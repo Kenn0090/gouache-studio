@@ -10,14 +10,11 @@ Test builds of every change are on the **Actions** tab (download `gouache-studio
 
 ## Releasing a version
 
-```
-node scripts/bump.mjs 0.2.0
-git commit -am "Version 0.2.0"
-git tag -a v0.2.0 -m "What's new in this version..."
-git push origin main v0.2.0
-```
+1. `node scripts/bump.mjs 0.2.0`
+2. Write what's new in `RELEASE_NOTES.md` (shown in the app's update card and on the release page).
+3. Commit and push to `main`.
 
-The tag message becomes the release notes shown in the app's update card. Releases are signed with the `TAURI_SIGNING_PRIVATE_KEY` repository secret.
+When the pushed version has no release yet, the build publishes `v0.2.0` automatically. Releases are signed with the `TAURI_SIGNING_PRIVATE_KEY` repository secret.
 
 ## Build it yourself
 

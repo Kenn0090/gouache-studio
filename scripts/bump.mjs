@@ -1,7 +1,6 @@
 // Sets the app version everywhere it is written down.
 //   node scripts/bump.mjs 0.2.0
-// Then commit, and tag with release notes as the tag message:
-//   git tag -a v0.2.0 -m "What's new: ..." && git push origin main v0.2.0
+// Then write RELEASE_NOTES.md, commit and push to main: the build publishes release v0.2.0.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
