@@ -4,7 +4,20 @@ A GPU-accelerated painting and texture app for hand-painted game art. Windows de
 
 ## Download
 
-Open the **Actions** tab, pick the latest successful "Build Windows installer" run, and download `gouache-studio-windows`. Inside the zip, `Gouache Studio_x.y.z_x64-setup.exe` is the installer.
+Get the latest installer from [Releases](https://github.com/Kenn0090/gouache-studio/releases/latest): `Gouache Studio_x.y.z_x64-setup.exe`. Once installed, the app checks for updates when it starts and can update itself (File › Check for updates…).
+
+Test builds of every change are on the **Actions** tab (download `gouache-studio-windows`).
+
+## Releasing a version
+
+```
+node scripts/bump.mjs 0.2.0
+git commit -am "Version 0.2.0"
+git tag -a v0.2.0 -m "What's new in this version..."
+git push origin main v0.2.0
+```
+
+The tag message becomes the release notes shown in the app's update card. Releases are signed with the `TAURI_SIGNING_PRIVATE_KEY` repository secret.
 
 ## Build it yourself
 
