@@ -54,6 +54,7 @@ function selViewU(z,dpr,wrap){if(!sel.t)return {};
     if(stroke&&stroke.L.quick&&stroke.o.tool!=='smudge'){selViewTmp=acquire();run(P.merge,selViewTmp,{uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:1},uStrokeColor:stroke.o.color,uStrokeOpacity:stroke.o.opacity,uLockAlpha:false});t=selViewTmp;bindTarget(null);}
     else if(preview&&preview.et&&preview.et.L.quick)t=previewT;
     return {uSel:t.tex,uSelMode:{int:2},uWrap:wrap};}
+  if(typeof selLive!=='undefined'&&selLive&&selLive.overlay)return {uSel:sel.t.tex,uSelMode:{int:2},uWrap:wrap};
   if(!sel.active)return {};
   return {uSel:sel.t.tex,uSelMode:{int:1},uTime:(performance.now()/1000)%1000,uPx:1/(z*dpr),uWrap:wrap};}
 function releaseSelView(){if(selViewTmp){release(selViewTmp);selViewTmp=null;}}

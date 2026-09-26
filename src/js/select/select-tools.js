@@ -126,22 +126,48 @@ function selKeys(e,m,k){
   if(isSelTool(ui.tool)&&sel.active&&e.key.startsWith('Arrow')){e.preventDefault();const s=e.shiftKey?10:1,d={ArrowLeft:[-s,0],ArrowRight:[s,0],ArrowUp:[0,-s],ArrowDown:[0,s]}[e.key];nudgeSel(d[0],d[1]);return true;}
   return false;}
 
-/* ---- Select menu dialogs ---- */
-function radiusDialog(title,label,max,def,fn,note){if(!needSel())return;let v=def;
-  const body=el('div',{class:'dlg-grid'},makeSlider({id:'selR',label,min:1,max,step:1,value:def,fmt:x=>x+'px',onInput:x=>{v=x;}}).el);if(note)body.append(el('p',{class:'note',text:note}));
-  openDialog({title,body,okLabel:'Apply',onOk(){fn(v);}});}
-function dlgFeather(){radiusDialog('Feather selection','Radius',250,8,featherSel,'Softens the edge of the selection.');}
-function dlgExpand(){radiusDialog('Expand selection','Expand by',100,4,expandSel);}
-function dlgContract(){radiusDialog('Contract selection','Contract by',100,4,contractSel);}
-function dlgSmooth(){radiusDialog('Smooth selection','Radius',100,4,smoothSel,'Rounds off jagged corners and removes small specks.');}
-function dlgLoadSel(){if(selBusy())return;const A=doc.active;const opts=[];
+/* ---- Select menu dialogs: live ----
+   While one is open the selection updates as you change the settings; Apply keeps it as one undo step,
+   Cancel (or Esc) puts the original back. Feather and Smooth show the selection as a red overlay so the soft edge is visible. */
+let selLive=null;
+function openLiveSel(o){if(o.needSel?!needSel():selBusy())return;
+  const orig=acquire();blit(sel.t,orig,0,0,doc.w,doc.h,0,0);const before={active:sel.active,bb:sel.bb&&sel.bb.slice()};
+  const L=selLive={overlay:!!o.overlay};let queued=false;
+  const render=()=>{queued=false;if(selLive!==L)return;const tmp=acquire();const r=o.compute(orig,tmp,before);blit(tmp,sel.t,0,0,doc.w,doc.h,0,0);release(tmp);sel.bb=r.bb;sel.active=r.active;selChanged();};
+  const upd=()=>{if(!queued){queued=true;requestAnimationFrame(render);}};
+  const body=el('div',{class:'dlg-grid'},...o.controls(upd));
+  body.append(chk('slOv','Show as red overlay',L.overlay,v=>{L.overlay=v;requestRender();}));
+  if(o.note)body.append(el('p',{class:'note',text:o.note}));
+  const finish=()=>{selLive=null;release(orig);selChanged();};
+  openDialog({title:o.title,body,float:true,okLabel:o.okLabel||'Apply',
+    onOk(){if(queued)render();const after={active:sel.active,bb:sel.bb&&sel.bb.slice()},region=rToDoc(rUnion(before.bb,after.bb));
+      const bs=region?captureSel(orig,region):null,as=region?captureSel(sel.t,region):null;
+      pushUndo({label:o.title,refs:[],snaps:[bs,as].filter(Boolean),
+        undo(){if(bs)restoreSel(bs,region[0],region[1]);setSelState({...before,quick:false});selChanged();},
+        redo(){if(as)restoreSel(as,region[0],region[1]);setSelState({...after,quick:false});selChanged();}});
+      finish();},
+    onCancel(){blit(orig,sel.t,0,0,doc.w,doc.h,0,0);sel.active=before.active;sel.bb=before.bb;finish();}});
+  render();}
+function liveRadius(title,label,max,def,apply,grow,overlay,note){let v=def;
+  openLiveSel({title,needSel:true,overlay,note,
+    controls:upd=>[makeSlider({id:'selR',label,min:1,max,step:1,value:def,fmt:x=>x+'px',onInput:x=>{v=x;upd();}}).el],
+    compute:(orig,dst,b)=>{apply(orig,dst,v);return {bb:rToDoc(rGrow(b.bb,grow(v))),active:true};}});}
+function dlgFeather(){liveRadius('Feather selection','Radius',250,8,(s,d,v)=>gaussian(s,d,v),v=>Math.ceil(v*1.4)+2,true,'Softens the edge of the selection.');}
+function dlgExpand(){liveRadius('Expand selection','Expand by',100,4,(s,d,v)=>morph(s,d,v,true),v=>v,false);}
+function dlgContract(){liveRadius('Contract selection','Contract by',100,4,(s,d,v)=>morph(s,d,v,false),()=>0,false);}
+function dlgSmooth(){liveRadius('Smooth selection','Radius',100,4,(s,d,v)=>{const b=acquire();gaussian(s,b,v);run(P.thresh,d,{uSrc:b.tex});release(b);},()=>0,true,'Rounds off jagged corners and removes small specks.');}
+function dlgLoadSel(){const A=doc.active;const opts=[];
   if(A)opts.push(['layer','Transparency of “'+A.name+'”']);if(A&&A.mask)opts.push(['mask','Mask of “'+A.name+'”']);
   opts.push(['r','Red channel of the image'],['g','Green channel of the image'],['b','Blue channel of the image'],['a','Alpha (transparency) of the image'],['lum','Brightness of the image']);
-  let src=opts[0][0],mode='new',inv=false;
-  const s=el('select',{id:'lsSrc','aria-label':'Source'},...opts.map(([v,t])=>el('option',{value:v,text:t})));s.addEventListener('change',()=>{src=s.value;});
-  const body=el('div',{class:'dlg-grid'},el('div',{class:'frow'},el('label',{for:'lsSrc',text:'From'}),s),
-    seg([['new','New'],['add','Add'],['sub','Subtract'],['int','Intersect']],mode,v=>{mode=v;},'Mode'),chk('lsInv','Invert',false,v=>{inv=v;}));
-  openDialog({title:'Load selection',body,okLabel:'Load',onOk(){
-    if(src==='layer'){if(inv){const t=isLayer(A)?A.target:null;if(t)loadSelFrom(t.tex,0,mode,'Load selection',true);else{const r=renderNodes(A.children);loadSelFrom(r.tex,0,mode,'Load selection',true);release(r);}}else selectLayerPixels(A,mode);return;}
-    if(src==='mask'){loadSelFrom(A.mask.target.tex,1,mode,'Load selection',inv);return;}
-    loadSelFrom(freshComposite().tex,{r:1,g:2,b:3,a:0,lum:4}[src],mode,'Load selection',inv);}});}
+  const st={src:opts[0][0],mode:'new',inv:false};
+  openLiveSel({title:'Load selection',okLabel:'Load',
+    controls:upd=>{const s=el('select',{id:'lsSrc','aria-label':'Source'},...opts.map(([v,t])=>el('option',{value:v,text:t})));s.addEventListener('change',()=>{st.src=s.value;upd();});
+      return [el('div',{class:'frow'},el('label',{for:'lsSrc',text:'From'}),s),seg([['new','New'],['add','Add'],['sub','Subtract'],['int','Intersect']],st.mode,v=>{st.mode=v;upd();},'Mode'),chk('lsInv','Invert',false,v=>{st.inv=v;upd();})];},
+    compute:(orig,dst,b)=>{const shape=acquire();let grp=null,tex,what;
+      if(st.src==='layer'){if(isLayer(A))tex=A.target.tex;else{grp=renderNodes(A.children);tex=grp.tex;}what=0;}
+      else if(st.src==='mask'){tex=A.mask.target.tex;what=1;}
+      else{tex=freshComposite().tex;what={r:1,g:2,b:3,a:0,lum:4}[st.src];}
+      run(P.loadsel,shape,{uSrc:tex,uWhat:{int:what},uInv:st.inv});if(grp)release(grp);
+      const had=b.active&&!!b.bb,m=modeIndex(st.mode);
+      run(P.selop,dst,{uOld:orig.tex,uShape:shape.tex,uMode:{int:m},uOldOn:had});release(shape);
+      if(m>=2)return {bb:had?b.bb:null,active:had};return {bb:fullRect(),active:true};}});}

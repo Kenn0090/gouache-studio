@@ -48,7 +48,7 @@ function selRecord(label,rect,fn,fromT){const r=rect&&rToDoc(rect);const before=
     undo(){if(bs)restoreSel(bs,r[0],r[1]);setSelState(before);selChanged();refreshQuickUI();},
     redo(){if(as)restoreSel(as,r[0],r[1]);setSelState(after);selChanged();refreshQuickUI();}});
   selChanged();return true;}
-function selBusy(){if(preview){toast('Apply or cancel the open filter first.');return true;}if(sel.quick){toast('Quick mask is on. Press Q to turn it back into a selection first.');return true;}return false;}
+function selBusy(){if(selLive){toast('Apply or cancel the selection dialog first.');return true;}if(preview){toast('Apply or cancel the open filter first.');return true;}if(sel.quick){toast('Quick mask is on. Press Q to turn it back into a selection first.');return true;}return false;}
 
 /* ---- GPU polygon fill (even-odd, optionally anti-aliased), in chunks so huge documents work ---- */
 const CHUNK=2048;let polyRes=null;
