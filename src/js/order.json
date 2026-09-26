@@ -1,0 +1,32 @@
+{
+ "order": [
+  "core/prelude",
+  "core/platform",
+  "gpu/shaders",
+  "gpu/targets",
+  "core/document",
+  "core/render",
+  "paint/brush-engine",
+  "ui/color",
+  "paint/brush-library",
+  "ui/layers-panel",
+  "ui/channels-panel",
+  "tools/text",
+  "core/layer-ops",
+  "core/resize",
+  "files/helpers",
+  "files/decoders",
+  "files/import",
+  "files/psd-open",
+  "files/readback",
+  "files/encoders",
+  "files/psd-save",
+  "files/save",
+  "files/abr",
+  "ui/dialogs",
+  "ui/menus",
+  "ui/view-input",
+  "core/sample",
+  "core/boot"
+ ]
+}

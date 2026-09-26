@@ -1,0 +1,72 @@
+/* ================= Document ================= */
+const MODES=['Normal','Multiply','Screen','Overlay','Darken','Lighten','Color Dodge','Color Burn','Hard Light','Soft Light','Difference','Exclusion','Linear Dodge (Add)','Hue','Saturation','Color','Luminosity',
+  'Linear Burn','Darker Color','Lighter Color','Vivid Light','Linear Light','Pin Light','Hard Mix','Subtract','Divide'];
+const MODE_GROUPS=[['',[0]],['Darken',[4,1,7,17,18]],['Lighten',[5,2,6,12,19]],['Contrast',[3,9,8,20,21,22,23]],['Inversion',[10,11,24,25]],['Component',[13,14,15,16]]];
+const PSD_KEYS=['norm','mul ','scrn','over','dark','lite','div ','idiv','hLit','sLit','diff','smud','lddg','hue ','sat ','colr','lum ','lbrn','dkCl','lgCl','vLit','lLit','pLit','hMix','fsub','fdiv'];
+const PS_MODE={'normal':0,'darken':4,'multiply':1,'color burn':7,'linear burn':17,'darker color':18,'lighten':5,'screen':2,'color dodge':6,'linear dodge':12,'lighter color':19,
+  'overlay':3,'soft light':9,'hard light':8,'vivid light':20,'linear light':21,'pin light':22,'hard mix':23,'difference':10,'exclusion':11,'subtract':24,'divide':25,'hue':13,'saturation':14,'color':15,'luminosity':16};
+const doc={w:1024,h:1024,depth:8,wrap:false,name:'Untitled',root:{type:'group',children:[],isRoot:true,visible:true,opacity:1,mode:-1},active:null,sel:new Set(),count:0};
+const view={zoom:1,x:0,y:0};
+let compOut=null,strokeT=null,beforeT=null,scratchT=null,previewT=null;
+let stroke=null, preview=null, dirtyComp=true, raf=0, lid=0, groupCount=0;
+const hist={undo:[],redo:[]};
+const pool={free:[],all:[]};
+function acquire(){let t=pool.free.pop();if(!t){t=makeTarget(doc.w,doc.h);pool.all.push(t);}return t;}
+function release(t){if(t&&pool.all.includes(t)&&!pool.free.includes(t))pool.free.push(t);}
+function allocAux(){
+  [strokeT,beforeT,scratchT,previewT,...pool.all].forEach(disposeTarget);pool.free=[];pool.all=[];
+  strokeT=makeTarget(doc.w,doc.h);beforeT=makeTarget(doc.w,doc.h);scratchT=makeTarget(doc.w,doc.h);previewT=makeTarget(doc.w,doc.h);
+  compOut=acquire();clearTarget(compOut);
+}
+function thumbCanvas(){const c=el('canvas',{width:40,height:40});return c;}
+function newLayerObj(name){doc.count++;return {type:'layer',id:++lid,name:name||('Layer '+doc.count),target:makeTarget(doc.w,doc.h),visible:true,opacity:1,mode:0,clip:false,lockAlpha:false,thumb:thumbCanvas(),parent:null};}
+function newGroupObj(name){return {type:'group',id:++lid,name:name||('Group '+(++groupCount)),children:[],open:true,visible:true,opacity:1,mode:-1,clip:false,lockAlpha:false,parent:null};}
+function disposeLayer(n){if(n.target)disposeTarget(n.target);if(n.mask)disposeTarget(n.mask.target);}
+const isLayer=n=>!!n&&n.type==='layer';
+function insertNode(n,parent,i){n.parent=parent;const c=parent.children;c.splice(i==null?c.length:clamp(i,0,c.length),0,n);}
+function detachNode(n){const p=n.parent;if(!p)return -1;const i=p.children.indexOf(n);if(i>=0)p.children.splice(i,1);return i;}
+function allLayers(g,out){g=g||doc.root;out=out||[];for(const n of g.children){if(n.type==='group')allLayers(n,out);else out.push(n);}return out;}
+function allNodes(g,out){g=g||doc.root;out=out||[];for(const n of g.children){out.push(n);if(n.type==='group')allNodes(n,out);}return out;}
+function inDoc(n){let c=n;while(c&&c!==doc.root){const p=c.parent;if(!p||!p.children.includes(c))return false;c=p;}return c===doc.root;}
+function isAncestor(a,n){let c=n.parent;while(c){if(c===a)return true;c=c.parent;}return false;}
+function activeLayer(){return isLayer(doc.active)?doc.active:null;}
+function makeMask(fill){const m={target:makeTarget(doc.w,doc.h),enabled:true,thumb:thumbCanvas()};m.thumb.className='mthumb';clearTarget(m.target,[fill,fill,fill,1]);return m;}
+function cloneMask(m){if(!m)return null;const c=makeMask(1);blit(m.target,c.target,0,0,doc.w,doc.h,0,0);c.enabled=m.enabled;return c;}
+function editTarget(){const n=doc.active;if(!n)return null;
+  if(n.editMask&&n.mask)return {node:n,target:n.mask.target,isMask:true,L:{target:n.mask.target,lockAlpha:false,maskOf:n,maskObj:n.mask}};
+  if(n.type==='layer')return {node:n,target:n.target,isMask:false,L:n};return null;}
+function clipBaseOf(list,i){const n=list[i];if(!isLayer(n)||!n.clip)return null;let j=i-1;while(j>=0&&isLayer(list[j])&&list[j].clip)j--;return j>=0&&isLayer(list[j])?list[j]:null;}
+function selectOnly(n){doc.active=n||null;doc.sel=new Set(n?[n]:[]);}
+function topSelected(){const sel=doc.sel;return allNodes().filter(n=>sel.has(n)&&![...sel].some(a=>a!==n&&isAncestor(a,n)));}
+function snapTree(){const m=new Map();const walk=g=>{m.set(g,g.children.slice());for(const c of g.children)if(c.type==='group')walk(c);};walk(doc.root);return {m,active:doc.active,sel:[...doc.sel]};}
+function restoreTree(t){for(const [g,ch] of t.m){g.children=ch.slice();for(const c of ch)c.parent=g;}doc.active=t.active;doc.sel=new Set(t.sel);}
+function layersOfSnap(t){const out=new Set();for(const ch of t.m.values())for(const c of ch)out.add(c);return out;}
+function structOp(label,fn){const before=snapTree();if(fn()===false)return false;const after=snapTree();
+  pushUndo({label,refs:[...new Set([...layersOfSnap(before),...layersOfSnap(after)])],undo(){restoreTree(before);},redo(){restoreTree(after);}});
+  changedAll();return true;}
+
+function dropRecords(list){const cands=new Set(),mc=new Set();for(const r of list){r.drop&&r.drop();for(const s of r.snaps||[])if(s.file)platform.spillDelete(s.file);for(const n of r.refs||[])cands.add(n);for(const m of r.masks||[])mc.add(m);}
+  const live=new Set(),liveM=new Set();for(const r of [...hist.undo,...hist.redo]){for(const n of r.refs||[]){live.add(n);if(n.mask)liveM.add(n.mask);}for(const m of r.masks||[])liveM.add(m);}
+  for(const n of allNodes())if(n.mask)liveM.add(n.mask);
+  for(const n of cands)if(!live.has(n)&&!inDoc(n)){disposeLayer(n);if(n.mask)liveM.delete(n.mask);}
+  for(const m of mc)if(!liveM.has(m))disposeTarget(m.target);}
+/* Undo budget: snapshots are kept in RAM up to UNDO_RAM bytes. Beyond that the desktop app moves the
+   oldest snapshots to temporary files on disk (and reads them back when you undo that far);
+   the browser version drops the oldest steps instead. */
+let undoRamMB=platform.isDesktop?2048:768;try{const v=+localStorage.getItem('gs.undoRamMB');if(v>0)undoRamMB=v;}catch(e){}
+const UNDO_RAM=undoRamMB*1048576,UNDO_MAX_STEPS=platform.isDesktop?500:120;
+const recBytes=r=>(r.snaps||[]).reduce((s,x)=>s+(x.data?x.bytes:0),0);
+let undoBusy=false;
+function pushUndo(rec){hist.undo.push(rec);const dropped=hist.redo;hist.redo=[];while(hist.undo.length>UNDO_MAX_STEPS)dropped.push(hist.undo.shift());
+  if(!platform.isDesktop){let total=hist.undo.reduce((s,r)=>s+recBytes(r),0);while(total>UNDO_RAM&&hist.undo.length>1){const r=hist.undo.shift();total-=recBytes(r);dropped.push(r);}}
+  dropRecords(dropped);if(platform.isDesktop)spillOld();}
+async function spillOld(){let total=hist.undo.reduce((s,r)=>s+recBytes(r),0);
+  for(const r of hist.undo){if(total<=UNDO_RAM)break;for(const s of r.snaps||[]){if(!s.data||s.spilling)continue;s.spilling=true;
+    try{const bytes=new Uint8Array(s.data.buffer,s.data.byteOffset,s.data.byteLength);s.file=await platform.spillWrite(bytes);total-=s.bytes;s.data=null;}catch(e){console.warn('undo spill failed',e);}s.spilling=false;}}}
+async function loadSnaps(r){for(const s of r.snaps||[]){if(s.data||!s.file)continue;const buf=await platform.spillRead(s.file);s.data=s.depth===16?new Uint16Array(buf):new Uint8Array(buf);platform.spillDelete(s.file);s.file=null;}}
+function clearHistory(){const all=[...hist.undo,...hist.redo];hist.undo=[];hist.redo=[];dropRecords(all);}
+function regionRecord(L,before,after,x,y,w,h,label){return {label,refs:[L.maskOf||L],masks:L.maskObj?[L.maskObj]:[],snaps:[before,after],undo(){restoreRegion(before,L.target,x,y);},redo(){restoreRegion(after,L.target,x,y);}};}
+async function undo(){if(undoBusy)return;if(tedit)closeTextEditor();textCommit();const r=hist.undo[hist.undo.length-1];if(!r){toast('Nothing to undo');return;}
+  undoBusy=true;try{await loadSnaps(r);}finally{undoBusy=false;}if(hist.undo[hist.undo.length-1]!==r)return;hist.undo.pop();r.undo();hist.redo.push(r);toast('Undo: '+r.label);changedAll();}
+async function redo(){if(undoBusy)return;if(tedit)closeTextEditor();textCommit();const r=hist.redo[hist.redo.length-1];if(!r){toast('Nothing to redo');return;}
+  undoBusy=true;try{await loadSnaps(r);}finally{undoBusy=false;}if(hist.redo[hist.redo.length-1]!==r)return;hist.redo.pop();r.redo();hist.undo.push(r);toast('Redo: '+r.label);changedAll();if(platform.isDesktop)spillOld();}

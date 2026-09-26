@@ -1,0 +1,25 @@
+{
+  "name": "gouache-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GPU-accelerated hand-painting and texture editor",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:web": "node scripts/build.mjs --target=web",
+    "build:desktop": "node scripts/build.mjs --target=desktop",
+    "tauri": "tauri",
+    "desktop:dev": "npm run build:desktop && tauri dev",
+    "desktop:build": "npm run build:desktop && tauri build"
+  },
+  "dependencies": {
+    "ag-psd": "31.0.2",
+    "pako": "2.1.0",
+    "utif": "3.1.0",
+    "@fontsource/instrument-sans": "^5.0.0",
+    "@fontsource/jetbrains-mono": "^5.0.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}

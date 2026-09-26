@@ -1,0 +1,95 @@
+/* ================= Dialogs ================= */
+const modal=$('#modal');let dlg=null;
+function openDialog(o){closeMenu();dlg=o;$('#dlgTitle').textContent=o.title;$('#dlgBody').replaceChildren(o.body);modal.classList.toggle('float',!!o.float);
+  const ok=$('#dlgOk');ok.hidden=!o.okLabel;ok.textContent=o.okLabel||'';$('#dlgCancel').textContent=o.cancelLabel||'Cancel';modal.hidden=false;
+  const f=o.body.querySelector('input,button,select');if(f)f.focus();}
+function closeDialog(){modal.hidden=true;dlg=null;}
+$('#dlgOk').addEventListener('click',()=>{if(dlg&&dlg.onOk&&dlg.onOk()===false)return;closeDialog();});
+$('#dlgCancel').addEventListener('click',()=>{if(dlg&&dlg.onCancel)dlg.onCancel();closeDialog();});
+modal.addEventListener('pointerdown',e=>{if(e.target===modal&&!modal.classList.contains('float')){if(dlg&&dlg.onCancel)dlg.onCancel();closeDialog();}});
+
+function filterDialog(title,defs,render,label){const et=needTarget();if(!et)return;const L=et.L;if(!effVisible(et.node)){toast('Show the active layer before filtering it.');return;}
+  const vals={};const body=el('div',{class:'dlg-grid'});const sliders=[];
+  const upd=()=>{render(L,vals);chanLimit(et);requestRender(true);};
+  for(const d of defs){vals[d.key]=d.value;const s=makeSlider(Object.assign({},d,{id:'f_'+d.key,onInput:v=>{vals[d.key]=v;upd();}}));sliders.push([s,d]);body.append(s.el);}
+  body.append(el('div',{class:'frow'},el('button',{class:'btn sm',text:'Reset',onclick:()=>{for(const [s,d] of sliders){vals[d.key]=d.value;s.set(d.value);}upd();}}),el('span',{class:'note',text:'Previewing on “'+et.node.name+'”'+(et.isMask?' (mask)':chanRestricted()?' ('+chanLabel()+' only)':'')})));
+  preview={L:et.node,isMask:et.isMask,et};upd();
+  openDialog({title,body,float:true,okLabel:'Apply',onOk(){applyPreview(label);},onCancel(){preview=null;requestRender(true);}});}
+const sgn=v=>(v>0?'+':'')+v;
+function dlgAdjust(){filterDialog('Color adjustments',[
+  {key:'exposure',label:'Exposure',min:-3,max:3,step:.05,value:0,fmt:v=>(v>0?'+':'')+v.toFixed(1)+' EV'},
+  {key:'bright',label:'Brightness',min:-100,max:100,step:1,value:0,fmt:sgn},
+  {key:'contrast',label:'Contrast',min:-100,max:100,step:1,value:0,fmt:sgn},
+  {key:'sat',label:'Saturation',min:-100,max:100,step:1,value:0,fmt:sgn},
+  {key:'hue',label:'Hue',min:-180,max:180,step:1,value:0,fmt:v=>sgn(v)+'°'},
+  {key:'temp',label:'Temperature',min:-100,max:100,step:1,value:0,fmt:sgn}],
+  (L,v)=>run(P.adjust,previewT,{uSrc:L.target.tex,uExposure:v.exposure,uBright:v.bright/200,uContrast:1+v.contrast/100,uSat:1+v.sat/100,uHue:v.hue*Math.PI/180,uTemp:v.temp/100}),'Color adjustments');}
+function dlgBlur(){filterDialog('Gaussian blur',[{key:'r',label:'Radius',min:.5,max:100,step:.5,value:6,fmt:v=>v+'px'}],(L,v)=>gaussian(L.target,previewT,v.r),'Gaussian blur');}
+function dlgSharpen(){filterDialog('Sharpen',[{key:'a',label:'Amount',min:0,max:3,step:.05,value:.8,fmt:pct},{key:'r',label:'Radius',min:.5,max:12,step:.5,value:1.5,fmt:v=>v+'px'}],
+  (L,v)=>{gaussian(L.target,previewT,v.r);run(P.sharpen,scratchT,{uSrc:L.target.tex,uBlur:previewT.tex,uAmount:v.a});blit(scratchT,previewT,0,0,doc.w,doc.h,0,0);},'Sharpen');}
+function dlgPosterize(){filterDialog('Posterize',[{key:'n',label:'Levels',min:2,max:32,step:1,value:6}],(L,v)=>run(P.poster,previewT,{uSrc:L.target.tex,uLevels:v.n}),'Posterize');}
+
+function sizeFields(w,h,lockable){
+  const iw=el('input',{class:'num',type:'number',id:'dW',min:1,max:MAX_DIM,value:w}),ih=el('input',{class:'num',type:'number',id:'dH',min:1,max:MAX_DIM,value:h});
+  const lock=lockable?el('input',{type:'checkbox',id:'dLock'}):null;if(lock)lock.checked=true;const ratio=w/h;
+  iw.addEventListener('input',()=>{if(lock&&lock.checked)ih.value=Math.max(1,Math.round(+iw.value/ratio));});ih.addEventListener('input',()=>{if(lock&&lock.checked)iw.value=Math.max(1,Math.round(+ih.value*ratio));});
+  const presets=el('div',{class:'chips'},...[256,512,1024,2048,4096,8192,16384].filter(n=>n<=MAX_DIM).map(n=>el('button',{class:'chip',text:String(n),onclick:()=>{iw.value=n;ih.value=lock&&lock.checked?Math.max(1,Math.round(n/ratio)):n;}})));
+  const row=el('div',{class:'frow'},el('label',{for:'dW',text:'Width'}),iw,el('label',{for:'dH',text:'Height'}),ih,el('span',{class:'dim',text:'px'}));
+  const read=()=>{const W=Math.round(+iw.value),H=Math.round(+ih.value);if(!(W>=1&&H>=1&&W<=MAX_DIM&&H<=MAX_DIM)){toast('Width and height must be between 1 and '+MAX_DIM+' px.');return null;}return [W,H];};
+  return {row,presets,lock,read};
+}
+function dlgCanvasSize(){const f=sizeFields(doc.w,doc.h,false);let ax=.5,ay=.5;
+  const anchor=el('div',{class:'anchor',role:'group','aria-label':'Anchor'});
+  for(let j=0;j<3;j++)for(let i=0;i<3;i++){const b=el('button',{class:(i===1&&j===1)?'on':'','aria-label':'Anchor '+['top','middle','bottom'][j]+' '+['left','center','right'][i]});b.onclick=()=>{ax=i/2;ay=j/2;anchor.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');};anchor.append(b);}
+  const body=el('div',{class:'dlg-grid'},f.row,f.presets,el('div',{class:'frow'},el('label',{text:'Anchor'}),anchor,el('p',{class:'note',text:'Adds or trims canvas around existing pixels. Pixels are not resampled.'})));
+  openDialog({title:'Canvas size',body,okLabel:'Resize canvas',onOk(){const r=f.read();if(!r)return false;if(r[0]!==doc.w||r[1]!==doc.h)resizeCanvasDoc(r[0],r[1],ax,ay);}});}
+function dlgImageSize(){const f=sizeFields(doc.w,doc.h,true);
+  const body=el('div',{class:'dlg-grid'},f.row,f.presets,el('label',{class:'chk',for:'dLock'},f.lock,el('span',{text:'Keep proportions'})),el('p',{class:'note',text:'Resamples every layer on the GPU with box-filtered supersampling.'}));
+  openDialog({title:'Image size',body,okLabel:'Resample',onOk(){const r=f.read();if(!r)return false;if(r[0]!==doc.w||r[1]!==doc.h)resizeImageDoc(r[0],r[1]);}});}
+function dlgNew(){const f=sizeFields(1024,1024,false);let depth=doc.depth,bgMode='white',tile=false;
+  const seg=(opts,cur,set)=>{const w=el('div',{class:'chips'});const draw=()=>{w.replaceChildren(...opts.map(([v,l,dis])=>el('button',{class:'chip'+(v===cur()?' on':''),disabled:!!dis,title:dis?'This GPU cannot render 16-bit float textures':null,text:l,onclick:()=>{set(v);draw();}})));};draw();return w;};
+  const tileChk=chk('dTile','Seamless tile mode',false,v=>{tile=v;});
+  const body=el('div',{class:'dlg-grid'},f.row,f.presets,
+    el('div',{class:'sub',text:'Bit depth'}),seg([[8,'8-bit'],[16,'16-bit float',!canFloat]],()=>depth,v=>{depth=v;}),
+    el('div',{class:'sub',text:'Background'}),seg([['white','White'],['fg','Foreground color'],['clear','Transparent']],()=>bgMode,v=>{bgMode=v;}),
+    tileChk);
+  openDialog({title:'New document',body,okLabel:'Create',onOk(){const r=f.read();if(!r)return false;const bg=bgMode==='white'?[1,1,1]:bgMode==='fg'?ui.fg.slice():null;newDoc(r[0],r[1],depth,bg,'Untitled',tile);}});}
+const FORMATS=[['png','PNG'],['tga','TGA'],['dds','DDS'],['tif','TIFF'],['exr','EXR'],['jpg','JPG'],['webp','WebP']];
+const exp={fmt:'png',png16:false,tgaRle:true,tgaAlpha:true,dds:'bc3',mips:true,tif16:false,q:.92,src:'image'};
+const isPOT=n=>n>0&&(n&(n-1))===0;
+function segChips(opts,get,set,after){const w=el('div',{class:'chips'});const draw=()=>w.replaceChildren(...opts.map(([v,l,dis,tip])=>el('button',{class:'chip'+(v===get()?' on':''),disabled:!!dis,title:tip||null,text:l,onclick:()=>{set(v);draw();if(after)after();}})));draw();return w;}
+async function buildExport(){
+  const W=doc.w,H=doc.h,t=sourceTarget(exp.src),px=readPremult(t);if(t!==compOut)release(t);const base=slug(doc.name)+(exp.src==='layer'&&doc.active?'-'+slug(doc.active.name):'');
+  switch(exp.fmt){
+    case 'png':return exp.png16?{blob:await encodePNG16(W,H,toStraight(px,16)),name:base+'.png'}:{blob:await canvasBlob(W,H,toStraight(px,8),'image/png'),name:base+'.png'};
+    case 'tga':return {blob:encodeTGA(W,H,toStraight(px,8),exp.tgaRle,exp.tgaAlpha),name:base+'.tga'};
+    case 'dds':return {blob:await encodeDDS(W,H,toStraight(px,8),exp.dds,exp.mips),name:base+'.dds'};
+    case 'tif':return {blob:await encodeTIFF(W,H,toStraight(px,exp.tif16?16:8),exp.tif16?16:8),name:base+'.tif'};
+    case 'exr':return {blob:encodeEXR(W,H,px),name:base+'.exr'};
+    case 'jpg':return {blob:await canvasBlob(W,H,toStraight(px,8),'image/jpeg',exp.q,true),name:base+'.jpg'};
+    case 'webp':return {blob:await canvasBlob(W,H,toStraight(px,8),'image/webp',exp.q,false),name:base+'.webp'};}}
+function dlgExport(){
+  exp.png16=exp.tif16=doc.depth===16;
+  const opts=el('div',{class:'fmt-opts'}),info=el('p',{class:'note'}),status=el('div',{class:'status-line',role:'status'});
+  const go=el('button',{class:'btn primary',text:'Export'});
+  const fmtRow=segChips(FORMATS.map(([v,l])=>[v,l]),()=>exp.fmt,v=>{exp.fmt=v;},drawOpts);
+  const srcRow=segChips([['image','Visible image'],['layer',(doc.active&&doc.active.type==='group'?'Active group':'Active layer')+(doc.active?' ('+doc.active.name+')':'')]],()=>exp.src,v=>{exp.src=v;});
+  function drawOpts(){const f=exp.fmt,W=doc.w,H=doc.h,ow=[];const hi16=doc.depth===16?null:'The document is 8-bit; switch to 16-bit in the Image menu to get extra precision.';
+    if(f==='png'){ow.push(segChips([[false,'8-bit'],[true,'16-bit',doc.depth!==16,hi16]],()=>exp.png16,v=>{exp.png16=v;}),el('p',{class:'note',text:'Lossless with transparency. The safe default for engines and for sharing.'}));}
+    if(f==='tga'){ow.push(el('div',{class:'chips'},chk('eRle','RLE compression',exp.tgaRle,v=>{exp.tgaRle=v;}),chk('eAlpha','Alpha channel (32-bit)',exp.tgaAlpha,v=>{exp.tgaAlpha=v;})),el('p',{class:'note',text:'Top-left origin, BGRA. Read by Unreal, Unity, Godot, Substance and most DCC tools.'}));}
+    if(f==='dds'){ow.push(segChips([['bc1','BC1 / DXT1'],['bc3','BC3 / DXT5'],['rgba','Uncompressed']],()=>exp.dds,v=>{exp.dds=v;},drawOpts),el('div',{class:'chips'},chk('eMip','Generate mipmaps',exp.mips,v=>{exp.mips=v;})),
+        el('p',{class:'note',text:exp.dds==='bc1'?'Smallest file, for color maps without transparency (1-bit alpha at most).':exp.dds==='bc3'?'Color plus smooth alpha. Good for cutouts, foliage and decals.':'Full 8-bit BGRA, no compression artifacts, four to eight times larger.'}));
+      if(exp.dds!=='rgba'&&(W%4||H%4))ow.push(el('p',{class:'note',text:'Block compression works best when width and height are multiples of 4.'}));}
+    if(f==='tif'){ow.push(segChips([[false,'8-bit'],[true,'16-bit',doc.depth!==16,hi16]],()=>exp.tif16,v=>{exp.tif16=v;}),el('p',{class:'note',text:'Deflate-compressed RGBA with unassociated alpha.'}));}
+    if(f==='exr')ow.push(el('p',{class:'note',text:'Half-float RGBA in linear color with premultiplied alpha. Use it for HDR, lighting or VFX work; painted color textures usually go out as PNG, TGA or DDS.'}));
+    if(f==='jpg'||f==='webp'){ow.push(makeSlider({id:'eQ',label:'Quality',min:.4,max:1,step:.01,value:exp.q,fmt:pct,onInput:v=>{exp.q=v;}}).el);
+      if(f==='jpg')ow.push(el('p',{class:'note',text:'JPG has no transparency; transparent areas become black. Avoid it for textures you will edit again.'}));}
+    opts.replaceChildren(...ow);
+    info.textContent=doc.w+' × '+doc.h+' px'+(isPOT(doc.w)&&isPOT(doc.h)?' (power of two).':'. Not a power of two; engines generate mipmaps best from sizes like 512, 1024 or 2048.');}
+  drawOpts();
+  go.addEventListener('click',async()=>{go.disabled=true;status.className='status-line';status.textContent='Encoding…';await tick();
+    try{const {blob,name}=await buildExport();status.textContent='Saving '+name+' ('+(blob.size/1048576).toFixed(2)+' MB)…';const r=await deliver(name,blob);
+      status.className='status-line '+(r.ok?'ok':'err');status.textContent=deliveredText(r,exp.fmt.toUpperCase());}
+    catch(e){console.error(e);status.className='status-line err';status.textContent='Export failed: '+e.message;}finally{go.disabled=false;}});
+  const body=el('div',{class:'dlg-grid'},el('div',{class:'sub',text:'Format'}),fmtRow,opts,el('div',{class:'sub',text:'Source'}),srcRow,info,el('div',{class:'frow'},go,status));
+  openDialog({title:'Export',body,okLabel:null,cancelLabel:'Close'});}
