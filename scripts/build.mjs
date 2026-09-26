@@ -3,7 +3,8 @@
 //   dist/                - the desktop app's frontend (libraries and fonts bundled locally, works offline)
 import fs from 'node:fs';
 import path from 'node:path';
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+import { fileURLToPath } from 'node:url';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const r = p => path.join(root, p);
 const read = p => fs.readFileSync(r(p), 'utf8');
 const target = (process.argv.find(a => a.startsWith('--target=')) || '--target=all').split('=')[1];
