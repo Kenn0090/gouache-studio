@@ -49,5 +49,7 @@ function run(prog,target,u,opts){
 const dummy=(()=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array(4));gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);return t;})();
 
 const CH_DEF={uChanMode:{int:0},uChan:[1,1,1,1]};
-P.comp.defaults=Object.assign({uMask2:dummy,uLMask:dummy,uUseMask2:false,uUseLMask:false},CH_DEF);P.merge.defaults=CH_DEF;P.smudge.defaults=CH_DEF;
-P.mix.defaults={uM:dummy,uUseM:false};P.resample.defaults={uOutside:[0,0,0,0]};P.view.defaults={uShow:[1,1,1,0],uSingle:{int:-1},uMaskView:false};
+const SEL_DEF={uSelTex:dummy,uUseSel:false};
+P.comp.defaults=Object.assign({uMask2:dummy,uLMask:dummy,uUseMask2:false,uUseLMask:false},CH_DEF,SEL_DEF);P.merge.defaults=Object.assign({},CH_DEF,SEL_DEF);P.smudge.defaults=Object.assign({},CH_DEF,SEL_DEF);
+P.mix.defaults={uM:dummy,uUseM:false};P.resample.defaults={uOutside:[0,0,0,0]};P.view.defaults={uShow:[1,1,1,0],uSingle:{int:-1},uMaskView:false,uSel:dummy,uSelMode:{int:0},uTime:0,uPx:1,uWrap:false};
+P.shift.defaults={uWrap:false,uOutside:[0,0,0,0]};P.selop.defaults={uShape:dummy,uOldOn:true};P.loadsel.defaults={uInv:false};P.cropsel.defaults={uSel:dummy,uUseSel:false};

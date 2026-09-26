@@ -53,4 +53,8 @@ $('#fileIn').addEventListener('change',e=>{const f=e.target.files[0];if(f)handle
 stage.addEventListener('dragover',e=>{if([...e.dataTransfer.types].includes('Files')){e.preventDefault();$('#dropHint').hidden=false;}});
 stage.addEventListener('dragleave',e=>{if(e.target===stage||!stage.contains(e.relatedTarget))$('#dropHint').hidden=true;});
 stage.addEventListener('drop',e=>{e.preventDefault();$('#dropHint').hidden=true;const f=e.dataTransfer.files[0];if(f)handleFile(f,'place');});
-document.addEventListener('paste',e=>{const it=[...(e.clipboardData?e.clipboardData.items:[])].find(i=>i.type.startsWith('image/'));if(it){e.preventDefault();const f=it.getAsFile();handleFile(new File([f],'Pasted image.png',{type:f.type}),'place');}});
+/* paste: our own copied pixels (the clipboard holds a marker for them), else an image from another app */
+document.addEventListener('paste',e=>{if(isTypingTarget(e.target))return;const cd=e.clipboardData,txt=cd?cd.getData('text/plain'):'';
+  if(clip&&txt===clip.marker){e.preventDefault();pasteClip();return;}
+  const it=[...(cd?cd.items:[])].find(i=>i.type.startsWith('image/'));if(it){e.preventDefault();const f=it.getAsFile();handleFile(new File([f],'Pasted image.png',{type:f.type}),'place');return;}
+  if(clip&&!txt){e.preventDefault();pasteClip();}});

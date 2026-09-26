@@ -10,6 +10,10 @@ const view={zoom:1,x:0,y:0};
 let compOut=null,strokeT=null,beforeT=null,scratchT=null,previewT=null;
 let stroke=null, preview=null, dirtyComp=true, raf=0, lid=0, groupCount=0;
 const hist={undo:[],redo:[]};
+/* The selection is a greyscale image the size of the document (white = selected). It stays in video memory
+   next to the layers. "active" says whether it is in use; after Deselect the pixels are kept for Reselect.
+   bb = bounds of its non-empty pixels [x0,y0,x1,y1] (may be generous). In quick mask mode it is painted directly. */
+const sel={t:null,active:false,bb:null,quick:false,L:null,node:{name:'Quick mask',visible:true,parent:null}};
 const pool={free:[],all:[]};
 function acquire(){let t=pool.free.pop();if(!t){t=makeTarget(doc.w,doc.h);pool.all.push(t);}return t;}
 function release(t){if(t&&pool.all.includes(t)&&!pool.free.includes(t))pool.free.push(t);}
@@ -17,6 +21,9 @@ function allocAux(){
   [strokeT,beforeT,scratchT,previewT,...pool.all].forEach(disposeTarget);pool.free=[];pool.all=[];
   strokeT=makeTarget(doc.w,doc.h);beforeT=makeTarget(doc.w,doc.h);scratchT=makeTarget(doc.w,doc.h);previewT=makeTarget(doc.w,doc.h);
   compOut=acquire();clearTarget(compOut);
+  disposeTarget(sel.t);sel.t=makeTarget(doc.w,doc.h);clearTarget(sel.t,[0,0,0,1]);
+  sel.active=false;sel.bb=null;sel.quick=false;sel.L={target:sel.t,lockAlpha:false,quick:true};
+  if(typeof selChanged==='function')selChanged();
 }
 function thumbCanvas(){const c=el('canvas',{width:40,height:40});return c;}
 function newLayerObj(name){doc.count++;return {type:'layer',id:++lid,name:name||('Layer '+doc.count),target:makeTarget(doc.w,doc.h),visible:true,opacity:1,mode:0,clip:false,lockAlpha:false,thumb:thumbCanvas(),parent:null};}
@@ -32,7 +39,7 @@ function isAncestor(a,n){let c=n.parent;while(c){if(c===a)return true;c=c.parent
 function activeLayer(){return isLayer(doc.active)?doc.active:null;}
 function makeMask(fill){const m={target:makeTarget(doc.w,doc.h),enabled:true,thumb:thumbCanvas()};m.thumb.className='mthumb';clearTarget(m.target,[fill,fill,fill,1]);return m;}
 function cloneMask(m){if(!m)return null;const c=makeMask(1);blit(m.target,c.target,0,0,doc.w,doc.h,0,0);c.enabled=m.enabled;return c;}
-function editTarget(){const n=doc.active;if(!n)return null;
+function editTarget(){if(sel.quick)return {node:sel.node,target:sel.t,isMask:true,L:sel.L};const n=doc.active;if(!n)return null;
   if(n.editMask&&n.mask)return {node:n,target:n.mask.target,isMask:true,L:{target:n.mask.target,lockAlpha:false,maskOf:n,maskObj:n.mask}};
   if(n.type==='layer')return {node:n,target:n.target,isMask:false,L:n};return null;}
 function clipBaseOf(list,i){const n=list[i];if(!isLayer(n)||!n.clip)return null;let j=i-1;while(j>=0&&isLayer(list[j])&&list[j].clip)j--;return j>=0&&isLayer(list[j])?list[j]:null;}
@@ -65,7 +72,7 @@ async function spillOld(){let total=hist.undo.reduce((s,r)=>s+recBytes(r),0);
     try{const bytes=new Uint8Array(s.data.buffer,s.data.byteOffset,s.data.byteLength);s.file=await platform.spillWrite(bytes);total-=s.bytes;s.data=null;}catch(e){console.warn('undo spill failed',e);}s.spilling=false;}}}
 async function loadSnaps(r){for(const s of r.snaps||[]){if(s.data||!s.file)continue;const buf=await platform.spillRead(s.file);s.data=s.depth===16?new Uint16Array(buf):new Uint8Array(buf);platform.spillDelete(s.file);s.file=null;}}
 function clearHistory(){const all=[...hist.undo,...hist.redo];hist.undo=[];hist.redo=[];dropRecords(all);}
-function regionRecord(L,before,after,x,y,w,h,label){return {label,refs:[L.maskOf||L],masks:L.maskObj?[L.maskObj]:[],snaps:[before,after],undo(){restoreRegion(before,L.target,x,y);},redo(){restoreRegion(after,L.target,x,y);}};}
+function regionRecord(L,before,after,x,y,w,h,label){return {label,refs:L.quick?[]:[L.maskOf||L],masks:L.maskObj?[L.maskObj]:[],snaps:[before,after],undo(){restoreRegion(before,L.target,x,y);},redo(){restoreRegion(after,L.target,x,y);}};}
 async function undo(){if(undoBusy)return;if(tedit)closeTextEditor();textCommit();const r=hist.undo[hist.undo.length-1];if(!r){toast('Nothing to undo');return;}
   undoBusy=true;try{await loadSnaps(r);}finally{undoBusy=false;}if(hist.undo[hist.undo.length-1]!==r)return;hist.undo.pop();r.undo();hist.redo.push(r);toast('Undo: '+r.label);changedAll();}
 async function redo(){if(undoBusy)return;if(tedit)closeTextEditor();textCommit();const r=hist.redo[hist.redo.length-1];if(!r){toast('Nothing to redo');return;}

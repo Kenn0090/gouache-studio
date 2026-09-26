@@ -12,7 +12,7 @@ function resizeImageDoc(w,h){const fx=w/doc.w,fy=h/doc.h,sx=doc.w/w,sy=doc.h/h,t
 function setDepth(d){if(d===doc.depth)return;if(d===16&&!canFloat){toast('This GPU cannot render to 16-bit float textures, so 16-bit mode is unavailable.');return;}
   rebuildLayers(doc.w,doc.h,d,(s,t)=>run(P.resample,t,{uSrc:s.tex,uOffset:[0,0],uScale:[1,1],uTaps:{int:1}}));changedAll();updateStatus();
   toast(d===16?'Now 16 bits per channel (half float). Soft gradients and glazes will not band.':'Now 8 bits per channel.');}
-function toggleTile(){doc.wrap=!doc.wrap;const all=[strokeT,beforeT,scratchT,previewT,...pool.all,...allLayers().map(l=>l.target),...allNodes().filter(n=>n.mask).map(n=>n.mask.target)];all.forEach(t=>setWrap(t,doc.wrap));
+function toggleTile(){doc.wrap=!doc.wrap;const all=[strokeT,beforeT,scratchT,previewT,...pool.all,...allLayers().map(l=>l.target),...allNodes().filter(n=>n.mask).map(n=>n.mask.target),sel.t];all.forEach(t=>setWrap(t,doc.wrap));
   $('#tileBtn').setAttribute('aria-pressed',String(doc.wrap));fit();requestRender(true);toast(doc.wrap?'Tile mode on: strokes wrap across edges.':'Tile mode off.');}
 
 function newDoc(w,h,depth,bg,name,wrap){

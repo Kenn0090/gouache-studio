@@ -1,18 +1,22 @@
 /* ================= Menus ================= */
 const MENUS={
   File:[['New document…','new','Ctrl+Alt+N'],['Open… (PSD, PNG, TGA, DDS, TIFF, JPG)','open','Ctrl+O'],['Open recent…','recent'],['Place image as layer…','place'],'-',['Save (PSD)','savePsd','Ctrl+S'],['Save as… (PSD)','savePsdAs','Ctrl+Shift+S'],['Export… (PNG, TGA, DDS, TIFF, EXR, JPG)','export','Ctrl+Shift+E'],'-',['Import brushes (.abr)…','importAbr'],'-',['Check for updates…','checkUpdates']],
-  Edit:[['Undo','undo','Ctrl+Z'],['Redo','redo','Ctrl+Shift+Z'],'-',['Fill layer with foreground','fill','Alt+Del'],['Clear layer','clear','Del']],
+  Edit:[['Undo','undo','Ctrl+Z'],['Redo','redo','Ctrl+Shift+Z'],'-',['Cut','cut','Ctrl+X'],['Copy','copy','Ctrl+C'],['Copy merged','copyMerged','Ctrl+Shift+C'],['Paste','paste','Ctrl+V'],'-',['Fill with foreground','fill','Alt+Del'],['Clear','clear','Del']],
   Image:[['Canvas size…','canvasSize'],['Image size…','imageSize'],'-',['8 bits per channel','depth8'],['16 bits per channel (half float)','depth16']],
   Layer:[['New layer','addLayer','Ctrl+Shift+N'],['New group','newGroup'],['Group selected','group','Ctrl+G'],['Ungroup','ungroup','Ctrl+Shift+G'],['Duplicate','dupLayer','Ctrl+J'],['Delete','delLayer'],'-',
     ['Add mask','addMask'],['Add hide-all mask','addMaskHide'],['Apply mask','applyMask'],['Delete mask','deleteMask'],'-',['Merge down / selected','merge','Ctrl+E'],['Merge group','mergeGroup'],['Merge visible','mergeVisible'],['Flatten image','flatten'],'-',['Rasterize text','rasterize'],['Make brush tip from layer','tipFromLayer']],
+  Select:[['All','selAll','Ctrl+A'],['Deselect','deselect','Ctrl+D'],['Reselect','reselect','Ctrl+Shift+D'],['Invert','selInvert','Ctrl+Shift+I'],'-',
+    ['Feather…','selFeather'],['Expand…','selExpand'],['Contract…','selContract'],['Smooth…','selSmooth'],'-',['Select layer pixels','selLayer','Ctrl+click thumbnail'],['Load selection…','selLoad'],'-',['Quick mask','quickMask','Q']],
   Adjust:[['Color adjustments…','adjust','Ctrl+U'],['Invert','invert','Ctrl+I'],['Posterize…','posterize']],
   Filter:[['Gaussian blur…','blur'],['Sharpen…','sharpen']],
   View:[['Fit on screen','fit','Ctrl+0'],['Actual pixels','actual','Ctrl+1'],['Tile mode','tile','Shift+T']]
 };
 const actions={new:dlgNew,open:()=>pickFile('open'),place:()=>pickFile('place'),export:dlgExport,savePsd:()=>savePSD(false),savePsdAs:savePSDAs,recent:()=>platform.isDesktop?dlgRecent():toast('Recent files are available in the desktop app.'),importAbr:()=>pickFile('abr'),checkUpdates:()=>checkForUpdates(true),tipFromLayer,undo,redo,fill:fillLayer,clear:clearLayer,
   canvasSize:dlgCanvasSize,imageSize:dlgImageSize,depth8:()=>setDepth(8),depth16:()=>setDepth(16),addLayer:()=>cmdAddLayer(),newGroup:cmdNewGroup,group:cmdGroup,ungroup:cmdUngroup,dupLayer:cmdDuplicate,merge:cmdMerge,mergeGroup:()=>{if(doc.active&&doc.active.type==='group')cmdMergeGroup();else toast('Select a group to merge.');},mergeVisible:cmdMergeVisible,rasterize:()=>{const L=activeText();if(L){rasterizeText(L);toast('Text converted to pixels.');}else toast('Select a text layer first.');},addMask:()=>cmdAddMask(1),addMaskHide:()=>cmdAddMask(0),applyMask:()=>{if(isLayer(doc.active)&&doc.active.mask)cmdApplyMask();else toast('Select a layer that has a mask.');},deleteMask:()=>{if(doc.active&&doc.active.mask)cmdDeleteMask();else toast('The selection has no mask.');},flatten:cmdFlatten,delLayer:cmdDelete,
+  cut:()=>{if(cutSel())writeClipMarker();},copy:()=>{if(copySel(false))writeClipMarker();},copyMerged:()=>{if(copySel(true))writeClipMarker();},paste:pasteClip,
+  selAll:selectAll,deselect,reselect,selInvert:invertSel,selFeather:dlgFeather,selExpand:dlgExpand,selContract:dlgContract,selSmooth:dlgSmooth,selLayer:()=>selectLayerPixels(null,'new'),selLoad:dlgLoadSel,quickMask:toggleQuickMask,
   adjust:dlgAdjust,invert,posterize:dlgPosterize,blur:dlgBlur,sharpen:dlgSharpen,fit,actual,tile:toggleTile};
-const checked={depth8:()=>doc.depth===8,depth16:()=>doc.depth===16,tile:()=>doc.wrap};
+const checked={depth8:()=>doc.depth===8,depth16:()=>doc.depth===16,tile:()=>doc.wrap,quickMask:()=>sel.quick};
 const pop=$('#menuPop');let openName=null;
 const menuBtns={};for(const name in MENUS){const b=el('button',{text:name,'aria-haspopup':'true','aria-expanded':'false'});b.addEventListener('click',()=>openName===name?closeMenu():openMenu(name));b.addEventListener('mouseenter',()=>{if(openName&&openName!==name)openMenu(name);});menuBtns[name]=b;$('#menus').append(b);}
 function openMenu(name){closeMenu();const b=menuBtns[name];

@@ -77,7 +77,9 @@ function renderMaskRow(){const A=doc.active,row=$('#maskRow');row.replaceChildre
     el('button',{class:'btn sm',text:'Delete mask',onclick:cmdDeleteMask})].filter(Boolean));}
 function maskRecord(n,oldM,newM,label){return {label,refs:[n],masks:[oldM,newM].filter(Boolean),undo(){n.mask=oldM;n.editMask=!!oldM&&n.editMask;if(!oldM)ui.viewMask=false;},redo(){n.mask=newM;n.editMask=!!newM;if(!newM)ui.viewMask=false;}};}
 function cmdAddMask(fill){const n=doc.active;if(!n){toast('Select a layer or group first.');return;}if(n.mask){toast('This already has a mask.');return;}
-  const r=maskRecord(n,null,makeMask(fill),'Add mask');r.redo();pushUndo(r);changed(n);toast(fill?'Mask added. Paint black to hide.':'Hide-all mask added. Paint white to reveal.');}
+  const m=makeMask(fill),fromSel=sel.active&&!sel.quick;if(fromSel)run(P.loadsel,m.target,{uSrc:sel.t.tex,uWhat:{int:1},uInv:!fill});
+  const r=maskRecord(n,null,m,fromSel?(fill?'Add mask from selection':'Add mask hiding selection'):'Add mask');r.redo();pushUndo(r);changed(n);
+  toast(fromSel?(fill?'Mask added: the selection stays visible.':'Mask added: the selection is hidden.'):fill?'Mask added. Paint black to hide.':'Hide-all mask added. Paint white to reveal.');}
 function cmdDeleteMask(){const n=doc.active;if(!n||!n.mask)return;const r=maskRecord(n,n.mask,null,'Delete mask');r.redo();pushUndo(r);changed(n);}
 function cmdApplyMask(){const L=doc.active;if(!isLayer(L)||!L.mask)return;const W=doc.w,H=doc.h,m=L.mask,before=captureRegion(L.target,0,0,W,H);
   run(P.applymask,scratchT,{uSrc:L.target.tex,uM:m.target.tex});blit(scratchT,L.target,0,0,W,H,0,0);const after=captureRegion(L.target,0,0,W,H);L.mask=null;L.editMask=false;ui.viewMask=false;
@@ -87,6 +89,8 @@ const dropLine=el('div',{class:'dropline',hidden:true});
 let ldrag=null;
 function layerPointerDown(e,n,row){
   if(e.button!==0||e.target.closest('button,input'))return;
+  if((e.ctrlKey||e.metaKey)&&(e.target===n.thumb||(n.mask&&e.target===n.mask.thumb))){const mode=e.shiftKey&&e.altKey?'int':e.shiftKey?'add':e.altKey?'sub':'new';
+    if(e.target===n.thumb)selectLayerPixels(n,mode);else selectMask(n,mode);return;}
   if(n.mask&&e.target===n.mask.thumb){if(e.shiftKey){n.mask.enabled=!n.mask.enabled;toast(n.mask.enabled?'Mask on.':'Mask off.');}
     else if(e.altKey){selectOnly(n);n.editMask=true;ui.viewMask=!ui.viewMask;}
     else{selectOnly(n);n.editMask=true;}renderLayers();requestRender(true);refreshChanUI();return;}

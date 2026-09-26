@@ -67,9 +67,10 @@ const sizeMap={to:v=>Math.round(Math.pow((v-1)/499,1/2.2)*1000),from:u=>Math.max
 let sizeSlider=null,dynOpen=false;
 function brushEdited(){if(activePreset){activePreset=null;renderLibrary();}schedulePreview();}
 function buildBrushPanel(){
-  const box=$('#brushBody');box.replaceChildren();const sm=ui.tool==='smudge',isText=ui.tool==='text';
-  $('#libBody').hidden=isText;document.querySelector('.prevwrap').hidden=isText;$('#abrBtn').hidden=isText;$('#tipBtn').hidden=isText;
+  const box=$('#brushBody');box.replaceChildren();const sm=ui.tool==='smudge',isText=ui.tool==='text',isSel=isSelTool(ui.tool),noBrush=isText||isSel;
+  $('#libBody').hidden=noBrush;document.querySelector('.prevwrap').hidden=noBrush;$('#abrBtn').hidden=noBrush;$('#tipBtn').hidden=noBrush;
   if(isText){$('#brushTitle').textContent='Text';buildTextPanel(box);return;}
+  if(isSel){buildSelectPanel(box);return;}
   $('#brushTitle').textContent=sm?'Blend brush':ui.tool==='erase'?'Eraser':'Brush';
   const S=(id,label,key,min,max,step,fmt,map)=>makeSlider({id,label,min,max,step,value:brush[key],fmt,map,onInput:v=>{brush[key]=v;brushEdited();if(key==='size')refreshCursor();}});
   const C=(id,label,key,rebuild)=>chk(id,label,!!brush[key],v=>{brush[key]=v;brushEdited();if(rebuild)buildBrushPanel();});
@@ -96,7 +97,7 @@ function buildBrushPanel(){
   box.append(det);schedulePreview();
 }
 function applyPreset(p){for(const k of SETTING_KEYS)brush[k]=(k in p)?p[k]:BRUSH_DEFAULTS[k];activePreset=p;setTool(p.tool||'brush',true);renderLibrary();refreshCursor();}
-function setTool(t,keepPreset){if(t!=='text'&&typeof closeTextEditor==='function')closeTextEditor();ui.tool=t;stage.classList.toggle('txt',t==='text');document.querySelectorAll('.tool').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t)));
+function setTool(t,keepPreset){if(t!=='text'&&typeof closeTextEditor==='function')closeTextEditor();if(t!=='lasso'&&typeof polyLasso!=='undefined'&&polyLasso){polyLasso=null;drawSelOverlay();}ui.tool=t;stage.classList.toggle('txt',t==='text');stage.classList.toggle('selt',isSelTool(t));document.querySelectorAll('.tool').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t)));
   if(!keepPreset&&activePreset&&(activePreset.tool==='smudge')!==(t==='smudge')){activePreset=null;renderLibrary();}
   stage.classList.toggle('grab',t==='hand');stage.classList.toggle('pick',t==='picker');buildBrushPanel();refreshCursor();}
 document.querySelectorAll('.tool').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.tool)));

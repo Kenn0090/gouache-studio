@@ -10,7 +10,7 @@ modal.addEventListener('pointerdown',e=>{if(e.target===modal&&!modal.classList.c
 
 function filterDialog(title,defs,render,label){const et=needTarget();if(!et)return;const L=et.L;if(!effVisible(et.node)){toast('Show the active layer before filtering it.');return;}
   const vals={};const body=el('div',{class:'dlg-grid'});const sliders=[];
-  const upd=()=>{render(L,vals);chanLimit(et);requestRender(true);};
+  const upd=()=>{render(L,vals);chanLimit(et);selLimit(et);requestRender(true);};
   for(const d of defs){vals[d.key]=d.value;const s=makeSlider(Object.assign({},d,{id:'f_'+d.key,onInput:v=>{vals[d.key]=v;upd();}}));sliders.push([s,d]);body.append(s.el);}
   body.append(el('div',{class:'frow'},el('button',{class:'btn sm',text:'Reset',onclick:()=>{for(const [s,d] of sliders){vals[d.key]=d.value;s.set(d.value);}upd();}}),el('span',{class:'note',text:'Previewing on “'+et.node.name+'”'+(et.isMask?' (mask)':chanRestricted()?' ('+chanLabel()+' only)':'')})));
   preview={L:et.node,isMask:et.isMask,et};upd();

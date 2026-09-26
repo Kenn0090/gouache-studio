@@ -14,6 +14,8 @@
     "tools/text",
     "core/layer-ops",
     "core/resize",
+    "select/selection",
+    "select/select-tools",
     "files/helpers",
     "files/decoders",
     "files/import",

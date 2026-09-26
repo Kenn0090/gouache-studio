@@ -19,6 +19,7 @@ cv.addEventListener('pointerdown',e=>{
   e.preventDefault();cv.setPointerCapture(e.pointerId);showPressure(e);
   if(pan){ptr={mode:'pan',id:e.pointerId,sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y};stage.classList.add('panning');refreshCursor();return;}
   const [ix,iy]=toImage(e.clientX,e.clientY);
+  if(isSelTool(ui.tool)){selPointerDown(e,ix,iy);return;}
   if(ui.tool==='text'){
     if(tedit){const b=tedit.L.text.bbox;if(b&&ix>=b.bx&&ix<=b.bx+b.bw&&iy>=b.by&&iy<=b.by+b.bh){ted.focus();return;}closeTextEditor();return;}
     const hit=hitText(ix,iy);if(hit){selectOnly(hit);renderLayers();ptr={mode:'tmove',id:e.pointerId,L:hit,sx:ix,sy:iy,ox:hit.text.x,oy:hit.text.y,moved:false};return;}
@@ -28,7 +29,7 @@ cv.addEventListener('pointerdown',e=>{
   if(!effVisible(et.node)&&!ui.viewMask){toast('The active layer (or its group) is hidden. Show it to paint on it.');return;}
   if(preview){toast('Apply or cancel the open filter first.');return;}
   if(!et.isMask&&et.node.text){rasterizeText(et.node);toast('Text converted to pixels so you can paint on it. Undo brings the editable text back.');}
-  const L=et.L,p=pressureOf(e);const o=Object.assign({},brush,{tool:ui.tool,color:ui.fg.slice(),chan:!et.isMask&&chanRestricted()?chan.edit.slice():null});
+  const L=et.L,p=pressureOf(e);const o=Object.assign({},brush,{tool:ui.tool,color:ui.fg.slice(),chan:!et.isMask&&chanRestricted()?chan.edit.slice():null,sel:selOn(et)});
   if(et.isMask){const g=lum3(ui.fg);o.color=[g,g,g];if(o.tool==='erase'){o.tool='brush';o.color=[1,1,1];}}
   if(ui.tool!=='erase'&&(ui.tool==='brush'||brush.charge>0))pushRecent(ui.fg);
   ptr={mode:'paint',id:e.pointerId,sx:ix,sy:iy,sp:p,rx:ix,ry:iy};beginStroke(L,ix,iy,p,o);
@@ -36,7 +37,9 @@ cv.addEventListener('pointerdown',e=>{
 cv.addEventListener('pointermove',e=>{
   const r=stage.getBoundingClientRect();lastPos=[e.clientX-r.left,e.clientY-r.top];refreshCursor();showPressure(e);
   const [mx,my]=toImage(e.clientX,e.clientY);$('#stPos').textContent=(mx>=0&&my>=0&&mx<doc.w&&my<doc.h)?Math.floor(mx)+', '+Math.floor(my):'–';
+  if(!ptr&&polyLasso){polyMove(e,mx,my);return;}
   if(!ptr||e.pointerId!==ptr.id)return;
+  if(ptr.mode==='marq'||ptr.mode==='lasso'||ptr.mode==='selmove'){selPointerMove(e,mx,my);return;}
   if(ptr.mode==='pan'){view.x=ptr.vx+e.clientX-ptr.sx;view.y=ptr.vy+e.clientY-ptr.sy;requestRender();return;}
   if(ptr.mode==='tmove'){const [mx2,my2]=toImage(e.clientX,e.clientY),dx=mx2-ptr.sx,dy=my2-ptr.sy;if(!ptr.moved&&Math.hypot(dx,dy)*view.zoom<4)return;
     if(!ptr.moved){ptr.moved=true;textBegin(ptr.L);}ptr.L.text.x=Math.round(ptr.ox+dx);ptr.L.text.y=Math.round(ptr.oy+dy);renderText(ptr.L);return;}
@@ -46,7 +49,7 @@ cv.addEventListener('pointermove',e=>{
   for(const ev of list){const [ix,iy]=toImage(ev.clientX,ev.clientY),p=pressureOf(ev);ptr.rx=ix;ptr.ry=iy;
     ptr.sx+=(ix-ptr.sx)*k;ptr.sy+=(iy-ptr.sy)*k;ptr.sp+=(p-ptr.sp)*Math.max(k,.4);addPoint(ptr.sx,ptr.sy,ptr.sp);}
 });
-function endPtr(e){if(!ptr||e.pointerId!==ptr.id)return;if(ptr.mode==='paint'){if(brush.smoothing>0)addPoint(ptr.rx,ptr.ry,ptr.sp);endStroke(true);}
+function endPtr(e){if(!ptr||e.pointerId!==ptr.id)return;if(ptr.mode==='marq'||ptr.mode==='lasso'||ptr.mode==='selmove'){selPointerUp(e);refreshCursor();return;}if(ptr.mode==='paint'){if(brush.smoothing>0)addPoint(ptr.rx,ptr.ry,ptr.sp);endStroke(true);}
   if(ptr.mode==='tmove'){const t=ptr;ptr=null;if(t.moved){textCommit();changed(t.L);}else openTextEditor(t.L,false);refreshCursor();return;}
   ptr=null;stage.classList.remove('panning');refreshCursor();$('#pBar').style.width='0%';}
 cv.addEventListener('pointerup',endPtr);cv.addEventListener('pointercancel',endPtr);cv.addEventListener('lostpointercapture',endPtr);
@@ -59,6 +62,7 @@ window.addEventListener('keydown',e=>{
   if(e.key==='Escape'){if(openName){closeMenu();return;}if(!modal.hidden){$('#dlgCancel').click();return;}}
   if(!modal.hidden||typing)return;
   const m=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();
+  if(selKeys(e,m,k))return;
   if(m){const map={z:e.shiftKey?'redo':'undo',y:'redo',o:'open',s:e.shiftKey?'savePsdAs':'savePsd',u:'adjust',i:'invert','0':'fit','1':'actual',e:e.shiftKey?'export':'merge'};
     if(k==='n'&&e.shiftKey){e.preventDefault();cmdAddLayer();return;}if(k==='g'){e.preventDefault();e.shiftKey?cmdUngroup():cmdGroup();return;}if(k==='j'){e.preventDefault();cmdDuplicate();return;}if(k==='n'&&e.altKey){e.preventDefault();dlgNew();return;}
     if(map[k]){e.preventDefault();actions[map[k]]();}return;}
