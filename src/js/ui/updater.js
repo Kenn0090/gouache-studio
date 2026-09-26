@@ -21,8 +21,20 @@ function showUpdateBanner(){const b=updateBanner();
       el('button',{class:'btn sm',text:'Later',onclick:hideUpdateBanner}),
       el('button',{class:'btn sm primary',text:'Update now',onclick:startUpdate})));}
 
+/* release notes are light markdown: paragraphs, "- " bullets and **bold** */
+function inlineMd(line){const out=[];line.split(/(\*\*[^*]+\*\*|`[^`]+`)/).forEach(part=>{
+    if(/^\*\*[^*]+\*\*$/.test(part))out.push(el('strong',{text:part.slice(2,-2)}));
+    else if(/^`[^`]+`$/.test(part))out.push(el('code',{text:part.slice(1,-1)}));
+    else if(part)out.push(document.createTextNode(part));});return out;}
+function renderNotes(md){const box=el('div',{class:'upd-notes'});let list=null;
+  for(const raw of md.replace(/\r/g,'').split('\n')){const line=raw.trim();
+    if(!line){list=null;continue;}
+    const b=line.match(/^[-*]\s+(.*)$/);
+    if(b){if(!list){list=el('ul');box.append(list);}list.append(el('li',null,...inlineMd(b[1])));}
+    else{list=null;box.append(el('p',null,...inlineMd(line)));}}
+  return box;}
 function showUpdateNotes(){const body=el('div',{class:'dlg-grid'});
-  body.append(el('pre',{class:'upd-notes',text:(updateInfo.notes||'').trim()}));
+  body.append(renderNotes((updateInfo.notes||'').trim()));
   openDialog({title:'What’s new in '+updateInfo.version,body,okLabel:'Update now',cancelLabel:'Close',onOk(){startUpdate();}});}
 
 async function checkForUpdates(manual){if(!platform.isDesktop||updateBusy)return;

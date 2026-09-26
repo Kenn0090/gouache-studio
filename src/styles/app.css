@@ -231,4 +231,8 @@ details.more>div{display:grid;gap:10px;margin-top:10px}
 .upd-link:hover{text-decoration:underline}
 .upd-bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden}
 .upd-bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .15s}
-.upd-notes{white-space:pre-wrap;font:12px/1.5 var(--ui);margin:0;max-height:320px;overflow:auto}
+.upd-notes{font:12.5px/1.55 var(--ui);max-height:320px;overflow:auto;max-width:440px}
+.upd-notes p{margin:0 0 8px}
+.upd-notes ul{margin:0 0 8px;padding-left:18px}
+.upd-notes li{margin:2px 0}
+.upd-notes code{font:11.5px var(--mono);background:var(--ground);padding:1px 4px;border-radius:4px}
