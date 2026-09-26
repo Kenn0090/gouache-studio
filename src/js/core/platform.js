@@ -1,6 +1,6 @@
 /* ================= Platform bridge =================
    One place that knows whether we run as the desktop app (Tauri) or in a browser.
-   Desktop: native open/save dialogs, direct file writes, recent files, undo spill-to-disk.
+   Desktop: native open/save dialogs, direct file writes, recent files, undo spill-to-disk, self-update.
    Browser: falls back to file inputs and downloads. */
 const TAURI=window.__TAURI__&&window.__TAURI__.core?window.__TAURI__:null;
 const platform={
@@ -20,6 +20,10 @@ const platform={
   spillWrite(bytes){return this.invoke('spill_write',bytes);},
   async spillRead(id){return await this.invoke('spill_read',{id});},
   spillDelete(id){return this.invoke('spill_delete',{id}).catch(()=>{});},
-  engineInfo(){return this.invoke('engine_info').catch(()=>null);}
+  engineInfo(){return this.invoke('engine_info').catch(()=>null);},
+  updateCheck(){return this.invoke('update_check');},
+  updateInstall(){return this.invoke('update_install');},
+  /* progress callback gets (bytesReceived, totalBytes|null); resolves to an unsubscribe function */
+  onUpdateProgress(cb){return TAURI.event.listen('update-progress',e=>cb(e.payload[0],e.payload[1]));}
 };
 const fileNameOf=p=>String(p).split(/[\\/]/).pop();

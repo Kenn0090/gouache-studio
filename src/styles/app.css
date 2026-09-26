@@ -222,3 +222,13 @@ details.more>div{display:grid;gap:10px;margin-top:10px}
 .recentlist{display:grid;gap:6px}
 .recentlist .btn{display:grid;justify-items:start;text-align:left;gap:2px;width:100%}
 .recentlist .btn span{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+
+/* update banner (desktop) */
+#updBanner{position:fixed;right:16px;bottom:16px;z-index:45;width:320px;max-width:calc(100% - 32px);background:var(--raise);border:1px solid var(--line-2);border-radius:9px;box-shadow:0 10px 30px rgba(0,0,0,.45);padding:11px 12px;display:flex;flex-direction:column;gap:9px}
+#updBanner .upd-text{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px}
+#updBanner .upd-actions{display:flex;justify-content:flex-end;gap:6px}
+.upd-link{background:none;border:0;padding:0;color:var(--accent);cursor:pointer;font:inherit}
+.upd-link:hover{text-decoration:underline}
+.upd-bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+.upd-bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .15s}
+.upd-notes{white-space:pre-wrap;font:12px/1.5 var(--ui);margin:0;max-height:320px;overflow:auto}
