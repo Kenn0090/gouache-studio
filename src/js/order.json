@@ -25,6 +25,7 @@
     "files/psd-save",
     "files/save",
     "files/abr",
+    "ui/prefs",
     "ui/dialogs",
     "ui/menus",
     "ui/view-input",

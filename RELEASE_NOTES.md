@@ -1,4 +1,5 @@
-Live Select menu.
+Preferences and a switch for live previews.
 
-- **Feather, Expand, Contract, Smooth** and **Load selection** now update the selection live while you drag the slider or change options. **Apply** keeps it as one undo step; **Cancel** or `Esc` puts the original back.
-- Feather and Smooth show the selection as a red overlay while open, so you can see how soft the edge is. Untick **Show as red overlay** for marching ants.
+- **Edit › Preferences** (`Ctrl+K`): turn live previews on or off for the whole app, and set how much memory undo can use.
+- Every dialog that changes the image (blur, sharpen, colour adjustments, posterize, and the Select menu) now has a **Preview** checkbox, so you can switch the live preview off for one heavy effect only.
+- With previews off, nothing changes on the canvas until you click **Apply**. Hover previews for blend modes and fonts follow the same setting.

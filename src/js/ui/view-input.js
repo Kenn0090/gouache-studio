@@ -65,6 +65,7 @@ window.addEventListener('keydown',e=>{
   const m=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();
   if(selKeys(e,m,k))return;
   if(m){const map={z:e.shiftKey?'redo':'undo',y:'redo',o:'open',s:e.shiftKey?'savePsdAs':'savePsd',u:'adjust',i:'invert','0':'fit','1':'actual',e:e.shiftKey?'export':'merge'};
+    if(k==='k'){e.preventDefault();dlgPrefs();return;}
     if(k==='n'&&e.shiftKey){e.preventDefault();cmdAddLayer();return;}if(k==='g'){e.preventDefault();e.shiftKey?cmdUngroup():cmdGroup();return;}if(k==='j'){e.preventDefault();cmdDuplicate();return;}if(k==='n'&&e.altKey){e.preventDefault();dlgNew();return;}
     if(map[k]){e.preventDefault();actions[map[k]]();}return;}
   if(e.altKey&&/^Digit[2-6]$/.test(e.code)){e.preventDefault();selectChannel(+e.code.slice(5)-3,false);return;}

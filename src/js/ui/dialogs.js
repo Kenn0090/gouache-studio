@@ -10,11 +10,14 @@ modal.addEventListener('pointerdown',e=>{if(e.target===modal&&!modal.classList.c
 
 function filterDialog(title,defs,render,label){const et=needTarget();if(!et)return;const L=et.L;if(!effVisible(et.node)){toast('Show the active layer before filtering it.');return;}
   const vals={};const body=el('div',{class:'dlg-grid'});const sliders=[];
-  const upd=()=>{render(L,vals);chanLimit(et);selLimit(et);requestRender(true);};
+  /* preview.off: the dialog is open (painting stays blocked) but the canvas shows the original until Apply */
+  const draw=()=>{render(L,vals);chanLimit(et);selLimit(et);};
+  const upd=()=>{if(preview&&!preview.off){draw();requestRender(true);}};
   for(const d of defs){vals[d.key]=d.value;const s=makeSlider(Object.assign({},d,{id:'f_'+d.key,onInput:v=>{vals[d.key]=v;upd();}}));sliders.push([s,d]);body.append(s.el);}
   body.append(el('div',{class:'frow'},el('button',{class:'btn sm',text:'Reset',onclick:()=>{for(const [s,d] of sliders){vals[d.key]=d.value;s.set(d.value);}upd();}}),el('span',{class:'note',text:'Previewing on “'+et.node.name+'”'+(et.isMask?' (mask)':chanRestricted()?' ('+chanLabel()+' only)':'')})));
-  preview={L:et.node,isMask:et.isMask,et};upd();
-  openDialog({title,body,float:true,okLabel:'Apply',onOk(){applyPreview(label);},onCancel(){preview=null;requestRender(true);}});}
+  body.append(previewChk('fPrev',prefs.livePreview,v=>{if(!preview)return;preview.off=!v;if(v)draw();requestRender(true);}));
+  preview={L:et.node,isMask:et.isMask,et,off:!prefs.livePreview};upd();
+  openDialog({title,body,float:true,okLabel:'Apply',onOk(){if(preview.off)draw();applyPreview(label);},onCancel(){preview=null;requestRender(true);}});}
 const sgn=v=>(v>0?'+':'')+v;
 function dlgAdjust(){filterDialog('Color adjustments',[
   {key:'exposure',label:'Exposure',min:-3,max:3,step:.05,value:0,fmt:v=>(v>0?'+':'')+v.toFixed(1)+' EV'},

@@ -132,22 +132,23 @@ function selKeys(e,m,k){
 let selLive=null;
 function openLiveSel(o){if(o.needSel?!needSel():selBusy())return;
   const orig=acquire();blit(sel.t,orig,0,0,doc.w,doc.h,0,0);const before={active:sel.active,bb:sel.bb&&sel.bb.slice()};
-  const L=selLive={overlay:!!o.overlay};let queued=false;
-  const render=()=>{queued=false;if(selLive!==L)return;const tmp=acquire();const r=o.compute(orig,tmp,before);blit(tmp,sel.t,0,0,doc.w,doc.h,0,0);release(tmp);sel.bb=r.bb;sel.active=r.active;selChanged();};
-  const upd=()=>{if(!queued){queued=true;requestAnimationFrame(render);}};
+  const L=selLive={overlay:!!o.overlay,on:prefs.livePreview};let queued=false,stale=true;
+  const restore=()=>{blit(orig,sel.t,0,0,doc.w,doc.h,0,0);sel.active=before.active;sel.bb=before.bb;selChanged();};
+  const render=()=>{queued=false;if(selLive!==L)return;stale=false;const tmp=acquire();const r=o.compute(orig,tmp,before);blit(tmp,sel.t,0,0,doc.w,doc.h,0,0);release(tmp);sel.bb=r.bb;sel.active=r.active;selChanged();};
+  const upd=()=>{stale=true;if(L.on&&!queued){queued=true;requestAnimationFrame(render);}};
   const body=el('div',{class:'dlg-grid'},...o.controls(upd));
-  body.append(chk('slOv','Show as red overlay',L.overlay,v=>{L.overlay=v;requestRender();}));
+  body.append(el('div',{class:'chips'},previewChk('slPrev',L.on,v=>{L.on=v;if(v)render();else{queued=false;stale=true;restore();}}),chk('slOv','Show as red overlay',L.overlay,v=>{L.overlay=v;requestRender();})));
   if(o.note)body.append(el('p',{class:'note',text:o.note}));
   const finish=()=>{selLive=null;release(orig);selChanged();};
   openDialog({title:o.title,body,float:true,okLabel:o.okLabel||'Apply',
-    onOk(){if(queued)render();const after={active:sel.active,bb:sel.bb&&sel.bb.slice()},region=rToDoc(rUnion(before.bb,after.bb));
+    onOk(){if(queued||stale)render();const after={active:sel.active,bb:sel.bb&&sel.bb.slice()},region=rToDoc(rUnion(before.bb,after.bb));
       const bs=region?captureSel(orig,region):null,as=region?captureSel(sel.t,region):null;
       pushUndo({label:o.title,refs:[],snaps:[bs,as].filter(Boolean),
         undo(){if(bs)restoreSel(bs,region[0],region[1]);setSelState({...before,quick:false});selChanged();},
         redo(){if(as)restoreSel(as,region[0],region[1]);setSelState({...after,quick:false});selChanged();}});
       finish();},
-    onCancel(){blit(orig,sel.t,0,0,doc.w,doc.h,0,0);sel.active=before.active;sel.bb=before.bb;finish();}});
-  render();}
+    onCancel(){restore();finish();}});
+  if(L.on)render();}
 function liveRadius(title,label,max,def,apply,grow,overlay,note){let v=def;
   openLiveSel({title,needSel:true,overlay,note,
     controls:upd=>[makeSlider({id:'selR',label,min:1,max,step:1,value:def,fmt:x=>x+'px',onInput:x=>{v=x;upd();}}).el],

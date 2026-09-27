@@ -3,7 +3,7 @@
 const modeBtn=$('#lModeBtn'),modePop=el('div',{class:'modepop',role:'listbox','aria-label':'Blend modes',hidden:true});document.body.append(modePop);
 let modeState=null;
 const modeLabel=m=>m<0?'Pass through':MODES[m];
-function previewMode(m){if(!modeState)return;modeState.node.mode=m;requestRender(true);}
+function previewMode(m){if(!modeState)return;if(!prefs.livePreview&&m!==modeState.orig)return;modeState.node.mode=m;requestRender(true);}
 function closeModePop(commit){if(!modeState)return;const st=modeState;modeState=null;modePop.hidden=true;modeBtn.setAttribute('aria-expanded','false');
   st.node.mode=commit==null?st.orig:commit;renderLayers();requestRender(true);if(commit==null)modeBtn.focus();}
 function openModePop(){const n=doc.active;if(!n)return;if(modeState){closeModePop();return;}closeMenu();

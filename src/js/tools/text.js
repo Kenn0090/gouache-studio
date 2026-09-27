@@ -78,7 +78,7 @@ function closeFontPop(commit){const st=fontState;if(!st)return;fontState=null;fo
 function openFontPop(anchor){if(fontState){closeFontPop();return;}loadGFonts();const L=activeText();fontState={L,orig:L?L.text.font:ui.textStyle.font};if(L&&!(tedit&&tedit.isNew))textBegin(L);
   const cur=fontState.orig,kids=[el('div',{class:'mhint',text:'Hover to preview on the selected text. Click to use.'})];
   const item=n=>{const b=el('button',{role:'option','aria-selected':String(n===cur),style:'font-family:'+fontCss(n)+';font-size:15px',text:n});
-    b.addEventListener('mouseenter',()=>b.focus({preventScroll:true}));b.addEventListener('focus',()=>{if(fontState&&fontState.L&&fontState.L.text){fontState.L.text.font=n;renderText(fontState.L);positionEditor();}});
+    b.addEventListener('mouseenter',()=>b.focus({preventScroll:true}));b.addEventListener('focus',()=>{if(prefs.livePreview&&fontState&&fontState.L&&fontState.L.text){fontState.L.text.font=n;renderText(fontState.L);positionEditor();}});
     b.addEventListener('click',()=>closeFontPop(n));return b;};
   kids.push(el('div',{class:'mg',text:'Built-in'}),...Object.keys(FONT_STACKS).map(item),el('div',{class:'mg',text:'Game fonts (Google Fonts)'}),...GFONTS.map(item),el('div',{class:'mg',text:'Your fonts'}));
   if(!userFonts.length)kids.push(el('div',{class:'mhint',style:'border:0',text:'None yet. Add a .ttf, .otf, .woff or .woff2 file.'}));
