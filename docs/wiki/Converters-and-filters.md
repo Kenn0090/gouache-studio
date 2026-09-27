@@ -65,7 +65,7 @@ Only the Normal map is in colour. Every other converted map is grey and lands in
 - **Noise and patterns:**
   - Add noise;
   - **Render clouds** and **Render cells** (Voronoi). Both tile seamlessly and can be colour or black and white.
-- **Tiling:** **Offset** (slides the image with wrap-around so seams show), **Make seamless** (blends the edges).
+- **Tiling:** **Offset** (slides the image with wrap-around so seams show), **Tile** (repeats the image **Across** and **Down**, with **Row offset** for brick patterns, **Random rotation** and **Random flip** per tile, and **New random** for another arrangement), **Make seamless** (blends the edges).
 
 Heavy filters (painterly, oil paint, lens and surface blur, cutout) are drawn in small pieces, so big images don't freeze the graphics driver. They can still take a moment on very large documents.
 

@@ -425,7 +425,8 @@ body.convmode #mapsSec,body.convmode .sec[aria-labelledby="hLayers"],body.convmo
 .seg.wrapseg{display:flex;flex-wrap:wrap;height:auto}.seg.wrapseg button{flex:1 0 auto}
 /* shortcut hints off; keyboard shortcuts dialog */
 .nohints .hint{display:none}
-.kbdlg{display:flex;flex-direction:column;gap:8px;width:min(520px,80vw)}
+.kbdlg{display:flex;flex-direction:column;gap:8px;min-width:0}
+.dialog.kbwide{width:min(560px,100%)}
 .kbsearch{width:100%}
 .kblist{max-height:56vh;overflow:auto;padding-right:4px}
 .kbrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 4px;border-radius:5px}
@@ -441,3 +442,4 @@ body.convmode #mapsSec,body.convmode .sec[aria-labelledby="hLayers"],body.convmo
 .themecols{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0}
 .themecol{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--muted)}
 .themecol input[type=color]{width:42px;height:28px;padding:0;border:1px solid var(--line-2);border-radius:5px;background:none}
+.themeseg .segb{flex:1 0 auto;white-space:nowrap}

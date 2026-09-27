@@ -1,5 +1,10 @@
 # Keyboard shortcuts
 
+All of these can be changed in **Edit › Keyboard shortcuts…**: click a command's key, then press the new one (Esc cancels). **×** removes a key and **↺** puts the default back. Keys you changed are highlighted; if a key was already in use, the other command loses it (you're told which). **Photoshop keys** sets the keys that differ from Photoshop's (for example Hue/Saturation on Ctrl+U), **Save to file…** and **Load from file…** keep and share your key sets, and **Reset all** goes back to the defaults. The menus and the hint line at the bottom of the canvas always show your keys; **View › Shortcut hints** hides that line.
+
+![Keyboard shortcuts.](images/keyboard-shortcuts.png)
+*Edit › Keyboard shortcuts.*
+
 ## Tools
 | Key | Tool |
 |---|---|

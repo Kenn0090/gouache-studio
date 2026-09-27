@@ -60,7 +60,7 @@ function dlgKeys(){const list=el('div',{class:'kblist'}),search=el('input',{type
   const body=el('div',{class:'kbdlg'},el('p',{class:'note',text:'Click a key, then press the new one (Esc cancels). Keys you changed are highlighted.'}),search,list,el('div',{class:'chips'},ps,exp,imp,reset));
   /* listen on the whole window while open: the button that was clicked is redrawn and loses focus */
   window.addEventListener('keydown',onKey,true);const off=()=>window.removeEventListener('keydown',onKey,true);draw();
-  openDialog({title:'Keyboard shortcuts',body,cancelLabel:'Close',onCancel:off});setTimeout(()=>search.focus(),0);}
+  openDialog({title:'Keyboard shortcuts',body,cancelLabel:'Close',onCancel:off});$('#modal .dialog').classList.add('kbwide');setTimeout(()=>search.focus(),0);}
 
 /* the one-line reminder of the main keys at the bottom of the canvas (View › Shortcut hints) */
 function refreshHints(){const h=$('#hint');if(!h)return;document.body.classList.toggle('nohints',!!prefs.hideHints);

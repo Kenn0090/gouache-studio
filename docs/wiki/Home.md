@@ -7,7 +7,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 - [Keyboard shortcuts](Keyboard-shortcuts.md)
 
 ## Painting
-- [Brushes and painting](Brushes-and-painting.md): brushes, presets, Photoshop brushes, pen pressure, eraser, blend, dodge and burn
+- [Brushes and painting](Brushes-and-painting.md): brushes, presets, colour jitter, making your own tips, Photoshop brushes, pen pressure, eraser, blend, dodge and burn
 - [Layers](Layers.md): layers, groups, masks, blend modes, clipping, text, live gradients
 - [Selections, transforms and crop](Selections-transforms-and-crop.md)
 - [Fills and gradients](Fills-and-gradients.md)
@@ -31,7 +31,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 - [Files, saving and export](Files-and-export.md): .gouache documents, PSD, image formats, texture export for Unreal, Unity, Godot and Blender, sprite sheets
 
 ## Settings and help
-- [Preferences and performance](Preferences-and-performance.md)
+- [Preferences and performance](Preferences-and-performance.md): themes, shortcut hints, previews, memory
 - [Troubleshooting and FAQ](Troubleshooting.md)
 
 ## Roadmap

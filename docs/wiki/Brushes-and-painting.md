@@ -12,13 +12,21 @@ Pick a preset from the **Brush** panel, or change the settings:
 - **Smoothing:** steadies wobbly lines.
 - **Pen pressure:** can drive **Size** (down to *Min size*), **Opacity**, or **Build-up**, where overlapping dabs keep adding paint within one stroke. **Curve** makes the pressure response softer or firmer.
 - **Tip shape & dynamics:** Angle, Roundness, Size jitter, Angle jitter, Scatter, Count, Follow stroke, Scatter both axes and Random flip.
+- **Colour jitter** (in the same section): **Hue**, **Saturation** and **Brightness** vary the colour of every dab around your brush colour. Tick **Once per stroke** to change the colour only once per stroke instead. It is saved with the brush. On grey maps (roughness, height…) only Brightness applies.
+
+![Colour jitter.](images/colour-jitter.png)
+*Hue jitter: every dab gets its own colour.*
 
 **Built-in presets:** Round, Soft air, Chalk, Ink, Flat bristle, Sponge, Foliage, Grass and Splatter, plus the blend presets Blender, Wet mix and Bristle blend.
 
 ## Your own brushes
 - **Save brush** stores the current settings in **My brushes**. That includes which extra maps the brush paints and their values (see [Maps and PBR](Maps-and-PBR.md)).
 - **Import .ABR** loads Photoshop brush sets. Tips come across, and the settings that map cleanly are kept.
-- **Tip from layer**, or **Layer › Make brush tip from layer**, turns the active layer into a brush tip.
+- **Make tip** (or **Edit › Make brush tip…**) turns what you drew into a brush tip, like Photoshop's *Define Brush Preset*: give it a name and choose the **visible canvas** or the **active layer**. Dark paints and white doesn't; on a see-through layer, whatever is painted becomes the tip. With a selection, only the selected part is used. **Layer › Make brush tip from layer** does the same from the active layer in one click.
+- **Brush tip template:** *File › New document*, template **Brush tip**, gives a white 512 × 512 canvas with a black brush and a banner: paint in black, then press **Make brush** (or **Clear** to start again).
+
+![Brush tip template.](images/brush-tip-template.png)
+*The Brush tip template.*
 
 Brush libraries are stored on your computer and come back each time you open the app.
 

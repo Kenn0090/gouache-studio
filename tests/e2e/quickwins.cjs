@@ -20,7 +20,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const px=(x,y)=>p.evaluate(([x,y])=>{const d=__gs.readRGBA8(__gs.compositeMap('base'));return [...d.slice((y*__gs.doc.w+x)*4,(y*__gs.doc.w+x)*4+4)];},[x,y]);
  const rowStats=y=>p.evaluate(y=>{const t=__gs.compositeMap('base');const d=__gs.readRGBA8(t);__gs.release(t);const W=__gs.doc.w;const hs=new Set();let mn=[255,255,255],mx=[0,0,0];
    for(let x=30;x<W-30;x++){const i=(y*W+x)*4;for(let c=0;c<3;c++){mn[c]=Math.min(mn[c],d[i+c]);mx[c]=Math.max(mx[c],d[i+c]);}hs.add(d[i]>>4<<8|d[i+1]>>4<<4|d[i+2]>>4);}return {mn,mx,n:hs.size};},y);
- await p.evaluate(()=>__gs.newDoc(256,256,8,[1,1,1],'F14',false));await W();
+ await p.evaluate(()=>__gs.newDoc(256,256,8,[1,1,1],'QW',false));await W();
  await p.evaluate(()=>{__gs.act('addLayer');});await W(200);
  // ---- colour jitter ----
  await setFG('#d02020');await p.evaluate(()=>Object.assign(__gs.brush,{size:30,hardness:1,opacity:1,flow:1,spacing:.25,smoothing:0,pSize:false,tip:null,hueJitter:0,satJitter:0,valJitter:0}));

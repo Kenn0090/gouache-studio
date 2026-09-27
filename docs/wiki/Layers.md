@@ -29,6 +29,11 @@ In documents with several maps, each layer has **a blend mode per map**. The mod
 
 Click the mask thumbnail to paint the mask. **Shift+click** turns the mask off or on, and **Alt+click** views it. **Layer › Apply mask** bakes the mask into the layer; **Delete mask** removes it.
 
+**Pictures into a mask** (light shows the layer, dark and see-through parts hide it):
+- **Paste:** click the mask thumbnail, then **Ctrl+V**. A copied part (or an image copied in another program) lands in the mask with Free transform on: move or scale it, then press **Enter**. This works in the quick mask (Q) too.
+- **Drag a layer** onto another layer's mask thumbnail: its picture becomes that mask. Hold **Alt** and drop onto a row to give a layer without a mask a new one.
+- **Drop an image file** from your computer on a mask thumbnail (or **Alt**+drop it on a row): it is stretched to fit the mask. **Filter › Tile** can then repeat it.
+
 ## Groups
 Groups can be nested, and each has its own mode, opacity and mask. **Merge group** flattens a group into one layer.
 
