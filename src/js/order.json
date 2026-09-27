@@ -36,6 +36,7 @@
     "files/encoders",
     "files/psd-save",
     "files/save",
+    "files/tex-export",
     "files/abr",
     "ui/prefs",
     "ui/dialogs",
