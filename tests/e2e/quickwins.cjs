@@ -38,7 +38,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.mouse.click(box.x+5,box.y+5);await p.keyboard.press('e');await W(100);ok(await p.evaluate(()=>__gs.ui.tool)==='erase','E still picks the eraser');
  await p.evaluate(()=>__gs.act('keys'));await W(300);
  await p.fill('.kbsearch','brush');await W(100);
- const kb=p.locator('.kbrow',{hasText:/^Brush/}).first();await kb.locator('.kbkey').click();await W(100);await p.keyboard.press('p');await W(200);
+ const kb=p.locator('.kbrow').filter({has:p.locator('span:text-is("Brush")')}).first();await kb.locator('.kbkey').click();await W(100);await p.keyboard.press('p');await W(200);
  ok(/^P$/.test((await kb.locator('.kbkey').textContent()).trim()),'Brush now on P');
  await p.fill('.kbsearch','');await W(100);
  // Ctrl+Shift+L onto "Levels" (default Ctrl+L)
