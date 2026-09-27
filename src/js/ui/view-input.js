@@ -25,6 +25,7 @@ cv.addEventListener('pointerdown',e=>{
   if(ui.tool==='move'){movePointerDown(e,ix,iy);return;}
   if(ui.tool==='gradient'){gradPointerDown(e,ix,iy);return;}
   if(ui.tool==='bucket'){bucketFill(ix,iy);return;}
+  if(ui.tool==='gbucket'){gbucketDown(e,ix,iy);return;}
   if(isSelTool(ui.tool)){selPointerDown(e,ix,iy);return;}
   if(ui.tool==='text'){
     if(tedit){const b=tedit.L.text.bbox;if(b&&ix>=b.bx&&ix<=b.bx+b.bw&&iy>=b.by&&iy<=b.by+b.bh){ted.focus();return;}closeTextEditor();return;}
@@ -46,7 +47,7 @@ cv.addEventListener('pointermove',e=>{
   const [mx,my]=toImage(e.clientX,e.clientY);$('#stPos').textContent=(mx>=0&&my>=0&&mx<doc.w&&my<doc.h)?Math.floor(mx)+', '+Math.floor(my):'–';
   if(!ptr&&polyLasso){polyMove(e,mx,my);return;}
   if(!ptr){if(xf&&!xf.move)xfHover(e);else if(ui.tool==='crop'&&crop)cropHover(e);else if(ui.tool==='gradient')gradHover(e);}
-  if(ptr&&e.pointerId===ptr.id){if(ptr.mode==='xf'){xfPointerMove(e,mx,my);return;}if(ptr.mode==='crop'){cropPointerMove(e,mx,my);return;}if(ptr.mode==='movedrag'){movePointerMove(e,mx,my);return;}if(ptr.mode==='grad'){gradPointerMove(e,mx,my);return;}}
+  if(ptr&&e.pointerId===ptr.id){if(ptr.mode==='xf'){xfPointerMove(e,mx,my);return;}if(ptr.mode==='crop'){cropPointerMove(e,mx,my);return;}if(ptr.mode==='movedrag'){movePointerMove(e,mx,my);return;}if(ptr.mode==='grad'){gradPointerMove(e,mx,my);return;}if(ptr.mode==='gbucket'){gbucketMove(e,mx,my);return;}}
   if(!ptr||e.pointerId!==ptr.id)return;
   if(ptr.mode==='marq'||ptr.mode==='lasso'||ptr.mode==='selmove'){selPointerMove(e,mx,my);return;}
   if(ptr.mode==='pan'){view.x=ptr.vx+e.clientX-ptr.sx;view.y=ptr.vy+e.clientY-ptr.sy;requestRender();return;}
@@ -58,7 +59,7 @@ cv.addEventListener('pointermove',e=>{
   for(const ev of list){const [ix,iy]=toImage(ev.clientX,ev.clientY),p=pressureOf(ev);ptr.rx=ix;ptr.ry=iy;
     ptr.sx+=(ix-ptr.sx)*k;ptr.sy+=(iy-ptr.sy)*k;ptr.sp+=(p-ptr.sp)*Math.max(k,.4);addPoint(ptr.sx,ptr.sy,ptr.sp);}
 });
-function endPtr(e){if(!ptr||e.pointerId!==ptr.id)return;if(ptr.mode==='xf'){xfPointerUp();return;}if(ptr.mode==='crop'){cropPointerUp();return;}if(ptr.mode==='movedrag'){movePointerUp();return;}if(ptr.mode==='grad'){gradPointerUp();return;}if(ptr.mode==='marq'||ptr.mode==='lasso'||ptr.mode==='selmove'){selPointerUp(e);refreshCursor();return;}if(ptr.mode==='paint'){if(brush.smoothing>0)addPoint(ptr.rx,ptr.ry,ptr.sp);endStroke(true);}
+function endPtr(e){if(!ptr||e.pointerId!==ptr.id)return;if(ptr.mode==='xf'){xfPointerUp();return;}if(ptr.mode==='crop'){cropPointerUp();return;}if(ptr.mode==='movedrag'){movePointerUp();return;}if(ptr.mode==='grad'){gradPointerUp();return;}if(ptr.mode==='gbucket'){gbucketUp();return;}if(ptr.mode==='marq'||ptr.mode==='lasso'||ptr.mode==='selmove'){selPointerUp(e);refreshCursor();return;}if(ptr.mode==='paint'){if(brush.smoothing>0)addPoint(ptr.rx,ptr.ry,ptr.sp);endStroke(true);}
   if(ptr.mode==='tmove'){const t=ptr;ptr=null;if(t.moved){textCommit();changed(t.L);}else openTextEditor(t.L,false);refreshCursor();return;}
   ptr=null;stage.classList.remove('panning');refreshCursor();$('#pBar').style.width='0%';}
 cv.addEventListener('pointerup',endPtr);cv.addEventListener('pointercancel',endPtr);cv.addEventListener('lostpointercapture',endPtr);
@@ -76,7 +77,7 @@ window.addEventListener('keydown',e=>{
   if(m&&k==='t'){e.preventDefault();freeTransform();return;}
   if(selKeys(e,m,k))return;
   if(!m&&!e.altKey&&k==='v'){setTool('move');return;}
-  if(!m&&!e.altKey&&k==='g'){if(e.shiftKey&&(ui.tool==='gradient'||ui.tool==='bucket'))ui.fillKind=ui.tool==='gradient'?'bucket':'gradient';setTool(ui.fillKind);return;}
+  if(!m&&!e.altKey&&k==='g'){const F=['gradient','bucket','gbucket'];if(e.shiftKey&&F.includes(ui.tool))ui.fillKind=F[(F.indexOf(ui.tool)+1)%3];setTool(ui.fillKind);return;}
   if(!m&&!e.altKey&&k==='o'){if(e.shiftKey&&(ui.tool==='dodge'||ui.tool==='burn'))ui.tonal=ui.tool==='dodge'?'burn':'dodge';setTool(ui.tonal);return;}
   if(!m&&!e.altKey&&k==='c'){setTool('crop');return;}
   if(ui.tool==='move'&&!m&&e.key.startsWith('Arrow')){e.preventDefault();const s=e.shiftKey?10:1,d={ArrowLeft:[-s,0],ArrowRight:[s,0],ArrowUp:[0,-s],ArrowDown:[0,s]}[e.key];nudgeLayer(d[0],d[1]);return;}

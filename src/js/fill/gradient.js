@@ -54,8 +54,10 @@ function rasterizeGrad(L){if(!L||!L.grad)return;if(gsess&&gsess.L===L)gradCommit
   pushUndo({label:'Rasterize gradient',refs:[L],undo(){L.grad=g;},redo(){L.grad=null;}});renderLayers();if(ui.tool==='gradient')buildBrushPanel();}
 const activeGrad=()=>isLayer(doc.active)&&doc.active.grad?doc.active:null;
 /* the definition the panel edits: the selected live gradient layer, or the tool's own */
-const panelDef=()=>{const L=activeGrad();return L?L.grad.def:ui.grad;};
-function defChanged(){const L=activeGrad();if(L){gradBegin(L);renderLiveGrad(L);gradTouch();renderLayers();}gradPanelRefresh(true);drawXfOverlay();}
+/* only the gradient tool edits a selected gradient layer; the gradient bucket always uses the tool's own gradient */
+const editedGrad=()=>ui.tool==='gradient'?activeGrad():null;
+const panelDef=()=>{const L=editedGrad();return L?L.grad.def:ui.grad;};
+function defChanged(){const L=editedGrad();if(L){gradBegin(L);renderLiveGrad(L);gradTouch();renderLayers();}gradPanelRefresh(true);drawXfOverlay();}
 
 /* ---- the gradient tool on the canvas ---- */
 function gradHandles(L){const g=L.grad,d=g.def,pt=t=>[g.a[0]+(g.b[0]-g.a[0])*t,g.a[1]+(g.b[1]-g.a[1])*t];
@@ -100,6 +102,7 @@ function gradPointerUp(){const p=ptr,h=p.hit;ptr=null;
   gradTouch();gradPanelRefresh();drawXfOverlay();}
 function drawGradOverlay(){let a,b,L=null;
   if(ptr&&ptr.mode==='grad'&&ptr.hit.type==='classic'){if(!ptr.moved)return '';a=ptr.a;b=ptr.b;}
+  else if(ptr&&ptr.mode==='gbucket'){if(!ptr.moved)return '';a=ptr.a;b=ptr.b;}
   else{L=activeGrad();if(!L||ui.tool!=='gradient')return '';a=L.grad.a;b=L.grad.b;}
   const A=scrPt(a),B=scrPt(b);let s='<path class="ln" d="M'+A.join(' ')+'L'+B.join(' ')+'"/>';
   s+='<circle class="ge" cx="'+A[0]+'" cy="'+A[1]+'" r="5"/><circle class="ge" cx="'+B[0]+'" cy="'+B[1]+'" r="5"/>';
@@ -110,7 +113,7 @@ function drawGradOverlay(){let a,b,L=null;
 /* ---- panel ---- */
 ui.gradStop={kind:'c',i:0};
 let gradPanelBox=null;
-function gradPanelRefresh(light){if(ui.tool!=='gradient'||!gradPanelBox)return;if(light&&gradBar){drawGradBar();return;}buildBrushPanel();}
+function gradPanelRefresh(light){if((ui.tool!=='gradient'&&ui.tool!=='gbucket')||!gradPanelBox)return;if(light&&gradBar){drawGradBar();return;}buildBrushPanel();}
 let gradBar=null;
 function drawGradBar(){const d=panelDef(),b=gradBar;if(!b)return;b.strip.style.background=gradCss(d)+', repeating-conic-gradient(#555 0 25%, #333 0 50%) 0 0/10px 10px';
   const mk=(list,kind)=>{const row=kind==='c'?b.crow:b.arow;row.replaceChildren();
@@ -130,7 +133,8 @@ function stopDrag(e,kind,i,row){e.preventDefault();e.stopPropagation();ui.gradSt
     s.p=p;ui.gradStop={kind,i:Math.max(0,list.indexOf(s))};defChanged();};
   const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);if(removed)ui.gradStop={kind,i:0};defChanged();};
   window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);drawGradBar();}
-function buildGradPanel(box){gradPanelBox=box;const L=activeGrad(),d=panelDef();$('#brushTitle').textContent=L?'Gradient layer':'Gradient';
+function buildGradPanel(box){gradPanelBox=box;const L=editedGrad(),d=panelDef(),gb=ui.tool==='gbucket';$('#brushTitle').textContent=gb?'Gradient bucket':L?'Gradient layer':'Gradient';
+  if(gb)box.append(el('div',{class:'sub',text:'Press inside an area and drag to set the direction; the gradient fills only that area (similar colours, like the paint bucket). A click fills it left to right.'}));else
   if(!L)box.append(seg([['live','Live gradient layer','Makes an editable gradient layer'],['classic','Classic','Paints the gradient into the current layer']],ui.gradLive?'live':'classic',v=>{ui.gradLive=v==='live';buildBrushPanel();},'Gradient mode'));
   else box.append(el('div',{class:'sub',text:'Drag the end points on the canvas; click the line to add a colour stop, drag a stop along the line to move it. Drag anywhere else to redraw it.'}));
   const sg=seg(GRAD_SHAPES.map(s=>[s,s==='reflected'?'Reflect':s[0].toUpperCase()+s.slice(1),s[0].toUpperCase()+s.slice(1)]),d.shape,v=>{d.shape=v;defChanged();},'Shape');sg.classList.add('tight');box.append(sg);
@@ -143,7 +147,7 @@ function buildGradPanel(box){gradPanelBox=box;const L=activeGrad(),d=panelDef();
   const pre=el('div',{class:'gpresets'});
   const addPre=(pr,user)=>{const dd=pr.dyn?presetDef(pr):pr.def;const b=el('button',{class:'gpre',title:pr.name+(user?' (right-click to remove)':''),'aria-label':pr.name,style:'background:'+gradCss(dd)+', repeating-conic-gradient(#555 0 25%, #333 0 50%) 0 0/8px 8px'});
     b.addEventListener('click',()=>{const nd=presetDef(pr);nd.shape=panelDef().shape;nd.method=panelDef().method;nd.dither=panelDef().dither;
-      const LL=activeGrad();if(LL){gradBegin(LL);LL.grad.def=nd;renderLiveGrad(LL);gradTouch();}else ui.grad=nd;ui.gradStop={kind:'c',i:0};buildBrushPanel();drawXfOverlay();});
+      const LL=editedGrad();if(LL){gradBegin(LL);LL.grad.def=nd;renderLiveGrad(LL);gradTouch();}else ui.grad=nd;ui.gradStop={kind:'c',i:0};buildBrushPanel();drawXfOverlay();});
     if(user)b.addEventListener('contextmenu',e=>{e.preventDefault();userGradPresets.splice(userGradPresets.indexOf(pr),1);saveGradPresets();buildBrushPanel();});pre.append(b);};
   GRAD_BUILTIN.forEach(p=>addPre(p,false));userGradPresets.forEach(p=>addPre(p,true));
   pre.append(el('button',{class:'btn sm',text:'+ Save',title:'Save this gradient as a preset',onclick:()=>{userGradPresets.push({name:'My gradient '+(userGradPresets.length+1),def:cloneGrad(panelDef())});saveGradPresets();buildBrushPanel();}}));
@@ -151,6 +155,9 @@ function buildGradPanel(box){gradPanelBox=box;const L=activeGrad(),d=panelDef();
   const ms=el('select',{id:'gMethod','aria-label':'Blending method'},...[['perceptual','Perceptual'],['linear','Linear'],['classic','Classic']].map(([v,t])=>el('option',{value:v,text:t})));ms.value=d.method;
   ms.addEventListener('change',()=>{d.method=ms.value;defChanged();});
   box.append(el('div',{class:'frow'},el('label',{for:'gMethod',text:'Blending'}),ms),el('div',{class:'chips'},chk('gRev','Reverse',d.reverse,v=>{d.reverse=v;defChanged();}),chk('gDith','Dither',d.dither,v=>{d.dither=v;defChanged();})));
+  if(gb){box.append(makeSlider({id:'gbTol',label:'Tolerance',min:0,max:255,step:1,value:ui.bucketTol,onInput:v=>{ui.bucketTol=v;}}).el,
+      makeSlider({id:'gbOp',label:'Opacity',min:0,max:1,step:.01,value:ui.gradOpacity,fmt:pct,onInput:v=>{ui.gradOpacity=v;}}).el,
+      el('div',{class:'chips'},chk('gbCont','Contiguous',ui.bucketContig,v=>{ui.bucketContig=v;}),chk('gbAll','Sample all layers',ui.bucketAll,v=>{ui.bucketAll=v;}),chk('gbAA','Anti-alias',ui.bucketAA,v=>{ui.bucketAA=v;})));return;}
   if(!L&&!ui.gradLive)box.append(makeSlider({id:'gOp',label:'Opacity',min:0,max:1,step:.01,value:ui.gradOpacity,fmt:pct,onInput:v=>{ui.gradOpacity=v;}}).el);
   if(L)box.append(el('div',{class:'frow'},el('button',{class:'btn sm',text:'Rasterize',title:'Turn the gradient into ordinary pixels',onclick:()=>rasterizeGrad(L)})));
   else box.append(el('div',{class:'sub',text:ui.gradLive?'Drag on the canvas to make a gradient layer you can keep editing. Shift keeps the angle to 45° steps. With a selection, the layer gets a mask of it.':'Drag on the canvas to paint a gradient into the current layer. Shift keeps the angle to 45° steps.'}));}

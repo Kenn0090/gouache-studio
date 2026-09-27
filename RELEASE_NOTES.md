@@ -1,7 +1,4 @@
-Gradients, paint bucket, dodge and burn.
+Gradient bucket.
 
-- **Gradient tool** (`G`): drag to make a **live gradient layer** you can keep editing: drag its end points on the canvas, click the line to add a colour stop, drag stops along it. Switch to **Classic** to paint straight into the current layer.
-- Five shapes (linear, radial, angle, reflected, diamond), a stop editor for colour and opacity, presets (plus your own), dithering against banding, and **Perceptual**, Linear or Classic blending.
-- A live gradient made with a selection gets a mask of it. **Rasterize** turns it into pixels. Live gradients and text stay editable when you save and reopen a PSD in Gouache Studio (Photoshop sees them as pixels).
-- **Paint bucket** (`Shift+G`): tolerance, contiguous, sample all layers, anti-alias and opacity; stays inside the selection.
-- **Dodge and burn** (`O`, `Shift+O` switches): every brush tip and pressure setting, with range (shadows, midtones, highlights), exposure and **protect tones**.
+- A third tool on the `G` button (**Shift+G** cycles gradient → paint bucket → gradient bucket): press inside an area and drag to set the direction. The gradient fills only that area of similar colours, like the paint bucket, with a live preview while you drag. A single click fills it left to right.
+- Uses the gradient presets, shapes and stop editor, plus tolerance, contiguous, sample all layers and anti-alias. Stays inside the selection; one undo step per fill.

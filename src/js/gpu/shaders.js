@@ -235,6 +235,10 @@ void main(){ vec2 p=gl_FragCoord.xy; vec2 d=uB-uA; float L2=max(dot(d,d),1e-6), 
 const FS_FILLCOV=`uniform sampler2D uOld; uniform sampler2D uCov; uniform vec4 uColor; uniform sampler2D uSelTex; uniform int uUseSel;
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy); float k=texelFetch(uCov,p,0).r; if(uUseSel==1) k*=texelFetch(uSelTex,p,0).r;
   vec4 b=texelFetch(uOld,p,0),c=uColor*k; o=c+b*(1.0-c.a); }`;
+/* gradient bucket: lay a premultiplied image over the old pixels by a coverage image */
+const FS_TEXCOV=`uniform sampler2D uOld; uniform sampler2D uCov; uniform sampler2D uTex; uniform sampler2D uSelTex; uniform int uUseSel;
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy); float k=texelFetch(uCov,p,0).r; if(uUseSel==1) k*=texelFetch(uSelTex,p,0).r;
+  vec4 b=texelFetch(uOld,p,0),c=texelFetch(uTex,p,0)*k; o=c+b*(1.0-c.a); }`;
 /* ---- transforms ---- */
 /* shared sampling of a source image in pixel coordinates; outside the image = uOutside */
 const CH_SAMPLE=`
@@ -283,7 +287,7 @@ const P={
   sharpen:program(FS_SHARPEN), poster:program(FS_POSTER), invert:program(FS_INVERT), place:program(FS_PLACE), mix:program(FS_MIX), chmerge:program(FS_CHMERGE), maskplace:program(FS_MASKPLACE), applymask:program(FS_APPLYMASK),
   poly:program(FS_ONE,VS_POLY), rcopy:program(FS_RCOPY), selop:program(FS_SELOP), shift:program(FS_SHIFT), morph:program(FS_MORPH), thresh:program(FS_THRESH),
   selmix:program(FS_SELMIX), loadsel:program(FS_LOADSEL), cropsel:program(FS_CROPSEL),
-  grad:program(FS_GRAD), fillcov:program(FS_FILLCOV), xform:program(FS_XFORM), proj:program(FS_PROJ), mesh:(()=>{const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,VS_MESH));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS_HEAD+FS_MESH));
+  grad:program(FS_GRAD), fillcov:program(FS_FILLCOV), texcov:program(FS_TEXCOV), xform:program(FS_XFORM), proj:program(FS_PROJ), mesh:(()=>{const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,VS_MESH));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS_HEAD+FS_MESH));
     gl.bindAttribLocation(p,0,'a');gl.bindAttribLocation(p,1,'b');gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return {p,locs:{}};})()
 };
 const vao=gl.createVertexArray();gl.bindVertexArray(vao);
