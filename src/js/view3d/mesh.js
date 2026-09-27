@@ -43,12 +43,12 @@ function gridBuild(nu,nv,fn){const pos=[],nrm=[],uv=[],idx=[];
   return {pos,nrm,uv,idx};}
 function mergeParts(parts){const pos=[],nrm=[],uv=[],idx=[];const add=(d,a)=>{for(let i=0;i<a.length;i++)d.push(a[i]);};for(const p of parts){const o=pos.length/3;add(pos,p.pos);add(nrm,p.nrm);add(uv,p.uv);for(const i of p.idx)idx.push(i+o);}
   return {pos:new Float32Array(pos),nrm:new Float32Array(nrm),uv:new Float32Array(uv),idx:new Uint32Array(idx)};}
-/* detail 0..6: how many triangles the shapes get (more for testing height displacement) */
-const DETAIL=[1,2,4,8,16,32,64],RDETAIL=[1,1.5,2,3,4,6,8];
+/* detail 0..7: how many triangles the shapes get (more for testing height displacement) */
+const DETAIL=[1,2,4,8,16,32,64,128],RDETAIL=[1,1.5,2,3,4,6,8,11];
 function primPlane(d){const seg=Math.min(1024,8*DETAIL[d]*(d?1:.125)),a=doc.w/doc.h,w=a>=1?1:a,h=a>=1?1/a:1;
   return mergeParts([gridBuild(seg,seg,(u,v)=>({p:[(u*2-1)*w,(1-v*2)*h,0],n:[0,0,1]}))]);}
 /* six faces, each with the whole texture; round>0 rounds the edges */
-function primCube(round,d){const N=Math.max(round?16:1,Math.round(4*DETAIL[d]*(d?1:.25))),faces=[[[1,0,0],[0,0,-1],[0,-1,0]],[[-1,0,0],[0,0,1],[0,-1,0]],[[0,1,0],[1,0,0],[0,0,1]],[[0,-1,0],[1,0,0],[0,0,-1]],[[0,0,1],[1,0,0],[0,-1,0]],[[0,0,-1],[-1,0,0],[0,-1,0]]];
+function primCube(round,d){const N=Math.min(400,Math.max(round?16:1,Math.round(4*DETAIL[d]*(d?1:.25)))),faces=[[[1,0,0],[0,0,-1],[0,-1,0]],[[-1,0,0],[0,0,1],[0,-1,0]],[[0,1,0],[1,0,0],[0,0,1]],[[0,-1,0],[1,0,0],[0,0,-1]],[[0,0,1],[1,0,0],[0,-1,0]],[[0,0,-1],[-1,0,0],[0,-1,0]]];
   return mergeParts(faces.map(([n,U,V])=>gridBuild(N,N,(u,v)=>{let p=[0,1,2].map(c=>n[c]+U[c]*(u*2-1)+V[c]*(v*2-1)),nn=n;
     if(round){const r=round,q=p.map(x=>clamp(x,-1+r,1-r)),dd=p.map((x,c)=>x-q[c]),l=Math.hypot(...dd)||1;nn=dd.map(x=>x/l);p=q.map((x,c)=>x+nn[c]*r);}
     return {p,n:nn};})));}
