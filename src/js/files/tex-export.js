@@ -11,6 +11,7 @@ const TEX_PRESETS={
     {s:'N',what:'Normal (DirectX)',rgb:'normal'},
     {s:'ORM',what:'R occlusion · G roughness · B metallic',ch:['ao','rough','metal'],need:['ao','rough','metal']},
     {s:'H',what:'Height',grey:'height'},
+    {s:'Curv',what:'Curvature (mask)',grey:'curv'},
     {s:'E',what:'Emissive',rgb:'emis'}]},
   urp:{label:'Unity (URP)',normal:'gl',name:n=>pascal(n)+'_{s}',outs:[
     {s:'Albedo',what:'Base map (alpha: opacity)',rgb:'base',a:'opac?'},
@@ -18,18 +19,21 @@ const TEX_PRESETS={
     {s:'Normal',what:'Normal (OpenGL)',rgb:'normal'},
     {s:'Occlusion',what:'Occlusion',grey:'ao'},
     {s:'Height',what:'Height (parallax)',grey:'height'},
+    {s:'Curvature',what:'Curvature (mask)',grey:'curv'},
     {s:'Emission',what:'Emission',rgb:'emis'}]},
   hdrp:{label:'Unity (HDRP)',normal:'gl',name:n=>pascal(n)+'_{s}',outs:[
     {s:'BaseColor',what:'Base colour (alpha: opacity)',rgb:'base',a:'opac?'},
     {s:'MaskMap',what:'R metallic · G occlusion · B detail mask · A smoothness',ch:['metal','ao','one','smooth'],need:['metal','ao','rough']},
     {s:'Normal',what:'Normal (OpenGL)',rgb:'normal'},
     {s:'Height',what:'Height',grey:'height'},
+    {s:'Curvature',what:'Curvature (mask)',grey:'curv'},
     {s:'Emissive',what:'Emissive',rgb:'emis'}]},
   godot:{label:'Godot',normal:'gl',name:n=>snake(n)+'_{s}',outs:[
     {s:'albedo',what:'Albedo (alpha: opacity)',rgb:'base',a:'opac?'},
     {s:'orm',what:'R occlusion · G roughness · B metallic (ORMMaterial3D)',ch:['ao','rough','metal'],need:['ao','rough','metal']},
     {s:'normal',what:'Normal (OpenGL)',rgb:'normal'},
     {s:'height',what:'Height (white is high)',grey:'height'},
+    {s:'curvature',what:'Curvature (mask)',grey:'curv'},
     {s:'emission',what:'Emission',rgb:'emis'}]},
   blender:{label:'Blender',normal:'gl',name:n=>pascal(n)+'_{s}',outs:[
     {s:'BaseColor',what:'Base colour',rgb:'base'},
@@ -37,6 +41,7 @@ const TEX_PRESETS={
     {s:'Metallic',what:'Metallic',grey:'metal'},
     {s:'Normal',what:'Normal (OpenGL)',rgb:'normal'},
     {s:'Height',what:'Height',grey:'height'},
+    {s:'Curvature',what:'Curvature (mask)',grey:'curv'},
     {s:'AO',what:'Ambient occlusion',grey:'ao'},
     {s:'Emission',what:'Emission',rgb:'emis'},
     {s:'Opacity',what:'Opacity',grey:'opac'}]}};

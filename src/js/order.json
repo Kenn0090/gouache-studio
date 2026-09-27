@@ -30,6 +30,7 @@
     "anim/anim-ui",
     "anim/anim-io",
     "files/helpers",
+    "files/loading",
     "files/decoders",
     "files/import",
     "files/psd-open",

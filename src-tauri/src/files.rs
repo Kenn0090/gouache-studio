@@ -13,6 +13,23 @@ pub fn read_file(path: String) -> Result<Response, String> {
     fs::read(&path).map(Response::new).map_err(|e| format!("{path}: {e}"))
 }
 
+/// Size of a file in bytes (so big reads can be done in pieces with a progress bar).
+#[tauri::command]
+pub fn file_size(path: String) -> Result<u64, String> {
+    fs::metadata(&path).map(|m| m.len()).map_err(|e| format!("{path}: {e}"))
+}
+
+/// Read part of a file: `len` bytes from `offset`, as binary.
+#[tauri::command]
+pub fn read_file_range(path: String, offset: u64, len: u64) -> Result<Response, String> {
+    use std::io::{Read, Seek, SeekFrom};
+    let mut f = fs::File::open(&path).map_err(|e| format!("{path}: {e}"))?;
+    f.seek(SeekFrom::Start(offset)).map_err(|e| format!("{path}: {e}"))?;
+    let mut buf = Vec::with_capacity(len as usize);
+    f.take(len).read_to_end(&mut buf).map_err(|e| format!("{path}: {e}"))?;
+    Ok(Response::new(buf))
+}
+
 /// Write bytes sent as a raw request body. The destination path travels in the `x-path` header
 /// (URL-encoded), so large files never pass through JSON.
 #[tauri::command]

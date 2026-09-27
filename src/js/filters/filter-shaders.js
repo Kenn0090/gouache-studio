@@ -87,6 +87,12 @@ void main(){ vec2 s=vec2(textureSize(uSrc,0)),p=gl_FragCoord.xy; vec4 acc=vec4(0
     vec4 c=texture(uSrc,(p+q*uR)/s); vec3 st=c.a>1e-6?c.rgb/c.a:vec3(0); float l=dot(st,vec3(0.2126,0.7152,0.0722));
     float w=1.0+uBoost*pow(max(l-uThr,0.0)/max(1.0-uThr,1e-3),2.0)*8.0; acc+=c*w; ws+=w; }
   o=acc/max(ws,1e-6); }`,
+  /* edge wear: lighten raised edges and darken cavities of the colour, using a curvature image (mid-grey flat) */
+  cwear:`uniform sampler2D uSrc; uniform sampler2D uC; uniform float uEdge; uniform float uCav; uniform vec3 uEC; uniform vec3 uCC; uniform int uEM; uniform int uCM; uniform float uSharp; uniform float uK;
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 s=texelFetch(uSrc,p,0); if(s.a<=1e-6){ o=s; return; } vec3 c=s.rgb/s.a; float k=0.5+(texelFetch(uC,p,0).r-0.5)*uK;
+  float e=clamp((k-0.5)*2.0,0.0,1.0), d=clamp((0.5-k)*2.0,0.0,1.0); e=smoothstep(0.0,1.0,pow(e,1.0/uSharp)); d=smoothstep(0.0,1.0,pow(d,1.0/uSharp));
+  vec3 et=uEM==0?c+(1.0-c)*0.75:uEC, ct=uCM==0?c*0.25:uCC;
+  c=mix(c,et,clamp(e*uEdge,0.0,1.0)); c=mix(c,ct,clamp(d*uCav,0.0,1.0)); o=vec4(clamp(c,0.0,1.0)*s.a,s.a); }`,
   /* curvature straight from a normal map: how much the normals spread apart (ridges) or come together (cavities) */
   ncurv:`uniform sampler2D uN; uniform int uWrap; uniform float uStr; uniform int uMode; uniform float uStep;
 ivec2 wrapP(ivec2 p,ivec2 s,int w){ return w==1?((p%s)+s)%s:clamp(p,ivec2(0),s-1); }

@@ -10,6 +10,7 @@ A document can hold several **maps**: images of the same size that together desc
 | Height | Raised (lighter) or lowered (darker) around mid-grey | 50% (flat) |
 | Normal | Surface direction detail (OpenGL: green = up) | flat |
 | Ambient occlusion | How much light reaches each spot | 100% (white) |
+| Curvature | Raised edges (light) and cavities (dark), a grey mask for wear and dirt. Not shown in the material; exported as its own texture | 50% (grey) |
 | Emissive | Glow colour | black |
 | Opacity | See-through areas | 100% |
 

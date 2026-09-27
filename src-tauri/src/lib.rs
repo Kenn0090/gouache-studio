@@ -53,6 +53,8 @@ pub fn run() {
             set_title,
             launch_file,
             files::read_file,
+            files::file_size,
+            files::read_file_range,
             files::write_file,
             files::recent_list,
             files::recent_add,

@@ -32,19 +32,19 @@ async function decodeFile(file){const ext=extOf(file.name);
   return loadImageEl(file);}
 function askReplace(){if(!hist.undo.length||hist.undo[hist.undo.length-1]===doc.savedAt)return Promise.resolve(true);return new Promise(res=>{openDialog({title:'Replace the current painting?',
   body:el('p',{class:'note',text:'Opening a file replaces what is on the canvas. Use File › Save first if you want to keep it.'}),okLabel:'Open anyway',onOk(){res(true);},onCancel(){res(false);}});});}
-async function handleFile(file,mode,path){const ext=extOf(file.name);
-  try{if(ext==='abr'){await importABR(file);return;}
+async function handleFile(file,mode,path){const ext=extOf(file.name);loadStart(file.name);
+  try{if(!['abr','ttf','otf','woff','woff2'].includes(ext)){loadBusy(mode==='open'?'Opening…':'Placing…');await loadPaint();}if(ext==='abr'){await importABR(file);return;}
     if(['ttf','otf','woff','woff2'].includes(ext)){await addFontFile(file);return;}
     if(mode==='open'){if(!(await askReplace()))return;const head=await file.slice(0,8).arrayBuffer();if(ext==='gouache'||isGouache(head)){await openGouache(await file.arrayBuffer(),baseName(file.name));doc.filePath=path||null;markSaved();}else if(ext==='psd'){await openPSD(await file.arrayBuffer(),baseName(file.name));doc.filePath=path||null;}else{openRaw(await decodeFile(file),baseName(file.name));doc.filePath=null;}
       if(path)platform.recentAdd(path);updateTitle();}
     else if(ui.mode==='anim')toast('To bring images into an animation, use Import in the timeline.');else placeRaw(await decodeFile(file),baseName(file.name)||'Pasted image');}
-  catch(e){console.error(e);toast(e.message||String(e));}}
+  catch(e){console.error(e);toast(e.message||String(e));}finally{loadEnd();}}
 let fileMode='open';
 const OPEN_FILTERS={open:[{name:'Images and documents',extensions:['gouache','psd','png','jpg','jpeg','webp','gif','bmp','tga','dds','tif','tiff']},{name:'Brushes and fonts',extensions:['abr','ttf','otf','woff','woff2']}],
   place:[{name:'Images',extensions:['psd','png','jpg','jpeg','webp','gif','bmp','tga','dds','tif','tiff']}],abr:[{name:'Photoshop brushes',extensions:['abr']}],font:[{name:'Fonts',extensions:['ttf','otf','woff','woff2']}]};
 const MIME={png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',gif:'image/gif',bmp:'image/bmp'};
 /* desktop: open a file from disk by path (native dialog, recent files) */
-async function openPath(path,mode){try{const bytes=await platform.readFile(path);const name=fileNameOf(path);
+async function openPath(path,mode){try{loadStart(fileNameOf(path));let bytes;try{bytes=await platform.readFile(path);}finally{loadEnd();}const name=fileNameOf(path);
     await handleFile(new File([bytes],name,{type:MIME[extOf(name)]||''}),mode,path);}catch(e){console.error(e);toast('Could not open “'+fileNameOf(path)+'”: '+(e.message||e));}}
 async function pickFile(m){if(platform.isDesktop){try{const p=await platform.openDialog(OPEN_FILTERS[m]||OPEN_FILTERS.open);if(p)await openPath(p,m==='abr'||m==='font'?'open':m);}catch(e){toast('The file dialog failed: '+(e.message||e));}return;}
   pickFileWeb(m);}
@@ -52,7 +52,12 @@ function pickFileWeb(m){fileMode=m;const f=$('#fileIn');f.accept=m==='font'?'.tt
 $('#fileIn').addEventListener('change',e=>{const f=e.target.files[0];if(f)handleFile(f,fileMode==='abr'||fileMode==='font'?'open':fileMode);});
 $('#work').addEventListener('dragover',e=>{if([...e.dataTransfer.types].includes('Files')){e.preventDefault();$('#dropHint').hidden=false;}});
 $('#work').addEventListener('dragleave',e=>{if(e.target===$('#work')||!$('#work').contains(e.relatedTarget))$('#dropHint').hidden=true;});
-$('#work').addEventListener('drop',e=>{e.preventDefault();$('#dropHint').hidden=true;const f=e.dataTransfer.files[0];if(f)handleFile(f,'place');});
+$('#work').addEventListener('drop',e=>{e.preventDefault();$('#dropHint').hidden=true;const fs=[...e.dataTransfer.files],f=fs[0];if(!f)return;
+  /* 3D models: into the baker in the Bake tab, into the 3D view otherwise */
+  if(fs.some(x=>isModelName(x.name))){if(ui.mode==='bake')bakeDropFiles(fs,null);else v3DropModel(fs);return;}
+  handleFile(f,'place');});
+/* model files dropped on the Bake panel */
+bakeDropZone($('#bakeSec'),null);
 /* paste: our own copied pixels (the clipboard holds a marker for them), else an image from another app */
 document.addEventListener('paste',e=>{if(isTypingTarget(e.target))return;const cd=e.clipboardData,txt=cd?cd.getData('text/plain'):'';
   if(clip&&txt===clip.marker){e.preventDefault();pasteClip();return;}

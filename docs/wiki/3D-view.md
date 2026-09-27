@@ -8,7 +8,7 @@
 *The 3D view docked beside the canvas.*
 
 - **Built-in:** plane, cube, rounded cube, sphere, cylinder.
-- **Import:** **OBJ**, **glTF / GLB** or **FBX** (binary FBX; for text FBX, export as glTF or OBJ). Pick *Import a model…* in the model list.
+- **Import:** **OBJ**, **glTF / GLB** or **FBX** (binary FBX; for text FBX, export as glTF or OBJ). Pick *Import a model…* in the model list, or **drag the file onto the app**. A loading bar shows big files coming in.
 - An imported model is **saved inside your .gouache file**.
 - The corner of the view shows the model's triangle count. It warns you if the model has no UVs, since textures can't map onto a model without them.
 

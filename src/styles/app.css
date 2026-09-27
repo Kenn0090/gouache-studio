@@ -400,3 +400,14 @@ canvas.fxthumb{background:#2a2d33 url("data:image/svg+xml,%3Csvg xmlns='http://w
 #bkProg .bakebar{margin-top:4px}
 .note.warn{color:#e8b04a}
 .v3lab{font-size:11.5px;color:var(--muted);padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40%}
+.bkmodel{display:flex;gap:6px;align-items:center;min-width:0}.bkmodel select{flex:1;min-width:0}
+.bkmodel.dropon,#bakeSec.dropon{outline:2px dashed var(--accent);outline-offset:2px;border-radius:6px}
+/* loading bar */
+#loadBox{position:fixed;left:50%;bottom:44px;transform:translateX(-50%);z-index:60;min-width:300px;max-width:min(520px,90vw);background:rgba(22,24,28,.96);border:1px solid var(--line-2);border-radius:9px;padding:10px 12px;box-shadow:0 8px 28px rgba(0,0,0,.45);pointer-events:none}
+#loadBox[hidden]{display:none}
+#loadBox .lb-name{font-weight:600;font-size:12.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#loadBox .lb-msg{font-size:11.5px;color:var(--muted);margin:3px 0 7px}
+#loadBox .lb-bar{height:6px;border-radius:3px;background:var(--raise);overflow:hidden;position:relative}
+#loadBox .lb-bar>div{height:100%;width:0;background:var(--accent);transition:width .12s}
+#loadBox .lb-bar.busy>div{width:35%!important;transition:none;animation:lbmove 1.1s ease-in-out infinite}
+@keyframes lbmove{0%{transform:translateX(-100%)}100%{transform:translateX(290%)}}

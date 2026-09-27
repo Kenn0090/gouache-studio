@@ -31,20 +31,29 @@ function tangentsOf(pos,nrm,uv,idx){const n=pos.length/3,T=new Float32Array(n*3)
   for(let i=0;i<n;i++){const nx=nrm[i*3],ny=nrm[i*3+1],nz=nrm[i*3+2];let tx=T[i*3],ty=T[i*3+1],tz=T[i*3+2];const d=nx*tx+ny*ty+nz*tz;tx-=nx*d;ty-=ny*d;tz-=nz*d;
     let l=Math.hypot(tx,ty,tz);if(l<1e-8){const a=Math.abs(nx)<.9?[1,0,0]:[0,1,0];tx=a[1]*nz-a[2]*ny;ty=a[2]*nx-a[0]*nz;tz=a[0]*ny-a[1]*nx;l=Math.hypot(tx,ty,tz)||1;}
     tx/=l;ty/=l;tz/=l;const cx=ny*tz-nz*ty,cy=nz*tx-nx*tz,cz=nx*ty-ny*tx,w=(cx*B[i*3]+cy*B[i*3+1]+cz*B[i*3+2])<0?-1:1;
-    out.set([tx,ty,tz,w],i*4);}
+    out[i*4]=tx;out[i*4+1]=ty;out[i*4+2]=tz;out[i*4+3]=w;}
   return out;}
 /* unique edges, for the wireframe and the UV overlay */
-function meshEdges(m){const seen=new Set(),e=[];const k=(a,b)=>a<b?a*4294967296+b:b*4294967296+a;
-  for(let t=0;t<m.idx.length;t+=3)for(const [a,b] of [[m.idx[t],m.idx[t+1]],[m.idx[t+1],m.idx[t+2]],[m.idx[t+2],m.idx[t]]]){const h=k(a,b);if(!seen.has(h)){seen.add(h);e.push(a,b);}}
-  return new Uint32Array(e);}
+function meshEdges(m){const I=m.idx,T=I.length/3;
+  /* very big meshes: every triangle's edges (a few doubled), without the memory of finding duplicates */
+  if(T>1.5e6){const e=new Uint32Array(T*6);for(let t=0;t<T;t++){const a=I[t*3],b=I[t*3+1],c=I[t*3+2];e.set([a,b,b,c,c,a],t*6);}return e;}
+  const seen=new Set(),e=grow(Uint32Array,T*3);const k=(a,b)=>a<b?a*4294967296+b:b*4294967296+a;
+  for(let t=0;t<I.length;t+=3){const a=I[t],b=I[t+1],c=I[t+2];let h=k(a,b);if(!seen.has(h)){seen.add(h);e.p2(a,b);}h=k(b,c);if(!seen.has(h)){seen.add(h);e.p2(b,c);}h=k(c,a);if(!seen.has(h)){seen.add(h);e.p2(c,a);}}
+  return e.out();}
 
 /* ---- built-in shapes ---- */
 function gridBuild(nu,nv,fn){const pos=[],nrm=[],uv=[],idx=[];
   for(let j=0;j<=nv;j++)for(let i=0;i<=nu;i++){const u=i/nu,v=j/nv,r=fn(u,v);pos.push(...r.p);nrm.push(...r.n);uv.push(u,v);}
   for(let j=0;j<nv;j++)for(let i=0;i<nu;i++){const a=j*(nu+1)+i,b=a+1,c=a+nu+1,d=c+1;idx.push(a,c,b,b,c,d);}
   return {pos,nrm,uv,idx};}
-function mergeParts(parts){const pos=[],nrm=[],uv=[],idx=[];const add=(d,a)=>{for(let i=0;i<a.length;i++)d.push(a[i]);};for(const p of parts){const o=pos.length/3;add(pos,p.pos);add(nrm,p.nrm);add(uv,p.uv);for(const i of p.idx)idx.push(i+o);}
-  return {pos:new Float32Array(pos),nrm:new Float32Array(nrm),uv:new Float32Array(uv),idx:new Uint32Array(idx)};}
+/* growable typed arrays: big models stay compact in memory (plain arrays take several times more) */
+function grow(T,n){return {a:new T(n||4096),n:0,T,need(k){if(this.n+k>this.a.length){const b=new this.T(Math.max(this.a.length*2,this.n+k));b.set(this.a.subarray(0,this.n));this.a=b;}},
+  p1(x){this.need(1);this.a[this.n++]=x;},p2(x,y){this.need(2);const a=this.a,n=this.n;a[n]=x;a[n+1]=y;this.n=n+2;},p3(x,y,z){this.need(3);const a=this.a,n=this.n;a[n]=x;a[n+1]=y;a[n+2]=z;this.n=n+3;},
+  out(){return this.a.length===this.n?this.a:this.a.slice(0,this.n);}};}
+function mergeParts(parts){let np=0,ni=0;for(const p of parts){np+=p.pos.length;ni+=p.idx.length;}
+  const pos=new Float32Array(np),nrm=new Float32Array(np),uv=new Float32Array(np/3*2),idx=new Uint32Array(ni);let o=0,oi=0;
+  for(const p of parts){pos.set(p.pos,o);nrm.set(p.nrm,o);uv.set(p.uv,o/3*2);const base=o/3;for(let i=0;i<p.idx.length;i++)idx[oi+i]=p.idx[i]+base;o+=p.pos.length;oi+=p.idx.length;}
+  return {pos,nrm,uv,idx};}
 /* detail 0..7: how many triangles the shapes get (more for testing height displacement) */
 const DETAIL=[1,2,4,8,16,32,64,128],RDETAIL=[1,1.5,2,3,4,6,8,11];
 function primPlane(d){const seg=Math.min(1024,8*DETAIL[d]*(d?1:.125)),a=doc.w/doc.h,w=a>=1?1:a,h=a>=1?1/a:1;
@@ -75,19 +84,42 @@ function subdivideMesh(m,d){let cur=m;for(let l=0;l<d;l++){if(cur.idx.length/3*4
 function idColor(key){let h=2166136261;for(const c of String(key))h=Math.imul(h^c.charCodeAt(0),16777619);const H=((h>>>0)%360)/360;
   const f=n=>{const k=(n+H*6)%6;return .92-.72*Math.max(0,Math.min(k,4-k,1));};return [f(5),f(3),f(1)];}
 /* ---- OBJ ---- */
-function parseOBJ(text,name){const P=[],T=[],N=[],pos=[],uv=[],nrm=[],idx=[],tc=[],map=new Map();let hasN=false,hasT=false,grp='default',gc=idColor('default');const pn=['default'],tp=[];let part=0;
-  const vert=s=>{let r=map.get(s);if(r!==undefined)return r;const [a,b,c]=s.split('/');const vi=+a,ti=b?+b:0,ni=c?+c:0;
-    const pi=vi<0?P.length/3+vi:vi-1;pos.push(P[pi*3],P[pi*3+1],P[pi*3+2]);
-    if(ti){const q=ti<0?T.length/2+ti:ti-1;uv.push(T[q*2],1-T[q*2+1]);hasT=true;}else uv.push(0,0);
-    if(ni){const q=ni<0?N.length/3+ni:ni-1;nrm.push(N[q*3],N[q*3+1],N[q*3+2]);hasN=true;}else nrm.push(0,0,0);
-    r=pos.length/3-1;map.set(s,r);return r;};
-  for(const line of text.split('\n')){const t=line.trim();if(!t||t[0]==='#')continue;const p=t.split(/\s+/);
-    if(p[0]==='v')P.push(+p[1],+p[2],+p[3]);else if(p[0]==='vt')T.push(+p[1],+(p[2]||0));else if(p[0]==='vn')N.push(+p[1],+p[2],+p[3]);
-    else if(p[0]==='usemtl'||p[0]==='o'||p[0]==='g'){if(p[0]!=='usemtl'){const nm=p.slice(1).join(' ')||'default';part=pn.indexOf(nm);if(part<0){part=pn.length;pn.push(nm);}}if(p[0]==='usemtl'||grp==='default'||p[0]==='o'){grp=p.slice(1).join(' ')||grp;gc=idColor(grp);}}
-    else if(p[0]==='f'){const vs=p.slice(1).map(vert);for(let i=1;i+1<vs.length;i++){idx.push(vs[0],vs[i],vs[i+1]);tc.push(gc[0],gc[1],gc[2]);tp.push(part);}}}
-  if(!idx.length)throw new Error('This OBJ file has no faces.');
-  const m={pos:new Float32Array(pos),uv:new Float32Array(uv),idx:new Uint32Array(idx),nrm:hasN?new Float32Array(nrm):null};
-  const r=meshFinish(m,name);r.noUV=!hasT;r.triCol=new Float32Array(tc);r.partNames=pn;r.triPart=new Uint32Array(tp);return r;}
+/* OBJ, read straight from the file's bytes: no giant text string, compact arrays, and it can
+   pause between pieces so the loading bar moves (a high-poly OBJ can be hundreds of MB) */
+function objReader(name){const P=grow(Float32Array),T=grow(Float32Array),N=grow(Float32Array),pos=grow(Float32Array),uv=grow(Float32Array),nrm=grow(Float32Array),idx=grow(Uint32Array),tc=grow(Float32Array),tp=grow(Uint32Array);
+  const vF=grow(Int32Array),vT=grow(Int32Array),vN=grow(Int32Array),alt=new Map(),pn=['default'],dec=new TextDecoder();let hasN=false,hasT=false,grp='default',gc=idColor('default'),part=0,face=[];
+  const nameOf=(b,i,e)=>dec.decode(b.subarray(i,e)).trim();
+  /* number at b[i..]: returns [value, next index] */
+  let ni=0;const num=(b,i,e)=>{while(i<e&&(b[i]===32||b[i]===9))i++;let sg=1;if(b[i]===45){sg=-1;i++;}else if(b[i]===43)i++;let v=0,f=0,d=1,any=false;
+    while(i<e&&b[i]>=48&&b[i]<=57){v=v*10+(b[i]-48);i++;any=true;}if(b[i]===46){i++;while(i<e&&b[i]>=48&&b[i]<=57){f=f*10+(b[i]-48);d*=10;i++;any=true;}}v+=f/d;
+    if(b[i]===101||b[i]===69){i++;let es=1;if(b[i]===45){es=-1;i++;}else if(b[i]===43)i++;let ex=0;while(i<e&&b[i]>=48&&b[i]<=57){ex=ex*10+(b[i]-48);i++;}v*=Math.pow(10,es*ex);}
+    ni=i;return any?sg*v:NaN;};
+  const vert=(pi,ti,ki)=>{const nP=P.n/3;while(vF.n<nP){vF.p1(-1);vT.p1(-1);vN.p1(-1);}
+    let r=vF.a[pi];if(r>=0){if(vT.a[pi]===ti&&vN.a[pi]===ki)return r;const key=pi+','+ti+','+ki;const q=alt.get(key);if(q!==undefined)return q;}
+    pos.p3(P.a[pi*3],P.a[pi*3+1],P.a[pi*3+2]);if(ti>=0){uv.p2(T.a[ti*2],1-T.a[ti*2+1]);hasT=true;}else uv.p2(0,0);
+    if(ki>=0){nrm.p3(N.a[ki*3],N.a[ki*3+1],N.a[ki*3+2]);hasN=true;}else nrm.p3(0,0,0);r=pos.n/3-1;
+    if(vF.a[pi]<0){vF.a[pi]=r;vT.a[pi]=ti;vN.a[pi]=ki;}else alt.set(pi+','+ti+','+ki,r);return r;};
+  const line=(b,i,e)=>{while(i<e&&(b[i]===32||b[i]===9))i++;if(i>=e||b[i]===35)return;const c0=b[i],c1=b[i+1];
+    if(c0===118&&(c1===32||c1===9)){const x=num(b,i+2,e),y=num(b,ni,e),z=num(b,ni,e);P.p3(x,y,z);return;}
+    if(c0===118&&c1===116){const x=num(b,i+2,e);let y=num(b,ni,e);if(isNaN(y))y=0;T.p2(x,y);return;}
+    if(c0===118&&c1===110){const x=num(b,i+2,e),y=num(b,ni,e),z=num(b,ni,e);N.p3(x,y,z);return;}
+    if(c0===102&&(c1===32||c1===9)){face.length=0;let k=i+2;const nP=P.n/3,nT=T.n/2,nN=N.n/3;
+      while(k<e){while(k<e&&(b[k]===32||b[k]===9||b[k]===13))k++;if(k>=e)break;
+        const v=num(b,k,e);k=ni;let t=-1,n=-1;
+        if(b[k]===47){k++;if(b[k]!==47){const tv=num(b,k,e);k=ni;if(!isNaN(tv))t=tv<0?nT+tv:tv-1;}if(b[k]===47){k++;const nv=num(b,k,e);k=ni;if(!isNaN(nv))n=nv<0?nN+nv:nv-1;}}
+        while(k<e&&b[k]!==32&&b[k]!==9)k++;if(isNaN(v))continue;face.push(vert(v<0?nP+v:v-1,t,n));}
+      for(let j=1;j+1<face.length;j++){idx.p3(face[0],face[j],face[j+1]);tc.p3(gc[0],gc[1],gc[2]);tp.p1(part);}return;}
+    const w=nameOf(b,i,Math.min(e,i+7)).split(/\s/)[0];
+    if(w==='o'||w==='g'||w==='usemtl'){const nm=nameOf(b,i+w.length,e)||'default';if(w!=='usemtl'){part=pn.indexOf(nm);if(part<0){part=pn.length;pn.push(nm);}}if(w==='usemtl'||grp==='default'||w==='o'){grp=nm||grp;gc=idColor(grp);}}};
+  return {
+    /* read b[s..e) line by line; returns where the last complete line ended */
+    feed(b,s,e,final){let i=s;for(;;){let j=b.indexOf(10,i);if(j<0||j>=e){if(final&&i<e){line(b,i,e);return e;}return i;}line(b,i,j);i=j+1;}},
+    finish(){if(!idx.n)throw new Error('This OBJ file has no faces.');const m={pos:pos.out(),uv:uv.out(),idx:idx.out(),nrm:hasN?nrm.out():null};
+      const r=meshFinish(m,name);r.noUV=!hasT;r.triCol=tc.out();r.partNames=pn;r.triPart=tp.out();return r;}};}
+function parseOBJ(text,name){const b=typeof text==='string'?new TextEncoder().encode(text):text,R=objReader(name);R.feed(b,0,b.length,true);return R.finish();}
+async function parseOBJAsync(b,name,onProgress){const R=objReader(name),CH=8*1024*1024;let i=0;
+  while(i<b.length){const e=Math.min(b.length,i+CH),fin=e>=b.length;const j=R.feed(b,i,e,fin);i=j>i?j:e;if(onProgress)onProgress(i/b.length);await new Promise(r=>setTimeout(r,0));}
+  if(onProgress)onProgress(1,'finish');await loadPaint();return R.finish();}
 
 /* ---- glTF 2.0 (.glb, or .gltf with embedded data) ---- */
 async function parseGLTF(buf,name,readSibling){let json,bin=null;const u8=new Uint8Array(buf);
@@ -138,7 +170,7 @@ function meshUnpack(bytes,name){const b=bytes.buffer.slice(bytes.byteOffset,byte
   return meshFinish({pos,nrm,uv,idx},name);}
 
 /* ---- FBX (binary, as written by Blender, Maya, 3ds Max, Unity and Unreal) ---- */
-async function parseFBX(buf,name){const u8=new Uint8Array(buf),dv=new DataView(buf);
+async function parseFBX(buf,name,onProgress){const u8=new Uint8Array(buf),dv=new DataView(buf);
   const sig='Kaydara FBX Binary';if(new TextDecoder().decode(u8.subarray(0,18))!==sig){
     if(/FBXHeaderExtension|; FBX/.test(new TextDecoder().decode(u8.subarray(0,400))))throw new Error('This is a text (ASCII) FBX. Export it as binary FBX, glTF or OBJ.');throw new Error('This does not look like an FBX file.');}
   const ver=dv.getUint32(23,true),big=ver>=7500,pending=[];
@@ -173,19 +205,18 @@ async function parseFBX(buf,name){const u8=new Uint8Array(buf),dv=new DataView(b
   const parts=[];let noUV=false;
   for(const [id,g] of Object.entries(geoms)){const V=val((kid(g,'Vertices')||{props:[]}).props[0]),PI=val((kid(g,'PolygonVertexIndex')||{props:[]}).props[0]);if(!V||!PI)continue;
     const N=layer(g,'LayerElementNormal','Normals','NormalsIndex'),U=layer(g,'LayerElementUV','UV','UVIndex');if(!U)noUV=true;
-    const M=world(geoOf[id]),pos=[],nrm=[],uv=[],idx=[];
-    const pick=(L,pv,vi,c)=>{if(!L)return null;let k=/Vert/.test(L.map)&&!/Polygon/.test(L.map)?vi:pv;if(/Index/.test(L.ref)&&L.idx)k=L.idx[k];return Array.from(L.d.subarray(k*c,k*c+c));};
-    let poly=[],pv=0;
-    for(let i=0;i<PI.length;i++){let vi=PI[i],last=false;if(vi<0){vi=-vi-1;last=true;}
-      const x=V[vi*3],y=V[vi*3+1],z=V[vi*3+2];pos.push(M[0]*x+M[4]*y+M[8]*z+M[12],M[1]*x+M[5]*y+M[9]*z+M[13],M[2]*x+M[6]*y+M[10]*z+M[14]);
-      const n=pick(N,pv,vi,3);if(n){const a=n[0],b=n[1],c=n[2];nrm.push(M[0]*a+M[4]*b+M[8]*c,M[1]*a+M[5]*b+M[9]*c,M[2]*a+M[6]*b+M[10]*c);}else nrm.push(0,0,0);
-      const t=pick(U,pv,vi,2);uv.push(t?t[0]:0,t?1-t[1]:0);
-      poly.push(pos.length/3-1);pv++;
-      if(last){for(let k=1;k+1<poly.length;k++)idx.push(poly[0],poly[k],poly[k+1]);poly=[];}}
-    for(let i=0;i<nrm.length;i+=3){const l=Math.hypot(nrm[i],nrm[i+1],nrm[i+2]);if(l>0){nrm[i]/=l;nrm[i+1]/=l;nrm[i+2]/=l;}}
-    const pname=models[geoOf[id]]?models[geoOf[id]].name:('mesh'+id);parts.push({pos,nrm,uv,idx,hasN:!!N,pname});}
+    const M=world(geoOf[id]),cnt=PI.length,pos=new Float32Array(cnt*3),nrm=new Float32Array(cnt*3),uv=new Float32Array(cnt*2),idx=grow(Uint32Array,cnt*2);
+    const at=(L,pv,vi)=>{let k=/Vert/.test(L.map)&&!/Polygon/.test(L.map)?vi:pv;if(/Index/.test(L.ref)&&L.idx)k=L.idx[k];return k;};
+    let p0=0,pv=0;
+    for(let i=0;i<cnt;i++){let vi=PI[i],last=false;if(vi<0){vi=-vi-1;last=true;}
+      const x=V[vi*3],y=V[vi*3+1],z=V[vi*3+2];pos[i*3]=M[0]*x+M[4]*y+M[8]*z+M[12];pos[i*3+1]=M[1]*x+M[5]*y+M[9]*z+M[13];pos[i*3+2]=M[2]*x+M[6]*y+M[10]*z+M[14];
+      if(N){const k=at(N,pv,vi)*3,a=N.d[k],b=N.d[k+1],c=N.d[k+2];const nx=M[0]*a+M[4]*b+M[8]*c,ny=M[1]*a+M[5]*b+M[9]*c,nz=M[2]*a+M[6]*b+M[10]*c,l=Math.hypot(nx,ny,nz)||1;nrm[i*3]=nx/l;nrm[i*3+1]=ny/l;nrm[i*3+2]=nz/l;}
+      if(U){const k=at(U,pv,vi)*2;uv[i*2]=U.d[k];uv[i*2+1]=1-U.d[k+1];}
+      pv++;if(last){for(let k=p0+1;k+1<=i;k++)idx.p3(p0,k,k+1);p0=i+1;}
+      if((i&1048575)===1048575){if(onProgress)onProgress(i/cnt);await new Promise(r=>setTimeout(r,0));}}
+    const pname=models[geoOf[id]]?models[geoOf[id]].name:('mesh'+id);parts.push({pos,nrm,uv,idx:idx.out(),hasN:!!N,pname});}
   if(!parts.length)throw new Error('No meshes were found in this FBX file.');
   const m=mergeParts(parts);if(parts.some(p=>!p.hasN))m.nrm=null;const r=meshFinish(m,name);r.noUV=noUV;partsInfo(r,parts);
   r.triCol=new Float32Array(r.triPart.length*3);r.triPart.forEach((p,i)=>r.triCol.set(idColor(r.partNames[p]),i*3));return r;}
 /* which part (object) each triangle came from, by name */
-function partsInfo(r,parts){const names=[],tp=[];for(const p of parts){let k=names.indexOf(p.pname);if(k<0){k=names.length;names.push(p.pname);}for(let t=0;t<p.idx.length/3;t++)tp.push(k);}r.partNames=names;r.triPart=new Uint32Array(tp);}
+function partsInfo(r,parts){const names=[];let T=0;for(const p of parts)T+=p.idx.length/3;const tp=new Uint32Array(T);let o=0;for(const p of parts){let k=names.indexOf(p.pname);if(k<0){k=names.length;names.push(p.pname);}const n=p.idx.length/3;tp.fill(k,o,o+n);o+=n;}r.partNames=names;r.triPart=tp;}

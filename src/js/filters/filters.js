@@ -190,6 +190,26 @@ fxDef('emboss',{title:'Emboss',defs:[{key:'a',label:'Angle',min:-180,max:180,ste
 fxDef('edges',{title:'Find edges',defs:[{key:'a',label:'Strength',min:.2,max:8,step:.1,value:2,fmt:pct}],checks:[['inv','Dark lines on white',true]],
   render(src,dst,v){run(P.f_edges,dst,{uSrc:src.tex,uAmt:v.a,uWrap:!!doc.wrap,uInv:!!v.inv});}});
 
+/* edge wear: curvature from the document's normal and height (or its Curvature map) put onto colour */
+fxDef('edgeWear',{title:'Edge wear',note:'Lightens raised edges and darkens cavities of this layer, following the shape in the Normal and Height maps (or the Curvature map). As a filter layer it follows the shape as you paint.',
+  init:()=>({src:'shape',em:0,cm:0,ec:null,cc:null}),
+  defs:[{key:'k',label:'Strength',min:.2,max:12,step:.1,value:4,fmt:pct},{key:'r',label:'Width',min:0,max:16,step:.5,value:1.5,fmt:px},{key:'e',label:'Edges',min:0,max:2,step:.01,value:.8,fmt:pct},{key:'c',label:'Cavities',min:0,max:2,step:.01,value:.6,fmt:pct},
+    {key:'s',label:'Sharpness',min:.3,max:3,step:.05,value:1,fmt:pct},{key:'sm',label:'Smooth',min:0,max:8,step:.5,value:1,fmt:px}],
+  controls:(v,upd)=>{if(!v.ec){v.ec=ui.fg.slice();v.cc=ui.bg.slice();}const out=[el('div',{class:'sub',text:'Shape from'}),seg([['shape','Normal and height maps'],['curv','Curvature map']],v.src,x=>{v.src=x;upd();},'Shape from'),
+      el('div',{class:'sub',text:'Edges become'}),seg([[0,'Lighter'],[1,'Foreground colour']],v.em,x=>{v.em=x;if(x===1)v.ec=ui.fg.slice();upd();},'Edges become'),
+      el('div',{class:'sub',text:'Cavities become'}),seg([[0,'Darker'],[1,'Background colour']],v.cm,x=>{v.cm=x;if(x===1)v.cc=ui.bg.slice();upd();},'Cavities become')];return out;},
+  render(src,dst,v){let c=null;
+    if(v.src==='curv'&&doc.maps.includes('curv')){c=compositeMap('curv');}
+    else if(doc.maps.includes('height')&&!(doc.maps.includes('normal')&&paintLayers().some(L=>hasMap(L,'normal')))){
+      /* height only: curvature from the height itself is smoother than from its 8-bit normal */
+      const h=compositeMap('height'),rr=Math.max(1,v.r*2),b1=acquireD(h.depth),b2=acquireD(h.depth);gaussian(h,b1,rr);gaussian(h,b2,rr*3);
+      c=acquireD(canFloat?16:doc.depth);run(P.f_curv,c,{uH:h.tex,uB1:b1.tex,uB2:b2.tex,uStr:.5,uMode:{int:0}});release(h);release(b1);release(b2);}
+    else if(doc.maps.includes('normal')||doc.maps.includes('height')){const n=normalComposite(false,null),b=acquireD(n.depth);if(v.r>.25)gaussian(n,b,v.r);else blit(n,b,0,0,doc.w,doc.h,0,0);release(n);
+      c=acquireD(canFloat?16:doc.depth);run(P.f_ncurv,c,{uN:b.tex,uWrap:!!doc.wrap,uStr:1,uMode:{int:0},uStep:Math.max(1,Math.round(v.r*.7))});release(b);}
+    if(!c){blit(src,dst,0,0,doc.w,doc.h,0,0);return;}
+    if(v.sm>.25){const t=acquireD(c.depth);gaussian(c,t,v.sm);release(c);c=t;}
+    run(P.f_cwear,dst,{uSrc:src.tex,uC:c.tex,uEdge:v.e,uCav:v.c,uEC:v.ec||[1,1,1],uCC:v.cc||[0,0,0],uEM:{int:v.em},uCM:{int:v.cm},uSharp:v.s,uK:v.k==null?4:v.k});release(c);}});
+
 /* ---- noise and generated patterns ---- */
 const newSeed=(v,upd)=>el('div',{class:'frow'},el('button',{class:'btn sm',text:'New pattern',onclick:()=>{v.seed=Math.random()*100;upd();}}));
 fxDef('noise',{title:'Add noise',init:()=>({seed:Math.random()*100}),defs:[{key:'a',label:'Amount',min:0,max:1,step:.01,value:.15,fmt:pct}],checks:[['mono','Monochrome',true]],

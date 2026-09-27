@@ -15,8 +15,10 @@ Each converter makes a **new layer** in the target map and adds that map if it's
 | Normal from base colour | Height from brightness, turned into normal detail. |
 | Roughness from base colour | Brightness mapped into a roughness range. |
 | Ambient occlusion from height | Crevices get darker; the layer multiplies over the AO map. |
-| Curvature from height | Smooth curvature: edges light, cavities dark. It can go to a base colour layer (for edge highlights and wear), a roughness layer, or a **selection**. |
+| Curvature from height | Smooth curvature: edges light, cavities dark. It goes into its own grey **Curvature** map (your colours are not touched), or becomes a **selection**. Put it onto colour with *Filter › Edge wear*. |
 | Curvature from normal | The same, read straight from the finished normal. |
+
+Only the Normal map is in colour. Every other converted map is grey and lands in its own map, so a conversion never paints over your base colour.
 | Ambient occlusion from normal | Rebuilds the shape from the normal map, then darkens its crevices. |
 | Height from normal | Rebuilds the shape a loaded normal map describes. |
 | Flip normal green | Switches a normal layer between DirectX and OpenGL. |

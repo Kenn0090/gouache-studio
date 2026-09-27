@@ -10,12 +10,13 @@ const MAP_DEFS={
   height:{label:'Height',grey:true,def:.5,blend:21,hint:'Mid-grey is flat; lighter raises, darker lowers.'},
   normal:{label:'Normal',grey:false,def:null,blend:0,noPaint:true},
   ao:{label:'Ambient occlusion',grey:true,def:1,blend:0},
+  curv:{label:'Curvature',grey:true,def:.5,blend:0,hint:'Mid-grey is flat; light is raised edges, dark is cavities. A mask for wear and dirt, not shown in the material.'},
   emis:{label:'Emissive',grey:false,def:null,blend:0},
   opac:{label:'Opacity',grey:true,def:1,blend:0}};
-const MAP_SHORT={base:'Col',rough:'Rgh',metal:'Met',height:'Hgt',normal:'Nrm',ao:'AO',emis:'Emi',opac:'Opa'};
+const MAP_SHORT={base:'Col',rough:'Rgh',metal:'Met',height:'Hgt',normal:'Nrm',ao:'AO',curv:'Cur',emis:'Emi',opac:'Opa'};
 /* a layer whose base colour was never painted (made by a converter or painted only in other maps) */
 const isBlankBase=L=>!!L.blankBase;
-const MAP_ORDER=['base','rough','metal','height','normal','ao','emis','opac'];
+const MAP_ORDER=['base','rough','metal','height','normal','ao','curv','emis','opac'];
 const MAP_TEMPLATES={hand:['base'],pbr:['base','rough','metal','height','normal']};
 function mapDepth(k){return k==='height'&&canFloat?16:doc.depth;}
 /* what a map shows where no layer has painted it */

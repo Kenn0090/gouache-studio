@@ -29,15 +29,24 @@ function bvhBuild(pos,idx,onProgress){const T=idx.length/3,cx=new Float32Array(T
   out.forEach((o,i)=>{nodeData.set([o.mn[0],o.mn[1],o.mn[2],o.count?o.start:0,o.mx[0],o.mx[1],o.mx[2],o.count?-o.count:o.right],i*8);});
   return {nodeData,order,nodes:n};}
 /* float texture holding count RGBA texels (padded to rows of BK_TW) */
-function bkDataTex(data,texels){const w=Math.min(BK_TW,Math.max(1,texels)),h=Math.max(1,Math.ceil(texels/BK_TW)),full=new Float32Array(w*h*4);full.set(data.subarray(0,Math.min(data.length,full.length)));
-  const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,w,h,0,gl.RGBA,gl.FLOAT,full);
+function bkDataTex(data,texels,half){const w=Math.min(BK_TW,Math.max(1,texels)),h=Math.max(1,Math.ceil(texels/BK_TW));let full=data;
+  if(data.length!==w*h*4){full=new Float32Array(w*h*4);full.set(data.subarray(0,Math.min(data.length,full.length)));}
+  const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.texImage2D(gl.TEXTURE_2D,0,half?gl.RGBA16F:gl.RGBA32F,w,h,0,gl.RGBA,gl.FLOAT,full);
   for(const p of [gl.TEXTURE_MIN_FILTER,gl.TEXTURE_MAG_FILTER])gl.texParameteri(gl.TEXTURE_2D,p,gl.NEAREST);return tex;}
 /* the high-poly on the GPU: tree nodes, triangle corners, corner normals and colours */
-function bkHighGPU(h,onStep){const T=h.idx.length/3;onStep('Sorting '+T.toLocaleString()+' high-poly triangles…');
-  const B=bvhBuild(h.pos,h.idx);const P=new Float32Array(T*12),N=new Float32Array(T*12),C=new Float32Array(T*12);
-  for(let k=0;k<T;k++){const t=B.order[k];const part=h.bakePart?h.bakePart[t]:0;for(let v=0;v<3;v++){const vi=h.idx[t*3+v];P.set([h.pos[vi*3],h.pos[vi*3+1],h.pos[vi*3+2],part],(k*3+v)*4);N.set([h.nrm[vi*3],h.nrm[vi*3+1],h.nrm[vi*3+2],0],(k*3+v)*4);
-      if(h.col)C.set([h.col[vi*4],h.col[vi*4+1],h.col[vi*4+2],1],(k*3+v)*4);else if(h.triCol&&h.triCol.length)C.set([h.triCol[t*3],h.triCol[t*3+1],h.triCol[t*3+2],1],(k*3+v)*4);else C.set([...partCol(h.triPart?h.triPart[t]:0),1],(k*3+v)*4);}}
-  return {nodes:bkDataTex(B.nodeData,B.nodes*2),tris:bkDataTex(P,T*3),nrm:bkDataTex(N,T*3),col:bkDataTex(C,T*3),count:T,nodeCount:B.nodes};}
+/* built one texture at a time (each array freed before the next) so a big high-poly fits in memory;
+   normals are stored at half precision, and colours only when ID colours are baked */
+function bkHighGPU(h,onStep,needCol){const T=h.idx.length/3;onStep('Sorting '+T.toLocaleString()+' high-poly triangles…');
+  const B=bvhBuild(h.pos,h.idx),o=B.order,I=h.idx,pad=n=>Math.max(1,Math.ceil(n/BK_TW))*Math.min(BK_TW,Math.max(1,n))*4;
+  const nodes=bkDataTex(B.nodeData,B.nodes*2);
+  let A=new Float32Array(pad(T*3));for(let k=0;k<T;k++){const t=o[k],part=h.bakePart?h.bakePart[t]:0;for(let v=0;v<3;v++){const vi=I[t*3+v],q=(k*3+v)*4;A[q]=h.pos[vi*3];A[q+1]=h.pos[vi*3+1];A[q+2]=h.pos[vi*3+2];A[q+3]=part;}}
+  const tris=bkDataTex(A,T*3);
+  A.fill(0);for(let k=0;k<T;k++){const t=o[k];for(let v=0;v<3;v++){const vi=I[t*3+v],q=(k*3+v)*4;A[q]=h.nrm[vi*3];A[q+1]=h.nrm[vi*3+1];A[q+2]=h.nrm[vi*3+2];}}
+  const nrm=bkDataTex(A,T*3,true);
+  let col;if(needCol){A.fill(0);for(let k=0;k<T;k++){const t=o[k];let c=null;if(!h.col){c=h.triCol&&h.triCol.length?[h.triCol[t*3],h.triCol[t*3+1],h.triCol[t*3+2]]:partCol(h.triPart?h.triPart[t]:0);}
+      for(let v=0;v<3;v++){const vi=I[t*3+v],q=(k*3+v)*4;if(h.col){A[q]=h.col[vi*4];A[q+1]=h.col[vi*4+1];A[q+2]=h.col[vi*4+2];}else{A[q]=c[0];A[q+1]=c[1];A[q+2]=c[2];}A[q+3]=1;}}
+    col=bkDataTex(A,T*3,true);}else col=bkDataTex(new Float32Array(4),1,true);
+  A=null;return {nodes,tris,nrm,col,count:T,nodeCount:B.nodes,hasCol:!!needCol};}
 const partCol=(()=>{const cache={};return p=>cache[p]||(cache[p]=idColor('part '+p));})();
 function bkFreeHigh(g){if(!g)return;for(const k of ['nodes','tris','nrm','col'])gl.deleteTexture(g[k]);}
 
@@ -166,7 +175,7 @@ const nextTick=()=>new Promise(r=>setTimeout(r,0));
 async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.sizeH||o.size,SS=o.ss,FW=W*SS,FH=H*SS,TILE=Math.min(1024,Math.max(FW,FH));
   /* low-poly only: rays find the low-poly itself (a hair's breadth away), so AO, thickness, ID and the rest work the same */
   const self=false,solo=!high;if(solo){o=Object.assign({},o,{front:.003,back:.003,cage:null,average:false,match:false});low.vertCurv=meshCurvature(low);}
-  const hg=o.hg||bkHighGPU(high||low,progress.step);if(progress.cancelled){if(!o.hg)bkFreeHigh(hg);return null;}
+  const hg=o.hg||bkHighGPU(high||low,progress.step,o.kinds.includes('id'));if(progress.cancelled){if(!o.hg)bkFreeHigh(hg);return null;}
   low.ray=o.cage?o.cage:bkRayDirs(low,o.average);const lg=bkLowGPU(low);
   const kinds=o.kinds.filter(k=>k!=='curv');const outDepth=canFloat?16:8;
   /* o.acc: running sums kept from an earlier bake (re-bake part of it); o.rect: only this part (output pixels) */

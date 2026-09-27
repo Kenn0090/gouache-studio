@@ -66,7 +66,7 @@ function v3MapTex(k,src){let t=v3.tex[k];if(!t||t.w!==doc.w||t.h!==doc.h||t.dept
   blit(src,t,0,0,doc.w,doc.h,0,0);gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.generateMipmap(gl.TEXTURE_2D);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
   if(anisoExt)gl.texParameterf(gl.TEXTURE_2D,anisoExt.TEXTURE_MAX_ANISOTROPY_EXT,8);return t;}
 const anisoExt=gl.getExtension('EXT_texture_filter_anisotropic');
-function v3Needed(){if(v3Unlit())return doc.maps.filter(k=>k==='base'||k==='ao');return doc.maps.filter(k=>k!=='normal'&&k!=='height').concat(doc.maps.includes('height')||doc.maps.includes('normal')?['nfinal']:[]);}
+function v3Needed(){if(v3Unlit())return doc.maps.filter(k=>k==='base'||k==='ao');return doc.maps.filter(k=>k!=='normal'&&k!=='height'&&k!=='curv').concat(doc.maps.includes('height')||doc.maps.includes('normal')?['nfinal']:[]);}
 function v3Refresh(){if(!v3.on)return;if(ui.mode==='bake'){bakeV3Refresh();return;}const now=performance.now(),full=v3.mapsDirty&&(!stroke||now-v3.lastFull>150);
   const plain=doc.view===doc.map&&compOut&&ui.mode!=='anim';
   const one=k=>{if(k==='nfinal'){const t=normalComposite(false,null);v3MapTex(k,t);release(t);return;}
@@ -113,6 +113,7 @@ function v3Render(F,flip){const s=v3s(),g=v3.gpu;if(!g)return;
     if(s.wire){gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);}
     gl.bindVertexArray(g.vao);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);gl.disable(gl.POLYGON_OFFSET_FILL);}
   if(s.wire){useProg(P3.line,Object.assign({},common,{uCol:[.95,.7,.35,1]}));gl.bindVertexArray(g.evao);gl.drawElements(gl.LINES,g.ecount,gl.UNSIGNED_INT,0);}
+  if(bake)bakeDrawCage(common);
   gl.bindVertexArray(vao);gl.disable(gl.DEPTH_TEST);
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,F.rf);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
 /* after the 2D view: refresh maps if needed, redraw the model if anything changed, copy it into the pane */
@@ -179,17 +180,16 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
   sp.addEventListener('pointerup',()=>{if(!d)return;d=null;try{localStorage.setItem('gs.pane3d',String($('#pane3d').clientWidth));}catch(e){}});})();
 
 /* ---- importing a model ---- */
-async function importModel(){const pick=async(name,bytes,sib)=>{try{const ext=extOf(name);let m;
-      if(ext==='obj')m=parseOBJ(new TextDecoder().decode(bytes),baseName(name));
-      else if(ext==='glb'||ext==='gltf')m=await parseGLTF(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),baseName(name),sib);
-      else if(ext==='fbx')m=await parseFBX(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),baseName(name));
-      else throw new Error('Use an OBJ, glTF, GLB or FBX file.');
-      v3.imported=m;v3s().model='imported';v3SetMesh(m);build3dPane();toast('Loaded “'+m.name+'”: '+m.tris.toLocaleString()+' triangles.'+(m.noUV?' It has no UVs, so the textures cannot map onto it.':''));}
-    catch(e){console.error(e);toast('This model could not be loaded: '+(e.message||e));}};
-  if(platform.isDesktop){try{const p=await platform.openDialog([{name:'3D models',extensions:['obj','glb','gltf','fbx']}]);if(!p)return;const bytes=await platform.readFile(p);
-      const dir=p.replace(/[\\/][^\\/]*$/,''),sep=p.includes('\\')?'\\':'/';await pick(fileNameOf(p),bytes,async u=>{const b=await platform.readFile(dir+sep+u);return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);});}
-    catch(e){toast('The file dialog failed: '+(e.message||e));}return;}
-  const f=el('input',{type:'file',accept:'.obj,.glb,.gltf,.fbx'});f.onchange=async()=>{const file=f.files[0];if(file)await pick(file.name,new Uint8Array(await file.arrayBuffer()),null);};f.click();}
+async function v3DropModel(files){const f=files.find(x=>isModelName(x.name));if(!f)return;loadStart(f.name);
+  try{const m=await parseModelFile(f,files);v3.imported=m;v3s().model='imported';if(!v3.on)toggle3D(true);v3SetMesh(m);build3dPane();toast('Loaded “'+m.name+'”: '+m.tris.toLocaleString()+' triangles.'+(m.noUV?' It has no UVs, so the textures cannot map onto it.':''));}
+  catch(e){console.warn(e);toast('This model could not be loaded: '+(e.message||e));}finally{loadEnd();}}
+async function importModel(){const done=m=>{v3.imported=m;v3s().model='imported';v3SetMesh(m);build3dPane();toast('Loaded “'+m.name+'”: '+m.tris.toLocaleString()+' triangles.'+(m.noUV?' It has no UVs, so the textures cannot map onto it.':''));};
+  if(platform.isDesktop){try{const p=await platform.openDialog([{name:'3D models',extensions:['obj','glb','gltf','fbx','OBJ','GLB','GLTF','FBX']}]);if(!p)return;loadStart(fileNameOf(p));
+      try{const bytes=await platform.readFile(p);const dir=p.replace(/[\\/][^\\/]*$/,''),sep=p.includes('\\')?'\\':'/';
+        done(await parseModelBytes(fileNameOf(p),bytes,async u=>{const b=await platform.readFile(dir+sep+u);return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);}));}finally{loadEnd();}}
+    catch(e){console.warn(e);toast('This model could not be loaded: '+(e.message||e));}return;}
+  const f=el('input',{type:'file',accept:'.obj,.glb,.gltf,.fbx',multiple:true});f.onchange=async()=>{const fs=[...f.files],file=fs.find(x=>isModelName(x.name));if(!file)return;loadStart(file.name);
+    try{done(await parseModelFile(file,fs));}catch(e){console.warn(e);toast('This model could not be loaded: '+(e.message||e));}finally{loadEnd();}};f.click();}
 /* ---- its own window (second screen): the GPU draws it here and the picture is copied into that window ---- */
 function pop3D(out,quiet){if(out){if(v3.pop)return;const w=window.open('about:blank','gouache3d','width=960,height=720');
     if(!w){toast('The window could not be opened.');return;}

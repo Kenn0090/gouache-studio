@@ -18,11 +18,14 @@ The **Bake** tab (top right, or **Maps › Bake from high poly…**) copies the 
 
 ## Models
 
-- **Low-poly:** the model in the 3D view, or load a file (OBJ, glTF, GLB, FBX). It must have UVs.
+- **Loading models:** press **Load…** next to Low-poly, High-poly or Cage, or **drag model files** onto those rows. You can also drop them anywhere in the Bake tab: files named `…_low`, `…_high` and `…_cage` go to the right place by themselves. A loading bar shows big files coming in. FBX must be binary FBX (not text).
+- **Low-poly:** the model in the 3D view, or a file (OBJ, glTF, GLB, FBX). It must have UVs.
 - **High-poly:** load a file. Or choose **None** to bake the low-poly on its own (see below).
 - **Cage:** either *Push out by the front distance*, or load a **cage model**, which is your low-poly pushed outwards with the same vertices and triangles.
 
 ## Rays
+**Show the cage on the model** draws where the rays start as a see-through blue shell around the model. It follows Front, the offset map and a loaded cage model, so you can check the cage covers the high-poly.
+
 Each pixel of the low-poly's UVs sends a ray from just outside the surface back through it and records where it first meets the high-poly.
 - **Front:** how far outside the surface the ray starts, as a % of the model's size.
 - **Back:** how far inside it still looks.
@@ -34,16 +37,16 @@ If parts of the high-poly are missed, raise the distances. If detail from other 
 ## Maps
 | Map | Where it goes |
 |---|---|
-| Normal (OpenGL) | New layer in the Normal map |
-| Height (high-poly above = light) | New layer in the Height map |
-| Ambient occlusion | New layer in the AO map |
-| Curvature | *Baked maps* group (base colour) |
-| Thickness (white = thick) | *Baked maps* group |
-| World-space normal | *Baked maps* group |
-| Position (gradient over the model's box) | *Baked maps* group |
-| ID colours (vertex colours, material colours, or one colour per part) | *Baked maps* group |
+| Normal (OpenGL) | Normal map |
+| Height (high-poly above = light) | Height map |
+| Ambient occlusion | AO map |
+| Curvature | Curvature map |
+| Thickness (white = thick) | Base colour, hidden |
+| World-space normal | Base colour, hidden |
+| Position (gradient over the model's box) | Base colour, hidden |
+| ID colours (vertex colours, material colours, or one colour per part) | Base colour, hidden |
 
-Maps the document doesn't have yet are added for you. The **Baked maps** group is hidden: show it, or use its layers as masks with *Select › Load selection*.
+Each baked map arrives in **its own group** (“Baked normal”, “Baked AO”…), so they're easy to find in the layer stack. Maps the document doesn't have yet are added for you. Groups for maps that live in the base colour (thickness, world-space normal, position, ID) start hidden so they don't cover your colours: show one, or use it as a mask with *Select › Load selection*.
 
 ## Low-poly on its own
 Choose High-poly **None** to bake AO, **curvature from the model's own shape**, thickness, ID, world-space normal and position. Normal and height are skipped because they'd come out flat.
