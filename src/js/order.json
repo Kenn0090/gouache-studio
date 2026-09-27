@@ -53,6 +53,7 @@
     "bake/bake-tab",
     "convert/convert-tab",
     "files/abr",
+    "paint/brush-tab",
     "ui/prefs",
     "ui/themes",
     "ui/perf",

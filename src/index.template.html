@@ -11,7 +11,7 @@
     <nav class="menus" id="menus" aria-label="Main menu"></nav>
     <div class="bar-r">
       <span id="docName"></span>
-      <div class="tabs" id="modeTabs" role="tablist" aria-label="Workspace"><button role="tab" data-mode="paint" aria-selected="true" title="Paint your textures">Paint</button><button role="tab" data-mode="anim" aria-selected="false" title="Flipbooks and sprite sheets">Animation</button><button role="tab" data-mode="bake" aria-selected="false" title="Bake maps from a high-poly model and fix the bake">Bake</button><button role="tab" data-mode="convert" aria-selected="false" title="Make normal, height, AO and more from a photo or another map">Convert</button></div>
+      <div class="tabs" id="modeTabs" role="tablist" aria-label="Workspace"><button role="tab" data-mode="paint" aria-selected="true" title="Paint your textures">Paint</button><button role="tab" data-mode="anim" aria-selected="false" title="Flipbooks and sprite sheets">Animation</button><button role="tab" data-mode="bake" aria-selected="false" title="Bake maps from a high-poly model and fix the bake">Bake</button><button role="tab" data-mode="convert" aria-selected="false" title="Make normal, height, AO and more from a photo or another map">Convert</button><button role="tab" data-mode="brush" aria-selected="false" title="Draw your own brush tips on a canvas of their own">Brush</button></div>
       <button class="toggle" id="tileBtn" aria-pressed="false" title="Seamless tile mode (Shift+T): wraps brush strokes and shows a 3&times;3 repeat"><i></i>Tile mode</button>
     </div>
   </header>
@@ -42,6 +42,10 @@
   <section id="timeline" aria-label="Animation timeline"></section>
 
   <aside class="panel" aria-label="Panels">
+    <section class="sec" id="brushTabSec" aria-labelledby="hBrushTab">
+      <div class="sec-h" id="hBrushTab"><span>Brush maker</span></div>
+      <div id="btBody" class="dlg-grid"></div>
+    </section>
     <section class="sec" id="convSec" aria-labelledby="hConv">
       <div class="sec-h" id="hConv"><span>Convert</span></div>
       <div id="convBody" class="dlg-grid"></div>

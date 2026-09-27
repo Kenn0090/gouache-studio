@@ -12,7 +12,7 @@ Read this first. It carries over everything from the long first conversation tha
 ## What the app is
 A GPU hand-painting and texture app (Photoshop-style painting plus PBR maps, 3D view, baker and converter) for game art. Public, open-source repo: **Kenn0090/gouache-studio**. Windows desktop app (Tauri 2 + WebView2) that updates itself; also runs in a browser.
 
-The top-right tabs are **Paint · Animation · Bake · Convert**. The user guide is in `docs/wiki/` (Home.md lists every page) and is kept up to date with each release, with screenshots in `docs/wiki/images/`.
+The top-right tabs are **Paint · Animation · Bake · Convert · Brush** (the Brush tab swaps in a sketch document of its own: `docState()`/`setDocState()` in `paint/brush-tab.js`). The user guide is in `docs/wiki/` (Home.md lists every page) and is kept up to date with each release, with screenshots in `docs/wiki/images/`.
 
 ## Code layout
 - `src/js/**`: plain JavaScript (no framework, no modules). `scripts/build.mjs` concatenates the files **in the order listed in `src/js/order.json`** into one script inside `src/index.template.html`, producing `dist-web/index.html` (web) and `dist/` (desktop). Every top-level name is global, so **new names must not clash**. `cv` is the main canvas, which is why the Convert tab's state is `cvS`. A new file must be added to `order.json`.

@@ -41,4 +41,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.act('keys'));await W();await p.fill('.kbsearch','layer');await W();await dlg('keyboard-shortcuts');await p.click('#dlgCancel');
  // preferences with themes
  await p.keyboard.press('Control+k');await W();await p.click('.themeseg button:has-text("Dark red")');await W();await dlg('preferences');await p.click('#dlgCancel');await W();
+ // Brush tab
+ await p.click('#modeTabs [data-mode=brush]');await W(600);await p.evaluate(()=>Object.assign(__gs.brush,{size:40,hardness:.7,flow:1,opacity:1,spacing:.1,tip:null,smoothing:0,pSize:false}));
+ for(let i=0;i<5;i++){const a=i/5*Math.PI*2-Math.PI/2;await drag(256,256,256+Math.cos(a)*190,256+Math.sin(a)*190,{steps:10});}
+ await p.evaluate(()=>{const s=document.querySelector('#btSJ');s.value=.3;s.dispatchEvent(new Event('input'));const a=document.querySelector('#btAJ');a.value=1;a.dispatchEvent(new Event('input'));});
+ await p.fill('#btName','Star');await W(900);await hideToast();await shot('brush-tab');
+ await p.click('#modeTabs [data-mode=paint]');await W(300);
  console.log(errs.join('\n'));await b.close();})();

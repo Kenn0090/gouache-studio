@@ -443,3 +443,14 @@ body.convmode #mapsSec,body.convmode .sec[aria-labelledby="hLayers"],body.convmo
 .themecol{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--muted)}
 .themecol input[type=color]{width:42px;height:28px;padding:0;border:1px solid var(--line-2);border-radius:5px;background:none}
 .themeseg .segb{flex:1 0 auto;white-space:nowrap}
+/* Brush tab */
+body:not(.brushmode) #brushTabSec{display:none}
+body.brushmode #mapsSec,body.brushmode .sec[aria-labelledby="hChan"],body.brushmode #animSec,body.brushmode #convSec,body.brushmode #bakeSec{display:none}
+#xfOv .guide{fill:none;stroke:var(--accent);stroke-width:1;stroke-dasharray:2 5;opacity:.55}
+.bttest{width:100%;height:92px;display:block;border:1px solid var(--line-2);border-radius:6px;background:var(--ground)}
+.btlist{display:flex;flex-direction:column;gap:4px}
+.btrow{display:flex;align-items:center;gap:8px;padding:3px 4px;border-radius:6px}
+.btrow.on{background:var(--accent-soft)}
+.btrow canvas{width:32px;height:32px;border-radius:4px;background:var(--ground);flex:none}
+.btname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#btName{width:100%}

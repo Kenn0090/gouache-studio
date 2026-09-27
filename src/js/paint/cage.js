@@ -199,4 +199,7 @@ function cageOverlay(){let s='';const C=cageOf(),f=p=>scrPt(p).map(v=>v.toFixed(
     if(S.mode==='radial'){const R=Math.hypot(W,H);for(let k=0;k<S.n;k++){const t=k*2*Math.PI/S.n-Math.PI/2;d+='M'+f([cx,cy])+'L'+f([cx+Math.cos(t)*R,cy+Math.sin(t)*R]);}}
     else{if(S.mode!=='y')d+='M'+f([cx,0])+'L'+f([cx,H]);if(S.mode!=='x')d+='M'+f([0,cy])+'L'+f([W,cy]);}
     s+='<path class="sym" d="'+d+'"/>';}
+  /* Brush tab: centre cross and circle, to keep tips centred and round */
+  if(ui.mode==='brush'&&bt.guides&&!ui.cageFlat){const [W,H]=viewDims(),c=[W/2,H/2],r=Math.min(W,H)*.43,q=[];for(let k=0;k<=48;k++){const t=k/48*Math.PI*2;q.push((k?'L':'M')+f([c[0]+Math.cos(t)*r,c[1]+Math.sin(t)*r]));}
+    s+='<path class="guide" d="M'+f([W/2,0])+'L'+f([W/2,H])+'M'+f([0,H/2])+'L'+f([W,H/2])+q.join('')+'"/>';}
   return s;}

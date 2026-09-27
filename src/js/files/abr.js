@@ -38,13 +38,13 @@ async function importABR(file){
   if(notes.size)openDialog({title:'Brushes imported',okLabel:null,cancelLabel:'OK',body:el('div',{class:'dlg-grid'},el('p',{class:'note',text:msg+' Some Photoshop brush settings are approximated:'}),el('ul',{class:'report'},...[...notes].map(n=>el('li',{text:n}))))});
   else toast(msg);}
 /* ---- making a brush tip from pixels (like Photoshop's Define Brush Preset): dark is paint, transparent is nothing ---- */
-function addCustomTip(name,W,H,v){let x0=W,y0=H,x1=-1,y1=-1;
+function addCustomTip(name,W,H,v,extra,noApply){let x0=W,y0=H,x1=-1,y1=-1;
   for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(v[y*W+x]>8){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
   if(x1<0)return null;
   const w=x1-x0+1,h=y1-y0+1,a=new Uint8Array(w*h);for(let y=0;y<h;y++)a.set(v.subarray((y0+y)*W+x0,(y0+y)*W+x0+w),y*w);
   const t=makeTip(name,w,h,a);let set=library.find(s=>s.id==='custom');if(!set){set={id:'custom',name:'Custom tips',presets:[],tips:[]};library.push(set);}
-  const p=Object.assign({},BRUSH_DEFAULTS,{name,tool:'brush',tip:t,size:clamp(Math.max(w,h),4,500),spacing:.2,pSize:true,minSize:.3});
-  set.presets.push(p);set.tips.push(t);saveSet(set);applyPreset(p);return p;}
+  const p=Object.assign({},BRUSH_DEFAULTS,{name,tool:'brush',tip:t,size:clamp(Math.max(w,h),4,500),spacing:.2,pSize:true,minSize:.3},extra||{});
+  set.presets.push(p);set.tips.push(t);saveSet(set);if(noApply)renderLibrary();else applyPreset(p);return p;}
 /* what becomes the tip: the visible canvas (or the active layer), only inside the selection when there is one */
 function tipAlpha(src){const W=doc.w,H=doc.h;let t=null,own=false;
   if(src==='layer'){const L=needLayer();if(!L)return null;t=mapT(L,'base');}else{t=compositeMap('base');own=true;}
