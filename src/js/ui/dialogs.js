@@ -49,14 +49,16 @@ function dlgCanvasSize(){const f=sizeFields(doc.w,doc.h,false);let ax=.5,ay=.5;
 function dlgImageSize(){const f=sizeFields(doc.w,doc.h,true);
   const body=el('div',{class:'dlg-grid'},f.row,f.presets,el('label',{class:'chk',for:'dLock'},f.lock,el('span',{text:'Keep proportions'})),el('p',{class:'note',text:'Resamples every layer on the GPU with box-filtered supersampling.'}));
   openDialog({title:'Image size',body,okLabel:'Resample',onOk(){const r=f.read();if(!r)return false;if(r[0]!==doc.w||r[1]!==doc.h)resizeImageDoc(r[0],r[1]);}});}
-function dlgNew(){const f=sizeFields(1024,1024,false);let depth=doc.depth,bgMode='white',tile=false;
+function dlgNew(){const f=sizeFields(1024,1024,false);let depth=doc.depth,bgMode='white',tile=false,tpl='hand';
   const seg=(opts,cur,set)=>{const w=el('div',{class:'chips'});const draw=()=>{w.replaceChildren(...opts.map(([v,l,dis])=>el('button',{class:'chip'+(v===cur()?' on':''),disabled:!!dis,title:dis?'This GPU cannot render 16-bit float textures':null,text:l,onclick:()=>{set(v);draw();}})));};draw();return w;};
   const tileChk=chk('dTile','Seamless tile mode',false,v=>{tile=v;});
+  const TPL_NOTES={hand:'Base colour only.',pbr:'Base colour, roughness, metallic, height and normal.',custom:'Choose the maps after creating.'};const tplNote=el('p',{class:'note',text:TPL_NOTES.hand});
   const body=el('div',{class:'dlg-grid'},f.row,f.presets,
+    el('div',{class:'sub',text:'Template'}),seg([['hand','Hand-painted'],['pbr','PBR'],['custom','Custom…']],()=>tpl,v=>{tpl=v;tplNote.textContent=TPL_NOTES[v];}),tplNote,
     el('div',{class:'sub',text:'Bit depth'}),seg([[8,'8-bit'],[16,'16-bit float',!canFloat]],()=>depth,v=>{depth=v;}),
     el('div',{class:'sub',text:'Background'}),seg([['white','White'],['fg','Foreground color'],['clear','Transparent']],()=>bgMode,v=>{bgMode=v;}),
     tileChk);
-  openDialog({title:'New document',body,okLabel:'Create',onOk(){const r=f.read();if(!r)return false;const bg=bgMode==='white'?[1,1,1]:bgMode==='fg'?ui.fg.slice():null;newDoc(r[0],r[1],depth,bg,'Untitled',tile);}});}
+  openDialog({title:'New document',body,okLabel:'Create',onOk(){const r=f.read();if(!r)return false;const bg=bgMode==='white'?[1,1,1]:bgMode==='fg'?ui.fg.slice():null;newDoc(r[0],r[1],depth,bg,'Untitled',tile,tpl==='custom'?'hand':tpl);if(tpl==='custom')setTimeout(dlgMaps,0);}});}
 const FORMATS=[['png','PNG'],['tga','TGA'],['dds','DDS'],['tif','TIFF'],['exr','EXR'],['jpg','JPG'],['webp','WebP']];
 const exp={fmt:'png',png16:false,tgaRle:true,tgaAlpha:true,dds:'bc3',mips:true,tif16:false,q:.92,src:'image'};
 const isPOT=n=>n>0&&(n&(n-1))===0;

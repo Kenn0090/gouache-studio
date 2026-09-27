@@ -14,7 +14,7 @@ function rleChannel(plane,W,H){const rows=[];let total=0;for(let y=0;y<H;y++){co
 async function encodePSD(){
   const W=doc.w,H=doc.h,b16=doc.depth===16,bits=b16?16:8,N=W*H,recs=[],empty=new Uint8Array(0);
   const emptyChans=()=>[-1,0,1,2].map(id=>({id,comp:0,data:empty}));
-  const encLayer=async L=>{const st=toStraight(readPremult(L.target),bits),chans=[];
+  const encLayer=async L=>{const st=toStraight(readPremult(mapT(L,'base')),bits),chans=[];
     for(const [id,ci] of [[-1,3],[0,0],[1,1],[2,2]]){
       if(b16){const pl=new Uint8Array(N*2);for(let i=0,j=ci;i<N;i++,j+=4){pl[i*2]=st[j]>>8;pl[i*2+1]=st[j]&255;}chans.push({id,comp:2,data:await zlib(pl)});}
       else{const pl=new Uint8Array(N);for(let i=0,j=ci;i<N;i++,j+=4)pl[i]=st[j];chans.push({id,comp:1,data:rleChannel(pl,W,H)});}}

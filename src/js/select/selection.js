@@ -6,6 +6,8 @@ const SEL_MODES=['new','add','sub','int'];
 ui.selMode='new';ui.selFeather=0;ui.selAA=true;ui.marquee='rect';ui.lasso='free';
 ui.wandTol=32;ui.wandContig=true;ui.wandAll=false;
 
+/* working images at the selection's own bit depth */
+const acquireS=()=>acquireD(sel.t?sel.t.depth:doc.depth);
 function selChanged(){requestRender();updateSelStatus();}
 function updateSelStatus(){const p=$('#stSel');if(!p)return;
   if(sel.quick){p.hidden=false;p.textContent='Quick mask';p.title='Painting the selection: black hides, white selects. Press Q to turn it back into a selection.';return;}
@@ -96,11 +98,11 @@ function applyShape(shapeT,mode,shapeBB,label){
   else if(m===1){region=shapeBB;nb=rUnion(old,shapeBB);}
   else if(m===2){region=rInter(old,shapeBB);nb=old;}
   else{region=old;nb=rInter(old,shapeBB);}
-  selRecord(label,region||[0,0,0,0],()=>{const tmp=acquire();run(P.selop,tmp,{uOld:sel.t.tex,uShape:shapeT.tex,uMode:{int:m},uOldOn:had});
+  selRecord(label,region||[0,0,0,0],()=>{const tmp=acquireS();run(P.selop,tmp,{uOld:sel.t.tex,uShape:shapeT.tex,uMode:{int:m},uOldOn:had});
     blit(tmp,sel.t,0,0,doc.w,doc.h,0,0);release(tmp);sel.bb=nb;sel.active=!!nb;});}
 function featherInto(t,bb,f){if(f>0){gaussian(t,t,f);return rToDoc(rGrow(bb,Math.ceil(f*1.4)+2));}return rToDoc(bb);}
 function selectPolygon(pts,mode,label,aa){if(selBusy())return;const bbRaw=polyBounds(pts);if(!(bbRaw[2]>bbRaw[0]&&bbRaw[3]>bbRaw[1]))return;
-  const t=acquire();rasterPoly(pts,t,aa);const bb=featherInto(t,bbRaw,ui.selFeather);
+  const t=acquireS();rasterPoly(pts,t,aa);const bb=featherInto(t,bbRaw,ui.selFeather);
   if(!bb&&!doc.wrap){release(t);if(modeIndex(mode)===0)deselect();return;}
   applyShape(t,mode,bb,label);release(t);}
 
@@ -109,17 +111,17 @@ function selectAll(){if(selBusy())return;selRecord('Select all',fullRect(),()=>{
 function deselect(){if(sel.quick)return;if(!sel.active)return;cancelSelTool();selRecord('Deselect',null,()=>{sel.active=false;});}
 function reselect(){if(selBusy())return;if(sel.active)return;if(!sel.bb){toast('There is no earlier selection to bring back.');return;}selRecord('Reselect',null,()=>{sel.active=true;});}
 function invertSel(){if(selBusy())return;const had=sel.active;
-  selRecord('Invert selection',fullRect(),()=>{const tmp=acquire();run(P.selop,tmp,{uOld:sel.t.tex,uMode:{int:4},uOldOn:had});blit(tmp,sel.t,0,0,doc.w,doc.h,0,0);release(tmp);sel.bb=fullRect();sel.active=true;});}
+  selRecord('Invert selection',fullRect(),()=>{const tmp=acquireS();run(P.selop,tmp,{uOld:sel.t.tex,uMode:{int:4},uOldOn:had});blit(tmp,sel.t,0,0,doc.w,doc.h,0,0);release(tmp);sel.bb=fullRect();sel.active=true;});}
 function needSel(){if(selBusy())return false;if(!sel.active){toast('Make a selection first.');return false;}return true;}
 function modifySel(label,grow,fn){if(!needSel())return;const nb=rToDoc(rGrow(sel.bb,grow));const region=rUnion(sel.bb,nb);
-  selRecord(label,region,()=>{const tmp=acquire();fn(tmp);blit(tmp,sel.t,0,0,doc.w,doc.h,0,0);release(tmp);sel.bb=nb;});}
+  selRecord(label,region,()=>{const tmp=acquireS();fn(tmp);blit(tmp,sel.t,0,0,doc.w,doc.h,0,0);release(tmp);sel.bb=nb;});}
 function featherSel(r){modifySel('Feather selection',Math.ceil(r*1.4)+2,tmp=>gaussian(sel.t,tmp,r));}
-function morph(src,dst,r,max){const a=acquire();run(P.morph,a,{uSrc:src.tex,uDir:[1,0],uR:{int:r},uMax:{int:max?1:0},uWrap:doc.wrap});run(P.morph,dst,{uSrc:a.tex,uDir:[0,1],uR:{int:r},uMax:{int:max?1:0},uWrap:doc.wrap});release(a);}
+function morph(src,dst,r,max){const a=acquireS();run(P.morph,a,{uSrc:src.tex,uDir:[1,0],uR:{int:r},uMax:{int:max?1:0},uWrap:doc.wrap});run(P.morph,dst,{uSrc:a.tex,uDir:[0,1],uR:{int:r},uMax:{int:max?1:0},uWrap:doc.wrap});release(a);}
 function expandSel(r){modifySel('Expand selection',r,tmp=>morph(sel.t,tmp,r,true));}
 function contractSel(r){modifySel('Contract selection',0,tmp=>morph(sel.t,tmp,r,false));}
-function smoothSel(r){modifySel('Smooth selection',0,tmp=>{const b=acquire();gaussian(sel.t,b,r);run(P.thresh,tmp,{uSrc:b.tex});release(b);});}
+function smoothSel(r){modifySel('Smooth selection',0,tmp=>{const b=acquireS();gaussian(sel.t,b,r);run(P.thresh,tmp,{uSrc:b.tex});release(b);});}
 /* selection from an image: what = 0 alpha, 1 red, 2 green, 3 blue, 4 luminosity */
-function loadSelFrom(tex,what,mode,label,inv){if(selBusy())return;const t=acquire();run(P.loadsel,t,{uSrc:tex,uWhat:{int:what},uInv:!!inv});applyShape(t,mode,fullRect(),label);release(t);}
+function loadSelFrom(tex,what,mode,label,inv){if(selBusy())return;const t=acquireS();run(P.loadsel,t,{uSrc:tex,uWhat:{int:what},uInv:!!inv});applyShape(t,mode,fullRect(),label);release(t);}
 function selectLayerPixels(n,mode){n=n||doc.active;if(!n){toast('Select a layer first.');return;}
   if(isLayer(n)){loadSelFrom(n.target.tex,0,mode||'new','Select layer pixels');return;}
   const r=renderNodes(n.children);loadSelFrom(r.tex,0,mode||'new','Select group pixels');release(r);}
@@ -128,7 +130,7 @@ function freshComposite(){if(dirtyComp){composite();dirtyComp=false;}return comp
 
 /* ---- moving the selection outline ---- */
 function shiftSel(src,dx,dy){run(P.shift,sel.t,{uSrc:src.tex,uOff:[dx,dy],uWrap:doc.wrap,uOutside:[0,0,0,1]});}
-function nudgeSel(dx,dy){if(!needSel())return;const snap=acquire();blit(sel.t,snap,0,0,doc.w,doc.h,0,0);const nb=rToDoc([sel.bb[0]+dx,sel.bb[1]+dy,sel.bb[2]+dx,sel.bb[3]+dy]);
+function nudgeSel(dx,dy){if(!needSel())return;const snap=acquireS();blit(sel.t,snap,0,0,doc.w,doc.h,0,0);const nb=rToDoc([sel.bb[0]+dx,sel.bb[1]+dy,sel.bb[2]+dx,sel.bb[3]+dy]);
   selRecord('Move selection',rUnion(sel.bb,nb),()=>{shiftSel(snap,dx,dy);sel.bb=nb;});release(snap);}
 function selValueAt(x,y){if(!sel.active)return 0;x=Math.floor(x);y=Math.floor(y);if(doc.wrap){x=mod(x,doc.w);y=mod(y,doc.h);}if(x<0||y<0||x>=doc.w||y>=doc.h)return 0;
   gl.bindFramebuffer(gl.FRAMEBUFFER,sel.t.fbo);if(sel.t.depth===16){const f=new Float32Array(4);gl.readPixels(x,y,1,1,gl.RGBA,gl.FLOAT,f);return f[0];}
@@ -166,7 +168,7 @@ function magicWand(ix,iy,mode){if(selBusy())return;const W=doc.w,H=doc.h;let x=M
   const m=wandMask(px,W,H,x,y,Math.round(ui.wandTol),ui.wandContig,doc.wrap);let bb=maskBounds(m,W,H);if(!bb)return;
   const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);gl.texImage2D(gl.TEXTURE_2D,0,gl.R8,W,H,0,gl.RED,gl.UNSIGNED_BYTE,m);gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
-  const t=acquire();run(P.rcopy,t,{uSrc:tex,uOff:[0,0]});gl.deleteTexture(tex);
+  const t=acquireS();run(P.rcopy,t,{uSrc:tex,uOff:[0,0]});gl.deleteTexture(tex);
   if(ui.selAA){gaussian(t,t,.7);bb=rToDoc(rGrow(bb,2));}
   bb=featherInto(t,bb,ui.selFeather);applyShape(t,mode,bb,'Magic wand');release(t);}
 
@@ -197,13 +199,15 @@ function pasteClip(){if(!clip){toast('Nothing has been copied yet.');return;}if(
 /* Ctrl+J / Ctrl+Shift+J with a selection: the selected pixels onto a new layer */
 function layerViaSel(cut){if(ui.mode==='anim'){toast('Layers are not used in Animation mode.');return;}const et=editTarget();if(!et||et.isMask||!isLayer(et.node)){toast('Select a layer to copy from.');return;}if(preview)return;
   const src=et.node,r=sel.bb||fullRect(),x=r[0],y=r[1],w=r[2]-r[0],h=r[3]-r[1];if(w<=0||h<=0)return;
-  const L=newLayerObj(src.name+(cut?' (cut)':' (copy)'));run(P.cropsel,L.target,{uSrc:src.target.tex,uSel:sel.t.tex,uOff:[0,0],uUseSel:true});
-  const before=snapTree(),b=cut?captureRegion(src.target,x,y,w,h):null;
-  if(cut){const t=acquire();clearTarget(t);run(P.selmix,scratchT,{uOld:src.target.tex,uNew:t.tex,uSel:sel.t.tex});blit(scratchT,src.target,0,0,doc.w,doc.h,0,0);release(t);}
+  /* every map of the layer: the selected part is copied (and cut) */
+  const L=newLayerObj(src.name+(cut?' (cut)':' (copy)')),keys=mapKeysOf(src),steps=[];L.mapModes=Object.assign({},src.mapModes);
+  for(const k of keys)run(P.cropsel,ensureMapTarget(L,k),{uSrc:mapT(src,k).tex,uSel:sel.t.tex,uOff:[0,0],uUseSel:true});L.target=L.maps[doc.map]||emptyFor(mapDepth(doc.map));
+  const before=snapTree();
+  if(cut)for(const k of keys){const T=mapT(src,k),b=captureRegion(T,x,y,w,h),t=acquireD(T.depth),o=acquireD(T.depth);clearTarget(t);run(P.selmix,o,{uOld:T.tex,uNew:t.tex,uSel:sel.t.tex});blit(o,T,0,0,doc.w,doc.h,0,0);release(t);release(o);steps.push({k,b,a:captureRegion(T,x,y,w,h)});}
   insertNode(L,src.parent,src.parent.children.indexOf(src)+1);selectOnly(L);
-  const after=snapTree(),a=cut?captureRegion(src.target,x,y,w,h):null;
-  pushUndo({label:cut?'Layer via cut':'Layer via copy',refs:[...new Set([...layersOfSnap(before),...layersOfSnap(after)])],snaps:[b,a].filter(Boolean),
-    undo(){restoreTree(before);if(b)restoreRegion(b,src.target,x,y);},redo(){restoreTree(after);if(a)restoreRegion(a,src.target,x,y);}});
+  const after=snapTree();
+  pushUndo({label:cut?'Layer via cut':'Layer via copy',refs:[...new Set([...layersOfSnap(before),...layersOfSnap(after)])],snaps:steps.flatMap(s=>[s.b,s.a]),
+    undo(){restoreTree(before);for(const s of steps)restoreRegion(s.b,mapT(src,s.k),x,y);},redo(){restoreTree(after);for(const s of steps)restoreRegion(s.a,mapT(src,s.k),x,y);}});
   changedAll();}
 document.addEventListener('copy',e=>{if(isTypingTarget(e.target))return;e.preventDefault();if(copySel(false)&&e.clipboardData)e.clipboardData.setData('text/plain',clip.marker);});
 document.addEventListener('cut',e=>{if(isTypingTarget(e.target))return;e.preventDefault();if(cutSel()&&e.clipboardData)e.clipboardData.setData('text/plain',clip.marker);});

@@ -38,7 +38,7 @@ function uploadLut(def){const d=new Float32Array(LUT_N*4);for(let i=0;i<LUT_N;i+
 function drawGradient(dst,g,o){o=o||{};const tex=uploadLut(g.def);
   run(P.grad,dst,{uLut:tex,uA:g.a,uB:g.b,uShape:{int:Math.max(0,GRAD_SHAPES.indexOf(g.def.shape))},uDither:!!g.def.dither&&doc.depth===8,uOpacity:o.opacity==null?1:o.opacity,uGray:!!o.gray,
     uBase:o.base?o.base.tex:dummy,uUseBase:!!o.base,uSelTex:o.sel?sel.t.tex:dummy,uUseSel:!!o.sel});}
-function renderLiveGrad(L){if(!L.grad)return;drawGradient(L.target,L.grad);scheduleThumb(L);requestRender(true);}
+function renderLiveGrad(L){if(!L.grad)return;drawGradient(mapT(L,'base'),L.grad);scheduleThumb(L);requestRender(true);}
 /* a CSS preview of a definition */
 function gradCss(def,dir){const n=24,parts=[];for(let i=0;i<=n;i++){const c=gradAt(def,i/n);parts.push('rgba('+c.slice(0,3).map(v=>Math.round(v*255)).join(',')+','+c[3].toFixed(3)+') '+(i/n*100).toFixed(1)+'%');}
   return 'linear-gradient('+(dir||'90deg')+','+parts.join(',')+')';}

@@ -5,7 +5,7 @@ const MODE_GROUPS=[['',[0]],['Darken',[4,1,7,17,18]],['Lighten',[5,2,6,12,19]],[
 const PSD_KEYS=['norm','mul ','scrn','over','dark','lite','div ','idiv','hLit','sLit','diff','smud','lddg','hue ','sat ','colr','lum ','lbrn','dkCl','lgCl','vLit','lLit','pLit','hMix','fsub','fdiv'];
 const PS_MODE={'normal':0,'darken':4,'multiply':1,'color burn':7,'linear burn':17,'darker color':18,'lighten':5,'screen':2,'color dodge':6,'linear dodge':12,'lighter color':19,
   'overlay':3,'soft light':9,'hard light':8,'vivid light':20,'linear light':21,'pin light':22,'hard mix':23,'difference':10,'exclusion':11,'subtract':24,'divide':25,'hue':13,'saturation':14,'color':15,'luminosity':16};
-const doc={w:1024,h:1024,depth:8,wrap:false,name:'Untitled',root:{type:'group',children:[],isRoot:true,visible:true,opacity:1,mode:-1},active:null,sel:new Set(),count:0};
+const doc={w:1024,h:1024,depth:8,wrap:false,name:'Untitled',root:{type:'group',children:[],isRoot:true,visible:true,opacity:1,mode:-1},active:null,sel:new Set(),count:0,maps:['base'],map:'base',view:'base',mapDef:{}};
 const view={zoom:1,x:0,y:0};
 let compOut=null,strokeT=null,beforeT=null,scratchT=null,previewT=null;
 let stroke=null, preview=null, dirtyComp=true, raf=0, lid=0, groupCount=0;
@@ -14,21 +14,30 @@ const hist={undo:[],redo:[]};
    next to the layers. "active" says whether it is in use; after Deselect the pixels are kept for Reselect.
    bb = bounds of its non-empty pixels [x0,y0,x1,y1] (may be generous). In quick mask mode it is painted directly. */
 const sel={t:null,active:false,bb:null,quick:false,L:null,node:{name:'Quick mask',visible:true,parent:null}};
-const pool={free:[],all:[]};
-function acquire(){let t=pool.free.pop();if(!t){t=makeTarget(doc.w,doc.h);pool.all.push(t);}return t;}
-function release(t){if(t&&pool.all.includes(t)&&!pool.free.includes(t))pool.free.push(t);}
+/* Working images come in sets per bit depth (8-bit documents still edit height at 16 bits).
+   pool is the current set's pool of spare document-size images; every image remembers its pool. */
+const aux={};let pool=null;
+function auxFor(d){let a=aux[d];if(!a){const mk=()=>makeTarget(doc.w,doc.h,d);a=aux[d]={depth:d,strokeT:mk(),beforeT:mk(),scratchT:mk(),previewT:mk(),pool:{free:[],all:[],depth:d}};}return a;}
+function useAux(d){const a=auxFor(d);strokeT=a.strokeT;beforeT=a.beforeT;scratchT=a.scratchT;previewT=a.previewT;pool=a.pool;}
+function acquireIn(pl){let t=pl.free.pop();if(!t){t=makeTarget(doc.w,doc.h,pl.depth);t.pool=pl;pl.all.push(t);}return t;}
+function acquire(){return acquireIn(pool);}
+function acquireD(d){return acquireIn(auxFor(d).pool);}
+function release(t){const pl=t&&t.pool;if(pl&&pl.all.includes(t)&&!pl.free.includes(t))pl.free.push(t);}
+function auxTargets(){const out=[];for(const d in aux){const a=aux[d];out.push(a.strokeT,a.beforeT,a.scratchT,a.previewT,...a.pool.all);}return out;}
 function allocAux(){
-  [strokeT,beforeT,scratchT,previewT,...pool.all].forEach(disposeTarget);pool.free=[];pool.all=[];
-  strokeT=makeTarget(doc.w,doc.h);beforeT=makeTarget(doc.w,doc.h);scratchT=makeTarget(doc.w,doc.h);previewT=makeTarget(doc.w,doc.h);
+  auxTargets().forEach(disposeTarget);for(const d in aux)delete aux[d];if(typeof resetEmpties==='function')resetEmpties();
+  auxFor(doc.depth);useAux(mapDepth(doc.map||'base'));
   compOut=acquire();clearTarget(compOut);
   disposeTarget(sel.t);sel.t=makeTarget(doc.w,doc.h);clearTarget(sel.t,[0,0,0,1]);
   sel.active=false;sel.bb=null;sel.quick=false;sel.L={target:sel.t,lockAlpha:false,quick:true};
   if(typeof selChanged==='function')selChanged();
 }
 function thumbCanvas(){const c=el('canvas',{width:40,height:40});return c;}
-function newLayerObj(name){doc.count++;return {type:'layer',id:++lid,name:name||('Layer '+doc.count),target:makeTarget(doc.w,doc.h),visible:true,opacity:1,mode:0,clip:false,lockAlpha:false,thumb:thumbCanvas(),parent:null};}
+function newLayerObj(name){doc.count++;const B=makeTarget(doc.w,doc.h,mapDepth('base')),maps={base:B};let T=B;
+  if(doc.map&&doc.map!=='base'&&ui.mode!=='anim'){T=makeTarget(doc.w,doc.h,mapDepth(doc.map));maps[doc.map]=T;}
+  return {type:'layer',id:++lid,name:name||('Layer '+doc.count),target:T,maps,mapModes:{},visible:true,opacity:1,mode:0,clip:false,lockAlpha:false,thumb:thumbCanvas(),parent:null};}
 function newGroupObj(name){return {type:'group',id:++lid,name:name||('Group '+(++groupCount)),children:[],open:true,visible:true,opacity:1,mode:-1,clip:false,lockAlpha:false,parent:null};}
-function disposeLayer(n){if(n.target)disposeTarget(n.target);if(n.mask)disposeTarget(n.mask.target);}
+function disposeLayer(n){if(n.maps)for(const k in n.maps){const t=n.maps[k];if(t&&!t.empty)disposeTarget(t);}if(n.target&&!n.target.empty)disposeTarget(n.target);if(n.mask)disposeTarget(n.mask.target);}
 const isLayer=n=>!!n&&n.type==='layer';
 function insertNode(n,parent,i){n.parent=parent;const c=parent.children;c.splice(i==null?c.length:clamp(i,0,c.length),0,n);}
 function detachNode(n){const p=n.parent;if(!p)return -1;const i=p.children.indexOf(n);if(i>=0)p.children.splice(i,1);return i;}
@@ -40,7 +49,7 @@ function isAncestor(a,n){let c=n.parent;while(c){if(c===a)return true;c=c.parent
 function activeLayer(){return isLayer(doc.active)?doc.active:null;}
 function makeMask(fill){const m={target:makeTarget(doc.w,doc.h),enabled:true,thumb:thumbCanvas()};m.thumb.className='mthumb';clearTarget(m.target,[fill,fill,fill,1]);return m;}
 function cloneMask(m){if(!m)return null;const c=makeMask(1);blit(m.target,c.target,0,0,doc.w,doc.h,0,0);c.enabled=m.enabled;return c;}
-function editTarget(){if(sel.quick)return {node:sel.node,target:sel.t,isMask:true,L:sel.L};const n=doc.active;if(!n)return null;
+function editTarget(){if(sel.quick){useAux(sel.t.depth);return {node:sel.node,target:sel.t,isMask:true,L:sel.L};}const n=doc.active;if(!n)return null;if(isLayer(n)&&!n.editMask){ensureTarget(n);useAux(n.target.depth);}else if(n.mask&&n.editMask)useAux(n.mask.target.depth);
   if(n.editMask&&n.mask)return {node:n,target:n.mask.target,isMask:true,L:{target:n.mask.target,lockAlpha:false,maskOf:n,maskObj:n.mask}};
   if(n.type==='layer')return {node:n,target:n.target,isMask:false,L:n};return null;}
 function clipBaseOf(list,i){const n=list[i];if(!isLayer(n)||!n.clip)return null;let j=i-1;while(j>=0&&isLayer(list[j])&&list[j].clip)j--;return j>=0&&isLayer(list[j])?list[j]:null;}
@@ -73,7 +82,13 @@ async function spillOld(){let total=hist.undo.reduce((s,r)=>s+recBytes(r),0);
     try{const bytes=new Uint8Array(s.data.buffer,s.data.byteOffset,s.data.byteLength);s.file=await platform.spillWrite(bytes);total-=s.bytes;s.data=null;}catch(e){console.warn('undo spill failed',e);}s.spilling=false;}}}
 async function loadSnaps(r){for(const s of r.snaps||[]){if(s.data||!s.file)continue;const buf=await platform.spillRead(s.file);s.data=s.depth===16?new Uint16Array(buf):new Uint8Array(buf);platform.spillDelete(s.file);s.file=null;}}
 function clearHistory(){const all=[...hist.undo,...hist.redo];hist.undo=[];hist.redo=[];dropRecords(all);}
-function regionRecord(L,before,after,x,y,w,h,label){return {label,refs:L.quick?[]:[L.maskOf||L],masks:L.maskObj?[L.maskObj]:[],snaps:[before,after],undo(){restoreRegion(before,L.target,x,y);},redo(){restoreRegion(after,L.target,x,y);}};}
+/* the image a record restores into: a layer's map as it was when the step was made (not whichever map is being edited now) */
+function recTarget(L){const k=doc.map;if(L.quick||L.maskOf||!L.maps)return ()=>L.target;return ()=>mapT(L,k);}
+function regionRecord(L,before,after,x,y,w,h,label){const T=recTarget(L);return {label,refs:L.quick?[]:[L.maskOf||L],masks:L.maskObj?[L.maskObj]:[],snaps:[before,after],undo(){const t=T();if(t)restoreRegion(before,t,x,y);},redo(){const t=T();if(t)restoreRegion(after,t,x,y);}};}
+/* one undo step that also covers other maps of the same layer */
+function withMapParts(r,L,parts,x,y){const u=r.undo,re=r.redo;r.snaps=[...r.snaps,...parts.flatMap(p=>[p.before,p.after])];
+  r.undo=function(){u.call(this);for(const p of parts){const t=mapT(L,p.k);if(t&&!t.empty)restoreRegion(p.before,t,x,y);}};
+  r.redo=function(){re.call(this);for(const p of parts){const t=mapT(L,p.k);if(t&&!t.empty)restoreRegion(p.after,t,x,y);}};return r;}
 /* undoing a step from the other mode switches to it; a step on another frame shows that frame */
 function undoFocus(r){if(r.mode&&r.mode!==ui.mode)setMode(r.mode,true);
   if(ui.mode==='anim'&&doc.anim){const f=(r.refs||[]).find(n=>n.frame);if(f){const i=doc.anim.frames.indexOf(f);if(i>=0&&i!==doc.anim.cur&&!r.label.includes('frame'))showFrame(i);}for(const n of r.refs||[])if(n.frame)frameDirty(n);}}

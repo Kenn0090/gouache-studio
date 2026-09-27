@@ -18,11 +18,11 @@ function setMode(m,quiet){if(m===ui.mode)return true;
   if(preview||selLive){toast('Apply or cancel the open dialog first.');return false;}
   if(stroke)return false;
   if(typeof xf!=='undefined'&&xf)xfCommit();if(typeof gsess!=='undefined'&&gsess)gradCommit();if(typeof tedit!=='undefined'&&tedit)closeTextEditor();textCommit();cancelSelTool();stopPlay();
-  if(m==='anim'){if(!doc.anim)doc.anim=makeAnim();doc.paintRoot=doc.root;doc.paintSel={active:doc.active,sel:[...doc.sel]};doc.root=animRoot;ui.mode='anim';showFrame(doc.anim.cur,true);}
+  if(m==='anim'){if(doc.map!=='base'||doc.view!=='base'){setEditMap('base');if(doc.map!=='base')return false;}if(!doc.anim)doc.anim=makeAnim();doc.paintRoot=doc.root;doc.paintSel={active:doc.active,sel:[...doc.sel]};doc.root=animRoot;ui.mode='anim';showFrame(doc.anim.cur,true);}
   else{doc.root=doc.paintRoot;doc.paintRoot=null;const s=doc.paintSel||{active:null,sel:[]};doc.active=s.active;doc.sel=new Set(s.sel);ui.mode='paint';}
   document.body.classList.toggle('animmode',ui.mode==='anim');$('#modeSel').value=ui.mode;
   if(ui.tool==='text')setTool('brush');
-  renderLayers();refreshChanUI();renderTimeline();renderAnimPanel();buildBrushPanel();changedAll();resizeGL();requestRender(true);
+  renderLayers();refreshChanUI();refreshMapsUI();renderTimeline();renderAnimPanel();buildBrushPanel();changedAll();resizeGL();requestRender(true);
   if(!quiet)toast(ui.mode==='anim'?'Animation mode: paint each frame. , and . step through frames, Enter plays.':'Paint mode.');return true;}
 function showFrame(i,noRender){const A=A_();if(!A)return;A.cur=clamp(i,0,A.frames.length-1);const F=A.frames[A.cur];
   if(ui.mode==='anim'){animRoot.children=[F];F.parent=animRoot;selectOnly(F);}

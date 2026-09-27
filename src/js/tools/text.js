@@ -19,14 +19,14 @@ function ensureFont(t){const f=textFont(t);if(GFONTS.includes(t.font))loadGFonts
 function renderText(L){const t=L.text;if(!t)return;
   if(!document.fonts.check(textFont(t),'Ag')||(GFONTS.includes(t.font)&&!gfontsLoaded)){const want=textFont(t);ensureFont(t).then(()=>{if(L.text&&textFont(L.text)===want){drawTextNow(L);positionEditor();}});}
   drawTextNow(L);}
-function drawTextNow(L){const t=L.text,lay=layoutText(t);t.bbox=lay;clearTarget(L.target);
+function drawTextNow(L){const t=L.text,lay=layoutText(t),B=mapT(L,'base');t.bbox=lay;clearTarget(B);
   if(String(t.content).trim()){const bw=Math.min(lay.bw,8192),bh=Math.min(lay.bh,8192),c=document.createElement('canvas');c.width=bw;c.height=bh;const x=c.getContext('2d');
     x.font=textFont(t);try{x.letterSpacing=(t.tracking||0)+'px';}catch(e){}x.textBaseline='alphabetic';x.lineJoin='round';x.miterLimit=2;
     lay.lines.forEach((ln,i)=>{const w=lay.widths[i],ox=lay.pad+lay.fx+(t.align==='left'?0:t.align==='center'?(lay.W-w)/2:lay.W-w),oy=lay.pad+lay.asc+i*lay.lh;
       if(t.outline>0){x.lineWidth=t.outline*2;x.strokeStyle=toHex(t.outlineColor||[0,0,0]);x.strokeText(ln,ox,oy);}});
     x.fillStyle=toHex(t.color||[1,1,1]);
     lay.lines.forEach((ln,i)=>{const w=lay.widths[i],ox=lay.pad+lay.fx+(t.align==='left'?0:t.align==='center'?(lay.W-w)/2:lay.W-w),oy=lay.pad+lay.asc+i*lay.lh;x.fillText(ln,ox,oy);});
-    const d=x.getImageData(0,0,bw,bh);const tex=uploadStraight({w:bw,h:bh,data:d.data,bits:8});premultInto(L.target,tex,[lay.bx,lay.by],null);gl.deleteTexture(tex);}
+    const d=x.getImageData(0,0,bw,bh);const tex=uploadStraight({w:bw,h:bh,data:d.data,bits:8});premultInto(B,tex,[lay.bx,lay.by],null);gl.deleteTexture(tex);}
   scheduleThumb(L);requestRender(true);}
 function activeText(){return isLayer(doc.active)&&doc.active.text?doc.active:null;}
 function hitText(x,y){const ls=allLayers();for(let i=ls.length-1;i>=0;i--){const L=ls[i];if(!L.text||!effVisible(L))continue;const b=L.text.bbox;if(b&&x>=b.bx&&x<=b.bx+b.bw&&y>=b.by&&y<=b.by+b.bh)return L;}return null;}

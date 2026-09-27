@@ -3,21 +3,21 @@
 const modeBtn=$('#lModeBtn'),modePop=el('div',{class:'modepop',role:'listbox','aria-label':'Blend modes',hidden:true});document.body.append(modePop);
 let modeState=null;
 const modeLabel=m=>m<0?'Pass through':MODES[m];
-function previewMode(m){if(!modeState)return;if(!prefs.livePreview&&m!==modeState.orig)return;modeState.node.mode=m;requestRender(true);}
+function previewMode(m){if(!modeState)return;if(!prefs.livePreview&&m!==modeState.orig)return;setMapModeOf(modeState.node,modeState.k,m);requestRender(true);}
 function closeModePop(commit){if(!modeState)return;const st=modeState;modeState=null;modePop.hidden=true;modeBtn.setAttribute('aria-expanded','false');
-  st.node.mode=commit==null?st.orig:commit;renderLayers();requestRender(true);if(commit==null)modeBtn.focus();}
+  setMapModeOf(st.node,st.k,commit==null?st.orig:commit);renderLayers();requestRender(true);if(commit==null)modeBtn.focus();}
 function openModePop(){const n=doc.active;if(!n)return;if(modeState){closeModePop();return;}closeMenu();
-  modeState={node:n,orig:n.mode};const items=[];
-  const add=m=>{const b=el('button',{role:'option','aria-selected':String(m===n.mode),text:modeLabel(m)});b.dataset.mode=m;
+  const k=doc.map,cm=mapModeOf(n,k);modeState={node:n,k,orig:cm};const items=[];
+  const add=m=>{const b=el('button',{role:'option','aria-selected':String(m===cm),text:modeLabel(m)});b.dataset.mode=m;
     b.addEventListener('mouseenter',()=>{b.focus({preventScroll:true});});b.addEventListener('focus',()=>previewMode(m));
     b.addEventListener('click',()=>closeModePop(m));items.push(b);return b;};
-  const kids=[el('div',{class:'mhint',text:'Hover or arrow keys to preview. Click or Enter applies, Esc cancels.'})];if(n.type==='group')kids.push(add(-1));
+  const kids=[el('div',{class:'mhint',text:(doc.map!=='base'&&n.type!=='group'?'Blend mode for the '+MAP_DEFS[doc.map].label+' map. ':'')+'Hover or arrow keys to preview. Click or Enter applies, Esc cancels.'})];if(n.type==='group')kids.push(add(-1));
   for(const [g,ids] of MODE_GROUPS){if(g)kids.push(el('div',{class:'mg',text:g}));for(const i of ids)kids.push(add(i));}
   modePop.replaceChildren(...kids);modePop.hidden=false;modeBtn.setAttribute('aria-expanded','true');
   const r=modeBtn.getBoundingClientRect(),h=Math.min(window.innerHeight*.7,560);modePop.style.maxHeight=h+'px';
   modePop.style.left=Math.max(8,Math.min(r.left,window.innerWidth-228))+'px';
   const below=window.innerHeight-r.bottom-8;modePop.style.top=(below>=Math.min(h,modePop.scrollHeight)?r.bottom+4:Math.max(8,r.top-4-Math.min(h,modePop.scrollHeight)))+'px';
-  const cur=items.find(b=>+b.dataset.mode===n.mode)||items[0];cur.scrollIntoView({block:'center'});cur.focus({preventScroll:true});}
+  const cur=items.find(b=>+b.dataset.mode===cm)||items[0];cur.scrollIntoView({block:'center'});cur.focus({preventScroll:true});}
 modeBtn.addEventListener('click',openModePop);
 modePop.addEventListener('mouseleave',()=>{if(modeState)previewMode(modeState.orig);});
 modePop.addEventListener('keydown',e=>{const items=[...modePop.querySelectorAll('button')],i=items.indexOf(document.activeElement);
@@ -37,7 +37,7 @@ function updateRowClasses(){for(const r of $('#layerList').children){if(!r._node
 let gradPanelFor=null;
 function syncLayerProps(){const A=doc.active,grp=A&&A.type==='group';if(ui.tool==='text'&&textPanelFor!==activeText()&&!fontState)buildBrushPanel();
   if(ui.tool==='gradient'&&gradPanelFor!==activeGrad()){gradPanelFor=activeGrad();buildBrushPanel();drawXfOverlay();}
-  $('#lModeName').textContent=A?modeLabel(A.mode):'Normal';modeBtn.disabled=!A;renderMaskRow();
+  $('#lModeName').textContent=A?modeLabel(mapModeOf(A,doc.map)):'Normal';modeBtn.disabled=!A;renderMaskRow();
   if(A){opSlider.set(A.opacity);$('#lClip').checked=!!A.clip;$('#lLock').checked=!!A.lockAlpha;}
   $('#lClip').disabled=$('#lLock').disabled=!isLayer(A);
   const tops=topSelected(),p=A&&A.parent,i=p?p.children.indexOf(A):-1;
@@ -50,7 +50,7 @@ function renderLayers(){
   for(const {n,depth,clipped} of displayRows()){const grp=n.type==='group';
     const eye=el('button',{class:'eye',title:n.visible?'Hide':'Show','aria-label':(n.visible?'Hide ':'Show ')+n.name});eye.innerHTML=n.visible?eyeOn:eyeOff;
     eye.addEventListener('click',e=>{e.stopPropagation();n.visible=!n.visible;renderLayers();requestRender(true);});
-    const meta=[];if(grp)meta.push(n.mode<0?'pass':MODES[n.mode]);else if(n.mode)meta.push(MODES[n.mode].replace(' (Add)',''));
+    const meta=[];if(grp)meta.push(n.mode<0?'pass':MODES[n.mode]);else{const mm=mapModeOf(n,doc.map);if(mm!==(doc.map==='base'?0:MAP_DEFS[doc.map].blend))meta.push(MODES[mm].replace(' (Add)',''));}
     if(n.text)meta.unshift('text');if(n.grad)meta.unshift('gradient');if(n.opacity<1)meta.push(Math.round(n.opacity*100)+'%');if(n.lockAlpha)meta.push('lock');
     const name=el('div',{class:'lname',text:(clipped?'↳ ':'')+n.name,title:'Double-click to rename'});
     let icon;
@@ -83,9 +83,11 @@ function cmdAddMask(fill){const n=doc.active;if(!n){toast('Select a layer or gro
   const r=maskRecord(n,null,m,fromSel?(fill?'Add mask from selection':'Add mask hiding selection'):'Add mask');r.redo();pushUndo(r);changed(n);
   toast(fromSel?(fill?'Mask added: the selection stays visible.':'Mask added: the selection is hidden.'):fill?'Mask added. Paint black to hide.':'Hide-all mask added. Paint white to reveal.');}
 function cmdDeleteMask(){const n=doc.active;if(!n||!n.mask)return;const r=maskRecord(n,n.mask,null,'Delete mask');r.redo();pushUndo(r);changed(n);}
-function cmdApplyMask(){const L=doc.active;if(!isLayer(L)||!L.mask)return;const W=doc.w,H=doc.h,m=L.mask,before=captureRegion(L.target,0,0,W,H);
-  run(P.applymask,scratchT,{uSrc:L.target.tex,uM:m.target.tex});blit(scratchT,L.target,0,0,W,H,0,0);const after=captureRegion(L.target,0,0,W,H);L.mask=null;L.editMask=false;ui.viewMask=false;
-  pushUndo({label:'Apply mask',refs:[L],masks:[m],snaps:[before,after],undo(){restoreRegion(before,L.target,0,0);L.mask=m;},redo(){restoreRegion(after,L.target,0,0);L.mask=null;L.editMask=false;}});changed(L);}
+/* the mask is baked into every map the layer has */
+function cmdApplyMask(){const L=doc.active;if(!isLayer(L)||!L.mask)return;const W=doc.w,H=doc.h,m=L.mask,steps=[];
+  for(const k of mapKeysOf(L)){const T=mapT(L,k),before=captureRegion(T,0,0,W,H),tmp=acquireD(T.depth);run(P.applymask,tmp,{uSrc:T.tex,uM:m.target.tex});blit(tmp,T,0,0,W,H,0,0);release(tmp);steps.push({k,before,after:captureRegion(T,0,0,W,H)});}
+  L.mask=null;L.editMask=false;ui.viewMask=false;
+  pushUndo({label:'Apply mask',refs:[L],masks:[m],snaps:steps.flatMap(s=>[s.before,s.after]),undo(){for(const s of steps)restoreRegion(s.before,mapT(L,s.k),0,0);L.mask=m;},redo(){for(const s of steps)restoreRegion(s.after,mapT(L,s.k),0,0);L.mask=null;L.editMask=false;}});changed(L);}
 /* selection + drag to rearrange */
 const dropLine=el('div',{class:'dropline',hidden:true});
 let ldrag=null;
@@ -144,7 +146,7 @@ function cmdGroup(){const tops=topSelected();if(!tops.length)return;
   toast('Grouped '+tops.length+' item'+(tops.length===1?'':'s')+'.');}
 function cmdUngroup(){const G=doc.active;if(!G||G.type!=='group'){toast('Select a group to ungroup.');return;}
   structOp('Ungroup',()=>{const p=G.parent,i=p.children.indexOf(G),ch=G.children.slice();detachNode(G);p.children.splice(i,0,...ch);ch.forEach(c=>c.parent=p);doc.sel=new Set(ch);doc.active=ch[ch.length-1]||p.children[Math.max(0,i-1)]||null;});}
-function cloneNode(n){if(n.type==='layer'){const L=newLayerObj(n.name+' copy');Object.assign(L,{opacity:n.opacity,mode:n.mode,clip:n.clip,lockAlpha:n.lockAlpha,visible:n.visible,mask:cloneMask(n.mask),text:n.text?cloneText(n.text):null,grad:n.grad?cloneGrad(n.grad):null});blit(n.target,L.target,0,0,doc.w,doc.h,0,0);if(L.text)L.text.bbox=layoutText(L.text);return L;}
+function cloneNode(n){if(n.type==='layer'){const L=newLayerObj(n.name+' copy');Object.assign(L,{opacity:n.opacity,mode:n.mode,clip:n.clip,lockAlpha:n.lockAlpha,visible:n.visible,mask:cloneMask(n.mask),text:n.text?cloneText(n.text):null,grad:n.grad?cloneGrad(n.grad):null});for(const k of mapKeysOf(n))blit(mapT(n,k),ensureMapTarget(L,k),0,0,doc.w,doc.h,0,0);L.mapModes=Object.assign({},n.mapModes);L.target=L.maps[doc.map]||emptyFor(mapDepth(doc.map));if(L.text)L.text.bbox=layoutText(L.text);return L;}
   const G=newGroupObj(n.name+' copy');Object.assign(G,{opacity:n.opacity,mode:n.mode,visible:n.visible,open:n.open,mask:cloneMask(n.mask)});for(const c of n.children){const cc=cloneNode(c);cc.name=c.name;insertNode(cc,G);}return G;}
 function cmdDuplicate(){const tops=topSelected();if(!tops.length)return;
   structOp('Duplicate',()=>{const clones=[];for(const n of tops){const c=cloneNode(n);insertNode(c,n.parent,n.parent.children.indexOf(n)+1);clones.push(c);}doc.sel=new Set(clones);doc.active=clones[clones.length-1];});}
@@ -154,26 +156,32 @@ function cmdDelete(){const tops=topSelected();if(!tops.length)return;
     const next=p.children[Math.max(0,i-1)]||(p!==doc.root?p:null)||remaining[remaining.length-1];selectOnly(next);});}
 function cmdMove(d){const A=doc.active;if(!A)return;const p=A.parent,i=p.children.indexOf(A),j=i+d;if(j<0||j>=p.children.length)return;
   structOp('Move layer',()=>{p.children.splice(i,1);p.children.splice(j,0,A);});}
-function mergedLayer(name,R,props){const M=newLayerObj(name);blit(R,M.target,0,0,doc.w,doc.h,0,0);release(R);Object.assign(M,props||{});return M;}
+/* a new layer holding, for every map some of the given layers use, render(k) */
+function anyInMap(list,k){return list.some(n=>n.type==='group'?anyInMap(n.children,k):hasMap(n,k));}
+function mergedLayer(name,list,props,render){const M=newLayerObj(name);Object.assign(M,props||{});
+  for(const k of doc.maps){if(k!=='base'&&!anyInMap(list,k))continue;const R=render?render(k):renderNodesMap(list,k);if(!R)continue;blit(R,ensureMapTarget(M,k),0,0,doc.w,doc.h,0,0);release(R);}
+  M.target=M.maps[doc.map]||emptyFor(mapDepth(doc.map));return M;}
 function cmdMergeDown(){const L=doc.active;if(!isLayer(L))return;const p=L.parent,i=p.children.indexOf(L),lower=p.children[i-1];
   if(!isLayer(lower)){toast(lower?'The item below is a group. Use Merge group on it first.':'There is no layer below to merge into.');return;}
-  const clipped=clipBaseOf(p.children,i)===lower,R=acquire();
-  run(P.comp,R,{uBase:lower.target.tex,uLayer:L.target.tex,uStrokeTex:strokeT.tex,uMask:clipped?lower.target.tex:dummy,uUseMask:clipped,uLMask:maskTexOf(L)||dummy,uUseLMask:!!maskTexOf(L),uMode:{int:L.mode},uOpacity:L.visible?L.opacity:0,uStroke:{int:0},uStrokeColor:[0,0,0],uStrokeOpacity:0,uLockAlpha:false});
-  const M=mergedLayer(lower.name,R,{opacity:lower.opacity,mode:lower.mode,visible:lower.visible,clip:lower.clip,lockAlpha:lower.lockAlpha,mask:cloneMask(lower.mask)});
+  const clipped=clipBaseOf(p.children,i)===lower;
+  const M=mergedLayer(lower.name,[L,lower],{opacity:lower.opacity,mode:lower.mode,visible:lower.visible,clip:lower.clip,lockAlpha:lower.lockAlpha,mask:cloneMask(lower.mask)},k=>{
+    const d=mapDepth(k),E=emptyFor(d),LT=hasMap(L,k)?mapT(L,k):E,BT=hasMap(lower,k)?mapT(lower,k):E,R=acquireD(d);
+    run(P.comp,R,{uBase:BT.tex,uLayer:LT.tex,uStrokeTex:strokeT.tex,uMask:clipped?mapT(lower,'base').tex:dummy,uUseMask:clipped,uLMask:maskTexOf(L)||dummy,uUseLMask:!!maskTexOf(L),uMode:{int:mapModeOf(L,k)},uOpacity:L.visible?L.opacity:0,uStroke:{int:0},uStrokeColor:[0,0,0],uStrokeOpacity:0,uLockAlpha:false});return R;});
+  M.mapModes=Object.assign({},lower.mapModes);
   structOp('Merge down',()=>{const k=p.children.indexOf(lower);detachNode(L);detachNode(lower);insertNode(M,p,k);selectOnly(M);});}
 function cmdMergeGroup(){const G=doc.active;if(!G||G.type!=='group')return;
-  const M=mergedLayer(G.name,renderNodes(G.children),{opacity:G.opacity,mode:Math.max(0,G.mode),visible:G.visible,mask:cloneMask(G.mask)});
+  const M=mergedLayer(G.name,G.children,{opacity:G.opacity,mode:Math.max(0,G.mode),visible:G.visible,mask:cloneMask(G.mask)});
   structOp('Merge group',()=>{const p=G.parent,i=p.children.indexOf(G);detachNode(G);insertNode(M,p,i);selectOnly(M);});}
 function cmdMergeSelected(){const tops=topSelected();if(tops.length<2)return;
-  const M=mergedLayer('Merged',renderNodes(tops));
+  const M=mergedLayer('Merged',tops);
   structOp('Merge layers',()=>{const top=tops[tops.length-1],p=top.parent;insertNode(M,p,p.children.indexOf(top)+1);for(const n of tops)detachNode(n);selectOnly(M);});}
 function cmdMerge(){const tops=topSelected();if(tops.length>1)cmdMergeSelected();else if(doc.active&&doc.active.type==='group')cmdMergeGroup();else cmdMergeDown();}
 function hiddenNodes(g,out){for(const n of g.children){if(!n.visible)out.push(n);else if(n.type==='group')hiddenNodes(n,out);}return out;}
-function cmdMergeVisible(){const M=mergedLayer('Merged',renderNodes(doc.root.children));
+function cmdMergeVisible(){const M=mergedLayer('Merged',doc.root.children);
   structOp('Merge visible',()=>{const hid=hiddenNodes(doc.root,[]);for(const n of hid)detachNode(n);doc.root.children=[];hid.forEach(n=>insertNode(n,doc.root));insertNode(M,doc.root);selectOnly(M);});
   toast('Merged visible layers. Hidden layers were kept.');}
 function cmdFlatten(){const hid=hiddenNodes(doc.root,[]),count=hid.reduce((s,n)=>s+(n.type==='layer'?1:allLayers(n).length),0);
-  const go=()=>{const M=mergedLayer('Background',renderNodes(doc.root.children));structOp('Flatten image',()=>{doc.root.children=[];insertNode(M,doc.root);selectOnly(M);});toast('Flattened to one layer. Undo brings the layers back.');};
+  const go=()=>{const M=mergedLayer('Background',doc.root.children);structOp('Flatten image',()=>{doc.root.children=[];insertNode(M,doc.root);selectOnly(M);});toast('Flattened to one layer. Undo brings the layers back.');};
   if(!count){go();return;}
   openDialog({title:'Flatten image?',body:el('p',{class:'note',text:'Flattening combines everything visible into one layer and discards '+count+' hidden layer'+(count===1?'':'s')+'. You can undo this.'}),okLabel:'Flatten',onOk:go});}
 $('#lAdd').addEventListener('click',()=>cmdAddLayer());$('#lGroup').addEventListener('click',()=>{if(doc.sel.size>1||(doc.active&&topSelected().length))cmdGroup();else cmdNewGroup();});

@@ -54,7 +54,7 @@
     </section>
 
     <section class="sec" aria-labelledby="hBrush">
-      <div class="sec-h" id="hBrush"><span id="brushTitle">Brush</span><span class="sec-actions"><button class="btn sm" id="abrBtn" title="Import Photoshop brushes (.abr)">Import .ABR</button><button class="btn sm" id="tipBtn" title="Make a brush tip from the active layer">Tip from layer</button></span></div>
+      <div class="sec-h" id="hBrush"><span id="brushTitle">Brush</span><span class="sec-actions"><button class="btn sm" id="saveBrushBtn" title="Save these brush settings (and its map values) as a brush">Save brush</button><button class="btn sm" id="abrBtn" title="Import Photoshop brushes (.abr)">Import .ABR</button><button class="btn sm" id="tipBtn" title="Make a brush tip from the active layer">Tip from layer</button></span></div>
       <div id="libBody" class="lib" aria-label="Brush library"></div>
       <div class="prevwrap"><canvas id="brushPrev" role="img" aria-label="Preview of a stroke with the current brush settings"></canvas><span id="prevNote"></span></div>
       <div id="brushBody" class="dlg-grid"></div>
@@ -65,6 +65,10 @@
       <div id="animBody" class="dlg-grid"></div>
     </section>
 
+    <section class="sec" id="mapsSec" aria-labelledby="hMaps">
+      <div class="sec-h" id="hMaps"><span>Maps</span><span id="mapState" class="dim"></span><button class="btn sm" id="mapsBtn" title="Add or remove maps (base colour, roughness, metallic, height…)">Maps…</button></div>
+      <div id="mapList" class="llist" role="listbox" aria-label="Maps"></div>
+    </section>
     <section class="sec" aria-labelledby="hLayers">
       <div class="sec-h" id="hLayers"><span>Layers</span></div>
       <div class="lprops">
@@ -100,6 +104,7 @@
     <span id="stDoc"></span>
     <button class="pill" id="stDepth" title="Switch bit depth"></button>
     <button class="pill" id="stSel" hidden></button>
+    <button class="pill" id="stMap" hidden title="The map that painting changes. Click to view it."></button>
     <button class="pill" id="stChan" hidden title="Painting is limited to these channels. Click to edit all channels again."></button>
     <span id="stZoom"></span>
     <span id="stPos" class="hide-s"></span>

@@ -11,6 +11,10 @@ function beginStroke(L,x,y,p,o){
   if(o.tool!=='smudge')clearTarget(strokeT);
   const gx=Math.max(1,Math.round(W/6)),gy=Math.max(1,Math.round(H/6));
   stroke={L,o,x,y,p,lsx:x,lsy:y,dir:0,carry:0,bb:[W,H,0,0],gScale:[W/gx,H/gy],gPeriod:[gx,gy]};
+  /* other maps painted by the same stroke: make sure the layer has an image there; with Lock alpha they follow the base colour's shape */
+  if(o.extras&&o.extras.length){for(const e of o.extras)ensureMapTarget(L,e.key);
+    if(L.lockAlpha){const lt=acquireD(doc.depth);run(P.lockcov,lt,Object.assign({uA:mapT(L,'base').tex},selU(o)));stroke.lockT=lt;stroke.exU={uSelTex:lt.tex,uUseSel:true};}
+    else stroke.exU=selU(o);}
   stamp(x,y,p);stroke.carry=spacingAt(p);requestRender(true);
 }
 function stamp(x,y,p){
@@ -53,10 +57,18 @@ function addPoint(x,y,p){
 function endStroke(record){
   const s=stroke;if(!s)return;const L=s.L,W=doc.w,H=doc.h;
   if(s.o.tool!=='smudge')run(P.merge,L.target,{uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(s.o)},...tonalU(s.o),uStrokeColor:s.o.color,uStrokeOpacity:s.o.opacity,uLockAlpha:L.lockAlpha,...chanU(s.o),...selU(s.o)});
+  const x0=clamp(Math.floor(s.bb[0]),0,W),y0=clamp(Math.floor(s.bb[1]),0,H),x1=clamp(Math.ceil(s.bb[2]),0,W),y1=clamp(Math.ceil(s.bb[3]),0,H),bw=x1-x0,bh=y1-y0;
+  /* the same stroke merged into each other enabled map */
+  const parts=[];
+  for(const e of (s.o.extras||[])){const T=mapT(L,e.key),old=acquireD(T.depth);blit(T,old,0,0,W,H,0,0);
+    if(record&&bw>0&&bh>0)parts.push({k:e.key,before:captureRegion(old,x0,y0,bw,bh)});
+    run(P.merge,T,Object.assign({uSrc:old.tex,uStrokeTex:strokeT.tex,uStroke:{int:e.mode},uStrokeColor:e.color,uStrokeOpacity:s.o.opacity,uLockAlpha:false},chanU(null),s.exU));release(old);
+    if(parts.length&&parts[parts.length-1].k===e.key)parts[parts.length-1].after=captureRegion(T,x0,y0,bw,bh);}
+  if(s.lockT)release(s.lockT);
   stroke=null;
   if(record){
-    const x0=clamp(Math.floor(s.bb[0]),0,W),y0=clamp(Math.floor(s.bb[1]),0,H),x1=clamp(Math.ceil(s.bb[2]),0,W),y1=clamp(Math.ceil(s.bb[3]),0,H);
-    if(x1>x0&&y1>y0){const w=x1-x0,h=y1-y0;pushUndo(regionRecord(L,captureRegion(beforeT,x0,y0,w,h),captureRegion(L.target,x0,y0,w,h),x0,y0,w,h,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?'Blend':s.o.tool==='dodge'?'Dodge':s.o.tool==='burn'?'Burn':'Brush stroke'));}
+    if(bw>0&&bh>0){const r=regionRecord(L,captureRegion(beforeT,x0,y0,bw,bh),captureRegion(L.target,x0,y0,bw,bh),x0,y0,bw,bh,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?'Blend':s.o.tool==='dodge'?'Dodge':s.o.tool==='burn'?'Burn':'Brush stroke');
+      pushUndo(parts.length?withMapParts(r,L,parts,x0,y0):r);}
     scheduleThumb(L.maskOf||L);
   }
   requestRender(true);

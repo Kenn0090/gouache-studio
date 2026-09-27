@@ -68,7 +68,7 @@ let sizeSlider=null,dynOpen=false;
 function brushEdited(){if(activePreset){activePreset=null;renderLibrary();}schedulePreview();}
 function buildBrushPanel(){
   const box=$('#brushBody');box.replaceChildren();const sm=ui.tool==='smudge',isText=ui.tool==='text',isSel=isSelTool(ui.tool),isXf=!!(xf&&!xf.move),isOther=['crop','move','gradient','bucket','gbucket'].includes(ui.tool),noBrush=isText||isSel||isXf||isOther;
-  $('#libBody').hidden=noBrush;document.querySelector('.prevwrap').hidden=noBrush;$('#abrBtn').hidden=noBrush;$('#tipBtn').hidden=noBrush;
+  $('#libBody').hidden=noBrush;document.querySelector('.prevwrap').hidden=noBrush;$('#abrBtn').hidden=noBrush;$('#saveBrushBtn').hidden=noBrush||ui.tool==='dodge'||ui.tool==='burn';$('#tipBtn').hidden=noBrush;
   if(isText){$('#brushTitle').textContent='Text';buildTextPanel(box);return;}
   if(isXf){buildXfPanel(box);return;}
   if(ui.tool==='crop'){buildCropPanel(box);return;}
@@ -104,9 +104,9 @@ function buildBrushPanel(){
     S('bSc','Scatter','scatter',0,4,.05,pct).el,
     S('bCnt','Count','count',1,8,1,v=>String(Math.round(v))).el,
     el('div',{class:'chips'},C('bFD','Follow stroke','followDir'),C('bBA','Scatter both axes','bothAxes'),C('bRF','Random flip','randFlipX'))));
-  box.append(det);schedulePreview();
+  box.append(det);if(ui.tool==='brush'||ui.tool==='erase')buildMapBrushSection(box,ui.tool);schedulePreview();
 }
-function applyPreset(p){for(const k of SETTING_KEYS)brush[k]=(k in p)?p[k]:BRUSH_DEFAULTS[k];activePreset=p;setTool((ui.tool==='dodge'||ui.tool==='burn')&&p.tool!=='smudge'?ui.tool:(p.tool||'brush'),true);renderLibrary();refreshCursor();}
+function applyPreset(p){for(const k of SETTING_KEYS)brush[k]=(k in p)?p[k]:BRUSH_DEFAULTS[k];if(p.maps)applyMapBrush(p.maps);activePreset=p;setTool((ui.tool==='dodge'||ui.tool==='burn')&&p.tool!=='smudge'?ui.tool:(p.tool||'brush'),true);renderLibrary();refreshCursor();}
 function setTool(t,keepPreset){if(t==='text'&&ui.mode==='anim'){toast('Text is available in Paint mode. Frames are single images.');return;}if(t!=='text'&&typeof closeTextEditor==='function')closeTextEditor();if(t!=='lasso'&&typeof polyLasso!=='undefined'&&polyLasso){polyLasso=null;drawSelOverlay();}
   if(typeof xf!=='undefined'&&xf&&!xf.move)xfCommit();if(t!=='gradient'&&typeof gsess!=='undefined'&&gsess)gradCommit();if(t==='gradient'||t==='bucket'||t==='gbucket')ui.fillKind=t;if(t==='dodge'||t==='burn')ui.tonal=t;updateGroupButtons(t);if(typeof crop!=='undefined'){if(t==='crop'&&ui.tool!=='crop')crop=null;else if(t!=='crop')crop=null;}cv.style.cursor='';ui.tool=t;stage.classList.toggle('txt',t==='text');stage.classList.toggle('selt',isSelTool(t));stage.classList.toggle('movet',t==='move');stage.classList.toggle('fillt',t==='gradient'||t==='bucket'||t==='gbucket');document.querySelectorAll('.tool').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t)));
   if(!keepPreset&&activePreset&&(activePreset.tool==='smudge')!==(t==='smudge')){activePreset=null;renderLibrary();}
@@ -146,7 +146,7 @@ const store={db:null,
   all(sn){return this.tx('readonly',st=>st.getAll(),sn).catch(()=>[]);}
 };
 function serializeSet(set){const tips=[],idx=new Map();
-  const presets=set.presets.map(p=>{const o={name:p.name,tool:p.tool};for(const k of SETTING_KEYS)if(k!=='tip')o[k]=p[k];
+  const presets=set.presets.map(p=>{const o={name:p.name,tool:p.tool,maps:p.maps};for(const k of SETTING_KEYS)if(k!=='tip')o[k]=p[k];
     if(p.tip){if(!idx.has(p.tip)){idx.set(p.tip,tips.length);tips.push({name:p.tip.name,w:p.tip.w,h:p.tip.h,alpha:p.tip.alpha});}o.tipIndex=idx.get(p.tip);}return o;});
   return {id:set.id,name:set.name,presets,tips};}
 function deserializeSet(d){const tips=d.tips.map(t=>makeTip(t.name,t.w,t.h,t.alpha));
@@ -155,5 +155,14 @@ function saveSet(set){store.put(serializeSet(set));}
 function addSet(set){library.push(set);renderLibrary();saveSet(set);}
 function removeSet(set){const i=library.indexOf(set);if(i<0)return;library.splice(i,1);
   if(set.presets.some(p=>p===activePreset)||(brush.tip&&set.tips.includes(brush.tip)))applyPreset(PRESETS[0]);
-  for(const t of set.tips)disposeTip(t);store.del(set.id);renderLibrary();toast('Removed “'+set.name+'”.');}
+  for(const t of set.tips)if(!library.some(s2=>s2.tips.includes(t)))disposeTip(t);store.del(set.id);renderLibrary();toast('Removed “'+set.name+'”.');}
+/* save the current settings as a brush in "My brushes" (kept per browser / per computer) */
+function dlgSaveBrush(){const inp=el('input',{type:'text',id:'sbName',value:activePreset?activePreset.name+' 2':'My brush',maxlength:40});
+  const anyMaps=mapBrushTargets().length>0;
+  const body=el('div',{class:'dlg-grid'},el('label',{for:'sbName',text:'Name'}),inp,el('p',{class:'note',text:anyMaps?'The brush also remembers which other maps it paints and their values.':'Saved to “My brushes”.'}));
+  openDialog({title:'Save brush',body,okLabel:'Save',onOk(){const name=inp.value.trim();if(!name){toast('Give the brush a name.');return false;}
+    let set=library.find(s=>s.id==='mine');if(!set){set={id:'mine',name:'My brushes',presets:[],tips:[]};library.push(set);}
+    const p={name,tool:ui.tool};for(const k of SETTING_KEYS)p[k]=brush[k];p.maps=mapBrushSnapshot();
+    if(p.tip&&!set.tips.includes(p.tip))set.tips.push(p.tip);set.presets.push(p);activePreset=p;renderLibrary();saveSet(set);toast('Saved brush “'+name+'”.');}});}
+$('#saveBrushBtn').addEventListener('click',dlgSaveBrush);
 async function loadSavedSets(){try{const all=await store.all();for(const d of all||[]){try{library.push(deserializeSet(d));}catch(e){}}renderLibrary();}catch(e){}}

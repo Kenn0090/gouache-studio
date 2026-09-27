@@ -9,27 +9,34 @@ function strokeMode(o){return o.tool==='erase'?2:o.tool==='dodge'?3:o.tool==='bu
 function tonalU(o){return o&&(o.tool==='dodge'||o.tool==='burn')?{uTonalRange:{int:o.range},uProtect:!!o.protect}:{};}
 function selU(o){return o&&o.sel&&sel.t?{uSelTex:sel.t.tex,uUseSel:true}:{uSelTex:dummy,uUseSel:false};}
 function chanU(o){return o&&o.chan?{uChanMode:{int:1},uChan:o.chan}:{uChanMode:{int:0},uChan:[1,1,1,1]};}
-function compositeList(list,acc){let base=null;
-  for(let i=0;i<list.length;i++){const n=list[i],clipped=clipBaseOf(list,i);if(!clipped)base=n;
+/* composite a list of layers for map k (default: the map being edited) onto acc.
+   Layers with nothing in map k are skipped; clipping always uses the base colour's shape. */
+function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
+  for(let i=0;i<list.length;i++){const n=list[i],clipped=clipBaseOf(list,i);
     if(!n.visible)continue;if(clipped&&!clipped.visible)continue;
     const mt=maskTexOf(n);
-    if(n.type==='layer'){const src=(preview&&!preview.off&&preview.L===n&&!preview.isMask)?previewT:n.target,st=(stroke&&stroke.L===n&&stroke.o.tool!=='smudge')?stroke:null,out=acquire(),cm=clipped?maskTexOf(clipped):null;
-      run(P.comp,out,Object.assign({uBase:acc.tex,uLayer:src.tex,uStrokeTex:strokeT.tex,uMask:clipped?clipped.target.tex:dummy,uUseMask:!!clipped,uMask2:cm||dummy,uUseMask2:!!cm,uLMask:mt||dummy,uUseLMask:!!mt,
-        uMode:{int:n.mode},uOpacity:n.opacity,uStroke:{int:st?strokeMode(st.o):0},uStrokeColor:st?st.o.color:[0,0,0],uStrokeOpacity:st?st.o.opacity:0,uLockAlpha:n.lockAlpha},chanU(st&&st.o),selU(st&&st.o),tonalU(st&&st.o)));
+    if(n.type==='layer'){const T=edit?n.target:mapT(n,k);if(!T||T.empty)continue;
+      const src=(edit&&preview&&!preview.off&&preview.L===n&&!preview.isMask)?previewT:T,out=acquire(),cm=clipped?maskTexOf(clipped):null;
+      let st=(stroke&&stroke.L===n&&stroke.o.tool!=='smudge')?stroke:null,ex=null;
+      if(st&&!edit){ex=(st.o.extras||[]).find(e=>e.key===k)||null;if(!ex)st=null;}
+      run(P.comp,out,Object.assign({uBase:acc.tex,uLayer:src.tex,uStrokeTex:strokeT.tex,uMask:clipped?mapT(clipped,'base').tex:dummy,uUseMask:!!clipped,uMask2:cm||dummy,uUseMask2:!!cm,uLMask:mt||dummy,uUseLMask:!!mt,
+        uMode:{int:mapModeOf(n,k)},uOpacity:n.opacity,uStroke:{int:st?(ex?ex.mode:strokeMode(st.o)):0},uStrokeColor:st?(ex?ex.color:st.o.color):[0,0,0],uStrokeOpacity:st?st.o.opacity:0,uLockAlpha:ex?false:n.lockAlpha},
+        edit?chanU(st&&st.o):chanU(null),ex?st.exU:selU(st&&st.o),edit?tonalU(st&&st.o):{}));
       release(acc);acc=out;}
     else if(n.mode<0){
-      if(n.opacity>=.999&&!mt)acc=compositeList(n.children,acc);
-      else{const x=acquire();blit(acc,x,0,0,doc.w,doc.h,0,0);const r=compositeList(n.children,x),out=acquire();run(P.mix,out,{uA:acc.tex,uB:r.tex,uT:n.opacity,uM:mt||dummy,uUseM:!!mt});release(acc);release(r);acc=out;}}
-    else{const g=acquire();clearTarget(g);const r=compositeList(n.children,g),out=acquire();
+      if(n.opacity>=.999&&!mt)acc=compositeList(n.children,acc,k);
+      else{const x=acquire();blit(acc,x,0,0,doc.w,doc.h,0,0);const r=compositeList(n.children,x,k),out=acquire();run(P.mix,out,{uA:acc.tex,uB:r.tex,uT:n.opacity,uM:mt||dummy,uUseM:!!mt});release(acc);release(r);acc=out;}}
+    else{const g=acquire();clearTarget(g);const r=compositeList(n.children,g,k),out=acquire();
       run(P.comp,out,{uBase:acc.tex,uLayer:r.tex,uStrokeTex:strokeT.tex,uMask:dummy,uUseMask:false,uLMask:mt||dummy,uUseLMask:!!mt,uMode:{int:n.mode},uOpacity:n.opacity,uStroke:{int:0},uStrokeColor:[0,0,0],uStrokeOpacity:0,uLockAlpha:false});
       release(acc);release(r);acc=out;}}
   return acc;}
 function renderNodes(list){const acc=acquire();clearTarget(acc);return compositeList(list,acc);}
 let maskViewT=null,maskViewLive=false;
 function composite(){if(compOut)release(compOut);maskOverride=new Map();const tmp=[];maskViewLive=false;
-  if(stroke&&stroke.L.maskOf&&stroke.o.tool!=='smudge'){const lm=acquire();tmp.push(lm);run(P.merge,lm,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},selU(stroke.o),tonalU(stroke.o)));maskOverride.set(stroke.L.maskOf,lm.tex);if(ui.viewMask){if(!maskViewT||maskViewT.w!==doc.w||maskViewT.h!==doc.h||maskViewT.depth!==doc.depth){disposeTarget(maskViewT);maskViewT=makeTarget(doc.w,doc.h);}blit(lm,maskViewT,0,0,doc.w,doc.h,0,0);maskViewLive=true;}}
+  if(stroke&&stroke.L.maskOf&&stroke.o.tool!=='smudge'){const lm=acquire();tmp.push(lm);run(P.merge,lm,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},selU(stroke.o),tonalU(stroke.o)));maskOverride.set(stroke.L.maskOf,lm.tex);if(ui.viewMask){if(!maskViewT||maskViewT.w!==doc.w||maskViewT.h!==doc.h||maskViewT.depth!==lm.depth){disposeTarget(maskViewT);maskViewT=makeTarget(doc.w,doc.h,lm.depth);}blit(lm,maskViewT,0,0,doc.w,doc.h,0,0);maskViewLive=true;}}
   if(preview&&!preview.off&&preview.isMask)maskOverride.set(preview.L,previewT.tex);
-  compOut=renderNodes(doc.root.children);compOut.mipDirty=true;tmp.forEach(release);maskOverride=new Map();
+  {const acc=acquire();clearTarget(acc,ui.mode==='anim'?[0,0,0,0]:mapDefault(doc.map));compOut=compositeList(doc.root.children,acc);}compOut.mipDirty=true;
+  if(ui.mode!=='anim'&&(doc.view==='material'||doc.view==='normal'))buildMaterialView();tmp.forEach(release);maskOverride=new Map();
   if(ui.mode==='anim'){buildOnion();if(stroke)liveFrameUpdate();}else if(onionT){release(onionT);onionT=null;}}
 function dprNow(){return cv.width/Math.max(1,stage.clientWidth);}
 function viewSource(){const A=doc.active;if(ui.viewMask&&A&&A.mask){

@@ -12,15 +12,18 @@ function bucketFill(ix,iy){if(preview||selLive){toast('Apply or cancel the open 
   const m=wandMask(px,W,H,x,y,Math.round(ui.bucketTol),ui.bucketContig,doc.wrap);let bb=maskBounds(m,W,H);if(!bb)return;
   const cov=maskToTarget(m);if(ui.bucketAA){gaussian(cov,cov,.7);bb=rToDoc(rGrow(bb,2));}
   const op=ui.bucketOpacity,c=et.isMask||et.L.quick?Array(3).fill(lum3(ui.fg)):ui.fg;
-  run(P.fillcov,previewT,{uOld:et.target.tex,uCov:cov.tex,uColor:[c[0]*op,c[1]*op,c[2]*op,op],uSelTex:selOn(et)?sel.t.tex:dummy,uUseSel:selOn(et)});release(cov);chanLimit(et);
-  const r=selRect(et)?rInter(bb,selRect(et)):bb;if(!r)return;
+  const su={uSelTex:selOn(et)?sel.t.tex:dummy,uUseSel:selOn(et)};
+  run(P.fillcov,previewT,Object.assign({uOld:et.target.tex,uCov:cov.tex,uColor:[c[0]*op,c[1]*op,c[2]*op,op]},su));chanLimit(et);
+  const r=selRect(et)?rInter(bb,selRect(et)):bb;if(!r){release(cov);return;}
   if(!et.isMask)pushRecent(ui.fg);
-  fullRecord(et.L,'Paint bucket',()=>blit(previewT,et.target,0,0,W,H,0,0),r);}
+  /* the same area filled in the other enabled maps with their values */
+  const oth=otherMapsFor(et).map(k=>({k,apply:T=>{const mc=mapBrushColor(k),o=acquireD(T.depth);run(P.fillcov,o,Object.assign({uOld:T.tex,uCov:cov.tex,uColor:[mc[0]*op,mc[1]*op,mc[2]*op,op]},su));blit(o,T,0,0,W,H,0,0);release(o);}}));
+  fullRecord(et.L,'Paint bucket',()=>blit(previewT,et.target,0,0,W,H,0,0),r,oth);release(cov);}
 function buildBucketPanel(box){$('#brushTitle').textContent='Paint bucket';
   box.append(makeSlider({id:'bkTol',label:'Tolerance',min:0,max:255,step:1,value:ui.bucketTol,onInput:v=>{ui.bucketTol=v;}}).el,
     makeSlider({id:'bkOp',label:'Opacity',min:0,max:1,step:.01,value:ui.bucketOpacity,fmt:pct,onInput:v=>{ui.bucketOpacity=v;}}).el,
     el('div',{class:'chips'},chk('bkCont','Contiguous',ui.bucketContig,v=>{ui.bucketContig=v;}),chk('bkAll','Sample all layers',ui.bucketAll,v=>{ui.bucketAll=v;}),chk('bkAA','Anti-alias',ui.bucketAA,v=>{ui.bucketAA=v;})),
-    el('div',{class:'sub',text:'Click to fill similar colours with the foreground colour. With a selection, the fill stays inside it. Shift+G switches to the gradient bucket.'}));}
+    el('div',{class:'sub',text:'Click to fill similar colours with the foreground colour. With a selection, the fill stays inside it. Shift+G switches to the gradient bucket.'}));buildMapBrushSection(box,'fill');}
 
 /* ---- gradient bucket: press in an area, drag the direction; the gradient fills only that area ---- */
 function gbucketDown(e,ix,iy){if(preview||selLive){toast('Apply or cancel the open dialog first.');return;}

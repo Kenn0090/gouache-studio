@@ -38,18 +38,19 @@ function xfStart(opts){opts=opts||{};if(xf)return true;
   if(preview||selLive){toast('Apply or cancel the open dialog first.');return false;}
   if(sel.quick){toast('Leave quick mask (Q) first.');return false;}
   const pick=xfLayers(),useSel=sel.active&&!!sel.bb;const items=[];let rect=null;
-  if(pick.maskOnly){const n=pick.maskOnly,m=n.mask,orig=acquire();blit(m.target,orig,0,0,doc.w,doc.h,0,0);
+  if(pick.maskOnly){const n=pick.maskOnly,m=n.mask,orig=acquireD(m.target.depth);blit(m.target,orig,0,0,doc.w,doc.h,0,0);
     items.push({node:n,t:()=>m.target,orig,src:orig,base:null,outside:[1,1,1,1],full:true,mask:m});rect=fullRect();}
   else{let layers=pick.layers;if(!layers.length){toast('Select a layer to transform.');return false;}
     for(const L of layers)if(L.text||L.grad){rasterizeText(L);toast('Converted to pixels for the transform. Undo brings the editable layer back.');}
-    for(const L of layers){const orig=acquire();blit(L.target,orig,0,0,doc.w,doc.h,0,0);let src=orig,base=null;
-      if(useSel){src=acquire();run(P.cropsel,src,{uSrc:orig.tex,uSel:sel.t.tex,uOff:[0,0],uUseSel:true});
-        base=acquire();const clearT=acquire();clearTarget(clearT);run(P.selmix,base,{uOld:orig.tex,uNew:clearT.tex,uSel:sel.t.tex});release(clearT);}
+    /* every map of every layer moves together */
+    for(const L of layers){for(const k of mapKeysOf(L)){const T0=mapT(L,k),d=T0.depth,orig=acquireD(d);blit(T0,orig,0,0,doc.w,doc.h,0,0);let src=orig,base=null;
+      if(useSel){src=acquireD(d);run(P.cropsel,src,{uSrc:orig.tex,uSel:sel.t.tex,uOff:[0,0],uUseSel:true});
+        base=acquireD(d);const clearT=acquireD(d);clearTarget(clearT);run(P.selmix,base,{uOld:orig.tex,uNew:clearT.tex,uSel:sel.t.tex});release(clearT);}
       const b=contentBounds(src);if(b)rect=rUnion(rect,b);
-      items.push({node:L,t:()=>L.target,orig,src,base,outside:[0,0,0,0]});
-      if(!useSel&&L.mask){const m=L.mask,mo=acquire();blit(m.target,mo,0,0,doc.w,doc.h,0,0);items.push({node:L,t:()=>m.target,orig:mo,src:mo,base:null,outside:[1,1,1,1],full:true,mask:m});}}
+      items.push({node:L,t:()=>mapT(L,k),orig,src,base,outside:[0,0,0,0]});}
+      if(!useSel&&L.mask){const m=L.mask,mo=acquireD(m.target.depth);blit(m.target,mo,0,0,doc.w,doc.h,0,0);items.push({node:L,t:()=>m.target,orig:mo,src:mo,base:null,outside:[1,1,1,1],full:true,mask:m});}}
     if(!rect){for(const it of items)freeItem(it);toast(useSel?'There are no pixels inside the selection to transform.':'The layer is empty, so there is nothing to transform.');return false;}}
-  let selItem=null;if(useSel&&!pick.maskOnly){const o=acquire();blit(sel.t,o,0,0,doc.w,doc.h,0,0);selItem={orig:o,bb:sel.bb.slice()};}
+  let selItem=null;if(useSel&&!pick.maskOnly){const o=acquireD(sel.t.depth);blit(sel.t,o,0,0,doc.w,doc.h,0,0);selItem={orig:o,bb:sel.bb.slice()};}
   xf={items,selItem,rect,q:rectCorners(rect),pivot:[(rect[0]+rect[2])/2,(rect[1]+rect[3])/2],warp:null,move:!!opts.move,dirty:null};
   if(!xf.move){buildBrushPanel();drawXfOverlay();}
   return true;}

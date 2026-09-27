@@ -14,7 +14,7 @@ function selPointerDown(e,ix,iy){
   if(t==='wand'){magicWand(ix,iy,modeFromMods(e));return;}
   if(t==='lasso'&&ui.lasso==='poly'){polyClick(e,ix,iy);return;}
   const noMods=!e.shiftKey&&!e.altKey&&!e.ctrlKey&&!e.metaKey;
-  if(noMods&&sel.active&&selValueAt(ix,iy)>=.5){const snap=acquire();blit(sel.t,snap,0,0,doc.w,doc.h,0,0);
+  if(noMods&&sel.active&&selValueAt(ix,iy)>=.5){const snap=acquireS();blit(sel.t,snap,0,0,doc.w,doc.h,0,0);
     ptr={mode:'selmove',id:e.pointerId,sx:ix,sy:iy,dx:0,dy:0,snap,bb:sel.bb.slice()};return;}
   const mode=modeFromMods(e);
   if(t==='marquee')ptr={mode:'marq',id:e.pointerId,x0:ix,y0:iy,x1:ix,y1:iy,selMode:mode,startShift:e.shiftKey,startAlt:e.altKey,rect:null};
@@ -131,10 +131,10 @@ function selKeys(e,m,k){
    Cancel (or Esc) puts the original back. Feather and Smooth show the selection as a red overlay so the soft edge is visible. */
 let selLive=null;
 function openLiveSel(o){if(o.needSel?!needSel():selBusy())return;
-  const orig=acquire();blit(sel.t,orig,0,0,doc.w,doc.h,0,0);const before={active:sel.active,bb:sel.bb&&sel.bb.slice()};
+  const orig=acquireS();blit(sel.t,orig,0,0,doc.w,doc.h,0,0);const before={active:sel.active,bb:sel.bb&&sel.bb.slice()};
   const L=selLive={overlay:!!o.overlay,on:prefs.livePreview};let queued=false,stale=true;
   const restore=()=>{blit(orig,sel.t,0,0,doc.w,doc.h,0,0);sel.active=before.active;sel.bb=before.bb;selChanged();};
-  const render=()=>{queued=false;if(selLive!==L)return;stale=false;const tmp=acquire();const r=o.compute(orig,tmp,before);blit(tmp,sel.t,0,0,doc.w,doc.h,0,0);release(tmp);sel.bb=r.bb;sel.active=r.active;selChanged();};
+  const render=()=>{queued=false;if(selLive!==L)return;stale=false;const tmp=acquireS();const r=o.compute(orig,tmp,before);blit(tmp,sel.t,0,0,doc.w,doc.h,0,0);release(tmp);sel.bb=r.bb;sel.active=r.active;selChanged();};
   const upd=()=>{stale=true;if(L.on&&!queued){queued=true;requestAnimationFrame(render);}};
   const body=el('div',{class:'dlg-grid'},...o.controls(upd));
   body.append(el('div',{class:'chips'},previewChk('slPrev',L.on,v=>{L.on=v;if(v)render();else{queued=false;stale=true;restore();}}),chk('slOv','Show as red overlay',L.overlay,v=>{L.overlay=v;requestRender();})));
@@ -156,7 +156,7 @@ function liveRadius(title,label,max,def,apply,grow,overlay,note){let v=def;
 function dlgFeather(){liveRadius('Feather selection','Radius',250,8,(s,d,v)=>gaussian(s,d,v),v=>Math.ceil(v*1.4)+2,true,'Softens the edge of the selection.');}
 function dlgExpand(){liveRadius('Expand selection','Expand by',100,4,(s,d,v)=>morph(s,d,v,true),v=>v,false);}
 function dlgContract(){liveRadius('Contract selection','Contract by',100,4,(s,d,v)=>morph(s,d,v,false),()=>0,false);}
-function dlgSmooth(){liveRadius('Smooth selection','Radius',100,4,(s,d,v)=>{const b=acquire();gaussian(s,b,v);run(P.thresh,d,{uSrc:b.tex});release(b);},()=>0,true,'Rounds off jagged corners and removes small specks.');}
+function dlgSmooth(){liveRadius('Smooth selection','Radius',100,4,(s,d,v)=>{const b=acquireS();gaussian(s,b,v);run(P.thresh,d,{uSrc:b.tex});release(b);},()=>0,true,'Rounds off jagged corners and removes small specks.');}
 function dlgLoadSel(){const A=doc.active;const opts=[];
   if(A)opts.push(['layer','Transparency of “'+A.name+'”']);if(A&&A.mask)opts.push(['mask','Mask of “'+A.name+'”']);
   opts.push(['r','Red channel of the image'],['g','Green channel of the image'],['b','Blue channel of the image'],['a','Alpha (transparency) of the image'],['lum','Brightness of the image']);
@@ -164,7 +164,7 @@ function dlgLoadSel(){const A=doc.active;const opts=[];
   openLiveSel({title:'Load selection',okLabel:'Load',
     controls:upd=>{const s=el('select',{id:'lsSrc','aria-label':'Source'},...opts.map(([v,t])=>el('option',{value:v,text:t})));s.addEventListener('change',()=>{st.src=s.value;upd();});
       return [el('div',{class:'frow'},el('label',{for:'lsSrc',text:'From'}),s),seg([['new','New'],['add','Add'],['sub','Subtract'],['int','Intersect']],st.mode,v=>{st.mode=v;upd();},'Mode'),chk('lsInv','Invert',false,v=>{st.inv=v;upd();})];},
-    compute:(orig,dst,b)=>{const shape=acquire();let grp=null,tex,what;
+    compute:(orig,dst,b)=>{const shape=acquireS();let grp=null,tex,what;
       if(st.src==='layer'){if(isLayer(A))tex=A.target.tex;else{grp=renderNodes(A.children);tex=grp.tex;}what=0;}
       else if(st.src==='mask'){tex=A.mask.target.tex;what=1;}
       else{tex=freshComposite().tex;what={r:1,g:2,b:3,a:0,lum:4}[st.src];}

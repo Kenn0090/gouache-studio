@@ -79,13 +79,15 @@ function applyCropBox(c){const nw=clamp(Math.round(c.w),1,MAX_DIM),nh=clamp(Math
   else{const co=Math.cos(c.ang),si=Math.sin(c.ang);H=[co,-si,c.cx-co*nw/2+si*nh/2, si,co,c.cy-si*nw/2-co*nh/2, 0,0,1];}
   const layers=everyLayer();if(rot)for(const L of layers)if(L.text||L.grad)rasterizeText(L);
   const maskNodes=everyNode().filter(n=>n.mask),mObjs=maskNodes.map(n=>n.mask),texts=rot?[]:layers.filter(L=>L.text),grads=rot?[]:layers.filter(L=>L.grad);
-  const draw=(src,outside)=>{const t=makeTarget(nw,nh,doc.depth,doc.wrap);run(P.xform,t,{uSrc:src.tex,uH0:H.slice(0,3),uH1:H.slice(3,6),uH2:H.slice(6,9),uInterp:{int:rot?2:0},uSS:{int:1},uWrap:false,uDoc:[nw,nh],uOutside:outside});return t;};
-  const newT=layers.map(L=>draw(L.target,[0,0,0,0])),newM=mObjs.map(m=>draw(m.target,[1,1,1,1]));
-  const oldT=layers.map(L=>L.target),oldM=mObjs.map(m=>m.target),oldSize=[doc.w,doc.h],newSize=[nw,nh];
-  const set=(sz,ts,ms,dir)=>{doc.w=sz[0];doc.h=sz[1];layers.forEach((L,i)=>L.target=ts[i]);mObjs.forEach((m,i)=>m.target=ms[i]);
+  const draw=(src,outside)=>{const t=makeTarget(nw,nh,src.depth,doc.wrap);run(P.xform,t,{uSrc:src.tex,uH0:H.slice(0,3),uH1:H.slice(3,6),uH2:H.slice(6,9),uInterp:{int:rot?2:0},uSS:{int:1},uWrap:false,uDoc:[nw,nh],uOutside:outside});return t;};
+  /* every map of every layer (frames too) */
+  const mapsOf=L=>L.maps?Object.assign({},...Object.keys(L.maps).filter(k=>L.maps[k]&&!L.maps[k].empty).map(k=>({[k]:L.maps[k]}))):{base:L.target};
+  const oldT=layers.map(mapsOf),newT=oldT.map(ms=>Object.fromEntries(Object.entries(ms).map(([k,t])=>[k,draw(t,[0,0,0,0])]))),newM=mObjs.map(m=>draw(m.target,[1,1,1,1]));
+  const oldM=mObjs.map(m=>m.target),oldSize=[doc.w,doc.h],newSize=[nw,nh];
+  const set=(sz,ts,ms,dir)=>{doc.w=sz[0];doc.h=sz[1];layers.forEach((L,i)=>{L.maps=Object.assign({},ts[i]);L.target=L.maps.base;});mObjs.forEach((m,i)=>m.target=ms[i]);
     for(const L of texts){L.text.x-=dir*x0;L.text.y-=dir*y0;}for(const L of grads)for(const k of ['a','b']){L.grad[k][0]-=dir*x0;L.grad[k][1]-=dir*y0;}
-    allocAux();if(doc.anim){doc.anim.frames.forEach(frameDirty);showFrame(doc.anim.cur,true);}for(const L of texts)renderText(L);for(const L of grads)renderLiveGrad(L);fit();changedAll();updateStatus();};
-  set(newSize,newT,newM,1);
-  pushUndo({label:'Crop',refs:layers,undo(){set(oldSize,oldT,oldM,-1);if(crop)cropStart();},redo(){set(newSize,newT,newM,1);if(crop)cropStart();},
-    drop(){const usingNew=layers.length?layers[0].target===newT[0]:doc.w===nw;(usingNew?[...oldT,...oldM]:[...newT,...newM]).forEach(disposeTarget);}});
+    allocAux();syncTargets();if(doc.anim){doc.anim.frames.forEach(frameDirty);showFrame(doc.anim.cur,true);}for(const L of texts)renderText(L);for(const L of grads)renderLiveGrad(L);fit();changedAll();updateStatus();};
+  set(newSize,newT,newM,1);let usingNew=true;
+  pushUndo({label:'Crop',refs:layers,undo(){usingNew=false;set(oldSize,oldT,oldM,-1);if(crop)cropStart();},redo(){usingNew=true;set(newSize,newT,newM,1);if(crop)cropStart();},
+    drop(){const flat=a=>a.flatMap(m=>Object.values(m));(usingNew?[...flat(oldT),...oldM]:[...flat(newT),...newM]).forEach(disposeTarget);}});
   toast('Cropped to '+nw+' × '+nh+'.');}
