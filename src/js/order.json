@@ -44,6 +44,8 @@
     "filters/fx-layers",
     "view3d/mesh",
     "view3d/view3d",
+    "bake/bake-gpu",
+    "bake/bake-ui",
     "files/abr",
     "ui/prefs",
     "ui/perf",

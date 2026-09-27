@@ -16,7 +16,7 @@ Test builds of every change are on the **Actions** tab (download `gouache-studio
 4. ~~Converters and filters~~ (0.7)
 5. ~~Filter layers~~ (0.8)
 6. ~~3D viewer~~ (0.9)
-7. Baker
+7. ~~Baker~~ (0.10)
 8. Cage / skew painting
 9. Paint on the model
 

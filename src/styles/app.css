@@ -375,3 +375,5 @@ canvas.fxthumb{background:#2a2d33 url("data:image/svg+xml,%3Csvg xmlns='http://w
 .v3bar .btn.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
 .v3set{position:absolute;right:8px;top:48px;width:min(300px,calc(100% - 16px));max-height:calc(100% - 64px);overflow:auto;background:var(--panel,#1c1e22);border:1px solid var(--line-2);border-radius:10px;padding:10px;display:grid;gap:6px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
 .v3info{position:absolute;left:10px;bottom:8px;font:11px var(--mono);color:var(--muted);pointer-events:none;text-shadow:0 1px 2px #000}
+.bakekinds{flex-wrap:wrap}
+.bakebar{height:8px;border-radius:4px;background:var(--raise);overflow:hidden}.bakebar>div{height:100%;width:0;background:var(--accent);transition:width .15s}

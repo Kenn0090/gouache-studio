@@ -1,5 +1,17 @@
-Mesh detail for testing height maps.
+The baker.
 
-- **Detail menu at the top of the 3D view.** It was tucked away in Settings. Pick Low up to ×128 to give the model more triangles, so **Height depth** can push the surface out finely. At ×128 a plane has about 2 million triangles. Imported models are split into smaller triangles the same way.
-- **Detail rises automatically.** Turning up Height depth on a low-detail model switches it to ×16 so the height shows right away.
-- **Triangle count:** the bottom-left corner of the 3D view shows the model's current count.
+**Maps › Bake from high poly…** copies the detail of a high-poly model onto your low-poly's UVs.
+
+- **Models:** the low-poly can be the model in the 3D view or a file. The high-poly can be an FBX, OBJ, glTF or GLB file.
+- **Maps you can bake:**
+  - **Normal**, **Height** and **Ambient occlusion** go into the matching maps as new layers. Any missing maps are added for you.
+  - **Curvature**, **Thickness**, **World-space normal**, **Position** and **ID colours** go into a hidden **Baked maps** group, ready to use as masks.
+  - ID colours come from vertex colours, material colours, or one colour per part.
+- **Rays:**
+  - **Front and Back** set how far outside and inside the surface the baker looks.
+  - **Average ray directions** stops gaps at hard edges.
+  - You can load your own **cage** model instead of using distances.
+- **Match parts by name:** "crate_low" bakes only against "crate_high", so parts that sit close together don't leak into each other.
+- **Low-poly only:** leave the high-poly on **None** to bake AO, curvature (from the model's own shape), thickness, ID colours, world-space normal and position from the low-poly by itself.
+- **Quality:** anti-aliasing at 1×, 4× or 16× samples per pixel, **edge padding** past UV seams, and a progress bar with Cancel.
+- **Speed:** everything runs on the graphics card in small pieces, so the app stays responsive during big bakes.
