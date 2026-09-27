@@ -24,8 +24,8 @@ function newDoc(w,h,depth,bg,name,wrap,tpl){
   if(typeof bakeReset==='function')bakeReset();
   if(ui.mode==='anim'){stopPlay();doc.root=doc.paintRoot;doc.paintRoot=null;ui.mode='paint';document.body.classList.remove('animmode');syncModeTabs();}
   clearHistory();for(const L of everyNode())disposeLayer(L);doc.anim=null;doc.root.children=[];ui.viewMask=false;selectOnly(null);preview=null;dropStrokeCache(stroke);stroke=null;groupCount=0;if(typeof cageFlatOff==='function')cageFlatOff();doc.cage=null;
-  Object.assign(doc,{w,h,depth,name,wrap,count:0,filePath:null,maps:(MAP_TEMPLATES[tpl]||['base']).slice(),map:'base',view:'base',mapDef:{},nrmStr:8,light:{az:135,el:40},v3d:null});allocAux();if(typeof v3!=='undefined'){v3.mesh=null;v3.imported=null;for(const k in v3.tex){disposeTarget(v3.tex[k]);delete v3.tex[k];}}
+  Object.assign(doc,{w,h,depth,name,wrap,count:0,filePath:null,maps:(MAP_TEMPLATES[tpl]||['base']).slice(),map:'base',view:'base',mapDef:{},nrmStr:8,light:{az:135,el:40},v3d:null,brushTpl:false});allocAux();if(typeof v3!=='undefined'){v3.mesh=null;v3.imported=null;for(const k in v3.tex){disposeTarget(v3.tex[k]);delete v3.tex[k];}}
   let L=null;if(bg!==false){L=newLayerObj('Background');insertNode(L,doc.root);selectOnly(L);if(bg)clearTarget(L.target,[bg[0],bg[1],bg[2],1]);}
   if(typeof xf!=='undefined'&&xf){for(const it of xf.items)freeItem(it);xf=null;}if(typeof crop!=='undefined'&&crop)cropStart();
-  $('#tileBtn').setAttribute('aria-pressed',String(wrap));$('#docName').textContent=name;fit();changedAll();updateStatus();refreshMapsUI();return L;
+  $('#tileBtn').setAttribute('aria-pressed',String(wrap));$('#docName').textContent=name;fit();changedAll();updateStatus();refreshMapsUI();if(typeof tipBanner==='function')tipBanner();return L;
 }

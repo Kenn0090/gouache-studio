@@ -37,15 +37,32 @@ async function importABR(file){
   const msg='Imported '+presets.length+' brush'+(presets.length===1?'':'es')+' from “'+setName+'”.';
   if(notes.size)openDialog({title:'Brushes imported',okLabel:null,cancelLabel:'OK',body:el('div',{class:'dlg-grid'},el('p',{class:'note',text:msg+' Some Photoshop brush settings are approximated:'}),el('ul',{class:'report'},...[...notes].map(n=>el('li',{text:n}))))});
   else toast(msg);}
-function tipFromLayer(){const L=needLayer();if(!L)return;const W=doc.w,H=doc.h,px=toStraight(readPremult(L.target),8);
-  let trans=0;for(let i=3;i<px.length;i+=4)if(px[i]<250)trans++;const useAlpha=trans>W*H*.01;
-  const v=new Uint8Array(W*H);let x0=W,y0=H,x1=-1,y1=-1;
-  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=y*W+x,j=i*4,a=useAlpha?px[j+3]:255-Math.round(px[j]*.299+px[j+1]*.587+px[j+2]*.114);v[i]=a;if(a>8){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}}
-  if(x1<0){toast('The active layer is empty, so there is nothing to make a tip from.');return;}
+/* ---- making a brush tip from pixels (like Photoshop's Define Brush Preset): dark is paint, transparent is nothing ---- */
+function addCustomTip(name,W,H,v){let x0=W,y0=H,x1=-1,y1=-1;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(v[y*W+x]>8){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
+  if(x1<0)return null;
   const w=x1-x0+1,h=y1-y0+1,a=new Uint8Array(w*h);for(let y=0;y<h;y++)a.set(v.subarray((y0+y)*W+x0,(y0+y)*W+x0+w),y*w);
-  const t=makeTip(L.name+' tip',w,h,a);let set=library.find(s=>s.id==='custom');if(!set){set={id:'custom',name:'Custom tips',presets:[],tips:[]};library.push(set);}
-  const p=Object.assign({},BRUSH_DEFAULTS,{name:L.name+' tip',tool:'brush',tip:t,size:clamp(Math.max(w,h),4,500),spacing:.2,pSize:true,minSize:.3});
-  set.presets.push(p);set.tips.push(t);saveSet(set);applyPreset(p);
-  toast('Made a brush tip from “'+L.name+'” using its '+(useAlpha?'transparency':'dark areas')+'.');}
+  const t=makeTip(name,w,h,a);let set=library.find(s=>s.id==='custom');if(!set){set={id:'custom',name:'Custom tips',presets:[],tips:[]};library.push(set);}
+  const p=Object.assign({},BRUSH_DEFAULTS,{name,tool:'brush',tip:t,size:clamp(Math.max(w,h),4,500),spacing:.2,pSize:true,minSize:.3});
+  set.presets.push(p);set.tips.push(t);saveSet(set);applyPreset(p);return p;}
+/* what becomes the tip: the visible canvas (or the active layer), only inside the selection when there is one */
+function tipAlpha(src){const W=doc.w,H=doc.h;let t=null,own=false;
+  if(src==='layer'){const L=needLayer();if(!L)return null;t=mapT(L,'base');}else{t=compositeMap('base');own=true;}
+  const px=toStraight(readPremult(t),8);if(own)release(t);
+  const cov=sel.active&&!sel.quick?captureSel(sel.t,[0,0,W,H]).data:null,v=new Uint8Array(W*H);
+  /* mostly see-through (strokes on a transparent layer): the shape is what's painted, whatever its colour */
+  let trans=0;for(let i=3;i<px.length;i+=4)if(px[i]<250)trans++;const useAlpha=trans>W*H*.01;
+  for(let i=0;i<W*H;i++){const j=i*4;let a=useAlpha?px[j+3]:255-(px[j]*.299+px[j+1]*.587+px[j+2]*.114);if(cov)a=a*cov[i]/255;v[i]=Math.round(a);}
+  return v;}
+function tipFromCanvas(src,name){src=src||'canvas';const v=tipAlpha(src);if(!v)return null;
+  const p=addCustomTip(name||(doc.name||'Canvas')+' tip',doc.w,doc.h,v);
+  if(!p){toast(sel.active?'The selection has no dark pixels, so there is nothing to make a tip from.':'There are no dark pixels, so there is nothing to make a tip from. Paint in black (or a dark colour) where the brush should paint.');return null;}
+  toast('Made the brush “'+p.name+'”. It is in Custom tips.');return p;}
+function dlgMakeTip(){let src='canvas';const name=el('input',{type:'text',value:(doc.brushTpl?'Brush':(doc.name||'Canvas'))+' tip','aria-label':'Name'});
+  const seg=el('div',{class:'chips'});const draw=()=>seg.replaceChildren(...[['canvas','Visible canvas'],['layer','Active layer']].map(([k,l])=>el('button',{class:'chip'+(src===k?' on':''),text:l,onclick:()=>{src=k;draw();}})));draw();
+  const body=el('div',{class:'dlg-grid'},el('label',{class:'sub',text:'Name'}),name,el('div',{class:'sub',text:'From'}),seg,
+    el('p',{class:'note',text:'Dark paints and white does not (like Photoshop). On a see-through layer, whatever is painted becomes the tip. '+(sel.active&&!sel.quick?'Only the selection is used.':'Select an area first to use just that part.')}));
+  openDialog({title:'Make brush tip',body,okLabel:'Make brush',onOk(){return tipFromCanvas(src,name.value.trim()||'Brush tip')?undefined:false;}});setTimeout(()=>{name.focus();name.select();},0);}
+function tipFromLayer(){return tipFromCanvas('layer',(doc.active?doc.active.name:'Layer')+' tip');}
 $('#abrBtn').addEventListener('click',()=>pickFile('abr'));
-$('#tipBtn').addEventListener('click',tipFromLayer);
+$('#tipBtn').addEventListener('click',dlgMakeTip);

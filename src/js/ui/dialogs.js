@@ -52,13 +52,19 @@ function dlgImageSize(){const f=sizeFields(doc.w,doc.h,true);
 function dlgNew(){const f=sizeFields(1024,1024,false);let depth=doc.depth,bgMode='white',tile=false,tpl='hand';
   const seg=(opts,cur,set)=>{const w=el('div',{class:'chips'});const draw=()=>{w.replaceChildren(...opts.map(([v,l,dis])=>el('button',{class:'chip'+(v===cur()?' on':''),disabled:!!dis,title:dis?'This GPU cannot render 16-bit float textures':null,text:l,onclick:()=>{set(v);draw();}})));};draw();return w;};
   const tileChk=chk('dTile','Seamless tile mode',false,v=>{tile=v;});
-  const TPL_NOTES={hand:'Base colour only.',pbr:'Base colour, roughness, metallic, height and normal.',custom:'Choose the maps after creating.'};const tplNote=el('p',{class:'note',text:TPL_NOTES.hand});
+  const TPL_NOTES={brush:'A black-and-white canvas for drawing a brush tip: paint in black, then press Make brush.',hand:'Base colour only.',pbr:'Base colour, roughness, metallic, height and normal.',custom:'Choose the maps after creating.'};const tplNote=el('p',{class:'note',text:TPL_NOTES.hand});
   const body=el('div',{class:'dlg-grid'},f.row,f.presets,
-    el('div',{class:'sub',text:'Template'}),seg([['hand','Hand-painted'],['pbr','PBR'],['custom','Custom…']],()=>tpl,v=>{tpl=v;tplNote.textContent=TPL_NOTES[v];}),tplNote,
+    el('div',{class:'sub',text:'Template'}),seg([['hand','Hand-painted'],['pbr','PBR'],['brush','Brush tip'],['custom','Custom…']],()=>tpl,v=>{tpl=v;tplNote.textContent=TPL_NOTES[v];if(v==='brush'){$('#dW').value=512;$('#dH').value=512;}}),tplNote,
     el('div',{class:'sub',text:'Bit depth'}),seg([[8,'8-bit'],[16,'16-bit float',!canFloat]],()=>depth,v=>{depth=v;}),
     el('div',{class:'sub',text:'Background'}),seg([['white','White'],['fg','Foreground color'],['clear','Transparent']],()=>bgMode,v=>{bgMode=v;}),
     tileChk);
-  openDialog({title:'New document',body,okLabel:'Create',onOk(){const r=f.read();if(!r)return false;const bg=bgMode==='white'?[1,1,1]:bgMode==='fg'?ui.fg.slice():null;newDoc(r[0],r[1],depth,bg,'Untitled',tile,tpl==='custom'?'hand':tpl);if(tpl==='custom')setTimeout(dlgMaps,0);}});}
+  openDialog({title:'New document',body,okLabel:'Create',onOk(){const r=f.read();if(!r)return false;const bg=bgMode==='white'?[1,1,1]:bgMode==='fg'?ui.fg.slice():null;if(tpl==='brush'){newBrushDoc(r[0],r[1]);return;}newDoc(r[0],r[1],depth,bg,'Untitled',tile,tpl==='custom'?'hand':tpl);if(tpl==='custom')setTimeout(dlgMaps,0);}});}
+/* the brush-tip template: white, 8-bit, black brush, and a banner with Make brush */
+function newBrushDoc(w,h){newDoc(w||512,h||512,8,[1,1,1],'Brush tip',false,'hand');doc.brushTpl=true;ui.bg=[1,1,1];setFG([0,0,0]);setTool('brush');tipBanner();}
+let tipBan=null;
+function tipBanner(){const on=!!(doc.brushTpl&&ui.mode==='paint');if(!tipBan){if(!on)return;tipBan=el('div',{id:'tipBanner',class:'banner',role:'status'});stage.append(tipBan);}
+  tipBan.hidden=!on;if(on)tipBan.replaceChildren(el('b',{text:'Brush tip'}),document.createTextNode(' · paint in black, grey is partly see-through · '),
+    el('button',{class:'btn sm primary',text:'Make brush',onclick:dlgMakeTip}),el('button',{class:'btn sm',text:'Clear',onclick:()=>{const L=paintLayers()[0];if(L){selectOnly(L);renderLayers();}if(sel.active)actions.deselect();const f=ui.fg;ui.fg=[1,1,1];try{fillLayer();}finally{ui.fg=f;}}}));}
 const FORMATS=[['png','PNG'],['tga','TGA'],['dds','DDS'],['tif','TIFF'],['exr','EXR'],['jpg','JPG'],['webp','WebP']];
 const exp={fmt:'png',png16:false,tgaRle:true,tgaAlpha:true,dds:'bc3',mips:true,tif16:false,q:.92,src:'image'};
 const isPOT=n=>n>0&&(n&(n-1))===0;

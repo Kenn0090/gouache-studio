@@ -67,5 +67,24 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(th.a==='#3399ff'&&th.saved==='custom','custom theme saved '+JSON.stringify(th));
  await p.screenshot({path:OUT+'f14-theme-custom.png'});
  await p.evaluate(()=>__gs.act('prefs'));await W(300);await p.click('.themeseg button:has-text("Dark")');await p.click('#dlgOk');await W(200);
+
+ // ---- brush tip template and Make tip ----
+ await p.evaluate(()=>__gs.act('new'));await W(300);await p.click('#dlgBody .chip:text("Brush tip")');await W(100);
+ ok(await p.inputValue('#dW')==='512','brush template picks 512');await p.click('#dlgOk');await W(500);
+ let bt=await p.evaluate(()=>({tpl:__gs.doc.brushTpl,w:__gs.doc.w,fg:[...__gs.ui.fg],ban:!document.querySelector('#tipBanner').hidden}));
+ ok(bt.tpl&&bt.w===512&&bt.fg.join()==='0,0,0'&&bt.ban,'brush tip canvas: white, black brush, banner '+JSON.stringify(bt));
+ await p.screenshot({path:OUT+'f14-tipdoc.png'});
+ await p.evaluate(()=>Object.assign(__gs.brush,{size:60,hardness:1,flow:1,opacity:1,spacing:.1,tip:null,smoothing:0}));
+ await drag(150,256,360,256);await drag(256,150,256,360);
+ await p.click('#tipBanner button:text("Make brush")');await W(300);await p.fill('#dlgBody input[type=text]','Cross');await p.click('#dlgOk');await W(500);
+ let tp=await p.evaluate(()=>({tip:__gs.brush.tip&&{w:__gs.brush.tip.w,h:__gs.brush.tip.h,name:__gs.brush.tip.name}}));
+ ok(tp.tip&&tp.tip.name==='Cross'&&Math.abs(tp.tip.w-270)<20&&Math.abs(tp.tip.h-270)<20,'Make brush: a tip the size of the drawing '+JSON.stringify(tp));
+ // only the selection
+ await p.evaluate(()=>{__gs.setTool('marquee');});await drag(140,226,200,286);console.log('sel',await p.evaluate(()=>({a:__gs.sel.active,t:__gs.ui.tool,modal:!document.querySelector('#modal').hidden})));await p.evaluate(()=>__gs.setTool('brush'));
+ await p.evaluate(()=>__gs.act('makeTip'));await W(300);await p.click('#dlgOk');await W(400);
+ tp=await p.evaluate(()=>({w:__gs.brush.tip.w,h:__gs.brush.tip.h}));ok(tp.w<=62&&tp.h<=62,'Make tip uses only the selection '+JSON.stringify(tp));
+ await p.evaluate(()=>__gs.act('deselect'));
+ await p.click('#tipBanner button:text("Clear")');await W(300);const cl=await px(256,256);ok(cl[0]>250,'Clear makes the canvas white again '+cl);
+ await p.click('#modeTabs [data-mode=convert]');await W(500);ok(await p.evaluate(()=>document.querySelector('#tipBanner').hidden),'banner only in Paint');await p.click('#modeTabs [data-mode=paint]');await W(300);
  ok(!errs.length,'no errors '+errs.join('\n'));
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();})();

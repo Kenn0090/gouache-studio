@@ -387,10 +387,10 @@ canvas.fxthumb{background:#2a2d33 url("data:image/svg+xml,%3Csvg xmlns='http://w
 #xfOv .cgo{fill:none;stroke:rgba(255,255,255,.55);stroke-width:1;stroke-dasharray:5 4;filter:drop-shadow(0 0 1px #000)}
 #xfOv .cgf{fill:none;stroke:var(--accent);stroke-width:1.2;stroke-dasharray:6 4}
 #xfOv .sym{fill:none;stroke:#6ec6ff;stroke-width:1;stroke-dasharray:3 4;opacity:.85}
-#cageBanner{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:6;background:color-mix(in srgb,var(--ground) 92%,transparent);border:1px solid var(--accent);border-radius:8px;padding:6px 8px 6px 12px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:4px;pointer-events:auto;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden}
-#cageBanner[hidden]{display:none}
-#cageBanner b{color:var(--text)}
-#cageBanner .btn{margin-left:8px}
+#cageBanner,#tipBanner{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:6;background:color-mix(in srgb,var(--ground) 92%,transparent);border:1px solid var(--accent);border-radius:8px;padding:6px 8px 6px 12px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:4px;pointer-events:auto;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden}
+#cageBanner[hidden],#tipBanner[hidden]{display:none}
+#cageBanner b,#tipBanner b{color:var(--text)}
+#cageBanner .btn,#tipBanner .btn{margin-left:8px}
 .hint2{font-size:11px;color:var(--faint);line-height:1.45;margin:2px 0 6px}
 .row.wrap{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}
 
