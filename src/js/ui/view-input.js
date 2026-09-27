@@ -15,12 +15,26 @@ function refreshCursor(){if(!lastPos){bc.hidden=true;return;}const paint=['brush
   if(!paint){bc.hidden=true;return;}const d=Math.max(3,brush.size*view.zoom);bc.hidden=false;bc.style.width=d+'px';bc.style.height=d+'px';bc.style.transform='translate('+(lastPos[0]-d/2)+'px,'+(lastPos[1]-d/2)+'px)';}
 function pressureOf(e){return e.pointerType==='pen'?Math.max(.02,e.pressure||0):1;}
 function showPressure(e){const pb=$('#pBar'),pv=$('#pVal');if(e.pointerType==='pen'){pb.style.width=Math.round((e.pressure||0)*100)+'%';pv.textContent=(e.pressure||0).toFixed(2)+' pen';}else{pb.style.width=(e.buttons?100:0)+'%';pv.textContent=e.pointerType==='touch'?'touch':'mouse';}}
+/* brush settings for a stroke on edit target et (null, with a message, if it can't be painted) */
+function paintOpts(et){
+  if(et===false)return null;
+  if(!et){toast(doc.active&&doc.active.fx?'This is a filter layer: it has no pixels to paint on. Double-click its thumbnail to change its filters, or select a normal layer.':doc.active?'A group is selected. Select a layer inside it, or click the group’s mask thumbnail to paint its mask.':'Select a layer to paint on.');return null;}
+  if(et.node&&!effVisible(et.node)&&!ui.viewMask){toast('The active layer (or its group) is hidden. Show it to paint on it.');return null;}
+  if(preview){toast('Apply or cancel the open filter first.');return null;}
+  if(!et.isMask&&et.node&&(et.node.text||et.node.grad)){const g=!!et.node.grad;rasterizeText(et.node);toast(g?'Gradient converted to pixels so you can paint on it. Undo brings the editable gradient back.':'Text converted to pixels so you can paint on it. Undo brings the editable text back.');}
+  const o=Object.assign({},brush,{tool:ui.tool,color:ui.fg.slice(),chan:!et.isMask&&chanRestricted()?chan.edit.slice():null,sel:selOn(et)});
+  if(o.tool==='dodge'||o.tool==='burn')Object.assign(o,{opacity:ui.tonalExposure,range:ui.tonalRange,protect:ui.tonalProtect});
+  if(et.isMask){const g=lum3(ui.fg);o.color=[g,g,g];if(o.tool==='erase'){o.tool='brush';o.color=(et.erase||[1,1,1]).slice();}}
+  o.extras=strokeExtras(o,et);
+  if(ui.tool!=='erase'&&(ui.tool==='brush'||brush.charge>0))pushRecent(ui.fg);
+  return o;}
 cv.addEventListener('pointerdown',e=>{
   if(ptr)return;closeMenu();const pan=e.button===1||spaceDown||ui.tool==='hand';if(!pan&&e.button!==0)return;
   e.preventDefault();cv.setPointerCapture(e.pointerId);showPressure(e);
   if(pan){ptr={mode:'pan',id:e.pointerId,sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y};stage.classList.add('panning');refreshCursor();return;}
   const [ix,iy]=toImage(e.clientX,e.clientY);
   if(ui.cageFlat&&!['brush','erase','smudge','dodge','burn','picker'].includes(ui.tool)&&!e.altKey){toast('Only painting works in the flat cage view. Press F to go back to the canvas.');return;}
+  if(ui.mode==='bake'&&!['brush','erase','picker','hand'].includes(ui.tool)&&!e.altKey){toast('In the Bake tab you can paint fixes with the Brush and Eraser. Switch to Paint for the other tools.');return;}
   if(ui.tool==='cage'){cagePointerDown(e,ix,iy);return;}
   if(selLive){toast('Apply or cancel the selection dialog first.');return;}
   if(xf&&!xf.move){xfPointerDown(e,ix,iy);return;}
@@ -35,15 +49,7 @@ cv.addEventListener('pointerdown',e=>{
     const hit=hitText(ix,iy);if(hit){selectOnly(hit);renderLayers();ptr={mode:'tmove',id:e.pointerId,L:hit,sx:ix,sy:iy,ox:hit.text.x,oy:hit.text.y,moved:false};return;}
     if(!effVisible(doc.active||doc.root)&&doc.active){}createText(ix,iy);return;}
   if(ui.tool==='picker'||e.altKey){ptr={mode:'pick',id:e.pointerId};const q=ui.cageFlat?cageFwd(ix,iy):[ix,iy];pickAt(q[0],q[1]);return;}
-  const et=editTarget();if(!et){toast(doc.active&&doc.active.fx?'This is a filter layer: it has no pixels to paint on. Double-click its thumbnail to change its filters, or select a normal layer.':doc.active?'A group is selected. Select a layer inside it, or click the group’s mask thumbnail to paint its mask.':'Select a layer to paint on.');return;}
-  if(!effVisible(et.node)&&!ui.viewMask){toast('The active layer (or its group) is hidden. Show it to paint on it.');return;}
-  if(preview){toast('Apply or cancel the open filter first.');return;}
-  if(!et.isMask&&(et.node.text||et.node.grad)){const g=!!et.node.grad;rasterizeText(et.node);toast(g?'Gradient converted to pixels so you can paint on it. Undo brings the editable gradient back.':'Text converted to pixels so you can paint on it. Undo brings the editable text back.');}
-  const L=et.L,p=pressureOf(e);const o=Object.assign({},brush,{tool:ui.tool,color:ui.fg.slice(),chan:!et.isMask&&chanRestricted()?chan.edit.slice():null,sel:selOn(et)});
-  if(o.tool==='dodge'||o.tool==='burn')Object.assign(o,{opacity:ui.tonalExposure,range:ui.tonalRange,protect:ui.tonalProtect});
-  if(et.isMask){const g=lum3(ui.fg);o.color=[g,g,g];if(o.tool==='erase'){o.tool='brush';o.color=[1,1,1];}}
-  o.extras=strokeExtras(o,et);
-  if(ui.tool!=='erase'&&(ui.tool==='brush'||brush.charge>0))pushRecent(ui.fg);
+  const et=ui.mode==='bake'?bakeEditTarget():editTarget();const o=paintOpts(et);if(!o)return;const L=et.L,p=pressureOf(e);
   const cz=cageStrokeStart(o,ix,iy);if(cz===false)return;const sx=cz?cz.x:ix,sy=cz?cz.y:iy;o.sym=symFor(o);
   ptr={mode:'paint',id:e.pointerId,sx,sy,sp:p,rx:sx,ry:sy,cage:cz?cz.kind:null,ox:sx,oy:sy,lock:null};beginStroke(L,sx,sy,p,o);
 });
@@ -62,7 +68,7 @@ cv.addEventListener('pointermove',e=>{
   if(ptr.mode==='pick'){const l=list[list.length-1];let q=toImage(l.clientX,l.clientY);if(ui.cageFlat)q=cageFwd(q[0],q[1]);pickAt(q[0],q[1]);return;}
   const k=1-brush.smoothing*.93;
   for(const ev of list){let [ix,iy]=toImage(ev.clientX,ev.clientY);const p=pressureOf(ev);
-    if(ptr.cage==='bend'&&stroke&&stroke.cage){const m=cageInv(stroke.cage.C,ix,iy);if(!m){ptr.gap=true;continue;}ix=m.x;iy=m.y;stroke.rs=1/Math.max(m.s,1e-3);
+    if(ptr.cage==='bend'&&stroke&&stroke.space){const m=cageInv(stroke.space.C,ix,iy);if(!m){ptr.gap=true;continue;}ix=m.x;iy=m.y;stroke.rs=1/Math.max(m.s,1e-3);
       if(ptr.gap){ptr.gap=false;ptr.sx=ptr.rx=ix;ptr.sy=ptr.ry=iy;ptr.sp=p;strokeJump(ix,iy,p);continue;}}
     /* Shift inside a cage: follow the cage's grid lines (straight in flat space, so the stroke curves with the cage) */
     if(ptr.cage&&ev.shiftKey){if(!ptr.lock){const dx=ix-ptr.ox,dy=iy-ptr.oy;if(Math.hypot(dx,dy)>4)ptr.lock=Math.abs(dx)>=Math.abs(dy)?'u':'v';}if(ptr.lock==='u')iy=ptr.oy;else if(ptr.lock==='v')ix=ptr.ox;else continue;}
@@ -103,7 +109,7 @@ window.addEventListener('keydown',e=>{
   if(tools[k]){setTool(tools[k]);return;}
   if(k==='['||k===']'){brush.size=clamp(Math.round(brush.size*(k===']'?1.15:1/1.15)+(k===']'?1:-1)),1,500);if(sizeSlider)sizeSlider.set(brush.size);refreshCursor();schedulePreview();return;}
   if(k==='x'){swapColors();return;}if(k==='d'){ui.bg=[1,1,1];setFG([0,0,0]);return;}if(k==='t'){if(e.shiftKey)toggleTile();else setTool('text');return;}
-  if(k==='delete'||k==='backspace'){e.preventDefault();e.altKey?fillLayer():clearLayer();}
+  if((k==='delete'||k==='backspace')&&ui.mode!=='bake'){e.preventDefault();e.altKey?fillLayer():clearLayer();}
 });
 window.addEventListener('keyup',e=>{if(e.code==='Space'){spaceDown=false;if(ui.tool!=='hand')stage.classList.remove('grab');refreshCursor();}});
 window.addEventListener('blur',()=>{spaceDown=false;stage.classList.toggle('grab',ui.tool==='hand');});

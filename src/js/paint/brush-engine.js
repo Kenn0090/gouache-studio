@@ -9,10 +9,11 @@ function spacingAt(p){return Math.max(.5,stroke.o.spacing*2*radiusAt(p));}
 function beginStroke(L,x,y,p,o){
   const W=doc.w,H=doc.h;blit(L.target,beforeT,0,0,W,H,0,0);
   if(o.tool!=='smudge')clearTarget(strokeT);
-  const cg=o.tool!=='smudge'&&o.cage?o.cage:null;if(cg)clearTarget(cageStrokeTarget(cg.C));
-  const SW=cg?cg.C.fw:W,SH=cg?cg.C.fh:H;
+  /* o.space: the stroke is stamped somewhere else (a cage's flat space, the screen over the 3D model) and drawn into strokeT by space.sync() */
+  const cg=o.tool!=='smudge'&&o.space?o.space:null;if(cg)clearTarget(cg.buf);
+  const SW=cg?cg.w:W,SH=cg?cg.h:H;
   const gx=Math.max(1,Math.round(W/6)),gy=Math.max(1,Math.round(H/6));
-  stroke={L,o,x,y,p,lsx:x,lsy:y,dir:0,carry:0,bb:[W,H,0,0],gScale:[W/gx,H/gy],gPeriod:[gx,gy],cage:cg,rs:cg?(o.cageRs||1):1,SW,SH,sym:o.sym||null};
+  stroke={L,o,x,y,p,lsx:x,lsy:y,dir:0,carry:0,bb:[W,H,0,0],gScale:[W/gx,H/gy],gPeriod:[gx,gy],space:cg,rs:cg?(o.cageRs||1):1,SW,SH,sym:o.sym||null};
   /* other maps painted by the same stroke: make sure the layer has an image there; with Lock alpha they follow the base colour's shape */
   if(o.extras&&o.extras.length){for(const e of o.extras)ensureMapTarget(L,e.key);
     if(L.lockAlpha){const lt=acquireD(doc.depth);run(P.lockcov,lt,Object.assign({uA:mapT(L,'base').tex},selU(o)));stroke.lockT=lt;stroke.exU={uSelTex:lt.tex,uUseSel:true};}
@@ -31,13 +32,13 @@ function stamp(x,y,p){
     const fx=(o.flipX?-1:1)*(o.randFlipX&&Math.random()<.5?-1:1),fy=(o.flipY?-1:1)*(o.randFlipY&&Math.random()<.5?-1:1);
     for(const c of symCopies(s.sym,s.SW,s.SH,px,py,ang,fx,fy,dx,dy))stampOne(c[0],c[1],r,a,c[2],c[3],c[4],c[5],c[6]);
   }
-  if(s.cage)s.cageDirty=true;
+  if(s.space)s.spaceDirty=true;
 }
 /* continue a stroke from a new place without painting the gap between (a stroke that left the cage and came back) */
 function strokeJump(x,y,p){const s=stroke;if(!s)return;s.x=x;s.y=y;s.p=p;s.lsx=x;s.lsy=y;stamp(x,y,p);s.carry=spacingAt(p);requestRender(true);}
 function stampOne(x,y,r,a,ang,fx,fy,dx,dy){
   const s=stroke,o=s.o,W=s.SW||doc.w,H=s.SH||doc.h,tip=o.tip&&o.tip.tex?o.tip:null,ext=r*(tip?1.4143:1)+2;const copies=[];
-  if(doc.wrap&&!s.cage){const cx0=mod(x,W),cy0=mod(y,H);for(const ox of [-W,0,W])for(const oy of [-H,0,H]){const cx=cx0+ox,cy=cy0+oy;if(cx+ext<0||cx-ext>W||cy+ext<0||cy-ext>H)continue;copies.push([cx,cy]);}}
+  if(doc.wrap&&!s.space){const cx0=mod(x,W),cy0=mod(y,H);for(const ox of [-W,0,W])for(const oy of [-H,0,H]){const cx=cx0+ox,cy=cy0+oy;if(cx+ext<0||cx-ext>W||cy+ext<0||cy-ext>H)continue;copies.push([cx,cy]);}}
   else if(!(x+ext<0||x-ext>W||y+ext<0||y-ext>H))copies.push([x,y]);
   if(!copies.length)return;
   const U={uRadius:r,uExtent:ext,uSize:[W,H],uHard:o.hardness,uGrain:o.grain,uGrainScale:s.gScale,uPeriod:s.gPeriod,
@@ -47,7 +48,7 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy){
     else{const x0=clamp(Math.floor(Math.min(x,x-dx)-ext-4),0,W),y0=clamp(Math.floor(Math.min(y,y-dy)-ext-4),0,H),x1=clamp(Math.ceil(Math.max(x,x-dx)+ext+4),0,W),y1=clamp(Math.ceil(Math.max(y,y-dy)+ext+4),0,H);if(x1>x0&&y1>y0)blit(s.L.target,scratchT,x0,y0,x1-x0,y1-y0,x0,y0);}
     for(const c of copies)run(P.smudge,s.L.target,Object.assign({},U,{uCenter:c,uSrc:scratchT.tex,uDelta:[dx,dy],uAlpha:a,uStrength:o.strength,uCharge:o.charge,uColor:o.color,uLockAlpha:s.L.lockAlpha},chanU(o),selU(o)));
   } else {
-    for(const c of copies)run(P.stamp,s.cage?cageST:strokeT,Object.assign({},U,{uCenter:c,uAlpha:a}),{blend:o.buildup?'over':'max'});
+    for(const c of copies)run(P.stamp,s.space?s.space.buf:strokeT,Object.assign({},U,{uCenter:c,uAlpha:a}),{blend:o.buildup?'over':'max'});
   }
   for(const [cx,cy] of copies){const b=s.bb;b[0]=Math.min(b[0],cx-ext-1);b[1]=Math.min(b[1],cy-ext-1);b[2]=Math.max(b[2],cx+ext+1);b[3]=Math.max(b[3],cy+ext+1);}
 }
@@ -61,7 +62,7 @@ function addPoint(x,y,p){
 }
 function endStroke(record){
   const s=stroke;if(!s)return;const L=s.L,W=doc.w,H=doc.h;
-  if(s.cage){cageSyncStroke();const b=cageBBox(s.cage.C);s.bb=doc.wrap?[0,0,W,H]:[b[0]-2,b[1]-2,b[2]+2,b[3]+2];}
+  if(s.space){s.spaceDirty=false;s.space.sync();const b=s.space.bbox(s);s.bb=doc.wrap?[0,0,W,H]:[b[0]-2,b[1]-2,b[2]+2,b[3]+2];}
   if(s.o.tool!=='smudge')run(P.merge,L.target,{uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(s.o)},...tonalU(s.o),uStrokeColor:s.o.color,uStrokeOpacity:s.o.opacity,uLockAlpha:L.lockAlpha,...chanU(s.o),...selU(s.o)});
   const x0=clamp(Math.floor(s.bb[0]),0,W),y0=clamp(Math.floor(s.bb[1]),0,H),x1=clamp(Math.ceil(s.bb[2]),0,W),y1=clamp(Math.ceil(s.bb[3]),0,H),bw=x1-x0,bh=y1-y0;
   /* the same stroke merged into each other enabled map */
@@ -74,6 +75,7 @@ function endStroke(record){
   stroke=null;
   if(record){
     if(bw>0&&bh>0){const r=regionRecord(L,captureRegion(beforeT,x0,y0,bw,bh),captureRegion(L.target,x0,y0,bw,bh),x0,y0,bw,bh,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?'Blend':s.o.tool==='dodge'?'Dodge':s.o.tool==='burn'?'Burn':'Brush stroke');
+      if(L.onRecord)L.onRecord(r,[x0,y0,bw,bh]);
       pushUndo(parts.length?withMapParts(r,L,parts,x0,y0):r);}
     scheduleThumb(L.maskOf||L);
   }

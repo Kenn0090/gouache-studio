@@ -42,6 +42,16 @@ The **Detail** menu at the top gives the model more triangles, from Low up to ×
 - **Pop out:** moves the 3D view into its own window, handy on a second monitor. **Dock** (or closing that window) brings it back.
 - **×** closes the 3D view.
 
+## Painting on the model
+Press **Paint** in the 3D view's toolbar, then paint on the model with the Brush, Eraser, Dodge or Burn.
+- The paint goes onto the active layer and the map you're editing, exactly as if you'd painted on the canvas. Other maps ticked under "Also paint", selections, masks, Lock alpha and undo all apply.
+- The brush is round on screen, and its size is in screen pixels. Paint only lands on parts of the model you can see, not on the back or behind other parts. It carries across UV seams without a break.
+- **Alt+drag** turns the model while Paint is on, **right-drag** moves it, and the **wheel** zooms.
+- In the Bake tab, the same brush paints the skew and offset maps (see [Baker](Baker.md)).
+
+![Painting on the model.](images/paint-on-model.png)
+*Painting straight onto the model. The stroke lands in the layer on the canvas too.*
+
 ## Camera
 - **Drag:** orbit.
 - **Right-drag**, middle-drag or **Shift+drag:** pan.

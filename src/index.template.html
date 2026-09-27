@@ -11,7 +11,7 @@
     <nav class="menus" id="menus" aria-label="Main menu"></nav>
     <div class="bar-r">
       <span id="docName"></span>
-      <select id="modeSel" aria-label="Workspace" title="Workspace: Paint or Animation"><option value="paint">Paint</option><option value="anim">Animation</option></select>
+      <div class="tabs" id="modeTabs" role="tablist" aria-label="Workspace"><button role="tab" data-mode="paint" aria-selected="true" title="Paint your textures">Paint</button><button role="tab" data-mode="anim" aria-selected="false" title="Flipbooks and sprite sheets">Animation</button><button role="tab" data-mode="bake" aria-selected="false" title="Bake maps from a high-poly model and fix the bake">Bake</button></div>
       <button class="toggle" id="tileBtn" aria-pressed="false" title="Seamless tile mode (Shift+T): wraps brush strokes and shows a 3&times;3 repeat"><i></i>Tile mode</button>
     </div>
   </header>
@@ -42,6 +42,10 @@
   <section id="timeline" aria-label="Animation timeline"></section>
 
   <aside class="panel" aria-label="Panels">
+    <section class="sec" id="bakeSec" aria-labelledby="hBake">
+      <div class="sec-h" id="hBake"><span>Bake</span></div>
+      <div id="bakeBody" class="dlg-grid"></div>
+    </section>
     <section class="sec" aria-labelledby="hColor">
       <div class="sec-h" id="hColor"><span>Color</span></div>
       <canvas id="sv" aria-label="Saturation and value"></canvas>

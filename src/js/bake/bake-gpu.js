@@ -67,12 +67,20 @@ vec3 bkHemi(vec3 n,vec2 r){ float ph=6.2831853*r.x,ct=sqrt(1.0-r.y),stt=sqrt(r.y
 const BK_VS_UV=`#version 300 es
 layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec2 aT; layout(location=3) in vec4 aTan; layout(location=4) in vec3 aR; layout(location=5) in float aPart; layout(location=6) in float aCurv;
 uniform vec2 uFull; uniform vec4 uTile;
-out vec3 vP; out vec3 vN; out vec4 vTan; out vec3 vR; flat out float vPart; out float vCurv;
-void main(){ vec2 px=aT*uFull; vec2 c=(px-uTile.xy)/uTile.zw*2.0-1.0; gl_Position=vec4(c,0.0,1.0); vP=aP; vN=aN; vTan=aTan; vR=aR; vPart=aPart; vCurv=aCurv; }`;
+out vec3 vP; out vec3 vN; out vec4 vTan; out vec3 vR; flat out float vPart; out float vCurv; out vec2 vT;
+void main(){ vec2 px=aT*uFull; vec2 c=(px-uTile.xy)/uTile.zw*2.0-1.0; gl_Position=vec4(c,0.0,1.0); vP=aP; vN=aN; vTan=aTan; vR=aR; vPart=aPart; vCurv=aCurv; vT=aT; }`;
 const BK_FS_UV=`#version 300 es
-precision highp float; in vec3 vP; in vec3 vN; in vec4 vTan; in vec3 vR; flat in float vPart; in float vCurv; uniform int uCage;
+precision highp float; in vec3 vP; in vec3 vN; in vec4 vTan; in vec3 vR; flat in float vPart; in float vCurv; in vec2 vT; uniform int uCage;
+uniform sampler2D uSkew; uniform sampler2D uOffs; uniform int uUseSkew; uniform int uUseOff;
 layout(location=0) out vec4 oP; layout(location=1) out vec4 oN; layout(location=2) out vec4 oT; layout(location=3) out vec4 oR;
-void main(){ oP=vec4(vP,1.0); oN=vec4(normalize(vN),vPart); oT=vTan; oR=uCage==1?vec4(vR,vCurv):vec4(normalize(vR),vCurv); }`;
+/* skew map: white keeps the averaged (cage) ray direction, black shoots straight out of the face.
+   offset map: grey keeps the front/back distances, white doubles them, black shrinks them to nothing.
+   The offset factor rides in oP.w (1 + factor; 0 still means "no surface here"). */
+void main(){ vec3 n=normalize(vN); vec3 fn=cross(dFdx(vP),dFdy(vP)); fn=dot(fn,fn)>1e-20?normalize(fn):n; if(dot(fn,n)<0.0) fn=-fn;
+  float sk=uUseSkew==1?clamp(texture(uSkew,vT).r,0.0,1.0):1.0, of=uUseOff==1?clamp(texture(uOffs,vT).r,0.0,1.0)*2.0:1.0;
+  oP=vec4(vP,1.0+of); oN=vec4(n,vPart); oT=vTan;
+  if(uCage==1){ vec3 d=vR-vP; float l=length(d); vec3 dc=l>1e-7?d/l:fn; oR=vec4(vP+normalize(mix(fn,dc,sk))*l,vCurv); }
+  else oR=vec4(normalize(mix(fn,normalize(vR),sk)),vCurv); }`;
 /* 2. the ray from the cage to the high-poly */
 const BK_FS_HIT=BK_TRACE+`uniform sampler2D uGP; uniform sampler2D uGR; uniform sampler2D uGN; uniform float uFront; uniform float uBack; uniform int uSelf; uniform int uCage; uniform int uMatch;
 layout(location=0) out vec4 oH; layout(location=1) out vec4 oHN;
@@ -81,9 +89,9 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 P=texelFetch(uGP,p,0); if(P.w<
   if(uSelf==1){ oH=vec4(P.xyz,1.0); oHN=vec4(0,0,0,0); return; }
   if(uMatch==1) bkPart=int(texelFetch(uGN,p,0).w+0.5);
   /* the ray starts on the cage (a loaded cage mesh, or the surface pushed out by the front distance) */
-  vec3 org,dir; float len,front;
-  if(uCage==1){ vec3 v=P.xyz-R; front=length(v); dir=front>1e-6?v/front:-normalize(texelFetch(uGN,p,0).xyz); org=R; len=front+uBack; }
-  else { dir=-R; org=P.xyz+R*uFront; front=uFront; len=uFront+uBack; }
+  vec3 org,dir; float len,front; float of=max(P.w-1.0,0.0);
+  if(uCage==1){ vec3 Rc=P.xyz+(R-P.xyz)*of; vec3 v=P.xyz-Rc; front=length(v); dir=front>1e-6?v/front:-normalize(texelFetch(uGN,p,0).xyz); org=Rc; len=front+uBack*of; }
+  else { dir=-R; front=uFront*of; org=P.xyz+R*front; len=front+uBack*of; }
   int t=bkTrace(org,dir,len,false,th,bc);
   if(t<0){ oH=vec4(P.xyz,0.5); oHN=vec4(0,0,0,0); return; }
   vec3 hp=org+dir*th; oH=vec4(hp,1.0); oHN=vec4(bkNrm(t,bc),front-th); o=vec4(float(t),bc,1.0); }`;
@@ -158,44 +166,50 @@ const nextTick=()=>new Promise(r=>setTimeout(r,0));
 async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.sizeH||o.size,SS=o.ss,FW=W*SS,FH=H*SS,TILE=Math.min(1024,Math.max(FW,FH));
   /* low-poly only: rays find the low-poly itself (a hair's breadth away), so AO, thickness, ID and the rest work the same */
   const self=false,solo=!high;if(solo){o=Object.assign({},o,{front:.003,back:.003,cage:null,average:false,match:false});low.vertCurv=meshCurvature(low);}
-  const hg=bkHighGPU(high||low,progress.step);if(progress.cancelled){bkFreeHigh(hg);return null;}
+  const hg=o.hg||bkHighGPU(high||low,progress.step);if(progress.cancelled){if(!o.hg)bkFreeHigh(hg);return null;}
   low.ray=o.cage?o.cage:bkRayDirs(low,o.average);const lg=bkLowGPU(low);
   const kinds=o.kinds.filter(k=>k!=='curv');const outDepth=canFloat?16:8;
-  const results={},acc={};for(const k of kinds)acc[k]=makeTarget(W,H,16,false);
+  /* o.acc: running sums kept from an earlier bake (re-bake part of it); o.rect: only this part (output pixels) */
+  const results={},acc=o.acc||{};for(const k of kinds)if(!acc[k]||acc[k].w!==W||acc[k].h!==H){if(acc[k])disposeTarget(acc[k]);acc[k]=makeTarget(W,H,16,false);}
+  const RR=o.rect?[Math.max(0,Math.floor(o.rect[0]))*SS,Math.max(0,Math.floor(o.rect[1]))*SS,Math.min(W,Math.ceil(o.rect[2]))*SS,Math.min(H,Math.ceil(o.rect[3]))*SS]:[0,0,FW,FH];
   const G=bkMRT(TILE,TILE,4),HB=bkMRT(TILE,TILE,3),OUT=bkMRT(TILE,TILE,1);
   let bmin=[1e9,1e9,1e9],bmax=[-1e9,-1e9,-1e9];const src=high||low;for(let i=0;i<src.pos.length;i+=3)for(let c=0;c<3;c++){bmin[c]=Math.min(bmin[c],src.pos[i+c]);bmax[c]=Math.max(bmax[c],src.pos[i+c]);}
   const bsize=bmin.map((v,c)=>Math.max(1e-6,bmax[c]-v));
-  const tiles=[];for(let y=0;y<FH;y+=TILE)for(let x=0;x<FW;x+=TILE)tiles.push([x,y,Math.min(TILE,FW-x),Math.min(TILE,FH-y)]);
+  const tiles=[];for(let y=0;y<FH;y+=TILE)for(let x=0;x<FW;x+=TILE){const t=[x,y,Math.min(TILE,FW-x),Math.min(TILE,FH-y)];if(t[0]<RR[2]&&t[0]+t[2]>RR[0]&&t[1]<RR[3]&&t[1]+t[3]>RR[1])tiles.push(t);}
   const heavy=kinds.filter(k=>k==='ao'||k==='thick').length,steps=tiles.length*(2+kinds.length+heavy*6);let done=0;const tick=async()=>{done++;progress.set(done/steps);await nextTick();};
   const SUB=o.rays>64?128:256;
   try{
   for(const [tx,ty,tw,th] of tiles){if(progress.cancelled)break;
+    /* the part of this tile to work on (tile coordinates) */
+    const lx0=Math.max(0,RR[0]-tx),ly0=Math.max(0,RR[1]-ty),lx1=Math.min(tw,RR[2]-tx),ly1=Math.min(th,RR[3]-ty);
     /* 1: surface points of this tile */
-    bkClear(G);gl.bindFramebuffer(gl.FRAMEBUFFER,G.fbo);gl.viewport(0,0,tw,th);useProg(P.uv,{uFull:[FW,FH],uTile:[tx,ty,tw,th],uCage:!!o.cage});
+    bkClear(G);gl.bindFramebuffer(gl.FRAMEBUFFER,G.fbo);gl.viewport(0,0,tw,th);useProg(P.uv,{uFull:[FW,FH],uTile:[tx,ty,tw,th],uCage:!!o.cage,uSkew:o.skew?o.skew.tex:dummy,uOffs:o.offset?o.offset.tex:dummy,uUseSkew:!!o.skew,uUseOff:!!o.offset});
     gl.disable(gl.CULL_FACE);gl.bindVertexArray(lg.vao);gl.drawElements(gl.TRIANGLES,lg.count,gl.UNSIGNED_INT,0);gl.bindVertexArray(vao);await tick();
     /* 2: rays to the high-poly, in small pieces */
     bkClear(HB);const hitU={uNodes:hg.nodes,uTris:hg.tris,uTN:hg.nrm,uTC:hg.col,uGP:G.tex[0],uGR:G.tex[3],uGN:G.tex[1],uFront:o.front,uBack:o.back,uSelf:self,uCage:!!o.cage,uMatch:!!o.match};
     gl.enable(gl.SCISSOR_TEST);
-    for(let sy=0;sy<th;sy+=256)for(let sx=0;sx<tw;sx+=256){gl.bindFramebuffer(gl.FRAMEBUFFER,HB.fbo);gl.viewport(0,0,tw,th);gl.scissor(sx,sy,Math.min(256,tw-sx),Math.min(256,th-sy));useProg(P.hit,hitU);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.flush();}
+    for(let sy=ly0;sy<ly1;sy+=256)for(let sx=lx0;sx<lx1;sx+=256){gl.bindFramebuffer(gl.FRAMEBUFFER,HB.fbo);gl.viewport(0,0,tw,th);gl.scissor(sx,sy,Math.min(256,lx1-sx),Math.min(256,ly1-sy));useProg(P.hit,hitU);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.flush();}
     gl.disable(gl.SCISSOR_TEST);await tick();
     /* 3: each map, then averaged into the final image */
     for(const k of kinds){if(progress.cancelled)break;const kind=BK_KINDS[k],rayed=k==='ao'||k==='thick',sub=rayed?SUB:Math.max(tw,th);
       gl.bindFramebuffer(gl.FRAMEBUFFER,OUT.fbo);gl.viewport(0,0,tw,th);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.enable(gl.SCISSOR_TEST);
       const U={uNodes:hg.nodes,uTris:hg.tris,uTN:hg.nrm,uTC:hg.col,uGR:G.tex[3],uGP:G.tex[0],uGN:G.tex[1],uGT:G.tex[2],uHP:HB.tex[0],uHN:HB.tex[1],uHT:HB.tex[2],uKind:{int:kind},uMatch:!!o.match,uFlipY:o.dx,uRange:Math.max(o.front,o.back),
         uBMin:bmin,uBSize:bsize,uRays:{int:k==='ao'?o.rays:Math.max(8,o.rays>>1)},uDist:k==='ao'?o.aoDist:o.thickDist,uSeed:o.seed||1.3,uSelf:self};
-      let n=0;for(let sy=0;sy<th;sy+=sub)for(let sx=0;sx<tw;sx+=sub){gl.bindFramebuffer(gl.FRAMEBUFFER,OUT.fbo);gl.viewport(0,0,tw,th);gl.scissor(sx,sy,Math.min(sub,tw-sx),Math.min(sub,th-sy));useProg(P.out,U);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.flush();
+      let n=0;for(let sy=ly0;sy<ly1;sy+=sub)for(let sx=lx0;sx<lx1;sx+=sub){gl.bindFramebuffer(gl.FRAMEBUFFER,OUT.fbo);gl.viewport(0,0,tw,th);gl.scissor(sx,sy,Math.min(sub,lx1-sx),Math.min(sub,ly1-sy));useProg(P.out,U);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.flush();
         if(rayed&&++n%4===0){await nextTick();if(progress.cancelled)break;}}
       gl.disable(gl.SCISSOR_TEST);
       /* average into the result: output pixels covered by this tile */
-      const ox=tx/SS,oy=ty/SS,ow=tw/SS,oh=th/SS;gl.enable(gl.SCISSOR_TEST);bindTarget(acc[k]);gl.scissor(ox,oy,ow,oh);
+      const ox=tx/SS,oy=ty/SS;gl.enable(gl.SCISSOR_TEST);bindTarget(acc[k]);gl.scissor(ox+lx0/SS,oy+ly0/SS,(lx1-lx0)/SS,(ly1-ly0)/SS);
       useProg(P.down,{uSrc:OUT.tex[0],uSS:{int:SS},uOff:[ox,oy]});gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.disable(gl.SCISSOR_TEST);
-      for(let i=0;i<(rayed?6:0);i++)await tick();await tick();}}
+      for(let i=0;i<(rayed?6:0);i++)await tick();await tick();}
+    if(o.onTile&&!progress.cancelled)o.onTile(acc,kinds);}
   if(progress.cancelled)return null;
   /* padding past the UV edges, then opaque results */
   progress.step('Padding the edges…');
-  for(const k of kinds){let a=acc[k],b=makeTarget(W,H,16,false);for(let i=0;i<o.pad;i++){run(P.dil,b,{uSrc:a.tex});const t=a;a=b;b=t;if(i%16===15)await nextTick();}
+  for(const k of kinds){let a=acc[k],b=makeTarget(W,H,16,false);const keep=!!o.acc;if(keep&&o.pad>0){run(P.dil,b,{uSrc:a.tex});a=b;b=makeTarget(W,H,16,false);}
+    for(let i=keep&&o.pad>0?1:0;i<o.pad;i++){run(P.dil,b,{uSrc:a.tex});const t=a;a=b;b=t;if(i%16===15)await nextTick();}
     const fin=makeTarget(W,H,k==='height'||k==='position'?16:outDepth,false);
     const empty=k==='normal'?[.5,.5,1,1]:k==='height'?[.5,.5,.5,1]:k==='ao'||k==='thick'?[1,1,1,1]:[0,0,0,1];
-    run(P.fin,fin,{uSrc:a.tex,uEmpty:empty});disposeTarget(a);disposeTarget(b);results[k]=fin;}
+    run(P.fin,fin,{uSrc:a.tex,uEmpty:empty});if(a!==acc[k])disposeTarget(a);if(b!==acc[k])disposeTarget(b);results[k]=fin;}
   return results;}
-  finally{for(const k in acc)if(!results[k]&&acc[k].tex)disposeTarget(acc[k]);bkFreeMRT(G);bkFreeMRT(HB);bkFreeMRT(OUT);bkFreeHigh(hg);bkFreeLow(lg);gl.bindVertexArray(vao);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}}
+  finally{if(!o.acc)for(const k in acc)if(acc[k].tex)disposeTarget(acc[k]);bkFreeMRT(G);bkFreeMRT(HB);bkFreeMRT(OUT);if(!o.hg)bkFreeHigh(hg);bkFreeLow(lg);gl.bindVertexArray(vao);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}}

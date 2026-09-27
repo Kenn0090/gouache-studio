@@ -67,7 +67,7 @@ function v3MapTex(k,src){let t=v3.tex[k];if(!t||t.w!==doc.w||t.h!==doc.h||t.dept
   if(anisoExt)gl.texParameterf(gl.TEXTURE_2D,anisoExt.TEXTURE_MAX_ANISOTROPY_EXT,8);return t;}
 const anisoExt=gl.getExtension('EXT_texture_filter_anisotropic');
 function v3Needed(){if(v3Unlit())return doc.maps.filter(k=>k==='base'||k==='ao');return doc.maps.filter(k=>k!=='normal'&&k!=='height').concat(doc.maps.includes('height')||doc.maps.includes('normal')?['nfinal']:[]);}
-function v3Refresh(){if(!v3.on||ui.mode==='anim'&&false)return;const now=performance.now(),full=v3.mapsDirty&&(!stroke||now-v3.lastFull>150);
+function v3Refresh(){if(!v3.on)return;if(ui.mode==='bake'){bakeV3Refresh();return;}const now=performance.now(),full=v3.mapsDirty&&(!stroke||now-v3.lastFull>150);
   const plain=doc.view===doc.map&&compOut&&ui.mode!=='anim';
   const one=k=>{if(k==='nfinal'){const t=normalComposite(false,null);v3MapTex(k,t);release(t);return;}
     if(k===doc.map&&plain){v3MapTex(k,compOut);return;}
@@ -87,7 +87,7 @@ function m4look(e,c,u){const z=norm3(sub3(e,c)),x=norm3(cross3(u,z)),y=cross3(z,
 function m4mul(a,b){const o=m4();for(let i=0;i<4;i++)for(let j=0;j<4;j++){let s=0;for(let k=0;k<4;k++)s+=a[k*4+i]*b[j*4+k];o[j*4+i]=s;}return o;}
 const sub3=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],dot3=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],cross3=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],norm3=a=>{const l=Math.hypot(...a)||1;return a.map(v=>v/l);};
 function v3Eye(){const c=v3.cam,cp=Math.cos(c.pitch);return [c.tx+Math.sin(c.yaw)*cp*c.dist,c.ty+Math.sin(c.pitch)*c.dist,c.tz+Math.cos(c.yaw)*cp*c.dist];}
-function v3Frame(){const r=v3.mesh?v3.mesh.radius:1.5,f=v3s().fov*Math.PI/180;Object.assign(v3.cam,{tx:0,ty:0,tz:0,dist:r/Math.sin(f/2)*1.08});
+function v3Frame(){const r=v3.mesh?v3.mesh.radius:1.5,pane=v3.pop?null:$('#pane3d'),asp=pane&&pane.clientHeight?Math.min(1,pane.clientWidth/pane.clientHeight):1,f=2*Math.atan(Math.tan(v3s().fov*Math.PI/360)*asp);Object.assign(v3.cam,{tx:0,ty:0,tz:0,dist:r/Math.sin(f/2)*1.08});
   if(v3s().model==='plane'||v3s().model==='dplane'){v3.cam.yaw=0;v3.cam.pitch=0;}v3.dirty=true;}
 
 /* ---- drawing ---- */
@@ -104,12 +104,12 @@ function v3Render(F,flip){const s=v3s(),g=v3.gpu;if(!g)return;
   gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);const bg=BG3[s.bg]||BG3.dark;gl.clearColor(bg[0],bg[1],bg[2],1);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
   const eye=v3Eye(),V=m4look(eye,[v3.cam.tx,v3.cam.ty,v3.cam.tz],[0,1,0]),Pm=m4persp(s.fov*Math.PI/180,F.w/F.h,.02,100);if(flip)Pm[5]=-Pm[5];const VP=m4mul(Pm,V);
-  const T=v3.tex,has=(T.rough?1:0)|(T.metal?2:0)|(T.nfinal?4:0)|(T.ao?8:0)|(T.emis?16:0)|(T.opac?64:0),ok=k=>T[k]&&(k==='nfinal'?doc.maps.includes('height')||doc.maps.includes('normal'):doc.maps.includes(k));
+  const bake=ui.mode==='bake'&&v3.btex,T=bake?v3.btex:v3.tex,ok=k=>T[k]&&(bake||(k==='nfinal'?doc.maps.includes('height')||doc.maps.includes('normal'):doc.maps.includes(k)));
   const hm=(ok('rough')?1:0)|(ok('metal')?2:0)|(ok('nfinal')?4:0)|(ok('ao')?8:0)|(ok('emis')?16:0)|(ok('opac')?64:0);
   const a=s.sunAz*Math.PI/180,e=s.sunEl*Math.PI/180,base=T.base||null;
-  const common={uVP:{m4:VP},uUVs:s.uvs,uH:T.height&&s.disp?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:!!(T.height&&s.disp&&doc.maps.includes('height'))};
+  const common={uVP:{m4:VP},uUVs:bake?1:s.uvs,uH:T.height&&s.disp?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:!!(!bake&&T.height&&s.disp&&doc.maps.includes('height'))};
   if(base){useProg(P3.mesh,Object.assign({},common,{uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:ok('metal')?T.metal.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,
-      uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:s.sunI,uSkyI:s.skyI,uExpo:s.expo,uUnlit:v3Unlit(),uFlipY:!!flip,uClip:!!s.clip}));
+      uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:s.sunI,uSkyI:s.skyI,uExpo:s.expo,uUnlit:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!!s.clip}));
     if(s.wire){gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);}
     gl.bindVertexArray(g.vao);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);gl.disable(gl.POLYGON_OFFSET_FILL);}
   if(s.wire){useProg(P3.line,Object.assign({},common,{uCol:[.95,.7,.35,1]}));gl.bindVertexArray(g.evao);gl.drawElements(gl.LINES,g.ecount,gl.UNSIGNED_INT,0);}
@@ -148,7 +148,10 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   const gear=el('button',{class:'btn sm',text:'Settings',id:'v3Gear','aria-expanded':'false'});
   const dock=el('button',{class:'btn sm',text:v3.pop?'Dock':'Pop out',id:'v3Pop',title:v3.pop?'Put the 3D view back beside the canvas':'Open the 3D view in its own window (for a second screen)'});dock.onclick=()=>pop3D(!v3.pop);
   const close=el('button',{class:'btn sm',text:'×',title:'Close the 3D view (F3)','aria-label':'Close the 3D view'});close.onclick=()=>toggle3D(false);
-  const bar=el('div',{class:'v3bar'},models,detSel,shade,tog('v3Wire','Wireframe','wire','Show the mesh edges'),tog('v3UV','UVs','showUV','Draw the model’s UV layout over your canvas'),tog('v3Spin','Turntable','spin','Spin the model slowly'),gear,dock,close);
+  const pbtn=el('button',{class:'btn sm'+(v3.paintOn?' on':''),id:'v3Paint',text:'Paint',title:'Paint on the model with the brush (Alt+drag turns it, right-drag moves it)','aria-pressed':String(v3.paintOn)});
+  pbtn.onclick=()=>{v3.paintOn=!v3.paintOn;pbtn.classList.toggle('on',v3.paintOn);pbtn.setAttribute('aria-pressed',String(v3.paintOn));if(v3.paintOn&&!MESH_TOOLS.includes(ui.tool))setTool('brush');refresh3dUI();};
+  const inBake=ui.mode==='bake',lowLab=inBake?el('span',{class:'v3lab',text:'Low-poly: '+bkLow().name,title:'Choose the low-poly in the Bake panel'}):null;
+  const bar=el('div',{class:'v3bar'},...(inBake?[lowLab]:[models,detSel,shade]),pbtn,tog('v3Wire','Wireframe','wire','Show the mesh edges'),tog('v3UV','UVs','showUV','Draw the model’s UV layout over your canvas'),tog('v3Spin','Turntable','spin','Spin the model slowly'),gear,dock,close);
   const box=el('div',{class:'v3set',hidden:true});
   const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:s[key],fmt,onInput:v=>{s[key]=v;if(key==='disp'){v3.mapsDirty=true;if(v>0&&(s.detail||0)<4&&!v3.detAuto){v3.detAuto=true;s.detail=4;if(v3.detSel)v3.detSel.value='4';v3LoadModel(true);toast('Mesh detail raised to ×16 so the height can show. Change it with the Detail menu at the top of the 3D view.');}}v3.dirty=true;requestRender(key==='disp');}}).el;
   box.append(S('v3Uvs','Tile repeat','uvs',1,8,1,v=>v+'×'),S('v3Disp','Height depth','disp',0,1,.01,pct),S('v3Az','Sun angle','sunAz',0,360,1,deg),S('v3El','Sun height','sunEl',0,90,1,deg),
@@ -160,13 +163,13 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   const info=el('div',{class:'v3info',id:'v3Info'});v3.infoEl=info;
   const hit=el('div',{class:'v3hit',id:'v3Hit'});
   pane.append(hit,bar,box,info);refresh3dUI();v3Controls(hit);}
-function refresh3dUI(){const i=v3.infoEl;if(!i||!v3.mesh)return;const m=v3.mesh;i.textContent=m.name+' · '+m.tris.toLocaleString()+' triangles'+(m.noUV?' · this model has no UVs, so textures cannot map onto it':'');}
+function refresh3dUI(){const i=v3.infoEl;if(!i||!v3.mesh)return;const m=v3.mesh;i.textContent=m.name+' · '+m.tris.toLocaleString()+' triangles'+(m.noUV?' · this model has no UVs, so textures cannot map onto it':v3.paintOn?' · painting: Alt+drag turns, right-drag moves':'');}
 function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault());
-  hit.addEventListener('pointerdown',e=>{hit.setPointerCapture(e.pointerId);v3.drag={x:e.clientX,y:e.clientY,pan:e.button===2||e.button===1||e.shiftKey};});
-  hit.addEventListener('pointermove',e=>{const d=v3.drag;if(!d)return;const dx=e.clientX-d.x,dy=e.clientY-d.y;d.x=e.clientX;d.y=e.clientY;const c=v3.cam;
+  hit.addEventListener('pointerdown',e=>{hit.setPointerCapture(e.pointerId);if(meshPaintReady(e)&&meshDown(hit,e))return;v3.drag={x:e.clientX,y:e.clientY,pan:e.button===2||e.button===1||e.shiftKey};});
+  hit.addEventListener('pointermove',e=>{meshCursor(hit,e);if(v3.mstroke){meshMove(hit,e);return;}const d=v3.drag;if(!d)return;const dx=e.clientX-d.x,dy=e.clientY-d.y;d.x=e.clientX;d.y=e.clientY;const c=v3.cam;
     if(d.pan){const k=c.dist*.0018,eye=v3Eye(),f=norm3(sub3([c.tx,c.ty,c.tz],eye)),r=norm3(cross3(f,[0,1,0])),u=cross3(r,f);c.tx+=(-r[0]*dx+u[0]*dy)*k;c.ty+=(-r[1]*dx+u[1]*dy)*k;c.tz+=(-r[2]*dx+u[2]*dy)*k;}
     else{c.yaw-=dx*.008;c.pitch=clamp(c.pitch+dy*.008,-1.55,1.55);}v3.dirty=true;requestRender();});
-  const up=()=>{v3.drag=null;};hit.addEventListener('pointerup',up);hit.addEventListener('pointercancel',up);
+  const up=e=>{v3.drag=null;meshUp(e);};hit.addEventListener('pointerup',up);hit.addEventListener('pointercancel',up);hit.addEventListener('pointerleave',()=>meshCursor(hit,null));
   hit.addEventListener('wheel',e=>{e.preventDefault();e.stopPropagation();v3.cam.dist=clamp(v3.cam.dist*Math.exp(e.deltaY*.0012),.2,50);v3.dirty=true;requestRender();},{passive:false});
   hit.addEventListener('dblclick',()=>{v3Frame();requestRender();});}
 /* dragging the divider */

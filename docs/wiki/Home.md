@@ -20,7 +20,8 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 
 ## 3D
 - [3D view](3D-view.md): see your textures on a model while you paint
-- [Baker](Baker.md): bake normal, AO, curvature and more from a high-poly model
+- [Baker](Baker.md): the Bake tab. Bake normal, AO, curvature and more from a high-poly model, watch it on the model, and paint skew and offset fixes
+- Painting on the model: see [3D view](3D-view.md#painting-on-the-model)
 
 ## Animation
 - [Animation, flipbooks and sprite sheets](Animation.md)
@@ -43,4 +44,5 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 | 5 | 3D view | 0.9 |
 | 6 | Baker | 0.10 |
 | 7 | Cage painting and symmetry | 0.11 |
-| 8 | Painting on the model | next |
+| 8 | Bake tab, painting on the model, skew and offset painting | 0.12 |
+| 9 | Convert tab (CrazyBump-style map converter) | next |

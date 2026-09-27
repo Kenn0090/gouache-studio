@@ -18,7 +18,7 @@ If an update was published while the app was already open, it won't show until t
 *The Gouache Studio window: tools on the left, canvas in the middle, panels on the right.*
 
 - **Menu bar** (top): File, Edit, Image, Maps, Layer, Select, Adjust, Filter, View.
-- **Mode switch** (top right): **Paint** or **Animation** (see [Animation](Animation.md)). Next to it is **Tile mode**, for seamless textures that wrap at the edges.
+- **Tabs** (top right): **Paint**, **Animation** (see [Animation](Animation.md)) and **Bake** (see [Baker](Baker.md)). Next to them is **Tile mode**, for seamless textures that wrap at the edges.
 - **Toolbar** (left): move, selections, brush, eraser, blend, fills and gradients, dodge/burn, crop, text, eyedropper and hand. Small corner marks show buttons that hold more than one tool.
 - **Canvas** (centre): wheel to zoom, **Space**+drag or the Hand tool to pan.
 - **Panels** (right), from top to bottom:

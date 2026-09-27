@@ -74,7 +74,7 @@ function cageDraw(mesh,src,dst,W,H,offs,clear){
 function wrapOffs(){const W=doc.w,H=doc.h;return doc.wrap?[[-W,-H],[0,-H],[W,-H],[-W,0],[0,0],[W,0],[-W,H],[0,H],[W,H]]:[[0,0]];}
 /* the flat stroke buffer, bent into the document's stroke buffer */
 function cageStrokeTarget(C){cageMesh(C);if(!cageST||cageST.w!==C.fw||cageST.h!==C.fh){if(cageST)disposeTarget(cageST);cageST=makeTarget(C.fw,C.fh,doc.depth===16?16:8,false);}return cageST;}
-function cageSyncStroke(){const s=stroke;if(!s||!s.cage)return;s.cageDirty=false;cageDraw(cageMesh(s.cage.C).fwd,cageST,strokeT,doc.w,doc.h,wrapOffs(),true);}
+function cageSpace(C){cageMesh(C);const buf=cageStrokeTarget(C);return {C,w:C.fw,h:C.fh,buf,sync(){cageDraw(cageMesh(C).fwd,buf,strokeT,doc.w,doc.h,wrapOffs(),true);},bbox:()=>cageBBox(C)};}
 /* what the flat view shows: the current view picture straightened out */
 function cageRenderFlat(src){const C=cageOf();const m=cageMesh(C);
   if(!cageViewT||cageViewT.w!==C.fw||cageViewT.h!==C.fh){if(cageViewT)disposeTarget(cageViewT);cageViewT=makeTarget(C.fw,C.fh,8,false);}
@@ -97,9 +97,9 @@ function cageBanner(on){if(!cageBan){cageBan=el('div',{id:'cageBanner',role:'sta
 /* returns false (don't paint), null (paint normally) or the starting point in flat space */
 function cageStrokeStart(o,ix,iy){const C=cageOf();
   if(ui.cageFlat&&C){if(o.tool==='smudge'){toast('The blend brush works on the canvas, not in the flat view. Press F to go back.');return false;}
-    o.cage={C};return {x:ix,y:iy,kind:'flat'};}
+    o.space=cageSpace(C);return {x:ix,y:iy,kind:'flat'};}
   if(!C||!C.on||o.tool==='smudge')return null;
-  const m=cageInv(C,ix,iy);if(!m)return null;o.cage={C};o.cageRs=1/Math.max(m.s,1e-3);return {x:m.x,y:m.y,kind:'bend'};}
+  const m=cageInv(C,ix,iy);if(!m)return null;o.space=cageSpace(C);o.cageRs=1/Math.max(m.s,1e-3);return {x:m.x,y:m.y,kind:'bend'};}
 
 /* ---------- symmetry ---------- */
 function symFor(o){const S=ui.sym;if(S.mode==='off')return null;return {mode:S.mode,n:clamp(Math.round(S.n),2,32),cx:S.cx,cy:S.cy};}
@@ -155,7 +155,7 @@ function cageHover(e){const C=cageOf();if(!C){cv.style.cursor='crosshair';return
   if(cageHitAnchor(C,sx,sy))cv.style.cursor='pointer';else{const [x,y]=toImage(e.clientX,e.clientY);cv.style.cursor=cageInv(C,x,y)?'move':'crosshair';}}
 function cageKeys(e,m,k){
   if(ui.cageFlat&&e.key==='Escape'){e.preventDefault();cageFlatOff();return true;}
-  if(m||e.altKey)return false;
+  if(m||e.altKey||ui.mode==='bake')return false;
   if(k==='k'&&!e.shiftKey){if(ui.cageFlat)cageFlatOff();setTool('cage');return true;}
   if(k==='f'&&!e.shiftKey){toggleCageFlat();return true;}
   if(k==='x'&&e.shiftKey){symToggleX();return true;}

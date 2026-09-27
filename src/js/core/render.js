@@ -1,7 +1,7 @@
 /* ================= Rendering ================= */
 function requestRender(comp){if(comp)dirtyComp=true;if(!raf)raf=requestAnimationFrame(frame);}
 const perf={on:false,frames:[],worst:null,last:0};
-function frame(){raf=0;const t0=performance.now();let tc=t0;if(stroke&&stroke.cageDirty)cageSyncStroke();if(dirtyComp){composite();dirtyComp=false;tc=performance.now();}drawView();drawUVOverlay();draw3D();const tv=performance.now();flushThumbs();if(tedit)positionEditor();
+function frame(){raf=0;const t0=performance.now();let tc=t0;if(stroke&&stroke.spaceDirty){stroke.spaceDirty=false;stroke.space.sync();}if(dirtyComp){composite();dirtyComp=false;tc=performance.now();}drawView();drawUVOverlay();draw3D();const tv=performance.now();flushThumbs();if(tedit)positionEditor();
   if(perf.on)perfFrame(t0,tc-t0,tv-tc,performance.now()-tv);}
 let maskOverride=new Map();
 function maskTexOf(n){if(!n.mask||!n.mask.enabled)return null;return maskOverride.get(n)||n.mask.target.tex;}
@@ -63,7 +63,7 @@ function viewSource(){const A=doc.active;if(ui.viewMask&&A&&A.mask){
   return {t:compOut,mask:false};}
 function drawView(){
   bindTarget(null);gl.clearColor(21/255,23/255,27/255,1);gl.clear(gl.COLOR_BUFFER_BIT);
-  const dpr=dprNow(),z=view.zoom,vs=viewSource(),fl=cageFlatActive(),T=fl?cageRenderFlat(vs.t):vs.t,DW=fl?fl.fw:doc.w,DH=fl?fl.fh:doc.h;
+  const dpr=dprNow(),z=view.zoom,vs=viewSource(),fl=cageFlatActive(),bv=ui.mode==='bake'?bakeViewTex():null,T=bv||(fl?cageRenderFlat(vs.t):vs.t),DW=fl?fl.fw:doc.w,DH=fl?fl.fh:doc.h;
   gl.bindTexture(gl.TEXTURE_2D,T.tex);
   if(z<1&&T===compOut){if(compOut.mipDirty){gl.generateMipmap(gl.TEXTURE_2D);compOut.mipDirty=false;}gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);}
   else gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,z>=2?gl.NEAREST:gl.LINEAR);

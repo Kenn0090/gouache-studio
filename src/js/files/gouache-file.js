@@ -29,7 +29,8 @@ async function encodeGouache(){const blobs=[];let off=0;
     anim={frames,fps:A.fps,cur:A.cur,onion:A.onion,tags:A.tags.map(t=>{const [a,b]=tagRange(t);return {name:t.name,from:a,to:b,mode:t.mode,color:t.color};}),mode:ui.mode,bg:ui.animBg};}
   /* the 3D view's settings, and an imported model so it comes back with the document */
   let meshRec=null;if(typeof v3!=='undefined'&&v3.imported){const c=await streamThrough(meshPack(v3.imported),'deflate-raw');blobs.push(c);meshRec={o:off,n:c.length,name:v3.imported.name};off+=c.length;}
-  const head={cage:cageClone(doc.cage),v3d:doc.v3d||null,mesh:meshRec,app:'Gouache Studio',v:GF_VERSION,w:doc.w,h:doc.h,depth:doc.depth,wrap:doc.wrap,name:doc.name,
+  const bakeMaps={};for(const k of ['skew','offset'])if(bk.maps[k]){const r=await put(bk.maps[k],true);if(r)bakeMaps[k]=r;}
+  const head={bakeMaps,cage:cageClone(doc.cage),v3d:doc.v3d||null,mesh:meshRec,app:'Gouache Studio',v:GF_VERSION,w:doc.w,h:doc.h,depth:doc.depth,wrap:doc.wrap,name:doc.name,
     maps:doc.maps,map:doc.map,view:doc.view,mapDef:doc.mapDef,nrmStr:doc.nrmStr,light:doc.light,tex:texCfg,kids,active,anim,layers:all.length};
   const hj=new TextEncoder().encode(JSON.stringify(head)),pre=new Uint8Array(16);pre.set(GF_MAGIC,0);const dv=new DataView(pre.buffer);dv.setUint32(8,GF_VERSION,true);dv.setUint32(12,hj.length,true);
   return new Blob([pre,hj,...blobs],{type:'application/octet-stream'});}
@@ -66,6 +67,7 @@ async function openGouache(buf,name){if(!isGouache(buf))throw new Error('This is
     return n;};
   for(const o of head.kids||[]){await mk(o,doc.root);await tick();}
   if(!allLayers().length){const L=newLayerObj('Background');insertNode(L,doc.root);}
+  for(const k in head.bakeMaps||{}){const t=bakeMapT(k,true);await img(head.bakeMaps[k],t);}
   syncTargets();
   const nodes=allNodes(doc.root);selectOnly(nodes[head.active]||allLayers().slice(-1)[0]);doc.count=allLayers().length;
   let animMode=false;
