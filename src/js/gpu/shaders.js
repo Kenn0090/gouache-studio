@@ -40,12 +40,22 @@ const CH_STROKE=`
 uniform int uStroke; uniform vec3 uStrokeColor; uniform float uStrokeOpacity; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan;
 uniform sampler2D uSelTex; uniform int uUseSel;
 float selCov(ivec2 p, float c){ return uUseSel==1?c*texelFetch(uSelTex,p,0).r:c; }
+/* dodge (3) and burn (4): uTonalRange 0 shadows, 1 midtones, 2 highlights; uProtect keeps hue and saturation */
+uniform int uTonalRange; uniform int uProtect;
+vec3 tonal(vec3 c, float k, bool dodge){ float l=dot(c,vec3(0.299,0.587,0.114));
+  float w=uTonalRange==0?1.0-smoothstep(0.0,0.7,l):uTonalRange==2?smoothstep(0.3,1.0,l):1.0-abs(l-0.5)*2.0; float a=k*clamp(w,0.0,1.0);
+  if(uProtect==1){ float nl=dodge?l+(1.0-l)*a:l*(1.0-a); vec3 r=c+(nl-l);
+    float n=min(min(r.r,r.g),r.b), x=max(max(r.r,r.g),r.b);
+    if(n<0.0) r=nl+(r-nl)*nl/max(nl-n,1e-5); if(x>1.0) r=nl+(r-nl)*(1.0-nl)/max(x-nl,1e-5); return clamp(r,0.0,1.0); }
+  return dodge?c+(1.0-c)*a:c*(1.0-a); }
 vec4 chanMix(vec4 oldP, vec4 t, float a){
   vec3 oc=oldP.a>1e-6?oldP.rgb/oldP.a:vec3(0.0); float oa=oldP.a;
   vec3 nc=mix(oc,mix(oc,t.rgb,a),uChan.rgb); float na=mix(oa,mix(oa,t.a,a),uChan.a); if(uLockAlpha==1) na=oa;
   return vec4(clamp(nc,0.0,1.0)*na,na); }
 vec4 applyStroke(vec4 L, float cov){
   float a=clamp(cov,0.0,1.0)*uStrokeOpacity;
+  if(uStroke>=3){ if(L.a<=1e-6) return L; vec3 r=tonal(clamp(L.rgb/L.a,0.0,1.0),a,uStroke==3);
+    if(uChanMode==1) return chanMix(L,vec4(r,L.a),1.0); return vec4(r*L.a,L.a); }
   if(uChanMode==1&&uStroke!=0){ vec4 t=uStroke==1?vec4(uStrokeColor,dot(uStrokeColor,vec3(0.299,0.587,0.114))):vec4(0.0); return chanMix(L,t,a); }
   if(uStroke==1){ if(uLockAlpha==1) return vec4(mix(L.rgb,uStrokeColor*L.a,a),L.a); return vec4(uStrokeColor*a,a)+L*(1.0-a); }
   if(uStroke==2){ if(uLockAlpha==1) return L; return L*(1.0-a); }
@@ -202,6 +212,29 @@ void main(){ vec4 c=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0);
 /* cut a rectangle out of an image, keeping only what is selected */
 const FS_CROPSEL=`uniform sampler2D uSrc; uniform sampler2D uSel; uniform vec2 uOff; uniform int uUseSel;
 void main(){ ivec2 p=ivec2(floor(gl_FragCoord.xy+uOff)); vec4 c=texelFetch(uSrc,p,0); if(uUseSel==1) c*=texelFetch(uSel,p,0).r; o=c; }`;
+/* ---- gradients ---- */
+/* uLut: 1-pixel-high strip of straight colour + alpha along the gradient; shapes 0 linear 1 radial 2 angle 3 reflected 4 diamond */
+const FS_GRAD=`uniform sampler2D uLut; uniform vec2 uA; uniform vec2 uB; uniform int uShape; uniform int uDither; uniform float uOpacity; uniform int uGray;
+uniform sampler2D uBase; uniform int uUseBase; uniform sampler2D uSelTex; uniform int uUseSel;
+float h12(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
+void main(){ vec2 p=gl_FragCoord.xy; vec2 d=uB-uA; float L2=max(dot(d,d),1e-6), L=sqrt(L2); vec2 v=p-uA; float t;
+  if(uShape==0) t=dot(v,d)/L2;
+  else if(uShape==1) t=length(v)/L;
+  else if(uShape==2) t=fract((atan(v.y,v.x)-atan(d.y,d.x))/6.28318530718);
+  else if(uShape==3) t=abs(dot(v,d)/L2);
+  else { vec2 u=d/L; t=(abs(dot(v,u))+abs(dot(v,vec2(-u.y,u.x))))/L; }
+  t=clamp(t,0.0,1.0); int n=textureSize(uLut,0).x-1; float x=t*float(n); int i=int(floor(x)); float f=x-float(i);
+  vec4 c=mix(texelFetch(uLut,ivec2(i,0),0),texelFetch(uLut,ivec2(min(i+1,n),0),0),f);
+  if(uGray==1) c.rgb=vec3(dot(c.rgb,vec3(0.299,0.587,0.114)));
+  if(uDither==1){ float r=(h12(p)+h12(p+vec2(17.3,5.1))-1.0)/255.0; c.rgb+=r; }
+  c=clamp(c,0.0,1.0); vec4 g=vec4(c.rgb*c.a,c.a)*uOpacity;
+  if(uUseSel==1) g*=texelFetch(uSelTex,ivec2(p),0).r;
+  if(uUseBase==1){ vec4 b=texelFetch(uBase,ivec2(p),0); g=g+b*(1.0-g.a); }
+  o=g; }`;
+/* paint bucket: lay a colour over the old pixels by a coverage image */
+const FS_FILLCOV=`uniform sampler2D uOld; uniform sampler2D uCov; uniform vec4 uColor; uniform sampler2D uSelTex; uniform int uUseSel;
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy); float k=texelFetch(uCov,p,0).r; if(uUseSel==1) k*=texelFetch(uSelTex,p,0).r;
+  vec4 b=texelFetch(uOld,p,0),c=uColor*k; o=c+b*(1.0-c.a); }`;
 /* ---- transforms ---- */
 /* shared sampling of a source image in pixel coordinates; outside the image = uOutside */
 const CH_SAMPLE=`
@@ -250,7 +283,7 @@ const P={
   sharpen:program(FS_SHARPEN), poster:program(FS_POSTER), invert:program(FS_INVERT), place:program(FS_PLACE), mix:program(FS_MIX), chmerge:program(FS_CHMERGE), maskplace:program(FS_MASKPLACE), applymask:program(FS_APPLYMASK),
   poly:program(FS_ONE,VS_POLY), rcopy:program(FS_RCOPY), selop:program(FS_SELOP), shift:program(FS_SHIFT), morph:program(FS_MORPH), thresh:program(FS_THRESH),
   selmix:program(FS_SELMIX), loadsel:program(FS_LOADSEL), cropsel:program(FS_CROPSEL),
-  xform:program(FS_XFORM), proj:program(FS_PROJ), mesh:(()=>{const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,VS_MESH));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS_HEAD+FS_MESH));
+  grad:program(FS_GRAD), fillcov:program(FS_FILLCOV), xform:program(FS_XFORM), proj:program(FS_PROJ), mesh:(()=>{const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,VS_MESH));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS_HEAD+FS_MESH));
     gl.bindAttribLocation(p,0,'a');gl.bindAttribLocation(p,1,'b');gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return {p,locs:{}};})()
 };
 const vao=gl.createVertexArray();gl.bindVertexArray(vao);

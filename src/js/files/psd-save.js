@@ -29,7 +29,11 @@ async function encodePSD(){
   await walkSave(doc.root);
   const w=BW();
   w.str('8BPS');w.u16(1);for(let i=0;i<6;i++)w.u8(0);w.u16(b16?3:4);w.u32(H);w.u32(W);w.u16(bits);w.u16(3);
-  w.u32(0);w.u32(0);
+  w.u32(0);
+  /* image resources: XMP (id 1060) carrying Gouache Studio's notes for live gradient and text layers */
+  const xmp=liveLayersXmp();
+  if(xmp){const data=new TextEncoder().encode(xmp),rp=w.length;w.u32(0);const r0=w.length;w.str('8BIM');w.u16(1060);w.u16(0);w.u32(data.length);w.bytes(data);if(data.length%2)w.u8(0);w.setU32(rp,w.length-r0);}
+  else w.u32(0);
   const lmPos=w.length;w.u32(0);
   const layerInfo=()=>{w.u16((b16?recs.length:-recs.length)&0xffff);
     recs.forEach(r=>{const n=r.n,full=r.kind==='layer';

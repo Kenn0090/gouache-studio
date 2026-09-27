@@ -10,7 +10,7 @@ $('#stDepth').addEventListener('click',()=>setDepth(doc.depth===16?8:16));
 $('#tileBtn').addEventListener('click',toggleTile);
 
 const bc=$('#brushCursor');let lastPos=null,spaceDown=false,ptr=null;
-function refreshCursor(){if(!lastPos){bc.hidden=true;return;}const paint=['brush','erase','smudge'].includes(ui.tool)&&!spaceDown&&!(ptr&&ptr.mode==='pan');
+function refreshCursor(){if(!lastPos){bc.hidden=true;return;}const paint=['brush','erase','smudge','dodge','burn'].includes(ui.tool)&&!spaceDown&&!(ptr&&ptr.mode==='pan');
   if(!paint){bc.hidden=true;return;}const d=Math.max(3,brush.size*view.zoom);bc.hidden=false;bc.style.width=d+'px';bc.style.height=d+'px';bc.style.transform='translate('+(lastPos[0]-d/2)+'px,'+(lastPos[1]-d/2)+'px)';}
 function pressureOf(e){return e.pointerType==='pen'?Math.max(.02,e.pressure||0):1;}
 function showPressure(e){const pb=$('#pBar'),pv=$('#pVal');if(e.pointerType==='pen'){pb.style.width=Math.round((e.pressure||0)*100)+'%';pv.textContent=(e.pressure||0).toFixed(2)+' pen';}else{pb.style.width=(e.buttons?100:0)+'%';pv.textContent=e.pointerType==='touch'?'touch':'mouse';}}
@@ -23,6 +23,8 @@ cv.addEventListener('pointerdown',e=>{
   if(xf&&!xf.move){xfPointerDown(e,ix,iy);return;}
   if(ui.tool==='crop'){cropPointerDown(e,ix,iy);return;}
   if(ui.tool==='move'){movePointerDown(e,ix,iy);return;}
+  if(ui.tool==='gradient'){gradPointerDown(e,ix,iy);return;}
+  if(ui.tool==='bucket'){bucketFill(ix,iy);return;}
   if(isSelTool(ui.tool)){selPointerDown(e,ix,iy);return;}
   if(ui.tool==='text'){
     if(tedit){const b=tedit.L.text.bbox;if(b&&ix>=b.bx&&ix<=b.bx+b.bw&&iy>=b.by&&iy<=b.by+b.bh){ted.focus();return;}closeTextEditor();return;}
@@ -32,8 +34,9 @@ cv.addEventListener('pointerdown',e=>{
   const et=editTarget();if(!et){toast(doc.active?'A group is selected. Select a layer inside it, or click the group’s mask thumbnail to paint its mask.':'Select a layer to paint on.');return;}
   if(!effVisible(et.node)&&!ui.viewMask){toast('The active layer (or its group) is hidden. Show it to paint on it.');return;}
   if(preview){toast('Apply or cancel the open filter first.');return;}
-  if(!et.isMask&&et.node.text){rasterizeText(et.node);toast('Text converted to pixels so you can paint on it. Undo brings the editable text back.');}
+  if(!et.isMask&&(et.node.text||et.node.grad)){const g=!!et.node.grad;rasterizeText(et.node);toast(g?'Gradient converted to pixels so you can paint on it. Undo brings the editable gradient back.':'Text converted to pixels so you can paint on it. Undo brings the editable text back.');}
   const L=et.L,p=pressureOf(e);const o=Object.assign({},brush,{tool:ui.tool,color:ui.fg.slice(),chan:!et.isMask&&chanRestricted()?chan.edit.slice():null,sel:selOn(et)});
+  if(o.tool==='dodge'||o.tool==='burn')Object.assign(o,{opacity:ui.tonalExposure,range:ui.tonalRange,protect:ui.tonalProtect});
   if(et.isMask){const g=lum3(ui.fg);o.color=[g,g,g];if(o.tool==='erase'){o.tool='brush';o.color=[1,1,1];}}
   if(ui.tool!=='erase'&&(ui.tool==='brush'||brush.charge>0))pushRecent(ui.fg);
   ptr={mode:'paint',id:e.pointerId,sx:ix,sy:iy,sp:p,rx:ix,ry:iy};beginStroke(L,ix,iy,p,o);
@@ -42,8 +45,8 @@ cv.addEventListener('pointermove',e=>{
   const r=stage.getBoundingClientRect();lastPos=[e.clientX-r.left,e.clientY-r.top];refreshCursor();showPressure(e);
   const [mx,my]=toImage(e.clientX,e.clientY);$('#stPos').textContent=(mx>=0&&my>=0&&mx<doc.w&&my<doc.h)?Math.floor(mx)+', '+Math.floor(my):'–';
   if(!ptr&&polyLasso){polyMove(e,mx,my);return;}
-  if(!ptr){if(xf&&!xf.move)xfHover(e);else if(ui.tool==='crop'&&crop)cropHover(e);}
-  if(ptr&&e.pointerId===ptr.id){if(ptr.mode==='xf'){xfPointerMove(e,mx,my);return;}if(ptr.mode==='crop'){cropPointerMove(e,mx,my);return;}if(ptr.mode==='movedrag'){movePointerMove(e,mx,my);return;}}
+  if(!ptr){if(xf&&!xf.move)xfHover(e);else if(ui.tool==='crop'&&crop)cropHover(e);else if(ui.tool==='gradient')gradHover(e);}
+  if(ptr&&e.pointerId===ptr.id){if(ptr.mode==='xf'){xfPointerMove(e,mx,my);return;}if(ptr.mode==='crop'){cropPointerMove(e,mx,my);return;}if(ptr.mode==='movedrag'){movePointerMove(e,mx,my);return;}if(ptr.mode==='grad'){gradPointerMove(e,mx,my);return;}}
   if(!ptr||e.pointerId!==ptr.id)return;
   if(ptr.mode==='marq'||ptr.mode==='lasso'||ptr.mode==='selmove'){selPointerMove(e,mx,my);return;}
   if(ptr.mode==='pan'){view.x=ptr.vx+e.clientX-ptr.sx;view.y=ptr.vy+e.clientY-ptr.sy;requestRender();return;}
@@ -55,7 +58,7 @@ cv.addEventListener('pointermove',e=>{
   for(const ev of list){const [ix,iy]=toImage(ev.clientX,ev.clientY),p=pressureOf(ev);ptr.rx=ix;ptr.ry=iy;
     ptr.sx+=(ix-ptr.sx)*k;ptr.sy+=(iy-ptr.sy)*k;ptr.sp+=(p-ptr.sp)*Math.max(k,.4);addPoint(ptr.sx,ptr.sy,ptr.sp);}
 });
-function endPtr(e){if(!ptr||e.pointerId!==ptr.id)return;if(ptr.mode==='xf'){xfPointerUp();return;}if(ptr.mode==='crop'){cropPointerUp();return;}if(ptr.mode==='movedrag'){movePointerUp();return;}if(ptr.mode==='marq'||ptr.mode==='lasso'||ptr.mode==='selmove'){selPointerUp(e);refreshCursor();return;}if(ptr.mode==='paint'){if(brush.smoothing>0)addPoint(ptr.rx,ptr.ry,ptr.sp);endStroke(true);}
+function endPtr(e){if(!ptr||e.pointerId!==ptr.id)return;if(ptr.mode==='xf'){xfPointerUp();return;}if(ptr.mode==='crop'){cropPointerUp();return;}if(ptr.mode==='movedrag'){movePointerUp();return;}if(ptr.mode==='grad'){gradPointerUp();return;}if(ptr.mode==='marq'||ptr.mode==='lasso'||ptr.mode==='selmove'){selPointerUp(e);refreshCursor();return;}if(ptr.mode==='paint'){if(brush.smoothing>0)addPoint(ptr.rx,ptr.ry,ptr.sp);endStroke(true);}
   if(ptr.mode==='tmove'){const t=ptr;ptr=null;if(t.moved){textCommit();changed(t.L);}else openTextEditor(t.L,false);refreshCursor();return;}
   ptr=null;stage.classList.remove('panning');refreshCursor();$('#pBar').style.width='0%';}
 cv.addEventListener('pointerup',endPtr);cv.addEventListener('pointercancel',endPtr);cv.addEventListener('lostpointercapture',endPtr);
@@ -73,6 +76,8 @@ window.addEventListener('keydown',e=>{
   if(m&&k==='t'){e.preventDefault();freeTransform();return;}
   if(selKeys(e,m,k))return;
   if(!m&&!e.altKey&&k==='v'){setTool('move');return;}
+  if(!m&&!e.altKey&&k==='g'){if(e.shiftKey&&(ui.tool==='gradient'||ui.tool==='bucket'))ui.fillKind=ui.tool==='gradient'?'bucket':'gradient';setTool(ui.fillKind);return;}
+  if(!m&&!e.altKey&&k==='o'){if(e.shiftKey&&(ui.tool==='dodge'||ui.tool==='burn'))ui.tonal=ui.tool==='dodge'?'burn':'dodge';setTool(ui.tonal);return;}
   if(!m&&!e.altKey&&k==='c'){setTool('crop');return;}
   if(ui.tool==='move'&&!m&&e.key.startsWith('Arrow')){e.preventDefault();const s=e.shiftKey?10:1,d={ArrowLeft:[-s,0],ArrowRight:[s,0],ArrowUp:[0,-s],ArrowDown:[0,s]}[e.key];nudgeLayer(d[0],d[1]);return;}
   if(m){const map={z:e.shiftKey?'redo':'undo',y:'redo',o:'open',s:e.shiftKey?'savePsdAs':'savePsd',u:'adjust',i:'invert','0':'fit','1':'actual',e:e.shiftKey?'export':'merge'};

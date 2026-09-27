@@ -41,6 +41,9 @@ async function openPSD(buf,name){
   if(!items.length&&psd.imageData)addComposite('Background',true);
   else if(notes.length&&psd.imageData)addComposite('Photoshop composite (reference)',false);
   if(!allLayers().length){const L=newLayerObj('Background');insertNode(L,doc.root);}
+  /* bring back live gradients and editable text saved by Gouache Studio */
+  const live=readLiveLayersXmp(psd.imageResources&&psd.imageResources.xmpMetadata);let restored=0;
+  for(const it of live){const x=items[it.i];if(!x||x.L.name!==it.name)continue;if(it.grad){x.L.grad=it.grad;renderLiveGrad(x.L);restored++;}else if(it.text){x.L.text=it.text;renderText(x.L);restored++;}}
   const lays=allLayers();selectOnly([...lays].reverse().find(L=>effVisible(L))||lays[lays.length-1]);doc.count=lays.length;
   changedAll();updateStatus();fit();
   const summary=items.length+' layer'+(items.length===1?'':'s')+(groups?' in '+groups+' group'+(groups===1?'':'s'):'')+', '+W+' × '+H+', '+bits+'-bit';

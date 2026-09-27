@@ -20,6 +20,8 @@
     "transform/warp",
     "transform/xform-ui",
     "transform/crop",
+    "fill/gradient",
+    "fill/bucket",
     "files/helpers",
     "files/decoders",
     "files/import",

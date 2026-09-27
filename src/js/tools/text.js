@@ -59,7 +59,7 @@ ted.addEventListener('pointerdown',e=>e.stopPropagation());
 function createText(ix,iy){const before=snapTree(),L=newLayerObj('Text');L.autoName=true;
   const st=ui.textStyle;L.text=Object.assign(cloneText(st),{content:'',color:ui.fg.slice(),x:Math.round(ix),y:Math.round(iy-st.size*.8)});
   const [p,i]=insertPoint();insertNode(L,p,i);selectOnly(L);renderText(L);renderLayers();openTextEditor(L,true,before);}
-function rasterizeText(L){if(!L||!L.text)return;if(tedit&&tedit.L===L)closeTextEditor();textCommit();const t=L.text;L.text=null;
+function rasterizeText(L){if(L&&L.grad){rasterizeGrad(L);if(!L.text)return;}if(!L||!L.text)return;if(tedit&&tedit.L===L)closeTextEditor();textCommit();const t=L.text;L.text=null;
   pushUndo({label:'Rasterize text',refs:[L],undo(){L.text=t;},redo(){L.text=null;}});renderLayers();if(ui.tool==='text')buildBrushPanel();}
 /* user fonts */
 async function addFontFile(file){const buf=await file.arrayBuffer();const base=baseName(file.name).replace(/[-_]+/g,' ').trim()||'Custom font';let n=base,k=2;

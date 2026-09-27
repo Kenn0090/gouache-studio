@@ -54,7 +54,7 @@ function xfPointerMove(e,ix,iy){const p=ptr,h=p.hit,R=xfLocalRect(),dx=ix-p.m0[0
 function xfPointerUp(){ptr=null;xfRender(false);drawXfOverlay();xfPanelSync();}
 
 /* ---- overlay drawing ---- */
-function drawXfOverlay(){if(!xf||xf.move){if(typeof crop!=='undefined'&&crop){drawCropOverlay();return;}if(xfOv.firstChild)xfOv.replaceChildren();return;}
+function drawXfOverlay(){if(!xf||xf.move){if(typeof crop!=='undefined'&&crop){drawCropOverlay();return;}const g=typeof drawGradOverlay==='function'?drawGradOverlay():'';if(g){xfOv.innerHTML=g;return;}if(xfOv.firstChild)xfOv.replaceChildren();return;}
   const f=p=>scrPt(p).map(v=>v.toFixed(1)).join(' ');let s='';
   if(xf.warp){const W=xf.warp;let d='';
     for(let j=0;j<=W.n;j++)for(let i=0;i<W.n;i++){const e=W.hE[j][i];d+='M'+f(W.A[j][i])+'C'+f(e[0])+' '+f(e[1])+' '+f(W.A[j][i+1]);}
@@ -117,8 +117,13 @@ function buildMovePanel(box){$('#brushTitle').textContent='Move';
     el('div',{class:'frow'},el('button',{class:'btn sm',text:'Free transform (Ctrl+T)',onclick:freeTransform})));}
 
 (function addTools(){const bar=$('#tools');
-  const mk=(tool,label,icon,before)=>{const b=el('button',{class:'tool','data-tool':tool,title:label,'aria-label':label.replace(/ \(.*\)$/,''),'aria-pressed':'false'});b.innerHTML='<svg viewBox="0 0 24 24">'+icon+'</svg>';b.addEventListener('click',()=>setTool(tool));bar.insertBefore(b,before);};
+  const mk=(tool,label,icon,before)=>{const b=el('button',{class:'tool','data-tool':tool,title:label,'aria-label':label.replace(/ \(.*\)$/,''),'aria-pressed':'false'});b.innerHTML='<svg viewBox="0 0 24 24">'+icon+'</svg>';b.addEventListener('click',()=>setTool(b.dataset.tool));bar.insertBefore(b,before);};
   mk('move','Move (V)','<path d="M12 3v18M3 12h18"/><path d="m9 6 3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/>',bar.firstElementChild);
+  const fillIcons={gradient:'<rect x="3.5" y="5" width="17" height="14" rx="1.5"/><path d="M8 5v14M12.5 5v14M17 5v14" opacity=".35"/>',bucket:'<path d="M5 11l7-7 7 7-7 7z"/><path d="M19 13.5c1 1.6 1.6 2.6 1.6 3.4a1.6 1.6 0 0 1-3.2 0c0-.8.6-1.8 1.6-3.4z"/><path d="M5 11h14"/>'};
+  const tonalIcons={dodge:'<circle cx="9" cy="9" r="5"/><path d="M12.5 12.5 20 20"/>',burn:'<path d="M6 14c0-4 4-6 6-10 2 4 6 6 6 10a6 6 0 0 1-12 0z"/><path d="M10 15.5a2 2 0 0 0 4 0c0-1.2-1-2-2-3.5-1 1.5-2 2.3-2 3.5z"/>'};
+  const sm=bar.querySelector('.tool[data-tool="smudge"]').nextElementSibling;
+  mk('gradient','Gradient / paint bucket (G, Shift+G switches)',fillIcons.gradient,sm);mk('dodge','Dodge / burn (O, Shift+O switches)',tonalIcons.dodge,sm);
+  window.__groupIcons={gradient:fillIcons.gradient,bucket:fillIcons.bucket,dodge:tonalIcons.dodge,burn:tonalIcons.burn};
   mk('crop','Crop (C)','<path d="M6 2v16h16"/><path d="M2 6h16v16"/>',bar.querySelector('.tool[data-tool="text"]'));})();
 /* keys while a transform is open; returns true if used */
 function xfKeys(e,m,k){if(!xf||xf.move)return false;
@@ -128,3 +133,10 @@ function xfKeys(e,m,k){if(!xf||xf.move)return false;
     if(xf.warp){const W=xf.warp;if(W.active){warpMoveAnchor(W,W.active[0],W.active[1],d[0],d[1]);}else return true;}else xf.q=xf.q.map((v,i)=>v+(i%2?d[1]:d[0]));
     xfRender(false);drawXfOverlay();xfPanelSync();return true;}
   return false;}
+
+/* tool buttons that hold two tools (gradient/bucket, dodge/burn) show the current one */
+ui.fillKind='gradient';ui.tonal='dodge';ui.tonalRange=1;ui.tonalExposure=.5;ui.tonalProtect=true;
+function updateGroupButtons(t){const G=window.__groupIcons;if(!G)return;
+  for(const [pair,cur] of [[['gradient','bucket'],ui.fillKind],[['dodge','burn'],ui.tonal]]){const b=document.querySelector('.tool[data-group="'+pair[0]+'"]');if(!b)continue;
+    b.dataset.tool=cur;b.innerHTML='<svg viewBox="0 0 24 24">'+G[cur]+'</svg>';b.setAttribute('aria-pressed',String(pair.includes(t)));}}
+document.querySelectorAll('.tool[data-tool="gradient"],.tool[data-tool="dodge"]').forEach(b=>{b.dataset.group=b.dataset.tool;});

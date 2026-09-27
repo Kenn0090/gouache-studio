@@ -67,20 +67,27 @@ const sizeMap={to:v=>Math.round(Math.pow((v-1)/499,1/2.2)*1000),from:u=>Math.max
 let sizeSlider=null,dynOpen=false;
 function brushEdited(){if(activePreset){activePreset=null;renderLibrary();}schedulePreview();}
 function buildBrushPanel(){
-  const box=$('#brushBody');box.replaceChildren();const sm=ui.tool==='smudge',isText=ui.tool==='text',isSel=isSelTool(ui.tool),isXf=!!(xf&&!xf.move),isOther=ui.tool==='crop'||ui.tool==='move',noBrush=isText||isSel||isXf||isOther;
+  const box=$('#brushBody');box.replaceChildren();const sm=ui.tool==='smudge',isText=ui.tool==='text',isSel=isSelTool(ui.tool),isXf=!!(xf&&!xf.move),isOther=['crop','move','gradient','bucket'].includes(ui.tool),noBrush=isText||isSel||isXf||isOther;
   $('#libBody').hidden=noBrush;document.querySelector('.prevwrap').hidden=noBrush;$('#abrBtn').hidden=noBrush;$('#tipBtn').hidden=noBrush;
   if(isText){$('#brushTitle').textContent='Text';buildTextPanel(box);return;}
   if(isXf){buildXfPanel(box);return;}
   if(ui.tool==='crop'){buildCropPanel(box);return;}
   if(ui.tool==='move'){buildMovePanel(box);return;}
+  if(ui.tool==='gradient'){buildGradPanel(box);return;}
+  if(ui.tool==='bucket'){buildBucketPanel(box);return;}
   if(isSel){buildSelectPanel(box);return;}
-  $('#brushTitle').textContent=sm?'Blend brush':ui.tool==='erase'?'Eraser':'Brush';
+  const tonal=ui.tool==='dodge'||ui.tool==='burn';
+  $('#brushTitle').textContent=sm?'Blend brush':ui.tool==='erase'?'Eraser':tonal?(ui.tool==='dodge'?'Dodge':'Burn'):'Brush';
+  if(tonal)box.append(seg([['dodge','Dodge','Lighten (O)'],['burn','Burn','Darken (Shift+O switches)']],ui.tool,v=>{ui.tonal=v;setTool(v);},'Dodge or burn'),
+    el('div',{class:'sub',text:'Range'}),seg([[0,'Shadows'],[1,'Midtones'],[2,'Highlights']],ui.tonalRange,v=>{ui.tonalRange=v;},'Range'),
+    makeSlider({id:'tExp',label:'Exposure',min:.01,max:1,step:.01,value:ui.tonalExposure,fmt:pct,onInput:v=>{ui.tonalExposure=v;}}).el,
+    el('div',{class:'chips'},chk('tProt','Protect tones',ui.tonalProtect,v=>{ui.tonalProtect=v;})));
   const S=(id,label,key,min,max,step,fmt,map)=>makeSlider({id,label,min,max,step,value:brush[key],fmt,map,onInput:v=>{brush[key]=v;brushEdited();if(key==='size')refreshCursor();}});
   const C=(id,label,key,rebuild)=>chk(id,label,!!brush[key],v=>{brush[key]=v;brushEdited();if(rebuild)buildBrushPanel();});
   box.append(el('div',{class:'sub',text:'Tip: '+(brush.tip?brush.tip.name+' ('+brush.tip.w+'×'+brush.tip.h+')':'round')+(activePreset?' · preset “'+activePreset.name+'”':'')}));
   sizeSlider=S('bSize','Size','size',0,1000,1,v=>v+'px',sizeMap);box.append(sizeSlider.el);
   if(sm)box.append(S('bStr','Strength','strength',0,1,.01,pct).el,S('bCharge','Paint load','charge',0,1,.01,pct).el);
-  else box.append(S('bOp','Opacity','opacity',0,1,.01,pct).el);
+  else if(!tonal)box.append(S('bOp','Opacity','opacity',0,1,.01,pct).el);
   box.append(S('bFlow','Flow','flow',.01,1,.01,pct).el);
   if(!brush.tip)box.append(S('bHard','Hardness','hardness',0,1,.01,pct).el);
   box.append(S('bSpace','Spacing','spacing',.01,1.5,.01,pct).el,S('bGrain','Grain','grain',0,1,.01,pct).el,S('bSmooth','Smoothing','smoothing',0,1,.01,pct).el);
@@ -99,9 +106,9 @@ function buildBrushPanel(){
     el('div',{class:'chips'},C('bFD','Follow stroke','followDir'),C('bBA','Scatter both axes','bothAxes'),C('bRF','Random flip','randFlipX'))));
   box.append(det);schedulePreview();
 }
-function applyPreset(p){for(const k of SETTING_KEYS)brush[k]=(k in p)?p[k]:BRUSH_DEFAULTS[k];activePreset=p;setTool(p.tool||'brush',true);renderLibrary();refreshCursor();}
+function applyPreset(p){for(const k of SETTING_KEYS)brush[k]=(k in p)?p[k]:BRUSH_DEFAULTS[k];activePreset=p;setTool((ui.tool==='dodge'||ui.tool==='burn')&&p.tool!=='smudge'?ui.tool:(p.tool||'brush'),true);renderLibrary();refreshCursor();}
 function setTool(t,keepPreset){if(t!=='text'&&typeof closeTextEditor==='function')closeTextEditor();if(t!=='lasso'&&typeof polyLasso!=='undefined'&&polyLasso){polyLasso=null;drawSelOverlay();}
-  if(typeof xf!=='undefined'&&xf&&!xf.move)xfCommit();if(typeof crop!=='undefined'){if(t==='crop'&&ui.tool!=='crop')crop=null;else if(t!=='crop')crop=null;}cv.style.cursor='';ui.tool=t;stage.classList.toggle('txt',t==='text');stage.classList.toggle('selt',isSelTool(t));stage.classList.toggle('movet',t==='move');document.querySelectorAll('.tool').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t)));
+  if(typeof xf!=='undefined'&&xf&&!xf.move)xfCommit();if(t!=='gradient'&&typeof gsess!=='undefined'&&gsess)gradCommit();if(t==='gradient'||t==='bucket')ui.fillKind=t;if(t==='dodge'||t==='burn')ui.tonal=t;updateGroupButtons(t);if(typeof crop!=='undefined'){if(t==='crop'&&ui.tool!=='crop')crop=null;else if(t!=='crop')crop=null;}cv.style.cursor='';ui.tool=t;stage.classList.toggle('txt',t==='text');stage.classList.toggle('selt',isSelTool(t));stage.classList.toggle('movet',t==='move');stage.classList.toggle('fillt',t==='gradient'||t==='bucket');document.querySelectorAll('.tool').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t)));
   if(!keepPreset&&activePreset&&(activePreset.tool==='smudge')!==(t==='smudge')){activePreset=null;renderLibrary();}
   stage.classList.toggle('grab',t==='hand');stage.classList.toggle('pick',t==='picker');buildBrushPanel();refreshCursor();}
 document.querySelectorAll('.tool').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.tool)));

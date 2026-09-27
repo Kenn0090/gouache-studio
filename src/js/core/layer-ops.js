@@ -1,6 +1,6 @@
 /* ================= Layer content ops ================= */
 function needLayer(){const L=activeLayer();if(!L)toast(doc.active?'Select a layer (not a group) for this.':'Select a layer first.');return L;}
-function needTarget(){const et=editTarget();if(et&&!et.isMask&&et.node.text){rasterizeText(et.node);toast('Text converted to pixels for this edit. Undo brings the editable text back.');}if(!et)toast(doc.active?'A group is selected. Select a layer, or click the group’s mask thumbnail to edit its mask.':'Select a layer first.');return et;}
+function needTarget(){const et=editTarget();if(et&&!et.isMask&&(et.node.text||et.node.grad)){const g=!!et.node.grad;rasterizeText(et.node);toast(g?'Gradient converted to pixels for this edit. Undo brings the editable gradient back.':'Text converted to pixels for this edit. Undo brings the editable text back.');}if(!et)toast(doc.active?'A group is selected. Select a layer, or click the group’s mask thumbnail to edit its mask.':'Select a layer first.');return et;}
 /* rect = [x0,y0,x1,y1] limits what the undo step stores (the selection bounds, when one is active) */
 function fullRecord(L,label,fn,rect){const r=rect||[0,0,doc.w,doc.h],x=r[0],y=r[1],w=r[2]-r[0],h=r[3]-r[1];if(w<=0||h<=0){fn();changed(L.maskOf||L);return;}
   const b=captureRegion(L.target,x,y,w,h);fn();const a=captureRegion(L.target,x,y,w,h);pushUndo(regionRecord(L,b,a,x,y,w,h,label));changed(L.maskOf||L);}

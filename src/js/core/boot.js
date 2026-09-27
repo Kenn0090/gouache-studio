@@ -5,4 +5,4 @@ try{buildSample();toast('Sample tile loaded. Paint on it, or start fresh from Fi
 updateStatus();requestRender(true);
 if(platform.isDesktop)setTimeout(()=>checkForUpdates(false),4000);
 /* test hook: only with ?debug in the address */
-if(/[?&]debug\b/.test(location.search))window.__gs={doc,sel,view,hist,ui,readRGBA8,selPixels:()=>captureSel(sel.t,[0,0,doc.w,doc.h]).data,layerByName:n=>allLayers().find(L=>L.name===n),newDoc,get xf(){return xf;},get crop(){return crop;},xfHandles:()=>xf&&!xf.warp?xfHandles():null,toScreen};
+if(/[?&]debug\b/.test(location.search))window.__gs={doc,sel,view,hist,ui,readRGBA8,selPixels:()=>captureSel(sel.t,[0,0,doc.w,doc.h]).data,layerByName:n=>allLayers().find(L=>L.name===n),newDoc,get xf(){return xf;},get crop(){return crop;},xfHandles:()=>xf&&!xf.warp?xfHandles():null,toScreen,encodePSD,openPSD};

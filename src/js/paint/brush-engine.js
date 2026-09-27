@@ -52,11 +52,11 @@ function addPoint(x,y,p){
 }
 function endStroke(record){
   const s=stroke;if(!s)return;const L=s.L,W=doc.w,H=doc.h;
-  if(s.o.tool!=='smudge')run(P.merge,L.target,{uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:s.o.tool==='erase'?2:1},uStrokeColor:s.o.color,uStrokeOpacity:s.o.opacity,uLockAlpha:L.lockAlpha,...chanU(s.o),...selU(s.o)});
+  if(s.o.tool!=='smudge')run(P.merge,L.target,{uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(s.o)},...tonalU(s.o),uStrokeColor:s.o.color,uStrokeOpacity:s.o.opacity,uLockAlpha:L.lockAlpha,...chanU(s.o),...selU(s.o)});
   stroke=null;
   if(record){
     const x0=clamp(Math.floor(s.bb[0]),0,W),y0=clamp(Math.floor(s.bb[1]),0,H),x1=clamp(Math.ceil(s.bb[2]),0,W),y1=clamp(Math.ceil(s.bb[3]),0,H);
-    if(x1>x0&&y1>y0){const w=x1-x0,h=y1-y0;pushUndo(regionRecord(L,captureRegion(beforeT,x0,y0,w,h),captureRegion(L.target,x0,y0,w,h),x0,y0,w,h,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?'Blend':'Brush stroke'));}
+    if(x1>x0&&y1>y0){const w=x1-x0,h=y1-y0;pushUndo(regionRecord(L,captureRegion(beforeT,x0,y0,w,h),captureRegion(L.target,x0,y0,w,h),x0,y0,w,h,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?'Blend':s.o.tool==='dodge'?'Dodge':s.o.tool==='burn'?'Burn':'Brush stroke'));}
     scheduleThumb(L.maskOf||L);
   }
   requestRender(true);

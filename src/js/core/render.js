@@ -4,6 +4,9 @@ function frame(){raf=0;if(dirtyComp){composite();dirtyComp=false;}drawView();flu
 let maskOverride=new Map();
 function maskTexOf(n){if(!n.mask||!n.mask.enabled)return null;return maskOverride.get(n)||n.mask.target.tex;}
 /* selection clipping for a stroke: only when the stroke was started with an active selection */
+/* how a stroke is merged: 1 paint, 2 erase, 3 dodge, 4 burn (plus the dodge/burn settings) */
+function strokeMode(o){return o.tool==='erase'?2:o.tool==='dodge'?3:o.tool==='burn'?4:1;}
+function tonalU(o){return o&&(o.tool==='dodge'||o.tool==='burn')?{uTonalRange:{int:o.range},uProtect:!!o.protect}:{};}
 function selU(o){return o&&o.sel&&sel.t?{uSelTex:sel.t.tex,uUseSel:true}:{uSelTex:dummy,uUseSel:false};}
 function chanU(o){return o&&o.chan?{uChanMode:{int:1},uChan:o.chan}:{uChanMode:{int:0},uChan:[1,1,1,1]};}
 function compositeList(list,acc){let base=null;
@@ -12,7 +15,7 @@ function compositeList(list,acc){let base=null;
     const mt=maskTexOf(n);
     if(n.type==='layer'){const src=(preview&&!preview.off&&preview.L===n&&!preview.isMask)?previewT:n.target,st=(stroke&&stroke.L===n&&stroke.o.tool!=='smudge')?stroke:null,out=acquire(),cm=clipped?maskTexOf(clipped):null;
       run(P.comp,out,Object.assign({uBase:acc.tex,uLayer:src.tex,uStrokeTex:strokeT.tex,uMask:clipped?clipped.target.tex:dummy,uUseMask:!!clipped,uMask2:cm||dummy,uUseMask2:!!cm,uLMask:mt||dummy,uUseLMask:!!mt,
-        uMode:{int:n.mode},uOpacity:n.opacity,uStroke:{int:st?(st.o.tool==='erase'?2:1):0},uStrokeColor:st?st.o.color:[0,0,0],uStrokeOpacity:st?st.o.opacity:0,uLockAlpha:n.lockAlpha},chanU(st&&st.o),selU(st&&st.o)));
+        uMode:{int:n.mode},uOpacity:n.opacity,uStroke:{int:st?strokeMode(st.o):0},uStrokeColor:st?st.o.color:[0,0,0],uStrokeOpacity:st?st.o.opacity:0,uLockAlpha:n.lockAlpha},chanU(st&&st.o),selU(st&&st.o),tonalU(st&&st.o)));
       release(acc);acc=out;}
     else if(n.mode<0){
       if(n.opacity>=.999&&!mt)acc=compositeList(n.children,acc);
@@ -24,7 +27,7 @@ function compositeList(list,acc){let base=null;
 function renderNodes(list){const acc=acquire();clearTarget(acc);return compositeList(list,acc);}
 let maskViewT=null,maskViewLive=false;
 function composite(){if(compOut)release(compOut);maskOverride=new Map();const tmp=[];maskViewLive=false;
-  if(stroke&&stroke.L.maskOf&&stroke.o.tool!=='smudge'){const lm=acquire();tmp.push(lm);run(P.merge,lm,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:1},uStrokeColor:stroke.o.color,uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},selU(stroke.o)));maskOverride.set(stroke.L.maskOf,lm.tex);if(ui.viewMask){if(!maskViewT||maskViewT.w!==doc.w||maskViewT.h!==doc.h||maskViewT.depth!==doc.depth){disposeTarget(maskViewT);maskViewT=makeTarget(doc.w,doc.h);}blit(lm,maskViewT,0,0,doc.w,doc.h,0,0);maskViewLive=true;}}
+  if(stroke&&stroke.L.maskOf&&stroke.o.tool!=='smudge'){const lm=acquire();tmp.push(lm);run(P.merge,lm,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},selU(stroke.o),tonalU(stroke.o)));maskOverride.set(stroke.L.maskOf,lm.tex);if(ui.viewMask){if(!maskViewT||maskViewT.w!==doc.w||maskViewT.h!==doc.h||maskViewT.depth!==doc.depth){disposeTarget(maskViewT);maskViewT=makeTarget(doc.w,doc.h);}blit(lm,maskViewT,0,0,doc.w,doc.h,0,0);maskViewLive=true;}}
   if(preview&&!preview.off&&preview.isMask)maskOverride.set(preview.L,previewT.tex);
   compOut=renderNodes(doc.root.children);compOut.mipDirty=true;tmp.forEach(release);maskOverride=new Map();}
 function dprNow(){return cv.width/Math.max(1,stage.clientWidth);}
@@ -51,7 +54,7 @@ function drawView(){
 let selViewTmp=null;
 function selViewU(z,dpr,wrap){if(!sel.t)return {};
   if(sel.quick){let t=sel.t;
-    if(stroke&&stroke.L.quick&&stroke.o.tool!=='smudge'){selViewTmp=acquire();run(P.merge,selViewTmp,{uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:1},uStrokeColor:stroke.o.color,uStrokeOpacity:stroke.o.opacity,uLockAlpha:false});t=selViewTmp;bindTarget(null);}
+    if(stroke&&stroke.L.quick&&stroke.o.tool!=='smudge'){selViewTmp=acquire();run(P.merge,selViewTmp,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},tonalU(stroke.o)));t=selViewTmp;bindTarget(null);}
     else if(preview&&!preview.off&&preview.et&&preview.et.L.quick)t=previewT;
     return {uSel:t.tex,uSelMode:{int:2},uWrap:wrap};}
   if(typeof selLive!=='undefined'&&selLive&&selLive.overlay&&selLive.on)return {uSel:sel.t.tex,uSelMode:{int:2},uWrap:wrap};
