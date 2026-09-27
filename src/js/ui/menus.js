@@ -11,7 +11,7 @@ const MENUS={
     ['Feather…','selFeather'],['Expand…','selExpand'],['Contract…','selContract'],['Smooth…','selSmooth'],'-',['Select layer pixels','selLayer','Ctrl+click thumbnail'],['Load selection…','selLoad'],'-',['Quick mask','quickMask','Q']],
   Adjust:[['Color adjustments…','adjust','Ctrl+U'],['Levels…','levels','Ctrl+L'],['Curves…','curves','Ctrl+M'],['Hue / Saturation…','hueSat'],['Gradient map…','gradMap'],'-',
     ['Invert','invert','Ctrl+I'],['Desaturate','desat','Ctrl+Shift+U'],['Threshold…','threshold'],['Posterize…','posterize'],['Quantize…','quantize']],
-  Filter:[['Gaussian blur…','blur'],['Box blur…','boxBlur'],['Radial blur…','radialBlur'],['Lens blur…','lensBlur'],['Surface blur…','surfBlur'],['Motion blur…','motionBlur'],'-',['Sharpen…','sharpen'],['High pass…','highPass'],'-',
+  Filter:[['Filter Gallery…','gallery','Ctrl+Shift+F'],'-',['Gaussian blur…','blur'],['Box blur…','boxBlur'],['Radial blur…','radialBlur'],['Lens blur…','lensBlur'],['Surface blur…','surfBlur'],['Motion blur…','motionBlur'],'-',['Sharpen…','sharpen'],['High pass…','highPass'],'-',
     ['Oil paint…','oilPaint'],['Painterly…','painterly'],['Cutout…','cutout'],['Mosaic…','mosaic'],'-',['Emboss…','emboss'],['Find edges…','edges'],['Edge wear…','edgeWear'],'-',
     ['Add noise…','noise'],['Render clouds…','clouds'],['Render cells…','cells'],'-',['Offset…','offset'],['Tile…','tile_fx'],['Make seamless…','seamless']],
   View:[['Fit on screen','fit','Ctrl+0'],['Actual pixels','actual','Ctrl+1'],['Tile mode','tile','Shift+T'],['3D view','view3d','F3'],'-',['Cage tool','cageTool','K'],['Flat cage view','cageFlat','F'],['Symmetry: left–right','symX','Shift+X'],'-',['Shortcut hints','hints'],['Performance monitor','perf']],
@@ -25,7 +25,7 @@ const actions={new:dlgNew,open:()=>pickFile('open'),place:()=>pickFile('place'),
   adjust:()=>fxMenu('colorAdj'),invert,posterize:()=>fxMenu('posterize'),blur:()=>fxMenu('blur'),sharpen:()=>fxMenu('sharpen'),fit,actual,tile:toggleTile};
 /* the Brush tab's sketch is not a document: saving it would be a surprise */
 for(const k of ['save','saveAs','savePsdAs','export','expTex']){const f=actions[k];actions[k]=(...a)=>{if(ui.mode==='brush'){toast('The Brush tab makes brushes: press Make brush. Switch to Paint to save your document.');return;}return f(...a);};}
-Object.assign(actions,{ws_painting:()=>setWorkspace('painting'),ws_texturing:()=>setWorkspace('texturing'),ws_paint3d:()=>setWorkspace('paint3d'),ws_minimal:()=>setWorkspace('minimal'),wsSave:()=>saveWorkspaceAs(),wsReset:()=>resetWorkspace(),wsLock:()=>toggleLockPanels(),
+Object.assign(actions,{gallery:()=>dlgGallery(),ws_painting:()=>setWorkspace('painting'),ws_texturing:()=>setWorkspace('texturing'),ws_paint3d:()=>setWorkspace('paint3d'),ws_minimal:()=>setWorkspace('minimal'),wsSave:()=>saveWorkspaceAs(),wsReset:()=>resetWorkspace(),wsLock:()=>toggleLockPanels(),
   pn_color:()=>togglePanel('color'),pn_brushes:()=>togglePanel('brushes'),pn_tool:()=>togglePanel('tool'),pn_maps:()=>togglePanel('maps'),pn_layers:()=>togglePanel('layers'),pn_chan:()=>togglePanel('chan'),
   optBarToggle:()=>{dk.L.opt=!dk.L.opt;dkRender();dkSave();},tbCols:()=>dkToolbar({cols:dk.L.tb.cols===2?1:2}),tbSide:()=>dkToolbar({side:dk.L.tb.side==='right'?'left':'right'})});
 Object.assign(actions,{makeTip:()=>dlgMakeTip(),keys:()=>dlgKeys(),hints:()=>toggleHints(),cageTool:()=>{if(ui.cageFlat)cageFlatOff();setTool('cage');},cageFlat:()=>toggleCageFlat(),symX:()=>symToggleX()});

@@ -46,6 +46,7 @@
     "filters/converters",
     "filters/filters",
     "filters/fx-layers",
+    "filters/gallery",
     "view3d/mesh",
     "view3d/view3d",
     "view3d/mesh-paint",
