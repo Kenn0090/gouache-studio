@@ -74,6 +74,10 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); float c=texel
   for(int i=0;i<16;i++){ float a=float(i)*0.3927+(i>=8?0.19635:0.0); float r=i>=8?uR:uR*0.5; ivec2 q=clamp(p+ivec2(round(vec2(cos(a),sin(a))*r)),ivec2(0),s-1);
     float v=texelFetch(uSrc,q,0).r; if(abs(v-c)<=uT){ sum+=v; n+=1.0; } }
   o=vec4(vec3(sum/n),1.0); }`,
+  /* roughness -> glossiness, or metallic -> specular (about 22% grey, the photo's colour where metal) */
+  tosg:`uniform sampler2D uSrc; uniform sampler2D uCol; uniform int uSpec;
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy); float v=texelFetch(uSrc,p,0).r; if(uSpec==0){ o=vec4(vec3(1.0-v),1.0); return; }
+  vec4 c=texelFetch(uCol,p,0); vec3 col=c.a>1e-6?c.rgb/c.a:vec3(0.0); o=vec4(mix(vec3(0.22),col,v),1.0); }`,
   shade:`uniform sampler2D uN; uniform vec2 uSize; void main(){ vec3 n=texture(uN,gl_FragCoord.xy/uSize).rgb*2.0-1.0; vec3 L=normalize(vec3(-0.55,0.55,0.62)); float d=max(dot(normalize(n),L),0.0);
   o=vec4(vec3(0.18+0.82*d)*vec3(0.95,0.9,0.82),1.0); }`};
 let CVP=null;const cvP=()=>CVP||(CVP=Object.fromEntries(Object.entries(CV_FS).map(([k,s])=>[k,program(s)])));
@@ -219,9 +223,11 @@ function cvOverlay(){if(ui.mode!=='convert'||!cvS.persp.edit||!cvS.persp.q)retur
 /* ---------- sending and exporting ---------- */
 const cvMade=()=>CV_OUTS[cvS.kind].filter(k=>cvS.make[k]);
 function cvSend(){if(!cvS.src){toast('Pick a source first.');return;}const ks=cvMade();if(!ks.length){toast('Tick at least one map to make.');return;}
-  for(const k of ks)cvRes(k);const need=ks.map(k=>CV_MAP[k]).filter(m=>!doc.maps.includes(m));if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the conversion');
-  const groups=[];const mk=(k)=>{const m=CV_MAP[k],L=newLayerObj('Converted '+CV_NAMES[k].toLowerCase());for(const x of Object.keys(L.maps))if(x!=='base'&&x!==m){disposeTarget(L.maps[x]);delete L.maps[x];}
-    const T=ensureMapTarget(L,m);run(P.shift,T,{uSrc:cvS.res[k].tex,uOff:[0,0],uWrap:false,uOutside:[0,0,0,0]});if(m!=='base'){L.blankBase=true;setMapModeOf(L,m,0);}
+  /* a Specular/Gloss document gets glossiness (inverted roughness) and specular (dark grey, the colour where metal) */
+  const sg=doc.workflow==='spec',mapOf=k=>sg&&k==='rough'?'gloss':sg&&k==='metal'?'spec':CV_MAP[k],nameOf=k=>sg&&k==='rough'?'Glossiness':sg&&k==='metal'?'Specular':CV_NAMES[k];
+  for(const k of ks)cvRes(k);const need=ks.map(mapOf).filter(m=>!doc.maps.includes(m));if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the conversion');
+  const groups=[];const mk=(k)=>{const m=mapOf(k),L=newLayerObj('Converted '+nameOf(k).toLowerCase());for(const x of Object.keys(L.maps))if(x!=='base'&&x!==m){disposeTarget(L.maps[x]);delete L.maps[x];}
+    const T=ensureMapTarget(L,m);if(m==='gloss'||m==='spec')run(cvP().tosg,T,{uSrc:cvS.res[k].tex,uCol:cvPrep().tex,uSpec:m==='spec'});else run(P.shift,T,{uSrc:cvS.res[k].tex,uOff:[0,0],uWrap:false,uOutside:[0,0,0,0]});if(m!=='base'){L.blankBase=true;setMapModeOf(L,m,0);}
     const G=newGroupObj(L.name);G.open=false;G.converted=true;insertNode(L,G);groups.push(G);return G;};
   const old=cvS.replace?cvS.sent.filter(n=>n.parent&&allNodes().includes(n)):[];
   structOp(old.length?'Replace converted maps':'Convert maps',()=>{for(const n of old)detachNode(n);for(const k of ks)insertNode(mk(k),doc.root);cvS.sent=groups;});

@@ -4,20 +4,22 @@
    (doc.map), or a shared empty image when the layer has nothing in that map, so every tool keeps
    working on "the layer" unchanged. Height is stored at 16 bits even in 8-bit documents. */
 const MAP_DEFS={
-  base:{label:'Base colour',grey:false,def:null,blend:0},
+  base:{get label(){return doc.workflow==='spec'?'Diffuse':'Base colour';},grey:false,def:null,blend:0},
   rough:{label:'Roughness',grey:true,def:.5,blend:0},
   metal:{label:'Metallic',grey:true,def:0,blend:0},
+  spec:{label:'Specular',grey:false,def:.22,blend:0,hint:'Dark grey for non-metals (about 22%), the metal’s own colour for metals.'},
+  gloss:{label:'Glossiness',grey:true,def:.5,blend:0,hint:'White is shiny, black is rough (the opposite of roughness).'},
   height:{label:'Height',grey:true,def:.5,blend:21,hint:'Mid-grey is flat; lighter raises, darker lowers.'},
   normal:{label:'Normal',grey:false,def:null,blend:0,noPaint:true},
   ao:{label:'Ambient occlusion',grey:true,def:1,blend:0},
   curv:{label:'Curvature',grey:true,def:.5,blend:0,hint:'Mid-grey is flat; light is raised edges, dark is cavities. A mask for wear and dirt, not shown in the material.'},
   emis:{label:'Emissive',grey:false,def:null,blend:0},
   opac:{label:'Opacity',grey:true,def:1,blend:0}};
-const MAP_SHORT={base:'Col',rough:'Rgh',metal:'Met',height:'Hgt',normal:'Nrm',ao:'AO',curv:'Cur',emis:'Emi',opac:'Opa'};
+const MAP_SHORT={base:'Col',rough:'Rgh',metal:'Met',spec:'Spc',gloss:'Gls',height:'Hgt',normal:'Nrm',ao:'AO',curv:'Cur',emis:'Emi',opac:'Opa'};
 /* a layer whose base colour was never painted (made by a converter or painted only in other maps) */
 const isBlankBase=L=>!!L.blankBase;
-const MAP_ORDER=['base','rough','metal','height','normal','ao','curv','emis','opac'];
-const MAP_TEMPLATES={hand:['base'],pbr:['base','rough','metal','height','normal']};
+const MAP_ORDER=['base','rough','metal','spec','gloss','height','normal','ao','curv','emis','opac'];
+const MAP_TEMPLATES={hand:['base'],pbr:['base','rough','metal','height','normal'],pbrsg:['base','spec','gloss','height','normal']};
 function mapDepth(k){return k==='height'&&canFloat?16:doc.depth;}
 /* what a map shows where no layer has painted it */
 function mapDefault(k){if(k==='base')return [0,0,0,0];if(k==='normal')return [.5,.5,1,1];if(k==='emis')return [0,0,0,1];
@@ -79,9 +81,11 @@ function lightVec(){const a=doc.light.az*Math.PI/180,e=doc.light.el*Math.PI/180;
 function buildMaterialView(){const own=compOut;let out;
   if(doc.view==='nfinal')out=normalComposite(false,own);
   else{const get=k=>doc.maps.includes(k)?mapComp(k,own):null;
-    const base=get('base'),r=get('rough'),m=get('metal'),ao=get('ao'),em=get('emis'),nrm=normalComposite(false,own);
+    let base=get('base'),r=get('rough'),m=get('metal'),sg=null;const ao=get('ao'),em=get('emis'),nrm=normalComposite(false,own);
+    /* Specular/Gloss: shaded as the equivalent base/metal/rough */
+    if(doc.workflow==='spec'){const s=get('spec'),g=get('gloss');sg=sgAsMR(base.t,s&&s.t,g&&g.t);for(const c of [base,s,g])if(c&&!c.own)release(c.t);base={t:sg.base,own:false};r={t:sg.rough,own:false};m={t:sg.metal,own:false};}
     out=acquireD(doc.depth);
     run(P.mat,out,{uBase:base.t.tex,uRough:r?r.t.tex:dummy,uMetal:m?m.t.tex:dummy,uNrm:nrm.tex,uAO:ao?ao.t.tex:dummy,uEmis:em?em.t.tex:dummy,
-      uHas:{int:(r?1:0)|(m?2:0)|4|(ao?8:0)|(em?16:0)},uLight:lightVec(),uDef:[MAP_DEFS.rough.def,MAP_DEFS.metal.def,0,0]});
+      uHas:{int:(r?1:0)|(m?2:0)|4|(ao?8:0)|(em?16:0)},uLight:lightVec(),uDef:[mapDefault('rough')[0],mapDefault('metal')[0],0,0]});
     for(const c of [base,r,m,ao,em])if(c&&!c.own)release(c.t);release(nrm);}
   release(own);compOut=out;}

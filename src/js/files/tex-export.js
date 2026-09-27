@@ -35,6 +35,32 @@ const TEX_PRESETS={
     {s:'height',what:'Height (white is high)',grey:'height'},
     {s:'curvature',what:'Curvature (mask)',grey:'curv'},
     {s:'emission',what:'Emission',rgb:'emis'}]},
+  /* Specular/Gloss documents. Unity's Standard (Specular setup): specular in RGB, smoothness (gloss) in alpha. Unreal has no built-in
+     spec/gloss material, so the maps come separately for a custom material. */
+  unitySG:{label:'Unity (Standard, specular)',wf:'spec',normal:'gl',name:n=>pascal(n)+'_{s}',outs:[
+    {s:'Albedo',what:'Diffuse (alpha: opacity)',rgb:'base',a:'opac?'},
+    {s:'Specular',what:'RGB specular · A smoothness (glossiness)',rgbA:['spec','gloss'],need:['spec','gloss']},
+    {s:'Normal',what:'Normal (OpenGL)',rgb:'normal'},
+    {s:'Occlusion',what:'Occlusion',grey:'ao'},
+    {s:'Height',what:'Height (parallax)',grey:'height'},
+    {s:'Emission',what:'Emission',rgb:'emis'}]},
+  unrealSG:{label:'Unreal Engine (specular/gloss)',wf:'spec',normal:'dx',name:n=>'T_'+pascal(n)+'_{s}',outs:[
+    {s:'D',what:'Diffuse (alpha: opacity)',rgb:'base',a:'opac?'},
+    {s:'S',what:'Specular colour',rgb:'spec'},
+    {s:'G',what:'Glossiness',grey:'gloss'},
+    {s:'N',what:'Normal (DirectX)',rgb:'normal'},
+    {s:'AO',what:'Ambient occlusion',grey:'ao'},
+    {s:'H',what:'Height',grey:'height'},
+    {s:'E',what:'Emissive',rgb:'emis'}]},
+  separateSG:{label:'Separate maps (specular/gloss)',wf:'spec',normal:'gl',name:n=>pascal(n)+'_{s}',outs:[
+    {s:'Diffuse',what:'Diffuse',rgb:'base'},
+    {s:'Specular',what:'Specular colour',rgb:'spec'},
+    {s:'Glossiness',what:'Glossiness',grey:'gloss'},
+    {s:'Normal',what:'Normal (OpenGL)',rgb:'normal'},
+    {s:'Height',what:'Height',grey:'height'},
+    {s:'AO',what:'Ambient occlusion',grey:'ao'},
+    {s:'Emission',what:'Emission',rgb:'emis'},
+    {s:'Opacity',what:'Opacity',grey:'opac'}]},
   blender:{label:'Blender',normal:'gl',name:n=>pascal(n)+'_{s}',outs:[
     {s:'BaseColor',what:'Base colour',rgb:'base'},
     {s:'Roughness',what:'Roughness',grey:'rough'},
@@ -49,6 +75,7 @@ const pascal=n=>(String(n||'Texture').replace(/\.[a-z0-9]+$/i,'').match(/[A-Za-z
 const snake=n=>(String(n||'texture').replace(/\.[a-z0-9]+$/i,'').match(/[A-Za-z0-9]+/g)||['texture']).map(w=>w.toLowerCase()).join('_');
 const texCfg={preset:'unreal',normal:'preset',size:0,fmt:'png',h16:true,name:''};
 /* which files this document produces with a preset */
+const texPresetsFor=()=>Object.entries(TEX_PRESETS).filter(([k,p])=>(p.wf||'metal')===(doc.workflow||'metal'));
 function texOutputs(pr){const has=k=>doc.maps.includes(k);
   return pr.outs.filter(o=>{if(o.rgb==='normal')return has('height')||has('normal');if(o.rgb)return has(o.rgb);if(o.grey)return has(o.grey);return o.need.some(has);});}
 function texNormalFlip(pr){const c=texCfg.normal==='preset'?pr.normal:texCfg.normal;return c==='dx';}
@@ -90,6 +117,8 @@ async function buildTextures(pr,name){const W=doc.w,H=doc.h,S=texCfg.size||0,nw=
       if(o.a==='opac?'&&has('opac')){const op=grey('opac');for(let i=0;i<n;i++)rgba[i*4+3]*=op[i];C=4;f=rgba;}
       else if(o.rgb==='base'&&baseHasAlpha(rgba,n)&&o.a){C=4;f=rgba;}
       else{C=3;f=dropAlpha(rgba,n);}}
+    else if(o.rgbA){const [rk,ak]=o.rgbA;const t=compositeMap(rk);const rgba=readMapF(t,4);release(t);const g=grey(ak),d=def(ak);for(let i=0;i<n;i++)rgba[i*4+3]=g?g[i]:d;C=4;f=rgba;
+      if(!has(rk)){const c=mapDefault(rk);for(let i=0;i<n;i++){rgba[i*4]=c[0];rgba[i*4+1]=c[1];rgba[i*4+2]=c[2];}}}
     else if(o.grey){f=grey(o.grey).slice();C=1;}
     else{C=o.ch.length;f=new Float32Array(n*C);o.ch.forEach((k,c)=>{const g=grey(k),inv=k==='smooth',d=def(k);for(let i=0;i<n;i++){const v=g?g[i]:d;f[i*C+c]=inv&&g?1-v:v;}});}
     const r=resampleF(f,W,H,C,nw,nh,C===4);const bits=o.grey==='height'&&texCfg.h16&&ext==='png'?16:8;
@@ -107,7 +136,8 @@ function dlgExportTextures(){if(stroke||preview||selLive){toast('Finish the curr
   const draw=()=>{const pr=TEX_PRESETS[texCfg.preset],outs=texOutputs(pr),flip=texNormalFlip(pr);list.replaceChildren(...outs.map(o=>el('div',{class:'texrow'},
       el('code',{text:pr.name(texCfg.name||'Texture').replace('{s}',o.s)+'.'+texCfg.fmt}),el('span',{class:'dim',text:o.rgb==='normal'?'Normal ('+(flip?'DirectX':'OpenGL')+')':o.what}))));
     if(doc.maps.length<2)list.append(el('p',{class:'note',text:'This document only has base colour. Add maps with Image › Document maps… to export roughness, metallic, height and normal too.'}));};
-  body.append(sel('txPreset','Engine',Object.entries(TEX_PRESETS).map(([k,p])=>[k,p.label]),texCfg.preset,v=>{texCfg.preset=v;}),
+  if((TEX_PRESETS[texCfg.preset].wf||'metal')!==(doc.workflow||'metal'))texCfg.preset=texPresetsFor()[0][0];
+  body.append(sel('txPreset','Engine',texPresetsFor().map(([k,p])=>[k,p.label]),texCfg.preset,v=>{texCfg.preset=v;}),
     el('div',{class:'frow'},el('label',{for:'txName',text:'Name'}),nameIn),
     sel('txNrm','Normal map',[['preset','Engine default'],['gl','OpenGL (green up)'],['dx','DirectX (green down)']],texCfg.normal,v=>{texCfg.normal=v;}),
     sel('txSize','Size',sizes,texCfg.size,v=>{texCfg.size=+v;}),

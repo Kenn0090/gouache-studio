@@ -7,6 +7,7 @@
     "core/document",
     "core/maps",
     "core/render",
+    "core/workflow",
     "paint/brush-engine",
     "ui/color",
     "paint/brush-library",

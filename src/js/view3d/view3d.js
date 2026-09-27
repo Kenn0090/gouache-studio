@@ -74,8 +74,11 @@ function v3Refresh(){if(!v3.on)return;if(ui.mode==='bake'){bakeV3Refresh();retur
     if(ui.mode==='anim'&&k==='base'){v3MapTex(k,compOut);return;}
     const t=compositeMap(k);v3MapTex(k,t);release(t);};
   if(full){for(const k of v3Needed())one(k);if(v3s().disp&&doc.maps.includes('height')){const t=compositeMap('height');v3MapTex('height',t);release(t);}
-    v3.mapsDirty=false;v3.editDirty=false;v3.lastFull=now;v3.dirty=true;}
-  else if(v3.editDirty){const k=ui.mode==='anim'?'base':doc.map;if(v3Needed().includes(k))one(k);if(k==='height'&&stroke&&now-v3.lastFull>150){one('nfinal');}v3.editDirty=false;v3.dirty=true;}}
+    v3.mapsDirty=false;v3.editDirty=false;v3.lastFull=now;v3.dirty=true;v3SgDerive();}
+  else if(v3.editDirty){const k=ui.mode==='anim'?'base':doc.map;if(v3Needed().includes(k))one(k);if(k==='height'&&stroke&&now-v3.lastFull>150){one('nfinal');}v3.editDirty=false;v3.dirty=true;if(['base','spec','gloss'].includes(k))v3SgDerive();}}
+/* Specular/Gloss documents shade the model with the equivalent base/metal/rough */
+function v3SgDerive(){if(doc.workflow!=='spec'||!v3.tex.base||ui.mode==='anim')return;const T=v3.tex,r=sgAsMR(T.base,doc.maps.includes('spec')?T.spec:null,doc.maps.includes('gloss')?T.gloss:null);
+  v3MapTex('sgBase',r.base);v3MapTex('sgMetal',r.metal);v3MapTex('sgRough',r.rough);for(const k in r)release(r[k]);}
 /* called by composite(): the document changed */
 function v3Changed(){if(!v3.on)return;v3.editDirty=true;v3.mapsDirty=true;}
 
@@ -104,7 +107,8 @@ function v3Render(F,flip){const s=v3s(),g=v3.gpu;if(!g)return;
   gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);const bg=BG3[s.bg]||BG3.dark;gl.clearColor(bg[0],bg[1],bg[2],1);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
   const eye=v3Eye(),V=m4look(eye,[v3.cam.tx,v3.cam.ty,v3.cam.tz],[0,1,0]),Pm=m4persp(s.fov*Math.PI/180,F.w/F.h,.02,100);if(flip)Pm[5]=-Pm[5];const VP=m4mul(Pm,V);
-  const bake=(ui.mode==='bake'||ui.mode==='convert')&&v3.btex,T=bake?v3.btex:v3.tex,ok=k=>T[k]&&(bake||(k==='nfinal'?doc.maps.includes('height')||doc.maps.includes('normal'):doc.maps.includes(k)));
+  const bake=(ui.mode==='bake'||ui.mode==='convert')&&v3.btex,sg=!bake&&doc.workflow==='spec'&&v3.tex.sgBase&&ui.mode!=='anim'&&!v3Unlit();
+  const T=bake?v3.btex:sg?Object.assign({},v3.tex,{base:v3.tex.sgBase,metal:v3.tex.sgMetal,rough:v3.tex.sgRough}):v3.tex,ok=k=>T[k]&&(bake||(sg&&(k==='rough'||k==='metal'))||(k==='nfinal'?doc.maps.includes('height')||doc.maps.includes('normal'):doc.maps.includes(k)));
   const hm=(ok('rough')?1:0)|(ok('metal')?2:0)|(ok('nfinal')?4:0)|(ok('ao')?8:0)|(ok('emis')?16:0)|(ok('opac')?64:0);
   const a=s.sunAz*Math.PI/180,e=s.sunEl*Math.PI/180,base=T.base||null;
   const common={uVP:{m4:VP},uUVs:bake?1:s.uvs,uH:T.height&&s.disp?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:!!(!bake&&T.height&&s.disp&&doc.maps.includes('height'))};

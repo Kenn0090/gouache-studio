@@ -46,6 +46,14 @@ Exports the **visible image** or the **active layer** as:
 | Godot | `_albedo`, `_orm`, `_normal`, `_height`, `_emission` |
 | Blender | one file per map |
 
+For **Specular/Gloss** documents (see [Maps and PBR](Maps-and-PBR.md)):
+
+| Preset | Files |
+|---|---|
+| Unity (Standard, specular) | `_Albedo` (diffuse), `_Specular` (RGB specular, A smoothness = glossiness), `_Normal`, `_Occlusion`, `_Height`, `_Emission` |
+| Unreal (specular/gloss) | `T_Name_D` (diffuse), `T_Name_S` (specular), `T_Name_G` (glossiness), `T_Name_N` (DirectX), `T_Name_AO`, `T_Name_H`, `T_Name_E`, for a custom material |
+| Separate maps | one file per map |
+
 Other options:
 - **Normal map direction:** the engine default, OpenGL or DirectX.
 - **Size:** the document size or 256–4096.

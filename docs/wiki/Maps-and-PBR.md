@@ -18,6 +18,26 @@ A document can hold several **maps**: images of the same size that together desc
 
 Height is stored at 16 bits even in 8-bit documents, so it stays smooth.
 
+## Specular/Gloss workflow
+Documents are **Metal/Rough** by default. A **Specular/Gloss** document paints three different maps instead of Base colour, Metallic and Roughness:
+
+| Map | What it is | Unpainted value |
+|---|---|---|
+| Diffuse | The colour of non-metals; black (or very dark) on bare metal | transparent |
+| Specular | A colour: about 22% grey for non-metals, the metal's own colour for metals | 22% grey |
+| Glossiness | 0% rough … 100% shiny (the opposite of roughness) | 50% |
+
+- Start one with *File › New document*, template **PBR spec/gloss**, or switch any document in **Maps › Document maps…** under **Workflow**.
+
+![Workflow in Document maps.](images/maps-workflow.png)
+*Maps › Document maps with the Specular/Gloss workflow.*
+
+- **Switching** converts the finished look (all layers together) into new groups, one per map: *Diffuse (converted)*, *Specular (converted)* and *Glossiness (converted)* (or *Base colour*, *Metallic* and *Roughness* going the other way). The maps your layers had before are set aside, not deleted: when you switch back, you're asked whether to **bring them back** exactly as they were or **convert** the current look again. Height, normal, AO and the other maps are not touched. Switching is one undo step. (Set-aside layers are kept until you close the document; they are not saved in the file.)
+- The material view and the 3D view shade a Specular/Gloss document correctly; it looks the same as its Metal/Rough version.
+- Brushes that paint several maps at once get **Specular** (a colour) and **Glossiness** values.
+- The **Convert tab** sends **Glossiness** (inverted roughness) and **Specular** (grey, with the photo's colour where it's metal) to a Specular/Gloss document.
+- **Export textures** offers the Specular/Gloss presets (see [Files and export](Files-and-export.md)).
+
 ## The Maps panel
 
 ![The Maps panel.](images/maps-panel.png)

@@ -31,7 +31,7 @@ async function encodeGouache(){const blobs=[];let off=0;
   let meshRec=null;if(typeof v3!=='undefined'&&v3.imported){const c=await streamThrough(meshPack(v3.imported),'deflate-raw');blobs.push(c);meshRec={o:off,n:c.length,name:v3.imported.name};off+=c.length;}
   const bakeMaps={};for(const k of ['skew','offset'])if(bk.maps[k]){const r=await put(bk.maps[k],true);if(r)bakeMaps[k]=r;}
   const head={bakeMaps,cage:cageClone(doc.cage),v3d:doc.v3d||null,mesh:meshRec,app:'Gouache Studio',v:GF_VERSION,w:doc.w,h:doc.h,depth:doc.depth,wrap:doc.wrap,name:doc.name,
-    maps:doc.maps,map:doc.map,view:doc.view,mapDef:doc.mapDef,nrmStr:doc.nrmStr,light:doc.light,tex:texCfg,kids,active,anim,layers:all.length};
+    maps:doc.maps,map:doc.map,view:doc.view,mapDef:doc.mapDef,workflow:doc.workflow,nrmStr:doc.nrmStr,light:doc.light,tex:texCfg,kids,active,anim,layers:all.length};
   const hj=new TextEncoder().encode(JSON.stringify(head)),pre=new Uint8Array(16);pre.set(GF_MAGIC,0);const dv=new DataView(pre.buffer);dv.setUint32(8,GF_VERSION,true);dv.setUint32(12,hj.length,true);
   return new Blob([pre,hj,...blobs],{type:'application/octet-stream'});}
 function isGouache(buf){const u=new Uint8Array(buf,0,Math.min(8,buf.byteLength));return u.length===8&&GF_MAGIC.every((v,i)=>u[i]===v);}
@@ -42,7 +42,7 @@ async function openGouache(buf,name){if(!isGouache(buf))throw new Error('This is
   if(head.w>MAX_DIM||head.h>MAX_DIM)throw new Error('This document is larger than this computer can edit.');
   const depth=head.depth===16&&!canFloat?8:head.depth;
   newDoc(head.w,head.h,depth,false,head.name||name,!!head.wrap);
-  Object.assign(doc,{maps:head.maps||['base'],mapDef:head.mapDef||{},nrmStr:head.nrmStr!=null?head.nrmStr:8,light:head.light||{az:135,el:40}});
+  Object.assign(doc,{maps:head.maps||['base'],mapDef:head.mapDef||{},workflow:head.workflow==='spec'?'spec':'metal',nrmStr:head.nrmStr!=null?head.nrmStr:8,light:head.light||{az:135,el:40}});
   if(head.tex)Object.assign(texCfg,head.tex);
   if(head.cage&&head.cage.A)doc.cage=cageClone(head.cage);
   if(head.v3d)doc.v3d=Object.assign({},V3D_DEFAULTS,head.v3d);

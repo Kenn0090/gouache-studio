@@ -31,17 +31,21 @@ function mapKeyNav(e){if(!(e.shiftKey&&e.altKey)||e.ctrlKey||e.metaKey)return fa
 /* Maps dialog: choose which maps the document has and what unpainted areas default to */
 function dlgMaps(){if(ui.mode==='anim'){toast('Switch to paint mode to change maps.');return;}
   const on=new Set(doc.maps),defs=Object.assign({},doc.mapDef),body=el('div',{class:'dlg-grid'});
-  const tpl=el('div',{class:'chips'},...Object.entries({hand:'Hand-painted',pbr:'PBR'}).map(([t,l])=>el('button',{class:'chip',text:l,onclick:()=>{on.clear();MAP_TEMPLATES[t].forEach(k=>on.add(k));draw();}})));
+  let wf=doc.workflow||'metal';const other=w=>WF_KEYS[w==='spec'?'metal':'spec'];
+  const wfSeg=el('div',{class:'seg'});const drawWf=()=>wfSeg.replaceChildren(...[['metal','Metal/Rough'],['spec','Specular/Gloss']].map(([k,l])=>el('button',{class:'segb','aria-pressed':String(wf===k),text:l,onclick:()=>{
+      if(wf===k)return;wf=k;for(const x of other(k))on.delete(x);for(const x of WF_KEYS[k])on.add(x);drawWf();draw();}})));drawWf();
+  const tpl=el('div',{class:'chips'},...Object.entries({hand:'Hand-painted',pbr:'PBR'}).map(([t,l])=>el('button',{class:'chip',text:l,onclick:()=>{on.clear();MAP_TEMPLATES[t==='pbr'&&wf==='spec'?'pbrsg':t].forEach(k=>on.add(k));draw();}})));
   const box=el('div',{class:'dlg-grid'});
-  const draw=()=>{box.replaceChildren(...MAP_ORDER.map(k=>{const D=MAP_DEFS[k];
+  const draw=()=>{box.replaceChildren(...MAP_ORDER.filter(k=>!other(wf).includes(k)).map(k=>{const D=MAP_DEFS[k];
     const c=chk('mp_'+k,D.label,on.has(k),v=>{if(v)on.add(k);else on.delete(k);draw();});if(k==='base'){c.querySelector('input').disabled=true;}
     const kids=[c];
-    if(D.grey&&D.def!=null&&on.has(k)){const s=makeSlider({id:'mpd_'+k,label:'Unpainted value',min:0,max:100,step:1,value:Math.round((defs[k]!=null?defs[k]:D.def)*100),fmt:v=>v+'%',onInput:v=>{defs[k]=v/100;}});kids.push(s.el);}
+    if((D.grey||k==='spec')&&D.def!=null&&on.has(k)){const s=makeSlider({id:'mpd_'+k,label:'Unpainted value',min:0,max:100,step:1,value:Math.round((defs[k]!=null?defs[k]:D.def)*100),fmt:v=>v+'%',onInput:v=>{defs[k]=v/100;}});kids.push(s.el);}
     if(k==='normal'&&on.has(k))kids.push(el('p',{class:'note',text:'Normal is built from Height automatically. Its own layer content is only for loaded normal detail.'}));
     return el('div',{class:'mapopt'},...kids);}));};draw();
-  const gone=()=>doc.maps.filter(k=>!on.has(k));
-  body.append(el('div',{class:'sub',text:'Start from'}),tpl,box,el('p',{class:'note',text:'Removing a map discards what was painted in it (you can undo).'}));
+  const gone=()=>doc.maps.filter(k=>!on.has(k)&&!(wf!==(doc.workflow||'metal')&&WF_KEYS[doc.workflow||'metal'].includes(k)));
+  body.append(el('div',{class:'sub',text:'Workflow'}),wfSeg,el('p',{class:'note',text:'Specular/Gloss paints Diffuse, Specular (colour) and Glossiness instead of Base colour, Metallic and Roughness. Switching converts what you have; switching back can restore your layers.'}),el('div',{class:'sub',text:'Start from'}),tpl,box,el('p',{class:'note',text:'Removing a map discards what was painted in it (you can undo).'}));
   openDialog({title:'Document maps',body,okLabel:'Apply',onOk(){const g=gone();if(g.length&&!confirm('Remove '+g.map(k=>MAP_DEFS[k].label).join(', ')+'? What was painted there is discarded (Undo brings it back).'))return false;
-    const keys=MAP_ORDER.filter(k=>on.has(k));const same=keys.join()===doc.maps.join()&&JSON.stringify(defs)===JSON.stringify(doc.mapDef);if(!same)setDocMaps(keys,'Document maps',defs);}});}
+    const apply=()=>{const keys=MAP_ORDER.filter(k=>on.has(k));const same=keys.join()===doc.maps.join()&&JSON.stringify(defs)===JSON.stringify(doc.mapDef);if(!same)setDocMaps(keys,'Document maps',defs);};
+    if(wf!==(doc.workflow||'metal')){setTimeout(()=>wfAsk(wf,apply),0);return;}apply();}});}
 $('#mapsBtn').addEventListener('click',dlgMaps);
 if($('#stMap'))$('#stMap').addEventListener('click',()=>setView(doc.map));

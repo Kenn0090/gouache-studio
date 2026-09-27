@@ -47,4 +47,6 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{const s=document.querySelector('#btSJ');s.value=.3;s.dispatchEvent(new Event('input'));const a=document.querySelector('#btAJ');a.value=1;a.dispatchEvent(new Event('input'));});
  await p.fill('#btName','Star');await W(900);await hideToast();await shot('brush-tab');
  await p.click('#modeTabs [data-mode=paint]');await W(300);
+ // Specular/Gloss in Document maps
+ await p.evaluate(()=>__gs.newDoc(256,256,8,[1,1,1],'Spec',false,'pbrsg'));await W();await p.evaluate(()=>__gs.act('maps'));await W();await dlg('maps-workflow');await p.click('#dlgCancel');
  console.log(errs.join('\n'));await b.close();})();

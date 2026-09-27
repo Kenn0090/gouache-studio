@@ -50,3 +50,4 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 | 9 | Convert tab (CrazyBump-style map converter) | 0.13 |
 | 10 | Colour jitter, keyboard shortcuts, themes, brush tips, pictures into masks, Tile filter | 0.14 |
 | 11 | Brush tab | 0.14.1 |
+| 12 | Specular/Gloss workflow | 0.15 |

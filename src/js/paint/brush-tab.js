@@ -15,7 +15,7 @@ function setDocState(s){for(const k of Object.keys(doc))delete doc[k];Object.ass
 function freshSketch(size){for(const k of Object.keys(aux))delete aux[k];for(const k of Object.keys(emptyTs))delete emptyTs[k];sel.t=null;hist.undo=[];hist.redo=[];
   for(const k of Object.keys(doc))delete doc[k];
   Object.assign(doc,{w:size,h:size,depth:8,wrap:false,name:'Brush sketch',root:{type:'group',children:[],isRoot:true,visible:true,opacity:1,mode:-1},active:null,sel:new Set(),count:0,
-    maps:['base'],map:'base',view:'base',mapDef:{},nrmStr:8,light:{az:135,el:40},v3d:null,anim:null,cage:null,brushTpl:true});
+    maps:['base'],map:'base',view:'base',mapDef:{},nrmStr:8,light:{az:135,el:40},v3d:null,anim:null,cage:null,brushTpl:true,workflow:'metal'});
   allocAux();groupCount=0;const L=newLayerObj('Sketch');insertNode(L,doc.root);selectOnly(L);clearTarget(L.target,[1,1,1,1]);}
 function brushTabEnter(){bt.v3was=v3.on;if(v3.on)toggle3D(false);bt.paintCol=[ui.fg.slice(),ui.bg.slice()];
   bt.paint=docState();if(bt.sketch)setDocState(bt.sketch);else freshSketch(bt.size);bt.sketch=null;
