@@ -2,6 +2,8 @@
 
 A GPU-accelerated painting and texture app for hand-painted game art. Windows desktop app built with Tauri, and also runs in a browser.
 
+**[User guide (wiki)](docs/wiki/Home.md)**: how everything in the app works.
+
 ## Download
 
 Get the latest installer from [Releases](https://github.com/Kenn0090/gouache-studio/releases/latest): `Gouache Studio_x.y.z_x64-setup.exe`. Once installed, the app checks for updates when it starts and can update itself (File › Check for updates…).
