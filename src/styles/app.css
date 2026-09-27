@@ -50,10 +50,10 @@ button{cursor:pointer}
 #work:has(>.stage.grab) #gl{cursor:grab}#work:has(>.stage.panning) #gl{cursor:grabbing}
 #work:has(>.stage.pick) #gl{cursor:cell}
 #brushCursor{position:absolute;left:0;top:0;border-radius:50%;pointer-events:none;border:1px solid rgba(255,255,255,.85);box-shadow:0 0 0 1px rgba(0,0,0,.55);will-change:transform}
-.hint{position:absolute;left:12px;bottom:10px;font:10.5px/1.3 var(--mono);color:var(--muted);background:rgba(21,23,27,.78);padding:5px 8px;border-radius:5px;pointer-events:none;max-width:calc(100% - 24px)}
+.hint{position:absolute;left:12px;bottom:10px;font:10.5px/1.3 var(--mono);color:var(--muted);background:color-mix(in srgb,var(--ground) 78%,transparent);padding:5px 8px;border-radius:5px;pointer-events:none;max-width:calc(100% - 24px)}
 .hint b{color:var(--text);font-weight:500}
 #toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:var(--raise);border:1px solid var(--line-2);padding:7px 12px;border-radius:7px;box-shadow:0 8px 24px rgba(0,0,0,.4);max-width:calc(100% - 32px);text-align:center}
-#dropHint{position:absolute;inset:12px;border:2px dashed var(--accent);border-radius:12px;display:grid;place-items:center;background:rgba(226,164,83,.07);font-weight:500;pointer-events:none}
+#dropHint{position:absolute;inset:12px;border:2px dashed var(--accent);border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 7%,transparent);font-weight:500;pointer-events:none}
 .fatal{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--muted);max-width:52ch;margin:auto}
 
 /* right panel */
@@ -105,7 +105,7 @@ select{background:var(--ground);border:1px solid var(--line-2);border-radius:5px
 .llist{position:relative}
 .lrow{display:grid;grid-template-columns:22px auto minmax(72px,1fr) minmax(0,max-content);align-items:center;gap:8px;padding:4px 6px 4px calc(6px + var(--depth,0) * 14px);border-radius:6px;cursor:pointer;user-select:none;touch-action:none}
 .lrow:hover{background:var(--raise)}
-.lrow.sel{background:rgba(226,164,83,.08)}
+.lrow.sel{background:color-mix(in srgb,var(--accent) 8%,transparent)}
 .lrow.on{background:var(--accent-soft)}
 .lrow.drop-into{box-shadow:inset 0 0 0 1.5px var(--accent)}
 .dropline{position:absolute;right:6px;height:2px;background:var(--accent);border-radius:1px;pointer-events:none}
@@ -113,7 +113,7 @@ select{background:var(--ground);border:1px solid var(--line-2);border-radius:5px
 body.ldragging,body.ldragging *{cursor:grabbing!important}
 .lrow .caret{width:36px;height:30px;border:0;background:none;color:var(--muted);display:grid;place-items:center;padding:0;border-radius:4px}
 .lrow .caret svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linejoin:round}
-.lrow .caret.open svg{fill:rgba(226,164,83,.18);stroke:var(--accent)}
+.lrow .caret.open svg{fill:color-mix(in srgb,var(--accent) 18%,transparent);stroke:var(--accent)}
 .lrow.group .lname{font-weight:600}
 .lrow.on .lname{color:var(--accent)}
 .lrow.clip{padding-left:calc(20px + var(--depth,0) * 14px)}
@@ -193,8 +193,8 @@ body.ldragging,body.ldragging *{cursor:grabbing!important}
 .crow2 canvas{width:36px;height:36px;border-radius:4px;border:1px solid var(--line-2);display:block;background:#000}
 .crow2 kbd{font:10px var(--mono);color:var(--faint)}
 #work:has(>.stage.txt) #gl{cursor:text}
-.texted{position:absolute;z-index:5;margin:0;border:1px dashed var(--accent);border-radius:2px;background:rgba(226,164,83,.05);color:transparent;caret-color:var(--accent);resize:none;overflow:hidden;white-space:pre;box-sizing:border-box;outline:none}
-.texted::selection{background:rgba(226,164,83,.35);color:transparent}
+.texted{position:absolute;z-index:5;margin:0;border:1px dashed var(--accent);border-radius:2px;background:color-mix(in srgb,var(--accent) 5%,transparent);color:transparent;caret-color:var(--accent);resize:none;overflow:hidden;white-space:pre;box-sizing:border-box;outline:none}
+.texted::selection{background:color-mix(in srgb,var(--accent) 35%,transparent);color:transparent}
 .swatch{width:22px;height:22px;border-radius:5px;border:1px solid rgba(255,255,255,.25);flex:none}
 .xbtn{background:none;border:0;color:var(--faint);font-size:16px;padding:0 6px;border-radius:4px;width:auto!important}
 .xbtn:hover{color:var(--danger)!important;background:none!important}
@@ -357,7 +357,7 @@ body.animmode .sec[aria-labelledby="hLayers"],body.animmode .sec[aria-labelledby
 .texrow{display:grid;gap:1px;padding:4px 6px;border-radius:6px;background:var(--raise)}
 .texrow code{font:11.5px var(--mono);color:var(--text)}
 .texrow .dim{font-size:11px}
-.perfbox{position:fixed;left:60px;top:48px;z-index:40;white-space:pre;font:11px/1.45 var(--mono);color:#e8eaed;background:rgba(10,12,16,.82);border:1px solid var(--line-2);border-radius:8px;padding:8px 10px;pointer-events:none}
+.perfbox{position:fixed;left:60px;top:48px;z-index:40;white-space:pre;font:11px/1.45 var(--mono);color:var(--text);background:color-mix(in srgb,var(--ground) 82%,transparent);border:1px solid var(--line-2);border-radius:8px;padding:8px 10px;pointer-events:none}
 .histo{width:100%;height:70px;border-radius:6px;background:rgba(255,255,255,.03);display:block}
 .curves{width:100%;max-width:280px;aspect-ratio:1;border-radius:6px;border:1px solid var(--line-2);display:block;margin:0 auto;cursor:crosshair;touch-action:none}
 /* filter layers */
@@ -387,7 +387,7 @@ canvas.fxthumb{background:#2a2d33 url("data:image/svg+xml,%3Csvg xmlns='http://w
 #xfOv .cgo{fill:none;stroke:rgba(255,255,255,.55);stroke-width:1;stroke-dasharray:5 4;filter:drop-shadow(0 0 1px #000)}
 #xfOv .cgf{fill:none;stroke:var(--accent);stroke-width:1.2;stroke-dasharray:6 4}
 #xfOv .sym{fill:none;stroke:#6ec6ff;stroke-width:1;stroke-dasharray:3 4;opacity:.85}
-#cageBanner{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:6;background:rgba(20,22,26,.92);border:1px solid var(--accent);border-radius:8px;padding:6px 8px 6px 12px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:4px;pointer-events:auto;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden}
+#cageBanner{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:6;background:color-mix(in srgb,var(--ground) 92%,transparent);border:1px solid var(--accent);border-radius:8px;padding:6px 8px 6px 12px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:4px;pointer-events:auto;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden}
 #cageBanner[hidden]{display:none}
 #cageBanner b{color:var(--text)}
 #cageBanner .btn{margin-left:8px}
@@ -403,7 +403,7 @@ canvas.fxthumb{background:#2a2d33 url("data:image/svg+xml,%3Csvg xmlns='http://w
 .bkmodel{display:flex;gap:6px;align-items:center;min-width:0}.bkmodel select{flex:1;min-width:0}
 .bkmodel.dropon,#bakeSec.dropon{outline:2px dashed var(--accent);outline-offset:2px;border-radius:6px}
 /* loading bar */
-#loadBox{position:fixed;left:50%;bottom:44px;transform:translateX(-50%);z-index:60;min-width:300px;max-width:min(520px,90vw);background:rgba(22,24,28,.96);border:1px solid var(--line-2);border-radius:9px;padding:10px 12px;box-shadow:0 8px 28px rgba(0,0,0,.45);pointer-events:none}
+#loadBox{position:fixed;left:50%;bottom:44px;transform:translateX(-50%);z-index:60;min-width:300px;max-width:min(520px,90vw);background:color-mix(in srgb,var(--ground) 96%,transparent);border:1px solid var(--line-2);border-radius:9px;padding:10px 12px;box-shadow:0 8px 28px rgba(0,0,0,.45);pointer-events:none}
 #loadBox[hidden]{display:none}
 #loadBox .lb-name{font-weight:600;font-size:12.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #loadBox .lb-msg{font-size:11.5px;color:var(--muted);margin:3px 0 7px}
@@ -433,3 +433,10 @@ body.convmode #mapsSec,body.convmode .sec[aria-labelledby="hLayers"],body.convmo
 .kbbtns{display:flex;gap:4px;align-items:center}
 .kbkey{min-width:92px;font-family:var(--mono)}
 .kbkey.on{outline:2px solid var(--accent)}
+/* themes */
+.themeseg{flex-wrap:wrap}
+.themeseg button{display:flex;align-items:center;gap:6px}
+.swatch{width:14px;height:14px;border-radius:4px;border:1px solid var(--line-2);flex:none}
+.themecols{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0}
+.themecol{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--muted)}
+.themecol input[type=color]{width:42px;height:28px;padding:0;border:1px solid var(--line-2);border-radius:5px;background:none}

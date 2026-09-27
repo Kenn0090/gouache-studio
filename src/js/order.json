@@ -53,6 +53,7 @@
     "convert/convert-tab",
     "files/abr",
     "ui/prefs",
+    "ui/themes",
     "ui/perf",
     "ui/dialogs",
     "ui/menus",

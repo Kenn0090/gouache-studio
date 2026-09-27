@@ -48,11 +48,11 @@ function tileCanvas(p){const c=el('canvas',{width:64,height:64});const x=c.getCo
   else{const h=clamp(p.hardness==null?.85:p.hardness,0,.98),g=x.createRadialGradient(32,32,0,32,32,26);g.addColorStop(0,'#fff');g.addColorStop(h,'#fff');g.addColorStop(1,'rgba(255,255,255,0)');
     x.fillStyle=g;x.save();x.translate(32,32);x.scale(1,clamp(p.roundness==null?1:p.roundness,.05,1));x.beginPath();x.arc(0,0,26,0,7);x.restore();x.fill();
     if(p.grain){x.globalCompositeOperation='destination-out';const R=rng(3);for(let i=0;i<260;i++){x.globalAlpha=R()*.8;x.fillRect(R()*64,R()*64,2,2);}}}
-  x.globalCompositeOperation='source-in';x.globalAlpha=1;x.fillStyle=p.tool==='smudge'?'#e2a453':'#e1e3e7';x.fillRect(0,0,64,64);return c;}
+  x.globalCompositeOperation='source-in';x.globalAlpha=1;const cs=getComputedStyle(document.documentElement);x.fillStyle=(cs.getPropertyValue(p.tool==='smudge'?'--accent':'--text').trim())||(p.tool==='smudge'?'#e2a453':'#e1e3e7');x.fillRect(0,0,64,64);return c;}
 function renderLibrary(){const box=$('#libBody');box.replaceChildren();
   for(const set of library){const head=el('div',{class:'libset-h'},el('span',{text:set.builtin?set.name:set.name+' · '+set.presets.length}),set.builtin?null:el('button',{text:'Remove','aria-label':'Remove brush set '+set.name,onclick:()=>removeSet(set)}));
     const tiles=el('div',{class:'tiles'});
-    for(const p of set.presets){const b=el('button',{title:p.name+(p.tool==='smudge'?' (blend)':''),'aria-label':p.name,class:p===activePreset?'on':null,onclick:()=>applyPreset(p)});b.append(p._thumb||(p._thumb=tileCanvas(p)));tiles.append(b);}
+    for(const p of set.presets){const b=el('button',{title:p.name+(p.tool==='smudge'?' (blend)':''),'aria-label':p.name,class:p===activePreset?'on':null,onclick:()=>applyPreset(p)});if(p._thumbTheme!==themeKey()){p._thumb=null;p._thumbTheme=themeKey();}b.append(p._thumb||(p._thumb=tileCanvas(p)));tiles.append(b);}
     box.append(el('div',{class:'libset'},head,tiles));}}
 function makeSlider(o){
   const to=o.map?o.map.to:v=>v,from=o.map?o.map.from:v=>v,fmt=o.fmt||(v=>String(v));

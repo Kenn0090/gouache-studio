@@ -52,5 +52,20 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.act('hints'));await W(100);ok(!(await p.isVisible('#hint')),'shortcut hints can be hidden');await p.evaluate(()=>__gs.act('hints'));await W(100);ok(await p.isVisible('#hint'),'and shown again');
  await p.evaluate(()=>__gs.act('keys'));await W(200);await p.click('.kbdlg button:text("Photoshop keys")');await W(100);const psk=await p.evaluate(()=>JSON.parse(localStorage.getItem('gs.keys')).hueSat);ok(psk==='Ctrl+U','Photoshop keys: Hue/Saturation on Ctrl+U');await p.click('.kbdlg button:text-is("Reset all")');await p.click('#dlgCancel');await W(100);
  await p.keyboard.press('b');await W(100);ok(await p.evaluate(()=>__gs.ui.tool)==='brush','reset: B is the brush again');
+
+ // ---- themes ----
+ await p.evaluate(()=>__gs.act('prefs'));await W(300);
+ await p.click('.themeseg button:has-text("Dark red")');await W(200);
+ ok(await p.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--accent').trim())==='#e05555','Dark red theme previews live');
+ await p.screenshot({path:OUT+'f14-theme-red.png'});
+ await p.click('.themeseg button:has-text("Light")');await W(200);await p.screenshot({path:OUT+'f14-theme-light.png'});
+ await p.click('#dlgCancel');await W(200);ok(await p.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--accent').trim())==='#e2a453','Cancel goes back to the old theme');
+ await p.evaluate(()=>__gs.act('prefs'));await W(300);await p.click('.themeseg button:has-text("Custom")');await W(200);
+ await p.evaluate(()=>{const i=document.querySelectorAll('.themecol input')[4];i.value='#3399ff';i.dispatchEvent(new Event('input'));});await W(100);
+ await p.click('#dlgOk');await W(200);
+ const th=await p.evaluate(()=>({a:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),saved:JSON.parse(localStorage.getItem('gs.prefs')).theme}));
+ ok(th.a==='#3399ff'&&th.saved==='custom','custom theme saved '+JSON.stringify(th));
+ await p.screenshot({path:OUT+'f14-theme-custom.png'});
+ await p.evaluate(()=>__gs.act('prefs'));await W(300);await p.click('.themeseg button:has-text("Dark")');await p.click('#dlgOk');await W(200);
  ok(!errs.length,'no errors '+errs.join('\n'));
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();})();
