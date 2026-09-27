@@ -1,7 +1,7 @@
 /* ================= Boot ================= */
 renderLibrary();buildBrushPanel();applyPreset(PRESETS[0]);loadSavedSets();loadSavedFonts();refreshChanUI();
 setFG(ui.fg);renderRecent();resizeGL();
-dkInit();syncWsSel();{const s=$('#wsSel');s.onchange=()=>{const v=s.value;if(v===':save')saveWorkspaceAs();else if(v===':reset')resetWorkspace();else if(v===':delete')deleteWorkspace();else if(v)setWorkspace(v);syncWsSel();};}if(dk.lock)document.body.classList.add('dklock');
+dkInit();syncWsSel();setTimeout(dkReopenPops,500);{const s=$('#wsSel');s.onchange=()=>{const v=s.value;if(v===':save')saveWorkspaceAs();else if(v===':reset')resetWorkspace();else if(v===':delete')deleteWorkspace();else if(v)setWorkspace(v);syncWsSel();};}if(dk.lock)document.body.classList.add('dklock');
 try{buildSample();toast('Sample tile loaded. Paint on it, or start fresh from File › New document.');}catch(err){console.error(err);newDoc(1024,1024,8,[1,1,1],'Untitled',false);}
 updateStatus();requestRender(true);
 refreshMapsUI();

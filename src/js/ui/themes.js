@@ -24,7 +24,7 @@ function applyTheme(c){c=c||themeColors();const R=document.documentElement.style
   set('muted',mixHex(c.text,c.panel,.38));set('faint',mixHex(c.text,c.panel,.58));
   const a=hexRGB(c.accent);set('accent-soft','rgba('+a.map(v=>Math.round(v*255)).join(',')+',.15)');set('accent-ink',lumHex(c.accent)>.45?mixHex(c.accent,'#000000',.88):'#ffffff');
   themeGround=hexRGB(c.ground);R.setProperty('color-scheme',light?'light':'dark');
-  if(typeof renderLibrary==='function')renderLibrary();if(typeof requestRender==='function')requestRender(true);document.body.classList.toggle('lighttheme',light);}
+  if(typeof renderLibrary==='function')renderLibrary();if(typeof requestRender==='function')requestRender(true);document.body.classList.toggle('lighttheme',light);try{dkPopSync();}catch(e){}}
 /* the theme part of the Preferences dialog; returns {el, save(), cancel()} */
 function themeSection(){let theme=prefs.theme||'dark',custom=Object.assign({},themeColors(),prefs.customTheme||{});
   const wrap=el('div',{});

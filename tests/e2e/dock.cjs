@@ -73,6 +73,18 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.setWorkspace('painting'));await W(300);await p.evaluate(()=>__gs.act('wsReset'));await W(300);ok(await vis('#optBar'),'Painting (reset) has the options bar');
  await p.evaluate(()=>__gs.setWorkspace(__gs.dk.ws.startsWith('c_')?__gs.dk.ws:Object.keys(__gs.dk.custom)[0]));await W(300);ok(!(await vis('#optBar')),'your workspace keeps it hidden');
  await p.evaluate(()=>__gs.setWorkspace('painting'));
+
+ // a floating panel in a window of its own (second monitor)
+ const tb2=await p.locator('.dktab:text-is("Channels")').boundingBox();await p.mouse.move(tb2.x+20,tb2.y+10);await p.mouse.down();await p.mouse.move(600,400,{steps:10});await p.mouse.up();await W(300);
+ const [pop]=await Promise.all([p.waitForEvent('popup'),p.click('.dkfloat button[aria-label="Move to its own window"]')]);await W(600);
+ ok(await pop.evaluate(()=>!!document.querySelector('#chanList .crow2'))&&!(await p.evaluate(()=>!!document.querySelector('#chanList'))),'⧉ moves the panel into its own window');
+ ok(await pop.evaluate(()=>getComputedStyle(document.querySelector('.dktabs')).display==='flex'),'the window has the app’s look');
+ await pop.click('#chanList .crow2:has-text("Red")');await W(300);ok(/: R\b/.test(await p.textContent('#stChan')),'clicking in that window works in the app ('+await p.textContent('#stChan')+')');
+ await pop.click('#chanList .crow2:has-text("RGB")');await W(200);
+ await pop.keyboard.press('e');await W(200);ok(await p.evaluate(()=>__gs.ui.tool)==='erase','keys pressed there work too');await p.keyboard.press('b');
+ ok(await p.evaluate(()=>__gs.dk.L.floats.some(f=>f.pop)),'remembered as a window');
+ await pop.close();await W(600);ok(await p.evaluate(()=>!!document.querySelector('.dkfloat #chanList')),'closing the window brings the panel back as a floating panel');
+ await p.click('.dkfloat button[aria-label="Back into the dock"]');await W(300);
  await p.screenshot({path:OUT+'dock.png'});
  ok(!errs.length,'no errors '+errs.join('\n'));
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();})();

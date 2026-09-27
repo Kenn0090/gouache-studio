@@ -15,6 +15,7 @@ The right side is a column of **groups**; each group holds one or more panels as
   - onto the top or bottom edge of a group: it becomes a group of its own there;
   - onto the icon column: it becomes an icon;
   - anywhere else (over the canvas): it **floats** as its own window. Drag a floating panel by its tabs, resize it from the corner, **⤓** puts it back in the dock, **✕** closes it.
+  - **⧉** on a floating panel moves it into a **window of its own**, which you can drag to a second monitor. Clicks and shortcut keys there work as in the main window. The window's place and size are remembered, and it opens again next time (in the desktop app). Close it to bring the panel back as a floating panel, or press **⤓** there to put it back in the dock.
 - **⋯** on a group: float the panel, keep it as an icon, close it, or fold the group.
 - Picking a tool that isn't a brush (selections, gradient, crop…) brings **Tool settings** to the front.
 

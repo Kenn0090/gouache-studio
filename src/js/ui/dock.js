@@ -66,14 +66,14 @@ function dkRender(){const L=dk.L,dock=$('#dock');dkGrid();
   dk.icons.replaceChildren(...L.icons.filter(id=>PANELS[id].avail(ui.mode)).map(id=>{const b=el('button',{class:'dkicon'+(dk.flyout===id?' on':''),title:PANELS[id].title,'aria-label':PANELS[id].title,'aria-pressed':String(dk.flyout===id)});
     b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+(PANELS[id].icon||'')+'</svg>';b.onclick=()=>dkFlyout(dk.flyout===id?null:id);b.addEventListener('pointerdown',e=>dkDragStart(e,id,{icons:true}));return b;}));
   for(const n of [...document.querySelectorAll('.dkfloat')])n.remove();
-  for(const f of L.floats)dkFloatEl(f);
+  for(const f of L.floats){if(f.pop){const pp=dk.pops.find(x=>x.f===f&&!x.win.closed);if(pp){dkPopEl(f,pp);continue;}f.pop=false;f.wasPop=true;}dkFloatEl(f);}
   if(dk.flyout&&!(L.icons.includes(dk.flyout)&&PANELS[dk.flyout].avail(ui.mode)))dk.flyout=null;
   if(dk.flyout)dkFlyoutEl(dk.flyout);
   for(const id of PANEL_IDS){const s=dkSec(id);if(!s.parentElement||s.parentElement===dk.park||!s.isConnected)dk.park.append(s);}
   if(typeof resizeGL==='function')requestAnimationFrame(()=>{resizeGL();if(typeof drawSV==='function')drawSV();});}
 function dkTabs(tabs,active,where,onPick){const strip=el('div',{class:'dktabs',role:'tablist'});
   for(const id of tabs){const on=id===active,b=el('button',{class:'dktab'+(on?' on':''),role:'tab','aria-selected':String(on),text:id==='tool'?(dk.toolTitle.textContent||'Tool settings'):PANELS[id].title});
-    b.addEventListener('click',()=>onPick(id));b.addEventListener('pointerdown',e=>dkDragStart(e,id,where));strip.append(b);}
+    b.addEventListener('click',()=>onPick(id));if(!where.popped)b.addEventListener('pointerdown',e=>dkDragStart(e,id,where));strip.append(b);}
   const more=el('button',{class:'dkmore','aria-label':'Panel options',title:'Panel options',text:'⋯'});more.onclick=e=>dkMenu(e,active,where);strip.append(more);return strip;}
 function dkGroup(g){const av=dkAvail(g);let a=av.includes(g.active)?g.active:av[0];
   /* a workspace tab that just became available (entering Bake, Convert…) comes to the front */
@@ -94,7 +94,8 @@ function dkFloatEl(f){const av=f.tabs.filter(id=>PANELS[id].avail(ui.mode));if(!
   const tabs=dkTabs(av,a,{float:f},id=>{f.active=id;dkRender();dkSave();});
   const dockBtn=el('button',{class:'dkmore',text:'⤓',title:'Back into the dock','aria-label':'Back into the dock',onclick:()=>{dk.L.floats=dk.L.floats.filter(x=>x!==f);dk.L.groups.push({tabs:f.tabs,f:1});dkApply(dk.L,true);}});
   const close=el('button',{class:'dkmore',text:'✕',title:'Close (Window menu brings it back)','aria-label':'Close',onclick:()=>{dk.L.floats=dk.L.floats.filter(x=>x!==f);dk.L.hidden.push(...f.tabs);dkApply(dk.L,true);}});
-  tabs.append(dockBtn,close);
+  const popBtn=el('button',{class:'dkmore',text:'⧉',title:'Its own window (for a second monitor)','aria-label':'Move to its own window',onclick:()=>dkPopOut(f)});
+  tabs.append(popBtn,dockBtn,close);
   const grow=el('div',{class:'dkgrow',title:'Resize'});
   const w=el('div',{class:'dkfloat',style:`left:${f.x}px;top:${f.y}px;width:${f.w||300}px;height:${f.h||360}px`},tabs,body,grow);document.body.append(w);
   tabs.addEventListener('pointerdown',e=>{if(e.target.closest('button'))return;e.preventDefault();const x0=e.clientX-f.x,y0=e.clientY-f.y;
@@ -172,3 +173,40 @@ function syncWsSel(){const s=$('#wsSel');if(!s)return;s.replaceChildren(...wsLis
 function dkModeChanged(){if(dk.L)dkRender();}
 /* bring a panel to the front of its group if it is in the dock (without moving it) */
 function dkActivate(id){if(!dk.L)return;const g=dk.L.groups.find(g=>g.tabs.includes(id));if(g&&g.active!==id){g.active=id;g.min=false;dkRender();}}
+
+/* ---- panels in windows of their own (a second monitor) ---- */
+dk.pops=[];dk.popSeq=0;
+function dkPopQuery(s){for(const p of dk.pops){if(p.win.closed)continue;try{const e=p.win.document.querySelector(s);if(e)return e;}catch(e){}}return null;}
+/* the look of the main window: stylesheets, theme colours, body classes */
+function dkPopSync(){for(const p of dk.pops){if(p.win.closed)continue;const d=p.win.document;d.documentElement.style.cssText=document.documentElement.style.cssText;d.body.className=document.body.className;}}
+function dkPopOut(f,quiet){const W=Math.round(f.w||320),H=Math.round(f.h||440);
+  const feat='width='+W+',height='+H+(f.sx!=null?',left='+Math.round(f.sx)+',top='+Math.round(f.sy):'');
+  let w=null;try{w=window.open('about:blank','gspanel'+(++dk.popSeq),feat);}catch(e){}
+  if(!w){if(!quiet)toast('The window could not be opened.');f.pop=false;dkRender();return false;}
+  const d=w.document;d.title='Gouache Studio — '+f.tabs.map(id=>PANELS[id].title).join(', ');
+  for(const st of document.querySelectorAll('style,link[rel=stylesheet]'))d.head.append(d.importNode(st,true));
+  d.body.style.cssText='margin:0;height:100vh;overflow:hidden;background:var(--panel);color:var(--text);font:12.5px/1.4 var(--ui)';
+  const p={f,win:w};dk.pops.push(p);f.pop=true;delete f.wasPop;dkPopSync();
+  /* keys typed in the panel window work as in the main window (unless typing in a field) */
+  for(const type of ['keydown','keyup'])w.addEventListener(type,e=>{const t=e.target,tag=(t.tagName||'').toLowerCase();if((tag==='input'&&!['range','checkbox','radio','button'].includes(t.type))||tag==='textarea'||tag==='select')return;
+    const ev=new KeyboardEvent(type,{key:e.key,code:e.code,ctrlKey:e.ctrlKey,shiftKey:e.shiftKey,altKey:e.altKey,metaKey:e.metaKey,repeat:e.repeat,bubbles:true,cancelable:true});window.dispatchEvent(ev);if(ev.defaultPrevented)e.preventDefault();});
+  /* drags that started in the panel window (layer rows, sliders) keep following the pointer */
+  for(const type of ['pointermove','pointerup','pointercancel'])w.addEventListener(type,e=>{window.dispatchEvent(new PointerEvent(type,{clientX:e.clientX,clientY:e.clientY,screenX:e.screenX,screenY:e.screenY,pointerId:e.pointerId,pointerType:e.pointerType,button:e.button,buttons:e.buttons,ctrlKey:e.ctrlKey,shiftKey:e.shiftKey,altKey:e.altKey,metaKey:e.metaKey,pressure:e.pressure}));});
+  w.addEventListener('resize',()=>{f.w=w.innerWidth;f.h=w.innerHeight;if(typeof drawSV==='function')drawSV();if(typeof schedulePreview==='function')schedulePreview();dkSave();});
+  p.timer=setInterval(()=>{if(w.closed){clearInterval(p.timer);return;}if(w.screenX!==f.sx||w.screenY!==f.sy){f.sx=w.screenX;f.sy=w.screenY;dkSave();}},1000);
+  w.addEventListener('pagehide',()=>{if(!p.closing)dkPopClosed(p);});
+  dkRender();dkSave();if(!quiet)toast('The panel is in its own window: drag it to your other monitor. Close it (or press ⤓ there) to bring it back.');return true;}
+function dkPopEl(f,p){const d=p.win.document,av=f.tabs.filter(id=>PANELS[id].avail(ui.mode));
+  if(!av.length){d.body.replaceChildren(d.createTextNode(''));const n=el('p',{class:'note',style:'padding:16px',text:'Not used in this tab of the app.'});d.body.append(n);return;}
+  const a=av.includes(f.active)?f.active:av[0];f.active=a;const body=el('div',{class:'dkbody',style:'flex:1;min-height:0'});for(const id of av){const s=dkSec(id);s.classList.toggle('dk-off',id!==a);body.append(s);}
+  const tabs=dkTabs(av,a,{float:f,popped:true},id=>{f.active=id;dkRender();dkSave();});
+  tabs.append(el('button',{class:'dkmore',text:'⤓',title:'Back into the main window','aria-label':'Back into the main window',onclick:()=>{p.closing=true;dkPopClosed(p,true);try{p.win.close();}catch(e){}}}));
+  d.body.replaceChildren(el('div',{style:'display:flex;flex-direction:column;height:100vh'},tabs,body));}
+/* the panel window was closed: its panels come back as a floating panel (or into the dock with ⤓) */
+function dkPopClosed(p,toDock){clearInterval(p.timer);dk.pops=dk.pops.filter(x=>x!==p);const f=p.f;f.pop=false;
+  for(const id of f.tabs){const s=dkSec(id);document.adoptNode(s);dk.park.append(s);}
+  if(toDock){dk.L.floats=dk.L.floats.filter(x=>x!==f);dk.L.groups.push({tabs:f.tabs,f:1});}
+  dkApply(dk.L,true);}
+/* windows that were open when the app closed come back (the desktop app allows it; a browser may not) */
+function dkReopenPops(){for(const f of dk.L.floats)if(f.wasPop&&!dk.pops.some(p=>p.f===f)){delete f.wasPop;if(platform.isDesktop)dkPopOut(f,true);}dkRender();}
+window.addEventListener('beforeunload',()=>{for(const p of dk.pops){p.closing=true;try{p.win.close();}catch(e){}}});
