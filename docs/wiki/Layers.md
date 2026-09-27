@@ -50,3 +50,5 @@ The Gradient tool makes a layer you can re-edit: drag its ends, change its colou
 
 ## Layer rows in multi-map documents
 Each row lists which maps the layer has content in (Col, Rgh, Met, Hgt, Nrm, AO, Emi, Opa). If the layer is empty in the map you're viewing, the row says **empty in …**.
+
+Sent bakes and conversions hold just one map each (a normal, an AO…). Their group rows show which map (for example **Nrm**), their thumbnails show that map, and **clicking one switches the view to its map**, so you see it straight away.
