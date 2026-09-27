@@ -20,7 +20,7 @@ function newDoc(w,h,depth,bg,name,wrap,tpl){
   if(tedit){tedit=null;ted.hidden=true;}if(tsess){clearTimeout(tsess.timer);tsess=null;}
   if(ui.mode==='anim'){stopPlay();doc.root=doc.paintRoot;doc.paintRoot=null;ui.mode='paint';document.body.classList.remove('animmode');$('#modeSel').value='paint';}
   clearHistory();for(const L of everyNode())disposeLayer(L);doc.anim=null;doc.root.children=[];ui.viewMask=false;selectOnly(null);preview=null;stroke=null;groupCount=0;
-  Object.assign(doc,{w,h,depth,name,wrap,count:0,filePath:null,maps:(MAP_TEMPLATES[tpl]||['base']).slice(),map:'base',view:'base',mapDef:{}});allocAux();
+  Object.assign(doc,{w,h,depth,name,wrap,count:0,filePath:null,maps:(MAP_TEMPLATES[tpl]||['base']).slice(),map:'base',view:'base',mapDef:{},nrmStr:8,light:{az:135,el:40}});allocAux();
   let L=null;if(bg!==false){L=newLayerObj('Background');insertNode(L,doc.root);selectOnly(L);if(bg)clearTarget(L.target,[bg[0],bg[1],bg[2],1]);}
   if(typeof xf!=='undefined'&&xf){for(const it of xf.items)freeItem(it);xf=null;}if(typeof crop!=='undefined'&&crop)cropStart();
   $('#tileBtn').setAttribute('aria-pressed',String(wrap));$('#docName').textContent=name;fit();changedAll();updateStatus();refreshMapsUI();return L;

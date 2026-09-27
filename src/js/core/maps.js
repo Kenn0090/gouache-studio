@@ -62,5 +62,22 @@ function setDocMaps(keys,label,defs){keys=MAP_ORDER.filter(k=>keys.includes(k)||
     redo(){for(const [t,[L,k]] of stash)delete L.maps[k];applied=true;apply(keys,defA);},
     drop(){if(applied)for(const t of stash.keys())disposeTarget(t);}});}
 
-/* ---- lit views (filled in by the material view) ---- */
-function buildMaterialView(){}
+/* ---- normal map and lit material view ---- */
+/* map k of the whole document; the edited map reuses the frame's composite (it includes live strokes) */
+function mapComp(k,own){if(k===doc.map&&own)return {t:own,own:true};return {t:compositeMap(k),own:false};}
+/* the final normal: built from height (strength doc.nrmStr) and combined with normal detail */
+function normalComposite(flipY,own){const hasH=doc.maps.includes('height'),hasN=doc.maps.includes('normal');
+  const out=acquireD(doc.depth);if(!hasH&&!hasN){clearTarget(out,[.5,.5,1,1]);return out;}
+  const h=hasH?mapComp('height',own):null,n=hasN?mapComp('normal',own):null;
+  run(P.nrm,out,{uH:h?h.t.tex:dummy,uN:n?n.t.tex:dummy,uUseN:!!n,uStr:hasH?doc.nrmStr:0,uWrap:!!doc.wrap,uFlipY:!!flipY});
+  for(const c of [h,n])if(c&&!c.own)release(c.t);return out;}
+function lightVec(){const a=doc.light.az*Math.PI/180,e=doc.light.el*Math.PI/180;return [Math.cos(e)*Math.cos(a),Math.cos(e)*Math.sin(a),Math.sin(e)];}
+function buildMaterialView(){const own=compOut;let out;
+  if(doc.view==='normal')out=normalComposite(false,own);
+  else{const get=k=>doc.maps.includes(k)?mapComp(k,own):null;
+    const base=get('base'),r=get('rough'),m=get('metal'),ao=get('ao'),em=get('emis'),nrm=normalComposite(false,own);
+    out=acquireD(doc.depth);
+    run(P.mat,out,{uBase:base.t.tex,uRough:r?r.t.tex:dummy,uMetal:m?m.t.tex:dummy,uNrm:nrm.tex,uAO:ao?ao.t.tex:dummy,uEmis:em?em.t.tex:dummy,
+      uHas:{int:(r?1:0)|(m?2:0)|4|(ao?8:0)|(em?16:0)},uLight:lightVec(),uDef:[MAP_DEFS.rough.def,MAP_DEFS.metal.def,0,0]});
+    for(const c of [base,r,m,ao,em])if(c&&!c.own)release(c.t);release(nrm);}
+  release(own);compOut=out;}

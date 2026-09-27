@@ -16,6 +16,12 @@ function refreshMapsUI(){const list=$('#mapList');if(!list)return;list.replaceCh
       mapSwatch(k),el('div',{class:'lname',text:label}),editing&&!on?el('span',{class:'dim',text:'painting'}):null,i<9&&!dis?el('kbd',{text:'Shift+Alt+'+(i+1)}):null);
     const go=()=>{if(dis)return;setView(k);};
     row.addEventListener('click',go);row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});list.append(row);});
+  const ctl=$('#mapCtl');ctl.replaceChildren();
+  if(doc.maps.includes('height')&&!anim)ctl.append(makeSlider({id:'nrmStr',label:'Bump',min:0,max:32,step:.5,value:doc.nrmStr,fmt:v=>v.toFixed(1),onInput:v=>{doc.nrmStr=v;if(doc.view==='material'||doc.view==='normal')requestRender(true);}}).el);
+  if(doc.view==='material'&&!anim)ctl.append(
+    makeSlider({id:'lAz',label:'Light angle',min:0,max:360,step:1,value:doc.light.az,fmt:v=>Math.round(v)+'°',onInput:v=>{doc.light.az=v;requestRender(true);}}).el,
+    makeSlider({id:'lEl',label:'Light height',min:5,max:90,step:1,value:doc.light.el,fmt:v=>Math.round(v)+'°',onInput:v=>{doc.light.el=v;requestRender(true);}}).el);
+  ctl.hidden=!ctl.children.length;
   $('#mapState').textContent=doc.maps.length>1?doc.maps.length+' maps':'';
   const st=$('#stMap');if(st){st.hidden=doc.maps.length<2;st.textContent='Map: '+MAP_DEFS[doc.map].label+(doc.view!==doc.map?' (viewing '+(doc.view==='material'?'material':'normal')+')':'');}
   if(typeof renderLayers==='function'&&doc.active)$('#lModeName').textContent=modeLabel(mapModeOf(doc.active,doc.map));}

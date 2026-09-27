@@ -177,6 +177,35 @@ const FS_APPLYMASK=`uniform sampler2D uSrc; uniform sampler2D uM;
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy); o=texelFetch(uSrc,p,0)*texelFetch(uM,p,0).r; }`;
 const FS_INVERT=`uniform sampler2D uSrc;
 void main(){ vec4 c=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0); if(c.a<=1e-6){ o=c; return; } o=vec4((1.0-c.rgb/c.a)*c.a,c.a); }`;
+/* ---- maps: normal from height, lit material preview ---- */
+/* Sobel slope of the height composite -> tangent-space normal (OpenGL: green = up), combined with
+   any painted/loaded normal detail by reoriented normal blending. uFlipY gives DirectX (green = down). */
+const FS_NRM=`uniform sampler2D uH; uniform sampler2D uN; uniform int uUseN; uniform float uStr; uniform int uWrap; uniform int uFlipY;
+float hAt(ivec2 p){ ivec2 s=textureSize(uH,0); if(uWrap==1) p=((p%s)+s)%s; else p=clamp(p,ivec2(0),s-1); return texelFetch(uH,p,0).r; }
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy);
+  float tl=hAt(p+ivec2(-1,-1)),t=hAt(p+ivec2(0,-1)),tr=hAt(p+ivec2(1,-1)),l=hAt(p+ivec2(-1,0)),r=hAt(p+ivec2(1,0)),bl=hAt(p+ivec2(-1,1)),b=hAt(p+ivec2(0,1)),br=hAt(p+ivec2(1,1));
+  float dx=((tr+2.0*r+br)-(tl+2.0*l+bl))/8.0, dy=((bl+2.0*b+br)-(tl+2.0*t+tr))/8.0;
+  vec3 n=normalize(vec3(-dx*uStr, dy*uStr, 1.0));
+  if(uUseN==1){ vec3 d=texelFetch(uN,p,0).rgb*2.0-1.0; vec3 tt=n+vec3(0,0,1), u=d*vec3(-1,-1,1); n=normalize(tt*dot(tt,u)/tt.z-u); }
+  if(uFlipY==1) n.y=-n.y;
+  o=vec4(n*0.5+0.5,1.0); }`;
+const FS_MAT=`uniform sampler2D uBase; uniform sampler2D uRough; uniform sampler2D uMetal; uniform sampler2D uNrm; uniform sampler2D uAO; uniform sampler2D uEmis;
+uniform int uHas; uniform vec3 uLight; uniform vec4 uDef;
+vec3 lin(vec3 c){ return pow(max(c,0.0),vec3(2.2)); }
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 b=texelFetch(uBase,p,0); if(b.a<=1e-5){ o=vec4(0); return; }
+  vec3 alb=lin(b.rgb/b.a);
+  float rough=(uHas&1)!=0?texelFetch(uRough,p,0).r:uDef.x, metal=(uHas&2)!=0?texelFetch(uMetal,p,0).r:uDef.y, ao=(uHas&8)!=0?texelFetch(uAO,p,0).r:1.0;
+  vec3 N=(uHas&4)!=0?normalize(texelFetch(uNrm,p,0).rgb*2.0-1.0):vec3(0,0,1); vec3 emis=(uHas&16)!=0?lin(texelFetch(uEmis,p,0).rgb):vec3(0);
+  vec3 L=normalize(uLight), V=vec3(0,0,1), H=normalize(L+V);
+  float NdL=max(dot(N,L),0.0), NdV=max(dot(N,V),1e-3), NdH=max(dot(N,H),0.0), VdH=max(dot(V,H),0.0);
+  float a=max(rough*rough,0.002), a2=a*a, dd=NdH*NdH*(a2-1.0)+1.0, D=a2/(3.14159*dd*dd);
+  float k=(rough+1.0)*(rough+1.0)/8.0, G=(NdL/(NdL*(1.0-k)+k))*(NdV/(NdV*(1.0-k)+k));
+  vec3 F0=mix(vec3(0.04),alb,metal), F=F0+(1.0-F0)*pow(1.0-VdH,5.0);
+  vec3 spec=D*G*F/max(4.0*NdL*NdV,1e-3);
+  vec3 dif=(1.0-F)*(1.0-metal)*alb/3.14159;
+  vec3 col=(dif+spec)*NdL*3.2 + (alb*(1.0-metal)*0.22 + F0*0.18)*ao + emis;
+  col=col/(1.0+col*0.15); col=pow(clamp(col,0.0,1.0),vec3(1.0/2.2));
+  o=vec4(col*b.a,b.a); }`;
 /* ---- selections ---- */
 const VS_POLY=`#version 300 es
 in vec2 a; uniform vec2 uOrigin; uniform vec2 uSize; void main(){ gl_Position=vec4((a-uOrigin)/uSize*2.0-1.0,0.0,1.0); }`;
@@ -295,7 +324,7 @@ const P={
   sharpen:program(FS_SHARPEN), poster:program(FS_POSTER), invert:program(FS_INVERT), place:program(FS_PLACE), mix:program(FS_MIX), chmerge:program(FS_CHMERGE), maskplace:program(FS_MASKPLACE), applymask:program(FS_APPLYMASK),
   poly:program(FS_ONE,VS_POLY), rcopy:program(FS_RCOPY), selop:program(FS_SELOP), shift:program(FS_SHIFT), morph:program(FS_MORPH), thresh:program(FS_THRESH),
   selmix:program(FS_SELMIX), loadsel:program(FS_LOADSEL), cropsel:program(FS_CROPSEL),
-  onion:program(FS_ONION), grad:program(FS_GRAD), fillcov:program(FS_FILLCOV), lockcov:program(FS_LOCKCOV), texcov:program(FS_TEXCOV), xform:program(FS_XFORM), proj:program(FS_PROJ), mesh:(()=>{const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,VS_MESH));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS_HEAD+FS_MESH));
+  onion:program(FS_ONION), grad:program(FS_GRAD), fillcov:program(FS_FILLCOV), nrm:program(FS_NRM), mat:program(FS_MAT), lockcov:program(FS_LOCKCOV), texcov:program(FS_TEXCOV), xform:program(FS_XFORM), proj:program(FS_PROJ), mesh:(()=>{const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,VS_MESH));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS_HEAD+FS_MESH));
     gl.bindAttribLocation(p,0,'a');gl.bindAttribLocation(p,1,'b');gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return {p,locs:{}};})()
 };
 const vao=gl.createVertexArray();gl.bindVertexArray(vao);
