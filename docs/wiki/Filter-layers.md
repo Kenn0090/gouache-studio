@@ -8,12 +8,20 @@ A filter layer changes **everything below it** in its group, without touching an
 - **Keep live** in a converter adds a live converter layer.
 
 ## The editor
+
+![The filter layer editor: a stack of filters that stays editable.](images/filter-layer-editor.png)
+*The filter layer editor: a stack of filters that stays editable.*
+
 Open it by double-clicking the filter layer's **thumbnail**, or with **Layer › Edit filter layer…**.
 - A **stack**: add as many filters as you like with **+ Add a filter…**. They apply from top to bottom.
 - Each filter can be **turned off** (eye), moved **up** or **down**, or **removed**. Click a filter's name to open its settings.
 - Changes show live. **Done** keeps them as one undo step, and **Cancel** puts everything back.
 
 ## Like any layer
+
+![A filter layer in the Layers panel.](images/filter-layer-row.png)
+*A filter layer in the Layers panel.*
+
 Filter layers have **opacity**, a **blend mode** and a **mask**, can go in groups, and can be hidden. They have no pixels of their own, so the brush won't paint on them.
 
 ## Only one layer: clipping

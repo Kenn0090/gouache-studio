@@ -3,6 +3,10 @@
 Switch **Paint ▾ / Animation** in the top-right corner. Animation mode shows only frames. Each frame is its own image, and you paint it with the usual tools. Your paint-mode layers wait untouched until you switch back.
 
 ## Timeline (under the canvas)
+
+![Animation mode: the timeline under the canvas, with onion skin.](images/animation.png)
+*Animation mode: the timeline under the canvas, with onion skin.*
+
 - **Frames:** add, duplicate, delete, and drag to reorder. **,** and **.** step through frames; **Enter** plays.
 - **Speed:** frame rate buttons for **12, 24 and 30 fps**, or type any rate. Each frame has a **hold** (how many frames it lasts).
 - **Tags:** Shift+click a range of frames and tag it (idle, run, attack…). A tag can **loop**, **play once** or **ping-pong**.

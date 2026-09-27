@@ -18,6 +18,10 @@ A document can hold several **maps**: images of the same size that together desc
 Height is stored at 16 bits even in 8-bit documents, so it stays smooth.
 
 ## The Maps panel
+
+![The Maps panel.](images/maps-panel.png)
+*The Maps panel.*
+
 Found above Layers.
 - **Switching maps:** click a map, or press Shift+Alt+1…9, to **view and paint it**. The status bar shows which map you're painting.
 - **Material (lit):** every map shown together with lighting. Use *Light angle* and *Light height* to turn the light. You keep painting whichever map you picked last.
@@ -25,6 +29,10 @@ Found above Layers.
 - **Bump:** how strongly Height turns into normal detail.
 
 ## Painting several maps in one stroke
+
+![The Material (lit) view, showing every map together.](images/material-view.png)
+*The Material (lit) view, showing every map together.*
+
 The Brush panel has an **Also paint** section for the other maps: tick a map and give it a value, for example Roughness 20%, Metallic 100%, Height +50%.
 - The map you're **viewing** gets the foreground colour.
 - The ticked maps get their own values.
@@ -34,10 +42,18 @@ The Brush panel has an **Also paint** section for the other maps: tick a map and
 - **Save brush** remembers these switches and values.
 
 ## What works on which maps
+
+![The Normal (final) view.](images/normal-view.png)
+*The Normal (final) view.*
+
 - **All maps of a layer:** Move, Free transform, Warp, Crop, Image/Canvas size, layer via copy/cut, masks, groups and selections.
 - **Only the map you're viewing:** Blend, Dodge/Burn, gradients, filters and adjustments.
 
 ## Layers in multi-map documents
+
+![Choosing which maps a document has.](images/document-maps.png)
+*Choosing which maps a document has.*
+
 Layers only store the maps they actually use, so memory isn't wasted. Each layer has its own blend mode per map. Layer rows show which maps have content (Col, Rgh, Met, Hgt, Nrm, AO, Emi, Opa), or "empty in …" for the map you're viewing.
 
 ## Exporting

@@ -9,6 +9,10 @@ Fills similar colours with the foreground colour.
 - **Other maps:** in multi-map documents, it also fills the other maps that are switched on (*Also fill* in the panel).
 
 ## Gradient tool
+
+![Dragging a gradient.](images/gradient.png)
+*Dragging a gradient.*
+
 Drag to draw a gradient. It becomes a **live gradient layer**: drag its end points later, click the line to add a colour stop, and change the colours any time.
 - **Shapes:** linear, radial, angle, reflected, diamond.
 - **Blending:**

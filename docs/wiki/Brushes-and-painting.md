@@ -1,6 +1,10 @@
 # Brushes and painting
 
 ## Brush tool (B)
+
+![The brush panel.](images/brush-panel.png)
+*The brush panel.*
+
 Pick a preset from the **Brush** panel, or change the settings:
 - **Size, Opacity, Flow, Hardness.** Flow is how much paint each dab lays down. Opacity caps the whole stroke.
 - **Spacing:** the distance between dabs.
@@ -31,6 +35,10 @@ Lightens (Dodge) or darkens (Burn). **Shift+O** switches between them.
 - **Protect tones:** keeps colours from going grey or oversaturated.
 
 ## Colour
+
+![The colour panel.](images/color-panel.png)
+*The colour panel.*
+
 - **Picker:** the square, the hue bar and a hex field.
 - **Mix strip:** steps from the foreground colour to the background colour, mixed in OKLab so the in-between colours stay clean. Click one to use it.
 - **Recent colours** remember what you've painted with.
@@ -42,4 +50,8 @@ Lightens (Dodge) or darkens (Burn). **Shift+O** switches between them.
 - **Channels panel:** click a channel to view and paint only that channel. Ctrl+click adds more channels.
 
 ## Painting several maps at once
+
+!["Also paint" in the brush panel: one stroke paints roughness, metallic and height too.](images/also-paint.png)
+*"Also paint" in the brush panel: one stroke paints roughness, metallic and height too.*
+
 In documents with more than one map, one stroke can paint base colour, roughness, height and others together. See [Maps and PBR](Maps-and-PBR.md).

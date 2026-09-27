@@ -3,12 +3,20 @@
 **View › 3D view** (F3) puts a model beside the canvas. It shows your maps live: the map you're painting updates every frame, and the other maps a few times a second. Drag the divider to resize the panel.
 
 ## Models
+
+![The 3D view docked beside the canvas.](images/3d-view.png)
+*The 3D view docked beside the canvas.*
+
 - **Built-in:** plane, cube, rounded cube, sphere, cylinder.
 - **Import:** **OBJ**, **glTF / GLB** or **FBX** (binary FBX; for text FBX, export as glTF or OBJ). Pick *Import a model…* in the model list.
 - An imported model is **saved inside your .gouache file**.
 - The corner of the view shows the model's triangle count. It warns you if the model has no UVs, since textures can't map onto a model without them.
 
 ## Detail (mesh density)
+
+![A dense plane showing the height map as real displacement.](images/3d-height.png)
+*A dense plane showing the height map as real displacement.*
+
 The **Detail** menu at the top gives the model more triangles, from Low up to ×128, so **Height depth** can push the surface out finely. Imported models are split into smaller triangles the same way. Turning up Height depth on a low-detail model raises Detail to ×16 by itself. The highest levels are heavy on older or built-in graphics chips.
 
 ## Shading
@@ -16,6 +24,10 @@ The **Detail** menu at the top gives the model more triangles, from Low up to ×
 - **Unlit:** base colour only (plus AO), the way hand-painted games usually look. This is the default for hand-painted documents.
 
 ## Toolbar
+
+![The UV overlay on the canvas while the 3D view shows a sphere.](images/3d-uv-overlay.png)
+*The UV overlay on the canvas while the 3D view shows a sphere.*
+
 - **Model** and **Detail** menus, **Lit / Unlit**.
 - **Wireframe:** shows the mesh edges.
 - **UVs:** draws the model's UV layout **over your 2D canvas**, so you can see where to paint.

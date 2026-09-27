@@ -1,6 +1,10 @@
 # Layers
 
 ## Basics
+
+![The Layers panel, with a group and clipped layers.](images/layers-panel.png)
+*The Layers panel, with a group and clipped layers.*
+
 - **+ Layer** (Ctrl+Shift+N), **+ Group**, **Duplicate** (Ctrl+J), **Delete**, and the ↑ / ↓ buttons.
 - **Selecting:** click to select a layer; Ctrl or Shift+click selects several. Drag to reorder, or drop onto a group to move a layer inside it.
 - **Rename:** double-click a layer's name.
@@ -12,6 +16,10 @@
   - **Lock alpha:** paint only where the layer already has paint.
 
 ## Blend modes
+
+![Choosing a blend mode.](images/blend-modes.png)
+*Choosing a blend mode.*
+
 Normal, Multiply, Screen, Overlay, Darken, Lighten, Color dodge, Color burn, Hard light, Soft light, Difference, Exclusion, Linear dodge (Add), Hue, Saturation, Color, Luminosity, Vivid light, Linear light, Pin light and more. Groups can also be **Pass through**.
 
 In documents with several maps, each layer has **a blend mode per map**. The mode button shows the one for the map you're viewing. Height layers default to Linear Light, so mid-grey leaves the height unchanged.

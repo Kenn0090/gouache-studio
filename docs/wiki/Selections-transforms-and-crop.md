@@ -1,6 +1,10 @@
 # Selections, transforms and crop
 
 ## Selection tools
+
+![A selection with marching ants.](images/selection.png)
+*A selection with marching ants.*
+
 - **Marquee (M):** rectangle or ellipse (Shift+M switches). Pressing **Shift** after you start dragging keeps it square or circular.
 - **Lasso (L):** freehand, or polygonal (Shift+L switches). In polygonal mode:
   - click to place points;
@@ -29,6 +33,10 @@ Painting, fills, filters and adjustments all stay inside the selection.
 Drag to move the layer, or the selected part of it. Arrow keys nudge it. All maps of the layer move together.
 
 ## Free transform (Ctrl+T)
+
+![Free transform, with its handles and options.](images/transform.png)
+*Free transform, with its handles and options.*
+
 - **Handles:** drag them to scale; drag outside the box to rotate; **Ctrl+drag** a corner to distort it freely.
 - **Panel:** exact X, Y, width %, height %, angle and skew; **Flip ↔ / ↕**; resampling (smooth, bilinear, or nearest for pixel art).
 - **Warp:** bend the layer with a grid of handles.

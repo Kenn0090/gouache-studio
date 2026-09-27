@@ -32,6 +32,10 @@ Exports the **visible image** or the **active layer** as:
 - **WebP**
 
 ## Export textures for a game engine
+
+![Export textures, with engine presets.](images/export-textures.png)
+*Export textures, with engine presets.*
+
 **File › Export textures for a game engine…** writes every map as separate files, packed and named for the engine you pick:
 
 | Preset | Files |

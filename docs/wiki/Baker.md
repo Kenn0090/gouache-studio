@@ -3,6 +3,10 @@
 **Maps › Bake from high poly…** copies the detail of a high-poly model onto the low-poly model's UVs. The results arrive as **new layers** in this document, at the document's size. For a bigger bake, change *Image › Image size* first.
 
 ## Models
+
+![The Bake dialog.](images/bake-dialog.png)
+*The Bake dialog.*
+
 - **Low-poly:** the model in the 3D view, or load a file (OBJ, glTF, GLB, FBX). It must have UVs.
 - **High-poly:** load a file. Or choose **None** to bake the low-poly on its own (see below).
 - **Cage:** either *Push out by the front distance*, or load a **cage model**, which is your low-poly pushed outwards with the same vertices and triangles.

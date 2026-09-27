@@ -103,7 +103,7 @@ select{background:var(--ground);border:1px solid var(--line-2);border-radius:5px
 .lprops{display:grid;gap:8px}
 .llist{display:grid;gap:2px}
 .llist{position:relative}
-.lrow{display:grid;grid-template-columns:22px auto minmax(0,1fr) auto;align-items:center;gap:8px;padding:4px 6px 4px calc(6px + var(--depth,0) * 14px);border-radius:6px;cursor:pointer;user-select:none;touch-action:none}
+.lrow{display:grid;grid-template-columns:22px auto minmax(72px,1fr) minmax(0,max-content);align-items:center;gap:8px;padding:4px 6px 4px calc(6px + var(--depth,0) * 14px);border-radius:6px;cursor:pointer;user-select:none;touch-action:none}
 .lrow:hover{background:var(--raise)}
 .lrow.sel{background:rgba(226,164,83,.08)}
 .lrow.on{background:var(--accent-soft)}
@@ -128,7 +128,7 @@ body.ldragging,body.ldragging *{cursor:grabbing!important}
 .lrow canvas{width:36px;height:36px;border-radius:4px;border:1px solid var(--line-2);background:repeating-conic-gradient(#3a3d44 0 25%,#2f3238 0 50%) 0 0/8px 8px;display:block}
 .lname{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lname input{width:100%;background:var(--ground);border:1px solid var(--accent);border-radius:4px;padding:2px 4px}
-.lmeta{font:10px var(--mono);color:var(--faint);text-align:right;white-space:nowrap}
+.lmeta{font:10px var(--mono);color:var(--faint);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .lbtns{display:flex;gap:5px;flex-wrap:wrap}
 .btn{border:1px solid var(--line-2);background:var(--raise);border-radius:6px;padding:5px 10px;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
 .btn:hover{border-color:var(--muted)}

@@ -13,6 +13,10 @@ A few seconds after it starts, the app checks GitHub for a newer version. If one
 If an update was published while the app was already open, it won't show until the next check. Use **File › Check for updates…** or restart the app.
 
 ## The screen
+
+![The Gouache Studio window: tools on the left, canvas in the middle, panels on the right.](images/overview.png)
+*The Gouache Studio window: tools on the left, canvas in the middle, panels on the right.*
+
 - **Menu bar** (top): File, Edit, Image, Maps, Layer, Select, Adjust, Filter, View.
 - **Mode switch** (top right): **Paint** or **Animation** (see [Animation](Animation.md)). Next to it is **Tile mode**, for seamless textures that wrap at the edges.
 - **Toolbar** (left): move, selections, brush, eraser, blend, fills and gradients, dodge/burn, crop, text, eyedropper and hand. Small corner marks show buttons that hold more than one tool.
@@ -26,6 +30,10 @@ If an update was published while the app was already open, it won't show until t
 - **Status bar** (bottom): size, bit depth, the map you're painting, zoom, cursor position, pen pressure.
 
 ## Your first document
+
+![The New document dialog.](images/new-document.png)
+*The New document dialog.*
+
 **File › New document…** (Ctrl+Alt+N):
 - **Size:** type it in or pick a preset.
 - **Template:**

@@ -3,6 +3,10 @@
 Every dialog below **previews live** on the canvas. Turn this off for one dialog with its Preview checkbox, or everywhere in Preferences. Filters work on **the map you're viewing** and stay **inside the selection**. Every filter dialog also has **Keep editable**, which makes a [filter layer](Filter-layers.md) clipped to the layer instead of changing its pixels.
 
 ## Maps menu: converters
+
+![A converter with live preview: curvature from the height map.](images/converter-curvature.png)
+*A converter with live preview: curvature from the height map.*
+
 Each converter makes a **new layer** in the target map and adds that map if it's missing. You can fade, mask or paint over the result. **Keep live** makes a filter layer that updates by itself whenever the source map changes.
 
 | Converter | Result |
@@ -18,6 +22,13 @@ Each converter makes a **new layer** in the target map and adds that map if it's
 | Flip normal green | Switches a normal layer between DirectX and OpenGL. |
 
 ## Adjust menu
+
+![Curves.](images/curves.png)
+*Curves.*
+
+![Levels.](images/levels.png)
+*Levels.*
+
 - **Color adjustments** (Ctrl+U): exposure, brightness, contrast, saturation, hue, temperature.
 - **Levels** (Ctrl+L): input black, midtones and input white; output black and white; per channel, with a histogram and **Auto**.
 - **Curves** (Ctrl+M):
@@ -30,6 +41,10 @@ Each converter makes a **new layer** in the target map and adds that map if it's
 - **Quantize:** reduce to 2–64 colours picked from the image, with optional dithering.
 
 ## Filter menu
+
+![A filter dialog (Clouds) with live preview.](images/filter-clouds.png)
+*A filter dialog (Clouds) with live preview.*
+
 - **Blurs:**
   - Gaussian;
   - Box (flat and even);
