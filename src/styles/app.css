@@ -251,3 +251,18 @@ details.more>div{display:grid;gap:10px;margin-top:10px}
 .segb+.segb{border-left:1px solid var(--line-2)}
 .segb:hover{color:var(--text)}
 .segb[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+
+/* transform + crop handles */
+#xfOv{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+#xfOv .ln{fill:none;stroke:#fff;stroke-width:1;filter:drop-shadow(0 0 1px #000)}
+#xfOv .hs{fill:#fff;stroke:#222;stroke-width:1}
+#xfOv .hs.on{fill:var(--accent)}
+#xfOv .hl{stroke:var(--accent);stroke-width:1;fill:none}
+#xfOv .hc{fill:var(--accent);stroke:#222;stroke-width:1}
+#xfOv .pv{fill:none;stroke:#fff;stroke-width:1.2;filter:drop-shadow(0 0 1px #000)}
+#xfOv .dim{fill:rgba(10,11,13,.55);stroke:none}
+#xfOv .th{fill:none;stroke:rgba(255,255,255,.35);stroke-width:1}
+.xfgrid{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:6px 8px;align-items:center}
+.xfgrid label{color:var(--muted)}
+.xfgrid .num{width:100%;min-width:0}
+.stage.movet #gl{cursor:move}

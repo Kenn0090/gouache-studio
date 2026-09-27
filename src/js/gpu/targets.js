@@ -31,6 +31,16 @@ function restoreRegion(snap,dst,x,y){gl.bindTexture(gl.TEXTURE_2D,dst.tex);gl.pi
   else gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,snap.w,snap.h,gl.RGBA,gl.UNSIGNED_BYTE,snap.data);
   gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);}
 function run(prog,target,u,opts){
+  useProg(prog,u);
+  bindTarget(target);
+  const b=opts&&opts.blend;
+  if(b){gl.enable(gl.BLEND);if(b==='max'){gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);}else{gl.blendEquation(gl.FUNC_ADD);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);}}
+  else gl.disable(gl.BLEND);
+  gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+  if(b)gl.disable(gl.BLEND);
+}
+/* select a program and set its uniforms (textures go to units 0,1,2...) */
+function useProg(prog,u){
   if(prog.defaults)u=Object.assign({},prog.defaults,u);
   gl.useProgram(prog.p);let unit=0;
   for(const k in u){const v=u[k];let l=prog.locs[k];if(l===undefined)l=prog.locs[k]=gl.getUniformLocation(prog.p,k);if(l===null)continue;
@@ -39,12 +49,6 @@ function run(prog,target,u,opts){
     else if(typeof v==='boolean')gl.uniform1i(l,v?1:0);
     else if(v.int!==undefined)gl.uniform1i(l,v.int);
     else if(v.length===2)gl.uniform2f(l,v[0],v[1]);else if(v.length===3)gl.uniform3f(l,v[0],v[1],v[2]);else if(v.length===4)gl.uniform4f(l,v[0],v[1],v[2],v[3]);}
-  bindTarget(target);
-  const b=opts&&opts.blend;
-  if(b){gl.enable(gl.BLEND);if(b==='max'){gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);}else{gl.blendEquation(gl.FUNC_ADD);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);}}
-  else gl.disable(gl.BLEND);
-  gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
-  if(b)gl.disable(gl.BLEND);
 }
 const dummy=(()=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array(4));gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);return t;})();
 
@@ -52,4 +56,4 @@ const CH_DEF={uChanMode:{int:0},uChan:[1,1,1,1]};
 const SEL_DEF={uSelTex:dummy,uUseSel:false};
 P.comp.defaults=Object.assign({uMask2:dummy,uLMask:dummy,uUseMask2:false,uUseLMask:false},CH_DEF,SEL_DEF);P.merge.defaults=Object.assign({},CH_DEF,SEL_DEF);P.smudge.defaults=Object.assign({},CH_DEF,SEL_DEF);
 P.mix.defaults={uM:dummy,uUseM:false};P.resample.defaults={uOutside:[0,0,0,0]};P.view.defaults={uShow:[1,1,1,0],uSingle:{int:-1},uMaskView:false,uSel:dummy,uSelMode:{int:0},uTime:0,uPx:1,uWrap:false};
-P.shift.defaults={uWrap:false,uOutside:[0,0,0,0]};P.selop.defaults={uShape:dummy,uOldOn:true};P.loadsel.defaults={uInv:false};P.cropsel.defaults={uSel:dummy,uUseSel:false};
+P.shift.defaults={uWrap:false,uOutside:[0,0,0,0]};P.xform.defaults={uOutside:[0,0,0,0],uInterp:{int:2},uSS:{int:1},uWrap:false,uRect:[0,0,0,0],uBase:dummy,uUseBase:false};P.mesh.defaults={uOutside:[0,0,0,0],uInterp:{int:2},uOff:[0,0]};P.proj.defaults={uAlphaOnly:true};P.selop.defaults={uShape:dummy,uOldOn:true};P.loadsel.defaults={uInv:false};P.cropsel.defaults={uSel:dummy,uUseSel:false};

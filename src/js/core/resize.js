@@ -19,5 +19,6 @@ function newDoc(w,h,depth,bg,name,wrap){
   if(tedit){tedit=null;ted.hidden=true;}if(tsess){clearTimeout(tsess.timer);tsess=null;}clearHistory();for(const L of allNodes())disposeLayer(L);doc.root.children=[];ui.viewMask=false;selectOnly(null);preview=null;stroke=null;groupCount=0;
   Object.assign(doc,{w,h,depth,name,wrap,count:0,filePath:null});allocAux();
   let L=null;if(bg!==false){L=newLayerObj('Background');insertNode(L,doc.root);selectOnly(L);if(bg)clearTarget(L.target,[bg[0],bg[1],bg[2],1]);}
+  if(typeof xf!=='undefined'&&xf){for(const it of xf.items)freeItem(it);xf=null;}if(typeof crop!=='undefined'&&crop)cropStart();
   $('#tileBtn').setAttribute('aria-pressed',String(wrap));$('#docName').textContent=name;fit();changedAll();updateStatus();return L;
 }

@@ -45,7 +45,7 @@ function drawView(){
     uUV0:t?[-1,-1]:[0,0],uUV1:t?[2,2]:[1,1],uChk1:[.235,.247,.271],uChk2:[.188,.2,.22],uChkSize:Math.max(4,8*dpr),
     uShow:sh,uSingle:{int:vs.mask?-1:single},uMaskView:vs.mask,...selViewU(z,dpr,t)});
   gl.bindTexture(gl.TEXTURE_2D,T.tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
-  releaseSelView();drawSelOverlay();
+  releaseSelView();drawSelOverlay();drawXfOverlay();
 }
 /* marching ants (active selection) or red overlay (quick mask) drawn by the view shader */
 let selViewTmp=null;

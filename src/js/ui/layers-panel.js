@@ -89,6 +89,7 @@ const dropLine=el('div',{class:'dropline',hidden:true});
 let ldrag=null;
 function layerPointerDown(e,n,row){
   if(e.button!==0||e.target.closest('button,input'))return;
+  if(xf&&!xf.move)xfCommit();
   if((e.ctrlKey||e.metaKey)&&(e.target===n.thumb||(n.mask&&e.target===n.mask.thumb))){const mode=e.shiftKey&&e.altKey?'int':e.shiftKey?'add':e.altKey?'sub':'new';
     if(e.target===n.thumb)selectLayerPixels(n,mode);else selectMask(n,mode);return;}
   if(n.mask&&e.target===n.mask.thumb){if(e.shiftKey){n.mask.enabled=!n.mask.enabled;toast(n.mask.enabled?'Mask on.':'Mask off.');}

@@ -202,6 +202,45 @@ void main(){ vec4 c=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0);
 /* cut a rectangle out of an image, keeping only what is selected */
 const FS_CROPSEL=`uniform sampler2D uSrc; uniform sampler2D uSel; uniform vec2 uOff; uniform int uUseSel;
 void main(){ ivec2 p=ivec2(floor(gl_FragCoord.xy+uOff)); vec4 c=texelFetch(uSrc,p,0); if(uUseSel==1) c*=texelFetch(uSel,p,0).r; o=c; }`;
+/* ---- transforms ---- */
+/* shared sampling of a source image in pixel coordinates; outside the image = uOutside */
+const CH_SAMPLE=`
+uniform sampler2D uSrc; uniform vec4 uOutside; uniform int uInterp;
+vec4 fetchS(ivec2 q){ ivec2 sz=textureSize(uSrc,0); if(any(lessThan(q,ivec2(0)))||any(greaterThanEqual(q,sz))) return uOutside; return texelFetch(uSrc,q,0); }
+vec4 cubW(float t){ float t2=t*t, t3=t2*t; return vec4(-0.5*t3+t2-0.5*t, 1.5*t3-2.5*t2+1.0, -1.5*t3+2.0*t2+0.5*t, 0.5*t3-0.5*t2); }
+vec4 sampleAt(vec2 s){
+  if(uInterp==0) return fetchS(ivec2(floor(s)));
+  vec2 t=s-0.5; ivec2 i=ivec2(floor(t)); vec2 f=t-floor(t);
+  if(uInterp==1) return mix(mix(fetchS(i),fetchS(i+ivec2(1,0)),f.x),mix(fetchS(i+ivec2(0,1)),fetchS(i+ivec2(1,1)),f.x),f.y);
+  vec4 wx=cubW(f.x), wy=cubW(f.y); vec4 acc=vec4(0.0);
+  for(int y=0;y<4;y++){ vec4 row=vec4(0.0); for(int x=0;x<4;x++) row+=fetchS(i+ivec2(x-1,y-1))*wx[x]; acc+=row*wy[y]; }
+  acc.a=clamp(acc.a,0.0,1.0); acc.rgb=clamp(acc.rgb,vec3(0.0),vec3(acc.a)); return acc; }
+`;
+/* free transform: uH0..2 = rows of the matrix mapping a document pixel to a source pixel (projective) */
+const FS_XFORM=CH_SAMPLE+`uniform vec3 uH0; uniform vec3 uH1; uniform vec3 uH2; uniform int uSS; uniform int uWrap; uniform vec4 uRect; uniform vec2 uDoc;
+uniform sampler2D uBase; uniform int uUseBase;
+bool mapTo(vec2 p, out vec2 s){ vec3 v=vec3(p,1.0); float z=dot(uH2,v); if(z<=1e-8) return false; s=vec2(dot(uH0,v),dot(uH1,v))/z; return true; }
+vec4 one(vec2 p){ vec2 s;
+  if(uWrap==0){ if(!mapTo(p,s)) return uOutside; return sampleAt(s); }
+  vec2 D=uDoc;
+  for(int k=0;k<9;k++){ vec2 off=vec2(float(k%3-1),float(k/3-1))*D;
+    if(mapTo(p+off,s)&&s.x>=uRect.x-1.0&&s.y>=uRect.y-1.0&&s.x<=uRect.z+1.0&&s.y<=uRect.w+1.0) return sampleAt(s); }
+  return uOutside; }
+void main(){ vec2 p0=floor(gl_FragCoord.xy); vec4 acc=vec4(0.0); int n=max(uSS,1);
+  for(int j=0;j<4;j++){ if(j>=n) break; for(int i=0;i<4;i++){ if(i>=n) break; acc+=one(p0+(vec2(float(i),float(j))+0.5)/float(n)); } }
+  vec4 c=acc/float(n*n);
+  if(uUseBase==1) c=c+texelFetch(uBase,ivec2(gl_FragCoord.xy),0)*(1.0-c.a);
+  o=c; }`;
+/* warp: a mesh whose vertices carry document position (a) and source position (b) */
+const VS_MESH=`#version 300 es
+in vec2 a; in vec2 b; uniform vec2 uSize; uniform vec2 uOff; out vec2 vS;
+void main(){ vS=b; gl_Position=vec4((a+uOff)/uSize*2.0-1.0,0.0,1.0); }`;
+const FS_MESH=CH_SAMPLE+`in vec2 vS; void main(){ o=sampleAt(vS); }`;
+/* content bounds: for each column (uAxis 0) or row (1), is anything there? */
+const FS_PROJ=`uniform sampler2D uSrc; uniform int uAxis; uniform int uAlphaOnly;
+void main(){ ivec2 sz=textureSize(uSrc,0); int n=uAxis==0?sz.y:sz.x; int k=int(gl_FragCoord.x); float m=0.0;
+  for(int i=0;i<16384;i++){ if(i>=n) break; vec4 c=texelFetch(uSrc,uAxis==0?ivec2(k,i):ivec2(i,k),0); m=max(m,uAlphaOnly==1?c.a:c.r); }
+  o=vec4(step(0.002,m)); }`;
 
 function compile(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;}
 function program(fs,vs){const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,vs||VS_FULL));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS_HEAD+fs));gl.bindAttribLocation(p,0,'a');gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return {p,locs:{}};}
@@ -210,7 +249,9 @@ const P={
   view:program(FS_VIEW,VS_VIEW), resample:program(FS_RESAMPLE), adjust:program(FS_ADJUST), blur:program(FS_BLUR),
   sharpen:program(FS_SHARPEN), poster:program(FS_POSTER), invert:program(FS_INVERT), place:program(FS_PLACE), mix:program(FS_MIX), chmerge:program(FS_CHMERGE), maskplace:program(FS_MASKPLACE), applymask:program(FS_APPLYMASK),
   poly:program(FS_ONE,VS_POLY), rcopy:program(FS_RCOPY), selop:program(FS_SELOP), shift:program(FS_SHIFT), morph:program(FS_MORPH), thresh:program(FS_THRESH),
-  selmix:program(FS_SELMIX), loadsel:program(FS_LOADSEL), cropsel:program(FS_CROPSEL)
+  selmix:program(FS_SELMIX), loadsel:program(FS_LOADSEL), cropsel:program(FS_CROPSEL),
+  xform:program(FS_XFORM), proj:program(FS_PROJ), mesh:(()=>{const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,VS_MESH));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS_HEAD+FS_MESH));
+    gl.bindAttribLocation(p,0,'a');gl.bindAttribLocation(p,1,'b');gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return {p,locs:{}};})()
 };
 const vao=gl.createVertexArray();gl.bindVertexArray(vao);
 const vbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vbo);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([0,0,1,0,0,1,1,1]),gl.STATIC_DRAW);
