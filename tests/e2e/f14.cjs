@@ -33,5 +33,24 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.screenshot({path:OUT+'f14-jitter.png'});
  const saved=await p.evaluate(()=>Object.keys(__gs.brush).filter(k=>/Jitter|jitterPer/.test(k)));ok(saved.length>=4,'jitter settings are brush settings '+saved);
  await p.evaluate(()=>Object.assign(__gs.brush,{hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false}));
+
+ // ---- keyboard shortcuts ----
+ await p.mouse.click(box.x+5,box.y+5);await p.keyboard.press('e');await W(100);ok(await p.evaluate(()=>__gs.ui.tool)==='erase','E still picks the eraser');
+ await p.evaluate(()=>__gs.act('keys'));await W(300);
+ await p.fill('.kbsearch','brush');await W(100);
+ const kb=p.locator('.kbrow',{hasText:/^Brush/}).first();await kb.locator('.kbkey').click();await W(100);await p.keyboard.press('p');await W(200);
+ ok(/^P$/.test((await kb.locator('.kbkey').textContent()).trim()),'Brush now on P');
+ await p.fill('.kbsearch','');await W(100);
+ // Ctrl+Shift+L onto "Levels" (default Ctrl+L)
+ await p.fill('.kbsearch','levels');await p.locator('.kbrow',{hasText:'Levels'}).locator('.kbkey').click();await p.keyboard.press('Control+Shift+Y');await W(100);
+ await p.click('#dlgCancel');await W(200);
+ await p.keyboard.press('p');await W(100);ok(await p.evaluate(()=>__gs.ui.tool)==='brush','P picks the brush');
+ await p.keyboard.press('e');await p.keyboard.press('b');await W(100);ok(await p.evaluate(()=>__gs.ui.tool)==='erase','B no longer picks the brush');
+ ok((await p.textContent('#hint')).includes('P brush'),'hint line shows the new key: '+(await p.textContent('#hint')).slice(0,40));
+ await p.keyboard.press('Control+Shift+y');await W(400);ok(await p.evaluate(()=>!document.querySelector('#modal').hidden&&/Levels/.test(document.querySelector('#dlgTitle').textContent)),'new key opens Levels');await p.click('#dlgCancel');await W(200);
+ await p.click('#menus button:text("Adjust")');await W(150);ok(await p.locator('#menuPop .mi',{hasText:'Levels'}).locator('kbd').textContent()==='Ctrl+Shift+Y','menu shows the new key');await p.keyboard.press('Escape');
+ await p.evaluate(()=>__gs.act('hints'));await W(100);ok(!(await p.isVisible('#hint')),'shortcut hints can be hidden');await p.evaluate(()=>__gs.act('hints'));await W(100);ok(await p.isVisible('#hint'),'and shown again');
+ await p.evaluate(()=>__gs.act('keys'));await W(200);await p.click('.kbdlg button:text("Photoshop keys")');await W(100);const psk=await p.evaluate(()=>JSON.parse(localStorage.getItem('gs.keys')).hueSat);ok(psk==='Ctrl+U','Photoshop keys: Hue/Saturation on Ctrl+U');await p.click('.kbdlg button:text-is("Reset all")');await p.click('#dlgCancel');await W(100);
+ await p.keyboard.press('b');await W(100);ok(await p.evaluate(()=>__gs.ui.tool)==='brush','reset: B is the brush again');
  ok(!errs.length,'no errors '+errs.join('\n'));
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();})();

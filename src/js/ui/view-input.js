@@ -89,6 +89,7 @@ window.addEventListener('keydown',e=>{
   const t=e.target,tag=(t.tagName||'').toLowerCase();const typing=(tag==='input'&&!['range','checkbox','radio','button'].includes(t.type))||tag==='select'||tag==='textarea';
   if(e.key==='Escape'){if(openName){closeMenu();return;}if(!modal.hidden){$('#dlgCancel').click();return;}}
   if(!modal.hidden||typing)return;
+  if(kbHandle(e))return;
   const m=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();
   if(e.key==='F3'){e.preventDefault();toggle3D();return;}
   if(xfKeys(e,m,k)||cropKeys(e)||cageKeys(e,m,k))return;

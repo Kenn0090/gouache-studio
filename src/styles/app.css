@@ -422,3 +422,14 @@ body.convmode #mapsSec,body.convmode .sec[aria-labelledby="hLayers"],body.convmo
 .cvkey{display:grid;grid-template-columns:22px 1fr auto;gap:6px;align-items:start;border:1px solid var(--line-2);border-radius:7px;padding:6px}
 .cvsw{width:20px;height:20px;border-radius:4px;border:1px solid var(--line-2);margin-top:4px}
 .seg.wrapseg{display:flex;flex-wrap:wrap;height:auto}.seg.wrapseg button{flex:1 0 auto}
+/* shortcut hints off; keyboard shortcuts dialog */
+.nohints .hint{display:none}
+.kbdlg{display:flex;flex-direction:column;gap:8px;width:min(520px,80vw)}
+.kbsearch{width:100%}
+.kblist{max-height:56vh;overflow:auto;padding-right:4px}
+.kbrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 4px;border-radius:5px}
+.kbrow:hover{background:var(--raise)}
+.kbrow.changed>span:first-child{color:var(--accent)}
+.kbbtns{display:flex;gap:4px;align-items:center}
+.kbkey{min-width:92px;font-family:var(--mono)}
+.kbkey.on{outline:2px solid var(--accent)}
