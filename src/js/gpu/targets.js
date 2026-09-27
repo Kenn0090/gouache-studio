@@ -1,5 +1,5 @@
 /* ================= Targets ================= */
-function texFmt(depth){return depth===16?{i:gl.RGBA16F,t:gl.HALF_FLOAT}:{i:gl.RGBA8,t:gl.UNSIGNED_BYTE};}
+function texFmt(depth){return depth===32?{i:gl.RGBA32F,t:gl.FLOAT}:depth===16?{i:gl.RGBA16F,t:gl.HALF_FLOAT}:{i:gl.RGBA8,t:gl.UNSIGNED_BYTE};}
 function makeTarget(w,h,depth,wrap){
   depth=depth||doc.depth; if(wrap===undefined)wrap=doc.wrap;
   const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);const F=texFmt(depth);

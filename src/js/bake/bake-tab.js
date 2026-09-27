@@ -22,7 +22,8 @@ function bakeEnter(){if(!canFloat)toast('Baking needs 16-bit float support, whic
   bakeSyncMesh();buildBakePanel();build3dPane();bk.dirty=true;v3.mapsDirty=true;v3.dirty=true;resizeGL();fit();requestRender(true);}
 function bakeExit(){const p=bk.prev3d;bk.prev3d=null;v3.btex=null;
   if(p&&!p.on)toggle3D(false);else if(p&&!v3.pop){$('#work').style.setProperty('--pane3d',p.w||'0px');}
-  if(v3.on){v3LoadModel(true);build3dPane();}v3.mapsDirty=true;v3.dirty=true;resizeGL();fit();requestRender(true);}
+  /* back to the model the 3D view had (even when it closes: Convert and Paint reopen it) */
+  if(v3.on||v3.mesh===bakeCfg.low)v3LoadModel(true);if(v3.on)build3dPane();v3.mapsDirty=true;v3.dirty=true;resizeGL();fit();requestRender(true);}
 /* the 3D view shows the model being baked onto */
 function bakeSyncMesh(){if(ui.mode!=='bake'||!v3.on)return;const C=bakeCfg,was=v3.mesh;if(C.low){if(v3.mesh!==C.low)v3SetMesh(C.low);}else v3LoadModel(true);if(v3.mesh!==was&&v3.on)build3dPane();v3.dirty=true;}
 function bakeReset(){for(const k in bk.res)disposeTarget(bk.res[k]);for(const k in bk.acc)disposeTarget(bk.acc[k]);bk.res={};bk.acc={};bk.opts=null;bk.src=null;bk.kinds=[];
@@ -120,7 +121,7 @@ function bakeSend(){const res=bk.res,ks=bk.kinds;if(!Object.keys(res).length){to
     bk.sentLayers=groups;
     if(ui.mode!=='bake'){const last=layers[layers.length-1]||aux[aux.length-1];if(last)selectOnly(last);}});
   syncTargets();changedAll();refreshMapsUI();if(typeof v3Changed==='function')v3Changed();
-  if(ui.mode==='bake')toast((old.length?'Replaced the baked layers':'Sent '+(layers.length+aux.length)+' baked map'+(layers.length+aux.length>1?'s':'')+' to the document')+'. Switch to Paint to see them.');}
+  if(ui.mode==='bake')toast((old.length?'Replaced the baked layers':'Sent '+(layers.length+aux.length)+' baked map'+(layers.length+aux.length>1?'s':'')+' to the document')+'. In Paint, click a group to see its map.');}
 
 /* estimate offset: bake height with a long reach, then set each pixel's reach to what it needed */
 const FS_BKEST=`uniform sampler2D uH; uniform float uRange; uniform float uFront; uniform float uBack;

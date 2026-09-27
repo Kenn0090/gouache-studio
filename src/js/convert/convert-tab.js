@@ -67,6 +67,13 @@ void main(){ vec2 u=gl_FragCoord.xy/uSize; float w=uHb.z*u.x+uHb.w*u.y+1.0; vec2
   rnm:`uniform sampler2D uA; uniform sampler2D uB; uniform int uOutDX;
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 A=texelFetch(uA,p,0),B=texelFetch(uB,p,0); vec3 a=(A.a>1e-6?A.rgb/A.a:vec3(0.5,0.5,1.0))*2.0-1.0,b=(B.a>1e-6?B.rgb/B.a:vec3(0.5,0.5,1.0))*2.0-1.0;
   vec3 t=a+vec3(0,0,1),u=b*vec3(-1,-1,1); vec3 n=normalize(t*dot(t,u)/t.z-u); if(uOutDX==1) n.y=-n.y; o=vec4(n*0.5+0.5,1.0); }`,
+  /* evens out the one-level stair steps of 8-bit images (seen as rings in the normal map): averages
+     nearby pixels that differ by less than uT, so real detail and edges stay */
+  deband:`uniform sampler2D uSrc; uniform float uR; uniform float uT;
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); float c=texelFetch(uSrc,p,0).r,sum=c,n=1.0;
+  for(int i=0;i<16;i++){ float a=float(i)*0.3927+(i>=8?0.19635:0.0); float r=i>=8?uR:uR*0.5; ivec2 q=clamp(p+ivec2(round(vec2(cos(a),sin(a))*r)),ivec2(0),s-1);
+    float v=texelFetch(uSrc,q,0).r; if(abs(v-c)<=uT){ sum+=v; n+=1.0; } }
+  o=vec4(vec3(sum/n),1.0); }`,
   shade:`uniform sampler2D uN; uniform vec2 uSize; void main(){ vec3 n=texture(uN,gl_FragCoord.xy/uSize).rgb*2.0-1.0; vec3 L=normalize(vec3(-0.55,0.55,0.62)); float d=max(dot(normalize(n),L),0.0);
   o=vec4(vec3(0.18+0.82*d)*vec3(0.95,0.9,0.82),1.0); }`};
 let CVP=null;const cvP=()=>CVP||(CVP=Object.fromEntries(Object.entries(CV_FS).map(([k,s])=>[k,program(s)])));
@@ -124,13 +131,17 @@ function cvHomog(q){const x0=q[0][0]/doc.w,y0=q[0][1]/doc.h,x1=q[1][0]/doc.w,y1=
 function cvPrep(){if(!cvS.prepDirty&&cvS.prep)return cvS.prep;const P2=cvP();let cur=cvS.src;
   if(cvS.persp.on&&cvS.persp.q){const t=cvT('persp');const H=cvHomog(cvS.persp.q);run(P2.persp,t,{uSrc:cur.tex,uSize:[doc.w,doc.h],uHa:[H[0],H[1],H[2],H[3]],uHb:[H[4],H[5],H[6],H[7]]});cur=t;}
   if(cvS.seam.on){const t=cvT('seam');run(P.f_seam,t,{uSrc:cur.tex,uW:cvS.seam.w});cur=t;}
-  cvS.prep=cur;cvS.prepDirty=false;cvS.cache.pyr={};cvS.cache.pois=null;
+  cvS.prep=cur;cvS.prepDirty=false;cvS.lumOK=false;cvS.cache.pyr={};cvS.cache.pois=null;
   /* average brightness, for evening out the lighting */
   const S=32,sm=makeTarget(S,S,8,false);run(P.f_rs,sm,{uSrc:cur.tex,uOut:[S,S]});const d=captureRegionNow(sm,0,0,sm.w,sm.h).data;disposeTarget(sm);let s=0,n=0;for(let i=0;i<d.length;i+=4){if(d[i+3]<128)continue;s+=(.2126*d[i]+.7152*d[i+1]+.0722*d[i+2])/255;n++;}cvS.mean=n?s/n:.5;
   return cur;}
+/* brightness of the prepared source, with the 8-bit steps evened out */
+function cvLum(){if(cvS.lumOK&&cvS.cache.lum)return cvS.cache.lum;const src=cvPrep(),l=cvT('lum');run(P.f_lum,l,{uSrc:src.tex});
+  if(l.depth>8){let a=l,b=cvT('lumdb');for(const r of [2,4,8,16]){run(cvP().deband,b,{uSrc:a.tex,uR:r,uT:1.5/255});[a,b]=[b,a];}if(a!==l)blit(a,l,0,0,doc.w,doc.h,0,0);}
+  cvS.lumOK=true;return l;}
 /* brightness and its blurs at five sizes (noise removal first) */
 function cvPyr(noise){const key=noise.toFixed(2);if(cvS.cache.pyr&&cvS.cache.pyr[key])return cvS.cache.pyr[key];cvS.cache.pyr=cvS.cache.pyr||{};
-  const src=cvPrep(),l=cvT('lum');run(P.f_lum,l,{uSrc:src.tex});const L0=cvT('L0_'+key);cvBlur(l,L0,noise*.8,'btA');
+  const l=cvLum();const L0=cvT('L0_'+key);cvBlur(l,L0,noise*.8,'btA');
   const b1=cvT('b1_'+key),b2=cvT('b2_'+key);cvBlur(L0,b1,1.4,'btA');cvBlur(L0,b2,4,'btA');
   const d3=cvDown(L0,4,'d3'),b3=cvT('b3_'+key,d3.w,d3.h);cvBlur(d3,b3,3);const d4=cvDown(L0,8,'d4'),b4=cvT('b4_'+key,d4.w,d4.h);cvBlur(d4,b4,5);const d5=cvDown(L0,16,'d5'),b5=cvT('b5_'+key,d5.w,d5.h);cvBlur(d5,b5,8);
   return cvS.cache.pyr[key]={L0,b1,b2,b3,b4,b5};}
@@ -144,13 +155,13 @@ function cvPois(){if(cvS.cache.pois&&cvS.cache.poisDx===cvS.dx)return cvS.cache.
 const CV_MAKE={
   height(dst){const v=cvS.v.height,P2=cvP();
     if(cvS.kind==='photo'){const t=cvT('hraw');cvBands(t,v,v.con);const b=cvT('hb');cvBlur(t,b,1.5,'btB');run(P2.adjh,dst,{uH:t.tex,uB:b.tex,uCon:1,uSharp:v.sharp,uInv:false});}
-    else{const src=cvS.kind==='normal'?cvPois():(()=>{const l=cvT('lum');run(P.f_lum,l,{uSrc:cvPrep().tex});return l;})();const b=cvT('hb');cvBlur(src,b,1.5,'btB');run(P2.adjh,dst,{uH:src.tex,uB:b.tex,uCon:v.con,uSharp:v.sharp||0,uInv:cvS.kind==='height'&&!!cvS.inv});}
+    else{const src=cvS.kind==='normal'?cvPois():cvLum();const b=cvT('hb');cvBlur(src,b,1.5,'btB');run(P2.adjh,dst,{uH:src.tex,uB:b.tex,uCon:v.con,uSharp:v.sharp||0,uInv:cvS.kind==='height'&&!!cvS.inv});}
     if(v.smooth>.25){const t=cvT('hs');cvBlur(dst,t,v.smooth,'btB');blit(t,dst,0,0,doc.w,doc.h,0,0);}},
   normal(dst){const v=cvS.v.normal,P2=cvP(),mix=v.mix&&(doc.maps.includes('normal')||doc.maps.includes('height'));let dn=null;if(mix)dn=normalComposite(false,null);
     if(cvS.kind==='normal'){const s=cvT('ns');cvBlur(cvPrep(),s,v.noise*.8,'btC');const t=mix?cvT('nt'):dst;run(P2.nadj,t,{uN:s.tex,uStr:v.nstr,uInDX:!!cvS.dx,uOutDX:!!v.dx&&!mix});
       if(mix)run(P2.rnm,dst,{uA:t.tex,uB:dn.tex,uOutDX:!!v.dx});}
     else{let h;if(cvS.kind==='photo'){h=cvT('nh');cvBands(h,v,1,true);if(v.sharp>0){const b=cvT('nhb');cvBlur(h,b,1.2,'btC');const t=cvT('nhs');run(P2.adjh,t,{uH:h.tex,uB:b.tex,uCon:1,uSharp:v.sharp,uInv:false});h=t;}}
-      else{h=cvT('nh');const l=cvT('lum');run(P.f_lum,l,{uSrc:cvPrep().tex});cvBlur(l,h,v.noise*.8,'btC');if(cvS.inv){const t=cvT('nhi');run(P2.adjh,t,{uH:h.tex,uB:h.tex,uCon:1,uSharp:0,uInv:true});h=t;}}
+      else{h=cvT('nh');const l=cvLum();cvBlur(l,h,v.noise*.8,'btC');if(cvS.inv){const t=cvT('nhi');run(P2.adjh,t,{uH:h.tex,uB:h.tex,uCon:1,uSharp:0,uInv:true});h=t;}}
       run(P.nrm,dst,{uH:h.tex,uN:dn?dn.tex:dummy,uUseN:!!dn,uStr:v.str,uWrap:!!(cvS.seam.on||doc.wrap),uFlipY:!!v.dx});}
     if(dn)release(dn);},
   ao(dst){const v=cvS.v.ao,h=cvRes('height'),b1=cvT('ab1'),b2=cvT('ab2'),b3=cvT('ab3');cvBlur(h,b1,v.r*.25,'btD');cvBlur(h,b2,v.r*.5,'btD');cvBlur(h,b3,v.r,'btD');
@@ -160,7 +171,7 @@ const CV_MAKE={
     if(v.smooth>.25){const t=cvT('cs');cvBlur(dst,t,v.smooth,'btE');blit(t,dst,0,0,doc.w,doc.h,0,0);}},
   rough(dst){cvKeyed(dst,'rough',0);},
   metal(dst){cvKeyed(dst,'metal',1);},
-  base(dst){const v=cvS.v.base,src=cvPrep(),l=cvT('lum');run(P.f_lum,l,{uSrc:src.tex});const d=cvDown(l,Math.max(1,Math.pow(2,Math.floor(Math.log2(Math.max(1,v.r/6))))),'bd'),lb=cvT('blb',d.w,d.h);
+  base(dst){const v=cvS.v.base,src=cvPrep(),l=cvT('blum');run(P.f_lum,l,{uSrc:src.tex});const d=cvDown(l,Math.max(1,Math.pow(2,Math.floor(Math.log2(Math.max(1,v.r/6))))),'bd'),lb=cvT('blb',d.w,d.h);
     cvBlur(d,lb,Math.max(1,v.r/Math.max(1,doc.w/d.w)));run(cvP().base,dst,{uSrc:src.tex,uLB:lb.tex,uSize:[doc.w,doc.h],uMean:cvS.mean,uEven:v.even,uShad:v.shad,uHigh:v.high,uSat:v.sat});}};
 function cvKeyed(dst,k,mode){const v=cvS.v[k],keys=cvS.keys[k].slice(0,6),kc=new Float32Array(18),kp=new Float32Array(18);keys.forEach((q,i)=>{kc.set(q.c,i*3);kp.set([q.v,q.tol,q.soft],i*3);});
   run(cvP().key,dst,{uSrc:cvPrep().tex,uMode:{int:mode},uMin:v.min||0,uMax:v.max||1,uCon:v.con||1,uBase:v.base||0,uInv:!!v.inv,uKC:{v3:kc},uKP:{v3:kp},uKN:{int:keys.length}});}
@@ -214,7 +225,7 @@ function cvSend(){if(!cvS.src){toast('Pick a source first.');return;}const ks=cv
     const G=newGroupObj(L.name);G.open=false;G.converted=true;insertNode(L,G);groups.push(G);return G;};
   const old=cvS.replace?cvS.sent.filter(n=>n.parent&&allNodes().includes(n)):[];
   structOp(old.length?'Replace converted maps':'Convert maps',()=>{for(const n of old)detachNode(n);for(const k of ks)insertNode(mk(k),doc.root);cvS.sent=groups;});
-  syncTargets();changedAll();refreshMapsUI();v3Changed();toast((old.length?'Replaced':'Sent')+' '+ks.length+' map'+(ks.length>1?'s':'')+' to the document, one group each. Switch to Paint to see them.');}
+  syncTargets();changedAll();refreshMapsUI();v3Changed();toast((old.length?'Replaced':'Sent')+' '+ks.length+' map'+(ks.length>1?'s':'')+' to the document, one group each. In Paint, click a group to see its map.');}
 async function cvExport(){if(!cvS.src){toast('Pick a source first.');return;}const ks=cvMade();if(!ks.length){toast('Tick at least one map to make.');return;}
   let dir=null;if(platform.isDesktop){dir=await platform.pickFolder();if(!dir)return;}
   loadStart('Exporting maps');try{const files=[],name=pascal(cvS.srcName||'Texture');let i=0;

@@ -104,7 +104,11 @@ function renderThumb(target,canvas){const s=Math.min(40/doc.w,40/doc.h),tw=doc.w
     for(let i=0;i<d.length;i+=4){const a=buf[i+3];if(a){d[i]=Math.min(255,buf[i]*255/a);d[i+1]=Math.min(255,buf[i+1]*255/a);d[i+2]=Math.min(255,buf[i+2]*255/a);d[i+3]=a;}}
     canvas.getContext('2d').putImageData(img,0,0);});}
 function flushThumbs(){
-  for(const n of thumbQ){if(n.type==='layer'&&n.target&&n.target.tex)renderThumb(n.target,n.thumb);if(n.mask&&n.mask.target.tex)renderThumb(n.mask.target,n.mask.thumb);}
+  for(const n of thumbQ){if(n.type==='layer'&&n.target&&n.target.tex){let t=n.target;
+      /* a layer with only one other map (a sent bake or conversion) shows that map instead of an empty square */
+      if(doc.map==='base'&&isBlankBase(n)&&n.maps){const ks=Object.keys(n.maps).filter(k=>k!=='base'&&n.maps[k]&&!n.maps[k].empty&&n.maps[k].tex);if(ks.length===1)t=n.maps[ks[0]];}
+      renderThumb(t,n.thumb);}
+    if(n.mask&&n.mask.target.tex)renderThumb(n.mask.target,n.mask.thumb);}
   thumbQ.clear();
   if(chanThumbDirty&&compOut&&typeof drawChannelThumbs==='function'){chanThumbDirty=false;drawChannelThumbs();}
 }

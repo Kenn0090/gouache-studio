@@ -50,7 +50,7 @@ function renderLayers(){
   for(const {n,depth,clipped} of displayRows()){const grp=n.type==='group';
     const eye=el('button',{class:'eye',title:n.visible?'Hide':'Show','aria-label':(n.visible?'Hide ':'Show ')+n.name});eye.innerHTML=n.visible?eyeOn:eyeOff;
     eye.addEventListener('click',e=>{e.stopPropagation();n.visible=!n.visible;renderLayers();requestRender(true);});
-    const meta=[];if(grp)meta.push(n.mode<0?'pass':MODES[n.mode]);else{const mm=mapModeOf(n,doc.map);if(mm!==(doc.map==='base'?0:MAP_DEFS[doc.map].blend))meta.push(MODES[mm].replace(' (Add)',''));}
+    const meta=[];if(grp){meta.push(n.mode<0?'pass':MODES[n.mode]);const om=doc.maps.length>1&&ui.mode!=='anim'?onlyMapOf(n):null;if(om)meta.push(MAP_SHORT[om]);}else{const mm=mapModeOf(n,doc.map);if(mm!==(doc.map==='base'?0:MAP_DEFS[doc.map].blend))meta.push(MODES[mm].replace(' (Add)',''));}
     if(n.text)meta.unshift('text');if(n.grad)meta.unshift('gradient');if(n.opacity<1)meta.push(Math.round(n.opacity*100)+'%');if(n.lockAlpha)meta.push('lock');
     /* which maps this layer has something in (so a layer painted only in Height is easy to find) */
     if(n.fx){meta.length=0;const mm=mapModeOf(n,n.fx.map);if(mm)meta.push(MODES[mm].replace(' (Add)',''));if(n.opacity<1)meta.push(Math.round(n.opacity*100)+'%');
@@ -97,6 +97,10 @@ function cmdApplyMask(){const L=doc.active;if(!isLayer(L)||!L.mask)return;const 
 /* selection + drag to rearrange */
 const dropLine=el('div',{class:'dropline',hidden:true});
 let ldrag=null;
+/* the one map a layer or group holds when it has nothing in the base colour (sent bakes and conversions) */
+function onlyMapOf(n){const ks=new Set();const add=L=>{if(L.fx||L.text||L.grad)return false;for(const k of mapKeysOf(L))if(!(k==='base'&&isBlankBase(L)))ks.add(k);return true;};
+  if(n.type==='group'){const walk=g=>g.children.every(c=>c.type==='group'?walk(c):add(c));if(!walk(n))return null;}else if(!add(n))return null;
+  if(ks.size!==1)return null;const k=[...ks][0];return k!=='base'&&doc.maps.includes(k)?k:null;}
 function layerPointerDown(e,n,row){
   if(e.button!==0||e.target.closest('button,input'))return;
   if(xf&&!xf.move)xfCommit();
@@ -111,6 +115,8 @@ function layerPointerDown(e,n,row){
   else if(e.ctrlKey||e.metaKey){if(doc.sel.has(n)&&doc.sel.size>1){doc.sel.delete(n);if(doc.active===n)doc.active=[...doc.sel].pop();}else{doc.sel.add(n);doc.active=n;}}
   else if(!doc.sel.has(n))selectOnly(n);else{doc.active=n;pendingSingle=n;}
   updateRowClasses();
+  /* clicking a layer or group that only holds one other map shows that map */
+  if(ui.mode==='paint'&&!e.shiftKey&&!e.ctrlKey&&!e.metaKey){const k=onlyMapOf(n);if(k&&k!==doc.map){setView(k);if(doc.map===k)toast('Showing the '+MAP_DEFS[k].label.toLowerCase()+' map.');}}
   ldrag={n,x:e.clientX,y:e.clientY,id:e.pointerId,moving:false,pendingSingle,target:null};
 }
 function dropTargetAt(y){const rows=[...$('#layerList').querySelectorAll('.lrow')];if(!rows.length)return null;

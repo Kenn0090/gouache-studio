@@ -53,16 +53,20 @@ const CONVERTERS={
     make(src,out,v){heightFromNormal(src,out,v);}},
 };
 /* Poisson solve from coarse to fine: slopes -> divergence -> relaxation at 1/8, 1/4, 1/2, full size */
-function heightFromNormal(src,out,v){const W=doc.w,H=doc.h,S=makeTarget(W,H,16),D=makeTarget(W,H,16);
+/* full-precision float targets for solving the height (half floats round it into terraces: rings in AO) */
+const solveDepth=()=>canFloat&&gl.getExtension('OES_texture_float_linear')?32:16;
+function heightFromNormal(src,out,v){const W=doc.w,H=doc.h,F=solveDepth(),S=makeTarget(W,H,F),D=makeTarget(W,H,F);
   run(P.f_nslope,S,{uN:src.tex,uFlip:!!v.dx});run(P.f_ndiv,D,{uS:S.tex,uWrap:!!doc.wrap});disposeTarget(S);
   const levels=[];let w=W,h=H,l=0;while(true){levels.push([w,h,l]);if(Math.max(w,h)<=96||l>=6)break;w=Math.ceil(w/2);h=Math.ceil(h/2);l++;}
+  /* the slopes' divergence averaged down for each coarser level (sampling it at single points misses thin lines) */
+  const Ds=[D];for(let i=1;i<levels.length;i++){const [lw,lh]=levels[i],t=makeTarget(lw,lh,F);run(P.f_rs,t,{uSrc:Ds[i-1].tex,uOut:[lw,lh]});Ds.push(t);}
   let cur=null;
-  for(let i=levels.length-1;i>=0;i--){const [lw,lh,ll]=levels[i];let a=makeTarget(lw,lh,16),b=makeTarget(lw,lh,16);
+  for(let i=levels.length-1;i>=0;i--){const [lw,lh,ll]=levels[i];let a=makeTarget(lw,lh,F),b=makeTarget(lw,lh,F);
     if(cur){run(P.f_rs,a,{uSrc:cur.tex,uOut:[lw,lh]});disposeTarget(cur);}else clearTarget(a,[0,0,0,1]);
     const n=Math.round(v.iter*(i===levels.length-1?4:1));
-    for(let k=0;k<n;k++){run(P.f_jacobi,b,{uH:a.tex,uD:D.tex,uWrap:!!doc.wrap,uScale:Math.pow(4,ll)});const t=a;a=b;b=t;}
+    for(let k=0;k<n;k++){run(P.f_jacobi,b,{uH:a.tex,uD:Ds[i].tex,uWrap:!!doc.wrap,uScale:Math.pow(4,ll)});const t=a;a=b;b=t;}
     disposeTarget(b);cur=a;}
-  disposeTarget(D);
+  for(const t of Ds)disposeTarget(t);
   /* spread: find the range on a small copy */
   const sm=makeTarget(64,64,16);run(P.f_rs,sm,{uSrc:cur.tex,uOut:[64,64]});gl.bindFramebuffer(gl.FRAMEBUFFER,sm.fbo);const f=new Float32Array(64*64*4);gl.readPixels(0,0,64,64,gl.RGBA,gl.FLOAT,f);gl.bindFramebuffer(gl.FRAMEBUFFER,null);disposeTarget(sm);
   let mn=1e9,mx=-1e9,sum=0;for(let i=0;i<f.length;i+=4){mn=Math.min(mn,f[i]);mx=Math.max(mx,f[i]);sum+=f[i];}

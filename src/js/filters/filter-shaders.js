@@ -30,6 +30,8 @@ void main(){ float l=texelFetch(uL,ivec2(gl_FragCoord.xy),0).r; l=clamp((l-0.5)*
   ndiv:`uniform sampler2D uS; uniform int uWrap; void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uS,0);
   float gx1=texelFetch(uS,wrapP(p+ivec2(1,0),s,uWrap),0).r, gx0=texelFetch(uS,wrapP(p-ivec2(1,0),s,uWrap),0).r;
   float gy1=texelFetch(uS,wrapP(p+ivec2(0,1),s,uWrap),0).g, gy0=texelFetch(uS,wrapP(p-ivec2(0,1),s,uWrap),0).g;
+  /* not tiling: no slope crosses the image edge (else the edges come out raised) */
+  if(uWrap==0){ vec2 c=texelFetch(uS,p,0).rg; if(p.x==0) gx0=1.0-c.r; if(p.x==s.x-1) gx1=1.0-c.r; if(p.y==0) gy0=1.0-c.g; if(p.y==s.y-1) gy1=1.0-c.g; }
   float d=((gx1-gx0)+(gy1-gy0))*0.5*2.0; o=vec4(d,0,0,1); }`.replace('uniform sampler2D uS;',GL_ST.split('\n')[2]+'\nuniform sampler2D uS;'),
   jacobi:`uniform sampler2D uH; uniform sampler2D uD; uniform int uWrap; uniform float uScale;
 ivec2 wrapP(ivec2 p,ivec2 s,int w){ return w==1?((p%s)+s)%s:clamp(p,ivec2(0),s-1); }
