@@ -150,7 +150,7 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 b=uHasB==1?texelFetch(uB,p,0):
 let bkTintP=null;
 /* the paint map as it looks right now (with the stroke being painted) */
 function bakePaintLive(k){const T=bakeMapT(k);if(!T)return null;const L=bk.L[k];
-  if(stroke&&L&&stroke.L===L&&stroke.o.tool!=='smudge'){const t=acquireD(8);run(P.merge,t,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},tonalU(stroke.o),chanU(null),selU(stroke.o)));return {t,tmp:true};}
+  if(stroke&&L&&stroke.L===L&&stroke.o.tool!=='smudge'){const t=acquireD(8);run(P.merge,t,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,...tintU(),uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},tonalU(stroke.o),chanU(null),selU(stroke.o)));return {t,tmp:true};}
   return {t:T,tmp:false};}
 function bakeTint(dst,base,paintK,mode){if(!bkTintP)bkTintP=program(FS_BKTINT);const pm=paintK?bakePaintLive(paintK):null;
   run(bkTintP,dst,{uB:base?base.tex:dummy,uHasB:!!base,uM:pm?pm.t.tex:dummy,uMode:{int:pm?mode:0},uGrey:[.62,.62,.64]});if(pm&&pm.tmp)release(pm.t);}

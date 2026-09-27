@@ -56,7 +56,7 @@ function run(prog,target,u,opts){if(prog.tiled&&!runTiling&&target.w*target.h>26
   useProg(prog,u);
   bindTarget(target);
   const b=opts&&opts.blend;
-  if(b){gl.enable(gl.BLEND);if(b==='max'){gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);}else{gl.blendEquation(gl.FUNC_ADD);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);}}
+  if(b){gl.enable(gl.BLEND);if(b==='max'){gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);}else if(b==='tintfirst'){gl.blendEquation(gl.FUNC_ADD);gl.blendFuncSeparate(gl.ONE_MINUS_DST_ALPHA,gl.DST_ALPHA,gl.ZERO,gl.ONE);}else if(b==='tintmax'){gl.blendEquationSeparate(gl.FUNC_ADD,gl.MAX);gl.blendFuncSeparate(gl.ONE,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE);}else{gl.blendEquation(gl.FUNC_ADD);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);}}
   else gl.disable(gl.BLEND);
   gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
   if(b)gl.disable(gl.BLEND);
@@ -78,6 +78,6 @@ const dummy=(()=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.
 
 const CH_DEF={uChanMode:{int:0},uChan:[1,1,1,1]};
 const SEL_DEF={uSelTex:dummy,uUseSel:false,uTonalRange:{int:1},uProtect:true};
-P.comp.defaults=Object.assign({uMask2:dummy,uLMask:dummy,uUseMask2:false,uUseLMask:false},CH_DEF,SEL_DEF);P.merge.defaults=Object.assign({},CH_DEF,SEL_DEF);P.smudge.defaults=Object.assign({},CH_DEF,SEL_DEF);
+P.comp.defaults=Object.assign({uMask2:dummy,uLMask:dummy,uUseMask2:false,uUseLMask:false,uStrokeTint:false},CH_DEF,SEL_DEF);P.merge.defaults=Object.assign({uStrokeTint:false},CH_DEF,SEL_DEF);P.stamp.defaults={uTint:{int:0},uDabCol:[0,0,0]};P.smudge.defaults=Object.assign({},CH_DEF,SEL_DEF);
 P.mix.defaults={uM:dummy,uUseM:false};P.resample.defaults={uOutside:[0,0,0,0]};P.view.defaults={uShow:[1,1,1,0],uSingle:{int:-1},uMaskView:false,uSel:dummy,uSelMode:{int:0},uTime:0,uPx:1,uWrap:false,uUnder:dummy,uUseUnder:false,uBg:[0,0,0,0]};
 P.shift.defaults={uWrap:false,uOutside:[0,0,0,0]};P.grad.defaults={uShape:{int:0},uDither:false,uOpacity:1,uGray:false,uBase:dummy,uUseBase:false,uSelTex:dummy,uUseSel:false};P.fillcov.defaults={uSelTex:dummy,uUseSel:false};P.lockcov.defaults={uSelTex:dummy,uUseSel:false};P.texcov.defaults={uSelTex:dummy,uUseSel:false};P.xform.defaults={uOutside:[0,0,0,0],uInterp:{int:2},uSS:{int:1},uWrap:false,uRect:[0,0,0,0],uBase:dummy,uUseBase:false};P.mesh.defaults={uOutside:[0,0,0,0],uInterp:{int:2},uOff:[0,0]};P.proj.defaults={uAlphaOnly:true};P.selop.defaults={uShape:dummy,uOldOn:true};P.loadsel.defaults={uInv:false};P.cropsel.defaults={uSel:dummy,uUseSel:false};

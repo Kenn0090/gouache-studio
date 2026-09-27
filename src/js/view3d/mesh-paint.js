@@ -18,7 +18,7 @@ void main(){ vec4 c=uVPm*vec4(vP,1.0); if(c.w<=1e-6){ o=vec4(0); return; } vec2 
   if(s.x<0.0||s.y<0.0||s.x>1.0||s.y>1.0){ o=vec4(0); return; }
   ivec2 ds=textureSize(uDepth,0); float z=texelFetch(uDepth,clamp(ivec2(s*vec2(ds)),ivec2(0),ds-1),0).r; float d=length(vP-uCamP);
   if(z<=0.0||d>z*1.006+0.004){ o=vec4(0); return; }
-  float f=abs(dot(normalize(vN),normalize(uCamP-vP))); o=texture(uStroke,s)*smoothstep(0.04,0.22,f); }`;
+  float f=abs(dot(normalize(vN),normalize(uCamP-vP))); vec4 t=texture(uStroke,s); o=vec4(t.rgb,t.a*smoothstep(0.04,0.22,f)); }`;
 const VS_3DD=VS_3D.replace('out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;','out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;');
 let P3P=null;
 function p3p(){if(!P3P)P3P={depth:prog3(VS_3DD,FS_3DDEPTH.replace('void main','in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan;\nvoid main')),proj:prog3(VS_3DPROJ,FS_3DPROJ)};return P3P;}

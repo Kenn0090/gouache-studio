@@ -24,7 +24,7 @@ function paintOpts(et){
   if(!et.isMask&&et.node&&(et.node.text||et.node.grad)){const g=!!et.node.grad;rasterizeText(et.node);toast(g?'Gradient converted to pixels so you can paint on it. Undo brings the editable gradient back.':'Text converted to pixels so you can paint on it. Undo brings the editable text back.');}
   const o=Object.assign({},brush,{tool:ui.tool,color:ui.fg.slice(),chan:!et.isMask&&chanRestricted()?chan.edit.slice():null,sel:selOn(et)});
   if(o.tool==='dodge'||o.tool==='burn')Object.assign(o,{opacity:ui.tonalExposure,range:ui.tonalRange,protect:ui.tonalProtect});
-  if(et.isMask){const g=lum3(ui.fg);o.color=[g,g,g];if(o.tool==='erase'){o.tool='brush';o.color=(et.erase||[1,1,1]).slice();}}
+  if(et.isMask){const g=lum3(ui.fg);o.color=[g,g,g];o.noTint=true;if(o.tool==='erase'){o.tool='brush';o.color=(et.erase||[1,1,1]).slice();}}
   o.extras=strokeExtras(o,et);
   if(ui.tool!=='erase'&&(ui.tool==='brush'||brush.charge>0))pushRecent(ui.fg);
   return o;}

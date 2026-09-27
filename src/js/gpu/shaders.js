@@ -37,7 +37,7 @@ float brushMask(vec2 pix){
   return m; }
 `;
 const CH_STROKE=`
-uniform int uStroke; uniform vec3 uStrokeColor; uniform float uStrokeOpacity; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan;
+uniform int uStroke; uniform vec3 uStrokeColor; uniform int uStrokeTint; vec3 gSC; uniform float uStrokeOpacity; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan;
 uniform sampler2D uSelTex; uniform int uUseSel;
 float selCov(ivec2 p, float c){ return uUseSel==1?c*texelFetch(uSelTex,p,0).r:c; }
 /* dodge (3) and burn (4): uTonalRange 0 shadows, 1 midtones, 2 highlights; uProtect keeps hue and saturation */
@@ -56,12 +56,14 @@ vec4 applyStroke(vec4 L, float cov){
   float a=clamp(cov,0.0,1.0)*uStrokeOpacity;
   if(uStroke>=3){ if(L.a<=1e-6) return L; vec3 r=tonal(clamp(L.rgb/L.a,0.0,1.0),a,uStroke==3);
     if(uChanMode==1) return chanMix(L,vec4(r,L.a),1.0); return vec4(r*L.a,L.a); }
-  if(uChanMode==1&&uStroke!=0){ vec4 t=uStroke==1?vec4(uStrokeColor,dot(uStrokeColor,vec3(0.299,0.587,0.114))):vec4(0.0); return chanMix(L,t,a); }
-  if(uStroke==1){ if(uLockAlpha==1) return vec4(mix(L.rgb,uStrokeColor*L.a,a),L.a); return vec4(uStrokeColor*a,a)+L*(1.0-a); }
+  if(uChanMode==1&&uStroke!=0){ vec4 t=uStroke==1?vec4(gSC,dot(gSC,vec3(0.299,0.587,0.114))):vec4(0.0); return chanMix(L,t,a); }
+  if(uStroke==1){ if(uLockAlpha==1) return vec4(mix(L.rgb,gSC*L.a,a),L.a); return vec4(gSC*a,a)+L*(1.0-a); }
   if(uStroke==2){ if(uLockAlpha==1) return L; return L*(1.0-a); }
   return L; }
 `;
-const FS_STAMP=CH_BRUSH+`uniform float uAlpha; void main(){ float m=brushMask(gl_FragCoord.xy)*uAlpha; o=vec4(m); }`;
+const FS_STAMP=CH_BRUSH+`uniform float uAlpha; uniform int uTint; uniform vec3 uDabCol; void main(){ float m=brushMask(gl_FragCoord.xy)*uAlpha; if(uTint==2){ if(m<=0.0) discard; o=vec4(uDabCol,0.0); return; } o=uTint==1?vec4(uDabCol*m,m):vec4(m); }`;
+/* colour-jitter strokes stamp each dab twice: uTint 2 first gives pixels nothing has touched yet the dab's colour
+   (so soft edges keep it), then uTint 1 lays the dab over what is there */
 const FS_SMUDGE=CH_BRUSH+`
 uniform sampler2D uSrc; uniform vec2 uDelta; uniform float uAlpha; uniform float uStrength; uniform float uCharge; uniform vec3 uColor; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan;
 uniform sampler2D uSelTex; uniform int uUseSel;
@@ -74,7 +76,7 @@ void main(){ vec2 size=vec2(textureSize(uSrc,0)); vec2 uv=gl_FragCoord.xy/size;
   if(uLockAlpha==1){ vec3 c=r.a>1e-6?r.rgb/r.a:vec3(0.0); r=vec4(c*dst.a,dst.a); }
   o=r; }`;
 const FS_MERGE=CH_STROKE+`uniform sampler2D uSrc; uniform sampler2D uStrokeTex;
-void main(){ ivec2 p=ivec2(gl_FragCoord.xy); o=applyStroke(texelFetch(uSrc,p,0),selCov(p,texelFetch(uStrokeTex,p,0).a)); }`;
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 st=texelFetch(uStrokeTex,p,0); gSC=uStrokeTint==1?st.rgb:uStrokeColor; o=applyStroke(texelFetch(uSrc,p,0),selCov(p,st.a)); }`;
 const FS_COMP=CH_STROKE+`
 uniform sampler2D uBase; uniform sampler2D uLayer; uniform sampler2D uStrokeTex; uniform sampler2D uMask; uniform sampler2D uMask2; uniform sampler2D uLMask;
 uniform int uMode; uniform int uUseMask; uniform int uUseMask2; uniform int uUseLMask; uniform float uOpacity;
@@ -107,7 +109,7 @@ vec3 blendFn(vec3 b,vec3 s){
   return s; }
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy);
   vec4 b=texelFetch(uBase,p,0); vec4 s=texelFetch(uLayer,p,0);
-  if(uStroke!=0) s=applyStroke(s,selCov(p,texelFetch(uStrokeTex,p,0).a));
+  if(uStroke!=0){ vec4 st=texelFetch(uStrokeTex,p,0); gSC=uStrokeTint==1?st.rgb:uStrokeColor; s=applyStroke(s,selCov(p,st.a)); }
   s*=uOpacity; if(uUseLMask==1) s*=texelFetch(uLMask,p,0).r;
   if(uUseMask==1) s*=texelFetch(uMask,p,0).a*(uUseMask2==1?texelFetch(uMask2,p,0).r:1.0);
   if(uMode==0){ o=s+b*(1.0-s.a); return; }

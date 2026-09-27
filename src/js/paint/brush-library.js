@@ -105,7 +105,12 @@ function buildBrushPanel(){
     S('bAJ','Angle jitter','angleJitter',0,1,.01,pct).el,
     S('bSc','Scatter','scatter',0,4,.05,pct).el,
     S('bCnt','Count','count',1,8,1,v=>String(Math.round(v))).el,
-    el('div',{class:'chips'},C('bFD','Follow stroke','followDir'),C('bBA','Scatter both axes','bothAxes'),C('bRF','Random flip','randFlipX'))));
+    el('div',{class:'chips'},C('bFD','Follow stroke','followDir'),C('bBA','Scatter both axes','bothAxes'),C('bRF','Random flip','randFlipX')),
+    el('div',{class:'sub',text:'Colour jitter'}),
+    S('bHJ','Hue','hueJitter',0,1,.01,pct).el,
+    S('bSatJ','Saturation','satJitter',0,1,.01,pct).el,
+    S('bVJ','Brightness','valJitter',0,1,.01,pct).el,
+    el('div',{class:'chips'},C('bJS','Once per stroke','jitterPerStroke'))));
   box.append(det);buildSymSection(box);if((ui.tool==='brush'||ui.tool==='erase')&&ui.mode!=='bake')buildMapBrushSection(box,ui.tool);schedulePreview();
 }
 function applyPreset(p){for(const k of SETTING_KEYS)brush[k]=(k in p)?p[k]:BRUSH_DEFAULTS[k];if(p.maps)applyMapBrush(p.maps);activePreset=p;setTool((ui.tool==='dodge'||ui.tool==='burn')&&p.tool!=='smudge'?ui.tool:(p.tool||'brush'),true);renderLibrary();refreshCursor();}
