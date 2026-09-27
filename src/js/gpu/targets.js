@@ -17,15 +17,36 @@ function blit(src,dst,sx,sy,w,h,dx,dy){gl.bindFramebuffer(gl.READ_FRAMEBUFFER,sr
 /* Undo snapshots live in system RAM (typed arrays), not in video memory.
    8-bit layers: 4 bytes per pixel. 16-bit layers: stored as half floats, 8 bytes per pixel. */
 let halfRead=null;
-function captureRegion(src,x,y,w,h){
-  gl.bindFramebuffer(gl.FRAMEBUFFER,src.fbo);
+/* ---- reading pixels back without stalling ----
+   A plain readPixels makes the CPU wait until the GPU has finished everything queued, which shows
+   up as a hitch. Instead the copy goes into a GPU buffer with a fence; the bytes are collected a
+   frame or two later, when the GPU is done. Anything that needs them sooner waits only then. */
+const pendingReads=new Set();
+function asyncRead(fbo,x,y,w,h,type,ctor,n,done){const buf=gl.createBuffer();gl.bindBuffer(gl.PIXEL_PACK_BUFFER,buf);gl.bufferData(gl.PIXEL_PACK_BUFFER,n*ctor.BYTES_PER_ELEMENT,gl.STREAM_READ);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);gl.readPixels(x,y,w,h,gl.RGBA,type,0);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  const fence=gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE,0);gl.flush();
+  const job={buf,fence,finish(){if(!pendingReads.delete(job))return;const out=new ctor(n);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,buf);gl.getBufferSubData(gl.PIXEL_PACK_BUFFER,0,out);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);
+    gl.deleteBuffer(buf);gl.deleteSync(fence);done(out);}};
+  pendingReads.add(job);schedulePoll();return job;}
+let pollTimer=0;
+function schedulePoll(){if(!pollTimer&&pendingReads.size)pollTimer=setTimeout(pollReads,4);}
+function pollReads(){pollTimer=0;for(const j of [...pendingReads]){const s=gl.clientWaitSync(j.fence,0,0);if(s===gl.ALREADY_SIGNALED||s===gl.CONDITION_SATISFIED)j.finish();}schedulePoll();}
+/* immediate read, for code that needs the pixels right away */
+function captureRegionNow(src,x,y,w,h){gl.bindFramebuffer(gl.FRAMEBUFFER,src.fbo);let u;
+  if(src.depth===16){const f=new Float32Array(w*h*4);gl.readPixels(x,y,w,h,gl.RGBA,gl.FLOAT,f);u=new Uint16Array(f.length);for(let i=0;i<f.length;i++)u[i]=f2h(f[i]);}
+  else{u=new Uint8Array(w*h*4);gl.readPixels(x,y,w,h,gl.RGBA,gl.UNSIGNED_BYTE,u);}
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);return {w,h,depth:src.depth===16?16:8,data:u,bytes:u.byteLength};}
+/* an undo snapshot: its pixels arrive asynchronously; reading .data before then waits for them */
+function makeSnap(w,h,depth,bytes){const s={w,h,depth,bytes,_d:null,_job:null,
+  get data(){if(this._job)this._job.finish();return this._d;},set data(v){this._d=v;},get resident(){return !!(this._d||this._job);}};return s;}
+function captureRegion(src,x,y,w,h){const n=w*h*4;
   if(src.depth===16){
     if(halfRead===null)halfRead=gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_FORMAT)===gl.RGBA&&gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_TYPE)===gl.HALF_FLOAT;
-    let u;
-    if(halfRead){u=new Uint16Array(w*h*4);gl.readPixels(x,y,w,h,gl.RGBA,gl.HALF_FLOAT,u);}
-    else{const f=new Float32Array(w*h*4);gl.readPixels(x,y,w,h,gl.RGBA,gl.FLOAT,f);u=new Uint16Array(f.length);for(let i=0;i<f.length;i++)u[i]=f2h(f[i]);}
-    return {w,h,depth:16,data:u,bytes:u.byteLength};}
-  const u=new Uint8Array(w*h*4);gl.readPixels(x,y,w,h,gl.RGBA,gl.UNSIGNED_BYTE,u);return {w,h,depth:8,data:u,bytes:u.byteLength};}
+    const s=makeSnap(w,h,16,n*2);
+    s._job=halfRead?asyncRead(src.fbo,x,y,w,h,gl.HALF_FLOAT,Uint16Array,n,u=>{s._job=null;s._d=u;})
+      :asyncRead(src.fbo,x,y,w,h,gl.FLOAT,Float32Array,n,f=>{const u=new Uint16Array(n);for(let i=0;i<n;i++)u[i]=f2h(f[i]);s._job=null;s._d=u;});
+    return s;}
+  const s=makeSnap(w,h,8,n);s._job=asyncRead(src.fbo,x,y,w,h,gl.UNSIGNED_BYTE,Uint8Array,n,u=>{s._job=null;s._d=u;});return s;}
 function restoreRegion(snap,dst,x,y){gl.bindTexture(gl.TEXTURE_2D,dst.tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
   if(snap.depth===16)gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,snap.w,snap.h,gl.RGBA,gl.HALF_FLOAT,snap.data);
   else gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,snap.w,snap.h,gl.RGBA,gl.UNSIGNED_BYTE,snap.data);

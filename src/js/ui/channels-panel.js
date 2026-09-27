@@ -20,9 +20,9 @@ function refreshChanUI(){const list=$('#chanList');list.replaceChildren();const 
   const st=$('#stChan');st.hidden=all;st.textContent='Channels: '+chanLabel();$('#chanState').textContent=all?'':'editing '+chanLabel();
   $('#brushTitle').dataset.chan=all?'':chanLabel();}
 $('#stChan').addEventListener('click',()=>selectChannel(-1));
-function drawChannelThumbs(){const buf=renderThumb(compOut,null);
+function drawChannelThumbs(){renderThumb(compOut,buf=>{
   CHS.forEach((c,k)=>{const x=chanCanvases[k].getContext('2d'),img=x.createImageData(40,40),d=img.data;
     for(let i=0;i<d.length;i+=4){const a=buf[i+3];
       if(c.i<0){const bg=((((i/4)%40)>>2)+(((i/4)/40|0)>>2))&1?58:47;d[i]=buf[i]+bg*(255-a)/255;d[i+1]=buf[i+1]+bg*(255-a)/255;d[i+2]=buf[i+2]+bg*(255-a)/255;}
       else{const v=c.i===3?a:buf[i+c.i];d[i]=d[i+1]=d[i+2]=v;}d[i+3]=255;}
-    x.putImageData(img,0,0);});}
+    x.putImageData(img,0,0);});});}

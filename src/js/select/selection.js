@@ -33,7 +33,7 @@ function h2fLut(){if(H2F)return H2F;H2F=new Float32Array(65536);for(let h=0;h<65
 let F2H8=null;
 function f2h8(){if(F2H8)return F2H8;F2H8=new Uint16Array(256);for(let i=0;i<256;i++)F2H8[i]=f2h(i/255);return F2H8;}
 function captureSel(t,r){const [x,y]=r,w=r[2]-r[0],h=r[3]-r[1],out=new Uint8Array(w*h),strip=Math.max(1,Math.floor(4194304/w));
-  for(let sy=0;sy<h;sy+=strip){const sh=Math.min(strip,h-sy),s=captureRegion(t,x,y+sy,w,sh),d=s.data,o=sy*w;
+  for(let sy=0;sy<h;sy+=strip){const sh=Math.min(strip,h-sy),s=captureRegionNow(t,x,y+sy,w,sh),d=s.data,o=sy*w;
     if(s.depth===16){const L=h2fLut();for(let i=0;i<w*sh;i++)out[o+i]=Math.max(0,Math.min(255,Math.round(L[d[i*4]]*255)));}
     else for(let i=0;i<w*sh;i++)out[o+i]=d[i*4];}
   return {w,h,depth:'sel',data:out,bytes:out.byteLength};}

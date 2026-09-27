@@ -40,6 +40,7 @@
     "files/gouache-file",
     "files/abr",
     "ui/prefs",
+    "ui/perf",
     "ui/dialogs",
     "ui/menus",
     "ui/view-input",

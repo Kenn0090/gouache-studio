@@ -350,3 +350,4 @@ body.animmode .sec[aria-labelledby="hLayers"],body.animmode .sec[aria-labelledby
 .texrow{display:grid;gap:1px;padding:4px 6px;border-radius:6px;background:var(--raise)}
 .texrow code{font:11.5px var(--mono);color:var(--text)}
 .texrow .dim{font-size:11px}
+.perfbox{position:fixed;left:60px;top:48px;z-index:40;white-space:pre;font:11px/1.45 var(--mono);color:#e8eaed;background:rgba(10,12,16,.82);border:1px solid var(--line-2);border-radius:8px;padding:8px 10px;pointer-events:none}

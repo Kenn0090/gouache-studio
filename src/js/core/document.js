@@ -72,15 +72,15 @@ function dropRecords(list){const cands=new Set(),mc=new Set();for(const r of lis
    the browser version drops the oldest steps instead. */
 let undoRamMB=platform.isDesktop?2048:768;try{const v=+localStorage.getItem('gs.undoRamMB');if(v>0)undoRamMB=v;}catch(e){}
 const UNDO_RAM=undoRamMB*1048576,UNDO_MAX_STEPS=platform.isDesktop?500:120;
-const recBytes=r=>(r.snaps||[]).reduce((s,x)=>s+(x.data?x.bytes:0),0);
+const recBytes=r=>(r.snaps||[]).reduce((s,x)=>s+(x.resident!==false&&!x.file?x.bytes:0),0);
 let undoBusy=false;
 function pushUndo(rec){if(!rec.mode)rec.mode=ui.mode;hist.undo.push(rec);const dropped=hist.redo;hist.redo=[];while(hist.undo.length>UNDO_MAX_STEPS)dropped.push(hist.undo.shift());
   if(!platform.isDesktop){let total=hist.undo.reduce((s,r)=>s+recBytes(r),0);while(total>UNDO_RAM&&hist.undo.length>1){const r=hist.undo.shift();total-=recBytes(r);dropped.push(r);}}
   dropRecords(dropped);if(platform.isDesktop)spillOld();}
 async function spillOld(){let total=hist.undo.reduce((s,r)=>s+recBytes(r),0);
-  for(const r of hist.undo){if(total<=UNDO_RAM)break;for(const s of r.snaps||[]){if(!s.data||s.spilling)continue;s.spilling=true;
+  for(const r of hist.undo){if(total<=UNDO_RAM)break;for(const s of r.snaps||[]){if(s.file||s.spilling||s.resident===false)continue;s.spilling=true;
     try{const bytes=new Uint8Array(s.data.buffer,s.data.byteOffset,s.data.byteLength);s.file=await platform.spillWrite(bytes);total-=s.bytes;s.data=null;}catch(e){console.warn('undo spill failed',e);}s.spilling=false;}}}
-async function loadSnaps(r){for(const s of r.snaps||[]){if(s.data||!s.file)continue;const buf=await platform.spillRead(s.file);s.data=s.depth===16?new Uint16Array(buf):new Uint8Array(buf);platform.spillDelete(s.file);s.file=null;}}
+async function loadSnaps(r){for(const s of r.snaps||[]){if(!s.file)continue;const buf=await platform.spillRead(s.file);s.data=s.depth===16?new Uint16Array(buf):new Uint8Array(buf);platform.spillDelete(s.file);s.file=null;}}
 function clearHistory(){const all=[...hist.undo,...hist.redo];hist.undo=[];hist.redo=[];dropRecords(all);}
 /* the image a record restores into: a layer's map as it was when the step was made (not whichever map is being edited now) */
 function recTarget(L){const k=doc.map;if(L.quick||L.maskOf||!L.maps)return ()=>L.target;return ()=>mapT(L,k);}

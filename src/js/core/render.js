@@ -1,6 +1,8 @@
 /* ================= Rendering ================= */
 function requestRender(comp){if(comp)dirtyComp=true;if(!raf)raf=requestAnimationFrame(frame);}
-function frame(){raf=0;if(dirtyComp){composite();dirtyComp=false;}drawView();flushThumbs();if(tedit)positionEditor();}
+const perf={on:false,frames:[],worst:null,last:0};
+function frame(){raf=0;const t0=performance.now();let tc=t0;if(dirtyComp){composite();dirtyComp=false;tc=performance.now();}drawView();const tv=performance.now();flushThumbs();if(tedit)positionEditor();
+  if(perf.on)perfFrame(t0,tc-t0,tv-tc,performance.now()-tv);}
 let maskOverride=new Map();
 function maskTexOf(n){if(!n.mask||!n.mask.enabled)return null;return maskOverride.get(n)||n.mask.target.tex;}
 /* selection clipping for a stroke: only when the stroke was started with an active selection */
@@ -11,8 +13,17 @@ function selU(o){return o&&o.sel&&sel.t?{uSelTex:sel.t.tex,uUseSel:true}:{uSelTe
 function chanU(o){return o&&o.chan?{uChanMode:{int:1},uChan:o.chan}:{uChanMode:{int:0},uChan:[1,1,1,1]};}
 /* composite a list of layers for map k (default: the map being edited) onto acc.
    Layers with nothing in map k are skipped; clipping always uses the base colour's shape. */
+/* While a stroke is being painted nothing below the painted layer changes, so the picture of
+   everything underneath is made once per stroke and reused every frame. */
+function strokeCacheFor(list,k){if(!stroke||list!==doc.root.children)return null;let n=stroke.L.maskOf||stroke.L;
+  while(n&&n.parent&&n.parent!==doc.root)n=n.parent;const i=list.indexOf(n);if(i<1)return null;
+  const c=stroke.cache||(stroke.cache={});return c[k]||(c[k]={i,t:null});}
+function dropStrokeCache(s){if(s&&s.cache){for(const k in s.cache)if(s.cache[k].t)disposeTarget(s.cache[k].t);s.cache=null;}}
 function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
-  for(let i=0;i<list.length;i++){const n=list[i],clipped=clipBaseOf(list,i);
+  const sc=strokeCacheFor(list,k);let start=0;
+  if(sc&&sc.t&&sc.t.depth===acc.depth){blit(sc.t,acc,0,0,doc.w,doc.h,0,0);start=sc.i;}
+  for(let i=start;i<list.length;i++){if(sc&&i===sc.i&&!sc.t){sc.t=makeTarget(doc.w,doc.h,acc.depth);blit(acc,sc.t,0,0,doc.w,doc.h,0,0);}
+    const n=list[i],clipped=clipBaseOf(list,i);
     if(!n.visible)continue;if(clipped&&!clipped.visible)continue;
     const mt=maskTexOf(n);
     if(n.type==='layer'){const T=edit?n.target:mapT(n,k);if(!T||T.empty)continue;
@@ -80,10 +91,11 @@ function scheduleThumb(n){if(n){if(n.frame)frameDirty(n);thumbQ.add(n);chanThumb
 let chanThumbDirty=true;
 function renderThumb(target,canvas){const s=Math.min(40/doc.w,40/doc.h),tw=doc.w*s,th=doc.h*s;clearTarget(thumbT);
   run(P.resample,thumbT,{uSrc:target.tex,uOffset:[(40-tw)/2,(40-th)/2],uScale:[1/s,1/s],uTaps:{int:Math.min(8,Math.ceil(1/s))}});
-  gl.bindFramebuffer(gl.FRAMEBUFFER,thumbT.fbo);gl.readPixels(0,0,40,40,gl.RGBA,gl.UNSIGNED_BYTE,thumbBuf);
-  if(!canvas)return thumbBuf;const img=new ImageData(40,40);const d=img.data;
-  for(let i=0;i<d.length;i+=4){const a=thumbBuf[i+3];if(a){d[i]=Math.min(255,thumbBuf[i]*255/a);d[i+1]=Math.min(255,thumbBuf[i+1]*255/a);d[i+2]=Math.min(255,thumbBuf[i+2]*255/a);d[i+3]=a;}}
-  canvas.getContext('2d').putImageData(img,0,0);return thumbBuf;}
+  /* collected when the GPU is done, so thumbnails never make painting wait */
+  asyncRead(thumbT.fbo,0,0,40,40,gl.UNSIGNED_BYTE,Uint8Array,40*40*4,buf=>{if(typeof canvas==='function'){canvas(buf);return;}
+    const img=new ImageData(40,40);const d=img.data;
+    for(let i=0;i<d.length;i+=4){const a=buf[i+3];if(a){d[i]=Math.min(255,buf[i]*255/a);d[i+1]=Math.min(255,buf[i+1]*255/a);d[i+2]=Math.min(255,buf[i+2]*255/a);d[i+3]=a;}}
+    canvas.getContext('2d').putImageData(img,0,0);});}
 function flushThumbs(){
   for(const n of thumbQ){if(n.type==='layer'&&n.target&&n.target.tex)renderThumb(n.target,n.thumb);if(n.mask&&n.mask.target.tex)renderThumb(n.mask.target,n.mask.thumb);}
   thumbQ.clear();
