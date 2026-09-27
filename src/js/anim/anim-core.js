@@ -21,15 +21,15 @@ function setMode(m,quiet){if(m===ui.mode)return true;
   if(typeof cageFlatOff==='function')cageFlatOff();
   if(m==='anim'&&(doc.map!=='base'||doc.view!=='base')){setEditMap('base');if(doc.map!=='base')return false;}
   const from=ui.mode;
-  if(from==='bake')bakeExit();
+  if(from==='bake')bakeExit();if(from==='convert')convertExit();
   if(from==='anim'){doc.root=doc.paintRoot;doc.paintRoot=null;const s=doc.paintSel||{active:null,sel:[]};doc.active=s.active;doc.sel=new Set(s.sel);ui.mode='paint';}
   if(m==='anim'){if(!doc.anim)doc.anim=makeAnim();doc.paintRoot=doc.root;doc.paintSel={active:doc.active,sel:[...doc.sel]};doc.root=animRoot;ui.mode='anim';showFrame(doc.anim.cur,true);}
   else ui.mode=m;
-  document.body.classList.toggle('animmode',ui.mode==='anim');document.body.classList.toggle('bakemode',ui.mode==='bake');syncModeTabs();
-  if(ui.mode==='bake')bakeEnter();
+  document.body.classList.toggle('animmode',ui.mode==='anim');document.body.classList.toggle('bakemode',ui.mode==='bake');document.body.classList.toggle('convmode',ui.mode==='convert');syncModeTabs();
+  if(ui.mode==='bake')bakeEnter();if(ui.mode==='convert')convertEnter();
   if(ui.tool==='text'&&ui.mode!=='paint')setTool('brush');
   renderLayers();refreshChanUI();refreshMapsUI();renderTimeline();renderAnimPanel();buildBrushPanel();changedAll();resizeGL();requestRender(true);
-  if(!quiet)toast(ui.mode==='anim'?'Animation mode: paint each frame. , and . step through frames, Enter plays.':ui.mode==='bake'?'Bake: bake maps from a high-poly model, see them on the model, and paint fixes.':'Paint mode.');return true;}
+  if(!quiet)toast(ui.mode==='anim'?'Animation mode: paint each frame. , and . step through frames, Enter plays.':ui.mode==='bake'?'Bake: bake maps from a high-poly model, see them on the model, and paint fixes.':ui.mode==='convert'?'Convert: make normal, height, AO and more from a photo or another map.':'Paint mode.');return true;}
 function showFrame(i,noRender){const A=A_();if(!A)return;A.cur=clamp(i,0,A.frames.length-1);const F=A.frames[A.cur];
   if(ui.mode==='anim'){animRoot.children=[F];F.parent=animRoot;selectOnly(F);}
   if(!noRender){renderTimeline();requestRender(true);}}

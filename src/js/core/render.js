@@ -63,7 +63,7 @@ function viewSource(){const A=doc.active;if(ui.viewMask&&A&&A.mask){
   return {t:compOut,mask:false};}
 function drawView(){
   bindTarget(null);gl.clearColor(21/255,23/255,27/255,1);gl.clear(gl.COLOR_BUFFER_BIT);
-  const dpr=dprNow(),z=view.zoom,vs=viewSource(),fl=cageFlatActive(),bv=ui.mode==='bake'?bakeViewTex():null,T=bv||(fl?cageRenderFlat(vs.t):vs.t),DW=fl?fl.fw:doc.w,DH=fl?fl.fh:doc.h;
+  const dpr=dprNow(),z=view.zoom,vs=viewSource(),fl=cageFlatActive(),bv=ui.mode==='bake'?bakeViewTex():ui.mode==='convert'?cvViewTex():null,T=bv||(fl?cageRenderFlat(vs.t):vs.t),DW=fl?fl.fw:doc.w,DH=fl?fl.fh:doc.h;
   gl.bindTexture(gl.TEXTURE_2D,T.tex);
   if(z<1&&T===compOut){if(compOut.mipDirty){gl.generateMipmap(gl.TEXTURE_2D);compOut.mipDirty=false;}gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);}
   else gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,z>=2?gl.NEAREST:gl.LINEAR);

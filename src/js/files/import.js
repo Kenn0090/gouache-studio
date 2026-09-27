@@ -55,9 +55,13 @@ $('#work').addEventListener('dragleave',e=>{if(e.target===$('#work')||!$('#work'
 $('#work').addEventListener('drop',e=>{e.preventDefault();$('#dropHint').hidden=true;const fs=[...e.dataTransfer.files],f=fs[0];if(!f)return;
   /* 3D models: into the baker in the Bake tab, into the 3D view otherwise */
   if(fs.some(x=>isModelName(x.name))){if(ui.mode==='bake')bakeDropFiles(fs,null);else v3DropModel(fs);return;}
+  if(ui.mode==='convert'){cvSourceFromFile(f);return;}
   handleFile(f,'place');});
 /* model files dropped on the Bake panel */
 bakeDropZone($('#bakeSec'),null);
+/* images dropped on the Convert panel become the source */
+(s=>{s.addEventListener('dragover',e=>{if([...e.dataTransfer.types].includes('Files')){e.preventDefault();s.classList.add('dropon');}});s.addEventListener('dragleave',()=>s.classList.remove('dropon'));
+  s.addEventListener('drop',e=>{e.preventDefault();s.classList.remove('dropon');const f=e.dataTransfer.files[0];if(f)cvSourceFromFile(f);});})($('#convSec'));
 /* paste: our own copied pixels (the clipboard holds a marker for them), else an image from another app */
 document.addEventListener('paste',e=>{if(isTypingTarget(e.target))return;const cd=e.clipboardData,txt=cd?cd.getData('text/plain'):'';
   if(clip&&txt===clip.marker){e.preventDefault();pasteClip();return;}

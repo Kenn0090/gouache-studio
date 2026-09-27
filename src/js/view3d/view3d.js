@@ -67,7 +67,7 @@ function v3MapTex(k,src){let t=v3.tex[k];if(!t||t.w!==doc.w||t.h!==doc.h||t.dept
   if(anisoExt)gl.texParameterf(gl.TEXTURE_2D,anisoExt.TEXTURE_MAX_ANISOTROPY_EXT,8);return t;}
 const anisoExt=gl.getExtension('EXT_texture_filter_anisotropic');
 function v3Needed(){if(v3Unlit())return doc.maps.filter(k=>k==='base'||k==='ao');return doc.maps.filter(k=>k!=='normal'&&k!=='height'&&k!=='curv').concat(doc.maps.includes('height')||doc.maps.includes('normal')?['nfinal']:[]);}
-function v3Refresh(){if(!v3.on)return;if(ui.mode==='bake'){bakeV3Refresh();return;}const now=performance.now(),full=v3.mapsDirty&&(!stroke||now-v3.lastFull>150);
+function v3Refresh(){if(!v3.on)return;if(ui.mode==='bake'){bakeV3Refresh();return;}if(ui.mode==='convert'){cvV3Refresh();return;}const now=performance.now(),full=v3.mapsDirty&&(!stroke||now-v3.lastFull>150);
   const plain=doc.view===doc.map&&compOut&&ui.mode!=='anim';
   const one=k=>{if(k==='nfinal'){const t=normalComposite(false,null);v3MapTex(k,t);release(t);return;}
     if(k===doc.map&&plain){v3MapTex(k,compOut);return;}
@@ -104,7 +104,7 @@ function v3Render(F,flip){const s=v3s(),g=v3.gpu;if(!g)return;
   gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);const bg=BG3[s.bg]||BG3.dark;gl.clearColor(bg[0],bg[1],bg[2],1);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
   const eye=v3Eye(),V=m4look(eye,[v3.cam.tx,v3.cam.ty,v3.cam.tz],[0,1,0]),Pm=m4persp(s.fov*Math.PI/180,F.w/F.h,.02,100);if(flip)Pm[5]=-Pm[5];const VP=m4mul(Pm,V);
-  const bake=ui.mode==='bake'&&v3.btex,T=bake?v3.btex:v3.tex,ok=k=>T[k]&&(bake||(k==='nfinal'?doc.maps.includes('height')||doc.maps.includes('normal'):doc.maps.includes(k)));
+  const bake=(ui.mode==='bake'||ui.mode==='convert')&&v3.btex,T=bake?v3.btex:v3.tex,ok=k=>T[k]&&(bake||(k==='nfinal'?doc.maps.includes('height')||doc.maps.includes('normal'):doc.maps.includes(k)));
   const hm=(ok('rough')?1:0)|(ok('metal')?2:0)|(ok('nfinal')?4:0)|(ok('ao')?8:0)|(ok('emis')?16:0)|(ok('opac')?64:0);
   const a=s.sunAz*Math.PI/180,e=s.sunEl*Math.PI/180,base=T.base||null;
   const common={uVP:{m4:VP},uUVs:bake?1:s.uvs,uH:T.height&&s.disp?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:!!(!bake&&T.height&&s.disp&&doc.maps.includes('height'))};
@@ -152,7 +152,7 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   const pbtn=el('button',{class:'btn sm'+(v3.paintOn?' on':''),id:'v3Paint',text:'Paint',title:'Paint on the model with the brush (Alt+drag turns it, right-drag moves it)','aria-pressed':String(v3.paintOn)});
   pbtn.onclick=()=>{v3.paintOn=!v3.paintOn;pbtn.classList.toggle('on',v3.paintOn);pbtn.setAttribute('aria-pressed',String(v3.paintOn));if(v3.paintOn&&!MESH_TOOLS.includes(ui.tool))setTool('brush');refresh3dUI();};
   const inBake=ui.mode==='bake',lowLab=inBake?el('span',{class:'v3lab',text:'Low-poly: '+bkLow().name,title:'Choose the low-poly in the Bake panel'}):null;
-  const bar=el('div',{class:'v3bar'},...(inBake?[lowLab]:[models,detSel,shade]),pbtn,tog('v3Wire','Wireframe','wire','Show the mesh edges'),tog('v3UV','UVs','showUV','Draw the model’s UV layout over your canvas'),tog('v3Spin','Turntable','spin','Spin the model slowly'),gear,dock,close);
+  const bar=el('div',{class:'v3bar'},...(inBake?[lowLab]:ui.mode==='convert'?[models,detSel]:[models,detSel,shade]),...(ui.mode==='convert'?[]:[pbtn]),tog('v3Wire','Wireframe','wire','Show the mesh edges'),tog('v3UV','UVs','showUV','Draw the model’s UV layout over your canvas'),tog('v3Spin','Turntable','spin','Spin the model slowly'),gear,dock,close);
   const box=el('div',{class:'v3set',hidden:true});
   const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:s[key],fmt,onInput:v=>{s[key]=v;if(key==='disp'){v3.mapsDirty=true;if(v>0&&(s.detail||0)<4&&!v3.detAuto){v3.detAuto=true;s.detail=4;if(v3.detSel)v3.detSel.value='4';v3LoadModel(true);toast('Mesh detail raised to ×16 so the height can show. Change it with the Detail menu at the top of the 3D view.');}}v3.dirty=true;requestRender(key==='disp');}}).el;
   box.append(S('v3Uvs','Tile repeat','uvs',1,8,1,v=>v+'×'),S('v3Disp','Height depth','disp',0,1,.01,pct),S('v3Az','Sun angle','sunAz',0,360,1,deg),S('v3El','Sun height','sunEl',0,90,1,deg),

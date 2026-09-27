@@ -4,7 +4,7 @@ function rebuildLayers(newW,newH,depth,draw){
   for(const L of everyLayer()){if(!L.maps)L.maps={base:L.target};for(const k of Object.keys(L.maps)){const t=L.maps[k];if(!t||t.empty){delete L.maps[k];continue;}
       const nt=makeTarget(newW,newH,k==='height'&&canFloat?16:depth);draw(t,nt,false);disposeTarget(t);L.maps[k]=nt;}L.target=L.maps.base;}
   for(const n of everyNode())if(n.mask){const nt=makeTarget(newW,newH,depth);draw(n.mask.target,nt,true);disposeTarget(n.mask.target);n.mask.target=nt;}
-  if(newW!==doc.w||newH!==doc.h){if(doc.cage){doc.cage=null;cageFlatOff();}if(typeof bakeReset==='function')bakeReset();}doc.w=newW;doc.h=newH;doc.depth=depth;allocAux();syncTargets();if(doc.anim){doc.anim.frames.forEach(frameDirty);showFrame(doc.anim.cur,true);}
+  if(newW!==doc.w||newH!==doc.h){if(doc.cage){doc.cage=null;cageFlatOff();}if(typeof bakeReset==='function')bakeReset();if(typeof cvReset==='function')cvReset();}doc.w=newW;doc.h=newH;doc.depth=depth;allocAux();syncTargets();if(doc.anim){doc.anim.frames.forEach(frameDirty);showFrame(doc.anim.cur,true);}
 }
 function resizeCanvasDoc(w,h,ax,ay){const ox=Math.round((w-doc.w)*ax),oy=Math.round((h-doc.h)*ay);
   rebuildLayers(w,h,doc.depth,(s,d,m)=>run(P.resample,d,{uSrc:s.tex,uOffset:[ox,oy],uScale:[1,1],uTaps:{int:1},uOutside:m?[1,1,1,1]:[0,0,0,0]}));for(const L of everyLayer()){if(L.text){L.text.x+=ox;L.text.y+=oy;renderText(L);}if(L.grad){for(const k of ['a','b']){L.grad[k][0]+=ox;L.grad[k][1]+=oy;}renderLiveGrad(L);}}fit();changedAll();updateStatus();toast('Canvas is now '+w+' × '+h+'. Undo history was cleared.');}
@@ -19,6 +19,8 @@ function toggleTile(){doc.wrap=!doc.wrap;const all=[strokeT,beforeT,scratchT,pre
 function newDoc(w,h,depth,bg,name,wrap,tpl){
   if(tedit){tedit=null;ted.hidden=true;}if(tsess){clearTimeout(tsess.timer);tsess=null;}
   if(ui.mode==='bake'){bakeExit();ui.mode='paint';document.body.classList.remove('bakemode');syncModeTabs();}
+  if(ui.mode==='convert'){convertExit();ui.mode='paint';document.body.classList.remove('convmode');syncModeTabs();}
+  if(typeof cvReset==='function')cvReset();
   if(typeof bakeReset==='function')bakeReset();
   if(ui.mode==='anim'){stopPlay();doc.root=doc.paintRoot;doc.paintRoot=null;ui.mode='paint';document.body.classList.remove('animmode');syncModeTabs();}
   clearHistory();for(const L of everyNode())disposeLayer(L);doc.anim=null;doc.root.children=[];ui.viewMask=false;selectOnly(null);preview=null;dropStrokeCache(stroke);stroke=null;groupCount=0;if(typeof cageFlatOff==='function')cageFlatOff();doc.cage=null;

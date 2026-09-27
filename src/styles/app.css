@@ -411,3 +411,14 @@ canvas.fxthumb{background:#2a2d33 url("data:image/svg+xml,%3Csvg xmlns='http://w
 #loadBox .lb-bar>div{height:100%;width:0;background:var(--accent);transition:width .12s}
 #loadBox .lb-bar.busy>div{width:35%!important;transition:none;animation:lbmove 1.1s ease-in-out infinite}
 @keyframes lbmove{0%{transform:translateX(-100%)}100%{transform:translateX(290%)}}
+/* Convert tab */
+body:not(.convmode) #convSec{display:none}
+body.convmode #mapsSec,body.convmode .sec[aria-labelledby="hLayers"],body.convmode .sec[aria-labelledby="hChan"],body.convmode #animSec,body.convmode .sec[aria-labelledby="hColor"],body.convmode .sec[aria-labelledby="hBrush"]{display:none}
+#convSec.dropon{outline:2px dashed var(--accent);outline-offset:-4px}
+.cvthumbs{display:flex;gap:8px}
+.cvthumb{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--raise);border:1px solid var(--line-2);border-radius:8px;padding:6px;cursor:pointer;color:var(--muted);font:inherit;font-size:11.5px}
+.cvthumb canvas{width:100%;max-width:112px;aspect-ratio:1;border-radius:5px;background:#222}
+.cvthumb.on{border-color:var(--accent);color:var(--text);box-shadow:0 0 0 1px var(--accent)}
+.cvkey{display:grid;grid-template-columns:22px 1fr auto;gap:6px;align-items:start;border:1px solid var(--line-2);border-radius:7px;padding:6px}
+.cvsw{width:20px;height:20px;border-radius:4px;border:1px solid var(--line-2);margin-top:4px}
+.seg.wrapseg{display:flex;flex-wrap:wrap;height:auto}.seg.wrapseg button{flex:1 0 auto}

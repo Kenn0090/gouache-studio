@@ -15,6 +15,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 
 ## Texture maps
 - [Maps and PBR](Maps-and-PBR.md): base colour, roughness, metallic, height, normal and more; the Maps panel; painting several maps at once
+- [Convert tab](Convert-tab.md): CrazyBump-style map making from a photo or another map
 - [Converters and filters](Converters-and-filters.md): make one map from another; every adjustment and filter
 - [Filter layers](Filter-layers.md): filters you can change later, smart filters, live converters, pattern layers
 
@@ -45,4 +46,4 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 | 6 | Baker | 0.10 |
 | 7 | Cage painting and symmetry | 0.11 |
 | 8 | Bake tab, painting on the model, skew and offset painting | 0.12 |
-| 9 | Convert tab (CrazyBump-style map converter) | next |
+| 9 | Convert tab (CrazyBump-style map converter) | 0.13 |

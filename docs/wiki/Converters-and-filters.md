@@ -3,6 +3,7 @@
 Every dialog below **previews live** on the canvas. Turn this off for one dialog with its Preview checkbox, or everywhere in Preferences. Filters work on **the map you're viewing** and stay **inside the selection**. Every filter dialog also has **Keep editable**, which makes a [filter layer](Filter-layers.md) clipped to the layer instead of changing its pixels.
 
 ## Maps menu: converters
+The Maps menu's converters now open the [Convert tab](Convert-tab.md), which has more settings, straightening, seamless tiling and colour picking. The table below lists what each conversion does; the same conversions work live in [filter layers](Filter-layers.md).
 
 ![A converter with live preview: curvature from the height map.](images/converter-curvature.png)
 *A converter with live preview: curvature from the height map.*

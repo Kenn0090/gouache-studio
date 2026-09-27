@@ -50,6 +50,7 @@
     "bake/bake-gpu",
     "bake/bake-ui",
     "bake/bake-tab",
+    "convert/convert-tab",
     "files/abr",
     "ui/prefs",
     "ui/perf",
