@@ -22,6 +22,7 @@ const platform={
   spillWrite(bytes){return this.invoke('spill_write',bytes);},
   async spillRead(id){return await this.invoke('spill_read',{id});},
   spillDelete(id){return this.invoke('spill_delete',{id}).catch(()=>{});},
+  launchFile(){return this.invoke('launch_file').catch(()=>null);},
   engineInfo(){return this.invoke('engine_info').catch(()=>null);},
   updateCheck(){return this.invoke('update_check');},
   updateInstall(){return this.invoke('update_install');},

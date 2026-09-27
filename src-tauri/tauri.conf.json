@@ -47,7 +47,16 @@
         "installMode": "currentUser"
       }
     },
-    "createUpdaterArtifacts": true
+    "createUpdaterArtifacts": true,
+    "fileAssociations": [
+      {
+        "ext": ["gouache"],
+        "name": "Gouache Studio document",
+        "description": "Gouache Studio document",
+        "role": "Editor",
+        "mimeType": "application/x-gouache"
+      }
+    ]
   },
   "plugins": {
     "updater": {

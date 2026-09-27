@@ -3,6 +3,7 @@ renderLibrary();buildBrushPanel();applyPreset(PRESETS[0]);loadSavedSets();loadSa
 setFG(ui.fg);renderRecent();resizeGL();
 try{buildSample();toast('Sample tile loaded. Paint on it, or start fresh from File › New document.');}catch(err){console.error(err);newDoc(1024,1024,8,[1,1,1],'Untitled',false);}
 updateStatus();requestRender(true);
-if(platform.isDesktop)setTimeout(()=>checkForUpdates(false),4000);
+refreshMapsUI();
+if(platform.isDesktop){setTimeout(()=>checkForUpdates(false),4000);platform.launchFile().then(p=>{if(p)openPath(p,'open');});}
 /* test hook: only with ?debug in the address */
-if(/[?&]debug\b/.test(location.search))window.__gs={doc,sel,view,hist,ui,readRGBA8,selPixels:()=>captureSel(sel.t,[0,0,doc.w,doc.h]).data,layerByName:n=>allLayers().find(L=>L.name===n),newDoc,get xf(){return xf;},get crop(){return crop;},xfHandles:()=>xf&&!xf.warp?xfHandles():null,toScreen,encodePSD,openPSD,setMode,get anim(){return doc.anim;},get mode(){return ui.mode;},get onionT(){return onionT;},get playing(){return playing;},setView,setEditMap,setDocMaps,mapT,compositeMap,release,clearTarget,mapKeysOf,paintLayers,compOut:()=>compOut,brush,buildTextures,TEX_PRESETS,texCfg,undo:()=>undo(),redo:()=>redo()};
+if(/[?&]debug\b/.test(location.search))window.__gs={doc,sel,view,hist,ui,readRGBA8,selPixels:()=>captureSel(sel.t,[0,0,doc.w,doc.h]).data,layerByName:n=>allLayers().find(L=>L.name===n),newDoc,get xf(){return xf;},get crop(){return crop;},xfHandles:()=>xf&&!xf.warp?xfHandles():null,toScreen,encodePSD,openPSD,setMode,get anim(){return doc.anim;},get mode(){return ui.mode;},get onionT(){return onionT;},get playing(){return playing;},setView,setEditMap,setDocMaps,mapT,compositeMap,release,clearTarget,mapKeysOf,paintLayers,compOut:()=>compOut,brush,buildTextures,TEX_PRESETS,texCfg,encodeGouache,openGouache,allLayers,undo:()=>undo(),redo:()=>redo()};

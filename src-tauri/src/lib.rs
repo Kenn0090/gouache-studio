@@ -16,6 +16,14 @@ fn set_title(window: tauri::WebviewWindow, title: String) -> Result<(), String> 
     window.set_title(&title).map_err(|e| e.to_string())
 }
 
+/// The file the app was started with (double-clicking a .gouache file in Explorer), if any.
+#[tauri::command]
+fn launch_file() -> Option<String> {
+    std::env::args()
+        .skip(1)
+        .find(|a| !a.starts_with('-') && std::path::Path::new(a).is_file())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -32,6 +40,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             set_title,
+            launch_file,
             files::read_file,
             files::write_file,
             files::recent_list,

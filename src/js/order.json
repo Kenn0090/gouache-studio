@@ -37,6 +37,7 @@
     "files/psd-save",
     "files/save",
     "files/tex-export",
+    "files/gouache-file",
     "files/abr",
     "ui/prefs",
     "ui/dialogs",

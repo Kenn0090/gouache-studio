@@ -30,7 +30,14 @@ async function savePSD(forceAsk){toast('Preparing PSD…');try{await tick();cons
     const r=await deliver(slug(doc.name)+'.psd',blob);toast(deliveredText(r,'PSD'));
     if(r.ok&&r.path){doc.filePath=r.path;doc.name=baseName(fileNameOf(r.path));platform.recentAdd(r.path);markSaved();updateStatus();}}
   catch(e){console.error(e);toast('The PSD could not be saved: '+e.message);}}
-function savePSDAs(){return savePSD(true);}
+function savePSDAs(){if(doc.maps.length>1)toast('A PSD holds the base colour only. Save as .gouache to keep every map.');return savePSD(true);}
+/* Save (Ctrl+S): the document's own .gouache file; the first save (or Save As) asks where */
+async function saveDoc(forceAsk){if(stroke){return;}toast('Saving…');try{await tick();const blob=await encodeGouache(),bytes=new Uint8Array(await blob.arrayBuffer());
+    if(platform.isDesktop&&doc.filePath&&!forceAsk&&extOf(doc.filePath)==='gouache'){await platform.writeFile(doc.filePath,bytes);toast('Saved '+doc.filePath);markSaved();return;}
+    if(platform.isDesktop){const path=await platform.saveAs(slug(doc.name)+'.gouache',bytes,'Gouache Studio document');if(!path){toast('Save cancelled.');return;}
+      doc.filePath=path;doc.name=baseName(fileNameOf(path));platform.recentAdd(path);markSaved();updateStatus();toast('Saved '+path);return;}
+    const r=await deliver(slug(doc.name)+'.gouache',blob);toast(deliveredText(r,'Document'));if(r.ok)markSaved();}
+  catch(e){console.error(e);toast('The document could not be saved: '+(e.message||e));}}
 function markSaved(){doc.savedAt=hist.undo.length?hist.undo[hist.undo.length-1]:null;updateTitle();}
 function updateTitle(){platform.setTitle((doc.name||'Untitled')+(doc.filePath?' — '+doc.filePath:'')+' — Gouache Studio');}
 /* Open recent (desktop) */
