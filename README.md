@@ -13,7 +13,7 @@ Test builds of every change are on the **Actions** tab (download `gouache-studio
 1. ~~Desktop foundation~~ (0.1)
 2. ~~Selections, transforms, crop, fills, gradients, dodge/burn, flipbooks~~ (0.2–0.5)
 3. ~~Material maps and game-engine export presets~~ (0.6)
-4. Converters and filters
+4. ~~Converters and filters~~ (0.7)
 5. Filter layers
 6. 3D viewer
 7. Baker

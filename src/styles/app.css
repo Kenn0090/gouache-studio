@@ -351,3 +351,5 @@ body.animmode .sec[aria-labelledby="hLayers"],body.animmode .sec[aria-labelledby
 .texrow code{font:11.5px var(--mono);color:var(--text)}
 .texrow .dim{font-size:11px}
 .perfbox{position:fixed;left:60px;top:48px;z-index:40;white-space:pre;font:11px/1.45 var(--mono);color:#e8eaed;background:rgba(10,12,16,.82);border:1px solid var(--line-2);border-radius:8px;padding:8px 10px;pointer-events:none}
+.histo{width:100%;height:70px;border-radius:6px;background:rgba(255,255,255,.03);display:block}
+.curves{width:100%;max-width:280px;aspect-ratio:1;border-radius:6px;border:1px solid var(--line-2);display:block;margin:0 auto;cursor:crosshair;touch-action:none}

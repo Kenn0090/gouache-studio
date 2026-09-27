@@ -83,7 +83,7 @@ window.addEventListener('keydown',e=>{
   if(!m&&!e.altKey&&k==='o'){if(e.shiftKey&&(ui.tool==='dodge'||ui.tool==='burn'))ui.tonal=ui.tool==='dodge'?'burn':'dodge';setTool(ui.tonal);return;}
   if(!m&&!e.altKey&&k==='c'){setTool('crop');return;}
   if(ui.tool==='move'&&!m&&e.key.startsWith('Arrow')){e.preventDefault();const s=e.shiftKey?10:1,d={ArrowLeft:[-s,0],ArrowRight:[s,0],ArrowUp:[0,-s],ArrowDown:[0,s]}[e.key];nudgeLayer(d[0],d[1]);return;}
-  if(m){const map={z:e.shiftKey?'redo':'undo',y:'redo',o:'open',s:e.shiftKey?'saveAs':'save',u:'adjust',i:'invert','0':'fit','1':'actual',e:e.shiftKey?'export':'merge'};
+  if(m){const map={z:e.shiftKey?'redo':'undo',y:'redo',o:'open',s:e.shiftKey?'saveAs':'save',u:e.shiftKey?'desat':'adjust',l:'levels',m:'curves',i:'invert','0':'fit','1':'actual',e:e.shiftKey?'export':'merge'};
     if(k==='k'){e.preventDefault();dlgPrefs();return;}
     if(k==='n'&&e.shiftKey){e.preventDefault();cmdAddLayer();return;}if(k==='g'){e.preventDefault();e.shiftKey?cmdUngroup():cmdGroup();return;}if(k==='j'){e.preventDefault();cmdDuplicate();return;}if(k==='n'&&e.altKey){e.preventDefault();dlgNew();return;}
     if(map[k]){e.preventDefault();actions[map[k]]();}return;}

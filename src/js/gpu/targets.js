@@ -51,7 +51,8 @@ function restoreRegion(snap,dst,x,y){gl.bindTexture(gl.TEXTURE_2D,dst.tex);gl.pi
   if(snap.depth===16)gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,snap.w,snap.h,gl.RGBA,gl.HALF_FLOAT,snap.data);
   else gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,snap.w,snap.h,gl.RGBA,gl.UNSIGNED_BYTE,snap.data);
   gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);}
-function run(prog,target,u,opts){
+let runTiling=false;
+function run(prog,target,u,opts){if(prog.tiled&&!runTiling&&target.w*target.h>262144){runTiling=true;try{runTiled(prog,target,u);}finally{runTiling=false;}return;}
   useProg(prog,u);
   bindTarget(target);
   const b=opts&&opts.blend;
@@ -69,6 +70,7 @@ function useProg(prog,u){
     else if(typeof v==='number')gl.uniform1f(l,v);
     else if(typeof v==='boolean')gl.uniform1i(l,v?1:0);
     else if(v.int!==undefined)gl.uniform1i(l,v.int);
+    else if(v.v3)gl.uniform3fv(l,v.v3);
     else if(v.length===2)gl.uniform2f(l,v[0],v[1]);else if(v.length===3)gl.uniform3f(l,v[0],v[1],v[2]);else if(v.length===4)gl.uniform4f(l,v[0],v[1],v[2],v[3]);}
 }
 const dummy=(()=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array(4));gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);return t;})();
