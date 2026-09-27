@@ -61,7 +61,9 @@
     "ui/dialogs",
     "ui/menus",
     "ui/keys",
+    "ui/dock",
     "ui/view-input",
+    "ui/optbar",
     "core/sample",
     "ui/updater",
     "core/boot"

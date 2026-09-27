@@ -13,11 +13,12 @@ body{margin:0;background:var(--ground);color:var(--text);font:12.5px/1.4 var(--u
 button,input,select{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-#app{display:grid;grid-template-columns:46px minmax(0,1fr) 292px;grid-template-rows:38px minmax(0,1fr) auto 26px;height:100%}
-#app>.tools{grid-column:1;grid-row:2/4}#app>#work{grid-column:2;grid-row:2}#app>#timeline{grid-column:2;grid-row:3}#app>.panel{grid-column:3;grid-row:2/4}#app>.status{grid-row:4}
+#app{display:grid;grid-template-columns:46px minmax(0,1fr) 0px 300px;grid-template-rows:38px 36px minmax(0,1fr) auto 26px;height:100%;
+  grid-template-areas:"head head head head" "opt opt opt opt" "tools work icons dock" "tools tl icons dock" "status status status status"}
+#app>.bar{grid-area:head}#app>#optBar{grid-area:opt}#app>.tools{grid-area:tools}#app>#work{grid-area:work}#app>#timeline{grid-area:tl}#app>#dkIcons{grid-area:icons}#app>.panel{grid-area:dock}#app>.status{grid-area:status}
 
 /* top bar */
-.bar{grid-column:1/-1;display:flex;align-items:center;gap:4px;padding-inline:10px;background:var(--panel);border-bottom:1px solid var(--line);min-width:0}
+.bar{display:flex;align-items:center;gap:4px;padding-inline:10px;background:var(--panel);border-bottom:1px solid var(--line);min-width:0}
 .brand{display:flex;align-items:center;gap:8px;font-weight:600;letter-spacing:.01em;margin-right:8px;white-space:nowrap}
 .brand small{font-weight:400;color:var(--muted)}
 .dab{width:15px;height:15px;border-radius:52% 44% 56% 42%;background:radial-gradient(circle at 34% 32%,#f6cf8e,var(--accent) 52%,#a4642a);transform:rotate(-12deg)}
@@ -139,7 +140,7 @@ body.ldragging,body.ldragging *{cursor:grabbing!important}
 .btn.sm{padding:3px 8px;font-size:11.5px}
 
 /* status */
-.status{grid-column:1/-1;display:flex;gap:18px;align-items:center;padding-inline:12px;border-top:1px solid var(--line);background:var(--panel);font:11px var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;font-variant-numeric:tabular-nums}
+.status{display:flex;gap:18px;align-items:center;padding-inline:12px;border-top:1px solid var(--line);background:var(--panel);font:11px var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;font-variant-numeric:tabular-nums}
 .status .pill{border:1px solid var(--line-2);background:none;border-radius:4px;padding:1px 7px;font:inherit;color:var(--text)}
 .status .pill:hover{border-color:var(--accent)}
 .status .pmeter i{width:70px;flex:none}
@@ -454,3 +455,57 @@ body.brushmode #mapsSec,body.brushmode .sec[aria-labelledby="hChan"],body.brushm
 .btrow canvas{width:32px;height:32px;border-radius:4px;background:var(--ground);flex:none}
 .btname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #btName{width:100%}
+
+/* ---- dock, tabs, floating panels, icons ---- */
+.panel#dock{display:flex;flex-direction:column;overflow:hidden}
+.dkgrp{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.dkgrp.min .dkbody{display:none}
+.dktabs{display:flex;align-items:flex-end;gap:1px;padding:4px 6px 0;background:color-mix(in srgb,var(--ground) 45%,var(--panel));border-bottom:1px solid var(--line);flex:none;min-height:28px;overflow-x:auto;scrollbar-width:none}
+.dktab{border:1px solid transparent;border-bottom:0;background:none;color:var(--muted);padding:5px 11px;border-radius:6px 6px 0 0;font:500 12px var(--ui);white-space:nowrap;cursor:grab;touch-action:none}
+.dktab:hover{color:var(--text)}
+.dktab.on{background:var(--panel);border-color:var(--line);color:var(--text);margin-bottom:-1px;padding-bottom:6px}
+.dkmore{margin-left:auto;border:0;background:none;color:var(--faint);padding:4px 7px;border-radius:5px;align-self:center}
+.dkmore+.dkmore{margin-left:0}
+.dkmore:hover{color:var(--text);background:var(--raise)}
+.dkbody{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden}
+.dkbody>.sec{border-bottom:0}
+.dkbody>.sec>.sec-h>span:first-child:not(#brushTitle){display:none}
+#toolSec>.sec-h{display:none}
+.dk-off{display:none!important}
+.dksplit{flex:none;height:6px;background:color-mix(in srgb,var(--ground) 45%,var(--panel));border-block:1px solid var(--line);cursor:row-resize;position:relative}
+.dksplit::after{content:'';position:absolute;left:50%;top:1px;width:26px;height:2px;margin-left:-13px;border-radius:1px;background:var(--faint)}
+.dksplit:hover{background:var(--accent-soft)}
+.dkfloat{position:fixed;z-index:30;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line-2);border-radius:9px;box-shadow:0 18px 50px rgba(0,0,0,.5);overflow:hidden}
+.dkfloat .dktabs{cursor:move;border-radius:9px 9px 0 0}
+.dkfloat.flyout{z-index:32}
+.dkgrow{position:absolute;right:0;bottom:0;width:14px;height:14px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 50%,var(--line-2) 50%)}
+#dkIcons{background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:8px;overflow:hidden}
+.dkicon{width:30px;height:30px;border:0;border-radius:6px;background:none;color:var(--muted);display:grid;place-items:center}
+.dkicon:hover,.dkicon.on{background:var(--raise);color:var(--text)}
+.dkicon svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.dkghost{position:fixed;z-index:60;pointer-events:none;background:var(--raise);border:1px solid var(--accent);border-radius:6px;padding:4px 10px;font-weight:600;box-shadow:0 8px 20px rgba(0,0,0,.4)}
+.dkhint{position:fixed;z-index:59;pointer-events:none;border:2px dashed var(--accent);background:var(--accent-soft);border-radius:6px}
+body.dkdragging,body.dkdragging *{cursor:grabbing!important}
+body.dklock .dktab{cursor:pointer}body.dklock .dksplit{cursor:default}
+/* the toolbar: grip, two columns */
+.tbgrip{width:22px;height:5px;border-block:1px solid var(--faint);cursor:grab;margin-bottom:4px;flex:none}
+body.tb2 .tools{display:grid;grid-template-columns:34px 34px;justify-content:center;align-content:start;gap:4px}
+body.tb2 .tools>.tbgrip,body.tb2 .tools>.tsep,body.tb2 .tools>.mini-sw{grid-column:1/-1;justify-self:center}
+/* workspace menu */
+.wssel{background:var(--raise);border:1px solid var(--line-2);border-radius:6px;color:var(--text);padding:3px 6px;font:inherit;max-width:150px}
+/* ---- tool options bar ---- */
+.optbar{display:flex;align-items:center;gap:12px;padding:0 12px;background:color-mix(in srgb,var(--ground) 35%,var(--panel));border-bottom:1px solid var(--line);overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;white-space:nowrap;min-width:0}
+body.noopt .optbar{display:none}
+.optname{font-weight:600;color:var(--text)}
+.optnote{color:var(--muted)}
+.optsep{width:1px;height:20px;background:var(--line);flex:none}
+.optpreset{display:flex;align-items:center;gap:7px;border:1px solid var(--line-2);background:var(--raise);border-radius:6px;padding:3px 9px;color:var(--text);font:inherit}
+.optdot{width:14px;height:14px;border-radius:50%;background:var(--text);display:block}.optdot.tip{border-radius:3px;background:var(--muted)}
+.optbar .srow.optslider{display:flex;align-items:center;gap:7px;grid-template-columns:none}
+.optbar .srow.optslider input[type=range]{width:84px}
+.optbar .srow.optslider output{min-width:40px}
+.optchip{border:1px solid var(--line-2);background:var(--raise);border-radius:6px;padding:3px 9px;color:var(--muted);font:inherit}
+.optchip.on{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
+.optsel{background:var(--raise);border:1px solid var(--line-2);border-radius:6px;color:var(--text);padding:3px 6px;font:inherit}
+.optsel{width:auto;flex:none}
+.optbar .optchip,.optbar .btn{flex:none}

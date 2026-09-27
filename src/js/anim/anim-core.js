@@ -28,7 +28,7 @@ function setMode(m,quiet){if(m===ui.mode)return true;
   document.body.classList.toggle('animmode',ui.mode==='anim');document.body.classList.toggle('bakemode',ui.mode==='bake');document.body.classList.toggle('convmode',ui.mode==='convert');document.body.classList.toggle('brushmode',ui.mode==='brush');syncModeTabs();
   if(ui.mode==='bake')bakeEnter();if(ui.mode==='convert')convertEnter();if(ui.mode==='brush')brushTabEnter();
   if(ui.tool==='text'&&ui.mode!=='paint')setTool('brush');
-  if(typeof tipBanner==='function')tipBanner();
+  if(typeof tipBanner==='function')tipBanner();if(typeof dkModeChanged==='function')dkModeChanged();
   renderLayers();refreshChanUI();refreshMapsUI();renderTimeline();renderAnimPanel();buildBrushPanel();changedAll();resizeGL();requestRender(true);
   if(!quiet)toast(ui.mode==='anim'?'Animation mode: paint each frame. , and . step through frames, Enter plays.':ui.mode==='bake'?'Bake: bake maps from a high-poly model, see them on the model, and paint fixes.':ui.mode==='convert'?'Convert: make normal, height, AO and more from a photo or another map.':ui.mode==='brush'?'Brush: draw a brush tip in black. Your painting is kept in Paint.':'Paint mode.');return true;}
 function showFrame(i,noRender){const A=A_();if(!A)return;A.cur=clamp(i,0,A.frames.length-1);const F=A.frames[A.cur];

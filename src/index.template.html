@@ -11,10 +11,13 @@
     <nav class="menus" id="menus" aria-label="Main menu"></nav>
     <div class="bar-r">
       <span id="docName"></span>
+      <select id="wsSel" class="wssel" aria-label="Workspace" title="Workspace: where the panels are"></select>
       <div class="tabs" id="modeTabs" role="tablist" aria-label="Workspace"><button role="tab" data-mode="paint" aria-selected="true" title="Paint your textures">Paint</button><button role="tab" data-mode="anim" aria-selected="false" title="Flipbooks and sprite sheets">Animation</button><button role="tab" data-mode="bake" aria-selected="false" title="Bake maps from a high-poly model and fix the bake">Bake</button><button role="tab" data-mode="convert" aria-selected="false" title="Make normal, height, AO and more from a photo or another map">Convert</button><button role="tab" data-mode="brush" aria-selected="false" title="Draw your own brush tips on a canvas of their own">Brush</button></div>
       <button class="toggle" id="tileBtn" aria-pressed="false" title="Seamless tile mode (Shift+T): wraps brush strokes and shows a 3&times;3 repeat"><i></i>Tile mode</button>
     </div>
   </header>
+
+  <div id="optBar" class="optbar" role="toolbar" aria-label="Tool options"></div>
 
   <aside class="tools" id="tools" aria-label="Tools">
     <button class="tool" data-tool="brush" title="Brush (B)" aria-label="Brush"><svg viewBox="0 0 24 24"><path d="M4 20c2.2 0 4-.9 4-3.2 0-1.4 1-2.4 2.4-2.4 1.5 0 2.5 1 2.5 2.4C12.9 19 10.8 20 8 20H4z"/><path d="M11.2 13.6 20 4.6a1.4 1.4 0 0 0-2-2l-9 8.8"/></svg></button>
