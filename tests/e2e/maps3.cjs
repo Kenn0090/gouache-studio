@@ -20,7 +20,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
 
  await p.keyboard.press('Control+Alt+n');await p.waitForTimeout(200);
  await p.fill('#dW','300');await p.fill('#dH','200');await p.click('button.chip:has-text("PBR")');await p.click('#dlgOk');await p.waitForTimeout(400);
- await setFG('#c07040');await p.keyboard.press('b');await p.check('#mb_rough');await p.check('#mb_height');await p.check('#mb_metal');
+ await setFG('#c07040');await p.keyboard.press('b');await p.evaluate(()=>__gs.showPanel('tool'));await p.check('#mb_rough');await p.check('#mb_height');await p.check('#mb_metal');
  await p.evaluate(()=>{Object.assign(__gs.ui.mapBrush.rough,{v:.25});Object.assign(__gs.ui.mapBrush.metal,{v:1});Object.assign(__gs.ui.mapBrush.height,{v:1});__gs.brush&&0;});
  await p.evaluate(()=>{__gs.brush.size=40;__gs.brush.hardness=0;__gs.brush.pSize=false;});
  await p.evaluate(()=>{const s=document.querySelector('#bSize');});

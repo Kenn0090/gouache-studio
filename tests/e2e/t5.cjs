@@ -35,9 +35,9 @@ const S=__dirname+'/';
  await p.click('#maskRow button:text-is("Add mask")');await p.keyboard.press('d');await stroke(300,650,1,0);
  await p.mouse.move(box.x+500,box.y+640);await p.mouse.down();await p.mouse.move(box.x+500,box.y+760,{steps:10});await p.mouse.up();
  // channels: red only, paint
- await p.click('#chanList .crow2:has-text("Red")');console.log('chan state',await p.textContent('#stChan'));
+ await p.click('.dktab:text-is("Channels")');await p.waitForTimeout(200);await p.click('#chanList .crow2:has-text("Red")');console.log('chan state',await p.textContent('#stChan'));
  await p.waitForTimeout(200);await p.screenshot({path:S+'out/chan-red.png'});
- await p.click('#chanList .crow2:has-text("RGB")');
+ await p.click('#chanList .crow2:has-text("RGB")');await p.click('.dktab:text-is("Layers")');await p.waitForTimeout(200);
  // alpha only
  await p.keyboard.press('Alt+6');console.log('alpha',await p.textContent('#stChan'));await p.screenshot({path:S+'out/chan-alpha.png'});await p.keyboard.press('Alt+2');
  // blend hover preview

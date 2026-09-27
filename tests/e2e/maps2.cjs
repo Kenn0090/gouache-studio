@@ -22,7 +22,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.fill('#dW','300');await p.fill('#dH','200');await p.click('button.chip:has-text("PBR")');await p.click('#dlgOk');await p.waitForTimeout(400);
  await p.keyboard.press('b');await p.waitForTimeout(100);
  ok(await p.locator('.mapbrush').count()===1,'brush has Maps section');
- await p.check('#mb_rough');await p.waitForTimeout(80);await p.check('#mb_height');await p.waitForTimeout(80);
+ await p.evaluate(()=>__gs.showPanel('tool'));await p.check('#mb_rough');await p.waitForTimeout(80);await p.check('#mb_height');await p.waitForTimeout(80);
  await p.evaluate(()=>{__gs.ui.mapBrush.rough.v=.2;__gs.ui.mapBrush.height.v=1;});
  await p.keyboard.press('Control+Shift+n');const ln=await p.evaluate(()=>__gs.doc.active.name);
  await setFG('#00ff00');await drag(50,100,250,100);
@@ -59,7 +59,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.screenshot({path:OUT+'maps-brush.png'});
  // save brush remembers maps
  await p.click('#mapList .mrow:has-text("Base colour")');await p.keyboard.press('b');
- await p.click('#saveBrushBtn');await p.fill('#sbName','Rough brush');await p.click('#dlgOk');await p.waitForTimeout(100);
+ await p.evaluate(()=>__gs.showPanel('brushes'));await p.click('#saveBrushBtn');await p.fill('#sbName','Rough brush');await p.click('#dlgOk');await p.waitForTimeout(100);
  await p.evaluate(()=>{__gs.ui.mapBrush.rough.on=false;__gs.ui.mapBrush.rough.v=.9;});
  await p.click('.libset button[aria-label="Round"]');await p.click('.libset button[aria-label="Rough brush"]');await p.waitForTimeout(100);
  let mb=await p.evaluate(()=>__gs.ui.mapBrush.rough);ok(mb.on&&Math.abs(mb.v-.2)<1e-6,'saved brush restores map values '+JSON.stringify(mb));

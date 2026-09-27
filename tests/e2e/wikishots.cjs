@@ -68,7 +68,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await shot('3d-height');
  await p.keyboard.press('F3');await W(600);
  // bake dialog + export textures + preferences + maps dialog
- await p.click('#dlgCancel');await W();
+ if(await p.isVisible('#dlgCancel'))await p.click('#dlgCancel');await W();
  await p.evaluate(()=>__gs.act('expTex'));await W();await dlg('export-textures');await p.click('#dlgCancel');await W();
  await p.evaluate(()=>__gs.act('maps'));await W();await dlg('document-maps');await p.click('#dlgCancel');await W();
  await p.keyboard.press('Control+k');await W();await dlg('preferences');await p.click('#dlgCancel');await W();

@@ -1,7 +1,8 @@
-The Specular/Gloss workflow.
+A new layout, and the Filter Gallery.
 
-- **Specular/Gloss documents:** paint **Diffuse**, **Specular** (a colour map) and **Glossiness** instead of Base colour, Metallic and Roughness. Start one with the **PBR spec/gloss** template in File › New, or switch any document in **Maps › Document maps › Workflow**.
-- **Switching converts your material:** the finished look becomes one new group per map, and it looks the same as before. Your old layers are set aside, and switching back brings them back exactly (or converts again, your choice). Switching is one undo step.
-- **Material view and 3D view** shade Specular/Gloss correctly.
-- **Export textures** for Specular/Gloss: **Unity (Standard, specular)** with glossiness in the specular map's alpha, **Unreal** (diffuse, specular and gloss files for a custom material), or separate maps.
-- Multi-map brushes paint **Specular** and **Glossiness**; the **Convert tab** sends glossiness and specular to Specular/Gloss documents.
+- **Options bar** under the menus: size, opacity, flow, hardness, pressure, symmetry and the maps the brush paints, always at hand.
+- **Tabbed panels**: the right side is now a dock of groups with tabs (Color · Brushes · Tool settings · Maps · Layers · Channels). Drag the bars between groups to resize, drag a tab to another group, to a new group, onto the icon column, or off the dock to **float** it. Double-click a tab to fold its group.
+- **Workspaces**: Painting, Texturing, **3D Paint** (big 3D view, painting on the model) and Minimal, plus your own (**Save workspace…**). Changes are remembered; **Reset** puts a workspace back; **Lock panels** stops accidental drags.
+- **Window menu**: show or hide any panel, the options bar, and the toolbar settings.
+- **Toolbar**: two columns, or on the right side (Window menu, or double-click / drag its grip).
+- **Filter Gallery** (Filter › Filter Gallery…, Ctrl+Shift+F): every filter as a thumbnail in folders, a big preview with hold-to-compare, and a stack of filters on top of each other. Apply, or keep them editable **as a filter layer**.

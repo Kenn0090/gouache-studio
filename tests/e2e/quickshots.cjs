@@ -49,4 +49,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('#modeTabs [data-mode=paint]');await W(300);
  // Specular/Gloss in Document maps
  await p.evaluate(()=>__gs.newDoc(256,256,8,[1,1,1],'Spec',false,'pbrsg'));await W();await p.evaluate(()=>__gs.act('maps'));await W();await dlg('maps-workflow');await p.click('#dlgCancel');
+ // new layout and Filter Gallery (on the sample tile)
+ await p.reload();await W(2500);await hideToast();await shot('workspace-painting');
+ console.log(await p.evaluate(()=>__gs.allLayers().map(l=>l.name).join()));await p.evaluate(()=>{const L=__gs.allLayers().find(l=>/stone|cobble/i.test(l.name))||__gs.allLayers()[1];__gs.doc.active=L;__gs.doc.sel=new Set([L]);});await p.keyboard.press('Control+Shift+F');await W(2500);await p.evaluate(()=>{document.activeElement.blur();});await dlg('filter-gallery');await p.click('#dlgCancel');
  console.log(errs.join('\n'));await b.close();})();

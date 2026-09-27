@@ -22,7 +22,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.keyboard.press('Control+Alt+n');await p.waitForTimeout(200);
  await p.fill('#dW','512');await p.fill('#dH','512');await p.click('button.chip:has-text("PBR")');await p.click('#dlgOk');await p.waitForTimeout(400);
  await p.evaluate(()=>{__gs.act('clouds');});await p.waitForTimeout(200);await p.click('#dlgOk');await p.waitForTimeout(200);
- await p.keyboard.press('b');await p.check('#mb_height');await p.check('#mb_rough');await p.check('#mb_metal');
+ await p.keyboard.press('b');await p.evaluate(()=>__gs.showPanel('tool'));await p.check('#mb_height');await p.check('#mb_rough');await p.check('#mb_metal');
  await p.evaluate(()=>{const m=__gs.ui.mapBrush;m.height.v=1;m.rough.v=.2;m.metal.v=1;__gs.brush.size=60;__gs.brush.hardness=.7;});
  await setFG('#d0a040');await drag(80,256,430,256,{steps:12});await drag(256,80,256,430,{steps:12});
  await p.keyboard.press('F3');await p.waitForTimeout(700);

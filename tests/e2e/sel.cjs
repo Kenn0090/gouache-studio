@@ -67,7 +67,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  // 10. move the selection by dragging inside it
  await p.keyboard.press('Shift+L');await drag(300,50,300,150);
  v=await selAt([[300,150],[300,50]]);s=await state();ok(v.join()==='255,0'&&Math.abs(s.bb[1]-120)<=1,'move selection '+v+' '+JSON.stringify(s.bb));
- await p.keyboard.press('ArrowRight');s=await state();ok(s.bb[0]===201,'arrow nudge '+JSON.stringify(s.bb));
+ console.log('focus',await p.evaluate(()=>{const a=document.activeElement;return a.tagName+'#'+a.id+'.'+a.className+' tool='+__gs.ui.tool;}));const bx=(await state()).bb[0];await p.keyboard.press('ArrowRight');await p.waitForTimeout(100);s=await state();ok(s.bb[0]===bx+1,'arrow nudge '+JSON.stringify(s.bb));
  // 11. magic wand on the filled red block (layer 1 has foreground fill in 100..300 x 100..200)
  await p.keyboard.press('w');await click(150,110);
  s=await state();v=await selAt([[150,110],[50,50]]);ok(v[1]===0&&v[0]===255,'magic wand picks fill '+v+' '+JSON.stringify(s.bb));
