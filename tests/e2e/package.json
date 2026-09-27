@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "description": "End-to-end tests for Gouache Studio (Playwright, software GPU). See README.md.",
+  "dependencies": {
+    "playwright": "1.56.0",
+    "ag-psd": "^31.0.2",
+    "pako": "^2.1.0",
+    "utif": "^3.1.0"
+  }
+}

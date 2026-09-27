@@ -1,0 +1,24 @@
+const {chromium}=require('playwright');
+const OLD=__dirname+'/';
+const OUT=__dirname+'/out/';
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
+  if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());if(m.type()==='warning'&&/GL|WebGL/.test(m.text()))errs.push('GLWARN '+m.text());});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ const IMG=require('path').resolve(__dirname,'../../docs/wiki/images')+'/';const W=ms=>p.waitForTimeout(ms||300);
+ const setFG=async hx=>{await p.fill('#hex',hx);await p.press('#hex','Enter');};
+ await p.evaluate(()=>__gs.newDoc(1024,1024,8,[1,1,1],'Stones',false));await setFG('#6a5a4a');await p.evaluate(()=>{__gs.ui.bg=[.8,.75,.68];});
+ await p.evaluate(()=>__gs.act('cells'));await W(500);await p.click('#dlgOk');await W(300);
+ await p.click('#modeTabs [data-mode=convert]');await W(1500);
+ await p.check('#cvMk_curv');await p.check('#cvMk_rough');await W(600);await p.mouse.move(5,300);await p.screenshot({path:IMG+'convert-tab.png'});
+ await p.evaluate(()=>{const b=[...document.querySelectorAll('#convBody .seg button')].find(b=>b.textContent==='Roughness');b.click();});await W(500);
+ await p.evaluate(()=>{const s=document.querySelector('#convBody');s.scrollTop=0;document.querySelector('.panel').scrollTop=400;});await W(200);await p.screenshot({path:IMG+'convert-roughness.png'});
+ await p.evaluate(()=>{document.querySelector('.panel').scrollTop=0;document.querySelector('#convBody details.more').open=true;});await p.check('#cvPersp');await W(700);await p.screenshot({path:IMG+'convert-straighten.png'});
+ ok(errs.length===0,'no errors '+errs.join('\n'));console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();})();

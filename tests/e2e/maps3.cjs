@@ -1,0 +1,40 @@
+const {chromium}=require('playwright');
+const OLD=__dirname+'/';
+const OUT=__dirname+'/out/';
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const ctx=await b.newContext({viewport:{width:1440,height:1000}});const p=await ctx.newPage();
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
+  if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());if(m.type()==='warning'&&/GL|WebGL/.test(m.text()))errs.push('GLWARN '+m.text());});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ const box=await p.locator('#gl').boundingBox();
+ const scr=async(x,y)=>{const v=await p.evaluate(()=>({x:__gs.view.x,y:__gs.view.y,z:__gs.view.zoom}));return [box.x+v.x+x*v.z,box.y+v.y+y*v.z];};
+ const drag=async(x0,y0,x1,y1,opts={})=>{const a=await scr(x0,y0),c=await scr(x1,y1);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.move(c[0],c[1],{steps:opts.steps||8});await p.mouse.up();await p.waitForTimeout(120);};
+ const mpx=(name,k,pts)=>p.evaluate(([name,k,pts])=>{const L=__gs.layerByName(name),t=__gs.mapT(L,k);if(!t||t.empty)return null;const d=__gs.readRGBA8(t),W=__gs.doc.w;return pts.map(([x,y])=>Array.from(d.slice((y*W+x)*4,(y*W+x)*4+4)));},[name,k,pts]);
+ const setFG=async hx=>{await p.fill('#hex',hx);await p.press('#hex','Enter');};
+
+ await p.keyboard.press('Control+Alt+n');await p.waitForTimeout(200);
+ await p.fill('#dW','300');await p.fill('#dH','200');await p.click('button.chip:has-text("PBR")');await p.click('#dlgOk');await p.waitForTimeout(400);
+ await setFG('#c07040');await p.keyboard.press('b');await p.check('#mb_rough');await p.check('#mb_height');await p.check('#mb_metal');
+ await p.evaluate(()=>{Object.assign(__gs.ui.mapBrush.rough,{v:.25});Object.assign(__gs.ui.mapBrush.metal,{v:1});Object.assign(__gs.ui.mapBrush.height,{v:1});__gs.brush&&0;});
+ await p.evaluate(()=>{__gs.brush.size=40;__gs.brush.hardness=0;__gs.brush.pSize=false;});
+ await p.evaluate(()=>{const s=document.querySelector('#bSize');});
+ // big soft dab
+ await p.evaluate(()=>{});
+ await drag(150,100,151,100);
+ const vp=async(x,y)=>p.evaluate(([x,y])=>{const d=__gs.readRGBA8(__gs.compOut()),W=__gs.doc.w;return Array.from(d.slice((y*W+x)*4,(y*W+x)*4+4));},[x,y]);
+ console.log(JSON.stringify(await mpx('Background','height',[[150,100],[150,90]])));
+ await p.click('#mapList .mrow:has-text("Normal (final)")');await p.waitForTimeout(300);
+ let up=await vp(150,88),dn=await vp(150,112),lf=await vp(138,100),rt=await vp(162,100),fl=await vp(20,20);
+ ok(up[1]>140&&dn[1]<116&&lf[0]<116&&rt[0]>140&&Math.abs(fl[0]-128)<3&&fl[2]>250,'normal from height (GL): '+JSON.stringify({up,dn,lf,rt,fl}));
+ await p.screenshot({path:OUT+'maps-normal.png'});
+ await p.click('#mapList .mrow:has-text("Material")');await p.waitForTimeout(300);
+ ok(await p.locator('#lAz').count()===1,'light controls shown');
+ await p.screenshot({path:OUT+'maps-material.png'});
+ ok(errs.length===0,'no errors '+errs.slice(0,3).join('\n'));
+ console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();})();

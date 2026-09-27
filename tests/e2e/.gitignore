@@ -1,0 +1,5 @@
+node_modules/
+out/
+fixtures/big.obj
+regress.log
+fixtures/samba.fbx
