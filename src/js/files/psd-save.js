@@ -26,7 +26,7 @@ async function encodePSD(){
   const walkSave=async g=>{for(let i=0;i<g.children.length;i++){const n=g.children[i];
     if(n.type==='group'){recs.push({kind:'end',name:'</Layer group>',chans:emptyChans()});await walkSave(n);recs.push({kind:'group',n,name:n.name,chans:await withMask(n,emptyChans())});}
     else recs.push({kind:'layer',n,name:n.name,clipped:!!clipBaseOf(g.children,i),chans:await withMask(n,await encLayer(n))});}};
-  await walkSave(doc.root);
+  await walkSave(psdRoot());
   const w=BW();
   w.str('8BPS');w.u16(1);for(let i=0;i<6;i++)w.u8(0);w.u16(b16?3:4);w.u32(H);w.u32(W);w.u16(bits);w.u16(3);
   w.u32(0);
@@ -54,7 +54,7 @@ async function encodePSD(){
   if(!b16){const lp=w.length;w.u32(0);const s0=w.length;layerInfo();while((w.length-s0)%4)w.u8(0);w.setU32(lp,w.length-s0);w.u32(0);}
   else{w.u32(0);w.u32(0);w.str('8BIM');w.str('Lr16');const lp=w.length;w.u32(0);const s0=w.length;layerInfo();while((w.length-s0)%4)w.u8(0);w.setU32(lp,w.length-s0);}
   w.setU32(lmPos,w.length-lmPos-4);
-  composite();dirtyComp=false;const cs=toStraight(readPremult(compOut),bits);
+  const flat=renderNodes(paintRoot().children),cs=toStraight(readPremult(flat),bits);release(flat);
   if(!b16){w.u16(1);const rows=[];for(let ci=0;ci<4;ci++){const pl=new Uint8Array(N);for(let i=0;i<N;i++)pl[i]=cs[i*4+ci];for(let y=0;y<H;y++)rows.push(packRow(pl,y*W,W));}
     for(const r of rows)w.u16(r.length);for(const r of rows)w.bytes(r);}
   else{w.u16(0);for(let ci=0;ci<3;ci++){const pl=new Uint8Array(N*2);for(let i=0;i<N;i++){const a=cs[i*4+3]/65535,v=Math.round(cs[i*4+ci]*a+65535*(1-a));pl[i*2]=v>>8;pl[i*2+1]=v&255;}w.bytes(pl);}}

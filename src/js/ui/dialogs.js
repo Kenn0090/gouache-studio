@@ -1,6 +1,6 @@
 /* ================= Dialogs ================= */
 const modal=$('#modal');let dlg=null;
-function openDialog(o){closeMenu();dlg=o;$('#dlgTitle').textContent=o.title;$('#dlgBody').replaceChildren(o.body);modal.classList.toggle('float',!!o.float);
+function openDialog(o){closeMenu();dlg=o;$('#dlgTitle').textContent=o.title;$('#dlgBody').replaceChildren(o.body);modal.classList.toggle('float',!!o.float);modal.classList.toggle('wide',!!o.wide);
   const ok=$('#dlgOk');ok.hidden=!o.okLabel;ok.textContent=o.okLabel||'';$('#dlgCancel').textContent=o.cancelLabel||'Cancel';modal.hidden=false;
   const f=o.body.querySelector('input,button,select');if(f)f.focus();}
 function closeDialog(){modal.hidden=true;dlg=null;}

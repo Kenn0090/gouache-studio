@@ -116,11 +116,13 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy);
   o=vec4(s.rgb*(1.0-b.a)+b.rgb*(1.0-s.a)+s.a*b.a*B, s.a+b.a*(1.0-s.a)); }`;
 const FS_VIEW=`in vec2 vUV; uniform sampler2D uComp; uniform vec3 uChk1; uniform vec3 uChk2; uniform float uChkSize; uniform vec4 uShow; uniform int uSingle; uniform int uMaskView;
 uniform sampler2D uSel; uniform int uSelMode; uniform float uTime; uniform float uPx; uniform int uWrap;
+uniform sampler2D uUnder; uniform int uUseUnder; uniform vec4 uBg;
 float selAt(vec2 dp){ ivec2 sz=textureSize(uSel,0); ivec2 q=ivec2(floor(dp));
   if(uWrap==1) q=ivec2(mod(vec2(q),vec2(sz))); else if(any(lessThan(q,ivec2(0)))||any(greaterThanEqual(q,sz))) return 0.0;
   return texelFetch(uSel,q,0).r; }
 void main(){ vec4 c=texture(uComp,vUV); vec2 q=floor(gl_FragCoord.xy/uChkSize); float k=mod(q.x+q.y,2.0);
-  vec3 col=c.rgb+mix(uChk1,uChk2,k)*(1.0-c.a);
+  if(uUseUnder==1){ vec4 u=texture(uUnder,vUV); c=c+u*(1.0-c.a); }
+  vec3 col=c.rgb+(uBg.a>0.5?uBg.rgb:mix(uChk1,uChk2,k))*(1.0-c.a);
   if(uMaskView==1) col=vec3(c.r);
   else if(uSingle>=0){ float v=uSingle==3?c.a:(uSingle==0?col.r:uSingle==1?col.g:col.b); col=vec3(v); }
   else { col*=uShow.rgb; if(uShow.a>0.5) col=mix(col,vec3(0.86,0.14,0.14),(1.0-c.a)*0.55); }
@@ -212,6 +214,9 @@ void main(){ vec4 c=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0);
 /* cut a rectangle out of an image, keeping only what is selected */
 const FS_CROPSEL=`uniform sampler2D uSrc; uniform sampler2D uSel; uniform vec2 uOff; uniform int uUseSel;
 void main(){ ivec2 p=ivec2(floor(gl_FragCoord.xy+uOff)); vec4 c=texelFetch(uSrc,p,0); if(uUseSel==1) c*=texelFetch(uSel,p,0).r; o=c; }`;
+/* onion skin: a frame, optionally tinted, faded */
+const FS_ONION=`uniform sampler2D uSrc; uniform vec3 uTint; uniform int uUseTint; uniform float uAlpha;
+void main(){ vec4 c=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0); if(uUseTint==1&&c.a>1e-6){ vec3 s=c.rgb/c.a; float l=dot(s,vec3(0.299,0.587,0.114)); c.rgb=mix(vec3(l),uTint,0.65)*c.a; } o=c*uAlpha; }`;
 /* ---- gradients ---- */
 /* uLut: 1-pixel-high strip of straight colour + alpha along the gradient; shapes 0 linear 1 radial 2 angle 3 reflected 4 diamond */
 const FS_GRAD=`uniform sampler2D uLut; uniform vec2 uA; uniform vec2 uB; uniform int uShape; uniform int uDither; uniform float uOpacity; uniform int uGray;
@@ -287,7 +292,7 @@ const P={
   sharpen:program(FS_SHARPEN), poster:program(FS_POSTER), invert:program(FS_INVERT), place:program(FS_PLACE), mix:program(FS_MIX), chmerge:program(FS_CHMERGE), maskplace:program(FS_MASKPLACE), applymask:program(FS_APPLYMASK),
   poly:program(FS_ONE,VS_POLY), rcopy:program(FS_RCOPY), selop:program(FS_SELOP), shift:program(FS_SHIFT), morph:program(FS_MORPH), thresh:program(FS_THRESH),
   selmix:program(FS_SELMIX), loadsel:program(FS_LOADSEL), cropsel:program(FS_CROPSEL),
-  grad:program(FS_GRAD), fillcov:program(FS_FILLCOV), texcov:program(FS_TEXCOV), xform:program(FS_XFORM), proj:program(FS_PROJ), mesh:(()=>{const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,VS_MESH));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS_HEAD+FS_MESH));
+  onion:program(FS_ONION), grad:program(FS_GRAD), fillcov:program(FS_FILLCOV), texcov:program(FS_TEXCOV), xform:program(FS_XFORM), proj:program(FS_PROJ), mesh:(()=>{const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,VS_MESH));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS_HEAD+FS_MESH));
     gl.bindAttribLocation(p,0,'a');gl.bindAttribLocation(p,1,'b');gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return {p,locs:{}};})()
 };
 const vao=gl.createVertexArray();gl.bindVertexArray(vao);

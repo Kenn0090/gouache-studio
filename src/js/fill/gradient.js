@@ -73,7 +73,7 @@ function gradPointerDown(e,ix,iy){const [sx,sy]=stageXY(e),hit=gradHit(sx,sy);
   if(hit){gradBegin(hit.L);ptr={mode:'grad',id:e.pointerId,hit,m0:[ix,iy],moved:false,g0:cloneGrad(hit.L.grad)};return;}
   const A=activeGrad();
   if(A){gradBegin(A);ptr={mode:'grad',id:e.pointerId,hit:{type:'redraw',L:A},m0:[ix,iy],moved:false,g0:cloneGrad(A.grad)};return;}
-  if(ui.gradLive){/* a new live gradient layer, shown while dragging; one undo step when done */
+  if(ui.gradLive&&ui.mode!=='anim'){/* a new live gradient layer, shown while dragging; one undo step when done */
     const L=newLayerObj('Gradient');L.grad={def:cloneGrad(ui.grad),a:[ix,iy],b:[ix+1,iy]};const [p,i]=insertPoint();insertNode(L,p,i);
     if(sel.active&&!sel.quick){L.mask=makeMask(1);run(P.loadsel,L.mask.target,{uSrc:sel.t.tex,uWhat:{int:1},uInv:false});}
     const prev=doc.active,prevSel=[...doc.sel];selectOnly(L);
@@ -164,8 +164,12 @@ function buildGradPanel(box){gradPanelBox=box;const L=editedGrad(),d=panelDef(),
 
 /* ---- saving live layers (and text) in PSD files: hidden notes in the file's XMP metadata ---- */
 const GS_NS='https://github.com/Kenn0090/gouache-studio/ns/1.0/';
-function liveLayersXmp(){const list=[];allLayers().forEach((L,i)=>{if(L.grad)list.push({i,name:L.name,grad:L.grad});else if(L.text)list.push({i,name:L.name,text:cloneText(L.text)});});
-  if(!list.length)return null;const b64=btoa(unescape(encodeURIComponent(JSON.stringify(list))));
+/* what a PSD save walks: the paint layers, plus the animation's frames in a hidden group */
+function psdRoot(){const R=paintRoot();if(!doc.anim)return R;doc.anim.frames.forEach((F,i)=>{F.name='Frame '+(i+1);});
+  const G={type:'group',name:'Gouache animation',children:doc.anim.frames,visible:false,opacity:1,mode:-1,open:false,mask:null,lockAlpha:false};return {type:'group',children:[...R.children,G],isRoot:true};}
+function liveLayersXmp(){const list=[];allLayers(psdRoot()).forEach((L,i)=>{if(L.grad)list.push({i,name:L.name,grad:L.grad});else if(L.text)list.push({i,name:L.name,text:cloneText(L.text)});});
+  const A=doc.anim,anim=A?{fps:A.fps,cur:A.cur,holds:A.frames.map(f=>f.hold),tags:A.tags.map(t=>{const [a,b]=tagRange(t);return {name:t.name,from:a,to:b,mode:t.mode,color:t.color};}),onion:A.onion,mode:ui.mode,bg:ui.animBg}:null;
+  if(!list.length&&!anim)return null;const b64=btoa(unescape(encodeURIComponent(JSON.stringify({v:2,layers:list,anim}))));
   return '<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?><x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description rdf:about="" xmlns:gouache="'+GS_NS+'"><gouache:liveLayers>'+b64+'</gouache:liveLayers></rdf:Description></rdf:RDF></x:xmpmeta><?xpacket end="w"?>';}
-function readLiveLayersXmp(xmp){if(!xmp)return [];const m=/<gouache:liveLayers>([^<]+)<\/gouache:liveLayers>/.exec(xmp);if(!m)return [];
-  try{return JSON.parse(decodeURIComponent(escape(atob(m[1].trim()))));}catch(e){console.warn('live layer notes unreadable',e);return [];}}
+function readLiveLayersXmp(xmp){if(!xmp)return {layers:[],anim:null};const m=/<gouache:liveLayers>([^<]+)<\/gouache:liveLayers>/.exec(xmp);if(!m)return {layers:[],anim:null};
+  try{const v=JSON.parse(decodeURIComponent(escape(atob(m[1].trim()))));return Array.isArray(v)?{layers:v,anim:null}:v;}catch(e){console.warn('live layer notes unreadable',e);return {layers:[],anim:null};}}

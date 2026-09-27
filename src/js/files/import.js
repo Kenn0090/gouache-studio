@@ -37,7 +37,7 @@ async function handleFile(file,mode,path){const ext=extOf(file.name);
     if(['ttf','otf','woff','woff2'].includes(ext)){await addFontFile(file);return;}
     if(mode==='open'){if(!(await askReplace()))return;if(ext==='psd'){await openPSD(await file.arrayBuffer(),baseName(file.name));doc.filePath=path||null;}else{openRaw(await decodeFile(file),baseName(file.name));doc.filePath=null;}
       if(path)platform.recentAdd(path);updateTitle();}
-    else placeRaw(await decodeFile(file),baseName(file.name)||'Pasted image');}
+    else if(ui.mode==='anim')toast('To bring images into an animation, use Import in the timeline.');else placeRaw(await decodeFile(file),baseName(file.name)||'Pasted image');}
   catch(e){console.error(e);toast(e.message||String(e));}}
 let fileMode='open';
 const OPEN_FILTERS={open:[{name:'Images and documents',extensions:['psd','png','jpg','jpeg','webp','gif','bmp','tga','dds','tif','tiff']},{name:'Brushes and fonts',extensions:['abr','ttf','otf','woff','woff2']}],

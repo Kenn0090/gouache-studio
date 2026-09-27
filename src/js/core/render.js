@@ -29,7 +29,8 @@ let maskViewT=null,maskViewLive=false;
 function composite(){if(compOut)release(compOut);maskOverride=new Map();const tmp=[];maskViewLive=false;
   if(stroke&&stroke.L.maskOf&&stroke.o.tool!=='smudge'){const lm=acquire();tmp.push(lm);run(P.merge,lm,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},selU(stroke.o),tonalU(stroke.o)));maskOverride.set(stroke.L.maskOf,lm.tex);if(ui.viewMask){if(!maskViewT||maskViewT.w!==doc.w||maskViewT.h!==doc.h||maskViewT.depth!==doc.depth){disposeTarget(maskViewT);maskViewT=makeTarget(doc.w,doc.h);}blit(lm,maskViewT,0,0,doc.w,doc.h,0,0);maskViewLive=true;}}
   if(preview&&!preview.off&&preview.isMask)maskOverride.set(preview.L,previewT.tex);
-  compOut=renderNodes(doc.root.children);compOut.mipDirty=true;tmp.forEach(release);maskOverride=new Map();}
+  compOut=renderNodes(doc.root.children);compOut.mipDirty=true;tmp.forEach(release);maskOverride=new Map();
+  if(ui.mode==='anim'){buildOnion();if(stroke)liveFrameUpdate();}else if(onionT){release(onionT);onionT=null;}}
 function dprNow(){return cv.width/Math.max(1,stage.clientWidth);}
 function viewSource(){const A=doc.active;if(ui.viewMask&&A&&A.mask){
     if(stroke&&stroke.L.maskObj===A.mask&&maskViewLive)return {t:maskViewT,mask:true};
@@ -46,10 +47,13 @@ function drawView(){
   const sh=chan.show,n=sh.filter(Boolean).length,single=n===1?sh.indexOf(1):-1;
   run(P.view,null,{uComp:T.tex,uOrigin:t?[ox-ew,oy-eh]:[ox,oy],uExtent:t?[ew*3,eh*3]:[ew,eh],uViewport:[cv.width,cv.height],
     uUV0:t?[-1,-1]:[0,0],uUV1:t?[2,2]:[1,1],uChk1:[.235,.247,.271],uChk2:[.188,.2,.22],uChkSize:Math.max(4,8*dpr),
-    uShow:sh,uSingle:{int:vs.mask?-1:single},uMaskView:vs.mask,...selViewU(z,dpr,t)});
+    uShow:sh,uSingle:{int:vs.mask?-1:single},uMaskView:vs.mask,...selViewU(z,dpr,t),...animViewU(vs)});
   gl.bindTexture(gl.TEXTURE_2D,T.tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
   releaseSelView();drawSelOverlay();drawXfOverlay();
 }
+/* animation mode: onion skin under the frame, and the chosen canvas background */
+function animViewU(vs){if(ui.mode!=='anim'||vs.mask)return {};const u={};if(onionT){u.uUnder=onionT.tex;u.uUseUnder=true;}
+  if(ui.animBg==='white')u.uBg=[1,1,1,1];else if(ui.animBg==='grey')u.uBg=[.5,.5,.5,1];else if(ui.animBg==='dark')u.uBg=[.12,.12,.13,1];return u;}
 /* marching ants (active selection) or red overlay (quick mask) drawn by the view shader */
 let selViewTmp=null;
 function selViewU(z,dpr,wrap){if(!sel.t)return {};
@@ -65,7 +69,7 @@ function releaseSelView(){if(selViewTmp){release(selViewTmp);selViewTmp=null;}}
 /* thumbnails */
 const thumbT=makeTargetRaw(40,40);const thumbBuf=new Uint8Array(40*40*4);const thumbQ=new Set();
 function makeTargetRaw(w,h){const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);const fbo=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0);return {tex,fbo,w,h,depth:8};}
-function scheduleThumb(n){if(n){thumbQ.add(n);chanThumbDirty=true;}requestRender();}
+function scheduleThumb(n){if(n){if(n.frame)frameDirty(n);thumbQ.add(n);chanThumbDirty=true;}requestRender();}
 let chanThumbDirty=true;
 function renderThumb(target,canvas){const s=Math.min(40/doc.w,40/doc.h),tw=doc.w*s,th=doc.h*s;clearTarget(thumbT);
   run(P.resample,thumbT,{uSrc:target.tex,uOffset:[(40-tw)/2,(40-th)/2],uScale:[1/s,1/s],uTaps:{int:Math.min(8,Math.ceil(1/s))}});

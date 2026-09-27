@@ -76,6 +76,7 @@ window.addEventListener('keydown',e=>{
   if(xfKeys(e,m,k)||cropKeys(e))return;
   if(m&&k==='t'){e.preventDefault();freeTransform();return;}
   if(selKeys(e,m,k))return;
+  if(animKeys(e,m,k))return;
   if(!m&&!e.altKey&&k==='v'){setTool('move');return;}
   if(!m&&!e.altKey&&k==='g'){const F=['gradient','bucket','gbucket'];if(e.shiftKey&&F.includes(ui.tool))ui.fillKind=F[(F.indexOf(ui.tool)+1)%3];setTool(ui.fillKind);return;}
   if(!m&&!e.altKey&&k==='o'){if(e.shiftKey&&(ui.tool==='dodge'||ui.tool==='burn'))ui.tonal=ui.tool==='dodge'?'burn':'dodge';setTool(ui.tonal);return;}

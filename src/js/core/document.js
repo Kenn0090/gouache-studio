@@ -34,7 +34,8 @@ function insertNode(n,parent,i){n.parent=parent;const c=parent.children;c.splice
 function detachNode(n){const p=n.parent;if(!p)return -1;const i=p.children.indexOf(n);if(i>=0)p.children.splice(i,1);return i;}
 function allLayers(g,out){g=g||doc.root;out=out||[];for(const n of g.children){if(n.type==='group')allLayers(n,out);else out.push(n);}return out;}
 function allNodes(g,out){g=g||doc.root;out=out||[];for(const n of g.children){out.push(n);if(n.type==='group')allNodes(n,out);}return out;}
-function inDoc(n){let c=n;while(c&&c!==doc.root){const p=c.parent;if(!p||!p.children.includes(c))return false;c=p;}return c===doc.root;}
+function inDoc(n){if(n&&n.frame)return !!(doc.anim&&doc.anim.frames.includes(n));const roots=[doc.root,doc.paintRoot].filter(Boolean);let c=n;
+  while(c&&!roots.includes(c)){const p=c.parent;if(!p||!p.children.includes(c))return false;c=p;}return roots.includes(c);}
 function isAncestor(a,n){let c=n.parent;while(c){if(c===a)return true;c=c.parent;}return false;}
 function activeLayer(){return isLayer(doc.active)?doc.active:null;}
 function makeMask(fill){const m={target:makeTarget(doc.w,doc.h),enabled:true,thumb:thumbCanvas()};m.thumb.className='mthumb';clearTarget(m.target,[fill,fill,fill,1]);return m;}
@@ -54,7 +55,7 @@ function structOp(label,fn){const before=snapTree();if(fn()===false)return false
 
 function dropRecords(list){const cands=new Set(),mc=new Set();for(const r of list){r.drop&&r.drop();for(const s of r.snaps||[])if(s.file)platform.spillDelete(s.file);for(const n of r.refs||[])cands.add(n);for(const m of r.masks||[])mc.add(m);}
   const live=new Set(),liveM=new Set();for(const r of [...hist.undo,...hist.redo]){for(const n of r.refs||[]){live.add(n);if(n.mask)liveM.add(n.mask);}for(const m of r.masks||[])liveM.add(m);}
-  for(const n of allNodes())if(n.mask)liveM.add(n.mask);
+  for(const n of [...allNodes(doc.root),...(doc.paintRoot?allNodes(doc.paintRoot):[])])if(n.mask)liveM.add(n.mask);
   for(const n of cands)if(!live.has(n)&&!inDoc(n)){disposeLayer(n);if(n.mask)liveM.delete(n.mask);}
   for(const m of mc)if(!liveM.has(m))disposeTarget(m.target);}
 /* Undo budget: snapshots are kept in RAM up to UNDO_RAM bytes. Beyond that the desktop app moves the
@@ -64,7 +65,7 @@ let undoRamMB=platform.isDesktop?2048:768;try{const v=+localStorage.getItem('gs.
 const UNDO_RAM=undoRamMB*1048576,UNDO_MAX_STEPS=platform.isDesktop?500:120;
 const recBytes=r=>(r.snaps||[]).reduce((s,x)=>s+(x.data?x.bytes:0),0);
 let undoBusy=false;
-function pushUndo(rec){hist.undo.push(rec);const dropped=hist.redo;hist.redo=[];while(hist.undo.length>UNDO_MAX_STEPS)dropped.push(hist.undo.shift());
+function pushUndo(rec){if(!rec.mode)rec.mode=ui.mode;hist.undo.push(rec);const dropped=hist.redo;hist.redo=[];while(hist.undo.length>UNDO_MAX_STEPS)dropped.push(hist.undo.shift());
   if(!platform.isDesktop){let total=hist.undo.reduce((s,r)=>s+recBytes(r),0);while(total>UNDO_RAM&&hist.undo.length>1){const r=hist.undo.shift();total-=recBytes(r);dropped.push(r);}}
   dropRecords(dropped);if(platform.isDesktop)spillOld();}
 async function spillOld(){let total=hist.undo.reduce((s,r)=>s+recBytes(r),0);
@@ -73,7 +74,10 @@ async function spillOld(){let total=hist.undo.reduce((s,r)=>s+recBytes(r),0);
 async function loadSnaps(r){for(const s of r.snaps||[]){if(s.data||!s.file)continue;const buf=await platform.spillRead(s.file);s.data=s.depth===16?new Uint16Array(buf):new Uint8Array(buf);platform.spillDelete(s.file);s.file=null;}}
 function clearHistory(){const all=[...hist.undo,...hist.redo];hist.undo=[];hist.redo=[];dropRecords(all);}
 function regionRecord(L,before,after,x,y,w,h,label){return {label,refs:L.quick?[]:[L.maskOf||L],masks:L.maskObj?[L.maskObj]:[],snaps:[before,after],undo(){restoreRegion(before,L.target,x,y);},redo(){restoreRegion(after,L.target,x,y);}};}
+/* undoing a step from the other mode switches to it; a step on another frame shows that frame */
+function undoFocus(r){if(r.mode&&r.mode!==ui.mode)setMode(r.mode,true);
+  if(ui.mode==='anim'&&doc.anim){const f=(r.refs||[]).find(n=>n.frame);if(f){const i=doc.anim.frames.indexOf(f);if(i>=0&&i!==doc.anim.cur&&!r.label.includes('frame'))showFrame(i);}for(const n of r.refs||[])if(n.frame)frameDirty(n);}}
 async function undo(){if(undoBusy)return;if(tedit)closeTextEditor();textCommit();const r=hist.undo[hist.undo.length-1];if(!r){toast('Nothing to undo');return;}
-  undoBusy=true;try{await loadSnaps(r);}finally{undoBusy=false;}if(hist.undo[hist.undo.length-1]!==r)return;hist.undo.pop();r.undo();hist.redo.push(r);toast('Undo: '+r.label);changedAll();}
+  undoBusy=true;try{await loadSnaps(r);}finally{undoBusy=false;}if(hist.undo[hist.undo.length-1]!==r)return;undoFocus(r);hist.undo.pop();r.undo();hist.redo.push(r);toast('Undo: '+r.label);changedAll();}
 async function redo(){if(undoBusy)return;if(tedit)closeTextEditor();textCommit();const r=hist.redo[hist.redo.length-1];if(!r){toast('Nothing to redo');return;}
-  undoBusy=true;try{await loadSnaps(r);}finally{undoBusy=false;}if(hist.redo[hist.redo.length-1]!==r)return;hist.redo.pop();r.redo();hist.undo.push(r);toast('Redo: '+r.label);changedAll();if(platform.isDesktop)spillOld();}
+  undoBusy=true;try{await loadSnaps(r);}finally{undoBusy=false;}if(hist.redo[hist.redo.length-1]!==r)return;undoFocus(r);hist.redo.pop();r.redo();hist.undo.push(r);toast('Redo: '+r.label);changedAll();if(platform.isDesktop)spillOld();}

@@ -11,6 +11,7 @@
     <nav class="menus" id="menus" aria-label="Main menu"></nav>
     <div class="bar-r">
       <span id="docName"></span>
+      <select id="modeSel" aria-label="Workspace" title="Workspace: Paint or Animation"><option value="paint">Paint</option><option value="anim">Animation</option></select>
       <button class="toggle" id="tileBtn" aria-pressed="false" title="Seamless tile mode (Shift+T): wraps brush strokes and shows a 3&times;3 repeat"><i></i>Tile mode</button>
     </div>
   </header>
@@ -34,6 +35,8 @@
     <div id="dropHint" hidden>Drop an image to place it as a new layer</div>
   </main>
 
+  <section id="timeline" aria-label="Animation timeline"></section>
+
   <aside class="panel" aria-label="Panels">
     <section class="sec" aria-labelledby="hColor">
       <div class="sec-h" id="hColor"><span>Color</span></div>
@@ -55,6 +58,11 @@
       <div id="libBody" class="lib" aria-label="Brush library"></div>
       <div class="prevwrap"><canvas id="brushPrev" role="img" aria-label="Preview of a stroke with the current brush settings"></canvas><span id="prevNote"></span></div>
       <div id="brushBody" class="dlg-grid"></div>
+    </section>
+
+    <section class="sec" id="animSec" aria-labelledby="hAnim">
+      <div class="sec-h" id="hAnim"><span>Animation</span></div>
+      <div id="animBody" class="dlg-grid"></div>
     </section>
 
     <section class="sec" aria-labelledby="hLayers">

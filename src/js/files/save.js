@@ -8,7 +8,7 @@ async function makeZip(name,data){const nb=new TextEncoder().encode(name),comp=a
   return new Blob([lh,nb,comp,cd,nb,end],{type:'application/zip'});}
 let dlPromise=null;
 function downloadsCap(){if(!(window.claude&&typeof window.claude.use==='function'))return Promise.resolve(null);if(!dlPromise)dlPromise=window.claude.use('downloads').catch(()=>null);return dlPromise;}
-const VIEWER_OK=['png','jpg','jpeg','webp','gif'];
+const VIEWER_OK=['png','jpg','jpeg','webp','gif','zip'];
 async function deliver(filename,blob){
   if(platform.isDesktop){const bytes=new Uint8Array(await blob.arrayBuffer());
     try{const path=await platform.saveAs(filename,bytes);if(!path)return {ok:false,msg:'Save cancelled.'};return {ok:true,name:fileNameOf(path),path,desktop:true};}

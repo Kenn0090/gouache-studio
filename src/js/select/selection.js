@@ -191,10 +191,11 @@ function copySel(merged){if(preview){toast('Apply or cancel the open filter firs
   clip={t,x:r[0],y:r[1],w,h,marker:'gouache-studio-clip:'+Date.now()};toast((merged?'Copied merged ':'Copied ')+w+' × '+h+'.');return true;}
 function cutSel(){if(!copySel(false))return false;clearLayer();return true;}
 function pasteClip(){if(!clip){toast('Nothing has been copied yet.');return;}if(preview){toast('Apply or cancel the open filter first.');return;}
+  if(ui.mode==='anim'){const F=curFrame();fullRecord(F,'Paste',()=>run(P.shift,F.target,{uSrc:clip.t.tex,uOff:[clip.x,clip.y],uWrap:false,uOutside:[0,0,0,0]},{blend:'over'}),[clip.x,clip.y,Math.min(doc.w,clip.x+clip.w),Math.min(doc.h,clip.y+clip.h)].map((v,i)=>clamp(v,0,i%2?doc.h:doc.w)));toast('Pasted onto this frame.');return;}
   const L=newLayerObj('Pasted');run(P.shift,L.target,{uSrc:clip.t.tex,uOff:[clip.x,clip.y],uWrap:false,uOutside:[0,0,0,0]});
   structOp('Paste',()=>{const [p,i]=insertPoint();insertNode(L,p,i);selectOnly(L);});toast('Pasted as a new layer in the same place.');}
 /* Ctrl+J / Ctrl+Shift+J with a selection: the selected pixels onto a new layer */
-function layerViaSel(cut){const et=editTarget();if(!et||et.isMask||!isLayer(et.node)){toast('Select a layer to copy from.');return;}if(preview)return;
+function layerViaSel(cut){if(ui.mode==='anim'){toast('Layers are not used in Animation mode.');return;}const et=editTarget();if(!et||et.isMask||!isLayer(et.node)){toast('Select a layer to copy from.');return;}if(preview)return;
   const src=et.node,r=sel.bb||fullRect(),x=r[0],y=r[1],w=r[2]-r[0],h=r[3]-r[1];if(w<=0||h<=0)return;
   const L=newLayerObj(src.name+(cut?' (cut)':' (copy)'));run(P.cropsel,L.target,{uSrc:src.target.tex,uSel:sel.t.tex,uOff:[0,0],uUseSel:true});
   const before=snapTree(),b=cut?captureRegion(src.target,x,y,w,h):null;

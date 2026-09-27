@@ -14,6 +14,8 @@ const platform={
   writeFile(path,bytes){return this.invoke('write_file',bytes,{headers:{'x-path':encodeURIComponent(path)}});},
   async readFile(path){return new Uint8Array(await this.invoke('read_file',{path}));},
   async openDialog(filters){const p=await this.invoke('plugin:dialog|open',{options:{multiple:false,directory:false,filters}});return Array.isArray(p)?p[0]:p;},
+  async openFiles(filters,multiple){const p=await this.invoke('plugin:dialog|open',{options:{multiple:!!multiple,directory:false,filters}});return p?(Array.isArray(p)?p:[p]):[];},
+  async pickFolder(){const p=await this.invoke('plugin:dialog|open',{options:{multiple:false,directory:true}});return Array.isArray(p)?p[0]:p;},
   recentList(){return this.invoke('recent_list').catch(()=>[]);},
   recentAdd(path){return this.invoke('recent_add',{path}).catch(()=>{});},
   setTitle(t){if(TAURI)this.invoke('set_title',{title:t}).catch(()=>{});},

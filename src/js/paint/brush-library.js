@@ -107,7 +107,7 @@ function buildBrushPanel(){
   box.append(det);schedulePreview();
 }
 function applyPreset(p){for(const k of SETTING_KEYS)brush[k]=(k in p)?p[k]:BRUSH_DEFAULTS[k];activePreset=p;setTool((ui.tool==='dodge'||ui.tool==='burn')&&p.tool!=='smudge'?ui.tool:(p.tool||'brush'),true);renderLibrary();refreshCursor();}
-function setTool(t,keepPreset){if(t!=='text'&&typeof closeTextEditor==='function')closeTextEditor();if(t!=='lasso'&&typeof polyLasso!=='undefined'&&polyLasso){polyLasso=null;drawSelOverlay();}
+function setTool(t,keepPreset){if(t==='text'&&ui.mode==='anim'){toast('Text is available in Paint mode. Frames are single images.');return;}if(t!=='text'&&typeof closeTextEditor==='function')closeTextEditor();if(t!=='lasso'&&typeof polyLasso!=='undefined'&&polyLasso){polyLasso=null;drawSelOverlay();}
   if(typeof xf!=='undefined'&&xf&&!xf.move)xfCommit();if(t!=='gradient'&&typeof gsess!=='undefined'&&gsess)gradCommit();if(t==='gradient'||t==='bucket'||t==='gbucket')ui.fillKind=t;if(t==='dodge'||t==='burn')ui.tonal=t;updateGroupButtons(t);if(typeof crop!=='undefined'){if(t==='crop'&&ui.tool!=='crop')crop=null;else if(t!=='crop')crop=null;}cv.style.cursor='';ui.tool=t;stage.classList.toggle('txt',t==='text');stage.classList.toggle('selt',isSelTool(t));stage.classList.toggle('movet',t==='move');stage.classList.toggle('fillt',t==='gradient'||t==='bucket'||t==='gbucket');document.querySelectorAll('.tool').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t)));
   if(!keepPreset&&activePreset&&(activePreset.tool==='smudge')!==(t==='smudge')){activePreset=null;renderLibrary();}
   stage.classList.toggle('grab',t==='hand');stage.classList.toggle('pick',t==='picker');buildBrushPanel();refreshCursor();}

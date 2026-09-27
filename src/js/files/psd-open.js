@@ -42,10 +42,17 @@ async function openPSD(buf,name){
   else if(notes.length&&psd.imageData)addComposite('Photoshop composite (reference)',false);
   if(!allLayers().length){const L=newLayerObj('Background');insertNode(L,doc.root);}
   /* bring back live gradients and editable text saved by Gouache Studio */
-  const live=readLiveLayersXmp(psd.imageResources&&psd.imageResources.xmpMetadata);let restored=0;
+  const notes2=readLiveLayersXmp(psd.imageResources&&psd.imageResources.xmpMetadata),live=notes2.layers;let restored=0;
   for(const it of live){const x=items[it.i];if(!x||x.L.name!==it.name)continue;if(it.grad){x.L.grad=it.grad;renderLiveGrad(x.L);restored++;}else if(it.text){x.L.text=it.text;renderText(x.L);restored++;}}
+  /* an animation saved by Gouache Studio: its frames sit in a hidden group at the top */
+  const G=doc.root.children[doc.root.children.length-1];let animMode=false;
+  if(notes2.anim&&G&&G.type==='group'&&G.name==='Gouache animation'){const an=notes2.anim,frames=G.children.filter(isLayer);detachNode(G);
+    frames.forEach((F,i)=>{F.frame=true;F.hold=an.holds&&an.holds[i]||1;F.parent=null;});
+    if(frames.length){doc.anim=makeAnim(frames);doc.anim.fps=an.fps||12;doc.anim.cur=clamp(an.cur||0,0,frames.length-1);if(an.onion)doc.anim.onion=Object.assign(doc.anim.onion,an.onion);
+      doc.anim.tags=(an.tags||[]).filter(t=>frames[t.from]&&frames[t.to]).map(t=>({name:t.name,from:frames[t.from],to:frames[t.to],mode:t.mode||'loop',color:t.color||TAG_COLORS[0]}));
+      if(an.bg)ui.animBg=an.bg;animMode=an.mode==='anim';}}
   const lays=allLayers();selectOnly([...lays].reverse().find(L=>effVisible(L))||lays[lays.length-1]);doc.count=lays.length;
-  changedAll();updateStatus();fit();
+  changedAll();updateStatus();fit();if(animMode)setMode('anim',true);
   const summary=items.length+' layer'+(items.length===1?'':'s')+(groups?' in '+groups+' group'+(groups===1?'':'s'):'')+', '+W+' × '+H+', '+bits+'-bit';
   if(notes.length)openDialog({title:'Opened “'+name+'”',okLabel:null,cancelLabel:'OK',body:el('div',{class:'dlg-grid'},
     el('p',{class:'note',text:summary+'. A few Photoshop features did not carry over:'}),el('ul',{class:'report'},...notes.map(n=>el('li',{text:n}))),
