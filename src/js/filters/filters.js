@@ -231,6 +231,11 @@ fxDef('offset',{title:'Offset',note:'Slides the image, wrapping around the edges
   init:()=>({x:Math.round(doc.w/2),y:Math.round(doc.h/2)}),
   controls:(v,upd)=>[makeSlider({id:'fx_x',label:'Horizontal',min:-doc.w,max:doc.w,step:1,value:v.x,fmt:px,onInput:x=>{v.x=x;upd();}}).el,makeSlider({id:'fx_y',label:'Vertical',min:-doc.h,max:doc.h,step:1,value:v.y,fmt:px,onInput:x=>{v.y=x;upd();}}).el],
   render(src,dst,v){run(P.shift,dst,{uSrc:src.tex,uOff:[v.x,v.y],uWrap:true,uOutside:[0,0,0,0]});}});
+fxDef('tile',{title:'Tile',note:'Repeats the image across and down, smaller each time. Works on masks too. Check the result with Tile mode.',init:()=>({flip:false,seed:1}),
+  defs:[{key:'nx',label:'Across',min:1,max:32,step:1,value:2,fmt:v=>String(Math.round(v))},{key:'ny',label:'Down',min:1,max:32,step:1,value:2,fmt:v=>String(Math.round(v))},
+    {key:'sh',label:'Row offset',min:0,max:1,step:.01,value:0,fmt:pct},{key:'rot',label:'Random rotation',min:0,max:180,step:1,value:0,fmt:v=>Math.round(v)+'°'}],
+  controls:(v,upd)=>[el('div',{class:'chips'},chk('fx_tflip','Random flip',!!v.flip,x=>{v.flip=x;upd();}),el('button',{class:'btn sm',text:'New random',onclick:()=>{v.seed=Math.floor(Math.random()*1000)+1;upd();}}))],
+  render(src,dst,v){run(P.f_tile,dst,{uSrc:src.tex,uN:[Math.round(v.nx),Math.round(v.ny)],uShift:v.sh,uRot:v.rot*Math.PI/180,uSeed:v.seed||1,uFlip:!!v.flip});}});
 fxDef('seamless',{title:'Make seamless',note:'Blends the edges with the middle of the image so it repeats without visible seams. Check it with Tile mode.',
   defs:[{key:'w',label:'Blend width',min:.05,max:1,step:.01,value:.35,fmt:pct}],render(src,dst,v){run(P.f_seam,dst,{uSrc:src.tex,uW:v.w});}});
 

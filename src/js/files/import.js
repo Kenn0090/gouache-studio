@@ -64,6 +64,7 @@ bakeDropZone($('#bakeSec'),null);
   s.addEventListener('drop',e=>{e.preventDefault();s.classList.remove('dropon');const f=e.dataTransfer.files[0];if(f)cvSourceFromFile(f);});})($('#convSec'));
 /* paste: our own copied pixels (the clipboard holds a marker for them), else an image from another app */
 document.addEventListener('paste',e=>{if(isTypingTarget(e.target))return;const cd=e.clipboardData,txt=cd?cd.getData('text/plain'):'';
-  if(clip&&txt===clip.marker){e.preventDefault();pasteClip();return;}
-  const it=[...(cd?cd.items:[])].find(i=>i.type.startsWith('image/'));if(it){e.preventDefault();const f=it.getAsFile();handleFile(new File([f],'Pasted image.png',{type:f.type}),'place');return;}
-  if(clip&&!txt){e.preventDefault();pasteClip();}});
+  const mt=ui.mode==='paint'?maskEditTarget():null;
+  if(clip&&txt===clip.marker){e.preventDefault();if(mt)pasteClipIntoMask(mt);else pasteClip();return;}
+  const it=[...(cd?cd.items:[])].find(i=>i.type.startsWith('image/'));if(it){e.preventDefault();const f=it.getAsFile(),file=new File([f],'Pasted image.png',{type:f.type});if(mt)pasteImageIntoMask(mt,file);else handleFile(file,'place');return;}
+  if(clip&&!txt){e.preventDefault();if(mt)pasteClipIntoMask(mt);else pasteClip();}});

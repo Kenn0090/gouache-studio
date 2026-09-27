@@ -33,6 +33,7 @@
     "files/loading",
     "files/decoders",
     "files/import",
+    "select/mask-paste",
     "files/psd-open",
     "files/readback",
     "files/encoders",

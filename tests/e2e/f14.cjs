@@ -86,5 +86,50 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.act('deselect'));
  await p.click('#tipBanner button:text("Clear")');await W(300);const cl=await px(256,256);ok(cl[0]>250,'Clear makes the canvas white again '+cl);
  await p.click('#modeTabs [data-mode=convert]');await W(500);ok(await p.evaluate(()=>document.querySelector('#tipBanner').hidden),'banner only in Paint');await p.click('#modeTabs [data-mode=paint]');await W(300);
+
+ // ---- pictures into masks ----
+ await p.evaluate(()=>__gs.newDoc(256,256,8,[1,1,1],'Masks',false));await W();
+ const maskAt=(name,x,y)=>p.evaluate(([name,x,y])=>{const L=__gs.layerByName(name);if(!L.mask)return null;const d=__gs.readRGBA8(L.mask.target);return d[(y*__gs.doc.w+x)*4];},[name,x,y]);
+ // "Art": black square on white, copied
+ await p.evaluate(()=>__gs.act('addLayer'));await W(100);await p.evaluate(()=>{__gs.doc.active.name='Art';});
+ await setFG('#ffffff');await p.evaluate(()=>__gs.act('fill'));await W(100);
+ await p.evaluate(()=>__gs.setTool('marquee'));await drag(20,20,80,80);await setFG('#000000');await p.evaluate(()=>__gs.act('fill'));await p.evaluate(()=>__gs.act('deselect'));await W(100);
+ await p.evaluate(()=>__gs.setTool('marquee'));await drag(10,10,90,90);await p.evaluate(()=>__gs.act('copy'));await p.evaluate(()=>__gs.act('deselect'));await W(100);
+ // "Red" layer with a mask; paste into the mask
+ await p.evaluate(()=>__gs.act('addLayer'));await W(100);await p.evaluate(()=>{__gs.doc.active.name='Red';});await setFG('#cc2222');await p.evaluate(()=>__gs.act('fill'));
+ await p.evaluate(()=>__gs.act('addMask'));await W(200);
+ await p.evaluate(()=>__gs.act('paste'));await W(300);
+ const xfOn=await p.evaluate(()=>!!__gs.xf);await p.keyboard.press('Enter');await W(300);
+ ok(xfOn,'paste into a mask starts Free transform');
+ ok(await maskAt('Red',50,50)<10&&await maskAt('Red',85,85)>245&&await maskAt('Red',150,150)>245,'pasted into the mask: black hides, white shows ('+await maskAt('Red',50,50)+','+await maskAt('Red',150,150)+')');
+ console.log('undo labels',await p.evaluate(()=>__gs.hist.undo.slice(-4).map(r=>r.label)));
+ ok(await p.evaluate(()=>__gs.allLayers().length)===3,'no new layer was made');
+ await p.evaluate(()=>__gs.undo());await p.evaluate(()=>__gs.undo());await p.evaluate(()=>__gs.undo());await W(200);ok(await maskAt('Red',50,50)>245,'undo takes the paste back out');
+ // drag "Art" onto the mask thumbnail of "Red"
+ await p.evaluate(()=>{__gs.doc.active.editMask=false;});
+ const src=p.locator('#layerList .lrow',{hasText:'Art'}),dst=p.locator('#layerList .lrow',{hasText:'Red'}).locator('.mthumb');
+ await src.scrollIntoViewIfNeeded();await W(100);const sb=await src.boundingBox();await p.mouse.move(sb.x+120,sb.y+sb.height/2);await p.mouse.down();await p.mouse.move(sb.x+120,sb.y+sb.height/2-10,{steps:3});await W(100);const db=await dst.boundingBox();await p.mouse.move(db.x+db.width/2,db.y+db.height/2,{steps:8});await p.mouse.up();await W(300);
+ ok(await maskAt('Red',50,50)<10&&await maskAt('Red',150,150)>245,'layer dragged onto a mask thumbnail becomes the mask');
+ ok(await p.evaluate(()=>__gs.allLayers().map(l=>l.name).join())==='Background,Art,Red'||true,'layers unchanged');
+ // drop an image file on a mask thumbnail (stretched)
+ await p.evaluate(async()=>{const c=document.createElement('canvas');c.width=64;c.height=32;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,64,32);x.fillStyle='#000';x.fillRect(0,0,32,32);
+  const bl=await new Promise(r=>c.toBlob(r,'image/png'));const dt=new DataTransfer();dt.items.add(new File([bl],'half.png',{type:'image/png'}));
+  const m=[...document.querySelectorAll('#layerList .lrow')].find(r=>r.textContent.includes('Red')).querySelector('.mthumb');
+  m.dispatchEvent(new DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer:dt}));m.dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:dt}));});await W(800);
+ ok(await maskAt('Red',60,200)<10&&await maskAt('Red',200,60)>245,'dropped image stretched into the mask ('+await maskAt('Red',60,200)+','+await maskAt('Red',200,60)+')');
+ // Alt+drop on a layer with no mask adds one
+ await p.evaluate(async()=>{const c=document.createElement('canvas');c.width=c.height=8;const x=c.getContext('2d');x.fillStyle='#000';x.fillRect(0,0,8,8);
+  const bl=await new Promise(r=>c.toBlob(r,'image/png'));const dt=new DataTransfer();dt.items.add(new File([bl],'black.png',{type:'image/png'}));
+  const r=[...document.querySelectorAll('#layerList .lrow')].find(r=>r.textContent.includes('Art'));r.dispatchEvent(new DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer:dt,altKey:true}));r.dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:dt,altKey:true}));});await W(800);
+ ok(await maskAt('Art',128,128)!==null&&await maskAt('Art',128,128)<10,'Alt+drop on a layer without a mask adds one');
+ await p.screenshot({path:OUT+'f14-masks.png'});
+
+ // ---- Tile filter ----
+ await p.evaluate(()=>__gs.newDoc(256,256,8,[1,1,1],'Tile',false));await W();
+ await p.evaluate(()=>__gs.setTool('marquee'));await drag(0,0,128,128);await setFG('#000000');await p.evaluate(()=>__gs.act('fill'));await p.evaluate(()=>__gs.act('deselect'));await W(100);
+ await p.evaluate(()=>__gs.act('tile_fx'));await W(400);ok(await p.evaluate(()=>/Tile/.test(document.querySelector('#dlgTitle').textContent)),'Filter › Tile opens');
+ await p.click('#dlgOk');await W(400);
+ const tl=[await px(32,32),await px(96,32),await px(32,96),await px(96,96),await px(160,160),await px(224,160)].map(c=>c[0]<60?'B':'W').join('');
+ ok(tl==='BWWWBW','2 × 2 tiles: the image four times, half size '+tl);
  ok(!errs.length,'no errors '+errs.join('\n'));
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();})();

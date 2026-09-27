@@ -131,15 +131,19 @@ function resolveDrop(t){if(!t)return null;const {ref,where}=t;
 function dropAllowed(nodes,d){if(!d)return false;if(d.ref&&nodes.includes(d.ref))return false;for(const n of nodes){if(d.parent===n||isAncestor(n,d.parent))return false;}return true;}
 window.addEventListener('pointermove',e=>{if(!ldrag||e.pointerId!==ldrag.id)return;
   if(!ldrag.moving){if(Math.hypot(e.clientX-ldrag.x,e.clientY-ldrag.y)<5)return;ldrag.moving=true;ldrag.pendingSingle=null;document.body.classList.add('ldragging');}
+  document.querySelectorAll('.lrow.drop-into,.lrow.drop-mask').forEach(r=>r.classList.remove('drop-into','drop-mask'));dropLine.hidden=true;
+  /* onto a mask thumbnail (or Alt over a row): the dragged layer becomes that mask */
+  const under=document.elementFromPoint(e.clientX,e.clientY),mrow=under&&under.closest('.lrow');ldrag.maskTo=null;
+  if(mrow&&mrow._node&&mrow._node!==ldrag.n&&(under.closest('.mthumb')||e.altKey)&&isLayer(ldrag.n)){ldrag.maskTo=mrow._node;ldrag.target=null;mrow.classList.add('drop-mask');return;}
   const t=dropTargetAt(e.clientY),d=resolveDrop(t),nodes=topSelected();ldrag.target=dropAllowed(nodes,d)?d:null;
-  document.querySelectorAll('.lrow.drop-into').forEach(r=>r.classList.remove('drop-into'));dropLine.hidden=true;
   if(!ldrag.target)return;
   if(d.top&&t.where==='into'){t.row.classList.add('drop-into');return;}
   const list=$('#layerList'),lb=list.getBoundingClientRect(),rb=t.row.getBoundingClientRect();
   dropLine.hidden=false;dropLine.style.top=((t.where==='above'?rb.top:rb.bottom)-lb.top+list.scrollTop-1)+'px';
   dropLine.style.left=(rb.left-lb.left+10+(d.top?(+(t.row.style.getPropertyValue('--depth'))+1)*14:+(t.row.style.getPropertyValue('--depth'))*14))+'px';});
 function endLayerDrag(e){if(!ldrag||e.pointerId!==ldrag.id)return;const g=ldrag;ldrag=null;document.body.classList.remove('ldragging');dropLine.hidden=true;
-  document.querySelectorAll('.lrow.drop-into').forEach(r=>r.classList.remove('drop-into'));
+  document.querySelectorAll('.lrow.drop-into,.lrow.drop-mask').forEach(r=>r.classList.remove('drop-into','drop-mask'));
+  if(g.moving&&g.maskTo){layerIntoMask(g.n,g.maskTo);return;}
   if(!g.moving){if(g.pendingSingle){selectOnly(g.pendingSingle);updateRowClasses();}return;}
   if(g.target)moveNodes(topSelected(),g.target);}
 window.addEventListener('pointerup',endLayerDrag);window.addEventListener('pointercancel',endLayerDrag);

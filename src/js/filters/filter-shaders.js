@@ -153,6 +153,13 @@ float bayer(ivec2 p){ int x=p.x&3,y=p.y&3; int m[16]=int[16](0,8,2,10,12,4,14,6,
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 c=texelFetch(uSrc,p,0); if(c.a<=1e-6){ o=c; return; } vec3 v=st(c)+(bayer(p)-0.5)*uDither; int bi=0; float bd=1e9;
   for(int i=0;i<64;i++){ if(i>=uN) break; vec3 d=v-uPal[i]; float e=dot(d,d); if(e<bd){ bd=e; bi=i; } } vec3 r=uPal[0]; for(int i=0;i<64;i++) if(i==bi) r=uPal[i]; o=vec4(r*c.a,c.a); }`,
   /* ---- mosaic: square cells of their average colour, with optional grout lines ---- */
+  /* repeat the image across x down; odd rows slide by uShift; each tile turned by a random angle up to uRot */
+  tile:`uniform sampler2D uSrc; uniform vec2 uN; uniform float uShift; uniform float uRot; uniform float uSeed; uniform int uFlip;
+float h2(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233))+uSeed*7.13)*43758.5453); }
+void main(){ vec2 sz=vec2(textureSize(uSrc,0)); vec2 t=gl_FragCoord.xy/sz*uN; float row=floor(t.y); t.x+=mod(row,2.0)*uShift; vec2 id=floor(t); vec2 l=fract(t)-0.5;
+  float a=(h2(id)*2.0-1.0)*uRot; float c=cos(a),s=sin(a); l=vec2(c*l.x-s*l.y,s*l.x+c*l.y);
+  if(uFlip==1){ if(h2(id+17.0)<0.5) l.x=-l.x; if(h2(id+31.0)<0.5) l.y=-l.y; }
+  o=texture(uSrc,fract(l+0.5)); }`,
   mosaic:`uniform sampler2D uSrc; uniform float uCell; uniform float uGrout; uniform vec4 uGC; uniform float uBevel;
 void main(){ vec2 s=vec2(textureSize(uSrc,0)),p=gl_FragCoord.xy; vec2 cell=floor(p/uCell); vec2 c0=cell*uCell;
   vec4 acc=vec4(0); float n=0.0; for(int y=0;y<8;y++) for(int x=0;x<8;x++){ vec2 q=c0+(vec2(x,y)+0.5)*uCell/8.0; if(q.x>=s.x||q.y>=s.y) continue; acc+=texture(uSrc,q/s); n+=1.0; }

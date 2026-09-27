@@ -108,6 +108,7 @@ select{background:var(--ground);border:1px solid var(--line-2);border-radius:5px
 .lrow.sel{background:color-mix(in srgb,var(--accent) 8%,transparent)}
 .lrow.on{background:var(--accent-soft)}
 .lrow.drop-into{box-shadow:inset 0 0 0 1.5px var(--accent)}
+.lrow.drop-mask .mthumb,.lrow.drop-mask .thumbs{box-shadow:0 0 0 2px var(--accent);border-radius:4px}
 .dropline{position:absolute;right:6px;height:2px;background:var(--accent);border-radius:1px;pointer-events:none}
 .dropline::before{content:'';position:absolute;left:-4px;top:-3px;width:8px;height:8px;border-radius:50%;border:2px solid var(--accent);background:var(--panel)}
 body.ldragging,body.ldragging *{cursor:grabbing!important}
