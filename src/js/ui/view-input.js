@@ -32,7 +32,7 @@ cv.addEventListener('pointerdown',e=>{
     const hit=hitText(ix,iy);if(hit){selectOnly(hit);renderLayers();ptr={mode:'tmove',id:e.pointerId,L:hit,sx:ix,sy:iy,ox:hit.text.x,oy:hit.text.y,moved:false};return;}
     if(!effVisible(doc.active||doc.root)&&doc.active){}createText(ix,iy);return;}
   if(ui.tool==='picker'||e.altKey){ptr={mode:'pick',id:e.pointerId};pickAt(ix,iy);return;}
-  const et=editTarget();if(!et){toast(doc.active?'A group is selected. Select a layer inside it, or click the group’s mask thumbnail to paint its mask.':'Select a layer to paint on.');return;}
+  const et=editTarget();if(!et){toast(doc.active&&doc.active.fx?'This is a filter layer: it has no pixels to paint on. Double-click its thumbnail to change its filters, or select a normal layer.':doc.active?'A group is selected. Select a layer inside it, or click the group’s mask thumbnail to paint its mask.':'Select a layer to paint on.');return;}
   if(!effVisible(et.node)&&!ui.viewMask){toast('The active layer (or its group) is hidden. Show it to paint on it.');return;}
   if(preview){toast('Apply or cancel the open filter first.');return;}
   if(!et.isMask&&(et.node.text||et.node.grad)){const g=!!et.node.grad;rasterizeText(et.node);toast(g?'Gradient converted to pixels so you can paint on it. Undo brings the editable gradient back.':'Text converted to pixels so you can paint on it. Undo brings the editable text back.');}

@@ -12,6 +12,9 @@ const MAP_DEFS={
   ao:{label:'Ambient occlusion',grey:true,def:1,blend:0},
   emis:{label:'Emissive',grey:false,def:null,blend:0},
   opac:{label:'Opacity',grey:true,def:1,blend:0}};
+const MAP_SHORT={base:'Col',rough:'Rgh',metal:'Met',height:'Hgt',normal:'Nrm',ao:'AO',emis:'Emi',opac:'Opa'};
+/* a layer whose base colour was never painted (made by a converter or painted only in other maps) */
+const isBlankBase=L=>!!L.blankBase;
 const MAP_ORDER=['base','rough','metal','height','normal','ao','emis','opac'];
 const MAP_TEMPLATES={hand:['base'],pbr:['base','rough','metal','height','normal']};
 function mapDepth(k){return k==='height'&&canFloat?16:doc.depth;}
@@ -41,7 +44,7 @@ function setEditMap(k,keepView){if(!doc.maps.includes(k))return;if(ui.mode==='an
   if(!keepView)doc.view=k;
   if(typeof chanRestricted==='function'&&chanRestricted())selectChannel(-1);
   changedAll();refreshMapsUI();buildBrushPanel();}
-function setView(v){doc.view=v;if(v!=='material'&&v!=='normal'&&v!==doc.map){setEditMap(v);return;}requestRender(true);refreshMapsUI();}
+function setView(v){doc.view=v;if(v!=='material'&&v!=='nfinal'&&v!==doc.map){setEditMap(v);return;}requestRender(true);refreshMapsUI();}
 
 /* ---- rendering one map ---- */
 /* layers of a list composited for map k onto a transparent image (for merges and groups) */
@@ -54,8 +57,8 @@ function setDocMaps(keys,label,defs){keys=MAP_ORDER.filter(k=>keys.includes(k)||
   const defB=Object.assign({},doc.mapDef),defA=Object.assign({},doc.mapDef,defs||{});
   if(removed.includes(doc.map))setEditMap('base');const stash=new Map();
   for(const L of paintLayers())for(const k of removed)if(L.maps&&L.maps[k]){stash.set(L.maps[k],[L,k]);delete L.maps[k];}
-  const apply=(ks,df)=>{doc.maps=ks.slice();doc.mapDef=Object.assign({},df);if(!doc.maps.includes(doc.map))setEditMap('base');if(!doc.maps.includes(doc.view)&&doc.view!=='material'&&doc.view!=='normal')doc.view=doc.map;
-    if((doc.view==='material'||doc.view==='normal')&&doc.maps.length<2)doc.view=doc.map;syncTargets();changedAll();refreshMapsUI();buildBrushPanel();};
+  const apply=(ks,df)=>{doc.maps=ks.slice();doc.mapDef=Object.assign({},df);if(!doc.maps.includes(doc.map))setEditMap('base');if(!doc.maps.includes(doc.view)&&doc.view!=='material'&&doc.view!=='nfinal')doc.view=doc.map;
+    if((doc.view==='material'||doc.view==='nfinal')&&doc.maps.length<2)doc.view=doc.map;syncTargets();changedAll();refreshMapsUI();buildBrushPanel();};
   let applied=true;apply(keys,defA);
   pushUndo({label:label||'Maps',refs:[],
     undo(){for(const [t,[L,k]] of stash)L.maps[k]=t;applied=false;apply(before,defB);},
@@ -73,7 +76,7 @@ function normalComposite(flipY,own){const hasH=doc.maps.includes('height'),hasN=
   for(const c of [h,n])if(c&&!c.own)release(c.t);return out;}
 function lightVec(){const a=doc.light.az*Math.PI/180,e=doc.light.el*Math.PI/180;return [Math.cos(e)*Math.cos(a),Math.cos(e)*Math.sin(a),Math.sin(e)];}
 function buildMaterialView(){const own=compOut;let out;
-  if(doc.view==='normal')out=normalComposite(false,own);
+  if(doc.view==='nfinal')out=normalComposite(false,own);
   else{const get=k=>doc.maps.includes(k)?mapComp(k,own):null;
     const base=get('base'),r=get('rough'),m=get('metal'),ao=get('ao'),em=get('emis'),nrm=normalComposite(false,own);
     out=acquireD(doc.depth);

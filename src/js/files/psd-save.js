@@ -14,7 +14,12 @@ function rleChannel(plane,W,H){const rows=[];let total=0;for(let y=0;y<H;y++){co
 async function encodePSD(){
   const W=doc.w,H=doc.h,b16=doc.depth===16,bits=b16?16:8,N=W*H,recs=[],empty=new Uint8Array(0);
   const emptyChans=()=>[-1,0,1,2].map(id=>({id,comp:0,data:empty}));
-  const encLayer=async L=>{const st=toStraight(readPremult(mapT(L,'base')),bits),chans=[];
+  /* a filter layer has no pixels: Photoshop gets what it produces from the layers under it (base colour) */
+  const fxPixels=(L,g,i)=>{const prev=pool;pool=auxFor(mapDepth('base')).pool;let base,out;
+    const cb=clipBaseOf(g.children,i);
+    if(cb){base=acquire();if(mapT(cb,'base'))blit(mapT(cb,'base'),base,0,0,W,H,0,0);else clearTarget(base);}else base=renderNodesMap(g.children.slice(0,i),'base');
+    out=L.fx.map==='base'?fxStackResult(L,base,'base'):base;if(out!==base)release(base);pool=prev;return out;};
+  const encLayer=async(L,g,i)=>{let T=mapT(L,'base'),tmp=null;if(L.fx){tmp=fxPixels(L,g,i);T=tmp;}const st=toStraight(readPremult(T),bits),chans=[];if(tmp)release(tmp);
     for(const [id,ci] of [[-1,3],[0,0],[1,1],[2,2]]){
       if(b16){const pl=new Uint8Array(N*2);for(let i=0,j=ci;i<N;i++,j+=4){pl[i*2]=st[j]>>8;pl[i*2+1]=st[j]&255;}chans.push({id,comp:2,data:await zlib(pl)});}
       else{const pl=new Uint8Array(N);for(let i=0,j=ci;i<N;i++,j+=4)pl[i]=st[j];chans.push({id,comp:1,data:rleChannel(pl,W,H)});}}
@@ -25,7 +30,7 @@ async function encodePSD(){
   const withMask=async(n,ch)=>{if(n.mask)ch.push(await encMask(n.mask));return ch;};
   const walkSave=async g=>{for(let i=0;i<g.children.length;i++){const n=g.children[i];
     if(n.type==='group'){recs.push({kind:'end',name:'</Layer group>',chans:emptyChans()});await walkSave(n);recs.push({kind:'group',n,name:n.name,chans:await withMask(n,emptyChans())});}
-    else recs.push({kind:'layer',n,name:n.name,clipped:!!clipBaseOf(g.children,i),chans:await withMask(n,await encLayer(n))});}};
+    else recs.push({kind:'layer',n,name:n.name,clipped:!!clipBaseOf(g.children,i),chans:await withMask(n,await encLayer(n,g,i))});}};
   await walkSave(psdRoot());
   const w=BW();
   w.str('8BPS');w.u16(1);for(let i=0;i<6;i++)w.u8(0);w.u16(b16?3:4);w.u32(H);w.u32(W);w.u16(bits);w.u16(3);

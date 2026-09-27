@@ -69,6 +69,32 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); vec4 c0=texel
   motion:`uniform sampler2D uSrc; uniform vec2 uDir; uniform float uLen;
 void main(){ vec2 s=vec2(textureSize(uSrc,0)),uv=gl_FragCoord.xy/s; vec4 a=vec4(0); float n=0.0;
   for(int i=-64;i<=64;i++){ float t=float(i)/64.0; a+=texture(uSrc,uv+uDir*t*uLen*0.5/s); n+=1.0; } o=a/n; }`,
+  box:`uniform sampler2D uSrc; uniform vec2 uDir; uniform int uR; uniform int uWrap;
+ivec2 wrapP(ivec2 p,ivec2 s,int w){ return w==1?((p%s)+s)%s:clamp(p,ivec2(0),s-1); }
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); vec4 a=vec4(0); ivec2 d=ivec2(uDir);
+  for(int i=-256;i<=256;i++){ if(i<-uR) continue; if(i>uR) break; a+=texelFetch(uSrc,wrapP(p+d*i,s,uWrap),0); } o=a/float(2*uR+1); }`,
+  /* radial: spin (around the centre) or zoom (towards it) */
+  radial:`uniform sampler2D uSrc; uniform vec2 uC; uniform float uAmt; uniform int uZoom;
+void main(){ vec2 s=vec2(textureSize(uSrc,0)),p=gl_FragCoord.xy,d=p-uC; vec4 a=vec4(0); float n=0.0;
+  for(int i=0;i<64;i++){ float t=(float(i)/63.0-0.5); vec2 q;
+    if(uZoom==1) q=uC+d*(1.0+t*uAmt); else { float ang=t*uAmt; float c=cos(ang),sn=sin(ang); q=uC+vec2(d.x*c-d.y*sn,d.x*sn+d.y*c); }
+    a+=texture(uSrc,q/s); n+=1.0; } o=a/n; }`,
+  /* lens blur: a camera-like out-of-focus blur; bright spots bloom into round or six-sided highlights */
+  lens:`uniform sampler2D uSrc; uniform float uR; uniform float uBoost; uniform float uThr; uniform int uShape; uniform float uRot;
+float inShape(vec2 q){ if(uShape==0) return 1.0; float a=atan(q.y,q.x)-uRot, r=length(q); float k=3.14159265/3.0; float m=cos(k*0.5)/cos(mod(a,k)-k*0.5); return r<=m?1.0:0.0; }
+void main(){ vec2 s=vec2(textureSize(uSrc,0)),p=gl_FragCoord.xy; vec4 acc=vec4(0); float ws=0.0;
+  for(int i=0;i<192;i++){ float f=(float(i)+0.5)/192.0, r=sqrt(f), ang=float(i)*2.39996323; vec2 q=vec2(cos(ang),sin(ang))*r; if(inShape(q)<0.5) continue;
+    vec4 c=texture(uSrc,(p+q*uR)/s); vec3 st=c.a>1e-6?c.rgb/c.a:vec3(0); float l=dot(st,vec3(0.2126,0.7152,0.0722));
+    float w=1.0+uBoost*pow(max(l-uThr,0.0)/max(1.0-uThr,1e-3),2.0)*8.0; acc+=c*w; ws+=w; }
+  o=acc/max(ws,1e-6); }`,
+  /* curvature straight from a normal map: how much the normals spread apart (ridges) or come together (cavities) */
+  ncurv:`uniform sampler2D uN; uniform int uWrap; uniform float uStr; uniform int uMode; uniform float uStep;
+ivec2 wrapP(ivec2 p,ivec2 s,int w){ return w==1?((p%s)+s)%s:clamp(p,ivec2(0),s-1); }
+vec2 nAt(ivec2 p,ivec2 s){ vec4 c=texelFetch(uN,wrapP(p,s,uWrap),0); return c.a>1e-6?c.rg/c.a*2.0-1.0:vec2(0); }
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uN,0); int k=int(uStep);
+  float dx=nAt(p+ivec2(k,0),s).x-nAt(p-ivec2(k,0),s).x, dy=nAt(p+ivec2(0,k),s).y-nAt(p-ivec2(0,k),s).y;
+  float c=(dx-dy)*uStr*2.0/uStep;
+  float v=uMode==1?clamp(c,0.0,1.0):uMode==2?1.0-clamp(-c,0.0,1.0):clamp(0.5+c*0.5,0.0,1.0); o=vec4(vec3(v),1.0); }`,
   highpass:`uniform sampler2D uSrc; uniform sampler2D uBlur; void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 s=texelFetch(uSrc,p,0),b=texelFetch(uBlur,p,0);
   if(s.a<=1e-6){ o=s; return; } vec3 r=clamp(s.rgb/s.a-(b.a>1e-6?b.rgb/b.a:vec3(0))+0.5,0.0,1.0); o=vec4(r*s.a,s.a); }`,
   /* ---- painterly ---- */
@@ -158,7 +184,7 @@ void main(){ vec2 per=vec2(max(1.0,floor(uScale+0.5))); vec2 p=gl_FragCoord.xy/u
   vec4 b=texelFetch(uSrc,ivec2(mod(p+s*0.5,s)),0); vec2 e=min(p,s-p)/(s*uW*0.5); float w=clamp(min(e.x,e.y),0.0,1.0); w=w*w*(3.0-2.0*w); o=mix(b,a,w); }`,
 };
 /* heavy filters are drawn in tiles, so no single GPU job runs long enough for Windows to reset the driver */
-const HEAVY=new Set(['surface','kuwa','akuwa','vote','motion','quant','pal']);
+const HEAVY=new Set(['box','radial','lens','surface','kuwa','akuwa','vote','motion','quant','pal']);
 function runTiled(prog,target,u){const T=512;gl.enable(gl.SCISSOR_TEST);
   for(let y=0;y<target.h;y+=T)for(let x=0;x<target.w;x+=T){gl.scissor(x,y,Math.min(T,target.w-x),Math.min(T,target.h-y));run(prog,target,u);gl.flush();}
   gl.disable(gl.SCISSOR_TEST);}

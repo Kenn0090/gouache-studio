@@ -3,21 +3,21 @@
    filters change. Material shows every map lit together; Normal shows the normal built from height. */
 const MAP_SWATCH={base:null,normal:'#8080ff',emis:'#000'};
 function mapSwatch(k){const s=el('span',{class:'mswatch'});
-  if(k==='base')s.classList.add('rainbow');else if(k==='material')s.classList.add('mat');else if(MAP_SWATCH[k])s.style.background=MAP_SWATCH[k];
+  if(k==='nfinal')k='normal';if(k==='base')s.classList.add('rainbow');else if(k==='material')s.classList.add('mat');else if(MAP_SWATCH[k])s.style.background=MAP_SWATCH[k];
   else{const v=Math.round(mapDefault(k)[0]*255);s.style.background='rgb('+v+','+v+','+v+')';}return s;}
 function refreshMapsUI(){const list=$('#mapList');if(!list)return;list.replaceChildren();const anim=ui.mode==='anim';
   const rows=doc.maps.map(k=>[k,MAP_DEFS[k].label]);
   if(doc.maps.length>1)rows.push(['material','Material (lit)']);
-  if(doc.maps.includes('height')||doc.maps.includes('normal'))rows.push(['normal','Normal (final)']);
+  if(doc.maps.includes('height')||doc.maps.includes('normal'))rows.push(['nfinal','Normal (final)']);
   rows.forEach(([k,label],i)=>{const on=doc.view===k,editing=k===doc.map,dis=anim&&k!=='base';
     const row=el('div',{class:'crow2 mrow'+(on?' on':'')+(dis?' dis':''),role:'option','aria-selected':String(on),tabindex:'0',title:dis?'Animation mode paints the base colour map only.':
-      k==='material'?'See all maps together, lit. You keep painting '+MAP_DEFS[doc.map].label.toLowerCase()+'.':k==='normal'?'The normal map as exported: built from height plus any normal content. You keep painting '+MAP_DEFS[doc.map].label.toLowerCase()+'.':
+      k==='material'?'See all maps together, lit. You keep painting '+MAP_DEFS[doc.map].label.toLowerCase()+'.':k==='nfinal'?'The normal map as exported: built from height plus any normal content. You keep painting '+MAP_DEFS[doc.map].label.toLowerCase()+'.':
       MAP_DEFS[k].noPaint?'Loaded normal detail. Painting here edits it directly; usually you paint Height instead.':'View and paint '+label.toLowerCase()+(MAP_DEFS[k].hint?'. '+MAP_DEFS[k].hint:'')},
       mapSwatch(k),el('div',{class:'lname',text:label}),editing&&!on?el('span',{class:'dim',text:'painting'}):null,i<9&&!dis?el('kbd',{text:'Shift+Alt+'+(i+1)}):null);
     const go=()=>{if(dis)return;setView(k);};
     row.addEventListener('click',go);row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});list.append(row);});
   const ctl=$('#mapCtl');ctl.replaceChildren();
-  if(doc.maps.includes('height')&&!anim)ctl.append(makeSlider({id:'nrmStr',label:'Bump',min:0,max:32,step:.5,value:doc.nrmStr,fmt:v=>v.toFixed(1),onInput:v=>{doc.nrmStr=v;if(doc.view==='material'||doc.view==='normal')requestRender(true);}}).el);
+  if(doc.maps.includes('height')&&!anim)ctl.append(makeSlider({id:'nrmStr',label:'Bump',min:0,max:32,step:.5,value:doc.nrmStr,fmt:v=>v.toFixed(1),onInput:v=>{doc.nrmStr=v;if(doc.view==='material'||doc.view==='nfinal')requestRender(true);}}).el);
   if(doc.view==='material'&&!anim)ctl.append(
     makeSlider({id:'lAz',label:'Light angle',min:0,max:360,step:1,value:doc.light.az,fmt:v=>Math.round(v)+'°',onInput:v=>{doc.light.az=v;requestRender(true);}}).el,
     makeSlider({id:'lEl',label:'Light height',min:5,max:90,step:1,value:doc.light.el,fmt:v=>Math.round(v)+'°',onInput:v=>{doc.light.el=v;requestRender(true);}}).el);
@@ -26,7 +26,7 @@ function refreshMapsUI(){const list=$('#mapList');if(!list)return;list.replaceCh
   const st=$('#stMap');if(st){st.hidden=doc.maps.length<2;st.textContent='Map: '+MAP_DEFS[doc.map].label+(doc.view!==doc.map?' (viewing '+(doc.view==='material'?'material':'normal')+')':'');}
   if(typeof renderLayers==='function'&&doc.active)$('#lModeName').textContent=modeLabel(mapModeOf(doc.active,doc.map));}
 function mapKeyNav(e){if(!(e.shiftKey&&e.altKey)||e.ctrlKey||e.metaKey)return false;const n=+e.code.replace('Digit','');if(!(n>=1&&n<=9))return false;
-  const rows=[...doc.maps];if(doc.maps.length>1)rows.push('material');if(doc.maps.includes('height')||doc.maps.includes('normal'))rows.push('normal');
+  const rows=[...doc.maps];if(doc.maps.length>1)rows.push('material');if(doc.maps.includes('height')||doc.maps.includes('normal'))rows.push('nfinal');
   const k=rows[n-1];if(!k)return false;e.preventDefault();if(ui.mode==='anim'&&k!=='base')return true;setView(k);return true;}
 /* Maps dialog: choose which maps the document has and what unpainted areas default to */
 function dlgMaps(){if(ui.mode==='anim'){toast('Switch to paint mode to change maps.');return;}

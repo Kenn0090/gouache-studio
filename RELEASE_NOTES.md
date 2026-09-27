@@ -1,20 +1,19 @@
-Converters and filters.
+Filter layers, new blurs, and fixes.
 
-**Maps menu: make one map from another.** Each converter previews live and adds a new layer, so you can fade it, mask it or paint over it:
-- **Height, Normal or Roughness from base colour.** Sliders for fine detail, large shapes, contrast and invert.
-- **Ambient occlusion from height:** crevices get darker.
-- **Smooth curvature from height:** edges light, cavities dark. It can go to a base colour layer (for edge highlights and wear), a roughness layer, or a selection.
-- **Height from normal:** rebuilds the shape a loaded normal map describes.
-- **Flip normal green** (DirectX ↔ OpenGL).
-- **Document maps…** moved here. A converter adds its target map for you if the document doesn't have it yet.
+**Filter layers.** Filters and adjustments you can change at any time:
+- **+ Filter** in the Layers panel, or **Layer › New filter layer…**, adds a layer that changes everything under it. It holds a **stack** of filters that apply from top to bottom. Each filter can be turned off, reordered or removed.
+- **Double-click the thumbnail** of a filter layer to change its filters. It has its own opacity, blend mode and mask like any layer.
+- **Clip it to a layer** ("Clip to layer below") and it changes only that layer, like a smart filter. Painting on that layer shows the filters as you paint.
+- **Every filter dialog has "Keep editable".** It adds a filter layer clipped to the layer you were filtering, instead of changing its pixels.
+- **Patterns** (clouds, cells) can live in a filter layer, so you can re-edit them later.
+- **Live converters.** Tick **Keep live** in Curvature, AO, Height, Normal or Roughness, or add them to a filter layer. The result updates itself when you paint the source map. Slow filters (painterly, oil paint, lens blur, surface blur, live converters) catch up when each stroke ends, so painting stays smooth.
+- **Merge down** bakes a filter layer into the layer under it.
+- **.gouache files** keep filter layers editable. **PSD export** turns them into their pixels.
 
-**Adjust:** **Levels** (Ctrl+L, with histogram and Auto), **Curves** (Ctrl+M, per channel, with presets), **Hue / Saturation** (with Colorize), **Gradient map**, **Desaturate** (Ctrl+Shift+U), **Threshold** and **Quantize** (reduce to 2–64 colours taken from the image, with dithering).
+**New:**
+- **Blurs:** Box blur, Radial blur (spin or zoom), and Lens blur, a camera-style blur where bright spots bloom into round or six-sided highlights.
+- **Maps › Curvature from normal** and **Ambient occlusion from normal.**
 
-**Filter:**
-- **Blur and sharpen:** Surface blur (keeps edges), Motion blur, High pass.
-- **Artistic:** Oil paint, Painterly (strokes that follow the shapes), Cutout, Mosaic (with grout and bevel).
-- **Stylize:** Emboss, Find edges.
-- **Noise and patterns:** Add noise, Render clouds, Render cells. Clouds and cells tile seamlessly.
-- **Tiling:** Offset, Make seamless.
-
-All of them preview live, work on the map you're viewing, and stay inside the selection. Heavy filters are drawn in pieces so large images don't freeze the graphics driver.
+**Fixed:**
+- **The Normal map row could not be edited.** Clicking it, or making a layer with *Normal from base colour*, showed the finished normal while you kept painting base colour. It now switches to the Normal map properly.
+- **Easier to find converted layers:** layer rows now show which maps each layer has content in, or "empty in …" for the map you're viewing.

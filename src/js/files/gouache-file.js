@@ -19,6 +19,7 @@ async function encodeGouache(){const blobs=[];let off=0;
   const mask=async n=>n.mask?{en:n.mask.enabled,img:await put(n.mask.target,true)}:null;
   const node=async n=>{const base={name:n.name,vis:n.visible,op:n.opacity,mode:n.mode,mask:await mask(n)};
     if(n.type==='group'){const kids=[];for(const c of n.children)kids.push(await node(c));return Object.assign(base,{t:'G',open:n.open,kids});}
+    if(n.fx)return Object.assign(base,{t:'F',clip:n.clip,mapModes:n.mapModes||{},fx:{map:n.fx.map,stack:fxCleanStack(n.fx.stack)}});
     const maps={};for(const k of mapKeysOf(n)){const r=await put(mapT(n,k));if(r)maps[k]=r;}
     return Object.assign(base,{t:'L',clip:n.clip,lock:n.lockAlpha,mapModes:n.mapModes||{},maps,text:n.text?cloneText(n.text):undefined,grad:n.grad||undefined,hold:n.frame?n.hold:undefined});};
   const R=paintRoot(),kids=[];for(const c of R.children){kids.push(await node(c));await tick();}
@@ -49,6 +50,7 @@ async function openGouache(buf,name){if(!isGouache(buf))throw new Error('This is
     writeRegion(t,x,y,w,h,new Uint8Array(out.buffer));};
   const mk=async(o,parent)=>{let n;
     if(o.t==='G'){n=newGroupObj(o.name);n.open=o.open!==false;}
+    else if(o.t==='F'){n=newFxLayerObj(o.name,(o.fx.stack||[]).filter(it=>it.conv?CONVERTERS[it.conv]:FX[it.id]),o.fx.map);n.clip=!!o.clip;n.mapModes=Object.assign({},o.mapModes||{});}
     else{n=newLayerObj(o.name);n.clip=!!o.clip;n.lockAlpha=!!o.lock;n.mapModes=Object.assign({},o.mapModes||{});
       for(const k in o.maps||{}){if(k!=='base'&&!doc.maps.includes(k))continue;const t=k==='base'?n.maps.base:ensureMapTarget(n,k);await img(o.maps[k],t);}
       if(o.text)n.text=o.text;if(o.grad)n.grad=o.grad;}
@@ -68,6 +70,6 @@ async function openGouache(buf,name){if(!isGouache(buf))throw new Error('This is
     doc.anim.tags=(an.tags||[]).filter(t=>frames[t.from]&&frames[t.to]).map(t=>({name:t.name,from:frames[t.from],to:frames[t.to],mode:t.mode||'loop',color:t.color||TAG_COLORS[0]}));
     if(an.bg)ui.animBg=an.bg;animMode=an.mode==='anim';}
   if(head.map&&head.map!=='base'&&doc.maps.includes(head.map))setEditMap(head.map);
-  if(head.view&&head.view!==doc.map&&(head.view==='material'||head.view==='normal'))doc.view=head.view;
+  if(head.view&&head.view!==doc.map&&(head.view==='material'||head.view==='nfinal'||head.view==='normal'))doc.view=head.view==='normal'?'nfinal':head.view;
   changedAll();updateStatus();fit();refreshMapsUI();buildBrushPanel();if(animMode)setMode('anim',true);
   toast('Opened “'+(head.name||name)+'”.');}

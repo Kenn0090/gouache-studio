@@ -52,11 +52,17 @@ function renderLayers(){
     eye.addEventListener('click',e=>{e.stopPropagation();n.visible=!n.visible;renderLayers();requestRender(true);});
     const meta=[];if(grp)meta.push(n.mode<0?'pass':MODES[n.mode]);else{const mm=mapModeOf(n,doc.map);if(mm!==(doc.map==='base'?0:MAP_DEFS[doc.map].blend))meta.push(MODES[mm].replace(' (Add)',''));}
     if(n.text)meta.unshift('text');if(n.grad)meta.unshift('gradient');if(n.opacity<1)meta.push(Math.round(n.opacity*100)+'%');if(n.lockAlpha)meta.push('lock');
+    /* which maps this layer has something in (so a layer painted only in Height is easy to find) */
+    if(n.fx){meta.length=0;const mm=mapModeOf(n,n.fx.map);if(mm)meta.push(MODES[mm].replace(' (Add)',''));if(n.opacity<1)meta.push(Math.round(n.opacity*100)+'%');
+      meta.unshift(n.fx.stack.filter(it=>it.on!==false).map(fxItemTitle).join(', ')||'no filters');if(doc.maps.length>1)meta.push(MAP_SHORT[n.fx.map]);}
+    else if(!grp&&doc.maps.length>1&&ui.mode!=='anim'){const ks=mapKeysOf(n).filter(k=>doc.maps.includes(k)&&!(k==='base'&&isBlankBase(n)));
+      if(!ks.includes(doc.map))meta.push('empty in '+MAP_DEFS[doc.map].label.toLowerCase());if(ks.length)meta.push(ks.map(k=>MAP_SHORT[k]).join(' '));}
     const name=el('div',{class:'lname',text:(clipped?'↳ ':'')+n.name,title:'Double-click to rename'});
     let icon;
     if(grp){icon=el('button',{class:'caret'+(n.open?' open':''),'aria-label':(n.open?'Collapse ':'Expand ')+n.name,'aria-expanded':String(n.open)});icon.innerHTML=folderSvg;
       icon.addEventListener('click',e=>{e.stopPropagation();n.open=!n.open;renderLayers();});icon.addEventListener('pointerdown',e=>e.stopPropagation());}
-    else{icon=n.thumb;icon.classList.toggle('edit',!!(n.mask&&!n.editMask&&n===doc.active));}
+    else{icon=n.thumb;icon.classList.toggle('edit',!!(n.mask&&!n.editMask&&n===doc.active));icon.classList.toggle('fxthumb',!!n.fx);
+      if(n.fx){icon.title='Filter layer: double-click to change its filters';icon.ondblclick=e=>{e.stopPropagation();selectOnly(n);updateRowClasses();fxEditor(n);};}else{icon.ondblclick=null;icon.title='';}}
     const thumbs=el('div',{class:'thumbs'},icon);
     if(n.mask){const mt=n.mask.thumb;mt.className='mthumb'+(n.editMask&&n===doc.active?' edit':'')+(n.mask.enabled?'':' off');mt.title='Mask: click to edit, Shift+click to turn off or on, Alt+click to view it';thumbs.append(mt);}
     icon=thumbs;
@@ -146,7 +152,8 @@ function cmdGroup(){const tops=topSelected();if(!tops.length)return;
   toast('Grouped '+tops.length+' item'+(tops.length===1?'':'s')+'.');}
 function cmdUngroup(){const G=doc.active;if(!G||G.type!=='group'){toast('Select a group to ungroup.');return;}
   structOp('Ungroup',()=>{const p=G.parent,i=p.children.indexOf(G),ch=G.children.slice();detachNode(G);p.children.splice(i,0,...ch);ch.forEach(c=>c.parent=p);doc.sel=new Set(ch);doc.active=ch[ch.length-1]||p.children[Math.max(0,i-1)]||null;});}
-function cloneNode(n){if(n.type==='layer'){const L=newLayerObj(n.name+' copy');Object.assign(L,{opacity:n.opacity,mode:n.mode,clip:n.clip,lockAlpha:n.lockAlpha,visible:n.visible,mask:cloneMask(n.mask),text:n.text?cloneText(n.text):null,grad:n.grad?cloneGrad(n.grad):null});for(const k of mapKeysOf(n))blit(mapT(n,k),ensureMapTarget(L,k),0,0,doc.w,doc.h,0,0);L.mapModes=Object.assign({},n.mapModes);L.target=L.maps[doc.map]||emptyFor(mapDepth(doc.map));if(L.text)L.text.bbox=layoutText(L.text);return L;}
+function cloneNode(n){if(n.type==='layer'&&n.fx){const L=newFxLayerObj(n.name+' copy',JSON.parse(JSON.stringify(fxCleanStack(n.fx.stack))),n.fx.map);Object.assign(L,{opacity:n.opacity,mode:n.mode,clip:n.clip,visible:n.visible,mask:cloneMask(n.mask)});L.mapModes=Object.assign({},n.mapModes);return L;}
+  if(n.type==='layer'){const L=newLayerObj(n.name+' copy');Object.assign(L,{opacity:n.opacity,mode:n.mode,clip:n.clip,lockAlpha:n.lockAlpha,visible:n.visible,mask:cloneMask(n.mask),text:n.text?cloneText(n.text):null,grad:n.grad?cloneGrad(n.grad):null});for(const k of mapKeysOf(n))blit(mapT(n,k),ensureMapTarget(L,k),0,0,doc.w,doc.h,0,0);L.mapModes=Object.assign({},n.mapModes);L.target=L.maps[doc.map]||emptyFor(mapDepth(doc.map));if(L.text)L.text.bbox=layoutText(L.text);return L;}
   const G=newGroupObj(n.name+' copy');Object.assign(G,{opacity:n.opacity,mode:n.mode,visible:n.visible,open:n.open,mask:cloneMask(n.mask)});for(const c of n.children){const cc=cloneNode(c);cc.name=c.name;insertNode(cc,G);}return G;}
 function cmdDuplicate(){const tops=topSelected();if(!tops.length)return;
   structOp('Duplicate',()=>{const clones=[];for(const n of tops){const c=cloneNode(n);insertNode(c,n.parent,n.parent.children.indexOf(n)+1);clones.push(c);}doc.sel=new Set(clones);doc.active=clones[clones.length-1];});}
@@ -164,6 +171,12 @@ function mergedLayer(name,list,props,render){const M=newLayerObj(name);Object.as
 function cmdMergeDown(){const L=doc.active;if(!isLayer(L))return;const p=L.parent,i=p.children.indexOf(L),lower=p.children[i-1];
   if(!isLayer(lower)){toast(lower?'The item below is a group. Use Merge group on it first.':'There is no layer below to merge into.');return;}
   const clipped=clipBaseOf(p.children,i)===lower;
+  if(isFx(L)){/* bake the filters into the layer below */
+    const M=mergedLayer(lower.name,[lower],{opacity:lower.opacity,mode:lower.mode,visible:lower.visible,clip:lower.clip,lockAlpha:lower.lockAlpha,mask:cloneMask(lower.mask)},k=>{
+      if(!hasMap(lower,k))return null;const d=mapDepth(k),prev=pool;pool=auxFor(d).pool;const B=acquire();blit(mapT(lower,k),B,0,0,doc.w,doc.h,0,0);
+      const R=k===L.fx.map&&L.visible?fxApplyLayer(L,B,k,maskTexOf(L)):B;if(R!==B)release(B);pool=prev;return R;});
+    M.mapModes=Object.assign({},lower.mapModes);structOp('Merge filter down',()=>{const at=p.children.indexOf(lower);detachNode(L);detachNode(lower);insertNode(M,p,at);selectOnly(M);});return;}
+  
   const M=mergedLayer(lower.name,[L,lower],{opacity:lower.opacity,mode:lower.mode,visible:lower.visible,clip:lower.clip,lockAlpha:lower.lockAlpha,mask:cloneMask(lower.mask)},k=>{
     const d=mapDepth(k),E=emptyFor(d),LT=hasMap(L,k)?mapT(L,k):E,BT=hasMap(lower,k)?mapT(lower,k):E,R=acquireD(d);
     run(P.comp,R,{uBase:BT.tex,uLayer:LT.tex,uStrokeTex:strokeT.tex,uMask:clipped?mapT(lower,'base').tex:dummy,uUseMask:clipped,uLMask:maskTexOf(L)||dummy,uUseLMask:!!maskTexOf(L),uMode:{int:mapModeOf(L,k)},uOpacity:L.visible?L.opacity:0,uStroke:{int:0},uStrokeColor:[0,0,0],uStrokeOpacity:0,uLockAlpha:false});return R;});
