@@ -42,6 +42,8 @@
     "filters/converters",
     "filters/filters",
     "filters/fx-layers",
+    "view3d/mesh",
+    "view3d/view3d",
     "files/abr",
     "ui/prefs",
     "ui/perf",

@@ -9,7 +9,6 @@ mod files;
 mod undo_spill;
 mod updates;
 
-use tauri::Manager;
 
 #[tauri::command]
 fn set_title(window: tauri::WebviewWindow, title: String) -> Result<(), String> {
@@ -33,7 +32,19 @@ pub fn run() {
         .setup(|app| {
             // Start each session with an empty undo spill folder.
             undo_spill::reset(&app.handle());
-            if let Some(w) = app.get_webview_window("main") {
+            // The main window is built here (not from the config alone) so that the 3D view can
+            // pop out into its own window: window.open("about:blank") from the page is allowed and
+            // gets a plain window the page draws into. Anything else is refused.
+            if let Some(cfg) = app.config().app.windows.iter().find(|w| w.label == "main").cloned() {
+                let w = tauri::WebviewWindowBuilder::from_config(app.handle(), &cfg)?
+                    .on_new_window(|url, _features| {
+                        if url.as_str() == "about:blank" {
+                            tauri::webview::NewWindowResponse::Allow
+                        } else {
+                            tauri::webview::NewWindowResponse::Deny
+                        }
+                    })
+                    .build()?;
                 let _ = w.set_title("Gouache Studio");
             }
             Ok(())

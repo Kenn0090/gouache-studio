@@ -50,9 +50,9 @@ async function pickFile(m){if(platform.isDesktop){try{const p=await platform.ope
   pickFileWeb(m);}
 function pickFileWeb(m){fileMode=m;const f=$('#fileIn');f.accept=m==='font'?'.ttf,.otf,.woff,.woff2':m==='abr'?'.abr':(m==='open'?'.gouache,':'')+'.psd,.png,.jpg,.jpeg,.webp,.gif,.bmp,.tga,.dds,.tif,.tiff,.abr,image/*';f.value='';f.click();}
 $('#fileIn').addEventListener('change',e=>{const f=e.target.files[0];if(f)handleFile(f,fileMode==='abr'||fileMode==='font'?'open':fileMode);});
-stage.addEventListener('dragover',e=>{if([...e.dataTransfer.types].includes('Files')){e.preventDefault();$('#dropHint').hidden=false;}});
-stage.addEventListener('dragleave',e=>{if(e.target===stage||!stage.contains(e.relatedTarget))$('#dropHint').hidden=true;});
-stage.addEventListener('drop',e=>{e.preventDefault();$('#dropHint').hidden=true;const f=e.dataTransfer.files[0];if(f)handleFile(f,'place');});
+$('#work').addEventListener('dragover',e=>{if([...e.dataTransfer.types].includes('Files')){e.preventDefault();$('#dropHint').hidden=false;}});
+$('#work').addEventListener('dragleave',e=>{if(e.target===$('#work')||!$('#work').contains(e.relatedTarget))$('#dropHint').hidden=true;});
+$('#work').addEventListener('drop',e=>{e.preventDefault();$('#dropHint').hidden=true;const f=e.dataTransfer.files[0];if(f)handleFile(f,'place');});
 /* paste: our own copied pixels (the clipboard holds a marker for them), else an image from another app */
 document.addEventListener('paste',e=>{if(isTypingTarget(e.target))return;const cd=e.clipboardData,txt=cd?cd.getData('text/plain'):'';
   if(clip&&txt===clip.marker){e.preventDefault();pasteClip();return;}

@@ -1,7 +1,7 @@
 /* ================= Rendering ================= */
 function requestRender(comp){if(comp)dirtyComp=true;if(!raf)raf=requestAnimationFrame(frame);}
 const perf={on:false,frames:[],worst:null,last:0};
-function frame(){raf=0;const t0=performance.now();let tc=t0;if(dirtyComp){composite();dirtyComp=false;tc=performance.now();}drawView();const tv=performance.now();flushThumbs();if(tedit)positionEditor();
+function frame(){raf=0;const t0=performance.now();let tc=t0;if(dirtyComp){composite();dirtyComp=false;tc=performance.now();}drawView();drawUVOverlay();draw3D();const tv=performance.now();flushThumbs();if(tedit)positionEditor();
   if(perf.on)perfFrame(t0,tc-t0,tv-tc,performance.now()-tv);}
 let maskOverride=new Map();
 function maskTexOf(n){if(!n.mask||!n.mask.enabled)return null;return maskOverride.get(n)||n.mask.target.tex;}
@@ -55,8 +55,8 @@ function composite(){if(compOut)release(compOut);maskOverride=new Map();const tm
   if(preview&&!preview.off&&preview.isMask)maskOverride.set(preview.L,previewT.tex);
   {const acc=acquire();clearTarget(acc,ui.mode==='anim'?[0,0,0,0]:mapDefault(doc.map));compOut=compositeList(doc.root.children,acc);}
   if(ui.mode!=='anim'&&(doc.view==='material'||doc.view==='nfinal'))buildMaterialView();compOut.mipDirty=true;tmp.forEach(release);maskOverride=new Map();
-  if(ui.mode==='anim'){buildOnion();if(stroke)liveFrameUpdate();}else if(onionT){release(onionT);onionT=null;}}
-function dprNow(){return cv.width/Math.max(1,stage.clientWidth);}
+  if(ui.mode==='anim'){buildOnion();if(stroke)liveFrameUpdate();}else if(onionT){release(onionT);onionT=null;}v3Changed();}
+function dprNow(){return cv.height/Math.max(1,stage.clientHeight);}
 function viewSource(){const A=doc.active;if(ui.viewMask&&A&&A.mask){
     if(stroke&&stroke.L.maskObj===A.mask&&maskViewLive)return {t:maskViewT,mask:true};
     if(preview&&!preview.off&&preview.isMask&&preview.L===A)return {t:previewT,mask:true};return {t:A.mask.target,mask:true};}

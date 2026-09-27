@@ -15,7 +15,7 @@ Test builds of every change are on the **Actions** tab (download `gouache-studio
 3. ~~Material maps and game-engine export presets~~ (0.6)
 4. ~~Converters and filters~~ (0.7)
 5. ~~Filter layers~~ (0.8)
-6. 3D viewer
+6. ~~3D viewer~~ (0.9)
 7. Baker
 8. Cage / skew painting
 9. Paint on the model

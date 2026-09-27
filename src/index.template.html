@@ -27,12 +27,16 @@
     <div class="mini-sw" title="Foreground / background (X swaps)"><span class="f" id="miniFG"></span><span class="b" id="miniBG"></span></div>
   </aside>
 
-  <main class="stage" id="stage">
+  <main class="work" id="work">
     <canvas id="gl"></canvas>
+    <div class="stage" id="stage">
     <div id="brushCursor" hidden></div>
     <div class="hint" id="hint"><b>B</b> brush &middot; <b>E</b> eraser &middot; <b>S</b> blend &middot; <b>Alt</b> pick color &middot; <b>Space</b> pan &middot; wheel zoom &middot; <b>[ ]</b> size &middot; <b>V</b> move &middot; <b>G</b> gradient &middot; <b>O</b> dodge &middot; <b>Ctrl+T</b> transform &middot; <b>C</b> crop &middot; <b>M L W</b> select &middot; <b>Q</b> quick mask &middot; <b>T</b> text &middot; <b>Shift+T</b> tile &middot; <b>Ctrl+S</b> save</div>
     <div id="toast" hidden role="status"></div>
     <div id="dropHint" hidden>Drop an image to place it as a new layer</div>
+    </div>
+    <div id="split3d" hidden role="separator" aria-orientation="vertical" aria-label="Resize the 3D view" tabindex="0"></div>
+    <section id="pane3d" hidden aria-label="3D view"></section>
   </main>
 
   <section id="timeline" aria-label="Animation timeline"></section>

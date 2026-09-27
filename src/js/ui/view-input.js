@@ -1,5 +1,6 @@
 /* ================= View + input ================= */
-function resizeGL(){const d=Math.min(window.devicePixelRatio||1,2);const w=Math.max(1,Math.round(stage.clientWidth*d)),h=Math.max(1,Math.round(stage.clientHeight*d));if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}requestRender();}
+const work=$('#work');
+function resizeGL(){const d=Math.min(window.devicePixelRatio||1,2);const w=Math.max(1,Math.round(work.clientWidth*d)),h=Math.max(1,Math.round(work.clientHeight*d));if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}requestRender();}
 function fit(){const W=stage.clientWidth,H=stage.clientHeight,pad=doc.wrap?90:48;view.zoom=clamp(Math.min((W-pad)/doc.w,(H-pad)/doc.h),.02,32);view.x=(W-doc.w*view.zoom)/2;view.y=(H-doc.h*view.zoom)/2;updateStatus();refreshCursor();requestRender();}
 function actual(){const W=stage.clientWidth,H=stage.clientHeight;view.zoom=1;view.x=Math.round((W-doc.w)/2);view.y=Math.round((H-doc.h)/2);updateStatus();refreshCursor();requestRender();}
 function zoomAt(f,sx,sy){const z=clamp(view.zoom*f,.02,64),k=z/view.zoom;view.x=sx-(sx-view.x)*k;view.y=sy-(sy-view.y)*k;view.zoom=z;updateStatus();refreshCursor();requestRender();}
@@ -67,13 +68,14 @@ cv.addEventListener('pointerup',endPtr);cv.addEventListener('pointercancel',endP
 cv.addEventListener('pointerleave',()=>{if(!ptr){lastPos=null;bc.hidden=true;}});
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 cv.addEventListener('dblclick',e=>{if(ui.tool==='crop'&&crop){const [sx,sy]=stageXY(e);if(cropHit(sx,sy).type==='move')cropApply();}else if(xf&&!xf.move&&!xf.warp){const [sx,sy]=stageXY(e);const h=xfHit(sx,sy);if(h&&h.type==='move')xfCommit();}});
-stage.addEventListener('wheel',e=>{e.preventDefault();const r=stage.getBoundingClientRect();const dy=e.deltaY*(e.deltaMode===1?16:1);zoomAt(Math.exp(-dy*(e.ctrlKey?.01:.0015)),e.clientX-r.left,e.clientY-r.top);},{passive:false});
+work.addEventListener('wheel',e=>{e.preventDefault();const r=stage.getBoundingClientRect();const dy=e.deltaY*(e.deltaMode===1?16:1);zoomAt(Math.exp(-dy*(e.ctrlKey?.01:.0015)),e.clientX-r.left,e.clientY-r.top);},{passive:false});
 
 window.addEventListener('keydown',e=>{
   const t=e.target,tag=(t.tagName||'').toLowerCase();const typing=(tag==='input'&&!['range','checkbox','radio','button'].includes(t.type))||tag==='select'||tag==='textarea';
   if(e.key==='Escape'){if(openName){closeMenu();return;}if(!modal.hidden){$('#dlgCancel').click();return;}}
   if(!modal.hidden||typing)return;
   const m=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();
+  if(e.key==='F3'){e.preventDefault();toggle3D();return;}
   if(xfKeys(e,m,k)||cropKeys(e))return;
   if(m&&k==='t'){e.preventDefault();freeTransform();return;}
   if(selKeys(e,m,k))return;
@@ -97,6 +99,6 @@ window.addEventListener('keydown',e=>{
 });
 window.addEventListener('keyup',e=>{if(e.code==='Space'){spaceDown=false;if(ui.tool!=='hand')stage.classList.remove('grab');refreshCursor();}});
 window.addEventListener('blur',()=>{spaceDown=false;stage.classList.toggle('grab',ui.tool==='hand');});
-new ResizeObserver(()=>{resizeGL();drawSV();}).observe(stage);
+new ResizeObserver(()=>{resizeGL();drawSV();}).observe(stage);new ResizeObserver(()=>resizeGL()).observe(work);
 new ResizeObserver(()=>drawSV()).observe(svC);
 cv.addEventListener('webglcontextlost',e=>{e.preventDefault();toast('The GPU context was lost. Reload the page to continue.');});
