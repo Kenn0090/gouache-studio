@@ -13,6 +13,7 @@
 | L | Lasso (Shift+L switches freehand / polygon) |
 | W | Magic wand |
 | C | Crop |
+| K | Cage |
 | T | Text |
 | I, or hold Alt | Eyedropper |
 | H, or hold Space | Hand (pan) |
@@ -23,6 +24,8 @@
 | [ and ] | Smaller / larger brush |
 | X | Swap foreground and background colours |
 | D | Default colours (black and white) |
+| Shift+X | Left–right symmetry on / off |
+| Shift (while painting inside a cage) | Follow the cage's lines |
 | Alt+Backspace (Alt+Del) | Fill with foreground colour (on the active layer or inside the selection) |
 | Backspace / Del | Clear (delete the selection's contents, or the whole layer) |
 
@@ -74,6 +77,7 @@
 | Ctrl+0 / Ctrl+1 | Fit on screen / actual pixels |
 | Shift+T | Tile mode |
 | F3 | 3D view |
+| F | Flat cage view (F or Esc to go back) |
 | Shift+Alt+1…9 | Switch maps (Maps panel order) |
 | Alt+2…6 | Channels: RGB, red, green, blue, alpha |
 

@@ -54,7 +54,7 @@ function xfPointerMove(e,ix,iy){const p=ptr,h=p.hit,R=xfLocalRect(),dx=ix-p.m0[0
 function xfPointerUp(){ptr=null;xfRender(false);drawXfOverlay();xfPanelSync();}
 
 /* ---- overlay drawing ---- */
-function drawXfOverlay(){if(!xf||xf.move){if(typeof crop!=='undefined'&&crop){drawCropOverlay();return;}const g=typeof drawGradOverlay==='function'?drawGradOverlay():'';if(g){xfOv.innerHTML=g;return;}if(xfOv.firstChild)xfOv.replaceChildren();return;}
+function drawXfOverlay(){if(!xf||xf.move){if(typeof crop!=='undefined'&&crop){drawCropOverlay();return;}const g=(ui.cageFlat?'':(typeof drawGradOverlay==='function'?drawGradOverlay():''))+cageOverlay();if(g){xfOv.innerHTML=g;return;}if(xfOv.firstChild)xfOv.replaceChildren();return;}
   const f=p=>scrPt(p).map(v=>v.toFixed(1)).join(' ');let s='';
   if(xf.warp){const W=xf.warp;let d='';
     for(let j=0;j<=W.n;j++)for(let i=0;i<W.n;i++){const e=W.hE[j][i];d+='M'+f(W.A[j][i])+'C'+f(e[0])+' '+f(e[1])+' '+f(W.A[j][i+1]);}
@@ -125,6 +125,7 @@ function buildMovePanel(box){$('#brushTitle').textContent='Move';
   const sm=bar.querySelector('.tool[data-tool="smudge"]').nextElementSibling;
   mk('gradient','Gradient / paint bucket / gradient bucket (G, Shift+G switches)',fillIcons.gradient,sm);mk('dodge','Dodge / burn (O, Shift+O switches)',tonalIcons.dodge,sm);
   window.__groupIcons={gradient:fillIcons.gradient,bucket:fillIcons.bucket,gbucket:fillIcons.gbucket,dodge:tonalIcons.dodge,burn:tonalIcons.burn};
+  mk('cage','Cage: bend and flat painting (K)','<path d="M4 6.5 19 4l1 15.5L5 18z"/><path d="M11.6 5.2l.7 13.6M4.5 12.2l15.2-.9" opacity=".55"/><circle cx="4" cy="6.5" r="1.3"/><circle cx="19" cy="4" r="1.3"/><circle cx="20" cy="19.5" r="1.3"/><circle cx="5" cy="18" r="1.3"/>',bar.querySelector('.tool[data-tool="text"]'));
   mk('crop','Crop (C)','<path d="M6 2v16h16"/><path d="M2 6h16v16"/>',bar.querySelector('.tool[data-tool="text"]'));})();
 /* keys while a transform is open; returns true if used */
 function xfKeys(e,m,k){if(!xf||xf.move)return false;

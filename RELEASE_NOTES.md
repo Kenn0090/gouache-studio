@@ -1,17 +1,8 @@
-The baker.
+Cage painting and symmetry.
 
-**Maps › Bake from high poly…** copies the detail of a high-poly model onto your low-poly's UVs.
-
-- **Models:** the low-poly can be the model in the 3D view or a file. The high-poly can be an FBX, OBJ, glTF or GLB file.
-- **Maps you can bake:**
-  - **Normal**, **Height** and **Ambient occlusion** go into the matching maps as new layers. Any missing maps are added for you.
-  - **Curvature**, **Thickness**, **World-space normal**, **Position** and **ID colours** go into a hidden **Baked maps** group, ready to use as masks.
-  - ID colours come from vertex colours, material colours, or one colour per part.
-- **Rays:**
-  - **Front and Back** set how far outside and inside the surface the baker looks.
-  - **Average ray directions** stops gaps at hard edges.
-  - You can load your own **cage** model instead of using distances.
-- **Match parts by name:** "crate_low" bakes only against "crate_high", so parts that sit close together don't leak into each other.
-- **Low-poly only:** leave the high-poly on **None** to bake AO, curvature (from the model's own shape), thickness, ID colours, world-space normal and position from the low-poly by itself.
-- **Quality:** anti-aliasing at 1×, 4× or 16× samples per pixel, **edge padding** past UV seams, and a progress bar with Cancel.
-- **Speed:** everything runs on the graphics card in small pieces, so the app stays responsive during big bakes.
+- **Cage tool (K):** lay a 4-corner cage (with perspective) or a smooth grid cage (up to 12 × 12) over a slanted, curved or perspective part of your texture, then paint through it.
+- **Bend:** paint on the canvas as usual. Inside the cage the brush takes the cage's shape, and holding Shift makes the stroke follow the cage's lines.
+- **Flat view (F):** see the cage's contents laid flat, paint there with straight lines and round brushes, and watch it bend back onto the texture live.
+- Works with every map, "Also paint", selections, masks and undo. The cage is saved in .gouache files.
+- **Symmetry:** left–right, top–bottom, both, or radial (2–24 copies), with a movable centre. Inside a cage, symmetry mirrors across the cage. Shift+X toggles left–right.
+- Fixed: a long description on a filter layer could hide the layer's name.

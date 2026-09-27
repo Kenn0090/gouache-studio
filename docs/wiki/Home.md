@@ -11,6 +11,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 - [Layers](Layers.md): layers, groups, masks, blend modes, clipping, text, live gradients
 - [Selections, transforms and crop](Selections-transforms-and-crop.md)
 - [Fills and gradients](Fills-and-gradients.md)
+- [Cage painting and symmetry](Cage-painting-and-symmetry.md): paint through a cage onto slanted or curved shapes; mirror and radial symmetry
 
 ## Texture maps
 - [Maps and PBR](Maps-and-PBR.md): base colour, roughness, metallic, height, normal and more; the Maps panel; painting several maps at once
@@ -41,5 +42,5 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 | 4 | Filter layers | 0.8 |
 | 5 | 3D view | 0.9 |
 | 6 | Baker | 0.10 |
-| 7 | Cage painting | next |
-| 8 | Painting on the model | planned |
+| 7 | Cage painting and symmetry | 0.11 |
+| 8 | Painting on the model | next |

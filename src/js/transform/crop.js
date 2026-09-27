@@ -84,7 +84,7 @@ function applyCropBox(c){const nw=clamp(Math.round(c.w),1,MAX_DIM),nh=clamp(Math
   const mapsOf=L=>L.maps?Object.assign({},...Object.keys(L.maps).filter(k=>L.maps[k]&&!L.maps[k].empty).map(k=>({[k]:L.maps[k]}))):{base:L.target};
   const oldT=layers.map(mapsOf),newT=oldT.map(ms=>Object.fromEntries(Object.entries(ms).map(([k,t])=>[k,draw(t,[0,0,0,0])]))),newM=mObjs.map(m=>draw(m.target,[1,1,1,1]));
   const oldM=mObjs.map(m=>m.target),oldSize=[doc.w,doc.h],newSize=[nw,nh];
-  const set=(sz,ts,ms,dir)=>{doc.w=sz[0];doc.h=sz[1];layers.forEach((L,i)=>{L.maps=Object.assign({},ts[i]);L.target=L.maps.base;});mObjs.forEach((m,i)=>m.target=ms[i]);
+  const set=(sz,ts,ms,dir)=>{if(doc.cage){doc.cage=null;cageFlatOff();}doc.w=sz[0];doc.h=sz[1];layers.forEach((L,i)=>{L.maps=Object.assign({},ts[i]);L.target=L.maps.base;});mObjs.forEach((m,i)=>m.target=ms[i]);
     for(const L of texts){L.text.x-=dir*x0;L.text.y-=dir*y0;}for(const L of grads)for(const k of ['a','b']){L.grad[k][0]-=dir*x0;L.grad[k][1]-=dir*y0;}
     allocAux();syncTargets();if(doc.anim){doc.anim.frames.forEach(frameDirty);showFrame(doc.anim.cur,true);}for(const L of texts)renderText(L);for(const L of grads)renderLiveGrad(L);fit();changedAll();updateStatus();};
   set(newSize,newT,newM,1);let usingNew=true;

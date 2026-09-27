@@ -45,6 +45,9 @@ Lightens (Dodge) or darkens (Burn). **Shift+O** switches between them.
 - **Eyedropper:** the Eyedropper tool (I), or hold **Alt** while painting.
 - **X** swaps the two colours; **D** resets them to black and white.
 
+## Symmetry and cages
+The brush panel's **Symmetry** buttons mirror your strokes left–right, top–bottom, both ways, or radially. To paint onto a slanted or curved part of the texture, lay a cage over it. See [Cage painting and symmetry](Cage-painting-and-symmetry.md).
+
 ## Painting on a mask or a single channel
 - **Masks:** click a layer's mask thumbnail to paint the mask. Black hides, white shows.
 - **Channels panel:** click a channel to view and paint only that channel. Ctrl+click adds more channels.

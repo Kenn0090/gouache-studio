@@ -22,6 +22,7 @@
     "transform/xform-core",
     "transform/warp",
     "transform/xform-ui",
+    "paint/cage",
     "transform/crop",
     "fill/gradient",
     "fill/bucket",

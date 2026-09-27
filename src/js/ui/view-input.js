@@ -1,8 +1,8 @@
 /* ================= View + input ================= */
 const work=$('#work');
 function resizeGL(){const d=Math.min(window.devicePixelRatio||1,2);const w=Math.max(1,Math.round(work.clientWidth*d)),h=Math.max(1,Math.round(work.clientHeight*d));if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}requestRender();}
-function fit(){const W=stage.clientWidth,H=stage.clientHeight,pad=doc.wrap?90:48;view.zoom=clamp(Math.min((W-pad)/doc.w,(H-pad)/doc.h),.02,32);view.x=(W-doc.w*view.zoom)/2;view.y=(H-doc.h*view.zoom)/2;updateStatus();refreshCursor();requestRender();}
-function actual(){const W=stage.clientWidth,H=stage.clientHeight;view.zoom=1;view.x=Math.round((W-doc.w)/2);view.y=Math.round((H-doc.h)/2);updateStatus();refreshCursor();requestRender();}
+function fit(){const W=stage.clientWidth,H=stage.clientHeight,[DW,DH]=viewDims(),pad=doc.wrap&&!ui.cageFlat?90:48;view.zoom=clamp(Math.min((W-pad)/DW,(H-pad)/DH),.02,32);view.x=(W-DW*view.zoom)/2;view.y=(H-DH*view.zoom)/2;updateStatus();refreshCursor();requestRender();}
+function actual(){const W=stage.clientWidth,H=stage.clientHeight,[DW,DH]=viewDims();view.zoom=1;view.x=Math.round((W-DW)/2);view.y=Math.round((H-DH)/2);updateStatus();refreshCursor();requestRender();}
 function zoomAt(f,sx,sy){const z=clamp(view.zoom*f,.02,64),k=z/view.zoom;view.x=sx-(sx-view.x)*k;view.y=sy-(sy-view.y)*k;view.zoom=z;updateStatus();refreshCursor();requestRender();}
 function toImage(cx,cy){const r=stage.getBoundingClientRect();return [(cx-r.left-view.x)/view.zoom,(cy-r.top-view.y)/view.zoom];}
 function updateStatus(){$('#stDoc').textContent=doc.w+' × '+doc.h+' px';$('#stDepth').textContent=doc.depth+'-bit';$('#stDepth').title=doc.depth===16?'16 bits per channel (half float). Click for 8-bit.':(canFloat?'8 bits per channel. Click for 16-bit.':'8 bits per channel. 16-bit is not supported on this GPU.');
@@ -20,6 +20,8 @@ cv.addEventListener('pointerdown',e=>{
   e.preventDefault();cv.setPointerCapture(e.pointerId);showPressure(e);
   if(pan){ptr={mode:'pan',id:e.pointerId,sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y};stage.classList.add('panning');refreshCursor();return;}
   const [ix,iy]=toImage(e.clientX,e.clientY);
+  if(ui.cageFlat&&!['brush','erase','smudge','dodge','burn','picker'].includes(ui.tool)&&!e.altKey){toast('Only painting works in the flat cage view. Press F to go back to the canvas.');return;}
+  if(ui.tool==='cage'){cagePointerDown(e,ix,iy);return;}
   if(selLive){toast('Apply or cancel the selection dialog first.');return;}
   if(xf&&!xf.move){xfPointerDown(e,ix,iy);return;}
   if(ui.tool==='crop'){cropPointerDown(e,ix,iy);return;}
@@ -32,7 +34,7 @@ cv.addEventListener('pointerdown',e=>{
     if(tedit){const b=tedit.L.text.bbox;if(b&&ix>=b.bx&&ix<=b.bx+b.bw&&iy>=b.by&&iy<=b.by+b.bh){ted.focus();return;}closeTextEditor();return;}
     const hit=hitText(ix,iy);if(hit){selectOnly(hit);renderLayers();ptr={mode:'tmove',id:e.pointerId,L:hit,sx:ix,sy:iy,ox:hit.text.x,oy:hit.text.y,moved:false};return;}
     if(!effVisible(doc.active||doc.root)&&doc.active){}createText(ix,iy);return;}
-  if(ui.tool==='picker'||e.altKey){ptr={mode:'pick',id:e.pointerId};pickAt(ix,iy);return;}
+  if(ui.tool==='picker'||e.altKey){ptr={mode:'pick',id:e.pointerId};const q=ui.cageFlat?cageFwd(ix,iy):[ix,iy];pickAt(q[0],q[1]);return;}
   const et=editTarget();if(!et){toast(doc.active&&doc.active.fx?'This is a filter layer: it has no pixels to paint on. Double-click its thumbnail to change its filters, or select a normal layer.':doc.active?'A group is selected. Select a layer inside it, or click the group’s mask thumbnail to paint its mask.':'Select a layer to paint on.');return;}
   if(!effVisible(et.node)&&!ui.viewMask){toast('The active layer (or its group) is hidden. Show it to paint on it.');return;}
   if(preview){toast('Apply or cancel the open filter first.');return;}
@@ -42,26 +44,32 @@ cv.addEventListener('pointerdown',e=>{
   if(et.isMask){const g=lum3(ui.fg);o.color=[g,g,g];if(o.tool==='erase'){o.tool='brush';o.color=[1,1,1];}}
   o.extras=strokeExtras(o,et);
   if(ui.tool!=='erase'&&(ui.tool==='brush'||brush.charge>0))pushRecent(ui.fg);
-  ptr={mode:'paint',id:e.pointerId,sx:ix,sy:iy,sp:p,rx:ix,ry:iy};beginStroke(L,ix,iy,p,o);
+  const cz=cageStrokeStart(o,ix,iy);if(cz===false)return;const sx=cz?cz.x:ix,sy=cz?cz.y:iy;o.sym=symFor(o);
+  ptr={mode:'paint',id:e.pointerId,sx,sy,sp:p,rx:sx,ry:sy,cage:cz?cz.kind:null,ox:sx,oy:sy,lock:null};beginStroke(L,sx,sy,p,o);
 });
 cv.addEventListener('pointermove',e=>{
   const r=stage.getBoundingClientRect();lastPos=[e.clientX-r.left,e.clientY-r.top];refreshCursor();showPressure(e);
   const [mx,my]=toImage(e.clientX,e.clientY);$('#stPos').textContent=(mx>=0&&my>=0&&mx<doc.w&&my<doc.h)?Math.floor(mx)+', '+Math.floor(my):'–';
   if(!ptr&&polyLasso){polyMove(e,mx,my);return;}
-  if(!ptr){if(xf&&!xf.move)xfHover(e);else if(ui.tool==='crop'&&crop)cropHover(e);else if(ui.tool==='gradient')gradHover(e);}
-  if(ptr&&e.pointerId===ptr.id){if(ptr.mode==='xf'){xfPointerMove(e,mx,my);return;}if(ptr.mode==='crop'){cropPointerMove(e,mx,my);return;}if(ptr.mode==='movedrag'){movePointerMove(e,mx,my);return;}if(ptr.mode==='grad'){gradPointerMove(e,mx,my);return;}if(ptr.mode==='gbucket'){gbucketMove(e,mx,my);return;}}
+  if(!ptr){if(ui.tool==='cage'&&!ui.cageFlat)cageHover(e);else if(xf&&!xf.move)xfHover(e);else if(ui.tool==='crop'&&crop)cropHover(e);else if(ui.tool==='gradient')gradHover(e);}
+  if(ptr&&e.pointerId===ptr.id){if(ptr.mode==='cage'){cagePointerMove(e,mx,my);return;}if(ptr.mode==='xf'){xfPointerMove(e,mx,my);return;}if(ptr.mode==='crop'){cropPointerMove(e,mx,my);return;}if(ptr.mode==='movedrag'){movePointerMove(e,mx,my);return;}if(ptr.mode==='grad'){gradPointerMove(e,mx,my);return;}if(ptr.mode==='gbucket'){gbucketMove(e,mx,my);return;}}
   if(!ptr||e.pointerId!==ptr.id)return;
   if(ptr.mode==='marq'||ptr.mode==='lasso'||ptr.mode==='selmove'){selPointerMove(e,mx,my);return;}
   if(ptr.mode==='pan'){view.x=ptr.vx+e.clientX-ptr.sx;view.y=ptr.vy+e.clientY-ptr.sy;requestRender();return;}
   if(ptr.mode==='tmove'){const [mx2,my2]=toImage(e.clientX,e.clientY),dx=mx2-ptr.sx,dy=my2-ptr.sy;if(!ptr.moved&&Math.hypot(dx,dy)*view.zoom<4)return;
     if(!ptr.moved){ptr.moved=true;textBegin(ptr.L);}ptr.L.text.x=Math.round(ptr.ox+dx);ptr.L.text.y=Math.round(ptr.oy+dy);renderText(ptr.L);return;}
   const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];const list=evs.length?evs:[e];
-  if(ptr.mode==='pick'){const l=list[list.length-1];const q=toImage(l.clientX,l.clientY);pickAt(q[0],q[1]);return;}
+  if(ptr.mode==='pick'){const l=list[list.length-1];let q=toImage(l.clientX,l.clientY);if(ui.cageFlat)q=cageFwd(q[0],q[1]);pickAt(q[0],q[1]);return;}
   const k=1-brush.smoothing*.93;
-  for(const ev of list){const [ix,iy]=toImage(ev.clientX,ev.clientY),p=pressureOf(ev);ptr.rx=ix;ptr.ry=iy;
+  for(const ev of list){let [ix,iy]=toImage(ev.clientX,ev.clientY);const p=pressureOf(ev);
+    if(ptr.cage==='bend'&&stroke&&stroke.cage){const m=cageInv(stroke.cage.C,ix,iy);if(!m){ptr.gap=true;continue;}ix=m.x;iy=m.y;stroke.rs=1/Math.max(m.s,1e-3);
+      if(ptr.gap){ptr.gap=false;ptr.sx=ptr.rx=ix;ptr.sy=ptr.ry=iy;ptr.sp=p;strokeJump(ix,iy,p);continue;}}
+    /* Shift inside a cage: follow the cage's grid lines (straight in flat space, so the stroke curves with the cage) */
+    if(ptr.cage&&ev.shiftKey){if(!ptr.lock){const dx=ix-ptr.ox,dy=iy-ptr.oy;if(Math.hypot(dx,dy)>4)ptr.lock=Math.abs(dx)>=Math.abs(dy)?'u':'v';}if(ptr.lock==='u')iy=ptr.oy;else if(ptr.lock==='v')ix=ptr.ox;else continue;}
+    ptr.rx=ix;ptr.ry=iy;
     ptr.sx+=(ix-ptr.sx)*k;ptr.sy+=(iy-ptr.sy)*k;ptr.sp+=(p-ptr.sp)*Math.max(k,.4);addPoint(ptr.sx,ptr.sy,ptr.sp);}
 });
-function endPtr(e){if(!ptr||e.pointerId!==ptr.id)return;if(ptr.mode==='xf'){xfPointerUp();return;}if(ptr.mode==='crop'){cropPointerUp();return;}if(ptr.mode==='movedrag'){movePointerUp();return;}if(ptr.mode==='grad'){gradPointerUp();return;}if(ptr.mode==='gbucket'){gbucketUp();return;}if(ptr.mode==='marq'||ptr.mode==='lasso'||ptr.mode==='selmove'){selPointerUp(e);refreshCursor();return;}if(ptr.mode==='paint'){if(brush.smoothing>0)addPoint(ptr.rx,ptr.ry,ptr.sp);endStroke(true);}
+function endPtr(e){if(!ptr||e.pointerId!==ptr.id)return;if(ptr.mode==='cage'){cagePointerUp();return;}if(ptr.mode==='xf'){xfPointerUp();return;}if(ptr.mode==='crop'){cropPointerUp();return;}if(ptr.mode==='movedrag'){movePointerUp();return;}if(ptr.mode==='grad'){gradPointerUp();return;}if(ptr.mode==='gbucket'){gbucketUp();return;}if(ptr.mode==='marq'||ptr.mode==='lasso'||ptr.mode==='selmove'){selPointerUp(e);refreshCursor();return;}if(ptr.mode==='paint'){if(brush.smoothing>0)addPoint(ptr.rx,ptr.ry,ptr.sp);endStroke(true);}
   if(ptr.mode==='tmove'){const t=ptr;ptr=null;if(t.moved){textCommit();changed(t.L);}else openTextEditor(t.L,false);refreshCursor();return;}
   ptr=null;stage.classList.remove('panning');refreshCursor();$('#pBar').style.width='0%';}
 cv.addEventListener('pointerup',endPtr);cv.addEventListener('pointercancel',endPtr);cv.addEventListener('lostpointercapture',endPtr);
@@ -76,7 +84,7 @@ window.addEventListener('keydown',e=>{
   if(!modal.hidden||typing)return;
   const m=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();
   if(e.key==='F3'){e.preventDefault();toggle3D();return;}
-  if(xfKeys(e,m,k)||cropKeys(e))return;
+  if(xfKeys(e,m,k)||cropKeys(e)||cageKeys(e,m,k))return;
   if(m&&k==='t'){e.preventDefault();freeTransform();return;}
   if(selKeys(e,m,k))return;
   if(mapKeyNav(e))return;if(animKeys(e,m,k))return;
