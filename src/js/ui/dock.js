@@ -7,6 +7,7 @@ const PANELS={
   p3d:{title:'3D Paint',sel:'#p3dSec',avail:m=>m==='p3d',mode:true},
   hist:{title:'History',sel:'#histSec',avail:m=>m!=='convert',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>'},
   matEd:{title:'Properties',sel:'#matEdSec',avail:m=>m==='paint'||m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M8 15l8-8M9 9h.01"/>'},
+  shading:{title:'Shader',sel:'#shadeSec',avail:m=>m==='p3d'||m==='paint',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" opacity=".35"/>'},
   stencils:{title:'Stencils',sel:'#st3Sec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 15l3-4 2 3 1.5-2 1.5 3"/>'},
   mats:{title:'Materials',sel:'#matSec',avail:m=>m==='paint'||m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M7 9.5a6 6 0 0 1 5-3" opacity=".6"/>'},
   brushtab:{title:'Brush maker',sel:'#brushTabSec',avail:m=>m==='brush',mode:true},
@@ -23,10 +24,10 @@ const PANEL_IDS=Object.keys(PANELS);
 const MODE_GROUP=['p3d','brushtab','conv','bake','anim'];
 /* the built-in workspaces: extra = 3D view on and how wide, painting on the model */
 const WS_PRESETS={
-  painting:{name:'Painting',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['color','matEd'],f:1.05},{tabs:['brushes','stencils','mats','tool'],f:1.25},{tabs:['maps'],f:.45},{tabs:['layers','chan','hist'],f:1.6}],icons:[],floats:[]},
-  texturing:{name:'Texturing',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['maps'],f:.7},{tabs:['layers','chan','hist'],f:1.6},{tabs:['tool','brushes','stencils','mats','color','matEd'],f:1.3}],icons:[],floats:[]},
-  paint3d:{name:'3D Paint',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['layers','maps','chan','hist'],f:1.6},{tabs:['color','matEd','brushes','stencils','mats','tool'],f:1.4}],icons:[],floats:[]},
-  minimal:{name:'Minimal',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1}],icons:['color','matEd','brushes','stencils','mats','tool','maps','layers','chan','hist'],floats:[]}};
+  painting:{name:'Painting',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['color','matEd','shading'],f:1.05},{tabs:['brushes','stencils','mats','tool'],f:1.25},{tabs:['maps'],f:.45},{tabs:['layers','chan','hist'],f:1.6}],icons:[],floats:[]},
+  texturing:{name:'Texturing',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['maps'],f:.7},{tabs:['layers','chan','hist'],f:1.6},{tabs:['tool','brushes','stencils','mats','color','matEd','shading'],f:1.3}],icons:[],floats:[]},
+  paint3d:{name:'3D Paint',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['layers','maps','chan','hist'],f:1.6},{tabs:['color','matEd','shading','brushes','stencils','mats','tool'],f:1.4}],icons:[],floats:[]},
+  minimal:{name:'Minimal',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1}],icons:['color','matEd','shading','brushes','stencils','mats','tool','maps','layers','chan','hist'],floats:[]}};
 const dk={ws:'painting',L:null,custom:{},saved:{},lock:false,flyout:null,drag:null};
 (()=>{try{const s=JSON.parse(localStorage.getItem('gs.dock')||'{}');if(s.ws)dk.ws=s.ws;if(s.col2&&s.col2.groups)dk.col2=s.col2;dk.saved=s.saved||{};dk.custom=s.custom||{};dk.lock=!!s.lock;}catch(e){}})();
 const dkClone=o=>JSON.parse(JSON.stringify(o));
@@ -66,15 +67,17 @@ function dkGrid(){const L=dk.L,app=$('#app'),hasDock=L.groups.some(g=>dkAvail(g)
   app.style.gridTemplateAreas=left?'"head head head head head" "opt opt opt opt opt" "tools work dock2 icons dock" "tools tl dock2 icons dock" "status status status status status"':'"head head head head head" "opt opt opt opt opt" "work tools dock2 icons dock" "tl tools dock2 icons dock" "status status status status status"';}
 /* in 3D Paint, Colour, Material, Brushes, Materials and Tool settings sit in a column of their own beside the
    viewport (dock2). Its tabs drag like any other: out of it, or other tabs into it (remembered in gs.dock col2). */
-const DK_COL2=['color','matEd','brushes','stencils','mats','tool'];
+const DK_COL2=['color','matEd','shading','brushes','stencils','mats','tool'];
 const dkCol2On=()=>ui.mode==='p3d';
 const dkC2Has=id=>dk.col2.groups.some(g=>g.tabs.includes(id));
 const dkIn=id=>PANELS[id].avail(ui.mode)&&!(dkCol2On()&&dkC2Has(id));
 const dkAvail=g=>g._c2?g.tabs.filter(id=>PANELS[id].avail(ui.mode)):g.tabs.filter(id=>dkIn(id));
-if(!dk.col2)dk.col2={w:250,groups:[{tabs:['color','matEd'],f:1,_c2:true},{tabs:['brushes','stencils','mats','tool'],f:1.5,_c2:true}]};
+if(!dk.col2)dk.col2={w:250,groups:[{tabs:['color','matEd','shading'],f:1,_c2:true},{tabs:['brushes','stencils','mats','tool'],f:1.5,_c2:true}]};
 /* older saved columns: the Material tab joins Colour */
 if(!dkC2Has('matEd')){const g=dk.col2.groups.find(g=>g.tabs.includes('color'))||dk.col2.groups[0];if(g)g.tabs.push('matEd');}
 for(const g of dk.col2.groups)g._c2=true;
+/* 0.26: the Shader panel joins Colour and Properties */
+if(!dkC2Has('shading')){const g=dk.col2.groups.find(g=>g.tabs.includes('matEd'))||dk.col2.groups[0];if(g){const i=g.tabs.indexOf('matEd');g.tabs.splice(i<0?g.tabs.length:i+1,0,'shading');}}
 /* 0.25: Stencils became a tab of their own, beside Brushes */
 if(!dkC2Has('stencils')){const g=dk.col2.groups.find(g=>g.tabs.includes('brushes'))||dk.col2.groups[dk.col2.groups.length-1];if(g){const i=g.tabs.indexOf('brushes');g.tabs.splice(i<0?g.tabs.length:i+1,0,'stencils');}}
 function dkRender(){const L=dk.L,dock=$('#dock');dkGrid();

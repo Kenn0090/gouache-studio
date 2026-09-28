@@ -16,9 +16,12 @@ const css = read('src/styles/app.css');
 const tpl = read('src/index.template.html');
 const assemble = head => tpl.replace(/<!--VERSION-->/g, APP_VERSION).replace('<!--HEAD-->', () => head).replace('<!--STYLE-->', () => css).replace('<!--SCRIPT-->', () => js);
 
+/* the bundled HDRIs (assets/hdri): the desktop app loads them as files; the one-page web version carries them inside the page */
+const HDRIS = fs.existsSync(r('assets/hdri')) ? fs.readdirSync(r('assets/hdri')).filter(f => f.endsWith('.hdr')) : [];
+const hdriTags = () => HDRIS.map(f => `<script type="text/plain" id="hdri_${f.replace(/_1k\.hdr$/, '')}">${fs.readFileSync(r('assets/hdri/' + f)).toString('base64')}</script>`).join('\n');
 function buildWeb() {
   fs.mkdirSync(r('dist-web'), { recursive: true });
-  fs.writeFileSync(r('dist-web/index.html'), assemble(read('src/head.web.html')));
+  fs.writeFileSync(r('dist-web/index.html'), assemble(read('src/head.web.html')).replace('<!--HDRI-->', () => hdriTags()));
   console.log('web     -> dist-web/index.html');
 }
 
@@ -29,6 +32,7 @@ function buildDesktop() {
   copy('node_modules/pako/dist/pako.min.js', `${out}/vendor/pako.min.js`);
   copy('node_modules/utif/UTIF.js', `${out}/vendor/UTIF.js`);
   copy('node_modules/ag-psd/dist/bundle.js', `${out}/vendor/ag-psd.js`);
+  for (const f of HDRIS) copy('assets/hdri/' + f, `${out}/hdri/${f}`);
   // UI fonts bundled so the app looks right offline
   const fonts = [
     ['@fontsource/instrument-sans', 'Instrument Sans', [400, 500, 600]],

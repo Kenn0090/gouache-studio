@@ -30,7 +30,7 @@ function p3dExit(){p3.cam=Object.assign({},v3.cam);p3.imported=v3.imported;p3.v3
 /* 3D only (the viewport takes the whole painting area), 3D + the flat texture, or the flat texture only */
 function p3ApplyLayout(){const L=p3.layout,work=$('#work');work.classList.toggle('v3full',L==='3d');toggle3D(L!=='2d');if(v3.on&&!v3.mesh)v3LoadModel(true);}
 function p3SetLayout(L){p3.layout=L;p3Save();p3ApplyLayout();buildP3Panel();}
-function buildP3Panel(){const sb=$('#st3Body');if(sb)sb.replaceChildren(el('p',{class:'note',text:'A picture laid over the 3D view: the brush paints through it onto the model.'}),st3Box());const box=$('#p3dBody');if(!box)return;box.replaceChildren();const s=v3s();
+function buildP3Panel(){if(typeof renderShading==='function')renderShading();const sb=$('#st3Body');if(sb)sb.replaceChildren(el('p',{class:'note',text:'A picture laid over the 3D view: the brush paints through it onto the model.'}),st3Box());const box=$('#p3dBody');if(!box)return;box.replaceChildren();const s=v3s();
   const models=el('select',{id:'p3Model','aria-label':'Model'},...Object.entries(PRIMS).map(([k,[l]])=>el('option',{value:k,text:l})),
     ...(v3.imported?[el('option',{value:'imported',text:v3.imported.name})]:[]),el('option',{value:'__import',text:'Import a model (OBJ, glTF, GLB, FBX)…'}));
   models.value=s.model;models.onchange=()=>{if(models.value==='__import'){models.value=s.model;importModel().then(()=>{p3.imported=v3.imported;buildP3Panel();});return;}s.model=models.value;v3LoadModel();buildP3Panel();};
@@ -53,8 +53,10 @@ function p3Resize(n){if(n===doc.w&&n===doc.h)return;if(n>MAX_DIM){toast('This co
 const p3Range=()=>{const m=v3.mesh,r=m&&m.setRanges;const S=p3.sets[p3.cur];return (r&&S&&r.find(x=>x.name===S.name))||{start:0,count:m?m.idx.length/3:0};};
 function p3Blank(){if(!p3.blank){const t=makeTarget(4,4,8,true);clearTarget(t,[.72,.72,.72,1]);p3.blank={base:t};}return p3.blank;}
 /* what to draw: every set's triangles with that set's textures */
-function p3DrawList(){const m=v3.mesh,rs=m&&m.setRanges;if(!rs||rs.length<2)return [{T:v3.tex,start:0,count:m?m.idx.length/3:0}];
-  return rs.map(r=>{const i=p3.sets.findIndex(S=>S.name===r.name);const T=i===p3.cur?v3.tex:(i>=0&&p3.sets[i].tex&&p3.sets[i].tex.base?p3.sets[i].tex:p3Blank());return {T,start:r.start,count:r.count};});}
+function p3DrawList(){const m=v3.mesh,rs=m&&m.setRanges;if(!rs||rs.length<2)return [{T:v3.tex,start:0,count:m?m.idx.length/3:0,sh:v3ShadeOf(doc),thick:doc.meshMaps&&doc.meshMaps.thick||null}];
+  return rs.map(r=>{const i=p3.sets.findIndex(S=>S.name===r.name);const T=i===p3.cur?v3.tex:(i>=0&&p3.sets[i].tex&&p3.sets[i].tex.base?p3.sets[i].tex:p3Blank());
+    /* each set has its own shader, and skin reads its own baked thickness */
+    const D=i===p3.cur?doc:(i>=0&&p3.sets[i].state?p3.sets[i].state.doc:null),mm=D&&D.meshMaps;return {T,start:r.start,count:r.count,sh:D?v3ShadeOf(D):null,thick:mm&&mm.thick||null};});}
 /* a texture of set k (range index k of the model), for picking */
 function p3SetTex(k,map){const rs=v3.mesh&&v3.mesh.setRanges,nm=rs&&rs[k]?rs[k].name:null,i=nm?p3.sets.findIndex(S=>S.name===nm):p3.cur;
   const T=i===p3.cur||i<0?v3.tex:p3.sets[i].tex;return T&&T[map];}

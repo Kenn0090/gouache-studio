@@ -5,7 +5,7 @@ const MAP_SWATCH={base:null,normal:'#8080ff',emis:'#000'};
 function mapSwatch(k){const s=el('span',{class:'mswatch'});
   if(k==='nfinal')k='normal';if(k==='base')s.classList.add('rainbow');else if(k==='material')s.classList.add('mat');else if(MAP_SWATCH[k])s.style.background=MAP_SWATCH[k];
   else{const v=Math.round(mapDefault(k)[0]*255);s.style.background='rgb('+v+','+v+','+v+')';}return s;}
-function refreshMapsUI(){const list=$('#mapList');if(!list)return;list.replaceChildren();const anim=ui.mode==='anim';
+function refreshMapsUI(){if(typeof renderShading==="function")renderShading();const list=$("#mapList");if(!list)return;list.replaceChildren();const anim=ui.mode==='anim';
   const rows=doc.maps.map(k=>[k,MAP_DEFS[k].label]);
   if(doc.maps.length>1)rows.push(['material','Material (lit)']);
   if(doc.maps.includes('height')||doc.maps.includes('normal'))rows.push(['nfinal','Normal (final)']);

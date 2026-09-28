@@ -57,6 +57,8 @@
         "filters/gallery",
         "view3d/mesh",
         "view3d/view3d",
+        "view3d/env",
+        "view3d/shading",
         "view3d/mesh-paint",
         "view3d/paint3d",
         "view3d/mask-tools",

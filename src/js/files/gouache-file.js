@@ -38,7 +38,7 @@ async function encodeGouacheNow(opts){opts=opts||{};const blobs=[];let off=0;/* 
   let meshRec=null;if(!opts.lean&&typeof v3!=='undefined'&&v3.imported){const c=await streamThrough(meshPack(v3.imported),'deflate-raw');blobs.push(c);meshRec={o:off,n:c.length,name:v3.imported.name};off+=c.length;}
   const bakeMaps={};if(!opts.lean)for(const k of ['skew','offset'])if(bk.maps[k]){const r=await put(bk.maps[k],true);if(r)bakeMaps[k]=r;}
   const meshMaps={};for(const k in doc.meshMaps||{}){const r=await put(doc.meshMaps[k],true);if(r)meshMaps[k]=r;}
-  const head={p3:!!doc.p3,meshMaps,bakeMaps,cage:cageClone(doc.cage),v3d:doc.v3d||null,mesh:meshRec,app:'Gouache Studio',v:GF_VERSION,w:doc.w,h:doc.h,depth:doc.depth,wrap:doc.wrap,name:doc.name,
+  const head={p3:!!doc.p3,meshMaps,bakeMaps,cage:cageClone(doc.cage),v3d:doc.v3d||null,v3shade:doc.v3shade||null,mesh:meshRec,app:'Gouache Studio',v:GF_VERSION,w:doc.w,h:doc.h,depth:doc.depth,wrap:doc.wrap,name:doc.name,
     maps:doc.maps,map:doc.map,view:doc.view,mapDef:doc.mapDef,workflow:doc.workflow,nrmStr:doc.nrmStr,light:doc.light,tex:texCfg,kids,active,anim,layers:all.length};
   const hj=new TextEncoder().encode(JSON.stringify(head)),pre=new Uint8Array(16);pre.set(GF_MAGIC,0);const dv=new DataView(pre.buffer);dv.setUint32(8,GF_VERSION,true);dv.setUint32(12,hj.length,true);
   return new Blob([pre,hj,...blobs],{type:'application/octet-stream'});}
@@ -52,6 +52,7 @@ async function openGouache(buf,name){const {head,data}=gfHead(buf);if(tabDocs.pa
   if(head.tex)Object.assign(texCfg,head.tex);
   if(head.cage&&head.cage.A)doc.cage=cageClone(head.cage);
   if(head.v3d)doc.v3d=Object.assign({},V3D_DEFAULTS,head.v3d);
+  doc.v3shade=head.v3shade||null;
   if(head.mesh){try{const raw=await streamThrough(new Uint8Array(buf,data+head.mesh.o,head.mesh.n),'deflate-raw',true);v3.imported=meshUnpack(raw,head.mesh.name||'Model');}catch(e){console.warn('model not restored',e);}}
   const {img,mk}=await gfReadInto(buf,head,data);
   for(const k in head.bakeMaps||{}){const t=bakeMapT(k,true);await img(head.bakeMaps[k],t);}
