@@ -91,7 +91,9 @@ function dkTabs(tabs,active,where,onPick){const strip=el('div',{class:'dktabs',r
   const more=el('button',{class:'dkmore','aria-label':'Panel options',title:'Panel options',text:'⋯'});more.onclick=e=>dkMenu(e,active,where);strip.append(more);return strip;}
 function dkGroup(g){const av=dkAvail(g);let a=av.includes(g.active)?g.active:av[0];
   /* a workspace tab that just became available (entering Bake, Convert…) comes to the front */
-  const mp=av.find(id=>PANELS[id].mode);if(mp)a=mp;g.active=a;
+  const mp=av.find(id=>PANELS[id].mode);if(mp)a=mp;
+  /* keep the chosen tab when it is only hidden for now (Layers while in Animation), so it comes back to the front */
+  if(mp||av.includes(g.active)||!g.active||!PANEL_IDS.includes(g.active))g.active=a;
   const body=el('div',{class:'dkbody'});for(const id of av){const s=dkSec(id);s.classList.toggle('dk-off',id!==a);body.append(s);}
   const box=el('div',{class:'dkgrp'+(g.min?' min':''),style:'flex:'+(g.min?'0 0 auto':g.f+' 1 0px')},dkTabs(av,a,{group:g,popped:!!g._c2},id=>{g.active=id;g.min=false;dkRender();dkSave();}),body);
   box.querySelector('.dktabs').addEventListener('dblclick',e=>{if(e.target.closest('.dktab')){g.min=!g.min;dkRender();dkSave();}});
