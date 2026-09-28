@@ -15,11 +15,17 @@ void main(){ vec2 t=aT*uUVs; vec3 p=aP; if(uUseH==1&&uDisp!=0.0){ float h=textur
   vP=p; vN=aN; vec2 q=t-uShift; gl_Position=vec4(q*2.0-1.0,0.0,1.0); }`;
 /* uMir: for mirror and radial painting, the texel looks up the brush where its mirror image is (identity otherwise) */
 const FS_3DPROJ=`in vec3 vP; in vec3 vN; uniform mat4 uVPm; uniform sampler2D uStroke; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform mat4 uMir;
+uniform int uSt; uniform sampler2D uStT; uniform vec2 uStC; uniform vec2 uStHalf; uniform float uStRot; uniform vec2 uScr; uniform int uStTile;
 void main(){ vec3 q=(uMir*vec4(vP,1.0)).xyz, nq=mat3(uMir)*vN; vec4 c=uVPm*vec4(q,1.0); if(c.w<=1e-6){ o=vec4(0); return; } vec2 s=c.xy/c.w*0.5+0.5;
   if(s.x<0.0||s.y<0.0||s.x>1.0||s.y>1.0){ o=vec4(0); return; }
   ivec2 ds=textureSize(uDepth,0); float z=texelFetch(uDepth,clamp(ivec2(s*vec2(ds)),ivec2(0),ds-1),0).r; float d=length(q-uCamP);
   if(z<=0.0||d>z*1.006+0.004){ o=vec4(0); return; }
-  float f=abs(dot(normalize(nq),normalize(uCamP-q))); vec4 t=texture(uStroke,s); o=vec4(t.rgb,t.a*smoothstep(0.04,0.22,f)); }`;
+  float f=abs(dot(normalize(nq),normalize(uCamP-q))); vec4 t=texture(uStroke,s);
+  /* stencil: 1 = mask (light parts let paint through), 2 = colour (paints the picture itself) */
+  if(uSt>0){ vec2 pp=s*uScr-uStC; float cr=cos(uStRot),sr=sin(uStRot); vec2 l=vec2(cr*pp.x-sr*pp.y,sr*pp.x+cr*pp.y)/(2.0*uStHalf)+0.5;
+    if(uStTile==1) l=fract(l); else if(l.x<0.0||l.y<0.0||l.x>1.0||l.y>1.0){ o=vec4(0); return; }
+    vec4 m=texture(uStT,vec2(l.x,1.0-l.y));/* pictures are stored top row first */ if(uSt==1){ t.a*=m.a>1e-5?dot(m.rgb/m.a,vec3(0.299,0.587,0.114))*m.a:0.0; } else { t.rgb=m.a>1e-5?m.rgb/m.a:vec3(0.0); t.a*=m.a; } }
+  o=vec4(t.rgb,t.a*smoothstep(0.04,0.22,f)); }`;
 const VS_3DD=VS_3D.replace('out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;','out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;');
 let P3P=null;
 function p3p(){if(!P3P)P3P={depth:prog3(VS_3DD,FS_3DDEPTH.replace('void main','in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan;\nvoid main')),proj:prog3(VS_3DPROJ,FS_3DPROJ)};return P3P;}
@@ -38,13 +44,13 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
   const mirs=mir3Mats(),mesh=v3.mesh,R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:g.count/3};/* 3D Paint: only the active texture set takes paint */
   return {w,h,buf:M.buf,
     sync(){bindTarget(strokeT);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
-      for(const Mi of mirs){useProg(P.proj,{uVPm:{m4:VP},uStroke:M.buf.tex,uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uMir:{m4:Mi}});
+      const stU=st3Uniforms(w,h);for(const Mi of mirs){useProg(P.proj,Object.assign({uVPm:{m4:VP},uStroke:M.buf.tex,uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uMir:{m4:Mi}},stU));
       bindTarget(strokeT);gl.enable(gl.BLEND);gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);gl.disable(gl.CULL_FACE);
       const loc=gl.getUniformLocation(P.proj.p,'uShift');gl.bindVertexArray(g.vao);
       for(let j=0;j<uvs;j++)for(let i=0;i<uvs;i++){gl.uniform2f(loc,i,j);gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);}}
       gl.bindVertexArray(vao);gl.blendEquation(gl.FUNC_ADD);gl.disable(gl.BLEND);},
     /* the part of the texture this stroke can have touched: triangles whose screen position meets the stroke */
-    bbox(st){const b=st&&st.bb;if(!b||b[2]<b[0]||mirs.length>1)return [0,0,doc.w,doc.h];let x0=1,y0=1,x1=0,y1=0;const p=mesh.pos,uv=mesh.uv,ix=mesh.idx,n=p.length/3,sx=new Float32Array(n),sy=new Float32Array(n),ok=new Uint8Array(n);
+    bbox(st){const b=st&&st.bb;if(!b||b[2]<b[0]||mirs.length>1)return [0,0,doc.w,doc.h];/* (a stencil only takes paint away, so the box still holds) */let x0=1,y0=1,x1=0,y1=0;const p=mesh.pos,uv=mesh.uv,ix=mesh.idx,n=p.length/3,sx=new Float32Array(n),sy=new Float32Array(n),ok=new Uint8Array(n);
       for(let i=0;i<n;i++){const X=p[i*3],Y=p[i*3+1],Z=p[i*3+2],cw=VP[3]*X+VP[7]*Y+VP[11]*Z+VP[15];if(cw<=1e-6)continue;ok[i]=1;sx[i]=((VP[0]*X+VP[4]*Y+VP[8]*Z+VP[12])/cw*.5+.5)*w;sy[i]=((VP[1]*X+VP[5]*Y+VP[9]*Z+VP[13])/cw*.5+.5)*h;}
       const pad=Math.max(8,(s.disp||0)*w*.2);
       for(let t=R.start*3;t<(R.start+R.count)*3;t+=3){const a=ix[t],c=ix[t+1],d=ix[t+2];if(!ok[a]||!ok[c]||!ok[d])continue;
@@ -132,3 +138,55 @@ function mir3Box(){const box=el('div',{class:'dlg-grid',id:'mir3Box'}),redo=()=>
   box.append(el('div',{class:'chips'},chk('mir3Snap','Snap planes',!!mir3.snap,v=>{mir3.snap=v;mir3Save();}),chk('mir3Show','Show planes',!!mir3.show,v=>{mir3.show=v;mir3Save();}),
     el('button',{class:'btn sm',text:'Centre',onclick:()=>{mir3.off=[0,0,0];mir3Save();redo();}})));
   return box;}
+
+/* ---- stencils (projection painting): a picture over the 3D view ----
+   Mask: the brush paints only where the picture is light. Colour: the brush paints the picture's own colours.
+   Hold S over the view: S+left-drag turns it, S+right-drag scales it, S+middle-drag moves it (like Substance Painter).
+   Its place is kept relative to the view: centre (0..1 from the top left), height as a share of the view's height. */
+const st3={img:null,name:'',mode:'mask',x:.5,y:.5,scale:.6,rot:0,show:.35,tile:false,sKey:false,list:[]};
+function st3Uniforms(w,h){if(!st3.img||st3.mode==='off')return {uSt:{int:0},uStT:dummy,uStC:[0,0],uStHalf:[1,1],uStRot:0,uScr:[w,h],uStTile:{int:0}};
+  const S=st3.scale*h,a=st3.img.w/st3.img.h;return {uSt:{int:st3.mode==='colour'?2:1},uStT:st3.img.tex,uStC:[st3.x*w,(1-st3.y)*h],uStHalf:[S*a/2,S/2],uStRot:st3.rot*Math.PI/180,uScr:[w,h],uStTile:{int:st3.tile?1:0}};}
+/* the picture shown over the view (a plain canvas, so it costs the GPU nothing) */
+function st3Overlay(){const hit=document.getElementById('v3Hit');let c=st3.el;
+  if(!hit||!st3.img||st3.mode==='off'||!st3.show){if(c)c.hidden=true;return;}
+  if(!c||!c.isConnected){c=st3.el=el('canvas',{class:'v3stencil','aria-hidden':'true'});hit.parentNode.insertBefore(c,hit.nextSibling);st3.drawn=null;}
+  if(st3.drawn!==st3.img){const w=Math.min(1024,st3.img.w),h=Math.round(w*st3.img.h/st3.img.w);c.width=w;c.height=h;const d=captureRegionNow(st3.img,0,0,st3.img.w,st3.img.h).data,src=document.createElement('canvas');src.width=st3.img.w;src.height=st3.img.h;
+    const id=src.getContext('2d').createImageData(st3.img.w,st3.img.h);for(let i=0;i<d.length;i+=4){const a=d[i+3]||1;id.data[i]=d[i]*255/a;id.data[i+1]=d[i+1]*255/a;id.data[i+2]=d[i+2]*255/a;id.data[i+3]=d[i+3];}
+    const sx=src.getContext('2d');sx.putImageData(id,0,0);const x=c.getContext('2d');x.clearRect(0,0,w,h);x.drawImage(src,0,0,w,h);st3.drawn=st3.img;}
+  const r=hit.getBoundingClientRect(),pr=hit.parentNode.getBoundingClientRect(),S=st3.scale*r.height,a=st3.img.w/st3.img.h;
+  c.hidden=false;c.style.width=S*a+'px';c.style.height=S+'px';c.style.opacity=String(st3.show);
+  c.style.transform='translate('+(r.left-pr.left+st3.x*r.width-S*a/2)+'px,'+(r.top-pr.top+st3.y*r.height-S/2)+'px) rotate('+st3.rot+'deg)';}
+async function st3Load(file){let t;try{t=await fileTarget(file);}catch(e){toast('Could not read '+file.name+': '+(e.message||e));return;}setWrap(t,true);st3Use(t,file.name);}
+function st3Use(t,name){if(st3.img&&!st3.list.some(s=>s.t===st3.img))disposeTarget(st3.img);st3.img=t;st3.name=name;if(!st3.list.some(s=>s.t===t))st3.list.unshift({t,name});st3.list=st3.list.slice(0,12);
+  if(st3.mode==='off')st3.mode='mask';st3Overlay();if(typeof buildP3Panel==='function'&&ui.mode==='p3d')buildP3Panel();}
+function st3Clear(){st3.img=null;st3.name='';st3Overlay();if(ui.mode==='p3d')buildP3Panel();}
+/* built-in stencils, drawn once */
+function st3Builtin(kind){const N=512,c=document.createElement('canvas');c.width=c.height=N;const x=c.getContext('2d');x.fillStyle='#000';x.fillRect(0,0,N,N);x.fillStyle='#fff';x.strokeStyle='#fff';let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
+  if(kind==='dots'){for(let j=0;j<8;j++)for(let i=0;i<8;i++){x.beginPath();x.arc(32+i*64,32+j*64,20,0,7);x.fill();}}
+  else if(kind==='stripes'){x.save();x.translate(N/2,N/2);x.rotate(Math.PI/4);for(let i=-N;i<N;i+=48)x.fillRect(i,-N,24,2*N);x.restore();}
+  else if(kind==='scratches'){x.lineCap='round';for(let i=0;i<70;i++){x.lineWidth=.6+rnd()*2.2;x.globalAlpha=.4+rnd()*.6;const a=rnd()*Math.PI,l=40+rnd()*200,px=rnd()*N,py=rnd()*N;x.beginPath();x.moveTo(px,py);x.quadraticCurveTo(px+Math.cos(a)*l/2+rnd()*20,py+Math.sin(a)*l/2,px+Math.cos(a)*l,py+Math.sin(a)*l);x.stroke();}}
+  else{/* grunge: blotches over noise */const id=x.getImageData(0,0,N,N);for(let i=0;i<id.data.length;i+=4){const v=rnd()<.5?rnd()*90:0;id.data[i]=id.data[i+1]=id.data[i+2]=v;}x.putImageData(id,0,0);
+    for(let i=0;i<260;i++){x.globalAlpha=.08+rnd()*.35;x.beginPath();x.arc(rnd()*N,rnd()*N,4+rnd()*46,0,7);x.fill();}}
+  const tex=uploadStraight({el:c,w:N,h:N}),t=makeTarget(N,N,8,true);premultInto(t,tex,[0,0],null);gl.deleteTexture(tex);return t;}
+const ST3_BUILTIN=[['grunge','Grunge'],['scratches','Scratches'],['dots','Dots'],['stripes','Stripes']];
+function st3Box(){const box=el('div',{class:'dlg-grid',id:'st3Box'});
+  const tiles=el('div',{class:'st3tiles'},...ST3_BUILTIN.map(([k,l])=>el('button',{class:'btn sm'+(st3.name===l?' on':''),text:l,id:'st3_'+k,onclick:()=>{const f=st3.list.find(s=>s.name===l);st3Use(f?f.t:st3Builtin(k),l);}})),
+    ...st3.list.filter(s=>!ST3_BUILTIN.some(b=>b[1]===s.name)).map(s=>el('button',{class:'btn sm'+(st3.img===s.t?' on':''),text:s.name,title:s.name,onclick:()=>st3Use(s.t,s.name)})),
+    el('button',{class:'btn sm',text:'Load image…',id:'st3Load',onclick:async()=>{const fs=await pickFiles('image/*',false,'Images',['png','jpg','jpeg','webp','tga','tif','tiff','bmp','psd','exr']);if(fs[0])st3Load(fs[0]);}}));
+  box.append(tiles);
+  if(st3.img){box.append(seg([['mask','Mask'],['colour','Colour'],['off','Off']],st3.mode,v=>{st3.mode=v;st3Overlay();buildP3Panel();},'Stencil mode'),
+    el('p',{class:'note',text:st3.mode==='colour'?'The brush paints the picture’s own colours onto the model.':'The brush paints only where the picture is light.'}),
+    makeSlider({id:'st3Show',label:'Show',min:0,max:1,step:.05,value:st3.show,fmt:pct,onInput:v=>{st3.show=v;st3Overlay();}}).el,
+    makeSlider({id:'st3Scale',label:'Size',min:.05,max:4,step:.01,value:st3.scale,fmt:pct,onInput:v=>{st3.scale=v;st3Overlay();}}).el,
+    makeSlider({id:'st3Rot',label:'Angle',min:-180,max:180,step:1,value:st3.rot,fmt:v=>v+'°',onInput:v=>{st3.rot=v;st3Overlay();}}).el,
+    el('div',{class:'chips'},chk('st3Tile','Repeat',st3.tile,v=>{st3.tile=v;}),el('button',{class:'btn sm',text:'Centre',onclick:()=>{Object.assign(st3,{x:.5,y:.5,rot:0});st3Overlay();buildP3Panel();}}),el('button',{class:'btn sm',text:'Remove',onclick:st3Clear})),
+    el('p',{class:'note',text:'Hold S over the view: S+left-drag turns the stencil, S+right-drag scales it, S+middle-drag moves it.'}));}
+  return box;}
+/* S held over the 3D view moves the stencil instead of choosing the Smudge tool */
+window.addEventListener('keydown',e=>{if((e.key==='s'||e.key==='S')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&st3.img&&v3.on&&v3.hover&&!isTypingTarget(e.target)){e.preventDefault();e.stopImmediatePropagation();st3.sKey=true;}},true);
+window.addEventListener('keyup',e=>{if(e.key==='s'||e.key==='S')st3.sKey=false;},true);
+function st3Drag(d,e,hit){const r=hit.getBoundingClientRect(),dx=e.clientX-d.x,dy=e.clientY-d.y;
+  if(d.how==='stmove'){st3.x+=dx/r.width;st3.y+=dy/r.height;}
+  else if(d.how==='stscale')st3.scale=clamp(st3.scale*Math.exp((dx-dy)*.005),.02,8);
+  else{const cx=r.left+st3.x*r.width,cy=r.top+st3.y*r.height,a0=Math.atan2(d.y-cy,d.x-cx),a1=Math.atan2(e.clientY-cy,e.clientX-cx);st3.rot=((st3.rot+(a1-a0)*180/Math.PI+540)%360)-180;}
+  st3Overlay();}

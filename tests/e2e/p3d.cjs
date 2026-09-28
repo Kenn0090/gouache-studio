@@ -95,6 +95,25 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.screenshot({path:OUT+'p3d-mirror.png'});
  await p.evaluate(()=>{__gs.mir3.radial=6;__gs.mir3.axis='z';});ok(await p.evaluate(()=>__gs.mir3Mats().length===12),'radial 6 with Mirror X gives 12 copies');
  await p.evaluate(()=>{__gs.mir3.radial=0;});await p.click('#mir3_x');await W(200);ok(await p.evaluate(()=>!__gs.mir3.x),'Mirror X off');
+ /* ---- stencil: a mask stencil, white on top and black below, lets paint through only on its top half ---- */
+ await p.selectOption('#p3Model','plane');await W(800);
+ await p.evaluate(()=>{Object.assign(__gs.v3.cam,{yaw:0,pitch:0});__gs.v3.dirty=true;});
+ ok(await p.evaluate(()=>__gs.doc.name==='default'&&__gs.p3.sets.find(S=>S.name==='Left').missing),'a plain shape gets its own set; the others are kept, marked');
+ await p.evaluate(async()=>{const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');x.fillStyle='#000';x.fillRect(0,0,64,64);x.fillStyle='#fff';x.fillRect(0,0,64,32);
+   const b=await new Promise(r=>c.toBlob(r,'image/png'));await __gs.st3Load(new File([b],'half.png',{type:'image/png'}));Object.assign(__gs.st3,{x:.5,y:.5,scale:1.2,rot:0,mode:'mask'});});await W(400);
+ ok(await p.evaluate(()=>!!__gs.st3.img&&!document.querySelector('.v3stencil').hidden),'stencil loaded and shown over the view');
+ await setFG('#e01010');await p.evaluate(()=>{document.activeElement&&document.activeElement.blur();Object.assign(__gs.brush,{size:30});});
+ const hb3=await p.locator('#v3Hit').boundingBox(),vx=hb3.x+hb3.width/2;
+ await p.mouse.move(vx,hb3.y+hb3.height*.2);await p.mouse.down();await p.mouse.move(vx,hb3.y+hb3.height*.8,{steps:16});await p.mouse.up();await W(600);
+ const halves=await p.evaluate(()=>{const F=__gs.v3.fbo,g=document.querySelector('#gl').getContext('webgl2'),d=new Uint8Array(F.w*F.h*4);g.bindFramebuffer(g.FRAMEBUFFER,F.rf);g.readPixels(0,0,F.w,F.h,g.RGBA,g.UNSIGNED_BYTE,d);g.bindFramebuffer(g.FRAMEBUFFER,null);
+   let top=0,bot=0;for(let y=0;y<F.h;y++)for(let x=0;x<F.w;x++){const i=(y*F.w+x)*4;if(d[i]>150&&d[i+1]<90&&d[i+2]<90){if(y>=F.h/2)top++;else bot++;}}return {top,bot};});
+ ok(halves.top>200&&halves.bot<halves.top*.1,'mask stencil: paint only where it is white (top half) '+JSON.stringify(halves));
+ await p.screenshot({path:OUT+'p3d-stencil.png'});
+ /* S+middle-drag moves it; S does not switch to Smudge */
+ const sx0=await p.evaluate(()=>__gs.st3.x);await p.mouse.move(vx,hb3.y+hb3.height*.5);await p.keyboard.down('s');
+ await p.mouse.down({button:'middle'});await p.mouse.move(vx+120,hb3.y+hb3.height*.5,{steps:5});await p.mouse.up({button:'middle'});await p.keyboard.up('s');await W(200);
+ const sm=await p.evaluate(()=>({x:__gs.st3.x,tool:__gs.ui.tool}));ok(sm.x>sx0+.05&&sm.tool==='brush','S+middle-drag moves the stencil, the tool stays the brush '+JSON.stringify(sm));
+ await p.evaluate(()=>{__gs.st3.mode='off';});
  /* ---- back to Paint: the painting is untouched, and 3D Paint keeps its work ---- */
  await p.click('#modeTabs [data-mode=paint]');await W(600);
  s=await p.evaluate(()=>({own:__gs.tabDocs.key,names:__gs.allLayers().map(L=>L.name),w:__gs.doc.w,dock2:document.querySelector('#dock2').hidden}));
