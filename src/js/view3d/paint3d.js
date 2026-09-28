@@ -272,3 +272,30 @@ function p3MeshLayer(k){const M=doc.meshMaps,L=newLayerObj(k==='normal'?'Mesh no
 function p3MeshMapsBox(){const M=doc.meshMaps||{},ks=Object.keys(M);if(!ks.length)return el('p',{class:'note',text:'None yet. Press Bake mesh maps (or bake in the Bake tab and press Send to 3D Paint): the baked maps land here, per texture set.'});
   return el('div',{class:'p3mm'},...ks.map(k=>el('div',{class:'p3mmrow'},el('span',{text:msMeshName(k)}),
     el('button',{class:'btn sm',text:'Add as layer',onclick:()=>{const L=p3MeshLayer(k);structOp('Add mesh map layer',()=>{insertNode(L,doc.root);selectOnly(L);});changed(L);}}))));}
+/* ---- a 3D Paint layer to the Paint canvas and back (0.25) ----
+   Right-click a layer in 3D Paint › Edit in the Paint canvas: its content (every map, without its mask, opacity
+   or blend mode) becomes a linked layer in the painting. Edit it there with every Paint tool, then right-click ›
+   Send back to 3D Paint: it replaces the original layer's content (it becomes a plain paint layer), keeping its
+   name, mask, opacity and blend mode, as one undo step. */
+function flatNodeMaps(n,maps){const s={v:n.visible,o:n.opacity,m:n.mode,me:n.mask?n.mask.enabled:null};n.visible=true;n.opacity=1;if(n.type!=='group')n.mode=0;if(n.mask)n.mask.enabled=false;
+  const out={};try{for(const k of maps){const t=renderNodesMap([n],k),c=makeTarget(doc.w,doc.h,t.depth,false);blit(t,c,0,0,doc.w,doc.h,0,0);release(t);out[k]=c;}}
+  finally{n.visible=s.v;n.opacity=s.o;n.mode=s.m;if(n.mask)n.mask.enabled=s.me;}return out;}
+function p3LayerToPaint(n){if(ui.mode!=='p3d'||!n)return;if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
+  const set=p3.sets[p3.cur].name,tok=n.p3tok||(n.p3tok='l'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)),maps=doc.maps.slice(),imgs=flatNodeMaps(n,maps),name=n.name;
+  if(!setMode('paint',true)){for(const k in imgs)disposeTarget(imgs[k]);return;}
+  const need=maps.filter(k=>!doc.maps.includes(k)&&MAP_DEFS[k]);if(need.length)setDocMaps([...doc.maps,...need],'Add maps from 3D Paint');
+  const L=newLayerObj(name+' (from 3D Paint)');doc.count--;for(const x of Object.keys(L.maps))if(!imgs[x]){disposeTarget(L.maps[x]);delete L.maps[x];}
+  for(const k in imgs){if(doc.maps.includes(k))copyScaled(imgs[k],ensureMapTarget(L,k));disposeTarget(imgs[k]);}
+  L.p3link={set,tok,name};syncTargets();structOp('From 3D Paint',()=>{const [p,i]=insertPoint();insertNode(L,p,i);selectOnly(L);});changed(L);renderLayers();
+  toast('“'+name+'” is in the Paint canvas. Edit it, then right-click it › Send back to 3D Paint.');return L;}
+function paintLayerBackToP3(n){const ln=n&&n.p3link;if(!ln)return;if(ui.mode!=='paint'){toast('Send back works from the Paint tab.');return;}if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
+  const maps=doc.maps.slice(),imgs=flatNodeMaps(n,maps);
+  if(!setMode('p3d',true)){for(const k in imgs)disposeTarget(imgs[k]);return;}
+  const done=()=>{for(const k in imgs)disposeTarget(imgs[k]);};
+  const si=p3.sets.findIndex(S=>S.name===ln.set);if(si<0){done();toast('The texture set “'+ln.set+'” is gone.');return;}if(si!==p3.cur)p3SwitchSet(si,true);
+  const O=allNodes().find(x=>x.p3tok===ln.tok);if(!O||O.type==='group'){done();toast('The layer “'+ln.name+'” is no longer in 3D Paint.');return;}
+  const L=newLayerObj(O.name);doc.count--;for(const x of Object.keys(L.maps))if(!imgs[x]){disposeTarget(L.maps[x]);delete L.maps[x];}
+  for(const k in imgs)if(doc.maps.includes(k))copyScaled(imgs[k],ensureMapTarget(L,k));done();
+  Object.assign(L,{opacity:O.opacity,mode:O.mode,visible:O.visible,clip:O.clip,p3tok:O.p3tok});if(O.mask)L.mask=cloneMask(O.mask);/* (its effects and styles are now part of the pixels) */
+  syncTargets();structOp('Back from Paint',()=>{const P=O.parent,i=P.children.indexOf(O);detachNode(O);insertNode(L,P,i);selectOnly(L);});changed(L);renderLayers();buildP3Panel();
+  toast('“'+L.name+'” in 3D Paint now has your edits from the Paint canvas.');return L;}

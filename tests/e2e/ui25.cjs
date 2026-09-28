@@ -40,6 +40,19 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.showPanel('stencils'));await W(300);
  ok(await p.evaluate(()=>{const s=document.querySelector('#st3Sec');const tab=[...document.querySelectorAll('.dktab')].find(t=>/Stencils/.test(t.textContent));return !!s&&s.offsetParent!==null&&!!s.querySelector('#st3Load')&&!!tab;}),'Stencils is a tab of its own');
  ok(await p.evaluate(()=>{const g=__gs.dk.col2.groups.find(g=>g.tabs.includes('stencils'));return g&&g.tabs.indexOf('stencils')===g.tabs.indexOf('brushes')+1;}),'…right next to Brushes');
+ /* a 3D Paint layer to the Paint canvas and back */
+ const fillBase=(name,c)=>p.evaluate(([name,c])=>{const L=__gs.allLayers().find(l=>l.name===name),T=__gs.mapT(L,'base'),n=T.w,m=T.h,g=document.querySelector('#gl').getContext('webgl2'),px=new Uint8Array(n*m*4);for(let i=0;i<n*m;i++)px.set(c,i*4);
+   const T8=__gs.makeTarget(n,m,8,false);g.bindTexture(g.TEXTURE_2D,T8.tex);g.texSubImage2D(g.TEXTURE_2D,0,0,0,n,m,g.RGBA,g.UNSIGNED_BYTE,px);__gs.copyScaled(T8,T);T.empty=false;L.lookVer=(L.lookVer||0)+1;__gs.requestRender(true);},[name,c]);
+ const baseAt=name=>p.evaluate(name=>{const L=__gs.allLayers().find(l=>l.name===name);const d=__gs.readRGBA8(__gs.mapT(L,'base'));return Array.from(d.slice(0,4));},name);
+ await fillBase('Paint',[220,30,30,255]);await p.evaluate(()=>{const L=__gs.allLayers().find(l=>l.name==='Paint');__gs.doc.active=L;__gs.doc.sel=new Set([L]);L.opacity=.7;__gs.act('addMask');__gs.showPanel('layers');__gs.renderLayers();});await W(300);
+ await p.click('#layerList .lrow:has(.lname:text-is("Paint"))',{button:'right'});await W(150);await p.click('#menuPop .mi:has-text("Edit in the Paint canvas")');await W(1200);
+ let rt=await p.evaluate(()=>({mode:__gs.mode,has:__gs.allLayers().some(l=>l.name==='Paint (from 3D Paint)')}));ok(rt.mode==='paint'&&rt.has,'Edit in the Paint canvas opens the layer in Paint '+JSON.stringify(rt));
+ let c=await baseAt('Paint (from 3D Paint)');ok(c[0]>200&&c[1]<60,'…with its content '+c);
+ await fillBase('Paint (from 3D Paint)',[30,40,220,255]);await W(200);
+ await p.click('#layerList .lrow:has(.lname:text-is("Paint (from 3D Paint)"))',{button:'right'});await W(150);await p.click('#menuPop .mi:has-text("Send back to 3D Paint")');await W(1500);
+ rt=await p.evaluate(()=>{const L=__gs.allLayers().find(l=>l.name==='Paint');return {mode:__gs.mode,op:L&&L.opacity,mask:!!(L&&L.mask)};});ok(rt.mode==='p3d'&&rt.op===.7&&rt.mask,'Send back returns to 3D Paint, keeping the layer’s opacity and mask '+JSON.stringify(rt));
+ c=await baseAt('Paint');ok(c[2]>200&&c[0]<60,'…with the edits from Paint '+c);
+ await p.keyboard.press('Control+z');await W(500);c=await baseAt('Paint');ok(c[0]>200,'one undo brings the original back '+c);
  /* keyboard shortcuts in categories, with a warning when a key is taken */
  await p.evaluate(()=>__gs.act('keys'));await W(300);
  ok(await p.evaluate(()=>document.querySelectorAll('.kbcats .kbcat').length>=10),'the shortcuts editor lists categories');

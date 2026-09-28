@@ -235,6 +235,8 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
   if(lay&&!anim&&mm.length){items.push(sep(),head('Mask from mesh map'));for(const k of mm)items.push(it(P3_MESHMAP_NAMES[k]||k,()=>maskFromMeshMap(n,k)));}
   if(!anim&&!n.fx&&typeof smSave==='function'){items.push(sep(),it('Save as smart material…',()=>smSave(n)));if(n.mask)items.push(it('Save mask as smart mask…',()=>smMaskSave(n)));}
   if(!anim&&ui.mode==='paint'&&typeof sendToP3==='function')items.push(sep(),it('Send layer to 3D Paint',()=>sendToP3(n)));
+  if(!anim&&ui.mode==='paint'&&n.p3link)items.push(it('Send back to 3D Paint (replaces “'+n.p3link.name+'”)',()=>paintLayerBackToP3(n)));
+  if(ui.mode==='p3d'&&typeof p3LayerToPaint==='function')items.push(sep(),it('Edit in the Paint canvas',()=>p3LayerToPaint(n)));
   if(!anim)items.push(it('New fill layer',cmdNewFillLayer));
   items.push(sep(),it(grp?'Ungroup':'Group into folder',grp?cmdUngroup:cmdGroup,grp?'Ctrl+Shift+G':'Ctrl+G',anim),it('Duplicate',cmdDuplicate,'Ctrl+J',anim),it(grp?'Merge group':'Merge down',cmdMerge,'Ctrl+E',anim),it('Delete',cmdDelete,'Del',anim));
   pop.replaceChildren(...items);pop.hidden=false;
