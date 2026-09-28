@@ -33,7 +33,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await drag(60,210,580,210,{steps:20});await p.evaluate(()=>{const L=__gs.doc.active;L.name='Steel';});
  await p.click('#lAdd');await p.evaluate(()=>{__gs.doc.active.name='Paint';});await W();
  await p.evaluate(()=>{const L=__gs.layerByName('Steel');__gs.doc.active=L;__gs.doc.sel=new Set([L]);});await W();
- await p.evaluate(()=>__gs.showPanel('layers'));await W();
+ await p.setViewportSize({width:1440,height:1400});await p.evaluate(()=>__gs.showPanel('layers'));await W(600);
  await elShot('layers-panel','section[aria-labelledby="hLayers"]');
  await p.locator('#layerList .lrow:has(.lname:text-is("Steel"))').click({button:'right'});await W(400);
  await elShot('layer-menu','#menuPop');await p.keyboard.press('Escape');await p.mouse.click(700,500);await W();

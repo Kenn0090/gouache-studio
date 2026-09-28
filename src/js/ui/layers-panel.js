@@ -43,7 +43,7 @@ function syncLayerProps(){const A=doc.active,grp=A&&A.type==='group';if(ui.tool=
   if(A){opSlider.set(A.opacity);$('#lClip').checked=!!A.clip;$('#lLock').checked=!!A.lockAlpha;}
   $('#lClip').disabled=$('#lLock').disabled=!isLayer(A);
   const tops=topSelected(),p=A&&A.parent,i=p?p.children.indexOf(A):-1;
-  const mb=$('#lMerge');mb.textContent=tops.length>1?'Merge '+tops.length:grp?'Merge group':'Merge down';
+  const mb=$('#lMerge'),mt=tops.length>1?'Merge '+tops.length+' layers':grp?'Merge group':'Merge down';mb.title=mt+' (Ctrl+E)';mb.setAttribute('aria-label',mt);
   mb.disabled=!(tops.length>1||grp||(isLayer(A)&&i>0&&isLayer(p.children[i-1])));
   $('#lDel').disabled=!A;$('#lUp').disabled=!A||i>=p.children.length-1;$('#lDown').disabled=!A||i<=0;$('#lUngroup').disabled=!grp;
 }
