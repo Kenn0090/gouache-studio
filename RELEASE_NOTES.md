@@ -1,7 +1,8 @@
-Move, turn and scale projections, like Substance Painter, plus two new projections.
+Smart materials, anchor points, healing brushes and baking inside 3D Paint.
 
-- **Planar** (straight from one direction, for decals and logos) and **Spherical** projections, beside UV and Triplanar. They work for material pictures and for mask rows (pictures, noise, generators). Planar can **repeat** or not, and **Front faces only** keeps it off the parts facing away.
-- **Gizmo in the 3D view:** select the layer or mask row, then drag the arrows to move it, the rings to turn it, the small boxes to scale it along one axis and the middle box to scale it evenly.
-- **UV frame on the flat canvas:** drag a corner to scale (Shift keeps the proportions), the round handle to turn, and inside with the Move tool (or Ctrl) to move.
-- **Offset, Rotation and Scale** fields in Properties, with **Reset**. Every change is live, and each drag is one undo step.
-- **Right-click a layer in Paint › Send layer to 3D Paint:** just that layer (or group), flattened with its effects, arrives as a new layer in 3D Paint.
+- **Smart materials:** whole folders of layers (materials with generated masks) that fit themselves to your model using its baked maps, like Substance Painter's. Nine built in: Gun metal, Moss, Dirt, Dust, Imperfections, Skin, Steel, Wood and Leather. Right-click a folder › **Save as smart material…** to keep your own.
+- **Smart masks:** saved mask stacks (Worn edges, Dirty cavities, Dusty top, Scratched, Chipped paint, and your own). Click one to give the selected layer that mask.
+- **Anchor points:** masks higher up can follow what you painted lower down (height, shape or colour). Generators such as Edge wear can follow an anchor's painted height too.
+- **Healing brushes (J):** *Spot* heals a flaw with clean texture from nearby; *Healing* copies from where you Alt+click. The copy is blended into its edges. It works in Paint and on the model in 3D Paint, heals every map of the layer together, and follows the selection, symmetry and the 3D mirror.
+- **Bake mesh maps inside 3D Paint:** pick the maps, the size, a high-poly (optional) and which texture sets, then press Bake. Masks and materials that use the mesh maps update straight away. The bake also waits in the Bake tab for fine-tuning, and can be sent to the Paint canvas to clean up by hand.
+- Smart materials and smart masks can be exported and imported as .gmat files.

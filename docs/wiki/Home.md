@@ -8,9 +8,10 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 - [Panels and workspaces](Panels-and-workspaces.md): the options bar, the dock, floating panels, workspaces, the Filter Gallery
 
 ## Painting
-- [Brushes and painting](Brushes-and-painting.md): brushes, presets, colour jitter, making your own tips, Photoshop brushes, pen pressure, eraser, blend, dodge and burn
+- [Brushes and painting](Brushes-and-painting.md): brushes, presets, colour jitter, making your own tips, Photoshop brushes, pen pressure, eraser, blend, healing brushes, dodge and burn
 - [Layers](Layers.md): layers, groups, masks, fill layers, the right-click menu, blend modes, clipping, text, live gradients
 - [Masks and effects](Masks-and-effects.md): rows under a layer's mask (paint, mesh maps, ID colours, noise, generators, filters), content effects, the live mask, mesh maps from a material
+- [Smart materials, smart masks and anchor points](Smart-materials-and-anchors.md): whole folders of layers or masks saved to reuse; masks that follow what you painted lower down
 - [Shapes, arrays and layer styles](Shapes-arrays-and-layer-styles.md): shapes with bevels, repeating a layer in a line, grid or circle, drop shadows, strokes, bevels and more
 - [Selections, transforms and crop](Selections-transforms-and-crop.md)
 - [Fills and gradients](Fills-and-gradients.md)
@@ -24,7 +25,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 - [Filter layers](Filter-layers.md): filters you can change later, smart filters, live converters, pattern layers
 
 ## 3D
-- [3D Paint](3D-Paint.md): the 3D Paint tab. Paint on a model with texture sets, mirror and radial painting, stencils, selections on the model, materials and project files
+- [3D Paint](3D-Paint.md): the 3D Paint tab. Paint on a model with texture sets, mirror and radial painting, stencils, selections on the model, materials, baking mesh maps and project files
 - [3D view](3D-view.md): see your textures on a model while you paint
 - [Baker](Baker.md): the Bake tab. Bake normal, AO, curvature and more from a high-poly model, watch it on the model, and paint skew and offset fixes
 - Painting on the model: see [3D view](3D-view.md#painting-on-the-model)
@@ -64,5 +65,5 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 | 19 | Material layers and the Materials tab, triplanar, mask mode, bake to 3D Paint per material, ID from vertex colours/polypaint, floating dialogs, History, lazy mouse; Material panel, mesh maps in materials and masks, mask tools and ID colour masks, Substance-style Levels (0.22.2) | 0.22 |
 | 20 | Masks and effects: rows under a layer (paint, mesh maps, ID colours, direction, gradients, noise, generators, filters), content effects, Properties panel, live mask, mesh maps from a material | 0.23 |
 | 20b | Planar and spherical projections, projection gizmo and UV frame | 0.23.1 |
-| 21 | Smart materials and smart masks, anchor points, baking inside 3D Paint, smart heal brush | 0.24 |
+| 21 | Smart materials and smart masks, anchor points, baking inside 3D Paint, healing brushes | 0.24 |
 | 22 | PBR viewer with HDRIs, screenshots, ray-traced and turntable renders | 0.25 |

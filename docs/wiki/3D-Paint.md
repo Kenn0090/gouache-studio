@@ -94,8 +94,22 @@ The **Materials** tab sits beside Brushes. Click a material (Steel, Gold, Copper
 
 The layer stays live: every change shows straight away on the model, and becomes one undo step when you pause.
 
+**Smart materials** (a whole folder of layers with generated masks, such as Gun metal, Moss or Dust) and **smart masks** are in the Materials tab too: see [Smart materials, smart masks and anchor points](Smart-materials-and-anchors.md).
+
+## Baking mesh maps here
+**Bake mesh maps…** (3D Paint panel, under *Mesh maps*) bakes without leaving 3D Paint, like Substance Painter's window:
+- **Maps:** Normal, Ambient occlusion, Curvature, Height, Thickness, World-space normal, Position and ID colours.
+- **Size:** the texture set's, or 512 to 4K.
+- **High-poly:** optional. Load one to bake its detail into the normal and height; without one, the maps come from the model itself (normal and height are skipped).
+- **Texture sets:** each is baked on its own part of the model; untick the ones to leave alone.
+- **Quality** (the number of rays) and *also add them as layers*.
+
+![The Bake mesh maps window.](images/p3-bake.png)
+
+The results become each set's mesh maps, and everything that reads them (mask rows, generators, material channels) updates straight away. The bake also waits in the **Bake tab**: **Fine-tune in the Bake tab** opens it there to change settings, add a cage or paint skew and offset fixes, then **Send to 3D Paint** again. **Send to the Paint canvas** puts the active set's bake in the painting as layers, to clean up intersections by hand.
+
 ## Mesh maps (from the Bake tab)
-In the Bake tab, tick **Bake each material separately**, then press **Send to 3D Paint**. The model comes over, and each material's baked maps land in its own texture set as that set's **mesh maps** (listed in the 3D Paint panel), like Substance Painter's. They're what masks and smart materials will read.
+In the Bake tab, tick **Bake each material separately**, then press **Send to 3D Paint**. The model comes over, and each material's baked maps land in its own texture set as that set's **mesh maps** (listed in the 3D Paint panel), like Substance Painter's. Masks, generators and [smart materials](Smart-materials-and-anchors.md) read them.
 - The baked normal becomes a layer in the Normal map, so the high-poly detail shows on the model straight away.
 - **Add as layer** puts any mesh map in the layer stack.
 - Tick *also add them as layers* before sending to get AO (Multiply) and curvature (Overlay) layers automatically.

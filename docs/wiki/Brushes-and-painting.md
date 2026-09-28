@@ -41,6 +41,18 @@ Uses the same settings as the brush. On a document with several maps, it can era
 ## Blend (S)
 Smudges and mixes paint. **Strength** is how far the colour is dragged. **Paint load** adds some of the foreground colour as you blend, like a loaded brush.
 
+## Healing brushes (J)
+Fix flaws, seams and specks without leaving a smear, like Photoshop's healing brushes. The tool has two modes (in the options bar or Tool settings):
+- **Spot:** paint over the flaw. When you let go, it is replaced with clean texture from nearby, found by itself.
+- **Healing:** **Alt+click** where to copy from (a cross marks it), then paint where it should go. **Aligned** keeps the same distance between the source and the brush for every stroke; untick it to start from the source each time.
+
+Either way the borrowed texture keeps its detail, but its colour and brightness are bent to match the edges of what you painted, so it blends in. While you paint, the stroke shows as a faint grey trail; the healing happens when you let go.
+
+On a layer with several maps (a material, or a layer with height and roughness), **every map is healed together** with the same source. The stroke follows the **selection** and **symmetry** like any brush. In 3D Paint it works on the model too: Alt+click on the model (without dragging) sets the source, and the **mirror** heals both sides.
+
+![Spot healing.](images/heal.png)
+*The left flaw was painted over once with the Spot healing brush; the right one is untouched.*
+
 ## Dodge and burn (O)
 Lightens (Dodge) or darkens (Burn). **Shift+O** switches between them.
 - **Range:** affect shadows, midtones or highlights.
