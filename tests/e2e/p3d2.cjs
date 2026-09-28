@@ -114,5 +114,15 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const sp=await p.evaluate(()=>{const L=__gs.doc.active,d=__gs.readRGBA8(__gs.mapT(L,'base')),W=__gs.doc.w;let g=0,o=0;for(let i=0;i<d.length;i+=4){if(d[i+1]>150&&d[i]<90&&d[i+3]>200)g++;else if(d[i+3]>20)o++;}return {mode:__gs.mode,name:L.name,g,o,frac:g/(W*W)};});
  ok(sp.mode==='p3d'&&/from Paint/.test(sp.name)&&sp.g>100&&sp.o<sp.g*.1,'Send to 3D Paint: the painting arrives as a layer in 3D Paint '+JSON.stringify(sp));
  await p.click('#modeTabs [data-mode=paint]');await W(600);
+ /* right-click one layer › Send layer to 3D Paint: only that layer goes */
+ await p.evaluate(()=>{__gs.allLayers()[0].visible=true;__gs.act('addLayer');});await W();await setFG('#2040e0');
+ await p.keyboard.press('m');{const v2=await p.evaluate(()=>({x:__gs.view.x,y:__gs.view.y,z:__gs.view.zoom}));await p.mouse.move(gb.x+v2.x+160*v2.z,gb.y+v2.y+40*v2.z);await p.mouse.down();await p.mouse.move(gb.x+v2.x+260*v2.z,gb.y+v2.y+120*v2.z,{steps:5});await p.mouse.up();await W();}
+ await p.evaluate(()=>{__gs.act('fill');__gs.act('deselect');const L=__gs.doc.active;L.name='Logo';__gs.showPanel('layers');});await W(300);
+ await p.click('#layerList .lrow:has(.lname:text-is("Logo"))',{button:'right'});await W(150);
+ ok(await p.evaluate(()=>[...document.querySelectorAll('#menuPop .mi')].some(b=>b.textContent.includes('Send layer to 3D Paint'))),'right-click in Paint offers Send layer to 3D Paint');
+ await p.click('#menuPop .mi:has-text("Send layer to 3D Paint")');await W(1200);
+ const sl=await p.evaluate(()=>{const L=__gs.doc.active,d=__gs.readRGBA8(__gs.mapT(L,'base'));let bl=0,o=0;for(let i=0;i<d.length;i+=4){if(d[i+2]>150&&d[i]<90&&d[i+3]>200)bl++;else if(d[i+3]>20)o++;}return {mode:__gs.mode,name:L.name,bl,o};});
+ ok(sl.mode==='p3d'&&/Logo/.test(sl.name)&&sl.bl>100&&sl.o<sl.bl*.1,'only that layer arrives in 3D Paint (no background, no other layers) '+JSON.stringify(sl));
+ await p.click('#modeTabs [data-mode=paint]');await W(600);
  ok(errs.length===0,'no errors '+errs.slice(0,3).join('\n'));
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();})();

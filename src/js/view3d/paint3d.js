@@ -230,9 +230,12 @@ window.addEventListener('keydown',e=>{if(e.key==='Escape'&&ui.viewMask&&!(typeof
 
 /* ---- Paint › Send to 3D Paint: the painting, flattened (every map it shares with 3D Paint), as a new layer of the
    active texture set, ready to move and scale with Free transform. Nothing stays live: it is plain pixels. */
-function sendToP3(){if(ui.mode!=='paint'){toast('Send to 3D Paint works from the Paint tab.');return;}if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
-  const maps=doc.maps.filter(k=>P3_MAPS.includes(k)),R=paintRoot().children,imgs={},name=doc.name||'Painting';
+/* only: one layer or group (right-click › Send layer to 3D Paint), flattened with its effects; else the whole painting */
+function sendToP3(only){if(ui.mode!=='paint'){toast('Send to 3D Paint works from the Paint tab.');return;}if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
+  const maps=doc.maps.filter(k=>P3_MAPS.includes(k)),R=only?[only]:paintRoot().children,imgs={},name=only?only.name:(doc.name||'Painting');
+  const vis=only?only.visible:true;if(only)only.visible=true;/* a hidden layer is sent as it would show */
   for(const k of maps){const t=renderNodesMap(R,k),c=makeTarget(doc.w,doc.h,t.depth,false);blit(t,c,0,0,doc.w,doc.h,0,0);release(t);imgs[k]=c;}
+  if(only)only.visible=vis;
   if(!setMode('p3d',true)){for(const k in imgs)disposeTarget(imgs[k]);return;}
   const L=newLayerObj(name+' (from Paint)');doc.count--;
   for(const k in imgs){if(!doc.maps.includes(k)){disposeTarget(imgs[k]);continue;}fitInto(imgs[k],ensureMapTarget(L,k));disposeTarget(imgs[k]);}
