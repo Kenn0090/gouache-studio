@@ -91,6 +91,7 @@ Answers to the design questions:
 - The **Paint tab also gets fill layers and the icon layer buttons**, so both tabs match.
 - New: a **turntable render** of the viewport: choose how many spins, the speed, and the file format (video MP4/WebM, GIF, PNG sequence).
 - New: a **viewport screenshot button** and a **GPU ray-traced render button** (progressive path tracing in shaders, reusing the baker's BVH; WebGL/WebGPU can't use RTX cores).
+Release order (Kenn chose plan A): **0.20** separate tabs + layer changes (Bake/Convert own canvas without brush/colour panels; bake send ticks, plain layers, export, onto texture set later; Delete key; 3D button; resizable dock; icon layer buttons; right-click layer menu; extendable options bar; fill layers in Paint). **0.21** the 3D Paint tab (own project file, texture sets, Substance-style stack, Colour+Brushes column, navigation, Alt-hover pick, mirror/radial, stencils, selections, shade arrows, lock-up fix). **0.22** looks (PBR + HDRIs .hdr/.exr, screenshot, ray-traced render, turntable render, high-poly in Bake, C cycles maps). **0.23** Mask Builder.
 More requests from Kenn in the same message:
 1. 3D Painter **layer stack like Substance Painter's** (fill layers, paint layers, masks, per-channel blending).
 2. Sending bakes: **tick which maps get sent**, plus **export baked maps** straight to files.
