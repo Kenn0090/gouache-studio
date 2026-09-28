@@ -66,6 +66,7 @@ cv.addEventListener('pointerdown',e=>{
     const hit=hitText(ix,iy);if(hit){selectOnly(hit);renderLayers();ptr={mode:'tmove',id:e.pointerId,L:hit,sx:ix,sy:iy,ox:hit.text.x,oy:hit.text.y,moved:false};return;}
     if(!effVisible(doc.active||doc.root)&&doc.active){}createText(ix,iy);return;}
   if(ui.tool==='picker'||e.altKey){ptr={mode:'pick',id:e.pointerId};const q=ui.cageFlat?cageFwd(ix,iy):[ix,iy];pickAt(q[0],q[1]);return;}
+  if(typeof maskPaintLocked==='function'&&maskPaintLocked()){toast('Press Paint in the mask bar to paint the mask.');return;}
   const et=ui.mode==='bake'?bakeEditTarget():editTarget();const o=paintOpts(et);if(!o)return;const L=et.L,p=pressureOf(e);
   const cz=cageStrokeStart(o,ix,iy);if(cz===false)return;const sx=cz?cz.x:ix,sy=cz?cz.y:iy;o.sym=symFor(o);
   ptr={mode:'paint',id:e.pointerId,sx,sy,sp:p,rx:sx,ry:sy,cage:cz?cz.kind:null,ox:sx,oy:sy,lock:null};beginStroke(L,sx,sy,p,o);

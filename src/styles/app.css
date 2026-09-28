@@ -596,3 +596,5 @@ body.noopt .optbar{display:none}
 #matEdBody{padding:8px 10px;gap:8px;overflow:auto}
 #matEdBody .matHead{grid-template-columns:72px 1fr}#matEdBody .matprev{width:72px;height:72px}
 #matEdBody .fillrow{display:grid;gap:6px;padding:6px 0;border-top:1px solid var(--line)}#matEdBody .fillrow.off{opacity:.75}
+.v3mk{position:absolute;pointer-events:none;z-index:3}
+.v3mk{position:absolute;pointer-events:none;z-index:3}

@@ -57,6 +57,7 @@
     "view3d/view3d",
     "view3d/mesh-paint",
     "view3d/paint3d",
+    "view3d/mask-tools",
     "files/p3-project",
     "layers/materials",
     "bake/bake-gpu",

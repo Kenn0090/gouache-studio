@@ -114,6 +114,8 @@ function layerPointerDown(e,n,row){
   if(n.mask&&e.target===n.mask.thumb){if(e.shiftKey){n.mask.enabled=!n.mask.enabled;toast(n.mask.enabled?'Mask on.':'Mask off.');}
     else if(e.altKey){selectOnly(n);n.editMask=true;ui.viewMask=!ui.viewMask;}
     else{selectOnly(n);n.editMask=true;}renderLayers();requestRender(true);refreshChanUI();return;}
+  /* the layer's own thumbnail: back to the layer (and out of mask mode) */
+  if(e.target===n.thumb&&ui.viewMask&&typeof maskModeExit==='function'){maskModeExit();v3.dirty=true;}
   if(e.target===n.thumb&&n.editMask){n.editMask=false;ui.viewMask=false;}
   let pendingSingle=null;
   if(e.shiftKey&&doc.active){const rows=displayRows().map(r=>r.n),a=rows.indexOf(doc.active),b=rows.indexOf(n);if(a>=0&&b>=0){const lo=Math.min(a,b),hi=Math.max(a,b);doc.sel=new Set(rows.slice(lo,hi+1));}doc.sel.add(n);doc.active=n;}

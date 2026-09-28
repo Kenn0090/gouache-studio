@@ -202,20 +202,22 @@ function maskFromMeshMap(L,k){const M=doc.meshMaps&&doc.meshMaps[k];if(!M||!isLa
   if(!L.mask){if(doc.active!==L)selectOnly(L);cmdAddMask(1);}if(!L.mask)return;
   const T=L.mask.target;fullRecord({target:T,lockAlpha:false,maskOf:L,maskObj:L.mask},'Mask from '+(P3_MESHMAP_NAMES[k]||k).toLowerCase(),()=>{const tmp=acquireD(T.depth);copyScaled(M,tmp);run(P_MASKLUM,T,{uSrc:tmp.tex});release(tmp);});
   changed(L);renderLayers();v3.dirty=true;requestRender(true);toast('The mask of “'+L.name+'” is now its '+(P3_MESHMAP_NAMES[k]||k).toLowerCase()+'. Alt+click it to see it on the model.');}
-function maskModeExit(){const A=doc.active;ui.viewMask=false;if(A&&A.mask)A.editMask=false;renderLayers();requestRender(true);v3.dirty=true;}
+function maskModeExit(){const A=doc.active;if(typeof mk3Reset==='function')mk3Reset();ui.viewMask=false;if(A&&A.mask)A.editMask=false;renderLayers();requestRender(true);v3.dirty=true;}
 function maskBarSync(){let bar=document.getElementById('maskBar');const on=!!(ui.viewMask&&doc.active&&doc.active.mask&&ui.mode!=='anim');
   if(!on){if(bar)bar.hidden=true;return;}
   if(!bar){bar=el('div',{id:'maskBar',class:'maskbar',role:'toolbar','aria-label':'Mask'});$('#work').append(bar);}
   const kinds=SEL3_KINDS.filter(k=>k[0]!=='off'),pick=el('select',{id:'maskSel','aria-label':'Double-click the model to fill'},el('option',{value:'off',text:'Double-click: off'}),...kinds.map(([k,l])=>el('option',{value:k,text:'Double-click: '+l})));
   pick.value=sel3.mode;pick.onchange=()=>{sel3.mode=pick.value;if(ui.mode==='p3d')buildP3Panel();};
-  bar.replaceChildren(el('span',{class:'maskbar-t',text:'Mask of “'+doc.active.name+'”'}),
+  const tools=el('div',{class:'seg',role:'group','aria-label':'Mask tools'},...MK_TOOLS.map(([k,l])=>el('button',{class:'segb',id:'mk_'+k,'aria-pressed':String(mk3.tool===k),text:l,
+    title:k==='paint'?'Paint the mask (nothing paints until this is on)':'Select with a '+l.toLowerCase()+' (drag inside it to move it)',onclick:()=>maskTool(k)})));
+  bar.replaceChildren(el('span',{class:'maskbar-t',text:'Mask of “'+doc.active.name+'”'}),tools,
     el('button',{class:'btn sm',id:'maskWhite',text:'Fill white',title:'Show everything (or the selection)',onclick:()=>maskOp(0,1)}),
     el('button',{class:'btn sm',id:'maskBlack',text:'Fill black',title:'Hide everything (or the selection)',onclick:()=>maskOp(0,0)}),
     el('button',{class:'btn sm',id:'maskInv',text:'Invert',onclick:()=>maskOp(1)}),pick,
-    el('span',{class:'maskbar-n',text:'Paint white to show, black to hide. Ctrl+double-click hides a part.'}),
+    el('span',{class:'maskbar-n',text:typeof mk3Hint==='function'?mk3Hint():''}),
     el('button',{class:'btn sm primary',id:'maskDone',text:'Done',title:'Back to the material (Esc)',onclick:maskModeExit}));
   bar.hidden=false;}
-window.addEventListener('keydown',e=>{if(e.key==='Escape'&&ui.viewMask&&modal.hidden&&!isTypingTarget(e.target)&&!(typeof xf!=='undefined'&&xf)&&!selLive){e.preventDefault();e.stopImmediatePropagation();maskModeExit();}},true);
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&ui.viewMask&&!(typeof mk3!=='undefined'&&mk3.draw)&&modal.hidden&&!isTypingTarget(e.target)&&!(typeof xf!=='undefined'&&xf)&&!selLive){e.preventDefault();e.stopImmediatePropagation();maskModeExit();}},true);
 
 /* ---- Paint › Send to 3D Paint: the painting, flattened (every map it shares with 3D Paint), as a new layer of the
    active texture set, ready to move and scale with Free transform. Nothing stays live: it is plain pixels. */

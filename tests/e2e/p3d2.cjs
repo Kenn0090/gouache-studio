@@ -70,6 +70,26 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.mouse.move(cx,cy);await p.keyboard.press('Escape');await W(400);
  ok(await p.evaluate(()=>!__gs.ui.viewMask&&document.querySelector('#maskBar').hidden),'Esc leaves mask mode');
  c=await px();ok(!(c[0]>240&&c[1]>240&&c[2]>240),'the model shows its material again '+c);
+ /* ---- mask tools: nothing paints until Paint is on; Box selects what you see; drag inside moves it; the thumbnail leaves ---- */
+ await mt.click({modifiers:['Alt']});await W(500);
+ const mblack=()=>p.evaluate(()=>{const L=__gs.allLayers().find(l=>l.name==='Paint'),d=__gs.readRGBA8(L.mask.target);let n=0;for(let i=0;i<d.length;i+=4)if(d[i]<60)n++;return n;});
+ const selInfo=()=>p.evaluate(()=>{const d=__gs.selPixels(),W=__gs.doc.w,k=W*__gs.doc.h/(d.length/4),w=Math.round(W/Math.sqrt(k));let n=0,sx=0;for(let i=0;i<d.length;i+=4)if(d[i]>127){n+=k;sx+=(i/4)%w;}return {n,x:n?Math.round(sx*k/n):0,on:!!__gs.sel.active};});
+ await p.evaluate(()=>{__gs.v3.paintOn=true;Object.assign(__gs.brush,{size:40,hardness:1,opacity:1,flow:1,smoothing:0,lazy:0,pSize:false,tip:null});});await setFG('#000000');await p.evaluate(()=>document.activeElement&&document.activeElement.blur());
+ const stroke3=async(x0,y0,x1,y1)=>{await p.mouse.move(x0,y0);await p.mouse.down();await p.mouse.move(x1,y1,{steps:8});await p.mouse.up();await W(500);};
+ await stroke3(cx-40,cy,cx+40,cy);ok(await mblack()===0,'in mask mode nothing paints until Paint is pressed');
+ await p.click('#mk_paint');await W(200);await stroke3(cx-40,cy,cx+40,cy);const nb=await mblack();ok(nb>200,'with Paint on, the brush paints the mask ('+nb+')');
+ await p.click('#maskWhite');await W(300);await p.click('#mk_box');await W(200);
+ ok(await p.evaluate(()=>__gs.ui.tool==='marquee'&&document.querySelector('#mk_box').getAttribute('aria-pressed')==='true'),'Box is on (and the canvas uses the marquee)');
+ await stroke3(cx-70,cy-60,cx-5,cy+60);const s1=await selInfo();ok(s1.on&&s1.n>300,'Box selects the visible part of the model '+JSON.stringify(s1));
+ ok(await p.evaluate(()=>{const c=document.querySelector('.v3mk');return !!c&&!c.hidden;}),'the box outline shows over the view');
+ await stroke3(cx-40,cy,cx+50,cy);const s2=await selInfo();ok(s2.on&&Math.abs(s2.n-s1.n)<s1.n*.5&&s2.x!==s1.x,'dragging inside moves the selection '+JSON.stringify(s2));
+ await p.click('#maskBlack');await W(400);const nb2=await mblack();ok(nb2>100&&Math.abs(nb2-s2.n)<s2.n*.35,'Fill black fills only the selection ('+nb2+')');
+ await p.keyboard.press('Control+d');await W(200);await p.click('#mk_poly');await W(200);
+ for(const [dx,dy] of [[-50,-50],[30,-50],[30,40]]){await p.mouse.click(cx+dx,cy+dy);await W(120);}await p.keyboard.press('Enter');await W(500);
+ const s3=await selInfo();ok(s3.on&&s3.n>100,'Polygon: click the corners, Enter closes '+JSON.stringify(s3));
+ await p.keyboard.press('Control+d');await W(200);
+ await p.locator('#layerList .lrow:has(.lname:text-is("Paint")) .thumbs > :first-child').click();await W(400);
+ ok(await p.evaluate(()=>!__gs.ui.viewMask&&document.querySelector('#maskBar').hidden),'clicking the layer thumbnail leaves mask mode');
  await p.click('#modeTabs [data-mode=paint]');await W(600);ok(await p.evaluate(ws=>__gs.dk.ws===ws,ws0),'leaving brings the previous workspace back');
  /* ---- Paint › Send to 3D Paint: flattened into a new layer of the active set ---- */
  await p.evaluate(()=>{__gs.allLayers()[0].visible=false;__gs.act('addLayer');});await W();
