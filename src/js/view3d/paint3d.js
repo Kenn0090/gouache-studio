@@ -30,7 +30,7 @@ function p3dExit(){p3.cam=Object.assign({},v3.cam);p3.imported=v3.imported;p3.v3
 /* 3D only (the viewport takes the whole painting area), 3D + the flat texture, or the flat texture only */
 function p3ApplyLayout(){const L=p3.layout,work=$('#work');work.classList.toggle('v3full',L==='3d');toggle3D(L!=='2d');if(v3.on&&!v3.mesh)v3LoadModel(true);}
 function p3SetLayout(L){p3.layout=L;p3Save();p3ApplyLayout();buildP3Panel();}
-function buildP3Panel(){const box=$('#p3dBody');if(!box)return;box.replaceChildren();const s=v3s();
+function buildP3Panel(){const sb=$('#st3Body');if(sb)sb.replaceChildren(el('p',{class:'note',text:'A picture laid over the 3D view: the brush paints through it onto the model.'}),st3Box());const box=$('#p3dBody');if(!box)return;box.replaceChildren();const s=v3s();
   const models=el('select',{id:'p3Model','aria-label':'Model'},...Object.entries(PRIMS).map(([k,[l]])=>el('option',{value:k,text:l})),
     ...(v3.imported?[el('option',{value:'imported',text:v3.imported.name})]:[]),el('option',{value:'__import',text:'Import a model (OBJ, glTF, GLB, FBX)…'}));
   models.value=s.model;models.onchange=()=>{if(models.value==='__import'){models.value=s.model;importModel().then(()=>{p3.imported=v3.imported;buildP3Panel();});return;}s.model=models.value;v3LoadModel();buildP3Panel();};
@@ -44,8 +44,6 @@ function buildP3Panel(){const box=$('#p3dBody');if(!box)return;box.replaceChildr
       Object.keys(bk.res||{}).length?el('button',{class:'btn sm',text:'Fine-tune in the Bake tab',onclick:()=>setMode('bake')}):null,Object.keys(bk.res||{}).length?el('button',{class:'btn sm',id:'p3BakePaint',text:'Send to the Paint canvas',title:'The bake as layers in the painting, to clean up by hand',onclick:p3BakeToPaint}):null),p3MeshMapsBox(),
     el('div',{class:'sub',text:'Project'}),el('div',{class:'chips'},el('button',{class:'btn sm',text:'Save project',title:'Save the model and all texture sets as a .gouache3d project (Ctrl+S here)',onclick:()=>saveP3Project(false)}),el('button',{class:'btn sm',text:'Open project…',onclick:()=>pickFile('open')}),el('button',{class:'btn sm',text:'Export textures…',onclick:()=>actions.expTex()})),
     el('div',{class:'sub',text:'Select on the model'}),sel3Box(),
-    el('div',{class:'sub',text:'Mirror'}),mir3Box(),
-    el('div',{class:'sub',text:'Stencil'}),st3Box(),
     el('div',{class:'sub',text:'Texture size'}),seg([[1024,'1K'],[2048,'2K'],[4096,'4K']],doc.w,v=>p3Resize(+v),'Texture size'));}
 function p3Resize(n){if(n===doc.w&&n===doc.h)return;if(n>MAX_DIM){toast('This computer cannot edit textures that large.');return;}p3.size=n;p3Save();resizeImageDoc(n,n);for(const L of paintLayers())if(L.fill)fillRender(L);buildP3Panel();}
 

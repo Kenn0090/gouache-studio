@@ -129,9 +129,9 @@ function drawMir3(VP){if(!mir3.show||!(mir3.x||mir3.y||mir3.z)||!v3.mesh)return;
   useProg(P3.line,{uVP:{m4:VP},uUVs:1,uH:dummy,uDisp:0,uUseH:false,uCol:[.35,.8,1,.4]});gl.drawArrays(gl.LINES,0,pts.length/3);
   gl.depthMask(true);gl.disable(gl.BLEND);gl.bindVertexArray(vao);}
 /* the Mirror section (3D Paint panel, and the 3D view's settings in Paint) */
-function mir3Box(){const box=el('div',{class:'dlg-grid',id:'mir3Box'}),redo=()=>{const n=mir3Box();box.replaceWith(n);};
+function mir3Box(noAxes){const box=el('div',{class:'dlg-grid',id:'mir3Box'}),redo=()=>{const n=mir3Box(noAxes);box.replaceWith(n);if(noAxes)mir3BarSync();};
   const tg=(k,l)=>el('button',{class:'optchip'+(mir3[k]?' on':''),id:'mir3_'+k,'aria-pressed':String(!!mir3[k]),text:l,onclick:()=>{mir3[k]=!mir3[k];mir3Save();redo();}});
-  box.append(el('div',{class:'chips'},tg('x','Mirror X'),tg('y','Mirror Y'),tg('z','Mirror Z')));
+  if(!noAxes)box.append(el('div',{class:'chips'},tg('x','Mirror X'),tg('y','Mirror Y'),tg('z','Mirror Z')));
   const snapV=v=>{if(Math.abs(v)<.025)return 0;return mir3.snap?Math.round(v/.05)*.05:v;};
   ['x','y','z'].forEach((a,i)=>{if(!mir3[a]&&!(mir3.radial>1))return;box.append(makeSlider({id:'mir3o_'+a,label:a.toUpperCase()+' plane',min:-1.2,max:1.2,step:.005,value:mir3.off[i],fmt:v=>v===0?'centre':(v>0?'+':'')+v.toFixed(2),
     onInput:v=>{mir3.off[i]=snapV(v);mir3Save();},onChange:()=>redo()}).el);});
@@ -140,6 +140,17 @@ function mir3Box(){const box=el('div',{class:'dlg-grid',id:'mir3Box'}),redo=()=>
   box.append(el('div',{class:'chips'},chk('mir3Snap','Snap planes',!!mir3.snap,v=>{mir3.snap=v;mir3Save();}),chk('mir3Show','Show planes',!!mir3.show,v=>{mir3.show=v;mir3Save();}),
     el('button',{class:'btn sm',text:'Centre',onclick:()=>{mir3.off=[0,0,0];mir3Save();redo();}})));
   return box;}
+
+/* 3D Paint: the mirror sits in the 3D view's top bar (X, Y, Z, radial copies; ▾ opens the planes and snapping) */
+function mir3Bar(){const wrap=el('span',{class:'v3mir',id:'v3Mir'}),pop=el('div',{class:'v3set v3mirpop',id:'v3MirPop',hidden:true});
+  const tg=(k,l)=>el('button',{class:'btn sm'+(mir3[k]?' on':''),id:'mir3_'+k,'aria-pressed':String(!!mir3[k]),text:l,title:'Mirror painting across the '+k.toUpperCase()+' plane',onclick:()=>{mir3[k]=!mir3[k];mir3Save();mir3BarSync();}});
+  const rad=el('select',{id:'mir3Rad','aria-label':'Radial copies',title:'Radial painting: copies around an axis'},el('option',{value:0,text:'Radial off'}),...[2,3,4,5,6,8,10,12,16].map(n=>el('option',{value:n,text:n+'× radial'})));
+  rad.value=String(mir3.radial>1?mir3.radial:0);rad.onchange=()=>{mir3.radial=+rad.value;mir3Save();mir3BarSync();};
+  const more=el('button',{class:'btn sm',id:'mir3More',text:'▾',title:'Mirror planes, radial axis and snapping','aria-expanded':'false',onclick:()=>{pop.hidden=!pop.hidden;more.setAttribute('aria-expanded',String(!pop.hidden));if(!pop.hidden)pop.replaceChildren(el('div',{class:'sub',text:'Mirror'}),mir3Box(true));}});
+  wrap.append(el('span',{class:'v3lab',text:'Mirror'}),tg('x','X'),tg('y','Y'),tg('z','Z'),rad,more);return {wrap,pop};}
+function mir3BarSync(){for(const k of ['x','y','z']){const b=document.getElementById('mir3_'+k);if(b){b.classList.toggle('on',!!mir3[k]);b.setAttribute('aria-pressed',String(!!mir3[k]));}}
+  const r=document.getElementById('mir3Rad');if(r)r.value=String(mir3.radial>1?mir3.radial:0);const p=document.getElementById('v3MirPop');if(p&&!p.hidden&&!p.contains(document.activeElement))p.replaceChildren(el('div',{class:'sub',text:'Mirror'}),mir3Box(true));
+  v3.dirty=true;requestRender();}
 
 /* ---- stencils (projection painting): a picture over the 3D view ----
    Mask: the brush paints only where the picture is light. Colour: the brush paints the picture's own colours.

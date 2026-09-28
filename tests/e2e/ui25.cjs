@@ -29,6 +29,17 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  bs=await p.evaluate(()=>{__gs.brush.angle=40;__gs.setTool('erase');return [__gs.brush.angle,__gs.brush.size];});ok(bs[0]===40&&bs[1]===80,'All tools share the brush tip: the tip goes along, the size stays per tool '+bs);
  await p.evaluate(()=>__gs.setTool('brush'));await p.click('label[for=bShareTip]');
  ok(await p.evaluate(()=>{const s=JSON.parse(localStorage.getItem('gs.toolBrush'));return s.slots.erase.size===80;}),'each tool’s brush is remembered for next time');
+ /* 3D Paint: mirror in the view's top bar, Stencils beside Brushes */
+ await p.evaluate(()=>__gs.newDoc(128,128,8,[1,1,1],'painting',false));await W(300);
+ await p.click('#modeTabs [data-mode=p3d]');await W(1500);
+ ok(await p.evaluate(()=>!!document.querySelector('.v3bar #v3Mir #mir3_x')&&!document.querySelector('#p3dBody #mir3Box')&&!document.querySelector('#p3dBody #st3Box')),'the mirror is in the 3D view’s top bar, not the panel');
+ await p.click('#mir3_x');await W(150);ok(await p.evaluate(()=>__gs.mir3.x===true&&document.querySelector('#mir3_x').classList.contains('on')),'X in the bar turns the mirror on');
+ await p.click('#mir3More');await W(150);ok(await p.evaluate(()=>!document.querySelector('#v3MirPop').hidden&&!!document.querySelector('#v3MirPop #mir3o_x')),'▾ opens the plane settings');
+ await p.selectOption('#mir3Rad','6');await W(100);ok(await p.evaluate(()=>__gs.mir3.radial===6),'radial copies from the bar');
+ await p.evaluate(()=>{__gs.mir3.x=false;__gs.mir3.radial=0;});
+ await p.evaluate(()=>__gs.showPanel('stencils'));await W(300);
+ ok(await p.evaluate(()=>{const s=document.querySelector('#st3Sec');const tab=[...document.querySelectorAll('.dktab')].find(t=>/Stencils/.test(t.textContent));return !!s&&s.offsetParent!==null&&!!s.querySelector('#st3Load')&&!!tab;}),'Stencils is a tab of its own');
+ ok(await p.evaluate(()=>{const g=__gs.dk.col2.groups.find(g=>g.tabs.includes('stencils'));return g&&g.tabs.indexOf('stencils')===g.tabs.indexOf('brushes')+1;}),'…right next to Brushes');
  ok(errs.length===0,'no page errors '+errs.slice(0,3).join(' | '));
  await b.close();console.log(fails?fails+" FAILED":"ALL PASSED");process.exit(fails?1:0);
 })();
