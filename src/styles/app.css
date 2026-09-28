@@ -132,7 +132,8 @@ body.ldragging,body.ldragging *{cursor:grabbing!important}
 .lname input{width:100%;background:var(--ground);border:1px solid var(--accent);border-radius:4px;padding:2px 4px}
 .lmeta{font:10px var(--mono);color:var(--faint);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .lbtns{display:flex;gap:5px;flex-wrap:wrap}
-.lbtns.icons{gap:2px;justify-content:space-between;border-top:1px solid var(--line);padding-top:6px}
+.lbtns.icons{gap:2px;justify-content:space-between;border-top:1px solid var(--line);padding:6px 0 4px;flex-wrap:nowrap;position:sticky;bottom:0;z-index:2;background:var(--panel)}
+.lbtns.icons .lyb{flex:1 1 0;min-width:0;max-width:30px}
 .lyb{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:6px;background:none;color:var(--muted);cursor:pointer;padding:0}
 .lyb:hover{background:var(--raise);color:var(--text)}.lyb:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .lyb svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -479,7 +480,8 @@ body.dkresizing{cursor:col-resize;user-select:none}body.dklock .dkwidth{cursor:d
 .dkmore+.dkmore{margin-left:0}
 .dkmore:hover{color:var(--text);background:var(--raise)}
 .dkbody{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden}
-.dkbody>.sec{border-bottom:0}
+.dkbody>.sec{border-bottom:0;grid-template-columns:minmax(0,1fr)}
+.llist{grid-template-columns:minmax(0,1fr)}
 .dkbody>.sec>.sec-h>span:first-child:not(#brushTitle){display:none}
 #toolSec>.sec-h{display:none}
 .dk-off{display:none!important}
