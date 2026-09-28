@@ -31,4 +31,19 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  r=await bake('mat');const d2=Math.abs(r[0][0]-r[1][0])+Math.abs(r[0][1]-r[1][1])+Math.abs(r[0][2]-r[1][2]);ok(d2>60,'Materials: two different colours '+JSON.stringify(r));
  ok(await p.evaluate(()=>{const b=[...document.querySelectorAll('#bakeBody .seg button')].find(b=>b.textContent.startsWith('Other'));if(b)b.click();return !!document.querySelector('#bkIdSrc');}),'the Other tab offers the ID colour sources');
  ok(errs.length===0,'no errors '+errs.slice(0,3).join('\n'));
+ /* an FBX with vertex colours loads (0.22 read the colour count too early) */
+ const fbx=(()=>{const B=[];const u32=v=>{const b=Buffer.alloc(4);b.writeUInt32LE(v>>>0);return b;};
+   const P={S:v=>Buffer.concat([Buffer.from('S'),u32(Buffer.byteLength(v)),Buffer.from(v)]),L:v=>{const b=Buffer.alloc(9);b[0]=76;b.writeBigInt64LE(BigInt(v),1);return b;},
+     d:a=>{const b=Buffer.alloc(13+a.length*8);b[0]=100;b.writeUInt32LE(a.length,1);b.writeUInt32LE(a.length*8,9);a.forEach((v,i)=>b.writeDoubleLE(v,13+i*8));return b;},
+     i:a=>{const b=Buffer.alloc(13+a.length*4);b[0]=105;b.writeUInt32LE(a.length,1);b.writeUInt32LE(a.length*4,9);a.forEach((v,i)=>b.writeInt32LE(v,13+i*4));return b;}};
+   const node=(at,name,props,kids)=>{const pb=Buffer.concat(props);let o=at+13+name.length+pb.length;const kb=[];for(const k of kids||[]){const b=k(o);kb.push(b);o+=b.length;}
+     if(kids&&kids.length){kb.push(Buffer.alloc(13));o+=13;}return Buffer.concat([u32(o),u32(props.length),u32(pb.length),Buffer.from([name.length]),Buffer.from(name),pb,...kb]);};
+   const N=(name,props,kids)=>at=>node(at,name,props,kids);
+   const head=Buffer.concat([Buffer.from('Kaydara FBX Binary  \0'),Buffer.from([0x1a,0]),u32(7400)]);
+   const top=[N('Objects',[],[N('Geometry',[P.L(10),P.S('q\0\x01Geometry'),P.S('Mesh')],[N('Vertices',[P.d([-1,-1,0,1,-1,0,1,1,0,-1,1,0])]),N('PolygonVertexIndex',[P.i([0,1,2,-4])]),
+       N('LayerElementColor',[],[N('MappingInformationType',[P.S('ByPolygonVertex')]),N('ReferenceInformationType',[P.S('Direct')]),N('Colors',[P.d([1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1])])])]),
+     N('Model',[P.L(20),P.S('Quad\0\x01Model'),P.S('Mesh')],[])]),N('Connections',[],[N('C',[P.S('OO'),P.L(10),P.L(20)])])];
+   let o=head.length;const parts=[head];for(const t of top){const b=t(o);parts.push(b);o+=b.length;}parts.push(Buffer.alloc(13),Buffer.alloc(200));return Buffer.concat(parts);})();
+ const fr=await p.evaluate(async a=>{try{const m=await __gs.parseFBX(new Uint8Array(a).buffer,'vc.fbx');return {tris:m.idx.length/3,red:!!m.vcol&&m.vcol[0]>.9&&m.vcol[1]<.1};}catch(e){return String(e);}},[...fbx]);
+ ok(fr&&fr.tris===2&&fr.red,'FBX with vertex colours loads '+JSON.stringify(fr));
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();})();

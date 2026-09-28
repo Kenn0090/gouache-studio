@@ -226,10 +226,10 @@ async function parseFBX(buf,name,onProgress){const u8=new Uint8Array(buf),dv=new
   const parts=[];let noUV=false;
   for(const [id,g] of Object.entries(geoms)){const V=val((kid(g,'Vertices')||{props:[]}).props[0]),PI=val((kid(g,'PolygonVertexIndex')||{props:[]}).props[0]);if(!V||!PI)continue;
     const N=layer(g,'LayerElementNormal','Normals','NormalsIndex'),U=layer(g,'LayerElementUV','UV','UVIndex');if(!U)noUV=true;
-    const CL=layer(g,'LayerElementColor','Colors','ColorIndex'),vcol=CL?new Float32Array(cnt*4):null;
+    const CL=layer(g,'LayerElementColor','Colors','ColorIndex');
     const ML=kid(g,'LayerElementMaterial'),MA=ML?val((kid(ML,'Materials')||{props:[]}).props[0]):null,Mall=ML&&/AllSame/.test((kid(ML,'MappingInformationType')||{props:['']}).props[0]),mdl=models[geoOf[id]],tmat=[];let poly=0;
     const mnm=()=>{const k=MA?(Mall?MA[0]:MA[poly]):0;return (mdl&&mdl.mats[k])||(mdl&&mdl.mats[0])||'default';};
-    const M=world(geoOf[id]),cnt=PI.length,pos=new Float32Array(cnt*3),nrm=new Float32Array(cnt*3),uv=new Float32Array(cnt*2),idx=grow(Uint32Array,cnt*2);
+    const M=world(geoOf[id]),cnt=PI.length,pos=new Float32Array(cnt*3),nrm=new Float32Array(cnt*3),uv=new Float32Array(cnt*2),idx=grow(Uint32Array,cnt*2),vcol=CL?new Float32Array(cnt*4):null;
     const at=(L,pv,vi)=>{let k=/Vert/.test(L.map)&&!/Polygon/.test(L.map)?vi:pv;if(/Index/.test(L.ref)&&L.idx)k=L.idx[k];return k;};
     let p0=0,pv=0;
     for(let i=0;i<cnt;i++){let vi=PI[i],last=false;if(vi<0){vi=-vi-1;last=true;}
