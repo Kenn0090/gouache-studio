@@ -166,12 +166,18 @@ async function parseGLTF(buf,name,readSibling){let json,bin=null;const u8=new Ui
   const r=meshFinish(m,name);r.noUV=noUV;r.triCol=new Float32Array(parts.flatMap(p=>p.tcol));partsInfo(r,parts);matsInfo(r,parts);return r;}
 
 /* ---- keeping an imported model inside a .gouache file ---- */
-function meshPack(m){const n=m.pos.length,u=m.uv.length,x=m.idx.length,out=new Uint8Array(16+(n*2+u)*4+x*4),dv=new DataView(out.buffer);
-  dv.setUint32(0,n,true);dv.setUint32(4,u,true);dv.setUint32(8,x,true);let o=16;
-  for(const a of [m.pos,m.nrm,m.uv]){new Float32Array(out.buffer,o,a.length).set(a);o+=a.length*4;}new Uint32Array(out.buffer,o,x).set(m.idx);return out;}
-function meshUnpack(bytes,name){const b=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),dv=new DataView(b),n=dv.getUint32(0,true),u=dv.getUint32(4,true),x=dv.getUint32(8,true);let o=16;
-  const f=len=>{const a=new Float32Array(b.slice(o,o+len*4));o+=len*4;return a;};const pos=f(n),nrm=f(n),uv=f(u),idx=new Uint32Array(b.slice(o,o+x*4));
-  return meshFinish({pos,nrm,uv,idx},name);}
+function meshPack(m){const n=m.pos.length,u=m.uv.length,x=m.idx.length,T=x/3,hasM=!!m.triMat,hasP=!!m.triPart,js=new TextEncoder().encode(JSON.stringify({matNames:m.matNames||null,partNames:m.partNames||null}));
+  const out=new Uint8Array(16+(n*2+u)*4+x*4+(hasM?T*4:0)+(hasP?T*4:0)+4+js.length),dv=new DataView(out.buffer);
+  dv.setUint32(0,n,true);dv.setUint32(4,u,true);dv.setUint32(8,x,true);dv.setUint32(12,(hasM?1:0)|(hasP?2:0)|4,true);let o=16;
+  for(const a of [m.pos,m.nrm,m.uv]){new Float32Array(out.buffer,o,a.length).set(a);o+=a.length*4;}new Uint32Array(out.buffer,o,x).set(m.idx);o+=x*4;
+  /* materials (texture sets) and parts per triangle, and their names */
+  if(hasM){new Uint32Array(out.buffer,o,T).set(m.triMat);o+=T*4;}if(hasP){new Uint32Array(out.buffer,o,T).set(m.triPart);o+=T*4;}dv.setUint32(o,js.length,true);out.set(js,o+4);return out;}
+function meshUnpack(bytes,name){const b=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),dv=new DataView(b),n=dv.getUint32(0,true),u=dv.getUint32(4,true),x=dv.getUint32(8,true),fl=dv.getUint32(12,true);let o=16;
+  const f=len=>{const a=new Float32Array(b.slice(o,o+len*4));o+=len*4;return a;};const pos=f(n),nrm=f(n),uv=f(u),idx=new Uint32Array(b.slice(o,o+x*4));o+=x*4;
+  const r=meshFinish({pos,nrm,uv,idx},name),T=x/3;
+  if(fl&1){r.triMat=new Uint32Array(b.slice(o,o+T*4));o+=T*4;}if(fl&2){r.triPart=new Uint32Array(b.slice(o,o+T*4));o+=T*4;}
+  if(fl&4){const l=dv.getUint32(o,true),j=JSON.parse(new TextDecoder().decode(new Uint8Array(b,o+4,l)));if(j.matNames)r.matNames=j.matNames;if(j.partNames)r.partNames=j.partNames;}
+  return r;}
 
 /* ---- FBX (binary, as written by Blender, Maya, 3ds Max, Unity and Unreal) ---- */
 async function parseFBX(buf,name,onProgress){const u8=new Uint8Array(buf),dv=new DataView(buf);

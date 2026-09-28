@@ -567,3 +567,7 @@ body.noopt .optbar{display:none}
 .p3set.missing{opacity:.55;cursor:default}.p3sn{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .v3stencil{position:absolute;left:0;top:0;pointer-events:none;transform-origin:50% 50%;image-rendering:auto;z-index:2}
 .st3tiles{display:flex;flex-wrap:wrap;gap:4px}.st3tiles .btn.on{border-color:var(--accent);color:var(--accent)}
+.p3mats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+.p3mat{display:flex;align-items:center;gap:7px;border:1px solid var(--line-2);background:var(--raise);border-radius:6px;padding:4px 6px;color:var(--text);font:inherit;text-align:left;min-width:0}
+.p3mat span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.p3mat:hover{border-color:var(--accent)}
+.p3sw{width:16px;height:16px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}

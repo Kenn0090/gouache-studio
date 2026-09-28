@@ -24,13 +24,16 @@ function fillRender(L,only){const f=L.fill;if(!f)return;
     const c=grey?[s.v,s.v,s.v]:(s.c||[s.v,s.v,s.v]);clearTarget(T,[c[0],c[1],c[2],1]);}
   if(doc.map==='base')delete L.blankBase;L.lookVer=(L.lookVer||0)+1;scheduleThumb(L);requestRender(true);}
 /* Layer › New fill layer (and the fill button under the layers): fills everything; a selection becomes its mask */
-function cmdNewFillLayer(){if(ui.mode==='anim'){toast('Fill layers are available in Paint mode.');return;}
-  if(ui.mode!=='paint'&&typeof setMode==='function')setMode('paint',true);
-  const L=newLayerObj('Fill '+(++fillCount));doc.count--;L.fill=fillDefaults();fillRender(L);
+/* preset: {name, maps:{k:{c|v}}} fills those maps (a material from the 3D Paint panel) and skips the dialog */
+function cmdNewFillLayer(preset){if(ui.mode==='anim'){toast('Fill layers are available in Paint mode.');return;}
+  if(ui.mode!=='paint'&&ui.mode!=='p3d'&&typeof setMode==='function')setMode('paint',true);
+  const L=newLayerObj(preset&&preset.name||'Fill '+(++fillCount));doc.count--;L.fill=fillDefaults();
+  if(preset&&preset.maps){for(const k in L.fill.maps)L.fill.maps[k].on=false;for(const k in preset.maps)if(L.fill.maps[k])Object.assign(L.fill.maps[k],{on:true,src:'value'},preset.maps[k]);}
+  fillRender(L);
   const m=makeMask(1),fromSel=sel.active&&!sel.quick;if(fromSel)run(P.loadsel,m.target,{uSrc:sel.t.tex,uWhat:{int:1},uInv:false});
   L.mask=m;L.editMask=true;
   structOp('New fill layer',()=>{const [p,i]=insertPoint();insertNode(L,p,i);selectOnly(L);});
-  changed(L);dlgFillLayer(L,true);return L;}
+  changed(L);if(!preset)dlgFillLayer(L,true);else{renderLayers();toast('Added “'+L.name+'”'+(fromSel?' in the selection.':'. Paint its mask to show it where you want (black hides, white shows).'));}return L;}
 /* the fill's settings: live on the canvas, one undo step on OK */
 function dlgFillLayer(L,fresh){L=L||doc.active;if(!isLayer(L)||!L.fill){toast('Select a fill layer.');return;}
   const before=fillClone(L.fill),W=fillClone(L.fill),keys0=fillMapsOf(),snapB={};

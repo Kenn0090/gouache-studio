@@ -37,6 +37,8 @@ function buildP3Panel(){const box=$('#p3dBody');if(!box)return;box.replaceChildr
     el('div',{class:'sub',text:'Navigation'}),seg([['substance','Substance Painter'],['coat','3D-Coat']],v3nav.mode,v=>{setNav3d(v);buildP3Panel();},'Navigation style'),
     el('p',{class:'note',text:v3nav.mode==='coat'?'Left paints. Right-drag turns, middle-drag moves, Ctrl+right-drag zooms (or the wheel). Left-drag off the model turns too.':'Left paints. Alt+left turns, Alt+middle moves, Alt+right zooms (or the wheel). Middle or right drag also moves.'}),
     el('p',{class:'note',text:'Hold Alt over the model to pick its colour. Left/Right arrow keys step through the shades in the Color panel. Double-click empty space to reframe.'}),
+    el('div',{class:'sub',text:'Materials'}),p3MatBox(),
+    el('div',{class:'sub',text:'Project'}),el('div',{class:'chips'},el('button',{class:'btn sm',text:'Save project',title:'Save the model and all texture sets as a .gouache3d project (Ctrl+S here)',onclick:()=>saveP3Project(false)}),el('button',{class:'btn sm',text:'Open project…',onclick:()=>pickFile('open')}),el('button',{class:'btn sm',text:'Export textures…',onclick:()=>actions.expTex()})),
     el('div',{class:'sub',text:'Select on the model'}),sel3Box(),
     el('div',{class:'sub',text:'Mirror'}),mir3Box(),
     el('div',{class:'sub',text:'Stencil'}),st3Box(),
@@ -151,3 +153,16 @@ function p3SelectAt(hit,e){if(sel3.mode==='off'||!v3.mesh||(ui.mode!=='p3d'&&ui.
 function sel3Box(){return el('div',{class:'dlg-grid'},seg(SEL3_KINDS,sel3.mode,v=>{sel3.mode=v;buildP3Panel();},'Select on the model'),
   el('p',{class:'note',text:sel3.mode==='off'?'Choose what a double-click on the model selects.':'Double-click the model to select. Shift+double-click adds, Ctrl+double-click removes, Ctrl+D deselects. Painting stays inside the selection.'}),
   el('div',{class:'chips'},el('button',{class:'btn sm',text:'Selection to mask',title:'Give the active layer a mask made from the selection',onclick:()=>{if(!sel.active){toast('Select something first.');return;}cmdAddMask(1);}})));}
+
+/* ---- materials: ready-made fill layers (colour, roughness, metallic), added above the active layer ---- */
+const P3_MATERIALS=[
+  ['Steel',{base:{c:[.56,.57,.58]},rough:{v:.32},metal:{v:1}}],['Iron (rough)',{base:{c:[.42,.42,.43]},rough:{v:.62},metal:{v:1}}],
+  ['Aluminium',{base:{c:[.91,.92,.92]},rough:{v:.25},metal:{v:1}}],['Gold',{base:{c:[1,.78,.34]},rough:{v:.22},metal:{v:1}}],
+  ['Copper',{base:{c:[.95,.64,.54]},rough:{v:.28},metal:{v:1}}],['Brass',{base:{c:[.91,.78,.42]},rough:{v:.3},metal:{v:1}}],
+  ['Chrome',{base:{c:[.55,.56,.55]},rough:{v:.06},metal:{v:1}}],['Rust',{base:{c:[.45,.2,.1]},rough:{v:.85},metal:{v:0}}],
+  ['Glossy plastic',{base:{c:[.8,.15,.12]},rough:{v:.18},metal:{v:0}}],['Matte plastic',{base:{c:[.25,.35,.55]},rough:{v:.6},metal:{v:0}}],
+  ['Rubber',{base:{c:[.08,.08,.08]},rough:{v:.9},metal:{v:0}}],['Painted metal',{base:{c:[.2,.45,.3]},rough:{v:.45},metal:{v:0}}],
+  ['Wood (varnished)',{base:{c:[.45,.28,.14]},rough:{v:.35},metal:{v:0}}],['Stone',{base:{c:[.5,.48,.44]},rough:{v:.8},metal:{v:0}}],
+  ['Fabric',{base:{c:[.55,.5,.42]},rough:{v:.95},metal:{v:0}}],['Dirt',{base:{c:[.3,.24,.17]},rough:{v:.95},metal:{v:0}}]];
+function p3MatBox(){return el('div',{class:'p3mats'},...P3_MATERIALS.map(([n,m])=>{const c=m.base.c,sw=el('span',{class:'p3sw',style:'background:'+toHex(c)+(m.metal.v>.5?';background-image:linear-gradient(135deg,rgba(255,255,255,.45),transparent 55%)':'')});
+  return el('button',{class:'p3mat',title:n+': roughness '+Math.round(m.rough.v*100)+'%, metallic '+Math.round(m.metal.v*100)+'%. Adds a fill layer (in the selection, if there is one)',onclick:()=>cmdNewFillLayer({name:n,maps:JSON.parse(JSON.stringify(m))})},sw,el('span',{text:n}));}));}

@@ -23,6 +23,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 - [Filter layers](Filter-layers.md): filters you can change later, smart filters, live converters, pattern layers
 
 ## 3D
+- [3D Paint](3D-Paint.md): the 3D Paint tab. Paint on a model with texture sets, mirror and radial painting, stencils, selections on the model, materials and project files
 - [3D view](3D-view.md): see your textures on a model while you paint
 - [Baker](Baker.md): the Bake tab. Bake normal, AO, curvature and more from a high-poly model, watch it on the model, and paint skew and offset fixes
 - Painting on the model: see [3D view](3D-view.md#painting-on-the-model)

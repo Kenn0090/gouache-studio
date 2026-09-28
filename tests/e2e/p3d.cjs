@@ -143,6 +143,23 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const g=await p.evaluate(()=>{const L=__gs.doc.active,d=__gs.readRGBA8(__gs.mapT(L,'base')),W=__gs.doc.w;let l=0,r=0;for(let i=0;i<d.length;i+=4)if(d[i+1]>150&&d[i]<90&&d[i+3]>200){if((i/4)%W<W/2)l++;else r++;}return {l,r};});
  ok(g.r>500&&g.l===0,'painting stays inside the selection '+JSON.stringify(g));
  await p.keyboard.press('Control+d');await p.click('#p3dBody .segb:text-is("Off")');await W();
+ /* ---- materials: a click adds a fill layer with the material's values ---- */
+ await p.click('#p3dBody .p3mat:has-text("Gold")');await W(400);
+ let mt=await p.evaluate(()=>{const L=__gs.doc.active;return {name:L.name,fill:!!L.fill,metal:L.fill&&L.fill.maps.metal.v,rough:L.fill&&L.fill.maps.rough.v,layers:__gs.allLayers().length};});
+ ok(mt.name==='Gold'&&mt.fill&&mt.metal===1&&Math.abs(mt.rough-.22)<.01,'Materials › Gold adds a gold fill layer '+JSON.stringify(mt));
+ const mc=await p.evaluate(()=>{const t=__gs.compositeMap('metal'),d=__gs.readRGBA8(t);__gs.release(t);return d[(128*256+128)*4];});ok(mc>250,'the model is metal now ('+mc+')');
+ /* ---- the project file: model and every texture set, back as they were ---- */
+ const before=await p.evaluate(()=>({sets:__gs.p3.sets.map(S=>S.name),cur:__gs.p3.cur,layers:__gs.allLayers().map(L=>L.name).join(),model:__gs.v3.imported&&__gs.v3.imported.name,mats:__gs.v3.imported&&__gs.v3.imported.partNames}));
+ await p.evaluate(async()=>{const b=await __gs.encodeP3Project();window.__p3buf=await b.arrayBuffer();});
+ ok(await p.evaluate(()=>window.__p3buf.byteLength>1000),'project saved ('+await p.evaluate(()=>window.__p3buf.byteLength)+' bytes)');
+ await p.evaluate(()=>{__gs.act('undo');__gs.useModel(__gs.primMesh('sphere'));});await W(500);
+ await p.evaluate(()=>{window.__opened=__gs.openP3Project(window.__p3buf,'proj').then(()=>'ok',e=>String(e));});await W(400);
+ const askd=await p.evaluate(()=>!document.querySelector('#modal').hidden&&document.querySelector('#dlgTitle').textContent);ok(askd==='Replace the 3D Paint project?','asks before replacing unsaved work');
+ if(askd)await p.click('#dlgOk');ok((await p.evaluate(()=>window.__opened))==='ok','project opened');await W(800);
+ const after=await p.evaluate(()=>({sets:__gs.p3.sets.map(S=>S.name),cur:__gs.p3.cur,layers:__gs.allLayers().map(L=>L.name).join(),model:__gs.v3.imported&&__gs.v3.imported.name,mats:__gs.v3.imported&&__gs.v3.imported.partNames}));
+ ok(JSON.stringify(after)===JSON.stringify(before),'project opens back the same '+JSON.stringify(after));
+ ok(await p.evaluate(()=>{const t=__gs.compositeMap('metal'),d=__gs.readRGBA8(t);__gs.release(t);return d[(128*256+128)*4]>250;}),'with its painting');
+ await p.click('#p3dBody .p3set:has-text("Left")');await W(500);ok((await cnt('Paint'))>=aOnA,'and the other sets’ painting');
  /* ---- back to Paint: the painting is untouched, and 3D Paint keeps its work ---- */
  await p.click('#modeTabs [data-mode=paint]');await W(600);
  s=await p.evaluate(()=>({own:__gs.tabDocs.key,names:__gs.allLayers().map(L=>L.name),w:__gs.doc.w,dock2:document.querySelector('#dock2').hidden}));
