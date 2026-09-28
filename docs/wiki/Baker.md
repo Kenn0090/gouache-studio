@@ -16,6 +16,35 @@ The **Bake** tab (top right, or **Maps › Bake from high poly…**) copies the 
   - Tick **Send results to layers automatically** to have every bake go straight into the document.
   - **Replace the last baked layers** swaps the previous bake's layers for the new ones, instead of piling them up.
 
+## Settings: one tab per map
+Under the model rows, the tabs hold the settings. A dot marks the maps that will be baked; tick **Bake …** at the top of a tab to turn a map on or off.
+- **General:** Front, Back, Average ray directions, Anti-aliasing, Padding, and how bakes are sent to the document (below).
+- **Normal:** OpenGL style (green up). For DirectX engines, flip green when exporting (*File › Export textures*).
+- **AO:** Rays, Reach and **Spread** (narrower keeps the shading to deep cavities).
+- **Curvature:** see below.
+- **Height**, **Thickness** (its own Rays and Reach) and **Other** (world-space normal, position, ID colours).
+
+![The Bake panel's tabs.](images/bake-tabs.png)
+*The map tabs, here AO.*
+
+## Curvature
+Light on edges and corners, dark in creases, mid-grey on flat areas. **From** picks where it comes from:
+- **The shape** (the default): measured on the high-poly itself, so it comes out right on mirrored and flipped UVs. Without a high-poly it's measured on the low-poly's corners.
+- **Baked normal:** worked out from the normal map baked with it.
+- **Normal map:** worked out from the document's own normal map, with no high-poly needed.
+
+For the last two, **Flip green** swaps the edges and creases that run across the texture, in case a normal map's green points the other way.
+- **Radius:** how far around each point it looks. Small gives thin, sharp edges; large gives broad, soft ones.
+- **Strength**, and **Edges** and **Creases** to set the light and dark sides separately.
+- **Also make edges-only and creases-only maps:** two extra layers, white where the edges (or creases) are, handy as masks.
+
+## Sending bakes to the document
+**Send as** (General tab):
+- **Layers** (the default): every bake is also a layer in the **base colour**, so bakes blend with each other there. For example, set the curvature layer to *Overlay* over the AO. AO, curvature and height also go into their own maps. The edges-only and creases-only layers sit, hidden, in the curvature group.
+- **Maps only:** each bake only in its own map, as before.
+
+Each map arrives in its own group. Groups that would cover your colours (thickness, world-space normal, position, ID) start hidden.
+
 ## Models
 
 - **Loading models:** press **Load…** next to Low-poly, High-poly or Cage, or **drag model files** onto those rows. You can also drop them anywhere in the Bake tab: files named `…_low`, `…_high` and `…_cage` go to the right place by themselves. A loading bar shows big files coming in. FBX must be binary FBX (not text).
@@ -35,16 +64,16 @@ Each pixel of the low-poly's UVs sends a ray from just outside the surface back 
 If parts of the high-poly are missed, raise the distances. If detail from other parts leaks in, lower them or match parts by name. To fix just one area, paint an offset map (below).
 
 ## Maps
-| Map | Where it goes |
-|---|---|
-| Normal (OpenGL) | Normal map |
-| Height (high-poly above = light) | Height map |
-| Ambient occlusion | AO map |
-| Curvature | Curvature map |
-| Thickness (white = thick) | Base colour, hidden |
-| World-space normal | Base colour, hidden |
-| Position (gradient over the model's box) | Base colour, hidden |
-| ID colours (vertex colours, material colours, or one colour per part) | Base colour, hidden |
+| Map | Where it goes (as layers) | Maps only |
+|---|---|---|
+| Normal (OpenGL) | Normal map | Normal map |
+| Height (high-poly above = light) | Height map and base colour | Height map |
+| Ambient occlusion | AO map and base colour | AO map |
+| Curvature (+ edges and creases) | Curvature map and base colour | Curvature map (edges and creases: base colour, hidden) |
+| Thickness (white = thick) | Base colour, hidden | Base colour, hidden |
+| World-space normal | Base colour, hidden | Base colour, hidden |
+| Position (gradient over the model's box) | Base colour, hidden | Base colour, hidden |
+| ID colours (vertex colours, material colours, or one colour per part) | Base colour, hidden | Base colour, hidden |
 
 Each baked map arrives in **its own group** (“Baked normal”, “Baked AO”…), so they're easy to find in the layer stack. Maps the document doesn't have yet are added for you. Groups for maps that live in the base colour (thickness, world-space normal, position, ID) start hidden so they don't cover your colours: show one, or use it as a mask with *Select › Load selection*.
 
@@ -52,7 +81,7 @@ Each baked map arrives in **its own group** (“Baked normal”, “Baked AO”�
 Choose High-poly **None** to bake AO, **curvature from the model's own shape**, thickness, ID, world-space normal and position. Normal and height are skipped because they'd come out flat.
 
 ## Quality
-- **Rays and reach:** how many rays each pixel sends for AO and thickness. More rays are smoother but slower. Reach is how far those rays look.
+- **Rays and reach** (AO and Thickness tabs): how many rays each pixel sends. More rays are smoother but slower. Reach is how far those rays look.
 - **Anti-aliasing:** 1×, 4× or 16× samples per pixel. A pixel's AO and thickness rays are shared out over its samples, so anti-aliasing smooths the edges without multiplying the time AO and thickness take.
 - **Padding:** extends colour past the UV edges so seams don't show.
 

@@ -4,8 +4,9 @@
    Height, AO into Ambient occlusion; curvature, thickness, world-space normal, position and ID
    go into a hidden "Baked maps" group in base colour, ready to use as masks. */
 const bakeCfg={low:null,high:null,cage:null,match:false,average:true,front:2.5,back:2.5,kinds:{normal:true,ao:true,curv:true,height:false,thick:false,wnormal:false,position:false,id:false},
-  rays:64,aoDist:25,thickDist:50,ss:2,pad:16,autoSend:false,replace:true};
-const BAKE_NAMES={normal:'Normal',ao:'Ambient occlusion',curv:'Curvature',height:'Height',thick:'Thickness',wnormal:'World-space normal',position:'Position',id:'ID colours'};
+  rays:64,aoDist:25,thickDist:50,ss:2,pad:16,autoSend:false,replace:true,
+  aoSpread:1,thickRays:32,curvSrc:'mesh',curvRadius:3,curvStr:1,curvEdges:1,curvCreases:1,curvFlip:false,curvParts:true,sendAs:'layers',tab:'general'};
+const BAKE_NAMES={normal:'Normal',ao:'Ambient occlusion',curv:'Curvature',curvEdge:'Curvature edges',curvCrease:'Curvature creases',height:'Height',thick:'Thickness',wnormal:'World-space normal',position:'Position',id:'ID colours'};
 /* read a model file (OBJ, glTF, GLB, FBX) */
 const MODEL_EXTS=['obj','glb','gltf','fbx'];
 const isModelName=n=>MODEL_EXTS.includes(extOf(n));

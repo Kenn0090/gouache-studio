@@ -96,12 +96,12 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 s=texelFetch(uSrc,p,0); if(s.a
   vec3 et=uEM==0?c+(1.0-c)*0.75:uEC, ct=uCM==0?c*0.25:uCC;
   c=mix(c,et,clamp(e*uEdge,0.0,1.0)); c=mix(c,ct,clamp(d*uCav,0.0,1.0)); o=vec4(clamp(c,0.0,1.0)*s.a,s.a); }`,
   /* curvature straight from a normal map: how much the normals spread apart (ridges) or come together (cavities) */
-  ncurv:`uniform sampler2D uN; uniform int uWrap; uniform float uStr; uniform int uMode; uniform float uStep;
+  ncurv:`uniform sampler2D uN; uniform int uWrap; uniform float uStr; uniform int uMode; uniform float uStep; uniform int uFlipG;
 ivec2 wrapP(ivec2 p,ivec2 s,int w){ return w==1?((p%s)+s)%s:clamp(p,ivec2(0),s-1); }
 vec2 nAt(ivec2 p,ivec2 s){ vec4 c=texelFetch(uN,wrapP(p,s,uWrap),0); return c.a>1e-6?c.rg/c.a*2.0-1.0:vec2(0); }
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uN,0); int k=int(uStep);
   float dx=nAt(p+ivec2(k,0),s).x-nAt(p-ivec2(k,0),s).x, dy=nAt(p+ivec2(0,k),s).y-nAt(p-ivec2(0,k),s).y;
-  float c=(dx-dy)*uStr*2.0/uStep;
+  if(uFlipG==1) dy=-dy; float c=(dx-dy)*uStr*2.0/uStep;
   float v=uMode==1?clamp(c,0.0,1.0):uMode==2?1.0-clamp(-c,0.0,1.0):clamp(0.5+c*0.5,0.0,1.0); o=vec4(vec3(v),1.0); }`,
   highpass:`uniform sampler2D uSrc; uniform sampler2D uBlur; void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 s=texelFetch(uSrc,p,0),b=texelFetch(uBlur,p,0);
   if(s.a<=1e-6){ o=s; return; } vec3 r=clamp(s.rgb/s.a-(b.a>1e-6?b.rgb/b.a:vec3(0))+0.5,0.0,1.0); o=vec4(r*s.a,s.a); }`,

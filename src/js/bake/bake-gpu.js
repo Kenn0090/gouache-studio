@@ -171,7 +171,7 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 P=texelFetch(uGP,p,0); if(P.w<
   vec3 hp=org+dir*th; oH=vec4(hp,1.0); oHN=vec4(bkNrm(t,bc),front-th); vec2 tp=bkTriPack(t); o=vec4(tp.x,bc,tp.y); }`;
 /* 3. what each map records (value in rgb, coverage in a) */
 const BK_FS_OUT=BK_TRACE+`uniform sampler2D uGR; uniform sampler2D uGP; uniform sampler2D uGN; uniform sampler2D uGT; uniform sampler2D uHP; uniform sampler2D uHN; uniform sampler2D uHT;
-uniform int uKind; uniform int uMatch; uniform int uFlipY; uniform float uRange; uniform vec3 uBMin; uniform vec3 uBSize; uniform int uRays; uniform float uDist; uniform uint uSeed; uniform int uSelf; uniform ivec2 uOrg; uniform int uSS;
+uniform int uKind; uniform int uMatch; uniform int uFlipY; uniform float uRange; uniform vec3 uBMin; uniform vec3 uBSize; uniform int uRays; uniform float uDist; uniform uint uSeed; uniform int uSelf; uniform ivec2 uOrg; uniform int uSS; uniform float uSpread;
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 P=texelFetch(uGP,p,0); if(P.w<0.5){ o=vec4(0); return; }
   vec3 Nl=normalize(texelFetch(uGN,p,0).xyz); vec4 H=texelFetch(uHP,p,0),HN=texelFetch(uHN,p,0); bool hit=H.w>0.75; vec3 Nh=hit&&uSelf==0?normalize(HN.xyz):Nl; vec3 X=hit?H.xyz:P.xyz;
   if(uKind==0){ /* tangent-space normal */ vec4 Tn=texelFetch(uGT,p,0); vec3 T=normalize(Tn.xyz-Nl*dot(Nl,Tn.xyz)),B=cross(Nl,T)*(Tn.w<0.0?-1.0:1.0);
@@ -180,6 +180,8 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 P=texelFetch(uGP,p,0); if(P.w<
   if(uKind==2){ o=vec4(Nh*0.5+0.5,1.0); return; }
   if(uKind==7){ /* curvature of the low-poly itself */ o=vec4(vec3(clamp(0.5+texelFetch(uGR,p,0).w,0.0,1.0)),1.0); return; }
   if(uKind==3){ o=vec4(clamp((X-uBMin)/uBSize,0.0,1.0),1.0); return; }
+  if(uKind==9){ o=vec4(X,1.0); return; } /* for curvature from the shape: exact surface point and normal */
+  if(uKind==10){ o=vec4(Nh,1.0); return; }
   if(uKind==4){ /* ID colours */ vec4 ti=texelFetch(uHT,p,0); o=vec4(hit&&ti.w>0.5?bkCol(bkTriUnpack(ti),ti.yz):vec3(0.0),1.0); return; }
   /* ambient occlusion (5) and thickness (6): rays over the hemisphere.
      The rays of one output pixel are shared out over its anti-aliasing samples, as one evenly spread
@@ -193,9 +195,24 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 P=texelFetch(uGP,p,0); if(P.w<
   ivec2 fp=p+uOrg; ivec2 px=fp/uSS, sub=fp-px*uSS; uint j=uint(sub.y*uSS+sub.x), per=uint(uSS*uSS), total=uint(uRays)*per;
   uint h=bkPcg(uint(px.x)*1973u+bkPcg(uint(px.y)*9277u+uSeed)); vec2 rot=vec2(bkRnd(h),bkRnd(h^0x9E3779B9u));
   for(int i=0;i<256;i++){ if(i>=uRays) break; uint gi=uint(i)*per+j; vec2 r=fract(vec2((float(gi)+0.5)/float(total),bkRadInv(gi))+rot);
-    vec3 d=bkHemi(n,r); float dg=dot(d,ng); if(dg<0.0) d=d-2.0*dg*ng; float th; vec2 bc;
+    r.y*=uSpread; vec3 d=bkHemi(n,r); float dg=dot(d,ng); if(dg<0.0) d=d-2.0*dg*ng; float th; vec2 bc;
     int t=bkTrace(org,d,uDist,uKind==5,th,bc); if(uKind==5) acc+=t>=0?1.0:0.0; else acc+=t>=0?th/uDist:1.0; }
   float v=acc/float(uRays); o=vec4(vec3(uKind==5?1.0-v:v),1.0); }`;
+/* curvature from the surface's shape, over the whole image once every tile is done: how the normal turns
+   between each point and points around it (at two distances), measured on the model itself, so mirrored
+   or flipped UVs make no difference. Pairs of opposite neighbours are used together, and pairs that
+   straddle a UV seam (very uneven distances) are skipped. Convex > 0.5 > concave; coverage kept in alpha. */
+const BK_FS_GCURV=`uniform sampler2D uP; uniform sampler2D uN; uniform float uRad; uniform float uStr;
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uP,0); vec4 a=texelFetch(uP,p,0); if(a.a<=0.0){ o=vec4(0); return; }
+  vec3 X=a.rgb/a.a, N=normalize(texelFetch(uN,p,0).rgb+vec3(1e-9)); float acc=0.0,n=0.0;
+  for(int ring=0;ring<2;ring++){ float r=ring==0?uRad:max(1.0,uRad*0.5);
+    for(int i=0;i<4;i++){ float an=float(i)*0.7853982; ivec2 d=ivec2(round(vec2(cos(an),sin(an))*r)); ivec2 q1=p+d,q2=p-d;
+      if(any(lessThan(min(q1,q2),ivec2(0)))||any(greaterThanEqual(max(q1,q2),s))) continue;
+      vec4 a1=texelFetch(uP,q1,0),a2=texelFetch(uP,q2,0); if(a1.a<=0.0||a2.a<=0.0) continue;
+      vec3 d1=a1.rgb/a1.a-X,d2=a2.rgb/a2.a-X; float l1=length(d1),l2=length(d2); if(l1<1e-12||l2<1e-12||l1>3.0*l2||l2>3.0*l1) continue;
+      vec3 n1=normalize(texelFetch(uN,q1,0).rgb+vec3(1e-9)),n2=normalize(texelFetch(uN,q2,0).rgb+vec3(1e-9));
+      acc+=dot(n1-N,d1/l1)+dot(n2-N,d2/l2); n+=2.0; } }
+  float c=n>0.0?acc/n*uStr:0.0; o=vec4(vec3(clamp(0.5+c,0.0,1.0))*a.a,a.a); }`;
 /* 4. tile → final image: average the samples of each output pixel, keeping coverage */
 const BK_FS_DOWN=`uniform sampler2D uSrc; uniform int uSS; uniform vec2 uOff;
 void main(){ ivec2 q=(ivec2(gl_FragCoord.xy)-ivec2(uOff))*uSS; vec4 acc=vec4(0);
@@ -208,7 +225,7 @@ const BK_FS_DIL=`uniform sampler2D uSrc; void main(){ ivec2 p=ivec2(gl_FragCoord
 const BK_FS_FIN=`uniform sampler2D uSrc; uniform vec4 uEmpty; void main(){ vec4 c=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0); o=c.a>0.0?vec4(c.rgb/c.a,1.0):uEmpty; }`;
 let BKP=null;
 function bkPrograms(){if(BKP)return BKP;const mk=(vs,fs,head)=>{const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,vs));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,head?fs:FS_HEAD+fs));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return {p,locs:{}};};
-  BKP={uv:mk(BK_VS_UV,BK_FS_UV,true),hit:mk(VS_FULL,FS_HEAD.replace('out vec4 o;','')+'layout(location=2) out vec4 o;\n'+BK_FS_HIT,true),out:mk(VS_FULL,BK_FS_OUT),down:mk(VS_FULL,BK_FS_DOWN),dil:mk(VS_FULL,BK_FS_DIL),fin:mk(VS_FULL,BK_FS_FIN)};return BKP;}
+  BKP={uv:mk(BK_VS_UV,BK_FS_UV,true),hit:mk(VS_FULL,FS_HEAD.replace('out vec4 o;','')+'layout(location=2) out vec4 o;\n'+BK_FS_HIT,true),out:mk(VS_FULL,BK_FS_OUT),down:mk(VS_FULL,BK_FS_DOWN),dil:mk(VS_FULL,BK_FS_DIL),fin:mk(VS_FULL,BK_FS_FIN),gcurv:mk(VS_FULL,BK_FS_GCURV)};return BKP;}
 
 /* ---- float render targets (several outputs at once) ---- */
 function bkMRT(w,h,n){const fbo=gl.createFramebuffer(),tex=[];gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);
@@ -245,7 +262,7 @@ function bkRayDirs(L,average){if(!average)return L.nrm.slice();const n=L.pos.len
 
 /* AO and thickness rays per anti-aliasing sample: the pixel's rays shared out over its samples (at least 4 each) */
 const bkRaysPer=(rays,SS)=>Math.max(4,Math.ceil(rays/(SS*SS)));
-const BK_KINDS={normal:0,height:1,wnormal:2,position:3,id:4,ao:5,thick:6,mcurv:7};
+const BK_KINDS={normal:0,height:1,wnormal:2,position:3,id:4,ao:5,thick:6,mcurv:7,cpos:9,cnrm:10};
 const nextTick=()=>new Promise(r=>setTimeout(r,0));
 /* bake: low and high (already in the same space), settings; returns {kind: target} at size W×H */
 async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.sizeH||o.size,SS=o.ss,FW=W*SS,FH=H*SS,TILE=Math.min(1024,Math.max(FW,FH));
@@ -255,7 +272,7 @@ async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.si
   low.ray=o.cage?o.cage:bkRayDirs(low,o.average);const lg=bkLowGPU(low);
   const kinds=o.kinds.filter(k=>k!=='curv');const outDepth=canFloat?16:8;
   /* o.acc: running sums kept from an earlier bake (re-bake part of it); o.rect: only this part (output pixels) */
-  const results={},acc=o.acc||{};for(const k of kinds)if(!acc[k]||acc[k].w!==W||acc[k].h!==H){if(acc[k])disposeTarget(acc[k]);acc[k]=makeTarget(W,H,16,false);}
+  const results={},acc=o.acc||{};for(const k of kinds)if(!acc[k]||acc[k].w!==W||acc[k].h!==H){if(acc[k])disposeTarget(acc[k]);acc[k]=makeTarget(W,H,k==='cpos'||k==='cnrm'?32:16,false);if(acc[k].depth===32){/* 32-bit float cannot be filtered on every card */gl.bindTexture(gl.TEXTURE_2D,acc[k].tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);}}
   const RR=o.rect?[Math.max(0,Math.floor(o.rect[0]))*SS,Math.max(0,Math.floor(o.rect[1]))*SS,Math.min(W,Math.ceil(o.rect[2]))*SS,Math.min(H,Math.ceil(o.rect[3]))*SS]:[0,0,FW,FH];
   const G=bkMRT(TILE,TILE,4),HB=bkMRT(TILE,TILE,3),OUT=bkMRT(TILE,TILE,1);
   let bmin=[1e9,1e9,1e9],bmax=[-1e9,-1e9,-1e9];const src=high||low;for(let i=0;i<src.pos.length;i+=3)for(let c=0;c<3;c++){bmin[c]=Math.min(bmin[c],src.pos[i+c]);bmax[c]=Math.max(bmax[c],src.pos[i+c]);}
@@ -279,7 +296,7 @@ async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.si
     for(const k of kinds){if(progress.cancelled)break;const kind=BK_KINDS[k],rayed=k==='ao'||k==='thick',sub=rayed?SUB:Math.max(tw,th);
       gl.bindFramebuffer(gl.FRAMEBUFFER,OUT.fbo);gl.viewport(0,0,tw,th);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.enable(gl.SCISSOR_TEST);
       const U={uNodes:hg.nodes,uTris:hg.tris,uTN:hg.nrm,uTC:hg.col,uGR:G.tex[3],uGP:G.tex[0],uGN:G.tex[1],uGT:G.tex[2],uHP:HB.tex[0],uHN:HB.tex[1],uHT:HB.tex[2],uKind:{int:kind},uMatch:!!o.match,uFlipY:o.dx,uRange:Math.max(o.front,o.back),
-        uBMin:bmin,uBSize:bsize,uRays:{int:bkRaysPer(k==='ao'?o.rays:Math.max(8,o.rays>>1),SS)},uDist:k==='ao'?o.aoDist:o.thickDist,uSeed:{uint:Math.floor((o.seed||1.3)*1e6)},uSelf:self,uOrg:{iv2:[tx,ty]},uSS:{int:SS}};
+        uBMin:bmin,uBSize:bsize,uRays:{int:bkRaysPer(k==='ao'?o.rays:o.thickRays||Math.max(8,o.rays>>1),SS)},uSpread:k==='ao'?(o.aoSpread||1):1,uDist:k==='ao'?o.aoDist:o.thickDist,uSeed:{uint:Math.floor((o.seed||1.3)*1e6)},uSelf:self,uOrg:{iv2:[tx,ty]},uSS:{int:SS}};
       let n=0;for(let sy=ly0;sy<ly1;sy+=sub)for(let sx=lx0;sx<lx1;sx+=sub){gl.bindFramebuffer(gl.FRAMEBUFFER,OUT.fbo);gl.viewport(0,0,tw,th);gl.scissor(sx,sy,Math.min(sub,lx1-sx),Math.min(sub,ly1-sy));useProg(P.out,U);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.flush();
         if(rayed&&++n%4===0){await nextTick();if(progress.cancelled)break;}}
       gl.disable(gl.SCISSOR_TEST);
@@ -287,14 +304,18 @@ async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.si
       const ox=tx/SS,oy=ty/SS;gl.enable(gl.SCISSOR_TEST);bindTarget(acc[k]);gl.scissor(ox+lx0/SS,oy+ly0/SS,(lx1-lx0)/SS,(ly1-ly0)/SS);
       useProg(P.down,{uSrc:OUT.tex[0],uSS:{int:SS},uOff:[ox,oy]});gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.disable(gl.SCISSOR_TEST);
       for(let i=0;i<(rayed?6:0);i++)await tick();await tick();}
-    if(o.onTile&&!progress.cancelled)o.onTile(acc,kinds);}
+    if(o.onTile&&!progress.cancelled)o.onTile(acc,kinds.filter(k=>k!=='cpos'&&k!=='cnrm'));}
   if(progress.cancelled)return null;
   /* padding past the UV edges, then opaque results */
+  /* curvature from the shape, over the whole image */
+  let outKinds=kinds.filter(k=>k!=='cpos'&&k!=='cnrm');
+  if(acc.cpos&&acc.cnrm&&kinds.includes('cpos')){if(!acc.gcurv||acc.gcurv.w!==W||acc.gcurv.h!==H){if(acc.gcurv)disposeTarget(acc.gcurv);acc.gcurv=makeTarget(W,H,16,false);}
+    run(P.gcurv,acc.gcurv,{uP:acc.cpos.tex,uN:acc.cnrm.tex,uRad:Math.max(1,o.curvRadius||3),uStr:o.curvStr||1});outKinds.push('gcurv');}
   progress.step('Padding the edges…');
-  for(const k of kinds){let a=acc[k],b=makeTarget(W,H,16,false);const keep=!!o.acc;if(keep&&o.pad>0){run(P.dil,b,{uSrc:a.tex});a=b;b=makeTarget(W,H,16,false);}
+  for(const k of outKinds){let a=acc[k],b=makeTarget(W,H,16,false);const keep=!!o.acc;if(keep&&o.pad>0){run(P.dil,b,{uSrc:a.tex});a=b;b=makeTarget(W,H,16,false);}
     for(let i=keep&&o.pad>0?1:0;i<o.pad;i++){run(P.dil,b,{uSrc:a.tex});const t=a;a=b;b=t;if(i%16===15)await nextTick();}
     const fin=makeTarget(W,H,k==='height'||k==='position'?16:outDepth,false);
-    const empty=k==='normal'?[.5,.5,1,1]:k==='height'?[.5,.5,.5,1]:k==='ao'||k==='thick'?[1,1,1,1]:[0,0,0,1];
+    const empty=k==='normal'?[.5,.5,1,1]:k==='height'||k==='gcurv'?[.5,.5,.5,1]:k==='ao'||k==='thick'?[1,1,1,1]:[0,0,0,1];
     run(P.fin,fin,{uSrc:a.tex,uEmpty:empty});if(a!==acc[k])disposeTarget(a);if(b!==acc[k])disposeTarget(b);results[k]=fin;}
   return results;}
   finally{if(!o.acc)for(const k in acc)if(acc[k].tex)disposeTarget(acc[k]);bkFreeMRT(G);bkFreeMRT(HB);bkFreeMRT(OUT);if(!o.hg)bkFreeHigh(hg);bkFreeLow(lg);gl.bindVertexArray(vao);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}}

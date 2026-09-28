@@ -1,8 +1,6 @@
-Faster baking, and memory settings like Photoshop's.
+Baking: a tab of settings for each map, reworked curvature, and bakes sent as layers you can blend.
 
-- **Faster AO and thickness bakes:** about 3 times faster at the default settings, more with 16× anti-aliasing. A pixel's rays are now shared out over its anti-aliasing samples, and every ray finds the high-poly quicker.
-- **No more banding in AO and thickness:** the rays are spread evenly and randomly, and they no longer shade their own triangle.
-- **Big high-polys:** sorting the high-poly (*Sorting triangles…*) runs in the background with a percentage, uses much less memory, and works past 16 million triangles.
-- **Memory and disk** in Preferences (Ctrl+K): a memory limit (the app shows how much memory your computer has), how many undo steps to keep, and a **disk cache** folder you can move to another drive, with a size limit. Undo steps past the memory limit go to the disk cache.
-- **Bake search trees are cached:** baking the same high-poly again, even after a restart, skips the sorting step.
-- The performance monitor shows the memory in use.
+- **A tab per map** in the Bake panel: General, Normal, AO, Curvature, Height, Thickness and Other, each with its own settings. AO gets **Spread**; Thickness gets its own Rays.
+- **Curvature, reworked:** measured on the high-poly's real shape by default, so mirrored and flipped UVs come out right. You can still work it out from the baked normal or from the document's normal map, with **Flip green**. New Radius, Strength, Edges and Creases settings, plus optional **edges-only** and **creases-only** maps.
+- **Bakes arrive as layers:** each one is also a layer in the base colour, so you can blend them (curvature on Overlay over AO). AO, curvature and height still go into their own maps too. *Maps only* in the General tab sends them the old way.
+- The installer builds faster.
