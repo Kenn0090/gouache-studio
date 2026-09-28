@@ -7,6 +7,10 @@ const EXAMPLES=[
   {id:'p3metal',name:'Smart materials on a cube',kind:'3D Paint',text:'Gun metal with dust in 3D Paint: open the folders to see the generated masks.',icon:'◈',async run(){if(ui.mode!=='p3d'&&!setMode('p3d',true))return;await tick();await new Promise(r=>setTimeout(r,300));
     for(const n of ['Gun Metal','Dust']){const rec=smBuiltins().find(r=>r.name.toLowerCase()===n.toLowerCase());if(rec)smApply(rec);}}}];
 const welcomeOn=()=>!prefs.noWelcome;
+/* where to start: each tab of the app (Kenn: choose the starting section right after the splash) */
+const WELCOME_MODES=[['paint','Paint','Photoshop-style painting and texture maps','▨'],['p3d','3D Paint','Paint a model with texture sets and materials','◈'],['anim','Animation','Flipbooks and sprite sheets','▶'],
+  ['bake','Bake','Bake maps from a high-poly model','◎'],['convert','Convert','Normal, height, AO and more from a photo','◐'],['brush','Brush','Draw your own brush tips','✎']];
+function welcomeGo(m,remember){if(remember){prefs.startMode=m;savePrefs();}closeWelcome();if(ui.mode!==m)setMode(m);}
 function closeWelcome(){const w=document.getElementById('welcome');if(w)w.remove();document.removeEventListener('keydown',welcomeKey,true);}
 function welcomeKey(e){if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeWelcome();}}
 async function showWelcome(){closeWelcome();
@@ -17,6 +21,7 @@ async function showWelcome(){closeWelcome();
     el('div',{class:'whead'},el('i',{class:'spdab'}),el('div',{},el('div',{class:'wname'},'Gouache ',el('small',{text:'Studio'})),el('div',{class:'dim',text:'Version '+APP_VERSION})),
       el('button',{class:'btn sm wclose',text:'×','aria-label':'Close the welcome screen',onclick:closeWelcome})),
     recover,
+    el('div',{class:'sub',text:'Start in'}),el('div',{class:'wmodes',role:'group','aria-label':'Start in'},...WELCOME_MODES.map(([m,l,t,i])=>el('button',{class:'wmode'+(ui.mode===m?' on':''),id:'wMode_'+m,title:t,onclick:()=>welcomeGo(m,document.getElementById('wRemember')&&document.getElementById('wRemember').checked)},el('span',{class:'wmicon',text:i}),el('b',{text:l}),el('small',{text:t})))),
     el('div',{class:'wcols'},
       el('div',{class:'wcol'},el('div',{class:'sub',text:'Start'}),
         act('New document…','A blank canvas for painting and texture maps','wNew',()=>actions.new()),
@@ -25,7 +30,7 @@ async function showWelcome(){closeWelcome();
       el('div',{class:'wcol'},el('div',{class:'sub',text:'Recent'}),recentBox),
       el('div',{class:'wcol'},el('div',{class:'sub',text:'Examples'}),...EXAMPLES.map(x=>el('button',{class:'wex',id:'wEx_'+x.id,onclick:()=>{closeWelcome();x.run();}},
         el('span',{class:'wexicon',text:x.icon}),el('span',{},el('b',{text:x.name}),el('small',{text:x.kind+' · '+x.text})))))),
-    el('div',{class:'wfoot'},chk('wShow','Show this at start-up',welcomeOn(),v=>{prefs.noWelcome=!v;savePrefs();}),el('span',{class:'dim',text:'File › Welcome screen opens it again.'})));
+    el('div',{class:'wfoot'},chk('wShow','Show this at start-up',welcomeOn(),v=>{prefs.noWelcome=!v;savePrefs();}),chk('wRemember','Always start in the section I pick',!!prefs.startMode,v=>{if(!v){delete prefs.startMode;savePrefs();}}),el('span',{class:'dim',text:'File › Welcome screen opens it again.'})));
   const w=el('div',{id:'welcome',class:'welcome'},card);w.addEventListener('pointerdown',e=>{if(e.target===w)closeWelcome();});document.body.append(w);document.addEventListener('keydown',welcomeKey,true);
   /* autosaved work from a session that did not end saved */
   const rs=await asRecoveries();if(rs.length&&recover.isConnected)recover.replaceWith(el('div',{class:'wrecover',id:'wRecover'},el('b',{text:'Unsaved work was kept by autosave:'}),
@@ -36,5 +41,7 @@ async function showWelcome(){closeWelcome();
 /* after loading: fade the splash out, then the welcome screen */
 function bootDone(){const s=document.getElementById('splash');const go=()=>{if(s){s.classList.add('out');setTimeout(()=>s.remove(),400);}};
   const t0=window.__gsT0||0,wait=Math.max(0,700-(performance.now()-t0));setTimeout(go,wait);
-  const test=/[?&]debug\b/.test(location.search);if(test?/[?&]welcome\b/.test(location.search):welcomeOn())setTimeout(showWelcome,wait+50);}
+  const test=/[?&]debug\b/.test(location.search);
+  /* the section picked with "Always start in" */
+  if(!test&&prefs.startMode&&prefs.startMode!=='paint'&&WELCOME_MODES.some(x=>x[0]===prefs.startMode))setTimeout(()=>{if(ui.mode==='paint')setMode(prefs.startMode);},wait+20);if(test?/[?&]welcome\b/.test(location.search):welcomeOn())setTimeout(showWelcome,wait+50);}
 Object.assign(actions,{welcome:()=>showWelcome(),examples:()=>showWelcome()});

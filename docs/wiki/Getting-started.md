@@ -27,6 +27,7 @@ If an update was published while the app was already open, it won't show until t
 
 ## The welcome screen
 While the app loads, a splash with its version shows. Then the **welcome screen** opens:
+- **Start in:** jump straight to a section: Paint, 3D Paint, Animation, Bake, Convert or Brush. Tick **Always start in the section I pick** to open there every time.
 - **Start:** New document…, Open…, or a new 3D Paint project.
 - **Recent** (desktop app): the files you opened or saved lately, with their folders.
 - **Examples:** the **Cobblestone tile** (a hand-painted tiling texture in layers) and **Smart materials on a cube** (3D Paint).

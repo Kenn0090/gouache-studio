@@ -36,6 +36,12 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>__gs.allLayers().some(L=>L.name==='Autosaved layer')),'Recover brings it back');
  await p.evaluate(()=>__gs.showWelcome());await W(300);await p.click('#wEx_p3metal');await W(3000);
  ok(await p.evaluate(()=>__gs.mode==='p3d'&&__gs.allNodes().some(n=>/gun metal/i.test(n.name))&&__gs.allNodes().some(n=>/dust/i.test(n.name))),'the 3D Paint example opens with Gun metal and Dust');
+ await p.evaluate(()=>__gs.showWelcome());await W(300);
+ ok(await p.evaluate(()=>['paint','p3d','anim','bake','convert','brush'].every(m=>!!document.getElementById('wMode_'+m))),'Start in: a button for each section');
+ await p.click('#wMode_bake');await W(1500);ok(await p.evaluate(()=>__gs.mode==='bake'&&!document.getElementById('welcome')),'Start in › Bake opens the Bake tab');
+ await p.evaluate(()=>__gs.showWelcome());await W(300);await p.click('label[for=wRemember]');await p.click('#wMode_anim');await W(1200);
+ ok(await p.evaluate(()=>__gs.mode==='anim'&&__gs.prefs.startMode==='anim'),'“Always start in the section I pick” remembers it');
+ await p.evaluate(()=>{delete __gs.prefs.startMode;});await p.click('#modeTabs [data-mode=paint]');await W(800);
  /* turning the welcome screen off */
  await p.evaluate(()=>__gs.showWelcome());await W(300);await p.click('label[for=wShow]');await W(100);
  ok(await p.evaluate(()=>__gs.prefs.noWelcome===true),'“Show this at start-up” can be turned off');
