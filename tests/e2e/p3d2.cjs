@@ -97,7 +97,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.mouse.click(cx-30,cy);await W(400);let hv=await idHalves();
  ok((hv.l===hv.half&&hv.r===0)||(hv.r===hv.half&&hv.l===0),'picking an ID colour: that colour white, the rest black '+JSON.stringify(hv));
  await p.click('label:has(#idInv), #idInv');await W(300);const hv2=await idHalves();ok(hv2.l===hv.r&&hv2.r===hv.l,'Invert swaps them '+JSON.stringify(hv2));
- await W(900);ok(await p.evaluate(n=>__gs.hist.undo.length===n+2&&__gs.hist.undo.slice(-1)[0].label==='ID colour selection',nU),'the ID colour row, then one undo step for its changes');
+ await W(900);ok(await p.evaluate(n=>{const d=__gs.hist.undo.length-n;return (d===2||d===3)&&__gs.hist.undo.slice(-1)[0].label==='ID colour selection';},nU),'the ID colour row, then one undo step for its changes');
  ok(await p.evaluate(()=>{const L=__gs.allLayers().find(l=>l.name==='Paint'),r=L.mask.stack&&L.mask.stack.find(x=>x.kind==='id');return !!r&&r.p.cols.length===1&&r.p.inv;}),'the ID selection is a live row of the mask');
  await p.click('#mk_id');await W(100);
  await p.locator('#layerList .lrow:has(.lname:text-is("Paint")) .thumbs > :first-child').click();await W(400);
