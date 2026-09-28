@@ -4,7 +4,7 @@ const prefs=Object.assign({livePreview:true},(()=>{try{return JSON.parse(localSt
 function savePrefs(){try{localStorage.setItem('gs.prefs',JSON.stringify(prefs));}catch(e){}}
 /* the Preview checkbox every image-changing dialog carries; starts from the global setting */
 function previewChk(id,on,onChange){return chk(id,'Preview',on,onChange);}
-function dlgPrefs(){let live=prefs.livePreview,hints=!prefs.hideHints,tipCur=!!prefs.tipCursor,maxB=prefs.maxBrush||5000;const th=themeSection(),ms=memSection();
+function dlgPrefs(){let live=prefs.livePreview,hints=!prefs.hideHints,tipCur=!!prefs.tipCursor,maxB=prefs.maxBrush||5000;const th=themeSection(),ms=memSection(),asb=autosavePrefsBox();
   const body=el('div',{class:'dlg-grid'},
     el('div',{class:'sub',text:'Theme'}),th.el,
     el('div',{class:'sub',text:'Screen'}),
@@ -16,5 +16,6 @@ function dlgPrefs(){let live=prefs.livePreview,hints=!prefs.hideHints,tipCur=!!p
     el('div',{class:'sub',text:'Live previews'}),
     chk('pLive','Show changes live while adjusting',live,v=>{live=v;}),
     el('p',{class:'note',text:'When on, filters, adjustments, Select menu changes and hover previews (blend modes, fonts) show on the canvas as you adjust them. Each dialog also has its own Preview checkbox. Turn this off for very large documents or slower machines.'}),
+    el('div',{class:'sub',text:'Autosave and backups'}),asb.el,
     el('div',{class:'sub',text:'Memory and disk'}),ms.el);
-  openDialog({title:'Preferences',body,okLabel:'Save',onCancel(){th.cancel();},onOk(){prefs.livePreview=live;prefs.hideHints=!hints;prefs.tipCursor=tipCur;prefs.maxBrush=maxB===5000?0:maxB;if(typeof sizeSlider!=='undefined'&&sizeSlider)sizeSlider.set(brush.size);if(typeof buildOptBar==='function')buildOptBar();if(typeof refreshCursor==='function')refreshCursor();th.save();savePrefs();refreshHints();ms.save();toast('Preferences saved.');}});}
+  openDialog({title:'Preferences',body,okLabel:'Save',onCancel(){th.cancel();},onOk(){prefs.livePreview=live;prefs.hideHints=!hints;prefs.tipCursor=tipCur;prefs.maxBrush=maxB===5000?0:maxB;if(typeof sizeSlider!=='undefined'&&sizeSlider)sizeSlider.set(brush.size);if(typeof buildOptBar==='function')buildOptBar();if(typeof refreshCursor==='function')refreshCursor();th.save();savePrefs();refreshHints();ms.save();asb.save();savePrefs();toast('Preferences saved.');}});}

@@ -10,10 +10,11 @@ const read = p => fs.readFileSync(r(p), 'utf8');
 const target = (process.argv.find(a => a.startsWith('--target=')) || '--target=all').split('=')[1];
 
 const order = JSON.parse(read('src/js/order.json')).order;
-const js = order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
+const APP_VERSION = JSON.parse(read('package.json')).version;
+const js = `const APP_VERSION='${APP_VERSION}';\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
 const css = read('src/styles/app.css');
 const tpl = read('src/index.template.html');
-const assemble = head => tpl.replace('<!--HEAD-->', () => head).replace('<!--STYLE-->', () => css).replace('<!--SCRIPT-->', () => js);
+const assemble = head => tpl.replace(/<!--VERSION-->/g, APP_VERSION).replace('<!--HEAD-->', () => head).replace('<!--STYLE-->', () => css).replace('<!--SCRIPT-->', () => js);
 
 function buildWeb() {
   fs.mkdirSync(r('dist-web'), { recursive: true });

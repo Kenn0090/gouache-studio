@@ -5,7 +5,7 @@ const S=__dirname+'/';
  const ctx=await b.newContext({viewport:{width:1440,height:1000},acceptDownloads:true});const p=await ctx.newPage();
  await p.route('**/*',r=>{const u=r.request().url();if(u.includes('ag-psd'))return r.fulfill({path:S+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});if(u.startsWith('file:'))return r.continue();return r.abort();});
  const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text())});
- await p.goto((process.env.APP||'file://'+require('path').resolve(__dirname,'../../dist-web/index.html'))+'');await p.waitForTimeout(2500);
+ await p.goto((process.env.APP||'file://'+require('path').resolve(__dirname,'../../dist-web/index.html'))+'');await p.waitForTimeout(2500);await p.keyboard.press('Escape');await p.waitForTimeout(200);
  const names=async()=>(await p.locator('#layerList .lrow .lname').allTextContents()).join(' | ');
  const box=await p.locator('#gl').boundingBox();
  await p.keyboard.press('t');console.log('tool title:',await p.textContent('#brushTitle'));

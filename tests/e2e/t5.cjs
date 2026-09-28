@@ -9,7 +9,7 @@ const S=__dirname+'/';
   if(u.includes('ag-psd'))return r.fulfill({path:S+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
   if(u.startsWith('file:'))return r.continue(); return r.abort();});
  const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text())});
- await p.goto((process.env.APP||'file://'+require('path').resolve(__dirname,'../../dist-web/index.html'))+'');await p.waitForTimeout(2500);
+ await p.goto((process.env.APP||'file://'+require('path').resolve(__dirname,'../../dist-web/index.html'))+'');await p.waitForTimeout(2500);await p.click('#wEx_cobble');await p.waitForTimeout(1500);
  const row=n=>p.locator('#layerList .lrow',{has:p.locator(`.lname:text-is("${n}")`)}).first();
  const box=await p.locator('#gl').boundingBox();
  const stroke=async(x,y,n=20,dx=12)=>{await p.mouse.move(box.x+x,box.y+y);await p.mouse.down();for(let i=0;i<n;i++)await p.mouse.move(box.x+x+i*dx,box.y+y);await p.mouse.up();};

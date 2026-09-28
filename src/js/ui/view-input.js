@@ -6,7 +6,7 @@ function actual(){const W=stage.clientWidth,H=stage.clientHeight,[DW,DH]=viewDim
 function zoomAt(f,sx,sy){const z=clamp(view.zoom*f,.02,64),k=z/view.zoom;view.x=sx-(sx-view.x)*k;view.y=sy-(sy-view.y)*k;view.zoom=z;updateStatus();refreshCursor();requestRender();}
 function toImage(cx,cy){const r=stage.getBoundingClientRect();return [(cx-r.left-view.x)/view.zoom,(cy-r.top-view.y)/view.zoom];}
 function updateStatus(){$('#stDoc').textContent=doc.w+' × '+doc.h+' px';$('#stDepth').textContent=doc.depth+'-bit';$('#stDepth').title=doc.depth===16?'16 bits per channel (half float). Click for 8-bit.':(canFloat?'8 bits per channel. Click for 16-bit.':'8 bits per channel. 16-bit is not supported on this GPU.');
-  $('#stZoom').textContent=(view.zoom*100).toFixed(view.zoom<.1?1:0)+'%';$('#stFmt').textContent='WebGL2 · '+(doc.depth===16?'RGBA16F':'RGBA8')+' layers';$('#docName').textContent=doc.name;updateTitle();}
+  $('#stZoom').textContent=(view.zoom*100).toFixed(view.zoom<.1?1:0)+'%';$('#stFmt').textContent='WebGL2 · '+(doc.depth===16?'RGBA16F':'RGBA8')+' layers';$('#docName').textContent=doc.name;updateTitle();if(typeof fileLocUpdate==='function')fileLocUpdate();}
 $('#stDepth').addEventListener('click',()=>setDepth(doc.depth===16?8:16));
 $('#tileBtn').addEventListener('click',toggleTile);
 

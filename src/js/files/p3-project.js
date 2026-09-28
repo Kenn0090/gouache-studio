@@ -20,7 +20,7 @@ async function saveP3Project(forceAsk){if(stroke)return;toast('Saving the 3D Pai
   try{await tick();const blob=await encodeP3Project(),bytes=new Uint8Array(await blob.arrayBuffer()),nm=slug(p3.name||'3D Paint')+'.gouache3d';
     if(platform.isDesktop&&p3.path&&!forceAsk){await platform.writeFile(p3.path,bytes);p3.savedAt=p3Sig();toast('Saved '+p3.path);return;}
     if(platform.isDesktop){const path=await platform.saveAs(nm,bytes,'Gouache Studio 3D Paint project');if(!path){toast('Save cancelled.');return;}
-      p3.path=path;p3.name=baseName(fileNameOf(path));platform.recentAdd(path);p3.savedAt=p3Sig();toast('Saved '+path);return;}
+      p3.path=path;p3.name=baseName(fileNameOf(path));platform.recentAdd(path);if(typeof fileLocUpdate==='function')fileLocUpdate();p3.savedAt=p3Sig();toast('Saved '+path);return;}
     const r=await deliver(nm,blob);toast(deliveredText(r,'Project'));if(r.ok)p3.savedAt=p3Sig();}
   catch(e){console.error(e);toast('The project could not be saved: '+(e.message||e));}}
 /* something to tell whether there is unsaved work */

@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use tauri::ipc::{InvokeBody, Request, Response};
 use tauri::{AppHandle, Manager};
 
-const MAX_RECENT: usize = 12;
+const MAX_RECENT: usize = 20;
 
 /// Read a whole file and hand the bytes to the interface as binary (no JSON encoding).
 #[tauri::command]
@@ -87,6 +87,109 @@ pub fn recent_add(app: AppHandle, path: String) -> Result<(), String> {
     list.truncate(MAX_RECENT);
     let file = recent_file(&app).ok_or("no config directory")?;
     fs::write(file, serde_json::to_string_pretty(&list).unwrap()).map_err(|e| e.to_string())
+}
+
+/// Recent files with when each was last saved (seconds since 1970), newest first.
+#[tauri::command]
+pub fn recent_details(app: AppHandle) -> Vec<(String, u64)> {
+    load_recent(&app)
+        .into_iter()
+        .filter_map(|p| {
+            let m = fs::metadata(&p).ok()?;
+            let t = m
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            Some((p, t))
+        })
+        .collect()
+}
+
+#[tauri::command]
+pub fn recent_remove(app: AppHandle, path: String) -> Result<(), String> {
+    let mut list = load_recent(&app);
+    list.retain(|p| p != &path);
+    let file = recent_file(&app).ok_or("no config directory")?;
+    fs::write(file, serde_json::to_string_pretty(&list).unwrap()).map_err(|e| e.to_string())
+}
+
+/// Show a file in the system's file browser (selected in Explorer on Windows).
+#[tauri::command]
+pub fn reveal_path(path: String) -> Result<(), String> {
+    let p = PathBuf::from(&path);
+    #[cfg(target_os = "windows")]
+    {
+        let r = if p.is_file() {
+            std::process::Command::new("explorer").arg(format!("/select,{}", path)).spawn()
+        } else {
+            std::process::Command::new("explorer").arg(&path).spawn()
+        };
+        return r.map(|_| ()).map_err(|e| e.to_string());
+    }
+    #[cfg(target_os = "macos")]
+    {
+        return std::process::Command::new("open").arg("-R").arg(&path).spawn().map(|_| ()).map_err(|e| e.to_string());
+    }
+    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+    {
+        let dir = if p.is_file() { p.parent().map(|d| d.to_path_buf()).unwrap_or(p) } else { p };
+        return std::process::Command::new("xdg-open").arg(dir).spawn().map(|_| ()).map_err(|e| e.to_string());
+    }
+}
+
+/// The folder holding autosaved recovery copies (created if needed).
+#[tauri::command]
+pub fn autosave_dir(app: AppHandle) -> Result<String, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join("autosave");
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir.to_string_lossy().to_string())
+}
+
+/// Recovery copies: (path, saved time in seconds, size in bytes).
+#[tauri::command]
+pub fn autosave_list(app: AppHandle) -> Vec<(String, u64, u64)> {
+    let Ok(dir) = autosave_dir(app) else { return vec![] };
+    let Ok(rd) = fs::read_dir(&dir) else { return vec![] };
+    rd.filter_map(|e| {
+        let e = e.ok()?;
+        let m = e.metadata().ok()?;
+        if !m.is_file() {
+            return None;
+        }
+        let t = m.modified().ok()?.duration_since(std::time::UNIX_EPOCH).ok()?.as_secs();
+        Some((e.path().to_string_lossy().to_string(), t, m.len()))
+    })
+    .collect()
+}
+
+/// Delete a recovery copy (only inside the autosave folder).
+#[tauri::command]
+pub fn autosave_delete(app: AppHandle, path: String) -> Result<(), String> {
+    let dir = PathBuf::from(autosave_dir(app)?);
+    let p = PathBuf::from(&path);
+    if p.parent().map(|d| d == dir.as_path()) != Some(true) {
+        return Err("not an autosave file".into());
+    }
+    fs::remove_file(p).map_err(|e| e.to_string())
+}
+
+/// Before saving over a file: keep the previous version beside it as "name.backup.ext".
+#[tauri::command]
+pub fn backup_copy(path: String) -> Result<Option<String>, String> {
+    let p = PathBuf::from(&path);
+    if !p.is_file() {
+        return Ok(None);
+    }
+    let stem = p.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+    let name = match p.extension() {
+        Some(e) => format!("{}.backup.{}", stem, e.to_string_lossy()),
+        None => format!("{}.backup", stem),
+    };
+    let dst = p.with_file_name(name);
+    fs::copy(&p, &dst).map_err(|e| e.to_string())?;
+    Ok(Some(dst.to_string_lossy().to_string()))
 }
 
 fn percent_decode(s: &str) -> String {

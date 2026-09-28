@@ -40,10 +40,5 @@ async function saveDoc(forceAsk){if(stroke){return;}toast('Saving…');try{await
   catch(e){console.error(e);toast('The document could not be saved: '+(e.message||e));}}
 function markSaved(){doc.savedAt=hist.undo.length?hist.undo[hist.undo.length-1]:null;updateTitle();}
 function updateTitle(){platform.setTitle((doc.name||'Untitled')+(doc.filePath?' — '+doc.filePath:'')+' — Gouache Studio');}
-/* Open recent (desktop) */
-async function dlgRecent(){const list=await platform.recentList();
-  const body=el('div',{class:'dlg-grid'});
-  if(!list.length)body.append(el('p',{class:'note',text:'Files you open or save will be listed here.'}));
-  else body.append(el('div',{class:'recentlist'},...list.map(p=>el('button',{class:'btn',title:p,onclick:()=>{closeDialog();openPath(p,'open');}},el('b',{text:fileNameOf(p)}),el('span',{class:'dim',text:p})))));
-  openDialog({title:'Open recent',body,okLabel:null,cancelLabel:'Close'});}
+/* Recent files: files/recent.js */
 
