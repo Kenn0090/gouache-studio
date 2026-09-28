@@ -116,7 +116,7 @@ Masks can hold rows (generators, noise, mesh maps, ID colours, filters…) and l
 - **Done**, **Esc**, Alt + click again, or clicking the layer's own thumbnail goes back to the material.
 
 ## From Paint
-In the Paint tab, **File › Send to 3D Paint** flattens the painting (every map it shares with 3D Paint) into a new layer of the active texture set, keeping its proportions. Hide the background first to keep transparency. In 3D Paint, press **Ctrl + T** to move and scale it.
+In the Paint tab, **right-click a layer › Send layer to 3D Paint** sends just that layer (or group), flattened with its effects. **File › Send to 3D Paint** flattens the whole painting (every map it shares with 3D Paint) into a new layer of the active texture set, keeping its proportions. Hide the background first to keep transparency. In 3D Paint, press **Ctrl + T** to move and scale it.
 
 ## Saving and exporting
 - **Ctrl + S** in the 3D Paint tab (or **Save project**) saves a **.gouache3d** project: the model with its materials, every texture set with its layers, the camera and the mirror settings. Open it with **File › Open** or **Open project…**.

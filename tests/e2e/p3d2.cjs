@@ -117,7 +117,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* right-click one layer › Send layer to 3D Paint: only that layer goes */
  await p.evaluate(()=>{__gs.allLayers()[0].visible=true;__gs.act('addLayer');});await W();await setFG('#2040e0');
  await p.keyboard.press('m');{const v2=await p.evaluate(()=>({x:__gs.view.x,y:__gs.view.y,z:__gs.view.zoom}));await p.mouse.move(gb.x+v2.x+160*v2.z,gb.y+v2.y+40*v2.z);await p.mouse.down();await p.mouse.move(gb.x+v2.x+260*v2.z,gb.y+v2.y+120*v2.z,{steps:5});await p.mouse.up();await W();}
- await p.evaluate(()=>{__gs.act('fill');__gs.act('deselect');const L=__gs.doc.active;L.name='Logo';__gs.showPanel('layers');});await W(300);
+ await p.evaluate(()=>{__gs.act('fill');__gs.act('deselect');const L=__gs.doc.active;L.name='Logo';__gs.showPanel('layers');__gs.renderLayers();});await W(300);
  await p.click('#layerList .lrow:has(.lname:text-is("Logo"))',{button:'right'});await W(150);
  ok(await p.evaluate(()=>[...document.querySelectorAll('#menuPop .mi')].some(b=>b.textContent.includes('Send layer to 3D Paint'))),'right-click in Paint offers Send layer to 3D Paint');
  await p.click('#menuPop .mi:has-text("Send layer to 3D Paint")');await W(1200);
