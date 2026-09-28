@@ -347,6 +347,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
   box.append(el('p',{class:'note',text:'Drop model files here: names ending in _low, _high and _cage go to the right place.'}),row('Low-poly',modelSel('low',lowOpts)),row('High-poly',modelSel('high',highOpts)),row('Cage',modelSel('cage',cageOpts)),
     chk('bkMatch','Match parts by name (“_low” bakes only against its “_high”)',C.match,v=>{C.match=v;info();}),
     el('div',{class:'chips'},chk('bkShowCage','Show the cage on the model',bk.showCage,v=>{bk.showCage=v;v3.dirty=true;requestRender();})),
+    ...(C.high?[row('Show high-poly',(()=>{const g=seg([['off','Off'],['over','See-through'],['only','Only']],bk.showHigh||'off',v=>{bk.showHigh=v;v3.dirty=true;requestRender();},'Show the high-poly');g.id='bkShowHigh';return g;})())]:[]),
     tabs,page,
     bkMats(bkLow())?chk('bkPerMat','Bake each material separately ('+bkMats(bkLow()).length+' materials: one set of maps per texture set)',C.perMat!==false,v=>{C.perMat=v;}):null,
     el('div',{class:'row wrap'},go),
@@ -358,7 +359,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
   const have=Object.keys(bk.res).filter(k=>k!=='mcurv'&&k!=='gcurv');
   if(have.length||bk.maps.skew||bk.maps.offset){const opts=[['material','Material (lit)'],...have.map(k=>[k,k==='curv'?'Curvature':BAKE_NAMES[k]]),...Object.keys(BK_PAINT).filter(k=>bk.maps[k]).map(k=>[k,BK_PAINT[k].name+' map'])];
     const s=el('select',{id:'bkShow','aria-label':'Show'},...opts.map(([v,t])=>el('option',{value:v,text:t})));s.value=opts.some(o=>o[0]===bk.show)?bk.show:'material';
-    s.onchange=()=>{bk.show=s.value;bk.dirty=true;requestRender();};box.append(row('Show',s));
+    s.onchange=()=>{bk.show=s.value;bk.dirty=true;requestRender();};box.append(row('Show',s),el('p',{class:'note',text:'C steps through them on the model (Shift+C backwards).'}));
     if(bk.show==='material')box.append(el('div',{class:'chips'},chk('bkDocBase','Use the document’s base colour on the model',bk.docBase,v=>{bk.docBase=v;v3.mapsDirty=true;bk.dirty=true;requestRender(true);})));}
   if(bk.stale.size)box.append(el('p',{class:'note warn',text:[...bk.stale].map(k=>BAKE_NAMES[k]).join(' and ')+' will update on the next full bake.'}));
   /* fixing */

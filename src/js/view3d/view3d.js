@@ -161,6 +161,7 @@ function v3Render(F,flip){const s=v3s(),g=v3.gpu;if(!g)return;
   /* one draw per texture set in 3D Paint (each with its own maps), else the whole model with the document's maps */
   let list=!bake&&pre?pre:[{T:T0,start:0,count:g.count/3,sh:bake?null:v3ShadeOf(doc)}];
   if(mv){const R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():null;list=list.map(it=>!R||it.start===R.start?{T:{base:mv},start:it.start,count:it.count,unlit:true}:it);}
+  if(bake&&typeof bakeHighHidesLow==='function'&&bakeHighHidesLow())list=[];
   if(s.wire){gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);}gl.bindVertexArray(g.vao);
   for(const it of list){const T=it.T||{},base=T.base||null;if(!base||!it.count)continue;
     const ok=k=>T[k]&&(bake||(sg&&(k==='rough'||k==='metal'))||(k==='nfinal'?doc.maps.includes('height')||doc.maps.includes('normal'):doc.maps.includes(k)));
@@ -176,7 +177,7 @@ function v3Render(F,flip){const s=v3s(),g=v3.gpu;if(!g)return;
     gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);useProg(P3.sel,Object.assign({},common,{uSel:sel.t.tex}));gl.bindVertexArray(g.vao);
     gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);gl.depthMask(true);gl.disable(gl.BLEND);}
   if(s.wire){useProg(P3.line,Object.assign({},common,{uCol:[.95,.7,.35,1]}));gl.bindVertexArray(g.evao);gl.drawElements(gl.LINES,g.ecount,gl.UNSIGNED_INT,0);}
-  if(bake)bakeDrawCage(common);
+  if(bake){bakeDrawHigh(common);bakeDrawCage(common);}
   if(!bake&&(v3.paintOn||ui.mode==='p3d'))drawMir3(VP);
   gl.bindVertexArray(vao);gl.disable(gl.DEPTH_TEST);
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,F.rf);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}

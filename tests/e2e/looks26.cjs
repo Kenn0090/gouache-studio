@@ -65,6 +65,18 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>Math.abs(__gs.doc.v3d.envRot||0)<.01),'the camera and light are put back afterwards');
  await p.evaluate(()=>{__gs.v3.tto={spins:1,secs:1,fps:24,size:'view',fmt:'png',lightTurns:true,tr:true};});
  const dl4=p.waitForEvent('download',{timeout:120000});await p.evaluate(()=>__gs.ttRecord(__gs.v3.tto));const d4=await dl4;ok(/_turntable\.zip$/.test(d4.suggestedFilename()),'a PNG sequence comes as a zip in the browser');
+ /* Bake tab: the high-poly on the model, and C to step through the maps */
+ await p.click('#modeTabs [data-mode=bake]');await W(1500);
+ await p.evaluate(()=>{const lo='v -1 -1 0\nv 1 -1 0\nv 1 1 0\nv -1 1 0\nvt 0 0\nvt 1 0\nvt 1 1\nvt 0 1\nf 1/1 2/2 3/3 4/4\n',hi='v -1 -1 0\nv 1 -1 0\nv 1 1 0.2\nv -1 1 0\nf 1 2 3 4\n';
+   const C=__gs.bakeCfg;C.low=__gs.parseOBJ(lo,'q_low.obj');C.high=__gs.parseOBJ(hi,'q_high.obj');C.cage=null;C.size=64;C.ss=1;C.pad=2;C.rays=16;for(const k in C.kinds)C.kinds[k]=k==='ao'||k==='normal';__gs.buildBakePanel();});await W(800);
+ ok(await p.evaluate(()=>!!document.querySelector('#bkShowHigh')),'with a high-poly loaded, the Bake panel offers Show high-poly');
+ await p.click('#bkShowHigh .segb:has-text("Only")');await W(800);ok(await p.evaluate(()=>!!__gs.bkHV.g&&__gs.bkHV.g.count===6),'Only: the high-poly is drawn on its own');
+ await p.click('#bkShowHigh .segb:has-text("See-through")');await W(400);
+ await p.click('#bkGo');for(let i=0;i<120&&(await p.evaluate(()=>__gs.bk.busy||!Object.keys(__gs.bk.res).length));i++)await W(500);
+ await p.mouse.move(300,300);const s0=await p.evaluate(()=>__gs.bk.show);await p.keyboard.press('c');await W(200);const s1=await p.evaluate(()=>__gs.bk.show);await p.keyboard.press('c');await W(200);const s2=await p.evaluate(()=>__gs.bk.show);
+ ok(s0!==s1&&s1!==s2,'C steps through what the model shows ('+[s0,s1,s2].join(' → ')+')');
+ await p.keyboard.press('Shift+c');await W(200);ok(await p.evaluate(s1=>__gs.bk.show===s1,s1),'Shift+C steps back');
+ ok(await p.evaluate(()=>__gs.ui.tool!=='crop'),'…without picking the Crop tool');
  ok(errs.length===0,'no page errors '+errs.slice(0,3).join(' | '));
  await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);
 })();
