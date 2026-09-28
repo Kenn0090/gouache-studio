@@ -310,8 +310,9 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
   const on=k=>chk('bk_'+k,'Bake '+BAKE_NAMES[k].toLowerCase(),!!C.kinds[k],v=>{C.kinds[k]=v;tabs.replaceWith(tabs=tabBar());});
   const note=t=>el('p',{class:'note',text:t});
   /* one tab of settings per map, plus the ones they share */
-  const TABS=[['general','General'],['normal','Normal'],['ao','AO'],['curv','Curvature'],['height','Height'],['thick','Thickness'],['other','Other']];
-  const baking=t=>t==='other'?['wnormal','position','id'].some(k=>C.kinds[k]):!!C.kinds[t];
+  const TABS=[['general','General'],['normal','Normal'],['ao','AO'],['curv','Curvature'],['height','Height'],['thick','Thickness'],['wnormal','World normal'],['position','Position'],['id','ID']];
+  if(!TABS.some(t=>t[0]===C.tab))C.tab=C.tab==='other'?'id':'general';
+  const baking=t=>!!C.kinds[t];
   const tabBar=()=>{const g=seg(TABS.map(([v,t])=>[v,t+(v!=='general'&&baking(v)?' •':''),v==='general'?'Settings every map shares':baking(v)?t+': baked':t+': not baked']),C.tab,v=>{C.tab=v;page.replaceWith(page=tabPage());},'Map settings');g.classList.add('themeseg','bktabs');return g;};
   const tabPage=()=>{const T=C.tab,pg=el('div',{class:'dlg-grid bktab',id:'bkTab_'+T});
     if(T==='general')pg.append(el('div',{class:'sub',text:'Size'}),bakeSizeSeg(),
@@ -332,10 +333,12 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
         note('Radius: how far around each point it looks (small: thin sharp edges; large: broad soft ones). Edges and Creases set the light and dark sides on their own.'));}
     if(T==='height')pg.append(on('height'),note('How far the high-poly is above (light) or below (dark) the low-poly, within Front and Back (General).'));
     if(T==='thick')pg.append(on('thick'),S('bkThR','Rays','thickRays',8,256,8,v=>String(v)),S('bkThD','Reach','thickDist',1,100,1,v=>v+'%'),note('White is thick, dark is thin. Reach: how deep it looks.'));
-    if(T==='other'){const M=C.high||bkLow(),h=bakeIdHas(M),have=[h.part&&'separate meshes ('+M.partNames.length+')',h.mat&&'materials ('+M.matNames.length+')',h.vertex&&'vertex colours',h.poly&&'polypaint'].filter(Boolean);
-      pg.append(on('wnormal'),on('position'),on('id'),el('div',{class:'sub',text:'ID colours from'}),(()=>{const g=seg(BK_ID_SRC,C.idSrc||'auto',v=>{C.idSrc=v;},'ID colours from');g.classList.add('themeseg');g.id='bkIdSrc';return g;})(),
+    if(T==='wnormal')pg.append(on('wnormal'),note('The direction each point faces in the world (red = X, green = Y, blue = Z), not bent by the UVs. Masks use it for things like dust on top.'));
+    if(T==='position')pg.append(on('position'),note('Where each point is inside the model’s box, as a colour gradient (red = X, green = Y, blue = Z). Masks use it for gradients from bottom to top or side to side.'));
+    if(T==='id'){const M=C.high||bkLow(),h=bakeIdHas(M),have=[h.part&&'separate meshes ('+M.partNames.length+')',h.mat&&'materials ('+M.matNames.length+')',h.vertex&&'vertex colours',h.poly&&'polypaint'].filter(Boolean);
+      pg.append(on('id'),el('div',{class:'sub',text:'ID colours from'}),(()=>{const g=seg(BK_ID_SRC,C.idSrc||'auto',v=>{C.idSrc=v;},'ID colours from');g.classList.add('themeseg');g.id='bkIdSrc';return g;})(),
         note('The '+(C.high?'high-poly':'low-poly')+' has: '+(have.length?have.join(', '):'one mesh, no materials or colours')+'. Separate meshes: one colour per object in the file. Materials: one per material. Vertex colours: the colours painted on its vertices. Polypaint: ZBrush polypaint (export the OBJ with Polypaint on). Auto: vertex colours if it has them, else material colours.'),
-        note('World-space normal and position (a gradient over the model’s box) are here too.'));}
+        note('In 3D Paint, masks can pick these colours: Alt+click a mask, then ID colour.'));}
     return pg;};
   let tabs=tabBar(),page=tabPage();
   const go=el('button',{class:'btn primary',id:'bkGo',text:'Bake'});

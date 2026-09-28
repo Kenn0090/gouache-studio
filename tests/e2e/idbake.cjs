@@ -29,7 +29,9 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  r=await bake('poly');ok(r[0][1]>200&&r[0][0]<60&&r[1][0]>200&&r[1][1]>200&&r[1][2]<60,'Polypaint: green and yellow '+JSON.stringify(r));
  r=await bake('part');const d1=Math.abs(r[0][0]-r[1][0])+Math.abs(r[0][1]-r[1][1])+Math.abs(r[0][2]-r[1][2]);ok(d1>60,'Separate meshes: two different colours '+JSON.stringify(r));
  r=await bake('mat');const d2=Math.abs(r[0][0]-r[1][0])+Math.abs(r[0][1]-r[1][1])+Math.abs(r[0][2]-r[1][2]);ok(d2>60,'Materials: two different colours '+JSON.stringify(r));
- ok(await p.evaluate(()=>{const b=[...document.querySelectorAll('#bakeBody .seg button')].find(b=>b.textContent.startsWith('Other'));if(b)b.click();return !!document.querySelector('#bkIdSrc');}),'the Other tab offers the ID colour sources');
+ const tabNames=await p.evaluate(()=>[...document.querySelectorAll('#bakeBody .bktabs button')].map(b=>b.textContent.replace(' •','')));
+ ok(!tabNames.includes('Other')&&['World normal','Position','ID'].every(t=>tabNames.includes(t)),'every bake has its own tab '+JSON.stringify(tabNames));
+ ok(await p.evaluate(()=>{const b=[...document.querySelectorAll('#bakeBody .bktabs button')].find(b=>b.textContent.startsWith('ID'));if(b)b.click();return !!document.querySelector('#bkIdSrc')&&!!document.querySelector('#bk_id')&&!document.querySelector('#bk_position');}),'the ID tab has the ID bake and where its colours come from');
  ok(errs.length===0,'no errors '+errs.slice(0,3).join('\n'));
  /* an FBX with vertex colours loads (0.22 read the colour count too early) */
  const fbx=(()=>{const B=[];const u32=v=>{const b=Buffer.alloc(4);b.writeUInt32LE(v>>>0);return b;};
