@@ -63,6 +63,7 @@
     "layers/mask-stack",
     "ui/mask-rows",
     "layers/mat-convert",
+    "layers/smart",
     "files/p3-project",
     "layers/materials",
     "bake/bake-gpu",
