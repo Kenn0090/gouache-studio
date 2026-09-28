@@ -24,6 +24,9 @@ The right side is a column of **groups**; each group holds one or more panels as
 - **⋯** on a group: float the panel, keep it as an icon, close it, or fold the group.
 - Picking a tool that isn't a brush (selections, gradient, crop…) brings **Tool settings** to the front.
 
+## Dialogs
+Dialogs (Layer style, the Filter Gallery, the material editor, filters…) float without darkening the window, so you can watch what they change. **Drag the title bar** to move one; it opens there next time. Double-click the title to put it back.
+
 ## Icons
 Panels kept as **icons** sit in a thin column next to the dock. Click an icon to open its panel beside the column; click elsewhere to close it.
 

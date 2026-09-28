@@ -34,7 +34,11 @@ Double-click empty space to frame the model again. The same navigation works in 
 ## Texture sets
 A model with several materials gets one **texture set** per material, each with its own maps and layers, like Substance Painter. Click a set in the list to paint it. Only the active set takes paint; the others keep showing their own textures on the model.
 
-If you switch to a model that doesn't have a set's material, the set is kept (greyed out) so your work isn't lost. Its **×** button deletes it.
+If you switch to a model that doesn't have a set's material, the set is kept (greyed out) so your work isn't lost.
+
+The **×** on a set deletes it, after asking. If its material is still on the model, that part starts again with a new, empty set.
+
+Entering 3D Paint switches to the **Texturing** workspace; going back to Paint brings your previous workspace back.
 
 ## Mirror and radial painting
 Under **Mirror**:
@@ -55,6 +59,8 @@ To place it, hold **S** over the view:
 - **S + right drag** scales it.
 - **S + middle drag** moves it.
 
+**Invert** (or **X** over the model) swaps black and white.
+
 ## Selecting parts of the model
 Under **Select on the model**, choose **Object**, **Material**, **UV island**, **Face** or **Loop**, then **double-click** the model:
 - **Shift + double-click** adds to the selection.
@@ -66,9 +72,33 @@ The selection is tinted on the model and shows on the flat texture too. Painting
 A **loop** is the ring of quads crossing the edge you click nearest to. Faces and loops follow the model as you imported it, even when the view shows it subdivided.
 
 ## Materials
-Click a material (Steel, Gold, Copper, Rust, Rubber, Plastic and more) to add it as a fill layer. If a selection is active, it becomes the layer's mask; otherwise paint the mask to show the material where you want it.
+The **Materials** tab sits beside Brushes. Click a material (Steel, Gold, Copper, Rust, Rubber, Plastic, your own…) to add it as a **material layer**. If a selection is active, it becomes the layer's mask; otherwise paint the mask to show the material where you want it.
+
+**New material…** (or double-clicking a material layer's thumbnail) opens the **material editor**:
+- **Channels:** base colour, roughness, metallic, height, normal, emissive and opacity. Each one is a colour or value, or an image, with **Tile** and **Turn** for images.
+- **Height** makes bump detail on the model (the normal follows it), with a **Bump strength** slider.
+- **Projection:** *UV* follows the model's UVs. *Triplanar* projects images from three sides and blends them, so there are no seams. **Blend** sets how soft the joins are.
+- **Save to Materials** keeps the material, with its images, on this computer for other layers and projects. In the Materials tab, **⤓** exports one as a **.gmat** file and **Import…** brings one in.
+
+The layer stays live: open the editor again at any time and every channel updates.
+
+## Mesh maps (from the Bake tab)
+In the Bake tab, tick **Bake each material separately**, then press **Send to 3D Paint**. The model comes over, and each material's baked maps land in its own texture set as that set's **mesh maps** (listed in the 3D Paint panel), like Substance Painter's. They're what masks and smart materials will read.
+- The baked normal becomes a layer in the Normal map, so the high-poly detail shows on the model straight away.
+- **Add as layer** puts any mesh map in the layer stack.
+- Tick *also add them as layers* before sending to get AO (Multiply) and curvature (Overlay) layers automatically.
+
+## Mask mode
+**Alt + click a layer's mask** to see it on the model in black and white, without lighting. A bar appears at the top:
+- **Fill white** / **Fill black** (inside the selection, if there is one) and **Invert**.
+- **Double-click:** choose Object, Material, UV island, Face or Loop, then double-click the model. That part turns white in the mask; **Ctrl + double-click** turns it black.
+- Painting paints the mask.
+- **Done** (or **Esc**, or Alt + click again) goes back to the material.
+
+## From Paint
+In the Paint tab, **File › Send to 3D Paint** flattens the painting (every map it shares with 3D Paint) into a new layer of the active texture set, keeping its proportions. Hide the background first to keep transparency. In 3D Paint, press **Ctrl + T** to move and scale it.
 
 ## Saving and exporting
 - **Ctrl + S** in the 3D Paint tab (or **Save project**) saves a **.gouache3d** project: the model with its materials, every texture set with its layers, the camera and the mirror settings. Open it with **File › Open** or **Open project…**.
-- **Export textures…** exports the active set's maps (see [Files, saving and export](Files-and-export.md)).
+- **Export textures…** exports **every texture set** at once (untick it for just the active one), each named after its set. A baked AO fills the ORM or occlusion file (see [Files, saving and export](Files-and-export.md)).
 - Your Paint document is saved separately, as before.

@@ -40,6 +40,8 @@ For the last two, **Flip green** swaps the edges and creases that run across the
 - **Also make edges-only and creases-only maps:** two extra layers, white where the edges (or creases) are, handy as masks.
 
 ## Sending bakes to the document
+**Send to 3D Paint** sends the low-poly and the ticked maps to 3D Paint: each material's maps go to its own texture set (see [3D Paint](3D-Paint.md#mesh-maps-from-the-bake-tab)). With several materials, tick **Bake each material separately** before baking; a **Material** menu then shows each one's result.
+
 **Send as** (General tab):
 - **Layers** (the default): every bake is also a layer in the **base colour**, so bakes blend with each other there. For example, set the curvature layer to *Overlay* over the AO. AO, curvature and height also go into their own maps. The edges-only and creases-only layers sit, hidden, in the curvature group.
 - **Maps only:** each bake only in its own map, as before.
@@ -52,6 +54,15 @@ Each map arrives as a **plain layer** (no folders), so you can set blend modes b
 - **Low-poly:** the model in the 3D view, or a file (OBJ, glTF, GLB, FBX). It must have UVs.
 - **High-poly:** load a file. Or choose **None** to bake the low-poly on its own (see below).
 - **Cage:** either *Push out by the front distance*, or load a **cage model**, which is your low-poly pushed outwards with the same vertices and triangles.
+
+## ID colours
+In the **Other** tab, *ID colours from* chooses where the ID map's colours come from:
+- **Separate meshes:** one colour per object in the file.
+- **Materials:** one colour per material.
+- **Vertex colours:** the colours painted on the high-poly's vertices (OBJ, glTF, FBX).
+- **Polypaint:** ZBrush polypaint. Export the OBJ from ZBrush with Polypaint on.
+
+The tab lists what the loaded model has.
 
 ## Rays
 **Show the cage on the model** draws where the rays start as a see-through blue shell around the model. It follows Front, the offset map and a loaded cage model, so you can check the cage covers the high-poly.
@@ -74,7 +85,7 @@ If parts of the high-poly are missed, raise the distances. If detail from other 
 | Thickness (white = thick) | Base colour, hidden | Base colour, hidden |
 | World-space normal | Base colour, hidden | Base colour, hidden |
 | Position (gradient over the model's box) | Base colour, hidden | Base colour, hidden |
-| ID colours (vertex colours, material colours, or one colour per part) | Base colour, hidden | Base colour, hidden |
+| ID colours (Other tab: **separate meshes**, **materials**, **vertex colours** or **ZBrush polypaint**; Auto uses vertex colours, else materials) | Base colour, hidden | Base colour, hidden |
 
 Each baked map arrives in **its own group** (“Baked normal”, “Baked AO”…), so they're easy to find in the layer stack. Maps the document doesn't have yet are added for you. Groups for maps that live in the base colour (thickness, world-space normal, position, ID) start hidden so they don't cover your colours: show one, or use it as a mask with *Select › Load selection*.
 

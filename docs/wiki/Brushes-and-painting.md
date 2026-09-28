@@ -19,6 +19,10 @@ Pick a preset from the **Brush** panel, or change the settings:
 
 **Built-in presets:** Round, Soft air, Chalk, Ink, Flat bristle, Sponge, Foliage, Grass and Splatter, plus the blend presets Blender, Wet mix and Bristle blend.
 
+## Lazy mouse and the tip cursor
+- **Lazy mouse** (brush bar › More, or Tool settings): the brush follows the pointer on a string of that many pixels, so it only moves once the string is pulled tight. It's good for steady lines, on the canvas and on the model.
+- **Preferences › Show the brush tip's shape as the cursor** outlines the actual tip, turned and squashed like the dabs.
+
 ## Your own brushes
 - **Save brush** stores the current settings in **My brushes**. That includes which extra maps the brush paints and their values (see [Maps and PBR](Maps-and-PBR.md)).
 - **Import .ABR** loads Photoshop brush sets. Tips come across, and the settings that map cleanly are kept.
@@ -49,7 +53,7 @@ Lightens (Dodge) or darkens (Burn). **Shift+O** switches between them.
 *The colour panel.*
 
 - **Picker:** the square, the hue bar and a hex field.
-- **Mix strip:** steps from the foreground colour to the background colour, mixed in OKLab so the in-between colours stay clean. Click one to use it.
+- **Mix strip:** steps from the foreground colour to the background colour, mixed in OKLab so the in-between colours stay clean. Click one to use it, or step with the **Left / Right arrow keys**. Past either end they keep going, lighter or darker in the same colour.
 - **Recent colours** remember what you've painted with.
 - **Eyedropper:** the Eyedropper tool (I), or hold **Alt** while painting.
 - **X** swaps the two colours; **D** resets them to black and white.

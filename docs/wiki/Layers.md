@@ -31,24 +31,29 @@ In documents with several maps, each layer has **a blend mode per map**. The mod
 ## Masks
 **Add mask** starts a mask that shows everything; **Add hide-all mask** starts one that hides everything. If a selection is active, the new mask is made from it.
 
-Click the mask thumbnail to paint the mask. **Shift+click** turns the mask off or on, and **Alt+click** views it. **Layer › Apply mask** bakes the mask into the layer; **Delete mask** removes it.
+Click the mask thumbnail to paint the mask. **Shift+click** turns the mask off or on, and **Alt+click** views it (with a bar to fill, invert or pick parts of the model; see [3D Paint](3D-Paint.md#mask-mode)). **Layer › Apply mask** bakes the mask into the layer; **Delete mask** removes it.
 
 **Pictures into a mask** (light shows the layer, dark and see-through parts hide it):
 - **Paste:** click the mask thumbnail, then **Ctrl+V**. A copied part (or an image copied in another program) lands in the mask with Free transform on: move or scale it, then press **Enter**. This works in the quick mask (Q) too.
 - **Drag a layer** onto another layer's mask thumbnail: its picture becomes that mask. Hold **Alt** and drop onto a row to give a layer without a mask a new one.
 - **Drop an image file** from your computer on a mask thumbnail (or **Alt**+drop it on a row): it is stretched to fit the mask. **Filter › Tile** can then repeat it.
 
-## Fill layers
-A fill layer is like one in Substance Painter: it fills each map with one colour or value, or with a picture. Make one with **Layer › New fill layer…**, the fill button under the layers, or the right-click menu. If a selection is active it becomes the fill layer's mask.
+## Fill (material) layers
+A fill layer is like one in Substance Painter: a material that fills each map with one colour or value, or with a picture. Make one with **Layer › New fill layer…**, the fill button under the layers, or the right-click menu. If a selection is active it becomes the fill layer's mask.
 
 ![The fill layer settings.](images/fill-layer.png)
 *A steel fill: grey base colour, roughness 35%, metallic 100%.*
 
-- For each map (base colour, roughness, metallic, height and the others in the document), tick it to fill it and choose **Colour/Value** or **Image**. A value is a slider (for example roughness 80%, metallic 100%); an image is stretched over the canvas, and **Tile** repeats it.
-- If the document has no roughness or metallic map, the dialog offers to add them.
+- For each map (base colour, roughness, metallic, height, normal, emissive, opacity and the others in the document), tick it to fill it and choose **Colour/Value** or **Image**. A value is a slider (for example roughness 80%, metallic 100%). An image is stretched over the canvas; **Tile** repeats it and **Turn** rotates it.
+- **Height** images make bump detail (the normal follows the height), with **Bump strength**.
+- **Projection: Triplanar** lays images over the 3D model from three sides, with no seams (it needs a model in the 3D view or 3D Paint).
+- The editor offers to add any map the document is missing. **Save to Materials** keeps the material in the Materials tab (see [3D Paint](3D-Paint.md#materials)).
 - **Painting on a fill layer paints its mask:** black hides the fill, white shows it. So you can paint where the metal or the rust goes.
 - **Double-click its thumbnail** (or right-click › Fill settings…) to change it later. **Convert to pixels** makes it a normal layer.
-- Fill layers are kept in .gouache files. After opening a file, choose the image again if you want to change its tiling.
+- Fill layers are kept in .gouache files with their images, so they stay editable.
+
+## History
+The **History** tab (beside Layers) lists every step you can undo, oldest first. Click a step to go back to it; the greyed steps after it are what Redo brings back.
 
 ## Groups
 Groups can be nested, and each has its own mode, opacity and mask. **Merge group** flattens a group into one layer.
