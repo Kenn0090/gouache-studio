@@ -34,32 +34,47 @@ function kbHandle(e){if(!Object.keys(kbUser).length)return false;const combo=kbC
   const moved=kbCommands().find(c=>c[3]===combo&&c[0] in kbUser&&kbUser[c[0]]!==combo);
   if(moved){e.preventDefault();return true;}
   return false;}
-function dlgKeys(){const list=el('div',{class:'kblist'}),search=el('input',{type:'search',placeholder:'Search commands',class:'kbsearch','aria-label':'Search commands'});
-  let capture=null;
-  const draw=()=>{const q=search.value.trim().toLowerCase();list.replaceChildren();let group=null;
-    for(const c of kbCommands()){if(q&&!(c[1].toLowerCase().includes(q)||c[2].toLowerCase().includes(q)||kbKeyOf(c[0]).toLowerCase().includes(q)))continue;
-      if(c[2]!==group){group=c[2];list.append(el('div',{class:'sub',text:group}));}
-      const k=kbKeyOf(c[0]),changed=c[0] in kbUser;
-      const btn=el('button',{class:'btn sm kbkey'+(capture===c[0]?' on':''),text:capture===c[0]?'Press keys…':(k||'—'),title:'Click, then press the new key',onclick:()=>{capture=capture===c[0]?null:c[0];draw();}});
-      const clr=el('button',{class:'btn sm',text:'×',title:'Remove this key','aria-label':'Remove the key of '+c[1],onclick:()=>{kbUser[c[0]]='';kbSave();draw();}});
-      const rst=changed?el('button',{class:'btn sm',text:'↺',title:'Back to '+(c[3]||'no key'),'aria-label':'Reset '+c[1],onclick:()=>{delete kbUser[c[0]];kbSave();draw();}}):null;
-      list.append(el('div',{class:'kbrow'+(changed?' changed':'')},el('span',{text:c[1]}),el('span',{class:'kbbtns'},btn,k?clr:null,rst)));}
+/* the editor's categories (0.25): menus and tools sorted into groups that are easier to scan */
+const KB_CATS=[['tools-paint','Painting tools'],['tools-sel','Selection tools'],['tools-other','Other tools'],['brush','Brush and colour'],['File','Files'],['Edit','Edit and history'],['Image','Image and canvas'],['Maps','Maps'],['Layer','Layers'],['Select','Selections'],['Adjust','Adjustments'],['Filter','Filters'],['View','View and 3D'],['Window','Panels and workspaces']];
+function kbCat(c){const id=c[0];if(id.startsWith('tool:')){const t=id.slice(5);return ['brush','erase','smudge','heal','clone','dodge','picker','gradient'].includes(t)?'tools-paint':['marquee','lasso','wand'].includes(t)?'tools-sel':'tools-other';}
+  if(id.startsWith('paint:'))return 'brush';return KB_CATS.some(k=>k[0]===c[2])?c[2]:'Edit';}
+function dlgKeys(){const list=el('div',{class:'kblist'}),search=el('input',{type:'search',placeholder:'Search all commands or keys',class:'kbsearch','aria-label':'Search commands'}),cats=el('div',{class:'kbcats',role:'tablist','aria-label':'Categories'});
+  let capture=null,cat='all',pending=null;
+  const used=()=>{const m=new Map();for(const c of kbCommands()){const k=kbKeyOf(c[0]);if(k)m.set(k,(m.get(k)||0)+1);}return m;};
+  const drawCats=()=>{const n={all:kbCommands().length},clash=used();for(const c of kbCommands()){const k=kbCat(c);n[k]=(n[k]||0)+1;}
+    cats.replaceChildren(...[['all','All'],...KB_CATS].filter(([k])=>n[k]).map(([k,l])=>el('button',{class:'kbcat'+(cat===k?' on':''),role:'tab','aria-selected':String(cat===k),'data-cat':k,onclick:()=>{cat=k;search.value='';drawCats();draw();}},el('span',{text:l}),el('small',{text:String(n[k])}))));
+    if([...clash.values()].some(v=>v>1))cats.append(el('p',{class:'note kbwarn',text:'⚠ Some keys are used twice: those rows are marked.'}));};
+  const draw=()=>{const q=search.value.trim().toLowerCase(),clash=used();list.replaceChildren();let group=null;
+    const cmds=kbCommands().map(c=>[c,kbCat(c)]).filter(([c,k])=>q?(c[1].toLowerCase().includes(q)||c[2].toLowerCase().includes(q)||kbKeyOf(c[0]).toLowerCase().includes(q)):(cat==='all'||k===cat));
+    cmds.sort((x,y)=>KB_CATS.findIndex(k=>k[0]===x[1])-KB_CATS.findIndex(k=>k[0]===y[1]));
+    for(const [c,k0] of cmds){
+      if(k0!==group){group=k0;list.append(el('div',{class:'sub',text:(KB_CATS.find(k=>k[0]===k0)||[0,k0])[1]}));}
+      const k=kbKeyOf(c[0]),changed=c[0] in kbUser,twice=k&&clash.get(k)>1;
+      const btn=el('button',{class:'btn sm kbkey'+(capture===c[0]?' on':''),text:capture===c[0]?'Press keys…':(k||'—'),title:'Click, then press the new key',onclick:()=>{capture=capture===c[0]?null:c[0];pending=null;draw();}});
+      const clr=el('button',{class:'btn sm',text:'×',title:'Remove this key','aria-label':'Remove the key of '+c[1],onclick:()=>{kbUser[c[0]]='';kbSave();drawCats();draw();}});
+      const rst=changed?el('button',{class:'btn sm',text:'↺',title:'Back to '+(c[3]||'no key'),'aria-label':'Reset '+c[1],onclick:()=>{delete kbUser[c[0]];kbSave();drawCats();draw();}}):null;
+      list.append(el('div',{class:'kbrow'+(changed?' changed':'')+(twice?' clash':''),'data-id':c[0]},el('span',{text:(twice?'⚠ ':'')+c[1],title:twice?k+' is also used by another command':''}),el('span',{class:'kbbtns'},btn,k?clr:null,rst)));
+      /* the key is taken: ask before moving it */
+      if(pending&&pending.id===c[0])list.append(el('div',{class:'kbclash',id:'kbClash'},el('span',{text:pending.combo+' is used by “'+pending.other[1]+'”.'}),
+        el('button',{class:'btn sm',id:'kbUseHere',text:'Use it here',onclick:()=>{kbUser[pending.other[0]]='';kbSet(pending.id,pending.combo);toast(pending.combo+' now runs “'+c[1]+'”; “'+pending.other[1]+'” has no key.');pending=null;kbSave();drawCats();draw();}}),
+        el('button',{class:'btn sm',text:'Cancel',onclick:()=>{pending=null;draw();}})));}
     if(!list.children.length)list.append(el('p',{class:'note',text:'No command matches.'}));};
+  const kbSet=(id,combo)=>{kbUser[id]=combo===kbDefault(id)?undefined:combo;if(kbUser[id]===undefined)delete kbUser[id];};
   const onKey=e=>{if(!capture)return;e.preventDefault();e.stopPropagation();if(e.key==='Escape'){capture=null;draw();return;}
     const combo=kbCombo(e);if(!combo)return;
     const other=kbCommands().find(c=>c[0]!==capture&&kbKeyOf(c[0])===combo);
-    if(other){kbUser[other[0]]='';toast(combo+' was used by “'+other[1]+'”, which now has no key.');}
-    kbUser[capture]=combo===kbDefault(capture)?undefined:combo;if(kbUser[capture]===undefined)delete kbUser[capture];capture=null;kbSave();draw();};
+    if(other){pending={id:capture,combo,other};capture=null;draw();return;}
+    kbSet(capture,combo);capture=null;kbSave();drawCats();draw();};
   search.addEventListener('input',draw);
-  const reset=el('button',{class:'btn',text:'Reset all',title:'Back to Gouache Studio’s own keys',onclick:()=>{kbUser={};kbSave();draw();toast('All keys are back to the defaults.');}});
-  const ps=el('button',{class:'btn',text:'Photoshop keys',title:'Keys as close to Photoshop’s as this app allows',onclick:()=>{kbUser=Object.assign({},KB_PHOTOSHOP);kbSave();draw();toast('Photoshop-style keys set.');}});
+  const reset=el('button',{class:'btn',text:'Reset all',title:'Back to Gouache Studio’s own keys',onclick:()=>{kbUser={};kbSave();draw();toast('All keys are back to the defaults.');drawCats();}});
+  const ps=el('button',{class:'btn',text:'Photoshop keys',title:'Keys as close to Photoshop’s as this app allows',onclick:()=>{kbUser=Object.assign({},KB_PHOTOSHOP);kbSave();drawCats();draw();toast('Photoshop-style keys set.');}});
   const exp=el('button',{class:'btn',text:'Save to file…',onclick:async()=>{const r=await deliver('Keyboard shortcuts.gskeys',new Blob([JSON.stringify({gouacheKeys:1,keys:kbUser},null,1)],{type:'application/json'}));toast(deliveredText(r,'Keys'));}});
   const imp=el('button',{class:'btn',text:'Load from file…',onclick:async()=>{const [f]=await pickFiles('.gskeys,.json',false,'Key sets',['gskeys','json']);if(!f)return;
-    try{const j=JSON.parse(await f.text());if(!j||!j.keys||typeof j.keys!=='object')throw 0;kbUser={};for(const [id,k] of Object.entries(j.keys))if(typeof k==='string'&&kbCommands().some(c=>c[0]===id))kbUser[id]=k;kbSave();draw();toast('Keys loaded from '+f.name+'.');}
+    try{const j=JSON.parse(await f.text());if(!j||!j.keys||typeof j.keys!=='object')throw 0;kbUser={};for(const [id,k] of Object.entries(j.keys))if(typeof k==='string'&&kbCommands().some(c=>c[0]===id))kbUser[id]=k;kbSave();drawCats();draw();toast('Keys loaded from '+f.name+'.');}
     catch(e){toast('That file is not a key set saved by Gouache Studio.');}}});
-  const body=el('div',{class:'kbdlg'},el('p',{class:'note',text:'Click a key, then press the new one (Esc cancels). Keys you changed are highlighted.'}),search,list,el('div',{class:'chips'},ps,exp,imp,reset));
+  const body=el('div',{class:'kbdlg'},el('p',{class:'note',text:'Pick a category, or search. Click a key, then press the new one (Esc cancels). Keys you changed are highlighted.'}),search,el('div',{class:'kbmain'},cats,list),el('div',{class:'chips'},ps,exp,imp,reset));
   /* listen on the whole window while open: the button that was clicked is redrawn and loses focus */
-  window.addEventListener('keydown',onKey,true);const off=()=>window.removeEventListener('keydown',onKey,true);draw();
+  window.addEventListener('keydown',onKey,true);const off=()=>window.removeEventListener('keydown',onKey,true);drawCats();draw();
   openDialog({title:'Keyboard shortcuts',body,cancelLabel:'Close',onCancel:off});$('#modal .dialog').classList.add('kbwide');setTimeout(()=>search.focus(),0);}
 
 /* the one-line reminder of the main keys at the bottom of the canvas (View › Shortcut hints) */

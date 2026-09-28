@@ -40,6 +40,17 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.showPanel('stencils'));await W(300);
  ok(await p.evaluate(()=>{const s=document.querySelector('#st3Sec');const tab=[...document.querySelectorAll('.dktab')].find(t=>/Stencils/.test(t.textContent));return !!s&&s.offsetParent!==null&&!!s.querySelector('#st3Load')&&!!tab;}),'Stencils is a tab of its own');
  ok(await p.evaluate(()=>{const g=__gs.dk.col2.groups.find(g=>g.tabs.includes('stencils'));return g&&g.tabs.indexOf('stencils')===g.tabs.indexOf('brushes')+1;}),'…right next to Brushes');
+ /* keyboard shortcuts in categories, with a warning when a key is taken */
+ await p.evaluate(()=>__gs.act('keys'));await W(300);
+ ok(await p.evaluate(()=>document.querySelectorAll('.kbcats .kbcat').length>=10),'the shortcuts editor lists categories');
+ await p.click('.kbcat[data-cat="tools-paint"]');await W(100);
+ let rows=await p.evaluate(()=>[...document.querySelectorAll('.kblist .kbrow span:first-child')].map(s=>s.textContent));
+ ok(rows.includes('Healing brush')&&rows.includes('Clone stamp')&&!rows.includes('Marquee'),'Painting tools shows just those '+rows.join());
+ await p.locator('.kbrow[data-id="tool:clone"] .kbkey').click();await p.keyboard.press('b');await W(150);
+ ok(await p.evaluate(()=>!!document.querySelector('#kbClash')&&/used by “Brush”/.test(document.querySelector('#kbClash').textContent)),'a key already in use asks first');
+ await p.click('#kbUseHere');await W(150);
+ ok(await p.evaluate(()=>__gs.kbKeyOf('tool:clone')==='B'&&__gs.kbKeyOf('tool:brush')===''),'Use it here moves the key');
+ await p.evaluate(()=>{localStorage.removeItem('gs.keys');});await p.click('#dlgCancel');await W(200);
  ok(errs.length===0,'no page errors '+errs.slice(0,3).join(' | '));
  await b.close();console.log(fails?fails+" FAILED":"ALL PASSED");process.exit(fails?1:0);
 })();
