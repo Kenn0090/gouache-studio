@@ -533,3 +533,12 @@ body.noopt .optbar{display:none}
 .galrow.on{background:var(--accent-soft)}
 .galname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .eyeb{border:0;background:none;color:var(--muted);font-size:13px;padding:0 4px}
+
+/* layer styles */
+.styledlg{display:grid;grid-template-columns:minmax(170px,210px) 1fr;gap:14px;min-width:min(620px,80vw)}
+.stylelist{display:flex;flex-direction:column;gap:2px;margin-bottom:8px}
+.stylerow{display:flex;align-items:center;gap:6px}
+.stylebtn{flex:1;text-align:left;background:none;border:1px solid transparent;border-radius:6px;padding:5px 8px;color:var(--text);font:inherit;cursor:pointer}
+.stylebtn:hover{background:var(--raise)}.stylebtn.on{background:var(--accent-soft);color:var(--accent);border-color:var(--line-2)}
+.fxbadge{margin-left:auto;font:italic 600 11px/1 var(--font,inherit);padding:3px 5px;border-radius:4px;border:1px solid var(--line-2);background:var(--raise);color:var(--accent);cursor:pointer}
+@media (max-width:640px){.styledlg{grid-template-columns:1fr}}

@@ -28,15 +28,16 @@ function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
     const mt=maskTexOf(n);
     /* filter layer: changes what is below it (clipped ones are applied to their base layer instead) */
     if(n.type==='layer'&&n.fx){if(clipped||n.fx.map!==k)continue;const r=fxApplyLayer(n,acc,k,mt);if(r!==acc){release(acc);acc=r;}continue;}
-    if(n.type==='layer'){const T=edit?n.target:mapT(n,k);if(!T||T.empty)continue;
+    if(n.type==='layer'){let T=edit?n.target:mapT(n,k);const lk=lookTouches(n,k);if((!T||T.empty)&&!lk)continue;if(!T||T.empty)T=emptyFor(mapDepth(k));
       let src=(edit&&preview&&!preview.off&&preview.L===n&&!preview.isMask)?previewT:T,own=null;const out=acquire(),cm=clipped?maskTexOf(clipped):null;
       let st=(stroke&&stroke.L===n&&stroke.o.tool!=='smudge')?stroke:null,ex=null;
       if(st&&!edit){ex=(st.o.extras||[]).find(e=>e.key===k)||null;if(!ex)st=null;}
       const cf=clippedFx(list,i,k);
-      if(cf.length){/* the live stroke goes in first, so clipped filters apply to it too */
+      if(cf.length||lk){/* the live stroke goes in first, so clipped filters and the layer's array and styles apply to it too */
         if(st){own=acquire();run(P.merge,own,Object.assign({uSrc:src.tex,uStrokeTex:strokeT.tex,uStroke:{int:ex?ex.mode:strokeMode(st.o)},uStrokeColor:ex?ex.color:st.o.color,uStrokeTint:!ex&&!!st.tint,uStrokeOpacity:st.o.opacity,uLockAlpha:ex?false:n.lockAlpha},
           edit?chanU(st.o):chanU(null),ex?st.exU:selU(st.o),edit?tonalU(st.o):{}));src=own;st=null;ex=null;}
-        for(const f of cf){const r=fxApplyLayer(f,src,k,maskTexOf(f));if(r!==src){if(own)release(own);own=r;src=r;}}}
+        for(const f of cf){const r=fxApplyLayer(f,src,k,maskTexOf(f));if(r!==src){if(own)release(own);own=r;src=r;}}
+        if(lk){const r=layerLook(n,src,k,src===T);if(r.t!==src){if(own)release(own);own=r.pooled?r.t:null;src=r.t;}}}
       run(P.comp,out,Object.assign({uBase:acc.tex,uLayer:src.tex,uStrokeTex:strokeT.tex,uMask:clipped?(mapT(clipped,'base')||emptyFor(8)).tex:dummy,uUseMask:!!clipped,uMask2:cm||dummy,uUseMask2:!!cm,uLMask:mt||dummy,uUseLMask:!!mt,
         uMode:{int:mapModeOf(n,k)},uOpacity:n.opacity,uStroke:{int:st?(ex?ex.mode:strokeMode(st.o)):0},uStrokeTint:!!(st&&!ex&&st.tint),uStrokeColor:st?(ex?ex.color:st.o.color):[0,0,0],uStrokeOpacity:st?st.o.opacity:0,uLockAlpha:ex?false:n.lockAlpha},
         edit?chanU(st&&st.o):chanU(null),ex?st.exU:selU(st&&st.o),edit?tonalU(st&&st.o):{}));
@@ -94,7 +95,7 @@ function releaseSelView(){if(selViewTmp){release(selViewTmp);selViewTmp=null;}}
 /* thumbnails */
 const thumbT=makeTargetRaw(40,40);const thumbBuf=new Uint8Array(40*40*4);const thumbQ=new Set();
 function makeTargetRaw(w,h){const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);const fbo=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0);return {tex,fbo,w,h,depth:8};}
-function scheduleThumb(n){if(n){if(n.frame)frameDirty(n);thumbQ.add(n);chanThumbDirty=true;}requestRender();}
+function scheduleThumb(n){if(n){n.lookVer=(n.lookVer||0)+1;if(n.frame)frameDirty(n);thumbQ.add(n);chanThumbDirty=true;}requestRender();}
 let chanThumbDirty=true;
 function renderThumb(target,canvas){const s=Math.min(40/doc.w,40/doc.h),tw=doc.w*s,th=doc.h*s;clearTarget(thumbT);
   run(P.resample,thumbT,{uSrc:target.tex,uOffset:[(40-tw)/2,(40-th)/2],uScale:[1/s,1/s],uTaps:{int:Math.min(8,Math.ceil(1/s))}});

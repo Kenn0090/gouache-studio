@@ -35,8 +35,10 @@ function displayRows(){const rows=[];const walk=(g,depth)=>{for(let i=g.children
 function effVisible(n){let c=n;while(c&&c!==doc.root){if(!c.visible)return false;c=c.parent;}return true;}
 function updateRowClasses(){for(const r of $('#layerList').children){if(!r._node)continue;r.classList.toggle('on',r._node===doc.active);r.classList.toggle('sel',doc.sel.has(r._node));r.setAttribute('aria-selected',String(doc.sel.has(r._node)));}syncLayerProps();}
 let gradPanelFor=null;
+let lkPanelFor=null;
 function syncLayerProps(){const A=doc.active,grp=A&&A.type==='group';if(ui.tool==='text'&&textPanelFor!==activeText()&&!fontState)buildBrushPanel();
   if(ui.tool==='gradient'&&gradPanelFor!==activeGrad()){gradPanelFor=activeGrad();buildBrushPanel();drawXfOverlay();}
+  if((ui.tool==='array'||ui.tool==='shape')&&lkPanelFor!==doc.active){lkPanelFor=doc.active;buildBrushPanel();drawXfOverlay();}
   $('#lModeName').textContent=A?modeLabel(mapModeOf(A,doc.map)):'Normal';modeBtn.disabled=!A;renderMaskRow();
   if(A){opSlider.set(A.opacity);$('#lClip').checked=!!A.clip;$('#lLock').checked=!!A.lockAlpha;}
   $('#lClip').disabled=$('#lLock').disabled=!isLayer(A);
@@ -51,7 +53,7 @@ function renderLayers(){
     const eye=el('button',{class:'eye',title:n.visible?'Hide':'Show','aria-label':(n.visible?'Hide ':'Show ')+n.name});eye.innerHTML=n.visible?eyeOn:eyeOff;
     eye.addEventListener('click',e=>{e.stopPropagation();n.visible=!n.visible;renderLayers();requestRender(true);});
     const meta=[];if(grp){meta.push(n.mode<0?'pass':MODES[n.mode]);const om=doc.maps.length>1&&ui.mode!=='anim'?onlyMapOf(n):null;if(om)meta.push(MAP_SHORT[om]);}else{const mm=mapModeOf(n,doc.map);if(mm!==(doc.map==='base'?0:MAP_DEFS[doc.map].blend))meta.push(MODES[mm].replace(' (Add)',''));}
-    if(n.text)meta.unshift('text');if(n.grad)meta.unshift('gradient');if(n.opacity<1)meta.push(Math.round(n.opacity*100)+'%');if(n.lockAlpha)meta.push('lock');
+    if(n.text)meta.unshift('text');if(n.grad)meta.unshift('gradient');if(n.shape)meta.unshift('shape');if(n.array&&n.array.on!==false)meta.unshift('array');if(n.opacity<1)meta.push(Math.round(n.opacity*100)+'%');if(n.lockAlpha)meta.push('lock');
     /* which maps this layer has something in (so a layer painted only in Height is easy to find) */
     if(n.fx){meta.length=0;const mm=mapModeOf(n,n.fx.map);if(mm)meta.push(MODES[mm].replace(' (Add)',''));if(n.opacity<1)meta.push(Math.round(n.opacity*100)+'%');
       meta.unshift(n.fx.stack.filter(it=>it.on!==false).map(fxItemTitle).join(', ')||'no filters');if(doc.maps.length>1)meta.push(MAP_SHORT[n.fx.map]);}
@@ -67,6 +69,8 @@ function renderLayers(){
     if(n.mask){const mt=n.mask.thumb;mt.className='mthumb'+(n.editMask&&n===doc.active?' edit':'')+(n.mask.enabled?'':' off');mt.title='Mask: click to edit, Shift+click to turn off or on, Alt+click to view it';thumbs.append(mt);}
     icon=thumbs;
     const row=el('div',{class:'lrow'+(grp?' group':'')+(clipped?' clip':'')+(effVisible(n)?'':' hid'),role:'option',tabindex:'0',style:'--depth:'+depth},eye,icon,name,el('div',{class:'lmeta',text:(grp?n.children.length+' · ':'')+meta.join(' · ')}));
+    if(!grp&&!n.fx&&n.styles&&STYLE_ORDER.some(k=>n.styles[k]&&n.styles[k].on)){const fx=el('button',{class:'fxbadge',text:'fx',title:'Layer style: click to change','aria-label':'Layer style of '+n.name});
+      fx.addEventListener('pointerdown',e=>e.stopPropagation());fx.addEventListener('click',e=>{e.stopPropagation();selectOnly(n);updateRowClasses();dlgLayerStyle();});row.append(fx);}
     row._node=n;
     row.addEventListener('pointerdown',e=>layerPointerDown(e,n,row));
     row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selectOnly(n);updateRowClasses();}});
@@ -163,7 +167,7 @@ function cmdGroup(){const tops=topSelected();if(!tops.length)return;
 function cmdUngroup(){const G=doc.active;if(!G||G.type!=='group'){toast('Select a group to ungroup.');return;}
   structOp('Ungroup',()=>{const p=G.parent,i=p.children.indexOf(G),ch=G.children.slice();detachNode(G);p.children.splice(i,0,...ch);ch.forEach(c=>c.parent=p);doc.sel=new Set(ch);doc.active=ch[ch.length-1]||p.children[Math.max(0,i-1)]||null;});}
 function cloneNode(n){if(n.type==='layer'&&n.fx){const L=newFxLayerObj(n.name+' copy',JSON.parse(JSON.stringify(fxCleanStack(n.fx.stack))),n.fx.map);Object.assign(L,{opacity:n.opacity,mode:n.mode,clip:n.clip,visible:n.visible,mask:cloneMask(n.mask)});L.mapModes=Object.assign({},n.mapModes);return L;}
-  if(n.type==='layer'){const L=newLayerObj(n.name+' copy');Object.assign(L,{opacity:n.opacity,mode:n.mode,clip:n.clip,lockAlpha:n.lockAlpha,visible:n.visible,mask:cloneMask(n.mask),text:n.text?cloneText(n.text):null,grad:n.grad?cloneGrad(n.grad):null});for(const k of mapKeysOf(n))blit(mapT(n,k),ensureMapTarget(L,k),0,0,doc.w,doc.h,0,0);L.mapModes=Object.assign({},n.mapModes);L.target=L.maps[doc.map]||emptyFor(mapDepth(doc.map));if(L.text)L.text.bbox=layoutText(L.text);return L;}
+  if(n.type==='layer'){const L=newLayerObj(n.name+' copy');Object.assign(L,{opacity:n.opacity,mode:n.mode,clip:n.clip,lockAlpha:n.lockAlpha,visible:n.visible,mask:cloneMask(n.mask),text:n.text?cloneText(n.text):null,grad:n.grad?cloneGrad(n.grad):null,array:n.array?JSON.parse(JSON.stringify(n.array)):null,arrBox:n.arrBox||null,styles:n.styles?JSON.parse(JSON.stringify(n.styles)):null,shape:n.shape?JSON.parse(JSON.stringify(n.shape)):null});for(const k of mapKeysOf(n))blit(mapT(n,k),ensureMapTarget(L,k),0,0,doc.w,doc.h,0,0);L.mapModes=Object.assign({},n.mapModes);L.target=L.maps[doc.map]||emptyFor(mapDepth(doc.map));if(L.text)L.text.bbox=layoutText(L.text);return L;}
   const G=newGroupObj(n.name+' copy');Object.assign(G,{opacity:n.opacity,mode:n.mode,visible:n.visible,open:n.open,mask:cloneMask(n.mask)});for(const c of n.children){const cc=cloneNode(c);cc.name=c.name;insertNode(cc,G);}return G;}
 function cmdDuplicate(){const tops=topSelected();if(!tops.length)return;
   structOp('Duplicate',()=>{const clones=[];for(const n of tops){const c=cloneNode(n);insertNode(c,n.parent,n.parent.children.indexOf(n)+1);clones.push(c);}doc.sel=new Set(clones);doc.active=clones[clones.length-1];});}

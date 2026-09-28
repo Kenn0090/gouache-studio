@@ -10,6 +10,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 ## Painting
 - [Brushes and painting](Brushes-and-painting.md): brushes, presets, colour jitter, making your own tips, Photoshop brushes, pen pressure, eraser, blend, dodge and burn
 - [Layers](Layers.md): layers, groups, masks, blend modes, clipping, text, live gradients
+- [Shapes, arrays and layer styles](Shapes-arrays-and-layer-styles.md): shapes with bevels, repeating a layer in a line, grid or circle, drop shadows, strokes, bevels and more
 - [Selections, transforms and crop](Selections-transforms-and-crop.md)
 - [Fills and gradients](Fills-and-gradients.md)
 - [Cage painting and symmetry](Cage-painting-and-symmetry.md): paint through a cage onto slanted or curved shapes; mirror and radial symmetry
@@ -54,3 +55,5 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 | 12 | Specular/Gloss workflow | 0.15 |
 | 13 | New layout: options bar, tabbed dock, floating panels, workspaces, Filter Gallery | 0.16 |
 | 14 | 15 new filters (glass, print, photo and artistic looks), Y2K gradient maps | 0.17 |
+| 15 | Faster baking, memory and disk settings, bake tabs, reworked curvature, bakes as layers | 0.18 |
+| 16 | Shapes with bevels, Array tool, layer styles | 0.19 |

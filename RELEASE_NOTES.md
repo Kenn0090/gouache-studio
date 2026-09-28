@@ -1,6 +1,6 @@
-Baking: a tab of settings for each map, reworked curvature, and bakes sent as layers you can blend.
+Canvas tools: shapes with bevels, the Array tool and layer styles.
 
-- **A tab per map** in the Bake panel: General, Normal, AO, Curvature, Height, Thickness and Other, each with its own settings. AO gets **Spread**; Thickness gets its own Rays.
-- **Curvature, reworked:** measured on the high-poly's real shape by default, so mirrored and flipped UVs come out right. You can still work it out from the baked normal or from the document's normal map, with **Flip green**. New Radius, Strength, Edges and Creases settings, plus optional **edges-only** and **creases-only** maps.
-- **Bakes arrive as layers:** each one is also a layer in the base colour, so you can blend them (curvature on Overlay over AO). AO, curvature and height still go into their own maps too. *Maps only* in the General tab sends them the old way.
-- The installer builds faster.
+- **Shape tool (U):** rectangle, rounded rectangle, ellipse, polygon, star, line, arrow and heart, each on its own layer and editable until you paint on it. Fill and outline, and a **bevel** with a choice of profiles (flat, round, cove, ogee, steps, pillow) that raises the Height map, so the normal and the 3D view follow.
+- **Array tool:** repeat a layer in a line, a grid or a circle. The copies stay live: paint on the layer and they all follow. Drag the handles on the canvas; add random variety (rotation, size, hue, brightness) per copy; Apply turns them into pixels.
+- **Layer styles (Layer › Layer style…):** drop shadow, outer glow, stroke, colour overlay, inner shadow, inner glow, and bevel & emboss. Live on the layer, with an **fx** badge. The bevel (and a raised stroke) goes into the Height map; the stroke and colour overlay can also set roughness and metallic.
+- Shapes, arrays and styles are kept in .gouache files and included in texture export.

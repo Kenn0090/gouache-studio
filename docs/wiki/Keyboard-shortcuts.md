@@ -20,6 +20,7 @@ All of these can be changed in **Edit › Keyboard shortcuts…**: click a comma
 | C | Crop |
 | K | Cage |
 | T | Text |
+| U | Shape |
 | I, or hold Alt | Eyedropper |
 | H, or hold Space | Hand (pan) |
 

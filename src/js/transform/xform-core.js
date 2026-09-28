@@ -41,7 +41,7 @@ function xfStart(opts){opts=opts||{};if(xf)return true;
   if(pick.maskOnly){const n=pick.maskOnly,m=n.mask,orig=acquireD(m.target.depth);blit(m.target,orig,0,0,doc.w,doc.h,0,0);
     items.push({node:n,t:()=>m.target,orig,src:orig,base:null,outside:[1,1,1,1],full:true,mask:m});rect=fullRect();}
   else{let layers=pick.layers;if(!layers.length){toast('Select a layer to transform.');return false;}
-    for(const L of layers)if(L.text||L.grad){rasterizeText(L);toast('Converted to pixels for the transform. Undo brings the editable layer back.');}
+    for(const L of layers)if(L.text||L.grad||L.shape){rasterizeText(L);toast('Converted to pixels for the transform. Undo brings the editable layer back.');}
     /* every map of every layer moves together */
     for(const L of layers){for(const k of mapKeysOf(L)){const T0=mapT(L,k),d=T0.depth,orig=acquireD(d);blit(T0,orig,0,0,doc.w,doc.h,0,0);let src=orig,base=null;
       if(useSel){src=acquireD(d);run(P.cropsel,src,{uSrc:orig.tex,uSel:sel.t.tex,uOff:[0,0],uUseSel:true});
