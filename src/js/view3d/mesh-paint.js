@@ -119,12 +119,12 @@ let mir3VB=null;
 function drawMir3(VP){if(!mir3.show||!(mir3.x||mir3.y||mir3.z)||!v3.mesh)return;const r=(v3.mesh.radius||1.2)*1.15,o=mir3.off,pts=[];
   ['x','y','z'].forEach((a,i)=>{if(!mir3[a])return;const u=(i+1)%3,v=(i+2)%3,c=[[-r,-r],[r,-r],[r,r],[-r,r]];
     for(let k=0;k<4;k++){const A=c[k],B=c[(k+1)%4];for(const P of [A,B]){const p=[0,0,0];p[i]=o[i];p[u]=P[0];p[v]=P[1];pts.push(...p);}}
-    for(let t=-3;t<=3;t++){const q=t/4*r;for(const P of [[q,-r],[q,r],[-r,q],[r,q]]){const p=[0,0,0];p[i]=o[i];p[u]=P[0];p[v]=P[1];pts.push(...p);}}});
+    for(const P of [[0,-r],[0,r],[-r,0],[r,0]]){const p=[0,0,0];p[i]=o[i];p[u]=P[0];p[v]=P[1];pts.push(...p);}});
   if(!pts.length)return;if(!mir3VB){mir3VB={vao:gl.createVertexArray(),vb:gl.createBuffer()};}
   gl.bindVertexArray(mir3VB.vao);gl.bindBuffer(gl.ARRAY_BUFFER,mir3VB.vb);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(pts),gl.DYNAMIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,12,0);
   for(const a of [1,2,3])gl.disableVertexAttribArray(a);gl.vertexAttrib3f(1,0,1,0);gl.vertexAttrib2f(2,0,0);gl.vertexAttrib4f(3,1,0,0,1);
   gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);
-  useProg(P3.line,{uVP:{m4:VP},uUVs:1,uH:dummy,uDisp:0,uUseH:false,uCol:[.35,.8,1,.55]});gl.drawArrays(gl.LINES,0,pts.length/3);
+  useProg(P3.line,{uVP:{m4:VP},uUVs:1,uH:dummy,uDisp:0,uUseH:false,uCol:[.35,.8,1,.4]});gl.drawArrays(gl.LINES,0,pts.length/3);
   gl.depthMask(true);gl.disable(gl.BLEND);gl.bindVertexArray(vao);}
 /* the Mirror section (3D Paint panel, and the 3D view's settings in Paint) */
 function mir3Box(){const box=el('div',{class:'dlg-grid',id:'mir3Box'}),redo=()=>{const n=mir3Box();box.replaceWith(n);};

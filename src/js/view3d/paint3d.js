@@ -150,7 +150,8 @@ function p3SelectAt(hit,e){if(sel3.mode==='off'||!v3.mesh||(ui.mode!=='p3d'&&ui.
   const own=sel3Grow(O,Math.floor(t/f),sel3.mode,hitPos,RO),tris=[];for(const x of own)for(let j=0;j<f;j++)tris.push(x*f+j);
   const mode=e.shiftKey?'add':(e.ctrlKey||e.metaKey)?'sub':'new',img=sel3Draw(m,tris);
   applyShape(img,mode,fullRect(),'Select '+SEL3_KINDS.find(k=>k[0]===sel3.mode)[1].toLowerCase());release(img);v3.dirty=true;requestRender(true);return true;}
-function sel3Box(){return el('div',{class:'dlg-grid'},seg(SEL3_KINDS,sel3.mode,v=>{sel3.mode=v;buildP3Panel();},'Select on the model'),
+function sel3Box(){const pick=el('select',{id:'sel3Kind','aria-label':'Double-click on the model selects'},...SEL3_KINDS.map(([k,l])=>el('option',{value:k,text:k==='off'?'Off (double-click reframes)':l})));pick.value=sel3.mode;pick.onchange=()=>{sel3.mode=pick.value;if(ui.mode==='p3d')buildP3Panel();};
+  return el('div',{class:'dlg-grid'},pick,
   el('p',{class:'note',text:sel3.mode==='off'?'Choose what a double-click on the model selects.':'Double-click the model to select. Shift+double-click adds, Ctrl+double-click removes, Ctrl+D deselects. Painting stays inside the selection.'}),
   el('div',{class:'chips'},el('button',{class:'btn sm',text:'Selection to mask',title:'Give the active layer a mask made from the selection',onclick:()=>{if(!sel.active){toast('Select something first.');return;}cmdAddMask(1);}})));}
 

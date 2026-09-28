@@ -122,7 +122,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
    o+='o B\nv 0.5 -0.5 0\nv 1.5 -0.5 0\nv 1.5 0.5 0\nv 0.5 0.5 0\nvt 0.55 0\nvt 1 0\nvt 1 1\nvt 0.55 1\nf 16/16 17/17 18/18 19/19\n';
    __gs.useModel(__gs.parseOBJ(o,'grid.obj'));});await W(800);
  await p.evaluate(()=>{Object.assign(__gs.v3.cam,{yaw:0,pitch:0});__gs.v3.dirty=true;});await W(300);
- await p.click('#p3dBody .segb:text-is("Object")');await W();
+ await p.selectOption('#sel3Kind','object');await W();
  /* find screen points on the model by picking along the middle row */
  const pts=await p.evaluate(()=>{const hit=document.querySelector('#v3Hit'),r=hit.getBoundingClientRect(),out=[];for(let x=r.left+5;x<r.right;x+=6){const y=r.top+r.height/2+r.height*.06,q=__gs.v3PickAt(hit,{clientX:x,clientY:y});if(q)out.push({x,y,u:q.uv[0],v:q.uv[1]});}return out;});
  const onA=pts.find(q=>q.u>.12&&q.u<.16),onB=pts.find(q=>q.u>.7);
@@ -130,19 +130,19 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const selCount=()=>p.evaluate(()=>{const d=__gs.selPixels(),W=__gs.doc.w;let L=0,R=0;for(let i=0;i<d.length;i++)if(d[i]>128){if(i%W<W/2)L++;else R++;}return {L,R};});
  await p.mouse.dblclick(onA.x,onA.y);await W(400);let sc=await selCount();
  ok(sc.L>256*256*.4&&sc.R===0,'double-click selects the whole object (its UVs) '+JSON.stringify(sc));
- await p.click('#p3dBody .segb:text-is("Face")');await W();await p.mouse.dblclick(onA.x,onA.y);await W(400);const face=await selCount();
+ await p.selectOption('#sel3Kind','face');await W();await p.mouse.dblclick(onA.x,onA.y);await W(400);const face=await selCount();
  ok(face.L>256*256*.04&&face.L<256*256*.09,'Face selects one quad '+JSON.stringify(face));
  await p.keyboard.down('Shift');await p.mouse.dblclick(onB.x,onB.y);await p.keyboard.up('Shift');await W(400);sc=await selCount();ok(sc.R>256*256*.3&&sc.L===face.L,'Shift+double-click adds '+JSON.stringify(sc));
- await p.click('#p3dBody .segb:text-is("Loop")');await W();await p.mouse.dblclick(onA.x,onA.y);await W(400);const loop=await selCount();
+ await p.selectOption('#sel3Kind','loop');await W();await p.mouse.dblclick(onA.x,onA.y);await W(400);const loop=await selCount();
  ok(loop.L>face.L*1.5&&loop.L<256*256*.45,'Loop selects a ring of quads '+JSON.stringify(loop));
- await p.click('#p3dBody .segb:text-is("UV island")');await W();await p.mouse.dblclick(onB.x,onB.y);await W(400);sc=await selCount();ok(sc.R>256*256*.3&&sc.L===0,'UV island '+JSON.stringify(sc));
+ await p.selectOption('#sel3Kind','island');await W();await p.mouse.dblclick(onB.x,onB.y);await W(400);sc=await selCount();ok(sc.R>256*256*.3&&sc.L===0,'UV island '+JSON.stringify(sc));
  await p.screenshot({path:OUT+'p3d-select.png'});
  /* painting keeps inside the selection */
  await setFG('#10c020');await p.evaluate(()=>{document.activeElement&&document.activeElement.blur();Object.assign(__gs.brush,{size:200});});
  await p.mouse.move(onA.x,onA.y);await p.mouse.down();await p.mouse.move(onB.x,onB.y,{steps:12});await p.mouse.up();await W(500);
  const g=await p.evaluate(()=>{const L=__gs.doc.active,d=__gs.readRGBA8(__gs.mapT(L,'base')),W=__gs.doc.w;let l=0,r=0;for(let i=0;i<d.length;i+=4)if(d[i+1]>150&&d[i]<90&&d[i+3]>200){if((i/4)%W<W/2)l++;else r++;}return {l,r};});
  ok(g.r>500&&g.l===0,'painting stays inside the selection '+JSON.stringify(g));
- await p.keyboard.press('Control+d');await p.click('#p3dBody .segb:text-is("Off")');await W();
+ await p.keyboard.press('Control+d');await p.selectOption('#sel3Kind','off');await W();
  /* ---- materials: a click adds a fill layer with the material's values ---- */
  await p.click('#p3dBody .p3mat:has-text("Gold")');await W(400);
  let mt=await p.evaluate(()=>{const L=__gs.doc.active;return {name:L.name,fill:!!L.fill,metal:L.fill&&L.fill.maps.metal.v,rough:L.fill&&L.fill.maps.rough.v,layers:__gs.allLayers().length};});
@@ -159,7 +159,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const after=await p.evaluate(()=>({sets:__gs.p3.sets.map(S=>S.name),cur:__gs.p3.cur,layers:__gs.allLayers().map(L=>L.name).join(),model:__gs.v3.imported&&__gs.v3.imported.name,mats:__gs.v3.imported&&__gs.v3.imported.partNames}));
  ok(JSON.stringify(after)===JSON.stringify(before),'project opens back the same '+JSON.stringify(after));
  ok(await p.evaluate(()=>{const t=__gs.compositeMap('metal'),d=__gs.readRGBA8(t);__gs.release(t);return d[(128*256+128)*4]>250;}),'with its painting');
- await p.click('#p3dBody .p3set:has-text("Left")');await W(500);ok((await cnt('Paint'))>=aOnA,'and the other sets’ painting');
+ await p.evaluate(()=>__gs.p3SwitchSet(__gs.p3.sets.findIndex(S=>S.name==='Left'),true));await W(500);ok((await cnt('Paint'))>=aOnA,'and the other sets’ painting');
  /* ---- back to Paint: the painting is untouched, and 3D Paint keeps its work ---- */
  await p.click('#modeTabs [data-mode=paint]');await W(600);
  s=await p.evaluate(()=>({own:__gs.tabDocs.key,names:__gs.allLayers().map(L=>L.name),w:__gs.doc.w,dock2:document.querySelector('#dock2').hidden}));
