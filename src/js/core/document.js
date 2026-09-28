@@ -37,7 +37,7 @@ function newLayerObj(name){doc.count++;const B=makeTarget(doc.w,doc.h,mapDepth('
   if(doc.map&&doc.map!=='base'&&ui.mode!=='anim'){T=makeTarget(doc.w,doc.h,mapDepth(doc.map));maps[doc.map]=T;}
   return {type:'layer',id:++lid,name:name||('Layer '+doc.count),target:T,maps,mapModes:{},visible:true,opacity:1,mode:0,clip:false,lockAlpha:false,thumb:thumbCanvas(),parent:null};}
 function newGroupObj(name){return {type:'group',id:++lid,name:name||('Group '+(++groupCount)),children:[],open:true,visible:true,opacity:1,mode:-1,clip:false,lockAlpha:false,parent:null};}
-function disposeLayer(n){if(n._fxc)dropFxCache(n);if(n._lk)lookFree(n);if(n.maps)for(const k in n.maps){const t=n.maps[k];if(t&&!t.empty)disposeTarget(t);}if(n.target&&!n.target.empty)disposeTarget(n.target);if(n.mask)disposeTarget(n.mask.target);if(n._fillImg){for(const k in n._fillImg)disposeTarget(n._fillImg[k]);n._fillImg=null;}}
+function disposeLayer(n){if(n._fxc)dropFxCache(n);if(n._lk)lookFree(n);if(n.maps)for(const k in n.maps){const t=n.maps[k];if(t&&!t.empty)disposeTarget(t);}if(n.target&&!n.target.empty)disposeTarget(n.target);if(n.mask)maskDispose(n.mask);if(n._fillImg){for(const k in n._fillImg)disposeTarget(n._fillImg[k]);n._fillImg=null;}}
 const isLayer=n=>!!n&&n.type==='layer';
 function insertNode(n,parent,i){n.parent=parent;const c=parent.children;c.splice(i==null?c.length:clamp(i,0,c.length),0,n);}
 function detachNode(n){const p=n.parent;if(!p)return -1;const i=p.children.indexOf(n);if(i>=0)p.children.splice(i,1);return i;}
@@ -48,8 +48,14 @@ function inDoc(n){if(n&&n.frame)return !!(doc.anim&&doc.anim.frames.includes(n))
 function isAncestor(a,n){let c=n.parent;while(c){if(c===a)return true;c=c.parent;}return false;}
 function activeLayer(){return isLayer(doc.active)?doc.active:null;}
 function makeMask(fill){const m={target:makeTarget(doc.w,doc.h),enabled:true,thumb:thumbCanvas()};m.thumb.className='mthumb';clearTarget(m.target,[fill,fill,fill,1]);return m;}
-function cloneMask(m){if(!m)return null;const c=makeMask(1);blit(m.target,c.target,0,0,doc.w,doc.h,0,0);c.enabled=m.enabled;return c;}
+function cloneMask(m){if(!m)return null;const c=makeMask(1);blit(m.target,c.target,0,0,doc.w,doc.h,0,0);c.enabled=m.enabled;
+  /* its rows too, each with its own copy of its picture */
+  if(m.stack){c._rows=new Set();c.stack=m.stack.map(r=>{const x=Object.assign({},r,{id:'r'+(++msSeq),p:JSON.parse(JSON.stringify(r.p||{})),v:r.v?JSON.parse(JSON.stringify(r.v)):r.v});
+    if(r.t){x.t=makeTarget(r.t.w,r.t.h,r.t.depth,r.kind==='image');blit(r.t,x.t,0,0,r.t.w,r.t.h,0,0);}c._rows.add(x);return x;});}
+  return c;}
 function editTarget(){if(sel.quick){useAux(sel.t.depth);return {node:sel.node,target:sel.t,isMask:true,L:sel.L};}const n=doc.active;if(!n)return null;fillMaskEdit(n);if(n.fx&&!n.editMask)return null;if(isLayer(n)&&!n.editMask){ensureTarget(n);useAux(n.target.depth);if(doc.map==='base')delete n.blankBase;}else if(n.mask&&n.editMask)useAux(n.mask.target.depth);
+  /* a mask with rows: painting goes into its Paint row */
+  if(n.editMask&&n.mask&&n.mask.stack){const r=msPaintRow(n);return {node:n,target:r.t,isMask:true,L:{target:r.t,lockAlpha:false,maskOf:n,maskObj:n.mask,mrow:r}};}
   if(n.editMask&&n.mask)return {node:n,target:n.mask.target,isMask:true,L:{target:n.mask.target,lockAlpha:false,maskOf:n,maskObj:n.mask}};
   if(n.type==='layer')return {node:n,target:n.target,isMask:false,L:n};return null;}
 function clipBaseOf(list,i){const n=list[i];if(!isLayer(n)||!n.clip)return null;let j=i-1;while(j>=0&&isLayer(list[j])&&list[j].clip)j--;return j>=0&&isLayer(list[j])?list[j]:null;}
@@ -66,7 +72,7 @@ function dropRecords(list){const cands=new Set(),mc=new Set();for(const r of lis
   const live=new Set(),liveM=new Set();for(const r of [...hist.undo,...hist.redo]){for(const n of r.refs||[]){live.add(n);if(n.mask)liveM.add(n.mask);}for(const m of r.masks||[])liveM.add(m);}
   for(const n of [...allNodes(doc.root),...(doc.paintRoot?allNodes(doc.paintRoot):[])])if(n.mask)liveM.add(n.mask);
   for(const n of cands)if(!live.has(n)&&!inDoc(n)){disposeLayer(n);if(n.mask)liveM.delete(n.mask);}
-  for(const m of mc)if(!liveM.has(m))disposeTarget(m.target);}
+  for(const m of mc)if(!liveM.has(m))maskDispose(m);}
 /* Memory and disk (Edit › Preferences), like Photoshop's memory limit and scratch disk.
    Undo snapshots stay in RAM while they and the loaded models fit within the memory limit. Beyond it the
    desktop app moves the oldest snapshots to the disk cache (read back if you undo that far); the browser

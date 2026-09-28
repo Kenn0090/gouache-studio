@@ -6,7 +6,7 @@
    painting for a moment, to read from it or to send results to it. */
 const tabDocs={paint:null,own:{},key:null};
 /* free everything a set-aside document holds on the graphics card */
-function disposeDocState(s){if(!s)return;const walk=g=>{for(const n of g.children||[]){if(n.type==='group')walk(n);else disposeLayer(n);if(n.mask&&n.type==='group')disposeTarget(n.mask.target);}};
+function disposeDocState(s){if(!s)return;const walk=g=>{for(const n of g.children||[]){if(n.type==='group')walk(n);else disposeLayer(n);if(n.mask&&n.type==='group')maskDispose(n.mask);}};
   if(s.doc&&s.doc.root)walk(s.doc.root);if(s.doc&&s.doc.meshMaps)for(const k in s.doc.meshMaps)disposeTarget(s.doc.meshMaps[k]);
   for(const d in s.aux){const a=s.aux[d];for(const k of ['strokeT','beforeT','scratchT','previewT'])disposeTarget(a[k]);for(const t of a.pool.all)disposeTarget(t);}
   for(const d in s.empties)disposeTarget(s.empties[d]);if(s.sel&&s.sel.t)disposeTarget(s.sel.t);}

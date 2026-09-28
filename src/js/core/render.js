@@ -32,10 +32,11 @@ function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
       let src=(edit&&preview&&!preview.off&&preview.L===n&&!preview.isMask)?previewT:T,own=null;const out=acquire(),cm=clipped?maskTexOf(clipped):null;
       let st=(stroke&&stroke.L===n&&stroke.o.tool!=='smudge')?stroke:null,ex=null;
       if(st&&!edit){ex=(st.o.extras||[]).find(e=>e.key===k)||null;if(!ex)st=null;}
-      const cf=clippedFx(list,i,k);
-      if(cf.length||lk){/* the live stroke goes in first, so clipped filters and the layer's array and styles apply to it too */
+      const cf=clippedFx(list,i,k),cx=n.cfx&&cfxOn(n,k);
+      if(cf.length||lk||cx){/* the live stroke goes in first, so clipped filters and the layer's array and styles apply to it too */
         if(st){own=acquire();run(P.merge,own,Object.assign({uSrc:src.tex,uStrokeTex:strokeT.tex,uStroke:{int:ex?ex.mode:strokeMode(st.o)},uStrokeColor:ex?ex.color:st.o.color,uStrokeTint:!ex&&!!st.tint,uStrokeOpacity:st.o.opacity,uLockAlpha:ex?false:n.lockAlpha},
           edit?chanU(st.o):chanU(null),ex?st.exU:selU(st.o),edit?tonalU(st.o):{}));src=own;st=null;ex=null;}
+        if(cx){const r=cfxApply(n,src,k);if(r!==src){if(own)release(own);own=r;src=r;}}
         for(const f of cf){const r=fxApplyLayer(f,src,k,maskTexOf(f));if(r!==src){if(own)release(own);own=r;src=r;}}
         if(lk){const r=layerLook(n,src,k,src===T);if(r.t!==src){if(own)release(own);own=r.pooled?r.t:null;src=r.t;}}}
       run(P.comp,out,Object.assign({uBase:acc.tex,uLayer:src.tex,uStrokeTex:strokeT.tex,uMask:clipped?(mapT(clipped,'base')||emptyFor(8)).tex:dummy,uUseMask:!!clipped,uMask2:cm||dummy,uUseMask2:!!cm,uLMask:mt||dummy,uUseLMask:!!mt,
@@ -51,8 +52,11 @@ function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
   return acc;}
 function renderNodes(list){const acc=acquire();clearTarget(acc);return compositeList(list,acc);}
 let maskViewT=null,maskViewLive=false;
-function composite(){if(compOut)release(compOut);maskOverride=new Map();const tmp=[];maskViewLive=false;
-  if(stroke&&stroke.L.maskOf&&stroke.o.tool!=='smudge'){const lm=acquire();tmp.push(lm);run(P.merge,lm,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,...tintU(),uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},selU(stroke.o),tonalU(stroke.o)));maskOverride.set(stroke.L.maskOf,lm.tex);if(ui.viewMask){if(!maskViewT||maskViewT.w!==doc.w||maskViewT.h!==doc.h||maskViewT.depth!==lm.depth){disposeTarget(maskViewT);maskViewT=makeTarget(doc.w,doc.h,lm.depth);}blit(lm,maskViewT,0,0,doc.w,doc.h,0,0);maskViewLive=true;}}
+function composite(){if(compOut)release(compOut);maskOverride=new Map();const tmp=[];maskViewLive=false;if(typeof msUpdateAll==='function')msUpdateAll();
+  if(stroke&&stroke.L.maskOf&&stroke.o.tool!=='smudge'){const lm=acquire();tmp.push(lm);run(P.merge,lm,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,...tintU(),uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},selU(stroke.o),tonalU(stroke.o)));
+    /* a Paint row of a mask with rows: the whole stack again, with the row as it is being painted */
+    if(stroke.L.mrow){const ev=msEval(stroke.L.maskOf,{row:stroke.L.mrow,t:lm});tmp.push(ev);maskOverride.set(stroke.L.maskOf,ev.tex);if(ui.viewMask){if(!maskViewT||maskViewT.w!==doc.w||maskViewT.h!==doc.h||maskViewT.depth!==ev.depth){disposeTarget(maskViewT);maskViewT=makeTarget(doc.w,doc.h,ev.depth);}blit(ev,maskViewT,0,0,doc.w,doc.h,0,0);maskViewLive=true;}}
+    else{maskOverride.set(stroke.L.maskOf,lm.tex);if(ui.viewMask){if(!maskViewT||maskViewT.w!==doc.w||maskViewT.h!==doc.h||maskViewT.depth!==lm.depth){disposeTarget(maskViewT);maskViewT=makeTarget(doc.w,doc.h,lm.depth);}blit(lm,maskViewT,0,0,doc.w,doc.h,0,0);maskViewLive=true;}}}
   if(preview&&!preview.off&&preview.isMask)maskOverride.set(preview.L,previewT.tex);
   {const acc=acquire();clearTarget(acc,ui.mode==='anim'?[0,0,0,0]:mapDefault(doc.map));compOut=compositeList(doc.root.children,acc);}
   if(ui.mode!=='anim'&&(doc.view==='material'||doc.view==='nfinal'))buildMaterialView();compOut.mipDirty=true;tmp.forEach(release);maskOverride=new Map();

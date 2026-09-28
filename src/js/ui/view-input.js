@@ -38,7 +38,7 @@ function paintOpts(et){
   if(!et.isMask&&et.node&&(et.node.text||et.node.grad||et.node.shape)){const g=et.node.grad?'Gradient':et.node.shape?'Shape':'Text';rasterizeText(et.node);toast(g+' converted to pixels so you can paint on it. Undo brings the editable '+g.toLowerCase()+' back.');}
   const o=Object.assign({},brush,{tool:ui.tool,color:ui.mode==='bake'&&typeof bk!=='undefined'&&bk.paint?bakePaintColor():ui.fg.slice(),chan:!et.isMask&&chanRestricted()?chan.edit.slice():null,sel:selOn(et)});
   if(o.tool==='dodge'||o.tool==='burn')Object.assign(o,{opacity:ui.tonalExposure,range:ui.tonalRange,protect:ui.tonalProtect});
-  if(et.isMask){const g=lum3(o.color);o.color=[g,g,g];o.noTint=true;if(o.tool==='erase'){o.tool='brush';o.color=(et.erase||[1,1,1]).slice();}}
+  if(et.isMask){const g=lum3(o.color);o.color=[g,g,g];o.noTint=true;/* a mask's Paint row really erases (back to what is below it) */if(o.tool==='erase'&&!et.L.mrow){o.tool='brush';o.color=(et.erase||[1,1,1]).slice();}}
   o.extras=strokeExtras(o,et);
   if(ui.tool!=='erase'&&(ui.tool==='brush'||brush.charge>0))pushRecent(ui.fg);
   return o;}

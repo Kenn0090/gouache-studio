@@ -14,8 +14,8 @@ async function histJump(i){if(histJumping)return;histJumping=true;try{let guard=
   while(hist.undo.length-1>i&&hist.undo.length&&guard--){const n=hist.undo.length;await undo();if(hist.undo.length===n)break;}
   while(hist.undo.length-1<i&&hist.redo.length&&guard--){const n=hist.redo.length;await redo();if(hist.redo.length===n)break;}}finally{histJumping=false;renderHistory();}}
 /* a material change still waiting for its pause becomes its undo step first, so steps stay in order */
-const matFlush=()=>{if(typeof matEd!=='undefined'&&matEd.snap)matEdCommit();};
+const matFlush=()=>{if(typeof matEd!=='undefined'&&matEd.snap)matEdCommit();if(typeof msEd!=='undefined'&&msEd.snap)msCommit();};
 {const pu=pushUndo;pushUndo=function(r){matFlush();pu(r);renderHistory();};const u=undo;undo=async function(){matFlush();await u();renderHistory();};const rd=redo;redo=async function(){matFlush();await rd();renderHistory();};
-  const ch=clearHistory;clearHistory=function(){if(typeof matEd!=='undefined'){clearTimeout(matEd.timer);matEd.snap=null;}ch();renderHistory();};const sd=setDocState;setDocState=function(s){matFlush();sd(s);renderHistory();if(typeof renderMatEd==='function')renderMatEd(true);};}
+  const ch=clearHistory;clearHistory=function(){if(typeof matEd!=='undefined'){clearTimeout(matEd.timer);matEd.snap=null;}if(typeof msEd!=='undefined'){clearTimeout(msEd.timer);msEd.snap=null;}ch();renderHistory();};const sd=setDocState;setDocState=function(s){matFlush();sd(s);renderHistory();if(typeof renderMatEd==='function')renderMatEd(true);};}
 /* the Edit menu and Ctrl+Z hold their own reference: point them at the ones above */
 actions.undo=()=>undo();actions.redo=()=>redo();

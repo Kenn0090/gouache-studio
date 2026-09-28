@@ -196,12 +196,10 @@ function maskOp(op,v){const et=editTarget();if(!et||!et.isMask){toast('Select a 
 /* right-click › Mask from mesh map: a baked grey map (AO, curvature, thickness, height) becomes the layer's mask */
 const MASK_MESH_OK=['ao','curv','curvEdge','curvCrease','thick','height'];
 const maskMeshKeys=()=>Object.keys(doc.meshMaps||{}).filter(k=>MASK_MESH_OK.includes(k));
-const FS_MASKLUM=`uniform sampler2D uSrc; void main(){ vec4 c=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0); float g=dot(c.a>1e-6?c.rgb/c.a:vec3(0.0),vec3(0.299,0.587,0.114)); o=vec4(vec3(g),1.0); }`;
-let P_MASKLUM=null;
-function maskFromMeshMap(L,k){const M=doc.meshMaps&&doc.meshMaps[k];if(!M||!isLayer(L))return;if(!P_MASKLUM)P_MASKLUM=program(FS_MASKLUM);
-  if(!L.mask){if(doc.active!==L)selectOnly(L);cmdAddMask(1);}if(!L.mask)return;
-  const T=L.mask.target;fullRecord({target:T,lockAlpha:false,maskOf:L,maskObj:L.mask},'Mask from '+(P3_MESHMAP_NAMES[k]||k).toLowerCase(),()=>{const tmp=acquireD(T.depth);copyScaled(M,tmp);run(P_MASKLUM,T,{uSrc:tmp.tex});release(tmp);});
-  changed(L);renderLayers();v3.dirty=true;requestRender(true);toast('The mask of “'+L.name+'” is now its '+(P3_MESHMAP_NAMES[k]||k).toLowerCase()+'. Alt+click it to see it on the model.');}
+function maskFromMeshMap(L,k){if(!(doc.meshMaps&&doc.meshMaps[k])||!isLayer(L))return;if(doc.active!==L)selectOnly(L);
+  /* a live row of the mask: it follows the mesh map, and more rows can go on top */
+  msAdd(L,'mesh',{p:{k,inv:false}},'Mask from '+(P3_MESHMAP_NAMES[k]||k).toLowerCase());v3.dirty=true;requestRender(true);
+  toast('The mask of “'+L.name+'” is now its '+(P3_MESHMAP_NAMES[k]||k).toLowerCase()+'. Alt+click it to see it on the model.');}
 function maskModeExit(){const A=doc.active;if(typeof mk3Reset==='function')mk3Reset();ui.viewMask=false;if(A&&A.mask)A.editMask=false;renderLayers();requestRender(true);v3.dirty=true;}
 function maskBarSync(){let bar=document.getElementById('maskBar');const on=!!(ui.viewMask&&doc.active&&doc.active.mask&&ui.mode!=='anim');
   if(!on){if(bar)bar.hidden=true;return;}

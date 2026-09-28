@@ -70,27 +70,22 @@ window.addEventListener('keydown',e=>{if(!mk3.draw||isTypingTarget(e.target))ret
 
 /* ---- ID colour selection (like Substance Painter's and Marmoset's): pick colours on the texture set's baked ID map;
    where the ID map has one of them the mask turns white, elsewhere black. Live while you change it: more colours,
-   Tolerance (how close a colour counts), Softness (the edge) and Invert. Kept on the layer (L.idSel) so you can
+   Tolerance (how close a colour counts), Softness (the edge) and Invert. It is a row of the mask (ID colour), so you can
    come back to it; changes become one undo step after a pause. ---- */
 const FS_IDSEL=`uniform sampler2D uId; uniform vec3 uCols[8]; uniform int uN; uniform float uTol; uniform float uSoft; uniform int uInv; uniform vec2 uSz;
 void main(){ vec4 c=texture(uId,gl_FragCoord.xy/uSz); float m=0.0;
   if(c.a>0.01){ vec3 q=c.rgb/c.a; float d=10.0; for(int i=0;i<8;i++){ if(i>=uN) break; d=min(d,length(q-uCols[i])); } m=1.0-smoothstep(uTol,uTol+uSoft+1e-4,d); }
   if(uInv==1) m=1.0-m; o=vec4(vec3(m),1.0); }`;
-let P_IDSEL=null;const mkId={snap:null,L:null,timer:0};
+let P_IDSEL=null;
 const idSelMap=()=>doc.meshMaps&&doc.meshMaps.id;
-function idSelOf(L){return L.idSel||(L.idSel={cols:[],tol:.08,soft:.04,inv:false});}
-function idSelRender(L){const M=idSelMap(),S=idSelOf(L);if(!M||!L.mask)return;if(!P_IDSEL)P_IDSEL=program(FS_IDSEL);
-  const cols=new Float32Array(24);S.cols.slice(0,8).forEach((c,i)=>cols.set(c,i*3));const T=L.mask.target;
-  run(P_IDSEL,T,{uId:M.tex,uSz:[T.w,T.h],uCols:{v3:cols},uN:{int:Math.min(8,S.cols.length)},uTol:S.tol,uSoft:S.soft,uInv:{int:S.inv?1:0}});
-  changed(L);v3.dirty=true;requestRender(true);}
-/* every change: remember the mask before the first one, redraw it, one undo step after a pause */
-function idSelEdit(fn){const L=doc.active;if(!L||!L.mask)return;if(!idSelMap()){toast('Bake an ID map and send it to 3D Paint first (Bake tab › ID).');return;}
-  if(mkId.L!==L||!mkId.snap){idSelCommit();mkId.L=L;mkId.snap={m:captureRegion(L.mask.target,0,0,doc.w,doc.h),s:JSON.parse(JSON.stringify(idSelOf(L)))};}
-  fn(idSelOf(L));idSelRender(L);clearTimeout(mkId.timer);mkId.timer=setTimeout(idSelCommit,700);}
-function idSelCommit(){clearTimeout(mkId.timer);const L=mkId.L,B=mkId.snap;mkId.snap=null;if(!L||!B||!L.mask)return;
-  const mo=L.mask,A={m:captureRegion(mo.target,0,0,doc.w,doc.h),s:JSON.parse(JSON.stringify(idSelOf(L)))};
-  const put=X=>{if(L.mask!==mo)return;restoreRegion(X.m,mo.target,0,0);L.idSel=JSON.parse(JSON.stringify(X.s));changed(L);v3.dirty=true;maskBarSync();};
-  pushUndo({label:'ID colour selection',refs:[L],masks:[mo],snaps:[B.m,A.m],undo(){put(B);},redo(){put(A);}});}
+/* the ID colour row of the active layer's mask: the selected one, else the top one (made on the first pick) */
+function idSelRowOf(L,make){if(!L||!L.mask&&!make)return null;const S=L.mask&&L.mask.stack||[],cur=msRowOf(ui.msSel);
+  if(cur&&cur.kind==='id'&&ui.msSel.L===L)return cur;for(let i=S.length-1;i>=0;i--)if(S[i].kind==='id')return S[i];
+  if(!make)return null;const p=L.idSel?JSON.parse(JSON.stringify(L.idSel)):null;return msAdd(L,'id',p?{p}:null,'Add ID colour to the mask');}
+function idSelOf(L){const r=idSelRowOf(L,false);return r?r.p:(L.idSel||{cols:[],tol:.08,soft:.04,inv:false});}
+function idSelEdit(fn){const L=doc.active;if(!L)return;if(!idSelMap()){toast('Bake an ID map and send it to 3D Paint first (Bake tab › ID).');return;}
+  const r=idSelRowOf(L,true);if(!r)return;msEdit(L,r,x=>fn(x.p),'ID colour selection');}
+function idSelCommit(){if(typeof msCommit==='function')msCommit();}
 /* a pick on the ID map at texture position (x, y) adds its colour */
 function idSelPickAt(x,y){const M=idSelMap();if(!M){toast('Bake an ID map and send it to 3D Paint first (Bake tab › ID).');return;}
   const px=clamp(Math.floor(x),0,M.w-1),py=clamp(Math.floor(y),0,M.h-1),d=captureRegionNow(M,px,py,1,1).data,a=(d[3]||255)/255,c=[d[0]/255/a,d[1]/255/a,d[2]/255/a];

@@ -4,6 +4,8 @@ function rebuildLayers(newW,newH,depth,draw){
   for(const L of everyLayer()){if(!L.maps)L.maps={base:L.target};for(const k of Object.keys(L.maps)){const t=L.maps[k];if(!t||t.empty){delete L.maps[k];continue;}
       const nt=makeTarget(newW,newH,k==='height'&&canFloat?16:depth);draw(t,nt,false);disposeTarget(t);L.maps[k]=nt;}L.target=L.maps.base;}
   for(const n of everyNode())if(n.mask){const nt=makeTarget(newW,newH,depth);draw(n.mask.target,nt,true);disposeTarget(n.mask.target);n.mask.target=nt;}
+  /* mask rows with pictures of their own (Paint rows; pictures keep their size) */
+  for(const n of everyNode())if(n.mask&&n.mask.stack){for(const r of n.mask.stack)if(r.t&&r.kind!=='image'){const nt=makeTarget(newW,newH,depth);clearTarget(nt,[0,0,0,0]);draw(r.t,nt,false);disposeTarget(r.t);r.t=nt;}n.mask._key=null;}
   if(newW!==doc.w||newH!==doc.h){if(doc.cage){doc.cage=null;cageFlatOff();}if(typeof bakeReset==='function')bakeReset();if(typeof cvReset==='function')cvReset();}doc.w=newW;doc.h=newH;doc.depth=depth;allocAux();syncTargets();if(doc.anim){doc.anim.frames.forEach(frameDirty);showFrame(doc.anim.cur,true);}
 }
 function resizeCanvasDoc(w,h,ax,ay){const ox=Math.round((w-doc.w)*ax),oy=Math.round((h-doc.h)*ay);
