@@ -76,7 +76,7 @@ A **loop** is the ring of quads crossing the edge you click nearest to. Faces an
 ## Materials
 The **Materials** tab sits beside Brushes. Click a material (Steel, Gold, Copper, Rust, Rubber, Plastic, your own…) to add it as a **material layer**. If a selection is active, it becomes the layer's mask; otherwise paint the mask to show the material where you want it.
 
-**New material…** makes a material layer and shows it in the **Material** panel (the tab beside Colour), which edits whichever material layer is selected. Double-clicking a material layer's thumbnail brings it forward.
+**New material…** makes a material layer and shows it in the **Properties** panel (the tab beside Colour), which edits whichever material layer (or mask row) is selected. Double-clicking a material layer's thumbnail brings it forward.
 
 ![The Material panel beside Colour, and the Materials tab.](images/material-panel.png)
 
@@ -92,9 +92,11 @@ In the Bake tab, tick **Bake each material separately**, then press **Send to 3D
 - The baked normal becomes a layer in the Normal map, so the high-poly detail shows on the model straight away.
 - **Add as layer** puts any mesh map in the layer stack.
 - Tick *also add them as layers* before sending to get AO (Multiply) and curvature (Overlay) layers automatically.
-- Material channels can use them (**Mesh map** in the Material panel), and **right-click a layer › Mask from mesh map** makes its mask from AO, curvature, thickness or height.
+- Material channels can use them (**Mesh map** in the Properties panel), and **right-click a layer › Mask from mesh map** makes its mask from AO, curvature, thickness or height.
 
 ## Mask mode
+Masks can hold rows (generators, noise, mesh maps, ID colours, filters…) and layers without a mask can have a live mask: see [Masks and effects](Masks-and-effects.md).
+
 **Alt + click a layer's mask** to see it on the model in black and white, without lighting. A bar appears at the top:
 
 ![Mask mode with ID colour.](images/mask-tools.png)

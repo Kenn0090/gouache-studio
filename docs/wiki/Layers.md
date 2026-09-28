@@ -33,7 +33,9 @@ In documents with several maps, each layer has **a blend mode per map**. The mod
 
 Click the mask thumbnail to paint the mask. **Shift+click** turns the mask off or on, and **Alt+click** views it (with a bar to paint, fill, invert, select with a box, lasso or polygon, or pick ID colours; see [3D Paint](3D-Paint.md#mask-mode)).
 
-**Right-click › Mask from mesh map** makes the mask from a baked map of the texture set: AO, curvature, thickness or height. **Layer › Apply mask** bakes the mask into the layer; **Delete mask** removes it.
+**Right-click › Mask from mesh map** makes the mask from a baked map of the texture set: AO, curvature, thickness or height.
+
+A mask can hold **rows** (paint, mesh maps, ID colours, noise, generators, filters), listed under the layer, and a layer can have **content effects**. See [Masks and effects](Masks-and-effects.md). **Layer › Apply mask** bakes the mask into the layer; **Delete mask** removes it.
 
 **Pictures into a mask** (light shows the layer, dark and see-through parts hide it):
 - **Paste:** click the mask thumbnail, then **Ctrl+V**. A copied part (or an image copied in another program) lands in the mask with Free transform on: move or scale it, then press **Enter**. This works in the quick mask (Q) too.
@@ -43,8 +45,8 @@ Click the mask thumbnail to paint the mask. **Shift+click** turns the mask off o
 ## Fill (material) layers
 A fill layer is like one in Substance Painter: a material that fills each map with one colour or value, or with a picture. Make one with **Layer › New fill layer…**, the fill button under the layers, or the right-click menu. If a selection is active it becomes the fill layer's mask.
 
-![The Material panel.](images/material-panel.png)
-*The Material panel (beside Colour) edits the selected fill layer.*
+![The Properties panel.](images/material-panel.png)
+*The Properties panel (beside Colour) edits the selected fill layer, or the selected mask or effect row.*
 
 - For each map (base colour, roughness, metallic, height, normal, emissive, opacity and the others in the document), tick it to fill it and choose **Colour/Value** or **Image**. A value is a slider (for example roughness 80%, metallic 100%). An image is stretched over the canvas; **Tile** repeats it and **Turn** rotates it.
 - **Height** images make bump detail (the normal follows the height), with **Bump strength**.
@@ -52,7 +54,7 @@ A fill layer is like one in Substance Painter: a material that fills each map wi
 - Each channel can also take a **Mesh map**: one of the baked maps of the texture set (AO, curvature…; see [3D Paint](3D-Paint.md#mesh-maps-from-the-bake-tab)).
 - The panel offers to add any map the document is missing. **Save to Materials** keeps the material in the Materials tab (see [3D Paint](3D-Paint.md#materials)).
 - **Painting on a fill layer paints its mask:** black hides the fill, white shows it. So you can paint where the metal or the rust goes.
-- The settings are in the **Material** panel, a tab beside Colour. It shows the selected fill layer and changes it live; each change becomes one undo step once you pause. **Double-click its thumbnail** (or right-click › Fill settings…) brings the panel forward. **Convert to pixels** makes it a normal layer.
+- The settings are in the **Properties** panel, a tab beside Colour. It shows the selected fill layer and changes it live; each change becomes one undo step once you pause. **Double-click its thumbnail** (or right-click › Fill settings…) brings the panel forward. **Convert to pixels** makes it a normal layer.
 - Fill layers are kept in .gouache files with their images, so they stay editable.
 
 ## History

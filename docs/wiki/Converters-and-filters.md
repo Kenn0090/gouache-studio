@@ -33,6 +33,7 @@ Only the Normal map is in colour. Every other converted map is grey and lands in
 *Levels.*
 
 - **Color adjustments** (Ctrl+U): exposure, brightness, contrast, saturation, hue, temperature.
+- **Mesh maps from material…** (Filter menu): curvature, cavity AO, edges, creases, roughness and metallic from a material's height or normal; see [Masks and effects](Masks-and-effects.md#mesh-maps-from-a-material).
 - **Levels** (Ctrl+L): input black, midtones and input white; output black and white; per channel, with a histogram and **Auto**. **Simple** (the usual layout, like Substance Painter's) has handles to drag under the histogram and on the output bar, and **Invert**; **Sliders** shows a slider for each value.
 
   ![Levels, simple layout.](images/levels-simple.png)

@@ -10,6 +10,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 ## Painting
 - [Brushes and painting](Brushes-and-painting.md): brushes, presets, colour jitter, making your own tips, Photoshop brushes, pen pressure, eraser, blend, dodge and burn
 - [Layers](Layers.md): layers, groups, masks, fill layers, the right-click menu, blend modes, clipping, text, live gradients
+- [Masks and effects](Masks-and-effects.md): rows under a layer's mask (paint, mesh maps, ID colours, noise, generators, filters), content effects, the live mask, mesh maps from a material
 - [Shapes, arrays and layer styles](Shapes-arrays-and-layer-styles.md): shapes with bevels, repeating a layer in a line, grid or circle, drop shadows, strokes, bevels and more
 - [Selections, transforms and crop](Selections-transforms-and-crop.md)
 - [Fills and gradients](Fills-and-gradients.md)
@@ -61,5 +62,6 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 | 17 | Fill layers, own canvas for Bake and Convert, bake export, right-click layer menu, resizable dock | 0.20 |
 | 18 | 3D Paint tab (texture sets, Substance-style layers, mirror, stencils, selections) | 0.21 |
 | 19 | Material layers and the Materials tab, triplanar, mask mode, bake to 3D Paint per material, ID from vertex colours/polypaint, floating dialogs, History, lazy mouse; Material panel, mesh maps in materials and masks, mask tools and ID colour masks, Substance-style Levels (0.22.2) | 0.22 |
-| 20 | Layer stacks inside masks, Mask Builder (generators, smart masks), mask effects, smart materials, anchor points, baking inside 3D Paint | 0.23 |
-| 21 | PBR viewer with HDRIs, screenshots, ray-traced and turntable renders | 0.24 |
+| 20 | Masks and effects: rows under a layer (paint, mesh maps, ID colours, direction, gradients, noise, generators, filters), content effects, Properties panel, live mask, mesh maps from a material | 0.23 |
+| 21 | Smart materials, anchor points, baking inside 3D Paint | 0.24 |
+| 22 | PBR viewer with HDRIs, screenshots, ray-traced and turntable renders | 0.25 |

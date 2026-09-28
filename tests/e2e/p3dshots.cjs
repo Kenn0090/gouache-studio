@@ -1,4 +1,4 @@
-/* Guide pictures for 3D Paint (docs/wiki/images/p3d-tab.png, material-panel.png, mask-tools.png, levels-simple.png, bake-tabs.png). */
+/* Guide pictures for 3D Paint (docs/wiki/images/p3d-tab.png, material-panel.png, mask-tools.png, levels-simple.png, bake-tabs.png, mask-rows.png, live-mask.png, mat-convert.png). */
 const {chromium}=require('playwright');
 const OLD=__dirname+'/';
 const OUT=require("path").resolve(__dirname,"../../docs/wiki/images")+"/";
@@ -35,6 +35,21 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('#maskDone');await W(300);
  /* Levels, simple layout */
  await p.evaluate(()=>__gs.act('levels'));await W(600);await p.locator('#modal .dialog').screenshot({path:OUT+'levels-simple.png'});console.log('shot levels-simple');await p.click('#dlgCancel');await W(200);
+ /* 0.23: mask rows under the layer, with Properties showing the selected row */
+ await p.evaluate(()=>{const L=__gs.allLayers().find(l=>l.name==='Painted metal');__gs.doc.active=L;__gs.doc.sel=new Set([L]);
+   if(L.mask&&L.mask.stack)L.mask.stack.length=0;__gs.msAdd(L,'fill',{p:{v:1}});__gs.msAdd(L,'gen',{p:{g:'edge',amount:.55,width:.6,breakup:.5,contrast:1.5,scale:6,seed:1,inv:false}});
+   const n=__gs.msAdd(L,'noise',{p:{type:'grunge',scale:5,contrast:2,level:.1,seed:2,tri:true,inv:false}});n.mode='multiply';n.op=.8;__gs.msAdd(L,'filter',{fx:'levels'});
+   const g=L.mask.stack.find(r=>r.kind==='gen');__gs.msSelect(L,'m',g.id);
+   for(const gg of __gs.dk.L.groups)gg.min=!gg.tabs.includes('layers');__gs.showPanel('layers');__gs.ui.viewMask=false;__gs.v3.dirty=true;});await W(900);
+ {const a=await p.locator('#dock2').boundingBox(),d=await p.locator('#dock').boundingBox();await p.screenshot({path:OUT+'mask-rows.png',clip:{x:a.x,y:a.y,width:d.x+d.width-a.x,height:Math.min(a.height,d.height)}});console.log('shot mask-rows');}
+ /* the live mask on a layer without a mask */
+ await p.evaluate(()=>{const L=__gs.allLayers().find(l=>l.name==='Paint');__gs.doc.active=L;__gs.doc.sel=new Set([L]);__gs.liveMaskStart(L);__gs.liveAdd('gen',{p:{g:'dust',amount:.5,width:.5,breakup:.5,contrast:1.5,scale:6,seed:1,inv:false}});});await W(600);
+ await p.click('#mk_id');await W(200);await p.mouse.click(cx-20,cy);await W(600);await p.mouse.move(cx+300,cy+250);await W(300);
+ await p.locator('#work').screenshot({path:OUT+'live-mask.png'});console.log('shot live-mask');
+ await p.click('#lmClose');await W(200);
+ /* Mesh maps from a material */
+ await p.evaluate(()=>{const L=__gs.allLayers().find(l=>l.name==='Painted metal');__gs.doc.active=L;__gs.dlgMatConvert(L);});await W(400);
+ await p.locator('#modal .dialog').screenshot({path:OUT+'mat-convert.png'});console.log('shot mat-convert');await p.click('#dlgCancel');await W(200);
  /* the Bake tab's tabs */
  await p.click('#modeTabs [data-mode=bake]');await W(1200);await p.evaluate(()=>{for(const g of __gs.dk.L.groups)g.min=!g.tabs.includes('bake');__gs.showPanel('bake');});await W(300);
  await p.locator('#bakeSec').screenshot({path:OUT+'bake-tabs.png'});console.log('shot bake-tabs');

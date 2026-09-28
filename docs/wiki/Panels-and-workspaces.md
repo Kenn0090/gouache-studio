@@ -11,7 +11,7 @@ The strip under the menus holds what you change all the time. For the brush, era
  Other tools show their name; their settings are in **Tool settings**. **Window › Options bar** hides it.
 
 ## The dock
-The right side is a column of **groups**; each group holds one or more panels as **tabs**: Color, Material, Brushes, Materials, Tool settings, Maps, Layers, Channels and History (plus Bake, Convert, Animation and Brush maker in their tabs of the app).
+The right side is a column of **groups**; each group holds one or more panels as **tabs**: Color, Properties, Brushes, Materials, Tool settings, Maps, Layers, Channels and History (plus Bake, Convert, Animation and Brush maker in their tabs of the app).
 - **Click a tab** to bring it to the front. **Double-click** it to fold the group down to its tabs (again to unfold).
 - **Drag the bars** between groups to make them taller or shorter.
 - **Drag the dock's left edge** to make the whole dock wider or narrower. Double-click the edge to go back to the usual width.
