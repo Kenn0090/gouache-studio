@@ -209,7 +209,7 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     e.preventDefault();/* no text selection or native drag from here: a double-click used to select text, and the next press dragged it, taking the mouse away */
     try{hit.setPointerCapture(e.pointerId);}catch(er){}
     /* mask mode: Paint must be on to paint; Box, Lasso and Polygon draw shapes */
-    if(e.button===0&&!e.altKey&&!st3.sKey&&maskToolsOn()&&mk3Down(hit,e))return;
+    if(e.button===0&&!e.altKey&&!st3.sKey&&(maskToolsOn()||liveOn())&&mk3Down(hit,e))return;
     let how=v3NavOf(hit,e);
     if(how==='paint'){if(e.button===0&&meshDown(hit,e)&&v3.mstroke)return;how='turn';if(stroke)return;}
     v3.drag={x:e.clientX,y:e.clientY,how,id:e.pointerId};});

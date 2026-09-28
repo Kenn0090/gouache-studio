@@ -201,9 +201,19 @@ function maskFromMeshMap(L,k){if(!(doc.meshMaps&&doc.meshMaps[k])||!isLayer(L))r
   msAdd(L,'mesh',{p:{k,inv:false}},'Mask from '+(P3_MESHMAP_NAMES[k]||k).toLowerCase());v3.dirty=true;requestRender(true);
   toast('The mask of “'+L.name+'” is now its '+(P3_MESHMAP_NAMES[k]||k).toLowerCase()+'. Alt+click it to see it on the model.');}
 function maskModeExit(){const A=doc.active;if(typeof mk3Reset==='function')mk3Reset();ui.viewMask=false;if(A&&A.mask)A.editMask=false;renderLayers();requestRender(true);v3.dirty=true;}
-function maskBarSync(){let bar=document.getElementById('maskBar');const on=!!(ui.viewMask&&doc.active&&doc.active.mask&&ui.mode!=='anim');
+function maskBarSync(){let bar=document.getElementById('maskBar');
+  if(typeof lm!=='undefined'&&lm.on&&doc.active!==lm.L)liveMaskEnd();
+  const live=typeof liveOn==='function'&&liveOn(),on=live||!!(ui.viewMask&&doc.active&&doc.active.mask&&ui.mode!=='anim');
   if(!on){if(bar)bar.hidden=true;return;}
   if(!bar){bar=el('div',{id:'maskBar',class:'maskbar',role:'toolbar','aria-label':'Mask'});$('#work').append(bar);}
+  bar.classList.toggle('live',live);
+  if(live){const tools=el('div',{class:'seg',role:'group','aria-label':'Live mask tools'},...MK_TOOLS.filter(t=>t[0]!=='paint').map(([k,l])=>el('button',{class:'segb',id:'mk_'+k,'aria-pressed':String(mk3.tool===k),text:l,onclick:()=>maskTool(k)})));
+    bar.replaceChildren(el('span',{class:'maskbar-t',text:'Live mask on “'+lm.L.name+'”'}),tools,
+      el('span',{class:'maskbar-n',text:mk3.tool?mk3Hint():'Painting and fills stay inside the live mask.'}),
+      el('button',{class:'btn sm',id:'lmClear',text:'Clear',onclick:()=>{for(const r of lm.M.mask.stack.slice())liveRemove(r.id);}}),
+      el('button',{class:'btn sm primary',id:'lmKeep',text:'Keep…',onclick:liveMaskKeep}),
+      el('button',{class:'btn sm',id:'lmClose',text:'Close',title:'Stop the live mask (nothing is kept)',onclick:()=>liveMaskEnd()}),liveBarRow());
+    if(mk3.tool==='id')bar.append(idSelRow());bar.hidden=false;return;}
   const kinds=SEL3_KINDS.filter(k=>k[0]!=='off'),pick=el('select',{id:'maskSel','aria-label':'Double-click the model to fill'},el('option',{value:'off',text:'Double-click: off'}),...kinds.map(([k,l])=>el('option',{value:k,text:'Double-click: '+l})));
   pick.value=sel3.mode;pick.onchange=()=>{sel3.mode=pick.value;if(ui.mode==='p3d')buildP3Panel();};
   const tools=el('div',{class:'seg',role:'group','aria-label':'Mask tools'},...MK_TOOLS.map(([k,l])=>el('button',{class:'segb',id:'mk_'+k,'aria-pressed':String(mk3.tool===k),text:l,

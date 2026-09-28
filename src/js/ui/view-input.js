@@ -60,7 +60,7 @@ cv.addEventListener('pointerdown',e=>{
   if(ui.tool==='shape'){shapePointerDown(e,ix,iy);return;}
   if(ui.tool==='bucket'){bucketFill(ix,iy);return;}
   if(ui.tool==='gbucket'){gbucketDown(e,ix,iy);return;}
-  if(typeof maskToolsOn==='function'&&maskToolsOn()&&mk3.tool==='id'){idSelPickAt(ix,iy);return;}
+  if(typeof maskToolsOn==='function'&&(maskToolsOn()||liveOn())&&mk3.tool==='id'){idSelPickAt(ix,iy);return;}
   if(isSelTool(ui.tool)){selPointerDown(e,ix,iy);return;}
   if(ui.tool==='text'){
     if(tedit){const b=tedit.L.text.bbox;if(b&&ix>=b.bx&&ix<=b.bx+b.bw&&iy>=b.by&&iy<=b.by+b.bh){ted.focus();return;}closeTextEditor();return;}

@@ -614,3 +614,5 @@ body.noopt .optbar{display:none}
 .msdel{border:0;background:none;color:var(--muted);cursor:pointer;padding:0 2px;font-size:12px}.msdel:hover{color:var(--text)}
 .msfold{border:0;background:none;color:var(--muted);cursor:pointer;width:14px;padding:0;font-size:10px}
 .mshead{display:flex;align-items:center;gap:8px}.mstitle{font-weight:600}
+.maskbar.live{border-color:#4a90d9}.maskbar.live .maskbar-t{color:#7fb3ea}.lmchip{display:inline-flex;align-items:center;gap:2px}
+.bigchoice{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;padding:10px 12px;border-radius:8px;border:1px solid var(--line-2);background:var(--raise);color:var(--text);cursor:pointer;font:inherit}.bigchoice:hover{border-color:var(--accent)}

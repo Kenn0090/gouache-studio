@@ -226,7 +226,7 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
   const it=(t,f,key,dis)=>{const b=el('button',{class:'mi',role:'menuitem',disabled:!!dis,onclick:()=>{pop.hidden=true;f();}},el('span'),el('span',{text:t}),el('span',{text:key||''}));return b;};
   const head=t=>el('div',{class:'mh',text:t});const sep=()=>el('div',{class:'msep'});
   const items=[];
-  if(!anim){if(n.mask)items.push(it('Delete mask',cmdDeleteMask));else items.push(it('Add mask',()=>cmdAddMask(1)),it('Add black mask (hide all)',()=>cmdAddMask(0)));}
+  if(!anim){if(n.mask)items.push(it('Delete mask',cmdDeleteMask));else items.push(it('Add mask',()=>cmdAddMask(1)),it('Add black mask (hide all)',()=>cmdAddMask(0)),...(lay&&typeof liveMaskStart==='function'?[it('Live mask…',()=>liveMaskStart(n))]:[]));}
   if(lay&&!anim){items.push(sep(),head('Layer style'));for(const k of STYLE_ORDER)items.push(it(STYLE_DEFS[k].label+(n.styles&&n.styles[k]&&n.styles[k].on?' ✓':''),()=>dlgLayerStyle(k,true)));
     items.push(it('All styles…',()=>dlgLayerStyle()),sep(),it('Filter layer above…',cmdNewFxLayer),it('Array…',()=>setTool('array')));
     if(n.fill)items.splice(0,0,it('Fill settings…',()=>dlgFillLayer(n)),sep());

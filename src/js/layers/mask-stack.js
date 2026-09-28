@@ -183,8 +183,8 @@ function msUpdateAll(){for(const n of allNodes(doc.root))if(msHas(n))msUpdate(n)
 
 /* ---- turning a plain mask into a stack, adding and removing rows (each one undo step) ---- */
 function msSnap(L){const M=L.mask;return {mask:M,target:M?M.target:null,stack:M&&M.stack?M.stack.map(r=>({r,d:JSON.stringify(r,(k,x)=>k==='t'||k[0]==='_'?undefined:x)})):null,cfx:(L.cfx||[]).map(r=>({r,d:JSON.stringify(r,(k,x)=>k[0]==='_'?undefined:x)}))};}
-function msRestore(L,s){L.mask=s.mask;if(s.mask){s.mask.target=s.target;s.mask.stack=s.stack?s.stack.map(x=>Object.assign(x.r,JSON.parse(x.d),{t:x.r.t})):null;s.mask._key=null;}
-  L.cfx=s.cfx.map(x=>Object.assign(x.r,JSON.parse(x.d)));L.lookVer=(L.lookVer||0)+1;}
+function msRestore(L,s){if(L.live&&!lm.on)return;L.mask=s.mask;if(s.mask){s.mask.target=s.target;s.mask.stack=s.stack?s.stack.map(x=>Object.assign(x.r,JSON.parse(x.d),{t:x.r.t})):null;s.mask._key=null;}
+  L.cfx=s.cfx.map(x=>Object.assign(x.r,JSON.parse(x.d)));L.lookVer=(L.lookVer||0)+1;if(L.live&&typeof liveMaskSync==='function')liveMaskSync();}
 function msRecord(L,label,fn){const b=msSnap(L);if(fn()===false)return false;const a=msSnap(L);
   pushUndo({label,refs:[L],masks:[b.mask,a.mask].filter(Boolean),undo(){msRestore(L,b);},redo(){msRestore(L,a);}});if(L.mask)L.mask._key=null;changed(L);return true;}
 /* a plain mask becomes a stack: its picture is the first Paint row */
@@ -242,7 +242,7 @@ function maskDispose(m){if(!m)return;disposeTarget(m.target);if(m._rows)for(cons
 /* changing a row's settings: live, and one undo step once you pause (or do something else) */
 const msEd={L:null,snap:null,timer:0,label:''};
 function msEdit(L,row,fn,label){if(msEd.L!==L||!msEd.snap){msCommit();msEd.L=L;msEd.snap=msSnap(L);msEd.label=label||('Change '+msRowTitle(row).toLowerCase());}
-  fn(row);if(L.mask)L.mask._key=null;L.lookVer=(L.lookVer||0)+1;requestRender(true);v3.dirty=true;clearTimeout(msEd.timer);msEd.timer=setTimeout(msCommit,700);}
+  fn(row);if(L.mask)L.mask._key=null;L.lookVer=(L.lookVer||0)+1;requestRender(true);v3.dirty=true;clearTimeout(msEd.timer);msEd.timer=setTimeout(msCommit,700);if(L.live&&typeof liveMaskSync==='function')liveMaskSync();}
 function msCommit(){clearTimeout(msEd.timer);msEd.timer=0;const L=msEd.L,b=msEd.snap;msEd.snap=null;if(!L||!b)return;const a=msSnap(L);
   if(JSON.stringify(a.stack&&a.stack.map(x=>x.d))===JSON.stringify(b.stack&&b.stack.map(x=>x.d))&&JSON.stringify(a.cfx.map(x=>x.d))===JSON.stringify(b.cfx.map(x=>x.d)))return;
   pushUndo({label:msEd.label,refs:[L],masks:[a.mask].filter(Boolean),undo(){msRestore(L,b);},redo(){msRestore(L,a);}});}

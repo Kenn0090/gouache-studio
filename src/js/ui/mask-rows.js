@@ -37,7 +37,7 @@ function fxAddMenu(e){const L=doc.active;if(!L||!(isLayer(L)||L.type==='group')|
   const filters=own=>[...MS_FILTERS.filter(id=>FX[id]).map(id=>it(FX[id].title,own?add('filter',{fx:id}):()=>cfxAdd(L,id))),...(own?Object.keys(MS_OWN_FILTERS).map(k=>it(MS_OWN_FILTERS[k],add('filter',{own:k,p:{r:k==='grow'?3:k==='warp'?4:6,scale:6,seed:1}}))):[])];
   function main(){
     if(!toMask){const all=[];for(const [g,ids] of FX_KINDS())for(const id of ids)if(FX[id]&&!(FX[id].gen))all.push(it(FX[id].title,()=>cfxAdd(L,id)));
-      page([head('Add to the layer’s content'),...all.slice(0,40),sep(),it('Add to its mask instead…',()=>{if(!L.mask){msAdd(L,'fill',{p:{v:1}});}L.editMask=true;renderLayers();fxAddMenu(e);},true)]);return;}
+      page([head('Add to the layer’s content'),...all.slice(0,40),sep(),...(isLayer(L)&&!L.mask?[it('Live mask (limits painting)…',()=>liveMaskStart(L))]:[]),it('Add to its mask instead…',()=>{if(!L.mask){msAdd(L,'fill',{p:{v:1}});}L.editMask=true;renderLayers();fxAddMenu(e);},true)]);return;}
     const mks=msMeshKeys(),others=allNodes(doc.root).filter(n=>n!==L&&n.mask);
     page([head('Add to the mask of “'+L.name+'”'),
       it('Paint',add('paint')),it('Fill white',add('fill',{p:{v:1}})),it('Fill black',add('fill',{p:{v:0}})),

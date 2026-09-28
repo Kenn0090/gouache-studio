@@ -92,8 +92,8 @@ function matEdCommit(){clearTimeout(matEd.timer);matEd.timer=0;const L=matEd.L,B
 function fillImgsOf(L){const o=Object.assign({},L._fillImg||{}),M=doc.meshMaps||{},f=L.fill;if(f)for(const k in f.maps){const s=f.maps[k];if(s&&s.src==='baked'&&M[s.mm])o[k]=M[s.mm];}return o;}
 function renderMatEd(force){const box=document.getElementById('matEdBody');if(!box)return;const L=doc.active;
   /* a mask or effect row selected in the Layers panel: its settings */
-  const row=typeof msRowOf==='function'&&ui.msSel&&ui.msSel.L===L?msRowOf(ui.msSel):null;
-  if(row){if(matEd.L&&matEd.L!==L)matEdCommit();matEd.shown=null;box.replaceChildren();msRowEditor(box,L,ui.msSel.where,row);return;}
+  const row=typeof msRowOf==='function'&&ui.msSel&&(ui.msSel.L===L||ui.msSel.L.live)?msRowOf(ui.msSel):null;
+  if(row){if(matEd.L&&matEd.L!==L)matEdCommit();matEd.shown=null;box.replaceChildren();msRowEditor(box,ui.msSel.L,ui.msSel.where,row);return;}
   if(!force&&matEd.shown===L&&box.childElementCount&&!(L&&L.fill&&!box.querySelector('.matHead')))return;
   if(matEd.L&&matEd.L!==L)matEdCommit();matEd.shown=L;
   if(!isLayer(L)||!L.fill){box.replaceChildren(el('p',{class:'note',text:'Select a material (fill) layer, or a mask or effect row under a layer, to change it here.'}),
