@@ -59,6 +59,7 @@
     "view3d/paint3d",
     "view3d/mask-tools",
     "layers/mask-stack",
+    "ui/mask-rows",
     "files/p3-project",
     "layers/materials",
     "bake/bake-gpu",

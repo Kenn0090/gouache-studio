@@ -58,6 +58,25 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* generators and direction in the flat texture (no model): they still work */
  await p.evaluate(()=>{const A=__gs.doc.active;__gs.msAdd(A,'gen',{p:{g:'dust',amount:.5,width:.5,breakup:.5,contrast:1.5,scale:6,seed:1,inv:false}});__gs.msAdd(A,'dir');__gs.msAdd(A,'grad');});await W(400);
  ok(await p.evaluate(()=>{const A=__gs.doc.active;return A.mask.stack.length>=5;}),'generator, direction and gradient rows added');
+ /* ---- the rows in the Layers panel, FX ▾, Properties ---- */
+ await p.evaluate(()=>{for(const g of __gs.dk.L.groups)g.min=!g.tabs.includes('layers')&&!g.tabs.includes('matEd');__gs.showPanel('layers');});await W(300);
+ const nrows=await p.evaluate(()=>({rows:document.querySelectorAll('#layerList .msrow').length,m:document.querySelectorAll('#layerList .msrow.m').length,c:document.querySelectorAll('#layerList .msrow.c').length,want:__gs.doc.active.mask.stack.length}));
+ ok(nrows.m===nrows.want&&nrows.c===1,'mask rows and the content effect show under the layer '+JSON.stringify(nrows));
+ await p.click('#layerList .msrow.m:has-text("Dust on top")');await W(300);
+ ok(await p.evaluate(()=>!!document.querySelector('#matEdBody #ms_g')&&document.querySelector('#hMatEd').textContent.includes('Properties')),'clicking a row shows its settings in Properties');
+ await p.evaluate(()=>{const s=document.querySelector('#ms_amt input[type=range]')||document.querySelector('#ms_amt');s.value=.9;s.dispatchEvent(new Event('input',{bubbles:true}));});await W(300);
+ ok(await p.evaluate(()=>{const r=__gs.msRowOf(__gs.ui.msSel);return r.p.amount>.85;}),'a slider changes the row live');
+ await p.evaluate(()=>{__gs.doc.active.editMask=true;});await p.click('#lFxAdd');await W(200);
+ ok(await p.evaluate(()=>!document.querySelector('#menuPop').hidden&&document.querySelector('#menuPop').textContent.includes('Generator')),'FX ▾ with the mask selected offers mask rows');
+ await p.click('#menuPop .mi:has-text("Generator")');await W(150);await p.click('#menuPop .mi:has-text("Moss")');await W(300);
+ ok(await p.evaluate(()=>[...document.querySelectorAll('#layerList .msrow.m .lname')].some(e=>e.textContent==='Moss')),'…and a generator preset lands as a row');
+ const order0=await p.evaluate(()=>__gs.doc.active.mask.stack.map(r=>r.kind).join());
+ const rA=p.locator('#layerList .msrow.m').first(),rB=p.locator('#layerList .msrow.m').nth(2);const ba=await rA.boundingBox(),bb=await rB.boundingBox();
+ await p.mouse.move(ba.x+60,ba.y+ba.height/2);await p.mouse.down();await p.mouse.move(bb.x+60,bb.y+bb.height/2,{steps:6});await p.mouse.up();await W(300);
+ ok(await p.evaluate(o=>__gs.doc.active.mask.stack.map(r=>r.kind).join()!==o,order0),'dragging a row reorders the stack');
+ await p.screenshot({path:OUT+'mstack-rows.png'});
+ await p.click('#layerList .msfold');await W(150);ok(await p.evaluate(()=>document.querySelectorAll('#layerList .msrow').length===0),'▾ folds the rows away');
+ await p.click('#layerList .msfold');await W(150);
  /* files: rows and effects come back */
  const before=await p.evaluate(()=>{const A=__gs.doc.active;return {k:A.mask.stack.map(r=>r.kind+':'+r.mode+':'+(r.on!==false)).join(),c:(A.cfx||[]).map(r=>r.fx).join(),m:Array.from(__gs.readRGBA8(A.mask.target).slice(0,40)).join()};});
  await p.evaluate(async()=>{const b=await __gs.encodeGouache();window.__gb=await b.arrayBuffer();});

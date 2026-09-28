@@ -78,7 +78,11 @@ function renderLayers(){
     name.addEventListener('dblclick',e=>{e.stopPropagation();const inp=el('input',{value:n.name,'aria-label':'Name'});name.replaceChildren(inp);inp.focus();inp.select();
       inp.addEventListener('pointerdown',ev=>ev.stopPropagation());
       const done=()=>{const v=inp.value.trim();if(v&&v!==n.name){n.name=v;n.autoName=false;}renderLayers();};inp.addEventListener('blur',done);inp.addEventListener('keydown',ev=>{ev.stopPropagation();if(ev.key==='Enter')inp.blur();if(ev.key==='Escape'){inp.value=n.name;inp.blur();}});});
-    list.append(row);}
+    /* a layer with mask rows or content effects: ▾ folds them (like Substance) */
+    if(typeof msRowsEl==='function'&&(msHas(n)||(n.cfx&&n.cfx.length))){const fold=el('button',{class:'msfold'+(n.fxFold?'':' open'),text:n.fxFold?'▸':'▾',title:n.fxFold?'Show its mask and effect rows':'Fold its rows','aria-label':(n.fxFold?'Show':'Fold')+' the rows of '+n.name});
+      fold.addEventListener('pointerdown',e=>e.stopPropagation());fold.addEventListener('click',e=>{e.stopPropagation();n.fxFold=!n.fxFold;renderLayers();});row.insertBefore(fold,row.children[1]);}
+    row.addEventListener('pointerdown',()=>{if(ui.msSel){ui.msSel=null;if(typeof renderMatEd==='function')requestAnimationFrame(()=>renderMatEd(true));}},true);
+    list.append(row);if(typeof msRowsEl==='function')for(const r of msRowsEl(n))list.append(r);}
   list.append(dropLine);updateRowClasses();if(typeof maskBarSync==='function')maskBarSync();v3.dirty=true;
 }
 function renderMaskRow(){const A=doc.active,row=$('#maskRow');row.replaceChildren();if(!A)return;
