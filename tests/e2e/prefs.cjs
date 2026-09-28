@@ -54,6 +54,15 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  // reload keeps the setting
  await p.reload();await p.waitForTimeout(2500);await p.keyboard.press('Control+k');ok(!(await p.isChecked('#pLive')),'setting remembered after restart');
  await p.check('#pLive');await p.click('#dlgOk');
+ // Memory and disk: memory limit and undo steps
+ await p.keyboard.press('Control+k');ok(await p.isVisible('#pMem')&&await p.isVisible('#pSteps'),'memory limit and undo steps in Preferences');
+ await p.evaluate(()=>{const i=document.querySelector('#pSteps');i.value='20';i.dispatchEvent(new Event('input'));});await p.click('#dlgOk');
+ ok(JSON.parse(await p.evaluate(()=>localStorage.getItem('gs.mem'))).steps===20,'undo steps saved');
+ for(let i=0;i<26;i++){await p.keyboard.press('Alt+Delete');}
+ const nu=await p.evaluate(()=>__gs.hist.undo.length);ok(nu===20,'history keeps 20 steps ('+nu+')');
+ await p.click('#menus button:text-is("View")');await p.click('#menuPop .mi:has-text("Performance monitor")');await p.waitForTimeout(700);
+ const pm=await p.textContent('.perfbox');ok(/Memory: undo .* limit 1\.0 GB/.test(pm),'performance monitor shows memory: '+pm.split('\n').pop());
+ await p.click('#menus button:text-is("View")');await p.click('#menuPop .mi:has-text("Performance monitor")');
  console.log(errs.length?errs.join('\n'):'no errors');ok(!errs.length,'no page errors');
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();process.exit(fails?1:0);
 })();

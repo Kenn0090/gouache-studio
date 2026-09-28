@@ -48,8 +48,10 @@ function bakePrep(L){const C=bakeCfg;const high=C.high?bakeAlign(C.high,L):null,
     const hn=(high.partNames||['default']).map(n=>ix.has(partBase(n))?ix.get(partBase(n)):9999);high.bakePart=new Float32Array((high.triPart||new Uint32Array(high.tris)).length);(high.triPart||[]).forEach((p,t)=>{high.bakePart[t]=hn[p];});}
   return {low,high,cage};}
 /* the high-poly's search tree, kept between bakes of the same models */
-function bakeHG(L,high,low,step,needCol){const k=bk.hgKey,same=bk.hg&&k&&k[0]===bakeCfg.high&&k[1]===L&&k[2]===!!(bakeCfg.match&&high);
-  if(same&&(!needCol||bk.hg.hasCol))return bk.hg;if(bk.hg)bkFreeHigh(bk.hg);bk.hg=bkHighGPU(high||low,step,needCol);bk.hgKey=[bakeCfg.high,L,!!(bakeCfg.match&&high)];return bk.hg;}
+async function bakeHG(L,high,low,step,needCol){const key=[bakeCfg.high,L,!!(bakeCfg.match&&high)],same=k=>k&&k[0]===key[0]&&k[1]===key[1]&&k[2]===key[2];
+  if(bk.hgBuild){const b=bk.hgBuild;try{await b.p;}catch(e){}if(bk.hgBuild===b)bk.hgBuild=null;}
+  if(bk.hg&&same(bk.hgKey)&&(!needCol||bk.hg.hasCol))return bk.hg;if(bk.hg){bkFreeHigh(bk.hg);bk.hg=null;bk.hgKey=null;}
+  const b={p:bkHighGPU(high||low,step,needCol)};bk.hgBuild=b;try{bk.hg=await b.p;}finally{if(bk.hgBuild===b)bk.hgBuild=null;}bk.hgKey=key;return bk.hg;}
 function bakeKinds(ks,high){const kinds=ks.slice();if(kinds.includes('curv')){if(high){if(!kinds.includes('normal'))kinds.push('normal');}else kinds.push('mcurv');}return kinds.filter(k=>k!=='curv');}
 /* full bake of maps ks from low-poly L */
 async function runBake(L,ks){const C=bakeCfg;if(bk.busy)return;if(!canFloat){toast('Baking needs 16-bit float support, which this graphics card lacks.');return;}
@@ -68,7 +70,7 @@ async function runBake(L,ks){const C=bakeCfg;if(bk.busy)return;if(!canFloat){toa
     rays:C.rays,aoDist:C.aoDist*.02,thickDist:C.thickDist*.02,pad:C.pad,dx:false,seed:Math.random()*10};
   let res=null;
   try{prog.step('Baking '+ks.map(k=>BAKE_NAMES[k].toLowerCase()).join(', ')+'…');
-    const hg=bakeHG(L,high,low,t=>prog.step(t),kinds.includes('id'));
+    const hg=await bakeHG(L,high,low,t=>prog.step(t),kinds.includes('id'));
     res=await bakeRun(low,high,Object.assign({},o,{hg,acc:bk.acc,skew:bk.maps.skew,offset:bk.maps.offset,onTile:(acc,kk)=>bakeShowPartial(acc,kk)}),prog);}
   catch(e){console.error(e);bk.busy=false;bk.prog=null;if(!inTab)closeDialog();bakeProgUI();toast('The bake failed: '+(e.message||e));return;}
   bk.busy=false;bk.prog=null;if(!inTab)closeDialog();
@@ -93,7 +95,7 @@ async function bakeRegion(rect){if(!bk.opts||!bk.src)return;const r=[Math.max(0,
   const quick=bk.opts.kinds.filter(k=>k!=='ao'&&k!=='thick');for(const k of bk.opts.kinds)if(k==='ao'||k==='thick')bk.stale.add(k);
   if(!quick.length){buildBakePanel();return;}
   bk.regionBusy=true;bakeProgUI();const S=bk.src,prog={cancelled:false,set(){},step(){}};
-  try{const hg=bakeHG(S.L,S.high,S.low,()=>{},quick.includes('id'));
+  try{const hg=await bakeHG(S.L,S.high,S.low,()=>{},quick.includes('id'));
     const res=await bakeRun(S.low,S.high,Object.assign({},bk.opts,{kinds:quick,hg,acc:bk.acc,rect:r,skew:bk.maps.skew,offset:bk.maps.offset}),prog);
     if(res){for(const k in res){const kk=k==='mcurv'?'curv':k;if(bk.res[kk])disposeTarget(bk.res[kk]);bk.res[kk]=res[k];}if(res.normal&&bk.kinds.includes('curv')&&!res.mcurv)bakeDerive();}}
   catch(e){console.error(e);}
@@ -131,7 +133,7 @@ let bkEstP=null;
 async function bakeEstimateOffset(){if(bk.busy)return;const C=bakeCfg;if(!C.high){toast('Estimating the offset needs a high-poly.');return;}const L=bkLow();if(L.noUV){toast('The low-poly has no UVs.');return;}
   const {low,high,cage}=bakePrep(L);const reach=4,f=C.front*.02,b=C.back*.02;
   const prog={cancelled:false,f:0,msg:'Estimating the offset…',set(x){this.f=x;bakeProgUI();},step(t){this.msg=t;bakeProgUI();}};bk.busy=true;bk.prog=prog;bakeProgUI();await tick();
-  try{const hg=bakeHG(L,high,low,t=>prog.step(t));
+  try{const hg=await bakeHG(L,high,low,t=>prog.step(t));
     const res=await bakeRun(low,high,{size:doc.w,sizeH:doc.h,ss:1,front:f*reach,back:b*reach,average:C.average,cage,match:C.match,kinds:['height'],rays:8,aoDist:.1,thickDist:.1,pad:4,dx:false,hg},prog);
     if(res&&res.height){if(!bkEstP)bkEstP=program(FS_BKEST);const T=bakeMapT('offset',true),before=captureRegionNow(T,0,0,doc.w,doc.h);
       const t=makeTarget(doc.w,doc.h,8,false);run(bkEstP,t,{uH:res.height.tex,uRange:Math.max(f,b)*reach,uFront:f,uBack:b});gaussian(t,T,3);disposeTarget(t);disposeTarget(res.height);

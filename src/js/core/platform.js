@@ -27,6 +27,12 @@ const platform={
   spillWrite(bytes){return this.invoke('spill_write',bytes);},
   async spillRead(id){return await this.invoke('spill_read',{id});},
   spillDelete(id){return this.invoke('spill_delete',{id}).catch(()=>{});},
+  /* the disk cache: where it is, what it holds, how much memory this computer has */
+  cacheInfo(){return this.invoke('cache_info').catch(()=>null);},
+  cacheSetDir(dir){return this.invoke('cache_set_dir',{dir:dir||null});},
+  treeWrite(key,bytes){return this.invoke('tree_write',bytes,{headers:{'x-key':key}});},
+  async treeRead(key){return await this.invoke('tree_read',{key});},
+  treePrune(maxBytes){return this.invoke('tree_prune',{maxBytes:Math.max(0,Math.floor(maxBytes))}).catch(()=>0);},
   launchFile(){return this.invoke('launch_file').catch(()=>null);},
   engineInfo(){return this.invoke('engine_info').catch(()=>null);},
   updateCheck(){return this.invoke('update_check');},

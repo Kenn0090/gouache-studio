@@ -52,11 +52,14 @@ Each baked map arrives in **its own group** (“Baked normal”, “Baked AO”�
 Choose High-poly **None** to bake AO, **curvature from the model's own shape**, thickness, ID, world-space normal and position. Normal and height are skipped because they'd come out flat.
 
 ## Quality
-- **Rays and reach:** more rays make AO and thickness smoother but slower. Reach is how far those rays look.
-- **Anti-aliasing:** 1×, 4× or 16× samples per pixel.
+- **Rays and reach:** how many rays each pixel sends for AO and thickness. More rays are smoother but slower. Reach is how far those rays look.
+- **Anti-aliasing:** 1×, 4× or 16× samples per pixel. A pixel's AO and thickness rays are shared out over its samples, so anti-aliasing smooths the edges without multiplying the time AO and thickness take.
 - **Padding:** extends colour past the UV edges so seams don't show.
 
 Baking runs on the graphics card in small pieces with a progress bar and **Cancel**, so the app stays responsive.
+
+## Big high-polys
+Before the first bake the high-poly is sorted into a **search tree** (*Sorting triangles…*), so each ray only tests the few triangles near it. This runs in the background, and the tree is kept for later bakes of the same models. The desktop app also saves it in the **disk cache** (see [Preferences and performance](Preferences-and-performance.md)), so baking the same high-poly after a restart skips this step. High-polys of about 20 million triangles work on a card like an RTX 4080; the app says so if one is too big for the card.
 
 ## Fixing the bake: skew and offset
 Sometimes a bake comes out wrong in places. Floating details like screws, bolts and panel lines come out smeared or leaning, parts of the high-poly are missed, or detail from a nearby part leaks in. You fix those by painting two maps on the low-poly, the same idea as Marmoset Toolbag's projection tools.

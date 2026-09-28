@@ -58,6 +58,7 @@
     "files/abr",
     "paint/brush-tab",
     "ui/prefs",
+    "ui/memory",
     "ui/themes",
     "ui/perf",
     "ui/dialogs",

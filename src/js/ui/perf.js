@@ -13,6 +13,7 @@ function perfUpdate(){if(!perf.on)return;const F=perf.frames,now=performance.now
   perfBox.textContent=[fps+' fps · '+work.toFixed(1)+' ms work per frame',
     'Slowest frame (10 s): '+(w?(w.comp+w.view+w.thumbs).toFixed(0)+' ms — composite '+w.comp.toFixed(0)+', view '+w.view.toFixed(0)+', thumbs '+w.thumbs.toFixed(0)+(w.stroke?' (painting)':''):'—'),
     'Longest freeze (10 s): '+(lt?lt.toFixed(0)+' ms':'none'),
-    doc.w+'×'+doc.h+' '+doc.depth+'-bit · '+layers+' layers · '+maps+' map'+(maps>1?'s':'')+' · view '+doc.view+' · undo '+(hist.undo.reduce((s,r)=>s+recBytes(r),0)/1048576).toFixed(0)+' MB'].join('\n');}
+    doc.w+'×'+doc.h+' '+doc.depth+'-bit · '+layers+' layers · '+maps+' map'+(maps>1?'s':'')+' · view '+doc.view,
+    'Memory: undo '+fmtBytes(hist.undo.reduce((s,r)=>s+recBytes(r),0))+(platform.isDesktop?' + '+fmtBytes(hist.undo.reduce((s,r)=>s+recDisk(r),0))+' on disk':'')+' · models '+fmtBytes(memModels())+' · limit '+fmtBytes(memLimit())].join('\n');}
 setInterval(perfUpdate,500);
 function togglePerf(){perf.on=!perf.on;perfBox.hidden=!perf.on;perf.frames=[];perfLong=[];if(perf.on){perfUpdate();requestRender(true);}}

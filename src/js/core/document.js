@@ -67,19 +67,38 @@ function dropRecords(list){const cands=new Set(),mc=new Set();for(const r of lis
   for(const n of [...allNodes(doc.root),...(doc.paintRoot?allNodes(doc.paintRoot):[])])if(n.mask)liveM.add(n.mask);
   for(const n of cands)if(!live.has(n)&&!inDoc(n)){disposeLayer(n);if(n.mask)liveM.delete(n.mask);}
   for(const m of mc)if(!liveM.has(m))disposeTarget(m.target);}
-/* Undo budget: snapshots are kept in RAM up to UNDO_RAM bytes. Beyond that the desktop app moves the
-   oldest snapshots to temporary files on disk (and reads them back when you undo that far);
-   the browser version drops the oldest steps instead. */
-let undoRamMB=platform.isDesktop?2048:768;try{const v=+localStorage.getItem('gs.undoRamMB');if(v>0)undoRamMB=v;}catch(e){}
-const UNDO_RAM=undoRamMB*1048576,UNDO_MAX_STEPS=platform.isDesktop?500:120;
+/* Memory and disk (Edit › Preferences), like Photoshop's memory limit and scratch disk.
+   Undo snapshots stay in RAM while they and the loaded models fit within the memory limit. Beyond it the
+   desktop app moves the oldest snapshots to the disk cache (read back if you undo that far); the browser
+   drops the oldest steps instead. The disk cache has its own limit: past it the oldest steps are dropped. */
+const mem=Object.assign({limitMB:0,steps:0,diskGB:20,dir:''},(()=>{try{return JSON.parse(localStorage.getItem('gs.mem')||'{}');}catch(e){return {};}})());
+const memSys={ramTotal:0,ramAvail:0};/* filled in by the desktop app at start-up (memory.js) */
+function memSave(){try{localStorage.setItem('gs.mem',JSON.stringify(mem));}catch(e){}}
+/* the limit in bytes: yours, or half of this computer's memory (at least 2 GB) */
+const memAutoMB=()=>platform.isDesktop?(memSys.ramTotal?Math.max(2048,Math.round(memSys.ramTotal/1048576*.5/256)*256):4096):1024;
+const memLimit=()=>(mem.limitMB||memAutoMB())*1048576;
+const undoSteps=()=>mem.steps||(platform.isDesktop?500:120);
+/* loaded models (3D view and Bake tab) count against the limit too */
+function memModels(){const seen=new Set();let n=0;const add=m=>{if(!m||seen.has(m))return;seen.add(m);for(const k of ['pos','nrm','uv','tan','idx','col','triPart','triCol','bakePart'])if(m[k]&&m[k].byteLength)n+=m[k].byteLength;};
+  try{add(v3.imported);add(bakeCfg.low);add(bakeCfg.high);add(bakeCfg.cage);}catch(e){/* not loaded yet */}return n;}
+const undoRam=()=>Math.max(256*1048576,memLimit()-memModels());
 const recBytes=r=>(r.snaps||[]).reduce((s,x)=>s+(x.resident!==false&&!x.file?x.bytes:0),0);
+const recDisk=r=>(r.snaps||[]).reduce((s,x)=>s+(x.file?x.bytes:0),0);
 let undoBusy=false;
-function pushUndo(rec){if(!rec.mode)rec.mode=ui.mode;hist.undo.push(rec);const dropped=hist.redo;hist.redo=[];while(hist.undo.length>UNDO_MAX_STEPS)dropped.push(hist.undo.shift());
-  if(!platform.isDesktop){let total=hist.undo.reduce((s,r)=>s+recBytes(r),0);while(total>UNDO_RAM&&hist.undo.length>1){const r=hist.undo.shift();total-=recBytes(r);dropped.push(r);}}
+function pushUndo(rec){if(!rec.mode)rec.mode=ui.mode;hist.undo.push(rec);const dropped=hist.redo;hist.redo=[];while(hist.undo.length>undoSteps())dropped.push(hist.undo.shift());
+  if(!platform.isDesktop){let total=hist.undo.reduce((s,r)=>s+recBytes(r),0);while(total>undoRam()&&hist.undo.length>1){const r=hist.undo.shift();total-=recBytes(r);dropped.push(r);}}
   dropRecords(dropped);if(platform.isDesktop)spillOld();}
-async function spillOld(){let total=hist.undo.reduce((s,r)=>s+recBytes(r),0);
-  for(const r of hist.undo){if(total<=UNDO_RAM)break;for(const s of r.snaps||[]){if(s.file||s.spilling||s.resident===false)continue;s.spilling=true;
-    try{const bytes=new Uint8Array(s.data.buffer,s.data.byteOffset,s.data.byteLength);s.file=await platform.spillWrite(bytes);total-=s.bytes;s.data=null;}catch(e){console.warn('undo spill failed',e);}s.spilling=false;}}}
+/* after a Preferences change: fewer steps, less memory */
+function memApply(){const dropped=[];while(hist.undo.length>undoSteps())dropped.push(hist.undo.shift());
+  if(!platform.isDesktop){let total=hist.undo.reduce((s,r)=>s+recBytes(r),0);while(total>undoRam()&&hist.undo.length>1){const r=hist.undo.shift();total-=recBytes(r);dropped.push(r);}}
+  dropRecords(dropped);if(platform.isDesktop)spillOld();}
+async function spillOld(){let total=hist.undo.reduce((s,r)=>s+recBytes(r),0);const budget=undoRam();
+  for(const r of hist.undo){if(total<=budget)break;for(const s of r.snaps||[]){if(s.file||s.spilling||s.resident===false)continue;s.spilling=true;
+    try{const bytes=new Uint8Array(s.data.buffer,s.data.byteOffset,s.data.byteLength);s.file=await platform.spillWrite(bytes);total-=s.bytes;s.data=null;}catch(e){console.warn('undo spill failed',e);}s.spilling=false;}}
+  /* the disk cache is full: the oldest steps go */
+  let disk=hist.undo.reduce((s,r)=>s+recDisk(r),0);const cap=mem.diskGB*1073741824,dropped=[];
+  while(disk>cap&&hist.undo.length>1&&!(hist.undo[0].snaps||[]).some(s=>s.spilling)){const r=hist.undo.shift();disk-=recDisk(r);dropped.push(r);}
+  if(dropped.length)dropRecords(dropped);}
 async function loadSnaps(r){for(const s of r.snaps||[]){if(!s.file)continue;const buf=await platform.spillRead(s.file);s.data=s.depth===16?new Uint16Array(buf):new Uint8Array(buf);platform.spillDelete(s.file);s.file=null;}}
 function clearHistory(){const all=[...hist.undo,...hist.redo];hist.undo=[];hist.redo=[];dropRecords(all);}
 /* the image a record restores into: a layer's map as it was when the step was made (not whichever map is being edited now) */

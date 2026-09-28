@@ -29,8 +29,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(updates::Pending::default())
+        .manage(undo_spill::CacheDir::default())
         .setup(|app| {
-            // Start each session with an empty undo spill folder.
+            // Start each session with an empty undo folder in the default cache (a chosen folder is
+            // cleared when the interface sets it at start-up).
             undo_spill::reset(&app.handle());
             // The main window is built here (not from the config alone) so that the 3D view can
             // pop out into its own window: window.open("about:blank") from the page is allowed and
@@ -61,6 +63,11 @@ pub fn run() {
             undo_spill::spill_write,
             undo_spill::spill_read,
             undo_spill::spill_delete,
+            undo_spill::tree_write,
+            undo_spill::tree_read,
+            undo_spill::tree_prune,
+            undo_spill::cache_info,
+            undo_spill::cache_set_dir,
             engine::engine_info,
             updates::update_check,
             updates::update_install,

@@ -5,72 +5,137 @@
    walked on the GPU. What is found there becomes the normal, height, AO and other maps.
    Work is done in tiles and small pieces so the app stays responsive and the driver never
    waits too long on one job. */
-const BK_TW=4096; /* width of the data textures */
-/* ---- bounding volume tree over the high-poly triangles ---- */
-function bvhBuild(pos,idx,onProgress){const T=idx.length/3,cx=new Float32Array(T*3),bmin=new Float32Array(T*3),bmax=new Float32Array(T*3);
-  for(let t=0;t<T;t++)for(let c=0;c<3;c++){const a=pos[idx[t*3]*3+c],b=pos[idx[t*3+1]*3+c],d=pos[idx[t*3+2]*3+c];bmin[t*3+c]=Math.min(a,b,d);bmax[t*3+c]=Math.max(a,b,d);cx[t*3+c]=(a+b+d)/3;}
+const BK_TW=Math.min(8192,gl.getParameter(gl.MAX_TEXTURE_SIZE)||4096); /* width of the data textures */
+/* ---- bounding volume tree over the high-poly triangles ----
+   Binned surface-area split (what ray tracers use): each node is cut where the two halves cost the
+   least to test, so a ray skips much more of the model than with a plain middle cut.
+   Typed arrays only, so tens of millions of triangles fit in memory. Nodes are two texels,
+   [min.xyz, first triangle (leaf) or split axis] [max.xyz, -count (leaf) or right child];
+   the left child always follows its parent. A leaf's first triangle is split between the two .w values
+   (low 20 bits, then count + 8 × the rest) so every number stays exact in a 32-bit float.
+   Self-contained, so it can run in a worker. */
+function bvhBuild(pos,idx,onProgress){const T=idx.length/3,bx=new Float32Array(T*6);
+  for(let t=0;t<T;t++){const a=idx[t*3]*3,b=idx[t*3+1]*3,c=idx[t*3+2]*3,o=t*6;for(let k=0;k<3;k++){const x=pos[a+k],y=pos[b+k],z=pos[c+k];bx[o+k]=x<y?(x<z?x:z):(y<z?y:z);bx[o+3+k]=x>y?(x>z?x:z):(y>z?y:z);}}
   const order=new Uint32Array(T);for(let i=0;i<T;i++)order[i]=i;
-  const nodes=[];/* {mn,mx,left,right,start,count} flattened later */
-  const stack=[[0,T,-1,0]];/* start,end,parent,isRight */
-  const out=[];let built=0;
-  while(stack.length){const [s,e,parent,isRight]=stack.pop();const mn=[1e30,1e30,1e30],mx=[-1e30,-1e30,-1e30],cmn=[1e30,1e30,1e30],cmx=[-1e30,-1e30,-1e30];
-    for(let i=s;i<e;i++){const t=order[i];for(let c=0;c<3;c++){if(bmin[t*3+c]<mn[c])mn[c]=bmin[t*3+c];if(bmax[t*3+c]>mx[c])mx[c]=bmax[t*3+c];const v=cx[t*3+c];if(v<cmn[c])cmn[c]=v;if(v>cmx[c])cmx[c]=v;}}
-    const id=out.length;out.push({mn,mx,start:s,count:e-s,right:-1});if(parent>=0&&isRight)out[parent].right=id;
-    if(e-s<=4){built+=e-s;continue;}
-    let ax=0;for(let c=1;c<3;c++)if(cmx[c]-cmn[c]>cmx[ax]-cmn[ax])ax=c;
-    const mid=(cmn[ax]+cmx[ax])/2;let i=s,j=e-1;
-    while(i<=j){if(cx[order[i]*3+ax]<mid)i++;else{const t=order[i];order[i]=order[j];order[j]=t;j--;}}
-    let m=i;if(m===s||m===e){/* all centroids on one side: split in the middle of the list */m=(s+e)>>1;
-      const sub=Array.from(order.subarray(s,e)).sort((a,b)=>cx[a*3+ax]-cx[b*3+ax]);order.set(sub,s);}
-    out[id].count=0;
-    /* left child comes right after this node (depth first); the right one is pushed first so it is built later */
-    stack.push([m,e,id,1]);stack.push([s,m,id,0]);}
-  const n=out.length,nodeData=new Float32Array(n*8);
-  out.forEach((o,i)=>{nodeData.set([o.mn[0],o.mn[1],o.mn[2],o.count?o.start:0,o.mx[0],o.mx[1],o.mx[2],o.count?-o.count:o.right],i*8);});
-  return {nodeData,order,nodes:n};}
-/* float texture holding count RGBA texels (padded to rows of BK_TW) */
-function bkDataTex(data,texels,half){const w=Math.min(BK_TW,Math.max(1,texels)),h=Math.max(1,Math.ceil(texels/BK_TW));let full=data;
-  if(data.length!==w*h*4){full=new Float32Array(w*h*4);full.set(data.subarray(0,Math.min(data.length,full.length)));}
-  const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.texImage2D(gl.TEXTURE_2D,0,half?gl.RGBA16F:gl.RGBA32F,w,h,0,gl.RGBA,gl.FLOAT,full);
-  for(const p of [gl.TEXTURE_MIN_FILTER,gl.TEXTURE_MAG_FILTER])gl.texParameteri(gl.TEXTURE_2D,p,gl.NEAREST);return tex;}
-/* the high-poly on the GPU: tree nodes, triangle corners, corner normals and colours */
-/* built one texture at a time (each array freed before the next) so a big high-poly fits in memory;
-   normals are stored at half precision, and colours only when ID colours are baked */
-function bkHighGPU(h,onStep,needCol){const T=h.idx.length/3;onStep('Sorting '+T.toLocaleString()+' high-poly triangles…');
-  const B=bvhBuild(h.pos,h.idx),o=B.order,I=h.idx,pad=n=>Math.max(1,Math.ceil(n/BK_TW))*Math.min(BK_TW,Math.max(1,n))*4;
-  const nodes=bkDataTex(B.nodeData,B.nodes*2);
-  let A=new Float32Array(pad(T*3));for(let k=0;k<T;k++){const t=o[k],part=h.bakePart?h.bakePart[t]:0;for(let v=0;v<3;v++){const vi=I[t*3+v],q=(k*3+v)*4;A[q]=h.pos[vi*3];A[q+1]=h.pos[vi*3+1];A[q+2]=h.pos[vi*3+2];A[q+3]=part;}}
-  const tris=bkDataTex(A,T*3);
-  A.fill(0);for(let k=0;k<T;k++){const t=o[k];for(let v=0;v<3;v++){const vi=I[t*3+v],q=(k*3+v)*4;A[q]=h.nrm[vi*3];A[q+1]=h.nrm[vi*3+1];A[q+2]=h.nrm[vi*3+2];}}
-  const nrm=bkDataTex(A,T*3,true);
-  let col;if(needCol){A.fill(0);for(let k=0;k<T;k++){const t=o[k];let c=null;if(!h.col){c=h.triCol&&h.triCol.length?[h.triCol[t*3],h.triCol[t*3+1],h.triCol[t*3+2]]:partCol(h.triPart?h.triPart[t]:0);}
-      for(let v=0;v<3;v++){const vi=I[t*3+v],q=(k*3+v)*4;if(h.col){A[q]=h.col[vi*4];A[q+1]=h.col[vi*4+1];A[q+2]=h.col[vi*4+2];}else{A[q]=c[0];A[q+1]=c[1];A[q+2]=c[2];}A[q+3]=1;}}
-    col=bkDataTex(A,T*3,true);}else col=bkDataTex(new Float32Array(4),1,true);
-  A=null;return {nodes,tris,nrm,col,count:T,nodeCount:B.nodes,hasCol:!!needCol};}
+  let cap=Math.max(64,Math.ceil(T*.8)),nd=new Float32Array(cap*8),n=0;
+  const NBMAX=16,bc=new Float64Array(NBMAX*3),bb=new Float32Array(NBMAX*3*6),rA=new Float64Array(NBMAX),rC=new Float64Array(NBMAX),cm=new Float64Array(3),ex=new Float64Array(3),sc=new Float64Array(3);
+  const area=(x0,y0,z0,x1,y1,z1)=>{const dx=x1-x0,dy=y1-y0,dz=z1-z0;return dx<0?0:dx*dy+dy*dz+dz*dx;};
+  const st=[0,T,-1,0];let done=0,lastP=0;
+  while(st.length){const depth=st.pop(),parent=st.pop(),e=st.pop(),s=st.pop();
+    if(n>=cap){cap=Math.ceil(cap*1.5);const g=new Float32Array(cap*8);g.set(nd);nd=g;}
+    const id=n++;if(parent>=0)nd[parent*8+7]=id;/* the right child is recorded; the left one is parent+1 */
+    const cnt=e-s;let mn0=1e30,mn1=1e30,mn2=1e30,mx0=-1e30,mx1=-1e30,mx2=-1e30,c0=1e30,c1=1e30,c2=1e30,C0=-1e30,C1=-1e30,C2=-1e30;
+    for(let i=s;i<e;i++){const o=order[i]*6,a0=bx[o],a1=bx[o+1],a2=bx[o+2],b0=bx[o+3],b1=bx[o+4],b2=bx[o+5];
+      if(a0<mn0)mn0=a0;if(a1<mn1)mn1=a1;if(a2<mn2)mn2=a2;if(b0>mx0)mx0=b0;if(b1>mx1)mx1=b1;if(b2>mx2)mx2=b2;
+      const x=a0+b0,y=a1+b1,z=a2+b2;if(x<c0)c0=x;if(x>C0)C0=x;if(y<c1)c1=y;if(y>C1)C1=y;if(z<c2)c2=z;if(z>C2)C2=z;}
+    const o=id*8;nd[o]=mn0;nd[o+1]=mn1;nd[o+2]=mn2;nd[o+4]=mx0;nd[o+5]=mx1;nd[o+6]=mx2;
+    if(cnt<=4){nd[o+3]=s%1048576;nd[o+7]=-(cnt+8*Math.floor(s/1048576));done+=cnt;if(onProgress&&done-lastP>2e6){lastP=done;onProgress(done/T);}continue;}
+    /* centres are kept doubled (min+max) */
+    cm[0]=c0;cm[1]=c1;cm[2]=c2;ex[0]=C0-c0;ex[1]=C1-c1;ex[2]=C2-c2;let ax=-1,split=0;const NB=cnt>256?NBMAX:cnt>32?8:4;
+    for(let k=0;k<3;k++)sc[k]=ex[k]>0?NB*(1-1e-6)/ex[k]:0;
+    if(depth<44&&(sc[0]||sc[1]||sc[2])){
+      /* bin the triangles along each axis by centre, adding up their boxes (big nodes: a sample is enough) */
+      bc.fill(0);for(let q=0;q<NB*3;q++){const b=q*6;bb[b]=bb[b+1]=bb[b+2]=1e30;bb[b+3]=bb[b+4]=bb[b+5]=-1e30;}
+      const step=cnt>8192?Math.floor(cnt/4096):1;
+      for(let i=s;i<e;i+=step){const o=order[i]*6,a0=bx[o],a1=bx[o+1],a2=bx[o+2],b0=bx[o+3],b1=bx[o+4],b2=bx[o+5];
+        for(let k=0;k<3;k++){if(!sc[k])continue;const q=k*NB+Math.floor((bx[o+k]+bx[o+3+k]-cm[k])*sc[k]),b=q*6;bc[q]++;
+          if(a0<bb[b])bb[b]=a0;if(a1<bb[b+1])bb[b+1]=a1;if(a2<bb[b+2])bb[b+2]=a2;if(b0>bb[b+3])bb[b+3]=b0;if(b1>bb[b+4])bb[b+4]=b1;if(b2>bb[b+5])bb[b+5]=b2;}}
+      let best=Math.ceil(cnt/step)*area(mn0,mn1,mn2,mx0,mx1,mx2);
+      for(let k=0;k<3;k++){if(!sc[k])continue;
+        let x0=1e30,y0=1e30,z0=1e30,x1=-1e30,y1=-1e30,z1=-1e30,c=0;
+        for(let i=NB-1;i>0;i--){const b=(k*NB+i)*6;c+=bc[k*NB+i];if(bb[b]<x0)x0=bb[b];if(bb[b+1]<y0)y0=bb[b+1];if(bb[b+2]<z0)z0=bb[b+2];if(bb[b+3]>x1)x1=bb[b+3];if(bb[b+4]>y1)y1=bb[b+4];if(bb[b+5]>z1)z1=bb[b+5];rA[i]=area(x0,y0,z0,x1,y1,z1);rC[i]=c;}
+        x0=1e30;y0=1e30;z0=1e30;x1=-1e30;y1=-1e30;z1=-1e30;c=0;
+        for(let i=0;i<NB-1;i++){const b=(k*NB+i)*6;c+=bc[k*NB+i];if(bb[b]<x0)x0=bb[b];if(bb[b+1]<y0)y0=bb[b+1];if(bb[b+2]<z0)z0=bb[b+2];if(bb[b+3]>x1)x1=bb[b+3];if(bb[b+4]>y1)y1=bb[b+4];if(bb[b+5]>z1)z1=bb[b+5];
+          if(!c||!rC[i+1])continue;const cost=c*area(x0,y0,z0,x1,y1,z1)+rC[i+1]*rA[i+1];if(cost<best){best=cost;ax=k;split=i+1;}}}}
+    let m=s;
+    if(ax>=0){const sk=sc[ax],c=cm[ax];let i=s,j=e-1;
+      while(i<=j){const t=order[i],q=t*6+ax;if(Math.floor((bx[q]+bx[q+3]-c)*sk)<split)i++;else{order[i]=order[j];order[j]=t;j--;}}m=i;}
+    if(ax<0||m===s||m===e){/* no useful cut (or very deep): halve the list along the longest axis */
+      ax=ex[0]>=ex[1]&&ex[0]>=ex[2]?0:ex[1]>=ex[2]?1:2;m=(s+e)>>1;
+      if(ex[ax]>0){const sub=order.subarray(s,e),key=new Float32Array(cnt),ix=new Uint32Array(cnt);for(let i=0;i<cnt;i++){const q=sub[i]*6+ax;key[i]=bx[q]+bx[q+3];ix[i]=i;}
+        ix.sort((a,b)=>key[a]-key[b]);const cp=Uint32Array.from(ix,i=>sub[i]);sub.set(cp);}}
+    nd[o+3]=ax;nd[o+7]=0;
+    st.push(m,e,id,depth+1,s,m,-1,depth+1);}
+  return {nodeData:nd.subarray(0,n*8),order,nodes:n};}
+/* the tree is built in a worker so the app stays responsive (falls back to building it here) */
+function bvhBuildAsync(pos,idx,onProgress){return new Promise((res,rej)=>{const here=()=>{bvhBuildAsync.via='here';try{res(bvhBuild(pos,idx,onProgress));}catch(e){rej(e);}};let w;
+  try{const src=bvhBuild.toString()+'\nonmessage=e=>{const r=bvhBuild(e.data.pos,e.data.idx,f=>postMessage({f}));postMessage({done:1,nodeData:r.nodeData,order:r.order,nodes:r.nodes},[r.nodeData.buffer,r.order.buffer]);};';
+    const url=URL.createObjectURL(new Blob([src],{type:'text/javascript'}));w=new Worker(url);URL.revokeObjectURL(url);}catch(e){here();return;}
+  w.onmessage=e=>{const d=e.data;if(d.done){w.terminate();bvhBuildAsync.via='worker';res(d);}else if(onProgress)onProgress(d.f);};
+  w.onerror=e=>{e.preventDefault();w.terminate();here();};
+  const P=pos.slice(),X=idx.slice();w.postMessage({pos:P,idx:X},[P.buffer,X.buffer]);});}
+/* the desktop app keeps each high-poly's tree in the disk cache, found again by a fingerprint of its
+   points and triangles, so baking the same high-poly later (even after a restart) skips building it */
+function bvhKey(h){let a=0x811c9dc5,b=0x9e3779b9;const hash=u=>{for(let i=0;i<u.length;i++){const v=u[i];a=Math.imul(a^v,16777619);b=Math.imul(b^v,2246822519)^(b>>>13);}};
+  const P=h.pos instanceof Float32Array?h.pos:Float32Array.from(h.pos);hash(new Uint32Array(P.buffer,P.byteOffset,P.length));hash(h.idx instanceof Uint32Array?h.idx:Uint32Array.from(h.idx));
+  return 't'+(h.idx.length/3)+'x'+(a>>>0).toString(16)+(b>>>0).toString(16);}
+async function bvhCached(h,build){if(!platform.isDesktop)return build();const T=h.idx.length/3;if(T<200000)return build();
+  const key=bvhKey(h);
+  try{const buf=await platform.treeRead(key),hd=new Uint32Array(buf,0,4);
+    if(hd[0]===0x47535456&&hd[1]===1&&hd[3]===T&&buf.byteLength===16+hd[2]*32+T*4)return {nodes:hd[2],nodeData:new Float32Array(buf,16,hd[2]*8),order:new Uint32Array(buf,16+hd[2]*32,T),cached:true};}catch(e){}
+  const B=await build();
+  try{const out=new Uint8Array(16+B.nodes*32+T*4),hd=new Uint32Array(out.buffer,0,4);hd.set([0x47535456,1,B.nodes,T]);
+    out.set(new Uint8Array(B.nodeData.buffer,B.nodeData.byteOffset,B.nodes*32),16);out.set(new Uint8Array(B.order.buffer,B.order.byteOffset,T*4),16+B.nodes*32);
+    platform.treeWrite(key,out).then(()=>platform.treePrune(Math.max(0,mem.diskGB*1073741824-hist.undo.reduce((s,r)=>s+recDisk(r),0)))).catch(e=>console.warn('search tree not cached',e));}catch(e){console.warn(e);}
+  return B;}
+/* the high-poly on the GPU: tree nodes, triangle corners, corner normals and colours.
+   Each texture is filled a band of rows at a time from one small buffer, so even a high-poly of
+   tens of millions of triangles needs little memory beyond the model itself; normals and colours
+   are stored at half precision, and colours only when ID colours are baked */
+function bkBandTex(texels,half,fill){const w=Math.min(BK_TW,Math.max(1,texels)),h=Math.max(1,Math.ceil(texels/BK_TW)),max=gl.getParameter(gl.MAX_TEXTURE_SIZE);
+  if(h>max)throw new Error('the high-poly has too many triangles for this graphics card ('+Math.floor(max*BK_TW/3).toLocaleString()+' at most)');
+  const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.texStorage2D(gl.TEXTURE_2D,1,half?gl.RGBA16F:gl.RGBA32F,w,h);
+  for(const p of [gl.TEXTURE_MIN_FILTER,gl.TEXTURE_MAG_FILTER])gl.texParameteri(gl.TEXTURE_2D,p,gl.NEAREST);
+  const rows=Math.max(1,Math.floor((1<<22)/w)),buf=new Float32Array(rows*w*4);
+  for(let y=0;y<h;y+=rows){const n=Math.min(rows,h-y),b=buf.subarray(0,n*w*4);b.fill(0);fill(b,y*w,Math.min(texels,(y+n)*w));gl.bindTexture(gl.TEXTURE_2D,tex);gl.texSubImage2D(gl.TEXTURE_2D,0,0,y,w,n,gl.RGBA,gl.FLOAT,b);}
+  return tex;}
+async function bkHighGPU(h,onStep,needCol){const T=h.idx.length/3;onStep('Sorting '+T.toLocaleString()+' high-poly triangles…');
+  const B=await bvhCached(h,()=>bvhBuildAsync(h.pos,h.idx,f=>onStep('Sorting '+T.toLocaleString()+' high-poly triangles… '+Math.round(f*100)+'%')));
+  if(B.nodes>=16777216)throw new Error('the high-poly has too many triangles');
+  onStep('Sending the high-poly to the graphics card…');await nextTick();
+  const o=B.order,I=h.idx,nd=B.nodeData;
+  const nodes=bkBandTex(B.nodes*2,false,(b,t0,t1)=>b.set(nd.subarray(t0*4,t1*4)));
+  /* corners: texel k*3+v is corner v of the k-th triangle in tree order */
+  const corners=(src,stride,w)=>(b,t0,t1)=>{for(let q=t0;q<t1;q++){const k=(q/3)|0,t=o[k],vi=I[t*3+q-k*3],d=(q-t0)*4;for(let c=0;c<3;c++)b[d+c]=src[vi*stride+c];if(w)b[d+3]=w(t);}};
+  const tris=bkBandTex(T*3,false,corners(h.pos,3,t=>h.bakePart?h.bakePart[t]:0));
+  const nrm=bkBandTex(T*3,true,corners(h.nrm,3,null));
+  let col;if(needCol){col=bkBandTex(T*3,true,(b,t0,t1)=>{for(let q=t0;q<t1;q++){const k=(q/3)|0,t=o[k],vi=I[t*3+q-k*3],d=(q-t0)*4;
+      if(h.col){b[d]=h.col[vi*4];b[d+1]=h.col[vi*4+1];b[d+2]=h.col[vi*4+2];}else{const c=h.triCol&&h.triCol.length?[h.triCol[t*3],h.triCol[t*3+1],h.triCol[t*3+2]]:partCol(h.triPart?h.triPart[t]:0);b[d]=c[0];b[d+1]=c[1];b[d+2]=c[2];}b[d+3]=1;}});}
+  else col=bkBandTex(1,true,()=>{});
+  return {nodes,tris,nrm,col,count:T,nodeCount:B.nodes,hasCol:!!needCol};}
 const partCol=(()=>{const cache={};return p=>cache[p]||(cache[p]=idColor('part '+p));})();
 function bkFreeHigh(g){if(!g)return;for(const k of ['nodes','tris','nrm','col'])gl.deleteTexture(g[k]);}
 
 /* ---- shaders ---- */
 const BK_TRACE=`uniform highp sampler2D uNodes; uniform highp sampler2D uTris; uniform highp sampler2D uTN; uniform highp sampler2D uTC;
-int bkPart=-1;
+int bkPart=-1; int bkSkip=-1;
 vec4 bkF(highp sampler2D s,int i){ return texelFetch(s,ivec2(i%${BK_TW},i/${BK_TW}),0); }
 bool bkBox(vec3 o,vec3 inv,vec3 a,vec3 b,float tmax){ vec3 t0=(a-o)*inv,t1=(b-o)*inv; vec3 lo=min(t0,t1),hi=max(t0,t1);
   float tn=max(max(lo.x,lo.y),max(lo.z,0.0)), tf=min(min(hi.x,hi.y),min(hi.z,tmax)); return tn<=tf; }
-/* closest hit (any=false) or any hit (any=true) along o+t*d, 0<t<tmax */
-int bkTrace(vec3 o,vec3 d,float tmax,bool any,out float tHit,out vec2 bc){ int st[48]; int sp=0; st[sp++]=0; int hit=-1; tHit=tmax; bc=vec2(0);
+/* closest hit (any=false) or any hit (any=true) along o+t*d, 0<t<tmax. The nearer child is visited
+   first (by the ray's direction along the node's split axis), so closest hits shrink the search early. */
+int bkTrace(vec3 o,vec3 d,float tmax,bool any,out float tHit,out vec2 bc){ int st[64]; int sp=0; st[sp++]=0; int hit=-1; tHit=tmax; bc=vec2(0);
   vec3 inv=1.0/(d+vec3(1e-12)); int guard=0;
-  while(sp>0&&guard<20000){ guard++; int ni=st[--sp]; vec4 a=bkF(uNodes,ni*2),b=bkF(uNodes,ni*2+1); if(!bkBox(o,inv,a.xyz,b.xyz,tHit)) continue;
-    if(b.w<0.0){ int s=int(a.w),c=int(-b.w);
-      for(int k=0;k<4;k++){ if(k>=c) break; int t=s+k; vec4 w0=bkF(uTris,t*3); if(bkPart>=0&&int(w0.w+0.5)!=bkPart) continue; vec3 v0=w0.xyz,v1=bkF(uTris,t*3+1).xyz,v2=bkF(uTris,t*3+2).xyz;
+  while(sp>0&&guard<40000){ guard++; int ni=st[--sp]; vec4 a=bkF(uNodes,ni*2),b=bkF(uNodes,ni*2+1); if(!bkBox(o,inv,a.xyz,b.xyz,tHit)) continue;
+    if(b.w<0.0){ int e=int(-b.w+0.5),c=e%8,s=int(a.w+0.5)+(e/8)*1048576;
+      for(int k=0;k<4;k++){ if(k>=c) break; int t=s+k; if(t==bkSkip) continue; vec4 w0=bkF(uTris,t*3); if(bkPart>=0&&int(w0.w+0.5)!=bkPart) continue; vec3 v0=w0.xyz,v1=bkF(uTris,t*3+1).xyz,v2=bkF(uTris,t*3+2).xyz;
         vec3 e1=v1-v0,e2=v2-v0,p=cross(d,e2); float det=dot(e1,p); if(abs(det)<1e-12) continue; float id=1.0/det; vec3 s0=o-v0; float u=dot(s0,p)*id; if(u<0.0||u>1.0) continue;
         vec3 q=cross(s0,e1); float v=dot(d,q)*id; if(v<0.0||u+v>1.0) continue; float tt=dot(e2,q)*id; if(tt>1e-6&&tt<tHit){ tHit=tt; hit=t; bc=vec2(u,v); if(any) return hit; } } }
-    else if(sp<46){ st[sp++]=int(b.w); st[sp++]=ni+1; } }
+    else if(sp<62){ int r=int(b.w+0.5),ax=int(a.w+0.5); if(d[ax]<0.0){ st[sp++]=ni+1; st[sp++]=r; } else { st[sp++]=r; st[sp++]=ni+1; } } }
   return hit; }
 vec3 bkNrm(int t,vec2 bc){ return normalize(bkF(uTN,t*3).xyz*(1.0-bc.x-bc.y)+bkF(uTN,t*3+1).xyz*bc.x+bkF(uTN,t*3+2).xyz*bc.y); }
 vec3 bkCol(int t,vec2 bc){ return bkF(uTC,t*3).xyz*(1.0-bc.x-bc.y)+bkF(uTC,t*3+1).xyz*bc.x+bkF(uTC,t*3+2).xyz*bc.y; }
-float bkHash(vec2 p,float s){ return fract(sin(dot(p,vec2(12.9898,78.233))+s*37.719)*43758.5453); }
-/* cosine-weighted direction around n */
-vec3 bkHemi(vec3 n,vec2 r){ float ph=6.2831853*r.x,ct=sqrt(1.0-r.y),stt=sqrt(r.y); vec3 t=normalize(abs(n.x)<0.9?cross(n,vec3(1,0,0)):cross(n,vec3(0,1,0))),b=cross(n,t); return normalize(t*cos(ph)*stt+b*sin(ph)*stt+n*ct); }
+/* the triangle a ray hit, kept exactly in two floats: (index mod 4096, 1 + index / 4096); w > 0.5 means "hit" */
+vec2 bkTriPack(int t){ return vec2(float(t%4096),1.0+float(t/4096)); }
+int bkTriUnpack(vec4 ti){ return int(ti.x+0.5)+(int(ti.w+0.5)-1)*4096; }
+/* random numbers from integer hashing (no sin(): that repeats in patterns and showed as banding) */
+uint bkPcg(uint v){ uint s=v*747796405u+2891336453u; uint w=((s>>((s>>28u)+4u))^s)*277803737u; return (w>>22u)^w; }
+float bkRnd(uint v){ return float(bkPcg(v)>>8u)*(1.0/16777216.0); }
+float bkRadInv(uint b){ b=(b<<16u)|(b>>16u); b=((b&0x55555555u)<<1u)|((b&0xAAAAAAAAu)>>1u); b=((b&0x33333333u)<<2u)|((b&0xCCCCCCCCu)>>2u);
+  b=((b&0x0F0F0F0Fu)<<4u)|((b&0xF0F0F0F0u)>>4u); b=((b&0x00FF00FFu)<<8u)|((b&0xFF00FF00u)>>8u); return float(b>>8u)*(1.0/16777216.0); }
+/* cosine-weighted direction around n, with a frame that turns smoothly with n (no seams where it flips) */
+vec3 bkHemi(vec3 n,vec2 r){ float ph=6.2831853*r.x,ct=sqrt(1.0-r.y),stt=sqrt(r.y); float sg=n.z>=0.0?1.0:-1.0,a=-1.0/(sg+n.z),b=n.x*n.y*a;
+  vec3 t=vec3(1.0+sg*n.x*n.x*a,sg*b,-sg*n.x),bb=vec3(b,sg+n.y*n.y*a,-n.y); return normalize(t*(cos(ph)*stt)+bb*(sin(ph)*stt)+n*ct); }
 `;
 /* 1. the low-poly drawn in UV space: surface point, ray direction, tangent frame */
 const BK_VS_UV=`#version 300 es
@@ -103,10 +168,10 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 P=texelFetch(uGP,p,0); if(P.w<
   else { dir=-R; front=uFront*of; org=P.xyz+R*front; len=front+uBack*of; }
   int t=bkTrace(org,dir,len,false,th,bc);
   if(t<0){ oH=vec4(P.xyz,0.5); oHN=vec4(0,0,0,0); return; }
-  vec3 hp=org+dir*th; oH=vec4(hp,1.0); oHN=vec4(bkNrm(t,bc),front-th); o=vec4(float(t),bc,1.0); }`;
+  vec3 hp=org+dir*th; oH=vec4(hp,1.0); oHN=vec4(bkNrm(t,bc),front-th); vec2 tp=bkTriPack(t); o=vec4(tp.x,bc,tp.y); }`;
 /* 3. what each map records (value in rgb, coverage in a) */
 const BK_FS_OUT=BK_TRACE+`uniform sampler2D uGR; uniform sampler2D uGP; uniform sampler2D uGN; uniform sampler2D uGT; uniform sampler2D uHP; uniform sampler2D uHN; uniform sampler2D uHT;
-uniform int uKind; uniform int uMatch; uniform int uFlipY; uniform float uRange; uniform vec3 uBMin; uniform vec3 uBSize; uniform int uRays; uniform float uDist; uniform float uSeed; uniform int uSelf;
+uniform int uKind; uniform int uMatch; uniform int uFlipY; uniform float uRange; uniform vec3 uBMin; uniform vec3 uBSize; uniform int uRays; uniform float uDist; uniform uint uSeed; uniform int uSelf; uniform ivec2 uOrg; uniform int uSS;
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 P=texelFetch(uGP,p,0); if(P.w<0.5){ o=vec4(0); return; }
   vec3 Nl=normalize(texelFetch(uGN,p,0).xyz); vec4 H=texelFetch(uHP,p,0),HN=texelFetch(uHN,p,0); bool hit=H.w>0.75; vec3 Nh=hit&&uSelf==0?normalize(HN.xyz):Nl; vec3 X=hit?H.xyz:P.xyz;
   if(uKind==0){ /* tangent-space normal */ vec4 Tn=texelFetch(uGT,p,0); vec3 T=normalize(Tn.xyz-Nl*dot(Nl,Tn.xyz)),B=cross(Nl,T)*(Tn.w<0.0?-1.0:1.0);
@@ -115,11 +180,20 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 P=texelFetch(uGP,p,0); if(P.w<
   if(uKind==2){ o=vec4(Nh*0.5+0.5,1.0); return; }
   if(uKind==7){ /* curvature of the low-poly itself */ o=vec4(vec3(clamp(0.5+texelFetch(uGR,p,0).w,0.0,1.0)),1.0); return; }
   if(uKind==3){ o=vec4(clamp((X-uBMin)/uBSize,0.0,1.0),1.0); return; }
-  if(uKind==4){ /* ID colours */ vec4 ti=texelFetch(uHT,p,0); o=vec4(hit&&ti.w>0.5?bkCol(int(ti.x),ti.yz):vec3(0.0),1.0); return; }
-  /* ambient occlusion (5) and thickness (6): rays over the hemisphere */
+  if(uKind==4){ /* ID colours */ vec4 ti=texelFetch(uHT,p,0); o=vec4(hit&&ti.w>0.5?bkCol(bkTriUnpack(ti),ti.yz):vec3(0.0),1.0); return; }
+  /* ambient occlusion (5) and thickness (6): rays over the hemisphere.
+     The rays of one output pixel are shared out over its anti-aliasing samples, as one evenly spread
+     (Hammersley) set turned by a per-pixel random angle: smooth results from few rays, no banding.
+     They leave from the hit triangle's own face (which they skip), so its facets cannot shade it. */
   if(uMatch==1) bkPart=int(texelFetch(uGN,p,0).w+0.5);
-  vec3 n=uKind==5?Nh:-Nh; vec3 org=X+n*max(uDist*0.002,1e-4); float acc=0.0;
-  for(int i=0;i<256;i++){ if(i>=uRays) break; vec2 r=vec2(bkHash(vec2(p)+float(i)*1.37,uSeed),bkHash(vec2(p).yx+float(i)*2.11,uSeed+3.1)); vec3 d=bkHemi(n,r); float th; vec2 bc;
+  vec3 n=uKind==5?Nh:-Nh, ng=n; vec4 ti=texelFetch(uHT,p,0);
+  if(hit&&uSelf==0&&ti.w>0.5){ int tt=bkTriUnpack(ti); bkSkip=tt; vec3 v0=bkF(uTris,tt*3).xyz; vec3 g=cross(bkF(uTris,tt*3+1).xyz-v0,bkF(uTris,tt*3+2).xyz-v0);
+    if(dot(g,g)>1e-30){ g=normalize(g); ng=dot(g,n)<0.0?-g:g; } }
+  vec3 org=X+ng*max(uDist*0.0005,1e-5); float acc=0.0;
+  ivec2 fp=p+uOrg; ivec2 px=fp/uSS, sub=fp-px*uSS; uint j=uint(sub.y*uSS+sub.x), per=uint(uSS*uSS), total=uint(uRays)*per;
+  uint h=bkPcg(uint(px.x)*1973u+bkPcg(uint(px.y)*9277u+uSeed)); vec2 rot=vec2(bkRnd(h),bkRnd(h^0x9E3779B9u));
+  for(int i=0;i<256;i++){ if(i>=uRays) break; uint gi=uint(i)*per+j; vec2 r=fract(vec2((float(gi)+0.5)/float(total),bkRadInv(gi))+rot);
+    vec3 d=bkHemi(n,r); float dg=dot(d,ng); if(dg<0.0) d=d-2.0*dg*ng; float th; vec2 bc;
     int t=bkTrace(org,d,uDist,uKind==5,th,bc); if(uKind==5) acc+=t>=0?1.0:0.0; else acc+=t>=0?th/uDist:1.0; }
   float v=acc/float(uRays); o=vec4(vec3(uKind==5?1.0-v:v),1.0); }`;
 /* 4. tile → final image: average the samples of each output pixel, keeping coverage */
@@ -169,13 +243,15 @@ function bkRayDirs(L,average){if(!average)return L.nrm.slice();const n=L.pos.len
   for(let i=0;i<n;i++){const k=key(i);let a=acc.get(k);if(!a){a=[0,0,0];acc.set(k,a);}a[0]+=L.nrm[i*3];a[1]+=L.nrm[i*3+1];a[2]+=L.nrm[i*3+2];}
   const out=new Float32Array(n*3);for(let i=0;i<n;i++){const a=acc.get(key(i)),l=Math.hypot(...a)||1;out[i*3]=a[0]/l;out[i*3+1]=a[1]/l;out[i*3+2]=a[2]/l;}return out;}
 
+/* AO and thickness rays per anti-aliasing sample: the pixel's rays shared out over its samples (at least 4 each) */
+const bkRaysPer=(rays,SS)=>Math.max(4,Math.ceil(rays/(SS*SS)));
 const BK_KINDS={normal:0,height:1,wnormal:2,position:3,id:4,ao:5,thick:6,mcurv:7};
 const nextTick=()=>new Promise(r=>setTimeout(r,0));
 /* bake: low and high (already in the same space), settings; returns {kind: target} at size W×H */
 async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.sizeH||o.size,SS=o.ss,FW=W*SS,FH=H*SS,TILE=Math.min(1024,Math.max(FW,FH));
   /* low-poly only: rays find the low-poly itself (a hair's breadth away), so AO, thickness, ID and the rest work the same */
   const self=false,solo=!high;if(solo){o=Object.assign({},o,{front:.003,back:.003,cage:null,average:false,match:false});low.vertCurv=meshCurvature(low);}
-  const hg=o.hg||bkHighGPU(high||low,progress.step,o.kinds.includes('id'));if(progress.cancelled){if(!o.hg)bkFreeHigh(hg);return null;}
+  const hg=o.hg||await bkHighGPU(high||low,progress.step,o.kinds.includes('id'));if(progress.cancelled){if(!o.hg)bkFreeHigh(hg);return null;}
   low.ray=o.cage?o.cage:bkRayDirs(low,o.average);const lg=bkLowGPU(low);
   const kinds=o.kinds.filter(k=>k!=='curv');const outDepth=canFloat?16:8;
   /* o.acc: running sums kept from an earlier bake (re-bake part of it); o.rect: only this part (output pixels) */
@@ -186,7 +262,7 @@ async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.si
   const bsize=bmin.map((v,c)=>Math.max(1e-6,bmax[c]-v));
   const tiles=[];for(let y=0;y<FH;y+=TILE)for(let x=0;x<FW;x+=TILE){const t=[x,y,Math.min(TILE,FW-x),Math.min(TILE,FH-y)];if(t[0]<RR[2]&&t[0]+t[2]>RR[0]&&t[1]<RR[3]&&t[1]+t[3]>RR[1])tiles.push(t);}
   const heavy=kinds.filter(k=>k==='ao'||k==='thick').length,steps=tiles.length*(2+kinds.length+heavy*6);let done=0;const tick=async()=>{done++;progress.set(done/steps);await nextTick();};
-  const SUB=o.rays>64?128:256;
+  const SUB=bkRaysPer(o.rays,SS)>64?128:256;
   try{
   for(const [tx,ty,tw,th] of tiles){if(progress.cancelled)break;
     /* the part of this tile to work on (tile coordinates) */
@@ -203,7 +279,7 @@ async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.si
     for(const k of kinds){if(progress.cancelled)break;const kind=BK_KINDS[k],rayed=k==='ao'||k==='thick',sub=rayed?SUB:Math.max(tw,th);
       gl.bindFramebuffer(gl.FRAMEBUFFER,OUT.fbo);gl.viewport(0,0,tw,th);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.enable(gl.SCISSOR_TEST);
       const U={uNodes:hg.nodes,uTris:hg.tris,uTN:hg.nrm,uTC:hg.col,uGR:G.tex[3],uGP:G.tex[0],uGN:G.tex[1],uGT:G.tex[2],uHP:HB.tex[0],uHN:HB.tex[1],uHT:HB.tex[2],uKind:{int:kind},uMatch:!!o.match,uFlipY:o.dx,uRange:Math.max(o.front,o.back),
-        uBMin:bmin,uBSize:bsize,uRays:{int:k==='ao'?o.rays:Math.max(8,o.rays>>1)},uDist:k==='ao'?o.aoDist:o.thickDist,uSeed:o.seed||1.3,uSelf:self};
+        uBMin:bmin,uBSize:bsize,uRays:{int:bkRaysPer(k==='ao'?o.rays:Math.max(8,o.rays>>1),SS)},uDist:k==='ao'?o.aoDist:o.thickDist,uSeed:{uint:Math.floor((o.seed||1.3)*1e6)},uSelf:self,uOrg:{iv2:[tx,ty]},uSS:{int:SS}};
       let n=0;for(let sy=ly0;sy<ly1;sy+=sub)for(let sx=lx0;sx<lx1;sx+=sub){gl.bindFramebuffer(gl.FRAMEBUFFER,OUT.fbo);gl.viewport(0,0,tw,th);gl.scissor(sx,sy,Math.min(sub,lx1-sx),Math.min(sub,ly1-sy));useProg(P.out,U);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.flush();
         if(rayed&&++n%4===0){await nextTick();if(progress.cancelled)break;}}
       gl.disable(gl.SCISSOR_TEST);
