@@ -89,12 +89,18 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
     el('p',{class:'note',text:v3.mesh?'Uses the model: world directions.':'On the flat texture it uses the normal map (up = the top of the texture).'}));
   if(r.kind==='grad')box.append(sel('ms_axis','Towards',[['up','Top'],['down','Bottom'],['x','Right'],['-x','Left'],['z','Front'],['-z','Back']],'axis'),S('ms_from','From','from',0,1,.01,pct),S('ms_to','To','to',0,1,.01,pct),inv());
   if(r.kind==='noise')box.append(sel('ms_type','Pattern',MS_NOISES,'type'),S('ms_scale','Size','scale',.5,40,.5),S('ms_con','Contrast','contrast',.2,8,.05),S('ms_lvl','Level','level',-1,1,.01),S('ms_seed','Seed','seed',1,99,1,v=>String(v)),
-    chk('ms_tri','Triplanar on the model (no seams)',!!p.tri,v=>ed(x=>{x.p.tri=v;})),inv());
+    inv(),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]));
   if(r.kind==='image')box.append(el('div',{class:'row wrap'},el('span',{class:'note',text:p.name||'No picture'}),el('button',{class:'btn sm',text:'Choose picture…',onclick:()=>msPickImage(L,r)})),
-    S('ms_tile','Tile','tile',.25,16,.25,v=>v+'×'),S('ms_rot','Turn','rot',-180,180,1,v=>v+'°'),chk('ms_tri','Triplanar on the model',!!p.tri,v=>ed(x=>{x.p.tri=v;})),inv());
+    S('ms_tile','Tile','tile',.25,16,.25,v=>v+'×'),inv(),pxfBox(L,r,PXF_MODES));
   if(r.kind==='ref'){const os=allNodes(doc.root).filter(n=>n!==L&&n.mask);box.append(sel('ms_ref','Layer',os.map(o=>[o.name,o.name]),'name'),inv(),el('p',{class:'note',text:'Follows that layer’s mask, live.'}));}
   if(r.kind==='gen'){const has=[msMeshTex('curv')&&'curvature',msMeshTex('ao')&&'AO',v3.mesh&&'the model'].filter(Boolean);
     box.append(sel('ms_g','Preset',MS_GENS,'g'),S('ms_amt','Amount','amount',0,1,.01,pct),S('ms_w','Width','width',0,1,.01,pct),S('ms_brk','Breakup','breakup',0,1,.01,pct),S('ms_con','Contrast','contrast',.3,6,.05),
-      S('ms_scale','Noise size','scale',.5,40,.5),S('ms_seed','Seed','seed',1,99,1,v=>String(v)),inv(),
+      S('ms_scale','Noise size','scale',.5,40,.5),S('ms_seed','Seed','seed',1,99,1,v=>String(v)),inv(),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),
       el('p',{class:'note',text:'Uses '+(has.length?has.join(', '):'the document’s maps')+'. Bake curvature and AO for the best results.'}));}}
 $('#lFxAdd').addEventListener('click',fxAddMenu);
+
+/* a row's projection: its mode, and the offset/rotation/scale fields (the gizmo or the 2D handles move them too) */
+function pxfBox(L,r,modes){const m=pxfRowMode(r),g=seg(modes,m,v=>{msEdit(L,r,x=>{x.p.proj=v;delete x.p.tri;});renderMatEd(true);requestRender(true);},'Projection');g.classList.add('tight');g.id='ms_proj';
+  return el('div',{class:'dlg-grid'},el('div',{class:'sub',text:'Projection'}),g,
+    m==='planar'?chk('ms_rep','Repeat',r.p.rep!==false,v=>msEdit(L,r,x=>{x.p.rep=v;})):null,
+    pxfFields(()=>pxfOf(r.p),fn=>msEdit(L,r,x=>fn(pxfOf(x.p))),m,()=>renderMatEd(true)));}

@@ -6,14 +6,20 @@
    is decided by the mask, so painting on a fill layer paints its mask. The layer stays live: double-click it to
    change the material. L.fill = {maps:{k:{on,src,c,v,tile,rot,name}},proj,triSharp,hStr,name};
    the chosen images are L._fillImg[k] (kept in .gouache files). */
-const FS_FILLIMG=`uniform sampler2D uSrc; uniform float uTile; uniform float uRot; uniform int uGrey; uniform int uTri; uniform sampler2D uPos; uniform sampler2D uNrm;
-uniform float uSharp; uniform float uHStr; uniform int uHeight; uniform int uNormal; in vec2 vUV;
+/* projections (0.23.1): 0 UV (uUvM: offset/turn/scale), 1 triplanar, 2 planar, 3 spherical; uInv takes a world position
+   into the projection's own space (its offset, rotation and scale) */
+const FS_FILLIMG=`uniform sampler2D uSrc; uniform float uTile; uniform float uRot; uniform int uGrey; uniform int uProj; uniform sampler2D uPos; uniform sampler2D uNrm;
+uniform float uSharp; uniform float uHStr; uniform int uHeight; uniform int uNormal; uniform mat4 uInv; uniform mat3 uUvM; uniform int uRep; in vec2 vUV;
 vec4 samp(vec2 t){ float c=cos(uRot),s=sin(uRot); t=mat2(c,s,-s,c)*(t-0.5)+0.5; return texture(uSrc,t); }
+vec4 sampL(vec2 t){ float c=cos(uRot),s=sin(uRot); t=mat2(c,s,-s,c)*(t-0.5)+0.5; return textureLod(uSrc,t,0.0); }
 void main(){ vec4 s;
-  if(uTri==1){ ivec2 q=ivec2(gl_FragCoord.xy); vec4 P=texelFetch(uPos,q,0); if(P.a<0.5){ o=vec4(0.0); return; }
-    vec3 N=normalize(texelFetch(uNrm,q,0).xyz+1e-5); vec3 w=pow(abs(N),vec3(uSharp)); w/=max(w.x+w.y+w.z,1e-5); vec3 p=P.xyz*uTile*0.5;
-    s=samp(p.zy)*w.x+samp(p.xz)*w.y+samp(p.xy)*w.z; }
-  else s=samp(vUV*uTile);
+  if(uProj>=1){ ivec2 q=ivec2(gl_FragCoord.xy); vec4 P=texelFetch(uPos,q,0); if(P.a<0.5){ o=vec4(0.0); return; }
+    vec3 L=(uInv*vec4(P.xyz,1.0)).xyz;
+    if(uProj==1){ vec3 N=normalize(mat3(uInv)*texelFetch(uNrm,q,0).xyz+1e-5); vec3 w=pow(abs(N),vec3(uSharp)); w/=max(w.x+w.y+w.z,1e-5); vec3 p=L*uTile*0.5;
+      s=samp(p.zy)*w.x+samp(p.xz)*w.y+samp(p.xy)*w.z; }
+    else if(uProj==2){ vec2 t=vec2(L.x*0.5+0.5,0.5-L.y*0.5); if(uRep==0&&(t.x<0.0||t.y<0.0||t.x>1.0||t.y>1.0)){ o=vec4(0.0); return; } s=samp(t*uTile); }
+    else { vec3 d=normalize(L+vec3(0.0,0.0,1e-6)); vec2 t=vec2(atan(d.x,d.z)/6.2831853+0.5,0.5-asin(clamp(d.y,-1.0,1.0))/3.1415927); s=sampL(t*uTile); } }
+  else s=samp((uUvM*vec3(vUV,1.0)).xy*uTile);
   vec3 c=s.a>1e-6?s.rgb/s.a:vec3(0.0);
   if(uGrey==1){ float g=dot(c,vec3(0.299,0.587,0.114)); if(uHeight==1) g=clamp(0.5+(g-0.5)*uHStr,0.0,1.0); o=vec4(vec3(g),1.0); return; }
   if(uNormal==1){ o=vec4(c,1.0); return; }
@@ -47,13 +53,13 @@ function fillPosMaps(){const m=v3.mesh,g=v3.gpu;if(!m||!g||m.noUV)return null;co
     for(let n=0;n<4;n++){run(P_FILLPOS.dil,tmp,{uSrc:t.tex});blit(tmp,t,0,0,doc.w,doc.h,0,0);}}
   disposeTarget(tmp);fillPosC={key,m,pos,nrm};return fillPosC;}
 /* redraw a fill layer's maps from its settings (image maps need their picture in memory) */
-function fillRender(L,only){const f=L.fill;if(!f)return;const tri=f.proj==='tri'?fillPosMaps():null;
+function fillRender(L,only){const f=L.fill;if(!f)return;const tri=pxfIs3D(f.proj)?fillPosMaps():null;
   for(const k of fillMapsOf()){if(only&&k!==only)continue;const s=f.maps[k]||(f.maps[k]=fillDefaults().maps[k]);
     if(!s.on){const t=mapT(L,k);if(t&&!t.empty)clearTarget(t);continue;}
     const T=ensureMapTarget(L,k),grey=MAP_DEFS[k].grey;
     if(s.src==='image'||s.src==='baked'||s.src==='conv'){const bk=s.src==='baked'||s.src==='conv',img=bk?doc.meshMaps&&doc.meshMaps[s.mm]:L._fillImg&&L._fillImg[k];if(!img){if(k==='normal')clearTarget(T,[.5,.5,1,1]);continue;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
-      run(P_FILLIMG,T,{uSrc:img.tex,uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uGrey:{int:grey?1:0},uTri:{int:tri&&!bk?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,
-        uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}});continue;}
+      run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uRep:{int:f.rep===false?0:1},
+        uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}},(tri&&!bk?pxfUniforms(f.proj,f.xf):pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf))));continue;}
     if(k==='normal'){clearTarget(T,[.5,.5,1,1]);continue;}
     const c=grey?[s.v,s.v,s.v]:(s.c||[s.v,s.v,s.v]);clearTarget(T,[c[0],c[1],c[2],1]);}
   if(doc.map==='base')delete L.blankBase;L.lookVer=(L.lookVer||0)+1;scheduleThumb(L);requestRender(true);}
@@ -63,7 +69,7 @@ function cmdNewFillLayer(preset){if(ui.mode==='anim'){toast('Fill layers are ava
   if(ui.mode!=='paint'&&ui.mode!=='p3d'&&typeof setMode==='function')setMode('paint',true);
   const L=newLayerObj(preset&&preset.name||'Fill '+(++fillCount));doc.count--;L.fill=fillDefaults();
   if(preset&&preset.maps){for(const k in L.fill.maps)L.fill.maps[k].on=false;for(const k in preset.maps)if(L.fill.maps[k])Object.assign(L.fill.maps[k],{on:true,src:'value'},preset.maps[k]);
-    for(const k of ['proj','triSharp','hStr'])if(preset[k]!=null)L.fill[k]=preset[k];L.fill.name=preset.name;
+    for(const k of ['proj','triSharp','hStr','xf','rep'])if(preset[k]!=null)L.fill[k]=JSON.parse(JSON.stringify(preset[k]));L.fill.name=preset.name;
     if(preset.imgs){L._fillImg={};for(const k in preset.imgs){const s=preset.imgs[k],t=makeTarget(s.w,s.h,8,true);blit(s,t,0,0,s.w,s.h,0,0);L._fillImg[k]=t;}}
     const need=Object.keys(preset.maps).filter(k=>preset.maps[k].on!==false&&!doc.maps.includes(k)&&MAP_DEFS[k]&&!(doc.workflow==='spec'&&(k==='rough'||k==='metal')));
     if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the material');}
@@ -104,8 +110,10 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
   box.replaceChildren();
   const nm=el('input',{type:'text',id:'fl_name',value:L.name,'aria-label':'Material name'});nm.addEventListener('input',()=>edit(()=>{L.name=nm.value||L.name;W.name=L.name;renderLayers();},false));
   box.append(el('div',{class:'matHead'},prev.el,el('div',{class:'dlg-grid'},nm,
-    el('div',{class:'sub',text:'Projection'}),seg([['uv','UV'],['tri','Triplanar']],W.proj||'uv',v=>edit(()=>{W.proj=v;if(v==='tri'&&!fillPosMaps())toast('Triplanar needs a model: open the 3D view or 3D Paint. Until then images follow the UVs.');},null,true),'Projection'),
-    W.proj==='tri'?makeSlider({id:'fl_sharp',label:'Blend',min:1,max:16,step:.5,value:W.triSharp||4,fmt:v=>v<3?'soft':v>9?'sharp':'medium',onInput:v=>edit(()=>{W.triSharp=v;})}).el:null)));
+    el('div',{class:'sub',text:'Projection'}),(()=>{const g=seg(PXF_MODES,W.proj||'uv',v=>edit(()=>{W.proj=v;if(pxfIs3D(v)&&!fillPosMaps())toast('This projection needs a model: open the 3D view or 3D Paint. Until then images follow the UVs.');},null,true),'Projection');g.classList.add('tight');g.id='fl_proj';return g;})(),
+    W.proj==='tri'?makeSlider({id:'fl_sharp',label:'Blend',min:1,max:16,step:.5,value:W.triSharp||4,fmt:v=>v<3?'soft':v>9?'sharp':'medium',onInput:v=>edit(()=>{W.triSharp=v;})}).el:null,
+    W.proj==='planar'?chk('fl_rep','Repeat',W.rep!==false,v=>edit(()=>{W.rep=v;},null)):null,
+    pxfFields(()=>pxfOf(W),fn=>edit(()=>fn(pxfOf(W)),null),W.proj||'uv',()=>renderMatEd(true)))));
   const M=doc.meshMaps||{},mks=Object.keys(M).filter(k=>!k.startsWith('cv:')),cks=Object.keys(M).filter(k=>k.startsWith('cv:')),keys=MAT_CH.filter(k=>fillMapsOf().includes(k));
   for(const k of keys){const s=W.maps[k]||(W.maps[k]=fillDefaults().maps[k]),grey=MAP_DEFS[k].grey,isN=k==='normal';
     const row=el('div',{class:'fillrow'+(s.on?'':' off')});

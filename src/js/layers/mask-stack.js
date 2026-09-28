@@ -65,6 +65,9 @@ const MS_SURF_GLSL=`uniform sampler2D uPos; uniform sampler2D uNrm; uniform int 
 vec3 surfP(vec2 uv){ if(uHasPos==1){ vec4 P=texelFetch(uPos,ivec2(gl_FragCoord.xy),0); if(P.a>0.5) return (P.xyz-uBmin)/max(uBsize,vec3(1e-4)); } return vec3(uv.x,1.0-uv.y,0.5); }
 vec3 surfN(){ if(uHasPos==1){ vec4 P=texelFetch(uPos,ivec2(gl_FragCoord.xy),0); if(P.a>0.5) return normalize(texelFetch(uNrm,ivec2(gl_FragCoord.xy),0).xyz+1e-5); }
   if(uHasDocN==1){ vec3 n=texture(uDocN,gl_FragCoord.xy/uSz).rgb*2.0-1.0; return normalize(vec3(n.x,n.y,n.z)); } return vec3(0.0,0.0,1.0); }
+/* where a pattern is sampled: in the projection's own 3D space (World), or the texture's (UV), with its transform */
+uniform mat4 uInv; uniform mat3 uUvM; uniform int uWorld;
+vec3 surfQ(vec2 uv){ if(uWorld==1&&uHasPos==1){ vec4 P=texelFetch(uPos,ivec2(gl_FragCoord.xy),0); if(P.a>0.5) return (uInv*vec4(P.xyz,1.0)).xyz; } return vec3((uUvM*vec3(uv,1.0)).xy,0.0); }
 /* "up" for the flat texture: towards the top of the texture (green of the normal map) */
 vec3 upOf(){ return uHasPos==1?vec3(0.0,1.0,0.0):vec3(0.0,1.0,0.0); }`;
 const FS_MSBLEND=`uniform sampler2D uA; uniform sampler2D uB; uniform int uMode; uniform float uOp;
@@ -74,20 +77,20 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); float a=texelFetch(uA,p,0).r; vec4 
   o=vec4(vec3(mix(a,clamp(r,0.0,1.0),cov*uOp)),1.0); }`;
 /* one row's own picture (grey, coverage in alpha): 0 a texture's brightness, 1 a flat value, 2 direction, 3 gradient, 4 noise */
 const FS_MSSRC=MS_NOISE_GLSL+MS_SURF_GLSL+`
-uniform int uKind; uniform sampler2D uT; uniform float uV; uniform vec3 uDir; uniform float uA; uniform float uB; uniform float uC; uniform int uType; uniform int uTri; uniform float uScale; uniform int uInv; in vec2 vUV;
+uniform int uKind; uniform sampler2D uT; uniform float uV; uniform vec3 uDir; uniform float uA; uniform float uB; uniform float uC; uniform int uType; uniform int uTri; uniform float uScale; uniform int uNeg; in vec2 vUV;
 void main(){ vec2 uv=gl_FragCoord.xy/uSz; float m=0.0,cov=1.0;
   if(uKind==0){ vec4 c=texture(uT,uv); m=c.a>1e-5?dot(c.rgb/c.a,vec3(0.299,0.587,0.114)):0.0; }
   else if(uKind==1) m=uV;
   else if(uKind==2){ float d=dot(surfN(),normalize(uDir)); m=smoothstep(uA-uB,uA+uB,d); }
   else if(uKind==3){ vec3 P=surfP(uv); float t=dot(P,abs(uDir)); if(uDir.x+uDir.y+uDir.z<0.0) t=1.0-t; m=clamp((t-uA)/max(uB-uA,1e-3),0.0,1.0); }
-  else { vec3 q=(uTri==1&&uHasPos==1?surfP(uv)*uBsize/max(max(uBsize.x,uBsize.y),uBsize.z):vec3(uv,0.0))*uScale; float n=noiseOf(uType,q); m=clamp((n-0.5)*uC+0.5+uV,0.0,1.0); }
-  if(uInv==1) m=1.0-m; o=vec4(vec3(m)*cov,cov); }`;
+  else { vec3 q=surfQ(uv)*uScale; float n=noiseOf(uType,q); m=clamp((n-0.5)*uC+0.5+uV,0.0,1.0); }
+  if(uNeg==1) m=1.0-m; o=vec4(vec3(m)*cov,cov); }`;
 /* generators: the Mask Builder presets, made from curvature, AO, direction and height with noise to break them up */
 const FS_MSGEN=MS_NOISE_GLSL+MS_SURF_GLSL+`
-uniform sampler2D uCurv; uniform int uHasCurv; uniform sampler2D uAO; uniform int uHasAO; uniform int uG; uniform float uAmt; uniform float uWidth; uniform float uBreak; uniform float uCon; uniform float uScale; uniform int uInv;
+uniform sampler2D uCurv; uniform int uHasCurv; uniform sampler2D uAO; uniform int uHasAO; uniform int uG; uniform float uAmt; uniform float uWidth; uniform float uBreak; uniform float uCon; uniform float uScale; uniform int uNeg;
 float curvOf(vec2 uv){ return uHasCurv==1?texture(uCurv,uv).r:0.5; }
 float aoOf(vec2 uv){ return uHasAO==1?texture(uAO,uv).r:1.0; }
-void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(); vec3 q=(uHasPos==1?P*uBsize/max(max(uBsize.x,uBsize.y),uBsize.z):vec3(uv,0.0))*uScale;
+void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(); vec3 q=surfQ(uv)*uScale;
   float c=curvOf(uv),edge=clamp((c-0.5)*2.0,0.0,1.0),cav=clamp((0.5-c)*2.0,0.0,1.0),ao=aoOf(uv),occ=1.0-ao,up=dot(N,vec3(0.0,1.0,0.0)),n=fbm(q),w=uWidth;
   float b=0.0;
   if(uG==0) b=edge*(0.6+w*1.4);
@@ -105,7 +108,7 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(); vec3 q=(uH
   else if(uG==12) b=(edge*0.4+cav*0.4+occ*0.3)*fbm(vec3(q.x*4.0,q.y*0.12,q.z*4.0))*(1.0+w*1.5);
   else b=smoothstep(-0.2,0.9,up)*(0.4+w*0.8)*(0.7+fbm(q*0.5)*0.6);
   float v=b+(n-0.5)*uBreak*1.2, thr=1.0-uAmt, s=0.35/max(uCon,0.3);
-  float m=smoothstep(thr-s,thr+s,v); if(uInv==1) m=1.0-m; o=vec4(vec3(m),1.0); }`;
+  float m=smoothstep(thr-s,thr+s,v); if(uNeg==1) m=1.0-m; o=vec4(vec3(m),1.0); }`;
 /* our own mask filters: grow/shrink (min/max around), warp (pushed by noise), slope blur (smeared along a noise) */
 const FS_MSOWN=MS_NOISE_GLSL+`uniform sampler2D uSrc; uniform int uOwn; uniform float uR; uniform float uS; uniform float uScale; uniform vec2 uSz;
 void main(){ vec2 uv=gl_FragCoord.xy/uSz; float r=0.0;
@@ -138,29 +141,32 @@ function msSurf(){const tri=typeof fillPosMaps==='function'&&v3.mesh&&(ui.mode==
   const m=v3.mesh;if(!m._bb){const p=m.pos,mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];for(let i=0;i<p.length;i+=3)for(let j=0;j<3;j++){mn[j]=Math.min(mn[j],p[i+j]);mx[j]=Math.max(mx[j],p[i+j]);}m._bb={mn,sz:mx.map((v,j)=>v-mn[j])};}
   return {uPos:tri.pos.tex,uNrm:tri.nrm.tex,uHasPos:{int:1},uBmin:m._bb.mn,uBsize:m._bb.sz};}
 function msCtx(){const ctx={tmp:[],doc:{},surf:msSurf()};const dn=msDocMap('normal',ctx);
-  Object.assign(ctx.surf,{uDocN:dn?dn.tex:dummy,uHasDocN:{int:dn?1:0},uSz:[doc.w,doc.h]});return ctx;}
+  Object.assign(ctx.surf,{uDocN:dn?dn.tex:dummy,uHasDocN:{int:dn?1:0},uSz:[doc.w,doc.h],uWorld:{int:0}},pxfUniforms('uv',null));return ctx;}
 function msCtxFree(ctx){for(const t of ctx.tmp)if(t)release(t);}
+/* a row's projection uniforms: its mode and transform */
+const msPx=(r,ctx)=>{const m=pxfRowMode(r);return Object.assign({},ctx.surf,pxfUniforms(m,r.p.xf),{uWorld:{int:m==='world'?1:0}});};
 const MS_AXES={up:[0,1,0],down:[0,-1,0],x:[1,0,0],'-x':[-1,0,0],z:[0,0,1],'-z':[0,0,-1]};
 
 /* one row's picture (grey, coverage in alpha): {t, pooled} or null */
 function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquireD(depth);
   if(r.kind==='paint'){const t=ov&&ov.row===r?ov.t:r.t;return t?{t,pooled:false}:null;}
   if(r.kind==='fill'){const o=out();clearTarget(o,[p.v,p.v,p.v,1]);return {t:o,pooled:true};}
-  const lum=(tex,inv)=>{const o=out();run(P.src,o,Object.assign({uKind:{int:0},uT:tex,uInv:{int:inv?1:0},uSeed:0},ctx.surf));return {t:o,pooled:true};};
+  const lum=(tex,inv)=>{const o=out();run(P.src,o,Object.assign({uKind:{int:0},uT:tex,uNeg:{int:inv?1:0},uSeed:0},ctx.surf));return {t:o,pooled:true};};
   if(r.kind==='mesh'){const t=msMeshTex(p.k)||msDocMap(p.k,ctx);return t?lum(t.tex,p.inv):null;}
   if(r.kind==='ref'){const o=r._ref&&r._ref.mask&&inDoc(r._ref)?r._ref:(allNodes(doc.root).find(n=>n.name===p.name&&n.mask&&n!==L)||null);if(!o||o===L||(guard||[]).includes(o))return null;r._ref=o;
     if(msHas(o))msUpdate(o,[...(guard||[]),L]);return lum(o.mask.target.tex,p.inv);}
-  if(r.kind==='image'){if(!r.t)return null;if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);const tri=p.tri&&typeof fillPosMaps==='function'?fillPosMaps():null,o=out();
-    run(P_FILLIMG,o,{uSrc:r.t.tex,uTile:Math.max(.05,p.tile||1),uRot:(p.rot||0)*Math.PI/180,uGrey:{int:1},uTri:{int:tri?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uSharp:4,uHStr:1,uHeight:{int:0},uNormal:{int:0}});
-    if(p.inv){const o2=out();run(P.src,o2,Object.assign({uKind:{int:0},uT:o.tex,uInv:{int:1},uSeed:0},ctx.surf));release(o);return {t:o2,pooled:true};}return {t:o,pooled:true};}
+  if(r.kind==='image'){if(!r.t)return null;if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);const pm=pxfRowMode(r),tri=pxfIs3D(pm)&&typeof fillPosMaps==='function'?fillPosMaps():null,o=out();
+    run(P_FILLIMG,o,Object.assign({uSrc:r.t.tex,uTile:Math.max(.05,p.tile||1),uRot:(p.rot||0)*Math.PI/180,uGrey:{int:1},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uSharp:4,uHStr:1,uHeight:{int:0},uNormal:{int:0},uRep:{int:p.rep===false?0:1}},
+      tri?pxfUniforms(pm,p.xf):pxfUniforms('uv',pxfIs3D(pm)?null:p.xf)));
+    if(p.inv){const o2=out();run(P.src,o2,Object.assign({uKind:{int:0},uT:o.tex,uNeg:{int:1},uSeed:0},ctx.surf));release(o);return {t:o2,pooled:true};}return {t:o,pooled:true};}
   if(r.kind==='id'){const M=doc.meshMaps&&doc.meshMaps.id;if(!M||!p.cols.length)return null;if(!P_IDSEL)P_IDSEL=program(FS_IDSEL);const o=out(),cols=new Float32Array(24);p.cols.slice(0,8).forEach((c,i)=>cols.set(c,i*3));
     run(P_IDSEL,o,{uId:M.tex,uSz:[o.w,o.h],uCols:{v3:cols},uN:{int:Math.min(8,p.cols.length)},uTol:p.tol,uSoft:p.soft,uInv:{int:p.inv?1:0}});return {t:o,pooled:true};}
-  if(r.kind==='dir'){const o=out(),a=(p.angle||50)*Math.PI/180;run(P.src,o,Object.assign({uKind:{int:2},uDir:MS_AXES[p.axis]||[0,1,0],uA:Math.cos(a),uB:Math.max(.01,(p.soft||15)/90),uInv:{int:p.inv?1:0},uSeed:0},ctx.surf));return {t:o,pooled:true};}
-  if(r.kind==='grad'){const o=out();run(P.src,o,Object.assign({uKind:{int:3},uDir:MS_AXES[p.axis]||[0,1,0],uA:p.from||0,uB:p.to==null?1:p.to,uInv:{int:p.inv?1:0},uSeed:0},ctx.surf));return {t:o,pooled:true};}
-  if(r.kind==='noise'){const o=out();run(P.src,o,Object.assign({uKind:{int:4},uType:{int:Math.max(0,MS_NOISES.findIndex(n=>n[0]===p.type))},uScale:p.scale||6,uC:p.contrast||1,uV:p.level||0,uTri:{int:p.tri?1:0},uInv:{int:p.inv?1:0},uSeed:p.seed||1},ctx.surf));return {t:o,pooled:true};}
+  if(r.kind==='dir'){const o=out(),a=(p.angle||50)*Math.PI/180;run(P.src,o,Object.assign({uKind:{int:2},uDir:MS_AXES[p.axis]||[0,1,0],uA:Math.cos(a),uB:Math.max(.01,(p.soft||15)/90),uNeg:{int:p.inv?1:0},uSeed:0},ctx.surf));return {t:o,pooled:true};}
+  if(r.kind==='grad'){const o=out();run(P.src,o,Object.assign({uKind:{int:3},uDir:MS_AXES[p.axis]||[0,1,0],uA:p.from||0,uB:p.to==null?1:p.to,uNeg:{int:p.inv?1:0},uSeed:0},ctx.surf));return {t:o,pooled:true};}
+  if(r.kind==='noise'){const o=out();run(P.src,o,Object.assign(msPx(r,ctx),{uKind:{int:4},uType:{int:Math.max(0,MS_NOISES.findIndex(n=>n[0]===p.type))},uScale:p.scale||6,uC:p.contrast||1,uV:p.level||0,uNeg:{int:p.inv?1:0},uSeed:p.seed||1}));return {t:o,pooled:true};}
   if(r.kind==='gen'){const o=out(),curv=msMeshTex('curv')||msMeshTex('cv:curv')||msDocMap('curv',ctx)||msModelCurv(),ao=msMeshTex('ao')||msMeshTex('cv:ao')||msDocMap('ao',ctx);
     run(P.gen,o,Object.assign({uG:{int:Math.max(0,MS_GENS.findIndex(g=>g[0]===p.g))},uCurv:curv?curv.tex:dummy,uHasCurv:{int:curv?1:0},uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},
-      uAmt:p.amount,uWidth:p.width,uBreak:p.breakup,uCon:p.contrast,uScale:p.scale||6,uSeed:p.seed||1,uInv:{int:p.inv?1:0}},ctx.surf));return {t:o,pooled:true};}
+      uAmt:p.amount,uWidth:p.width,uBreak:p.breakup,uCon:p.contrast,uScale:p.scale||6,uSeed:p.seed||1,uNeg:{int:p.inv?1:0}},msPx(r,ctx)));return {t:o,pooled:true};}
   return null;}
 /* a filter row on the picture so far */
 function msFilter(r,acc){const o=acquireD(acc.depth);

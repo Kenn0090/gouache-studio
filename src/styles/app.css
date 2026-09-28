@@ -617,3 +617,6 @@ body.noopt .optbar{display:none}
 .maskbar.live{border-color:#4a90d9}.maskbar.live .maskbar-t{color:#7fb3ea}.lmchip{display:inline-flex;align-items:center;gap:2px}
 .bigchoice{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;padding:10px 12px;border-radius:8px;border:1px solid var(--line-2);background:var(--raise);color:var(--text);cursor:pointer;font:inherit}.bigchoice:hover{border-color:var(--accent)}
 .cvtiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.cvtile{padding:8px 4px;border-radius:6px;border:1px solid var(--line-2);background:var(--raise);color:var(--text);font:inherit;font-size:11px;cursor:pointer}.cvtile.on{border-color:var(--accent);color:var(--accent)}
+/* projection transform fields (0.23.1) */
+.pxf{display:grid;gap:4px}.pxfrow{display:grid;grid-template-columns:62px repeat(3,minmax(0,1fr));gap:4px;align-items:center}.pxfl{color:var(--muted);font-size:11.5px}
+.pxfrow input[type=number]{width:100%;min-width:0;padding:3px 4px;font:inherit;font-size:11.5px}
