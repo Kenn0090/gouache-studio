@@ -83,7 +83,9 @@ function memSave(){try{localStorage.setItem('gs.mem',JSON.stringify(mem));}catch
 /* the limit in bytes: yours, or half of this computer's memory (at least 2 GB) */
 const memAutoMB=()=>platform.isDesktop?(memSys.ramTotal?Math.max(2048,Math.round(memSys.ramTotal/1048576*.5/256)*256):4096):1024;
 const memLimit=()=>(mem.limitMB||memAutoMB())*1048576;
-const undoSteps=()=>mem.steps||(platform.isDesktop?500:120);
+/* fewer undo steps by default (0.25): long histories of big documents used a lot of memory and could crash */
+const UNDO_DEFAULT=()=>platform.isDesktop?50:30;
+const undoSteps=()=>mem.steps||UNDO_DEFAULT();
 /* loaded models (3D view and Bake tab) count against the limit too */
 function memModels(){const seen=new Set();let n=0;const add=m=>{if(!m||seen.has(m))return;seen.add(m);for(const k of ['pos','nrm','uv','tan','idx','col','triPart','triCol','bakePart'])if(m[k]&&m[k].byteLength)n+=m[k].byteLength;};
   try{add(v3.imported);add(bakeCfg.low);add(bakeCfg.high);add(bakeCfg.cage);}catch(e){/* not loaded yet */}return n;}

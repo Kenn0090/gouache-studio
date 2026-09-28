@@ -12,6 +12,7 @@
     "paint/heal",
     "ui/color",
     "paint/brush-library",
+    "paint/tool-brushes",
     "paint/map-brush",
     "ui/layers-panel",
     "ui/channels-panel",

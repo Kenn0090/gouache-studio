@@ -11,7 +11,7 @@ function readAbrLegacy(buf){const dv=new DataView(buf),src=new Uint8Array(buf),v
     o=st+size;}
   return out;}
 function presetFromAbr(b,samples,notes){const sh=b.shape||{};
-  const p=Object.assign({},BRUSH_DEFAULTS,{name:b.name||'Brush',tool:'brush',size:clamp(Math.round(sh.size||30),1,500),spacing:sh.spacingOn===false?.05:clamp(sh.spacing||.25,.01,1.5),
+  const p=Object.assign({},BRUSH_DEFAULTS,{name:b.name||'Brush',tool:'brush',size:clamp(Math.round(sh.size||30),1,5000),spacing:sh.spacingOn===false?.05:clamp(sh.spacing||.25,.01,1.5),
     angle:sh.angle||0,roundness:clamp(sh.roundness==null?1:sh.roundness,.05,1),flipX:!!sh.flipX,flipY:!!sh.flipY,pSize:false,pOpacity:false,minSize:0,smoothing:.2});
   if(sh.type==='sampled'){const t=samples.get(sh.sampledData);if(t)p.tip=t;else notes.add('Some brushes referenced tip images missing from the file; they use a round tip.');}
   else if(sh.type==='computed')p.hardness=sh.hardness==null?1:sh.hardness;
@@ -26,12 +26,12 @@ function presetFromAbr(b,samples,notes){const sh=b.shape||{};
 async function importABR(file){
   const buf=await file.arrayBuffer(),dv=new DataView(buf),ver=dv.getInt16(0),setName=baseName(file.name),notes=new Set(),presets=[],tips=[];
   if(ver===1||ver===2){for(const r of readAbrLegacy(buf)){
-      if(r.tip){const t=makeTip(r.name,r.tip.w,r.tip.h,r.tip.alpha);tips.push(t);presets.push(Object.assign({},BRUSH_DEFAULTS,{name:r.name,tool:'brush',tip:t,size:clamp(Math.max(r.tip.w,r.tip.h),1,500),spacing:clamp(r.spacing||.25,.01,1.5),pSize:false,smoothing:.2}));}
-      else presets.push(Object.assign({},BRUSH_DEFAULTS,{name:r.name,tool:'brush',size:clamp(r.size||20,1,500),hardness:clamp(r.hardness,0,1),roundness:clamp(r.roundness||1,.05,1),angle:r.angle||0,spacing:clamp(r.spacing||.25,.01,1.5),pSize:false}));}}
+      if(r.tip){const t=makeTip(r.name,r.tip.w,r.tip.h,r.tip.alpha);tips.push(t);presets.push(Object.assign({},BRUSH_DEFAULTS,{name:r.name,tool:'brush',tip:t,size:clamp(Math.max(r.tip.w,r.tip.h),1,5000),spacing:clamp(r.spacing||.25,.01,1.5),pSize:false,smoothing:.2}));}
+      else presets.push(Object.assign({},BRUSH_DEFAULTS,{name:r.name,tool:'brush',size:clamp(r.size||20,1,5000),hardness:clamp(r.hardness,0,1),roundness:clamp(r.roundness||1,.05,1),angle:r.angle||0,spacing:clamp(r.spacing||.25,.01,1.5),pSize:false}));}}
   else{needLib('agPsd','Brush import');let abr;try{abr=agPsd.readAbr(new Uint8Array(buf));}catch(e){throw new Error('This brush file could not be read: '+e.message);}
     const samples=new Map();for(const s of abr.samples){if(s.bounds.w>0&&s.bounds.h>0){const t=makeTip('Tip '+(samples.size+1),s.bounds.w,s.bounds.h,s.alpha);samples.set(s.id,t);tips.push(t);}}
     for(const b of abr.brushes){const p=presetFromAbr(b,samples,notes);if(p.tip&&p.tip.name.startsWith('Tip '))p.tip.name=p.name;presets.push(p);}
-    const used=new Set(presets.map(p=>p.tip));for(const t of samples.values())if(!used.has(t))presets.push(Object.assign({},BRUSH_DEFAULTS,{name:t.name,tool:'brush',tip:t,size:clamp(Math.max(t.w,t.h),1,500),spacing:.25,pSize:false}));}
+    const used=new Set(presets.map(p=>p.tip));for(const t of samples.values())if(!used.has(t))presets.push(Object.assign({},BRUSH_DEFAULTS,{name:t.name,tool:'brush',tip:t,size:clamp(Math.max(t.w,t.h),1,5000),spacing:.25,pSize:false}));}
   if(!presets.length)throw new Error('No brushes were found in “'+file.name+'”.');
   const set={id:'abr-'+Date.now(),name:setName,presets,tips};addSet(set);applyPreset(presets[0]);
   const msg='Imported '+presets.length+' brush'+(presets.length===1?'':'es')+' from “'+setName+'”.';
@@ -43,7 +43,7 @@ function addCustomTip(name,W,H,v,extra,noApply){let x0=W,y0=H,x1=-1,y1=-1;
   if(x1<0)return null;
   const w=x1-x0+1,h=y1-y0+1,a=new Uint8Array(w*h);for(let y=0;y<h;y++)a.set(v.subarray((y0+y)*W+x0,(y0+y)*W+x0+w),y*w);
   const t=makeTip(name,w,h,a);let set=library.find(s=>s.id==='custom');if(!set){set={id:'custom',name:'Custom tips',presets:[],tips:[]};library.push(set);}
-  const p=Object.assign({},BRUSH_DEFAULTS,{name,tool:'brush',tip:t,size:clamp(Math.max(w,h),4,500),spacing:.2,pSize:true,minSize:.3},extra||{});
+  const p=Object.assign({},BRUSH_DEFAULTS,{name,tool:'brush',tip:t,size:clamp(Math.max(w,h),4,5000),spacing:.2,pSize:true,minSize:.3},extra||{});
   set.presets.push(p);set.tips.push(t);saveSet(set);if(noApply)renderLibrary();else applyPreset(p);return p;}
 /* what becomes the tip: the visible canvas (or the active layer), only inside the selection when there is one */
 function tipAlpha(src){const W=doc.w,H=doc.h;let t=null,own=false;
