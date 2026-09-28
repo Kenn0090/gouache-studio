@@ -49,16 +49,16 @@ function hlProgs(){if(!P_HL)P_HL={mask:program(FS_HLMASK),pull0:program(FS_HLPUL
 /* ---- the source (healing brush) ---- */
 function healSetSource(x,y,set){heal.src=[x,y];heal.srcSet=set==null?null:set;heal.off=null;healMarker();toast('Heal source set. Now paint where it should go.');}
 /* the point where a stroke starts (document pixels), and the offset it copies from */
-function healBegin(x,y){heal.start=[x,y];
-  if(heal.mode!=='source')return true;
+function healBegin(x,y,tool){heal.start=[x,y];
+  if(tool!=='clone'&&heal.mode!=='source')return true;
   if(!heal.src){toast('Alt+click where to copy from first.');return false;}
   if(ui.mode==='p3d'&&heal.srcSet!=null&&typeof p3!=='undefined'&&heal.srcSet!==p3.cur){toast('The source is on another texture set. Alt+click on this one.');return false;}
   if(!heal.aligned||!heal.off)heal.off=[Math.round(heal.src[0]-x),Math.round(heal.src[1]-y)];return true;}
 /* a small cross on the canvas where the copy comes from */
-function healMarker(){let m=document.getElementById('healMark');const on=ui.tool==='heal'&&heal.mode==='source'&&heal.src&&!ui.cageFlat&&typeof view!=='undefined';
+function healMarker(){let m=document.getElementById('healMark');const on=(ui.tool==='clone'||ui.tool==='heal'&&heal.mode==='source')&&heal.src&&!ui.cageFlat&&typeof view!=='undefined';
   if(!on){if(m)m.hidden=true;return;}
   if(!m){m=el('div',{id:'healMark',class:'healmark','aria-hidden':'true'});stage.appendChild(m);}
-  let [x,y]=heal.src;if(stroke&&heal.off&&stroke.o.tool==='heal'&&!stroke.space&&ptr&&ptr.mode==='paint'){x=ptr.rx+heal.off[0];y=ptr.ry+heal.off[1];}
+  let [x,y]=heal.src;if(stroke&&heal.off&&(stroke.o.tool==='heal'||stroke.o.tool==='clone')&&!stroke.space&&ptr&&ptr.mode==='paint'){x=ptr.rx+heal.off[0];y=ptr.ry+heal.off[1];}
   m.hidden=false;m.style.transform='translate('+(view.x+x*view.zoom-8)+'px,'+(view.y+y*view.zoom-8)+'px)';}
 
 /* ---- spot healing: find a clean place nearby with texture like the edge of the stroke ---- */
@@ -124,3 +124,35 @@ function buildHealPanel(box){$('#brushTitle').textContent=heal.mode==='spot'?'Sp
   const b=el('button',{class:'tool','data-tool':'heal',title:'Healing brush (J): spot or Alt+click source','aria-label':'Healing brush','aria-pressed':'false'});
   b.innerHTML='<svg viewBox="0 0 24 24"><rect x="2.8" y="8.6" width="18.4" height="6.8" rx="3.4" transform="rotate(-45 12 12)"/><rect x="9.2" y="9.2" width="5.6" height="5.6" rx=".8" transform="rotate(-45 12 12)"/><path d="M11 11.2h.01M13 12.8h.01"/></svg>';
   b.addEventListener('click',()=>setTool('heal'));sm.after(b);})();
+
+/* ================= Clone stamp (0.24) =================
+   Alt+click where to copy from, then paint: the copy appears as you paint (no blending into the edges, unlike
+   the healing brush). It shares the source (and Aligned) with the healing brush. Every map of the layer is
+   cloned together; selection, symmetry and the 3D mirror shape the stroke. Opacity sets how strongly it covers. */
+const FS_CLONE=`uniform sampler2D uT; uniform sampler2D uStrokeTex; uniform sampler2D uSelTex; uniform int uUseSel; uniform vec2 uOff; uniform int uWrap; uniform float uOpacity;
+void main(){ ivec2 q=ivec2(gl_FragCoord.xy), sz=textureSize(uT,0); vec4 t=texelFetch(uT,q,0); float m=texelFetch(uStrokeTex,q,0).a*uOpacity; if(uUseSel==1) m*=texelFetch(uSelTex,q,0).r;
+  ivec2 r=q+ivec2(uOff); if(uWrap==1) r=ivec2(mod(vec2(r),vec2(sz))); else if(any(lessThan(r,ivec2(0)))||any(greaterThanEqual(r,sz))){ o=t; return; }
+  o=mix(t,texelFetch(uT,r,0),m); }`;
+let P_CLONE=null;
+const strokeLive=o=>o.tool==='smudge'||o.tool==='clone';
+/* at the start of a clone stroke: a copy of every map as it was (the primary map's copy is beforeT) */
+function cloneBegin(s){const L=s.L,maps=[];
+  if(!L.maskOf&&!L.quick&&L.maps)for(const k of Object.keys(L.maps)){const T=L.maps[k];if(!T||T.empty||!T.tex||T===L.target)continue;const old=acquireD(T.depth);blit(T,old,0,0,T.w,T.h,0,0);maps.push({k,T,old});}
+  s.clone={maps,off:heal.off.slice()};}
+/* redraw the copy where the stroke has been so far */
+function cloneUpdate(){const s=stroke;if(!s||!s.clone)return;s.cloneDirty=false;if(!P_CLONE)P_CLONE=program(FS_CLONE);
+  const U=Object.assign({uStrokeTex:strokeT.tex,uOff:s.clone.off,uWrap:{int:doc.wrap?1:0},uOpacity:s.o.opacity},selU(s.o));
+  run(P_CLONE,s.L.target,Object.assign({uT:beforeT.tex},U));for(const m of s.clone.maps)run(P_CLONE,m.T,Object.assign({uT:m.old.tex},U));
+  if(s.L.maskOf||s.L.quick)return;s.L.lookVer=(s.L.lookVer||0)+1;}
+/* at the end: the undo parts of the other maps */
+function cloneEnd(s,x0,y0,bw,bh,record){cloneUpdate();const parts=[];
+  for(const m of s.clone.maps){if(record&&bw>0&&bh>0)parts.push({k:m.k,before:captureRegion(m.old,x0,y0,bw,bh),after:captureRegion(m.T,x0,y0,bw,bh)});release(m.old);}
+  s.clone=null;return parts;}
+function buildClonePanel(box){$('#brushTitle').textContent='Clone stamp';
+  box.append(el('div',{class:'chips'},chk('clAl','Aligned',heal.aligned,v=>{heal.aligned=v;heal.off=null;healSave();})),
+    el('p',{class:'note',text:heal.src?'Alt+click to pick a new source. Aligned: the source moves along with each stroke. The healing brush uses the same source.':'Alt+click where to copy from (on the canvas or the model), then paint.'}),
+    el('p',{class:'note',text:'Every map of the layer is copied together (a material). Selections, symmetry and the 3D mirror shape the stroke.'}));}
+(function(){const h=document.querySelector('#tools .tool[data-tool="heal"]');if(!h)return;
+  const b=el('button',{class:'tool','data-tool':'clone',title:'Clone stamp (Y): Alt+click a source, then paint','aria-label':'Clone stamp','aria-pressed':'false'});
+  b.innerHTML='<svg viewBox="0 0 24 24"><path d="M9.5 3.5h5v5.2c0 1.2 1 2.1 2.2 2.1h1.3a1.5 1.5 0 0 1 1.5 1.5V15H5v-2.7a1.5 1.5 0 0 1 1.5-1.5h1.3c1.2 0 1.7-.9 1.7-2.1z"/><path d="M5 18h14M7 21h10"/></svg>';
+  b.addEventListener('click',()=>setTool('clone'));h.after(b);})();

@@ -31,6 +31,7 @@ function beginStroke(L,x,y,p,o){
   if(o.extras&&o.extras.length){for(const e of o.extras)ensureMapTarget(L,e.key);
     if(L.lockAlpha){const lt=acquireD(doc.depth);run(P.lockcov,lt,Object.assign({uA:mapT(L,'base').tex},selU(o)));stroke.lockT=lt;stroke.exU={uSelTex:lt.tex,uUseSel:true};}
     else stroke.exU=selU(o);}
+  if(o.tool==='clone')cloneBegin(stroke);
   stamp(x,y,p);stroke.carry=spacingAt(p);requestRender(true);
 }
 function stamp(x,y,p){
@@ -46,7 +47,7 @@ function stamp(x,y,p){
     if(s.tint&&!o.jitterPerStroke)s.dabCol=jitterColor(o.color,o,s.grey);
     for(const c of symCopies(s.sym,s.SW,s.SH,px,py,ang,fx,fy,dx,dy))stampOne(c[0],c[1],r,a,c[2],c[3],c[4],c[5],c[6]);
   }
-  if(s.space)s.spaceDirty=true;
+  if(s.space)s.spaceDirty=true;if(s.clone)s.cloneDirty=true;
 }
 /* continue a stroke from a new place without painting the gap between (a stroke that left the cage and came back) */
 function strokeJump(x,y,p){const s=stroke;if(!s)return;s.x=x;s.y=y;s.p=p;s.lsx=x;s.lsy=y;stamp(x,y,p);s.carry=spacingAt(p);requestRender(true);}
@@ -79,11 +80,11 @@ function addPoint(x,y,p){
 function endStroke(record){
   const s=stroke;if(!s)return;const L=s.L,W=doc.w,H=doc.h;
   if(s.space){s.spaceDirty=false;s.space.sync();const b=s.space.bbox(s);s.bb=doc.wrap?[0,0,W,H]:[b[0]-2,b[1]-2,b[2]+2,b[3]+2];}
-  const healing=s.o.tool==='heal';
-  if(s.o.tool!=='smudge'&&!healing)run(P.merge,L.target,{uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(s.o)},...tonalU(s.o),uStrokeColor:s.o.color,uStrokeTint:!!s.tint,uStrokeOpacity:s.o.opacity,uLockAlpha:L.lockAlpha,...chanU(s.o),...selU(s.o)});
+  const healing=s.o.tool==='heal',cloning=s.o.tool==='clone';
+  if(s.o.tool!=='smudge'&&!healing&&!cloning)run(P.merge,L.target,{uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(s.o)},...tonalU(s.o),uStrokeColor:s.o.color,uStrokeTint:!!s.tint,uStrokeOpacity:s.o.opacity,uLockAlpha:L.lockAlpha,...chanU(s.o),...selU(s.o)});
   const x0=clamp(Math.floor(s.bb[0]),0,W),y0=clamp(Math.floor(s.bb[1]),0,H),x1=clamp(Math.ceil(s.bb[2]),0,W),y1=clamp(Math.ceil(s.bb[3]),0,H),bw=x1-x0,bh=y1-y0;
   /* the heal brush heals every map of the layer where the stroke went */
-  const parts=healing?healApply(s,x0,y0,bw,bh,record).parts:[];
+  const parts=healing?healApply(s,x0,y0,bw,bh,record).parts:cloning&&s.clone?cloneEnd(s,x0,y0,bw,bh,record):[];
   for(const e of (s.o.extras||[])){const T=mapT(L,e.key),old=acquireD(T.depth);blit(T,old,0,0,W,H,0,0);
     if(record&&bw>0&&bh>0)parts.push({k:e.key,before:captureRegion(old,x0,y0,bw,bh)});
     run(P.merge,T,Object.assign({uSrc:old.tex,uStrokeTex:strokeT.tex,uStroke:{int:e.mode},uStrokeColor:e.color,uStrokeOpacity:s.o.opacity,uLockAlpha:false},chanU(null),s.exU));release(old);
@@ -91,7 +92,7 @@ function endStroke(record){
   if(s.lockT)release(s.lockT);dropStrokeCache(s);
   stroke=null;
   if(record){
-    if(bw>0&&bh>0){const r=regionRecord(L,captureRegion(beforeT,x0,y0,bw,bh),captureRegion(L.target,x0,y0,bw,bh),x0,y0,bw,bh,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?'Blend':s.o.tool==='dodge'?'Dodge':s.o.tool==='burn'?'Burn':healing?'Heal':'Brush stroke');
+    if(bw>0&&bh>0){const r=regionRecord(L,captureRegion(beforeT,x0,y0,bw,bh),captureRegion(L.target,x0,y0,bw,bh),x0,y0,bw,bh,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?'Blend':s.o.tool==='dodge'?'Dodge':s.o.tool==='burn'?'Burn':healing?'Heal':cloning?'Clone':'Brush stroke');
       if(L.onRecord)L.onRecord(r,[x0,y0,bw,bh]);
       pushUndo(parts.length?withMapParts(r,L,parts,x0,y0):r);}
     scheduleThumb(L.maskOf||L);

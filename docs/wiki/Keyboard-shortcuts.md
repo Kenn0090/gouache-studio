@@ -12,6 +12,7 @@ All of these can be changed in **Edit › Keyboard shortcuts…**: click a comma
 | E | Eraser |
 | S | Blend (smudge) |
 | J | Healing brush (Spot or Healing; Alt+click sets the source) |
+| Y | Clone stamp (Alt+click sets the source) |
 | O | Dodge / Burn (Shift+O switches between them) |
 | G | Fill tools: gradient, paint bucket, gradient bucket (Shift+G cycles) |
 | V | Move |

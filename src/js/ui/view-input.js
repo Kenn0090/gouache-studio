@@ -11,7 +11,7 @@ $('#stDepth').addEventListener('click',()=>setDepth(doc.depth===16?8:16));
 $('#tileBtn').addEventListener('click',toggleTile);
 
 const bc=$('#brushCursor');let lastPos=null,spaceDown=false,ptr=null;
-function refreshCursor(){if(typeof healMarker==='function')healMarker();if(!lastPos){bc.hidden=true;return;}const paint=['brush','erase','smudge','dodge','burn','heal'].includes(ui.tool)&&!spaceDown&&!(ptr&&ptr.mode==='pan');
+function refreshCursor(){if(typeof healMarker==='function')healMarker();if(!lastPos){bc.hidden=true;return;}const paint=['brush','erase','smudge','dodge','burn','heal','clone'].includes(ui.tool)&&!spaceDown&&!(ptr&&ptr.mode==='pan');
   if(!paint){bc.hidden=true;return;}const d=Math.max(3,brush.size*view.zoom);bc.hidden=false;bc.style.width=d+'px';bc.style.height=d+'px';tipCursor(bc,d);bc.style.transform='translate('+(lastPos[0]-d/2)+'px,'+(lastPos[1]-d/2)+'px)';}
 /* Preferences › Show the brush tip's shape as the cursor: the tip's outline, at the brush size, turned and squashed like the dabs */
 const tipOutlineCache=new Map();
@@ -42,6 +42,7 @@ function paintOpts(et){
   o.extras=strokeExtras(o,et);
   /* the heal brush: a faint grey trail while painting; the healing happens on release, on every map */
   if(o.tool==='heal')Object.assign(o,{color:[.6,.6,.6],opacity:.45,noTint:true,extras:[],buildup:false,hueJitter:0,satJitter:0,valJitter:0,chan:null});
+  if(o.tool==='clone')Object.assign(o,{noTint:true,extras:[],buildup:false,hueJitter:0,satJitter:0,valJitter:0,chan:null});
   if(ui.tool!=='erase'&&(ui.tool==='brush'||brush.charge>0))pushRecent(ui.fg);
   return o;}
 cv.addEventListener('pointerdown',e=>{
@@ -49,7 +50,7 @@ cv.addEventListener('pointerdown',e=>{
   e.preventDefault();cv.setPointerCapture(e.pointerId);showPressure(e);
   if(pan){ptr={mode:'pan',id:e.pointerId,sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y};stage.classList.add('panning');refreshCursor();return;}
   const [ix,iy]=toImage(e.clientX,e.clientY);
-  if(ui.cageFlat&&!['brush','erase','smudge','dodge','burn','heal','picker'].includes(ui.tool)&&!e.altKey){toast('Only painting works in the flat cage view. Press F to go back to the canvas.');return;}
+  if(ui.cageFlat&&!['brush','erase','smudge','dodge','burn','heal','clone','picker'].includes(ui.tool)&&!e.altKey){toast('Only painting works in the flat cage view. Press F to go back to the canvas.');return;}
   if(ui.mode==='convert'){cvPointerDown(e,ix,iy);return;}
   /* a UV projection's frame (selected material or mask row with a picture or pattern) */
   if(typeof pxf2Down==='function'&&pxf2Down(e))return;
@@ -70,11 +71,12 @@ cv.addEventListener('pointerdown',e=>{
     if(tedit){const b=tedit.L.text.bbox;if(b&&ix>=b.bx&&ix<=b.bx+b.bw&&iy>=b.by&&iy<=b.by+b.bh){ted.focus();return;}closeTextEditor();return;}
     const hit=hitText(ix,iy);if(hit){selectOnly(hit);renderLayers();ptr={mode:'tmove',id:e.pointerId,L:hit,sx:ix,sy:iy,ox:hit.text.x,oy:hit.text.y,moved:false};return;}
     if(!effVisible(doc.active||doc.root)&&doc.active){}createText(ix,iy);return;}
+  if(ui.tool==='clone'&&e.altKey){healSetSource(ix,iy);buildBrushPanel();return;}
   if(ui.tool==='heal'&&e.altKey){if(heal.mode==='spot'){heal.mode='source';healSave();buildBrushPanel();buildOptBar();}healSetSource(ix,iy);return;}
   if(ui.tool==='picker'||e.altKey){ptr={mode:'pick',id:e.pointerId};const q=ui.cageFlat?cageFwd(ix,iy):[ix,iy];pickAt(q[0],q[1]);return;}
   if(typeof maskPaintLocked==='function'&&maskPaintLocked()){toast('Press Paint in the mask bar to paint the mask.');return;}
   const et=ui.mode==='bake'?bakeEditTarget():editTarget();const o=paintOpts(et);if(!o)return;const L=et.L,p=pressureOf(e);
-  if(o.tool==='heal'&&!healBegin(ix,iy))return;const cz=cageStrokeStart(o,ix,iy);if(cz===false)return;const sx=cz?cz.x:ix,sy=cz?cz.y:iy;o.sym=symFor(o);
+  if((o.tool==='heal'||o.tool==='clone')&&!healBegin(ix,iy,o.tool))return;const cz=cageStrokeStart(o,ix,iy);if(cz===false)return;const sx=cz?cz.x:ix,sy=cz?cz.y:iy;o.sym=symFor(o);
   ptr={mode:'paint',id:e.pointerId,sx,sy,sp:p,rx:sx,ry:sy,cage:cz?cz.kind:null,ox:sx,oy:sy,lock:null};beginStroke(L,sx,sy,p,o);
 });
 cv.addEventListener('pointermove',e=>{
@@ -137,7 +139,7 @@ window.addEventListener('keydown',e=>{
     if(map[k]){e.preventDefault();actions[map[k]]();}return;}
   if(e.altKey&&/^Digit[2-6]$/.test(e.code)){e.preventDefault();selectChannel(+e.code.slice(5)-3,false);return;}
   if(e.code==='Space'){e.preventDefault();if(!spaceDown){spaceDown=true;stage.classList.add('grab');refreshCursor();}return;}
-  const tools={b:'brush',e:'erase',s:'smudge',i:'picker',h:'hand',u:'shape',j:'heal'};
+  const tools={b:'brush',e:'erase',s:'smudge',i:'picker',h:'hand',u:'shape',j:'heal',y:'clone'};
   if(tools[k]){setTool(tools[k]);return;}
   if(k==='['||k===']'){brush.size=clamp(Math.round(brush.size*(k===']'?1.15:1/1.15)+(k===']'?1:-1)),1,500);if(sizeSlider)sizeSlider.set(brush.size);refreshCursor();schedulePreview();return;}
   if(k==='x'){swapColors();return;}if(k==='d'){ui.bg=[1,1,1];setFG([0,0,0]);return;}if(k==='t'){if(e.shiftKey)toggleTile();else setTool('text');return;}

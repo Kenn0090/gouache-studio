@@ -53,6 +53,11 @@ On a layer with several maps (a material, or a layer with height and roughness),
 ![Spot healing.](images/heal.png)
 *The left flaw was painted over once with the Spot healing brush; the right one is untouched.*
 
+## Clone stamp (Y)
+Copies one part of the picture onto another, like Photoshop's clone stamp. **Alt+click** where to copy from (a cross marks it), then paint: the copy appears as you paint. Unlike the healing brush it is not blended into its surroundings, so it copies exactly. **Opacity** sets how strongly it covers; **Aligned** works as for the healing brush, and the two tools share the same source.
+
+Like the healing brush, it copies **every map of the layer** together, follows the **selection** and **symmetry**, and works on the model in 3D Paint (Alt+click the model to set the source; the **mirror** clones both sides).
+
 ## Dodge and burn (O)
 Lightens (Dodge) or darkens (Burn). **Shift+O** switches between them.
 - **Range:** affect shadows, midtones or highlights.

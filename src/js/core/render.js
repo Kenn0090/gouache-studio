@@ -1,7 +1,7 @@
 /* ================= Rendering ================= */
 function requestRender(comp){if(comp)dirtyComp=true;if(!raf)raf=requestAnimationFrame(frame);}
 const perf={on:false,frames:[],worst:null,last:0};
-function frame(){raf=0;if(typeof tabDocs!=='undefined'&&tabDocs.hold){requestRender();return;}const t0=performance.now();let tc=t0;if(stroke&&stroke.spaceDirty){stroke.spaceDirty=false;stroke.space.sync();}if(dirtyComp){composite();dirtyComp=false;tc=performance.now();}drawView();drawUVOverlay();draw3D();const tv=performance.now();flushThumbs();if(tedit)positionEditor();
+function frame(){raf=0;if(typeof tabDocs!=='undefined'&&tabDocs.hold){requestRender();return;}const t0=performance.now();let tc=t0;if(stroke&&stroke.spaceDirty){stroke.spaceDirty=false;stroke.space.sync();}if(stroke&&stroke.cloneDirty)cloneUpdate();if(dirtyComp){composite();dirtyComp=false;tc=performance.now();}drawView();drawUVOverlay();draw3D();const tv=performance.now();flushThumbs();if(tedit)positionEditor();
   if(perf.on)perfFrame(t0,tc-t0,tv-tc,performance.now()-tv);}
 let maskOverride=new Map();
 function maskTexOf(n){if(!n.mask||!n.mask.enabled)return null;return maskOverride.get(n)||n.mask.target.tex;}
@@ -30,7 +30,7 @@ function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
     if(n.type==='layer'&&n.fx){if(clipped||n.fx.map!==k)continue;const r=fxApplyLayer(n,acc,k,mt);if(r!==acc){release(acc);acc=r;}continue;}
     if(n.type==='layer'){let T=edit?n.target:mapT(n,k);const lk=lookTouches(n,k);if((!T||T.empty)&&!lk)continue;if(!T||T.empty)T=emptyFor(mapDepth(k));
       let src=(edit&&preview&&!preview.off&&preview.L===n&&!preview.isMask)?previewT:T,own=null;const out=acquire(),cm=clipped?maskTexOf(clipped):null;
-      let st=(stroke&&stroke.L===n&&stroke.o.tool!=='smudge')?stroke:null,ex=null;
+      let st=(stroke&&stroke.L===n&&!strokeLive(stroke.o))?stroke:null,ex=null;
       if(st&&!edit){ex=(st.o.extras||[]).find(e=>e.key===k)||null;if(!ex)st=null;}
       const cf=clippedFx(list,i,k),cx=n.cfx&&cfxOn(n,k);
       if(cf.length||lk||cx){/* the live stroke goes in first, so clipped filters and the layer's array and styles apply to it too */
@@ -53,7 +53,7 @@ function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
 function renderNodes(list){const acc=acquire();clearTarget(acc);return compositeList(list,acc);}
 let maskViewT=null,maskViewLive=false;
 function composite(){if(compOut)release(compOut);maskOverride=new Map();const tmp=[];maskViewLive=false;if(typeof msUpdateAll==='function')msUpdateAll();
-  if(stroke&&stroke.L.maskOf&&stroke.o.tool!=='smudge'){const lm=acquire();tmp.push(lm);run(P.merge,lm,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,...tintU(),uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},selU(stroke.o),tonalU(stroke.o)));
+  if(stroke&&stroke.L.maskOf&&!strokeLive(stroke.o)){const lm=acquire();tmp.push(lm);run(P.merge,lm,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,...tintU(),uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},selU(stroke.o),tonalU(stroke.o)));
     /* a Paint row of a mask with rows: the whole stack again, with the row as it is being painted */
     if(stroke.L.mrow){const ev=msEval(stroke.L.maskOf,{row:stroke.L.mrow,t:lm});tmp.push(ev);maskOverride.set(stroke.L.maskOf,ev.tex);if(ui.viewMask){if(!maskViewT||maskViewT.w!==doc.w||maskViewT.h!==doc.h||maskViewT.depth!==ev.depth){disposeTarget(maskViewT);maskViewT=makeTarget(doc.w,doc.h,ev.depth);}blit(ev,maskViewT,0,0,doc.w,doc.h,0,0);maskViewLive=true;}}
     else{maskOverride.set(stroke.L.maskOf,lm.tex);if(ui.viewMask){if(!maskViewT||maskViewT.w!==doc.w||maskViewT.h!==doc.h||maskViewT.depth!==lm.depth){disposeTarget(maskViewT);maskViewT=makeTarget(doc.w,doc.h,lm.depth);}blit(lm,maskViewT,0,0,doc.w,doc.h,0,0);maskViewLive=true;}}}
@@ -88,7 +88,7 @@ function animViewU(vs){if(ui.mode!=='anim'||vs.mask)return {};const u={};if(onio
 let selViewTmp=null;
 function selViewU(z,dpr,wrap){if(!sel.t)return {};
   if(sel.quick){let t=sel.t;
-    if(stroke&&stroke.L.quick&&stroke.o.tool!=='smudge'){selViewTmp=acquire();run(P.merge,selViewTmp,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,...tintU(),uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},tonalU(stroke.o)));t=selViewTmp;bindTarget(null);}
+    if(stroke&&stroke.L.quick&&!strokeLive(stroke.o)){selViewTmp=acquire();run(P.merge,selViewTmp,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,...tintU(),uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},tonalU(stroke.o)));t=selViewTmp;bindTarget(null);}
     else if(preview&&!preview.off&&preview.et&&preview.et.L.quick)t=previewT;
     return {uSel:t.tex,uSelMode:{int:2},uWrap:wrap};}
   if(typeof selLive!=='undefined'&&selLive&&selLive.overlay&&selLive.on)return {uSel:sel.t.tex,uSelMode:{int:2},uWrap:wrap};

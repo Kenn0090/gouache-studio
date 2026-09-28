@@ -64,6 +64,18 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await drag(61,64,67,64);await W(400);
  c=await px('base',[[64,64],[62,63]]);ok(!c.some(red)&&await p.evaluate(()=>Math.abs(__gs.heal.last.off[0]+29)<2&&Math.abs(__gs.heal.last.off[1]+32)<2),'painting copies from the source (offset from the stroke start) '+JSON.stringify(c));
  ok((await px('height',[[64,64]]))[0][0]<230,'…healing the height too');
+ /* the clone stamp: shares the source; copies exactly, live while painting, every map */
+ await setup([[64,64]]);await W(200);
+ await p.keyboard.press('y');await W(100);ok(await p.evaluate(()=>__gs.ui.tool==='clone'&&!!document.querySelector('#tools .tool[data-tool=clone]')),'Y picks the clone stamp');
+ {const s2=await scr(32,32);await p.keyboard.down('Alt');await p.mouse.click(s2[0],s2[1]);await p.keyboard.up('Alt');await W(150);
+  const a=await scr(61,64),c=await scr(67,64);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.move(c[0],c[1],{steps:6});await W(300);
+  const live=await px('base',[[64,64]]);await p.mouse.up();await W(400);
+  ok(!red(live[0]),'the copy shows while you paint '+live[0]);}
+ c=await px('base',[[64,64],[66,64]]);h=await px('height',[[64,64]]);
+ ok(Math.abs(c[0][1]-81)<4&&Math.abs(c[1][1]-(140+37*.6|0))<4,'the clone stamp copies the source exactly (offset from the stroke start) '+JSON.stringify(c));
+ ok(Math.abs(h[0][0]-90)<4,'…in the height map too '+h[0]);
+ ok(await p.evaluate(()=>__gs.hist.undo[__gs.hist.undo.length-1].label==='Clone'),'one undo step “Clone”');
+ await p.keyboard.press('Control+z');await W(300);ok(red((await px('base',[[64,64]]))[0])&&(await px('height',[[64,64]]))[0][0]>250,'undo takes the clone away in both maps');
  /* 3D Paint: heal on the model */
  await p.evaluate(()=>__gs.newDoc(128,128,8,[1,1,1],'painting',false));await W(300);
  await p.click('#modeTabs [data-mode=p3d]');await W(1200);
@@ -78,6 +90,11 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.mouse.move(cx-8,cy);await p.mouse.down();await p.mouse.move(cx+8,cy,{steps:6});await p.mouse.up();await W(600);
  const c3=await p.evaluate(n=>{const d=__gs.readRGBA8(__gs.mapT(__gs.doc.active,'base'));const i=((n/2)*n+n/2)*4;return Array.from(d.slice(i,i+4));},n3);
  ok(c3[0]-c3[1]<30,'3D Paint: spot healing on the model heals the flaw '+c3);
+ await p.evaluate(()=>{__gs.setTool('clone');__gs.heal.src=null;Object.assign(__gs.brush,{size:30,opacity:1});});
+ await p.keyboard.down('Alt');await p.mouse.click(cx-hb.width*.2,cy);await p.keyboard.up('Alt');await W(200);
+ const src3=await p.evaluate(()=>__gs.heal.src);
+ await p.mouse.move(cx+10,cy+30);await p.mouse.down();await p.mouse.move(cx+30,cy+30,{steps:5});await p.mouse.up();await W(500);
+ ok(!!src3&&await p.evaluate(()=>__gs.hist.undo[__gs.hist.undo.length-1].label==='Clone'),'3D Paint: Alt+click on the model sets the clone source, and painting clones '+JSON.stringify(src3));
  ok(errs.length===0,'no page errors '+errs.slice(0,3).join(' | '));
  await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);
 })();

@@ -59,13 +59,13 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
       if(x1<x0)return [0,0,0,0];if(uvs>1||x0<0||y0<0||x1>1||y1>1)return [0,0,doc.w,doc.h];
       return [x0*doc.w-2,y0*doc.h-2,x1*doc.w+2,y1*doc.h+2];}};}
 /* ---- pointer on the 3D view ---- */
-const MESH_TOOLS=['brush','erase','dodge','burn','heal'];
+const MESH_TOOLS=['brush','erase','dodge','burn','heal','clone'];
 function meshPaintReady(e){return v3.paintOn&&MESH_TOOLS.includes(ui.tool)&&!e.altKey&&e.button===0&&v3.gpu&&v3.mesh&&!v3.mesh.noUV;}
 function meshPt(hit,e){const r=hit.getBoundingClientRect();return [e.clientX-r.left,r.height-(e.clientY-r.top)];}
 function meshDown(hit,e){if(stroke||preview||selLive)return false;if(typeof bk!=='undefined'&&bk.busy&&ui.mode==='bake'){toast('Wait for the bake to finish.');return true;}
   const et=ui.mode==='bake'?bakeEditTarget():editTarget(),o=paintOpts(et);if(!o)return true;
   const r=hit.getBoundingClientRect(),w=Math.max(1,Math.round(r.width)),h=Math.max(1,Math.round(r.height)),sp=meshSpace(w,h);if(!sp)return true;
-  if(o.tool==='heal'){const pk=v3PickAt(hit,e);if(!pk)return true;if(!healBegin(pk.uv[0]*doc.w,pk.uv[1]*doc.h))return true;}
+  if(o.tool==='heal'||o.tool==='clone'){const pk=v3PickAt(hit,e);if(!pk)return true;if(!healBegin(pk.uv[0]*doc.w,pk.uv[1]*doc.h,o.tool))return true;}
   o.space=sp;o.sym=null;const [x,y]=meshPt(hit,e),p=pressureOf(e);v3.mstroke={id:e.pointerId,sx:x,sy:y,sp:p,rx:x,ry:y};beginStroke(et.L,x,y,p,o);return true;}
 function meshMove(hit,e){const m=v3.mstroke;if(!m||e.pointerId!==m.id||!stroke)return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];const k=1-brush.smoothing*.93;
   for(const ev of (evs.length?evs:[e])){let [x,y]=meshPt(hit,ev);const p=pressureOf(ev);m.rx=x;m.ry=y;if(brush.lazy>0){const q=lazyStep(m,x,y,brush.lazy);if(!q)continue;x=q[0];y=q[1];}m.sx+=(x-m.sx)*k;m.sy+=(y-m.sy)*k;m.sp+=(p-m.sp)*Math.max(k,.4);addPoint(m.sx,m.sy,m.sp);}}
@@ -97,7 +97,7 @@ function v3Ray(w,h,px,py){const s=v3s(),eye=v3Eye(),c=v3.cam,f=norm3(sub3([c.tx,
 /* hold Alt over the model: its base colour there becomes the foreground colour (Alt+drag still turns) */
 /* it picks when the pointer rests for a moment, not on every movement (each pick waits for the graphics card) */
 let v3PickQ=null;
-function v3HoverPick(hit,e){if(ui.mode==='bake'||ui.mode==='convert'||stroke||ui.tool==='heal')return;const q={clientX:e.clientX,clientY:e.clientY};clearTimeout(v3PickQ);
+function v3HoverPick(hit,e){if(ui.mode==='bake'||ui.mode==='convert'||stroke||ui.tool==='heal'||ui.tool==='clone')return;const q={clientX:e.clientX,clientY:e.clientY};clearTimeout(v3PickQ);
   v3PickQ=setTimeout(()=>{const ev=q;v3PickQ=null;if(v3.drag||v3.mstroke||!v3.on)return;const p=v3PickAt(hit,ev);const t=p&&ui.mode==='p3d'&&typeof p3SetTex==='function'?p3SetTex(p.set,'base'):v3.tex.base;if(!p||!t)return;
     const x=clamp(Math.floor(p.uv[0]*t.w),0,t.w-1),y=clamp(Math.floor(p.uv[1]*t.h),0,t.h-1),d=captureRegionNow(t,x,y,1,1).data;
     let c=t.depth===16?(()=>{const L=h2fLut();return [L[d[0]],L[d[1]],L[d[2]],L[d[3]]];})():[d[0]/255,d[1]/255,d[2]/255,d[3]/255];
