@@ -4,6 +4,7 @@
 //! "engine room": direct file access, recent files, undo spill-to-disk, self-update, and later the
 //! heavy GPU/CPU work (mesh baking, large-file encoding) that a browser cannot do.
 
+mod altmenu;
 mod engine;
 mod files;
 mod undo_spill;
@@ -48,6 +49,7 @@ pub fn run() {
                     })
                     .build()?;
                 let _ = w.set_title("Gouache Studio");
+                altmenu::install(&w);
             }
             Ok(())
         })

@@ -94,12 +94,13 @@ function v3PickAt(hit,e){const g=v3.gpu;if(!g||!v3.mesh)return null;if(!P3PICK)P
 function v3Ray(w,h,px,py){const s=v3s(),eye=v3Eye(),c=v3.cam,f=norm3(sub3([c.tx,c.ty,c.tz],eye)),r=norm3(cross3(f,[0,1,0])),u=cross3(r,f),t=Math.tan(s.fov*Math.PI/360),x=(2*px/w-1)*t*w/h,y=(2*py/h-1)*t;
   return norm3([f[0]+r[0]*x+u[0]*y,f[1]+r[1]*x+u[1]*y,f[2]+r[2]*x+u[2]*y]);}
 /* hold Alt over the model: its base colour there becomes the foreground colour (Alt+drag still turns) */
+/* it picks when the pointer rests for a moment, not on every movement (each pick waits for the graphics card) */
 let v3PickQ=null;
-function v3HoverPick(hit,e){if(ui.mode==='bake'||ui.mode==='convert'||stroke)return;const q={clientX:e.clientX,clientY:e.clientY};if(v3PickQ){v3PickQ.e=q;return;}v3PickQ={e:q};
-  requestAnimationFrame(()=>{const ev=v3PickQ.e;v3PickQ=null;const p=v3PickAt(hit,ev);const t=p&&ui.mode==='p3d'&&typeof p3SetTex==='function'?p3SetTex(p.set,'base'):v3.tex.base;if(!p||!t)return;
+function v3HoverPick(hit,e){if(ui.mode==='bake'||ui.mode==='convert'||stroke)return;const q={clientX:e.clientX,clientY:e.clientY};clearTimeout(v3PickQ);
+  v3PickQ=setTimeout(()=>{const ev=q;v3PickQ=null;if(v3.drag||v3.mstroke||!v3.on)return;const p=v3PickAt(hit,ev);const t=p&&ui.mode==='p3d'&&typeof p3SetTex==='function'?p3SetTex(p.set,'base'):v3.tex.base;if(!p||!t)return;
     const x=clamp(Math.floor(p.uv[0]*t.w),0,t.w-1),y=clamp(Math.floor(p.uv[1]*t.h),0,t.h-1),d=captureRegionNow(t,x,y,1,1).data;
     let c=t.depth===16?(()=>{const L=h2fLut();return [L[d[0]],L[d[1]],L[d[2]],L[d[3]]];})():[d[0]/255,d[1]/255,d[2]/255,d[3]/255];
-    if(c[3]<.02)return;c=[c[0]/c[3],c[1]/c[3],c[2]/c[3]].map(v=>clamp(v,0,1));if(toHex(c)!==toHex(ui.fg))setFG(c);});}
+    if(c[3]<.02)return;c=[c[0]/c[3],c[1]/c[3],c[2]/c[3]].map(v=>clamp(v,0,1));if(toHex(c)!==toHex(ui.fg))setFG(c);},60);}
 
 /* ---- mirror and radial painting on the model ----
    Mirrors across X, Y and/or Z planes (each can be moved off centre, snapping to the centre and to steps), and

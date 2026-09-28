@@ -202,10 +202,15 @@ function v3NavOf(hit,e){const b=e.button,paint=v3CanPaint();
   if(b===1||b===2)return 'pan';if(paint)return 'paint';return e.shiftKey?'pan':'turn';}
 function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault());
   hit.addEventListener('pointerdown',e=>{if(v3.mstroke&&!stroke)v3.mstroke=null;/* a stroke that never started must not block turning */
+    if(v3.mstroke&&v3.mstroke.id!==e.pointerId)meshUp();/* one whose release was missed is finished now */v3.drag=null;
+    e.preventDefault();/* no text selection or native drag from here: a double-click used to select text, and the next press dragged it, taking the mouse away */
     try{hit.setPointerCapture(e.pointerId);}catch(er){}let how=v3NavOf(hit,e);
     if(how==='paint'){if(e.button===0&&meshDown(hit,e)&&v3.mstroke)return;how='turn';if(stroke)return;}
     v3.drag={x:e.clientX,y:e.clientY,how,id:e.pointerId};});
-  hit.addEventListener('pointermove',e=>{meshCursor(hit,e);if(v3.mstroke){meshMove(hit,e);return;}const d=v3.drag;
+  hit.addEventListener('pointermove',e=>{meshCursor(hit,e);
+    /* no button held any more: the release went missing (another window, a pen gesture, Alt menu mode); finish instead of sticking */
+    if(!e.buttons){if(v3.mstroke)meshUp();if(v3.drag)v3.drag=null;}
+    if(v3.mstroke){meshMove(hit,e);return;}const d=v3.drag;
     if(!d){if(e.altKey&&!e.buttons)v3HoverPick(hit,e);return;}
     if(d.how.startsWith('st')){st3Drag(d,e,hit);d.x=e.clientX;d.y=e.clientY;return;}
     const dx=e.clientX-d.x,dy=e.clientY-d.y;d.x=e.clientX;d.y=e.clientY;const c=v3.cam;
@@ -215,7 +220,11 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
   const up=e=>{if(v3.drag&&e.pointerId!==undefined&&v3.drag.id!==e.pointerId)return;v3.drag=null;meshUp(e);};
   hit.addEventListener('pointerup',up);hit.addEventListener('pointercancel',up);hit.addEventListener('lostpointercapture',up);hit.addEventListener('pointerleave',()=>{v3.hover=false;meshCursor(hit,null);});hit.addEventListener('pointerenter',()=>{v3.hover=true;});
   hit.addEventListener('wheel',e=>{e.preventDefault();e.stopPropagation();v3.cam.dist=clamp(v3.cam.dist*Math.exp(e.deltaY*.0012),.2,50);v3.dirty=true;requestRender();},{passive:false});
-  hit.addEventListener('dblclick',e=>{if(typeof p3SelectAt==='function'&&p3SelectAt(hit,e))return;v3Frame();requestRender();});}
+  for(const t of ['selectstart','dragstart'])hit.parentNode.addEventListener(t,e=>e.preventDefault());
+  hit.addEventListener('dblclick',e=>{const s=window.getSelection&&window.getSelection();if(s&&s.rangeCount)s.removeAllRanges();if(typeof p3SelectAt==='function'&&p3SelectAt(hit,e))return;v3Frame();requestRender();});}
+/* a release anywhere (or the window losing focus) ends turning and painting on the model */
+window.addEventListener('pointerup',e=>{if(v3.drag&&v3.drag.id===e.pointerId)v3.drag=null;if(v3.mstroke&&v3.mstroke.id===e.pointerId)meshUp(e);},true);
+window.addEventListener('blur',()=>{v3.drag=null;if(v3.mstroke)meshUp();});
 /* Alt on its own must not hand the keyboard to the window menu (Windows), which made the model seem locked */
 for(const t of ['keydown','keyup'])window.addEventListener(t,e=>{if(e.key==='Alt')e.preventDefault();},true);
 /* dragging the divider */

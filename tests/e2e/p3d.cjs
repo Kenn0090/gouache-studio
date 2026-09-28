@@ -55,6 +55,11 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{__gs.v3.mstroke={id:99};});
  const y3=await p.evaluate(()=>__gs.v3.cam.yaw);await p.keyboard.down('Alt');await p.mouse.move(cx,cy);await p.mouse.down();await p.mouse.move(cx+90,cy,{steps:5});await p.mouse.up();await p.keyboard.up('Alt');await W(200);
  ok(Math.abs(await p.evaluate(()=>__gs.v3.cam.yaw)-y3)>.3,'a stuck stroke no longer locks the model');
+ /* ---- double-clicking the model must not select page text (the next drag used to drag that text, and the model stopped turning) ---- */
+ await p.mouse.dblclick(cx,cy);await W(300);await p.mouse.dblclick(cx+10,cy+140);await W(300);
+ ok(await p.evaluate(()=>(window.getSelection()+'')==='' ),'double-click selects no text');
+ const y4=await p.evaluate(()=>__gs.v3.cam.yaw);await p.keyboard.down('Alt');await p.mouse.move(cx,cy);await p.mouse.down();await p.mouse.move(cx+90,cy,{steps:5});await p.mouse.up();await p.keyboard.up('Alt');await W(200);
+ ok(Math.abs(await p.evaluate(()=>__gs.v3.cam.yaw)-y4)>.3,'after double-clicks the model still turns');
  /* ---- shade strip: Left/Right arrow keys ---- */
  await p.evaluate(()=>{__gs.ui.bg=[1,1,1];});await setFG('#000000');await p.evaluate(()=>document.activeElement&&document.activeElement.blur());await W();
  const onIdx=()=>p.evaluate(()=>({i:[...document.querySelectorAll('#mix button')].findIndex(b=>b.classList.contains('on')),fg:__gs.ui.fg.map(v=>Math.round(v*255))[0],bg:__gs.ui.bg[0]}));

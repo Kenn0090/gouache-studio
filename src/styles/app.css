@@ -381,7 +381,7 @@ canvas.fxthumb{background:#2a2d33 url("data:image/svg+xml,%3Csvg xmlns='http://w
 .fxbody{padding:8px}
 .btn.ghost{background:transparent;border-color:transparent}.btn.ghost:hover:not(:disabled){background:var(--raise)}
 /* 3D view */
-#pane3d{position:absolute;right:0;top:0;bottom:0;width:var(--pane3d,0px);border-left:1px solid var(--line-2)}
+#pane3d{position:absolute;right:0;top:0;bottom:0;width:var(--pane3d,0px);border-left:1px solid var(--line-2);user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
 #split3d{position:absolute;top:0;bottom:0;width:7px;cursor:col-resize;z-index:6}
 #split3d:hover,#split3d:focus-visible{background:var(--accent-soft)}
 .v3hit{position:absolute;inset:0;cursor:grab;touch-action:none}.v3hit:active{cursor:grabbing}
