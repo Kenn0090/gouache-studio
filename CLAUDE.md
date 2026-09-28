@@ -115,6 +115,11 @@ Kenn's requests and answers:
 - Tests: mstack.cjs, livemask.cjs, matconv.cjs. Rounded cube (rcube) has overlapping UVs: don't judge direction/gradient visuals on it.
 - Next (0.24): smart materials (material + mask rows saved together), anchor points, baking inside 3D Paint; then the looks (0.25).
 
+## After 0.23: agreed with Kenn
+- **0.23.1 (building): transforms + projections.** Projections UV / Triplanar / **Planar** / **Spherical** for material image channels and mask Picture/Noise/Generator rows. 3D **gizmo** in the viewport (move arrows, rotate rings, scale boxes) for the 3D projections; **2D handles** (Free Transform style) on the flat canvas for UV. Offset/rotation/scale fields in Properties + Reset; live; one undo step per drag.
+- **0.24 answers:** 1. smart materials very close to Substance (folders of layers with materials, mask rows, effects). 2. smart masks too. 3. built-ins: Gun Metal, Moss, Dirt, Dust, Imperfections, Skin, Steel, Wood, Leather. 4. anchor points as proposed (Anchor row on a layer; mask source "From anchor"; generators can use the anchor's height). 5. baking inside 3D Paint = a Bake mesh maps window like Substance's (maps, size, high-poly optional, which sets); after baking you can go to the Bake tab for cleanups, and send the bakes to the Paint canvas to clean up intersections. 6. a bake refreshes everything that uses the maps. 7. transform plan yes.
+- **Smart heal brush** (new, asked with 0.24): for the Photoshop-style Paint canvas, and one for 3D Paint that heals every map of the layer (a material) together. Asked: spot heal + healing brush (Alt+click source)? follows selection/mirror?
+
 ## 0.20 3D Paint: agreed with Kenn (after 0.19)
 Answers to the design questions:
 - **3D Paint gets its own canvas** (its own document, separate from Paint, like the Brush tab has its own).
