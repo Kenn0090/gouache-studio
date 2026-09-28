@@ -390,7 +390,7 @@ canvas.fxthumb{background:#2a2d33 url("data:image/svg+xml,%3Csvg xmlns='http://w
 .v3hit{position:absolute;inset:0;cursor:grab;touch-action:none}.v3hit:active{cursor:grabbing}
 .v3bar{position:absolute;left:8px;right:8px;top:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;pointer-events:none}
 .v3bar>*{pointer-events:auto}
-.v3bar select{max-width:190px}
+.v3bar select{max-width:160px}
 .v3bar .btn.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
 .v3set{position:absolute;right:8px;top:48px;width:min(300px,calc(100% - 16px));max-height:calc(100% - 64px);overflow:auto;background:var(--panel,#1c1e22);border:1px solid var(--line-2);border-radius:10px;padding:10px;display:grid;gap:6px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
 .v3info{position:absolute;left:10px;bottom:8px;font:11px var(--mono);color:var(--muted);pointer-events:none;text-shadow:0 1px 2px #000}
@@ -622,7 +622,7 @@ body.noopt .optbar{display:none}
 .pxf{display:grid;gap:4px}.pxfrow{display:grid;grid-template-columns:62px repeat(3,minmax(0,1fr));gap:4px;align-items:center}.pxfl{color:var(--muted);font-size:11.5px}
 .pxfrow input[type=number]{width:100%;min-width:0;padding:3px 4px;font:inherit;font-size:11.5px}
 .v3gz{position:absolute;pointer-events:none;z-index:3}#v3Hit.gzhot{cursor:grab}
-.v3mir{display:inline-flex;gap:4px;align-items:center}.v3mir select{max-width:110px}.v3set.v3mirpop{right:auto;left:8px}
+.v3mir{display:inline-flex;gap:4px;align-items:center;flex:0 0 auto;padding:2px 4px;border-radius:7px;background:rgba(0,0,0,.25)}.v3mir .v3lab{white-space:nowrap;overflow:visible;max-width:none}.v3mir select{max-width:120px}.v3set.v3mirpop{right:auto;left:8px}
 .kbmain{display:grid;grid-template-columns:170px minmax(0,1fr);gap:10px;min-height:0}
 .kbcats{display:flex;flex-direction:column;gap:2px;max-height:56vh;overflow:auto}
 .kbcat{display:flex;justify-content:space-between;align-items:center;gap:6px;text-align:left;background:none;border:0;color:var(--text);padding:5px 8px;border-radius:5px;cursor:pointer;font:inherit}

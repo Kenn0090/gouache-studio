@@ -43,14 +43,17 @@ The **×** on a set deletes it, after asking. If its material is still on the mo
 Entering 3D Paint switches to the **Texturing** workspace; going back to Paint brings your previous workspace back.
 
 ## Mirror and radial painting
-Under **Mirror**:
-- **Mirror X / Y / Z** paints the other side at the same time. The **plane** sliders move a mirror off centre. With **Snap planes** on, they snap to the centre and to small steps. **Show planes** draws them on the model.
+The mirror sits in the **3D view's top bar**: **X**, **Y** and **Z** turn the mirror planes on, the menu next to them sets **radial** copies, and **▾** opens the plane positions, the radial axis, snapping and showing the planes.
+
+![The mirror in the 3D view's top bar, with ▾ open.](images/mirror-bar.png)
+
+- **X / Y / Z** paints the other side at the same time. The **plane** sliders move a mirror off centre. With **Snap planes** on, they snap to the centre and to small steps. **Show planes** draws them on the model.
 - **Radial copies** repeats every stroke around an axis (for example 6 copies around Y). It works together with the mirrors.
 
 Mirror painting also works in Paint's 3D view (Settings in the 3D view).
 
 ## Stencils (projection painting)
-A stencil is a picture laid over the view:
+Stencils have their own tab, **Stencils**, right next to Brushes. A stencil is a picture laid over the view:
 - **Mask**: the brush paints only where the picture is light.
 - **Colour**: the brush paints the picture's own colours onto the model.
 
@@ -131,6 +134,9 @@ Masks can hold rows (generators, noise, mesh maps, ID colours, filters…) and l
 
 ## From Paint
 In the Paint tab, **right-click a layer › Send layer to 3D Paint** sends just that layer (or group), flattened with its effects. **File › Send to 3D Paint** flattens the whole painting (every map it shares with 3D Paint) into a new layer of the active texture set, keeping its proportions. Hide the background first to keep transparency. In 3D Paint, press **Ctrl + T** to move and scale it.
+
+## Editing a layer in the Paint canvas
+Right-click a layer › **Edit in the Paint canvas** sends its content (every map) to the Paint tab as a linked layer, so you can use every Paint tool on it. When you're done, right-click it there › **Send back to 3D Paint**: it replaces the original layer's content and keeps its name, mask, opacity and blend mode. Its effects and styles become part of the pixels, and a material layer becomes a plain paint layer. One undo step in 3D Paint takes it back.
 
 ## Saving and exporting
 - **Ctrl + S** in the 3D Paint tab (or **Save project**) saves a **.gouache3d** project: the model with its materials, every texture set with its layers, the camera and the mirror settings. Open it with **File › Open** or **Open project…**.

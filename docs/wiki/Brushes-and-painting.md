@@ -19,6 +19,11 @@ Pick a preset from the **Brush** panel, or change the settings:
 
 **Built-in presets:** Round, Soft air, Chalk, Ink, Flat bristle, Sponge, Foliage, Grass and Splatter, plus the blend presets Blender, Wet mix and Bristle blend.
 
+## Each tool keeps its own brush
+The Brush, Eraser, Blend, Dodge/Burn, Healing brush and Clone stamp each remember their own brush and settings (size, opacity, tip, spacing, jitter…), also for next time. Switching tools no longer carries one brush across. Tick **All tools share the brush tip** (Tool settings) to keep the same tip (with its angle, roundness and flips) on every tool while the other settings stay per tool.
+
+Brushes go up to **5000 px** (**]** and the Size slider); Preferences › **Largest brush size** allows more.
+
 ## Lazy mouse and the tip cursor
 - **Lazy mouse** (brush bar › More, or Tool settings): the brush follows the pointer on a string of that many pixels, so it only moves once the string is pulled tight. It's good for steady lines, on the canvas and on the model.
 - **Preferences › Show the brush tip's shape as the cursor** outlines the actual tip, turned and squashed like the dabs.

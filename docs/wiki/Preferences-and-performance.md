@@ -8,12 +8,18 @@
 - **Theme:** Dark, **Dark red** (the Dark theme with red accents), Darker, Warm and Light, or **Custom**: pick your own Background, Panels, Text, Highlight and Accent colours (**Start from…** copies a preset to begin with). Themes preview as you click; **Cancel** goes back.
 - **Show shortcut hints on the canvas:** the line of keys at the bottom of the canvas. **View › Shortcut hints** turns it on and off too.
 - **Keyboard shortcuts…** opens the shortcut editor (see [Keyboard shortcuts](Keyboard-shortcuts.md)).
+- **Largest brush size:** 5000 px by default; 10000 or 20000 px for very big canvases (big brushes paint slowly on large documents).
 - **Live previews:** filters, adjustments, Select menu changes and hover previews (blend modes, fonts) show on the canvas as you adjust them. Turn this off for very large documents or slower machines. Each dialog also has its own **Preview** checkbox.
+
+## Autosave and backups
+- **Autosave every:** Off, 1, 2, 5 (the default), 10, 15 or 30 minutes. When the painting (or, in 3D Paint, the project) has changed, a **recovery copy** is saved: in the desktop app in an *Autosave* folder beside the app's settings, in the browser in its own storage. It is removed when you save. If the app closes without saving, or crashes, the welcome screen offers it back.
+- **Autosave also saves over the file itself:** when the file has been saved before, autosave saves it there instead of keeping a recovery copy.
+- **Keep a backup of the previous save** (desktop app, on by default): before saving over a file, the previous version is kept beside it as *name.backup.gouache* (or *.backup.gouache3d*).
 
 ## Memory and disk
 Like Photoshop's memory and scratch disk settings.
 - **Use up to:** the memory limit. The app shows how much memory your computer has and how much is free. Undo history and loaded models (the 3D view and the Bake tab) share this memory. Past it, the desktop app moves older undo steps to the **disk cache** and reads them back if you undo that far; the browser version drops the oldest steps. It starts at half your memory. Leave room for Windows and other apps: half to three quarters works well.
-- **Undo steps:** how many steps the history keeps (20 to 1000).
+- **Undo steps:** how many steps the history keeps (10 to 1000). The default is **50** in the desktop app and **30** in the browser: long histories of big documents used a lot of memory and could slow the app down or crash it.
 - **Disk cache** (desktop app): the folder for undo steps past the memory limit and for the **search trees** of high-polys you've baked. Press **Change…** to put it on another drive (a fast SSD with plenty of space is best), or **Default** to go back. The app only writes inside a *Gouache Studio cache* folder there. Moving it takes the undo steps already on disk along.
 - **Cache size:** the most the disk cache may hold. Past it, the oldest undo steps and the least recently used search trees are removed. The line below shows what's in it and how much space the drive has left. **Clear bake trees** deletes the saved search trees; they're rebuilt when needed.
 

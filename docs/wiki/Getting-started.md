@@ -25,6 +25,17 @@ If an update was published while the app was already open, it won't show until t
 - **Dock** (right): groups of tabbed panels: **Color**, **Brushes** and **Tool settings**, **Maps**, **Layers** and **Channels**. Drag tabs and the bars between groups to arrange them any way you like (see [Panels and workspaces](Panels-and-workspaces.md)).
 - **Status bar** (bottom): size, bit depth, the map you're painting, zoom, cursor position, pen pressure.
 
+## The welcome screen
+While the app loads, a splash with its version shows. Then the **welcome screen** opens:
+- **Start:** New document…, Open…, or a new 3D Paint project.
+- **Recent** (desktop app): the files you opened or saved lately, with their folders.
+- **Examples:** the **Cobblestone tile** (a hand-painted tiling texture in layers) and **Smart materials on a cube** (3D Paint).
+- If autosave kept unsaved work from last time, it offers it back here: **Recover** or **Discard**.
+
+Untick **Show this at start-up** to go straight to a blank canvas; **File › Welcome screen and examples…** opens it again.
+
+![The welcome screen.](images/welcome.png)
+
 ## Your first document
 
 ![The New document dialog.](images/new-document.png)
@@ -43,4 +54,4 @@ If an update was published while the app was already open, it won't show until t
 You can add or remove maps later with **Maps › Document maps…**.
 
 ## Saving
-**Ctrl+S** saves a `.gouache` file, which keeps everything: layers, maps, masks, filter layers, text, gradients, animation and the 3D model. See [Files, saving and export](Files-and-export.md) for PSD and other formats.
+**Ctrl+S** saves a `.gouache` file, which keeps everything: layers, maps, masks, filter layers, text, gradients, animation and the 3D model. The status bar shows where the file is saved (click it to see it in Explorer), and the top of the **File** menu says so too. The File menu also lists your **recent Paint documents** and **recent 3D Paint projects**, each with its folder and when it was saved; **All recent files…** shows the whole list, with **Show in folder**. **Autosave** keeps recovery copies every few minutes (see [Preferences](Preferences-and-performance.md#autosave-and-backups)). See [Files, saving and export](Files-and-export.md) for PSD and other formats.
