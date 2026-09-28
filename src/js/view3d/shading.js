@@ -27,7 +27,7 @@ function v3DrawOutlines(list,common,F,flip){const eye=v3Eye(),c=v3.cam,dist=Math
 function shadeEdit(fn){const d=doc.v3shade||(doc.v3shade={kind:'std',p:{}});if(!d.p)d.p={};fn(d);v3.dirty=true;requestRender();}
 function renderShading(){const box=document.getElementById('shadeBody');if(!box)return;const sh=v3ShadeOf(doc),k=sh.kind,P=shParams(sh);
   const setP=(key,v)=>shadeEdit(d=>{d.p[k]=Object.assign({},shParams(d,k),{[key]:v});});
-  const sl=(key,label,min,max,step,fmt)=>makeSlider({id:'sh_'+key,label,min,max,step,value:P[key],fmt:fmt||pct,onInput:v=>setP(key,v)}).el;
+  const sl=(key,label,min=0,max=1,step=.01,fmt)=>makeSlider({id:'sh_'+key,label,min,max,step,value:P[key],fmt:fmt||pct,onInput:v=>setP(key,v)}).el;
   const colr=(key,label)=>el('div',{class:'frow'},el('span',{text:label}),colourBtn('sh_'+key,()=>P[key],c=>setP(key,c),label));
   const who=ui.mode==='p3d'&&typeof p3!=='undefined'&&p3.sets[p3.cur]?'texture set “'+p3.sets[p3.cur].name+'”':'this document';
   /* a drop-down list of the shaders (Kenn); each keeps its own settings below it */
