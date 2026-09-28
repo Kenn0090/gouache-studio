@@ -85,7 +85,7 @@ Answers to the design questions:
 - Several materials: **texture sets like Substance Painter** (each material its own maps, switch between them).
 - Stencils / projection painting: **yes**.
 - HDRIs: **.hdr and .exr** (all).
-- Kenn wants a **mock-up of the layout** before building.
+- Mock-up of the layout (awaiting Kenn's feedback): https://claude.ai/artifact/BALjGQnN4WY9Mw6dBL6Jaf (boards: 3D Paint main screen, layer stack + right-click menu, layouts + navigation, Bake tab, Convert tab).
 More requests from Kenn in the same message:
 1. 3D Painter **layer stack like Substance Painter's** (fill layers, paint layers, masks, per-channel blending).
 2. Sending bakes: **tick which maps get sent**, plus **export baked maps** straight to files.
