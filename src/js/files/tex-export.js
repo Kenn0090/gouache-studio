@@ -73,10 +73,12 @@ const TEX_PRESETS={
     {s:'Opacity',what:'Opacity',grey:'opac'}]}};
 const pascal=n=>(String(n||'Texture').replace(/\.[a-z0-9]+$/i,'').match(/[A-Za-z0-9]+/g)||['Texture']).map(w=>w[0].toUpperCase()+w.slice(1)).join('');
 const snake=n=>(String(n||'texture').replace(/\.[a-z0-9]+$/i,'').match(/[A-Za-z0-9]+/g)||['texture']).map(w=>w.toLowerCase()).join('_');
-const texCfg={preset:'unreal',normal:'preset',size:0,fmt:'png',h16:true,name:''};
+const texCfg={preset:'unreal',normal:'preset',size:0,fmt:'png',h16:true,name:'',allSets:true};
+/* a baked mesh map (3D Paint) stands in for a map the document doesn't paint, like AO in the ORM file */
+const texMesh=k=>doc.meshMaps&&doc.meshMaps[k]&&!doc.maps.includes(k)?doc.meshMaps[k]:null;
 /* which files this document produces with a preset */
 const texPresetsFor=()=>Object.entries(TEX_PRESETS).filter(([k,p])=>(p.wf||'metal')===(doc.workflow||'metal'));
-function texOutputs(pr){const has=k=>doc.maps.includes(k);
+function texOutputs(pr){const has=k=>doc.maps.includes(k)||!!texMesh(k);
   return pr.outs.filter(o=>{if(o.rgb==='normal')return has('height')||has('normal');if(o.rgb)return has(o.rgb);if(o.grey)return has(o.grey);return o.need.some(has);});}
 function texNormalFlip(pr){const c=texCfg.normal==='preset'?pr.normal:texCfg.normal;return c==='dx';}
 /* read a map of the whole document as straight 0..1 floats (C = 1 grey or 4 RGBA) */
@@ -108,7 +110,7 @@ async function encodeTex(W,H,f,C,fmt,bits){
 /* build every file of a preset: [{name,data}] */
 async function buildTextures(pr,name){const W=doc.w,H=doc.h,S=texCfg.size||0,nw=S||W,nh=S?Math.max(1,Math.round(S*H/W)):H;
   const cache={},has=k=>doc.maps.includes(k);
-  const grey=k=>{if(k==='one')return null;const kk=k==='smooth'?'rough':k;if(!has(kk))return null;if(!cache[kk]){const t=compositeMap(kk);cache[kk]=readMapF(t,1);release(t);}return cache[kk];};
+  const grey=k=>{if(k==='one')return null;const kk=k==='smooth'?'rough':k;const mm=texMesh(kk);if(!has(kk)&&!mm)return null;if(!cache[kk]){if(mm)cache[kk]=readMapF(mm,1);else{const t=compositeMap(kk);cache[kk]=readMapF(t,1);release(t);}}return cache[kk];};
   const def=k=>k==='one'?1:k==='smooth'?1-mapDefault('rough')[0]:has(k)?mapDefault(k)[0]:(MAP_DEFS[k].def!=null?MAP_DEFS[k].def:0);
   const files=[],ext=texCfg.fmt,n=W*H;
   for(const o of texOutputs(pr)){let f,C;
@@ -119,7 +121,7 @@ async function buildTextures(pr,name){const W=doc.w,H=doc.h,S=texCfg.size||0,nw=
       else{C=3;f=dropAlpha(rgba,n);}}
     else if(o.rgbA){const [rk,ak]=o.rgbA;const t=compositeMap(rk);const rgba=readMapF(t,4);release(t);const g=grey(ak),d=def(ak);for(let i=0;i<n;i++)rgba[i*4+3]=g?g[i]:d;C=4;f=rgba;
       if(!has(rk)){const c=mapDefault(rk);for(let i=0;i<n;i++){rgba[i*4]=c[0];rgba[i*4+1]=c[1];rgba[i*4+2]=c[2];}}}
-    else if(o.grey){f=grey(o.grey).slice();C=1;}
+    else if(o.grey){const g=grey(o.grey);if(!g)continue;f=g.slice();C=1;}
     else{C=o.ch.length;f=new Float32Array(n*C);o.ch.forEach((k,c)=>{const g=grey(k),inv=k==='smooth',d=def(k);for(let i=0;i<n;i++){const v=g?g[i]:d;f[i*C+c]=inv&&g?1-v:v;}});}
     const r=resampleF(f,W,H,C,nw,nh,C===4);const bits=o.grey==='height'&&texCfg.h16&&ext==='png'?16:8;
     const blob=await encodeTex(nw,nh,r,C,ext,bits);files.push({name:pr.name(name).replace('{s}',o.s)+'.'+ext,data:new Uint8Array(await blob.arrayBuffer())});await tick();}
@@ -133,8 +135,9 @@ function dlgExportTextures(){if(stroke||preview||selLive){toast('Finish the curr
   const sel=(id,label,opts,cur,set)=>{const s=el('select',{id});for(const [v,l] of opts){const o=el('option',{value:String(v),text:l});if(String(v)===String(cur))o.selected=true;s.append(o);}s.addEventListener('change',()=>{set(s.value);draw();});return el('div',{class:'frow'},el('label',{for:id,text:label}),s);};
   const nameIn=el('input',{type:'text',id:'txName',value:texCfg.name});nameIn.addEventListener('input',()=>{texCfg.name=nameIn.value;draw();});
   const sizes=[[0,'Document ('+doc.w+' × '+doc.h+')'],[256,'256'],[512,'512'],[1024,'1024'],[2048,'2048'],[4096,'4096']];
+  const setNm=()=>ui.mode==='p3d'&&texCfg.allSets&&p3.sets.filter(S=>!S.missing).length>1?(texCfg.name||'Texture')+'_'+doc.name:(texCfg.name||'Texture');
   const draw=()=>{const pr=TEX_PRESETS[texCfg.preset],outs=texOutputs(pr),flip=texNormalFlip(pr);list.replaceChildren(...outs.map(o=>el('div',{class:'texrow'},
-      el('code',{text:pr.name(texCfg.name||'Texture').replace('{s}',o.s)+'.'+texCfg.fmt}),el('span',{class:'dim',text:o.rgb==='normal'?'Normal ('+(flip?'DirectX':'OpenGL')+')':o.what}))));
+      el('code',{text:pr.name(setNm()).replace('{s}',o.s)+'.'+texCfg.fmt}),el('span',{class:'dim',text:o.rgb==='normal'?'Normal ('+(flip?'DirectX':'OpenGL')+')':o.what}))));
     if(doc.maps.length<2)list.append(el('p',{class:'note',text:'This document only has base colour. Add maps with Image › Document maps… to export roughness, metallic, height and normal too.'}));};
   if((TEX_PRESETS[texCfg.preset].wf||'metal')!==(doc.workflow||'metal'))texCfg.preset=texPresetsFor()[0][0];
   body.append(sel('txPreset','Engine',texPresetsFor().map(([k,p])=>[k,p.label]),texCfg.preset,v=>{texCfg.preset=v;}),
@@ -143,12 +146,18 @@ function dlgExportTextures(){if(stroke||preview||selLive){toast('Finish the curr
     sel('txSize','Size',sizes,texCfg.size,v=>{texCfg.size=+v;}),
     sel('txFmt','Format',[['png','PNG'],['tga','TGA']],texCfg.fmt,v=>{texCfg.fmt=v;}),
     chk('txH16','Height at 16 bits (PNG)',texCfg.h16,v=>{texCfg.h16=v;}),
+    ui.mode==='p3d'&&p3.sets.filter(S=>!S.missing).length>1?chk('txAll','Every texture set (files named after each set)',texCfg.allSets,v=>{texCfg.allSets=v;draw();}):null,
     el('div',{class:'sub',text:'Files'}),list);draw();
   openDialog({title:'Export textures',body,okLabel:platform.isDesktop?'Choose folder…':'Export',onOk(){exportTextures();}});}
 async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.name||'Texture';
   let dir=null;if(platform.isDesktop){dir=await platform.pickFolder();if(!dir)return;}
   toast('Exporting textures…');await tick();
-  try{const files=await buildTextures(pr,name);if(!files.length){toast('Nothing to export.');return;}
+  try{let files;
+    /* 3D Paint: every texture set, each named after its set */
+    if(ui.mode==='p3d'&&texCfg.allSets&&p3.sets.filter(S=>!S.missing).length>1){files=[];const back=p3.cur;
+      for(let i=0;i<p3.sets.length;i++){if(p3.sets[i].missing)continue;p3SwitchSet(i,true);files.push(...await buildTextures(pr,name+'_'+p3.sets[i].name));}p3SwitchSet(back,true);}
+    else files=await buildTextures(pr,name);
+    if(!files.length){toast('Nothing to export.');return;}
     if(dir){const sep=dir.includes('\\')?'\\':'/';for(const f of files)await platform.writeFile(dir.replace(/[\\/]$/,'')+sep+f.name,f.data);toast('Saved '+files.length+' textures to '+dir);}
     else{const r=await deliver(pascal(name)+'_'+texCfg.preset+'.zip',await makeZipMulti(files));toast(deliveredText(r,'Textures'));}}
   catch(e){console.error(e);toast('Export failed: '+(e.message||e));}}

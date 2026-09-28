@@ -31,7 +31,7 @@ function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren
   if(!more)return;
   bar.append(el('span',{class:'optbreak'}));
   const X=(key,label,min,max,step,fmt,id)=>{S(key,label,min,max,step,fmt);const o=optSliders[key];o.sl.el.querySelector('input').addEventListener('input',()=>{const s=document.getElementById(id);if(s){s.value=brush[key];const n=s.nextSibling;if(n)n.textContent=fmt(brush[key]);}});};
-  X('spacing','Spacing',.01,1.5,.01,pct,'bSpace');X('smoothing','Smoothing',0,1,.01,pct,'bSmooth');X('grain','Grain',0,1,.01,pct,'bGrain');
+  X('spacing','Spacing',.01,1.5,.01,pct,'bSpace');X('smoothing','Smoothing',0,1,.01,pct,'bSmooth');X('lazy','Lazy mouse',0,200,1,v=>v?v+' px':'off','bLazy');X('grain','Grain',0,1,.01,pct,'bGrain');
   X('sizeJitter','Size jitter',0,1,.01,pct,'bSJ');X('angleJitter','Angle jitter',0,1,.01,pct,'bAJ');
   bar.append(el('span',{class:'optsep'}));
   bar.append(tg('Pressure: opacity',brush.pOpacity,()=>{brush.pOpacity=!brush.pOpacity;brushEdited();buildBrushPanel();},'Pen pressure changes the opacity'));

@@ -41,7 +41,6 @@ function buildP3Panel(){const box=$('#p3dBody');if(!box)return;box.replaceChildr
     el('p',{class:'note',text:v3nav.mode==='coat'?'Left paints. Right-drag turns, middle-drag moves, Ctrl+right-drag zooms (or the wheel). Left-drag off the model turns too.':'Left paints. Alt+left turns, Alt+middle moves, Alt+right zooms (or the wheel). Middle or right drag also moves.'}),
     el('p',{class:'note',text:'Hold Alt over the model to pick its colour. Left/Right arrow keys step through the shades in the Color panel. Double-click empty space to reframe.'}),
     el('div',{class:'sub',text:'Mesh maps (baked)'}),p3MeshMapsBox(),
-    el('div',{class:'sub',text:'Materials'}),p3MatBox(),
     el('div',{class:'sub',text:'Project'}),el('div',{class:'chips'},el('button',{class:'btn sm',text:'Save project',title:'Save the model and all texture sets as a .gouache3d project (Ctrl+S here)',onclick:()=>saveP3Project(false)}),el('button',{class:'btn sm',text:'Open project…',onclick:()=>pickFile('open')}),el('button',{class:'btn sm',text:'Export textures…',onclick:()=>actions.expTex()})),
     el('div',{class:'sub',text:'Select on the model'}),sel3Box(),
     el('div',{class:'sub',text:'Mirror'}),mir3Box(),

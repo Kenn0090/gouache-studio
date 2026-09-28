@@ -67,7 +67,7 @@ function meshDown(hit,e){if(stroke||preview||selLive)return false;if(typeof bk!=
   const r=hit.getBoundingClientRect(),w=Math.max(1,Math.round(r.width)),h=Math.max(1,Math.round(r.height)),sp=meshSpace(w,h);if(!sp)return true;
   o.space=sp;o.sym=null;const [x,y]=meshPt(hit,e),p=pressureOf(e);v3.mstroke={id:e.pointerId,sx:x,sy:y,sp:p,rx:x,ry:y};beginStroke(et.L,x,y,p,o);return true;}
 function meshMove(hit,e){const m=v3.mstroke;if(!m||e.pointerId!==m.id||!stroke)return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];const k=1-brush.smoothing*.93;
-  for(const ev of (evs.length?evs:[e])){const [x,y]=meshPt(hit,ev),p=pressureOf(ev);m.rx=x;m.ry=y;m.sx+=(x-m.sx)*k;m.sy+=(y-m.sy)*k;m.sp+=(p-m.sp)*Math.max(k,.4);addPoint(m.sx,m.sy,m.sp);}}
+  for(const ev of (evs.length?evs:[e])){let [x,y]=meshPt(hit,ev);const p=pressureOf(ev);m.rx=x;m.ry=y;if(brush.lazy>0){const q=lazyStep(m,x,y,brush.lazy);if(!q)continue;x=q[0];y=q[1];}m.sx+=(x-m.sx)*k;m.sy+=(y-m.sy)*k;m.sp+=(p-m.sp)*Math.max(k,.4);addPoint(m.sx,m.sy,m.sp);}}
 function meshUp(e){const m=v3.mstroke;if(!m||(e&&e.pointerId!==m.id))return;v3.mstroke=null;if(stroke){if(brush.smoothing>0)addPoint(m.rx,m.ry,m.sp);endStroke(true);}}
 /* round cursor showing the brush size over the model */
 function meshCursor(hit,e){let c=v3.curEl;if(!c||!c.isConnected){c=v3.curEl=el('div',{class:'v3cur'});hit.parentNode.append(c);}

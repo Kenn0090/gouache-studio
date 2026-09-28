@@ -582,3 +582,13 @@ body.noopt .optbar{display:none}
   background:color-mix(in srgb,var(--panel) 94%,transparent);border:1px solid var(--accent);border-radius:8px;padding:6px 8px;box-shadow:0 8px 22px rgba(0,0,0,.45)}
 .maskbar[hidden]{display:none}.maskbar-t{font-weight:600;color:var(--accent)}.maskbar-n{color:var(--muted);font-size:11.5px}.maskbar select{width:auto}
 .p3mm{display:grid;gap:3px}.p3mmrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
+/* Materials tab and the material editor */
+.matgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px}
+.mattile{display:grid;justify-items:center;gap:3px;border:1px solid var(--line-2);background:var(--raise);border-radius:8px;padding:6px 4px;color:var(--text);font:inherit;font-size:11px;min-width:0;width:100%}
+.mattile span{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mattile:hover{border-color:var(--accent)}
+.matwrap{position:relative}.matacts{position:absolute;top:2px;right:2px;display:none;gap:2px}.matwrap:hover .matacts{display:flex}.matacts .btn{padding:0 5px;min-height:0;line-height:18px}
+.matHead{display:grid;grid-template-columns:96px 1fr;gap:12px;align-items:start}.matprev{border-radius:50%}
+/* History panel */
+.histlist{display:grid;gap:1px;max-height:none;overflow:auto}
+.hrow{padding:4px 8px;border-radius:5px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+.hrow:hover{background:var(--raise)}.hrow.on{background:var(--accent-soft);color:var(--accent)}.hrow.redo{opacity:.45}.hrow.first{font-style:italic}

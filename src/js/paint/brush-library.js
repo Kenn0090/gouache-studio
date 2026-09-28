@@ -94,7 +94,7 @@ function buildBrushPanel(){
   else if(!tonal)box.append(S('bOp','Opacity','opacity',0,1,.01,pct).el);
   box.append(S('bFlow','Flow','flow',.01,1,.01,pct).el);
   if(!brush.tip)box.append(S('bHard','Hardness','hardness',0,1,.01,pct).el);
-  box.append(S('bSpace','Spacing','spacing',.01,1.5,.01,pct).el,S('bGrain','Grain','grain',0,1,.01,pct).el,S('bSmooth','Smoothing','smoothing',0,1,.01,pct).el);
+  box.append(S('bSpace','Spacing','spacing',.01,1.5,.01,pct).el,S('bGrain','Grain','grain',0,1,.01,pct).el,S('bSmooth','Smoothing','smoothing',0,1,.01,pct).el,S('bLazy','Lazy mouse','lazy',0,200,1,v=>v?v+' px':'off').el);
   box.append(el('div',{class:'sub',text:'Pen pressure'}));
   box.append(el('div',{class:'chips'},C('bPS','Size','pSize',true),C('bPO','Opacity','pOpacity'),sm?null:C('bBU','Build-up','buildup')));
   if(brush.pSize)box.append(S('bMin','Min size','minSize',0,1,.01,pct).el);
@@ -148,7 +148,7 @@ new ResizeObserver(()=>schedulePreview()).observe(prevC);
 
 /* brush library persistence (per browser, best effort) */
 const store={db:null,
-  open(){if(this.db)return Promise.resolve(this.db);return new Promise((res,rej)=>{try{const r=indexedDB.open('gouache-studio',2);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains('sets'))db.createObjectStore('sets',{keyPath:'id'});if(!db.objectStoreNames.contains('fonts'))db.createObjectStore('fonts',{keyPath:'name'});};r.onsuccess=()=>{this.db=r.result;res(r.result);};r.onerror=()=>rej(r.error);}catch(e){rej(e);}});},
+  open(){if(this.db)return Promise.resolve(this.db);return new Promise((res,rej)=>{try{const r=indexedDB.open('gouache-studio',3);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains('sets'))db.createObjectStore('sets',{keyPath:'id'});if(!db.objectStoreNames.contains('materials'))db.createObjectStore('materials',{keyPath:'id'});if(!db.objectStoreNames.contains('fonts'))db.createObjectStore('fonts',{keyPath:'name'});};r.onsuccess=()=>{this.db=r.result;res(r.result);};r.onerror=()=>rej(r.error);}catch(e){rej(e);}});},
   tx(mode,fn,sn){sn=sn||'sets';return this.open().then(db=>new Promise((res,rej)=>{const t=db.transaction(sn,mode);const req=fn(t.objectStore(sn));t.oncomplete=()=>res(req&&req.result);t.onerror=()=>rej(t.error);}));},
   put(d,sn){return this.tx('readwrite',st=>st.put(d),sn).catch(()=>{});},
   del(id,sn){return this.tx('readwrite',st=>st.delete(id),sn).catch(()=>{});},

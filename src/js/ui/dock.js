@@ -5,6 +5,8 @@
    The arrangement is a workspace: Painting, Texturing, 3D Paint, Minimal or your own, remembered per workspace. */
 const PANELS={
   p3d:{title:'3D Paint',sel:'#p3dSec',avail:m=>m==='p3d',mode:true},
+  hist:{title:'History',sel:'#histSec',avail:m=>m!=='convert',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>'},
+  mats:{title:'Materials',sel:'#matSec',avail:m=>m==='paint'||m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M7 9.5a6 6 0 0 1 5-3" opacity=".6"/>'},
   brushtab:{title:'Brush maker',sel:'#brushTabSec',avail:m=>m==='brush',mode:true},
   conv:{title:'Convert',sel:'#convSec',avail:m=>m==='convert',mode:true},
   bake:{title:'Bake',sel:'#bakeSec',avail:m=>m==='bake',mode:true},
@@ -19,10 +21,10 @@ const PANEL_IDS=Object.keys(PANELS);
 const MODE_GROUP=['p3d','brushtab','conv','bake','anim'];
 /* the built-in workspaces: extra = 3D view on and how wide, painting on the model */
 const WS_PRESETS={
-  painting:{name:'Painting',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['color'],f:1.05},{tabs:['brushes','tool'],f:1.25},{tabs:['maps'],f:.45},{tabs:['layers','chan'],f:1.6}],icons:[],floats:[]},
-  texturing:{name:'Texturing',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['maps'],f:.7},{tabs:['layers','chan'],f:1.6},{tabs:['tool','brushes','color'],f:1.3}],icons:[],floats:[]},
-  paint3d:{name:'3D Paint',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['layers','maps','chan'],f:1.6},{tabs:['color','brushes','tool'],f:1.4}],icons:[],floats:[]},
-  minimal:{name:'Minimal',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1}],icons:['color','brushes','tool','maps','layers','chan'],floats:[]}};
+  painting:{name:'Painting',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['color'],f:1.05},{tabs:['brushes','mats','tool'],f:1.25},{tabs:['maps'],f:.45},{tabs:['layers','chan','hist'],f:1.6}],icons:[],floats:[]},
+  texturing:{name:'Texturing',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['maps'],f:.7},{tabs:['layers','chan','hist'],f:1.6},{tabs:['tool','brushes','mats','color'],f:1.3}],icons:[],floats:[]},
+  paint3d:{name:'3D Paint',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['layers','maps','chan','hist'],f:1.6},{tabs:['color','brushes','mats','tool'],f:1.4}],icons:[],floats:[]},
+  minimal:{name:'Minimal',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1}],icons:['color','brushes','mats','tool','maps','layers','chan','hist'],floats:[]}};
 const dk={ws:'painting',L:null,custom:{},saved:{},lock:false,flyout:null,drag:null};
 (()=>{try{const s=JSON.parse(localStorage.getItem('gs.dock')||'{}');if(s.ws)dk.ws=s.ws;dk.saved=s.saved||{};dk.custom=s.custom||{};dk.lock=!!s.lock;}catch(e){}})();
 const dkClone=o=>JSON.parse(JSON.stringify(o));
@@ -61,11 +63,11 @@ function dkGrid(){const L=dk.L,app=$('#app'),hasDock=L.groups.some(g=>dkAvail(g)
   app.style.gridTemplateRows=`38px ${L.opt?'minmax(36px,auto)':'0px'} minmax(0,1fr) auto 26px`;
   app.style.gridTemplateAreas=left?'"head head head head head" "opt opt opt opt opt" "tools work dock2 icons dock" "tools tl dock2 icons dock" "status status status status status"':'"head head head head head" "opt opt opt opt opt" "work tools dock2 icons dock" "tl tools dock2 icons dock" "status status status status status"';}
 /* in 3D Paint, Color, Brushes and Tool settings sit in a column of their own beside the viewport (dock2) */
-const DK_COL2=['color','brushes','tool'];
+const DK_COL2=['color','brushes','mats','tool'];
 const dkCol2On=()=>ui.mode==='p3d';
 const dkIn=id=>PANELS[id].avail(ui.mode)&&!(dkCol2On()&&DK_COL2.includes(id));
 const dkAvail=g=>g._c2?g.tabs.filter(id=>PANELS[id].avail(ui.mode)):g.tabs.filter(id=>dkIn(id));
-if(!dk.col2)dk.col2={w:250,groups:[{tabs:['color'],f:1,_c2:true},{tabs:['brushes','tool'],f:1.5,_c2:true}]};
+if(!dk.col2)dk.col2={w:250,groups:[{tabs:['color'],f:1,_c2:true},{tabs:['brushes','mats','tool'],f:1.5,_c2:true}]};
 function dkRender(){const L=dk.L,dock=$('#dock');dkGrid();
   for(const id of PANEL_IDS){const s=dkSec(id);s.classList.remove('dk-off');}
   dock.replaceChildren();const gs=L.groups.filter(g=>dkAvail(g).length);
@@ -147,7 +149,7 @@ function dkMove(id,to){const L=dk.L;dkRemove(id);
   if(!L.groups.some(g=>g.tabs.length)&&!to.group&&to.newGroup==null&&L.icons.length===0)L.groups.push({tabs:[],f:1});
   dkApply(L,true);}
 /* show a panel (Window menu, tests): brings it back into the dock and to the front */
-function showPanel(id){const L=dk.L;let g=L.groups.find(g=>g.tabs.includes(id));const f=L.floats.find(f=>f.tabs.includes(id));
+function showPanel(id){const L=dk.L;if(dkCol2On()&&DK_COL2.includes(id)){const g2=dk.col2.groups.find(g=>g.tabs.includes(id));if(g2){g2.active=id;g2.min=false;dkRender();return;}}let g=L.groups.find(g=>g.tabs.includes(id));const f=L.floats.find(f=>f.tabs.includes(id));
   if(f){f.active=id;dkRender();return;}if(L.icons.includes(id)){dkFlyout(id);return;}
   if(!g){L.hidden=L.hidden.filter(t=>t!==id);const home=WS_PRESETS.painting.groups.findIndex(x=>x.tabs.includes(id));g=L.groups.find(x=>x.tabs.some(t=>(WS_PRESETS.painting.groups[home]||{tabs:[]}).tabs.includes(t)));
     if(g)g.tabs.push(id);else{g={tabs:[id],f:1};L.groups.push(g);}}
