@@ -57,7 +57,7 @@ The top-right tabs are **Paint · Animation · Bake · Convert · Brush** (the B
 - Numbers kept in float textures (triangle and node indices in the baker) must stay below 2^24 to be exact; the baker splits bigger ones over two values (`bkTriPack`, the leaf encoding in `bvhBuild`).
 - GPU work is asynchronous: to time it, include a readback (`readRGBA8`) in the timed part.
 
-## Where things stand (after 0.22.2)
+## Where things stand (after 0.23.0)
 Done: phases 0–9, including selections, transforms, fills, animation/flipbooks, PBR maps, converters and filters, filter layers, 3D view (pop-out, painting on the model), baker (Bake tab, progressive preview, skew/offset painting, cage display, drag and drop, low-memory loading), cage painting and symmetry on the canvas, and the Convert tab (CrazyBump-style). 0.13.1 fixed Convert rings/height-from-normal; 0.14 added colour jitter (per-dab colour lives in strokeT's RGB), keyboard shortcuts editor, themes, Make brush tip + Brush tip template, pictures into masks, Tile filter.
 
 0.14.1 added the Brush tab; 0.15 the Specular/Gloss workflow (`core/workflow.js`: doc.workflow, maps spec/gloss, diffuse kept in 'base'; shading converts to metal/rough on the fly; switching converts the composite into one group per map and stashes the old maps on each layer in L.wfStash, not saved in files).
@@ -106,6 +106,14 @@ Kenn's requests and answers:
 - **0.23 design (mock-up https://claude.ai/artifact/QMd3snZUzPVwUqcPkx8B9b, Kenn liked all but the first mask layout):** mask effects are rows UNDER the layer in the Layers panel like Substance (eye, name, blend, opacity, ×; fold ▾; drag to reorder); FX ▾ adds to the mask when the mask thumbnail is selected, to the content (blue fx rows) when the content thumbnail is; the Material tab becomes **Properties** (shows the selected material or effect's settings; pending Kenn's OK, and whether content effects come in 0.23). Sources: paint, fill, mesh map, converted map, ID colour, direction, gradient, noise/grunge, image, shape (box/lasso kept movable), another layer's mask, generators (14 presets). Filters: levels, contrast, blur, slope blur, warp, grow/shrink, threshold, posterize, edge detect, invert; effects change everything below. Masks in the Paint tab get the same. Existing masks → one Paint row; L.idSel → an ID colour row.
 - **Live mask** on a layer without a mask: the mask-mode tools make a live limit on painting; **Keep…** asks: as a mask stack, or apply to the layer (erase outside).
 - **Mesh maps from a material** (Kenn: C): from a material's height/normal make curvature, cavity AO, edges, creases, roughness, metallic; send to any of: converted mesh maps, added onto the baked maps, new layers, the material's own roughness/metallic. The Material/Properties panel gets a 4th source **Converted** listing them.
+
+## 0.23 (built): masks and effects
+- `layers/mask-stack.js`: L.mask.stack = rows bottom first {id,kind,on,mode,op,p,t}; kinds paint/fill/mesh/id/dir/grad/noise/image/ref/gen/filter(fx id or own grow|warp|slope). msEval → L.mask.target (so everything reading masks is unchanged); msUpdate keyed by msKey (lookVer, rows JSON, meshMaps, model, msEpoch, msDocVer when rows read document maps). Paint rows keep coverage in alpha (new ones are transparent); editTarget paints the selected/top Paint row (L.mrow); render.js re-evaluates the stack live during a stroke. Content effects L.cfx (FX filters on the layer's own maps, per-row maps) in compositeList. Undo: msRecord (structure), msEdit/msCommit (settings, 700 ms; flushed by history.js). Files: node.mstack/cfx; pictures saved raw (d.pic). maskDispose frees row pictures. Generators read baked curv/AO, else converted, else document maps, else msModelCurv (curvature from fillPosMaps normals).
+- `ui/mask-rows.js`: rows under the layer (msrow .m red / .c blue), drag to reorder, ▾ fold (n.fxFold), ✦ button #lFxAdd → fxAddMenu (mask when editMask, else content), msRowEditor in Properties (the old Material panel, dock id still matEd).
+- `view3d/mask-tools.js`: ID colour is now a mask row; live mask `lm` (pseudo layer lm.M with a stack → sel.t via P.loadsel; shapes become rows; Keep → msRecord mask stack or apply to maps).
+- `layers/mat-convert.js`: Mesh maps from a material → doc.meshMaps['cv:*'] (curv, ao, curvEdge, curvCrease, rough, metal), optional add onto baked, layers, material channels src 'conv'.
+- Tests: mstack.cjs, livemask.cjs, matconv.cjs. Rounded cube (rcube) has overlapping UVs: don't judge direction/gradient visuals on it.
+- Next (0.24): smart materials (material + mask rows saved together), anchor points, baking inside 3D Paint; then the looks (0.25).
 
 ## 0.20 3D Paint: agreed with Kenn (after 0.19)
 Answers to the design questions:
