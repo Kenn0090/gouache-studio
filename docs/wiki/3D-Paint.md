@@ -3,7 +3,9 @@
 The **3D Paint** tab (top right, next to Paint) is for painting straight onto a model, in the spirit of Substance Painter. It has its own textures, separate from the Paint tab, and saves as its own project file.
 
 ![The 3D Paint tab.](images/p3d-tab.png)
-*The model fills the painting area; Colour and Brushes sit in a column beside it; the 3D Paint panel, Maps and Layers are on the right.*
+*The model fills the painting area; Colour, Material, Brushes and Materials sit in a column beside it; the 3D Paint panel, Maps and Layers are on the right.*
+
+The column beside the view works like the rest of the dock: drag its tabs out (to float them or put them with other panels), or drag other tabs into it.
 
 ## Getting started
 1. Click **3D Paint** at the top right.
@@ -74,26 +76,35 @@ A **loop** is the ring of quads crossing the edge you click nearest to. Faces an
 ## Materials
 The **Materials** tab sits beside Brushes. Click a material (Steel, Gold, Copper, Rust, Rubber, Plastic, your own…) to add it as a **material layer**. If a selection is active, it becomes the layer's mask; otherwise paint the mask to show the material where you want it.
 
-**New material…** (or double-clicking a material layer's thumbnail) opens the **material editor**:
-- **Channels:** base colour, roughness, metallic, height, normal, emissive and opacity. Each one is a colour or value, or an image, with **Tile** and **Turn** for images.
+**New material…** makes a material layer and shows it in the **Material** panel (the tab beside Colour), which edits whichever material layer is selected. Double-clicking a material layer's thumbnail brings it forward.
+
+![The Material panel beside Colour, and the Materials tab.](images/material-panel.png)
+
+- **Channels:** base colour, roughness, metallic, height, normal, emissive and opacity. Each one is a colour or value, an **Image** (with **Tile** and **Turn**), or a **Mesh map**: one of the texture set's baked maps (AO, curvature, thickness…), laid over the model as baked.
 - **Height** makes bump detail on the model (the normal follows it), with a **Bump strength** slider.
 - **Projection:** *UV* follows the model's UVs. *Triplanar* projects images from three sides and blends them, so there are no seams. **Blend** sets how soft the joins are.
 - **Save to Materials** keeps the material, with its images, on this computer for other layers and projects. In the Materials tab, **⤓** exports one as a **.gmat** file and **Import…** brings one in.
 
-The layer stays live: open the editor again at any time and every channel updates.
+The layer stays live: every change shows straight away on the model, and becomes one undo step when you pause.
 
 ## Mesh maps (from the Bake tab)
 In the Bake tab, tick **Bake each material separately**, then press **Send to 3D Paint**. The model comes over, and each material's baked maps land in its own texture set as that set's **mesh maps** (listed in the 3D Paint panel), like Substance Painter's. They're what masks and smart materials will read.
 - The baked normal becomes a layer in the Normal map, so the high-poly detail shows on the model straight away.
 - **Add as layer** puts any mesh map in the layer stack.
 - Tick *also add them as layers* before sending to get AO (Multiply) and curvature (Overlay) layers automatically.
+- Material channels can use them (**Mesh map** in the Material panel), and **right-click a layer › Mask from mesh map** makes its mask from AO, curvature, thickness or height.
 
 ## Mask mode
 **Alt + click a layer's mask** to see it on the model in black and white, without lighting. A bar appears at the top:
+
+![Mask mode with ID colour.](images/mask-tools.png)
+
+- **Paint:** nothing paints the mask until this is on (white shows the layer, black hides it).
+- **Box**, **Lasso** and **Polygon** select what you can see of the model under the shape you draw. Drag inside the shape to move it; the selection follows when you let go. **Shift** adds, **Ctrl** takes away. For the polygon, click the corners, then double-click, click the first point or press **Enter**. On the flat texture they are the usual selection tools.
+- **ID colour** (like Substance Painter's colour selection): click the model (or the flat texture) to pick colours of the texture set's baked **ID** map. Those colours turn white in the mask, the rest black. **Tolerance** sets how close a colour counts, **Softness** the edge, **Invert** swaps them; click a colour swatch to remove it. It stays with the layer, so you can come back and change it.
 - **Fill white** / **Fill black** (inside the selection, if there is one) and **Invert**.
 - **Double-click:** choose Object, Material, UV island, Face or Loop, then double-click the model. That part turns white in the mask; **Ctrl + double-click** turns it black.
-- Painting paints the mask.
-- **Done** (or **Esc**, or Alt + click again) goes back to the material.
+- **Done**, **Esc**, Alt + click again, or clicking the layer's own thumbnail goes back to the material.
 
 ## From Paint
 In the Paint tab, **File › Send to 3D Paint** flattens the painting (every map it shares with 3D Paint) into a new layer of the active texture set, keeping its proportions. Hide the background first to keep transparency. In 3D Paint, press **Ctrl + T** to move and scale it.

@@ -60,6 +60,6 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 | 16 | Shapes with bevels, Array tool, layer styles | 0.19 |
 | 17 | Fill layers, own canvas for Bake and Convert, bake export, right-click layer menu, resizable dock | 0.20 |
 | 18 | 3D Paint tab (texture sets, Substance-style layers, mirror, stencils, selections) | 0.21 |
-| 19 | Material layers and the Materials tab, triplanar, mask mode, bake to 3D Paint per material, ID from vertex colours/polypaint, floating dialogs, History, lazy mouse | 0.22 |
-| 20 | Mask Builder (generators, smart masks), mask effects, smart materials, anchor points, baking inside 3D Paint | 0.23 |
+| 19 | Material layers and the Materials tab, triplanar, mask mode, bake to 3D Paint per material, ID from vertex colours/polypaint, floating dialogs, History, lazy mouse; Material panel, mesh maps in materials and masks, mask tools and ID colour masks, Substance-style Levels (0.22.2) | 0.22 |
+| 20 | Layer stacks inside masks, Mask Builder (generators, smart masks), mask effects, smart materials, anchor points, baking inside 3D Paint | 0.23 |
 | 21 | PBR viewer with HDRIs, screenshots, ray-traced and turntable renders | 0.24 |

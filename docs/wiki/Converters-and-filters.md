@@ -33,7 +33,9 @@ Only the Normal map is in colour. Every other converted map is grey and lands in
 *Levels.*
 
 - **Color adjustments** (Ctrl+U): exposure, brightness, contrast, saturation, hue, temperature.
-- **Levels** (Ctrl+L): input black, midtones and input white; output black and white; per channel, with a histogram and **Auto**.
+- **Levels** (Ctrl+L): input black, midtones and input white; output black and white; per channel, with a histogram and **Auto**. **Simple** (the usual layout, like Substance Painter's) has handles to drag under the histogram and on the output bar, and **Invert**; **Sliders** shows a slider for each value.
+
+  ![Levels, simple layout.](images/levels-simple.png)
 - **Curves** (Ctrl+M):
   - click the curve to add a point, drag to move it, drag it off the box to remove it;
   - works per channel;

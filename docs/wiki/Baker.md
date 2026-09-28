@@ -23,7 +23,9 @@ Under the model rows, the tabs hold the settings. A dot marks the maps that will
 - **Normal:** OpenGL style (green up). For DirectX engines, flip green when exporting (*File › Export textures*).
 - **AO:** Rays, Reach and **Spread** (narrower keeps the shading to deep cavities).
 - **Curvature:** see below.
-- **Height**, **Thickness** (its own Rays and Reach) and **Other** (world-space normal, position, ID colours).
+- **Height**, **Thickness** (its own Rays and Reach), **World normal**, **Position** and **ID** (where its colours come from). Every bake has its own tab; a dot marks the ones that will be baked.
+
+![The Bake tab's tabs.](images/bake-tabs.png)
 
 ![The Bake panel's tabs.](images/bake-tabs.png)
 *The map tabs, here AO.*
@@ -56,7 +58,7 @@ Each map arrives as a **plain layer** (no folders), so you can set blend modes b
 - **Cage:** either *Push out by the front distance*, or load a **cage model**, which is your low-poly pushed outwards with the same vertices and triangles.
 
 ## ID colours
-In the **Other** tab, *ID colours from* chooses where the ID map's colours come from:
+In the **ID** tab, *ID colours from* chooses where the ID map's colours come from:
 - **Separate meshes:** one colour per object in the file.
 - **Materials:** one colour per material.
 - **Vertex colours:** the colours painted on the high-poly's vertices (OBJ, glTF, FBX).
@@ -85,7 +87,7 @@ If parts of the high-poly are missed, raise the distances. If detail from other 
 | Thickness (white = thick) | Base colour, hidden | Base colour, hidden |
 | World-space normal | Base colour, hidden | Base colour, hidden |
 | Position (gradient over the model's box) | Base colour, hidden | Base colour, hidden |
-| ID colours (Other tab: **separate meshes**, **materials**, **vertex colours** or **ZBrush polypaint**; Auto uses vertex colours, else materials) | Base colour, hidden | Base colour, hidden |
+| ID colours (ID tab: **separate meshes**, **materials**, **vertex colours** or **ZBrush polypaint**; Auto uses vertex colours, else materials) | Base colour, hidden | Base colour, hidden |
 
 Each baked map arrives in **its own group** (“Baked normal”, “Baked AO”…), so they're easy to find in the layer stack. Maps the document doesn't have yet are added for you. Groups for maps that live in the base colour (thickness, world-space normal, position, ID) start hidden so they don't cover your colours: show one, or use it as a mask with *Select › Load selection*.
 
