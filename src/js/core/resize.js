@@ -17,7 +17,7 @@ function toggleTile(){doc.wrap=!doc.wrap;const all=[strokeT,beforeT,scratchT,pre
   $('#tileBtn').setAttribute('aria-pressed',String(doc.wrap));fit();requestRender(true);toast(doc.wrap?'Tile mode on: strokes wrap across edges.':'Tile mode off.');}
 
 function newDoc(w,h,depth,bg,name,wrap,tpl){
-  if(ui.mode==='brush')setMode('paint',true);
+  if(ui.mode==='brush'||tabDocs.paint)setMode('paint',true);
   if(tedit){tedit=null;ted.hidden=true;}if(tsess){clearTimeout(tsess.timer);tsess=null;}
   if(ui.mode==='bake'){bakeExit();ui.mode='paint';document.body.classList.remove('bakemode');syncModeTabs();}
   if(ui.mode==='convert'){convertExit();ui.mode='paint';document.body.classList.remove('convmode');syncModeTabs();}

@@ -36,7 +36,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  // skew: paint black over the left half on the canvas
  await p.evaluate(()=>{const b=[...document.querySelectorAll('#bakeBody .seg button')].find(b=>b.textContent==='Skew');b.click();});await W(200);
  ok(await p.evaluate(()=>__gs.bk.paint==='skew'&&!!__gs.bk.maps.skew),'skew map ready');
- await setFG('#000000');await p.evaluate(()=>Object.assign(__gs.brush,{size:120,hardness:1,opacity:1,flow:1,smoothing:0,pSize:false,tip:null}));
+ await p.evaluate(()=>Object.assign(__gs.brush,{size:120,hardness:1,opacity:1,flow:1,smoothing:0,pSize:false,tip:null}));
  for(let y=30;y<500;y+=90)await drag(10,y,240,y,{steps:14});
  await waitIdle();await W(200);
  const sk=await rd('skew',[[100,100],[400,100]]);ok(sk[0][0]<20&&sk[1][0]>240,'skew painted '+JSON.stringify(sk));
@@ -53,7 +53,11 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.screenshot({path:OUT+'baketab-mesh.png'});
  // send to document, twice (replaces)
  await p.click('#bkSend');await W(300);await p.click('#bkSend');await W(300);
- st=await p.evaluate(()=>__gs.allLayers().map(l=>l.name));ok(st.filter(n=>n==='Baked normal').length===1,'send to document (replacing) '+st.join('|'));
+ st=await p.evaluate(()=>__gs.inPaint(()=>__gs.allLayers().map(l=>l.name)));ok(st.filter(n=>n==='Baked normal').length===1,'send to the painting (replacing) '+st.join('|'));
+ // unticking the only map: nothing to send
+ await p.uncheck('#bks_normal');await W();ok(await p.evaluate(()=>document.querySelector('#bkSend').disabled),'with no map ticked Send is off');
+ await p.check('#bks_normal');await W();
+ const dl=p.waitForEvent('download',{timeout:15000}).catch(()=>null);await p.click('#bkExport');const d=await dl;ok(!!d&&/\.zip$/.test(d.suggestedFilename()),'Export saves the baked maps '+(d&&d.suggestedFilename()));
  // estimate offset
  await p.evaluate(()=>{const b=[...document.querySelectorAll('#bakeBody button')].find(b=>b.textContent==='Estimate offset');b.click();});await W(300);await waitIdle();
  const of=await p.evaluate(()=>{const t=__gs.bk.maps.offset;if(!t)return null;const d=__gs.readRGBA8(t);let mn=255,mx=0;for(let i=0;i<d.length;i+=4){mn=Math.min(mn,d[i]);mx=Math.max(mx,d[i]);}return [mn,mx];});

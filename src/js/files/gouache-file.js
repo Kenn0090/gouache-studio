@@ -13,7 +13,9 @@ function writeRegion(t,x,y,w,h,bytes){gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.pix
   if(t.depth===16)gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,w,h,gl.RGBA,gl.HALF_FLOAT,new Uint16Array(bytes.buffer,bytes.byteOffset,w*h*4));
   else gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,w,h,gl.RGBA,gl.UNSIGNED_BYTE,bytes);
   gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);t.mipDirty=true;}
-async function encodeGouache(){const blobs=[];let off=0;
+/* in the Bake or Convert tab, the painting is what gets saved */
+async function encodeGouache(){return tabDocs.paint?withPaintDocAsync(encodeGouacheNow):encodeGouacheNow();}
+async function encodeGouacheNow(){const blobs=[];let off=0;
   const put=async(t,full)=>{if(!t||t.empty)return null;const b=full?[0,0,doc.w,doc.h]:contentBounds(t);if(!b)return null;
     const [x,y]=b,w=b[2]-b[0],h=b[3]-b[1],c=await streamThrough(readRegion(t,x,y,w,h),'deflate-raw');blobs.push(c);const r={o:off,n:c.length,r:[x,y,w,h],d:t.depth};off+=c.length;return r;};
   const mask=async n=>n.mask?{en:n.mask.enabled,img:await put(n.mask.target,true)}:null;
@@ -21,7 +23,7 @@ async function encodeGouache(){const blobs=[];let off=0;
     if(n.type==='group'){const kids=[];for(const c of n.children)kids.push(await node(c));return Object.assign(base,{t:'G',open:n.open,kids});}
     if(n.fx)return Object.assign(base,{t:'F',clip:n.clip,mapModes:n.mapModes||{},fx:{map:n.fx.map,stack:fxCleanStack(n.fx.stack)}});
     const maps={};for(const k of mapKeysOf(n)){const r=await put(mapT(n,k));if(r)maps[k]=r;}
-    return Object.assign(base,{t:'L',clip:n.clip,lock:n.lockAlpha,mapModes:n.mapModes||{},maps,text:n.text?cloneText(n.text):undefined,grad:n.grad||undefined,array:n.array||undefined,arrBox:n.array?n.arrBox:undefined,styles:n.styles||undefined,shape:n.shape||undefined,hold:n.frame?n.hold:undefined});};
+    return Object.assign(base,{t:'L',clip:n.clip,lock:n.lockAlpha,mapModes:n.mapModes||{},maps,text:n.text?cloneText(n.text):undefined,grad:n.grad||undefined,array:n.array||undefined,arrBox:n.array?n.arrBox:undefined,styles:n.styles||undefined,shape:n.shape||undefined,fill:n.fill||undefined,hold:n.frame?n.hold:undefined});};
   const R=paintRoot(),kids=[];for(const c of R.children){kids.push(await node(c));await tick();}
   const all=allLayers(R),active=doc.active&&!doc.active.frame?allNodes(R).indexOf(doc.active):-1;
   const A=doc.anim;let anim=null;
@@ -35,7 +37,7 @@ async function encodeGouache(){const blobs=[];let off=0;
   const hj=new TextEncoder().encode(JSON.stringify(head)),pre=new Uint8Array(16);pre.set(GF_MAGIC,0);const dv=new DataView(pre.buffer);dv.setUint32(8,GF_VERSION,true);dv.setUint32(12,hj.length,true);
   return new Blob([pre,hj,...blobs],{type:'application/octet-stream'});}
 function isGouache(buf){const u=new Uint8Array(buf,0,Math.min(8,buf.byteLength));return u.length===8&&GF_MAGIC.every((v,i)=>u[i]===v);}
-async function openGouache(buf,name){if(!isGouache(buf))throw new Error('This is not a Gouache Studio document.');
+async function openGouache(buf,name){if(!isGouache(buf))throw new Error('This is not a Gouache Studio document.');if(tabDocs.paint)setMode('paint',true);
   const dv=new DataView(buf),ver=dv.getUint32(8,true),hl=dv.getUint32(12,true);
   if(ver>GF_VERSION)throw new Error('This document was saved by a newer Gouache Studio. Update the app to open it.');
   const head=JSON.parse(new TextDecoder().decode(new Uint8Array(buf,16,hl))),data=16+hl;
@@ -59,7 +61,7 @@ async function openGouache(buf,name){if(!isGouache(buf))throw new Error('This is
     else if(o.t==='F'){n=newFxLayerObj(o.name,(o.fx.stack||[]).filter(it=>it.conv?CONVERTERS[it.conv]:FX[it.id]),o.fx.map);n.clip=!!o.clip;n.mapModes=Object.assign({},o.mapModes||{});}
     else{n=newLayerObj(o.name);n.clip=!!o.clip;n.lockAlpha=!!o.lock;n.mapModes=Object.assign({},o.mapModes||{});
       for(const k in o.maps||{}){if(k!=='base'&&!doc.maps.includes(k))continue;const t=k==='base'?n.maps.base:ensureMapTarget(n,k);await img(o.maps[k],t);}
-      if(o.text)n.text=o.text;if(o.grad)n.grad=o.grad;if(o.array){n.array=o.array;n.arrBox=o.arrBox||null;}if(o.styles)n.styles=o.styles;if(o.shape)n.shape=o.shape;}
+      if(o.text)n.text=o.text;if(o.grad)n.grad=o.grad;if(o.array){n.array=o.array;n.arrBox=o.arrBox||null;}if(o.styles)n.styles=o.styles;if(o.shape)n.shape=o.shape;if(o.fill)n.fill=o.fill;}
     Object.assign(n,{visible:o.vis!==false,opacity:o.op==null?1:o.op,mode:o.mode==null?(o.t==='G'?-1:0):o.mode});
     if(o.mask){n.mask=makeMask(1);n.mask.enabled=o.mask.en!==false;await img(o.mask.img,n.mask.target);}
     if(parent)insertNode(n,parent);

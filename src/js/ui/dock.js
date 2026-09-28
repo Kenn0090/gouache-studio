@@ -8,9 +8,9 @@ const PANELS={
   conv:{title:'Convert',sel:'#convSec',avail:m=>m==='convert',mode:true},
   bake:{title:'Bake',sel:'#bakeSec',avail:m=>m==='bake',mode:true},
   anim:{title:'Animation',sel:'#animSec',avail:m=>m==='anim',mode:true},
-  color:{title:'Color',sel:'section[aria-labelledby="hColor"]',avail:m=>m!=='convert',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16" opacity=".5"/>'},
-  brushes:{title:'Brushes',sel:'section[aria-labelledby="hBrush"]',avail:m=>m!=='convert',icon:'<path d="M4 20c2.2 0 4-.9 4-3.2 0-1.4 1-2.4 2.4-2.4 1.5 0 2.5 1 2.5 2.4C12.9 19 10.8 20 8 20H4z"/><path d="M11.2 13.6 20 4.6a1.4 1.4 0 0 0-2-2l-9 8.8"/>'},
-  tool:{title:'Tool settings',sel:'#toolSec',avail:m=>m!=='convert',icon:'<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="8" cy="17" r="1.8"/>'},
+  color:{title:'Color',sel:'section[aria-labelledby="hColor"]',avail:m=>m!=='convert'&&m!=='bake',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16" opacity=".5"/>'},
+  brushes:{title:'Brushes',sel:'section[aria-labelledby="hBrush"]',avail:m=>m!=='convert'&&m!=='bake',icon:'<path d="M4 20c2.2 0 4-.9 4-3.2 0-1.4 1-2.4 2.4-2.4 1.5 0 2.5 1 2.5 2.4C12.9 19 10.8 20 8 20H4z"/><path d="M11.2 13.6 20 4.6a1.4 1.4 0 0 0-2-2l-9 8.8"/>'},
+  tool:{title:'Tool settings',sel:'#toolSec',avail:m=>m!=='convert'&&m!=='bake',icon:'<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="8" cy="17" r="1.8"/>'},
   maps:{title:'Maps',sel:'#mapsSec',avail:m=>m==='paint'||m==='anim',icon:'<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>'},
   layers:{title:'Layers',sel:'section[aria-labelledby="hLayers"]',avail:m=>m==='paint'||m==='brush',icon:'<path d="M12 4 3 9l9 5 9-5-9-5z"/><path d="m3 14 9 5 9-5"/>'},
   chan:{title:'Channels',sel:'section[aria-labelledby="hChan"]',avail:m=>m==='paint',icon:'<circle cx="9" cy="10" r="5"/><circle cx="15" cy="10" r="5"/><circle cx="12" cy="15" r="5"/>'}};
@@ -56,13 +56,14 @@ function dkGrid(){const L=dk.L,app=$('#app'),hasDock=L.groups.some(g=>dkAvail(g)
   document.body.classList.toggle('tb2',L.tb.cols===2);document.body.classList.toggle('noopt',!L.opt);
   const left=L.tb.side!=='right';
   app.style.gridTemplateColumns=left?`${tw} minmax(0,1fr) ${ic} ${hasDock?L.w+'px':'0px'}`:`minmax(0,1fr) ${tw} ${ic} ${hasDock?L.w+'px':'0px'}`;
-  app.style.gridTemplateRows=`38px ${L.opt?'36px':'0px'} minmax(0,1fr) auto 26px`;
+  app.style.gridTemplateRows=`38px ${L.opt?'minmax(36px,auto)':'0px'} minmax(0,1fr) auto 26px`;
   app.style.gridTemplateAreas=left?'"head head head head" "opt opt opt opt" "tools work icons dock" "tools tl icons dock" "status status status status"':'"head head head head" "opt opt opt opt" "work tools icons dock" "tl tools icons dock" "status status status status"';}
 const dkAvail=g=>g.tabs.filter(id=>PANELS[id].avail(ui.mode));
 function dkRender(){const L=dk.L,dock=$('#dock');dkGrid();
   for(const id of PANEL_IDS){const s=dkSec(id);s.classList.remove('dk-off');}
   dock.replaceChildren();const gs=L.groups.filter(g=>dkAvail(g).length);
   gs.forEach((g,i)=>{if(i)dock.append(dkSplit(gs[i-1],g));dock.append(dkGroup(g));});
+  if(!dk.wbar){dk.wbar=dkWidthBar();$('#app').append(dk.wbar);}dk.wbar.hidden=!gs.length||!(L.w>0);
   dk.icons.replaceChildren(...L.icons.filter(id=>PANELS[id].avail(ui.mode)).map(id=>{const b=el('button',{class:'dkicon'+(dk.flyout===id?' on':''),title:PANELS[id].title,'aria-label':PANELS[id].title,'aria-pressed':String(dk.flyout===id)});
     b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+(PANELS[id].icon||'')+'</svg>';b.onclick=()=>dkFlyout(dk.flyout===id?null:id);b.addEventListener('pointerdown',e=>dkDragStart(e,id,{icons:true}));return b;}));
   for(const n of [...document.querySelectorAll('.dkfloat')])n.remove();
@@ -82,6 +83,14 @@ function dkGroup(g){const av=dkAvail(g);let a=av.includes(g.active)?g.active:av[
   const box=el('div',{class:'dkgrp'+(g.min?' min':''),style:'flex:'+(g.min?'0 0 auto':g.f+' 1 0px')},dkTabs(av,a,{group:g},id=>{g.active=id;g.min=false;dkRender();dkSave();}),body);
   box.querySelector('.dktabs').addEventListener('dblclick',e=>{if(e.target.closest('.dktab')){g.min=!g.min;dkRender();dkSave();}});
   box._g=g;return box;}
+/* the dock's left edge: drag to make the whole dock wider or narrower (double-click: back to the usual width) */
+function dkSetWidth(w){dk.L.w=Math.round(clamp(w,220,Math.min(720,window.innerWidth*.6)));dkGrid();if(typeof resizeGL==='function'){resizeGL();fit();}if(typeof drawSV==='function')drawSV();}
+function dkWidthBar(){const s=el('div',{class:'dkwidth',role:'separator','aria-orientation':'vertical','aria-label':'Dock width',title:'Drag to resize the dock'});
+  s.addEventListener('dblclick',()=>{if(dk.lock)return;dkSetWidth(300);dkSave();});
+  s.addEventListener('pointerdown',e=>{if(dk.lock||e.button!==0)return;e.preventDefault();const w0=dk.L.w,x0=e.clientX;document.body.classList.add('dkresizing');
+    const mv=ev=>dkSetWidth(w0-(ev.clientX-x0));
+    const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);document.body.classList.remove('dkresizing');dkSave();};window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);});
+  return s;}
 function dkSplit(a,b){const s=el('div',{class:'dksplit',role:'separator','aria-orientation':'horizontal',title:'Drag to resize'});
   s.addEventListener('pointerdown',e=>{if(dk.lock||a.min||b.min)return;e.preventDefault();const A=s.previousSibling,B=s.nextSibling,ha=A.getBoundingClientRect().height,hb=B.getBoundingClientRect().height,tot=a.f+b.f,y0=e.clientY;
     const mv=ev=>{const d=clamp(ev.clientY-y0,-ha+40,hb-40),na=(ha+d)/(ha+hb)*tot;a.f=na;b.f=tot-na;A.style.flex=a.f+' 1 0px';B.style.flex=b.f+' 1 0px';};

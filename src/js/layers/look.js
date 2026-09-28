@@ -57,7 +57,7 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); vec4 best=tex
   o=best; }`;
 /* signed distance in pixels: negative inside the shape; sub-pixel from the edge pixels' own coverage */
 const FS_LKSDF=`uniform sampler2D uSeed; uniform sampler2D uShape;
-void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 s=texelFetch(uSeed,p,0); float a=texelFetch(uShape,p,0).a; float d=s.x>=0.0?length(s.xy-vec2(p)):1e5;
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 s=texelFetch(uSeed,p,0); float a=texelFetch(uShape,p,0).a; float d=s.x>=0.0?length(s.xy-vec2(p)):6e4;
   float sd=a>=0.5?-d:d; o=vec4(sd,0.0,0.0,1.0); }`;
 /* the styles, for one map at a time (uMap: 0 base colour, 1 height, 2 roughness, 3 metallic).
    Each style's settings: x = on, then opacity, size and one more; colours and offsets separately. */

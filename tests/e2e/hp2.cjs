@@ -32,9 +32,9 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  // bake + send: one group per map
  await p.evaluate(async()=>{const C=__gs.bakeCfg;C.ss=1;C.pad=2;C.front=15;C.back=5;C.rays=8;for(const k in C.kinds)C.kinds[k]=['normal','thick','curv'].includes(k);await __gs.runBake(__gs.bakeViewModel(),['normal','thick','curv']);});
  await p.click('#bkSend');await p.waitForTimeout(300);
- let g=await p.evaluate(()=>__gs.doc.root.children.map(n=>n.type+':'+n.name+':'+n.visible+':'+(n.children?n.children.map(c=>c.name).join('/'):'')));
- console.log(g);ok(g.filter(x=>x.startsWith('group:Baked')).length===3&&g.some(x=>x==='group:Baked thickness:false:Thickness'),'one group per baked map');
- await p.click('#bkSend');await p.waitForTimeout(300);g=await p.evaluate(()=>__gs.doc.root.children.filter(n=>n.type==='group').length);ok(g===3,'sending again replaces the groups ('+g+')');
+ let g=await p.evaluate(()=>__gs.inPaint(()=>__gs.doc.root.children.map(n=>n.type+':'+n.name+':'+n.visible)));
+ console.log(g);ok(g.includes('layer:Baked normal:true')&&g.includes('layer:Thickness:false')&&g.includes('layer:Baked curvature:true')&&!g.some(x=>x.startsWith('group:')),'sent to the painting as plain layers (no folders)');
+ await p.click('#bkSend');await p.waitForTimeout(300);g=await p.evaluate(()=>__gs.inPaint(()=>__gs.doc.root.children.filter(n=>n.baked).length));ok(g===3,'sending again replaces them ('+g+')');
  // cage shown
  await p.evaluate(()=>{__gs.bakeCfg.front=12;});await p.click('#bkFront');await p.waitForTimeout(400);await p.screenshot({path:OUT+'cage-shell.png'});
  ok(await p.evaluate(()=>!!__gs.bk.cageGPU),'cage drawn on the model');

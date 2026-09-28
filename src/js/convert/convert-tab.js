@@ -95,14 +95,19 @@ function cvSetSource(t,name,own){if(cvS.src&&cvS.srcOwn)disposeTarget(cvS.src);c
   cvDetect();cvS.prepDirty=true;cvAllDirty();cvS.thumbs=null;if(ui.mode==='convert'){buildConvertPanel();fitSoon();}}
 const fitSoon=()=>requestAnimationFrame(()=>{fit();requestRender(true);});
 /* a snapshot of a document map or the active layer */
-function cvSourceFromDoc(what){const W=doc.w,H=doc.h,t=makeTarget(W,H,cvDepth(),false);let s=null,name=doc.name||'Texture';
+/* read from the painting (the Convert tab's own canvas then takes its size) */
+function cvSourceFromDoc(what){const got=withPaintDoc(()=>cvReadPaint(what));if(!got)return false;if(ui.mode==='convert')tabDocResize(got.t.w,got.t.h,'Convert');
+  cvSetSource(got.t,got.name,true);if(what==='normal')cvSetKind('normal');else if(what==='height')cvSetKind('height');return true;}
+function cvReadPaint(what){const W=doc.w,H=doc.h,t=makeTarget(W,H,cvDepth(),false);let s=null,name=doc.name||'Texture';
   if(what==='layer'){const L=doc.active;if(!L||!isLayer(L)||!mapT(L,doc.map)||mapT(L,doc.map).empty){toast('The active layer has nothing in this map.');disposeTarget(t);return false;}blit(mapT(L,doc.map),t,0,0,W,H,0,0);name=L.name;}
   else if(what==='normal'){if(!doc.maps.includes('normal')&&!doc.maps.includes('height')){toast('This document has no normal or height map.');disposeTarget(t);return false;}s=normalComposite(false,null);blit(s,t,0,0,W,H,0,0);release(s);}
   else{if(!doc.maps.includes(what)){toast('This document has no '+MAP_DEFS[what].label.toLowerCase()+' map.');disposeTarget(t);return false;}s=compositeMap(what);blit(s,t,0,0,W,H,0,0);release(s);}
-  cvSetSource(t,name,true);if(what==='normal')cvSetKind('normal');else if(what==='height')cvSetKind('height');return true;}
-async function cvSourceFromFile(file){loadStart(file.name);try{loadBusy('Reading the image…');await loadPaint();const raw=await decodeFile(file),t=makeTarget(doc.w,doc.h,cvDepth(),false);
-    const tmp=makeTarget(doc.w,doc.h,cvDepth(),false);drawRawStretch(t,raw);disposeTarget(tmp);cvSetSource(t,baseName(file.name),true);
-    if(raw.w!==doc.w||raw.h!==doc.h)toast('“'+file.name+'” ('+raw.w+' × '+raw.h+') was fitted to the document size, '+doc.w+' × '+doc.h+'.');}
+  return {t,name};}
+async function cvSourceFromFile(file){loadStart(file.name);try{loadBusy('Reading the image…');await loadPaint();const raw=await decodeFile(file);
+    /* the Convert tab's canvas takes the picture's own size (8192 at most) */
+    const k=Math.min(1,8192/Math.max(raw.w,raw.h)),w=Math.max(1,Math.round(raw.w*k)),h=Math.max(1,Math.round(raw.h*k));if(ui.mode==='convert')tabDocResize(w,h,'Convert');
+    const t=makeTarget(doc.w,doc.h,cvDepth(),false);drawRawStretch(t,raw);cvSetSource(t,baseName(file.name),true);
+    if(k<1)toast('“'+file.name+'” is '+raw.w+' × '+raw.h+'; it is converted at '+w+' × '+h+'.');}
   catch(e){console.warn(e);toast('That image could not be read: '+(e.message||e));}finally{loadEnd();}}
 /* a decoded image stretched over a target */
 function drawRawStretch(target,raw){const tex=uploadStraight(raw),tmp=makeTarget(raw.w,raw.h,cvDepth(),false);premultInto(tmp,tex,[0,0],null);gl.deleteTexture(tex);
@@ -193,12 +198,13 @@ function cvThumbs(){const S=112,P2=cvP();cvS.thumbs=[];const keepInv=cvS.inv;
 function cvDrawThumbs(box){box.querySelectorAll('canvas').forEach((c,i)=>{const d=cvS.thumbs&&cvS.thumbs[i];if(!d)return;const x=c.getContext('2d'),im=x.createImageData(112,112);im.data.set(d);x.putImageData(im,0,0);});}
 
 /* ---------- workspace ---------- */
-function convertEnter(){const work=$('#work');cvS.prev3d={on:v3.on,w:getComputedStyle(work).getPropertyValue('--pane3d')};
+function convertEnter(){const own=tabDocs.own.convert,ps=paintDocSize();tabDocEnter('convert',own?own.doc.w:ps[0],own?own.doc.h:ps[1],'Convert');
+  const work=$('#work');cvS.prev3d={on:v3.on,w:getComputedStyle(work).getPropertyValue('--pane3d')};
   if(!v3.on)toggle3D(true);if(!v3.pop)work.style.setProperty('--pane3d',Math.round(work.clientWidth*.46)+'px');
-  if(!cvS.src){if(doc.maps.includes('base')&&paintLayers().some(L=>hasMap(L,'base')))cvSourceFromDoc('base');}
+  if(!cvS.src){if(withPaintDoc(()=>doc.maps.includes('base')&&paintLayers().some(L=>hasMap(L,'base'))))cvSourceFromDoc('base');}
   const s=v3s();if(s.model==='plane'&&!v3.convModel){v3.convModel=true;s.model='sphere';v3LoadModel();}
   buildConvertPanel();build3dPane();cvAllDirty();v3.dirty=true;resizeGL();fit();requestRender(true);}
-function convertExit(){const p=cvS.prev3d;cvS.prev3d=null;v3.btex=null;cvS.pick=null;cvS.persp.edit=false;
+function convertExit(){tabDocExit('convert');const p=cvS.prev3d;cvS.prev3d=null;v3.btex=null;cvS.pick=null;cvS.persp.edit=false;
   if(p&&!p.on)toggle3D(false);else if(p&&!v3.pop)$('#work').style.setProperty('--pane3d',p.w||'0px');v3.mapsDirty=true;v3.dirty=true;resizeGL();fit();requestRender(true);}
 /* canvas: the result being edited, or the source */
 function cvViewTex(){if(!cvS.src){return cvT('empty',doc.w,doc.h,8);}
@@ -222,16 +228,19 @@ function cvOverlay(){if(ui.mode!=='convert'||!cvS.persp.edit||!cvS.persp.q)retur
 
 /* ---------- sending and exporting ---------- */
 const cvMade=()=>CV_OUTS[cvS.kind].filter(k=>cvS.make[k]);
+/* send the ticked maps to the painting, as plain layers (scaled to its size when it differs) */
 function cvSend(){if(!cvS.src){toast('Pick a source first.');return;}const ks=cvMade();if(!ks.length){toast('Tick at least one map to make.');return;}
-  /* a Specular/Gloss document gets glossiness (inverted roughness) and specular (dark grey, the colour where metal) */
-  const sg=doc.workflow==='spec',mapOf=k=>sg&&k==='rough'?'gloss':sg&&k==='metal'?'spec':CV_MAP[k],nameOf=k=>sg&&k==='rough'?'Glossiness':sg&&k==='metal'?'Specular':CV_NAMES[k];
-  for(const k of ks)cvRes(k);const need=ks.map(mapOf).filter(m=>!doc.maps.includes(m));if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the conversion');
-  const groups=[];const mk=(k)=>{const m=mapOf(k),L=newLayerObj('Converted '+nameOf(k).toLowerCase());for(const x of Object.keys(L.maps))if(x!=='base'&&x!==m){disposeTarget(L.maps[x]);delete L.maps[x];}
-    const T=ensureMapTarget(L,m);if(m==='gloss'||m==='spec')run(cvP().tosg,T,{uSrc:cvS.res[k].tex,uCol:cvPrep().tex,uSpec:m==='spec'});else run(P.shift,T,{uSrc:cvS.res[k].tex,uOff:[0,0],uWrap:false,uOutside:[0,0,0,0]});if(m!=='base'){L.blankBase=true;setMapModeOf(L,m,0);}
-    const G=newGroupObj(L.name);G.open=false;G.converted=true;insertNode(L,G);groups.push(G);return G;};
-  const old=cvS.replace?cvS.sent.filter(n=>n.parent&&allNodes().includes(n)):[];
-  structOp(old.length?'Replace converted maps':'Convert maps',()=>{for(const n of old)detachNode(n);for(const k of ks)insertNode(mk(k),doc.root);cvS.sent=groups;});
-  syncTargets();changedAll();refreshMapsUI();v3Changed();toast((old.length?'Replaced':'Sent')+' '+ks.length+' map'+(ks.length>1?'s':'')+' to the document, one group each. In Paint, click a group to see its map.');}
+  const sg=withPaintDoc(()=>doc.workflow==='spec'),mapOf=k=>sg&&k==='rough'?'gloss':sg&&k==='metal'?'spec':CV_MAP[k],nameOf=k=>sg&&k==='rough'?'Glossiness':sg&&k==='metal'?'Specular':CV_NAMES[k];
+  /* each result as it will go in, at the Convert canvas's size */
+  const src={},tmp=[];for(const k of ks){const r=cvRes(k),m=mapOf(k);if(m==='gloss'||m==='spec'){const t=makeTarget(r.w,r.h,r.depth,false);run(cvP().tosg,t,{uSrc:r.tex,uCol:cvPrep().tex,uSpec:m==='spec'});src[k]=t;tmp.push(t);}else src[k]=r;}
+  let n=0,replaced=false;
+  withPaintDoc(()=>{const need=ks.map(mapOf).filter(m=>!doc.maps.includes(m));if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the conversion');
+    const mk=k=>{const m=mapOf(k),L=newLayerObj('Converted '+nameOf(k).toLowerCase());for(const x of Object.keys(L.maps))if(x!=='base'&&x!==m){disposeTarget(L.maps[x]);delete L.maps[x];}
+      copyScaled(src[k],ensureMapTarget(L,m));if(m!=='base'){L.blankBase=true;setMapModeOf(L,m,0);}L.converted=true;return L;};
+    const old=cvS.replace?cvS.sent.filter(x=>x.parent&&allNodes().includes(x)):[];replaced=old.length>0;
+    structOp(old.length?'Replace converted maps':'Convert maps',()=>{for(const x of old)detachNode(x);const Ls=ks.map(mk);for(const L of Ls)insertNode(L,doc.root);cvS.sent=Ls;n=Ls.length;});
+    syncTargets();changedAll();refreshMapsUI();});
+  tmp.forEach(disposeTarget);v3Changed();toast((replaced?'Replaced':'Sent')+' '+n+' map'+(n>1?'s':'')+' to the painting, as layers.');}
 async function cvExport(){if(!cvS.src){toast('Pick a source first.');return;}const ks=cvMade();if(!ks.length){toast('Tick at least one map to make.');return;}
   let dir=null;if(platform.isDesktop){dir=await platform.pickFolder();if(!dir)return;}
   loadStart('Exporting maps');try{const files=[],name=pascal(cvS.srcName||'Texture');let i=0;

@@ -33,7 +33,7 @@ All of these can be changed in **Edit › Keyboard shortcuts…**: click a comma
 | Shift+X | Left–right symmetry on / off |
 | Shift (while painting inside a cage) | Follow the cage's lines |
 | Alt+Backspace (Alt+Del) | Fill with foreground colour (on the active layer or inside the selection) |
-| Backspace / Del | Clear (delete the selection's contents, or the whole layer) |
+| Backspace / Del | Delete the selected layers; with a selection active, clear the selection's contents. In Animation and the Brush tab it clears the frame or sketch |
 
 ## Edit and file
 | Key | Action |

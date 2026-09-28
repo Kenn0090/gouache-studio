@@ -53,7 +53,7 @@ function renderLayers(){
     const eye=el('button',{class:'eye',title:n.visible?'Hide':'Show','aria-label':(n.visible?'Hide ':'Show ')+n.name});eye.innerHTML=n.visible?eyeOn:eyeOff;
     eye.addEventListener('click',e=>{e.stopPropagation();n.visible=!n.visible;renderLayers();requestRender(true);});
     const meta=[];if(grp){meta.push(n.mode<0?'pass':MODES[n.mode]);const om=doc.maps.length>1&&ui.mode!=='anim'?onlyMapOf(n):null;if(om)meta.push(MAP_SHORT[om]);}else{const mm=mapModeOf(n,doc.map);if(mm!==(doc.map==='base'?0:MAP_DEFS[doc.map].blend))meta.push(MODES[mm].replace(' (Add)',''));}
-    if(n.text)meta.unshift('text');if(n.grad)meta.unshift('gradient');if(n.shape)meta.unshift('shape');if(n.array&&n.array.on!==false)meta.unshift('array');if(n.opacity<1)meta.push(Math.round(n.opacity*100)+'%');if(n.lockAlpha)meta.push('lock');
+    if(n.text)meta.unshift('text');if(n.grad)meta.unshift('gradient');if(n.shape)meta.unshift('shape');if(n.fill)meta.unshift('fill');if(n.array&&n.array.on!==false)meta.unshift('array');if(n.opacity<1)meta.push(Math.round(n.opacity*100)+'%');if(n.lockAlpha)meta.push('lock');
     /* which maps this layer has something in (so a layer painted only in Height is easy to find) */
     if(n.fx){meta.length=0;const mm=mapModeOf(n,n.fx.map);if(mm)meta.push(MODES[mm].replace(' (Add)',''));if(n.opacity<1)meta.push(Math.round(n.opacity*100)+'%');
       meta.unshift(n.fx.stack.filter(it=>it.on!==false).map(fxItemTitle).join(', ')||'no filters');if(doc.maps.length>1)meta.push(MAP_SHORT[n.fx.map]);}
@@ -64,7 +64,7 @@ function renderLayers(){
     if(grp){icon=el('button',{class:'caret'+(n.open?' open':''),'aria-label':(n.open?'Collapse ':'Expand ')+n.name,'aria-expanded':String(n.open)});icon.innerHTML=folderSvg;
       icon.addEventListener('click',e=>{e.stopPropagation();n.open=!n.open;renderLayers();});icon.addEventListener('pointerdown',e=>e.stopPropagation());}
     else{icon=n.thumb;icon.classList.toggle('edit',!!(n.mask&&!n.editMask&&n===doc.active));icon.classList.toggle('fxthumb',!!n.fx);
-      if(n.fx){icon.title='Filter layer: double-click to change its filters';icon.ondblclick=e=>{e.stopPropagation();selectOnly(n);updateRowClasses();fxEditor(n);};}else{icon.ondblclick=null;icon.title='';}}
+      if(n.fx){icon.title='Filter layer: double-click to change its filters';icon.ondblclick=e=>{e.stopPropagation();selectOnly(n);updateRowClasses();fxEditor(n);};}else if(n.fill){icon.title='Fill layer: double-click to change what it fills';icon.ondblclick=e=>{e.stopPropagation();selectOnly(n);updateRowClasses();dlgFillLayer(n);};}else{icon.ondblclick=null;icon.title='';}}
     const thumbs=el('div',{class:'thumbs'},icon);
     if(n.mask){const mt=n.mask.thumb;mt.className='mthumb'+(n.editMask&&n===doc.active?' edit':'')+(n.mask.enabled?'':' off');mt.title='Mask: click to edit, Shift+click to turn off or on, Alt+click to view it';thumbs.append(mt);}
     icon=thumbs;
@@ -73,6 +73,7 @@ function renderLayers(){
       fx.addEventListener('pointerdown',e=>e.stopPropagation());fx.addEventListener('click',e=>{e.stopPropagation();selectOnly(n);updateRowClasses();dlgLayerStyle();});row.append(fx);}
     row._node=n;
     row.addEventListener('pointerdown',e=>layerPointerDown(e,n,row));
+    row.addEventListener('contextmenu',e=>{e.preventDefault();if(!doc.sel.has(n)){selectOnly(n);updateRowClasses();syncLayerProps();}layerMenu(e,n);});
     row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selectOnly(n);updateRowClasses();}});
     name.addEventListener('dblclick',e=>{e.stopPropagation();const inp=el('input',{value:n.name,'aria-label':'Name'});name.replaceChildren(inp);inp.focus();inp.select();
       inp.addEventListener('pointerdown',ev=>ev.stopPropagation());
@@ -167,7 +168,7 @@ function cmdGroup(){const tops=topSelected();if(!tops.length)return;
 function cmdUngroup(){const G=doc.active;if(!G||G.type!=='group'){toast('Select a group to ungroup.');return;}
   structOp('Ungroup',()=>{const p=G.parent,i=p.children.indexOf(G),ch=G.children.slice();detachNode(G);p.children.splice(i,0,...ch);ch.forEach(c=>c.parent=p);doc.sel=new Set(ch);doc.active=ch[ch.length-1]||p.children[Math.max(0,i-1)]||null;});}
 function cloneNode(n){if(n.type==='layer'&&n.fx){const L=newFxLayerObj(n.name+' copy',JSON.parse(JSON.stringify(fxCleanStack(n.fx.stack))),n.fx.map);Object.assign(L,{opacity:n.opacity,mode:n.mode,clip:n.clip,visible:n.visible,mask:cloneMask(n.mask)});L.mapModes=Object.assign({},n.mapModes);return L;}
-  if(n.type==='layer'){const L=newLayerObj(n.name+' copy');Object.assign(L,{opacity:n.opacity,mode:n.mode,clip:n.clip,lockAlpha:n.lockAlpha,visible:n.visible,mask:cloneMask(n.mask),text:n.text?cloneText(n.text):null,grad:n.grad?cloneGrad(n.grad):null,array:n.array?JSON.parse(JSON.stringify(n.array)):null,arrBox:n.arrBox||null,styles:n.styles?JSON.parse(JSON.stringify(n.styles)):null,shape:n.shape?JSON.parse(JSON.stringify(n.shape)):null});for(const k of mapKeysOf(n))blit(mapT(n,k),ensureMapTarget(L,k),0,0,doc.w,doc.h,0,0);L.mapModes=Object.assign({},n.mapModes);L.target=L.maps[doc.map]||emptyFor(mapDepth(doc.map));if(L.text)L.text.bbox=layoutText(L.text);return L;}
+  if(n.type==='layer'){const L=newLayerObj(n.name+' copy');Object.assign(L,{opacity:n.opacity,mode:n.mode,clip:n.clip,lockAlpha:n.lockAlpha,visible:n.visible,mask:cloneMask(n.mask),text:n.text?cloneText(n.text):null,grad:n.grad?cloneGrad(n.grad):null,array:n.array?JSON.parse(JSON.stringify(n.array)):null,arrBox:n.arrBox||null,styles:n.styles?JSON.parse(JSON.stringify(n.styles)):null,shape:n.shape?JSON.parse(JSON.stringify(n.shape)):null,fill:n.fill?JSON.parse(JSON.stringify(n.fill)):null});if(n._fillImg){L._fillImg={};for(const k in n._fillImg){const s=n._fillImg[k],t=makeTarget(s.w,s.h,8,true);blit(s,t,0,0,s.w,s.h,0,0);L._fillImg[k]=t;}}for(const k of mapKeysOf(n))blit(mapT(n,k),ensureMapTarget(L,k),0,0,doc.w,doc.h,0,0);L.mapModes=Object.assign({},n.mapModes);L.target=L.maps[doc.map]||emptyFor(mapDepth(doc.map));if(L.text)L.text.bbox=layoutText(L.text);return L;}
   const G=newGroupObj(n.name+' copy');Object.assign(G,{opacity:n.opacity,mode:n.mode,visible:n.visible,open:n.open,mask:cloneMask(n.mask)});for(const c of n.children){const cc=cloneNode(c);cc.name=c.name;insertNode(cc,G);}return G;}
 function cmdDuplicate(){const tops=topSelected();if(!tops.length)return;
   structOp('Duplicate',()=>{const clones=[];for(const n of tops){const c=cloneNode(n);insertNode(c,n.parent,n.parent.children.indexOf(n)+1);clones.push(c);}doc.sel=new Set(clones);doc.active=clones[clones.length-1];});}
@@ -214,3 +215,20 @@ function cmdFlatten(){const hid=hiddenNodes(doc.root,[]),count=hid.reduce((s,n)=
 $('#lAdd').addEventListener('click',()=>cmdAddLayer());$('#lGroup').addEventListener('click',()=>{if(doc.sel.size>1||(doc.active&&topSelected().length))cmdGroup();else cmdNewGroup();});
 $('#lUngroup').addEventListener('click',cmdUngroup);$('#lDup').addEventListener('click',cmdDuplicate);$('#lDel').addEventListener('click',cmdDelete);
 $('#lMerge').addEventListener('click',cmdMerge);$('#lUp').addEventListener('click',()=>cmdMove(1));$('#lDown').addEventListener('click',()=>cmdMove(-1));
+/* right-click a layer: masks, layer styles (each adds that style and opens it), filters, array, and the usual commands */
+function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)&&!n.fx,grp=n.type==='group',anim=ui.mode==='anim';
+  const it=(t,f,key,dis)=>{const b=el('button',{class:'mi',role:'menuitem',disabled:!!dis,onclick:()=>{pop.hidden=true;f();}},el('span'),el('span',{text:t}),el('span',{text:key||''}));return b;};
+  const head=t=>el('div',{class:'mh',text:t});const sep=()=>el('div',{class:'msep'});
+  const items=[];
+  if(!anim){if(n.mask)items.push(it('Delete mask',cmdDeleteMask));else items.push(it('Add mask',()=>cmdAddMask(1)),it('Add black mask (hide all)',()=>cmdAddMask(0)));}
+  if(lay&&!anim){items.push(sep(),head('Layer style'));for(const k of STYLE_ORDER)items.push(it(STYLE_DEFS[k].label+(n.styles&&n.styles[k]&&n.styles[k].on?' ✓':''),()=>dlgLayerStyle(k,true)));
+    items.push(it('All styles…',()=>dlgLayerStyle()),sep(),it('Filter layer above…',cmdNewFxLayer),it('Array…',()=>setTool('array')));
+    if(n.fill)items.splice(0,0,it('Fill settings…',()=>dlgFillLayer(n)),sep());
+    if(n.text||n.grad||n.shape||n.fill)items.push(it('Convert to pixels',()=>{if(n.fill)fillRasterize(n);else rasterizeText(n);changed(n);}));}
+  if(!anim)items.push(it('New fill layer',cmdNewFillLayer));
+  items.push(sep(),it(grp?'Ungroup':'Group into folder',grp?cmdUngroup:cmdGroup,grp?'Ctrl+Shift+G':'Ctrl+G',anim),it('Duplicate',cmdDuplicate,'Ctrl+J',anim),it(grp?'Merge group':'Merge down',cmdMerge,'Ctrl+E',anim),it('Delete',cmdDelete,'Del',anim));
+  pop.replaceChildren(...items);pop.hidden=false;
+  pop.style.left=Math.max(4,Math.min(e.clientX,window.innerWidth-pop.offsetWidth-8))+'px';pop.style.top=Math.max(4,Math.min(e.clientY+4,window.innerHeight-pop.offsetHeight-8))+'px';
+  const off=ev=>{if(!pop.contains(ev.target)){pop.hidden=true;document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}
+$('#lMaskAdd').addEventListener('click',()=>{if(isLayer(doc.active)||(doc.active&&doc.active.type==='group'))cmdAddMask(1);else toast('Select a layer to add a mask to.');});
+$('#lStyle').addEventListener('click',()=>dlgLayerStyle());$('#lFill').addEventListener('click',()=>cmdNewFillLayer());

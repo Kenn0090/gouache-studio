@@ -2,9 +2,10 @@
    Layer › Layer style… (or the fx badge on a layer): drop shadow, outer glow, stroke, colour
    overlay, inner shadow, inner glow and bevel & emboss, all live on the layer (see look.js).
    Changes show on the canvas as you adjust them (Preview); OK keeps them as one undo step. */
-function dlgLayerStyle(pick){const L=doc.active;if(!isLayer(L)||L.fx){toast('Select a layer to give it a style.');return;}
+function dlgLayerStyle(pick,turnOn){const L=doc.active;if(!isLayer(L)||L.fx){toast('Select a layer to give it a style.');return;}
   const before=L.styles?JSON.parse(JSON.stringify(L.styles)):null,W=Object.assign(newStyles(),before?JSON.parse(JSON.stringify(before)):{});
   for(const k of STYLE_ORDER)W[k]=Object.assign(JSON.parse(JSON.stringify(STYLE_DEFS[k])),W[k]);for(const k of STYLE_ORDER)delete W[k].label;
+  if(pick&&turnOn&&W[pick])W[pick].on=true;
   let cur=pick||STYLE_ORDER.find(k=>W[k].on)||'drop',live=prefs.livePreview;
   const apply=()=>{L.styles=live?JSON.parse(JSON.stringify(W)):before;L.lookVer=(L.lookVer||0)+1;requestRender(true);};
   const list=el('div',{class:'stylelist'}),pane=el('div',{class:'dlg-grid stylepane'});

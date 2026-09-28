@@ -23,7 +23,7 @@ function mesa(N){const v=[],f=[];for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){cons
  const cv=pts=>p.evaluate(pts=>{const L=__gs.layerByName('Baked curvature'),d=__gs.readRGBA8(__gs.mapT(L,'curv')),W=__gs.doc.w;return pts.map(([x,y])=>d[(y*W+x)*4]);},pts);
  /* rim (convex) right and top, foot (concave) right and top, flat top, flat plate */
  const PTS=[[179,128],[128,77],[198,128],[128,58],[128,128],[245,128]];
- await bake({curvSrc:'mesh',curvRadius:3,curvStr:1,curvEdges:1,curvCreases:1,curvParts:true,sendAs:'layers'},['ao','curv']);
+ await bake({curvSrc:'mesh',curvRadius:3,curvStr:1,curvEdges:1,curvCreases:1,curvParts:true,sendAs:'layers',send:{curvEdge:true,curvCrease:true}},['ao','curv']);
  let v=await cv(PTS);console.log('shape',JSON.stringify(v));
  ok(v[0]>150&&v[1]>150,'from the shape: rims light on both axes');
  ok(v[2]<106&&v[3]<106,'from the shape: feet dark on both axes');
@@ -36,7 +36,8 @@ function mesa(N){const v=[],f=[];for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){cons
  console.log(JSON.stringify(st));
  ok(st.aoBase&&st.cuBase>150,'as layers: AO and curvature are in the base colour too');
  ok(/ao/.test(st.maps)&&/curv/.test(st.maps),'as layers: and in their own maps');
- ok(st.g.some(x=>/^Baked curvature:Curvature creases\(hidden\)\/Curvature edges\(hidden\)\/Baked curvature$/.test(x)),'curvature group: edges and creases layers under it (hidden)');
+ const hid=await p.evaluate(()=>['Curvature edges','Curvature creases'].map(n=>{const L=__gs.layerByName(n);return !!L&&!L.visible&&L.parent===__gs.doc.root;}));
+ ok(hid[0]&&hid[1]&&!st.g.some(x=>/:.+/.test(x)),'plain layers, no folders; edges and creases layers hidden '+JSON.stringify(st.g));
  ok(st.edge>80&&st.edgeFlat<10,'edges-only map: white on the rim, black on flat');
  /* blending: curvature on Overlay over AO changes the base colour */
  const bl=await p.evaluate(async()=>{const cu=__gs.layerByName('Baked curvature'),g=cu.parent;const read=()=>{const t=__gs.compositeMap('base'),d=__gs.readRGBA8(t);__gs.release(t);return d[(128*__gs.doc.w+179)*4];};

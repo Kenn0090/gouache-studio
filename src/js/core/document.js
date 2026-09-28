@@ -37,7 +37,7 @@ function newLayerObj(name){doc.count++;const B=makeTarget(doc.w,doc.h,mapDepth('
   if(doc.map&&doc.map!=='base'&&ui.mode!=='anim'){T=makeTarget(doc.w,doc.h,mapDepth(doc.map));maps[doc.map]=T;}
   return {type:'layer',id:++lid,name:name||('Layer '+doc.count),target:T,maps,mapModes:{},visible:true,opacity:1,mode:0,clip:false,lockAlpha:false,thumb:thumbCanvas(),parent:null};}
 function newGroupObj(name){return {type:'group',id:++lid,name:name||('Group '+(++groupCount)),children:[],open:true,visible:true,opacity:1,mode:-1,clip:false,lockAlpha:false,parent:null};}
-function disposeLayer(n){if(n._fxc)dropFxCache(n);if(n._lk)lookFree(n);if(n.maps)for(const k in n.maps){const t=n.maps[k];if(t&&!t.empty)disposeTarget(t);}if(n.target&&!n.target.empty)disposeTarget(n.target);if(n.mask)disposeTarget(n.mask.target);}
+function disposeLayer(n){if(n._fxc)dropFxCache(n);if(n._lk)lookFree(n);if(n.maps)for(const k in n.maps){const t=n.maps[k];if(t&&!t.empty)disposeTarget(t);}if(n.target&&!n.target.empty)disposeTarget(n.target);if(n.mask)disposeTarget(n.mask.target);if(n._fillImg){for(const k in n._fillImg)disposeTarget(n._fillImg[k]);n._fillImg=null;}}
 const isLayer=n=>!!n&&n.type==='layer';
 function insertNode(n,parent,i){n.parent=parent;const c=parent.children;c.splice(i==null?c.length:clamp(i,0,c.length),0,n);}
 function detachNode(n){const p=n.parent;if(!p)return -1;const i=p.children.indexOf(n);if(i>=0)p.children.splice(i,1);return i;}
@@ -49,7 +49,7 @@ function isAncestor(a,n){let c=n.parent;while(c){if(c===a)return true;c=c.parent
 function activeLayer(){return isLayer(doc.active)?doc.active:null;}
 function makeMask(fill){const m={target:makeTarget(doc.w,doc.h),enabled:true,thumb:thumbCanvas()};m.thumb.className='mthumb';clearTarget(m.target,[fill,fill,fill,1]);return m;}
 function cloneMask(m){if(!m)return null;const c=makeMask(1);blit(m.target,c.target,0,0,doc.w,doc.h,0,0);c.enabled=m.enabled;return c;}
-function editTarget(){if(sel.quick){useAux(sel.t.depth);return {node:sel.node,target:sel.t,isMask:true,L:sel.L};}const n=doc.active;if(!n)return null;if(n.fx&&!n.editMask)return null;if(isLayer(n)&&!n.editMask){ensureTarget(n);useAux(n.target.depth);if(doc.map==='base')delete n.blankBase;}else if(n.mask&&n.editMask)useAux(n.mask.target.depth);
+function editTarget(){if(sel.quick){useAux(sel.t.depth);return {node:sel.node,target:sel.t,isMask:true,L:sel.L};}const n=doc.active;if(!n)return null;fillMaskEdit(n);if(n.fx&&!n.editMask)return null;if(isLayer(n)&&!n.editMask){ensureTarget(n);useAux(n.target.depth);if(doc.map==='base')delete n.blankBase;}else if(n.mask&&n.editMask)useAux(n.mask.target.depth);
   if(n.editMask&&n.mask)return {node:n,target:n.mask.target,isMask:true,L:{target:n.mask.target,lockAlpha:false,maskOf:n,maskObj:n.mask}};
   if(n.type==='layer')return {node:n,target:n.target,isMask:false,L:n};return null;}
 function clipBaseOf(list,i){const n=list[i];if(!isLayer(n)||!n.clip)return null;let j=i-1;while(j>=0&&isLayer(list[j])&&list[j].clip)j--;return j>=0&&isLayer(list[j])?list[j]:null;}

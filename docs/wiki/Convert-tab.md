@@ -1,6 +1,6 @@
 # Convert tab
 
-The **Convert** tab (top right, or **Maps › Convert tab…**) makes texture maps from a photo or from another map, in the spirit of CrazyBump: normal, height, ambient occlusion, curvature, roughness, metallic and a cleaned-up base colour. Every setting previews live, on the canvas and on the 3D model in the middle.
+The **Convert** tab (top right, or **Maps › Convert tab…**) makes texture maps from a photo or from another map, in the spirit of CrazyBump: normal, height, ambient occlusion, curvature, roughness, metallic and a cleaned-up base colour. Every setting previews live, on the canvas and on the 3D model in the middle. The tab has **its own canvas** (sized to the source image), so converting never touches your painting until you send the results.
 
 ![The Convert tab.](images/convert-tab.png)
 *The Convert tab: the map you're adjusting on the left, all the maps together on the model in the middle, settings on the right.*
@@ -41,7 +41,7 @@ Only the normal map is in colour; everything else is grey. **Canvas shows** swit
 *Roughness from brightness, with colour picking.*
 
 ## 5. Use the results
-- **Send to document** puts each map into the matching document map, **one group per map** ("Converted normal", "Converted height"…). Missing maps are added for you. **Replace the last converted maps** swaps the previous conversion's groups for the new ones. In Paint, click a group to see its map.
+- **Send to document** puts each map into the matching map of your painting as a **plain layer** ("Converted normal", "Converted height"…), scaled to the painting's size. Missing maps are added for you. **Replace the last converted maps** swaps the previous conversion's layers for the new ones. In Paint, click a layer to see its map.
 - **Export files…** saves the maps as PNG files (height at 16 bits). On the desktop you choose a folder; in the browser they download as a zip.
 
 The **Maps** menu's converters (Normal from base colour, AO from height…) open this tab with the right source and map already chosen. For a conversion that keeps updating while you paint, add it to a [filter layer](Filter-layers.md) instead.

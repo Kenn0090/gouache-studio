@@ -12,7 +12,8 @@ The **Bake** tab (top right, or **Maps › Bake from high poly…**) copies the 
   - **Material (lit)** is a clay model with the baked normal and AO. You can tick *Use the document's base colour on the model*.
   - Any single baked map on its own.
   - The skew or offset map.
-- Bakes stay in the tab, so you can check them and bake again as often as you like. **Send to document** adds them as layers.
+- The Bake tab has **its own canvas**, sized by **Size** in the General tab (the painting's size unless you choose another). Baking never touches your painting until you send the results, and the tab shows only its own panels.
+- Bakes stay in the tab, so you can check them and bake again as often as you like. Tick the maps you want under **Send to the painting, or export**, then **Send to Paint** adds them as layers, or **Export…** saves them as PNG files (you choose a folder on the desktop; the browser gives a zip).
   - Tick **Send results to layers automatically** to have every bake go straight into the document.
   - **Replace the last baked layers** swaps the previous bake's layers for the new ones, instead of piling them up.
 
@@ -43,7 +44,7 @@ For the last two, **Flip green** swaps the edges and creases that run across the
 - **Layers** (the default): every bake is also a layer in the **base colour**, so bakes blend with each other there. For example, set the curvature layer to *Overlay* over the AO. AO, curvature and height also go into their own maps. The edges-only and creases-only layers sit, hidden, in the curvature group.
 - **Maps only:** each bake only in its own map, as before.
 
-Each map arrives in its own group. Groups that would cover your colours (thickness, world-space normal, position, ID) start hidden.
+Each map arrives as a **plain layer** (no folders), so you can set blend modes between them. Layers that would cover your colours (thickness, world-space normal, position, ID) start hidden. Bakes of a different size are scaled to the painting.
 
 ## Models
 

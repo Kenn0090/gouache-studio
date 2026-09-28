@@ -84,7 +84,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  // Convert sends glossiness and specular
  await setFG('#3070d0');await p.evaluate(()=>__gs.act('fill'));await p.click('#modeTabs [data-mode=convert]');await W(900);
  await p.evaluate(()=>{__gs.cvSetKind('photo');for(const k in __gs.cv.make)__gs.cv.make[k]=false;__gs.cv.make.rough=true;__gs.cv.make.metal=true;});await W(300);await p.click('#cvSend');await W(400);
- const cg=await p.evaluate(()=>__gs.doc.root.children.map(n=>n.name).join('|'));ok(/Converted glossiness/.test(cg)&&/Converted specular/.test(cg),'Convert sends glossiness and specular '+cg);
+ const cg=await p.evaluate(()=>__gs.inPaint(()=>__gs.doc.root.children.map(n=>n.name).join("|")));ok(/Converted glossiness/.test(cg)&&/Converted specular/.test(cg),'Convert sends glossiness and specular '+cg);
  await p.click('#modeTabs [data-mode=paint]');await W(300);
  ok(!errs.length,'no errors '+errs.join('\n'));
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();})();

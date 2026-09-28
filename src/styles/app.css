@@ -132,6 +132,11 @@ body.ldragging,body.ldragging *{cursor:grabbing!important}
 .lname input{width:100%;background:var(--ground);border:1px solid var(--accent);border-radius:4px;padding:2px 4px}
 .lmeta{font:10px var(--mono);color:var(--faint);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .lbtns{display:flex;gap:5px;flex-wrap:wrap}
+.lbtns.icons{gap:2px;justify-content:space-between;border-top:1px solid var(--line);padding-top:6px}
+.lyb{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:6px;background:none;color:var(--muted);cursor:pointer;padding:0}
+.lyb:hover{background:var(--raise);color:var(--text)}.lyb:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.lyb svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.lyb.fxb{font:italic 600 13px/1 var(--ui,inherit)}
 .btn{border:1px solid var(--line-2);background:var(--raise);border-radius:6px;padding:5px 10px;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
 .btn:hover{border-color:var(--muted)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
@@ -154,6 +159,8 @@ body.ldragging,body.ldragging *{cursor:grabbing!important}
 .mi:hover kbd,.mi:focus-visible kbd{color:inherit}
 .mi[disabled]{opacity:.4;pointer-events:none}
 .msep{height:1px;background:var(--line);margin:4px 6px}
+#menuPop .mh{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);padding:4px 10px 2px 28px}
+#menuPop{max-height:calc(100vh - 16px);overflow-y:auto}
 #modal{position:fixed;inset:0;background:rgba(8,9,11,.5);display:grid;place-items:center;z-index:50;padding:16px}
 #modal.float{background:transparent;pointer-events:none;place-items:start end;padding:52px 306px 16px 16px}
 .dialog{pointer-events:auto;background:var(--panel);border:1px solid var(--line-2);border-radius:10px;box-shadow:0 22px 60px rgba(0,0,0,.55);width:min(380px,100%);max-height:calc(100vh - 80px);overflow:auto;padding:16px;display:grid;gap:14px}
@@ -299,7 +306,7 @@ details.more>div{display:grid;gap:10px;margin-top:10px}
 #modeTabs button:hover{color:var(--text)}
 #modeTabs button[aria-selected="true"]{background:var(--accent);color:#1a1206;font-weight:600}
 body:not(.bakemode) #bakeSec{display:none}
-body.bakemode #mapsSec,body.bakemode .sec[aria-labelledby="hLayers"],body.bakemode .sec[aria-labelledby="hChan"],body.bakemode #animSec{display:none}
+body.bakemode #mapsSec,body.bakemode .sec[aria-labelledby="hLayers"],body.bakemode .sec[aria-labelledby="hChan"],body.bakemode #animSec,body.bakemode .sec[aria-labelledby="hColor"],body.bakemode .sec[aria-labelledby="hBrush"]{display:none}
 body:not(.animmode) #timeline,body:not(.animmode) #animSec{display:none}
 body.animmode .sec[aria-labelledby="hLayers"],body.animmode .sec[aria-labelledby="hChan"]{display:none}
 #timeline{background:var(--panel);border-top:1px solid var(--line);display:grid;gap:6px;padding:6px 8px 8px;min-width:0}
@@ -458,6 +465,10 @@ body.brushmode #mapsSec,body.brushmode .sec[aria-labelledby="hChan"],body.brushm
 
 /* ---- dock, tabs, floating panels, icons ---- */
 .panel#dock{display:flex;flex-direction:column;overflow:hidden}
+#app>.dkwidth{grid-area:dock;justify-self:start;align-self:stretch;width:6px;cursor:col-resize;z-index:5}
+#app>.dkwidth[hidden]{display:none}
+.dkwidth:hover,body.dkresizing .dkwidth{background:color-mix(in srgb,var(--accent) 45%,transparent)}
+body.dkresizing{cursor:col-resize;user-select:none}body.dklock .dkwidth{cursor:default;background:none}
 .dkgrp{display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .dkgrp.min .dkbody{display:none}
 .dktabs{display:flex;align-items:flex-end;gap:1px;padding:4px 6px 0;background:color-mix(in srgb,var(--ground) 45%,var(--panel));border-bottom:1px solid var(--line);flex:none;min-height:28px;overflow-x:auto;scrollbar-width:none}
@@ -496,6 +507,9 @@ body.tb2 .tools>.tbgrip,body.tb2 .tools>.tsep,body.tb2 .tools>.mini-sw{grid-colu
 /* ---- tool options bar ---- */
 .optbar{display:flex;align-items:center;gap:12px;padding:0 12px;background:color-mix(in srgb,var(--ground) 35%,var(--panel));border-bottom:1px solid var(--line);overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;white-space:nowrap;min-width:0}
 body.noopt .optbar{display:none}
+.optbar.more{flex-wrap:wrap;row-gap:4px;padding:4px 12px;overflow-x:hidden}
+.optbreak{flex-basis:100%;height:0}
+.optmore{color:var(--text)}
 .optname{font-weight:600;color:var(--text)}
 .optnote{color:var(--muted)}
 .optsep{width:1px;height:20px;background:var(--line);flex:none}

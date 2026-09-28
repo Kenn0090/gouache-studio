@@ -4,12 +4,17 @@
 *The Painting workspace: the options bar on top, the toolbar on the left, the dock of tabbed panels on the right.*
 
 ## The options bar
-The strip under the menus holds what you change all the time. For the brush, eraser, blend, dodge and burn: the current brush (click it to open **Brushes**), **Size**, **Opacity** (Strength for blend, Exposure for dodge and burn), **Flow**, **Hardness**, **Pressure: size**, **Symmetry** and which other maps the brush paints. Other tools show their name; their settings are in **Tool settings**. **Window › Options bar** hides it.
+The strip under the menus holds what you change all the time. For the brush, eraser, blend, dodge and burn: the current brush (click it to open **Brushes**), **Size**, **Opacity** (Strength for blend, Exposure for dodge and burn), **Flow**, **Hardness**, **Pressure: size**, **Symmetry** and which other maps the brush paints. **More ▾** at the end opens a second row with spacing, smoothing, grain, size and angle jitter, pressure for opacity, build-up and minimum size; **Less ▴** closes it again (it remembers).
+
+![The options bar with More open.](images/options-more.png)
+
+ Other tools show their name; their settings are in **Tool settings**. **Window › Options bar** hides it.
 
 ## The dock
 The right side is a column of **groups**; each group holds one or more panels as **tabs**: Color, Brushes, Tool settings, Maps, Layers and Channels (plus Bake, Convert, Animation and Brush maker in their tabs of the app).
 - **Click a tab** to bring it to the front. **Double-click** it to fold the group down to its tabs (again to unfold).
 - **Drag the bars** between groups to make them taller or shorter.
+- **Drag the dock's left edge** to make the whole dock wider or narrower. Double-click the edge to go back to the usual width.
 - **Drag a tab**:
   - onto another group's tabs: it joins that group;
   - onto the top or bottom edge of a group: it becomes a group of its own there;

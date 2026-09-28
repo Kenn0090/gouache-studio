@@ -22,9 +22,9 @@ function paintOpts(et){
   if(et.node&&!effVisible(et.node)&&!ui.viewMask){toast('The active layer (or its group) is hidden. Show it to paint on it.');return null;}
   if(preview){toast('Apply or cancel the open filter first.');return null;}
   if(!et.isMask&&et.node&&(et.node.text||et.node.grad||et.node.shape)){const g=et.node.grad?'Gradient':et.node.shape?'Shape':'Text';rasterizeText(et.node);toast(g+' converted to pixels so you can paint on it. Undo brings the editable '+g.toLowerCase()+' back.');}
-  const o=Object.assign({},brush,{tool:ui.tool,color:ui.fg.slice(),chan:!et.isMask&&chanRestricted()?chan.edit.slice():null,sel:selOn(et)});
+  const o=Object.assign({},brush,{tool:ui.tool,color:ui.mode==='bake'&&typeof bk!=='undefined'&&bk.paint?bakePaintColor():ui.fg.slice(),chan:!et.isMask&&chanRestricted()?chan.edit.slice():null,sel:selOn(et)});
   if(o.tool==='dodge'||o.tool==='burn')Object.assign(o,{opacity:ui.tonalExposure,range:ui.tonalRange,protect:ui.tonalProtect});
-  if(et.isMask){const g=lum3(ui.fg);o.color=[g,g,g];o.noTint=true;if(o.tool==='erase'){o.tool='brush';o.color=(et.erase||[1,1,1]).slice();}}
+  if(et.isMask){const g=lum3(o.color);o.color=[g,g,g];o.noTint=true;if(o.tool==='erase'){o.tool='brush';o.color=(et.erase||[1,1,1]).slice();}}
   o.extras=strokeExtras(o,et);
   if(ui.tool!=='erase'&&(ui.tool==='brush'||brush.charge>0))pushRecent(ui.fg);
   return o;}
@@ -118,7 +118,8 @@ window.addEventListener('keydown',e=>{
   if(tools[k]){setTool(tools[k]);return;}
   if(k==='['||k===']'){brush.size=clamp(Math.round(brush.size*(k===']'?1.15:1/1.15)+(k===']'?1:-1)),1,500);if(sizeSlider)sizeSlider.set(brush.size);refreshCursor();schedulePreview();return;}
   if(k==='x'){swapColors();return;}if(k==='d'){ui.bg=[1,1,1];setFG([0,0,0]);return;}if(k==='t'){if(e.shiftKey)toggleTile();else setTool('text');return;}
-  if((k==='delete'||k==='backspace')&&ui.mode!=='bake'&&ui.mode!=='convert'){e.preventDefault();e.altKey?fillLayer():clearLayer();}
+  /* Delete: with a selection it clears what is selected (like Photoshop); without one it deletes the layer. Alt+Delete fills. */
+  if((k==='delete'||k==='backspace')&&ui.mode!=='bake'&&ui.mode!=='convert'){e.preventDefault();if(e.altKey)fillLayer();else if((sel.active&&!sel.quick)||ui.mode==='anim'||ui.mode==='brush')clearLayer();else cmdDelete();}
 });
 window.addEventListener('keyup',e=>{if(e.code==='Space'){spaceDown=false;if(ui.tool!=='hand')stage.classList.remove('grab');refreshCursor();}});
 window.addEventListener('blur',()=>{spaceDown=false;stage.classList.toggle('grab',ui.tool==='hand');});

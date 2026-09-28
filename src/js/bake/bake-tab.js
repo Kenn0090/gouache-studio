@@ -14,13 +14,15 @@ const BK_EMPTY={normal:[.5,.5,1,1],height:[.5,.5,.5,1],ao:[1,1,1,1],thick:[1,1,1
 const bkLow=()=>bakeCfg.low||bakeViewModel();
 
 /* ---------- workspace ---------- */
-function bakeEnter(){if(!canFloat)toast('Baking needs 16-bit float support, which this graphics card lacks.');
+/* the Bake tab's canvas size: Size in the General tab, or the painting's */
+function bakeSize(){const ps=paintDocSize(),s=bakeCfg.size;return s?[s,s]:ps;}
+function bakeEnter(){const bs=bakeSize();tabDocEnter('bake',bs[0],bs[1],'Bake');if(!canFloat)toast('Baking needs 16-bit float support, which this graphics card lacks.');
   if(!['brush','erase','picker','hand'].includes(ui.tool))setTool('brush');
   const work=$('#work');bk.prev3d={on:v3.on,w:getComputedStyle(work).getPropertyValue('--pane3d')};
   if(!v3.on)toggle3D(true);if(!v3.pop){work.style.setProperty('--pane3d',Math.round(work.clientWidth*.58)+'px');}
   if(bk.paint)v3.paintOn=true;
   bakeSyncMesh();buildBakePanel();build3dPane();bk.dirty=true;v3.mapsDirty=true;v3.dirty=true;resizeGL();fit();requestRender(true);}
-function bakeExit(){const p=bk.prev3d;bk.prev3d=null;v3.btex=null;
+function bakeExit(){tabDocExit('bake');const p=bk.prev3d;bk.prev3d=null;v3.btex=null;
   if(p&&!p.on)toggle3D(false);else if(p&&!v3.pop){$('#work').style.setProperty('--pane3d',p.w||'0px');}
   /* back to the model the 3D view had (even when it closes: Convert and Paint reopen it) */
   if(v3.on||v3.mesh===bakeCfg.low)v3LoadModel(true);if(v3.on)build3dPane();v3.mapsDirty=true;v3.dirty=true;resizeGL();fit();requestRender(true);}
@@ -35,6 +37,8 @@ function bakeMapT(k,create){let t=bk.maps[k];if(t&&(t.w!==doc.w||t.h!==doc.h)){d
 function bakeMapL(k){const T=bakeMapT(k,true);let L=bk.L[k];if(!L||L.target!==T)L=bk.L[k]={target:T,lockAlpha:false,bakeMap:k,
     onRecord(r,rect){const u=r.undo,re=r.redo;r.undo=function(){u.call(this);bakeMapEdited(rect);};r.redo=function(){re.call(this);bakeMapEdited(rect);};bakeMapEdited(rect);}};return L;}
 /* what painting in the Bake tab paints on (false: nothing, with a message already shown) */
+/* the grey the brush paints skew or offset fixes with (the Bake tab has no colour panel) */
+function bakePaintColor(){const val=bk.val||(bk.val={skew:0,offset:.85}),v=val[bk.paint]==null?0:val[bk.paint];return [v,v,v];}
 function bakeEditTarget(){if(!bk.paint){toast('Pick Skew or Offset under “Fix the bake” to paint fixes.');return false;}if(bk.busy){toast('Wait for the bake to finish.');return false;}
   const L=bakeMapL(bk.paint);useAux(8);return {node:null,target:L.target,isMask:true,erase:BK_PAINT[bk.paint].erase,L};}
 function bakeMapEdited(rect){bk.dirty=true;bk.offVer=(bk.offVer||0)+1;bk.cageKey=null;v3.dirty=true;requestRender();bakeRegion(rect);}
@@ -116,33 +120,38 @@ async function bakeRegion(rect){if(!bk.opts||!bk.src)return;const r=[Math.max(0,
   bk.regionBusy=false;bakeRefresh();
   if(bk.region){const q=bk.region;bk.region=null;bakeRegion(q);}}
 /* baked maps -> layers (replacing the ones sent before, if asked) */
-/* Send to document. As layers (the default): every grey or colour result is also a layer in the base colour,
-   so the bakes blend with each other there (curvature on Overlay over AO, and so on), and AO, curvature and
-   height are in their own maps too. As maps: each result only in its own map, as before. Either way each
-   map arrives in its own group; groups that would cover the colours start hidden. */
-function bakeSend(){const res=bk.res,ks=bk.kinds;if(!Object.keys(res).length){toast('Bake first.');return;}const asLayers=bakeCfg.sendAs!=='maps';
-  const need=[];if(res.normal&&ks.includes('normal'))need.push('normal');if(res.height)need.push('height');if(res.ao)need.push('ao');if(ks.includes('curv')&&res.curv)need.push('curv');
-  const missing=need.filter(k=>!doc.maps.includes(k));if(missing.length)setDocMaps([...doc.maps,...missing],'Add maps for the bake');
-  const put=(L,k,src)=>{const T=ensureMapTarget(L,k);run(P.shift,T,{uSrc:src.tex,uOff:[0,0],uWrap:false,uOutside:[0,0,0,0]});};
-  const mk=(name,k,src,inBase,hidden)=>{const L=newLayerObj(name);for(const m of Object.keys(L.maps))if(m!=='base'&&m!==k){disposeTarget(L.maps[m]);delete L.maps[m];}
-    put(L,k,src);if(k!=='base'){if(inBase)put(L,'base',src);else L.blankBase=true;setMapModeOf(L,k,0);}L.baked=true;if(hidden)L.visible=false;return L;};
-  const entries=[];/* [group name, layers, hidden] bottom to top */
-  if(res.normal&&ks.includes('normal'))entries.push(['Baked normal',[mk('Baked normal','normal',res.normal,false)],false]);
-  if(res.height)entries.push(['Baked height',[mk('Baked height','height',res.height,asLayers)],false]);
-  if(res.ao)entries.push(['Baked AO',[mk('Baked AO','ao',res.ao,asLayers)],false]);
-  if(ks.includes('curv')&&res.curv){const g=[mk('Baked curvature','curv',res.curv,asLayers)];
-    if(res.curvEdge)g.unshift(mk(BAKE_NAMES.curvEdge,'base',res.curvEdge,true,asLayers));if(res.curvCrease)g.unshift(mk(BAKE_NAMES.curvCrease,'base',res.curvCrease,true,asLayers));
-    entries.push([asLayers?'Baked curvature':'Baked curvature',g,false]);}
-  for(const k of ['thick','wnormal','position','id'])if(res[k]&&ks.includes(k))entries.push(['Baked '+BAKE_NAMES[k].toLowerCase(),[mk(BAKE_NAMES[k],'base',res[k])],true]);
-  if(!asLayers)for(const e of entries)if(e[0]==='Baked curvature'&&e[1].length>1){for(const L of e[1].slice(0,-1)){L.visible=true;}const extra=e[1].slice(0,-1);e[1]=e[1].slice(-1);for(const L of extra)entries.push(['Baked '+L.name.toLowerCase(),[L],true]);}
-  const old=bakeCfg.replace?bk.sentLayers.filter(n=>n.parent&&allNodes().includes(n)):[];
-  const groups=[];
-  structOp(old.length?'Replace baked layers':'Bake',()=>{for(const n of old)detachNode(n);
-    for(const [name,Ls,hidden] of entries){const G=newGroupObj(name);G.baked=true;G.open=false;G.visible=!hidden;for(const L of Ls)insertNode(L,G);insertNode(G,doc.root);groups.push(G);}
-    bk.sentLayers=groups;
-    if(ui.mode!=='bake'){const e=entries.filter(e=>!e[2]).pop()||entries[entries.length-1];if(e)selectOnly(e[1][e[1].length-1]);}});
-  syncTargets();changedAll();refreshMapsUI();if(typeof v3Changed==='function')v3Changed();
-  const n=entries.length;if(ui.mode==='bake')toast((old.length?'Replaced the baked layers':'Sent '+n+' baked map'+(n>1?'s':'')+' to the document')+(asLayers?'. They are layers in the base colour too, so you can blend them.':'. In Paint, click a group to see its map.'));}
+/* Send to the painting: the ticked maps, as plain layers (no folders), scaled to the painting's size when it differs.
+   As layers (the default) every grey or colour result is also in the base colour, so bakes blend with each other there
+   (curvature on Overlay over AO…), and AO, curvature and height are in their own maps too. Maps only: each in its own map. */
+const BK_SEND_ORDER=['normal','height','ao','curv','curvEdge','curvCrease','thick','wnormal','position','id'];
+function bakeSendable(){const res=bk.res,ks=bk.kinds;return BK_SEND_ORDER.filter(k=>res[k]&&(k==='curvEdge'||k==='curvCrease'?ks.includes('curv'):ks.includes(k)));}
+function bakeSend(){const res=bk.res;if(!Object.keys(res).length){toast('Bake first.');return;}const asLayers=bakeCfg.sendAs!=='maps',tick=bakeCfg.send||{};
+  const ks=bakeSendable().filter(k=>tick[k]!==false&&!(tick[k]===undefined&&(k==='curvEdge'||k==='curvCrease')));if(!ks.length){toast('Tick at least one map to send.');return;}
+  const own={normal:'normal',height:'height',ao:'ao',curv:'curv'},inBase=k=>asLayers||!own[k],hiddenK=k=>!own[k]||(k==='height'&&asLayers&&false);
+  let n=0,replaced=false;
+  withPaintDoc(()=>{const need=ks.map(k=>own[k]).filter(Boolean).filter(m=>!doc.maps.includes(m));if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the bake');
+    const mk=k=>{const name=k==='curvEdge'||k==='curvCrease'?BAKE_NAMES[k]:k==='thick'||k==='wnormal'||k==='position'||k==='id'?BAKE_NAMES[k]:'Baked '+(k==='ao'?'AO':BAKE_NAMES[k].toLowerCase());
+      const L=newLayerObj(name),m=own[k]||'base';for(const x of Object.keys(L.maps))if(x!=='base'&&x!==m){disposeTarget(L.maps[x]);delete L.maps[x];}
+      copyScaled(res[k],ensureMapTarget(L,m));if(m!=='base'){if(inBase(k)&&k!=='normal')copyScaled(res[k],ensureMapTarget(L,'base'));else L.blankBase=true;setMapModeOf(L,m,0);}
+      L.baked=true;if(hiddenK(k))L.visible=false;return L;};
+    const old=bakeCfg.replace?bk.sentLayers.filter(x=>x.parent&&allNodes().includes(x)):[];replaced=old.length>0;
+    structOp(old.length?'Replace baked layers':'Bake',()=>{for(const x of old)detachNode(x);const Ls=ks.map(mk);for(const L of Ls)insertNode(L,doc.root);bk.sentLayers=Ls;n=Ls.length;
+      if(ui.mode!=='bake'){const vis=Ls.filter(L=>L.visible);const last=vis[vis.length-1]||Ls[Ls.length-1];if(last)selectOnly(last);}});
+    syncTargets();changedAll();refreshMapsUI();});
+  if(typeof v3Changed==='function')v3Changed();
+  if(ui.mode==='bake')toast((replaced?'Replaced the baked layers':'Sent '+n+' baked map'+(n>1?'s':'')+' to the painting')+(asLayers?', as layers you can blend.':'.'));}
+/* Export: the ticked maps straight to image files (a folder on the desktop, a zip in the browser) */
+async function bakeExport(){const tick=bakeCfg.send||{},ks=bakeSendable().filter(k=>tick[k]!==false&&!(tick[k]===undefined&&(k==='curvEdge'||k==='curvCrease')));
+  if(!ks.length){toast(Object.keys(bk.res).length?'Tick at least one map to export.':'Bake first.');return;}
+  let dir=null;if(platform.isDesktop){dir=await platform.pickFolder();if(!dir)return;}
+  const base=pascal(((bk.src&&bk.src.L&&bk.src.L.name)||'Bake').replace(/[_\-\s]*(low|lo|lp)(poly)?$/i,''))||'Bake',W=doc.w,H=doc.h;
+  const fileOf={normal:'Normal',height:'Height',ao:'AO',curv:'Curvature',curvEdge:'CurvatureEdges',curvCrease:'CurvatureCreases',thick:'Thickness',wnormal:'WorldNormal',position:'Position',id:'ID'};
+  loadStart('Exporting baked maps');try{const files=[];let i=0;
+    for(const k of ks){loadSet(i++/ks.length,BAKE_NAMES[k]+'…');await loadPaint();const col=k==='normal'||k==='wnormal'||k==='position'||k==='id',C=col?3:1;let f=readMapF(bk.res[k],col?4:1);if(C===3)f=dropAlpha(f,W*H);
+      const blob=await encodeTex(W,H,f,C,'png',k==='height'&&canFloat?16:8);files.push({name:base+'_'+fileOf[k]+'.png',data:new Uint8Array(await blob.arrayBuffer())});}
+    if(dir){const sep=dir.includes('\\')?'\\':'/';for(const f of files)await platform.writeFile(dir.replace(/[\\/]$/,'')+sep+f.name,f.data);toast('Saved '+files.length+' baked map'+(files.length>1?'s':'')+' to '+dir);}
+    else{const r=await deliver(base+'_bake.zip',await makeZipMulti(files));toast(deliveredText(r,'Baked maps'));}}
+  catch(e){console.error(e);toast('Export failed: '+(e.message||e));}finally{loadEnd();}}
 
 /* estimate offset: bake height with a long reach, then set each pixel's reach to what it needed */
 const FS_BKEST=`uniform sampler2D uH; uniform float uRange; uniform float uFront; uniform float uBack;
@@ -230,6 +239,21 @@ function bakeDrawCage(common){if(!bk.showCage||ui.mode!=='bake')return;const g=b
   gl.bindVertexArray(vao);gl.depthMask(true);gl.disable(gl.BLEND);}
 
 /* ---------- panel ---------- */
+/* the Bake tab's canvas size (a change clears the bake) */
+function bakeSizeSeg(){const ps=paintDocSize(),opts=[[0,'Painting ('+ps[0]+(ps[0]===ps[1]?'':'×'+ps[1])+')'],[512,'512'],[1024,'1K'],[2048,'2K'],[4096,'4K'],[8192,'8K']];
+  const g=seg(opts,bakeCfg.size||0,v=>{if(bk.busy){toast('Wait for the bake to finish.');buildBakePanel();return;}bakeCfg.size=v||null;bakeReset();const bs=bakeSize();tabDocResize(bs[0],bs[1],'Bake');bk.dirty=true;buildBakePanel();requestRender(true);},'Bake size');g.classList.add('themeseg');g.id='bkSize';return g;}
+/* which maps to send or export, and the buttons */
+function bakeSendBox(){const box=el('div',{class:'dlg-grid',id:'bkSendBox'}),have=bakeSendable(),t=bakeCfg.send||(bakeCfg.send={});
+  box.append(el('div',{class:'sub',text:'Send to the painting, or export'}));
+  if(!have.length){box.append(el('p',{class:'note',text:'Bake first: the maps you bake can then be ticked here.'}));return box;}
+  const on=k=>t[k]!==undefined?t[k]:!(k==='curvEdge'||k==='curvCrease');
+  const none=()=>!have.some(on),send=el('button',{class:'btn',id:'bkSend',text:'Send to Paint',title:'Add the ticked maps to the painting as layers',disabled:bk.busy||none(),onclick:bakeSend}),
+    exp=el('button',{class:'btn',id:'bkExport',text:'Export…',title:'Save the ticked maps as image files',disabled:bk.busy||none(),onclick:bakeExport});
+  box.append(el('div',{class:'chips'},...have.map(k=>chk('bks_'+k,BAKE_NAMES[k],on(k),v=>{t[k]=v;send.disabled=exp.disabled=bk.busy||none();}))),
+    el('div',{class:'row wrap'},send,exp),
+    el('p',{class:'note',text:'They arrive as plain layers (no folders), scaled to the painting when its size differs. In the browser, Export gives a zip.'}));
+  return box;}
+
 function bakeProgUI(){const box=$('#bkProg');if(!box)return;const p=bk.prog;
   if(p||bk.regionBusy){box.hidden=false;box.querySelector('.bakebar div').style.width=((p?p.f:0.5)*100).toFixed(1)+'%';box.querySelector('.note').textContent=p?p.msg:'Updating where you painted…';}
   else box.hidden=true;const b=$('#bkGo');if(b){b.textContent=bk.busy?'Cancel':'Bake';b.classList.toggle('primary',!bk.busy);}}
@@ -257,7 +281,8 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
   const baking=t=>t==='other'?['wnormal','position','id'].some(k=>C.kinds[k]):!!C.kinds[t];
   const tabBar=()=>{const g=seg(TABS.map(([v,t])=>[v,t+(v!=='general'&&baking(v)?' •':''),v==='general'?'Settings every map shares':baking(v)?t+': baked':t+': not baked']),C.tab,v=>{C.tab=v;page.replaceWith(page=tabPage());},'Map settings');g.classList.add('themeseg','bktabs');return g;};
   const tabPage=()=>{const T=C.tab,pg=el('div',{class:'dlg-grid bktab',id:'bkTab_'+T});
-    if(T==='general')pg.append(makeSlider({id:'bkFront',label:'Front',min:0,max:20,step:.1,value:C.front,fmt:v=>v.toFixed(1)+'%',onInput:v=>{C.front=v;bakeCageDirty();}}).el,S('bkBack','Back','back',0,20,.1,v=>v.toFixed(1)+'%'),
+    if(T==='general')pg.append(el('div',{class:'sub',text:'Size'}),bakeSizeSeg(),
+      makeSlider({id:'bkFront',label:'Front',min:0,max:20,step:.1,value:C.front,fmt:v=>v.toFixed(1)+'%',onInput:v=>{C.front=v;bakeCageDirty();}}).el,S('bkBack','Back','back',0,20,.1,v=>v.toFixed(1)+'%'),
       chk('bkAvg','Average ray directions (no gaps at hard edges)',C.average,v=>{C.average=v;bakeCageDirty();}),
       el('div',{class:'sub',text:'Anti-aliasing'}),seg([[1,'1×'],[2,'4×'],[4,'16×']],C.ss,v=>{C.ss=v;},'Anti-aliasing'),S('bkPad','Padding','pad',0,64,1,v=>v+'px'),
       el('div',{class:'sub',text:'Send to the document as'}),seg([['layers','Layers'],['maps','Maps only']],C.sendAs==='maps'?'maps':'layers',v=>{C.sendAs=v;},'Send as'),
@@ -284,7 +309,8 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
     chk('bkMatch','Match parts by name (“_low” bakes only against its “_high”)',C.match,v=>{C.match=v;info();}),
     el('div',{class:'chips'},chk('bkShowCage','Show the cage on the model',bk.showCage,v=>{bk.showCage=v;v3.dirty=true;requestRender();})),
     tabs,page,
-    el('div',{class:'row wrap'},go,(()=>{const b=el('button',{class:'btn',id:'bkSend',text:'Send to document',title:'Add the baked maps to the document as layers'});b.disabled=!Object.keys(bk.res).length||bk.busy;b.onclick=bakeSend;return b;})()),
+    el('div',{class:'row wrap'},go),
+    bakeSendBox(),
     prog,inf);
   info();
   /* what to look at */
@@ -299,6 +325,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
       if(bk.paint){bakeMapT(bk.paint,true);v3.paintOn=true;if(!['brush','erase'].includes(ui.tool))setTool('brush');}bk.dirty=true;buildBakePanel();if(v3.on)build3dPane();requestRender();},'Paint fixes'));
   if(bk.paint==='skew')box.append(el('p',{class:'note',text:'Paint black over details that come out smeared or leaning (screws, bolts, panel lines): the rays there shoot straight out of the surface. White keeps the averaged direction, which avoids gaps at hard edges. The Eraser paints white.'}));
   if(bk.paint==='offset')box.append(el('p',{class:'note',text:'Grey keeps Front and Back. Lighter reaches further (for parts of the high-poly that were missed); darker reaches less far (for detail leaking in from nearby parts). The Eraser paints grey.'}));
+  if(bk.paint){const vk=bk.paint,val=bk.val||(bk.val={skew:0,offset:.85});box.append(makeSlider({id:'bkPaintVal',label:'Paint',min:0,max:1,step:.01,value:val[vk],fmt:v=>v<.02?'black':v>.98?'white':Math.round(v*100)+'%',onInput:v=>{val[vk]=v;}}).el);}
   if(bk.paint)box.append(el('p',{class:'note',text:'Paint on the model in the 3D view (Alt+drag turns it) or on the map on the left. After each stroke the bake updates where you painted.'}));
   const bt=(t,f,dis)=>{const b=el('button',{class:'btn sm',text:t});b.disabled=!!dis;b.onclick=f;return b;};
   box.append(el('div',{class:'row wrap'},bt('Estimate offset',bakeEstimateOffset,!C.high||bk.busy),bt('Clear skew',()=>bakeClearMap('skew'),!bk.maps.skew),bt('Clear offset',()=>bakeClearMap('offset'),!bk.maps.offset)));

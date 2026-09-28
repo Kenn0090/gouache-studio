@@ -35,7 +35,8 @@ function askReplace(){if(!hist.undo.length||hist.undo[hist.undo.length-1]===doc.
 async function handleFile(file,mode,path){const ext=extOf(file.name);loadStart(file.name);
   try{if(!['abr','ttf','otf','woff','woff2'].includes(ext)){loadBusy(mode==='open'?'Opening…':'Placing…');await loadPaint();}if(ext==='abr'){await importABR(file);return;}
     if(['ttf','otf','woff','woff2'].includes(ext)){await addFontFile(file);return;}
-    if(mode==='open'){if(!(await askReplace()))return;const head=await file.slice(0,8).arrayBuffer();if(ext==='gouache'||isGouache(head)){await openGouache(await file.arrayBuffer(),baseName(file.name));doc.filePath=path||null;markSaved();}else if(ext==='psd'){await openPSD(await file.arrayBuffer(),baseName(file.name));doc.filePath=path||null;}else{openRaw(await decodeFile(file),baseName(file.name));doc.filePath=null;}
+    if(mode!=='open'&&tabDocs.paint){toast('Switch to Paint to place images.');return;}
+    if(mode==='open'){if(tabDocs.paint&&!setMode('paint',true))return;if(!(await askReplace()))return;const head=await file.slice(0,8).arrayBuffer();if(ext==='gouache'||isGouache(head)){await openGouache(await file.arrayBuffer(),baseName(file.name));doc.filePath=path||null;markSaved();}else if(ext==='psd'){await openPSD(await file.arrayBuffer(),baseName(file.name));doc.filePath=path||null;}else{openRaw(await decodeFile(file),baseName(file.name));doc.filePath=null;}
       if(path)platform.recentAdd(path);updateTitle();}
     else if(ui.mode==='anim')toast('To bring images into an animation, use Import in the timeline.');else placeRaw(await decodeFile(file),baseName(file.name)||'Pasted image');}
   catch(e){console.error(e);toast(e.message||String(e));}finally{loadEnd();}}

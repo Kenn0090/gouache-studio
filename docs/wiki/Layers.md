@@ -2,10 +2,14 @@
 
 ## Basics
 
-![The Layers panel, with a group and clipped layers.](images/layers-panel.png)
-*The Layers panel, with a group and clipped layers.*
+![The Layers panel, with a fill layer and the icon buttons.](images/layers-panel.png)
+*The Layers panel, with a fill layer (its mask shows where it is painted) and the icon buttons at the bottom.*
 
-- **+ Layer** (Ctrl+Shift+N), **+ Group**, **Duplicate** (Ctrl+J), **Delete**, and the ↑ / ↓ buttons.
+- The icon buttons under the list: **new layer** (Ctrl+Shift+N), **new fill layer**, **new filter layer**, **add mask**, **layer style**, **group**, **ungroup**, **duplicate** (Ctrl+J), **merge**, **move up / down** and **delete**. Hover a button to see its name.
+- **Delete** (or Backspace) deletes the selected layers. With a selection active it clears the selection instead, like Photoshop.
+- **Right-click a layer** for a menu: add or delete its mask, switch on a layer style (it opens the Layer style dialog on that style), add a filter layer, the Array tool, group, duplicate, merge, convert to pixels and delete.
+
+  ![The right-click layer menu.](images/layer-menu.png)
 - **Selecting:** click to select a layer; Ctrl or Shift+click selects several. Drag to reorder, or drop onto a group to move a layer inside it.
 - **Rename:** double-click a layer's name.
 - **Visibility:** the eye button hides or shows a layer.
@@ -33,6 +37,18 @@ Click the mask thumbnail to paint the mask. **Shift+click** turns the mask off o
 - **Paste:** click the mask thumbnail, then **Ctrl+V**. A copied part (or an image copied in another program) lands in the mask with Free transform on: move or scale it, then press **Enter**. This works in the quick mask (Q) too.
 - **Drag a layer** onto another layer's mask thumbnail: its picture becomes that mask. Hold **Alt** and drop onto a row to give a layer without a mask a new one.
 - **Drop an image file** from your computer on a mask thumbnail (or **Alt**+drop it on a row): it is stretched to fit the mask. **Filter › Tile** can then repeat it.
+
+## Fill layers
+A fill layer is like one in Substance Painter: it fills each map with one colour or value, or with a picture. Make one with **Layer › New fill layer…**, the fill button under the layers, or the right-click menu. If a selection is active it becomes the fill layer's mask.
+
+![The fill layer settings.](images/fill-layer.png)
+*A steel fill: grey base colour, roughness 35%, metallic 100%.*
+
+- For each map (base colour, roughness, metallic, height and the others in the document), tick it to fill it and choose **Colour/Value** or **Image**. A value is a slider (for example roughness 80%, metallic 100%); an image is stretched over the canvas, and **Tile** repeats it.
+- If the document has no roughness or metallic map, the dialog offers to add them.
+- **Painting on a fill layer paints its mask:** black hides the fill, white shows it. So you can paint where the metal or the rust goes.
+- **Double-click its thumbnail** (or right-click › Fill settings…) to change it later. **Convert to pixels** makes it a normal layer.
+- Fill layers are kept in .gouache files. After opening a file, choose the image again if you want to change its tiling.
 
 ## Groups
 Groups can be nested, and each has its own mode, opacity and mask. **Merge group** flattens a group into one layer.

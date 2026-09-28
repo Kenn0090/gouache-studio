@@ -13,6 +13,7 @@
       <span id="docName"></span>
       <select id="wsSel" class="wssel" aria-label="Workspace" title="Workspace: where the panels are"></select>
       <div class="tabs" id="modeTabs" role="tablist" aria-label="Workspace"><button role="tab" data-mode="paint" aria-selected="true" title="Paint your textures">Paint</button><button role="tab" data-mode="anim" aria-selected="false" title="Flipbooks and sprite sheets">Animation</button><button role="tab" data-mode="bake" aria-selected="false" title="Bake maps from a high-poly model and fix the bake">Bake</button><button role="tab" data-mode="convert" aria-selected="false" title="Make normal, height, AO and more from a photo or another map">Convert</button><button role="tab" data-mode="brush" aria-selected="false" title="Draw your own brush tips on a canvas of their own">Brush</button></div>
+      <button class="toggle btn3d" id="btn3d" aria-pressed="false" title="Show or hide the 3D view (F3)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3 20 7.5v9L12 21l-8-4.5v-9z"/><path d="M12 12 20 7.5M12 12v9M12 12 4 7.5"/></svg>3D</button>
       <button class="toggle" id="tileBtn" aria-pressed="false" title="Seamless tile mode (Shift+T): wraps brush strokes and shows a 3&times;3 repeat"><i></i>Tile mode</button>
     </div>
   </header>
@@ -102,16 +103,19 @@
       <div id="maskRow" class="chips"></div>
       <div id="layerList" class="llist" role="listbox" aria-multiselectable="true" aria-label="Layers"></div>
       <div class="sub">Ctrl or Shift + click to select several. Drag to reorder, or onto a group to move inside it.</div>
-      <div class="lbtns">
-        <button class="btn sm" id="lAdd" title="New layer (Ctrl+Shift+N)">+ Layer</button>
-        <button class="btn sm" id="lFx" title="New filter layer: filters and adjustments you can change any time">+ Filter</button>
-        <button class="btn sm" id="lGroup" title="Group selected (Ctrl+G), or add an empty group">+ Group</button>
-        <button class="btn sm" id="lUngroup" title="Ungroup (Ctrl+Shift+G)">Ungroup</button>
-        <button class="btn sm" id="lDup">Duplicate</button>
-        <button class="btn sm" id="lMerge" title="Merge (Ctrl+E)">Merge down</button>
-        <button class="btn sm" id="lDel">Delete</button>
-        <button class="btn sm" id="lUp" aria-label="Move layer up">&uarr;</button>
-        <button class="btn sm" id="lDown" aria-label="Move layer down">&darr;</button>
+      <div class="lbtns icons" role="toolbar" aria-label="Layer buttons">
+        <button class="lyb" id="lAdd" title="New layer (Ctrl+Shift+N)" aria-label="New layer"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M12 8v8M8 12h8"/></svg></button>
+        <button class="lyb" id="lFill" title="New fill layer: one colour and value for each map, or a picture" aria-label="New fill layer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11l7-7 7 7-7 7z"/><path d="M5 11h14"/></svg></button>
+        <button class="lyb" id="lFx" title="New filter layer: filters and adjustments you can change any time" aria-label="New filter layer"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><path d="M12 5a7 7 0 0 1 0 14z" fill="currentColor"/></svg></button>
+        <button class="lyb" id="lMaskAdd" title="Add a mask to the layer" aria-label="Add mask"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg></button>
+        <button class="lyb fxb" id="lStyle" title="Layer style: shadows, glows, stroke, bevel…" aria-label="Layer style">fx</button>
+        <button class="lyb" id="lGroup" title="Group selected (Ctrl+G), or add an empty group" aria-label="Group"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h7l2 2h9v11H3z"/></svg></button>
+        <button class="lyb" id="lUngroup" title="Ungroup (Ctrl+Shift+G)" aria-label="Ungroup"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h7l2 2h9v11H3z"/><path d="M9 13h6"/></svg></button>
+        <button class="lyb" id="lDup" title="Duplicate (Ctrl+J)" aria-label="Duplicate"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V4h12"/></svg></button>
+        <button class="lyb" id="lMerge" title="Merge down (Ctrl+E)" aria-label="Merge down"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></button>
+        <button class="lyb" id="lUp" title="Move up" aria-label="Move layer up"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+        <button class="lyb" id="lDown" title="Move down" aria-label="Move layer down"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button>
+        <button class="lyb" id="lDel" title="Delete (Del)" aria-label="Delete layer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
       </div>
     </section>
     <section class="sec" aria-labelledby="hChan">

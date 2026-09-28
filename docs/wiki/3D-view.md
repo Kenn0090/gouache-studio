@@ -1,6 +1,6 @@
 # 3D view
 
-**View › 3D view** (F3) puts a model beside the canvas. It shows your maps live: the map you're painting updates every frame, and the other maps a few times a second. Drag the divider to resize the panel.
+**View › 3D view** (F3), or the **3D** button at the top, puts a model beside the canvas. It shows your maps live: the map you're painting updates every frame, and the other maps a few times a second. Drag the divider to resize the panel.
 
 ## Models
 

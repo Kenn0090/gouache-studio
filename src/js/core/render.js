@@ -1,7 +1,7 @@
 /* ================= Rendering ================= */
 function requestRender(comp){if(comp)dirtyComp=true;if(!raf)raf=requestAnimationFrame(frame);}
 const perf={on:false,frames:[],worst:null,last:0};
-function frame(){raf=0;const t0=performance.now();let tc=t0;if(stroke&&stroke.spaceDirty){stroke.spaceDirty=false;stroke.space.sync();}if(dirtyComp){composite();dirtyComp=false;tc=performance.now();}drawView();drawUVOverlay();draw3D();const tv=performance.now();flushThumbs();if(tedit)positionEditor();
+function frame(){raf=0;if(typeof tabDocs!=='undefined'&&tabDocs.hold){requestRender();return;}const t0=performance.now();let tc=t0;if(stroke&&stroke.spaceDirty){stroke.spaceDirty=false;stroke.space.sync();}if(dirtyComp){composite();dirtyComp=false;tc=performance.now();}drawView();drawUVOverlay();draw3D();const tv=performance.now();flushThumbs();if(tedit)positionEditor();
   if(perf.on)perfFrame(t0,tc-t0,tv-tc,performance.now()-tv);}
 let maskOverride=new Map();
 function maskTexOf(n){if(!n.mask||!n.mask.enabled)return null;return maskOverride.get(n)||n.mask.target.tex;}

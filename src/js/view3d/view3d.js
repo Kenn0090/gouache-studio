@@ -134,7 +134,8 @@ function drawUVOverlay(){if(!v3.on||!v3s().showUV||!v3.gpu)return;const d=dprNow
   gl.bindVertexArray(vao);gl.disable(gl.BLEND);}
 
 /* ---- the pane: toolbar, settings, camera controls ---- */
-function toggle3D(on){v3.on=on===undefined?!v3.on:!!on;const pane=$('#pane3d'),sp=$('#split3d'),work=$('#work');
+$('#btn3d').addEventListener('click',()=>toggle3D());
+function toggle3D(on){v3.on=on===undefined?!v3.on:!!on;$('#btn3d').setAttribute('aria-pressed',String(v3.on));const pane=$('#pane3d'),sp=$('#split3d'),work=$('#work');
   if(v3.on&&ui.mode==='anim'&&false)return;
   if(!v3.on&&v3.pop)pop3D(false,true);
   pane.hidden=!v3.on||!!v3.pop;sp.hidden=!v3.on||!!v3.pop;let w=320;try{w=+localStorage.getItem('gs.pane3d')||0;}catch(e){}if(!w)w=Math.round(work.clientWidth*.42);

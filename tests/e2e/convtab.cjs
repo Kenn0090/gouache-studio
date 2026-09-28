@@ -44,9 +44,9 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.screenshot({path:OUT+'convtab-persp.png'});
  await p.click('text=Done moving corners');await p.check('#cvSeam');await W(400);
  // send
- await p.click('#cvSend');await W(400);let g=await p.evaluate(()=>({g:__gs.doc.root.children.filter(n=>n.type==='group').map(n=>n.name),maps:__gs.doc.maps.join()}));
- ok(g.g.includes('Converted normal')&&g.g.includes('Converted metallic')&&g.maps.includes('metal'),'sent: one group per map '+JSON.stringify(g));
- await p.click('#cvSend');await W(300);ok((await p.evaluate(()=>__gs.doc.root.children.filter(n=>n.type==='group').length))===g.g.length,'sending again replaces');
+ await p.click('#cvSend');await W(400);let g=await p.evaluate(()=>__gs.inPaint(()=>({g:__gs.doc.root.children.filter(n=>n.converted).map(n=>n.name),groups:__gs.doc.root.children.filter(n=>n.type==='group').length,maps:__gs.doc.maps.join()})));
+ ok(g.g.includes('Converted normal')&&g.g.includes('Converted metallic')&&g.maps.includes('metal')&&g.groups===0,'sent to the painting: one plain layer per map '+JSON.stringify(g));
+ await p.click('#cvSend');await W(300);ok((await p.evaluate(()=>__gs.inPaint(()=>__gs.doc.root.children.filter(n=>n.converted).length)))===g.g.length,'sending again replaces');
  // export
  const dl=p.waitForEvent('download',{timeout:15000}).catch(()=>null);await p.click('#cvExport');const d=await dl;ok(!!d&&/maps\.zip$/.test(d.suggestedFilename()),'export gives a zip '+(d&&d.suggestedFilename()));
  // normal source: detected as normal (OpenGL); DirectX version detected too

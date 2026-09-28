@@ -1,0 +1,42 @@
+/* Guide screenshots for 0.20: the layer panel with icons and a fill layer, the right-click menu, the fill dialog, the options bar More row. */
+const {chromium}=require('playwright');
+const OLD=__dirname+'/';
+const OUT=require('path').resolve(__dirname,'../../docs/wiki/images')+'/';
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const ctx=await b.newContext({viewport:{width:1440,height:1000}});const p=await ctx.newPage();
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
+  if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());if(m.type()==='warning'&&/GL|WebGL/.test(m.text()))errs.push('GLWARN '+m.text());});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ const box=await p.locator('#gl').boundingBox();
+ const scr=async(x,y)=>{const v=await p.evaluate(()=>({x:__gs.view.x,y:__gs.view.y,z:__gs.view.zoom}));return [box.x+v.x+x*v.z,box.y+v.y+y*v.z];};
+ const drag=async(x0,y0,x1,y1,opts={})=>{const a=await scr(x0,y0),c=await scr(x1,y1);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.move(c[0],c[1],{steps:opts.steps||8});await p.mouse.up();await p.waitForTimeout(120);};
+ const mpx=(name,k,pts)=>p.evaluate(([name,k,pts])=>{const L=__gs.layerByName(name),t=__gs.mapT(L,k);if(!t||t.empty)return null;const d=__gs.readRGBA8(t),W=__gs.doc.w;return pts.map(([x,y])=>Array.from(d.slice((y*W+x)*4,(y*W+x)*4+4)));},[name,k,pts]);
+ const setFG=async hx=>{await p.fill('#hex',hx);await p.press('#hex','Enter');};
+ const W=async ms=>p.waitForTimeout(ms||300);
+ const setv=(id,v)=>p.evaluate(([id,v])=>{const i=document.querySelector('#'+id);i.value=String(v);i.dispatchEvent(new Event('input'));},[id,v]);
+ const stageShot=async n=>{await W(500);const bb=await p.locator('#stage').boundingBox();await p.screenshot({path:OUT+n+'.png',clip:{x:bb.x,y:bb.y,width:Math.min(bb.width,900),height:Math.min(bb.height,640)}});console.log('shot',n);};
+ const elShot=async(n,sel)=>{await W(400);await p.locator(sel).first().screenshot({path:OUT+n+'.png'});console.log('shot',n);};
+ await p.evaluate(()=>__gs.newDoc(640,420,8,[.93,.91,.87],'fills',false));await p.evaluate(()=>__gs.setDocMaps(['base','rough','metal','height','normal'],'maps'));await p.evaluate(()=>__gs.act('fit'));await W();
+ await setFG('#8a8f96');await p.click('#lFill');await W(500);
+ await setv('fl_v_metal',1);await setv('fl_v_rough',.35);await W();
+ await p.locator('#modal .dialog').screenshot({path:OUT+'fill-layer.png'});console.log('shot fill-layer');
+ await p.click('#dlgOk');await W();
+ /* paint the mask so the fill shows only in a band */
+ await p.evaluate(()=>{const L=__gs.doc.active;__gs.clearTarget(L.mask.target,[0,0,0,1]);});await setFG('#ffffff');await p.keyboard.press('b');
+ await p.evaluate(()=>Object.assign(__gs.brush,{size:90,hardness:.8,opacity:1,flow:1,smoothing:0,pSize:false,tip:null}));
+ await drag(60,210,580,210,{steps:20});await p.evaluate(()=>{const L=__gs.doc.active;L.name='Steel';});
+ await p.click('#lAdd');await p.evaluate(()=>{__gs.doc.active.name='Paint';});await W();
+ await p.evaluate(()=>{const L=__gs.layerByName('Steel');__gs.doc.active=L;__gs.doc.sel=new Set([L]);});await W();
+ await p.evaluate(()=>__gs.showPanel('layers'));await W();
+ await elShot('layers-panel','section[aria-labelledby="hLayers"]');
+ await p.locator('#layerList .lrow:has(.lname:text-is("Steel"))').click({button:'right'});await W(400);
+ await elShot('layer-menu','#menuPop');await p.keyboard.press('Escape');await p.mouse.click(700,500);await W();
+ await p.click('#obMore');await W(300);await elShot('options-more','#optBar');await p.click('#obMore');
+ ok(errs.length===0,'no errors '+errs.slice(0,3).join('\n'));
+ console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();})();

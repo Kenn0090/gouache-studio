@@ -1,6 +1,11 @@
-Canvas tools: shapes with bevels, the Array tool and layer styles.
+Tidier tabs, fill layers and a friendlier layer stack.
 
-- **Shape tool (U):** rectangle, rounded rectangle, ellipse, polygon, star, line, arrow and heart, each on its own layer and editable until you paint on it. Fill and outline, and a **bevel** with a choice of profiles (flat, round, cove, ogee, steps, pillow) that raises the Height map, so the normal and the 3D view follow.
-- **Array tool:** repeat a layer in a line, a grid or a circle. The copies stay live: paint on the layer and they all follow. Drag the handles on the canvas; add random variety (rotation, size, hue, brightness) per copy; Apply turns them into pixels.
-- **Layer styles (Layer › Layer style…):** drop shadow, outer glow, stroke, colour overlay, inner shadow, inner glow, and bevel & emboss. Live on the layer, with an **fx** badge. The bevel (and a raised stroke) goes into the Height map; the stroke and colour overlay can also set roughness and metallic.
-- Shapes, arrays and styles are kept in .gouache files and included in texture export.
+- **Bake and Convert have their own canvas.** Working in them no longer touches your painting, and they show only their own settings (no brush or colour panels). Bake size can be set in the General tab.
+- **Sending bakes:** tick which maps to send. They arrive as plain layers (no folders), so you can blend them, for example curvature over AO. **Export…** saves the ticked maps as image files (a zip in the browser).
+- **Fill layers (Layer › New fill layer, or the fill button under the layers):** like Substance Painter. One layer fills each map with a colour or value (base colour, roughness, metallic, height…) or with an image, stretched or tiled. Painting on it paints its mask. Double-click its thumbnail to change it.
+- **Right-click a layer** for masks, layer styles (pick one to switch it on), filter layers, Array, group, duplicate, merge, convert to pixels and delete.
+- The **Delete key** deletes the selected layer.
+- The layer buttons are now **icons**. There is a **3D button** at the top to show or hide the 3D view.
+- **Drag the dock's left edge** to make the panels wider or narrower (double-click: back to normal).
+- The options bar has a **More ▾** button with spacing, smoothing, grain, jitter and pressure settings.
+- Fixes: painting skew and offset fixes in the Bake tab uses its own Paint value. A drop shadow or glow on an empty layer no longer darkens the whole canvas.
