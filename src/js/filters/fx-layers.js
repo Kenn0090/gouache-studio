@@ -5,8 +5,9 @@
    L.fx = {map, stack:[{id|conv, v, on}]}. The layer has no pixels of its own. */
 const FX_KINDS=()=>[
   ['Adjust',['colorAdj','levels','curves','hueSat','gradMap','desat','invert','threshold','posterize','quantize']],
-  ['Blur and sharpen',['blur','boxBlur','radialBlur','lensBlur','surfBlur','motionBlur','sharpen','highPass']],
-  ['Artistic',['oilPaint','painterly','cutout','mosaic','emboss','edges','noise']],
+  ['Blur and sharpen',['blur','boxBlur','radialBlur','lensBlur','surfBlur','motionBlur','driftBlur','sharpen','highPass']],
+  ['Artistic',['oilPaint','painterly','kuwahara','watercolour','charcoal','cutout','mosaic','acid','glass','emboss','edges','noise']],
+  ['Photo and print',['softFocus','cineMono','anaglyph','halftone','engraving','riso','bwPrint','pixelBitmap']],
   ['Patterns',['clouds','cells']],
   ['Tiling',['offset','seamless']]];
 const fxItemTitle=it=>it.conv?CONVERTERS[it.conv].title+' (live)':FX[it.id].title;

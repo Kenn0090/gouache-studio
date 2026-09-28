@@ -45,6 +45,7 @@
     "filters/filter-shaders",
     "filters/converters",
     "filters/filters",
+    "filters/filters-more",
     "filters/fx-layers",
     "filters/gallery",
     "view3d/mesh",

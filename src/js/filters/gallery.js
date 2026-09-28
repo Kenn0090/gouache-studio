@@ -3,10 +3,12 @@
    and a stack of filters applied on top of each other (reorder, switch off, remove). Apply bakes the stack into the
    layer; "As a filter layer" keeps it editable as a filter layer clipped to the layer. */
 const GALLERY_FOLDERS=()=>[
-  ['Artistic',['oilPaint','painterly','cutout','mosaic']],
-  ['Blur',['blur','boxBlur','radialBlur','lensBlur','surfBlur','motionBlur']],
+  ['Artistic',['oilPaint','painterly','kuwahara','watercolour','charcoal','cutout','mosaic','acid']],
+  ['Photo',['softFocus','cineMono','anaglyph']],
+  ['Print',['halftone','engraving','riso','bwPrint','pixelBitmap']],
+  ['Blur',['blur','boxBlur','radialBlur','lensBlur','surfBlur','motionBlur','driftBlur']],
   ['Sharpen',['sharpen','highPass']],
-  ['Stylize',['emboss','edges','edgeWear']],
+  ['Stylize',['glass','emboss','edges','edgeWear']],
   ['Render',['clouds','cells','noise']],
   ['Tiling',['offset','tile','seamless']],
   ['Adjust',['levels','curves','hueSat','gradMap','threshold','posterize','quantize','desat','invert']]].map(([n,ids])=>[n,ids.filter(id=>FX[id])]).filter(f=>f[1].length);
