@@ -73,3 +73,29 @@ Open items Kenn has seen (he also has **more features to add**, so ask him first
 6. AI light removal for photos (probably not).
 7. Things only Kenn can check on his machine: skew fixes on a real bake, the Convert tab's default strengths on real photos.
 8. The installer isn't code-signed (Windows shows a warning); a certificate is his call.
+
+## 0.20 3D Paint: agreed with Kenn (after 0.19)
+Answers to the design questions:
+- **3D Paint gets its own canvas** (its own document, separate from Paint, like the Brush tab has its own).
+- Split: **0.20** = 3D Paint tab (painting, navigation, picking, mirror, selections, HDRIs, layouts), **0.21** = Mask Builder.
+- Navigation: **Substance Painter style** (Alt+left turn, Alt+middle move, Alt+right zoom) by default, **3D-Coat style** as a setting.
+- Colour pick: **hold Alt while hovering over the mesh picks the colour** (a special rule), and **Alt+left-drag still navigates** (turns the model).
+- Layouts: 3D only, 3D + flat texture, 2D only.
+- Mirror: straight mirrors (X/Y/Z, movable, snapping) **and radial**.
+- Several materials: **texture sets like Substance Painter** (each material its own maps, switch between them).
+- Stencils / projection painting: **yes**.
+- HDRIs: **.hdr and .exr** (all).
+- Kenn wants a **mock-up of the layout** before building.
+More requests from Kenn in the same message:
+1. 3D Painter **layer stack like Substance Painter's** (fill layers, paint layers, masks, per-channel blending).
+2. Sending bakes: **tick which maps get sent**, plus **export baked maps** straight to files.
+3. Sent baked maps **should not be in folders** (no groups; plain layers).
+4. The **Delete key deletes the layer**.
+5. **Convert tab and Bake tab as separate entities with their own canvas**, and without brush/colour panels: only their own settings.
+6. A **3D button** to switch to the 3D view easily.
+7. In the painter: **metallic and roughness adjustable with a slider or an image** (like Substance fill values).
+8. **Make the model viewer properly PBR** (the mesh doesn't look PBR-correct now).
+9. **Right-side panel dock adjustable** (resizable), and **layer stack buttons at the bottom as icons**.
+10. **Layer stack like Substance Painter + Photoshop** so things are familiar (layer styles etc.), with a **right-click menu** to add them to a layer.
+11. **Brush tool bar (options bar) can be extended** (more settings shown / expandable).
+
