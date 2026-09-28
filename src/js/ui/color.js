@@ -26,10 +26,14 @@ function refreshColor(){
   $('#swFG').style.background=fh;$('#swBG').style.background=bh;$('#miniFG').style.background=fh;$('#miniBG').style.background=bh;
   if(document.activeElement!==$('#hex'))$('#hex').value=fh;
   $('#hsvOut').textContent='H'+Math.round(ui.hsv[0])+' S'+Math.round(ui.hsv[1]*100)+' V'+Math.round(ui.hsv[2]*100);
-  const a=toOk(ui.fg),b=toOk(ui.bg);const mix=$('#mix');mix.replaceChildren();
-  for(let i=0;i<9;i++){const t=i/8;const c=fromOk([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]);const hx=toHex(c);
-    mix.append(el('button',{title:hx+' ('+Math.round(t*100)+'% background)','aria-label':'Mixed color '+hx,style:'background:'+hx,onclick:()=>{const keep=ui.bg;setFG(c);ui.bg=keep;refreshColor();}}));}
+  /* the shade strip stays put while you step through it (click, or Left/Right arrow keys); it starts again from the colour you pick elsewhere */
+  const sh=ui.shade;if(!sh||toHex(shadeAt(sh,sh.i))!==fh||toHex(sh.b)!==bh)ui.shade={a:ui.fg.slice(),b:ui.bg.slice(),i:0};
+  const S=ui.shade,mix=$('#mix');mix.replaceChildren();
+  for(let i=0;i<9;i++){const c=shadeAt(S,i),hx=toHex(c);
+    mix.append(el('button',{class:i===S.i?'on':'',title:hx+' ('+Math.round(i/8*100)+'% background). Left/Right arrow keys step through the shades','aria-label':'Mixed color '+hx,'aria-pressed':String(i===S.i),style:'background:'+hx,onclick:()=>shadeStep(i-S.i)}));}
 }
+function shadeAt(S,i){const a=toOk(S.a),b=toOk(S.b),t=i/8;return fromOk([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]);}
+function shadeStep(d){const S=ui.shade;if(!S)return;const i=clamp(S.i+d,0,8);if(i===S.i)return;S.i=i;const keep=ui.bg;setFG(shadeAt(S,i));ui.bg=keep;refreshColor();}
 function renderRecent(){const r=$('#recent');r.replaceChildren();if(!ui.recent.length){r.append(el('span',{class:'none',text:'Colors you paint with appear here'}));return;}
   for(const hx of ui.recent)r.append(el('button',{style:'background:'+hx,title:hx,'aria-label':'Use '+hx,onclick:()=>setFG(fromHex(hx))}));}
 function dragOn(c,fn){c.addEventListener('pointerdown',e=>{c.setPointerCapture(e.pointerId);fn(e);const mv=ev=>fn(ev);const up=()=>{c.removeEventListener('pointermove',mv);c.removeEventListener('pointerup',up);c.removeEventListener('pointercancel',up);};c.addEventListener('pointermove',mv);c.addEventListener('pointerup',up);c.addEventListener('pointercancel',up);});}

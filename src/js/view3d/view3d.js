@@ -57,7 +57,7 @@ function v3Upload(m){const g=v3.gpu;if(g){gl.deleteVertexArray(g.vao);gl.deleteB
   const edges=meshEdges(m),evao=gl.createVertexArray();gl.bindVertexArray(evao);gl.bindBuffer(gl.ARRAY_BUFFER,vb);at(0,3,0);at(1,3,3);at(2,2,6);at(3,4,8);
   const eb=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,eb);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,edges,gl.STATIC_DRAW);
   gl.bindVertexArray(vao);v3.gpu={vao,vb,ib,eb,evao,count:m.idx.length,ecount:edges.length};}
-function v3SetMesh(m,keepCam){v3.mesh=m;v3Upload(m);gl.bindVertexArray(vao);if(!keepCam)v3Frame();v3.dirty=true;requestRender();refresh3dUI();if(v3s().showUV)requestRender();}
+function v3SetMesh(m,keepCam){v3.mesh=m;v3Upload(m);gl.bindVertexArray(vao);if(!keepCam)v3Frame();v3.dirty=true;requestRender();refresh3dUI();if(ui.mode==='p3d'&&typeof buildP3Panel==='function')buildP3Panel();if(v3s().showUV)requestRender();}
 function v3LoadModel(keepCam){const s=v3s();if(s.model==='dplane'){s.model='plane';s.detail=Math.max(s.detail||0,5);}
   const m=s.model==='imported'&&v3.imported?subdivideMesh(v3.imported,s.detail||0):primMesh(PRIMS[s.model]?s.model:'plane',s.detail||0);v3SetMesh(m,keepCam);}
 
@@ -139,7 +139,8 @@ function toggle3D(on){v3.on=on===undefined?!v3.on:!!on;$('#btn3d').setAttribute(
   if(v3.on&&ui.mode==='anim'&&false)return;
   if(!v3.on&&v3.pop)pop3D(false,true);
   pane.hidden=!v3.on||!!v3.pop;sp.hidden=!v3.on||!!v3.pop;let w=320;try{w=+localStorage.getItem('gs.pane3d')||0;}catch(e){}if(!w)w=Math.round(work.clientWidth*.42);
-  work.style.setProperty('--pane3d',v3.on&&!v3.pop?clamp(w,200,work.clientWidth-200)+'px':'0px');sp.style.right=v3.on?'calc(var(--pane3d) - 3px)':'';
+  const full=v3.on&&!v3.pop&&work.classList.contains('v3full');if(full)sp.hidden=true;
+  work.style.setProperty('--pane3d',full?'100%':v3.on&&!v3.pop?clamp(w,200,work.clientWidth-200)+'px':'0px');sp.style.right=v3.on?'calc(var(--pane3d) - 3px)':'';
   if(v3.on){if(!v3.pop)build3dPane();v3.mapsDirty=true;v3.editDirty=true;v3.dirty=true;if(!v3.mesh)v3LoadModel();}
   resizeGL();fit();requestRender(true);}
 function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.replaceChildren();
@@ -153,11 +154,11 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   const shade=seg([['lit','Lit'],['unlit','Unlit']],v3Unlit()?'unlit':'lit',x=>{s.unlit=x==='unlit';v3.mapsDirty=true;v3.dirty=true;requestRender(true);},'Shading');
   const gear=el('button',{class:'btn sm',text:'Settings',id:'v3Gear','aria-expanded':'false'});
   const dock=el('button',{class:'btn sm',text:v3.pop?'Dock':'Pop out',id:'v3Pop',title:v3.pop?'Put the 3D view back beside the canvas':'Open the 3D view in its own window (for a second screen)'});dock.onclick=()=>pop3D(!v3.pop);
-  const close=el('button',{class:'btn sm',text:'×',title:'Close the 3D view (F3)','aria-label':'Close the 3D view'});close.onclick=()=>toggle3D(false);
+  const close=el('button',{class:'btn sm',text:'×',title:'Close the 3D view (F3)','aria-label':'Close the 3D view'});close.onclick=()=>{if(ui.mode==='p3d')p3SetLayout('2d');else toggle3D(false);};
   const pbtn=el('button',{class:'btn sm'+(v3.paintOn?' on':''),id:'v3Paint',text:'Paint',title:'Paint on the model with the brush (Alt+drag turns it, right-drag moves it)','aria-pressed':String(v3.paintOn)});
   pbtn.onclick=()=>{v3.paintOn=!v3.paintOn;pbtn.classList.toggle('on',v3.paintOn);pbtn.setAttribute('aria-pressed',String(v3.paintOn));if(v3.paintOn&&!MESH_TOOLS.includes(ui.tool))setTool('brush');refresh3dUI();};
   const inBake=ui.mode==='bake',lowLab=inBake?el('span',{class:'v3lab',text:'Low-poly: '+bkLow().name,title:'Choose the low-poly in the Bake panel'}):null;
-  const bar=el('div',{class:'v3bar'},...(inBake?[lowLab]:ui.mode==='convert'?[models,detSel]:[models,detSel,shade]),...(ui.mode==='convert'?[]:[pbtn]),tog('v3Wire','Wireframe','wire','Show the mesh edges'),tog('v3UV','UVs','showUV','Draw the model’s UV layout over your canvas'),tog('v3Spin','Turntable','spin','Spin the model slowly'),gear,dock,close);
+  const bar=el('div',{class:'v3bar'},...(inBake?[lowLab]:ui.mode==='convert'?[models,detSel]:[models,detSel,shade]),...(ui.mode==='convert'||ui.mode==='p3d'?[]:[pbtn]),tog('v3Wire','Wireframe','wire','Show the mesh edges'),tog('v3UV','UVs','showUV','Draw the model’s UV layout over your canvas'),tog('v3Spin','Turntable','spin','Spin the model slowly'),gear,dock,close);
   const box=el('div',{class:'v3set',hidden:true});
   const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:s[key],fmt,onInput:v=>{s[key]=v;if(key==='disp'){v3.mapsDirty=true;if(v>0&&(s.detail||0)<4&&!v3.detAuto){v3.detAuto=true;s.detail=4;if(v3.detSel)v3.detSel.value='4';v3LoadModel(true);toast('Mesh detail raised to ×16 so the height can show. Change it with the Detail menu at the top of the 3D view.');}}v3.dirty=true;requestRender(key==='disp');}}).el;
   box.append(S('v3Uvs','Tile repeat','uvs',1,8,1,v=>v+'×'),S('v3Disp','Height depth','disp',0,1,.01,pct),S('v3Az','Sun angle','sunAz',0,360,1,deg),S('v3El','Sun height','sunEl',0,90,1,deg),
@@ -169,15 +170,37 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   const info=el('div',{class:'v3info',id:'v3Info'});v3.infoEl=info;
   const hit=el('div',{class:'v3hit',id:'v3Hit'});
   pane.append(hit,bar,box,info);refresh3dUI();v3Controls(hit);}
-function refresh3dUI(){const i=v3.infoEl;if(!i||!v3.mesh)return;const m=v3.mesh;i.textContent=m.name+' · '+m.tris.toLocaleString()+' triangles'+(m.noUV?' · this model has no UVs, so textures cannot map onto it':v3.paintOn?' · painting: Alt+drag turns, right-drag moves':'');}
+function refresh3dUI(){const i=v3.infoEl;if(!i||!v3.mesh)return;const m=v3.mesh;i.textContent=m.name+' · '+m.tris.toLocaleString()+' triangles'+(m.noUV?' · this model has no UVs, so textures cannot map onto it':v3.paintOn?' · painting: '+v3NavHint()+'; hold Alt over the model to pick its colour':'');}
+/* ---- navigation: Substance Painter style (default) or 3D-Coat style (Preferences, or the 3D Paint panel) ----
+   Substance: Alt+left turns, Alt+middle moves, Alt+right zooms; middle or right drag also moves; left paints.
+   3D-Coat: right-drag turns (Shift+right moves, Ctrl+right zooms), middle moves, left paints on the model and turns off it.
+   With painting off, left-drag turns in both. Holding Alt over the model (no button) picks its colour. */
+const v3nav={mode:(()=>{try{return localStorage.getItem('gs.nav3d')||'substance';}catch(e){return 'substance';}})()};
+function setNav3d(m){v3nav.mode=m;try{localStorage.setItem('gs.nav3d',m);}catch(e){}refresh3dUI();}
+const v3CanPaint=()=>v3.paintOn&&MESH_TOOLS.includes(ui.tool)&&!!v3.gpu&&!!v3.mesh&&!v3.mesh.noUV;
+function v3NavHint(){return v3nav.mode==='coat'?'right-drag turns, middle moves, Ctrl+right zooms':'Alt+left turns, Alt+middle moves, Alt+right zooms';}
+function v3NavOf(hit,e){const b=e.button,paint=v3CanPaint();
+  if(v3nav.mode==='coat'){if(b===2)return e.ctrlKey?'zoom':e.shiftKey?'pan':'turn';if(b===1)return 'pan';if(e.altKey)return 'turn';
+    if(paint)return v3PickAt(hit,e)?'paint':'turn';return e.shiftKey?'pan':'turn';}
+  if(e.altKey)return b===1?'pan':b===2?'zoom':'turn';
+  if(b===1||b===2)return 'pan';if(paint)return 'paint';return e.shiftKey?'pan':'turn';}
 function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault());
-  hit.addEventListener('pointerdown',e=>{hit.setPointerCapture(e.pointerId);if(meshPaintReady(e)&&meshDown(hit,e))return;v3.drag={x:e.clientX,y:e.clientY,pan:e.button===2||e.button===1||e.shiftKey};});
-  hit.addEventListener('pointermove',e=>{meshCursor(hit,e);if(v3.mstroke){meshMove(hit,e);return;}const d=v3.drag;if(!d)return;const dx=e.clientX-d.x,dy=e.clientY-d.y;d.x=e.clientX;d.y=e.clientY;const c=v3.cam;
-    if(d.pan){const k=c.dist*.0018,eye=v3Eye(),f=norm3(sub3([c.tx,c.ty,c.tz],eye)),r=norm3(cross3(f,[0,1,0])),u=cross3(r,f);c.tx+=(-r[0]*dx+u[0]*dy)*k;c.ty+=(-r[1]*dx+u[1]*dy)*k;c.tz+=(-r[2]*dx+u[2]*dy)*k;}
+  hit.addEventListener('pointerdown',e=>{if(v3.mstroke&&!stroke)v3.mstroke=null;/* a stroke that never started must not block turning */
+    try{hit.setPointerCapture(e.pointerId);}catch(er){}let how=v3NavOf(hit,e);
+    if(how==='paint'){if(e.button===0&&meshDown(hit,e)&&v3.mstroke)return;how='turn';if(stroke)return;}
+    v3.drag={x:e.clientX,y:e.clientY,how,id:e.pointerId};});
+  hit.addEventListener('pointermove',e=>{meshCursor(hit,e);if(v3.mstroke){meshMove(hit,e);return;}const d=v3.drag;
+    if(!d){if(e.altKey&&!e.buttons)v3HoverPick(hit,e);return;}
+    const dx=e.clientX-d.x,dy=e.clientY-d.y;d.x=e.clientX;d.y=e.clientY;const c=v3.cam;
+    if(d.how==='pan'){const k=c.dist*.0018,eye=v3Eye(),f=norm3(sub3([c.tx,c.ty,c.tz],eye)),r=norm3(cross3(f,[0,1,0])),u=cross3(r,f);c.tx+=(-r[0]*dx+u[0]*dy)*k;c.ty+=(-r[1]*dx+u[1]*dy)*k;c.tz+=(-r[2]*dx+u[2]*dy)*k;}
+    else if(d.how==='zoom')c.dist=clamp(c.dist*Math.exp((dy-dx)*.006),.2,50);
     else{c.yaw-=dx*.008;c.pitch=clamp(c.pitch+dy*.008,-1.55,1.55);}v3.dirty=true;requestRender();});
-  const up=e=>{v3.drag=null;meshUp(e);};hit.addEventListener('pointerup',up);hit.addEventListener('pointercancel',up);hit.addEventListener('pointerleave',()=>meshCursor(hit,null));
+  const up=e=>{if(v3.drag&&e.pointerId!==undefined&&v3.drag.id!==e.pointerId)return;v3.drag=null;meshUp(e);};
+  hit.addEventListener('pointerup',up);hit.addEventListener('pointercancel',up);hit.addEventListener('lostpointercapture',up);hit.addEventListener('pointerleave',()=>meshCursor(hit,null));
   hit.addEventListener('wheel',e=>{e.preventDefault();e.stopPropagation();v3.cam.dist=clamp(v3.cam.dist*Math.exp(e.deltaY*.0012),.2,50);v3.dirty=true;requestRender();},{passive:false});
-  hit.addEventListener('dblclick',()=>{v3Frame();requestRender();});}
+  hit.addEventListener('dblclick',e=>{if(typeof p3SelectAt==='function'&&p3SelectAt(hit,e))return;v3Frame();requestRender();});}
+/* Alt on its own must not hand the keyboard to the window menu (Windows), which made the model seem locked */
+for(const t of ['keydown','keyup'])window.addEventListener(t,e=>{if(e.key==='Alt')e.preventDefault();},true);
 /* dragging the divider */
 (()=>{const sp=$('#split3d'),work=$('#work');let d=null;
   sp.addEventListener('pointerdown',e=>{sp.setPointerCapture(e.pointerId);d={x:e.clientX,w:$('#pane3d').clientWidth};});

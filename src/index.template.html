@@ -12,7 +12,7 @@
     <div class="bar-r">
       <span id="docName"></span>
       <select id="wsSel" class="wssel" aria-label="Workspace" title="Workspace: where the panels are"></select>
-      <div class="tabs" id="modeTabs" role="tablist" aria-label="Workspace"><button role="tab" data-mode="paint" aria-selected="true" title="Paint your textures">Paint</button><button role="tab" data-mode="anim" aria-selected="false" title="Flipbooks and sprite sheets">Animation</button><button role="tab" data-mode="bake" aria-selected="false" title="Bake maps from a high-poly model and fix the bake">Bake</button><button role="tab" data-mode="convert" aria-selected="false" title="Make normal, height, AO and more from a photo or another map">Convert</button><button role="tab" data-mode="brush" aria-selected="false" title="Draw your own brush tips on a canvas of their own">Brush</button></div>
+      <div class="tabs" id="modeTabs" role="tablist" aria-label="Workspace"><button role="tab" data-mode="paint" aria-selected="true" title="Paint your textures">Paint</button><button role="tab" data-mode="p3d" aria-selected="false" title="Paint on a 3D model, with texture sets, like Substance Painter">3D Paint</button><button role="tab" data-mode="anim" aria-selected="false" title="Flipbooks and sprite sheets">Animation</button><button role="tab" data-mode="bake" aria-selected="false" title="Bake maps from a high-poly model and fix the bake">Bake</button><button role="tab" data-mode="convert" aria-selected="false" title="Make normal, height, AO and more from a photo or another map">Convert</button><button role="tab" data-mode="brush" aria-selected="false" title="Draw your own brush tips on a canvas of their own">Brush</button></div>
       <button class="toggle btn3d" id="btn3d" aria-pressed="false" title="Show or hide the 3D view (F3)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3 20 7.5v9L12 21l-8-4.5v-9z"/><path d="M12 12 20 7.5M12 12v9M12 12 4 7.5"/></svg>3D</button>
       <button class="toggle" id="tileBtn" aria-pressed="false" title="Seamless tile mode (Shift+T): wraps brush strokes and shows a 3&times;3 repeat"><i></i>Tile mode</button>
     </div>
@@ -53,6 +53,10 @@
     <section class="sec" id="convSec" aria-labelledby="hConv">
       <div class="sec-h" id="hConv"><span>Convert</span></div>
       <div id="convBody" class="dlg-grid"></div>
+    </section>
+    <section class="sec" id="p3dSec" aria-labelledby="hP3d">
+      <div class="sec-h" id="hP3d"><span>3D Paint</span></div>
+      <div id="p3dBody" class="dlg-grid"></div>
     </section>
     <section class="sec" id="bakeSec" aria-labelledby="hBake">
       <div class="sec-h" id="hBake"><span>Bake</span></div>

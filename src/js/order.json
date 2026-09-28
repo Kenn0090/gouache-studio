@@ -56,6 +56,7 @@
     "view3d/mesh",
     "view3d/view3d",
     "view3d/mesh-paint",
+    "view3d/paint3d",
     "bake/bake-gpu",
     "bake/bake-ui",
     "bake/bake-tab",

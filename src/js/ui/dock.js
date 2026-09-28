@@ -4,6 +4,7 @@
    dragged to another group, between groups, onto the icon column (one click away), or off the dock to float.
    The arrangement is a workspace: Painting, Texturing, 3D Paint, Minimal or your own, remembered per workspace. */
 const PANELS={
+  p3d:{title:'3D Paint',sel:'#p3dSec',avail:m=>m==='p3d',mode:true},
   brushtab:{title:'Brush maker',sel:'#brushTabSec',avail:m=>m==='brush',mode:true},
   conv:{title:'Convert',sel:'#convSec',avail:m=>m==='convert',mode:true},
   bake:{title:'Bake',sel:'#bakeSec',avail:m=>m==='bake',mode:true},
@@ -11,11 +12,11 @@ const PANELS={
   color:{title:'Color',sel:'section[aria-labelledby="hColor"]',avail:m=>m!=='convert'&&m!=='bake',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16" opacity=".5"/>'},
   brushes:{title:'Brushes',sel:'section[aria-labelledby="hBrush"]',avail:m=>m!=='convert'&&m!=='bake',icon:'<path d="M4 20c2.2 0 4-.9 4-3.2 0-1.4 1-2.4 2.4-2.4 1.5 0 2.5 1 2.5 2.4C12.9 19 10.8 20 8 20H4z"/><path d="M11.2 13.6 20 4.6a1.4 1.4 0 0 0-2-2l-9 8.8"/>'},
   tool:{title:'Tool settings',sel:'#toolSec',avail:m=>m!=='convert'&&m!=='bake',icon:'<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="8" cy="17" r="1.8"/>'},
-  maps:{title:'Maps',sel:'#mapsSec',avail:m=>m==='paint'||m==='anim',icon:'<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>'},
-  layers:{title:'Layers',sel:'section[aria-labelledby="hLayers"]',avail:m=>m==='paint'||m==='brush',icon:'<path d="M12 4 3 9l9 5 9-5-9-5z"/><path d="m3 14 9 5 9-5"/>'},
-  chan:{title:'Channels',sel:'section[aria-labelledby="hChan"]',avail:m=>m==='paint',icon:'<circle cx="9" cy="10" r="5"/><circle cx="15" cy="10" r="5"/><circle cx="12" cy="15" r="5"/>'}};
+  maps:{title:'Maps',sel:'#mapsSec',avail:m=>m==='paint'||m==='anim'||m==='p3d',icon:'<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>'},
+  layers:{title:'Layers',sel:'section[aria-labelledby="hLayers"]',avail:m=>m==='paint'||m==='brush'||m==='p3d',icon:'<path d="M12 4 3 9l9 5 9-5-9-5z"/><path d="m3 14 9 5 9-5"/>'},
+  chan:{title:'Channels',sel:'section[aria-labelledby="hChan"]',avail:m=>m==='paint'||m==='p3d',icon:'<circle cx="9" cy="10" r="5"/><circle cx="15" cy="10" r="5"/><circle cx="12" cy="15" r="5"/>'}};
 const PANEL_IDS=Object.keys(PANELS);
-const MODE_GROUP=['brushtab','conv','bake','anim'];
+const MODE_GROUP=['p3d','brushtab','conv','bake','anim'];
 /* the built-in workspaces: extra = 3D view on and how wide, painting on the model */
 const WS_PRESETS={
   painting:{name:'Painting',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['color'],f:1.05},{tabs:['brushes','tool'],f:1.25},{tabs:['maps'],f:.45},{tabs:['layers','chan'],f:1.6}],icons:[],floats:[]},
@@ -55,20 +56,30 @@ function dkToolbar(o){Object.assign(dk.L.tb,o);dkRender();dkSave();resizeGL();fi
 function dkGrid(){const L=dk.L,app=$('#app'),hasDock=L.groups.some(g=>dkAvail(g).length)&&L.w>0,ic=L.icons.length?'38px':'0px',tw=L.tb.cols===2?'82px':'46px';
   document.body.classList.toggle('tb2',L.tb.cols===2);document.body.classList.toggle('noopt',!L.opt);
   const left=L.tb.side!=='right';
-  app.style.gridTemplateColumns=left?`${tw} minmax(0,1fr) ${ic} ${hasDock?L.w+'px':'0px'}`:`minmax(0,1fr) ${tw} ${ic} ${hasDock?L.w+'px':'0px'}`;
+  const c2=dkCol2On()?dk.col2.w+'px':'0px';
+  app.style.gridTemplateColumns=left?`${tw} minmax(0,1fr) ${c2} ${ic} ${hasDock?L.w+'px':'0px'}`:`minmax(0,1fr) ${tw} ${c2} ${ic} ${hasDock?L.w+'px':'0px'}`;
   app.style.gridTemplateRows=`38px ${L.opt?'minmax(36px,auto)':'0px'} minmax(0,1fr) auto 26px`;
-  app.style.gridTemplateAreas=left?'"head head head head" "opt opt opt opt" "tools work icons dock" "tools tl icons dock" "status status status status"':'"head head head head" "opt opt opt opt" "work tools icons dock" "tl tools icons dock" "status status status status"';}
-const dkAvail=g=>g.tabs.filter(id=>PANELS[id].avail(ui.mode));
+  app.style.gridTemplateAreas=left?'"head head head head head" "opt opt opt opt opt" "tools work dock2 icons dock" "tools tl dock2 icons dock" "status status status status status"':'"head head head head head" "opt opt opt opt opt" "work tools dock2 icons dock" "tl tools dock2 icons dock" "status status status status status"';}
+/* in 3D Paint, Color, Brushes and Tool settings sit in a column of their own beside the viewport (dock2) */
+const DK_COL2=['color','brushes','tool'];
+const dkCol2On=()=>ui.mode==='p3d';
+const dkIn=id=>PANELS[id].avail(ui.mode)&&!(dkCol2On()&&DK_COL2.includes(id));
+const dkAvail=g=>g._c2?g.tabs.filter(id=>PANELS[id].avail(ui.mode)):g.tabs.filter(id=>dkIn(id));
+if(!dk.col2)dk.col2={w:250,groups:[{tabs:['color'],f:1,_c2:true},{tabs:['brushes','tool'],f:1.5,_c2:true}]};
 function dkRender(){const L=dk.L,dock=$('#dock');dkGrid();
   for(const id of PANEL_IDS){const s=dkSec(id);s.classList.remove('dk-off');}
   dock.replaceChildren();const gs=L.groups.filter(g=>dkAvail(g).length);
   gs.forEach((g,i)=>{if(i)dock.append(dkSplit(gs[i-1],g));dock.append(dkGroup(g));});
   if(!dk.wbar){dk.wbar=dkWidthBar();$('#app').append(dk.wbar);}dk.wbar.hidden=!gs.length||!(L.w>0);
-  dk.icons.replaceChildren(...L.icons.filter(id=>PANELS[id].avail(ui.mode)).map(id=>{const b=el('button',{class:'dkicon'+(dk.flyout===id?' on':''),title:PANELS[id].title,'aria-label':PANELS[id].title,'aria-pressed':String(dk.flyout===id)});
+  /* the second column (3D Paint) */
+  if(!dk.dock2){dk.dock2=el('aside',{class:'panel',id:'dock2','aria-label':'Colour and brushes'});$('#app').append(dk.dock2);}
+  dk.dock2.replaceChildren();dk.dock2.hidden=!dkCol2On();
+  if(dkCol2On()){const g2=dk.col2.groups.filter(g=>dkAvail(g).length);g2.forEach((g,i)=>{if(i)dk.dock2.append(dkSplit(g2[i-1],g));dk.dock2.append(dkGroup(g));});}
+  dk.icons.replaceChildren(...L.icons.filter(id=>dkIn(id)).map(id=>{const b=el('button',{class:'dkicon'+(dk.flyout===id?' on':''),title:PANELS[id].title,'aria-label':PANELS[id].title,'aria-pressed':String(dk.flyout===id)});
     b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+(PANELS[id].icon||'')+'</svg>';b.onclick=()=>dkFlyout(dk.flyout===id?null:id);b.addEventListener('pointerdown',e=>dkDragStart(e,id,{icons:true}));return b;}));
   for(const n of [...document.querySelectorAll('.dkfloat')])n.remove();
   for(const f of L.floats){if(f.pop){const pp=dk.pops.find(x=>x.f===f&&!x.win.closed);if(pp){dkPopEl(f,pp);continue;}f.pop=false;f.wasPop=true;}dkFloatEl(f);}
-  if(dk.flyout&&!(L.icons.includes(dk.flyout)&&PANELS[dk.flyout].avail(ui.mode)))dk.flyout=null;
+  if(dk.flyout&&!(L.icons.includes(dk.flyout)&&dkIn(dk.flyout)))dk.flyout=null;
   if(dk.flyout)dkFlyoutEl(dk.flyout);
   for(const id of PANEL_IDS){const s=dkSec(id);if(!s.parentElement||s.parentElement===dk.park||!s.isConnected)dk.park.append(s);}
   if(typeof resizeGL==='function')requestAnimationFrame(()=>{resizeGL();if(typeof drawSV==='function')drawSV();});}
@@ -80,7 +91,7 @@ function dkGroup(g){const av=dkAvail(g);let a=av.includes(g.active)?g.active:av[
   /* a workspace tab that just became available (entering Bake, Convert…) comes to the front */
   const mp=av.find(id=>PANELS[id].mode);if(mp)a=mp;g.active=a;
   const body=el('div',{class:'dkbody'});for(const id of av){const s=dkSec(id);s.classList.toggle('dk-off',id!==a);body.append(s);}
-  const box=el('div',{class:'dkgrp'+(g.min?' min':''),style:'flex:'+(g.min?'0 0 auto':g.f+' 1 0px')},dkTabs(av,a,{group:g},id=>{g.active=id;g.min=false;dkRender();dkSave();}),body);
+  const box=el('div',{class:'dkgrp'+(g.min?' min':''),style:'flex:'+(g.min?'0 0 auto':g.f+' 1 0px')},dkTabs(av,a,{group:g,popped:!!g._c2},id=>{g.active=id;g.min=false;dkRender();dkSave();}),body);
   box.querySelector('.dktabs').addEventListener('dblclick',e=>{if(e.target.closest('.dktab')){g.min=!g.min;dkRender();dkSave();}});
   box._g=g;return box;}
 /* the dock's left edge: drag to make the whole dock wider or narrower (double-click: back to the usual width) */
@@ -98,7 +109,7 @@ function dkSplit(a,b){const s=el('div',{class:'dksplit',role:'separator','aria-o
   return s;}
 /* ---- floating panels (inside the window) ---- */
 function dkKeepOnScreen(f){f.x=clamp(f.x,0,Math.max(0,window.innerWidth-120));f.y=clamp(f.y,38,Math.max(38,window.innerHeight-60));}
-function dkFloatEl(f){const av=f.tabs.filter(id=>PANELS[id].avail(ui.mode));if(!av.length)return;const a=av.includes(f.active)?f.active:av[0];f.active=a;dkKeepOnScreen(f);
+function dkFloatEl(f){const av=f.tabs.filter(id=>dkIn(id));if(!av.length)return;const a=av.includes(f.active)?f.active:av[0];f.active=a;dkKeepOnScreen(f);
   const body=el('div',{class:'dkbody'});for(const id of av){const s=dkSec(id);s.classList.toggle('dk-off',id!==a);body.append(s);}
   const tabs=dkTabs(av,a,{float:f},id=>{f.active=id;dkRender();dkSave();});
   const dockBtn=el('button',{class:'dkmore',text:'⤓',title:'Back into the dock','aria-label':'Back into the dock',onclick:()=>{dk.L.floats=dk.L.floats.filter(x=>x!==f);dk.L.groups.push({tabs:f.tabs,f:1});dkApply(dk.L,true);}});
@@ -205,7 +216,7 @@ function dkPopOut(f,quiet){const W=Math.round(f.w||320),H=Math.round(f.h||440);
   p.timer=setInterval(()=>{if(w.closed){clearInterval(p.timer);return;}if(w.screenX!==f.sx||w.screenY!==f.sy){f.sx=w.screenX;f.sy=w.screenY;dkSave();}},1000);
   w.addEventListener('pagehide',()=>{if(!p.closing)dkPopClosed(p);});
   dkRender();dkSave();if(!quiet)toast('The panel is in its own window: drag it to your other monitor. Close it (or press ⤓ there) to bring it back.');return true;}
-function dkPopEl(f,p){const d=p.win.document,av=f.tabs.filter(id=>PANELS[id].avail(ui.mode));
+function dkPopEl(f,p){const d=p.win.document,av=f.tabs.filter(id=>dkIn(id));
   if(!av.length){d.body.replaceChildren(d.createTextNode(''));const n=el('p',{class:'note',style:'padding:16px',text:'Not used in this tab of the app.'});d.body.append(n);return;}
   const a=av.includes(f.active)?f.active:av[0];f.active=a;const body=el('div',{class:'dkbody',style:'flex:1;min-height:0'});for(const id of av){const s=dkSec(id);s.classList.toggle('dk-off',id!==a);body.append(s);}
   const tabs=dkTabs(av,a,{float:f,popped:true},id=>{f.active=id;dkRender();dkSave();});
