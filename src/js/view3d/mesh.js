@@ -91,7 +91,7 @@ function idColor(key){let h=2166136261;for(const c of String(key))h=Math.imul(h^
 /* OBJ, read straight from the file's bytes: no giant text string, compact arrays, and it can
    pause between pieces so the loading bar moves (a high-poly OBJ can be hundreds of MB) */
 function objReader(name){const P=grow(Float32Array),T=grow(Float32Array),N=grow(Float32Array),pos=grow(Float32Array),uv=grow(Float32Array),nrm=grow(Float32Array),idx=grow(Uint32Array),tc=grow(Float32Array),tp=grow(Uint32Array);
-  const tm=grow(Uint32Array),mn=['default'];let mat=0;const vF=grow(Int32Array),vT=grow(Int32Array),vN=grow(Int32Array),alt=new Map(),pn=['default'],dec=new TextDecoder();let hasN=false,hasT=false,grp='default',gc=idColor('default'),part=0,face=[];
+  const tm=grow(Uint32Array),mn=['default'],VC=grow(Float32Array),PC=grow(Float32Array),vpi=grow(Int32Array);let mat=0,hasVC=false;const vF=grow(Int32Array),vT=grow(Int32Array),vN=grow(Int32Array),alt=new Map(),pn=['default'],dec=new TextDecoder();let hasN=false,hasT=false,grp='default',gc=idColor('default'),part=0,face=[];
   const nameOf=(b,i,e)=>dec.decode(b.subarray(i,e)).trim();
   /* number at b[i..]: returns [value, next index] */
   let ni=0;const num=(b,i,e)=>{while(i<e&&(b[i]===32||b[i]===9))i++;let sg=1;if(b[i]===45){sg=-1;i++;}else if(b[i]===43)i++;let v=0,f=0,d=1,any=false;
@@ -100,11 +100,18 @@ function objReader(name){const P=grow(Float32Array),T=grow(Float32Array),N=grow(
     ni=i;return any?sg*v:NaN;};
   const vert=(pi,ti,ki)=>{const nP=P.n/3;while(vF.n<nP){vF.p1(-1);vT.p1(-1);vN.p1(-1);}
     let r=vF.a[pi];if(r>=0){if(vT.a[pi]===ti&&vN.a[pi]===ki)return r;const key=pi+','+ti+','+ki;const q=alt.get(key);if(q!==undefined)return q;}
-    pos.p3(P.a[pi*3],P.a[pi*3+1],P.a[pi*3+2]);if(ti>=0){uv.p2(T.a[ti*2],1-T.a[ti*2+1]);hasT=true;}else uv.p2(0,0);
+    pos.p3(P.a[pi*3],P.a[pi*3+1],P.a[pi*3+2]);vpi.p1(pi);if(ti>=0){uv.p2(T.a[ti*2],1-T.a[ti*2+1]);hasT=true;}else uv.p2(0,0);
     if(ki>=0){nrm.p3(N.a[ki*3],N.a[ki*3+1],N.a[ki*3+2]);hasN=true;}else nrm.p3(0,0,0);r=pos.n/3-1;
     if(vF.a[pi]<0){vF.a[pi]=r;vT.a[pi]=ti;vN.a[pi]=ki;}else alt.set(pi+','+ti+','+ki,r);return r;};
-  const line=(b,i,e)=>{while(i<e&&(b[i]===32||b[i]===9))i++;if(i>=e||b[i]===35)return;const c0=b[i],c1=b[i+1];
-    if(c0===118&&(c1===32||c1===9)){const x=num(b,i+2,e),y=num(b,ni,e),z=num(b,ni,e);P.p3(x,y,z);return;}
+  const hx=c=>c>=48&&c<=57?c-48:c>=97&&c<=102?c-87:c>=65&&c<=70?c-55:-1;
+  const line=(b,i,e)=>{while(i<e&&(b[i]===32||b[i]===9))i++;if(i>=e)return;
+    /* ZBrush polypaint: "#MRGB MMRRGGBB…" in vertex order */
+    if(b[i]===35){if(b[i+1]===77&&b[i+2]===82&&b[i+3]===71&&b[i+4]===66){let k=i+5;while(k<e&&(b[k]===32||b[k]===9))k++;
+        for(;k+8<=e;k+=8){const h=j=>hx(b[k+j])*16+hx(b[k+j+1]);if(hx(b[k])<0)break;PC.p3(h(2)/255,h(4)/255,h(6)/255);}}return;}
+    const c0=b[i],c1=b[i+1];
+    if(c0===118&&(c1===32||c1===9)){const x=num(b,i+2,e),y=num(b,ni,e),z=num(b,ni,e);P.p3(x,y,z);
+      /* vertex colours, when written after the position ("v x y z r g b") */
+      const r=num(b,ni,e);if(!isNaN(r)){const g=num(b,ni,e),bl=num(b,ni,e);VC.p3(r,g,bl);hasVC=true;}else VC.p3(1,1,1);return;}
     if(c0===118&&c1===116){const x=num(b,i+2,e);let y=num(b,ni,e);if(isNaN(y))y=0;T.p2(x,y);return;}
     if(c0===118&&c1===110){const x=num(b,i+2,e),y=num(b,ni,e),z=num(b,ni,e);N.p3(x,y,z);return;}
     if(c0===102&&(c1===32||c1===9)){face.length=0;let k=i+2;const nP=P.n/3,nT=T.n/2,nN=N.n/3;
@@ -119,7 +126,9 @@ function objReader(name){const P=grow(Float32Array),T=grow(Float32Array),N=grow(
     /* read b[s..e) line by line; returns where the last complete line ended */
     feed(b,s,e,final){let i=s;for(;;){let j=b.indexOf(10,i);if(j<0||j>=e){if(final&&i<e){line(b,i,e);return e;}return i;}line(b,i,j);i=j+1;}},
     finish(){if(!idx.n)throw new Error('This OBJ file has no faces.');const m={pos:pos.out(),uv:uv.out(),idx:idx.out(),nrm:hasN?nrm.out():null};
-      const r=meshFinish(m,name);r.noUV=!hasT;r.triCol=tc.out();r.partNames=pn;r.triPart=tp.out();r.matNames=mn;r.triMat=tm.out();matCompact(r);return r;}};}
+      const r=meshFinish(m,name);r.noUV=!hasT;r.triCol=tc.out();r.partNames=pn;r.triPart=tp.out();r.matNames=mn;r.triMat=tm.out();matCompact(r);
+      const V=vpi.out(),perV=(src,n)=>{const o=new Float32Array(V.length*4);for(let q=0;q<V.length;q++){const p=V[q];if(p*3+2<n){o[q*4]=src[p*3];o[q*4+1]=src[p*3+1];o[q*4+2]=src[p*3+2];}else{o[q*4]=o[q*4+1]=o[q*4+2]=1;}o[q*4+3]=1;}return o;};
+      if(hasVC)r.vcol=perV(VC.a,VC.n);if(PC.n)r.pcol=perV(PC.a,PC.n);return r;}};}
 function parseOBJ(text,name){const b=typeof text==='string'?new TextEncoder().encode(text):text,R=objReader(name);R.feed(b,0,b.length,true);return R.finish();}
 async function parseOBJAsync(b,name,onProgress){const R=objReader(name),CH=8*1024*1024;let i=0;
   while(i<b.length){const e=Math.min(b.length,i+CH),fin=e>=b.length;const j=R.feed(b,i,e,fin);i=j>i?j:e;if(onProgress)onProgress(i/b.length);await new Promise(r=>setTimeout(r,0));}
@@ -157,13 +166,14 @@ async function parseGLTF(buf,name,readSibling){let json,bin=null;const u8=new Ui
       const vc=at.COLOR_0!==undefined?acc(at.COLOR_0):null,vn=vc?vc.length/cnt:0,mat=pr.material!==undefined&&json.materials?json.materials[pr.material]:null;
       const fc=mat&&mat.pbrMetallicRoughness&&mat.pbrMetallicRoughness.baseColorFactor?mat.pbrMetallicRoughness.baseColorFactor.slice(0,3):idColor((mat&&mat.name)||(json.meshes[n.mesh].name||'mesh'+n.mesh)+':'+parts.length);
       const tcol=[];for(let t=0;t<idx.length;t+=3){if(vc){for(let c=0;c<3;c++)tcol.push((vc[idx[t]*vn+c]+vc[idx[t+1]*vn+c]+vc[idx[t+2]*vn+c])/3);}else tcol.push(fc[0],fc[1],fc[2]);}
-      parts.push({pos,nrm:nr?nrm:null,uv:tc?Array.from(tc):new Array(cnt*2).fill(0),idx,tcol,pname:n.name||json.meshes[n.mesh].name||('mesh'+n.mesh),mname:mat?(mat.name||('Material '+pr.material)):'default'});}
+      parts.push({pos,nrm:nr?nrm:null,uv:tc?Array.from(tc):new Array(cnt*2).fill(0),idx,tcol,vc:vc?Array.from({length:cnt*4},(_,q)=>{const c=q&3,v=q>>2;return c===3?1:(c<vn?vc[v*vn+c]:1);}):null,cnt,pname:n.name||json.meshes[n.mesh].name||('mesh'+n.mesh),mname:mat?(mat.name||('Material '+pr.material)):'default'});}
     for(const c of n.children||[])visit(c,W);};
   const scene=json.scenes?json.scenes[json.scene||0]:{nodes:(json.nodes||[]).map((_,i)=>i)};const I=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
   for(const r of scene.nodes)visit(r,I);
   if(!parts.length)throw new Error('No triangle meshes were found in this file.');
   const needN=parts.some(p=>!p.nrm);const m=mergeParts(parts.map(p=>Object.assign({},p,{nrm:p.nrm||new Array(p.pos.length).fill(0)})));if(needN)m.nrm=null;
-  const r=meshFinish(m,name);r.noUV=noUV;r.triCol=new Float32Array(parts.flatMap(p=>p.tcol));partsInfo(r,parts);matsInfo(r,parts);return r;}
+  const r=meshFinish(m,name);r.noUV=noUV;r.triCol=new Float32Array(parts.flatMap(p=>p.tcol));partsInfo(r,parts);matsInfo(r,parts);
+  if(parts.some(p=>p.vc)){const o=new Float32Array(r.pos.length/3*4).fill(1);let q=0;for(const p of parts){if(p.vc)o.set(p.vc,q*4);q+=p.cnt;}r.vcol=o;}return r;}
 
 /* ---- keeping an imported model inside a .gouache file ---- */
 function meshPack(m){const n=m.pos.length,u=m.uv.length,x=m.idx.length,T=x/3,hasM=!!m.triMat,hasP=!!m.triPart,js=new TextEncoder().encode(JSON.stringify({matNames:m.matNames||null,partNames:m.partNames||null}));
@@ -216,6 +226,7 @@ async function parseFBX(buf,name,onProgress){const u8=new Uint8Array(buf),dv=new
   const parts=[];let noUV=false;
   for(const [id,g] of Object.entries(geoms)){const V=val((kid(g,'Vertices')||{props:[]}).props[0]),PI=val((kid(g,'PolygonVertexIndex')||{props:[]}).props[0]);if(!V||!PI)continue;
     const N=layer(g,'LayerElementNormal','Normals','NormalsIndex'),U=layer(g,'LayerElementUV','UV','UVIndex');if(!U)noUV=true;
+    const CL=layer(g,'LayerElementColor','Colors','ColorIndex'),vcol=CL?new Float32Array(cnt*4):null;
     const ML=kid(g,'LayerElementMaterial'),MA=ML?val((kid(ML,'Materials')||{props:[]}).props[0]):null,Mall=ML&&/AllSame/.test((kid(ML,'MappingInformationType')||{props:['']}).props[0]),mdl=models[geoOf[id]],tmat=[];let poly=0;
     const mnm=()=>{const k=MA?(Mall?MA[0]:MA[poly]):0;return (mdl&&mdl.mats[k])||(mdl&&mdl.mats[0])||'default';};
     const M=world(geoOf[id]),cnt=PI.length,pos=new Float32Array(cnt*3),nrm=new Float32Array(cnt*3),uv=new Float32Array(cnt*2),idx=grow(Uint32Array,cnt*2);
@@ -225,11 +236,13 @@ async function parseFBX(buf,name,onProgress){const u8=new Uint8Array(buf),dv=new
       const x=V[vi*3],y=V[vi*3+1],z=V[vi*3+2];pos[i*3]=M[0]*x+M[4]*y+M[8]*z+M[12];pos[i*3+1]=M[1]*x+M[5]*y+M[9]*z+M[13];pos[i*3+2]=M[2]*x+M[6]*y+M[10]*z+M[14];
       if(N){const k=at(N,pv,vi)*3,a=N.d[k],b=N.d[k+1],c=N.d[k+2];const nx=M[0]*a+M[4]*b+M[8]*c,ny=M[1]*a+M[5]*b+M[9]*c,nz=M[2]*a+M[6]*b+M[10]*c,l=Math.hypot(nx,ny,nz)||1;nrm[i*3]=nx/l;nrm[i*3+1]=ny/l;nrm[i*3+2]=nz/l;}
       if(U){const k=at(U,pv,vi)*2;uv[i*2]=U.d[k];uv[i*2+1]=1-U.d[k+1];}
+      if(CL){const k=at(CL,pv,vi)*4;vcol[i*4]=CL.d[k];vcol[i*4+1]=CL.d[k+1];vcol[i*4+2]=CL.d[k+2];vcol[i*4+3]=1;}
       pv++;if(last){const mm=mnm();for(let k=p0+1;k+1<=i;k++){idx.p3(p0,k,k+1);tmat.push(mm);}p0=i+1;poly++;}
       if((i&1048575)===1048575){if(onProgress)onProgress(i/cnt);await new Promise(r=>setTimeout(r,0));}}
-    const pname=models[geoOf[id]]?models[geoOf[id]].name:('mesh'+id);parts.push({pos,nrm,uv,idx:idx.out(),hasN:!!N,pname,tmat});}
+    const pname=models[geoOf[id]]?models[geoOf[id]].name:('mesh'+id);parts.push({pos,nrm,uv,idx:idx.out(),hasN:!!N,pname,tmat,vc:vcol,cnt});}
   if(!parts.length)throw new Error('No meshes were found in this FBX file.');
   const m=mergeParts(parts);if(parts.some(p=>!p.hasN))m.nrm=null;const r=meshFinish(m,name);r.noUV=noUV;partsInfo(r,parts);matsInfo(r,parts);
+  if(parts.some(p=>p.vc)){const o=new Float32Array(r.pos.length/3*4).fill(1);let q=0;for(const p of parts){if(p.vc)o.set(p.vc,q*4);q+=p.cnt;}r.vcol=o;}
   r.triCol=new Float32Array(r.triPart.length*3);r.triPart.forEach((p,i)=>r.triCol.set(idColor(r.partNames[p]),i*3));return r;}
 /* which material each triangle uses (texture sets in 3D Paint): per part one name (mname) or one per triangle (tmat) */
 function matsInfo(r,parts){const names=[],tm=new Uint32Array(r.idx.length/3);let o=0;const id=nm=>{let k=names.indexOf(nm);if(k<0){k=names.length;names.push(nm);}return k;};

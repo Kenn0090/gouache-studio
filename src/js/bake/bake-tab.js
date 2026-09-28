@@ -52,7 +52,7 @@ function bakePrep(L){const C=bakeCfg;const high=C.high?bakeAlign(C.high,L):null,
     const hn=(high.partNames||['default']).map(n=>ix.has(partBase(n))?ix.get(partBase(n)):9999);high.bakePart=new Float32Array((high.triPart||new Uint32Array(high.tris)).length);(high.triPart||[]).forEach((p,t)=>{high.bakePart[t]=hn[p];});}
   return {low,high,cage};}
 /* the high-poly's search tree, kept between bakes of the same models */
-async function bakeHG(L,high,low,step,needCol){const key=[bakeCfg.high,L.whole||L,!!(bakeCfg.match&&high)],same=k=>k&&k[0]===key[0]&&k[1]===key[1]&&k[2]===key[2];
+async function bakeHG(L,high,low,step,needCol){const key=[bakeCfg.high,L.whole||L,!!(bakeCfg.match&&high),needCol?bakeCfg.idSrc||'auto':''],same=k=>k&&k[0]===key[0]&&k[1]===key[1]&&k[2]===key[2]&&(!needCol||k[3]===key[3]);
   if(bk.hgBuild){const b=bk.hgBuild;try{await b.p;}catch(e){}if(bk.hgBuild===b)bk.hgBuild=null;}
   if(bk.hg&&same(bk.hgKey)&&(!needCol||bk.hg.hasCol))return bk.hg;if(bk.hg){bkFreeHigh(bk.hg);bk.hg=null;bk.hgKey=null;}
   const b={p:bkHighGPU(high||low,step,needCol)};bk.hgBuild=b;try{bk.hg=await b.p;}finally{if(bk.hgBuild===b)bk.hgBuild=null;}bk.hgKey=key;return bk.hg;}
@@ -67,6 +67,7 @@ async function runBake(L,ks,opt){opt=opt||{};const C=bakeCfg;if(bk.busy)return;i
   if(!high){const skip=ks.filter(k=>k==='normal'||k==='height');if(skip.length)toast('Without a high-poly, '+skip.map(k=>BAKE_NAMES[k].toLowerCase()).join(' and ')+' would be flat, so '+(skip.length>1?'they are':'it is')+' skipped.');ks=ks.filter(k=>k!=='normal'&&k!=='height');if(!ks.length)return;}
   if(ks.includes('curv')&&bakeCfg.curvSrc!==bakeCurvSrc(high))toast(bakeCfg.curvSrc==='normal'?'Curvature from the baked normal needs a high-poly, so it comes from the shape instead.':'The document has no normal map, so curvature comes from the shape instead.');
   const kinds=bakeKinds(ks,high),inTab=ui.mode==='bake';bk.curvSrc=bakeCurvSrc(high);
+  if(kinds.includes('id')){const got=bakeIdSource(high||low);if(got.missing)toast(got.missing);}
   const prog={cancelled:false,f:0,msg:'Preparing…',set(f){this.f=f;bakeProgUI();},step(t){this.msg=t;bakeProgUI();}};
   let dlgBar=null;if(!inTab){dlgBar=el('div',{class:'bakebar'},el('div'));const msg=el('p',{class:'note',text:'Preparing…'});prog.set=f=>{dlgBar.firstChild.style.width=(f*100).toFixed(1)+'%';};prog.step=t=>{msg.textContent=t;};
     openDialog({title:'Baking…',body:el('div',{class:'dlg-grid'},msg,dlgBar),okLabel:null,cancelLabel:'Cancel',onCancel(){prog.cancelled=true;}});}
@@ -124,6 +125,17 @@ async function bakeRegion(rect){if(!bk.opts||!bk.src)return;const r=[Math.max(0,
    As layers (the default) every grey or colour result is also in the base colour, so bakes blend with each other there
    (curvature on Overlay over AO…), and AO, curvature and height are in their own maps too. Maps only: each in its own map. */
 const BK_SEND_ORDER=['normal','height','ao','curv','curvEdge','curvCrease','thick','wnormal','position','id'];
+/* ---- where the ID map's colours come from (Other tab): separate meshes (parts), materials, vertex colours,
+   or ZBrush polypaint; Auto uses vertex colours, else material colours, else one colour per part ---- */
+const BK_ID_SRC=[['auto','Auto'],['part','Separate meshes'],['mat','Materials'],['vertex','Vertex colours'],['poly','Polypaint']];
+function bakeIdHas(M){const n=M?M.pos.length/3:0;return {part:!!(M&&M.partNames&&M.partNames.length>1),mat:!!(M&&M.matNames&&M.matNames.length>1),vertex:!!(M&&M.vcol&&M.vcol.length===n*4),poly:!!(M&&M.pcol&&M.pcol.length===n*4)};}
+function bakeIdSource(M){const s=bakeCfg.idSrc||'auto',h=bakeIdHas(M),T=M.idx.length/3,per=(ids,names)=>{const o=new Float32Array(T*3);for(let t=0;t<T;t++)o.set(idColor(names[ids?ids[t]:0]||'part '+t),t*3);return o;};
+  M.col=null;let missing=null;
+  if(s==='vertex'||s==='poly'){const a=s==='vertex'?M.vcol:M.pcol;if(h[s])M.col=a;else missing=(s==='vertex'?'This model has no vertex colours':'This model has no polypaint (export it from ZBrush as OBJ with Polypaint on)')+', so the ID uses its parts and materials.';}
+  else if(s==='part')M.triCol=per(M.triPart,M.partNames||['part']);
+  else if(s==='mat')M.triCol=per(M.triMat,M.matNames||['material']);
+  else if(h.vertex)M.col=M.vcol;
+  return {missing};}
 /* ---- one bake per material (texture set): the low-poly's triangles of that material, the same vertices ---- */
 function meshSubset(L,k){const T=L.idx.length/3,M=L.triMat,keep=[];for(let t=0;t<T;t++)if(!M||M[t]===k)keep.push(t);
   const idx=new Uint32Array(keep.length*3),per=(a,w)=>{if(!a)return a;const o=new a.constructor(keep.length*w);keep.forEach((t,i)=>{for(let c=0;c<w;c++)o[i*w+c]=a[t*w+c];});return o;};
@@ -320,7 +332,10 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
         note('Radius: how far around each point it looks (small: thin sharp edges; large: broad soft ones). Edges and Creases set the light and dark sides on their own.'));}
     if(T==='height')pg.append(on('height'),note('How far the high-poly is above (light) or below (dark) the low-poly, within Front and Back (General).'));
     if(T==='thick')pg.append(on('thick'),S('bkThR','Rays','thickRays',8,256,8,v=>String(v)),S('bkThD','Reach','thickDist',1,100,1,v=>v+'%'),note('White is thick, dark is thin. Reach: how deep it looks.'));
-    if(T==='other')pg.append(on('wnormal'),on('position'),on('id'),note('World-space normal, position (a gradient over the model’s box) and ID colours (vertex colours, material colours, or one colour per part).'));
+    if(T==='other'){const M=C.high||bkLow(),h=bakeIdHas(M),have=[h.part&&'separate meshes ('+M.partNames.length+')',h.mat&&'materials ('+M.matNames.length+')',h.vertex&&'vertex colours',h.poly&&'polypaint'].filter(Boolean);
+      pg.append(on('wnormal'),on('position'),on('id'),el('div',{class:'sub',text:'ID colours from'}),(()=>{const g=seg(BK_ID_SRC,C.idSrc||'auto',v=>{C.idSrc=v;},'ID colours from');g.classList.add('themeseg');g.id='bkIdSrc';return g;})(),
+        note('The '+(C.high?'high-poly':'low-poly')+' has: '+(have.length?have.join(', '):'one mesh, no materials or colours')+'. Separate meshes: one colour per object in the file. Materials: one per material. Vertex colours: the colours painted on its vertices. Polypaint: ZBrush polypaint (export the OBJ with Polypaint on). Auto: vertex colours if it has them, else material colours.'),
+        note('World-space normal and position (a gradient over the model’s box) are here too.'));}
     return pg;};
   let tabs=tabBar(),page=tabPage();
   const go=el('button',{class:'btn primary',id:'bkGo',text:'Bake'});
