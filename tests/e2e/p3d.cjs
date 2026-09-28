@@ -88,6 +88,13 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* both parts show their own paint: sample the rendered view */
  const px=await p.evaluate(()=>{const F=__gs.v3.fbo;return null;});
  await p.click('#p3dBody .p3set:has-text("Left")');await W(600);ok((await cnt('Paint'))===aOnA,'switching back keeps the first set’s painting');
+ /* ---- mirror: with Mirror X, a stroke on the right half also paints its mirror image on the left (the active set) ---- */
+ await p.click('#mir3_x');await W(300);ok(await p.evaluate(()=>__gs.mir3.x&&__gs.mir3Mats().length===2),'Mirror X on (two copies)');
+ await setFG('#2040e0');await p.evaluate(()=>document.activeElement&&document.activeElement.blur());
+ await p.mouse.move(hb2.x+hb2.width/2+qx-30,mid-70);await p.mouse.down();await p.mouse.move(hb2.x+hb2.width/2+qx+30,mid-70,{steps:8});await p.mouse.up();await W(500);const mirA=await cnt('Paint');ok(mirA>aOnA+200,'Mirror X paints the mirrored side ('+aOnA+' → '+mirA+')');
+ await p.screenshot({path:OUT+'p3d-mirror.png'});
+ await p.evaluate(()=>{__gs.mir3.radial=6;__gs.mir3.axis='z';});ok(await p.evaluate(()=>__gs.mir3Mats().length===12),'radial 6 with Mirror X gives 12 copies');
+ await p.evaluate(()=>{__gs.mir3.radial=0;});await p.click('#mir3_x');await W(200);ok(await p.evaluate(()=>!__gs.mir3.x),'Mirror X off');
  /* ---- back to Paint: the painting is untouched, and 3D Paint keeps its work ---- */
  await p.click('#modeTabs [data-mode=paint]');await W(600);
  s=await p.evaluate(()=>({own:__gs.tabDocs.key,names:__gs.allLayers().map(L=>L.name),w:__gs.doc.w,dock2:document.querySelector('#dock2').hidden}));

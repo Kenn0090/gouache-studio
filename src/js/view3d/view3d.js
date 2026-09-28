@@ -125,6 +125,7 @@ function v3Render(F,flip){const s=v3s(),g=v3.gpu;if(!g)return;
   gl.disable(gl.POLYGON_OFFSET_FILL);
   if(s.wire){useProg(P3.line,Object.assign({},common,{uCol:[.95,.7,.35,1]}));gl.bindVertexArray(g.evao);gl.drawElements(gl.LINES,g.ecount,gl.UNSIGNED_INT,0);}
   if(bake)bakeDrawCage(common);
+  if(!bake&&(v3.paintOn||ui.mode==='p3d'))drawMir3(VP);
   gl.bindVertexArray(vao);gl.disable(gl.DEPTH_TEST);
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,F.rf);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
 /* after the 2D view: refresh maps if needed, redraw the model if anything changed, copy it into the pane */
@@ -172,6 +173,7 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
     S('v3Si','Sun strength','sunI',0,3,.05,pct),S('v3Ki','Sky strength','skyI',0,3,.05,pct),S('v3Ex','Exposure','expo',.2,3,.05,pct),S('v3Fov','Lens','fov',15,90,1,v=>v+'°'),
     el('div',{class:'sub',text:'Background'}),seg([['dark','Dark'],['grey','Grey'],['light','Light']],s.bg,x=>{s.bg=x;v3.dirty=true;requestRender();},'Background'),
     chk('v3Clip','Cut out transparent areas',!!s.clip,x=>{s.clip=x;v3.dirty=true;requestRender();}),
+    ...(ui.mode==='p3d'||ui.mode==='bake'||ui.mode==='convert'?[]:[el('div',{class:'sub',text:'Mirror painting on the model'}),mir3Box()]),
     el('p',{class:'note',text:'Drag to turn, right-drag to move, wheel to zoom, double-click to reframe. Raise Detail (top of the 3D view) to see Height depth push the surface out finely; imported models are subdivided.'}));
   gear.onclick=()=>{box.hidden=!box.hidden;gear.setAttribute('aria-expanded',String(!box.hidden));};
   const info=el('div',{class:'v3info',id:'v3Info'});v3.infoEl=info;
