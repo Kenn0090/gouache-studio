@@ -114,6 +114,35 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.mouse.down({button:'middle'});await p.mouse.move(vx+120,hb3.y+hb3.height*.5,{steps:5});await p.mouse.up({button:'middle'});await p.keyboard.up('s');await W(200);
  const sm=await p.evaluate(()=>({x:__gs.st3.x,tool:__gs.ui.tool}));ok(sm.x>sx0+.05&&sm.tool==='brush','S+middle-drag moves the stencil, the tool stays the brush '+JSON.stringify(sm));
  await p.evaluate(()=>{__gs.st3.mode='off';});
+ /* ---- selections on the model: object, face, loop ---- */
+ await p.evaluate(()=>{let o='',vi=1;const v=[],vt=[],f=[];
+   /* object A: 4×2 quads, UVs in the left half; object B: one quad, UVs in the right half */
+   o+='o A\n';for(let j=0;j<=2;j++)for(let i=0;i<=4;i++){o+='v '+(-2+i*.5)+' '+(-.5+j*.5)+' 0\n';o+='vt '+(i/4*.45)+' '+(j/2)+'\n';}
+   for(let j=0;j<2;j++)for(let i=0;i<4;i++){const a=j*5+i+1,b=a+1,c=a+6,d=a+5;o+='f '+a+'/'+a+' '+b+'/'+b+' '+c+'/'+c+' '+d+'/'+d+'\n';}
+   o+='o B\nv 0.5 -0.5 0\nv 1.5 -0.5 0\nv 1.5 0.5 0\nv 0.5 0.5 0\nvt 0.55 0\nvt 1 0\nvt 1 1\nvt 0.55 1\nf 16/16 17/17 18/18 19/19\n';
+   __gs.useModel(__gs.parseOBJ(o,'grid.obj'));});await W(800);
+ await p.evaluate(()=>{Object.assign(__gs.v3.cam,{yaw:0,pitch:0});__gs.v3.dirty=true;});await W(300);
+ await p.click('#p3dBody .segb:text-is("Object")');await W();
+ /* find screen points on the model by picking along the middle row */
+ const pts=await p.evaluate(()=>{const hit=document.querySelector('#v3Hit'),r=hit.getBoundingClientRect(),out=[];for(let x=r.left+5;x<r.right;x+=6){const y=r.top+r.height/2+r.height*.06,q=__gs.v3PickAt(hit,{clientX:x,clientY:y});if(q)out.push({x,y,u:q.uv[0],v:q.uv[1]});}return out;});
+ const onA=pts.find(q=>q.u>.12&&q.u<.16),onB=pts.find(q=>q.u>.7);
+ ok(onA&&onB,'found points on both objects');
+ const selCount=()=>p.evaluate(()=>{const d=__gs.selPixels(),W=__gs.doc.w;let L=0,R=0;for(let i=0;i<d.length;i++)if(d[i]>128){if(i%W<W/2)L++;else R++;}return {L,R};});
+ await p.mouse.dblclick(onA.x,onA.y);await W(400);let sc=await selCount();
+ ok(sc.L>256*256*.4&&sc.R===0,'double-click selects the whole object (its UVs) '+JSON.stringify(sc));
+ await p.click('#p3dBody .segb:text-is("Face")');await W();await p.mouse.dblclick(onA.x,onA.y);await W(400);const face=await selCount();
+ ok(face.L>256*256*.04&&face.L<256*256*.09,'Face selects one quad '+JSON.stringify(face));
+ await p.keyboard.down('Shift');await p.mouse.dblclick(onB.x,onB.y);await p.keyboard.up('Shift');await W(400);sc=await selCount();ok(sc.R>256*256*.3&&sc.L===face.L,'Shift+double-click adds '+JSON.stringify(sc));
+ await p.click('#p3dBody .segb:text-is("Loop")');await W();await p.mouse.dblclick(onA.x,onA.y);await W(400);const loop=await selCount();
+ ok(loop.L>face.L*1.5&&loop.L<256*256*.45,'Loop selects a ring of quads '+JSON.stringify(loop));
+ await p.click('#p3dBody .segb:text-is("UV island")');await W();await p.mouse.dblclick(onB.x,onB.y);await W(400);sc=await selCount();ok(sc.R>256*256*.3&&sc.L===0,'UV island '+JSON.stringify(sc));
+ await p.screenshot({path:OUT+'p3d-select.png'});
+ /* painting keeps inside the selection */
+ await setFG('#10c020');await p.evaluate(()=>{document.activeElement&&document.activeElement.blur();Object.assign(__gs.brush,{size:200});});
+ await p.mouse.move(onA.x,onA.y);await p.mouse.down();await p.mouse.move(onB.x,onB.y,{steps:12});await p.mouse.up();await W(500);
+ const g=await p.evaluate(()=>{const L=__gs.doc.active,d=__gs.readRGBA8(__gs.mapT(L,'base')),W=__gs.doc.w;let l=0,r=0;for(let i=0;i<d.length;i+=4)if(d[i+1]>150&&d[i]<90&&d[i+3]>200){if((i/4)%W<W/2)l++;else r++;}return {l,r};});
+ ok(g.r>500&&g.l===0,'painting stays inside the selection '+JSON.stringify(g));
+ await p.keyboard.press('Control+d');await p.click('#p3dBody .segb:text-is("Off")');await W();
  /* ---- back to Paint: the painting is untouched, and 3D Paint keeps its work ---- */
  await p.click('#modeTabs [data-mode=paint]');await W(600);
  s=await p.evaluate(()=>({own:__gs.tabDocs.key,names:__gs.allLayers().map(L=>L.name),w:__gs.doc.w,dock2:document.querySelector('#dock2').hidden}));

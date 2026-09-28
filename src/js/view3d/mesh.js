@@ -81,7 +81,8 @@ function subdivideMesh(m,d){let cur=m;for(let l=0;l<d;l++){if(cur.idx.length/3*4
   if(cur===m)return m;const r=meshFinish(cur,m.name);r.noUV=m.noUV;
   /* each triangle became 4^levels triangles in a row: per-triangle data is repeated */
   const f=cur.idx.length/m.idx.length,rep=(a,w)=>{if(!a)return a;const T=a.length/w,o=new a.constructor(a.length*f);for(let t=0;t<T;t++)for(let j=0;j<f;j++)for(let c=0;c<w;c++)o[(t*f+j)*w+c]=a[t*w+c];return o;};
-  r.triMat=rep(m.triMat,1);r.matNames=m.matNames;r.triPart=rep(m.triPart,1);r.partNames=m.partNames;r.triCol=rep(m.triCol,3);return r;}
+  r.triMat=rep(m.triMat,1);r.matNames=m.matNames;r.triPart=rep(m.triPart,1);r.partNames=m.partNames;r.triCol=rep(m.triCol,3);
+  r.src=m;r.subF=f;/* triangle t here came from triangle floor(t/subF) of the model as loaded */return r;}
 
 /* a distinct colour for each part or material (for ID maps) */
 function idColor(key){let h=2166136261;for(const c of String(key))h=Math.imul(h^c.charCodeAt(0),16777619);const H=((h>>>0)%360)/360;
