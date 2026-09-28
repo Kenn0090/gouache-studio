@@ -50,7 +50,7 @@ A fill layer is like one in Substance Painter: a material that fills each map wi
 
 - For each map (base colour, roughness, metallic, height, normal, emissive, opacity and the others in the document), tick it to fill it and choose **Colour/Value** or **Image**. A value is a slider (for example roughness 80%, metallic 100%). An image is stretched over the canvas; **Tile** repeats it and **Turn** rotates it.
 - **Height** images make bump detail (the normal follows the height), with **Bump strength**.
-- **Projection: Triplanar** lays images over the 3D model from three sides, with no seams (it needs a model in the 3D view or 3D Paint).
+- **Projection:** UV, **Triplanar** (from three sides, no seams), **Planar** (from one direction, for decals) or **Spherical**. The 3D ones need a model in the 3D view or 3D Paint, and get a gizmo there to move, turn and scale them; UV gets a frame on the canvas. See [3D Paint](3D-Paint.md#materials).
 - Each channel can also take a **Mesh map**: one of the baked maps of the texture set (AO, curvature…; see [3D Paint](3D-Paint.md#mesh-maps-from-the-bake-tab)).
 - The panel offers to add any map the document is missing. **Save to Materials** keeps the material in the Materials tab (see [3D Paint](3D-Paint.md#materials)).
 - **Painting on a fill layer paints its mask:** black hides the fill, white shows it. So you can paint where the metal or the rust goes.

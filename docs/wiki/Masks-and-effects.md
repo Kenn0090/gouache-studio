@@ -28,11 +28,13 @@ Blend modes: Normal, Multiply, Add, Subtract, Screen, Min, Max and Overlay. A ro
 | **ID colour** | Pick colours of the baked ID map (Tolerance, Softness, Invert). |
 | **Direction** | Faces pointing up (dust, snow), down, or along an axis, with an angle and softness. |
 | **Gradient** | From bottom to top, or side to side, over the model. |
-| **Noise** | Clouds, Cells, Grunge, Scratches, Streaks, Dots or Fibres, triplanar on the model so there are no seams. |
-| **Picture** | Your own image, tiled or triplanar. |
+| **Noise** | Clouds, Cells, Grunge, Scratches, Streaks, Dots or Fibres: *World* (in 3D on the model, no seams) or *UV*. |
+| **Picture** | Your own image: UV, Triplanar, Planar or Spherical. |
 | **Another layer's mask** | Follows that mask, live. |
 | **Generator** | The presets: Edge wear, Dirt in cavities, Dust on top, Moss, Rust streaks, Water line, Slime, Crud, Chipped paint, Scratches, Snow on top, Soot, Drips and leaks, Sun-bleached. Each has Amount, Width, Breakup, Contrast, noise size and seed. |
 | **Filters** | Levels, Curves, Threshold, Posterize, Invert, Blur, Box blur, Motion blur, Sharpen, High pass, Edges, plus **Grow / shrink**, **Warp** (breaks up clean edges) and **Slope blur** (smears along a noise). |
+
+Pictures, noise and generators can be **moved, turned and scaled**: select the row and use the gizmo on the model (World, Triplanar, Planar, Spherical) or the frame on the canvas (UV), or the fields in Properties.
 
 Generators read the texture set's baked curvature and AO. Without a bake they use curvature worked out from the model, which is rougher, so bake for the best results. On the flat Paint canvas, "up" is the top of the texture.
 

@@ -82,7 +82,14 @@ The **Materials** tab sits beside Brushes. Click a material (Steel, Gold, Copper
 
 - **Channels:** base colour, roughness, metallic, height, normal, emissive and opacity. Each one is a colour or value, an **Image** (with **Tile** and **Turn**), or a **Mesh map**: one of the texture set's baked maps (AO, curvature, thickness…), laid over the model as baked.
 - **Height** makes bump detail on the model (the normal follows it), with a **Bump strength** slider.
-- **Projection:** *UV* follows the model's UVs. *Triplanar* projects images from three sides and blends them, so there are no seams. **Blend** sets how soft the joins are.
+- **Projection:**
+  - *UV* follows the model's UVs.
+  - *Triplanar* projects images from three sides and blends them, so there are no seams. **Blend** sets how soft the joins are.
+  - *Planar* projects straight from one direction, like a slide projector: good for decals and logos. **Repeat** tiles it; **Front faces only** keeps it off the parts facing away.
+  - *Spherical* wraps it around from a centre point.
+- **Moving, turning and scaling a projection:** with the layer selected, a **gizmo** sits on the model for Triplanar, Planar and Spherical. The arrows move it, the rings turn it, the small boxes scale it along one axis and the middle box scales it evenly. For *UV*, a frame shows on the flat canvas: drag a corner to scale (Shift keeps the proportions), the round handle to turn, and inside with the Move tool (or Ctrl) to move. **Offset**, **Rotation** and **Scale** are also in Properties, with **Reset**. Each drag is one undo step.
+
+  ![The projection gizmo.](images/proj-gizmo.png)
 - **Save to Materials** keeps the material, with its images, on this computer for other layers and projects. In the Materials tab, **⤓** exports one as a **.gmat** file and **Import…** brings one in.
 
 The layer stays live: every change shows straight away on the model, and becomes one undo step when you pause.
