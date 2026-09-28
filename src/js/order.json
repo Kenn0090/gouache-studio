@@ -60,6 +60,7 @@
     "view3d/mask-tools",
     "layers/mask-stack",
     "ui/mask-rows",
+    "layers/mat-convert",
     "files/p3-project",
     "layers/materials",
     "bake/bake-gpu",

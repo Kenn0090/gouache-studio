@@ -51,7 +51,7 @@ function fillRender(L,only){const f=L.fill;if(!f)return;const tri=f.proj==='tri'
   for(const k of fillMapsOf()){if(only&&k!==only)continue;const s=f.maps[k]||(f.maps[k]=fillDefaults().maps[k]);
     if(!s.on){const t=mapT(L,k);if(t&&!t.empty)clearTarget(t);continue;}
     const T=ensureMapTarget(L,k),grey=MAP_DEFS[k].grey;
-    if(s.src==='image'||s.src==='baked'){const bk=s.src==='baked',img=bk?doc.meshMaps&&doc.meshMaps[s.mm]:L._fillImg&&L._fillImg[k];if(!img){if(k==='normal')clearTarget(T,[.5,.5,1,1]);continue;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
+    if(s.src==='image'||s.src==='baked'||s.src==='conv'){const bk=s.src==='baked'||s.src==='conv',img=bk?doc.meshMaps&&doc.meshMaps[s.mm]:L._fillImg&&L._fillImg[k];if(!img){if(k==='normal')clearTarget(T,[.5,.5,1,1]);continue;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
       run(P_FILLIMG,T,{uSrc:img.tex,uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uGrey:{int:grey?1:0},uTri:{int:tri&&!bk?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,
         uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}});continue;}
     if(k==='normal'){clearTarget(T,[.5,.5,1,1]);continue;}
@@ -89,7 +89,7 @@ function matEdCommit(){clearTimeout(matEd.timer);matEd.timer=0;const L=matEd.L,B
     L.lookVer=(L.lookVer||0)+1;changed(L);renderLayers();if(matEd.shown===L)renderMatEd(true);};
   pushUndo({label:'Material',refs:[L],snaps:[...Object.values(B.S),...Object.values(A.S)].filter(Boolean),undo(){put(B);},redo(){put(A);}});}
 /* images a channel shows: its own picture, or the baked mesh map it uses */
-function fillImgsOf(L){const o=Object.assign({},L._fillImg||{}),M=doc.meshMaps||{},f=L.fill;if(f)for(const k in f.maps){const s=f.maps[k];if(s&&s.src==='baked'&&M[s.mm])o[k]=M[s.mm];}return o;}
+function fillImgsOf(L){const o=Object.assign({},L._fillImg||{}),M=doc.meshMaps||{},f=L.fill;if(f)for(const k in f.maps){const s=f.maps[k];if(s&&(s.src==='baked'||s.src==='conv')&&M[s.mm])o[k]=M[s.mm];}return o;}
 function renderMatEd(force){const box=document.getElementById('matEdBody');if(!box)return;const L=doc.active;
   /* a mask or effect row selected in the Layers panel: its settings */
   const row=typeof msRowOf==='function'&&ui.msSel&&(ui.msSel.L===L||ui.msSel.L.live)?msRowOf(ui.msSel):null;
@@ -106,15 +106,19 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
   box.append(el('div',{class:'matHead'},prev.el,el('div',{class:'dlg-grid'},nm,
     el('div',{class:'sub',text:'Projection'}),seg([['uv','UV'],['tri','Triplanar']],W.proj||'uv',v=>edit(()=>{W.proj=v;if(v==='tri'&&!fillPosMaps())toast('Triplanar needs a model: open the 3D view or 3D Paint. Until then images follow the UVs.');},null,true),'Projection'),
     W.proj==='tri'?makeSlider({id:'fl_sharp',label:'Blend',min:1,max:16,step:.5,value:W.triSharp||4,fmt:v=>v<3?'soft':v>9?'sharp':'medium',onInput:v=>edit(()=>{W.triSharp=v;})}).el:null)));
-  const M=doc.meshMaps||{},mks=Object.keys(M),keys=MAT_CH.filter(k=>fillMapsOf().includes(k));
+  const M=doc.meshMaps||{},mks=Object.keys(M).filter(k=>!k.startsWith('cv:')),cks=Object.keys(M).filter(k=>k.startsWith('cv:')),keys=MAT_CH.filter(k=>fillMapsOf().includes(k));
   for(const k of keys){const s=W.maps[k]||(W.maps[k]=fillDefaults().maps[k]),grey=MAP_DEFS[k].grey,isN=k==='normal';
     const row=el('div',{class:'fillrow'+(s.on?'':' off')});
     row.append(chk('fl_on_'+k,MAP_DEFS[k].label,!!s.on,v=>edit(()=>{s.on=v;if(v&&isN&&s.src==='value')s.src='image';},k,true)));
-    if(s.on){const srcs=[...(isN?[]:[['value',grey?'Value':'Colour']]),['image','Image'],['baked','Mesh map']];
+    if(s.on){const srcs=[...(isN?[]:[['value',grey?'Value':'Colour']]),['image','Image'],['baked','Mesh map'],['conv','Converted']];
       row.append(seg(srcs,s.src,v=>{if(v==='image'&&!(L._fillImg&&L._fillImg[k])){matEdBegin(L);fillPickImage(L,k,s,()=>edit(()=>{},k,true));return;}
-        edit(()=>{s.src=v;if(v==='baked'&&!M[s.mm])s.mm=mks.find(x=>x===k)||(isN?'normal':mks.find(x=>x!=='normal'))||mks[0];},k,true);},'Fill '+MAP_DEFS[k].label+' with'));
+        edit(()=>{s.src=v;if(v==='baked'&&!(M[s.mm]&&!s.mm.startsWith('cv:')))s.mm=mks.find(x=>x===k)||(isN?'normal':mks.find(x=>x!=='normal'))||mks[0];if(v==='conv'&&!(M[s.mm]&&s.mm.startsWith('cv:')))s.mm=cks.find(x=>x==='cv:'+k)||cks[0];},k,true);},'Fill '+MAP_DEFS[k].label+' with'));
       if(s.src==='value'&&!isN){if(grey)row.append(makeSlider({id:'fl_v_'+k,label:k==='metal'?'Metallic':k==='rough'?'Roughness':k==='height'?'Height':'Level',min:0,max:1,step:.01,value:s.v,fmt:pct,onInput:v=>edit(()=>{s.v=v;},k)}).el);
         else row.append(el('div',{class:'frow'},el('label',{text:'Colour'}),colourBtn('fl_c_'+k,()=>s.c||[.5,.5,.5],c=>edit(()=>{s.c=c;},k),MAP_DEFS[k].label+' colour')));}
+      else if(s.src==='conv'){
+        /* the maps made by Filter › Mesh maps from material, as tiles */
+        if(!cks.length)row.append(el('p',{class:'note',text:'No converted maps yet. Right-click a material layer › Mesh maps from this material.'}),el('button',{class:'btn sm',text:'Make them…',onclick:()=>dlgMatConvert(L)}));
+        else row.append(el('div',{class:'cvtiles'},...cks.map(x=>el('button',{class:'cvtile'+(s.mm===x?' on':''),id:'fl_cv_'+k+'_'+x.slice(3),'aria-pressed':String(s.mm===x),text:msMeshName(x).replace(' (converted)',''),onclick:()=>edit(()=>{s.mm=x;},k,true)}))));}
       else if(s.src==='baked'){
         if(!mks.length)row.append(el('p',{class:'note',text:'No baked maps in this texture set yet. Bake in the Bake tab and press Send to 3D Paint.'}));
         else{const pick=el('select',{id:'fl_mm_'+k,'aria-label':MAP_DEFS[k].label+' from the baked map'},...mks.map(x=>el('option',{value:x,text:(typeof P3_MESHMAP_NAMES!=='undefined'&&P3_MESHMAP_NAMES[x])||x})));

@@ -246,7 +246,7 @@ function fitInto(src,dst){const k=Math.min(dst.w/src.w,dst.h/src.h),off=[(dst.w-
    They become the set's mesh maps (doc.meshMaps, like Substance Painter's: for masks and smart materials) and the
    baked normal becomes a layer in the Normal map so its detail shows; with "also as layers", AO and curvature
    arrive as blendable layers too. by: {material name: {map: target}} ('*' = the same for every set). */
-const P3_MESHMAP_NAMES={normal:'Normal',height:'Height',ao:'Ambient occlusion',curv:'Curvature',curvEdge:'Curvature edges',curvCrease:'Curvature creases',thick:'Thickness',wnormal:'World normal',position:'Position',id:'ID'};
+const P3_MESHMAP_NAMES={normal:'Normal',height:'Height',ao:'Ambient occlusion',curv:'Curvature',curvEdge:'Curvature edges',curvCrease:'Curvature creases',thick:'Thickness',wnormal:'World normal',position:'Position',id:'ID',rough:'Roughness',metal:'Metallic'};
 function p3ReceiveBake(mesh,by,ks,asLayers){if(ui.mode!=='p3d'&&!setMode('p3d',true))return;
   if(mesh&&mesh!==v3.imported){v3.imported=p3.imported=mesh;v3s().model='imported';v3.mesh=null;v3LoadModel();}
   const back=p3.sets[p3.cur]&&p3.sets[p3.cur].name;let n=0;
@@ -268,5 +268,5 @@ function p3MeshLayer(k){const M=doc.meshMaps,L=newLayerObj(k==='normal'?'Mesh no
   if(k==='ao')L.mode=MODES.indexOf('Multiply');else if(/^curv/.test(k))L.mode=MODES.indexOf('Overlay');else if(k!=='normal')L.visible=false;
   L.meshMap=k;L.baked=true;return L;}
 function p3MeshMapsBox(){const M=doc.meshMaps||{},ks=Object.keys(M);if(!ks.length)return el('p',{class:'note',text:'None yet. Bake in the Bake tab and press Send to 3D Paint: the baked maps land here, per texture set.'});
-  return el('div',{class:'p3mm'},...ks.map(k=>el('div',{class:'p3mmrow'},el('span',{text:P3_MESHMAP_NAMES[k]||k}),
+  return el('div',{class:'p3mm'},...ks.map(k=>el('div',{class:'p3mmrow'},el('span',{text:msMeshName(k)}),
     el('button',{class:'btn sm',text:'Add as layer',onclick:()=>{const L=p3MeshLayer(k);structOp('Add mesh map layer',()=>{insertNode(L,doc.root);selectOnly(L);});changed(L);}}))));}

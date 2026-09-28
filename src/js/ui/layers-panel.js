@@ -229,7 +229,7 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
   if(!anim){if(n.mask)items.push(it('Delete mask',cmdDeleteMask));else items.push(it('Add mask',()=>cmdAddMask(1)),it('Add black mask (hide all)',()=>cmdAddMask(0)),...(lay&&typeof liveMaskStart==='function'?[it('Live mask…',()=>liveMaskStart(n))]:[]));}
   if(lay&&!anim){items.push(sep(),head('Layer style'));for(const k of STYLE_ORDER)items.push(it(STYLE_DEFS[k].label+(n.styles&&n.styles[k]&&n.styles[k].on?' ✓':''),()=>dlgLayerStyle(k,true)));
     items.push(it('All styles…',()=>dlgLayerStyle()),sep(),it('Filter layer above…',cmdNewFxLayer),it('Array…',()=>setTool('array')));
-    if(n.fill)items.splice(0,0,it('Fill settings…',()=>dlgFillLayer(n)),sep());
+    if(n.fill)items.splice(0,0,it('Fill settings…',()=>dlgFillLayer(n)),it('Mesh maps from this material…',()=>dlgMatConvert(n)),sep());
     if(n.text||n.grad||n.shape||n.fill)items.push(it('Convert to pixels',()=>{if(n.fill)fillRasterize(n);else rasterizeText(n);changed(n);}));}
   const mm=typeof maskMeshKeys==='function'?maskMeshKeys():[];
   if(lay&&!anim&&mm.length){items.push(sep(),head('Mask from mesh map'));for(const k of mm)items.push(it(P3_MESHMAP_NAMES[k]||k,()=>maskFromMeshMap(n,k)));}
