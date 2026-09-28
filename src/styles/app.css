@@ -165,6 +165,8 @@ body.ldragging,body.ldragging *{cursor:grabbing!important}
 #menuPop{max-height:calc(100vh - 16px);overflow-y:auto}
 #modal{position:fixed;inset:0;background:rgba(8,9,11,.5);display:grid;place-items:center;z-index:50;padding:16px}
 #modal.float{background:transparent;pointer-events:none;place-items:start end;padding:52px 306px 16px 16px}
+#modal.float .dialog{pointer-events:auto;box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 0 1px var(--line-2)}#modal.float #dlgTitle{cursor:move;user-select:none}
+#modal.float.wide{place-items:start center;padding:52px 16px 16px}
 .dialog{pointer-events:auto;background:var(--panel);border:1px solid var(--line-2);border-radius:10px;box-shadow:0 22px 60px rgba(0,0,0,.55);width:min(380px,100%);max-height:calc(100vh - 80px);overflow:auto;padding:16px;display:grid;gap:14px}
 .dialog h2{margin:0;font-size:14px;font-weight:600;letter-spacing:.01em}
 .dlg-grid{display:grid;gap:10px}

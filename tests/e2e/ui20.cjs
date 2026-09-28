@@ -56,6 +56,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(items.some(t=>t.includes('Drop shadow'))&&items.some(t=>t.includes('Add mask'))&&items.some(t=>t.includes('Duplicate')),'right-click shows the layer menu '+items.length);
  await p.click('#menuPop .mi:has-text("Drop shadow")');await W(250);
  ok(await p.evaluate(()=>document.querySelector('#ls_drop')&&document.querySelector('#ls_drop').checked),'picking a style turns it on in the Layer style dialog');
+ const fl=await p.evaluate(()=>{const m=document.querySelector('#modal');return {float:m.classList.contains('float'),bg:getComputedStyle(m).backgroundColor};});
+ ok(fl.float&&/rgba\(0, 0, 0, 0\)|transparent/.test(fl.bg),'the dialog floats without darkening the window '+JSON.stringify(fl));
+ const tb=await p.locator('#dlgTitle').boundingBox();await p.mouse.move(tb.x+30,tb.y+8);await p.mouse.down();await p.mouse.move(tb.x-270,tb.y+208,{steps:6});await p.mouse.up();
+ const tb2=await p.locator('#dlgTitle').boundingBox();ok(Math.abs(tb2.x-(tb.x-300))<3&&Math.abs(tb2.y-(tb.y+200))<3,'and moves by its title bar');
  await p.click('#dlgOk');await W();
  ok(await p.evaluate(()=>!!(__gs.doc.active.styles&&__gs.doc.active.styles.drop.on)),'the layer keeps the drop shadow');
 

@@ -1,9 +1,17 @@
 /* ================= Dialogs ================= */
 const modal=$('#modal');let dlg=null;
-function openDialog(o){closeMenu();dlg=o;$('#modal .dialog').classList.remove('kbwide');$('#dlgTitle').textContent=o.title;$('#dlgBody').replaceChildren(o.body);modal.classList.toggle('float',!!o.float);modal.classList.toggle('wide',!!o.wide);
+/* Dialogs float over the work without darkening it, and move by their title bar (each remembers where it was put),
+   so what they change stays in view. o.dim keeps the old darkened, centred look (none use it now). */
+const dlgPos={};const dlgKey=t=>String(t||'').split(':')[0].trim();
+function dlgPlace(){const d=$('#modal .dialog'),p=dlgPos[dlgKey(dlg&&dlg.title)]||[0,0];d.style.transform=p[0]||p[1]?'translate('+p[0]+'px,'+p[1]+'px)':'';}
+function openDialog(o){closeMenu();dlg=o;$('#modal .dialog').classList.remove('kbwide');$('#dlgTitle').textContent=o.title;$('#dlgBody').replaceChildren(o.body);modal.classList.toggle('float',!o.dim);modal.classList.toggle('wide',!!o.wide);dlgPlace();
   const ok=$('#dlgOk');ok.hidden=!o.okLabel;ok.textContent=o.okLabel||'';$('#dlgCancel').textContent=o.cancelLabel||'Cancel';modal.hidden=false;
   const f=o.body.querySelector('input,button,select');if(f)f.focus();}
 function closeDialog(){modal.hidden=true;dlg=null;}
+(h=>{h.addEventListener('pointerdown',e=>{if(e.button!==0||!dlg)return;e.preventDefault();const k=dlgKey(dlg.title),p0=(dlgPos[k]||[0,0]).slice(),x0=e.clientX,y0=e.clientY,d=$('#modal .dialog'),r0=d.getBoundingClientRect();h.setPointerCapture(e.pointerId);
+  const mv=ev=>{/* keep the title bar on screen */let dx=ev.clientX-x0,dy=ev.clientY-y0;dx=clamp(dx,-r0.left-r0.width+80,window.innerWidth-r0.left-80);dy=clamp(dy,-r0.top,window.innerHeight-r0.top-40);dlgPos[k]=[p0[0]+dx,p0[1]+dy];dlgPlace();};
+  const up=()=>{h.removeEventListener('pointermove',mv);h.removeEventListener('pointerup',up);h.removeEventListener('pointercancel',up);};h.addEventListener('pointermove',mv);h.addEventListener('pointerup',up);h.addEventListener('pointercancel',up);});
+  h.addEventListener('dblclick',()=>{if(!dlg)return;delete dlgPos[dlgKey(dlg.title)];dlgPlace();});h.title='Drag to move. Double-click to put it back.';})($('#dlgTitle'));
 $('#dlgOk').addEventListener('click',()=>{if(dlg&&dlg.onOk&&dlg.onOk()===false)return;closeDialog();});
 $('#dlgCancel').addEventListener('click',()=>{if(dlg&&dlg.onCancel)dlg.onCancel();closeDialog();});
 modal.addEventListener('pointerdown',e=>{if(e.target===modal&&!modal.classList.contains('float')){if(dlg&&dlg.onCancel)dlg.onCancel();closeDialog();}});
