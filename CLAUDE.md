@@ -89,6 +89,7 @@ Answers to the design questions:
 - 3D Paint document is **its own file, like a Substance Painter project** (not inside the Paint .gouache).
 - Bakes can go straight onto a texture set (e.g. as a fill layer's image), and can also simply be **exported** as files.
 - The **Paint tab also gets fill layers and the icon layer buttons**, so both tabs match.
+- New: a **turntable render** of the viewport: choose how many spins, the speed, and the file format (video MP4/WebM, GIF, PNG sequence).
 - New: a **viewport screenshot button** and a **GPU ray-traced render button** (progressive path tracing in shaders, reusing the baker's BVH; WebGL/WebGPU can't use RTX cores).
 More requests from Kenn in the same message:
 1. 3D Painter **layer stack like Substance Painter's** (fill layers, paint layers, masks, per-channel blending).
