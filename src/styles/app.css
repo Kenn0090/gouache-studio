@@ -560,3 +560,8 @@ body.noopt .optbar{display:none}
 .stylebtn:hover{background:var(--raise)}.stylebtn.on{background:var(--accent-soft);color:var(--accent);border-color:var(--line-2)}
 .fxbadge{margin-left:auto;font:italic 600 11px/1 var(--font,inherit);padding:3px 5px;border-radius:4px;border:1px solid var(--line-2);background:var(--raise);color:var(--accent);cursor:pointer}
 @media (max-width:640px){.styledlg{grid-template-columns:1fr}}
+/* 3D Paint: texture sets */
+.p3sets{display:grid;gap:2px}
+.p3set{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;border:1px solid transparent}
+.p3set:hover{background:var(--raise)}.p3set.on{background:var(--accent-soft);border-color:var(--accent)}.p3set.on .p3sn{color:var(--accent)}
+.p3set.missing{opacity:.55;cursor:default}.p3sn{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

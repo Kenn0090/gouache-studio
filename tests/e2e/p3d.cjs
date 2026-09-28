@@ -67,6 +67,27 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('#p3dBody .segb:text-is("2D")');await W(400);ok(await p.evaluate(()=>!__gs.v3.on),'2D layout hides the viewport');
  await p.click('#p3dBody .segb:text-is("3D")');await W(400);
  await p.screenshot({path:OUT+'p3d-painted.png'});
+ /* ---- texture sets: a model with two materials gets two sets; each takes paint only on its own part ---- */
+ await p.evaluate(()=>{const o='v -2 -1 0\nv -0.1 -1 0\nv -0.1 1 0\nv -2 1 0\nv 0.1 -1 0\nv 2 -1 0\nv 2 1 0\nv 0.1 1 0\nvt 0 0\nvt 1 0\nvt 1 1\nvt 0 1\nusemtl Left\nf 1/1 2/2 3/3 4/4\nusemtl Right\nf 5/1 6/2 7/3 8/4\n';
+   __gs.useModel(__gs.parseOBJ(o,'two.obj'));});await W(800);
+ await p.evaluate(()=>{Object.assign(__gs.v3.cam,{yaw:0,pitch:0});__gs.v3.dirty=true;});await W(400);
+ let ts=await p.evaluate(()=>({sets:__gs.p3.sets.map(S=>S.name),cur:__gs.p3.cur,doc:__gs.doc.name}));
+ ok(ts.sets.join()==='Left,Right'&&ts.cur===0&&ts.doc==='Left','two materials give two texture sets '+JSON.stringify(ts));
+ ok(await p.evaluate(()=>__gs.allLayers().some(L=>L.name==='Paint'&&__gs.mapKeysOf(L).includes('base'))),'the painting so far carried over to the first set');
+ const hb2=await p.locator('#v3Hit').boundingBox(),mid=hb2.y+hb2.height/2,qx=hb2.width*.2;
+ const cnt=(nm)=>p.evaluate(nm=>{const L=__gs.allLayers().find(L=>L.name===nm)||__gs.allLayers().slice(-1)[0],d=__gs.readRGBA8(__gs.mapT(L,'base'));let n=0;for(let i=0;i<d.length;i+=4)if(d[i+2]>150&&d[i]<80&&d[i+3]>200)n++;return n;},nm);
+ await setFG('#2040e0');await p.evaluate(()=>document.activeElement&&document.activeElement.blur());
+ const stroke=async x=>{await p.mouse.move(x-30,mid);await p.mouse.down();await p.mouse.move(x+30,mid,{steps:8});await p.mouse.up();await W(400);};
+ await stroke(hb2.x+hb2.width/2+qx);const aOnB=await cnt('Paint');ok(aOnB===0,'painting the other part does nothing to the active set ('+aOnB+')');
+ await stroke(hb2.x+hb2.width/2-qx);const aOnA=await cnt('Paint');ok(aOnA>300,'painting its own part does ('+aOnA+')');
+ await p.click('#p3dBody .p3set:has-text("Right")');await W(600);
+ ts=await p.evaluate(()=>({cur:__gs.p3.cur,doc:__gs.doc.name,layers:__gs.allLayers().map(L=>L.name).join()}));ok(ts.cur===1&&ts.doc==='Right'&&ts.layers==='Base material,Paint','clicking a set switches to its own canvas '+JSON.stringify(ts));
+ ok((await cnt('Paint'))===0,'the new set starts clean');
+ await stroke(hb2.x+hb2.width/2+qx);ok((await cnt('Paint'))>300,'and takes paint on its own part');
+ await W(500);await p.screenshot({path:OUT+'p3d-sets.png'});
+ /* both parts show their own paint: sample the rendered view */
+ const px=await p.evaluate(()=>{const F=__gs.v3.fbo;return null;});
+ await p.click('#p3dBody .p3set:has-text("Left")');await W(600);ok((await cnt('Paint'))===aOnA,'switching back keeps the first set’s painting');
  /* ---- back to Paint: the painting is untouched, and 3D Paint keeps its work ---- */
  await p.click('#modeTabs [data-mode=paint]');await W(600);
  s=await p.evaluate(()=>({own:__gs.tabDocs.key,names:__gs.allLayers().map(L=>L.name),w:__gs.doc.w,dock2:document.querySelector('#dock2').hidden}));

@@ -34,18 +34,18 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
   gl.bindFramebuffer(gl.FRAMEBUFFER,M.fb);gl.viewport(0,0,w,h);gl.clearColor(0,0,0,0);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.BLEND);
   useProg(P.depth,{uVP:{m4:VP},uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uCamP:eye});gl.bindVertexArray(g.vao);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);gl.bindVertexArray(vao);
   gl.disable(gl.DEPTH_TEST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
-  const mesh=v3.mesh;
+  const mesh=v3.mesh,R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:g.count/3};/* 3D Paint: only the active texture set takes paint */
   return {w,h,buf:M.buf,
     sync(){useProg(P.proj,{uVPm:{m4:VP},uStroke:M.buf.tex,uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH});
       bindTarget(strokeT);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.enable(gl.BLEND);gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);gl.disable(gl.CULL_FACE);
       const loc=gl.getUniformLocation(P.proj.p,'uShift');gl.bindVertexArray(g.vao);
-      for(let j=0;j<uvs;j++)for(let i=0;i<uvs;i++){gl.uniform2f(loc,i,j);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);}
+      for(let j=0;j<uvs;j++)for(let i=0;i<uvs;i++){gl.uniform2f(loc,i,j);gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);}
       gl.bindVertexArray(vao);gl.blendEquation(gl.FUNC_ADD);gl.disable(gl.BLEND);},
     /* the part of the texture this stroke can have touched: triangles whose screen position meets the stroke */
     bbox(st){const b=st&&st.bb;if(!b||b[2]<b[0])return [0,0,doc.w,doc.h];let x0=1,y0=1,x1=0,y1=0;const p=mesh.pos,uv=mesh.uv,ix=mesh.idx,n=p.length/3,sx=new Float32Array(n),sy=new Float32Array(n),ok=new Uint8Array(n);
       for(let i=0;i<n;i++){const X=p[i*3],Y=p[i*3+1],Z=p[i*3+2],cw=VP[3]*X+VP[7]*Y+VP[11]*Z+VP[15];if(cw<=1e-6)continue;ok[i]=1;sx[i]=((VP[0]*X+VP[4]*Y+VP[8]*Z+VP[12])/cw*.5+.5)*w;sy[i]=((VP[1]*X+VP[5]*Y+VP[9]*Z+VP[13])/cw*.5+.5)*h;}
       const pad=Math.max(8,(s.disp||0)*w*.2);
-      for(let t=0;t<ix.length;t+=3){const a=ix[t],c=ix[t+1],d=ix[t+2];if(!ok[a]||!ok[c]||!ok[d])continue;
+      for(let t=R.start*3;t<(R.start+R.count)*3;t+=3){const a=ix[t],c=ix[t+1],d=ix[t+2];if(!ok[a]||!ok[c]||!ok[d])continue;
         if(Math.max(sx[a],sx[c],sx[d])<b[0]-pad||Math.min(sx[a],sx[c],sx[d])>b[2]+pad||Math.max(sy[a],sy[c],sy[d])<b[1]-pad||Math.min(sy[a],sy[c],sy[d])>b[3]+pad)continue;
         for(const v of [a,c,d]){const u=uv[v*2]*uvs,vv=uv[v*2+1]*uvs;x0=Math.min(x0,u);y0=Math.min(y0,vv);x1=Math.max(x1,u);y1=Math.max(y1,vv);}}
       if(x1<x0)return [0,0,0,0];if(uvs>1||x0<0||y0<0||x1>1||y1>1)return [0,0,doc.w,doc.h];
@@ -66,7 +66,7 @@ function meshCursor(hit,e){let c=v3.curEl;if(!c||!c.isConnected){c=v3.curEl=el('
   if(!e||!v3.paintOn||!MESH_TOOLS.includes(ui.tool)){c.hidden=true;return;}const r=hit.getBoundingClientRect(),pr=hit.parentNode.getBoundingClientRect(),d=Math.max(3,brush.size);
   c.hidden=false;c.style.width=c.style.height=d+'px';c.style.transform='translate('+(e.clientX-pr.left-d/2)+'px,'+(e.clientY-pr.top-d/2)+'px)';}
 /* ---- what is under the pointer: the model's UV there (and how far away), from a one-pixel render ---- */
-const FS_3DPICK=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform vec3 uCamP; void main(){ o=vec4(fract(vT),length(vP-uCamP),1.0); }`;
+const FS_3DPICK=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform vec3 uCamP; uniform float uSet; void main(){ o=vec4(fract(vT),length(vP-uCamP),1.0+uSet); }`;
 let P3PICK=null;
 function v3PickAt(hit,e){const g=v3.gpu;if(!g||!v3.mesh)return null;if(!P3PICK)P3PICK=prog3(VS_3DD,FS_3DPICK);
   const r=hit.getBoundingClientRect(),w=Math.max(1,r.width),h=Math.max(1,r.height),px=e.clientX-r.left,py=h-(e.clientY-r.top);if(px<0||py<0||px>w||py>h)return null;
@@ -78,16 +78,17 @@ function v3PickAt(hit,e){const g=v3.gpu;if(!g||!v3.mesh)return null;if(!P3PICK)P
   /* a projection that blows the pixel under the pointer up to the whole (1×1) target */
   const cx=2*px/w-1,cy=2*py/h-1,M=m4();M[0]=w;M[5]=h;M[10]=1;M[15]=1;M[12]=-w*cx;M[13]=-h*cy;const VPp=m4mul(M,VP);
   gl.bindFramebuffer(gl.FRAMEBUFFER,K.fb);gl.viewport(0,0,1,1);gl.clearColor(0,0,0,0);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.BLEND);
-  useProg(P3PICK,{uVP:{m4:VPp},uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uCamP:eye});gl.bindVertexArray(g.vao);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);gl.bindVertexArray(vao);
+  const rs=ui.mode==='p3d'&&v3.mesh.setRanges?v3.mesh.setRanges:[{start:0,count:g.count/3}];gl.bindVertexArray(g.vao);
+  rs.forEach((R,k)=>{useProg(P3PICK,{uVP:{m4:VPp},uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uCamP:eye,uSet:k});gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);});gl.bindVertexArray(vao);
   gl.disable(gl.DEPTH_TEST);const out=new Float32Array(4);gl.readPixels(0,0,1,1,gl.RGBA,gl.FLOAT,out);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
-  if(out[3]<.5)return null;const dist=out[2],ray=v3Ray(w,h,px,py);return {uv:[out[0],out[1]],dist,pos:[eye[0]+ray[0]*dist,eye[1]+ray[1]*dist,eye[2]+ray[2]*dist],dir:ray,eye};}
+  if(out[3]<.5)return null;const dist=out[2],ray=v3Ray(w,h,px,py);return {uv:[out[0],out[1]],set:Math.round(out[3]-1),dist,pos:[eye[0]+ray[0]*dist,eye[1]+ray[1]*dist,eye[2]+ray[2]*dist],dir:ray,eye};}
 /* the direction from the camera through a pixel of the view */
 function v3Ray(w,h,px,py){const s=v3s(),eye=v3Eye(),c=v3.cam,f=norm3(sub3([c.tx,c.ty,c.tz],eye)),r=norm3(cross3(f,[0,1,0])),u=cross3(r,f),t=Math.tan(s.fov*Math.PI/360),x=(2*px/w-1)*t*w/h,y=(2*py/h-1)*t;
   return norm3([f[0]+r[0]*x+u[0]*y,f[1]+r[1]*x+u[1]*y,f[2]+r[2]*x+u[2]*y]);}
 /* hold Alt over the model: its base colour there becomes the foreground colour (Alt+drag still turns) */
 let v3PickQ=null;
 function v3HoverPick(hit,e){if(ui.mode==='bake'||ui.mode==='convert'||stroke)return;const q={clientX:e.clientX,clientY:e.clientY};if(v3PickQ){v3PickQ.e=q;return;}v3PickQ={e:q};
-  requestAnimationFrame(()=>{const ev=v3PickQ.e;v3PickQ=null;const p=v3PickAt(hit,ev);const t=v3.tex.base;if(!p||!t)return;
+  requestAnimationFrame(()=>{const ev=v3PickQ.e;v3PickQ=null;const p=v3PickAt(hit,ev);const t=p&&ui.mode==='p3d'&&typeof p3SetTex==='function'?p3SetTex(p.set,'base'):v3.tex.base;if(!p||!t)return;
     const x=clamp(Math.floor(p.uv[0]*t.w),0,t.w-1),y=clamp(Math.floor(p.uv[1]*t.h),0,t.h-1),d=captureRegionNow(t,x,y,1,1).data;
     let c=t.depth===16?(()=>{const L=h2fLut();return [L[d[0]],L[d[1]],L[d[2]],L[d[3]]];})():[d[0]/255,d[1]/255,d[2]/255,d[3]/255];
     if(c[3]<.02)return;c=[c[0]/c[3],c[1]/c[3],c[2]/c[3]].map(v=>clamp(v,0,1));if(toHex(c)!==toHex(ui.fg))setFG(c);});}
