@@ -37,7 +37,7 @@ function fxAddMenu(e){const L=doc.active;if(!L||!(isLayer(L)||L.type==='group')|
   const filters=own=>[...MS_FILTERS.filter(id=>FX[id]).map(id=>it(FX[id].title,own?add('filter',{fx:id}):()=>cfxAdd(L,id))),...(own?Object.keys(MS_OWN_FILTERS).map(k=>it(MS_OWN_FILTERS[k],add('filter',{own:k,p:{r:k==='grow'?3:k==='warp'?4:6,scale:6,seed:1}}))):[])];
   function main(){
     if(!toMask){const all=[];for(const [g,ids] of FX_KINDS())for(const id of ids)if(FX[id]&&!(FX[id].gen))all.push(it(FX[id].title,()=>cfxAdd(L,id)));
-      page([head('Add to the layer’s content'),...all.slice(0,40),sep(),...(isLayer(L)&&!L.mask?[it('Live mask (limits painting)…',()=>liveMaskStart(L))]:[]),it('Add to its mask instead…',()=>{if(!L.mask){msAdd(L,'fill',{p:{v:1}});}L.editMask=true;renderLayers();fxAddMenu(e);},true)]);return;}
+      page([head('Add to the layer’s content'),it('⚓ Anchor point',()=>cfxAddAnchor(L)),sep(),...all.slice(0,40),sep(),...(isLayer(L)&&!L.mask?[it('Live mask (limits painting)…',()=>liveMaskStart(L))]:[]),it('Add to its mask instead…',()=>{if(!L.mask){msAdd(L,'fill',{p:{v:1}});}L.editMask=true;renderLayers();fxAddMenu(e);},true)]);return;}
     const mks=msMeshKeys(),others=allNodes(doc.root).filter(n=>n!==L&&n.mask);
     page([head('Add to the mask of “'+L.name+'”'),
       it('Paint',add('paint')),it('Fill white',add('fill',{p:{v:1}})),it('Fill black',add('fill',{p:{v:0}})),
@@ -46,6 +46,7 @@ function fxAddMenu(e){const L=doc.active;if(!L||!(isLayer(L)||L.type==='group')|
       it('Direction (facing up…)',add('dir')),it('Gradient',add('grad')),
       it('Noise',sub('Noise',MS_NOISES.map(([k,t])=>it(t,add('noise',{p:Object.assign(MS_KINDS.noise.p(),{type:k})})))),true),
       it('Picture…',add('image')),
+      it('From anchor',sub('From anchor',msAnchorNames().length?msAnchorNames().map(nm=>it(nm,add('anchor',{p:{name:nm,ch:'height',inv:false}}))):[el('p',{class:'note',style:'padding:6px 10px;max-width:240px',text:'No anchor points yet. Select a layer’s own thumbnail, press ✦ and choose Anchor point.'})]),true),
       it('Another layer’s mask',sub('Another layer’s mask',others.length?others.map(o=>it(o.name,add('ref',{p:{name:o.name}}))):[el('p',{class:'note',style:'padding:6px 10px',text:'No other layer has a mask.'})]),true),
       it('Generator',sub('Generator',MS_GENS.map(([k,t])=>it(t,add('gen',{p:Object.assign(MS_KINDS.gen.p(),{g:k})})))),true),
       sep(),it('Filter',sub('Filter',filters(true)),true)]);}
@@ -79,6 +80,12 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
     el('div',{class:'chips'},el('button',{class:'btn sm',text:'Fill white',onclick:()=>{msSelect(L,where,r.id);maskOp(0,1);}}),el('button',{class:'btn sm',text:'Fill black',onclick:()=>{msSelect(L,where,r.id);maskOp(0,0);}}),
       el('button',{class:'btn sm',text:'Clear',onclick:()=>{msSelect(L,where,r.id);fullRecord({target:r.t,lockAlpha:false,maskOf:L,maskObj:L.mask},'Clear paint row',()=>clearTarget(r.t,[0,0,0,0]));}})));return;}
   if(r.kind==='fill')box.append(S('ms_v','Value','v',0,1,.01,pct));
+  if(r.kind==='anchorpt'){box.replaceChildren(box.firstChild);const i=el('input',{type:'text',id:'ms_aname',value:p.name||'','aria-label':'Anchor name'});i.addEventListener('change',()=>{const old=p.name,nw=i.value.trim()||old;
+      ed(x=>{x.p.name=nw;});for(const n of allNodes(doc.root))for(const q of (n.mask&&n.mask.stack)||[])if((q.kind==='anchor'&&q.p.name===old)||(q.kind==='gen'&&q.p.anchor===old)){if(q.kind==='anchor')q.p.name=nw;else q.p.anchor=nw;if(n.mask)n.mask._key=null;}renderLayers();});
+    box.append(el('div',{class:'frow'},el('label',{text:'Name'}),i),el('p',{class:'note',text:'Masks elsewhere can read this layer through its anchor (✦ › From anchor): its height, colour or shape. Generators can follow its height too (Also follow anchor).'}));return;}
+  if(r.kind==='anchor'){const ns=msAnchorNames();if(p.name&&!ns.includes(p.name))ns.unshift(p.name);
+    box.append(sel('ms_anc','Anchor',ns.map(x=>[x,x]),'name'),el('div',{class:'sub',text:'Reads'}),seg([['height','Height'],['shape','Shape'],['colour','Colour']],p.ch||'height',v=>{ed(x=>{x.p.ch=v;});renderLayers();},'Reads'),inv(),
+      el('p',{class:'note',text:msAnchor(p.name)?'Follows “'+msAnchor(p.name).name+'”, live.':'That anchor point is gone.'}));}
   if(r.kind==='mesh'){const ks=msMeshKeys();if(!ks.includes(p.k))ks.unshift(p.k);box.append(sel('ms_k','Map',ks.map(k=>[k,msMeshName(k)]),'k'),inv(),
     el('p',{class:'note',text:msMeshTex(p.k)?'A baked map of this texture set.':'Not baked yet: using the document’s own map, if it has one.'}));}
   if(r.kind==='id'){const sw=(p.cols||[]).map((c,i)=>el('button',{class:'idsw',style:'background:'+toHex(c),title:'Remove this colour','aria-label':'Remove colour '+toHex(c),onclick:()=>{ed(x=>x.p.cols.splice(i,1));renderMatEd(true);}}));
@@ -95,7 +102,8 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
   if(r.kind==='ref'){const os=allNodes(doc.root).filter(n=>n!==L&&n.mask);box.append(sel('ms_ref','Layer',os.map(o=>[o.name,o.name]),'name'),inv(),el('p',{class:'note',text:'Follows that layer’s mask, live.'}));}
   if(r.kind==='gen'){const has=[msMeshTex('curv')&&'curvature',msMeshTex('ao')&&'AO',v3.mesh&&'the model'].filter(Boolean);
     box.append(sel('ms_g','Preset',MS_GENS,'g'),S('ms_amt','Amount','amount',0,1,.01,pct),S('ms_w','Width','width',0,1,.01,pct),S('ms_brk','Breakup','breakup',0,1,.01,pct),S('ms_con','Contrast','contrast',.3,6,.05),
-      S('ms_scale','Noise size','scale',.5,40,.5),S('ms_seed','Seed','seed',1,99,1,v=>String(v)),inv(),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),
+      S('ms_scale','Noise size','scale',.5,40,.5),S('ms_seed','Seed','seed',1,99,1,v=>String(v)),inv(),
+      sel('ms_ganc','Also follow anchor',[['','None'],...msAnchorNames().map(x=>[x,x])],'anchor'),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),
       el('p',{class:'note',text:'Uses '+(has.length?has.join(', '):'the document’s maps')+'. Bake curvature and AO for the best results.'}));}}
 $('#lFxAdd').addEventListener('click',fxAddMenu);
 
@@ -104,3 +112,8 @@ function pxfBox(L,r,modes){const m=pxfRowMode(r),g=seg(modes,m,v=>{msEdit(L,r,x=
   return el('div',{class:'dlg-grid'},el('div',{class:'sub',text:'Projection'}),g,
     m==='planar'?el('div',{class:'chips'},chk('ms_rep','Repeat',r.p.rep!==false,v=>msEdit(L,r,x=>{x.p.rep=v;})),chk('ms_front','Front faces only',!!r.p.front,v=>msEdit(L,r,x=>{x.p.front=v;}))):null,
     pxfFields(()=>pxfOf(r.p),fn=>msEdit(L,r,x=>fn(pxfOf(x.p))),m,()=>renderMatEd(true)));}
+
+/* ✦ › Anchor point: marks this layer's content so masks elsewhere can read it */
+function cfxAddAnchor(L){if(!isLayer(L))return null;let row=null;const names=msAnchorNames();let nm=L.name,i=2;while(names.includes(nm))nm=L.name+' '+(i++);
+  msRecord(L,'Add anchor point to “'+L.name+'”',()=>{row=msRow('anchorpt',{p:{name:nm}});L.cfx=L.cfx||[];L.cfx.push(row);L.editMask=false;});
+  if(row)msSelect(L,'c',row.id);return row;}

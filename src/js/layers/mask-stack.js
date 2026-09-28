@@ -23,7 +23,10 @@ const MS_KINDS={
   noise:{title:'Noise',p:()=>({type:'grunge',scale:6,contrast:1.5,level:0,seed:1,tri:true,inv:false})},
   image:{title:'Picture',p:()=>({tile:1,rot:0,tri:false,inv:false,name:''})},
   ref:{title:'Another mask',p:()=>({name:''})},
-  gen:{title:'Generator',p:()=>({g:'edge',amount:.5,width:.5,breakup:.5,contrast:1.5,scale:6,seed:1,inv:false})},
+  gen:{title:'Generator',p:()=>({g:'edge',amount:.5,width:.5,breakup:.5,contrast:1.5,scale:6,seed:1,inv:false,anchor:''})},
+  /* anchor points (0.24): 'anchorpt' marks a layer's content (a blue row); 'anchor' reads it in a mask */
+  anchorpt:{title:'Anchor point',p:()=>({name:''})},
+  anchor:{title:'From anchor',p:()=>({name:'',ch:'height',inv:false})},
   filter:{title:'Filter'}};
 /* filters a mask row can use (the ones that make sense on a black and white picture), plus our own */
 const MS_FILTERS=['levels','curves','threshold','posterize','invert','blur','boxBlur','motionBlur','sharpen','highPass','edges'];
@@ -36,6 +39,8 @@ function msRowTitle(r){if(r.kind==='filter')return r.own?MS_OWN_FILTERS[r.own]:(
   if(r.kind==='mesh')return msMeshName(r.p.k);
   if(r.kind==='image')return r.p.name||'Picture';
   if(r.kind==='ref')return 'Mask of “'+(r.p.name||'?')+'”';
+  if(r.kind==='anchorpt')return '⚓ Anchor “'+(r.p.name||'?')+'”';
+  if(r.kind==='anchor')return 'From anchor “'+(r.p.name||'?')+'”'+({height:' · height',shape:' · shape',colour:' · colour'}[r.p.ch]||'');
   if(r.kind==='fill')return r.p.v>=.99?'White':r.p.v<=.01?'Black':'Grey '+Math.round(r.p.v*100)+'%';
   return r.name||MS_KINDS[r.kind].title;}
 /* rows that read the document's own maps (no bake yet, or the Paint tab) redo when any layer changes */
@@ -88,7 +93,8 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; float m=0.0,cov=1.0;
 /* generators: the Mask Builder presets, made from curvature, AO, direction and height with noise to break them up */
 const FS_MSGEN=MS_NOISE_GLSL+MS_SURF_GLSL+`
 uniform sampler2D uCurv; uniform int uHasCurv; uniform sampler2D uAO; uniform int uHasAO; uniform int uG; uniform float uAmt; uniform float uWidth; uniform float uBreak; uniform float uCon; uniform float uScale; uniform int uNeg;
-float curvOf(vec2 uv){ return uHasCurv==1?texture(uCurv,uv).r:0.5; }
+uniform sampler2D uCurv2; uniform int uHasCurv2;
+float curvOf(vec2 uv){ float c=uHasCurv==1?texture(uCurv,uv).r:0.5; if(uHasCurv2==1) c=clamp(c+(texture(uCurv2,uv).r-0.5)*1.5,0.0,1.0); return c; }
 float aoOf(vec2 uv){ return uHasAO==1?texture(uAO,uv).r:1.0; }
 void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(); vec3 q=surfQ(uv)*uScale;
   float c=curvOf(uv),edge=clamp((c-0.5)*2.0,0.0,1.0),cav=clamp((0.5-c)*2.0,0.0,1.0),ao=aoOf(uv),occ=1.0-ao,up=dot(N,vec3(0.0,1.0,0.0)),n=fbm(q),w=uWidth;
@@ -127,8 +133,18 @@ function msModelCurv(){const tri=typeof fillPosMaps==='function'&&v3.mesh&&(ui.m
   if(msCurvC&&msCurvC.src===tri&&msCurvC.t.w===doc.w&&msCurvC.t.h===doc.h)return msCurvC.t;if(msCurvC)disposeTarget(msCurvC.t);
   msSurf();const m=v3.mesh,sz=m._bb?Math.max(...m._bb.sz):1,t=makeTarget(doc.w,doc.h,8,false);run(msProgs().curv,t,{uPos:tri.pos.tex,uNrm:tri.nrm.tex,uK:1/Math.max(1e-4,sz)});
   msCurvC={src:tri,t};return t;}
+/* an anchor's picture: brightness (height, colour) or coverage (shape, with its mask) */
+const FS_MSANC=`uniform sampler2D uT; uniform sampler2D uM; uniform int uUseM; uniform int uCh; uniform int uNeg;
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 c=texelFetch(uT,p,0); float m=uCh==1?c.a:(c.a>1e-5?dot(c.rgb/c.a,vec3(0.299,0.587,0.114)):0.5);
+  if(uUseM==1) m*=texelFetch(uM,p,0).r; if(uNeg==1) m=1.0-m; o=vec4(vec3(m),1.0); }`;
+/* the layer holding the anchor point of that name */
+function msAnchor(name){if(!name)return null;for(const n of allNodes(doc.root))if(n.cfx&&n.cfx.some(r=>r.kind==='anchorpt'&&r.on!==false&&r.p.name===name))return n;return null;}
+const msAnchorNames=()=>{const out=[];for(const n of allNodes(doc.root))for(const r of n.cfx||[])if(r.kind==='anchorpt'&&r.p.name&&!out.includes(r.p.name))out.push(r.p.name);return out;};
+/* curvature of an anchor's height (so edge wear also follows painted details) */
+function msAnchorCurv(name,ctx){const A=msAnchor(name),H=A&&mapT(A,'height');if(!H||H.empty)return null;const t=acquireD(8),b1=blurOf(H,3),b2=blurOf(H,9);
+  run(P.f_curv,t,{uH:H.tex,uB1:b1.tex,uB2:b2.tex,uStr:1.5,uMode:{int:0}});release(b1);release(b2);ctx.tmp.push(t);return t;}
 let P_MS=null;
-function msProgs(){if(!P_MS)P_MS={blend:program(FS_MSBLEND),src:program(FS_MSSRC),gen:program(FS_MSGEN),own:program(FS_MSOWN),curv:program(FS_MSCURV)};return P_MS;}
+function msProgs(){if(!P_MS)P_MS={blend:program(FS_MSBLEND),src:program(FS_MSSRC),gen:program(FS_MSGEN),own:program(FS_MSOWN),curv:program(FS_MSCURV),anc:program(FS_MSANC)};return P_MS;}
 
 /* ---- what the rows read: mesh maps (baked, converted, or in 2D the document's maps) and the model's surface ---- */
 function msMeshTex(k){const M=doc.meshMaps||{};if(M[k])return M[k];if(k&&k.startsWith('cv:')&&M[k])return M[k];
@@ -164,8 +180,11 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
   if(r.kind==='dir'){const o=out(),a=(p.angle||50)*Math.PI/180;run(P.src,o,Object.assign({uKind:{int:2},uDir:MS_AXES[p.axis]||[0,1,0],uA:Math.cos(a),uB:Math.max(.01,(p.soft||15)/90),uNeg:{int:p.inv?1:0},uSeed:0},ctx.surf));return {t:o,pooled:true};}
   if(r.kind==='grad'){const o=out();run(P.src,o,Object.assign({uKind:{int:3},uDir:MS_AXES[p.axis]||[0,1,0],uA:p.from||0,uB:p.to==null?1:p.to,uNeg:{int:p.inv?1:0},uSeed:0},ctx.surf));return {t:o,pooled:true};}
   if(r.kind==='noise'){const o=out();run(P.src,o,Object.assign(msPx(r,ctx),{uKind:{int:4},uType:{int:Math.max(0,MS_NOISES.findIndex(n=>n[0]===p.type))},uScale:p.scale||6,uC:p.contrast||1,uV:p.level||0,uNeg:{int:p.inv?1:0},uSeed:p.seed||1}));return {t:o,pooled:true};}
+  if(r.kind==='anchor'){const A=msAnchor(p.name);if(!A)return null;const o=out(),ch=p.ch||'height',T=ch==='height'?mapT(A,'height'):mapT(A,'base');if(!T||T.empty)return null;
+    run(msProgs().anc,o,{uT:T.tex,uM:A.mask&&A.mask.enabled!==false?A.mask.target.tex:dummy,uUseM:{int:A.mask&&A.mask.enabled!==false&&ch==='shape'?1:0},uCh:{int:ch==='shape'?1:0},uNeg:{int:p.inv?1:0}});return {t:o,pooled:true};}
   if(r.kind==='gen'){const o=out(),curv=msMeshTex('curv')||msMeshTex('cv:curv')||msDocMap('curv',ctx)||msModelCurv(),ao=msMeshTex('ao')||msMeshTex('cv:ao')||msDocMap('ao',ctx);
-    run(P.gen,o,Object.assign({uG:{int:Math.max(0,MS_GENS.findIndex(g=>g[0]===p.g))},uCurv:curv?curv.tex:dummy,uHasCurv:{int:curv?1:0},uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},
+    const ac=p.anchor?msAnchorCurv(p.anchor,ctx):null;
+    run(P.gen,o,Object.assign({uG:{int:Math.max(0,MS_GENS.findIndex(g=>g[0]===p.g))},uCurv:curv?curv.tex:dummy,uHasCurv:{int:curv?1:0},uCurv2:ac?ac.tex:dummy,uHasCurv2:{int:ac?1:0},uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},
       uAmt:p.amount,uWidth:p.width,uBreak:p.breakup,uCon:p.contrast,uScale:p.scale||6,uSeed:p.seed||1,uNeg:{int:p.inv?1:0}},msPx(r,ctx)));return {t:o,pooled:true};}
   return null;}
 /* a filter row on the picture so far */
@@ -182,7 +201,7 @@ function msEval(L,ov,guard){const M=L.mask,S=M.stack,P=msProgs(),d=M.target.dept
   return acc;}
 /* keep L.mask.target up to date: redone when the rows, the layer, the mesh maps or the model change */
 function msKey(L){const M=doc.meshMaps||{};return [L.lookVer||0,JSON.stringify(L.mask.stack,(k,x)=>k==='t'||k[0]==='_'?undefined:x),Object.keys(M).map(k=>k+(M[k].tex?1:0)).join(),doc.w,doc.h,
-  v3.mesh&&(ui.mode==='p3d'||v3.on)?v3.mesh.name+v3.mesh.idx.length+(typeof p3Range==='function'&&ui.mode==='p3d'?p3Range().start:0):'',msEpoch,msUsesDoc(L)?msDocVer:'',(L.mask.stack.find(r=>r.kind==='ref')?allNodes(doc.root).map(n=>n.mask&&n.mask._key?n.lookVer:'').join(','):'')].join('|');}
+  v3.mesh&&(ui.mode==='p3d'||v3.on)?v3.mesh.name+v3.mesh.idx.length+(typeof p3Range==='function'&&ui.mode==='p3d'?p3Range().start:0):'',msEpoch,msUsesDoc(L)?msDocVer:'',L.mask.stack.some(r=>r.kind==='anchor'||(r.kind==='gen'&&r.p.anchor))?L.mask.stack.map(r=>{const A=msAnchor(r.kind==='anchor'?r.p.name:r.p.anchor);return A?A.lookVer||0:'';}).join(':'):'',(L.mask.stack.find(r=>r.kind==='ref')?allNodes(doc.root).map(n=>n.mask&&n.mask._key?n.lookVer:'').join(','):'')].join('|');}
 let msEpoch=0;
 function msUpdate(L,guard){if(!msHas(L))return;const k=msKey(L);if(L.mask._key===k)return;L.mask._key=k;const r=msEval(L,null,guard);blit(r,L.mask.target,0,0,doc.w,doc.h,0,0);release(r);if(L.mask.thumb)thumbQ.add(L);}
 function msUpdateAll(){for(const n of allNodes(doc.root))if(msHas(n))msUpdate(n);}
@@ -226,10 +245,10 @@ function msPaintRow(L){const S=L.mask.stack,cur=msRowOf(ui.msSel);if(cur&&cur.ki
   const r=msNewPaintRow(L);S.push(r);ui.msSel={L,where:'m',id:r.id};renderLayers();return r;}
 
 /* ---- content effects in compositing ---- */
-const cfxOn=(n,k)=>!!(n.cfx&&n.cfx.some(r=>r.on!==false&&cfxMaps(r,k)));
+const cfxOn=(n,k)=>!!(n.cfx&&n.cfx.some(r=>r.on!==false&&r.kind==='filter'&&cfxMaps(r,k)));
 const cfxMaps=(r,k)=>r.maps==='all'?k!=='normal':Array.isArray(r.maps)?r.maps.includes(k):k==='base';
 function cfxApply(n,src,k){let cur=src;
-  for(const r of n.cfx){if(r.on===false||!cfxMaps(r,k))continue;const F=FX[r.fx];if(!F)continue;const o=acquireD(src.depth);F.render(cur,o,r.v||fxDefaults(F),{});
+  for(const r of n.cfx){if(r.on===false||r.kind!=='filter'||!cfxMaps(r,k))continue;const F=FX[r.fx];if(!F)continue;const o=acquireD(src.depth);F.render(cur,o,r.v||fxDefaults(F),{});
     let res=o;if((r.op==null?1:r.op)<.999){res=acquireD(src.depth);run(P.mix,res,{uA:cur.tex,uB:o.tex,uT:r.op,uM:dummy,uUseM:false});release(o);}
     if(cur!==src)release(cur);cur=res;}
   return cur;}
