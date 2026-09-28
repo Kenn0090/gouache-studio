@@ -70,6 +70,7 @@
     "bake/bake-gpu",
     "bake/bake-ui",
     "bake/bake-tab",
+    "view3d/p3-bake",
     "convert/convert-tab",
     "files/abr",
     "paint/brush-tab",
