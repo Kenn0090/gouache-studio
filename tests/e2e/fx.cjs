@@ -22,7 +22,14 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await setFG('#e08030');await p.keyboard.press('b');await p.evaluate(()=>{__gs.brush.size=30;});await drag(20,30,140,90);await setFG('#206020');await drag(20,90,140,30);
  const sig=()=>p.evaluate(()=>{const d=__gs.readRGBA8(__gs.doc.active.target);let s=0;for(let i=0;i<d.length;i+=3)s=(s*31+d[i])>>>0;return s;});
  const acts=['boxBlur','radialBlur','lensBlur','levels','curves','hueSat','gradMap','desat','threshold','posterize','quantize','surfBlur','motionBlur','highPass','oilPaint','painterly','cutout','mosaic','emboss','edges','noise','clouds','cells','offset','seamless'];
- const tweak={levels:async()=>{await p.click('.dlg-grid button:has-text("Auto")');await p.evaluate(()=>{const s=document.querySelector('#lvG');s.value=1.8;s.dispatchEvent(new Event('input'));});},
+ const tweak={levels:async()=>{
+   /* the simple (Substance-style) layout: drag the white input handle left, the picture changes */
+   ok(await p.isVisible('canvas.lvsimple'),'Levels opens in the simple layout');const g0=await p.locator('#gl').screenshot();
+   const bb=await p.locator('canvas.lvsimple').boundingBox(),sx=bb.width/256,sy=bb.height/132;
+   await p.mouse.move(bb.x+(8+240)*sx,bb.y+95*sy);await p.mouse.down();await p.mouse.move(bb.x+(8+120)*sx,bb.y+95*sy,{steps:5});await p.mouse.up();await p.waitForTimeout(400);
+   ok(!(await p.locator('#gl').screenshot()).equals(g0),'dragging a handle changes the picture');
+   await p.click('.segb:text-is("Sliders")');await p.click('.dlg-grid button:has-text("Reset")').catch(()=>{});
+   await p.click('.dlg-grid button:has-text("Auto")');await p.evaluate(()=>{const s=document.querySelector('#lvG');s.value=1.8;s.dispatchEvent(new Event('input'));});},
    curves:async()=>{await p.selectOption('#cvPre','s');},hueSat:async()=>{await p.evaluate(()=>{const s=document.querySelector('#fx_h');s.value=90;s.dispatchEvent(new Event('input'));});},
    mosaic:async()=>{await p.evaluate(()=>{const s=document.querySelector('#fx_g');s.value=2;s.dispatchEvent(new Event('input'));});},
    offset:null};
