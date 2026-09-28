@@ -85,7 +85,11 @@ Answers to the design questions:
 - Several materials: **texture sets like Substance Painter** (each material its own maps, switch between them).
 - Stencils / projection painting: **yes**.
 - HDRIs: **.hdr and .exr** (all).
-- Mock-up of the layout (awaiting Kenn's feedback): https://claude.ai/artifact/BALjGQnN4WY9Mw6dBL6Jaf (boards: 3D Paint main screen, layer stack + right-click menu, layouts + navigation, Bake tab, Convert tab).
+- Mock-up approved: https://claude.ai/artifact/BALjGQnN4WY9Mw6dBL6Jaf — Kenn prefers board **Main2** (3D layout with a Colour + Brushes column between the viewport and the layer column: colour square/hue, shade strip, recents; brush grid with Brushes/Stencils/Materials tabs and "this brush paints" chips). Other boards: layer stack + right-click menu, layouts + navigation, Bake tab, Convert tab.
+- 3D Paint document is **its own file, like a Substance Painter project** (not inside the Paint .gouache).
+- Bakes can go straight onto a texture set (e.g. as a fill layer's image), and can also simply be **exported** as files.
+- The **Paint tab also gets fill layers and the icon layer buttons**, so both tabs match.
+- New: a **viewport screenshot button** and a **GPU ray-traced render button** (progressive path tracing in shaders, reusing the baker's BVH; WebGL/WebGPU can't use RTX cores).
 More requests from Kenn in the same message:
 1. 3D Painter **layer stack like Substance Painter's** (fill layers, paint layers, masks, per-channel blending).
 2. Sending bakes: **tick which maps get sent**, plus **export baked maps** straight to files.
