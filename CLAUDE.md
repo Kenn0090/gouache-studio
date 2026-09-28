@@ -57,7 +57,7 @@ The top-right tabs are **Paint · Animation · Bake · Convert · Brush** (the B
 - Numbers kept in float textures (triangle and node indices in the baker) must stay below 2^24 to be exact; the baker splits bigger ones over two values (`bkTriPack`, the leaf encoding in `bvhBuild`).
 - GPU work is asynchronous: to time it, include a readback (`readRGBA8`) in the timed part.
 
-## Where things stand (after 0.20.0)
+## Where things stand (after 0.22.2)
 Done: phases 0–9, including selections, transforms, fills, animation/flipbooks, PBR maps, converters and filters, filter layers, 3D view (pop-out, painting on the model), baker (Bake tab, progressive preview, skew/offset painting, cage display, drag and drop, low-memory loading), cage painting and symmetry on the canvas, and the Convert tab (CrazyBump-style). 0.13.1 fixed Convert rings/height-from-normal; 0.14 added colour jitter (per-dab colour lives in strokeT's RGB), keyboard shortcuts editor, themes, Make brush tip + Brush tip template, pictures into masks, Tile filter.
 
 0.14.1 added the Brush tab; 0.15 the Specular/Gloss workflow (`core/workflow.js`: doc.workflow, maps spec/gloss, diffuse kept in 'base'; shading converts to metal/rough on the fly; switching converts the composite into one group per map and stashes the old maps on each layer in L.wfStash, not saved in files).
@@ -92,6 +92,18 @@ Kenn's requests and answers:
 - **Material editor** + its own **Materials tab**: base colour, roughness, metallic, normal, height, emissive, opacity; each colour/slider or image with tiling; materials saved for future projects (export/import files); a material stays **live** on its layer (edit later, channels update). A material's **height makes bump/normal detail** (height feeds the normal, with a strength slider).
 - Chosen Substance features: a) triplanar projection, b) bake mesh maps inside 3D Paint per set, c) generators/smart masks (Mask Builder), d) effects in masks (levels, blur, noise), e) smart materials, f) engine export presets (Unreal/Unity/Godot, all sets), g) lazy mouse for 3D, i) History panel, j) anchor points. (Not h, particle brushes.)
 - Order: this round first ("make sure it feels good"): **0.22** = sets delete, mask view/tools, Texturing workspace, Send to 3D Paint, shade past ends, stencil invert/X, tip outline, per-material bake + send, material editor/tab, triplanar, export presets, lazy mouse, History panel. **0.23** = generators/smart masks (Mask Builder), mask effects, smart materials, anchor points, baking inside 3D Paint. Then the looks (HDRIs, screenshot, ray-traced render, turntable, high-poly in Bake, C cycles maps).
+
+## 0.22 / 0.22.1 / 0.22.2 (done)
+0.22 shipped the Substance round (above). 0.22.1: FBX with vertex colours read `cnt` too early (mesh.js). 0.22.2, Kenn's follow-ups:
+- **Material panel** `matEd` (dock PANELS id `matEd`, #matEdSec, beside Colour; in fill-layer.js `renderMatEd`, `matEdBegin/Commit`: edits L.fill in place, one 'Material' undo step after 700 ms; history.js flushes it before any other undo step, undo/redo, or doc switch). `dlgFillLayer` now just brings the panel forward (the pop-up is gone, Kenn said yes).
+- Channel source `src:'baked'` + `mm` (label **Mesh map**): fillRender reads doc.meshMaps[mm] (UV, no tile/turn/triplanar).
+- Right-click › **Mask from mesh map** (`maskFromMeshMap`, MASK_MESH_OK in paint3d.js).
+- 3D Paint side column `dk.col2` is now draggable and stored in gs.dock `col2` (dkC2Has; drops `newGroup2`; dkRemove clears col2 only while in p3d).
+- Mask mode tools `view3d/mask-tools.js` (`mk3`): Paint must be on (`maskPaintLocked` gates 2D and 3D); Box/Lasso/Polygon on the model = screen polygon → canvas → meshSpace buf → sp.sync() (stencil off) → strokeT alpha → applyShape; drag inside moves (re-projected on release); on the flat canvas they switch to marquee/lasso. **ID colour** (`L.idSel={cols,tol,soft,inv}`, saved in .gouache; FS_IDSEL on doc.meshMaps.id; one undo step after a pause). Clicking the layer thumbnail leaves mask mode.
+- Bake tab: every bake its own tab (World normal, Position, ID); old C.tab 'other' → 'id'.
+- Levels: **Simple** layout (`lvSimple` in filters.js, handles on histogram/output bar, Invert) default, Sliders via gs.lvMode.
+- Open question to Kenn: the filter that turns a material's height/normal into curvature/AO/roughness — where results go (same material's maps / new layers / mesh maps). He also said the Mesh map button in the material editor is part of it.
+- **0.23 starts with layer stacks inside masks** (Kenn asked twice): each mask gets its own small stack (paint, fill, mesh map, ID colour, generators, noise, levels), blend modes, opacity, visibility; L.idSel and mask-from-mesh-map become layers of it. Design with Kenn first.
 
 ## 0.20 3D Paint: agreed with Kenn (after 0.19)
 Answers to the design questions:
