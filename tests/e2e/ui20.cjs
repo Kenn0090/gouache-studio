@@ -18,7 +18,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const box=await p.locator('#gl').boundingBox();
  const scr=async(x,y)=>{const v=await p.evaluate(()=>({x:__gs.view.x,y:__gs.view.y,z:__gs.view.zoom}));return [box.x+v.x+x*v.z,box.y+v.y+y*v.z];};
  const drag=async(x0,y0,x1,y1)=>{const a=await scr(x0,y0),c=await scr(x1,y1);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.move(c[0],c[1],{steps:8});await p.mouse.up();await W(150);};
- const setFG=async hx=>{await p.fill('#hex',hx);await p.press('#hex','Enter');};
+ const setFG=async hx=>{await p.evaluate(()=>__gs.showPanel('color'));await p.fill('#hex',hx);await p.press('#hex','Enter');};
  const comp=(k,pts)=>p.evaluate(([k,pts])=>{const t=__gs.compositeMap(k),d=__gs.readRGBA8(t),W=__gs.doc.w;__gs.release(t);return pts.map(([x,y])=>Array.from(d.slice((y*W+x)*4,(y*W+x)*4+4)));},[k,pts]);
  const names=()=>p.evaluate(()=>__gs.allLayers().map(L=>L.name));
  await p.evaluate(()=>__gs.newDoc(300,200,8,[1,1,1],'ui20',false));await W(300);
@@ -80,8 +80,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('#lFill');await W(300);
  ok(await p.evaluate(()=>!!document.querySelector('#fl_v_rough')),'new fill layer opens its settings');
  await p.evaluate(()=>{const i=document.querySelector('#fl_v_rough input[type=range]')||document.querySelector('#fl_v_rough');i.value=.8;i.dispatchEvent(new Event('input',{bubbles:true}));
-   const m=document.querySelector('#fl_v_metal input[type=range]')||document.querySelector('#fl_v_metal');m.value=1;m.dispatchEvent(new Event('input',{bubbles:true}));});await W();
- await p.click('#dlgOk');await W(300);
+   const m=document.querySelector('#fl_v_metal input[type=range]')||document.querySelector('#fl_v_metal');m.value=1;m.dispatchEvent(new Event('input',{bubbles:true}));});await W(900);
  const F=await p.evaluate(()=>{const L=__gs.doc.active;return {name:L.name,fill:!!L.fill,mask:!!L.mask,edit:!!L.editMask};});
  ok(F.fill&&F.mask,'fill layer with a mask '+JSON.stringify(F));
  let v=await comp('base',[[150,100]]),r=await comp('rough',[[150,100]]),m=await comp('metal',[[150,100]]);
@@ -96,13 +95,13 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(r[0][0]>120&&r[0][0]<136,'and its roughness too '+r[0][0]);
  ok(await p.evaluate(()=>{const L=__gs.doc.active,d=__gs.readRGBA8(__gs.mapT(L,'base'));return d[(100*300+60)*4+2]>170;}),'the fill itself is untouched');
  /* changing a value later, with undo */
- await p.evaluate(()=>__gs.act('newFill')).catch(()=>{});await W(200);await p.click('#dlgCancel');await W();
+ await p.evaluate(()=>__gs.act('newFill')).catch(()=>{});await W(300);
  const cnt=(await names()).filter(n=>n.startsWith('Fill')).length;ok(cnt===2,'Layer › New fill layer adds another '+cnt);
  await p.keyboard.press('Control+z');await W();
  await p.evaluate(()=>{const L=__gs.layerByName('Fill 1');__gs.doc.active=L;__gs.doc.sel=new Set([L]);});
  await p.evaluate(()=>__gs.dlgFill());await W(200);
  await p.evaluate(()=>{const i=document.querySelector('#fl_v_rough input[type=range]')||document.querySelector('#fl_v_rough');i.value=.2;i.dispatchEvent(new Event('input',{bubbles:true}));});
- await p.click('#dlgOk');await W(200);r=await comp('rough',[[150,100]]);ok(Math.abs(r[0][0]-51)<4,'roughness changed to 20% '+r[0][0]);
+ await W(900);r=await comp('rough',[[150,100]]);ok(Math.abs(r[0][0]-51)<4,'roughness changed to 20% '+r[0][0]);
  await p.keyboard.press('Control+z');await W(300);r=await comp('rough',[[150,100]]);ok(Math.abs(r[0][0]-204)<4,'undo restores 80% '+r[0][0]);
  /* Duplicate keeps it a fill layer; Convert to pixels makes it a normal layer */
  /* kept in .gouache files */

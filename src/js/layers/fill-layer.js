@@ -51,8 +51,8 @@ function fillRender(L,only){const f=L.fill;if(!f)return;const tri=f.proj==='tri'
   for(const k of fillMapsOf()){if(only&&k!==only)continue;const s=f.maps[k]||(f.maps[k]=fillDefaults().maps[k]);
     if(!s.on){const t=mapT(L,k);if(t&&!t.empty)clearTarget(t);continue;}
     const T=ensureMapTarget(L,k),grey=MAP_DEFS[k].grey;
-    if(s.src==='image'){const img=L._fillImg&&L._fillImg[k];if(!img){if(k==='normal')clearTarget(T,[.5,.5,1,1]);continue;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
-      run(P_FILLIMG,T,{uSrc:img.tex,uTile:Math.max(.05,s.tile||1),uRot:(s.rot||0)*Math.PI/180,uGrey:{int:grey?1:0},uTri:{int:tri?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,
+    if(s.src==='image'||s.src==='baked'){const bk=s.src==='baked',img=bk?doc.meshMaps&&doc.meshMaps[s.mm]:L._fillImg&&L._fillImg[k];if(!img){if(k==='normal')clearTarget(T,[.5,.5,1,1]);continue;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
+      run(P_FILLIMG,T,{uSrc:img.tex,uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uGrey:{int:grey?1:0},uTri:{int:tri&&!bk?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,
         uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}});continue;}
     if(k==='normal'){clearTarget(T,[.5,.5,1,1]);continue;}
     const c=grey?[s.v,s.v,s.v]:(s.c||[s.v,s.v,s.v]);clearTarget(T,[c[0],c[1],c[2],1]);}
@@ -72,46 +72,68 @@ function cmdNewFillLayer(preset){if(ui.mode==='anim'){toast('Fill layers are ava
   L.mask=m;L.editMask=true;
   structOp(preset?'Add material':'New fill layer',()=>{const [p,i]=insertPoint();insertNode(L,p,i);selectOnly(L);});
   changed(L);if(!preset)dlgFillLayer(L,true);else{renderLayers();toast('Added “'+L.name+'”'+(fromSel?' in the selection.':'. Paint its mask to show it where you want (black hides, white shows).'));}return L;}
-/* the material editor: live on the canvas and the model, one undo step on OK */
+/* ---- the Material panel (a tab beside Colour): edits the selected material layer live, on the canvas and the model.
+   Changes become one undo step when you pause (or pick another layer). Each channel is a colour or value, an image,
+   or one of the texture set's baked mesh maps. ---- */
 const MAT_CH=['base','rough','metal','height','normal','emis','opac','spec','gloss','ao'];
-function dlgFillLayer(L,fresh){L=L||doc.active;if(!isLayer(L)||!L.fill){toast('Select a fill layer.');return;}
-  const before=fillClone(L.fill),W=fillClone(L.fill),keys0=fillMapsOf(),snapB={};
-  for(const k of keys0){const t=mapT(L,k);snapB[k]=t&&!t.empty?captureRegion(t,0,0,doc.w,doc.h):null;}
-  const imgB=Object.assign({},L._fillImg||{}),nameB=L.name;
-  const apply=k=>{L.fill=W;fillRender(L,k);prev.redraw();};
-  const box=el('div',{class:'dlg-grid filldlg'}),prev=matPreviewEl(()=>W,()=>L._fillImg);
-  const draw=()=>{box.replaceChildren();const keys=MAT_CH.filter(k=>fillMapsOf().includes(k));
-    const nm=el('input',{type:'text',id:'fl_name',value:L.name,'aria-label':'Material name'});nm.addEventListener('input',()=>{L.name=nm.value||L.name;W.name=L.name;renderLayers();});
-    box.append(el('div',{class:'matHead'},prev.el,el('div',{class:'dlg-grid'},nm,
-      el('div',{class:'sub',text:'Projection'}),seg([['uv','UV'],['tri','Triplanar']],W.proj||'uv',v=>{W.proj=v;if(v==='tri'&&!fillPosMaps())toast('Triplanar needs a model: open the 3D view or 3D Paint. Until then images follow the UVs.');apply();draw();},'Projection'),
-      W.proj==='tri'?makeSlider({id:'fl_sharp',label:'Blend',min:1,max:16,step:.5,value:W.triSharp||4,fmt:v=>v<3?'soft':v>9?'sharp':'medium',onInput:v=>{W.triSharp=v;apply();}}).el:null)));
-    for(const k of keys){const s=W.maps[k]||(W.maps[k]=fillDefaults().maps[k]),grey=MAP_DEFS[k].grey,isN=k==='normal';
-      const row=el('div',{class:'fillrow'+(s.on?'':' off')});
-      row.append(chk('fl_on_'+k,MAP_DEFS[k].label,!!s.on,v=>{s.on=v;if(v&&isN)s.src='image';apply(k);draw();}));
-      if(s.on){if(!isN)row.append(seg([['value',grey?'Value':'Colour'],['image','Image']],s.src,v=>{s.src=v;if(v==='image'&&!(L._fillImg&&L._fillImg[k]))fillPickImage(L,k,s,()=>{apply(k);draw();});else{apply(k);draw();}},'Fill '+MAP_DEFS[k].label+' with'));
-        if(s.src==='value'&&!isN){if(grey)row.append(makeSlider({id:'fl_v_'+k,label:k==='metal'?'Metallic':k==='rough'?'Roughness':k==='height'?'Height':'Level',min:0,max:1,step:.01,value:s.v,fmt:pct,onInput:v=>{s.v=v;apply(k);}}).el);
-          else row.append(el('div',{class:'frow'},el('label',{text:'Colour'}),colourBtn('fl_c_'+k,()=>s.c||[.5,.5,.5],c=>{s.c=c;apply(k);},MAP_DEFS[k].label+' colour')));}
-        else{const has=!!(L._fillImg&&L._fillImg[k]);
-          row.append(el('div',{class:'row wrap'},el('span',{class:'note',text:s.name||(isN?'No normal map yet':'No image')}),el('button',{class:'btn sm',text:'Choose image…',id:'fl_img_'+k,onclick:()=>fillPickImage(L,k,s,()=>{apply(k);draw();})})));
-          if(has)row.append(makeSlider({id:'fl_t_'+k,label:W.proj==='tri'?'Scale':'Tile',min:.25,max:16,step:.25,value:s.tile||1,fmt:v=>v+'×',onInput:v=>{s.tile=v;apply(k);}}).el,
-            makeSlider({id:'fl_r_'+k,label:'Turn',min:-180,max:180,step:1,value:s.rot||0,fmt:v=>v+'°',onInput:v=>{s.rot=v;apply(k);}}).el);
-          else if(s.name)row.append(el('p',{class:'note',text:'Choose the image again to change its tiling.'}));
-          if(k==='height'&&has)row.append(makeSlider({id:'fl_hs',label:'Bump strength',min:0,max:4,step:.05,value:W.hStr==null?1:W.hStr,fmt:pct,onInput:v=>{W.hStr=v;apply(k);}}).el,
-            el('p',{class:'note',text:'Height makes bump detail: the normal follows it, on the model and in exported normal maps.'}));}}
-      box.append(row);}
-    const miss=['rough','metal','height','normal','emis','opac'].filter(k=>!doc.maps.includes(k)&&!(doc.workflow==='spec'&&(k==='rough'||k==='metal')));
-    if(miss.length)box.append(el('div',{class:'chips'},el('span',{class:'note',text:'Add a map:'}),...miss.map(k=>el('button',{class:'btn sm',text:MAP_DEFS[k].label,onclick:()=>{setDocMaps([...doc.maps,k],'Add a map for the material');fillRender(L);draw();}}))));
-    box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'fl_save',text:'Save to Materials',title:'Keep this material in the Materials tab for other layers and projects',onclick:()=>{if(typeof matSaveFromFill==='function')matSaveFromFill(L,W);}})),
-      el('p',{class:'note',text:'Painting on a fill layer paints its mask: black hides the material, white shows it.'}));};
-  draw();
-  const restore=()=>{L.fill=before;L.name=nameB;for(const k in L._fillImg||{})if(L._fillImg[k]!==imgB[k])disposeTarget(L._fillImg[k]);L._fillImg=imgB;for(const k of Object.keys(snapB)){const s=snapB[k];if(s)restoreRegion(s,ensureMapTarget(L,k),0,0);else{const t=mapT(L,k);if(t&&!t.empty)clearTarget(t);}}fillRender(L);changed(L);renderLayers();};
-  openDialog({title:(fresh?'New material':'Material')+': '+L.name,body:box,okLabel:'OK',
-    onCancel(){restore();},
-    onOk(){L.fill=W;const keys=[...new Set([...keys0,...fillMapsOf()])],snapA={},imgA=Object.assign({},L._fillImg||{}),nameA=L.name;
-      for(const k of keys){const t=mapT(L,k);snapA[k]=t&&!t.empty?captureRegion(t,0,0,doc.w,doc.h):null;}
-      const put=(f,S,I,n)=>{L.fill=fillClone(f);L._fillImg=I;L.name=n;for(const k of keys){const s=S[k];if(s)restoreRegion(s,ensureMapTarget(L,k),0,0);else{const t=mapT(L,k);if(t&&!t.empty)clearTarget(t);}}L.lookVer=(L.lookVer||0)+1;renderLayers();};
-      if(JSON.stringify(before)!==JSON.stringify(W)||nameA!==nameB)pushUndo({label:'Material',refs:[L],snaps:[...Object.values(snapB),...Object.values(snapA)].filter(Boolean),undo(){put(before,snapB,imgB,nameB);},redo(){put(W,snapA,imgA,nameA);}});
-      changed(L);}});}
+const matEd={L:null,snap:null,timer:0,shown:null};
+function matEdSnap(L){const keys=fillMapsOf(),S={};for(const k of keys){const t=mapT(L,k);S[k]=t&&!t.empty?captureRegion(t,0,0,doc.w,doc.h):null;}
+  return {f:fillClone(L.fill),S,I:Object.assign({},L._fillImg||{}),n:L.name,keys};}
+function matEdBegin(L){if(matEd.snap&&matEd.L===L)return;matEdCommit();matEd.L=L;matEd.snap=matEdSnap(L);}
+function matEdCommit(){clearTimeout(matEd.timer);matEd.timer=0;const L=matEd.L,B=matEd.snap;matEd.snap=null;if(!L||!B||!L.fill)return;
+  const I=L._fillImg||{},sameImg=Object.keys(I).length===Object.keys(B.I).length&&Object.keys(I).every(k=>I[k]===B.I[k]);
+  if(JSON.stringify(B.f)===JSON.stringify(L.fill)&&B.n===L.name&&sameImg)return;
+  const A=matEdSnap(L),keys=[...new Set([...B.keys,...A.keys])];
+  const put=X=>{L.fill=fillClone(X.f);L._fillImg=Object.assign({},X.I);L.name=X.n;
+    for(const k of keys){const s=X.S[k];if(s)restoreRegion(s,ensureMapTarget(L,k),0,0);else{const t=mapT(L,k);if(t&&!t.empty)clearTarget(t);}}
+    L.lookVer=(L.lookVer||0)+1;changed(L);renderLayers();if(matEd.shown===L)renderMatEd(true);};
+  pushUndo({label:'Material',refs:[L],snaps:[...Object.values(B.S),...Object.values(A.S)].filter(Boolean),undo(){put(B);},redo(){put(A);}});}
+/* images a channel shows: its own picture, or the baked mesh map it uses */
+function fillImgsOf(L){const o=Object.assign({},L._fillImg||{}),M=doc.meshMaps||{},f=L.fill;if(f)for(const k in f.maps){const s=f.maps[k];if(s&&s.src==='baked'&&M[s.mm])o[k]=M[s.mm];}return o;}
+function renderMatEd(force){const box=document.getElementById('matEdBody');if(!box)return;const L=doc.active;
+  if(!force&&matEd.shown===L&&box.childElementCount&&!(L&&L.fill&&!box.querySelector('.matHead')))return;
+  if(matEd.L&&matEd.L!==L)matEdCommit();matEd.shown=L;
+  if(!isLayer(L)||!L.fill){box.replaceChildren(el('p',{class:'note',text:'Select a material (fill) layer to change it here.'}),
+    el('div',{class:'chips'},el('button',{class:'btn sm',id:'matEdNew',text:'New material',onclick:()=>cmdNewFillLayer()}),el('button',{class:'btn sm',text:'Materials…',onclick:()=>showPanel('mats')})));return;}
+  const W=L.fill,prev=matPreviewEl(()=>L.fill,()=>fillImgsOf(L));
+  /* every change: remember the state before the first one, redraw, and make the undo step after a pause */
+  const edit=(fn,k,redraw)=>{matEdBegin(L);fn();if(k!==false){fillRender(L,k||undefined);prev.redraw();}clearTimeout(matEd.timer);matEd.timer=setTimeout(matEdCommit,700);if(redraw)renderMatEd(true);};
+  box.replaceChildren();
+  const nm=el('input',{type:'text',id:'fl_name',value:L.name,'aria-label':'Material name'});nm.addEventListener('input',()=>edit(()=>{L.name=nm.value||L.name;W.name=L.name;renderLayers();},false));
+  box.append(el('div',{class:'matHead'},prev.el,el('div',{class:'dlg-grid'},nm,
+    el('div',{class:'sub',text:'Projection'}),seg([['uv','UV'],['tri','Triplanar']],W.proj||'uv',v=>edit(()=>{W.proj=v;if(v==='tri'&&!fillPosMaps())toast('Triplanar needs a model: open the 3D view or 3D Paint. Until then images follow the UVs.');},null,true),'Projection'),
+    W.proj==='tri'?makeSlider({id:'fl_sharp',label:'Blend',min:1,max:16,step:.5,value:W.triSharp||4,fmt:v=>v<3?'soft':v>9?'sharp':'medium',onInput:v=>edit(()=>{W.triSharp=v;})}).el:null)));
+  const M=doc.meshMaps||{},mks=Object.keys(M),keys=MAT_CH.filter(k=>fillMapsOf().includes(k));
+  for(const k of keys){const s=W.maps[k]||(W.maps[k]=fillDefaults().maps[k]),grey=MAP_DEFS[k].grey,isN=k==='normal';
+    const row=el('div',{class:'fillrow'+(s.on?'':' off')});
+    row.append(chk('fl_on_'+k,MAP_DEFS[k].label,!!s.on,v=>edit(()=>{s.on=v;if(v&&isN&&s.src==='value')s.src='image';},k,true)));
+    if(s.on){const srcs=[...(isN?[]:[['value',grey?'Value':'Colour']]),['image','Image'],['baked','Mesh map']];
+      row.append(seg(srcs,s.src,v=>{if(v==='image'&&!(L._fillImg&&L._fillImg[k])){matEdBegin(L);fillPickImage(L,k,s,()=>edit(()=>{},k,true));return;}
+        edit(()=>{s.src=v;if(v==='baked'&&!M[s.mm])s.mm=mks.find(x=>x===k)||(isN?'normal':mks.find(x=>x!=='normal'))||mks[0];},k,true);},'Fill '+MAP_DEFS[k].label+' with'));
+      if(s.src==='value'&&!isN){if(grey)row.append(makeSlider({id:'fl_v_'+k,label:k==='metal'?'Metallic':k==='rough'?'Roughness':k==='height'?'Height':'Level',min:0,max:1,step:.01,value:s.v,fmt:pct,onInput:v=>edit(()=>{s.v=v;},k)}).el);
+        else row.append(el('div',{class:'frow'},el('label',{text:'Colour'}),colourBtn('fl_c_'+k,()=>s.c||[.5,.5,.5],c=>edit(()=>{s.c=c;},k),MAP_DEFS[k].label+' colour')));}
+      else if(s.src==='baked'){
+        if(!mks.length)row.append(el('p',{class:'note',text:'No baked maps in this texture set yet. Bake in the Bake tab and press Send to 3D Paint.'}));
+        else{const pick=el('select',{id:'fl_mm_'+k,'aria-label':MAP_DEFS[k].label+' from the baked map'},...mks.map(x=>el('option',{value:x,text:(typeof P3_MESHMAP_NAMES!=='undefined'&&P3_MESHMAP_NAMES[x])||x})));
+          pick.value=M[s.mm]?s.mm:mks[0];pick.onchange=()=>edit(()=>{s.mm=pick.value;},k);row.append(pick);
+          if(k==='height')row.append(makeSlider({id:'fl_hs',label:'Bump strength',min:0,max:4,step:.05,value:W.hStr==null?1:W.hStr,fmt:pct,onInput:v=>edit(()=>{W.hStr=v;},k)}).el);}}
+      else{const has=!!(L._fillImg&&L._fillImg[k]);
+        row.append(el('div',{class:'row wrap'},el('span',{class:'note',text:s.name||(isN?'No normal map yet':'No image')}),el('button',{class:'btn sm',text:'Choose image…',id:'fl_img_'+k,onclick:()=>{matEdBegin(L);fillPickImage(L,k,s,()=>edit(()=>{},k,true));}})));
+        if(has)row.append(makeSlider({id:'fl_t_'+k,label:W.proj==='tri'?'Scale':'Tile',min:.25,max:16,step:.25,value:s.tile||1,fmt:v=>v+'×',onInput:v=>edit(()=>{s.tile=v;},k)}).el,
+          makeSlider({id:'fl_r_'+k,label:'Turn',min:-180,max:180,step:1,value:s.rot||0,fmt:v=>v+'°',onInput:v=>edit(()=>{s.rot=v;},k)}).el);
+        else if(s.name)row.append(el('p',{class:'note',text:'Choose the image again to change its tiling.'}));
+        if(k==='height'&&has)row.append(makeSlider({id:'fl_hs',label:'Bump strength',min:0,max:4,step:.05,value:W.hStr==null?1:W.hStr,fmt:pct,onInput:v=>edit(()=>{W.hStr=v;},k)}).el,
+          el('p',{class:'note',text:'Height makes bump detail: the normal follows it, on the model and in exported normal maps.'}));}}
+    box.append(row);}
+  const miss=['rough','metal','height','normal','emis','opac'].filter(k=>!doc.maps.includes(k)&&!(doc.workflow==='spec'&&(k==='rough'||k==='metal')));
+  if(miss.length)box.append(el('div',{class:'chips'},el('span',{class:'note',text:'Add a map:'}),...miss.map(k=>el('button',{class:'btn sm',text:MAP_DEFS[k].label,onclick:()=>{matEdCommit();setDocMaps([...doc.maps,k],'Add a map for the material');fillRender(L);renderMatEd(true);}}))));
+  box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'fl_save',text:'Save to Materials',title:'Keep this material in the Materials tab for other layers and projects',onclick:()=>{matEdCommit();if(typeof matSaveFromFill==='function')matSaveFromFill(L,L.fill);}})),
+    el('p',{class:'note',text:'Painting on a material layer paints its mask: black hides the material, white shows it.'}));}
+/* the layer's material: brings the Material panel forward on it (double-click a material layer, Fill settings…) */
+function dlgFillLayer(L){L=L||doc.active;if(!isLayer(L)||!L.fill){toast('Select a fill layer.');return;}if(doc.active!==L){selectOnly(L);renderLayers();}
+  showPanel('matEd');renderMatEd(true);}
+/* the panel follows the selected layer */
+{const rl=renderLayers;renderLayers=function(...a){const r=rl.apply(this,a);if(matEd.shown!==doc.active||(doc.active&&doc.active.fill&&!document.querySelector('#matEdBody .matHead')))renderMatEd();return r;};}
 async function fillPickImage(L,k,s,done){const fs=await pickFiles('image/*',false,'Images',['png','jpg','jpeg','webp','tga','tif','tiff','bmp','psd','exr','hdr']);const f=fs[0];if(!f){if(!(L._fillImg&&L._fillImg[k])&&k!=='normal')s.src='value';done();return;}
   let t;try{t=await fileTarget(f);}catch(e){toast('Could not read '+f.name+': '+(e.message||e));if(k!=='normal')s.src='value';done();return;}
   setWrap(t,true);L._fillImg=L._fillImg||{};L._fillImg[k]=t;s.src='image';s.name=f.name;done();}
@@ -125,7 +147,7 @@ function matImgPixels(t){if(!t)return null;let c=matImgCPU.get(t);if(c)return c;
   const d=captureRegionNow(tmp,0,0,n,n).data;disposeTarget(tmp);c={n,d};matImgCPU.set(t,c);return c;}
 function matPreviewEl(getF,getImgs,size){const S=size||96,cv2=el('canvas',{class:'matprev',width:S,height:S,'aria-hidden':'true'});
   const redraw=()=>{const f=getF(),I=getImgs()||{},x=cv2.getContext('2d'),id=x.createImageData(S,S),D=id.data,ch=k=>f.maps[k]&&f.maps[k].on?f.maps[k]:null;
-    const bI=ch('base')&&ch('base').src==='image'?matImgPixels(I.base):null,hI=ch('height')&&ch('height').src==='image'?matImgPixels(I.height):null;
+    const bI=ch('base')&&ch('base').src!=='value'?matImgPixels(I.base):null,hI=ch('height')&&ch('height').src!=='value'?matImgPixels(I.height):null;
     const bc=ch('base')?(ch('base').c||[.7,.7,.7]):[.72,.72,.72],r=ch('rough')?ch('rough').v:.5,mt=ch('metal')?ch('metal').v:0,hs=f.hStr==null?1:f.hStr;
     const smp=(im,u,v)=>{const n=im.n,i=((Math.floor(v*n)%n+n)%n*n+(Math.floor(u*n)%n+n)%n)*4,a=im.d[i+3]/255||1;return [im.d[i]/255/a,im.d[i+1]/255/a,im.d[i+2]/255/a];};
     const L=norm3([-.5,.6,.65]),lin=v=>Math.pow(v,2.2);

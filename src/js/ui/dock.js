@@ -6,6 +6,7 @@
 const PANELS={
   p3d:{title:'3D Paint',sel:'#p3dSec',avail:m=>m==='p3d',mode:true},
   hist:{title:'History',sel:'#histSec',avail:m=>m!=='convert',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>'},
+  matEd:{title:'Material',sel:'#matEdSec',avail:m=>m==='paint'||m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M8 15l8-8M9 9h.01"/>'},
   mats:{title:'Materials',sel:'#matSec',avail:m=>m==='paint'||m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M7 9.5a6 6 0 0 1 5-3" opacity=".6"/>'},
   brushtab:{title:'Brush maker',sel:'#brushTabSec',avail:m=>m==='brush',mode:true},
   conv:{title:'Convert',sel:'#convSec',avail:m=>m==='convert',mode:true},
@@ -21,15 +22,15 @@ const PANEL_IDS=Object.keys(PANELS);
 const MODE_GROUP=['p3d','brushtab','conv','bake','anim'];
 /* the built-in workspaces: extra = 3D view on and how wide, painting on the model */
 const WS_PRESETS={
-  painting:{name:'Painting',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['color'],f:1.05},{tabs:['brushes','mats','tool'],f:1.25},{tabs:['maps'],f:.45},{tabs:['layers','chan','hist'],f:1.6}],icons:[],floats:[]},
-  texturing:{name:'Texturing',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['maps'],f:.7},{tabs:['layers','chan','hist'],f:1.6},{tabs:['tool','brushes','mats','color'],f:1.3}],icons:[],floats:[]},
-  paint3d:{name:'3D Paint',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['layers','maps','chan','hist'],f:1.6},{tabs:['color','brushes','mats','tool'],f:1.4}],icons:[],floats:[]},
-  minimal:{name:'Minimal',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1}],icons:['color','brushes','mats','tool','maps','layers','chan','hist'],floats:[]}};
+  painting:{name:'Painting',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['color','matEd'],f:1.05},{tabs:['brushes','mats','tool'],f:1.25},{tabs:['maps'],f:.45},{tabs:['layers','chan','hist'],f:1.6}],icons:[],floats:[]},
+  texturing:{name:'Texturing',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['maps'],f:.7},{tabs:['layers','chan','hist'],f:1.6},{tabs:['tool','brushes','mats','color','matEd'],f:1.3}],icons:[],floats:[]},
+  paint3d:{name:'3D Paint',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['layers','maps','chan','hist'],f:1.6},{tabs:['color','matEd','brushes','mats','tool'],f:1.4}],icons:[],floats:[]},
+  minimal:{name:'Minimal',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1}],icons:['color','matEd','brushes','mats','tool','maps','layers','chan','hist'],floats:[]}};
 const dk={ws:'painting',L:null,custom:{},saved:{},lock:false,flyout:null,drag:null};
-(()=>{try{const s=JSON.parse(localStorage.getItem('gs.dock')||'{}');if(s.ws)dk.ws=s.ws;dk.saved=s.saved||{};dk.custom=s.custom||{};dk.lock=!!s.lock;}catch(e){}})();
+(()=>{try{const s=JSON.parse(localStorage.getItem('gs.dock')||'{}');if(s.ws)dk.ws=s.ws;if(s.col2&&s.col2.groups)dk.col2=s.col2;dk.saved=s.saved||{};dk.custom=s.custom||{};dk.lock=!!s.lock;}catch(e){}})();
 const dkClone=o=>JSON.parse(JSON.stringify(o));
 function dkPreset(ws){return dkClone(WS_PRESETS[ws]||dk.custom[ws]||WS_PRESETS.painting);}
-function dkSave(){if(dk.L)dk.saved[dk.ws]=dk.L;try{localStorage.setItem('gs.dock',JSON.stringify({ws:dk.ws,saved:dk.saved,custom:dk.custom,lock:dk.lock}));}catch(e){}}
+function dkSave(){if(dk.L)dk.saved[dk.ws]=dk.L;try{localStorage.setItem('gs.dock',JSON.stringify({ws:dk.ws,saved:dk.saved,custom:dk.custom,lock:dk.lock,col2:dk.col2}));}catch(e){}}
 /* every panel is in exactly one place: a group, a float, the icons, or hidden */
 function dkFix(L){const seen=new Set();const keep=a=>a.filter(id=>PANELS[id]&&!seen.has(id)&&seen.add(id));
   for(const g of L.groups)g.tabs=keep(g.tabs);for(const f of L.floats)f.tabs=keep(f.tabs);L.icons=keep(L.icons||[]);L.hidden=keep(L.hidden||[]);
@@ -58,16 +59,21 @@ function dkToolbar(o){Object.assign(dk.L.tb,o);dkRender();dkSave();resizeGL();fi
 function dkGrid(){const L=dk.L,app=$('#app'),hasDock=L.groups.some(g=>dkAvail(g).length)&&L.w>0,ic=L.icons.length?'38px':'0px',tw=L.tb.cols===2?'82px':'46px';
   document.body.classList.toggle('tb2',L.tb.cols===2);document.body.classList.toggle('noopt',!L.opt);
   const left=L.tb.side!=='right';
-  const c2=dkCol2On()?dk.col2.w+'px':'0px';
+  const c2=dkCol2On()&&dk.col2.groups.some(g=>dkAvail(g).length)?dk.col2.w+'px':'0px';
   app.style.gridTemplateColumns=left?`${tw} minmax(0,1fr) ${c2} ${ic} ${hasDock?L.w+'px':'0px'}`:`minmax(0,1fr) ${tw} ${c2} ${ic} ${hasDock?L.w+'px':'0px'}`;
   app.style.gridTemplateRows=`38px ${L.opt?'minmax(36px,auto)':'0px'} minmax(0,1fr) auto 26px`;
   app.style.gridTemplateAreas=left?'"head head head head head" "opt opt opt opt opt" "tools work dock2 icons dock" "tools tl dock2 icons dock" "status status status status status"':'"head head head head head" "opt opt opt opt opt" "work tools dock2 icons dock" "tl tools dock2 icons dock" "status status status status status"';}
-/* in 3D Paint, Color, Brushes and Tool settings sit in a column of their own beside the viewport (dock2) */
-const DK_COL2=['color','brushes','mats','tool'];
+/* in 3D Paint, Colour, Material, Brushes, Materials and Tool settings sit in a column of their own beside the
+   viewport (dock2). Its tabs drag like any other: out of it, or other tabs into it (remembered in gs.dock col2). */
+const DK_COL2=['color','matEd','brushes','mats','tool'];
 const dkCol2On=()=>ui.mode==='p3d';
-const dkIn=id=>PANELS[id].avail(ui.mode)&&!(dkCol2On()&&DK_COL2.includes(id));
+const dkC2Has=id=>dk.col2.groups.some(g=>g.tabs.includes(id));
+const dkIn=id=>PANELS[id].avail(ui.mode)&&!(dkCol2On()&&dkC2Has(id));
 const dkAvail=g=>g._c2?g.tabs.filter(id=>PANELS[id].avail(ui.mode)):g.tabs.filter(id=>dkIn(id));
-if(!dk.col2)dk.col2={w:250,groups:[{tabs:['color'],f:1,_c2:true},{tabs:['brushes','mats','tool'],f:1.5,_c2:true}]};
+if(!dk.col2)dk.col2={w:250,groups:[{tabs:['color','matEd'],f:1,_c2:true},{tabs:['brushes','mats','tool'],f:1.5,_c2:true}]};
+/* older saved columns: the Material tab joins Colour */
+if(!dkC2Has('matEd')){const g=dk.col2.groups.find(g=>g.tabs.includes('color'))||dk.col2.groups[0];if(g)g.tabs.push('matEd');}
+for(const g of dk.col2.groups)g._c2=true;
 function dkRender(){const L=dk.L,dock=$('#dock');dkGrid();
   for(const id of PANEL_IDS){const s=dkSec(id);s.classList.remove('dk-off');}
   dock.replaceChildren();const gs=L.groups.filter(g=>dkAvail(g).length);
@@ -95,7 +101,7 @@ function dkGroup(g){const av=dkAvail(g);let a=av.includes(g.active)?g.active:av[
   /* keep the chosen tab when it is only hidden for now (Layers while in Animation), so it comes back to the front */
   if(mp||av.includes(g.active)||!g.active||!PANEL_IDS.includes(g.active))g.active=a;
   const body=el('div',{class:'dkbody'});for(const id of av){const s=dkSec(id);s.classList.toggle('dk-off',id!==a);body.append(s);}
-  const box=el('div',{class:'dkgrp'+(g.min?' min':''),style:'flex:'+(g.min?'0 0 auto':g.f+' 1 0px')},dkTabs(av,a,{group:g,popped:!!g._c2},id=>{g.active=id;g.min=false;dkRender();dkSave();}),body);
+  const box=el('div',{class:'dkgrp'+(g.min?' min':''),style:'flex:'+(g.min?'0 0 auto':g.f+' 1 0px')},dkTabs(av,a,{group:g,c2:!!g._c2},id=>{g.active=id;g.min=false;dkRender();dkSave();}),body);
   box.querySelector('.dktabs').addEventListener('dblclick',e=>{if(e.target.closest('.dktab')){g.min=!g.min;dkRender();dkSave();}});
   box._g=g;return box;}
 /* the dock's left edge: drag to make the whole dock wider or narrower (double-click: back to the usual width) */
@@ -142,21 +148,22 @@ function dkMenu(e,id,where){const items=[['Float “'+PANELS[id].title+'”',()=
   pop.hidden=false;pop.style.left=Math.min(e.clientX,window.innerWidth-pop.offsetWidth-8)+'px';pop.style.top=(e.clientY+6)+'px';
   const off=ev=>{if(!pop.contains(ev.target)){pop.hidden=true;document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}
 /* take a panel out of wherever it is and put it somewhere else */
-function dkRemove(id){const L=dk.L;for(const g of L.groups)g.tabs=g.tabs.filter(t=>t!==id);for(const f of L.floats)f.tabs=f.tabs.filter(t=>t!==id);L.icons=L.icons.filter(t=>t!==id);L.hidden=L.hidden.filter(t=>t!==id);if(dk.flyout===id)dk.flyout=null;}
+function dkRemove(id){const L=dk.L;if(dkCol2On()){for(const g of dk.col2.groups)g.tabs=g.tabs.filter(t=>t!==id);dk.col2.groups=dk.col2.groups.filter(g=>g.tabs.length);}for(const g of L.groups)g.tabs=g.tabs.filter(t=>t!==id);for(const f of L.floats)f.tabs=f.tabs.filter(t=>t!==id);L.icons=L.icons.filter(t=>t!==id);L.hidden=L.hidden.filter(t=>t!==id);if(dk.flyout===id)dk.flyout=null;}
 function dkMove(id,to){const L=dk.L;dkRemove(id);
   if(to.group){to.group.tabs.splice(to.index==null?to.group.tabs.length:to.index,0,id);to.group.active=id;to.group.min=false;}
   else if(to.newGroup!=null){L.groups.splice(to.newGroup,0,{tabs:[id],active:id,f:1});}
+  else if(to.newGroup2!=null){dk.col2.groups.splice(to.newGroup2,0,{tabs:[id],active:id,f:1,_c2:true});}
   else if(to.float){L.floats.push({tabs:[id],active:id,x:to.float.x,y:to.float.y,w:300,h:Math.min(420,window.innerHeight-120)});}
   else if(to.icons)L.icons.push(id);else if(to.hidden)L.hidden.push(id);
-  if(!L.groups.some(g=>g.tabs.length)&&!to.group&&to.newGroup==null&&L.icons.length===0)L.groups.push({tabs:[],f:1});
+  if(!L.groups.some(g=>g.tabs.length)&&!to.group&&to.newGroup==null&&to.newGroup2==null&&L.icons.length===0)L.groups.push({tabs:[],f:1});
   dkApply(L,true);}
 /* show a panel (Window menu, tests): brings it back into the dock and to the front */
-function showPanel(id){const L=dk.L;if(dkCol2On()&&DK_COL2.includes(id)){const g2=dk.col2.groups.find(g=>g.tabs.includes(id));if(g2){g2.active=id;g2.min=false;dkRender();return;}}let g=L.groups.find(g=>g.tabs.includes(id));const f=L.floats.find(f=>f.tabs.includes(id));
+function showPanel(id){const L=dk.L;if(dkCol2On()&&dkC2Has(id)){const g2=dk.col2.groups.find(g=>g.tabs.includes(id));if(g2){g2.active=id;g2.min=false;dkRender();return;}}let g=L.groups.find(g=>g.tabs.includes(id));const f=L.floats.find(f=>f.tabs.includes(id));
   if(f){f.active=id;dkRender();return;}if(L.icons.includes(id)){dkFlyout(id);return;}
   if(!g){L.hidden=L.hidden.filter(t=>t!==id);const home=WS_PRESETS.painting.groups.findIndex(x=>x.tabs.includes(id));g=L.groups.find(x=>x.tabs.some(t=>(WS_PRESETS.painting.groups[home]||{tabs:[]}).tabs.includes(t)));
     if(g)g.tabs.push(id);else{g={tabs:[id],f:1};L.groups.push(g);}}
   g.active=id;g.min=false;dkRender();dkSave();}
-function panelShown(id){const L=dk.L;return L.groups.some(g=>g.tabs.includes(id))||L.floats.some(f=>f.tabs.includes(id))||L.icons.includes(id);}
+function panelShown(id){const L=dk.L;if(dkCol2On()&&dkC2Has(id))return true;return L.groups.some(g=>g.tabs.includes(id))||L.floats.some(f=>f.tabs.includes(id))||L.icons.includes(id);}
 function togglePanel(id){if(panelShown(id)&&!dk.L.icons.includes(id)){dkMove(id,{hidden:true});}else showPanel(id);}
 /* ---- dragging a tab ---- */
 function dkDragStart(e,id,where){if(dk.lock||e.button!==0)return;dk.drag={id,where,x:e.clientX,y:e.clientY,on:false,ghost:null,hint:null,to:null};}
@@ -171,6 +178,13 @@ function dkDragMove(e){const d=dk.drag;if(!d)return;if(!d.on){if(Math.hypot(e.cl
       else if(e.clientY>r.bottom-r.height*.28){to={newGroup:i+1};box={left:r.left,top:r.bottom-6,width:r.width,height:10};}
       else{to={group:g};box=r;}}
     else if(grs.length){const r=dock.getBoundingClientRect();to={newGroup:dk.L.groups.length};box={left:r.left,top:r.bottom-12,width:r.width,height:10};}}
+  else if(t&&t.closest('#dock2')&&dkCol2On()){const gEl=t.closest('.dkgrp'),d2=dk.dock2,G=dk.col2.groups;
+    if(gEl){const r=gEl.getBoundingClientRect(),g=gEl._g,i=G.indexOf(g);
+      if(t.closest('.dktabs')){to={group:g};box=gEl.querySelector('.dktabs').getBoundingClientRect();}
+      else if(e.clientY<r.top+r.height*.28){to={newGroup2:i};box={left:r.left,top:r.top-4,width:r.width,height:10};}
+      else if(e.clientY>r.bottom-r.height*.28){to={newGroup2:i+1};box={left:r.left,top:r.bottom-6,width:r.width,height:10};}
+      else{to={group:g};box=r;}}
+    else{const r=d2.getBoundingClientRect();to={newGroup2:G.length};box={left:r.left,top:r.bottom-12,width:r.width,height:10};}}
   else if(t&&t.closest('.dkfloat:not(.flyout)')){/* onto another floating panel: join it */const fe=t.closest('.dkfloat');const f=dk.L.floats[[...document.querySelectorAll('.dkfloat:not(.flyout)')].indexOf(fe)];if(f){to={floatJoin:f};box=fe.getBoundingClientRect();}}
   else{to={float:{x:e.clientX-40,y:e.clientY-12}};}
   d.to=to;if(box){Object.assign(d.hint.style,{left:box.left+'px',top:box.top+'px',width:box.width+'px',height:box.height+'px'});d.hint.hidden=false;}else d.hint.hidden=true;}
@@ -196,7 +210,7 @@ function syncWsSel(){const s=$('#wsSel');if(!s)return;s.replaceChildren(...wsLis
   el('option',{value:':save',text:'Save workspace…'}),el('option',{value:':reset',text:'Reset this workspace'}),el('option',{value:':delete',text:'Delete this workspace'}));s.value=dk.ws;}
 function dkModeChanged(){if(dk.L)dkRender();}
 /* bring a panel to the front of its group if it is in the dock (without moving it) */
-function dkActivate(id){if(!dk.L)return;const g=dk.L.groups.find(g=>g.tabs.includes(id));if(g&&g.active!==id){g.active=id;g.min=false;dkRender();}}
+function dkActivate(id){if(!dk.L)return;const g=(dkCol2On()&&dk.col2.groups.find(g=>g.tabs.includes(id)))||dk.L.groups.find(g=>g.tabs.includes(id));if(g&&g.active!==id){g.active=id;g.min=false;dkRender();}}
 
 /* ---- panels in windows of their own (a second monitor) ---- */
 dk.pops=[];dk.popSeq=0;
