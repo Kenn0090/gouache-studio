@@ -40,6 +40,7 @@ function buildP3Panel(){const box=$('#p3dBody');if(!box)return;box.replaceChildr
     el('div',{class:'sub',text:'Navigation'}),seg([['substance','Substance Painter'],['coat','3D-Coat']],v3nav.mode,v=>{setNav3d(v);buildP3Panel();},'Navigation style'),
     el('p',{class:'note',text:v3nav.mode==='coat'?'Left paints. Right-drag turns, middle-drag moves, Ctrl+right-drag zooms (or the wheel). Left-drag off the model turns too.':'Left paints. Alt+left turns, Alt+middle moves, Alt+right zooms (or the wheel). Middle or right drag also moves.'}),
     el('p',{class:'note',text:'Hold Alt over the model to pick its colour. Left/Right arrow keys step through the shades in the Color panel. Double-click empty space to reframe.'}),
+    el('div',{class:'sub',text:'Mesh maps (baked)'}),p3MeshMapsBox(),
     el('div',{class:'sub',text:'Materials'}),p3MatBox(),
     el('div',{class:'sub',text:'Project'}),el('div',{class:'chips'},el('button',{class:'btn sm',text:'Save project',title:'Save the model and all texture sets as a .gouache3d project (Ctrl+S here)',onclick:()=>saveP3Project(false)}),el('button',{class:'btn sm',text:'Open project…',onclick:()=>pickFile('open')}),el('button',{class:'btn sm',text:'Export textures…',onclick:()=>actions.expTex()})),
     el('div',{class:'sub',text:'Select on the model'}),sel3Box(),
@@ -221,3 +222,32 @@ function sendToP3(){if(ui.mode!=='paint'){toast('Send to 3D Paint works from the
 /* src into dst keeping its proportions, centred (the rest stays empty) */
 function fitInto(src,dst){const k=Math.min(dst.w/src.w,dst.h/src.h),off=[(dst.w-src.w*k)/2,(dst.h-src.h*k)/2];
   run(P.resample,dst,{uSrc:src.tex,uOffset:off,uScale:[1/k,1/k],uTaps:{int:Math.min(8,Math.max(1,Math.ceil(1/k)))},uOutside:[0,0,0,0]});}
+
+/* ---- bakes from the Bake tab: the model, and each material's maps into its own texture set ----
+   They become the set's mesh maps (doc.meshMaps, like Substance Painter's: for masks and smart materials) and the
+   baked normal becomes a layer in the Normal map so its detail shows; with "also as layers", AO and curvature
+   arrive as blendable layers too. by: {material name: {map: target}} ('*' = the same for every set). */
+const P3_MESHMAP_NAMES={normal:'Normal',height:'Height',ao:'Ambient occlusion',curv:'Curvature',curvEdge:'Curvature edges',curvCrease:'Curvature creases',thick:'Thickness',wnormal:'World normal',position:'Position',id:'ID'};
+function p3ReceiveBake(mesh,by,ks,asLayers){if(ui.mode!=='p3d'&&!setMode('p3d',true))return;
+  if(mesh&&mesh!==v3.imported){v3.imported=p3.imported=mesh;v3s().model='imported';v3.mesh=null;v3LoadModel();}
+  const back=p3.sets[p3.cur]&&p3.sets[p3.cur].name;let n=0;
+  for(let i=0;i<p3.sets.length;i++){const S=p3.sets[i],res=by[S.name]||by['*'];if(!res||S.missing)continue;p3SwitchSet(i,true);p3ApplyBake(res,ks,asLayers);n++;}
+  const j=p3.sets.findIndex(S=>S.name===back);if(j>=0)p3SwitchSet(j,true);buildP3Panel();
+  toast(n?'Sent the bake to '+n+' texture set'+(n>1?'s':'')+(asLayers?', as mesh maps and layers.':', as mesh maps.'):'No texture set matched the baked materials.');}
+function p3ApplyBake(res,ks,asLayers){const M=doc.meshMaps||(doc.meshMaps={});
+  for(const k of ks){if(!res[k])continue;let t=M[k];if(!t||t.w!==doc.w||t.h!==doc.h){if(t)disposeTarget(t);t=M[k]=makeTarget(doc.w,doc.h,k==='height'&&canFloat?16:doc.depth,false);}copyScaled(res[k],t);}
+  const add=[];
+  if(ks.includes('normal')&&M.normal)add.push(p3MeshLayer('normal'));
+  if(asLayers)for(const k of ks)if(k!=='normal'&&M[k])add.push(p3MeshLayer(k));
+  const old=paintLayers().filter(L=>L.meshMap&&add.some(a=>a.meshMap===L.meshMap));
+  structOp('Bake from the Bake tab',()=>{for(const L of old)detachNode(L);for(const L of add)insertNode(L,doc.root,L.meshMap==='normal'?1:doc.root.children.length);});
+  syncTargets();changedAll();renderLayers();}
+/* a mesh map as a layer: the normal in the Normal map, AO on Multiply, curvature on Overlay, the rest hidden in the base colour */
+function p3MeshLayer(k){const M=doc.meshMaps,L=newLayerObj(k==='normal'?'Mesh normal (baked)':'Baked '+(P3_MESHMAP_NAMES[k]||k).toLowerCase());doc.count--;
+  const own=k==='normal'?'normal':'base';for(const x of Object.keys(L.maps))if(x!==own){disposeTarget(L.maps[x]);delete L.maps[x];}
+  copyScaled(M[k],ensureMapTarget(L,own));if(own!=='base'){L.blankBase=true;setMapModeOf(L,own,0);}
+  if(k==='ao')L.mode=MODES.indexOf('Multiply');else if(/^curv/.test(k))L.mode=MODES.indexOf('Overlay');else if(k!=='normal')L.visible=false;
+  L.meshMap=k;L.baked=true;return L;}
+function p3MeshMapsBox(){const M=doc.meshMaps||{},ks=Object.keys(M);if(!ks.length)return el('p',{class:'note',text:'None yet. Bake in the Bake tab and press Send to 3D Paint: the baked maps land here, per texture set.'});
+  return el('div',{class:'p3mm'},...ks.map(k=>el('div',{class:'p3mmrow'},el('span',{text:P3_MESHMAP_NAMES[k]||k}),
+    el('button',{class:'btn sm',text:'Add as layer',onclick:()=>{const L=p3MeshLayer(k);structOp('Add mesh map layer',()=>{insertNode(L,doc.root);selectOnly(L);});changed(L);}}))));}

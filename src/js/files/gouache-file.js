@@ -32,7 +32,8 @@ async function encodeGouacheNow(opts){opts=opts||{};const blobs=[];let off=0;/* 
   /* the 3D view's settings, and an imported model so it comes back with the document */
   let meshRec=null;if(!opts.lean&&typeof v3!=='undefined'&&v3.imported){const c=await streamThrough(meshPack(v3.imported),'deflate-raw');blobs.push(c);meshRec={o:off,n:c.length,name:v3.imported.name};off+=c.length;}
   const bakeMaps={};if(!opts.lean)for(const k of ['skew','offset'])if(bk.maps[k]){const r=await put(bk.maps[k],true);if(r)bakeMaps[k]=r;}
-  const head={p3:!!doc.p3,bakeMaps,cage:cageClone(doc.cage),v3d:doc.v3d||null,mesh:meshRec,app:'Gouache Studio',v:GF_VERSION,w:doc.w,h:doc.h,depth:doc.depth,wrap:doc.wrap,name:doc.name,
+  const meshMaps={};for(const k in doc.meshMaps||{}){const r=await put(doc.meshMaps[k],true);if(r)meshMaps[k]=r;}
+  const head={p3:!!doc.p3,meshMaps,bakeMaps,cage:cageClone(doc.cage),v3d:doc.v3d||null,mesh:meshRec,app:'Gouache Studio',v:GF_VERSION,w:doc.w,h:doc.h,depth:doc.depth,wrap:doc.wrap,name:doc.name,
     maps:doc.maps,map:doc.map,view:doc.view,mapDef:doc.mapDef,workflow:doc.workflow,nrmStr:doc.nrmStr,light:doc.light,tex:texCfg,kids,active,anim,layers:all.length};
   const hj=new TextEncoder().encode(JSON.stringify(head)),pre=new Uint8Array(16);pre.set(GF_MAGIC,0);const dv=new DataView(pre.buffer);dv.setUint32(8,GF_VERSION,true);dv.setUint32(12,hj.length,true);
   return new Blob([pre,hj,...blobs],{type:'application/octet-stream'});}
@@ -81,6 +82,7 @@ async function gfReadInto(buf,head,data){
     if(parent)insertNode(n,parent);
     if(o.t==='G')for(const c of o.kids||[])await mk(c,n);
     return n;};
+  if(head.meshMaps&&Object.keys(head.meshMaps).length){doc.meshMaps={};for(const k in head.meshMaps){const r=head.meshMaps[k],t=makeTarget(doc.w,doc.h,r.d===16&&canFloat?16:8,false);await img(r,t);doc.meshMaps[k]=t;}}
   for(const o of head.kids||[]){await mk(o,doc.root);await tick();}
   if(!allLayers().length){const L=newLayerObj('Background');insertNode(L,doc.root);}
   syncTargets();

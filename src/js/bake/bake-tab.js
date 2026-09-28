@@ -52,7 +52,7 @@ function bakePrep(L){const C=bakeCfg;const high=C.high?bakeAlign(C.high,L):null,
     const hn=(high.partNames||['default']).map(n=>ix.has(partBase(n))?ix.get(partBase(n)):9999);high.bakePart=new Float32Array((high.triPart||new Uint32Array(high.tris)).length);(high.triPart||[]).forEach((p,t)=>{high.bakePart[t]=hn[p];});}
   return {low,high,cage};}
 /* the high-poly's search tree, kept between bakes of the same models */
-async function bakeHG(L,high,low,step,needCol){const key=[bakeCfg.high,L,!!(bakeCfg.match&&high)],same=k=>k&&k[0]===key[0]&&k[1]===key[1]&&k[2]===key[2];
+async function bakeHG(L,high,low,step,needCol){const key=[bakeCfg.high,L.whole||L,!!(bakeCfg.match&&high)],same=k=>k&&k[0]===key[0]&&k[1]===key[1]&&k[2]===key[2];
   if(bk.hgBuild){const b=bk.hgBuild;try{await b.p;}catch(e){}if(bk.hgBuild===b)bk.hgBuild=null;}
   if(bk.hg&&same(bk.hgKey)&&(!needCol||bk.hg.hasCol))return bk.hg;if(bk.hg){bkFreeHigh(bk.hg);bk.hg=null;bk.hgKey=null;}
   const b={p:bkHighGPU(high||low,step,needCol)};bk.hgBuild=b;try{bk.hg=await b.p;}finally{if(bk.hgBuild===b)bk.hgBuild=null;}bk.hgKey=key;return bk.hg;}
@@ -60,9 +60,9 @@ async function bakeHG(L,high,low,step,needCol){const key=[bakeCfg.high,L,!!(bake
 function bakeCurvSrc(high){const v=bakeCfg.curvSrc||'mesh';if(v==='normal'&&!high)return 'mesh';if(v==='doc'&&!doc.maps.includes('normal'))return 'mesh';return v;}
 function bakeKinds(ks,high){const kinds=ks.filter(k=>k!=='curv');if(ks.includes('curv')){const src=bakeCurvSrc(high);if(src==='mesh')kinds.push(...(high?['cpos','cnrm']:['mcurv']));else if(src==='normal'&&!kinds.includes('normal'))kinds.push('normal');}return kinds;}
 /* full bake of maps ks from low-poly L */
-async function runBake(L,ks){const C=bakeCfg;if(bk.busy)return;if(!canFloat){toast('Baking needs 16-bit float support, which this graphics card lacks.');return;}
+async function runBake(L,ks,opt){opt=opt||{};const C=bakeCfg;if(bk.busy)return;if(!canFloat){toast('Baking needs 16-bit float support, which this graphics card lacks.');return;}
   if(L.noUV){toast('The low-poly has no UVs: nothing can be baked onto it.');return;}
-  if(C.cage&&(C.cage.verts!==L.verts||C.cage.tris!==L.tris)){toast('The cage does not match the low-poly.');return;}
+  if(C.cage&&(C.cage.verts!==L.verts||C.cage.tris!==(L.whole||L).tris)){toast('The cage does not match the low-poly.');return;}
   const {low,high,cage}=bakePrep(L);
   if(!high){const skip=ks.filter(k=>k==='normal'||k==='height');if(skip.length)toast('Without a high-poly, '+skip.map(k=>BAKE_NAMES[k].toLowerCase()).join(' and ')+' would be flat, so '+(skip.length>1?'they are':'it is')+' skipped.');ks=ks.filter(k=>k!=='normal'&&k!=='height');if(!ks.length)return;}
   if(ks.includes('curv')&&bakeCfg.curvSrc!==bakeCurvSrc(high))toast(bakeCfg.curvSrc==='normal'?'Curvature from the baked normal needs a high-poly, so it comes from the shape instead.':'The document has no normal map, so curvature comes from the shape instead.');
@@ -81,11 +81,11 @@ async function runBake(L,ks){const C=bakeCfg;if(bk.busy)return;if(!canFloat){toa
     res=await bakeRun(low,high,Object.assign({},o,{hg,acc:bk.acc,skew:bk.maps.skew,offset:bk.maps.offset,onTile:(acc,kk)=>bakeShowPartial(acc,kk)}),prog);}
   catch(e){console.error(e);bk.busy=false;bk.prog=null;if(!inTab)closeDialog();bakeProgUI();toast('The bake failed: '+(e.message||e));return;}
   bk.busy=false;bk.prog=null;if(!inTab)closeDialog();
-  if(!res){for(const k in bk.acc)disposeTarget(bk.acc[k]);bk.acc={};for(const k in bk.res)disposeTarget(bk.res[k]);bk.res={};bk.opts=null;bakeProgUI();bakeRefresh();toast('Bake cancelled.');return;}
+  if(!res){for(const k in bk.acc)disposeTarget(bk.acc[k]);bk.acc={};for(const k in bk.res)disposeTarget(bk.res[k]);bk.res={};bk.opts=null;bakeProgUI();bakeRefresh();toast('Bake cancelled.');return 'cancelled';}
   for(const k in bk.res)disposeTarget(bk.res[k]);bk.res=res;bk.kinds=ks;bk.opts=o;bk.src={L,low,high};bakeDerive();
   if(!ks.includes(bk.show)&&bk.show!=='material'&&!BK_PAINT[bk.show])bk.show='material';
-  bakeRefresh();toast('Baked '+ks.length+' map'+(ks.length>1?'s':'')+' in '+((performance.now()-t0)/1000).toFixed(1)+' s.');
-  if(C.autoSend||!inTab)bakeSend();
+  bakeRefresh();if(!opt.quiet)toast('Baked '+ks.length+' map'+(ks.length>1?'s':'')+' in '+((performance.now()-t0)/1000).toFixed(1)+' s.');
+  if(!opt.quiet&&(C.autoSend||!inTab))bakeSend();
   if(bk.region){const r=bk.region;bk.region=null;bakeRegion(r);}}
 /* curvature: from the shape (gcurv), the baked normal or the document's normal map; then edges and creases
    are weighted and, if asked, split into their own maps (white = strong) */
@@ -124,6 +124,26 @@ async function bakeRegion(rect){if(!bk.opts||!bk.src)return;const r=[Math.max(0,
    As layers (the default) every grey or colour result is also in the base colour, so bakes blend with each other there
    (curvature on Overlay over AO…), and AO, curvature and height are in their own maps too. Maps only: each in its own map. */
 const BK_SEND_ORDER=['normal','height','ao','curv','curvEdge','curvCrease','thick','wnormal','position','id'];
+/* ---- one bake per material (texture set): the low-poly's triangles of that material, the same vertices ---- */
+function meshSubset(L,k){const T=L.idx.length/3,M=L.triMat,keep=[];for(let t=0;t<T;t++)if(!M||M[t]===k)keep.push(t);
+  const idx=new Uint32Array(keep.length*3),per=(a,w)=>{if(!a)return a;const o=new a.constructor(keep.length*w);keep.forEach((t,i)=>{for(let c=0;c<w;c++)o[i*w+c]=a[t*w+c];});return o;};
+  keep.forEach((t,i)=>{idx[i*3]=L.idx[t*3];idx[i*3+1]=L.idx[t*3+1];idx[i*3+2]=L.idx[t*3+2];});
+  return Object.assign({},L,{idx,tris:keep.length,triPart:per(L.triPart,1),triCol:per(L.triCol,3),triMat:per(L.triMat,1),whole:L,setRanges:null,_topo:null});}
+const bkMats=L=>(L&&L.matNames&&L.matNames.length>1&&L.triMat)?L.matNames:null;
+async function runBakeSets(L,ks){const names=bkMats(L);if(!names){bk.byMat=null;return runBake(L,ks);}
+  for(const n in bk.byMat||{})if(n!==bk.matShow)for(const k in bk.byMat[n].res)disposeTarget(bk.byMat[n].res[k]);bk.byMat={};const t0=performance.now();
+  for(let i=0;i<names.length;i++){bk.res={};const r=await runBake(meshSubset(L,i),ks,{quiet:true});if(r==='cancelled'||!Object.keys(bk.res).length){bk.byMat=null;return;}
+    bk.byMat[names[i]]={res:bk.res,kinds:bk.kinds,opts:bk.opts,src:bk.src};toast('Baked “'+names[i]+'” ('+(i+1)+' of '+names.length+').');}
+  bk.matShow=null;bakeShowMat(names[0]);toast('Baked '+names.length+' materials in '+((performance.now()-t0)/1000).toFixed(1)+' s.');if(bakeCfg.autoSend)bakeSend();}
+/* which material's results are shown (and sent to Paint, exported, fixed) */
+function bakeShowMat(n){const B=bk.byMat;if(!B||!B[n])return;if(bk.matShow&&B[bk.matShow])Object.assign(B[bk.matShow],{res:bk.res,kinds:bk.kinds,opts:bk.opts,src:bk.src});
+  const E=B[n];bk.res=E.res;bk.kinds=E.kinds;bk.opts=E.opts;bk.src=E.src;bk.matShow=n;bakeRefresh();}
+/* Send to 3D Paint: the low-poly and the ticked maps, each material's to its own texture set */
+function bakeSendP3(){if(!Object.keys(bk.res).length){toast('Bake first.');return;}const tick=bakeCfg.send||{},ks=bakeSendable().filter(k=>tick[k]!==false&&!(tick[k]===undefined&&(k==='curvEdge'||k==='curvCrease')));
+  if(!ks.length){toast('Tick at least one map to send.');return;}
+  if(bk.byMat&&bk.matShow)Object.assign(bk.byMat[bk.matShow],{res:bk.res});
+  const L=bk.src&&bk.src.L?(bk.src.L.whole||bk.src.L):bkLow(),by={};if(bk.byMat)for(const n in bk.byMat)by[n]=bk.byMat[n].res;else by['*']=bk.res;
+  p3ReceiveBake(L,by,ks,!!bakeCfg.p3Layers);}
 function bakeSendable(){const res=bk.res,ks=bk.kinds;return BK_SEND_ORDER.filter(k=>res[k]&&(k==='curvEdge'||k==='curvCrease'?ks.includes('curv'):ks.includes(k)));}
 function bakeSend(){const res=bk.res;if(!Object.keys(res).length){toast('Bake first.');return;}const asLayers=bakeCfg.sendAs!=='maps',tick=bakeCfg.send||{};
   const ks=bakeSendable().filter(k=>tick[k]!==false&&!(tick[k]===undefined&&(k==='curvEdge'||k==='curvCrease')));if(!ks.length){toast('Tick at least one map to send.');return;}
@@ -249,8 +269,9 @@ function bakeSendBox(){const box=el('div',{class:'dlg-grid',id:'bkSendBox'}),hav
   const on=k=>t[k]!==undefined?t[k]:!(k==='curvEdge'||k==='curvCrease');
   const none=()=>!have.some(on),send=el('button',{class:'btn',id:'bkSend',text:'Send to Paint',title:'Add the ticked maps to the painting as layers',disabled:bk.busy||none(),onclick:bakeSend}),
     exp=el('button',{class:'btn',id:'bkExport',text:'Export…',title:'Save the ticked maps as image files',disabled:bk.busy||none(),onclick:bakeExport});
-  box.append(el('div',{class:'chips'},...have.map(k=>chk('bks_'+k,BAKE_NAMES[k],on(k),v=>{t[k]=v;send.disabled=exp.disabled=bk.busy||none();}))),
-    el('div',{class:'row wrap'},send,exp),
+  box.append(el('div',{class:'chips'},...have.map(k=>chk('bks_'+k,BAKE_NAMES[k],on(k),v=>{t[k]=v;send.disabled=exp.disabled=bk.busy||none();const p=document.getElementById('bkSendP3');if(p)p.disabled=send.disabled;}))),
+    el('div',{class:'row wrap'},send,el('button',{class:'btn',id:'bkSendP3',text:'Send to 3D Paint',title:'Send the low-poly and the ticked maps to 3D Paint: each material’s maps to its own texture set',disabled:bk.busy||none(),onclick:bakeSendP3}),exp),
+    chk('bkP3Layers','3D Paint: also add them as layers (they always become the set’s mesh maps)',!!bakeCfg.p3Layers,v=>{bakeCfg.p3Layers=v;}),
     el('p',{class:'note',text:'They arrive as plain layers (no folders), scaled to the painting when its size differs. In the browser, Export gives a zip.'}));
   return box;}
 
@@ -303,13 +324,15 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
     return pg;};
   let tabs=tabBar(),page=tabPage();
   const go=el('button',{class:'btn primary',id:'bkGo',text:'Bake'});
-  go.onclick=()=>{if(bk.busy){if(bk.prog)bk.prog.cancelled=true;return;}const L=bkLow();const ks=Object.keys(C.kinds).filter(k=>C.kinds[k]);if(!ks.length){toast('Pick at least one map.');return;}runBake(L,ks);};
+  go.onclick=()=>{if(bk.busy){if(bk.prog)bk.prog.cancelled=true;return;}const L=bkLow();const ks=Object.keys(C.kinds).filter(k=>C.kinds[k]);if(!ks.length){toast('Pick at least one map.');return;}if(C.perMat!==false&&bkMats(L))runBakeSets(L,ks);else{bk.byMat=null;runBake(L,ks);}};
   const prog=el('div',{id:'bkProg',hidden:true},el('p',{class:'note'}),el('div',{class:'bakebar'},el('div')));
   box.append(el('p',{class:'note',text:'Drop model files here: names ending in _low, _high and _cage go to the right place.'}),row('Low-poly',modelSel('low',lowOpts)),row('High-poly',modelSel('high',highOpts)),row('Cage',modelSel('cage',cageOpts)),
     chk('bkMatch','Match parts by name (“_low” bakes only against its “_high”)',C.match,v=>{C.match=v;info();}),
     el('div',{class:'chips'},chk('bkShowCage','Show the cage on the model',bk.showCage,v=>{bk.showCage=v;v3.dirty=true;requestRender();})),
     tabs,page,
+    bkMats(bkLow())?chk('bkPerMat','Bake each material separately ('+bkMats(bkLow()).length+' materials: one set of maps per texture set)',C.perMat!==false,v=>{C.perMat=v;}):null,
     el('div',{class:'row wrap'},go),
+    bk.byMat?row('Material',(()=>{const s=el('select',{id:'bkMat','aria-label':'Material'},...Object.keys(bk.byMat).map(n=>el('option',{value:n,text:n})));s.value=bk.matShow;s.onchange=()=>bakeShowMat(s.value);return s;})()):null,
     bakeSendBox(),
     prog,inf);
   info();
