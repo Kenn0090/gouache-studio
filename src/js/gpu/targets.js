@@ -75,6 +75,7 @@ function useProg(prog,u){
     else if(v.v3)gl.uniform3fv(l,v.v3);
     else if(v.m4)gl.uniformMatrix4fv(l,false,v.m4);
     else if(v.m3)gl.uniformMatrix3fv(l,false,v.m3);
+    else if(v.v4a)gl.uniform4fv(l,v.v4a);
     else if(v.length===2)gl.uniform2f(l,v[0],v[1]);else if(v.length===3)gl.uniform3f(l,v[0],v[1],v[2]);else if(v.length===4)gl.uniform4f(l,v[0],v[1],v[2],v[3]);}
 }
 const dummy=(()=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array(4));gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);return t;})();

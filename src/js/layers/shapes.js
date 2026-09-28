@@ -5,11 +5,19 @@
    into the base colour; the bevel, with a choice of profiles, raises the Height map (and so the
    normal). Drag on the canvas to draw one; drag its handles to resize, move or turn it. */
 const SHAPE_KINDS=[['rect','Rectangle'],['round','Rounded'],['ellipse','Ellipse'],['poly','Polygon'],['star','Star'],['line','Line'],['arrow','Arrow'],['heart','Heart']];
-ui.shape={kind:'rect',fillOn:true,lineOn:false,line:[0,0,0],lineW:6,corner:24,sides:6,inner:.5,head:3,bevel:{on:false,profile:'round',size:16,depth:.6,dir:'up'}};
+ui.shape={kind:'rect',fillOn:true,lineOn:false,line:[0,0,0],lineW:6,corner:24,sides:6,inner:.5,head:3,cb:{size:0,seg:1},bevel:{on:false,profile:'round',size:16,depth:.6,dir:'up',seg:0,full:false}};
+/* corner bevel (0.25): shapes with corners get them cut like a 3D bevel, with segments (1 = a flat cut, more = rounder) */
+const SHP_MAXPTS=192,shpCornered=k=>k==='rect'||k==='poly'||k==='star';
 const lineKind=k=>k==='line'||k==='arrow';
 const FS_SHAPE=`uniform vec2 uC; uniform vec2 uH; uniform float uRot; uniform int uKind; uniform float uCorner; uniform float uSides; uniform float uInner;
 uniform vec2 uA; uniform vec2 uB; uniform float uW; uniform float uHead; uniform int uOut; uniform vec3 uFill; uniform vec3 uLine; uniform float uLineW; uniform int uFillOn; uniform int uLineOn;
-uniform vec4 uBev; /* on, size, depth×direction, profile */
+uniform vec4 uBev; /* on, size, depth×direction, profile */ uniform float uBevSeg; uniform vec4 uPts[96]; uniform int uNPts;
+vec2 ptAt(int i){ vec4 v=uPts[i/2]; return (i%2==0)?v.xy:v.zw; }
+/* a polygon given point by point (the bevelled corners) */
+float sdPts(vec2 p){ vec2 v0=ptAt(0); float d=dot(p-v0,p-v0),s=1.0; int j=uNPts-1;
+  for(int i=0;i<192;i++){ if(i>=uNPts) break; vec2 vi=ptAt(i),vj=ptAt(j),e=vj-vi,w=p-vi,b=w-e*clamp(dot(w,e)/max(dot(e,e),1e-9),0.0,1.0); d=min(d,dot(b,b));
+    bvec3 c=bvec3(p.y>=vi.y,p.y<vj.y,e.x*w.y>e.y*w.x); if(all(c)||all(not(c))) s=-s; j=i; }
+  return s*sqrt(d); }
 float sdBox(vec2 p,vec2 b,float r){ r=min(r,min(b.x,b.y)); vec2 q=abs(p)-b+r; return length(max(q,0.0))+min(max(q.x,q.y),0.0)-r; }
 float sdEll(vec2 p,vec2 ab){ ab=max(ab,vec2(1e-3)); float k0=length(p/ab),k1=length(p/(ab*ab)); return k1>0.0?k0*(k0-1.0)/k1:-min(ab.x,ab.y); }
 float sdPoly(vec2 p,float r,float n){ float an=3.14159265/n; vec2 acs=vec2(cos(an),sin(an)); float bn=mod(atan(p.x,-p.y),2.0*an)-an; p=length(p)*vec2(cos(bn),abs(sin(bn))); p-=r*acs; p.y+=clamp(-p.y,0.0,r*acs.y); return length(p)*sign(p.x); }
@@ -28,6 +36,7 @@ float sd(vec2 q){
   if(uKind==5||uKind==6){ float d=sdSeg(q,uA,uB)-uW*0.5; if(uKind==6){ vec2 dir=normalize(uB-uA+vec2(1e-6)),nr=vec2(-dir.y,dir.x); float hl=uW*uHead; vec2 base=uB-dir*hl;
       d=min(sdSeg(q,uA,base)-uW*0.5,sdTri(q,uB,base+nr*hl*0.6,base-nr*hl*0.6)); } return d; }
   vec2 p=q-uC; float c=cos(uRot),s=sin(uRot); p=vec2(c*p.x+s*p.y,-s*p.x+c*p.y); float m=min(uH.x,uH.y);
+  if(uNPts>2) return sdPts(p);
   if(uKind==0) return sdBox(p,uH,0.0);
   if(uKind==1) return sdBox(p,uH,uCorner);
   if(uKind==2) return sdEll(p,uH);
@@ -39,14 +48,37 @@ void main(){ vec2 q=gl_FragCoord.xy; float d=sd(q); float fill=clamp(0.5-d,0.0,1
   if(uOut==0){ vec4 r=vec4(0.0); if(uFillOn==1) r=vec4(uFill*fill,fill);
     if(uLineOn==1){ float a=clamp(0.5-d,0.0,1.0)*clamp(uLineW+d+0.5,0.0,1.0); r=vec4(uLine*a,a)+r*(1.0-a); } o=r; return; }
   /* height: mid-grey is flat; the bevel rises over its size from the edge in */
-  float h=uBev.x>0.5?prof(-d/max(uBev.y,0.5),int(uBev.w+0.5))*uBev.z:0.0; o=vec4(vec3(clamp(0.5+h*0.5,0.0,1.0))*fill,fill); }`;
+  float t=-d/max(uBev.y,0.5),h=0.0; int pk=int(uBev.w+0.5);
+  /* segments: the profile in flat steps, like a 3D bevel with few segments */
+  if(uBev.x>0.5){ if(uBevSeg>0.5){ float u=clamp(t,0.0,1.0)*uBevSeg,i=floor(u); h=mix(prof(i/uBevSeg,pk),prof(min(i+1.0,uBevSeg)/uBevSeg,pk),u-i); } else h=prof(t,pk); h*=uBev.z; } o=vec4(vec3(clamp(0.5+h*0.5,0.0,1.0))*fill,fill); }`;
 let SHP=null;
 function shapeProg(){if(!SHP)SHP=program(FS_SHAPE);return SHP;}
 function shapeUniforms(s){const x0=Math.min(s.x0,s.x1),x1=Math.max(s.x0,s.x1),y0=Math.min(s.y0,s.y1),y1=Math.max(s.y0,s.y1),B=s.bevel||{};
   return {uC:[(x0+x1)/2,(y0+y1)/2],uH:[Math.max(.5,(x1-x0)/2),Math.max(.5,(y1-y0)/2)],uRot:(s.rot||0)*Math.PI/180,uKind:{int:Math.max(0,SHAPE_KINDS.findIndex(k=>k[0]===s.kind))},
     uCorner:s.corner||0,uSides:Math.max(3,s.sides||5),uInner:s.inner==null?.5:s.inner,uA:[s.x0,s.y0],uB:[s.x1,s.y1],uW:Math.max(1,s.lineW||1),uHead:s.head||3,
     uFill:s.fill||[1,1,1],uLine:s.line||[0,0,0],uLineW:s.lineW||0,uFillOn:lineKind(s.kind)?true:s.fillOn!==false,uLineOn:!lineKind(s.kind)&&!!s.lineOn,
-    uBev:[B.on?1:0,B.size||0,(B.depth==null?.6:B.depth)*(B.dir==='down'?-1:1),Math.max(0,BEVEL_PROFILES.findIndex(p=>p[0]===B.profile))]};}
+    ...shapePts(s),uBevSeg:B.seg||0,
+    uBev:[B.on?1:0,B.full?shapeInR(s):(B.size||0),(B.depth==null?.6:B.depth)*(B.dir==='down'?-1:1),Math.max(0,BEVEL_PROFILES.findIndex(p=>p[0]===B.profile))]};}
+/* the outline as points in the shape's own space (centred, unrotated, pixels), with bevelled corners */
+function shapeOutline(s){const x0=Math.min(s.x0,s.x1),x1=Math.max(s.x0,s.x1),y0=Math.min(s.y0,s.y1),y1=Math.max(s.y0,s.y1),hx=Math.max(.5,(x1-x0)/2),hy=Math.max(.5,(y1-y0)/2);
+  if(s.kind==='rect')return [[-hx,-hy],[hx,-hy],[hx,hy],[-hx,hy]];
+  const n=Math.max(3,Math.round(s.sides||5)),an=Math.PI/n,at=(th,r)=>[hx*r*Math.sin(th),-hy*r*Math.cos(th)],P=[];
+  if(s.kind==='poly'){for(let k=0;k<n;k++)P.push(at(an+2*an*k,1));return P;}
+  /* star: tips on the unit circle, inner corners where the star's own distance field crosses zero */
+  const ri=starInner(n,s.inner==null?.5:s.inner);for(let k=0;k<n;k++){P.push(at(2*an*k,ri));P.push(at(an+2*an*k,1));}return P;}
+function starInner(n,inner){const an=Math.PI/n,m=clamp(2+(n-2)*inner,2,n),en=Math.PI/m,acs=[Math.cos(an),Math.sin(an)],ecs=[Math.cos(en),Math.sin(en)];
+  const sd=t=>{let px=t,py=0;/* along the middle of a sector (the folded frame's x axis) */px-=acs[0];py-=acs[1];const k=clamp(-(px*ecs[0]+py*ecs[1]),0,acs[1]/ecs[1]);px+=ecs[0]*k;py+=ecs[1]*k;return Math.hypot(px,py)*Math.sign(px);};
+  let a=0,b=1;for(let i=0;i<40;i++){const c=(a+b)/2;if(sd(c)<0)a=c;else b=c;}return (a+b)/2;}
+function shapePts(s){const cb=s.cb||{};if(!shpCornered(s.kind)||!(cb.size>0))return {uNPts:{int:0}};
+  const P=shapeOutline(s),N=P.length,seg=clamp(Math.round(cb.seg||1),1,Math.max(1,Math.floor(SHP_MAXPTS/N)-1)),out=[];
+  for(let i=0;i<N;i++){const V=P[i],A0=P[(i+N-1)%N],B0=P[(i+1)%N],la=Math.hypot(A0[0]-V[0],A0[1]-V[1]),lb=Math.hypot(B0[0]-V[0],B0[1]-V[1]),d=Math.min(cb.size,la*.5,lb*.5);
+    const A=[V[0]+(A0[0]-V[0])/la*d,V[1]+(A0[1]-V[1])/la*d],B=[V[0]+(B0[0]-V[0])/lb*d,V[1]+(B0[1]-V[1])/lb*d];
+    for(let j=0;j<=seg;j++){const t=j/seg,u=1-t;out.push([u*u*A[0]+2*u*t*V[0]+t*t*B[0],u*u*A[1]+2*u*t*V[1]+t*t*B[1]]);}}
+  const f=new Float32Array(SHP_MAXPTS*2);out.slice(0,SHP_MAXPTS).forEach((p,i)=>{f[i*2]=p[0];f[i*2+1]=p[1];});return {uPts:{v4a:f},uNPts:{int:Math.min(out.length,SHP_MAXPTS)}};}
+/* how far in the middle of the shape is from its edge (Round the whole shape) */
+function shapeInR(s){const hx=Math.max(.5,Math.abs(s.x1-s.x0)/2),hy=Math.max(.5,Math.abs(s.y1-s.y0)/2),m=Math.min(hx,hy);
+  if(lineKind(s.kind))return Math.max(1,(s.lineW||1)/2);if(s.kind==='poly')return m*Math.cos(Math.PI/Math.max(3,s.sides||5));
+  if(s.kind==='star')return m*starInner(Math.max(3,Math.round(s.sides||5)),s.inner==null?.5:s.inner)*Math.cos(Math.PI/Math.max(3,s.sides||5));if(s.kind==='heart')return m*.5;return m;}
 /* draw the shape into the layer: base colour, and the height map when bevelled */
 function renderShape(L){const s=L.shape;if(!s)return;const P=shapeProg(),u=shapeUniforms(s),B=ensureMapTarget(L,'base');
   run(P,B,Object.assign({},u,{uOut:{int:0}}));
@@ -126,11 +158,15 @@ function buildShapePanel(box){const L=activeShape(),S=L?L.shape:ui.shape;$('#bru
   if(S.kind==='round')box.append(sl('shpCorner','Corners',()=>S.corner,(s,v)=>{s.corner=v;},0,400,1,v=>v+' px'));
   if(S.kind==='poly'||S.kind==='star')box.append(sl('shpSides',S.kind==='star'?'Points':'Sides',()=>S.sides,(s,v)=>{s.sides=v;},3,24,1,v=>String(v)));
   if(S.kind==='star')box.append(sl('shpInner','Inner radius',()=>S.inner,(s,v)=>{s.inner=v;},.1,.95,.01,pct));
+  if(shpCornered(S.kind)){const C=S.cb||(S.cb={size:0,seg:1});box.append(el('div',{class:'sub',text:'Corner bevel'}),sl('shpCbSize','Amount',()=>C.size,(s,v)=>{(s.cb||(s.cb={size:0,seg:1})).size=v;},0,300,1,v=>v?v+' px':'off'),
+    sl('shpCbSeg','Segments',()=>C.seg||1,(s,v)=>{(s.cb||(s.cb={size:0,seg:1})).seg=v;},1,24,1,v=>v===1?'1 (flat cut)':String(v)));}
   if(S.kind==='arrow')box.append(sl('shpHead','Head size',()=>S.head,(s,v)=>{s.head=v;},1.5,8,.1,v=>v.toFixed(1)+'×'));
   const B=S.bevel||(S.bevel={on:false,profile:'round',size:16,depth:.6,dir:'up'});
   box.append(el('div',{class:'sub',text:'Bevel'}),chk('shpBevel','Bevel (raises the Height map)',!!B.on,v=>{shapeSet(s=>{s.bevel.on=v;});buildBrushPanel();}));
   if(B.on){const pg=seg(BEVEL_PROFILES,B.profile,v=>shapeSet(s=>{s.bevel.profile=v;}),'Bevel profile');pg.classList.add('themeseg');
-    box.append(pg,sl('shpBevSize','Size',()=>B.size,(s,v)=>{s.bevel.size=v;},1,200,1,v=>v+' px'),sl('shpBevDepth','Depth',()=>B.depth,(s,v)=>{s.bevel.depth=v;},0,1,.01,pct),
+    box.append(pg,chk('shpBevFull','Round the whole shape (a dome, not just the edges)',!!B.full,v=>{shapeSet(s=>{s.bevel.full=v;});buildBrushPanel();}),
+      ...(B.full?[]:[sl('shpBevSize','Size',()=>B.size,(s,v)=>{s.bevel.size=v;},1,400,1,v=>v+' px')]),
+      sl('shpBevSeg','Segments',()=>B.seg||0,(s,v)=>{s.bevel.seg=v;},0,24,1,v=>v?v+' (in steps)':'smooth'),sl('shpBevDepth','Depth',()=>B.depth,(s,v)=>{s.bevel.depth=v;},0,1,.01,pct),
       seg([['up','Raised'],['down','Sunken']],B.dir||'up',v=>shapeSet(s=>{s.bevel.dir=v;}),'Bevel direction'));}
   if(L)box.append(el('div',{class:'row wrap'},el('button',{class:'btn',id:'shpRaster',text:'Convert to pixels',onclick:()=>shapeRasterize(L)})));}
 

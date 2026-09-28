@@ -13,6 +13,12 @@ Pick the **Shape** tool (U), choose a shape in the Tool settings panel, and drag
 - **Editing:** with the shape's layer selected and the Shape tool on, drag a **corner** to resize, the **round handle** above it to turn it (Shift snaps to 15°), or **inside** it to move it. Lines and arrows have a handle at each end.
 - **Fill** and **Outline**, each with its own colour; outline thickness. Rounded has **Corners**, Polygon **Sides**, Star **Points** and **Inner radius**, Arrow **Head size**.
 - **Bevel** raises the shape in the **Height map** (so the normal and the 3D view follow). Choose a **profile**: Flat, Round, Cove, Ogee, Steps or Pillow; its **Size** (how far in from the edge it rises), **Depth**, and **Raised** or **Sunken**. The Height map is added to the document if it doesn't have one.
+  - **Segments** makes the bevel faceted, in flat steps, like a bevel with few segments in 3D software; *smooth* is a continuous curve.
+  - **Round the whole shape** makes the height rise all the way to the middle (a dome or pillow), not just along the edges.
+- **Corner bevel** (Rectangle, Polygon and Star): cuts the corners like a bevel in 3D software. **Amount** is how far along each edge the cut starts; **Segments** is how many steps it has: **1** is a flat cut, more make the corner rounder. It works together with the height bevel.
+
+  ![Corner bevels and height bevels.](images/shape-bevel.png)
+  *Left: 1-segment corner cut with a 3-segment height bevel. Middle: 10-segment rounded corners, whole shape rounded. Right: a star with softened points.*
 - A shape stays editable until you paint on it, transform it, or press **Convert to pixels**. Undo brings the editable shape back.
 
 ![The Shape tool's settings.](images/shape-panel.png)
