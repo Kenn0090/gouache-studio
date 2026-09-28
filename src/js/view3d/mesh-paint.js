@@ -15,7 +15,7 @@ void main(){ vec2 t=aT*uUVs; vec3 p=aP; if(uUseH==1&&uDisp!=0.0){ float h=textur
   vP=p; vN=aN; vec2 q=t-uShift; gl_Position=vec4(q*2.0-1.0,0.0,1.0); }`;
 /* uMir: for mirror and radial painting, the texel looks up the brush where its mirror image is (identity otherwise) */
 const FS_3DPROJ=`in vec3 vP; in vec3 vN; uniform mat4 uVPm; uniform sampler2D uStroke; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform mat4 uMir;
-uniform int uSt; uniform sampler2D uStT; uniform vec2 uStC; uniform vec2 uStHalf; uniform float uStRot; uniform vec2 uScr; uniform int uStTile;
+uniform int uSt; uniform sampler2D uStT; uniform vec2 uStC; uniform vec2 uStHalf; uniform float uStRot; uniform vec2 uScr; uniform int uStTile; uniform int uStInv;
 void main(){ vec3 q=(uMir*vec4(vP,1.0)).xyz, nq=mat3(uMir)*vN; vec4 c=uVPm*vec4(q,1.0); if(c.w<=1e-6){ o=vec4(0); return; } vec2 s=c.xy/c.w*0.5+0.5;
   if(s.x<0.0||s.y<0.0||s.x>1.0||s.y>1.0){ o=vec4(0); return; }
   ivec2 ds=textureSize(uDepth,0); float z=texelFetch(uDepth,clamp(ivec2(s*vec2(ds)),ivec2(0),ds-1),0).r; float d=length(q-uCamP);
@@ -24,7 +24,7 @@ void main(){ vec3 q=(uMir*vec4(vP,1.0)).xyz, nq=mat3(uMir)*vN; vec4 c=uVPm*vec4(
   /* stencil: 1 = mask (light parts let paint through), 2 = colour (paints the picture itself) */
   if(uSt>0){ vec2 pp=s*uScr-uStC; float cr=cos(uStRot),sr=sin(uStRot); vec2 l=vec2(cr*pp.x-sr*pp.y,sr*pp.x+cr*pp.y)/(2.0*uStHalf)+0.5;
     if(uStTile==1) l=fract(l); else if(l.x<0.0||l.y<0.0||l.x>1.0||l.y>1.0){ o=vec4(0); return; }
-    vec4 m=texture(uStT,vec2(l.x,1.0-l.y));/* pictures are stored top row first */ if(uSt==1){ t.a*=m.a>1e-5?dot(m.rgb/m.a,vec3(0.299,0.587,0.114))*m.a:0.0; } else { t.rgb=m.a>1e-5?m.rgb/m.a:vec3(0.0); t.a*=m.a; } }
+    vec4 m=texture(uStT,vec2(l.x,1.0-l.y));/* pictures are stored top row first */ if(uSt==1){ float k=m.a>1e-5?dot(m.rgb/m.a,vec3(0.299,0.587,0.114))*m.a:0.0; t.a*=uStInv==1?1.0-k:k; } else { vec3 c=m.a>1e-5?m.rgb/m.a:vec3(0.0); t.rgb=uStInv==1?1.0-c:c; t.a*=m.a; } }
   o=vec4(t.rgb,t.a*smoothstep(0.04,0.22,f)); }`;
 const VS_3DD=VS_3D.replace('out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;','out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;');
 let P3P=null;
@@ -72,7 +72,7 @@ function meshUp(e){const m=v3.mstroke;if(!m||(e&&e.pointerId!==m.id))return;v3.m
 /* round cursor showing the brush size over the model */
 function meshCursor(hit,e){let c=v3.curEl;if(!c||!c.isConnected){c=v3.curEl=el('div',{class:'v3cur'});hit.parentNode.append(c);}
   if(!e||!v3.paintOn||!MESH_TOOLS.includes(ui.tool)){c.hidden=true;return;}const r=hit.getBoundingClientRect(),pr=hit.parentNode.getBoundingClientRect(),d=Math.max(3,brush.size);
-  c.hidden=false;c.style.width=c.style.height=d+'px';c.style.transform='translate('+(e.clientX-pr.left-d/2)+'px,'+(e.clientY-pr.top-d/2)+'px)';}
+  c.hidden=false;c.style.width=c.style.height=d+'px';c.style.transform='translate('+(e.clientX-pr.left-d/2)+'px,'+(e.clientY-pr.top-d/2)+'px)';tipCursor(c,d);}
 /* ---- what is under the pointer: the model's UV there (and how far away), from a one-pixel render ---- */
 const FS_3DPICK=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform vec3 uCamP; uniform float uSet; void main(){ o=vec4(fract(vT),length(vP-uCamP),1.0+uSet); }`;
 let P3PICK=null;
@@ -144,9 +144,9 @@ function mir3Box(){const box=el('div',{class:'dlg-grid',id:'mir3Box'}),redo=()=>
    Mask: the brush paints only where the picture is light. Colour: the brush paints the picture's own colours.
    Hold S over the view: S+left-drag turns it, S+right-drag scales it, S+middle-drag moves it (like Substance Painter).
    Its place is kept relative to the view: centre (0..1 from the top left), height as a share of the view's height. */
-const st3={img:null,name:'',mode:'mask',x:.5,y:.5,scale:.6,rot:0,show:.35,tile:false,sKey:false,list:[]};
-function st3Uniforms(w,h){if(!st3.img||st3.mode==='off')return {uSt:{int:0},uStT:dummy,uStC:[0,0],uStHalf:[1,1],uStRot:0,uScr:[w,h],uStTile:{int:0}};
-  const S=st3.scale*h,a=st3.img.w/st3.img.h;return {uSt:{int:st3.mode==='colour'?2:1},uStT:st3.img.tex,uStC:[st3.x*w,(1-st3.y)*h],uStHalf:[S*a/2,S/2],uStRot:st3.rot*Math.PI/180,uScr:[w,h],uStTile:{int:st3.tile?1:0}};}
+const st3={img:null,name:'',mode:'mask',x:.5,y:.5,scale:.6,rot:0,show:.35,tile:false,invert:false,sKey:false,list:[]};
+function st3Uniforms(w,h){if(!st3.img||st3.mode==='off')return {uSt:{int:0},uStT:dummy,uStC:[0,0],uStHalf:[1,1],uStRot:0,uScr:[w,h],uStTile:{int:0},uStInv:{int:0}};
+  const S=st3.scale*h,a=st3.img.w/st3.img.h;return {uSt:{int:st3.mode==='colour'?2:1},uStT:st3.img.tex,uStC:[st3.x*w,(1-st3.y)*h],uStHalf:[S*a/2,S/2],uStRot:st3.rot*Math.PI/180,uScr:[w,h],uStTile:{int:st3.tile?1:0},uStInv:{int:st3.invert?1:0}};}
 /* the picture shown over the view (a plain canvas, so it costs the GPU nothing) */
 function st3Overlay(){const hit=document.getElementById('v3Hit');let c=st3.el;
   if(!hit||!st3.img||st3.mode==='off'||!st3.show){if(c)c.hidden=true;return;}
@@ -155,7 +155,7 @@ function st3Overlay(){const hit=document.getElementById('v3Hit');let c=st3.el;
     const id=src.getContext('2d').createImageData(st3.img.w,st3.img.h);for(let i=0;i<d.length;i+=4){const a=d[i+3]||1;id.data[i]=d[i]*255/a;id.data[i+1]=d[i+1]*255/a;id.data[i+2]=d[i+2]*255/a;id.data[i+3]=d[i+3];}
     const sx=src.getContext('2d');sx.putImageData(id,0,0);const x=c.getContext('2d');x.clearRect(0,0,w,h);x.drawImage(src,0,0,w,h);st3.drawn=st3.img;}
   const r=hit.getBoundingClientRect(),pr=hit.parentNode.getBoundingClientRect(),S=st3.scale*r.height,a=st3.img.w/st3.img.h;
-  c.hidden=false;c.style.width=S*a+'px';c.style.height=S+'px';c.style.opacity=String(st3.show);
+  c.hidden=false;c.style.width=S*a+'px';c.style.height=S+'px';c.style.opacity=String(st3.show);c.style.filter=st3.invert?'invert(1)':'';
   c.style.transform='translate('+(r.left-pr.left+st3.x*r.width-S*a/2)+'px,'+(r.top-pr.top+st3.y*r.height-S/2)+'px) rotate('+st3.rot+'deg)';}
 async function st3Load(file){let t;try{t=await fileTarget(file);}catch(e){toast('Could not read '+file.name+': '+(e.message||e));return;}setWrap(t,true);st3Use(t,file.name);}
 function st3Use(t,name){if(st3.img&&!st3.list.some(s=>s.t===st3.img))disposeTarget(st3.img);st3.img=t;st3.name=name;if(!st3.list.some(s=>s.t===t))st3.list.unshift({t,name});st3.list=st3.list.slice(0,12);
@@ -180,12 +180,15 @@ function st3Box(){const box=el('div',{class:'dlg-grid',id:'st3Box'});
     makeSlider({id:'st3Show',label:'Show',min:0,max:1,step:.05,value:st3.show,fmt:pct,onInput:v=>{st3.show=v;st3Overlay();}}).el,
     makeSlider({id:'st3Scale',label:'Size',min:.05,max:4,step:.01,value:st3.scale,fmt:pct,onInput:v=>{st3.scale=v;st3Overlay();}}).el,
     makeSlider({id:'st3Rot',label:'Angle',min:-180,max:180,step:1,value:st3.rot,fmt:v=>v+'°',onInput:v=>{st3.rot=v;st3Overlay();}}).el,
-    el('div',{class:'chips'},chk('st3Tile','Repeat',st3.tile,v=>{st3.tile=v;}),el('button',{class:'btn sm',text:'Centre',onclick:()=>{Object.assign(st3,{x:.5,y:.5,rot:0});st3Overlay();buildP3Panel();}}),el('button',{class:'btn sm',text:'Remove',onclick:st3Clear})),
+    el('div',{class:'chips'},chk('st3Inv','Invert (X)',st3.invert,v=>{st3.invert=v;st3Overlay();}),chk('st3Tile','Repeat',st3.tile,v=>{st3.tile=v;}),el('button',{class:'btn sm',text:'Centre',onclick:()=>{Object.assign(st3,{x:.5,y:.5,rot:0});st3Overlay();buildP3Panel();}}),el('button',{class:'btn sm',text:'Remove',onclick:st3Clear})),
     el('p',{class:'note',text:'Hold S over the view: S+left-drag turns the stencil, S+right-drag scales it, S+middle-drag moves it.'}));}
   return box;}
 /* S held over the 3D view moves the stencil instead of choosing the Smudge tool */
 window.addEventListener('keydown',e=>{if((e.key==='s'||e.key==='S')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&st3.img&&v3.on&&v3.hover&&!isTypingTarget(e.target)){e.preventDefault();e.stopImmediatePropagation();st3.sKey=true;}},true);
 window.addEventListener('keyup',e=>{if(e.key==='s'||e.key==='S')st3.sKey=false;},true);
+/* X over the 3D view with a stencil: swap black and white (elsewhere X still swaps the colours) */
+function st3Invert(){st3.invert=!st3.invert;st3Overlay();const c=document.getElementById('st3Inv');if(c)c.checked=st3.invert;toast(st3.invert?'Stencil inverted.':'Stencil back to normal.');}
+window.addEventListener('keydown',e=>{if((e.key==='x'||e.key==='X')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&st3.img&&st3.mode!=='off'&&v3.on&&v3.hover&&!isTypingTarget(e.target)){e.preventDefault();e.stopImmediatePropagation();st3Invert();}},true);
 function st3Drag(d,e,hit){const r=hit.getBoundingClientRect(),dx=e.clientX-d.x,dy=e.clientY-d.y;
   if(d.how==='stmove'){st3.x+=dx/r.width;st3.y+=dy/r.height;}
   else if(d.how==='stscale')st3.scale=clamp(st3.scale*Math.exp((dx-dy)*.005),.02,8);

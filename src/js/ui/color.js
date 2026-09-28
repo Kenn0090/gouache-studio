@@ -28,12 +28,17 @@ function refreshColor(){
   $('#hsvOut').textContent='H'+Math.round(ui.hsv[0])+' S'+Math.round(ui.hsv[1]*100)+' V'+Math.round(ui.hsv[2]*100);
   /* the shade strip stays put while you step through it (click, or Left/Right arrow keys); it starts again from the colour you pick elsewhere */
   const sh=ui.shade;if(!sh||toHex(shadeAt(sh,sh.i))!==fh||toHex(sh.b)!==bh)ui.shade={a:ui.fg.slice(),b:ui.bg.slice(),i:0};
-  const S=ui.shade,mix=$('#mix');mix.replaceChildren();
-  for(let i=0;i<9;i++){const c=shadeAt(S,i),hx=toHex(c);
-    mix.append(el('button',{class:i===S.i?'on':'',title:hx+' ('+Math.round(i/8*100)+'% background). Left/Right arrow keys step through the shades','aria-label':'Mixed color '+hx,'aria-pressed':String(i===S.i),style:'background:'+hx,onclick:()=>shadeStep(i-S.i)}));}
+  /* the strip shows nine shades around the current one: past either end it keeps going, lighter or darker in the same colour */
+  const S=ui.shade,mix=$('#mix');mix.replaceChildren();const o=S.i<0?S.i:S.i>8?S.i-8:0;
+  for(let k=0;k<9;k++){const i=o+k,c=shadeAt(S,i),hx=toHex(c);
+    mix.append(el('button',{class:i===S.i?'on':'',title:hx+(i<0||i>8?' (beyond the strip)':' ('+Math.round(i/8*100)+'% background)')+'. Left/Right arrow keys step through the shades','aria-label':'Mixed color '+hx,'aria-pressed':String(i===S.i),style:'background:'+hx,onclick:()=>shadeStep(i-S.i)}));}
 }
-function shadeAt(S,i){const a=toOk(S.a),b=toOk(S.b),t=i/8;return fromOk([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]);}
-function shadeStep(d){const S=ui.shade;if(!S)return;const i=clamp(S.i+d,0,8);if(i===S.i)return;S.i=i;const keep=ui.bg;setFG(shadeAt(S,i));ui.bg=keep;refreshColor();}
+function shadeAt(S,i){const a=toOk(S.a),b=toOk(S.b);if(i>=0&&i<=8){const t=i/8;return fromOk([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]);}
+  /* beyond an end: that end's colour, lightness moving on in the same direction (steps as on the strip), colourfulness easing off near black and white */
+  const e=i>8?b:a,o=i>8?a:b,n=i>8?i-8:-i,dl=e[0]-o[0],s=Math.abs(dl)>1e-4?Math.sign(dl):(i>8?1:-1),step=Math.max(.035,Math.abs(dl)/8),L=clamp(e[0]+s*step*n,0,1);
+  const room=s>0?(1-L)/Math.max(1e-4,1-e[0]):L/Math.max(1e-4,e[0]),k=clamp(room,0,1);return fromOk([L,e[1]*k,e[2]*k]);}
+function shadeStep(d){const S=ui.shade;if(!S)return;const i=clamp(S.i+d,-40,48);if(i===S.i)return;const c=shadeAt(S,i);if(toHex(c)===toHex(shadeAt(S,S.i)))return;/* already black or white */
+  S.i=i;const keep=ui.bg;setFG(c);ui.bg=keep;refreshColor();}
 function renderRecent(){const r=$('#recent');r.replaceChildren();if(!ui.recent.length){r.append(el('span',{class:'none',text:'Colors you paint with appear here'}));return;}
   for(const hx of ui.recent)r.append(el('button',{style:'background:'+hx,title:hx,'aria-label':'Use '+hx,onclick:()=>setFG(fromHex(hx))}));}
 function dragOn(c,fn){c.addEventListener('pointerdown',e=>{c.setPointerCapture(e.pointerId);fn(e);const mv=ev=>fn(ev);const up=()=>{c.removeEventListener('pointermove',mv);c.removeEventListener('pointerup',up);c.removeEventListener('pointercancel',up);};c.addEventListener('pointermove',mv);c.addEventListener('pointerup',up);c.addEventListener('pointercancel',up);});}

@@ -80,6 +80,19 @@ Open items Kenn has seen (he also has **more features to add**, so ask him first
 7. Things only Kenn can check on his machine: skew fixes on a real bake, the Convert tab's default strengths on real photos.
 8. The installer isn't code-signed (Windows shows a warning); a certificate is his call.
 
+## After 0.21: "work like Substance Painter" round (agreed; before the looks)
+Kenn's requests and answers:
+- Bake → 3D Paint: bake per material (one bake per texture set) and "Send to 3D Paint" sends the low-poly model plus ticked maps to their own sets. Sent bakes become the set's **mesh maps** (like Painter; used by masks/generators/smart materials), optionally also as layers.
+- Delete any texture set (with confirm).
+- Alt-click a layer mask: view the mask on the model unlit (black/white), plus a **mask tools bar** (paint, fill, the model selections object/material/UV island/face/loop, invert, later generators); Alt-click again or Esc leaves.
+- Entering 3D Paint switches to the **Texturing** workspace; Paint is the regular Photoshop-style 2D app. Paint gets **Send to 3D Paint**: the image is flattened (nothing live) into a new layer in the active texture set, which can then be moved/scaled.
+- Shade strip: arrow keys **keep going past the ends** (lighter/darker in the same colour).
+- Stencil **invert** (button and **X key**).
+- **Brush tip outline cursor** (Photoshop-style tip shape, canvas and model), a Preferences option.
+- **Material editor** + its own **Materials tab**: base colour, roughness, metallic, normal, height, emissive, opacity; each colour/slider or image with tiling; materials saved for future projects (export/import files); a material stays **live** on its layer (edit later, channels update). A material's **height makes bump/normal detail** (height feeds the normal, with a strength slider).
+- Chosen Substance features: a) triplanar projection, b) bake mesh maps inside 3D Paint per set, c) generators/smart masks (Mask Builder), d) effects in masks (levels, blur, noise), e) smart materials, f) engine export presets (Unreal/Unity/Godot, all sets), g) lazy mouse for 3D, i) History panel, j) anchor points. (Not h, particle brushes.)
+- Order: this round first ("make sure it feels good"): **0.22** = sets delete, mask view/tools, Texturing workspace, Send to 3D Paint, shade past ends, stencil invert/X, tip outline, per-material bake + send, material editor/tab, triplanar, export presets, lazy mouse, History panel. **0.23** = generators/smart masks (Mask Builder), mask effects, smart materials, anchor points, baking inside 3D Paint. Then the looks (HDRIs, screenshot, ray-traced render, turntable, high-poly in Bake, C cycles maps).
+
 ## 0.20 3D Paint: agreed with Kenn (after 0.19)
 Answers to the design questions:
 - **3D Paint gets its own canvas** (its own document, separate from Paint, like the Brush tab has its own).

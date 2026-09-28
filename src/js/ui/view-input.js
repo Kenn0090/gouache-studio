@@ -12,7 +12,21 @@ $('#tileBtn').addEventListener('click',toggleTile);
 
 const bc=$('#brushCursor');let lastPos=null,spaceDown=false,ptr=null;
 function refreshCursor(){if(!lastPos){bc.hidden=true;return;}const paint=['brush','erase','smudge','dodge','burn'].includes(ui.tool)&&!spaceDown&&!(ptr&&ptr.mode==='pan');
-  if(!paint){bc.hidden=true;return;}const d=Math.max(3,brush.size*view.zoom);bc.hidden=false;bc.style.width=d+'px';bc.style.height=d+'px';bc.style.transform='translate('+(lastPos[0]-d/2)+'px,'+(lastPos[1]-d/2)+'px)';}
+  if(!paint){bc.hidden=true;return;}const d=Math.max(3,brush.size*view.zoom);bc.hidden=false;bc.style.width=d+'px';bc.style.height=d+'px';tipCursor(bc,d);bc.style.transform='translate('+(lastPos[0]-d/2)+'px,'+(lastPos[1]-d/2)+'px)';}
+/* Preferences › Show the brush tip's shape as the cursor: the tip's outline, at the brush size, turned and squashed like the dabs */
+const tipOutlineCache=new Map();
+function tipOutline(tip,d){const n=clamp(Math.round(d/4)*4,8,512),key=tip.id+':'+n;let c=tipOutlineCache.get(key);if(c)return c;
+  const a=tip.w/tip.h,W=a>=1?n:Math.max(2,Math.round(n*a)),H=a>=1?Math.max(2,Math.round(n/a)):n;
+  c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');x.drawImage(tip.canvas,0,0,W,H);const A=x.getImageData(0,0,W,H).data,out=x.createImageData(W,H),O=out.data;
+  const on=(i,j)=>i>=0&&j>=0&&i<W&&j<H&&A[(j*W+i)*4+3]>=110;
+  for(let j=0;j<H;j++)for(let i=0;i<W;i++){if(!on(i,j)||(on(i-1,j)&&on(i+1,j)&&on(i,j-1)&&on(i,j+1)))continue;const p=(j*W+i)*4;O[p]=O[p+1]=O[p+2]=O[p+3]=255;}
+  x.putImageData(out,0,0);if(tipOutlineCache.size>32)tipOutlineCache.clear();tipOutlineCache.set(key,c);return c;}
+function tipCursor(elm,d){const t=brush.tip,on=!!(prefs.tipCursor&&t&&t.canvas);elm.classList.toggle('tipcur',on);
+  if(!on){if(elm.firstChild)elm.replaceChildren();return;}
+  const src=tipOutline(t,d);let c=elm.firstChild;if(!c||c.tagName!=='CANVAS'){c=document.createElement('canvas');elm.replaceChildren(c);}
+  if(c._src!==src){c.width=src.width;c.height=src.height;c.getContext('2d').drawImage(src,0,0);c._src=src;}
+  const a=t.w/t.h;c.style.width=(a>=1?d:d*a)+'px';c.style.height=(a>=1?d/a:d)+'px';
+  c.style.transform='translate(-50%,-50%) rotate('+(brush.angle||0)+'deg) scale('+(brush.flipX?-1:1)+','+(brush.roundness||1)*(brush.flipY?-1:1)+')';}
 function pressureOf(e){return e.pointerType==='pen'?Math.max(.02,e.pressure||0):1;}
 function showPressure(e){const pb=$('#pBar'),pv=$('#pVal');if(e.pointerType==='pen'){pb.style.width=Math.round((e.pressure||0)*100)+'%';pv.textContent=(e.pressure||0).toFixed(2)+' pen';}else{pb.style.width=(e.buttons?100:0)+'%';pv.textContent=e.pointerType==='touch'?'touch':'mouse';}}
 /* brush settings for a stroke on edit target et (null, with a message, if it can't be painted) */

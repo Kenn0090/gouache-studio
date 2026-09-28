@@ -176,7 +176,7 @@ function dkDragEnd(){const d=dk.drag;dk.drag=null;if(!d||!d.on)return;d.ghost.re
   dkMove(d.id,d.to);}
 /* ---- workspaces ---- */
 function wsList(){return [...Object.keys(WS_PRESETS).map(k=>[k,WS_PRESETS[k].name]),...Object.keys(dk.custom).map(k=>[k,dk.custom[k].name||k])];}
-function setWorkspace(ws){if(!WS_PRESETS[ws]&&!dk.custom[ws])return;dk.ws=ws;dk.flyout=null;dkApply(dk.saved[ws]?dkClone(dk.saved[ws]):dkPreset(ws));syncWsSel();toast('Workspace: '+(WS_PRESETS[ws]||dk.custom[ws]).name+'.');}
+function setWorkspace(ws,quiet){if(!WS_PRESETS[ws]&&!dk.custom[ws])return;dk.ws=ws;dk.flyout=null;dkApply(dk.saved[ws]?dkClone(dk.saved[ws]):dkPreset(ws));syncWsSel();if(!quiet)toast('Workspace: '+(WS_PRESETS[ws]||dk.custom[ws]).name+'.');}
 function resetWorkspace(){delete dk.saved[dk.ws];dk.flyout=null;dkApply(dkPreset(dk.ws));toast('Workspace reset.');}
 function saveWorkspaceAs(){const inp=el('input',{type:'text',value:'My workspace','aria-label':'Name'});
   openDialog({title:'Save workspace',body:el('div',{class:'dlg-grid'},el('p',{class:'note',text:'Saves where every panel is, the toolbar and the options bar.'}),inp),okLabel:'Save',onOk(){const n=inp.value.trim();if(!n)return false;const id='c_'+n.toLowerCase().replace(/[^a-z0-9]+/g,'_');
