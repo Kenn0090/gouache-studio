@@ -142,12 +142,13 @@ function sel3Grow(m,t,kind,hitPos,R){const inR=x=>x>=R.start&&x<R.start+R.count,
 const VS_SEL3=`#version 300 es
 layout(location=2) in vec2 aT; uniform vec2 uShift; uniform float uUVs; void main(){ gl_Position=vec4((aT*uUVs-uShift)*2.0-1.0,0.0,1.0); }`;
 let P_SEL3=null;
-function sel3Draw(m,tris){if(!P_SEL3)P_SEL3=prog3(VS_SEL3,`void main(){ o=vec4(1.0); }`);const g=v3.gpu,t=acquireS();clearTarget(t,[0,0,0,1]);
+/* into=[target, value]: draw into that image (a mask) in that grey, without clearing it */
+function sel3Draw(m,tris,into){if(!P_SEL3)P_SEL3=prog3(VS_SEL3,`uniform float uV; void main(){ o=vec4(vec3(uV),1.0); }`);const g=v3.gpu,t=into?into[0]:acquireS();if(!into)clearTarget(t,[0,0,0,1]);const val=into?into[1]:1;
   const tri=new Uint32Array(tris.length*3),ln=new Uint32Array(tris.length*6);tris.forEach((x,i)=>{for(let c=0;c<3;c++){tri[i*3+c]=m.idx[x*3+c];ln[i*6+c*2]=m.idx[x*3+c];ln[i*6+c*2+1]=m.idx[x*3+(c+1)%3];}});
   const va=gl.createVertexArray();gl.bindVertexArray(va);gl.bindBuffer(gl.ARRAY_BUFFER,g.vb);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,2,gl.FLOAT,false,48,24);
   const eb=gl.createBuffer(),lb=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,eb);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,tri,gl.STREAM_DRAW);
   const uvs=v3s().uvs||1;bindTarget(t);gl.disable(gl.BLEND);
-  for(let j=0;j<uvs;j++)for(let i=0;i<uvs;i++){useProg(P_SEL3,{uShift:[i,j],uUVs:uvs});bindTarget(t);gl.bindVertexArray(va);
+  for(let j=0;j<uvs;j++)for(let i=0;i<uvs;i++){useProg(P_SEL3,{uShift:[i,j],uUVs:uvs,uV:val});bindTarget(t);gl.bindVertexArray(va);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,eb);gl.drawElements(gl.TRIANGLES,tri.length,gl.UNSIGNED_INT,0);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,lb);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,ln,gl.STREAM_DRAW);gl.drawElements(gl.LINES,ln.length,gl.UNSIGNED_INT,0);}
   gl.bindVertexArray(vao);gl.deleteVertexArray(va);gl.deleteBuffer(eb);gl.deleteBuffer(lb);return t;}
@@ -158,6 +159,8 @@ function p3SelectAt(hit,e){if(sel3.mode==='off'||!v3.mesh||(ui.mode!=='p3d'&&ui.
   /* faces, loops and islands are found on the model as loaded (the view may show it subdivided), then mapped back */
   const O=m.src||m,f=m.subF||1,RO={start:R.start/f,count:R.count/f},hitPos=f>1?p.pos:p.pos;
   const own=sel3Grow(O,Math.floor(t/f),sel3.mode,hitPos,RO),tris=[];for(const x of own)for(let j=0;j<f;j++)tris.push(x*f+j);
+  /* in mask view the part goes straight into the mask: white shows, Ctrl+double-click hides (black) */
+  if(maskViewTex()){const et=editTarget();if(et&&et.isMask){const v=(e.ctrlKey||e.metaKey)?0:1;fullRecord(et.L,v?'Show part in mask':'Hide part in mask',()=>sel3Draw(m,tris,[et.target,v]));v3.dirty=true;requestRender(true);return true;}}
   const mode=e.shiftKey?'add':(e.ctrlKey||e.metaKey)?'sub':'new',img=sel3Draw(m,tris);
   applyShape(img,mode,fullRect(),'Select '+SEL3_KINDS.find(k=>k[0]===sel3.mode)[1].toLowerCase());release(img);v3.dirty=true;requestRender(true);return true;}
 function sel3Box(){const pick=el('select',{id:'sel3Kind','aria-label':'Double-click on the model selects'},...SEL3_KINDS.map(([k,l])=>el('option',{value:k,text:k==='off'?'Off (double-click reframes)':l})));pick.value=sel3.mode;pick.onchange=()=>{sel3.mode=pick.value;if(ui.mode==='p3d')buildP3Panel();};
@@ -177,3 +180,44 @@ const P3_MATERIALS=[
   ['Fabric',{base:{c:[.55,.5,.42]},rough:{v:.95},metal:{v:0}}],['Dirt',{base:{c:[.3,.24,.17]},rough:{v:.95},metal:{v:0}}]];
 function p3MatBox(){return el('div',{class:'p3mats'},...P3_MATERIALS.map(([n,m])=>{const c=m.base.c,sw=el('span',{class:'p3sw',style:'background:'+toHex(c)+(m.metal.v>.5?';background-image:linear-gradient(135deg,rgba(255,255,255,.45),transparent 55%)':'')});
   return el('button',{class:'p3mat',title:n+': roughness '+Math.round(m.rough.v*100)+'%, metallic '+Math.round(m.metal.v*100)+'%. Adds a fill layer (in the selection, if there is one)',onclick:()=>cmdNewFillLayer({name:n,maps:JSON.parse(JSON.stringify(m))})},sw,el('span',{text:n}));}));}
+
+/* ---- mask mode (Alt+click a layer's mask, like Substance Painter) ----
+   The mask shows on the model in black and white, unlit, and on the flat canvas; a bar offers what you do to
+   masks: fill white or black, invert, and the model selections (double-click the model: that part turns white,
+   Ctrl+double-click turns it black). Painting paints the mask. Done, Esc or Alt+click again goes back. */
+function maskViewTex(){const A=doc.active;if(!ui.viewMask||!A||!A.mask)return null;const v=viewSource();return v&&v.mask?v.t:A.mask.target;}
+const FS_MASKOP=`uniform sampler2D uSrc; uniform sampler2D uSel; uniform int uOp; uniform float uV; uniform int uUseSel;
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy); float m=texelFetch(uSrc,p,0).r, k=uUseSel==1?texelFetch(uSel,p,0).r:1.0; float n=uOp==1?1.0-m:uV; o=vec4(vec3(mix(m,n,k)),1.0); }`;
+let P_MASKOP=null;
+function maskOp(op,v){const et=editTarget();if(!et||!et.isMask){toast('Select a mask first (click its thumbnail).');return;}if(!P_MASKOP)P_MASKOP=program(FS_MASKOP);
+  const T=et.target,useSel=sel.active&&!sel.quick;
+  fullRecord(et.L,op===1?'Invert mask':v?'Fill mask white':'Fill mask black',()=>{const tmp=acquireD(T.depth);blit(T,tmp,0,0,doc.w,doc.h,0,0);run(P_MASKOP,T,{uSrc:tmp.tex,uSel:useSel?sel.t.tex:dummy,uOp:{int:op},uV:v||0,uUseSel:{int:useSel?1:0}});release(tmp);});
+  v3.dirty=true;requestRender(true);}
+function maskModeExit(){const A=doc.active;ui.viewMask=false;if(A&&A.mask)A.editMask=false;renderLayers();requestRender(true);v3.dirty=true;}
+function maskBarSync(){let bar=document.getElementById('maskBar');const on=!!(ui.viewMask&&doc.active&&doc.active.mask&&ui.mode!=='anim');
+  if(!on){if(bar)bar.hidden=true;return;}
+  if(!bar){bar=el('div',{id:'maskBar',class:'maskbar',role:'toolbar','aria-label':'Mask'});$('#work').append(bar);}
+  const kinds=SEL3_KINDS.filter(k=>k[0]!=='off'),pick=el('select',{id:'maskSel','aria-label':'Double-click the model to fill'},el('option',{value:'off',text:'Double-click: off'}),...kinds.map(([k,l])=>el('option',{value:k,text:'Double-click: '+l})));
+  pick.value=sel3.mode;pick.onchange=()=>{sel3.mode=pick.value;if(ui.mode==='p3d')buildP3Panel();};
+  bar.replaceChildren(el('span',{class:'maskbar-t',text:'Mask of “'+doc.active.name+'”'}),
+    el('button',{class:'btn sm',id:'maskWhite',text:'Fill white',title:'Show everything (or the selection)',onclick:()=>maskOp(0,1)}),
+    el('button',{class:'btn sm',id:'maskBlack',text:'Fill black',title:'Hide everything (or the selection)',onclick:()=>maskOp(0,0)}),
+    el('button',{class:'btn sm',id:'maskInv',text:'Invert',onclick:()=>maskOp(1)}),pick,
+    el('span',{class:'maskbar-n',text:'Paint white to show, black to hide. Ctrl+double-click hides a part.'}),
+    el('button',{class:'btn sm primary',id:'maskDone',text:'Done',title:'Back to the material (Esc)',onclick:maskModeExit}));
+  bar.hidden=false;}
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&ui.viewMask&&modal.hidden&&!isTypingTarget(e.target)&&!(typeof xf!=='undefined'&&xf)&&!selLive){e.preventDefault();e.stopImmediatePropagation();maskModeExit();}},true);
+
+/* ---- Paint › Send to 3D Paint: the painting, flattened (every map it shares with 3D Paint), as a new layer of the
+   active texture set, ready to move and scale with Free transform. Nothing stays live: it is plain pixels. */
+function sendToP3(){if(ui.mode!=='paint'){toast('Send to 3D Paint works from the Paint tab.');return;}if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
+  const maps=doc.maps.filter(k=>P3_MAPS.includes(k)),R=paintRoot().children,imgs={},name=doc.name||'Painting';
+  for(const k of maps){const t=renderNodesMap(R,k),c=makeTarget(doc.w,doc.h,t.depth,false);blit(t,c,0,0,doc.w,doc.h,0,0);release(t);imgs[k]=c;}
+  if(!setMode('p3d',true)){for(const k in imgs)disposeTarget(imgs[k]);return;}
+  const L=newLayerObj(name+' (from Paint)');doc.count--;
+  for(const k in imgs){if(!doc.maps.includes(k)){disposeTarget(imgs[k]);continue;}fitInto(imgs[k],ensureMapTarget(L,k));disposeTarget(imgs[k]);}
+  syncTargets();structOp('Send from Paint',()=>{const [p,i]=insertPoint();insertNode(L,p,i);selectOnly(L);});changed(L);renderLayers();
+  toast('“'+name+'” is a new layer in “'+doc.name+'”. Press Ctrl+T to move and scale it.');return L;}
+/* src into dst keeping its proportions, centred (the rest stays empty) */
+function fitInto(src,dst){const k=Math.min(dst.w/src.w,dst.h/src.h),off=[(dst.w-src.w*k)/2,(dst.h-src.h*k)/2];
+  run(P.resample,dst,{uSrc:src.tex,uOffset:off,uScale:[1/k,1/k],uTaps:{int:Math.min(8,Math.max(1,Math.ceil(1/k)))},uOutside:[0,0,0,0]});}

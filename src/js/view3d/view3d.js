@@ -108,6 +108,8 @@ const BG3={dark:[.09,.1,.115],grey:[.32,.33,.35],light:[.78,.79,.81]};
 function v3Render(F,flip){const s=v3s(),g=v3.gpu;if(!g)return;
   /* 3D Paint's per-set list is made before drawing starts (it may create textures, which binds other framebuffers) */
   const pre=ui.mode==='p3d'&&typeof p3DrawList==='function'?p3DrawList():null;
+  /* mask view (Alt+click a mask): the active layer's mask on the model, black and white, unlit */
+  const mv=ui.mode!=='bake'&&ui.mode!=='convert'&&typeof maskViewTex==='function'?maskViewTex():null;
   gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);const bg=BG3[s.bg]||BG3.dark;gl.clearColor(bg[0],bg[1],bg[2],1);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
   const eye=v3Eye(),V=m4look(eye,[v3.cam.tx,v3.cam.ty,v3.cam.tz],[0,1,0]),Pm=m4persp(s.fov*Math.PI/180,F.w/F.h,.02,100);if(flip)Pm[5]=-Pm[5];const VP=m4mul(Pm,V);
@@ -116,13 +118,14 @@ function v3Render(F,flip){const s=v3s(),g=v3.gpu;if(!g)return;
   const a=s.sunAz*Math.PI/180,e=s.sunEl*Math.PI/180;
   const common={uVP:{m4:VP},uUVs:bake?1:s.uvs,uH:T0.height&&s.disp?T0.height.tex:dummy,uDisp:s.disp*.3,uUseH:!!(!bake&&T0.height&&s.disp&&doc.maps.includes('height'))};
   /* one draw per texture set in 3D Paint (each with its own maps), else the whole model with the document's maps */
-  const list=!bake&&pre?pre:[{T:T0,start:0,count:g.count/3}];
+  let list=!bake&&pre?pre:[{T:T0,start:0,count:g.count/3}];
+  if(mv){const R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():null;list=list.map(it=>!R||it.start===R.start?{T:{base:mv},start:it.start,count:it.count,unlit:true}:it);}
   if(s.wire){gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);}gl.bindVertexArray(g.vao);
   for(const it of list){const T=it.T||{},base=T.base||null;if(!base||!it.count)continue;
     const ok=k=>T[k]&&(bake||(sg&&(k==='rough'||k==='metal'))||(k==='nfinal'?doc.maps.includes('height')||doc.maps.includes('normal'):doc.maps.includes(k)));
     const hm=(ok('rough')?1:0)|(ok('metal')?2:0)|(ok('nfinal')?4:0)|(ok('ao')?8:0)|(ok('emis')?16:0)|(ok('opac')?64:0);
     useProg(P3.mesh,Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:ok('metal')?T.metal.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,
-      uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:s.sunI,uSkyI:s.skyI,uExpo:s.expo,uUnlit:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!!s.clip}));
+      uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:s.sunI,uSkyI:s.skyI,uExpo:s.expo,uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip}));
     gl.drawElements(gl.TRIANGLES,it.count*3,gl.UNSIGNED_INT,it.start*12);}
   gl.disable(gl.POLYGON_OFFSET_FILL);
   /* the selection, tinted on the model (3D Paint, or while painting on the model) */

@@ -575,3 +575,7 @@ body.noopt .optbar{display:none}
 #brushCursor.tipcur,.v3cur.tipcur{border:0;border-radius:0;box-shadow:none}
 #brushCursor.tipcur>canvas,.v3cur.tipcur>canvas{position:absolute;left:50%;top:50%;filter:drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000)}
 .p3set .p3del{opacity:0}.p3set:hover .p3del,.p3set.on .p3del,.p3set.missing .p3del{opacity:1}
+/* mask mode bar (Alt+click a mask) */
+.maskbar{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:8;display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 24px);
+  background:color-mix(in srgb,var(--panel) 94%,transparent);border:1px solid var(--accent);border-radius:8px;padding:6px 8px;box-shadow:0 8px 22px rgba(0,0,0,.45)}
+.maskbar[hidden]{display:none}.maskbar-t{font-weight:600;color:var(--accent)}.maskbar-n{color:var(--muted);font-size:11.5px}.maskbar select{width:auto}

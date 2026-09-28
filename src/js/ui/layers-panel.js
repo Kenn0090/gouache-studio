@@ -79,7 +79,7 @@ function renderLayers(){
       inp.addEventListener('pointerdown',ev=>ev.stopPropagation());
       const done=()=>{const v=inp.value.trim();if(v&&v!==n.name){n.name=v;n.autoName=false;}renderLayers();};inp.addEventListener('blur',done);inp.addEventListener('keydown',ev=>{ev.stopPropagation();if(ev.key==='Enter')inp.blur();if(ev.key==='Escape'){inp.value=n.name;inp.blur();}});});
     list.append(row);}
-  list.append(dropLine);updateRowClasses();
+  list.append(dropLine);updateRowClasses();if(typeof maskBarSync==='function')maskBarSync();v3.dirty=true;
 }
 function renderMaskRow(){const A=doc.active,row=$('#maskRow');row.replaceChildren();if(!A)return;
   if(!A.mask){row.append(el('button',{class:'btn sm',text:'Add mask',title:'Add a white mask (reveals everything)',onclick:()=>cmdAddMask(1)}),el('button',{class:'btn sm',text:'Add hide-all mask',title:'Add a black mask (hides everything)',onclick:()=>cmdAddMask(0)}));return;}

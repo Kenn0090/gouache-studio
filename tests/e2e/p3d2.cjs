@@ -59,6 +59,28 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>{const c=document.querySelector('#brushCursor');return c.classList.contains('tipcur')&&!!c.querySelector('canvas');}),'and on the flat canvas');
  await p.evaluate(()=>{__gs.prefs.tipCursor=false;__gs.brush.tip=null;});await p.click('#p3dBody .segb:text-is("3D")');
  await p.screenshot({path:OUT+'p3d2.png'});
+ /* ---- mask mode: Alt+click the mask shows it on the model, unlit; the bar fills it; Esc leaves ---- */
+ const px=()=>p.evaluate(()=>{const F=__gs.v3.fbo,g=document.querySelector('#gl').getContext('webgl2'),d=new Uint8Array(4);g.bindFramebuffer(g.FRAMEBUFFER,F.rf);g.readPixels(F.w>>1,F.h>>1,1,1,g.RGBA,g.UNSIGNED_BYTE,d);g.bindFramebuffer(g.FRAMEBUFFER,null);return Array.from(d);});
+ await p.evaluate(()=>{const L=__gs.allLayers().find(l=>l.name==='Paint');__gs.doc.active=L;__gs.doc.sel=new Set([L]);__gs.act('addMask');});await W(300);
+ const mt=p.locator('#layerList .lrow:has(.lname:text-is("Paint")) .mthumb');await mt.click({modifiers:['Alt']});await W(600);
+ ok(await p.evaluate(()=>__gs.ui.viewMask&&!document.querySelector('#maskBar').hidden),'Alt+click on the mask: mask mode with its bar');
+ let c=await px();ok(c[0]>240&&c[1]>240&&c[2]>240,'the model shows the (white) mask, unlit '+c);
+ await p.click('#maskBlack');await W(500);c=await px();ok(c[0]<15&&c[1]<15,'Fill black shows black on the model '+c);
+ await p.click('#maskInv');await W(500);c=await px();ok(c[0]>240,'Invert '+c);
+ await p.mouse.move(cx,cy);await p.keyboard.press('Escape');await W(400);
+ ok(await p.evaluate(()=>!__gs.ui.viewMask&&document.querySelector('#maskBar').hidden),'Esc leaves mask mode');
+ c=await px();ok(!(c[0]>240&&c[1]>240&&c[2]>240),'the model shows its material again '+c);
  await p.click('#modeTabs [data-mode=paint]');await W(600);ok(await p.evaluate(ws=>__gs.dk.ws===ws,ws0),'leaving brings the previous workspace back');
+ /* ---- Paint › Send to 3D Paint: flattened into a new layer of the active set ---- */
+ await p.evaluate(()=>{__gs.allLayers()[0].visible=false;__gs.act('addLayer');});await W();
+ await p.evaluate(()=>{const s=__gs.sel;});await setFG('#20c040');
+ await p.keyboard.press('m');const gb=await p.locator('#gl').boundingBox();
+ const v=await p.evaluate(()=>({x:__gs.view.x,y:__gs.view.y,z:__gs.view.zoom}));
+ await p.mouse.move(gb.x+v.x+40*v.z,gb.y+v.y+40*v.z);await p.mouse.down();await p.mouse.move(gb.x+v.x+140*v.z,gb.y+v.y+120*v.z,{steps:5});await p.mouse.up();await W();
+ await p.evaluate(()=>__gs.act('fill'));await p.evaluate(()=>__gs.act('deselect'));await W();
+ await p.evaluate(()=>__gs.act('sendP3'));await W(1200);
+ const sp=await p.evaluate(()=>{const L=__gs.doc.active,d=__gs.readRGBA8(__gs.mapT(L,'base')),W=__gs.doc.w;let g=0,o=0;for(let i=0;i<d.length;i+=4){if(d[i+1]>150&&d[i]<90&&d[i+3]>200)g++;else if(d[i+3]>20)o++;}return {mode:__gs.mode,name:L.name,g,o,frac:g/(W*W)};});
+ ok(sp.mode==='p3d'&&/from Paint/.test(sp.name)&&sp.g>100&&sp.o<sp.g*.1,'Send to 3D Paint: the painting arrives as a layer in 3D Paint '+JSON.stringify(sp));
+ await p.click('#modeTabs [data-mode=paint]');await W(600);
  ok(errs.length===0,'no errors '+errs.slice(0,3).join('\n'));
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();})();
