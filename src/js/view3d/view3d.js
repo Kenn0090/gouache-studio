@@ -183,7 +183,9 @@ function v3Render(F,flip){const s=v3s(),g=v3.gpu;if(!g)return;
 /* after the 2D view: refresh maps if needed, redraw the model if anything changed, copy it into the pane */
 function draw3D(){if(!v3.on)return;if(v3.pop){drawPop();return;}const pane=$('#pane3d'),d=dprNow(),w=Math.max(1,Math.round(pane.clientWidth*d)),h=cv.height,x0=cv.width-w;
   if(!v3.mesh)v3LoadModel();v3Refresh();const F=v3Targets(w,h);
-  if(v3.dirty){v3Render(F);v3.dirty=false;}
+  /* Ray traced mode: a sample more each frame until it is clean (the normal view meanwhile while it prepares) */
+  const rtr=v3.rt&&!v3Unlit()&&ui.mode!=='bake'&&ui.mode!=='convert'&&typeof rtViewDraw==='function'?rtViewDraw(F):null;
+  if(rtr===true)requestRender();else if(rtr===null&&v3.dirty){v3Render(F);v3.dirty=false;}
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.rf);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,null);gl.blitFramebuffer(0,0,w,h,x0,0,x0+w,h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
   if(v3s().spin&&!v3.drag){v3.cam.yaw+=.006;v3.dirty=true;requestRender();}}
 /* the model's UV layout over the 2D canvas */
@@ -211,7 +213,7 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   const detSel=el('select',{id:'v3Det','aria-label':'Mesh detail',title:'Mesh detail: more triangles let Height depth push the surface out finely'},...['Low','×2','×4','×8','×16','×32','×64','×128'].map((l,i)=>el('option',{value:i,text:'Detail '+l})));
   detSel.value=String(s.detail||0);detSel.onchange=()=>{s.detail=+detSel.value;v3LoadModel(true);};v3.detSel=detSel;
   const tog=(id,label,key,title)=>{const b=el('button',{class:'btn sm'+(s[key]?' on':''),id,text:label,title,'aria-pressed':String(!!s[key])});b.onclick=()=>{s[key]=!s[key];b.classList.toggle('on',s[key]);b.setAttribute('aria-pressed',String(s[key]));v3.dirty=true;requestRender();};return b;};
-  const shade=seg([['lit','Lit'],['unlit','Unlit']],v3Unlit()?'unlit':'lit',x=>{s.unlit=x==='unlit';v3.mapsDirty=true;v3.dirty=true;requestRender(true);},'Shading');
+  const shade=seg([['lit','Lit'],['unlit','Unlit'],['rt','Ray traced']],v3Unlit()?'unlit':v3.rt?'rt':'lit',x=>{s.unlit=x==='unlit';v3.rt=x==='rt';v3.mapsDirty=true;v3.dirty=true;requestRender(true);refresh3dUI();},'Shading');shade.id='v3Shade';
   const gear=el('button',{class:'btn sm',text:'Settings',id:'v3Gear','aria-expanded':'false'});
   const dock=el('button',{class:'btn sm',text:v3.pop?'Dock':'Pop out',id:'v3Pop',title:v3.pop?'Put the 3D view back beside the canvas':'Open the 3D view in its own window (for a second screen)'});dock.onclick=()=>pop3D(!v3.pop);
   const close=el('button',{class:'btn sm',text:'×',title:'Close the 3D view (F3)','aria-label':'Close the 3D view'});close.onclick=()=>{if(ui.mode==='p3d')p3SetLayout('2d');else toggle3D(false);};

@@ -30,7 +30,8 @@ function renderShading(){const box=document.getElementById('shadeBody');if(!box)
   const sl=(key,label,min,max,step,fmt)=>makeSlider({id:'sh_'+key,label,min,max,step,value:P[key],fmt:fmt||pct,onInput:v=>setP(key,v)}).el;
   const colr=(key,label)=>el('div',{class:'frow'},el('span',{text:label}),colourBtn('sh_'+key,()=>P[key],c=>setP(key,c),label));
   const who=ui.mode==='p3d'&&typeof p3!=='undefined'&&p3.sets[p3.cur]?'texture set “'+p3.sets[p3.cur].name+'”':'this document';
-  const tabs=el('div',{class:'shtabs',role:'tablist','aria-label':'Shader'},...SHADERS.map(([id,l])=>el('button',{class:'shtab'+(id===k?' on':''),role:'tab','aria-selected':String(id===k),id:'shTab_'+id,text:l,onclick:()=>{shadeEdit(d=>{d.kind=id;});renderShading();}})));
+  /* a drop-down list of the shaders (Kenn); each keeps its own settings below it */
+  const tabs=el('select',{id:'shKind',class:'shsel','aria-label':'Shader'},...SHADERS.map(([id,l])=>el('option',{value:id,text:l})));tabs.value=k;tabs.onchange=()=>{shadeEdit(d=>{d.kind=tabs.value;});renderShading();};
   const body=el('div',{class:'dlg-grid'});
   if(k==='std')body.append(el('p',{class:'note',text:'Physically based shading (metal/roughness), lit by the HDRI chosen in the 3D view’s Settings.'}));
   if(k==='skin')body.append(sl('scatter','Scatter'),sl('strength','Strength'),sl('soft','Softness'),colr('col','Subsurface colour'),

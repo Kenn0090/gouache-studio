@@ -74,6 +74,7 @@
         "bake/bake-ui",
         "bake/bake-tab",
         "view3d/p3-bake",
+        "view3d/raytrace",
         "convert/convert-tab",
         "files/abr",
         "paint/brush-tab",

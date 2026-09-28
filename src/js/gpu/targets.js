@@ -67,6 +67,7 @@ function useProg(prog,u){
   gl.useProgram(prog.p);let unit=0;
   for(const k in u){const v=u[k];let l=prog.locs[k];if(l===undefined)l=prog.locs[k]=gl.getUniformLocation(prog.p,k);if(l===null)continue;
     if(v instanceof WebGLTexture){gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,v);gl.uniform1i(l,unit);unit++;}
+    else if(v&&v.arr){gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D_ARRAY,v.arr);gl.uniform1i(l,unit);unit++;}
     else if(typeof v==='number')gl.uniform1f(l,v);
     else if(typeof v==='boolean')gl.uniform1i(l,v?1:0);
     else if(v.int!==undefined)gl.uniform1i(l,v.int);
