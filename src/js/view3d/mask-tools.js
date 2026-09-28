@@ -5,22 +5,23 @@
    inside the shape moves it (the selection follows when you let go). Fill white / Fill black then fill the
    selection, and painting stays inside it. Shift adds to the selection, Ctrl takes away. */
 const mk3={tool:null,pts:null,draw:null,move:null,el:null};
-const MK_TOOLS=[['paint','Paint'],['box','Box'],['lasso','Lasso'],['poly','Polygon']];
+const MK_TOOLS=[['paint','Paint'],['box','Box'],['lasso','Lasso'],['poly','Polygon'],['id','ID colour']];
 const maskToolsOn=()=>!!(ui.viewMask&&doc.active&&doc.active.mask&&ui.mode!=='anim'&&ui.mode!=='bake');
 const maskPaintLocked=()=>maskToolsOn()&&mk3.tool!=='paint';
-function maskTool(t){if(mk3.tool===t)t=null;mk3.tool=t;mk3.draw=null;mk3.move=null;
+function maskTool(t){if(mk3.tool===t)t=null;if(mk3.tool==='id')idSelCommit();mk3.tool=t;mk3.draw=null;mk3.move=null;
   if(t==='paint'){if(!MESH_TOOLS.includes(ui.tool))setTool('brush');if(v3.on||ui.mode==='p3d')v3.paintOn=true;}
   else if(t==='box'){ui.marquee='rect';setTool('marquee');}
   else if(t==='lasso'){ui.lasso='free';setTool('lasso');}
   else if(t==='poly'){ui.lasso='poly';setTool('lasso');}
   maskBarSync();mk3Overlay();}
-function mk3Reset(){mk3.tool=null;mk3.pts=null;mk3.draw=null;mk3.move=null;mk3Overlay();}
+function mk3Reset(){if(mk3.tool==='id')idSelCommit();mk3.tool=null;mk3.pts=null;mk3.draw=null;mk3.move=null;mk3Overlay();}
 const mk3Hint=()=>({paint:'Paint white to show, black to hide.',box:'Drag over the model to select what you see. Drag inside the box to move it. Shift adds, Ctrl removes.',
-  lasso:'Draw around what you want. Drag inside the shape to move it. Shift adds, Ctrl removes.',poly:'Click the corners; double-click (or click the first point, or press Enter) to close.'})[mk3.tool]||'Press Paint to paint the mask, or Box, Lasso or Polygon to select parts of the model.';
+  lasso:'Draw around what you want. Drag inside the shape to move it. Shift adds, Ctrl removes.',poly:'Click the corners; double-click (or click the first point, or press Enter) to close.',id:'Click the model (or the flat texture) to pick colours of the ID map.'})[mk3.tool]||'Press Paint to paint the mask, or Box, Lasso or Polygon to select parts of the model.';
 function mk3InPoly(x,y,P){let c=false;for(let i=0,j=P.length-2;i<P.length;j=i,i+=2){const xi=P[i],yi=P[i+1],xj=P[j],yj=P[j+1];if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)c=!c;}return c;}
 /* pointer on the 3D view in mask mode: true when the mask tools took it */
 function mk3Down(hit,e){
   if(!mk3.tool||mk3.tool==='paint'){if(!mk3.tool&&v3CanPaint()){toast('Press Paint in the mask bar to paint the mask.');return true;}return false;}
+  if(mk3.tool==='id'){idSelPick3(hit,e);return true;}
   if(!sel.active)mk3.pts=null;const [x,y]=meshPt(hit,e);
   if(mk3.pts&&!mk3.draw&&!e.shiftKey&&!e.ctrlKey&&!e.metaKey&&mk3InPoly(x,y,mk3.pts)){mk3.move={id:e.pointerId,x,y,pts0:mk3.pts.slice()};return true;}
   const mode=e.shiftKey?'add':(e.ctrlKey||e.metaKey)?'sub':'new';
@@ -66,3 +67,41 @@ function mk3Overlay(){const hit=document.getElementById('v3Hit');let c=mk3.el;co
 window.addEventListener('keydown',e=>{if(!mk3.draw||isTypingTarget(e.target))return;
   if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();mk3.draw=null;mk3Overlay();}
   else if(e.key==='Enter'&&mk3.draw.kind==='poly'){e.preventDefault();e.stopImmediatePropagation();mk3Finish();}},true);
+
+/* ---- ID colour selection (like Substance Painter's and Marmoset's): pick colours on the texture set's baked ID map;
+   where the ID map has one of them the mask turns white, elsewhere black. Live while you change it: more colours,
+   Tolerance (how close a colour counts), Softness (the edge) and Invert. Kept on the layer (L.idSel) so you can
+   come back to it; changes become one undo step after a pause. ---- */
+const FS_IDSEL=`uniform sampler2D uId; uniform vec3 uCols[8]; uniform int uN; uniform float uTol; uniform float uSoft; uniform int uInv; uniform vec2 uSz;
+void main(){ vec4 c=texture(uId,gl_FragCoord.xy/uSz); float m=0.0;
+  if(c.a>0.01){ vec3 q=c.rgb/c.a; float d=10.0; for(int i=0;i<8;i++){ if(i>=uN) break; d=min(d,length(q-uCols[i])); } m=1.0-smoothstep(uTol,uTol+uSoft+1e-4,d); }
+  if(uInv==1) m=1.0-m; o=vec4(vec3(m),1.0); }`;
+let P_IDSEL=null;const mkId={snap:null,L:null,timer:0};
+const idSelMap=()=>doc.meshMaps&&doc.meshMaps.id;
+function idSelOf(L){return L.idSel||(L.idSel={cols:[],tol:.08,soft:.04,inv:false});}
+function idSelRender(L){const M=idSelMap(),S=idSelOf(L);if(!M||!L.mask)return;if(!P_IDSEL)P_IDSEL=program(FS_IDSEL);
+  const cols=new Float32Array(24);S.cols.slice(0,8).forEach((c,i)=>cols.set(c,i*3));const T=L.mask.target;
+  run(P_IDSEL,T,{uId:M.tex,uSz:[T.w,T.h],uCols:{v3:cols},uN:{int:Math.min(8,S.cols.length)},uTol:S.tol,uSoft:S.soft,uInv:{int:S.inv?1:0}});
+  changed(L);v3.dirty=true;requestRender(true);}
+/* every change: remember the mask before the first one, redraw it, one undo step after a pause */
+function idSelEdit(fn){const L=doc.active;if(!L||!L.mask)return;if(!idSelMap()){toast('Bake an ID map and send it to 3D Paint first (Bake tab › ID).');return;}
+  if(mkId.L!==L||!mkId.snap){idSelCommit();mkId.L=L;mkId.snap={m:captureRegion(L.mask.target,0,0,doc.w,doc.h),s:JSON.parse(JSON.stringify(idSelOf(L)))};}
+  fn(idSelOf(L));idSelRender(L);clearTimeout(mkId.timer);mkId.timer=setTimeout(idSelCommit,700);}
+function idSelCommit(){clearTimeout(mkId.timer);const L=mkId.L,B=mkId.snap;mkId.snap=null;if(!L||!B||!L.mask)return;
+  const mo=L.mask,A={m:captureRegion(mo.target,0,0,doc.w,doc.h),s:JSON.parse(JSON.stringify(idSelOf(L)))};
+  const put=X=>{if(L.mask!==mo)return;restoreRegion(X.m,mo.target,0,0);L.idSel=JSON.parse(JSON.stringify(X.s));changed(L);v3.dirty=true;maskBarSync();};
+  pushUndo({label:'ID colour selection',refs:[L],masks:[mo],snaps:[B.m,A.m],undo(){put(B);},redo(){put(A);}});}
+/* a pick on the ID map at texture position (x, y) adds its colour */
+function idSelPickAt(x,y){const M=idSelMap();if(!M){toast('Bake an ID map and send it to 3D Paint first (Bake tab › ID).');return;}
+  const px=clamp(Math.floor(x),0,M.w-1),py=clamp(Math.floor(y),0,M.h-1),d=captureRegionNow(M,px,py,1,1).data,a=(d[3]||255)/255,c=[d[0]/255/a,d[1]/255/a,d[2]/255/a];
+  if(d[3]<3){toast('No ID colour there.');return;}
+  idSelEdit(S=>{if(!S.cols.some(q=>Math.hypot(q[0]-c[0],q[1]-c[1],q[2]-c[2])<.02)){S.cols.push(c);if(S.cols.length>8)S.cols.shift();}});maskBarSync();}
+function idSelPick3(hit,e){const p=v3PickAt(hit,e);if(!p||!p.uv){toast('Click on the model.');return;}const M=idSelMap();if(!M)return idSelPickAt(0,0);idSelPickAt(p.uv[0]*M.w,p.uv[1]*M.h);}
+/* the second row of the mask bar while ID is on */
+function idSelRow(){const L=doc.active,S=idSelOf(L),has=!!idSelMap();
+  if(!has)return el('div',{class:'maskbar-row'},el('span',{class:'maskbar-n',text:'This texture set has no baked ID map yet. Bake one in the Bake tab (ID) and press Send to 3D Paint.'}));
+  const sw=S.cols.map((c,i)=>el('button',{class:'idsw',style:'background:'+toHex(c),title:'Remove this colour','aria-label':'Remove colour '+toHex(c),onclick:()=>{idSelEdit(S=>S.cols.splice(i,1));maskBarSync();}}));
+  return el('div',{class:'maskbar-row'},el('span',{class:'maskbar-n',text:S.cols.length?'Colours:':'Click the model to pick ID colours.'}),...sw,
+    makeSlider({id:'idTol',label:'Tolerance',min:0,max:.6,step:.01,value:S.tol,fmt:pct,onInput:v=>idSelEdit(S=>{S.tol=v;})}).el,
+    makeSlider({id:'idSoft',label:'Softness',min:0,max:.3,step:.01,value:S.soft,fmt:pct,onInput:v=>idSelEdit(S=>{S.soft=v;})}).el,
+    chk('idInv','Invert',!!S.inv,v=>idSelEdit(S=>{S.inv=v;})));}

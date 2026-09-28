@@ -598,3 +598,5 @@ body.noopt .optbar{display:none}
 #matEdBody .fillrow{display:grid;gap:6px;padding:6px 0;border-top:1px solid var(--line)}#matEdBody .fillrow.off{opacity:.75}
 .v3mk{position:absolute;pointer-events:none;z-index:3}
 .v3mk{position:absolute;pointer-events:none;z-index:3}
+.maskbar-row{flex-basis:100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}.maskbar-row .srow,.maskbar-row .slider{min-width:150px}
+.idsw{width:20px;height:20px;border-radius:4px;border:1px solid var(--line);padding:0;cursor:pointer}

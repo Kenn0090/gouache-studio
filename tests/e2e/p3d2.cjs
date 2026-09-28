@@ -88,6 +88,18 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  for(const [dx,dy] of [[-50,-50],[30,-50],[30,40]]){await p.mouse.click(cx+dx,cy+dy);await W(120);}await p.keyboard.press('Enter');await W(500);
  const s3=await selInfo();ok(s3.on&&s3.n>100,'Polygon: click the corners, Enter closes '+JSON.stringify(s3));
  await p.keyboard.press('Control+d');await W(200);
+ /* ID colour: a baked ID map (left half red, right half blue); a click on the model picks its colour there */
+ await p.evaluate(()=>{const d=__gs.doc,t=__gs.makeTarget(d.w,d.h,8,false),g=document.querySelector('#gl').getContext('webgl2'),px=new Uint8Array(d.w*d.h*4);
+   for(let i=0;i<d.w*d.h;i++){const left=(i%d.w)<d.w/2;px.set(left?[255,0,0,255]:[0,0,255,255],i*4);}g.bindTexture(g.TEXTURE_2D,t.tex);g.texSubImage2D(g.TEXTURE_2D,0,0,0,d.w,d.h,g.RGBA,g.UNSIGNED_BYTE,px);d.meshMaps=Object.assign(d.meshMaps||{},{id:t});});
+ await p.click('#mk_id');await W(200);ok(await p.evaluate(()=>!!document.querySelector('#idTol')),'ID colour shows its settings row');
+ const idHalves=()=>p.evaluate(()=>{const L=__gs.allLayers().find(l=>l.name==='Paint'),d=__gs.readRGBA8(L.mask.target),W=__gs.doc.w;let l=0,r=0;for(let i=0;i<d.length;i+=4)if(d[i]>200){if((i/4)%W<W/2)l++;else r++;}return {l,r,half:W*__gs.doc.h/2};});
+ const nU=await p.evaluate(()=>__gs.hist.undo.length);
+ await p.mouse.click(cx-30,cy);await W(400);let hv=await idHalves();
+ ok((hv.l===hv.half&&hv.r===0)||(hv.r===hv.half&&hv.l===0),'picking an ID colour: that colour white, the rest black '+JSON.stringify(hv));
+ await p.click('label:has(#idInv), #idInv');await W(300);const hv2=await idHalves();ok(hv2.l===hv.r&&hv2.r===hv.l,'Invert swaps them '+JSON.stringify(hv2));
+ await W(900);ok(await p.evaluate(n=>__gs.hist.undo.length===n+1&&__gs.hist.undo.slice(-1)[0].label==='ID colour selection',nU),'one undo step for the ID selection');
+ ok(await p.evaluate(()=>{const L=__gs.allLayers().find(l=>l.name==='Paint');return L.idSel&&L.idSel.cols.length===1&&L.idSel.inv;}),'the ID selection is kept on the layer');
+ await p.click('#mk_id');await W(100);
  await p.locator('#layerList .lrow:has(.lname:text-is("Paint")) .thumbs > :first-child').click();await W(400);
  ok(await p.evaluate(()=>!__gs.ui.viewMask&&document.querySelector('#maskBar').hidden),'clicking the layer thumbnail leaves mask mode');
  await p.click('#modeTabs [data-mode=paint]');await W(600);ok(await p.evaluate(ws=>__gs.dk.ws===ws,ws0),'leaving brings the previous workspace back');

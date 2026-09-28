@@ -209,13 +209,14 @@ function maskBarSync(){let bar=document.getElementById('maskBar');const on=!!(ui
   const kinds=SEL3_KINDS.filter(k=>k[0]!=='off'),pick=el('select',{id:'maskSel','aria-label':'Double-click the model to fill'},el('option',{value:'off',text:'Double-click: off'}),...kinds.map(([k,l])=>el('option',{value:k,text:'Double-click: '+l})));
   pick.value=sel3.mode;pick.onchange=()=>{sel3.mode=pick.value;if(ui.mode==='p3d')buildP3Panel();};
   const tools=el('div',{class:'seg',role:'group','aria-label':'Mask tools'},...MK_TOOLS.map(([k,l])=>el('button',{class:'segb',id:'mk_'+k,'aria-pressed':String(mk3.tool===k),text:l,
-    title:k==='paint'?'Paint the mask (nothing paints until this is on)':'Select with a '+l.toLowerCase()+' (drag inside it to move it)',onclick:()=>maskTool(k)})));
+    title:k==='paint'?'Paint the mask (nothing paints until this is on)':k==='id'?'Pick colours of the baked ID map: they turn white in the mask':'Select with a '+l.toLowerCase()+' (drag inside it to move it)',onclick:()=>maskTool(k)})));
   bar.replaceChildren(el('span',{class:'maskbar-t',text:'Mask of “'+doc.active.name+'”'}),tools,
     el('button',{class:'btn sm',id:'maskWhite',text:'Fill white',title:'Show everything (or the selection)',onclick:()=>maskOp(0,1)}),
     el('button',{class:'btn sm',id:'maskBlack',text:'Fill black',title:'Hide everything (or the selection)',onclick:()=>maskOp(0,0)}),
     el('button',{class:'btn sm',id:'maskInv',text:'Invert',onclick:()=>maskOp(1)}),pick,
     el('span',{class:'maskbar-n',text:typeof mk3Hint==='function'?mk3Hint():''}),
     el('button',{class:'btn sm primary',id:'maskDone',text:'Done',title:'Back to the material (Esc)',onclick:maskModeExit}));
+  if(typeof mk3!=='undefined'&&mk3.tool==='id')bar.append(idSelRow());
   bar.hidden=false;}
 window.addEventListener('keydown',e=>{if(e.key==='Escape'&&ui.viewMask&&!(typeof mk3!=='undefined'&&mk3.draw)&&modal.hidden&&!isTypingTarget(e.target)&&!(typeof xf!=='undefined'&&xf)&&!selLive){e.preventDefault();e.stopImmediatePropagation();maskModeExit();}},true);
 
