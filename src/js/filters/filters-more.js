@@ -73,7 +73,7 @@ void main(){ vec2 p=gl_FragCoord.xy; vec2 w=vec2(fbm(p/28.0+uSeed),fbm(p/28.0+uS
   char:FX2_H+`uniform sampler2D uSrc; uniform float uAng; uniform float uLen; uniform float uCon; uniform float uTooth; uniform vec3 uInk; uniform vec3 uPaper; uniform float uSeed;
 void main(){ vec2 p=gl_FragCoord.xy; vec4 c=at(uSrc,p); float l=lumOf(st(c)); l=clamp((l-0.5)*(1.0+uCon)+0.5,0.0,1.0);
   vec2 q=rot(p,-uAng); float stroke=fbm(vec2(q.x/uLen,q.y/1.6)+uSeed)*0.75+fbm(vec2(q.x/(uLen*0.3),q.y/0.9)+uSeed+5.0)*0.25; float tooth=fbm(p/1.4+uSeed+9.0);
-  float m=smoothstep(l-0.18,l+0.18,stroke*0.85+tooth*uTooth*0.3); vec3 r=mix(uInk,uPaper,m); r*=1.0-(1.0-tooth)*uTooth*0.12; o=outC(r,c.a); }`,
+  float m=smoothstep(-0.16,0.16,l-(stroke*0.85+tooth*uTooth*0.3)+0.08); vec3 r=mix(uInk,uPaper,m); r*=1.0-(1.0-tooth)*uTooth*0.12; o=outC(r,c.a); }`,
   /* drift blur: streaks along a direction that wanders over the image */
   drift:FX2_H+`uniform sampler2D uSrc; uniform float uAng; uniform float uLen; uniform float uCurve; uniform float uScale; uniform float uStreak; uniform float uSeed;
 void main(){ vec2 p=gl_FragCoord.xy; float a=uAng+(fbm(p/uScale+uSeed)-0.5)*uCurve*3.1416; vec2 d=vec2(cos(a),-sin(a)); vec3 acc=vec3(0.0); float aa=0.0,wt=0.0,mx=0.0;
@@ -81,10 +81,11 @@ void main(){ vec2 p=gl_FragCoord.xy; float a=uAng+(fbm(p/uScale+uSeed)-0.5)*uCur
   vec3 r=acc/wt; float l=lumOf(r); r=r+(r/max(l,0.05))*(mx-l)*uStreak*0.6; o=outC(r,aa/wt); }`,
   /* pixels: blocks, fewer colours, dithering; or 1-bit black and white */
   pix:FX2_H+`uniform sampler2D uSrc; uniform float uPx; uniform int uMode; uniform float uLevels; uniform int uDith; uniform float uDA; uniform vec3 uInk; uniform vec3 uPaper;
-float bayer(vec2 p){ ivec2 i=ivec2(mod(p,8.0)); int b=0; for(int k=0;k<3;k++){ int x=(i.x>>(2-k))&1,y=(i.y>>(2-k))&1; b=b*4+((x^y)*2+y); } return (float(b)+0.5)/64.0; }
+/* the 8x8 ordered-dither (Bayer) matrix: the lowest bits of x and y matter most */
+float bayer(vec2 p){ ivec2 i=ivec2(mod(p,8.0)); int v=0; for(int k=0;k<3;k++){ int x=(i.x>>k)&1,y=(i.y>>k)&1; v|=(((x^y)<<1)|y)<<(2*(2-k)); } return (float(v)+0.5)/64.0; }
 void main(){ vec2 p=gl_FragCoord.xy; vec2 cell=floor(p/uPx); vec3 acc=vec3(0.0); float aa=0.0; for(int y=0;y<3;y++)for(int x=0;x<3;x++){ vec4 c=at(uSrc,(cell+(vec2(x,y)+0.5)/3.0)*uPx); acc+=st(c); aa+=c.a; }
   vec3 s=acc/9.0; float a=aa/9.0; float t=uDith==1?bayer(cell)-0.5:uDith==2?hash1(cell*1.37)-0.5:0.0;
-  if(uMode==2){ float l=lumOf(s)+t*uDA; o=outC(l>0.5?uPaper:uInk,a); return; }
+  if(uMode==2){ float l=lumOf(s)+t*uDA*0.9; o=outC(l>0.5?uPaper:uInk,a); return; }
   if(uMode==1) s=vec3(lumOf(s)); float n=max(uLevels-1.0,1.0); s=floor(s*n+0.5+t*uDA)/n; o=outC(s,a); }`,
   /* anaglyph: red from one side, cyan from the other (the shift can grow with brightness for a fake depth) */
   ana:FX2_H+`uniform sampler2D uSrc; uniform float uOff; uniform float uAng; uniform int uGrey; uniform float uDepth;
@@ -125,7 +126,7 @@ fxDef('engraving',{title:'Engraving',note:'Fine lines like an etching; thicker w
   controls:(v,upd)=>[el('div',{class:'chips'},chk('fx_cross','Cross-hatch the darkest parts',!!v.cross,x=>{v.cross=x;upd();}),chk('fx_pop','Pop art colour',!!v.pop,x=>{v.pop=x;upd();})),el('div',{class:'chips'},colIn(v,'ink','Ink',upd),colIn(v,'paper','Paper',upd))],
   render(src,dst,v){run(PX2.engr,dst,{uSrc:src.tex,uSp:v.sp,uAng:rad(v.ang),uBend:v.bend,uCross:!!v.cross,uPop:!!v.pop,uInk:v.ink,uPaper:v.paper});}});
 fxDef('riso',{title:'Riso print',note:'Two or three bright inks printed a little out of line, with grain, like a risograph.',init:()=>({n:2,i1:[1,.28,.55],i2:[.1,.35,.85],i3:[1,.85,0],paper:[.98,.96,.92],seed:Math.random()*100}),
-  defs:[{key:'str',label:'Ink strength',min:.2,max:2,step:.01,value:1.1,fmt:pct},{key:'mis',label:'Out of line',min:0,max:20,step:.5,value:3,fmt:px},{key:'gr',label:'Grain',min:0,max:1,step:.01,value:.45,fmt:pct}],
+  defs:[{key:'str',label:'Ink strength',min:.2,max:2,step:.01,value:.8,fmt:pct},{key:'mis',label:'Out of line',min:0,max:20,step:.5,value:3,fmt:px},{key:'gr',label:'Grain',min:0,max:1,step:.01,value:.45,fmt:pct}],
   controls:(v,upd)=>[modeSeg(v,'n',[[2,'Two inks'],[3,'Three inks']],upd,'Inks'),el('div',{class:'chips'},colIn(v,'i1','Ink 1',upd),colIn(v,'i2','Ink 2',upd),colIn(v,'i3','Ink 3',upd),colIn(v,'paper','Paper',upd)),el('div',{class:'frow'},seedBtn(v,upd,'New grain'))],
   render(src,dst,v){run(PX2.riso,dst,{uSrc:src.tex,uI1:v.i1,uI2:v.i2,uI3:v.i3,uN:{int:v.n},uMis:v.mis,uGrain:v.gr,uStr:v.str,uPaper:v.paper,uSeed:v.seed||1});}});
 fxDef('bwPrint',{title:'B&W print',note:'Hard black ink with rough edges on grainy paper.',init:()=>({ink:[.05,.05,.05],paper:[.95,.94,.9],seed:Math.random()*100}),

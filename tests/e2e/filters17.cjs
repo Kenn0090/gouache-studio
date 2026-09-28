@@ -38,5 +38,14 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.act('gradMap'));await W(400);ok(await p.evaluate(()=>[...document.querySelectorAll('#gmSel option')].filter(o=>/Y2K/.test(o.textContent)).length)>=5,'Y2K gradient maps');await p.click('#dlgCancel');
  // as a filter layer
  await p.evaluate(()=>__gs.act('newFx'));await W(400);const kinds=await p.evaluate(()=>document.querySelector('#dlgBody').textContent);ok(/Riso print/.test(kinds)&&/Drift blur/.test(kinds),'filter layers can use them');await p.click('#dlgCancel');
+
+ // Tile: uniform scale (one count for both directions) and separate counts
+ await p.evaluate(()=>__gs.newDoc(240,120,8,[1,1,1],'T',false));await W();
+ await p.evaluate(()=>{__gs.setTool('marquee');});const A=await scr(0,0),C=await scr(120,60);await p.mouse.move(A[0],A[1]);await p.mouse.down();await p.mouse.move(C[0],C[1],{steps:4});await p.mouse.up();
+ await setFG('#000000');await p.evaluate(()=>{__gs.act('fill');__gs.act('deselect');});await W(200);
+ await p.evaluate(()=>__gs.act('tile_fx'));await W(400);ok(await p.isChecked('#fx_tuni'),'Tile: uniform scale is on for a new tile');
+ await p.evaluate(()=>{const s=document.querySelector('#fx_nx');s.value=3;s.dispatchEvent(new Event('input'));});await W(200);await p.click('#dlgOk');await W(300);
+ const cnt=await p.evaluate(()=>{const d=__gs.readRGBA8(__gs.doc.active.target),W=__gs.doc.w;const row=y=>{let n=0,prev=255;for(let x=0;x<W;x++){const v=d[(y*W+x)*4];if(v<60&&prev>=60)n++;prev=v;}return n;};let col=0,prev=255;for(let y=0;y<__gs.doc.h;y++){const v=d[(y*W+5)*4];if(v<60&&prev>=60)col++;prev=v;}return [row(5),col];});
+ ok(cnt[0]===3&&cnt[1]===3,'Tiles 3 with uniform scale: 3 across and 3 down '+cnt);
  ok(!errs.length,'no errors '+errs.join('\n'));
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();})();

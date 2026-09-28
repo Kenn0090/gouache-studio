@@ -53,3 +53,4 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 | 11 | Brush tab | 0.14.1 |
 | 12 | Specular/Gloss workflow | 0.15 |
 | 13 | New layout: options bar, tabbed dock, floating panels, workspaces, Filter Gallery | 0.16 |
+| 14 | 15 new filters (glass, print, photo and artistic looks), Y2K gradient maps | 0.17 |

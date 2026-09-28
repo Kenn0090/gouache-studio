@@ -39,7 +39,7 @@ Only the Normal map is in colour. Every other converted map is grey and lands in
   - works per channel;
   - presets: S-curve, lighter, darker, invert, flatten.
 - **Hue / Saturation**, with **Colorize**.
-- **Gradient map:** each brightness replaced by a colour from a gradient.
+- **Gradient map:** each brightness replaced by a colour from a gradient, including six **Y2K** gradients (chrome, cyber pink, holo, lime, ice, sunset).
 - **Invert** (Ctrl+I), **Desaturate** (Ctrl+Shift+U), **Threshold**, **Posterize**.
 - **Quantize:** reduce to 2–64 colours picked from the image, with optional dithering.
 
@@ -54,18 +54,36 @@ Only the Normal map is in colour. Every other converted map is grey and lands in
   - Radial, which spins around or zooms towards a centre you choose;
   - **Lens blur:** out-of-focus camera look, where bright spots bloom into round or six-sided highlights;
   - Surface blur (smooths but keeps edges);
-  - Motion blur.
+  - Motion blur;
+  - **Drift blur:** streaky motion blur whose direction wanders across the image (**Drift** and **Drift size**), with **Streaks** that let bright parts trail.
 - **Sharpen**, **High pass** (keep only fine detail; set the layer to Overlay to sharpen).
 - **Artistic:**
   - **Oil paint:** calm, flat dabs;
   - **Painterly:** strokes that follow the shapes;
   - **Cutout:** a few flat colours with simplified edges;
-  - **Mosaic:** square tiles, with optional grout and bevel.
-- **Stylize:** Emboss, Find edges.
+  - **Mosaic:** square tiles, with optional grout and bevel;
+  - **Kuwahara:** painterly smoothing that keeps edges sharp;
+  - **Watercolour:** soft washes that **bleed** a little, darker pooled **edges**, pigment **granulation** and paper;
+  - **Charcoal:** streaky strokes along an **angle** on toothy paper, with **Smudge**; pick the charcoal and paper colours;
+  - **Acid:** **Colour flow** (warped, psychedelic colour) or **Glitch trails** (stretched slices with split colour).
+- **Photo:**
+  - **Soft focus:** a dreamy glow from the bright parts, with contrast and warmth;
+  - **Cinematic mono:** black and white through a **lens filter** (red, yellow, green, blue), film curve, faded blacks, grain, vignette and a touch of tone;
+  - **Anaglyph:** red and cyan pulled apart like a 3D-glasses picture, optionally deeper where it's brighter.
+- **Print:**
+  - **Halftone:** **dots**, **lines** or **wavy lines**, in one ink or the image's colours;
+  - **Engraving:** fine lines thicker where it's darker that bend with the shapes, cross-hatching in the darkest parts, and **Pop art colour**;
+  - **Riso print:** two or three bright inks printed a little out of line, with grain;
+  - **B&W print:** hard ink with rough edges on grainy paper;
+  - **Pixel / bitmap:** chunky pixels with fewer colours and **pattern** or **diffusion** dithering, or **1-bit** black and white like Photoshop's Bitmap mode.
+
+![The new filters on the sample tile.](images/new-filters.png)
+*The 0.17 filters on the sample tile.*
+- **Stylize:** Emboss, Find edges, **Glass** (**Frosted** or **Ribbed** glass seen through, or an **Overlay** of glassy streaks and reflections).
 - **Noise and patterns:**
   - Add noise;
   - **Render clouds** and **Render cells** (Voronoi). Both tile seamlessly and can be colour or black and white.
-- **Tiling:** **Offset** (slides the image with wrap-around so seams show), **Tile** (repeats the image **Across** and **Down**, with **Row offset** for brick patterns, **Random rotation** and **Random flip** per tile, and **New random** for another arrangement), **Make seamless** (blends the edges).
+- **Tiling:** **Offset** (slides the image with wrap-around so seams show), **Tile** (repeats the image; with **Uniform scale** on, **Tiles** sets both directions, otherwise **Tiles** (across) and **Down** separately; with **Row offset** for brick patterns, **Random rotation** and **Random flip** per tile, and **New random** for another arrangement), **Make seamless** (blends the edges).
 
 Heavy filters (painterly, oil paint, lens and surface blur, cutout) are drawn in small pieces, so big images don't freeze the graphics driver. They can still take a moment on very large documents.
 
