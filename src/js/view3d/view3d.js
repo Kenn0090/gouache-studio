@@ -214,7 +214,7 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     if(e.button===0&&!e.altKey&&!st3.sKey&&(maskToolsOn()||liveOn())&&mk3Down(hit,e))return;
     let how=v3NavOf(hit,e);
     if(how==='paint'){if(e.button===0&&meshDown(hit,e)&&v3.mstroke)return;how='turn';if(stroke)return;}
-    v3.drag={x:e.clientX,y:e.clientY,how,id:e.pointerId};});
+    v3.drag={x:e.clientX,y:e.clientY,how,id:e.pointerId,x0:e.clientX,y0:e.clientY,alt:e.altKey&&e.button===0};});
   hit.addEventListener('pointermove',e=>{if(pgz.drag){if(!e.buttons){pgzUp();return;}pgzMove(hit,e);return;}if(!e.buttons&&pgzHover(hit,e)){meshCursor(hit,null);return;}if(mk3Busy()){mk3Move(hit,e);return;}meshCursor(hit,e);
     /* no button held any more: the release went missing (another window, a pen gesture, Alt menu mode); finish instead of sticking */
     if(!e.buttons){if(v3.mstroke)meshUp();if(v3.drag)v3.drag=null;}
@@ -231,7 +231,10 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
   for(const t of ['selectstart','dragstart'])hit.parentNode.addEventListener(t,e=>e.preventDefault());
   hit.addEventListener('dblclick',e=>{const s=window.getSelection&&window.getSelection();if(s&&s.rangeCount)s.removeAllRanges();if(maskToolsOn()&&mk3.tool&&mk3.tool!=='paint')return;if(typeof p3SelectAt==='function'&&p3SelectAt(hit,e))return;v3Frame();requestRender();});}
 /* a release anywhere (or the window losing focus) ends turning and painting on the model */
-window.addEventListener('pointerup',e=>{if(v3.drag&&v3.drag.id===e.pointerId)v3.drag=null;if(v3.mstroke&&v3.mstroke.id===e.pointerId)meshUp(e);},true);
+window.addEventListener('pointerup',e=>{if(v3.drag&&v3.drag.id===e.pointerId){const d=v3.drag;v3.drag=null;
+    /* the heal brush: Alt+click on the model (without turning it) sets where to copy from */
+    if(d.alt&&ui.tool==='heal'&&Math.hypot(e.clientX-d.x0,e.clientY-d.y0)<4){const hit=document.getElementById('v3Hit'),pk=hit&&v3PickAt(hit,e);
+      if(pk){if(heal.mode==='spot'){heal.mode='source';healSave();buildBrushPanel();buildOptBar();}healSetSource(pk.uv[0]*doc.w,pk.uv[1]*doc.h,ui.mode==='p3d'?pk.set:null);}}}if(v3.mstroke&&v3.mstroke.id===e.pointerId)meshUp(e);},true);
 window.addEventListener('blur',()=>{v3.drag=null;if(v3.mstroke)meshUp();});
 /* Alt on its own must not hand the keyboard to the window menu (Windows), which made the model seem locked */
 for(const t of ['keydown','keyup'])window.addEventListener(t,e=>{if(e.key==='Alt')e.preventDefault();},true);

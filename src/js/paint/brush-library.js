@@ -80,8 +80,9 @@ function buildBrushPanel(){
   if(ui.tool==='gradient'||ui.tool==='gbucket'){buildGradPanel(box);return;}
   if(ui.tool==='bucket'){buildBucketPanel(box);return;}
   if(isSel){buildSelectPanel(box);return;}
+  const healing=ui.tool==='heal';if(healing)buildHealPanel(box);
   const tonal=ui.tool==='dodge'||ui.tool==='burn';
-  $('#brushTitle').textContent=sm?'Blend brush':ui.tool==='erase'?'Eraser':tonal?(ui.tool==='dodge'?'Dodge':'Burn'):'Brush';
+  if(!healing)$('#brushTitle').textContent=sm?'Blend brush':ui.tool==='erase'?'Eraser':tonal?(ui.tool==='dodge'?'Dodge':'Burn'):'Brush';
   if(tonal)box.append(seg([['dodge','Dodge','Lighten (O)'],['burn','Burn','Darken (Shift+O switches)']],ui.tool,v=>{ui.tonal=v;setTool(v);},'Dodge or burn'),
     el('div',{class:'sub',text:'Range'}),seg([[0,'Shadows'],[1,'Midtones'],[2,'Highlights']],ui.tonalRange,v=>{ui.tonalRange=v;},'Range'),
     makeSlider({id:'tExp',label:'Exposure',min:.01,max:1,step:.01,value:ui.tonalExposure,fmt:pct,onInput:v=>{ui.tonalExposure=v;}}).el,
@@ -91,7 +92,7 @@ function buildBrushPanel(){
   box.append(el('div',{class:'sub',text:'Tip: '+(brush.tip?brush.tip.name+' ('+brush.tip.w+'×'+brush.tip.h+')':'round')+(activePreset?' · preset “'+activePreset.name+'”':'')}));
   sizeSlider=S('bSize','Size','size',0,1000,1,v=>v+'px',sizeMap);box.append(sizeSlider.el);
   if(sm)box.append(S('bStr','Strength','strength',0,1,.01,pct).el,S('bCharge','Paint load','charge',0,1,.01,pct).el);
-  else if(!tonal)box.append(S('bOp','Opacity','opacity',0,1,.01,pct).el);
+  else if(!tonal&&!healing)box.append(S('bOp','Opacity','opacity',0,1,.01,pct).el);
   box.append(S('bFlow','Flow','flow',.01,1,.01,pct).el);
   if(!brush.tip)box.append(S('bHard','Hardness','hardness',0,1,.01,pct).el);
   box.append(S('bSpace','Spacing','spacing',.01,1.5,.01,pct).el,S('bGrain','Grain','grain',0,1,.01,pct).el,S('bSmooth','Smoothing','smoothing',0,1,.01,pct).el,S('bLazy','Lazy mouse','lazy',0,200,1,v=>v?v+' px':'off').el);
@@ -119,7 +120,7 @@ function applyPreset(p){for(const k of SETTING_KEYS)brush[k]=(k in p)?p[k]:BRUSH
 function setTool(t,keepPreset){if(t==='text'&&ui.mode==='anim'){toast('Text is available in Paint mode. Frames are single images.');return;}if(t!=='text'&&typeof closeTextEditor==='function')closeTextEditor();if(t!=='lasso'&&typeof polyLasso!=='undefined'&&polyLasso){polyLasso=null;drawSelOverlay();}
   if(typeof xf!=='undefined'&&xf&&!xf.move)xfCommit();if(t!=='gradient'&&typeof gsess!=='undefined'&&gsess)gradCommit();if(t!=='array'&&typeof asess!=='undefined'&&asess)arrCommit();if(t!=='shape'&&typeof ssess!=='undefined'&&ssess)shapeCommit();if(t==='gradient'||t==='bucket'||t==='gbucket')ui.fillKind=t;if(t==='dodge'||t==='burn')ui.tonal=t;updateGroupButtons(t);if(typeof crop!=='undefined'){if(t==='crop'&&ui.tool!=='crop')crop=null;else if(t!=='crop')crop=null;}cv.style.cursor='';ui.tool=t;stage.classList.toggle('txt',t==='text');stage.classList.toggle('selt',isSelTool(t));stage.classList.toggle('movet',t==='move');stage.classList.toggle('fillt',t==='gradient'||t==='bucket'||t==='gbucket');document.querySelectorAll('.tool').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t)));
   if(!keepPreset&&activePreset&&(activePreset.tool==='smudge')!==(t==='smudge')){activePreset=null;renderLibrary();}
-  stage.classList.toggle('grab',t==='hand');stage.classList.toggle('pick',t==='picker');if(ui.cageFlat&&!['brush','erase','smudge','dodge','burn','picker','hand'].includes(t))cageFlatOff();buildBrushPanel();refreshCursor();if(typeof drawXfOverlay==='function')drawXfOverlay();}
+  stage.classList.toggle('grab',t==='hand');stage.classList.toggle('pick',t==='picker');if(ui.cageFlat&&!['brush','erase','smudge','dodge','burn','heal','picker','hand'].includes(t))cageFlatOff();buildBrushPanel();refreshCursor();if(typeof drawXfOverlay==='function')drawXfOverlay();}
 document.querySelectorAll('.tool').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.tool)));
 
 /* live brush preview: runs the real brush engine on a small offscreen canvas */

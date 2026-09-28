@@ -9,6 +9,7 @@
     "core/render",
     "core/workflow",
     "paint/brush-engine",
+    "paint/heal",
     "ui/color",
     "paint/brush-library",
     "paint/map-brush",

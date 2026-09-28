@@ -3,7 +3,7 @@
    strength / exposure), flow, hardness, pen pressure, symmetry and the other maps the brush paints. Everything
    else stays in the Tool settings panel. */
 let optSliders={};
-const OPT_PAINT=['brush','erase','smudge','dodge','burn'];
+const OPT_PAINT=['brush','erase','smudge','dodge','burn','heal'];
 function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren();optSliders={};
   const t=ui.tool,title=$('#brushTitle')?$('#brushTitle').textContent:'';
   bar.append(el('span',{class:'optname',text:title||t}));
@@ -17,10 +17,14 @@ function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren
       if(!set)brushEdited();}});sl.el.classList.add('optslider');optSliders[key]={sl,get:get||(()=>brush[key])};bar.append(sl.el);};
   S('size','Size',0,1000,1,v=>Math.round(v)+'px',typeof sizeMap!=='undefined'?sizeMap:undefined);
   if(tonal)S('exposure','Exposure',.01,1,.01,pct,null,()=>ui.tonalExposure,v=>{ui.tonalExposure=v;});
-  else if(sm)S('strength','Strength',0,1,.01,pct);else S('opacity','Opacity',0,1,.01,pct);
+  else if(sm)S('strength','Strength',0,1,.01,pct);else if(t!=='heal')S('opacity','Opacity',0,1,.01,pct);
   S('flow','Flow',.01,1,.01,pct);if(!brush.tip)S('hardness','Hardness',0,1,.01,pct);
   bar.append(el('span',{class:'optsep'}));
   const tg=(label,on,fn,title)=>el('button',{class:'optchip'+(on?' on':''),'aria-pressed':String(!!on),title:title||'',text:label,onclick:fn});
+  if(t==='heal'){bar.append(tg('Spot',heal.mode==='spot',()=>{heal.mode='spot';healSave();buildBrushPanel();buildOptBar();healMarker();},'Paint over a flaw: clean texture from nearby'),
+      tg('Healing',heal.mode==='source',()=>{heal.mode='source';healSave();buildBrushPanel();buildOptBar();healMarker();},'Alt+click where to copy from, then paint'));
+    if(heal.mode==='source')bar.append(tg('Aligned',heal.aligned,()=>{heal.aligned=!heal.aligned;heal.off=null;healSave();buildOptBar();buildBrushPanel();},'The source moves along with each stroke'));
+    bar.append(el('span',{class:'optsep'}));}
   bar.append(tg('Pressure: size',brush.pSize,()=>{brush.pSize=!brush.pSize;brushEdited();buildBrushPanel();},'Pen pressure changes the size'));
   const sy=el('select',{class:'optsel','aria-label':'Symmetry',title:'Symmetry'},...SYM_MODES.map(([k,l])=>el('option',{value:k,text:'Symmetry: '+l})));sy.value=ui.sym.mode;sy.onchange=()=>setSym(sy.value);bar.append(sy);
   const mb=typeof mapBrushTargets==='function'?mapBrushTargets():[];
