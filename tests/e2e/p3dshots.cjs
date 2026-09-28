@@ -1,4 +1,4 @@
-/* Guide pictures for 3D Paint (docs/wiki/images/p3d-tab.png, material-panel.png, mask-tools.png, levels-simple.png, bake-tabs.png, mask-rows.png, live-mask.png, mat-convert.png). */
+/* Guide pictures for 3D Paint (docs/wiki/images/p3d-tab.png, material-panel.png, mask-tools.png, levels-simple.png, bake-tabs.png, mask-rows.png, live-mask.png, mat-convert.png, proj-gizmo.png). */
 const {chromium}=require('playwright');
 const OLD=__dirname+'/';
 const OUT=require("path").resolve(__dirname,"../../docs/wiki/images")+"/";
@@ -50,6 +50,12 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* Mesh maps from a material */
  await p.evaluate(()=>{const L=__gs.allLayers().find(l=>l.name==='Painted metal');__gs.doc.active=L;__gs.dlgMatConvert(L);});await W(400);
  await p.locator('#modal .dialog').screenshot({path:OUT+'mat-convert.png'});console.log('shot mat-convert');await p.click('#dlgCancel');await W(200);
+ /* 0.23.1: the projection gizmo (planar picture) and the UV frame */
+ await p.evaluate(()=>{const n=64,t=__gs.makeTarget(n,n,8,true),g=document.querySelector('#gl').getContext('webgl2'),px=new Uint8Array(n*n*4);
+   for(let y=0;y<n;y++)for(let x=0;x<n;x++){const on=((x>>3)+(y>>3))%2;px.set(on?[235,190,60,255]:[40,60,90,255],(y*n+x)*4);}g.bindTexture(g.TEXTURE_2D,t.tex);g.texSubImage2D(g.TEXTURE_2D,0,0,0,n,n,g.RGBA,g.UNSIGNED_BYTE,px);
+   const L=__gs.cmdNewFillLayer({name:'Decal',maps:{base:{src:'image',tile:1,rot:0,name:'checker.png'}},proj:'planar',rep:false,xf:{t:[0,.1,0],r:[0,0,15],s:[.6,.6,.6]},imgs:{base:t}});
+   L.mask=null;__gs.showPanel('matEd');Object.assign(__gs.v3.cam,{yaw:.5,pitch:.35});__gs.v3.dirty=true;});await W(1200);await p.mouse.move(cx+300,cy+250);await W(300);
+ await p.locator('#work').screenshot({path:OUT+'proj-gizmo.png'});console.log('shot proj-gizmo');
  /* the Bake tab's tabs */
  await p.click('#modeTabs [data-mode=bake]');await W(1200);await p.evaluate(()=>{for(const g of __gs.dk.L.groups)g.min=!g.tabs.includes('bake');__gs.showPanel('bake');});await W(300);
  await p.locator('#bakeSec').screenshot({path:OUT+'bake-tabs.png'});console.log('shot bake-tabs');

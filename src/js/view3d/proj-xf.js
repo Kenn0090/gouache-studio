@@ -67,7 +67,30 @@ function pxfFields(get,edit,mode,onReset){const X=get(),is3=pxfIs3D(mode),box=el
     row('Turn',num('pxf_r2','Turn',X.r[2],1,(x,v)=>{x.r[2]=v;})),
     row('Scale',num('pxf_s0','Scale U',X.s[0],.05,(x,v)=>{x.s[0]=Math.max(.001,v);}),num('pxf_s1','Scale V',X.s[1],.05,(x,v)=>{x.s[1]=Math.max(.001,v);})));
   box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'pxfReset',text:'Reset',onclick:()=>{edit(x=>Object.assign(x,pxfDef()));if(onReset)onReset();}}),
-    el('span',{class:'note',text:is3?'Drag the gizmo on the model: arrows move, rings turn, boxes scale.':'Drag the frame on the flat canvas: inside moves, corners scale, the round handle turns.'})));
+    el('span',{class:'note',text:is3?'Drag the gizmo on the model: arrows move, rings turn, boxes scale.':'On the flat canvas: drag a corner to scale (Shift keeps proportions), the round handle to turn, and inside with the Move tool (or Ctrl) to move.'})));
   return box;}
 /* after a drag, the fields show the new numbers */
 function pxfSyncFields(){const T=pxfTarget();if(!T)return;const X=T.xf;for(let i=0;i<3;i++)for(const [k,a] of [['t',X.t],['r',X.r],['s',X.s]]){const e=document.getElementById('pxf_'+k+i);if(e&&document.activeElement!==e)e.value=String(Math.round(a[i]*1000)/1000);}}
+
+/* ---- UV projections: a frame with handles on the flat canvas (like Free Transform) ----
+   Drag inside to move, a corner to scale (Shift keeps the proportions), the round handle to turn. */
+const pxf2={drag:null};
+function pxf2Active(){const T=pxfTarget();return T&&!pxfIs3D(T.mode)&&!xf&&!(typeof crop!=='undefined'&&crop)?T:null;}
+function pxf2Geom(T){const X=pxfNorm(T.xf),C=pxfUvCorners(X).map(([u,v])=>toScreen(u*doc.w,v*doc.h)),mid=[(C[0][0]+C[1][0])/2,(C[0][1]+C[1][1])/2],cen=toScreen((.5+X.t[0])*doc.w,(.5+X.t[1])*doc.h);
+  const ux=mid[0]-cen[0],uy=mid[1]-cen[1],l=Math.hypot(ux,uy)||1,rot=[mid[0]+ux/l*26,mid[1]+uy/l*26];return {X,C,cen,rot,mid};}
+function pxfOverlay2D(){const T=pxf2Active();if(!T)return '';const G=pxf2Geom(T),f=p=>p[0].toFixed(1)+' '+p[1].toFixed(1);
+  let s='<path class="ln" d="M'+G.C.map(f).join('L')+'Z"/><path class="ln" d="M'+f(G.mid)+'L'+f(G.rot)+'"/>';
+  for(const q of G.C)s+='<rect class="hs" x="'+(q[0]-5)+'" y="'+(q[1]-5)+'" width="10" height="10"/>';
+  s+='<circle class="ge" cx="'+G.rot[0]+'" cy="'+G.rot[1]+'" r="6"/><circle class="hc" cx="'+G.cen[0]+'" cy="'+G.cen[1]+'" r="3"/>';return s;}
+function pxf2Down(e){const T=pxf2Active();if(!T||e.button!==0||e.altKey)return false;const r=stage.getBoundingClientRect(),m=[e.clientX-r.left,e.clientY-r.top],G=pxf2Geom(T);
+  const inQuad=p=>{let c=false;for(let i=0,j=3;i<4;j=i++){const a=G.C[i],b=G.C[j];if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])c=!c;}return c;};
+  let h=null;if(Math.hypot(m[0]-G.rot[0],m[1]-G.rot[1])<9)h={k:'r'};else{const ci=G.C.findIndex(q=>Math.hypot(m[0]-q[0],m[1]-q[1])<9);if(ci>=0)h={k:'s',i:ci};else if(inQuad(m)&&(ui.tool==='move'||e.ctrlKey||e.metaKey||!MESH_TOOLS.includes(ui.tool)))h={k:'t'};}
+  if(!h)return false;e.preventDefault();pxf2.drag={h,m0:m,G,X0:pxfNorm(T.xf),T};
+  const mv=ev=>{const D=pxf2.drag;if(!D)return;const q=[ev.clientX-r.left,ev.clientY-r.top],X0=D.X0,z=view.zoom;let fn=null;
+    if(D.h.k==='t'){const du=(q[0]-D.m0[0])/z/doc.w,dv=(q[1]-D.m0[1])/z/doc.h;fn=x=>{x.t[0]=X0.t[0]+du;x.t[1]=X0.t[1]+dv;};}
+    else if(D.h.k==='r'){const c=D.G.cen,a0=Math.atan2(D.m0[1]-c[1],D.m0[0]-c[0]),a1=Math.atan2(q[1]-c[1],q[0]-c[0]);let d=(a1-a0)*180/Math.PI;if(ev.shiftKey)d=Math.round((X0.r[2]+d)/15)*15-X0.r[2];fn=x=>{x.r[2]=Math.round((X0.r[2]+d)*100)/100;};}
+    else{/* the corner's distance from the centre, measured along the frame's own axes */const c=D.G.cen,a=(X0.r[2]||0)*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a),lx=(q[0]-c[0])/z/doc.w,ly=(q[1]-c[1])/z/doc.h;
+      let su=Math.abs(ca*lx+sa*ly)*2,sv=Math.abs(-sa*lx+ca*ly)*2;if(ev.shiftKey){const k=Math.max(su/(X0.s[0]||1),sv/(X0.s[1]||1));su=(X0.s[0]||1)*k;sv=(X0.s[1]||1)*k;}fn=x=>{x.s[0]=Math.max(.01,su);x.s[1]=Math.max(.01,sv);};}
+    D.T.edit(x=>{const n=pxfNorm(x);Object.assign(x,{t:n.t,r:n.r,s:n.s});fn(x);});pxfSyncFields();drawXfOverlay();requestRender(true);v3.dirty=true;};
+  const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);pxf2.drag=null;drawXfOverlay();};
+  window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);return true;}

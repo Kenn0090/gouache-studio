@@ -156,7 +156,7 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
   if(r.kind==='ref'){const o=r._ref&&r._ref.mask&&inDoc(r._ref)?r._ref:(allNodes(doc.root).find(n=>n.name===p.name&&n.mask&&n!==L)||null);if(!o||o===L||(guard||[]).includes(o))return null;r._ref=o;
     if(msHas(o))msUpdate(o,[...(guard||[]),L]);return lum(o.mask.target.tex,p.inv);}
   if(r.kind==='image'){if(!r.t)return null;if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);const pm=pxfRowMode(r),tri=pxfIs3D(pm)&&typeof fillPosMaps==='function'?fillPosMaps():null,o=out();
-    run(P_FILLIMG,o,Object.assign({uSrc:r.t.tex,uTile:Math.max(.05,p.tile||1),uRot:(p.rot||0)*Math.PI/180,uGrey:{int:1},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uSharp:4,uHStr:1,uHeight:{int:0},uNormal:{int:0},uRep:{int:p.rep===false?0:1}},
+    run(P_FILLIMG,o,Object.assign({uSrc:r.t.tex,uTile:Math.max(.05,p.tile||1),uRot:(p.rot||0)*Math.PI/180,uGrey:{int:1},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uSharp:4,uHStr:1,uHeight:{int:0},uNormal:{int:0},uRep:{int:p.rep===false?0:1},uFront:{int:p.front?1:0}},
       tri?pxfUniforms(pm,p.xf):pxfUniforms('uv',pxfIs3D(pm)?null:p.xf)));
     if(p.inv){const o2=out();run(P.src,o2,Object.assign({uKind:{int:0},uT:o.tex,uNeg:{int:1},uSeed:0},ctx.surf));release(o);return {t:o2,pooled:true};}return {t:o,pooled:true};}
   if(r.kind==='id'){const M=doc.meshMaps&&doc.meshMaps.id;if(!M||!p.cols.length)return null;if(!P_IDSEL)P_IDSEL=program(FS_IDSEL);const o=out(),cols=new Float32Array(24);p.cols.slice(0,8).forEach((c,i)=>cols.set(c,i*3));

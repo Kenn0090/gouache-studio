@@ -54,7 +54,7 @@ function xfPointerMove(e,ix,iy){const p=ptr,h=p.hit,R=xfLocalRect(),dx=ix-p.m0[0
 function xfPointerUp(){ptr=null;xfRender(false);drawXfOverlay();xfPanelSync();}
 
 /* ---- overlay drawing ---- */
-function drawXfOverlay(){if(!xf||xf.move){if(typeof crop!=='undefined'&&crop){drawCropOverlay();return;}const g=(ui.cageFlat?'':(typeof drawGradOverlay==='function'?drawGradOverlay():'')+(typeof lkOverlay==='function'?lkOverlay()+shapeOverlay():''))+cageOverlay()+(typeof cvOverlay==='function'?cvOverlay():'');if(g){xfOv.innerHTML=g;return;}if(xfOv.firstChild)xfOv.replaceChildren();return;}
+function drawXfOverlay(){if(!xf||xf.move){if(typeof crop!=='undefined'&&crop){drawCropOverlay();return;}const g=(ui.cageFlat?'':(typeof drawGradOverlay==='function'?drawGradOverlay():'')+(typeof lkOverlay==='function'?lkOverlay()+shapeOverlay():''))+cageOverlay()+(typeof cvOverlay==='function'?cvOverlay():'')+(typeof pxfOverlay2D==='function'&&!ui.cageFlat?pxfOverlay2D():'');if(g){xfOv.innerHTML=g;return;}if(xfOv.firstChild)xfOv.replaceChildren();return;}
   const f=p=>scrPt(p).map(v=>v.toFixed(1)).join(' ');let s='';
   if(xf.warp){const W=xf.warp;let d='';
     for(let j=0;j<=W.n;j++)for(let i=0;i<W.n;i++){const e=W.hE[j][i];d+='M'+f(W.A[j][i])+'C'+f(e[0])+' '+f(e[1])+' '+f(W.A[j][i+1]);}

@@ -102,5 +102,5 @@ $('#lFxAdd').addEventListener('click',fxAddMenu);
 /* a row's projection: its mode, and the offset/rotation/scale fields (the gizmo or the 2D handles move them too) */
 function pxfBox(L,r,modes){const m=pxfRowMode(r),g=seg(modes,m,v=>{msEdit(L,r,x=>{x.p.proj=v;delete x.p.tri;});renderMatEd(true);requestRender(true);},'Projection');g.classList.add('tight');g.id='ms_proj';
   return el('div',{class:'dlg-grid'},el('div',{class:'sub',text:'Projection'}),g,
-    m==='planar'?chk('ms_rep','Repeat',r.p.rep!==false,v=>msEdit(L,r,x=>{x.p.rep=v;})):null,
+    m==='planar'?el('div',{class:'chips'},chk('ms_rep','Repeat',r.p.rep!==false,v=>msEdit(L,r,x=>{x.p.rep=v;})),chk('ms_front','Front faces only',!!r.p.front,v=>msEdit(L,r,x=>{x.p.front=v;}))):null,
     pxfFields(()=>pxfOf(r.p),fn=>msEdit(L,r,x=>fn(pxfOf(x.p))),m,()=>renderMatEd(true)));}

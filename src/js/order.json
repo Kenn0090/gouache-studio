@@ -59,6 +59,7 @@
     "view3d/paint3d",
     "view3d/mask-tools",
     "view3d/proj-xf",
+    "view3d/proj-gizmo",
     "layers/mask-stack",
     "ui/mask-rows",
     "layers/mat-convert",

@@ -49,6 +49,8 @@ cv.addEventListener('pointerdown',e=>{
   const [ix,iy]=toImage(e.clientX,e.clientY);
   if(ui.cageFlat&&!['brush','erase','smudge','dodge','burn','picker'].includes(ui.tool)&&!e.altKey){toast('Only painting works in the flat cage view. Press F to go back to the canvas.');return;}
   if(ui.mode==='convert'){cvPointerDown(e,ix,iy);return;}
+  /* a UV projection's frame (selected material or mask row with a picture or pattern) */
+  if(typeof pxf2Down==='function'&&pxf2Down(e))return;
   if(ui.mode==='bake'&&!['brush','erase','picker','hand'].includes(ui.tool)&&!e.altKey){toast('In the Bake tab you can paint fixes with the Brush and Eraser. Switch to Paint for the other tools.');return;}
   if(ui.tool==='cage'){cagePointerDown(e,ix,iy);return;}
   if(selLive){toast('Apply or cancel the selection dialog first.');return;}

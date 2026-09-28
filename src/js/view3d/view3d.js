@@ -209,11 +209,13 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     e.preventDefault();/* no text selection or native drag from here: a double-click used to select text, and the next press dragged it, taking the mouse away */
     try{hit.setPointerCapture(e.pointerId);}catch(er){}
     /* mask mode: Paint must be on to paint; Box, Lasso and Polygon draw shapes */
+    /* the projection gizmo (a material or mask row projected from 3D) */
+    if(e.button===0&&!e.altKey&&!st3.sKey&&pgzDown(hit,e))return;
     if(e.button===0&&!e.altKey&&!st3.sKey&&(maskToolsOn()||liveOn())&&mk3Down(hit,e))return;
     let how=v3NavOf(hit,e);
     if(how==='paint'){if(e.button===0&&meshDown(hit,e)&&v3.mstroke)return;how='turn';if(stroke)return;}
     v3.drag={x:e.clientX,y:e.clientY,how,id:e.pointerId};});
-  hit.addEventListener('pointermove',e=>{if(mk3Busy()){mk3Move(hit,e);return;}meshCursor(hit,e);
+  hit.addEventListener('pointermove',e=>{if(pgz.drag){if(!e.buttons){pgzUp();return;}pgzMove(hit,e);return;}if(!e.buttons&&pgzHover(hit,e)){meshCursor(hit,null);return;}if(mk3Busy()){mk3Move(hit,e);return;}meshCursor(hit,e);
     /* no button held any more: the release went missing (another window, a pen gesture, Alt menu mode); finish instead of sticking */
     if(!e.buttons){if(v3.mstroke)meshUp();if(v3.drag)v3.drag=null;}
     if(v3.mstroke){meshMove(hit,e);return;}const d=v3.drag;
@@ -223,7 +225,7 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     if(d.how==='pan'){const k=c.dist*.0018,eye=v3Eye(),f=norm3(sub3([c.tx,c.ty,c.tz],eye)),r=norm3(cross3(f,[0,1,0])),u=cross3(r,f);c.tx+=(-r[0]*dx+u[0]*dy)*k;c.ty+=(-r[1]*dx+u[1]*dy)*k;c.tz+=(-r[2]*dx+u[2]*dy)*k;}
     else if(d.how==='zoom')c.dist=clamp(c.dist*Math.exp((dy-dx)*.006),.2,50);
     else{c.yaw-=dx*.008;c.pitch=clamp(c.pitch+dy*.008,-1.55,1.55);}v3.dirty=true;requestRender();});
-  const up=e=>{if(mk3Busy()&&e.type!=='lostpointercapture'){mk3Up(e);return;}if(v3.drag&&e.pointerId!==undefined&&v3.drag.id!==e.pointerId)return;v3.drag=null;meshUp(e);};
+  const up=e=>{if(pgz.drag){pgzUp();return;}if(mk3Busy()&&e.type!=='lostpointercapture'){mk3Up(e);return;}if(v3.drag&&e.pointerId!==undefined&&v3.drag.id!==e.pointerId)return;v3.drag=null;meshUp(e);};
   hit.addEventListener('pointerup',up);hit.addEventListener('pointercancel',up);hit.addEventListener('lostpointercapture',up);hit.addEventListener('pointerleave',()=>{v3.hover=false;meshCursor(hit,null);});hit.addEventListener('pointerenter',()=>{v3.hover=true;});
   hit.addEventListener('wheel',e=>{e.preventDefault();e.stopPropagation();v3.cam.dist=clamp(v3.cam.dist*Math.exp(e.deltaY*.0012),.2,50);v3.dirty=true;requestRender();},{passive:false});
   for(const t of ['selectstart','dragstart'])hit.parentNode.addEventListener(t,e=>e.preventDefault());
