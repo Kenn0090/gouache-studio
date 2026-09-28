@@ -113,8 +113,19 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; float r=0.0;
   else if(uOwn==1){ vec3 q=vec3(uv*uScale,0.0); vec2 d=vec2(fbm(q),fbm(q+vec3(5.2,1.3,0.0)))-0.5; r=texture(uSrc,uv+d*uR/uSz*8.0).r; }
   else { vec3 q=vec3(uv*uScale,0.0); vec2 g=vec2(fbm(q+vec3(0.01,0.0,0.0))-fbm(q-vec3(0.01,0.0,0.0)),fbm(q+vec3(0.0,0.01,0.0))-fbm(q-vec3(0.0,0.01,0.0))); vec2 dir=normalize(g+1e-5); float s=0.0; for(int i=0;i<16;i++){ s+=texture(uSrc,uv+dir*float(i)*uR*0.25/uSz).r; } r=s/16.0; }
   o=vec4(vec3(r),1.0); }`;
+/* curvature straight from the model (no bake yet): how the normal turns between neighbouring texels, per distance */
+const FS_MSCURV=`uniform sampler2D uPos; uniform sampler2D uNrm; uniform float uK;
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uPos,0); vec4 P=texelFetch(uPos,p,0); if(P.a<0.5){ o=vec4(0.5,0.5,0.5,1.0); return; } vec3 N=normalize(texelFetch(uNrm,p,0).xyz+1e-5);
+  float c=0.0,w=0.0; for(int r=1;r<=3;r++) for(int i=0;i<8;i++){ float a=float(i)*0.7853982; ivec2 q=clamp(p+ivec2(round(vec2(cos(a),sin(a))*float(r*2))),ivec2(0),s-1); vec4 Q=texelFetch(uPos,q,0); if(Q.a<0.5) continue;
+    vec3 d=Q.xyz-P.xyz; float l2=dot(d,d); if(l2<1e-12) continue; vec3 M=normalize(texelFetch(uNrm,q,0).xyz+1e-5); float k=dot(M-N,d)/l2; float wt=1.0/(1.0+l2*uK*uK*0.0); c+=k*wt; w+=wt; }
+  float v=w>0.0?c/w:0.0; o=vec4(vec3(clamp(0.5+v/uK*0.08,0.0,1.0)),1.0); }`;
+let msCurvC=null;
+function msModelCurv(){const tri=typeof fillPosMaps==='function'&&v3.mesh&&(ui.mode==='p3d'||v3.on)?fillPosMaps():null;if(!tri)return null;
+  if(msCurvC&&msCurvC.src===tri&&msCurvC.t.w===doc.w&&msCurvC.t.h===doc.h)return msCurvC.t;if(msCurvC)disposeTarget(msCurvC.t);
+  msSurf();const m=v3.mesh,sz=m._bb?Math.max(...m._bb.sz):1,t=makeTarget(doc.w,doc.h,8,false);run(msProgs().curv,t,{uPos:tri.pos.tex,uNrm:tri.nrm.tex,uK:1/Math.max(1e-4,sz)});
+  msCurvC={src:tri,t};return t;}
 let P_MS=null;
-function msProgs(){if(!P_MS)P_MS={blend:program(FS_MSBLEND),src:program(FS_MSSRC),gen:program(FS_MSGEN),own:program(FS_MSOWN)};return P_MS;}
+function msProgs(){if(!P_MS)P_MS={blend:program(FS_MSBLEND),src:program(FS_MSSRC),gen:program(FS_MSGEN),own:program(FS_MSOWN),curv:program(FS_MSCURV)};return P_MS;}
 
 /* ---- what the rows read: mesh maps (baked, converted, or in 2D the document's maps) and the model's surface ---- */
 function msMeshTex(k){const M=doc.meshMaps||{};if(M[k])return M[k];if(k&&k.startsWith('cv:')&&M[k])return M[k];
@@ -147,7 +158,7 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
   if(r.kind==='dir'){const o=out(),a=(p.angle||50)*Math.PI/180;run(P.src,o,Object.assign({uKind:{int:2},uDir:MS_AXES[p.axis]||[0,1,0],uA:Math.cos(a),uB:Math.max(.01,(p.soft||15)/90),uInv:{int:p.inv?1:0},uSeed:0},ctx.surf));return {t:o,pooled:true};}
   if(r.kind==='grad'){const o=out();run(P.src,o,Object.assign({uKind:{int:3},uDir:MS_AXES[p.axis]||[0,1,0],uA:p.from||0,uB:p.to==null?1:p.to,uInv:{int:p.inv?1:0},uSeed:0},ctx.surf));return {t:o,pooled:true};}
   if(r.kind==='noise'){const o=out();run(P.src,o,Object.assign({uKind:{int:4},uType:{int:Math.max(0,MS_NOISES.findIndex(n=>n[0]===p.type))},uScale:p.scale||6,uC:p.contrast||1,uV:p.level||0,uTri:{int:p.tri?1:0},uInv:{int:p.inv?1:0},uSeed:p.seed||1},ctx.surf));return {t:o,pooled:true};}
-  if(r.kind==='gen'){const o=out(),curv=msMeshTex('curv')||msMeshTex('cv:curv')||msDocMap('curv',ctx),ao=msMeshTex('ao')||msMeshTex('cv:ao')||msDocMap('ao',ctx);
+  if(r.kind==='gen'){const o=out(),curv=msMeshTex('curv')||msMeshTex('cv:curv')||msDocMap('curv',ctx)||msModelCurv(),ao=msMeshTex('ao')||msMeshTex('cv:ao')||msDocMap('ao',ctx);
     run(P.gen,o,Object.assign({uG:{int:Math.max(0,MS_GENS.findIndex(g=>g[0]===p.g))},uCurv:curv?curv.tex:dummy,uHasCurv:{int:curv?1:0},uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},
       uAmt:p.amount,uWidth:p.width,uBreak:p.breakup,uCon:p.contrast,uScale:p.scale||6,uSeed:p.seed||1,uInv:{int:p.inv?1:0}},ctx.surf));return {t:o,pooled:true};}
   return null;}
