@@ -25,7 +25,7 @@ function msRowDown(e,row){if(e.button!==0)return;e.stopPropagation();const {L,wh
   window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);}
 
 /* ---- FX ▾ ---- */
-function fxAddMenu(e){const L=doc.active;if(!L||!(isLayer(L)||L.type==='group')||L.fx){toast('Select a layer first.');return;}if(ui.mode==='anim'){toast('Masks with rows are for Paint and 3D Paint.');return;}
+function fxAddMenu(e,start){const L=doc.active;if(!L||!(isLayer(L)||L.type==='group')||L.fx){toast('Select a layer first.');return;}if(ui.mode==='anim'){toast('Masks with rows are for Paint and 3D Paint.');return;}
   const toMask=!!(L.editMask||!isLayer(L)),pop=$('#menuPop');closeMenu();
   const it=(t,f,sub)=>el('button',{class:'mi',role:'menuitem',onclick:ev=>{ev.stopPropagation();if(!sub)pop.hidden=true;f();}},el('span'),el('span',{text:t}),el('span',{text:sub?'▸':''}));
   const head=t=>el('div',{class:'mh',text:t}),sep=()=>el('div',{class:'msep'});
@@ -51,7 +51,11 @@ function fxAddMenu(e){const L=doc.active;if(!L||!(isLayer(L)||L.type==='group')|
       it('Generator',sub('Generator',MS_GENS.map(([k,t])=>it(t,add('gen',{p:Object.assign(MS_KINDS.gen.p(),{g:k})})))),true),
       sep(),it('Filter',sub('Filter',filters(true)),true),
       /* (0.27, Kenn: filter layers on masks) every filter, in the Filter Gallery's folders; it works on the rows below it */
-      it('All filters',sub('All filters',FX_KINDS().map(([g,ids])=>it(g,sub(g,ids.filter(id=>FX[id]&&!FX[id].gen).map(id=>it(FX[id].title,add('filter',{fx:id})))),true))),true)]);}
+      it('All filters',sub('All filters',maskGroups()),true)]);}
+  function maskGroups(){return FX_KINDS().map(([g,ids])=>it(g,sub(g,ids.filter(id=>FX[id]&&!FX[id].gen).map(id=>it(FX[id].title,add('filter',{fx:id})))),true));}
+  /* (0.27) from the right-click layer menu: straight to the filters */
+  if(start==='filters'){if(toMask)page([head('Filter the mask of “'+L.name+'”'),...filters(true),sep(),head('All filters'),...maskGroups()]);
+    else page([head('Filter “'+L.name+'” (live, editable)'),...FX_KINDS().map(([g,ids])=>it(g,()=>page([it('‹ Back',()=>fxAddMenu(e,'filters'),true),head(g),...ids.filter(id=>FX[id]&&!FX[id].gen).map(id=>it(FX[id].title,()=>cfxAdd(L,id)))]),true))]);return;}
   main();
   const off=ev=>{if(!pop.contains(ev.target)){pop.hidden=true;document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}
 async function msPickImage(L,r){if(!r)return;const fs=await pickFiles('image/*',false,'Images',['png','jpg','jpeg','webp','tga','tif','tiff','bmp','psd','exr','hdr']);const f=fs[0];if(!f)return;

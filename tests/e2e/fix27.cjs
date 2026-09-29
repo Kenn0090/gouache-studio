@@ -51,5 +51,12 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{const L=__gs.layerByName('Steel');L.editMask=true;__gs.renderLayers();});await W(200);
  await p.click('#lFxAdd');await W(200);await p.click('#menuPop .mi:has-text("All filters")');await W(150);await p.click('#menuPop .mi:has-text("Artistic")');await W(150);await p.click('#menuPop .mi:has-text("Oil paint")');await W(400);
  ok(await p.evaluate(()=>__gs.layerByName('Steel').mask.stack.some(r=>r.kind==='filter'&&r.fx==='oilPaint')),'Oil paint added to the mask from All filters');
+ /* 6. filters from the right-click layer menu, on the layer and on its mask */
+ await p.locator('#layerList .lrow',{hasText:'Steel'}).first().click({button:'right',position:{x:120,y:12}});await W(200);
+ await p.click('#menuPop .mi:has-text("Filter this layer")');await W(250);await p.click('#menuPop .mi:has-text("Adjust")');await W(150);await p.click('#menuPop .mi:has-text("Invert")');await W(400);
+ ok(await p.evaluate(()=>(__gs.layerByName('Steel').cfx||[]).some(r=>r.fx==='invert')),'right-click › Filter this layer adds a live filter to the layer');
+ await p.locator('#layerList .lrow',{hasText:'Steel'}).first().click({button:'right',position:{x:120,y:12}});await W(200);
+ await p.click('#menuPop .mi:has-text("Filter its mask")');await W(250);await p.locator('#menuPop .mi',{hasText:/^Blur$|Gaussian blur/}).first().click();await W(400);
+ ok(await p.evaluate(()=>__gs.layerByName('Steel').mask.stack.filter(r=>r.kind==='filter').length>=2),'right-click › Filter its mask adds a filter to the mask');
  console.log(errs.length?errs.join('\n'):'no page errors');ok(!errs.length,'no page errors');
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();process.exit(fails?1:0);})();
