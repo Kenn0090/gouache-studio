@@ -97,8 +97,19 @@ function drawPreviewWin(){if(!pw)return;const A=A_();if(!A)return;const {s}=pwSe
 
 /* ---- keys in Animation mode; returns true if used ---- */
 function animKeys(e,m,k){if(ui.mode!=='anim')return false;
+  /* (0.28, Kenn) Ctrl+F new frame, Ctrl+D duplicate, Delete removes it, , and . step, Space plays, Ctrl+Shift+←/→ moves it */
+  if(m&&!e.shiftKey&&!e.altKey&&k==='f'){e.preventDefault();addFrame();return true;}
+  if(m&&!e.shiftKey&&!e.altKey&&k==='d'){e.preventDefault();duplicateFrame();return true;}
+  if(m&&e.shiftKey&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();const A=A_();if(A){const to=clamp(A.cur+(e.key==='ArrowLeft'?-1:1),0,A.frames.length-1);if(to!==A.cur)moveFrame(A.cur,to);}return true;}
   if(m&&['n','g','e'].includes(k)||(m&&k==='j')){e.preventDefault();toast('Layers are not used in Animation mode. Switch to Paint mode (top right) for layers.');return true;}
   if(m||e.altKey)return false;
+  if((k==='delete'||k==='backspace')&&!(sel.active&&!sel.quick)){e.preventDefault();deleteFrame();return true;}
   if(k===','){stepFrame(-1);return true;}if(k==='.'){stepFrame(1);return true;}
   if(e.key==='Enter'){e.preventDefault();togglePlay();return true;}
   return false;}
+/* Space: a tap plays or stops; held down (with a drag) it still pans */
+const animSpace={t:0,used:false};
+window.addEventListener('keydown',e=>{if(e.code==='Space'&&!e.repeat&&ui.mode==='anim'){animSpace.t=performance.now();animSpace.used=false;}},true);
+window.addEventListener('pointerdown',()=>{if(animSpace.t)animSpace.used=true;},true);
+window.addEventListener('keyup',e=>{if(e.code!=='Space'||ui.mode!=='anim'||!animSpace.t)return;const tap=!animSpace.used&&performance.now()-animSpace.t<350;animSpace.t=0;
+  const tg=e.target,tag=(tg.tagName||'').toLowerCase();if(tap&&!(tag==='input'||tag==='textarea'||tag==='select')&&document.getElementById('modal').hidden)togglePlay();},true);
