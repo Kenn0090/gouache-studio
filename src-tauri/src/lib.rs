@@ -71,6 +71,7 @@ pub fn run() {
             files::make_dir,
             files::launch_app,
             files::blender_send,
+            files::open_url,
             files::autosave_list,
             files::autosave_delete,
             files::backup_copy,

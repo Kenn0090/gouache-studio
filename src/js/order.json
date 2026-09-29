@@ -93,6 +93,7 @@
         "ui/perf",
         "ui/dialogs",
         "ui/menus",
+        "ui/help",
         "core/tabdoc",
         "ui/keys",
         "ui/dock",

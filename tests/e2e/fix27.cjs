@@ -34,13 +34,14 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const same=await p.evaluate(()=>document.querySelector('#fl_mm_rough')===window.__s);
  await p.selectOption('#fl_mm_rough','curv');await W(500);
  ok(same&&await p.evaluate(()=>__gs.doc.active.fill.maps.rough.mm==='curv'),'the Mesh map list stays put and picks a map');
- /* 3. a new material has no mask; painting on it adds one */
+ /* 3. a new material has no mask; painting on it does nothing (0.28); the later checks give it a hide-all mask */
  const L=await p.evaluate(()=>{const L=__gs.cmdNewFillLayer({name:'Steel',maps:{base:{c:[.6,.6,.6]},metal:{v:1}}});return {mask:!!L.mask,name:L.name};});
  ok(!L.mask,'a material arrives without a mask');
  await p.evaluate(()=>__gs.setFG([1,1,1]));
  const box=await p.locator('#v3Hit').boundingBox();
  await p.mouse.move(box.x+box.width/2-20,box.y+box.height/2);await p.mouse.down();await p.mouse.move(box.x+box.width/2+20,box.y+box.height/2,{steps:4});await p.mouse.up();await W(500);
- ok(await p.evaluate(()=>{const L=__gs.layerByName('Steel');const d=__gs.readRGBA8(L.mask.target);let hi=0,lo=0;for(let i=0;i<d.length;i+=4){if(d[i]>200)hi++;else if(d[i]<30)lo++;}return !!L.mask&&L.editMask&&lo>hi&&hi>0;}),'painting on it adds a black mask and paints it');
+ ok(await p.evaluate(()=>{const L=__gs.layerByName('Steel');return !L.mask&&__gs.hist.undo.slice(-1)[0].label!=='Paint';}),'painting on a material without a mask does nothing (0.28)');
+ await p.evaluate(()=>{const L=__gs.layerByName('Steel');__gs.doc.active=L;__gs.act('addMaskHide');});await W(200);
  /* 4. baked normal: a mesh map, not a layer; it shades the model */
  const n0=await p.evaluate(()=>{const t=__gs.normalComp2(),d=__gs.readRGBA8(t);__gs.release(t);return [d[0],d[1],d[2]];});
  const r=await p.evaluate(()=>{const g=__gs,t=g.makeTarget(g.doc.w,g.doc.h,8,true);g.clearTarget(t,[.8,.5,.8,1]);const n=g.allLayers().length;g.p3ApplyBake({normal:t},['normal'],false);

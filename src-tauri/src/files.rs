@@ -283,6 +283,24 @@ pub fn blender_send(path: String, port: u16) -> bool {
     matches!(s.read(&mut buf), Ok(n) if n > 0 && buf[..n].starts_with(b"HTTP/1.") && buf[..n].windows(3).any(|w| w == b"200"))
 }
 
+/// Open a web page (the user guide, the issue tracker) in the default browser. Only https links.
+#[tauri::command]
+pub fn open_url(url: String) -> Result<(), String> {
+    if !url.starts_with("https://") || url.contains('"') || url.contains(' ') {
+        return Err("not a web link".into());
+    }
+    #[cfg(target_os = "windows")]
+    {
+        return std::process::Command::new("explorer").arg(&url).spawn().map(|_| ()).map_err(|e| e.to_string());
+    }
+    #[cfg(target_os = "macos")]
+    {
+        return std::process::Command::new("open").arg(&url).spawn().map(|_| ()).map_err(|e| e.to_string());
+    }
+    #[allow(unreachable_code)]
+    std::process::Command::new("xdg-open").arg(&url).spawn().map(|_| ()).map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod addon_tests {
     #[test]

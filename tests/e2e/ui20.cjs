@@ -86,7 +86,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  let v=await comp('base',[[150,100]]),r=await comp('rough',[[150,100]]),m=await comp('metal',[[150,100]]);
  ok(v[0][2]>170&&v[0][0]<60,'base colour filled with the foreground '+v[0]);
  ok(Math.abs(r[0][0]-204)<4&&m[0][0]>250,'roughness 80% and metallic 100% '+r[0][0]+'/'+m[0][0]);
- /* painting on it adds a black mask; white paint shows the fill there (0.27) */
+ /* painting on a material without a mask does nothing (0.28): give it a hide-all mask, then white paint shows the fill there */
+ await p.evaluate(()=>__gs.act('addMaskHide'));await W(200);
  await setFG('#ffffff');await p.keyboard.press('b');
  await p.evaluate(()=>Object.assign(__gs.brush,{size:40,hardness:1,opacity:1,flow:1,smoothing:0,pSize:false,tip:null}));
  await drag(40,100,90,100);

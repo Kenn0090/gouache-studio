@@ -63,7 +63,7 @@ const MESH_TOOLS=['brush','erase','dodge','burn','heal','clone'];
 function meshPaintReady(e){return v3.paintOn&&MESH_TOOLS.includes(ui.tool)&&!e.altKey&&e.button===0&&v3.gpu&&v3.mesh&&!v3.mesh.noUV;}
 function meshPt(hit,e){const r=hit.getBoundingClientRect();return [e.clientX-r.left,r.height-(e.clientY-r.top)];}
 function meshDown(hit,e){if(stroke||preview||selLive)return false;if(typeof bk!=='undefined'&&bk.busy&&ui.mode==='bake'){toast('Wait for the bake to finish.');return true;}
-  fillAutoMask();
+  if(fillNoMask())return true;
   const et=ui.mode==='bake'?bakeEditTarget():editTarget(),o=paintOpts(et);if(!o)return true;
   const r=hit.getBoundingClientRect(),w=Math.max(1,Math.round(r.width)),h=Math.max(1,Math.round(r.height)),sp=meshSpace(w,h);if(!sp)return true;
   if(o.tool==='heal'||o.tool==='clone'){const pk=v3PickAt(hit,e);if(!pk)return true;if(!healBegin(pk.uv[0]*doc.w,pk.uv[1]*doc.h,o.tool))return true;}

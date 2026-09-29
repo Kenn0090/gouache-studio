@@ -20,7 +20,9 @@ const order = JSON.parse(read('src/js/order.json')).order;
 const APP_VERSION = JSON.parse(read('package.json')).version;
 /* the Blender add-on (assets/addons), carried inside the app so it can be saved from the Export window */
 const BLENDER_ADDON = fs.existsSync(r('assets/addons/gouache_link.py')) ? read('assets/addons/gouache_link.py') : '';
-const js = `const APP_VERSION='${APP_VERSION}';\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
+/* the change log for Help › What's new */
+const CHANGELOG = fs.existsSync(r('CHANGELOG.md')) ? read('CHANGELOG.md') : '';
+const js = `const APP_VERSION='${APP_VERSION}';\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\nconst CHANGELOG_MD=${JSON.stringify(CHANGELOG).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
 const css = read('src/styles/app.css');
 const tpl = read('src/index.template.html');
 const assemble = head => tpl.replace(/<!--VERSION-->/g, APP_VERSION).replace('<!--HEAD-->', () => head).replace('<!--STYLE-->', () => css).replace('<!--SCRIPT-->', () => js);

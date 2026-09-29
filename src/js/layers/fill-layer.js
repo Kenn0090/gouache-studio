@@ -76,7 +76,7 @@ function cmdNewFillLayer(preset){if(ui.mode==='anim'){toast('Fill layers are ava
     if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the material');}
   fillRender(L);
   /* (0.27, Kenn: "materials shouldn't have a mask by default") a mask only when there is a selection to keep it in;
-     painting on a material without one adds it then (fillAutoMask) */
+     painting on a material without one does nothing (fillNoMask) */
   const fromSel=sel.active&&!sel.quick;if(fromSel){const m=makeMask(1);run(P.loadsel,m.target,{uSrc:sel.t.tex,uWhat:{int:1},uInv:false});L.mask=m;L.editMask=true;}
   structOp(preset?'Add material':'New fill layer',()=>{const [p,i]=insertPoint();insertNode(L,p,i);selectOnly(L);});
   changed(L);if(!preset)dlgFillLayer(L,true);else{renderLayers();toast('Added “'+L.name+'”'+(fromSel?' in the selection.':'.'));}return L;}
@@ -162,8 +162,9 @@ async function fillPickImage(L,k,s,done){const fs=await pickFiles('image/*',fals
 /* painting, filters and fills on a fill layer go to its mask */
 /* painting, filling or a gradient on a material without a mask: the material itself is made from its settings,
    so the paint goes into a new black mask (Kenn: paint white to reveal, like Substance) (one undo step) */
-function fillAutoMask(){const n=doc.active;if(ui.mode==='bake'||sel.quick||!isLayer(n)||!n.fill||n.mask||n.fx)return;if(typeof lockStop==='function'&&lockStop({node:n}))return;
-  const r=maskRecord(n,null,makeMask(0),'Add mask');r.redo();pushUndo(r);n.editMask=true;changed(n);renderLayers();toast('Added a black mask: paint white to show the material, black to hide it.');}
+/* (0.28, Kenn) a material layer without a mask: painting, filling and gradients do nothing at all (it is made from its
+   settings; add a mask to show it in places) */
+function fillNoMask(){const n=doc.active;return ui.mode!=='bake'&&!sel.quick&&isLayer(n)&&!!n.fill&&!n.mask&&!n.fx;}
 function fillMaskEdit(n){if(isLayer(n)&&n.fill&&n.mask&&!n.editMask)n.editMask=true;}
 /* Convert to pixels: the layer keeps what it shows now and becomes a normal layer */
 function fillRasterize(L){if(!L||!L.fill)return;const f=L.fill;L.fill=null;pushUndo({label:'Convert fill to pixels',refs:[L],undo(){L.fill=f;renderLayers();},redo(){L.fill=null;renderLayers();}});renderLayers();}
