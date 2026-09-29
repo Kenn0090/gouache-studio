@@ -8,7 +8,7 @@ const mk3={tool:null,pts:null,draw:null,move:null,el:null};
 const MK_TOOLS=[['paint','Paint'],['box','Box'],['lasso','Lasso'],['poly','Polygon'],['id','ID colour']];
 const maskToolsOn=()=>!!(ui.viewMask&&doc.active&&doc.active.mask&&ui.mode!=='anim'&&ui.mode!=='bake');
 const maskPaintLocked=()=>maskToolsOn()&&mk3.tool!=='paint';
-function maskTool(t){if(mk3.tool===t)t=null;if(mk3.tool==='id')idSelCommit();mk3.tool=t;mk3.draw=null;mk3.move=null;
+function maskTool(t){if(mk3.tool===t)t=null;if(t&&t!=='paint'&&mk3.was)mk3.was.used=true;if(mk3.tool==='id')idSelCommit();mk3.tool=t;mk3.draw=null;mk3.move=null;
   if(t==='paint'||(!t&&liveOn())){if(!MESH_TOOLS.includes(ui.tool))setTool('brush');if(v3.on||ui.mode==='p3d')v3.paintOn=true;}
   else if(t==='box'){ui.marquee='rect';setTool('marquee');}
   else if(t==='lasso'){ui.lasso='free';setTool('lasso');}

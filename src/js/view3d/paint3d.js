@@ -203,6 +203,11 @@ function maskModeExit(){const A=doc.active;if(typeof mk3Reset==='function')mk3Re
 function maskBarSync(){let bar=document.getElementById('maskBar');
   if(typeof lm!=='undefined'&&lm.on&&doc.active!==lm.L)liveMaskEnd();
   const live=typeof liveOn==='function'&&liveOn(),on=live||!!(ui.viewMask&&doc.active&&doc.active.mask&&ui.mode!=='anim');
+  /* entering and leaving the mask view: selections and the Box/Lasso tool used for the mask don't stay behind */
+  if(on&&!live&&!mk3.was){mk3.was={tool:ui.tool,sel:sel.active,used:false};}
+  else if(!on&&mk3.was){const w=mk3.was;mk3.was=null;if(mk3.tool)mk3Reset();
+    if(sel.active&&(w.used||!w.sel))deselect();drawSelOverlay();
+    if((ui.tool==='marquee'||ui.tool==='lasso')&&w.tool!==ui.tool)setTool(w.tool||'brush');}
   if(!on){if(bar)bar.hidden=true;return;}
   if(!bar){bar=el('div',{id:'maskBar',class:'maskbar',role:'toolbar','aria-label':'Mask'});$('#work').append(bar);}
   bar.classList.toggle('live',live);

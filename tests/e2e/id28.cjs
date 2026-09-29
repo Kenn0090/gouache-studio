@@ -29,5 +29,13 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await it.click();await W(600);
  const r=await p.evaluate(()=>{const L=__gs.layerByName('Base material');return {rows:L.mask&&L.mask.stack?L.mask.stack.map(x=>x.kind).join():'',tool:__gs.mk3.tool,view:__gs.ui.viewMask};});
  ok(r.rows.includes('id')&&r.tool==='id'&&r.view,'it adds an ID colour row and starts picking colours on the model '+JSON.stringify(r));
+ /* Kenn: selections and lassos made in the mask view stayed after leaving it */
+ await p.click('#maskDone');await W(300);await p.evaluate(()=>{__gs.ui.viewMask=true;__gs.renderLayers();});await W(300);
+ await p.click('#mk_box');await W(200);
+ await p.evaluate(()=>{__gs.sel.active=true;});
+ const b4=await p.evaluate(()=>({tool:__gs.ui.tool,sel:__gs.sel.active}));
+ await p.click('#maskDone');await W(300);
+ const af=await p.evaluate(()=>({tool:__gs.ui.tool,sel:__gs.sel.active,view:__gs.ui.viewMask}));
+ ok(b4.tool==='marquee'&&b4.sel&&!af.sel&&af.tool!=='marquee'&&!af.view,'leaving the mask view drops its box selection and the box tool '+JSON.stringify([b4,af]));
  console.log(errs.length?errs.join('\n'):'no page errors');ok(!errs.length,'no page errors');
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();process.exit(fails?1:0);})();
