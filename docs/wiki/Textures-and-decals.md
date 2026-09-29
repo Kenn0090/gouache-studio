@@ -29,7 +29,9 @@ Each decal carries colour, height (so the normal shows its shape), roughness and
 - **Import your own…** turns a PNG with transparency (a logo, a label) into a decal.
 
 ## Materials library
-The Materials panel's **Library** has 23 ready-made materials: red, brown, black and quilted leather; worn steel, dark iron, brass, blued steel, brushed metal, rusty painted metal and rust; dirt, dry mud and gravel; linen, wool, check fabric and canvas; dark and pale wood; concrete, rubber and plastic. ![Brown leather from the library](images/library-leather.png)
+The Materials panel's **Library** has 23 ready-made materials: red, brown, black and quilted leather; worn steel, dark iron, brass, blued steel, brushed metal, rusty painted metal and rust; dirt, dry mud and gravel; linen, wool, check fabric and canvas; dark and pale wood; concrete, rubber and plastic.
+
+![Brown leather from the library](images/library-leather.png)
 
 Click one to add it as a material layer, or drag it between layers. Each loads the first time you use it. (The browser version downloads it from the internet.)
 
