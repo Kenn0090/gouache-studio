@@ -60,5 +60,5 @@ async function pxDeep(o,pack){if(!o||typeof o!=='object'||ArrayBuffer.isView(o)|
   if(Object.getPrototypeOf(o)!==Object.prototype)return pack?undefined:o;/* GPU textures and the like stay in memory only */
   const r={};for(const k in o){if(pack&&k[0]==='_')continue;const v=await pxDeep(o[k],pack);if(v!==undefined)r[k]=v;}return r;}
 {const put0=store.put.bind(store),all0=store.all.bind(store);
-  store.put=async(d,sn)=>sn==='materials'?put0(await pxDeep(d,true),sn):put0(d,sn);
-  store.all=async sn=>{const r=await all0(sn);if(sn!=='materials'||!r)return r;const out=[];for(const x of r){try{out.push(await pxDeep(x,false));}catch(e){console.warn('material',e);}}return out;};}
+  store.put=async(d,sn)=>sn==='materials'||sn==='textures'?put0(await pxDeep(d,true),sn):put0(d,sn);
+  store.all=async sn=>{const r=await all0(sn);if((sn!=='materials'&&sn!=='textures')||!r)return r;const out=[];for(const x of r){try{out.push(await pxDeep(x,false));}catch(e){console.warn('material',e);}}return out;};}

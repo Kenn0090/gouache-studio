@@ -78,6 +78,7 @@
         "layers/materials",
         "layers/mat-import",
         "ui/lib-drag",
+        "ui/textures",
         "bake/bake-gpu",
         "bake/bake-ui",
         "bake/bake-tab",
