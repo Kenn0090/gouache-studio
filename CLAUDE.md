@@ -135,6 +135,7 @@ Kenn's requests and answers:
 ## Saved for much later (Kenn): a UV tab (UV unwrapper, RizomUV-style)
 Kenn wants to "close out everything tab-wise" with a **UV tab**, but **much later** (not 0.27). His idea:
 - Mock-up (for Kenn to review): https://claude.ai/artifact/Gvye8hLLwMaTPVq9i6Dpbb (main layout, No UVs prompt, Auto UVs, Pack/texel density, send on + Update mesh + export model, hotkeys).
+- Mock-up answers: 1. 3D and UV views side by side, same size by default, **resizable** (drag bar). 2. keep the step strip across the top (helps new users). 3. Send to 3D Paint **always asks** "bake mesh maps first / just start painting". 4. Update mesh choices OK (unwrap only new parts / use the file's UVs / redo all). 5. add **swappable checker picture** (numbers grid, plain, arrows for flipped islands, your own image), **Straighten to grid**, and a good **transform tool** for islands (frame with scale corners, turn handle, movable pivot, snapping, exact Move/Turn/Scale fields, ±90°, flips, align/same size/space evenly). Boards Transform and SendAsk added.
 - Importing a low-poly with **no UVs** asks: **Manual UVs** or **Auto UVs**.
 - **Manual** sends the low-poly to the **UV tab**, laid out and controlled like **RizomUV** (similar controls, general usage and hotkeys).
 - Seams: a **continuous edge-loop seam selector**, and **double-click for edge loops**, etc.
