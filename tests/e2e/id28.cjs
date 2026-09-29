@@ -1,0 +1,33 @@
+/* 0.28: baked ID colours reach 3D Paint and can become a mask from the right-click menu */
+const {chromium}=require('playwright');
+const OLD=__dirname+'/';
+const OUT=__dirname+'/out/';
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();
+ await p.addInitScript(()=>{try{localStorage.setItem('gs.p3d',JSON.stringify({size:256,layout:'3d'}));}catch(e){}});
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
+  if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());if(m.type()==='warning'&&/GL|WebGL/.test(m.text()))errs.push('GLWARN '+m.text());});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ const W=ms=>p.waitForTimeout(ms||200);
+ const waitIdle=async()=>{for(let i=0;i<900;i++){if(await p.evaluate(()=>!__gs.bk.busy&&!__gs.bk.regionBusy))return;await W(100);}};
+ await p.evaluate(()=>__gs.newDoc(256,256,8,[1,1,1],'painting',false));await W(300);
+ await p.click('#modeTabs [data-mode=bake]');await W(600);
+ await p.evaluate(()=>{const o='v -2 -1 0\nv -0.1 -1 0\nv -0.1 1 0\nv -2 1 0\nv 0.1 -1 0\nv 2 -1 0\nv 2 1 0\nv 0.1 1 0\nv 0.1 -1 0.6\nv 2 -1 0.6\nvt 0 0\nvt 1 0\nvt 1 1\nvt 0 1\nusemtl Left\nf 1/1 2/2 3/3 4/4\nusemtl Right\nf 5/1 6/2 7/3 8/4\nf 5/1 9/2 10/3 6/4\n';
+   const C=__gs.bakeCfg;C.low=__gs.parseOBJ(o,'two_low.obj');C.high=null;C.cage=null;C.size=128;C.ss=1;C.pad=2;C.rays=32;C.aoDist=100;C.match=false;for(const k in C.kinds)C.kinds[k]=k==='ao'||k==='id';C.perMat=true;C.p3Layers=true;});
+ await p.evaluate(()=>__gs.act('bake'));await W(400);
+ await p.click('#bkGo');await W(300);await waitIdle();await W(300);
+ await p.click('#bkSendP3');await W(1500);
+ ok(await p.evaluate(()=>!!(__gs.doc.meshMaps&&__gs.doc.meshMaps.id)),'the baked ID colours arrive in 3D Paint as a mesh map');
+ await p.evaluate(()=>{__gs.showPanel('layers');});const row=p.locator('#layerList .lrow',{hasText:'Base material'}).first();await row.click({button:'right',position:{x:120,y:12}});await W(300);
+ const it=p.locator('#menuPop .mi',{hasText:'ID colour'});ok(await it.count()===1,'right-click offers an ID colour mask');
+ await it.click();await W(600);
+ const r=await p.evaluate(()=>{const L=__gs.layerByName('Base material');return {rows:L.mask&&L.mask.stack?L.mask.stack.map(x=>x.kind).join():'',tool:__gs.mk3.tool,view:__gs.ui.viewMask};});
+ ok(r.rows.includes('id')&&r.tool==='id'&&r.view,'it adds an ID colour row and starts picking colours on the model '+JSON.stringify(r));
+ console.log(errs.length?errs.join('\n'):'no page errors');ok(!errs.length,'no page errors');
+ console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();process.exit(fails?1:0);})();

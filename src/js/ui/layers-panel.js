@@ -236,7 +236,10 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
     if(n.fill)items.splice(0,0,it('Fill settings…',()=>dlgFillLayer(n)),it('Mesh maps from this material…',()=>dlgMatConvert(n)),sep());
     if(n.text||n.grad||n.shape||n.fill)items.push(it('Convert to pixels',()=>{if(n.fill)fillRasterize(n);else rasterizeText(n);changed(n);}));}
   const mm=typeof maskMeshKeys==='function'?maskMeshKeys():[];
-  if(lay&&!anim&&mm.length){items.push(sep(),head('Mask from mesh map'));for(const k of mm)items.push(it(P3_MESHMAP_NAMES[k]||k,()=>maskFromMeshMap(n,k)));}
+  const hasId=!!(doc.meshMaps&&doc.meshMaps.id);
+  if(lay&&!anim&&(mm.length||hasId||ui.mode==='p3d')){items.push(sep(),head('Mask from mesh map'));for(const k of mm)items.push(it(P3_MESHMAP_NAMES[k]||k,()=>maskFromMeshMap(n,k)));
+    /* (0.28, Kenn) the baked ID colours as a mask: pick the colours on the model */
+    items.push(it('ID colour (pick colours on the model)…',()=>idColourMask(n)));}
   if(!anim&&!n.fx&&typeof smSave==='function'){items.push(sep(),it('Save as smart material…',()=>smSave(n)));if(n.mask)items.push(it('Save mask as smart mask…',()=>smMaskSave(n)));}
   if(!anim&&ui.mode==='paint'&&typeof sendToP3==='function')items.push(sep(),it('Send layer to 3D Paint',()=>sendToP3(n)));
   if(!anim&&ui.mode==='paint'&&n.p3link)items.push(it('Send back to 3D Paint (replaces “'+n.p3link.name+'”)',()=>paintLayerBackToP3(n)));
@@ -248,3 +251,7 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
   const off=ev=>{if(!pop.contains(ev.target)){pop.hidden=true;document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}
 $('#lMaskAdd').addEventListener('click',()=>{if(isLayer(doc.active)||(doc.active&&doc.active.type==='group'))cmdAddMask(1);else toast('Select a layer to add a mask to.');});
 $('#lStyle').addEventListener('click',()=>dlgLayerStyle());$('#lFill').addEventListener('click',()=>cmdNewFillLayer());
+
+/* right-click › ID colour: a mask row that keeps the ID colours you click on the model (or the flat texture) */
+function idColourMask(n){if(!(doc.meshMaps&&doc.meshMaps.id)){toast('Bake an ID map first: Bake mesh maps (or the Bake tab) › ID colours, then send it to 3D Paint.');return;}
+  if(typeof msAdd!=='function')return;selectOnly(n);n.editMask=true;renderLayers();const r=msAdd(n,'id');if(r){ui.viewMask=true;if(typeof maskTool==='function')maskTool('id');toast('Click the colours to keep (Shift adds more). Esc or Done goes back.');}}
