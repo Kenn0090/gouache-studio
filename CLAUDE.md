@@ -184,3 +184,7 @@ More requests from Kenn in the same message:
 10. **Layer stack like Substance Painter + Photoshop** so things are familiar (layer styles etc.), with a **right-click menu** to add them to a layer.
 11. **Brush tool bar (options bar) can be extended** (more settings shown / expandable).
 
+
+## 0.26.1 "polish" (agreed; before 0.27): a friend's feedback
+Kenn's friend tested an older build. Already done in 0.25/0.26: welcome screen, per-tool brushes, size > 500, undo lower, autosave. Kenn's answers: 1. yes, 0.26.1 before 0.27. 2. layer locks **like Photoshop** (transparent pixels, image pixels, position, all). 3. shortcut helper after holding Ctrl/Alt/Shift ~0.5 s, Preferences switch. 4. colour panel modes (square, **wheel**, **sliders**) as tabs + darker/lighter/more/less saturated buttons, **plus swatches and colour models like CMYK** etc. 5. canvas presets: **add them all** (paper sizes, screens, phone, book covers, trading cards, square textures) + units/DPI. 6. **Sharp theme shape** (no rounded corners, minimal) as a separate Themes choice. 7. the lost file: friend pressed **Ctrl+R** (WebView2 reloads the page: everything gone) → block reload keys, warn before unload.
+Bugs to fix: 8↔16 bit switch makes the canvas black/blank; undo buggy once there is history; Tab key cycles focus through the UI; dragging highlights UI text; custom-brush lag on 16k (pause before each stroke, symmetry laggy); layer buttons move when a layer is deleted (keep at the bottom); broken paint-brush icon; brush preview should show the tip shape.
