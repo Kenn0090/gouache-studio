@@ -1,6 +1,6 @@
 /* ================= View + input ================= */
 const work=$('#work');
-function resizeGL(){const d=Math.min(window.devicePixelRatio||1,2);const w=Math.max(1,Math.round(work.clientWidth*d)),h=Math.max(1,Math.round(work.clientHeight*d));if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}requestRender();}
+function resizeGL(){const d=Math.min(window.devicePixelRatio||1,typeof qual==='function'?qual('dpr'):2);const w=Math.max(1,Math.round(work.clientWidth*d)),h=Math.max(1,Math.round(work.clientHeight*d));if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}requestRender();}
 function fit(){const W=stage.clientWidth,H=stage.clientHeight,[DW,DH]=viewDims(),pad=doc.wrap&&!ui.cageFlat?90:48;view.zoom=clamp(Math.min((W-pad)/DW,(H-pad)/DH),.02,32);view.x=(W-DW*view.zoom)/2;view.y=(H-DH*view.zoom)/2;updateStatus();refreshCursor();requestRender();}
 function actual(){const W=stage.clientWidth,H=stage.clientHeight,[DW,DH]=viewDims();view.zoom=1;view.x=Math.round((W-DW)/2);view.y=Math.round((H-DH)/2);updateStatus();refreshCursor();requestRender();}
 function zoomAt(f,sx,sy){const z=clamp(view.zoom*f,.02,64),k=z/view.zoom;view.x=sx-(sx-view.x)*k;view.y=sy-(sy-view.y)*k;view.zoom=z;updateStatus();refreshCursor();requestRender();}

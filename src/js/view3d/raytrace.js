@@ -93,7 +93,7 @@ function rtViewDraw(F){const g=rt.mesh===v3.mesh?rt.g:null;if(!g){if(v3.infoEl)v
   const E=envUniforms();if(envOf(v3s())!=='none'&&!E.uEnvOn){setTimeout(()=>{v3.dirty=true;requestRender();},100);return null;}
   rtMaterials(g);let S=rt.view;const key=rtViewKey(F);if(!S||S.w!==F.w||S.h!==F.h){rtFree(S);S=rt.view=rtSession(F.w,F.h);}
   if(S.key!==key){S.key=key;S.n=0;clearTarget(S.a);clearTarget(S.b);}
-  const s=v3s(),max=s.rtSamples||512;if(S.n<max){const per=S.n<4?1:2;for(let i=0;i<per&&S.n<max;i++)rtStep(S,g,{bg:s.envBg?0:1,bgCol:(BG3[s.bg]||BG3.dark).map(v=>Math.pow(v,2.2))});}
+  const s=v3s(),max=s.rtSamples||qual('rt');if(S.n<max){const per=S.n<4?1:2;for(let i=0;i<per&&S.n<max;i++)rtStep(S,g,{bg:s.envBg?0:1,bgCol:(BG3[s.bg]||BG3.dark).map(v=>Math.pow(v,2.2))});}
   gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);useProg(rtProgs().show,{uAcc:S.a.tex,uN:S.n,uExpo:s.expo,uTone:{int:s.tone==='neutral'?0:1},uOff:[0,0],uBg:BG3[s.bg]||BG3.dark,uOpaque:true});gl.bindVertexArray(vao);gl.disable(gl.DEPTH_TEST);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,F.rf);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
   if(v3.infoEl)v3.infoEl.textContent='Ray traced · '+S.n+' / '+max+' samples'+(S.n<max?' (cleaning up…)':'');

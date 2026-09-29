@@ -116,10 +116,10 @@ function v3LoadModel(keepCam){const s=v3s();if(s.model==='dplane'){s.model='plan
 /* ---- maps as textures for the model: the map being painted updates every frame, the rest a few times a second ---- */
 function v3MapTex(k,src){let t=v3.tex[k];if(!t||t.w!==doc.w||t.h!==doc.h||t.depth!==src.depth){if(t)disposeTarget(t);t=v3.tex[k]=makeTarget(doc.w,doc.h,src.depth,true);}
   blit(src,t,0,0,doc.w,doc.h,0,0);gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.generateMipmap(gl.TEXTURE_2D);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
-  if(anisoExt)gl.texParameterf(gl.TEXTURE_2D,anisoExt.TEXTURE_MAX_ANISOTROPY_EXT,8);return t;}
-const anisoExt=gl.getExtension('EXT_texture_filter_anisotropic');
+  if(anisoExt)gl.texParameterf(gl.TEXTURE_2D,anisoExt.TEXTURE_MAX_ANISOTROPY_EXT,Math.min(qual('aniso'),anisoMax));return t;}
+const anisoExt=gl.getExtension('EXT_texture_filter_anisotropic'),anisoMax=anisoExt?gl.getParameter(anisoExt.MAX_TEXTURE_MAX_ANISOTROPY_EXT):1;
 function v3Needed(){if(v3Unlit())return doc.maps.filter(k=>k==='base'||k==='ao');return doc.maps.filter(k=>k!=='normal'&&k!=='height'&&k!=='curv').concat(doc.maps.includes('height')||doc.maps.includes('normal')||meshNormalBase()?['nfinal']:[]);}
-function v3Refresh(){if(!v3.on)return;if(ui.mode==='bake'){bakeV3Refresh();return;}if(ui.mode==='convert'){cvV3Refresh();return;}const now=performance.now(),full=v3.mapsDirty&&(!stroke||now-v3.lastFull>150);
+function v3Refresh(){if(!v3.on)return;if(ui.mode==='bake'){bakeV3Refresh();return;}if(ui.mode==='convert'){cvV3Refresh();return;}const now=performance.now(),full=v3.mapsDirty&&(!stroke||now-v3.lastFull>qual('refresh'));
   const plain=doc.view===doc.map&&compOut&&ui.mode!=='anim';
   const one=k=>{if(k==='nfinal'){const t=normalComposite(false,null);v3MapTex(k,t);release(t);return;}
     if(k===doc.map&&plain){v3MapTex(k,compOut);return;}
@@ -127,7 +127,7 @@ function v3Refresh(){if(!v3.on)return;if(ui.mode==='bake'){bakeV3Refresh();retur
     const t=compositeMap(k);v3MapTex(k,t);release(t);};
   if(full){for(const k of v3Needed())one(k);if(v3s().disp&&doc.maps.includes('height')){const t=compositeMap('height');v3MapTex('height',t);release(t);}
     v3.mapsDirty=false;v3.editDirty=false;v3.lastFull=now;v3.dirty=true;v3SgDerive();}
-  else if(v3.editDirty){const k=ui.mode==='anim'?'base':doc.map;if(v3Needed().includes(k))one(k);if(k==='height'&&stroke&&now-v3.lastFull>150){one('nfinal');}v3.editDirty=false;v3.dirty=true;if(['base','spec','gloss'].includes(k))v3SgDerive();}}
+  else if(v3.editDirty){const k=ui.mode==='anim'?'base':doc.map;if(v3Needed().includes(k))one(k);if(k==='height'&&stroke&&now-v3.lastFull>qual('refresh')){one('nfinal');}v3.editDirty=false;v3.dirty=true;if(['base','spec','gloss'].includes(k))v3SgDerive();}}
 /* Specular/Gloss documents shade the model with the equivalent base/metal/rough */
 function v3SgDerive(){if(doc.workflow!=='spec'||!v3.tex.base||ui.mode==='anim')return;const T=v3.tex,r=sgAsMR(T.base,doc.maps.includes('spec')?T.spec:null,doc.maps.includes('gloss')?T.gloss:null);
   v3MapTex('sgBase',r.base);v3MapTex('sgMetal',r.metal);v3MapTex('sgRough',r.rough);for(const k in r)release(r[k]);}
@@ -146,9 +146,9 @@ function v3Frame(){const r=v3.mesh?v3.mesh.radius:1.5,pane=v3.pop?null:$('#pane3
   if(v3s().model==='plane'||v3s().model==='dplane'){v3.cam.yaw=0;v3.cam.pitch=0;}v3.dirty=true;}
 
 /* ---- drawing ---- */
-function v3Targets(w,h){let F=v3.fbo;if(F&&F.w===w&&F.h===h)return F;
+function v3Targets(w,h){let F=v3.fbo;const S=Math.min(qual('msaa'),gl.getParameter(gl.MAX_SAMPLES)||0);if(F&&F.w===w&&F.h===h&&F.S===S)return F;
   if(F){gl.deleteFramebuffer(F.ms);gl.deleteRenderbuffer(F.c);gl.deleteRenderbuffer(F.d);gl.deleteFramebuffer(F.rf);gl.deleteRenderbuffer(F.rc);}
-  const S=Math.min(4,gl.getParameter(gl.MAX_SAMPLES)||0);F={w,h};
+  F={w,h,S};
   F.ms=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);
   F.c=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,F.c);gl.renderbufferStorageMultisample(gl.RENDERBUFFER,S,gl.RGBA8,w,h);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.RENDERBUFFER,F.c);
   F.d=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,F.d);gl.renderbufferStorageMultisample(gl.RENDERBUFFER,S,gl.DEPTH_COMPONENT24,w,h);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,F.d);

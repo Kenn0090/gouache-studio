@@ -70,8 +70,8 @@ function primCylinder(d){const k=RDETAIL[d],R=Math.round(64*k),side=gridBuild(R,
   return mergeParts([side,cap(1,1),cap(-1,-1)]);}
 const PRIMS={plane:['Plane',d=>primPlane(d)],cube:['Cube',d=>primCube(0,d)],rcube:['Rounded cube',d=>primCube(.18,d)],sphere:['Sphere',primSphere],cylinder:['Cylinder',primCylinder]};
 function primMesh(k,d){const [label,fn]=PRIMS[k]||PRIMS.plane;return meshFinish(fn(d||0),label);}
-/* split every triangle into four, d times (for imported models), up to about two million triangles */
-function subdivideMesh(m,d){let cur=m;for(let l=0;l<d;l++){if(cur.idx.length/3*4>2e6)break;
+/* split every triangle into four, d times (for imported models), up to the Engine quality's triangle limit (two million on High) */
+function subdivideMesh(m,d){let cur=m;for(let l=0;l<d;l++){if(cur.idx.length/3*4>qual('tris'))break;
     /* compact number arrays sized for the worst case (every edge new): plain arrays ran WebView2 out of memory */
     const T=cur.idx.length/3,V0=cur.pos.length/3,cap=V0+T*3,pos=new Float32Array(cap*3),nrm=new Float32Array(cap*3),uv=new Float32Array(cap*2),idx=new Uint32Array(T*12),mid=new Map();
     pos.set(cur.pos);nrm.set(cur.nrm);uv.set(cur.uv);let nv=V0;

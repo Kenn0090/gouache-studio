@@ -76,5 +76,12 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.keyboard.press('Space');await W(400);ok((await an()).play,'a tap on Space plays');await p.keyboard.press('Space');await W(300);ok(!(await an()).play,'…and stops');
  await p.keyboard.press('Delete');await W(300);ok((await an()).n===n0+1,'Delete removes the frame');
  await p.click('#modeTabs [data-mode=paint]');await W(800);
+ /* Engine quality in Preferences */
+ await p.evaluate(()=>__gs.act('prefs'));await W(400);
+ const qb=p.locator('#modal [role=radiogroup][aria-label="Engine quality"] button',{hasText:'Low'});ok(await qb.count()===1,'Preferences has Engine quality');
+ await qb.click();await p.click('#dlgOk');await W(400);
+ await p.evaluate(()=>{if(!__gs.v3.on)document.querySelector('#btn3d').click();});await W(1200);
+ const q=await p.evaluate(()=>({q:__gs.prefs.quality,S:__gs.v3.fbo&&__gs.v3.fbo.S}));ok(q.q==='low'&&q.S===0,'Low turns off the 3D view’s edge smoothing '+JSON.stringify(q));
+ await p.evaluate(()=>{__gs.prefs.quality=undefined;__gs.v3.dirty=true;});
  console.log(errs.length?errs.join('\n'):'no page errors');ok(!errs.length,'no page errors');
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();process.exit(fails?1:0);})();
