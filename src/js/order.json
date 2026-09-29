@@ -80,6 +80,7 @@
         "bake/bake-tab",
         "bake/bake-highview",
         "view3d/p3-bake",
+        "files/model-watch",
         "view3d/raytrace",
         "view3d/capture",
         "convert/convert-tab",

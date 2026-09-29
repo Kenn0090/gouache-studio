@@ -35,7 +35,7 @@ function dlgP3Bake(){if(ui.mode!=='p3d')return;if(bk.busy){toast('Wait for the b
     const which=sets.length>1?sets.filter(n=>p3bk.sets[n]!==false):sets;if(!which.length){toast('Tick at least one texture set.');return false;}
     Object.assign(C.kinds,kinds);setTimeout(()=>p3Bake(ks,pick,which),0);}});}
 /* bake the ticked maps for the ticked sets and hand them to the sets */
-async function p3Bake(ks,size,which){const C=bakeCfg,model=bakeViewModel(),names=bkMats(model);
+async function p3Bake(ks,size,which){p3bk.lastArgs={ks:ks.slice(),size,which:which&&which.slice()};const C=bakeCfg,model=bakeViewModel(),names=bkMats(model);
   const keep={high:C.high,cage:C.cage,size:C.size};if(!p3bk.useHigh)C.high=null;if(C.cage&&C.low!==model)C.cage=null;
   /* the Bake tab's fixes are painted for its own model and size */
   if(C.low!==model||(C.size||0)!==size){for(const k of ['skew','offset'])if(bk.maps[k]){disposeTarget(bk.maps[k]);bk.maps[k]=null;}}
