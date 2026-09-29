@@ -307,7 +307,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
       bits.push(both.length?'Matching '+both.length+' part'+(both.length>1?'s':'')+' by name: '+both.slice(0,6).join(', ')+(both.length>6?'…':'')+'.':'No part names match between the models (use names like “crate_low” and “crate_high”).');}
     bits.push('Bakes at the document size, '+doc.w+' × '+doc.h+'.');inf.textContent=bits.join(' ');};
   const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:C[key],fmt,onInput:v=>{C[key]=v;}}).el;
-  const on=k=>chk('bk_'+k,'Bake '+BAKE_NAMES[k].toLowerCase(),!!C.kinds[k],v=>{C.kinds[k]=v;tabs.replaceWith(tabs=tabBar());});
+  const on=k=>chk('bk_'+k,'Bake '+BAKE_NAMES[k].toLowerCase(),!!C.kinds[k],v=>{C.kinds[k]=v;tabs.replaceWith(tabs=tabBar());const m=document.getElementById('bkm_'+k);if(m)m.checked=v;});
   const note=t=>el('p',{class:'note',text:t});
   /* one tab of settings per map, plus the ones they share */
   const TABS=[['general','General'],['normal','Normal'],['ao','AO'],['curv','Curvature'],['height','Height'],['thick','Thickness'],['wnormal','World normal'],['position','Position'],['id','ID']];
@@ -341,6 +341,9 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
         note('In 3D Paint, masks can pick these colours: Alt+click a mask, then ID colour.'));}
     return pg;};
   let tabs=tabBar(),page=tabPage();
+  /* (0.28, Kenn) every map to bake in one list; Alt + click keeps only that one, again flips (ui/ticks.js) */
+  const BK_LIST=['normal','ao','curv','height','thick','wnormal','position','id'];
+  const list=()=>el('div',{class:'chips bklist',id:'bkList',title:'Alt + click: only this one. Alt + click again: all the others.'},...BK_LIST.map(k=>chk('bkm_'+k,BAKE_NAMES[k],!!C.kinds[k],v=>{C.kinds[k]=v;tabs.replaceWith(tabs=tabBar());page.replaceWith(page=tabPage());})));
   const go=el('button',{class:'btn primary',id:'bkGo',text:'Bake'});
   go.onclick=()=>{if(bk.busy){if(bk.prog)bk.prog.cancelled=true;return;}const L=bkLow();const ks=Object.keys(C.kinds).filter(k=>C.kinds[k]);if(!ks.length){toast('Pick at least one map.');return;}if(C.perMat!==false&&bkMats(L))runBakeSets(L,ks);else{bk.byMat=null;runBake(L,ks);}};
   const prog=el('div',{id:'bkProg',hidden:true},el('p',{class:'note'}),el('div',{class:'bakebar'},el('div')));
@@ -348,7 +351,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
     chk('bkMatch','Match parts by name (“_low” bakes only against its “_high”)',C.match,v=>{C.match=v;info();}),
     el('div',{class:'chips'},chk('bkShowCage','Show the cage on the model',bk.showCage,v=>{bk.showCage=v;v3.dirty=true;requestRender();})),
     ...(C.high?[row('Show high-poly',(()=>{const g=seg([['off','Off'],['over','See-through'],['only','Only']],bk.showHigh||'off',v=>{bk.showHigh=v;v3.dirty=true;requestRender();},'Show the high-poly');g.id='bkShowHigh';return g;})())]:[]),
-    tabs,page,
+    el('div',{class:'sub',text:'Maps to bake'}),list(),tabs,page,
     bkMats(bkLow())?chk('bkPerMat','Bake each material separately ('+bkMats(bkLow()).length+' materials: one set of maps per texture set)',C.perMat!==false,v=>{C.perMat=v;}):null,
     el('div',{class:'row wrap'},go),
     bk.byMat?row('Material',(()=>{const s=el('select',{id:'bkMat','aria-label':'Material'},...Object.keys(bk.byMat).map(n=>el('option',{value:n,text:n})));s.value=bk.matShow;s.onchange=()=>bakeShowMat(s.value);return s;})()):null,

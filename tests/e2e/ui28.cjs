@@ -42,5 +42,25 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  w=await ws();ok(w.sel==='Paint','back in Paint: Paint '+JSON.stringify(w));
  await p.click('#modeTabs [data-mode=convert]');await W(800);w=await ws();ok(w.ws==='minimal','Convert remembers the workspace picked there '+JSON.stringify(w));
  await p.click('#modeTabs [data-mode=paint]');await W(800);
+ /* Bake: every map listed; Alt + click keeps only that one, again flips */
+ await p.click('#modeTabs [data-mode=bake]');await W(1200);await p.evaluate(()=>__gs.showPanel('bake'));await W(300);
+ const kinds=()=>p.evaluate(()=>Object.keys(__gs.bakeCfg.kinds).filter(k=>['normal','ao','curv','height','thick','wnormal','position','id'].includes(k)&&__gs.bakeCfg.kinds[k]).sort().join());
+ ok(await p.locator('#bkList input[type=checkbox]').count()===8,'the Bake panel lists all 8 maps');
+ await p.click('label[for=bkm_ao]',{modifiers:['Alt']});await W(300);
+ ok(await kinds()==='ao','Alt + click: only AO '+await kinds());
+ await p.click('label[for=bkm_ao]',{modifiers:['Alt']});await W(300);
+ ok(await kinds()==='curv,height,id,normal,position,thick,wnormal','Alt + click again: everything but AO '+await kinds());
+ ok(await p.evaluate(()=>!document.getElementById('bkm_ao').checked&&document.getElementById('bkm_curv').checked),'the ticks show it');
+ await p.click('label[for=bkm_normal]');await W(200);ok(!(await kinds()).split(',').includes('normal'),'a plain click still just toggles one');
+ /* the Material panel's channels too */
+ await p.click('#modeTabs [data-mode=p3d]');await W(2500);
+ await p.evaluate(()=>{__gs.showPanel('layers');});await p.locator('#layerList .lrow',{hasText:'Base material'}).first().click({position:{x:120,y:12}});await W(400);
+ await p.evaluate(()=>__gs.showPanel('matEd'));await W(600);
+ const ch=()=>p.evaluate(()=>{const f=__gs.doc.active.fill.maps;return [...document.querySelectorAll('#matEdBody input[id^=fl_on_]')].map(b=>b.id.slice(6)).filter(k=>f[k].on).sort().join();});
+ await p.click('label[for=fl_on_rough]',{modifiers:['Alt']});await W(500);
+ ok(await ch()==='rough','Material: Alt + click keeps only roughness '+await ch());
+ await p.click('label[for=fl_on_rough]',{modifiers:['Alt']});await W(500);
+ const c2=await ch();ok(!c2.split(',').includes('rough')&&c2.split(',').length>=4,'Alt + click again: every other channel on '+c2);
+ await p.click('#modeTabs [data-mode=paint]');await W(800);
  console.log(errs.length?errs.join('\n'):'no page errors');ok(!errs.length,'no page errors');
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();process.exit(fails?1:0);})();

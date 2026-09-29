@@ -94,6 +94,7 @@
         "ui/dialogs",
         "ui/menus",
         "ui/help",
+        "ui/ticks",
         "core/tabdoc",
         "ui/keys",
         "ui/dock",
