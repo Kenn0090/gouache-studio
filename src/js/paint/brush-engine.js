@@ -18,14 +18,18 @@ function strokeTints(o){if(o.tool!=='brush'||o.noTint||!o.color)return false;con
   return grey?(o.valJitter||0)>0:((o.hueJitter||0)+(o.satJitter||0)+(o.valJitter||0))>0;}
 const tintU=()=>({uStrokeTint:!!(stroke&&stroke.tint)});
 function beginStroke(L,x,y,p,o){
-  const W=doc.w,H=doc.h;blit(L.target,beforeT,0,0,W,H,0,0);
+  const W=doc.w,H=doc.h;
+  /* Big canvases: plain painting copies only the part of the layer the stroke covered, when it ends (endStroke), and
+     clears only what the last stroke left in strokeT, instead of the whole canvas each time (a 16k canvas is 1 GB). */
+  const lazy=['brush','erase','dodge','burn'].includes(o.tool)&&!L.maskOf&&!L.quick&&ui.mode!=='bake'&&!o.space;
+  if(!lazy)blit(L.target,beforeT,0,0,W,H,0,0);
   const tint=strokeTints(o),tc=[0,0,0,0];
-  if(o.tool!=='smudge')clearTarget(strokeT,tint?tc:undefined);
+  if(o.tool!=='smudge'){const d=strokeT.dirtyR;if(d&&d!=='all'){if(d[2]>0&&d[3]>0)scissorDo(d,()=>clearTarget(strokeT,tint?tc:undefined));}else clearTarget(strokeT,tint?tc:undefined);strokeT.dirtyR=null;}
   /* o.space: the stroke is stamped somewhere else (a cage's flat space, the screen over the 3D model) and drawn into strokeT by space.sync() */
   const cg=o.tool!=='smudge'&&o.space?o.space:null;if(cg)clearTarget(cg.buf,tint?tc:undefined);
   const SW=cg?cg.w:W,SH=cg?cg.h:H;
   const gx=Math.max(1,Math.round(W/6)),gy=Math.max(1,Math.round(H/6));
-  stroke={L,o,x,y,p,lsx:x,lsy:y,dir:0,carry:0,bb:[W,H,0,0],gScale:[W/gx,H/gy],gPeriod:[gx,gy],space:cg,rs:cg?(o.cageRs||1):1,SW,SH,sym:o.sym||null,tint,grey:doc.map!=='base'};
+  stroke={lazy,fd:o.space?'all':null,L,o,x,y,p,lsx:x,lsy:y,dir:0,carry:0,bb:[W,H,0,0],gScale:[W/gx,H/gy],gPeriod:[gx,gy],space:cg,rs:cg?(o.cageRs||1):1,SW,SH,sym:o.sym||null,tint,grey:doc.map!=='base'};
   if(tint&&o.jitterPerStroke)stroke.dabCol=jitterColor(o.color,o,stroke.grey);
   /* other maps painted by the same stroke: make sure the layer has an image there; with Lock alpha they follow the base colour's shape */
   if(o.extras&&o.extras.length){for(const e of o.extras)ensureMapTarget(L,e.key);
@@ -68,6 +72,8 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy){
       run(P.stamp,dst,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:s.tint?1:0},uDabCol:s.dabCol||[0,0,0]}),{blend:o.buildup?'over':s.tint?'tintmax':'max'});}
   }
   for(const [cx,cy] of copies){const b=s.bb;b[0]=Math.min(b[0],cx-ext-1);b[1]=Math.min(b[1],cy-ext-1);b[2]=Math.max(b[2],cx+ext+1);b[3]=Math.max(b[3],cy+ext+1);}
+  /* what changed since the last frame, so only that part of the picture is composited again */
+  if(s.fd!=='all')for(const [cx,cy] of copies){const e=ext+(o.tool==='smudge'?Math.hypot(dx,dy):0)+3,f=s.fd||(s.fd=[cx,cy,cx,cy]);f[0]=Math.min(f[0],cx-e);f[1]=Math.min(f[1],cy-e);f[2]=Math.max(f[2],cx+e);f[3]=Math.max(f[3],cy+e);}
 }
 function addPoint(x,y,p){
   const s=stroke;if(!s)return;const dx=x-s.x,dy=y-s.y,len=Math.hypot(dx,dy);
@@ -81,13 +87,15 @@ function endStroke(record){
   const s=stroke;if(!s)return;const L=s.L,W=doc.w,H=doc.h;
   if(s.space){s.spaceDirty=false;s.space.sync();const b=s.space.bbox(s);s.bb=doc.wrap?[0,0,W,H]:[b[0]-2,b[1]-2,b[2]+2,b[3]+2];}
   const healing=s.o.tool==='heal',cloning=s.o.tool==='clone';
-  if(s.o.tool!=='smudge'&&!healing&&!cloning)run(P.merge,L.target,{uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(s.o)},...tonalU(s.o),uStrokeColor:s.o.color,uStrokeTint:!!s.tint,uStrokeOpacity:s.o.opacity,uLockAlpha:L.lockAlpha,...chanU(s.o),...selU(s.o)});
-  const x0=clamp(Math.floor(s.bb[0]),0,W),y0=clamp(Math.floor(s.bb[1]),0,H),x1=clamp(Math.ceil(s.bb[2]),0,W),y1=clamp(Math.ceil(s.bb[3]),0,H),bw=x1-x0,bh=y1-y0;
+  const x0=clamp(Math.floor(s.bb[0]),0,W),y0=clamp(Math.floor(s.bb[1]),0,H),x1=clamp(Math.ceil(s.bb[2]),0,W),y1=clamp(Math.ceil(s.bb[3]),0,H),bw=x1-x0,bh=y1-y0,R=[x0,y0,bw,bh];
+  if(s.lazy&&bw>0&&bh>0)blit(L.target,beforeT,x0,y0,bw,bh,x0,y0);
+  if(s.o.tool!=='smudge'&&!healing&&!cloning&&bw>0&&bh>0)scissorDo(R,()=>run(P.merge,L.target,{uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(s.o)},...tonalU(s.o),uStrokeColor:s.o.color,uStrokeTint:!!s.tint,uStrokeOpacity:s.o.opacity,uLockAlpha:L.lockAlpha,...chanU(s.o),...selU(s.o)}));
+  if(s.o.tool!=='smudge')strokeT.dirtyR=s.space?'all':R;
   /* the heal brush heals every map of the layer where the stroke went */
   const parts=healing?healApply(s,x0,y0,bw,bh,record).parts:cloning&&s.clone?cloneEnd(s,x0,y0,bw,bh,record):[];
-  for(const e of (s.o.extras||[])){const T=mapT(L,e.key),old=acquireD(T.depth);blit(T,old,0,0,W,H,0,0);
+  for(const e of (s.o.extras||[])){if(!(bw>0&&bh>0))break;const T=mapT(L,e.key),old=acquireD(T.depth);blit(T,old,x0,y0,bw,bh,x0,y0);
     if(record&&bw>0&&bh>0)parts.push({k:e.key,before:captureRegion(old,x0,y0,bw,bh)});
-    run(P.merge,T,Object.assign({uSrc:old.tex,uStrokeTex:strokeT.tex,uStroke:{int:e.mode},uStrokeColor:e.color,uStrokeOpacity:s.o.opacity,uLockAlpha:false},chanU(null),s.exU));release(old);
+    scissorDo(R,()=>run(P.merge,T,Object.assign({uSrc:old.tex,uStrokeTex:strokeT.tex,uStroke:{int:e.mode},uStrokeColor:e.color,uStrokeOpacity:s.o.opacity,uLockAlpha:false},chanU(null),s.exU)));release(old);
     if(parts.length&&parts[parts.length-1].k===e.key)parts[parts.length-1].after=captureRegion(T,x0,y0,bw,bh);}
   if(s.lockT)release(s.lockT);dropStrokeCache(s);
   stroke=null;

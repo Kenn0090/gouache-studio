@@ -22,7 +22,7 @@ function dropStrokeCache(s){if(s&&s.cache){for(const k in s.cache)if(s.cache[k].
 function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
   const sc=strokeCacheFor(list,k);let start=0;
   if(sc&&sc.t&&sc.t.depth===acc.depth){blit(sc.t,acc,0,0,doc.w,doc.h,0,0);start=sc.i;}
-  for(let i=start;i<list.length;i++){if(sc&&i===sc.i&&!sc.t){sc.t=makeTarget(doc.w,doc.h,acc.depth);blit(acc,sc.t,0,0,doc.w,doc.h,0,0);}
+  for(let i=start;i<list.length;i++){if(sc&&i===sc.i&&!sc.t&&!compPart){sc.t=makeTarget(doc.w,doc.h,acc.depth);blit(acc,sc.t,0,0,doc.w,doc.h,0,0);}
     const n=list[i],clipped=clipBaseOf(list,i);
     if(!n.visible)continue;if(clipped&&!clipped.visible)continue;
     const mt=maskTexOf(n);
@@ -52,7 +52,19 @@ function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
   return acc;}
 function renderNodes(list){const acc=acquire();clearTarget(acc);return compositeList(list,acc);}
 let maskViewT=null,maskViewLive=false;
-function composite(){if(compOut)release(compOut);maskOverride=new Map();const tmp=[];maskViewLive=false;if(typeof msUpdateAll==='function')msUpdateAll();
+/* While painting a plain stroke only the part of the picture the new dabs touched is composited again (scissored),
+   into the picture from the frame before. Layers whose look depends on their surroundings (filter layers, layer
+   styles and arrays, content effects) need the whole picture, so then everything is composited as before. */
+function compNeedsAll(list,k){for(const n of list){if(!n.visible)continue;if(n.type==='layer'){if(n.fx)return true;if(typeof lookTouches==='function'&&lookTouches(n,k))return true;if(n.cfx&&typeof cfxOn==='function'&&cfxOn(n,k))return true;}
+    else if(n.children&&compNeedsAll(n.children,k))return true;}return false;}
+let compPart=false;
+function compositeStrokePart(){const s=stroke;if(!s||!s.compDone||s.fd==='all'||!compOut||compOut.w!==doc.w||compOut.h!==doc.h||s.L.maskOf||s.L.quick||preview||ui.mode==='anim'||ui.mode==='bake'||doc.view==='material'||doc.view==='nfinal'||compNeedsAll(doc.root.children,doc.map))return false;
+  const f=s.fd;s.fd=null;if(!f)return true;const r=doc.wrap?[0,0,doc.w,doc.h]:[Math.max(0,Math.floor(f[0])),Math.max(0,Math.floor(f[1])),0,0];
+  if(!doc.wrap){r[2]=Math.min(doc.w,Math.ceil(f[2]))-r[0];r[3]=Math.min(doc.h,Math.ceil(f[3]))-r[1];}if(r[2]<=0||r[3]<=0)return true;
+  if(typeof msUpdateAll==='function')msUpdateAll();
+  compPart=true;try{scissorDo(r,()=>{const acc=acquire();clearTarget(acc,mapDefault(doc.map));const out=compositeList(doc.root.children,acc);blit(out,compOut,r[0],r[1],r[2],r[3],r[0],r[1]);release(out);});}finally{compPart=false;}
+  compOut.mipDirty=true;v3Changed();return true;}
+function composite(){if(compositeStrokePart())return;if(compOut)release(compOut);maskOverride=new Map();const tmp=[];maskViewLive=false;if(typeof msUpdateAll==='function')msUpdateAll();
   if(stroke&&stroke.L.maskOf&&!strokeLive(stroke.o)){const lm=acquire();tmp.push(lm);run(P.merge,lm,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,...tintU(),uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},selU(stroke.o),tonalU(stroke.o)));
     /* a Paint row of a mask with rows: the whole stack again, with the row as it is being painted */
     if(stroke.L.mrow){const ev=msEval(stroke.L.maskOf,{row:stroke.L.mrow,t:lm});tmp.push(ev);maskOverride.set(stroke.L.maskOf,ev.tex);if(ui.viewMask){if(!maskViewT||maskViewT.w!==doc.w||maskViewT.h!==doc.h||maskViewT.depth!==ev.depth){disposeTarget(maskViewT);maskViewT=makeTarget(doc.w,doc.h,ev.depth);}blit(ev,maskViewT,0,0,doc.w,doc.h,0,0);maskViewLive=true;}}
@@ -60,7 +72,7 @@ function composite(){if(compOut)release(compOut);maskOverride=new Map();const tm
   if(preview&&!preview.off&&preview.isMask)maskOverride.set(preview.L,previewT.tex);
   {const acc=acquire();clearTarget(acc,ui.mode==='anim'?[0,0,0,0]:mapDefault(doc.map));compOut=compositeList(doc.root.children,acc);}
   if(ui.mode!=='anim'&&(doc.view==='material'||doc.view==='nfinal'))buildMaterialView();compOut.mipDirty=true;tmp.forEach(release);maskOverride=new Map();
-  if(ui.mode==='anim'){buildOnion();if(stroke)liveFrameUpdate();}else if(onionT){release(onionT);onionT=null;}v3Changed();}
+  if(ui.mode==='anim'){buildOnion();if(stroke)liveFrameUpdate();}else if(onionT){release(onionT);onionT=null;}v3Changed();if(stroke){stroke.compDone=true;stroke.fd=stroke.fd==='all'?'all':null;}}
 function dprNow(){return cv.height/Math.max(1,stage.clientHeight);}
 function viewSource(){const A=doc.active;if(ui.viewMask&&A&&A.mask){
     if(stroke&&stroke.L.maskObj===A.mask&&maskViewLive)return {t:maskViewT,mask:true};
@@ -70,7 +82,8 @@ function drawView(){
   bindTarget(null);gl.clearColor(themeGround[0],themeGround[1],themeGround[2],1);gl.clear(gl.COLOR_BUFFER_BIT);
   const dpr=dprNow(),z=view.zoom,vs=viewSource(),fl=cageFlatActive(),bv=ui.mode==='bake'?bakeViewTex():ui.mode==='convert'?cvViewTex():null,T=bv||(fl?cageRenderFlat(vs.t):vs.t),DW=fl?fl.fw:doc.w,DH=fl?fl.fh:doc.h;
   gl.bindTexture(gl.TEXTURE_2D,T.tex);
-  if(z<1&&T===compOut){if(compOut.mipDirty){gl.generateMipmap(gl.TEXTURE_2D);compOut.mipDirty=false;}gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);}
+  if(z<1&&T===compOut&&compOut.mipDirty&&stroke&&doc.w*doc.h>=16777216)gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); /* big canvas: the smaller copies are made once the stroke ends */
+  else if(z<1&&T===compOut){if(compOut.mipDirty){gl.generateMipmap(gl.TEXTURE_2D);compOut.mipDirty=false;}gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);}
   else gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,z>=2?gl.NEAREST:gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,z>=2?gl.NEAREST:gl.LINEAR);
   const ox=view.x*dpr,oy=view.y*dpr,ew=DW*z*dpr,eh=DH*z*dpr,t=doc.wrap&&!fl;
