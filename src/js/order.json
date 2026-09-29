@@ -52,6 +52,7 @@
         "filters/filters",
         "filters/filters-more",
         "filters/filters-distort",
+        "filters/embroidery",
         "filters/fx-layers",
         "layers/look",
         "layers/array",
