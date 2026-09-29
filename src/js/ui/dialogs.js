@@ -61,12 +61,44 @@ function dlgNew(){const f=sizeFields(1024,1024,false);let depth=doc.depth,bgMode
   const seg=(opts,cur,set)=>{const w=el('div',{class:'chips'});const draw=()=>{w.replaceChildren(...opts.map(([v,l,dis])=>el('button',{class:'chip'+(v===cur()?' on':''),disabled:!!dis,title:dis?'This GPU cannot render 16-bit float textures':null,text:l,onclick:()=>{set(v);draw();}})));};draw();return w;};
   const tileChk=chk('dTile','Seamless tile mode',false,v=>{tile=v;});
   const TPL_NOTES={pbrsg:'Diffuse, specular, glossiness, height and normal (the Specular/Gloss workflow).',brush:'A black-and-white canvas for drawing a brush tip: paint in black, then press Make brush.',hand:'Base colour only.',pbr:'Base colour, roughness, metallic, height and normal.',custom:'Choose the maps after creating.'};const tplNote=el('p',{class:'note',text:TPL_NOTES.hand});
-  const body=el('div',{class:'dlg-grid'},f.row,f.presets,
+  const np=newPresetBox(f);
+  const body=el('div',{class:'dlg-grid'},np.el,f.row,np.units,f.presets,
     el('div',{class:'sub',text:'Template'}),seg([['hand','Hand-painted'],['pbr','PBR'],['pbrsg','PBR spec/gloss'],['brush','Brush tip'],['custom','Custom…']],()=>tpl,v=>{tpl=v;tplNote.textContent=TPL_NOTES[v];if(v==='brush'){$('#dW').value=512;$('#dH').value=512;}}),tplNote,
     el('div',{class:'sub',text:'Bit depth'}),seg([[8,'8-bit'],[16,'16-bit float',!canFloat]],()=>depth,v=>{depth=v;}),
     el('div',{class:'sub',text:'Background'}),seg([['white','White'],['fg','Foreground color'],['clear','Transparent']],()=>bgMode,v=>{bgMode=v;}),
     tileChk);
-  openDialog({title:'New document',body,okLabel:'Create',onOk(){const r=f.read();if(!r)return false;const bg=bgMode==='white'?[1,1,1]:bgMode==='fg'?ui.fg.slice():null;if(tpl==='brush'){newBrushDoc(r[0],r[1]);return;}newDoc(r[0],r[1],depth,bg,'Untitled',tile,tpl==='custom'?'hand':tpl);if(tpl==='custom')setTimeout(dlgMaps,0);}});}
+  openDialog({title:'New document',body,okLabel:'Create',onOk(){const r=np.read();if(!r)return false;const dpiNew=np.dpi();const bg=bgMode==='white'?[1,1,1]:bgMode==='fg'?ui.fg.slice():null;if(tpl==='brush'){newBrushDoc(r[0],r[1]);return;}newDoc(r[0],r[1],depth,bg,'Untitled',tile,tpl==='custom'?'hand':tpl);doc.dpi=dpiNew;if(tpl==='custom')setTimeout(dlgMaps,0);}});}
+/* ---- New document presets (0.26.1): textures, screens, phones, social, paper, photo, books, cards, posters, film ---- */
+const NEW_PRESETS=[
+  ['Textures',[['256 × 256',256,256],['512 × 512',512,512],['1K (1024)',1024,1024],['2K (2048)',2048,2048],['4K (4096)',4096,4096],['8K (8192)',8192,8192],['16K (16384)',16384,16384],['2K × 1K (2:1)',2048,1024],['4K × 2K (2:1)',4096,2048]]],
+  ['Screens',[['HD 720p (16:9)',1280,720],['Full HD 1080p (16:9)',1920,1080],['QHD 1440p (16:9)',2560,1440],['4K UHD (16:9)',3840,2160],['8K UHD (16:9)',7680,4320],['Ultrawide (21:9)',3440,1440],['4:3 (1600 × 1200)',1600,1200],['4:3 (1024 × 768)',1024,768],['16:10 (1920 × 1200)',1920,1200],['Square (1:1)',2048,2048]]],
+  ['Phones and tablets',[['iPhone (portrait)',1179,2556],['iPhone Pro Max (portrait)',1290,2796],['Android phone (portrait)',1080,2400],['Phone wallpaper',1440,3200],['iPad Pro 12.9" (portrait)',2048,2732],['iPad (portrait)',1640,2360],['Android tablet (landscape)',2560,1600]]],
+  ['Social media',[['Square post',1080,1080],['Portrait post (4:5)',1080,1350],['Story / Reel (9:16)',1080,1920],['YouTube thumbnail',1280,720],['YouTube banner',2560,1440],['X / Twitter header',1500,500],['Facebook cover',1640,624],['Twitch banner',1200,480],['Discord banner',960,540],['Profile picture',800,800]]],
+  ['Paper',[['Letter (8.5 × 11 in)',8.5,11,'in'],['Legal (8.5 × 14 in)',8.5,14,'in'],['Tabloid (11 × 17 in)',11,17,'in'],['Ledger (17 × 11 in)',17,11,'in'],['A6',105,148,'mm'],['A5',148,210,'mm'],['A4',210,297,'mm'],['A3',297,420,'mm'],['A2',420,594,'mm'],['A1',594,841,'mm'],['B5',176,250,'mm'],['B4',250,353,'mm']]],
+  ['Photo prints',[['4 × 6 in',4,6,'in'],['5 × 7 in',5,7,'in'],['8 × 10 in',8,10,'in'],['11 × 14 in',11,14,'in'],['Square 8 × 8 in',8,8,'in']]],
+  ['Books and comics',[['Book 6 × 9 in',6,9,'in'],['Book 5.5 × 8.5 in',5.5,8.5,'in'],['Book 5 × 8 in',5,8,'in'],['Children’s book 8.5 × 8.5 in',8.5,8.5,'in'],['Comic page (US, 6.625 × 10.25 in)',6.625,10.25,'in'],['Comic cover with bleed (6.875 × 10.5 in)',6.875,10.5,'in'],['Manga (B6, 128 × 182 mm)',128,182,'mm'],['Webtoon strip (800 × 1280)',800,1280]]],
+  ['Cards',[['Trading card (2.5 × 3.5 in)',2.5,3.5,'in'],['Trading card with bleed (2.75 × 3.75 in)',2.75,3.75,'in'],['Tarot card (2.75 × 4.75 in)',2.75,4.75,'in'],['Business card (3.5 × 2 in)',3.5,2,'in'],['Postcard (6 × 4 in)',6,4,'in'],['Greeting card (5 × 7 in)',5,7,'in']]],
+  ['Posters',[['Poster 11 × 17 in',11,17,'in'],['Poster 18 × 24 in',18,24,'in'],['Poster 24 × 36 in',24,36,'in'],['Movie poster (27 × 40 in)',27,40,'in']]],
+  ['Film and video',[['Cinema 2K DCI',2048,1080],['Cinema 4K DCI',4096,2160],['Widescreen 2.39:1 (1920 × 804)',1920,804],['Storyboard panel (16:9)',1920,1080],['Concept art (3:2, 3000 × 2000)',3000,2000]]]];
+const NEW_UNITS=[['px','Pixels'],['in','Inches'],['cm','Centimetres'],['mm','Millimetres']];
+function newPresetBox(f){const iw=f.row.querySelector('#dW'),ih=f.row.querySelector('#dH'),dimLab=f.row.querySelector('.dim');let unit='px',dpi=72;
+  const per=u=>({px:1,in:dpi,cm:dpi/2.54,mm:dpi/25.4}[u]);const fmt=v=>unit==='px'?String(Math.round(v)):String(+v.toFixed(3));
+  const px=()=>[Math.round(+iw.value*per(unit)),Math.round(+ih.value*per(unit))];
+  const info=el('span',{class:'dim'});const upd=()=>{const [W,H]=px();info.textContent=unit==='px'?'= '+(W/dpi).toFixed(2)+' × '+(H/dpi).toFixed(2)+' in at '+dpi+' DPI':'= '+W+' × '+H+' px';dimLab.textContent=unit;};
+  const sel=el('select',{'aria-label':'Preset'},el('option',{value:'',text:'Custom size'}),...NEW_PRESETS.map(([g,list],gi)=>{const og=el('optgroup',{label:g});list.forEach(([n],i)=>og.append(el('option',{value:gi+':'+i,text:n})));return og;}));
+  const us=el('select',{'aria-label':'Units'},...NEW_UNITS.map(([u,n])=>el('option',{value:u,text:n})));
+  const di=el('input',{class:'num',type:'number',min:1,max:9600,value:dpi,'aria-label':'Resolution in DPI'});
+  const setUnit=u=>{const [W,H]=px();unit=u;us.value=u;iw.value=fmt(W/per(u));ih.value=fmt(H/per(u));upd();};
+  us.addEventListener('change',()=>setUnit(us.value));
+  di.addEventListener('input',()=>{const v=Math.round(+di.value);if(v>0){if(unit==='px'){dpi=v;upd();}else{dpi=v;upd();}}});
+  sel.addEventListener('change',()=>{if(!sel.value)return;const [gi,i]=sel.value.split(':').map(Number),[,w,h,u]=NEW_PRESETS[gi][1][i];
+    if(u){dpi=300;di.value=300;unit=u;us.value=u;iw.value=fmt(w);ih.value=fmt(h);}else{unit='px';us.value='px';iw.value=w;ih.value=h;}upd();});
+  const swap=el('button',{class:'btn sm',title:'Swap width and height (portrait / landscape)','aria-label':'Swap width and height',text:'⇄',onclick:()=>{const a=iw.value;iw.value=ih.value;ih.value=a;upd();}});
+  for(const i of [iw,ih])i.addEventListener('input',()=>{sel.value='';upd();});
+  for(const b of f.presets.querySelectorAll('button'))b.addEventListener('click',()=>{if(unit!=='px')setUnit('px');sel.value='';setTimeout(upd,0);});
+  iw.step=ih.step='any';upd();
+  return {el:el('div',{class:'frow'},el('label',{text:'Preset'}),sel),units:el('div',{class:'frow'},el('label',{text:'Units'}),us,el('label',{text:'DPI'}),di,swap,info),dpi:()=>dpi,
+    read(){const [W,H]=px();if(!(W>=1&&H>=1&&W<=MAX_DIM&&H<=MAX_DIM)){toast('That is '+W+' × '+H+' px. Width and height must be between 1 and '+MAX_DIM+' px'+(unit!=='px'?' (try a lower DPI).':'.'));return null;}return [W,H];}};}
 /* the brush-tip template: white, 8-bit, black brush, and a banner with Make brush */
 function newBrushDoc(w,h){newDoc(w||512,h||512,8,[1,1,1],'Brush tip',false,'hand');doc.brushTpl=true;ui.bg=[1,1,1];setFG([0,0,0]);setTool('brush');tipBanner();}
 let tipBan=null;

@@ -10,7 +10,9 @@ function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren
   if(!OPT_PAINT.includes(t)||ui.mode==='convert'){bar.append(el('span',{class:'optnote',text:'More settings in the Tool settings panel.'}),el('button',{class:'btn sm',text:'Tool settings',onclick:()=>showPanel('tool')}));return;}
   const sm=t==='smudge',tonal=t==='dodge'||t==='burn';
   if(typeof activePreset!=='undefined')bar.append(el('button',{class:'optpreset',title:'Pick a brush in the Brushes panel',onclick:()=>showPanel('brushes')},
-    el('span',{class:'optdot'+(brush.tip?' tip':''),style:brush.hardness<.5&&!brush.tip?'opacity:.7;filter:blur(1px)':''}),el('span',{text:activePreset?activePreset.name:(brush.tip?brush.tip.name:'Custom')})));
+    (()=>{const t=brush.tip;if(t&&t.canvas){/* the brush's own tip shape (0.26.1), not a plain dot */if(!t._url)try{t._url=t.canvas.toDataURL();}catch(e){t._url='';}
+      if(t._url){const s=el('span',{class:'optdot tipimg'});s.style.webkitMaskImage=s.style.maskImage='url('+t._url+')';return s;}}
+      return el('span',{class:'optdot'+(brush.tip?' tip':''),style:brush.hardness<.5&&!brush.tip?'opacity:.7;filter:blur(1px)':''});})(),el('span',{text:activePreset?activePreset.name:(brush.tip?brush.tip.name:'Custom')})));
   bar.append(el('span',{class:'optsep'}));
   const S=(key,label,min,max,step,fmt,map,get,set)=>{const sl=makeSlider({id:'ob_'+key,label,min,max,step,value:get?get():brush[key],fmt,map,onInput:v=>{if(set)set(v);else brush[key]=v;
       if(key==='size'){if(sizeSlider)sizeSlider.set(v);refreshCursor();}else{const s=document.getElementById({opacity:'bOp',flow:'bFlow',hardness:'bHard',strength:'bStr'}[key]);if(s){s.value=v;const o=s.nextSibling;if(o)o.textContent=fmt(v);}}

@@ -4,7 +4,7 @@ const prefs=Object.assign({livePreview:true},(()=>{try{return JSON.parse(localSt
 function savePrefs(){try{localStorage.setItem('gs.prefs',JSON.stringify(prefs));}catch(e){}}
 /* the Preview checkbox every image-changing dialog carries; starts from the global setting */
 function previewChk(id,on,onChange){return chk(id,'Preview',on,onChange);}
-function dlgPrefs(){let live=prefs.livePreview,hints=!prefs.hideHints,tipCur=!!prefs.tipCursor,maxB=prefs.maxBrush||5000;const th=themeSection(),ms=memSection(),asb=autosavePrefsBox();
+function dlgPrefs(){let live=prefs.livePreview,hints=!prefs.hideHints,tipCur=prefs.tipCursor!==false,maxB=prefs.maxBrush||5000;const th=themeSection(),ms=memSection(),asb=autosavePrefsBox();
   const body=el('div',{class:'dlg-grid'},
     el('div',{class:'sub',text:'Theme'}),th.el,
     el('div',{class:'sub',text:'Screen'}),

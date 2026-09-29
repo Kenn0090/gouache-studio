@@ -21,7 +21,7 @@ function tipOutline(tip,d){const n=clamp(Math.round(d/4)*4,8,512),key=tip.id+':'
   const on=(i,j)=>i>=0&&j>=0&&i<W&&j<H&&A[(j*W+i)*4+3]>=110;
   for(let j=0;j<H;j++)for(let i=0;i<W;i++){if(!on(i,j)||(on(i-1,j)&&on(i+1,j)&&on(i,j-1)&&on(i,j+1)))continue;const p=(j*W+i)*4;O[p]=O[p+1]=O[p+2]=O[p+3]=255;}
   x.putImageData(out,0,0);if(tipOutlineCache.size>32)tipOutlineCache.clear();tipOutlineCache.set(key,c);return c;}
-function tipCursor(elm,d){const t=brush.tip,on=!!(prefs.tipCursor&&t&&t.canvas);elm.classList.toggle('tipcur',on);
+function tipCursor(elm,d){const t=brush.tip,on=!!(prefs.tipCursor!==false&&t&&t.canvas);elm.classList.toggle('tipcur',on);
   if(!on){if(elm.firstChild)elm.replaceChildren();return;}
   const src=tipOutline(t,d);let c=elm.firstChild;if(!c||c.tagName!=='CANVAS'){c=document.createElement('canvas');elm.replaceChildren(c);}
   if(c._src!==src){c.width=src.width;c.height=src.height;c.getContext('2d').drawImage(src,0,0);c._src=src;}
@@ -63,6 +63,7 @@ cv.addEventListener('pointerdown',e=>{
   if(ui.tool==='gradient'){gradPointerDown(e,ix,iy);return;}
   if(ui.tool==='array'){arrPointerDown(e,ix,iy);return;}
   if(ui.tool==='shape'){shapePointerDown(e,ix,iy);return;}
+  if(['bucket','gbucket','gradient'].includes(ui.tool)&&typeof lockStop==='function'&&lockStop(editTarget()))return;
   if(ui.tool==='bucket'){bucketFill(ix,iy);return;}
   if(ui.tool==='gbucket'){gbucketDown(e,ix,iy);return;}
   if(typeof maskToolsOn==='function'&&(maskToolsOn()||liveOn())&&mk3.tool==='id'){idSelPickAt(ix,iy);return;}
@@ -75,7 +76,7 @@ cv.addEventListener('pointerdown',e=>{
   if(ui.tool==='heal'&&e.altKey){if(heal.mode==='spot'){heal.mode='source';healSave();buildBrushPanel();buildOptBar();}healSetSource(ix,iy);return;}
   if(ui.tool==='picker'||e.altKey){ptr={mode:'pick',id:e.pointerId};const q=ui.cageFlat?cageFwd(ix,iy):[ix,iy];pickAt(q[0],q[1]);return;}
   if(typeof maskPaintLocked==='function'&&maskPaintLocked()){toast('Press Paint in the mask bar to paint the mask.');return;}
-  const et=ui.mode==='bake'?bakeEditTarget():editTarget();const o=paintOpts(et);if(!o)return;const L=et.L,p=pressureOf(e);
+  const et=ui.mode==='bake'?bakeEditTarget():editTarget();if(ui.mode!=='bake'&&typeof lockStop==='function'&&lockStop(et))return;const o=paintOpts(et);if(!o)return;const L=et.L,p=pressureOf(e);
   if((o.tool==='heal'||o.tool==='clone')&&!healBegin(ix,iy,o.tool))return;const cz=cageStrokeStart(o,ix,iy);if(cz===false)return;const sx=cz?cz.x:ix,sy=cz?cz.y:iy;o.sym=symFor(o);
   ptr={mode:'paint',id:e.pointerId,sx,sy,sp:p,rx:sx,ry:sy,cage:cz?cz.kind:null,ox:sx,oy:sy,lock:null};beginStroke(L,sx,sy,p,o);
 });

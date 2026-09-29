@@ -53,7 +53,7 @@ function renderLayers(){
     const eye=el('button',{class:'eye',title:n.visible?'Hide':'Show','aria-label':(n.visible?'Hide ':'Show ')+n.name});eye.innerHTML=n.visible?eyeOn:eyeOff;
     eye.addEventListener('click',e=>{e.stopPropagation();n.visible=!n.visible;renderLayers();requestRender(true);});
     const meta=[];if(grp){meta.push(n.mode<0?'pass':MODES[n.mode]);const om=doc.maps.length>1&&ui.mode!=='anim'?onlyMapOf(n):null;if(om)meta.push(MAP_SHORT[om]);}else{const mm=mapModeOf(n,doc.map);if(mm!==(doc.map==='base'?0:MAP_DEFS[doc.map].blend))meta.push(MODES[mm].replace(' (Add)',''));}
-    if(n.text)meta.unshift('text');if(n.grad)meta.unshift('gradient');if(n.shape)meta.unshift('shape');if(n.fill)meta.unshift('fill');if(n.array&&n.array.on!==false)meta.unshift('array');if(n.opacity<1)meta.push(Math.round(n.opacity*100)+'%');if(n.lockAlpha)meta.push('lock');
+    if(n.text)meta.unshift('text');if(n.grad)meta.unshift('gradient');if(n.shape)meta.unshift('shape');if(n.fill)meta.unshift('fill');if(n.array&&n.array.on!==false)meta.unshift('array');if(n.opacity<1)meta.push(Math.round(n.opacity*100)+'%');if(n.lockAll)meta.push('locked');else{if(n.lockPx)meta.push('pixels locked');if(n.lockPos)meta.push('position locked');if(n.lockAlpha)meta.push('lock alpha');}
     /* which maps this layer has something in (so a layer painted only in Height is easy to find) */
     if(n.fx){meta.length=0;const mm=mapModeOf(n,n.fx.map);if(mm)meta.push(MODES[mm].replace(' (Add)',''));if(n.opacity<1)meta.push(Math.round(n.opacity*100)+'%');
       meta.unshift(n.fx.stack.filter(it=>it.on!==false).map(fxItemTitle).join(', ')||'no filters');if(doc.maps.length>1)meta.push(MAP_SHORT[n.fx.map]);}

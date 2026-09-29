@@ -97,6 +97,8 @@
         "files/recent",
         "files/autosave",
         "ui/safety",
+        "layers/locks",
+        "ui/key-helper",
         "ui/rulers",
         "ui/welcome",
         "core/boot"
