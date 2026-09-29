@@ -8,6 +8,8 @@ The **3D Paint** tab (top right, next to Paint) is for painting straight onto a 
 The column beside the view works like the rest of the dock: drag its tabs out (to float them or put them with other panels), or drag other tabs into it.
 
 ## Getting started
+**File › New** can start a new 3D Paint project straight away: choose **Start in: 3D Paint** at the top of the New document window. The width you type is the texture size, and the model you have loaded stays.
+
 1. Click **3D Paint** at the top right.
 2. Pick a model in the **3D Paint** panel: one of the shapes, or **Import a model** (OBJ, glTF, GLB or FBX). You can also drop a model file on the view.
 3. Paint with a left drag. The model starts with a **Base material** (a fill layer) and an empty **Paint** layer.
@@ -77,7 +79,11 @@ The selection is tinted on the model and shows on the flat texture too. Painting
 A **loop** is the ring of quads crossing the edge you click nearest to. Faces and loops follow the model as you imported it, even when the view shows it subdivided.
 
 ## Materials
-The **Materials** tab sits beside Brushes. Click a material (Steel, Gold, Copper, Rust, Rubber, Plastic, your own…) to add it as a **material layer**. If a selection is active, it becomes the layer's mask; otherwise paint the mask to show the material where you want it.
+The **Materials** tab sits beside Brushes. Click a material (Steel, Gold, Copper, Rust, Rubber, Plastic, your own…) to add it as a **material layer** on top of the selected layer, or **drag it onto the Layers panel** and drop it between two layers to put it exactly there (a line shows where it will land). Smart materials drag the same way, and a **smart mask dropped onto a layer** becomes that layer's mask.
+
+A new material covers the whole model and has **no mask**. If a selection is active, the selection becomes its mask. The first time you paint, fill or draw a gradient on it, a **black mask** is added for you: paint white to show the material where you want it, like Substance Painter.
+
+**From textures…** turns a material you downloaded (ambientCG, Poly Haven, ShareTextures, cgbookcase, 3DTextures.me, TextureCan…) into one of yours in one step: pick its **folder**, its **images** or the **.zip**. The images are sorted by their names (Color, Roughness, Metalness, NormalGL, Displacement, AO, and packed ARM files), a DirectX normal is turned the right way, and the pictures are scaled to 1K, 2K, 4K or kept full size.
 
 **New material…** makes a material layer and shows it in the **Properties** panel (the tab beside Colour), which edits whichever material layer (or mask row) is selected. Double-clicking a material layer's thumbnail brings it forward.
 
@@ -113,7 +119,7 @@ The results become each set's mesh maps, and everything that reads them (mask ro
 
 ## Mesh maps (from the Bake tab)
 In the Bake tab, tick **Bake each material separately**, then press **Send to 3D Paint**. The model comes over, and each material's baked maps land in its own texture set as that set's **mesh maps** (listed in the 3D Paint panel), like Substance Painter's. Masks, generators and [smart materials](Smart-materials-and-anchors.md) read them.
-- The baked normal becomes a layer in the Normal map, so the high-poly detail shows on the model straight away.
+- The bakes are **not** added to the layer stack. The baked normal shades the model by itself (your painted normal and height sit on top of it, and it goes into exported normal maps), so the high-poly detail shows straight away.
 - **Add as layer** puts any mesh map in the layer stack.
 - Tick *also add them as layers* before sending to get AO (Multiply) and curvature (Overlay) layers automatically.
 - Material channels can use them (**Mesh map** in the Properties panel), and **right-click a layer › Mask from mesh map** makes its mask from AO, curvature, thickness or height.
@@ -133,7 +139,9 @@ Masks can hold rows (generators, noise, mesh maps, ID colours, filters…) and l
 - **Done**, **Esc**, Alt + click again, or clicking the layer's own thumbnail goes back to the material.
 
 ## From Paint
-In the Paint tab, **right-click a layer › Send layer to 3D Paint** sends just that layer (or group), flattened with its effects. **File › Send to 3D Paint** flattens the whole painting (every map it shares with 3D Paint) into a new layer of the active texture set, keeping its proportions. Hide the background first to keep transparency. In 3D Paint, press **Ctrl + T** to move and scale it.
+In the Paint tab, **right-click a layer › Send layer to 3D Paint** sends just that layer (or group), flattened with its effects. **File › Send to 3D Paint** sends the whole painting (every map it shares with 3D Paint). Hide the background first to keep transparency.
+
+It arrives as a **sticker**: a material layer whose pictures are projected onto the model from **where you are looking**, only on the faces turned towards you, and see-through wherever the painting was empty. Its gizmo sits on the model: the arrows move it, the rings turn it, the boxes scale it. It stays movable until you choose **right-click › Convert to pixels**.
 
 ## Editing a layer in the Paint canvas
 Right-click a layer › **Edit in the Paint canvas** sends its content (every map) to the Paint tab as a linked layer, so you can use every Paint tool on it. When you're done, right-click it there › **Send back to 3D Paint**: it replaces the original layer's content and keeps its name, mask, opacity and blend mode. Its effects and styles become part of the pixels, and a material layer becomes a plain paint layer. One undo step in 3D Paint takes it back.

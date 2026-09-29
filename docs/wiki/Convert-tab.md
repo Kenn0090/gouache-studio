@@ -42,6 +42,7 @@ Only the normal map is in colour; everything else is grey. **Canvas shows** swit
 
 ## 5. Use the results
 - **Send to document** puts each map into the matching map of your painting as a **plain layer** ("Converted normal", "Converted height"…), scaled to the painting's size. Missing maps are added for you. **Replace the last converted maps** swaps the previous conversion's layers for the new ones. In Paint, click a layer to see its map.
+- **Turn into material…** makes a material from the results, for 3D Paint: the base colour (the photo, or its evened-out colour if you ticked Base colour) with the normal, height, AO, roughness and metallic you made. It is saved in **Materials** (at 1K, 2K, 4K or full size) and, if you like, added to 3D Paint straight away as a material layer.
 - **Export files…** saves the maps as PNG files (height at 16 bits). On the desktop you choose a folder; in the browser they download as a zip.
 
 The **Maps** menu's converters (Normal from base colour, AO from height…) open this tab with the right source and map already chosen. For a conversion that keeps updating while you paint, add it to a [filter layer](Filter-layers.md) instead.

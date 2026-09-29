@@ -43,6 +43,7 @@ Untick **Show this at start-up** to go straight to a blank canvas; **File › We
 *The New document dialog.*
 
 **File › New document…** (Ctrl+Alt+N):
+- **Start in:** **Paint** (a new tab), **3D Paint** (a new 3D Paint project on the current model; the width is the texture size), **Animation** or **Brush** (a new sketch canvas for brush tips).
 - **Preset:** about 90 sizes in groups: **Textures** (256 to 16K), **Screens** (HD, Full HD, 4K, 8K, ultrawide, 4:3), **Phones and tablets**, **Social media**, **Paper** (Letter, Legal, Tabloid, A6 to A1, B5, B4), **Photo prints**, **Books and comics**, **Cards** (trading cards, tarot, business cards, postcards), **Posters** and **Film and video**.
 - **Size:** type it in, in **pixels, inches, centimetres or millimetres**. **DPI** sets how many pixels make an inch (paper presets use 300); the size in pixels (or inches) shows beside it. **⇄** swaps width and height (portrait / landscape).
 - **Template:**

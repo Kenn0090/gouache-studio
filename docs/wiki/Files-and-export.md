@@ -54,9 +54,19 @@ For **Specular/Gloss** documents (see [Maps and PBR](Maps-and-PBR.md)):
 | Unreal (specular/gloss) | `T_Name_D` (diffuse), `T_Name_S` (specular), `T_Name_G` (glossiness), `T_Name_N` (DirectX), `T_Name_AO`, `T_Name_H`, `T_Name_E`, for a custom material |
 | Separate maps | one file per map |
 
+**Your own presets:** **New preset…** opens an editor where you list the files: each is a **colour map** (base colour, with opacity in its alpha if you like; normal; emissive), a **grey map**, or a **packed** image with one map in each of red, green, blue and alpha (for example metallic, roughness and AO in one file). Choose the normal map style (OpenGL or DirectX) and how files are named (`{name}` is the export name, `{s}` each file's suffix). It starts from whichever preset is chosen. Your presets show with a ★ in the list and are kept on this computer; **Edit preset…** changes or deletes one.
+
+**The model too:** in 3D Paint (or with a model in the 3D view), **Model** exports it along with the textures:
+- **.glb:** one file with the textures inside, already connected to the materials (one material per texture set). Blender, Godot and Unreal open it as is; Unity needs the free *glTFast* package.
+- **.obj + .mtl:** the model and a material file that points at the texture files.
+
+**Send to** (desktop app): after exporting, the files can go straight into another program:
+- **Unity, Godot, Unreal:** choose your project's folder once. The files go to `Assets/Gouache/<name>` (Unity), `res://gouache/<name>` (Godot) or `Content/Gouache/<name>` (Unreal). Unity and Godot import them when you switch back to them; in Unreal turn on *Auto Import* (Editor Preferences › Loading & Saving) or drag the .glb into the Content Browser.
+- **Blender:** click **Save the Blender add-on…**, then in Blender go to *Edit › Preferences › Add-ons › Install…*, pick the file and tick **Gouache Studio link**. From then on a running Blender receives the model at once, in a collection called *Gouache - <name>*; sending again replaces it. If Blender isn't running, choose the Blender program and it is started with the model.
+
 Other options:
 - **Normal map direction:** the engine default, OpenGL or DirectX.
-- **Size:** the document size or 256–4096.
+- **Size:** the document size or 256–8192.
 - **Format:** PNG or TGA, with **16-bit height**.
 - **Opacity:** goes into the base colour's alpha.
 
@@ -67,3 +77,9 @@ See [Animation](Animation.md).
 
 ## Brushes
 **File › Import brushes (.abr)** loads Photoshop brushes. See [Brushes and painting](Brushes-and-painting.md).
+
+## When a model file changes (desktop app)
+If a model you opened with **Import model** or **Load…** is saved again in another program (Blender, Maya…), Gouache Studio notices and asks **Update it here?**. After updating it offers to **bake again** with the last settings (3D Paint's *Bake mesh maps*, or the Bake tab), so masks and materials that use the mesh maps follow the new model. Tick **Always update and bake without asking** (also in *Preferences › Models*) to skip the questions. A changed **high-poly** is never updated without asking. The browser version can't watch files on your computer.
+
+## Autosave
+Every open document tab has its own recovery copy, not only the one you are working on. Saving or closing a tab removes its copy.

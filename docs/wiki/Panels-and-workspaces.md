@@ -14,7 +14,11 @@ The strip under the menus holds what you change all the time. For the brush, era
 The right side is a column of **groups**; each group holds one or more panels as **tabs**: Color, Properties, Brushes, Materials, Tool settings, Maps, Layers, Channels and History (plus Bake, Convert, Animation and Brush maker in their tabs of the app).
 - **Click a tab** to bring it to the front. **Double-click** it to fold the group down to its tabs (again to unfold).
 - **Drag the bars** between groups to make them taller or shorter.
-- **Drag the dock's left edge** to make the whole dock wider or narrower. Double-click the edge to go back to the usual width.
+- **Drag the dock's left edge** to make the whole dock wider or narrower (up to all but a strip of the window). Double-click the edge to go back to the usual width.
+- In **3D Paint**, the middle column (Colour, Brushes, Materials…) has its own edge: drag it to make the column wider.
+- **Drag the toolbar's edge** to switch between one and two columns of tools.
+- In **Animation**, drag the timeline's top edge to make it taller, with bigger frame pictures.
+Each workspace remembers its own sizes; double-click an edge to reset it.
 - **Drag a tab**:
   - onto another group's tabs: it joins that group;
   - onto the top or bottom edge of a group: it becomes a group of its own there;

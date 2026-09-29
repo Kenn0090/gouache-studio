@@ -47,3 +47,6 @@ Painting on big canvases (8k, 16k) only redraws the parts your brush touches, an
 - **Hide the 3D view** or the Material view when you don't need them. They add work to every change.
 - **Use cheaper filters while painting:** slow filters (painterly, lens and surface blur, live converters) catch up after each stroke. If painting under them still drags, hide their filter layers.
 - **Stay at 8-bit** unless you need 16-bit.
+
+## Models
+**When a model file is saved again elsewhere, update it and bake again without asking** (desktop app): see [Files, saving and export](Files-and-export.md#when-a-model-file-changes-desktop-app). A changed high-poly always asks first.

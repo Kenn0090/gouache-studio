@@ -35,7 +35,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 - [Animation, flipbooks and sprite sheets](Animation.md)
 
 ## Files
-- [Files, saving and export](Files-and-export.md): .gouache documents, PSD, image formats, texture export for Unreal, Unity, Godot and Blender, sprite sheets
+- [Files, saving and export](Files-and-export.md): .gouache documents, PSD, image formats, texture export for Unreal, Unity, Godot and Blender (your own packed presets, the model as .glb or .obj, sending straight into the engine or Blender), models that update when their file changes, sprite sheets
 
 ## Settings and help
 - [Preferences and performance](Preferences-and-performance.md): themes (rounded or sharp), shortcut hints and the shortcut helper, autosave countdown, previews, memory
@@ -71,4 +71,4 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 | 23 | HDRI lighting, shaders per texture set, ray-traced view and renders, screenshots, turntables, high-poly in the Bake tab | 0.26 |
 | 23b | Polish from testers: no accidental reloads, rulers and guides, layer locks, New document presets, colour wheel/sliders/swatches, shortcut helper, sharp theme, faster big canvases, autosave countdown | 0.26.1 |
 | 23c | Document tabs, and documents in windows of their own | 0.26.2 |
-| 24 | Export dialog (with the model), automatic mesh updater, Distort / Warp / Slope blur filters | 0.27 |
+| 24 | Your own export presets, the model with its textures, Send to Blender/Unity/Godot/Unreal (+ Blender add-on), model updater, Warp / Slope blur / Distort, stretchable panels, stickers from Paint, materials from downloaded textures or the Convert tab, drag materials onto layers, autosave for every tab | 0.27 |

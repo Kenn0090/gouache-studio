@@ -27,7 +27,7 @@ The **Detail** menu at the top gives the model more triangles, from Low up to ×
 ![Ray traced mode.](images/raytraced.png)
 
 ## Lighting (HDRIs)
-The model is lit by an **HDRI**, a 360° photo of real light, the way Substance Painter and Marmoset do it. Choose one in **Settings › Lighting**:
+The model is lit by an **HDRI**, a 360° photo of real light, the way Substance Painter and Marmoset do it. Choose one in the **Shader** panel's **Environment** section (or **Settings › Lighting**). **Shift + right-drag** in the 3D view turns the lighting around the model, like Substance Painter (with 3D-Coat navigation: **Shift + Alt + right-drag**); with the simple sky it moves the sun.
 - **Studio**, **Photo studio**, **Cloudy sky**, **Venice sunset** and **Evening sky** come with the app.
 - **Load your own .hdr or .exr…** uses your own (EXR files saved with ZIP compression or none; PIZ isn't supported, so save those as .hdr).
 - **Simple sky** is the old sky-and-sun light.

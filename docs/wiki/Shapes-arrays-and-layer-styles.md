@@ -43,6 +43,8 @@ The array copies every map of the layer (colour, height, roughness and so on) th
 
 ![Layer style dialog.](images/layer-style.png)
 
+On a layer with a **mask** (including material layers), the styles follow the masked shape, and effects such as a drop shadow or outer glow can reach outside the mask, as in Photoshop.
+
 **Layer › Layer style…** (or click the **fx** badge on a layer that has styles). Tick a style on the left to turn it on, click its name to change its settings. The canvas shows the changes as you adjust them (**Preview**); **OK** keeps them as one undo step, **Cancel** puts things back.
 
 - **Drop shadow:** colour, opacity, angle, distance, size, spread.

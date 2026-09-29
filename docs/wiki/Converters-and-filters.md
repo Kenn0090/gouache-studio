@@ -48,6 +48,12 @@ Only the Normal map is in colour. Every other converted map is grey and lands in
 
 ## Filter menu
 
+**Warp, Slope blur and Distort** (also in the Filter Gallery's *Distort* folder, and as filter layers and mask or content effects):
+- **Warp** pushes the picture around with a smooth noise: wobbly edges and organic breakup. **Turbulent** folds it harder. *Amount*, *Noise size* and *Seed*.
+- **Slope blur** smears the picture downhill along a slope, like Substance's: its **own** brightness, or a **noise**. **Blur** averages along the way, **Min** eats into the bright parts, **Max** grows them. Great for drips, erosion and melted edges.
+- **Distort** makes **waves**, **ripples**, a **twirl**, or a **pinch / bulge** around a centre you choose.
+In tile mode they wrap around the edges, so the result stays seamless.
+
 ![A filter dialog (Clouds) with live preview.](images/filter-clouds.png)
 *A filter dialog (Clouds) with live preview.*
 
