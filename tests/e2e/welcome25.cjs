@@ -29,7 +29,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* autosave keeps a recovery copy, offered back at the next start */
  await p.evaluate(()=>{__gs.act('addLayer');__gs.doc.active.name='Autosaved layer';});await W(200);
  ok(await p.evaluate(()=>__gs.autosaveNow(true)),'autosave writes a recovery copy when there are changes');
- const rs=await p.evaluate(async()=>(await __gs.asRecoveries()).map(r=>r.kind+':'+r.name));ok(rs.includes('paint:Cobblestone tile'),'…kept in the browser '+rs);
+ const rs=await p.evaluate(async()=>(await __gs.asRecoveries()).map(r=>r.kind+':'+r.name));ok(rs.some(r=>/^(paint|tab:\d+):Cobblestone tile$/.test(r)),'…kept in the browser '+rs);
  await p.goto(URL);await W(3200);
  ok(await p.evaluate(()=>!!document.querySelector('#wRecover .wrrow')),'next start: the welcome screen offers the unsaved work');
  await p.click('#wRecover .wrrow button:has-text("Recover")');await W(2000);

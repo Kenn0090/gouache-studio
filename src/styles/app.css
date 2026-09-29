@@ -763,3 +763,5 @@ body.stvresize{cursor:row-resize;user-select:none}
 /* (0.27) dragging a material onto the layers */
 .libghost{position:fixed;z-index:9999;pointer-events:none;padding:4px 9px;border-radius:6px;background:var(--accent);color:var(--accentText,#111);font-weight:600;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.35)}
 body.libdragging,body.libdragging *{cursor:grabbing!important;user-select:none}
+/* (0.27) autosaving another tab: the screen holds still for a moment */
+.ascover{position:fixed;inset:0;z-index:9998;cursor:progress;background:transparent}

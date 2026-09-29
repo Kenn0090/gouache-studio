@@ -20,19 +20,33 @@ function asPaintPeek(fn){const S=tabDocs.paint&&!tabDocs.inPaint?tabDocs.paint:n
 const asPaintSig=()=>asPaintPeek(u=>u.length?u[u.length-1]:null);
 const asPaintSaved=()=>asPaintPeek((u,d)=>!u.length||u[u.length-1]===d.savedAt);
 const asPaintName=()=>asPaintPeek((u,d)=>d.name||'Untitled');
+/* (0.27) every open document tab is autosaved, each under its own key (the live one too) */
+const asPaintKind=()=>typeof dtab!=='undefined'&&dtab.live?'tab:'+dtab.live:'paint';
+const asTabSig=t=>{const u=t.state&&t.state.undo;return u&&u.length?u[u.length-1]:null;};
+const asTabSaved=t=>{const u=t.state.undo;return !u.length||u[u.length-1]===t.state.doc.savedAt;};
+const asTabsWaiting=()=>typeof dtab==='undefined'?[]:dtab.tabs.filter(t=>t.state&&asTabSig(t)&&asTabSig(t)!==as.last['tab:'+t.id]);
 async function asWrite(kind,name,blob){const t=Date.now();
-  if(platform.isDesktop){const dir=await asDir(),sep=dir.includes('\\')?'\\':'/',file=dir+sep+(kind==='p3d'?'3D Paint - ':'Paint - ')+asSlug(name)+(kind==='p3d'?'.gouache3d':'.gouache');
+  if(platform.isDesktop){const dir=await asDir(),sep=dir.includes('\\')?'\\':'/',file=dir+sep+(kind==='p3d'?'3D Paint - ':'Paint - ')+asSlug(name)+(kind.startsWith('tab:')?' ['+kind.slice(4)+']':'')+(kind==='p3d'?'.gouache3d':'.gouache');
     if(as.t[kind]&&as.t[kind].path&&as.t[kind].path!==file)platform.invoke('autosave_delete',{path:as.t[kind].path}).catch(()=>{});
     await platform.writeFile(file,new Uint8Array(await blob.arrayBuffer()));as.t[kind]={path:file,t};}
   else{await asDB.run('readwrite',st=>st.put({id:kind,name,t,blob}));as.t[kind]={t};}
   fileLocUpdate&&fileLocUpdate();}
 async function asClear(kind){const c=as.t[kind];delete as.t[kind];as.last[kind]=undefined;
   try{if(platform.isDesktop){if(c&&c.path)await platform.invoke('autosave_delete',{path:c.path});}else await asDB.run('readwrite',st=>st.delete(kind));}catch(e){}}
+/* run fn on a stashed tab's document: swapped in under a cover, then swapped back */
+async function asWithTab(t,fn){if(!t.state||stroke||preview)return null;const cover=el('div',{class:'ascover'});document.body.append(cover);
+  const mine=docState();let r=null;tabDocs.hold=true;
+  try{setDocState(t.state);r=await fn();}catch(e){console.warn('autosave tab',e);}
+  finally{t.state=docState();setDocState(mine);tabDocs.hold=false;cover.remove();requestRender(true);}return r;}
 async function autosaveNow(force){if(as.busy||stroke||preview||(typeof tabDocs!=='undefined'&&tabDocs.hold)||(typeof bk!=='undefined'&&bk.busy))return false;as.busy=true;let n=0;
   try{/* the painting */
-    const sig=asPaintSig();if(sig&&(force||sig!==as.last.paint)){if(asPaintSaved()){await asClear('paint');}
+    const pk=asPaintKind(),sig=asPaintSig();if(sig&&(force||sig!==as.last[pk])){if(asPaintSaved()){await asClear(pk);}
       else{if(prefs.autosaveOver&&platform.isDesktop&&withPaintDoc(()=>doc.filePath&&extOf(doc.filePath)==='gouache'))await withPaintDocAsync(()=>saveDoc(false));
-        else await asWrite('paint',asPaintName(),await encodeGouache());n++;}as.last.paint=sig;}
+        else await asWrite(pk,asPaintName(),await encodeGouache());n++;}as.last[pk]=sig;}
+    /* the other open tabs: each is swapped in for a moment (the screen holds still meanwhile) */
+    if(ui.mode==='paint')for(const t of asTabsWaiting()){const k='tab:'+t.id,sg=asTabSig(t);
+      if(asTabSaved(t)){await asClear(k);as.last[k]=sg;continue;}
+      const blob=await asWithTab(t,()=>encodeGouache());if(blob){await asWrite(k,t.state.doc.name||'Untitled',blob);n++;as.last[k]=sg;}}
     /* the 3D Paint project (only while in 3D Paint: its texture sets are live there) */
     if(ui.mode==='p3d'&&typeof p3!=='undefined'&&p3.started){const s=p3Sig();if(force||s!==as.last.p3d){if(s===p3.savedAt)await asClear('p3d');
       else{if(prefs.autosaveOver&&platform.isDesktop&&p3.path)await saveP3Project(false);else await asWrite('p3d',p3.name||'3D Paint',await encodeP3Project());n++;}as.last.p3d=s;}}}
@@ -41,7 +55,7 @@ let asTimer=0,asNext=0;
 /* Before each autosave a small popup counts down (Preferences: 3, 5 or 10 seconds, or no warning), so nobody is
    surprised by the short pause while it saves. "Not now" waits another minute; "Save now" saves at once. */
 const asCountSec=()=>prefs.autosaveWarn===undefined?5:prefs.autosaveWarn;
-function asPending(){try{const sig=asPaintSig();if(sig&&sig!==as.last.paint&&!asPaintSaved())return true;
+function asPending(){try{const sig=asPaintSig();if(sig&&sig!==as.last[asPaintKind()]&&!asPaintSaved())return true;if(ui.mode==='paint'&&asTabsWaiting().some(t=>!asTabSaved(t)))return true;
   if(ui.mode==='p3d'&&typeof p3!=='undefined'&&p3.started){const s=p3Sig();if(s!==as.last.p3d&&s!==p3.savedAt)return true;}}catch(e){}return false;}
 let asCd=null;
 function asCountClose(){if(!asCd)return;clearInterval(asCd.timer);asCd.box.remove();asCd=null;}
@@ -58,10 +72,10 @@ const ptrBusy=()=>typeof ptr!=='undefined'&&!!ptr;
 function asSchedule(){clearInterval(asTimer);asCountClose();const m=asMin();if(!m){asNext=0;return;}asNext=Date.now()+m*60000;
   asTimer=setInterval(()=>{if(Date.now()<asNext||asCd)return;asNext=Date.now()+asMin()*60000;if(asPending())asCountdown();},15000);}
 /* after a real save the recovery copy is not needed any more */
-{const sd=saveDoc;saveDoc=async function(f){const r=await sd(f);if(asPaintSaved())asClear('paint');return r;};
+{const sd=saveDoc;saveDoc=async function(f){const r=await sd(f);if(asPaintSaved())asClear(asPaintKind());return r;};
  const sp=saveP3Project;saveP3Project=async function(f){const r=await sp(f);if(p3.savedAt===p3Sig())asClear('p3d');return r;};}
 /* recovery copies left by a session that did not end with everything saved */
-async function asRecoveries(){try{if(platform.isDesktop){const l=await platform.invoke('autosave_list');return (l||[]).filter(([p])=>/\.gouache3?d?$/i.test(p)).map(([path,t])=>({kind:/\.gouache3d$/i.test(path)?'p3d':'paint',name:fileNameOf(path).replace(/^(3D )?Paint - /,'').replace(/\.gouache3?d?$/i,''),t:t*1000,path}));}
+async function asRecoveries(){try{if(platform.isDesktop){const l=await platform.invoke('autosave_list');return (l||[]).filter(([p])=>/\.gouache3?d?$/i.test(p)).map(([path,t])=>({kind:/\.gouache3d$/i.test(path)?'p3d':'paint',name:fileNameOf(path).replace(/^(3D )?Paint - /,'').replace(/\.gouache3?d?$/i,'').replace(/ \[\d+\]$/,''),t:t*1000,path}));}
   const all=await asDB.run('readonly',st=>st.getAll());return (all||[]).map(r=>({kind:r.id,name:r.name,t:r.t,blob:r.blob}));}catch(e){return [];}}
 async function asRecover(r){try{let buf;if(r.path){const u=await platform.readFile(r.path);buf=u.buffer.slice(u.byteOffset,u.byteOffset+u.byteLength);}else buf=await r.blob.arrayBuffer();
     if(r.kind==='p3d'){if(ui.mode!=='p3d'&&!setMode('p3d',true))return;await openP3Project(buf,r.name,null);}
@@ -79,3 +93,6 @@ function autosavePrefsBox(){const d={min:asMin(),warn:asCountSec(),over:!!prefs.
     platform.isDesktop?chk('pBackup','Keep a backup of the previous save beside the file (name.backup.gouache)',d.backup,v=>{d.backup=v;}):null);
   return {el:el1,save(){prefs.autosaveMin=d.min;prefs.autosaveWarn=d.warn;prefs.autosaveOver=d.over;prefs.backup=d.backup;asSchedule();}};}
 setTimeout(asSchedule,3000);
+
+/* a closed tab needs no recovery copy */
+{const dc=dtClose;dtClose=async function(id){const r=await dc(id);if(!dtTab(id))asClear('tab:'+id);return r;};}
