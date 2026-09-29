@@ -7,12 +7,15 @@
 
 - **Theme:** Dark, **Dark red** (the Dark theme with red accents), Darker, Warm and Light, or **Custom**: pick your own Background, Panels, Text, Highlight and Accent colours (**Start from…** copies a preset to begin with). Themes preview as you click; **Cancel** goes back.
 - **Show shortcut hints on the canvas:** the line of keys at the bottom of the canvas. **View › Shortcut hints** turns it on and off too.
+- **Shape:** **Rounded** (as before) or **Sharp**: square corners and a flatter, more minimal look. It works with every colour theme.
+- **Shortcut helper:** hold **Ctrl**, **Alt** or **Shift** for half a second and a card lists what that key does with each other key (your own keys too). Moving the pointer or pressing another key hides it. **View › Shortcut helper** turns it off.
 - **Keyboard shortcuts…** opens the shortcut editor (see [Keyboard shortcuts](Keyboard-shortcuts.md)).
 - **Largest brush size:** 5000 px by default; 10000 or 20000 px for very big canvases (big brushes paint slowly on large documents).
 - **Live previews:** filters, adjustments, Select menu changes and hover previews (blend modes, fonts) show on the canvas as you adjust them. Turn this off for very large documents or slower machines. Each dialog also has its own **Preview** checkbox.
 
 ## Autosave and backups
 - **Autosave every:** Off, 1, 2, 5 (the default), 10, 15 or 30 minutes. When the painting (or, in 3D Paint, the project) has changed, a **recovery copy** is saved: in the desktop app in an *Autosave* folder beside the app's settings, in the browser in its own storage. It is removed when you save. If the app closes without saving, or crashes, the welcome screen offers it back.
+- **Countdown first:** a small popup counts down (3, 5 or 10 seconds, or no warning) before each autosave, so you know the short pause is coming. **Not now** puts it off for a minute; **Save now** saves straight away. It waits for you to finish a stroke.
 - **Autosave also saves over the file itself:** when the file has been saved before, autosave saves it there instead of keeping a recovery copy.
 - **Keep a backup of the previous save** (desktop app, on by default): before saving over a file, the previous version is kept beside it as *name.backup.gouache* (or *.backup.gouache3d*).
 
@@ -29,7 +32,7 @@ Everything takes effect when you press **Save**. The performance monitor's last 
 For seamless textures: strokes, blurs and patterns wrap across the edges, and the canvas shows neighbouring copies so seams are easy to spot. See also *Filter › Offset* and *Make seamless*.
 
 ## Bit depth
-**Image › 8 bits / 16 bits per channel.** 16-bit (half float) avoids banding in smooth gradients and heavy adjustments. The Height map is always 16-bit when the graphics card supports it.
+**Image › 8 bits / 16 bits per channel**, or click **8-bit / 16-bit** in the status bar. 16-bit (half float) avoids banding in smooth gradients and heavy adjustments, but needs twice the graphics memory (a 16k × 16k layer is 2 GB). If there isn't enough, the switch stops and tells you, and the picture stays as it was. The Height map is always 16-bit when the graphics card supports it.
 
 ## Performance monitor
 
@@ -39,6 +42,8 @@ For seamless textures: strokes, blurs and patterns wrap across the edges, and th
 **View › Performance monitor** shows the frame rate, the slowest recent frame, the longest freeze, and what the app was doing then: compositing, the view or thumbnails. Its last line shows memory: undo steps in memory (and on disk), loaded models, and the limit. If you notice a hitch, turn it on and note what it says.
 
 ## Tips for big documents
+Painting on big canvases (8k, 16k) only redraws the parts your brush touches, and symmetry paints each side's area separately, so custom and textured brushes stay quick.
+
 - **Hide the 3D view** or the Material view when you don't need them. They add work to every change.
 - **Use cheaper filters while painting:** slow filters (painterly, lens and surface blur, live converters) catch up after each stroke. If painting under them still drags, hide their filter layers.
 - **Stay at 8-bit** unless you need 16-bit.

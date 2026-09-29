@@ -50,6 +50,7 @@ All of these can be changed in **Edit › Keyboard shortcuts…**. The commands 
 | Ctrl+O | Open |
 | Ctrl+S / Ctrl+Shift+S | Save / Save as (.gouache) |
 | Ctrl+Shift+E | Export an image |
+| Ctrl+Shift+R | Reload the app (asks first if something is unsaved) |
 
 ## Layers
 | Key | Action |
@@ -84,6 +85,9 @@ All of these can be changed in **Edit › Keyboard shortcuts…**. The commands 
 | Key | Action |
 |---|---|
 | Ctrl+0 / Ctrl+1 | Fit on screen / actual pixels |
+| Ctrl+R | Rulers |
+| Ctrl+; / Alt+Ctrl+; | Show guides / lock guides |
+| Hold Ctrl, Alt or Shift | Shortcut helper: shows what that key does |
 | Shift+T | Tile mode |
 | F3 | 3D view |
 | F | Flat cage view (F or Esc to go back) |

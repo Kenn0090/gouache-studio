@@ -43,7 +43,8 @@ Untick **Show this at start-up** to go straight to a blank canvas; **File › We
 *The New document dialog.*
 
 **File › New document…** (Ctrl+Alt+N):
-- **Size:** type it in or pick a preset.
+- **Preset:** about 90 sizes in groups: **Textures** (256 to 16K), **Screens** (HD, Full HD, 4K, 8K, ultrawide, 4:3), **Phones and tablets**, **Social media**, **Paper** (Letter, Legal, Tabloid, A6 to A1, B5, B4), **Photo prints**, **Books and comics**, **Cards** (trading cards, tarot, business cards, postcards), **Posters** and **Film and video**.
+- **Size:** type it in, in **pixels, inches, centimetres or millimetres**. **DPI** sets how many pixels make an inch (paper presets use 300); the size in pixels (or inches) shows beside it. **⇄** swaps width and height (portrait / landscape).
 - **Template:**
   - **Hand-painted:** base colour only. Choose this for stylised, unlit art.
   - **PBR:** base colour, roughness, metallic, height and normal.
@@ -53,6 +54,9 @@ Untick **Show this at start-up** to go straight to a blank canvas; **File › We
 - **Seamless tile mode:** strokes wrap across the edges.
 
 You can add or remove maps later with **Maps › Document maps…**.
+
+## Reloading
+The app can't be reloaded by accident any more: **F5** does nothing and **Ctrl+R** shows the rulers (as in Photoshop). To reload on purpose press **Ctrl+Shift+R**: if something is unsaved it asks first and keeps a recovery copy. Closing the browser tab with unsaved work also asks first.
 
 ## Saving
 **Ctrl+S** saves a `.gouache` file, which keeps everything: layers, maps, masks, filter layers, text, gradients, animation and the 3D model. The status bar shows where the file is saved (click it to see it in Explorer), and the top of the **File** menu says so too. The File menu also lists your **recent Paint documents** and **recent 3D Paint projects**, each with its folder and when it was saved; **All recent files…** shows the whole list, with **Show in folder**. **Autosave** keeps recovery copies every few minutes (see [Preferences](Preferences-and-performance.md#autosave-and-backups)). See [Files, saving and export](Files-and-export.md) for PSD and other formats.

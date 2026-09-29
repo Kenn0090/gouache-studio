@@ -25,6 +25,8 @@ The Brush, Eraser, Blend, Dodge/Burn, Healing brush and Clone stamp each remembe
 Brushes go up to **5000 px** (**]** and the Size slider); Preferences › **Largest brush size** allows more.
 
 ## Lazy mouse and the tip cursor
+The brush cursor shows the tip's real shape (turn it off in Preferences), and the options bar shows the tip's shape next to the brush name.
+
 - **Lazy mouse** (brush bar › More, or Tool settings): the brush follows the pointer on a string of that many pixels, so it only moves once the string is pulled tight. It's good for steady lines, on the canvas and on the model.
 - **Preferences › Show the brush tip's shape as the cursor** outlines the actual tip, turned and squashed like the dabs.
 
@@ -71,10 +73,19 @@ Lightens (Dodge) or darkens (Burn). **Shift+O** switches between them.
 
 ## Colour
 
-![The colour panel.](images/color-panel.png)
-*The colour panel.*
+![The colour panel's Wheel tab.](images/color-wheel.png)
+*The Wheel tab: a hue ring with a triangle, and HSB sliders above it.*
 
-- **Picker:** the square, the hue bar and a hex field.
+![The Sliders tab in CMYK.](images/color-sliders.png)
+*The Sliders tab, here in CMYK.*
+
+- **Four ways to pick** (tabs at the top of the panel; drag the panel taller if needed):
+  - **Square:** the saturation/brightness square and the hue bar.
+  - **Wheel:** a hue ring with a triangle inside, like Photoshop's colour wheel. The triangle turns with the hue: its corners are the pure colour, white and black. Above it, **HSB** or **RGB** sliders with number boxes.
+  - **Sliders:** **HSB**, **HSL**, **RGB**, **CMYK** or **Lab**, each with a gradient bar and a number box.
+  - **Swatches:** your own colour set. Click one to use it, **+** adds the current colour, right-click removes one, **Reset** brings back the built-in set.
+- **Darker, Lighter, Less sat., More sat.:** small steps from the current colour, whichever way you pick.
+- A **hex** field, and the foreground and background colours (click the background one to swap).
 - **Mix strip:** steps from the foreground colour to the background colour, mixed in OKLab so the in-between colours stay clean. Click one to use it, or step with the **Left / Right arrow keys**. Past either end they keep going, lighter or darker in the same colour.
 - **Recent colours** remember what you've painted with.
 - **Eyedropper:** the Eyedropper tool (I), or hold **Alt** while painting.

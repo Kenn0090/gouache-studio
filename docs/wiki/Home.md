@@ -14,6 +14,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 - [Smart materials, smart masks and anchor points](Smart-materials-and-anchors.md): whole folders of layers or masks saved to reuse; masks that follow what you painted lower down
 - [Shapes, arrays and layer styles](Shapes-arrays-and-layer-styles.md): shapes with bevels, repeating a layer in a line, grid or circle, drop shadows, strokes, bevels and more
 - [Selections, transforms and crop](Selections-transforms-and-crop.md)
+- [Rulers and guides](Rulers-and-guides.md): rulers in pixels, inches or centimetres, guides, snapping
 - [Fills and gradients](Fills-and-gradients.md)
 - [Cage painting and symmetry](Cage-painting-and-symmetry.md): paint through a cage onto slanted or curved shapes; mirror and radial symmetry
 
@@ -37,7 +38,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 - [Files, saving and export](Files-and-export.md): .gouache documents, PSD, image formats, texture export for Unreal, Unity, Godot and Blender, sprite sheets
 
 ## Settings and help
-- [Preferences and performance](Preferences-and-performance.md): themes, shortcut hints, previews, memory
+- [Preferences and performance](Preferences-and-performance.md): themes (rounded or sharp), shortcut hints and the shortcut helper, autosave countdown, previews, memory
 - [Troubleshooting and FAQ](Troubleshooting.md)
 
 ## Roadmap
@@ -68,4 +69,5 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 | 21 | Smart materials and smart masks, anchor points, baking inside 3D Paint, healing brushes, clone stamp | 0.24 |
 | 22 | Welcome screen, autosave, recent files, per-tool brushes, shape corner bevels, shortcut categories | 0.25 |
 | 23 | HDRI lighting, shaders per texture set, ray-traced view and renders, screenshots, turntables, high-poly in the Bake tab | 0.26 |
+| 23b | Polish from testers: no accidental reloads, rulers and guides, layer locks, New document presets, colour wheel/sliders/swatches, shortcut helper, sharp theme, faster big canvases, autosave countdown | 0.26.1 |
 | 24 | Export dialog (with the model), automatic mesh updater, Distort / Warp / Slope blur filters | 0.27 |

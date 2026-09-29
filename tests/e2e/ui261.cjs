@@ -145,4 +145,4 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.act('prefs'));await W(300);await p.click('#thShape_sharp');await W(100);
  ok(await p.evaluate(()=>document.body.classList.contains('sharp')&&getComputedStyle(document.querySelector('.btn')).borderTopLeftRadius==='0px'),'the Sharp shape gives square corners');
  await p.click('#thShape_round');await p.click('#dlgCancel');ok(await p.evaluate(()=>!document.body.classList.contains('sharp')),'…Cancel keeps the rounded look');
- console.log(errs.join('\n'));console.log(fails?'FAILS '+fails:'ALL PASS');await b.close();process.exit(fails?1:0);})();
+ console.log(errs.join('\n'));console.log(fails?'FAILS '+fails:'ALL PASSED');await b.close();process.exit(fails?1:0);})();

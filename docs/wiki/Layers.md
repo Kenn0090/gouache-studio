@@ -17,7 +17,15 @@
   - **Blend mode:** hover a mode to preview it before choosing.
   - **Opacity.**
   - **Clip to layer below:** the layer only shows where the layer under it has paint.
-  - **Lock alpha:** paint only where the layer already has paint.
+  - **Lock** (four buttons, like Photoshop; see the picture below). A locked layer shows its lock on its row, and a group's locks apply to everything inside it:
+    - **Transparent pixels:** paint only where the layer already has paint.
+    - **Image pixels:** no painting, filling, filters or other changes to the pixels (its mask can still be edited).
+    - **Position:** no moving or transforming.
+    - **All:** everything above, the mask too.
+- The layer buttons stay at the bottom of the panel, even when you delete layers.
+
+![The lock buttons, with Position locked.](images/layer-locks.png)
+*The lock buttons above the layer list, with Position locked.*
 
 ## Blend modes
 
