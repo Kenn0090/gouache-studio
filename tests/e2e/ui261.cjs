@@ -43,7 +43,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* marquee snaps */
  const a=await scr(62,102),c=await scr(180,200);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.move(c[0],c[1],{steps:6});await p.mouse.up();await W(300);
  const sp=await p.evaluate(()=>{const d=__gs.selPixels();const W=__gs.doc.w,at=(x,y)=>d[y*W+x];return [at(60,100),at(59,100),at(60,99)];});
- ok(sp[0]>128&&sp[1]<128&&sp[2]<128,'a selection drawn near guides starts exactly on them '+sp);
+ {const a=await scr(62,102);console.log('HIT',await p.evaluate(([x,y])=>{const e=document.elementFromPoint(x,y);return e.tagName+'#'+e.id+'.'+e.className;},a));}console.log('SELDBG',JSON.stringify(await p.evaluate(()=>[__gs.ui.tool,__gs.sel.active,__gs.sel.bb||null])),JSON.stringify(sp));ok(sp[0]>128&&sp[1]<128&&sp[2]<128,'a selection drawn near guides starts exactly on them '+sp);
  await p.keyboard.press('Control+d');await W(100);
  /* move a guide with the Move tool, undo, delete by dragging onto the ruler */
  await p.evaluate(()=>__gs.setTool('move'));const [hx,hy]=await scr(128,100),[hx2,hy2]=await scr(128,150);
@@ -121,4 +121,28 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* the options bar shows the tip's own shape */
  await p.evaluate(()=>{__gs.usePreset('Sponge');__gs.buildOptBar();});await W(100);
  ok(await p.evaluate(()=>!!__gs.brush.tip&&!!document.querySelector('.optdot.tipimg')),'a textured brush shows its tip shape in the options bar');
+ /* colour panel: wheel with triangle, sliders in five models, swatches, darker/lighter */
+ await p.evaluate(()=>{__gs.showPanel('color');__gs.setFG([.8,.2,.2]);});await W(200);
+ await p.click('#cmTab_wheel');await W(300);ok(await p.isVisible('.cmwheel')&&!(await p.isVisible('#sv')),'the Wheel tab shows the hue ring and triangle');
+ const wb=await p.locator('.cmwheel').boundingBox();await p.mouse.click(wb.x+wb.width/2,wb.y+4);await W(200);
+ let hh=await p.evaluate(()=>Math.round(__gs.ui.hsv[0]));ok(Math.abs(hh-90)<6,'clicking the top of the ring picks hue 90 (yellow-green) '+hh);
+ await p.mouse.click(wb.x+wb.width/2-wb.width*.12,wb.y+wb.height/2);await W(200);const hv=await p.evaluate(()=>__gs.ui.hsv.slice());ok(Math.abs(hv[0]-90)<6&&hv[2]>.05,'clicking in the triangle keeps the hue and sets saturation/brightness '+hv.map(v=>v.toFixed(2)));
+ ok((await p.locator('#cmWheelSl .cmrow').count())===3,'three HSB sliders above the wheel');
+ await p.click('#cmWheel .cmmodels button:has-text("RGB")');await W(100);ok(/R/.test(await p.textContent('#cmWheelSl')),'…which can switch to RGB');
+ await p.click('#cmTab_sliders');for(const m of ['HSB','HSL','RGB','CMYK','Lab']){await p.click('#cmSliders .cmmodels button:has-text("'+m+'")');await W(80);}
+ ok((await p.locator('#cmSliders .cmrow').count())===3,'Sliders: HSB, HSL, RGB, CMYK and Lab (Lab has three)');
+ await p.evaluate(()=>__gs.setFG([.5,.5,.5]));await p.click('#cmSliders .cmmodels button:has-text("RGB")');await W(80);
+ await p.fill('#cmSliders .cmnum >> nth=0','255');await p.keyboard.press('Enter');await W(100);ok(await p.evaluate(()=>Math.abs(__gs.ui.fg[0]-1)<.01&&Math.abs(__gs.ui.fg[1]-.5)<.01),'typing R = 255 sets the red channel');
+ await p.click('#cmSliders .cmmodels button:has-text("CMYK")');await W(80);const cmyk=await p.evaluate(()=>[...document.querySelectorAll('#cmSliders .cmnum')].map(i=>+i.value));ok(cmyk[0]===0&&cmyk[3]===0,'…and CMYK reads it back '+cmyk);
+ const l0=await p.evaluate(()=>__gs.ui.fg.reduce((a,b)=>a+b));await p.click('#cmDarker');const l1=await p.evaluate(()=>__gs.ui.fg.reduce((a,b)=>a+b));await p.click('#cmLighter');await p.click('#cmLighter');const l2=await p.evaluate(()=>__gs.ui.fg.reduce((a,b)=>a+b));
+ ok(l1<l0&&l2>l0,'Darker and Lighter step the colour '+[l0,l1,l2].map(v=>v.toFixed(2)));
+ const sa0=await p.evaluate(()=>__gs.ui.hsv[1]);await p.click('#cmDuller');const sa1=await p.evaluate(()=>__gs.ui.hsv[1]);ok(sa1<sa0,'Less saturated makes it greyer');
+ await p.click('#cmTab_swatches');await W(100);const nsw=await p.locator('.cmsw:not(.add)').count();await p.click('.cmsw.add');ok((await p.locator('.cmsw:not(.add)').count())===nsw+1,'+ adds the colour to the swatches');
+ await p.locator('.cmsw:not(.add)').first().click();ok(await p.evaluate(()=>__gs.ui.fg.every(v=>v<.01)),'clicking a swatch uses it');
+ await p.click('#cmTab_wheel');await p.evaluate(()=>__gs.setFG([.2,.5,.8]));await W(200);await p.locator('section[aria-labelledby="hColor"]').screenshot({path:'/tmp/claude-0/-home-user-gouache-studio/b50c4247-fe44-5859-b749-7be7a4db9b43/scratchpad/wheel.png'});
+ await p.click('#cmTab_square');
+ /* sharp interface shape */
+ await p.evaluate(()=>__gs.act('prefs'));await W(300);await p.click('#thShape_sharp');await W(100);
+ ok(await p.evaluate(()=>document.body.classList.contains('sharp')&&getComputedStyle(document.querySelector('.btn')).borderTopLeftRadius==='0px'),'the Sharp shape gives square corners');
+ await p.click('#thShape_round');await p.click('#dlgCancel');ok(await p.evaluate(()=>!document.body.classList.contains('sharp')),'…Cancel keeps the rounded look');
  console.log(errs.join('\n'));console.log(fails?'FAILS '+fails:'ALL PASS');await b.close();process.exit(fails?1:0);})();

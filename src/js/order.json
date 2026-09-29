@@ -11,6 +11,7 @@
         "paint/brush-engine",
         "paint/heal",
         "ui/color",
+        "ui/color-modes",
         "paint/brush-library",
         "paint/tool-brushes",
         "paint/map-brush",
