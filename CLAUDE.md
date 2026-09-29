@@ -139,6 +139,8 @@ Kenn wants to "close out everything tab-wise" with a **UV tab**, but **much late
 - Seams: a **continuous edge-loop seam selector**, and **double-click for edge loops**, etc.
 - When done: **send to the Bake tab** (to bake) or **to 3D Paint** (to bake there or just texture it).
 - **Update mesh**: bring in a changed model (e.g. a missed piece) and add it to the existing UV set.
+- Design sketch (agreed direction): 3D view + flat UV view side by side with linked selection; steps Seams (edges, loops, continuous edge-loop selector, double-click loops) → Unfold (live) → Optimize/relax → Straighten/align → Pack (padding, rotation); checker + stretch colour view + texel density; Auto UVs; Update mesh keeps unchanged parts' UVs and packs new parts into free space.
+- Kenn's answers: 1. **copy RizomUV's hotkeys** as closely as possible. 2. **symmetry** (unwrap half, mirror/overlap): yes. 3. **UDIMs** yes, but only once the whole project supports UDIMs. 4. per-material UV squares **and** one shared layout: **an option**. 5. Auto UVs: **one button with a seams-vs-stretch slider AND presets** (hard surface, organic, lightmap). 6. **pinning**: yes. 7. **save UVs back into the exported model** (OBJ/FBX/glTF) and in the 3D Paint project: yes. 8. most used in RizomUV: **Optimize**, **fill holes** (virtually close holes so unfolding behaves), **UV selection brushes** (paint to select), and **aligning** (islands/mesh).
 - Other open items after 0.27: add-on/plugin system, UV island cage, more filters (Kenn will send links), code signing (his call).
 
 ## 0.26 (built): the looks
