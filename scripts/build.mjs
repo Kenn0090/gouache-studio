@@ -1,6 +1,7 @@
 // Builds Gouache Studio from src/ into:
 //   dist-web/index.html  - one self-contained page (libraries and fonts from CDNs), for the browser version
 //   dist/                - the desktop app's frontend (libraries and fonts bundled locally, works offline)
+import zlib from 'zlib';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,7 +23,13 @@ const APP_VERSION = JSON.parse(read('package.json')).version;
 const BLENDER_ADDON = fs.existsSync(r('assets/addons/gouache_link.py')) ? read('assets/addons/gouache_link.py') : '';
 /* the change log for Help › What's new */
 const CHANGELOG = fs.existsSync(r('CHANGELOG.md')) ? read('CHANGELOG.md') : '';
-const js = `const APP_VERSION='${APP_VERSION}';\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\nconst CHANGELOG_MD=${JSON.stringify(CHANGELOG).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
+/* materials shipped with the app (assets/materials/*.gmat): a list with names and previews goes into the page; the
+   files themselves are copied next to the desktop app and loaded when first used */
+const GMATS = fs.existsSync(r('assets/materials')) ? fs.readdirSync(r('assets/materials')).filter(f => f.endsWith('.gmat')).sort().map(f => {
+  let b = fs.readFileSync(r('assets/materials/' + f)); if (b[0] === 0x1f && b[1] === 0x8b) b = zlib.gunzipSync(b);
+  const j = JSON.parse(b.toString('utf8')); return { file: f, name: j.name || f.replace(/\.gmat$/, ''), thumb: j.thumb || '', credit: j.credit || '', kind: j.kind || 'material' };
+}) : [];
+const js = `const APP_VERSION='${APP_VERSION}';\nconst GM_BUNDLED=${JSON.stringify(GMATS).replace(/<\//g, '<\\/')};\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\nconst CHANGELOG_MD=${JSON.stringify(CHANGELOG).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
 const css = read('src/styles/app.css');
 const tpl = read('src/index.template.html');
 const assemble = head => tpl.replace(/<!--VERSION-->/g, APP_VERSION).replace('<!--HEAD-->', () => head).replace('<!--STYLE-->', () => css).replace('<!--SCRIPT-->', () => js);
@@ -34,6 +41,7 @@ const hdriTags = () => HDRIS.map(f => `<script type="text/plain" id="hdri_${f.re
   .concat(GRUNGE.map(f => `<script type="text/plain" id="gr_${f.replace(/\.webp$/, '')}">${fs.readFileSync(r('assets/grunge/' + f)).toString('base64')}</script>`)).join('\n');
 function buildWeb() {
   fs.mkdirSync(r('dist-web'), { recursive: true });
+  for (const g of GMATS) copy('assets/materials/' + g.file, `dist-web/materials/${g.file}`);
   fs.writeFileSync(r('dist-web/index.html'), assemble(read('src/head.web.html')).replace('<!--HDRI-->', () => hdriTags()));
   console.log('web     -> dist-web/index.html');
 }
@@ -46,6 +54,7 @@ function buildDesktop() {
   copy('node_modules/utif/UTIF.js', `${out}/vendor/UTIF.js`);
   copy('node_modules/ag-psd/dist/bundle.js', `${out}/vendor/ag-psd.js`);
   for (const f of HDRIS) copy('assets/hdri/' + f, `${out}/hdri/${f}`);
+  for (const g of GMATS) copy('assets/materials/' + g.file, `${out}/materials/${g.file}`);
   for (const f of GRUNGE) copy('assets/grunge/' + f, `${out}/grunge/${f}`);
   // UI fonts bundled so the app looks right offline
   const fonts = [

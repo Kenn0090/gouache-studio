@@ -29,5 +29,5 @@ function libDrop(e){const D=libDrag.d;if(!D||e.pointerId!==D.id)return;libDrag.d
   const T=libTarget(e.clientX,e.clientY,D);if(!T)return;libApply(D.kind,D.rec,T);}
 window.addEventListener('pointerup',libDrop,true);window.addEventListener('pointercancel',e=>{if(libDrag.d&&e.pointerId===libDrag.d.id){libDrag.d=null;libGhost.hidden=true;libClear();document.body.classList.remove('libdragging');}},true);
 /* also used by tests */
-function libApply(kind,rec,T){if(kind==='smask'){const n=T.mask;if(!n)return;selectOnly(n);renderLayers();smMaskApply(rec);return;}
+function libApply(kind,rec,T){if(rec&&rec.bundled&&!(rec.fill&&rec.imgs)){gmLoad(rec).then(()=>libApply(kind,rec,T)).catch(e=>toast('Could not load “'+rec.name+'”: '+(e.message||e)));return;}if(kind==='smask'){const n=T.mask;if(!n)return;selectOnly(n);renderLayers();smMaskApply(rec);return;}
   insertAt=T.at;try{return kind==='smart'?smApply(rec):matApply(rec);}finally{insertAt=null;}}

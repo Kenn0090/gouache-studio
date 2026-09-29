@@ -26,14 +26,25 @@ async function matExport(rec){if(rec.kind==='smart'||rec.kind==='smask'){const b
     x.putImageData(id,0,0);imgs[k]={w:im.w,h:im.h,png:pxDataURL(c,k)};}
   const blob=await gmatBlob({app:'Gouache Studio',kind:'material',v:1,name:rec.name,fill:rec.fill,imgs});
   const r=await deliver(slug(rec.name)+'.gmat',blob);toast(deliveredText(r,'Material'));}
+/* a .gmat's pictures (PNG or WebP data URLs) back to premultiplied pixels */
+async function gmatImgs(j){const imgs={};
+  for(const k in j.imgs||{}){const im=j.imgs[k],img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('bad image'));i.src=im.png;});
+    const c=document.createElement('canvas');c.width=im.w;c.height=im.h;const x=c.getContext('2d');x.drawImage(img,0,0);const d=x.getImageData(0,0,im.w,im.h).data,out=new Uint8Array(d.length);
+    for(let i=0;i<d.length;i+=4){const a=d[i+3];out[i]=d[i]*a/255;out[i+1]=d[i+1]*a/255;out[i+2]=d[i+2]*a/255;out[i+3]=a;}imgs[k]={w:im.w,h:im.h,data:out};}
+  return imgs;}
+/* ---- the Library: materials shipped with the app (assets/materials, e.g. from ambientCG), loaded when first used ---- */
+const GM_RAW='https://raw.githubusercontent.com/Kenn0090/gouache-studio/main/assets/materials/';
+const gmRecs=(typeof GM_BUNDLED!=='undefined'?GM_BUNDLED:[]).filter(g=>g.kind==='material').map(g=>({id:'s:'+g.file,name:g.name,builtin:true,bundled:g,thumb:g.thumb,credit:g.credit}));
+async function gmFetch(file){for(const u of (location.protocol==='file:'?[]:['materials/'+file]).concat([GM_RAW+file])){try{const r=await fetch(u);if(r.ok)return new Uint8Array(await r.arrayBuffer());}catch(e){}}
+  throw new Error(platform.isDesktop?'the file is missing':'it could not be downloaded (the web version needs the internet for the library)');}
+async function gmLoad(rec){if(rec.fill&&rec.imgs)return rec;if(rec._loading)return rec._loading;
+  return rec._loading=(async()=>{try{const j=await gmatParse(await gmFetch(rec.bundled.file));rec.fill=j.fill;rec.imgs=await gmatImgs(j);return rec;}finally{rec._loading=null;}})();}
+async function gmApply(rec){if(!(rec.fill&&rec.imgs)){toast('Loading “'+rec.name+'”…');try{await gmLoad(rec);}catch(e){toast('Could not load “'+rec.name+'”: '+(e.message||e));return null;}}return matApply(rec);}
 async function matImport(){const fs=await pickFiles('.gmat,application/json',true,'Gouache Studio materials',['gmat']);let n=0;
   for(const f of fs){try{const j=await gmatParse(f);
       if((j.kind==='smart'&&j.tree)||(j.kind==='smask'&&j.mask)){const body=await smImgsIn(j.kind==='smart'?{tree:j.tree}:{mask:j.mask});smPut(Object.assign({kind:j.kind,name:j.name||baseName(f.name)},body));n++;continue;}
-      if(j.kind!=='material'||!j.fill)throw new Error('not a material');const imgs={};
-      for(const k in j.imgs||{}){const im=j.imgs[k],img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('bad image'));i.src=im.png;});
-        const c=document.createElement('canvas');c.width=im.w;c.height=im.h;const x=c.getContext('2d');x.drawImage(img,0,0);const d=x.getImageData(0,0,im.w,im.h).data,out=new Uint8Array(d.length);
-        for(let i=0;i<d.length;i+=4){const a=d[i+3];out[i]=d[i]*a/255;out[i+1]=d[i+1]*a/255;out[i+2]=d[i+2]*a/255;out[i+3]=a;}imgs[k]={w:im.w,h:im.h,data:out};}
-      const rec={id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:j.name||baseName(f.name),t:Date.now(),fill:j.fill,imgs};matLib.list.push(rec);store.put(rec,'materials');n++;}
+      if(j.kind!=='material'||!j.fill)throw new Error('not a material');
+      const rec={id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:j.name||baseName(f.name),t:Date.now(),fill:j.fill,imgs:await gmatImgs(j)};matLib.list.push(rec);store.put(rec,'materials');n++;}
     catch(e){toast('Could not read '+f.name+': '+(e.message||e));}}
   if(n){renderMats();toast('Imported '+n+' material'+(n>1?'s':'')+'.');}}
 function renderMats(){const box=document.getElementById('matBody');if(!box)return;if(!matLib.loaded){matLoad();}
@@ -46,6 +57,8 @@ function renderMats(){const box=document.getElementById('matBody');if(!box)retur
       el('button',{class:'btn sm',text:'⤓',title:'Export as a .gmat file','aria-label':'Export '+rec.name,onclick:()=>matExport(rec)}),el('button',{class:'btn sm',text:'×',title:'Delete from Materials','aria-label':'Delete '+rec.name,onclick:()=>matDelete(rec)})));return w;};
   box.replaceChildren(el('div',{class:'chips'},el('button',{class:'btn sm',id:'matNew',text:'New material…',title:'A new material layer, with the material editor',onclick:()=>cmdNewFillLayer()}),el('button',{class:'btn sm',text:'Import…',title:'A .gmat file saved from Gouache Studio',onclick:matImport}),el('button',{class:'btn sm',id:'matFromTex',text:'From textures…',title:'Make a material from downloaded textures (a folder, images or a .zip)',onclick:()=>dlgMatFromTextures()})),
     ...(mats.length?[el('div',{class:'sub',text:'Yours'}),el('div',{class:'matgrid',id:'matMine'},...mats.map(tile))]:[]),
+    ...(gmRecs.length?[el('div',{class:'sub',text:'Library'}),el('div',{class:'matgrid',id:'matLib'},...gmRecs.map(rec=>el('button',{class:'mattile',id:'gm_'+rec.bundled.file.replace(/\.gmat$/,''),_libDrag:['mat',rec],title:rec.name+(rec.credit?' ('+rec.credit+')':'')+': click to add as a material layer',onclick:()=>gmApply(rec)},
+      el('img',{src:rec.thumb,alt:'',width:56,height:56,class:'gmthumb'}),el('span',{text:rec.name}))))]:[]),
     el('div',{class:'sub',text:'Built in'}),el('div',{class:'matgrid'},...matBuiltins().map(tile)),
     el('div',{class:'sub',text:'Smart materials'}),el('div',{class:'matgrid',id:'smGrid'},...smarts.map(r=>stile(r,false)),...smBuiltins().map(r=>stile(r,false))),
     el('div',{class:'sub',text:'Smart masks'}),el('div',{class:'matgrid',id:'smMaskGrid'},...smasks.map(r=>stile(r,true)),...smaskBuiltins().map(r=>stile(r,true))),
