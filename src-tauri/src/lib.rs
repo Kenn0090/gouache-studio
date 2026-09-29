@@ -66,6 +66,8 @@ pub fn run() {
             files::recent_remove,
             files::reveal_path,
             files::autosave_dir,
+            files::dir_files,
+            files::file_mtime,
             files::autosave_list,
             files::autosave_delete,
             files::backup_copy,

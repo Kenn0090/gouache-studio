@@ -223,3 +223,31 @@ mod tests {
         assert_eq!(percent_decode("plain"), "plain");
     }
 }
+
+/// The files directly inside a folder: (path, modified time in seconds, size in bytes).
+/// Used to import a material from a folder of textures, and to notice when a model file changes.
+#[tauri::command]
+pub fn dir_files(dir: String) -> Vec<(String, u64, u64)> {
+    let Ok(rd) = fs::read_dir(&dir) else { return vec![] };
+    rd.filter_map(|e| {
+        let e = e.ok()?;
+        let m = e.metadata().ok()?;
+        if !m.is_file() {
+            return None;
+        }
+        let t = m.modified().ok()?.duration_since(std::time::UNIX_EPOCH).ok()?.as_secs();
+        Some((e.path().to_string_lossy().to_string(), t, m.len()))
+    })
+    .collect()
+}
+
+/// When a file was last changed (seconds since 1970, with milliseconds), or 0 if it cannot be read.
+#[tauri::command]
+pub fn file_mtime(path: String) -> f64 {
+    fs::metadata(&path)
+        .ok()
+        .and_then(|m| m.modified().ok())
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as f64 / 1000.0)
+        .unwrap_or(0.0)
+}
