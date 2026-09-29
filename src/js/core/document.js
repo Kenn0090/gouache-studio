@@ -93,6 +93,8 @@ const undoRam=()=>Math.max(256*1048576,memLimit()-memModels());
 const recBytes=r=>(r.snaps||[]).reduce((s,x)=>s+(x.resident!==false&&!x.file?x.bytes:0),0);
 const recDisk=r=>(r.snaps||[]).reduce((s,x)=>s+(x.file?x.bytes:0),0);
 let undoBusy=false;
+/* presses that come while a step is still being read back from the disk cache wait their turn instead of being lost */
+const undoQ=[];function undoNext(){const f=undoQ.shift();if(f)setTimeout(f==='u'?undo:redo,0);}
 function pushUndo(rec){if(!rec.mode)rec.mode=ui.mode;hist.undo.push(rec);const dropped=hist.redo;hist.redo=[];while(hist.undo.length>undoSteps())dropped.push(hist.undo.shift());
   if(!platform.isDesktop){let total=hist.undo.reduce((s,r)=>s+recBytes(r),0);while(total>undoRam()&&hist.undo.length>1){const r=hist.undo.shift();total-=recBytes(r);dropped.push(r);}}
   dropRecords(dropped);if(platform.isDesktop)spillOld();}
@@ -119,7 +121,7 @@ function withMapParts(r,L,parts,x,y){const u=r.undo,re=r.redo;r.snaps=[...r.snap
 /* undoing a step from the other mode switches to it; a step on another frame shows that frame */
 function undoFocus(r){if(r.mode&&r.mode!==ui.mode)setMode(r.mode,true);
   if(ui.mode==='anim'&&doc.anim){const f=(r.refs||[]).find(n=>n.frame);if(f){const i=doc.anim.frames.indexOf(f);if(i>=0&&i!==doc.anim.cur&&!r.label.includes('frame'))showFrame(i);}for(const n of r.refs||[])if(n.frame)frameDirty(n);}}
-async function undo(){if(undoBusy)return;if(tedit)closeTextEditor();textCommit();const r=hist.undo[hist.undo.length-1];if(!r){toast('Nothing to undo');return;}
-  undoBusy=true;try{await loadSnaps(r);}finally{undoBusy=false;}if(hist.undo[hist.undo.length-1]!==r)return;undoFocus(r);hist.undo.pop();r.undo();hist.redo.push(r);toast('Undo: '+r.label);changedAll();}
-async function redo(){if(undoBusy)return;if(tedit)closeTextEditor();textCommit();const r=hist.redo[hist.redo.length-1];if(!r){toast('Nothing to redo');return;}
-  undoBusy=true;try{await loadSnaps(r);}finally{undoBusy=false;}if(hist.redo[hist.redo.length-1]!==r)return;undoFocus(r);hist.redo.pop();r.redo();hist.undo.push(r);toast('Redo: '+r.label);changedAll();if(platform.isDesktop)spillOld();}
+async function undo(){if(undoBusy){undoQ.push('u');return;}if(typeof stroke!=='undefined'&&stroke)return;if(tedit)closeTextEditor();textCommit();const r=hist.undo[hist.undo.length-1];if(!r){toast('Nothing to undo');return;}
+  undoBusy=true;try{await loadSnaps(r);}finally{undoBusy=false;}if(hist.undo[hist.undo.length-1]!==r){undoNext();return;}undoFocus(r);hist.undo.pop();r.undo();hist.redo.push(r);toast('Undo: '+r.label);changedAll();undoNext();}
+async function redo(){if(undoBusy){undoQ.push('r');return;}if(typeof stroke!=='undefined'&&stroke)return;if(tedit)closeTextEditor();textCommit();const r=hist.redo[hist.redo.length-1];if(!r){toast('Nothing to redo');return;}
+  undoBusy=true;try{await loadSnaps(r);}finally{undoBusy=false;}if(hist.redo[hist.redo.length-1]!==r){undoNext();return;}undoFocus(r);hist.redo.pop();r.redo();hist.undo.push(r);toast('Redo: '+r.label);changedAll();if(platform.isDesktop)spillOld();undoNext();}

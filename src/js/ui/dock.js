@@ -15,7 +15,7 @@ const PANELS={
   bake:{title:'Bake',sel:'#bakeSec',avail:m=>m==='bake',mode:true},
   anim:{title:'Animation',sel:'#animSec',avail:m=>m==='anim',mode:true},
   color:{title:'Color',sel:'section[aria-labelledby="hColor"]',avail:m=>m!=='convert'&&m!=='bake',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16" opacity=".5"/>'},
-  brushes:{title:'Brushes',sel:'section[aria-labelledby="hBrush"]',avail:m=>m!=='convert'&&m!=='bake',icon:'<path d="M4 20c2.2 0 4-.9 4-3.2 0-1.4 1-2.4 2.4-2.4 1.5 0 2.5 1 2.5 2.4C12.9 19 10.8 20 8 20H4z"/><path d="M11.2 13.6 20 4.6a1.4 1.4 0 0 0-2-2l-9 8.8"/>'},
+  brushes:{title:'Brushes',sel:'section[aria-labelledby="hBrush"]',avail:m=>m!=='convert'&&m!=='bake',icon:'<path d="m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z"/>'},
   tool:{title:'Tool settings',sel:'#toolSec',avail:m=>m!=='convert'&&m!=='bake',icon:'<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="8" cy="17" r="1.8"/>'},
   maps:{title:'Maps',sel:'#mapsSec',avail:m=>m==='paint'||m==='anim'||m==='p3d',icon:'<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>'},
   layers:{title:'Layers',sel:'section[aria-labelledby="hLayers"]',avail:m=>m==='paint'||m==='brush'||m==='p3d',icon:'<path d="M12 4 3 9l9 5 9-5-9-5z"/><path d="m3 14 9 5 9-5"/>'},

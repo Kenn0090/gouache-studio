@@ -71,4 +71,11 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const t1=await p.textContent('.ascount b');await W(1100);const t2=await p.textContent('.ascount b');ok(+t2===+t1-1,'…counting down '+t1+' → '+t2);
  await p.click('.ascount button:has-text("Not now")');ok(!(await p.isVisible('.ascount')),'Not now puts it off');
  await p.evaluate(()=>__gs.asCountdown());await W(3600);ok(!(await p.isVisible('.ascount'))&&!(await p.evaluate(()=>__gs.asPending())),'…otherwise it autosaves when it reaches zero');
+ /* the layer buttons stay put when a layer is deleted */
+ await p.evaluate(()=>{__gs.showPanel('layers');for(let i=0;i<4;i++)__gs.act('addLayer');});await W(300);
+ const y0=(await p.locator('.lbtns.icons').boundingBox()).y;await p.evaluate(()=>{__gs.act('delLayer');__gs.act('delLayer');__gs.act('delLayer');});await W(300);
+ const y1=(await p.locator('.lbtns.icons').boundingBox()).y;ok(Math.abs(y1-y0)<1,'the layer buttons stay at the bottom of the panel when layers are deleted '+y0+' '+y1);
+ /* undo presses while one is busy are kept, not lost */
+ const nU=await p.evaluate(async()=>{const n=__gs.hist.undo.length;__gs.undo();__gs.undo();__gs.undo();await new Promise(r=>setTimeout(r,400));return n-__gs.hist.undo.length;});ok(nU===3,'three quick undos undo three steps '+nU);
+ await p.screenshot({path:'/tmp/claude-0/-home-user-gouache-studio/b50c4247-fe44-5859-b749-7be7a4db9b43/scratchpad/ui261b.png'});
  console.log(errs.join('\n'));console.log(fails?'FAILS '+fails:'ALL PASS');await b.close();process.exit(fails?1:0);})();

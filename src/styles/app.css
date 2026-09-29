@@ -687,3 +687,6 @@ body.noopt .optbar{display:none}
 .stage>.guidecv{position:absolute;left:0;top:0;pointer-events:none;z-index:3}
 body.gdhov-h #gl{cursor:ns-resize!important}body.gdhov-v #gl{cursor:ew-resize!important}
 body.gdhov-h #brushCursor,body.gdhov-v #brushCursor{display:none}
+/* 0.26.1: the layer buttons stay at the bottom of the Layers panel (they used to move up when a layer was deleted) */
+.dkbody>.sec[aria-labelledby="hLayers"]{min-height:100%;box-sizing:border-box;grid-template-rows:auto auto auto 1fr auto auto;align-content:stretch}
+.dkbody>.sec[aria-labelledby="hLayers"]>.llist{align-content:start}
