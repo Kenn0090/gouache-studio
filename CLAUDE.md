@@ -220,7 +220,7 @@ Follow-up answers: sending into engines is **an option** (Blender launched with 
 - **Embroidery filter** for patches: thread colours from the picture, satin stitches, fill stitch, merrow border, thread shine, height/normal.
 - Kenn asked how to make his own materials that ship with the app → plan: materials (.gmat) placed in assets/materials are bundled as built-ins.
 
-## 0.28 (built; release after the suite passes)
+## 0.28 (released 0.28.0)
 Kenn's list, all done: `fillNoMask()` (painting a material without a mask does nothing); Help menu `ui/help.js` (F1, What's new from CHANGELOG_MD, About); workspace per tab (`WS_MODE_DEF`, dk.modeWs); animation keys (Ctrl+F/Ctrl+D/Delete/,/./Space/Ctrl+Shift+arrows in `animKeys`); `ui/ticks.js` Alt+click solo/flip for tick groups; Bake list `#bkList`; C/Shift+C in 3D Paint = `p3mm` (unlit mesh map via the mask-view substitution in v3Render, badge #p3mmBadge); right-click › ID colour mask (`idColourMask`); mask view exit drops its selection and Box/Lasso tool (`mk3.was` in maskBarSync).
 - **Tessellation:** displacement uses a welded normal (vertex attribute 4 `aD`, `meshWeldN`, stride 60 bytes: anything binding `v3.gpu.vb` must use 60); subdivided meshes keep `setRanges`×subF; `subdivideMesh` uses typed arrays.
 - **Engine quality** `QUALITY`/`qual(k)` in prefs.js (dpr, msaa, aniso, tris, refresh, rt); `qualityChanged()`.
