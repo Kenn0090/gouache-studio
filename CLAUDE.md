@@ -134,6 +134,7 @@ Kenn's requests and answers:
 
 ## Saved for much later (Kenn): a UV tab (UV unwrapper, RizomUV-style)
 Kenn wants to "close out everything tab-wise" with a **UV tab**, but **much later** (not 0.27). His idea:
+- Mock-up (for Kenn to review): https://claude.ai/artifact/Gvye8hLLwMaTPVq9i6Dpbb (main layout, No UVs prompt, Auto UVs, Pack/texel density, send on + Update mesh + export model, hotkeys).
 - Importing a low-poly with **no UVs** asks: **Manual UVs** or **Auto UVs**.
 - **Manual** sends the low-poly to the **UV tab**, laid out and controlled like **RizomUV** (similar controls, general usage and hotkeys).
 - Seams: a **continuous edge-loop seam selector**, and **double-click for edge loops**, etc.
