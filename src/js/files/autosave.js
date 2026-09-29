@@ -35,7 +35,25 @@ async function autosaveNow(force){if(as.busy||stroke||preview||(typeof tabDocs!=
       else{if(prefs.autosaveOver&&platform.isDesktop&&p3.path)await saveP3Project(false);else await asWrite('p3d',p3.name||'3D Paint',await encodeP3Project());n++;}as.last.p3d=s;}}}
   catch(e){console.warn('autosave',e);}finally{as.busy=false;}return n>0;}
 let asTimer=0,asNext=0;
-function asSchedule(){clearInterval(asTimer);const m=asMin();if(!m){asNext=0;return;}asNext=Date.now()+m*60000;asTimer=setInterval(()=>{if(Date.now()<asNext)return;asNext=Date.now()+asMin()*60000;autosaveNow(false);},15000);}
+/* Before each autosave a small popup counts down (Preferences: 3, 5 or 10 seconds, or no warning), so nobody is
+   surprised by the short pause while it saves. "Not now" waits another minute; "Save now" saves at once. */
+const asCountSec=()=>prefs.autosaveWarn===undefined?5:prefs.autosaveWarn;
+function asPending(){try{const sig=asPaintSig();if(sig&&sig!==as.last.paint&&!asPaintSaved())return true;
+  if(ui.mode==='p3d'&&typeof p3!=='undefined'&&p3.started){const s=p3Sig();if(s!==as.last.p3d&&s!==p3.savedAt)return true;}}catch(e){}return false;}
+let asCd=null;
+function asCountClose(){if(!asCd)return;clearInterval(asCd.timer);asCd.box.remove();asCd=null;}
+function asCountdown(){if(asCd)return;const n0=asCountSec();if(!n0){autosaveNow(false);return;}
+  const num=el('b',{text:String(n0)}),box=el('div',{class:'ascount',role:'status','aria-live':'polite'},
+    el('span',{},'Autosaving in ',num,'…'),
+    el('button',{class:'btn sm',text:'Not now',onclick:()=>{asCountClose();asNext=Date.now()+60000;}}),
+    el('button',{class:'btn sm primary',text:'Save now',onclick:()=>{asCountClose();autosaveNow(false);}}));
+  document.body.append(box);let n=n0;
+  asCd={box,timer:setInterval(()=>{n--;if(n>0){num.textContent=String(n);return;}
+    if(stroke||ptrBusy()){num.textContent='0';return;} /* wait until the stroke is finished */
+    asCountClose();box.classList.add('go');autosaveNow(false).then(ok=>{if(ok)toast('Autosaved.');});},1000)};}
+const ptrBusy=()=>typeof ptr!=='undefined'&&!!ptr;
+function asSchedule(){clearInterval(asTimer);asCountClose();const m=asMin();if(!m){asNext=0;return;}asNext=Date.now()+m*60000;
+  asTimer=setInterval(()=>{if(Date.now()<asNext||asCd)return;asNext=Date.now()+asMin()*60000;if(asPending())asCountdown();},15000);}
 /* after a real save the recovery copy is not needed any more */
 {const sd=saveDoc;saveDoc=async function(f){const r=await sd(f);if(asPaintSaved())asClear('paint');return r;};
  const sp=saveP3Project;saveP3Project=async function(f){const r=await sp(f);if(p3.savedAt===p3Sig())asClear('p3d');return r;};}
@@ -50,10 +68,11 @@ async function asRecover(r){try{let buf;if(r.path){const u=await platform.readFi
 async function asDiscard(r){try{if(r.path)await platform.invoke('autosave_delete',{path:r.path});else await asDB.run('readwrite',st=>st.delete(r.kind));}catch(e){}}
 /* backups: the previous version kept beside the file when saving over it */
 {const wf=platform.writeFile.bind(platform);platform.writeFile=async function(path,bytes){if(prefs.backup!==false&&/\.gouache3?d?$/i.test(path)&&!(as.dir&&path.startsWith(as.dir)))await this.invoke('backup_copy',{path}).catch(()=>{});return wf(path,bytes);};}
-function autosavePrefsBox(){const d={min:asMin(),over:!!prefs.autosaveOver,backup:prefs.backup!==false};
+function autosavePrefsBox(){const d={min:asMin(),warn:asCountSec(),over:!!prefs.autosaveOver,backup:prefs.backup!==false};
   const el1=el('div',{class:'dlg-grid'},seg(AS_TIMES.map(m=>[m,m?m+' min':'Off']),d.min,v=>{d.min=+v;},'Autosave every'),
+    seg([[0,'No warning'],[3,'3 s'],[5,'5 s'],[10,'10 s']],d.warn,v=>{d.warn=+v;},'Countdown first'),
     chk('pAsOver','Autosave also saves over the file itself (when it has been saved before)',d.over,v=>{d.over=v;}),
     el('p',{class:'note',text:'Otherwise autosave keeps a recovery copy'+(platform.isDesktop?' in the app’s Autosave folder':' in the browser')+', offered back if the app closes without saving.'}),
     platform.isDesktop?chk('pBackup','Keep a backup of the previous save beside the file (name.backup.gouache)',d.backup,v=>{d.backup=v;}):null);
-  return {el:el1,save(){prefs.autosaveMin=d.min;prefs.autosaveOver=d.over;prefs.backup=d.backup;asSchedule();}};}
+  return {el:el1,save(){prefs.autosaveMin=d.min;prefs.autosaveWarn=d.warn;prefs.autosaveOver=d.over;prefs.backup=d.backup;asSchedule();}};}
 setTimeout(asSchedule,3000);

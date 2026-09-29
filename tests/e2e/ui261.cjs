@@ -1,0 +1,74 @@
+/* 0.26.1 polish: no accidental reload, Tab, rulers and guides, autosave countdown, safe 8/16-bit switch, and more. */
+const {chromium}=require('playwright');
+const OLD=__dirname+'/';
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const ctx=await b.newContext({viewport:{width:1440,height:1000}});const p=await ctx.newPage();
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
+  if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());if(m.type()==='warning'&&/GL|WebGL/.test(m.text()))errs.push('GLWARN '+m.text());});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ const W=ms=>p.waitForTimeout(ms||150);
+ const scr=async(x,y)=>{const box=await p.locator('#gl').boundingBox();const v=await p.evaluate(()=>({x:__gs.view.x,y:__gs.view.y,z:__gs.view.zoom}));return [box.x+v.x+x*v.z,box.y+v.y+y*v.z];};
+ const comp=(pts)=>p.evaluate((pts)=>{const t=__gs.compositeMap('base'),d=__gs.readRGBA8(t),W=__gs.doc.w;__gs.release(t);return pts.map(([x,y])=>Array.from(d.slice((y*W+x)*4,(y*W+x)*4+4)));},pts);
+ await p.evaluate(()=>{localStorage.removeItem('gs.rulers');__gs.newDoc(256,256,8,[1,1,1],'T',false);});await W(300);
+ /* no accidental reload */
+ await p.evaluate(()=>{window.__alive=1;});
+ await p.mouse.move(700,500);await p.keyboard.press('F5');await W(300);
+ ok(await p.evaluate(()=>window.__alive===1),'F5 does not reload the app');
+ await p.keyboard.press('Control+r');await W(300);
+ ok(await p.evaluate(()=>window.__alive===1&&__gs.rl().on),'Ctrl+R shows the rulers instead of reloading');
+ ok(await p.isVisible('.ruler.rh')&&await p.isVisible('.ruler.rv'),'…the top and left rulers are there');
+ /* Tab does not walk the buttons */
+ await p.evaluate(()=>document.activeElement&&document.activeElement.blur());const f0=await p.evaluate(()=>document.activeElement&&document.activeElement.tagName);
+ await p.keyboard.press('Tab');await p.keyboard.press('Tab');const f1=await p.evaluate(()=>document.activeElement&&document.activeElement.tagName);
+ ok(f0===f1,'Tab does not move through the interface '+f0+' '+f1);
+ /* dragging does not highlight interface text */
+ ok(await p.evaluate(()=>{const ev=new Event('selectstart',{bubbles:true,cancelable:true});document.querySelector('.sec-h').dispatchEvent(ev);return ev.defaultPrevented;}),'interface text cannot be highlighted by dragging');
+ /* guides: drag one out of the top ruler */
+ const rh=await p.locator('.ruler.rh').boundingBox();const [gx,gy]=await scr(128,100);
+ await p.mouse.move(rh.x+200,rh.y+10);await p.mouse.down();await p.mouse.move(rh.x+200,gy,{steps:6});await p.mouse.up();await W(200);
+ let G=await p.evaluate(()=>__gs.doc.guides.slice());ok(G.length===1&&G[0].o==='h'&&Math.abs(G[0].p-100)<=1,'dragging from the top ruler makes a horizontal guide '+JSON.stringify(G));
+ const rv=await p.locator('.ruler.rv').boundingBox();const [vx]=await scr(60,0);
+ await p.mouse.move(rv.x+10,rv.y+200);await p.mouse.down();await p.mouse.move(vx,rv.y+200,{steps:6});await p.mouse.up();await W(200);
+ G=await p.evaluate(()=>__gs.doc.guides.slice());ok(G.length===2&&G[1].o==='v'&&Math.abs(G[1].p-60)<=1,'…and from the left ruler a vertical one '+JSON.stringify(G));
+ /* snapping */
+ await p.evaluate(()=>__gs.setTool('marquee'));
+ let sn=await p.evaluate(()=>{const z=__gs.view.zoom;return __gs.gdSnap(60+3/z,100-3/z);});ok(Math.abs(sn[0]-60)<1e-6&&Math.abs(sn[1]-100)<1e-6,'points near guides snap onto them '+sn);
+ sn=await p.evaluate(()=>__gs.gdSnap(150,180));ok(sn[0]===150&&sn[1]===180,'…points far away do not');
+ /* marquee snaps */
+ const a=await scr(62,102),c=await scr(180,200);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.move(c[0],c[1],{steps:6});await p.mouse.up();await W(300);
+ const sp=await p.evaluate(()=>{const d=__gs.selPixels();const W=__gs.doc.w,at=(x,y)=>d[y*W+x];return [at(60,100),at(59,100),at(60,99)];});
+ ok(sp[0]>128&&sp[1]<128&&sp[2]<128,'a selection drawn near guides starts exactly on them '+sp);
+ await p.keyboard.press('Control+d');await W(100);
+ /* move a guide with the Move tool, undo, delete by dragging onto the ruler */
+ await p.evaluate(()=>__gs.setTool('move'));const [hx,hy]=await scr(128,100),[hx2,hy2]=await scr(128,150);
+ await p.mouse.move(hx,hy);await p.mouse.down();await p.mouse.move(hx2,hy2,{steps:6});await p.mouse.up();await W(200);
+ G=await p.evaluate(()=>__gs.doc.guides.slice());ok(Math.abs(G[0].p-150)<=1,'the Move tool drags a guide '+JSON.stringify(G));
+ await p.keyboard.press('Control+z');await W(300);G=await p.evaluate(()=>__gs.doc.guides.slice());ok(Math.abs(G[0].p-100)<=1,'…undo puts it back');
+ await p.mouse.move(hx,hy);await p.mouse.down();await p.mouse.move(hx,rh.y+5,{steps:6});await p.mouse.up();await W(200);
+ G=await p.evaluate(()=>__gs.doc.guides.slice());ok(G.length===1&&G[0].o==='v','dragging a guide back onto the ruler deletes it');
+ /* guides in files; Ctrl+; hides them */
+ const kept=await p.evaluate(async()=>{__gs.doc.dpi=300;const b=await __gs.encodeGouache();__gs.doc.guides=[];await __gs.openGouache(await b.arrayBuffer(),'x.gouache');return [__gs.doc.guides.length,__gs.doc.dpi];});
+ ok(kept[0]===1&&kept[1]===300,'guides and the resolution are saved in .gouache files '+kept);
+ await p.keyboard.press('Control+;');ok(await p.evaluate(()=>!__gs.rl().show),'Ctrl+; hides the guides');await p.keyboard.press('Control+;');
+ await p.evaluate(()=>{__gs.rl().unit='in';});await W(100);ok(await p.evaluate(()=>__gs.rl().unit==='in'),'rulers can measure in inches');
+ await p.screenshot({path:'/tmp/claude-0/-home-user-gouache-studio/b50c4247-fe44-5859-b749-7be7a4db9b43/scratchpad/rulers.png'});
+ await p.evaluate(()=>{__gs.rl().unit='px';});
+ await p.keyboard.press('Control+r');ok(await p.evaluate(()=>!__gs.rl().on),'Ctrl+R hides the rulers again');
+ /* 8 / 16 bit */
+ await p.evaluate(()=>{__gs.setTool('brush');__gs.brush.size=30;});const s0=await scr(40,128),s1=await scr(200,128);await p.mouse.move(s0[0],s0[1]);await p.mouse.down();await p.mouse.move(s1[0],s1[1],{steps:8});await p.mouse.up();await W(400);
+ const before=await comp([[128,128],[10,10]]);await p.evaluate(()=>__gs.setDepth(16));await W(300);const mid=await comp([[128,128],[10,10]]);await p.evaluate(()=>__gs.setDepth(8));await W(300);const after=await comp([[128,128],[10,10]]);
+ ok(JSON.stringify(before)===JSON.stringify(mid)&&JSON.stringify(before)===JSON.stringify(after)&&await p.evaluate(()=>__gs.doc.depth===8),'switching 8 → 16 → 8 bit keeps the picture '+JSON.stringify([before,mid,after]));
+ /* autosave countdown */
+ await p.mouse.move(s0[0],s0[1]+40);await p.mouse.down();await p.mouse.move(s1[0],s1[1]+40,{steps:6});await p.mouse.up();await W(300);
+ await p.evaluate(()=>{__gs.prefs.autosaveWarn=3;});ok(await p.evaluate(()=>__gs.asPending()),'there are unsaved changes to autosave');
+ await p.evaluate(()=>__gs.asCountdown());await W(200);ok(await p.isVisible('.ascount'),'a countdown shows before autosaving');
+ const t1=await p.textContent('.ascount b');await W(1100);const t2=await p.textContent('.ascount b');ok(+t2===+t1-1,'…counting down '+t1+' → '+t2);
+ await p.click('.ascount button:has-text("Not now")');ok(!(await p.isVisible('.ascount')),'Not now puts it off');
+ await p.evaluate(()=>__gs.asCountdown());await W(3600);ok(!(await p.isVisible('.ascount'))&&!(await p.evaluate(()=>__gs.asPending())),'…otherwise it autosaves when it reaches zero');
+ console.log(errs.join('\n'));console.log(fails?'FAILS '+fails:'ALL PASS');await b.close();process.exit(fails?1:0);})();

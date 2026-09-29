@@ -96,6 +96,8 @@
         "ui/updater",
         "files/recent",
         "files/autosave",
+        "ui/safety",
+        "ui/rulers",
         "ui/welcome",
         "core/boot"
     ]

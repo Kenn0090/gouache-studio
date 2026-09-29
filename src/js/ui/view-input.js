@@ -49,7 +49,7 @@ cv.addEventListener('pointerdown',e=>{
   if(ptr)return;closeMenu();const pan=e.button===1||spaceDown||ui.tool==='hand';if(!pan&&e.button!==0)return;
   e.preventDefault();cv.setPointerCapture(e.pointerId);showPressure(e);
   if(pan){ptr={mode:'pan',id:e.pointerId,sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y};stage.classList.add('panning');refreshCursor();return;}
-  const [ix,iy]=toImage(e.clientX,e.clientY);
+  let [ix,iy]=toImage(e.clientX,e.clientY);if(typeof gdSnapOn==='function'&&gdSnapOn()&&!e.altKey)[ix,iy]=gdSnap(ix,iy);
   if(ui.cageFlat&&!['brush','erase','smudge','dodge','burn','heal','clone','picker'].includes(ui.tool)&&!e.altKey){toast('Only painting works in the flat cage view. Press F to go back to the canvas.');return;}
   if(ui.mode==='convert'){cvPointerDown(e,ix,iy);return;}
   /* a UV projection's frame (selected material or mask row with a picture or pattern) */
@@ -81,7 +81,8 @@ cv.addEventListener('pointerdown',e=>{
 });
 cv.addEventListener('pointermove',e=>{
   const r=stage.getBoundingClientRect();lastPos=[e.clientX-r.left,e.clientY-r.top];refreshCursor();showPressure(e);
-  const [mx,my]=toImage(e.clientX,e.clientY);$('#stPos').textContent=(mx>=0&&my>=0&&mx<doc.w&&my<doc.h)?Math.floor(mx)+', '+Math.floor(my):'–';
+  let [mx,my]=toImage(e.clientX,e.clientY);$('#stPos').textContent=(mx>=0&&my>=0&&mx<doc.w&&my<doc.h)?Math.floor(mx)+', '+Math.floor(my):'–';
+  if(typeof gdSnapOn==='function'&&gdSnapOn()&&!e.altKey)[mx,my]=gdSnap(mx,my);
   if(!ptr&&polyLasso){polyMove(e,mx,my);return;}
   if(!ptr){if(ui.tool==='cage'&&!ui.cageFlat)cageHover(e);else if(xf&&!xf.move)xfHover(e);else if(ui.tool==='crop'&&crop)cropHover(e);else if(ui.tool==='gradient')gradHover(e);else if(ui.tool==='array')arrHover(e);else if(ui.tool==='shape')shapeHover(e);}
   if(ptr&&e.pointerId===ptr.id){if(ptr.mode==='cvq'){cvPointerMove(e,mx,my);return;}if(ptr.mode==='cage'){cagePointerMove(e,mx,my);return;}if(ptr.mode==='xf'){xfPointerMove(e,mx,my);return;}if(ptr.mode==='crop'){cropPointerMove(e,mx,my);return;}if(ptr.mode==='movedrag'){movePointerMove(e,mx,my);return;}if(ptr.mode==='grad'){gradPointerMove(e,mx,my);return;}if(ptr.mode==='gbucket'){gbucketMove(e,mx,my);return;}}

@@ -62,6 +62,6 @@ async function installUpdate(){updateBusy=true;const b=updateBanner();
       bar.firstChild.style.width=pct+'%';
       label.textContent=total?`Downloading… ${pct}% of ${(total/1048576).toFixed(1)} MB`:`Downloading… ${(got/1048576).toFixed(1)} MB`;
       if(total&&got>=total)label.textContent='Installing… the app will restart.';});
-    await platform.updateInstall(); /* on success the app restarts and never gets here */
-  }catch(e){console.error(e);updateBusy=false;toast('The update failed: '+e);showUpdateBanner();}
+    window.__gsQuit=true;await platform.updateInstall(); /* on success the app restarts and never gets here */
+  }catch(e){window.__gsQuit=false;console.error(e);updateBusy=false;toast('The update failed: '+e);showUpdateBanner();}
   finally{if(stop)stop();}}
