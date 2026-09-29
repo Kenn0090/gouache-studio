@@ -20,6 +20,8 @@ The **Decals** panel has bolts, rivets, cross and slot screws, a vent grille, a 
 1. Click a decal. It lights up.
 2. Click the model. The decal lands there, facing the surface. Keep clicking to place more; press **Esc** to stop.
 
+![Decals on a model](images/decals-on-model.png)
+
 Each decal carries colour, height (so the normal shows its shape), roughness and metal. It is its own layer, a sticker projected onto the model, so you can move, turn and scale it with the gizmo. Right-click › **Convert to pixels** fixes it in place.
 
 - **Size** sets how big new decals are, compared with the model.
@@ -27,7 +29,9 @@ Each decal carries colour, height (so the normal shows its shape), roughness and
 - **Import your own…** turns a PNG with transparency (a logo, a label) into a decal.
 
 ## Materials library
-The Materials panel's **Library** has 23 ready-made materials: red, brown, black and quilted leather; worn steel, dark iron, brass, blued steel, brushed metal, rusty painted metal and rust; dirt, dry mud and gravel; linen, wool, check fabric and canvas; dark and pale wood; concrete, rubber and plastic. Click one to add it as a material layer, or drag it between layers. Each loads the first time you use it. (The browser version downloads it from the internet.)
+The Materials panel's **Library** has 23 ready-made materials: red, brown, black and quilted leather; worn steel, dark iron, brass, blued steel, brushed metal, rusty painted metal and rust; dirt, dry mud and gravel; linen, wool, check fabric and canvas; dark and pale wood; concrete, rubber and plastic. ![Brown leather from the library](images/library-leather.png)
+
+Click one to add it as a material layer, or drag it between layers. Each loads the first time you use it. (The browser version downloads it from the internet.)
 
 **Your own built-in materials:** any .gmat file (Materials › ⤓ export) placed in the app's `materials` folder shows in the Library too. To ship one with the app, put it in `assets/materials` in the project.
 

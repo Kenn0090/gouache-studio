@@ -106,3 +106,5 @@ Filter › **Embroidery patch…** turns a picture (the selected layer, or the w
 - **Patch shape:** the picture's outline (transparent parts stay empty) or the whole canvas.
 - **Thread shine**, **Height** and **Variation**.
 It writes colour and Height (so the normal shows the threads), and Roughness if the document has it.
+
+![An embroidered patch](images/embroidery-patch.png)
