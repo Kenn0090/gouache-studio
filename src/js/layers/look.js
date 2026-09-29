@@ -174,7 +174,10 @@ function styleUniforms(S){const on=k=>S[k]&&S[k].on,u={};const col=c=>c||[0,0,0]
   u.uBvL=[Math.cos(alt)*Math.cos(an),-Math.cos(alt)*Math.sin(an),Math.sin(alt)];u.uBvHL=[B.hi==null?.6:B.hi,B.lo==null?.6:B.lo];return u;}
 function lookKey(n){return JSON.stringify([n.lookVer||0,doc.w,doc.h,n.array,n.styles]);}
 function lookFree(n){const c=n._lk;if(!c)return;if(c.sd)disposeTarget(c.sd);if(c.shape)disposeTarget(c.shape);for(const k in c.maps)disposeTarget(c.maps[k].t);n._lk=null;}
-function layerLook(n,src,k,cacheable){const P=lkProgs();let c=n._lk;const key=lookKey(n);
+/* (0.27) a masked layer's styles follow the masked shape (Kenn: styles did nothing on materials and masked layers) */
+const FS_LKMASK=`uniform sampler2D uSrc; uniform sampler2D uM; void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 c=texelFetch(uSrc,p,0); o=c*texelFetch(uM,p,0).r; }`;
+let P_LKMASK=null;function lkMasked(src,mt){if(!P_LKMASK)P_LKMASK=program(FS_LKMASK);const o=acquireD(src.depth===32?16:src.depth);run(P_LKMASK,o,{uSrc:src.tex,uM:mt});return o;}
+function layerLook(n,src,k,cacheable,mt){const P=lkProgs();let c=n._lk;const key=lookKey(n);
   if(!c||c.w!==doc.w||c.h!==doc.h){lookFree(n);c=n._lk={w:doc.w,h:doc.h,maps:{},shapeKey:null};}
   if(cacheable&&c.maps[k]&&c.maps[k].key===key)return {t:c.maps[k].t,cached:true};
   /* this map's content, arrayed */
@@ -187,7 +190,7 @@ function layerLook(n,src,k,cacheable){const P=lkProgs();let c=n._lk;const key=lo
     if(live||c.shapeKey!==sk||!c.sd){if(!c.sd)c.sd=lkSD();if(!c.shape)c.shape=makeTarget(doc.w,doc.h,8,false);
       const B=k==='base'?body:null;
       if(B)blit(B,c.shape,0,0,doc.w,doc.h,0,0);
-      else{const bt=mapT(n,'base');if(bt&&!bt.empty){if(arrayOn(n))arrayDraw(n,bt,c.shape,'base',!cacheable);else blit(bt,c.shape,0,0,doc.w,doc.h,0,0);}else clearTarget(c.shape);}
+      else{const bt=mapT(n,'base');if(bt&&!bt.empty){const bm=mt?lkMasked(bt,mt):bt;if(arrayOn(n))arrayDraw(n,bm,c.shape,'base',!cacheable);else blit(bm,c.shape,0,0,doc.w,doc.h,0,0);if(bm!==bt)release(bm);}else clearTarget(c.shape);}
       lkDistance(c.shape,c.sd);c.shapeKey=live?null:sk;}
     const m=LK_MAPS[k];
     if(m!=null){out=acquireD(Math.max(body.depth===32?16:body.depth,k==='height'?mapDepth('height'):8));tmp.push(out);

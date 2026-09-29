@@ -247,6 +247,8 @@ const v3CanPaint=()=>v3.paintOn&&MESH_TOOLS.includes(ui.tool)&&!!v3.gpu&&!!v3.me
 function v3NavHint(){return v3nav.mode==='coat'?'right-drag turns, middle moves, Ctrl+right zooms':'Alt+left turns, Alt+middle moves, Alt+right zooms';}
 function v3NavOf(hit,e){const b=e.button,paint=v3CanPaint();
   if(st3.sKey&&st3.img)return b===0?'strot':b===2?'stscale':'stmove';
+  /* (0.27, Kenn) turn the sky (HDRI) like Substance Painter: Shift+right-drag (3D-Coat navigation: Shift+Alt+right-drag) */
+  if(b===2&&e.shiftKey&&(v3nav.mode!=='coat'||e.altKey))return 'sky';
   if(v3nav.mode==='coat'){if(b===2)return e.ctrlKey?'zoom':e.shiftKey?'pan':'turn';if(b===1)return 'pan';if(e.altKey)return 'turn';
     if(paint)return v3PickAt(hit,e)?'paint':'turn';return e.shiftKey?'pan':'turn';}
   if(e.altKey)return b===1?'pan':b===2?'zoom':'turn';
@@ -270,6 +272,7 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     if(!d){if(e.altKey&&!e.buttons)v3HoverPick(hit,e);return;}
     if(d.how.startsWith('st')){st3Drag(d,e,hit);d.x=e.clientX;d.y=e.clientY;return;}
     const dx=e.clientX-d.x,dy=e.clientY-d.y;d.x=e.clientX;d.y=e.clientY;const c=v3.cam;
+    if(d.how==='sky'){envTurnBy(dx*.5);return;}
     if(d.how==='pan'){const k=c.dist*.0018,eye=v3Eye(),f=norm3(sub3([c.tx,c.ty,c.tz],eye)),r=norm3(cross3(f,[0,1,0])),u=cross3(r,f);c.tx+=(-r[0]*dx+u[0]*dy)*k;c.ty+=(-r[1]*dx+u[1]*dy)*k;c.tz+=(-r[2]*dx+u[2]*dy)*k;}
     else if(d.how==='zoom')c.dist=clamp(c.dist*Math.exp((dy-dx)*.006),.2,50);
     else{c.yaw-=dx*.008;c.pitch=clamp(c.pitch+dy*.008,-1.55,1.55);}v3.dirty=true;requestRender();});

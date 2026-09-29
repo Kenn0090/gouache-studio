@@ -33,7 +33,7 @@ function renderShading(){const box=document.getElementById('shadeBody');if(!box)
   /* a drop-down list of the shaders (Kenn); each keeps its own settings below it */
   const tabs=el('select',{id:'shKind',class:'shsel','aria-label':'Shader'},...SHADERS.map(([id,l])=>el('option',{value:id,text:l})));tabs.value=k;tabs.onchange=()=>{shadeEdit(d=>{d.kind=tabs.value;});renderShading();};
   const body=el('div',{class:'dlg-grid'});
-  if(k==='std')body.append(el('p',{class:'note',text:'Physically based shading (metal/roughness), lit by the HDRI chosen in the 3D view’s Settings.'}));
+  if(k==='std')body.append(el('p',{class:'note',text:'Physically based shading (metal/roughness), lit by the environment chosen below.'}));
   if(k==='skin')body.append(sl('scatter','Scatter'),sl('strength','Strength'),sl('soft','Softness'),colr('col','Subsurface colour'),
     ...(doc.meshMaps&&doc.meshMaps.thick?[el('p',{class:'note',text:'Thin parts glow, from the baked Thickness map.'})]:[sl('thick','Thickness'),el('p',{class:'note',text:'Bake a Thickness map (Bake mesh maps) so thin parts like ears glow on their own.'})]));
   if(k==='aniso')body.append(sl('amount','Stretch',-1,1,.01,v=>Math.round(v*100)+'%'),sl('dir','Direction',0,1,.01,v=>Math.round(v*360)+'°'),el('p',{class:'note',text:'Highlights stretch along the model’s UV direction, turned by Direction, like brushed or spun metal.'}));
@@ -42,4 +42,7 @@ function renderShading(){const box=document.getElementById('shadeBody');if(!box)
   if(k==='cel')body.append(sl('thresh','Shadow line'),sl('soft','Edge softness',0,.5,.01),colr('col','Shadow colour'),sl('spec','Highlight'),sl('rim','Rim light'),sl('outline','Outline',0,10,.5,v=>v?v+' px':'off'),colr('ocol','Outline colour'));
   if(k==='specgloss')body.append((()=>{const g=seg([[0,'Lit'],[1,'Diffuse'],[2,'Specular'],[3,'Gloss'],[4,'Reflections']],P.view,v=>{setP('view',+v);},'Spec/Gloss view');g.classList.add('themeseg');return g;})(),
     el('p',{class:'note',text:'See the diffuse colour, the specular colour, the glossiness or the reflections alone, as a Specular/Gloss material would store them.'}));
-  box.replaceChildren(el('p',{class:'note',text:'Shader for '+who+'. Each shader keeps its own settings.'}),tabs,body);}
+  /* (0.27, Kenn) the environment (HDRI) lives here too: the lighting the shaders are seen in */
+  const envS=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:v3s()[key],fmt,onInput:v=>{v3s()[key]=v;v3.dirty=true;requestRender();}}).el;
+  const envPart=typeof envSettingsBox==='function'?[el('div',{class:'sub',text:'Environment'}),el('p',{class:'note',text:'The HDRI lighting the model. Shift + right-drag in the 3D view turns it.'}),envSettingsBox(envS,'sh')]:[];
+  box.replaceChildren(el('p',{class:'note',text:'Shader for '+who+'. Each shader keeps its own settings.'}),tabs,body,...envPart);}

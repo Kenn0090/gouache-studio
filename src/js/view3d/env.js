@@ -112,15 +112,19 @@ function m4inv(m){const inv=new Float32Array(16),a=m;
   inv[3]=-a[1]*a[6]*a[11]+a[1]*a[7]*a[10]+a[5]*a[2]*a[11]-a[5]*a[3]*a[10]-a[9]*a[2]*a[7]+a[9]*a[3]*a[6];inv[7]=a[0]*a[6]*a[11]-a[0]*a[7]*a[10]-a[4]*a[2]*a[11]+a[4]*a[3]*a[10]+a[8]*a[2]*a[7]-a[8]*a[3]*a[6];
   inv[11]=-a[0]*a[5]*a[11]+a[0]*a[7]*a[9]+a[4]*a[1]*a[11]-a[4]*a[3]*a[9]-a[8]*a[1]*a[7]+a[8]*a[3]*a[5];inv[15]=a[0]*a[5]*a[10]-a[0]*a[6]*a[9]-a[4]*a[1]*a[10]+a[4]*a[2]*a[9]+a[8]*a[1]*a[6]-a[8]*a[2]*a[5];
   let det=a[0]*inv[0]+a[1]*inv[4]+a[2]*inv[8]+a[3]*inv[12];det=det?1/det:0;for(let i=0;i<16;i++)inv[i]*=det;return inv;}
-/* the Lighting part of the 3D view's Settings */
-function envSettingsBox(S){const s=v3s(),k=envOf(s),box=el('div',{class:'dlg-grid',id:'envBox'}),redo=()=>{const n=envSettingsBox(S);box.replaceWith(n);v3.dirty=true;requestRender();};
-  const sel=el('select',{id:'v3Env','aria-label':'Environment'},...ENV_LIST.map(([id,l])=>el('option',{value:id,text:l})),...(env.custom?[el('option',{value:'custom',text:env.custom.name})]:[]),el('option',{value:'none',text:'Simple sky (no HDRI)'}),el('option',{value:'__load',text:'Load your own .hdr or .exr…'}));
+/* turning the sky from the 3D view (Shift+right-drag): the HDRI, or the sun of the simple sky; sliders showing it follow */
+function envTurnBy(deg){const s=v3s(),k=envOf(s)==='none'?'sunAz':'envRot';s[k]=(((s[k]||0)+deg)%360+360)%360;
+  for(const i of document.querySelectorAll('input[type=range][id$="'+(k==='envRot'?'EnvRot':'Az')+'"]')){i.value=s[k];const o=i.parentNode&&i.parentNode.querySelector('output');if(o)o.textContent=Math.round(s[k])+'°';}
+  v3.dirty=true;requestRender();}
+/* the Lighting part of the 3D view's Settings; also the Environment part of the Shader panel (pre: id prefix) */
+function envSettingsBox(S,pre){pre=pre||'v3';if(pre!=='v3'){const S0=S;S=(id,...r)=>S0(id.replace(/^v3/,pre),...r);}const s=v3s(),k=envOf(s),box=el('div',{class:'dlg-grid',id:pre==='v3'?'envBox':pre+'EnvBox'}),redo=()=>{const n=envSettingsBox(S,pre);box.replaceWith(n);v3.dirty=true;requestRender();};
+  const sel=el('select',{id:pre+'Env','aria-label':'Environment'},...ENV_LIST.map(([id,l])=>el('option',{value:id,text:l})),...(env.custom?[el('option',{value:'custom',text:env.custom.name})]:[]),el('option',{value:'none',text:'Simple sky (no HDRI)'}),el('option',{value:'__load',text:'Load your own .hdr or .exr…'}));
   sel.value=k;sel.onchange=()=>{if(sel.value==='__load'){sel.value=k;envLoadFile().then(redo);return;}s.env=sel.value;envEnsure();redo();};
   const deg=v=>Math.round(v)+'°';
   box.append(sel);
   if(k==='none')box.append(S('v3Az','Sun angle','sunAz',0,360,1,deg),S('v3El','Sun height','sunEl',0,90,1,deg),S('v3Si','Sun strength','sunI',0,3,.05,pct),S('v3Ki','Sky strength','skyI',0,3,.05,pct));
   else box.append(S('v3EnvRot','Turn','envRot',0,360,1,deg),S('v3EnvI','Brightness','envI',0,4,.05,pct),
-    chk('v3EnvBg','Show it as the background',!!s.envBg,v=>{s.envBg=v;redo();}),...(s.envBg?[S('v3EnvBlur','Background blur','envBlur',0,1,.01,pct)]:[]),
+    chk(pre+'EnvBg','Show it as the background',!!s.envBg,v=>{s.envBg=v;redo();}),...(s.envBg?[S('v3EnvBlur','Background blur','envBlur',0,1,.01,pct)]:[]),
     S('v3EnvSun','Extra sun','envSun',0,3,.05,v=>v?pct(v):'off'),...(s.envSun?[S('v3Az','Sun angle','sunAz',0,360,1,deg),S('v3El','Sun height','sunEl',0,90,1,deg)]:[]));
   box.append(S('v3Ex','Exposure','expo',.2,3,.05,pct),seg([['filmic','Filmic'],['neutral','Neutral']],s.tone==='neutral'?'neutral':'filmic',v=>{s.tone=v;v3.dirty=true;requestRender();},'Tone mapping'));
   if(k!=='none'&&k!=='custom'){const it=ENV_LIST.find(e=>e[0]===k);if(it)box.append(el('p',{class:'note',text:'“'+it[1]+'” by '+it[3]+', from Poly Haven (CC0).'}));}

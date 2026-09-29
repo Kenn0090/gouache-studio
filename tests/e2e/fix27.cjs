@@ -58,6 +58,15 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.locator('#layerList .lrow',{hasText:'Steel'}).first().click({button:'right',position:{x:120,y:12}});await W(200);
  await p.click('#menuPop .mi:has-text("Filter its mask")');await W(250);await p.locator('#menuPop .mi',{hasText:/^Blur$|Gaussian blur/}).first().click();await W(400);
  ok(await p.evaluate(()=>__gs.layerByName('Steel').mask.stack.filter(r=>r.kind==='filter').length>=2),'right-click › Filter its mask adds a filter to the mask');
+ /* 9. the environment in the Shader panel, and Shift+right-drag turns the sky */
+ await p.evaluate(()=>__gs.showPanel('shading'));await W(300);
+ ok(await p.locator('#shEnv').isVisible()&&await p.locator('#shEnvRot').count()===1,'the Shader panel has the Environment settings');
+ const r0=await p.evaluate(()=>__gs.v3s?0:0)+await p.evaluate(()=>__gs.doc.v3d.envRot||0);
+ const hb=await p.locator('#v3Hit').boundingBox();await p.keyboard.down('Shift');
+ await p.mouse.move(hb.x+hb.width/2,hb.y+hb.height/2);await p.mouse.down({button:'right'});await p.mouse.move(hb.x+hb.width/2+80,hb.y+hb.height/2,{steps:5});await p.mouse.up({button:'right'});await p.keyboard.up('Shift');await W(200);
+ const r1=await p.evaluate(()=>__gs.doc.v3d.envRot||0),sl=+(await p.locator('#shEnvRot').inputValue());
+ ok(Math.abs(r1-r0-40)<3&&Math.abs(sl-r1)<1.01,'Shift + right-drag turns the sky ('+r0+' → '+r1+'°, slider '+sl+')');
+ await p.screenshot({path:OUT+'fix27-shader.png'});
  /* 7. New document › Start in: a new 3D Paint project at the chosen size */
  await p.evaluate(()=>__gs.act('new'));await W(300);
  ok(await p.locator('#dStart').isVisible(),'New document has a Start in choice');
@@ -69,5 +78,15 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.act('new'));await W(300);await p.locator('#dStart .chip',{hasText:'Paint'}).first().click();await p.fill('#dW','200');await p.fill('#dH','100');
  await p.click('#dlgOk');await W(1200);
  const pp=await p.evaluate(()=>({mode:__gs.mode,w:__gs.doc.w,h:__gs.doc.h}));ok(pp.mode==='paint'&&pp.w===200&&pp.h===100,'Start in Paint opens a new Paint document '+JSON.stringify(pp));
+ /* 8. layer styles on a masked material: they follow the mask, and the shadow spills outside it */
+ const q=await p.evaluate(()=>[__gs.toScreen(40,20),__gs.toScreen(120,70)]);
+ await p.keyboard.press('m');await p.mouse.move(q[0][0],q[0][1]);await p.mouse.down();await p.mouse.move(q[1][0],q[1][1],{steps:4});await p.mouse.up();await W(200);
+ await p.evaluate(()=>{__gs.cmdNewFillLayer({name:'Blue',maps:{base:{c:[0,0,1]}}});});await W(400);await p.keyboard.press('Control+d');await W(200);
+ const at=()=>p.evaluate(()=>{const t=__gs.compositeMap('base'),d=__gs.readRGBA8(t);__gs.release(t);let grey=0,blueish=0;for(let i=0;i<d.length;i+=4){if(d[i]<200&&Math.abs(d[i]-d[i+2])<25)grey++;if(d[i+2]>200&&d[i]>60&&d[i]<230)blueish++;}return {grey,blueish};});
+ const s0=await at();
+ await p.locator('#layerList .lrow',{hasText:'Blue'}).first().click({button:'right',position:{x:120,y:12}});await W(200);
+ await p.click('#menuPop .mi:has-text("Drop shadow")');await W(500);await p.click('#dlgOk');await W(500);
+ const s1=await at();
+ ok(s1.grey>s0.grey+200&&s1.blueish<s1.grey/3,'drop shadow shows outside a masked material, grey not blue ('+JSON.stringify(s0)+' → '+JSON.stringify(s1)+')');
  console.log(errs.length?errs.join('\n'):'no page errors');ok(!errs.length,'no page errors');
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();process.exit(fails?1:0);})();
