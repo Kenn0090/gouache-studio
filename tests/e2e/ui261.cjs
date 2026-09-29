@@ -43,7 +43,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* marquee snaps */
  const a=await scr(62,102),c=await scr(180,200);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.move(c[0],c[1],{steps:6});await p.mouse.up();await W(300);
  const sp=await p.evaluate(()=>{const d=__gs.selPixels();const W=__gs.doc.w,at=(x,y)=>d[y*W+x];return [at(60,100),at(59,100),at(60,99)];});
- {const a=await scr(62,102);console.log('HIT',await p.evaluate(([x,y])=>{const e=document.elementFromPoint(x,y);return e.tagName+'#'+e.id+'.'+e.className;},a));}console.log('SELDBG',JSON.stringify(await p.evaluate(()=>[__gs.ui.tool,__gs.sel.active,__gs.sel.bb||null])),JSON.stringify(sp));ok(sp[0]>128&&sp[1]<128&&sp[2]<128,'a selection drawn near guides starts exactly on them '+sp);
+ ok(sp[0]>128&&sp[1]<128&&sp[2]<128,'a selection drawn near guides starts exactly on them '+sp);
  await p.keyboard.press('Control+d');await W(100);
  /* move a guide with the Move tool, undo, delete by dragging onto the ruler */
  await p.evaluate(()=>__gs.setTool('move'));const [hx,hy]=await scr(128,100),[hx2,hy2]=await scr(128,150);
@@ -124,9 +124,9 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* colour panel: wheel with triangle, sliders in five models, swatches, darker/lighter */
  await p.evaluate(()=>{__gs.showPanel('color');__gs.setFG([.8,.2,.2]);});await W(200);
  await p.click('#cmTab_wheel');await W(300);ok(await p.isVisible('.cmwheel')&&!(await p.isVisible('#sv')),'the Wheel tab shows the hue ring and triangle');
- const wb=await p.locator('.cmwheel').boundingBox();await p.mouse.click(wb.x+wb.width/2,wb.y+4);await W(200);
+ const wb=await p.locator('.cmwheel').boundingBox();await p.locator('.cmwheel').click({position:{x:wb.width/2,y:4}});await W(200);
  let hh=await p.evaluate(()=>Math.round(__gs.ui.hsv[0]));ok(Math.abs(hh-90)<6,'clicking the top of the ring picks hue 90 (yellow-green) '+hh);
- await p.mouse.click(wb.x+wb.width/2-wb.width*.12,wb.y+wb.height/2);await W(200);const hv=await p.evaluate(()=>__gs.ui.hsv.slice());ok(Math.abs(hv[0]-90)<6&&hv[2]>.05,'clicking in the triangle keeps the hue and sets saturation/brightness '+hv.map(v=>v.toFixed(2)));
+ await p.locator('.cmwheel').click({position:{x:wb.width/2-wb.width*.12,y:wb.height/2}});await W(200);const hv=await p.evaluate(()=>__gs.ui.hsv.slice());ok(Math.abs(hv[0]-90)<6&&hv[2]>.05,'clicking in the triangle keeps the hue and sets saturation/brightness '+hv.map(v=>v.toFixed(2)));
  ok((await p.locator('#cmWheelSl .cmrow').count())===3,'three HSB sliders above the wheel');
  await p.click('#cmWheel .cmmodels button:has-text("RGB")');await W(100);ok(/R/.test(await p.textContent('#cmWheelSl')),'…which can switch to RGB');
  await p.click('#cmTab_sliders');for(const m of ['HSB','HSL','RGB','CMYK','Lab']){await p.click('#cmSliders .cmmodels button:has-text("'+m+'")');await W(80);}

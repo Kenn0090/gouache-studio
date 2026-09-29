@@ -38,9 +38,9 @@ function themeSection(){let theme=prefs.theme||'dark',custom=Object.assign({},th
       from.onchange=()=>{if(!from.value)return;custom=Object.assign({},THEMES[from.value].c);applyTheme(custom);draw();};
       wrap.append(g,from);}
     /* 0.26.1: the shape of the interface, with any colours: rounded (as before) or sharp (square corners, flatter, minimal) */
-    wrap.append(el('div',{class:'frow'},el('label',{text:'Shape'}),el('div',{class:'seg'},...[['round','Rounded'],['sharp','Sharp']].map(([k,n])=>el('button',{class:'segb',id:'thShape_'+k,'aria-pressed':String(shape===k),text:n,onclick:()=>{shape=k;applyShape(k);draw();}})))));};
+    wrap.append(el('div',{class:'frow'},el('label',{text:'Shape'}),el('div',{class:'seg'},...[['round','Rounded'],['sharp','Sharp']].map(([k,n])=>el('button',{class:'segb',id:'thShape_'+k,'aria-pressed':String(shape===k),text:n,onclick:()=>{shape=k;applyUiShape(k);draw();}})))));};
   let shape=prefs.uiShape||'round';
   draw();
-  return {el:wrap,save(){prefs.theme=theme;if(theme==='custom')prefs.customTheme=custom;prefs.uiShape=shape;applyTheme();applyShape();},cancel(){applyTheme();applyShape();}};}
-function applyShape(k){document.body.classList.toggle('sharp',(k||prefs.uiShape)==='sharp');}
-applyTheme();applyShape();
+  return {el:wrap,save(){prefs.theme=theme;if(theme==='custom')prefs.customTheme=custom;prefs.uiShape=shape;applyTheme();applyUiShape();},cancel(){applyTheme();applyUiShape();}};}
+function applyUiShape(k){document.body.classList.toggle('sharp',(k||prefs.uiShape)==='sharp');}
+applyTheme();applyUiShape();

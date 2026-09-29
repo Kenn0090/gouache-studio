@@ -10,6 +10,13 @@ const read = p => fs.readFileSync(r(p), 'utf8');
 const target = (process.argv.find(a => a.startsWith('--target=')) || '--target=all').split('=')[1];
 
 const order = JSON.parse(read('src/js/order.json')).order;
+/* every file shares one scope: a second top-level function/const with the same name silently replaces the first
+   (0.26.1: a new applyShape in themes.js broke every selection tool), so the build stops on duplicates */
+{const seen = new Map(), dup = [], glsl = new Set(['float','int','vec2','vec3','vec4','mat3','mat4','bool','uint']);
+ for (const n of order) read(`src/js/${n}.js`).split('\n').forEach((l, i) => {
+   const m = /^(?:async\s+)?function\s+([A-Za-z_$][\w$]*)|^(?:const|let|var)\s+([A-Za-z_$][\w$]*)/.exec(l); if (!m) return;
+   const k = m[1] || m[2]; if (glsl.has(k)) return; if (seen.has(k)) dup.push(`${k}: ${seen.get(k)} and ${n}.js:${i + 1}`); else seen.set(k, `${n}.js:${i + 1}`); });
+ if (dup.length) { console.error('Duplicate top-level names:\n  ' + dup.join('\n  ')); process.exit(1); }}
 const APP_VERSION = JSON.parse(read('package.json')).version;
 const js = `const APP_VERSION='${APP_VERSION}';\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
 const css = read('src/styles/app.css');

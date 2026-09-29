@@ -696,7 +696,7 @@ body.gdhov-h #brushCursor,body.gdhov-v #brushCursor{display:none}
 .cmtab{flex:1;padding:5px 4px;border:0;border-bottom:2px solid transparent;background:none;color:var(--muted);cursor:pointer;font:inherit}
 .cmtab.on{color:var(--text);border-bottom-color:var(--accent)}
 .cmpane{display:grid;gap:8px}.cmpane[hidden]{display:none}
-.cmwheel{width:100%;max-width:280px;justify-self:center;display:block;cursor:crosshair;touch-action:none}
+.cmwheel{width:100%;max-width:220px;justify-self:center;display:block;cursor:crosshair;touch-action:none}
 .cmmodels{display:flex;gap:4px;flex-wrap:wrap}
 .cmsliders{display:grid;gap:5px}
 .cmrow{display:grid;grid-template-columns:14px minmax(0,1fr) 52px 14px;gap:6px;align-items:center}

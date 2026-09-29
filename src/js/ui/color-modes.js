@@ -39,7 +39,7 @@ const cmW={c:null,ring:null,size:0,drag:null};
 function cmWheelGeo(){const s=cmW.size,cx=s/2,cy=s/2,R=s/2-2,r=R*.84,tr=r-4,a=-ui.hsv[0]*Math.PI/180;
   const P=k=>[cx+tr*Math.cos(a+k*2*Math.PI/3),cy+tr*Math.sin(a+k*2*Math.PI/3)];return {cx,cy,R,r,H:P(0),Wv:P(1),K:P(2)};}
 function cmBary(p,G){const [x1,y1]=G.H,[x2,y2]=G.Wv,[x3,y3]=G.K,det=(y2-y3)*(x1-x3)+(x3-x2)*(y1-y3);const a=((y2-y3)*(p[0]-x3)+(x3-x2)*(p[1]-y3))/det,b=((y3-y1)*(p[0]-x3)+(x1-x3)*(p[1]-y3))/det;return [a,b,1-a-b];}
-function cmDrawWheel(){const c=cmW.c;if(!c||!c.clientWidth)return;const d=Math.min(devicePixelRatio||1,2),s=Math.round(Math.min(c.clientWidth,280)*d);
+function cmDrawWheel(){const c=cmW.c;if(!c||!c.clientWidth)return;const d=Math.min(devicePixelRatio||1,2),s=Math.round(Math.min(c.clientWidth,220)*d);
   if(c.width!==s){c.width=c.height=s;c.style.height=(s/d)+'px';cmW.ring=null;}cmW.size=s;const x=c.getContext('2d'),G=cmWheelGeo();
   if(!cmW.ring){const img=x.createImageData(s,s),D=img.data;for(let j=0;j<s;j++)for(let i=0;i<s;i++){const dx=i+.5-G.cx,dy=j+.5-G.cy,rr=Math.hypot(dx,dy);if(rr>G.R||rr<G.r)continue;
       const h=(-Math.atan2(dy,dx)*180/Math.PI+360)%360,[r,g,b]=hsv2rgb(h,1,1),p=(j*s+i)*4,aa=clamp(Math.min(G.R-rr,rr-G.r)+.5,0,1);D[p]=r*255;D[p+1]=g*255;D[p+2]=b*255;D[p+3]=aa*255;}cmW.ring=img;}
@@ -70,7 +70,7 @@ function cmNudge(dl,dc){const o=toOk(ui.fg);const L=clamp(o[0]+dl,0,1),k=dc?Math
 /* ---- building the panel ---- */
 const cmUI={draws:[],box:null};
 function cmBuild(){const sec=$('#hColor').parentElement,sv=$('#sv'),hue=$('#hue');
-  const tabs=el('div',{class:'cmtabs',role:'tablist','aria-label':'Colour picker'},...CM_MODES.map(([k,n])=>el('button',{class:'cmtab',role:'tab',id:'cmTab_'+k,'aria-selected':'false',text:n,onclick:()=>{cm.mode=k;cmStore();cmShow();}})));
+  const tabs=el('div',{class:'cmtabs',role:'tablist','aria-label':'Colour picker'},...CM_MODES.map(([k,n])=>el('button',{class:'cmtab',role:'tab',id:'cmTab_'+k,'aria-selected':'false',text:n,onclick:()=>{cm.mode=k;cmStore();cmShow();cmFitGroup();}})));
   const sq=el('div',{class:'cmpane',id:'cmSquare'});sv.before(tabs);tabs.after(sq);sq.append(sv,hue);
   const wh=el('div',{class:'cmpane',id:'cmWheel'});cmW.c=el('canvas',{class:'cmwheel','aria-label':'Hue ring and colour triangle'});
   cmW.c.addEventListener('pointerdown',e=>{cmW.c.setPointerCapture(e.pointerId);cmWheelPick(e,true);const mv=ev=>cmWheelPick(ev,false),up=()=>{cmW.c.removeEventListener('pointermove',mv);cmW.c.removeEventListener('pointerup',up);cmW.drag=null;};cmW.c.addEventListener('pointermove',mv);cmW.c.addEventListener('pointerup',up);});
@@ -80,7 +80,7 @@ function cmBuild(){const sec=$('#hColor').parentElement,sv=$('#sv'),hue=$('#hue'
   const sw=el('div',{class:'cmpane',id:'cmSwatches'}),swBox=el('div',{class:'cmswatches'});sw.append(swBox);sl.after(sw);
   const nudge=el('div',{class:'cmnudge',role:'group','aria-label':'Adjust the colour'},
     el('button',{class:'btn sm',id:'cmDarker',text:'Darker',title:'A little darker',onclick:()=>cmNudge(-.05,0)}),el('button',{class:'btn sm',id:'cmLighter',text:'Lighter',title:'A little lighter',onclick:()=>cmNudge(.05,0)}),
-    el('button',{class:'btn sm',id:'cmDuller',text:'Less saturated',title:'A little greyer',onclick:()=>cmNudge(0,-1)}),el('button',{class:'btn sm',id:'cmRicher',text:'More saturated',title:'A little more colourful',onclick:()=>cmNudge(0,1)}));
+    el('button',{class:'btn sm',id:'cmDuller',text:'Less sat.',title:'Less saturated (a little greyer)',onclick:()=>cmNudge(0,-1)}),el('button',{class:'btn sm',id:'cmRicher',text:'More sat.',title:'More saturated (a little more colourful)',onclick:()=>cmNudge(0,1)}));
   sec.querySelector('.crow').after(nudge);
   cmUI.box={whSl,whSeg,slSeg,slBox,swBox};cmRebuildSliders();}
 function cmModelSeg(box,cur,list,set){box.replaceChildren(...list.map(([k,n])=>el('button',{class:'chip'+(k===cur?' on':''),'aria-pressed':String(k===cur),text:n,onclick:()=>{set(k);cmStore();cmRebuildSliders();cmRefresh();}})));}
@@ -90,6 +90,12 @@ function cmRebuildSliders(){const B=cmUI.box;if(!B)return;cmUI.draws=[];
 function cmShow(){for(const [k] of CM_MODES){const p=$('#cm'+k[0].toUpperCase()+k.slice(1));if(p)p.hidden=k!==cm.mode;const t=$('#cmTab_'+k);if(t){t.setAttribute('aria-selected',String(k===cm.mode));t.classList.toggle('on',k===cm.mode);}}
   if(cm.mode==='square')drawSV();cmRefresh();}
 function cmRefresh(){if(!cmUI.box)return;if(cm.mode==='wheel'){cmDrawWheel();}if(cm.mode==='wheel'||cm.mode==='sliders')for(const [m,d] of cmUI.draws)if(m===cm.mode)d();if(cm.mode==='swatches')cmDrawSwatches(cmUI.box.swBox);}
+/* picking a taller mode (the wheel) makes the Color panel's group taller, so all of it shows without scrolling */
+function cmFitGroup(){const sec=$('#hColor').parentElement,box=sec.closest('.dkgrp'),g=box&&box._g;if(!g||g.min||!box.parentElement)return;
+  const sibs=[...box.parentElement.children].filter(b=>b.classList.contains('dkgrp')&&b._g&&!b._g.min);if(sibs.length<2)return;
+  const tabs=box.querySelector('.dktabs'),need=sec.scrollHeight+(tabs?tabs.offsetHeight:0)+4,have=box.clientHeight;if(have>=need-2)return;
+  const Hs=sibs.reduce((a,b)=>a+b.clientHeight,0),want=Math.min(need,Hs*.7),So=sibs.filter(b=>b!==box).reduce((a,b)=>a+(b._g.f||1),0);if(want>=Hs)return;
+  g.f=Math.max(.2,want*So/(Hs-want));box.style.flex=g.f+' 1 0px';if(typeof dkSave==='function')dkSave();cmW.ring=null;requestAnimationFrame(cmRefresh);}
 cmBuild();cmShow();
 {const rc=refreshColor;refreshColor=function(){rc.apply(this,arguments);cmRefresh();};}
 new ResizeObserver(()=>{cmW.ring=null;cmRefresh();}).observe($('#hColor').parentElement);
