@@ -50,3 +50,9 @@ Painting on big canvases (8k, 16k) only redraws the parts your brush touches, an
 
 ## Models
 **When a model file is saved again elsewhere, update it and bake again without asking** (desktop app): see [Files, saving and export](Files-and-export.md#when-a-model-file-changes-desktop-app). A changed high-poly always asks first.
+
+## Engine quality
+Preferences › **Engine quality**: Low, Medium, High (the normal setting) or Ultra. Lower settings help slower computers: the canvas and 3D view draw fewer pixels, the model's edges and textures are less smooth, Detail makes fewer triangles, the 3D view catches up less often while you paint, and the ray-traced view stops sooner. Ultra is for fast graphics cards and sharp screens.
+
+## Smaller files
+Every picture in documents, 3D Paint projects, autosaves and materials is packed without losing anything, so files are much smaller than before. **Smaller files** (Preferences › Files, on by default) also keeps colour and grey maps as high-quality WebP when that is smaller; the difference is too small to see. Normal maps, Height, masks and baked maps always stay exact. Turn it off if you need every colour pixel exact.

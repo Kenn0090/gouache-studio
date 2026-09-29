@@ -97,3 +97,12 @@ In tile mode they wrap around the edges, so the result stays seamless.
 Heavy filters (painterly, oil paint, lens and surface blur, cutout) are drawn in small pieces, so big images don't freeze the graphics driver. They can still take a moment on very large documents.
 
 **Cutout and Quantize** pick their colours once. **Pick colours again** refreshes them.
+
+## Embroidery patch
+Filter › **Embroidery patch…** turns a picture (the selected layer, or the whole painting) into a stitched patch on a new layer:
+- **Thread colours:** how many colours; they are picked from the picture and shown as swatches. **Simplify** and **Clean up small bits** remove details too small to stitch.
+- **Stitches:** thread width, the width of the **satin** band along each colour's edges (threads running across it), and the angle of the **fill** stitches inside (optionally different for each colour).
+- **Merrow border:** the rolled edge around the patch, in the darkest or lightest thread or the foreground colour.
+- **Patch shape:** the picture's outline (transparent parts stay empty) or the whole canvas.
+- **Thread shine**, **Height** and **Variation**.
+It writes colour and Height (so the normal shows the threads), and Roughness if the document has it.

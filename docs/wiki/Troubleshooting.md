@@ -42,3 +42,5 @@ The graphics driver reset, which can happen with very heavy work on weak GPUs. S
 **Where are my brushes and preferences stored?**
 
 In the app's storage on your computer, so they survive updates.
+
+**The Help menu** has the user guide (F1), what's new, the keyboard shortcuts, a link to report a problem or ask for a feature, and About.

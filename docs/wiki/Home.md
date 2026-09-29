@@ -22,7 +22,8 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 - [Maps and PBR](Maps-and-PBR.md): base colour, roughness, metallic, height, normal and more; the Maps panel; painting several maps at once
 - [Convert tab](Convert-tab.md): CrazyBump-style map making from a photo or another map
 - [Brush tab](Brush-tab.md): draw your own brush tips on a canvas of their own
-- [Converters and filters](Converters-and-filters.md): make one map from another; every adjustment and filter
+- [Converters and filters](Converters-and-filters.md): make one map from another; every adjustment and filter, including the Embroidery patch
+- [Textures, decals and the material library](Textures-and-decals.md): grunge maps and textures, decals on the model, ready-made materials (and who made them)
 - [Filter layers](Filter-layers.md): filters you can change later, smart filters, live converters, pattern layers
 
 ## 3D
@@ -38,7 +39,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 - [Files, saving and export](Files-and-export.md): .gouache documents, PSD, image formats, texture export for Unreal, Unity, Godot and Blender (your own packed presets, the model as .glb or .obj, sending straight into the engine or Blender), models that update when their file changes, sprite sheets
 
 ## Settings and help
-- [Preferences and performance](Preferences-and-performance.md): themes (rounded or sharp), shortcut hints and the shortcut helper, autosave countdown, previews, memory
+- [Preferences and performance](Preferences-and-performance.md): engine quality, smaller files, themes (rounded or sharp), shortcut hints and the shortcut helper, autosave countdown, previews, memory
 - [Troubleshooting and FAQ](Troubleshooting.md)
 
 ## Roadmap
@@ -72,3 +73,4 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 | 23b | Polish from testers: no accidental reloads, rulers and guides, layer locks, New document presets, colour wheel/sliders/swatches, shortcut helper, sharp theme, faster big canvases, autosave countdown | 0.26.1 |
 | 23c | Document tabs, and documents in windows of their own | 0.26.2 |
 | 24 | Your own export presets, the model with its textures, Send to Blender/Unity/Godot/Unreal (+ Blender add-on), model updater, Warp / Slope blur / Distort, stretchable panels, stickers from Paint, materials from downloaded textures or the Convert tab, drag materials onto layers, autosave for every tab | 0.27 |
+| 25 | Textures panel (photo grunge, generated, yours), Decals, materials library (ambientCG), Embroidery patch, smaller files, engine quality, Help menu, Height depth fixes, animation shortcuts | 0.28 |

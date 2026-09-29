@@ -58,3 +58,6 @@ Every filter in one window:
 - **Settings** of the selected filter.
 - **Applied, top first**: the stack of filters. **+ Add** puts another filter on top, **↑ ↓** reorder, **◉** switches one off, **Remove** takes it out.
 - **Apply** bakes them into the layer; **As a filter layer** keeps them editable as a filter layer clipped to the layer (see [Filter layers](Filter-layers.md)).
+
+## Each tab has its own workspace
+The workspace drop-down follows the top tab: Paint, 3D Paint, Animation, Bake, Convert and Brush each remember the workspace you last picked there.

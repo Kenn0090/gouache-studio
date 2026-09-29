@@ -150,3 +150,9 @@ Right-click a layer › **Edit in the Paint canvas** sends its content (every ma
 - **Ctrl + S** in the 3D Paint tab (or **Save project**) saves a **.gouache3d** project: the model with its materials, every texture set with its layers, the camera and the mirror settings. Open it with **File › Open** or **Open project…**.
 - **Export textures…** exports **every texture set** at once (untick it for just the active one), each named after its set. A baked AO fills the ORM or occlusion file (see [Files, saving and export](Files-and-export.md)).
 - Your Paint document is saved separately, as before.
+
+## Seeing the mesh maps (C)
+Press **C** in 3D Paint to see the texture set's baked mesh maps on the model one by one (ambient occlusion, curvature, ID, thickness…), unlit. **Shift+C** goes back one; **Esc** or the label in the corner returns to the material.
+
+## Decals, textures and the material library
+See [Textures, decals and the material library](Textures-and-decals.md): click a decal and then the model to place bolts, vents, labels and more; use grunge maps in masks and materials; start from ready-made leathers, metals, fabrics and more.

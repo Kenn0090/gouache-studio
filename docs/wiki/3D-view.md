@@ -96,3 +96,6 @@ Press **Paint** in the 3D view's toolbar, then paint on the model with the Brush
 - **Right-drag**, middle-drag or **Shift+drag:** pan.
 - **Wheel:** zoom.
 - **Double-click:** frame the model again.
+
+## Height depth on your models (0.28)
+Height depth now pushes each point of a model out in one direction, so hard edges and UV seams no longer tear open, and models with several texture sets keep their textures when Detail is raised. How many triangles Detail may make depends on Preferences › Engine quality (two million on High).

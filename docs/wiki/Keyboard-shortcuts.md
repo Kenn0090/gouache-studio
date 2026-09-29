@@ -107,3 +107,9 @@ All of these can be changed in **Edit › Keyboard shortcuts…**. The commands 
 |---|---|
 | , and . | Previous / next frame |
 | Enter | Play / stop |
+
+## Added in 0.28
+- **F1**: the user guide (Help menu)
+- **C / Shift+C** in 3D Paint: step through the baked mesh maps on the model; **Esc** goes back to the material
+- Animation: **Ctrl+F**, **Ctrl+D**, **Delete**, **,** and **.**, **Space**, **Ctrl+Shift+Left/Right** (see [Animation](Animation.md#frame-shortcuts))
+- **Alt+click** a tick box in a list: only that one; Alt+click it again: everything else
