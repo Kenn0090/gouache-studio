@@ -51,10 +51,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  // lock alpha: other maps only inside base shape
  await p.keyboard.press('b');await p.keyboard.press('Control+Shift+n');const l2=await p.evaluate(()=>__gs.doc.active.name);
  await setFG('#0000ff');await p.evaluate(()=>{__gs.ui.mapBrush.rough.on=false;__gs.ui.mapBrush.height.on=false;});await drag(100,30,200,30);
- await p.evaluate(()=>{__gs.ui.mapBrush.rough.on=true;});await p.check('#lLock');await drag(150,10,150,60);
+ await p.evaluate(()=>{__gs.ui.mapBrush.rough.on=true;});await p.click('#lock_alpha');await drag(150,10,150,60);
  r=await mpx(l2,'rough',[[150,30],[150,55]]);ok(r[0][3]===255&&r[1][3]===0,'lock alpha: rough follows base shape '+JSON.stringify(r));
  // painting while viewing roughness paints fg into rough, and base when base toggle? (base not extra)
- await p.uncheck('#lLock');
+ await p.click('#lock_alpha');
  await p.click('#mapList .mrow:has-text("Material")');await p.waitForTimeout(150);
  await p.screenshot({path:OUT+'maps-brush.png'});
  // save brush remembers maps

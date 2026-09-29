@@ -94,7 +94,7 @@ function cmRefresh(){if(!cmUI.box)return;if(cm.mode==='wheel'){cmDrawWheel();}if
 function cmFitGroup(){const sec=$('#hColor').parentElement,box=sec.closest('.dkgrp'),g=box&&box._g;if(!g||g.min||!box.parentElement)return;
   const sibs=[...box.parentElement.children].filter(b=>b.classList.contains('dkgrp')&&b._g&&!b._g.min);if(sibs.length<2)return;
   const tabs=box.querySelector('.dktabs'),need=sec.scrollHeight+(tabs?tabs.offsetHeight:0)+4,have=box.clientHeight;if(have>=need-2)return;
-  const Hs=sibs.reduce((a,b)=>a+b.clientHeight,0),want=Math.min(need,Hs*.7),So=sibs.filter(b=>b!==box).reduce((a,b)=>a+(b._g.f||1),0);if(want>=Hs)return;
+  const Hs=sibs.reduce((a,b)=>a+b.clientHeight,0),want=Math.min(need,Hs*.55),So=sibs.filter(b=>b!==box).reduce((a,b)=>a+(b._g.f||1),0);if(want>=Hs)return;
   g.f=Math.max(.2,want*So/(Hs-want));box.style.flex=g.f+' 1 0px';if(typeof dkSave==='function')dkSave();cmW.ring=null;requestAnimationFrame(cmRefresh);}
 cmBuild();cmShow();
 {const rc=refreshColor;refreshColor=function(){rc.apply(this,arguments);cmRefresh();};}
