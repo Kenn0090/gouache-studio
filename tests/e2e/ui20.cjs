@@ -82,17 +82,17 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{const i=document.querySelector('#fl_v_rough input[type=range]')||document.querySelector('#fl_v_rough');i.value=.8;i.dispatchEvent(new Event('input',{bubbles:true}));
    const m=document.querySelector('#fl_v_metal input[type=range]')||document.querySelector('#fl_v_metal');m.value=1;m.dispatchEvent(new Event('input',{bubbles:true}));});await W(900);
  const F=await p.evaluate(()=>{const L=__gs.doc.active;return {name:L.name,fill:!!L.fill,mask:!!L.mask,edit:!!L.editMask};});
- ok(F.fill&&F.mask,'fill layer with a mask '+JSON.stringify(F));
+ ok(F.fill&&!F.mask,'fill layer without a mask (0.27) '+JSON.stringify(F));
  let v=await comp('base',[[150,100]]),r=await comp('rough',[[150,100]]),m=await comp('metal',[[150,100]]);
  ok(v[0][2]>170&&v[0][0]<60,'base colour filled with the foreground '+v[0]);
  ok(Math.abs(r[0][0]-204)<4&&m[0][0]>250,'roughness 80% and metallic 100% '+r[0][0]+'/'+m[0][0]);
- /* painting black on it paints the mask, hiding the fill there */
- await setFG('#000000');await p.keyboard.press('b');
+ /* painting on it adds a black mask; white paint shows the fill there (0.27) */
+ await setFG('#ffffff');await p.keyboard.press('b');
  await p.evaluate(()=>Object.assign(__gs.brush,{size:40,hardness:1,opacity:1,flow:1,smoothing:0,pSize:false,tip:null}));
  await drag(40,100,90,100);
  v=await comp('base',[[60,100],[200,100]]);r=await comp('rough',[[60,100]]);
- ok(v[0][0]>240&&v[1][0]<60&&v[1][2]>170,'painting black hides the fill (mask) '+JSON.stringify(v));
- ok(r[0][0]>120&&r[0][0]<136,'and its roughness too '+r[0][0]);
+ ok(v[0][2]>170&&v[0][0]<60&&v[1][0]>240,'painting white shows the fill only there (black mask) '+JSON.stringify(v));
+ ok(Math.abs(r[0][0]-204)<6,'and its roughness too '+r[0][0]);
  ok(await p.evaluate(()=>{const L=__gs.doc.active,d=__gs.readRGBA8(__gs.mapT(L,'base'));return d[(100*300+60)*4+2]>170;}),'the fill itself is untouched');
  /* changing a value later, with undo */
  await p.evaluate(()=>__gs.act('newFill')).catch(()=>{});await W(300);
@@ -101,15 +101,15 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{const L=__gs.layerByName('Fill 1');__gs.doc.active=L;__gs.doc.sel=new Set([L]);});
  await p.evaluate(()=>__gs.dlgFill());await W(200);
  await p.evaluate(()=>{const i=document.querySelector('#fl_v_rough input[type=range]')||document.querySelector('#fl_v_rough');i.value=.2;i.dispatchEvent(new Event('input',{bubbles:true}));});
- await W(900);r=await comp('rough',[[150,100]]);ok(Math.abs(r[0][0]-51)<4,'roughness changed to 20% '+r[0][0]);
- await p.keyboard.press('Control+z');await W(300);r=await comp('rough',[[150,100]]);ok(Math.abs(r[0][0]-204)<4,'undo restores 80% '+r[0][0]);
+ await W(900);r=await comp('rough',[[60,100]]);ok(Math.abs(r[0][0]-51)<4,'roughness changed to 20% '+r[0][0]);
+ await p.keyboard.press('Control+z');await W(300);r=await comp('rough',[[60,100]]);ok(Math.abs(r[0][0]-204)<4,'undo restores 80% '+r[0][0]);
  /* Duplicate keeps it a fill layer; Convert to pixels makes it a normal layer */
  /* kept in .gouache files */
  await p.evaluate(async()=>{const b=await __gs.encodeGouache();window.__gbuf=await b.arrayBuffer();});
  await p.evaluate(()=>__gs.newDoc(50,50,8,[1,1,1],'x',false));await p.evaluate(async()=>{await __gs.openGouache(window.__gbuf,'t');});await W(400);
  const re=await p.evaluate(()=>{const L=__gs.layerByName('Fill 1');return L&&{fill:!!L.fill,rough:L.fill.maps.rough.v,mask:!!L.mask};});
  ok(re&&re.fill&&Math.abs(re.rough-.8)<.01&&re.mask,'fill layer survives saving and opening '+JSON.stringify(re));
- v=await comp('base',[[60,100],[200,100]]);ok(v[0][0]>240&&v[1][0]<60&&v[1][2]>170,'and still shows through its mask');
+ v=await comp('base',[[60,100],[200,100]]);ok(v[0][2]>170&&v[0][0]<60&&v[1][0]>240,'and still shows through its mask');
  await p.screenshot({path:OUT+'ui20.png'});
  ok(errs.length===0,'no errors '+errs.slice(0,3).join('\n'));
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();})();

@@ -15,7 +15,6 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());if(m.type()==='warning'&&/GL|WebGL/.test(m.text()))errs.push('GLWARN '+m.text());});
  await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
  const W=ms=>p.waitForTimeout(ms||200);
- const W=ms=>p.waitForTimeout(ms||200);
  /* 0.27 fixes Kenn reported */
  await p.click('#modeTabs [data-mode=p3d]');await W(2500);
  await p.evaluate(()=>__gs.showPanel('layers'));await W(300);
@@ -38,9 +37,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* 3. a new material has no mask; painting on it adds one */
  const L=await p.evaluate(()=>{const L=__gs.cmdNewFillLayer({name:'Steel',maps:{base:{c:[.6,.6,.6]},metal:{v:1}}});return {mask:!!L.mask,name:L.name};});
  ok(!L.mask,'a material arrives without a mask');
- const box=await p.locator('#pane3d canvas').first().boundingBox();
+ await p.evaluate(()=>__gs.setFG([1,1,1]));
+ const box=await p.locator('#v3Hit').boundingBox();
  await p.mouse.move(box.x+box.width/2-20,box.y+box.height/2);await p.mouse.down();await p.mouse.move(box.x+box.width/2+20,box.y+box.height/2,{steps:4});await p.mouse.up();await W(500);
- ok(await p.evaluate(()=>{const L=__gs.layerByName('Steel');return !!L.mask&&L.editMask;}),'painting on it adds a mask to paint on');
+ ok(await p.evaluate(()=>{const L=__gs.layerByName('Steel');const d=__gs.readRGBA8(L.mask.target);let hi=0,lo=0;for(let i=0;i<d.length;i+=4){if(d[i]>200)hi++;else if(d[i]<30)lo++;}return !!L.mask&&L.editMask&&lo>hi&&hi>0;}),'painting on it adds a black mask and paints it');
  /* 4. baked normal: a mesh map, not a layer; it shades the model */
  const n0=await p.evaluate(()=>{const t=__gs.normalComp2(),d=__gs.readRGBA8(t);__gs.release(t);return [d[0],d[1],d[2]];});
  const r=await p.evaluate(()=>{const g=__gs,t=g.makeTarget(g.doc.w,g.doc.h,8,true);g.clearTarget(t,[.8,.5,.8,1]);const n=g.allLayers().length;g.p3ApplyBake({normal:t},['normal'],false);
@@ -58,5 +58,16 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.locator('#layerList .lrow',{hasText:'Steel'}).first().click({button:'right',position:{x:120,y:12}});await W(200);
  await p.click('#menuPop .mi:has-text("Filter its mask")');await W(250);await p.locator('#menuPop .mi',{hasText:/^Blur$|Gaussian blur/}).first().click();await W(400);
  ok(await p.evaluate(()=>__gs.layerByName('Steel').mask.stack.filter(r=>r.kind==='filter').length>=2),'right-click › Filter its mask adds a filter to the mask');
+ /* 7. New document › Start in: a new 3D Paint project at the chosen size */
+ await p.evaluate(()=>__gs.act('new'));await W(300);
+ ok(await p.locator('#dStart').isVisible(),'New document has a Start in choice');
+ await p.locator('#dStart .chip',{hasText:'3D Paint'}).click();await p.fill('#dW','128');await W(100);
+ await p.click('#dlgOk');await W(600);
+ if(await p.locator('#dlgOk',{hasText:'Start new'}).isVisible())await p.click('#dlgOk');await W(1500);
+ const np=await p.evaluate(()=>({mode:__gs.mode,w:__gs.doc.w,names:__gs.allLayers().map(L=>L.name)}));
+ ok(np.mode==='p3d'&&np.w===128&&!np.names.includes('Steel')&&np.names.includes('Base material'),'Start in 3D Paint makes a fresh project at 128 '+JSON.stringify(np));
+ await p.evaluate(()=>__gs.act('new'));await W(300);await p.locator('#dStart .chip',{hasText:'Paint'}).first().click();await p.fill('#dW','200');await p.fill('#dH','100');
+ await p.click('#dlgOk');await W(1200);
+ const pp=await p.evaluate(()=>({mode:__gs.mode,w:__gs.doc.w,h:__gs.doc.h}));ok(pp.mode==='paint'&&pp.w===200&&pp.h===100,'Start in Paint opens a new Paint document '+JSON.stringify(pp));
  console.log(errs.length?errs.join('\n'):'no page errors');ok(!errs.length,'no page errors');
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();process.exit(fails?1:0);})();

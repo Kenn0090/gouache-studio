@@ -25,8 +25,8 @@ async function saveP3Project(forceAsk){if(stroke)return;toast('Saving the 3D Pai
   catch(e){console.error(e);toast('The project could not be saved: '+(e.message||e));}}
 /* something to tell whether there is unsaved work */
 const p3Sig=()=>p3.sets.map((S,i)=>{const u=i===p3.cur?hist.undo:(S.state?S.state.undo:[]);return u.length+':'+(u[u.length-1]||{}).label;}).join('|');
-function p3AskReplace(){if(!p3.started||p3Sig()===p3.savedAt||p3.sets.every((S,i)=>!(i===p3.cur?hist.undo.length:(S.state&&S.state.undo.length))))return Promise.resolve(true);
-  return new Promise(res=>openDialog({title:'Replace the 3D Paint project?',body:el('p',{class:'note',text:'Opening a project replaces the model and texture sets in 3D Paint. Save first (Ctrl+S in the 3D Paint tab) if you want to keep them.'}),okLabel:'Open anyway',onOk(){res(true);},onCancel(){res(false);}}));}
+function p3AskReplace(fresh){if(!p3.started||p3Sig()===p3.savedAt||p3.sets.every((S,i)=>!(i===p3.cur?hist.undo.length:(S.state&&S.state.undo.length))))return Promise.resolve(true);
+  return new Promise(res=>openDialog({title:'Replace the 3D Paint project?',body:el('p',{class:'note',text:fresh?'A new project clears the texture sets in 3D Paint (the model stays). Save first (Ctrl+S in the 3D Paint tab) if you want to keep them.':'Opening a project replaces the model and texture sets in 3D Paint. Save first (Ctrl+S in the 3D Paint tab) if you want to keep them.'}),okLabel:fresh?'Start new':'Open anyway',onOk(){res(true);},onCancel(){res(false);}}));}
 async function openP3Project(buf,name,path){if(!isP3Proj(buf))throw new Error('This is not a Gouache Studio 3D Paint project.');const dv=new DataView(buf),ver=dv.getUint32(8,true),hl=dv.getUint32(12,true);
   if(ver>G3_VERSION)throw new Error('This project was saved by a newer Gouache Studio. Update the app to open it.');
   const head=JSON.parse(new TextDecoder().decode(new Uint8Array(buf,16,hl))),data=16+hl;
@@ -51,3 +51,15 @@ async function openP3Project(buf,name,path){if(!isP3Proj(buf))throw new Error('T
   $('#docName').textContent=doc.name;if(typeof selChanged==='function')selChanged();
   renderLayers();refreshChanUI();refreshMapsUI();buildBrushPanel();changedAll();fit();updateStatus();buildP3Panel();if(v3.on)build3dPane();requestRender(true);
   p3.savedAt=p3Sig();toast('Opened the 3D Paint project “'+p3.name+'”.');}
+
+/* (0.27) File › New with "Start in: 3D Paint": a fresh project at the chosen texture size on the same model
+   (every texture set starts again with its base material) */
+async function p3NewProject(size){size=Math.max(64,Math.min(MAX_DIM,Math.round(size||2048)));
+  if(!p3.started){p3.size=size;p3Save();if(ui.mode!=='p3d')setMode('p3d');return;}
+  if(ui.mode!=='p3d'&&!setMode('p3d',true))return;if(!(await p3AskReplace(true)))return;
+  const old=docState();for(const S of p3.sets){if(S.state)disposeDocState(S.state);if(S.tex)for(const k in S.tex)disposeTarget(S.tex[k]);}for(const k in v3.tex)disposeTarget(v3.tex[k]);v3.tex={};
+  const names=p3.sets.filter(S=>!S.missing).map(S=>S.name);p3.size=size;p3Save();
+  p3.sets=(names.length?names:['default']).map(n=>({name:n,state:null,tex:null,missing:false}));p3.cur=0;
+  blankTabDoc(size,size,p3.sets[0].name);p3Setup(p3.sets[0].name);disposeDocState(old);
+  p3.name=null;p3.path=null;p3.savedAt=p3Sig();p3SyncSets();
+  v3.mapsDirty=true;v3.dirty=true;fit();changedAll();renderLayers();buildP3Panel();requestRender(true);toast('New 3D Paint project: '+size+' × '+size+' textures.');}

@@ -161,9 +161,9 @@ async function fillPickImage(L,k,s,done){const fs=await pickFiles('image/*',fals
   setWrap(t,true);L._fillImg=L._fillImg||{};L._fillImg[k]=t;s.src='image';s.name=f.name;done();}
 /* painting, filters and fills on a fill layer go to its mask */
 /* painting, filling or a gradient on a material without a mask: the material itself is made from its settings,
-   so the paint goes into a new white mask (one undo step) */
+   so the paint goes into a new black mask (Kenn: paint white to reveal, like Substance) (one undo step) */
 function fillAutoMask(){const n=doc.active;if(ui.mode==='bake'||sel.quick||!isLayer(n)||!n.fill||n.mask||n.fx)return;if(typeof lockStop==='function'&&lockStop({node:n}))return;
-  const r=maskRecord(n,null,makeMask(1),'Add mask');r.redo();pushUndo(r);n.editMask=true;changed(n);renderLayers();toast('Added a mask to paint on: black hides the material, white shows it.');}
+  const r=maskRecord(n,null,makeMask(0),'Add mask');r.redo();pushUndo(r);n.editMask=true;changed(n);renderLayers();toast('Added a black mask: paint white to show the material, black to hide it.');}
 function fillMaskEdit(n){if(isLayer(n)&&n.fill&&n.mask&&!n.editMask)n.editMask=true;}
 /* Convert to pixels: the layer keeps what it shows now and becomes a normal layer */
 function fillRasterize(L){if(!L||!L.fill)return;const f=L.fill;L.fill=null;pushUndo({label:'Convert fill to pixels',refs:[L],undo(){L.fill=f;renderLayers();},redo(){L.fill=null;renderLayers();}});renderLayers();}

@@ -57,17 +57,29 @@ function dlgCanvasSize(){const f=sizeFields(doc.w,doc.h,false);let ax=.5,ay=.5;
 function dlgImageSize(){const f=sizeFields(doc.w,doc.h,true);
   const body=el('div',{class:'dlg-grid'},f.row,f.presets,el('label',{class:'chk',for:'dLock'},f.lock,el('span',{text:'Keep proportions'})),el('p',{class:'note',text:'Resamples every layer on the GPU with box-filtered supersampling.'}));
   openDialog({title:'Image size',body,okLabel:'Resample',onOk(){const r=f.read();if(!r)return false;if(r[0]!==doc.w||r[1]!==doc.h)resizeImageDoc(r[0],r[1]);}});}
-function dlgNew(){const f=sizeFields(1024,1024,false);let depth=doc.depth,bgMode='white',tile=false,tpl='hand';
+/* (0.27, Kenn) where the new document starts: Paint (tabs), 3D Paint (a new project, square textures), Animation, Brush */
+const NEW_START=[['paint','Paint'],['p3d','3D Paint'],['anim','Animation'],['brush','Brush']];
+const NEW_START_NOTES={paint:'A new tab in the Paint canvas.',p3d:'A new 3D Paint project on the current model: the width sets the texture size (square).',anim:'A new document, opened in Animation for flipbooks and sprite sheets.',brush:'A new sketch canvas in the Brush tab (square) for drawing brush tips.'};
+function dlgNew(){const f=sizeFields(1024,1024,false);let depth=doc.depth,bgMode='white',tile=false,tpl='hand',start=['p3d','anim','brush'].includes(ui.mode)?ui.mode:'paint';
   const seg=(opts,cur,set)=>{const w=el('div',{class:'chips'});const draw=()=>{w.replaceChildren(...opts.map(([v,l,dis])=>el('button',{class:'chip'+(v===cur()?' on':''),disabled:!!dis,title:dis?'This GPU cannot render 16-bit float textures':null,text:l,onclick:()=>{set(v);draw();}})));};draw();return w;};
   const tileChk=chk('dTile','Seamless tile mode',false,v=>{tile=v;});
   const TPL_NOTES={pbrsg:'Diffuse, specular, glossiness, height and normal (the Specular/Gloss workflow).',brush:'A black-and-white canvas for drawing a brush tip: paint in black, then press Make brush.',hand:'Base colour only.',pbr:'Base colour, roughness, metallic, height and normal.',custom:'Choose the maps after creating.'};const tplNote=el('p',{class:'note',text:TPL_NOTES.hand});
   const np=newPresetBox(f);
-  const body=el('div',{class:'dlg-grid'},np.el,f.row,np.units,f.presets,
-    el('div',{class:'sub',text:'Template'}),seg([['hand','Hand-painted'],['pbr','PBR'],['pbrsg','PBR spec/gloss'],['brush','Brush tip'],['custom','Custom…']],()=>tpl,v=>{tpl=v;tplNote.textContent=TPL_NOTES[v];if(v==='brush'){$('#dW').value=512;$('#dH').value=512;}}),tplNote,
+  const stNote=el('p',{class:'note',id:'dStartNote',text:NEW_START_NOTES[start]});
+  const onlyPaint=[];const stUpd=()=>{stNote.textContent=NEW_START_NOTES[start];for(const x of onlyPaint)x.hidden=start==='p3d'||start==='brush';};
+  const stSeg=seg(NEW_START,()=>start,v=>{start=v;stUpd();if((v==='p3d'||v==='brush')&&$('#dH'))$('#dH').value=$('#dW').value;});stSeg.id='dStart';
+  const body=el('div',{class:'dlg-grid'},el('div',{class:'sub',text:'Start in'}),stSeg,stNote,np.el,f.row,np.units,f.presets,
+    ...(()=>{const a=el('div',{class:'sub',text:'Template'});onlyPaint.push(a);return [a];})(),seg([['hand','Hand-painted'],['pbr','PBR'],['pbrsg','PBR spec/gloss'],['brush','Brush tip'],['custom','Custom…']],()=>tpl,v=>{tpl=v;tplNote.textContent=TPL_NOTES[v];if(v==='brush'){$('#dW').value=512;$('#dH').value=512;}}),tplNote,
     el('div',{class:'sub',text:'Bit depth'}),seg([[8,'8-bit'],[16,'16-bit float',!canFloat]],()=>depth,v=>{depth=v;}),
     el('div',{class:'sub',text:'Background'}),seg([['white','White'],['fg','Foreground color'],['clear','Transparent']],()=>bgMode,v=>{bgMode=v;}),
     tileChk);
-  openDialog({title:'New document',body,okLabel:'Create',onOk(){const r=np.read();if(!r)return false;const dpiNew=np.dpi();const bg=bgMode==='white'?[1,1,1]:bgMode==='fg'?ui.fg.slice():null;if(typeof dtNewTab==='function'&&!dtNewTab())return;if(tpl==='brush'){newBrushDoc(r[0],r[1]);return;}newDoc(r[0],r[1],depth,bg,typeof dtUntitled==='function'?dtUntitled():'Untitled',tile,tpl==='custom'?'hand':tpl);doc.dpi=dpiNew;if(tpl==='custom')setTimeout(dlgMaps,0);}});}
+  /* the template row and note only matter for Paint and Animation */
+  {const kids=[...body.children],ti=kids.indexOf(onlyPaint[0]);if(ti>=0)onlyPaint.push(kids[ti+1],kids[ti+2]);}stUpd();
+  openDialog({title:'New document',body,okLabel:'Create',onOk(){const r=np.read();if(!r)return false;const dpiNew=np.dpi();
+    if(start==='p3d'){const n=r[0];setTimeout(()=>p3NewProject(n),0);return;}
+    if(start==='brush'){if(ui.mode!=='brush'&&!setMode('brush',true))return;btNewCanvas(Math.max(64,Math.min(4096,r[0])));return;}
+    if(start==='paint'&&ui.mode!=='paint'&&typeof setMode==='function'&&!setMode('paint',true))return;
+    if(start==='anim'&&ui.mode!=='paint'&&ui.mode!=='anim'&&typeof setMode==='function'&&!setMode('paint',true))return;const bg=bgMode==='white'?[1,1,1]:bgMode==='fg'?ui.fg.slice():null;if(typeof dtNewTab==='function'&&!dtNewTab())return;if(tpl==='brush'){newBrushDoc(r[0],r[1]);return;}newDoc(r[0],r[1],depth,bg,typeof dtUntitled==='function'?dtUntitled():'Untitled',tile,tpl==='custom'?'hand':tpl);doc.dpi=dpiNew;if(tpl==='custom')setTimeout(dlgMaps,0);if(start==='anim'&&ui.mode!=='anim')setMode('anim');}});}
 /* ---- New document presets (0.26.1): textures, screens, phones, social, paper, photo, books, cards, posters, film ---- */
 const NEW_PRESETS=[
   ['Textures',[['256 × 256',256,256],['512 × 512',512,512],['1K (1024)',1024,1024],['2K (2048)',2048,2048],['4K (4096)',4096,4096],['8K (8192)',8192,8192],['16K (16384)',16384,16384],['2K × 1K (2:1)',2048,1024],['4K × 2K (2:1)',4096,2048]]],
