@@ -44,6 +44,7 @@
         "files/psd-save",
         "files/save",
         "files/tex-export",
+        "files/model-export",
         "files/gouache-file",
         "filters/filter-shaders",
         "filters/converters",

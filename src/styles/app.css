@@ -754,3 +754,9 @@ body.stvresize{cursor:row-resize;user-select:none}
 /* (0.27) Material/Properties sliders: the slider gets the whole row width (the name and number sit above it) so it is easy to drag in a narrow column */
 #matEdBody .srow{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"l o" "r r";row-gap:2px}
 #matEdBody .srow label{grid-area:l}#matEdBody .srow output{grid-area:o}#matEdBody .srow input[type=range]{grid-area:r;width:100%;min-width:0}
+/* (0.27) export preset editor: one row per file */
+.txprows{display:flex;flex-direction:column;gap:6px;max-height:44vh;overflow:auto}
+.txprow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px;border:1px solid var(--line);border-radius:6px}
+.txprow input[type=text]{width:84px;flex:0 0 auto}.txprow select{width:auto;min-width:0;flex:1 1 120px}
+.txprow .txpch{display:flex;align-items:center;gap:4px;flex:1 1 150px;color:var(--muted);font-weight:600}.txprow .txpch select{flex:1 1 auto}
+.txprow>.btn{margin-left:auto}

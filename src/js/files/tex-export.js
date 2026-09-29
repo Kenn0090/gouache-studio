@@ -73,7 +73,7 @@ const TEX_PRESETS={
     {s:'Opacity',what:'Opacity',grey:'opac'}]}};
 const pascal=n=>(String(n||'Texture').replace(/\.[a-z0-9]+$/i,'').match(/[A-Za-z0-9]+/g)||['Texture']).map(w=>w[0].toUpperCase()+w.slice(1)).join('');
 const snake=n=>(String(n||'texture').replace(/\.[a-z0-9]+$/i,'').match(/[A-Za-z0-9]+/g)||['texture']).map(w=>w.toLowerCase()).join('_');
-const texCfg={preset:'unreal',normal:'preset',size:0,fmt:'png',h16:true,name:'',allSets:true};
+const texCfg={preset:'unreal',normal:'preset',size:0,fmt:'png',h16:true,name:'',allSets:true,model:'none'};
 /* a baked mesh map (3D Paint) stands in for a map the document doesn't paint, like AO in the ORM file */
 const texMesh=k=>doc.meshMaps&&doc.meshMaps[k]&&!doc.maps.includes(k)?doc.meshMaps[k]:null;
 /* which files this document produces with a preset */
@@ -111,7 +111,7 @@ async function encodeTex(W,H,f,C,fmt,bits){
 async function buildTextures(pr,name){const W=doc.w,H=doc.h,S=texCfg.size||0,nw=S||W,nh=S?Math.max(1,Math.round(S*H/W)):H;
   const cache={},has=k=>doc.maps.includes(k);
   const grey=k=>{if(k==='one')return null;const kk=k==='smooth'?'rough':k;const mm=texMesh(kk);if(!has(kk)&&!mm)return null;if(!cache[kk]){if(mm)cache[kk]=readMapF(mm,1);else{const t=compositeMap(kk);cache[kk]=readMapF(t,1);release(t);}}return cache[kk];};
-  const def=k=>k==='one'?1:k==='smooth'?1-mapDefault('rough')[0]:has(k)?mapDefault(k)[0]:(MAP_DEFS[k].def!=null?MAP_DEFS[k].def:0);
+  const def=k=>k==='zero'?0:k==='one'?1:k==='smooth'?1-mapDefault('rough')[0]:has(k)?mapDefault(k)[0]:(MAP_DEFS[k].def!=null?MAP_DEFS[k].def:0);
   const files=[],ext=texCfg.fmt,n=W*H;
   for(const o of texOutputs(pr)){let f,C;
     if(o.rgb==='normal'){const t=normalComposite(texNormalFlip(pr),null);f=readMapF(t,4);release(t);C=3;f=dropAlpha(f,n);}
@@ -124,7 +124,7 @@ async function buildTextures(pr,name){const W=doc.w,H=doc.h,S=texCfg.size||0,nw=
     else if(o.grey){const g=grey(o.grey);if(!g)continue;f=g.slice();C=1;}
     else{C=o.ch.length;f=new Float32Array(n*C);o.ch.forEach((k,c)=>{const g=grey(k),inv=k==='smooth',d=def(k);for(let i=0;i<n;i++){const v=g?g[i]:d;f[i*C+c]=inv&&g?1-v:v;}});}
     const r=resampleF(f,W,H,C,nw,nh,C===4);const bits=o.grey==='height'&&texCfg.h16&&ext==='png'?16:8;
-    const blob=await encodeTex(nw,nh,r,C,ext,bits);files.push({name:pr.name(name).replace('{s}',o.s)+'.'+ext,data:new Uint8Array(await blob.arrayBuffer())});await tick();}
+    const blob=await encodeTex(nw,nh,r,C,ext,bits);files.push({suffix:o.s,name:pr.name(name).replace('{s}',o.s)+'.'+ext,data:new Uint8Array(await blob.arrayBuffer())});await tick();}
   return files;}
 function dropAlpha(f,n){const o=new Float32Array(n*3);for(let i=0;i<n;i++){o[i*3]=f[i*4];o[i*3+1]=f[i*4+1];o[i*3+2]=f[i*4+2];}return o;}
 function baseHasAlpha(f,n){for(let i=0;i<n;i++)if(f[i*4+3]<.999)return true;return false;}
@@ -134,30 +134,43 @@ function dlgExportTextures(){if(stroke||preview||selLive){toast('Finish the curr
   const body=el('div',{class:'dlg-grid'}),list=el('div',{class:'texlist'});
   const sel=(id,label,opts,cur,set)=>{const s=el('select',{id});for(const [v,l] of opts){const o=el('option',{value:String(v),text:l});if(String(v)===String(cur))o.selected=true;s.append(o);}s.addEventListener('change',()=>{set(s.value);draw();});return el('div',{class:'frow'},el('label',{for:id,text:label}),s);};
   const nameIn=el('input',{type:'text',id:'txName',value:texCfg.name});nameIn.addEventListener('input',()=>{texCfg.name=nameIn.value;draw();});
-  const sizes=[[0,'Document ('+doc.w+' × '+doc.h+')'],[256,'256'],[512,'512'],[1024,'1024'],[2048,'2048'],[4096,'4096']];
+  const sizes=[[0,'Document ('+doc.w+' × '+doc.h+')'],[256,'256'],[512,'512'],[1024,'1024'],[2048,'2048'],[4096,'4096'],[8192,'8192 (8K)']];
   const setNm=()=>ui.mode==='p3d'&&texCfg.allSets&&p3.sets.filter(S=>!S.missing).length>1?(texCfg.name||'Texture')+'_'+doc.name:(texCfg.name||'Texture');
   const draw=()=>{const pr=TEX_PRESETS[texCfg.preset],outs=texOutputs(pr),flip=texNormalFlip(pr);list.replaceChildren(...outs.map(o=>el('div',{class:'texrow'},
       el('code',{text:pr.name(setNm()).replace('{s}',o.s)+'.'+texCfg.fmt}),el('span',{class:'dim',text:o.rgb==='normal'?'Normal ('+(flip?'DirectX':'OpenGL')+')':o.what}))));
     if(doc.maps.length<2)list.append(el('p',{class:'note',text:'This document only has base colour. Add maps with Image › Document maps… to export roughness, metallic, height and normal too.'}));};
   if((TEX_PRESETS[texCfg.preset].wf||'metal')!==(doc.workflow||'metal'))texCfg.preset=texPresetsFor()[0][0];
-  body.append(sel('txPreset','Engine',texPresetsFor().map(([k,p])=>[k,p.label]),texCfg.preset,v=>{texCfg.preset=v;}),
+  if(!TEX_PRESETS[texCfg.preset])texCfg.preset=texPresetsFor()[0][0];
+  const own=el('div',{class:'chips'},el('button',{class:'btn sm',id:'txNewPreset',text:'New preset…',title:'Your own files and channel packing',onclick:()=>{closeDialog();dlgTexPreset(texCfg.preset);}}),
+    TEX_PRESETS[texCfg.preset].user?el('button',{class:'btn sm',id:'txEditPreset',text:'Edit preset…',onclick:()=>{closeDialog();dlgTexPreset(texCfg.preset);}}):null);
+  /* (0.27) the model too, with its textures connected */
+  const modelRow=mxHasModel()?[sel('txModel','Model',[['none','No model'],['glb','.glb (textures inside)'],['obj','.obj + .mtl']],texCfg.model||'none',v=>{texCfg.model=v;}),
+    el('p',{class:'note',text:'The model goes with the textures: .glb has them inside and connected (Blender, Godot, Unreal, Unity with glTFast); .obj + .mtl points to the texture files.'})]:[];
+  body.append(sel('txPreset','Engine',texPresetsFor().map(([k,p])=>[k,p.label]),texCfg.preset,v=>{texCfg.preset=v;closeDialog();dlgExportTextures();}),own,
     el('div',{class:'frow'},el('label',{for:'txName',text:'Name'}),nameIn),
     sel('txNrm','Normal map',[['preset','Engine default'],['gl','OpenGL (green up)'],['dx','DirectX (green down)']],texCfg.normal,v=>{texCfg.normal=v;}),
     sel('txSize','Size',sizes,texCfg.size,v=>{texCfg.size=+v;}),
     sel('txFmt','Format',[['png','PNG'],['tga','TGA']],texCfg.fmt,v=>{texCfg.fmt=v;}),
     chk('txH16','Height at 16 bits (PNG)',texCfg.h16,v=>{texCfg.h16=v;}),
     ui.mode==='p3d'&&p3.sets.filter(S=>!S.missing).length>1?chk('txAll','Every texture set (files named after each set)',texCfg.allSets,v=>{texCfg.allSets=v;draw();}):null,
-    el('div',{class:'sub',text:'Files'}),list);draw();
+    ...modelRow,el('div',{class:'sub',text:'Files'}),list);draw();
   openDialog({title:'Export textures',body,okLabel:platform.isDesktop?'Choose folder…':'Export',onOk(){exportTextures();}});}
-async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.name||'Texture';
+async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.name||'Texture',wantModel=mxHasModel()&&texCfg.model&&texCfg.model!=='none';
   let dir=null;if(platform.isDesktop){dir=await platform.pickFolder();if(!dir)return;}
   toast('Exporting textures…');await tick();
-  try{let files;
-    /* 3D Paint: every texture set, each named after its set */
-    if(ui.mode==='p3d'&&texCfg.allSets&&p3.sets.filter(S=>!S.missing).length>1){files=[];const back=p3.cur;
-      for(let i=0;i<p3.sets.length;i++){if(p3.sets[i].missing)continue;p3SwitchSet(i,true);files.push(...await buildTextures(pr,name+'_'+p3.sets[i].name));}p3SwitchSet(back,true);}
-    else files=await buildTextures(pr,name);
+  try{let files=[];const bySet={},glTex={};
+    /* each texture set (3D Paint), or the document; the model needs glTF-shaped textures too */
+    const one=async(setName,fileName)=>{const fs=await buildTextures(pr,fileName);bySet[setName]=fs;files.push(...fs);
+      if(wantModel&&texCfg.model==='glb'){const g=await buildTextures(GLTF_TEX,pascal(fileName)),T={};for(const f of g)T[f.suffix]=f;T.alpha=doc.maps.includes('opac');glTex[setName]=T;}};
+    const sets=ui.mode==='p3d'?p3.sets.filter(S=>!S.missing):[];
+    if(ui.mode==='p3d'&&(texCfg.allSets||wantModel)&&sets.length>1){const back=p3.cur;
+      for(let i=0;i<p3.sets.length;i++){if(p3.sets[i].missing)continue;p3SwitchSet(i,true);await one(p3.sets[i].name,name+'_'+p3.sets[i].name);}p3SwitchSet(back,true);}
+    else await one(ui.mode==='p3d'&&p3.sets[p3.cur]?p3.sets[p3.cur].name:(doc.name||name),name);
+    if(wantModel){const m=mxModel(),setNames=Object.keys(bySet),groups=mxGroups(m,setNames),mn=pascal(name);
+      if(texCfg.model==='glb')files=files.concat([{name:mn+'.glb',data:mxGLB(m,groups,glTex,mn)}]);
+      else{const o=mxOBJ(m,groups,bySet,mn,pr);files.push({name:mn+'.obj',data:o.obj},{name:mn+'.mtl',data:o.mtl});}}
     if(!files.length){toast('Nothing to export.');return;}
-    if(dir){const sep=dir.includes('\\')?'\\':'/';for(const f of files)await platform.writeFile(dir.replace(/[\\/]$/,'')+sep+f.name,f.data);toast('Saved '+files.length+' textures to '+dir);}
-    else{const r=await deliver(pascal(name)+'_'+texCfg.preset+'.zip',await makeZipMulti(files));toast(deliveredText(r,'Textures'));}}
+    if(dir){const sep=dir.includes('\\')?'\\':'/';for(const f of files)await platform.writeFile(dir.replace(/[\\/]$/,'')+sep+f.name,f.data);toast('Saved '+files.length+' files to '+dir);}
+    else{const r=await deliver(pascal(name)+'_'+(pr.user?'custom':texCfg.preset)+'.zip',await makeZipMulti(files));toast(deliveredText(r,'Textures'));}
+    return files;}
   catch(e){console.error(e);toast('Export failed: '+(e.message||e));}}
