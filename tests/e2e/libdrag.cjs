@@ -25,7 +25,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
    await p.mouse.move(r.x+r.width/2,y,{steps:8});await W(150);const shown=await p.evaluate(()=>!document.querySelector('.dropline').hidden||!!document.querySelector('.lrow.drop-mask,.lrow.drop-into'));
    await p.mouse.up();await W(700);return shown;};
  /* a material between Paint and Base material */
- const matTile='#matBody .matgrid:not(#matMine) .mattile:not(.smart)';const matName=await p.locator(matTile).first().getAttribute('title');
+ const matTile='#matBody .matgrid:not(#matMine):not(#matLib) .mattile:not(.smart)';const matName=await p.locator(matTile).first().getAttribute('title');
  let shown=await drag(matTile,'Base material','above');let n=await names();
  ok(shown,'dragging shows where it will land');
  ok(n.length===3&&n[0]==='Paint'&&n[2]==='Base material'&&matName.startsWith(n[1]),'a material dropped between two layers lands between them '+JSON.stringify(n));
