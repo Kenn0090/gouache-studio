@@ -74,6 +74,7 @@
         "files/p3-project",
         "layers/materials",
         "layers/mat-import",
+        "ui/lib-drag",
         "bake/bake-gpu",
         "bake/bake-ui",
         "bake/bake-tab",

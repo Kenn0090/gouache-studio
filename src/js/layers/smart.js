@@ -41,7 +41,7 @@ function smApply(rec){if(ui.mode==='anim'){toast('Smart materials are for Paint 
   const n=smBuild(rec.tree);n.name=rec.name;const fromSel=sel.active&&!sel.quick&&!n.mask;
   if(fromSel){n.mask=makeMask(0);run(P.loadsel,n.mask.target,{uSrc:sel.t.tex,uWhat:{int:1},uInv:false});}
   /* above the selected layer or folder (not inside a folder that happens to be selected) */
-  const A=doc.active,P=A&&A.parent?A.parent:doc.root,I=A&&A.parent?P.children.indexOf(A)+1:P.children.length;
+  const A=doc.active,P=insertAt?insertAt.parent:A&&A.parent?A.parent:doc.root,I=insertAt?insertAt.index:A&&A.parent?P.children.indexOf(A)+1:P.children.length;
   structOp('Add smart material',()=>{insertNode(n,P,I);selectOnly(n);});msEpoch++;changedAll();
   toast('Added the smart material “'+rec.name+'”'+(fromSel?' in the selection.':'. Its rows stay live: change them under each layer.'));return n;}
 /* Materials tab › a smart mask: it becomes the active layer's mask */

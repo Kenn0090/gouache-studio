@@ -165,7 +165,9 @@ function moveNodes(nodes,d){if(!nodes.length||!dropAllowed(nodes,d))return;
     if(d.top)d.parent.open=true;});}
 
 /* commands */
-function insertPoint(){const a=doc.active;if(!a)return [doc.root,doc.root.children.length];if(a.type==='group'&&a.open)return [a,a.children.length];return [a.parent,a.parent.children.indexOf(a)+1];}
+/* (0.27) a drop from the Materials tab says exactly where the new layer goes */
+let insertAt=null;
+function insertPoint(){if(insertAt)return [insertAt.parent,insertAt.index];const a=doc.active;if(!a)return [doc.root,doc.root.children.length];if(a.type==='group'&&a.open)return [a,a.children.length];return [a.parent,a.parent.children.indexOf(a)+1];}
 function cmdAddLayer(name){const L=newLayerObj(name);structOp('New layer',()=>{const [p,i]=insertPoint();insertNode(L,p,i);selectOnly(L);});return L;}
 function cmdNewGroup(){const G=newGroupObj();structOp('New group',()=>{const [p,i]=insertPoint();insertNode(G,p,i);selectOnly(G);});}
 function cmdGroup(){const tops=topSelected();if(!tops.length)return;

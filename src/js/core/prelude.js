@@ -1,6 +1,6 @@
 /* also finds panels moved into their own windows (ui/dock.js) */
 const $=s=>document.querySelector(s)||(typeof dkPopQuery==='function'?dkPopQuery(s):null);
-function el(tag,attrs,...kids){const e=document.createElement(tag);if(attrs)for(const k in attrs){const v=attrs[k];if(k==='class')e.className=v;else if(k==='text')e.textContent=v;else if(k.startsWith('on')&&typeof v==='function')e.addEventListener(k.slice(2),v);else if(v===true)e.setAttribute(k,'');else if(v!==false&&v!=null)e.setAttribute(k,v);}for(const c of kids)if(c!=null&&c!==false)e.append(c);return e;}
+function el(tag,attrs,...kids){const e=document.createElement(tag);if(attrs)for(const k in attrs){const v=attrs[k];if(k==='class')e.className=v;else if(k==='text')e.textContent=v;else if(k[0]==='_')e[k]=v;else if(k.startsWith('on')&&typeof v==='function')e.addEventListener(k.slice(2),v);else if(v===true)e.setAttribute(k,'');else if(v!==false&&v!=null)e.setAttribute(k,v);}for(const c of kids)if(c!=null&&c!==false)e.append(c);return e;}
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const mod=(a,n)=>((a%n)+n)%n;
 
