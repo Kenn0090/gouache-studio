@@ -205,3 +205,17 @@ Follow-up answers: sending into engines is **an option** (Blender launched with 
 - Tests: fix27, mimport, filters27, export27, libdrag, cvmat, astabs, mwatch, esend, stretch27. Pitfall: sed-editing the `window.__gs={` line can drop hooks (mw was lost once) — prepend, don't replace the first name.
 - Only Kenn can check: the Blender add-on / Send to with real apps, the updater with a real re-saved model.
 - **0.28 not planned yet.** Candidates: UV tab (much later per Kenn), add-on/plugin system, UV island cage, more filters (Kenn's links), code signing.
+
+## 0.28 plan (Kenn's answers after 0.27.0)
+- **Compression across the board** (library, .gmat, smart materials, autosaves, projects): lossless by default; a **"Smaller files" switch in Preferences, ON by default** (tiny loss; normal maps always lossless). Grey maps stored grey.
+- **Grunge / Textures tab**: built-in generated textures **and** real photo-based grunge maps shipped; import your own (images/folder/.zip); share as a pack file; uses: mask picture row, material channel, new layer, stencil, brush tip (all).
+- Animation hotkeys: **Ctrl+F new frame, Ctrl+D duplicate frame**, Delete removes the frame, , / . previous/next, Space play/stop, Ctrl+Shift+Left/Right move the frame.
+- Tessellation (Height depth / displacement in the 3D view) isn't working: investigate and fix.
+- Painting on a material layer **without a mask does nothing at all** (undo 0.27's automatic black mask; same for fill bucket and gradient).
+- **Engine quality** (Low/Medium/High/Ultra) for the 3D view, in **Preferences** (Kenn: "the setting menu").
+- **Decals**: a Decals tab with a library (bolts, rivets, vents, screws, labels, logos, cracks, bullet holes); click onto the model, sits on the surface facing out; colour + height/normal + roughness; stays movable; import your own.
+- **Help menu**: the wiki, what's new (change log), keyboard shortcuts, About.
+- **Workspace drop-down follows the tab** (Paint → Painting, 3D Paint → Texturing, …), each tab remembers its own workspace.
+- **Bake map list**: all bake options listed; Alt+click = only that one; Alt+click again = everything else on, that one off.
+- **Embroidery filter** for patches: thread colours from the picture, satin stitches, fill stitch, merrow border, thread shine, height/normal.
+- Kenn asked how to make his own materials that ship with the app → plan: materials (.gmat) placed in assets/materials are bundled as built-ins.
