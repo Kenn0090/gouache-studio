@@ -1,5 +1,5 @@
 /* ================= Color ================= */
-const ui={tool:'brush',fg:[.86,.62,.35],bg:[.13,.12,.14],hsv:[0,0,0],recent:[],preset:'Round'};
+const ui={tool:'brush',fg:[0,0,0],bg:[1,1,1],hsv:[0,0,0],recent:[],preset:'Round'};
 function hsv2rgb(h,s,v){const f=n=>{const k=(n+h/60)%6;return v-v*s*Math.max(0,Math.min(k,4-k,1));};return [f(5),f(3),f(1)];}
 function rgb2hsv(r,g,b){const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;let h=0;if(d){if(mx===r)h=((g-b)/d)%6;else if(mx===g)h=(b-r)/d+2;else h=(r-g)/d+4;h*=60;if(h<0)h+=360;}return [h,mx?d/mx:0,mx];}
 const toHex=c=>'#'+c.map(v=>Math.round(clamp(v,0,1)*255).toString(16).padStart(2,'0')).join('');
@@ -41,7 +41,11 @@ function shadeStep(d){const S=ui.shade;if(!S)return;const i=clamp(S.i+d,-40,48);
   S.i=i;const keep=ui.bg;setFG(c);ui.bg=keep;refreshColor();}
 function renderRecent(){const r=$('#recent');r.replaceChildren();if(!ui.recent.length){r.append(el('span',{class:'none',text:'Colors you paint with appear here'}));return;}
   for(const hx of ui.recent)r.append(el('button',{style:'background:'+hx,title:hx,'aria-label':'Use '+hx,onclick:()=>setFG(fromHex(hx))}));}
-function dragOn(c,fn){c.addEventListener('pointerdown',e=>{c.setPointerCapture(e.pointerId);fn(e);const mv=ev=>fn(ev);const up=()=>{c.removeEventListener('pointermove',mv);c.removeEventListener('pointerup',up);c.removeEventListener('pointercancel',up);};c.addEventListener('pointermove',mv);c.addEventListener('pointerup',up);c.addEventListener('pointercancel',up);});}
+function dragOn(c,fn){c.addEventListener('pointerdown',e=>{c.setPointerCapture(e.pointerId);fn(e);
+  /* a missed button release must not leave the drag running (the colour would follow the pointer around) */
+  const end=()=>{c.removeEventListener('pointermove',mv);c.removeEventListener('pointerup',end);c.removeEventListener('pointercancel',end);c.removeEventListener('lostpointercapture',end);window.removeEventListener('blur',end);};
+  const mv=ev=>{if(!ev.buttons){end();return;}fn(ev);};
+  c.addEventListener('pointermove',mv);c.addEventListener('pointerup',end);c.addEventListener('pointercancel',end);c.addEventListener('lostpointercapture',end);window.addEventListener('blur',end);});}
 dragOn(svC,e=>{const r=svC.getBoundingClientRect();setHSV(ui.hsv[0],clamp((e.clientX-r.left)/r.width,0,1),clamp(1-(e.clientY-r.top)/r.height,0,1));});
 dragOn(hueC,e=>{const r=hueC.getBoundingClientRect();setHSV(clamp((e.clientX-r.left)/r.width,0,1)*359.9,ui.hsv[1],ui.hsv[2]);});
 function swapColors(){const t=ui.fg;ui.fg=ui.bg;ui.bg=t;setFG(ui.fg);}

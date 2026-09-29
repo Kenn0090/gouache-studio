@@ -15,7 +15,7 @@ const KB_PHOTOSHOP={hueSat:'Ctrl+U',adjust:'',mergeVisible:'Ctrl+Shift+E',export
 let kbCmds=null;
 /* [id,label,group,default key,run] for everything that can have a key */
 function kbCommands(){if(kbCmds)return kbCmds;kbCmds=[];const seen=new Set();
-  for(const name in MENUS)for(const it of MENUS[name]){if(it==='-'||seen.has(it[1])||!actions[it[1]])continue;seen.add(it[1]);
+  for(const name in MENUS)for(const it of menuFlat(MENUS[name])){if(it==='-'||seen.has(it[1])||!actions[it[1]])continue;seen.add(it[1]);
     const key=it[2]&&!/click/i.test(it[2])?it[2]:'';kbCmds.push([it[1],it[0].replace(/…$/,'').replace(/\s*\(.*\)$/,''),name,key,()=>actions[it[1]]()]);}
   kbCmds.push(...KB_EXTRA);return kbCmds;}
 let kbUser=(()=>{try{return JSON.parse(localStorage.getItem('gs.keys')||'{}');}catch(e){return {};}})();

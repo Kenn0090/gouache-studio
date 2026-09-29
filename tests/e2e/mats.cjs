@@ -82,8 +82,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const rv=await p.evaluate(()=>{const L=__gs.doc.active;return {src:L.fill.maps.rough.src,mm:L.fill.maps.rough.mm,pick:!!document.querySelector('#fl_mm_rough'),v:__gs.readRGBA8(__gs.mapT(L,'rough'))[0]};});
  ok(rv.src==='baked'&&rv.mm==='ao'&&rv.pick&&Math.abs(rv.v-51)<6,'Mesh map fills roughness from the baked AO '+JSON.stringify(rv));
  await p.evaluate(()=>__gs.showPanel('layers'));await W(150);await p.click('#layerList .lrow.on',{button:'right'});await W(200);
- ok(await p.evaluate(()=>[...document.querySelectorAll('#menuPop .mi')].some(b=>b.textContent.includes('Ambient occlusion'))),'right-click offers Mask from mesh map');
- await p.click('#menuPop .mi:has-text("Ambient occlusion")');await W(400);
+ await p.hover('#menuPop .hassub:has-text("Mask from mesh map")');ok(await p.evaluate(()=>[...document.querySelectorAll('#menuSub .mi')].some(b=>b.textContent.includes('Ambient occlusion'))),'right-click offers Mask from mesh map');
+ await p.click('#menuSub .mi:has-text("Ambient occlusion")');await W(400);
  ok(await p.evaluate(()=>{const L=__gs.doc.active;return Math.abs(__gs.readRGBA8(L.mask.target)[0]-51)<6;}),'the mask becomes the baked AO');
  /* the Materials tab can leave the side column */
  await p.evaluate(()=>__gs.dkMove('mats',{float:{x:500,y:200}}));await W(300);

@@ -40,7 +40,7 @@ function buildP3Panel(){if(typeof renderShading==='function')renderShading();con
     el('p',{class:'note',text:'Hold Alt over the model to pick its colour. Left/Right arrow keys step through the shades in the Color panel. Double-click empty space to reframe.'}),
     el('div',{class:'sub',text:'Mesh maps (baked)'}),el('div',{class:'chips'},el('button',{class:'btn sm',id:'p3BakeBtn',text:'Bake mesh maps…',title:'Bake AO, curvature, normal… for the texture sets, here',onclick:dlgP3Bake}),
       Object.keys(bk.res||{}).length?el('button',{class:'btn sm',text:'Fine-tune in the Bake tab',onclick:()=>setMode('bake')}):null,Object.keys(bk.res||{}).length?el('button',{class:'btn sm',id:'p3BakePaint',text:'Send to the Paint canvas',title:'The bake as layers in the painting, to clean up by hand',onclick:p3BakeToPaint}):null),p3MeshMapsBox(),
-    el('div',{class:'sub',text:'Project'}),el('div',{class:'chips'},el('button',{class:'btn sm',text:'Save project',title:'Save the model and all texture sets as a .gouache3d project (Ctrl+S here)',onclick:()=>saveP3Project(false)}),el('button',{class:'btn sm',text:'Open project…',onclick:()=>pickFile('open')}),el('button',{class:'btn sm',text:'Export textures…',onclick:()=>actions.expTex()})),
+    el('div',{class:'sub',text:'Project'}),el('div',{class:'chips'},el('button',{class:'btn sm',text:'Save project',title:'Save the model and all texture sets as a .gouache3d project (Ctrl+S here)',onclick:()=>saveP3Project(false)}),el('button',{class:'btn sm',text:'Open project…',onclick:()=>pickFile('open')})),
     el('div',{class:'sub',text:'Select on the model'}),sel3Box(),
     el('div',{class:'sub',text:'Texture size'}),seg([[1024,'1K'],[2048,'2K'],[4096,'4K']],doc.w,v=>p3Resize(+v),'Texture size'));}
 function p3Resize(n){if(n===doc.w&&n===doc.h)return;if(n>MAX_DIM){toast('This computer cannot edit textures that large.');return;}p3.size=n;p3Save();resizeImageDoc(n,n);for(const L of paintLayers())if(L.fill)fillRender(L);buildP3Panel();}
@@ -164,8 +164,7 @@ function p3SelectAt(hit,e){if(sel3.mode==='off'||!v3.mesh||(ui.mode!=='p3d'&&ui.
   applyShape(img,mode,fullRect(),'Select '+SEL3_KINDS.find(k=>k[0]===sel3.mode)[1].toLowerCase());release(img);v3.dirty=true;requestRender(true);return true;}
 function sel3Box(){const pick=el('select',{id:'sel3Kind','aria-label':'Double-click on the model selects'},...SEL3_KINDS.map(([k,l])=>el('option',{value:k,text:k==='off'?'Off (double-click reframes)':l})));pick.value=sel3.mode;pick.onchange=()=>{sel3.mode=pick.value;if(ui.mode==='p3d')buildP3Panel();};
   return el('div',{class:'dlg-grid'},pick,
-  el('p',{class:'note',text:sel3.mode==='off'?'Choose what a double-click on the model selects.':'Double-click the model to select. Shift+double-click adds, Ctrl+double-click removes, Ctrl+D deselects. Painting stays inside the selection.'}),
-  el('div',{class:'chips'},el('button',{class:'btn sm',text:'Selection to mask',title:'Give the active layer a mask made from the selection',onclick:()=>{if(!sel.active){toast('Select something first.');return;}cmdAddMask(1);}})));}
+  el('p',{class:'note',text:sel3.mode==='off'?'Choose what a double-click on the model selects.':'Double-click the model to select. Shift+double-click adds, Ctrl+double-click removes, Ctrl+D deselects. Painting stays inside the selection.'}));}
 
 /* ---- materials: ready-made fill layers (colour, roughness, metallic), added above the active layer ---- */
 const P3_MATERIALS=[

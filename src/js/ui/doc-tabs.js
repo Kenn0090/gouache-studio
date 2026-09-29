@@ -94,15 +94,18 @@ function dtRender(){const L=dtLive();dtab.sig=dtSig();dtBar.replaceChildren(...d
 function dtSig(){return dtab.live+'|'+dtab.tabs.map(t=>t.id+':'+dtName(t)+':'+dtUnsaved(t)+':'+!!t.win).join(',');}
 setInterval(()=>{if(dtSig()!==dtab.sig)dtRender();for(const t of dtab.tabs)if(t.win&&t.win.w.closed&&!t.win.closing)dtDock(t.id);},700);
 /* drag: left/right reorders, down out of the bar opens a window of its own */
-function dtDragStart(e,t,b){if(e.button!==0||e.target.closest('.dtx'))return;const x0=e.clientX,y0=e.clientY;let moved=false,out=false;b.setPointerCapture(e.pointerId);
+function dtDragStart(e,t,b){if(e.button!==0||e.target.closest('.dtx'))return;const x0=e.clientX,y0=e.clientY;let moved=false,out=false;
+  /* the bar is rebuilt after every swap, so the drag listens on the window and finds the tab's button again each time */
+  const mine=()=>[...dtBar.querySelectorAll('.dtab')][dtab.tabs.indexOf(t)];
   const mv=ev=>{if(!moved&&Math.hypot(ev.clientX-x0,ev.clientY-y0)<6)return;moved=true;const br=dtBar.getBoundingClientRect();out=ev.clientY>br.bottom+40||ev.clientY<br.top-40;
-    b.classList.toggle('tearing',out);document.body.classList.toggle('dtdrag',true);
-    if(!out){const others=[...dtBar.querySelectorAll('.dtab')];const i=dtab.tabs.indexOf(t);for(const [j,o] of others.entries()){if(o===b)continue;const r=o.getBoundingClientRect();
-        if(ev.clientX>r.left&&ev.clientX<r.right){dtab.tabs.splice(i,1);dtab.tabs.splice(j,0,t);dtRender();const nb=[...dtBar.querySelectorAll('.dtab')][j];if(nb){b.releasePointerCapture&&b.releasePointerCapture(ev.pointerId);up(ev);}return;}}}},
-    up=ev=>{b.removeEventListener('pointermove',mv);b.removeEventListener('pointerup',up);b.removeEventListener('pointercancel',up);document.body.classList.remove('dtdrag');b.classList.remove('tearing');
-      if(!moved){if(t.win){try{t.win.w.focus();}catch(e){}dtActivate(t.id);}else dtActivate(t.id);return;}
+    const cur=mine();if(cur)cur.classList.toggle('tearing',out);document.body.classList.add('dtdrag');
+    if(out)return;const i=dtab.tabs.indexOf(t),others=[...dtBar.querySelectorAll('.dtab')].filter((_,k)=>k!==i);
+    const j=others.filter(o=>{const r=o.getBoundingClientRect();return ev.clientX>r.left+r.width/2;}).length;
+    if(j!==i){dtab.tabs.splice(i,1);dtab.tabs.splice(j,0,t);dtRender();}},
+    up=ev=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);document.body.classList.remove('dtdrag');const cur=mine();if(cur)cur.classList.remove('tearing');
+      if(!moved){dtActivate(t.id);if(t.win){try{t.win.w.focus();}catch(err){}}return;}
       if(out&&ev.type==='pointerup'&&!t.win)dtPop(t.id,ev.screenX,ev.screenY);};
-  b.addEventListener('pointermove',mv);b.addEventListener('pointerup',up);b.addEventListener('pointercancel',up);}
+  window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up);}
 /* ---- keys: Ctrl+Tab / Ctrl+Shift+Tab switch documents, Ctrl+W closes one ---- */
 window.addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey)||e.altKey||ui.mode!=='paint'||!modal.hidden)return;
   if(e.key==='Tab'&&dtab.tabs.length>1){e.preventDefault();e.stopImmediatePropagation();const i=dtab.tabs.findIndex(t=>t.id===dtab.live),n=dtab.tabs.length,o=dtab.tabs[(i+(e.shiftKey?-1:1)+n)%n];if(o.win)try{o.win.w.focus();}catch(err){}dtActivate(o.id);}

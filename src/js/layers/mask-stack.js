@@ -194,8 +194,16 @@ function msFilter(r,acc){const o=acquireD(acc.depth);
   if(r.own){const P=msProgs(),p=r.p||{};run(P.own,o,{uSrc:acc.tex,uOwn:{int:['grow','warp','slope'].indexOf(r.own)},uR:p.r==null?3:p.r,uScale:p.scale||6,uSz:[doc.w,doc.h],uSeed:p.seed||1});return o;}
   const F=FX[r.fx];if(!F){release(o);return null;}F.render(acc,o,r.v||fxDefaults(F),{});return o;}
 /* the whole stack → a picture (pooled). ov = {row, t}: that Paint row's picture while it is being painted */
+/* while a Paint row is being painted, everything under it stays the same: that part is worked out once (msPre) and each frame starts from it */
+function msPreFree(M){if(M._pre){disposeTarget(M._pre.t);M._pre=null;}}
 function msEval(L,ov,guard){const M=L.mask,S=M.stack,P=msProgs(),d=M.target.depth,ctx=msCtx();let acc=acquireD(d);clearTarget(acc,[0,0,0,1]);
-  try{for(const r of S){if(r.on===false)continue;let s=null;
+  let from=0;
+  if(!ov||!ov.row)msPreFree(M);
+  else if(ov.upTo==null){const idx=S.indexOf(ov.row);
+    if(idx>1){const key=msKey(L)+'|'+idx;
+      if(!M._pre||M._pre.key!==key||M._pre.t.depth!==d){msPreFree(M);const pre=msEval(L,{row:S[idx],t:null,upTo:idx},guard);M._pre={key,t:makeTarget(doc.w,doc.h,d)};blit(pre,M._pre.t,0,0,doc.w,doc.h,0,0);release(pre);}
+      blit(M._pre.t,acc,0,0,doc.w,doc.h,0,0);from=idx;}}
+  try{for(let ri=from;ri<S.length;ri++){const r=S[ri];if(ov&&ov.upTo!=null&&ri>=ov.upTo)break;if(r.on===false)continue;let s=null;
     if(r.kind==='filter'){const f=msFilter(r,acc);if(!f)continue;s={t:f,pooled:true};}
     else s=msSource(r,ctx,d,ov,L,guard);
     if(!s)continue;const o=acquireD(d);run(P.blend,o,{uA:acc.tex,uB:s.t.tex,uMode:{int:msModeIx(r.mode)},uOp:r.op==null?1:r.op});if(s.pooled)release(s.t);release(acc);acc=o;}}
@@ -264,7 +272,7 @@ async function msDecode(n,o,img,getRaw){if(o.cfx)n.cfx=o.cfx.map(r=>Object.assig
     delete r.pic;if(d.img){r.t=makeTarget(doc.w,doc.h,d.img.d||8);clearTarget(r.t,[0,0,0,0]);await img(d.img,r.t);}else if(d.pic)r.t=await getRaw(d.pic);
     n.mask.stack.push(r);n.mask._rows.add(r);}n.mask._key=null;}}
 /* every picture a mask holds, for freeing */
-function maskDispose(m){if(!m)return;disposeTarget(m.target);if(m._rows)for(const r of m._rows)if(r.t)disposeTarget(r.t);m._rows=null;}
+function maskDispose(m){if(!m)return;msPreFree(m);disposeTarget(m.target);if(m._rows)for(const r of m._rows)if(r.t)disposeTarget(r.t);m._rows=null;}
 
 /* changing a row's settings: live, and one undo step once you pause (or do something else) */
 const msEd={L:null,snap:null,timer:0,label:''};

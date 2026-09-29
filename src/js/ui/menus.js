@@ -33,12 +33,33 @@ Object.assign(actions,{makeTip:()=>dlgMakeTip(),keys:()=>dlgKeys(),hints:()=>tog
 const LAYER_ONLY=['addLayer','newGroup','group','ungroup','dupLayer','delLayer','addMask','addMaskHide','applyMask','deleteMask','merge','mergeGroup','mergeVisible','flatten','rasterize','place','tipFromLayer','selLayer'];
 const checked={ws_painting:()=>dk.ws==='painting',ws_texturing:()=>dk.ws==='texturing',ws_paint3d:()=>dk.ws==='paint3d',ws_minimal:()=>dk.ws==='minimal',wsLock:()=>dk.lock,pn_color:()=>panelShown('color'),pn_brushes:()=>panelShown('brushes'),pn_tool:()=>panelShown('tool'),pn_maps:()=>panelShown('maps'),pn_layers:()=>panelShown('layers'),pn_chan:()=>panelShown('chan'),optBarToggle:()=>dk.L&&dk.L.opt,tbCols:()=>dk.L&&dk.L.tb.cols===2,tbSide:()=>dk.L&&dk.L.tb.side==='right',hints:()=>!prefs.hideHints,view3d:()=>v3.on,perf:()=>perf.on,depth8:()=>doc.depth===8,depth16:()=>doc.depth===16,tile:()=>doc.wrap,quickMask:()=>sel.quick};
 const pop=$('#menuPop');let openName=null;
+/* the Layer and Maps menus no longer sit in the bar: their items live at the end of the Image menu (the layer buttons and right-click menu still reach them) */
+MENUS.Image.push('-',['Layer','sub',MENUS.Layer],['Maps','sub',MENUS.Maps]);delete MENUS.Layer;delete MENUS.Maps;
 const menuBtns={};for(const name in MENUS){const b=el('button',{text:name,'aria-haspopup':'true','aria-expanded':'false'});b.addEventListener('click',()=>openName===name?closeMenu():openMenu(name));b.addEventListener('mouseenter',()=>{if(openName&&openName!==name)openMenu(name);});menuBtns[name]=b;$('#menus').append(b);}
+/* a menu entry; ['Name','sub',[entries]] opens a fly-out to the right */
+const flyEl=el('div',{id:'menuSub',role:'menu',hidden:true});document.body.append(flyEl);
+function flyHide(){flyEl.hidden=true;}
+function flyOpen(btn,items){const r=btn.getBoundingClientRect();flyEl.replaceChildren(...items);flyEl.hidden=false;
+  const left=r.right+2+flyEl.offsetWidth>window.innerWidth-6?Math.max(4,r.left-flyEl.offsetWidth-2):r.right+2;
+  flyEl.style.left=left+'px';flyEl.style.top=Math.max(4,Math.min(r.top-4,window.innerHeight-flyEl.offsetHeight-8))+'px';}
+function flyItem(label,items){const b=el('button',{class:'mi hassub',role:'menuitem','aria-haspopup':'true'},el('span'),el('span',{text:label}),el('span',{class:'arr',text:'▸'}));
+  b.addEventListener('mouseenter',()=>flyOpen(b,items()));b.addEventListener('click',e=>{e.stopPropagation();flyOpen(b,items());});return b;}
+function menuEntry(it){if(it==='-')return el('div',{class:'msep'});
+  if(it[1]==='sub')return flyItem(it[0],()=>menuList(it[2]));
+  return el('button',{class:'mi',role:'menuitem','data-act':it[1],disabled:it[1]==='depth16'&&!canFloat,onclick:()=>{closeMenu();if(xf&&!xf.move&&it[1]!=='freeTransform')xfCommit();if(ui.mode==='anim'&&LAYER_ONLY.includes(it[1])){toast('Layers are not used in Animation mode. Switch to Paint mode (top right) for layers.');return;}actions[it[1]]();}},el('span',{text:checked[it[1]]&&checked[it[1]]()?'✓':''}),el('span',{text:it[0]}),(()=>{const k=it[2]&&/click/i.test(it[2])?it[2]:kbKeyOf(it[1]);return k?el('kbd',{text:k}):el('span');})());}
+/* (0.29) the File menu shows what fits the section you are in: 3D Paint has no PSD or sprite sheets, Paint has no frames, and so on */
+const FILE_NOT={paint:['impSheet','impSeq','impGif','expSheet'],anim:['sendP3'],p3d:['place','savePsdAs','export','sendP3','importAbr','impSheet','impSeq','impGif','expSheet'],
+  bake:['place','savePsdAs','sendP3','importAbr','impSheet','impSeq','impGif','expSheet','expTex'],convert:['place','savePsdAs','sendP3','importAbr','impSheet','impSeq','impGif','expSheet','expTex'],
+  brush:['place','savePsdAs','sendP3','expTex','impSheet','impSeq','impGif','expSheet']};
+function menuTidy(list){const o=[];for(const it of list){if(it==='-'&&(!o.length||o[o.length-1]==='-'))continue;o.push(it);}while(o.length&&o[o.length-1]==='-')o.pop();return o;}
+function menuList(list,name){let l=list.filter(it=>platform.isDesktop||it==='-'||!['recent','checkUpdates'].includes(it[1]));
+  if(name==='File'){const no=FILE_NOT[ui.mode]||[];l=menuTidy(l.filter(it=>it==='-'||!no.includes(it[1])));}return l.map(menuEntry);}
+function menuFlat(list){const o=[];for(const it of list){if(it==='-')continue;if(it[1]==='sub')o.push(...menuFlat(it[2]));else o.push(it);}return o;}
 function openMenu(name){closeMenu();const b=menuBtns[name];
-  pop.replaceChildren(...MENUS[name].filter(it=>platform.isDesktop||it==='-'||!['recent','checkUpdates'].includes(it[1])).map(it=>it==='-'?el('div',{class:'msep'}):el('button',{class:'mi',role:'menuitem','data-act':it[1],disabled:it[1]==='depth16'&&!canFloat,onclick:()=>{closeMenu();if(xf&&!xf.move&&it[1]!=='freeTransform')xfCommit();if(ui.mode==='anim'&&LAYER_ONLY.includes(it[1])){toast('Layers are not used in Animation mode. Switch to Paint mode (top right) for layers.');return;}actions[it[1]]();}},el('span',{text:checked[it[1]]&&checked[it[1]]()?'✓':''}),el('span',{text:it[0]}),(()=>{const k=it[2]&&/click/i.test(it[2])?it[2]:kbKeyOf(it[1]);return k?el('kbd',{text:k}):el('span');})())));
+  pop.replaceChildren(...menuList(MENUS[name],name));
   if(name==='File'&&typeof fileMenuExtras==='function')fileMenuExtras(pop);
   const r=b.getBoundingClientRect();pop.hidden=false;pop.style.left=Math.min(r.left,window.innerWidth-pop.offsetWidth-8)+'px';pop.style.top=(r.bottom+3)+'px';b.setAttribute('aria-expanded','true');openName=name;}
-function closeMenu(){if(!openName)return;pop.hidden=true;menuBtns[openName].setAttribute('aria-expanded','false');openName=null;}
-document.addEventListener('pointerdown',e=>{if(openName&&!pop.contains(e.target)&&!$('#menus').contains(e.target))closeMenu();});
+function closeMenu(){flyHide();if(!openName)return;pop.hidden=true;menuBtns[openName].setAttribute('aria-expanded','false');openName=null;}
+document.addEventListener('pointerdown',e=>{if(openName&&!pop.contains(e.target)&&!flyEl.contains(e.target)&&!$('#menus').contains(e.target))closeMenu();});
 pop.addEventListener('keydown',e=>{const items=[...pop.querySelectorAll('.mi:not([disabled])')];const i=items.indexOf(document.activeElement);
   if(e.key==='ArrowDown'){e.preventDefault();(items[i+1]||items[0]).focus();}if(e.key==='ArrowUp'){e.preventDefault();(items[i-1]||items[items.length-1]).focus();}});

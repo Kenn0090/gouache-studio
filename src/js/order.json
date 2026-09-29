@@ -60,6 +60,7 @@
         "layers/shapes",
         "layers/styles",
         "layers/fill-layer",
+        "layers/recolour",
         "filters/gallery",
         "view3d/mesh",
         "view3d/view3d",

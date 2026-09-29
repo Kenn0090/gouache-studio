@@ -45,11 +45,11 @@ const S=__dirname+'/';
  await row('Cobbles').click();await p.click('#lMerge');console.log('merge group:',await names());
  await p.keyboard.press('Control+z');
  // merge visible
- await p.click('#menus button:text-is("Layer")');await p.click('#menuPop .mi:has-text("Merge visible")');console.log('merge visible:',await names(),errs);
+ await p.click('#menus button:text-is("Image")');await p.hover('#menuPop .hassub:has-text("Layer")');await p.click('#menuSub .mi:has-text("Merge visible")');console.log('merge visible:',await names(),errs);
  await p.keyboard.press('Control+z');console.log('undo:',await names());
  // hide one and flatten
  await row('Mortar').locator('.eye').click();
- await p.click('#menus button:text-is("Layer")');await p.click('#menuPop .mi:has-text("Flatten image")');
+ await p.click('#menus button:text-is("Image")');await p.hover('#menuPop .hassub:has-text("Layer")');await p.click('#menuSub .mi:has-text("Flatten image")');
  console.log('flatten dialog:',await p.textContent('#dlgBody'));await p.click('#dlgOk');console.log('flat:',await names());
  await p.keyboard.press('Control+z');console.log('undo flat:',await names());
  // reopen saved psd
