@@ -726,7 +726,7 @@ body.sharp .dialog,body.sharp #menuPop,body.sharp .khcard,body.sharp .ascount{bo
 /* 0.26.2 document tabs and document windows */
 #workWrap{display:flex;flex-direction:column;min-height:0;min-width:0}
 #docTabs{display:flex;align-items:stretch;gap:1px;min-height:28px;padding:3px 6px 0;background:var(--panel);border-bottom:1px solid var(--line-2);overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
-body.bakemode #docTabs,body.convmode #docTabs,body.animmode #docTabs,body.brushmode #docTabs,body.p3dmode #docTabs{display:none}
+body.bakemode #docTabs>*,body.convmode #docTabs>*,body.animmode #docTabs>*,body.brushmode #docTabs>*,body.p3dmode #docTabs>*{visibility:hidden}
 .dtab{display:flex;align-items:center;gap:4px;max-width:220px;padding:0 4px 0 10px;border:1px solid transparent;border-bottom:0;border-radius:6px 6px 0 0;color:var(--muted);cursor:pointer;user-select:none;white-space:nowrap;touch-action:none}
 .dtab:hover{background:var(--raise);color:var(--text)}
 .dtab.on{background:var(--ground);border-color:var(--line-2);color:var(--text)}
