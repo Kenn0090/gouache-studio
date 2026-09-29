@@ -135,6 +135,8 @@ body.ldragging,body.ldragging *{cursor:grabbing!important}
 .lmeta{font:10px var(--mono);color:var(--faint);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .lbtns{display:flex;gap:5px;flex-wrap:wrap}
 .lbtns.icons{gap:2px;justify-content:space-between;border-top:1px solid var(--line);padding:6px 0 4px;flex-wrap:nowrap;position:sticky;bottom:0;z-index:2;background:var(--panel)}
+.lbtns.icons.top{border-top:0;border-bottom:1px solid var(--line);top:0;bottom:auto;padding:2px 0 6px}
+.lbtnflip{margin:-3px 0 -3px auto;padding:0 6px;min-width:0;height:16px;font-size:9px;line-height:1}
 .lbtns.icons .lyb{flex:1 1 0;min-width:0;max-width:30px}
 .lyb{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:6px;background:none;color:var(--muted);cursor:pointer;padding:0}
 .lyb:hover{background:var(--raise);color:var(--text)}.lyb:focus-visible{outline:2px solid var(--accent);outline-offset:1px}

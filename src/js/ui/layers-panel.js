@@ -255,3 +255,11 @@ $('#lStyle').addEventListener('click',()=>dlgLayerStyle());$('#lFill').addEventL
 /* right-click › ID colour: a mask row that keeps the ID colours you click on the model (or the flat texture) */
 function idColourMask(n){if(!(doc.meshMaps&&doc.meshMaps.id)){toast('Bake an ID map first: Bake mesh maps (or the Bake tab) › ID colours, then send it to 3D Paint.');return;}
   if(typeof msAdd!=='function')return;selectOnly(n);n.editMask=true;renderLayers();const r=msAdd(n,'id');if(r){ui.viewMask=true;if(typeof maskTool==='function')maskTool('id');toast('Click the colours to keep (Shift adds more). Esc or Done goes back.');}}
+
+/* the round of quick icon buttons sits at the bottom of the layer list, or at the top: the arrow beside "Layers" switches (remembered) */
+{let top=false;try{top=localStorage.getItem('gs.lbtnTop')==='1';}catch(e){}
+  const bar=document.querySelector('.lbtns.icons'),list=$('#layerList'),head=$('#hLayers');
+  if(bar&&list&&head){const b=el('button',{class:'btn sm lbtnflip',type:'button'});head.append(b);
+    const place=()=>{if(top)list.before(bar);else{const sub=list.nextElementSibling;(sub&&sub.classList.contains('sub')?sub:list).after(bar);}
+      bar.classList.toggle('top',top);b.textContent=top?'▼':'▲';b.title=top?'Move the layer buttons to the bottom':'Move the layer buttons to the top';b.setAttribute('aria-label',b.title);};
+    b.addEventListener('click',()=>{top=!top;try{localStorage.setItem('gs.lbtnTop',top?'1':'0');}catch(e){}place();});place();}}
