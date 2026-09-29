@@ -3,7 +3,7 @@
 Gouache Studio is a GPU-powered painting and texture app for hand-painted and PBR game art. It runs as a Windows desktop app that updates itself, and also in a browser.
 
 ## Start here
-- [Getting started](Getting-started.md): installing, updates, a tour of the screen, your first document
+- [Getting started](Getting-started.md): installing, updates, a tour of the screen, your first document, document tabs and windows
 - [Keyboard shortcuts](Keyboard-shortcuts.md)
 - [Panels and workspaces](Panels-and-workspaces.md): the options bar, the dock, floating panels, workspaces, the Filter Gallery
 
@@ -70,4 +70,5 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 | 22 | Welcome screen, autosave, recent files, per-tool brushes, shape corner bevels, shortcut categories | 0.25 |
 | 23 | HDRI lighting, shaders per texture set, ray-traced view and renders, screenshots, turntables, high-poly in the Bake tab | 0.26 |
 | 23b | Polish from testers: no accidental reloads, rulers and guides, layer locks, New document presets, colour wheel/sliders/swatches, shortcut helper, sharp theme, faster big canvases, autosave countdown | 0.26.1 |
+| 23c | Document tabs, and documents in windows of their own | 0.26.2 |
 | 24 | Export dialog (with the model), automatic mesh updater, Distort / Warp / Slope blur filters | 0.27 |

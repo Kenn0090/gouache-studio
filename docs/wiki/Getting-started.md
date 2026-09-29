@@ -55,6 +55,17 @@ Untick **Show this at start-up** to go straight to a blank canvas; **File › We
 
 You can add or remove maps later with **Maps › Document maps…**.
 
+## Several documents: tabs and windows
+
+![Document tabs above the canvas.](images/doc-tabs.png)
+*Three documents open; the one with • has changes that aren't saved.*
+
+- Every document has a **tab** above the canvas. **New**, **Open**, the examples and recovered autosaves each open in a new tab (the untouched Untitled you start with is reused). New documents are named Untitled, Untitled-2, Untitled-3…
+- **Click** a tab to switch, or press **Ctrl+Tab** / **Ctrl+Shift+Tab**. Each document keeps its own layers, undo history, selection, zoom and guides.
+- **Drag** a tab left or right to reorder. **×** (or a middle-click, or **Ctrl+W**, or **File › Close document**) closes it; if it isn't saved you're asked **Save**, **Don't save** or **Cancel**. Closing the last one leaves a blank Untitled and shows the welcome screen.
+- **A window of its own:** drag a tab **down out of the bar** (or **Window › Document in its own window**) and it opens in a separate window you can put on another monitor. Click into a window to work on its document: the canvas moves there, and the other windows show a still picture of their documents until you click into them. The panels (Layers, Colour, Brushes…) stay in the main window and always show the document you're working on. **⤓ Back to the main window** (or closing that window) puts it back as a tab.
+- Tabs are for the Paint canvas. Bake, Convert, 3D Paint and the Brush tab keep their own canvases as before.
+
 ## Reloading
 The app can't be reloaded by accident any more: **F5** does nothing and **Ctrl+R** shows the rulers (as in Photoshop). To reload on purpose press **Ctrl+Shift+R**: if something is unsaved it asks first and keeps a recovery copy. Closing the browser tab with unsaved work also asks first.
 

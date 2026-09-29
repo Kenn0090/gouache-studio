@@ -51,6 +51,8 @@ All of these can be changed in **Edit › Keyboard shortcuts…**. The commands 
 | Ctrl+S / Ctrl+Shift+S | Save / Save as (.gouache) |
 | Ctrl+Shift+E | Export an image |
 | Ctrl+Shift+R | Reload the app (asks first if something is unsaved) |
+| Ctrl+Tab / Ctrl+Shift+Tab | Next / previous document tab |
+| Ctrl+W | Close the document (asks to save first) |
 
 ## Layers
 | Key | Action |

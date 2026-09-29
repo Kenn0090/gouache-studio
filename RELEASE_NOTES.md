@@ -1,13 +1,6 @@
-Polish from testers' feedback: safer, faster, and a few things painters expect.
+Document tabs: several pictures open at once, like Photoshop.
 
-- **No more lost work from a reload:** F5 does nothing, **Ctrl+R shows rulers** (as in Photoshop), and **Ctrl+Shift+R** reloads on purpose, asking first if something is unsaved. The Tab key no longer jumps around the buttons, and dragging no longer highlights the interface's text.
-- **Rulers and guides:** rulers in pixels, inches, centimetres, millimetres or points; drag guides out of the rulers; selections, crop, shapes and gradients snap to them. Ctrl+; shows or hides them.
-- **Layer locks like Photoshop:** transparent pixels, image pixels, position, or all.
-- **New document presets:** about 90 sizes (textures, screens, phones, social media, paper, photo prints, books and comics, trading cards, posters, film), in pixels, inches or centimetres, with DPI and a portrait/landscape swap.
-- **Colour panel:** pick with the square, a **colour wheel with a triangle**, **sliders** (HSB, HSL, RGB, CMYK, Lab) or your own **swatches**, plus Darker, Lighter, Less and More saturated buttons.
-- **Shortcut helper:** hold Ctrl, Alt or Shift to see what each key does with it.
-- **Sharp theme shape:** square corners and a flatter look, with any colour theme (Preferences).
-- **Autosave countdown:** a small popup counts down before each autosave, with Not now and Save now.
-- **Faster big canvases:** painting on 8k and 16k canvases only redraws what the brush touches, so textured brushes and symmetry no longer lag, and there's no pause before a stroke.
-- The brush cursor and the options bar show the brush tip's real shape.
-- Fixed: switching to 16-bit on a huge canvas could turn it black; it now checks the graphics memory first and leaves the picture as it was. Quick undo presses are no longer lost. The layer buttons stay at the bottom of the Layers panel. A new brush icon.
+- **A tab for every document** above the canvas. New, Open and the examples open a new tab instead of replacing your picture. Each document keeps its own layers, undo history, selection, zoom and guides.
+- **Switch** by clicking a tab or with **Ctrl+Tab**. Drag tabs to reorder them. **×**, a middle-click or **Ctrl+W** closes one, asking to save first if it has changes (a • on the tab means unsaved).
+- **Windows of their own:** drag a tab down out of the bar and the document opens in its own window, for a second monitor. Click into a window to work there; the panels in the main window follow the document you're working on. "Back to the main window" (or closing it) returns it as a tab.
+- New documents are named Untitled, Untitled-2, Untitled-3… so the tabs can be told apart.
