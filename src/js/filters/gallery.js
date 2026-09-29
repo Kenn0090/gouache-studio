@@ -6,6 +6,7 @@ const GALLERY_FOLDERS=()=>[
   ['Artistic',['oilPaint','painterly','kuwahara','watercolour','charcoal','cutout','mosaic','acid']],
   ['Photo',['softFocus','cineMono','anaglyph']],
   ['Print',['halftone','engraving','riso','bwPrint','pixelBitmap']],
+  ['Distort',['warp','slopeBlur','distort']],
   ['Blur',['blur','boxBlur','radialBlur','lensBlur','surfBlur','motionBlur','driftBlur']],
   ['Sharpen',['sharpen','highPass']],
   ['Stylize',['glass','emboss','edges','edgeWear']],

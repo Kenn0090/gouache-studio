@@ -49,6 +49,7 @@
         "filters/converters",
         "filters/filters",
         "filters/filters-more",
+        "filters/filters-distort",
         "filters/fx-layers",
         "layers/look",
         "layers/array",

@@ -92,11 +92,13 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; float m=0.0,cov=1.0;
   if(uNeg==1) m=1.0-m; o=vec4(vec3(m)*cov,cov); }`;
 /* generators: the Mask Builder presets, made from curvature, AO, direction and height with noise to break them up */
 const FS_MSGEN=MS_NOISE_GLSL+MS_SURF_GLSL+`
-uniform sampler2D uCurv; uniform int uHasCurv; uniform sampler2D uAO; uniform int uHasAO; uniform int uG; uniform float uAmt; uniform float uWidth; uniform float uBreak; uniform float uCon; uniform float uScale; uniform int uNeg;
+uniform sampler2D uCurv; uniform int uHasCurv; uniform sampler2D uAO; uniform int uHasAO; uniform int uG; uniform float uAmt; uniform float uWidth; uniform float uBreak; uniform float uCon; uniform float uScale; uniform int uNeg; uniform float uDist;
 uniform sampler2D uCurv2; uniform int uHasCurv2;
 float curvOf(vec2 uv){ float c=uHasCurv==1?texture(uCurv,uv).r:0.5; if(uHasCurv2==1) c=clamp(c+(texture(uCurv2,uv).r-0.5)*1.5,0.0,1.0); return c; }
 float aoOf(vec2 uv){ return uHasAO==1?texture(uAO,uv).r:1.0; }
 void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(); vec3 q=surfQ(uv)*uScale;
+  /* (0.27) Distort: the edges and cavities read a little off to the side, following a noise, so they break up irregularly */
+  if(uDist>0.0){ vec2 dd=vec2(fbm(q*0.45+vec3(3.1,0.0,1.7)),fbm(q*0.45+vec3(0.0,7.7,4.2)))-0.5; uv+=dd*uDist*0.05; }
   float c=curvOf(uv),edge=clamp((c-0.5)*2.0,0.0,1.0),cav=clamp((0.5-c)*2.0,0.0,1.0),ao=aoOf(uv),occ=1.0-ao,up=dot(N,vec3(0.0,1.0,0.0)),n=fbm(q),w=uWidth;
   float b=0.0;
   if(uG==0) b=edge*(0.6+w*1.4);
@@ -185,7 +187,7 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
   if(r.kind==='gen'){const o=out(),curv=msMeshTex('curv')||msMeshTex('cv:curv')||msDocMap('curv',ctx)||msModelCurv(),ao=msMeshTex('ao')||msMeshTex('cv:ao')||msDocMap('ao',ctx);
     const ac=p.anchor?msAnchorCurv(p.anchor,ctx):null;
     run(P.gen,o,Object.assign({uG:{int:Math.max(0,MS_GENS.findIndex(g=>g[0]===p.g))},uCurv:curv?curv.tex:dummy,uHasCurv:{int:curv?1:0},uCurv2:ac?ac.tex:dummy,uHasCurv2:{int:ac?1:0},uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},
-      uAmt:p.amount,uWidth:p.width,uBreak:p.breakup,uCon:p.contrast,uScale:p.scale||6,uSeed:p.seed||1,uNeg:{int:p.inv?1:0}},msPx(r,ctx)));return {t:o,pooled:true};}
+      uAmt:p.amount,uWidth:p.width,uBreak:p.breakup,uCon:p.contrast,uDist:p.distort||0,uScale:p.scale||6,uSeed:p.seed||1,uNeg:{int:p.inv?1:0}},msPx(r,ctx)));return {t:o,pooled:true};}
   return null;}
 /* a filter row on the picture so far */
 function msFilter(r,acc){const o=acquireD(acc.depth);

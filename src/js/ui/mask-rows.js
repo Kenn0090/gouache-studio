@@ -107,7 +107,7 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
     S('ms_tile','Tile','tile',.25,16,.25,v=>v+'×'),inv(),pxfBox(L,r,PXF_MODES));
   if(r.kind==='ref'){const os=allNodes(doc.root).filter(n=>n!==L&&n.mask);box.append(sel('ms_ref','Layer',os.map(o=>[o.name,o.name]),'name'),inv(),el('p',{class:'note',text:'Follows that layer’s mask, live.'}));}
   if(r.kind==='gen'){const has=[msMeshTex('curv')&&'curvature',msMeshTex('ao')&&'AO',v3.mesh&&'the model'].filter(Boolean);
-    box.append(sel('ms_g','Preset',MS_GENS,'g'),S('ms_amt','Amount','amount',0,1,.01,pct),S('ms_w','Width','width',0,1,.01,pct),S('ms_brk','Breakup','breakup',0,1,.01,pct),S('ms_con','Contrast','contrast',.3,6,.05),
+    box.append(sel('ms_g','Preset',MS_GENS,'g'),S('ms_amt','Amount','amount',0,1,.01,pct),S('ms_w','Width','width',0,1,.01,pct),S('ms_brk','Breakup','breakup',0,1,.01,pct),S('ms_dist','Distort','distort',0,1,.01,pct),S('ms_con','Contrast','contrast',.3,6,.05),
       S('ms_scale','Noise size','scale',.5,40,.5),S('ms_seed','Seed','seed',1,99,1,v=>String(v)),inv(),
       sel('ms_ganc','Also follow anchor',[['','None'],...msAnchorNames().map(x=>[x,x])],'anchor'),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),
       el('p',{class:'note',text:'Uses '+(has.length?has.join(', '):'the document’s maps')+'. Bake curvature and AO for the best results.'}));}}
