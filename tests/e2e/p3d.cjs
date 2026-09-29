@@ -149,7 +149,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(g.r>500&&g.l===0,'painting stays inside the selection '+JSON.stringify(g));
  await p.keyboard.press('Control+d');await p.selectOption('#sel3Kind','off');await W();
  /* ---- materials: a click adds a fill layer with the material's values ---- */
- await p.evaluate(()=>__gs.showPanel('mats'));await W(200);await p.click('#matBody .matgrid:not(#matLib) .mattile:has-text("Gold")');await W(400);
+ await p.evaluate(()=>__gs.showPanel('mats'));await W(200);await p.click('#matBody .matgrid:not(#matLib) .mattile:has-text("Gold")');await p.click('#lFill');await W(400);
  let mt=await p.evaluate(()=>{const L=__gs.doc.active;return {name:L.name,fill:!!L.fill,metal:L.fill&&L.fill.maps.metal.v,rough:L.fill&&L.fill.maps.rough.v,layers:__gs.allLayers().length};});
  ok(mt.name==='Gold'&&mt.fill&&mt.metal===1&&Math.abs(mt.rough-.22)<.01,'Materials › Gold adds a gold fill layer '+JSON.stringify(mt));
  const mc=await p.evaluate(()=>{const t=__gs.compositeMap('metal'),d=__gs.readRGBA8(t);__gs.release(t);return d[(128*256+128)*4];});ok(mc>250,'the model is metal now ('+mc+')');

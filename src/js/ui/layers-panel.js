@@ -249,8 +249,8 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
   flyHide();pop.replaceChildren(...items);pop.hidden=false;
   pop.style.left=Math.max(4,Math.min(e.clientX,window.innerWidth-pop.offsetWidth-8))+'px';pop.style.top=Math.max(4,Math.min(e.clientY+4,window.innerHeight-pop.offsetHeight-8))+'px';
   const off=ev=>{if(!pop.contains(ev.target)&&!flyEl.contains(ev.target)){pop.hidden=true;flyHide();document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}
-$('#lMaskAdd').addEventListener('click',()=>{if(isLayer(doc.active)||(doc.active&&doc.active.type==='group'))cmdAddMask(1);else toast('Select a layer to add a mask to.');});
-$('#lStyle').addEventListener('click',()=>dlgLayerStyle());$('#lFill').addEventListener('click',()=>cmdNewFillLayer());
+$('#lMaskAdd').addEventListener('click',()=>{if(typeof matMaskSelected==='function'&&matMaskSelected())return;if(isLayer(doc.active)||(doc.active&&doc.active.type==='group'))cmdAddMask(1);else toast('Select a layer to add a mask to.');});
+$('#lStyle').addEventListener('click',()=>dlgLayerStyle());$('#lFill').addEventListener('click',()=>{if(typeof matAddSelected==='function'&&matAddSelected())return;cmdNewFillLayer();});
 
 /* right-click › ID colour: a mask row that keeps the ID colours you click on the model (or the flat texture) */
 function idColourMask(n){if(!(doc.meshMaps&&doc.meshMaps.id)){toast('Bake an ID map first: Bake mesh maps (or the Bake tab) › ID colours, then send it to 3D Paint.');return;}

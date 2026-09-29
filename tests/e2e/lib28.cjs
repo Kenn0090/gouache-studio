@@ -27,11 +27,11 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const n=await p.evaluate(()=>({tiles:document.querySelectorAll('#matLib .mattile').length,thumbs:[...document.querySelectorAll('#matLib img')].filter(i=>i.naturalWidth>0).length}));
  ok(n.tiles===75&&n.thumbs===75,'the Library shows 75 materials with previews '+JSON.stringify(n));
  await p.locator('#matSec').screenshot({path:OUT+'lib-panel.png'});
- await p.click('#gm_brown-leather');for(let i=0;i<60;i++){if(await p.evaluate(()=>__gs.doc.active&&__gs.doc.active.name==='Brown leather'))break;await W(250);}
+ await p.click('#gm_brown-leather');await p.click('#lFill');for(let i=0;i<60;i++){if(await p.evaluate(()=>__gs.doc.active&&__gs.doc.active.name==='Brown leather'))break;await W(250);}
  const L=await p.evaluate(()=>{const L=__gs.doc.active;return {name:L.name,ch:Object.keys(L.fill.maps).filter(k=>L.fill.maps[k].on&&L.fill.maps[k].src==='image').join(','),imgs:Object.keys(L._fillImg||{}).join(',')};});
  ok(L.name==='Brown leather'&&/base/.test(L.ch)&&/normal/.test(L.ch)&&/rough/.test(L.ch),'clicking one loads it and adds it as a material layer '+JSON.stringify(L));
  await W(1500);await p.locator('#work').screenshot({path:OUT+'lib-leather.png'});
- await p.click('#gm_brass');for(let i=0;i<60;i++){if(await p.evaluate(()=>__gs.doc.active&&__gs.doc.active.name==='Brass'))break;await W(250);}
+ await p.click('#gm_brass');await p.click('#lFill');for(let i=0;i<60;i++){if(await p.evaluate(()=>__gs.doc.active&&__gs.doc.active.name==='Brass'))break;await W(250);}
  ok(await p.evaluate(()=>{const L=__gs.doc.active;return L.name==='Brass'&&L.fill.maps.metal.on;}),'metals come with a metallic map (Brass)');
  await p.evaluate(()=>{const l=__gs.layerByName('Brown leather');l.visible=false;__gs.changedAll();});await W(1500);await p.locator('#work').screenshot({path:OUT+'lib-brass.png'});
  console.log(errs.length?errs.join('\n'):'no page errors');ok(!errs.length,'no page errors');

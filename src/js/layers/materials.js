@@ -50,19 +50,51 @@ async function matImport(){const fs=await pickFiles('.gmat,application/json',tru
       const rec={id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:j.name||baseName(f.name),t:Date.now(),fill:j.fill,imgs:await gmatImgs(j)};matLib.list.push(rec);store.put(rec,'materials');n++;}
     catch(e){toast('Could not read '+f.name+': '+(e.message||e));}}
   if(n){renderMats();toast('Imported '+n+' material'+(n>1?'s':'')+'.');}}
-function renderMats(){const box=document.getElementById('matBody');if(!box)return;if(!matLib.loaded){matLoad();}
+/* (0.29, Kenn) a click only highlights a tile. Drag it onto the layers, or press the fill layer button, to add it.
+   Hovering shows a larger look with details, and S / M / L sets the thumbnail size. */
+const matSel={kind:null,rec:null};
+const MT_SIZES={s:44,m:64,l:104};
+let matSize=(()=>{try{return localStorage.getItem('gs.matSize')||'m';}catch(e){return 'm';}})();
+const matTw=()=>MT_SIZES[matSize]||64;
+function matPick(kind,rec,tile){matSel.kind=kind;matSel.rec=rec;document.querySelectorAll('#matBody .mattile.sel').forEach(t=>t.classList.remove('sel'));if(tile)tile.classList.add('sel');}
+/* the fill layer button adds the highlighted material; false when nothing is highlighted */
+function matAddSelected(){const r=matSel.rec;if(!r||matSel.kind==='smask')return false;
+  if(matSel.kind==='smart')smApply(r);else if(r.bundled&&!r.fill)gmApply(r);else if(r.bundled)gmApply(r);else matApply(r);return true;}
+function matMaskSelected(){const r=matSel.rec;if(!r||matSel.kind!=='smask')return false;smMaskApply(r);return true;}
+let matPopEl=null,matPopT=0;
+function matPopHide(){clearTimeout(matPopT);if(matPopEl){matPopEl.remove();matPopEl=null;}}
+function matPopShow(kind,rec,tile){matPopHide();matPopT=setTimeout(()=>{
+  const S=176;let pv;
+  const info=[];
+  if(kind==='smart')pv=smPreviewEl(rec,S);else if(kind==='smask')pv=smaskPreviewEl(rec,S);
+  else if(rec.fill&&(rec.imgs||!rec.bundled)){pv=matPreviewEl(()=>rec.fill,()=>matRecTargets(rec),S).el;}
+  else{pv=el('img',{class:'matprev',src:rec.thumb||'',width:S,height:S,alt:''});
+    if(rec.bundled)gmLoad(rec).then(()=>{if(matPopEl&&matPopEl._rec===rec){const n=matPreviewEl(()=>rec.fill,()=>matRecTargets(rec),S).el;pv.replaceWith(n);pv=n;}}).catch(()=>{});}
+  const kindName=kind==='smart'?'Smart material (a folder of live layers)':kind==='smask'?'Smart mask':'Material';
+  info.push(el('div',{class:'mpsub',text:kindName+(rec.cat?' · '+rec.cat:'')}));
+  const F=rec.fill;if(F&&F.maps){const on=Object.keys(F.maps).filter(k=>F.maps[k]&&F.maps[k].on&&MAP_DEFS[k]).map(k=>MAP_DEFS[k].label);if(on.length)info.push(el('div',{class:'mpline',text:'Channels: '+on.join(', ')}));}
+  if(rec.imgs){const im=Object.values(rec.imgs)[0];if(im&&im.w)info.push(el('div',{class:'mpline',text:'Pictures: '+im.w+' × '+im.h+' px'}));}
+  if(rec.credit)info.push(el('div',{class:'mpline',text:'Source: '+rec.credit}));
+  info.push(el('div',{class:'mpline dim',text:'Drag onto the layers, or highlight it and press the fill layer button.'}));
+  const pop=el('div',{class:'matpop',role:'tooltip'},pv,el('div',{class:'mpname',text:rec.name}),...info);pop._rec=rec;document.body.append(pop);matPopEl=pop;
+  const r=tile.getBoundingClientRect(),w=pop.offsetWidth,h=pop.offsetHeight;let x=r.left-w-8;if(x<8)x=Math.min(innerWidth-w-8,r.right+8);
+  pop.style.left=x+'px';pop.style.top=Math.max(8,Math.min(r.top,innerHeight-h-8))+'px';},350);}
+function matHoverOn(b,kind,rec){b.addEventListener('mouseenter',()=>matPopShow(kind,rec,b));b.addEventListener('mouseleave',matPopHide);b.addEventListener('pointerdown',matPopHide);}
+function renderMats(){const box=document.getElementById('matBody');if(!box)return;if(!matLib.loaded){matLoad();}matPopHide();const tw=matTw();box.style.setProperty('--tw',tw+'px');
   const mats=matLib.list.filter(r=>!r.kind||r.kind==='material'),smarts=matLib.list.filter(r=>r.kind==='smart'),smasks=matLib.list.filter(r=>r.kind==='smask');
+  const mark=(b,kind,rec)=>{b._libDrag=[kind,rec];if(matSel.rec===rec)b.classList.add('sel');matHoverOn(b,kind,rec);return b;};
   /* smart materials and smart masks (0.24) */
-  const stile=(rec,mask)=>{const b=el('button',{class:'mattile smart',_libDrag:[mask?'smask':'smart',rec],title:rec.name+(mask?': click to give the active layer this mask':': click to add this smart material (a folder of live layers)'),onclick:()=>mask?smMaskApply(rec):smApply(rec)},mask?smaskPreviewEl(rec,56):smPreviewEl(rec,56),el('span',{text:rec.name}));
+  const stile=(rec,mask)=>{const kind=mask?'smask':'smart',b=mark(el('button',{class:'mattile smart',title:rec.name+(mask?': click to highlight, then press the mask button under the layers, or drag it onto a layer':': click to highlight, then press the fill layer button, or drag it onto the layers'),onclick:()=>matPick(kind,rec,b)},mask?smaskPreviewEl(rec,tw):smPreviewEl(rec,tw),el('span',{text:rec.name})),kind,rec);
     if(rec.builtin)return b;return el('div',{class:'matwrap'},b,el('div',{class:'matacts'},el('button',{class:'btn sm',text:'⤓',title:'Export as a .gmat file','aria-label':'Export '+rec.name,onclick:()=>matExport(rec)}),el('button',{class:'btn sm',text:'×',title:'Delete from Materials','aria-label':'Delete '+rec.name,onclick:()=>matDelete(rec)})));};
-  const tile=rec=>{const pv=matPreviewEl(()=>rec.fill,()=>matRecTargets(rec),56),b=el('button',{class:'mattile',_libDrag:['mat',rec],title:rec.name+': click to add as a material layer'+(sel.active?' (in the selection)':''),onclick:()=>matApply(rec)},pv.el,el('span',{text:rec.name}));
+  const tile=rec=>{const pv=matPreviewEl(()=>rec.fill,()=>matRecTargets(rec),tw),b=mark(el('button',{class:'mattile',title:rec.name+': click to highlight, then press the fill layer button, or drag it onto the layers',onclick:()=>matPick('mat',rec,b)},pv.el,el('span',{text:rec.name})),'mat',rec);
     if(rec.builtin)return b;const w=el('div',{class:'matwrap'},b,el('div',{class:'matacts'},
       el('button',{class:'btn sm',text:'⤓',title:'Export as a .gmat file','aria-label':'Export '+rec.name,onclick:()=>matExport(rec)}),el('button',{class:'btn sm',text:'×',title:'Delete from Materials','aria-label':'Delete '+rec.name,onclick:()=>matDelete(rec)})));return w;};
-  box.replaceChildren(el('div',{class:'chips'},el('button',{class:'btn sm',id:'matNew',text:'New material…',title:'A new material layer, with the material editor',onclick:()=>cmdNewFillLayer()}),el('button',{class:'btn sm',text:'Import…',title:'A .gmat file saved from Gouache Studio',onclick:matImport}),el('button',{class:'btn sm',id:'matFromTex',text:'From textures…',title:'Make a material from downloaded textures (a folder, images or a .zip)',onclick:()=>dlgMatFromTextures()})),
+  const sizeSeg=el('div',{class:'seg matsize',role:'radiogroup','aria-label':'Thumbnail size'},...[['s','S'],['m','M'],['l','L']].map(([k,l])=>el('button',{type:'button',role:'radio','aria-checked':String(matSize===k),class:matSize===k?'on':'',id:'matSize_'+k,title:'Thumbnail size '+l,text:l,onclick:()=>{matSize=k;try{localStorage.setItem('gs.matSize',k);}catch(e){}renderMats();}})));
+  box.replaceChildren(el('div',{class:'chips'},el('button',{class:'btn sm',id:'matNew',text:'New material…',title:'A new material layer, with the material editor',onclick:()=>cmdNewFillLayer()}),el('button',{class:'btn sm',text:'Import…',title:'A .gmat file saved from Gouache Studio',onclick:matImport}),el('button',{class:'btn sm',id:'matFromTex',text:'From textures…',title:'Make a material from downloaded textures (a folder, images or a .zip)',onclick:()=>dlgMatFromTextures()}),sizeSeg),
     ...(mats.length?[el('div',{class:'sub',text:'Yours'}),el('div',{class:'matgrid',id:'matMine'},...mats.map(tile))]:[]),
     ...(gmRecs.length?[el('div',{class:'sub',text:'Library ('+gmRecs.length+')'}),segChips([...GM_CATS.filter(c=>gmRecs.some(r=>r.cat===c)).map(c=>[c,c+' '+gmRecs.filter(r=>r.cat===c).length]),['all','All']],()=>gmCat,v=>{gmCat=v;try{localStorage.setItem('gs.gmCat',v);}catch(e){}renderMats();}),
-      el('div',{class:'matgrid',id:'matLib'},...gmRecs.filter(r=>gmCat==='all'||r.cat===gmCat).map(rec=>el('button',{class:'mattile',id:'gm_'+rec.bundled.file.replace(/\.gmat$/,''),_libDrag:['mat',rec],title:rec.name+(rec.credit?' ('+rec.credit+')':'')+': click to add as a material layer',onclick:()=>gmApply(rec)},
-      el('img',{src:rec.thumb,alt:'',width:56,height:56,class:'gmthumb'}),el('span',{text:rec.name}))))]:[]),
+      el('div',{class:'matgrid',id:'matLib'},...gmRecs.filter(r=>gmCat==='all'||r.cat===gmCat).map(rec=>{const b=mark(el('button',{class:'mattile',id:'gm_'+rec.bundled.file.replace(/\.gmat$/,''),title:rec.name+(rec.credit?' ('+rec.credit+')':'')+': click to highlight, then press the fill layer button, or drag it onto the layers',onclick:()=>matPick('mat',rec,b)},
+      el('img',{src:rec.thumb,alt:'',width:tw,height:tw,class:'gmthumb',draggable:'false'}),el('span',{text:rec.name})),'mat',rec);return b;}))]:[]),
     el('div',{class:'sub',text:'Built in'}),el('div',{class:'matgrid'},...matBuiltins().map(tile)),
     el('div',{class:'sub',text:'Smart materials'}),el('div',{class:'matgrid',id:'smGrid'},...smarts.map(r=>stile(r,false)),...smBuiltins().map(r=>stile(r,false))),
     el('div',{class:'sub',text:'Smart masks'}),el('div',{class:'matgrid',id:'smMaskGrid'},...smasks.map(r=>stile(r,true)),...smaskBuiltins().map(r=>stile(r,true))),

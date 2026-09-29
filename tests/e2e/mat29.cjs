@@ -1,0 +1,32 @@
+/* 0.29: materials: a click highlights, the fill layer button adds; hover shows a bigger look; S/M/L thumbnail sizes */
+const {chromium}=require('playwright');
+const OLD=__dirname+'/';
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const ctx=await b.newContext({viewport:{width:1440,height:1000}});const p=await ctx.newPage();
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
+  if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ const W=ms=>p.waitForTimeout(ms||200);
+ await p.click('#modeTabs [data-mode=p3d]');await W(2500);
+ await p.evaluate(()=>{__gs.showPanel('layers');__gs.showPanel('mats');});await W(600);
+ const n0=await p.evaluate(()=>__gs.allLayers().length);
+ const tile=p.locator('#matBody .matgrid:not(#matLib):not(#smGrid):not(#smMaskGrid) .mattile').first();await tile.scrollIntoViewIfNeeded();
+ await tile.click();await W(300);
+ ok(await p.evaluate(n=>__gs.allLayers().length===n,n0),'clicking a material does not add it');
+ ok(await tile.evaluate(t=>t.classList.contains('sel')),'…it highlights it');
+ await p.mouse.move(5,5);await W(200);await tile.hover();await W(900);
+ ok(await p.evaluate(()=>{const e=document.querySelector('.matpop');return !!e&&e.querySelector('.mpname')&&e.textContent.includes('Drag onto the layers');}),'hovering shows the bigger look with details');
+ await p.mouse.move(5,5);await W(300);ok(await p.evaluate(()=>!document.querySelector('.matpop')),'…and it goes away');
+ await p.click('#lFill');await W(700);
+ ok(await p.evaluate(n=>__gs.allLayers().length===n+1,n0),'the fill layer button adds the highlighted material');
+ const w1=await p.evaluate(()=>document.querySelector('#matBody .matprev').getBoundingClientRect().width);
+ await p.click('#matSize_l');await W(400);const w2=await p.evaluate(()=>document.querySelector('#matBody .matprev').getBoundingClientRect().width);
+ await p.click('#matSize_s');await W(400);const w3=await p.evaluate(()=>document.querySelector('#matBody .matprev').getBoundingClientRect().width);
+ ok(w2>w1&&w3<w1,'the S / M / L buttons change the thumbnail size '+[w3,w1,w2]);
+ console.log(errs.join('\n'));console.log(fails?'FAILS '+fails:'ALL PASSED');await b.close();process.exit(fails?1:0);})();

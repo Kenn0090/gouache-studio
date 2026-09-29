@@ -50,7 +50,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>__gs.hist.undo.slice(-1)[0].label==='Material'),'the changes become a Material undo step after a pause');
  ok(await p.evaluate(()=>!!document.querySelector('#matMine .mattile')),'it shows under Yours in Materials');
  /* apply the saved one */
- await p.click('#matMine .mattile');await W(600);
+ await p.click('#matMine .mattile');await p.click('#lFill');await W(600);
  s=await p.evaluate(()=>{const L=__gs.doc.active;return {name:L.name,tri:L.fill&&L.fill.proj,imgs:Object.keys(L._fillImg||{})};});
  ok(s.name==='Blue checker'&&s.tri==='tri'&&s.imgs.includes('base')&&s.imgs.includes('height'),'clicking it adds a live material layer '+JSON.stringify(s));
  /* still editable after saving and opening the project */
@@ -59,7 +59,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  if(await p.evaluate(()=>!document.querySelector('#modal').hidden))await p.click('#dlgOk');ok((await p.evaluate(()=>window.__o))==='ok','project reopened');await W(600);
  ok(await p.evaluate(()=>{const L=__gs.allLayers().find(l=>l.name==='Blue checker');return !!(L&&L._fillImg&&L._fillImg.base&&L._fillImg.height);}),'material layers keep their images in files');
  /* ---- History panel ---- */
- await p.evaluate(()=>__gs.showPanel('mats'));await W(200);await p.click('#matMine .mattile');await W(500);await p.evaluate(()=>__gs.act('addLayer'));await W(200);
+ await p.evaluate(()=>__gs.showPanel('mats'));await W(200);await p.click('#matMine .mattile');await p.click('#lFill');await W(500);await p.evaluate(()=>__gs.act('addLayer'));await W(200);
  await p.evaluate(()=>__gs.showPanel('hist'));await W(300);
  let hr=await p.evaluate(()=>[...document.querySelectorAll('#histBody .hrow')].map(r=>r.textContent));ok(hr.length>=2&&/Add material/.test(hr.join('|')),'History lists the steps '+JSON.stringify(hr.slice(-3)));
  const nL=await p.evaluate(()=>__gs.allLayers().length);await p.click('#histBody .hrow.first');await W(800);
