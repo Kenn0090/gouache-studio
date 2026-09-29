@@ -57,12 +57,13 @@ let maskViewT=null,maskViewLive=false;
    styles and arrays, content effects) need the whole picture, so then everything is composited as before. */
 function compNeedsAll(list,k){for(const n of list){if(!n.visible)continue;if(n.type==='layer'){if(n.fx)return true;if(typeof lookTouches==='function'&&lookTouches(n,k))return true;if(n.cfx&&typeof cfxOn==='function'&&cfxOn(n,k))return true;}
     else if(n.children&&compNeedsAll(n.children,k))return true;}return false;}
-let compPart=false;
+let compPart=false;const compStats={parts:0};
 function compositeStrokePart(){const s=stroke;if(!s||!s.compDone||s.fd==='all'||!compOut||compOut.w!==doc.w||compOut.h!==doc.h||s.L.maskOf||s.L.quick||preview||ui.mode==='anim'||ui.mode==='bake'||doc.view==='material'||doc.view==='nfinal'||compNeedsAll(doc.root.children,doc.map))return false;
-  const f=s.fd;s.fd=null;if(!f)return true;const r=doc.wrap?[0,0,doc.w,doc.h]:[Math.max(0,Math.floor(f[0])),Math.max(0,Math.floor(f[1])),0,0];
-  if(!doc.wrap){r[2]=Math.min(doc.w,Math.ceil(f[2]))-r[0];r[3]=Math.min(doc.h,Math.ceil(f[3]))-r[1];}if(r[2]<=0||r[3]<=0)return true;
+  const F=s.fd;s.fd=null;if(!F||!F.length)return true;
+  const rs=doc.wrap?[[0,0,doc.w,doc.h]]:F.map(f=>{const x=Math.max(0,Math.floor(f[0])),y=Math.max(0,Math.floor(f[1]));return [x,y,Math.min(doc.w,Math.ceil(f[2]))-x,Math.min(doc.h,Math.ceil(f[3]))-y];}).filter(r=>r[2]>0&&r[3]>0);
+  if(!rs.length)return true;
   if(typeof msUpdateAll==='function')msUpdateAll();
-  compPart=true;try{scissorDo(r,()=>{const acc=acquire();clearTarget(acc,mapDefault(doc.map));const out=compositeList(doc.root.children,acc);blit(out,compOut,r[0],r[1],r[2],r[3],r[0],r[1]);release(out);});}finally{compPart=false;}
+  compStats.parts+=rs.length;compPart=true;try{for(const r of rs)scissorDo(r,()=>{const acc=acquire();clearTarget(acc,mapDefault(doc.map));const out=compositeList(doc.root.children,acc);blit(out,compOut,r[0],r[1],r[2],r[3],r[0],r[1]);release(out);});}finally{compPart=false;}
   compOut.mipDirty=true;v3Changed();return true;}
 function composite(){if(compositeStrokePart())return;if(compOut)release(compOut);maskOverride=new Map();const tmp=[];maskViewLive=false;if(typeof msUpdateAll==='function')msUpdateAll();
   if(stroke&&stroke.L.maskOf&&!strokeLive(stroke.o)){const lm=acquire();tmp.push(lm);run(P.merge,lm,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,...tintU(),uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},selU(stroke.o),tonalU(stroke.o)));

@@ -73,8 +73,12 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy){
   }
   for(const [cx,cy] of copies){const b=s.bb;b[0]=Math.min(b[0],cx-ext-1);b[1]=Math.min(b[1],cy-ext-1);b[2]=Math.max(b[2],cx+ext+1);b[3]=Math.max(b[3],cy+ext+1);}
   /* what changed since the last frame, so only that part of the picture is composited again */
-  if(s.fd!=='all')for(const [cx,cy] of copies){const e=ext+(o.tool==='smudge'?Math.hypot(dx,dy):0)+3,f=s.fd||(s.fd=[cx,cy,cx,cy]);f[0]=Math.min(f[0],cx-e);f[1]=Math.min(f[1],cy-e);f[2]=Math.max(f[2],cx+e);f[3]=Math.max(f[3],cy+e);}
+  if(s.fd!=='all')for(const [cx,cy] of copies){const e=ext+(o.tool==='smudge'?Math.hypot(dx,dy):0)+3;fdAdd(s,[cx-e,cy-e,cx+e,cy+e]);}
 }
+/* changed areas are kept as a few separate boxes (symmetry paints far apart: one box around both would be most of the canvas) */
+function fdAdd(s,r){const L=s.fd||(s.fd=[]),near=Math.max(64,(r[2]-r[0])*2);
+  for(const f of L)if(r[0]<=f[2]+near&&r[2]>=f[0]-near&&r[1]<=f[3]+near&&r[3]>=f[1]-near){f[0]=Math.min(f[0],r[0]);f[1]=Math.min(f[1],r[1]);f[2]=Math.max(f[2],r[2]);f[3]=Math.max(f[3],r[3]);return;}
+  L.push(r.slice());if(L.length>12){const u=L.reduce((a,f)=>[Math.min(a[0],f[0]),Math.min(a[1],f[1]),Math.max(a[2],f[2]),Math.max(a[3],f[3])]);s.fd=[u];}}
 function addPoint(x,y,p){
   const s=stroke;if(!s)return;const dx=x-s.x,dy=y-s.y,len=Math.hypot(dx,dy);
   if(len<1e-4){s.p=p;return;}
