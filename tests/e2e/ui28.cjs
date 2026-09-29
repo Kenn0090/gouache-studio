@@ -30,5 +30,17 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>/Gouache Studio \d+\.\d+/.test(document.querySelector('#dlgBody').textContent)),'About shows the version');
  await p.click('#dlgCancel');await W(200);
  await p.keyboard.press('F1');await W(200);ok(await p.evaluate(()=>window.__opened.length===2),'F1 opens the guide');
+ /* each tab has its own workspace, and the drop-down follows the tab */
+ const ws=()=>p.evaluate(()=>({ws:__gs.dk.ws,sel:document.querySelector('#wsSel').selectedOptions[0].textContent}));
+ let w=await ws();ok(w.ws==='painting'&&w.sel==='Paint','Paint uses the Paint workspace '+JSON.stringify(w));
+ await p.click('#modeTabs [data-mode=p3d]');await W(2500);w=await ws();ok(w.ws==='texturing'&&w.sel==='3D Paint','3D Paint switches the drop-down to 3D Paint '+JSON.stringify(w));
+ await p.click('#modeTabs [data-mode=anim]');await W(1000);w=await ws();ok(w.sel==='Animation','Animation → Animation '+JSON.stringify(w));
+ await p.click('#modeTabs [data-mode=bake]');await W(1000);w=await ws();ok(w.sel==='Bake','Bake → Bake');
+ await p.click('#modeTabs [data-mode=convert]');await W(1000);w=await ws();ok(w.sel==='Convert','Convert → Convert');
+ /* picking another workspace while in a tab: that tab remembers it */
+ await p.selectOption('#wsSel','minimal');await W(300);await p.click('#modeTabs [data-mode=paint]');await W(800);
+ w=await ws();ok(w.sel==='Paint','back in Paint: Paint '+JSON.stringify(w));
+ await p.click('#modeTabs [data-mode=convert]');await W(800);w=await ws();ok(w.ws==='minimal','Convert remembers the workspace picked there '+JSON.stringify(w));
+ await p.click('#modeTabs [data-mode=paint]');await W(800);
  console.log(errs.length?errs.join('\n'):'no page errors');ok(!errs.length,'no page errors');
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();process.exit(fails?1:0);})();

@@ -1,7 +1,7 @@
 /* ================= Boot ================= */
 renderLibrary();buildBrushPanel();applyPreset(PRESETS[0]);loadSavedSets();loadSavedFonts();refreshChanUI();
 setFG(ui.fg);renderRecent();resizeGL();
-dkInit();syncWsSel();setTimeout(dkReopenPops,500);{const s=$('#wsSel');s.onchange=()=>{const v=s.value;if(v===':save')saveWorkspaceAs();else if(v===':reset')resetWorkspace();else if(v===':delete')deleteWorkspace();else if(v)setWorkspace(v);syncWsSel();};}if(dk.lock)document.body.classList.add('dklock');
+dkInit();syncWsSel();setTimeout(dkReopenPops,500);{const s=$('#wsSel');s.onchange=()=>{const v=s.value;if(v===':save')saveWorkspaceAs();else if(v===':reset')resetWorkspace();else if(v===':delete')deleteWorkspace();else if(v){setWorkspace(v);dk.modeWs[ui.mode]=v;dkSave();}syncWsSel();};}if(dk.lock)document.body.classList.add('dklock');
 /* 0.25: a blank document and the welcome screen (the cobblestone tile is an example there) */
 newDoc(1024,1024,8,[1,1,1],'Untitled',false);
 updateStatus();requestRender(true);
