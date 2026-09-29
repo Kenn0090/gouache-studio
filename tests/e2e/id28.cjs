@@ -37,5 +37,11 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('#maskDone');await W(300);
  const af=await p.evaluate(()=>({tool:__gs.ui.tool,sel:__gs.sel.active,view:__gs.ui.viewMask}));
  ok(b4.tool==='marquee'&&b4.sel&&!af.sel&&af.tool!=='marquee'&&!af.view,'leaving the mask view drops its box selection and the box tool '+JSON.stringify([b4,af]));
+ /* Kenn: C in 3D Paint steps through the baked mesh maps on the model */
+ await p.mouse.move(700,450);const shotA=await p.locator('#work').screenshot();
+ await p.keyboard.press('c');await W(700);const k1=await p.evaluate(()=>__gs.p3mm.k);const shotB=await p.locator('#work').screenshot();
+ ok(!!k1&&await p.evaluate(()=>!document.getElementById('p3mmBadge').hidden)&&!shotA.equals(shotB),'C shows the first mesh map on the model ('+k1+')');
+ await p.keyboard.press('c');await W(300);const k2=await p.evaluate(()=>__gs.p3mm.k);ok(!!k2&&k2!==k1,'C again goes to the next one ('+k2+')');
+ await p.keyboard.press('Escape');await W(300);ok(await p.evaluate(()=>!__gs.p3mm.k&&document.getElementById('p3mmBadge').hidden),'Esc goes back to the material');
  console.log(errs.length?errs.join('\n'):'no page errors');ok(!errs.length,'no page errors');
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();process.exit(fails?1:0);})();

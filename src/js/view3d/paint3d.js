@@ -266,6 +266,21 @@ function fitInto(src,dst){const k=Math.min(dst.w/src.w,dst.h/src.h),off=[(dst.w-
    baked normal becomes a layer in the Normal map so its detail shows; with "also as layers", AO and curvature
    arrive as blendable layers too. by: {material name: {map: target}} ('*' = the same for every set). */
 const P3_MESHMAP_NAMES={normal:'Normal',height:'Height',ao:'Ambient occlusion',curv:'Curvature',curvEdge:'Curvature edges',curvCrease:'Curvature creases',thick:'Thickness',wnormal:'World normal',position:'Position',id:'ID',rough:'Roughness',metal:'Metallic'};
+/* C / Shift+C in 3D Paint (Kenn, 0.28): step through the set's baked mesh maps on the model, unlit, like the Bake tab */
+const p3mm={k:null};
+const p3mmKeys=()=>Object.keys(doc.meshMaps||{}).filter(k=>doc.meshMaps[k]&&!k.startsWith('cv:'));
+function p3MeshShowTex(){if(ui.mode!=='p3d'||!p3mm.k)return null;const t=doc.meshMaps&&doc.meshMaps[p3mm.k];if(!t){p3mm.k=null;p3mmBadge();return null;}return t;}
+function p3mmBadge(){let b=document.getElementById('p3mmBadge');const on=ui.mode==='p3d'&&!!p3mm.k;
+  if(!on){if(b)b.hidden=true;return;}
+  if(!b){b=el('button',{id:'p3mmBadge',class:'p3mmbadge',title:'Back to the material (Esc)',onclick:()=>p3mmSet(null)});$('#work').append(b);}
+  b.textContent='Mesh map: '+(P3_MESHMAP_NAMES[p3mm.k]||p3mm.k)+'  ·  C next, Esc back';b.hidden=false;}
+function p3mmSet(k){p3mm.k=k;p3mmBadge();v3.dirty=true;requestRender(true);}
+function p3mmCycle(dir){const K=p3mmKeys();if(!K.length){toast('No mesh maps yet: bake them (Bake mesh maps…) or send bakes from the Bake tab. Then C steps through them.');return;}
+  const L=[null,...K],i=Math.max(0,L.indexOf(p3mm.k)),k=L[(i+dir+L.length)%L.length];p3mmSet(k);
+  toast('Showing: '+(k?P3_MESHMAP_NAMES[k]||k:'the material'));}
+window.addEventListener('keydown',e=>{if(ui.mode!=='p3d'||!modal.hidden||isTypingTarget(e.target)||e.ctrlKey||e.metaKey||e.altKey)return;
+  if(e.key==='c'||e.key==='C'){e.preventDefault();e.stopImmediatePropagation();p3mmCycle(e.shiftKey?-1:1);}
+  else if(e.key==='Escape'&&p3mm.k&&!ui.viewMask){e.preventDefault();e.stopImmediatePropagation();p3mmSet(null);}},true);
 function p3ReceiveBake(mesh,by,ks,asLayers){if(ui.mode!=='p3d'&&!setMode('p3d',true))return;
   if(mesh&&mesh!==v3.imported){v3.imported=p3.imported=mesh;v3s().model='imported';v3.mesh=null;v3LoadModel();}
   const back=p3.sets[p3.cur]&&p3.sets[p3.cur].name;let n=0;
@@ -317,3 +332,4 @@ function paintLayerBackToP3(n){const ln=n&&n.p3link;if(!ln)return;if(ui.mode!=='
   Object.assign(L,{opacity:O.opacity,mode:O.mode,visible:O.visible,clip:O.clip,p3tok:O.p3tok});if(O.mask)L.mask=cloneMask(O.mask);/* (its effects and styles are now part of the pixels) */
   syncTargets();structOp('Back from Paint',()=>{const P=O.parent,i=P.children.indexOf(O);detachNode(O);insertNode(L,P,i);selectOnly(L);});changed(L);renderLayers();buildP3Panel();
   toast('“'+L.name+'” in 3D Paint now has your edits from the Paint canvas.');return L;}
+{const sm=setMode;setMode=function(m,q){const r=sm(m,q);p3mmBadge();return r;};}
