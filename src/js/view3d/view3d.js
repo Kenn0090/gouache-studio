@@ -3,10 +3,10 @@
    directly (no copying through the CPU). The canvas element spans the painting area and the
    3D pane; the 2D view draws first and the 3D picture is copied into the pane's part. */
 const VS_3D=`#version 300 es
-layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec2 aT; layout(location=3) in vec4 aTan;
+layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec2 aT; layout(location=3) in vec4 aTan; layout(location=4) in vec3 aD;
 uniform mat4 uVP; uniform float uUVs; uniform sampler2D uH; uniform float uDisp; uniform int uUseH;
 out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;
-void main(){ vec2 t=aT*uUVs; vec3 p=aP; if(uUseH==1&&uDisp!=0.0){ float h=textureLod(uH,t,0.0).r-0.5; p+=aN*h*uDisp; }
+void main(){ vec2 t=aT*uUVs; vec3 p=aP; if(uUseH==1&&uDisp!=0.0){ float h=textureLod(uH,t,0.0).r-0.5; p+=aD*h*uDisp; }
   vP=p; vN=aN; vT=t; vTan=aTan; gl_Position=uVP*vec4(p,1.0); }`;
 const FS_3D=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan;
 uniform sampler2D uBase; uniform sampler2D uRough; uniform sampler2D uMetal; uniform sampler2D uNrm; uniform sampler2D uAO; uniform sampler2D uEmis; uniform sampler2D uOpac; uniform sampler2D uThick;
@@ -90,12 +90,22 @@ function v3s(){if(!doc.v3d)doc.v3d=Object.assign({},V3D_DEFAULTS);else if(doc.v3
 const v3Unlit=()=>{const s=v3s();return s.unlit==null?doc.maps.length<2:s.unlit;};
 
 /* ---- mesh on the GPU ---- */
+/* Height depth pushes each point out along one shared direction per position: copies of a point (hard edges, UV
+   seams, the six sides of a cube) used to go different ways and tear the model open */
+function meshWeldN(m){const n=m.verts,P=new Uint32Array(m.pos.buffer,m.pos.byteOffset,n*3),N=m.nrm,out=new Float32Array(n*3);
+  let sz=1;while(sz<n*2)sz<<=1;const tab=new Int32Array(sz).fill(-1),grp=new Int32Array(n),mask=sz-1;
+  for(let i=0;i<n;i++){const a=P[i*3],b=P[i*3+1],c=P[i*3+2];let h=(Math.imul(a,73856093)^Math.imul(b,19349663)^Math.imul(c,83492791))&mask;
+    for(;;){const j=tab[h];if(j<0){tab[h]=i;grp[i]=i;break;}if(P[j*3]===a&&P[j*3+1]===b&&P[j*3+2]===c){grp[i]=j;break;}h=(h+1)&mask;}
+    const g=grp[i];out[g*3]+=N[i*3];out[g*3+1]+=N[i*3+1];out[g*3+2]+=N[i*3+2];}
+  for(let i=0;i<n;i++){const g=grp[i];if(g===i){const l=Math.hypot(out[i*3],out[i*3+1],out[i*3+2]);if(l>1e-6){out[i*3]/=l;out[i*3+1]/=l;out[i*3+2]/=l;}else{out[i*3]=N[i*3];out[i*3+1]=N[i*3+1];out[i*3+2]=N[i*3+2];}}}
+  for(let i=0;i<n;i++){const g=grp[i];if(g!==i){out[i*3]=out[g*3];out[i*3+1]=out[g*3+1];out[i*3+2]=out[g*3+2];}}
+  return out;}
 function v3Upload(m){const g=v3.gpu;if(g){gl.deleteVertexArray(g.vao);gl.deleteBuffer(g.vb);gl.deleteBuffer(g.ib);gl.deleteBuffer(g.eb);gl.deleteVertexArray(g.evao);}
-  const n=m.verts,d=new Float32Array(n*12);for(let i=0;i<n;i++){d.set(m.pos.subarray(i*3,i*3+3),i*12);d.set(m.nrm.subarray(i*3,i*3+3),i*12+3);d.set(m.uv.subarray(i*2,i*2+2),i*12+6);d.set(m.tan.subarray(i*4,i*4+4),i*12+8);}
+  const n=m.verts,d=new Float32Array(n*15),wn=meshWeldN(m);for(let i=0;i<n;i++){d.set(m.pos.subarray(i*3,i*3+3),i*15);d.set(m.nrm.subarray(i*3,i*3+3),i*15+3);d.set(m.uv.subarray(i*2,i*2+2),i*15+6);d.set(m.tan.subarray(i*4,i*4+4),i*15+8);d.set(wn.subarray(i*3,i*3+3),i*15+12);}
   const vao=gl.createVertexArray();gl.bindVertexArray(vao);const vb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vb);gl.bufferData(gl.ARRAY_BUFFER,d,gl.STATIC_DRAW);
-  const at=(i,sz,o)=>{gl.enableVertexAttribArray(i);gl.vertexAttribPointer(i,sz,gl.FLOAT,false,48,o*4);};at(0,3,0);at(1,3,3);at(2,2,6);at(3,4,8);
+  const at=(i,sz,o)=>{gl.enableVertexAttribArray(i);gl.vertexAttribPointer(i,sz,gl.FLOAT,false,60,o*4);};at(0,3,0);at(1,3,3);at(2,2,6);at(3,4,8);at(4,3,12);
   const ib=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,m.idx,gl.STATIC_DRAW);
-  const edges=meshEdges(m),evao=gl.createVertexArray();gl.bindVertexArray(evao);gl.bindBuffer(gl.ARRAY_BUFFER,vb);at(0,3,0);at(1,3,3);at(2,2,6);at(3,4,8);
+  const edges=meshEdges(m),evao=gl.createVertexArray();gl.bindVertexArray(evao);gl.bindBuffer(gl.ARRAY_BUFFER,vb);at(0,3,0);at(1,3,3);at(2,2,6);at(3,4,8);at(4,3,12);
   const eb=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,eb);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,edges,gl.STATIC_DRAW);
   gl.bindVertexArray(vao);v3.gpu={vao,vb,ib,eb,evao,count:m.idx.length,ecount:edges.length};}
 function v3SetMesh(m,keepCam){v3.mesh=m;meshGroupByMat(m);v3Upload(m);gl.bindVertexArray(vao);if(!keepCam)v3Frame();v3.dirty=true;requestRender();refresh3dUI();if(ui.mode==='p3d'&&typeof p3SyncSets==='function'){p3SyncSets();buildP3Panel();}if(v3s().showUV)requestRender();}

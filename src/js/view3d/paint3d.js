@@ -144,7 +144,7 @@ let P_SEL3=null;
 /* into=[target, value]: draw into that image (a mask) in that grey, without clearing it */
 function sel3Draw(m,tris,into){if(!P_SEL3)P_SEL3=prog3(VS_SEL3,`uniform float uV; void main(){ o=vec4(vec3(uV),1.0); }`);const g=v3.gpu,t=into?into[0]:acquireS();if(!into)clearTarget(t,[0,0,0,1]);const val=into?into[1]:1;
   const tri=new Uint32Array(tris.length*3),ln=new Uint32Array(tris.length*6);tris.forEach((x,i)=>{for(let c=0;c<3;c++){tri[i*3+c]=m.idx[x*3+c];ln[i*6+c*2]=m.idx[x*3+c];ln[i*6+c*2+1]=m.idx[x*3+(c+1)%3];}});
-  const va=gl.createVertexArray();gl.bindVertexArray(va);gl.bindBuffer(gl.ARRAY_BUFFER,g.vb);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,2,gl.FLOAT,false,48,24);
+  const va=gl.createVertexArray();gl.bindVertexArray(va);gl.bindBuffer(gl.ARRAY_BUFFER,g.vb);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,2,gl.FLOAT,false,60,24);
   const eb=gl.createBuffer(),lb=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,eb);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,tri,gl.STREAM_DRAW);
   const uvs=v3s().uvs||1;bindTarget(t);gl.disable(gl.BLEND);
   for(let j=0;j<uvs;j++)for(let i=0;i<uvs;i++){useProg(P_SEL3,{uShift:[i,j],uUVs:uvs,uV:val});bindTarget(t);gl.bindVertexArray(va);

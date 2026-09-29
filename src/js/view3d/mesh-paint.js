@@ -8,10 +8,10 @@
 v3.paintOn=false;
 const FS_3DDEPTH=`uniform vec3 uCamP; void main(){ o=vec4(length(vP-uCamP),0.0,0.0,1.0); }`;
 const VS_3DPROJ=`#version 300 es
-layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec2 aT;
+layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec2 aT; layout(location=4) in vec3 aD;
 uniform float uUVs; uniform vec2 uShift; uniform sampler2D uH; uniform float uDisp; uniform int uUseH;
 out vec3 vP; out vec3 vN;
-void main(){ vec2 t=aT*uUVs; vec3 p=aP; if(uUseH==1&&uDisp!=0.0){ float h=textureLod(uH,t,0.0).r-0.5; p+=aN*h*uDisp; }
+void main(){ vec2 t=aT*uUVs; vec3 p=aP; if(uUseH==1&&uDisp!=0.0){ float h=textureLod(uH,t,0.0).r-0.5; p+=aD*h*uDisp; }
   vP=p; vN=aN; vec2 q=t-uShift; gl_Position=vec4(q*2.0-1.0,0.0,1.0); }`;
 /* uMir: for mirror and radial painting, the texel looks up the brush where its mirror image is (identity otherwise) */
 const FS_3DPROJ=`in vec3 vP; in vec3 vN; uniform mat4 uVPm; uniform sampler2D uStroke; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform mat4 uMir;

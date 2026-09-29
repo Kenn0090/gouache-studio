@@ -72,16 +72,20 @@ const PRIMS={plane:['Plane',d=>primPlane(d)],cube:['Cube',d=>primCube(0,d)],rcub
 function primMesh(k,d){const [label,fn]=PRIMS[k]||PRIMS.plane;return meshFinish(fn(d||0),label);}
 /* split every triangle into four, d times (for imported models), up to about two million triangles */
 function subdivideMesh(m,d){let cur=m;for(let l=0;l<d;l++){if(cur.idx.length/3*4>2e6)break;
-    const pos=Array.from(cur.pos),nrm=Array.from(cur.nrm),uv=Array.from(cur.uv),idx=[],mid=new Map();
-    const M=(a,b)=>{const k=a<b?a*4294967296+b:b*4294967296+a;let r=mid.get(k);if(r!==undefined)return r;r=pos.length/3;
-      for(let c=0;c<3;c++){pos.push((pos[a*3+c]+pos[b*3+c])/2);nrm.push((nrm[a*3+c]+nrm[b*3+c])/2);}uv.push((uv[a*2]+uv[b*2])/2,(uv[a*2+1]+uv[b*2+1])/2);mid.set(k,r);return r;};
-    for(let t=0;t<cur.idx.length;t+=3){const a=cur.idx[t],b=cur.idx[t+1],c=cur.idx[t+2],ab=M(a,b),bc=M(b,c),ca=M(c,a);idx.push(a,ab,ca,ab,b,bc,ca,bc,c,ab,bc,ca);}
-    for(let i=0;i<nrm.length;i+=3){const l=Math.hypot(nrm[i],nrm[i+1],nrm[i+2])||1;nrm[i]/=l;nrm[i+1]/=l;nrm[i+2]/=l;}
-    cur={pos:new Float32Array(pos),nrm:new Float32Array(nrm),uv:new Float32Array(uv),idx:new Uint32Array(idx)};}
+    /* compact number arrays sized for the worst case (every edge new): plain arrays ran WebView2 out of memory */
+    const T=cur.idx.length/3,V0=cur.pos.length/3,cap=V0+T*3,pos=new Float32Array(cap*3),nrm=new Float32Array(cap*3),uv=new Float32Array(cap*2),idx=new Uint32Array(T*12),mid=new Map();
+    pos.set(cur.pos);nrm.set(cur.nrm);uv.set(cur.uv);let nv=V0;
+    const M=(a,b)=>{const k=a<b?a*4294967296+b:b*4294967296+a;let r=mid.get(k);if(r!==undefined)return r;r=nv++;
+      for(let c=0;c<3;c++){pos[r*3+c]=(pos[a*3+c]+pos[b*3+c])/2;nrm[r*3+c]=(nrm[a*3+c]+nrm[b*3+c])/2;}uv[r*2]=(uv[a*2]+uv[b*2])/2;uv[r*2+1]=(uv[a*2+1]+uv[b*2+1])/2;mid.set(k,r);return r;};
+    for(let t=0,o=0;t<cur.idx.length;t+=3){const a=cur.idx[t],b=cur.idx[t+1],c=cur.idx[t+2],ab=M(a,b),bc=M(b,c),ca=M(c,a);idx.set([a,ab,ca,ab,b,bc,ca,bc,c,ab,bc,ca],o);o+=12;}
+    for(let i=0;i<nv*3;i+=3){const l=Math.hypot(nrm[i],nrm[i+1],nrm[i+2])||1;nrm[i]/=l;nrm[i+1]/=l;nrm[i+2]/=l;}
+    cur={pos:pos.slice(0,nv*3),nrm:nrm.slice(0,nv*3),uv:uv.slice(0,nv*2),idx};}
   if(cur===m)return m;const r=meshFinish(cur,m.name);r.noUV=m.noUV;
   /* each triangle became 4^levels triangles in a row: per-triangle data is repeated */
   const f=cur.idx.length/m.idx.length,rep=(a,w)=>{if(!a)return a;const T=a.length/w,o=new a.constructor(a.length*f);for(let t=0;t<T;t++)for(let j=0;j<f;j++)for(let c=0;c<w;c++)o[(t*f+j)*w+c]=a[t*w+c];return o;};
   r.triMat=rep(m.triMat,1);r.matNames=m.matNames;r.triPart=rep(m.triPart,1);r.partNames=m.partNames;r.triCol=rep(m.triCol,3);
+  /* the texture sets' triangle ranges grow the same way */
+  if(m.setRanges)r.setRanges=m.setRanges.map(R=>({name:R.name,start:R.start*f,count:R.count*f}));
   r.src=m;r.subF=f;/* triangle t here came from triangle floor(t/subF) of the model as loaded */return r;}
 
 /* a distinct colour for each part or material (for ID maps) */
