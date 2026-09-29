@@ -101,6 +101,7 @@
         "layers/locks",
         "ui/key-helper",
         "ui/doc-tabs",
+        "ui/stretch",
         "ui/rulers",
         "ui/welcome",
         "core/boot"
