@@ -47,10 +47,16 @@ function flyItem(label,items){const b=el('button',{class:'mi hassub',role:'menui
 function menuEntry(it){if(it==='-')return el('div',{class:'msep'});
   if(it[1]==='sub')return flyItem(it[0],()=>menuList(it[2]));
   return el('button',{class:'mi',role:'menuitem','data-act':it[1],disabled:it[1]==='depth16'&&!canFloat,onclick:()=>{closeMenu();if(xf&&!xf.move&&it[1]!=='freeTransform')xfCommit();if(ui.mode==='anim'&&LAYER_ONLY.includes(it[1])){toast('Layers are not used in Animation mode. Switch to Paint mode (top right) for layers.');return;}actions[it[1]]();}},el('span',{text:checked[it[1]]&&checked[it[1]]()?'✓':''}),el('span',{text:it[0]}),(()=>{const k=it[2]&&/click/i.test(it[2])?it[2]:kbKeyOf(it[1]);return k?el('kbd',{text:k}):el('span');})());}
-function menuList(list){return list.filter(it=>platform.isDesktop||it==='-'||!['recent','checkUpdates'].includes(it[1])).map(menuEntry);}
+/* (0.29) the File menu shows what fits the section you are in: 3D Paint has no PSD or sprite sheets, Paint has no frames, and so on */
+const FILE_NOT={paint:['impSheet','impSeq','impGif','expSheet'],anim:['sendP3'],p3d:['place','savePsdAs','export','sendP3','importAbr','impSheet','impSeq','impGif','expSheet'],
+  bake:['place','savePsdAs','sendP3','importAbr','impSheet','impSeq','impGif','expSheet','expTex'],convert:['place','savePsdAs','sendP3','importAbr','impSheet','impSeq','impGif','expSheet','expTex'],
+  brush:['place','savePsdAs','sendP3','expTex','impSheet','impSeq','impGif','expSheet']};
+function menuTidy(list){const o=[];for(const it of list){if(it==='-'&&(!o.length||o[o.length-1]==='-'))continue;o.push(it);}while(o.length&&o[o.length-1]==='-')o.pop();return o;}
+function menuList(list,name){let l=list.filter(it=>platform.isDesktop||it==='-'||!['recent','checkUpdates'].includes(it[1]));
+  if(name==='File'){const no=FILE_NOT[ui.mode]||[];l=menuTidy(l.filter(it=>it==='-'||!no.includes(it[1])));}return l.map(menuEntry);}
 function menuFlat(list){const o=[];for(const it of list){if(it==='-')continue;if(it[1]==='sub')o.push(...menuFlat(it[2]));else o.push(it);}return o;}
 function openMenu(name){closeMenu();const b=menuBtns[name];
-  pop.replaceChildren(...menuList(MENUS[name]));
+  pop.replaceChildren(...menuList(MENUS[name],name));
   if(name==='File'&&typeof fileMenuExtras==='function')fileMenuExtras(pop);
   const r=b.getBoundingClientRect();pop.hidden=false;pop.style.left=Math.min(r.left,window.innerWidth-pop.offsetWidth-8)+'px';pop.style.top=(r.bottom+3)+'px';b.setAttribute('aria-expanded','true');openName=name;}
 function closeMenu(){flyHide();if(!openName)return;pop.hidden=true;menuBtns[openName].setAttribute('aria-expanded','false');openName=null;}
