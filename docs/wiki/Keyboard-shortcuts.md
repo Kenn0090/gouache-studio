@@ -13,6 +13,7 @@ All of these can be changed in **Edit › Keyboard shortcuts…**. The commands 
 | S | Blend (smudge) |
 | J | Healing brush (Spot or Healing; Alt+click sets the source) |
 | Y | Clone stamp (Alt+click sets the source) |
+| C (Bake tab) | Step through the baked maps on the model (Shift+C backwards) |
 | O | Dodge / Burn (Shift+O switches between them) |
 | G | Fill tools: gradient, paint bucket, gradient bucket (Shift+G cycles) |
 | V | Move |

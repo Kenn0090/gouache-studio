@@ -12,6 +12,8 @@ The **Bake** tab (top right, or **Maps › Bake from high poly…**) copies the 
   - **Material (lit)** is a clay model with the baked normal and AO. You can tick *Use the document's base colour on the model*.
   - Any single baked map on its own.
   - The skew or offset map.
+  - **C** steps through them on the model (**Shift+C** backwards).
+- **Show high-poly** (when one is loaded): **See-through** draws it over the low-poly to check they line up, **Only** shows it on its own in grey clay.
 - The Bake tab has **its own canvas**, sized by **Size** in the General tab (the painting's size unless you choose another). Baking never touches your painting until you send the results, and the tab shows only its own panels.
 - Bakes stay in the tab, so you can check them and bake again as often as you like. Tick the maps you want under **Send to the painting, or export**, then **Send to Paint** adds them as layers, or **Export…** saves them as PNG files (you choose a folder on the desktop; the browser gives a zip).
   - Tick **Send results to layers automatically** to have every bake go straight into the document.

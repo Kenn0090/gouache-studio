@@ -32,7 +32,8 @@ void main(){ vec4 b=texture(uBase,vT); float a=b.a; if((uHas&64)!=0) a*=texture(
   alb=lin(alb);
   vec3 Ng=normalize(vN),N=Ng; vec3 T=normalize(vTan.xyz-Ng*dot(Ng,vTan.xyz)), B=cross(Ng,T)*vTan.w;
   if((uHas&4)!=0){ vec3 n=texture(uNrm,vT).rgb*2.0-1.0; N=normalize(T*n.x+B*n.y+Ng*n.z); }
-  if(gl_FrontFacing==(uFlipY==1)){ N=-N; Ng=-Ng; }
+  /* which side faces the camera, from the surface itself (not the triangles' winding, which differs between models) */
+  { vec3 Nf=normalize(cross(dFdx(vP),dFdy(vP))); if(dot(Nf,uCam-vP)<0.0) Nf=-Nf; if(dot(Ng,Nf)<0.0){ N=-N; Ng=-Ng; } }
   float rough=clamp((uHas&1)!=0?texture(uRough,vT).r:uDef.x,0.04,1.0), metal=(uHas&2)!=0?texture(uMetal,vT).r:uDef.y, ao=(uHas&8)!=0?texture(uAO,vT).r:1.0;
   vec3 V=normalize(uCam-vP), L=normalize(uSun), H=normalize(L+V);
   float NdL=max(dot(N,L),0.0), NdV=max(dot(N,V),1e-3), NdH=max(dot(N,H),0.0), VdH=max(dot(V,H),0.0);
@@ -41,7 +42,7 @@ void main(){ vec4 b=texture(uBase,vT); float a=b.a; if((uHas&64)!=0) a*=texture(
   if(uSh==4||uSh==5){ float l=dot(N,L)*0.5+0.5, band;
     if(uSh==4){ float st=max(uShP.x,1.0); band=floor(l*st+0.5*uShQ.y)/st; } else band=smoothstep(uShP.x-uShP.y*0.5,uShP.x+uShP.y*0.5+1e-4,l);
     vec3 base=mix(alb*lin(uShC),alb,clamp(band,0.0,1.0));
-    float sp=step(1.0-uShP.z*0.25,NdH)*(1.0-rough)*step(0.01,uShP.z); float rim=smoothstep(1.0-uShP.w,1.0,1.0-NdV)*uShP.w;
+    float sp=step(1.0-uShP.z*0.05,NdH)*(1.0-rough*0.5)*step(0.01,uShP.z); float rim=smoothstep(1.0-uShP.w,1.0,1.0-NdV)*uShP.w;
     vec3 amb=envDif(N)*0.25; col=base*(0.75+0.25*uEnvI)+base*amb*ao+vec3(sp)+alb*rim;
     if((uHas&16)!=0) col+=lin(texture(uEmis,vT).rgb)*2.0; o=vec4(pow(clamp(col*uExpo,0.0,1.0),vec3(1.0/2.2)),1.0); return; }
   /* ---- the lit shaders ---- */

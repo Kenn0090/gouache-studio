@@ -26,7 +26,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 
 ## 3D
 - [3D Paint](3D-Paint.md): the 3D Paint tab. Paint on a model with texture sets, mirror and radial painting, stencils, selections on the model, materials, baking mesh maps and project files
-- [3D view](3D-view.md): see your textures on a model while you paint
+- [3D view](3D-view.md): see your textures on a model while you paint; HDRI lighting, shaders, ray-traced renders, screenshots and turntables
 - [Baker](Baker.md): the Bake tab. Bake normal, AO, curvature and more from a high-poly model, watch it on the model, and paint skew and offset fixes
 - Painting on the model: see [3D view](3D-view.md#painting-on-the-model)
 
@@ -66,4 +66,6 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 | 20 | Masks and effects: rows under a layer (paint, mesh maps, ID colours, direction, gradients, noise, generators, filters), content effects, Properties panel, live mask, mesh maps from a material | 0.23 |
 | 20b | Planar and spherical projections, projection gizmo and UV frame | 0.23.1 |
 | 21 | Smart materials and smart masks, anchor points, baking inside 3D Paint, healing brushes, clone stamp | 0.24 |
-| 22 | PBR viewer with HDRIs, screenshots, ray-traced and turntable renders | 0.25 |
+| 22 | Welcome screen, autosave, recent files, per-tool brushes, shape corner bevels, shortcut categories | 0.25 |
+| 23 | HDRI lighting, shaders per texture set, ray-traced view and renders, screenshots, turntables, high-poly in the Bake tab | 0.26 |
+| 24 | Export dialog (with the model), automatic mesh updater, Distort / Warp / Slope blur filters | 0.27 |
