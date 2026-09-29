@@ -33,14 +33,14 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  // defaults: live on; blur previews on canvas
  const comp=async(x,y)=>p.evaluate(([x,y])=>{const c=document.querySelector('#gl');return 0;},[x,y]);
  const bgPx=async(pts)=>layerPx('Background',pts);
- await menuItem('Filter','Gaussian blur');await p.waitForTimeout(200);
+ await (async()=>{await p.click('#menus button:text-is("Filter")');await p.hover('#menuPop .hassub:has-text("Blur")');await p.click('#menuSub .mi:has-text("Gaussian blur")');})();await p.waitForTimeout(200);
  ok(await p.isChecked('#fxPrev'),'preview checkbox on by default');
  await p.keyboard.press('Escape');
  // Ctrl+K preferences: turn live previews off
  await p.keyboard.press('Control+k');ok((await p.textContent('#dlgTitle'))==='Preferences','Ctrl+K opens preferences');
  await p.uncheck('#pLive');await p.click('#dlgOk');
  const stored=await p.evaluate(()=>localStorage.getItem('gs.prefs'));ok(stored.includes('"livePreview":false'),'saved '+stored);
- await menuItem('Filter','Gaussian blur');await p.waitForTimeout(200);ok(!(await p.isChecked('#fxPrev')),'preview checkbox follows setting');
+ await (async()=>{await p.click('#menus button:text-is("Filter")');await p.hover('#menuPop .hassub:has-text("Blur")');await p.click('#menuSub .mi:has-text("Gaussian blur")');})();await p.waitForTimeout(200);ok(!(await p.isChecked('#fxPrev')),'preview checkbox follows setting');
  await p.screenshot({path:OUT+'prev-off.png'});
  const hist0=await state();await p.click('#dlgOk');await p.waitForTimeout(100);
  let v=await bgPx([[200,150],[180,150]]);ok(v[0][0]>5&&v[0][0]<250,'apply still blurs with preview off '+JSON.stringify(v));

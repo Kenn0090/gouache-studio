@@ -586,7 +586,7 @@ body.noopt .optbar{display:none}
 .maskbar[hidden]{display:none}.maskbar-t{font-weight:600;color:var(--accent)}.maskbar-n{color:var(--muted);font-size:11.5px}.maskbar select{width:auto}
 .p3mm{display:grid;gap:3px}.p3mmrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
 /* Materials tab and the material editor */
-.matgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px}
+.matgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(var(--tw,64px) + 14px),1fr));gap:6px}
 .mattile{display:grid;justify-items:center;gap:3px;border:1px solid var(--line-2);background:var(--raise);border-radius:8px;padding:6px 4px;color:var(--text);font:inherit;font-size:11px;min-width:0;width:100%}
 .mattile span{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mattile:hover{border-color:var(--accent)}
 .matwrap{position:relative}.matacts{position:absolute;top:2px;right:2px;display:none;gap:2px}.matwrap:hover .matacts{display:flex}.matacts .btn{padding:0 5px;min-height:0;line-height:18px}
@@ -773,7 +773,7 @@ body.libdragging,body.libdragging *{cursor:grabbing!important;user-select:none}
 .p3mmbadge{position:absolute;left:12px;bottom:12px;z-index:8;padding:4px 10px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:12px;cursor:pointer;opacity:.92}
 .embsw{width:18px;height:18px;border-radius:4px;border:1px solid var(--line-2);display:inline-block}
 .txtile img{width:72px;height:72px;border-radius:4px;background:#000;object-fit:cover}
-.gmthumb{width:56px;height:56px;border-radius:50%;object-fit:cover}
+.gmthumb{width:var(--tw,56px);height:var(--tw,56px);border-radius:50%;object-fit:cover}
 .dctile img{width:56px;height:56px;object-fit:contain;background:#3a3d42;border-radius:6px}.dctile.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
 
 #menuSub{position:fixed;z-index:42;background:var(--raise);border:1px solid var(--line-2);border-radius:8px;padding:4px;min-width:230px;box-shadow:0 14px 34px rgba(0,0,0,.5);max-height:calc(100vh - 16px);overflow-y:auto}
@@ -781,3 +781,11 @@ body.libdragging,body.libdragging *{cursor:grabbing!important;user-select:none}
 #menuSub .mi,#menuPop .hassub{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:8px;width:100%;text-align:left}
 #menuPop .hassub .arr{color:var(--faint);font-size:10px}
 body.sharp #menuSub{border-radius:0}
+.mattile img{-webkit-user-drag:none;user-select:none}
+
+.mattile.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:color-mix(in srgb,var(--accent) 14%,var(--raise))}
+.mattile .matprev{width:var(--tw,56px);height:var(--tw,56px)}
+.matsize{margin-left:auto}.matsize button{padding:2px 8px}
+.matpop{position:fixed;z-index:60;width:200px;padding:10px;background:var(--raise);border:1px solid var(--line-2);border-radius:10px;box-shadow:0 14px 34px rgba(0,0,0,.5);display:grid;gap:5px;pointer-events:none}
+.matpop .matprev{width:176px;height:176px;border-radius:50%}.matpop .mpname{font-weight:600}.matpop .mpsub{font-size:10.5px;color:var(--muted)}
+.matpop .mpline{font-size:11px;line-height:1.35}.matpop .dim{color:var(--faint)}body.sharp .matpop{border-radius:0}

@@ -42,7 +42,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
 
  ok(await p.evaluate(()=>{const L=__gs.layerByName('Base material');return !!(L.mask&&L.mask.stack&&L.mask.stack.length);}),'a smart mask dropped onto a layer becomes its mask ('+smask+')');
  ok(await p.evaluate(()=>__gs.hist.undo.slice(-3).map(u=>u.label).join('|')).then(s=>/Add material/.test(s)&&/Smart mask|smart material/i.test(s)),'each drop is an undo step');
- /* a click still adds as before (on top of the selected layer) */
- const cnt=()=>p.evaluate(()=>__gs.allLayers().length);const before=await cnt();await p.locator(matTile).first().click();await W(500);ok((await cnt())===before+1,'clicking a tile still adds it');
+ /* a click highlights; the fill layer button adds it (on top of the selected layer) */
+ const cnt=()=>p.evaluate(()=>__gs.allLayers().length);const before=await cnt();await p.locator(matTile).first().click();await W(300);ok((await cnt())===before,'clicking a tile only highlights it');await p.click('#lFill');await W(500);ok((await cnt())===before+1,'the fill layer button adds the highlighted tile');
  console.log(errs.length?errs.join('\n'):'no page errors');ok(!errs.length,'no page errors');
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();process.exit(fails?1:0);})();

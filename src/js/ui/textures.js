@@ -87,9 +87,9 @@ async function txToChannel(it,k){const L=doc.active;if(!isLayer(L)||!L.fill){toa
 const FS_TXLAYER=`uniform sampler2D uSrc; uniform vec2 uDoc; uniform float uScale;
 void main(){ vec2 sz=vec2(textureSize(uSrc,0)); vec2 uv=gl_FragCoord.xy/(sz*uScale); o=texture(uSrc,uv); }`;
 let P_TXLAYER=null;
-async function txToLayer(it){if(ui.mode!=='paint'&&ui.mode!=='p3d'){toast('Switch to Paint or 3D Paint first.');return;}
+async function txToLayer(it,at){if(ui.mode!=='paint'&&ui.mode!=='p3d'){toast('Switch to Paint or 3D Paint first.');return;}
   const src=await txTarget(it);if(!P_TXLAYER)P_TXLAYER=program(FS_TXLAYER);
-  const A=doc.active,parent=A?(A.parent||doc.root):doc.root,idx=A?parent.children.indexOf(A)+1:doc.root.children.length,L=newLayerObj(it.name);
+  const A=doc.active,parent=at?at.parent:A?(A.parent||doc.root):doc.root,idx=at?at.index:A?parent.children.indexOf(A)+1:doc.root.children.length,L=newLayerObj(it.name);
   const sc=Math.max(doc.w,doc.h)/Math.max(src.w,src.h);run(P_TXLAYER,mapT(L,'base'),{uSrc:src.tex,uDoc:[doc.w,doc.h],uScale:sc});
   if(doc.map!=='base'&&L.maps[doc.map]){run(P_TXLAYER,L.maps[doc.map],{uSrc:src.tex,uDoc:[doc.w,doc.h],uScale:sc});}
   structOp('New layer from '+it.name.toLowerCase(),()=>{insertNode(L,parent,idx);selectOnly(L);});changedAll();toast('Added the layer “'+it.name+'”. Try a blend mode such as Multiply or Overlay.');}
@@ -112,7 +112,7 @@ function txItems(){const g=TX_GEN.map(([id,name])=>({kind:'gen',id,name})),p=TX_
 /* thumbnails are made when a tile comes into view (the panel may be hidden) */
 const txSeen=new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting){txSeen.unobserve(e.target);txThumb(e.target._tx,e.target);}});
 function renderTextures(){const box=$('#txBody');if(!box)return;if(!tx.loaded){txLoad();}
-  const tile=it=>{const img=el('img',{alt:'',width:72,height:72});img._tx=it;txSeen.observe(img);const b=el('button',{class:'mattile txtile',title:it.name+' (click for uses)',id:'tx_'+it.kind+'_'+it.id,onclick:e=>txMenu(e,it)},img,el('span',{text:it.name}));return b;};
+  const tile=it=>{const img=el('img',{alt:'',width:72,height:72,draggable:'false'});img._tx=it;txSeen.observe(img);const b=el('button',{class:'mattile txtile',title:it.name+' (click: new layer. Right-click: more uses. Drag onto the layers)',id:'tx_'+it.kind+'_'+it.id,onclick:()=>txToLayer(it),oncontextmenu:e=>{e.preventDefault();txMenu(e,it);}},img,el('span',{text:it.name}));b._libDrag=['tex',it];return b;};
   const items=txItems();
   box.replaceChildren(segChips([['all','All'],['mine','Yours'],['photo','Photo grunge'],['gen','Generated']],()=>tx.show,v=>{tx.show=v;try{localStorage.setItem('gs.txShow',v);}catch(e){}renderTextures();}),
     el('div',{class:'chips'},el('button',{class:'btn sm',id:'txImport',text:'Import…',title:'Pictures, or a .gtex texture pack',onclick:txImport}),el('button',{class:'btn sm',id:'txExport',text:'Export pack…',title:'All your textures in one .gtex file to share',onclick:txExportPack})),
