@@ -251,3 +251,48 @@ pub fn file_mtime(path: String) -> f64 {
         .map(|d| d.as_millis() as f64 / 1000.0)
         .unwrap_or(0.0)
 }
+
+/// Make a folder (and the folders above it) so exported files can go into a game project.
+#[tauri::command]
+pub fn make_dir(path: String) -> Result<(), String> {
+    fs::create_dir_all(&path).map_err(|e| e.to_string())
+}
+
+/// Start another program (Blender) with arguments; it runs on its own.
+#[tauri::command]
+pub fn launch_app(exe: String, args: Vec<String>) -> Result<(), String> {
+    std::process::Command::new(&exe).args(&args).spawn().map(|_| ()).map_err(|e| e.to_string())
+}
+
+/// Hand a file to the Gouache Studio add-on in a running Blender (it listens on this computer only).
+/// Returns false when no Blender with the add-on is listening.
+#[tauri::command]
+pub fn blender_send(path: String, port: u16) -> bool {
+    use std::io::{Read, Write};
+    use std::net::{SocketAddr, TcpStream};
+    use std::time::Duration;
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let Ok(mut s) = TcpStream::connect_timeout(&addr, Duration::from_millis(600)) else { return false };
+    let _ = s.set_read_timeout(Some(Duration::from_millis(1500)));
+    let body = path.as_bytes();
+    let head = format!("POST /import HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", body.len());
+    if s.write_all(head.as_bytes()).is_err() || s.write_all(body).is_err() {
+        return false;
+    }
+    let mut buf = [0u8; 64];
+    matches!(s.read(&mut buf), Ok(n) if n > 0 && buf[..n].starts_with(b"HTTP/1.") && buf[..n].windows(3).any(|w| w == b"200"))
+}
+
+#[cfg(test)]
+mod addon_tests {
+    #[test]
+    fn blender_send_talks_to_the_addon() {
+        // runs only when GS_ADDON_PORT names a port where assets/addons/gouache_link.py listens (e.g. run it with a stand-in bpy module)
+        let port: u16 = std::env::var("GS_ADDON_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(0);
+        if port == 0 { return; }
+        let me = std::env::current_dir().unwrap().join("Cargo.toml");
+        assert!(super::blender_send(me.to_string_lossy().to_string(), port));
+        assert!(!super::blender_send("/no/such/file.glb".into(), port));
+        assert!(!super::blender_send("x".into(), 1));
+    }
+}

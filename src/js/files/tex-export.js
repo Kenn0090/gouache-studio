@@ -153,10 +153,10 @@ function dlgExportTextures(){if(stroke||preview||selLive){toast('Finish the curr
     sel('txFmt','Format',[['png','PNG'],['tga','TGA']],texCfg.fmt,v=>{texCfg.fmt=v;}),
     chk('txH16','Height at 16 bits (PNG)',texCfg.h16,v=>{texCfg.h16=v;}),
     ui.mode==='p3d'&&p3.sets.filter(S=>!S.missing).length>1?chk('txAll','Every texture set (files named after each set)',texCfg.allSets,v=>{texCfg.allSets=v;draw();}):null,
-    ...modelRow,el('div',{class:'sub',text:'Files'}),list);draw();
-  openDialog({title:'Export textures',body,okLabel:platform.isDesktop?'Choose folder…':'Export',onOk(){exportTextures();}});}
+    ...modelRow,...esRow(()=>{closeDialog();dlgExportTextures();}),el('div',{class:'sub',text:'Files'}),list);draw();
+  openDialog({title:'Export textures',body,okLabel:platform.isDesktop?(esActive()?'Export and send':'Choose folder…'):'Export',onOk(){exportTextures();}});}
 async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.name||'Texture',wantModel=mxHasModel()&&texCfg.model&&texCfg.model!=='none';
-  let dir=null;if(platform.isDesktop){dir=await platform.pickFolder();if(!dir)return;}
+  let dir=null;if(platform.isDesktop){dir=await esTargetDir(name);if(!dir)return;}
   toast('Exporting textures…');await tick();
   try{let files=[];const bySet={},glTex={};
     /* each texture set (3D Paint), or the document; the model needs glTF-shaped textures too */
@@ -170,7 +170,7 @@ async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.
       if(texCfg.model==='glb')files=files.concat([{name:mn+'.glb',data:mxGLB(m,groups,glTex,mn)}]);
       else{const o=mxOBJ(m,groups,bySet,mn,pr);files.push({name:mn+'.obj',data:o.obj},{name:mn+'.mtl',data:o.mtl});}}
     if(!files.length){toast('Nothing to export.');return;}
-    if(dir){const sep=dir.includes('\\')?'\\':'/';for(const f of files)await platform.writeFile(dir.replace(/[\\/]$/,'')+sep+f.name,f.data);toast('Saved '+files.length+' files to '+dir);}
+    if(dir){const sep=dir.includes('\\')?'\\':'/';for(const f of files)await platform.writeFile(dir.replace(/[\\/]$/,'')+sep+f.name,f.data);toast('Saved '+files.length+' files to '+dir);await esAfter(dir,files,name);}
     else{const r=await deliver(pascal(name)+'_'+(pr.user?'custom':texCfg.preset)+'.zip',await makeZipMulti(files));toast(deliveredText(r,'Textures'));}
     return files;}
   catch(e){console.error(e);toast('Export failed: '+(e.message||e));}}

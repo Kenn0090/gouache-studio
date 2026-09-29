@@ -18,7 +18,9 @@ const order = JSON.parse(read('src/js/order.json')).order;
    const k = m[1] || m[2]; if (glsl.has(k)) return; if (seen.has(k)) dup.push(`${k}: ${seen.get(k)} and ${n}.js:${i + 1}`); else seen.set(k, `${n}.js:${i + 1}`); });
  if (dup.length) { console.error('Duplicate top-level names:\n  ' + dup.join('\n  ')); process.exit(1); }}
 const APP_VERSION = JSON.parse(read('package.json')).version;
-const js = `const APP_VERSION='${APP_VERSION}';\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
+/* the Blender add-on (assets/addons), carried inside the app so it can be saved from the Export window */
+const BLENDER_ADDON = fs.existsSync(r('assets/addons/gouache_link.py')) ? read('assets/addons/gouache_link.py') : '';
+const js = `const APP_VERSION='${APP_VERSION}';\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
 const css = read('src/styles/app.css');
 const tpl = read('src/index.template.html');
 const assemble = head => tpl.replace(/<!--VERSION-->/g, APP_VERSION).replace('<!--HEAD-->', () => head).replace('<!--STYLE-->', () => css).replace('<!--SCRIPT-->', () => js);
