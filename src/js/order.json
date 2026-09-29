@@ -100,6 +100,7 @@
         "ui/safety",
         "layers/locks",
         "ui/key-helper",
+        "ui/doc-tabs",
         "ui/rulers",
         "ui/welcome",
         "core/boot"

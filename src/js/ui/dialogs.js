@@ -67,7 +67,7 @@ function dlgNew(){const f=sizeFields(1024,1024,false);let depth=doc.depth,bgMode
     el('div',{class:'sub',text:'Bit depth'}),seg([[8,'8-bit'],[16,'16-bit float',!canFloat]],()=>depth,v=>{depth=v;}),
     el('div',{class:'sub',text:'Background'}),seg([['white','White'],['fg','Foreground color'],['clear','Transparent']],()=>bgMode,v=>{bgMode=v;}),
     tileChk);
-  openDialog({title:'New document',body,okLabel:'Create',onOk(){const r=np.read();if(!r)return false;const dpiNew=np.dpi();const bg=bgMode==='white'?[1,1,1]:bgMode==='fg'?ui.fg.slice():null;if(tpl==='brush'){newBrushDoc(r[0],r[1]);return;}newDoc(r[0],r[1],depth,bg,'Untitled',tile,tpl==='custom'?'hand':tpl);doc.dpi=dpiNew;if(tpl==='custom')setTimeout(dlgMaps,0);}});}
+  openDialog({title:'New document',body,okLabel:'Create',onOk(){const r=np.read();if(!r)return false;const dpiNew=np.dpi();const bg=bgMode==='white'?[1,1,1]:bgMode==='fg'?ui.fg.slice():null;if(typeof dtNewTab==='function'&&!dtNewTab())return;if(tpl==='brush'){newBrushDoc(r[0],r[1]);return;}newDoc(r[0],r[1],depth,bg,typeof dtUntitled==='function'?dtUntitled():'Untitled',tile,tpl==='custom'?'hand':tpl);doc.dpi=dpiNew;if(tpl==='custom')setTimeout(dlgMaps,0);}});}
 /* ---- New document presets (0.26.1): textures, screens, phones, social, paper, photo, books, cards, posters, film ---- */
 const NEW_PRESETS=[
   ['Textures',[['256 × 256',256,256],['512 × 512',512,512],['1K (1024)',1024,1024],['2K (2048)',2048,2048],['4K (4096)',4096,4096],['8K (8192)',8192,8192],['16K (16384)',16384,16384],['2K × 1K (2:1)',2048,1024],['4K × 2K (2:1)',4096,2048]]],

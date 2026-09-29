@@ -62,7 +62,7 @@ async function asRecoveries(){try{if(platform.isDesktop){const l=await platform.
   const all=await asDB.run('readonly',st=>st.getAll());return (all||[]).map(r=>({kind:r.id,name:r.name,t:r.t,blob:r.blob}));}catch(e){return [];}}
 async function asRecover(r){try{let buf;if(r.path){const u=await platform.readFile(r.path);buf=u.buffer.slice(u.byteOffset,u.byteOffset+u.byteLength);}else buf=await r.blob.arrayBuffer();
     if(r.kind==='p3d'){if(ui.mode!=='p3d'&&!setMode('p3d',true))return;await openP3Project(buf,r.name,null);}
-    else{if(tabDocs.paint&&!setMode('paint',true))return;await openGouache(buf,r.name);}
+    else{if(tabDocs.paint&&!setMode('paint',true))return;if(!(await askReplace()))return;await openGouache(buf,r.name);}
     toast('Recovered “'+r.name+'”. Save it to keep it.');}
   catch(e){toast('Could not recover it: '+(e.message||e));}}
 async function asDiscard(r){try{if(r.path)await platform.invoke('autosave_delete',{path:r.path});else await asDB.run('readwrite',st=>st.delete(r.kind));}catch(e){}}
