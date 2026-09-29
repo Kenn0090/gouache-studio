@@ -294,5 +294,29 @@ function buildConvertPanel(){const box=$('#convBody');if(!box)return;box.replace
       box.append(el('div',{class:'cvkey'},sw,el('div',{class:'dlg-grid'},makeSlider({id:'cvk'+k+i+'v',label:k==='metal'?'Metallic':'Roughness',min:0,max:1,step:.01,value:q.v,fmt:pct,onInput:x=>{q.v=x;cvChanged(k);}}).el,
         makeSlider({id:'cvk'+k+i+'t',label:'Tolerance',min:.01,max:.6,step:.01,value:q.tol,fmt:pct,onInput:x=>{q.tol=x;cvChanged(k);}}).el,makeSlider({id:'cvk'+k+i+'s',label:'Softness',min:0,max:1,step:.01,value:q.soft,fmt:pct,onInput:x=>{q.soft=x;cvChanged(k);}}).el),rm));});}
   box.append(el('div',{class:'sub',text:'Canvas shows'}),seg([['result','This map'],['source','The source']],cvS.show,x=>{cvS.show=x;requestRender();},'Canvas shows'));
-  const send=el('button',{class:'btn primary',id:'cvSend',text:'Send to document'});send.onclick=cvSend;const ex=el('button',{class:'btn',id:'cvExport',text:'Export files…'});ex.onclick=cvExport;
-  box.append(el('div',{class:'chips'},chk('cvRepl','Replace the last converted maps',cvS.replace,x=>{cvS.replace=x;})),el('div',{class:'row wrap'},send,ex));}
+  const send=el('button',{class:'btn primary',id:'cvSend',text:'Send to document'});send.onclick=cvSend;const ex=el('button',{class:'btn',id:'cvExport',text:'Export files…'});ex.onclick=cvExport;const tm=el('button',{class:'btn',id:'cvToMat',text:'Turn into material…',title:'Save these maps as a material in Materials, ready for 3D Paint'});tm.onclick=dlgCvMaterial;
+  box.append(el('div',{class:'chips'},chk('cvRepl','Replace the last converted maps',cvS.replace,x=>{cvS.replace=x;})),el('div',{class:'row wrap'},send,ex,tm));}
+
+/* ---- (0.27, Kenn) Turn into material: the converted maps become a material in Materials (and 3D Paint) ----
+   Base colour is the lighting-evened colour when it is made, otherwise the photo itself; normal, height, AO,
+   roughness and metallic come from the conversion. Curvature is a measurement, not a material channel. */
+const CV_MAT_CH=['base','normal','height','ao','rough','metal'];
+function cvMaterialRec(name,max){const made=new Set(cvMade()),pix={},fill=fillDefaults();for(const k in fill.maps)fill.maps[k].on=false;
+  for(const k of CV_MAT_CH){let t=null;if(k==='base')t=made.has('base')?cvRes('base'):cvPrep();else if(made.has(k))t=cvRes(k);if(!t)continue;
+    const s=Math.min(1,(max||1e9)/Math.max(t.w,t.h)),w=Math.max(1,Math.round(t.w*s)),h=Math.max(1,Math.round(t.h*s)),o=makeTarget(w,h,8,false);copyScaled(t,o);
+    const d=captureRegionNow(o,0,0,w,h).data;disposeTarget(o);pix[k]={w,h,data:new Uint8Array(d.buffer.slice(0))};
+    if(fill.maps[k])Object.assign(fill.maps[k],{on:true,src:'image',name:(CV_NAMES[k]||k)+' (converted)',tile:1,rot:0});}
+  if(!fill.maps.rough.on)Object.assign(fill.maps.rough,{on:true,src:'value',v:.6});if(!fill.maps.metal.on)Object.assign(fill.maps.metal,{on:true,src:'value',v:0});
+  if(fill.maps.height.on)fill.hStr=1;
+  return {id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:name||'Converted material',t:Date.now(),fill,imgs:pix};}
+function dlgCvMaterial(){if(!cvS.src){toast('Pick a source first.');return;}
+  let name=(cvS.srcName||'Converted').replace(/\.[a-z0-9]+$/i,'').replace(/[_-]+/g,' ').trim()||'Converted',max=2048,add=true;
+  const nm=el('input',{type:'text',id:'cvMatName',value:name});nm.addEventListener('input',()=>{name=nm.value;});
+  const made=cvMade().filter(k=>CV_MAT_CH.includes(k)).map(k=>CV_NAMES[k].toLowerCase());
+  openDialog({title:'Turn into material',body:el('div',{class:'dlg-grid'},el('div',{class:'frow'},el('label',{for:'cvMatName',text:'Name'}),nm),
+      el('p',{class:'note',text:'Base colour'+(made.length?', '+made.join(', '):'')+'. Saved in Materials so every 3D Paint project can use it; tick more maps above to include them.'}),
+      el('div',{class:'sub',text:'Picture size'}),seg([[1024,'1K'],[2048,'2K'],[4096,'4K'],[0,'Full size']],max,v=>{max=+v;},'Picture size'),
+      chk('cvMatAdd','Also add it to 3D Paint now (a new material layer in the texture set)',add,v=>{add=v;})),
+    okLabel:'Make material',onOk(){const rec=cvMaterialRec(name.trim(),max);matLib.list.push(rec);store.put(rec,'materials');if(typeof renderMats==='function')renderMats();
+      if(add&&setMode('p3d',true)){matApply(rec);toast('“'+rec.name+'” is in Materials and on a new layer in 3D Paint.');}
+      else toast('Saved “'+rec.name+'” in Materials. Add it from the Materials tab in 3D Paint.');}});}
