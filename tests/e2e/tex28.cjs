@@ -26,8 +26,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
    const st=t=>{const d=__gs.captureRegionNow(t,0,0,t.w,t.h).data;let mn=255,mx=0;for(let i=0;i<d.length;i+=4*97){mn=Math.min(mn,d[i]);mx=Math.max(mx,d[i]);}return [t.w,mn,mx];};return {a:st(a),b:st(b)};});
  ok(px.a[0]===1024&&px.a[2]-px.a[1]>150&&px.b[2]-px.b[1]>150,'photo and generated textures load with full contrast '+JSON.stringify(px));
  /* click a tile: its uses */
- await p.click('#tx_gen_clouds');await W(300);const menu=await p.evaluate(()=>[...document.querySelectorAll('#menuPop .mi')].map(b=>b.textContent));
- ok(menu.some(t=>t.includes('mask'))&&menu.some(t=>t.includes('New layer'))&&menu.some(t=>t.includes('Brush tip'))&&menu.some(t=>t.includes('Stencil')),'clicking a texture offers its uses');
+ await p.click('#tx_gen_clouds',{button:'right'});await W(300);const menu=await p.evaluate(()=>[...document.querySelectorAll('#menuPop .mi')].map(b=>b.textContent));
+ ok(menu.some(t=>t.includes('mask'))&&menu.some(t=>t.includes('New layer'))&&menu.some(t=>t.includes('Brush tip'))&&menu.some(t=>t.includes('Stencil')),'right-clicking a texture offers its uses');
  await p.keyboard.press('Escape');await p.mouse.click(5,450);
  await p.evaluate(()=>__gs.act('addLayer'));await W(200);
  await p.evaluate(()=>__gs.txToMask({kind:'gen',id:'clouds',name:'Clouds'}));await W(600);
@@ -48,5 +48,15 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* stencil in 3D Paint */
  await p.click('#modeTabs [data-mode=p3d]');await W(1500);await p.evaluate(()=>__gs.txToStencil({kind:'photo',id:'rings',name:'Water rings'}));await W(400);
  ok(await p.evaluate(()=>__gs.st3&&__gs.st3.name==='Water rings'),'Stencil from a texture in 3D Paint');
+ /* drag a tile: onto a layer's middle → its mask; to a layer's edge → a new layer there */
+ await p.evaluate(()=>{__gs.showPanel('textures');__gs.showPanel('layers');});await W(300);
+ await p.evaluate(()=>__gs.act('addLayer'));await W(300);
+ await p.locator('#tx_gen_clouds').scrollIntoViewIfNeeded();const tileB=await p.locator('#tx_gen_clouds').boundingBox();const rowB=await p.locator('#layerList .lrow').first().boundingBox();
+ const n0=await p.evaluate(()=>__gs.allLayers().length);
+ await p.mouse.move(tileB.x+30,tileB.y+30);await p.mouse.down();await p.mouse.move(tileB.x+40,tileB.y+40,{steps:3});await p.mouse.move(rowB.x+rowB.width/2,rowB.y+rowB.height/2,{steps:8});await p.mouse.up();await W(800);
+ ok(await p.evaluate(()=>__gs.allLayers().some(L=>L.mask&&L.mask.stack&&L.mask.stack.some(r=>r.kind==='image'))),'dragging a texture onto a layer puts it in that layer’s mask');
+ await p.locator('#tx_gen_clouds').scrollIntoViewIfNeeded();const tB2=await p.locator('#tx_gen_clouds').boundingBox(),rB2=await p.locator('#layerList .lrow').first().boundingBox();
+ await p.mouse.move(tB2.x+30,tB2.y+30);await p.mouse.down();await p.mouse.move(tB2.x+40,tB2.y+40,{steps:3});await p.mouse.move(rB2.x+rB2.width/2,rB2.y+2,{steps:8});await p.mouse.up();await W(800);
+ ok(await p.evaluate(n=>__gs.allLayers().length===n+1,n0),'dragging one to a layer’s edge makes a new layer there');
  console.log(errs.length?errs.join('\n'):'no page errors');ok(!errs.length,'no page errors');
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();process.exit(fails?1:0);})();

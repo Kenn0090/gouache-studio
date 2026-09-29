@@ -781,3 +781,4 @@ body.libdragging,body.libdragging *{cursor:grabbing!important;user-select:none}
 #menuSub .mi,#menuPop .hassub{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:8px;width:100%;text-align:left}
 #menuPop .hassub .arr{color:var(--faint);font-size:10px}
 body.sharp #menuSub{border-radius:0}
+.mattile img{-webkit-user-drag:none;user-select:none}

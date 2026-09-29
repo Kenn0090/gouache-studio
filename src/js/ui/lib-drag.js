@@ -9,7 +9,9 @@ document.addEventListener('pointerdown',e=>{if(e.button!==0)return;const t=e.tar
 function libClear(){document.querySelectorAll('.lrow.drop-into,.lrow.drop-mask').forEach(r=>r.classList.remove('drop-into','drop-mask'));dropLine.hidden=true;}
 /* where a drop at (x, y) goes: {mask: layer} for smart masks, {at: {parent, index}} for the rest */
 function libTarget(x,y,D){D=D||libDrag.d;const list=$('#layerList'),lb=list&&list.getBoundingClientRect();if(!lb||x<lb.left||x>lb.right||y<lb.top-8||y>lb.bottom+8)return null;
-  if(D.kind==='smask'){const under=document.elementFromPoint(x,y),row=under&&under.closest('.lrow');const n=row&&row._node;return n&&!n.fx?{mask:n,row}:null;}
+  if(D.kind==='smask'||D.kind==='tex'){const under=document.elementFromPoint(x,y),row=under&&under.closest('.lrow');const n=row&&row._node;
+    /* a texture on the middle of a layer goes into its mask; near a row's edge it becomes a layer there */
+    if(D.kind==='smask'||(n&&!n.fx&&y>row.getBoundingClientRect().top+row.offsetHeight*.3&&y<row.getBoundingClientRect().bottom-row.offsetHeight*.3))return n&&!n.fx?{mask:n,row}:null;}
   const t=dropTargetAt(y),d=resolveDrop(t);if(!d)return {at:{parent:doc.root,index:doc.root.children.length},t:null,d:null};
   const index=d.top?d.parent.children.length:d.parent.children.indexOf(d.ref)+(d.where==='above'?1:0);return {at:{parent:d.parent,index},t,d};}
 window.addEventListener('pointermove',e=>{const D=libDrag.d;if(!D||e.pointerId!==D.id)return;
@@ -30,4 +32,5 @@ function libDrop(e){const D=libDrag.d;if(!D||e.pointerId!==D.id)return;libDrag.d
 window.addEventListener('pointerup',libDrop,true);window.addEventListener('pointercancel',e=>{if(libDrag.d&&e.pointerId===libDrag.d.id){libDrag.d=null;libGhost.hidden=true;libClear();document.body.classList.remove('libdragging');}},true);
 /* also used by tests */
 function libApply(kind,rec,T){if(rec&&rec.bundled&&!(rec.fill&&rec.imgs)){gmLoad(rec).then(()=>libApply(kind,rec,T)).catch(e=>toast('Could not load “'+rec.name+'”: '+(e.message||e)));return;}if(kind==='smask'){const n=T.mask;if(!n)return;selectOnly(n);renderLayers();smMaskApply(rec);return;}
+  if(kind==='tex'){if(T.mask){selectOnly(T.mask);renderLayers();return txToMask(rec);}return txToLayer(rec,T.at);}
   insertAt=T.at;try{return kind==='smart'?smApply(rec):matApply(rec);}finally{insertAt=null;}}
