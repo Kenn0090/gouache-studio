@@ -99,7 +99,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const at=()=>p.evaluate(()=>{const t=__gs.compositeMap('base'),d=__gs.readRGBA8(t);__gs.release(t);let grey=0,blueish=0;for(let i=0;i<d.length;i+=4){if(d[i]<200&&Math.abs(d[i]-d[i+2])<25)grey++;if(d[i+2]>200&&d[i]>60&&d[i]<230)blueish++;}return {grey,blueish};});
  const s0=await at();
  await p.locator('#layerList .lrow',{hasText:'Blue'}).first().click({button:'right',position:{x:120,y:12}});await W(200);
- await p.click('#menuPop .mi:has-text("Drop shadow")');await W(500);await p.click('#dlgOk');await W(500);
+ await p.hover('#menuPop .hassub:has-text("Layer style")');await p.click('#menuSub .mi:has-text("Drop shadow")');await W(500);await p.click('#dlgOk');await W(500);
  const s1=await at();
  ok(s1.grey>s0.grey+200&&s1.blueish<s1.grey/3,'drop shadow shows outside a masked material, grey not blue ('+JSON.stringify(s0)+' → '+JSON.stringify(s1)+')');
  console.log(errs.length?errs.join('\n'):'no page errors');ok(!errs.length,'no page errors');

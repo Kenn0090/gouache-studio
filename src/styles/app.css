@@ -775,3 +775,9 @@ body.libdragging,body.libdragging *{cursor:grabbing!important;user-select:none}
 .txtile img{width:72px;height:72px;border-radius:4px;background:#000;object-fit:cover}
 .gmthumb{width:56px;height:56px;border-radius:50%;object-fit:cover}
 .dctile img{width:56px;height:56px;object-fit:contain;background:#3a3d42;border-radius:6px}.dctile.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+
+#menuSub{position:fixed;z-index:42;background:var(--raise);border:1px solid var(--line-2);border-radius:8px;padding:4px;min-width:230px;box-shadow:0 14px 34px rgba(0,0,0,.5);max-height:calc(100vh - 16px);overflow-y:auto}
+#menuSub[hidden]{display:none}
+#menuSub .mi,#menuPop .hassub{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:8px;width:100%;text-align:left}
+#menuPop .hassub .arr{color:var(--faint);font-size:10px}
+body.sharp #menuSub{border-radius:0}

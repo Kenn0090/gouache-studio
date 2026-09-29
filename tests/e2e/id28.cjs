@@ -25,7 +25,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('#bkSendP3');await W(1500);
  ok(await p.evaluate(()=>!!(__gs.doc.meshMaps&&__gs.doc.meshMaps.id)),'the baked ID colours arrive in 3D Paint as a mesh map');
  await p.evaluate(()=>{__gs.showPanel('layers');});const row=p.locator('#layerList .lrow',{hasText:'Base material'}).first();await row.click({button:'right',position:{x:120,y:12}});await W(300);
- const it=p.locator('#menuPop .mi',{hasText:'ID colour'});ok(await it.count()===1,'right-click offers an ID colour mask');
+ await p.hover('#menuPop .hassub:has-text("Mask from mesh map")');const it=p.locator('#menuSub .mi',{hasText:'ID colour'});ok(await it.count()===1,'right-click offers an ID colour mask');
  await it.click();await W(600);
  const r=await p.evaluate(()=>{const L=__gs.layerByName('Base material');return {rows:L.mask&&L.mask.stack?L.mask.stack.map(x=>x.kind).join():'',tool:__gs.mk3.tool,view:__gs.ui.viewMask};});
  ok(r.rows.includes('id')&&r.tool==='id'&&r.view,'it adds an ID colour row and starts picking colours on the model '+JSON.stringify(r));

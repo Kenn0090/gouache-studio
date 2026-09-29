@@ -225,30 +225,30 @@ $('#lUngroup').addEventListener('click',cmdUngroup);$('#lDup').addEventListener(
 $('#lMerge').addEventListener('click',cmdMerge);$('#lUp').addEventListener('click',()=>cmdMove(1));$('#lDown').addEventListener('click',()=>cmdMove(-1));
 /* right-click a layer: masks, layer styles (each adds that style and opens it), filters, array, and the usual commands */
 function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)&&!n.fx,grp=n.type==='group',anim=ui.mode==='anim';
-  const it=(t,f,key,dis)=>{const b=el('button',{class:'mi',role:'menuitem',disabled:!!dis,onclick:()=>{pop.hidden=true;f();}},el('span'),el('span',{text:t}),el('span',{text:key||''}));return b;};
+  const it=(t,f,key,dis)=>{const b=el('button',{class:'mi',role:'menuitem',disabled:!!dis,onclick:()=>{pop.hidden=true;flyHide();f();}},el('span'),el('span',{text:t}),el('span',{text:key||''}));return b;};
   const head=t=>el('div',{class:'mh',text:t});const sep=()=>el('div',{class:'msep'});
   const items=[];
   if(!anim){if(n.mask)items.push(it('Delete mask',cmdDeleteMask),...(typeof msHas==='function'&&msHas(n)?[it('Flatten mask (keep the result, drop its rows)',()=>msFlatten(n))]:[]));else items.push(it('Add mask',()=>cmdAddMask(1)),it('Add black mask (hide all)',()=>cmdAddMask(0)),...(lay&&typeof liveMaskStart==='function'?[it('Live mask…',()=>liveMaskStart(n))]:[]));}
-  if(lay&&!anim){items.push(sep(),head('Layer style'));for(const k of STYLE_ORDER)items.push(it(STYLE_DEFS[k].label+(n.styles&&n.styles[k]&&n.styles[k].on?' ✓':''),()=>dlgLayerStyle(k,true)));
-    items.push(it('All styles…',()=>dlgLayerStyle()),sep(),it('Filter this layer ▸',()=>{selectOnly(n);n.editMask=false;renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);}),
+  if(lay&&!anim){items.push(sep(),flyItem('Layer style',()=>[...STYLE_ORDER.map(k=>it(STYLE_DEFS[k].label+(n.styles&&n.styles[k]&&n.styles[k].on?' ✓':''),()=>dlgLayerStyle(k,true))),sep(),it('All styles…',()=>dlgLayerStyle())]));
+    items.push(sep(),it('Filter this layer ▸',()=>{selectOnly(n);n.editMask=false;renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);}),
       it('Filter its mask ▸',()=>{selectOnly(n);if(!n.mask)msAdd(n,'fill',{p:{v:1}});n.editMask=true;renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);}),
       it('Filter layer above…',cmdNewFxLayer),it('Array…',()=>setTool('array')));
     if(n.fill)items.splice(0,0,it('Fill settings…',()=>dlgFillLayer(n)),it('Mesh maps from this material…',()=>dlgMatConvert(n)),sep());
     if(n.text||n.grad||n.shape||n.fill)items.push(it('Convert to pixels',()=>{if(n.fill)fillRasterize(n);else rasterizeText(n);changed(n);}));}
   const mm=typeof maskMeshKeys==='function'?maskMeshKeys():[];
   const hasId=!!(doc.meshMaps&&doc.meshMaps.id);
-  if(lay&&!anim&&(mm.length||hasId||ui.mode==='p3d')){items.push(sep(),head('Mask from mesh map'));for(const k of mm)items.push(it(P3_MESHMAP_NAMES[k]||k,()=>maskFromMeshMap(n,k)));
+  if(lay&&!anim&&(mm.length||hasId||ui.mode==='p3d')){items.push(sep(),flyItem('Mask from mesh map',()=>[...mm.map(k=>it(P3_MESHMAP_NAMES[k]||k,()=>maskFromMeshMap(n,k))),
     /* (0.28, Kenn) the baked ID colours as a mask: pick the colours on the model */
-    items.push(it('ID colour (pick colours on the model)…',()=>idColourMask(n)));}
+    it('ID colour (pick colours on the model)…',()=>idColourMask(n))]));}
   if(!anim&&!n.fx&&typeof smSave==='function'){items.push(sep(),it('Save as smart material…',()=>smSave(n)));if(n.mask)items.push(it('Save mask as smart mask…',()=>smMaskSave(n)));}
   if(!anim&&ui.mode==='paint'&&typeof sendToP3==='function')items.push(sep(),it('Send layer to 3D Paint',()=>sendToP3(n)));
   if(!anim&&ui.mode==='paint'&&n.p3link)items.push(it('Send back to 3D Paint (replaces “'+n.p3link.name+'”)',()=>paintLayerBackToP3(n)));
   if(ui.mode==='p3d'&&typeof p3LayerToPaint==='function')items.push(sep(),it('Edit in the Paint canvas',()=>p3LayerToPaint(n)));
   if(!anim)items.push(it('New fill layer',cmdNewFillLayer));
   items.push(sep(),it(grp?'Ungroup':'Group into folder',grp?cmdUngroup:cmdGroup,grp?'Ctrl+Shift+G':'Ctrl+G',anim),it('Duplicate',cmdDuplicate,'Ctrl+J',anim),it(grp?'Merge group':'Merge down',cmdMerge,'Ctrl+E',anim),it('Delete',cmdDelete,'Del',anim));
-  pop.replaceChildren(...items);pop.hidden=false;
+  flyHide();pop.replaceChildren(...items);pop.hidden=false;
   pop.style.left=Math.max(4,Math.min(e.clientX,window.innerWidth-pop.offsetWidth-8))+'px';pop.style.top=Math.max(4,Math.min(e.clientY+4,window.innerHeight-pop.offsetHeight-8))+'px';
-  const off=ev=>{if(!pop.contains(ev.target)){pop.hidden=true;document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}
+  const off=ev=>{if(!pop.contains(ev.target)&&!flyEl.contains(ev.target)){pop.hidden=true;flyHide();document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}
 $('#lMaskAdd').addEventListener('click',()=>{if(isLayer(doc.active)||(doc.active&&doc.active.type==='group'))cmdAddMask(1);else toast('Select a layer to add a mask to.');});
 $('#lStyle').addEventListener('click',()=>dlgLayerStyle());$('#lFill').addEventListener('click',()=>cmdNewFillLayer());
 

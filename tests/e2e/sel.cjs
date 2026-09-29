@@ -113,7 +113,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.keyboard.press('Control+d');await p.locator('#layerList .lrow:has(.lname:text-is("Layer 2")) canvas').first().click({modifiers:['Control']});
  v=await selAt([[150,150],[50,50]]);ok(v[0]===255&&v[1]===0,'ctrl+click thumbnail selects layer pixels '+v);
  // 19. add mask from selection
- await p.click('#layerList .lrow:has(.lname:text-is("Background"))');await menuItem('Image','Add mask');
+ await p.click('#layerList .lrow:has(.lname:text-is("Background"))');await p.click('#menus button:text-is("Image")');await p.hover('#menuPop .hassub:has-text("Layer")');await p.click('#menuSub .mi:has-text("Add mask")');
  const mk=await p.evaluate(()=>{const L=__gs.layerByName('Background'),d=__gs.readRGBA8(L.mask.target),W=__gs.doc.w;return [d[(150*W+150)*4],d[(50*W+50)*4]];});ok(mk.join()==='255,0','mask from selection '+mk);
  // 20. tile mode: marquee across the right edge wraps to the left
  await p.keyboard.press('Control+d');await p.keyboard.press('Shift+T');await p.waitForTimeout(150);

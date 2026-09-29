@@ -67,7 +67,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  v=await comp('base',[[100,85+70]]);ok(!(v[0][0]>240&&v[0][1]>240&&v[0][2]>240),'the copy is still there as pixels '+JSON.stringify(v));
  await p.keyboard.press('Control+z');await p.waitForTimeout(200);a=await act();ok(!!a.array,'undo brings the live array back');
  /* ---- layer style ---- */
- await p.click('#menus button:text-is("Image")');await p.click('#menuPop .mi:has-text("Layer style")');await p.waitForTimeout(200);
+ await p.click('#menus button:text-is("Image")');await p.hover('#menuPop .hassub:has-text("Layer")');await p.click('#menuSub .mi:has-text("Layer style")');await p.waitForTimeout(200);
  ok((await p.textContent('#dlgTitle')).startsWith('Layer style'),'Layer › Layer style opens the dialog');
  await p.check('#ls_stroke');await p.evaluate(()=>{const i=document.querySelector('#lsSize');i.value='6';i.dispatchEvent(new Event('input'));});await p.waitForTimeout(150);
  v=await comp('base',[[47,85]]);ok(v[0][0]<60&&v[0][1]<60,'stroke draws outside the edge (live) '+JSON.stringify(v));
