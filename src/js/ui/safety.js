@@ -13,7 +13,7 @@ window.addEventListener('keydown',e=>{const m=(e.ctrlKey||e.metaKey)&&!e.altKey,
     else if(m&&r){if(modal.hidden&&!isTypingTarget(e.target)&&typeof toggleRulers==='function')toggleRulers();}
     else toast('Reloading is turned off so your work is never lost. Ctrl+Shift+R reloads the app.');
     return;}
-  if(e.key==='Tab'&&!e.ctrlKey&&!e.altKey&&!e.metaKey){if(!modal.hidden||(e.target.closest&&e.target.closest('.dialog,.welcome')))return;e.preventDefault();}
+  if(e.key==='Tab'&&!e.ctrlKey&&!e.altKey&&!e.metaKey){if(!modal.hidden||isTypingTarget(e.target)||(e.target.closest&&e.target.closest('.dialog,.welcome')))return;e.preventDefault();}
 },true);
 window.addEventListener('beforeunload',e=>{if(window.__gsQuit||!unsavedWork())return;try{autosaveNow(true);}catch(err){}e.preventDefault();e.returnValue='';});
 /* nothing outside text boxes gets highlighted when you drag */
