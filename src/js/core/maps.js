@@ -72,11 +72,18 @@ function setDocMaps(keys,label,defs){keys=MAP_ORDER.filter(k=>keys.includes(k)||
 /* map k of the whole document; the edited map reuses the frame's composite (it includes live strokes) */
 function mapComp(k,own){if(k===doc.map&&own)return {t:own,own:true};return {t:compositeMap(k),own:false};}
 /* the final normal: built from height (strength doc.nrmStr) and combined with normal detail */
-function normalComposite(flipY,own){const hasH=doc.maps.includes('height'),hasN=doc.maps.includes('normal');
-  const out=acquireD(doc.depth);if(!hasH&&!hasN){clearTarget(out,[.5,.5,1,1]);return out;}
-  const h=hasH?mapComp('height',own):null,n=hasN?mapComp('normal',own):null;
-  run(P.nrm,out,{uH:h?h.t.tex:dummy,uN:n?n.t.tex:dummy,uUseN:!!n,uStr:hasH?doc.nrmStr:0,uWrap:!!doc.wrap,uFlipY:!!flipY});
-  for(const c of [h,n])if(c&&!c.own)release(c.t);return out;}
+/* (0.27) a 3D Paint texture set's baked mesh normal is the base the painted normal and height sit on (like Substance),
+   instead of a "Mesh normal (baked)" layer; older projects that have that layer keep using it */
+function meshNormalBase(){const M=doc.meshMaps,t=M&&M.normal;if(!t||!t.tex)return null;return paintLayers().some(L=>L.meshMap==='normal')?null:t;}
+let P_NRMB=null;
+function normalComposite(flipY,own){const hasH=doc.maps.includes('height'),hasN=doc.maps.includes('normal'),mb=meshNormalBase();
+  const out=acquireD(doc.depth);
+  if(!hasH&&!hasN)clearTarget(out,[.5,.5,1,1]);
+  else{const h=hasH?mapComp('height',own):null,n=hasN?mapComp('normal',own):null;
+    run(P.nrm,out,{uH:h?h.t.tex:dummy,uN:n?n.t.tex:dummy,uUseN:!!n,uStr:hasH?doc.nrmStr:0,uWrap:!!doc.wrap,uFlipY:!!flipY&&!mb});
+    for(const c of [h,n])if(c&&!c.own)release(c.t);}
+  if(!mb)return out;
+  if(!P_NRMB)P_NRMB=program(FS_NRMB);const o2=acquireD(doc.depth);run(P_NRMB,o2,{uB:mb.tex,uD:out.tex,uFlipY:!!flipY});release(out);return o2;}
 function lightVec(){const a=doc.light.az*Math.PI/180,e=doc.light.el*Math.PI/180;return [Math.cos(e)*Math.cos(a),Math.cos(e)*Math.sin(a),Math.sin(e)];}
 function buildMaterialView(){const own=compOut;let out;
   if(doc.view==='nfinal')out=normalComposite(false,own);

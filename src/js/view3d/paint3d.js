@@ -259,11 +259,12 @@ function p3ReceiveBake(mesh,by,ks,asLayers){if(ui.mode!=='p3d'&&!setMode('p3d',t
   toast(n?'Sent the bake to '+n+' texture set'+(n>1?'s':'')+(asLayers?', as mesh maps and layers.':', as mesh maps.'):'No texture set matched the baked materials.');}
 function p3ApplyBake(res,ks,asLayers){const M=doc.meshMaps||(doc.meshMaps={});
   for(const k of ks){if(!res[k])continue;let t=M[k];if(!t||t.w!==doc.w||t.h!==doc.h){if(t)disposeTarget(t);t=M[k]=makeTarget(doc.w,doc.h,k==='height'&&canFloat?16:doc.depth,false);}copyScaled(res[k],t);}
+  /* (0.27, Kenn: sent bakes shouldn't be added to the layer stack) they are the set's mesh maps; the baked normal
+     shades the model from there (meshNormalBase). Layers only when asked for; an old "Mesh normal (baked)" layer goes. */
   const add=[];
-  if(ks.includes('normal')&&M.normal)add.push(p3MeshLayer('normal'));
   if(asLayers)for(const k of ks)if(k!=='normal'&&M[k])add.push(p3MeshLayer(k));
-  const old=paintLayers().filter(L=>L.meshMap&&add.some(a=>a.meshMap===L.meshMap));
-  structOp('Bake from the Bake tab',()=>{for(const L of old)detachNode(L);for(const L of add)insertNode(L,doc.root,L.meshMap==='normal'?1:doc.root.children.length);});
+  const old=paintLayers().filter(L=>L.meshMap&&(add.some(a=>a.meshMap===L.meshMap)||(L.meshMap==='normal'&&ks.includes('normal'))));
+  if(old.length||add.length)structOp('Bake from the Bake tab',()=>{for(const L of old)detachNode(L);for(const L of add)insertNode(L,doc.root,L.meshMap==='normal'?1:doc.root.children.length);});
   syncTargets();p3MeshMapsChanged();renderLayers();}
 /* a mesh map as a layer: the normal in the Normal map, AO on Multiply, curvature on Overlay, the rest hidden in the base colour */
 function p3MeshLayer(k){const M=doc.meshMaps,L=newLayerObj(k==='normal'?'Mesh normal (baked)':'Baked '+(P3_MESHMAP_NAMES[k]||k).toLowerCase());doc.count--;

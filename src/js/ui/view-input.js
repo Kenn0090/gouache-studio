@@ -60,6 +60,7 @@ cv.addEventListener('pointerdown',e=>{
   if(xf&&!xf.move){xfPointerDown(e,ix,iy);return;}
   if(ui.tool==='crop'){cropPointerDown(e,ix,iy);return;}
   if(ui.tool==='move'){movePointerDown(e,ix,iy);return;}
+  if(['gradient','bucket','gbucket'].includes(ui.tool))fillAutoMask();
   if(ui.tool==='gradient'){gradPointerDown(e,ix,iy);return;}
   if(ui.tool==='array'){arrPointerDown(e,ix,iy);return;}
   if(ui.tool==='shape'){shapePointerDown(e,ix,iy);return;}
@@ -76,6 +77,7 @@ cv.addEventListener('pointerdown',e=>{
   if(ui.tool==='heal'&&e.altKey){if(heal.mode==='spot'){heal.mode='source';healSave();buildBrushPanel();buildOptBar();}healSetSource(ix,iy);return;}
   if(ui.tool==='picker'||e.altKey){ptr={mode:'pick',id:e.pointerId};const q=ui.cageFlat?cageFwd(ix,iy):[ix,iy];pickAt(q[0],q[1]);return;}
   if(typeof maskPaintLocked==='function'&&maskPaintLocked()){toast('Press Paint in the mask bar to paint the mask.');return;}
+  fillAutoMask();
   const et=ui.mode==='bake'?bakeEditTarget():editTarget();if(ui.mode!=='bake'&&typeof lockStop==='function'&&lockStop(et))return;const o=paintOpts(et);if(!o)return;const L=et.L,p=pressureOf(e);
   if((o.tool==='heal'||o.tool==='clone')&&!healBegin(ix,iy,o.tool))return;const cz=cageStrokeStart(o,ix,iy);if(cz===false)return;const sx=cz?cz.x:ix,sy=cz?cz.y:iy;o.sym=symFor(o);
   ptr={mode:'paint',id:e.pointerId,sx,sy,sp:p,rx:sx,ry:sy,cage:cz?cz.kind:null,ox:sx,oy:sy,lock:null};beginStroke(L,sx,sy,p,o);

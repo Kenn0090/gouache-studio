@@ -49,7 +49,9 @@ function fxAddMenu(e){const L=doc.active;if(!L||!(isLayer(L)||L.type==='group')|
       it('From anchor',sub('From anchor',msAnchorNames().length?msAnchorNames().map(nm=>it(nm,add('anchor',{p:{name:nm,ch:'height',inv:false}}))):[el('p',{class:'note',style:'padding:6px 10px;max-width:240px',text:'No anchor points yet. Select a layer’s own thumbnail, press ✦ and choose Anchor point.'})]),true),
       it('Another layer’s mask',sub('Another layer’s mask',others.length?others.map(o=>it(o.name,add('ref',{p:{name:o.name}}))):[el('p',{class:'note',style:'padding:6px 10px',text:'No other layer has a mask.'})]),true),
       it('Generator',sub('Generator',MS_GENS.map(([k,t])=>it(t,add('gen',{p:Object.assign(MS_KINDS.gen.p(),{g:k})})))),true),
-      sep(),it('Filter',sub('Filter',filters(true)),true)]);}
+      sep(),it('Filter',sub('Filter',filters(true)),true),
+      /* (0.27, Kenn: filter layers on masks) every filter, in the Filter Gallery's folders; it works on the rows below it */
+      it('All filters',sub('All filters',FX_KINDS().map(([g,ids])=>it(g,sub(g,ids.filter(id=>FX[id]&&!FX[id].gen).map(id=>it(FX[id].title,add('filter',{fx:id})))),true))),true)]);}
   main();
   const off=ev=>{if(!pop.contains(ev.target)){pop.hidden=true;document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}
 async function msPickImage(L,r){if(!r)return;const fs=await pickFiles('image/*',false,'Images',['png','jpg','jpeg','webp','tga','tif','tiff','bmp','psd','exr','hdr']);const f=fs[0];if(!f)return;

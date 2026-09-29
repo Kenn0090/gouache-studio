@@ -191,6 +191,11 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy);
   if(uUseN==1){ vec3 d=texelFetch(uN,p,0).rgb*2.0-1.0; vec3 tt=n+vec3(0,0,1), u=d*vec3(-1,-1,1); n=normalize(tt*dot(tt,u)/tt.z-u); }
   if(uFlipY==1) n.y=-n.y;
   o=vec4(n*0.5+0.5,1.0); }`;
+/* the baked mesh normal (uB, any size) with the painted normal detail (uD) on top: reoriented normal mapping */
+const FS_NRMB=`uniform sampler2D uB; uniform sampler2D uD; uniform int uFlipY;
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec2 uv=(vec2(p)+0.5)/vec2(textureSize(uD,0));
+  vec3 b=texture(uB,uv).rgb*2.0-1.0, d=texelFetch(uD,p,0).rgb*2.0-1.0; vec3 t=b+vec3(0,0,1), u=d*vec3(-1,-1,1);
+  vec3 n=normalize(t*dot(t,u)/t.z-u); if(uFlipY==1) n.y=-n.y; o=vec4(n*0.5+0.5,1.0); }`;
 const FS_MAT=`uniform sampler2D uBase; uniform sampler2D uRough; uniform sampler2D uMetal; uniform sampler2D uNrm; uniform sampler2D uAO; uniform sampler2D uEmis;
 uniform int uHas; uniform vec3 uLight; uniform vec4 uDef;
 vec3 lin(vec3 c){ return pow(max(c,0.0),vec3(2.2)); }

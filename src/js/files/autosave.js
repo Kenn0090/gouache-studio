@@ -14,9 +14,12 @@ async function asDir(){if(!as.dir)as.dir=await platform.invoke('autosave_dir');r
 const asDB={open(){if(this.db)return Promise.resolve(this.db);return new Promise((res,rej)=>{try{const r=indexedDB.open('gouache-autosave',1);r.onupgradeneeded=()=>{r.result.createObjectStore('copies',{keyPath:'id'});};r.onsuccess=()=>{this.db=r.result;res(this.db);};r.onerror=()=>rej(r.error);}catch(e){rej(e);}});},
   run(mode,fn){return this.open().then(db=>new Promise((res,rej)=>{const t=db.transaction('copies',mode),q=fn(t.objectStore('copies'));t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error);}));}};
 /* what changed since the last autosave */
-const asPaintSig=()=>withPaintDoc(()=>hist.undo.length?hist.undo[hist.undo.length-1]:null);
-const asPaintSaved=()=>withPaintDoc(()=>!hist.undo.length||hist.undo[hist.undo.length-1]===doc.savedAt);
-const asPaintName=()=>withPaintDoc(()=>doc.name||'Untitled');
+/* (0.27) read the painting's history without swapping documents: the tab bar asks every 0.7 s, and a swap rebuilt
+   the panels (a Material slider was taken from under the mouse mid-drag) */
+function asPaintPeek(fn){const S=tabDocs.paint&&!tabDocs.inPaint?tabDocs.paint:null;return S?fn(S.undo||[],S.doc):fn(hist.undo,doc);}
+const asPaintSig=()=>asPaintPeek(u=>u.length?u[u.length-1]:null);
+const asPaintSaved=()=>asPaintPeek((u,d)=>!u.length||u[u.length-1]===d.savedAt);
+const asPaintName=()=>asPaintPeek((u,d)=>d.name||'Untitled');
 async function asWrite(kind,name,blob){const t=Date.now();
   if(platform.isDesktop){const dir=await asDir(),sep=dir.includes('\\')?'\\':'/',file=dir+sep+(kind==='p3d'?'3D Paint - ':'Paint - ')+asSlug(name)+(kind==='p3d'?'.gouache3d':'.gouache');
     if(as.t[kind]&&as.t[kind].path&&as.t[kind].path!==file)platform.invoke('autosave_delete',{path:as.t[kind].path}).catch(()=>{});

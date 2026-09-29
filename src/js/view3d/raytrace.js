@@ -22,7 +22,7 @@ const RT_MAPS=[['base',[0,0,0,0]],['rough',null],['metal',null],['nfinal',[.5,.5
 function rtMaterials(g){const list=ui.mode==='p3d'&&typeof p3DrawList==='function'?p3DrawList():[{T:v3.tex}],key=v3.lastFull+':'+list.length+':'+(doc.maps||[]).join();
   if(rt.mat&&rt.matKey===key)return rt.mat;const S=1024,L=list.length*4;if(rt.mat)gl.deleteTexture(rt.mat);
   const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D_ARRAY,tex);gl.texImage3D(gl.TEXTURE_2D_ARRAY,0,gl.RGBA8,S,S,L,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
-  const fb=gl.createFramebuffer(),has=k=>k==='nfinal'?doc.maps.includes('height')||doc.maps.includes('normal'):doc.maps.includes(k);
+  const fb=gl.createFramebuffer(),has=k=>k==='nfinal'?doc.maps.includes('height')||doc.maps.includes('normal')||!!meshNormalBase():doc.maps.includes(k);
   list.forEach((it,i)=>{const T=it.T||{};RT_MAPS.forEach(([k,def],j)=>{gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,fb);gl.framebufferTextureLayer(gl.DRAW_FRAMEBUFFER,gl.COLOR_ATTACHMENT0,tex,0,i*4+j);
     const src=T[k];if(src&&src.fbo&&has(k)){gl.bindFramebuffer(gl.READ_FRAMEBUFFER,src.fbo);gl.blitFramebuffer(0,0,src.w,src.h,0,0,S,S,gl.COLOR_BUFFER_BIT,gl.LINEAR);}
     else{const d=def||[mapDefault(k)[0],0,0,1];gl.viewport(0,0,S,S);gl.clearColor(d[0],d[1],d[2],d[3]);gl.clear(gl.COLOR_BUFFER_BIT);}});});

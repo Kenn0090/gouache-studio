@@ -751,3 +751,6 @@ body.dwbody{margin:0;height:100vh;display:flex;flex-direction:column;overflow:hi
 .stedge:hover,body.dkresizing .stedge{background:color-mix(in srgb,var(--accent) 45%,transparent)}body.dklock .stedge{cursor:default;background:none}
 .sttl{position:absolute;left:0;right:0;top:-3px;height:6px;cursor:row-resize;z-index:3}.sttl:hover,body.stvresize .sttl{background:color-mix(in srgb,var(--accent) 45%,transparent)}
 body.stvresize{cursor:row-resize;user-select:none}
+/* (0.27) Material/Properties sliders: the slider gets the whole row width (the name and number sit above it) so it is easy to drag in a narrow column */
+#matEdBody .srow{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"l o" "r r";row-gap:2px}
+#matEdBody .srow label{grid-area:l}#matEdBody .srow output{grid-area:o}#matEdBody .srow input[type=range]{grid-area:r;width:100%;min-width:0}

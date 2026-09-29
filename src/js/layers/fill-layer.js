@@ -75,10 +75,11 @@ function cmdNewFillLayer(preset){if(ui.mode==='anim'){toast('Fill layers are ava
     const need=Object.keys(preset.maps).filter(k=>preset.maps[k].on!==false&&!doc.maps.includes(k)&&MAP_DEFS[k]&&!(doc.workflow==='spec'&&(k==='rough'||k==='metal')));
     if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the material');}
   fillRender(L);
-  const m=makeMask(1),fromSel=sel.active&&!sel.quick;if(fromSel)run(P.loadsel,m.target,{uSrc:sel.t.tex,uWhat:{int:1},uInv:false});
-  L.mask=m;L.editMask=true;
+  /* (0.27, Kenn: "materials shouldn't have a mask by default") a mask only when there is a selection to keep it in;
+     painting on a material without one adds it then (fillAutoMask) */
+  const fromSel=sel.active&&!sel.quick;if(fromSel){const m=makeMask(1);run(P.loadsel,m.target,{uSrc:sel.t.tex,uWhat:{int:1},uInv:false});L.mask=m;L.editMask=true;}
   structOp(preset?'Add material':'New fill layer',()=>{const [p,i]=insertPoint();insertNode(L,p,i);selectOnly(L);});
-  changed(L);if(!preset)dlgFillLayer(L,true);else{renderLayers();toast('Added “'+L.name+'”'+(fromSel?' in the selection.':'. Paint its mask to show it where you want (black hides, white shows).'));}return L;}
+  changed(L);if(!preset)dlgFillLayer(L,true);else{renderLayers();toast('Added “'+L.name+'”'+(fromSel?' in the selection.':'.'));}return L;}
 /* ---- the Material panel (a tab beside Colour): edits the selected material layer live, on the canvas and the model.
    Changes become one undo step when you pause (or pick another layer). Each channel is a colour or value, an image,
    or one of the texture set's baked mesh maps. ---- */
@@ -100,7 +101,9 @@ function fillImgsOf(L){const o=Object.assign({},L._fillImg||{}),M=doc.meshMaps||
 function renderMatEd(force){const box=document.getElementById('matEdBody');if(!box)return;const L=doc.active;
   /* a mask or effect row selected in the Layers panel: its settings */
   const row=typeof msRowOf==='function'&&ui.msSel&&(ui.msSel.L===L||ui.msSel.L.live)?msRowOf(ui.msSel):null;
-  if(row){if(matEd.L&&matEd.L!==L)matEdCommit();matEd.shown=null;box.replaceChildren();msRowEditor(box,ui.msSel.L,ui.msSel.where,row);return;}
+  /* (0.27) only rebuild when a different row is picked: rebuilding while a slider is dragged took the slider away from the mouse */
+  if(row){if(!force&&matEd.shownRow===row&&matEd.shown===null&&box.childElementCount)return;if(matEd.L&&matEd.L!==L)matEdCommit();matEd.shown=null;matEd.shownRow=row;box.replaceChildren();msRowEditor(box,ui.msSel.L,ui.msSel.where,row);return;}
+  matEd.shownRow=null;
   if(!force&&matEd.shown===L&&box.childElementCount&&!(L&&L.fill&&!box.querySelector('.matHead')))return;
   if(matEd.L&&matEd.L!==L)matEdCommit();matEd.shown=L;
   if(!isLayer(L)||!L.fill){box.replaceChildren(el('p',{class:'note',text:'Select a material (fill) layer, or a mask or effect row under a layer, to change it here.'}),
@@ -149,11 +152,18 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
 function dlgFillLayer(L){L=L||doc.active;if(!isLayer(L)||!L.fill){toast('Select a fill layer.');return;}if(doc.active!==L){selectOnly(L);renderLayers();}
   showPanel('matEd');renderMatEd(true);}
 /* the panel follows the selected layer */
-{const rl=renderLayers;renderLayers=function(...a){const r=rl.apply(this,a);if(matEd.shown!==doc.active||(doc.active&&doc.active.fill&&!document.querySelector('#matEdBody .matHead')))renderMatEd();return r;};}
+/* (0.27) picking another layer (which only restyles the rows) also shows it here; this used to happen only by luck */
+function matEdFollow(){if((matEd.shown!==doc.active&&!(matEd.shown===null&&matEd.shownRow&&typeof msRowOf==='function'&&ui.msSel&&msRowOf(ui.msSel)===matEd.shownRow))||(doc.active&&doc.active.fill&&!document.querySelector('#matEdBody .matHead')))renderMatEd();}
+{const ur=updateRowClasses;updateRowClasses=function(...a){const r=ur.apply(this,a);matEdFollow();return r;};}
+{const rl=renderLayers;renderLayers=function(...a){const r=rl.apply(this,a);if((matEd.shown!==doc.active&&!(matEd.shown===null&&matEd.shownRow&&typeof msRowOf==='function'&&ui.msSel&&msRowOf(ui.msSel)===matEd.shownRow))||(doc.active&&doc.active.fill&&!document.querySelector('#matEdBody .matHead')))renderMatEd();return r;};}
 async function fillPickImage(L,k,s,done){const fs=await pickFiles('image/*',false,'Images',['png','jpg','jpeg','webp','tga','tif','tiff','bmp','psd','exr','hdr']);const f=fs[0];if(!f){if(!(L._fillImg&&L._fillImg[k])&&k!=='normal')s.src='value';done();return;}
   let t;try{t=await fileTarget(f);}catch(e){toast('Could not read '+f.name+': '+(e.message||e));if(k!=='normal')s.src='value';done();return;}
   setWrap(t,true);L._fillImg=L._fillImg||{};L._fillImg[k]=t;s.src='image';s.name=f.name;done();}
 /* painting, filters and fills on a fill layer go to its mask */
+/* painting, filling or a gradient on a material without a mask: the material itself is made from its settings,
+   so the paint goes into a new white mask (one undo step) */
+function fillAutoMask(){const n=doc.active;if(ui.mode==='bake'||sel.quick||!isLayer(n)||!n.fill||n.mask||n.fx)return;if(typeof lockStop==='function'&&lockStop({node:n}))return;
+  const r=maskRecord(n,null,makeMask(1),'Add mask');r.redo();pushUndo(r);n.editMask=true;changed(n);renderLayers();toast('Added a mask to paint on: black hides the material, white shows it.');}
 function fillMaskEdit(n){if(isLayer(n)&&n.fill&&n.mask&&!n.editMask)n.editMask=true;}
 /* Convert to pixels: the layer keeps what it shows now and becomes a normal layer */
 function fillRasterize(L){if(!L||!L.fill)return;const f=L.fill;L.fill=null;pushUndo({label:'Convert fill to pixels',refs:[L],undo(){L.fill=f;renderLayers();},redo(){L.fill=null;renderLayers();}});renderLayers();}
