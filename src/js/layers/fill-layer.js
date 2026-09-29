@@ -9,7 +9,7 @@
 /* projections (0.23.1): 0 UV (uUvM: offset/turn/scale), 1 triplanar, 2 planar, 3 spherical; uInv takes a world position
    into the projection's own space (its offset, rotation and scale) */
 const FS_FILLIMG=`uniform sampler2D uSrc; uniform float uTile; uniform float uRot; uniform int uGrey; uniform int uProj; uniform sampler2D uPos; uniform sampler2D uNrm;
-uniform float uSharp; uniform float uHStr; uniform int uHeight; uniform int uNormal; uniform mat4 uInv; uniform mat3 uUvM; uniform int uRep; uniform int uFront; in vec2 vUV;
+uniform float uSharp; uniform float uHStr; uniform int uHeight; uniform int uNormal; uniform mat4 uInv; uniform mat3 uUvM; uniform int uRep; uniform int uFront; uniform int uKeepA; in vec2 vUV;
 vec4 samp(vec2 t){ float c=cos(uRot),s=sin(uRot); t=mat2(c,s,-s,c)*(t-0.5)+0.5; return texture(uSrc,t); }
 vec4 sampL(vec2 t){ float c=cos(uRot),s=sin(uRot); t=mat2(c,s,-s,c)*(t-0.5)+0.5; return textureLod(uSrc,t,0.0); }
 void main(){ vec4 s;
@@ -18,12 +18,12 @@ void main(){ vec4 s;
     if(uProj==1){ vec3 N=normalize(mat3(uInv)*texelFetch(uNrm,q,0).xyz+1e-5); vec3 w=pow(abs(N),vec3(uSharp)); w/=max(w.x+w.y+w.z,1e-5); vec3 p=L*uTile*0.5;
       s=samp(p.zy)*w.x+samp(p.xz)*w.y+samp(p.xy)*w.z; }
     else if(uProj==2){ vec2 t=vec2(L.x*0.5+0.5,0.5-L.y*0.5);
-      if(uFront==1){ vec3 Nl=normalize(mat3(uInv)*texelFetch(uNrm,q,0).xyz+1e-5); if(Nl.z<0.15){ o=vec4(0.0); return; } } if(uRep==0&&(t.x<0.0||t.y<0.0||t.x>1.0||t.y>1.0)){ o=vec4(0.0); return; } s=samp(t*uTile); }
+      if(uFront==1){ vec3 Nl=normalize(mat3(uInv)*texelFetch(uNrm,q,0).xyz+1e-5); if(Nl.z<(uKeepA==1?0.5:0.15)){ o=vec4(0.0); return; } } if(uRep==0&&(t.x<0.0||t.y<0.0||t.x>1.0||t.y>1.0)){ o=vec4(0.0); return; } s=samp(t*uTile); }
     else { vec3 d=normalize(L+vec3(0.0,0.0,1e-6)); vec2 t=vec2(atan(d.x,d.z)/6.2831853+0.5,0.5-asin(clamp(d.y,-1.0,1.0))/3.1415927); s=sampL(t*uTile); } }
   else s=samp((uUvM*vec3(vUV,1.0)).xy*uTile);
   vec3 c=s.a>1e-6?s.rgb/s.a:vec3(0.0);
-  if(uGrey==1){ float g=dot(c,vec3(0.299,0.587,0.114)); if(uHeight==1) g=clamp(0.5+(g-0.5)*uHStr,0.0,1.0); o=vec4(vec3(g),1.0); return; }
-  if(uNormal==1){ o=vec4(c,1.0); return; }
+  if(uGrey==1){ float g=dot(c,vec3(0.299,0.587,0.114)); if(uHeight==1) g=clamp(0.5+(g-0.5)*uHStr,0.0,1.0); o=uKeepA==1?vec4(vec3(g)*s.a,s.a):vec4(vec3(g),1.0); return; }
+  if(uNormal==1){ o=uKeepA==1?vec4(c*s.a,s.a):vec4(c,1.0); return; }
   o=s; }`;
 let P_FILLIMG=null,fillCount=0;
 /* maps a fill can fill (curvature is a measurement, not a material) */
@@ -59,7 +59,7 @@ function fillRender(L,only){const f=L.fill;if(!f)return;const tri=pxfIs3D(f.proj
     if(!s.on){const t=mapT(L,k);if(t&&!t.empty)clearTarget(t);continue;}
     const T=ensureMapTarget(L,k),grey=MAP_DEFS[k].grey;
     if(s.src==='image'||s.src==='baked'||s.src==='conv'){const bk=s.src==='baked'||s.src==='conv',img=bk?doc.meshMaps&&doc.meshMaps[s.mm]:L._fillImg&&L._fillImg[k];if(!img){if(k==='normal')clearTarget(T,[.5,.5,1,1]);continue;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
-      run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},
+      run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
         uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}},(tri&&!bk?pxfUniforms(f.proj,f.xf):pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf))));continue;}
     if(k==='normal'){clearTarget(T,[.5,.5,1,1]);continue;}
     const c=grey?[s.v,s.v,s.v]:(s.c||[s.v,s.v,s.v]);clearTarget(T,[c[0],c[1],c[2],1]);}
@@ -70,7 +70,7 @@ function cmdNewFillLayer(preset){if(ui.mode==='anim'){toast('Fill layers are ava
   if(ui.mode!=='paint'&&ui.mode!=='p3d'&&typeof setMode==='function')setMode('paint',true);
   const L=newLayerObj(preset&&preset.name||'Fill '+(++fillCount));doc.count--;L.fill=fillDefaults();
   if(preset&&preset.maps){for(const k in L.fill.maps)L.fill.maps[k].on=false;for(const k in preset.maps)if(L.fill.maps[k])Object.assign(L.fill.maps[k],{on:true,src:'value'},preset.maps[k]);
-    for(const k of ['proj','triSharp','hStr','xf','rep','front'])if(preset[k]!=null)L.fill[k]=JSON.parse(JSON.stringify(preset[k]));L.fill.name=preset.name;
+    for(const k of ['proj','triSharp','hStr','xf','rep','front','decal'])if(preset[k]!=null)L.fill[k]=JSON.parse(JSON.stringify(preset[k]));L.fill.name=preset.name;
     if(preset.imgs){L._fillImg={};for(const k in preset.imgs){const s=preset.imgs[k],t=makeTarget(s.w,s.h,8,true);blit(s,t,0,0,s.w,s.h,0,0);L._fillImg[k]=t;}}
     const need=Object.keys(preset.maps).filter(k=>preset.maps[k].on!==false&&!doc.maps.includes(k)&&MAP_DEFS[k]&&!(doc.workflow==='spec'&&(k==='rough'||k==='metal')));
     if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the material');}

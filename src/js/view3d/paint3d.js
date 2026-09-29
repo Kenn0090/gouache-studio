@@ -237,11 +237,23 @@ function sendToP3(only){if(ui.mode!=='paint'){toast('Send to 3D Paint works from
   const vis=only?only.visible:true;if(only)only.visible=true;/* a hidden layer is sent as it would show */
   for(const k of maps){const t=renderNodesMap(R,k),c=makeTarget(doc.w,doc.h,t.depth,false);blit(t,c,0,0,doc.w,doc.h,0,0);release(t);imgs[k]=c;}
   if(only)only.visible=vis;
+  /* every map keeps only what shows in the base colour (a sticker has one outline) */
+  if(imgs.base)for(const k in imgs)if(k!=='base'){const t=acquireD(imgs[k].depth);run(p3StickerProg(),t,{uSrc:imgs[k].tex,uM:imgs.base.tex});blit(t,imgs[k],0,0,t.w,t.h,0,0);release(t);}
+  const aspect=doc.h/doc.w;
   if(!setMode('p3d',true)){for(const k in imgs)disposeTarget(imgs[k]);return;}
-  const L=newLayerObj(name+' (from Paint)');doc.count--;
-  for(const k in imgs){if(!doc.maps.includes(k)){disposeTarget(imgs[k]);continue;}fitInto(imgs[k],ensureMapTarget(L,k));disposeTarget(imgs[k]);}
-  syncTargets();structOp('Send from Paint',()=>{const [p,i]=insertPoint();insertNode(L,p,i);selectOnly(L);});changed(L);renderLayers();
-  toast('“'+name+'” is a new layer in “'+doc.name+'”. Press Ctrl+T to move and scale it.');return L;}
+  /* (0.27, Kenn) a live sticker: a material whose pictures are projected onto the model from where you are looking,
+     see-through where the painting is, with the move/turn/scale gizmo; right-click › Convert to pixels fixes it */
+  const chans={};for(const k in imgs)if(doc.maps.includes(k)&&!FILL_SKIP.includes(k))chans[k]={on:true,src:'image',name:name,tile:1,rot:0};
+  const L=cmdNewFillLayer({name:name+' (from Paint)',maps:chans,proj:'planar',rep:false,front:true,decal:true,xf:p3StickerXf(aspect),imgs});
+  for(const k in imgs)disposeTarget(imgs[k]);
+  if(L){L.fill.decal=true;fillRender(L);renderLayers();if(typeof showPanel==='function')showPanel('matEd');if(typeof renderMatEd==='function')renderMatEd(true);}
+  toast('“'+name+'” is on the model as a sticker, projected from this view. Drag the arrows, rings and boxes to move, turn and scale it; right-click › Convert to pixels fixes it.');return L;}
+const FS_STICKER=`uniform sampler2D uSrc; uniform sampler2D uM; void main(){ ivec2 p=ivec2(gl_FragCoord.xy); o=texelFetch(uSrc,p,0)*texelFetch(uM,p,0).a; }`;
+let P_STICKER=null;const p3StickerProg=()=>P_STICKER||(P_STICKER=program(FS_STICKER));
+/* a planar projection facing the camera, centred where it looks, half the model's size, the painting's proportions */
+function p3StickerXf(aspect){const c=v3.cam,eye=v3Eye(),tg=[c.tx,c.ty,c.tz],f=norm3(sub3(tg,eye));let r=cross3(f,[0,1,0]);if(Math.hypot(...r)<1e-4)r=[1,0,0];r=norm3(r);const u=cross3(r,f),bk=[-f[0],-f[1],-f[2]];
+  const R=[[r[0],u[0],bk[0]],[r[1],u[1],bk[1]],[r[2],u[2],bk[2]]].map(row=>row.map((v,j)=>j===1?v:-v)),{c:mc}=pxfModel();
+  return {t:[tg[0]-mc[0],tg[1]-mc[1],tg[2]-mc[2]],r:pxfEuler(R),s:aspect>1?[.5/aspect,.5,1]:[.5,.5*aspect,1]};}
 /* src into dst keeping its proportions, centred (the rest stays empty) */
 function fitInto(src,dst){const k=Math.min(dst.w/src.w,dst.h/src.h),off=[(dst.w-src.w*k)/2,(dst.h-src.h*k)/2];
   run(P.resample,dst,{uSrc:src.tex,uOffset:off,uScale:[1/k,1/k],uTaps:{int:Math.min(8,Math.max(1,Math.ceil(1/k)))},uOutside:[0,0,0,0]});}

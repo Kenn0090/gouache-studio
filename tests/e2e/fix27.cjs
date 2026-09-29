@@ -67,6 +67,19 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const r1=await p.evaluate(()=>__gs.doc.v3d.envRot||0),sl=+(await p.locator('#shEnvRot').inputValue());
  ok(Math.abs(r1-r0-40)<3&&Math.abs(sl-r1)<1.01,'Shift + right-drag turns the sky ('+r0+' → '+r1+'°, slider '+sl+')');
  await p.screenshot({path:OUT+'fix27-shader.png'});
+ /* 10. Paint › Send layer to 3D Paint: a live sticker projected from the view */
+ await p.click('#modeTabs [data-mode=paint]');await W(800);
+ await p.evaluate(()=>{const w=document.getElementById('welcome');if(w)w.remove();__gs.newDoc(160,160,8,null,'F',false);});await W(400);
+ {const q=await p.evaluate(()=>[__gs.toScreen(50,30),__gs.toScreen(110,130)]);await p.evaluate(()=>__gs.setFG([1,0,0]));await p.keyboard.press('m');
+  await p.mouse.move(q[0][0],q[0][1]);await p.mouse.down();await p.mouse.move(q[1][0],q[1][1],{steps:3});await p.mouse.up();await W(100);
+  await p.keyboard.press('Alt+Backspace');await W(200);await p.keyboard.press('Control+d');await W(200);}
+ await p.evaluate(()=>__gs.sendToP3(__gs.doc.active));await W(2500);
+ const stk=await p.evaluate(()=>{const L=__gs.doc.active,t=__gs.mapT(L,'base'),d=__gs.captureRegionNow(t,0,0,t.w,t.h).data;let red=0,other=0,cy=0;for(let i=0;i<d.length;i+=4){if(d[i+3]>200&&d[i]>200&&d[i+1]<60){red++;cy+=Math.floor(i/4/t.w);}else if(d[i+3]>20)other++;}
+   return {mode:__gs.mode,decal:!!(L.fill&&L.fill.decal),proj:L.fill&&L.fill.proj,mask:!!L.mask,red,other,cy:cy/Math.max(1,red)};});
+ ok(stk.mode==='p3d'&&stk.decal&&stk.proj==='planar'&&!stk.mask&&stk.red>150&&stk.other<stk.red*.2,'a sent layer lands on the model as a see-through sticker '+JSON.stringify(stk));
+ await p.evaluate(()=>{const L=__gs.doc.active;L.fill.xf.t[1]+=.4;__gs.fillRender(L);});await W(300);
+ const moved=await p.evaluate(()=>{const L=__gs.doc.active,t=__gs.mapT(L,'base'),d=__gs.captureRegionNow(t,0,0,t.w,t.h).data;let red=0,cy=0;for(let i=0;i<d.length;i+=4)if(d[i+3]>200&&d[i]>200&&d[i+1]<60){red++;cy+=Math.floor(i/4/t.w);}return {red,cy:cy/Math.max(1,red)};});
+ ok(moved.red>50&&Math.abs(moved.cy-stk.cy)>3,'moving it changes where it lands ('+stk.cy.toFixed(1)+' → '+moved.cy.toFixed(1)+')');
  /* 7. New document › Start in: a new 3D Paint project at the chosen size */
  await p.evaluate(()=>__gs.act('new'));await W(300);
  ok(await p.locator('#dStart').isVisible(),'New document has a Start in choice');
