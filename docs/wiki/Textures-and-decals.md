@@ -29,7 +29,7 @@ Each decal carries colour, height (so the normal shows its shape), roughness and
 - **Import your own…** turns a PNG with transparency (a logo, a label) into a decal.
 
 ## Materials library
-The Materials panel's **Library** has 75 ready-made materials, mostly for characters and weapons, split into categories you pick with the buttons above it: **Metal** (steels, gunmetal, blued gun metal, titanium, brushed aluminium, chrome, gold, brass, copper, bronze, rust, chainmail, a carbon-look weave, knurled grip…), **Leather** (from red and black to snakeskin, tufted and padded), **Fabric** (denim, linen, wool, tartan, plaid, velvet, knit, felt…), **Plastic & rubber** (gun polymer, grip rubber…), **Wood** (walnut and more), and **Ground & nature** (dirt, mud, gravel, sand, snow, grass, moss…).
+The Materials panel's **Library** has 75 ready-made materials, mostly for characters and weapons, split into categories you pick with the buttons above it: **Metal** (steels, gunmetal, blued gun metal, titanium, brushed aluminium, chrome, polished gold, brass, copper, bronze, rust, chainmail, a carbon-look weave, knurled grip…), **Leather** (from red and black to snakeskin, tufted and padded), **Fabric** (denim, linen, wool, tartan, plaid, velvet, knit, felt…), **Plastic & rubber** (gun polymer, grip rubber…), **Wood** (walnut and more), and **Ground & nature** (dirt, mud, gravel, sand, snow, grass, moss…).
 
 ![Brown leather from the library](images/library-leather.png)
 
