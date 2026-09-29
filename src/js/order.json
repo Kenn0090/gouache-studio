@@ -79,6 +79,7 @@
         "layers/mat-import",
         "ui/lib-drag",
         "ui/textures",
+        "view3d/decals",
         "bake/bake-gpu",
         "bake/bake-ui",
         "bake/bake-tab",

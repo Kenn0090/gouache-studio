@@ -54,7 +54,7 @@ function txThumbOf(t){const S=72,s=makeTarget(S,S,8,false);copyScaled(t,s);const
 async function txThumb(it,img){const key=it.kind+':'+it.id;if(tx.thumbs.has(key)){img.src=tx.thumbs.get(key);return;}
   try{const t=await txTarget(it);const u=txThumbOf(t);tx.thumbs.set(key,u);img.src=u;}catch(e){img.alt='?';}}
 /* your own textures (IndexedDB store 'textures', pictures packed) */
-async function txLoad(){if(tx.loaded)return;tx.loaded=true;try{tx.mine=((await store.all('textures'))||[]).sort((a,b)=>(a.t||0)-(b.t||0));}catch(e){tx.mine=[];}renderTextures();}
+async function txLoad(){if(tx.loaded)return;tx.loaded=true;try{tx.mine=((await store.all('textures'))||[]).filter(r=>!r.decal).sort((a,b)=>(a.t||0)-(b.t||0));}catch(e){tx.mine=[];}renderTextures();}
 async function txAddTarget(t,name){const rec={id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name,t:Date.now(),w:t.w,h:t.h,data:captureRegionNow(t,0,0,t.w,t.h).data};
   tx.mine.push(rec);tx.cache.set('mine:'+rec.id,t);await store.put(rec,'textures');return rec;}
 async function txImport(){const fs=await pickFiles('image/*,.gtex',true,'Textures and texture packs',['png','jpg','jpeg','webp','tga','tif','tiff','bmp','psd','gtex']);let n=0;

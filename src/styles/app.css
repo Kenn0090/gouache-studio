@@ -772,3 +772,4 @@ body.libdragging,body.libdragging *{cursor:grabbing!important;user-select:none}
 .embsw{width:18px;height:18px;border-radius:4px;border:1px solid var(--line-2);display:inline-block}
 .txtile img{width:72px;height:72px;border-radius:4px;background:#000;object-fit:cover}
 .gmthumb{width:56px;height:56px;border-radius:50%;object-fit:cover}
+.dctile img{width:56px;height:56px;object-fit:contain;background:#3a3d42;border-radius:6px}.dctile.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
