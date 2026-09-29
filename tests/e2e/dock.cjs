@@ -59,7 +59,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.setWorkspace('texturing'));await W(800);ok(await p.evaluate(()=>__gs.v3.on),'Texturing opens the 3D view');
  await p.evaluate(()=>__gs.setWorkspace('paint3d'));await W(800);ok(await p.evaluate(()=>__gs.v3.on&&__gs.v3.paintOn),'3D Paint: 3D view with painting on the model');
  await p.evaluate(()=>__gs.setWorkspace('painting'));await W(400);await p.evaluate(()=>__gs.act('wsReset'));await W(300);
- ok((await L()).groups.map(g=>g.tabs.join('+')).join(' | ').startsWith('p3d+brushtab+conv+bake+anim | color+matEd | brushes+stencils+mats+tool'),'Reset puts Painting back');
+ ok((await L()).groups.map(g=>g.tabs.join('+')).join(' | ').startsWith('p3d+brushtab+conv+bake+anim | color+matEd+shading | brushes+stencils+mats+tool'),'Reset puts Painting back');
  // toolbar
  await p.evaluate(()=>__gs.act('tbCols'));await W(300);let tw=await p.evaluate(()=>document.querySelector('#tools').getBoundingClientRect().width);ok(tw>70,'toolbar: two columns ('+tw+'px)');
  await p.evaluate(()=>__gs.act('tbSide'));await W(300);let tx=await p.evaluate(()=>document.querySelector('#tools').getBoundingClientRect().left);ok(tx>600,'toolbar on the right ('+tx+')');

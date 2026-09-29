@@ -45,7 +45,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* a Paint row: painting goes into it; the brush eraser really erases it */
  await p.evaluate(()=>{const A=__gs.doc.active;__gs.msAdd(A,'paint');});await W(200);
  ok(await p.evaluate(()=>{const A=__gs.doc.active,r=__gs.msRowOf(__gs.ui.msSel);return r&&r.kind==='paint'&&A.editMask;}),'a new Paint row is selected and the mask is being edited');
- await setFG('#000000');await p.evaluate(()=>{document.activeElement.blur();Object.assign(__gs.brush,{size:30,hardness:1,opacity:1,flow:1,smoothing:0,lazy:0,pSize:false,tip:null});});await p.keyboard.press('b');
+ await setFG('#000000');await p.evaluate(()=>{document.activeElement.blur();__gs.setTool('brush');Object.assign(__gs.brush,{size:30,hardness:1,opacity:1,flow:1,smoothing:0,lazy:0,pSize:false,tip:null});});
  await drag(10,64,50,64);c=await px('base',30,64);ok(c[1]>240,'painting black in the Paint row hides the layer there '+c);
  const onRow=await p.evaluate(()=>{const r=__gs.msRowOf(__gs.ui.msSel),d=__gs.readRGBA8(r.t),W=__gs.doc.w;return [d[(64*W+30)*4+3],d[(64*W+100)*4+3]];});ok(onRow[0]>200&&onRow[1]===0,'the stroke is in the Paint row, the rest of it is clear '+onRow);
  await p.keyboard.press('e');await drag(10,64,50,64);await p.keyboard.press('b');
