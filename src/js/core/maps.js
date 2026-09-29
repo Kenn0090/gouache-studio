@@ -24,7 +24,9 @@ function mapDepth(k){return k==='height'&&canFloat?16:doc.depth;}
 /* what a map shows where no layer has painted it */
 function mapDefault(k){if(k==='base')return [0,0,0,0];if(k==='normal')return [.5,.5,1,1];if(k==='emis')return [0,0,0,1];
   const v=doc.mapDef&&doc.mapDef[k]!=null?doc.mapDef[k]:MAP_DEFS[k].def;return [v,v,v,1];}
-function mapModeOf(n,k){if(n.type==='group')return n.mode;if(k==='base')return n.mode;const m=n.mapModes&&n.mapModes[k];return m!=null?m:MAP_DEFS[k].blend;}
+function mapModeOf(n,k){if(n.type==='group')return n.mode;if(k==='base')return n.mode;
+  /* (0.28.1, Kenn) a material ("Hide the bumps below", on unless unticked) replaces the height under it instead of adding to it */
+  if(k==='height'&&n.fill&&n.fill.coverH!==false)return 0;const m=n.mapModes&&n.mapModes[k];return m!=null?m:MAP_DEFS[k].blend;}
 function setMapModeOf(n,k,m){if(k==='base'||n.type==='group'){n.mode=m;return;}n.mapModes=n.mapModes||{};n.mapModes[k]=m;}
 const mapT=(L,k)=>L.maps?L.maps[k]:(k==='base'?L.target:null);
 const hasMap=(L,k)=>{const t=mapT(L,k);return !!t&&!t.empty;};

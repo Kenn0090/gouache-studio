@@ -19,7 +19,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.newDoc(256,256,8,[1,1,1],'tex',false,'pbr'));await W(300);
  await p.evaluate(()=>__gs.showPanel('textures'));await W(1500);
  const n=await p.evaluate(()=>({all:document.querySelectorAll('#txGrid .txtile').length,thumbs:[...document.querySelectorAll('#txGrid .txtile img')].filter(i=>i.src.startsWith('data:')).length}));
- ok(n.all===25,'the panel lists 13 photo grunge and 12 generated textures ('+n.all+')');
+ ok(n.all===52,'the panel lists 40 photo grunge and 12 generated textures ('+n.all+')');
  await p.locator('#txSec').screenshot({path:OUT+'tex-panel.png'});
  /* a photo grunge and a generated one decode to real pictures */
  const px=await p.evaluate(async()=>{const a=await __gs.txTarget({kind:'photo',id:'drips',name:'Drips'}),b=await __gs.txTarget({kind:'gen',id:'cells',name:'Cells'});

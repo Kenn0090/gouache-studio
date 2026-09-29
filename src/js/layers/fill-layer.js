@@ -56,6 +56,8 @@ function fillPosMaps(){const m=v3.mesh,g=v3.gpu;if(!m||!g||m.noUV)return null;co
 /* redraw a fill layer's maps from its settings (image maps need their picture in memory) */
 function fillRender(L,only){const f=L.fill;if(!f)return;const tri=pxfIs3D(f.proj)?fillPosMaps():null;
   for(const k of fillMapsOf()){if(only&&k!==only)continue;const s=f.maps[k]||(f.maps[k]=fillDefaults().maps[k]);
+    /* Hide the bumps below: a flat height and normal even where the material has none of its own (decals only cover their outline) */
+    if(!s.on&&f.coverH!==false&&!f.decal&&(k==='height'||k==='normal')&&doc.maps.includes(k)){clearTarget(ensureMapTarget(L,k),k==='normal'?[.5,.5,1,1]:[.5,.5,.5,1]);continue;}
     if(!s.on){const t=mapT(L,k);if(t&&!t.empty)clearTarget(t);continue;}
     const T=ensureMapTarget(L,k),grey=MAP_DEFS[k].grey;
     if(s.src==='image'||s.src==='baked'||s.src==='conv'){const bk=s.src==='baked'||s.src==='conv',img=bk?doc.meshMaps&&doc.meshMaps[s.mm]:L._fillImg&&L._fillImg[k];if(!img){if(k==='normal')clearTarget(T,[.5,.5,1,1]);continue;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
@@ -144,6 +146,8 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
         if(k==='height'&&has)row.append(makeSlider({id:'fl_hs',label:'Bump strength',min:0,max:4,step:.05,value:W.hStr==null?1:W.hStr,fmt:pct,onInput:v=>edit(()=>{W.hStr=v;},k)}).el,
           el('p',{class:'note',text:'Height makes bump detail: the normal follows it, on the model and in exported normal maps.'}));}}
     box.append(row);}
+  box.append(chk('fl_cover','Hide the bumps below',W.coverH!==false,v=>edit(()=>{W.coverH=v;},null)),
+    el('p',{class:'note',text:'On: this material covers the height and normal detail of the layers under it. Off: its bumps are added on top of theirs.'}));
   const miss=['rough','metal','height','normal','emis','opac'].filter(k=>!doc.maps.includes(k)&&!(doc.workflow==='spec'&&(k==='rough'||k==='metal')));
   if(miss.length)box.append(el('div',{class:'chips'},el('span',{class:'note',text:'Add a map:'}),...miss.map(k=>el('button',{class:'btn sm',text:MAP_DEFS[k].label,onclick:()=>{matEdCommit();setDocMaps([...doc.maps,k],'Add a map for the material');fillRender(L);renderMatEd(true);}}))));
   box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'fl_save',text:'Save to Materials',title:'Keep this material in the Materials tab for other layers and projects',onclick:()=>{matEdCommit();if(typeof matSaveFromFill==='function')matSaveFromFill(L,L.fill);}})),

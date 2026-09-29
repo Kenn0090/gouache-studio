@@ -27,7 +27,7 @@ const CHANGELOG = fs.existsSync(r('CHANGELOG.md')) ? read('CHANGELOG.md') : '';
    files themselves are copied next to the desktop app and loaded when first used */
 const GMATS = fs.existsSync(r('assets/materials')) ? fs.readdirSync(r('assets/materials')).filter(f => f.endsWith('.gmat')).sort().map(f => {
   let b = fs.readFileSync(r('assets/materials/' + f)); if (b[0] === 0x1f && b[1] === 0x8b) b = zlib.gunzipSync(b);
-  const j = JSON.parse(b.toString('utf8')); return { file: f, name: j.name || f.replace(/\.gmat$/, ''), thumb: j.thumb || '', credit: j.credit || '', kind: j.kind || 'material' };
+  const j = JSON.parse(b.toString('utf8')); return { file: f, name: j.name || f.replace(/\.gmat$/, ''), thumb: j.thumb || '', credit: j.credit || '', kind: j.kind || 'material', cat: j.cat || 'Other' };
 }) : [];
 const js = `const APP_VERSION='${APP_VERSION}';\nconst GM_BUNDLED=${JSON.stringify(GMATS).replace(/<\//g, '<\\/')};\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\nconst CHANGELOG_MD=${JSON.stringify(CHANGELOG).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
 const css = read('src/styles/app.css');

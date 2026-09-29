@@ -34,7 +34,10 @@ async function gmatImgs(j){const imgs={};
   return imgs;}
 /* ---- the Library: materials shipped with the app (assets/materials, e.g. from ambientCG), loaded when first used ---- */
 const GM_RAW='https://raw.githubusercontent.com/Kenn0090/gouache-studio/main/assets/materials/';
-const gmRecs=(typeof GM_BUNDLED!=='undefined'?GM_BUNDLED:[]).filter(g=>g.kind==='material').map(g=>({id:'s:'+g.file,name:g.name,builtin:true,bundled:g,thumb:g.thumb,credit:g.credit}));
+const gmRecs=(typeof GM_BUNDLED!=='undefined'?GM_BUNDLED:[]).filter(g=>g.kind==='material').map(g=>({id:'s:'+g.file,name:g.name,builtin:true,bundled:g,thumb:g.thumb,credit:g.credit,cat:g.cat||'Other'}));
+/* the Library's categories (Kenn: "almost triple the amount", so it is split up) */
+const GM_CATS=['Metal','Leather','Fabric','Plastic & rubber','Wood','Ground & nature','Other'];
+let gmCat=(()=>{try{return localStorage.getItem('gs.gmCat')||'Metal';}catch(e){return 'Metal';}})();
 async function gmFetch(file){for(const u of (location.protocol==='file:'?[]:['materials/'+file]).concat([GM_RAW+file])){try{const r=await fetch(u);if(r.ok)return new Uint8Array(await r.arrayBuffer());}catch(e){}}
   throw new Error(platform.isDesktop?'the file is missing':'it could not be downloaded (the web version needs the internet for the library)');}
 async function gmLoad(rec){if(rec.fill&&rec.imgs)return rec;if(rec._loading)return rec._loading;
@@ -57,7 +60,8 @@ function renderMats(){const box=document.getElementById('matBody');if(!box)retur
       el('button',{class:'btn sm',text:'⤓',title:'Export as a .gmat file','aria-label':'Export '+rec.name,onclick:()=>matExport(rec)}),el('button',{class:'btn sm',text:'×',title:'Delete from Materials','aria-label':'Delete '+rec.name,onclick:()=>matDelete(rec)})));return w;};
   box.replaceChildren(el('div',{class:'chips'},el('button',{class:'btn sm',id:'matNew',text:'New material…',title:'A new material layer, with the material editor',onclick:()=>cmdNewFillLayer()}),el('button',{class:'btn sm',text:'Import…',title:'A .gmat file saved from Gouache Studio',onclick:matImport}),el('button',{class:'btn sm',id:'matFromTex',text:'From textures…',title:'Make a material from downloaded textures (a folder, images or a .zip)',onclick:()=>dlgMatFromTextures()})),
     ...(mats.length?[el('div',{class:'sub',text:'Yours'}),el('div',{class:'matgrid',id:'matMine'},...mats.map(tile))]:[]),
-    ...(gmRecs.length?[el('div',{class:'sub',text:'Library'}),el('div',{class:'matgrid',id:'matLib'},...gmRecs.map(rec=>el('button',{class:'mattile',id:'gm_'+rec.bundled.file.replace(/\.gmat$/,''),_libDrag:['mat',rec],title:rec.name+(rec.credit?' ('+rec.credit+')':'')+': click to add as a material layer',onclick:()=>gmApply(rec)},
+    ...(gmRecs.length?[el('div',{class:'sub',text:'Library ('+gmRecs.length+')'}),segChips([...GM_CATS.filter(c=>gmRecs.some(r=>r.cat===c)).map(c=>[c,c+' '+gmRecs.filter(r=>r.cat===c).length]),['all','All']],()=>gmCat,v=>{gmCat=v;try{localStorage.setItem('gs.gmCat',v);}catch(e){}renderMats();}),
+      el('div',{class:'matgrid',id:'matLib'},...gmRecs.filter(r=>gmCat==='all'||r.cat===gmCat).map(rec=>el('button',{class:'mattile',id:'gm_'+rec.bundled.file.replace(/\.gmat$/,''),_libDrag:['mat',rec],title:rec.name+(rec.credit?' ('+rec.credit+')':'')+': click to add as a material layer',onclick:()=>gmApply(rec)},
       el('img',{src:rec.thumb,alt:'',width:56,height:56,class:'gmthumb'}),el('span',{text:rec.name}))))]:[]),
     el('div',{class:'sub',text:'Built in'}),el('div',{class:'matgrid'},...matBuiltins().map(tile)),
     el('div',{class:'sub',text:'Smart materials'}),el('div',{class:'matgrid',id:'smGrid'},...smarts.map(r=>stile(r,false)),...smBuiltins().map(r=>stile(r,false))),

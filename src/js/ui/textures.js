@@ -5,7 +5,11 @@
    - Yours: pictures you import, kept on this computer; share them as .gtex packs
    Click one for what to do with it: a picture row in the mask, a material channel, a new layer, a stencil, a brush tip. */
 const TX_GEN=[['clouds','Clouds'],['cells','Cells'],['cracks','Cracks'],['grain','Grain'],['ridges','Ridges'],['streaks','Streaks (noise)'],['scratchy','Fine scratches'],['blotches','Blotches'],['dots','Dots'],['weave','Weave'],['bricks','Bricks'],['pits','Pits']];
-const TX_PHOTO=[['streaks','Streaks'],['rings','Water rings'],['specks','Specks'],['stains','Stains'],['drips','Drips'],['splotches','Splotches'],['spatter','Spatter'],['scratches','Scratches'],['dirt','Dirt'],['dust','Dust'],['fingerprints','Fingerprints'],['smears','Smears'],['leaks','Leak streaks']];
+const TX_PHOTO=[['streaks','Streaks'],['rings','Water rings'],['specks','Specks'],['stains','Stains'],['drips','Drips'],['splotches','Splotches'],['spatter','Spatter'],['scratches','Scratches'],['dirt','Dirt'],['dust','Dust'],['fingerprints','Fingerprints'],['smears','Smears'],['leaks','Leak streaks'],
+  ['circles','Circles'],['scattered-rings','Scattered rings'],['chips','Chips'],['grime','Grime'],['fine-grime','Fine grime'],['speckle','Speckle'],['micro-scratches','Micro scratches'],['faint-marks','Faint marks'],
+  ['prints','Prints'],['prints-2','Prints 2'],['hand-print','Hand print'],['thumb-prints','Thumb prints'],['smudges','Smudges'],['greasy-prints','Greasy prints'],['print-smears','Print smears'],['oily-marks','Oily marks'],
+  ['wipe','Wipe'],['brush-smears','Brush smears'],['streaky-wipes','Streaky wipes'],['swipes','Swipes'],
+  ['leaks-2','Leaks 2'],['leaks-3','Leaks 3'],['leaks-4','Leaks 4'],['leaks-5','Leaks 5'],['leaks-6','Leaks 6'],['leaks-7','Leaks 7'],['leaks-8','Leaks 8']];
 const tx={show:(()=>{try{return localStorage.getItem('gs.txShow')||'all';}catch(e){return 'all';}})(),mine:[],loaded:false,cache:new Map(),thumbs:new Map()};
 /* seamless grey patterns: periodic noise so every one tiles */
 const FS_TXGEN=`uniform int uKind; uniform float uSeed; uniform vec2 uOut;

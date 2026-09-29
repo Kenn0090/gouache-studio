@@ -231,3 +231,7 @@ Kenn's list, all done: `fillNoMask()` (painting a material without a mask does n
 - **Decals** `view3d/decals.js` (dock id `decals`, p3d): procedural canvases per channel (dcDraw), armed tile + click on #v3Hit → planar sticker fill layer facing the surface (`dcXf`, `dcNormalAt` via sel3Tri); your own decals in store 'textures' with decal:true.
 - Tests: ui28, id28, tess28, emb28, comp28, tex28, lib28, dec28 (gfile now saves with Smaller files off for its exact round trip).
 - Open idea for Kenn: normal detail from layers below still shows through a material on top (normal maps combine); a "replace" option could come later.
+
+## 0.28.1 (building)
+- Materials cover the bumps below by default (`fill.coverH!==false`: height map mode 0 in `mapModeOf`, flat height/normal written by fillRender when the channel is off; decals excluded); Material panel tick `#fl_cover` "Hide the bumps below". Test cover281.
+- Library now 75 materials, character/weapon focused (+ a few nature: grass, moss, mossy ground, sand, snowy ground, bark); each .gmat has `cat` (Metal, Leather, Fabric, Plastic & rubber, Wood, Ground & nature); Library category chips (GM_CATS, localStorage gs.gmCat). Photo grunge now 40 (TX_PHOTO). ~38 MB materials + 9.5 MB grunge.
