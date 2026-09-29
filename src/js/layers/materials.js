@@ -18,16 +18,16 @@ function matSaveFromFill(L,f){const name=(L.name||'Material').trim(),imgs={};
   store.put(rec,'materials');renderMats();toast((old?'Updated':'Saved')+' “'+name+'” in Materials.');}
 function matDelete(rec){confirmDlg('Delete material','Delete the material “'+rec.name+'” from Materials? Layers that use it keep it.','Delete',()=>{
   const i=matLib.list.indexOf(rec);if(i>=0)matLib.list.splice(i,1);if(rec._t)for(const k in rec._t)disposeTarget(rec._t[k]);store.del(rec.id,'materials');renderMats();});}
-/* .gmat: the material as JSON, its images as PNG */
+/* .gmat: the material as gzipped JSON, its images as PNG or WebP */
 async function matExport(rec){if(rec.kind==='smart'||rec.kind==='smask'){const body=await smImgsOut(rec.kind==='smart'?{tree:rec.tree}:{mask:rec.mask});
-    const blob=new Blob([JSON.stringify(Object.assign({app:'Gouache Studio',kind:rec.kind,v:1,name:rec.name},body))],{type:'application/json'});const r=await deliver(slug(rec.name)+'.gmat',blob);toast(deliveredText(r,rec.kind==='smart'?'Smart material':'Smart mask'));return;}
+    const blob=await gmatBlob(Object.assign({app:'Gouache Studio',kind:rec.kind,v:1,name:rec.name},body));const r=await deliver(slug(rec.name)+'.gmat',blob);toast(deliveredText(r,rec.kind==='smart'?'Smart material':'Smart mask'));return;}
   const imgs={};for(const k in rec.imgs||{}){const im=rec.imgs[k],c=document.createElement('canvas');c.width=im.w;c.height=im.h;const x=c.getContext('2d'),id=x.createImageData(im.w,im.h),d=im.data;
     for(let i=0;i<d.length;i+=4){const a=d[i+3]||1;id.data[i]=Math.min(255,d[i]*255/a);id.data[i+1]=Math.min(255,d[i+1]*255/a);id.data[i+2]=Math.min(255,d[i+2]*255/a);id.data[i+3]=d[i+3];}
-    x.putImageData(id,0,0);imgs[k]={w:im.w,h:im.h,png:c.toDataURL('image/png')};}
-  const blob=new Blob([JSON.stringify({app:'Gouache Studio',kind:'material',v:1,name:rec.name,fill:rec.fill,imgs})],{type:'application/json'});
+    x.putImageData(id,0,0);imgs[k]={w:im.w,h:im.h,png:pxDataURL(c,k)};}
+  const blob=await gmatBlob({app:'Gouache Studio',kind:'material',v:1,name:rec.name,fill:rec.fill,imgs});
   const r=await deliver(slug(rec.name)+'.gmat',blob);toast(deliveredText(r,'Material'));}
 async function matImport(){const fs=await pickFiles('.gmat,application/json',true,'Gouache Studio materials',['gmat']);let n=0;
-  for(const f of fs){try{const j=JSON.parse(await f.text());
+  for(const f of fs){try{const j=await gmatParse(f);
       if((j.kind==='smart'&&j.tree)||(j.kind==='smask'&&j.mask)){const body=await smImgsIn(j.kind==='smart'?{tree:j.tree}:{mask:j.mask});smPut(Object.assign({kind:j.kind,name:j.name||baseName(f.name)},body));n++;continue;}
       if(j.kind!=='material'||!j.fill)throw new Error('not a material');const imgs={};
       for(const k in j.imgs||{}){const im=j.imgs[k],img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('bad image'));i.src=im.png;});

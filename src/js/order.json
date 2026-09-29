@@ -46,6 +46,7 @@
         "files/tex-export",
         "files/model-export",
         "files/engine-send",
+        "files/pixel-pack",
         "files/gouache-file",
         "filters/filter-shaders",
         "filters/converters",

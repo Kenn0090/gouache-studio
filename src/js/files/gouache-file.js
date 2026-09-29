@@ -2,7 +2,7 @@
    Gouache Studio's own file: everything the app knows about a document, so nothing is lost
    between sessions (maps, per-map blend modes, masks, live gradients, editable text, animation).
    Layout: "GOUACHE\0", u32 version, u32 header length, header JSON (UTF-8), then image blobs.
-   Each image is stored premultiplied, cropped to where it has content, and deflated on its own:
+   Each image is stored premultiplied, cropped to where it has content, and packed on its own (files/pixel-pack.js):
    8-bit images as bytes, 16-bit images as half floats. */
 const GF_MAGIC=[71,79,85,65,67,72,69,0],GF_VERSION=1;
 function readRegion(t,x,y,w,h){gl.bindFramebuffer(gl.FRAMEBUFFER,t.fbo);let out;
@@ -16,18 +16,19 @@ function writeRegion(t,x,y,w,h,bytes){gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.pix
 /* in the Bake or Convert tab, the painting is what gets saved */
 async function encodeGouache(){return tabDocs.paint?withPaintDocAsync(encodeGouacheNow):encodeGouacheNow();}
 async function encodeGouacheNow(opts){opts=opts||{};const blobs=[];let off=0;/* lean: a 3D Paint texture set (no model, no bake fixes) */
-  const put=async(t,full)=>{if(!t||t.empty)return null;const b=full?[0,0,doc.w,doc.h]:contentBounds(t);if(!b)return null;
-    const [x,y]=b,w=b[2]-b[0],h=b[3]-b[1],c=await streamThrough(readRegion(t,x,y,w,h),'deflate-raw');blobs.push(c);const r={o:off,n:c.length,r:[x,y,w,h],d:t.depth};off+=c.length;return r;};
+  /* pictures are packed (files/pixel-pack.js): lossless, or WebP for colour and grey maps with Smaller files on */
+  const put=async(t,full,lossy)=>{if(!t||t.empty)return null;const b=full?[0,0,doc.w,doc.h]:contentBounds(t);if(!b)return null;
+    const [x,y]=b,w=b[2]-b[0],h=b[3]-b[1],c=await pxPack(readRegion(t,x,y,w,h),w,h,t.depth,lossy);blobs.push(c.bytes);const r={o:off,n:c.bytes.length,r:[x,y,w,h],d:t.depth,f:c.f};off+=c.bytes.length;return r;};
   const mask=async n=>n.mask?{en:n.mask.enabled,img:await put(n.mask.target,true)}:null;
-  const putRaw=async t=>{const c=await streamThrough(readRegion(t,0,0,t.w,t.h),'deflate-raw');blobs.push(c);const r={o:off,n:c.length,w:t.w,h:t.h};off+=c.length;return r;};
+  const putRaw=async t=>{const c=await pxPack(readRegion(t,0,0,t.w,t.h),t.w,t.h,t.depth,false);blobs.push(c.bytes);const r={o:off,n:c.bytes.length,w:t.w,h:t.h,d:t.depth,f:c.f};off+=c.bytes.length;return r;};
   const node=async n=>{const base={name:n.name,vis:n.visible,op:n.opacity,mode:n.mode,mask:await mask(n),lockPx:n.lockPx||undefined,lockPos:n.lockPos||undefined,lockAll:n.lockAll||undefined};
     /* mask rows and content effects (0.23) */
     {const ms=await msEncode(n,put,putRaw);if(ms.stack)base.mstack=ms.stack;if(ms.cfx)base.cfx=ms.cfx;}
     if(n.type==='group'){const kids=[];for(const c of n.children)kids.push(await node(c));return Object.assign(base,{t:'G',open:n.open,kids});}
     if(n.fx)return Object.assign(base,{t:'F',clip:n.clip,mapModes:n.mapModes||{},fx:{map:n.fx.map,stack:fxCleanStack(n.fx.stack)}});
-    const maps={};for(const k of mapKeysOf(n)){const r=await put(mapT(n,k));if(r)maps[k]=r;}
+    const maps={};for(const k of mapKeysOf(n)){const r=await put(mapT(n,k),false,PX_LOSSY.has(k));if(r)maps[k]=r;}
     /* a material layer's own images (so it stays editable after opening) */
-    let fillImg;if(n.fill&&n._fillImg){fillImg={};for(const k in n._fillImg){const t=n._fillImg[k],c=await streamThrough(readRegion(t,0,0,t.w,t.h),'deflate-raw');blobs.push(c);fillImg[k]={o:off,n:c.length,w:t.w,h:t.h};off+=c.length;}}
+    let fillImg;if(n.fill&&n._fillImg){fillImg={};for(const k in n._fillImg){const t=n._fillImg[k],c=await pxPack(readRegion(t,0,0,t.w,t.h),t.w,t.h,t.depth,PX_LOSSY.has(k));blobs.push(c.bytes);fillImg[k]={o:off,n:c.bytes.length,w:t.w,h:t.h,f:c.f};off+=c.bytes.length;}}
     return Object.assign(base,{t:'L',clip:n.clip,lock:n.lockAlpha,mapModes:n.mapModes||{},maps,text:n.text?cloneText(n.text):undefined,grad:n.grad||undefined,array:n.array||undefined,arrBox:n.array?n.arrBox:undefined,styles:n.styles||undefined,shape:n.shape||undefined,fill:n.fill||undefined,idSel:n.idSel||undefined,fillImg,hold:n.frame?n.hold:undefined});};
   const R=paintRoot(),kids=[];for(const c of R.children){kids.push(await node(c));await tick();}
   const all=allLayers(R),active=doc.active&&!doc.active.frame?allNodes(R).indexOf(doc.active):-1;
@@ -70,7 +71,7 @@ async function openGouache(buf,name){const {head,data}=gfHead(buf);if(tabDocs.pa
 /* the maps, settings and layers of a document into the current (blank, right-sized) one; returns the image and layer readers */
 async function gfReadInto(buf,head,data){
   Object.assign(doc,{maps:head.maps||['base'],mapDef:head.mapDef||{},workflow:head.workflow==='spec'?'spec':'metal',nrmStr:head.nrmStr!=null?head.nrmStr:8,light:head.light||{az:135,el:40}});if(head.p3)doc.p3=true;
-  const img=async(r,t)=>{if(!r)return;const raw=await streamThrough(new Uint8Array(buf,data+r.o,r.n),'deflate-raw',true);const [x,y,w,h]=r.r;
+  const img=async(r,t)=>{if(!r)return;const [x,y,w,h]=r.r,raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),w,h,r.d||8,r.f);
     if(r.d===t.depth){writeRegion(t,x,y,w,h,raw);return;}
     /* stored at another depth (e.g. 16-bit file on a GPU without float targets): convert */
     const n=w*h*4,out=t.depth===16?new Uint16Array(n):new Uint8Array(n);
@@ -83,10 +84,10 @@ async function gfReadInto(buf,head,data){
     else{n=newLayerObj(o.name);n.clip=!!o.clip;n.lockAlpha=!!o.lock;n.mapModes=Object.assign({},o.mapModes||{});
       for(const k in o.maps||{}){if(k!=='base'&&!doc.maps.includes(k))continue;const t=k==='base'?n.maps.base:ensureMapTarget(n,k);await img(o.maps[k],t);}
       if(o.text)n.text=o.text;if(o.grad)n.grad=o.grad;if(o.array){n.array=o.array;n.arrBox=o.arrBox||null;}if(o.styles)n.styles=o.styles;if(o.shape)n.shape=o.shape;if(o.fill)n.fill=o.fill;if(o.idSel)n.idSel=o.idSel;
-      if(o.fillImg){n._fillImg={};for(const k in o.fillImg){const r=o.fillImg[k],raw=await streamThrough(new Uint8Array(buf,data+r.o,r.n),'deflate-raw',true),t=makeTarget(r.w,r.h,8,true);writeRegion(t,0,0,r.w,r.h,raw);n._fillImg[k]=t;}}}
+      if(o.fillImg){n._fillImg={};for(const k in o.fillImg){const r=o.fillImg[k],raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),r.w,r.h,8,r.f),t=makeTarget(r.w,r.h,8,true);writeRegion(t,0,0,r.w,r.h,raw);n._fillImg[k]=t;}}}
     Object.assign(n,{visible:o.vis!==false,opacity:o.op==null?1:o.op,mode:o.mode==null?(o.t==='G'?-1:0):o.mode});n.lockPx=!!o.lockPx;n.lockPos=!!o.lockPos;n.lockAll=!!o.lockAll;
     if(o.mask){n.mask=makeMask(1);n.mask.enabled=o.mask.en!==false;await img(o.mask.img,n.mask.target);}
-    await msDecode(n,o,img,async r=>{const raw=await streamThrough(new Uint8Array(buf,data+r.o,r.n),'deflate-raw',true),t=makeTarget(r.w,r.h,8,true);writeRegion(t,0,0,r.w,r.h,raw);return t;});
+    await msDecode(n,o,img,async r=>{const raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),r.w,r.h,r.d||8,r.f),t=makeTarget(r.w,r.h,8,true);writeRegion(t,0,0,r.w,r.h,raw);return t;});
     if(parent)insertNode(n,parent);
     if(o.t==='G')for(const c of o.kids||[])await mk(c,n);
     return n;};

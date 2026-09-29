@@ -118,9 +118,9 @@ function smaskPreviewEl(rec,S){S=S||56;const cv2=el('canvas',{class:'matprev',wi
   x.putImageData(id,0,0);return cv2;}
 
 /* .gmat for smart ones: every picture ({w,h,data}) as a PNG, and back */
-async function smImgsOut(o){if(!o||typeof o!=='object')return o;if(o.data&&o.w&&o.h){const c=document.createElement('canvas');c.width=o.w;c.height=o.h;const x=c.getContext('2d'),id=x.createImageData(o.w,o.h),d=o.data;
-    for(let i=0;i<d.length;i+=4){const a=d[i+3]||1;id.data[i]=Math.min(255,d[i]*255/a);id.data[i+1]=Math.min(255,d[i+1]*255/a);id.data[i+2]=Math.min(255,d[i+2]*255/a);id.data[i+3]=d[i+3];}x.putImageData(id,0,0);return {w:o.w,h:o.h,png:c.toDataURL('image/png')};}
-  if(Array.isArray(o)){const a=[];for(const v of o)a.push(await smImgsOut(v));return a;}const r={};for(const k in o)r[k]=await smImgsOut(o[k]);return r;}
+async function smImgsOut(o,key){if(!o||typeof o!=='object')return o;if(o.data&&o.w&&o.h){const c=document.createElement('canvas');c.width=o.w;c.height=o.h;const x=c.getContext('2d'),id=x.createImageData(o.w,o.h),d=o.data;
+    for(let i=0;i<d.length;i+=4){const a=d[i+3]||1;id.data[i]=Math.min(255,d[i]*255/a);id.data[i+1]=Math.min(255,d[i+1]*255/a);id.data[i+2]=Math.min(255,d[i+2]*255/a);id.data[i+3]=d[i+3];}x.putImageData(id,0,0);return {w:o.w,h:o.h,png:pxDataURL(c,key)};}
+  if(Array.isArray(o)){const a=[];for(const v of o)a.push(await smImgsOut(v,key));return a;}const r={};for(const k in o)r[k]=await smImgsOut(o[k],k);return r;}
 async function smImgsIn(o){if(!o||typeof o!=='object')return o;if(o.png&&o.w&&o.h){const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('bad image'));i.src=o.png;});
     const c=document.createElement('canvas');c.width=o.w;c.height=o.h;const x=c.getContext('2d');x.drawImage(img,0,0);const d=x.getImageData(0,0,o.w,o.h).data,out=new Uint8Array(d.length);
     for(let i=0;i<d.length;i+=4){const a=d[i+3];out[i]=d[i]*a/255;out[i+1]=d[i+1]*a/255;out[i+2]=d[i+2]*a/255;out[i+3]=a;}return {w:o.w,h:o.h,data:out};}

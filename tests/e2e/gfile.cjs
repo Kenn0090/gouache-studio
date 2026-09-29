@@ -39,7 +39,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
      if(c.mask){const d8=__gs.readRGBA8(c.mask.target);let s=0;for(let i=0;i<d8.length;i+=7)s+=d8[i];e.msum=s;}
      out.layers.push(e);if(c.children)walk(c,d+1);}};walk(__gs.doc.root,0);return out;});
  const before=await snap();
- const bytes=await p.evaluate(async()=>{const b=await __gs.encodeGouache();window.__gbuf=await b.arrayBuffer();return window.__gbuf.byteLength;});
+ const bytes=await p.evaluate(async()=>{__gs.prefs.smallFiles=false;/* exact copy: Smaller files off */const b=await __gs.encodeGouache();window.__gbuf=await b.arrayBuffer();return window.__gbuf.byteLength;});
  console.log('file bytes',bytes);
  await p.evaluate(()=>__gs.newDoc(50,50,8,[1,1,1],'x',false));
  await p.evaluate(async()=>{await __gs.openGouache(window.__gbuf,'t');});await p.waitForTimeout(300);
