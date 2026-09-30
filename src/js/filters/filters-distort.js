@@ -12,9 +12,10 @@ void main(){ vec2 p=gl_FragCoord.xy,sz=SZ(uSrc),q=p/max(uSize,1.0)+uSeed*3.7;
   o=at(uSrc,wr(p+d*2.0*uAmt,sz)); }`,
   /* slope blur: smears along the slope of a guide (the image's own brightness, or a noise), downhill;
      Blur averages, Min keeps the darkest, Max the brightest (Substance's modes) */
-  slope:()=>FX2_H+`uniform sampler2D uSrc; uniform float uAmt; uniform int uSteps; uniform int uMode; uniform int uGuide; uniform float uSize; uniform float uSeed; uniform int uWrap;
+  slope:()=>FX2_H+`uniform sampler2D uSrc; uniform float uAmt; uniform int uSteps; uniform int uMode; uniform int uGuide; uniform float uSize; uniform float uSeed; uniform int uWrap; uniform sampler2D uGImg; uniform float uGTile; uniform float uGInv;
 vec2 wr(vec2 p,vec2 sz){ return uWrap==1?mod(p,sz):clamp(p,vec2(0.5),sz-0.5); }
-float gd(vec2 p,vec2 sz){ if(uGuide==1) return fbm(p/max(uSize,1.0)+uSeed*3.7); vec4 c=at(uSrc,wr(p,sz)); return dot(st(c),vec3(0.299,0.587,0.114))*c.a; }
+float gd(vec2 p,vec2 sz){ if(uGuide==1) return fbm(p/max(uSize,1.0)+uSeed*3.7);
+  if(uGuide==2){ vec2 gs=SZ(uGImg); vec2 u=fract(p/sz*uGTile); vec4 c=at(uGImg,u*gs); float l=dot(st(c),vec3(0.299,0.587,0.114))*c.a; return uGInv>0.5?1.0-l:l; } vec4 c=at(uSrc,wr(p,sz)); return dot(st(c),vec3(0.299,0.587,0.114))*c.a; }
 void main(){ vec2 p=gl_FragCoord.xy,sz=SZ(uSrc); float e=uGuide==1?max(uSize*0.08,1.0):1.5;
   vec2 g=vec2(gd(p+vec2(e,0.0),sz)-gd(p-vec2(e,0.0),sz),gd(p+vec2(0.0,e),sz)-gd(p-vec2(0.0,e),sz));
   vec2 dir=length(g)>1e-6?-normalize(g):vec2(0.0); vec4 acc=at(uSrc,p),mn=acc,mx=acc; float n=1.0;
@@ -35,10 +36,31 @@ fxDef('warp',{title:'Warp',note:'Pushes the picture around with a smooth noise: 
   defs:[{key:'amt',label:'Amount',min:0,max:120,step:.5,value:12,fmt:px},{key:'size',label:'Noise size',min:4,max:600,step:1,value:80,fmt:px},{key:'seed',label:'Seed',min:1,max:99,step:1,value:1,fmt:v=>String(v)}],
   controls:(v,upd)=>[modeSeg(v,'mode',[['smooth','Smooth'],['turb','Turbulent']],upd,'Warp kind')],
   render(src,dst,v){run(pxd('warp'),dst,{uSrc:src.tex,uAmt:v.amt,uSize:v.size,uSeed:v.seed,uMode:{int:v.mode==='turb'?1:0},uWrap:fxdWrap()});}});
-fxDef('slopeBlur',{title:'Slope blur',note:'Smears the picture downhill along a slope (like Substance): its own brightness, or a noise. Min eats into bright parts, Max grows them.',init:()=>({mode:'blur',guide:'self'}),
-  defs:[{key:'amt',label:'Intensity',min:0,max:200,step:.5,value:16,fmt:px},{key:'steps',label:'Samples',min:4,max:64,step:1,value:16,fmt:v=>String(v)},{key:'size',label:'Noise size',min:4,max:600,step:1,value:60,fmt:px},{key:'seed',label:'Seed',min:1,max:99,step:1,value:1,fmt:v=>String(v)}],
-  controls:(v,upd)=>[modeSeg(v,'mode',[['blur','Blur'],['min','Min'],['max','Max']],upd,'Slope blur mode'),modeSeg(v,'guide',[['self','Its own slope'],['noise','Noise']],upd,'Slope from')],
-  render(src,dst,v){run(pxd('slope'),dst,{uSrc:src.tex,uAmt:v.amt,uSteps:{int:Math.round(v.steps)},uMode:{int:v.mode==='min'?1:v.mode==='max'?2:0},uGuide:{int:v.guide==='noise'?1:0},uSize:v.size,uSeed:v.seed,uWrap:fxdWrap()});}});
+/* (0.39, Kenn) the slope can come from a picture: drop one on the box, or pick from the Textures library */
+function fxdAllTex(){return [...tx.mine.map(rec=>({kind:'mine',id:rec.id,name:rec.name,rec})),...TX_PHOTO.map(([id,name])=>({kind:'photo',id,name})),...TX_GEN.map(([id,name])=>({kind:'gen',id,name}))];}
+function fxdGuideTex(v){const g=v.gimg;if(!g)return null;const key=g.kind+':'+g.id,t=tx.cache.get(key);if(t)return t;
+  if(!g._busy){g._busy=true;txLoad().then(()=>{const it=fxdAllTex().find(x=>x.kind===g.kind&&x.id===g.id);return it&&txTarget(it);}).then(r=>{g._busy=false;if(r)changedAll();}).catch(()=>{g._busy=false;});}
+  return null;}
+function fxdPickTexture(done){txLoad().then(()=>{const items=fxdAllTex();
+  const grid=el('div',{class:'fxdpick'},...items.map(it=>{const img=el('img',{alt:'',width:64,height:64,draggable:'false'});img._tx=it;txSeen.observe(img);
+    return el('button',{class:'mattile txtile',type:'button',title:it.name,onclick:()=>{closeDialog();done({kind:it.kind,id:it.id,name:it.name});}},img,el('span',{text:it.name}));}));
+  openDialog({title:'Pick a texture',body:grid,okLabel:'Close'});});}
+async function fxdDropFiles(files,done){const f=[...files].find(x=>/^image\//.test(x.type)||/\.(png|jpe?g|webp|tga|bmp|tiff?)$/i.test(x.name));if(!f)return;
+  try{await txLoad();const t=await fileTarget(f);const rec=await txAddTarget(t,baseName(f.name));if(typeof renderTextures==='function')renderTextures();done({kind:'mine',id:rec.id,name:rec.name});}catch(e){toast('Could not read that picture: '+(e.message||e));}}
+function fxdGuideRow(v,upd){const name=el('span',{class:'note',text:v.gimg?v.gimg.name:'No picture yet'});
+  const set=g=>{v.gimg=g;name.textContent=g.name;txLoad().then(()=>{const it=fxdAllTex().find(x=>x.kind===g.kind&&x.id===g.id);return it&&txTarget(it);}).then(()=>upd());};
+  const drop=el('div',{class:'fxddrop',id:'fxdDrop',tabindex:'0',title:'Drop a picture here'},el('b',{text:'Drop a picture'}),el('small',{text:'or click to browse'}));
+  drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+  drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');fxdDropFiles(e.dataTransfer.files,set);});
+  drop.addEventListener('click',async()=>{const fs=await pickFiles('image/*',false,'Pictures',['png','jpg','jpeg','webp','tga','bmp','tif','tiff']);if(fs&&fs.length)fxdDropFiles(fs,set);});
+  return el('div',{class:'fxdguide',id:'fxdGuide'},drop,el('div',{class:'chips'},el('button',{class:'btn sm',id:'fxdLib',text:'Choose from Textures…',onclick:()=>fxdPickTexture(set)}),name),
+    chk('fxdInv','Flip the slope',!!v.ginv,x=>{v.ginv=x;upd();}));}
+fxDef('slopeBlur',{title:'Slope blur',note:'Smears the picture downhill along a slope (like Substance): its own brightness, a noise, or a picture you choose. Min eats into bright parts, Max grows them.',init:()=>({mode:'blur',guide:'self',gimg:null,ginv:false}),
+  defs:[{key:'amt',label:'Intensity',min:0,max:200,step:.5,value:16,fmt:px},{key:'steps',label:'Samples',min:4,max:64,step:1,value:16,fmt:v=>String(v)},{key:'size',label:'Noise size',min:4,max:600,step:1,value:60,fmt:px},{key:'seed',label:'Seed',min:1,max:99,step:1,value:1,fmt:v=>String(v)},{key:'gtile',label:'Picture repeat',min:1,max:8,step:1,value:1,fmt:v=>v+'×'}],
+  controls:(v,upd)=>{const row=fxdGuideRow(v,upd);row.hidden=v.guide!=='image';
+    const gs=seg([['self','Its own slope'],['noise','Noise'],['image','A picture']],v.guide,x=>{v.guide=x;row.hidden=x!=='image';upd();},'Slope from');
+    return [modeSeg(v,'mode',[['blur','Blur'],['min','Min'],['max','Max']],upd,'Slope blur mode'),gs,row];},
+  render(src,dst,v){const gt=v.guide==='image'?fxdGuideTex(v):null;run(pxd('slope'),dst,{uSrc:src.tex,uAmt:v.amt,uSteps:{int:Math.round(v.steps)},uMode:{int:v.mode==='min'?1:v.mode==='max'?2:0},uGuide:{int:(v.guide==='image'&&gt)?2:v.guide==='noise'?1:0},uSize:v.size,uSeed:v.seed,uWrap:fxdWrap(),uGImg:(gt||src).tex,uGTile:v.gtile||1,uGInv:v.ginv?1:0});}});
 fxDef('distort',{title:'Distort',note:'Waves, ripples, a twirl, or a pinch or bulge around the middle.',init:()=>({kind:'waves'}),
   defs:[{key:'amt',label:'Amount',min:-100,max:100,step:.5,value:10,fmt:v=>String(v)},{key:'size',label:'Wave length',min:4,max:600,step:1,value:60,fmt:px},{key:'ang',label:'Angle',min:-180,max:180,step:1,value:0,fmt:deg},
     {key:'cx',label:'Centre across',min:0,max:1,step:.01,value:.5,fmt:pct},{key:'cy',label:'Centre down',min:0,max:1,step:.01,value:.5,fmt:pct}],
