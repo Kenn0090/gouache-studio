@@ -28,14 +28,16 @@ const MODE_GROUP=['p3d','brushtab','conv','bake','anim'];
 /* the built-in workspaces: extra = 3D view on and how wide, painting on the model */
 const WS_PRESETS={
   painting:{name:'Paint',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['color','matEd','shading'],f:1.05},{tabs:['brushes','stencils','mats','textures','decals','tool'],f:1.25},{tabs:['maps','p3bake'],f:.45},{tabs:['layers','chan','hist'],f:1.6}],icons:[],floats:[]},
-  texturing:{name:'3D Paint',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['maps','p3bake'],f:.7},{tabs:['layers','chan','hist'],f:1.6},{tabs:['tool','brushes','stencils','mats','textures','decals','color','matEd','shading'],f:1.3}],icons:[],floats:[]},
-  paint3d:{name:'3D Paint (big view)',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['layers','maps','p3bake','chan','hist'],f:1.6},{tabs:['color','matEd','shading','brushes','stencils','mats','textures','decals','tool'],f:1.4}],icons:[],floats:[]},
+  texturing:{name:'3D Paint',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:MODE_GROUP.slice(),f:1},{tabs:['maps','p3bake'],f:.6},{tabs:['layers','chan','hist'],f:2.6},{tabs:['tool','color','matEd','shading'],f:1.3}],shelf:{tabs:['mats','textures','decals','stencils','brushes'],f:1,h:180},icons:[],floats:[]},
+  paint3d:{name:'3D Paint (big view)',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['layers','maps','p3bake','chan','hist'],f:1.6},{tabs:['color','matEd','shading','tool'],f:1.4}],shelf:{tabs:['mats','textures','decals','stencils','brushes'],f:1,h:180},icons:[],floats:[]},
   minimal:{name:'Minimal',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1}],icons:['color','matEd','shading','brushes','stencils','mats','textures','decals','tool','maps','layers','chan','hist'],floats:[]}};
 /* (0.28, Kenn) each top tab has its own workspace, and the drop-down follows the tab */
 for(const [k,n] of [['animation','Animation'],['bake','Bake'],['convert','Convert'],['brush','Brush']])WS_PRESETS[k]=Object.assign(JSON.parse(JSON.stringify(WS_PRESETS.painting)),{name:n});
 const WS_MODE_DEF={paint:'painting',p3d:'texturing',anim:'animation',bake:'bake',convert:'convert',brush:'brush'};
 const dk={ws:'painting',L:null,custom:{},saved:{},lock:false,flyout:null,drag:null,modeWs:{}};
-(()=>{try{const s=JSON.parse(localStorage.getItem('gs.dock')||'{}');if(s.ws)dk.ws=s.ws;if(s.modeWs)dk.modeWs=s.modeWs;if(s.col2&&s.col2.groups)dk.col2=s.col2;dk.saved=s.saved||{};dk.custom=s.custom||{};dk.lock=!!s.lock;}catch(e){}})();
+(()=>{try{const s=JSON.parse(localStorage.getItem('gs.dock')||'{}');if(s.ws)dk.ws=s.ws;if(s.modeWs)dk.modeWs=s.modeWs;if(s.col2&&s.col2.groups)dk.col2=s.col2;dk.saved=s.saved||{};dk.custom=s.custom||{};dk.lock=!!s.lock;
+  /* 0.36: the asset panels moved to the bottom shelf in 3D Paint */
+  if(!localStorage.getItem('gs.shelf36')){localStorage.setItem('gs.shelf36','1');delete dk.saved.texturing;delete dk.saved.paint3d;if(dk.col2)delete dk.col2;}}catch(e){}})();
 const dkClone=o=>JSON.parse(JSON.stringify(o));
 function dkPreset(ws){return dkClone(WS_PRESETS[ws]||dk.custom[ws]||WS_PRESETS.painting);}
 function dkSave(){if(dk.L)dk.saved[dk.ws]=dk.L;try{localStorage.setItem('gs.dock',JSON.stringify({ws:dk.ws,modeWs:dk.modeWs,saved:dk.saved,custom:dk.custom,lock:dk.lock,col2:dk.col2}));}catch(e){}}
@@ -102,7 +104,7 @@ const dkCol2On=()=>ui.mode==='p3d';
 const dkC2Has=id=>dk.col2.groups.some(g=>g.tabs.includes(id));
 const dkIn=id=>PANELS[id].avail(ui.mode)&&!(dkCol2On()&&dkC2Has(id));
 const dkAvail=g=>g._c2?g.tabs.filter(id=>PANELS[id].avail(ui.mode)):g.tabs.filter(id=>dkIn(id));
-if(!dk.col2)dk.col2={w:250,groups:[{tabs:['color','matEd','shading'],f:1,_c2:true},{tabs:['brushes','stencils','mats','textures','decals','tool'],f:1.5,_c2:true}]};
+if(!dk.col2)dk.col2={w:250,groups:[{tabs:['color','matEd','shading'],f:1,_c2:true},{tabs:['tool'],f:1.5,_c2:true}]};
 /* older saved columns: the Material tab joins Colour */
 if(!dkC2Has('matEd')){const g=dk.col2.groups.find(g=>g.tabs.includes('color'))||dk.col2.groups[0];if(g)g.tabs.push('matEd');}
 for(const g of dk.col2.groups)g._c2=true;
@@ -202,11 +204,11 @@ function dkMove(id,to){const L=dk.L;dkRemove(id);
   dkApply(L,true);}
 /* show a panel (Window menu, tests): brings it back into the dock and to the front */
 function showPanel(id){const L=dk.L;if(dkCol2On()&&dkC2Has(id)){const g2=dk.col2.groups.find(g=>g.tabs.includes(id));if(g2){g2.active=id;g2.min=false;dkRender();return;}}let g=L.groups.find(g=>g.tabs.includes(id));const f=L.floats.find(f=>f.tabs.includes(id));
-  if(f){f.active=id;dkRender();return;}if(L.icons.includes(id)){dkFlyout(id);return;}
+  if(f){f.active=id;dkRender();return;}if(!g&&L.shelf&&L.shelf.tabs.includes(id)){L.shelf.active=id;L.shelf.min=false;if(L.fold&&L.fold.shelf){L.fold.shelf=false;dkGrid();}dkRender();dkSave();return;}if(L.icons.includes(id)){dkFlyout(id);return;}
   if(!g){L.hidden=L.hidden.filter(t=>t!==id);const home=WS_PRESETS.painting.groups.findIndex(x=>x.tabs.includes(id));g=L.groups.find(x=>x.tabs.some(t=>(WS_PRESETS.painting.groups[home]||{tabs:[]}).tabs.includes(t)));
     if(g)g.tabs.push(id);else{g={tabs:[id],f:1};L.groups.push(g);}}
   g.active=id;g.min=false;dkRender();dkSave();}
-function panelShown(id){const L=dk.L;if(dkCol2On()&&dkC2Has(id))return true;return L.groups.some(g=>g.tabs.includes(id))||L.floats.some(f=>f.tabs.includes(id))||L.icons.includes(id);}
+function panelShown(id){const L=dk.L;if(dkCol2On()&&dkC2Has(id))return true;return L.groups.some(g=>g.tabs.includes(id))||(L.shelf&&L.shelf.tabs.includes(id))||L.floats.some(f=>f.tabs.includes(id))||L.icons.includes(id);}
 function togglePanel(id){if(panelShown(id)&&!dk.L.icons.includes(id)){dkMove(id,{hidden:true});}else showPanel(id);}
 /* ---- dragging a tab ---- */
 function dkDragStart(e,id,where){if(dk.lock||e.button!==0)return;dk.drag={id,where,x:e.clientX,y:e.clientY,on:false,ghost:null,hint:null,to:null};}

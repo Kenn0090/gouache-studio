@@ -832,3 +832,12 @@ body.dcdragging,body.dcdragging *{cursor:grabbing!important;user-select:none}
 .vpsep{width:1px;align-self:stretch;margin:4px 3px;background:var(--line-2)}
 .p3eye{flex:0 0 auto;width:22px;height:22px;padding:0;background:transparent;border:0;color:var(--muted);cursor:pointer}.p3eye:hover{color:var(--text)}.p3eye svg{width:16px;height:16px}
 .p3set:has(.p3eye[aria-pressed=false]) .p3sn{opacity:.45;text-decoration:line-through}
+
+/* 0.36: the shelf's tabs are a category list at the left, like Painter's */
+.dkshelf .dkgrp{flex-direction:row}
+.dkshelf .dktabs{flex-direction:column;align-items:stretch;width:150px;min-width:110px;padding:6px;gap:2px;border-bottom:0;border-right:1px solid var(--line);overflow:auto;flex:none}
+.dkshelf .dktabs>*{text-align:left;justify-content:flex-start}
+.dkshelf .dkbody{flex:1 1 0;min-width:0}
+.dkshelf .dktab{border:0;border-radius:6px;padding:7px 10px;width:100%;margin:0}
+.dkshelf .dktab.on{background:color-mix(in srgb,var(--accent,#5b8cff) 28%,var(--panel));margin:0;padding:7px 10px}
+.dkshelf #dkShelfFold,.dkshelf .dktabs{padding-right:6px}

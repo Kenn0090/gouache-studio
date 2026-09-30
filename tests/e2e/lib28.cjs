@@ -23,7 +23,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const cats=await p.evaluate(()=>document.querySelectorAll('#matBody .chip').length);
  await p.locator('#matBody .chip',{hasText:'Metal'}).first().click();await W(300);const metal=await p.evaluate(()=>document.querySelectorAll('#matLib .mattile').length);
  ok(cats>=9&&metal===58,'the Library is split into categories ('+cats+' buttons; Metal shows '+metal+')');
- await p.locator('#matBody .chip',{hasText:/^All$/}).first().click();await W(500);
+ await p.locator('#matBody .chip',{hasText:/^All$/}).last().click();await W(500);
  const n=await p.evaluate(()=>({tiles:document.querySelectorAll('#matLib .mattile').length,thumbs:[...document.querySelectorAll('#matLib img')].filter(i=>i.naturalWidth>0).length}));
  ok(n.tiles===200&&n.thumbs===200,'the Library shows 200 materials with previews '+JSON.stringify(n));
  await p.locator('#matSec').screenshot({path:OUT+'lib-panel.png'});
