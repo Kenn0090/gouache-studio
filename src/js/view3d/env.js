@@ -94,13 +94,13 @@ function envUniforms(){const s=v3s(),E=envEnsure(),on=!!(E&&E.src&&E.lv.length==
   for(let i=0;i<ENV_LEVELS;i++)U['uEnv'+i]=on?E.lv[i].tex:dummy;U.uEnvSrc=on?E.src.tex:dummy;U.uIrr=on?E.irr.tex:dummy;return U;}
 /* the background: the HDRI behind the model (optional), blurred as you like */
 const FS_ENVBG=ENV_GLSL+`uniform mat4 uInvVP; uniform vec2 uSize; uniform sampler2D uEnvSrc; uniform sampler2D uL0; uniform sampler2D uL1; uniform sampler2D uL2; uniform float uBlur; uniform float uRot; uniform float uI; uniform float uExpo; uniform int uTone; uniform int uFlip;
-vec3 tone(vec3 c){ if(uTone==1){ c*=0.6; return clamp((c*(2.51*c+0.03))/(c*(2.43*c+0.59)+0.14),0.0,1.0); } return c/(1.0+c*0.12); }
+${TONE_GLSL}
 void main(){ vec2 ndc=gl_FragCoord.xy/uSize*2.0-1.0; if(uFlip==1) ndc.y=-ndc.y; vec4 a=uInvVP*vec4(ndc,-1.0,1.0),b=uInvVP*vec4(ndc,1.0,1.0); vec3 d=normalize(b.xyz/b.w-a.xyz/a.w); vec2 uv=envUV(d,uRot);
   float t=uBlur*3.0; vec3 c=t<1.0?mix(textureLod(uEnvSrc,uv,0.0).rgb,texture(uL0,uv).rgb,t):t<2.0?mix(texture(uL0,uv).rgb,texture(uL1,uv).rgb,t-1.0):mix(texture(uL1,uv).rgb,texture(uL2,uv).rgb,t-2.0);
   c=tone(c*uI*uExpo); o=vec4(pow(clamp(c,0.0,1.0),vec3(1.0/2.2)),1.0); }`;
 let P_ENVBG=null;
 function envDrawBg(F,VP,flip){const s=v3s(),E=env;if(!s.envBg||!E||!E.src||E.lv.length<3||envOf(s)==='none'||envOf(s)!==E.key)return false;if(!P_ENVBG)P_ENVBG=program(FS_ENVBG);
-  gl.disable(gl.DEPTH_TEST);useProg(P_ENVBG,{uInvVP:{m4:m4inv(VP)},uSize:[F.w,F.h],uEnvSrc:E.src.tex,uL0:E.lv[0].tex,uL1:E.lv[1].tex,uL2:E.lv[2].tex,uBlur:s.envBlur==null?.35:s.envBlur,uRot:(s.envRot||0)/360,uI:s.envI==null?1:s.envI,uExpo:s.expo,uTone:{int:s.tone==='neutral'?0:1},uFlip:!!flip});
+  gl.disable(gl.DEPTH_TEST);useProg(P_ENVBG,{uInvVP:{m4:m4inv(VP)},uSize:[F.w,F.h],uEnvSrc:E.src.tex,uL0:E.lv[0].tex,uL1:E.lv[1].tex,uL2:E.lv[2].tex,uBlur:s.envBlur==null?.35:s.envBlur,uRot:(s.envRot||0)/360,uI:s.envI==null?1:s.envI,uExpo:s.expo,uTone:{int:toneInt(s)},uFlip:!!flip});
   gl.bindVertexArray(vao);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.enable(gl.DEPTH_TEST);return true;}
 function m4inv(m){const inv=new Float32Array(16),a=m;
   inv[0]=a[5]*a[10]*a[15]-a[5]*a[11]*a[14]-a[9]*a[6]*a[15]+a[9]*a[7]*a[14]+a[13]*a[6]*a[11]-a[13]*a[7]*a[10];inv[4]=-a[4]*a[10]*a[15]+a[4]*a[11]*a[14]+a[8]*a[6]*a[15]-a[8]*a[7]*a[14]-a[12]*a[6]*a[11]+a[12]*a[7]*a[10];
@@ -126,7 +126,12 @@ function envSettingsBox(S,pre){pre=pre||'v3';if(pre!=='v3'){const S0=S;S=(id,...
   else box.append(S('v3EnvRot','Turn','envRot',0,360,1,deg),S('v3EnvI','Brightness','envI',0,4,.05,pct),
     chk(pre+'EnvBg','Show it as the background',!!s.envBg,v=>{s.envBg=v;redo();}),...(s.envBg?[S('v3EnvBlur','Background blur','envBlur',0,1,.01,pct)]:[]),
     S('v3EnvSun','Extra sun','envSun',0,3,.05,v=>v?pct(v):'off'),...(s.envSun?[S('v3Az','Sun angle','sunAz',0,360,1,deg),S('v3El','Sun height','sunEl',0,90,1,deg)]:[]));
-  box.append(S('v3Ex','Exposure','expo',.2,3,.05,pct),seg([['filmic','Filmic'],['neutral','Neutral']],s.tone==='neutral'?'neutral':'filmic',v=>{s.tone=v;v3.dirty=true;requestRender();},'Tone mapping'));
+  box.append(S('v3Ex','Exposure','expo',.2,3,.05,pct),toneRow(s));
   if(k!=='none'&&k!=='custom'){const it=ENV_LIST.find(e=>e[0]===k);if(it)box.append(el('p',{class:'note',text:'“'+it[1]+'” by '+it[3]+', from Poly Haven (CC0).'}));}
   box.append(el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:pre+'EnvReset',text:'Reset lighting',title:'Back to the starting environment, sun and exposure',onclick:()=>{for(const q of ['env','envRot','envI','envBg','envBlur','envSun','sunAz','sunEl','sunI','skyI','expo','tone'])s[q]=V3D_DEFAULTS[q];if(typeof envEnsure==='function')envEnsure();redo();}})));
   return box;}
+
+/* (0.40.2, Kenn) tone mapping list: Filmic, ACES, AgX, PBR Neutral, Soft, None */
+function toneRow(s){const pick=el('select',{id:'v3Tone','aria-label':'Tone mapping',title:'How bright lights and colours are squeezed into what a screen can show'},...TONE_LIST.map(([k,l])=>el('option',{value:k,text:l})));
+  pick.value=TONE_LIST.some(x=>x[0]===s.tone)?s.tone:'filmic';pick.addEventListener('change',()=>{s.tone=pick.value;v3.dirty=true;requestRender(true);});
+  return el('div',{class:'frow'},el('span',{text:'Tone mapping'}),pick);}
