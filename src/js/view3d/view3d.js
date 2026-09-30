@@ -146,7 +146,7 @@ function v3Frame(){const r=v3.mesh?v3.mesh.radius:1.5,pane=v3.pop?null:$('#pane3
   if(v3s().model==='plane'||v3s().model==='dplane'){v3.cam.yaw=0;v3.cam.pitch=0;}v3.dirty=true;}
 
 /* ---- drawing ---- */
-function v3Targets(w,h){let F=v3.fbo;const S=Math.min(qual('msaa'),gl.getParameter(gl.MAX_SAMPLES)||0);if(F&&F.w===w&&F.h===h&&F.S===S)return F;
+function v3Targets(w,h,lite){let F=v3.fbo;const S=lite?0:Math.min(qual('msaa'),gl.getParameter(gl.MAX_SAMPLES)||0);if(F&&F.w===w&&F.h===h&&F.S===S)return F;
   if(F){gl.deleteFramebuffer(F.ms);gl.deleteRenderbuffer(F.c);gl.deleteRenderbuffer(F.d);gl.deleteFramebuffer(F.rf);gl.deleteRenderbuffer(F.rc);}
   F={w,h,S};
   F.ms=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);
@@ -194,11 +194,13 @@ function v3Render(F,flip){const s=v3s(),g=v3.gpu;if(!g)return;
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,F.rf);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
 /* after the 2D view: refresh maps if needed, redraw the model if anything changed, copy it into the pane */
 function draw3D(){if(!v3.on)return;if(v3.pop){drawPop();return;}const pane=$('#pane3d'),d=dprNow(),w=Math.max(1,Math.round(pane.clientWidth*d)),h=cv.height,x0=cv.width-w;
-  if(!v3.mesh)v3LoadModel();v3Refresh();const F=v3Targets(w,h);
+  if(!v3.mesh)v3LoadModel();v3Refresh();
+  /* (0.30.2) Low power painting: while a stroke is going the model is drawn at half size without smoothing, then stretched */
+  const lite=!!(stroke&&prefs.paintHalf&&!v3.rt),W=lite?Math.max(1,Math.round(w/2)):w,H=lite?Math.max(1,Math.round(h/2)):h,F=v3Targets(W,H,lite);
   /* Ray traced mode: a sample more each frame until it is clean (the normal view meanwhile while it prepares) */
   const rtr=v3.rt&&!v3Unlit()&&ui.mode!=='bake'&&ui.mode!=='convert'&&typeof rtViewDraw==='function'?rtViewDraw(F):null;
   if(rtr===true)requestRender();else if(rtr===null&&v3.dirty){v3Render(F);v3.dirty=false;}
-  gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.rf);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,null);gl.blitFramebuffer(0,0,w,h,x0,0,x0+w,h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.rf);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,null);gl.blitFramebuffer(0,0,W,H,x0,0,x0+w,h,gl.COLOR_BUFFER_BIT,lite?gl.LINEAR:gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
   if(v3s().spin&&!v3.drag){v3.cam.yaw+=.006;v3.dirty=true;requestRender();}}
 /* the model's UV layout over the 2D canvas */
 function drawUVOverlay(){if(!v3.on||!v3s().showUV||!v3.gpu)return;const d=dprNow(),z=view.zoom;
@@ -244,6 +246,7 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
     el('div',{class:'sub',text:'Speed on this computer'}),seg([['low','Low'],['medium','Medium'],['high','High'],['ultra','Ultra']],QUALITY[prefs.quality]?prefs.quality:'high',x=>{prefs.quality=x==='high'?undefined:x;qualityChanged();},'Engine quality'),
     el('p',{class:'note',text:'Engine quality: lower is lighter on slower computers.'}),
     seg([['best','Best'],['balanced','Balanced'],['fast','Fast']],PAINT_GAP[prefs.paintSpeed]?prefs.paintSpeed:'best',x=>{prefs.paintSpeed=x==='best'?undefined:x;savePrefs();},'Painting speed'),
+    seg([['0','Full size'],['1','Half size']],prefs.paintHalf?'1':'0',x=>{prefs.paintHalf=x==='1'||undefined;savePrefs();v3.dirty=true;requestRender();},'Model while painting'),
     el('p',{class:'note',text:'Painting speed: Balanced and Fast redraw the picture less often while you paint. The paint is the same. Also in Preferences.'}),
     el('p',{class:'note',text:'Drag to turn, right-drag to move, wheel to zoom, double-click to reframe. Raise Detail (top of the 3D view) to see Height depth push the surface out finely; imported models are subdivided.'}));
   gear.onclick=()=>{box.hidden=!box.hidden;gear.setAttribute('aria-expanded',String(!box.hidden));/* below the bar, however many rows it wraps onto */if(!box.hidden){box.style.top=(bar.offsetTop+bar.offsetHeight+6)+'px';box.style.maxHeight='calc(100% - '+(bar.offsetTop+bar.offsetHeight+16)+'px)';}};
