@@ -160,3 +160,8 @@ Press **C** in 3D Paint to see the texture set's baked mesh maps on the model on
 
 ## Decals, textures and the material library
 See [Textures, decals and the material library](Textures-and-decals.md): click a decal and then the model to place bolts, vents, labels and more; use grunge maps in masks and materials; start from ready-made leathers, metals, fabrics and more.
+
+
+## The bottom shelf
+
+In 3D Paint the asset panels live in a shelf along the bottom: **Materials**, **Textures**, **Decals**, **Stencils** and **Brushes** are a list on the left, and the tiles of the chosen category fill the rest. Drag the bar above it to resize, or fold it with the arrow. In Materials, the chips at the top choose All, Yours, Library, Smart materials or Smart masks, and S / M / L set the tile size.

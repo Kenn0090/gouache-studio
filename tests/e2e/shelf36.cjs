@@ -1,0 +1,32 @@
+/* 0.28: Decals: click a decal, click the model; a movable sticker layer with colour, height, roughness, metal */
+const {chromium}=require('playwright');
+const OLD=__dirname+'/';
+const OUT=__dirname+'/out/';
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();
+ await p.addInitScript(()=>{try{localStorage.setItem('gs.p3d',JSON.stringify({size:256,layout:'3d'}));}catch(e){}});
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
+  if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());if(m.type()==='warning'&&/GL|WebGL/.test(m.text()))errs.push('GLWARN '+m.text());});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ const W=ms=>p.waitForTimeout(ms||200);
+ await p.evaluate(()=>__gs.newDoc(256,256,8,[1,1,1],'sh',false,'pbr'));await W(300);
+ await p.click('#modeTabs [data-mode=p3d]');await W(1500);
+ const r=await p.evaluate(()=>{const s=document.getElementById('dkShelf');if(!s||s.hidden)return null;const t=[...s.querySelectorAll('.dktab')].map(x=>x.textContent.trim());const tb=s.querySelector('.dktabs').getBoundingClientRect();return {t,w:tb.width,h:tb.height,sh:s.getBoundingClientRect().height};});
+ ok(!!r,'the bottom shelf shows in 3D Paint');
+ ok(r&&r.t.length>=4&&r.h>r.w,'category list runs down the left ('+(r&&r.t.join(','))+')');
+ ok(r&&r.sh>150,'shelf is tall enough ('+(r&&Math.round(r.sh))+')');
+ const inCol=await p.evaluate(()=>!!document.querySelector('#dock2 #matsSec,#dock2 #txSec'));
+  await p.screenshot({path:OUT+"shelf36.png"});
+ ok(!inCol,'the asset panels are not also in the side column');
+ await p.evaluate(()=>{const t=[...document.querySelectorAll('#dkShelf .dktab')].find(x=>/Material/i.test(x.textContent));if(t)t.click();});await W(500);
+ ok(await p.evaluate(()=>document.querySelectorAll('#dkShelf .segchip,#dkShelf .chip,#dkShelf button').length>3),'Materials tab has view chips');
+ ok(errs.length===0,'no errors '+errs.slice(0,3).join(' | '));
+ await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);
+})();

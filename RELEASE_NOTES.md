@@ -1,7 +1,7 @@
-The 3D Paint viewport gets a layout strip, and texture sets get an eyeball.
+The 3D Paint bottom shelf, like Substance Painter's.
 
-- **Viewport strip:** a small pill at the bottom of the 3D Paint area switches between **3D**, **Split** and **2D**, and turns the **UV** layout on and off. In Split the two views start the same size, and you can drag the divider. The flat texture keeps its own zoom.
-- **UV layout on by default** over the flat texture in 3D Paint, so you can see where things land.
-- **Eyeball on each texture set:** hide a set and the parts of the model that use it disappear from the 3D view. It is saved with the project. The Bake mesh maps window leaves hidden sets unticked, so you can bake in groups.
-- **File menu in 3D Paint** now has **Import a model** and **Bake mesh maps** in it.
-- **Update a saved smart material or smart mask:** right-click a folder that came from your saved smart material (or a layer whose mask came from your saved smart mask) and choose **Update smart material “name” in Materials** (or the mask one). It asks first, then puts your changes back into the library. The built-in ones can't be overwritten: use Save as to keep your own version.
+- **Bottom shelf:** in 3D Paint the asset panels now sit along the bottom in one wide shelf, with a **category list** down the left: **Materials**, **Textures** (grunges), **Decals**, **Stencils** and **Brushes**. Click a category to see its tiles. Drag the bar above the shelf to make it taller, or use the fold arrow to hide it.
+- **Thumbnail size:** the S / M / L buttons in the Materials category make the tiles smaller or bigger.
+- **Materials view:** chips at the top of Materials show All, Yours, Library, Smart materials or Smart masks, so you only see what you are looking for.
+- **More room on the sides:** the right-hand columns give the layer list more height now that the assets have moved down. If you saved your own 3D Paint layout, it is reset once to the new one.
+- Not in this round: an Environments category (HDRIs) and the eyeball in the Bake tab. Both come next.
