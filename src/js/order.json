@@ -66,6 +66,8 @@
         "view3d/view3d",
         "view3d/env",
         "view3d/shading",
+        "view3d/post",
+        "view3d/panner",
         "view3d/mesh-paint",
         "view3d/paint3d",
         "view3d/vp-strip",

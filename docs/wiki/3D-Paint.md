@@ -186,3 +186,10 @@ The shelf also has an **Environments** category: a thumbnail for each HDRI (clic
 - Preferences has tabs; Reset buttons for lighting, shader, brush and material adjustments.
 - Colour buttons open a picker with Hue, Saturation and Lightness sliders.
 - Ctrl + dragging a material over the model shows the ID map.
+
+## Small changes in 0.40
+
+- **Tab** hides all the panels so the view fills the window; Tab again brings them back (this works in every tab).
+- The flat view can show the model **lit**, laid out flat like Substance Painter's UV view. The **Lit** button is next to **UV** at the bottom of the viewport.
+- The **Layers** panel has a **channel drop-down**: choose which channel you see and paint. The blend mode and opacity shown are for that channel.
+- New viewer options in the Shader panel: the **Panner** shader and **Post processing** (see 3D view).

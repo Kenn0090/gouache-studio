@@ -920,3 +920,10 @@ body.lv-beginner .tool:not([data-tool=move]):not([data-tool=brush]):not([data-to
 .colpop{width:250px;transition:transform .16s ease,opacity .16s ease}.colpop.grow{transform:scale(.15);opacity:0}
 .colsq,.colhue{display:block;width:100%;border-radius:6px;border:1px solid var(--line);cursor:crosshair;touch-action:none}.colsq{height:150px}.colhue{height:14px}
 .colrow{display:grid;grid-template-columns:1fr 1fr;gap:0;border-radius:6px;overflow:hidden;border:1px solid var(--line)}.colrow .colsw{border:0;border-radius:0}.colold{height:26px;border:0;padding:0;cursor:pointer}
+
+/* (0.40) Tab: only the working area is left */
+body.tabfull #app{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr)!important;grid-template-areas:"work"!important}
+body.tabfull #app>:not(#workWrap):not(script){display:none!important}
+body.tabfull #docTabs{display:none!important}
+.postfx{border-top:1px solid var(--line-2);padding:4px 0}.postfx .postsl{display:none;padding:2px 0 4px 20px}.postfx.on .postsl{display:grid;gap:4px}
+#hLayers .lchan{margin-left:auto;max-width:150px}body:not(.m-p3d) #lChan{display:none}

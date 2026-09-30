@@ -7,13 +7,17 @@ function unsavedWork(){try{if(!asPaintSaved())return true;}catch(e){}
 async function reloadApp(){const go=async()=>{try{await autosaveNow(true);}catch(e){}window.__gsQuit=true;location.reload();};
   if(!unsavedWork())return go();
   confirmDlg('Reload the app?','You have unsaved changes. A recovery copy is kept, and the welcome screen offers it back after the reload.','Reload',go);}
+/* (0.40, Kenn) Tab hides every panel so the canvas or the 3D view fills the window; Tab again brings them back */
+function toggleTabFull(force){const on=force===undefined?!document.body.classList.contains('tabfull'):!!force;document.body.classList.toggle('tabfull',on);
+  if(on)toast('Panels hidden. Press Tab to bring them back.');
+  try{window.dispatchEvent(new Event('resize'));if(typeof fit==='function')fit();requestRender(true);}catch(err){}}
 window.addEventListener('keydown',e=>{const m=(e.ctrlKey||e.metaKey)&&!e.altKey,r=e.key==='r'||e.key==='R';
   if(e.key==='F5'||e.key==='BrowserRefresh'||(m&&r)){e.preventDefault();e.stopImmediatePropagation();
     if(m&&r&&e.shiftKey){if(modal.hidden)reloadApp();}
     else if(m&&r){if(modal.hidden&&!isTypingTarget(e.target)&&typeof toggleRulers==='function')toggleRulers();}
     else toast('Reloading is turned off so your work is never lost. Ctrl+Shift+R reloads the app.');
     return;}
-  if(e.key==='Tab'&&!e.ctrlKey&&!e.altKey&&!e.metaKey){if(!modal.hidden||isTypingTarget(e.target)||(e.target.closest&&e.target.closest('.dialog,.welcome')))return;e.preventDefault();}
+  if(e.key==='Tab'&&!e.ctrlKey&&!e.altKey&&!e.metaKey){if(!modal.hidden||isTypingTarget(e.target)||(e.target.closest&&e.target.closest('.dialog,.welcome')))return;e.preventDefault();if(!e.repeat&&!e.shiftKey)toggleTabFull();}
 },true);
 window.addEventListener('beforeunload',e=>{if(window.__gsQuit||!unsavedWork())return;try{autosaveNow(true);}catch(err){}e.preventDefault();e.returnValue='';});
 /* nothing outside text boxes gets highlighted when you drag */
