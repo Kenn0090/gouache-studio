@@ -241,6 +241,10 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
     el('div',{class:'sub',text:'Background'}),seg([['dark','Dark'],['grey','Grey'],['light','Light']],s.bg,x=>{s.bg=x;v3.dirty=true;requestRender();},'Background'),
     chk('v3Clip','Cut out transparent areas',!!s.clip,x=>{s.clip=x;v3.dirty=true;requestRender();}),
     ...(ui.mode==='p3d'||ui.mode==='bake'||ui.mode==='convert'?[]:[el('div',{class:'sub',text:'Mirror painting on the model'}),mir3Box(),el('div',{class:'sub',text:'Select on the model'}),sel3Box()]),
+    el('div',{class:'sub',text:'Speed on this computer'}),seg([['low','Low'],['medium','Medium'],['high','High'],['ultra','Ultra']],QUALITY[prefs.quality]?prefs.quality:'high',x=>{prefs.quality=x==='high'?undefined:x;qualityChanged();},'Engine quality'),
+    el('p',{class:'note',text:'Engine quality: lower is lighter on slower computers.'}),
+    seg([['best','Best'],['balanced','Balanced'],['fast','Fast']],PAINT_GAP[prefs.paintSpeed]?prefs.paintSpeed:'best',x=>{prefs.paintSpeed=x==='best'?undefined:x;savePrefs();},'Painting speed'),
+    el('p',{class:'note',text:'Painting speed: Balanced and Fast redraw the picture less often while you paint. The paint is the same. Also in Preferences.'}),
     el('p',{class:'note',text:'Drag to turn, right-drag to move, wheel to zoom, double-click to reframe. Raise Detail (top of the 3D view) to see Height depth push the surface out finely; imported models are subdivided.'}));
   gear.onclick=()=>{box.hidden=!box.hidden;gear.setAttribute('aria-expanded',String(!box.hidden));/* below the bar, however many rows it wraps onto */if(!box.hidden){box.style.top=(bar.offsetTop+bar.offsetHeight+6)+'px';box.style.maxHeight='calc(100% - '+(bar.offsetTop+bar.offsetHeight+16)+'px)';}};
   const info=el('div',{class:'v3info',id:'v3Info'});v3.infoEl=info;

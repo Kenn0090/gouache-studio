@@ -789,3 +789,25 @@ body.sharp #menuSub{border-radius:0}
 .matpop{position:fixed;z-index:60;width:200px;padding:10px;background:var(--raise);border:1px solid var(--line-2);border-radius:10px;box-shadow:0 14px 34px rgba(0,0,0,.5);display:grid;gap:5px;pointer-events:none}
 .matpop .matprev{width:176px;height:176px;border-radius:50%}.matpop .mpname{font-weight:600}.matpop .mpsub{font-size:10.5px;color:var(--muted)}
 .matpop .mpline{font-size:11px;line-height:1.35}.matpop .dim{color:var(--faint)}body.sharp .matpop{border-radius:0}
+
+/* 0.30 fold arrows and the bottom shelf */
+#app>.dkfold{position:relative;z-index:7;width:20px;height:20px;padding:0;border:0;border-radius:6px;background:var(--raise);color:var(--muted);font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;opacity:.8}
+#app>.dkfold:hover{opacity:1;color:var(--text);background:var(--accent-soft)}#app>.dkfold[hidden]{display:none}
+#app>.dkfold.fb-dock,#app>.dkfold.fb-dock2{justify-self:end;align-self:start;margin:4px 5px 0 0}
+#app.f-dock>.dkfold.fb-dock,#app.f-dock2>.dkfold.fb-dock2{justify-self:center;margin:5px 0 0 0}
+#app>.dkfold.fb-tools{justify-self:center;align-self:end;margin-bottom:6px}#app.f-tools>.dkfold.fb-tools{align-self:start;margin:5px 0 0 0}
+#app>.dkfold.fb-opt{justify-self:end;align-self:center;margin-right:6px}
+#app>.dkfold.fb-shelf{justify-self:end;align-self:start;margin:3px 5px 0 0}
+#dock .dktabs,#dock2 .dktabs,.dkshelf .dktabs{padding-right:28px}
+body:not(.noopt) .optbar{padding-right:34px}
+.dkfolded{position:relative;overflow:hidden}
+.dkfolded>*{display:none!important}
+.dkfolded::after{content:attr(data-lbl);position:absolute;color:var(--muted);font-size:11px;letter-spacing:.05em;white-space:nowrap}
+#dock.dkfolded::after,#dock2.dkfolded::after,#tools.dkfolded::after{writing-mode:vertical-rl;left:0;right:0;top:34px;text-align:left;padding-left:5px}
+#optBar.dkfolded::after,#dkShelf.dkfolded::after{left:12px;top:5px}
+#app.f-dock>.dkwidth,#app.f-dock2>.stcol2,#app.f-tools>.sttools{display:none}
+.dkshelf{grid-area:shelf;display:flex;flex-direction:column;position:relative;background:var(--panel);border-top:1px solid var(--line);min-height:0;overflow:hidden}
+.dkshelf[hidden]{display:none}.dkshelf .dkgrp{flex:1 1 0}
+.dkshbar{position:absolute;left:0;right:0;top:-3px;height:6px;cursor:row-resize;z-index:6}.dkshbar:hover{background:color-mix(in srgb,var(--accent) 45%,transparent)}
+.dkshelf .dkbody{overflow:auto}
+@media (max-width:820px){.dkshelf{display:none}}
