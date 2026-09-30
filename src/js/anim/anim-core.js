@@ -39,7 +39,13 @@ const curFrame=()=>A_()?A_().frames[A_().cur]:null;
 /* ---- undoable frame operations ---- */
 function animState(){const A=A_();return {frames:A.frames.slice(),holds:A.frames.map(f=>f.hold),cur:A.cur,fps:A.fps,tags:A.tags.map(t=>Object.assign({},t)),fxl:(A.fxl||[]).map(afxClone)};}
 function setAnimState(s){const A=A_();A.frames=s.frames.slice();s.frames.forEach((f,i)=>f.hold=s.holds[i]);A.fps=s.fps;A.tags=s.tags.map(t=>Object.assign({},t));A.fxl=(s.fxl||[]).map(afxClone);showFrame(s.cur);renderAnimPanel();}
-function animOp(label,fn){const A=A_();if(!A)return;if(ptr&&ptr.mode==='paint')return;stopPlay();const before=animState();if(fn(A)===false)return;const after=animState();
+function animOp(label,fn){const A=A_();if(!A)return;if(ptr&&ptr.mode==='paint')return;stopPlay();const before=animState();
+  /* keyframes follow the frames they sit on when frames are added, deleted or moved */
+  const order=A.frames.slice(),kr=[];for(const tr of A.fxl||[])for(const k in tr.keys)for(const x of tr.keys[k])kr.push([tr,k,x,order[x.f]]);
+  if(fn(A)===false)return;
+  for(const [tr,k,x,F] of kr){const n=F?A.frames.indexOf(F):-1;if(n<0){const ks=tr.keys[k];if(ks){const i=ks.indexOf(x);if(i>=0)ks.splice(i,1);if(!ks.length){tr.v[k]=x.v;delete tr.keys[k];}}}else x.f=n;}
+  for(const tr of A.fxl||[])for(const k in tr.keys)tr.keys[k].sort((a,b)=>a.f-b.f);
+  const after=animState();
   pushUndo({label,mode:'anim',refs:[...new Set([...before.frames,...after.frames])],undo(){setAnimState(before);},redo(){setAnimState(after);}});
   showFrame(A.cur);renderAnimPanel();}
 function addFrame(){animOp('New frame',A=>{A.frames.splice(A.cur+1,0,newFrame());A.cur++;});}
@@ -57,11 +63,9 @@ function animMemOk(extra){const per=doc.w*doc.h*(doc.depth>8?8:4),A=A_();const t
 /* n copies of the current frame, straight after it ('after') or at the end of the animation ('end') */
 function quickDupli(n,where,step){const A=A_();if(!A)return;n=clamp(Math.round(n)||0,1,512);if(!animMemOk(n))return;
   animOp('Quick dupli',A=>{const s=A.frames[A.cur],src=A.cur,at=where==='end'?A.frames.length:A.cur+1,list=[];for(let k=0;k<n;k++)list.push(frameCopy(s));A.frames.splice(at,0,...list);A.cur=at+n-1;ui.fsel=[at,at+n-1];
-    /* keyframes after the new copies move along with their frames */
-    for(const tr of A.fxl||[])for(const k in tr.keys)for(const x of tr.keys[k])if(x.f>=at)x.f+=n;
     /* optional: step an effect's slider from one value on the first frame to another on the last copy */
     const tr=step&&(A.fxl||[])[step.track];if(tr&&tr.keys&&typeof step.from==='number'&&typeof step.to==='number'){
-      const ks=tr.keys[step.key]=(tr.keys[step.key]||[]).filter(x=>x.f<src||x.f>at+n-1);
+      const ks=tr.keys[step.key]=(tr.keys[step.key]||[]).filter(x=>x.f!==src);
       ks.push({f:src,v:step.from,e:step.e||'lin'},{f:at+n-1,v:step.to,e:step.e||'lin'});ks.sort((a,b)=>a.f-b.f);}});}
 /* the frames a helper works on: the Shift+click range, or all frames */
 function animRange(){const A=A_();if(ui.fsel){const a=Math.min(...ui.fsel),b=Math.max(...ui.fsel);return [clamp(a,0,A.frames.length-1),clamp(b,0,A.frames.length-1)];}return [0,A.frames.length-1];}
