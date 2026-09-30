@@ -57,6 +57,14 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>document.querySelectorAll('.afxkey').length>=3),'the key strip shows the new key');
  await p.evaluate(()=>document.querySelector('.afxdia').click());await W(200);
  ok(await p.evaluate(()=>!__gs.afxList()[0].keys.r.some(k=>k.f===2)),'clicking the lit diamond removes that key');
+ /* keyframes follow their frames when frames are added or deleted */
+ await p.evaluate(()=>{const A=__gs.anim;A.fxl=[];__gs.afxAdd('blur');__gs.afxSetKey(0,'r',0,2,'lin');__gs.afxSetKey(0,'r',2,20,'lin');__gs.showFrame(0);});
+ const kf=()=>p.evaluate(()=>__gs.afxList()[0].keys.r.map(k=>k.f).join(','));
+ const nf0=await p.evaluate(()=>__gs.anim.frames.length);
+ await p.evaluate(()=>{__gs.showFrame(0);__gs.addFrame();});await W(300);ok(await kf()==='0,3','a frame added in between pushes the later key along ('+await kf()+')');
+ await p.evaluate(()=>{__gs.showFrame(1);__gs.deleteFrame();});await W(300);ok(await kf()==='0,2','deleting that frame brings it back ('+await kf()+')');
+ await p.evaluate(()=>{__gs.showFrame(2);__gs.deleteFrame();});await W(300);ok(await kf()==='0','deleting the frame a key sits on removes that key ('+await kf()+')');
+ await p.keyboard.press('Control+z');await W(400);ok(await kf()==='0,2','undo brings the key back ('+await kf()+')');
  ok(errs.length===0,'no errors '+errs.slice(0,3).join('|'));
  await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);
 })();
