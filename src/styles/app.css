@@ -167,9 +167,9 @@ body.ldragging,body.ldragging *{cursor:grabbing!important}
 #menuPop .mh{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);padding:4px 10px 2px 28px}
 #menuPop{max-height:calc(100vh - 16px);overflow-y:auto}
 #modal{position:fixed;inset:0;background:rgba(8,9,11,.5);display:grid;place-items:center;z-index:50;padding:16px}
-#modal.float{background:transparent;pointer-events:none;place-items:start end;padding:52px 306px 16px 16px}
+#modal.float{background:transparent;pointer-events:none;place-items:center;padding:16px}
 #modal.float .dialog{pointer-events:auto;box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 0 1px var(--line-2)}#modal.float #dlgTitle{cursor:move;user-select:none}
-#modal.float.wide{place-items:start center;padding:52px 16px 16px}
+#modal.float.wide{place-items:center;padding:16px}
 .dialog{pointer-events:auto;background:var(--panel);border:1px solid var(--line-2);border-radius:10px;box-shadow:0 22px 60px rgba(0,0,0,.55);width:min(380px,100%);max-height:calc(100vh - 80px);overflow:auto;padding:16px;display:grid;gap:14px}
 .dialog h2{margin:0;font-size:14px;font-weight:600;letter-spacing:.01em}
 .dlg-grid{display:grid;gap:10px}
@@ -235,7 +235,6 @@ details.more>div{display:grid;gap:10px;margin-top:10px}
   #app{grid-template-columns:44px minmax(0,1fr);grid-template-rows:38px 62vh auto auto 26px;height:auto}
   #app>.tools{grid-row:2}#app>#timeline{grid-column:1/-1;grid-row:3}#app>.panel{grid-column:1/-1;grid-row:4;border-left:0;border-top:1px solid var(--line)}#app>.status{grid-row:5}
   .brand small,#docName{display:none}
-  #modal.float{padding:16px;place-items:end center}
   .status .hide-s{display:none}
 }
 .recentlist{display:grid;gap:6px}

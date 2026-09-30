@@ -1,3 +1,4 @@
-The colour picker opens out into a full picker.
+Windows open in the middle of the screen, and colours can be picked from anywhere on your screen.
 
-- **Colour buttons** (tint, shader colours, shapes) now open a full picker from the swatch: a colour square, a hue bar, Hue / Saturation / Lightness sliders, a hex box, and the starting colour beside the new one so you can go back. The system picker is still one click away.
+- **Every pop-up window** (What's new, Save, Export, confirmations, filters and the rest) opens in the centre of the screen, every time. You can still drag one by its title bar while it is open.
+- **Eyedropper for colour pickers:** a new dropper button beside the hex box in the Colour panel and in the colour pop-up picker. Click it, then click any pixel on your screen, even outside Gouache Studio (another window, a reference picture, a website). Esc cancels.

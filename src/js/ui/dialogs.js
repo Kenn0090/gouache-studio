@@ -1,10 +1,10 @@
 /* ================= Dialogs ================= */
 const modal=$('#modal');let dlg=null;
-/* Dialogs float over the work without darkening it, and move by their title bar (each remembers where it was put),
+/* Dialogs float over the work without darkening it, and move by their title bar (they always open in the centre of the screen),
    so what they change stays in view. o.dim keeps the old darkened, centred look (none use it now). */
 const dlgPos={};const dlgKey=t=>String(t||'').split(':')[0].trim();
 function dlgPlace(){const d=$('#modal .dialog'),p=dlgPos[dlgKey(dlg&&dlg.title)]||[0,0];d.style.transform=p[0]||p[1]?'translate('+p[0]+'px,'+p[1]+'px)':'';}
-function openDialog(o){closeMenu();dlg=o;$('#modal .dialog').classList.remove('kbwide');$('#dlgTitle').textContent=o.title;$('#dlgBody').replaceChildren(o.body);modal.classList.toggle('float',!o.dim);modal.classList.toggle('wide',!!o.wide);dlgPlace();
+function openDialog(o){closeMenu();dlg=o;delete dlgPos[dlgKey(o.title)];$('#modal .dialog').classList.remove('kbwide');$('#dlgTitle').textContent=o.title;$('#dlgBody').replaceChildren(o.body);modal.classList.toggle('float',!o.dim);modal.classList.toggle('wide',!!o.wide);dlgPlace();
   const ok=$('#dlgOk');ok.hidden=!o.okLabel;ok.textContent=o.okLabel||'';$('#dlgCancel').textContent=o.cancelLabel||'Cancel';modal.hidden=false;
   const f=o.body.querySelector('input,button,select');if(f)f.focus();}
 function closeDialog(){modal.hidden=true;dlg=null;}
