@@ -174,13 +174,14 @@ function fillMaskEdit(n){if(isLayer(n)&&n.fill&&n.mask&&!n.editMask)n.editMask=t
 function fillRasterize(L){if(!L||!L.fill)return;const f=L.fill;L.fill=null;pushUndo({label:'Convert fill to pixels',refs:[L],undo(){L.fill=f;renderLayers();},redo(){L.fill=null;renderLayers();}});renderLayers();}
 /* ---- a small preview ball of a material (drawn on the CPU: base colour or its image, roughness, metallic, height bumps) ---- */
 const matImgCPU=new WeakMap();
-function matImgPixels(t){if(!t)return null;let c=matImgCPU.get(t);if(c)return c;const n=64,tmp=makeTarget(n,n,8,false);run(P.resample,tmp,{uSrc:t.tex,uOffset:[0,0],uScale:[t.w/n,t.h/n],uTaps:{int:8},uOutside:[0,0,0,0]});
+function matImgPixels(t){if(!t)return null;let c=matImgCPU.get(t);if(c)return c;const n=128,tmp=makeTarget(n,n,8,false);run(P.resample,tmp,{uSrc:t.tex,uOffset:[0,0],uScale:[t.w/n,t.h/n],uTaps:{int:8},uOutside:[0,0,0,0]});
   const d=captureRegionNow(tmp,0,0,n,n).data;disposeTarget(tmp);c={n,d};matImgCPU.set(t,c);return c;}
-function matPreviewEl(getF,getImgs,size){const S=size||96,cv2=el('canvas',{class:'matprev',width:S,height:S,'aria-hidden':'true'});
+function matPreviewEl(getF,getImgs,size,scale){const S0=size||96,S=Math.round(S0*(scale||Math.min(window.devicePixelRatio||1,2))),cv2=el('canvas',{class:'matprev',width:S,height:S,style:'width:'+S0+'px;height:'+S0+'px','aria-hidden':'true'});
   const redraw=()=>{const f=getF(),I=getImgs()||{},x=cv2.getContext('2d'),id=x.createImageData(S,S),D=id.data,ch=k=>f.maps[k]&&f.maps[k].on?f.maps[k]:null;
     const bI=ch('base')&&ch('base').src!=='value'?matImgPixels(I.base):null,hI=ch('height')&&ch('height').src!=='value'?matImgPixels(I.height):null;
     const bc=ch('base')?(ch('base').c||[.7,.7,.7]):[.72,.72,.72],r=ch('rough')?ch('rough').v:.5,mt=ch('metal')?ch('metal').v:0,hs=f.hStr==null?1:f.hStr;
-    const smp=(im,u,v)=>{const n=im.n,i=((Math.floor(v*n)%n+n)%n*n+(Math.floor(u*n)%n+n)%n)*4,a=im.d[i+3]/255||1;return [im.d[i]/255/a,im.d[i+1]/255/a,im.d[i+2]/255/a];};
+    const px1=(im,x,y)=>{const n=im.n,i=(((y%n)+n)%n*n+(((x%n)+n)%n))*4,a=im.d[i+3]/255||1;return [im.d[i]/255/a,im.d[i+1]/255/a,im.d[i+2]/255/a];};
+    const smp=(im,u,v)=>{const n=im.n,fx=u*n-.5,fy=v*n-.5,x0=Math.floor(fx),y0=Math.floor(fy),tx=fx-x0,ty=fy-y0,a=px1(im,x0,y0),b=px1(im,x0+1,y0),c=px1(im,x0,y0+1),d=px1(im,x0+1,y0+1);return [0,1,2].map(k=>(a[k]*(1-tx)+b[k]*tx)*(1-ty)+(c[k]*(1-tx)+d[k]*tx)*ty);};
     const L=norm3([-.5,.6,.65]),lin=v=>Math.pow(v,2.2);
     for(let y=0;y<S;y++)for(let x0=0;x0<S;x0++){const nx=(x0+.5)/S*2-1,ny=1-(y+.5)/S*2,rr=nx*nx+ny*ny,p=(y*S+x0)*4;if(rr>1){D[p+3]=0;continue;}
       let N=[nx,ny,Math.sqrt(1-rr)];const u=.5+Math.atan2(N[0],N[2])/(2*Math.PI),v=.5-Math.asin(N[1])/Math.PI;
