@@ -42,7 +42,7 @@ Animation mode paints base colour only, so switch to Paint mode for the other ma
 
 ## Effects and keyframes
 
-Under the frames is the **Effects** area. Pick **+ Effect…** to add Radial blur, Warp, Distort, Noise, Colour ramp and more. The effect sits over every frame. Press the **◆** next to a slider to set a keyframe on the current frame; do it on another frame with a different value and the slider moves by itself in between. Choose how it moves (Linear, Ease in, Ease out, Ease in-out, Hold) with **New keys**. The diamonds on the strip show the keys. Exports use the effects as you see them.
+Under the frames is the **Effects** area. Pick **+ Effect…** to add any filter from the Filter gallery (Radial blur, Warp, Distort, Noise, Colour ramp, Halftone, Glass and the rest), listed in groups. The effect sits over every frame. Press the **◆** next to a slider to set a keyframe on the current frame; do it on another frame with a different value and the slider moves by itself in between. Choose how it moves (Linear, Ease in, Ease out, Ease in-out, Hold) with **New keys**. The diamonds on the strip show the keys. Exports use the effects as you see them.
 
 **Erode / Dissolve and Glow** are in the effect list too. Animate Dissolve's Amount from 0 to 100% to make something burn or erode away. **Quick dupli** can step an effect: pick the effect and a slider, and it moves from the first value to the last across the copies.
 

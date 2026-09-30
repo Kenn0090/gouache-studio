@@ -37,7 +37,10 @@ function afxEdit(i,key,val){const A=A_(),tr=afxList()[i];if(!tr)return;const ks=
 function afxCommit(){afxUI.dirty=false;}
 const afxUI={sel:0,ease:'lin',open:true,dirty:false,t:0};
 /* undoable slider edits: wrap a drag in one step */
-function afxEditStep(i,key,val){const A=A_();if(!afxUI.pre){afxUI.pre=animState();}afxEdit(i,key,val);
+function afxEditStep(i,key,val){const A=A_();if(!afxUI.pre){afxUI.pre=animState();}afxEdit(i,key,val);afxUndoLater();}
+/* any other setting of an effect changed (mode buttons, ticks, colours, pickers) */
+function afxTouch(){if(!afxUI.pre)afxUI.pre=animState();afxApply();requestRender(true);afxUndoLater();}
+function afxUndoLater(){
   clearTimeout(afxUI.pt);afxUI.pt=setTimeout(()=>{const before=afxUI.pre,after=animState();afxUI.pre=null;if(JSON.stringify(afxSave2(before))===JSON.stringify(afxSave2(after)))return;
     pushUndo({label:'Effect',mode:'anim',refs:[...new Set([...before.frames,...after.frames])],undo(){setAnimState(before);},redo(){setAnimState(after);}});},700);}
 const afxSave2=s=>(s.fxl||[]).map(t=>({id:t.id,v:t.v,keys:t.keys,on:t.on}));
@@ -76,9 +79,17 @@ function renderAnimFx(){const A=A_();const box=tlParts.fxbox;if(!box||ui.mode!==
     const dia=el('button',{class:'afxdia'+(has?' on':ks&&ks.length?' mid':''),title:has?'Remove the keyframe on this frame':'Keyframe this slider on this frame','aria-label':'Keyframe '+(d.label||d.key),text:'◆'});
     dia.dataset.key=d.key;dia.onclick=()=>{const k=tr.keys[d.key],on=k&&k.some(x=>x.f===A_().cur);if(on)afxDelKey(afxUI.sel,d.key,A_().cur);else afxSetKey(afxUI.sel,d.key,A_().cur,afxValue(tr,d.key,A_().cur));};
     grid.append(el('div',{class:'afxsl'},dia,s.el));}
-  ed.append(grid);}
+  ed.append(grid);
+  /* the rest of the filter's own controls (modes, ticks, colours, pickers) */
+  const o=FX[tr.id],extra=el('div',{class:'dlg-grid afxextra'});
+  try{const ctx={src:A.frames[A.cur].target};if(o.note)extra.append(el('p',{class:'note',text:o.note}));
+    if(o.controls)extra.append(...o.controls(tr.v,afxTouch,ctx));
+    for(const [key,label] of o.checks||[])extra.append(chk('afx_ck_'+key,label,!!tr.v[key],x=>{tr.v[key]=x;afxTouch();}));}catch(e){}
+  if(extra.children.length)ed.append(extra);}
 function afxAddMenu(){const s=el('select',{class:'tlsel','aria-label':'Add an effect',title:'Add an effect you can animate'},el('option',{value:'',text:'+ Effect…'}));
-  s.addEventListener('focus',()=>{if(s.options.length===1)for(const id of AFX_IDS)if(FX[id])s.append(el('option',{value:id,text:FX[id].title}));});s.addEventListener('mousedown',()=>s.dispatchEvent(new Event('focus')));
+  s.addEventListener('focus',()=>{if(s.options.length>1)return;const seen=new Set();
+    const add=(label,ids)=>{const g=el('optgroup',{label});for(const id of ids)if(FX[id]&&FX[id].render&&!seen.has(id)){seen.add(id);g.append(el('option',{value:id,text:FX[id].title}));}if(g.children.length)s.append(g);};
+    add('Animation favourites',AFX_IDS);for(const [g,ids] of FX_KINDS())add(g,ids);add('More',Object.keys(FX));});s.addEventListener('mousedown',()=>s.dispatchEvent(new Event('focus')));
   s.onchange=()=>{const v=s.value;s.value='';s.blur();if(v){afxUI.open=true;afxAdd(v);}};return s;}
 (function buildFxArea(){const hd=el('div',{class:'afxbar'});
   const tg=el('button',{class:'tlchip',text:'Effects ▾',title:'Show or hide the effects under the frames',onclick:()=>{afxUI.open=!afxUI.open;renderAnimFx();}});
