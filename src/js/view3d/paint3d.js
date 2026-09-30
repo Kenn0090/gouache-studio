@@ -339,4 +339,4 @@ function paintLayerBackToP3(n){const ln=n&&n.p3link;if(!ln)return;if(ui.mode!=='
   Object.assign(L,{opacity:O.opacity,mode:O.mode,visible:O.visible,clip:O.clip,p3tok:O.p3tok});if(O.mask)L.mask=cloneMask(O.mask);/* (its effects and styles are now part of the pixels) */
   syncTargets();structOp('Back from Paint',()=>{const P=O.parent,i=P.children.indexOf(O);detachNode(O);insertNode(L,P,i);selectOnly(L);});changed(L);renderLayers();buildP3Panel();
   toast('“'+L.name+'” in 3D Paint now has your edits from the Paint canvas.');return L;}
-{const sm=setMode;setMode=function(m,q){const r=sm(m,q);p3mmBadge();if(typeof renderDecals==="function")renderDecals();return r;};}
+{const sm=setMode;setMode=function(m,q){const r=sm(m,q);p3mmBadge();if(typeof renderDecals==="function")renderDecals();if(typeof renderEnvs==="function")renderEnvs();return r;};}

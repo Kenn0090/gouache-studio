@@ -144,9 +144,16 @@ function meshSubset(L,k){const T=L.idx.length/3,M=L.triMat,keep=[];for(let t=0;t
 const bkMats=L=>(L&&L.matNames&&L.matNames.length>1&&L.triMat)?L.matNames:null;
 async function runBakeSets(L,ks){const names=bkMats(L);if(!names){bk.byMat=null;return runBake(L,ks);}
   for(const n in bk.byMat||{})if(n!==bk.matShow)for(const k in bk.byMat[n].res)disposeTarget(bk.byMat[n].res[k]);bk.byMat={};const t0=performance.now();
-  for(let i=0;i<names.length;i++){bk.res={};const r=await runBake(meshSubset(L,i),ks,{quiet:true});if(r==='cancelled'||!Object.keys(bk.res).length){bk.byMat=null;return;}
-    bk.byMat[names[i]]={res:bk.res,kinds:bk.kinds,opts:bk.opts,src:bk.src};toast('Baked “'+names[i]+'” ('+(i+1)+' of '+names.length+').');}
-  bk.matShow=null;bakeShowMat(names[0]);toast('Baked '+names.length+' materials in '+((performance.now()-t0)/1000).toFixed(1)+' s.');if(bakeCfg.autoSend)bakeSend();}
+  const skip=bakeCfg.skip||{},todo=names.map((n,i)=>i).filter(i=>!skip[names[i]]);if(!todo.length){bk.byMat=null;toast('Every material is hidden. Show at least one to bake.');return;}
+  for(let j=0;j<todo.length;j++){const i=todo[j];bk.res={};const r=await runBake(meshSubset(L,i),ks,{quiet:true});if(r==='cancelled'||!Object.keys(bk.res).length){bk.byMat=null;return;}
+    bk.byMat[names[i]]={res:bk.res,kinds:bk.kinds,opts:bk.opts,src:bk.src};toast('Baked “'+names[i]+'” ('+(j+1)+' of '+todo.length+').');}
+  bk.matShow=null;bakeShowMat(names[todo[0]]);toast('Baked '+todo.length+' material'+(todo.length>1?'s':'')+' in '+((performance.now()-t0)/1000).toFixed(1)+' s.');if(bakeCfg.autoSend)bakeSend();}
+/* (0.36.2) an eyeball per material: hidden ones are left out of the bake, so a big model can be baked in groups */
+function bkMatEyes(C){const names=bkMats(bkLow());C.skip=C.skip||{};const box=el('div',{class:'p3sets bkmats',id:'bkMatEyes',title:'Materials to bake'},el('div',{class:'sub',text:'Materials to bake'}));
+  for(const n of names){const b=el('button',{class:'eye p3eye',type:'button','aria-label':(C.skip[n]?'Bake ':'Leave out ')+n,'aria-pressed':String(!C.skip[n]),title:C.skip[n]?'Left out of the bake. Click to include it.':'Will be baked. Click to leave it out.'});
+    b.innerHTML=C.skip[n]?eyeOff:eyeOn;b.addEventListener('click',()=>{C.skip[n]=!C.skip[n];box.replaceWith(bkMatEyes(C));});
+    box.append(el('div',{class:'p3set'+(C.skip[n]?' missing':'')},b,el('span',{class:'p3sn',text:n})));}
+  return box;}
 /* which material's results are shown (and sent to Paint, exported, fixed) */
 function bakeShowMat(n){const B=bk.byMat;if(!B||!B[n])return;if(bk.matShow&&B[bk.matShow])Object.assign(B[bk.matShow],{res:bk.res,kinds:bk.kinds,opts:bk.opts,src:bk.src});
   const E=B[n];bk.res=E.res;bk.kinds=E.kinds;bk.opts=E.opts;bk.src=E.src;bk.matShow=n;bakeRefresh();}
@@ -353,6 +360,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
     ...(C.high?[row('Show high-poly',(()=>{const g=seg([['off','Off'],['over','See-through'],['only','Only']],bk.showHigh||'off',v=>{bk.showHigh=v;v3.dirty=true;requestRender();},'Show the high-poly');g.id='bkShowHigh';return g;})())]:[]),
     el('div',{class:'sub',text:'Maps to bake'}),list(),tabs,page,
     bkMats(bkLow())?chk('bkPerMat','Bake each material separately ('+bkMats(bkLow()).length+' materials: one set of maps per texture set)',C.perMat!==false,v=>{C.perMat=v;}):null,
+    bkMats(bkLow())&&C.perMat!==false?bkMatEyes(C):null,
     el('div',{class:'row wrap'},go),
     bk.byMat?row('Material',(()=>{const s=el('select',{id:'bkMat','aria-label':'Material'},...Object.keys(bk.byMat).map(n=>el('option',{value:n,text:n})));s.value=bk.matShow;s.onchange=()=>bakeShowMat(s.value);return s;})()):null,
     bakeSendBox(),
