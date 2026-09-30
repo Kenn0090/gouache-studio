@@ -48,7 +48,8 @@ function syncLayerProps(){const A=doc.active,grp=A&&A.type==='group';if(ui.tool=
   $('#lDel').disabled=!A;$('#lUp').disabled=!A||i>=p.children.length-1;$('#lDown').disabled=!A||i<=0;$('#lUngroup').disabled=!grp;
 }
 function renderLayers(){
-  const list=$('#layerList');list.replaceChildren();
+  const list=$('#layerList'),keep=[];for(let e=list;e&&e!==document.body;e=e.parentElement)if(e.scrollTop)keep.push([e,e.scrollTop]);
+  list.replaceChildren();
   for(const {n,depth,clipped} of displayRows()){const grp=n.type==='group';
     const eye=el('button',{class:'eye',title:n.visible?'Hide':'Show','aria-label':(n.visible?'Hide ':'Show ')+n.name});eye.innerHTML=n.visible?eyeOn:eyeOff;
     eye.addEventListener('click',e=>{e.stopPropagation();n.visible=!n.visible;renderLayers();requestRender(true);});
@@ -87,6 +88,7 @@ function renderLayers(){
     row.addEventListener('pointerdown',()=>{if(ui.msSel){ui.msSel=null;if(typeof renderMatEd==='function')requestAnimationFrame(()=>renderMatEd(true));}},true);
     list.append(row);if(typeof msRowsEl==='function')for(const r of msRowsEl(n))list.append(r);}
   list.append(dropLine);updateRowClasses();if(typeof maskBarSync==='function')maskBarSync();v3.dirty=true;
+  for(const [e,t] of keep)e.scrollTop=t;
 }
 function renderMaskRow(){const A=doc.active,row=$('#maskRow');row.replaceChildren();if(!A)return;
   if(!A.mask){row.append(el('button',{class:'btn sm',text:'Add mask',title:'Add a white mask (reveals everything)',onclick:()=>cmdAddMask(1)}),el('button',{class:'btn sm',text:'Add hide-all mask',title:'Add a black mask (hides everything)',onclick:()=>cmdAddMask(0)}));return;}

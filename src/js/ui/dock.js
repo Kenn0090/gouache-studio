@@ -110,7 +110,11 @@ for(const g of dk.col2.groups)g._c2=true;
 if(!dkC2Has('shading')){const g=dk.col2.groups.find(g=>g.tabs.includes('matEd'))||dk.col2.groups[0];if(g){const i=g.tabs.indexOf('matEd');g.tabs.splice(i<0?g.tabs.length:i+1,0,'shading');}}
 /* 0.25: Stencils became a tab of their own, beside Brushes */
 if(!dkC2Has('stencils')){const g=dk.col2.groups.find(g=>g.tabs.includes('brushes'))||dk.col2.groups[dk.col2.groups.length-1];if(g){const i=g.tabs.indexOf('brushes');g.tabs.splice(i<0?g.tabs.length:i+1,0,'stencils');}}
-function dkRender(){const L=dk.L,dock=$('#dock');dkGrid();
+/* (0.33, Kenn) a panel keeps its scroll place when the dock is rebuilt (clicking a mask row brings Properties forward) */
+function dkSecKey(v){if(!v)return '';if(v.id)return v.id;const d=v.querySelector('[id]');return d?d.id:'';}
+function dkScrollSave(){const m={};for(const b of document.querySelectorAll('.dkbody')){const v=[...b.children].find(c=>!c.classList.contains('dk-off'));const k=dkSecKey(v);if(k&&b.scrollTop)m[k]=b.scrollTop;}return m;}
+function dkScrollRestore(m){if(!m)return;for(const b of document.querySelectorAll('.dkbody')){const v=[...b.children].find(c=>!c.classList.contains('dk-off'));const k=dkSecKey(v);if(k&&m[k])b.scrollTop=m[k];}}
+function dkRender(){const keepSc=dkScrollSave(),L=dk.L,dock=$('#dock');dkGrid();
   for(const id of PANEL_IDS){const s=dkSec(id);s.classList.remove('dk-off');}
   dock.replaceChildren();const gs=L.groups.filter(g=>dkAvail(g).length);
   gs.forEach((g,i)=>{if(i)dock.append(dkSplit(gs[i-1],g));dock.append(dkGroup(g));});
@@ -128,6 +132,7 @@ function dkRender(){const L=dk.L,dock=$('#dock');dkGrid();
   if(dk.flyout)dkFlyoutEl(dk.flyout);
   for(const id of PANEL_IDS){const s=dkSec(id);if(!s.parentElement||s.parentElement===dk.park||!s.isConnected)dk.park.append(s);}
   dkFoldBtns();if(dk.wbar)dk.wbar.hidden=dk.wbar.hidden||!!(L.fold&&L.fold.dock);
+  dkScrollRestore(keepSc);requestAnimationFrame(()=>dkScrollRestore(keepSc));
   if(typeof resizeGL==='function')requestAnimationFrame(()=>{resizeGL();if(typeof drawSV==='function')drawSV();});}
 function dkTabs(tabs,active,where,onPick){const strip=el('div',{class:'dktabs',role:'tablist'});
   for(const id of tabs){const on=id===active,b=el('button',{class:'dktab'+(on?' on':''),role:'tab','aria-selected':String(on),text:id==='tool'?(dk.toolTitle.textContent||'Tool settings'):PANELS[id].title});
