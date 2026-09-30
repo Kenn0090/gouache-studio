@@ -16,7 +16,8 @@ function msRowsEl(n){const out=[];if(!(msHas(n)||(n.cfx&&n.cfx.length))||n.fxFol
     row.addEventListener('pointerdown',e=>msRowDown(e,row));
     row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();msSelect(n,where,r.id);}if(e.key==='Delete'){e.preventDefault();e.stopPropagation();msRemove(n,where,r.id);}});
     out.push(row);}};
-  if(n.cfx&&n.cfx.length)mk('c',n.cfx);if(msHas(n))mk('m',n.mask.stack);return out;}
+  /* (0.34, Kenn) the mask's rows show only while that layer's mask is the one selected */
+  if(n.cfx&&n.cfx.length)mk('c',n.cfx);if(msHas(n)&&n===doc.active&&n.editMask)mk('m',n.mask.stack);return out;}
 /* (0.31.2) click a row's blend name to pick another blend mode right there */
 function msModeMenu(e,n,r,btn){const pop=$('#menuPop');closeMenu();const cur=r.mode||'normal',b=btn.getBoundingClientRect();
   pop.replaceChildren(...MS_MODES.map(([v,t])=>el('button',{class:'mi',role:'menuitemradio','aria-checked':String(v===cur),onclick:()=>{pop.hidden=true;if(v===cur)return;msRecord(n,'Blend mode: '+t.toLowerCase(),()=>{r.mode=v;});}},el('span',{text:v===cur?'✓':''}),el('span',{text:t}),el('span'))));
