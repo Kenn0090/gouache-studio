@@ -54,7 +54,7 @@ function renderTimeline(){const A=A_();if(ui.mode!=='anim'||!A)return;
     bar.addEventListener('click',()=>{ui.playTag=i;stopPlay();togglePlay();renderAnimPanel();});return bar;}));
   renderRuler(A);tlParts.tags.style.height=A.tags.length?'18px':'0';
   const cur=fr.children[A.cur];if(cur){const s=tlParts.scroll,l=cur.offsetLeft;if(l<s.scrollLeft||l+CELL>s.scrollLeft+s.clientWidth)s.scrollLeft=l-s.clientWidth/2+CELL/2;}
-  scheduleTimeline();}
+  if(typeof renderAnimFx==='function')renderAnimFx();scheduleTimeline();}
 function frameCell(i){const c=el('div',{class:'fcell',role:'option',tabindex:'-1'},el('canvas',{class:'fthumb'}),el('span',{class:'fnum'}),el('span',{class:'fhold'}));
   c.addEventListener('pointerdown',e=>{if(e.button!==0)return;const i0=c._i,A=A_();
     if(e.shiftKey){ui.fsel=[ui.fsel?ui.fsel[0]:A.cur,i0];renderTimeline();return;}

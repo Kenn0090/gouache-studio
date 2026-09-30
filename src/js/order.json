@@ -33,6 +33,7 @@
         "anim/anim-core",
         "anim/anim-ui",
         "anim/anim-io",
+        "anim/anim-fx",
         "files/helpers",
         "files/loading",
         "files/decoders",

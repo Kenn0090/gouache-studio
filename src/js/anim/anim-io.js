@@ -56,7 +56,7 @@ async function importGif(){if(!ensureAnimMode())return;const [f]=await pickFiles
     dec.close();putFrames(list,replace,'Import GIF');}catch(e){console.error(e);toast('This GIF could not be read: '+(e.message||e));}}
 
 /* ---- reading frames at full size, straight (not premultiplied) colour ---- */
-function frameCanvas(F){const W=doc.w,H=doc.h,px=readRGBA8(F.target),img=new ImageData(W,H),d=img.data;
+function frameCanvas(F,T){const W=doc.w,H=doc.h,px=readRGBA8(T||F.target),img=new ImageData(W,H),d=img.data;
   for(let i=0;i<d.length;i+=4){const a=px[i+3];if(a){d[i]=Math.min(255,px[i]*255/a);d[i+1]=Math.min(255,px[i+1]*255/a);d[i+2]=Math.min(255,px[i+2]*255/a);d[i+3]=a;}}
   const c=document.createElement('canvas');c.width=W;c.height=H;c.getContext('2d').putImageData(img,0,0);return c;}
 function scaledCanvas(src,s){if(s===1)return src;const c=document.createElement('canvas');c.width=Math.max(1,Math.round(src.width*s));c.height=Math.max(1,Math.round(src.height*s));
@@ -66,7 +66,7 @@ const nextPow2=n=>{let p=1;while(p<n)p*=2;return p;};
 
 /* ---- sprite sheet / flipbook export window ---- */
 function dlgExportSheet(){if(!doc.anim){toast('Switch to Animation mode (top right) and make some frames first.');return;}if(!ensureAnimMode())return;stopPlay();
-  const A0=A_(),full0=A0.frames.map(frameCanvas);let A=A0,full=full0;
+  const A0=A_(),full0=afxRenderAll(A0);let A=A0,full=full0;
   const st={rate:'same',inter:'off',range:-1,tagRows:false,auto:true,cols:0,rows:0,left:'empty',scale:1,pad:0,ext:0,pot:false,holds:false,data:'json'};
   const sheet=document.createElement('canvas'),view=el('canvas',{class:'sheetview'}),anim=el('canvas',{class:'sheetanim'}),info=el('div',{class:'note sheetinfo'}),warn=el('div',{class:'note warn'}),unity=el('div',{class:'note'});
   let L=null,animTimer=0,ak=0;

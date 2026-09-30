@@ -933,3 +933,15 @@ body.tabfull #docTabs{display:none!important}
 .tlmark{position:absolute;top:0;height:16px;padding-left:3px;font-size:10px;color:var(--dim,#8a8f98);border-left:1px solid var(--line-2);line-height:16px;white-space:nowrap;overflow:hidden;pointer-events:none}
 .tlmark.sec{color:var(--text);border-left-color:var(--accent)}
 .tlhead{position:absolute;bottom:0;height:3px;background:var(--accent);border-radius:2px;pointer-events:none}
+/* animation effect tracks */
+.afxbar{display:flex;gap:8px;align-items:center;padding:4px 8px;border-top:1px solid var(--line)}
+.afxbox{display:flex;gap:10px;padding:0 8px 6px;max-height:220px;overflow:auto}
+.afxlist{display:flex;flex:1;min-width:0}
+.afxrows{flex:0 0 150px}.afxscroll{flex:1;min-width:0;overflow:hidden}.afxstrips{}
+.afxhead,.afxstrip{height:26px;display:flex;align-items:center;gap:4px;position:relative}
+.afxhead.sel{background:var(--hover)}.afxstrip{border-bottom:1px solid var(--line);background:repeating-linear-gradient(90deg,transparent 0 75px,var(--line) 75px 76px)}
+.afxname{background:none;border:0;color:inherit;flex:1;text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.afxkey{position:absolute;top:8px;width:10px;height:10px;background:var(--accent);transform:rotate(45deg)}.afxkey.cur{outline:2px solid #fff}
+.afxedit{flex:0 0 360px}.afxtop{display:flex;gap:8px;align-items:center;margin-bottom:4px}
+.afxsl{display:flex;align-items:center;gap:4px}.afxsl>*:last-child{flex:1}
+.afxdia{background:none;border:0;color:var(--dim,#888);cursor:pointer;font-size:14px}.afxdia.on{color:var(--accent)}.afxdia.mid{color:var(--accent);opacity:.5}

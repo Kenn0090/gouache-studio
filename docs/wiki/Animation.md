@@ -39,3 +39,7 @@ Animation mode paints base colour only, so switch to Paint mode for the other ma
 - **,** and **.** step to the previous and next frame
 - **Space** plays and stops (hold Space and drag to pan, as before)
 - **Ctrl+Shift+Left/Right** moves the frame earlier or later
+
+## Effects and keyframes
+
+Under the frames is the **Effects** area. Pick **+ Effect…** to add Radial blur, Warp, Distort, Noise, Colour ramp and more. The effect sits over every frame. Press the **◆** next to a slider to set a keyframe on the current frame; do it on another frame with a different value and the slider moves by itself in between. Choose how it moves (Linear, Ease in, Ease out, Ease in-out, Hold) with **New keys**. The diamonds on the strip show the keys. Exports use the effects as you see them.

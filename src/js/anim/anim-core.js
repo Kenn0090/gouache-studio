@@ -32,13 +32,13 @@ function setMode(m,quiet){if(m===ui.mode)return true;
   renderLayers();refreshChanUI();refreshMapsUI();renderTimeline();renderAnimPanel();buildBrushPanel();changedAll();resizeGL();requestRender(true);
   if(!quiet)toast(ui.mode==='anim'?'Animation mode: paint each frame. , and . step through frames, Enter plays.':ui.mode==='bake'?'Bake: bake maps from a high-poly model, see them on the model, and paint fixes.':ui.mode==='convert'?'Convert: make normal, height, AO and more from a photo or another map.':ui.mode==='brush'?'Brush: draw a brush tip in black. Your painting is kept in Paint.':ui.mode==='p3d'?'3D Paint: paint on the model. Its textures are separate from Paint.':'Paint mode.');return true;}
 function showFrame(i,noRender){const A=A_();if(!A)return;A.cur=clamp(i,0,A.frames.length-1);const F=A.frames[A.cur];
-  if(ui.mode==='anim'){animRoot.children=[F];F.parent=animRoot;selectOnly(F);}
+  if(ui.mode==='anim'){animRoot.children=[F];F.parent=animRoot;if(typeof afxApply==='function')afxApply();selectOnly(F);}
   if(!noRender){renderTimeline();requestRender(true);}}
 const curFrame=()=>A_()?A_().frames[A_().cur]:null;
 
 /* ---- undoable frame operations ---- */
-function animState(){const A=A_();return {frames:A.frames.slice(),holds:A.frames.map(f=>f.hold),cur:A.cur,fps:A.fps,tags:A.tags.map(t=>Object.assign({},t))};}
-function setAnimState(s){const A=A_();A.frames=s.frames.slice();s.frames.forEach((f,i)=>f.hold=s.holds[i]);A.fps=s.fps;A.tags=s.tags.map(t=>Object.assign({},t));showFrame(s.cur);renderAnimPanel();}
+function animState(){const A=A_();return {frames:A.frames.slice(),holds:A.frames.map(f=>f.hold),cur:A.cur,fps:A.fps,tags:A.tags.map(t=>Object.assign({},t)),fxl:(A.fxl||[]).map(afxClone)};}
+function setAnimState(s){const A=A_();A.frames=s.frames.slice();s.frames.forEach((f,i)=>f.hold=s.holds[i]);A.fps=s.fps;A.tags=s.tags.map(t=>Object.assign({},t));A.fxl=(s.fxl||[]).map(afxClone);showFrame(s.cur);renderAnimPanel();}
 function animOp(label,fn){const A=A_();if(!A)return;if(ptr&&ptr.mode==='paint')return;stopPlay();const before=animState();if(fn(A)===false)return;const after=animState();
   pushUndo({label,mode:'anim',refs:[...new Set([...before.frames,...after.frames])],undo(){setAnimState(before);},redo(){setAnimState(after);}});
   showFrame(A.cur);renderAnimPanel();}
