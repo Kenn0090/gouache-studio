@@ -43,6 +43,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>!!document.querySelector('.colpop #cp_h')&&!!document.querySelector('.colpop #cp_s')&&!!document.querySelector('.colpop #cp_l')),'the colour picker has Hue, Saturation and Lightness sliders');
  await p.evaluate(()=>{const i=document.querySelector('#cp_l');i.value=i.max;i.dispatchEvent(new Event('input',{bubbles:true}));});await W(200);
  ok(await p.evaluate(()=>document.querySelector('#sh_col').value==='#ffffff'),'moving Lightness changes the colour');
+ {const sq=await p.locator('#cp_sq').boundingBox();await p.mouse.click(sq.x+sq.width*.9,sq.y+sq.height*.1);await W(200);
+   ok(await p.evaluate(()=>{const v=document.querySelector('#sh_col').value,c=[1,3,5].map(i=>parseInt(v.slice(i,i+2),16));return Math.max(...c)>200&&Math.max(...c)-Math.min(...c)>150;}),'the colour square picks a bright, saturated colour');}
  await p.evaluate(()=>document.querySelector('#cp_close').click());
  await p.evaluate(()=>{__gs.brush.spacing=1;__gs.brush.grain=.8;__gs.buildBrushPanel&&__gs.buildBrushPanel();});
  if(await p.evaluate(()=>!!document.querySelector('#brushReset'))){await p.evaluate(()=>document.querySelector('#brushReset').click());await W(200);}

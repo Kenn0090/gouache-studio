@@ -917,3 +917,7 @@ body.lv-beginner .tool:not([data-tool=move]):not([data-tool=brush]):not([data-to
 .fxdguide{display:grid;gap:8px}.fxddrop{display:grid;place-items:center;gap:2px;padding:14px;border:1px dashed var(--line-2);border-radius:8px;cursor:pointer;text-align:center}
 .fxddrop small{color:var(--muted)}.fxddrop.over,.fxddrop:hover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
 .fxdpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;max-height:60vh;overflow:auto}
+/* 0.39.2 the colour preview opens out into a full picker */
+.colpop{width:250px;transition:transform .16s ease,opacity .16s ease}.colpop.grow{transform:scale(.15);opacity:0}
+.colsq,.colhue{display:block;width:100%;border-radius:6px;border:1px solid var(--line);cursor:crosshair;touch-action:none}.colsq{height:150px}.colhue{height:14px}
+.colrow{display:grid;grid-template-columns:1fr 1fr;gap:0;border-radius:6px;overflow:hidden;border:1px solid var(--line)}.colrow .colsw{border:0;border-radius:0}.colold{height:26px;border:0;padding:0;cursor:pointer}

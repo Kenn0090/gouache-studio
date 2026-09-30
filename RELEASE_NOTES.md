@@ -1,3 +1,3 @@
-Slope blur can follow a picture.
+The colour picker opens out into a full picker.
 
-- **Slope blur** has a new "A picture" choice. Drop a picture on the box, click it to browse, or use **Choose from Textures…** to pick from the library. The blur then flows along that picture's slope. Flip the slope reverses it, and Picture repeat tiles it.
+- **Colour buttons** (tint, shader colours, shapes) now open a full picker from the swatch: a colour square, a hue bar, Hue / Saturation / Lightness sliders, a hex box, and the starting colour beside the new one so you can go back. The system picker is still one click away.

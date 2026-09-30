@@ -147,15 +147,28 @@ function shapeOverlay(){if(ui.tool!=='shape')return '';const L=activeShape();if(
 function colourBtn(id,get,set,title){const i=el('input',{type:'color',id,value:toHex(get()),title,'aria-label':title});i.addEventListener('input',()=>{const c=fromHex(i.value);if(c)set(c);});
   i.addEventListener('click',e=>{e.preventDefault();colourPop(i,get,c=>{i.value=toHex(c);set(c);});});return i;}
 function colourPop(anchor,get,put){document.querySelectorAll('.colpop').forEach(x=>x.remove());
-  let [h,sa,l]=rgb2hsl(...get());const hexI=el('input',{type:'text',class:'colhex','aria-label':'Hex colour',maxlength:7});
-  const sw=el('div',{class:'colsw'});
-  const go=()=>{const c=hsl2rgb(h,sa,l);sw.style.background=toHex(c);hexI.value=toHex(c);put(c);};
-  const mk=(id,label,min,max,step,get1,set1,fmt)=>makeSlider({id,label,min,max,step,value:get1(),fmt,onInput:v=>{set1(v);go();}});
-  const H=mk('cp_h','Hue',0,360,1,()=>h,v=>{h=v;},v=>Math.round(v)+'°'),S=mk('cp_s','Saturation',0,1,.01,()=>sa,v=>{sa=v;},pct),Lm=mk('cp_l','Lightness',0,1,.01,()=>l,v=>{l=v;},pct);
-  hexI.onchange=()=>{const c=fromHex(hexI.value);if(!c)return;[h,sa,l]=rgb2hsl(...c);H.set&&H.set(h);S.set&&S.set(sa);Lm.set&&Lm.set(l);go();};
-  const pop=el('div',{class:'colpop',role:'dialog','aria-label':'Colour'},sw,H.el,S.el,Lm.el,el('div',{class:'frow'},hexI,el('button',{class:'btn sm',text:'System picker…',onclick:()=>{pop.remove();anchor.showPicker&&anchor.showPicker();}}),el('button',{class:'btn sm',id:'cp_close',text:'Done',onclick:()=>pop.remove()})));
+  /* (0.39.2, Kenn) the preview opens out into a full picker: colour square, hue bar, Hue / Saturation / Lightness sliders, hex and RGB */
+  let [h,sv,vv]=rgb2hsv(...get());const hexI=el('input',{type:'text',class:'colhex','aria-label':'Hex colour',maxlength:7,id:'cp_hex'});
+  const sw=el('div',{class:'colsw'}),old=toHex(get()),oldSw=el('button',{type:'button',class:'colold',title:'Back to the colour you started with',style:'background:'+old,onclick:()=>{[h,sv,vv]=rgb2hsv(...fromHex(old));sync();go();}});
+  const sq=el('canvas',{class:'colsq',id:'cp_sq',width:220,height:150,role:'img','aria-label':'Colour square: across is saturation, up is brightness'}),hb=el('canvas',{class:'colhue',id:'cp_hue',width:220,height:14,role:'img','aria-label':'Hue'});
+  const drawSq=()=>{const g=sq.getContext('2d'),W=sq.width,H=sq.height,im=g.createImageData(W,H);
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++){const c=hsv2rgb(h,x/(W-1),1-y/(H-1)),o=(y*W+x)*4;im.data[o]=c[0]*255;im.data[o+1]=c[1]*255;im.data[o+2]=c[2]*255;im.data[o+3]=255;}
+    g.putImageData(im,0,0);const cx=sv*(W-1),cy=(1-vv)*(H-1);g.beginPath();g.arc(cx,cy,6,0,7);g.lineWidth=2;g.strokeStyle='#fff';g.stroke();g.beginPath();g.arc(cx,cy,7.5,0,7);g.lineWidth=1;g.strokeStyle='#000';g.stroke();};
+  const drawHue=()=>{const g=hb.getContext('2d'),W=hb.width;for(let x=0;x<W;x++){const c=hsv2rgb(x/(W-1)*360,1,1);g.fillStyle='rgb('+Math.round(c[0]*255)+','+Math.round(c[1]*255)+','+Math.round(c[2]*255)+')';g.fillRect(x,0,1,hb.height);}
+    const x=h/360*(W-1);g.strokeStyle='#fff';g.lineWidth=2;g.strokeRect(x-2,1,4,hb.height-2);g.strokeStyle='#000';g.lineWidth=1;g.strokeRect(x-3,0,6,hb.height);};
+  const cur=()=>hsv2rgb(h,sv,vv);
+  const mk=(id,label,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:min,fmt,onInput:v=>{const [hh,ss,ll]=rgb2hsl(...cur());const t=id==='cp_h'?[v,ss,ll]:id==='cp_s'?[hh,v,ll]:[hh,ss,v];const c=hsl2rgb(...t);[h,sv,vv]=rgb2hsv(...c);if(id!=='cp_h'&&sv===0)h=hh;if(id==='cp_h')h=v;go(true);}});
+  const H=mk('cp_h','Hue',0,360,1,v=>Math.round(v)+'°'),S=mk('cp_s','Saturation',0,1,.01,pct),Lm=mk('cp_l','Lightness',0,1,.01,pct);
+  const sync=()=>{const [hh,ss,ll]=rgb2hsl(...cur());H.set(h);S.set(ss);Lm.set(ll);drawSq();drawHue();};
+  const go=(fromSlider)=>{const c=cur();sw.style.background=toHex(c);hexI.value=toHex(c);drawSq();drawHue();if(!fromSlider){const [hh,ss,ll]=rgb2hsl(...c);S.set(ss);Lm.set(ll);H.set(h);}put(c);};
+  const drag=(cv,fn)=>{cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);const f=ev=>{const r=cv.getBoundingClientRect();fn(clamp((ev.clientX-r.left)/r.width,0,1),clamp((ev.clientY-r.top)/r.height,0,1));go();};f(e);const up=()=>{cv.removeEventListener('pointermove',f);cv.removeEventListener('pointerup',up);};cv.addEventListener('pointermove',f);cv.addEventListener('pointerup',up);});};
+  drag(sq,(x,y)=>{sv=x;vv=1-y;});drag(hb,x=>{h=x*360;});
+  hexI.onchange=()=>{const c=fromHex(hexI.value);if(!c)return;[h,sv,vv]=rgb2hsv(...c);go();};
+  const pop=el('div',{class:'colpop',role:'dialog','aria-label':'Colour'},sq,hb,el('div',{class:'colrow'},sw,oldSw),H.el,S.el,Lm.el,el('div',{class:'frow'},hexI,el('button',{class:'btn sm',text:'System picker…',onclick:()=>{pop.remove();anchor.showPicker&&anchor.showPicker();}}),el('button',{class:'btn sm',id:'cp_close',text:'Done',onclick:()=>pop.remove()})));
   document.body.append(pop);go();
-  const r=anchor.getBoundingClientRect(),w=pop.offsetWidth,hh=pop.offsetHeight;pop.style.left=Math.max(6,Math.min(innerWidth-w-6,r.left))+'px';pop.style.top=Math.max(6,Math.min(innerHeight-hh-6,r.bottom+6))+'px';
+  const r=anchor.getBoundingClientRect(),w=pop.offsetWidth,hh=pop.offsetHeight,L=Math.max(6,Math.min(innerWidth-w-6,r.left)),T=Math.max(6,Math.min(innerHeight-hh-6,r.bottom+6));
+  pop.style.left=L+'px';pop.style.top=T+'px';pop.style.transformOrigin=(r.left+r.width/2-L)+'px '+(r.top+r.height/2-T)+'px';
+  pop.classList.add('grow');requestAnimationFrame(()=>requestAnimationFrame(()=>pop.classList.remove('grow')));
   const away=e=>{if(!pop.contains(e.target)&&e.target!==anchor){pop.remove();window.removeEventListener('pointerdown',away,true);}};setTimeout(()=>window.addEventListener('pointerdown',away,true),0);}
 function buildShapePanel(box){const L=activeShape(),S=L?L.shape:ui.shape;$('#brushTitle').textContent=L?'Shape layer':'Shape';
   const sl=(id,label,get,set,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:get(),fmt,onInput:v=>shapeSet(s=>set(s,v))}).el;
