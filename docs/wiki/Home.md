@@ -78,3 +78,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 | 33b | Library grows to 150 materials and 75 photo grunge maps | 0.33.1 |
 | 34 | Double-click swaps a material, Tiling slider, 200 materials, 19 new smart materials and 12 smart masks | 0.34.0 |
 | 35 | 3D Paint viewport strip (3D, Split, 2D, UV), eyeball on texture sets | 0.35.0 |
+
+## Look and level (0.39)
+
+The first time you start Gouache Studio a launch screen asks for your **Look** (Classic or Modern), your **Level** (Beginner or Full) and where to **Start in**. Change them later in Preferences › Look, or open File › **Launch screen…**. Beginner shows the main tools only and a Getting started card; Full shows everything.
