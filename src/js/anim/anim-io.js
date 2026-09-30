@@ -66,14 +66,14 @@ const nextPow2=n=>{let p=1;while(p<n)p*=2;return p;};
 
 /* ---- sprite sheet / flipbook export window ---- */
 function dlgExportSheet(){if(!doc.anim){toast('Switch to Animation mode (top right) and make some frames first.');return;}if(!ensureAnimMode())return;stopPlay();
-  const A=A_(),full=A.frames.map(frameCanvas);
-  const st={range:-1,tagRows:false,auto:true,cols:0,rows:0,left:'empty',scale:1,pad:0,ext:0,pot:false,holds:false,data:'json'};
+  const A0=A_(),full0=A0.frames.map(frameCanvas);let A=A0,full=full0;
+  const st={rate:'same',inter:'off',range:-1,tagRows:false,auto:true,cols:0,rows:0,left:'empty',scale:1,pad:0,ext:0,pot:false,holds:false,data:'json'};
   const sheet=document.createElement('canvas'),view=el('canvas',{class:'sheetview'}),anim=el('canvas',{class:'sheetanim'}),info=el('div',{class:'note sheetinfo'}),warn=el('div',{class:'note warn'}),unity=el('div',{class:'note'});
   let L=null,animTimer=0,ak=0;
   /* which frames go in, in order; holds can be repeated for engines that only step one cell per tick */
   const seqOf=(a,b)=>{const s=[];for(let i=a;i<=b;i++){const n=st.holds?A.frames[i].hold:1;for(let k=0;k<n;k++)s.push(i);}return s;};
   function layout(){const fw=Math.max(1,Math.round(doc.w*st.scale)),fh=Math.max(1,Math.round(doc.h*st.scale)),e=st.ext,p=st.pad;let groups;
-    if(st.tagRows&&A.tags.length)groups=A.tags.map(t=>{const [a,b]=tagRange(t);return {tag:t,seq:seqOf(a,b)};});
+    if(st.tagRows&&A.tags.length)groups=A.tags.map(t=>{const [a,b]=tagRange(t,A);return {tag:t,seq:seqOf(a,b)};});
     else{let a=0,b=A.frames.length-1,tag=null;if(st.range>=0&&A.tags[st.range]){tag=A.tags[st.range];[a,b]=tagRange(tag);}groups=[{tag,seq:seqOf(a,b)}];}
     const n=groups.reduce((s,g)=>s+g.seq.length,0);let cols,rows,cells=[],lost=0;
     if(groups.length>1){cols=Math.max(...groups.map(g=>g.seq.length));rows=groups.length;groups.forEach((g,r)=>g.seq.forEach((fi,c)=>cells.push({fi,c,r,g})));}
@@ -111,7 +111,20 @@ function dlgExportSheet(){if(!doc.anim){toast('Switch to Animation mode (top rig
   const numI=(id,label,val,max,fn)=>{const i=el('input',{class:'num',type:'number',min:0,max,value:val,id,'aria-label':label});i.addEventListener('change',()=>{fn(clamp(+i.value||0,0,max));upd();});return [el('label',{for:id,text:label}),i];};
   const rangeOpts=[[-1,'All frames'],...A.tags.map((t,i)=>[i,'Tag: '+t.name])];
   const expBtns=[el('button',{class:'btn primary',text:'Export sheet',onclick:()=>exportSheet()}),el('button',{class:'btn',text:'PNG sequence',onclick:()=>exportSequence()}),el('button',{class:'btn',text:'GIF',onclick:()=>exportGif()})];
+  /* (0.41, Kenn) export frame rate and in-between frames (blend or motion) */
+  const retimeNote=el('div',{class:'note'});let rtToken=0;
+  async function retime(){const my=++rtToken;const rate=exRate(st.rate,A0.fps);
+    if(rate===A0.fps){A=A0;full=full0;retimeNote.textContent='';upd();syncGrid();return;}
+    retimeNote.textContent='Making the in-between frames…';expBtns.forEach(b=>b.disabled=true);
+    try{const R=await buildRetimed(A0,full0,rate,st.inter,k=>{if(my===rtToken)retimeNote.textContent='Making frame '+k.done+' of '+k.total+'…';return my!==rtToken;});
+      if(my!==rtToken)return;A=R.A;full=R.full;retimeNote.textContent=A.frames.length+' frames at '+rate+' fps'+(st.inter==='off'?'':' ('+(st.inter==='motion'?'motion':'blended')+' in-betweens)')+'.'+(rate>50?' GIF files can’t play faster than 50 fps; use a PNG sequence or the sheet for higher rates.':'');}
+    catch(e){console.error(e);retimeNote.textContent='The in-between frames could not be made: '+(e.message||e);A=A0;full=full0;}
+    upd();syncGrid();}
   const side=el('div',{class:'dlg-grid sheetctl'},
+    el('div',{class:'sub',text:'Frame rate'}),
+    el('div',{class:'frow'},...sel('exRate','Export at',[['same','Same as the animation ('+A0.fps+' fps)'],['x2','2× ('+A0.fps*2+' fps)'],['x4','4× ('+A0.fps*4+' fps)'],[24,'24 fps'],[30,'30 fps'],[48,'48 fps'],[60,'60 fps'],[90,'90 fps'],[120,'120 fps'],[240,'240 fps']],st.rate,v=>{st.rate=isNaN(+v)?v:+v;retime();})),
+    el('div',{class:'frow'},...sel('exInter','In-between frames',[['off','Off (repeat the nearest frame)'],['blend','Blend (soft cross-fade)'],['motion','Motion (follows movement)']],st.inter,v=>{st.inter=v;retime();})),
+    retimeNote,
     el('div',{class:'sub',text:'Grid'}),gridBtns,el('div',{class:'frow'},el('label',{for:'exCols',text:'Columns'}),colsI,el('label',{for:'exRows',text:'Rows'}),rowsI),
     el('div',{class:'frow'},...sel('exLeft','If frames don’t fill it',[['empty','Leave cells empty'],['repeat','Repeat the last frame'],['shrink','Shrink the grid']],st.left,v=>{st.left=v;})),
     el('div',{class:'frow'},...sel('exRange','Frames',rangeOpts,st.range,v=>{st.range=+v;})),
@@ -125,7 +138,7 @@ function dlgExportSheet(){if(!doc.anim){toast('Switch to Animation mode (top rig
   render();syncGrid();openDialog({title:'Sprite sheet / flipbook export',body,wide:true,cancelLabel:'Close',onCancel(){clearTimeout(animTimer);}});tick();
   const base=slug(doc.name)+'_sheet';
   async function exportSheet(){const blob=await cvsToBlob(sheet),r=await deliver(base+'.png',blob);toast(deliveredText(r,'Sprite sheet'));if(!r.ok||st.data==='none')return;
-    const text=st.data==='godot'?godotTres(L,base+'.png'):sheetJson(L,base+'.png'),ext=st.data==='godot'?'.tres':'.json',bytes=new TextEncoder().encode(text);
+    const text=st.data==='godot'?godotTres(L,base+'.png',A):sheetJson(L,base+'.png',A),ext=st.data==='godot'?'.tres':'.json',bytes=new TextEncoder().encode(text);
     if(r.desktop&&r.path){await platform.writeFile(r.path.replace(/\.png$/i,'')+ext,bytes);toast('Saved '+r.path+' and its '+ext+' file.');}
     else{const r2=await deliver(base+ext,new Blob([bytes]));toast(deliveredText(r2,'Data file'));}}
   async function exportSequence(){const list=L.cells.filter(c=>!c.filler).map(c=>c.fi),files=[];
@@ -138,18 +151,18 @@ function dlgExportSheet(){if(!doc.anim){toast('Switch to Animation mode (top rig
 const tick0=()=>new Promise(r=>setTimeout(r,30));
 
 /* ---- engine data files ---- */
-function sheetJson(L,image){const A=A_(),frames={},names=[];let k=0;
+function sheetJson(L,image,A){A=A||A_();const frames={},names=[];let k=0;
   for(const c of L.cells){if(c.filler)continue;const name=slug(doc.name)+' '+(k++)+'.png';names.push({c,name});
     frames[name]={frame:{x:c.x,y:c.y,w:L.fw,h:L.fh},rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:L.fw,h:L.fh},sourceSize:{w:L.fw,h:L.fh},duration:Math.round((document.getElementById('exHolds')&&document.getElementById('exHolds').checked?1:A.frames[c.fi].hold)*1000/A.fps)};}
   const tags=[];for(const g of L.groups){if(!g.tag)continue;const idx=names.map((n,i)=>n.c.g===g?i:-1).filter(i=>i>=0);if(idx.length)tags.push({name:g.tag.name,from:idx[0],to:idx[idx.length-1],direction:g.tag.mode==='pingpong'?'pingpong':'forward'});}
-  if(L.groups.length===1&&!L.groups[0].tag)for(const t of A.tags){const [a,b]=tagRange(t);const idx=names.map((n,i)=>n.c.fi>=a&&n.c.fi<=b?i:-1).filter(i=>i>=0);if(idx.length)tags.push({name:t.name,from:idx[0],to:idx[idx.length-1],direction:t.mode==='pingpong'?'pingpong':'forward'});}
+  if(L.groups.length===1&&!L.groups[0].tag)for(const t of A.tags){const [a,b]=tagRange(t,A);const idx=names.map((n,i)=>n.c.fi>=a&&n.c.fi<=b?i:-1).filter(i=>i>=0);if(idx.length)tags.push({name:t.name,from:idx[0],to:idx[idx.length-1],direction:t.mode==='pingpong'?'pingpong':'forward'});}
   return JSON.stringify({frames,meta:{app:'Gouache Studio',version:'1.0',image,format:'RGBA8888',size:{w:L.W,h:L.H},scale:'1',frameTags:tags}},null,1);}
-function godotTres(L,image){const A=A_(),cells=L.cells.filter(c=>!c.filler);let s='',subs='';
+function godotTres(L,image,A){A=A||A_();const cells=L.cells.filter(c=>!c.filler);let s='',subs='';
   cells.forEach((c,i)=>{subs+='\n[sub_resource type="AtlasTexture" id="AtlasTexture_'+(i+1)+'"]\natlas = ExtResource("1_sheet")\nregion = Rect2('+c.x+', '+c.y+', '+L.fw+', '+L.fh+')\n';});
   const anims=[];const holdOf=c=>document.getElementById('exHolds')&&document.getElementById('exHolds').checked?1:A.frames[c.fi].hold;
   const mk=(name,list,loop)=>'{\n"frames": ['+list.map(c=>'{\n"duration": '+holdOf(c).toFixed(1)+',\n"texture": SubResource("AtlasTexture_'+(cells.indexOf(c)+1)+'")\n}').join(', ')+'],\n"loop": '+loop+',\n"name": &"'+name.replace(/"/g,'')+'",\n"speed": '+A.fps.toFixed(1)+'\n}';
   if(L.groups.length>1||L.groups[0].tag)for(const g of L.groups)anims.push(mk(g.tag?g.tag.name:'default',cells.filter(c=>c.g===g),!(g.tag&&g.tag.mode==='once')));
-  else{anims.push(mk('default',cells,true));for(const t of A.tags){const [a,b]=tagRange(t);const list=cells.filter(c=>c.fi>=a&&c.fi<=b);if(list.length)anims.push(mk(t.name,list,t.mode!=='once'));}}
+  else{anims.push(mk('default',cells,true));for(const t of A.tags){const [a,b]=tagRange(t,A);const list=cells.filter(c=>c.fi>=a&&c.fi<=b);if(list.length)anims.push(mk(t.name,list,t.mode!=='once'));}}
   s='[gd_resource type="SpriteFrames" load_steps='+(cells.length+2)+' format=3]\n\n[ext_resource type="Texture2D" path="res://'+image+'" id="1_sheet"]\n'+subs+'\n[resource]\nanimations = ['+anims.join(', ')+']\n';return s;}
 
 /* ---- several files in one zip (browser version) ---- */
@@ -187,3 +200,67 @@ function lzwEncode(idx){const out=[];let cur=0,bits=0,size=9,next=258;const dict
   for(let i=1;i<idx.length;i++){const k=idx[i],key=prefix*256+k,v=dict.get(key);if(v!==undefined){prefix=v;continue;}
     put(prefix);if(next<4096){dict.set(key,next++);if(next>(1<<size)&&size<12)size++;}else{put(256);dict.clear();next=258;size=9;}prefix=k;}
   put(prefix);put(257);if(bits>0)out.push(cur&255);return out;}
+
+/* ---- (0.41) retiming and in-between frames for export ---- */
+const exRate=(v,fps)=>v==='same'?fps:v==='x2'?fps*2:v==='x4'?fps*4:+v||fps;
+/* straight-alpha RGBA bytes of a canvas */
+const cvPix=c=>c.getContext('2d').getImageData(0,0,c.width,c.height);
+/* a picture from RGBA bytes held premultiplied (Float32), back to a canvas with straight colour */
+function pixToCanvas(W,H,pm){const c=document.createElement('canvas');c.width=W;c.height=H;const img=new ImageData(W,H),d=img.data;
+  for(let i=0;i<W*H;i++){const a=pm[i*4+3];if(a>0.001){d[i*4]=Math.min(255,pm[i*4]/a*255+.5);d[i*4+1]=Math.min(255,pm[i*4+1]/a*255+.5);d[i*4+2]=Math.min(255,pm[i*4+2]/a*255+.5);d[i*4+3]=Math.round(a*255);}}
+  c.getContext('2d').putImageData(img,0,0);return c;}
+/* premultiplied 0..1 floats of a canvas */
+function cvPremul(c){const d=cvPix(c).data,n=d.length/4,o=new Float32Array(n*4);for(let i=0;i<n;i++){const a=d[i*4+3]/255;o[i*4]=d[i*4]/255*a;o[i*4+1]=d[i*4+1]/255*a;o[i*4+2]=d[i*4+2]/255*a;o[i*4+3]=a;}return o;}
+function blendFrames(ca,cb,w){const W=ca.width,H=ca.height,a=cvPremul(ca),b=cvPremul(cb),o=new Float32Array(a.length);for(let i=0;i<o.length;i++)o[i]=a[i]*(1-w)+b[i]*w;return pixToCanvas(W,H,o);}
+/* Motion: block matching on small copies (coarse, then refined), smoothed, then both frames are pulled along the movement */
+function flowFeat(c,maxD){const s=Math.min(1,maxD/Math.max(c.width,c.height)),w=Math.max(8,Math.round(c.width*s)),h=Math.max(8,Math.round(c.height*s)),t=document.createElement('canvas');t.width=w;t.height=h;
+  const x=t.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(c,0,0,w,h);const d=x.getImageData(0,0,w,h).data,f=new Float32Array(w*h*2);
+  for(let i=0;i<w*h;i++){const a=d[i*4+3]/255;f[i*2]=(0.3*d[i*4]+0.59*d[i*4+1]+0.11*d[i*4+2])*a;f[i*2+1]=d[i*4+3]*0.6;}return {f,w,h};}
+/* for each block (step px apart) find the shift in B that best matches A; gx/gy = a first guess per block from a coarser level (in this level's px) */
+function blockMatch(A,B,step,win,R,guess){const w=A.w,h=A.h,gw=Math.ceil(w/step),gh=Math.ceil(h/step),dx=new Float32Array(gw*gh),dy=new Float32Array(gw*gh),ok=new Uint8Array(gw*gh),fa=A.f,fb=B.f;
+  for(let by=0;by<gh;by++)for(let bx=0;bx<gw;bx++){const cx=bx*step,cy=by*step;let g0=0,g1=0;if(guess){const gi=Math.min(guess.gh-1,Math.round(by*guess.ry))*guess.gw+Math.min(guess.gw-1,Math.round(bx*guess.rx));g0=Math.round(guess.dx[gi]*guess.sc);g1=Math.round(guess.dy[gi]*guess.sc);}
+    let en=0;for(let yy=-win;yy<=win;yy++){const ya=cy+yy;if(ya<0||ya>=h)continue;for(let xx=-win;xx<=win;xx++){const xa=cx+xx;if(xa>=0&&xa<w)en+=fa[(ya*w+xa)*2+1];}}
+    let best=1e30,bdx=g0,bdy=g1;
+    if(en<8){dx[by*gw+bx]=g0;dy[by*gw+bx]=g1;continue;}ok[by*gw+bx]=1;
+    for(let oy=-R;oy<=R;oy++)for(let ox=-R;ox<=R;ox++){const sx=g0+ox,sy=g1+oy;let sad=0;
+      for(let yy=-win;yy<=win;yy++){const ya=cy+yy;if(ya<0||ya>=h)continue;const yb=Math.min(h-1,Math.max(0,ya+sy));for(let xx=-win;xx<=win;xx++){const xa=cx+xx;if(xa<0||xa>=w)continue;const xb=Math.min(w-1,Math.max(0,xa+sx)),ia=(ya*w+xa)*2,ib=(yb*w+xb)*2;sad+=Math.abs(fa[ia]-fb[ib])+Math.abs(fa[ia+1]-fb[ib+1]);}}
+      sad+=(Math.abs(ox)+Math.abs(oy))*0.4;if(sad<best){best=sad;bdx=sx;bdy=sy;}}
+    dx[by*gw+bx]=bdx;dy[by*gw+bx]=bdy;}
+  return {dx,dy,ok,gw,gh};}
+function smoothFlow(F,times){const {gw,gh,ok}=F;for(let k=0;k<times;k++)for(const arr of [F.dx,F.dy]){const c=arr.slice();for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){if(!ok[y*gw+x])continue;const v=[];for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++){const xx=Math.min(gw-1,Math.max(0,x+i)),yy=Math.min(gh-1,Math.max(0,y+j));if(ok[yy*gw+xx])v.push(c[yy*gw+xx]);}v.sort((p,q)=>p-q);arr[y*gw+x]=v[v.length>>1];}}}
+function motionField(ca,cb){const lv=[[16,1,1,7],[32,2,2,3],[96,3,3,3],[256,4,4,2]];let prev=null,pw=0,F=null,fw=0,fh=0;
+  for(const [d,step,win,R] of lv){const A1=flowFeat(ca,d),B1=flowFeat(cb,d);let guess=null;
+    if(prev){const sc=A1.w/pw;guess={dx:prev.dx,dy:prev.dy,gw:prev.gw,gh:prev.gh,rx:(step/sc)/prev.step,ry:(step/sc)/prev.step,sc};}
+    F=blockMatch(A1,B1,step,win,R,guess);F.step=step;smoothFlow(F,prev?1:2);prev=F;pw=A1.w;fw=A1.w;fh=A1.h;}
+  return {F,step:prev.step,lw:fw,lh:fh};}
+/* the movement seen from the in-between picture: each block's movement is carried to where the block is at time w, holes are filled from their neighbours */
+function splatFlow(fld,w){const {F,step}=fld,{gw,gh}=F,sx=new Float32Array(gw*gh),sy=new Float32Array(gw*gh),has=new Uint8Array(gw*gh),mag=new Float32Array(gw*gh);
+  for(let by=0;by<gh;by++)for(let bx=0;bx<gw;bx++){const i=by*gw+bx,dx=F.dx[i],dy=F.dy[i],m=Math.abs(dx)+Math.abs(dy);if(!F.ok[i]||m<0.5)continue;
+    const tx=Math.round(bx+w*dx/step),ty=Math.round(by+w*dy/step);if(tx<0||ty<0||tx>=gw||ty>=gh)continue;const j=ty*gw+tx;if(!has[j]||m>mag[j]){has[j]=1;mag[j]=m;sx[j]=dx;sy[j]=dy;}}
+  for(let it=0;it<6;it++){const add=[];for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){const j=y*gw+x;if(has[j])continue;let n=0,ax=0,ay=0;
+      for(let q=-1;q<=1;q++)for(let r=-1;r<=1;r++){const xx=x+r,yy=y+q;if(xx<0||yy<0||xx>=gw||yy>=gh)continue;const k=yy*gw+xx;if(has[k]){n++;ax+=sx[k];ay+=sy[k];}}
+      if(n)add.push([j,ax/n,ay/n]);}
+    for(const [j,ax,ay] of add){has[j]=1;sx[j]=ax;sy[j]=ay;}}
+  return {dx:sx,dy:sy,gw,gh};}
+/* one in-between at time w (0..1) from A to B */
+function motionFrame(ca,cb,fld,w){const W=ca.width,H=ca.height,a=cvPremul(ca),b=cvPremul(cb),o=new Float32Array(a.length),{step}=fld,F=splatFlow(fld,w),kx=fld.lw/W,ky=fld.lh/H,gw=F.gw,gh=F.gh;
+  const samp=(src,x,y,out)=>{x=Math.min(W-1.001,Math.max(0,x));y=Math.min(H-1.001,Math.max(0,y));const x0=x|0,y0=y|0,fx=x-x0,fy=y-y0,i00=(y0*W+x0)*4,i10=i00+4,i01=i00+W*4,i11=i01+4;
+    for(let c=0;c<4;c++)out[c]=(src[i00+c]*(1-fx)+src[i10+c]*fx)*(1-fy)+(src[i01+c]*(1-fx)+src[i11+c]*fx)*fy;};
+  const t1=[0,0,0,0],t2=[0,0,0,0];
+  for(let y=0;y<H;y++){const gy=Math.min(gh-1.001,y*ky/step),y0=gy|0,fy=gy-y0;
+    for(let x=0;x<W;x++){const gx=Math.min(gw-1.001,x*kx/step),x0=gx|0,fx=gx-x0,i=y0*gw+x0;
+      const vx=((F.dx[i]*(1-fx)+F.dx[i+1]*fx)*(1-fy)+(F.dx[i+gw]*(1-fx)+F.dx[i+gw+1]*fx)*fy)/kx,vy=((F.dy[i]*(1-fx)+F.dy[i+1]*fx)*(1-fy)+(F.dy[i+gw]*(1-fx)+F.dy[i+gw+1]*fx)*fy)/ky;
+      samp(a,x-w*vx,y-w*vy,t1);samp(b,x+(1-w)*vx,y+(1-w)*vy,t2);const k=(y*W+x)*4;for(let c=0;c<4;c++)o[k+c]=t1[c]*(1-w)+t2[c]*w;}}
+  return pixToCanvas(W,H,o);}
+/* the animation resampled at a new frame rate, each new frame either the nearest earlier one, a blend, or a motion in-between */
+async function buildRetimed(A0,full0,rate,mode,progress){const n=A0.frames.length,starts=[];let t=0;for(const f of A0.frames){starts.push(t);t+=f.hold/A0.fps;}const total=t,count=Math.max(1,Math.round(total*rate));
+  const out=[],src=[],fields=new Map();let done=0,lastY=performance.now();
+  for(let j=0;j<count;j++){const tj=j/rate;let i=0;while(i+1<n&&starts[i+1]<=tj+1e-9)i++;let w=0;if(mode!=='off'&&i+1<n){w=(tj-starts[i])/(starts[i+1]-starts[i]);if(w<.02)w=0;}
+    src.push(i);
+    if(w===0)out.push(full0[i]);
+    else if(mode==='blend')out.push(blendFrames(full0[i],full0[i+1],w));
+    else{if(!fields.has(i))fields.set(i,motionField(full0[i],full0[i+1]));out.push(motionFrame(full0[i],full0[i+1],fields.get(i),w));}
+    done++;if(progress({done,total:count}))throw new Error('cancelled');if(w!==0&&performance.now()-lastY>40){await new Promise(r=>setTimeout(r,0));lastY=performance.now();}}
+  const frames=out.map(()=>({hold:1})),tags=[];
+  for(const tg of A0.tags){const [a,b]=tagRange(tg,A0);let from=-1,to=-1;src.forEach((i,j)=>{if(i>=a&&i<=b){if(from<0)from=j;to=j;}});if(from>=0)tags.push({name:tg.name,mode:tg.mode,color:tg.color,from:frames[from],to:frames[to]});}
+  return {A:{frames,fps:rate,tags},full:out};}

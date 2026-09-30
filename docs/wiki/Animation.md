@@ -8,7 +8,10 @@ Switch **Paint ▾ / Animation** in the top-right corner. Animation mode shows o
 *Animation mode: the timeline under the canvas, with onion skin.*
 
 - **Frames:** add, duplicate, delete, and drag to reorder. **,** and **.** step through frames; **Enter** plays.
-- **Speed:** frame rate buttons for **12, 24 and 30 fps**, or type any rate. Each frame has a **hold** (how many frames it lasts).
+- **Quick dupli…:** make many copies of the current frame in one go. Pick **4, 8, 12, 16, 24, 32 or 64**, or type any number, and choose whether they go right after this frame or at the end. One undo removes them all.
+- **Tools…:** **Reverse**, **Ping-pong** (forward, then back), **Repeat…** and **Set the hold…**. They work on the frames you picked with Shift+click, or on all frames.
+- **Seconds ruler:** above the frames, with a mark where each second starts. Click or drag on it to scrub through the animation.
+- **Speed:** frame rate buttons for **12, 24, 30 and 60 fps**, or type any rate up to 240. Each frame has a **hold** (how many frames it lasts).
 - **Tags:** Shift+click a range of frames and tag it (idle, run, attack…). A tag can **loop**, **play once** or **ping-pong**.
 - **Onion skin:** earlier frames in red, later ones in green. Choose how many to show and how faint they are.
 - **Preview window:** keeps playing while you paint.
@@ -20,6 +23,7 @@ From the File menu:
 - **Frames from a GIF…**
 
 ## Export (File › Export sprite sheet / flipbook…)
+- **Frame rate and in-betweens:** **Export at** another rate (2×, 4×, 24 to 240 fps) and choose **In-between frames**: **Off** repeats the nearest frame, **Blend** cross-fades between frames, **Motion** follows the movement so a swinging sword or a rising flame glides instead of fading. The window shows how many frames you get. GIF files can't play faster than 50 fps.
 - **Live preview**, played from the sheet itself.
 - **Grid:** presets (Fit, 2×2, 4×4, 8×8, 16×16) or any size, plus what to do with leftover cells.
 - **Frames:** frame size (100/50/25%), padding, edge extrusion, power-of-two sizes, and tags as separate rows.

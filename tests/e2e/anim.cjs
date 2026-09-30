@@ -53,7 +53,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('button:text-is("GIF")');await waitDl(3);fs.copyFileSync(await dls[2].path(),OUT+'anim_out.gif');
  await p.click('#dlgCancel');
  // 9. import a sprite sheet (4 x 2 cells of 32 px)
- const [fc]=await Promise.all([p.waitForEvent('filechooser'),p.selectOption('.tlsel','sheet')]);await fc.setFiles(__dirname+'/fixtures/sheet.png');await p.waitForTimeout(800);console.log('toast:',await p.textContent('#toast'),'modal hidden:',await p.evaluate(()=>document.querySelector('#modal').hidden),'title',await p.textContent('#dlgTitle'),errs.join('|'));
+ const [fc]=await Promise.all([p.waitForEvent('filechooser'),p.selectOption('select[aria-label="Import frames"]','sheet')]);await fc.setFiles(__dirname+'/fixtures/sheet.png');await p.waitForTimeout(800);console.log('toast:',await p.textContent('#toast'),'modal hidden:',await p.evaluate(()=>document.querySelector('#modal').hidden),'title',await p.textContent('#dlgTitle'),errs.join('|'));
  await p.fill('#slcols','4');await p.fill('#slrows','2');await p.uncheck('#slRep');await p.click('#dlgOk');await p.waitForTimeout(300);s=await st();
  ok(s.n===11&&s.w===32&&s.h===32,'imported 8 frames and canvas resized to 32×32 '+JSON.stringify(s));
  // 10. PSD round trip keeps the animation

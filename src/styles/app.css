@@ -927,3 +927,9 @@ body.tabfull #app>:not(#workWrap):not(script){display:none!important}
 body.tabfull #docTabs{display:none!important}
 .postfx{border-top:1px solid var(--line-2);padding:4px 0}.postfx .postsl{display:none;padding:2px 0 4px 20px}.postfx.on .postsl{display:grid;gap:4px}
 #hLayers .lchan{margin-left:auto;max-width:150px}body:not(.m-p3d) #lChan{display:none}
+
+/* 0.41: seconds ruler and scrub bar over the frames */
+.tlruler{position:relative;height:18px;margin:2px 0 4px;cursor:ew-resize;border-bottom:1px solid var(--line-2);user-select:none}
+.tlmark{position:absolute;top:0;height:16px;padding-left:3px;font-size:10px;color:var(--dim,#8a8f98);border-left:1px solid var(--line-2);line-height:16px;white-space:nowrap;overflow:hidden;pointer-events:none}
+.tlmark.sec{color:var(--text);border-left-color:var(--accent)}
+.tlhead{position:absolute;bottom:0;height:3px;background:var(--accent);border-radius:2px;pointer-events:none}

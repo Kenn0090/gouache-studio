@@ -49,9 +49,28 @@ function deleteFrame(){const A=A_();if(!A)return;if(A.frames.length<2){toast('An
     for(const t of A.tags){if(t.from===F||t.to===F){const i=A.cur;const near=A.frames[Math.min(i,A.frames.length-1)];if(t.from===F)t.from=near;if(t.to===F)t.to=near;}}
     A.tags=A.tags.filter(t=>A.frames.includes(t.from)&&A.frames.includes(t.to));A.cur=Math.min(A.cur,A.frames.length-1);});}
 function moveFrame(from,to){if(from===to)return;animOp('Move frame',A=>{const [F]=A.frames.splice(from,1);A.frames.splice(to,0,F);A.cur=to;});}
+/* ---- (0.41, Kenn) Quick dupli and flipbook helpers: one undo step each ---- */
+const QD_PRESETS=[4,8,12,16,24,32,64];
+function frameCopy(s){const F=newFrame();blit(s.target,F.target,0,0,doc.w,doc.h,0,0);F.hold=s.hold;frameDirty(F);return F;}
+function animMemOk(extra){const per=doc.w*doc.h*(doc.depth>8?8:4),A=A_();const total=(A.frames.length+extra)*per;
+  if(total>2.5e9){toast('That would use about '+(total/1e9).toFixed(1)+' GB of video memory. Try fewer frames or a smaller canvas.');return false;}return true;}
+/* n copies of the current frame, straight after it ('after') or at the end of the animation ('end') */
+function quickDupli(n,where){const A=A_();if(!A)return;n=clamp(Math.round(n)||0,1,512);if(!animMemOk(n))return;
+  animOp('Quick dupli',A=>{const s=A.frames[A.cur],at=where==='end'?A.frames.length:A.cur+1,list=[];for(let k=0;k<n;k++)list.push(frameCopy(s));A.frames.splice(at,0,...list);A.cur=at+n-1;ui.fsel=[at,at+n-1];});}
+/* the frames a helper works on: the Shift+click range, or all frames */
+function animRange(){const A=A_();if(ui.fsel){const a=Math.min(...ui.fsel),b=Math.max(...ui.fsel);return [clamp(a,0,A.frames.length-1),clamp(b,0,A.frames.length-1)];}return [0,A.frames.length-1];}
+function reverseFrames(){const A=A_();if(!A)return;const [a,b]=animRange();if(b<=a){toast('Pick a range with Shift+click, or have at least two frames.');return;}
+  animOp('Reverse frames',A=>{const part=A.frames.slice(a,b+1).reverse();A.frames.splice(a,b-a+1,...part);if(A.cur>=a&&A.cur<=b)A.cur=a+b-A.cur;});}
+/* play forward then back: adds reversed copies after the range (without doubling the two ends) */
+function pingPongFrames(){const A=A_();if(!A)return;const [a,b]=animRange();if(b<=a){toast('Pick a range with Shift+click, or have at least two frames.');return;}if(!animMemOk(b-a-1))return;
+  animOp('Ping-pong',A=>{const list=[];for(let i=b-1;i>a;i--)list.push(frameCopy(A.frames[i]));A.frames.splice(b+1,0,...list);ui.fsel=null;});}
+/* the range, repeated n more times */
+function repeatFrames(n){const A=A_();if(!A)return;n=clamp(Math.round(n)||1,1,64);const [a,b]=animRange(),len=b-a+1;if(!animMemOk(len*n))return;
+  animOp('Repeat frames',A=>{const src=A.frames.slice(a,b+1),list=[];for(let k=0;k<n;k++)for(const f of src)list.push(frameCopy(f));A.frames.splice(b+1,0,...list);ui.fsel=null;});}
+function setRangeHold(h){const A=A_();if(!A)return;h=clamp(Math.round(h)||1,1,99);const [a,b]=animRange();animOp('Frame hold',A=>{for(let i=a;i<=b;i++)A.frames[i].hold=h;});}
 function setHold(h){h=clamp(Math.round(h)||1,1,99);const F=curFrame();if(!F||F.hold===h)return;animOp('Frame hold',()=>{F.hold=h;});}
-function setFps(v){v=clamp(Math.round(v)||12,1,120);const A=A_();if(!A||A.fps===v)return;animOp('Frame rate',A=>{A.fps=v;});}
-function tagRange(t){const A=A_();let a=A.frames.indexOf(t.from),b=A.frames.indexOf(t.to);if(a>b)[a,b]=[b,a];return [a,b];}
+function setFps(v){v=clamp(Math.round(v)||12,1,240);const A=A_();if(!A||A.fps===v)return;animOp('Frame rate',A=>{A.fps=v;});}
+function tagRange(t,A){A=A||A_();let a=A.frames.indexOf(t.from),b=A.frames.indexOf(t.to);if(a>b)[a,b]=[b,a];return [a,b];}
 function addTag(a,b){animOp('New tag',A=>{const n=A.tags.length;A.tags.push({name:['idle','run','attack','jump','hit'][n]||('tag '+(n+1)),from:A.frames[Math.min(a,b)],to:A.frames[Math.max(a,b)],mode:'loop',color:TAG_COLORS[n%TAG_COLORS.length]});});}
 function editTag(i,patch){animOp('Edit tag',A=>{Object.assign(A.tags[i],patch);});}
 function deleteTag(i){animOp('Delete tag',A=>{A.tags.splice(i,1);});}
