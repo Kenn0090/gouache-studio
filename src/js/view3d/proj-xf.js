@@ -59,7 +59,8 @@ function pxfRowMode(r){const p=r.p||{};if(r.kind==='image')return p.proj||(p.tri
 /* (0.33, Kenn) lock X and Y (and Z) together like Substance Painter: changing one scale number changes the others by the same factor */
 function pxfLocked(){try{return localStorage.getItem('gs.pxfLock')!=='0';}catch(e){return true;}}
 function pxfSetScale(x,i,v,n,tiling){v=Math.max(.001,v);const nv=tiling?1/v:v,old=x.s[i]||1,f=pxfLocked()?nv/old:1;
-  if(!pxfLocked()){x.s[i]=Math.max(.001,nv);return;}for(let k=0;k<n;k++)x.s[k]=Math.max(.001,k===i?nv:x.s[k]*f);}
+  /* (0.37.1, Kenn) with the chain on, the number typed goes into every axis */
+  if(!pxfLocked()){x.s[i]=Math.max(.001,nv);return;}for(let k=0;k<n;k++)x.s[k]=Math.max(.001,nv);}
 /* (0.33, Kenn) material and pattern scale is shown as Tiling, like Substance Painter: a bigger number repeats more. It is stored as the size (1 / tiling), so older files look the same. Decals keep Size. */
 const pxfShow=(v,tiling)=>tiling?1/(v||1):v;
 function pxfLockBtn(){const b=el('button',{class:'btn sm pxflock',id:'pxfLock','aria-label':'Keep the scale proportions'});
@@ -81,6 +82,7 @@ function pxfFields(get,edit,mode,onReset,size){const til=!size,X=get(),is3=pxfIs
     sl.addEventListener('input',()=>{const v=Math.pow(10,parseFloat(sl.value));edit(x=>pxfSetScale(x,0,v,cnt,true));const Y=get();for(let i=0;i<cnt;i++){const e=document.getElementById('pxf_s'+i);if(e)e.value=String(Math.round(1000/(Y.s[i]||1))/1000);}});
     [...box.querySelectorAll('.pxfrow')].pop()?.after(el('div',{class:'pxfrow tsl'},sl));}
   for(const i of box.querySelectorAll('input[id^=pxf_s]'))i.dataset.til=til?'1':'0';
+  if(!is3&&ui.mode==='p3d')box.append(el('div',{class:'chips'},chk('pxf2Show','Show the frame on the flat texture',pxf2.show,v=>{pxf2.show=v;if(typeof drawXfOverlay==='function')drawXfOverlay();requestRender(true);})));
   box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'pxfReset',text:'Reset',onclick:()=>{edit(x=>Object.assign(x,pxfDef()));if(onReset)onReset();}}),
     el('span',{class:'note',text:is3?'Drag the gizmo on the model: arrows move, rings turn, boxes scale.':'On the flat canvas: drag a corner to scale (Shift keeps proportions), the round handle to turn, and inside with the Move tool (or Ctrl) to move.'})));
   return box;}
@@ -89,8 +91,8 @@ function pxfSyncFields(){const T=pxfTarget();if(!T)return;const X=T.xf;for(let i
 
 /* ---- UV projections: a frame with handles on the flat canvas (like Free Transform) ----
    Drag inside to move, a corner to scale (Shift keeps the proportions), the round handle to turn. */
-const pxf2={drag:null};
-function pxf2Active(){const T=pxfTarget();return T&&!pxfIs3D(T.mode)&&!xf&&!(typeof crop!=='undefined'&&crop)?T:null;}
+const pxf2={drag:null,show:false};
+function pxf2Active(){const T=pxfTarget();return T&&(ui.mode!=='p3d'||pxf2.show)&&!pxfIs3D(T.mode)&&!xf&&!(typeof crop!=='undefined'&&crop)?T:null;}
 function pxf2Geom(T){const X=pxfNorm(T.xf),C=pxfUvCorners(X).map(([u,v])=>toScreen(u*doc.w,v*doc.h)),mid=[(C[0][0]+C[1][0])/2,(C[0][1]+C[1][1])/2],cen=toScreen((.5+X.t[0])*doc.w,(.5+X.t[1])*doc.h);
   const ux=mid[0]-cen[0],uy=mid[1]-cen[1],l=Math.hypot(ux,uy)||1,rot=[mid[0]+ux/l*26,mid[1]+uy/l*26];return {X,C,cen,rot,mid};}
 function pxfOverlay2D(){const T=pxf2Active();if(!T)return '';const G=pxf2Geom(T),f=p=>p[0].toFixed(1)+' '+p[1].toFixed(1);

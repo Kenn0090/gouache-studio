@@ -8,7 +8,7 @@ const PANELS={
   hist:{title:'History',sel:'#histSec',avail:m=>m!=='convert',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>'},
   matEd:{title:'Properties',sel:'#matEdSec',avail:m=>m==='paint'||m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M8 15l8-8M9 9h.01"/>'},
   shading:{title:'Shader',sel:'#shadeSec',avail:m=>m==='p3d'||m==='paint',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" opacity=".35"/>'},
-  stencils:{title:'Stencils',sel:'#st3Sec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 15l3-4 2 3 1.5-2 1.5 3"/>'},
+  stencils:{title:'Stencils',sel:'#st3Sec',avail:m=>false,icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 15l3-4 2 3 1.5-2 1.5 3"/>'},
   mats:{title:'Materials',sel:'#matSec',avail:m=>m==='paint'||m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M7 9.5a6 6 0 0 1 5-3" opacity=".6"/>'},
   textures:{title:'Textures',sel:'#txSec',avail:m=>m==='paint'||m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M7 8h1M11 7h1M15 9h1M8 12h1M13 13h1M16 15h1M9 16h1" stroke-width="2.4" stroke-linecap="round"/>'},
   p3bake:{title:'Bake Maps',sel:'#p3bkSec',avail:m=>m==='p3d',icon:'<path d="M12 3c3 4 6 6 6 10a6 6 0 0 1-12 0c0-4 3-6 6-10z"/><path d="M9.5 14a2.5 2.5 0 0 0 2.5 2.5" opacity=".6"/>'},
@@ -29,8 +29,8 @@ const MODE_GROUP=['p3d','brushtab','conv','bake','anim'];
 /* the built-in workspaces: extra = 3D view on and how wide, painting on the model */
 const WS_PRESETS={
   painting:{name:'Paint',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['color','matEd','shading'],f:1.05},{tabs:['brushes','stencils','mats','textures','decals','envs','tool'],f:1.25},{tabs:['maps','p3bake'],f:.45},{tabs:['layers','chan','hist'],f:1.6}],icons:[],floats:[]},
-  texturing:{name:'3D Paint',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:MODE_GROUP.slice(),f:1.5},{tabs:['layers','maps','chan','hist','p3bake'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','stencils','brushes'],f:1,h:180},icons:[],floats:[]},
-  paint3d:{name:'3D Paint (big view)',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:MODE_GROUP.slice(),f:1.5},{tabs:['layers','maps','chan','hist','p3bake'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','stencils','brushes'],f:1,h:180},icons:[],floats:[]},
+  texturing:{name:'3D Paint',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:[...MODE_GROUP,'p3bake','shading'],f:1.2},{tabs:['layers','maps','chan','hist'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','brushes'],f:1,h:260},icons:[],floats:[]},
+  paint3d:{name:'3D Paint (big view)',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:[...MODE_GROUP,'p3bake','shading'],f:1.2},{tabs:['layers','maps','chan','hist'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','brushes'],f:1,h:260},icons:[],floats:[]},
   minimal:{name:'Minimal',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1}],icons:['color','matEd','shading','brushes','stencils','mats','textures','decals','envs','tool','maps','layers','chan','hist'],floats:[]}};
 /* (0.28, Kenn) each top tab has its own workspace, and the drop-down follows the tab */
 for(const [k,n] of [['animation','Animation'],['bake','Bake'],['convert','Convert'],['brush','Brush']])WS_PRESETS[k]=Object.assign(JSON.parse(JSON.stringify(WS_PRESETS.painting)),{name:n});
@@ -38,6 +38,10 @@ const WS_MODE_DEF={paint:'painting',p3d:'texturing',anim:'animation',bake:'bake'
 const dk={ws:'painting',L:null,custom:{},saved:{},lock:false,flyout:null,drag:null,modeWs:{}};
 (()=>{try{const s=JSON.parse(localStorage.getItem('gs.dock')||'{}');if(s.ws)dk.ws=s.ws;if(s.modeWs)dk.modeWs=s.modeWs;if(s.col2&&s.col2.groups)dk.col2=s.col2;dk.saved=s.saved||{};dk.custom=s.custom||{};dk.lock=!!s.lock;
   /* 0.36: the asset panels moved to the bottom shelf in 3D Paint */
+  if(!localStorage.getItem('gs.layout371')){localStorage.setItem('gs.layout371','1');
+    /* 0.37.1: Bake Maps and Shader join the texture sets tab; Stencils became a switch in Brushes */
+    for(const n of ['texturing','paint3d']){const L=dk.saved[n];if(!L)continue;const all=[...(L.groups||[]),L.shelf].filter(Boolean);for(const g of all)g.tabs=(g.tabs||[]).filter(t=>!['p3bake','shading','stencils'].includes(t));const g0=(L.groups||[]).find(g=>g.tabs.includes('p3d'))||(L.groups||[])[0];if(g0)g0.tabs.push('p3bake','shading');if(L.shelf&&L.shelf.h<240)L.shelf.h=260;}
+    if(dk.col2)for(const g of dk.col2.groups)g.tabs=g.tabs.filter(t=>!['shading','stencils'].includes(t));}
   if(!localStorage.getItem('gs.layout37')){localStorage.setItem('gs.layout37','1');delete dk.saved.texturing;delete dk.saved.paint3d;if(dk.col2)delete dk.col2;}}catch(e){}})();
 const dkClone=o=>JSON.parse(JSON.stringify(o));
 function dkPreset(ws){return dkClone(WS_PRESETS[ws]||dk.custom[ws]||WS_PRESETS.painting);}
@@ -105,14 +109,10 @@ const dkCol2On=()=>ui.mode==='p3d';
 const dkC2Has=id=>dk.col2.groups.some(g=>g.tabs.includes(id));
 const dkIn=id=>PANELS[id].avail(ui.mode)&&!(dkCol2On()&&dkC2Has(id));
 const dkAvail=g=>g._c2?g.tabs.filter(id=>PANELS[id].avail(ui.mode)):g.tabs.filter(id=>dkIn(id));
-if(!dk.col2)dk.col2={w:320,groups:[{tabs:['matEd','tool','color','shading'],f:1,_c2:true}]};
+if(!dk.col2)dk.col2={w:320,groups:[{tabs:['matEd','tool','color'],f:1,_c2:true}]};
 /* older saved columns: the Material tab joins Colour */
 if(!dkC2Has('matEd')){const g=dk.col2.groups.find(g=>g.tabs.includes('color'))||dk.col2.groups[0];if(g)g.tabs.push('matEd');}
 for(const g of dk.col2.groups)g._c2=true;
-/* 0.26: the Shader panel joins Colour and Properties */
-if(!dkC2Has('shading')){const g=dk.col2.groups.find(g=>g.tabs.includes('matEd'))||dk.col2.groups[0];if(g){const i=g.tabs.indexOf('matEd');g.tabs.splice(i<0?g.tabs.length:i+1,0,'shading');}}
-/* 0.25: Stencils became a tab of their own, beside Brushes */
-if(!dkC2Has('stencils')){const g=dk.col2.groups.find(g=>g.tabs.includes('brushes'))||dk.col2.groups[dk.col2.groups.length-1];if(g){const i=g.tabs.indexOf('brushes');g.tabs.splice(i<0?g.tabs.length:i+1,0,'stencils');}}
 /* (0.33, Kenn) a panel keeps its scroll place when the dock is rebuilt (clicking a mask row brings Properties forward) */
 function dkSecKey(v){if(!v)return '';if(v.id)return v.id;const d=v.querySelector('[id]');return d?d.id:'';}
 function dkScrollSave(){const m={};for(const b of document.querySelectorAll('.dkbody')){const v=[...b.children].find(c=>!c.classList.contains('dk-off'));const k=dkSecKey(v);if(k&&b.scrollTop)m[k]=b.scrollTop;}return m;}
@@ -143,7 +143,8 @@ function dkTabs(tabs,active,where,onPick){const strip=el('div',{class:'dktabs',r
   const more=el('button',{class:'dkmore','aria-label':'Panel options',title:'Panel options',text:'⋯'});more.onclick=e=>dkMenu(e,active,where);strip.append(more);return strip;}
 function dkGroup(g){const av=dkAvail(g);let a=av.includes(g.active)?g.active:av[0];
   /* a workspace tab that just became available (entering Bake, Convert…) comes to the front */
-  const mp=av.find(id=>PANELS[id].mode);if(mp)a=mp;
+  /* (0.37.1) only when it has just become available: Bake Maps and Shader share the group with the 3D Paint tab and must be able to stay in front */
+  const mp0=av.find(id=>PANELS[id].mode)||null,mp=mp0&&g._mp!==mp0?mp0:null;g._mp=mp0;if(mp)a=mp;
   /* keep the chosen tab when it is only hidden for now (Layers while in Animation), so it comes back to the front */
   if(mp||av.includes(g.active)||!g.active||!PANEL_IDS.includes(g.active))g.active=a;
   const body=el('div',{class:'dkbody'});for(const id of av){const s=dkSec(id);s.classList.toggle('dk-off',id!==a);body.append(s);}

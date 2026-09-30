@@ -15,7 +15,8 @@ const guides=()=>doc.guides||(doc.guides=[]);
 const rlH=el('canvas',{class:'ruler rh','aria-hidden':'true'}),rlV=el('canvas',{class:'ruler rv','aria-hidden':'true'}),
   rlC=el('button',{class:'ruler rc',title:'Ruler units',text:'px','aria-label':'Ruler units'}),gdC=el('canvas',{class:'guidecv','aria-hidden':'true'});
 stage.append(gdC,rlH,rlV,rlC);
-function rlSync(){for(const e of [rlH,rlV,rlC])e.hidden=!rl.on;rlC.textContent=rl.unit;rl.sig='';}
+const rlVis=()=>rl.on&&ui.mode!=='p3d';
+function rlSync(){for(const e of [rlH,rlV,rlC])e.hidden=!rlVis();rlC.textContent=rl.unit;rl.sig='';}
 function toggleRulers(on){rl.on=on===undefined?!rl.on:!!on;rlStore();rlSync();toast(rl.on?'Rulers on (Ctrl+R hides them). Drag from a ruler to make a guide.':'Rulers off.');}
 function rlSize(c,w,h){const r=devicePixelRatio||1;if(c.width!==Math.round(w*r)||c.height!==Math.round(h*r)){c.width=Math.round(w*r);c.height=Math.round(h*r);}c.style.width=w+'px';c.style.height=h+'px';const g=c.getContext('2d');g.setTransform(r,0,0,r,0,0);return g;}
 function rlCol(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()||'#888';}
@@ -41,8 +42,8 @@ function gdDraw(){const W=stage.clientWidth,H=stage.clientHeight,g=rlSize(gdC,W,
     g.font='11px sans-serif';const tw=g.measureText(t).width+10,x=G.o==='h'?(lastPos?lastPos[0]+14:40):s+8,y=G.o==='h'?s-8:(lastPos?lastPos[1]+22:40);
     g.fillStyle='rgba(0,0,0,.75)';g.fillRect(x,y-13,tw,18);g.fillStyle='#fff';g.fillText(t,x+5,y);}}
 function rlFrame(){const W=stage.clientWidth,H=stage.clientHeight,
-    sig=[view.x,view.y,view.zoom,W,H,rl.on,rl.show,rl.lock,rl.unit,doc.dpi,JSON.stringify(doc.guides||[]),lastPos&&lastPos.join(),rl.hover&&rl.hover.p,rl.drag&&rl.drag.g&&rl.drag.g.p,document.documentElement.style.cssText.length].join('|');
-  if(sig!==rl.sig){rl.sig=sig;gdDraw();if(rl.on){rlDraw(rlSize(rlH,Math.max(0,W-RUL),RUL),Math.max(0,W-RUL),true);
+    sig=[view.x,view.y,view.zoom,W,H,rlVis(),ui.mode,rl.show,rl.lock,rl.unit,doc.dpi,JSON.stringify(doc.guides||[]),lastPos&&lastPos.join(),rl.hover&&rl.hover.p,rl.drag&&rl.drag.g&&rl.drag.g.p,document.documentElement.style.cssText.length].join('|');
+  if(sig!==rl.sig){rl.sig=sig;if(rlH.hidden===rlVis())rlSync();gdDraw();if(rlVis()){rlDraw(rlSize(rlH,Math.max(0,W-RUL),RUL),Math.max(0,W-RUL),true);
       const gv=rlSize(rlV,RUL,Math.max(0,H-RUL));gv.save();gv.translate(0,-RUL);rlDraw(gv,H,false);gv.restore();}}
   requestAnimationFrame(rlFrame);}
 /* the top ruler starts after the corner, so it draws with the view shifted by RUL */

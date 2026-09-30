@@ -14,4 +14,6 @@ function tickSolo(box,group){const others=group.filter(b=>b!==box&&!b.disabled);
   for(const [b,v] of want){const cur=(b.id&&document.getElementById(b.id))||b;if(cur.checked!==v)cur.click();}}
 document.addEventListener('click',e=>{if(!e.altKey||e.ctrlKey||e.metaKey)return;const lab=e.target.closest&&e.target.closest('label');
   const box=e.target.matches&&e.target.matches('input[type=checkbox]')?e.target:lab&&lab.querySelector('input[type=checkbox]');if(!box||box.disabled)return;
-  const g=tickGroup(box);if(!g)return;e.preventDefault();e.stopPropagation();tickSolo(box,g);},true);
+  const g=tickGroup(box);if(!g)return;e.preventDefault();e.stopPropagation();
+  /* a click straight on the box has already flipped it and is put back after this handler: work from the put-back state */
+  if(e.target===box)setTimeout(()=>tickSolo(document.getElementById(box.id)||box,g),0);else tickSolo(box,g);},true);

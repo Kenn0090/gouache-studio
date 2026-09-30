@@ -31,7 +31,7 @@ function p3SetLayout(L){p3.layout=L;p3Save();p3ApplyLayout();buildP3Panel();}
 function p3BakePanel(){const b=$('#p3bkBody');if(!b)return;b.replaceChildren(
     el('p',{class:'note',text:'Bake ambient occlusion, curvature, normals and more from the model, per texture set. Masks, generators and smart materials use them.'}),el('div',{class:'chips'},el('button',{class:'btn sm',id:'p3BakeBtn',text:'Bake mesh maps…',title:'Bake AO, curvature, normal… for the texture sets, here',onclick:dlgP3Bake}),
       Object.keys(bk.res||{}).length?el('button',{class:'btn sm',text:'Fine-tune in the Bake tab',onclick:()=>setMode('bake')}):null,Object.keys(bk.res||{}).length?el('button',{class:'btn sm',id:'p3BakePaint',text:'Send to the Paint canvas',title:'The bake as layers in the painting, to clean up by hand',onclick:p3BakeToPaint}):null),p3MeshMapsBox());}
-function buildP3Panel(){p3BakePanel();if(typeof renderShading==='function')renderShading();const sb=$('#st3Body');if(sb)sb.replaceChildren(el('p',{class:'note',text:'A picture laid over the 3D view: the brush paints through it onto the model.'}),st3Box());const box=$('#p3dBody');if(!box)return;box.replaceChildren();const s=v3s();
+function buildP3Panel(){p3BakePanel();if(typeof stBrushRender==='function')stBrushRender();if(typeof renderShading==='function')renderShading();const box=$('#p3dBody');if(!box)return;box.replaceChildren();const s=v3s();
   const models=el('select',{id:'p3Model','aria-label':'Model'},...Object.entries(PRIMS).map(([k,[l]])=>el('option',{value:k,text:l})),
     ...(v3.imported?[el('option',{value:'imported',text:v3.imported.name})]:[]),el('option',{value:'__import',text:'Import a model (OBJ, glTF, GLB, FBX)…'}));
   models.value=s.model;models.onchange=()=>{if(models.value==='__import'){models.value=s.model;importModel().then(()=>{p3.imported=v3.imported;buildP3Panel();});return;}s.model=models.value;v3LoadModel();buildP3Panel();};
@@ -339,4 +339,4 @@ function paintLayerBackToP3(n){const ln=n&&n.p3link;if(!ln)return;if(ui.mode!=='
   Object.assign(L,{opacity:O.opacity,mode:O.mode,visible:O.visible,clip:O.clip,p3tok:O.p3tok});if(O.mask)L.mask=cloneMask(O.mask);/* (its effects and styles are now part of the pixels) */
   syncTargets();structOp('Back from Paint',()=>{const P=O.parent,i=P.children.indexOf(O);detachNode(O);insertNode(L,P,i);selectOnly(L);});changed(L);renderLayers();buildP3Panel();
   toast('“'+L.name+'” in 3D Paint now has your edits from the Paint canvas.');return L;}
-{const sm=setMode;setMode=function(m,q){const r=sm(m,q);p3mmBadge();if(typeof renderDecals==="function")renderDecals();if(typeof renderEnvs==="function")renderEnvs();return r;};}
+{const sm=setMode;setMode=function(m,q){const r=sm(m,q);p3mmBadge();if(typeof stBrushRender==='function')stBrushRender();if(typeof renderDecals==="function")renderDecals();if(typeof renderEnvs==="function")renderEnvs();return r;};}
