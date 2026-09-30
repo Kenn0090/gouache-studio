@@ -42,6 +42,7 @@ function renderShading(){const box=document.getElementById('shadeBody');if(!box)
   if(k==='cel')body.append(sl('thresh','Shadow line'),sl('soft','Edge softness',0,.5,.01),colr('col','Shadow colour'),sl('spec','Highlight'),sl('rim','Rim light'),sl('outline','Outline',0,10,.5,v=>v?v+' px':'off'),colr('ocol','Outline colour'));
   if(k==='specgloss')body.append((()=>{const g=seg([[0,'Lit'],[1,'Diffuse'],[2,'Specular'],[3,'Gloss'],[4,'Reflections']],P.view,v=>{setP('view',+v);},'Spec/Gloss view');g.classList.add('themeseg');return g;})(),
     el('p',{class:'note',text:'See the diffuse colour, the specular colour, the glossiness or the reflections alone, as a Specular/Gloss material would store them.'}));
+  body.append(el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:'shReset',text:'Reset this shader',title:'Put this shader’s settings back to how they start',onclick:()=>{shadeEdit(d=>{delete d.p[k];});renderShading();}})));
   /* (0.27, Kenn) the environment (HDRI) lives here too: the lighting the shaders are seen in */
   const envS=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:v3s()[key],fmt,onInput:v=>{v3s()[key]=v;v3.dirty=true;requestRender();}}).el;
   const envPart=typeof envSettingsBox==='function'?[el('div',{class:'sub',text:'Environment'}),el('p',{class:'note',text:'The HDRI lighting the model. Shift + right-drag in the 3D view turns it.'}),envSettingsBox(envS,'sh')]:[];

@@ -597,14 +597,14 @@ body.noopt .optbar{display:none}
 .hrow:hover{background:var(--raise)}.hrow.on{background:var(--accent-soft);color:var(--accent)}.hrow.redo{opacity:.45}.hrow.first{font-style:italic}
 /* Material panel (beside Colour) */
 #matEdBody{padding:8px 10px;gap:8px;overflow:auto}
-#matEdBody .matHead{grid-template-columns:72px 1fr}#matEdBody .matprev{width:72px;height:72px}
+#matEdBody .matHead{grid-template-columns:72px 1fr}#matEdBody .matprev{width:72px!important;height:72px!important}
 #matEdBody .fillrow{display:grid;gap:6px;padding:6px 0;border-top:1px solid var(--line)}#matEdBody .fillrow.off{opacity:.75}
 .v3mk{position:absolute;pointer-events:none;z-index:3}
 .v3mk{position:absolute;pointer-events:none;z-index:3}
 .maskbar-row{flex-basis:100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}.maskbar-row .srow,.maskbar-row .slider{min-width:150px}
 .idsw{width:20px;height:20px;border-radius:4px;border:1px solid var(--line);padding:0;cursor:pointer}
 .lvsimple{width:100%;max-width:420px;height:auto;touch-action:none;cursor:ew-resize}
-#matEdBody>*{min-width:0}#matEdBody .dlg-grid{min-width:0}#matEdBody .matHead{grid-template-columns:56px minmax(0,1fr)}#matEdBody .matprev{width:56px;height:56px}
+#matEdBody>*{min-width:0}#matEdBody .dlg-grid{min-width:0}#matEdBody .matHead{grid-template-columns:56px minmax(0,1fr)}#matEdBody .matprev{width:56px!important;height:56px!important}
 #matEdBody .seg{min-width:0}#matEdBody .segb{min-width:0;padding:4px 3px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #matEdBody input[type=text],#matEdBody select{width:100%;min-width:0}
 /* mask and effect rows under a layer (0.23) */
@@ -894,3 +894,17 @@ body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>#maskRow{order:5}
 #pane3d.libover{outline:2px dashed var(--accent);outline-offset:-3px}
 #matEdBody .fillcard.fillrow{padding:0;gap:0;border:1px solid var(--line)}
 #dkShelf #matBody.one .sub{display:none}
+
+/* 0.37.2 preferences tabs, reset rows, Brushes in the wide shelf: tips on the left, a small preview and the settings on the right */
+.preftabs{display:flex;flex-wrap:wrap;gap:4px}.preftabs .segb{flex:1 1 auto}
+.prefpanel{max-height:56vh;overflow:auto;padding-right:4px;min-width:min(520px,80vw)}
+.resetrow,.prefreset{justify-content:flex-end}
+.dkshelf .sec:has(#libBody){display:grid;grid-template-columns:minmax(0,1fr) 270px;grid-template-rows:auto auto auto 1fr;column-gap:14px;align-items:start;min-height:0}
+.dkshelf .sec:has(#libBody)>.sec-h{grid-column:1/-1}
+.dkshelf .sec:has(#libBody)>#libBody{grid-column:1;grid-row:2/5;max-height:none;overflow:auto;height:100%}
+.dkshelf .sec:has(#libBody) .libset>*:not(.libset-h){grid-template-columns:repeat(auto-fill,minmax(64px,1fr))}
+.dkshelf .sec:has(#libBody)>.stbrush,.dkshelf .sec:has(#libBody)>.prevwrap,.dkshelf .sec:has(#libBody)>#brushBody{grid-column:2}
+.dkshelf .sec:has(#libBody) #brushPrev{height:56px}
+.dkshelf .sec:has(#libBody)>#brushBody{max-height:calc(100% - 4px);overflow:auto}
+.colpop{position:fixed;z-index:9000;width:250px;display:grid;gap:8px;padding:10px;background:var(--panel);border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 28px rgba(0,0,0,.45)}
+.colsw{height:26px;border-radius:6px;border:1px solid var(--line)}.colhex{width:74px}

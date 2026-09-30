@@ -128,4 +128,5 @@ function envSettingsBox(S,pre){pre=pre||'v3';if(pre!=='v3'){const S0=S;S=(id,...
     S('v3EnvSun','Extra sun','envSun',0,3,.05,v=>v?pct(v):'off'),...(s.envSun?[S('v3Az','Sun angle','sunAz',0,360,1,deg),S('v3El','Sun height','sunEl',0,90,1,deg)]:[]));
   box.append(S('v3Ex','Exposure','expo',.2,3,.05,pct),seg([['filmic','Filmic'],['neutral','Neutral']],s.tone==='neutral'?'neutral':'filmic',v=>{s.tone=v;v3.dirty=true;requestRender();},'Tone mapping'));
   if(k!=='none'&&k!=='custom'){const it=ENV_LIST.find(e=>e[0]===k);if(it)box.append(el('p',{class:'note',text:'“'+it[1]+'” by '+it[3]+', from Poly Haven (CC0).'}));}
+  box.append(el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:pre+'EnvReset',text:'Reset lighting',title:'Back to the starting environment, sun and exposure',onclick:()=>{for(const q of ['env','envRot','envI','envBg','envBlur','envSun','sunAz','sunEl','sunI','skyI','expo','tone'])s[q]=V3D_DEFAULTS[q];if(typeof envEnsure==='function')envEnsure();redo();}})));
   return box;}

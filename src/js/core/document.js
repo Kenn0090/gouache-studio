@@ -95,6 +95,9 @@ const recDisk=r=>(r.snaps||[]).reduce((s,x)=>s+(x.file?x.bytes:0),0);
 let undoBusy=false;
 /* presses that come while a step is still being read back from the disk cache wait their turn instead of being lost */
 const undoQ=[];function undoNext(){const f=undoQ.shift();if(f)setTimeout(f==='u'?undo:redo,0);}
+/* (0.37.2) the last records after position `from` become one undo step */
+function undoMerge(from,label){const rs=hist.undo.splice(from);if(rs.length<2){hist.undo.push(...rs);return;}
+  hist.undo.push({label,mode:rs[0].mode,refs:[...new Set(rs.flatMap(r=>r.refs||[]))],masks:rs.flatMap(r=>r.masks||[]),undo(){for(let i=rs.length-1;i>=0;i--)rs[i].undo();},redo(){for(const r of rs)r.redo();}});}
 function pushUndo(rec){if(!rec.mode)rec.mode=ui.mode;hist.undo.push(rec);const dropped=hist.redo;hist.redo=[];while(hist.undo.length>undoSteps())dropped.push(hist.undo.shift());
   if(!platform.isDesktop){let total=hist.undo.reduce((s,r)=>s+recBytes(r),0);while(total>undoRam()&&hist.undo.length>1){const r=hist.undo.shift();total-=recBytes(r);dropped.push(r);}}
   dropRecords(dropped);if(platform.isDesktop)spillOld();}

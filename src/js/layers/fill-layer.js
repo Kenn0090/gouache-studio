@@ -148,7 +148,7 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
       el('div',{class:'chips'},...[['Rust',[.77,.42,.18]],['Moss',[.30,.49,.29]],['Blue steel',[.23,.44,.88]],['Gold',[.79,.64,.29]]].map(([n,c])=>el('button',{class:'btn sm',text:n,onclick:()=>edit(()=>{TN.c=c.slice();TN.on=true;if(!TN.amt)TN.amt=.7;},'base',true)})),
         el('button',{class:'btn sm',id:'fl_tint_off',text:'None',onclick:()=>edit(()=>{TN.on=false;},'base',true)})));
     const aj=(id,label,key,min,max,fm)=>makeSlider({id,label,min,max,step:key==='hue'?1:.01,value:AJ[key]||0,fmt:fm,onInput:v=>edit(()=>{AJ[key]=v;},'base')}).el;
-    const ab=el('div',{class:'fillbody'},aj('fl_adj_con','Contrast','con',-1,1,pct),aj('fl_adj_bri','Brightness','bri',-1,1,pct),aj('fl_adj_sat','Saturation','sat',-1,1,pct),aj('fl_adj_hue','Hue shift','hue',-180,180,v=>Math.round(v)+'°'));
+    const ab=el('div',{class:'fillbody'},aj('fl_adj_con','Contrast','con',-1,1,pct),aj('fl_adj_bri','Brightness','bri',-1,1,pct),aj('fl_adj_sat','Saturation','sat',-1,1,pct),aj('fl_adj_hue','Hue shift','hue',-180,180,v=>Math.round(v)+'°'),el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:'fl_adj_reset',text:'Reset',title:'Back to no adjustment',onclick:()=>edit(()=>{Object.assign(AJ,{con:0,bri:0,sat:0,hue:0});},'base',true)})));
     const t1=fold('fl_tint','Tint',TN.on,tb),t2=fold('fl_adj','Adjust',fillTintOn({adj:AJ}),ab);
     t1.querySelector('.fillhead').append(chk('fl_tint_on','',!!TN.on,v=>edit(()=>{TN.on=v;if(v&&!TN.amt)TN.amt=.7;matEd.open.fl_tint=v;},'base',true)));
     t1.querySelector('.v').textContent=TN.on?(TN.mode||'multiply')+' '+Math.round(TN.amt*100)+'%':'off';t2.querySelector('.v').textContent=fillTintOn({adj:AJ})?'on':'contrast, brightness…';

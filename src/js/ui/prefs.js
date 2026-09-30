@@ -9,29 +9,37 @@ function qualityChanged(){savePrefs();if(typeof resizeGL==='function')resizeGL()
 function savePrefs(){try{localStorage.setItem('gs.prefs',JSON.stringify(prefs));}catch(e){}}
 /* the Preview checkbox every image-changing dialog carries; starts from the global setting */
 function previewChk(id,on,onChange){return chk(id,'Preview',on,onChange);}
-function dlgPrefs(){let meshAuto=!!prefs.meshAuto,live=prefs.livePreview,hints=!prefs.hideHints,tipCur=prefs.tipCursor!==false,altPk=prefs.altPick!==false,maxB=prefs.maxBrush||5000,qk=QUALITY[prefs.quality]?prefs.quality:'high',small=prefs.smallFiles!==false,ps=PAINT_GAP[prefs.paintSpeed]?prefs.paintSpeed:'best',half=String(paintScale());const th=themeSection(),ms=memSection(),asb=autosavePrefsBox();
-  const body=el('div',{class:'dlg-grid'},
-    el('div',{class:'sub',text:'Theme'}),th.el,
-    el('div',{class:'sub',text:'Screen'}),
-    chk('pHints','Show shortcut hints on the canvas',hints,v=>{hints=v;}),
-    chk('pAltPick','Alt picks a colour (Alt+click on the canvas, Alt over the model)',altPk,v=>{altPk=v;}),
-    chk('pTipCur','Show the brush tip’s shape as the cursor',tipCur,v=>{tipCur=v;}),
-    el('div',{class:'sub',text:'Largest brush size'}),seg([[5000,'5000 px'],[10000,'10000 px'],[20000,'20000 px']],maxB,v=>{maxB=+v;},'Largest brush size'),
-    el('p',{class:'note',text:'Very big brushes paint slowly on large documents.'}),
-    el('button',{class:'btn sm',text:'Keyboard shortcuts…',onclick:()=>{th.save();savePrefs();dlgKeys();}}),
-    el('div',{class:'sub',text:'Painting speed'}),seg([['best','Best'],['balanced','Balanced'],['fast','Fast']],ps,v=>{ps=v;},'Painting speed'),
-    el('div',{class:'sub',text:'Model while painting'}),seg([['1','Full size'],['0.75','Three quarters'],['0.5','Half size']],half,v=>{half=v;},'Model while painting'),
-    el('p',{class:'note',text:'Draws the 3D model smaller and without smoothing while you paint, then sharp again when you lift the brush. Three quarters is a middle step; half is fastest. Good for integrated graphics.'}),
-    el('p',{class:'note',text:'For slower computers and big documents. Balanced and Fast redraw the picture less often while you drag the brush. The paint you put down is exactly the same; the screen just updates a little less smoothly. It is saved on this computer only.'}),
-    el('div',{class:'sub',text:'Engine quality'}),seg([['low','Low'],['medium','Medium'],['high','High'],['ultra','Ultra']],qk,v=>{qk=v;},'Engine quality'),
-    el('p',{class:'note',text:'Lower settings help slower computers: the canvas and 3D view draw fewer pixels, the model’s edges and textures are less smooth, Detail makes fewer triangles, the 3D view catches up less often while you paint, and the ray-traced view stops sooner. High is the normal setting; Ultra is for fast graphics cards and sharp screens.'}),
-    el('div',{class:'sub',text:'Live previews'}),
-    chk('pLive','Show changes live while adjusting',live,v=>{live=v;}),
-    el('p',{class:'note',text:'When on, filters, adjustments, Select menu changes and hover previews (blend modes, fonts) show on the canvas as you adjust them. Each dialog also has its own Preview checkbox. Turn this off for very large documents or slower machines.'}),
-    el('div',{class:'sub',text:'Files'}),chk('prSmall','Smaller files (on by default)',small,v=>{small=v;}),
-    el('p',{class:'note',text:'Every picture in documents, projects, autosaves and materials is packed without losing anything. With Smaller files on, colour and grey maps are also kept as high-quality WebP when that is smaller (a much smaller file; changes are too small to see). Normal maps, Height, masks and baked maps always stay exact.'}),
-    el('div',{class:'sub',text:'Autosave and backups'}),asb.el,
-    el('div',{class:'sub',text:'Models'}),chk('prMeshAuto','When a model file is saved again elsewhere, update it and bake again without asking',!!prefs.meshAuto,v=>{meshAuto=v;}),
-    el('p',{class:'note',text:platform.isDesktop?'The high-poly is never updated without asking. Only models opened with Import model or Load… are followed.':'This works in the desktop app only: a browser can’t watch files on your computer.'}),
-    el('div',{class:'sub',text:'Memory and disk'}),ms.el);
-  openDialog({title:'Preferences',body,okLabel:'Save',onCancel(){th.cancel();},onOk(){const qOld=prefs.quality||'high';prefs.quality=qk==='high'?undefined:qk;if(qOld!==qk)qualityChanged();prefs.smallFiles=small?undefined:false;prefs.paintSpeed=ps==='best'?undefined:ps;prefs.paintScale=half==='1'?undefined:+half;delete prefs.paintHalf;prefs.meshAuto=meshAuto;prefs.livePreview=live;prefs.hideHints=!hints;prefs.tipCursor=tipCur;prefs.altPick=altPk?undefined:false;prefs.maxBrush=maxB===5000?0:maxB;if(typeof sizeSlider!=='undefined'&&sizeSlider)sizeSlider.set(brush.size);if(typeof buildOptBar==='function')buildOptBar();if(typeof refreshCursor==='function')refreshCursor();th.save();savePrefs();refreshHints();ms.save();asb.save();savePrefs();toast('Preferences saved.');}});}
+function dlgPrefs(startTab){
+  /* (0.37.2, Kenn) tabs instead of one long window; every tab but Look can go back to its usual settings */
+  const S={meshAuto:!!prefs.meshAuto,live:prefs.livePreview,hints:!prefs.hideHints,tipCur:prefs.tipCursor!==false,altPk:prefs.altPick!==false,maxB:prefs.maxBrush||5000,qk:QUALITY[prefs.quality]?prefs.quality:'high',small:prefs.smallFiles!==false,ps:PAINT_GAP[prefs.paintSpeed]?prefs.paintSpeed:'best',half:String(paintScale())};
+  const D={meshAuto:false,live:true,hints:true,tipCur:true,altPk:true,maxB:5000,qk:'high',small:true,ps:'best',half:'1'};
+  const th=themeSection(),ms=memSection(),asb=autosavePrefsBox();
+  const TABS=[['look','Look'],['paint','Painting'],['speed','Speed'],['files','Files']],KEYS={paint:['hints','altPk','tipCur','maxB'],speed:['ps','half','qk','live'],files:['small','meshAuto']};
+  let cur=TABS.some(t=>t[0]===startTab)?startTab:(()=>{try{const t=localStorage.getItem('gs.prefTab');return TABS.some(x=>x[0]===t)?t:'look';}catch(e){return 'look';}})();
+  const holder=el('div',{class:'dlg-grid prefpanel'}),bar=el('div',{class:'seg preftabs',role:'tablist','aria-label':'Preferences'}),body=el('div',{class:'dlg-grid prefs'},bar,holder);
+  const panels={
+    look:()=>[el('div',{class:'sub',text:'Theme'}),th.el],
+    paint:()=>[chk('pHints','Show shortcut hints on the canvas',S.hints,v=>{S.hints=v;}),
+      chk('pAltPick','Alt picks a colour (Alt+click on the canvas, Alt over the model)',S.altPk,v=>{S.altPk=v;}),
+      chk('pTipCur','Show the brush tip’s shape as the cursor',S.tipCur,v=>{S.tipCur=v;}),
+      el('div',{class:'sub',text:'Largest brush size'}),seg([[5000,'5000 px'],[10000,'10000 px'],[20000,'20000 px']],S.maxB,v=>{S.maxB=+v;},'Largest brush size'),
+      el('p',{class:'note',text:'Very big brushes paint slowly on large documents.'}),
+      el('button',{class:'btn sm',text:'Keyboard shortcuts…',onclick:()=>{th.save();savePrefs();dlgKeys();}})],
+    speed:()=>[el('div',{class:'sub',text:'Painting speed'}),seg([['best','Best'],['balanced','Balanced'],['fast','Fast']],S.ps,v=>{S.ps=v;},'Painting speed'),
+      el('p',{class:'note',text:'For slower computers and big documents. Balanced and Fast redraw the picture less often while you drag the brush. The paint you put down is exactly the same.'}),
+      el('div',{class:'sub',text:'Model while painting'}),seg([['1','Full size'],['0.75','Three quarters'],['0.5','Half size']],S.half,v=>{S.half=v;},'Model while painting'),
+      el('p',{class:'note',text:'Draws the 3D model smaller while you paint, then sharp again when you lift the brush. Good for integrated graphics.'}),
+      el('div',{class:'sub',text:'Engine quality'}),seg([['low','Low'],['medium','Medium'],['high','High'],['ultra','Ultra']],S.qk,v=>{S.qk=v;},'Engine quality'),
+      el('p',{class:'note',text:'Lower settings help slower computers: fewer pixels, fewer triangles, and less frequent catching up while you paint. High is the normal setting; Ultra is for fast graphics cards.'}),
+      chk('pLive','Show changes live while adjusting',S.live,v=>{S.live=v;}),
+      el('p',{class:'note',text:'Filters, adjustments and hover previews show on the canvas as you adjust them. Turn this off for very large documents.'}),
+      el('div',{class:'sub',text:'Memory and disk'}),ms.el],
+    files:()=>[chk('prSmall','Smaller files (on by default)',S.small,v=>{S.small=v;}),
+      el('p',{class:'note',text:'Pictures are packed without losing anything. With Smaller files on, colour and grey maps are also kept as high-quality WebP when that is smaller. Normal maps, Height, masks and baked maps always stay exact.'}),
+      el('div',{class:'sub',text:'Autosave and backups'}),asb.el,
+      el('div',{class:'sub',text:'Models'}),chk('prMeshAuto','When a model file is saved again elsewhere, update it and bake again without asking',S.meshAuto,v=>{S.meshAuto=v;}),
+      el('p',{class:'note',text:platform.isDesktop?'The high-poly is never updated without asking. Only models opened with Import model or Load… are followed.':'This works in the desktop app only: a browser can’t watch files on your computer.'})]};
+  const draw=()=>{bar.replaceChildren(...TABS.map(([k,l])=>el('button',{type:'button',role:'tab',class:'segb','aria-selected':String(k===cur),'aria-pressed':String(k===cur),id:'pTab_'+k,text:l,onclick:()=>{cur=k;try{localStorage.setItem('gs.prefTab',k);}catch(e){}draw();}})));
+    holder.replaceChildren(...panels[cur](),...(KEYS[cur]?[el('div',{class:'chips prefreset'},el('button',{class:'btn sm',id:'pReset',text:'Reset this tab',title:'Put these settings back to how the app starts',onclick:()=>{for(const k of KEYS[cur])S[k]=D[k];draw();}}))]:[]));};
+  draw();
+  openDialog({title:'Preferences',body,okLabel:'Save',onCancel(){th.cancel();},onOk(){const qOld=prefs.quality||'high';prefs.quality=S.qk==='high'?undefined:S.qk;if(qOld!==S.qk)qualityChanged();prefs.smallFiles=S.small?undefined:false;prefs.paintSpeed=S.ps==='best'?undefined:S.ps;prefs.paintScale=S.half==='1'?undefined:+S.half;delete prefs.paintHalf;prefs.meshAuto=S.meshAuto;prefs.livePreview=S.live;prefs.hideHints=!S.hints;prefs.tipCursor=S.tipCur;prefs.altPick=S.altPk?undefined:false;prefs.maxBrush=S.maxB===5000?0:S.maxB;if(typeof sizeSlider!=='undefined'&&sizeSlider)sizeSlider.set(brush.size);if(typeof buildOptBar==='function')buildOptBar();if(typeof refreshCursor==='function')refreshCursor();th.save();savePrefs();refreshHints();ms.save();asb.save();savePrefs();toast('Preferences saved.');}});}

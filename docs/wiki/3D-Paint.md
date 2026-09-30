@@ -180,3 +180,9 @@ The shelf also has an **Environments** category: a thumbnail for each HDRI (clic
 - **Stencils:** tick *Use a stencil* in the Brushes panel, then drop a picture on the box.
 - The material editor starts with **Tint & adjust**; each channel folds open.
 - Bake Maps and Shader are tabs next to the texture sets.
+
+## Small changes in 0.37.2
+
+- Preferences has tabs; Reset buttons for lighting, shader, brush and material adjustments.
+- Colour buttons open a picker with Hue, Saturation and Lightness sliders.
+- Ctrl + dragging a material over the model shows the ID map.
