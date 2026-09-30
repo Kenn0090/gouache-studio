@@ -35,5 +35,14 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>__gs.allLayers().length)===n0,'no new layer was added');
  await W(300);await p.evaluate(()=>__gs.act('undo'));await W(500);
  ok(await p.evaluate(()=>__gs.doc.active.name==='Brown leather'),'undo brings the old material back');
+ // the tiling slider
+ await p.click('#gm_brown-leather');await p.click('#lFill');for(let i=0;i<60;i++){if(await p.evaluate(()=>__gs.doc.active&&__gs.doc.active.name==='Brown leather'))break;await W(250);}
+ await p.evaluate(()=>__gs.showPanel('matEd'));await W(500);
+ ok(await p.evaluate(()=>!!document.getElementById('pxf_tslide')),'the Tiling slider is there');
+ await p.evaluate(()=>{const e=document.getElementById('pxf_tslide');e.value='0.6';e.dispatchEvent(new Event('input',{bubbles:true}));});await W(900);
+ const sv=await p.evaluate(()=>({s:__gs.doc.active.fill.xf.s.slice(),f:document.getElementById('pxf_s0').value}));
+ ok(Math.abs(sv.s[0]-Math.pow(10,-.6))<.02&&Math.abs(sv.s[1]-sv.s[0])<.001,'the slider sets the tiling on both axes (size '+sv.s.map(v=>v.toFixed(3))+')');
+ ok(Math.abs(parseFloat(sv.f)-3.98)<.1,'and the number box follows ('+sv.f+')');
+ await p.locator('#matEdSec').screenshot({path:OUT+'tiling-slider.png'});
  ok(errs.length===0,'no errors '+errs.join('|').slice(0,300));
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();process.exit(fails?1:0);})();
