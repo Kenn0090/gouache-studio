@@ -65,6 +65,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{__gs.showFrame(1);__gs.deleteFrame();});await W(300);ok(await kf()==='0,2','deleting that frame brings it back ('+await kf()+')');
  await p.evaluate(()=>{__gs.showFrame(2);__gs.deleteFrame();});await W(300);ok(await kf()==='0','deleting the frame a key sits on removes that key ('+await kf()+')');
  await p.keyboard.press('Control+z');await W(400);ok(await kf()==='0,2','undo brings the key back ('+await kf()+')');
+ /* every filter can be an effect on the timeline */
+ const allr=await p.evaluate(()=>{const bad=[];const A=__gs.anim;for(const id of Object.keys(__gs.FX)){try{A.fxl=[];__gs.afxAdd(id);if(__gs.afxRenderAll(A).length<1)bad.push(id);}catch(e){bad.push(id+':'+e.message);}}A.fxl=[];return bad;});
+ ok(allr.length===0,'all filters work as timeline effects ('+allr.join(',')+')');
+ ok(await p.evaluate(()=>{const s=document.querySelector('select[aria-label="Add an effect"]');s.dispatchEvent(new Event('focus'));return s.querySelectorAll('optgroup').length>=5&&s.options.length>40;}),'the effect list offers every filter in groups');
  ok(errs.length===0,'no errors '+errs.slice(0,3).join('|'));
  await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);
 })();
