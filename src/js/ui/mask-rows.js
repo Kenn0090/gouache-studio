@@ -7,14 +7,21 @@ function msRowsEl(n){const out=[];if(!(msHas(n)||(n.cfx&&n.cfx.length))||n.fxFol
     const eye=el('button',{class:'eye',title:r.on!==false?'Hide':'Show','aria-label':(r.on!==false?'Hide ':'Show ')+msRowTitle(r)});eye.innerHTML=r.on!==false?eyeOn:eyeOff;
     eye.addEventListener('pointerdown',e=>e.stopPropagation());eye.addEventListener('click',e=>{e.stopPropagation();msRecord(n,(r.on!==false?'Hide ':'Show ')+msRowTitle(r).toLowerCase(),()=>{r.on=r.on===false;});});
     const del=el('button',{class:'msdel',text:'✕',title:'Delete','aria-label':'Delete '+msRowTitle(r)});del.addEventListener('pointerdown',e=>e.stopPropagation());del.addEventListener('click',e=>{e.stopPropagation();msRemove(n,where,r.id);});
+    const modeBtn=el('button',{class:'msmode',text:(MS_MODES.find(m=>m[0]===(r.mode||'normal'))||MS_MODES[0])[2],title:'Blend mode: click to change','aria-label':'Blend mode of '+msRowTitle(r)+': click to change'});
+    modeBtn.addEventListener('pointerdown',e=>e.stopPropagation());modeBtn.addEventListener('click',e=>{e.stopPropagation();msModeMenu(e,n,r,modeBtn);});
     const row=el('div',{class:'msrow '+(where==='m'?'m':'c')+(on?' on':'')+(r.on===false?' hid':''),role:'option',tabindex:'0','aria-selected':String(!!on),title:where==='m'?'In the mask: click to change it in Properties, drag to reorder':'On the layer: click to change it in Properties, drag to reorder'},
       eye,el('span',{class:'mskind',text:where==='m'?'▣':'fx','aria-hidden':'true'}),el('span',{class:'lname',text:msRowTitle(r)}),
-      el('span',{class:'msmode',text:(MS_MODES.find(m=>m[0]===(r.mode||'normal'))||MS_MODES[0])[2]}),el('span',{class:'msop',text:String(Math.round((r.op==null?1:r.op)*100))}),del);
+      modeBtn,el('span',{class:'msop',text:String(Math.round((r.op==null?1:r.op)*100))}),del);
     row._ms={L:n,where,id:r.id};
     row.addEventListener('pointerdown',e=>msRowDown(e,row));
     row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();msSelect(n,where,r.id);}if(e.key==='Delete'){e.preventDefault();e.stopPropagation();msRemove(n,where,r.id);}});
     out.push(row);}};
   if(n.cfx&&n.cfx.length)mk('c',n.cfx);if(msHas(n))mk('m',n.mask.stack);return out;}
+/* (0.31.2) click a row's blend name to pick another blend mode right there */
+function msModeMenu(e,n,r,btn){const pop=$('#menuPop');closeMenu();const cur=r.mode||'normal',b=btn.getBoundingClientRect();
+  pop.replaceChildren(...MS_MODES.map(([v,t])=>el('button',{class:'mi',role:'menuitemradio','aria-checked':String(v===cur),onclick:()=>{pop.hidden=true;if(v===cur)return;msRecord(n,'Blend mode: '+t.toLowerCase(),()=>{r.mode=v;});}},el('span',{text:v===cur?'✓':''}),el('span',{text:t}),el('span'))));
+  pop.hidden=false;pop.style.left=Math.max(4,Math.min(b.left,window.innerWidth-pop.offsetWidth-8))+'px';pop.style.top=Math.max(4,Math.min(b.bottom+2,window.innerHeight-pop.offsetHeight-8))+'px';
+  const off=ev=>{if(!pop.contains(ev.target)){pop.hidden=true;document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}
 /* click selects; a drag moves the row among the rows of the same layer and kind */
 function msRowDown(e,row){if(e.button!==0)return;e.stopPropagation();const {L,where,id}=row._ms,y0=e.clientY;let moved=false;
   const mv=ev=>{if(Math.abs(ev.clientY-y0)>5)moved=true;if(!moved)return;row.classList.add('drag');};
