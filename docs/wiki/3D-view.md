@@ -32,7 +32,7 @@ The model is lit by an **HDRI**, a 360° photo of real light, the way Substance 
 - **Load your own .hdr or .exr…** uses your own (EXR files saved with ZIP compression or none; PIZ isn't supported, so save those as .hdr).
 - **Simple sky** is the old sky-and-sun light.
 
-For an HDRI: **Turn** spins it around the model, **Brightness**, **Show it as the background** (with **Background blur**) and **Extra sun** adds a sun on top. **Exposure** and **Tone mapping** (**Filmic**, gentler on bright highlights, or **Neutral**) apply to all of them.
+For an HDRI: **Turn** spins it around the model, **Brightness**, **Show it as the background** (with **Background blur**) and **Extra sun** adds a sun on top. **Exposure** and **Tone mapping** is a drop-down list: **Filmic** (gentle on bright highlights), **ACES** (the film-industry standard look, with a slight roll-off and richer contrast), **AgX** (keeps very bright, saturated colours from turning orange), **PBR Neutral** (keeps colours true, good for checking materials), **Soft** and **None (linear)**. They apply to all of them.
 
 ### HDRI credits
 The HDRIs that come with Gouache Studio are from [Poly Haven](https://polyhaven.com), free to use (CC0). Thank you to their authors:
@@ -102,4 +102,4 @@ Press **Paint** in the 3D view's toolbar, then paint on the model with the Brush
 Height depth now pushes each point of a model out in one direction, so hard edges and UV seams no longer tear open, and models with several texture sets keep their textures when Detail is raised. How many triangles Detail may make depends on Preferences › Engine quality (two million on High).
 
 ## Post processing
-At the bottom of the **Shader** panel, tick an effect to switch it on and open its sliders: **Bloom**, **Ambient occlusion**, **Depth of field** (move the **Focus distance** to what should stay sharp), **Sharpen**, **Colour grade** (exposure, contrast, saturation, warmth), **Vignette**, **Chromatic aberration** and **Film grain**. They are laid over the finished picture, so screenshots, the render window and turntables get them too. **Reset post processing** turns them all off.
+At the bottom of the **Shader** panel, tick an effect to switch it on and open its sliders: **Bloom**, **Ambient occlusion** (soft contact shadows in creases and where things meet; **Strength**, **Radius** and **Smoothness**), **Depth of field** (move the **Focus distance** to what should stay sharp), **Sharpen**, **Colour grade** (exposure, contrast, saturation, warmth), **Vignette**, **Chromatic aberration** and **Film grain** (strongest in the mid-tones; **Grain size** and **Colour noise**, and a different pattern on every frame of a turntable). They are laid over the finished picture, so screenshots, the render window and turntables get them too. **Reset post processing** turns them all off.

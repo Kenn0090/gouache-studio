@@ -73,9 +73,9 @@ function dlgTurntable(){if(!v3.on||!v3.mesh){toast('Open the 3D view first.');re
   openDialog({title:'Turntable',body,okLabel:'Record',onOk(){setTimeout(()=>ttRecord(o),0);}});}
 async function ttRecord(o){const s=v3s(),n=Math.max(2,Math.round(o.spins*o.secs*o.fps));let [w,h]=v3SizeOf(o.size);if(o.fmt==='gif'&&w>640){h=Math.round(h*640/w);w=640;}
   if(o.fmt!=='png'){w&=~1;h&=~1;}const cam0=Object.assign({},v3.cam),rot0=s.envRot||0,az0=s.sunAz,tr=o.fmt==='png'&&o.tr;
-  const frame=i=>{const a=2*Math.PI*o.spins*i/n;v3.cam.yaw=cam0.yaw+a;/* light fixed to the viewer unless it turns with the model */if(!o.lightTurns){s.envRot=(rot0+a*180/Math.PI)%360;s.sunAz=(az0+a*180/Math.PI)%360;}
+  const frame=i=>{v3.postSeed=7.13+i*3.17;const a=2*Math.PI*o.spins*i/n;v3.cam.yaw=cam0.yaw+a;/* light fixed to the viewer unless it turns with the model */if(!o.lightTurns){s.envRot=(rot0+a*180/Math.PI)%360;s.sunAz=(az0+a*180/Math.PI)%360;}
     const d=v3Offscreen(w,h,{transparent:tr});const top=new Uint8Array(w*h*4);for(let y=0;y<h;y++)top.set(d.subarray((h-1-y)*w*4,(h-y)*w*4),y*w*4);return top;};
-  const restore=()=>{Object.assign(v3.cam,cam0);s.envRot=rot0;s.sunAz=az0;v3.dirty=true;requestRender();};
+  const restore=()=>{Object.assign(v3.cam,cam0);s.envRot=rot0;s.sunAz=az0;v3.postSeed=0;v3.dirty=true;requestRender();};
   loadStart('Turntable');let cancelled=false;
   try{if(o.fmt==='webm'||o.fmt==='mp4'){const c=el('canvas',{width:w,height:h}),x=c.getContext('2d'),st=c.captureStream(0),track=st.getVideoTracks()[0];
       const mime=o.fmt==='mp4'?'video/mp4':['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'video/webm',rec=new MediaRecorder(st,{mimeType:mime,videoBitsPerSecond:Math.min(40e6,w*h*o.fps*.12)}),chunks=[];

@@ -8,6 +8,18 @@ uniform mat4 uVP; uniform float uUVs; uniform sampler2D uH; uniform float uDisp;
 out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;
 void main(){ vec2 t=aT*uUVs; vec3 p=aP; if(uUseH==1&&uDisp!=0.0){ float h=textureLod(uH,t,0.0).r-0.5; p+=aD*h*uDisp; }
   vP=p; vN=aN; vT=t; vTan=aTan; gl_Position=uVP*vec4(p,1.0); }`;
+/* tone mapping: 0 soft, 1 filmic (quick ACES fit), 2 ACES (full), 3 AgX, 4 PBR Neutral (Khronos), 5 none */
+const TONE_GLSL=`vec3 acesHill(vec3 c){ const mat3 I=mat3(0.59719,0.07600,0.02840, 0.35458,0.90834,0.13383, 0.04823,0.01566,0.83777); const mat3 O=mat3(1.60475,-0.10208,-0.00327, -0.53108,1.10813,-0.07276, -0.07367,-0.00605,1.07602);
+  c=I*(c/0.6); vec3 a=c*(c+0.0245786)-0.000090537; vec3 b=c*(0.983729*c+0.4329510)+0.238081; return clamp(O*(a/b),0.0,1.0); }
+vec3 agxCurve(vec3 x){ vec3 x2=x*x, x4=x2*x2; return 15.5*x4*x2-40.14*x4*x+31.96*x4-6.868*x2*x+0.4298*x2+0.1191*x-0.00232; }
+vec3 agxMap(vec3 c){ const mat3 S2R=mat3(0.6274,0.0691,0.0164, 0.3293,0.9195,0.0880, 0.0433,0.0113,0.8956); const mat3 R2S=mat3(1.6605,-0.1246,-0.0182, -0.5876,1.1329,-0.1006, -0.0728,-0.0083,1.1187);
+  const mat3 IN=mat3(0.856627153315983,0.137318972929847,0.11189821299995, 0.0951212405381588,0.761241990602591,0.0767994186031903, 0.0482516061458583,0.101439036467306,0.811302368396859);
+  c=IN*(S2R*c); c=max(c,vec3(1e-10)); c=clamp((log2(c)+12.47393)/16.500,0.0,1.0); c=agxCurve(c); c=inverse(IN)*c; c=pow(max(c,vec3(0.0)),vec3(2.2)); return clamp(R2S*c,0.0,1.0); }
+vec3 pbrNeutral(vec3 c){ const float sc=0.76; const float ds=0.15; float x=min(c.r,min(c.g,c.b)); float off=x<0.08?x-6.25*x*x:0.04; c-=off; float pk=max(c.r,max(c.g,c.b)); if(pk<sc) return c;
+  float d=1.0-sc; float np=1.0-d*d/(pk+d-sc); c*=np/pk; float g=1.0-1.0/(ds*(pk-np)+1.0); return mix(c,vec3(np),g); }
+vec3 tone(vec3 c){ if(uTone==1){ c*=0.6; return clamp((c*(2.51*c+0.03))/(c*(2.43*c+0.59)+0.14),0.0,1.0); } if(uTone==2) return acesHill(c); if(uTone==3) return agxMap(c); if(uTone==4) return clamp(pbrNeutral(c),0.0,1.0); if(uTone==5) return clamp(c,0.0,1.0); return c/(1.0+c*0.12); }`;
+const TONE_LIST=[['filmic','Filmic',1],['aces','ACES',2],['agx','AgX',3],['khr','PBR Neutral',4],['neutral','Soft',0],['none','None (linear)',5]];
+const toneInt=s=>{const t=TONE_LIST.find(x=>x[0]===(s&&s.tone));return t?t[2]:1;};
 const FS_3D=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan;
 uniform sampler2D uBase; uniform sampler2D uRough; uniform sampler2D uMetal; uniform sampler2D uNrm; uniform sampler2D uAO; uniform sampler2D uEmis; uniform sampler2D uOpac; uniform sampler2D uThick;
 uniform int uFlipY; uniform int uHas; uniform vec2 uDef; uniform vec3 uCam; uniform vec3 uSun; uniform float uSunI; uniform float uSkyI; uniform float uExpo; uniform int uUnlit; uniform int uClip;
@@ -27,7 +39,7 @@ vec3 envSpec(vec3 R,float r){ if(uEnvOn==0) return mix(sky(R),mix(sky(R),vec3(0.
 vec3 envDif(vec3 N){ if(uEnvOn==0) return mix(sky(N),vec3(0.5),0.35); return texture(uIrr,envUV(N)).rgb*uEnvI; }
 /* split-sum reflection factor (Karis' fit) */
 vec2 envBRDF(float NdV,float r){ vec4 rr=r*vec4(-1.0,-0.0275,-0.572,0.022)+vec4(1.0,0.0425,1.04,-0.04); float a004=min(rr.x*rr.x,exp2(-9.28*NdV))*rr.x+rr.y; return vec2(-1.04,1.04)*a004+rr.zw; }
-vec3 tone(vec3 c){ if(uTone==1){ c*=0.6; return clamp((c*(2.51*c+0.03))/(c*(2.43*c+0.59)+0.14),0.0,1.0); } return c/(1.0+c*0.12); }
+${TONE_GLSL}
 void main(){ vec4 b=texture(uBase,vT+uPB); float a=b.a; if((uHas&64)!=0) a*=texture(uOpac,vT+uPO).r;
   if(uClip==1&&a<0.5) discard; vec3 alb=b.a>1e-5?b.rgb/b.a:vec3(0.0);
   if(uUnlit==1){ vec3 c=alb; if((uHas&8)!=0) c*=texture(uAO,vT+uPA).r; o=vec4(c,1.0); return; }
@@ -195,7 +207,7 @@ function v3MeshU(C,common,it,flip){const {s,bake,sg,EU,eye,a,e}=C,T=it.T||{},bas
     if(!bake&&!it.thick&&!it.sh&&doc.meshMaps&&doc.meshMaps.thick)it.thick=doc.meshMaps.thick;
     const hm=(ok('rough')?1:0)|(ok('metal')?2:0)|(ok('nfinal')?4:0)|(ok('ao')?8:0)|(ok('emis')?16:0)|(ok('opac')?64:0)|(it.thick?128:0);
     return Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:ok('metal')?T.metal.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,uThick:it.thick?it.thick.tex:dummy,...EU,...shadeUniforms(bake?null:it.sh||v3ShadeOf(doc)),
-      uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:s.tone==='neutral'?0:1},uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});}
+      uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});}
 function v3Render(F,flip){const g=v3.gpu;if(!g)return;const C=v3Ctx(),{s,bake}=C;
   gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);const bg=BG3[s.bg]||BG3.dark,tr=!!(v3.transparent);gl.clearColor(bg[0],bg[1],bg[2],tr?0:1);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
