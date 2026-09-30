@@ -9,7 +9,7 @@ A **smart material** is a whole folder of layers saved as one: material layers, 
 
 **Built in:** Gun metal, Moss, Dirt, Dust, Imperfections, Skin, Steel, Wood and Leather (these work at any size), and, since 0.34, 19 richer ones built from the Library materials and the photo grunge maps: Worn Steel, Rusty Painted Metal, Chipped Yellow Paint, Aged Bronze, Copper Patina, Battle Leather, Old Black Leather, Dirty Canvas, Worn Khaki Cloth, Weathered Wood, Old Planks, Cracked Stone, Snowy Rock, Muddy Ground, Stained Concrete, Scuffed Plastic, Cracked Porcelain, Worn Carbon and Molten Rock. The first time you add one it fetches its pictures, so give it a moment.
 
-**Your own:** right-click a folder (or a single layer) › **Save as smart material…** and give it a name. Pictures used by its layers and masks are saved with it.
+**Your own:** right-click a folder (or a single layer) › **Save as smart material…** and give it a name. Pictures used by its layers and masks are saved with it. To change it later, edit the folder's layers, then right-click the folder › **Update smart material “name” in Materials**. The built-in ones can't be overwritten; save your own copy instead.
 
 ## Smart masks
 A **smart mask** is just a mask stack, saved: the rows of a layer's mask. Click a tile under **Smart masks** to give the selected layer that mask (it replaces the mask it had).

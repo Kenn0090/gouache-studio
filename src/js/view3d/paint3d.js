@@ -18,15 +18,15 @@ function p3dEnter(){p3.was={on:v3.on,paintOn:v3.paintOn,imported:v3.imported,cam
   /* its workspace comes with the tab (dkModeWs in dock.js) */
   const S=p3.sets[p3.cur];v3.tex=(S&&S.tex)||{};if(S)S.tex=null;v3.mapsDirty=true;
   tabDocEnter('p3d',p3.size,p3.size,S?S.name:'3D Paint');if(!doc.p3)p3Setup(S?S.name:null);
-  doc.v3d=p3.v3d||(p3.v3d=Object.assign({},V3D_DEFAULTS,{model:'rcube',detail:2,unlit:false}));doc.workflow='metal';
+  doc.v3d=p3.v3d||(p3.v3d=Object.assign({},V3D_DEFAULTS,{model:'rcube',detail:2,unlit:false,showUV:true}));doc.workflow='metal';
   v3.imported=p3.imported;v3.mesh=null;if(p3.cam)Object.assign(v3.cam,p3.cam);
   v3.paintOn=true;if(!MESH_TOOLS.includes(ui.tool))setTool('brush');
   $('#docName').textContent=doc.name;v3.on=false;p3ApplyLayout();if(!p3.cam)v3Frame();p3.started=true;buildP3Panel();}
 function p3dExit(){p3.cam=Object.assign({},v3.cam);p3.imported=v3.imported;p3.v3d=doc.v3d;const S=p3.sets[p3.cur];if(S)S.tex=v3.tex;v3.tex=(p3.was&&p3.was.tex)||{};v3.mapsDirty=true;tabDocExit('p3d');
   const w=p3.was||{};v3.imported=w.imported||null;v3.mesh=null;if(w.cam)Object.assign(v3.cam,w.cam);v3.paintOn=!!w.paintOn;
-  $('#work').classList.remove('v3full');toggle3D(!!w.on);if(v3.on){v3LoadModel(true);build3dPane();}}
+  $('#work').classList.remove('v3full');toggle3D(!!w.on);if(typeof vpStripSync==='function')vpStripSync(false);if(v3.on){v3LoadModel(true);build3dPane();}}
 /* 3D only (the viewport takes the whole painting area), 3D + the flat texture, or the flat texture only */
-function p3ApplyLayout(){const L=p3.layout,work=$('#work');work.classList.toggle('v3full',L==='3d');toggle3D(L!=='2d');if(v3.on&&!v3.mesh)v3LoadModel(true);}
+function p3ApplyLayout(){const L=p3.layout,work=$('#work');work.classList.toggle('v3full',L==='3d');toggle3D(L!=='2d');if(v3.on&&!v3.mesh)v3LoadModel(true);if(typeof vpStripSync==='function')vpStripSync();}
 function p3SetLayout(L){p3.layout=L;p3Save();p3ApplyLayout();buildP3Panel();}
 function p3BakePanel(){const b=$('#p3bkBody');if(!b)return;b.replaceChildren(
     el('p',{class:'note',text:'Bake ambient occlusion, curvature, normals and more from the model, per texture set. Masks, generators and smart materials use them.'}),el('div',{class:'chips'},el('button',{class:'btn sm',id:'p3BakeBtn',text:'Bake mesh maps…',title:'Bake AO, curvature, normal… for the texture sets, here',onclick:dlgP3Bake}),
@@ -52,8 +52,8 @@ function p3Resize(n){if(n===doc.w&&n===doc.h)return;if(n>MAX_DIM){toast('This co
 const p3Range=()=>{const m=v3.mesh,r=m&&m.setRanges;const S=p3.sets[p3.cur];return (r&&S&&r.find(x=>x.name===S.name))||{start:0,count:m?m.idx.length/3:0};};
 function p3Blank(){if(!p3.blank){const t=makeTarget(4,4,8,true);clearTarget(t,[.72,.72,.72,1]);p3.blank={base:t};}return p3.blank;}
 /* what to draw: every set's triangles with that set's textures */
-function p3DrawList(){const m=v3.mesh,rs=m&&m.setRanges;if(!rs||rs.length<2)return [{T:v3.tex,start:0,count:m?m.idx.length/3:0,sh:v3ShadeOf(doc),thick:doc.meshMaps&&doc.meshMaps.thick||null}];
-  return rs.map(r=>{const i=p3.sets.findIndex(S=>S.name===r.name);const T=i===p3.cur?v3.tex:(i>=0&&p3.sets[i].tex&&p3.sets[i].tex.base?p3.sets[i].tex:p3Blank());
+function p3DrawList(){const m=v3.mesh,rs=m&&m.setRanges;if(!rs||rs.length<2){if(p3.sets.length===1&&p3.sets[0].hidden)return [];return [{T:v3.tex,start:0,count:m?m.idx.length/3:0,sh:v3ShadeOf(doc),thick:doc.meshMaps&&doc.meshMaps.thick||null}];}
+  return rs.filter(r=>{const S=p3.sets.find(x=>x.name===r.name);return !(S&&S.hidden);}).map(r=>{const i=p3.sets.findIndex(S=>S.name===r.name);const T=i===p3.cur?v3.tex:(i>=0&&p3.sets[i].tex&&p3.sets[i].tex.base?p3.sets[i].tex:p3Blank());
     /* each set has its own shader, and skin reads its own baked thickness */
     const D=i===p3.cur?doc:(i>=0&&p3.sets[i].state?p3.sets[i].state.doc:null),mm=D&&D.meshMaps;return {T,start:r.start,count:r.count,sh:D?v3ShadeOf(D):null,thick:mm&&mm.thick||null};});}
 /* a texture of set k (range index k of the model), for picking */
@@ -84,9 +84,12 @@ function p3DeleteSet(i){const S=p3.sets[i];if(!S)return;if(stroke||preview||selL
     p3SwitchSet(j,true);}
   disposeDocState(S.state);if(S.tex)for(const k in S.tex)disposeTarget(S.tex[k]);const cur=p3.sets[p3.cur];p3.sets.splice(p3.sets.indexOf(S),1);p3.cur=p3.sets.indexOf(cur);
   if(onModel)p3SyncSets();v3.dirty=true;requestRender(true);buildP3Panel();toast('Deleted the texture set “'+S.name+'”.');});}
+/* (0.35, Kenn) an eyeball on each texture set hides the parts of the model that use it; baking follows what is visible */
+function p3EyeBtn(S){const b=el('button',{class:'eye p3eye',title:S.hidden?'Show this texture set on the model':'Hide the parts of the model that use this texture set','aria-label':(S.hidden?'Show ':'Hide ')+S.name,'aria-pressed':String(!S.hidden)});
+  b.innerHTML=S.hidden?eyeOff:eyeOn;b.addEventListener('click',ev=>{ev.stopPropagation();S.hidden=!S.hidden;v3.dirty=true;requestRender(true);buildP3Panel();});return b;}
 function p3SetsBox(){const box=el('div',{class:'p3sets',role:'listbox','aria-label':'Texture sets'});
   p3.sets.forEach((S,i)=>{const on=i===p3.cur;const row=el('div',{class:'p3set'+(on?' on':'')+(S.missing?' missing':''),role:'option','aria-selected':String(on),tabindex:'0',title:S.missing?'This material is not on the current model':'Paint on '+S.name},
-      el('span',{class:'p3sn',text:S.name}),el('button',{class:'btn sm p3del',text:'×','aria-label':'Delete '+S.name,title:'Delete this texture set',onclick:ev=>{ev.stopPropagation();p3DeleteSet(i);}}));
+      p3EyeBtn(S),el('span',{class:'p3sn',text:S.name}),el('button',{class:'btn sm p3del',text:'×','aria-label':'Delete '+S.name,title:'Delete this texture set',onclick:ev=>{ev.stopPropagation();p3DeleteSet(i);}}));
     row.addEventListener('click',()=>{if(!S.missing)p3SwitchSet(i);});row.addEventListener('keydown',ev=>{if((ev.key==='Enter'||ev.key===' ')&&!S.missing){ev.preventDefault();p3SwitchSet(i);}});box.append(row);});
   return box;}
 

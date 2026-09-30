@@ -77,3 +77,4 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 | 25b | 75 library materials for characters and weapons, 40 photo grunge maps, materials cover the bumps below | 0.28.1 |
 | 33b | Library grows to 150 materials and 75 photo grunge maps | 0.33.1 |
 | 34 | Double-click swaps a material, Tiling slider, 200 materials, 19 new smart materials and 12 smart masks | 0.34.0 |
+| 35 | 3D Paint viewport strip (3D, Split, 2D, UV), eyeball on texture sets | 0.35.0 |
