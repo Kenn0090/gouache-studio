@@ -44,10 +44,10 @@ function stamp(x,y,p){
   const n=Math.max(1,Math.round(o.count||1)),dir=s.dir,PI=Math.PI;
   for(let k=0;k<n;k++){
     const r=Math.max(.5,r0*(1-(o.sizeJitter||0)*Math.random()));
-    const ang=-(o.angle||0)*PI/180+(o.followDir?dir:0)+(o.angleJitter||0)*(Math.random()*2-1)*PI;
+    const yup=!!(s.space&&s.space.yup),ang0=-(o.angle||0)*PI/180+(o.followDir?(yup?-dir:dir):0)+(o.angleJitter||0)*(Math.random()*2-1)*PI,ang=yup?-ang0:ang0;/* (0.32) the screen buffer over the 3D model counts y upward: mirror the tip so it lands the right way up */
     let px=x,py=y;
     if(o.scatter>0){const d=r0*2*o.scatter,c=Math.cos(dir),sn=Math.sin(dir),t=(Math.random()*2-1)*d;px+=-sn*t;py+=c*t;if(o.bothAxes){const u=(Math.random()*2-1)*d;px+=c*u;py+=sn*u;}}
-    const fx=(o.flipX?-1:1)*(o.randFlipX&&Math.random()<.5?-1:1),fy=(o.flipY?-1:1)*(o.randFlipY&&Math.random()<.5?-1:1);
+    const fx=(o.flipX?-1:1)*(o.randFlipX&&Math.random()<.5?-1:1),fy=(o.flipY?-1:1)*(o.randFlipY&&Math.random()<.5?-1:1)*(yup?-1:1);
     if(s.tint&&!o.jitterPerStroke)s.dabCol=jitterColor(o.color,o,s.grey);
     for(const c of symCopies(s.sym,s.SW,s.SH,px,py,ang,fx,fy,dx,dy))stampOne(c[0],c[1],r,a,c[2],c[3],c[4],c[5],c[6]);
   }

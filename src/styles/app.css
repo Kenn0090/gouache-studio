@@ -820,3 +820,6 @@ body:not(.noopt) .optbar{padding-right:34px}
 /* (0.31.2) blend name on mask rows is a button */
 button.msmode{background:none;border:0;padding:1px 4px;border-radius:3px;cursor:pointer;font:inherit;font-size:11px}
 button.msmode:hover,button.msmode:focus-visible{background:var(--hover,rgba(128,128,128,.25));color:var(--fg,inherit)}
+/* (0.32) a decal being dragged from the panel */
+.dcghost{position:fixed;z-index:9999;pointer-events:none;border-radius:6px;box-shadow:0 2px 10px rgba(0,0,0,.5);background:rgba(0,0,0,.35);transition:opacity .08s}
+body.dcdragging,body.dcdragging *{cursor:grabbing!important;user-select:none}

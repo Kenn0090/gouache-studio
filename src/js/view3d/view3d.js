@@ -159,7 +159,7 @@ function v3Render(F,flip){const s=v3s(),g=v3.gpu;if(!g)return;
   /* 3D Paint's per-set list is made before drawing starts (it may create textures, which binds other framebuffers) */
   const pre=ui.mode==='p3d'&&typeof p3DrawList==='function'?p3DrawList():null;
   /* mask view (Alt+click a mask): the active layer's mask on the model, black and white, unlit */
-  const mv=ui.mode!=='bake'&&ui.mode!=='convert'&&typeof maskViewTex==='function'?(maskViewTex()||(typeof p3MeshShowTex==='function'?p3MeshShowTex():null)):null;
+  const mv=ui.mode!=='bake'&&ui.mode!=='convert'&&typeof maskViewTex==='function'?((typeof idViewTex==='function'&&idViewTex())||maskViewTex()||(typeof p3MeshShowTex==='function'?p3MeshShowTex():null)):null;
   const EU=typeof envUniforms==='function'?envUniforms():{uEnvOn:false};/* before binding: may build the HDRI's levels */
   gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);const bg=BG3[s.bg]||BG3.dark,tr=!!(v3.transparent);gl.clearColor(bg[0],bg[1],bg[2],tr?0:1);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
