@@ -15,6 +15,8 @@ uniform int uFlipY; uniform int uHas; uniform vec2 uDef; uniform vec3 uCam; unif
 uniform int uEnvOn; uniform float uEnvRot; uniform float uEnvI; uniform sampler2D uEnv0; uniform sampler2D uEnv1; uniform sampler2D uEnv2; uniform sampler2D uEnv3; uniform sampler2D uEnv4; uniform sampler2D uEnv5; uniform sampler2D uIrr; uniform int uTone;
 /* the texture set's shader: 0 standard, 1 skin, 2 anisotropic metal, 3 velvet, 4 toon, 5 cel, 6 spec/gloss view; its settings */
 uniform int uSh; uniform vec4 uShP; uniform vec4 uShQ; uniform vec3 uShC; uniform vec3 uShD;
+/* the Panner shader (0.40): each map slid by its own offset */
+uniform vec2 uPB; uniform vec2 uPR; uniform vec2 uPM; uniform vec2 uPN; uniform vec2 uPA; uniform vec2 uPE; uniform vec2 uPO;
 const float PI=3.14159265;
 vec3 lin(vec3 c){ return pow(max(c,0.0),vec3(2.2)); }
 vec3 sky(vec3 d){ float y=d.y; vec3 zen=vec3(0.32,0.45,0.72),hor=vec3(0.78,0.80,0.84),gnd=vec3(0.24,0.22,0.20);
@@ -26,15 +28,15 @@ vec3 envDif(vec3 N){ if(uEnvOn==0) return mix(sky(N),vec3(0.5),0.35); return tex
 /* split-sum reflection factor (Karis' fit) */
 vec2 envBRDF(float NdV,float r){ vec4 rr=r*vec4(-1.0,-0.0275,-0.572,0.022)+vec4(1.0,0.0425,1.04,-0.04); float a004=min(rr.x*rr.x,exp2(-9.28*NdV))*rr.x+rr.y; return vec2(-1.04,1.04)*a004+rr.zw; }
 vec3 tone(vec3 c){ if(uTone==1){ c*=0.6; return clamp((c*(2.51*c+0.03))/(c*(2.43*c+0.59)+0.14),0.0,1.0); } return c/(1.0+c*0.12); }
-void main(){ vec4 b=texture(uBase,vT); float a=b.a; if((uHas&64)!=0) a*=texture(uOpac,vT).r;
+void main(){ vec4 b=texture(uBase,vT+uPB); float a=b.a; if((uHas&64)!=0) a*=texture(uOpac,vT+uPO).r;
   if(uClip==1&&a<0.5) discard; vec3 alb=b.a>1e-5?b.rgb/b.a:vec3(0.0);
-  if(uUnlit==1){ vec3 c=alb; if((uHas&8)!=0) c*=texture(uAO,vT).r; o=vec4(c,1.0); return; }
+  if(uUnlit==1){ vec3 c=alb; if((uHas&8)!=0) c*=texture(uAO,vT+uPA).r; o=vec4(c,1.0); return; }
   alb=lin(alb);
   vec3 Ng=normalize(vN),N=Ng; vec3 T=normalize(vTan.xyz-Ng*dot(Ng,vTan.xyz)), B=cross(Ng,T)*vTan.w;
-  if((uHas&4)!=0){ vec3 n=texture(uNrm,vT).rgb*2.0-1.0; N=normalize(T*n.x+B*n.y+Ng*n.z); }
+  if((uHas&4)!=0){ vec3 n=texture(uNrm,vT+uPN).rgb*2.0-1.0; N=normalize(T*n.x+B*n.y+Ng*n.z); }
   /* which side faces the camera, from the surface itself (not the triangles' winding, which differs between models) */
   { vec3 Nf=normalize(cross(dFdx(vP),dFdy(vP))); if(dot(Nf,uCam-vP)<0.0) Nf=-Nf; if(dot(Ng,Nf)<0.0){ N=-N; Ng=-Ng; } }
-  float rough=clamp((uHas&1)!=0?texture(uRough,vT).r:uDef.x,0.04,1.0), metal=(uHas&2)!=0?texture(uMetal,vT).r:uDef.y, ao=(uHas&8)!=0?texture(uAO,vT).r:1.0;
+  float rough=clamp((uHas&1)!=0?texture(uRough,vT+uPR).r:uDef.x,0.04,1.0), metal=(uHas&2)!=0?texture(uMetal,vT+uPM).r:uDef.y, ao=(uHas&8)!=0?texture(uAO,vT+uPA).r:1.0;
   vec3 V=normalize(uCam-vP), L=normalize(uSun), H=normalize(L+V);
   float NdL=max(dot(N,L),0.0), NdV=max(dot(N,V),1e-3), NdH=max(dot(N,H),0.0), VdH=max(dot(V,H),0.0);
   vec3 F0=mix(vec3(0.04),alb,metal), col=vec3(0.0);
@@ -44,7 +46,7 @@ void main(){ vec4 b=texture(uBase,vT); float a=b.a; if((uHas&64)!=0) a*=texture(
     vec3 base=mix(alb*lin(uShC),alb,clamp(band,0.0,1.0));
     float sp=step(1.0-uShP.z*0.05,NdH)*(1.0-rough*0.5)*step(0.01,uShP.z); float rim=smoothstep(1.0-uShP.w,1.0,1.0-NdV)*uShP.w;
     vec3 amb=envDif(N)*0.25; col=base*(0.75+0.25*uEnvI)+base*amb*ao+vec3(sp)+alb*rim;
-    if((uHas&16)!=0) col+=lin(texture(uEmis,vT).rgb)*2.0; o=vec4(pow(clamp(col*uExpo,0.0,1.0),vec3(1.0/2.2)),1.0); return; }
+    if((uHas&16)!=0) col+=lin(texture(uEmis,vT+uPE).rgb)*2.0; o=vec4(pow(clamp(col*uExpo,0.0,1.0),vec3(1.0/2.2)),1.0); return; }
   /* ---- the lit shaders ---- */
   float a2=pow(rough,4.0), dd=NdH*NdH*(a2-1.0)+1.0, D=a2/(PI*dd*dd);
   vec3 Ts=T,Bs=B;
@@ -72,7 +74,7 @@ void main(){ vec4 b=texture(uBase,vT); float a=b.a; if((uHas&64)!=0) a*=texture(
     if(m==1){ o=vec4(pow(dcol,vec3(1.0/2.2)),1.0); return; } if(m==2){ o=vec4(pow(scol,vec3(1.0/2.2)),1.0); return; } if(m==3){ o=vec4(vec3(1.0-rough),1.0); return; }
     if(m==4){ col=envS*uSkyI*ao; col*=uExpo; col=tone(col); o=vec4(pow(clamp(col,0.0,1.0),vec3(1.0/2.2)),1.0); return; } }
   col+=(envD+envS)*uSkyI*ao;
-  if((uHas&16)!=0) col+=lin(texture(uEmis,vT).rgb)*2.0;
+  if((uHas&16)!=0) col+=lin(texture(uEmis,vT+uPE).rgb)*2.0;
   col*=uExpo; col=tone(col); o=vec4(pow(clamp(col,0.0,1.0),vec3(1.0/2.2)),1.0); }`;
 const FS_3DLINE=`uniform vec4 uCol; void main(){ o=uCol; }`;
 const VS_UV=`#version 300 es
@@ -83,7 +85,7 @@ const FS_3DSEL=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform sample
 const P3={mesh:prog3(VS_3D,FS_3D),line:prog3(VS_3D,FS_3DLINE),uv:prog3(VS_UV,FS_3DLINE),sel:prog3(VS_3D,FS_3DSEL)};
 
 /* ---- settings (kept in the document) ---- */
-const V3D_DEFAULTS={model:'plane',detail:0,unlit:null,uvs:1,disp:0,sunAz:40,sunEl:45,sunI:1,skyI:1,expo:1,bg:'dark',clip:true,wire:false,showUV:false,spin:false,fov:40,ortho:false,
+const V3D_DEFAULTS={model:'plane',detail:0,unlit:null,uvs:1,disp:0,sunAz:40,sunEl:45,sunI:1,skyI:1,expo:1,bg:'dark',clip:true,wire:false,showUV:false,litUV:false,spin:false,fov:40,ortho:false,
   env:'studio',envRot:0,envI:1,envBg:false,envBlur:.35,envSun:0,tone:'filmic'};
 const v3={on:false,mesh:null,gpu:null,tex:{},cam:{yaw:.5,pitch:.25,dist:3.2,tx:0,ty:0,tz:0},dirty:true,mapsDirty:true,editDirty:true,lastFull:0,fbo:null,imported:null};
 function v3s(){if(!doc.v3d)doc.v3d=Object.assign({},V3D_DEFAULTS);else if(doc.v3d.tone===undefined){for(const k in V3D_DEFAULTS)if(!(k in doc.v3d))doc.v3d[k]=V3D_DEFAULTS[k];}return doc.v3d;}
@@ -121,13 +123,15 @@ const anisoExt=gl.getExtension('EXT_texture_filter_anisotropic'),anisoMax=anisoE
 function v3Needed(){if(v3Unlit())return doc.maps.filter(k=>k==='base'||k==='ao');return doc.maps.filter(k=>k!=='normal'&&k!=='height'&&k!=='curv').concat(doc.maps.includes('height')||doc.maps.includes('normal')||meshNormalBase()?['nfinal']:[]);}
 function v3Refresh(){if(!v3.on)return;if(ui.mode==='bake'){bakeV3Refresh();return;}if(ui.mode==='convert'){cvV3Refresh();return;}const now=performance.now(),gap=stroke?({fast:1e9,balanced:Math.max(qual('refresh'),900)}[prefs.paintSpeed]||qual('refresh')):0,full=v3.mapsDirty&&(!stroke||now-v3.lastFull>gap);/* (0.30) Painting speed Fast: the other maps update on the model when the stroke ends */
   const plain=doc.view===doc.map&&compOut&&ui.mode!=='anim';
-  const one=k=>{if(k==='nfinal'){const t=normalComposite(false,null);v3MapTex(k,t);release(t);return;}
-    if(k===doc.map&&plain){v3MapTex(k,compOut);return;}
+  const one0=k=>{if(k==='nfinal'){const t=normalComposite(false,null);v3MapTex(k,t);release(t);return;}
+    if(k===doc.map&&plain&&!panState){v3MapTex(k,compOut);return;}
     if(ui.mode==='anim'&&k==='base'){v3MapTex(k,compOut);return;}
     const t=compositeMap(k);v3MapTex(k,t);release(t);};
+  const one=k=>{if(typeof pnBegin==='function')pnBegin(k);try{one0(k);}finally{panState=null;}};
   if(full){for(const k of v3Needed())one(k);if(v3s().disp&&doc.maps.includes('height')){const t=compositeMap('height');v3MapTex('height',t);release(t);}
     v3.mapsDirty=false;v3.editDirty=false;v3.lastFull=now;v3.dirty=true;v3SgDerive();}
-  else if(v3.editDirty){const k=ui.mode==='anim'?'base':doc.map;if(v3Needed().includes(k))one(k);if(k==='height'&&stroke&&now-v3.lastFull>gap){one('nfinal');}v3.editDirty=false;v3.dirty=true;if(['base','spec','gloss'].includes(k))v3SgDerive();}}
+  else if(v3.editDirty){const k=ui.mode==='anim'?'base':doc.map;if(v3Needed().includes(k))one(k);if(k==='height'&&stroke&&now-v3.lastFull>gap){one('nfinal');}v3.editDirty=false;v3.dirty=true;if(['base','spec','gloss'].includes(k))v3SgDerive();}
+  if(typeof pnTick==='function')pnTick(one,full);}
 /* Specular/Gloss documents shade the model with the equivalent base/metal/rough */
 function v3SgDerive(){if(doc.workflow!=='spec'||!v3.tex.base||ui.mode==='anim')return;const T=v3.tex,r=sgAsMR(T.base,doc.maps.includes('spec')?T.spec:null,doc.maps.includes('gloss')?T.gloss:null);
   v3MapTex('sgBase',r.base);v3MapTex('sgMetal',r.metal);v3MapTex('sgRough',r.rough);for(const k in r)release(r[k]);}
@@ -159,7 +163,7 @@ function v3Frame(){const r=v3.mesh?v3.mesh.radius:1.5,pane=v3.pop?null:$('#pane3
 
 /* ---- drawing ---- */
 function v3Targets(w,h,lite){let F=v3.fbo;const S=lite?0:Math.min(qual('msaa'),gl.getParameter(gl.MAX_SAMPLES)||0);if(F&&F.w===w&&F.h===h&&F.S===S)return F;
-  if(F){gl.deleteFramebuffer(F.ms);gl.deleteRenderbuffer(F.c);gl.deleteRenderbuffer(F.d);gl.deleteFramebuffer(F.rf);gl.deleteRenderbuffer(F.rc);}
+  if(F){if(typeof v3PostFree==='function')v3PostFree(F);gl.deleteFramebuffer(F.ms);gl.deleteRenderbuffer(F.c);gl.deleteRenderbuffer(F.d);gl.deleteFramebuffer(F.rf);gl.deleteRenderbuffer(F.rc);}
   F={w,h,S};
   F.ms=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);
   F.c=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,F.c);gl.renderbufferStorageMultisample(gl.RENDERBUFFER,S,gl.RGBA8,w,h);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.RENDERBUFFER,F.c);
@@ -167,31 +171,41 @@ function v3Targets(w,h,lite){let F=v3.fbo;const S=lite?0:Math.min(qual('msaa'),g
   F.rf=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,F.rf);F.rc=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,F.rc);gl.renderbufferStorage(gl.RENDERBUFFER,gl.RGBA8,w,h);
   gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.RENDERBUFFER,F.rc);gl.bindFramebuffer(gl.FRAMEBUFFER,null);v3.fbo=F;v3.dirty=true;return F;}
 const BG3={dark:[.09,.1,.115],grey:[.32,.33,.35],light:[.78,.79,.81]};
-function v3Render(F,flip){const s=v3s(),g=v3.gpu;if(!g)return;
+/* what both the 3D view and the lit UV view need to draw the model (0.40) */
+function v3Ctx(){const g=v3.gpu,s=v3s();
   /* 3D Paint's per-set list is made before drawing starts (it may create textures, which binds other framebuffers) */
   const pre=ui.mode==='p3d'&&typeof p3DrawList==='function'?p3DrawList():null;
   /* mask view (Alt+click a mask): the active layer's mask on the model, black and white, unlit */
   const mv=ui.mode!=='bake'&&ui.mode!=='convert'&&typeof maskViewTex==='function'?((typeof idViewTex==='function'&&idViewTex())||maskViewTex()||(typeof p3MeshShowTex==='function'?p3MeshShowTex():null)):null;
   const EU=typeof envUniforms==='function'?envUniforms():{uEnvOn:false};/* before binding: may build the HDRI's levels */
-  gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);const bg=BG3[s.bg]||BG3.dark,tr=!!(v3.transparent);gl.clearColor(bg[0],bg[1],bg[2],tr?0:1);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-  gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
-  const eye=v3Eye(),V=m4look(eye,[v3.cam.tx,v3.cam.ty,v3.cam.tz],[0,1,0]),Pm=v3Proj(F.w/F.h,.02,100);if(flip)Pm[5]=-Pm[5];const VP=m4mul(Pm,V);
   const bake=(ui.mode==='bake'||ui.mode==='convert')&&v3.btex,sg=!bake&&doc.workflow==='spec'&&v3.tex.sgBase&&ui.mode!=='anim'&&!v3Unlit();
   const T0=bake?v3.btex:sg?Object.assign({},v3.tex,{base:v3.tex.sgBase,metal:v3.tex.sgMetal,rough:v3.tex.sgRough}):v3.tex;
   const a=s.sunAz*Math.PI/180,e=s.sunEl*Math.PI/180;
-  if(!tr&&!v3.bunlitBg&&typeof envDrawBg==='function')envDrawBg(F,VP,flip);
-  const common={uVP:{m4:VP},uUVs:bake?1:s.uvs,uH:T0.height&&s.disp?T0.height.tex:dummy,uDisp:s.disp*.3,uUseH:!!(!bake&&T0.height&&s.disp&&doc.maps.includes('height'))};
+  const eye=v3Eye();
+  return {g,s,pre,mv,EU,bake,sg,T0,a,e,eye};}
+function v3List(C){const {g,pre,mv,bake,T0}=C;
   /* one draw per texture set in 3D Paint (each with its own maps), else the whole model with the document's maps */
   let list=!bake&&pre?pre:[{T:T0,start:0,count:g.count/3,sh:bake?null:v3ShadeOf(doc)}];
   if(mv){const R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():null;list=list.map(it=>!R||it.start===R.start?{T:{base:mv},start:it.start,count:it.count,unlit:true}:it);}
   if(bake&&typeof bakeHighHidesLow==='function'&&bakeHighHidesLow())list=[];
-  if(s.wire){gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);}gl.bindVertexArray(g.vao);
-  for(const it of list){const T=it.T||{},base=T.base||null;if(!base||!it.count)continue;
+  return list;}
+/* the uniforms for one texture set's draw */
+function v3MeshU(C,common,it,flip){const {s,bake,sg,EU,eye,a,e}=C,T=it.T||{},base=T.base;
     const ok=k=>T[k]&&(bake||(sg&&(k==='rough'||k==='metal'))||(k==='nfinal'?doc.maps.includes('height')||doc.maps.includes('normal')||!!meshNormalBase():doc.maps.includes(k)));
     if(!bake&&!it.thick&&!it.sh&&doc.meshMaps&&doc.meshMaps.thick)it.thick=doc.meshMaps.thick;
     const hm=(ok('rough')?1:0)|(ok('metal')?2:0)|(ok('nfinal')?4:0)|(ok('ao')?8:0)|(ok('emis')?16:0)|(ok('opac')?64:0)|(it.thick?128:0);
-    useProg(P3.mesh,Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:ok('metal')?T.metal.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,uThick:it.thick?it.thick.tex:dummy,...EU,...shadeUniforms(bake?null:it.sh||v3ShadeOf(doc)),
-      uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:s.tone==='neutral'?0:1},uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip}));
+    return Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:ok('metal')?T.metal.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,uThick:it.thick?it.thick.tex:dummy,...EU,...shadeUniforms(bake?null:it.sh||v3ShadeOf(doc)),
+      uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:s.tone==='neutral'?0:1},uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});}
+function v3Render(F,flip){const g=v3.gpu;if(!g)return;const C=v3Ctx(),{s,bake}=C;
+  gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);const bg=BG3[s.bg]||BG3.dark,tr=!!(v3.transparent);gl.clearColor(bg[0],bg[1],bg[2],tr?0:1);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
+  const {mv,T0,eye}=C,V=m4look(eye,[v3.cam.tx,v3.cam.ty,v3.cam.tz],[0,1,0]),Pm=v3Proj(F.w/F.h,.02,100);if(flip)Pm[5]=-Pm[5];const VP=m4mul(Pm,V);
+  if(!tr&&!v3.bunlitBg&&typeof envDrawBg==='function')envDrawBg(F,VP,flip);
+  const common={uVP:{m4:VP},uUVs:bake?1:s.uvs,uH:T0.height&&s.disp?T0.height.tex:dummy,uDisp:s.disp*.3,uUseH:!!(!bake&&T0.height&&s.disp&&doc.maps.includes('height'))};
+  const list=v3List(C);
+  if(s.wire){gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);}gl.bindVertexArray(g.vao);
+  for(const it of list){const T=it.T||{},base=T.base||null;if(!base||!it.count)continue;
+    useProg(P3.mesh,v3MeshU(C,common,it,flip));
     gl.drawElements(gl.TRIANGLES,it.count*3,gl.UNSIGNED_INT,it.start*12);}
   gl.disable(gl.POLYGON_OFFSET_FILL);
   if(!bake&&!mv&&!v3Unlit())v3DrawOutlines(list,common,F,flip);gl.bindVertexArray(g.vao);
@@ -203,7 +217,8 @@ function v3Render(F,flip){const s=v3s(),g=v3.gpu;if(!g)return;
   if(bake){bakeDrawHigh(common);bakeDrawCage(common);}
   if(!bake&&(v3.paintOn||ui.mode==='p3d'))drawMir3(VP);
   gl.bindVertexArray(vao);gl.disable(gl.DEPTH_TEST);
-  gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,F.rf);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
+  gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,F.rf);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  if(!bake&&typeof v3Post==='function')v3Post(F);}
 /* after the 2D view: refresh maps if needed, redraw the model if anything changed, copy it into the pane */
 /* (0.31.1) how big the model is drawn while painting: 1 full, .75, .5 (older setting paintHalf = .5) */
 function paintScale(){return prefs.paintScale||(prefs.paintHalf?.5:1);}
@@ -217,7 +232,16 @@ function draw3D(){if(!v3.on)return;if(v3.pop){drawPop();return;}const pane=$('#p
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.rf);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,null);gl.blitFramebuffer(0,0,W,H,x0,0,x0+w,h,gl.COLOR_BUFFER_BIT,lite?gl.LINEAR:gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
   if(v3s().spin&&!v3.drag){v3.cam.yaw+=.006;v3.dirty=true;requestRender();}}
 /* the model's UV layout over the 2D canvas */
-function drawUVOverlay(){if(!v3.on||!v3s().showUV||!v3.gpu)return;const d=dprNow(),z=view.zoom;
+/* (0.40, Kenn) the flat view can show the model lit, as if the mesh were laid out flat: the same shading as the 3D view,
+   drawn where each triangle sits in the UV layout */
+const VS_FLAT=VS_3D.replace('uniform mat4 uVP;','uniform mat4 uVP; uniform vec2 uOrigin; uniform vec2 uExtent; uniform vec2 uViewport;').replace('gl_Position=uVP*vec4(p,1.0);','vec2 q=uOrigin+aT*uExtent; gl_Position=vec4(q.x/uViewport.x*2.0-1.0,1.0-q.y/uViewport.y*2.0,0.0,1.0);');
+let P3FLAT=null;
+function v3DrawLitUV(){const C=v3Ctx();if(C.bake||!v3.gpu)return;const list=v3List(C),d=dprNow(),z=view.zoom;if(!P3FLAT)P3FLAT=prog3(VS_FLAT,FS_3D);
+  const common={uVP:{m4:[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]},uUVs:1,uH:dummy,uDisp:0,uUseH:false,uOrigin:[view.x*d+stageOx(d),view.y*d],uExtent:[doc.w*z*d,doc.h*z*d],uViewport:[cv.width,cv.height]};
+  bindTarget(null);gl.disable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.bindVertexArray(v3.gpu.vao);
+  for(const it of list){if(!it.T||!it.T.base||!it.count)continue;useProg(P3FLAT,Object.assign(v3MeshU(C,common,it,false),{uClip:false}));gl.drawElements(gl.TRIANGLES,it.count*3,gl.UNSIGNED_INT,it.start*12);}
+  gl.bindVertexArray(vao);gl.disable(gl.BLEND);}
+function drawUVOverlay(){if(!v3.on||!v3.gpu)return;if(v3s().litUV&&ui.mode!=='bake'&&ui.mode!=='convert')v3DrawLitUV();if(!v3s().showUV)return;const d=dprNow(),z=view.zoom;
   bindTarget(null);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.bindVertexArray(v3.gpu.evao);
   const reps=doc.wrap?[-1,0,1]:[0];for(const sx of reps)for(const sy of reps){useProg(P3.uv,{uOrigin:[view.x*d+stageOx(d),view.y*d],uExtent:[doc.w*z*d,doc.h*z*d],uViewport:[cv.width,cv.height],uShift:[sx,sy],uCol:sx||sy?[1,.75,.35,.25]:[1,.75,.35,.8]});
     gl.drawElements(gl.LINES,v3.gpu.ecount,gl.UNSIGNED_INT,0);}

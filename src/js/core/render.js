@@ -36,6 +36,7 @@ function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
       let src=(edit&&preview&&!preview.off&&preview.L===n&&!preview.isMask)?previewT:T,own=null;const out=acquire(),cm=clipped?maskTexOf(clipped):null;
       let st=(stroke&&stroke.L===n&&!strokeLive(stroke.o))?stroke:null,ex=null,lkM=false;
       if(st&&!edit){ex=(st.o.extras||[]).find(e=>e.key===k)||null;if(!ex)st=null;}
+      let pn=null;if(panState&&n.id===panState.id&&panState.maps.has(k)){pn=panShift(src);src=pn;}
       const cf=clippedFx(list,i,k),cx=n.cfx&&cfxOn(n,k);
       if(cf.length||lk||cx){/* the live stroke goes in first, so clipped filters and the layer's array and styles apply to it too */
         if(st){own=acquire();run(P.merge,own,Object.assign({uSrc:src.tex,uStrokeTex:strokeT.tex,uStroke:{int:ex?ex.mode:strokeMode(st.o)},uStrokeColor:ex?ex.color:st.o.color,uStrokeTint:!ex&&!!st.tint,uStrokeOpacity:st.o.opacity,uLockAlpha:ex?false:n.lockAlpha},
@@ -47,13 +48,13 @@ function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
       run(P.comp,out,Object.assign({uBase:acc.tex,uLayer:src.tex,uStrokeTex:strokeT.tex,uMask:clipped?(mapT(clipped,'base')||emptyFor(8)).tex:dummy,uUseMask:!!clipped,uMask2:cm||dummy,uUseMask2:!!cm,uLMask:mt||dummy,uUseLMask:!!mt&&!lkM,
         uMode:{int:mapModeOf(n,k)},uOpacity:n.opacity,uStroke:{int:st?(ex?ex.mode:strokeMode(st.o)):0},uStrokeTint:!!(st&&!ex&&st.tint),uStrokeColor:st?(ex?ex.color:st.o.color):[0,0,0],uStrokeOpacity:st?st.o.opacity:0,uLockAlpha:ex?false:n.lockAlpha},
         edit?chanU(st&&st.o):chanU(null),ex?st.exU:selU(st&&st.o),edit?tonalU(st&&st.o):{}));
-      if(own)release(own);release(acc);acc=out;}
-    else if(n.mode<0){
+      if(own)release(own);if(pn)release(pn);release(acc);acc=out;}
+    else if(n.mode<0&&!(panState&&n.id===panState.id&&panState.maps.has(k))){
       if(n.opacity>=.999&&!mt)acc=compositeList(n.children,acc,k);
       else{const x=acquire();blit(acc,x,0,0,doc.w,doc.h,0,0);const r=compositeList(n.children,x,k),out=acquire();run(P.mix,out,{uA:acc.tex,uB:r.tex,uT:n.opacity,uM:mt||dummy,uUseM:!!mt});release(acc);release(r);acc=out;}}
-    else{const g=acquire();clearTarget(g);const r=compositeList(n.children,g,k),out=acquire();
-      run(P.comp,out,{uBase:acc.tex,uLayer:r.tex,uStrokeTex:strokeT.tex,uMask:dummy,uUseMask:false,uLMask:mt||dummy,uUseLMask:!!mt,uMode:{int:n.mode},uOpacity:n.opacity,uStroke:{int:0},uStrokeColor:[0,0,0],uStrokeOpacity:0,uLockAlpha:false});
-      release(acc);release(r);acc=out;}}
+    else{const g=acquire();clearTarget(g);const r0=compositeList(n.children,g,k),r=panState&&n.id===panState.id&&panState.maps.has(k)?panShift(r0):r0,out=acquire();
+      run(P.comp,out,{uBase:acc.tex,uLayer:r.tex,uStrokeTex:strokeT.tex,uMask:dummy,uUseMask:false,uLMask:mt||dummy,uUseLMask:!!mt,uMode:{int:Math.max(0,n.mode)},uOpacity:n.opacity,uStroke:{int:0},uStrokeColor:[0,0,0],uStrokeOpacity:0,uLockAlpha:false});
+      release(acc);release(r);if(r!==r0)release(r0);acc=out;}}
   return acc;}
 function renderNodes(list){const acc=acquire();clearTarget(acc);return compositeList(list,acc);}
 let maskViewT=null,maskViewLive=false;
