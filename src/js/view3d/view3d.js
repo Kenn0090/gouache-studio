@@ -55,9 +55,9 @@ void main(){ vec4 b=texture(uBase,vT); float a=b.a; if((uHas&64)!=0) a*=texture(
   vec3 spec=D*G*F/max(4.0*NdL*NdV,1e-3), dif=(1.0-F)*(1.0-metal)*alb/PI;
   float thick=(uHas&128)!=0?texture(uThick,vT).r:uShP.w;
   if(uSh==1){ /* skin: light wraps round and bleeds through thin parts in the subsurface colour */
-    float w=uShP.x, wl=max((dot(N,L)+w)/(1.0+w),0.0); vec3 sss=lin(uShC);
+    float w=uShP.x; vec3 sss=lin(uShC), wv=w*vec3(1.0,0.6,0.35), wl=max((vec3(dot(N,L))+wv)/(1.0+wv),0.0);
     vec3 tr=sss*pow(clamp(dot(V,-normalize(L+N*0.4)),0.0,1.0),4.0)*(1.0-thick)*uShP.y*2.0;
-    vec3 dl=mix(vec3(NdL),mix(vec3(NdL),vec3(wl),sss),clamp(uShP.y,0.0,1.0)); col=(dif*dl+spec*NdL+tr*alb)*uSunI*3.0; }
+    vec3 dl=mix(vec3(NdL),mix(vec3(NdL),wl,0.35+0.65*sss),clamp(uShP.y,0.0,1.0)); col=(dif*dl+spec*NdL+tr*alb+vec3(pow(NdH,48.0))*uShQ.z*0.3*NdL)*uSunI*3.0; }
   else col=(dif+spec)*NdL*uSunI*3.0;
   if(uSh==3){ /* velvet: a soft sheen at grazing angles */ float sr=max(uShP.y,0.05), sn=sqrt(max(1.0-NdH*NdH,0.0)), Dc=(2.0+1.0/sr)*pow(sn,1.0/sr)/(2.0*PI);
     col+=lin(uShC)*uShP.x*Dc*NdL*uSunI*3.0/max(4.0*(NdL+NdV-NdL*NdV),1e-3); }

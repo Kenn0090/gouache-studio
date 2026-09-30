@@ -33,6 +33,6 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('#smGrid .mattile:has-text("Dust")');await W(1500);
  await p.mouse.move(5,900);await W(800);await p.screenshot({path:OUT+'smart-materials.png'});console.log('shot smart-materials');
  /* the Bake mesh maps window */
- await p.evaluate(()=>__gs.showPanel('p3d'));await W(300);await p.click('#p3BakeBtn');await W(400);
+ await p.evaluate(()=>__gs.showPanel('p3d'));await W(300);await p.evaluate(()=>__gs.showPanel('p3bake'));await p.click('#p3BakeBtn');await W(400);
  await p.locator('#modal .dialog').screenshot({path:OUT+'p3-bake.png'});console.log('shot p3-bake');await p.click('#dlgCancel');
  console.log(errs.length?'ERRORS '+errs.slice(0,3).join('\n'):'no errors');await b.close();})();
