@@ -21,6 +21,12 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{const o='v -2 -1 0\nv -0.1 -1 0\nv -0.1 1 0\nv -2 1 0\nv 0.1 -1 0\nv 2 -1 0\nv 2 1 0\nv 0.1 1 0\nv 0.1 -1 0.6\nv 2 -1 0.6\nvt 0 0\nvt 1 0\nvt 1 1\nvt 0 1\nusemtl Left\nf 1/1 2/2 3/3 4/4\nusemtl Right\nf 5/1 6/2 7/3 8/4\nf 5/1 9/2 10/3 6/4\n';
    const C=__gs.bakeCfg;C.low=__gs.parseOBJ(o,'two_low.obj');C.high=null;C.cage=null;C.size=128;C.ss=1;C.pad=2;C.rays=32;C.aoDist=100;C.match=false;for(const k in C.kinds)C.kinds[k]=k==='ao';C.perMat=true;C.p3Layers=true;});
  await p.evaluate(()=>__gs.act('bake'));await W(400);
+ /* the eyeball leaves a material out of the bake */
+ await p.evaluate(()=>__gs.buildBakePanel());await W(200);
+ await p.locator('#bkMatEyes .p3eye').nth(1).click();await W(200);
+ await p.click('#bkGo');await W(300);await waitIdle();await W(300);
+ ok(await p.evaluate(()=>{const k=__gs.bk.byMat&&Object.keys(__gs.bk.byMat);return !!k&&k.join()==='Left';}),'a material with its eye closed is left out of the bake');
+ await p.locator('#bkMatEyes .p3eye').nth(1).click();await W(200);
  await p.click('#bkGo');await W(300);await waitIdle();await W(300);
  let s=await p.evaluate(()=>({mats:__gs.bk.byMat&&Object.keys(__gs.bk.byMat),show:__gs.bk.matShow,res:Object.keys(__gs.bk.res),sel:!!document.querySelector('#bkMat')}));
  ok(s.mats&&s.mats.join()==='Left,Right'&&s.show==='Left'&&s.res.includes('ao')&&s.sel,'one bake per material '+JSON.stringify(s));

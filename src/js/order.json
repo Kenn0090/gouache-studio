@@ -82,6 +82,7 @@
         "ui/lib-drag",
         "ui/textures",
         "view3d/decals",
+        "view3d/env-panel",
         "bake/bake-gpu",
         "bake/bake-ui",
         "bake/bake-tab",

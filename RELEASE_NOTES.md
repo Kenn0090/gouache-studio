@@ -1,4 +1,4 @@
-Two small fixes you asked for.
+Environments in the shelf, and an eyeball for each material in the Bake tab.
 
-- **Alt colour picking can be turned off:** Preferences has a new tick, "Alt picks a colour". Untick it and Alt+click on the canvas, or holding Alt over the model, no longer picks a colour. Alt still turns the 3D view.
-- **Chain link and the 3D scale boxes:** with the chain on, dragging one scale box on the 3D handles now scales X, Y and Z together. Turn the chain off to scale one direction at a time.
+- **Environments category:** the 3D Paint shelf now has an **Environments** category with a thumbnail for each HDRI. Click one to light the model with it. **Load your own…** reads a .hdr or .exr, and **Simple sky** turns the HDRI off. Turn, brightness and the background are still in the Shader panel.
+- **Bake tab eyeball:** when a model has more than one material, a **Materials to bake** list shows an eyeball for each. Close an eye and that material is left out of the bake, so a big model can be baked in groups. The eyeball does not hide the material in the 3D view of the Bake tab yet.

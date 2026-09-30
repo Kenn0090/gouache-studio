@@ -1,0 +1,32 @@
+/* 0.28: Decals: click a decal, click the model; a movable sticker layer with colour, height, roughness, metal */
+const {chromium}=require('playwright');
+const OLD=__dirname+'/';
+const OUT=__dirname+'/out/';
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();
+ await p.addInitScript(()=>{try{localStorage.setItem('gs.p3d',JSON.stringify({size:256,layout:'3d'}));}catch(e){}});
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
+  if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());if(m.type()==='warning'&&/GL|WebGL/.test(m.text()))errs.push('GLWARN '+m.text());});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ const W=ms=>p.waitForTimeout(ms||200);
+ await p.evaluate(()=>__gs.newDoc(256,256,8,[1,1,1],'en',false,'pbr'));await W(300);
+ await p.click('#modeTabs [data-mode=p3d]');await W(1500);
+ await p.evaluate(()=>__gs.showPanel('envs'));await W(500);
+ ok(await p.evaluate(()=>[...document.querySelectorAll('#dkShelf .dktab')].some(x=>/Environments/.test(x.textContent))),'the shelf has an Environments category');
+ await p.waitForFunction(()=>document.querySelectorAll('#envGrid img').length>=5,null,{timeout:60000}).catch(()=>{});
+ ok(await p.evaluate(()=>document.querySelectorAll('#envGrid img').length)>=5,'the HDRIs show thumbnails');
+ await p.locator('#envGrid button',{hasText:'Photo studio'}).click();await W(500);
+ ok(await p.evaluate(()=>__gs.v3s().env)==='photo','clicking a thumbnail lights the model with it');
+ ok(await p.evaluate(()=>!!document.querySelector('#envGrid .sel'))&&true,'the chosen one is marked');
+ await p.locator('#envGrid button',{hasText:'Simple sky'}).click();await W(300);
+ ok(await p.evaluate(()=>__gs.v3s().env)==='none','Simple sky turns the HDRI off');
+ ok(errs.length===0,'no errors '+errs.slice(0,3).join(' | '));
+ await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);
+})();
