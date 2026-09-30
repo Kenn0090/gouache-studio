@@ -5,8 +5,12 @@ const MENUS={
   Image:[['Canvas size…','canvasSize'],['Image size…','imageSize'],['Crop to selection','cropSel'],'-',['8 bits per channel','depth8'],['16 bits per channel (half float)','depth16']],
   Maps:[['Document maps…','maps'],'-',['Convert tab…','convertTab'],['Height from base colour…','cvHeight'],['Normal from base colour…','cvNormal'],['Roughness from base colour…','cvRough'],'-',
     ['Ambient occlusion from height…','cvAO'],['Curvature from height…','cvCurv'],'-',['Curvature from normal…','cvCurvN'],['Ambient occlusion from normal…','cvAON'],['Height from normal…','cvHfN'],['Flip normal green (DirectX ↔ OpenGL)','flipG'],'-',['Bake from high poly…','bake']],
-  Layer:[['New layer','addLayer','Ctrl+Shift+N'],['New filter layer…','newFx'],['New fill layer…','newFill'],['Edit filter layer…','editFx'],['New group','newGroup'],['Group selected','group','Ctrl+G'],['Ungroup','ungroup','Ctrl+Shift+G'],['Duplicate','dupLayer','Ctrl+J'],['Delete','delLayer'],'-',['Layer style…','layerStyle'],['Array…','arrayTool'],'-',
-    ['Add mask','addMask'],['Add hide-all mask','addMaskHide'],['Apply mask','applyMask'],['Delete mask','deleteMask'],'-',['Merge down / selected','merge','Ctrl+E'],['Merge group','mergeGroup'],['Merge visible','mergeVisible'],['Flatten image','flatten'],'-',['Rasterize text','rasterize'],['Make brush tip from layer','tipFromLayer']],
+  Layer:[['New','sub',[['Layer','addLayer','Ctrl+Shift+N'],['Group','newGroup'],['Fill layer…','newFill'],['Filter layer…','newFx']]],['Duplicate','dupLayer','Ctrl+J'],['Delete','delLayer','Del'],'-',
+    ['Layer style…','layerStyle'],['Array…','arrayTool'],['Edit filter layer…','editFx'],'-',
+    ['Layer mask','sub',[['Reveal all','addMask'],['Hide all','addMaskHide'],['Apply mask','applyMask'],['Delete mask','deleteMask']]],'-',
+    ['Group selected','group','Ctrl+G'],['Ungroup','ungroup','Ctrl+Shift+G'],'-',
+    ['Rasterize text, shape or fill','rasterize'],['Make brush tip from layer','tipFromLayer'],'-',
+    ['Merge down / selected','merge','Ctrl+E'],['Merge group','mergeGroup'],['Merge visible','mergeVisible'],['Flatten image','flatten']],
   Select:[['All','selAll','Ctrl+A'],['Deselect','deselect','Ctrl+D'],['Reselect','reselect','Ctrl+Shift+D'],['Invert','selInvert','Ctrl+Shift+I'],'-',
     ['Feather…','selFeather'],['Expand…','selExpand'],['Contract…','selContract'],['Smooth…','selSmooth'],'-',['Select layer pixels','selLayer','Ctrl+click thumbnail'],['Load selection…','selLoad'],'-',['Quick mask','quickMask','Q']],
   Adjust:[['Color adjustments…','adjust','Ctrl+U'],['Levels…','levels','Ctrl+L'],['Curves…','curves','Ctrl+M'],['Hue / Saturation…','hueSat'],['Gradient map…','gradMap'],'-',
@@ -40,8 +44,8 @@ Object.assign(actions,{makeTip:()=>dlgMakeTip(),keys:()=>dlgKeys(),hints:()=>tog
 const LAYER_ONLY=['addLayer','newGroup','group','ungroup','dupLayer','delLayer','addMask','addMaskHide','applyMask','deleteMask','merge','mergeGroup','mergeVisible','flatten','rasterize','place','tipFromLayer','selLayer'];
 const checked={ws_painting:()=>dk.ws==='painting',ws_texturing:()=>dk.ws==='texturing',ws_paint3d:()=>dk.ws==='paint3d',ws_minimal:()=>dk.ws==='minimal',wsLock:()=>dk.lock,pn_color:()=>panelShown('color'),pn_brushes:()=>panelShown('brushes'),pn_tool:()=>panelShown('tool'),pn_maps:()=>panelShown('maps'),pn_layers:()=>panelShown('layers'),pn_chan:()=>panelShown('chan'),optBarToggle:()=>dk.L&&dk.L.opt,tbCols:()=>dk.L&&dk.L.tb.cols===2,tbSide:()=>dk.L&&dk.L.tb.side==='right',hints:()=>!prefs.hideHints,view3d:()=>v3.on,perf:()=>perf.on,depth8:()=>doc.depth===8,depth16:()=>doc.depth===16,tile:()=>doc.wrap,quickMask:()=>sel.quick};
 const pop=$('#menuPop');let openName=null;
-/* the Layer and Maps menus no longer sit in the bar: their items live at the end of the Image menu (the layer buttons and right-click menu still reach them) */
-MENUS.Image.push('-',['Layer','sub',MENUS.Layer],['Maps','sub',MENUS.Maps]);delete MENUS.Layer;delete MENUS.Maps;
+/* (0.31) Layer is a menu of its own again, like Photoshop; Maps lives at the end of the Image menu */
+MENUS.Image.push('-',['Maps','sub',MENUS.Maps]);delete MENUS.Maps;
 const menuBtns={};for(const name in MENUS){const b=el('button',{text:name,'aria-haspopup':'true','aria-expanded':'false'});b.addEventListener('click',()=>openName===name?closeMenu():openMenu(name));b.addEventListener('mouseenter',()=>{if(openName&&openName!==name)openMenu(name);});menuBtns[name]=b;$('#menus').append(b);}
 /* a menu entry; ['Name','sub',[entries]] opens a fly-out to the right */
 const flyEl=el('div',{id:'menuSub',role:'menu',hidden:true});document.body.append(flyEl);
