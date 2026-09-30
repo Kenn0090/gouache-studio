@@ -1,5 +1,29 @@
 # What's new in Gouache Studio
 
+## 0.41.1
+
+ACES and other tone mapping, and better ambient occlusion and film grain.
+
+- **Tone mapping list** in the 3D settings: Filmic, **ACES**, **AgX**, **PBR Neutral**, Soft and None (linear). It applies to the 3D view, screenshots, renders and turntables.
+- **Better ambient occlusion** (Post processing): smooth contact shadows that follow the surface, without the speckle, edge halos or dirty grey. New **Smoothness** slider.
+- **Better film grain** (Post processing): finer, strongest in the mid-tones, with **Grain size** (the same look at any render size) and **Colour noise** sliders. Turntable frames get different grain each frame.
+
+## 0.41.0
+
+Animation: Quick dupli, frame tools, a seconds ruler, and export at any frame rate with in-between frames.
+
+- **Quick dupli…** makes copies of the current frame in one go: pick 4, 8, 12, 16, 24, 32 or 64, or type a number, and put them right after the frame or at the end. One undo removes them all.
+- **Tools…** in the timeline: Reverse, Ping-pong, Repeat and Set the hold, for the frames you Shift+click, or all frames.
+- **Seconds ruler** above the frames: click or drag it to scrub through the animation. The frame rate goes up to 240, with a 60 button.
+- **Export at any frame rate** (2×, 4×, 24 to 240 fps) with **In-between frames**: Blend (soft cross-fade) or Motion (follows the movement). It works for the sprite sheet, the PNG sequence and the GIF.
+
+## 0.40.1
+
+Windows open in the middle of the screen, and colours can be picked from anywhere on your screen.
+
+- **Every pop-up window** opens in the centre of the screen, every time. You can still drag one by its title bar while it is open.
+- **Eyedropper for colour pickers:** a dropper button beside the hex box in the Colour panel and in the pop-up picker. Click it, then click any pixel on your screen, even outside Gouache Studio. Esc cancels.
+
 ## 0.40.0
 
 Panels out of the way, a lit flat view, post effects, a Panner shader and a channel drop-down.

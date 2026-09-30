@@ -68,7 +68,7 @@ void main(){ ivec2 px=ivec2(gl_FragCoord.xy); uint seed=uint(px.x)*1973u+uint(px
   float lm=max(L.r,max(L.g,L.b)); if(lm>uClampL) L*=uClampL/lm;
   o=texelFetch(uPrev,px,0)+vec4(L,alpha); }`;
 const FS_RTSHOW=`uniform sampler2D uAcc; uniform float uN; uniform float uExpo; uniform int uTone; uniform vec2 uOff; uniform vec3 uBg; uniform int uOpaque;
-vec3 tone(vec3 c){ if(uTone==1){ c*=0.6; return clamp((c*(2.51*c+0.03))/(c*(2.43*c+0.59)+0.14),0.0,1.0); } return c/(1.0+c*0.12); }
+${TONE_GLSL}
 void main(){ vec4 c=texelFetch(uAcc,ivec2(gl_FragCoord.xy-uOff),0)/max(uN,1.0); vec3 col=pow(clamp(tone(c.rgb*uExpo),0.0,1.0),vec3(1.0/2.2));
   if(uOpaque==1){ o=vec4(mix(uBg,col,clamp(c.a,0.0,1.0)),1.0); return; } o=vec4(col*c.a,c.a); }`;
 let P_RT=null;
@@ -94,12 +94,12 @@ function rtViewDraw(F){const g=rt.mesh===v3.mesh?rt.g:null;if(!g){if(v3.infoEl)v
   rtMaterials(g);let S=rt.view;const key=rtViewKey(F);if(!S||S.w!==F.w||S.h!==F.h){rtFree(S);S=rt.view=rtSession(F.w,F.h);}
   if(S.key!==key){S.key=key;S.n=0;clearTarget(S.a);clearTarget(S.b);}
   const s=v3s(),max=s.rtSamples||qual('rt');if(S.n<max){const per=S.n<4?1:2;for(let i=0;i<per&&S.n<max;i++)rtStep(S,g,{bg:s.envBg?0:1,bgCol:(BG3[s.bg]||BG3.dark).map(v=>Math.pow(v,2.2))});}
-  gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);useProg(rtProgs().show,{uAcc:S.a.tex,uN:S.n,uExpo:s.expo,uTone:{int:s.tone==='neutral'?0:1},uOff:[0,0],uBg:BG3[s.bg]||BG3.dark,uOpaque:true});gl.bindVertexArray(vao);gl.disable(gl.DEPTH_TEST);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);useProg(rtProgs().show,{uAcc:S.a.tex,uN:S.n,uExpo:s.expo,uTone:{int:toneInt(s)},uOff:[0,0],uBg:BG3[s.bg]||BG3.dark,uOpaque:true});gl.bindVertexArray(vao);gl.disable(gl.DEPTH_TEST);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,F.rf);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
   if(v3.infoEl)v3.infoEl.textContent='Ray traced · '+S.n+' / '+max+' samples'+(S.n<max?' (cleaning up…)':'');
   return S.n<max;}
 /* ---- reading a finished picture back ---- */
-function rtPixels(S,opaque){const t=makeTarget(S.w,S.h,8,false);run(rtProgs().show,t,{uAcc:S.a.tex,uN:S.n,uExpo:v3s().expo,uTone:{int:v3s().tone==='neutral'?0:1},uOff:[0,0],uBg:[0,0,0],uOpaque:!!opaque});
+function rtPixels(S,opaque){const t=makeTarget(S.w,S.h,8,false);run(rtProgs().show,t,{uAcc:S.a.tex,uN:S.n,uExpo:v3s().expo,uTone:{int:toneInt(v3s())},uOff:[0,0],uBg:[0,0,0],uOpaque:!!opaque});
   const d=captureRegionNow(t,0,0,S.w,S.h).data;disposeTarget(t);return d;}
 /* RGBA rows (bottom first, premultiplied or not) → PNG blob */
 async function pixelsToPNG(w,h,d,premul){const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d'),im=x.createImageData(w,h);
