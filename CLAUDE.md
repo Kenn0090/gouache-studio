@@ -74,7 +74,7 @@ Open items Kenn has seen (he also has **more features to add**, so ask him first
 1. Load your own **HDRIs** to light the 3D view (asked for early on).
 2. An **add-on / plugin system** (he wants others to extend the open-source app; needs a design first).
 3. The **UV island cage** (postponed).
-4. **Symmetry when painting on the model.**
+4. ~~Symmetry when painting on the model~~ (done: mirror X/Y/Z and radial in the 3D bar, `mir3`).
 5. Show the **high-poly in the Bake tab**.
 6. AI light removal for photos (probably not).
 7. Things only Kenn can check on his machine: skew fixes on a real bake, the Convert tab's default strengths on real photos.
