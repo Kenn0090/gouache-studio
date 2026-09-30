@@ -9,7 +9,12 @@ const TX_PHOTO=[['streaks','Streaks'],['rings','Water rings'],['specks','Specks'
   ['circles','Circles'],['scattered-rings','Scattered rings'],['chips','Chips'],['grime','Grime'],['fine-grime','Fine grime'],['speckle','Speckle'],['micro-scratches','Micro scratches'],['faint-marks','Faint marks'],
   ['prints','Prints'],['prints-2','Prints 2'],['hand-print','Hand print'],['thumb-prints','Thumb prints'],['smudges','Smudges'],['greasy-prints','Greasy prints'],['print-smears','Print smears'],['oily-marks','Oily marks'],
   ['wipe','Wipe'],['brush-smears','Brush smears'],['streaky-wipes','Streaky wipes'],['swipes','Swipes'],
-  ['leaks-2','Leaks 2'],['leaks-3','Leaks 3'],['leaks-4','Leaks 4'],['leaks-5','Leaks 5'],['leaks-6','Leaks 6'],['leaks-7','Leaks 7'],['leaks-8','Leaks 8']];
+  ['leaks-2','Leaks 2'],['leaks-3','Leaks 3'],['leaks-4','Leaks 4'],['leaks-5','Leaks 5'],['leaks-6','Leaks 6'],['leaks-7','Leaks 7'],['leaks-8','Leaks 8'],
+  ['brushed-scratches','Brushed scratches'],['tangled-scratches','Tangled scratches'],['light-scratches','Light scratches'],['fine-brushed-lines','Fine brushed lines'],['hairline-scratches','Hairline scratches'],['ink-smears','Ink smears'],['greasy-swirls','Greasy swirls'],['bubble-stains','Bubble stains'],['foggy-blotches','Foggy blotches'],
+  ['runs-1','Runs 1'],['runs-2','Runs 2'],['runs-3','Runs 3'],['runs-4','Runs 4'],['runs-5','Runs 5'],['runs-6','Runs 6'],['runs-7','Runs 7'],['runs-8','Runs 8'],
+  ['cracks-1','Cracks 1'],['cracks-2','Cracks 2'],['cracks-3','Cracks 3'],['crazed-cracks','Crazed cracks'],['dry-cracks','Dry cracks'],['cracked-plates','Cracked plates'],['broken-plates','Broken plates'],
+  ['rust-pits-1','Rust pits 1'],['rust-pits-2','Rust pits 2'],['rust-pits-3','Rust pits 3'],['rust-pits-4','Rust pits 4'],['rust-pits-5','Rust pits 5'],['rust-pits-6','Rust pits 6'],['rust-pits-7','Rust pits 7'],
+  ['worn-paint-1','Worn paint 1'],['worn-paint-2','Worn paint 2'],['worn-paint-3','Worn paint 3'],['frost-veins','Frost veins']];
 const tx={show:(()=>{try{return localStorage.getItem('gs.txShow')||'all';}catch(e){return 'all';}})(),mine:[],loaded:false,cache:new Map(),thumbs:new Map()};
 /* seamless grey patterns: periodic noise so every one tiles */
 const FS_TXGEN=`uniform int uKind; uniform float uSeed; uniform vec2 uOut;

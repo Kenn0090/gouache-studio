@@ -75,3 +75,4 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 | 24 | Your own export presets, the model with its textures, Send to Blender/Unity/Godot/Unreal (+ Blender add-on), model updater, Warp / Slope blur / Distort, stretchable panels, stickers from Paint, materials from downloaded textures or the Convert tab, drag materials onto layers, autosave for every tab | 0.27 |
 | 25 | Textures panel (photo grunge, generated, yours), Decals, materials library (ambientCG), Embroidery patch, smaller files, engine quality, Help menu, Height depth fixes, animation shortcuts | 0.28 |
 | 25b | 75 library materials for characters and weapons, 40 photo grunge maps, materials cover the bumps below | 0.28.1 |
+| 33b | Library grows to 150 materials and 75 photo grunge maps | 0.33.1 |

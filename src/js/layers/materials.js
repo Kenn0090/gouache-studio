@@ -36,7 +36,7 @@ async function gmatImgs(j){const imgs={};
 const GM_RAW='https://raw.githubusercontent.com/Kenn0090/gouache-studio/main/assets/materials/';
 const gmRecs=(typeof GM_BUNDLED!=='undefined'?GM_BUNDLED:[]).filter(g=>g.kind==='material').map(g=>({id:'s:'+g.file,name:g.name,builtin:true,bundled:g,thumb:g.thumb,credit:g.credit,cat:g.cat||'Other'}));
 /* the Library's categories (Kenn: "almost triple the amount", so it is split up) */
-const GM_CATS=['Metal','Leather','Fabric','Plastic & rubber','Wood','Ground & nature','Other'];
+const GM_CATS=['Metal','Leather','Fabric','Plastic & rubber','Wood','Ground & nature','Stone & tile','Paint & ceramic','Other'];
 let gmCat=(()=>{try{return localStorage.getItem('gs.gmCat')||'Metal';}catch(e){return 'Metal';}})();
 async function gmFetch(file){for(const u of (location.protocol==='file:'?[]:['materials/'+file]).concat([GM_RAW+file])){try{const r=await fetch(u);if(r.ok)return new Uint8Array(await r.arrayBuffer());}catch(e){}}
   throw new Error(platform.isDesktop?'the file is missing':'it could not be downloaded (the web version needs the internet for the library)');}
