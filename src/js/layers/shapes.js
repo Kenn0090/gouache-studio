@@ -143,7 +143,20 @@ function shapeOverlay(){if(ui.tool!=='shape')return '';const L=activeShape();if(
   return o;}
 
 /* ---- the panel ---- */
-function colourBtn(id,get,set,title){const i=el('input',{type:'color',id,value:toHex(get()),title,'aria-label':title});i.addEventListener('input',()=>{const c=fromHex(i.value);if(c)set(c);});return i;}
+/* (0.37.2, Kenn) a colour button opens a small picker with hue, saturation and lightness sliders (the system picker stays as a button) */
+function colourBtn(id,get,set,title){const i=el('input',{type:'color',id,value:toHex(get()),title,'aria-label':title});i.addEventListener('input',()=>{const c=fromHex(i.value);if(c)set(c);});
+  i.addEventListener('click',e=>{e.preventDefault();colourPop(i,get,c=>{i.value=toHex(c);set(c);});});return i;}
+function colourPop(anchor,get,put){document.querySelectorAll('.colpop').forEach(x=>x.remove());
+  let [h,sa,l]=rgb2hsl(...get());const hexI=el('input',{type:'text',class:'colhex','aria-label':'Hex colour',maxlength:7});
+  const sw=el('div',{class:'colsw'});
+  const go=()=>{const c=hsl2rgb(h,sa,l);sw.style.background=toHex(c);hexI.value=toHex(c);put(c);};
+  const mk=(id,label,min,max,step,get1,set1,fmt)=>makeSlider({id,label,min,max,step,value:get1(),fmt,onInput:v=>{set1(v);go();}});
+  const H=mk('cp_h','Hue',0,360,1,()=>h,v=>{h=v;},v=>Math.round(v)+'°'),S=mk('cp_s','Saturation',0,1,.01,()=>sa,v=>{sa=v;},pct),Lm=mk('cp_l','Lightness',0,1,.01,()=>l,v=>{l=v;},pct);
+  hexI.onchange=()=>{const c=fromHex(hexI.value);if(!c)return;[h,sa,l]=rgb2hsl(...c);H.set&&H.set(h);S.set&&S.set(sa);Lm.set&&Lm.set(l);go();};
+  const pop=el('div',{class:'colpop',role:'dialog','aria-label':'Colour'},sw,H.el,S.el,Lm.el,el('div',{class:'frow'},hexI,el('button',{class:'btn sm',text:'System picker…',onclick:()=>{pop.remove();anchor.showPicker&&anchor.showPicker();}}),el('button',{class:'btn sm',id:'cp_close',text:'Done',onclick:()=>pop.remove()})));
+  document.body.append(pop);go();
+  const r=anchor.getBoundingClientRect(),w=pop.offsetWidth,hh=pop.offsetHeight;pop.style.left=Math.max(6,Math.min(innerWidth-w-6,r.left))+'px';pop.style.top=Math.max(6,Math.min(innerHeight-hh-6,r.bottom+6))+'px';
+  const away=e=>{if(!pop.contains(e.target)&&e.target!==anchor){pop.remove();window.removeEventListener('pointerdown',away,true);}};setTimeout(()=>window.addEventListener('pointerdown',away,true),0);}
 function buildShapePanel(box){const L=activeShape(),S=L?L.shape:ui.shape;$('#brushTitle').textContent=L?'Shape layer':'Shape';
   const sl=(id,label,get,set,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:get(),fmt,onInput:v=>shapeSet(s=>set(s,v))}).el;
   box.append(el('p',{class:'note',text:L?'Drag the corners to resize, the round handle to turn, inside to move. Painting on it or transforming it turns it into pixels.':'Drag on the canvas to draw a shape on a new layer (Shift: square or straight; Alt: from the centre). It fills with the foreground colour.'}),

@@ -276,7 +276,7 @@ const P3_MESHMAP_NAMES={normal:'Normal',height:'Height',ao:'Ambient occlusion',c
 /* C / Shift+C in 3D Paint (Kenn, 0.28): step through the set's baked mesh maps on the model, unlit, like the Bake tab */
 const p3mm={k:null};
 const p3mmKeys=()=>Object.keys(doc.meshMaps||{}).filter(k=>doc.meshMaps[k]&&!k.startsWith('cv:'));
-function p3MeshShowTex(){if(ui.mode!=='p3d'||!p3mm.k)return null;const t=doc.meshMaps&&doc.meshMaps[p3mm.k];if(!t){p3mm.k=null;p3mmBadge();return null;}return t;}
+function p3MeshShowTex(){if(libIdView&&ui.mode==='p3d'&&doc.meshMaps&&doc.meshMaps.id)return doc.meshMaps.id;if(ui.mode!=='p3d'||!p3mm.k)return null;const t=doc.meshMaps&&doc.meshMaps[p3mm.k];if(!t){p3mm.k=null;p3mmBadge();return null;}return t;}
 function p3mmBadge(){let b=document.getElementById('p3mmBadge');const on=ui.mode==='p3d'&&!!p3mm.k;
   if(!on){if(b)b.hidden=true;return;}
   if(!b){b=el('button',{id:'p3mmBadge',class:'p3mmbadge',title:'Back to the material (Esc)',onclick:()=>p3mmSet(null)});$('#work').append(b);}

@@ -894,3 +894,17 @@ body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>#maskRow{order:5}
 #pane3d.libover{outline:2px dashed var(--accent);outline-offset:-3px}
 #matEdBody .fillcard.fillrow{padding:0;gap:0;border:1px solid var(--line)}
 #dkShelf #matBody.one .sub{display:none}
+
+/* 0.37.2 preferences tabs, reset rows, Brushes in the wide shelf: tips on the left, a small preview and the settings on the right */
+.preftabs{display:flex;flex-wrap:wrap;gap:4px}.preftabs .segb{flex:1 1 auto}
+.prefpanel{max-height:56vh;overflow:auto;padding-right:4px;min-width:min(520px,80vw)}
+.resetrow,.prefreset{justify-content:flex-end}
+.dkshelf .sec:has(#libBody){display:grid;grid-template-columns:minmax(0,1fr) 270px;grid-template-rows:auto auto auto 1fr;column-gap:14px;align-items:start;min-height:0}
+.dkshelf .sec:has(#libBody)>.sec-h{grid-column:1/-1}
+.dkshelf .sec:has(#libBody)>#libBody{grid-column:1;grid-row:2/5;max-height:none;overflow:auto;height:100%}
+.dkshelf .sec:has(#libBody) .libset>*:not(.libset-h){grid-template-columns:repeat(auto-fill,minmax(64px,1fr))}
+.dkshelf .sec:has(#libBody)>.stbrush,.dkshelf .sec:has(#libBody)>.prevwrap,.dkshelf .sec:has(#libBody)>#brushBody{grid-column:2}
+.dkshelf .sec:has(#libBody) #brushPrev{height:56px}
+.dkshelf .sec:has(#libBody)>#brushBody{max-height:calc(100% - 4px);overflow:auto}
+.colpop{position:fixed;z-index:9000;width:250px;display:grid;gap:8px;padding:10px;background:var(--panel);border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 28px rgba(0,0,0,.45)}
+.colsw{height:26px;border-radius:6px;border:1px solid var(--line)}.colhex{width:74px}

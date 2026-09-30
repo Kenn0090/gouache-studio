@@ -119,6 +119,7 @@ function buildBrushPanel(){
     S('bSatJ','Saturation','satJitter',0,1,.01,pct).el,
     S('bVJ','Brightness','valJitter',0,1,.01,pct).el,
     el('div',{class:'chips'},C('bJS','Once per stroke','jitterPerStroke'))));
+  box.append(el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:'brushReset',text:'Reset brush',title:'Put this tool’s brush back to its starting settings',onclick:()=>{for(const k of SETTING_KEYS)brush[k]=BRUSH_DEFAULTS[k];activePreset=null;if(typeof tbSaveCur==='function')tbSaveCur();buildBrushPanel();if(typeof buildOptBar==='function')buildOptBar();if(typeof refreshCursor==='function')refreshCursor();toast('Brush back to its starting settings.');}})));
   box.append(det);buildSymSection(box);if((ui.tool==='brush'||ui.tool==='erase')&&ui.mode!=='bake')buildMapBrushSection(box,ui.tool);schedulePreview();
 }
 function applyPreset(p){if(typeof tbSaveCur==='function')tbSaveCur();for(const k of SETTING_KEYS)brush[k]=(k in p)?p[k]:BRUSH_DEFAULTS[k];if(p.maps)applyMapBrush(p.maps);activePreset=p;setTool(p.tool!=='smudge'&&['erase','smudge','dodge','burn','heal','clone'].includes(ui.tool)?ui.tool:(p.tool||'brush'),true);renderLibrary();refreshCursor();}
