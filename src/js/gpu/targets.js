@@ -54,7 +54,8 @@ function restoreRegion(snap,dst,x,y){gl.bindTexture(gl.TEXTURE_2D,dst.tex);gl.pi
 /* draw only inside a rectangle (x, y, w, h in the target's pixels) */
 function scissorDo(r,fn){gl.enable(gl.SCISSOR_TEST);gl.scissor(Math.max(0,Math.floor(r[0])),Math.max(0,Math.floor(r[1])),Math.max(0,Math.ceil(r[2])),Math.max(0,Math.ceil(r[3])));try{return fn();}finally{gl.disable(gl.SCISSOR_TEST);}}
 let runTiling=false;
-function run(prog,target,u,opts){if(prog.tiled&&!runTiling&&target.w*target.h>262144){runTiling=true;try{runTiled(prog,target,u);}finally{runTiling=false;}return;}
+const runStat={n:0,px:0,by:{}};
+function run(prog,target,u,opts){runStat.n++;{const a=target?target.w*target.h:0;runStat.px+=a;const k=prog._n||'?';runStat.by[k]=(runStat.by[k]||0)+a;}if(prog.tiled&&!runTiling&&target.w*target.h>262144){runTiling=true;try{runTiled(prog,target,u);}finally{runTiling=false;}return;}
   useProg(prog,u);
   bindTarget(target);
   const b=opts&&opts.blend;

@@ -41,7 +41,8 @@ function dkPreset(ws){return dkClone(WS_PRESETS[ws]||dk.custom[ws]||WS_PRESETS.p
 function dkSave(){if(dk.L)dk.saved[dk.ws]=dk.L;try{localStorage.setItem('gs.dock',JSON.stringify({ws:dk.ws,modeWs:dk.modeWs,saved:dk.saved,custom:dk.custom,lock:dk.lock,col2:dk.col2}));}catch(e){}}
 /* every panel is in exactly one place: a group, a float, the icons, or hidden */
 function dkFix(L){const seen=new Set();const keep=a=>a.filter(id=>PANELS[id]&&!seen.has(id)&&seen.add(id));
-  for(const g of L.groups)g.tabs=keep(g.tabs);for(const f of L.floats)f.tabs=keep(f.tabs);L.icons=keep(L.icons||[]);L.hidden=keep(L.hidden||[]);
+  if(!L.shelf)L.shelf={tabs:[],f:1,h:170};if(!L.fold)L.fold={};
+  for(const g of L.groups)g.tabs=keep(g.tabs);L.shelf.tabs=keep(L.shelf.tabs);for(const f of L.floats)f.tabs=keep(f.tabs);L.icons=keep(L.icons||[]);L.hidden=keep(L.hidden||[]);
   L.groups=L.groups.filter(g=>g.tabs.length);L.floats=L.floats.filter(f=>f.tabs.length);
   for(const id of PANEL_IDS)if(!seen.has(id)){const home=WS_PRESETS.painting.groups.find(g=>g.tabs.includes(id));const g=L.groups.find(g=>home&&g.tabs.some(t=>home.tabs.includes(t)));if(g)g.tabs.push(id);else L.groups.push({tabs:[id],f:1});}
   return L;}
@@ -64,13 +65,36 @@ function dkInit(){
 /* ---- applying a layout ---- */
 function dkApply(L,first){dk.L=dkFix(L);dkRender();if(!first)dkWorkspaceExtras();dkSave();}
 function dkToolbar(o){Object.assign(dk.L.tb,o);dkRender();dkSave();resizeGL();fit();}
-function dkGrid(){const L=dk.L,app=$('#app'),hasDock=L.groups.some(g=>dkAvail(g).length)&&L.w>0,ic=L.icons.length?'38px':'0px',tw=L.tb.cols===2?'82px':'46px';
+function dkGrid(){const L=dk.L,app=$('#app'),F=L.fold||{},shOn=!!(L.shelf&&dkAvail(L.shelf).length),hasDock=L.groups.some(g=>dkAvail(g).length)&&L.w>0,ic=L.icons.length?'38px':'0px',tw=F.tools?'26px':L.tb.cols===2?'82px':'46px';
   document.body.classList.toggle('tb2',L.tb.cols===2);document.body.classList.toggle('noopt',!L.opt);
+  for(const k of ['dock','dock2','tools','opt','shelf'])app.classList.toggle('f-'+k,!!F[k]);
   const left=L.tb.side!=='right';
-  const c2=dkCol2On()&&dk.col2.groups.some(g=>dkAvail(g).length)?dk.col2.w+'px':'0px';
-  app.style.gridTemplateColumns=left?`${tw} minmax(0,1fr) ${c2} ${ic} ${hasDock?L.w+'px':'0px'}`:`minmax(0,1fr) ${tw} ${c2} ${ic} ${hasDock?L.w+'px':'0px'}`;
-  app.style.gridTemplateRows=`38px ${L.opt?'minmax(36px,auto)':'0px'} minmax(0,1fr) auto 26px`;
-  app.style.gridTemplateAreas=left?'"head head head head head" "opt opt opt opt opt" "tools work dock2 icons dock" "tools tl dock2 icons dock" "status status status status status"':'"head head head head head" "opt opt opt opt opt" "work tools dock2 icons dock" "tl tools dock2 icons dock" "status status status status status"';}
+  const c2=dkCol2On()&&dk.col2.groups.some(g=>dkAvail(g).length)?(F.dock2?26:dk.col2.w)+'px':'0px';
+  const dw=hasDock?(F.dock?26:L.w)+'px':'0px';
+  app.style.gridTemplateColumns=left?`${tw} minmax(0,1fr) ${c2} ${ic} ${dw}`:`minmax(0,1fr) ${tw} ${c2} ${ic} ${dw}`;
+  app.style.gridTemplateRows=`38px ${L.opt?(F.opt?'26px':'minmax(36px,auto)'):'0px'} minmax(0,1fr) auto ${shOn?(F.shelf?26:clamp(L.shelf.h||170,90,Math.max(90,window.innerHeight*.6))):0}px 26px`;
+  const sh='"shelf shelf shelf shelf shelf"';
+  app.style.gridTemplateAreas=left?`"head head head head head" "opt opt opt opt opt" "tools work dock2 icons dock" "tools tl dock2 icons dock" ${sh} "status status status status status"`:`"head head head head head" "opt opt opt opt opt" "work tools dock2 icons dock" "tl tools dock2 icons dock" ${sh} "status status status status status"`;}
+/* ---- (0.30) fold arrows on every docked bar and column, and the bottom shelf ---- */
+const DK_FOLDS=[['dock','#dock','Panels',()=>dk.L.groups.some(g=>dkAvail(g).length)&&dk.L.w>0,()=>['›','‹']],
+  ['dock2','#dock2','Colour and brushes',()=>dkCol2On()&&dk.col2.groups.some(g=>dkAvail(g).length),()=>['›','‹']],
+  ['tools','#tools','Tools',()=>true,()=>dk.L.tb.side==='right'?['›','‹']:['‹','›']],
+  ['opt','#optBar','Tool options',()=>!!dk.L.opt,()=>['⌃','⌄']],
+  ['shelf','#dkShelf','Shelf',()=>!!(dk.L.shelf&&dkAvail(dk.L.shelf).length),()=>['⌄','⌃']]];
+function dkFoldSet(k,v){dk.L.fold=dk.L.fold||{};dk.L.fold[k]=v;dkRender();dkSave();if(typeof resizeGL==='function')requestAnimationFrame(()=>{resizeGL();if(typeof fit==='function')fit();});}
+function dkFoldBtns(){const F=dk.L.fold||{};dk.fb=dk.fb||{};
+  for(const [k,sel,lbl,present,glyph] of DK_FOLDS){const node=$(sel);if(!node)continue;let b=dk.fb[k];
+    if(!b){b=dk.fb[k]=el('button',{class:'dkfold fb-'+k,type:'button'});b.style.gridArea=k==='opt'?'opt':k;$('#app').append(b);b.addEventListener('click',()=>dkFoldSet(k,!(dk.L.fold&&dk.L.fold[k])));}
+    const on=present(),f=!!F[k],g=glyph();b.hidden=!on;b.textContent=f?g[1]:g[0];b.title=(f?'Show ':'Hide ')+lbl.toLowerCase();b.setAttribute('aria-label',b.title);b.setAttribute('aria-expanded',String(!f));
+    node.classList.toggle('dkfolded',on&&f);node.dataset.lbl=lbl;}}
+function dkShelfRender(){const L=dk.L,S=L.shelf;if(!dk.shelf){dk.shelf=el('aside',{class:'dkshelf',id:'dkShelf','aria-label':'Shelf'});$('#app').append(dk.shelf);}
+  const on=dkAvail(S).length>0;dk.shelf.hidden=!on;dk.shelf.replaceChildren();if(!on)return;
+  const bar=el('div',{class:'dkshbar',role:'separator','aria-orientation':'horizontal',title:'Drag to make the shelf taller (double-click: back to the usual height)'});
+  bar.addEventListener('dblclick',()=>{if(dk.lock)return;S.h=170;dkGrid();dkSave();resizeGL();fit();});
+  bar.addEventListener('pointerdown',e=>{if(dk.lock||e.button!==0||(L.fold&&L.fold.shelf))return;e.preventDefault();const h0=S.h||170,y0=e.clientY;document.body.classList.add('stvresize');
+    const mv=ev=>{S.h=Math.round(clamp(h0-(ev.clientY-y0),90,Math.max(90,window.innerHeight*.6)));dkGrid();if(typeof resizeGL==='function')resizeGL();};
+    const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);document.body.classList.remove('stvresize');dkSave();if(typeof fit==='function')fit();};window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);});
+  dk.shelf.append(bar,dkGroup(S));}
 /* in 3D Paint, Colour, Material, Brushes, Materials and Tool settings sit in a column of their own beside the
    viewport (dock2). Its tabs drag like any other: out of it, or other tabs into it (remembered in gs.dock col2). */
 const DK_COL2=['color','matEd','shading','brushes','stencils','mats','textures','decals','tool'];
@@ -95,6 +119,7 @@ function dkRender(){const L=dk.L,dock=$('#dock');dkGrid();
   if(!dk.dock2){dk.dock2=el('aside',{class:'panel',id:'dock2','aria-label':'Colour and brushes'});$('#app').append(dk.dock2);}
   dk.dock2.replaceChildren();dk.dock2.hidden=!dkCol2On();
   if(dkCol2On()){const g2=dk.col2.groups.filter(g=>dkAvail(g).length);g2.forEach((g,i)=>{if(i)dk.dock2.append(dkSplit(g2[i-1],g));dk.dock2.append(dkGroup(g));});}
+  dkShelfRender();
   dk.icons.replaceChildren(...L.icons.filter(id=>dkIn(id)).map(id=>{const b=el('button',{class:'dkicon'+(dk.flyout===id?' on':''),title:PANELS[id].title,'aria-label':PANELS[id].title,'aria-pressed':String(dk.flyout===id)});
     b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+(PANELS[id].icon||'')+'</svg>';b.onclick=()=>dkFlyout(dk.flyout===id?null:id);b.addEventListener('pointerdown',e=>dkDragStart(e,id,{icons:true}));return b;}));
   for(const n of [...document.querySelectorAll('.dkfloat')])n.remove();
@@ -102,6 +127,7 @@ function dkRender(){const L=dk.L,dock=$('#dock');dkGrid();
   if(dk.flyout&&!(L.icons.includes(dk.flyout)&&dkIn(dk.flyout)))dk.flyout=null;
   if(dk.flyout)dkFlyoutEl(dk.flyout);
   for(const id of PANEL_IDS){const s=dkSec(id);if(!s.parentElement||s.parentElement===dk.park||!s.isConnected)dk.park.append(s);}
+  dkFoldBtns();if(dk.wbar)dk.wbar.hidden=dk.wbar.hidden||!!(L.fold&&L.fold.dock);
   if(typeof resizeGL==='function')requestAnimationFrame(()=>{resizeGL();if(typeof drawSV==='function')drawSV();});}
 function dkTabs(tabs,active,where,onPick){const strip=el('div',{class:'dktabs',role:'tablist'});
   for(const id of tabs){const on=id===active,b=el('button',{class:'dktab'+(on?' on':''),role:'tab','aria-selected':String(on),text:id==='tool'?(dk.toolTitle.textContent||'Tool settings'):PANELS[id].title});
@@ -154,13 +180,13 @@ function dkFlyoutEl(id){const b=[...dk.icons.children].find(x=>x.title===PANELS[
   document.body.append(w);}
 document.addEventListener('pointerdown',e=>{if(dk.flyout&&!e.target.closest('.flyout,#dkIcons,#modal,.fontpop,#menuPop'))dkFlyout(null);},true);
 /* ---- the ⋯ menu of a group ---- */
-function dkMenu(e,id,where){const items=[['Float “'+PANELS[id].title+'”',()=>dkMove(id,{float:{x:e.clientX-320,y:e.clientY+10}})],['Keep as an icon',()=>dkMove(id,{icons:true})],['Close',()=>dkMove(id,{hidden:true})]];
+function dkMenu(e,id,where){const inShelf=dk.L.shelf.tabs.includes(id),items=[inShelf?['Back into the dock',()=>dkMove(id,{newGroup:dk.L.groups.length})]:['Move to the bottom shelf',()=>dkMove(id,{group:dk.L.shelf})],['Float “'+PANELS[id].title+'”',()=>dkMove(id,{float:{x:e.clientX-320,y:e.clientY+10}})],['Keep as an icon',()=>dkMove(id,{icons:true})],['Close',()=>dkMove(id,{hidden:true})]];
   if(where.group)items.push([where.group.min?'Unfold group':'Fold group',()=>{where.group.min=!where.group.min;dkRender();dkSave();}]);
   const pop=$('#menuPop');closeMenu();pop.replaceChildren(...items.map(([t,f])=>el('button',{class:'mi',role:'menuitem',onclick:()=>{pop.hidden=true;f();}},el('span'),el('span',{text:t}),el('span'))));
   pop.hidden=false;pop.style.left=Math.min(e.clientX,window.innerWidth-pop.offsetWidth-8)+'px';pop.style.top=(e.clientY+6)+'px';
   const off=ev=>{if(!pop.contains(ev.target)){pop.hidden=true;document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}
 /* take a panel out of wherever it is and put it somewhere else */
-function dkRemove(id){const L=dk.L;if(dkCol2On()){for(const g of dk.col2.groups)g.tabs=g.tabs.filter(t=>t!==id);dk.col2.groups=dk.col2.groups.filter(g=>g.tabs.length);}for(const g of L.groups)g.tabs=g.tabs.filter(t=>t!==id);for(const f of L.floats)f.tabs=f.tabs.filter(t=>t!==id);L.icons=L.icons.filter(t=>t!==id);L.hidden=L.hidden.filter(t=>t!==id);if(dk.flyout===id)dk.flyout=null;}
+function dkRemove(id){const L=dk.L;if(dkCol2On()){for(const g of dk.col2.groups)g.tabs=g.tabs.filter(t=>t!==id);dk.col2.groups=dk.col2.groups.filter(g=>g.tabs.length);}for(const g of L.groups)g.tabs=g.tabs.filter(t=>t!==id);if(L.shelf)L.shelf.tabs=L.shelf.tabs.filter(t=>t!==id);for(const f of L.floats)f.tabs=f.tabs.filter(t=>t!==id);L.icons=L.icons.filter(t=>t!==id);L.hidden=L.hidden.filter(t=>t!==id);if(dk.flyout===id)dk.flyout=null;}
 function dkMove(id,to){const L=dk.L;dkRemove(id);
   if(to.group){to.group.tabs.splice(to.index==null?to.group.tabs.length:to.index,0,id);to.group.active=id;to.group.min=false;}
   else if(to.newGroup!=null){L.groups.splice(to.newGroup,0,{tabs:[id],active:id,f:1});}
@@ -202,6 +228,9 @@ function dkDragMove(e){const d=dk.drag;if(!d)return;if(!d.on){if(Math.hypot(e.cl
       else if(e.clientY>r.bottom-r.height*.28){to={newGroup2:i+1};box={left:r.left,top:r.bottom-6,width:r.width,height:10};}
       else{to={group:g};box=r;}}
     else{const r=d2.getBoundingClientRect();to={newGroup2:G.length};box={left:r.left,top:r.bottom-12,width:r.width,height:10};}}
+  else if(t&&t.closest('#dkShelf')){const gEl=t.closest('.dkgrp'),S=dk.L.shelf;
+    if(gEl&&t.closest('.dktabs')){const T=dkTabSlot(gEl,S,d.id,e.clientX);to={group:S,index:T.index};box=T.box;}else{to={group:S};box=(gEl||dk.shelf).getBoundingClientRect();}}
+  else if(t&&t.closest('#workWrap')&&e.clientY>$('#workWrap').getBoundingClientRect().bottom-Math.min(90,$('#workWrap').getBoundingClientRect().height*.2)){const r=$('#workWrap').getBoundingClientRect();to={group:dk.L.shelf};box={left:r.left,top:r.bottom-8,width:r.width,height:10};}
   else if(t&&t.closest('.dkfloat:not(.flyout)')){/* onto another floating panel: join it */const fe=t.closest('.dkfloat');const f=dk.L.floats[[...document.querySelectorAll('.dkfloat:not(.flyout)')].indexOf(fe)];if(f){to={floatJoin:f};box=fe.getBoundingClientRect();}}
   else{to={float:{x:e.clientX-40,y:e.clientY-12}};}
   d.to=to;if(box){Object.assign(d.hint.style,{left:box.left+'px',top:box.top+'px',width:box.width+'px',height:box.height+'px'});d.hint.hidden=false;}else d.hint.hidden=true;}
