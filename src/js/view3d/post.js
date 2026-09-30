@@ -4,10 +4,11 @@
    and its own sliders in the Shader panel. They sit in the viewer settings (v3s().post), so the screenshot, the
    render window and the turntable get them too. Depth of field and occlusion read the model's depth. */
 const POST_DEF={bloom:{on:false,amt:.6,thr:.7,rad:.5},ao:{on:false,amt:.8,rad:.15,soft:.5},dof:{on:false,amt:.5,focus:0},sharp:{on:false,amt:.6},
-  grade:{on:false,exp:0,con:0,sat:0,warm:0},vig:{on:false,amt:.5,soft:.5},ca:{on:false,amt:.4},grain:{on:false,amt:.3,size:1.4,col:.25}};
+  grade:{on:false,exp:0,con:0,sat:0,warm:0},vig:{on:false,amt:.5,soft:.5},ca:{on:false,amt:.4},grain:{on:false,amt:.3,size:1.4,col:.25},look:{on:false,mode:1,amt:1,lv:5}};
 const POST_NAMES=[['bloom','Bloom','Bright parts glow'],['ao','Ambient occlusion','Darkens creases and where things meet'],['dof','Depth of field','Blurs what is nearer or farther than the focus'],
   ['sharp','Sharpen','Crisper fine detail'],['grade','Colour grade','Exposure, contrast, saturation and warmth'],['vig','Vignette','Darker corners'],
-  ['ca','Chromatic aberration','Colour fringes towards the edges, like a cheap lens'],['grain','Film grain','Fine film-style grain: strongest in the mid-tones, with its own size and a touch of colour']];
+  ['ca','Chromatic aberration','Colour fringes towards the edges, like a cheap lens'],['look','Filter look','Live screen filters: greyscale, sepia, invert, black and white, duotone, posterize, night vision, thermal, scanlines, blueprint'],['grain','Film grain','Fine film-style grain: strongest in the mid-tones, with its own size and a touch of colour']];
+const POST_LOOKS=[[1,'Greyscale'],[2,'Sepia'],[3,'Invert'],[4,'Black and white'],[5,'Duotone'],[6,'Posterize'],[7,'Night vision'],[8,'Thermal'],[9,'CRT scanlines'],[10,'Blueprint']];
 function postOf(s){s=s||v3s();const p=s.post||{},o={};for(const k in POST_DEF)o[k]=Object.assign({},POST_DEF[k],p[k]||{});return o;}
 function postActive(s){if(ui.mode==='bake'||ui.mode==='convert')return false;const p=postOf(s);for(const k in p)if(p[k].on)return true;return false;}
 const FS_POSTTH=`in vec2 vUV; uniform sampler2D uSrc; uniform float uT;
@@ -16,7 +17,7 @@ const FS_POSTBL=`in vec2 vUV; uniform sampler2D uSrc; uniform vec2 uDir;
 void main(){ vec3 s=texture(uSrc,vUV).rgb*0.227027; s+=(texture(uSrc,vUV+uDir*1.3846).rgb+texture(uSrc,vUV-uDir*1.3846).rgb)*0.316216; s+=(texture(uSrc,vUV+uDir*3.2308).rgb+texture(uSrc,vUV-uDir*3.2308).rgb)*0.070270; o=vec4(s,1.0); }`;
 const FS_POSTC=`in vec2 vUV; uniform sampler2D uSrc; uniform sampler2D uBloom; uniform sampler2D uDepth; uniform sampler2D uAO;
 uniform vec2 uPx; uniform float uAsp; uniform float uOrtho; uniform float uTan; uniform float uOH;
-uniform vec4 uA; uniform vec4 uD; uniform vec4 uB; uniform vec4 uG; uniform vec4 uV; uniform vec4 uS;
+uniform vec4 uA; uniform vec4 uD; uniform vec4 uB; uniform vec4 uG; uniform vec4 uV; uniform vec4 uS; uniform vec4 uL;
 float lin(vec2 uv){ float d=texture(uDepth,uv).r; if(d>=0.99999) return 1e4; return uOrtho>0.5 ? 0.02+d*99.98 : 2.0*0.02*100.0/(100.02-(2.0*d-1.0)*99.98); }
 float h12(vec2 p){ vec3 p3=fract(vec3(p.xyx)*0.1031); p3+=dot(p3,p3.yzx+33.33); return fract((p3.x+p3.y)*p3.z); }
 void main(){
@@ -34,6 +35,18 @@ void main(){
   if(uV.x>0.0){ float d=length((uv-0.5)*vec2(uAsp,1.0)); c*=1.0-uV.x*smoothstep(0.3,0.3+0.15+uV.y*0.9,d); }
   if(uV.z>0.0){ vec2 gp=floor(gl_FragCoord.xy/max(uS.w,0.5)); float m=h12(gp+uS.y)+h12(gp+uS.y+19.7)-1.0; vec3 n=vec3(h12(gp+uS.y+41.3)+h12(gp+uS.y+57.1)-1.0,h12(gp+uS.y+73.9)+h12(gp+uS.y+88.3)-1.0,h12(gp+uS.y+101.7)+h12(gp+uS.y+127.9)-1.0);
     float l=dot(c,vec3(0.2126,0.7152,0.0722)); float w=0.3+0.7*clamp(4.0*l*(1.0-l),0.0,1.0); c+=mix(vec3(m),n,uB.z)*uV.z*0.3*w; }
+  if(uL.x>0.5){ c=clamp(c,0.0,1.0); float l=dot(c,vec3(0.2126,0.7152,0.0722)); vec3 r=c; int m=int(uL.x+0.5);
+    if(m==1) r=vec3(l);
+    else if(m==2) r=vec3(l)*vec3(1.07,0.86,0.62)+vec3(0.02,0.0,-0.02);
+    else if(m==3) r=1.0-c;
+    else if(m==4) r=vec3(step(0.5,l));
+    else if(m==5) r=mix(vec3(0.05,0.08,0.3),vec3(1.0,0.75,0.35),l);
+    else if(m==6){ float n=max(uL.z,2.0); r=floor(c*n+0.5)/n; }
+    else if(m==7){ float g=clamp(l*1.6,0.0,1.0)*(0.85+0.15*h12(gl_FragCoord.xy+uS.y)); r=vec3(0.05,1.0,0.25)*g; }
+    else if(m==8){ r=clamp(vec3(1.5*l-0.5,1.5-abs(3.0*l-1.5),1.5*(1.0-l)-0.25),0.0,1.0); }
+    else if(m==9){ float sl=0.75+0.25*sin(gl_FragCoord.y*3.14159); r=c*sl; r=mix(r,r*vec3(1.05,1.0,0.95),0.5); }
+    else if(m==10){ r=mix(vec3(0.05,0.2,0.55),vec3(0.85,0.93,1.0),l); }
+    c=mix(c,r,uL.y); }
   o=vec4(clamp(c,0.0,1.0),s0.a); }`;
 /* ambient occlusion: a normal-aware screen-space pass into its own picture, then a blur that stops at edges */
 const FS_POSTAO=`in vec2 vUV; uniform sampler2D uDepth; uniform vec2 uPx; uniform float uAsp; uniform float uOrtho; uniform float uTan; uniform float uOH; uniform float uR;
@@ -78,16 +91,17 @@ function v3Post(F){const s=v3s();if(!postActive(s))return;const p=postOf(s),need
     const st=1+p.ao.soft*2.5;run(P_PAOB,X.ao1,{uSrc:X.ao0.tex,uDepth:X.dt,uDir:[st/F.w,0],uOrtho:sm.ortho?1:0});run(P_PAOB,X.ao0,{uSrc:X.ao1.tex,uDepth:X.dt,uDir:[0,st/F.h],uOrtho:sm.ortho?1:0});}
   run(P_PC,{fbo:F.rf,w:F.w,h:F.h},{uSrc:X.a.tex,uBloom:X.b0.tex,uDepth:needD&&X.dt?X.dt:dummy,uAO:p.ao.on&&X.ao0?X.ao0.tex:dummy,uPx:[1/F.w,1/F.h],uAsp:F.w/F.h,uOrtho:sm.ortho?1:0,uTan:tanH,uOH:oh,
     uA:[p.ao.on?1:0,p.ao.amt,p.ao.rad,0],uD:[p.dof.on?1:0,p.dof.amt,foc,0],uB:[p.bloom.on?1:0,p.bloom.amt,p.grain.col,0],uG:p.grade.on?[p.grade.exp,p.grade.con,p.grade.sat,p.grade.warm]:[0,0,0,0],
-    uV:[p.vig.on?p.vig.amt:0,p.vig.soft,p.grain.on?p.grain.amt:0,p.ca.on?p.ca.amt:0],uS:[p.sharp.on?p.sharp.amt:0,v3.postSeed||7.13,p.grade.on?1:0,p.grain.size*Math.max(1,F.h/1080)]});
+    uV:[p.vig.on?p.vig.amt:0,p.vig.soft,p.grain.on?p.grain.amt:0,p.ca.on?p.ca.amt:0],uS:[p.sharp.on?p.sharp.amt:0,v3.postSeed||7.13,p.grade.on?1:0,p.grain.size*Math.max(1,F.h/1080)],uL:[p.look.on?p.look.mode:0,p.look.amt,p.look.lv,0]});
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
 /* ---- the settings, in the Shader panel ---- */
 function postEdit(k,key,v){const s=v3s();if(!s.post)s.post={};s.post[k]=Object.assign({},s.post[k]||{},{[key]:v});v3.dirty=true;requestRender(true);}
 const POST_SL={bloom:[['amt','Amount',0,2,.01],['thr','Threshold',0,1,.01],['rad','Spread',0,1,.01]],ao:[['amt','Strength',0,1,.01],['rad','Radius',.02,1,.01],['soft','Smoothness',0,1,.01]],dof:[['amt','Blur',0,1,.01],['focus','Focus distance',-.8,1.5,.01]],
-  sharp:[['amt','Amount',0,1,.01]],grade:[['exp','Exposure',-2,2,.01],['con','Contrast',-.5,.8,.01],['sat','Saturation',-1,1,.01],['warm','Warmth',-1,1,.01]],vig:[['amt','Amount',0,1,.01],['soft','Softness',0,1,.01]],ca:[['amt','Amount',0,1,.01]],grain:[['amt','Amount',0,1,.01],['size','Grain size',.6,4,.05],['col','Colour noise',0,1,.01]]};
+  sharp:[['amt','Amount',0,1,.01]],grade:[['exp','Exposure',-2,2,.01],['con','Contrast',-.5,.8,.01],['sat','Saturation',-1,1,.01],['warm','Warmth',-1,1,.01]],vig:[['amt','Amount',0,1,.01],['soft','Softness',0,1,.01]],ca:[['amt','Amount',0,1,.01]],look:[['amt','Strength',0,1,.01],['lv','Levels (posterize)',2,12,1]],grain:[['amt','Amount',0,1,.01],['size','Grain size',.6,4,.05],['col','Colour noise',0,1,.01]]};
 function postBox(){const P=postOf(),box=el('div',{class:'dlg-grid',id:'postBox'});
   for(const [k,label,tip] of POST_NAMES){const row=el('div',{class:'postfx'+(P[k].on?' on':''),title:tip});
     row.append(chk('post_'+k,label,P[k].on,v=>{postEdit(k,'on',v);row.classList.toggle('on',v);}));
     const sl=el('div',{class:'postsl'});for(const [key,lab,mn,mx,st] of POST_SL[k])sl.append(makeSlider({id:'post_'+k+'_'+key,label:lab,min:mn,max:mx,step:st,value:P[k][key],fmt:v=>v.toFixed(2),onInput:v=>postEdit(k,key,v)}).el);
+    if(k==='look'){const ms=el('select',{id:'post_look_mode','aria-label':'Filter look'});for(const [v,t] of POST_LOOKS)ms.append(el('option',{value:String(v),text:t}));ms.value=String(P.look.mode);ms.onchange=()=>postEdit('look','mode',+ms.value);sl.prepend(ms);}
     row.append(sl);box.append(row);}
   box.append(el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:'postReset',text:'Reset post processing',title:'Turn every effect off and put the sliders back',onclick:()=>{const s=v3s();delete s.post;v3.dirty=true;requestRender(true);renderShading();}})));
   return box;}

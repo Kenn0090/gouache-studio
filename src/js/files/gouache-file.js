@@ -34,7 +34,7 @@ async function encodeGouacheNow(opts){opts=opts||{};const blobs=[];let off=0;/* 
   const all=allLayers(R),active=doc.active&&!doc.active.frame?allNodes(R).indexOf(doc.active):-1;
   const A=doc.anim;let anim=null;
   if(A){const frames=[];for(const F of A.frames)frames.push(await node(F));
-    anim={frames,fps:A.fps,cur:A.cur,onion:A.onion,tags:A.tags.map(t=>{const [a,b]=tagRange(t);return {name:t.name,from:a,to:b,mode:t.mode,color:t.color};}),mode:ui.mode,bg:ui.animBg};}
+    anim={frames,fps:A.fps,cur:A.cur,onion:A.onion,tags:A.tags.map(t=>{const [a,b]=tagRange(t);return {name:t.name,from:a,to:b,mode:t.mode,color:t.color};}),mode:ui.mode,bg:ui.animBg,fxl:afxSave()};}
   /* the 3D view's settings, and an imported model so it comes back with the document */
   let meshRec=null;if(!opts.lean&&typeof v3!=='undefined'&&v3.imported){const c=await streamThrough(meshPack(v3.imported),'deflate-raw');blobs.push(c);meshRec={o:off,n:c.length,name:v3.imported.name};off+=c.length;}
   const bakeMaps={};if(!opts.lean)for(const k of ['skew','offset'])if(bk.maps[k]){const r=await put(bk.maps[k],true);if(r)bakeMaps[k]=r;}
@@ -62,7 +62,7 @@ async function openGouache(buf,name){const {head,data}=gfHead(buf);if(tabDocs.pa
     for(const o of an.frames){const F=await mk(o,null);F.frame=true;F.hold=o.hold||1;F.parent=null;frames.push(F);}
     doc.anim=makeAnim(frames);doc.anim.fps=an.fps||12;doc.anim.cur=clamp(an.cur||0,0,frames.length-1);if(an.onion)doc.anim.onion=Object.assign(doc.anim.onion,an.onion);
     doc.anim.tags=(an.tags||[]).filter(t=>frames[t.from]&&frames[t.to]).map(t=>({name:t.name,from:frames[t.from],to:frames[t.to],mode:t.mode||'loop',color:t.color||TAG_COLORS[0]}));
-    if(an.bg)ui.animBg=an.bg;animMode=an.mode==='anim';}
+    if(an.bg)ui.animBg=an.bg;doc.anim.fxl=afxLoad(an.fxl);animMode=an.mode==='anim';}
   if(head.map&&head.map!=='base'&&doc.maps.includes(head.map))setEditMap(head.map);
   if(head.view&&head.view!==doc.map&&(head.view==='material'||head.view==='nfinal'||head.view==='normal'))doc.view=head.view==='normal'?'nfinal':head.view;
   changedAll();updateStatus();fit();refreshMapsUI();buildBrushPanel();if(animMode)setMode('anim',true);

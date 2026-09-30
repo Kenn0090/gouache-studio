@@ -32,13 +32,13 @@ function setMode(m,quiet){if(m===ui.mode)return true;
   renderLayers();refreshChanUI();refreshMapsUI();renderTimeline();renderAnimPanel();buildBrushPanel();changedAll();resizeGL();requestRender(true);
   if(!quiet)toast(ui.mode==='anim'?'Animation mode: paint each frame. , and . step through frames, Enter plays.':ui.mode==='bake'?'Bake: bake maps from a high-poly model, see them on the model, and paint fixes.':ui.mode==='convert'?'Convert: make normal, height, AO and more from a photo or another map.':ui.mode==='brush'?'Brush: draw a brush tip in black. Your painting is kept in Paint.':ui.mode==='p3d'?'3D Paint: paint on the model. Its textures are separate from Paint.':'Paint mode.');return true;}
 function showFrame(i,noRender){const A=A_();if(!A)return;A.cur=clamp(i,0,A.frames.length-1);const F=A.frames[A.cur];
-  if(ui.mode==='anim'){animRoot.children=[F];F.parent=animRoot;selectOnly(F);}
+  if(ui.mode==='anim'){animRoot.children=[F];F.parent=animRoot;if(typeof afxApply==='function')afxApply();selectOnly(F);}
   if(!noRender){renderTimeline();requestRender(true);}}
 const curFrame=()=>A_()?A_().frames[A_().cur]:null;
 
 /* ---- undoable frame operations ---- */
-function animState(){const A=A_();return {frames:A.frames.slice(),holds:A.frames.map(f=>f.hold),cur:A.cur,fps:A.fps,tags:A.tags.map(t=>Object.assign({},t))};}
-function setAnimState(s){const A=A_();A.frames=s.frames.slice();s.frames.forEach((f,i)=>f.hold=s.holds[i]);A.fps=s.fps;A.tags=s.tags.map(t=>Object.assign({},t));showFrame(s.cur);renderAnimPanel();}
+function animState(){const A=A_();return {frames:A.frames.slice(),holds:A.frames.map(f=>f.hold),cur:A.cur,fps:A.fps,tags:A.tags.map(t=>Object.assign({},t)),fxl:(A.fxl||[]).map(afxClone)};}
+function setAnimState(s){const A=A_();A.frames=s.frames.slice();s.frames.forEach((f,i)=>f.hold=s.holds[i]);A.fps=s.fps;A.tags=s.tags.map(t=>Object.assign({},t));A.fxl=(s.fxl||[]).map(afxClone);showFrame(s.cur);renderAnimPanel();}
 function animOp(label,fn){const A=A_();if(!A)return;if(ptr&&ptr.mode==='paint')return;stopPlay();const before=animState();if(fn(A)===false)return;const after=animState();
   pushUndo({label,mode:'anim',refs:[...new Set([...before.frames,...after.frames])],undo(){setAnimState(before);},redo(){setAnimState(after);}});
   showFrame(A.cur);renderAnimPanel();}
@@ -55,8 +55,14 @@ function frameCopy(s){const F=newFrame();blit(s.target,F.target,0,0,doc.w,doc.h,
 function animMemOk(extra){const per=doc.w*doc.h*(doc.depth>8?8:4),A=A_();const total=(A.frames.length+extra)*per;
   if(total>2.5e9){toast('That would use about '+(total/1e9).toFixed(1)+' GB of video memory. Try fewer frames or a smaller canvas.');return false;}return true;}
 /* n copies of the current frame, straight after it ('after') or at the end of the animation ('end') */
-function quickDupli(n,where){const A=A_();if(!A)return;n=clamp(Math.round(n)||0,1,512);if(!animMemOk(n))return;
-  animOp('Quick dupli',A=>{const s=A.frames[A.cur],at=where==='end'?A.frames.length:A.cur+1,list=[];for(let k=0;k<n;k++)list.push(frameCopy(s));A.frames.splice(at,0,...list);A.cur=at+n-1;ui.fsel=[at,at+n-1];});}
+function quickDupli(n,where,step){const A=A_();if(!A)return;n=clamp(Math.round(n)||0,1,512);if(!animMemOk(n))return;
+  animOp('Quick dupli',A=>{const s=A.frames[A.cur],src=A.cur,at=where==='end'?A.frames.length:A.cur+1,list=[];for(let k=0;k<n;k++)list.push(frameCopy(s));A.frames.splice(at,0,...list);A.cur=at+n-1;ui.fsel=[at,at+n-1];
+    /* keyframes after the new copies move along with their frames */
+    for(const tr of A.fxl||[])for(const k in tr.keys)for(const x of tr.keys[k])if(x.f>=at)x.f+=n;
+    /* optional: step an effect's slider from one value on the first frame to another on the last copy */
+    const tr=step&&(A.fxl||[])[step.track];if(tr&&tr.keys&&typeof step.from==='number'&&typeof step.to==='number'){
+      const ks=tr.keys[step.key]=(tr.keys[step.key]||[]).filter(x=>x.f<src||x.f>at+n-1);
+      ks.push({f:src,v:step.from,e:step.e||'lin'},{f:at+n-1,v:step.to,e:step.e||'lin'});ks.sort((a,b)=>a.f-b.f);}});}
 /* the frames a helper works on: the Shift+click range, or all frames */
 function animRange(){const A=A_();if(ui.fsel){const a=Math.min(...ui.fsel),b=Math.max(...ui.fsel);return [clamp(a,0,A.frames.length-1),clamp(b,0,A.frames.length-1)];}return [0,A.frames.length-1];}
 function reverseFrames(){const A=A_();if(!A)return;const [a,b]=animRange();if(b<=a){toast('Pick a range with Shift+click, or have at least two frames.');return;}
