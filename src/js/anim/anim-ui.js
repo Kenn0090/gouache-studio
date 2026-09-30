@@ -9,20 +9,36 @@ const tlParts={};
 (function buildTimeline(){
   const P1='<path d="M6 5v14M18 5 9 12l9 7z"/>',P2='<path d="M15 5 8 12l7 7z"/>',PL='<path d="M8 5v14l11-7z"/>',PN='<path d="M9 5l7 7-7 7z"/>',PE='<path d="M18 5v14M6 5l9 7-9 7z"/>';
   tlParts.play=tlBtn(ic(PL),'Play / stop (Enter)',togglePlay,'play');
-  const fps=el('div',{class:'tlgroup'});tlParts.fpsBtns=[12,24,30].map(v=>{const b=el('button',{class:'tlchip',text:String(v),title:v+' frames per second',onclick:()=>setFps(v)});fps.append(b);return b;});
-  tlParts.fps=el('input',{class:'num tlnum',type:'number',min:1,max:120,'aria-label':'Frames per second',title:'Any frame rate'});tlParts.fps.addEventListener('change',()=>setFps(+tlParts.fps.value));fps.append(tlParts.fps,el('span',{class:'dim',text:'fps'}));
+  const fps=el('div',{class:'tlgroup'});tlParts.fpsBtns=[12,24,30,60].map(v=>{const b=el('button',{class:'tlchip',text:String(v),title:v+' frames per second',onclick:()=>setFps(v)});fps.append(b);return b;});
+  tlParts.fps=el('input',{class:'num tlnum',type:'number',min:1,max:240,'aria-label':'Frames per second',title:'Any frame rate'});tlParts.fps.addEventListener('change',()=>setFps(+tlParts.fps.value));fps.append(tlParts.fps,el('span',{class:'dim',text:'fps'}));
   tlParts.hold=el('input',{class:'num tlnum',type:'number',min:1,max:99,'aria-label':'Hold (frames)',title:'How many beats this frame stays on screen'});tlParts.hold.addEventListener('change',()=>setHold(+tlParts.hold.value));
   tlParts.info=el('span',{class:'dim tlinfo'});
   tlParts.onion=el('button',{class:'tlchip',title:'Onion skin: show nearby frames faintly',onclick:()=>{const A=A_();A.onion.on=!A.onion.on;renderTimeline();renderAnimPanel();requestRender(true);}},'Onion');
   const imp=el('select',{class:'tlsel','aria-label':'Import frames'},el('option',{value:'',text:'Import…'}),el('option',{value:'sheet',text:'Frames from a sprite sheet…'}),el('option',{value:'seq',text:'Frames from an image sequence…'}),el('option',{value:'gif',text:'Frames from a GIF…'}));
   imp.addEventListener('change',()=>{const v=imp.value;imp.value='';imp.blur();if(v==='sheet')importSheet();if(v==='seq')importSequence();if(v==='gif')importGif();});
+  const framesMenu=el('select',{class:'tlsel','aria-label':'Frame tools',title:'Reverse, ping-pong, repeat or set the hold for the picked range (Shift+click), or all frames'},el('option',{value:'',text:'Tools…'}),el('option',{value:'rev',text:'Reverse'}),el('option',{value:'pp',text:'Ping-pong (forward, then back)'}),el('option',{value:'rep',text:'Repeat…'}),el('option',{value:'hold',text:'Set the hold…'}));
+  framesMenu.addEventListener('change',()=>{const v=framesMenu.value;framesMenu.value='';framesMenu.blur();if(v==='rev')reverseFrames();if(v==='pp')pingPongFrames();if(v==='rep')dlgNumber('Repeat','How many more times?',1,1,64,repeatFrames);if(v==='hold')dlgNumber('Set the hold','How many beats should each frame stay?',1,1,99,setRangeHold);});
   const ctr=el('div',{class:'tlctrl'},tlBtn(ic(P1),'First frame',()=>showFrame(0)),tlBtn(ic(P2),'Previous frame (,)',()=>stepFrame(-1)),tlParts.play,tlBtn(ic(PN),'Next frame (.)',()=>stepFrame(1)),tlBtn(ic(PE),'Last frame',()=>showFrame(A_().frames.length-1)),
     el('span',{class:'tlsep'}),fps,el('span',{class:'tlsep'}),el('label',{class:'dim',text:'Hold ×'}),tlParts.hold,el('span',{class:'tlsep'}),
-    el('button',{class:'btn sm',text:'+ Frame',title:'New blank frame after this one',onclick:addFrame}),el('button',{class:'btn sm',text:'Duplicate',title:'Copy this frame',onclick:duplicateFrame}),el('button',{class:'btn sm',text:'Delete',onclick:deleteFrame}),
+    el('button',{class:'btn sm',text:'+ Frame',title:'New blank frame after this one',onclick:addFrame}),el('button',{class:'btn sm',text:'Duplicate',title:'Copy this frame',onclick:duplicateFrame}),el('button',{class:'btn sm',text:'Quick dupli…',title:'Make a number of copies of this frame in one go',onclick:dlgQuickDupli}),framesMenu,el('button',{class:'btn sm',text:'Delete',onclick:deleteFrame}),
     el('span',{class:'tlsep'}),tlParts.onion,el('button',{class:'btn sm',text:'Preview',title:'Live preview window',onclick:togglePreviewWin}),imp,el('button',{class:'btn sm primary',text:'Export…',title:'Sprite sheet / flipbook export',onclick:dlgExportSheet}),tlParts.info);
-  tlParts.tags=el('div',{class:'tltags'});tlParts.frames=el('div',{class:'tlframes',role:'listbox','aria-label':'Frames'});
-  tlParts.scroll=el('div',{class:'tlscroll'},tlParts.tags,tlParts.frames);
+  tlParts.ruler=el('div',{class:'tlruler',title:'Click or drag to scrub through the animation'});tlParts.tags=el('div',{class:'tltags'});tlParts.frames=el('div',{class:'tlframes',role:'listbox','aria-label':'Frames'});
+  tlParts.scroll=el('div',{class:'tlscroll'},tlParts.ruler,tlParts.tags,tlParts.frames);tlRulerEvents();
   tl.append(ctr,tlParts.scroll);})();
+/* seconds ruler above the frames: a mark where each second starts, and click or drag to scrub */
+function tlRulerEvents(){const r=tlParts.ruler;const at=e=>{const A=A_();if(!A)return;const b=r.getBoundingClientRect();showFrame(clamp(Math.floor((e.clientX-b.left)/CELL),0,A.frames.length-1));};
+  r.addEventListener('pointerdown',e=>{if(e.button!==0)return;stopPlay();ui.fsel=null;at(e);r.setPointerCapture(e.pointerId);const mv=ev=>at(ev),up=()=>{r.removeEventListener('pointermove',mv);r.removeEventListener('pointerup',up);};r.addEventListener('pointermove',mv);r.addEventListener('pointerup',up);});}
+function renderRuler(A){const r=tlParts.ruler;r.style.width=(A.frames.length*CELL)+'px';const marks=[];let t=0,lastSec=-1;
+  A.frames.forEach((F,i)=>{const sec=Math.floor(t/A.fps+1e-6);if(sec!==lastSec||i===0){marks.push(el('span',{class:'tlmark'+(sec!==lastSec?' sec':''),style:'left:'+(i*CELL)+'px',text:sec+' s'}));lastSec=sec;}t+=F.hold;});
+  const cur=A.frames.slice(0,A.cur).reduce((s,f)=>s+f.hold,0);marks.push(el('span',{class:'tlhead',style:'left:'+(A.cur*CELL)+'px;width:'+(CELL-4)+'px',title:(cur/A.fps).toFixed(2)+' s'}));r.replaceChildren(...marks);}
+function dlgQuickDupli(){const A=A_();if(!A)return;let n=8,where='after';const num=el('input',{class:'num',type:'number',min:1,max:512,value:n,id:'qdN','aria-label':'Number of copies'});
+  const chips=el('div',{class:'chips'});const draw=()=>{chips.replaceChildren(...QD_PRESETS.map(v=>el('button',{class:'chip'+(n===v?' on':''),text:String(v),onclick:()=>{n=v;num.value=v;draw();}})));};
+  num.addEventListener('input',()=>{n=+num.value||1;draw();});draw();
+  const sel=el('select',{id:'qdWhere','aria-label':'Where the copies go'},el('option',{value:'after',text:'Right after this frame'}),el('option',{value:'end',text:'At the end of the animation'}));sel.addEventListener('change',()=>{where=sel.value;});
+  openDialog({title:'Quick dupli',body:el('div',{class:'dlg-grid'},el('p',{class:'note',text:'Makes copies of frame '+(A.cur+1)+'. Pick how many, or type a number.'}),chips,el('div',{class:'frow'},el('label',{for:'qdN',text:'Copies'}),num),el('div',{class:'frow'},el('label',{for:'qdWhere',text:'Put them'}),sel)),okLabel:'Make copies',onOk(){quickDupli(n,where);}});}
+/* a small "type a number" window for the frame tools */
+function dlgNumber(title,text,val,min,max,fn){let v=val;const num=el('input',{class:'num',type:'number',min,max,value:val,id:'dnN','aria-label':title});num.addEventListener('input',()=>{v=+num.value||min;});
+  openDialog({title,body:el('div',{class:'dlg-grid'},el('p',{class:'note',text:text+(ui.fsel?' (for the picked frames)':' (for all frames)')}),el('div',{class:'frow'},num)),okLabel:'OK',onOk(){fn(v);}});}
 function stepFrame(d){const A=A_();if(!A)return;stopPlay();showFrame((A.cur+d+A.frames.length)%A.frames.length);}
 let tlQueued=false;
 function scheduleTimeline(){if(tlQueued)return;tlQueued=true;requestAnimationFrame(()=>{tlQueued=false;drawTimelineThumbs();drawPreviewWin();});}
@@ -36,7 +52,7 @@ function renderTimeline(){const A=A_();if(ui.mode!=='anim'||!A)return;
     const inSel=ui.fsel&&i>=Math.min(...ui.fsel)&&i<=Math.max(...ui.fsel);c.classList.toggle('cur',i===A.cur);c.classList.toggle('rng',!!inSel&&i!==A.cur);c.setAttribute('aria-selected',String(i===A.cur));});
   tlParts.tags.replaceChildren(...A.tags.map((t,i)=>{const [a,b]=tagRange(t);const bar=el('button',{class:'tltag',title:t.name+' ('+{loop:'loops',once:'plays once',pingpong:'ping-pong'}[t.mode]+'). Click to play it.',style:'left:'+(a*CELL)+'px;width:'+((b-a+1)*CELL-4)+'px;background:'+t.color,text:t.name});
     bar.addEventListener('click',()=>{ui.playTag=i;stopPlay();togglePlay();renderAnimPanel();});return bar;}));
-  tlParts.tags.style.height=A.tags.length?'18px':'0';
+  renderRuler(A);tlParts.tags.style.height=A.tags.length?'18px':'0';
   const cur=fr.children[A.cur];if(cur){const s=tlParts.scroll,l=cur.offsetLeft;if(l<s.scrollLeft||l+CELL>s.scrollLeft+s.clientWidth)s.scrollLeft=l-s.clientWidth/2+CELL/2;}
   scheduleTimeline();}
 function frameCell(i){const c=el('div',{class:'fcell',role:'option',tabindex:'-1'},el('canvas',{class:'fthumb'}),el('span',{class:'fnum'}),el('span',{class:'fhold'}));
