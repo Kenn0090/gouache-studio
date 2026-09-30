@@ -853,3 +853,44 @@ body.dcdragging,body.dcdragging *{cursor:grabbing!important;user-select:none}
 #work.p3left .hint{display:none}
 body.m-p3d .tool[data-tool=cage],body.m-p3d .tool[data-tool=crop],body.m-p3d .tool[data-tool=array],body.m-p3d .tool[data-tool=shape],body.m-p3d .tool[data-tool=text]{display:none}
 .v3bar .seg button{white-space:nowrap}
+/* 0.37.1: messages sit under the 3D bar, not on top of it */
+body.m-p3d #toast{top:54px;z-index:40}
+/* 0.37.1: the material editor's channels and Tint & adjust are folding cards (as in the mock-up) */
+.fillcard{border:1px solid var(--line);border-radius:10px;background:var(--raise);margin:0 0 6px;overflow:hidden}
+.fillhead{display:flex;align-items:center;gap:8px;padding:6px 9px;cursor:pointer;user-select:none}
+.fillhead .chev{color:var(--muted,#8a8f98);transition:transform .1s;width:10px;flex:none}
+.fillcard.open>.fillhead .chev{transform:rotate(90deg)}
+.fillhead .sw{width:20px;height:20px;border-radius:6px;border:1px solid var(--line);flex:none}
+.fillhead .nm{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fillhead .v{color:var(--muted,#8a8f98);font-size:11px;white-space:nowrap}
+.fillhead .chk{margin:0;flex:none;padding:3px;border:0;gap:0}.fillhead .chk span{display:none}
+.fillcard.off>.fillhead .nm{opacity:.55}
+.fillcard>.fillbody{display:none;padding:4px 10px 10px;border-top:1px solid var(--line)}
+.fillcard.open>.fillbody{display:grid;gap:6px}
+/* 0.37.1: the 3D · Split · 2D · UV switch sits at the lower right; the layer list starts right under its buttons */
+.vpstrip{left:auto;right:14px;bottom:36px;transform:none}
+body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]{grid-template-rows:auto auto minmax(0,1fr) auto auto auto;align-content:stretch}
+body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.sec-h{order:0}
+body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.lbtns{order:1}
+body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.llist{order:2;align-content:start}
+body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.sub{order:3}
+body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.lprops{order:4}
+body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>#maskRow{order:5}
+.stbrush{display:grid;gap:6px;padding:6px 0;border-top:1px solid var(--line)}
+.stdrop{border:1.5px dashed var(--line-2);border-radius:10px;padding:14px 10px;text-align:center;color:var(--muted);cursor:pointer;font-size:12px}
+.stdrop:hover,.stdrop.over{border-color:var(--accent,#e0524d);color:var(--text)}
+/* 0.37.1: the material shelf: round previews with the name under, one tidy header row, more room for the tiles */
+.matsearch{flex:1 1 120px;min-width:90px;max-width:220px;height:26px}
+#dkShelf #matBody{gap:6px}
+#dkShelf #matBody .chips{flex-wrap:nowrap;overflow-x:auto;align-items:center;padding-bottom:2px}
+#dkShelf #matBody .chips>*{flex:none}
+#dkShelf #matBody .chips>.matsearch{flex:1 1 120px}
+#dkShelf .matgrid{grid-template-columns:repeat(auto-fill,minmax(calc(var(--tw,64px) + 18px),1fr));gap:8px 4px}
+#dkShelf .mattile{border-color:transparent;background:transparent;padding:4px 2px}
+#dkShelf .mattile:hover{background:var(--raise)}
+#dkShelf .mattile .matprev,#dkShelf .mattile .gmthumb{border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+#dkShelf .mattile.sel{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+#dkShelf #matBody .sub{margin:4px 0 0}
+#pane3d.libover{outline:2px dashed var(--accent);outline-offset:-3px}
+#matEdBody .fillcard.fillrow{padding:0;gap:0;border:1px solid var(--line)}
+#dkShelf #matBody.one .sub{display:none}

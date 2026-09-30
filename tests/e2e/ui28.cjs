@@ -11,6 +11,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
   if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
   if(u.startsWith('file:'))return r.continue();return r.abort();});
  const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.message+' '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());});
+ await p.addInitScript(()=>{try{localStorage.setItem('gs.matOpen','all');}catch(e){}});
  await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
  const W=ms=>p.waitForTimeout(ms||200);
  /* names from the sites */

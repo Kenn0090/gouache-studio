@@ -27,6 +27,22 @@ void main(){ vec4 s;
   o=s; }`;
 let P_FILLIMG=null,fillCount=0;
 /* maps a fill can fill (curvature is a measurement, not a material) */
+/* (0.37.1) Tint & adjust: recolours the material's colour after it is drawn (the mock-up's Recolour section) */
+const FS_FILLTINT=`uniform sampler2D uSrc; uniform vec3 uTint; uniform float uAmt; uniform int uMode; uniform vec4 uAdj;
+vec3 hueRot(vec3 c,float a){ float cs=cos(a),sn=sin(a); vec3 k=vec3(0.57735); return c*cs+cross(k,c)*sn+k*dot(k,c)*(1.0-cs); }
+void main(){ vec4 c=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0); vec3 x=c.a>0.0?c.rgb/c.a:c.rgb; float l=dot(x,vec3(.299,.587,.114)); vec3 t=uTint, r=x;
+  if(uAmt>0.0){ if(uMode==0) r=x*t; else if(uMode==1) r=clamp(t*(l/max(dot(t,vec3(.299,.587,.114)),.03)),0.0,1.0);
+    else if(uMode==2) r=mix(2.0*x*t,1.0-2.0*(1.0-x)*(1.0-t),step(.5,x));
+    else r=l<.5?mix(t*.12,t,l*2.0):mix(t,mix(t,vec3(1.0),.7),l*2.0-1.0);
+    r=mix(x,r,uAmt); }
+  r=(r-.5)*(1.0+uAdj.x)+.5+uAdj.y; float l2=dot(r,vec3(.299,.587,.114)); r=mix(vec3(l2),r,1.0+uAdj.z); if(abs(uAdj.w)>1e-4) r=hueRot(r,uAdj.w);
+  o=vec4(clamp(r,0.0,1.0)*c.a,c.a); }`;
+let P_FILLTINT=null;
+const fillTintOn=f=>!!f&&((f.tint&&f.tint.on&&f.tint.amt>0)||(f.adj&&(f.adj.con||f.adj.bri||f.adj.sat||f.adj.hue)));
+function fillTintPost(L){const f=L.fill;if(!fillTintOn(f)||!f.maps.base||!f.maps.base.on)return;const T=mapT(L,'base');if(!T||T.empty)return;
+  if(!P_FILLTINT)P_FILLTINT=program(FS_FILLTINT);const tmp=acquire(),tn=f.tint&&f.tint.on?f.tint:{amt:0,c:[1,1,1],mode:'multiply'},a=f.adj||{};
+  run(P_FILLTINT,tmp,{uSrc:T.tex,uTint:tn.c||[1,1,1],uAmt:tn.amt||0,uMode:{int:['multiply','colorize','overlay','gradient'].indexOf(tn.mode||'multiply')},uAdj:[a.con||0,(a.bri||0)*.5,a.sat||0,(a.hue||0)*Math.PI/180]});
+  blit(tmp,T,0,0,T.w,T.h,0,0);release(tmp);}
 const FILL_SKIP=['curv'];
 const fillMapsOf=()=>doc.maps.filter(k=>!FILL_SKIP.includes(k));
 function fillDefaults(){const m={};for(const k of MAP_ORDER){if(FILL_SKIP.includes(k))continue;const d=MAP_DEFS[k].def;
@@ -65,6 +81,7 @@ function fillRender(L,only){const f=L.fill;if(!f)return;const tri=pxfIs3D(f.proj
         uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}},(tri&&!bk?pxfUniforms(f.proj,f.xf):pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf))));continue;}
     if(k==='normal'){clearTarget(T,[.5,.5,1,1]);continue;}
     const c=grey?[s.v,s.v,s.v]:(s.c||[s.v,s.v,s.v]);clearTarget(T,[c[0],c[1],c[2],1]);}
+  if(!only||only==='base')fillTintPost(L);
   if(doc.map==='base')delete L.blankBase;L.lookVer=(L.lookVer||0)+1;scheduleThumb(L);requestRender(true);}
 /* Layer › New fill layer (and the fill button under the layers): fills everything; a selection becomes its mask.
    preset: a material {name, maps:{k:{c|v|src…}}, proj, triSharp, hStr, imgs:{k:target}} fills with it and skips the dialog */
@@ -86,7 +103,7 @@ function cmdNewFillLayer(preset){if(ui.mode==='anim'){toast('Fill layers are ava
    Changes become one undo step when you pause (or pick another layer). Each channel is a colour or value, an image,
    or one of the texture set's baked mesh maps. ---- */
 const MAT_CH=['base','rough','metal','height','normal','emis','opac','spec','gloss','ao'];
-const matEd={L:null,snap:null,timer:0,shown:null};
+const matEd={L:null,snap:null,timer:0,shown:null,open:{},openAll:(()=>{try{return localStorage.getItem('gs.matOpen')==='all';}catch(e){return false;}})()};
 function matEdSnap(L){const keys=fillMapsOf(),S={};for(const k of keys){const t=mapT(L,k);S[k]=t&&!t.empty?captureRegion(t,0,0,doc.w,doc.h):null;}
   return {f:fillClone(L.fill),S,I:Object.assign({},L._fillImg||{}),n:L.name,keys};}
 function matEdBegin(L){if(matEd.snap&&matEd.L===L)return;matEdCommit();matEd.L=L;matEd.snap=matEdSnap(L);}
@@ -120,10 +137,29 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
     W.proj==='tri'?makeSlider({id:'fl_sharp',label:'Blend',min:1,max:16,step:.5,value:W.triSharp||4,fmt:v=>v<3?'soft':v>9?'sharp':'medium',onInput:v=>edit(()=>{W.triSharp=v;})}).el:null,
     W.proj==='planar'?el('div',{class:'chips'},chk('fl_rep','Repeat',W.rep!==false,v=>edit(()=>{W.rep=v;},null)),chk('fl_front','Front faces only',!!W.front,v=>edit(()=>{W.front=v;},null))):null,
     pxfFields(()=>pxfOf(W),fn=>edit(()=>fn(pxfOf(W)),null),W.proj||'uv',()=>renderMatEd(true),!!W.decal))));
+  /* Tint & adjust: what most people change, straight under the projection */
+  {const TN=W.tint||(W.tint={on:false,mode:'multiply',c:[.77,.42,.18],amt:.7}),AJ=W.adj||(W.adj={con:0,bri:0,sat:0,hue:0}),fold=(id,title,on,body)=>{const open=matEd.open[id]!==false&&(matEd.open[id]||on||matEd.openAll);
+      const card=el('div',{class:'fillcard tint'+(open?' open':'')},el('div',{class:'fillhead',onclick:e=>{if(e.target.closest('.chk'))return;matEd.open[id]=!card.classList.contains('open');card.classList.toggle('open',matEd.open[id]);}},
+        el('span',{class:'chev',text:'▸'}),el('span',{class:'nm',text:title}),el('span',{class:'v',id:id+'_v'})),body);return card;};
+    const tb=el('div',{class:'fillbody'},
+      seg([['multiply','Multiply'],['colorize','Colorize'],['overlay','Overlay'],['gradient','Gradient']],TN.mode||'multiply',v=>edit(()=>{TN.mode=v;TN.on=true;},'base',true),'Tint mode'),
+      el('div',{class:'frow'},el('label',{text:'Colour'}),colourBtn('fl_tint_c',()=>TN.c,c=>edit(()=>{TN.c=c;TN.on=true;},'base'),'Tint colour')),
+      makeSlider({id:'fl_tint_a',label:'Amount',min:0,max:1,step:.01,value:TN.amt,fmt:pct,onInput:v=>edit(()=>{TN.amt=v;TN.on=v>0;},'base')}).el,
+      el('div',{class:'chips'},...[['Rust',[.77,.42,.18]],['Moss',[.30,.49,.29]],['Blue steel',[.23,.44,.88]],['Gold',[.79,.64,.29]]].map(([n,c])=>el('button',{class:'btn sm',text:n,onclick:()=>edit(()=>{TN.c=c.slice();TN.on=true;if(!TN.amt)TN.amt=.7;},'base',true)})),
+        el('button',{class:'btn sm',id:'fl_tint_off',text:'None',onclick:()=>edit(()=>{TN.on=false;},'base',true)})));
+    const aj=(id,label,key,min,max,fm)=>makeSlider({id,label,min,max,step:key==='hue'?1:.01,value:AJ[key]||0,fmt:fm,onInput:v=>edit(()=>{AJ[key]=v;},'base')}).el;
+    const ab=el('div',{class:'fillbody'},aj('fl_adj_con','Contrast','con',-1,1,pct),aj('fl_adj_bri','Brightness','bri',-1,1,pct),aj('fl_adj_sat','Saturation','sat',-1,1,pct),aj('fl_adj_hue','Hue shift','hue',-180,180,v=>Math.round(v)+'°'));
+    const t1=fold('fl_tint','Tint',TN.on,tb),t2=fold('fl_adj','Adjust',fillTintOn({adj:AJ}),ab);
+    t1.querySelector('.fillhead').append(chk('fl_tint_on','',!!TN.on,v=>edit(()=>{TN.on=v;if(v&&!TN.amt)TN.amt=.7;matEd.open.fl_tint=v;},'base',true)));
+    t1.querySelector('.v').textContent=TN.on?(TN.mode||'multiply')+' '+Math.round(TN.amt*100)+'%':'off';t2.querySelector('.v').textContent=fillTintOn({adj:AJ})?'on':'contrast, brightness…';
+    box.append(el('div',{class:'sub',text:'Tint & adjust'}),t1,t2);}
   const M=doc.meshMaps||{},mks=Object.keys(M).filter(k=>!k.startsWith('cv:')),cks=Object.keys(M).filter(k=>k.startsWith('cv:')),keys=MAT_CH.filter(k=>fillMapsOf().includes(k));
   for(const k of keys){const s=W.maps[k]||(W.maps[k]=fillDefaults().maps[k]),grey=MAP_DEFS[k].grey,isN=k==='normal';
-    const row=el('div',{class:'fillrow'+(s.on?'':' off')});
-    row.append(chk('fl_on_'+k,MAP_DEFS[k].label,!!s.on,v=>edit(()=>{s.on=v;if(v&&isN&&s.src==='value')s.src='image';},k,true)));
+    const row=el('div',{class:'fillbody'}),open=!!(s.on&&(matEd.open[k]||matEd.openAll)),card=el('div',{class:'fillcard fillrow'+(open?' open':'')+(s.on?'':' off')});
+    const sumTxt=!s.on?'Off':s.src==='value'?(grey?Math.round(s.v*100)/100:'Colour'):s.src==='baked'?'Mesh map':s.src==='conv'?'Converted':(s.name?'Image':'No image'),sw=s.on&&s.src==='value'?(grey?[s.v,s.v,s.v]:(s.c||[.5,.5,.5])):[.5,.5,.5];
+    card.append(el('div',{class:'fillhead',onclick:e=>{if(e.target.closest('.chk'))return;matEd.open[k]=!card.classList.contains('open');card.classList.toggle('open',matEd.open[k]);}},
+      el('span',{class:'chev',text:'▸'}),el('span',{class:'sw',style:'background:rgb('+sw.map(x=>Math.round(clamp(x,0,1)*255)).join(',')+')'}),el('span',{class:'nm',text:MAP_DEFS[k].label}),el('span',{class:'v',text:String(sumTxt)}),
+      chk('fl_on_'+k,'',!!s.on,v=>edit(()=>{s.on=v;matEd.open[k]=v;if(v&&isN&&s.src==='value')s.src='image';},k,true))),row);
     if(s.on){const srcs=[...(isN?[]:[['value',grey?'Value':'Colour']]),['image','Image'],['baked','Mesh map'],['conv','Converted']];
       row.append(seg(srcs,s.src,v=>{if(v==='image'&&!(L._fillImg&&L._fillImg[k])){matEdBegin(L);fillPickImage(L,k,s,()=>edit(()=>{},k,true));return;}
         edit(()=>{s.src=v;if(v==='baked'&&!(M[s.mm]&&!s.mm.startsWith('cv:')))s.mm=mks.find(x=>x===k)||(isN?'normal':mks.find(x=>x!=='normal'))||mks[0];if(v==='conv'&&!(M[s.mm]&&s.mm.startsWith('cv:')))s.mm=cks.find(x=>x==='cv:'+k)||cks[0];},k,true);},'Fill '+MAP_DEFS[k].label+' with'));
@@ -145,7 +181,7 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
         else if(s.name)row.append(el('p',{class:'note',text:'Choose the image again to change its tiling.'}));
         if(k==='height'&&has)row.append(makeSlider({id:'fl_hs',label:'Bump strength',min:0,max:4,step:.05,value:W.hStr==null?1:W.hStr,fmt:pct,onInput:v=>edit(()=>{W.hStr=v;},k)}).el,
           el('p',{class:'note',text:'Height makes bump detail: the normal follows it, on the model and in exported normal maps.'}));}}
-    box.append(row);}
+    box.append(card);}
   box.append(chk('fl_cover','Hide the bumps below',W.coverH!==false,v=>edit(()=>{W.coverH=v;},null)),
     el('p',{class:'note',text:'On: this material covers the height and normal detail of the layers under it. Off: its bumps are added on top of theirs.'}));
   const miss=['rough','metal','height','normal','emis','opac'].filter(k=>!doc.maps.includes(k)&&!(doc.workflow==='spec'&&(k==='rough'||k==='metal')));

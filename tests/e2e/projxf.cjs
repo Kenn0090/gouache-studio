@@ -13,6 +13,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
   if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
   if(u.startsWith('file:'))return r.continue();return r.abort();});
  const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());if(m.type()==='warning'&&/GL|WebGL/.test(m.text()))errs.push('GLWARN '+m.text());});
+ await p.addInitScript(()=>{try{localStorage.setItem('gs.matOpen','all');}catch(e){}});
  await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
  const W=ms=>p.waitForTimeout(ms||200);
  await p.evaluate(()=>__gs.newDoc(300,200,8,[1,1,1],'painting',false));await W(300);
@@ -54,6 +55,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await seg('Triplanar');let s4=await baseSig();ok(s4.r>200&&s4.b>200,'triplanar still works with the transform '+JSON.stringify(s4));
  /* UV: the frame on the flat canvas */
  await seg('UV');await p.click('#pxfReset');await W(900);await p.click('#p3dBody .segb:text-is("2D")');await W(600);
+ ok(await p.evaluate(()=>{const o=document.getElementById('xfOv');return !o||o.querySelectorAll('rect.hs').length===0;}),'a new material shows no frame on the flat texture');
+ await p.evaluate(()=>{document.querySelector('#pxf2Show').click();});await W(400);
  ok(await p.evaluate(()=>!document.querySelector('.v3gz')||document.querySelector('.v3gz').hidden),'no gizmo for UV');
  const fr=await p.evaluate(()=>{const o=document.getElementById('xfOv');return {n:o.querySelectorAll('rect.hs').length,rot:!!o.querySelector('circle.ge')};});ok(fr.n===4&&fr.rot,'UV shows a frame with corner and turn handles on the flat canvas '+JSON.stringify(fr));
  const st=await p.locator('#stage').boundingBox(),corner=await p.evaluate(([w,h])=>{const rs=[...document.querySelectorAll('#xfOv rect.hs')].map(r=>[parseFloat(r.getAttribute('x'))+5,parseFloat(r.getAttribute('y'))+5]);rs.sort((a,b)=>Math.hypot(a[0]-w/2,a[1]-h/2)-Math.hypot(b[0]-w/2,b[1]-h/2));return rs[0];},[st.width,st.height]);

@@ -172,3 +172,11 @@ The shelf also has an **Environments** category: a thumbnail for each HDRI (clic
 ## The 3D Paint layout (0.37)
 
 3D view on the left, flat texture on the right (drag the divider). The material editor has a column of its own: **Properties**, **Brush**, **Color** and **Shader** are tabs there. On the far right, **Texture sets** sit over **Layers** (with Maps, Channels, History and Bake Maps as tabs), with the layer buttons at the top of the list. The slim bar at the top has size, opacity, flow, hardness and what the brush paints; the rest of the brush settings are in the **Brush** tab. The 3D view's bar has shading, mirror, view and perspective; the **⋯** button opens wireframe, spin, screenshot, render, turntable, settings and pop out.
+
+
+## Small changes in 0.37.1
+
+- **F** frames the model in the middle. **Ctrl + drag a material onto the model** adds it only where the ID colour under the pointer is.
+- **Stencils:** tick *Use a stencil* in the Brushes panel, then drop a picture on the box.
+- The material editor starts with **Tint & adjust**; each channel folds open.
+- Bake Maps and Shader are tabs next to the texture sets.

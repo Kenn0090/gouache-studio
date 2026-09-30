@@ -93,11 +93,13 @@ function buildBrushPanel(){
   const C=(id,label,key,rebuild)=>chk(id,label,!!brush[key],v=>{brush[key]=v;brushEdited();if(rebuild)buildBrushPanel();});
   box.append(el('div',{class:'chips'},chk('bShareTip','All tools share the brush tip',toolBrush.share,v=>tbSetShare(v))));
   box.append(el('div',{class:'sub',text:'Tip: '+(brush.tip?brush.tip.name+' ('+brush.tip.w+'×'+brush.tip.h+')':'round')+(activePreset?' · preset “'+activePreset.name+'”':'')}));
-  sizeSlider=S('bSize','Size','size',0,1000,1,v=>v+'px',sizeMap);box.append(sizeSlider.el);
+  /* (0.37.1) in 3D Paint the top bar already has size, opacity, flow and hardness: the panel keeps the rest */
+  const bar3=ui.mode==='p3d'&&!sm&&!tonal;sizeSlider=null;
+  if(!bar3){sizeSlider=S('bSize','Size','size',0,1000,1,v=>v+'px',sizeMap);box.append(sizeSlider.el);}
   if(sm)box.append(S('bStr','Strength','strength',0,1,.01,pct).el,S('bCharge','Paint load','charge',0,1,.01,pct).el);
-  else if(!tonal&&ui.tool!=='heal')box.append(S('bOp','Opacity','opacity',0,1,.01,pct).el);
-  box.append(S('bFlow','Flow','flow',.01,1,.01,pct).el);
-  if(!brush.tip)box.append(S('bHard','Hardness','hardness',0,1,.01,pct).el);
+  else if(!tonal&&ui.tool!=='heal'&&!bar3)box.append(S('bOp','Opacity','opacity',0,1,.01,pct).el);
+  if(!bar3)box.append(S('bFlow','Flow','flow',.01,1,.01,pct).el);
+  if(!brush.tip&&!bar3)box.append(S('bHard','Hardness','hardness',0,1,.01,pct).el);
   box.append(S('bSpace','Spacing','spacing',.01,1.5,.01,pct).el,S('bGrain','Grain','grain',0,1,.01,pct).el,S('bSmooth','Smoothing','smoothing',0,1,.01,pct).el,S('bLazy','Lazy mouse','lazy',0,200,1,v=>v?v+' px':'off').el);
   box.append(el('div',{class:'sub',text:'Pen pressure'}));
   box.append(el('div',{class:'chips'},C('bPS','Size','pSize',true),C('bPO','Opacity','pOpacity'),sm?null:C('bBU','Build-up','buildup')));
@@ -119,7 +121,7 @@ function buildBrushPanel(){
     el('div',{class:'chips'},C('bJS','Once per stroke','jitterPerStroke'))));
   box.append(det);buildSymSection(box);if((ui.tool==='brush'||ui.tool==='erase')&&ui.mode!=='bake')buildMapBrushSection(box,ui.tool);schedulePreview();
 }
-function applyPreset(p){if(typeof tbSaveCur==='function')tbSaveCur();for(const k of SETTING_KEYS)brush[k]=(k in p)?p[k]:BRUSH_DEFAULTS[k];if(p.maps)applyMapBrush(p.maps);activePreset=p;setTool((ui.tool==='dodge'||ui.tool==='burn')&&p.tool!=='smudge'?ui.tool:(p.tool||'brush'),true);renderLibrary();refreshCursor();}
+function applyPreset(p){if(typeof tbSaveCur==='function')tbSaveCur();for(const k of SETTING_KEYS)brush[k]=(k in p)?p[k]:BRUSH_DEFAULTS[k];if(p.maps)applyMapBrush(p.maps);activePreset=p;setTool(p.tool!=='smudge'&&['erase','smudge','dodge','burn','heal','clone'].includes(ui.tool)?ui.tool:(p.tool||'brush'),true);renderLibrary();refreshCursor();}
 function setTool(t,keepPreset){if(t==='text'&&ui.mode==='anim'){toast('Text is available in Paint mode. Frames are single images.');return;}if(t!=='text'&&typeof closeTextEditor==='function')closeTextEditor();if(t!=='lasso'&&typeof polyLasso!=='undefined'&&polyLasso){polyLasso=null;drawSelOverlay();}
   if(typeof xf!=='undefined'&&xf&&!xf.move)xfCommit();if(t!=='gradient'&&typeof gsess!=='undefined'&&gsess)gradCommit();if(t!=='array'&&typeof asess!=='undefined'&&asess)arrCommit();if(t!=='shape'&&typeof ssess!=='undefined'&&ssess)shapeCommit();if(t==='gradient'||t==='bucket'||t==='gbucket')ui.fillKind=t;if(t==='dodge'||t==='burn')ui.tonal=t;if(typeof tbSwitch==='function')tbSwitch(t,keepPreset);updateGroupButtons(t);if(typeof crop!=='undefined'){if(t==='crop'&&ui.tool!=='crop')crop=null;else if(t!=='crop')crop=null;}cv.style.cursor='';ui.tool=t;stage.classList.toggle('txt',t==='text');stage.classList.toggle('selt',isSelTool(t));stage.classList.toggle('movet',t==='move');stage.classList.toggle('fillt',t==='gradient'||t==='bucket'||t==='gbucket');document.querySelectorAll('.tool').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t)));
   if(!keepPreset&&activePreset&&(activePreset.tool==='smudge')!==(t==='smudge')){activePreset=null;renderLibrary();}

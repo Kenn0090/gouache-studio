@@ -1,9 +1,13 @@
-3D Paint has a new, calmer layout, closer to the mock-up.
+Fixes and a tidier 3D Paint.
 
-- **Less to look at:** the material editor has its own column (Properties, Brush, Color and Shader as tabs). Texture sets and Layers sit together on the right (Layers, Maps, Channels, History and Bake Maps as tabs). Assets stay on the bottom shelf.
-- **3D on the left, flat texture on the right,** side by side by default. Drag the divider to change the split.
-- **Slim top bar:** only size, opacity, flow, hardness and what the brush paints. Everything else about the brush (spacing, smoothing, lazy mouse, jitter, symmetry for the flat canvas) is in the Brush tab. The 3D view's own bar shows shading, mirror, view and perspective; wireframe, spin, screenshot, render, turntable, settings and pop out are behind the ⋯ button.
-- **Layer buttons at the top** of the layer list in 3D Paint.
-- **Fewer tools and no key hints** in 3D Paint: crop, text, shape, array and cage tools are hidden there, and the shortcut card on the canvas is off.
-- Click the colour swatch on the toolbar to bring the Colour tab forward.
-- Your saved 3D Paint layout is reset once to this one. Everything else works as before.
+- **Brush tips on other tools:** picking a brush texture while the eraser, blend, dodge, burn, heal or clone tool is on now applies it to that tool. It used to jump back to the paintbrush and ignore it.
+- **Material editor:** new Tint & adjust section at the top (tint colour with Multiply, Colorize, Overlay or Gradient, plus contrast, brightness, saturation and hue shift). The channels are folding cards with an on/off switch.
+- **Tiling lock:** with the chain on, a number you type goes into every axis.
+- **F** brings the model back to the middle in 3D Paint.
+- **Layers** start right under their buttons. **Bake Maps** and **Shader** are tabs beside the texture sets. **3D · Split · 2D · UV** moved to the lower right.
+- **Stencils** are now a "Use a stencil" switch in Brushes: drop a picture on it or click to choose one. The Brushes panel no longer repeats size, opacity, flow and hardness from the top bar.
+- **Material shelf:** round previews, a search box, taller by default. You can still drag its tabs around to make your own layout.
+- **Drop a material on the model** to add it as a layer. Hold Ctrl while dropping to use only the ID colour under the pointer.
+- No rulers in 3D Paint. A material's frame no longer shows on the flat texture unless you tick it. Messages no longer cover the 3D bar.
+- Alt+click on a tick box that was clicked directly now works (for example the material channels).
+- Your saved 3D Paint layout is adjusted once: Bake Maps and Shader move next to the texture sets, and Stencils goes.

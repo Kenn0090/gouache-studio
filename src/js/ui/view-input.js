@@ -128,6 +128,7 @@ window.addEventListener('keydown',e=>{
   if(kbHandle(e))return;
   const m=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();
   if(e.key==='F3'){e.preventDefault();toggle3D();return;}
+  if(!m&&!e.altKey&&!e.shiftKey&&k==='f'&&ui.mode==='p3d'){e.preventDefault();v3Frame();v3.dirty=true;requestRender(true);return;}/* (0.37.1) F brings the model back to the middle */
   if(xfKeys(e,m,k)||cropKeys(e)||cageKeys(e,m,k))return;
   if(m&&k==='t'){e.preventDefault();freeTransform();return;}
   if(animKeys(e,m,k))return;

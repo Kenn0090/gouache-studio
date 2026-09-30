@@ -37,9 +37,9 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('#mir3More');await W(150);ok(await p.evaluate(()=>!document.querySelector('#v3MirPop').hidden&&!!document.querySelector('#v3MirPop #mir3o_x')),'▾ opens the plane settings');
  await p.selectOption('#mir3Rad','6');await W(100);ok(await p.evaluate(()=>__gs.mir3.radial===6),'radial copies from the bar');
  await p.evaluate(()=>{__gs.mir3.x=false;__gs.mir3.radial=0;});
- await p.evaluate(()=>__gs.showPanel('stencils'));await W(300);
- ok(await p.evaluate(()=>{const s=document.querySelector('#st3Sec');const tab=[...document.querySelectorAll('.dktab')].find(t=>/Stencils/.test(t.textContent));return !!s&&s.offsetParent!==null&&!!s.querySelector('#st3Load')&&!!tab;}),'Stencils is a tab of its own');
- ok(await p.evaluate(()=>{const t=__gs.dk.L.shelf.tabs;return Math.abs(t.indexOf('stencils')-t.indexOf('brushes'))===1;}),'…right next to Brushes');
+ await p.evaluate(()=>__gs.showPanel('brushes'));await W(300);
+ ok(await p.evaluate(()=>{const b=document.querySelector('#stBrush');return !!b&&!b.hidden&&!!b.querySelector('#stUse');}),'Stencils is a switch inside Brushes');
+ ok(await p.evaluate(()=>!__gs.dk.L.shelf.tabs.includes('stencils')),'…with no tab of its own');
  /* a 3D Paint layer to the Paint canvas and back */
  const fillBase=(name,c)=>p.evaluate(([name,c])=>{const L=__gs.allLayers().find(l=>l.name===name),T=__gs.mapT(L,'base'),n=T.w,m=T.h,g=document.querySelector('#gl').getContext('webgl2'),px=new Uint8Array(n*m*4);for(let i=0;i<n*m;i++)px.set(c,i*4);
    const T8=__gs.makeTarget(n,m,8,false);g.bindTexture(g.TEXTURE_2D,T8.tex);g.texSubImage2D(g.TEXTURE_2D,0,0,0,n,m,g.RGBA,g.UNSIGNED_BYTE,px);__gs.copyScaled(T8,T);T.empty=false;L.lookVer=(L.lookVer||0)+1;__gs.requestRender(true);},[name,c]);

@@ -166,9 +166,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>{const t=__gs.compositeMap('metal'),d=__gs.readRGBA8(t);__gs.release(t);return d[(128*256+128)*4]>250;}),'with its painting');
  await p.evaluate(()=>__gs.p3SwitchSet(__gs.p3.sets.findIndex(S=>S.name==='Left'),true));await W(500);ok((await cnt('Paint'))>=aOnA,'and the other sets’ painting');
  /* ---- back to Paint: the painting is untouched, and 3D Paint keeps its work ---- */
+ const rBack=await red();const setBack=await p.evaluate(()=>__gs.p3.cur);
  await p.click('#modeTabs [data-mode=paint]');await W(600);
  s=await p.evaluate(()=>({own:__gs.tabDocs.key,names:__gs.allLayers().map(L=>L.name),w:__gs.doc.w,dock2:document.querySelector('#dock2').hidden}));
  ok(!s.own&&s.names.join()==='Background'&&s.w===300&&s.dock2,'back in Paint the painting is unchanged '+JSON.stringify(s));
- await p.click('#modeTabs [data-mode=p3d]');await W(800);ok((await red())>=r1-5,'3D Paint keeps its painting');
+ await p.click('#modeTabs [data-mode=p3d]');await W(800);await p.evaluate(i=>__gs.p3SwitchSet(i,true),setBack);await W(600);ok((await red())>=rBack-5,'3D Paint keeps its painting');
  ok(errs.length===0,'no errors '+errs.slice(0,3).join('\n'));
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();})();

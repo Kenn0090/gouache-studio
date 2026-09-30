@@ -175,7 +175,7 @@ function st3Overlay(){const hit=document.getElementById('v3Hit');let c=st3.el;
   c.hidden=false;c.style.width=S*a+'px';c.style.height=S+'px';c.style.opacity=String(st3.show);c.style.filter=st3.invert?'invert(1)':'';
   c.style.transform='translate('+(r.left-pr.left+st3.x*r.width-S*a/2)+'px,'+(r.top-pr.top+st3.y*r.height-S/2)+'px) rotate('+st3.rot+'deg)';}
 async function st3Load(file){let t;try{t=await fileTarget(file);}catch(e){toast('Could not read '+file.name+': '+(e.message||e));return;}setWrap(t,true);st3Use(t,file.name);}
-function st3Use(t,name){if(st3.img&&!st3.list.some(s=>s.t===st3.img))disposeTarget(st3.img);st3.img=t;st3.name=name;if(!st3.list.some(s=>s.t===t))st3.list.unshift({t,name});st3.list=st3.list.slice(0,12);
+function st3Use(t,name){st3.want=false;if(st3.img&&!st3.list.some(s=>s.t===st3.img))disposeTarget(st3.img);st3.img=t;st3.name=name;if(!st3.list.some(s=>s.t===t))st3.list.unshift({t,name});st3.list=st3.list.slice(0,12);
   if(st3.mode==='off')st3.mode='mask';st3Overlay();if(typeof buildP3Panel==='function'&&ui.mode==='p3d')buildP3Panel();}
 function st3Clear(){st3.img=null;st3.name='';st3Overlay();if(ui.mode==='p3d')buildP3Panel();}
 /* built-in stencils, drawn once */
@@ -200,6 +200,17 @@ function st3Box(){const box=el('div',{class:'dlg-grid',id:'st3Box'});
     el('div',{class:'chips'},chk('st3Inv','Invert (X)',st3.invert,v=>{st3.invert=v;st3Overlay();}),chk('st3Tile','Repeat',st3.tile,v=>{st3.tile=v;}),el('button',{class:'btn sm',text:'Centre',onclick:()=>{Object.assign(st3,{x:.5,y:.5,rot:0});st3Overlay();buildP3Panel();}}),el('button',{class:'btn sm',text:'Remove',onclick:st3Clear})),
     el('p',{class:'note',text:'Hold S over the view: S+left-drag turns the stencil, S+right-drag scales it, S+middle-drag moves it.'}));}
   return box;}
+/* (0.37.1, Kenn) Stencils are a switch in the Brushes panel: tick it, then drop a picture on it (or load one) */
+function stBrushRender(){const b=document.getElementById('stBrush');if(!b)return;b.hidden=ui.mode!=='p3d';if(b.hidden)return;
+  const on=!!st3.img&&st3.mode!=='off';
+  const tick=chk('stUse','Use a stencil',on,v=>{if(v){if(st3.img){st3.mode=st3.mode==='off'?'mask':st3.mode;st3Overlay();}else{st3.want=true;}}else{st3.mode='off';st3Overlay();}stBrushRender();});
+  b.replaceChildren(tick);
+  if(on||st3.want){const drop=el('div',{class:'stdrop',id:'stDrop',tabindex:'0',role:'button','aria-label':'Drop a picture here or press Enter to choose one'},el('span',{text:st3.img?'Drop another picture here, or click to choose':'Drop a picture here, or click to choose'}));
+    const pick=async()=>{const fs=await pickFiles('image/*',false,'Images',['png','jpg','jpeg','webp','tga','tif','tiff','bmp','psd','exr']);if(fs[0])st3Load(fs[0]);};
+    drop.addEventListener('click',pick);drop.addEventListener('keydown',e=>{if(e.key==='Enter')pick();});
+    drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+    drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');const f=[...(e.dataTransfer&&e.dataTransfer.files||[])].find(f=>/^image\//.test(f.type)||/\.(png|jpe?g|webp|tga|tiff?|bmp|psd|exr)$/i.test(f.name));if(f)st3Load(f);});
+    b.append(drop,st3Box());}}
 /* S held over the 3D view moves the stencil instead of choosing the Smudge tool */
 window.addEventListener('keydown',e=>{if((e.key==='s'||e.key==='S')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&st3.img&&v3.on&&v3.hover&&!isTypingTarget(e.target)){e.preventDefault();e.stopImmediatePropagation();st3.sKey=true;}},true);
 window.addEventListener('keyup',e=>{if(e.key==='s'||e.key==='S')st3.sKey=false;},true);
