@@ -54,4 +54,6 @@ async function libMeshDrop(kind,rec,T){
   const L=doc.active;if(!isLayer(L)||L.mask)return;
   const r=msAdd(L,'id');if(r){msEdit(L,r,x=>{x.p.cols=[c];},'ID colour');if(typeof msCommit==='function')msCommit();}
   undoMerge(h0,'Add '+rec.name+' by ID colour');
+  /* (0.38.1, Kenn) land on the material, not the mask, so its settings can be adjusted right away */
+  L.editMask=false;ui.msSel=null;selectOnly(L);if(typeof renderMatEd==='function')renderMatEd(true);
   renderLayers();requestRender(true);toast('Added “'+rec.name+'” only where that ID colour is.');}

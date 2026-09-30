@@ -43,5 +43,5 @@ function bootDone(){const s=document.getElementById('splash');const go=()=>{if(s
   const t0=window.__gsT0||0,wait=Math.max(0,700-(performance.now()-t0));setTimeout(go,wait);
   const test=/[?&]debug\b/.test(location.search);
   /* the section picked with "Always start in" */
-  if(!test&&prefs.startMode&&prefs.startMode!=='paint'&&WELCOME_MODES.some(x=>x[0]===prefs.startMode))setTimeout(()=>{if(ui.mode==='paint')setMode(prefs.startMode);},wait+20);if(test?/[?&]welcome\b/.test(location.search):welcomeOn())setTimeout(showWelcome,wait+50);}
+  if(!test&&prefs.startMode&&prefs.startMode!=='paint'&&WELCOME_MODES.some(x=>x[0]===prefs.startMode))setTimeout(()=>{if(ui.mode==='paint')setMode(prefs.startMode);},wait+20);if(!test&&!prefs.setupDone){setTimeout(()=>showSetup(true),wait+50);return;}applyLevel();if(test?/[?&]welcome\b/.test(location.search):welcomeOn())setTimeout(showWelcome,wait+50);}
 Object.assign(actions,{welcome:()=>showWelcome(),examples:()=>showWelcome()});

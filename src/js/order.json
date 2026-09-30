@@ -120,6 +120,7 @@
         "ui/stretch",
         "ui/rulers",
         "ui/welcome",
+        "ui/setup",
         "core/boot"
     ]
 }

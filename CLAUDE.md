@@ -74,7 +74,7 @@ Open items Kenn has seen (he also has **more features to add**, so ask him first
 1. Load your own **HDRIs** to light the 3D view (asked for early on).
 2. An **add-on / plugin system** (he wants others to extend the open-source app; needs a design first).
 3. The **UV island cage** (postponed).
-4. **Symmetry when painting on the model.**
+4. ~~Symmetry when painting on the model~~ (done: mirror X/Y/Z and radial in the 3D bar, `mir3`).
 5. Show the **high-poly in the Bake tab**.
 6. AI light removal for photos (probably not).
 7. Things only Kenn can check on his machine: skew fixes on a real bake, the Convert tab's default strengths on real photos.
@@ -254,3 +254,5 @@ Preferences in tabs (`dlgPrefs`, defaults in D, Reset this tab); reset buttons (
 
 ## 0.37.2 / 0.38.0 (short notes)
 0.37.2: Preferences tabs, reset buttons (#shEnvReset, #shReset, #brushReset, #fl_adj_reset), `colourBtn` opens `colourPop` (H/S/L), Ctrl+drag shows the ID map (`libIdShow`), `undoMerge`, Brushes in the wide shelf = 2 columns. 0.38.0: `files/to-texture.js` (`dlgToTexture`, `ttMake`: grunge → txAddTarget, tip, stencil, decal/material → Convert tab; `cvS.decal` makes `cvMaterialRec` keep the source alpha and set fill.decal/planar; matApply passes `decal`); Flatten image in the Paint layer menu; no smart-material entries in the Paint layer menu. Tests fix372, tex38.
+0.38.1: Ctrl+drop leaves the material selected (editMask off, ui.msSel cleared in libMeshDrop). Test fix381.
+0.39.0: `ui/setup.js` (launch screen showSetup; prefs.level 'beginner'|'full', prefs.setupDone; Classic = uiShape sharp, Modern = round; BEGINNER_HIDE_PANELS filtered in dkAvail; body.lv-beginner hides tools by CSS; Getting started card #gsCard); a returning user (`gsHadPrefs`) defaults to Full. The shelf grid area now spans only tools+work (dock.js `sh`). Test lv39. Still open for Kenn: tooltips, Ctrl+K, Paint like Photoshop.

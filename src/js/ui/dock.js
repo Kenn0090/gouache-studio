@@ -80,7 +80,8 @@ function dkGrid(){const L=dk.L,app=$('#app'),F=L.fold||{},shOn=!!(L.shelf&&dkAva
   const dw=hasDock?(F.dock?26:L.w)+'px':'0px';
   app.style.gridTemplateColumns=left?`${tw} minmax(0,1fr) ${c2} ${ic} ${dw}`:`minmax(0,1fr) ${tw} ${c2} ${ic} ${dw}`;
   app.style.gridTemplateRows=`38px ${L.opt?(F.opt?'26px':'minmax(36px,auto)'):'0px'} minmax(0,1fr) auto ${shOn?(F.shelf?26:clamp(L.shelf.h||170,90,Math.max(90,window.innerHeight*.6))):0}px 26px`;
-  const sh='"shelf shelf shelf shelf shelf"';
+  /* (0.38.2, Kenn) like Substance: the shelf sits under the viewport only; the right-hand panels run all the way down */
+  const sh='"shelf shelf dock2 icons dock"';
   app.style.gridTemplateAreas=left?`"head head head head head" "opt opt opt opt opt" "tools work dock2 icons dock" "tools tl dock2 icons dock" ${sh} "status status status status status"`:`"head head head head head" "opt opt opt opt opt" "work tools dock2 icons dock" "tl tools dock2 icons dock" ${sh} "status status status status status"`;}
 /* ---- (0.30) fold arrows on every docked bar and column, and the bottom shelf ---- */
 const DK_FOLDS=[['dock','#dock','Panels',()=>dk.L.groups.some(g=>dkAvail(g).length)&&dk.L.w>0,()=>['›','‹']],
@@ -108,7 +109,7 @@ const DK_COL2=['color','matEd','shading','brushes','stencils','mats','textures',
 const dkCol2On=()=>ui.mode==='p3d';
 const dkC2Has=id=>dk.col2.groups.some(g=>g.tabs.includes(id));
 const dkIn=id=>PANELS[id].avail(ui.mode)&&!(dkCol2On()&&dkC2Has(id));
-const dkAvail=g=>g._c2?g.tabs.filter(id=>PANELS[id].avail(ui.mode)):g.tabs.filter(id=>dkIn(id));
+const dkAvail=g=>(g._c2?g.tabs.filter(id=>PANELS[id].avail(ui.mode)):g.tabs.filter(id=>dkIn(id))).filter(id=>!(typeof isBeginner==='function'&&isBeginner()&&BEGINNER_HIDE_PANELS.includes(id)));
 if(!dk.col2)dk.col2={w:320,groups:[{tabs:['matEd','tool','color'],f:1,_c2:true}]};
 /* older saved columns: the Material tab joins Colour */
 if(!dkC2Has('matEd')){const g=dk.col2.groups.find(g=>g.tabs.includes('color'))||dk.col2.groups[0];if(g)g.tabs.push('matEd');}

@@ -1,6 +1,7 @@
-Turn the canvas into a texture, plus layer menu tidy-up.
+Launch screen, Classic/Modern look, Beginner/Full level, and a Substance-style shelf.
 
-- **Turn canvas into a texture** (File menu, the Textures panel's From canvas button, and right-click a layer › Turn layer into a texture): pick Grunge, Decal, Material, Brush tip or Stencil. Transparency is kept, and only the selected area is used when there is a selection.
-- **Decal and Material** open the Convert tab with your picture. Make the maps, then press Turn into material. A decal keeps its cut-out and sits on the model like a sticker.
-- **Flatten image** is now in the layer right-click menu in Paint.
-- **Smart material** entries are gone from the layer menu in the Paint tab (they stay in 3D Paint).
+- **Launch screen:** the first time you start, pick your **Look**, your **Level** and where to **Start in**. File › Launch screen… shows it again, and Preferences › Look has the same choices.
+- **Classic / Modern:** Classic has square corners and a compact feel; Modern is rounded and roomier.
+- **Beginner / Full:** Beginner shows only the main tools (move, brush, eraser, fill, select, picker, hand) and hides the less-used panels, with a short Getting started card. Full shows everything. People who already use the app stay on Full.
+- **The bottom shelf** now sits under the 3D view only, so the panels on the right run all the way down, like Substance Painter.
+- **Ctrl + drop a material on the model** now leaves the material selected, so its settings show right away.
