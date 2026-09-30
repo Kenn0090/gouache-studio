@@ -22,10 +22,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.showPanel('mats'));await W(500);
  const cats=await p.evaluate(()=>document.querySelectorAll('#matBody .chip').length);
  await p.locator('#matBody .chip',{hasText:'Metal'}).first().click();await W(300);const metal=await p.evaluate(()=>document.querySelectorAll('#matLib .mattile').length);
- ok(cats>=7&&metal===27,'the Library is split into categories ('+cats+' buttons; Metal shows '+metal+')');
+ ok(cats>=9&&metal===46,'the Library is split into categories ('+cats+' buttons; Metal shows '+metal+')');
  await p.locator('#matBody .chip',{hasText:/^All$/}).first().click();await W(500);
  const n=await p.evaluate(()=>({tiles:document.querySelectorAll('#matLib .mattile').length,thumbs:[...document.querySelectorAll('#matLib img')].filter(i=>i.naturalWidth>0).length}));
- ok(n.tiles===75&&n.thumbs===75,'the Library shows 75 materials with previews '+JSON.stringify(n));
+ ok(n.tiles===150&&n.thumbs===150,'the Library shows 150 materials with previews '+JSON.stringify(n));
  await p.locator('#matSec').screenshot({path:OUT+'lib-panel.png'});
  await p.click('#gm_brown-leather');await p.click('#lFill');for(let i=0;i<60;i++){if(await p.evaluate(()=>__gs.doc.active&&__gs.doc.active.name==='Brown leather'))break;await W(250);}
  const L=await p.evaluate(()=>{const L=__gs.doc.active;return {name:L.name,ch:Object.keys(L.fill.maps).filter(k=>L.fill.maps[k].on&&L.fill.maps[k].src==='image').join(','),imgs:Object.keys(L._fillImg||{}).join(',')};});
@@ -34,5 +34,9 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('#gm_brass');await p.click('#lFill');for(let i=0;i<60;i++){if(await p.evaluate(()=>__gs.doc.active&&__gs.doc.active.name==='Brass'))break;await W(250);}
  ok(await p.evaluate(()=>{const L=__gs.doc.active;return L.name==='Brass'&&L.fill.maps.metal.on;}),'metals come with a metallic map (Brass)');
  await p.evaluate(()=>{const l=__gs.layerByName('Brown leather');l.visible=false;__gs.changedAll();});await W(1500);await p.locator('#work').screenshot({path:OUT+'lib-brass.png'});
+ /* the newer categories load too (a stone and a painted one) */
+ for(const [gid,name,cat] of [['gm_sci-fi-panels','Sci-fi panels','Metal'],['gm_white-marble','White marble','Stone & tile'],['gm_red-painted-metal','Red painted metal','Paint & ceramic']]){
+  await p.click('#'+gid);await p.click('#lFill');for(let i=0;i<60;i++){if(await p.evaluate(n=>__gs.doc.active&&__gs.doc.active.name===n,name))break;await W(250);}
+  ok(await p.evaluate(([n,c])=>{const L=__gs.doc.active,r=__gs.gmRecs.find(g=>g.name===n);return L.name===n&&r&&r.cat===c&&L.fill.maps.base.on&&L.fill.maps.normal.on;},[name,cat]),'new material loads: '+name+' ('+cat+')');}
  console.log(errs.length?errs.join('\n'):'no page errors');ok(!errs.length,'no page errors');
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();process.exit(fails?1:0);})();
