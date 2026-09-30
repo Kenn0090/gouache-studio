@@ -61,6 +61,20 @@ function matPick(kind,rec,tile){matSel.kind=kind;matSel.rec=rec;document.querySe
 function matAddSelected(){const r=matSel.rec;if(!r||matSel.kind==='smask')return false;
   if(matSel.kind==='smart')smApply(r);else if(r.bundled&&!r.fill)gmApply(r);else if(r.bundled)gmApply(r);else matApply(r);return true;}
 function matMaskSelected(){const r=matSel.rec;if(!r||matSel.kind!=='smask')return false;smMaskApply(r);return true;}
+/* (0.34, Kenn) double-click a material while a material layer is selected: it replaces that layer's material (mask, blend and place in the stack stay); one undo step */
+async function matReplace(rec){const L=doc.active;
+  if(!(isLayer(L)&&L.fill&&!L.editMask))return false;
+  if(rec.bundled&&!(rec.fill&&rec.imgs)){toast('Loading “'+rec.name+'”…');try{await gmLoad(rec);}catch(e){toast('Could not load “'+rec.name+'”: '+(e.message||e));return true;}}
+  if(doc.active!==L)return true;
+  const f=rec.fill,imgs=matRecTargets(rec);matEdBegin(L);
+  const nf=fillDefaults();for(const k in nf.maps)nf.maps[k].on=false;for(const k in f.maps)if(nf.maps[k])Object.assign(nf.maps[k],{on:true,src:'value'},JSON.parse(JSON.stringify(f.maps[k])));
+  for(const k of ['proj','triSharp','hStr','xf','rep','front','decal'])if(f[k]!=null)nf[k]=JSON.parse(JSON.stringify(f[k]));nf.name=rec.name;
+  L.fill=nf;L.name=rec.name;L._fillImg={};
+  for(const k in imgs){const t=imgs[k],c=makeTarget(t.w,t.h,8,true);blit(t,c,0,0,t.w,t.h,0,0);L._fillImg[k]=c;}
+  const need=Object.keys(f.maps).filter(k=>f.maps[k].on!==false&&!doc.maps.includes(k)&&MAP_DEFS[k]&&!(doc.workflow==='spec'&&(k==='rough'||k==='metal')));
+  if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the material');
+  fillRender(L);L.lookVer=(L.lookVer||0)+1;matEdCommit();changed(L);renderLayers();renderMatEd(true);requestRender(true);
+  toast('Replaced the material with “'+rec.name+'”.');return true;}
 let matPopEl=null,matPopT=0;
 function matPopHide(){clearTimeout(matPopT);if(matPopEl){matPopEl.remove();matPopEl=null;}}
 function matPopShow(kind,rec,tile){matPopHide();matPopT=setTimeout(()=>{
@@ -84,16 +98,16 @@ function renderMats(){const box=document.getElementById('matBody');if(!box)retur
   const mats=matLib.list.filter(r=>!r.kind||r.kind==='material'),smarts=matLib.list.filter(r=>r.kind==='smart'),smasks=matLib.list.filter(r=>r.kind==='smask');
   const mark=(b,kind,rec)=>{b._libDrag=[kind,rec];if(matSel.rec===rec)b.classList.add('sel');matHoverOn(b,kind,rec);return b;};
   /* smart materials and smart masks (0.24) */
-  const stile=(rec,mask)=>{const kind=mask?'smask':'smart',b=mark(el('button',{class:'mattile smart',title:rec.name+(mask?': click to highlight, then press the mask button under the layers, or drag it onto a layer':': click to highlight, then press the fill layer button, or drag it onto the layers'),onclick:()=>matPick(kind,rec,b)},mask?smaskPreviewEl(rec,tw):smPreviewEl(rec,tw),el('span',{text:rec.name})),kind,rec);
+  const stile=(rec,mask)=>{const kind=mask?'smask':'smart',b=mark(el('button',{class:'mattile smart',title:rec.name+(mask?': click to highlight, then press the mask button under the layers, or drag it onto a layer':': click to highlight, then press the fill layer button, or drag it onto the layers. Double-click to swap it into the selected material layer'),onclick:()=>matPick(kind,rec,b)},mask?smaskPreviewEl(rec,tw):smPreviewEl(rec,tw),el('span',{text:rec.name})),kind,rec);
     if(rec.builtin)return b;return el('div',{class:'matwrap'},b,el('div',{class:'matacts'},el('button',{class:'btn sm',text:'⤓',title:'Export as a .gmat file','aria-label':'Export '+rec.name,onclick:()=>matExport(rec)}),el('button',{class:'btn sm',text:'×',title:'Delete from Materials','aria-label':'Delete '+rec.name,onclick:()=>matDelete(rec)})));};
-  const tile=rec=>{const pv=matPreviewEl(()=>rec.fill,()=>matRecTargets(rec),tw),b=mark(el('button',{class:'mattile',title:rec.name+': click to highlight, then press the fill layer button, or drag it onto the layers',onclick:()=>matPick('mat',rec,b)},pv.el,el('span',{text:rec.name})),'mat',rec);
+  const tile=rec=>{const pv=matPreviewEl(()=>rec.fill,()=>matRecTargets(rec),tw),b=mark(el('button',{class:'mattile',title:rec.name+': click to highlight, then press the fill layer button, or drag it onto the layers. Double-click to swap it into the selected material layer',onclick:()=>matPick('mat',rec,b),ondblclick:()=>matReplace(rec)},pv.el,el('span',{text:rec.name})),'mat',rec);
     if(rec.builtin)return b;const w=el('div',{class:'matwrap'},b,el('div',{class:'matacts'},
       el('button',{class:'btn sm',text:'⤓',title:'Export as a .gmat file','aria-label':'Export '+rec.name,onclick:()=>matExport(rec)}),el('button',{class:'btn sm',text:'×',title:'Delete from Materials','aria-label':'Delete '+rec.name,onclick:()=>matDelete(rec)})));return w;};
   const sizeSeg=el('div',{class:'seg matsize',role:'radiogroup','aria-label':'Thumbnail size'},...[['s','S'],['m','M'],['l','L']].map(([k,l])=>el('button',{type:'button',role:'radio','aria-checked':String(matSize===k),class:matSize===k?'on':'',id:'matSize_'+k,title:'Thumbnail size '+l,text:l,onclick:()=>{matSize=k;try{localStorage.setItem('gs.matSize',k);}catch(e){}renderMats();}})));
   box.replaceChildren(el('div',{class:'chips'},el('button',{class:'btn sm',id:'matNew',text:'New material…',title:'A new material layer, with the material editor',onclick:()=>cmdNewFillLayer()}),el('button',{class:'btn sm',text:'Import…',title:'A .gmat file saved from Gouache Studio',onclick:matImport}),el('button',{class:'btn sm',id:'matFromTex',text:'From textures…',title:'Make a material from downloaded textures (a folder, images or a .zip)',onclick:()=>dlgMatFromTextures()}),sizeSeg),
     ...(mats.length?[el('div',{class:'sub',text:'Yours'}),el('div',{class:'matgrid',id:'matMine'},...mats.map(tile))]:[]),
     ...(gmRecs.length?[el('div',{class:'sub',text:'Library ('+gmRecs.length+')'}),segChips([...GM_CATS.filter(c=>gmRecs.some(r=>r.cat===c)).map(c=>[c,c+' '+gmRecs.filter(r=>r.cat===c).length]),['all','All']],()=>gmCat,v=>{gmCat=v;try{localStorage.setItem('gs.gmCat',v);}catch(e){}renderMats();}),
-      el('div',{class:'matgrid',id:'matLib'},...gmRecs.filter(r=>gmCat==='all'||r.cat===gmCat).map(rec=>{const b=mark(el('button',{class:'mattile',id:'gm_'+rec.bundled.file.replace(/\.gmat$/,''),title:rec.name+(rec.credit?' ('+rec.credit+')':'')+': click to highlight, then press the fill layer button, or drag it onto the layers',onclick:()=>matPick('mat',rec,b)},
+      el('div',{class:'matgrid',id:'matLib'},...gmRecs.filter(r=>gmCat==='all'||r.cat===gmCat).map(rec=>{const b=mark(el('button',{class:'mattile',id:'gm_'+rec.bundled.file.replace(/\.gmat$/,''),title:rec.name+(rec.credit?' ('+rec.credit+')':'')+': click to highlight, then press the fill layer button, or drag it onto the layers. Double-click to swap it into the selected material layer',onclick:()=>matPick('mat',rec,b),ondblclick:()=>matReplace(rec)},
       el('img',{src:rec.thumb,alt:'',width:tw,height:tw,class:'gmthumb',draggable:'false'}),el('span',{text:rec.name})),'mat',rec);return b;}))]:[]),
     el('div',{class:'sub',text:'Built in'}),el('div',{class:'matgrid'},...matBuiltins().map(tile)),
     el('div',{class:'sub',text:'Smart materials'}),el('div',{class:'matgrid',id:'smGrid'},...smarts.map(r=>stile(r,false)),...smBuiltins().map(r=>stile(r,false))),
