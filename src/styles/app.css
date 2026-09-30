@@ -597,14 +597,14 @@ body.noopt .optbar{display:none}
 .hrow:hover{background:var(--raise)}.hrow.on{background:var(--accent-soft);color:var(--accent)}.hrow.redo{opacity:.45}.hrow.first{font-style:italic}
 /* Material panel (beside Colour) */
 #matEdBody{padding:8px 10px;gap:8px;overflow:auto}
-#matEdBody .matHead{grid-template-columns:72px 1fr}#matEdBody .matprev{width:72px;height:72px}
+#matEdBody .matHead{grid-template-columns:72px 1fr}#matEdBody .matprev{width:72px!important;height:72px!important}
 #matEdBody .fillrow{display:grid;gap:6px;padding:6px 0;border-top:1px solid var(--line)}#matEdBody .fillrow.off{opacity:.75}
 .v3mk{position:absolute;pointer-events:none;z-index:3}
 .v3mk{position:absolute;pointer-events:none;z-index:3}
 .maskbar-row{flex-basis:100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}.maskbar-row .srow,.maskbar-row .slider{min-width:150px}
 .idsw{width:20px;height:20px;border-radius:4px;border:1px solid var(--line);padding:0;cursor:pointer}
 .lvsimple{width:100%;max-width:420px;height:auto;touch-action:none;cursor:ew-resize}
-#matEdBody>*{min-width:0}#matEdBody .dlg-grid{min-width:0}#matEdBody .matHead{grid-template-columns:56px minmax(0,1fr)}#matEdBody .matprev{width:56px;height:56px}
+#matEdBody>*{min-width:0}#matEdBody .dlg-grid{min-width:0}#matEdBody .matHead{grid-template-columns:56px minmax(0,1fr)}#matEdBody .matprev{width:56px!important;height:56px!important}
 #matEdBody .seg{min-width:0}#matEdBody .segb{min-width:0;padding:4px 3px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #matEdBody input[type=text],#matEdBody select{width:100%;min-width:0}
 /* mask and effect rows under a layer (0.23) */
