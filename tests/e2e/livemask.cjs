@@ -22,7 +22,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{Object.assign(__gs.v3.cam,{yaw:0,pitch:0});__gs.v3.dirty=true;
    const d=__gs.doc,t=__gs.makeTarget(d.w,d.h,8,false),g=document.querySelector('#gl').getContext('webgl2'),px=new Uint8Array(d.w*d.h*4);
    for(let i=0;i<d.w*d.h;i++)px.set((i%d.w)<d.w/2?[255,0,0,255]:[0,0,255,255],i*4);g.bindTexture(g.TEXTURE_2D,t.tex);g.texSubImage2D(g.TEXTURE_2D,0,0,0,d.w,d.h,g.RGBA,g.UNSIGNED_BYTE,px);d.meshMaps={id:t};});await W(400);
- const hb=await p.locator('#v3Hit').boundingBox(),cx=hb.x+hb.width/2,cy=hb.y+hb.height/2;
+ const hb=await p.locator('#v3Hit').boundingBox(),cx=hb.x+hb.width/2,cy=hb.y+hb.height/2+90;
  const selHalves=()=>p.evaluate(()=>{const d=__gs.selPixels(),n=__gs.doc.w;let l=0,r=0;for(let i=0;i<d.length;i++)if(d[i]>127){if(i%n<n/2)l++;else r++;}return {l,r,on:!!__gs.sel.active};});
  const paintHalves=()=>p.evaluate(()=>{const L=__gs.allLayers().find(l=>l.name==='Paint'),d=__gs.readRGBA8(__gs.mapT(L,'base')),W=__gs.doc.w;let l=0,r=0;for(let i=0;i<d.length;i+=4)if(d[i+1]>150&&d[i]<90&&d[i+3]>200){if((i/4)%W<W/2)l++;else r++;}return {l,r};});
  /* right-click the Paint layer (no mask) › Live mask… */

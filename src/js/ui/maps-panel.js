@@ -23,7 +23,7 @@ function refreshMapsUI(){if(typeof renderShading==="function")renderShading();co
     makeSlider({id:'lEl',label:'Light height',min:5,max:90,step:1,value:doc.light.el,fmt:v=>Math.round(v)+'°',onInput:v=>{doc.light.el=v;requestRender(true);}}).el);
   ctl.hidden=!ctl.children.length;
   $('#mapState').textContent=doc.maps.length>1?doc.maps.length+' maps':'';
-  const st=$('#stMap');if(st){st.hidden=doc.maps.length<2;st.textContent='Map: '+MAP_DEFS[doc.map].label+(doc.view!==doc.map?' (viewing '+(doc.view==='material'?'material':'normal')+')':'');}
+  const st=$('#stMap');if(st){st.hidden=doc.maps.length<2;st.textContent='Map: '+MAP_DEFS[doc.map].label+(doc.view!==doc.map?' (viewing '+(doc.view==='material'?'material':'normal')+')':'');}if(ui.mode==='p3d'&&typeof buildOptBar==='function'&&!optSliders.__busy)buildOptBar();
   if(typeof renderLayers==='function'&&doc.active)$('#lModeName').textContent=modeLabel(mapModeOf(doc.active,doc.map));}
 function mapKeyNav(e){if(!(e.shiftKey&&e.altKey)||e.ctrlKey||e.metaKey)return false;const n=+e.code.replace('Digit','');if(!(n>=1&&n<=9))return false;
   const rows=[...doc.maps];if(doc.maps.length>1)rows.push('material');if(doc.maps.includes('height')||doc.maps.includes('normal'))rows.push('nfinal');

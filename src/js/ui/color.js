@@ -50,7 +50,8 @@ dragOn(svC,e=>{const r=svC.getBoundingClientRect();setHSV(ui.hsv[0],clamp((e.cli
 dragOn(hueC,e=>{const r=hueC.getBoundingClientRect();setHSV(clamp((e.clientX-r.left)/r.width,0,1)*359.9,ui.hsv[1],ui.hsv[2]);});
 function swapColors(){const t=ui.fg;ui.fg=ui.bg;ui.bg=t;setFG(ui.fg);}
 $('#swBG').addEventListener('click',swapColors);
-$('#swFG').addEventListener('click',()=>$('#hex').focus());
+$('#swFG').addEventListener('click',()=>{if(typeof showPanel==='function')showPanel('color');$('#hex').focus();});
+$('#miniFG').parentNode.addEventListener('click',()=>{if(typeof showPanel==='function')showPanel('color');});
 $('#hex').addEventListener('change',e=>{const c=fromHex(e.target.value);if(c)setFG(c);else{toast('Enter a hex color like #d99f5a');e.target.value=toHex(ui.fg);}});
 $('#hex').addEventListener('keydown',e=>{if(e.key==='Enter')e.target.blur();});
 

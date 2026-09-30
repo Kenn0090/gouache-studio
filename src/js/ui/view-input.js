@@ -1,5 +1,7 @@
 /* ================= View + input ================= */
 const work=$('#work');
+/* (0.37) in 3D Paint the 3D view is on the left and the flat texture on the right: how far the flat view starts from the left, in canvas pixels */
+function stageOx(d){const w=document.getElementById('work');if(!w||!w.classList.contains('p3left')||typeof v3==='undefined'||!v3.on||v3.pop||w.classList.contains('v3full'))return 0;const p=document.getElementById('pane3d');return p?p.clientWidth*(d===undefined?dprNow():d):0;}
 function resizeGL(){const d=Math.min(window.devicePixelRatio||1,typeof qual==='function'?qual('dpr'):2);const w=Math.max(1,Math.round(work.clientWidth*d)),h=Math.max(1,Math.round(work.clientHeight*d));if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}requestRender();}
 function fit(){const W=stage.clientWidth,H=stage.clientHeight,[DW,DH]=viewDims(),pad=doc.wrap&&!ui.cageFlat?90:48;view.zoom=clamp(Math.min((W-pad)/DW,(H-pad)/DH),.02,32);view.x=(W-DW*view.zoom)/2;view.y=(H-DH*view.zoom)/2;updateStatus();refreshCursor();requestRender();}
 function actual(){const W=stage.clientWidth,H=stage.clientHeight,[DW,DH]=viewDims();view.zoom=1;view.x=Math.round((W-DW)/2);view.y=Math.round((H-DH)/2);updateStatus();refreshCursor();requestRender();}

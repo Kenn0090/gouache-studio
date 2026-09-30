@@ -29,8 +29,8 @@ const MODE_GROUP=['p3d','brushtab','conv','bake','anim'];
 /* the built-in workspaces: extra = 3D view on and how wide, painting on the model */
 const WS_PRESETS={
   painting:{name:'Paint',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['color','matEd','shading'],f:1.05},{tabs:['brushes','stencils','mats','textures','decals','envs','tool'],f:1.25},{tabs:['maps','p3bake'],f:.45},{tabs:['layers','chan','hist'],f:1.6}],icons:[],floats:[]},
-  texturing:{name:'3D Paint',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:MODE_GROUP.slice(),f:1},{tabs:['maps','p3bake'],f:.6},{tabs:['layers','chan','hist'],f:2.6},{tabs:['tool','color','matEd','shading'],f:1.3}],shelf:{tabs:['mats','textures','decals','envs','stencils','brushes'],f:1,h:180},icons:[],floats:[]},
-  paint3d:{name:'3D Paint (big view)',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['layers','maps','p3bake','chan','hist'],f:1.6},{tabs:['color','matEd','shading','tool'],f:1.4}],shelf:{tabs:['mats','textures','decals','envs','stencils','brushes'],f:1,h:180},icons:[],floats:[]},
+  texturing:{name:'3D Paint',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:MODE_GROUP.slice(),f:1.5},{tabs:['layers','maps','chan','hist','p3bake'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','stencils','brushes'],f:1,h:180},icons:[],floats:[]},
+  paint3d:{name:'3D Paint (big view)',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:MODE_GROUP.slice(),f:1.5},{tabs:['layers','maps','chan','hist','p3bake'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','stencils','brushes'],f:1,h:180},icons:[],floats:[]},
   minimal:{name:'Minimal',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1}],icons:['color','matEd','shading','brushes','stencils','mats','textures','decals','envs','tool','maps','layers','chan','hist'],floats:[]}};
 /* (0.28, Kenn) each top tab has its own workspace, and the drop-down follows the tab */
 for(const [k,n] of [['animation','Animation'],['bake','Bake'],['convert','Convert'],['brush','Brush']])WS_PRESETS[k]=Object.assign(JSON.parse(JSON.stringify(WS_PRESETS.painting)),{name:n});
@@ -38,7 +38,7 @@ const WS_MODE_DEF={paint:'painting',p3d:'texturing',anim:'animation',bake:'bake'
 const dk={ws:'painting',L:null,custom:{},saved:{},lock:false,flyout:null,drag:null,modeWs:{}};
 (()=>{try{const s=JSON.parse(localStorage.getItem('gs.dock')||'{}');if(s.ws)dk.ws=s.ws;if(s.modeWs)dk.modeWs=s.modeWs;if(s.col2&&s.col2.groups)dk.col2=s.col2;dk.saved=s.saved||{};dk.custom=s.custom||{};dk.lock=!!s.lock;
   /* 0.36: the asset panels moved to the bottom shelf in 3D Paint */
-  if(!localStorage.getItem('gs.shelf36b')){localStorage.setItem('gs.shelf36b','1');delete dk.saved.texturing;delete dk.saved.paint3d;if(dk.col2)delete dk.col2;}}catch(e){}})();
+  if(!localStorage.getItem('gs.layout37')){localStorage.setItem('gs.layout37','1');delete dk.saved.texturing;delete dk.saved.paint3d;if(dk.col2)delete dk.col2;}}catch(e){}})();
 const dkClone=o=>JSON.parse(JSON.stringify(o));
 function dkPreset(ws){return dkClone(WS_PRESETS[ws]||dk.custom[ws]||WS_PRESETS.painting);}
 function dkSave(){if(dk.L)dk.saved[dk.ws]=dk.L;try{localStorage.setItem('gs.dock',JSON.stringify({ws:dk.ws,modeWs:dk.modeWs,saved:dk.saved,custom:dk.custom,lock:dk.lock,col2:dk.col2}));}catch(e){}}
@@ -105,7 +105,7 @@ const dkCol2On=()=>ui.mode==='p3d';
 const dkC2Has=id=>dk.col2.groups.some(g=>g.tabs.includes(id));
 const dkIn=id=>PANELS[id].avail(ui.mode)&&!(dkCol2On()&&dkC2Has(id));
 const dkAvail=g=>g._c2?g.tabs.filter(id=>PANELS[id].avail(ui.mode)):g.tabs.filter(id=>dkIn(id));
-if(!dk.col2)dk.col2={w:250,groups:[{tabs:['color','matEd','shading'],f:1,_c2:true},{tabs:['tool'],f:1.5,_c2:true}]};
+if(!dk.col2)dk.col2={w:320,groups:[{tabs:['matEd','tool','color','shading'],f:1,_c2:true}]};
 /* older saved columns: the Material tab joins Colour */
 if(!dkC2Has('matEd')){const g=dk.col2.groups.find(g=>g.tabs.includes('color'))||dk.col2.groups[0];if(g)g.tabs.push('matEd');}
 for(const g of dk.col2.groups)g._c2=true;

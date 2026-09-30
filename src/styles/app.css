@@ -841,3 +841,15 @@ body.dcdragging,body.dcdragging *{cursor:grabbing!important;user-select:none}
 .dkshelf .dktab{border:0;border-radius:6px;padding:7px 10px;width:100%;margin:0}
 .dkshelf .dktab.on{background:color-mix(in srgb,var(--accent,#5b8cff) 28%,var(--panel));margin:0;padding:7px 10px}
 .dkshelf #dkShelfFold,.dkshelf .dktabs{padding-right:6px}
+/* 0.37: 3D Paint keeps its bars slim */
+.v3xtra{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.v3xtra[hidden]{display:none}
+.optbar.slim{gap:10px}
+/* 0.37: in 3D Paint the 3D view sits on the left, the flat texture on the right */
+#work.p3left #pane3d{right:auto;left:0;border-left:0;border-right:1px solid var(--line-2)}
+#work.p3left .stage{left:var(--pane3d,0px);right:0}
+#work.p3left .stage{--x:0}
+#work.v3full.p3left .stage{left:0}
+#work.p3left .hint{display:none}
+body.m-p3d .tool[data-tool=cage],body.m-p3d .tool[data-tool=crop],body.m-p3d .tool[data-tool=array],body.m-p3d .tool[data-tool=shape],body.m-p3d .tool[data-tool=text]{display:none}
+.v3bar .seg button{white-space:nowrap}

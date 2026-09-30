@@ -5,7 +5,7 @@
    zoom); Alt over the model picks its colour. Layouts: 3D only, 3D beside the flat texture, or the flat
    texture only. Colour and Brushes sit in their own column beside the viewport (dock.js, dock2). */
 const P3_PREFS=(()=>{try{return JSON.parse(localStorage.getItem('gs.p3d')||'{}');}catch(e){return {};}})();
-const p3={size:P3_PREFS.size||2048,layout:P3_PREFS.layout||'3d',was:null,v3d:null,imported:null,cam:null,started:false,sets:[],cur:0,blank:null};
+const p3={size:P3_PREFS.size||2048,layout:P3_PREFS.layout||'split',was:null,v3d:null,imported:null,cam:null,started:false,sets:[],cur:0,blank:null};
 function p3Save(){try{localStorage.setItem('gs.p3d',JSON.stringify({size:p3.size,layout:p3.layout}));}catch(e){}}
 const P3_MAPS=['base','rough','metal','height','normal'];
 /* a new texture set: the PBR maps, a base material (a fill layer) and an empty layer to paint on */
