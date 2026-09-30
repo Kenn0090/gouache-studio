@@ -75,7 +75,7 @@ cv.addEventListener('pointerdown',e=>{
     if(!effVisible(doc.active||doc.root)&&doc.active){}createText(ix,iy);return;}
   if(ui.tool==='clone'&&e.altKey){healSetSource(ix,iy);buildBrushPanel();return;}
   if(ui.tool==='heal'&&e.altKey){if(heal.mode==='spot'){heal.mode='source';healSave();buildBrushPanel();buildOptBar();}healSetSource(ix,iy);return;}
-  if(ui.tool==='picker'||e.altKey){ptr={mode:'pick',id:e.pointerId};const q=ui.cageFlat?cageFwd(ix,iy):[ix,iy];pickAt(q[0],q[1]);return;}
+  if(ui.tool==='picker'||(e.altKey&&prefs.altPick!==false)){ptr={mode:'pick',id:e.pointerId};const q=ui.cageFlat?cageFwd(ix,iy):[ix,iy];pickAt(q[0],q[1]);return;}
   if(typeof maskPaintLocked==='function'&&maskPaintLocked()){toast('Press Paint in the mask bar to paint the mask.');return;}
   if(fillNoMask())return;
   const et=ui.mode==='bake'?bakeEditTarget():editTarget();if(ui.mode!=='bake'&&typeof lockStop==='function'&&lockStop(et))return;const o=paintOpts(et);if(!o)return;const L=et.L,p=pressureOf(e);

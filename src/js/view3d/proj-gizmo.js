@@ -47,7 +47,7 @@ function pgzApply(){const D=pgz.drag;if(!D||!D.m)return;const {G,X0,h}=D,m=D.m,d
   if(h.k==='t'){const t=G.tips[h.a];if(!t)return;const sd=[t[0]-G.p0[0],t[1]-G.p0[1]],l2=sd[0]*sd[0]+sd[1]*sd[1];if(l2<4)return;const along=(dm[0]*sd[0]+dm[1]*sd[1])/l2*G.len;
     nx=x=>{for(let j=0;j<3;j++)x.t[j]=X0.t[j]+G.ax[h.a][j]*along;};}
   else if(h.k==='s'){const b=G.boxes[h.a];if(!b)return;const sd=[b[0]-G.p0[0],b[1]-G.p0[1]],l2=sd[0]*sd[0]+sd[1]*sd[1];if(l2<4)return;const f=Math.max(.02,1+(dm[0]*sd[0]+dm[1]*sd[1])/l2);
-    nx=x=>{x.s[h.a]=Math.max(.001,X0.s[h.a]*f);};}
+    nx=x=>{if(pxfLocked()){for(let j=0;j<3;j++)x.s[j]=Math.max(.001,X0.s[j]*f);}else x.s[h.a]=Math.max(.001,X0.s[h.a]*f);};}
   else if(h.k==='su'){const f=Math.exp((dm[0]-dm[1])/160);nx=x=>{for(let j=0;j<3;j++)x.s[j]=Math.max(.001,X0.s[j]*f);};}
   else if(h.k==='r'){const Rg=G.rings[h.a],th0=h.i/64*Math.PI*2,rr=G.len*.82,scr=phi=>{const q=[0,1,2].map(j=>G.c[j]+(Rg.u[j]*Math.cos(th0+phi)+Rg.v[j]*Math.sin(th0+phi))*rr);return G.pr(q);};
     /* the turn that keeps the grabbed point of the ring under the pointer */
