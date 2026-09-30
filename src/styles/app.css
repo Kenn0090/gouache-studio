@@ -817,3 +817,6 @@ body:not(.noopt) .optbar{padding-right:34px}
 .lrow .mlink:hover{color:var(--accent)}
 .lrow .mlink.off{opacity:.55}
 .lrow .mlink.off svg{transform:rotate(-30deg)}
+/* (0.31.2) blend name on mask rows is a button */
+button.msmode{background:none;border:0;padding:1px 4px;border-radius:3px;cursor:pointer;font:inherit;font-size:11px}
+button.msmode:hover,button.msmode:focus-visible{background:var(--hover,rgba(128,128,128,.25));color:var(--fg,inherit)}

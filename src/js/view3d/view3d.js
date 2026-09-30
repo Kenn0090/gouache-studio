@@ -193,10 +193,12 @@ function v3Render(F,flip){const s=v3s(),g=v3.gpu;if(!g)return;
   gl.bindVertexArray(vao);gl.disable(gl.DEPTH_TEST);
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,F.rf);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
 /* after the 2D view: refresh maps if needed, redraw the model if anything changed, copy it into the pane */
+/* (0.31.1) how big the model is drawn while painting: 1 full, .75, .5 (older setting paintHalf = .5) */
+function paintScale(){return prefs.paintScale||(prefs.paintHalf?.5:1);}
 function draw3D(){if(!v3.on)return;if(v3.pop){drawPop();return;}const pane=$('#pane3d'),d=dprNow(),w=Math.max(1,Math.round(pane.clientWidth*d)),h=cv.height,x0=cv.width-w;
   if(!v3.mesh)v3LoadModel();v3Refresh();
   /* (0.30.2) Low power painting: while a stroke is going the model is drawn at half size without smoothing, then stretched */
-  const lite=!!(stroke&&prefs.paintHalf&&!v3.rt),W=lite?Math.max(1,Math.round(w/2)):w,H=lite?Math.max(1,Math.round(h/2)):h,F=v3Targets(W,H,lite);
+  const ps=paintScale(),lite=!!(stroke&&ps<1&&!v3.rt),W=lite?Math.max(1,Math.round(w*ps)):w,H=lite?Math.max(1,Math.round(h*ps)):h,F=v3Targets(W,H,lite);
   /* Ray traced mode: a sample more each frame until it is clean (the normal view meanwhile while it prepares) */
   const rtr=v3.rt&&!v3Unlit()&&ui.mode!=='bake'&&ui.mode!=='convert'&&typeof rtViewDraw==='function'?rtViewDraw(F):null;
   if(rtr===true)requestRender();else if(rtr===null&&v3.dirty){v3Render(F);v3.dirty=false;}
@@ -246,7 +248,7 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
     el('div',{class:'sub',text:'Speed on this computer'}),seg([['low','Low'],['medium','Medium'],['high','High'],['ultra','Ultra']],QUALITY[prefs.quality]?prefs.quality:'high',x=>{prefs.quality=x==='high'?undefined:x;qualityChanged();},'Engine quality'),
     el('p',{class:'note',text:'Engine quality: lower is lighter on slower computers.'}),
     seg([['best','Best'],['balanced','Balanced'],['fast','Fast']],PAINT_GAP[prefs.paintSpeed]?prefs.paintSpeed:'best',x=>{prefs.paintSpeed=x==='best'?undefined:x;savePrefs();},'Painting speed'),
-    seg([['0','Full size'],['1','Half size']],prefs.paintHalf?'1':'0',x=>{prefs.paintHalf=x==='1'||undefined;savePrefs();v3.dirty=true;requestRender();},'Model while painting'),
+    seg([['1','Full size'],['0.75','Three quarters'],['0.5','Half size']],String(paintScale()),x=>{prefs.paintScale=x==='1'?undefined:+x;delete prefs.paintHalf;savePrefs();v3.dirty=true;requestRender();},'Model while painting'),
     el('p',{class:'note',text:'Painting speed: Balanced and Fast redraw the picture less often while you paint. The paint is the same. Also in Preferences.'}),
     el('p',{class:'note',text:'Drag to turn, right-drag to move, wheel to zoom, double-click to reframe. Raise Detail (top of the 3D view) to see Height depth push the surface out finely; imported models are subdivided.'}));
   gear.onclick=()=>{box.hidden=!box.hidden;gear.setAttribute('aria-expanded',String(!box.hidden));/* below the bar, however many rows it wraps onto */if(!box.hidden){box.style.top=(bar.offsetTop+bar.offsetHeight+6)+'px';box.style.maxHeight='calc(100% - '+(bar.offsetTop+bar.offsetHeight+16)+'px)';}};
