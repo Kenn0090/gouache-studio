@@ -22,6 +22,9 @@ function refreshMapsUI(){if(typeof renderShading==="function")renderShading();co
     makeSlider({id:'lAz',label:'Light angle',min:0,max:360,step:1,value:doc.light.az,fmt:v=>Math.round(v)+'°',onInput:v=>{doc.light.az=v;requestRender(true);}}).el,
     makeSlider({id:'lEl',label:'Light height',min:5,max:90,step:1,value:doc.light.el,fmt:v=>Math.round(v)+'°',onInput:v=>{doc.light.el=v;requestRender(true);}}).el);
   ctl.hidden=!ctl.children.length;
+  /* (0.40, Kenn) a channel drop-down on the layer stack, like Painter's: which channel you see and paint, and whose blend mode and opacity the stack shows */
+  {const h=$('#hLayers');if(h){let sel=$('#lChan');if(!sel){sel=el('select',{id:'lChan',class:'shsel lchan','aria-label':'Channel',title:'Which channel you see and paint. The blend mode and opacity below are for this channel.'});sel.onchange=()=>setView(sel.value);h.append(sel);}
+    sel.replaceChildren(...rows.map(([k,l])=>el('option',{value:k,text:l})));sel.value=doc.view;sel.hidden=doc.maps.length<2;}}
   $('#mapState').textContent=doc.maps.length>1?doc.maps.length+' maps':'';
   const st=$('#stMap');if(st){st.hidden=doc.maps.length<2;st.textContent='Map: '+MAP_DEFS[doc.map].label+(doc.view!==doc.map?' (viewing '+(doc.view==='material'?'material':'normal')+')':'');}if(ui.mode==='p3d'&&typeof buildOptBar==='function'&&!optSliders.__busy)buildOptBar();
   if(typeof renderLayers==='function'&&doc.active)$('#lModeName').textContent=modeLabel(mapModeOf(doc.active,doc.map));}

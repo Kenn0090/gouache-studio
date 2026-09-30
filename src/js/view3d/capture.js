@@ -13,7 +13,7 @@ function v3Offscreen(w,h,o){o=o||{};const S=Math.min(4,gl.getParameter(gl.MAX_SA
   F.rf=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,F.rf);F.rc=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,F.rc);gl.renderbufferStorage(gl.RENDERBUFFER,gl.RGBA8,w,h);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.RENDERBUFFER,F.rc);
   const was=v3.transparent;v3.transparent=!!o.transparent;let out;
   try{v3Render(F,false);gl.bindFramebuffer(gl.FRAMEBUFFER,F.rf);out=new Uint8Array(w*h*4);gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,out);}
-  finally{v3.transparent=was;gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.deleteFramebuffer(F.ms);gl.deleteFramebuffer(F.rf);for(const r of [F.c,F.d,F.rc])gl.deleteRenderbuffer(r);v3.dirty=true;requestRender();}
+  finally{v3.transparent=was;gl.bindFramebuffer(gl.FRAMEBUFFER,null);v3PostFree(F);gl.deleteFramebuffer(F.ms);gl.deleteFramebuffer(F.rf);for(const r of [F.c,F.d,F.rc])gl.deleteRenderbuffer(r);v3.dirty=true;requestRender();}
   return out;}
 const v3ViewSize=()=>{const pane=v3.pop?null:$('#pane3d'),d=dprNow();return pane?[Math.max(16,Math.round(pane.clientWidth*d)),Math.max(16,Math.round(pane.clientHeight*d))]:[1280,720];};
 const V3_SIZES=[['view','View'],['x2','View ×2'],['1080','1920 × 1080'],['sq2k','2048 × 2048'],['4k','3840 × 2160']];

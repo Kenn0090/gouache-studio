@@ -5,14 +5,14 @@
    and Cel (two tones), both with an outline, and a Spec/Gloss view (lit, or diffuse colour, specular colour,
    glossiness or reflections alone). Each shader has its own tab of settings in the Shader panel, and keeps
    them when you switch. Kept in the document (doc.v3shade) and so per texture set in 3D Paint. */
-const SHADERS=[['std','Standard'],['skin','Skin'],['aniso','Brushed metal'],['velvet','Velvet'],['toon','Toon'],['cel','Cel'],['specgloss','Spec/Gloss']];
+const SHADERS=[['std','Standard'],['skin','Skin'],['aniso','Brushed metal'],['velvet','Velvet'],['toon','Toon'],['cel','Cel'],['specgloss','Spec/Gloss'],['panner','Panner (PBR)']];
 const SH_DEF={std:{},skin:{scatter:.5,strength:.6,soft:.5,thick:.5,oil:.3,col:[.85,.25,.18]},aniso:{amount:.7,dir:0},velvet:{sheen:.8,srough:.5,rim:1,col:[1,1,1]},
-  toon:{steps:3,spec:.3,rim:.2,offset:0,col:[.45,.4,.55],outline:2,ocol:[0,0,0]},cel:{thresh:.5,soft:.06,spec:.3,rim:.15,col:[.45,.42,.55],outline:2,ocol:[0,0,0]},specgloss:{view:0}};
+  toon:{steps:3,spec:.3,rim:.2,offset:0,col:[.45,.4,.55],outline:2,ocol:[0,0,0]},cel:{thresh:.5,soft:.06,spec:.3,rim:.15,col:[.45,.42,.55],outline:2,ocol:[0,0,0]},specgloss:{view:0},panner:{sx:0,sy:.25,play:true,layer:0,maps:{base:true,rough:true,metal:true,nfinal:true,ao:true,emis:true,opac:true}}};
 function v3ShadeOf(D){const d=D&&D.v3shade;return d&&d.kind?d:{kind:'std',p:{}};}
 function shParams(sh,k){return Object.assign({},SH_DEF[k||sh.kind]||{},(sh.p&&sh.p[k||sh.kind])||{});}
-function shadeUniforms(sh){if(!sh)return {uSh:{int:0},uShP:[0,0,0,.5],uShQ:[0,0,0,0],uShC:[1,1,1],uShD:[0,0,0]};const k=sh.kind,P=shParams(sh),i=Math.max(0,SHADERS.findIndex(x=>x[0]===k));
+function shadeUniforms(sh){if(!sh)return Object.assign({uSh:{int:0},uShP:[0,0,0,.5],uShQ:[0,0,0,0],uShC:[1,1,1],uShD:[0,0,0]},pnUniforms(null));const k=sh.kind,P=shParams(sh),i=Math.max(0,SHADERS.findIndex(x=>x[0]===k));
   const v={skin:[P.scatter,P.strength,P.soft,P.thick],aniso:[P.amount,P.dir,0,.5],velvet:[P.sheen,P.srough,P.rim,.5],toon:[P.steps,0,P.spec,P.rim],cel:[P.thresh,P.soft,P.spec,P.rim],specgloss:[P.view,0,0,.5]}[k]||[0,0,0,.5];
-  return {uSh:{int:i},uShP:v,uShQ:[P.outline||0,P.offset||0,k==='skin'?(P.oil||0):0,0],uShC:P.col||[1,1,1],uShD:P.ocol||[0,0,0]};}
+  return Object.assign({uSh:{int:i},uShP:v,uShQ:[P.outline||0,P.offset||0,k==='skin'?(P.oil||0):0,0],uShC:P.col||[1,1,1],uShD:P.ocol||[0,0,0]},pnUniforms(k==='panner'?P:null));}
 /* the outline for Toon and Cel: the back faces drawn slightly larger, in the outline colour */
 const VS_3DOUT=VS_3D.replace('vec3 p=aP;','vec3 p=aP+aN*uOutW;').replace('uniform mat4 uVP;','uniform mat4 uVP; uniform float uOutW;');
 /* only the faces turned away from the camera are drawn, so it works whichever way the model's faces wind */
@@ -42,8 +42,9 @@ function renderShading(){const box=document.getElementById('shadeBody');if(!box)
   if(k==='cel')body.append(sl('thresh','Shadow line'),sl('soft','Edge softness',0,.5,.01),colr('col','Shadow colour'),sl('spec','Highlight'),sl('rim','Rim light'),sl('outline','Outline',0,10,.5,v=>v?v+' px':'off'),colr('ocol','Outline colour'));
   if(k==='specgloss')body.append((()=>{const g=seg([[0,'Lit'],[1,'Diffuse'],[2,'Specular'],[3,'Gloss'],[4,'Reflections']],P.view,v=>{setP('view',+v);},'Spec/Gloss view');g.classList.add('themeseg');return g;})(),
     el('p',{class:'note',text:'See the diffuse colour, the specular colour, the glossiness or the reflections alone, as a Specular/Gloss material would store them.'}));
+  if(k==='panner')body.append(...pnPanelRows(P,setP,sl));
   body.append(el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:'shReset',text:'Reset this shader',title:'Put this shader’s settings back to how they start',onclick:()=>{shadeEdit(d=>{delete d.p[k];});renderShading();}})));
   /* (0.27, Kenn) the environment (HDRI) lives here too: the lighting the shaders are seen in */
   const envS=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:v3s()[key],fmt,onInput:v=>{v3s()[key]=v;v3.dirty=true;requestRender();}}).el;
   const envPart=typeof envSettingsBox==='function'?[el('div',{class:'sub',text:'Environment'}),el('p',{class:'note',text:'The HDRI lighting the model. Shift + right-drag in the 3D view turns it.'}),envSettingsBox(envS,'sh')]:[];
-  box.replaceChildren(el('p',{class:'note',text:'Shader for '+who+'. Each shader keeps its own settings.'}),tabs,body,...envPart);}
+  box.replaceChildren(el('p',{class:'note',text:'Shader for '+who+'. Each shader keeps its own settings.'}),tabs,body,...envPart,el('div',{class:'sub',text:'Post processing'}),el('p',{class:'note',text:'Effects laid over the picture of the model. They also go into screenshots and renders.'}),postBox());}

@@ -50,6 +50,7 @@ The **Shader** panel (beside Colour and Properties) picks how the model is shade
 - **Skin:** light wraps round and shines through thin parts in the **Subsurface colour** (**Scatter**, **Strength**, **Softness**). With a baked **Thickness** map, thin parts like ears glow by themselves.
 - **Brushed metal:** anisotropic highlights stretched along a **Direction** (**Stretch**), like brushed or spun metal.
 - **Velvet:** a soft **Sheen** at grazing angles, with its colour and softness, and a **Rim**.
+- **Panner (PBR):** slides the textures over the model, for water, conveyor belts or glowing energy. Set **Speed across** and **Speed up**, tick which maps slide, and choose **What slides**: the whole material, or one layer or folder (the rest stays still). It only shows in the 3D view; your painting and exports are not changed. **Restart** puts the texture back at the start.
 - **Toon:** flat **Bands** of light, a **Shadow colour**, **Highlight**, **Rim light** and an **Outline** with its colour.
 - **Cel:** two tones split at the **Shadow line** (with **Edge softness**), highlight, rim and outline.
 - **Spec/Gloss:** the lit model, or just its **Diffuse** colour, **Specular** colour, **Gloss** or **Reflections**.
@@ -99,3 +100,6 @@ Press **Paint** in the 3D view's toolbar, then paint on the model with the Brush
 
 ## Height depth on your models (0.28)
 Height depth now pushes each point of a model out in one direction, so hard edges and UV seams no longer tear open, and models with several texture sets keep their textures when Detail is raised. How many triangles Detail may make depends on Preferences › Engine quality (two million on High).
+
+## Post processing
+At the bottom of the **Shader** panel, tick an effect to switch it on and open its sliders: **Bloom**, **Ambient occlusion**, **Depth of field** (move the **Focus distance** to what should stay sharp), **Sharpen**, **Colour grade** (exposure, contrast, saturation, warmth), **Vignette**, **Chromatic aberration** and **Film grain**. They are laid over the finished picture, so screenshots, the render window and turntables get them too. **Reset post processing** turns them all off.
