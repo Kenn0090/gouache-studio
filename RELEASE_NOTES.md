@@ -1,4 +1,3 @@
-Quicker blend modes, and a middle step for slower computers.
+Brush tips land the right way up on the 3D model.
 
-- **Change a blend mode right on the row:** on the rows under a layer's mask (and the effect rows on the layer), click the blend name to pick another one from a list. It is one undo step.
-- **"Model while painting" has Three quarters** between Full size and Half size. It is in Preferences and in the 3D view's settings.
+- **Fixed: brush tips painted upside down on the model.** A brush with a tip shape (an arrow, a leaf, a letter) came out flipped top to bottom when you painted on the 3D model. It now lands the right way up, and rotating the tip or making it follow the stroke direction turns it the right way too.
