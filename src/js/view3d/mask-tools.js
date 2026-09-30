@@ -13,8 +13,8 @@ function maskTool(t){if(mk3.tool===t)t=null;if(t&&t!=='paint'&&mk3.was)mk3.was.u
   else if(t==='box'){ui.marquee='rect';setTool('marquee');}
   else if(t==='lasso'){ui.lasso='free';setTool('lasso');}
   else if(t==='poly'){ui.lasso='poly';setTool('lasso');}
-  maskBarSync();mk3Overlay();}
-function mk3Reset(){if(mk3.tool==='id')idSelCommit();mk3.tool=null;mk3.pts=null;mk3.draw=null;mk3.move=null;mk3Overlay();}
+  maskBarSync();mk3Overlay();v3.dirty=true;requestRender(true);}
+function mk3Reset(){if(mk3.tool==='id'){idSelCommit();v3.dirty=true;}mk3.tool=null;mk3.pts=null;mk3.draw=null;mk3.move=null;mk3Overlay();}
 const mk3Hint=()=>({paint:'Paint white to show, black to hide.',box:'Drag over the model to select what you see. Drag inside the box to move it. Shift adds, Ctrl removes.',
   lasso:'Draw around what you want. Drag inside the shape to move it. Shift adds, Ctrl removes.',poly:'Click the corners; double-click (or click the first point, or press Enter) to close.',id:'Click the model (or the flat texture) to pick colours of the ID map.'})[mk3.tool]||'Press Paint to paint the mask, or Box, Lasso or Polygon to select parts of the model.';
 function mk3InPoly(x,y,P){let c=false;for(let i=0,j=P.length-2;i<P.length;j=i,i+=2){const xi=P[i],yi=P[i+1],xj=P[j],yj=P[j+1];if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)c=!c;}return c;}
@@ -80,6 +80,18 @@ void main(){ vec4 c=texture(uId,gl_FragCoord.xy/uSz); float m=0.0;
   if(c.a>0.01){ vec3 q=c.rgb/c.a; float d=10.0; for(int i=0;i<8;i++){ if(i>=uN) break; d=min(d,length(q-uCols[i])); } m=1.0-smoothstep(uTol,uTol+uSoft+1e-4,d); }
   if(uInv==1) m=1.0-m; o=vec4(vec3(m),1.0); }`;
 let P_IDSEL=null;
+/* (0.32) while picking ID colours the model shows the ID map itself, and the colours you picked turn white (as in Painter and Marmoset) */
+const FS_IDVIEW=`uniform sampler2D uId; uniform vec3 uCols[8]; uniform int uN; uniform float uTol; uniform float uSoft; uniform int uInv; uniform vec2 uSz;
+void main(){ vec4 c=texture(uId,gl_FragCoord.xy/uSz); if(c.a<=0.01){ o=vec4(0.06,0.06,0.07,1.0); return; }
+  vec3 q=c.rgb/c.a; float d=10.0; for(int i=0;i<8;i++){ if(i>=uN) break; d=min(d,length(q-uCols[i])); }
+  float m=uN>0?1.0-smoothstep(uTol,uTol+uSoft+1e-4,d):0.0; if(uInv==1&&uN>0) m=1.0-m; o=vec4(mix(q*0.85,vec3(1.0),m),1.0); }`;
+let P_IDVIEW=null,idViewT=null,idViewKey='';
+function idViewTex(){if(typeof mk3==='undefined'||mk3.tool!=='id')return null;const M=idSelMap();if(!M)return null;
+  const S=idSelOf(liveOn()?lm.M:doc.active),key=[M.w,M.h,S.cols.map(c=>c.join(',')).join(';'),S.tol,S.soft,S.inv?1:0,M.tex===(idViewT&&idViewT._src)].join('|');
+  if(!idViewT||idViewT.w!==M.w||idViewT.h!==M.h||idViewT._src!==M.tex){if(idViewT)disposeTarget(idViewT);idViewT=makeTarget(M.w,M.h,8,true);idViewT._src=M.tex;idViewKey='';}
+  if(key!==idViewKey){idViewKey=key;if(!P_IDVIEW)P_IDVIEW=program(FS_IDVIEW);const cols=new Float32Array(24);S.cols.slice(0,8).forEach((c,i)=>cols.set(c,i*3));
+    run(P_IDVIEW,idViewT,{uId:M.tex,uSz:[M.w,M.h],uCols:{v3:cols},uN:{int:Math.min(8,S.cols.length)},uTol:S.tol,uSoft:S.soft,uInv:{int:S.inv?1:0}});}
+  return idViewT;}
 const idSelMap=()=>doc.meshMaps&&doc.meshMaps.id;
 /* the ID colour row of the active layer's mask: the selected one, else the top one (made on the first pick) */
 function idSelRowOf(L,make){if(liveOn()){const S=lm.M.mask.stack,cur=msRowOf(ui.msSel);if(cur&&cur.kind==='id'&&S.includes(cur))return cur;for(let i=S.length-1;i>=0;i--)if(S[i].kind==='id')return S[i];return make?liveAdd('id'):null;}

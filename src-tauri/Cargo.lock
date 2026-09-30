@@ -1203,7 +1203,7 @@ dependencies = [
 
 [[package]]
 name = "gouache-studio"
-version = "0.31.3"
+version = "0.32.0"
 dependencies = [
  "serde",
  "serde_json",

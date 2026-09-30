@@ -63,18 +63,43 @@ function dcXf(pos,n,size,aspect){const c=v3.cam,eye=v3Eye(),tg=[c.tx,c.ty,c.tz],
   return {t:[pos[0]-mc[0],pos[1]-mc[1],pos[2]-mc[2]],r:pxfEuler(R),s:aspect>1?[size/aspect,size,1]:[size,size*aspect,1]};}
 function dcNormalAt(p){const m=v3.mesh,src=m;const t=sel3Tri(src,p.eye,p.dir,{start:0,count:src.idx.length/3});if(t<0)return null;const I=src.idx,P=src.pos,a=I[t*3]*3,b=I[t*3+1]*3,cc=I[t*3+2]*3;
   let n=norm3(cross3(sub3([P[b],P[b+1],P[b+2]],[P[a],P[a+1],P[a+2]]),sub3([P[cc],P[cc+1],P[cc+2]],[P[a],P[a+1],P[a+2]])));if(n[0]*p.dir[0]+n[1]*p.dir[1]+n[2]*p.dir[2]>0)n=n.map(v=>-v);return n;}
-async function dcPlace(it,p){const n=dcNormalAt(p)||[-p.dir[0],-p.dir[1],-p.dir[2]];let imgs;
+async function dcPlace(it,p,mode){const c0=v3.cam,n=p?(dcNormalAt(p)||[-p.dir[0],-p.dir[1],-p.dir[2]]):norm3(sub3(v3Eye(),[c0.tx,c0.ty,c0.tz]));if(!p)p={pos:[c0.tx,c0.ty,c0.tz]};let imgs;
   if(it.kind==='mine'){const t=makeTarget(it.rec.w,it.rec.h,8,true);writeRegion(t,0,0,it.rec.w,it.rec.h,it.rec.data);imgs=dcFromTarget(t);disposeTarget(t);}else imgs=dcTargets(it.id);
   if(dc.tint&&imgs.base){const d=captureRegionNow(imgs.base,0,0,imgs.base.w,imgs.base.h).data,f=ui.fg;for(let i=0;i<d.length;i+=4){d[i]*=f[0];d[i+1]*=f[1];d[i+2]*=f[2];}writeRegion(imgs.base,0,0,imgs.base.w,imgs.base.h,d);}
   const chans={};for(const k in imgs)if(doc.maps.includes(k))chans[k]={on:true,src:'image',name:it.name,tile:1,rot:0};
-  const L=cmdNewFillLayer({name:it.name,maps:chans,proj:'planar',rep:false,front:true,decal:true,xf:dcXf(p.pos,n,dc.size,imgs.base.h/imgs.base.w),imgs});
+  const L=cmdNewFillLayer({name:it.name,maps:chans,proj:mode==='tri'||mode==='uv'?mode:'planar',rep:false,front:true,decal:true,xf:mode==='tri'?{t:[0,0,0],r:[0,0,0],s:[dc.size*pxfModel().S,dc.size*pxfModel().S*(imgs.base.h/imgs.base.w),1]}:mode==='uv'?{t:[0,0],r:[0,0,0],s:[dc.size*2,dc.size*2*(imgs.base.h/imgs.base.w),1]}:dcXf(p.pos,n,dc.size,imgs.base.h/imgs.base.w),imgs});
   for(const k in imgs)disposeTarget(imgs[k]);if(L){L.fill.decal=true;fillRender(L);renderLayers();v3.dirty=true;requestRender(true);}return L;}
 /* armed: the next click on the model places it (Esc or the tile again stops) */
-function dcArm(it){dc.armed=dc.armed&&dc.armed.kind===it.kind&&dc.armed.id===it.id?null:it;renderDecals();
+function dcArm(it){dc.last=it;dc.armed=dc.armed&&dc.armed.kind===it.kind&&dc.armed.id===it.id?null:it;renderDecals();
   if(dc.armed)toast('Click the model to place “'+it.name+'”. Keep clicking for more; Esc stops.');}
 document.addEventListener('pointerdown',async e=>{if(!dc.armed||ui.mode!=='p3d'||e.button!==0||e.altKey||!e.target||e.target.id!=='v3Hit')return;
   const p=v3PickAt(e.target,e);if(!p)return;e.preventDefault();e.stopImmediatePropagation();await dcPlace(dc.armed,p);},true);
 window.addEventListener('keydown',e=>{if(e.key==='Escape'&&dc.armed){dc.armed=null;renderDecals();}});
+/* (0.32) drag a decal from the panel onto the model: the decal follows the cursor on the surface (a real layer, so you see exactly
+   what you will get), lands on release, and is taken away again if you let go off the model or press Esc */
+let dcDrag=null,dcLastPick=0;
+function dcDragEnd(commit){const d=dcDrag;dcDrag=null;document.body.classList.remove('dcdragging');if(d&&d.ghost)d.ghost.remove();if(!d||!d.started)return;
+  dc.justDragged=true;setTimeout(()=>{dc.justDragged=false;},0);
+  if(d.L){if(commit&&d.L.visible!==false){d.L.fill.decal=true;selectOnly(d.L);renderLayers();v3.dirty=true;requestRender(true);}
+    else{const L=d.L;undo().then(()=>{v3.dirty=true;requestRender(true);});}}}
+function dcDragMove(e){const d=dcDrag;if(!d)return;
+  if(!d.started){if(Math.hypot(e.clientX-d.x,e.clientY-d.y)<6)return;d.started=true;document.body.classList.add('dcdragging');
+    d.ghost=el('img',{class:'dcghost',src:dcPreview(d.it),alt:'',width:56,height:56});document.body.append(d.ghost);}
+  d.ghost.style.left=e.clientX+10+'px';d.ghost.style.top=e.clientY+10+'px';
+  const over=document.elementFromPoint(e.clientX,e.clientY),onModel=!!over&&over.id==='v3Hit';d.ghost.style.opacity=onModel?'0':'.9';
+  const now=performance.now();if(now-dcLastPick<45||d.busy)return;dcLastPick=now;
+  if(!onModel){if(d.L&&d.L.visible!==false){d.L.visible=false;renderLayers();v3.dirty=true;requestRender(true);}return;}
+  const p=v3PickAt(over,e);if(!p){if(d.L&&d.L.visible!==false){d.L.visible=false;renderLayers();v3.dirty=true;requestRender(true);}return;}
+  d.busy=true;(async()=>{try{
+    if(!d.L){d.L=await dcPlace(d.it,p);}
+    else{const n=dcNormalAt(p)||[-p.dir[0],-p.dir[1],-p.dir[2]],b=d.L.fill.xf;const X=dcXf(p.pos,n,dc.size,(b&&b.s?(b.s[1]/b.s[0]):1));d.L.fill.xf=X;d.L.visible=true;fillRender(d.L);renderLayers();}
+    v3.dirty=true;requestRender(true);}finally{d.busy=false;}})();}
+document.addEventListener('pointerdown',e=>{const t=e.target&&e.target.closest?e.target.closest('.dctile'):null;if(!t||e.button!==0||ui.mode!=='p3d')return;
+  const id=t.id.replace(/^dc_/,''),it=[...DC_LIST.map(([i,name])=>({kind:'built',id:i,name})),...dc.mine.map(rec=>({kind:'mine',id:rec.id,name:rec.name,rec}))].find(x=>x.id===id);if(it){dc.last=it;dcDrag={it,x:e.clientX,y:e.clientY,started:false,L:null};}},true);
+window.addEventListener('pointermove',dcDragMove,true);
+window.addEventListener('pointerup',e=>{if(dcDrag)dcDragEnd(true);},true);
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&dcDrag&&dcDrag.started){e.preventDefault();e.stopImmediatePropagation();dcDragEnd(false);}},true);
+
 /* your own decals: kept in the textures store, marked as decals */
 async function dcLoad(){if(dc.loaded)return;dc.loaded=true;try{dc.mine=((await store.all('textures'))||[]).filter(r=>r.decal).sort((a,b)=>(a.t||0)-(b.t||0));}catch(e){dc.mine=[];}renderDecals();}
 async function dcImport(){const fs=await pickFiles('image/*',true,'Pictures (PNG with transparency works best)',['png','webp','jpg','jpeg','tga']);let n=0;
@@ -93,7 +118,10 @@ function renderDecals(){const box=$('#dcBody');if(!box)return;if(!dc.loaded)dcLo
   box.replaceChildren(el('div',{class:'chips'},el('button',{class:'btn sm',id:'dcImport',text:'Import your own…',title:'A logo or label: PNG with transparency',onclick:dcImport})),
     makeSlider({id:'dcSize',label:'Size',min:.01,max:.5,step:.005,value:dc.size,fmt:pct,onInput:v=>{dc.size=v;try{localStorage.setItem('gs.dcSize',String(v));}catch(e){}}}).el,
     chk('dcTint','Tint with the foreground colour',dc.tint,v=>{dc.tint=v;}),
-    el('div',{class:'matgrid',id:'dcGrid'},...items.map(it=>{const b=el('button',{class:'mattile dctile'+(on(it)?' on':''),id:'dc_'+it.id,'aria-pressed':String(!!on(it)),title:it.name+': click, then click the model',onclick:()=>dcArm(it)},
+    el('div',{class:'sub',text:'Add as a layer'}),
+    el('div',{class:'chips'},...[['planar','Sticker'],['tri','Tri-planar'],['uv','UV']].map(([m,l])=>el('button',{class:'btn sm',id:'dcAdd_'+m,text:l,title:'Adds the selected decal as a layer with '+l.toLowerCase()+' projection; move it in Properties',
+      onclick:async()=>{const it=dc.armed||dc.last;if(!it){toast('Click a decal first, then choose how to add it.');return;}const L=await dcPlace(it,null,m);if(L){selectOnly(L);renderLayers();toast('Added “'+it.name+'” as a '+l.toLowerCase()+' layer: change its placement in Properties.');}}}))),
+    el('div',{class:'matgrid',id:'dcGrid'},...items.map(it=>{const b=el('button',{class:'mattile dctile'+(on(it)?' on':''),id:'dc_'+it.id,'aria-pressed':String(!!on(it)),title:it.name+': click, then click the model',onclick:()=>{if(dc.justDragged)return;dcArm(it);}},
       el('img',{src:dcPreview(it),alt:'',width:56,height:56}),el('span',{text:it.name}));
       if(it.kind!=='mine')return b;return el('div',{class:'matwrap'},b,el('div',{class:'matacts'},el('button',{class:'btn sm',text:'×',title:'Delete','aria-label':'Delete '+it.name,onclick:()=>confirmDlg('Delete decal','Delete “'+it.name+'”? Decals on models stay.','Delete',()=>{dc.mine.splice(dc.mine.indexOf(it.rec),1);store.del(it.rec.id,'textures');renderDecals();})})));})),
-    el('p',{class:'note',text:ui.mode==='p3d'?'Click a decal, then click the model. Each decal is a layer you can move, turn and scale with the gizmo; right-click › Convert to pixels fixes it.':'Decals are placed on the model in 3D Paint.'}));}
+    el('p',{class:'note',text:ui.mode==='p3d'?'Drag a decal onto the model (you see where it lands), or click it and then the model. Or pick one and use Add as a layer, then set Sticker, Tri-planar or UV in Properties. Each decal is a layer you can move, turn and scale; right-click › Convert to pixels fixes it.':'Decals are placed on the model in 3D Paint.'}));}
