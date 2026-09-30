@@ -9,7 +9,7 @@ function qualityChanged(){savePrefs();if(typeof resizeGL==='function')resizeGL()
 function savePrefs(){try{localStorage.setItem('gs.prefs',JSON.stringify(prefs));}catch(e){}}
 /* the Preview checkbox every image-changing dialog carries; starts from the global setting */
 function previewChk(id,on,onChange){return chk(id,'Preview',on,onChange);}
-function dlgPrefs(){let meshAuto=!!prefs.meshAuto,live=prefs.livePreview,hints=!prefs.hideHints,tipCur=prefs.tipCursor!==false,maxB=prefs.maxBrush||5000,qk=QUALITY[prefs.quality]?prefs.quality:'high',small=prefs.smallFiles!==false,ps=PAINT_GAP[prefs.paintSpeed]?prefs.paintSpeed:'best';const th=themeSection(),ms=memSection(),asb=autosavePrefsBox();
+function dlgPrefs(){let meshAuto=!!prefs.meshAuto,live=prefs.livePreview,hints=!prefs.hideHints,tipCur=prefs.tipCursor!==false,maxB=prefs.maxBrush||5000,qk=QUALITY[prefs.quality]?prefs.quality:'high',small=prefs.smallFiles!==false,ps=PAINT_GAP[prefs.paintSpeed]?prefs.paintSpeed:'best',half=!!prefs.paintHalf;const th=themeSection(),ms=memSection(),asb=autosavePrefsBox();
   const body=el('div',{class:'dlg-grid'},
     el('div',{class:'sub',text:'Theme'}),th.el,
     el('div',{class:'sub',text:'Screen'}),
@@ -19,6 +19,8 @@ function dlgPrefs(){let meshAuto=!!prefs.meshAuto,live=prefs.livePreview,hints=!
     el('p',{class:'note',text:'Very big brushes paint slowly on large documents.'}),
     el('button',{class:'btn sm',text:'Keyboard shortcuts…',onclick:()=>{th.save();savePrefs();dlgKeys();}}),
     el('div',{class:'sub',text:'Painting speed'}),seg([['best','Best'],['balanced','Balanced'],['fast','Fast']],ps,v=>{ps=v;},'Painting speed'),
+    el('div',{class:'sub',text:'Model while painting'}),seg([['0','Full size'],['1','Half size']],half?'1':'0',v=>{half=v==='1';},'Model while painting'),
+    el('p',{class:'note',text:'Half size draws the 3D model at half the size and no smoothing while you paint, then sharp again when you lift the brush. Good for integrated graphics.'}),
     el('p',{class:'note',text:'For slower computers and big documents. Balanced and Fast redraw the picture less often while you drag the brush. The paint you put down is exactly the same; the screen just updates a little less smoothly. It is saved on this computer only.'}),
     el('div',{class:'sub',text:'Engine quality'}),seg([['low','Low'],['medium','Medium'],['high','High'],['ultra','Ultra']],qk,v=>{qk=v;},'Engine quality'),
     el('p',{class:'note',text:'Lower settings help slower computers: the canvas and 3D view draw fewer pixels, the model’s edges and textures are less smooth, Detail makes fewer triangles, the 3D view catches up less often while you paint, and the ray-traced view stops sooner. High is the normal setting; Ultra is for fast graphics cards and sharp screens.'}),
@@ -31,4 +33,4 @@ function dlgPrefs(){let meshAuto=!!prefs.meshAuto,live=prefs.livePreview,hints=!
     el('div',{class:'sub',text:'Models'}),chk('prMeshAuto','When a model file is saved again elsewhere, update it and bake again without asking',!!prefs.meshAuto,v=>{meshAuto=v;}),
     el('p',{class:'note',text:platform.isDesktop?'The high-poly is never updated without asking. Only models opened with Import model or Load… are followed.':'This works in the desktop app only: a browser can’t watch files on your computer.'}),
     el('div',{class:'sub',text:'Memory and disk'}),ms.el);
-  openDialog({title:'Preferences',body,okLabel:'Save',onCancel(){th.cancel();},onOk(){const qOld=prefs.quality||'high';prefs.quality=qk==='high'?undefined:qk;if(qOld!==qk)qualityChanged();prefs.smallFiles=small?undefined:false;prefs.paintSpeed=ps==='best'?undefined:ps;prefs.meshAuto=meshAuto;prefs.livePreview=live;prefs.hideHints=!hints;prefs.tipCursor=tipCur;prefs.maxBrush=maxB===5000?0:maxB;if(typeof sizeSlider!=='undefined'&&sizeSlider)sizeSlider.set(brush.size);if(typeof buildOptBar==='function')buildOptBar();if(typeof refreshCursor==='function')refreshCursor();th.save();savePrefs();refreshHints();ms.save();asb.save();savePrefs();toast('Preferences saved.');}});}
+  openDialog({title:'Preferences',body,okLabel:'Save',onCancel(){th.cancel();},onOk(){const qOld=prefs.quality||'high';prefs.quality=qk==='high'?undefined:qk;if(qOld!==qk)qualityChanged();prefs.smallFiles=small?undefined:false;prefs.paintSpeed=ps==='best'?undefined:ps;prefs.paintHalf=half||undefined;prefs.meshAuto=meshAuto;prefs.livePreview=live;prefs.hideHints=!hints;prefs.tipCursor=tipCur;prefs.maxBrush=maxB===5000?0:maxB;if(typeof sizeSlider!=='undefined'&&sizeSlider)sizeSlider.set(brush.size);if(typeof buildOptBar==='function')buildOptBar();if(typeof refreshCursor==='function')refreshCursor();th.save();savePrefs();refreshHints();ms.save();asb.save();savePrefs();toast('Preferences saved.');}});}

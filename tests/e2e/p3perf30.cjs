@@ -30,6 +30,12 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const best=await stroke('Best');
  await p.evaluate(()=>{__gs.prefs.paintSpeed='fast';});const fast=await stroke('Fast');
  ok(fast.Mpx<best.Mpx,'Fast asks the graphics chip for less per stroke ('+best.Mpx+' -> '+fast.Mpx+' Mpx)');
+ await p.evaluate(()=>{__gs.prefs.paintHalf=true;});
+ const sizes=await p.evaluate(async()=>{const v=__gs.v3||window.v3;const a=v.fbo.w;return a;});
+ await p.mouse.move(cx-90,cy-20);await p.mouse.down();let mid=0;for(let i=0;i<12;i++){await p.mouse.move(cx-90+i*6,cy-20+i*2);await p.waitForTimeout(40);}
+ mid=await p.evaluate(()=>(__gs.v3||window.v3).fbo.w);await p.mouse.up();await W(700);
+ const after=await p.evaluate(()=>(__gs.v3||window.v3).fbo.w);
+ ok(mid<sizes*0.6&&after===sizes,'Half size: model drawn at half while painting ('+sizes+' -> '+mid+'), full again after ('+after+')');
  ok(errs.length===0,'no errors '+errs.join('|').slice(0,200));
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();process.exit(fails?1:0);
 })();
