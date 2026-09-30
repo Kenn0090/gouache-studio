@@ -48,6 +48,12 @@ function dragOn(c,fn){c.addEventListener('pointerdown',e=>{c.setPointerCapture(e
   c.addEventListener('pointermove',mv);c.addEventListener('pointerup',end);c.addEventListener('pointercancel',end);c.addEventListener('lostpointercapture',end);window.addEventListener('blur',end);});}
 dragOn(svC,e=>{const r=svC.getBoundingClientRect();setHSV(ui.hsv[0],clamp((e.clientX-r.left)/r.width,0,1),clamp(1-(e.clientY-r.top)/r.height,0,1));});
 dragOn(hueC,e=>{const r=hueC.getBoundingClientRect();setHSV(clamp((e.clientX-r.left)/r.width,0,1)*359.9,ui.hsv[1],ui.hsv[2]);});
+/* (0.39.3, Kenn) eyedropper that reads a colour from anywhere on the screen, also outside the app window (needs the browser's EyeDropper; hidden where it is missing) */
+const hasScreenPick=()=>typeof window.EyeDropper==='function';
+async function screenPick(put){if(!hasScreenPick()){toast('This browser cannot pick colours from the screen.');return;}
+  try{const r=await new window.EyeDropper().open();const c=fromHex(r.sRGBHex);if(c){put(c);}}catch(e){/* Esc or closed */}}
+function screenPickBtn(put){if(!hasScreenPick())return null;const b=el('button',{type:'button',class:'btn sm eyedrop',title:'Pick a colour from anywhere on the screen, even outside the app','aria-label':'Pick a colour from the screen',onclick:()=>screenPick(put)});
+  b.innerHTML='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z"/></svg>';return b;}
 function swapColors(){const t=ui.fg;ui.fg=ui.bg;ui.bg=t;setFG(ui.fg);}
 $('#swBG').addEventListener('click',swapColors);
 $('#swFG').addEventListener('click',()=>{if(typeof showPanel==='function')showPanel('color');$('#hex').focus();});
@@ -63,3 +69,4 @@ function pickAt(x,y){
   else{const u=new Uint8Array(4);gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE,u);px=Array.from(u,v=>v/255);}
   if(px[3]<.002)return;setFG([px[0]/px[3],px[1]/px[3],px[2]/px[3]].map(v=>clamp(v,0,1)));
 }
+{const slot=$('#eyeSlot'),b=slot&&screenPickBtn(c=>{const keep=ui.bg;setFG(c);ui.bg=keep;refreshColor();pushRecent(c);});if(b)slot.replaceWith(b);else if(slot)slot.remove();}

@@ -164,7 +164,7 @@ function colourPop(anchor,get,put){document.querySelectorAll('.colpop').forEach(
   const drag=(cv,fn)=>{cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);const f=ev=>{const r=cv.getBoundingClientRect();fn(clamp((ev.clientX-r.left)/r.width,0,1),clamp((ev.clientY-r.top)/r.height,0,1));go();};f(e);const up=()=>{cv.removeEventListener('pointermove',f);cv.removeEventListener('pointerup',up);};cv.addEventListener('pointermove',f);cv.addEventListener('pointerup',up);});};
   drag(sq,(x,y)=>{sv=x;vv=1-y;});drag(hb,x=>{h=x*360;});
   hexI.onchange=()=>{const c=fromHex(hexI.value);if(!c)return;[h,sv,vv]=rgb2hsv(...c);go();};
-  const pop=el('div',{class:'colpop',role:'dialog','aria-label':'Colour'},sq,hb,el('div',{class:'colrow'},sw,oldSw),H.el,S.el,Lm.el,el('div',{class:'frow'},hexI,el('button',{class:'btn sm',text:'System picker…',onclick:()=>{pop.remove();anchor.showPicker&&anchor.showPicker();}}),el('button',{class:'btn sm',id:'cp_close',text:'Done',onclick:()=>pop.remove()})));
+  const pop=el('div',{class:'colpop',role:'dialog','aria-label':'Colour'},sq,hb,el('div',{class:'colrow'},sw,oldSw),H.el,S.el,Lm.el,el('div',{class:'frow'},hexI,screenPickBtn(c=>{[h,sv,vv]=rgb2hsv(...c);go();}),el('button',{class:'btn sm',text:'System picker…',onclick:()=>{pop.remove();anchor.showPicker&&anchor.showPicker();}}),el('button',{class:'btn sm',id:'cp_close',text:'Done',onclick:()=>pop.remove()})));
   document.body.append(pop);go();
   const r=anchor.getBoundingClientRect(),w=pop.offsetWidth,hh=pop.offsetHeight,L=Math.max(6,Math.min(innerWidth-w-6,r.left)),T=Math.max(6,Math.min(innerHeight-hh-6,r.bottom+6));
   pop.style.left=L+'px';pop.style.top=T+'px';pop.style.transformOrigin=(r.left+r.width/2-L)+'px '+(r.top+r.height/2-T)+'px';
