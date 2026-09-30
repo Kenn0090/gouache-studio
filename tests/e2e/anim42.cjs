@@ -44,6 +44,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{__gs.dlgQuickDupli();});await W(200);
  ok(await p.evaluate(()=>!!document.getElementById('qdTrack')),'Quick dupli offers the effect step');
  await p.click('#dlgCancel').catch(()=>{});
+ /* animated film grain changes from frame to frame */
+ const gr=await p.evaluate(()=>{const A=__gs.anim;A.fxl=[];__gs.afxAdd('filmGrain');const c=__gs.afxRenderAll(A),f=x=>Array.from(x.getContext('2d').getImageData(0,0,x.width,x.height).data);
+   const a=f(c[0]),b=f(c[1]),n=Math.min(a.length,b.length);let d=0;for(let i=0;i<n;i+=4)if(Math.abs(a[i]-b[i])>3)d++;return [A.frames.length,d,n/4];});
+ ok(gr[0]>1&&gr[1]>gr[2]*.05,'film grain differs between frames ('+gr+')');
  ok(errs.length===0,'no errors '+errs.slice(0,3).join('|'));
  await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);
 })();

@@ -2,7 +2,7 @@
    An effect track is a filter (Radial blur, Warp…) that sits over every frame. Each slider can have
    keyframes, so the effect changes as the animation plays. A.fxl = [{id, v, keys:{param:[{f,e,v}]}, on, open}].
    Each track owns a real filter layer (tr._L) that is put above the frame while in Animation mode. */
-const AFX_IDS=['dissolve','vfxGlow','radialBlur','warp','distort','noise','gradMap','blur','motionBlur','hueSat','levels','pixelBitmap','halftone','glass','acid'];
+const AFX_IDS=['filmGrain','dissolve','vfxGlow','radialBlur','warp','distort','noise','gradMap','blur','motionBlur','hueSat','levels','pixelBitmap','halftone','glass','acid'];
 const AFX_EASE=[['lin','Linear'],['in','Ease in'],['out','Ease out'],['io','Ease in-out'],['hold','Hold']];
 const afxEase=(e,t)=>e==='in'?t*t:e==='out'?1-(1-t)*(1-t):e==='io'?t*t*(3-2*t):t;
 const afxList=()=>{const A=A_();return A?(A.fxl||(A.fxl=[])):[];};
@@ -12,7 +12,7 @@ function afxValue(tr,key,f){const ks=tr.keys[key];if(!ks||!ks.length)return tr.v
   if(f<=ks[0].f)return ks[0].v;const l=ks[ks.length-1];if(f>=l.f)return l.v;
   for(let i=0;i<ks.length-1;i++){const a=ks[i],b=ks[i+1];if(f>=a.f&&f<=b.f){if(a.e==='hold')return a.v;return a.v+(b.v-a.v)*afxEase(a.e,(f-a.f)/(b.f-a.f));}}
   return tr.v[key];}
-function afxValues(tr,f){const v=Object.assign({},tr.v);for(const k in tr.keys)v[k]=afxValue(tr,k,f);return v;}
+function afxValues(tr,f){const v=Object.assign({},tr.v);for(const k in tr.keys)v[k]=afxValue(tr,k,f);if(FX[tr.id].frameSeed&&v.animated!==false)v.seed=(tr.v.seed||0)+f*13.37;return v;}
 function afxLayer(tr){if(!tr._L){tr._L=newFxLayerObj(FX[tr.id].title,[{id:tr.id,v:fxDefaults(FX[tr.id]),on:true}],'base');tr._L.autoName=false;}return tr._L;}
 /* put the layers above the current frame with this frame's values */
 function afxApply(){const A=A_();if(!A||ui.mode!=='anim')return;const F=A.frames[A.cur],kids=[F];
