@@ -251,3 +251,6 @@ Kenn's list, all done: `fillNoMask()` (painting a material without a mask does n
 
 ## 0.37.2 (short notes)
 Preferences in tabs (`dlgPrefs`, defaults in D, Reset this tab); reset buttons (#shEnvReset via `envSettingsBox`, #shReset, #brushReset, #fl_adj_reset); `colourBtn` opens `colourPop` (H/S/L sliders, layers/shapes.js); Ctrl+drag material shows the ID map (`libIdShow`, `libIdView` in p3MeshShowTex) and `undoMerge` makes the drop one step; Brushes in the wide shelf is a 2-column grid (CSS `.dkshelf .sec:has(#libBody)`). Test fix372.
+
+## 0.37.2 / 0.38.0 (short notes)
+0.37.2: Preferences tabs, reset buttons (#shEnvReset, #shReset, #brushReset, #fl_adj_reset), `colourBtn` opens `colourPop` (H/S/L), Ctrl+drag shows the ID map (`libIdShow`), `undoMerge`, Brushes in the wide shelf = 2 columns. 0.38.0: `files/to-texture.js` (`dlgToTexture`, `ttMake`: grunge → txAddTarget, tip, stencil, decal/material → Convert tab; `cvS.decal` makes `cvMaterialRec` keep the source alpha and set fill.decal/planar; matApply passes `decal`); Flatten image in the Paint layer menu; no smart-material entries in the Paint layer menu. Tests fix372, tex38.

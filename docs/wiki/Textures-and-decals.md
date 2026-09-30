@@ -46,3 +46,7 @@ The photo grunge and the library materials come from **[ambientCG](https://ambie
 
 ## Bumps under a material
 A material covers the bumps (height and normal detail) of the layers under it, so a smooth metal on top of leather looks smooth. To let the bumps add up instead, untick **Hide the bumps below** in the Material panel. Decals only cover what is under their outline.
+
+## Turn the canvas into a texture (0.38)
+
+In Paint, use File › **Turn canvas into a texture…**, the **From canvas…** button in Textures, or right-click a layer › **Turn layer into a texture…**. Choose Grunge, Decal, Material, Brush tip or Stencil. Transparency is kept, and with a selection only that area is used. Decal and Material open the Convert tab: make the maps and press **Turn into material**. A decal keeps its cut-out.
