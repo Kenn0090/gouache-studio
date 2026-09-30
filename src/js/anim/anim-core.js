@@ -55,8 +55,14 @@ function frameCopy(s){const F=newFrame();blit(s.target,F.target,0,0,doc.w,doc.h,
 function animMemOk(extra){const per=doc.w*doc.h*(doc.depth>8?8:4),A=A_();const total=(A.frames.length+extra)*per;
   if(total>2.5e9){toast('That would use about '+(total/1e9).toFixed(1)+' GB of video memory. Try fewer frames or a smaller canvas.');return false;}return true;}
 /* n copies of the current frame, straight after it ('after') or at the end of the animation ('end') */
-function quickDupli(n,where){const A=A_();if(!A)return;n=clamp(Math.round(n)||0,1,512);if(!animMemOk(n))return;
-  animOp('Quick dupli',A=>{const s=A.frames[A.cur],at=where==='end'?A.frames.length:A.cur+1,list=[];for(let k=0;k<n;k++)list.push(frameCopy(s));A.frames.splice(at,0,...list);A.cur=at+n-1;ui.fsel=[at,at+n-1];});}
+function quickDupli(n,where,step){const A=A_();if(!A)return;n=clamp(Math.round(n)||0,1,512);if(!animMemOk(n))return;
+  animOp('Quick dupli',A=>{const s=A.frames[A.cur],src=A.cur,at=where==='end'?A.frames.length:A.cur+1,list=[];for(let k=0;k<n;k++)list.push(frameCopy(s));A.frames.splice(at,0,...list);A.cur=at+n-1;ui.fsel=[at,at+n-1];
+    /* keyframes after the new copies move along with their frames */
+    for(const tr of A.fxl||[])for(const k in tr.keys)for(const x of tr.keys[k])if(x.f>=at)x.f+=n;
+    /* optional: step an effect's slider from one value on the first frame to another on the last copy */
+    const tr=step&&(A.fxl||[])[step.track];if(tr&&tr.keys&&typeof step.from==='number'&&typeof step.to==='number'){
+      const ks=tr.keys[step.key]=(tr.keys[step.key]||[]).filter(x=>x.f<src||x.f>at+n-1);
+      ks.push({f:src,v:step.from,e:step.e||'lin'},{f:at+n-1,v:step.to,e:step.e||'lin'});ks.sort((a,b)=>a.f-b.f);}});}
 /* the frames a helper works on: the Shift+click range, or all frames */
 function animRange(){const A=A_();if(ui.fsel){const a=Math.min(...ui.fsel),b=Math.max(...ui.fsel);return [clamp(a,0,A.frames.length-1),clamp(b,0,A.frames.length-1)];}return [0,A.frames.length-1];}
 function reverseFrames(){const A=A_();if(!A)return;const [a,b]=animRange();if(b<=a){toast('Pick a range with Shift+click, or have at least two frames.');return;}

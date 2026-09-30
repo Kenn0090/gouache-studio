@@ -54,6 +54,7 @@
         "filters/filters",
         "filters/filters-more",
         "filters/filters-distort",
+        "filters/filters-vfx",
         "filters/embroidery",
         "filters/fx-layers",
         "layers/look",

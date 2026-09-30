@@ -35,7 +35,16 @@ function dlgQuickDupli(){const A=A_();if(!A)return;let n=8,where='after';const n
   const chips=el('div',{class:'chips'});const draw=()=>{chips.replaceChildren(...QD_PRESETS.map(v=>el('button',{class:'chip'+(n===v?' on':''),text:String(v),onclick:()=>{n=v;num.value=v;draw();}})));};
   num.addEventListener('input',()=>{n=+num.value||1;draw();});draw();
   const sel=el('select',{id:'qdWhere','aria-label':'Where the copies go'},el('option',{value:'after',text:'Right after this frame'}),el('option',{value:'end',text:'At the end of the animation'}));sel.addEventListener('change',()=>{where=sel.value;});
-  openDialog({title:'Quick dupli',body:el('div',{class:'dlg-grid'},el('p',{class:'note',text:'Makes copies of frame '+(A.cur+1)+'. Pick how many, or type a number.'}),chips,el('div',{class:'frow'},el('label',{for:'qdN',text:'Copies'}),num),el('div',{class:'frow'},el('label',{for:'qdWhere',text:'Put them'}),sel)),okLabel:'Make copies',onOk(){quickDupli(n,where);}});}
+  /* optional: step one slider of an effect across the copies */
+  const fxs=(A.fxl||[]),stepBox=el('div',{class:'dlg-grid'});let stepPick=()=>null;
+  if(fxs.length){const tsel=el('select',{id:'qdTrack','aria-label':'Effect to step'},el('option',{value:'',text:'No effect'}),...fxs.map((t,i)=>el('option',{value:String(i),text:FX[t.id].title})));
+    const psel=el('select',{id:'qdParam','aria-label':'Slider to step'}),from=el('input',{class:'num',type:'number',step:'any',id:'qdFrom','aria-label':'From'}),to=el('input',{class:'num',type:'number',step:'any',id:'qdTo','aria-label':'To'});
+    const sync=()=>{const ti=tsel.value;psel.replaceChildren();if(ti==='')return;const tr=fxs[+ti];for(const d of afxAnimatable(tr.id))psel.append(el('option',{value:d.key,text:d.label||d.key}));fill();};
+    const fill=()=>{const tr=fxs[+tsel.value],d=tr&&afxAnimatable(tr.id).find(x=>x.key===psel.value);if(d){from.value=d.value;to.value=d.max;}};
+    tsel.onchange=sync;psel.onchange=fill;
+    stepBox.append(el('div',{class:'frow'},el('label',{for:'qdTrack',text:'Step an effect'}),tsel),el('div',{class:'frow'},psel,from,el('span',{class:'dim',text:'to'}),to));
+    stepPick=()=>tsel.value===''||!psel.value?null:{track:+tsel.value,key:psel.value,from:+from.value,to:+to.value};}
+  openDialog({title:'Quick dupli',body:el('div',{class:'dlg-grid'},el('p',{class:'note',text:'Makes copies of frame '+(A.cur+1)+'. Pick how many, or type a number.'}),chips,el('div',{class:'frow'},el('label',{for:'qdN',text:'Copies'}),num),el('div',{class:'frow'},el('label',{for:'qdWhere',text:'Put them'}),sel),stepBox),okLabel:'Make copies',onOk(){quickDupli(n,where,stepPick());}});}
 /* a small "type a number" window for the frame tools */
 function dlgNumber(title,text,val,min,max,fn){let v=val;const num=el('input',{class:'num',type:'number',min,max,value:val,id:'dnN','aria-label':title});num.addEventListener('input',()=>{v=+num.value||min;});
   openDialog({title,body:el('div',{class:'dlg-grid'},el('p',{class:'note',text:text+(ui.fsel?' (for the picked frames)':' (for all frames)')}),el('div',{class:'frow'},num)),okLabel:'OK',onOk(){fn(v);}});}

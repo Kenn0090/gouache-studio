@@ -45,6 +45,15 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  let colourful=0;for(let i=0;i<g3.length;i+=4){const d=Math.max(Math.abs(g3[i]-base[i]-(g3[i+1]-base[i+1])),0);if(d>6)colourful++;}
  ok(colourful<300,'grain with Colour noise 0 is grey');
  await p.evaluate(()=>{document.getElementById('post_grain').click();});await W(300);
+ /* 0.42.1: filter looks */
+ const chroma=a=>{let c=0;for(let i=0;i<a.length;i+=4)c+=Math.abs(a[i]-a[i+1])+Math.abs(a[i+1]-a[i+2]);return c/(a.length/4);};
+ const c0=chroma(base);
+ await p.evaluate(()=>{document.getElementById('post_look').click();});await W(400);
+ ok(await p.evaluate(()=>!!document.getElementById('post_look_mode')),'filter look has a mode list');
+ const gr=await shot(320,240);ok(chroma(gr)<2&&c0>2,'Greyscale removes colour ('+c0.toFixed(1)+' -> '+chroma(gr).toFixed(1)+')');
+ const modes={};for(const m of [2,3,4,5,6,7,8,9,10]){await p.evaluate(m=>{const s=document.getElementById('post_look_mode');s.value=String(m);s.dispatchEvent(new Event('change'));},m);await W(300);modes[m]=await shot(320,240);}
+ ok(Object.keys(modes).every(m=>diff(modes[m],gr)>100),'every look changes the picture');
+ await p.evaluate(()=>{document.getElementById('post_look').click();});await W(300);
  require('fs').writeFileSync(process.env.OUT||'/tmp/claude-0/post.json',JSON.stringify({filmic:tones.filmic.slice(0,0)}));
  ok(errs.length===0,'no errors '+errs.slice(0,3).join(' | '));
  await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);

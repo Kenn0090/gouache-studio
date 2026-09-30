@@ -30,6 +30,20 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const sv=await p.evaluate(()=>__gs.afxLoad(JSON.parse(JSON.stringify(__gs.afxSave()))).length);ok(sv===1,'saves and loads');
  await p.keyboard.press('Control+z');await W(400);
  ok(await p.evaluate(()=>__gs.afxList().length===1),'undo after keys keeps the effect');
+ /* 0.42.1: Dissolve, Glow, stepping an effect with Quick dupli */
+ await p.evaluate(()=>{const A=__gs.anim,[w,h]=__gs.docWH(),d=new Uint8ClampedArray(w*h*4);for(let i=0;i<w*h;i++){d[i*4]=200;d[i*4+1]=40;d[i*4+2]=40;d[i*4+3]=255;}
+   const tex=__gs.uploadStraight({w,h,data:d,bits:8});__gs.premultInto(A.frames[0].target,tex,[0,0],null);A.fxl=[];__gs.showFrame(0);});
+ const alphaSum=async t=>p.evaluate(t=>{const A=__gs.anim;A.fxl=[];__gs.afxAdd('dissolve');const tr=__gs.afxList()[0];tr.v.t=t;const c=__gs.afxRenderAll(A)[0],d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let s=0;for(let i=3;i<d.length;i+=4)s+=d[i];return s/(d.length/4)/255;},t);
+ const a0=await alphaSum(0),a5=await alphaSum(.5),a1=await alphaSum(1);
+ ok(a0>.95&&a1<.05&&a5>.1&&a5<.9,'dissolve erodes with Amount ('+[a0,a5,a1].map(x=>x.toFixed(2))+')');
+ const g=await p.evaluate(()=>{const A=__gs.anim;A.fxl=[];__gs.afxAdd('vfxGlow');return __gs.afxRenderAll(A)[0].width;});ok(g===64,'glow renders');
+ await p.evaluate(()=>{const A=__gs.anim;A.fxl=[];__gs.afxAdd('dissolve');});
+ await p.evaluate(()=>{__gs.quickDupli(8,'after',{track:0,key:'t',from:0,to:1});});await W(300);
+ const ks=await p.evaluate(()=>__gs.afxList()[0].keys.t.map(k=>k.f+':'+k.v));
+ ok(ks.length===2&&ks[0]==='0:0'&&ks[1].startsWith('8:1'),'quick dupli stepped the effect '+ks);
+ await p.evaluate(()=>{__gs.dlgQuickDupli();});await W(200);
+ ok(await p.evaluate(()=>!!document.getElementById('qdTrack')),'Quick dupli offers the effect step');
+ await p.click('#dlgCancel').catch(()=>{});
  ok(errs.length===0,'no errors '+errs.slice(0,3).join('|'));
  await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);
 })();

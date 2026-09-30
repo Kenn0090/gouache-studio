@@ -7,7 +7,7 @@ const FX_KINDS=()=>[
   ['Adjust',['colorAdj','levels','curves','hueSat','gradMap','desat','invert','threshold','posterize','quantize']],
   ['Blur and sharpen',['blur','boxBlur','radialBlur','lensBlur','surfBlur','motionBlur','driftBlur','sharpen','highPass']],
   ['Distort',['warp','slopeBlur','distort']],
-  ['Artistic',['oilPaint','painterly','kuwahara','watercolour','charcoal','cutout','mosaic','acid','glass','emboss','edges','noise']],
+  ['Artistic',['dissolve','vfxGlow','oilPaint','painterly','kuwahara','watercolour','charcoal','cutout','mosaic','acid','glass','emboss','edges','noise']],
   ['Photo and print',['softFocus','cineMono','anaglyph','halftone','engraving','riso','bwPrint','pixelBitmap']],
   ['Patterns',['clouds','cells']],
   ['Tiling',['offset','seamless']]];

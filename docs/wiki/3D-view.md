@@ -103,3 +103,5 @@ Height depth now pushes each point of a model out in one direction, so hard edge
 
 ## Post processing
 At the bottom of the **Shader** panel, tick an effect to switch it on and open its sliders: **Bloom**, **Ambient occlusion** (soft contact shadows in creases and where things meet; **Strength**, **Radius** and **Smoothness**), **Depth of field** (move the **Focus distance** to what should stay sharp), **Sharpen**, **Colour grade** (exposure, contrast, saturation, warmth), **Vignette**, **Chromatic aberration** and **Film grain** (strongest in the mid-tones; **Grain size** and **Colour noise**, and a different pattern on every frame of a turntable). They are laid over the finished picture, so screenshots, the render window and turntables get them too. **Reset post processing** turns them all off.
+
+**Filter look** (Shader panel, post processing): live screen filters on the 3D view: Greyscale, Sepia, Invert, Black and white, Duotone, Posterize, Night vision, Thermal, CRT scanlines and Blueprint, with a Strength slider.

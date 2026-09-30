@@ -2,7 +2,7 @@
    An effect track is a filter (Radial blur, Warp…) that sits over every frame. Each slider can have
    keyframes, so the effect changes as the animation plays. A.fxl = [{id, v, keys:{param:[{f,e,v}]}, on, open}].
    Each track owns a real filter layer (tr._L) that is put above the frame while in Animation mode. */
-const AFX_IDS=['radialBlur','warp','distort','noise','gradMap','blur','motionBlur','hueSat','levels','pixelBitmap','halftone','glass','acid'];
+const AFX_IDS=['dissolve','vfxGlow','radialBlur','warp','distort','noise','gradMap','blur','motionBlur','hueSat','levels','pixelBitmap','halftone','glass','acid'];
 const AFX_EASE=[['lin','Linear'],['in','Ease in'],['out','Ease out'],['io','Ease in-out'],['hold','Hold']];
 const afxEase=(e,t)=>e==='in'?t*t:e==='out'?1-(1-t)*(1-t):e==='io'?t*t*(3-2*t):t;
 const afxList=()=>{const A=A_();return A?(A.fxl||(A.fxl=[])):[];};
