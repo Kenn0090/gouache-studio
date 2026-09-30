@@ -151,3 +151,12 @@ function liveBarRow(){const M=lm.M,S=M.mask.stack;
   const gn=el('select',{id:'lmGen','aria-label':'Add a generator'},el('option',{value:'',text:'+ Generator'}),...MS_GENS.map(([k,t])=>el('option',{value:k,text:t})));gn.onchange=()=>{if(gn.value)liveAdd('gen',{p:Object.assign(MS_KINDS.gen.p(),{g:gn.value})});};
   const nz=el('select',{id:'lmNoise','aria-label':'Add a noise'},el('option',{value:'',text:'+ Noise'}),...MS_NOISES.map(([k,t])=>el('option',{value:k,text:t})));nz.onchange=()=>{if(nz.value)liveAdd('noise',{p:Object.assign(MS_KINDS.noise.p(),{type:nz.value})});};
   return el('div',{class:'maskbar-row'},mm,gn,nz,...(chips.length?chips:[el('span',{class:'maskbar-n',text:'No rows yet.'})]));}
+
+/* (0.32.1) Alt+click on the model while a mask tool is on (ID colour, Box, Lasso, Polygon, Paint) clears the mask.
+   Alt+drag still turns the model. Returns true when it did something. */
+function maskClearAll(){if(!(typeof maskToolsOn==='function'&&maskToolsOn())&&!liveOn())return false;
+  if(mk3.tool==='id'){idSelEdit(S=>{S.cols=[];});maskBarSync();v3.dirty=true;requestRender(true);toast('ID colours cleared.');return true;}
+  if(liveOn()){deselect();mk3.pts=null;mk3.draw=null;mk3Overlay();v3.dirty=true;requestRender(true);toast('Selection cleared.');return true;}
+  const et=typeof editTarget==='function'?editTarget():null;
+  if(et&&et.isMask){maskOp(0,0);mk3.pts=null;mk3Overlay();if(sel.active)deselect();toast('Mask cleared.');return true;}
+  return false;}

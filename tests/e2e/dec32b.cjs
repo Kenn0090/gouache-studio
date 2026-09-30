@@ -1,0 +1,36 @@
+/* 0.32.1: a decal on a model whose stored normals point the other way (the sphere) still shows on the side you placed it */
+const {chromium}=require('playwright');
+const OLD=__dirname+'/';
+const OUT=__dirname+'/out/';
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();
+ await p.addInitScript(()=>{try{localStorage.setItem('gs.p3d',JSON.stringify({size:256,layout:'3d'}));}catch(e){}});
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
+  if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());if(m.type()==='warning'&&/GL|WebGL/.test(m.text()))errs.push('GLWARN '+m.text());});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ const W=ms=>p.waitForTimeout(ms||200);
+ await p.evaluate(()=>__gs.newDoc(256,256,8,[1,1,1],'dec',false,'pbr'));await W(300);
+ await p.click('#modeTabs [data-mode=p3d]');await W(1500);
+ await p.evaluate(()=>__gs.showPanel('decals'));await W(400);
+ ok(await p.evaluate(()=>document.querySelectorAll('#dcGrid .dctile').length)===12,'the Decals panel lists 12 decals');
+ await p.locator('#dcSec').screenshot({path:OUT+'dec-panel.png'});
+ await p.evaluate(()=>__gs.showPanel('decals'));await W(400);
+ const sel=p.locator('#pane3d select').first();console.log(await sel.evaluate(e=>[...e.options].map(o=>o.value).join(',')));
+ await sel.selectOption('sphere');await W(1200);
+ const hb=await p.locator('#v3Hit').boundingBox(),cx=hb.x+hb.width/2,cy=hb.y+hb.height/2;
+ const shot=async()=>{const b64=(await p.locator('#work').screenshot()).toString('base64');return p.evaluate(async ([b,cx0,cy0])=>{const im=new Image();im.src='data:image/png;base64,'+b;await im.decode();const c=document.createElement('canvas');c.width=im.width;c.height=im.height;const x=c.getContext('2d');x.drawImage(im,0,0);return Array.from(x.getImageData(cx0-45,cy0-45,90,90).data);},[b64,cx0,cy0]);};
+ const cx0=Math.round(hb.width/2),cy0=Math.round(hb.height/2)-0;
+ await p.mouse.move(cx+200,cy+150);await W(500);const before=await shot();
+ await p.click('#dc_bolt');await W(150);await p.mouse.click(cx,cy);await W(1200);await p.keyboard.press('Escape');await p.mouse.move(cx+250,cy+200);await W(300);
+ await p.evaluate(()=>{__gs.v3.dirty=true;});await W(1200);const after=await shot();
+ let diff=0;for(let i=0;i<before.length;i+=4)if(Math.abs(before[i]-after[i])+Math.abs(before[i+1]-after[i+1])+Math.abs(before[i+2]-after[i+2])>60)diff++;
+ ok(diff>150,'the decal shows on the front of the sphere ('+diff+' pixels changed)');
+ ok(errs.length===0,'no errors '+errs.join('|').slice(0,200));
+ console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();process.exit(fails?1:0);})();

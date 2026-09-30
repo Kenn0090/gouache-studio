@@ -60,7 +60,8 @@ function dcFromTarget(src){const S=Math.max(src.w,src.h),out={base:makeTarget(sr
 function dcXf(pos,n,size,aspect){const c=v3.cam,eye=v3Eye(),tg=[c.tx,c.ty,c.tz],cf=norm3(sub3(tg,eye));let up=cross3(cross3(cf,[0,1,0]),cf);if(Math.hypot(...up)<1e-4)up=[0,1,0];
   const f=[-n[0],-n[1],-n[2]];let r=cross3(f,norm3(up));if(Math.hypot(...r)<1e-4)r=cross3(f,[1,0,0]);r=norm3(r);const u=cross3(r,f),bk=n;
   const R=[[r[0],u[0],bk[0]],[r[1],u[1],bk[1]],[r[2],u[2],bk[2]]].map(row=>row.map((v,j)=>j===1?v:-v)),{c:mc}=pxfModel();
-  return {t:[pos[0]-mc[0],pos[1]-mc[1],pos[2]-mc[2]],r:pxfEuler(R),s:aspect>1?[size/aspect,size,1]:[size,size*aspect,1]};}
+  const w=aspect>1?size/aspect:size,h=aspect>1?size:size*aspect;/* the third number is how deep the sticker reaches: about its own size, so it never shows through to the far side of the model */
+  return {t:[pos[0]-mc[0],pos[1]-mc[1],pos[2]-mc[2]],r:pxfEuler(R),s:[w,h,Math.max(w,h)*.7]};}
 function dcNormalAt(p){const m=v3.mesh,src=m;const t=sel3Tri(src,p.eye,p.dir,{start:0,count:src.idx.length/3});if(t<0)return null;const I=src.idx,P=src.pos,a=I[t*3]*3,b=I[t*3+1]*3,cc=I[t*3+2]*3;
   let n=norm3(cross3(sub3([P[b],P[b+1],P[b+2]],[P[a],P[a+1],P[a+2]]),sub3([P[cc],P[cc+1],P[cc+2]],[P[a],P[a+1],P[a+2]])));if(n[0]*p.dir[0]+n[1]*p.dir[1]+n[2]*p.dir[2]>0)n=n.map(v=>-v);return n;}
 async function dcPlace(it,p,mode){const c0=v3.cam,n=p?(dcNormalAt(p)||[-p.dir[0],-p.dir[1],-p.dir[2]]):norm3(sub3(v3Eye(),[c0.tx,c0.ty,c0.tz]));if(!p)p={pos:[c0.tx,c0.ty,c0.tz]};let imgs;
@@ -74,11 +75,11 @@ function dcArm(it){dc.last=it;dc.armed=dc.armed&&dc.armed.kind===it.kind&&dc.arm
   if(dc.armed)toast('Click the model to place “'+it.name+'”. Keep clicking for more; Esc stops.');}
 document.addEventListener('pointerdown',async e=>{if(!dc.armed||ui.mode!=='p3d'||e.button!==0||e.altKey||!e.target||e.target.id!=='v3Hit')return;
   const p=v3PickAt(e.target,e);if(!p)return;e.preventDefault();e.stopImmediatePropagation();await dcPlace(dc.armed,p);},true);
-window.addEventListener('keydown',e=>{if(e.key==='Escape'&&dc.armed){dc.armed=null;renderDecals();}});
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&dc.armed){dc.armed=null;dcIndicator(null);renderDecals();}});
 /* (0.32) drag a decal from the panel onto the model: the decal follows the cursor on the surface (a real layer, so you see exactly
    what you will get), lands on release, and is taken away again if you let go off the model or press Esc */
 let dcDrag=null,dcLastPick=0;
-function dcDragEnd(commit){const d=dcDrag;dcDrag=null;document.body.classList.remove('dcdragging');if(d&&d.ghost)d.ghost.remove();if(!d||!d.started)return;
+function dcDragEnd(commit){const d=dcDrag;dcDrag=null;dcIndicator(null);document.body.classList.remove('dcdragging');if(d&&d.ghost)d.ghost.remove();if(!d||!d.started)return;
   dc.justDragged=true;setTimeout(()=>{dc.justDragged=false;},0);
   if(d.L){if(commit&&d.L.visible!==false){d.L.fill.decal=true;selectOnly(d.L);renderLayers();v3.dirty=true;requestRender(true);}
     else{const L=d.L;undo().then(()=>{v3.dirty=true;requestRender(true);});}}}
@@ -88,8 +89,9 @@ function dcDragMove(e){const d=dcDrag;if(!d)return;
   d.ghost.style.left=e.clientX+10+'px';d.ghost.style.top=e.clientY+10+'px';
   const over=document.elementFromPoint(e.clientX,e.clientY),onModel=!!over&&over.id==='v3Hit';d.ghost.style.opacity=onModel?'0':'.9';
   const now=performance.now();if(now-dcLastPick<45||d.busy)return;dcLastPick=now;
-  if(!onModel){if(d.L&&d.L.visible!==false){d.L.visible=false;renderLayers();v3.dirty=true;requestRender(true);}return;}
-  const p=v3PickAt(over,e);if(!p){if(d.L&&d.L.visible!==false){d.L.visible=false;renderLayers();v3.dirty=true;requestRender(true);}return;}
+  if(!onModel){dcIndicator(null);if(d.L&&d.L.visible!==false){d.L.visible=false;renderLayers();v3.dirty=true;requestRender(true);}return;}
+  const p=v3PickAt(over,e);if(!p){dcIndicator(null);if(d.L&&d.L.visible!==false){d.L.visible=false;renderLayers();v3.dirty=true;requestRender(true);}return;}
+  dcIndicator(over,p.pos,dcNormalAt(p)||[-p.dir[0],-p.dir[1],-p.dir[2]]);
   d.busy=true;(async()=>{try{
     if(!d.L){d.L=await dcPlace(d.it,p);}
     else{const n=dcNormalAt(p)||[-p.dir[0],-p.dir[1],-p.dir[2]],b=d.L.fill.xf;const X=dcXf(p.pos,n,dc.size,(b&&b.s?(b.s[1]/b.s[0]):1));d.L.fill.xf=X;d.L.visible=true;fillRender(d.L);renderLayers();}
@@ -97,9 +99,33 @@ function dcDragMove(e){const d=dcDrag;if(!d)return;
 document.addEventListener('pointerdown',e=>{const t=e.target&&e.target.closest?e.target.closest('.dctile'):null;if(!t||e.button!==0||ui.mode!=='p3d')return;
   const id=t.id.replace(/^dc_/,''),it=[...DC_LIST.map(([i,name])=>({kind:'built',id:i,name})),...dc.mine.map(rec=>({kind:'mine',id:rec.id,name:rec.name,rec}))].find(x=>x.id===id);if(it){dc.last=it;dcDrag={it,x:e.clientX,y:e.clientY,started:false,L:null};}},true);
 window.addEventListener('pointermove',dcDragMove,true);
+/* armed (click a decal, then the model): the same ring follows the cursor over the model */
+window.addEventListener('pointermove',e=>{if(!dc.armed||dcDrag||ui.mode!=='p3d'){if(dcInd.el&&!dcInd.el.hidden&&!dcDrag)dcIndicator(null);return;}
+  const over=e.target;if(!over||over.id!=='v3Hit'){dcIndicator(null);return;}const now=performance.now();if(now-dcLastPick<60)return;dcLastPick=now;
+  const p=v3PickAt(over,e);if(!p){dcIndicator(null);return;}dcIndicator(over,p.pos,dcNormalAt(p)||[-p.dir[0],-p.dir[1],-p.dir[2]]);},true);
 window.addEventListener('pointerup',e=>{if(dcDrag)dcDragEnd(true);},true);
 window.addEventListener('keydown',e=>{if(e.key==='Escape'&&dcDrag&&dcDrag.started){e.preventDefault();e.stopImmediatePropagation();dcDragEnd(false);}},true);
 
+/* (0.32.1) where it will land: a glowing ring with a grid on the surface under the cursor, tilted with the surface */
+const dcInd={el:null};
+function dcIndicator(hit,pos,n){let c=dcInd.el;if(!pos){if(c)c.hidden=true;return;}
+  const r=hit.getBoundingClientRect(),w=Math.max(1,r.width),h=Math.max(1,r.height);if(r.width<4)return;
+  if(!c||!c.isConnected){c=dcInd.el=el('canvas',{class:'v3gz dcind','aria-hidden':'true'});hit.parentNode.insertBefore(c,hit.nextSibling);}
+  const pr=hit.parentNode.getBoundingClientRect(),dpr=window.devicePixelRatio||1,W=Math.round(w*dpr),H=Math.round(h*dpr);
+  if(c.width!==W||c.height!==H){c.width=W;c.height=H;}c.hidden=false;Object.assign(c.style,{left:(r.left-pr.left)+'px',top:(r.top-pr.top)+'px',width:w+'px',height:h+'px'});
+  const {VP}=v3ViewProj(w,h),proj=q=>{const x=VP[0]*q[0]+VP[4]*q[1]+VP[8]*q[2]+VP[12],y=VP[1]*q[0]+VP[5]*q[1]+VP[9]*q[2]+VP[13],ww=VP[3]*q[0]+VP[7]*q[1]+VP[11]*q[2]+VP[15];return ww<=1e-5?null:[(x/ww*.5+.5)*w,(1-(y/ww*.5+.5))*h];};
+  let a=cross3(n,[0,1,0]);if(Math.hypot(...a)<1e-3)a=cross3(n,[1,0,0]);a=norm3(a);const b=cross3(n,a),R=dc.size*pxfModel().S*.5*1.15,lift=R*.02;
+  const at=(u,v)=>proj([pos[0]+(a[0]*u+b[0]*v)*R+n[0]*lift,pos[1]+(a[1]*u+b[1]*v)*R+n[1]*lift,pos[2]+(a[2]*u+b[2]*v)*R+n[2]*lift]);
+  const x=c.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,w,h);
+  const ring=[];for(let i=0;i<=64;i++){const t=i/64*Math.PI*2,q=at(Math.cos(t),Math.sin(t));if(!q)return;ring.push(q);}
+  const path=()=>{x.beginPath();ring.forEach((q,i)=>i?x.lineTo(q[0],q[1]):x.moveTo(q[0],q[1]));x.closePath();};
+  x.save();path();x.fillStyle='rgba(90,190,255,.10)';x.fill();x.clip();
+  x.strokeStyle='rgba(140,220,255,.55)';x.lineWidth=1;
+  for(let k=-4;k<=4;k++){const f=k/4;for(const dir of [0,1]){x.beginPath();let first=true;for(let j=-16;j<=16;j++){const g=j/16,q=dir?at(g,f):at(f,g);if(!q)continue;if(first){x.moveTo(q[0],q[1]);first=false;}else x.lineTo(q[0],q[1]);}x.stroke();}}
+  x.restore();
+  x.lineJoin='round';path();x.strokeStyle='rgba(120,210,255,.9)';x.lineWidth=2;x.shadowColor='rgba(80,190,255,.95)';x.shadowBlur=14;x.stroke();
+  x.shadowBlur=26;x.lineWidth=1;x.stroke();x.shadowBlur=0;
+  const m=at(0,0);if(m){x.fillStyle='#fff';x.beginPath();x.arc(m[0],m[1],2.5,0,7);x.fill();}}
 /* your own decals: kept in the textures store, marked as decals */
 async function dcLoad(){if(dc.loaded)return;dc.loaded=true;try{dc.mine=((await store.all('textures'))||[]).filter(r=>r.decal).sort((a,b)=>(a.t||0)-(b.t||0));}catch(e){dc.mine=[];}renderDecals();}
 async function dcImport(){const fs=await pickFiles('image/*',true,'Pictures (PNG with transparency works best)',['png','webp','jpg','jpeg','tga']);let n=0;

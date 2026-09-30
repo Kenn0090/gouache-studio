@@ -1,6 +1,7 @@
-Decals like Substance Painter, an ID map view for ID colour masks, and brush tips the right way up.
+Decals show where they will land, sit on the right side, and the 3D view snaps to sides.
 
-- **Drag a decal onto the model:** drag a decal from the Decals panel over the model. It sits on the surface under the cursor, facing out, and follows you so you see exactly where it will land. Let go to place it. Let go off the model, or press Esc, and it goes away again. Clicking a decal and then the model still works.
-- **Add a decal as a layer:** pick a decal and use Add as a layer with Sticker, Tri-planar or UV projection. It is a normal decal layer you can move, turn and scale in Properties.
-- **ID colour masks show the ID map:** while you pick ID colours, the model shows the ID map itself, and the colours you have picked turn white. Click a swatch to remove a colour and it goes back to its own colour.
-- **Fixed: brush tips painted upside down on the model.** A brush with a tip shape came out flipped top to bottom on the 3D model. It now lands the right way up, and rotating the tip or making it follow the stroke direction turns it the right way too.
+- **Placement halo for decals:** when you drag a decal (or click one and move over the model), a glowing ring with a grid follows the cursor on the surface, tilted with it, so you see exactly where and how big the decal will be.
+- **Fixed: decals landing behind the model.** On models whose surface directions point inwards, a decal could appear on the far side. A decal now only covers the surface right under it, whichever way the model's directions point, and it no longer reaches through to the back.
+- **Snap the view:** a new View… menu in the 3D view snaps to Front, Back, Left, Right, Top or Bottom. Numpad 1, 3 and 7 do Front, Right and Top over the model; hold Ctrl for the opposite side.
+- **Perspective or Orthographic:** a button in the 3D view switches between them (Numpad 5 too). Orthographic has no depth shrinking, good for lining things up. Painting, picking and decals work in both. Ray traced mode still uses a perspective camera.
+- **Alt+click clears the mask:** with a mask tool on (ID colour, Box, Lasso, Polygon or Paint), an Alt+click on the model, without dragging, clears the mask: the picked ID colours, the selection, or the mask itself. Alt+drag still turns the model.

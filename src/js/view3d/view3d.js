@@ -83,7 +83,7 @@ const FS_3DSEL=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform sample
 const P3={mesh:prog3(VS_3D,FS_3D),line:prog3(VS_3D,FS_3DLINE),uv:prog3(VS_UV,FS_3DLINE),sel:prog3(VS_3D,FS_3DSEL)};
 
 /* ---- settings (kept in the document) ---- */
-const V3D_DEFAULTS={model:'plane',detail:0,unlit:null,uvs:1,disp:0,sunAz:40,sunEl:45,sunI:1,skyI:1,expo:1,bg:'dark',clip:true,wire:false,showUV:false,spin:false,fov:40,
+const V3D_DEFAULTS={model:'plane',detail:0,unlit:null,uvs:1,disp:0,sunAz:40,sunEl:45,sunI:1,skyI:1,expo:1,bg:'dark',clip:true,wire:false,showUV:false,spin:false,fov:40,ortho:false,
   env:'studio',envRot:0,envI:1,envBg:false,envBlur:.35,envSun:0,tone:'filmic'};
 const v3={on:false,mesh:null,gpu:null,tex:{},cam:{yaw:.5,pitch:.25,dist:3.2,tx:0,ty:0,tz:0},dirty:true,mapsDirty:true,editDirty:true,lastFull:0,fbo:null,imported:null};
 function v3s(){if(!doc.v3d)doc.v3d=Object.assign({},V3D_DEFAULTS);else if(doc.v3d.tone===undefined){for(const k in V3D_DEFAULTS)if(!(k in doc.v3d))doc.v3d[k]=V3D_DEFAULTS[k];}return doc.v3d;}
@@ -136,6 +136,18 @@ function v3Changed(){if(!v3.on)return;v3.editDirty=true;v3.mapsDirty=true;}
 
 /* ---- camera ---- */
 const m4=()=>new Float32Array(16);
+/* (0.32.1) perspective or orthographic: the orthographic view frames the same size at the model's centre */
+/* (0.32.1) view snaps: the camera looks at the model from one side (yaw turns around, pitch goes up and down) */
+const V3_VIEWS=[['front','Front'],['back','Back'],['left','Left'],['right','Right'],['top','Top'],['bottom','Bottom']];
+function v3SnapView(k){const c=v3.cam,Q=Math.PI/2,P={front:[0,0],back:[Math.PI,0],left:[-Q,0],right:[Q,0],top:[c.yaw,1.5699],bottom:[c.yaw,-1.5699]}[k];if(!P)return;
+  c.yaw=P[0];c.pitch=P[1];v3.dirty=true;requestRender(true);toast(V3_VIEWS.find(v=>v[0]===k)[1]+' view');}
+function v3SetOrtho(on){const s=v3s();s.ortho=!!on;const b=document.getElementById('v3Proj');if(b){b.textContent=on?'Orthographic':'Perspective';b.setAttribute('aria-pressed',String(!!on));}v3.dirty=true;requestRender(true);
+  if(on&&v3.rt)toast('Ray traced mode still looks through a perspective camera.');}
+window.addEventListener('keydown',e=>{if(!v3.on&&ui.mode!=='p3d')return;if(!v3.hover||isTypingTarget(e.target)||e.altKey||e.metaKey)return;
+  const m={Numpad1:['front','back'],Numpad3:['right','left'],Numpad7:['top','bottom']}[e.code];
+  if(m){e.preventDefault();v3SnapView(e.ctrlKey?m[1]:m[0]);}else if(e.code==='Numpad5'){e.preventDefault();v3SetOrtho(!v3s().ortho);}});
+function m4ortho(hw,hh,n,fa){const o=m4();o[0]=1/hw;o[5]=1/hh;o[10]=-2/(fa-n);o[14]=-(fa+n)/(fa-n);o[15]=1;return o;}
+function v3Proj(a,n,fa){const s=v3s();if(s.ortho){const hh=v3.cam.dist*Math.tan(s.fov*Math.PI/360);return m4ortho(hh*a,hh,n,fa);}return m4persp(s.fov*Math.PI/180,a,n,fa);}
 function m4persp(f,a,n,fa){const o=m4(),t=1/Math.tan(f/2);o[0]=t/a;o[5]=t;o[10]=(fa+n)/(n-fa);o[11]=-1;o[14]=2*fa*n/(n-fa);return o;}
 function m4look(e,c,u){const z=norm3(sub3(e,c)),x=norm3(cross3(u,z)),y=cross3(z,x),o=m4();o[0]=x[0];o[4]=x[1];o[8]=x[2];o[1]=y[0];o[5]=y[1];o[9]=y[2];o[2]=z[0];o[6]=z[1];o[10]=z[2];
   o[12]=-dot3(x,e);o[13]=-dot3(y,e);o[14]=-dot3(z,e);o[15]=1;return o;}
@@ -163,7 +175,7 @@ function v3Render(F,flip){const s=v3s(),g=v3.gpu;if(!g)return;
   const EU=typeof envUniforms==='function'?envUniforms():{uEnvOn:false};/* before binding: may build the HDRI's levels */
   gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);const bg=BG3[s.bg]||BG3.dark,tr=!!(v3.transparent);gl.clearColor(bg[0],bg[1],bg[2],tr?0:1);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
-  const eye=v3Eye(),V=m4look(eye,[v3.cam.tx,v3.cam.ty,v3.cam.tz],[0,1,0]),Pm=m4persp(s.fov*Math.PI/180,F.w/F.h,.02,100);if(flip)Pm[5]=-Pm[5];const VP=m4mul(Pm,V);
+  const eye=v3Eye(),V=m4look(eye,[v3.cam.tx,v3.cam.ty,v3.cam.tz],[0,1,0]),Pm=v3Proj(F.w/F.h,.02,100);if(flip)Pm[5]=-Pm[5];const VP=m4mul(Pm,V);
   const bake=(ui.mode==='bake'||ui.mode==='convert')&&v3.btex,sg=!bake&&doc.workflow==='spec'&&v3.tex.sgBase&&ui.mode!=='anim'&&!v3Unlit();
   const T0=bake?v3.btex:sg?Object.assign({},v3.tex,{base:v3.tex.sgBase,metal:v3.tex.sgMetal,rough:v3.tex.sgRough}):v3.tex;
   const a=s.sunAz*Math.PI/180,e=s.sunEl*Math.PI/180;
@@ -228,6 +240,10 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   /* mesh density: in the toolbar, since height only shows on a dense mesh */
   const detSel=el('select',{id:'v3Det','aria-label':'Mesh detail',title:'Mesh detail: more triangles let Height depth push the surface out finely'},...['Low','×2','×4','×8','×16','×32','×64','×128'].map((l,i)=>el('option',{value:i,text:'Detail '+l})));
   detSel.value=String(s.detail||0);detSel.onchange=()=>{s.detail=+detSel.value;v3LoadModel(true);};v3.detSel=detSel;
+  /* (0.32.1) snap the view to front / back / left / right / top / bottom, and perspective or orthographic */
+  const viewSel=el('select',{id:'v3ViewSel','aria-label':'Snap the view',title:'Snap the view to a side (Numpad 1 front, 3 right, 7 top; Ctrl for the opposite side)'},el('option',{value:'',text:'View…'}),...V3_VIEWS.map(([k,l])=>el('option',{value:k,text:l})));
+  viewSel.onchange=()=>{if(viewSel.value)v3SnapView(viewSel.value);viewSel.value='';};
+  const projBtn=el('button',{class:'btn sm',id:'v3Proj',text:s.ortho?'Orthographic':'Perspective',title:'Perspective looks natural; orthographic has no depth shrinking, good for lining things up (Numpad 5)','aria-pressed':String(!!s.ortho),onclick:()=>v3SetOrtho(!v3s().ortho)});
   const tog=(id,label,key,title)=>{const b=el('button',{class:'btn sm'+(s[key]?' on':''),id,text:label,title,'aria-pressed':String(!!s[key])});b.onclick=()=>{s[key]=!s[key];b.classList.toggle('on',s[key]);b.setAttribute('aria-pressed',String(s[key]));v3.dirty=true;requestRender();};return b;};
   const shade=seg([['lit','Lit'],['unlit','Unlit'],['rt','Ray traced']],v3Unlit()?'unlit':v3.rt?'rt':'lit',x=>{s.unlit=x==='unlit';v3.rt=x==='rt';v3.mapsDirty=true;v3.dirty=true;requestRender(true);refresh3dUI();},'Shading');shade.id='v3Shade';
   const gear=el('button',{class:'btn sm',text:'Settings',id:'v3Gear','aria-expanded':'false'});
@@ -237,7 +253,7 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   pbtn.onclick=()=>{v3.paintOn=!v3.paintOn;pbtn.classList.toggle('on',v3.paintOn);pbtn.setAttribute('aria-pressed',String(v3.paintOn));if(v3.paintOn&&!MESH_TOOLS.includes(ui.tool))setTool('brush');refresh3dUI();};
   const inBake=ui.mode==='bake',lowLab=inBake?el('span',{class:'v3lab',text:'Low-poly: '+bkLow().name,title:'Choose the low-poly in the Bake panel'}):null;
   const mb=ui.mode==='p3d'?mir3Bar():null;
-  const bar=el('div',{class:'v3bar'},...(inBake?[lowLab]:ui.mode==='convert'?[models,detSel]:[models,detSel,shade]),...(mb?[mb.wrap]:[]),...(ui.mode==='convert'||ui.mode==='p3d'?[]:[pbtn]),tog('v3Wire','Wireframe','wire','Show the mesh edges'),tog('v3UV','UVs','showUV','Draw the model’s UV layout over your canvas'),tog('v3Spin','Spin','spin','Spin the model slowly'),
+  const bar=el('div',{class:'v3bar'},...(inBake?[lowLab]:ui.mode==='convert'?[models,detSel]:[models,detSel,shade]),...(mb?[mb.wrap]:[]),...(ui.mode==='convert'||ui.mode==='p3d'?[]:[pbtn]),viewSel,projBtn,tog('v3Wire','Wireframe','wire','Show the mesh edges'),tog('v3UV','UVs','showUV','Draw the model’s UV layout over your canvas'),tog('v3Spin','Spin','spin','Spin the model slowly'),
     ...(ui.mode==='bake'||ui.mode==='convert'?[]:[el('button',{class:'btn sm',id:'v3Shot',text:'📷',title:'Screenshot of the 3D view','aria-label':'Screenshot',onclick:()=>dlgScreenshot()}),el('button',{class:'btn sm',id:'v3RenderBtn',text:'Render…',title:'A ray-traced picture, in a window of its own',onclick:()=>dlgRender()}),el('button',{class:'btn sm',id:'v3TT',text:'Turntable…',title:'Record the model turning (video, GIF or PNG frames)',onclick:()=>dlgTurntable()})]),gear,dock,close);
   const box=el('div',{class:'v3set',hidden:true});
   const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:s[key],fmt,onInput:v=>{s[key]=v;if(key==='disp'){v3.mapsDirty=true;if(v>0&&(s.detail||0)<4&&!v3.detAuto){v3.detAuto=true;s.detail=4;if(v3.detSel)v3.detSel.value='4';v3LoadModel(true);toast('Mesh detail raised to ×16 so the height can show. Change it with the Detail menu at the top of the 3D view.');}}v3.dirty=true;requestRender(key==='disp');}}).el;
@@ -302,6 +318,8 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
   hit.addEventListener('dblclick',e=>{const s=window.getSelection&&window.getSelection();if(s&&s.rangeCount)s.removeAllRanges();if(maskToolsOn()&&mk3.tool&&mk3.tool!=='paint')return;if(typeof p3SelectAt==='function'&&p3SelectAt(hit,e))return;v3Frame();requestRender();});}
 /* a release anywhere (or the window losing focus) ends turning and painting on the model */
 window.addEventListener('pointerup',e=>{if(v3.drag&&v3.drag.id===e.pointerId){const d=v3.drag;v3.drag=null;
+    /* a mask tool is on: Alt+click on the model (without turning it) clears the mask */
+    if(d.alt&&e.button===0&&Math.hypot(e.clientX-d.x0,e.clientY-d.y0)<4&&typeof maskClearAll==='function'&&maskClearAll())return;
     /* the heal brush: Alt+click on the model (without turning it) sets where to copy from */
     if(d.alt&&(ui.tool==='heal'||ui.tool==='clone')&&Math.hypot(e.clientX-d.x0,e.clientY-d.y0)<4){const hit=document.getElementById('v3Hit'),pk=hit&&v3PickAt(hit,e);
       if(pk){if(ui.tool==='heal'&&heal.mode==='spot'){heal.mode='source';healSave();buildBrushPanel();buildOptBar();}healSetSource(pk.uv[0]*doc.w,pk.uv[1]*doc.h,ui.mode==='p3d'?pk.set:null);}}}if(v3.mstroke&&v3.mstroke.id===e.pointerId)meshUp(e);},true);
