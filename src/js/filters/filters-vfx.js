@@ -5,7 +5,7 @@ float hv(vec2 p){ return fract(sin(dot(p+uSeed,vec2(127.1,311.7)))*43758.5453); 
 float vn(vec2 p){ vec2 i=floor(p),f=fract(p),u=f*f*(3.0-2.0*f); return mix(mix(hv(i),hv(i+vec2(1,0)),u.x),mix(hv(i+vec2(0,1)),hv(i+vec2(1,1)),u.x),u.y); }
 void main(){ vec2 p=gl_FragCoord.xy; vec4 c=texelFetch(uSrc,ivec2(p),0);
   float n=0.0,a=0.5,s=1.0/max(uScale,1.0); for(int i=0;i<5;i++){ n+=a*vn(p*s); s*=2.0; a*=uRough; } float tot=0.0; a=0.5; for(int i=0;i<5;i++){ tot+=a; a*=uRough; } n/=tot;
-  n=clamp((n-0.5)*1.6+0.5,0.0,1.0);
+  n=clamp((n-0.5)*2.6+0.5,0.0,1.0);
   float e=uT*(1.0+uSoft+uEdge)-uSoft-uEdge;
   float vis=smoothstep(e,e+uSoft+0.0001,n);
   float ring=(1.0-smoothstep(e+uEdge,e+uEdge+uSoft+0.0001,n))*vis;

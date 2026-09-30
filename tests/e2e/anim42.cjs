@@ -33,7 +33,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* 0.42.1: Dissolve, Glow, stepping an effect with Quick dupli */
  await p.evaluate(()=>{const A=__gs.anim,[w,h]=__gs.docWH(),d=new Uint8ClampedArray(w*h*4);for(let i=0;i<w*h;i++){d[i*4]=200;d[i*4+1]=40;d[i*4+2]=40;d[i*4+3]=255;}
    const tex=__gs.uploadStraight({w,h,data:d,bits:8});__gs.premultInto(A.frames[0].target,tex,[0,0],null);A.fxl=[];__gs.showFrame(0);});
- const alphaSum=async t=>p.evaluate(t=>{const A=__gs.anim;A.fxl=[];__gs.afxAdd('dissolve');const tr=__gs.afxList()[0];tr.v.t=t;const c=__gs.afxRenderAll(A)[0],d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let s=0;for(let i=3;i<d.length;i+=4)s+=d[i];return s/(d.length/4)/255;},t);
+ const alphaSum=async t=>p.evaluate(t=>{const A=__gs.anim;A.fxl=[];__gs.afxAdd('dissolve');const tr=__gs.afxList()[0];tr.v.t=t;tr.v.sc=8;tr.v.seed=11;const c=__gs.afxRenderAll(A)[0],d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let s=0;for(let i=3;i<d.length;i+=4)s+=d[i];return s/(d.length/4)/255;},t);
  const a0=await alphaSum(0),a5=await alphaSum(.5),a1=await alphaSum(1);
  ok(a0>.95&&a1<.05&&a5>.1&&a5<.9,'dissolve erodes with Amount ('+[a0,a5,a1].map(x=>x.toFixed(2))+')');
  const g=await p.evaluate(()=>{const A=__gs.anim;A.fxl=[];__gs.afxAdd('vfxGlow');return __gs.afxRenderAll(A)[0].width;});ok(g===64,'glow renders');
@@ -48,6 +48,15 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const gr=await p.evaluate(()=>{const A=__gs.anim;A.fxl=[];__gs.afxAdd('filmGrain');const c=__gs.afxRenderAll(A),f=x=>Array.from(x.getContext('2d').getImageData(0,0,x.width,x.height).data);
    const a=f(c[0]),b=f(c[1]),n=Math.min(a.length,b.length);let d=0;for(let i=0;i<n;i+=4)if(Math.abs(a[i]-b[i])>3)d++;return [A.frames.length,d,n/4];});
  ok(gr[0]>1&&gr[1]>gr[2]*.05,'film grain differs between frames ('+gr+')');
+ /* moving a keyed slider on another frame adds a key at once, and the diamond shows it */
+ await p.evaluate(()=>{const A=__gs.anim;A.fxl=[];__gs.afxAdd('blur');__gs.afxSetKey(0,'r',0,2,'lin');__gs.afxSetKey(0,'r',3,20,'lin');__gs.showFrame(2);});await W(300);
+ const dia0=await p.evaluate(()=>document.querySelector('.afxdia').className);
+ await p.evaluate(()=>{const i=document.getElementById('afx_r');i.focus();i.value='50';i.dispatchEvent(new Event('input',{bubbles:true}));});await W(200);
+ ok(await p.evaluate(()=>__gs.afxList()[0].keys.r.some(k=>k.f===2&&Math.abs(k.v-50)<1)),'moving the slider on a new frame adds the key');
+ ok(await p.evaluate(()=>document.querySelector('.afxdia').classList.contains('on')),'the diamond lights up at once while the slider still has focus (was: '+dia0+')');
+ ok(await p.evaluate(()=>document.querySelectorAll('.afxkey').length>=3),'the key strip shows the new key');
+ await p.evaluate(()=>document.querySelector('.afxdia').click());await W(200);
+ ok(await p.evaluate(()=>!__gs.afxList()[0].keys.r.some(k=>k.f===2)),'clicking the lit diamond removes that key');
  ok(errs.length===0,'no errors '+errs.slice(0,3).join('|'));
  await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);
 })();
