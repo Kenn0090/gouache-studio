@@ -228,7 +228,7 @@ $('#btn3d').addEventListener('click',()=>toggle3D());
 function toggle3D(on){v3.on=on===undefined?!v3.on:!!on;$('#btn3d').setAttribute('aria-pressed',String(v3.on));const pane=$('#pane3d'),sp=$('#split3d'),work=$('#work');
   if(v3.on&&ui.mode==='anim'&&false)return;
   if(!v3.on&&v3.pop)pop3D(false,true);
-  pane.hidden=!v3.on||!!v3.pop;sp.hidden=!v3.on||!!v3.pop;let w=320;try{w=+localStorage.getItem('gs.pane3d')||0;}catch(e){}if(!w)w=Math.round(work.clientWidth*.42);
+  pane.hidden=!v3.on||!!v3.pop;sp.hidden=!v3.on||!!v3.pop;const p3k=ui.mode==='p3d'?'gs.pane3dp':'gs.pane3d';let w=320;try{w=+localStorage.getItem(p3k)||0;}catch(e){}if(!w)w=Math.round(work.clientWidth*(ui.mode==='p3d'?.5:.42));
   const full=v3.on&&!v3.pop&&work.classList.contains('v3full');if(full)sp.hidden=true;
   work.style.setProperty('--pane3d',full?'100%':v3.on&&!v3.pop?clamp(w,200,work.clientWidth-200)+'px':'0px');sp.style.right=v3.on?'calc(var(--pane3d) - 3px)':'';
   if(v3.on){if(!v3.pop)build3dPane();v3.mapsDirty=true;v3.editDirty=true;v3.dirty=true;if(!v3.mesh)v3LoadModel();}
@@ -333,7 +333,7 @@ for(const t of ['keydown','keyup'])window.addEventListener(t,e=>{if(e.key==='Alt
 (()=>{const sp=$('#split3d'),work=$('#work');let d=null;
   sp.addEventListener('pointerdown',e=>{sp.setPointerCapture(e.pointerId);d={x:e.clientX,w:$('#pane3d').clientWidth};});
   sp.addEventListener('pointermove',e=>{if(!d)return;const w=clamp(d.w-(e.clientX-d.x),200,work.clientWidth-200);work.style.setProperty('--pane3d',w+'px');resizeGL();requestRender();});
-  sp.addEventListener('pointerup',()=>{if(!d)return;d=null;try{localStorage.setItem('gs.pane3d',String($('#pane3d').clientWidth));}catch(e){}});})();
+  sp.addEventListener('pointerup',()=>{if(!d)return;d=null;try{localStorage.setItem(ui.mode==='p3d'?'gs.pane3dp':'gs.pane3d',String($('#pane3d').clientWidth));}catch(e){}});})();
 
 /* ---- importing a model ---- */
 async function v3DropModel(files){const f=files.find(x=>isModelName(x.name));if(!f)return;loadStart(f.name);

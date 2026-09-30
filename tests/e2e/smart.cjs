@@ -39,6 +39,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('#smGrid .mattile:has-text("My leather")');await p.click('#lFill');await W(800);
  const same=await p.evaluate(()=>{const s=n=>JSON.stringify(__gs.smSer(n),(k,v)=>k==='name'||k==='data'||k==='id'?undefined:v);const A=__gs.doc.root.children.find(n=>n.name==='Leather'),B=__gs.doc.active;return B.name==='My leather'&&s(A)===s(B);});
  ok(same,'…and it comes back the same (layers, materials, mask rows)');
+ /* update it in the library from the folder */
+ ok(await p.evaluate(()=>!!__gs.smOrigin(__gs.doc.active,'smart')),'the folder knows the saved smart material it came from');
+ await p.evaluate(()=>{const B=__gs.doc.active;B.children[0].name='Edited base';__gs.smUpdate(B);});await W(300);await p.click('#dlgOk');await W(400);
+ ok(await p.evaluate(()=>{const r=__gs.matLib.list.find(x=>x.kind==='smart'&&x.name==='My leather');return !!r&&r.tree.kids[0].name==='Edited base';}),'Update puts the changed folder back into the library');
  /* smart mask: save a layer's mask rows, give them to another layer */
  await p.evaluate(()=>{const G=__gs.doc.root.children.find(n=>n.name==='Gun Metal'),L=G.children.find(c=>c.name==='Worn edges');__gs.smMaskSave(L);});await W(200);
  await p.fill('#smName','Worn test');await p.click('#dlgOk');await W(300);

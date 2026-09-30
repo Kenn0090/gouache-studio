@@ -1,8 +1,7 @@
-Swap a layer's material by double-clicking, a Tiling slider, tidier mask rows, 50 calm base materials and lots of new smart materials and masks.
+The 3D Paint viewport gets a layout strip, and texture sets get an eyeball.
 
-- **Double-click to swap the material:** with a material layer selected (not its mask), double-click a tile in Materials and it replaces that layer's material. The layer keeps its mask, blend and place in the stack. One undo brings the old one back.
-- **Tiling slider:** the Tiling numbers now have a slider (from 0.1 to 30 repeats). With the chain lock on it moves every axis together. The lock button sits under the label so the number boxes have room.
-- **Mask rows only when the mask is selected:** the rows under a layer that belong to its mask now show only while that mask is the one selected. Click the mask thumbnail to see them.
-- **50 calm base materials (200 in the Library now):** plain, even leathers, fabrics and metals, dusty dirts and fine sands, made to sit under smart masks. Dirt, dust and sand are in Ground & nature.
-- **19 new smart materials:** Worn Steel, Rusty Painted Metal, Chipped Yellow Paint, Aged Bronze, Copper Patina, Battle Leather, Old Black Leather, Dirty Canvas, Worn Khaki Cloth, Weathered Wood, Old Planks, Cracked Stone, Snowy Rock, Muddy Ground, Stained Concrete, Scuffed Plastic, Cracked Porcelain, Worn Carbon and Molten Rock. They are built from the library materials and the grunge maps, and stay live.
-- **12 new smart masks:** Scratched edges, Scuffed edges, Rust streaks, Rust pits, Heavy grime, Paint chips, Cracks, Water stains, Settled dust, Frost, Fingerprints and Dripping grime.
+- **Viewport strip:** a small pill at the bottom of the 3D Paint area switches between **3D**, **Split** and **2D**, and turns the **UV** layout on and off. In Split the two views start the same size, and you can drag the divider. The flat texture keeps its own zoom.
+- **UV layout on by default** over the flat texture in 3D Paint, so you can see where things land.
+- **Eyeball on each texture set:** hide a set and the parts of the model that use it disappear from the 3D view. It is saved with the project. The Bake mesh maps window leaves hidden sets unticked, so you can bake in groups.
+- **File menu in 3D Paint** now has **Import a model** and **Bake mesh maps** in it.
+- **Update a saved smart material or smart mask:** right-click a folder that came from your saved smart material (or a layer whose mask came from your saved smart mask) and choose **Update smart material “name” in Materials** (or the mask one). It asks first, then puts your changes back into the library. The built-in ones can't be overwritten: use Save as to keep your own version.

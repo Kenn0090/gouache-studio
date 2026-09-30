@@ -38,7 +38,7 @@ function smMapsOf(o,out){out=out||new Set();if(o.fill)for(const k in o.fill.maps
 function smApplyNow(rec){if(ui.mode==='anim'){toast('Smart materials are for Paint and 3D Paint.');return;}if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
   const need=[...smMapsOf(rec.tree)].filter(k=>MAP_DEFS[k]&&!doc.maps.includes(k)&&!FILL_SKIP.includes(k)&&!(doc.workflow==='spec'&&(k==='rough'||k==='metal')));
   if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the smart material');
-  const n=smBuild(rec.tree);n.name=rec.name;const fromSel=sel.active&&!sel.quick&&!n.mask;
+  const n=smBuild(rec.tree);n.name=rec.name;if(!rec.builtin)n.smSrc=rec.id;const fromSel=sel.active&&!sel.quick&&!n.mask;
   if(fromSel){n.mask=makeMask(0);run(P.loadsel,n.mask.target,{uSrc:sel.t.tex,uWhat:{int:1},uInv:false});}
   /* above the selected layer or folder (not inside a folder that happens to be selected) */
   const A=doc.active,P=insertAt?insertAt.parent:A&&A.parent?A.parent:doc.root,I=insertAt?insertAt.index:A&&A.parent?P.children.indexOf(A)+1:P.children.length;
@@ -55,7 +55,7 @@ function smMaskApply(rec){if(!(rec.mask.rows||[]).some(r=>r.p&&r.p.grunge&&!r.im
   toast('Loading “'+rec.name+'”…');return (async()=>{const m=JSON.parse(JSON.stringify(rec.mask));try{await smResolveMask(m);}catch(e){toast('Could not load “'+rec.name+'”: '+(e.message||e));return;}
     if(doc.active!==L)return;smMaskApplyNow(Object.assign({},rec,{mask:m}));})();}
 function smMaskApplyNow(rec){const L=doc.active;if(!L||L.fx||ui.mode==='anim'){toast('Select a layer first.');return;}
-  msRecord(L,'Smart mask “'+rec.name+'”',()=>{const m=smBuildMask(rec.mask);if(L.mask){m.enabled=L.mask.enabled;}L.mask=m;L.editMask=true;});msEpoch++;toast('“'+L.name+'” has the smart mask “'+rec.name+'”.');}
+  msRecord(L,'Smart mask “'+rec.name+'”',()=>{const m=smBuildMask(rec.mask);if(L.mask){m.enabled=L.mask.enabled;}L.mask=m;L.editMask=true;L.smMaskSrc=rec.builtin?undefined:rec.id;});msEpoch++;toast('“'+L.name+'” has the smart mask “'+rec.name+'”.');}
 
 /* ---- saving ---- */
 function smThumb(){/* what the 3D view shows (or the base colour of the painting), small */
@@ -68,10 +68,20 @@ function smThumb(){/* what the 3D view shows (or the base colour of the painting
 function smAskName(title,def,fn){const inp=el('input',{type:'text',id:'smName',value:def,'aria-label':'Name'});
   openDialog({title,body:el('div',{class:'dlg-grid'},inp),okLabel:'Save',onOk(){const n=inp.value.trim();if(!n)return false;fn(n);}});setTimeout(()=>{inp.focus();inp.select();},0);}
 function smSave(n){if(!n)return;smAskName('Save as smart material',n.name,name=>{const tree=n.type==='group'?smSer(n):{t:'G',name,open:true,kids:[smSer(n)]};
-  smPut({kind:'smart',name,tree,thumb:smThumb()});toast('Saved “'+name+'” in Materials › Smart materials.');});}
-function smMaskSave(n){if(!n||!n.mask)return;smAskName('Save as smart mask',n.name+' mask',name=>{smPut({kind:'smask',name,mask:smSerMask(n.mask)});toast('Saved “'+name+'” in Materials › Smart masks.');});}
+  const r=smPut({kind:'smart',name,tree,thumb:smThumb()});n.smSrc=r.id;toast('Saved “'+name+'” in Materials › Smart materials.');});}
+function smMaskSave(n){if(!n||!n.mask)return;smAskName('Save as smart mask',n.name+' mask',name=>{const r=smPut({kind:'smask',name,mask:smSerMask(n.mask)});n.smMaskSrc=r.id;toast('Saved “'+name+'” in Materials › Smart masks.');});}
+/* (0.35, Kenn) right-click a folder that came from a saved smart material (or a layer whose mask came from a saved smart mask): put the changes back into the library */
+function smOrigin(n,kind){if(!n)return null;const id=kind==='smask'?n.smMaskSrc:n.smSrc,nm=kind==='smask'?null:n.name;
+  return matLib.list.find(r=>r.kind===kind&&!r.builtin&&(r.id===id||(!id&&nm&&r.name===nm)))||null;}
+function smUpdate(n){const rec=smOrigin(n,'smart');if(!rec){toast('This folder is not from a saved smart material. Use Save as smart material.');return;}
+  confirmDlg('Update smart material','Replace the saved smart material “'+rec.name+'” with this folder as it is now?','Update',()=>{
+    const tree=n.type==='group'?smSer(n):{t:'G',name:rec.name,open:true,kids:[smSer(n)]};tree.name=rec.name;
+    smPut({kind:'smart',name:rec.name,tree,thumb:smThumb()});n.smSrc=rec.id;toast('Updated “'+rec.name+'” in Materials › Smart materials.');});}
+function smMaskUpdate(n){const rec=smOrigin(n,'smask');if(!rec||!n.mask){toast('This mask is not from a saved smart mask. Use Save mask as smart mask.');return;}
+  confirmDlg('Update smart mask','Replace the saved smart mask “'+rec.name+'” with this mask as it is now?','Update',()=>{
+    smPut({kind:'smask',name:rec.name,mask:smSerMask(n.mask)});n.smMaskSrc=rec.id;toast('Updated “'+rec.name+'” in Materials › Smart masks.');});}
 function smPut(o){const old=matLib.list.find(r=>r.kind===o.kind&&r.name===o.name),rec=Object.assign({id:old?old.id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),t:old?old.t:Date.now()},o);
-  if(old)matLib.list[matLib.list.indexOf(old)]=rec;else matLib.list.push(rec);store.put(rec,'materials');renderMats();}
+  if(old)matLib.list[matLib.list.indexOf(old)]=rec;else matLib.list.push(rec);store.put(rec,'materials');renderMats();return rec;}
 
 /* ---- the built-ins: materials and generators only ---- */
 const SM_F=(name,maps,o)=>Object.assign({t:'L',name,fill:{maps:Object.fromEntries(Object.entries(maps).map(([k,v])=>[k,Object.assign({on:true,src:'value'},v)])),proj:'uv',triSharp:4,hStr:1}},o||{});

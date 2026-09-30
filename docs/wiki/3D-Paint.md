@@ -35,8 +35,12 @@ Double-click empty space to frame the model again. The same navigation works in 
 ## Layouts
 **3D** shows only the model, **3D + 2D** shows the flat texture beside it, and **2D** shows only the flat texture. You can paint in all of them.
 
+Since 0.35 a small strip at the bottom of the painting area switches between **3D**, **Split** and **2D** in one click, and the **UV** button shows or hides the model's UV layout over the flat texture. In Split the views start the same size and the divider between them drags; the flat texture keeps its own zoom.
+
 ## Texture sets
 A model with several materials gets one **texture set** per material, each with its own maps and layers, like Substance Painter. Click a set in the list to paint it. Only the active set takes paint; the others keep showing their own textures on the model.
+
+The **eyeball** on a set hides the parts of the model that use it (saved with the project); the Bake mesh maps window leaves hidden sets unticked, so you can bake in groups.
 
 If you switch to a model that doesn't have a set's material, the set is kept (greyed out) so your work isn't lost.
 

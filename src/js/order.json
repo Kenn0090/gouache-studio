@@ -68,6 +68,7 @@
         "view3d/shading",
         "view3d/mesh-paint",
         "view3d/paint3d",
+        "view3d/vp-strip",
         "view3d/mask-tools",
         "view3d/proj-xf",
         "view3d/proj-gizmo",
