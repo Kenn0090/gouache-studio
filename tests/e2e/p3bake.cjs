@@ -26,7 +26,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const maskAvg=()=>p.evaluate(()=>{const L=__gs.allLayers().find(l=>l.name==='Paint');__gs.msUpdate(L);const d=__gs.readRGBA8(L.mask.target);let s=0,n=0;for(let i=0;i<d.length;i+=4){s+=d[i];n++;}return s/n;});
  const before=await maskAvg();
  await p.evaluate(()=>__gs.showPanel('p3d'));await W(200);
- await p.click('#p3BakeBtn');await W(300);
+ await p.evaluate(()=>__gs.showPanel('p3bake'));await p.click('#p3BakeBtn');await W(300);
  ok(await p.evaluate(()=>!!document.querySelector('#p3bkDlg')&&document.querySelectorAll('#p3bkDlg input[id^=p3bkSet]').length===2&&!!document.querySelector('#p3bkLoadHigh')),'Bake mesh maps… opens the window: maps, size, high-poly, texture sets');
  for(const k of ['normal','ao','curv','height','thick','wnormal','position','id']){const on=k==='ao';if(await p.isChecked('#p3bk_'+k)!==on)await p.click('label[for=p3bk_'+k+']');}
  await p.click('#p3bkDlg .seg button:has-text("512")').catch(()=>{});
@@ -41,10 +41,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const m1=await mmAvg();await p.click('#p3dBody .p3set:has-text("Right")');await W(500);const m2=await mmAvg();
  ok(Math.abs(m1-m2)>1,'each set got its own bake ('+m1.toFixed(1)+' / '+m2.toFixed(1)+')');
  /* only one set ticked */
- await p.click('#p3BakeBtn');await W(300);await p.click('label[for=p3bkSet0]');await p.click('#dlgOk');await W(500);await waitIdle();await W(800);
+ await p.evaluate(()=>__gs.showPanel('p3bake'));await p.click('#p3BakeBtn');await W(300);await p.click('label[for=p3bkSet0]');await p.click('#dlgOk');await W(500);await waitIdle();await W(800);
  ok(await p.evaluate(()=>__gs.bk.byMat&&Object.keys(__gs.bk.byMat).join()==='Right'),'unticking a set bakes only the others');
  /* send to the Paint canvas */
- await p.evaluate(()=>__gs.showPanel('p3d'));await W(200);await p.click('#p3BakePaint');await W(600);
+ await p.evaluate(()=>__gs.showPanel('p3bake'));await W(200);await p.click('#p3BakePaint');await W(600);
  ok(await p.evaluate(()=>__gs.inPaint(()=>__gs.allLayers().some(L=>/Baked AO/.test(L.name)))),'Send to the Paint canvas puts the bake in the painting as a layer');
  /* fine-tune in the Bake tab: the results wait there */
  await p.click('#modeTabs [data-mode=bake]');await W(1000);

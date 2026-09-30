@@ -6,13 +6,13 @@
    glossiness or reflections alone). Each shader has its own tab of settings in the Shader panel, and keeps
    them when you switch. Kept in the document (doc.v3shade) and so per texture set in 3D Paint. */
 const SHADERS=[['std','Standard'],['skin','Skin'],['aniso','Brushed metal'],['velvet','Velvet'],['toon','Toon'],['cel','Cel'],['specgloss','Spec/Gloss']];
-const SH_DEF={std:{},skin:{scatter:.5,strength:.6,soft:.5,thick:.5,col:[.85,.25,.18]},aniso:{amount:.7,dir:0},velvet:{sheen:.8,srough:.5,rim:1,col:[1,1,1]},
+const SH_DEF={std:{},skin:{scatter:.5,strength:.6,soft:.5,thick:.5,oil:.3,col:[.85,.25,.18]},aniso:{amount:.7,dir:0},velvet:{sheen:.8,srough:.5,rim:1,col:[1,1,1]},
   toon:{steps:3,spec:.3,rim:.2,offset:0,col:[.45,.4,.55],outline:2,ocol:[0,0,0]},cel:{thresh:.5,soft:.06,spec:.3,rim:.15,col:[.45,.42,.55],outline:2,ocol:[0,0,0]},specgloss:{view:0}};
 function v3ShadeOf(D){const d=D&&D.v3shade;return d&&d.kind?d:{kind:'std',p:{}};}
 function shParams(sh,k){return Object.assign({},SH_DEF[k||sh.kind]||{},(sh.p&&sh.p[k||sh.kind])||{});}
 function shadeUniforms(sh){if(!sh)return {uSh:{int:0},uShP:[0,0,0,.5],uShQ:[0,0,0,0],uShC:[1,1,1],uShD:[0,0,0]};const k=sh.kind,P=shParams(sh),i=Math.max(0,SHADERS.findIndex(x=>x[0]===k));
   const v={skin:[P.scatter,P.strength,P.soft,P.thick],aniso:[P.amount,P.dir,0,.5],velvet:[P.sheen,P.srough,P.rim,.5],toon:[P.steps,0,P.spec,P.rim],cel:[P.thresh,P.soft,P.spec,P.rim],specgloss:[P.view,0,0,.5]}[k]||[0,0,0,.5];
-  return {uSh:{int:i},uShP:v,uShQ:[P.outline||0,P.offset||0,0,0],uShC:P.col||[1,1,1],uShD:P.ocol||[0,0,0]};}
+  return {uSh:{int:i},uShP:v,uShQ:[P.outline||0,P.offset||0,k==='skin'?(P.oil||0):0,0],uShC:P.col||[1,1,1],uShD:P.ocol||[0,0,0]};}
 /* the outline for Toon and Cel: the back faces drawn slightly larger, in the outline colour */
 const VS_3DOUT=VS_3D.replace('vec3 p=aP;','vec3 p=aP+aN*uOutW;').replace('uniform mat4 uVP;','uniform mat4 uVP; uniform float uOutW;');
 /* only the faces turned away from the camera are drawn, so it works whichever way the model's faces wind */
@@ -34,7 +34,7 @@ function renderShading(){const box=document.getElementById('shadeBody');if(!box)
   const tabs=el('select',{id:'shKind',class:'shsel','aria-label':'Shader'},...SHADERS.map(([id,l])=>el('option',{value:id,text:l})));tabs.value=k;tabs.onchange=()=>{shadeEdit(d=>{d.kind=tabs.value;});renderShading();};
   const body=el('div',{class:'dlg-grid'});
   if(k==='std')body.append(el('p',{class:'note',text:'Physically based shading (metal/roughness), lit by the environment chosen below.'}));
-  if(k==='skin')body.append(sl('scatter','Scatter'),sl('strength','Strength'),sl('soft','Softness'),colr('col','Subsurface colour'),
+  if(k==='skin')body.append(sl('scatter','Scatter'),sl('strength','Strength'),sl('soft','Softness'),sl('oil','Oily sheen'),colr('col','Subsurface colour'),
     ...(doc.meshMaps&&doc.meshMaps.thick?[el('p',{class:'note',text:'Thin parts glow, from the baked Thickness map.'})]:[sl('thick','Thickness'),el('p',{class:'note',text:'Bake a Thickness map (Bake mesh maps) so thin parts like ears glow on their own.'})]));
   if(k==='aniso')body.append(sl('amount','Stretch',-1,1,.01,v=>Math.round(v*100)+'%'),sl('dir','Direction',0,1,.01,v=>Math.round(v*360)+'°'),el('p',{class:'note',text:'Highlights stretch along the model’s UV direction, turned by Direction, like brushed or spun metal.'}));
   if(k==='velvet')body.append(sl('sheen','Sheen',0,2,.01),sl('srough','Sheen softness'),sl('rim','Rim',0,3,.05,v=>v.toFixed(2)),colr('col','Sheen colour'));

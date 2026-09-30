@@ -11,6 +11,7 @@ const PANELS={
   stencils:{title:'Stencils',sel:'#st3Sec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 15l3-4 2 3 1.5-2 1.5 3"/>'},
   mats:{title:'Materials',sel:'#matSec',avail:m=>m==='paint'||m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M7 9.5a6 6 0 0 1 5-3" opacity=".6"/>'},
   textures:{title:'Textures',sel:'#txSec',avail:m=>m==='paint'||m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M7 8h1M11 7h1M15 9h1M8 12h1M13 13h1M16 15h1M9 16h1" stroke-width="2.4" stroke-linecap="round"/>'},
+  p3bake:{title:'Bake Maps',sel:'#p3bkSec',avail:m=>m==='p3d',icon:'<path d="M12 3c3 4 6 6 6 10a6 6 0 0 1-12 0c0-4 3-6 6-10z"/><path d="M9.5 14a2.5 2.5 0 0 0 2.5 2.5" opacity=".6"/>'},
   decals:{title:'Decals',sel:'#dcSec',avail:m=>m==='p3d',icon:'<circle cx="12" cy="12" r="7"/><path d="M9 9l6 6M15 9l-6 6"/>'},
   brushtab:{title:'Brush maker',sel:'#brushTabSec',avail:m=>m==='brush',mode:true},
   conv:{title:'Convert',sel:'#convSec',avail:m=>m==='convert',mode:true},
@@ -26,9 +27,9 @@ const PANEL_IDS=Object.keys(PANELS);
 const MODE_GROUP=['p3d','brushtab','conv','bake','anim'];
 /* the built-in workspaces: extra = 3D view on and how wide, painting on the model */
 const WS_PRESETS={
-  painting:{name:'Paint',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['color','matEd','shading'],f:1.05},{tabs:['brushes','stencils','mats','textures','decals','tool'],f:1.25},{tabs:['maps'],f:.45},{tabs:['layers','chan','hist'],f:1.6}],icons:[],floats:[]},
-  texturing:{name:'3D Paint',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['maps'],f:.7},{tabs:['layers','chan','hist'],f:1.6},{tabs:['tool','brushes','stencils','mats','textures','decals','color','matEd','shading'],f:1.3}],icons:[],floats:[]},
-  paint3d:{name:'3D Paint (big view)',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['layers','maps','chan','hist'],f:1.6},{tabs:['color','matEd','shading','brushes','stencils','mats','textures','decals','tool'],f:1.4}],icons:[],floats:[]},
+  painting:{name:'Paint',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['color','matEd','shading'],f:1.05},{tabs:['brushes','stencils','mats','textures','decals','tool'],f:1.25},{tabs:['maps','p3bake'],f:.45},{tabs:['layers','chan','hist'],f:1.6}],icons:[],floats:[]},
+  texturing:{name:'3D Paint',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['maps','p3bake'],f:.7},{tabs:['layers','chan','hist'],f:1.6},{tabs:['tool','brushes','stencils','mats','textures','decals','color','matEd','shading'],f:1.3}],icons:[],floats:[]},
+  paint3d:{name:'3D Paint (big view)',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['layers','maps','p3bake','chan','hist'],f:1.6},{tabs:['color','matEd','shading','brushes','stencils','mats','textures','decals','tool'],f:1.4}],icons:[],floats:[]},
   minimal:{name:'Minimal',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1}],icons:['color','matEd','shading','brushes','stencils','mats','textures','decals','tool','maps','layers','chan','hist'],floats:[]}};
 /* (0.28, Kenn) each top tab has its own workspace, and the drop-down follows the tab */
 for(const [k,n] of [['animation','Animation'],['bake','Bake'],['convert','Convert'],['brush','Brush']])WS_PRESETS[k]=Object.assign(JSON.parse(JSON.stringify(WS_PRESETS.painting)),{name:n});

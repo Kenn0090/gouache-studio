@@ -1,5 +1,4 @@
-Fixes for lag, blurry material previews and moving panel tabs.
+3D Paint gets a Bake Maps tab, and the skin shader looks better.
 
-- **Less lag with grunge masks and filters:** the effects on a layer are now remembered while you paint, so a stroke no longer redoes them every time.
-- **Sharper material previews:** the little spheres and the hover preview are drawn in higher detail and smoothed, so you can tell what the material is.
-- **Panel tabs:** drag a tab to any spot among the others in its group; a bar shows where it will land.
+- **Bake Maps tab:** baking mesh maps now has its own tab in 3D Paint, next to Maps, instead of sitting in the long 3D Paint panel.
+- **Skin shader:** light now bleeds past the shadow edge red first, like real skin, and there is a new Oily sheen slider.
