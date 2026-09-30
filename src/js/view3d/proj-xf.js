@@ -69,18 +69,23 @@ function pxfFields(get,edit,mode,onReset,size){const til=!size,X=get(),is3=pxfIs
   const num=(id,label,val,step,set)=>{const i=el('input',{type:'number',id,step:String(step),value:String(Math.round(val*1000)/1000),'aria-label':label,title:label});
     i.addEventListener('change',()=>{const v=parseFloat(i.value);if(!isFinite(v))return;edit(x=>set(x,v));});return i;};
   const row=(label,...ins)=>el('div',{class:'pxfrow'},el('span',{class:'pxfl',text:label}),...ins);
+  const rowL=(label,...ins)=>el('div',{class:'pxfrow'},el('span',{class:'pxfl'},label+' ',pxfLockBtn()),...ins);
   if(is3){box.append(row('Offset',...[0,1,2].map(i=>num('pxf_t'+i,'Offset '+'XYZ'[i],X.t[i],.01,(x,v)=>{x.t[i]=v;}))),
     row('Rotation',...[0,1,2].map(i=>num('pxf_r'+i,'Rotation '+'XYZ'[i],X.r[i],1,(x,v)=>{x.r[i]=v;}))),
-    row(til?'Tiling':'Size',pxfLockBtn(),...[0,1,2].map(i=>num('pxf_s'+i,(til?'Tiling ':'Size ')+'XYZ'[i],pxfShow(X.s[i],til),til?.1:.05,(x,v)=>pxfSetScale(x,i,v,3,til)))));}
+    rowL(til?'Tiling':'Size',...[0,1,2].map(i=>num('pxf_s'+i,(til?'Tiling ':'Size ')+'XYZ'[i],pxfShow(X.s[i],til),til?.1:.05,(x,v)=>pxfSetScale(x,i,v,3,til)))));}
   else box.append(row('Offset',num('pxf_t0','Offset U',X.t[0],.01,(x,v)=>{x.t[0]=v;}),num('pxf_t1','Offset V',X.t[1],.01,(x,v)=>{x.t[1]=v;})),
     row('Turn',num('pxf_r2','Turn',X.r[2],1,(x,v)=>{x.r[2]=v;})),
-    row(til?'Tiling':'Size',pxfLockBtn(),num('pxf_s0',(til?'Tiling':'Size')+' U',pxfShow(X.s[0],til),til?.1:.05,(x,v)=>pxfSetScale(x,0,v,2,til)),num('pxf_s1',(til?'Tiling':'Size')+' V',pxfShow(X.s[1],til),til?.1:.05,(x,v)=>pxfSetScale(x,1,v,2,til))));
+    rowL(til?'Tiling':'Size',num('pxf_s0',(til?'Tiling':'Size')+' U',pxfShow(X.s[0],til),til?.1:.05,(x,v)=>pxfSetScale(x,0,v,2,til)),num('pxf_s1',(til?'Tiling':'Size')+' V',pxfShow(X.s[1],til),til?.1:.05,(x,v)=>pxfSetScale(x,1,v,2,til))));
+  /* (0.34, Kenn) a slider for the tiling: log scale from 0.1 to 30 repeats; with the lock on it moves every axis */
+  if(til){const cnt=is3?3:2,sl=el('input',{type:'range',id:'pxf_tslide',min:'-1',max:'1.48',step:'0.01',value:String(Math.log10(pxfShow(X.s[0],true))),'aria-label':'Tiling slider',title:'Tiling: drag to repeat the picture more or less'});
+    sl.addEventListener('input',()=>{const v=Math.pow(10,parseFloat(sl.value));edit(x=>pxfSetScale(x,0,v,cnt,true));const Y=get();for(let i=0;i<cnt;i++){const e=document.getElementById('pxf_s'+i);if(e)e.value=String(Math.round(1000/(Y.s[i]||1))/1000);}});
+    [...box.querySelectorAll('.pxfrow')].pop()?.after(el('div',{class:'pxfrow tsl'},sl));}
   for(const i of box.querySelectorAll('input[id^=pxf_s]'))i.dataset.til=til?'1':'0';
   box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'pxfReset',text:'Reset',onclick:()=>{edit(x=>Object.assign(x,pxfDef()));if(onReset)onReset();}}),
     el('span',{class:'note',text:is3?'Drag the gizmo on the model: arrows move, rings turn, boxes scale.':'On the flat canvas: drag a corner to scale (Shift keeps proportions), the round handle to turn, and inside with the Move tool (or Ctrl) to move.'})));
   return box;}
 /* after a drag, the fields show the new numbers */
-function pxfSyncFields(){const T=pxfTarget();if(!T)return;const X=T.xf;for(let i=0;i<3;i++)for(const [k,a] of [['t',X.t],['r',X.r],['s',X.s]]){const e=document.getElementById('pxf_'+k+i);if(e&&document.activeElement!==e){const v=k==='s'&&e.dataset.til==='1'?1/(a[i]||1):a[i];e.value=String(Math.round(v*1000)/1000);}}}
+function pxfSyncFields(){const T=pxfTarget();if(!T)return;const X=T.xf;for(let i=0;i<3;i++)for(const [k,a] of [['t',X.t],['r',X.r],['s',X.s]]){const e=document.getElementById('pxf_'+k+i);if(e&&document.activeElement!==e){const v=k==='s'&&e.dataset.til==='1'?1/(a[i]||1):a[i];e.value=String(Math.round(v*1000)/1000);}}const sl=document.getElementById('pxf_tslide');if(sl&&document.activeElement!==sl){const e0=document.getElementById('pxf_s0');if(e0&&e0.dataset.til==='1')sl.value=String(Math.log10(Math.max(.1,1/(X.s[0]||1))));}}
 
 /* ---- UV projections: a frame with handles on the flat canvas (like Free Transform) ----
    Drag inside to move, a corner to scale (Shift keeps the proportions), the round handle to turn. */

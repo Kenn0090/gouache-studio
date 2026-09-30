@@ -39,7 +39,9 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('#lmKeep');await W(200);await p.click('#lmStack');await W(400);
  let k=await p.evaluate(()=>{const L=__gs.allLayers().find(l=>l.name==='Paint');return {mask:!!(L.mask&&L.mask.stack),rows:L.mask&&L.mask.stack.map(r=>r.kind).join(),live:__gs.lm.on,sel:__gs.sel.active};});
  ok(k.mask&&k.rows==='id'&&!k.live&&!k.sel,'Keep › As a mask stack: the layer gets a mask with the ID colour row '+JSON.stringify(k));
- ok(await p.evaluate(()=>document.querySelectorAll('#layerList .msrow.m').length===1),'…shown as a row under the layer');
+ ok(await p.evaluate(()=>document.querySelectorAll('#layerList .msrow.m').length===0),'…its rows stay hidden until the mask is selected');
+ await p.evaluate(()=>{const L=__gs.allLayers().find(l=>l.name==='Paint');__gs.selectOnly(L);L.editMask=true;__gs.renderLayers();});await W(200);
+ ok(await p.evaluate(()=>document.querySelectorAll('#layerList .msrow.m').length===1),'…and show as a row under the layer once it is');
  await p.keyboard.press('Control+z');await W(400);ok(await p.evaluate(()=>!__gs.allLayers().find(l=>l.name==='Paint').mask),'undo takes the mask away again');
  /* a second layer: live mask from a generator, then Apply to the layer */
  await p.evaluate(()=>__gs.act('addLayer'));await W(200);await p.evaluate(()=>{__gs.act('fill');});await W(300);

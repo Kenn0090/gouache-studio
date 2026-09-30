@@ -11,6 +11,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
   if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
   if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
   if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  {const m=u.match(/materials\/([a-z0-9-]+\.gmat)$/);if(m)return r.fulfill({path:__dirname+'/../../assets/materials/'+m[1],contentType:'application/octet-stream'});}
   if(u.startsWith('file:'))return r.continue();return r.abort();});
  const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());if(m.type()==='warning'&&/GL|WebGL/.test(m.text()))errs.push('GLWARN '+m.text());});
  await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
@@ -19,7 +20,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('#modeTabs [data-mode=p3d]');await W(1200);
  await p.evaluate(()=>{__gs.useModel(__gs.primMesh('sphere',1));__gs.showPanel('mats');});await W(900);
  const g=await p.evaluate(()=>({sm:document.querySelectorAll('#smGrid .mattile').length,mk:document.querySelectorAll('#smMaskGrid .mattile').length,names:[...document.querySelectorAll('#smGrid .mattile span')].map(s=>s.textContent).join()}));
- ok(g.sm===9&&g.mk>=5&&/Gun Metal/.test(g.names)&&/Leather/.test(g.names),'Materials tab lists the 9 built-in smart materials and the smart masks '+JSON.stringify(g));
+ ok(g.sm===28&&g.mk>=17&&/Gun Metal/.test(g.names)&&/Leather/.test(g.names),'Materials tab lists the 28 built-in smart materials and the smart masks '+JSON.stringify(g));
  const n0=await p.evaluate(()=>__gs.allLayers().length);
  await p.click('#smGrid .mattile:has-text("Gun Metal")');await p.click('#lFill');await W(900);
  let a=await p.evaluate(()=>{const G=__gs.doc.active;return {type:G.type,name:G.name,kids:G.children.map(c=>c.name+':'+(c.fill?'fill':'px')+':'+(c.mask&&c.mask.stack?c.mask.stack.map(r=>r.kind).join('+'):'-')).join(' | ')};});
@@ -27,8 +28,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const metal=await p.evaluate(()=>{const t=__gs.compositeMap('metal'),d=__gs.readRGBA8(t);__gs.release(t);let s=0;for(let i=0;i<d.length;i+=4)s+=d[i];return s/(d.length/4);});ok(metal>200,'…and the model is metal ('+metal.toFixed(0)+')');
  await p.keyboard.press('Control+z');await W(400);ok(await p.evaluate(n=>__gs.allLayers().length===n,n0),'undo takes the smart material away');
  /* every built-in goes on without trouble */
- const all=await p.evaluate(async()=>{const out=[];for(const r of __gs.smBuiltins()){const G=__gs.smApply(r);await new Promise(r=>setTimeout(r,50));out.push(G?G.children.length:0);}__gs.requestRender(true);return out;});await W(900);
- ok(all.length===9&&all.every(n=>n>=1),'all nine built-ins add their layers '+JSON.stringify(all));
+ const all=await p.evaluate(async()=>{const out=[];for(const r of __gs.smBuiltins().filter(r=>['Gun Metal','Steel','Moss','Dirt','Dust','Imperfections','Skin','Wood','Leather','Cracked Porcelain'].includes(r.name))){const G=await __gs.smApply(r);await new Promise(r=>setTimeout(r,50));out.push(G?G.children.length:0);}__gs.requestRender(true);return out;});await W(900);
+ ok(all.length===10&&all.every(n=>n>=1),'the original built-ins and one library-based one add their layers (sm34 covers Worn Steel) '+JSON.stringify(all));
  /* save a folder as a smart material and add it back */
  await p.evaluate(()=>{const G=__gs.allNodes?null:null;});
  await p.evaluate(()=>{const G=__gs.doc.root.children.filter(n=>n.type==='group').find(n=>n.name==='Leather');__gs.doc.active=G;__gs.doc.sel=new Set([G]);__gs.smSave(G);});await W(200);

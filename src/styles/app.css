@@ -622,6 +622,7 @@ body.noopt .optbar{display:none}
 .cvtiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.cvtile{padding:8px 4px;border-radius:6px;border:1px solid var(--line-2);background:var(--raise);color:var(--text);font:inherit;font-size:11px;cursor:pointer}.cvtile.on{border-color:var(--accent);color:var(--accent)}
 /* projection transform fields (0.23.1) */
 .pxf{display:grid;gap:4px}.pxfrow{display:grid;grid-template-columns:62px repeat(3,minmax(0,1fr));gap:4px;align-items:center}.pxfl{color:var(--muted);font-size:11.5px}
+.pxfrow.tsl{display:block}.pxfrow.tsl input[type=range]{width:100%}.pxflock{padding:0 4px;min-width:0;font-size:10px;line-height:16px;margin-left:2px}
 .pxfrow input[type=number]{width:100%;min-width:0;padding:3px 4px;font:inherit;font-size:11.5px}
 .v3gz{position:absolute;pointer-events:none;z-index:3}#v3Hit.gzhot{cursor:grab}
 .v3mir{display:inline-flex;gap:4px;align-items:center;flex:0 0 auto;padding:2px 4px;border-radius:7px;background:rgba(0,0,0,.25)}.v3mir .v3lab{white-space:nowrap;overflow:visible;max-width:none}.v3mir select{max-width:120px}.v3set.v3mirpop{right:auto;left:8px}

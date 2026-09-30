@@ -3,7 +3,7 @@
    effects, styles and pictures) saved to the Materials tab; a click adds the whole folder, still live, so its
    generators fit whatever model it lands on. A smart mask is a mask's rows on their own, dropped onto any layer.
    Saved ones live with the materials (the browser's storage) and export as .gmat files. The built-ins are made
-   of materials and generators only (no pictures), so they work at any size. */
+   of materials and generators, plus (0.34) some that fetch library materials and grunge pictures when added. */
 /* ---- a layer or folder → a plain description (pictures copied as 8-bit images) ---- */
 function smCap(t){if(!t||t.empty)return null;let s=t,tmp=null;if(t.depth!==8){tmp=makeTarget(t.w,t.h,8,false);copyScaled(t,tmp);s=tmp;}const c=captureRegionNow(s,0,0,s.w,s.h);if(tmp)disposeTarget(tmp);return {w:c.w,h:c.h,data:c.data};}
 const smClone=o=>JSON.parse(JSON.stringify(o,(k,x)=>k==='t'||k[0]==='_'?undefined:x));
@@ -35,7 +35,7 @@ function smBuild(o){let n;
 /* the maps a description needs (added to the document if missing) */
 function smMapsOf(o,out){out=out||new Set();if(o.fill)for(const k in o.fill.maps||{})if(o.fill.maps[k].on!==false)out.add(k);for(const k in o.maps||{})out.add(k);for(const c of o.kids||[])smMapsOf(c,out);return out;}
 /* Materials tab › a smart material: the folder goes above the active layer (a selection becomes its mask) */
-function smApply(rec){if(ui.mode==='anim'){toast('Smart materials are for Paint and 3D Paint.');return;}if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
+function smApplyNow(rec){if(ui.mode==='anim'){toast('Smart materials are for Paint and 3D Paint.');return;}if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
   const need=[...smMapsOf(rec.tree)].filter(k=>MAP_DEFS[k]&&!doc.maps.includes(k)&&!FILL_SKIP.includes(k)&&!(doc.workflow==='spec'&&(k==='rough'||k==='metal')));
   if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the smart material');
   const n=smBuild(rec.tree);n.name=rec.name;const fromSel=sel.active&&!sel.quick&&!n.mask;
@@ -44,8 +44,17 @@ function smApply(rec){if(ui.mode==='anim'){toast('Smart materials are for Paint 
   const A=doc.active,P=insertAt?insertAt.parent:A&&A.parent?A.parent:doc.root,I=insertAt?insertAt.index:A&&A.parent?P.children.indexOf(A)+1:P.children.length;
   structOp('Add smart material',()=>{insertNode(n,P,I);selectOnly(n);});msEpoch++;changedAll();
   toast('Added the smart material “'+rec.name+'”'+(fromSel?' in the selection.':'. Its rows stay live: change them under each layer.'));return n;}
+/* built-ins that use library materials or grunge pictures fetch them first (a moment on the first use) */
+function smApply(rec){if(!smNeeds(rec.tree))return smApplyNow(rec);
+  const at=insertAt;toast('Loading “'+rec.name+'”…');
+  return (async()=>{const t=JSON.parse(JSON.stringify(rec.tree));try{await smResolveNode(t);}catch(e){toast('Could not load “'+rec.name+'”: '+(e.message||e));return null;}
+    insertAt=at;try{return smApplyNow(Object.assign({},rec,{tree:t}));}finally{insertAt=null;}})();}
 /* Materials tab › a smart mask: it becomes the active layer's mask */
-function smMaskApply(rec){const L=doc.active;if(!L||L.fx||ui.mode==='anim'){toast('Select a layer first.');return;}
+function smMaskApply(rec){if(!(rec.mask.rows||[]).some(r=>r.p&&r.p.grunge&&!r.img))return smMaskApplyNow(rec);
+  const L=doc.active;if(!L||L.fx||ui.mode==='anim'){toast('Select a layer first.');return;}
+  toast('Loading “'+rec.name+'”…');return (async()=>{const m=JSON.parse(JSON.stringify(rec.mask));try{await smResolveMask(m);}catch(e){toast('Could not load “'+rec.name+'”: '+(e.message||e));return;}
+    if(doc.active!==L)return;smMaskApplyNow(Object.assign({},rec,{mask:m}));})();}
+function smMaskApplyNow(rec){const L=doc.active;if(!L||L.fx||ui.mode==='anim'){toast('Select a layer first.');return;}
   msRecord(L,'Smart mask “'+rec.name+'”',()=>{const m=smBuildMask(rec.mask);if(L.mask){m.enabled=L.mask.enabled;}L.mask=m;L.editMask=true;});msEpoch++;toast('“'+L.name+'” has the smart mask “'+rec.name+'”.');}
 
 /* ---- saving ---- */
@@ -95,10 +104,94 @@ const SM_BUILTIN=[
   ['Leather',[SM_F('Leather',{base:{c:[.36,.2,.12]},rough:{v:.6},metal:{v:0},height:{v:.5}}),
     SM_F('Grain',{height:{v:.44},rough:{v:.7}},{mask:SM_M(SM_NOISE('cells',30,2,0)),op:.8}),
     SM_F('Worn edges',{base:{c:[.52,.34,.22]},rough:{v:.45}},{mask:SM_M(SM_GEN('edge',.5,.5,.6))})]]];
-function smBuiltins(){return SM_BUILTIN.map(([name,kids])=>({id:'sb:'+name,kind:'smart',builtin:true,name,tree:{t:'G',name,open:true,kids:kids.slice()}}));}
+
+/* ---- (0.34) richer built-ins made from the library materials and the photo grunge maps. A layer with `lib` takes
+   its whole material from the bundled Library and a mask row with p.grunge takes its picture from the grunge maps;
+   both are fetched when the smart material is added (smResolveNode), so the tile itself stays light. ---- */
+const SM_L=(name,slug,c,o)=>Object.assign({t:'L',name,lib:slug,fill:{maps:{base:{on:true,src:'value',c}},proj:'uv',triSharp:4,hStr:1}},o||{});
+const SM_IMG=(id,tile,inv,mode,op)=>['image',{grunge:id,name:id,tile:tile||1,inv:!!inv},mode,op];
+const SM_LIB=[
+  ['Worn Steel',[SM_L('Worn steel','worn-steel',[.42,.43,.44]),
+    SM_L('Polished edges','polished-steel',[.72,.73,.74],{mask:SM_M(SM_GEN('edge',.5,.45,.55),SM_IMG('light-scratches',2,false,'multiply',.9))}),
+    SM_L('Rust','rusty-steel',[.36,.2,.1],{mask:SM_M(SM_GEN('dirt',.4,.5,.5),SM_IMG('rust-pits-2',2,false,'multiply',.9))}),
+    SM_F('Grime',{base:{c:[.1,.09,.08]},rough:{v:.9},metal:{v:0}},{mask:SM_M(SM_GEN('dirt',.4,.5,.5),SM_IMG('grime',1,false,'multiply',.8)),op:.7})]],
+  ['Rusty Painted Metal',[SM_L('Painted metal','red-painted-metal',[.5,.1,.08]),
+    SM_L('Chipped through','scratched-rusty-iron',[.35,.2,.12],{mask:SM_M(SM_GEN('chips',.5,.5,.5),SM_IMG('worn-paint-1',1,false,'multiply',1))}),
+    SM_F('Rust streaks',{base:{c:[.3,.15,.07]},rough:{v:.85},metal:{v:0}},{mask:SM_M(SM_IMG('leaks-3',1,false,'normal',1),SM_GEN('dirt',.5,.5,.5)),op:.75})]],
+  ['Chipped Yellow Paint',[SM_L('Yellow paint','scratched-yellow-paint',[.75,.6,.1]),
+    SM_L('Bare metal','damaged-iron',[.4,.4,.4],{mask:SM_M(SM_GEN('chips',.55,.5,.5),SM_IMG('worn-paint-2',1,false,'multiply',1))}),
+    SM_F('Dirt',{base:{c:[.15,.12,.09]},rough:{v:.9},metal:{v:0}},{mask:SM_M(SM_GEN('dirt',.45,.5,.5),SM_IMG('stains',1,false,'multiply',.9)),op:.6})]],
+  ['Aged Bronze',[SM_L('Bronze','bronze',[.55,.35,.15]),
+    SM_L('Polished high points','brass',[.8,.6,.25],{mask:SM_M(SM_GEN('edge',.5,.45,.5),SM_IMG('micro-scratches',2,false,'multiply',.8))}),
+    SM_L('Verdigris','oxidised-copper',[.2,.5,.42],{mask:SM_M(SM_GEN('dirt',.5,.55,.5),SM_IMG('stains',1,false,'multiply',.9))})]],
+  ['Copper Patina',[SM_L('Copper','copper',[.7,.35,.2]),
+    SM_L('Patina','oxidised-copper',[.2,.5,.42],{mask:SM_M(SM_GEN('dirt',.5,.6,.55),SM_IMG('rings',1,false,'multiply',.9))}),
+    SM_L('Worn shine','polished-nickel',[.75,.75,.78],{mask:SM_M(SM_GEN('edge',.4,.4,.5)),op:.5})]],
+  ['Battle Leather',[SM_L('Leather','worn-brown-leather',[.36,.22,.13]),
+    SM_L('Scuffed edges','scuffed-leather',[.5,.35,.24],{mask:SM_M(SM_GEN('edge',.5,.5,.6),SM_IMG('brush-smears',1,false,'multiply',.9))}),
+    SM_F('Dirt',{base:{c:[.16,.12,.08]},rough:{v:.9},metal:{v:0}},{mask:SM_M(SM_GEN('dirt',.5,.55,.5),SM_IMG('grime',1,false,'multiply',.9)),op:.7}),
+    SM_F('Cracks',{base:{c:[.08,.05,.03]},rough:{v:.8},metal:{v:0}},{mask:SM_M(SM_IMG('cracks-1',1,false,'normal',1)),op:.6})]],
+  ['Old Black Leather',[SM_L('Leather','smooth-black-leather',[.09,.09,.1]),
+    SM_L('Worn through','scratched-old-leather',[.3,.24,.2],{mask:SM_M(SM_GEN('edge',.45,.4,.55),SM_IMG('brushed-scratches',1,false,'multiply',.8))}),
+    SM_F('Dust',{base:{c:[.55,.5,.44]},rough:{v:.95},metal:{v:0}},{mask:SM_M(SM_GEN('dust',.5,.5,.5),SM_IMG('dust',1,false,'multiply',.8)),op:.5})]],
+  ['Dirty Canvas',[SM_L('Canvas','canvas',[.6,.55,.45]),
+    SM_F('Dirt',{base:{c:[.2,.16,.11]},rough:{v:.95},metal:{v:0}},{mask:SM_M(SM_GEN('dirt',.5,.55,.5),SM_IMG('grime',1,false,'multiply',.9)),op:.8}),
+    SM_F('Stains',{base:{c:[.3,.22,.12]},rough:{v:.9},metal:{v:0}},{mask:SM_M(SM_IMG('stains',1,false,'normal',1)),op:.5})]],
+  ['Worn Khaki Cloth',[SM_L('Cloth','khaki-cloth',[.4,.38,.25]),
+    SM_L('Frayed edges','rough-cloth',[.55,.52,.4],{mask:SM_M(SM_GEN('edge',.5,.5,.6),SM_IMG('speckle',1,false,'multiply',.8))}),
+    SM_F('Mud',{base:{c:[.17,.12,.08]},rough:{v:.95},metal:{v:0}},{mask:SM_M(SM_GEN('dirt',.45,.6,.5),SM_IMG('spatter',1,false,'multiply',.9)),op:.75})]],
+  ['Weathered Wood',[SM_L('Wood','old-dark-wood',[.28,.18,.1]),
+    SM_L('Bare wood edges','pale-wood',[.6,.45,.28],{mask:SM_M(SM_GEN('edge',.5,.5,.6),SM_IMG('fine-brushed-lines',2,false,'multiply',.7))}),
+    SM_F('Grime',{base:{c:[.1,.08,.06]},rough:{v:.9},metal:{v:0}},{mask:SM_M(SM_GEN('dirt',.45,.55,.5),SM_IMG('dirt',1,false,'multiply',.9)),op:.6})]],
+  ['Old Planks',[SM_L('Planks','old-planks',[.35,.27,.19]),
+    SM_F('Water stains',{base:{c:[.16,.13,.1]},rough:{v:.9},metal:{v:0}},{mask:SM_M(SM_IMG('leaks-2',1,false,'normal',1),SM_GEN('dirt',.5,.5,.5)),op:.65}),
+    SM_L('Mossy patches','thick-moss',[.2,.35,.1],{mask:SM_M(SM_GEN('moss',.4,.6,.6),SM_IMG('splotches',1,false,'multiply',.9))})]],
+  ['Cracked Stone',[SM_L('Stone','rough-stone',[.42,.4,.37]),
+    SM_F('Dark cracks',{base:{c:[.05,.05,.05]},rough:{v:1},metal:{v:0},height:{v:.2}},{mask:SM_M(SM_IMG('cracks-2',1,false,'normal',1)),op:.9}),
+    SM_L('Moss','thick-moss',[.2,.35,.1],{mask:SM_M(SM_GEN('moss',.5,.6,.6),SM_IMG('splotches',1,false,'multiply',.9))})]],
+  ['Snowy Rock',[SM_L('Rock','black-rock',[.12,.12,.13]),
+    SM_L('Snow','fresh-snow',[.92,.94,.98],{mask:SM_M(SM_GEN('dust',.55,.55,.5),SM_IMG('spatter',1,false,'multiply',.9))})]],
+  ['Muddy Ground',[SM_L('Dry mud','dry-mud',[.35,.27,.19]),
+    SM_L('Wet clay','wet-clay',[.28,.2,.14],{mask:SM_M(SM_NOISE('clouds',4,2.5,-.05),SM_IMG('splotches',1,false,'multiply',.9))}),
+    SM_L('Forest mud','forest-mud',[.15,.11,.08],{mask:SM_M(SM_GEN('dirt',.5,.6,.5)),op:.7})]],
+  ['Stained Concrete',[SM_L('Concrete','cast-concrete',[.5,.5,.48]),
+    SM_F('Stains',{base:{c:[.2,.2,.19]},rough:{v:.95},metal:{v:0}},{mask:SM_M(SM_IMG('stains',1,false,'normal',1),SM_IMG('drips',1,false,'multiply',.8)),op:.7}),
+    SM_F('Cracks',{base:{c:[.08,.08,.08]},rough:{v:1},metal:{v:0},height:{v:.25}},{mask:SM_M(SM_IMG('cracks-3',1,false,'normal',1)),op:.85})]],
+  ['Scuffed Plastic',[SM_L('Plastic','white-plastic',[.85,.85,.82]),
+    SM_L('Scuffs','scuffed-plastic',[.6,.6,.58],{mask:SM_M(SM_GEN('edge',.5,.5,.55),SM_IMG('light-scratches',2,false,'multiply',.9))}),
+    SM_F('Fingerprints',{rough:{v:.55}},{mask:SM_M(SM_IMG('fingerprints',1,false,'normal',1)),op:.5})]],
+  ['Cracked Porcelain',[SM_L('Porcelain','white-porcelain',[.9,.9,.88]),
+    SM_F('Crazing',{base:{c:[.35,.3,.22]},rough:{v:.6},metal:{v:0}},{mask:SM_M(SM_IMG('crazed-cracks',1,false,'normal',1)),op:.7}),
+    SM_F('Tea stains',{base:{c:[.5,.38,.22]},rough:{v:.5},metal:{v:0}},{mask:SM_M(SM_IMG('stains',1,false,'normal',1),SM_GEN('dirt',.5,.5,.5)),op:.4})]],
+  ['Worn Carbon',[SM_L('Carbon','carbon-weave',[.06,.06,.07]),
+    SM_L('Scratches','scratched-black-plastic',[.15,.15,.16],{mask:SM_M(SM_IMG('tangled-scratches',1,false,'multiply',1),SM_GEN('edge',.5,.5,.5)),op:.9})]],
+  ['Molten Rock',[SM_L('Rock','black-rock',[.1,.1,.11]),
+    SM_L('Lava','lava',[.9,.35,.05],{mask:SM_M(SM_IMG('cracks-1',1,false,'normal',1))})]]];
+/* fetch what a description points at: library materials and grunge pictures */
+function smNeeds(o){if(o.lib)return true;for(const r of (o.mask&&o.mask.rows)||[])if(r.p&&r.p.grunge&&!r.img)return true;for(const c of o.kids||[])if(smNeeds(c))return true;return false;}
+async function smResolveMask(m){for(const r of m.rows||[]){const g=r.p&&r.p.grunge;if(g&&!r.img){const it=txItems().find(x=>x.kind==='photo'&&x.id===g);if(it){r.img=smCap(await txTarget(it));r.p.name=it.name;}}}}
+async function smResolveNode(o){
+  if(o.lib){const rec=gmRecs.find(r=>r.bundled&&r.bundled.file===o.lib+'.gmat');
+    if(rec){if(!(rec.fill&&rec.imgs))await gmLoad(rec);o.fill=fillClone(rec.fill);o.fillImg={};const T=matRecTargets(rec);for(const k in T){const c=smCap(T[k]);if(c)o.fillImg[k]=c;}}}
+  if(o.mask)await smResolveMask(o.mask);
+  for(const c of o.kids||[])await smResolveNode(c);}
+function smBuiltins(){return SM_BUILTIN.concat(SM_LIB).map(([name,kids])=>({id:'sb:'+name,kind:'smart',builtin:true,name,tree:{t:'G',name,open:true,kids:kids.slice()}}));}
 const SMASK_BUILTIN=[['Worn edges',SM_M(SM_GEN('edge',.5,.5,.55),SM_NOISE('grunge',8,2,.1,'multiply',.7))],['Dirty cavities',SM_M(SM_GEN('dirt',.5,.55,.5),SM_NOISE('clouds',6,1.5,.1,'multiply',.7))],
   ['Dusty top',SM_M(SM_GEN('dust',.5,.5,.5),SM_NOISE('clouds',5,1.5,.1,'multiply',.7))],['Scratched',SM_M(SM_NOISE('scratches',3,2,0))],['Chipped paint',SM_M(SM_GEN('chips',.5,.5,.5))]];
-function smaskBuiltins(){return SMASK_BUILTIN.map(([name,mask])=>({id:'mb:'+name,kind:'smask',builtin:true,name,mask}));}
+const SMASK_LIB=[
+  ['Scratched edges',SM_M(SM_GEN('edge',.5,.45,.55),SM_IMG('light-scratches',2,false,'multiply',.9))],
+  ['Scuffed edges',SM_M(SM_GEN('edge',.5,.5,.6),SM_IMG('brush-smears',1,false,'multiply',.9))],
+  ['Rust streaks',SM_M(SM_IMG('leaks-3',1,false,'normal',1),SM_GEN('dirt',.5,.5,.5))],
+  ['Rust pits',SM_M(SM_IMG('rust-pits-2',2,false,'normal',1),SM_GEN('dirt',.4,.5,.5))],
+  ['Heavy grime',SM_M(SM_GEN('dirt',.55,.6,.5),SM_IMG('grime',1,false,'multiply',.9))],
+  ['Paint chips',SM_M(SM_GEN('chips',.5,.5,.5),SM_IMG('worn-paint-1',1,false,'multiply',1))],
+  ['Cracks',SM_M(SM_IMG('cracks-1',1,false,'normal',1))],
+  ['Water stains',SM_M(SM_IMG('stains',1,false,'normal',1),SM_IMG('drips',1,false,'multiply',.8))],
+  ['Settled dust',SM_M(SM_GEN('dust',.5,.5,.5),SM_IMG('dust',1,false,'multiply',.85))],
+  ['Frost',SM_M(SM_GEN('dust',.5,.5,.5),SM_IMG('frost-veins',1,false,'multiply',1))],
+  ['Fingerprints',SM_M(SM_IMG('fingerprints',1,false,'normal',1))],
+  ['Dripping grime',SM_M(SM_IMG('runs-2',1,false,'normal',1),SM_GEN('dirt',.5,.5,.5))]];
+function smaskBuiltins(){return SMASK_BUILTIN.concat(SMASK_LIB).map(([name,mask])=>({id:'mb:'+name,kind:'smask',builtin:true,name,mask}));}
 
 /* ---- a small picture for the tiles: the bottom material as a ball, the layers above painted on where their
    generators would put them (edges at the rim, cavities low, dust on top, patterns as noise) ---- */
