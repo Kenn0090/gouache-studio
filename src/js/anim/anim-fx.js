@@ -32,9 +32,9 @@ function afxDelKey(i,key,f){animOp('Remove keyframe',A=>{const tr=A.fxl[i],ks=tr
 /* slider moved on the current frame: change the base value, or the key that sits here, or (once animated) make a key */
 function afxEdit(i,key,val){const A=A_(),tr=afxList()[i];if(!tr)return;const ks=tr.keys[key];
   if(!ks||!ks.length)tr.v[key]=val;else{const k=ks.find(x=>x.f===A.cur);if(k)k.v=val;else{ks.push({f:A.cur,v:val,e:afxUI.ease});ks.sort((a,b)=>a.f-b.f);}}
-  afxApply();requestRender(true);afxUI.dirty=true;clearTimeout(afxUI.t);afxUI.t=setTimeout(afxCommit,600);}
+  afxApply();requestRender(true);afxMarks();afxUI.dirty=true;clearTimeout(afxUI.t);afxUI.t=setTimeout(afxCommit,600);}
 /* undo step for slider drags: snapshot taken at the first edit */
-function afxCommit(){if(!afxUI.dirty)return;afxUI.dirty=false;renderAnimFx();}
+function afxCommit(){afxUI.dirty=false;}
 const afxUI={sel:0,ease:'lin',open:true,dirty:false,t:0};
 /* undoable slider edits: wrap a drag in one step */
 function afxEditStep(i,key,val){const A=A_();if(!afxUI.pre){afxUI.pre=animState();}afxEdit(i,key,val);
@@ -43,8 +43,14 @@ function afxEditStep(i,key,val){const A=A_();if(!afxUI.pre){afxUI.pre=animState(
 const afxSave2=s=>(s.fxl||[]).map(t=>({id:t.id,v:t.v,keys:t.keys,on:t.on}));
 
 /* ---- timeline UI ---- */
+function afxStripFill(strip,tr,A){strip.replaceChildren();const fs=new Set();for(const k in tr.keys)for(const p of tr.keys[k])fs.add(p.f);
+  for(const f of fs){if(f>=A.frames.length)continue;strip.append(el('span',{class:'afxkey'+(f===A.cur?' cur':''),style:'left:'+(f*CELL+CELL/2-5)+'px',title:'Frame '+(f+1)}));}}
+/* after a slider moves: update the diamonds and the key strips in place (the sliders keep their focus) */
+function afxMarks(){const A=A_();if(!A||!tlParts.fxbox)return;const L=afxList();
+  tlParts.fxstrips.querySelectorAll('.afxstrip').forEach((st,i)=>{if(L[i])afxStripFill(st,L[i],A);});
+  const tr=L[afxUI.sel];if(!tr)return;tlParts.fxedit.querySelectorAll('.afxdia').forEach(d=>{const ks=tr.keys[d.dataset.key],has=ks&&ks.some(k=>k.f===A.cur);
+    d.classList.toggle('on',!!has);d.classList.toggle('mid',!has&&!!(ks&&ks.length));d.title=has?'Remove the keyframe on this frame':'Keyframe this slider on this frame';});}
 function renderAnimFx(){const A=A_();const box=tlParts.fxbox;if(!box||ui.mode!=='anim'||!A)return;
-  if(box.contains(document.activeElement)&&document.activeElement.matches('input[type=range],select'))return;
   const L=afxList(),hd=tlParts.fxhead;
   hd.querySelector('.fxcount').textContent=L.length?L.length+(L.length===1?' effect':' effects'):'';
   hd.classList.toggle('open',afxUI.open);box.style.display=afxUI.open?'':'none';if(!afxUI.open)return;
@@ -53,8 +59,7 @@ function renderAnimFx(){const A=A_();const box=tlParts.fxbox;if(!box||ui.mode!==
     const nm=el('button',{class:'afxname',text:FX[tr.id].title,title:'Show its settings',onclick:()=>{afxUI.sel=i;renderAnimFx();}});
     const x=el('button',{class:'btn sm ghost',text:'×',title:'Remove effect','aria-label':'Remove effect',onclick:()=>afxRemove(i)});
     const strip=el('div',{class:'afxstrip',style:'width:'+(A.frames.length*CELL)+'px'});
-    const fs=new Set();for(const k in tr.keys)for(const p of tr.keys[k])fs.add(p.f);
-    for(const f of fs){if(f>=A.frames.length)continue;strip.append(el('span',{class:'afxkey'+(f===A.cur?' cur':''),style:'left:'+(f*CELL+CELL/2-5)+'px',title:'Frame '+(f+1)}));}
+    afxStripFill(strip,tr,A);
     strip.addEventListener('pointerdown',e=>{const b=strip.getBoundingClientRect();afxUI.sel=i;showFrame(clamp(Math.floor((e.clientX-b.left)/CELL),0,A.frames.length-1));});
     row.append(el('div',{class:'afxhead'},eye,nm,x),strip);return row;});
   tlParts.fxrows.replaceChildren(...rows.map(r=>r.firstChild));tlParts.fxstrips.replaceChildren(...rows.map(r=>r.lastChild));
@@ -69,7 +74,7 @@ function renderAnimFx(){const A=A_();const box=tlParts.fxbox;if(!box||ui.mode!==
   for(const d of afxAnimatable(tr.id)){const ks=tr.keys[d.key],has=ks&&ks.some(k=>k.f===f);
     const s=makeSlider(Object.assign({},d,{value:afxValue(tr,d.key,f),id:'afx_'+d.key,onInput:x=>afxEditStep(afxUI.sel,d.key,x)}));
     const dia=el('button',{class:'afxdia'+(has?' on':ks&&ks.length?' mid':''),title:has?'Remove the keyframe on this frame':'Keyframe this slider on this frame','aria-label':'Keyframe '+(d.label||d.key),text:'◆'});
-    dia.onclick=()=>{if(has)afxDelKey(afxUI.sel,d.key,f);else afxSetKey(afxUI.sel,d.key,f,afxValue(tr,d.key,f));};
+    dia.dataset.key=d.key;dia.onclick=()=>{const k=tr.keys[d.key],on=k&&k.some(x=>x.f===A_().cur);if(on)afxDelKey(afxUI.sel,d.key,A_().cur);else afxSetKey(afxUI.sel,d.key,A_().cur,afxValue(tr,d.key,A_().cur));};
     grid.append(el('div',{class:'afxsl'},dia,s.el));}
   ed.append(grid);}
 function afxAddMenu(){const s=el('select',{class:'tlsel','aria-label':'Add an effect',title:'Add an effect you can animate'},el('option',{value:'',text:'+ Effect…'}));
