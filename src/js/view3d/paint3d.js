@@ -133,8 +133,12 @@ function sel3Loop(m,tp,t0,hitPos,R){const inR=t=>t>=R.start&&t<R.start+R.count,q
   const out=new Set(Q0),walk=(Q,e)=>{for(let g=0;g<100000;g++){const ts=(tp.ep.get(e[2])||[]).filter(t=>!Q.includes(t)&&inR(t));if(!ts.length)return;const Q2=quad(ts[0]);if(Q2.some(t=>out.has(t)))return;
       const E2=sel3QuadEdges(m,tp,Q2);if(E2.length!==4){Q2.forEach(t=>out.add(t));return;}Q2.forEach(t=>out.add(t));const e2=E2.find(x=>x[2]===e[2]);const o=e2&&opp(E2,e2);if(!o)return;Q=Q2;e=o;}};
   walk(Q0,near);const o=opp(E,near);if(o)walk(Q0,o);return [...out];}
+/* separate pieces: triangles that share a welded corner belong to one shell (made once per model) */
+function sel3Shells(m){if(m._shell)return m._shell;const tp=sel3Topo(m),T=m.idx.length/3,par=new Int32Array(tp.NP+1).map((_,i)=>i),f=a=>{while(par[a]!==a){par[a]=par[par[a]];a=par[a];}return a;};
+  for(let t=0;t<T;t++){const a=f(tp.pid[m.idx[t*3]]);for(let c=1;c<3;c++){const b=f(tp.pid[m.idx[t*3+c]]);if(a!==b)par[b]=a;}}
+  const out=new Uint32Array(T);for(let t=0;t<T;t++)out[t]=f(tp.pid[m.idx[t*3]]);return m._shell=out;}
 function sel3Grow(m,t,kind,hitPos,R){const inR=x=>x>=R.start&&x<R.start+R.count,all=[];
-  if(kind==='object'){const P=m.triPart;for(let x=R.start;x<R.start+R.count;x++)if(!P||P[x]===P[t])all.push(x);return all;}
+  if(kind==='object'){const sh=sel3Shells(m);for(let x=R.start;x<R.start+R.count;x++)if(sh[x]===sh[t])all.push(x);return all;}
   if(kind==='material'){for(let x=R.start;x<R.start+R.count;x++)if(!m.triMat||m.triMat[x]===m.triMat[t])all.push(x);return all;}
   const tp=sel3Topo(m);
   if(kind==='island'){const seen=new Uint8Array(m.idx.length/3),st=[t];seen[t]=1;while(st.length){const c=st.pop();all.push(c);
