@@ -207,7 +207,7 @@ function v3Render(F,flip){const s=v3s(),g=v3.gpu;if(!g)return;
 /* after the 2D view: refresh maps if needed, redraw the model if anything changed, copy it into the pane */
 /* (0.31.1) how big the model is drawn while painting: 1 full, .75, .5 (older setting paintHalf = .5) */
 function paintScale(){return prefs.paintScale||(prefs.paintHalf?.5:1);}
-function draw3D(){if(!v3.on)return;if(v3.pop){drawPop();return;}const pane=$('#pane3d'),d=dprNow(),w=Math.max(1,Math.round(pane.clientWidth*d)),h=cv.height,x0=cv.width-w;
+function draw3D(){if(!v3.on)return;if(v3.pop){drawPop();return;}const pane=$('#pane3d'),d=dprNow(),w=Math.max(1,Math.round(pane.clientWidth*d)),h=cv.height,x0=$('#work').classList.contains('p3left')?0:cv.width-w;
   if(!v3.mesh)v3LoadModel();v3Refresh();
   /* (0.30.2) Low power painting: while a stroke is going the model is drawn at half size without smoothing, then stretched */
   const ps=paintScale(),lite=!!(stroke&&ps<1&&!v3.rt),W=lite?Math.max(1,Math.round(w*ps)):w,H=lite?Math.max(1,Math.round(h*ps)):h,F=v3Targets(W,H,lite);
@@ -219,18 +219,18 @@ function draw3D(){if(!v3.on)return;if(v3.pop){drawPop();return;}const pane=$('#p
 /* the model's UV layout over the 2D canvas */
 function drawUVOverlay(){if(!v3.on||!v3s().showUV||!v3.gpu)return;const d=dprNow(),z=view.zoom;
   bindTarget(null);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.bindVertexArray(v3.gpu.evao);
-  const reps=doc.wrap?[-1,0,1]:[0];for(const sx of reps)for(const sy of reps){useProg(P3.uv,{uOrigin:[view.x*d,view.y*d],uExtent:[doc.w*z*d,doc.h*z*d],uViewport:[cv.width,cv.height],uShift:[sx,sy],uCol:sx||sy?[1,.75,.35,.25]:[1,.75,.35,.8]});
+  const reps=doc.wrap?[-1,0,1]:[0];for(const sx of reps)for(const sy of reps){useProg(P3.uv,{uOrigin:[view.x*d+stageOx(d),view.y*d],uExtent:[doc.w*z*d,doc.h*z*d],uViewport:[cv.width,cv.height],uShift:[sx,sy],uCol:sx||sy?[1,.75,.35,.25]:[1,.75,.35,.8]});
     gl.drawElements(gl.LINES,v3.gpu.ecount,gl.UNSIGNED_INT,0);}
   gl.bindVertexArray(vao);gl.disable(gl.BLEND);}
 
 /* ---- the pane: toolbar, settings, camera controls ---- */
 $('#btn3d').addEventListener('click',()=>toggle3D());
-function toggle3D(on){v3.on=on===undefined?!v3.on:!!on;$('#btn3d').setAttribute('aria-pressed',String(v3.on));const pane=$('#pane3d'),sp=$('#split3d'),work=$('#work');
+function toggle3D(on){v3.on=on===undefined?!v3.on:!!on;$('#work').classList.toggle('p3left',ui.mode==='p3d');document.body.classList.toggle('m-p3d',ui.mode==='p3d');$('#btn3d').setAttribute('aria-pressed',String(v3.on));const pane=$('#pane3d'),sp=$('#split3d'),work=$('#work');
   if(v3.on&&ui.mode==='anim'&&false)return;
   if(!v3.on&&v3.pop)pop3D(false,true);
   pane.hidden=!v3.on||!!v3.pop;sp.hidden=!v3.on||!!v3.pop;const p3k=ui.mode==='p3d'?'gs.pane3dp':'gs.pane3d';let w=320;try{w=+localStorage.getItem(p3k)||0;}catch(e){}if(!w)w=Math.round(work.clientWidth*(ui.mode==='p3d'?.5:.42));
   const full=v3.on&&!v3.pop&&work.classList.contains('v3full');if(full)sp.hidden=true;
-  work.style.setProperty('--pane3d',full?'100%':v3.on&&!v3.pop?clamp(w,200,work.clientWidth-200)+'px':'0px');sp.style.right=v3.on?'calc(var(--pane3d) - 3px)':'';
+  work.style.setProperty('--pane3d',full?'100%':v3.on&&!v3.pop?clamp(w,200,work.clientWidth-200)+'px':'0px');if(work.classList.contains('p3left')){sp.style.right='auto';sp.style.left=v3.on?'calc(var(--pane3d) - 3px)':'';}else{sp.style.left='';sp.style.right=v3.on?'calc(var(--pane3d) - 3px)':'';}
   if(v3.on){if(!v3.pop)build3dPane();v3.mapsDirty=true;v3.editDirty=true;v3.dirty=true;if(!v3.mesh)v3LoadModel();}
   resizeGL();fit();requestRender(true);}
 function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.replaceChildren();
@@ -253,8 +253,14 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   pbtn.onclick=()=>{v3.paintOn=!v3.paintOn;pbtn.classList.toggle('on',v3.paintOn);pbtn.setAttribute('aria-pressed',String(v3.paintOn));if(v3.paintOn&&!MESH_TOOLS.includes(ui.tool))setTool('brush');refresh3dUI();};
   const inBake=ui.mode==='bake',lowLab=inBake?el('span',{class:'v3lab',text:'Low-poly: '+bkLow().name,title:'Choose the low-poly in the Bake panel'}):null;
   const mb=ui.mode==='p3d'?mir3Bar():null;
-  const bar=el('div',{class:'v3bar'},...(inBake?[lowLab]:ui.mode==='convert'?[models,detSel]:[models,detSel,shade]),...(mb?[mb.wrap]:[]),...(ui.mode==='convert'||ui.mode==='p3d'?[]:[pbtn]),viewSel,projBtn,tog('v3Wire','Wireframe','wire','Show the mesh edges'),tog('v3UV','UVs','showUV','Draw the model’s UV layout over your canvas'),tog('v3Spin','Spin','spin','Spin the model slowly'),
-    ...(ui.mode==='bake'||ui.mode==='convert'?[]:[el('button',{class:'btn sm',id:'v3Shot',text:'📷',title:'Screenshot of the 3D view','aria-label':'Screenshot',onclick:()=>dlgScreenshot()}),el('button',{class:'btn sm',id:'v3RenderBtn',text:'Render…',title:'A ray-traced picture, in a window of its own',onclick:()=>dlgRender()}),el('button',{class:'btn sm',id:'v3TT',text:'Turntable…',title:'Record the model turning (video, GIF or PNG frames)',onclick:()=>dlgTurntable()})]),gear,dock,close);
+  const wireB=tog('v3Wire','Wireframe','wire','Show the mesh edges'),uvB=tog('v3UV','UVs','showUV','Draw the model’s UV layout over your canvas'),spinB=tog('v3Spin','Spin','spin','Spin the model slowly');
+  const capB=ui.mode==='bake'||ui.mode==='convert'?[]:[el('button',{class:'btn sm',id:'v3Shot',text:'📷',title:'Screenshot of the 3D view','aria-label':'Screenshot',onclick:()=>dlgScreenshot()}),el('button',{class:'btn sm',id:'v3RenderBtn',text:'Render…',title:'A ray-traced picture, in a window of its own',onclick:()=>dlgRender()}),el('button',{class:'btn sm',id:'v3TT',text:'Turntable…',title:'Record the model turning (video, GIF or PNG frames)',onclick:()=>dlgTurntable()})];
+  let bar;
+  if(ui.mode==='p3d'){/* 3D Paint (0.37): a slim bar, the rest behind ⋯ */
+    const xt=el('div',{class:'v3xtra',id:'v3Xtra',hidden:true},models,detSel,wireB,uvB,spinB,...capB,gear,dock,close),more=el('button',{class:'btn sm',id:'v3More',text:'⋯',title:'More: model, detail, wireframe, spin, screenshot, render, turntable, settings','aria-expanded':'false','aria-label':'More 3D view options'});
+    more.onclick=()=>{xt.hidden=!xt.hidden;more.setAttribute('aria-expanded',String(!xt.hidden));more.classList.toggle('on',!xt.hidden);};
+    bar=el('div',{class:'v3bar slim'},shade,...(mb?[mb.wrap]:[]),viewSel,projBtn,more,xt);}
+  else bar=el('div',{class:'v3bar'},...(inBake?[lowLab]:ui.mode==='convert'?[models,detSel]:[models,detSel,shade]),...(mb?[mb.wrap]:[]),...(ui.mode==='convert'||ui.mode==='p3d'?[]:[pbtn]),viewSel,projBtn,wireB,uvB,spinB,...capB,gear,dock,close);
   const box=el('div',{class:'v3set',hidden:true});
   const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:s[key],fmt,onInput:v=>{s[key]=v;if(key==='disp'){v3.mapsDirty=true;if(v>0&&(s.detail||0)<4&&!v3.detAuto){v3.detAuto=true;s.detail=4;if(v3.detSel)v3.detSel.value='4';v3LoadModel(true);toast('Mesh detail raised to ×16 so the height can show. Change it with the Detail menu at the top of the 3D view.');}}v3.dirty=true;requestRender(key==='disp');}}).el;
   box.append(el('div',{class:'sub',text:'Lighting'}),envSettingsBox(S),el('div',{class:'sub',text:'Model and camera'}),S('v3Uvs','Tile repeat','uvs',1,8,1,v=>v+'×'),S('v3Disp','Height depth','disp',0,1,.01,pct),S('v3Fov','Lens','fov',15,90,1,v=>v+'°'),
@@ -332,7 +338,7 @@ for(const t of ['keydown','keyup'])window.addEventListener(t,e=>{if(e.key==='Alt
 /* dragging the divider */
 (()=>{const sp=$('#split3d'),work=$('#work');let d=null;
   sp.addEventListener('pointerdown',e=>{sp.setPointerCapture(e.pointerId);d={x:e.clientX,w:$('#pane3d').clientWidth};});
-  sp.addEventListener('pointermove',e=>{if(!d)return;const w=clamp(d.w-(e.clientX-d.x),200,work.clientWidth-200);work.style.setProperty('--pane3d',w+'px');resizeGL();requestRender();});
+  sp.addEventListener('pointermove',e=>{if(!d)return;const w=clamp(work.classList.contains('p3left')?d.w+(e.clientX-d.x):d.w-(e.clientX-d.x),200,work.clientWidth-200);work.style.setProperty('--pane3d',w+'px');resizeGL();requestRender();});
   sp.addEventListener('pointerup',()=>{if(!d)return;d=null;try{localStorage.setItem(ui.mode==='p3d'?'gs.pane3dp':'gs.pane3d',String($('#pane3d').clientWidth));}catch(e){}});})();
 
 /* ---- importing a model ---- */

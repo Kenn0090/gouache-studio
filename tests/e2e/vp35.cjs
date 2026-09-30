@@ -25,7 +25,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>document.getElementById('vp_split').getAttribute('aria-pressed')==='true'),'the Split button is lit');
  ok(await p.evaluate(()=>__gs.v3s().showUV===true),'the UV layout is on by default');
  // drag the divider
- const sb=await p.locator('#split3d').boundingBox();await p.mouse.move(sb.x+3,sb.y+sb.height/2);await p.mouse.down();await p.mouse.move(sb.x-160,sb.y+sb.height/2,{steps:6});await p.mouse.up();await W(400);
+ const sb=await p.locator('#split3d').boundingBox();await p.mouse.move(sb.x+3,sb.y+sb.height/2);await p.mouse.down();await p.mouse.move(sb.x+160,sb.y+sb.height/2,{steps:6});await p.mouse.up();await W(400);
  let b2=await paneW();ok(b2.p>a.p+100,'dragging the divider makes the 3D view bigger ('+Math.round(a.p)+' → '+Math.round(b2.p)+')');
  await p.click('#vp_2d');await W(600);let c=await paneW();ok(c.hid||c.p<5,'2D hides the 3D view');
  await p.click('#vp_3d');await W(600);c=await paneW();ok(!c.hid&&c.p>c.w-5,'3D fills the area');

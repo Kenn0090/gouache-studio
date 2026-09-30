@@ -1,4 +1,9 @@
-Environments in the shelf, and an eyeball for each material in the Bake tab.
+3D Paint has a new, calmer layout, closer to the mock-up.
 
-- **Environments category:** the 3D Paint shelf now has an **Environments** category with a thumbnail for each HDRI. Click one to light the model with it. **Load your own…** reads a .hdr or .exr, and **Simple sky** turns the HDRI off. Turn, brightness and the background are still in the Shader panel.
-- **Bake tab eyeball:** when a model has more than one material, a **Materials to bake** list shows an eyeball for each. Close an eye and that material is left out of the bake, so a big model can be baked in groups. The eyeball does not hide the material in the 3D view of the Bake tab yet.
+- **Three columns fewer things to look at:** the material editor has its own column (Properties, Brush, Color and Shader as tabs). Texture sets and Layers sit together on the right (Layers, Maps, Channels, History and Bake Maps as tabs). Assets stay on the bottom shelf.
+- **3D on the left, flat texture on the right,** side by side by default. Drag the divider to change the split.
+- **Slim top bar:** only size, opacity, flow, hardness and what the brush paints. Everything else about the brush (spacing, smoothing, lazy mouse, jitter, symmetry for the flat canvas) is in the Brush tab. The 3D view's own bar shows shading, mirror, view and perspective; wireframe, spin, screenshot, render, turntable, settings and pop out are behind the ⋯ button.
+- **Layer buttons at the top** of the layer list in 3D Paint.
+- **Fewer tools and no key hints** in 3D Paint: crop, text, shape, array and cage tools are hidden there, and the shortcut card on the canvas is off.
+- Click the colour swatch on the toolbar to bring the Colour tab forward.
+- Your saved 3D Paint layout is reset once to this one. Everything else works as before.

@@ -4,8 +4,9 @@
    its own zoom. */
 const vps={el:null};
 function vpStripSync(show){
-  const on=show===undefined?ui.mode==='p3d':!!show,work=$('#work');
+  const on=show===undefined?ui.mode==='p3d':!!show,work=$('#work');if(typeof lbtnPlace==='function')lbtnPlace(on);
   if(!work)return;
+  if(!on){work.classList.remove('p3left');document.body.classList.remove('m-p3d');const sp=$('#split3d');if(sp){sp.style.left='';}}
   if(!vps.el){
     vps.el=el('div',{class:'vpstrip',id:'vpStrip',role:'group','aria-label':'Viewport layout'});
     for(const [k,l,t] of [['3d','3D','Only the 3D view'],['split','Split','3D and the flat texture side by side; drag the divider'],['2d','2D','Only the flat texture']])

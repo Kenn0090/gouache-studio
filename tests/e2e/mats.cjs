@@ -21,7 +21,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const choose=async(btn,kind)=>{const fc=p.waitForEvent('filechooser');await p.click(btn);const ch=await fc;await ch.setFiles({name:kind+'.png',mimeType:'image/png',buffer:Buffer.from(await png(kind))});await W(600);};
  await p.evaluate(()=>__gs.newDoc(300,200,8,[1,1,1],'painting',false));await W(300);
  await p.click('#modeTabs [data-mode=p3d]');await W(1200);
- ok(await p.evaluate(()=>{const s=document.querySelector('#matSec');return !!s&&!!s.closest('#dock2');}),'Materials is a tab beside Brushes');
+ ok(await p.evaluate(()=>{const s=document.querySelector('#matSec');return !!s&&!!s.closest('#dkShelf');}),'Materials is a tab in the shelf, beside Brushes');
  await p.evaluate(()=>__gs.showPanel('mats'));await W(200);
  ok(await p.evaluate(()=>document.querySelectorAll('#matBody .mattile').length>=10),'built-in materials shown with previews');
  /* a new material with images */
@@ -90,7 +90,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>!!document.querySelector('#matSec').closest('.dkfloat')&&!__gs.dk.col2.groups.some(g=>g.tabs.includes('mats'))),'Materials floats out of the side column');
  const tb=await p.locator('#dock2 .dktab').first().boundingBox();
  await p.mouse.move(tb.x+10,tb.y+8);await p.mouse.down();await p.mouse.move(700,400,{steps:8});await p.mouse.up();await W(300);
- ok(await p.evaluate(()=>{const id=__gs.dk.L.floats.flatMap(f=>f.tabs);return id.includes('color')&&!__gs.dk.col2.groups.some(g=>g.tabs.includes('color'));}),'side-column tabs can be dragged out too');
+ ok(await p.evaluate(()=>{const id=__gs.dk.L.floats.flatMap(f=>f.tabs);return id.includes('matEd')&&!__gs.dk.col2.groups.some(g=>g.tabs.includes('matEd'));}),'side-column tabs can be dragged out too');
  /* ---- export every texture set ---- */
  await p.evaluate(()=>{const o='v -2 -1 0\nv -0.1 -1 0\nv -0.1 1 0\nv -2 1 0\nv 0.1 -1 0\nv 2 -1 0\nv 2 1 0\nv 0.1 1 0\nvt 0 0\nvt 1 0\nvt 1 1\nvt 0 1\nusemtl Left\nf 1/1 2/2 3/3 4/4\nusemtl Right\nf 5/1 6/2 7/3 8/4\n';__gs.useModel(__gs.parseOBJ(o,'two.obj'));});await W(800);
  await p.evaluate(()=>__gs.act('expTex'));await W(300);ok(await p.evaluate(()=>!!document.querySelector('#txAll')&&document.querySelector('#txAll').checked),'Export textures offers every texture set');

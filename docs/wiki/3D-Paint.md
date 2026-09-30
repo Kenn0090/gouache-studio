@@ -167,3 +167,8 @@ See [Textures, decals and the material library](Textures-and-decals.md): click a
 In 3D Paint the asset panels live in a shelf along the bottom: **Materials**, **Textures**, **Decals**, **Stencils** and **Brushes** are a list on the left, and the tiles of the chosen category fill the rest. Drag the bar above it to resize, or fold it with the arrow. In Materials, the chips at the top choose All, Yours, Library, Smart materials or Smart masks, and S / M / L set the tile size.
 
 The shelf also has an **Environments** category: a thumbnail for each HDRI (click to light the model), **Load your own…** for a .hdr or .exr, and **Simple sky** to turn the HDRI off. In the Bake tab, a model with several materials gets a **Materials to bake** list with an eyeball for each; a closed eye leaves that material out of the bake.
+
+
+## The 3D Paint layout (0.37)
+
+3D view on the left, flat texture on the right (drag the divider). The material editor has a column of its own: **Properties**, **Brush**, **Color** and **Shader** are tabs there. On the far right, **Texture sets** sit over **Layers** (with Maps, Channels, History and Bake Maps as tabs), with the layer buttons at the top of the list. The slim bar at the top has size, opacity, flow, hardness and what the brush paints; the rest of the brush settings are in the **Brush** tab. The 3D view's bar has shading, mirror, view and perspective; the **⋯** button opens wireframe, spin, screenshot, render, turntable, settings and pop out.
