@@ -17,8 +17,8 @@ void main(){ vec4 s;
     vec3 L=(uInv*vec4(P.xyz,1.0)).xyz;
     if(uProj==1){ vec3 N=normalize(mat3(uInv)*texelFetch(uNrm,q,0).xyz+1e-5); vec3 w=pow(abs(N),vec3(uSharp)); w/=max(w.x+w.y+w.z,1e-5); vec3 p=L*uTile*0.5;
       s=samp(p.zy)*w.x+samp(p.xz)*w.y+samp(p.xy)*w.z; }
-    else if(uProj==2){ vec2 t=vec2(L.x*0.5+0.5,0.5-L.y*0.5);
-      if(uFront==1){ vec3 Nl=normalize(mat3(uInv)*texelFetch(uNrm,q,0).xyz+1e-5); if(Nl.z<(uKeepA==1?0.5:0.15)){ o=vec4(0.0); return; } } if(uRep==0&&(t.x<0.0||t.y<0.0||t.x>1.0||t.y>1.0)){ o=vec4(0.0); return; } s=samp(t*uTile); }
+    else if(uProj==2){ vec2 t=vec2(L.x*0.5+0.5,0.5-L.y*0.5); if(uKeepA==1&&abs(L.z)>1.0){ o=vec4(0.0); return; }
+      if(uFront==1){ vec3 Nl=normalize(mat3(uInv)*texelFetch(uNrm,q,0).xyz+1e-5); if(uKeepA==1?abs(Nl.z)<0.5:Nl.z<0.15){ o=vec4(0.0); return; } }/* decals: the model's stored normals may point either way, the thin slab above keeps a sticker to the surface under it */ if(uRep==0&&(t.x<0.0||t.y<0.0||t.x>1.0||t.y>1.0)){ o=vec4(0.0); return; } s=samp(t*uTile); }
     else { vec3 d=normalize(L+vec3(0.0,0.0,1e-6)); vec2 t=vec2(atan(d.x,d.z)/6.2831853+0.5,0.5-asin(clamp(d.y,-1.0,1.0))/3.1415927); s=sampL(t*uTile); } }
   else s=samp((uUvM*vec3(vUV,1.0)).xy*uTile);
   vec3 c=s.a>1e-6?s.rgb/s.a:vec3(0.0);
