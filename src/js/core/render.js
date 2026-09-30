@@ -63,12 +63,30 @@ let maskViewT=null,maskViewLive=false;
 function compNeedsAll(list,k){for(const n of list){if(!n.visible)continue;if(n.type==='layer'){if(n.fx)return true;if(typeof lookTouches==='function'&&lookTouches(n,k))return true;if(n.cfx&&typeof cfxOn==='function'&&cfxOn(n,k))return true;}
     else if(n.children&&compNeedsAll(n.children,k))return true;}return false;}
 let compPart=false;const compStats={parts:0};
-function compositeStrokePart(){const s=stroke;if(!s||!s.compDone||s.fd==='all'||!compOut||compOut.w!==doc.w||compOut.h!==doc.h||s.L.maskOf||s.L.quick||preview||ui.mode==='anim'||ui.mode==='bake'||doc.view==='material'||doc.view==='nfinal'||compNeedsAll(doc.root.children,doc.map))return false;
+/* (0.30) Painting on a mask can redo only the painted area when nothing above the painted row needs its neighbours
+   and the rows underneath are already cached. Anything unusual falls back to redoing the whole picture. */
+function maskPartOK(s){const L=s.L.maskOf,M=L&&L.mask;if(!M||strokeLive(s.o)||ui.viewMask||maskViewLive)return false;
+  if(!s.L.mrow)return !M.stack;
+  const S=M.stack;if(!S)return false;const idx=S.indexOf(s.L.mrow);if(idx<0)return false;
+  for(let i=idx+1;i<S.length;i++)if(S[i].on!==false)return false;
+  for(let i=0;i<idx;i++)if(S[i].on!==false&&(S[i].kind==='filter'||S[i].kind==='ref'))return false;
+  if(idx>1&&!(M._pre&&M._pre.key===msKey(L)+'|'+idx))return false;
+  return true;}
+function compositeStrokePart(){const s=stroke;if(!s||!s.compDone||s.fd==='all'||!compOut||compOut.w!==doc.w||compOut.h!==doc.h||(s.L.maskOf&&!maskPartOK(s))||s.L.quick||preview||ui.mode==='anim'||ui.mode==='bake'||doc.view==='material'||doc.view==='nfinal'||compNeedsAll(doc.root.children,doc.map))return false;
   const F=s.fd;s.fd=null;if(!F||!F.length)return true;
   const rs=doc.wrap?[[0,0,doc.w,doc.h]]:F.map(f=>{const x=Math.max(0,Math.floor(f[0])),y=Math.max(0,Math.floor(f[1]));return [x,y,Math.min(doc.w,Math.ceil(f[2]))-x,Math.min(doc.h,Math.ceil(f[3]))-y];}).filter(r=>r[2]>0&&r[3]>0);
   if(!rs.length)return true;
   if(typeof msUpdateAll==='function')msUpdateAll();
-  compStats.parts+=rs.length;compPart=true;try{for(const r of rs)scissorDo(r,()=>{const acc=acquire();clearTarget(acc,mapDefault(doc.map));const out=compositeList(doc.root.children,acc);blit(out,compOut,r[0],r[1],r[2],r[3],r[0],r[1]);release(out);});}finally{compPart=false;}
+  compStats.parts+=rs.length;compPart=true;
+  if(s.L.maskOf){/* painting on a mask: the mask as it is now, and the picture, are redone only inside the union of the dirty boxes (0.30) */
+    let x0=1e9,y0=1e9,x1=0,y1=0;for(const r of rs){x0=Math.min(x0,r[0]);y0=Math.min(y0,r[1]);x1=Math.max(x1,r[0]+r[2]);y1=Math.max(y1,r[1]+r[3]);}
+    const tmp=[];maskOverride=new Map();
+    try{scissorDo([x0,y0,x1-x0,y1-y0],()=>{const lm=acquire();tmp.push(lm);
+      run(P.merge,lm,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(s.o)},uStrokeColor:s.o.color,...tintU(),uStrokeOpacity:s.o.opacity,uLockAlpha:false},selU(s.o),tonalU(s.o)));
+      if(s.L.mrow){const ev=msEval(s.L.maskOf,{row:s.L.mrow,t:lm});tmp.push(ev);maskOverride.set(s.L.maskOf,ev.tex);}else maskOverride.set(s.L.maskOf,lm.tex);
+      const acc=acquire();clearTarget(acc,mapDefault(doc.map));const out=compositeList(doc.root.children,acc);blit(out,compOut,x0,y0,x1-x0,y1-y0,x0,y0);release(out);});}
+    finally{compPart=false;maskOverride=new Map();tmp.forEach(release);}
+  }else try{for(const r of rs)scissorDo(r,()=>{const acc=acquire();clearTarget(acc,mapDefault(doc.map));const out=compositeList(doc.root.children,acc);blit(out,compOut,r[0],r[1],r[2],r[3],r[0],r[1]);release(out);});}finally{compPart=false;}
   compOut.mipDirty=true;v3Changed();return true;}
 function composite(){if(compositeStrokePart())return;if(compOut)release(compOut);maskOverride=new Map();const tmp=[];maskViewLive=false;if(typeof msUpdateAll==='function')msUpdateAll();
   if(stroke&&stroke.L.maskOf&&!strokeLive(stroke.o)){const lm=acquire();tmp.push(lm);run(P.merge,lm,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,...tintU(),uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},selU(stroke.o),tonalU(stroke.o)));
