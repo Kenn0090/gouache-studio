@@ -19,7 +19,7 @@ async function encodeGouacheNow(opts){opts=opts||{};const blobs=[];let off=0;/* 
   /* pictures are packed (files/pixel-pack.js): lossless, or WebP for colour and grey maps with Smaller files on */
   const put=async(t,full,lossy)=>{if(!t||t.empty)return null;const b=full?[0,0,doc.w,doc.h]:contentBounds(t);if(!b)return null;
     const [x,y]=b,w=b[2]-b[0],h=b[3]-b[1],c=await pxPack(readRegion(t,x,y,w,h),w,h,t.depth,lossy);blobs.push(c.bytes);const r={o:off,n:c.bytes.length,r:[x,y,w,h],d:t.depth,f:c.f};off+=c.bytes.length;return r;};
-  const mask=async n=>n.mask?{en:n.mask.enabled,img:await put(n.mask.target,true)}:null;
+  const mask=async n=>n.mask?{en:n.mask.enabled,lk:n.mask.link===false?0:undefined,img:await put(n.mask.target,true)}:null;
   const putRaw=async t=>{const c=await pxPack(readRegion(t,0,0,t.w,t.h),t.w,t.h,t.depth,false);blobs.push(c.bytes);const r={o:off,n:c.bytes.length,w:t.w,h:t.h,d:t.depth,f:c.f};off+=c.bytes.length;return r;};
   const node=async n=>{const base={name:n.name,vis:n.visible,op:n.opacity,mode:n.mode,mask:await mask(n),lockPx:n.lockPx||undefined,lockPos:n.lockPos||undefined,lockAll:n.lockAll||undefined};
     /* mask rows and content effects (0.23) */
@@ -86,7 +86,7 @@ async function gfReadInto(buf,head,data){
       if(o.text)n.text=o.text;if(o.grad)n.grad=o.grad;if(o.array){n.array=o.array;n.arrBox=o.arrBox||null;}if(o.styles)n.styles=o.styles;if(o.shape)n.shape=o.shape;if(o.fill)n.fill=o.fill;if(o.idSel)n.idSel=o.idSel;
       if(o.fillImg){n._fillImg={};for(const k in o.fillImg){const r=o.fillImg[k],raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),r.w,r.h,8,r.f),t=makeTarget(r.w,r.h,8,true);writeRegion(t,0,0,r.w,r.h,raw);n._fillImg[k]=t;}}}
     Object.assign(n,{visible:o.vis!==false,opacity:o.op==null?1:o.op,mode:o.mode==null?(o.t==='G'?-1:0):o.mode});n.lockPx=!!o.lockPx;n.lockPos=!!o.lockPos;n.lockAll=!!o.lockAll;
-    if(o.mask){n.mask=makeMask(1);n.mask.enabled=o.mask.en!==false;await img(o.mask.img,n.mask.target);}
+    if(o.mask){n.mask=makeMask(1);n.mask.enabled=o.mask.en!==false;if(o.mask.lk===0)n.mask.link=false;await img(o.mask.img,n.mask.target);}
     await msDecode(n,o,img,async r=>{const raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),r.w,r.h,r.d||8,r.f),t=makeTarget(r.w,r.h,8,true);writeRegion(t,0,0,r.w,r.h,raw);return t;});
     if(parent)insertNode(n,parent);
     if(o.t==='G')for(const c of o.kids||[])await mk(c,n);
