@@ -1,5 +1,11 @@
 # What's new in Gouache Studio
 
+## 0.38.1
+
+A small fix for material drops.
+
+- **Ctrl + drop a material on the model:** the material itself is now selected afterwards, so its settings show right away. It used to select the ID colour mask.
+
 ## 0.38.0
 
 Turn the canvas into a texture, plus layer menu tidy-up.

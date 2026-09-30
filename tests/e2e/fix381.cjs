@@ -1,0 +1,31 @@
+/* 0.38.1: Ctrl + drop of a material selects the material, not its ID mask row */
+const {chromium}=require('playwright');
+const OLD=__dirname+'/';
+const OUT=__dirname+'/out/';
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();
+ await p.addInitScript(()=>{try{localStorage.setItem('gs.p3d',JSON.stringify({size:256,layout:'3d'}));}catch(e){}});
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
+  if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());if(m.type()==='warning'&&/GL|WebGL/.test(m.text()))errs.push('GLWARN '+m.text());});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ const W=ms=>p.waitForTimeout(ms||200);
+ await p.evaluate(()=>__gs.newDoc(300,200,8,[1,1,1],'painting',false));await W(300);
+ await p.click('#modeTabs [data-mode=p3d]');await W(1200);
+ await p.evaluate(()=>{__gs.useModel(__gs.parseOBJ('v -1 -1 0\nv 1 -1 0\nv 1 1 0\nv -1 1 0\nvt 0 0\nvt 1 0\nvt 1 1\nvt 0 1\nf 1/1 2/2 3/3 4/4\n','quad.obj'));});await W(800);
+ await p.evaluate(()=>{Object.assign(__gs.v3.cam,{yaw:0,pitch:0});__gs.v3.dirty=true;
+   const d=__gs.doc,t=__gs.makeTarget(d.w,d.h,8,false),g=document.querySelector('#gl').getContext('webgl2'),px=new Uint8Array(d.w*d.h*4);
+   for(let i=0;i<d.w*d.h;i++)px.set((i%d.w)<d.w/2?[255,0,0,255]:[0,0,255,255],i*4);g.bindTexture(g.TEXTURE_2D,t.tex);g.texSubImage2D(g.TEXTURE_2D,0,0,0,d.w,d.h,g.RGBA,g.UNSIGNED_BYTE,px);d.meshMaps={id:t};});await W(400);
+ const hb=await p.locator('#v3Hit').boundingBox();
+ await p.evaluate(({x,y})=>__gs.libMeshDrop('mat',{name:'Red',fill:{maps:{base:{on:true,src:'value',c:[.8,.1,.1]}}}},{ctrl:true,x,y}),{x:hb.x+hb.width/2,y:hb.y+hb.height/2});await W(800);
+ const r=await p.evaluate(()=>{const L=__gs.doc.active;return {name:L&&L.name,rows:L&&L.mask&&L.mask.stack&&L.mask.stack.map(x=>x.kind).join(),editMask:L&&L.editMask,msSel:!!__gs.ui.msSel,propsFill:!!document.querySelector('#matEdBody #fl_name')};});
+ ok(r.name==='Red'&&/id/.test(r.rows||''),'the material has an ID colour mask row '+JSON.stringify(r));
+ ok(!r.editMask&&!r.msSel&&r.propsFill,'the material itself is selected, its settings are showing '+JSON.stringify(r));
+ ok(errs.length===0,'no errors '+errs.slice(0,3).join(' | '));
+ await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);
+})();

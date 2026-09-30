@@ -254,3 +254,4 @@ Preferences in tabs (`dlgPrefs`, defaults in D, Reset this tab); reset buttons (
 
 ## 0.37.2 / 0.38.0 (short notes)
 0.37.2: Preferences tabs, reset buttons (#shEnvReset, #shReset, #brushReset, #fl_adj_reset), `colourBtn` opens `colourPop` (H/S/L), Ctrl+drag shows the ID map (`libIdShow`), `undoMerge`, Brushes in the wide shelf = 2 columns. 0.38.0: `files/to-texture.js` (`dlgToTexture`, `ttMake`: grunge → txAddTarget, tip, stencil, decal/material → Convert tab; `cvS.decal` makes `cvMaterialRec` keep the source alpha and set fill.decal/planar; matApply passes `decal`); Flatten image in the Paint layer menu; no smart-material entries in the Paint layer menu. Tests fix372, tex38.
+0.38.1: Ctrl+drop leaves the material selected (editMask off, ui.msSel cleared in libMeshDrop). Test fix381.
