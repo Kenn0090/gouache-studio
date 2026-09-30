@@ -14,10 +14,11 @@ function putFrames(list,replace,label){if(!list.length){toast('No frames were fo
   list.forEach(frameDirty);toast(list.length+' frame'+(list.length===1?'':'s')+' added.');}
 
 /* sprite sheet -> frames */
-async function importSheet(){if(!ensureAnimMode())return;const [f]=await pickFiles('image/*,.tga,.dds,.tif,.tiff,.psd',false,'Images',['png','jpg','jpeg','webp','gif','tga','dds','tif','tiff','bmp']);if(!f)return;
-  let raw;try{raw=await decodeFile(f);}catch(e){toast(e.message);return;}
+async function importSheet(rawIn){if(!ensureAnimMode())return;const given=!!(rawIn&&rawIn.w&&rawIn.data);let raw=given?rawIn:null;
+  if(!raw){const [f]=await pickFiles('image/*,.tga,.dds,.tif,.tiff,.psd',false,'Images',['png','jpg','jpeg','webp','gif','tga','dds','tif','tiff','bmp']);if(!f)return;
+    try{raw=await decodeFile(f);}catch(e){toast(e.message);return;}}
   const guess=raw.w%raw.h===0&&raw.w>raw.h?[raw.w/raw.h,1]:raw.h%raw.w===0&&raw.h>raw.w?[1,raw.h/raw.w]:[4,4];
-  const st={cols:guess[0],rows:guess[1],replace:await framesEmpty(),skip:true,resize:true};
+  const st={cols:guess[0],rows:guess[1],replace:given?false:await framesEmpty(),skip:true,resize:true};
   const prev=el('canvas',{class:'slicepv'}),pw_=Math.min(460,raw.w),ph=Math.round(raw.h*pw_/raw.w);prev.width=pw_;prev.height=ph;
   const base=document.createElement('canvas');base.width=raw.w;base.height=raw.h;const bx=base.getContext('2d'),id=new ImageData(raw.w,raw.h);
   if(raw.el)bx.drawImage(raw.el,0,0);

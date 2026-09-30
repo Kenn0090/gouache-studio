@@ -45,3 +45,7 @@ Animation mode paints base colour only, so switch to Paint mode for the other ma
 Under the frames is the **Effects** area. Pick **+ Effect…** to add Radial blur, Warp, Distort, Noise, Colour ramp and more. The effect sits over every frame. Press the **◆** next to a slider to set a keyframe on the current frame; do it on another frame with a different value and the slider moves by itself in between. Choose how it moves (Linear, Ease in, Ease out, Ease in-out, Hold) with **New keys**. The diamonds on the strip show the keys. Exports use the effects as you see them.
 
 **Erode / Dissolve and Glow** are in the effect list too. Animate Dissolve's Amount from 0 to 100% to make something burn or erode away. **Quick dupli** can step an effect: pick the effect and a slider, and it moves from the first value to the last across the copies.
+
+## VFX menu
+
+The **VFX…** menu on the timeline has **Fire**, **Smoke** and **Sparks** generators. They make a set of frames that loop exactly. Choose the number of frames, the colours, the size of the detail, turbulence and strength, with a live preview. Tick **Shape it with the painted frame** to have fire or smoke rise from your own drawing. **Spin this frame** turns the current picture a full circle over the frames you choose. **Make loop seamless** fades the last frames into the first so there is no jump. **Cut this frame into a grid** slices a sheet into frames.
