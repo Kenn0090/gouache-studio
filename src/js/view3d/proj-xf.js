@@ -58,26 +58,29 @@ function pxfRowMode(r){const p=r.p||{};if(r.kind==='image')return p.proj||(p.tri
 /* ---- the transform fields in Properties ---- */
 /* (0.33, Kenn) lock X and Y (and Z) together like Substance Painter: changing one scale number changes the others by the same factor */
 function pxfLocked(){try{return localStorage.getItem('gs.pxfLock')!=='0';}catch(e){return true;}}
-function pxfSetScale(x,i,v,n){v=Math.max(.001,v);const old=x.s[i]||1,f=pxfLocked()?v/old:1;
-  if(f===1&&!pxfLocked()){x.s[i]=v;return;}for(let k=0;k<n;k++)x.s[k]=Math.max(.001,k===i?v:x.s[k]*f);}
+function pxfSetScale(x,i,v,n,tiling){v=Math.max(.001,v);const nv=tiling?1/v:v,old=x.s[i]||1,f=pxfLocked()?nv/old:1;
+  if(!pxfLocked()){x.s[i]=Math.max(.001,nv);return;}for(let k=0;k<n;k++)x.s[k]=Math.max(.001,k===i?nv:x.s[k]*f);}
+/* (0.33, Kenn) material and pattern scale is shown as Tiling, like Substance Painter: a bigger number repeats more. It is stored as the size (1 / tiling), so older files look the same. Decals keep Size. */
+const pxfShow=(v,tiling)=>tiling?1/(v||1):v;
 function pxfLockBtn(){const b=el('button',{class:'btn sm pxflock',id:'pxfLock','aria-label':'Keep the scale proportions'});
   const paint=()=>{const on=pxfLocked();b.textContent=on?'🔗':'⛓';b.classList.toggle('on',on);b.title=on?'Locked: the scale numbers move together. Click to unlock.':'Unlocked: each scale number is separate. Click to lock.';};
   paint();b.addEventListener('click',()=>{try{localStorage.setItem('gs.pxfLock',pxfLocked()?'0':'1');}catch(e){}paint();});return b;}
-function pxfFields(get,edit,mode,onReset){const X=get(),is3=pxfIs3D(mode),box=el('div',{class:'pxf'});
+function pxfFields(get,edit,mode,onReset,size){const til=!size,X=get(),is3=pxfIs3D(mode),box=el('div',{class:'pxf'});
   const num=(id,label,val,step,set)=>{const i=el('input',{type:'number',id,step:String(step),value:String(Math.round(val*1000)/1000),'aria-label':label,title:label});
     i.addEventListener('change',()=>{const v=parseFloat(i.value);if(!isFinite(v))return;edit(x=>set(x,v));});return i;};
   const row=(label,...ins)=>el('div',{class:'pxfrow'},el('span',{class:'pxfl',text:label}),...ins);
   if(is3){box.append(row('Offset',...[0,1,2].map(i=>num('pxf_t'+i,'Offset '+'XYZ'[i],X.t[i],.01,(x,v)=>{x.t[i]=v;}))),
     row('Rotation',...[0,1,2].map(i=>num('pxf_r'+i,'Rotation '+'XYZ'[i],X.r[i],1,(x,v)=>{x.r[i]=v;}))),
-    row('Scale',pxfLockBtn(),...[0,1,2].map(i=>num('pxf_s'+i,'Scale '+'XYZ'[i],X.s[i],.05,(x,v)=>pxfSetScale(x,i,v,3)))));}
+    row(til?'Tiling':'Size',pxfLockBtn(),...[0,1,2].map(i=>num('pxf_s'+i,(til?'Tiling ':'Size ')+'XYZ'[i],pxfShow(X.s[i],til),til?.1:.05,(x,v)=>pxfSetScale(x,i,v,3,til)))));}
   else box.append(row('Offset',num('pxf_t0','Offset U',X.t[0],.01,(x,v)=>{x.t[0]=v;}),num('pxf_t1','Offset V',X.t[1],.01,(x,v)=>{x.t[1]=v;})),
     row('Turn',num('pxf_r2','Turn',X.r[2],1,(x,v)=>{x.r[2]=v;})),
-    row('Scale',pxfLockBtn(),num('pxf_s0','Scale U',X.s[0],.05,(x,v)=>pxfSetScale(x,0,v,2)),num('pxf_s1','Scale V',X.s[1],.05,(x,v)=>pxfSetScale(x,1,v,2))));
+    row(til?'Tiling':'Size',pxfLockBtn(),num('pxf_s0',(til?'Tiling':'Size')+' U',pxfShow(X.s[0],til),til?.1:.05,(x,v)=>pxfSetScale(x,0,v,2,til)),num('pxf_s1',(til?'Tiling':'Size')+' V',pxfShow(X.s[1],til),til?.1:.05,(x,v)=>pxfSetScale(x,1,v,2,til))));
+  for(const i of box.querySelectorAll('input[id^=pxf_s]'))i.dataset.til=til?'1':'0';
   box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'pxfReset',text:'Reset',onclick:()=>{edit(x=>Object.assign(x,pxfDef()));if(onReset)onReset();}}),
     el('span',{class:'note',text:is3?'Drag the gizmo on the model: arrows move, rings turn, boxes scale.':'On the flat canvas: drag a corner to scale (Shift keeps proportions), the round handle to turn, and inside with the Move tool (or Ctrl) to move.'})));
   return box;}
 /* after a drag, the fields show the new numbers */
-function pxfSyncFields(){const T=pxfTarget();if(!T)return;const X=T.xf;for(let i=0;i<3;i++)for(const [k,a] of [['t',X.t],['r',X.r],['s',X.s]]){const e=document.getElementById('pxf_'+k+i);if(e&&document.activeElement!==e)e.value=String(Math.round(a[i]*1000)/1000);}}
+function pxfSyncFields(){const T=pxfTarget();if(!T)return;const X=T.xf;for(let i=0;i<3;i++)for(const [k,a] of [['t',X.t],['r',X.r],['s',X.s]]){const e=document.getElementById('pxf_'+k+i);if(e&&document.activeElement!==e){const v=k==='s'&&e.dataset.til==='1'?1/(a[i]||1):a[i];e.value=String(Math.round(v*1000)/1000);}}}
 
 /* ---- UV projections: a frame with handles on the flat canvas (like Free Transform) ----
    Drag inside to move, a corner to scale (Shift keeps the proportions), the round handle to turn. */

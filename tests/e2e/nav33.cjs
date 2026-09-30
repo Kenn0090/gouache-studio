@@ -19,6 +19,9 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const r=await p.evaluate(()=>{localStorage.setItem('gs.pxfLock','1');const x={s:[1,2,4]};__gs.pxfSetScale(x,0,2,3);const a=x.s.slice();localStorage.setItem('gs.pxfLock','0');__gs.pxfSetScale(x,1,9,3);return [a,x.s];});
  ok(JSON.stringify(r[0])===JSON.stringify([2,4,8]),'locked: all scale numbers move together '+r[0]);
  ok(r[1][1]===9&&r[1][0]===2,'unlocked: only one moves '+r[1]);
+ // tiling: bigger number = more repeats = smaller stored size
+ const tl=await p.evaluate(()=>{localStorage.setItem('gs.pxfLock','1');const x={s:[1,2,4]};__gs.pxfSetScale(x,0,2,3,true);return x.s;});
+ ok(tl[0]===.5&&tl[1]===1&&tl[2]===2,'tiling 2 halves the size of every axis when locked '+tl);
  // clicking mask rows keeps the layer list where it was (the dock is rebuilt when Properties comes forward)
  await p.evaluate(()=>__gs.newDoc(256,256,8,[1,1,1],'nav',false,'pbr'));await W(300);
  await p.click('#modeTabs [data-mode=p3d]');await W(1500);

@@ -119,7 +119,7 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
     el('div',{class:'sub',text:'Projection'}),(()=>{const g=seg(PXF_MODES,W.proj||'uv',v=>edit(()=>{W.proj=v;if(pxfIs3D(v)&&!fillPosMaps())toast('This projection needs a model: open the 3D view or 3D Paint. Until then images follow the UVs.');},null,true),'Projection');g.classList.add('tight');g.id='fl_proj';return g;})(),
     W.proj==='tri'?makeSlider({id:'fl_sharp',label:'Blend',min:1,max:16,step:.5,value:W.triSharp||4,fmt:v=>v<3?'soft':v>9?'sharp':'medium',onInput:v=>edit(()=>{W.triSharp=v;})}).el:null,
     W.proj==='planar'?el('div',{class:'chips'},chk('fl_rep','Repeat',W.rep!==false,v=>edit(()=>{W.rep=v;},null)),chk('fl_front','Front faces only',!!W.front,v=>edit(()=>{W.front=v;},null))):null,
-    pxfFields(()=>pxfOf(W),fn=>edit(()=>fn(pxfOf(W)),null),W.proj||'uv',()=>renderMatEd(true)))));
+    pxfFields(()=>pxfOf(W),fn=>edit(()=>fn(pxfOf(W)),null),W.proj||'uv',()=>renderMatEd(true),!!W.decal))));
   const M=doc.meshMaps||{},mks=Object.keys(M).filter(k=>!k.startsWith('cv:')),cks=Object.keys(M).filter(k=>k.startsWith('cv:')),keys=MAT_CH.filter(k=>fillMapsOf().includes(k));
   for(const k of keys){const s=W.maps[k]||(W.maps[k]=fillDefaults().maps[k]),grey=MAP_DEFS[k].grey,isN=k==='normal';
     const row=el('div',{class:'fillrow'+(s.on?'':' off')});

@@ -41,7 +41,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  g=await G();await dragS(g.ring,[g.ring[0]+30,g.ring[1]+25]);ok(await p.evaluate(()=>Math.abs(__gs.pxfNorm(__gs.doc.active.fill.xf).r[2])>3),'the ring turns it');
  g=await G();{const b=g.boxes[0],d=[b[0]-g.p0[0],b[1]-g.p0[1]];await dragS(b,[b[0]+d[0]*.5,b[1]+d[1]*.5]);}
  ok(await p.evaluate(()=>{const s=__gs.pxfNorm(__gs.doc.active.fill.xf).s;return s[0]>1.2&&Math.abs(s[1]-1)<1e-3;}),'the X box scales along X');
- ok(await p.evaluate(()=>{const e=document.querySelector('#pxf_s0');return !!e&&parseFloat(e.value)>1.2;}),'the fields show the new numbers');
+ ok(await p.evaluate(()=>{const e=document.querySelector('#pxf_s0');return !!e&&parseFloat(e.value)<0.85;}),'the fields show the new numbers (Tiling shrinks when the picture grows)');
  await p.evaluate(()=>{__gs.pxfTarget().edit(x=>Object.assign(x,{t:[0,0,0],r:[0,180,0],s:[1,1,1]}));});await W(900);let sb=await baseSig();
  await p.click('#fl_front');await W(900);let sf=await baseSig();ok(sb.r+sb.b>10000&&sf.r+sf.b<100,'Front faces only: a planar picture aimed from behind stays off the front '+JSON.stringify([sb.r+sb.b,sf.r+sf.b]));
  await p.click('#fl_front');await W(600);
