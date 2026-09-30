@@ -37,6 +37,12 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const ft=p.locator('.dkfloat .dktab:text-is("Channels")');bb=await ft.boundingBox();const lt=await p.locator('#dock .dktab:text-is("Layers")').boundingBox();
  await p.mouse.move(bb.x+20,bb.y+10);await p.mouse.down();await p.mouse.move(lt.x+60,lt.y+10,{steps:12});await p.mouse.up();await W(300);
  l=await L();ok(!l.floats.length&&l.groups.some(g=>g.tabs.includes('layers')&&g.tabs.includes('chan')),'and back into a group');
+ // reorder within a group: drag the last tab to the front
+ {const tabs=async()=>(await L()).groups.find(g=>g.tabs.includes('layers')).tabs.join('+');const before=await tabs();const ts=p.locator('#dock .dktab');
+  const grp=(await L()).groups.find(g=>g.tabs.includes('layers')).tabs;const first=await p.locator('#dock .dktabs').filter({has:p.locator('.dktab:text-is("Layers")')}).locator('.dktab').first().boundingBox();
+  const lastTab=p.locator('#dock .dktabs').filter({has:p.locator('.dktab:text-is("Layers")')}).locator('.dktab').last();const lb=await lastTab.boundingBox();
+  await p.mouse.move(lb.x+lb.width/2,lb.y+10);await p.mouse.down();await p.mouse.move(first.x+3,first.y+10,{steps:12});await p.mouse.up();await W(300);
+  const after=await tabs();ok(after!==before&&after.split('+')[0]===grp[grp.length-1],'dragging the last tab to the front reorders: '+before+' -> '+after);}
  // drag Color into a new group at the bottom
  const ct=await p.locator('.dktab:text-is("Color")').boundingBox(),dr=await p.locator('#dock').boundingBox();
  await p.mouse.move(ct.x+15,ct.y+10);await p.mouse.down();await p.mouse.move(dr.x+150,dr.y+dr.height-20,{steps:12});await p.mouse.up();await W(300);

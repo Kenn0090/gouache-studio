@@ -257,10 +257,18 @@ function msPaintRow(L){const S=L.mask.stack,cur=msRowOf(ui.msSel);if(cur&&cur.ki
 /* ---- content effects in compositing ---- */
 const cfxOn=(n,k)=>!!(n.cfx&&n.cfx.some(r=>r.on!==false&&r.kind==='filter'&&cfxMaps(r,k)));
 const cfxMaps=(r,k)=>r.maps==='all'?k!=='normal':Array.isArray(r.maps)?r.maps.includes(k):k==='base';
-function cfxApply(n,src,k){let cur=src;
+/* (0.29) the layer's effects are worked out once and kept: painting on another layer, or the view changing, no longer redoes a slow
+   filter (oil paint, painterly…) every frame. mode 'live' = the layer itself is being painted: the last result stands until the stroke ends;
+   mode 'off' = a preview is on the layer, so nothing is kept. */
+function cfxKey(n,k,src){return [n.lookVer||0,k,src.depth,doc.w,doc.h,JSON.stringify(n.cfx,(a,x)=>a==='t'||a[0]==='_'?undefined:x)].join('|');}
+function cfxDrop(n){const c=n&&n._cxc;if(c){for(const k in c)if(c[k].t)disposeTarget(c[k].t);n._cxc=null;}}
+function cfxApply(n,src,k,mode){const key=mode==='off'?null:cfxKey(n,k,src),c=n._cxc&&n._cxc[k];
+  if(c&&c.t&&c.t.w===doc.w&&c.t.h===doc.h&&c.t.depth===src.depth&&(mode==='live'||c.key===key)){const o=acquireD(src.depth);blit(c.t,o,0,0,doc.w,doc.h,0,0);return o;}
+  let cur=src;
   for(const r of n.cfx){if(r.on===false||r.kind!=='filter'||!cfxMaps(r,k))continue;const F=FX[r.fx];if(!F)continue;const o=acquireD(src.depth);F.render(cur,o,r.v||fxDefaults(F),{});
     let res=o;if((r.op==null?1:r.op)<.999){res=acquireD(src.depth);run(P.mix,res,{uA:cur.tex,uB:o.tex,uT:r.op,uM:dummy,uUseM:false});release(o);}
     if(cur!==src)release(cur);cur=res;}
+  if(key&&cur!==src&&mode!=='live'){n._cxc=n._cxc||{};let e=n._cxc[k];if(!e||!e.t||e.t.w!==doc.w||e.t.h!==doc.h||e.t.depth!==src.depth){if(e&&e.t)disposeTarget(e.t);e=n._cxc[k]={t:makeTarget(doc.w,doc.h,src.depth)};}blit(cur,e.t,0,0,doc.w,doc.h,0,0);e.key=key;}
   return cur;}
 
 /* ---- files: rows as settings, Paint rows and pictures as images ---- */

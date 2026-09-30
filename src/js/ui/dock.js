@@ -178,20 +178,25 @@ function panelShown(id){const L=dk.L;if(dkCol2On()&&dkC2Has(id))return true;retu
 function togglePanel(id){if(panelShown(id)&&!dk.L.icons.includes(id)){dkMove(id,{hidden:true});}else showPanel(id);}
 /* ---- dragging a tab ---- */
 function dkDragStart(e,id,where){if(dk.lock||e.button!==0)return;dk.drag={id,where,x:e.clientX,y:e.clientY,on:false,ghost:null,hint:null,to:null};}
+/* where a dragged tab would land among the tabs of a group: how many of the others are to its left, and a bar to show it */
+function dkTabSlot(gEl,g,id,x){const strip=gEl.querySelector('.dktabs'),sr=strip.getBoundingClientRect(),btns=[...strip.querySelectorAll('.dktab')].filter((b,i)=>g.tabs[i]!==id);
+  let n=0;for(const b of btns){const r=b.getBoundingClientRect();if(x>r.left+r.width/2)n++;}
+  const at=n===0?(btns[0]?btns[0].getBoundingClientRect().left:sr.left):btns[n-1].getBoundingClientRect().right;
+  return {index:n,box:{left:at-1,top:sr.top,width:3,height:sr.height}};}
 function dkDragMove(e){const d=dk.drag;if(!d)return;if(!d.on){if(Math.hypot(e.clientX-d.x,e.clientY-d.y)<6)return;d.on=true;d.ghost=el('div',{class:'dkghost',text:PANELS[d.id].title});d.hint=el('div',{class:'dkhint',hidden:true});document.body.append(d.ghost,d.hint);document.body.classList.add('dkdragging');}
   d.ghost.style.left=(e.clientX+12)+'px';d.ghost.style.top=(e.clientY+8)+'px';
   const t=document.elementFromPoint(e.clientX,e.clientY),dock=$('#dock');let to=null,box=null;
   if(t&&t.closest('#dkIcons')){to={icons:true};box=dk.icons.getBoundingClientRect();}
   else if(t&&t.closest('#dock')){const gEl=t.closest('.dkgrp'),grs=[...dock.querySelectorAll('.dkgrp')];
     if(gEl){const r=gEl.getBoundingClientRect(),g=gEl._g,i=dk.L.groups.indexOf(g);
-      if(t.closest('.dktabs')){to={group:g};box=gEl.querySelector('.dktabs').getBoundingClientRect();}
+      if(t.closest('.dktabs')){const T=dkTabSlot(gEl,g,d.id,e.clientX);to={group:g,index:T.index};box=T.box;}
       else if(e.clientY<r.top+r.height*.28){to={newGroup:i};box={left:r.left,top:r.top-4,width:r.width,height:10};}
       else if(e.clientY>r.bottom-r.height*.28){to={newGroup:i+1};box={left:r.left,top:r.bottom-6,width:r.width,height:10};}
       else{to={group:g};box=r;}}
     else if(grs.length){const r=dock.getBoundingClientRect();to={newGroup:dk.L.groups.length};box={left:r.left,top:r.bottom-12,width:r.width,height:10};}}
   else if(t&&t.closest('#dock2')&&dkCol2On()){const gEl=t.closest('.dkgrp'),d2=dk.dock2,G=dk.col2.groups;
     if(gEl){const r=gEl.getBoundingClientRect(),g=gEl._g,i=G.indexOf(g);
-      if(t.closest('.dktabs')){to={group:g};box=gEl.querySelector('.dktabs').getBoundingClientRect();}
+      if(t.closest('.dktabs')){const T=dkTabSlot(gEl,g,d.id,e.clientX);to={group:g,index:T.index};box=T.box;}
       else if(e.clientY<r.top+r.height*.28){to={newGroup2:i};box={left:r.left,top:r.top-4,width:r.width,height:10};}
       else if(e.clientY>r.bottom-r.height*.28){to={newGroup2:i+1};box={left:r.left,top:r.bottom-6,width:r.width,height:10};}
       else{to={group:g};box=r;}}
