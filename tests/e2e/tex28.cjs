@@ -19,12 +19,16 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.newDoc(256,256,8,[1,1,1],'tex',false,'pbr'));await W(300);
  await p.evaluate(()=>__gs.showPanel('textures'));await W(1500);
  const n=await p.evaluate(()=>({all:document.querySelectorAll('#txGrid .txtile').length,thumbs:[...document.querySelectorAll('#txGrid .txtile img')].filter(i=>i.src.startsWith('data:')).length}));
- ok(n.all===52,'the panel lists 40 photo grunge and 12 generated textures ('+n.all+')');
+ ok(n.all===87,'the panel lists 75 photo grunge and 12 generated textures ('+n.all+')');
  await p.locator('#txSec').screenshot({path:OUT+'tex-panel.png'});
  /* a photo grunge and a generated one decode to real pictures */
  const px=await p.evaluate(async()=>{const a=await __gs.txTarget({kind:'photo',id:'drips',name:'Drips'}),b=await __gs.txTarget({kind:'gen',id:'cells',name:'Cells'});
    const st=t=>{const d=__gs.captureRegionNow(t,0,0,t.w,t.h).data;let mn=255,mx=0;for(let i=0;i<d.length;i+=4*97){mn=Math.min(mn,d[i]);mx=Math.max(mx,d[i]);}return [t.w,mn,mx];};return {a:st(a),b:st(b)};});
  ok(px.a[0]===1024&&px.a[2]-px.a[1]>150&&px.b[2]-px.b[1]>150,'photo and generated textures load with full contrast '+JSON.stringify(px));
+ /* the newer photo grunge (every one of the 75 decodes to a 1024 picture with contrast) */
+ const allOk=await p.evaluate(async()=>{const bad=[];const ids=['brushed-scratches','ink-smears','runs-5','cracks-1','dry-cracks','rust-pits-3','worn-paint-2','frost-veins'];
+   for(const id of ids){const t=await __gs.txTarget({kind:'photo',id,name:id});const d=__gs.captureRegionNow(t,0,0,t.w,t.h).data;let mx=0;for(let i=0;i<d.length;i+=4*97)mx=Math.max(mx,d[i]);if(t.w!==1024||mx<150)bad.push(id+':'+t.w+':'+mx);}return bad;});
+ ok(!allOk.length,'the newer photo grunge maps decode with contrast '+JSON.stringify(allOk));
  /* click a tile: its uses */
  await p.click('#tx_gen_clouds',{button:'right'});await W(300);const menu=await p.evaluate(()=>[...document.querySelectorAll('#menuPop .mi')].map(b=>b.textContent));
  ok(menu.some(t=>t.includes('mask'))&&menu.some(t=>t.includes('New layer'))&&menu.some(t=>t.includes('Brush tip'))&&menu.some(t=>t.includes('Stencil')),'right-clicking a texture offers its uses');
