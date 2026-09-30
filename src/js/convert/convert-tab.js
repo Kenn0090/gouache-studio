@@ -91,7 +91,7 @@ function cvBlur(src,dst,r,tmpName){if(r<=.25){run(P.f_rs,dst,{uSrc:src.tex,uOut:
 function cvDown(src,f,name){let cur=src,w=doc.w,h=doc.h,i=0;while(f>1){w=Math.max(1,Math.ceil(w/2));h=Math.max(1,Math.ceil(h/2));const t=cvT(name+'_'+(i++),w,h);run(P.f_rs,t,{uSrc:cur.tex,uOut:[w,h]});cur=t;f/=2;}return cur;}
 
 /* ---------- source ---------- */
-function cvSetSource(t,name,own){if(cvS.src&&cvS.srcOwn)disposeTarget(cvS.src);cvS.src=t;cvS.srcOwn=!!own;cvS.srcName=name||'Texture';cvS.srcVer++;cvS.cache.pois=null;cvS.cache.pyr={};
+function cvSetSource(t,name,own){cvS.decal=false;if(cvS.src&&cvS.srcOwn)disposeTarget(cvS.src);cvS.src=t;cvS.srcOwn=!!own;cvS.srcName=name||'Texture';cvS.srcVer++;cvS.cache.pois=null;cvS.cache.pyr={};
   cvDetect();cvS.prepDirty=true;cvAllDirty();cvS.thumbs=null;if(ui.mode==='convert'){buildConvertPanel();fitSoon();}}
 const fitSoon=()=>requestAnimationFrame(()=>{fit();requestRender(true);});
 /* a snapshot of a document map or the active layer */
@@ -306,6 +306,9 @@ function cvMaterialRec(name,max){const made=new Set(cvMade()),pix={},fill=fillDe
     const s=Math.min(1,(max||1e9)/Math.max(t.w,t.h)),w=Math.max(1,Math.round(t.w*s)),h=Math.max(1,Math.round(t.h*s)),o=makeTarget(w,h,8,false);copyScaled(t,o);
     const d=captureRegionNow(o,0,0,w,h).data;disposeTarget(o);pix[k]={w,h,data:new Uint8Array(d.buffer.slice(0))};
     if(fill.maps[k])Object.assign(fill.maps[k],{on:true,src:'image',name:(CV_NAMES[k]||k)+' (converted)',tile:1,rot:0});}
+  /* (0.38) a decal keeps the picture's cut-out on every map and sits on the model like a sticker */
+  if(cvS.decal&&cvS.src){for(const k in pix){const P=pix[k],o=makeTarget(P.w,P.h,8,false);copyScaled(cvS.src,o);const a=captureRegionNow(o,0,0,P.w,P.h).data;disposeTarget(o);for(let i=3;i<P.data.length;i+=4)P.data[i]=a[i];}
+    fill.decal=true;fill.proj='planar';fill.rep=false;fill.front=true;}
   if(!fill.maps.rough.on)Object.assign(fill.maps.rough,{on:true,src:'value',v:.6});if(!fill.maps.metal.on)Object.assign(fill.maps.metal,{on:true,src:'value',v:0});
   if(fill.maps.height.on)fill.hStr=1;
   return {id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:name||'Converted material',t:Date.now(),fill,imgs:pix};}

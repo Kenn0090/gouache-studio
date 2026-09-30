@@ -92,6 +92,7 @@
         "view3d/raytrace",
         "view3d/capture",
         "convert/convert-tab",
+        "files/to-texture",
         "files/abr",
         "paint/brush-tab",
         "ui/prefs",
