@@ -1,0 +1,31 @@
+/* 0.28: Decals: click a decal, click the model; a movable sticker layer with colour, height, roughness, metal */
+const {chromium}=require('playwright');
+const OLD=__dirname+'/';
+const OUT=__dirname+'/out/';
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();
+ await p.addInitScript(()=>{try{localStorage.setItem('gs.p3d',JSON.stringify({size:256,layout:'3d'}));}catch(e){}});
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
+  if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());if(m.type()==='warning'&&/GL|WebGL/.test(m.text()))errs.push('GLWARN '+m.text());});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ const W=ms=>p.waitForTimeout(ms||200);
+ await p.evaluate(()=>__gs.newDoc(256,256,8,[1,0,0],'ap',false,'pbr'));await W(400);
+ await p.evaluate(()=>{__gs.ui.tool='brush';});
+ const box=await p.locator('#gl').boundingBox();const cx=box.x+box.width/2,cy=box.y+box.height/2;
+ const fg=()=>p.evaluate(()=>JSON.stringify(__gs.ui.fg));
+ let dx=0;const alt=async()=>{await p.evaluate(()=>{__gs.ui.fg=[0,0,1];});const f0=await fg();await p.keyboard.down('Alt');await p.mouse.click(cx+dx,cy);await p.keyboard.up('Alt');await W(300);return [f0,await fg()];};
+ let r=await alt();ok(r[0]!==r[1],'Alt+click picks a colour by default '+r.join(' -> '));
+ await p.evaluate(()=>{__gs.prefs.altPick=false;});
+ r=await alt();ok(r[0]===r[1],'with the option off, Alt+click does not pick '+r.join(' -> '));
+ await p.evaluate(()=>{__gs.prefs.altPick=undefined;});
+ dx=60;r=await alt();ok(r[0]!==r[1],'and it picks again when turned back on');
+ ok(errs.length===0,'no errors '+errs.slice(0,3).join(' | '));
+ await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);
+})();

@@ -244,3 +244,4 @@ Kenn's list, all done: `fillNoMask()` (painting a material without a mask does n
 ## 0.36 (short notes)
 3D Paint bottom shelf: presets texturing/paint3d have `shelf:{tabs:[mats,textures,decals,stencils,brushes]}`; `.dkshelf .dktabs` is a vertical category list (CSS at end of app.css); showPanel/panelShown know the shelf; one-time reset of saved 3D Paint layouts (localStorage gs.shelf36). Materials view chips `matView` (gs.matView). Test shelf36. Still to do: Environments (HDRI) category, eyeball in the Bake tab.
 - 0.36.1: selection kind 'object' = connected shell (`sel3Shells`, union of welded corners), no longer the file's named part. Test obj36.
+- 0.36.2: `prefs.altPick===false` turns off Alt colour picking (view-input.js pick, `v3HoverPick`); the projection gizmo's single scale box follows the chain lock (`pxfLocked`). Tests altpick36, projxf.
