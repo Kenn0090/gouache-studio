@@ -17,8 +17,9 @@ const sel={t:null,active:false,bb:null,quick:false,L:null,node:{name:'Quick mask
 /* Working images come in sets per bit depth (8-bit documents still edit height at 16 bits).
    pool is the current set's pool of spare document-size images; every image remembers its pool. */
 const aux={};let pool=null;
-function auxFor(d){let a=aux[d];if(!a){const mk=()=>makeTarget(doc.w,doc.h,d);a=aux[d]={depth:d,strokeT:mk(),beforeT:mk(),scratchT:mk(),previewT:mk(),pool:{free:[],all:[],depth:d}};}return a;}
-function useAux(d){const a=auxFor(d);strokeT=a.strokeT;beforeT=a.beforeT;scratchT=a.scratchT;previewT=a.previewT;pool=a.pool;}
+function auxFor(d){return aux[d]||(aux[d]={depth:d,pool:{free:[],all:[],depth:d}});}
+/* Compositing height needs scratch outputs, but its four brush buffers are needed only when editing it. */
+function useAux(d){const a=auxFor(d);if(!a.strokeT)for(const k of ['strokeT','beforeT','scratchT','previewT'])a[k]=makeTarget(doc.w,doc.h,d);strokeT=a.strokeT;beforeT=a.beforeT;scratchT=a.scratchT;previewT=a.previewT;pool=a.pool;}
 function acquireIn(pl){let t=pl.free.pop();if(!t){t=makeTarget(doc.w,doc.h,pl.depth);t.pool=pl;pl.all.push(t);}if(uvWrapScope)uvWrapTarget(t);return t;}
 function acquire(){return acquireIn(pool);}
 function acquireD(d){return acquireIn(auxFor(d).pool);}
@@ -36,7 +37,7 @@ function trimPools(budget=POOL_SPARE_BYTES){const pools=new Set(gpuLiveTargets()
     if(n<2&&kept+size<=budget){kept+=size;counts.set(p,n+1);continue;}
     p.free.splice(p.free.indexOf(t),1);p.all.splice(p.all.indexOf(t),1);freed+=size;disposeTarget(t);}
   return freed;}
-function auxTargets(){const out=[];for(const d in aux){const a=aux[d];out.push(a.strokeT,a.beforeT,a.scratchT,a.previewT,...a.pool.all);}return out;}
+function auxTargets(){const out=[];for(const d in aux){const a=aux[d];out.push(a.strokeT,a.beforeT,a.scratchT,a.previewT,...a.pool.all);}return out.filter(Boolean);}
 function allocAux(){
   auxTargets().forEach(disposeTarget);for(const d in aux)delete aux[d];if(typeof resetEmpties==='function')resetEmpties();
   auxFor(doc.depth);useAux(mapDepth(doc.map||'base'));
@@ -46,8 +47,8 @@ function allocAux(){
   if(typeof selChanged==='function')selChanged();
 }
 function thumbCanvas(){const c=el('canvas',{width:40,height:40});return c;}
-function newLayerObj(name){doc.count++;const B=makeTarget(doc.w,doc.h,mapDepth('base')),maps={base:B};let T=B;
-  if(doc.map&&doc.map!=='base'&&ui.mode!=='anim'){T=makeTarget(doc.w,doc.h,mapDepth(doc.map));maps[doc.map]=T;}
+function newLayerObj(name,compact){doc.count++;const B=compact?emptyFor(mapDepth('base')):makeTarget(doc.w,doc.h,mapDepth('base')),maps=compact?{}:{base:B};let T=B;
+  if(doc.map&&doc.map!=='base'&&ui.mode!=='anim'){T=compact?emptyFor(mapDepth(doc.map)):makeTarget(doc.w,doc.h,mapDepth(doc.map));if(!compact)maps[doc.map]=T;}
   return {type:'layer',id:++lid,name:name||('Layer '+doc.count),target:T,maps,mapModes:{},visible:true,opacity:1,mode:0,clip:false,lockAlpha:false,thumb:thumbCanvas(),parent:null};}
 function newGroupObj(name){return {type:'group',id:++lid,name:name||('Group '+(++groupCount)),children:[],open:true,visible:true,opacity:1,mode:-1,clip:false,lockAlpha:false,parent:null};}
 function disposeLayer(n){if(n._fxc)dropFxCache(n);if(n._cxc)cfxDrop(n);if(n._lk)lookFree(n);if(n.maps)for(const k in n.maps){const t=n.maps[k];if(t&&!t.empty)disposeTarget(t);}if(n.target&&!n.target.empty)disposeTarget(n.target);if(n.mask)maskDispose(n.mask);if(n._fillImg){for(const k in n._fillImg)disposeTarget(n._fillImg[k]);n._fillImg=null;}}

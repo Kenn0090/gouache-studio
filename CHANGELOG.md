@@ -1,5 +1,9 @@
 # What's new in Gouache Studio
 
+## 0.46.10
+
+Less graphics-memory pressure from uniform material channels and flat bumps. Opaque material stacks skip covered rows, and supported model brush strokes composite only the affected texture area. Height brush buffers are created when height is edited. Files, masks, undo and duplicates preserve the material data.
+
 ## 0.45.3
 
 More believable muzzle flashes, with new burst styles and smoke.

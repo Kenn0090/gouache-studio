@@ -28,8 +28,11 @@ function strokeCacheSafe(){if(!stroke)return false;if(stroke.cacheSafe===undefin
 function strokeCacheFor(list,k){if(!strokeCacheSafe())return null;const i=strokeBranch(list);if(i<1)return null;
   const c=stroke.cache||(stroke.cache=new Map());let maps=c.get(list);if(!maps)c.set(list,maps={});return maps[k]||(maps[k]={i,t:null});}
 function dropStrokeCache(s){if(s&&s.cache){for(const maps of s.cache.values())for(const k in maps)if(maps[k].t)disposeTarget(maps[k].t);s.cache=null;}}
+/* A proven opaque, normal-blended fill completely replaces the rows below in this channel.
+   Masks, projection holes, clipped effects and live looks keep the full ordering. */
+function compVisibleStart(list,k){for(let i=list.length-1;i>=0;i--){const n=list[i],c=mapSolid(n,k),t=mapT(n,k,true);if(n.type==='layer'&&n.visible&&(c?c[3]===1:n.fill&&t&&t.opaque)&&n.opacity===1&&mapModeOf(n,k)===0&&!n.clip&&!maskTexOf(n)&&!n.fx&&!lookTouches(n,k)&&!(n.cfx&&cfxOn(n,k))&&!clippedFx(list,i,k).length&&!(panState&&n.id===panState.id&&panState.maps.has(k))&&!(preview&&preview.L===n)&&!(stroke&&stroke.L===n))return i;}return 0;}
 function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
-  const sc=strokeCacheFor(list,k);let start=0;
+  let start=compVisibleStart(list,k);const cache=strokeCacheFor(list,k),sc=cache&&cache.i>start?cache:null;compStats.skipped+=start;
   if(sc&&sc.t&&sc.t.depth===acc.depth){blit(sc.t,acc,0,0,doc.w,doc.h,0,0);start=sc.i;compStats.cacheHits++;}
   for(let i=start;i<list.length;i++){if(sc&&i===sc.i&&!sc.t&&!compPart){sc.t=makeTarget(doc.w,doc.h,acc.depth);blit(acc,sc.t,0,0,doc.w,doc.h,0,0);}
     const n=list[i],clipped=clipBaseOf(list,i);
@@ -37,12 +40,13 @@ function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
     const mt=maskTexOf(n);
     /* filter layer: changes what is below it (clipped ones are applied to their base layer instead) */
     if(n.type==='layer'&&n.fx){if(clipped||n.fx.map!==k)continue;const r=fxApplyLayer(n,acc,k,mt);if(r!==acc){release(acc);acc=r;}continue;}
-    if(n.type==='layer'){let T=edit?n.target:mapT(n,k);const lk=lookTouches(n,k);if((!T||T.empty)&&!lk)continue;if(!T||T.empty)T=emptyFor(mapDepth(k));
+    if(n.type==='layer'){const lk=lookTouches(n,k),cf=clippedFx(list,i,k),cx=n.cfx&&cfxOn(n,k);let solid=mapSolid(n,k),T=edit?n.target:mapT(n,k,true);
+      if(solid&&(lk||cf.length||cx||panState&&n.id===panState.id&&panState.maps.has(k)||preview&&preview.L===n)){T=mapT(n,k);solid=null;}
+      if((!T||T.empty)&&!lk&&!solid)continue;if(!T||T.empty)T=emptyFor(mapDepth(k));
       let src=(edit&&preview&&!preview.off&&preview.L===n&&!preview.isMask)?previewT:T,own=null;const out=acquire(),cm=clipped?maskTexOf(clipped):null;
       let st=(stroke&&stroke.L===n&&!strokeLive(stroke.o))?stroke:null,ex=null,lkM=false;
       if(st&&!edit){ex=(st.o.extras||[]).find(e=>e.key===k)||null;if(!ex)st=null;}
       let pn=null;if(panState&&n.id===panState.id&&panState.maps.has(k)){pn=panShift(src);src=pn;}
-      const cf=clippedFx(list,i,k),cx=n.cfx&&cfxOn(n,k);
       if(cf.length||lk||cx){/* the live stroke goes in first, so clipped filters and the layer's array and styles apply to it too */
         if(st){own=acquire();run(P.merge,own,Object.assign({uSrc:src.tex,uStrokeTex:strokeT.tex,uStroke:{int:ex?ex.mode:strokeMode(st.o)},uStrokeColor:ex?ex.color:st.o.color,uStrokeTint:!ex&&!!st.tint,uStrokeOpacity:st.o.opacity,uLockAlpha:ex?false:n.lockAlpha},
           edit?chanU(st.o):chanU(null),ex?st.exU:selU(st.o),edit?tonalU(st.o):{}));src=own;st=null;ex=null;}
@@ -50,7 +54,8 @@ function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
         for(const f of cf){const r=fxApplyLayer(f,src,k,maskTexOf(f));if(r!==src){if(own)release(own);own=r;src=r;}}
         if(lk&&mt&&n.styles&&anyStyle(n)){const m=lkMasked(src,mt);if(own)release(own);own=m;src=m;lkM=true;}
         if(lk){const r=layerLook(n,src,k,src===T,lkM?mt:null);if(r.t!==src){if(own)release(own);own=r.pooled?r.t:null;src=r.t;}}}
-      run(P.comp,out,Object.assign({uBase:acc.tex,uLayer:src.tex,uStrokeTex:strokeT.tex,uMask:clipped?(mapT(clipped,'base')||emptyFor(8)).tex:dummy,uUseMask:!!clipped,uMask2:cm||dummy,uUseMask2:!!cm,uLMask:mt||dummy,uUseLMask:!!mt&&!lkM,
+      compStats.layerPixels+=compPart?compPartPixels:doc.w*doc.h;
+      run(P.comp,out,Object.assign({uSolid:!!solid,uSolidColor:solid||[0,0,0,0],uBase:acc.tex,uLayer:src.tex,uStrokeTex:strokeT.tex,uMask:clipped?(mapT(clipped,'base')||emptyFor(8)).tex:dummy,uUseMask:!!clipped,uMask2:cm||dummy,uUseMask2:!!cm,uLMask:mt||dummy,uUseLMask:!!mt&&!lkM,
         uMode:{int:mapModeOf(n,k)},uOpacity:n.opacity,uStroke:{int:st?(ex?ex.mode:strokeMode(st.o)):0},uStrokeTint:!!(st&&!ex&&st.tint),uStrokeColor:st?(ex?ex.color:st.o.color):[0,0,0],uStrokeOpacity:st?st.o.opacity:0,uLockAlpha:ex?false:n.lockAlpha},
         edit?chanU(st&&st.o):chanU(null),ex?st.exU:selU(st&&st.o),edit?tonalU(st&&st.o):{}));
       if(own)release(own);if(pn)release(pn);release(acc);acc=out;}
@@ -68,7 +73,7 @@ let maskViewT=null,maskViewLive=false;
    styles and arrays, content effects) need the whole picture, so then everything is composited as before. */
 function compNeedsAll(list,k){const c=strokeCacheFor(list,k),start=c&&c.t?c.i:0;for(let i=start;i<list.length;i++){const n=list[i];if(!n.visible)continue;if(n.type==='layer'){if(n.fx&&n.fx.map===k)return true;if(typeof lookTouches==='function'&&lookTouches(n,k))return true;if(n.cfx&&typeof cfxOn==='function'&&cfxOn(n,k))return true;}
     else if(n.children&&compNeedsAll(n.children,k))return true;}return false;}
-let compPart=false;const compStats={parts:0,full:0,cacheHits:0};
+let compPart=false,compPartPixels=0;const compStats={parts:0,full:0,cacheHits:0,skipped:0,layerPixels:0};
 /* (0.30) Painting on a mask can redo only the painted area when nothing above the painted row needs its neighbours
    and the rows underneath are already cached. Anything unusual falls back to redoing the whole picture. */
 function maskPartOK(s){const L=s.L.maskOf,M=L&&L.mask;if(!M||strokeLive(s.o)||ui.viewMask||maskViewLive)return false;
@@ -78,12 +83,12 @@ function maskPartOK(s){const L=s.L.maskOf,M=L&&L.mask;if(!M||strokeLive(s.o)||ui
   for(let i=0;i<idx;i++)if(S[i].on!==false&&(S[i].kind==='filter'||S[i].kind==='ref'))return false;
   if(idx>1&&!(M._pre&&M._pre.key===msKey(L)+'|'+idx))return false;
   return true;}
-function compositeStrokePart(){const s=stroke;if(!s||!strokeCacheSafe()||!s.compDone||s.fd==='all'||!compOut||compOut.w!==doc.w||compOut.h!==doc.h||(s.L.maskOf&&!maskPartOK(s))||s.L.quick||preview||ui.mode==='anim'||ui.mode==='bake'||doc.view==='material'||doc.view==='nfinal'||compNeedsAll(doc.root.children,doc.map))return false;
-  const F=s.fd;s.fd=null;if(!F||!F.length)return true;
+function compositeStrokePart(){const s=stroke;if(!s||!strokeCacheSafe()||!s.compDone||!compOut||compOut.w!==doc.w||compOut.h!==doc.h||(s.L.maskOf&&!maskPartOK(s))||s.L.quick||preview||ui.mode==='anim'||ui.mode==='bake'||doc.view==='material'||doc.view==='nfinal'||compNeedsAll(doc.root.children,doc.map))return false;
+  let F=s.fd;if(F==='all'){if(s.L.maskOf||(s.o.extras||[]).length||strokeLive(s.o))return false;const b=s.space&&s.space.viewportBounds&&!doc.wrap&&s.space.viewportBounds(s);if(!b)return false;F=[b];}else s.fd=null;if(!F||!F.length)return true;
   const rs=doc.wrap?[[0,0,doc.w,doc.h]]:F.map(f=>{const x=Math.max(0,Math.floor(f[0])),y=Math.max(0,Math.floor(f[1]));return [x,y,Math.min(doc.w,Math.ceil(f[2]))-x,Math.min(doc.h,Math.ceil(f[3]))-y];}).filter(r=>r[2]>0&&r[3]>0);
   if(!rs.length)return true;
   if(typeof msUpdateAll==='function')msUpdateAll();
-  compStats.parts+=rs.length;compPart=true;
+  compStats.parts+=rs.length;compPart=true;compPartPixels=rs.reduce((a,r)=>a+r[2]*r[3],0);
   if(s.L.maskOf){/* painting on a mask: the mask as it is now, and the picture, are redone only inside the union of the dirty boxes (0.30) */
     let x0=1e9,y0=1e9,x1=0,y1=0;for(const r of rs){x0=Math.min(x0,r[0]);y0=Math.min(y0,r[1]);x1=Math.max(x1,r[0]+r[2]);y1=Math.max(y1,r[1]+r[3]);}
     const tmp=[];maskOverride=new Map();
@@ -144,8 +149,9 @@ const thumbT=makeTargetRaw(40,40);const thumbBuf=new Uint8Array(40*40*4);const t
 function makeTargetRaw(w,h){const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);const fbo=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0);return gpuTrack({tex,fbo,w,h,depth:8});}
 function scheduleThumb(n){if(n){n.lookVer=(n.lookVer||0)+1;if(n.frame)frameDirty(n);thumbQ.add(n);chanThumbDirty=true;}requestRender();}
 let chanThumbDirty=true;
-function renderThumb(target,canvas){const s=Math.min(40/doc.w,40/doc.h),tw=doc.w*s,th=doc.h*s;clearTarget(thumbT);
-  run(P.resample,thumbT,{uSrc:target.tex,uOffset:[(40-tw)/2,(40-th)/2],uScale:[1/s,1/s],uTaps:{int:Math.min(8,Math.ceil(1/s))}});
+function renderThumb(target,canvas,solid){const s=Math.min(40/doc.w,40/doc.h),tw=doc.w*s,th=doc.h*s;clearTarget(thumbT);
+  if(solid)scissorDo([Math.round((40-tw)/2),Math.round((40-th)/2),Math.round(tw),Math.round(th)],()=>clearTarget(thumbT,solid));
+  else run(P.resample,thumbT,{uSrc:target.tex,uOffset:[(40-tw)/2,(40-th)/2],uScale:[1/s,1/s],uTaps:{int:Math.min(8,Math.ceil(1/s))}});
   /* collected when the GPU is done, so thumbnails never make painting wait */
   asyncRead(thumbT.fbo,0,0,40,40,gl.UNSIGNED_BYTE,Uint8Array,40*40*4,buf=>{if(typeof canvas==='function'){canvas(buf);return;}
     const img=new ImageData(40,40);const d=img.data;
@@ -155,7 +161,7 @@ function flushThumbs(){
   for(const n of thumbQ){if(n.type==='layer'&&n.target&&n.target.tex){let t=n.target;
       /* a layer with only one other map (a sent bake or conversion) shows that map instead of an empty square */
       if(doc.map==='base'&&isBlankBase(n)&&n.maps){const ks=Object.keys(n.maps).filter(k=>k!=='base'&&n.maps[k]&&!n.maps[k].empty&&n.maps[k].tex);if(ks.length===1)t=n.maps[ks[0]];}
-      renderThumb(t,n.thumb);}
+      renderThumb(t,n.thumb,mapSolid(n,doc.map));}
     if(n.mask&&n.mask.target.tex)renderThumb(n.mask.target,n.mask.thumb);}
   thumbQ.clear();
   if(chanThumbDirty&&compOut&&typeof drawChannelThumbs==='function'){chanThumbDirty=false;drawChannelThumbs();}

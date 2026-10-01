@@ -9,10 +9,10 @@ function readRegion(t,x,y,w,h){gl.bindFramebuffer(gl.FRAMEBUFFER,t.fbo);let out;
   if(t.depth===16){const f=new Float32Array(w*h*4);gl.readPixels(x,y,w,h,gl.RGBA,gl.FLOAT,f);out=new Uint16Array(f.length);for(let i=0;i<f.length;i++)out[i]=f2h(f[i]);out=new Uint8Array(out.buffer);}
   else{out=new Uint8Array(w*h*4);gl.readPixels(x,y,w,h,gl.RGBA,gl.UNSIGNED_BYTE,out);}
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);return out;}
-function writeRegion(t,x,y,w,h,bytes){gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
+function writeRegion(t,x,y,w,h,bytes){t.opaque=false;gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
   if(t.depth===16)gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,w,h,gl.RGBA,gl.HALF_FLOAT,new Uint16Array(bytes.buffer,bytes.byteOffset,w*h*4));
   else gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,w,h,gl.RGBA,gl.UNSIGNED_BYTE,bytes);
-  gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);t.mipDirty=true;}
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);t.mipDirty=true;t.opaque=x===0&&y===0&&w===t.w&&h===t.h&&imageOpaque(bytes,t.depth);}
 /* in the Bake or Convert tab, the painting is what gets saved */
 async function encodeGouache(){return tabDocs.paint?withPaintDocAsync(encodeGouacheNow):encodeGouacheNow();}
 let gfSaving=false;
@@ -32,6 +32,10 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
   /* pictures are packed (files/pixel-pack.js): lossless, or WebP for colour and grey maps with Smaller files on */
   const put=async(t,full,lossy)=>{if(!t||t.empty)return null;const start=performance.now(),b=full?[0,0,doc.w,doc.h]:await contentBoundsAsync(t);stats.bounds+=performance.now()-start;if(!b)return null;
     const [x,y]=b,w=b[2]-b[0],h=b[3]-b[1],c=await pack(t,x,y,w,h,lossy);blobs.push(c.bytes);const r={o:off,n:c.bytes.length,r:[x,y,w,h],d:t.depth,f:c.f};off+=c.bytes.length;return r;};
+  /* Keep ordinary pixel blobs for older app versions, without allocating/readback of a full GPU image.
+     The colour hint lets new versions reopen uniform maps without expanding their storage. */
+  const putSolid=async(k,color)=>{const d=mapDepth(k),time=performance.now(),c=await pxPackSolid(color,doc.w,doc.h,d);stats.pack+=performance.now()-time;stats.images++;stats.bytes+=doc.w*doc.h*(d===16?8:4);
+    blobs.push(c.bytes);const r={o:off,n:c.bytes.length,r:[0,0,doc.w,doc.h],d,f:c.f,c:color};off+=c.bytes.length;return r;};
   const mask=async n=>n.mask?{en:n.mask.enabled,lk:n.mask.link===false?0:undefined,img:await put(n.mask.target,true)}:null;
   const putRaw=async t=>{const c=await pack(t,0,0,t.w,t.h,false);blobs.push(c.bytes);const r={o:off,n:c.bytes.length,w:t.w,h:t.h,d:t.depth,f:c.f};off+=c.bytes.length;return r;};
   const node=async n=>{const base={name:n.name,vis:n.visible,op:n.opacity,mode:n.mode,mask:await mask(n),lockPx:n.lockPx||undefined,lockPos:n.lockPos||undefined,lockAll:n.lockAll||undefined,smSrc:n.smSrc||undefined,smMaskSrc:n.smMaskSrc||undefined};
@@ -39,7 +43,7 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
     {const ms=await msEncode(n,put,putRaw);if(ms.stack)base.mstack=ms.stack;if(ms.cfx)base.cfx=ms.cfx;}
     if(n.type==='group'){const kids=[];for(const c of n.children)kids.push(await node(c));return Object.assign(base,{t:'G',open:n.open,kids});}
     if(n.fx)return Object.assign(base,{t:'F',clip:n.clip,mapModes:n.mapModes||{},fx:{map:n.fx.map,stack:fxCleanStack(n.fx.stack)}});
-    const maps={};for(const k of mapKeysOf(n)){const r=await put(mapT(n,k),false,PX_LOSSY.has(k));if(r)maps[k]=r;}
+    const maps={};for(const k of mapKeysOf(n)){const color=mapSolid(n,k),r=color?await putSolid(k,color):await put(mapT(n,k),false,PX_LOSSY.has(k));if(r)maps[k]=r;}
     /* a material layer's own images (so it stays editable after opening) */
     let fillImg;if(n.fill&&n._fillImg){fillImg={};for(const k in n._fillImg){const t=n._fillImg[k],c=await pack(t,0,0,t.w,t.h,PX_LOSSY.has(k));blobs.push(c.bytes);fillImg[k]={o:off,n:c.bytes.length,w:t.w,h:t.h,f:c.f};off+=c.bytes.length;}}
     return Object.assign(base,{t:'L',clip:n.clip,lock:n.lockAlpha,mapModes:n.mapModes||{},maps,text:n.text?cloneText(n.text):undefined,grad:n.grad||undefined,array:n.array||undefined,arrBox:n.array?n.arrBox:undefined,styles:n.styles||undefined,shape:n.shape||undefined,fill:n.fill||undefined,idSel:n.idSel||undefined,fillImg,hold:n.frame?n.hold:undefined});};
@@ -84,7 +88,14 @@ async function openGouache(buf,name){const {head,data}=gfHead(buf);if(tabDocs.pa
 /* the maps, settings and layers of a document into the current (blank, right-sized) one; returns the image and layer readers */
 async function gfReadInto(buf,head,data){
   Object.assign(doc,{maps:head.maps||['base'],mapDef:head.mapDef||{},workflow:head.workflow==='spec'?'spec':'metal',nrmStr:head.nrmStr!=null?head.nrmStr:8,light:head.light||{az:135,el:40}});if(head.p3)doc.p3=true;
-  const img=async(r,t)=>{if(!r)return;const [x,y,w,h]=r.r,raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),w,h,r.d||8,r.f);
+  const img=async(r,t,L,k)=>{if(!r)return;const [x,y,w,h]=r.r;
+    if(L&&x===0&&y===0&&w===doc.w&&h===doc.h&&Array.isArray(r.c)&&r.c.length===4&&r.c.every(Number.isFinite)){setMapSolid(L,k,fillSolidColor(k,r.c));return;}
+    const raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),w,h,r.d||8,r.f);
+    /* Older documents also compact truly uniform fill images, checking every pixel, before GPU upload. */
+    if(L&&x===0&&y===0&&w===doc.w&&h===doc.h){const a=new DataView(raw.buffer,raw.byteOffset,raw.byteLength),step=r.d===16?8:4,v=a.getUint32(0,true),v2=step===8?a.getUint32(4,true):0;let same=true;
+      for(let i=step;i<raw.byteLength;i+=step)if(a.getUint32(i,true)!==v||step===8&&a.getUint32(i+4,true)!==v2){same=false;break;}
+      if(same){const c=step===8?Array.from({length:4},(_,i)=>h2fLut()[a.getUint16(i*2,true)]):Array.from(raw.subarray(0,4),v=>v/255);setMapSolid(L,k,fillSolidColor(k,c));return;}}
+    if(typeof t==='function')t=t();
     if(r.d===t.depth){writeRegion(t,x,y,w,h,raw);return;}
     /* stored at another depth (e.g. 16-bit file on a GPU without float targets): convert */
     const n=w*h*4,out=t.depth===16?new Uint16Array(n):new Uint8Array(n);
@@ -94,8 +105,8 @@ async function gfReadInto(buf,head,data){
   const mk=async(o,parent)=>{let n;
     if(o.t==='G'){n=newGroupObj(o.name);n.open=o.open!==false;}
     else if(o.t==='F'){n=newFxLayerObj(o.name,(o.fx.stack||[]).filter(it=>it.conv?CONVERTERS[it.conv]:FX[it.id]),o.fx.map);n.clip=!!o.clip;n.mapModes=Object.assign({},o.mapModes||{});}
-    else{n=newLayerObj(o.name);n.clip=!!o.clip;n.lockAlpha=!!o.lock;n.mapModes=Object.assign({},o.mapModes||{});
-      for(const k in o.maps||{}){if(k!=='base'&&!doc.maps.includes(k))continue;const t=k==='base'?n.maps.base:ensureMapTarget(n,k);await img(o.maps[k],t);}
+    else{n=newLayerObj(o.name,!!o.fill);n.clip=!!o.clip;n.lockAlpha=!!o.lock;n.mapModes=Object.assign({},o.mapModes||{});
+      for(const k in o.maps||{}){if(k!=='base'&&!doc.maps.includes(k))continue;await img(o.maps[k],()=>ensureMapTarget(n,k),o.fill?n:null,k);}
       if(o.text)n.text=o.text;if(o.grad)n.grad=o.grad;if(o.array){n.array=o.array;n.arrBox=o.arrBox||null;}if(o.styles)n.styles=o.styles;if(o.shape)n.shape=o.shape;if(o.fill)n.fill=o.fill;if(o.idSel)n.idSel=o.idSel;
       if(o.fillImg){n._fillImg={};for(const k in o.fillImg){const r=o.fillImg[k],raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),r.w,r.h,8,r.f),t=makeTarget(r.w,r.h,8,true);writeRegion(t,0,0,r.w,r.h,raw);n._fillImg[k]=t;}}}
     Object.assign(n,{visible:o.vis!==false,opacity:o.op==null?1:o.op,mode:o.mode==null?(o.t==='G'?-1:0):o.mode});n.lockPx=!!o.lockPx;n.lockPos=!!o.lockPos;n.lockAll=!!o.lockAll;n.smSrc=o.smSrc;n.smMaskSrc=o.smMaskSrc;
