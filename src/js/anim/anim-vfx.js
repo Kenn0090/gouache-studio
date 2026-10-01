@@ -1,6 +1,6 @@
 /* ================= VFX helpers for the animation tab =================
    Generators drawn by the GPU into new frames: Fire, Smoke, Sparks, Explosion, Lightning, Magic orb, Shockwave, Rain, Snow,
-   Blood splat, Ripples, Slash, Impact burst, Dust puff, Energy beam, Bubbles, Portal and Sparkles. The ones that can loop do so exactly. Fire and Smoke can be shaped by the painted frame.
+   Blood splat, Ripples, Slash, Impact burst, Dust puff, Energy beam, Bubbles, Portal, Sparkles and Muzzle flash. The ones that can loop do so exactly. Fire and Smoke can be shaped by the painted frame.
    Helpers: spin the current frame, make a loop seamless, cut the current frame into a grid. */
 const VFXG_FS=`uniform vec2 uSize; uniform float uT; uniform float uSeed; uniform float uScale; uniform float uTurb; uniform float uInt; uniform int uKind; uniform int uPal;
 uniform vec4 uP1; uniform vec4 uP2; uniform vec4 uP3; uniform vec3 uC1; uniform vec3 uC2;
@@ -22,7 +22,7 @@ vec3 fluid(int pal,float th){ vec3 dk,br; if(pal==1){ dk=vec3(0.03,0.22,0.02); b
   return mix(dk,br,smoothstep(0.0,0.7,th)); }
 float baseA(vec2 uv){ return texture(uBase,vec2(uv.x,1.0-uv.y)).a; }
 void main(){ vec2 uv=gl_FragCoord.xy/uSize; uv.y=1.0-uv.y; float asp=uSize.x/uSize.y; vec4 res=vec4(0.0);
-  float spd=uP1.x,wid=uP1.y,hei=uP1.z,lean=uP1.w,cnt=uP2.x,soft=uP2.y,glow=uP2.z,flick=uP2.w,cont=uP3.x,bright=uP3.y,spike=uP3.z;
+  float spd=uP1.x,wid=uP1.y,hei=uP1.z,lean=uP1.w,cnt=uP2.x,soft=uP2.y,glow=uP2.z,flick=uP2.w,cont=uP3.x,bright=uP3.y,spike=uP3.z,rot=uP3.w;
   vec2 c0=vec2(0.5,0.5); vec2 pc=(uv-c0)*vec2(asp,1.0); float rr=length(pc);
   if(uKind==2){ vec3 acc=vec3(0.0); float al=0.0;
     for(int i=0;i<48;i++){ if(float(i)>=cnt) break; float fi=float(i); float h1=hs(vec2(fi,1.0)),h2=hs(vec2(fi,2.0)),h3=hs(vec2(fi,3.0)),h4=hs(vec2(fi,4.0));
@@ -120,25 +120,43 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSize; uv.y=1.0-uv.y; float asp=uSize.x/uSi
       float ph=fract(uT*spd+h3); float tw=pow(sin(3.14159*ph),2.0); vec2 pos=vec2(h1+lean*ph*0.1,h2+ph*0.08*hei*(0.5+h4)); vec2 d=(uv-pos)*vec2(asp,1.0); float sz=(0.012+0.03*h4)*uScale*wid*(0.3+0.7*tw)+0.0005;
       float cr=exp(-abs(d.x*d.y)/(sz*sz*0.05))*exp(-length(d)/(sz*2.5)); float gl=exp(-dot(d,d)/(sz*sz*0.5))*glow*0.5; float v=(cr+gl)*tw; acc+=ramp(0.6+0.4*cr,uPal)*v; al+=v; }
     al=clamp(al*uInt,0.0,1.0); acc*=uInt; res=vec4(min(acc,vec3(al)*1.6),al); }
+  else if(uKind==18){ /* muzzle flash: directional hot core, flame lobes, cross flare and secondary sparks */
+    float life=1.0-smoothstep(0.42,1.0,uT); float grow=0.72+0.28*smoothstep(0.0,0.18,uT); float ra=rot*0.0174532925,ca=cos(ra),sa=sin(ra);
+    vec2 q=mat2(ca,sa,-sa,ca)*pc; float L=max(0.025,0.34*uScale*hei*grow),W=max(0.004,0.075*uScale*wid);
+    float x01=clamp(q.x/L,0.0,1.0); float jag=(vnp(vec2(x01*11.0+uSeed,4.0),vec2(64.0))-0.5)*uTurb*W*1.8;
+    float taper=mix(W,W*0.09,pow(x01,0.72)); float front=smoothstep(-W*0.45,0.0,q.x)*(1.0-smoothstep(L*0.62,L,q.x));
+    float flame=front*(1.0-smoothstep(taper*(0.45-soft*0.18),taper,abs(q.y+jag)));
+    float lobe=0.72+0.28*vnp(vec2(x01*7.0+uSeed,8.0),vec2(64.0)); flame*=lobe;
+    float coreR=max(0.004,0.036*uScale*wid); float core=exp(-dot(q,q)/(coreR*coreR));
+    float ang=atan(q.y,q.x); float rays=max(2.0,3.0+floor(spike*2.5)); float rf=pow(abs(cos(ang*rays)),2.0+spike*3.0);
+    float starR=(0.045+0.055*spike)*uScale*wid*(0.30+0.70*rf); float star=1.0-smoothstep(starR*(0.50-soft*0.15),starR,rr);
+    float halo=exp(-dot(q,q)/max(0.0003,0.018*uScale*uScale*wid*wid))*glow*0.38;
+    float sparks=0.0; for(int i=0;i<48;i++){ if(float(i)>=cnt) break; float fi=float(i); float h1=hs(vec2(fi,41.0)),h2=hs(vec2(fi,42.0)),h3=hs(vec2(fi,43.0));
+      float sx=(0.08+0.38*h1)*uScale*hei*grow,sy=(h2-0.5)*0.24*uScale*wid; vec2 dv=q-vec2(sx,sy); float sr=(0.0025+0.006*h3)*uScale;
+      float streak=length(vec2(dv.x*0.35,dv.y)); sparks=max(sparks,exp(-streak*streak/(sr*sr))*smoothstep(-0.04,0.0,dv.x)); }
+    float raw=max(max(flame,star),core*0.95)+halo+sparks*0.9; float a=clamp(raw*uInt*life,0.0,1.0);
+    float heat=clamp(core*1.25+star*0.75+flame*0.65+sparks,0.0,1.0); vec3 col=ramp(clamp(0.35+heat*0.65,0.0,1.0),uPal);
+    col=mix(col,vec3(1.0),clamp(core*(0.65+0.25*bright)+sparks*0.2,0.0,1.0)); res=vec4(min(col*a,vec3(a)*1.55),a); }
   o=res; }`;
 let P_VFXG=null;
 /* the kinds, whether they loop, and which sliders each one has */
-const VFX_KINDS=[[0,'Fire'],[1,'Smoke'],[2,'Sparks'],[3,'Explosion'],[4,'Lightning'],[5,'Magic orb'],[6,'Shockwave'],[7,'Rain'],[8,'Snow'],[9,'Blood splat'],[10,'Ripples'],[11,'Slash'],[12,'Impact burst'],[13,'Dust puff'],[14,'Energy beam'],[15,'Bubbles'],[16,'Portal'],[17,'Sparkles']];
-const VFX_ONESHOT=[3,6,9,11,12,13];
+const VFX_KINDS=[[0,'Fire'],[1,'Smoke'],[2,'Sparks'],[3,'Explosion'],[4,'Lightning'],[5,'Magic orb'],[6,'Shockwave'],[7,'Rain'],[8,'Snow'],[9,'Blood splat'],[10,'Ripples'],[11,'Slash'],[12,'Impact burst'],[13,'Dust puff'],[14,'Energy beam'],[15,'Bubbles'],[16,'Portal'],[17,'Sparkles'],[18,'Muzzle flash']];
+const VFX_ONESHOT=[3,6,9,11,12,13,18];
 const VFX_SL={scale:['Size',.4,3,.05,1],turb:['Turbulence',0,1.5,.01,.5],inten:['Strength',.3,2,.01,1],spd:['Speed (loops per cycle)',1,4,1,1],wid:['Width',.3,2.5,.01,1],hei:['Height / reach',.3,2,.01,1],lean:['Lean / wind',-1,1,.01,0],
-  cnt:['Amount',2,48,1,16],soft:['Softness',0,1,.01,.3],glow:['Glow',0,2,.01,.8],flick:['Flicker',0,1,.01,.4],cont:['Density contrast',0,1,.01,.5],bright:['Brightness',0,1.5,.01,.5],spike:['Spikes',0,1.5,.01,.5]};
+  cnt:['Amount',2,48,1,16],soft:['Softness',0,1,.01,.3],glow:['Glow',0,2,.01,.8],flick:['Flicker',0,1,.01,.4],cont:['Density contrast',0,1,.01,.5],bright:['Brightness',0,1.5,.01,.5],spike:['Spikes',0,1.5,.01,.5],rot:['Rotation',-180,180,1,0]};
 const VFX_SETS={0:['scale','turb','inten','spd','wid','hei','lean','soft','flick'],1:['scale','turb','inten','spd','wid','hei','lean','soft','cont','bright'],2:['scale','turb','inten','spd','wid','hei','lean','cnt','glow'],
   3:['scale','turb','inten','wid','soft','spike'],4:['scale','turb','inten','wid','lean','cnt','glow','flick'],5:['scale','turb','inten','spd','wid','soft','glow'],6:['scale','turb','inten','wid','soft','glow'],
   7:['scale','inten','spd','wid','hei','lean','cnt'],8:['scale','turb','inten','spd','wid','lean','cnt','soft'],9:['scale','turb','inten','wid','hei','soft','spike','cnt','bright'],
   10:['scale','turb','inten','spd','wid','soft','cnt','glow'],11:['scale','turb','inten','wid','lean','soft','glow'],12:['scale','turb','inten','wid','soft','glow','cnt','spike'],13:['scale','turb','inten','wid','hei','lean','soft','cont','bright'],
-  14:['scale','turb','inten','spd','wid','lean','glow','flick'],15:['scale','turb','inten','spd','wid','lean','cnt','soft'],16:['scale','turb','inten','spd','wid','soft','glow','cnt'],17:['scale','inten','spd','wid','hei','lean','cnt','glow']};
-const VFX_DEFS={0:{},1:{inten:1,cont:.5,bright:.5},2:{cnt:24},3:{scale:1},4:{cnt:4,wid:1,turb:.5,glow:1},5:{},6:{scale:1},7:{cnt:14,hei:1,wid:1},8:{cnt:14},9:{cnt:18,wid:1,hei:1},10:{cnt:4,pal:1,turb:.4},11:{wid:1,glow:.6},12:{cnt:10,spike:.8},13:{cont:.5,bright:.5},14:{pal:1,glow:1,turb:.4},15:{cnt:14,wid:1},16:{pal:3,cnt:16,glow:1},17:{cnt:20,glow:1}};
+  14:['scale','turb','inten','spd','wid','lean','glow','flick'],15:['scale','turb','inten','spd','wid','lean','cnt','soft'],16:['scale','turb','inten','spd','wid','soft','glow','cnt'],17:['scale','inten','spd','wid','hei','lean','cnt','glow'],
+  18:['scale','inten','wid','hei','rot','soft','glow','cnt','spike','turb','bright']};
+const VFX_DEFS={0:{},1:{inten:1,cont:.5,bright:.5},2:{cnt:24},3:{scale:1},4:{cnt:4,wid:1,turb:.5,glow:1},5:{},6:{scale:1},7:{cnt:14,hei:1,wid:1},8:{cnt:14},9:{cnt:18,wid:1,hei:1},10:{cnt:4,pal:1,turb:.4},11:{wid:1,glow:.6},12:{cnt:10,spike:.8},13:{cont:.5,bright:.5},14:{pal:1,glow:1,turb:.4},15:{cnt:14,wid:1},16:{pal:3,cnt:16,glow:1},17:{cnt:20,glow:1},18:{cnt:10,wid:1,hei:1.25,soft:.12,glow:1.15,spike:1.05,turb:.35,bright:1}};
 const VFX_PALS=[[0,'Orange fire / blood'],[1,'Blue flame / ooze'],[2,'Toxic green / oil'],[3,'Magic purple'],[4,'Your colours']];
 function vfxOpts(kind){const o={kind,n:24,seed:3.7,pal:0,useBase:false,replace:false,c1:[1,.35,.05],c2:[1,.95,.6]};for(const k in VFX_SL)o[k]=VFX_SL[k][4];Object.assign(o,VFX_DEFS[kind]||{});if(VFX_ONESHOT.includes(kind))o.n=16;return o;}
 /* draw one frame of a generator; t is 0..1 (loops end just before 1, one-shots reach 1 on the last frame) */
 function vfxGenInto(T,opt,t,base){if(!P_VFXG)P_VFXG=program(VFXG_FS);
   run(P_VFXG,T,{uSize:[doc.w,doc.h],uT:t,uSeed:opt.seed,uScale:opt.scale,uTurb:opt.turb,uInt:opt.inten,uKind:{int:opt.kind},uPal:{int:opt.pal},
-    uP1:[opt.spd,opt.wid,opt.hei,opt.lean],uP2:[opt.cnt,opt.soft,opt.glow,opt.flick],uP3:[opt.cont,opt.bright,opt.spike,0],uC1:opt.c1||[1,.35,.05],uC2:opt.c2||[1,.95,.6],
+    uP1:[opt.spd,opt.wid,opt.hei,opt.lean],uP2:[opt.cnt,opt.soft,opt.glow,opt.flick],uP3:[opt.cont,opt.bright,opt.spike,opt.rot||0],uC1:opt.c1||[1,.35,.05],uC2:opt.c2||[1,.95,.6],
     uBase:base?base.tex:dummy,uUseBase:base?1:0,uFlip:0});}
 function vfxGenerate(opt){const A=A_();if(!A)return;const n=clamp(Math.round(opt.n)||8,2,256);if(!animMemOk(n))return;
   const src=curFrame();let base=null;if(opt.useBase&&contentBounds(src.target)){base=acquire();blit(src.target,base,0,0,doc.w,doc.h,0,0);}
@@ -184,7 +202,7 @@ function seamlessLoop(k){const A=A_();if(!A)return;const [a,b]=animRange(),n=b-a
   toast('Loop made seamless: '+k+' frames now fade from the end into the start.');}
 function cutFrameGrid(){if(!ensureAnimMode())return;const c=frameCanvas(curFrame()),id=c.getContext('2d').getImageData(0,0,c.width,c.height);importSheet({w:c.width,h:c.height,data:id.data,bits:8});}
 (function buildVfxMenu(){const s=el('select',{class:'tlsel','aria-label':'VFX',title:'Fire, smoke and sparks generators, spin, seamless loop and cut into a grid'},el('option',{value:'',text:'VFX…'}),
-    ...[['g0','Fire…'],['g1','Smoke…'],['g2','Sparks…'],['g3','Explosion…'],['g4','Lightning…'],['g5','Magic orb…'],['g6','Shockwave…'],['g7','Rain…'],['g8','Snow…'],['g9','Blood splat…'],['g10','Ripples…'],['g11','Slash…'],['g12','Impact burst…'],['g13','Dust puff…'],['g14','Energy beam…'],['g15','Bubbles…'],['g16','Portal…'],['g17','Sparkles…']].map(([v,t])=>el('option',{value:v,text:t})),el('option',{value:'spin',text:'Spin this frame…'}),el('option',{value:'loop',text:'Make loop seamless…'}),el('option',{value:'cut',text:'Cut this frame into a grid…'}));
+    ...[['g0','Fire…'],['g1','Smoke…'],['g2','Sparks…'],['g3','Explosion…'],['g4','Lightning…'],['g5','Magic orb…'],['g6','Shockwave…'],['g7','Rain…'],['g8','Snow…'],['g9','Blood splat…'],['g10','Ripples…'],['g11','Slash…'],['g12','Impact burst…'],['g13','Dust puff…'],['g14','Energy beam…'],['g15','Bubbles…'],['g16','Portal…'],['g17','Sparkles…'],['g18','Muzzle flash…']].map(([v,t])=>el('option',{value:v,text:t})),el('option',{value:'spin',text:'Spin this frame…'}),el('option',{value:'loop',text:'Make loop seamless…'}),el('option',{value:'cut',text:'Cut this frame into a grid…'}));
   s.addEventListener('change',()=>{const v=s.value;s.value='';s.blur();
     if(v[0]==='g')dlgGenerate(+v.slice(1));
     if(v==='spin')dlgNumber('Spin this frame','How many frames for one full turn?',16,2,256,n=>spinFrames(n,360));
