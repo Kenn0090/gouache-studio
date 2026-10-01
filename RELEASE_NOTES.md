@@ -1,5 +1,6 @@
-# Gouache Studio 0.45.1
+# Gouache Studio 0.45.2
 
-The layer controls now work together, as in Kenn's mock-up.
+A new muzzle flash generator for game-ready sprite effects.
 
-- **Layers panel:** the blend mode and the channel drop-down sit side by side, the **opacity slider runs the full width** with a filled track you can see, then the layer buttons, then Clip and Lock, then the mask buttons. Before, the slider was squeezed to a dot.
+- **Animation › VFX › Muzzle flash:** generates a short one-shot flash with a hot core, directional flame, side flare, sparks and glow. Controls include size, strength, width, reach, rotation, softness, glow, spark amount, spikes, turbulence and brightness, with the existing colour presets or your own colours.
+- **Rotation:** point the flash in any direction to match side-view, angled or top-down weapon sprites.
