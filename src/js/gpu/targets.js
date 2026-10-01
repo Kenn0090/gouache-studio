@@ -2,9 +2,11 @@
 let uvWrapScope=null;
 /* Texture storage only: driver overhead, mesh buffers and multisampled view targets are separate. */
 const gpuTargets=new Set();
-function gpuTrack(t){gpuTargets.add(t);return t;}
+/* Tracking must not keep an abandoned texture alive merely for the memory counter. */
+function gpuTrack(t){t._gpuRef=new WeakRef(t);gpuTargets.add(t._gpuRef);return t;}
+function gpuLiveTargets(){const out=[];for(const ref of gpuTargets){const t=ref.deref();if(t)out.push(t);else gpuTargets.delete(ref);}return out;}
 const gpuBytes=t=>t.w*t.h*(t.depth===32?16:t.depth===16?8:4);
-function gpuMemory(){let bytes=0,spare=0;for(const t of gpuTargets){bytes+=gpuBytes(t);if(t.pool&&t.pool.free.includes(t))spare+=gpuBytes(t);}return {bytes,spare,targets:gpuTargets.size};}
+function gpuMemory(){let bytes=0,spare=0;const targets=gpuLiveTargets();for(const t of targets){bytes+=gpuBytes(t);if(t.pool&&t.pool.free.includes(t))spare+=gpuBytes(t);}return {bytes,spare,targets:targets.length};}
 /* Repeat only while evaluating an effect; never change the document or a pooled texture permanently. */
 function uvWrapTarget(t){if(!uvWrapScope||!t||!t.tex)return;if(!uvWrapScope.saved.has(t)){gl.bindTexture(gl.TEXTURE_2D,t.tex);uvWrapScope.saved.set(t,[gl.getTexParameter(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S),gl.getTexParameter(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T)]);}setWrap(t,uvWrapScope.on);}
 function withUVWrap(on,targets,fn){const previous=uvWrapScope,old=doc.wrap,scope={on:!!on,docWrap:old,saved:new Map()};uvWrapScope=scope;doc.wrap=scope.on;
@@ -19,7 +21,7 @@ function makeTarget(w,h,depth,wrap){
   const fbo=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0);
   const t=gpuTrack({tex,fbo,w,h,depth,mipDirty:true});clearTarget(t);return t;
 }
-function disposeTarget(t){if(!t)return;gpuTargets.delete(t);gl.deleteTexture(t.tex);gl.deleteFramebuffer(t.fbo);t.tex=null;t.fbo=null;}
+function disposeTarget(t){if(!t)return;gpuTargets.delete(t._gpuRef);gl.deleteTexture(t.tex);gl.deleteFramebuffer(t.fbo);t.tex=null;t.fbo=null;}
 function setWrap(t,rep){gl.bindTexture(gl.TEXTURE_2D,t.tex);const wm=rep?gl.REPEAT:gl.CLAMP_TO_EDGE;gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,wm);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,wm);}
 function bindTarget(t){gl.bindFramebuffer(gl.FRAMEBUFFER,t?t.fbo:null);gl.viewport(0,0,t?t.w:cv.width,t?t.h:cv.height);}
 function clearTarget(t,c){bindTarget(t);c=c||[0,0,0,0];gl.clearColor(c[0],c[1],c[2],c[3]);gl.clear(gl.COLOR_BUFFER_BIT);}

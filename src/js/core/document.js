@@ -29,7 +29,7 @@ function schedulePoolTrim(){if(!poolTrimTimer)poolTrimTimer=setTimeout(()=>{pool
   if(stroke||preview||typeof bk!=='undefined'&&bk.busy||typeof tabDocs!=='undefined'&&tabDocs.hold||typeof gfSaving!=='undefined'&&gfSaving){schedulePoolTrim();return;}
   trimPools();},10000);}
 /* Evict only released scratch images. Layer pixels, undo, and checked-out results are never trimmed. */
-function trimPools(budget=POOL_SPARE_BYTES){const pools=new Set([...gpuTargets].map(t=>t.pool).filter(Boolean)),free=[];
+function trimPools(budget=POOL_SPARE_BYTES){const pools=new Set(gpuLiveTargets().map(t=>t.pool).filter(Boolean)),free=[];
   for(const p of pools)for(const t of p.free)if(t.tex)free.push(t);
   free.sort((a,b)=>(b.idleAt||0)-(a.idleAt||0));let kept=0,freed=0;const counts=new Map();
   for(const t of free){const p=t.pool,n=counts.get(p)||0,size=gpuBytes(t);
