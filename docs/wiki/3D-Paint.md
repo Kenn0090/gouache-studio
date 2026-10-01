@@ -162,7 +162,7 @@ Press **M** to return to the **Lit** material view from a mesh map, mask, Unlit 
 
 ## Mask right-click menu and layer deletion
 
-Right-click a layer's **mask thumbnail** to open **Generators** or **Anchor points**. A generator is added above the existing mask pixels and rows, and its settings open in Properties. Anchor points offers **Add anchor point to this layer**, or **From “name”** to add an existing anchor as a mask input. The anchor input defaults to Height; Properties can switch it to Shape or Colour. Folder masks can use generators and existing anchors; create anchor points on a layer.
+Right-click a layer's **mask thumbnail** to open **Generators** or **Anchor points**, or add **Levels** or **Invert**. Each effect is an editable mask row above the existing mask pixels and rows, with settings in Properties. Levels adjusts the mask's tonal range; Invert swaps light and dark. Anchor points offers **Add anchor point to this layer**, or **From “name”** to add an existing anchor as a mask input. The anchor input defaults to Height; Properties can switch it to Shape or Colour. Folder masks can use generators, filters and existing anchors; create anchor points on a layer.
 
 In 3D Paint, **Delete** and **Backspace** remove selected layers, including when a mask or a model selection is active. **Undo** restores the layers and their masks. Text fields keep their normal editing keys; **Alt+Delete** keeps its fill shortcut. At least one layer remains in a texture set.
 
