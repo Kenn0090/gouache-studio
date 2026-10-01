@@ -20,3 +20,4 @@ node baketab.cjs              # one test: prints PASS/FAIL lines, then ALL PASSE
 - `fixtures/samba.fbx` (an animated FBX from the three.js examples) isn't kept in the repository for licensing reasons; `v3.cjs` skips it when it's missing. Put any binary FBX there to test FBX import.
 
 - `muzzle.cjs` checks the three muzzle flash styles, smoke and duration, deterministic variation, transparent output, presets, frame generation and undo/redo. On Windows it uses Edge; set `GS_BROWSER_CHANNEL` to override the browser channel.
+- `performance-foundations.cjs` compares partial stroke results against full compositing, including nested groups, group masks, clipping, 16-bit pixels and wrapping. It checks worker packing, worker-failure fallback, asynchronous saves, lossless project round trips and scratch eviction without destroying live results. Uses Edge by default; set `GS_BROWSER_CHANNEL` for another installed Chromium channel.

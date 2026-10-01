@@ -5,8 +5,9 @@ const perf={on:false,frames:[],worst:null,last:0};
    The paint itself lands exactly the same; only how often the picture is redrawn changes. */
 const PAINT_GAP={balanced:33,fast:70};let lastPaintFrame=0;
 function frame(){raf=0;if(typeof tabDocs!=='undefined'&&tabDocs.hold){requestRender();return;}const t0=performance.now();
-  if(stroke&&PAINT_GAP[prefs.paintSpeed]&&t0-lastPaintFrame<PAINT_GAP[prefs.paintSpeed]){requestRender();return;}lastPaintFrame=t0;let tc=t0;if(stroke&&stroke.spaceDirty){stroke.spaceDirty=false;stroke.space.sync();}if(stroke&&stroke.cloneDirty)cloneUpdate();if(dirtyComp){composite();dirtyComp=false;tc=performance.now();}drawView();drawUVOverlay();draw3D();const tv=performance.now();flushThumbs();if(tedit)positionEditor();
-  if(perf.on)perfFrame(t0,tc-t0,tv-tc,performance.now()-tv);}
+  if(stroke&&PAINT_GAP[prefs.paintSpeed]&&t0-lastPaintFrame<PAINT_GAP[prefs.paintSpeed]){requestRender();return;}lastPaintFrame=t0;const gq=perf.on?perfGpuBegin():null;let tc=t0;
+  try{if(stroke&&stroke.spaceDirty){stroke.spaceDirty=false;stroke.space.sync();}if(stroke&&stroke.cloneDirty)cloneUpdate();if(dirtyComp){composite();dirtyComp=false;tc=performance.now();}drawView();drawUVOverlay();draw3D();const tv=performance.now();flushThumbs();if(tedit)positionEditor();
+  if(perf.on)perfFrame(t0,tc-t0,tv-tc,performance.now()-tv);}finally{if(gq)perfGpuEnd(gq);}}
 let maskOverride=new Map();
 function maskTexOf(n){if(!n.mask||!n.mask.enabled)return null;return maskOverride.get(n)||n.mask.target.tex;}
 /* selection clipping for a stroke: only when the stroke was started with an active selection */
@@ -19,13 +20,17 @@ function chanU(o){return o&&o.chan?{uChanMode:{int:1},uChan:o.chan}:{uChanMode:{
    Layers with nothing in map k are skipped; clipping always uses the base colour's shape. */
 /* While a stroke is being painted nothing below the painted layer changes, so the picture of
    everything underneath is made once per stroke and reused every frame. */
-function strokeCacheFor(list,k){if(!stroke||list!==doc.root.children)return null;let n=stroke.L.maskOf||stroke.L;
-  while(n&&n.parent&&n.parent!==doc.root)n=n.parent;const i=list.indexOf(n);if(i<1)return null;
-  const c=stroke.cache||(stroke.cache={});return c[k]||(c[k]={i,t:null});}
-function dropStrokeCache(s){if(s&&s.cache){for(const k in s.cache)if(s.cache[k].t)disposeTarget(s.cache[k].t);s.cache=null;}}
+function strokeBranch(list){if(!stroke)return -1;let n=stroke.L.maskOf||stroke.L;while(n){const i=list.indexOf(n);if(i>=0)return i;n=n.parent;}return -1;}
+/* References and map-driven masks can change layers below the brush. Never freeze those dependencies. */
+function strokeCacheSafe(){if(!stroke)return false;if(stroke.cacheSafe===undefined)stroke.cacheSafe=!allNodes().some(n=>
+  (n.fx&&n.fx.stack.some(r=>r.on!==false&&r.conv))||(typeof msHas==='function'&&msHas(n)&&(msUsesDoc(n)||n.mask.stack.some(r=>r.on!==false&&(r.kind==='ref'||r.kind==='anchor'||r.kind==='gen'&&r.p.anchor)))));
+  return stroke.cacheSafe;}
+function strokeCacheFor(list,k){if(!strokeCacheSafe())return null;const i=strokeBranch(list);if(i<1)return null;
+  const c=stroke.cache||(stroke.cache=new Map());let maps=c.get(list);if(!maps)c.set(list,maps={});return maps[k]||(maps[k]={i,t:null});}
+function dropStrokeCache(s){if(s&&s.cache){for(const maps of s.cache.values())for(const k in maps)if(maps[k].t)disposeTarget(maps[k].t);s.cache=null;}}
 function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
   const sc=strokeCacheFor(list,k);let start=0;
-  if(sc&&sc.t&&sc.t.depth===acc.depth){blit(sc.t,acc,0,0,doc.w,doc.h,0,0);start=sc.i;}
+  if(sc&&sc.t&&sc.t.depth===acc.depth){blit(sc.t,acc,0,0,doc.w,doc.h,0,0);start=sc.i;compStats.cacheHits++;}
   for(let i=start;i<list.length;i++){if(sc&&i===sc.i&&!sc.t&&!compPart){sc.t=makeTarget(doc.w,doc.h,acc.depth);blit(acc,sc.t,0,0,doc.w,doc.h,0,0);}
     const n=list[i],clipped=clipBaseOf(list,i);
     if(!n.visible)continue;if(clipped&&!clipped.visible)continue;
@@ -61,9 +66,9 @@ let maskViewT=null,maskViewLive=false;
 /* While painting a plain stroke only the part of the picture the new dabs touched is composited again (scissored),
    into the picture from the frame before. Layers whose look depends on their surroundings (filter layers, layer
    styles and arrays, content effects) need the whole picture, so then everything is composited as before. */
-function compNeedsAll(list,k){for(const n of list){if(!n.visible)continue;if(n.type==='layer'){if(n.fx)return true;if(typeof lookTouches==='function'&&lookTouches(n,k))return true;if(n.cfx&&typeof cfxOn==='function'&&cfxOn(n,k))return true;}
+function compNeedsAll(list,k){const c=strokeCacheFor(list,k),start=c&&c.t?c.i:0;for(let i=start;i<list.length;i++){const n=list[i];if(!n.visible)continue;if(n.type==='layer'){if(n.fx&&n.fx.map===k)return true;if(typeof lookTouches==='function'&&lookTouches(n,k))return true;if(n.cfx&&typeof cfxOn==='function'&&cfxOn(n,k))return true;}
     else if(n.children&&compNeedsAll(n.children,k))return true;}return false;}
-let compPart=false;const compStats={parts:0};
+let compPart=false;const compStats={parts:0,full:0,cacheHits:0};
 /* (0.30) Painting on a mask can redo only the painted area when nothing above the painted row needs its neighbours
    and the rows underneath are already cached. Anything unusual falls back to redoing the whole picture. */
 function maskPartOK(s){const L=s.L.maskOf,M=L&&L.mask;if(!M||strokeLive(s.o)||ui.viewMask||maskViewLive)return false;
@@ -73,7 +78,7 @@ function maskPartOK(s){const L=s.L.maskOf,M=L&&L.mask;if(!M||strokeLive(s.o)||ui
   for(let i=0;i<idx;i++)if(S[i].on!==false&&(S[i].kind==='filter'||S[i].kind==='ref'))return false;
   if(idx>1&&!(M._pre&&M._pre.key===msKey(L)+'|'+idx))return false;
   return true;}
-function compositeStrokePart(){const s=stroke;if(!s||!s.compDone||s.fd==='all'||!compOut||compOut.w!==doc.w||compOut.h!==doc.h||(s.L.maskOf&&!maskPartOK(s))||s.L.quick||preview||ui.mode==='anim'||ui.mode==='bake'||doc.view==='material'||doc.view==='nfinal'||compNeedsAll(doc.root.children,doc.map))return false;
+function compositeStrokePart(){const s=stroke;if(!s||!strokeCacheSafe()||!s.compDone||s.fd==='all'||!compOut||compOut.w!==doc.w||compOut.h!==doc.h||(s.L.maskOf&&!maskPartOK(s))||s.L.quick||preview||ui.mode==='anim'||ui.mode==='bake'||doc.view==='material'||doc.view==='nfinal'||compNeedsAll(doc.root.children,doc.map))return false;
   const F=s.fd;s.fd=null;if(!F||!F.length)return true;
   const rs=doc.wrap?[[0,0,doc.w,doc.h]]:F.map(f=>{const x=Math.max(0,Math.floor(f[0])),y=Math.max(0,Math.floor(f[1]));return [x,y,Math.min(doc.w,Math.ceil(f[2]))-x,Math.min(doc.h,Math.ceil(f[3]))-y];}).filter(r=>r[2]>0&&r[3]>0);
   if(!rs.length)return true;
@@ -89,7 +94,7 @@ function compositeStrokePart(){const s=stroke;if(!s||!s.compDone||s.fd==='all'||
     finally{compPart=false;maskOverride=new Map();tmp.forEach(release);}
   }else try{for(const r of rs)scissorDo(r,()=>{const acc=acquire();clearTarget(acc,mapDefault(doc.map));const out=compositeList(doc.root.children,acc);blit(out,compOut,r[0],r[1],r[2],r[3],r[0],r[1]);release(out);});}finally{compPart=false;}
   compOut.mipDirty=true;v3Changed();return true;}
-function composite(){if(compositeStrokePart())return;if(compOut)release(compOut);maskOverride=new Map();const tmp=[];maskViewLive=false;if(typeof msUpdateAll==='function')msUpdateAll();
+function composite(){if(compositeStrokePart())return;compStats.full++;if(compOut)release(compOut);maskOverride=new Map();const tmp=[];maskViewLive=false;if(typeof msUpdateAll==='function')msUpdateAll();
   if(stroke&&stroke.L.maskOf&&!strokeLive(stroke.o)){const lm=acquire();tmp.push(lm);run(P.merge,lm,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,...tintU(),uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},selU(stroke.o),tonalU(stroke.o)));
     /* a Paint row of a mask with rows: the whole stack again, with the row as it is being painted */
     if(stroke.L.mrow){const ev=msEval(stroke.L.maskOf,{row:stroke.L.mrow,t:lm});tmp.push(ev);maskOverride.set(stroke.L.maskOf,ev.tex);if(ui.viewMask){if(!maskViewT||maskViewT.w!==doc.w||maskViewT.h!==doc.h||maskViewT.depth!==ev.depth){disposeTarget(maskViewT);maskViewT=makeTarget(doc.w,doc.h,ev.depth);}blit(ev,maskViewT,0,0,doc.w,doc.h,0,0);maskViewLive=true;}}
@@ -136,7 +141,7 @@ function releaseSelView(){if(selViewTmp){release(selViewTmp);selViewTmp=null;}}
 
 /* thumbnails */
 const thumbT=makeTargetRaw(40,40);const thumbBuf=new Uint8Array(40*40*4);const thumbQ=new Set();
-function makeTargetRaw(w,h){const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);const fbo=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0);return {tex,fbo,w,h,depth:8};}
+function makeTargetRaw(w,h){const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);const fbo=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0);return gpuTrack({tex,fbo,w,h,depth:8});}
 function scheduleThumb(n){if(n){n.lookVer=(n.lookVer||0)+1;if(n.frame)frameDirty(n);thumbQ.add(n);chanThumbDirty=true;}requestRender();}
 let chanThumbDirty=true;
 function renderThumb(target,canvas){const s=Math.min(40/doc.w,40/doc.h),tw=doc.w*s,th=doc.h*s;clearTarget(thumbT);

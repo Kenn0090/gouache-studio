@@ -39,10 +39,23 @@ For seamless textures: strokes, blurs and patterns wrap across the edges, and th
 ![The performance monitor.](images/performance-monitor.png)
 *The performance monitor.*
 
-**View › Performance monitor** shows the frame rate, the slowest recent frame, the longest freeze, and what the app was doing then: compositing, the view or thumbnails. Its last line shows memory: undo steps in memory (and on disk), loaded models, and the limit. If you notice a hitch, turn it on and note what it says.
+**View › Performance monitor** shows the frame rate, the slowest recent frame, the longest freeze, and what the app was doing then: compositing, the view or thumbnails. It also shows:
+
+- Undo and model memory, plus tracked texture storage and the scratch storage available for reuse. Texture figures are estimates; they exclude driver overhead, mesh buffers and the 3D view's own buffers. The Preferences memory limit applies to undo and models, not to graphics memory.
+- Graphics-card frame time when supported. **Unavailable** means this browser or graphics driver does not expose that measurement. CPU work per frame and GPU time measure different parts of rendering.
+- Partial redraws, full redraws and reused layer/group composites, counted since startup.
+- The last document's save preparation time, including waiting for image readbacks and packing images. File writing and preparation of a whole multi-set 3D project are separate from these figures.
+
+Frame rate can be low when the app is idle because it draws on demand. Compare measurements while repeating the same painting or camera movement.
+
+Large save images are packed in a background worker, and their GPU readbacks are collected asynchronously. While the document is captured, editing is briefly held so the saved settings and pixels belong to the same state. If workers are unavailable, the app uses its local packing path. Existing Gouache files stay compatible.
+
+Released scratch textures are trimmed when work has been idle for about ten seconds. The cache keeps at most two spare images per pool within a shared 256 MiB budget. Layer images, undo history and working results are not trimmed, including documents kept in other tabs.
 
 ## Tips for big documents
 Painting on big canvases (8k, 16k) only redraws the parts your brush touches, and symmetry paints each side's area separately, so custom and textured brushes stay quick.
+
+Unchanged layers underneath the brush can also be reused inside nested groups. Effects below that cached part no longer force a full redraw of each plain stroke. Filters above the brush, live converters, document-driven masks and anchor/reference dependencies keep a conservative redraw path; wrapping still redraws the full texture region to preserve seams.
 
 - **Hide the 3D view** or the Material view when you don't need them. They add work to every change.
 - **Use cheaper filters while painting:** slow filters (painterly, lens and surface blur, live converters) catch up after each stroke. If painting under them still drags, hide their filter layers.

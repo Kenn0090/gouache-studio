@@ -22,7 +22,20 @@ function useAux(d){const a=auxFor(d);strokeT=a.strokeT;beforeT=a.beforeT;scratch
 function acquireIn(pl){let t=pl.free.pop();if(!t){t=makeTarget(doc.w,doc.h,pl.depth);t.pool=pl;pl.all.push(t);}if(uvWrapScope)uvWrapTarget(t);return t;}
 function acquire(){return acquireIn(pool);}
 function acquireD(d){return acquireIn(auxFor(d).pool);}
-function release(t){const pl=t&&t.pool;if(pl&&pl.all.includes(t)&&!pl.free.includes(t))pl.free.push(t);}
+function release(t){const pl=t&&t.pool;if(pl&&t.tex&&pl.all.includes(t)&&!pl.free.includes(t)){t.idleAt=performance.now();pl.free.push(t);schedulePoolTrim();}}
+let poolTrimTimer=0;
+const POOL_SPARE_BYTES=256*1048576;
+function schedulePoolTrim(){if(!poolTrimTimer)poolTrimTimer=setTimeout(()=>{poolTrimTimer=0;
+  if(stroke||preview||typeof bk!=='undefined'&&bk.busy||typeof tabDocs!=='undefined'&&tabDocs.hold||typeof gfSaving!=='undefined'&&gfSaving){schedulePoolTrim();return;}
+  trimPools();},10000);}
+/* Evict only released scratch images. Layer pixels, undo, and checked-out results are never trimmed. */
+function trimPools(budget=POOL_SPARE_BYTES){const pools=new Set([...gpuTargets].map(t=>t.pool).filter(Boolean)),free=[];
+  for(const p of pools)for(const t of p.free)if(t.tex)free.push(t);
+  free.sort((a,b)=>(b.idleAt||0)-(a.idleAt||0));let kept=0,freed=0;const counts=new Map();
+  for(const t of free){const p=t.pool,n=counts.get(p)||0,size=gpuBytes(t);
+    if(n<2&&kept+size<=budget){kept+=size;counts.set(p,n+1);continue;}
+    p.free.splice(p.free.indexOf(t),1);p.all.splice(p.all.indexOf(t),1);freed+=size;disposeTarget(t);}
+  return freed;}
 function auxTargets(){const out=[];for(const d in aux){const a=aux[d];out.push(a.strokeT,a.beforeT,a.scratchT,a.previewT,...a.pool.all);}return out;}
 function allocAux(){
   auxTargets().forEach(disposeTarget);for(const d in aux)delete aux[d];if(typeof resetEmpties==='function')resetEmpties();

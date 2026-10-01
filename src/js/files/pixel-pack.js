@@ -41,9 +41,26 @@ async function pxWebpDecode(u8,w,h){const bm=await createImageBitmap(new Blob([u
   const c=new OffscreenCanvas(w,h),x=c.getContext('2d');x.drawImage(bm,0,0);bm.close&&bm.close();const d=x.getImageData(0,0,w,h).data,out=new Uint8Array(w*h*4);
   for(let i=0;i<d.length;i+=4){const a=d[i+3],f=a/255;out[i]=Math.round(d[i]*f);out[i+1]=Math.round(d[i+1]*f);out[i+2]=Math.round(d[i+2]*f);out[i+3]=a;}return out;}
 /* pack: {bytes, f} ('p' lossless, 'w' WebP); lossy only when asked and Smaller files is on, and only if it is smaller */
-async function pxPack(raw,w,h,depth,lossy){const z=await streamThrough(pxPredict(raw,w,h,depth),'deflate-raw');
-  if(lossy&&depth!==16&&pxSmall()&&w*h>=4096){const wb=await pxWebp(raw,w,h);if(wb&&wb.length<z.length*.8)return {bytes:wb,f:'w'};}
+function pxBytes(raw,depth){if(depth!==16||!(raw instanceof Float32Array))return raw;const out=new Uint16Array(raw.length);for(let i=0;i<raw.length;i++)out[i]=f2h(raw[i]);return new Uint8Array(out.buffer);}
+async function pxPackCore(raw,w,h,depth,lossy,small){raw=pxBytes(raw,depth);const z=await streamThrough(pxPredict(raw,w,h,depth),'deflate-raw');
+  if(lossy&&depth!==16&&small&&w*h>=4096){const wb=await pxWebp(raw,w,h);if(wb&&wb.length<z.length*.8)return {bytes:wb,f:'w'};}
   return {bytes:z,f:'p'};}
+/* A single worker keeps prediction, half-float conversion and image encoding off the UI thread.
+   Small images stay local. Existing callers retain their input; save readbacks transfer ownership. */
+const pxWorkerState={worker:null,unavailable:false,seq:0,jobs:new Map(),completed:0};
+function pxWorkerGet(){const S=pxWorkerState;if(S.worker||S.unavailable)return S.worker;
+  let url;try{const src='const pxMed='+pxMed.toString()+';let pxWebpOk=null;const _f32=new Float32Array(1),_u32=new Uint32Array(_f32.buffer);\n'+
+    [f2h,pxBytes,pxPredict,pxWebp,streamThrough,pxPackCore].map(f=>f.toString()).join('\n')+
+    '\nonmessage=async e=>{const {id,args}=e.data;try{const result=await pxPackCore(...args);postMessage({id,result},[result.bytes.buffer]);}catch(e){postMessage({id,error:e.message||String(e)});}};';
+    url=URL.createObjectURL(new Blob([src],{type:'text/javascript'}));const worker=new Worker(url);
+    worker.onmessage=e=>{const {id,result,error}=e.data,j=S.jobs.get(id);if(!j)return;S.jobs.delete(id);if(error)j.reject(new Error(error));else{S.completed++;j.resolve(result);}};
+    worker.onerror=e=>{e.preventDefault();for(const j of S.jobs.values())j.reject(new Error('Image packing failed. Please try saving again.'));S.jobs.clear();worker.terminate();S.worker=null;S.unavailable=true;};
+    S.worker=worker;return worker;
+  }catch(e){S.unavailable=true;return null;}finally{if(url)URL.revokeObjectURL(url);}}
+async function pxPack(raw,w,h,depth,lossy,owned=false){const worker=w*h>=65536?pxWorkerGet():null;
+  if(!worker)return pxPackCore(raw,w,h,depth,lossy,pxSmall());
+  const bytes=owned?raw:raw.slice(),S=pxWorkerState,id=++S.seq;
+  return new Promise((resolve,reject)=>{S.jobs.set(id,{resolve,reject});try{worker.postMessage({id,args:[bytes,w,h,depth,lossy,pxSmall()]},[bytes.buffer]);}catch(e){S.jobs.delete(id);reject(e);}});}
 /* unpack a stored picture back to raw pixels; f missing = an older file (plain deflate) */
 async function pxUnpack(u8,w,h,depth,f){if(f==='w')return pxWebpDecode(u8,w,h);const raw=await streamThrough(u8,'deflate-raw',true);return f==='p'?pxUnpredict(raw,w,h,depth):raw;}
 /* a picture in a .gmat: WebP for colour and grey channels with Smaller files on (smaller than PNG), else PNG */

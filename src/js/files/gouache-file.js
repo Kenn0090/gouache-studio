@@ -15,12 +15,25 @@ function writeRegion(t,x,y,w,h,bytes){gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.pix
   gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);t.mipDirty=true;}
 /* in the Bake or Convert tab, the painting is what gets saved */
 async function encodeGouache(){return tabDocs.paint?withPaintDocAsync(encodeGouacheNow):encodeGouacheNow();}
-async function encodeGouacheNow(opts){opts=opts||{};const blobs=[];let off=0;/* lean: a 3D Paint texture set (no model, no bake fixes) */
+let gfSaving=false;
+const gfSaveStats={last:null};
+/* Do not let a layer/tab change while its pixels and editable settings are being read. The UI thread
+   remains free to paint the progress cursor; other-tab and 3D-set wrappers keep their own hold flag. */
+async function encodeGouacheNow(opts){if(gfSaving)throw new Error('A document is already being saved.');gfSaving=true;
+  const keys=e=>{e.preventDefault();e.stopImmediatePropagation();},held=tabDocs.hold;
+  const surfaces=[...new Set([window,work.ownerDocument.defaultView,...dk.pops.map(p=>p.win),...dtab.tabs.map(t=>t.win&&t.win.w),v3.pop&&v3.pop.win])].filter(w=>w&&!w.closed),covers=[];
+  const stats={bounds:0,read:0,pack:0,images:0,bytes:0,total:0},t=performance.now();
+  try{for(const win of surfaces){win.addEventListener('keydown',keys,true);const c=win.document.createElement('div');c.className='ascover';win.document.body.append(c);covers.push(c);}tabDocs.hold=true;
+    return await encodeGouacheData(opts,stats);}finally{stats.total=performance.now()-t;gfSaveStats.last=stats;gfSaving=false;tabDocs.hold=held;
+    for(const win of surfaces)if(win&&!win.closed)win.removeEventListener('keydown',keys,true);covers.forEach(c=>c.remove());requestRender(true);}}
+async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let off=0;/* lean: a 3D Paint texture set (no model, no bake fixes) */
+  const pack=async(t,x,y,w,h,lossy)=>{let time=performance.now();const raw=await readRegionAsync(t,x,y,w,h);stats.read+=performance.now()-time;stats.bytes+=raw.byteLength;
+    time=performance.now();const c=await pxPack(raw,w,h,t.depth,lossy,true);stats.pack+=performance.now()-time;stats.images++;return c;};
   /* pictures are packed (files/pixel-pack.js): lossless, or WebP for colour and grey maps with Smaller files on */
-  const put=async(t,full,lossy)=>{if(!t||t.empty)return null;const b=full?[0,0,doc.w,doc.h]:contentBounds(t);if(!b)return null;
-    const [x,y]=b,w=b[2]-b[0],h=b[3]-b[1],c=await pxPack(readRegion(t,x,y,w,h),w,h,t.depth,lossy);blobs.push(c.bytes);const r={o:off,n:c.bytes.length,r:[x,y,w,h],d:t.depth,f:c.f};off+=c.bytes.length;return r;};
+  const put=async(t,full,lossy)=>{if(!t||t.empty)return null;const start=performance.now(),b=full?[0,0,doc.w,doc.h]:await contentBoundsAsync(t);stats.bounds+=performance.now()-start;if(!b)return null;
+    const [x,y]=b,w=b[2]-b[0],h=b[3]-b[1],c=await pack(t,x,y,w,h,lossy);blobs.push(c.bytes);const r={o:off,n:c.bytes.length,r:[x,y,w,h],d:t.depth,f:c.f};off+=c.bytes.length;return r;};
   const mask=async n=>n.mask?{en:n.mask.enabled,lk:n.mask.link===false?0:undefined,img:await put(n.mask.target,true)}:null;
-  const putRaw=async t=>{const c=await pxPack(readRegion(t,0,0,t.w,t.h),t.w,t.h,t.depth,false);blobs.push(c.bytes);const r={o:off,n:c.bytes.length,w:t.w,h:t.h,d:t.depth,f:c.f};off+=c.bytes.length;return r;};
+  const putRaw=async t=>{const c=await pack(t,0,0,t.w,t.h,false);blobs.push(c.bytes);const r={o:off,n:c.bytes.length,w:t.w,h:t.h,d:t.depth,f:c.f};off+=c.bytes.length;return r;};
   const node=async n=>{const base={name:n.name,vis:n.visible,op:n.opacity,mode:n.mode,mask:await mask(n),lockPx:n.lockPx||undefined,lockPos:n.lockPos||undefined,lockAll:n.lockAll||undefined,smSrc:n.smSrc||undefined,smMaskSrc:n.smMaskSrc||undefined};
     /* mask rows and content effects (0.23) */
     {const ms=await msEncode(n,put,putRaw);if(ms.stack)base.mstack=ms.stack;if(ms.cfx)base.cfx=ms.cfx;}
@@ -28,7 +41,7 @@ async function encodeGouacheNow(opts){opts=opts||{};const blobs=[];let off=0;/* 
     if(n.fx)return Object.assign(base,{t:'F',clip:n.clip,mapModes:n.mapModes||{},fx:{map:n.fx.map,stack:fxCleanStack(n.fx.stack)}});
     const maps={};for(const k of mapKeysOf(n)){const r=await put(mapT(n,k),false,PX_LOSSY.has(k));if(r)maps[k]=r;}
     /* a material layer's own images (so it stays editable after opening) */
-    let fillImg;if(n.fill&&n._fillImg){fillImg={};for(const k in n._fillImg){const t=n._fillImg[k],c=await pxPack(readRegion(t,0,0,t.w,t.h),t.w,t.h,t.depth,PX_LOSSY.has(k));blobs.push(c.bytes);fillImg[k]={o:off,n:c.bytes.length,w:t.w,h:t.h,f:c.f};off+=c.bytes.length;}}
+    let fillImg;if(n.fill&&n._fillImg){fillImg={};for(const k in n._fillImg){const t=n._fillImg[k],c=await pack(t,0,0,t.w,t.h,PX_LOSSY.has(k));blobs.push(c.bytes);fillImg[k]={o:off,n:c.bytes.length,w:t.w,h:t.h,f:c.f};off+=c.bytes.length;}}
     return Object.assign(base,{t:'L',clip:n.clip,lock:n.lockAlpha,mapModes:n.mapModes||{},maps,text:n.text?cloneText(n.text):undefined,grad:n.grad||undefined,array:n.array||undefined,arrBox:n.array?n.arrBox:undefined,styles:n.styles||undefined,shape:n.shape||undefined,fill:n.fill||undefined,idSel:n.idSel||undefined,fillImg,hold:n.frame?n.hold:undefined});};
   const R=paintRoot(),kids=[];for(const c of R.children){kids.push(await node(c));await tick();}
   const all=allLayers(R),active=doc.active&&!doc.active.frame?allNodes(R).indexOf(doc.active):-1;
