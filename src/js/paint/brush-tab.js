@@ -32,9 +32,9 @@ function btUpdateTip(){const v=tipAlpha('canvas');if(!v)return;const W=doc.w,H=d
   if(bt.tip){disposeTip(bt.tip);bt.tip=null;}
   if(x1>=0){const w=x1-x0+1,h=y1-y0+1,a=new Uint8Array(w*h);for(let y=0;y<h;y++)a.set(v.subarray((y0+y)*W+x0,(y0+y)*W+x0+w),y*w);bt.tip=makeTip('sketch',w,h,a);}
   btDrawTest();}
-function btDrawTest(){const c=$('#btTest');if(!c)return;const d=Math.min(window.devicePixelRatio||1,2),W=Math.round(c.clientWidth*d),H=Math.round(c.clientHeight*d);if(W<20||H<20)return;
+function btDrawTest(){btDrawTip();const c=$('#btTest');if(!c)return;const d=Math.min(window.devicePixelRatio||1,2),W=Math.round(c.clientWidth*d),H=Math.round(c.clientHeight*d);if(W<20||H<20)return;
   const x2=c.getContext('2d');c.width=W;c.height=H;
-  if(!bt.tip){x2.clearRect(0,0,W,H);$('#btTestNote').textContent='Paint in black on the canvas: the brush it makes is tried out here.';return;}
+  if(!bt.tip){x2.clearRect(0,0,W,H);$('#btTestNote').textContent='Paint in black to preview your new brush.';return;}
   $('#btTestNote').textContent='';
   let P2=bt.prev;if(!P2||P2.w!==W||P2.h!==H){if(P2)[P2.t,P2.s,P2.b,P2.c].forEach(disposeTarget);P2=bt.prev={w:W,h:H,t:makeTarget(W,H,8,false),s:makeTarget(W,H,8,false),b:makeTarget(W,H,8,false),c:makeTarget(W,H,8,false)};}
   const cs=getComputedStyle(document.documentElement),col=hexRGB((cs.getPropertyValue('--text').trim())||'#e1e3e7');
@@ -44,6 +44,8 @@ function btDrawTest(){const c=$('#btTest');if(!c)return;const d=Math.min(window.
     const p0=pt(0);beginStroke(L,p0[0],p0[1],p0[2],o);for(let i=1;i<=N;i++){const q=pt(i);addPoint(q[0],q[1],q[2]);}endStroke(false);}
   finally{Object.assign(doc,{w:saved.w,h:saved.h,wrap:saved.wrap,map:saved.map});strokeT=saved.strokeT;beforeT=saved.beforeT;scratchT=saved.scratchT;}
   const st=toStraight(readPremult(P2.t),8),id=x2.createImageData(W,H);id.data.set(st);x2.putImageData(id,0,0);}
+function btDrawTip(){const c=$('#btTip');if(!c)return;const x=c.getContext('2d');c.width=c.height=160;x.clearRect(0,0,160,160);
+  if(bt.tip){const k=144/Math.max(bt.tip.w,bt.tip.h),w=bt.tip.w*k,h=bt.tip.h*k;x.drawImage(bt.tip.canvas,(160-w)/2,(160-h)/2,w,h);}}
 function btCustomSet(){return library.find(s=>s.id==='custom');}
 /* a new, empty sketch of the given size (Undo can't bring the old one back, so ask when there is something on it) */
 function btNewCanvas(size){const go=()=>{for(const L of everyNode())disposeLayer(L);auxTargets().forEach(disposeTarget);resetEmpties();disposeTarget(sel.t);dropRecords([...hist.undo,...hist.redo]);
@@ -69,23 +71,22 @@ function btDelete(p){confirmDlg('Delete brush','Delete “'+p.name+'”? This ca
   const j=s.tips.indexOf(p.tip);if(j>=0)s.tips.splice(j,1);if(!s.presets.some(q=>q.tip===p.tip)&&brush.tip!==p.tip)disposeTip(p.tip);if(bt.editing===p)bt.editing=null;saveSet(s);renderLibrary();buildBrushTab();});}
 function buildBrushTab(){const box=$('#btBody');if(!box)return;box.replaceChildren();
   const seg=el('div',{class:'seg'},...[256,512,1024].map(n=>el('button',{class:'segb','aria-pressed':String(doc.w===n&&doc.h===n),text:String(n),title:'A new '+n+' × '+n+' canvas',onclick:()=>{if(doc.w!==n)btNewCanvas(n);}})));
-  box.append(el('p',{class:'note',text:'Paint the tip in black on white (grey is partly see-through). The test stroke shows the brush it makes.'}),
-    el('div',{class:'sub',text:'Canvas'}),seg,
-    el('div',{class:'chips'},el('button',{class:'btn sm',text:'Clear',onclick:btClear}),chk('btGuides','Centre guides',bt.guides,v=>{bt.guides=v;drawXfOverlay();})),
-    el('div',{class:'sub',text:'Test stroke'}),el('canvas',{id:'btTest',class:'bttest'}),el('p',{class:'note',id:'btTestNote'}));
+  box.append(el('div',{class:'btpreview'},el('div',{},el('div',{class:'sub',text:'Brush tip'}),el('canvas',{id:'btTip','aria-label':'Live brush tip',class:'bttip'})),el('div',{},el('div',{class:'sub',text:'Test stroke'}),el('canvas',{id:'btTest',class:'bttest','aria-label':'Live test stroke'}))),el('p',{class:'note',id:'btTestNote'}));
+  box.append(el('div',{class:'sub',text:'Canvas'}),seg,
+    el('div',{class:'chips'},el('button',{class:'btn sm',text:'Clear',onclick:btClear}),chk('btGuides','Centre guides',bt.guides,v=>{bt.guides=v;drawXfOverlay();})));
   const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:bt.set[key],fmt,onInput:v=>{bt.set[key]=v;btDrawTest();}}).el;
   const C=(id,label,key)=>chk(id,label,!!bt.set[key],v=>{bt.set[key]=v;btDrawTest();});
-  box.append(el('div',{class:'sub',text:'The new brush'}),S('btSp','Spacing','spacing',.01,1.5,.01,pct),S('btSJ','Size jitter','sizeJitter',0,1,.01,pct),S('btAJ','Angle jitter','angleJitter',0,1,.01,pct),
-    S('btSc','Scatter','scatter',0,4,.05,pct),S('btHJ','Hue jitter','hueJitter',0,1,.01,pct),S('btVJ','Brightness jitter','valJitter',0,1,.01,pct),
+  box.append(el('div',{class:'sub',text:'The new brush'}),el('div',{class:'btsettings'},S('btSp','Spacing','spacing',.01,1.5,.01,pct),S('btSJ','Size jitter','sizeJitter',0,1,.01,pct),S('btAJ','Angle jitter','angleJitter',0,1,.01,pct),
+    S('btSc','Scatter','scatter',0,4,.05,pct),S('btHJ','Hue jitter','hueJitter',0,1,.01,pct),S('btVJ','Brightness jitter','valJitter',0,1,.01,pct)),
     el('div',{class:'chips'},C('btPS','Pressure: size','pSize'),C('btFD','Follow stroke','followDir')));
   const name=el('input',{type:'text',id:'btName',value:bt.name||'','placeholder':'Name','aria-label':'Brush name'});name.addEventListener('input',()=>{bt.name=name.value;});
   const btns=el('div',{class:'chips'},bt.editing?el('button',{class:'btn primary',text:'Update “'+bt.editing.name+'”',onclick:()=>btMake(true)}):null,
     el('button',{class:'btn'+(bt.editing?'':' primary'),id:'btMake',text:bt.editing?'Save as new':'Make brush',onclick:()=>btMake(false)}),
     bt.editing?el('button',{class:'btn sm',text:'Stop editing',onclick:()=>{bt.editing=null;buildBrushTab();}}):null);
-  box.append(el('div',{class:'frow'},name),btns);
+  const save=el('div',{class:'btsave'},el('div',{class:'frow'},name),btns);box.insertBefore(save,box.children[1]);
   const set=btCustomSet(),list=el('div',{class:'btlist'});
   if(set&&set.presets.length)for(const p of set.presets){const th=p._thumb||(p._thumb=tileCanvas(p));const t2=th.cloneNode();t2.getContext('2d').drawImage(th,0,0);
     list.append(el('div',{class:'btrow'+(bt.editing===p?' on':'')},t2,el('span',{class:'btname',text:p.name}),el('span',{class:'kbbtns'},
       el('button',{class:'btn sm',text:'Edit',onclick:()=>btEdit(p)}),el('button',{class:'btn sm',text:'Rename',onclick:()=>btRename(p)}),el('button',{class:'btn sm',text:'×',title:'Delete','aria-label':'Delete '+p.name,onclick:()=>btDelete(p)}))));}
   else list.append(el('p',{class:'note',text:'Brushes you make appear here.'}));
-  box.append(el('div',{class:'sub',text:'Your tips'}),list);requestAnimationFrame(btDrawTest);}
+  box.append(el('details',{class:'btsaved'},el('summary',{text:'Your saved tips'}),list));requestAnimationFrame(btDrawTest);}

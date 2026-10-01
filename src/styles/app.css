@@ -1021,3 +1021,25 @@ body:not(.animmode):not(.bakemode):not(.convmode):not(.brushmode) .dkbody>.sec[a
 #maskRow{align-items:center;align-content:start;flex-wrap:wrap}
 #maskRow>button{height:auto;align-self:start}
 .vfxgallery .afxsearch{padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--text);width:100%}
+
+/* Frame thumbnails and key tracks keep their own space beside effect settings. */
+#timeline{display:flex;flex-direction:column;box-sizing:border-box}
+#timeline>.tlctrl,#timeline>.tlscroll,#timeline>.afxbar,#timeline>.tlresize{flex-shrink:0}
+.fcell{box-sizing:border-box}
+.afxbox{flex-shrink:0;overflow:hidden}
+.afxlist{overflow-y:auto;min-width:160px}
+.afxrows{flex-basis:120px;overflow:hidden}
+.afxscroll{overflow-x:auto;overflow-y:hidden;min-width:40px}
+.afxstrip{background:repeating-linear-gradient(90deg,transparent 0 calc(var(--fcs,72px) + 3px),var(--line) calc(var(--fcs,72px) + 3px) calc(var(--fcs,72px) + 4px))}
+.afxedit{flex-basis:min(var(--afx-width,420px),calc(100% - 190px));min-width:min(250px,40%)}
+
+/* Compact brush creation: live tip and stroke stay above the editable settings. */
+.btpreview{display:grid;grid-template-columns:100px minmax(0,1fr);gap:10px;position:sticky;top:0;background:var(--panel);z-index:2;padding-bottom:8px}
+.btpreview .bttip{width:100%;height:92px;object-fit:contain;display:block;background:var(--ground);border:1px solid var(--line-2);border-radius:6px;box-sizing:border-box}
+.btpreview .bttest{box-sizing:border-box}
+.btsettings{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:5px 10px}
+.btsettings .srow{min-width:0;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"label value" "track track";gap:2px 5px}
+.btsettings .srow label{grid-area:label}.btsettings .srow output{grid-area:value}.btsettings .srow input[type=range]{grid-area:track;width:100%;min-width:0}
+.btsave{display:grid;gap:5px}.btsaved summary{cursor:pointer;color:var(--muted);padding:4px 0}
+
+#btBody{gap:6px}.btsave:not(:has(.btn.sm)){grid-template-columns:minmax(0,1fr) auto;align-items:center}.btsave .frow{min-width:0}.btsave input{box-sizing:border-box;min-width:0}
