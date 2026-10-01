@@ -988,3 +988,35 @@ body.tabfull #docTabs{display:none!important}
 .vfxdlg>.dlg-grid{grid-column:2;grid-row:1 / span 2;min-width:0}
 .vfxdlg .srow>label{width:118px;flex-shrink:0}
 @media(max-width:650px){.vfxdlg{grid-template-columns:minmax(0,1fr)}.vfxdlg>canvas,.vfxdlg>.chips,.vfxdlg>.dlg-grid{grid-column:1;grid-row:auto}.vfxdlg>canvas{justify-self:center}}
+
+/* Full-width tracks keep labels and values from consuming the slider. */
+.afxedit>.afxgrid{grid-template-columns:repeat(auto-fit,minmax(190px,1fr));max-height:none;overflow:visible}
+.afxsl .srow,.vfxdlg .srow{min-width:0;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"label value" "track track";gap:3px 8px}
+.afxsl .srow label,.vfxdlg .srow label{grid-area:label;width:auto;min-width:0}
+.afxsl .srow output,.vfxdlg .srow output{grid-area:value}
+.afxsl .srow input[type=range],.vfxdlg .srow input[type=range]{grid-area:track;min-width:0;width:100%}
+input[type=range]::-webkit-slider-runnable-track{height:4px;background:color-mix(in srgb,var(--text) 35%,var(--panel))}
+input[type=range]::-moz-range-track{height:4px;background:color-mix(in srgb,var(--text) 35%,var(--panel))}
+.tlresize{height:8px;cursor:ns-resize;touch-action:none;border-top:2px solid var(--line-2)}
+.tlresize:hover,.afxresize:hover{background:var(--accent-soft)}
+#timeline{max-height:75vh;overflow:auto;min-height:180px}
+.afxbox{max-height:none;min-height:140px;flex:1;overflow:auto}
+.afxedit{flex:0 0 var(--afx-width,420px);min-width:250px;overflow:auto}
+.afxresize{flex:0 0 8px;cursor:ew-resize;touch-action:none;border-left:2px solid var(--line-2)}
+.dialog:has(.vfxdlg),.dialog:has(.vfxgallery){resize:both;min-width:420px;min-height:340px;max-width:96vw;max-height:94vh;overflow:auto}
+.lrow{display:flex;min-width:0}.lrow>.eye,.lrow>.thumbs,.lrow>.msfold,.lrow>.fxbadge{flex:none}.lrow>.lname{flex:1;min-width:30px;text-align:left}.lrow>.lmeta{flex:none;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.highmeshes{display:grid;gap:4px}.highmesh{display:flex;align-items:center;gap:6px}.highmesh span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dialog:has(.vfxgallery){width:min(920px,96vw)}
+.vfxgallery{display:flex;flex-direction:column;gap:10px;min-height:0;max-height:calc(90vh - 130px);overflow:auto}
+.vfxcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px}
+.vfxcard{display:flex;flex-direction:column;gap:5px;align-items:center;padding:8px;background:var(--ground);border:1px solid var(--line-2);border-radius:8px;color:var(--text);cursor:pointer;text-align:center}
+.vfxcard[hidden]{display:none}.vfxcard:hover,.vfxcard:focus-visible{border-color:var(--accent);background:var(--raise)}
+.vfxcard canvas{width:120px;height:120px;background:#14171a;border-radius:6px}.vfxcard b{font-size:12px}.vfxcard span{font-size:11px}
+
+/* Let the layer list absorb panel height, never the mask controls. */
+body:not(.animmode):not(.bakemode):not(.convmode):not(.brushmode) .dkbody>.sec[aria-labelledby="hLayers"],body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]{display:flex;flex-direction:column;gap:8px}
+body:not(.animmode):not(.bakemode):not(.convmode):not(.brushmode) .dkbody>.sec[aria-labelledby="hLayers"]>*,body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>*{flex:none}
+body:not(.animmode):not(.bakemode):not(.convmode):not(.brushmode) .dkbody>.sec[aria-labelledby="hLayers"]>.llist,body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.llist{flex:1;min-height:60px}
+#maskRow{align-items:center;align-content:start;flex-wrap:wrap}
+#maskRow>button{height:auto;align-self:start}
+.vfxgallery .afxsearch{padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--text);width:100%}

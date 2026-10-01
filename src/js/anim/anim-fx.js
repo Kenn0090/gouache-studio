@@ -116,6 +116,8 @@ function afxAddMenu(){const btn=el('button',{class:'tlchip afxaddbtn',type:'butt
   tlParts.fxrows=el('div',{class:'afxrows'});tlParts.fxstrips=el('div',{class:'afxstrips'});
   tlParts.fxedit=el('div',{class:'afxedit'});
   tlParts.fxbox=el('div',{class:'afxbox'},el('div',{class:'afxlist'},tlParts.fxrows,el('div',{class:'afxscroll'},tlParts.fxstrips)),tlParts.fxedit);
+  const grip=el('div',{class:'afxresize',role:'separator','aria-label':'Resize effect settings',title:'Drag to widen the effect settings'});tlParts.fxbox.insertBefore(grip,tlParts.fxedit);
+  grip.addEventListener('pointerdown',e=>{e.preventDefault();grip.setPointerCapture(e.pointerId);const x=e.clientX,w=tlParts.fxedit.getBoundingClientRect().width;const move=ev=>{tlParts.fxedit.style.setProperty('--afx-width',clamp(w+x-ev.clientX,250,Math.max(250,tl.clientWidth-180))+'px');};const end=()=>{grip.removeEventListener('pointermove',move);grip.removeEventListener('pointerup',end);grip.removeEventListener('pointercancel',end);};grip.addEventListener('pointermove',move);grip.addEventListener('pointerup',end);grip.addEventListener('pointercancel',end);});
   tl.append(hd,tlParts.fxbox);
   tlParts.scroll.addEventListener('scroll',()=>{tlParts.fxstrips.parentNode.scrollLeft=tlParts.scroll.scrollLeft;});})();
 /* every frame as it looks with the effects on (used by export) */

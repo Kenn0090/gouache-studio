@@ -4,7 +4,7 @@
    and its own sliders in the Shader panel. They sit in the viewer settings (v3s().post), so the screenshot, the
    render window and the turntable get them too. Depth of field and occlusion read the model's depth. */
 const POST_DEF={bloom:{on:false,amt:.6,thr:.7,rad:.5},ao:{on:false,amt:.8,rad:.15,soft:.5},dof:{on:false,amt:.5,focus:0},sharp:{on:false,amt:.6},
-  grade:{on:false,exp:0,con:0,sat:0,warm:0},vig:{on:false,amt:.5,soft:.5},ca:{on:false,amt:.4},grain:{on:false,amt:.3,size:1.4,col:.25},look:{on:false,mode:1,amt:1,lv:5}};
+  grade:{on:false,exp:0,con:0,sat:0,warm:0},vig:{on:false,amt:.5,soft:.5},ca:{on:false,amt:.4},grain:{on:false,amt:.3,size:1.4,col:.25,animated:false,speed:24},look:{on:false,mode:1,amt:1,lv:5}};
 const POST_NAMES=[['bloom','Bloom','Bright parts glow'],['ao','Ambient occlusion','Darkens creases and where things meet'],['dof','Depth of field','Blurs what is nearer or farther than the focus'],
   ['sharp','Sharpen','Crisper fine detail'],['grade','Colour grade','Exposure, contrast, saturation and warmth'],['vig','Vignette','Darker corners'],
   ['ca','Chromatic aberration','Colour fringes towards the edges, like a cheap lens'],['look','Filter look','Live screen filters: greyscale, sepia, invert, black and white, duotone, posterize, night vision, thermal, scanlines, blueprint'],['grain','Film grain','Fine film-style grain: strongest in the mid-tones, with its own size and a touch of colour']];
@@ -91,7 +91,7 @@ function v3Post(F){const s=v3s();if(!postActive(s))return;const p=postOf(s),need
     const st=1+p.ao.soft*2.5;run(P_PAOB,X.ao1,{uSrc:X.ao0.tex,uDepth:X.dt,uDir:[st/F.w,0],uOrtho:sm.ortho?1:0});run(P_PAOB,X.ao0,{uSrc:X.ao1.tex,uDepth:X.dt,uDir:[0,st/F.h],uOrtho:sm.ortho?1:0});}
   run(P_PC,{fbo:F.rf,w:F.w,h:F.h},{uSrc:X.a.tex,uBloom:X.b0.tex,uDepth:needD&&X.dt?X.dt:dummy,uAO:p.ao.on&&X.ao0?X.ao0.tex:dummy,uPx:[1/F.w,1/F.h],uAsp:F.w/F.h,uOrtho:sm.ortho?1:0,uTan:tanH,uOH:oh,
     uA:[p.ao.on?1:0,p.ao.amt,p.ao.rad,0],uD:[p.dof.on?1:0,p.dof.amt,foc,0],uB:[p.bloom.on?1:0,p.bloom.amt,p.grain.col,0],uG:p.grade.on?[p.grade.exp,p.grade.con,p.grade.sat,p.grade.warm]:[0,0,0,0],
-    uV:[p.vig.on?p.vig.amt:0,p.vig.soft,p.grain.on?p.grain.amt:0,p.ca.on?p.ca.amt:0],uS:[p.sharp.on?p.sharp.amt:0,v3.postSeed||7.13,p.grade.on?1:0,p.grain.size*Math.max(1,F.h/1080)],uL:[p.look.on?p.look.mode:0,p.look.amt,p.look.lv,0]});
+    uV:[p.vig.on?p.vig.amt:0,p.vig.soft,p.grain.on?p.grain.amt:0,p.ca.on?p.ca.amt:0],uS:[p.sharp.on?p.sharp.amt:0,postGrainSeed(p.grain),p.grade.on?1:0,p.grain.size*Math.max(1,F.h/1080)],uL:[p.look.on?p.look.mode:0,p.look.amt,p.look.lv,0]});
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
 /* ---- the settings, in the Shader panel ---- */
 function postEdit(k,key,v){const s=v3s();if(!s.post)s.post={};s.post[k]=Object.assign({},s.post[k]||{},{[key]:v});v3.dirty=true;requestRender(true);}
@@ -101,7 +101,12 @@ function postBox(){const P=postOf(),box=el('div',{class:'dlg-grid',id:'postBox'}
   for(const [k,label,tip] of POST_NAMES){const row=el('div',{class:'postfx'+(P[k].on?' on':''),title:tip});
     row.append(chk('post_'+k,label,P[k].on,v=>{postEdit(k,'on',v);row.classList.toggle('on',v);}));
     const sl=el('div',{class:'postsl'});for(const [key,lab,mn,mx,st] of POST_SL[k])sl.append(makeSlider({id:'post_'+k+'_'+key,label:lab,min:mn,max:mx,step:st,value:P[k][key],fmt:v=>v.toFixed(2),onInput:v=>postEdit(k,key,v)}).el);
+    if(k==='grain')sl.append(chk('post_grain_animated','Animate grain',!!P.grain.animated,v=>postEdit('grain','animated',v)),makeSlider({id:'post_grain_speed',label:'Frames per second',min:1,max:60,step:1,value:P.grain.speed,fmt:v=>String(v),onInput:v=>postEdit('grain','speed',v)}).el);
     if(k==='look'){const ms=el('select',{id:'post_look_mode','aria-label':'Filter look'});for(const [v,t] of POST_LOOKS)ms.append(el('option',{value:String(v),text:t}));ms.value=String(P.look.mode);ms.onchange=()=>postEdit('look','mode',+ms.value);sl.prepend(ms);}
     row.append(sl);box.append(row);}
   box.append(el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:'postReset',text:'Reset post processing',title:'Turn every effect off and put the sliders back',onclick:()=>{const s=v3s();delete s.post;v3.dirty=true;requestRender(true);renderShading();}})));
   return box;}
+
+function postGrainSeed(g){if(v3.postSeed)return g.animated?v3.postSeed:7.13;return g.animated?7.13+Math.floor(performance.now()/1000*(g.speed||24))*3.17:7.13;}
+/* Request view-only redraws; painting composites and idle views are left alone. */
+setInterval(()=>{if(document.hidden||!v3.on||ui.mode==='bake'||ui.mode==='convert')return;const g=postOf().grain;if(!g.on||!g.animated||g.amt<=0)return;v3.dirty=true;requestRender();},1000/60);

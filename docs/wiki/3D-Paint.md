@@ -193,3 +193,5 @@ The shelf also has an **Environments** category: a thumbnail for each HDRI (clic
 - The flat view can show the model **lit**, laid out flat like Substance Painter's UV view. The **Lit** button is next to **UV** at the bottom of the viewport.
 - The **Layers** panel has a **channel drop-down**: choose which channel you see and paint. The blend mode and opacity shown are for that channel.
 - New viewer options in the Shader panel: the **Panner** shader and **Post processing** (see 3D view).
+
+Tile controls now reach **1000**, including material image tiling and projection settings. Layer names stay beside their thumbnails, and mask buttons keep their normal height as the Layers panel is resized.

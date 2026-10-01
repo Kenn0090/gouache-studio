@@ -53,3 +53,9 @@ The **VFX…** menu on the timeline has generators for **Fire**, **Smoke**, **Sp
 Keyframes on an effect stay on the frames they belong to when you add, delete, duplicate or move frames.
 
 **Muzzle flash** makes a short burst with irregular flame tongues and moving sparks. Choose **Directional flash**, **Outward burst** (flames and sparks radiate from the centre), or **Front-facing flash** (a compact burst viewed towards the barrel). Start with a **Preset**, then adjust **Reach / Burst radius**, **Flame spread**, **Flame breakup**, **Sparks**, **Flash duration** and **Smoke trail**. Smoke is optional and lingers after the bright gas fades. Rotation changes the direction or turns the radial pattern. The last frame is transparent. Export through the usual sprite sheet or PNG sequence options.
+
+## VFX gallery and larger controls
+
+Use **VFX gallery…** to browse effects, hover over a tile to play its preview, then select it to edit colours, size and animation. Anime and Stylized sections each offer an explosion, impact and smoke. Explosions and impacts end transparent; smoke loops.
+
+Drag the top edge of the timeline to make it taller. Drag the divider beside effect settings to make those controls wider. The generator and gallery windows can also be stretched from their bottom-right corner.

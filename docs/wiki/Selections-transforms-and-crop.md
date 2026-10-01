@@ -49,3 +49,5 @@ Drag the box or type a size, rotate it if needed, then press **Enter**. **Image 
 ## Canvas and image size
 - **Image › Canvas size:** adds or trims canvas around the image, with an anchor.
 - **Image › Image size:** resamples the whole document on the graphics card.
+
+During Free transform, right-click the canvas for Scale, Rotate, Skew, Shear, Distort, Perspective and Warp. Select a mode and drag its handles, then Apply or Cancel. Finish or cancel a curved warp before switching back to a straight transform.
