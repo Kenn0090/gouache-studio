@@ -4,7 +4,7 @@
    Helpers: spin the current frame, make a loop seamless, cut the current frame into a grid. */
 const VFXG_FS=`uniform vec2 uSize; uniform float uT; uniform float uSeed; uniform float uScale; uniform float uTurb; uniform float uInt; uniform int uKind; uniform int uPal;
 uniform vec4 uP1; uniform vec4 uP2; uniform vec4 uP3; uniform vec3 uC1; uniform vec3 uC2;
-uniform sampler2D uBase; uniform float uUseBase; uniform float uFlip;
+uniform sampler2D uBase; uniform float uUseBase; uniform float uFlip; uniform vec4 uMuzzle;
 float hs(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7))+uSeed*1.7)*43758.5453); }
 float vnp(vec2 p,vec2 per){ vec2 i=floor(p),f=fract(p),u=f*f*(3.0-2.0*f); vec2 a=mod(i,per),b=mod(i+1.0,per);
   return mix(mix(hs(a),hs(vec2(b.x,a.y)),u.x),mix(hs(vec2(a.x,b.y)),hs(b),u.x),u.y); }
@@ -120,23 +120,61 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSize; uv.y=1.0-uv.y; float asp=uSize.x/uSi
       float ph=fract(uT*spd+h3); float tw=pow(sin(3.14159*ph),2.0); vec2 pos=vec2(h1+lean*ph*0.1,h2+ph*0.08*hei*(0.5+h4)); vec2 d=(uv-pos)*vec2(asp,1.0); float sz=(0.012+0.03*h4)*uScale*wid*(0.3+0.7*tw)+0.0005;
       float cr=exp(-abs(d.x*d.y)/(sz*sz*0.05))*exp(-length(d)/(sz*2.5)); float gl=exp(-dot(d,d)/(sz*sz*0.5))*glow*0.5; float v=(cr+gl)*tw; acc+=ramp(0.6+0.4*cr,uPal)*v; al+=v; }
     al=clamp(al*uInt,0.0,1.0); acc*=uInt; res=vec4(min(acc,vec3(al)*1.6),al); }
-  else if(uKind==18){ /* muzzle flash: directional hot core, flame lobes, cross flare and secondary sparks */
-    float life=1.0-smoothstep(0.42,1.0,uT); float grow=0.72+0.28*smoothstep(0.0,0.18,uT); float ra=rot*0.0174532925,ca=cos(ra),sa=sin(ra);
-    vec2 q=mat2(ca,sa,-sa,ca)*pc; float L=max(0.025,0.34*uScale*hei*grow),W=max(0.004,0.075*uScale*wid);
-    float x01=clamp(q.x/L,0.0,1.0); float jag=(vnp(vec2(x01*11.0+uSeed,4.0),vec2(64.0))-0.5)*uTurb*W*1.8;
-    float taper=mix(W,W*0.09,pow(x01,0.72)); float front=smoothstep(-W*0.45,0.0,q.x)*(1.0-smoothstep(L*0.62,L,q.x));
-    float flame=front*(1.0-smoothstep(taper*(0.45-soft*0.18),taper,abs(q.y+jag)));
-    float lobe=0.72+0.28*vnp(vec2(x01*7.0+uSeed,8.0),vec2(64.0)); flame*=lobe;
-    float coreR=max(0.004,0.036*uScale*wid); float core=exp(-dot(q,q)/(coreR*coreR));
-    float ang=atan(q.y,q.x); float rays=max(2.0,3.0+floor(spike*2.5)); float rf=pow(abs(cos(ang*rays)),2.0+spike*3.0);
-    float starR=(0.045+0.055*spike)*uScale*wid*(0.30+0.70*rf); float star=1.0-smoothstep(starR*(0.50-soft*0.15),starR,rr);
-    float halo=exp(-dot(q,q)/max(0.0003,0.018*uScale*uScale*wid*wid))*glow*0.38;
-    float sparks=0.0; for(int i=0;i<48;i++){ if(float(i)>=cnt) break; float fi=float(i); float h1=hs(vec2(fi,41.0)),h2=hs(vec2(fi,42.0)),h3=hs(vec2(fi,43.0));
-      float sx=(0.08+0.38*h1)*uScale*hei*grow,sy=(h2-0.5)*0.24*uScale*wid; vec2 dv=q-vec2(sx,sy); float sr=(0.0025+0.006*h3)*uScale;
-      float streak=length(vec2(dv.x*0.35,dv.y)); sparks=max(sparks,exp(-streak*streak/(sr*sr))*smoothstep(-0.04,0.0,dv.x)); }
-    float raw=max(max(flame,star),core*0.95)+halo+sparks*0.9; float a=clamp(raw*uInt*life,0.0,1.0);
-    float heat=clamp(core*1.25+star*0.75+flame*0.65+sparks,0.0,1.0); vec3 col=ramp(clamp(0.35+heat*0.65,0.0,1.0),uPal);
-    col=mix(col,vec3(1.0),clamp(core*(0.65+0.25*bright)+sparks*0.2,0.0,1.0)); res=vec4(min(col*a,vec3(a)*1.55),a); }
+  else if(uKind==18){ /* short pressure burst: asymmetric gas jets, advected breakup and ballistic embers */
+    float ra=rot*0.0174532925,ca=cos(ra),sa=sin(ra);
+    vec2 q=mat2(ca,sa,-sa,ca)*pc;
+    float age=clamp(uT/max(uMuzzle.y,0.15),0.0,1.0), pulse=exp(-age*7.0)*(1.0-smoothstep(0.48,0.72,age));
+    float expand=0.58+0.65*(1.0-exp(-age*13.0));
+    float L=max(0.015,0.25*uScale*hei*expand),W=max(0.004,0.065*uScale*wid);
+    vec2 np=q/vec2(L,W);
+    float noise=fbmp(np*vec2(5.0,2.5)-vec2(age*9.0,age*1.7),vec2(64.0));
+    float fine=vnp(np*vec2(17.0,8.0)-vec2(age*19.0,0.0),vec2(128.0));
+    bool radial=uMuzzle.x>0.5;
+    float gas=0.0;
+    for(int j=0;j<12;j++){ if(!radial&&j>=7)break; float fj=float(j),h1=hs(vec2(fj,71.0)),h2=hs(vec2(fj,72.0));
+      float angle=(h1-0.5)*(0.65+spike*0.85); if(j==0)angle=0.0;
+      if(radial)angle=(fj+(h1-0.5)*0.55)*6.2831853/12.0;
+      float cj=cos(angle),sj=sin(angle); vec2 jet=mat2(cj,sj,-sj,cj)*q;
+      float reach=L*(0.50+0.50*h2)*(uMuzzle.x>1.5?0.65:1.0),along=jet.x/reach;
+      float bend=sin(along*5.0+h1*6.28+age*8.0)*W*0.13*uTurb*along;
+      float radius=W*(0.32+0.35*h1)*pow(max(0.0,1.0-along),0.65);
+      float feather=max(W*0.045,radius*(0.28+soft*0.65));
+      float edge=radius-abs(jet.y+bend)+(noise-0.5)*W*(0.22+uTurb*0.65);
+      float tongue=smoothstep(-feather,feather,edge)*smoothstep(-W*0.12,W*0.18,jet.x)*(1.0-smoothstep(0.72,1.0,along));
+      gas=max(gas,tongue*(0.70+0.30*h2)); }
+    float holes=smoothstep(0.24+age*0.32,0.58+age*0.22,noise*0.75+fine*0.25);
+    gas*=mix(1.0,holes,clamp(0.35+age*1.4+uTurb*0.20,0.0,1.0));
+    vec2 cp=(q-vec2(radial?0.0:L*0.12,0.0))/(radial?vec2(W*0.7):vec2(L*0.23,W*0.42));
+    float core=exp(-dot(cp,cp)*2.0)*pulse;
+    vec2 hp=(q-vec2(radial?0.0:L*0.19,0.0))/(radial?vec2(L*0.55):vec2(L*0.65,W*1.7));
+    float halo=exp(-dot(hp,hp)*2.5)*glow*0.16*pulse;
+    float sparks=0.0;
+    for(int i=0;i<48;i++){ if(float(i)>=cnt)break; float fi=float(i),h1=hs(vec2(fi,41.0)),h2=hs(vec2(fi,42.0)),h3=hs(vec2(fi,43.0));
+      float sa2=radial?h2*6.2831853:(h2-0.5)*1.15,travel=(0.025+age*(0.20+0.32*h1))*uScale;
+      vec2 pos=vec2(cos(sa2)*travel*hei,sin(sa2)*travel*(radial?hei:wid)+age*age*0.035*uScale);
+      vec2 dv=q-pos; vec2 sd=vec2(cos(sa2)*dv.x+sin(sa2)*dv.y,-sin(sa2)*dv.x+cos(sa2)*dv.y);
+      float sr=(0.001+0.0015*h3)*uScale;
+      float ember=exp(-dot(sd/vec2(sr*(2.0+age*7.0),sr),sd/vec2(sr*(2.0+age*7.0),sr)));
+      sparks+=ember*(0.35+0.65*h3)*exp(-age*(3.0+3.0*h1))*(1.0-smoothstep(0.65,1.0,age)); }
+    /* Smoke is a separate, slower envelope: transparent at birth and at the end. */
+    float smoke=0.0;vec3 smokeCol=vec3(0.32,0.30,0.28);
+    if(uMuzzle.z>0.0){
+      float st=uT,smLife=smoothstep(0.04,0.25,st)*(1.0-smoothstep(0.55,1.0,st));
+      vec2 drift=radial?vec2(0.0,-st*0.06*uScale):vec2(st*0.12*uScale*hei,-st*st*0.06*uScale);
+      vec2 sq=q-drift;float cloud=0.0;
+      for(int k=0;k<5;k++){float fk=float(k),h=hs(vec2(fk,94.0)),a2=radial?fk*1.256637:(h-0.5)*0.8;
+        vec2 centre=vec2(cos(a2),sin(a2))*L*(0.12+fk*0.09)*(radial?1.0:0.8);
+        float radius=W*(0.65+st*2.4)*(0.70+h*0.5);vec2 sc=(sq-centre)/vec2(radius*(radial?1.0:1.4),radius);
+        cloud=max(cloud,exp(-dot(sc,sc)*1.7));}
+      float sn=fbmp(sq/max(W,0.004)*2.0-vec2(st*2.0,st*3.0),vec2(64.0));
+      smoke=cloud*smoothstep(0.20,0.75,sn)*smLife*uMuzzle.z*0.6;
+      smokeCol=mix(vec3(0.19,0.18,0.17),vec3(0.48,0.46,0.43),sn); }
+    float flame=gas*pulse,raw=(flame+core*0.8+halo+sparks)*uInt;
+    float al=clamp(raw,0.0,1.0);
+    float heat=clamp(gas*0.65+core*0.75+(noise-0.5)*0.25-age*0.65,0.0,1.0);
+    vec3 col=ramp(heat,uPal); col=mix(col,vec3(1.0,0.97,0.87),clamp(core*(0.65+bright*0.25),0.0,0.9));
+    vec3 rgb=col*flame+ramp(0.95,uPal)*core*0.8+ramp(0.4,uPal)*halo+ramp(0.8,uPal)*sparks;
+    res=vec4(min(rgb*uInt,vec3(al))+smokeCol*smoke*(1.0-al),al+smoke*(1.0-al)); }
   o=res; }`;
 let P_VFXG=null;
 /* the kinds, whether they loop, and which sliders each one has */
@@ -150,26 +188,34 @@ const VFX_SETS={0:['scale','turb','inten','spd','wid','hei','lean','soft','flick
   10:['scale','turb','inten','spd','wid','soft','cnt','glow'],11:['scale','turb','inten','wid','lean','soft','glow'],12:['scale','turb','inten','wid','soft','glow','cnt','spike'],13:['scale','turb','inten','wid','hei','lean','soft','cont','bright'],
   14:['scale','turb','inten','spd','wid','lean','glow','flick'],15:['scale','turb','inten','spd','wid','lean','cnt','soft'],16:['scale','turb','inten','spd','wid','soft','glow','cnt'],17:['scale','inten','spd','wid','hei','lean','cnt','glow'],
   18:['scale','inten','wid','hei','rot','soft','glow','cnt','spike','turb','bright']};
-const VFX_DEFS={0:{},1:{inten:1,cont:.5,bright:.5},2:{cnt:24},3:{scale:1},4:{cnt:4,wid:1,turb:.5,glow:1},5:{},6:{scale:1},7:{cnt:14,hei:1,wid:1},8:{cnt:14},9:{cnt:18,wid:1,hei:1},10:{cnt:4,pal:1,turb:.4},11:{wid:1,glow:.6},12:{cnt:10,spike:.8},13:{cont:.5,bright:.5},14:{pal:1,glow:1,turb:.4},15:{cnt:14,wid:1},16:{pal:3,cnt:16,glow:1},17:{cnt:20,glow:1},18:{cnt:10,wid:1,hei:1.25,soft:.12,glow:1.15,spike:1.05,turb:.35,bright:1}};
+const VFX_DEFS={0:{},1:{inten:1,cont:.5,bright:.5},2:{cnt:24},3:{scale:1},4:{cnt:4,wid:1,turb:.5,glow:1},5:{},6:{scale:1},7:{cnt:14,hei:1,wid:1},8:{cnt:14},9:{cnt:18,wid:1,hei:1},10:{cnt:4,pal:1,turb:.4},11:{wid:1,glow:.6},12:{cnt:10,spike:.8},13:{cont:.5,bright:.5},14:{pal:1,glow:1,turb:.4},15:{cnt:14,wid:1},16:{pal:3,cnt:16,glow:1},17:{cnt:20,glow:1},18:{cnt:7,wid:1,hei:1,soft:.35,glow:.65,spike:.65,turb:.65,bright:1,burst:0,flashTime:1,smoke:0}};
+/* Presets affect the look; frame count, colours, seed and replace choice stay with the user. */
+const VFX_MUZZLE_PRESETS=[
+  ['Small flash',{burst:0,scale:.8,wid:.75,hei:.7,cnt:3,spike:.4,turb:.5,soft:.35,glow:.5,flashTime:.65,smoke:0}],
+  ['Long flame',{burst:0,scale:1,wid:.8,hei:1.45,cnt:7,spike:.45,turb:.7,soft:.35,glow:.65,flashTime:.85,smoke:0}],
+  ['Outward burst',{burst:1,scale:1,wid:1,hei:.85,cnt:14,spike:1,turb:.7,soft:.4,glow:.7,flashTime:.8,smoke:0}],
+  ['Front-facing flash',{burst:2,scale:1,wid:1.3,hei:.85,cnt:9,spike:.8,turb:.65,soft:.45,glow:.8,flashTime:.65,smoke:0}],
+  ['Smoky burst',{burst:0,scale:1,wid:1,hei:1,cnt:5,spike:.65,turb:.65,soft:.4,glow:.65,flashTime:.5,smoke:.7}]
+];
 const VFX_PALS=[[0,'Orange fire / blood'],[1,'Blue flame / ooze'],[2,'Toxic green / oil'],[3,'Magic purple'],[4,'Your colours']];
 function vfxOpts(kind){const o={kind,n:24,seed:3.7,pal:0,useBase:false,replace:false,c1:[1,.35,.05],c2:[1,.95,.6]};for(const k in VFX_SL)o[k]=VFX_SL[k][4];Object.assign(o,VFX_DEFS[kind]||{});if(VFX_ONESHOT.includes(kind))o.n=16;return o;}
 /* draw one frame of a generator; t is 0..1 (loops end just before 1, one-shots reach 1 on the last frame) */
 function vfxGenInto(T,opt,t,base){if(!P_VFXG)P_VFXG=program(VFXG_FS);
   run(P_VFXG,T,{uSize:[doc.w,doc.h],uT:t,uSeed:opt.seed,uScale:opt.scale,uTurb:opt.turb,uInt:opt.inten,uKind:{int:opt.kind},uPal:{int:opt.pal},
     uP1:[opt.spd,opt.wid,opt.hei,opt.lean],uP2:[opt.cnt,opt.soft,opt.glow,opt.flick],uP3:[opt.cont,opt.bright,opt.spike,opt.rot||0],uC1:opt.c1||[1,.35,.05],uC2:opt.c2||[1,.95,.6],
-    uBase:base?base.tex:dummy,uUseBase:base?1:0,uFlip:0});}
+    uBase:base?base.tex:dummy,uUseBase:base?1:0,uFlip:0,uMuzzle:[opt.burst||0,opt.flashTime??1,opt.smoke||0,0]});}
 function vfxGenerate(opt){const A=A_();if(!A)return;const n=clamp(Math.round(opt.n)||8,2,256);if(!animMemOk(n))return;
   const src=curFrame();let base=null;if(opt.useBase&&contentBounds(src.target)){base=acquire();blit(src.target,base,0,0,doc.w,doc.h,0,0);}
   const one=VFX_ONESHOT.includes(opt.kind),list=[];for(let i=0;i<n;i++){const F=newFrame();vfxGenInto(F.target,opt,one?i/(n-1):i/n,base);list.push(F);}
   if(base)release(base);
   putFrames(list,!!opt.replace,'Generate '+VFX_KINDS[opt.kind][1].toLowerCase());}
 function dlgGenerate(kind){if(!ensureAnimMode())return;const cur={o:vfxOpts(kind||0)};
-  const body=el('div',{class:'dlg-grid vfxdlg'});const pv=el('canvas',{class:'slicepv',width:160,height:160,style:'width:160px;height:160px;background:#111;border-radius:6px;align-self:center'});
+  const body=el('div',{class:'dlg-grid vfxdlg'});const pv=el('canvas',{class:'slicepv',width:240,height:240,style:'width:240px;height:240px;background:#111;border-radius:6px;align-self:center'});
   let t=0,tmp=null,stop=false,raf=0;
   const draw=()=>{const A=A_();if(!A)return;const o=cur.o;if(!tmp)tmp=makeTarget(doc.w,doc.h,8);const src=curFrame();const base=o.useBase&&contentBounds(src.target)?src.target:null;
     vfxGenInto(tmp,o,VFX_ONESHOT.includes(o.kind)?Math.min(1,(t%1.25)/1.0):(t%1),base);const c=document.createElement('canvas');c.width=doc.w;c.height=doc.h;const px=readRGBA8(tmp),id=new ImageData(doc.w,doc.h);
     for(let i=0;i<px.length;i+=4){const a=px[i+3];if(a){id.data[i]=Math.min(255,px[i]*255/a);id.data[i+1]=Math.min(255,px[i+1]*255/a);id.data[i+2]=Math.min(255,px[i+2]*255/a);id.data[i+3]=a;}}
-    c.getContext('2d').putImageData(id,0,0);const x=pv.getContext('2d');x.clearRect(0,0,160,160);x.fillStyle='#111';x.fillRect(0,0,160,160);const s=Math.min(160/doc.w,160/doc.h);x.drawImage(c,80-doc.w*s/2,80-doc.h*s/2,doc.w*s,doc.h*s);};
+    c.getContext('2d').putImageData(id,0,0);const x=pv.getContext('2d');x.clearRect(0,0,240,240);x.fillStyle='#111';x.fillRect(0,0,240,240);const s=Math.min(240/doc.w,240/doc.h);x.drawImage(c,120-doc.w*s/2,120-doc.h*s/2,doc.w*s,doc.h*s);};
   const tick=()=>{if(stop)return;t+=1/Math.max(2,cur.o.n)/1.5;try{draw();}catch(e){}raf=setTimeout(tick,90);};
   const kinds=el('div',{class:'chips'}),ctl=el('div',{class:'dlg-grid'});
   const hexOf=c=>'#'+c.map(v=>Math.round(clamp(v,0,1)*255).toString(16).padStart(2,'0')).join('');
@@ -179,10 +225,15 @@ function dlgGenerate(kind){if(!ensureAnimMode())return;const cur={o:vfxOpts(kind
     const pal=el('select',{id:'vgPal','aria-label':'Colours'});for(const [v,l] of VFX_PALS)pal.append(el('option',{value:String(v),text:l}));pal.value=String(o.pal);pal.onchange=()=>{o.pal=+pal.value;build();};
     const c1=el('input',{type:'color',value:hexOf(o.c1),id:'vgC1','aria-label':'Colour 1'}),c2=el('input',{type:'color',value:hexOf(o.c2),id:'vgC2','aria-label':'Colour 2'});
     const fh=s=>[1,3,5].map(i=>parseInt(s.slice(i,i+2),16)/255);c1.oninput=()=>{o.c1=fh(c1.value);};c2.oninput=()=>{o.c2=fh(c2.value);};
-    const sls=VFX_SETS[o.kind].map(k=>{const [lab,mn,mx,st]=VFX_SL[k];return makeSlider({id:'vg_'+k,label:lab,min:mn,max:mx,step:st,value:o[k],fmt:v=>st>=1?String(Math.round(v)):v.toFixed(2),onInput:v=>{o[k]=v;}}).el;});
+    const muzzle=[];if(o.kind===18){
+      const style=el('select',{id:'vgBurst','aria-label':'Burst style'});for(const [v,l] of [[0,'Directional flash'],[1,'Outward burst'],[2,'Front-facing flash']])style.append(el('option',{value:String(v),text:l}));style.value=String(o.burst||0);style.onchange=()=>{o.burst=+style.value;t=0;build();};
+      const looks=el('select',{id:'vgMuzzlePreset','aria-label':'Flash preset'},el('option',{value:'',text:'Choose a preset…'}));VFX_MUZZLE_PRESETS.forEach(([name],i)=>looks.append(el('option',{value:String(i),text:name})));looks.onchange=()=>{if(looks.value==='')return;Object.assign(o,VFX_MUZZLE_PRESETS[+looks.value][1]);t=0;build();};
+      muzzle.push(el('div',{class:'frow'},el('label',{for:'vgMuzzlePreset',text:'Preset'}),looks),el('div',{class:'frow'},el('label',{for:'vgBurst',text:'Burst style'}),style),makeSlider({id:'vgFlashTime',label:'Flash duration',min:.15,max:1,step:.01,value:o.flashTime,fmt:pct,onInput:v=>{o.flashTime=v;}}).el,makeSlider({id:'vgSmoke',label:'Smoke trail',min:0,max:1,step:.01,value:o.smoke,fmt:pct,onInput:v=>{o.smoke=v;}}).el);
+    }
+    const sls=VFX_SETS[o.kind].map(k=>{const [generic,mn,mx,st]=VFX_SL[k];const lab=o.kind===18?({cnt:'Sparks',spike:'Flame spread',hei:o.burst?'Burst radius':'Reach',turb:'Flame breakup'}[k]||generic):generic;return makeSlider({id:'vg_'+k,label:lab,min:o.kind===18&&k==='cnt'?0:mn,max:mx,step:st,value:o[k],fmt:v=>st>=1?String(Math.round(v)):v.toFixed(2),onInput:v=>{o[k]=v;}}).el;});
     ctl.replaceChildren(el('div',{class:'frow'},el('label',{for:'vgN',text:VFX_ONESHOT.includes(o.kind)?'Frames (plays once)':'Frames (it loops)'}),numN),presets,el('div',{class:'frow'},el('label',{for:'vgPal',text:'Colours'}),pal),
-      ...(o.pal===4?[el('div',{class:'frow'},el('label',{text:'Dark / bright'}),c1,c2)]:[]),...sls,
-      el('div',{class:'frow'},el('button',{class:'btn sm',id:'vgRand',text:'New random',onclick:()=>{o.seed=Math.random()*50;}}),el('button',{class:'btn sm',text:'Reset sliders',onclick:()=>{const keep={replace:o.replace,useBase:o.useBase,n:o.n,pal:o.pal};cur.o=Object.assign(vfxOpts(o.kind),keep);build();}})),
+      ...(o.pal===4?[el('div',{class:'frow'},el('label',{text:'Dark / bright'}),c1,c2)]:[]),...muzzle,...sls,
+      el('div',{class:'frow'},el('button',{class:'btn sm',id:'vgRand',text:'New random',onclick:()=>{o.seed=Math.random()*50;}}),el('button',{class:'btn sm',text:'Reset sliders',onclick:()=>{const keep={replace:o.replace,useBase:o.useBase,n:o.n,pal:o.pal,burst:o.burst};cur.o=Object.assign(vfxOpts(o.kind),keep);build();}})),
       el('div',{class:'chips'},...([0,1].includes(o.kind)?[chk('vgBase','Shape it with the painted frame',o.useBase,v=>{o.useBase=v;})]:[]),chk('vgRep','Replace the current frames',o.replace,v=>{o.replace=v;})));};
   build();body.append(pv,kinds,ctl);
   tick();openDialog({title:'Generate effect',body,okLabel:'Make frames',onOk(){stop=true;clearTimeout(raf);if(tmp)disposeTarget(tmp);vfxGenerate(cur.o);},onCancel(){stop=true;clearTimeout(raf);if(tmp)disposeTarget(tmp);}});}
