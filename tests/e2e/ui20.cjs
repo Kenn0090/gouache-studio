@@ -22,7 +22,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const setFG=async hx=>{await p.evaluate(()=>__gs.showPanel('color'));await p.fill('#hex',hx);await p.press('#hex','Enter');};
  const comp=(k,pts)=>p.evaluate(([k,pts])=>{const t=__gs.compositeMap(k),d=__gs.readRGBA8(t),W=__gs.doc.w;__gs.release(t);return pts.map(([x,y])=>Array.from(d.slice((y*W+x)*4,(y*W+x)*4+4)));},[k,pts]);
  const names=()=>p.evaluate(()=>__gs.allLayers().map(L=>L.name));
- await p.evaluate(()=>__gs.newDoc(300,200,8,[1,1,1],'ui20',false));await W(300);
+ await p.evaluate(()=>__gs.newDoc(300,200,8,[1,1,1],'ui20',false));await p.addStyleTag({content:'#lFxAdd,#lFill{display:inline-flex!important}'});await W(300);
  await p.evaluate(()=>__gs.setDocMaps(['base','rough','metal','height','normal'],'maps'));await W();
 
  /* ---- Bake and Convert have their own canvas ---- */
@@ -47,8 +47,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* ---- layer icon buttons: one row, always in view at the bottom of the panel ---- */
  for(let i=0;i<6;i++)await p.click('#lAdd');await W();
  const lb=await p.evaluate(()=>{const bs=[...document.querySelectorAll('.lbtns.icons .lyb')].filter(b=>b.offsetParent).map(b=>b.getBoundingClientRect()),body=document.querySelector('#lAdd').closest('.dkbody').getBoundingClientRect();
-   return {w:['section[aria-labelledby="hLayers"]','.lbtns.icons','#layerList','.dkbody'].map(s=>{const r=document.querySelector('#lAdd').closest('.dkbody').querySelector(s)||document.querySelector(s);const q=r.getBoundingClientRect();return s.slice(0,8)+':'+Math.round(q.left)+'-'+Math.round(q.right)+' sw'+r.scrollWidth;}),l0:Math.round(bs[0].left),b:[Math.round(bs[0].top),Math.round(bs[0].bottom),Math.round(bs[11].right)],body:[Math.round(body.top),Math.round(body.bottom),Math.round(body.right)],rows:new Set(bs.map(r=>Math.round(r.y))).size,inView:bs.every(r=>r.bottom<=body.bottom+1&&r.top>=body.top-1&&r.right<=body.right+1),n:bs.length};});
- ok(lb.rows===1&&lb.inView&&lb.n===11,'layer buttons: one row, in view '+JSON.stringify(lb));
+   return {w:['section[aria-labelledby="hLayers"]','.lbtns.icons','#layerList','.dkbody'].map(s=>{const r=document.querySelector('#lAdd').closest('.dkbody').querySelector(s)||document.querySelector(s);const q=r.getBoundingClientRect();return s.slice(0,8)+':'+Math.round(q.left)+'-'+Math.round(q.right)+' sw'+r.scrollWidth;}),l0:Math.round(bs[0].left),b:[Math.round(bs[0].top),Math.round(bs[0].bottom),Math.round(bs[bs.length-1].right)],body:[Math.round(body.top),Math.round(body.bottom),Math.round(body.right)],rows:new Set(bs.map(r=>Math.round(r.y))).size,inView:bs.every(r=>r.bottom<=body.bottom+1&&r.top>=body.top-1&&r.right<=body.right+1),n:bs.length};});
+ ok(lb.rows===1&&lb.inView&&lb.n===13,'layer buttons: one row, in view '+JSON.stringify(lb));
  for(let i=0;i<6;i++)await p.keyboard.press('Control+z');await W();
  /* ---- right-click menu ---- */
  const row=p.locator('#layerList .lrow').first();
