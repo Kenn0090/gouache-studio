@@ -870,13 +870,14 @@ body.m-p3d #toast{top:54px;z-index:40}
 .fillcard.open>.fillbody{display:grid;gap:6px}
 /* 0.37.1: the 3D · Split · 2D · UV switch sits at the lower right; the layer list starts right under its buttons */
 .vpstrip{left:auto;right:14px;bottom:36px;transform:none}
-body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]{grid-template-rows:auto auto auto auto minmax(0,1fr) auto;align-content:stretch}
+body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]{grid-template-rows:auto auto auto auto auto minmax(0,1fr) auto;align-content:stretch}
 body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.sec-h{order:0}
-body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.lbtns{order:1}
-body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.lprops{order:2}
-body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>#maskRow{order:3}
-body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.llist{order:4;align-content:start}
-body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.sub{order:5}
+body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.lprops{order:1}
+body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.lbtns{order:2}
+body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>#lChipRow{order:3}
+body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>#maskRow{order:4}
+body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.llist{order:5;align-content:start}
+body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.sub{order:6}
 /* (0.45) Paint has no Properties panel, so the fill-layer and effect buttons are 3D Paint only */
 body:not(.m-p3d) #lFill,body:not(.m-p3d) #lFxAdd{display:none}
 .stbrush{display:grid;gap:6px;padding:6px 0;border-top:1px solid var(--line)}
@@ -967,3 +968,14 @@ body.tabfull #docTabs{display:none!important}
 .lprops>.chips{grid-column:1/-1;flex-wrap:nowrap;align-items:center}
 .lprops .lockrow{margin-left:auto}.lprops .lockrow .lab{margin-right:2px}
 #hBrush>span:not(#brushTitle):not(.sec-actions){display:none}
+
+/* 0.45.1 (Kenn's mock-up): blend mode + channel side by side, the opacity slider across the whole width with a filled track */
+.lprops{grid-template-columns:minmax(0,1fr);gap:8px}
+.lblendrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center}
+.lblendrow:has(#lChan[style*="none"]),body:not(.m-p3d) .lblendrow{grid-template-columns:minmax(0,1fr)}
+.lblendrow .lchan{margin:0;max-width:none;width:100%}
+#lOpacityRow .srow{grid-template-columns:62px minmax(0,1fr) 44px}
+#lOp::-webkit-slider-runnable-track{height:4px;background:linear-gradient(to right,var(--accent) var(--v,100%),var(--line-2) var(--v,100%))}
+#lOp::-moz-range-track{height:4px;background:linear-gradient(to right,var(--accent) var(--v,100%),var(--line-2) var(--v,100%))}
+#lOp::-webkit-slider-thumb{margin-top:-4px}
+#lChipRow{flex-wrap:nowrap;align-items:center;justify-content:space-between}#lChipRow .lockrow{margin-left:auto}

@@ -26,6 +26,7 @@ modePop.addEventListener('keydown',e=>{const items=[...modePop.querySelectorAll(
 document.addEventListener('pointerdown',e=>{if(modeState&&!modePop.contains(e.target)&&e.target!==modeBtn&&!modeBtn.contains(e.target))closeModePop();});
 const opSlider=makeSlider({id:'lOp',label:'Opacity',min:0,max:1,step:.01,value:1,fmt:pct,onInput:v=>{if(doc.active){doc.active.opacity=v;requestRender(true);}}});
 $('#lOpacityRow').append(opSlider.el);
+{const oi=$('#lOp'),fillOp=()=>oi.style.setProperty('--v',(oi.value/oi.max*100)+'%');oi.addEventListener('input',fillOp);const st=opSlider.set;opSlider.set=v=>{st(v);fillOp();};fillOp();}
 $('#lClip').addEventListener('change',e=>{if(isLayer(doc.active)){doc.active.clip=e.target.checked;renderLayers();requestRender(true);}});
 $('#lLock').addEventListener('change',e=>{if(isLayer(doc.active)){doc.active.lockAlpha=e.target.checked;renderLayers();}});
 const eyeOn='<svg viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg>';
@@ -270,6 +271,12 @@ function idColourMask(n){if(!(doc.meshMaps&&doc.meshMaps.id)){toast('Bake an ID 
   if(bar&&list&&head){const b=el('button',{class:'btn sm lbtnflip',type:'button'});head.append(b);
     const place=q=>{const in3=q===undefined?ui.mode==='p3d':!!q,tp=top||in3;b.hidden=in3;if(tp)list.before(bar);else{const sub=list.nextElementSibling;(sub&&sub.classList.contains('sub')?sub:list).after(bar);}
       /* (0.45, Kenn) blend mode, opacity, locks and the mask buttons sit above the list, under the layer buttons */
-      const lp=document.querySelector('.lprops'),mr=$('#maskRow');if(lp)list.before(lp);if(mr)list.before(mr);
+      const lp=document.querySelector('.lprops'),mr=document.querySelector('#maskRow');
+      if(lp){/* (0.45.1, Kenn's mock-up) one block: blend mode and channel side by side, the opacity slider across the full width; Clip and Lock go below the layer buttons */
+        let br=document.querySelector('#lBlendRow');if(!br){br=el('div',{id:'lBlendRow',class:'lblendrow'});lp.prepend(br);}
+        const mb=document.querySelector('#lModeBtn'),ch=document.querySelector('#lChan'),chips=lp.querySelector(':scope>.chips')||document.querySelector('#lChipRow');if(mb&&mb.parentNode!==br)br.append(mb);if(ch&&ch.parentNode!==br)br.append(ch);
+        if(chips){chips.id='lChipRow';}
+        if(tp)bar.before(lp);else list.before(lp);if(chips)(tp?bar:lp).after(chips);}
+      if(mr)list.before(mr);
       bar.classList.toggle('top',tp);b.textContent=top?'▼':'▲';b.title=top?'Move the layer buttons to the bottom':'Move the layer buttons to the top';b.setAttribute('aria-label',b.title);};
     b.addEventListener('click',()=>{top=!top;try{localStorage.setItem('gs.lbtnTop',top?'1':'0');}catch(e){}place();});place();window.lbtnPlace=place;}}
