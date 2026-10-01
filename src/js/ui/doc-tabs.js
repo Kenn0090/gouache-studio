@@ -29,7 +29,7 @@ function dtPlaceWork(){const L=dtLive(),inPop=!!(L&&L.win),holder=inPop?L.win.ho
   for(const t of dtab.tabs)if(t.win){const on=t.id===dtab.live;t.win.shot.hidden=on;if(!on)dtDrawShot(t.win.shot,t);}
   resizeGL();requestRender(true);}
 /* ---- switching ---- */
-function dtBusy(){return !!(stroke||ptr||preview||(typeof xf!=='undefined'&&xf)||(typeof selLive!=='undefined'&&selLive)||(typeof crop!=='undefined'&&crop)||!modal.hidden);}
+function dtBusy(){return !!(tabDocs.hold||stroke||ptr||preview||(typeof xf!=='undefined'&&xf)||(typeof selLive!=='undefined'&&selLive)||(typeof crop!=='undefined'&&crop)||!modal.hidden);}
 function dtLeave(){const L=dtLive();if(!L)return;dtShot(L);L.state=docState();dtab.live=0;}
 function dtActivate(id){if(id===dtab.live){const t=dtTab(id);if(t&&ui.mode!=='paint')setMode('paint',true);return true;}const t=dtTab(id);if(!t||!t.state)return false;
   if(ui.mode!=='paint'&&!setMode('paint',true))return false;if(dtBusy()){toast('Finish or cancel what you are doing first (a stroke, transform, crop or dialog).');return false;}

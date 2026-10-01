@@ -92,7 +92,7 @@ function playOrder(){const A=A_();let a=0,b=A.frames.length-1,mode='loop';
   const seq=[];for(let i=a;i<=b;i++)seq.push(i);if(mode==='pingpong')for(let i=b-1;i>a;i--)seq.push(i);return {seq,mode};}
 function togglePlay(){if(playing){stopPlay();return;}const A=A_();if(!A||A.frames.length<2){toast('Add a second frame to play the animation.');return;}
   const {seq,mode}=playOrder();playing={k:0,seq,mode,start:A.cur};renderTimeline();requestRender(true);step();
-  function step(){if(!playing)return;const i=playing.seq[playing.k];showFrame(i);const F=A.frames[i];
+  function step(){if(!playing)return;if(tabDocs.hold){playing.timer=setTimeout(step,50);return;}const i=playing.seq[playing.k];showFrame(i);const F=A.frames[i];
     playing.timer=setTimeout(()=>{if(!playing)return;playing.k++;if(playing.k>=playing.seq.length){if(playing.mode==='once'){stopPlay();return;}playing.k=0;}step();},F.hold*1000/A.fps);}}
 function stopPlay(){if(!playing)return;clearTimeout(playing.timer);playing=null;renderTimeline();requestRender(true);}
 
@@ -109,7 +109,7 @@ function buildOnion(){if(onionT){release(onionT);onionT=null;}const A=A_();if(ui
 const frameImgs=new WeakMap();let smallT=null;const SMALL=512;
 function frameDirty(F){const r=frameImgs.get(F);if(r)r.dirty=true;scheduleTimeline();}
 function renderSmall(t,canvas){const s=Math.min(1,SMALL/Math.max(doc.w,doc.h)),w=Math.max(1,Math.round(doc.w*s)),h=Math.max(1,Math.round(doc.h*s));
-  if(!smallT||smallT.w!==w||smallT.h!==h){if(smallT){gl.deleteTexture(smallT.tex);gl.deleteFramebuffer(smallT.fbo);}smallT=makeTargetRaw(w,h);}
+  if(!smallT||smallT.w!==w||smallT.h!==h){disposeTarget(smallT);smallT=makeTargetRaw(w,h);}
   clearTarget(smallT);run(P.resample,smallT,{uSrc:t.tex,uOffset:[0,0],uScale:[1/s,1/s],uTaps:{int:Math.min(8,Math.ceil(1/s))}});
   const buf=new Uint8Array(w*h*4);gl.bindFramebuffer(gl.FRAMEBUFFER,smallT.fbo);gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,buf);
   const img=new ImageData(w,h),d=img.data;for(let i=0;i<d.length;i+=4){const a=buf[i+3];if(a){d[i]=Math.min(255,buf[i]*255/a);d[i+1]=Math.min(255,buf[i+1]*255/a);d[i+2]=Math.min(255,buf[i+2]*255/a);d[i+3]=a;}}

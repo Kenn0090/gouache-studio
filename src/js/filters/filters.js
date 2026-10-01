@@ -45,7 +45,7 @@ const identity=()=>Array.from({length:256},(_,i)=>i/255);
 /* brightness histogram of a layer (R, G, B, luminance), from a small copy */
 function histogramOf(t){const S=256,sm=makeTargetRaw(S,S),s=Math.min(1,S/Math.max(doc.w,doc.h));
   run(P.resample,sm,{uSrc:t.tex,uOffset:[0,0],uScale:[doc.w/S,doc.h/S],uTaps:{int:Math.min(8,Math.ceil(Math.max(doc.w,doc.h)/S))}});
-  const u=new Uint8Array(S*S*4);gl.bindFramebuffer(gl.FRAMEBUFFER,sm.fbo);gl.readPixels(0,0,S,S,gl.RGBA,gl.UNSIGNED_BYTE,u);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.deleteTexture(sm.tex);gl.deleteFramebuffer(sm.fbo);
+  const u=new Uint8Array(S*S*4);gl.bindFramebuffer(gl.FRAMEBUFFER,sm.fbo);gl.readPixels(0,0,S,S,gl.RGBA,gl.UNSIGNED_BYTE,u);gl.bindFramebuffer(gl.FRAMEBUFFER,null);disposeTarget(sm);
   const h=[new Float32Array(256),new Float32Array(256),new Float32Array(256),new Float32Array(256)];
   for(let i=0;i<u.length;i+=4){const a=u[i+3];if(a<8)continue;const r=Math.min(255,u[i]*255/a|0),g=Math.min(255,u[i+1]*255/a|0),b=Math.min(255,u[i+2]*255/a|0);h[0][r]++;h[1][g]++;h[2][b]++;h[3][Math.round(r*.2126+g*.7152+b*.0722)]++;}
   return h;}
@@ -149,7 +149,7 @@ fxDef('colorAdj',{title:'Color adjustments',defs:[
 
 /* ---- palettes (Cutout, Quantize): k-means on a small copy of the image ---- */
 function paletteOf(t,k){const S=96,sm=makeTargetRaw(S,S);run(P.resample,sm,{uSrc:t.tex,uOffset:[0,0],uScale:[doc.w/S,doc.h/S],uTaps:{int:Math.min(8,Math.ceil(Math.max(doc.w,doc.h)/S))}});
-  const u=new Uint8Array(S*S*4);gl.bindFramebuffer(gl.FRAMEBUFFER,sm.fbo);gl.readPixels(0,0,S,S,gl.RGBA,gl.UNSIGNED_BYTE,u);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.deleteTexture(sm.tex);gl.deleteFramebuffer(sm.fbo);
+  const u=new Uint8Array(S*S*4);gl.bindFramebuffer(gl.FRAMEBUFFER,sm.fbo);gl.readPixels(0,0,S,S,gl.RGBA,gl.UNSIGNED_BYTE,u);gl.bindFramebuffer(gl.FRAMEBUFFER,null);disposeTarget(sm);
   const pts=[];for(let i=0;i<u.length;i+=4){const a=u[i+3];if(a<16)continue;pts.push([u[i]/a,u[i+1]/a,u[i+2]/a]);}
   if(!pts.length)return [[0,0,0]];k=Math.min(k,pts.length);
   const d2=(a,b)=>(a[0]-b[0])**2+(a[1]-b[1])**2+(a[2]-b[2])**2;const cs=[pts[0].slice()];const dist=pts.map(p=>d2(p,cs[0]));

@@ -1,7 +1,7 @@
-# Gouache Studio 0.46.6
+# Gouache Studio 0.46.7
 
-- Arranged Brush maker like the requested reference: creation previews and settings above the painting brush actions, stroke preview and brush controls.
-- Painting brush controls now scroll within Brush maker and return to their usual panels when switching modes.
-- Compact colour swatches sit above Brush maker; the brush-tip library stays below the canvas.
-- Added marquee selection duplication with Alt+drag using Move; ordinary dragging moves the selection, with Undo/Redo support.
-- Added transform quick controls above the canvas, including Warp grid size, position, scale, angle, skew, resampling, Apply and Cancel. Changing the warp grid keeps the edited bend.
+- Painting reuses unchanged layers inside nested groups. Effects below cached layers no longer force full redraws of every plain stroke; dependent effects and masks keep the full redraw path.
+- Large save images are packed in a background worker and read back asynchronously from the graphics card, reducing work on the main UI thread. Existing project files stay compatible, including lossless masks and 16-bit height.
+- Saving briefly holds edits and tab changes while capturing a consistent document. Animation playback waits during capture and resumes afterward.
+- Unused scratch textures are trimmed during idle time. Layer pixels, undo history and textures still in use are preserved.
+- Performance monitor now reports tracked texture storage, scratch reuse, partial/full redraw counts, GPU frame timings when available and save preparation stages.

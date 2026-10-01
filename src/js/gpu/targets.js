@@ -1,5 +1,12 @@
 /* ================= Targets ================= */
 let uvWrapScope=null;
+/* Texture storage only: driver overhead, mesh buffers and multisampled view targets are separate. */
+const gpuTargets=new Set();
+/* Tracking must not keep an abandoned texture alive merely for the memory counter. */
+function gpuTrack(t){t._gpuRef=new WeakRef(t);gpuTargets.add(t._gpuRef);return t;}
+function gpuLiveTargets(){const out=[];for(const ref of gpuTargets){const t=ref.deref();if(t)out.push(t);else gpuTargets.delete(ref);}return out;}
+const gpuBytes=t=>t.w*t.h*(t.depth===32?16:t.depth===16?8:4);
+function gpuMemory(){let bytes=0,spare=0;const targets=gpuLiveTargets();for(const t of targets){bytes+=gpuBytes(t);if(t.pool&&t.pool.free.includes(t))spare+=gpuBytes(t);}return {bytes,spare,targets:targets.length};}
 /* Repeat only while evaluating an effect; never change the document or a pooled texture permanently. */
 function uvWrapTarget(t){if(!uvWrapScope||!t||!t.tex)return;if(!uvWrapScope.saved.has(t)){gl.bindTexture(gl.TEXTURE_2D,t.tex);uvWrapScope.saved.set(t,[gl.getTexParameter(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S),gl.getTexParameter(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T)]);}setWrap(t,uvWrapScope.on);}
 function withUVWrap(on,targets,fn){const previous=uvWrapScope,old=doc.wrap,scope={on:!!on,docWrap:old,saved:new Map()};uvWrapScope=scope;doc.wrap=scope.on;
@@ -12,9 +19,9 @@ function makeTarget(w,h,depth,wrap){
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
   const wm=wrap?gl.REPEAT:gl.CLAMP_TO_EDGE;gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,wm);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,wm);
   const fbo=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0);
-  const t={tex,fbo,w,h,depth,mipDirty:true};clearTarget(t);return t;
+  const t=gpuTrack({tex,fbo,w,h,depth,mipDirty:true});clearTarget(t);return t;
 }
-function disposeTarget(t){if(!t)return;gl.deleteTexture(t.tex);gl.deleteFramebuffer(t.fbo);t.tex=null;t.fbo=null;}
+function disposeTarget(t){if(!t)return;gpuTargets.delete(t._gpuRef);gl.deleteTexture(t.tex);gl.deleteFramebuffer(t.fbo);t.tex=null;t.fbo=null;}
 function setWrap(t,rep){gl.bindTexture(gl.TEXTURE_2D,t.tex);const wm=rep?gl.REPEAT:gl.CLAMP_TO_EDGE;gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,wm);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,wm);}
 function bindTarget(t){gl.bindFramebuffer(gl.FRAMEBUFFER,t?t.fbo:null);gl.viewport(0,0,t?t.w:cv.width,t?t.h:cv.height);}
 function clearTarget(t,c){bindTarget(t);c=c||[0,0,0,0];gl.clearColor(c[0],c[1],c[2],c[3]);gl.clear(gl.COLOR_BUFFER_BIT);}
@@ -27,15 +34,16 @@ let halfRead=null;
    up as a hitch. Instead the copy goes into a GPU buffer with a fence; the bytes are collected a
    frame or two later, when the GPU is done. Anything that needs them sooner waits only then. */
 const pendingReads=new Set();
-function asyncRead(fbo,x,y,w,h,type,ctor,n,done){const buf=gl.createBuffer();gl.bindBuffer(gl.PIXEL_PACK_BUFFER,buf);gl.bufferData(gl.PIXEL_PACK_BUFFER,n*ctor.BYTES_PER_ELEMENT,gl.STREAM_READ);
+function asyncRead(fbo,x,y,w,h,type,ctor,n,done,failed){const buf=gl.createBuffer();gl.bindBuffer(gl.PIXEL_PACK_BUFFER,buf);gl.bufferData(gl.PIXEL_PACK_BUFFER,n*ctor.BYTES_PER_ELEMENT,gl.STREAM_READ);
   gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);gl.readPixels(x,y,w,h,gl.RGBA,type,0);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
   const fence=gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE,0);gl.flush();
-  const job={buf,fence,finish(){if(!pendingReads.delete(job))return;const out=new ctor(n);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,buf);gl.getBufferSubData(gl.PIXEL_PACK_BUFFER,0,out);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);
+  const job={buf,fence,fail(){if(!pendingReads.delete(job))return;gl.deleteBuffer(buf);gl.deleteSync(fence);if(failed)failed(new Error('The graphics card could not return the image. Please try saving again.'));},
+    finish(){if(gl.isContextLost()){job.fail();return;}if(!pendingReads.delete(job))return;const out=new ctor(n);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,buf);gl.getBufferSubData(gl.PIXEL_PACK_BUFFER,0,out);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);
     gl.deleteBuffer(buf);gl.deleteSync(fence);done(out);}};
   pendingReads.add(job);schedulePoll();return job;}
 let pollTimer=0;
 function schedulePoll(){if(!pollTimer&&pendingReads.size)pollTimer=setTimeout(pollReads,4);}
-function pollReads(){pollTimer=0;for(const j of [...pendingReads]){const s=gl.clientWaitSync(j.fence,0,0);if(s===gl.ALREADY_SIGNALED||s===gl.CONDITION_SATISFIED)j.finish();}schedulePoll();}
+function pollReads(){pollTimer=0;for(const j of [...pendingReads]){const s=gl.clientWaitSync(j.fence,0,0);if(s===gl.WAIT_FAILED||gl.isContextLost())j.fail();else if(s===gl.ALREADY_SIGNALED||s===gl.CONDITION_SATISFIED)j.finish();}schedulePoll();}
 /* immediate read, for code that needs the pixels right away */
 function captureRegionNow(src,x,y,w,h){gl.bindFramebuffer(gl.FRAMEBUFFER,src.fbo);let u;
   if(src.depth===16){const f=new Float32Array(w*h*4);gl.readPixels(x,y,w,h,gl.RGBA,gl.FLOAT,f);u=new Uint16Array(f.length);for(let i=0;i<f.length;i++)u[i]=f2h(f[i]);}
@@ -52,6 +60,10 @@ function captureRegion(src,x,y,w,h){const n=w*h*4;
       :asyncRead(src.fbo,x,y,w,h,gl.FLOAT,Float32Array,n,f=>{const u=new Uint16Array(n);for(let i=0;i<n;i++)u[i]=f2h(f[i]);s._job=null;s._d=u;});
     return s;}
   const s=makeSnap(w,h,8,n);s._job=asyncRead(src.fbo,x,y,w,h,gl.UNSIGNED_BYTE,Uint8Array,n,u=>{s._job=null;s._d=u;});return s;}
+/* File reads wait for the fence instead of forcing an undo snapshot's .data getter early.
+   The file worker converts float pixels to half-float bytes. */
+function readRegionAsync(src,x,y,w,h){return new Promise((resolve,reject)=>{if(gl.isContextLost()){reject(new Error('The graphics context was lost.'));return;}
+  asyncRead(src.fbo,x,y,w,h,src.depth===16?gl.FLOAT:gl.UNSIGNED_BYTE,src.depth===16?Float32Array:Uint8Array,w*h*4,resolve,reject);});}
 function restoreRegion(snap,dst,x,y){gl.bindTexture(gl.TEXTURE_2D,dst.tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
   if(snap.depth===16)gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,snap.w,snap.h,gl.RGBA,gl.HALF_FLOAT,snap.data);
   else gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,snap.w,snap.h,gl.RGBA,gl.UNSIGNED_BYTE,snap.data);

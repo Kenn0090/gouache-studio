@@ -24,11 +24,17 @@ function isParallelogram(q){const s=Math.hypot(q[4]-q[0],q[5]-q[1])+1;return Mat
 /* ---- where is there content? column and row projections on the GPU, then two tiny readbacks ---- */
 let projT=null;
 function contentBounds(t,alphaOnly){const W=doc.w,H=doc.h,n=Math.max(W,H);
-  if(!projT||projT.w<n){if(projT){gl.deleteTexture(projT.tex);gl.deleteFramebuffer(projT.fbo);}projT=makeTargetRaw(n,1);}
+  if(!projT||projT.w<n){disposeTarget(projT);projT=makeTargetRaw(n,1);}
   const read=(axis,len)=>{bindTarget(projT);gl.viewport(0,0,len,1);run(P.proj,projT,{uSrc:t.tex,uAxis:{int:axis},uAlphaOnly:alphaOnly!==false});
     const u=new Uint8Array(projT.w*4);gl.bindFramebuffer(gl.FRAMEBUFFER,projT.fbo);gl.readPixels(0,0,projT.w,1,gl.RGBA,gl.UNSIGNED_BYTE,u);
     let a=-1,b=-1;for(let i=0;i<len;i++)if(u[i*4]>127){if(a<0)a=i;b=i;}return a<0?null:[a,b+1];};
   const cx=read(0,W);if(!cx)return null;const cy=read(1,H);return cy?[cx[0],cy[0],cx[1],cy[1]]:null;}
+/* Saving needs the same exact crop, but must not synchronously wait on either projection. */
+async function contentBoundsAsync(t,alphaOnly){const W=doc.w,H=doc.h,n=Math.max(W,H);
+  if(!projT||projT.w<n){disposeTarget(projT);projT=makeTargetRaw(n,1);}
+  const read=async(axis,len)=>{run(P.proj,projT,{uSrc:t.tex,uAxis:{int:axis},uAlphaOnly:alphaOnly!==false});
+    const u=await readRegionAsync(projT,0,0,len,1);let a=-1,b=-1;for(let i=0;i<len;i++)if(u[i*4]>127){if(a<0)a=i;b=i;}return a<0?null:[a,b+1];};
+  const cx=await read(0,W);if(!cx)return null;const cy=await read(1,H);return cy?[cx[0],cy[0],cx[1],cy[1]]:null;}
 
 /* ---- starting a session ---- */
 function xfLayers(){if(doc.active&&doc.active.editMask&&doc.active.mask)return {maskOnly:doc.active};
