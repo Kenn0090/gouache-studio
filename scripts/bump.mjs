@@ -11,4 +11,4 @@ const edit = (file, fn) => { const p = path.join(root, file); fs.writeFileSync(p
 edit('package.json', s => s.replace(/"version": "[^"]+"/, `"version": "${v}"`));
 edit('src-tauri/tauri.conf.json', s => s.replace(/"version": "[^"]+"/, `"version": "${v}"`));
 edit('src-tauri/Cargo.toml', s => s.replace(/^version = "[^"]+"/m, `version = "${v}"`));
-edit('src-tauri/Cargo.lock', s => s.replace(/(name = "gouache-studio"\nversion = )"[^"]+"/, `$1"${v}"`));
+edit('src-tauri/Cargo.lock', s => s.replace(/(name = "gouache-studio"\r?\nversion = )"[^"]+"/, `$1"${v}"`));

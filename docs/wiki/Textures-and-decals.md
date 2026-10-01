@@ -62,3 +62,13 @@ Sources are [Public Domain Pictures](https://www.publicdomainpictures.net/en/vie
 These are grayscale masks, rather than complete PBR material sets. Right-click to use one in a mask or material channel. Bright scratches reveal a masked material; use Invert when dark cuts are needed. In a Height channel, adjust the layer's height strength to control the depth.
 
 Generated patterns include twill, herringbone, knit and basket weave, plus checkerboard, chevron, hexagons and scales. These are procedural grayscale patterns that repeat, and can be used in masks, height or other channels.
+
+## Shelf loading (0.46.8)
+
+Browsing uses small previews. The 99 bundled photo textures have separate previews; generated patterns use a small temporary preview. Full textures load when you apply them, with repeated requests sharing the same load.
+
+Your imported textures stay packed on this computer. The shelf loads names and previews first. New imports save a preview immediately; older imports create one the first time they are shown and reuse it afterward. Export pack still reads the full originals.
+
+Unused full textures leave the shelf cache after about ten idle seconds. The cache also trims older entries when it passes 128 MiB or 16 textures. Picture guides used by filters stay available while referenced, including by undo history. Masks, material channels, layers and stencils own their images independently of the shelf cache.
+
+For contributors: `python scripts/texture-previews.py` (Pillow required) regenerates `assets/grunge/previews.json`. The build verifies source hashes, so new or changed images without an up-to-date preview use a small resized decode instead.

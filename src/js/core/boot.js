@@ -15,3 +15,4 @@ if(/[?&]debug\b/.test(location.search))window.__gs={withUVWrap,fxControls,VFX_SE
 if(window.__gs)Object.assign(window.__gs,{beginStroke,addPoint,endStroke,composite,strokeNow:()=>stroke,strokeCacheSafe,dropStrokeCache,acquire,acquireD,trimPools,gpuMemory,gpuTargets,disposeTarget,pxWorkerState,pxPackCore,pxBytes,readRegionAsync,gfSaveStats,gfSavingNow:()=>gfSaving,perfGpu,perfGpuPoll,perfUpdate,newGroupObj,newLayerObj,insertNode,detachNode,newFxLayerObj,fxItem,fxDefaults,editTarget});
 if(window.__gs)Object.assign(window.__gs,{dtPop,dtDock,dtActivate,dtBusy,togglePlay,stopPlay,showPanel});
 if(window.__gs)Object.assign(window.__gs,{contentBounds,contentBoundsAsync});
+if(window.__gs)Object.assign(window.__gs,{txRead,txLoad,txCacheTrim,txCacheDrop,txCachePin,txCachePinned,txThumb,txMakeThumb,txMeta,txExportPack,txImport,txSaveThumb,txObserved,txPruneObserved,renderTextures,TX_PHOTO,TX_PREVIEWS,store,fxdGuideTex,fxdPickTexture,dcLoad});

@@ -16,7 +16,7 @@ const TX_PHOTO=[['streaks','Streaks'],['rings','Water rings'],['specks','Specks'
   ['rust-pits-1','Rust pits 1'],['rust-pits-2','Rust pits 2'],['rust-pits-3','Rust pits 3'],['rust-pits-4','Rust pits 4'],['rust-pits-5','Rust pits 5'],['rust-pits-6','Rust pits 6'],['rust-pits-7','Rust pits 7'],
   ['worn-paint-1','Worn paint 1'],['worn-paint-2','Worn paint 2'],['worn-paint-3','Worn paint 3'],['frost-veins','Frost veins']];
 TX_PHOTO.push(...TX_WORKSHOP.map(r=>[r.slug,r.name,r.category]));
-const tx={category:(()=>{try{return localStorage.getItem('gs.txCategory')||'all';}catch(e){return 'all';}})(),query:'',show:(()=>{try{return localStorage.getItem('gs.txShow')||'all';}catch(e){return 'all';}})(),size:(()=>{try{return localStorage.getItem('gs.txSize')||'m';}catch(e){return 'm';}})(),mine:[],loaded:false,cache:new Map(),thumbs:new Map()};
+const tx={category:(()=>{try{return localStorage.getItem('gs.txCategory')||'all';}catch(e){return 'all';}})(),query:'',show:(()=>{try{return localStorage.getItem('gs.txShow')||'all';}catch(e){return 'all';}})(),size:(()=>{try{return localStorage.getItem('gs.txSize')||'m';}catch(e){return 'm';}})(),mine:[],loaded:false,loading:null,cache:new Map(),used:new Map(),pending:new Map(),pins:new Map(),owners:new WeakMap(),thumbs:new Map(),thumbPending:new Map(),thumbQueue:[],thumbJobs:0,cacheTimer:0,cacheLimit:128*1024*1024,cacheCount:16,stats:{loads:0,unpacks:0,previews:0,coalesced:0}};
 /* seamless grey patterns: periodic noise so every one tiles */
 const FS_TXGEN=`uniform int uKind; uniform float uSeed; uniform vec2 uOut; uniform vec2 uPhase;
 float hs(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7))+uSeed*13.17)*43758.5453); }
@@ -55,36 +55,74 @@ async function txPhotoBytes(slug){const tag=document.getElementById('gr_'+slug);
   const r=await fetch('grunge/'+slug+'.webp');if(!r.ok)throw new Error('missing');return new Uint8Array(await r.arrayBuffer());}
 async function bitmapTarget(bm){const c=document.createElement('canvas');c.width=bm.width;c.height=bm.height;c.getContext('2d').drawImage(bm,0,0);
   const tex=uploadStraight({el:c,w:c.width,h:c.height}),t=makeTarget(c.width,c.height,8,true);premultInto(t,tex,[0,0],null);gl.deleteTexture(tex);setWrap(t,true);return t;}
-/* a texture as a target (kept while the app runs) */
-async function txTarget(it){const key=it.kind+':'+it.id;let t=tx.cache.get(key);if(t)return t;
-  if(it.kind==='gen')t=txGenTarget(it.id,1024);
-  else if(it.kind==='photo')t=await bitmapTarget(await createImageBitmap(new Blob([await txPhotoBytes(it.id)],{type:'image/webp'})));
-  else{t=makeTarget(it.rec.w,it.rec.h,8,true);writeRegion(t,0,0,it.rec.w,it.rec.h,it.rec.data);setWrap(t,true);}
-  tx.cache.set(key,t);return t;}
+/* The shelf owns borrowed originals. Layers/masks/stencils copy them. Live picture guides
+   pin their original through weak references, including guides retained by undo. */
+function txCacheGet(key){const t=tx.cache.get(key);if(t&&t.tex){tx.used.set(key,performance.now());return t;}return null;}
+function txCachePin(g){const key=g.kind+':'+g.id;if(tx.owners.get(g)===key)return;tx.owners.set(g,key);let refs=tx.pins.get(key);if(!refs)tx.pins.set(key,refs=new Set());refs.add(new WeakRef(g));}
+function txCachePinned(key){const refs=tx.pins.get(key);if(!refs)return false;for(const r of refs){const g=r.deref();if(!g||g.kind+':'+g.id!==key)refs.delete(r);}if(!refs.size)tx.pins.delete(key);return !!refs.size;}
+function txCacheDrop(key){if(txCachePinned(key))return;const t=tx.cache.get(key);tx.cache.delete(key);tx.used.delete(key);if(t&&![...tx.cache.values()].includes(t))disposeTarget(t);}
+function txCacheTrim(now=performance.now()){let bytes=0;for(const t of new Set(tx.cache.values()))bytes+=gpuBytes(t);
+  const keys=[...tx.cache.keys()].sort((a,b)=>(tx.used.get(a)||0)-(tx.used.get(b)||0));
+  for(const key of keys){if(txCachePinned(key))continue;if(bytes<=tx.cacheLimit&&tx.cache.size<=tx.cacheCount&&now-(tx.used.get(key)||0)<10000)continue;
+    const t=tx.cache.get(key);txCacheDrop(key);if(![...tx.cache.values()].includes(t))bytes-=gpuBytes(t);}
+  for(const key of tx.pins.keys())txCachePinned(key);
+  if(tx.cache.size&&!tx.cacheTimer)tx.cacheTimer=setTimeout(()=>{tx.cacheTimer=0;txCacheTrim();},10000);}
+function txCacheKeep(key,t){tx.cache.set(key,t);tx.used.set(key,performance.now());
+  /* All promise consumers get to copy/use the borrowed result before eviction. */
+  if(tx.cacheTimer)clearTimeout(tx.cacheTimer);tx.cacheTimer=setTimeout(()=>{tx.cacheTimer=0;txCacheTrim();},0);return t;}
+async function txRead(rec){if(rec.data)return rec;const raw=await store.getRaw(rec.id,'textures');if(!raw)throw new Error('This texture is no longer in the library.');tx.stats.unpacks++;const full=await pxDeep(raw,false);
+  if(!(full.data instanceof Uint8Array)||full.data.length!==full.w*full.h*4)throw new Error('The saved texture could not be read.');return full;}
+async function txTarget(it){const key=it.kind+':'+it.id,cached=txCacheGet(key);if(cached)return cached;
+  if(tx.pending.has(key)){tx.stats.coalesced++;return tx.pending.get(key);}
+  const job=(async()=>{let t;tx.stats.loads++;
+    if(it.kind==='gen')t=txGenTarget(it.id,1024);
+    else if(it.kind==='photo'){const bm=await createImageBitmap(new Blob([await txPhotoBytes(it.id)],{type:'image/webp'}));try{t=await bitmapTarget(bm);}finally{bm.close();}}
+    else{const rec=await txRead(it.rec||{id:it.id});t=makeTarget(rec.w,rec.h,8,true);writeRegion(t,0,0,rec.w,rec.h,rec.data);setWrap(t,true);}
+    return txCacheKeep(key,t);})();tx.pending.set(key,job);try{return await job;}finally{tx.pending.delete(key);}}
 function txCopy(t){const c=makeTarget(t.w,t.h,8,true);blit(t,c,0,0,t.w,t.h,0,0);setWrap(c,true);return c;}
 /* thumbnails */
 function txThumbOf(t){const S=72,s=makeTarget(S,S,8,false);copyScaled(t,s);const d=captureRegionNow(s,0,0,S,S).data;disposeTarget(s);
   const c=document.createElement('canvas');c.width=c.height=S;const id=c.getContext('2d').createImageData(S,S);
-  for(let y=0;y<S;y++)for(let x=0;x<S;x++){const i=(y*S+x)*4,j=((S-1-y)*S+x)*4,a=d[j+3]||1;id.data[i]=d[j]*255/a;id.data[i+1]=d[j+1]*255/a;id.data[i+2]=d[j+2]*255/a;id.data[i+3]=255;}
+  for(let y=0;y<S;y++)for(let x=0;x<S;x++){const i=(y*S+x)*4,a=d[i+3]||1;id.data[i]=d[i]*255/a;id.data[i+1]=d[i+1]*255/a;id.data[i+2]=d[i+2]*255/a;id.data[i+3]=255;}
   c.getContext('2d').putImageData(id,0,0);return c.toDataURL('image/png');}
-async function txThumb(it,img){const key=it.kind+':'+it.id;if(tx.thumbs.has(key)){img.src=tx.thumbs.get(key);return;}
-  try{const t=await txTarget(it);const u=txThumbOf(t);tx.thumbs.set(key,u);img.src=u;}catch(e){img.alt='?';}}
+/* The app's texture row zero is the top of the painting (VS_VIEW flips screen Y).
+   Sample premultiplied pixels straight into a tiny canvas, without a full-size upload. */
+function txThumbPixels(rec){const S=96,c=document.createElement('canvas');c.width=c.height=S;const x=c.getContext('2d'),im=x.createImageData(S,S),d=rec.data;
+  for(let y=0;y<S;y++)for(let i=0;i<S;i++){const sx=Math.min(rec.w-1,Math.floor((i+.5)*rec.w/S)),sy=Math.min(rec.h-1,Math.floor((y+.5)*rec.h/S)),a=(sy*rec.w+sx)*4,b=(y*S+i)*4,f=d[a+3]?255/d[a+3]:0;
+    im.data[b]=d[a]*f;im.data[b+1]=d[a+1]*f;im.data[b+2]=d[a+2]*f;im.data[b+3]=255;}
+  x.putImageData(im,0,0);return c.toDataURL('image/png');}
+function txMeta(rec){return {id:rec.id,name:rec.name,t:rec.t,w:rec.w,h:rec.h,category:rec.category,thumb:rec.thumb||''};}
+async function txSaveThumb(rec,u){/* Update only a record that still exists; never resurrect a deleted texture. */
+  await store.tx('readwrite',st=>{const r=st.get(rec.id);r.onsuccess=()=>{const old=r.result;if(old&&old.t===rec.t&&!old.thumb)st.put(Object.assign(old,{thumb:u}));};return r;},'textures');}
+async function txMakeThumb(it){tx.stats.previews++;if(it.kind==='photo'){
+    if(TX_PREVIEWS[it.id])return TX_PREVIEWS[it.id];
+    const bm=await createImageBitmap(new Blob([await txPhotoBytes(it.id)],{type:'image/webp'}),{resizeWidth:96,resizeHeight:96,resizeQuality:'high'});
+    try{const c=document.createElement('canvas');c.width=c.height=96;c.getContext('2d').drawImage(bm,0,0);return c.toDataURL('image/png');}finally{bm.close();}}
+  if(it.kind==='gen'){const t=txGenTarget(it.id,144);try{return txThumbOf(t);}finally{disposeTarget(t);}}
+  if(it.rec.thumb)return it.rec.thumb;const full=await txRead(it.rec),u=txThumbPixels(full);it.rec.thumb=u;txSaveThumb(it.rec,u).catch(()=>{});return u;}
+function txPumpThumbs(){while(tx.thumbJobs<2&&tx.thumbQueue.length){const j=tx.thumbQueue.shift();
+    if(!j.waiters.some(img=>img.isConnected&&!img._txCancelled)){tx.thumbPending.delete(j.key);j.resolve(null);continue;}
+    tx.thumbJobs++;txMakeThumb(j.it).then(u=>{tx.thumbs.set(j.key,u);j.resolve(u);},j.reject).finally(()=>{tx.thumbPending.delete(j.key);tx.thumbJobs--;setTimeout(txPumpThumbs,0);});}}
+async function txThumb(it,img){const key=it.kind+':'+it.id;try{let u=tx.thumbs.get(key);if(!u){let j=tx.thumbPending.get(key);if(!j){j={key,it,waiters:[]};j.promise=new Promise((resolve,reject)=>Object.assign(j,{resolve,reject}));tx.thumbPending.set(key,j);tx.thumbQueue.push(j);}j.waiters.push(img);txPumpThumbs();u=await j.promise;}
+    if(u&&img.isConnected&&!img._txCancelled&&img._tx===it)img.src=u;}catch(e){if(img.isConnected&&!img._txCancelled)img.alt='?';}}
 /* your own textures (IndexedDB store 'textures', pictures packed) */
-async function txLoad(){if(tx.loaded)return;tx.loaded=true;try{tx.mine=((await store.all('textures'))||[]).filter(r=>!r.decal).sort((a,b)=>(a.t||0)-(b.t||0));}catch(e){tx.mine=[];}renderTextures();}
-async function txAddTarget(t,name){const rec={id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name,t:Date.now(),w:t.w,h:t.h,data:captureRegionNow(t,0,0,t.w,t.h).data};
-  tx.mine.push(rec);tx.cache.set('mine:'+rec.id,t);await store.put(rec,'textures');return rec;}
+async function txLoad(){if(tx.loading)return tx.loading;if(tx.loaded)return;tx.loading=(async()=>{try{tx.mine=(await store.scanRaw('textures',r=>!r.decal?txMeta(r):undefined)).sort((a,b)=>(a.t||0)-(b.t||0));}catch(e){tx.mine=[];}tx.loaded=true;renderTextures();})();try{return await tx.loading;}finally{tx.loading=null;}}
+async function txAddTarget(t,name){/* Own a borrowed input before packing yields and the cache can trim it. */
+  const borrowed=[...tx.cache.values()].includes(t),owned=borrowed?txCopy(t):t;let kept=false;try{await txLoad();const rec={id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name,t:Date.now(),w:owned.w,h:owned.h,data:captureRegionNow(owned,0,0,owned.w,owned.h).data};rec.thumb=txThumbPixels(rec);
+  const packed=await pxDeep(rec,true);await store.tx('readwrite',st=>st.put(packed),'textures');const meta=txMeta(rec);tx.mine.push(meta);tx.thumbs.set('mine:'+rec.id,rec.thumb);
+  txCacheKeep('mine:'+rec.id,owned);kept=true;return meta;}finally{if(borrowed&&!kept)disposeTarget(owned);}}
 async function txImport(){const fs=await pickFiles('image/*,.gtex',true,'Textures and texture packs',['png','jpg','jpeg','webp','tga','tif','tiff','bmp','psd','gtex']);let n=0;
-  for(const f of fs){try{if(/\.gtex$/i.test(f.name)){const j=await gmatParse(f);for(const it of j.items||[]){const bm=await createImageBitmap(await (await fetch(it.img)).blob());await txAddTarget(await bitmapTarget(bm),it.name||'Texture');n++;}}
-      else{const t=await fileTarget(f);setWrap(t,true);await txAddTarget(t,baseName(f.name));n++;}}catch(e){toast('Could not read '+f.name+': '+(e.message||e));}}
+  for(const f of fs){try{if(/\.gtex$/i.test(f.name)){const j=await gmatParse(f);for(const it of j.items||[]){const bm=await createImageBitmap(await (await fetch(it.img)).blob());let t;try{t=await bitmapTarget(bm);}finally{bm.close();}try{await txAddTarget(t,it.name||'Texture');}catch(e){disposeTarget(t);throw e;}n++;}}
+      else{const t=await fileTarget(f);setWrap(t,true);try{await txAddTarget(t,baseName(f.name));}catch(e){disposeTarget(t);throw e;}n++;}}catch(e){toast('Could not read '+f.name+': '+(e.message||e));}}
   if(n){tx.show=tx.show==='gen'||tx.show==='photo'?'mine':tx.show;renderTextures();toast('Added '+n+' texture'+(n>1?'s':'')+' to Textures › Yours.');}}
 /* a pack: every texture of yours in one file to share */
 async function txExportPack(){if(!tx.mine.length){toast('Import some textures first: the pack holds yours.');return;}
-  const items=[];for(const rec of tx.mine){const c=document.createElement('canvas');c.width=rec.w;c.height=rec.h;const id=c.getContext('2d').createImageData(rec.w,rec.h),d=rec.data;
+  const items=[];for(const meta of tx.mine){const rec=await txRead(meta),c=document.createElement('canvas');c.width=rec.w;c.height=rec.h;const id=c.getContext('2d').createImageData(rec.w,rec.h),d=rec.data;
     for(let i=0;i<d.length;i+=4){const a=d[i+3]||1;id.data[i]=Math.min(255,d[i]*255/a);id.data[i+1]=Math.min(255,d[i+1]*255/a);id.data[i+2]=Math.min(255,d[i+2]*255/a);id.data[i+3]=d[i+3];}
     c.getContext('2d').putImageData(id,0,0);items.push({name:rec.name,img:pxDataURL(c,'base')});}
   const r=await deliver('textures.gtex',await gmatBlob({app:'Gouache Studio',kind:'textures',v:1,items}));toast(deliveredText(r,'Texture pack ('+items.length+')'));}
 function txDelete(rec){confirmDlg('Delete texture','Delete “'+rec.name+'” from Textures? Layers that use it keep it.','Delete',()=>{const i=tx.mine.indexOf(rec);if(i>=0)tx.mine.splice(i,1);
-  const t=tx.cache.get('mine:'+rec.id);if(t){disposeTarget(t);tx.cache.delete('mine:'+rec.id);}tx.thumbs.delete('mine:'+rec.id);store.del(rec.id,'textures');renderTextures();});}
+  txCacheDrop('mine:'+rec.id);tx.thumbs.delete('mine:'+rec.id);store.del(rec.id,'textures');renderTextures();});}
 /* ---- the uses ---- */
 async function txToMask(it){const L=doc.active;if(!isLayer(L)&&!(L&&L.type==='group')){toast('Select a layer first: the texture goes into its mask.');return;}
   const t=txCopy(await txTarget(it)),r=msAdd(L,'image',{p:{name:it.name}},'Add '+it.name.toLowerCase()+' to the mask');if(!r){disposeTarget(t);return;}
@@ -124,9 +162,13 @@ function txCategory(id,name,category){return category||(/scratch|abrasion|brushe
 function txItems(){const g=TX_GEN.map(([id,name])=>({kind:'gen',id,name,category:txCategory(id,name)})),p=TX_PHOTO.map(([id,name,category])=>({kind:'photo',id,name,category:txCategory(id,name,category)})),m=tx.mine.map(rec=>({kind:'mine',id:rec.id,name:rec.name,category:txCategory(rec.id,rec.name,rec.category),rec}));
   const items=tx.show==='gen'?g:tx.show==='photo'?p:tx.show==='mine'?m:[...m,...p,...g];return items.filter(it=>(tx.category==='all'||it.category===tx.category)&&it.name.toLowerCase().includes(tx.query.trim().toLowerCase()));}
 /* thumbnails are made when a tile comes into view (the panel may be hidden) */
-const txSeen=new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting){txSeen.unobserve(e.target);txThumb(e.target._tx,e.target);}});
+const txObserved=new Set();
+function txObserve(img){txObserved.add(img);txSeen.observe(img);}
+function txForget(root){for(const img of root.querySelectorAll('img')){img._txCancelled=true;txSeen.unobserve(img);txObserved.delete(img);}}
+function txPruneObserved(){for(const img of txObserved)if(!img.isConnected){txSeen.unobserve(img);txObserved.delete(img);}}
+const txSeen=new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting){txSeen.unobserve(e.target);txObserved.delete(e.target);if(e.target.isConnected)txThumb(e.target._tx,e.target);}});
 function renderTextures(){const box=$('#txBody');if(!box)return;if(!tx.loaded){txLoad();}const tw=MT_SIZES[tx.size]||64;box.style.setProperty('--tw',tw+'px');
-  const tile=it=>{const img=el('img',{alt:'',width:72,height:72,draggable:'false'});img._tx=it;txSeen.observe(img);const b=el('button',{class:'mattile txtile',title:it.name+' (click: new layer. Right-click: more uses. Drag onto the layers)',id:'tx_'+it.kind+'_'+it.id,onclick:()=>txToLayer(it),oncontextmenu:e=>{e.preventDefault();txMenu(e,it);}},img,el('span',{text:it.name}));b._libDrag=['tex',it];return b;};
+  const tile=it=>{const img=el('img',{alt:'',width:72,height:72,draggable:'false'});img._tx=it;txObserve(img);const b=el('button',{class:'mattile txtile',title:it.name+' (click: new layer. Right-click: more uses. Drag onto the layers)',id:'tx_'+it.kind+'_'+it.id,onclick:()=>txToLayer(it),oncontextmenu:e=>{e.preventDefault();txMenu(e,it);}},img,el('span',{text:it.name}));b._libDrag=['tex',it];return b;};
   const items=txItems();
   const category=el('select',{id:'txCategory','aria-label':'Texture category'},el('option',{value:'all',text:'All categories'}),...TX_CATEGORIES.map(k=>el('option',{value:k,text:k})));category.value=tx.category;category.addEventListener('change',()=>{tx.category=category.value;try{localStorage.setItem('gs.txCategory',tx.category);}catch(e){}renderTextures();});
   const search=el('input',{type:'search',id:'txSearch',placeholder:'Search textures','aria-label':'Search textures',value:tx.query});search.addEventListener('input',()=>{tx.query=search.value;const start=search.selectionStart;renderTextures();const next=$('#txSearch');next.focus();try{next.setSelectionRange(start,start);}catch(e){}});
@@ -134,4 +176,4 @@ function renderTextures(){const box=$('#txBody');if(!box)return;if(!tx.loaded){t
     el('div',{class:'row wrap'},category,search),el('p',{class:'note',text:items.length+' textures'}),
     el('div',{class:'chips'},el('button',{class:'btn sm',id:'txFromCanvas',text:'From canvas…',title:'Turn the Paint canvas or the selection into a texture',onclick:()=>{if(ui.mode==='paint')dlgToTexture();else toast('Switch to the Paint tab first.');}}),el('button',{class:'btn sm',id:'txImport',text:'Import…',title:'Pictures, or a .gtex texture pack',onclick:txImport}),el('button',{class:'btn sm',id:'txExport',text:'Export pack…',title:'All your textures in one .gtex file to share',onclick:txExportPack}),el('div',{class:'seg matsize',role:'radiogroup','aria-label':'Texture thumbnail size'},...['s','m','l'].map(k=>el('button',{id:'txSize_'+k,type:'button',role:'radio','aria-checked':String(tx.size===k),text:k.toUpperCase(),class:tx.size===k?'on':'',onclick:()=>{tx.size=k;try{localStorage.setItem('gs.txSize',k);}catch(e){}renderTextures();}})))),
     items.length?el('div',{class:'matgrid',id:'txGrid'},...items.map(tile)):el('p',{class:'note',text:'No textures match these filters. Choose All categories or clear the search.'}),
-    el('p',{class:'note',text:'Click a texture for what to do with it. Sources: ambientCG, Poly Haven, Public Domain Pictures and OpenGameArt (CC0).'}));}
+    el('p',{class:'note',text:'Click a texture for what to do with it. Sources: ambientCG, Poly Haven, Public Domain Pictures and OpenGameArt (CC0).'}));txPruneObserved();}
