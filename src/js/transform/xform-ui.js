@@ -24,14 +24,14 @@ function xfCursor(hit,e){if(!hit)return '';if(hit.type==='move')return 'move';if
   if(hit.type==='corner')return (e&&(e.ctrlKey||e.metaKey))?'default':(hit.k%2?'nesw-resize':'nwse-resize');if(hit.type==='edge')return (e&&(e.ctrlKey||e.metaKey))?(hit.k%2?'ns-resize':'ew-resize'):(hit.k%2?'ew-resize':'ns-resize');return 'pointer';}
 function xfHover(e){const [sx,sy]=stageXY(e);cv.style.cursor=xfCursor(xfHit(sx,sy),e);}
 
-function xfPointerDown(e,ix,iy){const [sx,sy]=stageXY(e),hit=xfHit(sx,sy);
+function xfPointerDown(e,ix,iy){const [sx,sy]=stageXY(e);let hit=xfHit(sx,sy);if(hit&&xf.dragMode==='rotate'&&hit.type!=='pivot')hit={type:'rotate'};if(hit&&['skew','shear'].includes(xf.dragMode)&&hit.type==='corner')hit={type:'edge',k:hit.k<2?0:2};
   if(!hit){if(xf.warp){xf.warp.active=null;drawXfOverlay();}return;}
   const H0=rectToQuad(xf.rect,xf.q),Hi=inv3(H0);
   ptr={mode:'xf',id:e.pointerId,hit,q0:xf.q.slice(),H0,Hi,m0:[ix,iy],u0:apply3(Hi,ix,iy),pd:apply3(H0,xf.pivot[0],xf.pivot[1])};
   if(hit.type==='wanchor'){xf.warp.active=[hit.i,hit.j];ptr.last=[ix,iy];}
   if(hit.type==='whandle')ptr.last=[ix,iy];
   drawXfOverlay();}
-function xfPointerMove(e,ix,iy){const p=ptr,h=p.hit,R=xfLocalRect(),dx=ix-p.m0[0],dy=iy-p.m0[1],ctrl=e.ctrlKey||e.metaKey;
+function xfPointerMove(e,ix,iy){const p=ptr,h=p.hit,R=xfLocalRect(),dx=ix-p.m0[0],dy=iy-p.m0[1],ctrl=e.ctrlKey||e.metaKey||['distort','skew','shear'].includes(xf.dragMode);
   const fromLocal=pts=>pts.flatMap(q=>apply3(p.H0,q[0],q[1]));const u=apply3(p.Hi,ix,iy);
   if(h.type==='wanchor'||h.type==='whandle'){const W=xf.warp,ddx=ix-p.last[0],ddy=iy-p.last[1];p.last=[ix,iy];
     if(h.type==='wanchor')warpMoveAnchor(W,h.i,h.j,ddx,ddy);else{h.p[0]+=ddx;h.p[1]+=ddy;W.mesh=null;}
@@ -40,6 +40,7 @@ function xfPointerMove(e,ix,iy){const p=ptr,h=p.hit,R=xfLocalRect(),dx=ix-p.m0[0
   if(h.type==='move'){let mx=dx,my=dy;if(e.shiftKey){if(Math.abs(mx)>Math.abs(my))my=0;else mx=0;}xf.q=p.q0.map((v,i)=>v+(i%2?my:mx));}
   else if(h.type==='rotate'){let a=Math.atan2(iy-p.pd[1],ix-p.pd[0])-Math.atan2(p.m0[1]-p.pd[1],p.m0[0]-p.pd[0]);if(e.shiftKey)a=Math.round(a/(Math.PI/12))*(Math.PI/12);
     const c=Math.cos(a),s=Math.sin(a);xf.q=[];for(let i=0;i<8;i+=2){const x=p.q0[i]-p.pd[0],y=p.q0[i+1]-p.pd[1];xf.q.push(p.pd[0]+x*c-y*s,p.pd[1]+x*s+y*c);}}
+  else if(h.type==='corner'&&xf.dragMode==='perspective'){const k=h.k,pair=k^1;xf.q=p.q0.slice();xf.q[k*2]+=dx;xf.q[k*2+1]+=dy;xf.q[pair*2]-=dx;xf.q[pair*2+1]+=dy;}
   else if(h.type==='corner'&&ctrl){xf.q=p.q0.slice();xf.q[h.k*2]+=dx;xf.q[h.k*2+1]+=dy;}
   else if(h.type==='corner'){const c=R.LC[h.k],a=e.altKey?[R.cx,R.cy]:R.LC[(h.k+2)%4];let sx=(u[0]-a[0])/(c[0]-a[0]),sy=(u[1]-a[1])/(c[1]-a[1]);
     if(!e.shiftKey){const vx=c[0]-a[0],vy=c[1]-a[1],s=((u[0]-a[0])*vx+(u[1]-a[1])*vy)/(vx*vx+vy*vy);sx=sy=s;}
@@ -142,3 +143,9 @@ function updateGroupButtons(t){const G=window.__groupIcons;if(!G)return;
   for(const [pair,cur] of [[['gradient','bucket','gbucket'],ui.fillKind],[['dodge','burn'],ui.tonal]]){const b=document.querySelector('.tool[data-group="'+pair[0]+'"]');if(!b)continue;
     b.dataset.tool=cur;b.innerHTML='<svg viewBox="0 0 24 24">'+G[cur]+'</svg>';b.setAttribute('aria-pressed',String(pair.includes(t)));}}
 document.querySelectorAll('.tool[data-tool="gradient"],.tool[data-tool="dodge"]').forEach(b=>{b.dataset.group=b.dataset.tool;});
+
+function xfContextMenu(e){if(!xf||xf.move)return;e.preventDefault();closeMenu();openName=':transform';
+  const item=(label,fn,disabled=false)=>el('button',{class:'mi',role:'menuitem',disabled,onclick:()=>{closeMenu();if(xf)fn();}},el('span'),el('span',{text:label}),el('span'));
+  const set=mode=>{xf.dragMode=mode;buildBrushPanel();drawXfOverlay();};
+  pop.replaceChildren(...[['free','Free transform'],['scale','Scale'],['rotate','Rotate'],['skew','Skew'],['shear','Shear'],['distort','Distort'],['perspective','Perspective']].map(([mode,label])=>item((xf.dragMode===mode?'✓ ':'')+label,()=>set(mode),!!xf.warp)),item('Warp',()=>{if(!xf.warp)warpInit(ui.warpN);set('warp');xfRender(false);}),el('div',{class:'msep'}),item('Flip horizontal',()=>xfFlip(true),!!xf.warp),item('Flip vertical',()=>xfFlip(false),!!xf.warp),item('Rotate 90° clockwise',()=>xfRot90(1),!!xf.warp),el('div',{class:'msep'}),item('Apply transform',xfCommit),item('Cancel transform',xfCancel));
+  pop.hidden=false;pop.style.left=Math.max(4,Math.min(e.clientX,innerWidth-pop.offsetWidth-8))+'px';pop.style.top=Math.max(4,Math.min(e.clientY,innerHeight-pop.offsetHeight-8))+'px';pop.querySelector('button:not([disabled])')?.focus();}

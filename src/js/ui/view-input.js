@@ -117,7 +117,7 @@ function endPtr(e){if(!ptr||e.pointerId!==ptr.id)return;if(ptr.mode==='cvq'){ptr
   ptr=null;stage.classList.remove('panning');refreshCursor();$('#pBar').style.width='0%';}
 cv.addEventListener('pointerup',endPtr);cv.addEventListener('pointercancel',endPtr);cv.addEventListener('lostpointercapture',endPtr);
 cv.addEventListener('pointerleave',()=>{if(!ptr){lastPos=null;bc.hidden=true;}});
-cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('contextmenu',e=>{e.preventDefault();if(xf&&!xf.move)xfContextMenu(e);});
 cv.addEventListener('dblclick',e=>{if(ui.tool==='crop'&&crop){const [sx,sy]=stageXY(e);if(cropHit(sx,sy).type==='move')cropApply();}else if(xf&&!xf.move&&!xf.warp){const [sx,sy]=stageXY(e);const h=xfHit(sx,sy);if(h&&h.type==='move')xfCommit();}});
 work.addEventListener('wheel',e=>{e.preventDefault();const r=stage.getBoundingClientRect();const dy=e.deltaY*(e.deltaMode===1?16:1);zoomAt(Math.exp(-dy*(e.ctrlKey?.01:.0015)),e.clientX-r.left,e.clientY-r.top);},{passive:false});
 

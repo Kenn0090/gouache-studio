@@ -175,11 +175,106 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSize; uv.y=1.0-uv.y; float asp=uSize.x/uSi
     vec3 col=ramp(heat,uPal); col=mix(col,vec3(1.0,0.97,0.87),clamp(core*(0.65+bright*0.25),0.0,0.9));
     vec3 rgb=col*flame+ramp(0.95,uPal)*core*0.8+ramp(0.4,uPal)*halo+ramp(0.8,uPal)*sparks;
     res=vec4(min(rgb*uInt,vec3(al))+smokeCol*smoke*(1.0-al),al+smoke*(1.0-al)); }
+  else if(uKind>=19){ /* hand-shaped, graphic effects with crisp bands rather than photographic noise */
+    float age=uT,life=1.0-smoothstep(0.45,1.0,age),shape=0.0,heat=0.0;
+    float arot=rot*0.0174532925;vec2 q=mat2(cos(arot),sin(arot),-sin(arot),cos(arot))*pc/max(uScale,0.1);
+    float r=length(q),ang=atan(q.y,q.x);
+    // Attack effects use layered silhouettes, tapered fragments and a short explosive envelope.
+    float aa=1.2/min(uSize.x,uSize.y)*max(1.0,1.0/uScale),halo=0.0,white=0.0;
+    vec3 effectCol=ramp(.65,uPal);float cloud=0.0,cloudShade=0.0;
+    if(uKind==19||uKind==22){
+      float e=1.0-exp(-age*13.0),fireLife=1.0-smoothstep(.2,.64,age);life=smoothstep(0.0,.025,age)*(1.0-smoothstep(.7,1.0,age));
+      float field=1.0-smoothstep(.10*e,.13*e+aa,r),inner=1.0-smoothstep(.05*e,.08*e+aa,r);
+      // Anime flame tips break the rounded outline into an asymmetric pressure burst.
+      if(uKind==19){for(int k=0;k<9;k++){float f=float(k),h=hs(vec2(f,235.0)),theta=(f+h*.5)*6.2831853/9.0;
+        vec2 d=vec2(dot(q,vec2(cos(theta),sin(theta))),dot(q,vec2(-sin(theta),cos(theta))));
+        float len=(.21+.18*h)*e,t=d.x/max(len,.001),w=.048*wid*pow(max(0.0,1.0-t),1.7);
+        float tip=(1.0-smoothstep(w,w+aa,abs(d.y)))*step(0.0,t)*step(t,1.0);field=max(field,tip);}}
+
+      // Offset lobes swell outwards and tear apart, leaving an uneven fire silhouette.
+      for(int j=0;j<12;j++){float f=float(j),h=hs(vec2(f,231.0)),h2=hs(vec2(f,232.0));
+        float theta=f*6.2831853/12.0+h*.55,reach=(.045+.095*h)*e;
+        vec2 cen=vec2(cos(theta),sin(theta))*reach;
+        float rad=(.075+.075*h2)*wid*(.35+e)*(1.0-age*.45);if(uKind==19)rad*=1.0+.10*sin(theta*4.0+age*24.0);
+        float d=length(q-cen)/max(rad,.001);field=max(field,1.0-smoothstep(.92,1.0+aa/rad,d));
+        inner=max(inner,1.0-smoothstep(.5,.56+aa/rad,length(q-cen-vec2(-rad*.18,-rad*.25))/max(rad,.001)));
+        // Cooler smoke swells more slowly above and around the fire.
+        vec2 sc=cen*(1.0+age*.6)+vec2(0.0,-age*age*.14*hei);
+        float sr=rad*(.9+age*.9),sd=length(q-sc)/max(sr,.001);
+        float cm=(1.0-smoothstep(.92,1.0+aa/sr,sd));cloud=max(cloud,cm);
+        cloudShade=max(cloudShade,(1.0-smoothstep(.60,.67,sd))*.45+cm*.2);
+      }
+      float burn=smoothstep(.17,.45,age);
+      float cracks=fbmp(q*19.0-vec2(age*3.0,age*5.0)+uSeed,vec2(64.0));
+      field*=1.0-burn*smoothstep(.55,.73,cracks)*.85;
+      float flame=field*fireLife;shape=flame;white=inner*(1.0-smoothstep(.08,.32,age));
+      effectCol=mix(ramp(.46,uPal),ramp(.83,uPal),step(.5,inner));effectCol=mix(effectCol,vec3(1.0,.98,.88),white);
+      for(int j=0;j<48;j++){if(float(j)>=cnt)break;float f=float(j),h=hs(vec2(f,241.0)),h2=hs(vec2(f,242.0));
+        float theta=(f+h)*6.2831853/max(cnt,1.0);vec2 d=vec2(dot(q,vec2(cos(theta),sin(theta))),dot(q,vec2(-sin(theta),cos(theta))));
+        float at=(.08+age*(.42+.28*h)),len=.024+.060*(1.0-age)*h2,sz=.007*wid*(1.0-age);
+        float shard=1.0-smoothstep(.85,1.0,abs((d.x-at)/len)+abs(d.y/max(sz,.0005)));
+        shape=max(shape,shard*(1.0-smoothstep(.3,.8,age)));
+      }
+      float smokeLife=smoothstep(.15,.4,age)*(1.0-smoothstep(.65,1.0,age));cloud*=smokeLife;
+      float curl=.5+.5*sin(ang*3.0+r*38.0-age*5.0);
+      vec3 smokeCol=mix(vec3(.12,.10,.16),vec3(.36,.32,.41),step(.48,curl));
+      smokeCol=mix(smokeCol,vec3(.48,.43,.52),step(.82,curl)*.65);
+      effectCol=mix(smokeCol,effectCol,clamp(flame+white,0.0,1.0));shape=max(shape,cloud*.8);
+      float rd=abs(length(q*vec2(1.0,1.55))-(.05+e*.34));float shock=(1.0-smoothstep(.003,.003+aa,rd))*(1.0-smoothstep(.14,.4,age));
+      shape=max(shape,shock*.7);halo=exp(-r*r/.04)*glow*.22*fireLife;heat=.8;
+    }
+    else if(uKind==20||uKind==24){
+      life=1.0;float shade=0.0,highlight=0.0;
+      // Looping clusters drift and expand; each puff contains overlapping curled lobes.
+      for(int j=0;j<12;j++){if(float(j)>=cnt)break;float f=float(j),h=hs(vec2(f,251.0)),ph=fract(age*spd+f/max(cnt,1.0));
+        vec2 centre=vec2((h-.5)*.18*wid+sin(ph*6.2831853+h*6.28)*.035,.27-ph*.64*hei);
+        float radius=(.035+.115*ph)*wid,fade=smoothstep(0.0,.12,ph)*(1.0-smoothstep(.72,1.0,ph));
+        float dist=100.0;
+        for(int k=0;k<6;k++){float fk=float(k),theta=fk*1.0471976+ph*1.4+h*6.28;vec2 cc=centre+vec2(cos(theta),sin(theta))*radius*.32;
+          float rad=radius*(.72+.08*sin(fk+h*3.0));dist=min(dist,length(q-cc)/max(rad,.001));
+        }
+        float puff=(1.0-smoothstep(.97,1.0+aa/radius,dist))*fade;
+        float interior=(1.0-smoothstep(.85,.9,dist))*fade;
+        vec2 hd=(q-centre-vec2(-radius*.15,-radius*.22))/radius;
+        float lit=(1.0-smoothstep(.63,.68,length(hd)))*interior;
+        // A curved shadow cut and rim highlight give each puff a rolling, inked curl.
+        vec2 curl=(q-centre)/radius;float cr=length(curl-vec2(.05,.10)),ca=atan(curl.y-.10,curl.x-.05);
+        float cut=(1.0-smoothstep(.045,.070,abs(cr-.43)))*smoothstep(-2.4,-2.0,ca)*(1.0-smoothstep(.7,1.0,ca));
+        interior*=1.0-cut*.75;lit*=1.0-cut;
+        float over=puff*(1.0-shape);shade=shade*(1.0-puff)+interior*puff;highlight=highlight*(1.0-puff)+lit*puff;shape=max(shape,puff);
+      }
+      vec3 edge=uKind==24?vec3(.10,.13,.20):vec3(.18,.20,.28),body=uKind==24?vec3(.44,.52,.64):vec3(.48,.51,.60),hi=vec3(.76,.80,.88);
+      if(uPal>0){edge=ramp(.05,uPal)*.6;body=ramp(.45,uPal);hi=ramp(.9,uPal);}if(uPal==4){edge=uC1*.3;body=uC1;hi=uC2;}
+      effectCol=mix(edge,body,smoothstep(.35,.65,shade/max(shape,.001)));effectCol=mix(effectCol,hi,smoothstep(.45,.7,highlight/max(shape,.001))*.75);heat=.7;
+    }
+    else if(uKind==21||uKind==23){
+      float e=1.0-exp(-age*18.0);life=smoothstep(0.0,.025,age)*(1.0-smoothstep(.25,.85,age));
+      // Uneven knife-shaped rays with a separate white core and coloured rim.
+      for(int j=0;j<32;j++){if(float(j)>=cnt)break;float f=float(j),h=hs(vec2(f,221.0)),h2=hs(vec2(f,222.0));
+        float theta=(f+.45*h)*6.2831853/max(cnt,1.0);vec2 d=vec2(dot(q,vec2(cos(theta),sin(theta))),dot(q,vec2(-sin(theta),cos(theta))));
+        float len=(.17+.23*h)*e*(.6+spike*.5),base=.049*wid*(.5+h2),t=d.x/max(len,.001);
+        float w=base*pow(max(0.0,1.0-t),1.6);float ray=(1.0-smoothstep(w,w+aa,abs(d.y)))*step(0.0,t)*step(t,1.0);
+        shape=max(shape,ray);white=max(white,(1.0-smoothstep(w*.35,w*.35+aa,abs(d.y)))*step(.03,t)*step(t,.85));
+        float centre=.10+age*(.38+.20*h),sz=.012*(1.0-age)*wid;
+        float shard=abs((d.x-centre)/(.025+.045*age))+abs(d.y/max(sz,.001));
+        float fragment=(1.0-smoothstep(.8,1.0,shard))*smoothstep(.03,.10,age);shape=max(shape,fragment);white=max(white,fragment*.8);
+      }
+      float ringR=.045+e*.29,rd=abs(r-ringR*(1.0+.025*sin(ang*11.0+uSeed))),ringLife=1.0-smoothstep(.15,.55,age);
+      float ring=(1.0-smoothstep(.007*wid,.007*wid+aa,rd))*ringLife*(uKind==23?1.0:smoothstep(-.45,.2,sin(ang*3.0+age*7.0)));shape=max(shape,ring);white=max(white,ring*.6);
+      float core=(1.0-smoothstep(.018,.045,abs(q.x)+abs(q.y)))*(1.0-smoothstep(.12,.3,age));shape=max(shape,core);white=max(white,core);
+      halo=exp(-r*r/.012)*.32*glow*(1.0-smoothstep(.12,.5,age));heat=.65;
+    }
+    float al=clamp((shape+halo)*life*uInt,0.0,1.0);vec3 col=ramp(floor(clamp(heat,0.0,1.0)*3.0)/3.0,uPal);
+    if(uKind==24&&uPal==0)col=mix(vec3(.25,.28,.34),vec3(.75,.79,.85),heat);
+    if(uKind==21||uKind==23)col=mix(ramp(heat,uPal),vec3(1.0),clamp(white,0.0,1.0));
+    else col=effectCol;
+    res=vec4(col*al,al); }
+
   o=res; }`;
 let P_VFXG=null;
 /* the kinds, whether they loop, and which sliders each one has */
-const VFX_KINDS=[[0,'Fire'],[1,'Smoke'],[2,'Sparks'],[3,'Explosion'],[4,'Lightning'],[5,'Magic orb'],[6,'Shockwave'],[7,'Rain'],[8,'Snow'],[9,'Blood splat'],[10,'Ripples'],[11,'Slash'],[12,'Impact burst'],[13,'Dust puff'],[14,'Energy beam'],[15,'Bubbles'],[16,'Portal'],[17,'Sparkles'],[18,'Muzzle flash']];
-const VFX_ONESHOT=[3,6,9,11,12,13,18];
+const VFX_KINDS=[[0,'Fire'],[1,'Smoke'],[2,'Sparks'],[3,'Explosion'],[4,'Lightning'],[5,'Magic orb'],[6,'Shockwave'],[7,'Rain'],[8,'Snow'],[9,'Blood splat'],[10,'Ripples'],[11,'Slash'],[12,'Impact burst'],[13,'Dust puff'],[14,'Energy beam'],[15,'Bubbles'],[16,'Portal'],[17,'Sparkles'],[18,'Muzzle flash'],[19,'Anime explosion'],[20,'Anime smoke'],[21,'Anime impact'],[22,'Stylized explosion'],[23,'Stylized impact'],[24,'Stylized smoke']];
+const VFX_ONESHOT=[3,6,9,11,12,13,18,19,21,22,23];
 const VFX_SL={scale:['Size',.4,3,.05,1],turb:['Turbulence',0,1.5,.01,.5],inten:['Strength',.3,2,.01,1],spd:['Speed (loops per cycle)',1,4,1,1],wid:['Width',.3,2.5,.01,1],hei:['Height / reach',.3,2,.01,1],lean:['Lean / wind',-1,1,.01,0],
   cnt:['Amount',2,48,1,16],soft:['Softness',0,1,.01,.3],glow:['Glow',0,2,.01,.8],flick:['Flicker',0,1,.01,.4],cont:['Density contrast',0,1,.01,.5],bright:['Brightness',0,1.5,.01,.5],spike:['Spikes',0,1.5,.01,.5],rot:['Rotation',-180,180,1,0]};
 const VFX_SETS={0:['scale','turb','inten','spd','wid','hei','lean','soft','flick'],1:['scale','turb','inten','spd','wid','hei','lean','soft','cont','bright'],2:['scale','turb','inten','spd','wid','hei','lean','cnt','glow'],
@@ -187,8 +282,9 @@ const VFX_SETS={0:['scale','turb','inten','spd','wid','hei','lean','soft','flick
   7:['scale','inten','spd','wid','hei','lean','cnt'],8:['scale','turb','inten','spd','wid','lean','cnt','soft'],9:['scale','turb','inten','wid','hei','soft','spike','cnt','bright'],
   10:['scale','turb','inten','spd','wid','soft','cnt','glow'],11:['scale','turb','inten','wid','lean','soft','glow'],12:['scale','turb','inten','wid','soft','glow','cnt','spike'],13:['scale','turb','inten','wid','hei','lean','soft','cont','bright'],
   14:['scale','turb','inten','spd','wid','lean','glow','flick'],15:['scale','turb','inten','spd','wid','lean','cnt','soft'],16:['scale','turb','inten','spd','wid','soft','glow','cnt'],17:['scale','inten','spd','wid','hei','lean','cnt','glow'],
+  19:['scale','inten','wid','hei','cnt','glow','rot'],20:['scale','inten','cnt','wid','hei','spd','rot'],21:['scale','inten','cnt','wid','spike','glow','rot'],22:['scale','inten','cnt','wid','hei','glow','rot'],23:['scale','inten','cnt','wid','spike','glow','rot'],24:['scale','inten','cnt','wid','hei','spd'],
   18:['scale','inten','wid','hei','rot','soft','glow','cnt','spike','turb','bright']};
-const VFX_DEFS={0:{},1:{inten:1,cont:.5,bright:.5},2:{cnt:24},3:{scale:1},4:{cnt:4,wid:1,turb:.5,glow:1},5:{},6:{scale:1},7:{cnt:14,hei:1,wid:1},8:{cnt:14},9:{cnt:18,wid:1,hei:1},10:{cnt:4,pal:1,turb:.4},11:{wid:1,glow:.6},12:{cnt:10,spike:.8},13:{cont:.5,bright:.5},14:{pal:1,glow:1,turb:.4},15:{cnt:14,wid:1},16:{pal:3,cnt:16,glow:1},17:{cnt:20,glow:1},18:{cnt:7,wid:1,hei:1,soft:.35,glow:.65,spike:.65,turb:.65,bright:1,burst:0,flashTime:1,smoke:0}};
+const VFX_DEFS={19:{pal:0,wid:1,hei:1,cnt:20,glow:.7},20:{pal:0,cnt:5,wid:1.35,hei:1},21:{pal:0,cnt:12,spike:1,wid:1,glow:.7},22:{pal:3,cnt:12,wid:1.2,hei:.8,glow:.4},23:{pal:3,cnt:7,wid:1.6,spike:1.3,glow:.35,rot:25},24:{cnt:4,wid:1.5,hei:.85},0:{},1:{inten:1,cont:.5,bright:.5},2:{cnt:24},3:{scale:1},4:{cnt:4,wid:1,turb:.5,glow:1},5:{},6:{scale:1},7:{cnt:14,hei:1,wid:1},8:{cnt:14},9:{cnt:18,wid:1,hei:1},10:{cnt:4,pal:1,turb:.4},11:{wid:1,glow:.6},12:{cnt:10,spike:.8},13:{cont:.5,bright:.5},14:{pal:1,glow:1,turb:.4},15:{cnt:14,wid:1},16:{pal:3,cnt:16,glow:1},17:{cnt:20,glow:1},18:{cnt:7,wid:1,hei:1,soft:.35,glow:.65,spike:.65,turb:.65,bright:1,burst:0,flashTime:1,smoke:0}};
 /* Presets affect the look; frame count, colours, seed and replace choice stay with the user. */
 const VFX_MUZZLE_PRESETS=[
   ['Small flash',{burst:0,scale:.8,wid:.75,hei:.7,cnt:3,spike:.4,turb:.5,soft:.35,glow:.5,flashTime:.65,smoke:0}],
@@ -200,8 +296,8 @@ const VFX_MUZZLE_PRESETS=[
 const VFX_PALS=[[0,'Orange fire / blood'],[1,'Blue flame / ooze'],[2,'Toxic green / oil'],[3,'Magic purple'],[4,'Your colours']];
 function vfxOpts(kind){const o={kind,n:24,seed:3.7,pal:0,useBase:false,replace:false,c1:[1,.35,.05],c2:[1,.95,.6]};for(const k in VFX_SL)o[k]=VFX_SL[k][4];Object.assign(o,VFX_DEFS[kind]||{});if(VFX_ONESHOT.includes(kind))o.n=16;return o;}
 /* draw one frame of a generator; t is 0..1 (loops end just before 1, one-shots reach 1 on the last frame) */
-function vfxGenInto(T,opt,t,base){if(!P_VFXG)P_VFXG=program(VFXG_FS);
-  run(P_VFXG,T,{uSize:[doc.w,doc.h],uT:t,uSeed:opt.seed,uScale:opt.scale,uTurb:opt.turb,uInt:opt.inten,uKind:{int:opt.kind},uPal:{int:opt.pal},
+function vfxGenInto(T,opt,t,base){if(!VFX_ONESHOT.includes(opt.kind))t-=Math.floor(t);if(!P_VFXG)P_VFXG=program(VFXG_FS);
+  run(P_VFXG,T,{uSize:[T.w,T.h],uT:t,uSeed:opt.seed,uScale:opt.scale,uTurb:opt.turb,uInt:opt.inten,uKind:{int:opt.kind},uPal:{int:opt.pal},
     uP1:[opt.spd,opt.wid,opt.hei,opt.lean],uP2:[opt.cnt,opt.soft,opt.glow,opt.flick],uP3:[opt.cont,opt.bright,opt.spike,opt.rot||0],uC1:opt.c1||[1,.35,.05],uC2:opt.c2||[1,.95,.6],
     uBase:base?base.tex:dummy,uUseBase:base?1:0,uFlip:0,uMuzzle:[opt.burst||0,opt.flashTime??1,opt.smoke||0,0]});}
 function vfxGenerate(opt){const A=A_();if(!A)return;const n=clamp(Math.round(opt.n)||8,2,256);if(!animMemOk(n))return;
@@ -209,7 +305,7 @@ function vfxGenerate(opt){const A=A_();if(!A)return;const n=clamp(Math.round(opt
   const one=VFX_ONESHOT.includes(opt.kind),list=[];for(let i=0;i<n;i++){const F=newFrame();vfxGenInto(F.target,opt,one?i/(n-1):i/n,base);list.push(F);}
   if(base)release(base);
   putFrames(list,!!opt.replace,'Generate '+VFX_KINDS[opt.kind][1].toLowerCase());}
-function dlgGenerate(kind){if(!ensureAnimMode())return;const cur={o:vfxOpts(kind||0)};
+function dlgGenerate(kind,initial){if(!ensureAnimMode())return;const cur={o:initial||vfxOpts(kind||0)};
   const body=el('div',{class:'dlg-grid vfxdlg'});const pv=el('canvas',{class:'slicepv',width:240,height:240,style:'width:240px;height:240px;background:#111;border-radius:6px;align-self:center'});
   let t=0,tmp=null,stop=false,raf=0;
   const draw=()=>{const A=A_();if(!A)return;const o=cur.o;if(!tmp)tmp=makeTarget(doc.w,doc.h,8);const src=curFrame();const base=o.useBase&&contentBounds(src.target)?src.target:null;
@@ -219,7 +315,7 @@ function dlgGenerate(kind){if(!ensureAnimMode())return;const cur={o:vfxOpts(kind
   const tick=()=>{if(stop)return;t+=1/Math.max(2,cur.o.n)/1.5;try{draw();}catch(e){}raf=setTimeout(tick,90);};
   const kinds=el('div',{class:'chips'}),ctl=el('div',{class:'dlg-grid'});
   const hexOf=c=>'#'+c.map(v=>Math.round(clamp(v,0,1)*255).toString(16).padStart(2,'0')).join('');
-  const build=()=>{const o=cur.o;kinds.replaceChildren(...VFX_KINDS.map(([v,l])=>el('button',{class:'chip'+(o.kind===v?' on':''),text:l,onclick:()=>{const keep={replace:o.replace,useBase:o.useBase};cur.o=Object.assign(vfxOpts(v),keep);build();}})));
+  const build=()=>{const o=cur.o;kinds.replaceChildren(el('button',{class:'btn sm',text:'‹ VFX gallery',onclick:()=>{stop=true;clearTimeout(raf);if(tmp){disposeTarget(tmp);tmp=null;}dlgVfxGallery();}}),el('b',{text:VFX_KINDS[o.kind][1]}));
     const numN=el('input',{class:'num',type:'number',min:2,max:256,value:o.n,id:'vgN','aria-label':'Frames'});numN.addEventListener('input',()=>{o.n=clamp(+numN.value||8,2,256);});
     const presets=el('div',{class:'chips'},...[8,16,24,32,64].map(v=>el('button',{class:'chip',text:String(v),onclick:()=>{o.n=v;numN.value=v;}})));
     const pal=el('select',{id:'vgPal','aria-label':'Colours'});for(const [v,l] of VFX_PALS)pal.append(el('option',{value:String(v),text:l}));pal.value=String(o.pal);pal.onchange=()=>{o.pal=+pal.value;build();};
@@ -230,7 +326,7 @@ function dlgGenerate(kind){if(!ensureAnimMode())return;const cur={o:vfxOpts(kind
       const looks=el('select',{id:'vgMuzzlePreset','aria-label':'Flash preset'},el('option',{value:'',text:'Choose a preset…'}));VFX_MUZZLE_PRESETS.forEach(([name],i)=>looks.append(el('option',{value:String(i),text:name})));looks.onchange=()=>{if(looks.value==='')return;Object.assign(o,VFX_MUZZLE_PRESETS[+looks.value][1]);t=0;build();};
       muzzle.push(el('div',{class:'frow'},el('label',{for:'vgMuzzlePreset',text:'Preset'}),looks),el('div',{class:'frow'},el('label',{for:'vgBurst',text:'Burst style'}),style),makeSlider({id:'vgFlashTime',label:'Flash duration',min:.15,max:1,step:.01,value:o.flashTime,fmt:pct,onInput:v=>{o.flashTime=v;}}).el,makeSlider({id:'vgSmoke',label:'Smoke trail',min:0,max:1,step:.01,value:o.smoke,fmt:pct,onInput:v=>{o.smoke=v;}}).el);
     }
-    const sls=VFX_SETS[o.kind].map(k=>{const [generic,mn,mx,st]=VFX_SL[k];const lab=o.kind===18?({cnt:'Sparks',spike:'Flame spread',hei:o.burst?'Burst radius':'Reach',turb:'Flame breakup'}[k]||generic):generic;return makeSlider({id:'vg_'+k,label:lab,min:o.kind===18&&k==='cnt'?0:mn,max:mx,step:st,value:o[k],fmt:v=>st>=1?String(Math.round(v)):v.toFixed(2),onInput:v=>{o[k]=v;}}).el;});
+    const sls=VFX_SETS[o.kind].map(k=>{const [generic,mn,mx,st]=VFX_SL[k];const lab=o.kind===18?({cnt:'Sparks',spike:'Flame spread',hei:o.burst?'Burst radius':'Reach',turb:'Flame breakup'}[k]||generic):generic;return makeSlider({id:'vg_'+k,label:lab,min:o.kind===18&&k==='cnt'?0:mn,max:k==='cnt'&&[20,24].includes(o.kind)?12:k==='cnt'&&[21,23].includes(o.kind)?32:mx,step:st,value:o[k],fmt:v=>st>=1?String(Math.round(v)):v.toFixed(2),onInput:v=>{o[k]=v;}}).el;});
     ctl.replaceChildren(el('div',{class:'frow'},el('label',{for:'vgN',text:VFX_ONESHOT.includes(o.kind)?'Frames (plays once)':'Frames (it loops)'}),numN),presets,el('div',{class:'frow'},el('label',{for:'vgPal',text:'Colours'}),pal),
       ...(o.pal===4?[el('div',{class:'frow'},el('label',{text:'Dark / bright'}),c1,c2)]:[]),...muzzle,...sls,
       el('div',{class:'frow'},el('button',{class:'btn sm',id:'vgRand',text:'New random',onclick:()=>{o.seed=Math.random()*50;}}),el('button',{class:'btn sm',text:'Reset sliders',onclick:()=>{const keep={replace:o.replace,useBase:o.useBase,n:o.n,pal:o.pal,burst:o.burst};cur.o=Object.assign(vfxOpts(o.kind),keep);build();}})),
@@ -253,10 +349,10 @@ function seamlessLoop(k){const A=A_();if(!A)return;const [a,b]=animRange(),n=b-a
   toast('Loop made seamless: '+k+' frames now fade from the end into the start.');}
 function cutFrameGrid(){if(!ensureAnimMode())return;const c=frameCanvas(curFrame()),id=c.getContext('2d').getImageData(0,0,c.width,c.height);importSheet({w:c.width,h:c.height,data:id.data,bits:8});}
 (function buildVfxMenu(){const s=el('select',{class:'tlsel','aria-label':'VFX',title:'Fire, smoke and sparks generators, spin, seamless loop and cut into a grid'},el('option',{value:'',text:'VFX…'}),
-    ...[['g0','Fire…'],['g1','Smoke…'],['g2','Sparks…'],['g3','Explosion…'],['g4','Lightning…'],['g5','Magic orb…'],['g6','Shockwave…'],['g7','Rain…'],['g8','Snow…'],['g9','Blood splat…'],['g10','Ripples…'],['g11','Slash…'],['g12','Impact burst…'],['g13','Dust puff…'],['g14','Energy beam…'],['g15','Bubbles…'],['g16','Portal…'],['g17','Sparkles…'],['g18','Muzzle flash…']].map(([v,t])=>el('option',{value:v,text:t})),el('option',{value:'spin',text:'Spin this frame…'}),el('option',{value:'loop',text:'Make loop seamless…'}),el('option',{value:'cut',text:'Cut this frame into a grid…'}));
+    el('option',{value:'g0',text:'Browse effect gallery…'}),el('option',{value:'spin',text:'Spin this frame…'}),el('option',{value:'loop',text:'Make loop seamless…'}),el('option',{value:'cut',text:'Cut this frame into a grid…'}));
   s.addEventListener('change',()=>{const v=s.value;s.value='';s.blur();
-    if(v[0]==='g')dlgGenerate(+v.slice(1));
+    if(v[0]==='g')dlgVfxGallery(+v.slice(1));
     if(v==='spin')dlgNumber('Spin this frame','How many frames for one full turn?',16,2,256,n=>spinFrames(n,360));
     if(v==='loop')dlgNumber('Make loop seamless','How many frames should fade between the end and the start?',Math.max(1,Math.min(8,Math.floor((A_().frames.length-1)/4))),1,64,seamlessLoop);
     if(v==='cut')cutFrameGrid();});
-  const c=document.querySelector('#timeline .tlctrl');const pv=[...c.children].find(x=>x.tagName==='BUTTON'&&x.textContent==='Preview');c.insertBefore(s,pv||null);})();
+  const c=document.querySelector('#timeline .tlctrl');const pv=[...c.children].find(x=>x.tagName==='BUTTON'&&x.textContent==='Preview');c.insertBefore(el('button',{class:'btn sm',id:'vfxGalleryBtn',text:'VFX gallery…',onclick:()=>dlgVfxGallery()}),pv||null);c.insertBefore(s,pv||null);})();

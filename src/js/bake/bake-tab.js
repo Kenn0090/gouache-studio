@@ -240,14 +240,14 @@ function bakeV3Refresh(){if(bk.docBase&&v3.mapsDirty){const t=compositeMap('base
 function bakeRefresh(){bk.dirty=true;v3.dirty=true;requestRender(true);if(ui.mode==='bake')buildBakePanel();}
 
 /* ---------- loading models: button, menu or drag and drop ---------- */
-function bakeSetModel(key,m){const C=bakeCfg;C[key]=m;
+function bakeSetModel(key,m){if(bk.busy){toast("Wait for the bake to finish.");return;}const C=bakeCfg;C[key]=m;if(key==='high'){C.highMeshes=[m];bk.hgKey=null;bkHighViewFree();}
   toast('Loaded “'+m.name+'” as the '+(key==='high'?'high-poly':key==='low'?'low-poly':'cage')+': '+m.tris.toLocaleString()+' triangles.'+(key==='low'&&m.noUV?' It has no UVs, so nothing can be baked onto it.':'')+(key==='high'&&m.tris>6e6?' That is very large; baking will be slow.':''));
   if(key==='low')bakeSyncMesh();bakeCageDirty();if(ui.mode==='bake')buildBakePanel();}
 /* which slot a file belongs in, from its name (crate_low, crate_high, crate_cage) */
 function bakeGuessSlot(name){const n=baseName(name).toLowerCase();if(/cage/.test(n))return 'cage';if(/(^|[_\-\s.])(high|hi|hp)(poly)?($|[_\-\s.\d])|highpoly/.test(n))return 'high';if(/(^|[_\-\s.])(low|lo|lp)(poly)?($|[_\-\s.\d])|lowpoly/.test(n))return 'low';return null;}
 async function bakeDropFiles(files,key){files=[...files];const models=files.filter(f=>isModelName(f.name));if(!models.length){toast('Drop an OBJ, glTF, GLB or FBX model.');return;}
   for(const f of models){let k=key||bakeGuessSlot(f.name);if(!k){if(models.length>1){toast('Name the files “…_low” and “…_high”, or drop each one on its row.');continue;}k=bakeCfg.high?'low':'high';}
-    loadStart(f.name);try{bakeSetModel(k,await parseModelFile(f,files));}catch(e){console.warn(e);toast('“'+f.name+'” could not be loaded: '+(e.message||e));}finally{loadEnd();}}}
+    loadStart(f.name);try{const m=await parseModelFile(f,files);if(k==='high'&&bakeCfg.high)bakeAddHigh(m);else bakeSetModel(k,m);}catch(e){console.warn(e);toast('“'+f.name+'” could not be loaded: '+(e.message||e));}finally{loadEnd();}}}
 function bakeDropZone(node,key){node.addEventListener('dragover',e=>{if([...e.dataTransfer.types].includes('Files')){e.preventDefault();e.stopPropagation();node.classList.add('dropon');}});
   node.addEventListener('dragleave',()=>node.classList.remove('dropon'));
   node.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();node.classList.remove('dropon');bakeDropFiles(e.dataTransfer.files,key);});}
@@ -301,9 +301,9 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
   const row=(label,ctrl)=>el('div',{class:'frow'},el('label',{text:label}),ctrl);
   const modelSel=(key,opts)=>{const s=el('select',{'aria-label':key,id:'bk_'+key});const draw=()=>{s.replaceChildren(...opts().map(([v,t])=>el('option',{value:v,text:t})));s.value=C[key]&&C[key].name?'file':opts()[0][0];};
     const load=async()=>{try{const m=await bakePickModel();if(m)bakeSetModel(key,m);}catch(e){console.warn(e);toast('This model could not be loaded: '+(e.message||e));}draw();info();};
-    s.onchange=async()=>{if(s.value==='load'){await load();return;}if(s.value!=='file')C[key]=null;info();if(key==='low')bakeSyncMesh();};draw();
+    s.onchange=async()=>{if(s.value==='load'){await load();return;}if(s.value!=='file'){C[key]=null;if(key==='high')C.highMeshes=[];}info();if(key==='low')bakeSyncMesh();};draw();
     const btn=el('button',{class:'btn sm',text:'Load…',id:'bk_'+key+'Load',title:'Load a model file (OBJ, glTF, GLB, FBX), or drop one here'});btn.onclick=load;
-    const wrap=el('div',{class:'bkmodel'},s,btn);bakeDropZone(wrap,key);return wrap;};
+    const wrap=el('div',{class:'bkmodel'},s,btn);if(key==='high')wrap.append(el('button',{class:'btn sm',id:'bk_highAdd',text:'Add mesh…',disabled:bk.busy,onclick:async()=>{try{const m=await bakePickModel();if(m)bakeAddHigh(m);}catch(e){toast('Could not add this mesh: '+(e.message||e));}}}));bakeDropZone(wrap,key);return wrap;};
   const lowOpts=()=>[['view','Model in the 3D view ('+bakeViewModel().name+')'],...(C.low?[['file',C.low.name+' · '+C.low.tris.toLocaleString()+' triangles']]:[]),['load','Load a model file…']];
   const highOpts=()=>[['none','None: bake the low-poly on its own'],...(C.high?[['file',C.high.name+' · '+C.high.tris.toLocaleString()+' triangles']]:[]),['load','Load a model file…']];
   const cageOpts=()=>[['none','Push out by the front distance'],...(C.cage?[['file',C.cage.name]]:[]),['load','Load a cage model…']];
@@ -354,7 +354,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
   const go=el('button',{class:'btn primary',id:'bkGo',text:'Bake'});
   go.onclick=()=>{if(bk.busy){if(bk.prog)bk.prog.cancelled=true;return;}const L=bkLow();const ks=Object.keys(C.kinds).filter(k=>C.kinds[k]);if(!ks.length){toast('Pick at least one map.');return;}if(C.perMat!==false&&bkMats(L))runBakeSets(L,ks);else{bk.byMat=null;runBake(L,ks);}};
   const prog=el('div',{id:'bkProg',hidden:true},el('p',{class:'note'}),el('div',{class:'bakebar'},el('div')));
-  box.append(el('p',{class:'note',text:'Drop model files here: names ending in _low, _high and _cage go to the right place.'}),row('Low-poly',modelSel('low',lowOpts)),row('High-poly',modelSel('high',highOpts)),row('Cage',modelSel('cage',cageOpts)),
+  box.append(el('p',{class:'note',text:'Drop model files here: names ending in _low, _high and _cage go to the right place.'}),row('Low-poly',modelSel('low',lowOpts)),row('High-poly',modelSel('high',highOpts)),bakeHighList(),row('Cage',modelSel('cage',cageOpts)),
     chk('bkMatch','Match parts by name (“_low” bakes only against its “_high”)',C.match,v=>{C.match=v;info();}),
     el('div',{class:'chips'},chk('bkShowCage','Show the cage on the model',bk.showCage,v=>{bk.showCage=v;v3.dirty=true;requestRender();})),
     ...(C.high?[row('Show high-poly',(()=>{const g=seg([['off','Off'],['over','See-through'],['only','Only']],bk.showHigh||'off',v=>{bk.showHigh=v;v3.dirty=true;requestRender();},'Show the high-poly');g.id='bkShowHigh';return g;})())]:[]),
@@ -383,3 +383,20 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
   const bt=(t,f,dis)=>{const b=el('button',{class:'btn sm',text:t});b.disabled=!!dis;b.onclick=f;return b;};
   box.append(el('div',{class:'row wrap'},bt('Estimate offset',bakeEstimateOffset,!C.high||bk.busy),bt('Clear skew',()=>bakeClearMap('skew'),!bk.maps.skew),bt('Clear offset',()=>bakeClearMap('offset'),!bk.maps.offset)));
   bakeProgUI();}
+
+/* Keep the file coordinates of every high mesh; normalising each import separately must not move it. */
+function bakeMergeHigh(list){if(list.length===1)return list[0];if(!list.length)return null;
+  const first=list[0],N=list.reduce((n,m)=>n+m.pos.length/3,0),T=list.reduce((n,m)=>n+m.idx.length/3,0);
+  const r={name:list.length+' high-poly meshes',pos:new Float32Array(N*3),nrm:new Float32Array(N*3),uv:new Float32Array(N*2),tan:new Float32Array(N*4),idx:new Uint32Array(T*3),triPart:new Uint32Array(T),triMat:new Uint32Array(T),partNames:[],matNames:[],xf:first.xf,verts:N,tris:T,radius:0};
+  for(const key of ['vcol','pcol'])if(list.some(m=>m[key])){r[key]=new Float32Array(N*4);r[key].fill(1);}
+  if(list.some(m=>m.triCol)){r.triCol=new Float32Array(T*3);r.triCol.fill(1);}
+  let vo=0,to=0;for(const m of list){const n=m.pos.length/3,t=m.idx.length/3,a=bakeAlign(m,first);
+    r.pos.set(a.pos,vo*3);r.nrm.set(m.nrm,vo*3);r.uv.set(m.uv,vo*2);r.tan.set(m.tan,vo*4);
+    for(let i=0;i<m.idx.length;i++)r.idx[to*3+i]=m.idx[i]+vo;
+    for(const [names,ids] of [['partNames','triPart'],['matNames','triMat']]){const local=m[names]&&m[names].length?m[names]:[m.name],map=local.map(name=>{let i=r[names].indexOf(name);if(i<0){i=r[names].length;r[names].push(name);}return i;});for(let i=0;i<t;i++)r[ids][to+i]=map[m[ids]?m[ids][i]:0]||0;}
+    for(const key of ['vcol','pcol'])if(m[key]&&r[key])r[key].set(m[key],vo*4);if(m.triCol&&r.triCol)r.triCol.set(m.triCol,to*3);
+    vo+=n;to+=t;}
+  for(let i=0;i<r.pos.length;i+=3)r.radius=Math.max(r.radius,Math.hypot(r.pos[i],r.pos[i+1],r.pos[i+2]));return r;}
+function bakeAddHigh(m){if(bk.busy){toast('Wait for the bake to finish.');return;}const list=(bakeCfg.highMeshes|| (bakeCfg.high?[bakeCfg.high]:[])).concat(m);const high=bakeMergeHigh(list);bakeCfg.highMeshes=list;bakeCfg.high=high;bk.hgKey=null;bkHighViewFree();bakeRefresh();toast('Added '+m.name+' · '+list.length+' high-poly meshes.');}
+function bakeHighList(){const box=el('div',{class:'highmeshes',id:'bkHighMeshes'}),list=bakeCfg.highMeshes||(bakeCfg.high?[bakeCfg.high]:[]);
+  list.forEach((m,i)=>box.append(el('div',{class:'highmesh'},el('span',{text:m.name+' · '+m.tris.toLocaleString()+' triangles',title:m.name}),el('button',{class:'btn sm',text:'×','aria-label':'Remove high-poly '+m.name,disabled:bk.busy,onclick:()=>{if(bk.busy)return;const next=list.filter((_,j)=>j!==i);const high=bakeMergeHigh(next);bakeCfg.highMeshes=next;bakeCfg.high=high;bk.hgKey=null;bkHighViewFree();bakeRefresh();}}))));return box;}

@@ -124,3 +124,7 @@ Every stroke can be undone. **Clear skew** and **Clear offset** start over. Both
 
 ## Exporting for DirectX engines
 Bakes are stored as OpenGL normals, like everything else in the app. Pick the engine preset in *File › Export textures for a game engine* and DirectX normals (Unreal) are flipped on export.
+
+## Multiple high-poly files
+
+Use **Add mesh…** beside High-poly to add another file. Each file keeps its original position in the model. Remove individual files with × in the list. **Load…** replaces the high-poly set; dropping another `_high` file adds it.

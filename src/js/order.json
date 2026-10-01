@@ -36,6 +36,7 @@
         "anim/anim-io",
         "anim/anim-fx",
         "anim/anim-vfx",
+        "anim/anim-vfx-gallery",
         "files/helpers",
         "files/loading",
         "files/decoders",

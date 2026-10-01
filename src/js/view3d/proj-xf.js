@@ -77,8 +77,8 @@ function pxfFields(get,edit,mode,onReset,size){const til=!size,X=get(),is3=pxfIs
   else box.append(row('Offset',num('pxf_t0','Offset U',X.t[0],.01,(x,v)=>{x.t[0]=v;}),num('pxf_t1','Offset V',X.t[1],.01,(x,v)=>{x.t[1]=v;})),
     row('Turn',num('pxf_r2','Turn',X.r[2],1,(x,v)=>{x.r[2]=v;})),
     rowL(til?'Tiling':'Size',num('pxf_s0',(til?'Tiling':'Size')+' U',pxfShow(X.s[0],til),til?.1:.05,(x,v)=>pxfSetScale(x,0,v,2,til)),num('pxf_s1',(til?'Tiling':'Size')+' V',pxfShow(X.s[1],til),til?.1:.05,(x,v)=>pxfSetScale(x,1,v,2,til))));
-  /* (0.34, Kenn) a slider for the tiling: log scale from 0.1 to 30 repeats; with the lock on it moves every axis */
-  if(til){const cnt=is3?3:2,sl=el('input',{type:'range',id:'pxf_tslide',min:'-1',max:'1.48',step:'0.01',value:String(Math.log10(pxfShow(X.s[0],true))),'aria-label':'Tiling slider',title:'Tiling: drag to repeat the picture more or less'});
+  /* (0.34, Kenn) a slider for the tiling: log scale from 0.1 to 1000 repeats; with the lock on it moves every axis */
+  if(til){const cnt=is3?3:2,sl=el('input',{type:'range',id:'pxf_tslide',min:'-1',max:'3',step:'0.01',value:String(Math.log10(pxfShow(X.s[0],true))),'aria-label':'Tiling slider',title:'Tiling: drag to repeat the picture more or less'});
     sl.addEventListener('input',()=>{const v=Math.pow(10,parseFloat(sl.value));edit(x=>pxfSetScale(x,0,v,cnt,true));const Y=get();for(let i=0;i<cnt;i++){const e=document.getElementById('pxf_s'+i);if(e)e.value=String(Math.round(1000/(Y.s[i]||1))/1000);}});
     [...box.querySelectorAll('.pxfrow')].pop()?.after(el('div',{class:'pxfrow tsl'},sl));}
   for(const i of box.querySelectorAll('input[id^=pxf_s]'))i.dataset.til=til?'1':'0';
