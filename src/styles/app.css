@@ -1043,3 +1043,6 @@ body:not(.animmode):not(.bakemode):not(.convmode):not(.brushmode) .dkbody>.sec[a
 .btsave{display:grid;gap:5px}.btsaved summary{cursor:pointer;color:var(--muted);padding:4px 0}
 
 #btBody{gap:6px}.btsave:not(:has(.btn.sm)){grid-template-columns:minmax(0,1fr) auto;align-items:center}.btsave .frow{min-width:0}.btsave input{box-sizing:border-box;min-width:0}
+
+/* Frame thumbnails keep a complete row above the original side-by-side effects area. */
+#timeline>.tlscroll{flex:0 0 auto;min-height:calc(var(--fcs,72px) + 28px)}
