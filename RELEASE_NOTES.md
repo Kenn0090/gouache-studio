@@ -1,9 +1,8 @@
-Editable smart materials, new mask generators, and slider fixes.
+More direct mask controls and viewport shortcuts in 3D Paint.
 
-- Six Workshop smart materials with matching smart masks: worn painted metal, leather, wood, concrete, stylized armour and comic book.
-- Light masks with adjustable direction, elevation, wrap and baked AO shading.
-- Linear and radial gradients with smooth or stepped falloff and adjustable endpoints.
-- Comic shading with ink shadows, shading bands and halftone dots.
-- Reverse existing gradient masks by swapping their endpoints.
-- Keep the recolour Colours slider working throughout a drag.
-- Make the existing Slash Softness control change the preview.
+- Right-click a mask thumbnail for Generators and Anchor points.
+- Add a generator, create a layer anchor, or read an existing anchor directly from the menu.
+- Press M to return to Lit material view without changing the paint channel, tool or camera.
+- Delete and Backspace remove selected layers in 3D Paint, including with an active selection or mask.
+- New texture sets start with a greyish-white non-metal base material.
+- Escape closes layer context menus and their submenus.

@@ -78,7 +78,7 @@ function renderLayers(){
       fx.addEventListener('pointerdown',e=>e.stopPropagation());fx.addEventListener('click',e=>{e.stopPropagation();selectOnly(n);updateRowClasses();dlgLayerStyle();});row.append(fx);}
     row._node=n;
     row.addEventListener('pointerdown',e=>layerPointerDown(e,n,row));
-    row.addEventListener('contextmenu',e=>{e.preventDefault();if(!doc.sel.has(n)){selectOnly(n);updateRowClasses();syncLayerProps();}layerMenu(e,n);});
+    row.addEventListener('contextmenu',e=>{e.preventDefault();const maskHit=!!(n.mask&&e.target.closest('.mthumb'));if(maskHit||!doc.sel.has(n)){selectOnly(n);if(maskHit){n.editMask=true;ui.msSel=null;}updateRowClasses();syncLayerProps();}layerMenu(e,n);});
     row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selectOnly(n);updateRowClasses();}});
     name.addEventListener('dblclick',e=>{e.stopPropagation();const inp=el('input',{value:n.name,'aria-label':'Name'});name.replaceChildren(inp);inp.focus();inp.select();
       inp.addEventListener('pointerdown',ev=>ev.stopPropagation());
@@ -234,6 +234,9 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
   const it=(t,f,key,dis)=>{const b=el('button',{class:'mi',role:'menuitem',disabled:!!dis,onclick:()=>{pop.hidden=true;flyHide();f();}},el('span'),el('span',{text:t}),el('span',{text:key||''}));return b;};
   const head=t=>el('div',{class:'mh',text:t});const sep=()=>el('div',{class:'msep'});
   const items=[];
+  if(ui.mode==='p3d'&&n.mask&&!n.fx&&e.target&&e.target.closest('.mthumb')){
+    const generators=flyItem('Generators',()=>MS_GENS.map(([k,title])=>it(title,()=>{selectOnly(n);msAdd(n,'gen',{p:msGenDefaults(k)});})));generators.setAttribute('aria-label','Generators');
+    const anchors=flyItem('Anchor points',()=>{const names=msAnchorNames();return [it('Add anchor point to this layer',()=>{selectOnly(n);cfxAddAnchor(n);},null,!lay),sep(),head('Use an anchor in this mask'),...(names.length?names.map(name=>it('From “'+name+'”',()=>{selectOnly(n);msAdd(n,'anchor',{p:{name,ch:'height',inv:false}});})): [it('No anchor points yet',()=>{},null,true)])];});anchors.setAttribute('aria-label','Anchor points');items.push(generators,anchors,sep());}
   if(!anim){if(n.mask)items.push(it('Delete mask',cmdDeleteMask),...(typeof msHas==='function'&&msHas(n)?[it('Flatten mask (keep the result, drop its rows)',()=>msFlatten(n))]:[]));else items.push(it('Add mask',()=>cmdAddMask(1)),it('Add black mask (hide all)',()=>cmdAddMask(0)),...(lay&&typeof liveMaskStart==='function'?[it('Live mask…',()=>liveMaskStart(n))]:[]));}
   if(lay&&!anim){items.push(sep(),flyItem('Layer style',()=>[...STYLE_ORDER.map(k=>it(STYLE_DEFS[k].label+(n.styles&&n.styles[k]&&n.styles[k].on?' ✓':''),()=>dlgLayerStyle(k,true))),sep(),it('All styles…',()=>dlgLayerStyle())]));
     items.push(sep(),it('Filter this layer ▸',()=>{selectOnly(n);n.editMask=false;renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);}),

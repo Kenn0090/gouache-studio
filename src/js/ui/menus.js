@@ -70,7 +70,7 @@ function openMenu(name){closeMenu();const b=menuBtns[name];
   pop.replaceChildren(...menuList(MENUS[name],name));
   if(name==='File'&&typeof fileMenuExtras==='function')fileMenuExtras(pop);
   const r=b.getBoundingClientRect();pop.hidden=false;pop.style.left=Math.min(r.left,window.innerWidth-pop.offsetWidth-8)+'px';pop.style.top=(r.bottom+3)+'px';b.setAttribute('aria-expanded','true');openName=name;}
-function closeMenu(){flyHide();if(!openName)return;pop.hidden=true;menuBtns[openName]?.setAttribute('aria-expanded','false');openName=null;}
+function closeMenu(){flyHide();pop.hidden=true;if(!openName)return;menuBtns[openName]?.setAttribute('aria-expanded','false');openName=null;}
 document.addEventListener('pointerdown',e=>{if(openName&&!pop.contains(e.target)&&!flyEl.contains(e.target)&&!$('#menus').contains(e.target))closeMenu();});
 pop.addEventListener('keydown',e=>{const items=[...pop.querySelectorAll('.mi:not([disabled])')];const i=items.indexOf(document.activeElement);
   if(e.key==='ArrowDown'){e.preventDefault();(items[i+1]||items[0]).focus();}if(e.key==='ArrowUp'){e.preventDefault();(items[i-1]||items[items.length-1]).focus();}});

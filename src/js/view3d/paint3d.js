@@ -11,8 +11,8 @@ const P3_MAPS=['base','rough','metal','height','normal'];
 /* a new texture set: the PBR maps, a base material (a fill layer) and an empty layer to paint on */
 function p3Setup(name){doc.maps=P3_MAPS.slice();doc.workflow='metal';doc.name=name||'3D Paint';syncTargets();
   const P=paintLayers()[0];P.name='Paint';
-  const B=newLayerObj('Base material');doc.count--;B.fill=fillDefaults();Object.assign(B.fill.maps.base,{on:true,src:'value',c:[.72,.72,.72]});
-  Object.assign(B.fill.maps.rough,{on:true,v:.55});Object.assign(B.fill.maps.metal,{on:true,v:0});B.fill.maps.height.on=false;fillRender(B);
+  const B=newLayerObj('Base material');doc.count--;B.fill=fillDefaults();Object.assign(B.fill.maps.base,{on:true,src:'value',c:[.82,.82,.82]});
+  Object.assign(B.fill.maps.rough,{on:true,v:.6});Object.assign(B.fill.maps.metal,{on:true,v:0});B.fill.maps.height.on=false;fillRender(B);
   insertNode(B,doc.root,0);selectOnly(P);hist.undo=[];hist.redo=[];doc.p3=true;}
 function p3dEnter(){p3.was={on:v3.on,paintOn:v3.paintOn,imported:v3.imported,cam:Object.assign({},v3.cam),tex:v3.tex,ws:dk.ws};if(v3.pop)pop3D(false,true);
   /* its workspace comes with the tab (dkModeWs in dock.js) */
@@ -50,7 +50,7 @@ function p3Resize(n){if(n===doc.w&&n===doc.h)return;if(n>MAX_DIM){toast('This co
    The active set's canvas is the live document; the others are set aside (docState) with the textures they
    last showed on the model, so the whole model draws with every set's own maps. Only the active set takes paint. */
 const p3Range=()=>{const m=v3.mesh,r=m&&m.setRanges;const S=p3.sets[p3.cur];return (r&&S&&r.find(x=>x.name===S.name))||{start:0,count:m?m.idx.length/3:0};};
-function p3Blank(){if(!p3.blank){const t=makeTarget(4,4,8,true);clearTarget(t,[.72,.72,.72,1]);p3.blank={base:t};}return p3.blank;}
+function p3Blank(){if(!p3.blank){const t=makeTarget(4,4,8,true);clearTarget(t,[.82,.82,.82,1]);p3.blank={base:t};}return p3.blank;}
 /* what to draw: every set's triangles with that set's textures */
 function p3DrawList(){const m=v3.mesh,rs=m&&m.setRanges;if(!rs||rs.length<2){if(p3.sets.length===1&&p3.sets[0].hidden)return [];return [{T:v3.tex,start:0,count:m?m.idx.length/3:0,sh:v3ShadeOf(doc),thick:doc.meshMaps&&doc.meshMaps.thick||null}];}
   return rs.filter(r=>{const S=p3.sets.find(x=>x.name===r.name);return !(S&&S.hidden);}).map(r=>{const i=p3.sets.findIndex(S=>S.name===r.name);const T=i===p3.cur?v3.tex:(i>=0&&p3.sets[i].tex&&p3.sets[i].tex.base?p3.sets[i].tex:p3Blank());
@@ -285,8 +285,11 @@ function p3mmSet(k){p3mm.k=k;p3mmBadge();v3.dirty=true;requestRender(true);}
 function p3mmCycle(dir){const K=p3mmKeys();if(!K.length){toast('No mesh maps yet: bake them (Bake mesh maps…) or send bakes from the Bake tab. Then C steps through them.');return;}
   const L=[null,...K],i=Math.max(0,L.indexOf(p3mm.k)),k=L[(i+dir+L.length)%L.length];p3mmSet(k);
   toast('Showing: '+(k?P3_MESHMAP_NAMES[k]||k:'the material'));}
+function p3ShowLit(){closeMenu();ui.viewMask=false;libIdShow(false);p3mmSet(null);v3s().unlit=false;v3.rt=false;setView('material');build3dPane();v3.mapsDirty=true;v3.dirty=true;requestRender(true);}
 window.addEventListener('keydown',e=>{if(ui.mode!=='p3d'||!modal.hidden||isTypingTarget(e.target)||e.ctrlKey||e.metaKey||e.altKey)return;
-  if(e.key==='c'||e.key==='C'){e.preventDefault();e.stopImmediatePropagation();p3mmCycle(e.shiftKey?-1:1);}
+  if((e.key==='m'||e.key==='M')&&!e.shiftKey){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat)p3ShowLit();}
+  else if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat){closeMenu();cmdDelete();}}
+  else if(e.key==='c'||e.key==='C'){e.preventDefault();e.stopImmediatePropagation();p3mmCycle(e.shiftKey?-1:1);}
   else if(e.key==='Escape'&&p3mm.k&&!ui.viewMask){e.preventDefault();e.stopImmediatePropagation();p3mmSet(null);}},true);
 function p3ReceiveBake(mesh,by,ks,asLayers){if(ui.mode!=='p3d'&&!setMode('p3d',true))return;
   if(mesh&&mesh!==v3.imported){v3.imported=p3.imported=mesh;v3s().model='imported';v3.mesh=null;v3LoadModel();}

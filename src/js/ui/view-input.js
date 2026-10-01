@@ -123,7 +123,7 @@ work.addEventListener('wheel',e=>{e.preventDefault();const r=stage.getBoundingCl
 
 window.addEventListener('keydown',e=>{
   const t=e.target,tag=(t.tagName||'').toLowerCase();const typing=(tag==='input'&&!['range','checkbox','radio','button'].includes(t.type))||tag==='select'||tag==='textarea';
-  if(e.key==='Escape'){if(openName){closeMenu();return;}if(!modal.hidden){$('#dlgCancel').click();return;}}
+  if(e.key==='Escape'){if(openName||!pop.hidden||!flyEl.hidden){closeMenu();return;}if(!modal.hidden){$('#dlgCancel').click();return;}}
   if(!modal.hidden||typing)return;
   if(kbHandle(e))return;
   const m=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();
