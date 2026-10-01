@@ -76,12 +76,13 @@ function xfCompose(v){const th=v.ang*Math.PI/180,co=Math.cos(th),si=Math.sin(th)
   const L=[co*sx,co*k*sy-si*sy,si*sx,si*k*sy+co*sy],R=xfLocalRect();
   xf.q=R.LC.flatMap(p=>{const x=p[0]-xf.pivot[0],y=p[1]-xf.pivot[1];return [v.x+L[0]*x+L[1]*y,v.y+L[2]*x+L[3]*y];});}
 let xfFields=null;ui.xfLink=true;
-function xfPanelSync(){if(!xfFields)return;const v=xf&&!xf.warp?xfDecompose():null;
-  for(const [k,inp,fmt] of xfFields){inp.disabled=!v;if(document.activeElement!==inp)inp.value=v?fmt(v[k]):'';}
+function xfPanelSync(){const v=xf&&!xf.warp?xfDecompose():null;
+  for(const [k,inp,fmt] of xfFields||[]){inp.disabled=!v;if(document.activeElement!==inp)inp.value=v?fmt(v[k]):'';}
+  if(typeof xfQuickSync==='function')xfQuickSync();
   const n=$('#xfNote');if(n)n.textContent=xf&&xf.warp?'':(v?'':'Distorted: drag the handles, or use the buttons.');}
 function buildXfPanel(box){$('#brushTitle').textContent=xf.warp?'Warp':'Transform';xfFields=null;
   const sel_=el('select',{id:'xfInterp','aria-label':'Resampling'},...[['2','Smooth (bicubic)'],['1','Bilinear'],['0','Nearest (pixel art)']].map(([v,t])=>el('option',{value:v,text:t})));sel_.value=String(ui.xfInterp);
-  sel_.addEventListener('change',()=>{ui.xfInterp=+sel_.value;xfRender(false);});
+  sel_.addEventListener('change',()=>{ui.xfInterp=+sel_.value;xfRender(false);xfQuickSync();});
   if(!xf.warp){const mk=(k,label,fmt,parse)=>{const inp=el('input',{class:'num',type:'number',id:'xf_'+k,step:'any','aria-label':label});
       inp.addEventListener('change',()=>{const v=xfDecompose();if(!v)return;const n=parseFloat(inp.value);if(!isFinite(n))return;const old=v[k];v[k]=parse(n);
         if(ui.xfLink&&(k==='sx'||k==='sy')&&old){const r=v[k]/old;if(k==='sx')v.sy*=r;else v.sx*=r;}
@@ -89,13 +90,13 @@ function buildXfPanel(box){$('#brushTitle').textContent=xf.warp?'Warp':'Transfor
       return [k,inp,fmt,label];};
     xfFields=[mk('x','X',v=>v.toFixed(1),n=>n),mk('y','Y',v=>v.toFixed(1),n=>n),mk('sx','W %',v=>(v*100).toFixed(1),n=>n/100),mk('sy','H %',v=>(v*100).toFixed(1),n=>n/100),mk('ang','Angle °',v=>v.toFixed(1),n=>n),mk('skew','Skew °',v=>v.toFixed(1),n=>n)];
     const grid=el('div',{class:'xfgrid'});for(const [k,inp,,label] of xfFields)grid.append(el('label',{for:inp.id,text:label}),inp);
-    box.append(grid,chk('xfLink','Keep W and H proportional when typing',ui.xfLink,v=>{ui.xfLink=v;}),el('div',{class:'sub',id:'xfNote'}));
+    box.append(grid,chk('xfLink','Keep W and H proportional when typing',ui.xfLink,v=>{ui.xfLink=v;xfQuickSync();}),el('div',{class:'sub',id:'xfNote'}));
     box.append(el('div',{class:'frow'},
       el('button',{class:'btn sm',text:'Flip ↔',title:'Flip horizontally',onclick:()=>xfFlip(true)}),el('button',{class:'btn sm',text:'Flip ↕',title:'Flip vertically',onclick:()=>xfFlip(false)}),
       el('button',{class:'btn sm',text:'↻ 90°',title:'Rotate 90° clockwise',onclick:()=>xfRot90(1)}),el('button',{class:'btn sm',text:'↺ 90°',title:'Rotate 90° counter-clockwise',onclick:()=>xfRot90(-1)})));}
   box.append(el('div',{class:'frow'},el('label',{for:'xfInterp',text:'Resampling'}),sel_));
   const gs=el('select',{id:'xfGrid','aria-label':'Warp grid'},...[2,3,4,5,6,8].map(n=>el('option',{value:String(n),text:n+' × '+n})));gs.value=String(ui.warpN);
-  gs.addEventListener('change',()=>{ui.warpN=+gs.value;if(xf.warp){const q=xf.q;warpInit(ui.warpN);xfRender(false);drawXfOverlay();}});
+  gs.addEventListener('change',()=>{ui.warpN=+gs.value;if(xf.warp){warpResize(ui.warpN);xfRender(false);drawXfOverlay();xfPanelSync();}});
   if(!xf.warp)box.append(el('div',{class:'frow'},el('button',{class:'btn sm',text:'Warp',title:'Bend the image with a grid of curved cells',onclick:()=>{warpInit(ui.warpN);xfRender(false);buildBrushPanel();drawXfOverlay();}}),el('label',{for:'xfGrid',text:'Grid'}),gs));
   else box.append(el('div',{class:'frow'},el('label',{for:'xfGrid',text:'Grid'}),gs,el('button',{class:'btn sm',text:'Reset warp',onclick:()=>{warpInit(ui.warpN);xfRender(false);drawXfOverlay();}})));
   box.append(el('div',{class:'frow'},el('button',{class:'btn sm primary',text:'Apply (Enter)',onclick:xfCommit}),el('button',{class:'btn sm',text:'Cancel (Esc)',onclick:xfCancel})));
@@ -108,13 +109,13 @@ function xfRot90(dir){const H=rectToQuad(xf.rect,xf.q),pd=apply3(H,xf.pivot[0],x
 function freeTransform(){if(xf)return;if(xfStart()){xfRender(false);toast('Transform: drag the handles, Enter applies, Esc cancels.');}}
 
 /* ---- Move tool (V) ---- */
-function movePointerDown(e,ix,iy){if(!xfStart({move:true}))return;ptr={mode:'movedrag',id:e.pointerId,m0:[ix,iy],q0:xf.q.slice(),d:[0,0]};}
+function movePointerDown(e,ix,iy){if(!xfStart({move:true,copy:e.altKey&&sel.active}))return;ptr={mode:'movedrag',id:e.pointerId,m0:[ix,iy],q0:xf.q.slice(),d:[0,0]};}
 function movePointerMove(e,ix,iy){let dx=Math.round(ix-ptr.m0[0]),dy=Math.round(iy-ptr.m0[1]);if(e.shiftKey){if(Math.abs(dx)>Math.abs(dy))dy=0;else dx=0;}
   if(dx===ptr.d[0]&&dy===ptr.d[1])return;ptr.d=[dx,dy];xf.q=ptr.q0.map((v,i)=>v+(i%2?dy:dx));xfRender(true);}
 function movePointerUp(){const d=ptr.d;ptr=null;if(d[0]||d[1])xfCommit();else xfCancel();}
 function nudgeLayer(dx,dy){if(!xfStart({move:true}))return;xf.q=xf.q.map((v,i)=>v+(i%2?dy:dx));xfCommit();}
 function buildMovePanel(box){$('#brushTitle').textContent='Move';
-  box.append(el('div',{class:'sub',text:'Drag to move the selected layers, or only the selected pixels when there is a selection. Shift keeps the move straight. Arrow keys nudge 1 px, Shift+arrow 10 px.'}),
+  box.append(el('div',{class:'sub',text:'Drag to move the selected layers, or only the selected pixels when there is a selection. Alt+drag copies the selected pixels. Shift keeps the move straight. Arrow keys nudge 1 px, Shift+arrow 10 px.'}),
     el('div',{class:'frow'},el('button',{class:'btn sm',text:'Free transform (Ctrl+T)',onclick:freeTransform})));}
 
 (function addTools(){const bar=$('#tools');

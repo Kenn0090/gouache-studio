@@ -45,13 +45,13 @@ function xfStart(opts){opts=opts||{};if(xf)return true;
     /* every map of every layer moves together */
     for(const L of layers){for(const k of mapKeysOf(L)){const T0=mapT(L,k),d=T0.depth,orig=acquireD(d);blit(T0,orig,0,0,doc.w,doc.h,0,0);let src=orig,base=null;
       if(useSel){src=acquireD(d);run(P.cropsel,src,{uSrc:orig.tex,uSel:sel.t.tex,uOff:[0,0],uUseSel:true});
-        base=acquireD(d);const clearT=acquireD(d);clearTarget(clearT);run(P.selmix,base,{uOld:orig.tex,uNew:clearT.tex,uSel:sel.t.tex});release(clearT);}
+        base=acquireD(d);if(opts.copy)blit(orig,base,0,0,doc.w,doc.h,0,0);else{const clearT=acquireD(d);clearTarget(clearT);run(P.selmix,base,{uOld:orig.tex,uNew:clearT.tex,uSel:sel.t.tex});release(clearT);}}
       const b=contentBounds(src);if(b)rect=rUnion(rect,b);
       items.push({node:L,t:()=>mapT(L,k),orig,src,base,outside:[0,0,0,0]});}
       if(!useSel&&L.mask&&L.mask.link!==false){const m=L.mask,mo=acquireD(m.target.depth);blit(m.target,mo,0,0,doc.w,doc.h,0,0);items.push({node:L,t:()=>m.target,orig:mo,src:mo,base:null,outside:[1,1,1,1],full:true,mask:m});}}
     if(!rect){for(const it of items)freeItem(it);toast(useSel?'There are no pixels inside the selection to transform.':'The layer is empty, so there is nothing to transform.');return false;}}
   let selItem=null;if(useSel&&!pick.maskOnly){const o=acquireD(sel.t.depth);blit(sel.t,o,0,0,doc.w,doc.h,0,0);selItem={orig:o,bb:sel.bb.slice()};}
-  xf={items,selItem,rect,q:rectCorners(rect),pivot:[(rect[0]+rect[2])/2,(rect[1]+rect[3])/2],warp:null,move:!!opts.move,dirty:null};
+  xf={items,selItem,rect,q:rectCorners(rect),pivot:[(rect[0]+rect[2])/2,(rect[1]+rect[3])/2],warp:null,move:!!opts.move,copy:!!opts.copy&&useSel&&!pick.maskOnly,dirty:null};
   if(!xf.move){buildBrushPanel();drawXfOverlay();}
   return true;}
 function freeItem(it){for(const k of ['orig','src','base'])if(it[k]&&(k==='orig'||it[k]!==it.orig))release(it[k]);}
@@ -84,7 +84,7 @@ function xfCommit(){if(!xf)return;const s=xf;xfRender(false);xf=null;
     const b=captureRegion(it.orig,r[0],r[1],w,h),a=captureRegion(it.t(),r[0],r[1],w,h);snaps.push(b,a);steps.push({it,r,b,a});}
   let selStep=null;if(s.selItem){const r=rToDoc(rUnion(s.selItem.bb,sel.bb))||fullRect();selStep={r,b:captureSel(s.selItem.orig,r),a:captureSel(sel.t,r),bbB:s.selItem.bb,bbA:sel.bb&&sel.bb.slice()};snaps.push(selStep.b,selStep.a);}
   const refs=[...new Set(s.items.map(it=>it.node))],masks=s.items.filter(it=>it.mask).map(it=>it.mask);
-  const label=s.move?'Move':s.warp?'Warp':'Transform';
+  const label=s.copy?'Duplicate selected pixels':s.move?'Move':s.warp?'Warp':'Transform';
   pushUndo({label,refs,masks,snaps,
     undo(){for(const st of steps)restoreRegion(st.b,st.it.t(),st.r[0],st.r[1]);if(selStep){restoreSel(selStep.b,selStep.r[0],selStep.r[1]);sel.bb=selStep.bbB;sel.active=true;selChanged();}},
     redo(){for(const st of steps)restoreRegion(st.a,st.it.t(),st.r[0],st.r[1]);if(selStep){restoreSel(selStep.a,selStep.r[0],selStep.r[1]);sel.bb=selStep.bbA;sel.active=true;selChanged();}}});

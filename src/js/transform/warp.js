@@ -45,3 +45,12 @@ function warpMoveAnchor(W,i,j,dx,dy){const mv=p=>{p[0]+=dx;p[1]+=dy;};mv(W.A[j][
   if(i>0)mv(W.hE[j][i-1][1]);if(i<W.n)mv(W.hE[j][i][0]);if(j>0)mv(W.vE[i][j-1][1]);if(j<W.n)mv(W.vE[i][j][0]);W.mesh=null;}
 /* handles belonging to anchor (i,j): [point, ...] */
 function warpHandlesOf(W,i,j){const h=[];if(i>0)h.push(W.hE[j][i-1][1]);if(i<W.n)h.push(W.hE[j][i][0]);if(j>0)h.push(W.vE[i][j-1][1]);if(j<W.n)h.push(W.vE[i][j][0]);return h;}
+
+/* Resample an edited warp onto a new grid instead of discarding the bend. */
+function warpResize(n){const old=xf.warp;if(!old||old.n===n)return;
+  const point=(u,v)=>{u=clamp(u,0,1);v=clamp(v,0,1);const i=Math.min(old.n-1,Math.floor(u*old.n)),j=Math.min(old.n-1,Math.floor(v*old.n));return cellPt(old,i,j,u*old.n-i,v*old.n-j);};
+  const tangent=(u,v,h)=>{const e=.0001,a=point(u-(h?e:0),v-(h?0:e)),b=point(u+(h?e:0),v+(h?0:e)),d=h?Math.min(1,u+e)-Math.max(0,u-e):Math.min(1,v+e)-Math.max(0,v-e);return [(b[0]-a[0])/d,(b[1]-a[1])/d];};
+  warpInit(n);const W=xf.warp;
+  for(let j=0;j<=n;j++)for(let i=0;i<=n;i++)W.A[j][i]=point(i/n,j/n);
+  for(let j=0;j<=n;j++)for(let i=0;i<n;i++){const a=W.A[j][i],b=W.A[j][i+1],ta=tangent(i/n,j/n,true),tb=tangent((i+1)/n,j/n,true);W.hE[j][i]=[a.map((x,k)=>x+ta[k]/(3*n)),b.map((x,k)=>x-tb[k]/(3*n))];}
+  for(let i=0;i<=n;i++)for(let j=0;j<n;j++){const a=W.A[j][i],b=W.A[j+1][i],ta=tangent(i/n,j/n,false),tb=tangent(i/n,(j+1)/n,false);W.vE[i][j]=[a.map((x,k)=>x+ta[k]/(3*n)),b.map((x,k)=>x-tb[k]/(3*n))];}}

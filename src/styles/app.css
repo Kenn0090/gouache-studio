@@ -1056,3 +1056,5 @@ body.brushmode section[aria-labelledby="hColor"]>*:not(.sec-h):not(.crow){displa
 body.brushmode section[aria-labelledby="hColor"]{gap:4px;padding-top:4px;padding-bottom:4px}
 body.brushmode .dkshelf .sec:has(#libBody){display:block}
 body.brushmode .dkshelf .sec:has(#libBody)>#libBody{height:100%;max-height:none}
+
+#optBar.xfoptions{flex-wrap:wrap}.xfquick{width:60px}.xfquicklabel{font-size:11px;color:var(--muted)}
