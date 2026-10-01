@@ -16,8 +16,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.newDoc(64,96,8,[1,1,1],'a43',false));await W(300);
  await p.click('#modeTabs [data-mode=anim]');await W(300);
  const cnt=c=>{const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let a=0;for(let i=3;i<d.length;i+=4)a+=d[i];return a/255;};
- const NAMES=['fire','smoke','sparks','explosion','lightning','magic orb','shockwave','rain','snow','blood splat','ripples','slash','impact burst','dust puff','energy beam','bubbles','portal','sparkles'];
- for(let k=0;k<18;k++){
+ const NAMES=['fire','smoke','sparks','explosion','lightning','magic orb','shockwave','rain','snow','blood splat','ripples','slash','impact burst','dust puff','energy beam','bubbles','portal','sparkles','muzzle flash'];
+ for(let k=0;k<19;k++){
    const r=await p.evaluate(k=>{const A=__gs.anim;A.frames.length=1;A.cur=0;const o=__gs.vfxOpts(k);o.n=6;o.replace=true;__gs.vfxGenerate(o);
      const f=A.frames.map(F=>{const c=__gs.frameCanvasOf(F),d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let a=0;for(let i=3;i<d.length;i+=4)a+=d[i];return Math.round(a/255);});
      const f0=__gs.frameCanvasOf(A.frames[0]).getContext('2d').getImageData(0,0,64,96).data,f1=__gs.frameCanvasOf(A.frames[2]).getContext('2d').getImageData(0,0,64,96).data;let d=0;for(let i=3;i<f0.length;i+=4)if(Math.abs(f0[i]-f1[i])>8)d++;
@@ -40,7 +40,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('#dlgCancel').catch(()=>{});await W(200);
  /* the menu and dialog */
  ok(await p.evaluate(()=>!!document.querySelector('select[aria-label="VFX"]')),'VFX menu on the timeline');
- await p.evaluate(()=>__gs.dlgGenerate(9));await W(600);ok(await p.evaluate(()=>!!document.getElementById('vgPal')&&document.querySelectorAll('#dlgBody input[type=range]').length>=6),'generate window opens with many sliders');await p.click('#dlgCancel').catch(()=>{});
+ await p.evaluate(()=>__gs.dlgGenerate(18));await W(600);ok(await p.evaluate(()=>!!document.getElementById('vgPal')&&!!document.getElementById('vg_rot')&&document.querySelectorAll('#dlgBody input[type=range]').length>=8),'muzzle flash window opens with rotation and game-VFX controls');await p.click('#dlgCancel').catch(()=>{});
+ /* muzzle flash rotation really changes the generated sprite */
+ const mr=await p.evaluate(()=>{const o=__gs.vfxOpts(18),A=[];for(const r of [0,90]){o.rot=r;const T=__gs.makeTarget(64,96,8);__gs.vfxGenInto(T,o,.18,null);A.push(__gs.readRGBA8(T));}let d=0;for(let i=0;i<A[0].length;i+=4)d+=Math.abs(A[0][i+3]-A[1][i+3]);return d;});
+ ok(mr>4000,'muzzle flash rotation turns the sprite ('+mr+' alpha difference)');
  /* the loop is exact: time 1 looks like time 0 */
  const lp=await p.evaluate(()=>{const out=[];for(const k of [0,1,2,5,7,8,10,14,15,16,17]){const o=__gs.vfxOpts(k);const T=[0,1].map(t=>{const x=__gs.makeTarget(64,96,8);__gs.vfxGenInto(x,o,t,null);return __gs.readRGBA8(x);});
    let d=0;for(let i=0;i<T[0].length;i++)d=Math.max(d,Math.abs(T[0][i]-T[1][i]));out.push(d);}return out;});
