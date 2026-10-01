@@ -86,11 +86,30 @@ function renderAnimFx(){const A=A_();const box=tlParts.fxbox;if(!box||ui.mode!==
     if(o.controls)extra.append(...o.controls(tr.v,afxTouch,ctx));
     for(const [key,label] of o.checks||[])extra.append(chk('afx_ck_'+key,label,!!tr.v[key],x=>{tr.v[key]=x;afxTouch();}));}catch(e){}
   if(extra.children.length)ed.append(extra);}
-function afxAddMenu(){const s=el('select',{class:'tlsel','aria-label':'Add an effect',title:'Add an effect you can animate'},el('option',{value:'',text:'+ Effect…'}));
-  s.addEventListener('focus',()=>{if(s.options.length>1)return;const seen=new Set();
-    const add=(label,ids)=>{const g=el('optgroup',{label});for(const id of ids)if(FX[id]&&FX[id].render&&!seen.has(id)){seen.add(id);g.append(el('option',{value:id,text:FX[id].title}));}if(g.children.length)s.append(g);};
-    add('Animation favourites',AFX_IDS);for(const [g,ids] of FX_KINDS())add(g,ids);add('More',Object.keys(FX));});s.addEventListener('mousedown',()=>s.dispatchEvent(new Event('focus')));
-  s.onchange=()=>{const v=s.value;s.value='';s.blur();if(v){afxUI.open=true;afxAdd(v);}};return s;}
+/* (0.45, Kenn) the effect picker: a small window with the effects in sections (Blurs, Patterns, Artistic…) and a search box */
+const AFX_SECTIONS=()=>{const nm={'Blur and sharpen':'Blurs'};const out=[['Animated',AFX_IDS.slice(0,7)]];
+  for(const [g,ids] of FX_KINDS())out.push([nm[g]||g,ids]);
+  const used=new Set(out.flatMap(x=>x[1]));const more=Object.keys(FX).filter(id=>!used.has(id));if(more.length)out.push(['More',more]);
+  return out.map(([n,ids])=>[n,ids.filter(id=>FX[id]&&FX[id].render)]).filter(x=>x[1].length);};
+function afxAddMenu(){const btn=el('button',{class:'tlchip afxaddbtn',type:'button','aria-label':'Add an effect','aria-haspopup':'dialog',title:'Add an effect you can animate',text:'+ Effect ▾'});
+  let pop=null,off=null;
+  const close=()=>{if(pop){pop.remove();pop=null;}if(off){off();off=null;}};
+  btn.onclick=()=>{if(pop){close();return;}
+    const secs=AFX_SECTIONS(),all=[...new Set(secs.flatMap(x=>x[1]))].sort((x,y)=>FX[x].title.localeCompare(FX[y].title));
+    let cur=secs[0][0],q='';
+    const search=el('input',{type:'search',class:'afxsearch',placeholder:'Search effects…','aria-label':'Search effects'}),nav=el('div',{class:'afxnav',role:'tablist'}),grid=el('div',{class:'afxgrid'});
+    const pick=id=>{close();afxUI.open=true;afxAdd(id);};
+    const draw=()=>{nav.replaceChildren(...secs.map(([n,ids])=>el('button',{type:'button',role:'tab',class:'afxsec'+(!q&&n===cur?' on':''),'aria-selected':String(!q&&n===cur),text:n,onclick:()=>{cur=n;q='';search.value='';draw();}},el('i',{text:String(ids.length)}))));
+      const ids=q?all.filter(id=>FX[id].title.toLowerCase().includes(q)||id.toLowerCase().includes(q)):(secs.find(x=>x[0]===cur)||secs[0])[1];
+      grid.replaceChildren(...(ids.length?ids.map(id=>el('button',{type:'button',class:'afxfx',text:FX[id].title,'data-fx':id,onclick:()=>pick(id)})):[el('p',{class:'note',text:'No effect has that name.'})]));};
+    search.addEventListener('input',()=>{q=search.value.trim().toLowerCase();draw();});
+    pop=el('div',{class:'afxmenu',role:'dialog','aria-label':'Add an effect'},search,el('div',{class:'afxmbody'},nav,grid));
+    document.body.append(pop);draw();
+    const r=btn.getBoundingClientRect(),w=Math.min(520,window.innerWidth-16);pop.style.width=w+'px';pop.style.left=Math.max(8,Math.min(r.left,window.innerWidth-w-8))+'px';
+    const h=pop.offsetHeight;pop.style.top=Math.max(8,(r.top-h-6>8?r.top-h-6:r.bottom+6))+'px';search.focus();
+    const dn=e=>{if(pop&&!pop.contains(e.target)&&e.target!==btn)close();},kd=e=>{if(e.key==='Escape'){e.stopPropagation();close();btn.focus();}};
+    window.addEventListener('pointerdown',dn,true);window.addEventListener('keydown',kd,true);off=()=>{window.removeEventListener('pointerdown',dn,true);window.removeEventListener('keydown',kd,true);};};
+  return btn;}
 (function buildFxArea(){const hd=el('div',{class:'afxbar'});
   const tg=el('button',{class:'tlchip',text:'Effects ▾',title:'Show or hide the effects under the frames',onclick:()=>{afxUI.open=!afxUI.open;renderAnimFx();}});
   hd.append(tg,afxAddMenu(),el('span',{class:'dim fxcount'}));tlParts.fxhead=hd;

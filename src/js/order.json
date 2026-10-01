@@ -13,6 +13,7 @@
         "ui/color",
         "ui/color-modes",
         "paint/brush-library",
+        "paint/brush-pack",
         "paint/tool-brushes",
         "paint/map-brush",
         "ui/layers-panel",

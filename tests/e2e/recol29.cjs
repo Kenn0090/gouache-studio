@@ -13,7 +13,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());});
  await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
  const W=ms=>p.waitForTimeout(ms||150);
- await p.evaluate(()=>__gs.newDoc(64,64,8,[1,1,1],'recol',false));await W(300);
+ await p.evaluate(()=>__gs.newDoc(64,64,8,[1,1,1],'recol',false));await W(300); await p.click('#modeTabs [data-mode=p3d]');await W(1500);
  await p.evaluate(()=>{__gs.act('newFill');});await W(600);
  if(await p.isVisible('#modal'))await p.click('#dlgOk');await W(300);
  await p.evaluate(()=>__gs.showPanel('matEd'));await W(300);

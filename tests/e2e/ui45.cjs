@@ -1,0 +1,36 @@
+/* 0.45: Paint panels trimmed, layer controls on top, brush panels merged, Preferences fits, free brush packs, grouped effect picker */
+const {chromium}=require('playwright');
+const OLD=__dirname+'/';
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
+  if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ const W=ms=>p.waitForTimeout(ms||200);
+ await p.evaluate(()=>__gs.newDoc(64,48,8,[1,1,1],'a45',false));await W(400);
+ const tabs=await p.evaluate(()=>[...document.querySelectorAll('.dktab')].map(b=>b.textContent.trim()));
+ ok(!tabs.some(t=>/Properties|Shader|Materials|Tool settings/.test(t)),'Paint has no Properties, Shader, Materials or Tool settings tab ('+tabs.join(',')+')');
+ const lay=await p.evaluate(()=>{const lp=document.querySelector('.lprops').getBoundingClientRect(),ll=document.querySelector('#layerList').getBoundingClientRect(),mr=document.querySelector('#maskRow').getBoundingClientRect();return {lp:lp.top,ll:ll.top,mr:mr.top};});
+ ok(lay.lp<lay.ll&&lay.mr<=lay.ll,'blend, opacity and mask controls sit above the layer list');
+ await p.evaluate(()=>__gs.showPanel('brushes'));await W(200);
+ ok(await p.evaluate(()=>{const a=document.querySelector('#libBody').closest('section'),b=document.querySelector('#brushBody').closest('section');return a===b&&!!a.offsetParent&&document.querySelector('#brushBody').offsetParent!==null;}),'brush library and brush settings are one panel');
+ await W(600);
+ const sets=await p.evaluate(()=>__gs.library.map(s=>[s.name,s.presets.length]));
+ ok(sets.some(s=>s[0]==='Basic media'&&s[1]>=10)&&sets.some(s=>s[0]==='Smoke and clouds'&&s[1]>=20)&&sets.reduce((a,s)=>a+s[1],0)>=100,'free brush packs are in the library '+JSON.stringify(sets));
+ const bright=await p.evaluate(()=>{const s=__gs.library.find(s=>s.name==='Smoke and clouds'),t=s.presets[0].tip;let m=0;for(const v of t.alpha)m=Math.max(m,v);return [t.w,m];});
+ ok(bright[0]===192&&bright[1]>100,'a pack tip carries a real picture');
+ await p.click('#libBody .libset:nth-child(4) .tiles button');await W(200);
+ ok(await p.evaluate(()=>!!document.querySelector('#libBody button.on')),'choosing a pack brush selects it');
+ await p.evaluate(()=>__gs.dlgPrefs('paint'));await W(400);
+ const ov=await p.evaluate(()=>{const d=document.querySelector('#modal .dialog');const r=d.getBoundingClientRect();let worst=0;for(const e of d.querySelectorAll('.prefpanel *')){const q=e.getBoundingClientRect();if(q.width&&q.right>r.right+1)worst=Math.max(worst,q.right-r.right);}return {w:r.width,over:worst,sx:d.scrollWidth>d.clientWidth+1};});
+ ok(ov.w>=500&&ov.over===0&&!ov.sx,'Preferences fits its window '+JSON.stringify(ov));
+ await p.click('#dlgCancel');await W(200);
+ await p.evaluate(()=>__gs.setMode&&0);
+ ok(errs.length===0,'no errors '+errs.slice(0,2).join(' | '));
+ await b.close();process.exit(fails?1:0);})();

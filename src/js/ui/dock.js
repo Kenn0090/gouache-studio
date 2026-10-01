@@ -6,10 +6,10 @@
 const PANELS={
   p3d:{title:'3D Paint',sel:'#p3dSec',avail:m=>m==='p3d',mode:true},
   hist:{title:'History',sel:'#histSec',avail:m=>m!=='convert',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>'},
-  matEd:{title:'Properties',sel:'#matEdSec',avail:m=>m==='paint'||m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M8 15l8-8M9 9h.01"/>'},
-  shading:{title:'Shader',sel:'#shadeSec',avail:m=>m==='p3d'||m==='paint',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" opacity=".35"/>'},
+  matEd:{title:'Properties',sel:'#matEdSec',avail:m=>m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M8 15l8-8M9 9h.01"/>'},
+  shading:{title:'Shader',sel:'#shadeSec',avail:m=>m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" opacity=".35"/>'},
   stencils:{title:'Stencils',sel:'#st3Sec',avail:m=>false,icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 15l3-4 2 3 1.5-2 1.5 3"/>'},
-  mats:{title:'Materials',sel:'#matSec',avail:m=>m==='paint'||m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M7 9.5a6 6 0 0 1 5-3" opacity=".6"/>'},
+  mats:{title:'Materials',sel:'#matSec',avail:m=>m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M7 9.5a6 6 0 0 1 5-3" opacity=".6"/>'},
   textures:{title:'Textures',sel:'#txSec',avail:m=>m==='paint'||m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M7 8h1M11 7h1M15 9h1M8 12h1M13 13h1M16 15h1M9 16h1" stroke-width="2.4" stroke-linecap="round"/>'},
   p3bake:{title:'Bake Maps',sel:'#p3bkSec',avail:m=>m==='p3d',icon:'<path d="M12 3c3 4 6 6 6 10a6 6 0 0 1-12 0c0-4 3-6 6-10z"/><path d="M9.5 14a2.5 2.5 0 0 0 2.5 2.5" opacity=".6"/>'},
   envs:{title:'Environments',sel:'#envSec',avail:m=>m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c3 3 3 13 0 16M12 4c-3 3-3 13 0 16"/>'},
@@ -20,7 +20,7 @@ const PANELS={
   anim:{title:'Animation',sel:'#animSec',avail:m=>m==='anim',mode:true},
   color:{title:'Color',sel:'section[aria-labelledby="hColor"]',avail:m=>m!=='convert'&&m!=='bake',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16" opacity=".5"/>'},
   brushes:{title:'Brushes',sel:'section[aria-labelledby="hBrush"]',avail:m=>m!=='convert'&&m!=='bake',icon:'<path d="m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z"/>'},
-  tool:{title:'Tool settings',sel:'#toolSec',avail:m=>m!=='convert'&&m!=='bake',icon:'<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="8" cy="17" r="1.8"/>'},
+  tool:{title:'Tool settings',sel:'#toolSec',avail:m=>m==='p3d',icon:'<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="8" cy="17" r="1.8"/>'},
   maps:{title:'Maps',sel:'#mapsSec',avail:m=>m==='paint'||m==='anim'||m==='p3d',icon:'<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>'},
   layers:{title:'Layers',sel:'section[aria-labelledby="hLayers"]',avail:m=>m==='paint'||m==='brush'||m==='p3d',icon:'<path d="M12 4 3 9l9 5 9-5-9-5z"/><path d="m3 14 9 5 9-5"/>'},
   chan:{title:'Channels',sel:'section[aria-labelledby="hChan"]',avail:m=>m==='paint'||m==='p3d',icon:'<circle cx="9" cy="10" r="5"/><circle cx="15" cy="10" r="5"/><circle cx="12" cy="15" r="5"/>'}};
@@ -55,6 +55,10 @@ function dkFix(L){const seen=new Set();const keep=a=>a.filter(id=>PANELS[id]&&!s
   return L;}
 /* the panels themselves, found once (while redrawing they are briefly off the page) */
 const dkSecs={};const dkSec=id=>dkSecs[id]||(dkSecs[id]=document.querySelector(PANELS[id].sel));
+/* (0.45, Kenn) the brush library and the brush settings are one panel everywhere except 3D Paint, where the settings keep their own panel beside the colour */
+function brushMergeSync(){const tool=$('#toolSec'),bb=$('#brushBody'),title=dk.toolTitle;if(!tool||!bb)return;const sep=ui.mode==='p3d',home=$('#hBrush'),pw=$('#brushPrev')&&$('#brushPrev').parentNode;
+  if(sep){if(bb.parentNode!==tool)tool.append(bb);const ht=$('#hTool');if(title&&ht&&title.parentNode!==ht)ht.prepend(title);}
+  else if(pw){if(bb.previousElementSibling!==pw)pw.after(bb);if(title&&home&&title.parentNode!==home)home.prepend(title);}}
 /* ---- building the page structure once ---- */
 function dkInit(){
   /* Tool settings get a panel of their own, split from the brush library */
@@ -118,7 +122,7 @@ for(const g of dk.col2.groups)g._c2=true;
 function dkSecKey(v){if(!v)return '';if(v.id)return v.id;const d=v.querySelector('[id]');return d?d.id:'';}
 function dkScrollSave(){const m={};for(const b of document.querySelectorAll('.dkbody')){const v=[...b.children].find(c=>!c.classList.contains('dk-off'));const k=dkSecKey(v);if(k&&b.scrollTop)m[k]=b.scrollTop;}return m;}
 function dkScrollRestore(m){if(!m)return;for(const b of document.querySelectorAll('.dkbody')){const v=[...b.children].find(c=>!c.classList.contains('dk-off'));const k=dkSecKey(v);if(k&&m[k])b.scrollTop=m[k];}}
-function dkRender(){const keepSc=dkScrollSave(),L=dk.L,dock=$('#dock');dkGrid();
+function dkRender(){brushMergeSync();const keepSc=dkScrollSave(),L=dk.L,dock=$('#dock');dkGrid();
   for(const id of PANEL_IDS){const s=dkSec(id);s.classList.remove('dk-off');}
   dock.replaceChildren();const gs=L.groups.filter(g=>dkAvail(g).length);
   gs.forEach((g,i)=>{if(i)dock.append(dkSplit(gs[i-1],g));dock.append(dkGroup(g));});
@@ -206,7 +210,7 @@ function dkMove(id,to){const L=dk.L;dkRemove(id);
   if(!L.groups.some(g=>g.tabs.length)&&!to.group&&to.newGroup==null&&to.newGroup2==null&&L.icons.length===0)L.groups.push({tabs:[],f:1});
   dkApply(L,true);}
 /* show a panel (Window menu, tests): brings it back into the dock and to the front */
-function showPanel(id){const L=dk.L;if(dkCol2On()&&dkC2Has(id)){const g2=dk.col2.groups.find(g=>g.tabs.includes(id));if(g2){g2.active=id;g2.min=false;dkRender();return;}}let g=L.groups.find(g=>g.tabs.includes(id));const f=L.floats.find(f=>f.tabs.includes(id));
+function showPanel(id){if(id==='tool'&&ui.mode!=='p3d')id='brushes';const L=dk.L;if(dkCol2On()&&dkC2Has(id)){const g2=dk.col2.groups.find(g=>g.tabs.includes(id));if(g2){g2.active=id;g2.min=false;dkRender();return;}}let g=L.groups.find(g=>g.tabs.includes(id));const f=L.floats.find(f=>f.tabs.includes(id));
   if(f){f.active=id;dkRender();return;}if(!g&&L.shelf&&L.shelf.tabs.includes(id)){L.shelf.active=id;L.shelf.min=false;if(L.fold&&L.fold.shelf){L.fold.shelf=false;dkGrid();}dkRender();dkSave();return;}if(L.icons.includes(id)){dkFlyout(id);return;}
   if(!g){L.hidden=L.hidden.filter(t=>t!==id);const home=WS_PRESETS.painting.groups.findIndex(x=>x.tabs.includes(id));g=L.groups.find(x=>x.tabs.some(t=>(WS_PRESETS.painting.groups[home]||{tabs:[]}).tabs.includes(t)));
     if(g)g.tabs.push(id);else{g={tabs:[id],f:1};L.groups.push(g);}}

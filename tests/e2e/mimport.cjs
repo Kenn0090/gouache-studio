@@ -40,7 +40,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(z.files.split(',').length===3&&z.ch==='base,normal,rough','a .zip is read ('+z.files+')');
  ok(z.n[1]===255-60,'a DirectX normal is flipped to OpenGL '+z.n);
  /* the button and dialog */
- await p.evaluate(()=>__gs.showPanel('mats'));await W(300);
+ await p.click('#modeTabs [data-mode=p3d]');await W(1500); await p.evaluate(()=>__gs.showPanel('mats'));await W(300);
  ok(await p.locator('#matFromTex').isVisible(),'Materials has a From textures… button');
  await p.click('#matFromTex');await W(200);ok(await p.locator('#miFolder').isVisible()&&await p.locator('#miFiles').isVisible(),'it offers a folder, or images / a .zip');
  console.log(errs.length?errs.join('\n'):'no page errors');ok(!errs.length,'no page errors');
