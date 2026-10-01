@@ -1,6 +1,4 @@
-# Gouache Studio 0.46.4
+# Gouache Studio 0.46.5
 
-- Fixed effect keyframes disappearing beside the settings on long animations. The keyframe tracks now have a horizontal scrollbar and keep the selected frame visible.
-- Enlarging animation thumbnails now keeps the ruler, tags and keyframes spaced correctly.
-- Timeline frames and effect settings retain separate space when the animation area is resized.
-- Rearranged the Brush workspace: live tip and test stroke together, creation settings and save controls underneath, and the painting brush library below the canvas.
+- Moved animation keyframe tracks above the effect amount controls. Keys now use the full timeline width and stay clear of the settings.
+- The divider below the keys now adjusts the height of the effect settings; long tracks scroll horizontally and settings scroll separately.

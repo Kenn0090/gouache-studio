@@ -1043,3 +1043,11 @@ body:not(.animmode):not(.bakemode):not(.convmode):not(.brushmode) .dkbody>.sec[a
 .btsave{display:grid;gap:5px}.btsaved summary{cursor:pointer;color:var(--muted);padding:4px 0}
 
 #btBody{gap:6px}.btsave:not(:has(.btn.sm)){grid-template-columns:minmax(0,1fr) auto;align-items:center}.btsave .frow{min-width:0}.btsave input{box-sizing:border-box;min-width:0}
+
+/* Keyframe tracks occupy the full row above effect amounts. */
+.afxbox{flex-direction:column;gap:4px;min-height:220px;overflow:visible}
+.afxlist{flex:0 0 auto;min-height:26px;max-height:156px;width:100%;min-width:0;position:relative;background:var(--panel)}
+.afxrows{flex:0 0 120px}
+.afxscroll{flex:1;min-width:0}
+.afxresize{flex:0 0 8px;width:100%;cursor:ns-resize;border-left:0;border-top:2px solid var(--line-2);box-sizing:border-box}
+.afxedit{flex:0 0 var(--afx-height,180px);width:100%;min-width:0;min-height:100px;max-height:45vh;overflow:auto}
