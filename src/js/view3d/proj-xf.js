@@ -68,7 +68,7 @@ function pxfLockBtn(){const b=el('button',{class:'btn sm pxflock',id:'pxfLock','
   paint();b.addEventListener('click',()=>{try{localStorage.setItem('gs.pxfLock',pxfLocked()?'0':'1');}catch(e){}paint();});return b;}
 function pxfFields(get,edit,mode,onReset,size){const til=!size,X=get(),is3=pxfIs3D(mode),box=el('div',{class:'pxf'});
   const num=(id,label,val,step,set)=>{const i=el('input',{type:'number',id,step:String(step),value:String(Math.round(val*1000)/1000),'aria-label':label,title:label});
-    i.addEventListener('change',()=>{const v=parseFloat(i.value);if(!isFinite(v))return;edit(x=>set(x,v));});return i;};
+    i.addEventListener('change',()=>{const v=parseFloat(i.value);if(!isFinite(v))return;edit(x=>set(x,v));const Y=get();for(let k=0;k<(is3?3:2);k++){const e=box.querySelector('#pxf_s'+k);if(e)e.value=String(Math.round(pxfShow(Y.s[k],til)*1000)/1000);}const sl=box.querySelector('#pxf_tslide');if(sl)sl.value=String(Math.log10(pxfShow(Y.s[0],true)));});return i;};
   const row=(label,...ins)=>el('div',{class:'pxfrow'},el('span',{class:'pxfl',text:label}),...ins);
   const rowL=(label,...ins)=>el('div',{class:'pxfrow'},el('span',{class:'pxfl'},label+' ',pxfLockBtn()),...ins);
   if(is3){box.append(row('Offset',...[0,1,2].map(i=>num('pxf_t'+i,'Offset '+'XYZ'[i],X.t[i],.01,(x,v)=>{x.t[i]=v;}))),

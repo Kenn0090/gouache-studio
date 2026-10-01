@@ -84,3 +84,13 @@ In Properties, each channel of a material can be a colour or value, an **Image**
 Generators and filters have **UV wrap** on by default. When an effect samples beyond a texture edge, it reads the opposite edge, including intermediate blur passes and anchor-height curvature used by generators. Turn it off in Properties or the filter settings to clamp at the border. The choice is saved with the effect and exported smart materials.
 
 This repeats across the texture's outer edges. It does not join separate UV islands on a mesh, and it does not change the document's tile-painting mode.
+
+## Mesh-map Mask builder
+
+Choose **Mask builder** from Generators (including the 3D Paint mask right-click menu). It adds one live generator row with separate strengths for curvature edges, curvature cavities, AO cavities, facing direction, position gradient, height and thin areas. The inputs add together, followed by Offset, Contrast, Grunge breakup and Invert.
+
+The builder reads the texture set's baked mesh maps. World normal and position take priority for direction and position; the model supplies them when those bakes are absent. Height can also use the document's height channel. Thickness needs a thickness bake. Curvature can follow a height anchor. Position start/end controls define the gradient; reverse them to reverse the fade. Direction softness widens the facing-angle range.
+
+Use a library grunge picture row above the builder in Multiply for a specific scratch or dirt pattern. Keep a paint row above it for touch-ups. All strengths and settings stay editable and save with projects and smart masks.
+
+Mask Levels reads the input mask below its row, including for its histogram and Auto. The simple handles and slider layout both update the actual mask. In the Sliders layout, typed black/white values use 0–255; midtones uses gamma.

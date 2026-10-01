@@ -62,7 +62,7 @@ const levelsCurve=p=>{const [ib,g,iw,ob,ow]=p;return identity().map(x=>{let t=cl
 fxDef('levels',{title:'Levels',init:()=>({lv:{m:[0,1,1,0,1],r:[0,1,1,0,1],g:[0,1,1,0,1],b:[0,1,1,0,1]}}),
   controls:(v,upd,ctx)=>{let ch='m';const lv=v.lv,cv=el('canvas',{class:'histo',width:256,height:90,'aria-label':'Histogram'});
     const drawH=()=>{const x=cv.getContext('2d'),h=histOf(ctx);x.clearRect(0,0,256,90);drawHist(x,256,90,h[ch==='m'?3:'rgb'.indexOf(ch)],'rgba(200,205,215,.7)');};
-    const S=(id,label,i,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:lv[ch][i],fmt,onInput:x=>{lv[ch][i]=x;upd();}});
+    const S=(id,label,i,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:lv[ch][i],fmt,numericScale:i===1?1:255,onInput:x=>{lv[ch][i]=i===0?Math.min(x,lv[ch][2]-.0001):i===2?Math.max(x,lv[ch][0]+.0001):x;upd();}});
     const box=el('div',{class:'dlg-grid'});
     let mode=(()=>{try{return localStorage.getItem('gs.lvMode')||'simple';}catch(e){return 'simple';}})();
     const build=()=>{if(mode==='simple'){box.replaceChildren(lvSimple(lv[ch],upd,cv));cv.hidden=true;drawH();return;}cv.hidden=false;box.replaceChildren(...[S('lvIb','Input black',0,0,1,.005,x=>Math.round(x*255)),S('lvG','Midtones',1,.1,5,.01,x=>x.toFixed(2)),S('lvIw','Input white',2,0,1,.005,x=>Math.round(x*255)),

@@ -1,10 +1,10 @@
 /* ================= Textures panel: grunge maps and textures (0.28) =================
    Kenn: a tab that houses grunge maps and textures anyone can use. Three kinds:
    - Generated: made by the app on the spot, seamless (clouds, cells, cracks, grain, scratches…)
-   - Photo grunge: real scans shipped with the app (ambientCG, CC0: see the guide's Textures page)
+   - Photo grunge: sourced damage textures shipped with the app (CC0: see the guide's Textures page)
    - Yours: pictures you import, kept on this computer; share them as .gtex packs
    Click one for what to do with it: a picture row in the mask, a material channel, a new layer, a stencil, a brush tip. */
-const TX_GEN=[['clouds','Clouds'],['cells','Cells'],['cracks','Cracks'],['grain','Grain'],['ridges','Ridges'],['streaks','Streaks (noise)'],['scratchy','Fine scratches'],['blotches','Blotches'],['dots','Dots'],['weave','Weave'],['bricks','Bricks'],['pits','Pits']];
+const TX_GEN=[['clouds','Clouds'],['cells','Cells'],['cracks','Cracks'],['grain','Grain'],['ridges','Ridges'],['streaks','Streaks (noise)'],['scratchy','Fine scratches'],['blotches','Blotches'],['dots','Dots'],['weave','Weave'],['bricks','Bricks'],['pits','Pits'],['twill','Fabric · Twill'],['herringbone','Fabric · Herringbone'],['knit','Fabric · Knit'],['basket','Fabric · Basket weave'],['checker','Pattern · Checkerboard'],['chevron','Pattern · Chevron'],['hexagons','Pattern · Hexagons'],['scales','Pattern · Scales']];
 const TX_PHOTO=[['streaks','Streaks'],['rings','Water rings'],['specks','Specks'],['stains','Stains'],['drips','Drips'],['splotches','Splotches'],['spatter','Spatter'],['scratches','Scratches'],['dirt','Dirt'],['dust','Dust'],['fingerprints','Fingerprints'],['smears','Smears'],['leaks','Leak streaks'],
   ['circles','Circles'],['scattered-rings','Scattered rings'],['chips','Chips'],['grime','Grime'],['fine-grime','Fine grime'],['speckle','Speckle'],['micro-scratches','Micro scratches'],['faint-marks','Faint marks'],
   ['prints','Prints'],['prints-2','Prints 2'],['hand-print','Hand print'],['thumb-prints','Thumb prints'],['smudges','Smudges'],['greasy-prints','Greasy prints'],['print-smears','Print smears'],['oily-marks','Oily marks'],
@@ -15,9 +15,10 @@ const TX_PHOTO=[['streaks','Streaks'],['rings','Water rings'],['specks','Specks'
   ['cracks-1','Cracks 1'],['cracks-2','Cracks 2'],['cracks-3','Cracks 3'],['crazed-cracks','Crazed cracks'],['dry-cracks','Dry cracks'],['cracked-plates','Cracked plates'],['broken-plates','Broken plates'],
   ['rust-pits-1','Rust pits 1'],['rust-pits-2','Rust pits 2'],['rust-pits-3','Rust pits 3'],['rust-pits-4','Rust pits 4'],['rust-pits-5','Rust pits 5'],['rust-pits-6','Rust pits 6'],['rust-pits-7','Rust pits 7'],
   ['worn-paint-1','Worn paint 1'],['worn-paint-2','Worn paint 2'],['worn-paint-3','Worn paint 3'],['frost-veins','Frost veins']];
-const tx={show:(()=>{try{return localStorage.getItem('gs.txShow')||'all';}catch(e){return 'all';}})(),mine:[],loaded:false,cache:new Map(),thumbs:new Map()};
+TX_PHOTO.push(...TX_WORKSHOP.map(r=>[r.slug,r.name,r.category]));
+const tx={category:(()=>{try{return localStorage.getItem('gs.txCategory')||'all';}catch(e){return 'all';}})(),query:'',show:(()=>{try{return localStorage.getItem('gs.txShow')||'all';}catch(e){return 'all';}})(),size:(()=>{try{return localStorage.getItem('gs.txSize')||'m';}catch(e){return 'm';}})(),mine:[],loaded:false,cache:new Map(),thumbs:new Map()};
 /* seamless grey patterns: periodic noise so every one tiles */
-const FS_TXGEN=`uniform int uKind; uniform float uSeed; uniform vec2 uOut;
+const FS_TXGEN=`uniform int uKind; uniform float uSeed; uniform vec2 uOut; uniform vec2 uPhase;
 float hs(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7))+uSeed*13.17)*43758.5453); }
 vec2 hs2(vec2 p){ return vec2(hs(p),hs(p+vec2(19.3,7.9))); }
 float vn(vec2 p,float P){ vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f);
@@ -26,7 +27,7 @@ float fbm(vec2 p,float P){ float v=0.0,a=0.5; for(int i=0;i<6;i++){ v+=a*vn(p,P)
 vec3 vor(vec2 p,float P){ vec2 i=floor(p),f=fract(p); float d1=9.0,d2=9.0; float id=0.0;
   for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){ vec2 g=vec2(x,y),c=mod(i+g,P); vec2 o=hs2(c); float d=length(g+o-f); if(d<d1){ d2=d1; d1=d; id=hs(c+3.1); } else if(d<d2) d2=d; }
   return vec3(d1,d2,id); }
-void main(){ vec2 uv=gl_FragCoord.xy/uOut; float v=0.0;
+void main(){ vec2 uv=gl_FragCoord.xy/uOut+uPhase; float v=0.0;
   if(uKind==0) v=fbm(uv*4.0,4.0);
   else if(uKind==1){ vec3 c=vor(uv*8.0,8.0); v=1.0-smoothstep(0.0,0.9,c.x); }
   else if(uKind==2){ vec3 c=vor(uv*6.0+vec2(fbm(uv*8.0,8.0)*0.4),6.0); v=1.0-smoothstep(0.0,0.06,c.y-c.x); }
@@ -39,10 +40,16 @@ void main(){ vec2 uv=gl_FragCoord.xy/uOut; float v=0.0;
   else if(uKind==8){ vec2 g=uv*24.0; vec2 f=fract(g)-0.5; v=1.0-smoothstep(0.25,0.32,length(f)); }
   else if(uKind==9){ vec2 g=uv*32.0; float a=sin(g.x*3.14159),b=sin(g.y*3.14159); float over=mod(floor(g.x)+floor(g.y),2.0); v=0.5+0.5*(over>0.5?abs(a):abs(b))*(0.8+0.2*fbm(uv*16.0,16.0)); }
   else if(uKind==10){ vec2 g=uv*vec2(8.0,16.0); g.x+=mod(floor(g.y),2.0)*0.5; vec2 f=fract(g); float e=min(min(f.x,1.0-f.x)*2.0,min(f.y,1.0-f.y)*4.0); v=smoothstep(0.02,0.12,e)*(0.75+0.25*hs(mod(floor(g),vec2(8.0,16.0)))); }
-  else { vec3 c=vor(uv*16.0,16.0); v=smoothstep(0.35,0.1,c.x)*step(0.55,c.z)*(0.6+0.4*fbm(uv*16.0,16.0)); }
+  else if(uKind==11){ vec3 c=vor(uv*16.0,16.0); v=(1.0-smoothstep(0.1,0.35,c.x))*step(0.55,c.z)*(0.6+0.4*fbm(uv*16.0,16.0)); }
+  else if(uKind==12||uKind==13||uKind==15){vec2 g=uv*32.0,i=floor(g),f=fract(g);float ix=mod(i.x,32.0);ix=uKind==13?mix(ix,31.0-ix,step(16.0,ix)):i.x;float over=uKind==15?step(1.0,mod(floor(i.x/2.0)+floor(i.y/2.0),2.0)):step(1.0,mod(ix+i.y,4.0));float a=sin(f.x*3.14159265),b=sin(f.y*3.14159265);float fiber=.9+.1*cos((over>.5?f.y:f.x)*18.8495559);v=.15+.8*mix(a,b,over)*fiber;}
+  else if(uKind==14){vec2 g=uv*vec2(16.0,24.0);g.x+=mod(floor(g.y),2.0)*.5;vec2 f=fract(g)-.5;float y=f.y+.15;float d=min(abs(f.x-y*.45-.16),abs(f.x+y*.45+.16));v=(1.0-smoothstep(.07,.14,d))*(.65+.35*cos(f.y*3.14159265));}
+  else if(uKind==16)v=mod(floor(uv.x*16.0)+floor(uv.y*16.0),2.0);
+  else if(uKind==17){float x=abs(fract(uv.x*8.0)*2.0-1.0);v=step(.5,fract(uv.y*8.0+x*.5));}
+  else if(uKind==18){vec2 g=uv*vec2(12.0,13.85640646);vec2 a=mod(g,vec2(1.0,1.73205))-.5*vec2(1.0,1.73205),b=mod(g-vec2(.5,.866025),vec2(1.0,1.73205))-.5*vec2(1.0,1.73205);vec2 f=dot(a,a)<dot(b,b)?a:b;float d=max(abs(f.x),dot(abs(f),vec2(.5,.866025)));v=1.0-smoothstep(.42,.47,d);}
+  else {vec2 g=uv*vec2(12.0,16.0);g.x+=mod(floor(g.y),2.0)*.5;vec2 f=fract(g)-vec2(.5,0.0);float d=length(f);v=1.0-smoothstep(.47,.5,d);}
   v=clamp(v,0.0,1.0); o=vec4(v,v,v,1.0); }`;
 let P_TXGEN=null;
-function txGenTarget(k,S){if(!P_TXGEN)P_TXGEN=program(FS_TXGEN);const i=TX_GEN.findIndex(g=>g[0]===k),t=makeTarget(S,S,8,true);run(P_TXGEN,t,{uKind:{int:i},uSeed:1,uOut:[S,S]});setWrap(t,true);return t;}
+function txGenTarget(k,S,phase){if(!P_TXGEN)P_TXGEN=program(FS_TXGEN);const i=TX_GEN.findIndex(g=>g[0]===k),t=makeTarget(S,S,8,true);run(P_TXGEN,t,{uKind:{int:i},uSeed:1,uOut:[S,S],uPhase:phase||[0,0]});setWrap(t,true);return t;}
 /* the shipped photo grunge: files next to the desktop app, or inside the page for the web version */
 async function txPhotoBytes(slug){const tag=document.getElementById('gr_'+slug);if(tag){const b=atob(tag.textContent.trim()),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;}
   const r=await fetch('grunge/'+slug+'.webp');if(!r.ok)throw new Error('missing');return new Uint8Array(await r.arrayBuffer());}
@@ -112,14 +119,19 @@ function txMenu(e,it){const pop=$('#menuPop');closeMenu();const L=doc.active,has
     ...(it.kind==='mine'?[el('div',{class:'msep'}),item('Delete…',()=>txDelete(it.rec))]:[]));
   pop.hidden=false;pop.style.left=Math.min(e.clientX,innerWidth-pop.offsetWidth-8)+'px';pop.style.top=Math.min(e.clientY+4,innerHeight-pop.offsetHeight-8)+'px';
   const off=ev=>{if(!pop.contains(ev.target)){pop.hidden=true;document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}
-function txItems(){const g=TX_GEN.map(([id,name])=>({kind:'gen',id,name})),p=TX_PHOTO.map(([id,name])=>({kind:'photo',id,name})),m=tx.mine.map(rec=>({kind:'mine',id:rec.id,name:rec.name,rec}));
-  return tx.show==='gen'?g:tx.show==='photo'?p:tx.show==='mine'?m:[...m,...p,...g];}
+const TX_CATEGORIES=['Scratches','Grunge','Fabric','Patterns'];
+function txCategory(id,name,category){return category||(/scratch|abrasion|brushed|hairline|scuff|gouge|tool scar/i.test(name)?'Scratches':/fabric|weave|twill|herringbone|knit|basket/i.test(name)?'Fabric':/pattern|dots|bricks/i.test(name)?'Patterns':'Grunge');}
+function txItems(){const g=TX_GEN.map(([id,name])=>({kind:'gen',id,name,category:txCategory(id,name)})),p=TX_PHOTO.map(([id,name,category])=>({kind:'photo',id,name,category:txCategory(id,name,category)})),m=tx.mine.map(rec=>({kind:'mine',id:rec.id,name:rec.name,category:txCategory(rec.id,rec.name,rec.category),rec}));
+  const items=tx.show==='gen'?g:tx.show==='photo'?p:tx.show==='mine'?m:[...m,...p,...g];return items.filter(it=>(tx.category==='all'||it.category===tx.category)&&it.name.toLowerCase().includes(tx.query.trim().toLowerCase()));}
 /* thumbnails are made when a tile comes into view (the panel may be hidden) */
 const txSeen=new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting){txSeen.unobserve(e.target);txThumb(e.target._tx,e.target);}});
-function renderTextures(){const box=$('#txBody');if(!box)return;if(!tx.loaded){txLoad();}
+function renderTextures(){const box=$('#txBody');if(!box)return;if(!tx.loaded){txLoad();}const tw=MT_SIZES[tx.size]||64;box.style.setProperty('--tw',tw+'px');
   const tile=it=>{const img=el('img',{alt:'',width:72,height:72,draggable:'false'});img._tx=it;txSeen.observe(img);const b=el('button',{class:'mattile txtile',title:it.name+' (click: new layer. Right-click: more uses. Drag onto the layers)',id:'tx_'+it.kind+'_'+it.id,onclick:()=>txToLayer(it),oncontextmenu:e=>{e.preventDefault();txMenu(e,it);}},img,el('span',{text:it.name}));b._libDrag=['tex',it];return b;};
   const items=txItems();
+  const category=el('select',{id:'txCategory','aria-label':'Texture category'},el('option',{value:'all',text:'All categories'}),...TX_CATEGORIES.map(k=>el('option',{value:k,text:k})));category.value=tx.category;category.addEventListener('change',()=>{tx.category=category.value;try{localStorage.setItem('gs.txCategory',tx.category);}catch(e){}renderTextures();});
+  const search=el('input',{type:'search',id:'txSearch',placeholder:'Search textures','aria-label':'Search textures',value:tx.query});search.addEventListener('input',()=>{tx.query=search.value;const start=search.selectionStart;renderTextures();const next=$('#txSearch');next.focus();try{next.setSelectionRange(start,start);}catch(e){}});
   box.replaceChildren(segChips([['all','All'],['mine','Yours'],['photo','Photo grunge'],['gen','Generated']],()=>tx.show,v=>{tx.show=v;try{localStorage.setItem('gs.txShow',v);}catch(e){}renderTextures();}),
-    el('div',{class:'chips'},el('button',{class:'btn sm',id:'txFromCanvas',text:'From canvas…',title:'Turn the Paint canvas or the selection into a texture',onclick:()=>{if(ui.mode==='paint')dlgToTexture();else toast('Switch to the Paint tab first.');}}),el('button',{class:'btn sm',id:'txImport',text:'Import…',title:'Pictures, or a .gtex texture pack',onclick:txImport}),el('button',{class:'btn sm',id:'txExport',text:'Export pack…',title:'All your textures in one .gtex file to share',onclick:txExportPack})),
-    items.length?el('div',{class:'matgrid',id:'txGrid'},...items.map(tile)):el('p',{class:'note',text:'No textures of yours yet. Import pictures or a .gtex pack.'}),
-    el('p',{class:'note',text:'Click a texture for what to do with it. Photo grunge: ambientCG (CC0).'}));}
+    el('div',{class:'row wrap'},category,search),el('p',{class:'note',text:items.length+' textures'}),
+    el('div',{class:'chips'},el('button',{class:'btn sm',id:'txFromCanvas',text:'From canvas…',title:'Turn the Paint canvas or the selection into a texture',onclick:()=>{if(ui.mode==='paint')dlgToTexture();else toast('Switch to the Paint tab first.');}}),el('button',{class:'btn sm',id:'txImport',text:'Import…',title:'Pictures, or a .gtex texture pack',onclick:txImport}),el('button',{class:'btn sm',id:'txExport',text:'Export pack…',title:'All your textures in one .gtex file to share',onclick:txExportPack}),el('div',{class:'seg matsize',role:'radiogroup','aria-label':'Texture thumbnail size'},...['s','m','l'].map(k=>el('button',{id:'txSize_'+k,type:'button',role:'radio','aria-checked':String(tx.size===k),text:k.toUpperCase(),class:tx.size===k?'on':'',onclick:()=>{tx.size=k;try{localStorage.setItem('gs.txSize',k);}catch(e){}renderTextures();}})))),
+    items.length?el('div',{class:'matgrid',id:'txGrid'},...items.map(tile)):el('p',{class:'note',text:'No textures match these filters. Choose All categories or clear the search.'}),
+    el('p',{class:'note',text:'Click a texture for what to do with it. Sources: ambientCG, Poly Haven, Public Domain Pictures and OpenGameArt (CC0).'}));}
