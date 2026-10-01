@@ -122,8 +122,8 @@ function afxAddMenu(){const btn=el('button',{class:'tlchip afxaddbtn',type:'butt
   tlParts.fxrows=el('div',{class:'afxrows'});tlParts.fxstrips=el('div',{class:'afxstrips'});
   tlParts.fxedit=el('div',{class:'afxedit'});
   tlParts.fxbox=el('div',{class:'afxbox'},el('div',{class:'afxlist'},tlParts.fxrows,el('div',{class:'afxscroll'},tlParts.fxstrips)),tlParts.fxedit);
-  const grip=el('div',{class:'afxresize',role:'separator','aria-orientation':'horizontal','aria-label':'Resize effect settings',title:'Drag to make the effect settings taller'});tlParts.fxbox.insertBefore(grip,tlParts.fxedit);
-  grip.addEventListener('pointerdown',e=>{e.preventDefault();grip.setPointerCapture(e.pointerId);const y=e.clientY,h=tlParts.fxedit.getBoundingClientRect().height;const move=ev=>{tlParts.fxedit.style.setProperty('--afx-height',clamp(h+y-ev.clientY,100,Math.max(100,innerHeight*.45))+'px');};const end=()=>{grip.removeEventListener('pointermove',move);grip.removeEventListener('pointerup',end);grip.removeEventListener('pointercancel',end);};grip.addEventListener('pointermove',move);grip.addEventListener('pointerup',end);grip.addEventListener('pointercancel',end);});
+  const grip=el('div',{class:'afxresize',role:'separator','aria-orientation':'vertical','aria-label':'Resize effect settings',title:'Drag to widen the effect settings'});tlParts.fxbox.insertBefore(grip,tlParts.fxedit);
+  grip.addEventListener('pointerdown',e=>{e.preventDefault();grip.setPointerCapture(e.pointerId);const x=e.clientX,w=tlParts.fxedit.getBoundingClientRect().width;const move=ev=>{tlParts.fxedit.style.setProperty('--afx-width',clamp(w+x-ev.clientX,250,Math.max(250,tl.clientWidth-360))+'px');};const end=()=>{grip.removeEventListener('pointermove',move);grip.removeEventListener('pointerup',end);grip.removeEventListener('pointercancel',end);};grip.addEventListener('pointermove',move);grip.addEventListener('pointerup',end);grip.addEventListener('pointercancel',end);});
   tl.append(hd,tlParts.fxbox);
   tlParts.scroll.addEventListener('scroll',afxSyncScroll);
   new ResizeObserver(()=>{if(ui.mode==='anim'&&A_())afxSyncScroll();}).observe(tlParts.fxstrips.parentNode);})();

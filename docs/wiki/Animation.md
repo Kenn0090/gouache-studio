@@ -58,6 +58,6 @@ Keyframes on an effect stay on the frames they belong to when you add, delete, d
 
 Use **VFX gallery…** to browse effects, hover over a tile to play its preview, then select it to edit colours, size and animation. Anime and Stylized sections each offer an explosion, impact and smoke. Explosions and impacts end transparent; smoke loops.
 
-Drag the top edge of the timeline to make it taller. The keyframe tracks sit above the effect settings and use the full timeline width. Drag their horizontal divider to make the settings area taller. The generator and gallery windows can also be stretched from their bottom-right corner.
+Drag the top edge of the timeline to make it taller. Frame thumbnails occupy a separate row above the Effects panel. The effect list and key tracks remain on the left, with amount controls on the right. Drag the divider beside effect settings to make those controls wider. The generator and gallery windows can also be stretched from their bottom-right corner.
 
-The effect keyframe tracks have a horizontal scrollbar above the settings. Selecting a frame keeps its keys visible, including the last frames of a long animation. Enlarging frame thumbnails also enlarges keyframe spacing. Short timelines can be scrolled vertically to reach every track.
+The effect keyframe tracks have a horizontal scrollbar beside the settings. Selecting a frame keeps its keys visible, including the last frames of a long animation. Enlarging frame thumbnails also enlarges keyframe spacing. Short timelines can be scrolled vertically to reach every track.
