@@ -51,3 +51,7 @@ Drag the box or type a size, rotate it if needed, then press **Enter**. **Image 
 - **Image › Image size:** resamples the whole document on the graphics card.
 
 During Free transform, right-click the canvas for Scale, Rotate, Skew, Shear, Distort, Perspective and Warp. Select a mode and drag its handles, then Apply or Cancel. Finish or cancel a curved warp before switching back to a straight transform.
+
+With a marquee selection, switch to **Move (V)** and **Alt+drag** to copy the selected pixels on their existing layers while keeping the originals. A regular drag moves them. Shift keeps the drag straight, and Undo/Redo includes the selection position.
+
+An active transform shows quick controls above the canvas: mode, position, width/height, linked scaling, angle, skew, resampling, Apply and Cancel. Warp shows grid size and Reset warp. Changing the warp grid resamples the current bend onto the new grid rather than clearing it; the top controls stay in step with the side panel.

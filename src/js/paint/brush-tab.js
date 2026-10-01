@@ -89,4 +89,4 @@ function buildBrushTab(){const box=$('#btBody');if(!box)return;box.replaceChildr
     list.append(el('div',{class:'btrow'+(bt.editing===p?' on':'')},t2,el('span',{class:'btname',text:p.name}),el('span',{class:'kbbtns'},
       el('button',{class:'btn sm',text:'Edit',onclick:()=>btEdit(p)}),el('button',{class:'btn sm',text:'Rename',onclick:()=>btRename(p)}),el('button',{class:'btn sm',text:'×',title:'Delete','aria-label':'Delete '+p.name,onclick:()=>btDelete(p)}))));}
   else list.append(el('p',{class:'note',text:'Brushes you make appear here.'}));
-  box.append(el('details',{class:'btsaved'},el('summary',{text:'Your saved tips'}),list));requestAnimationFrame(btDrawTest);}
+  box.append(el('details',{class:'btsaved'},el('summary',{text:'Your saved tips'}),list));if(typeof brushMergeSync==='function'&&dk.L)brushMergeSync();requestAnimationFrame(btDrawTest);}

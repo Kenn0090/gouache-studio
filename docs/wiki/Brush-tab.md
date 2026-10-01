@@ -25,3 +25,5 @@ Every tip you've made is listed at the bottom:
 Saving (Ctrl+S) and exporting are for documents, so they're not used in the Brush tab. Starting or opening a document takes you back to Paint first; the sketch waits in the Brush tab.
 
 The Brush workspace shows the **live brush tip** beside the **test stroke** at the top of Brush maker. Name/save controls and the new brush settings sit underneath; the painting brush library is below the drawing canvas. The previews stay visible when scrolling the creation controls. Saved tips are in the expandable **Your saved tips** section. Use **Reset this workspace** in the workspace dropdown to restore this arrangement if you have a custom layout.
+
+Below **Your saved tips**, Brush maker also contains **Save brush**, **Import .ABR**, **Make tip**, the painting stroke preview and painting brush settings. These painting controls scroll independently and return to their normal panels when leaving Brush mode. The colour swatches sit above Brush maker; the brush-tip library remains below the canvas.

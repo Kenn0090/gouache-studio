@@ -4,10 +4,11 @@
    else stays in the Tool settings panel. */
 let optSliders={};
 const OPT_PAINT=['brush','erase','smudge','dodge','burn','heal','clone'];
-function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren();optSliders={};
+function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren();bar.classList.remove('xfoptions');optSliders={};xfQuickFields=[];
   const t=ui.tool,title=$('#brushTitle')?$('#brushTitle').textContent:'';
   const slim=ui.mode==='p3d'&&OPT_PAINT.includes(t);bar.classList.toggle('slim',slim);
   if(!slim)bar.append(el('span',{class:'optname',text:title||t}));
+  if(xf&&!xf.move){buildXfOptBar(bar);return;}
   if(!OPT_PAINT.includes(t)||ui.mode==='convert'){bar.append(el('span',{class:'optnote',text:'More settings in the Tool settings panel.'}),el('button',{class:'btn sm',text:'Tool settings',onclick:()=>showPanel('tool')}));return;}
   const sm=t==='smudge',tonal=t==='dodge'||t==='burn';
   if(typeof activePreset!=='undefined')bar.append(el('button',{class:'optpreset',title:'Pick a brush in the Brushes panel',onclick:()=>showPanel('brushes')},
@@ -52,3 +53,16 @@ function optMore(v){if(v===undefined){try{return localStorage.getItem('gs.optMor
 /* keep the bar's values in step when the brush changes elsewhere */
 function optSync(){for(const k in optSliders){const o=optSliders[k];o.sl.set(o.get());}}
 {const bbp=buildBrushPanel;buildBrushPanel=function(){bbp();buildOptBar();if(!OPT_PAINT.includes(ui.tool))dkActivate('tool');};const be=brushEdited;brushEdited=function(){be();optSync();};const rc=refreshCursor;refreshCursor=function(){rc();optSync();};}
+
+/* Live transform controls above the canvas, kept in step with handle drags. */
+let xfQuickFields=[];
+function xfQuickSync(){const grid=$('#ob_xf_grid'),interp=$('#ob_xf_interp'),link=$('#ob_xf_link');if(grid&&xf&&xf.warp)grid.value=String(xf.warp.n);if(interp)interp.value=String(ui.xfInterp);if(link)link.checked=ui.xfLink;const v=xf&&!xf.warp?xfDecompose():null;for(const [k,e,scale] of xfQuickFields){e.disabled=!v;if(document.activeElement!==e)e.value=v?Number((v[k]*scale).toFixed(2)):'';}}
+function buildXfOptBar(bar){bar.classList.add('xfoptions');
+  const mode=el('select',{id:'ob_xf_mode',class:'optsel','aria-label':'Transform mode'});
+  for(const [k,t] of [['free','Free transform'],['scale','Scale'],['rotate','Rotate'],['skew','Skew'],['shear','Shear'],['distort','Distort'],['perspective','Perspective'],['warp','Warp']])mode.append(el('option',{value:k,text:t,disabled:!!xf.warp&&k!=='warp'}));
+  mode.value=xf.warp?'warp':xf.dragMode||'free';mode.onchange=()=>{if(!xf)return;if(mode.value==='warp'&&!xf.warp)warpInit(ui.warpN);xf.dragMode=mode.value;xfRender(false);buildBrushPanel();drawXfOverlay();};bar.append(mode);
+  if(xf.warp){const grid=el('select',{id:'ob_xf_grid',class:'optsel','aria-label':'Warp grid size'},...[2,3,4,5,6,8].map(n=>el('option',{value:String(n),text:n+' × '+n})));grid.value=String(xf.warp.n);grid.onchange=()=>{ui.warpN=+grid.value;warpResize(ui.warpN);xfRender(false);drawXfOverlay();buildBrushPanel();};bar.append(el('label',{text:'Grid',for:grid.id}),grid,el('button',{class:'btn sm',text:'Reset warp',onclick:()=>{warpInit(ui.warpN);xfRender(false);drawXfOverlay();}}));}
+  else{for(const [k,label,scale] of [['x','X',1],['y','Y',1],['sx','W %',100],['sy','H %',100],['ang','Angle °',1],['skew','Skew °',1]]){const e=el('input',{id:'ob_xf_'+k,type:'number',step:'any',class:'num xfquick','aria-label':'Transform '+label});e.onchange=()=>{const v=xf&&xfDecompose(),n=Number(e.value);if(!v||!Number.isFinite(n)||e.value==='')return;const old=v[k];v[k]=n/scale;if(ui.xfLink&&(k==='sx'||k==='sy')&&old){if(k==='sx')v.sy*=v[k]/old;else v.sx*=v[k]/old;}xfCompose(v);xfRender(false);drawXfOverlay();xfPanelSync();};xfQuickFields.push([k,e,scale]);bar.append(el('label',{class:'xfquicklabel',text:label,for:e.id}),e);}
+    bar.append(chk('ob_xf_link','Link W/H',ui.xfLink,v=>{ui.xfLink=v;const e=$('#xfLink');if(e)e.checked=v;}));}
+  const interp=el('select',{id:'ob_xf_interp',class:'optsel','aria-label':'Transform resampling'},...[['2','Smooth'],['1','Bilinear'],['0','Nearest']].map(([v,t])=>el('option',{value:v,text:t})));interp.value=String(ui.xfInterp);interp.onchange=()=>{ui.xfInterp=+interp.value;const e=$('#xfInterp');if(e)e.value=interp.value;xfRender(false);};
+  bar.append(interp,el('button',{id:'ob_xf_apply',class:'btn sm primary',text:'Apply',onclick:xfCommit}),el('button',{id:'ob_xf_cancel',class:'btn sm',text:'Cancel',onclick:xfCancel}));xfQuickSync();}
