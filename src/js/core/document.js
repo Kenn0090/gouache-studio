@@ -19,7 +19,7 @@ const sel={t:null,active:false,bb:null,quick:false,L:null,node:{name:'Quick mask
 const aux={};let pool=null;
 function auxFor(d){let a=aux[d];if(!a){const mk=()=>makeTarget(doc.w,doc.h,d);a=aux[d]={depth:d,strokeT:mk(),beforeT:mk(),scratchT:mk(),previewT:mk(),pool:{free:[],all:[],depth:d}};}return a;}
 function useAux(d){const a=auxFor(d);strokeT=a.strokeT;beforeT=a.beforeT;scratchT=a.scratchT;previewT=a.previewT;pool=a.pool;}
-function acquireIn(pl){let t=pl.free.pop();if(!t){t=makeTarget(doc.w,doc.h,pl.depth);t.pool=pl;pl.all.push(t);}return t;}
+function acquireIn(pl){let t=pl.free.pop();if(!t){t=makeTarget(doc.w,doc.h,pl.depth);t.pool=pl;pl.all.push(t);}if(uvWrapScope)uvWrapTarget(t);return t;}
 function acquire(){return acquireIn(pool);}
 function acquireD(d){return acquireIn(auxFor(d).pool);}
 function release(t){const pl=t&&t.pool;if(pl&&pl.all.includes(t)&&!pl.free.includes(t))pl.free.push(t);}

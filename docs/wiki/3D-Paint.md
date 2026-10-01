@@ -12,7 +12,7 @@ The column beside the view works like the rest of the dock: drag its tabs out (t
 
 1. Click **3D Paint** at the top right.
 2. Pick a model in the **3D Paint** panel: one of the shapes, or **Import a model** (OBJ, glTF, GLB or FBX). You can also drop a model file on the view.
-3. Paint with a left drag. The model starts with a **Base material** (a fill layer) and an empty **Paint** layer.
+3. Paint with a left drag. New texture sets start with a greyish-white, non-metal **Base material** (a fill layer) and an empty **Paint** layer.
 
 Each texture set has the PBR maps **base colour, roughness, metallic, height and normal**. The Layers panel works as in Paint: layers, groups, masks, fill layers, layer styles and a blend mode per map.
 
@@ -157,6 +157,14 @@ Right-click a layer › **Edit in the Paint canvas** sends its content (every ma
 
 ## Seeing the mesh maps (C)
 Press **C** in 3D Paint to see the texture set's baked mesh maps on the model one by one (ambient occlusion, curvature, ID, thickness…), unlit. **Shift+C** goes back one; **Esc** or the label in the corner returns to the material.
+
+Press **M** to return to the **Lit** material view from a mesh map, mask, Unlit or Ray traced view. Your paint channel, tool and camera stay where they were. This shortcut does not run while typing in a field or while a dialog is open.
+
+## Mask right-click menu and layer deletion
+
+Right-click a layer's **mask thumbnail** to open **Generators** or **Anchor points**, or add **Levels** or **Invert**. Each effect is an editable mask row above the existing mask pixels and rows, with settings in Properties. Levels adjusts the mask's tonal range; Invert swaps light and dark. Anchor points offers **Add anchor point to this layer**, or **From “name”** to add an existing anchor as a mask input. The anchor input defaults to Height; Properties can switch it to Shape or Colour. Folder masks can use generators, filters and existing anchors; create anchor points on a layer.
+
+In 3D Paint, **Delete** and **Backspace** remove selected layers, including when a mask or a model selection is active. **Undo** restores the layers and their masks. Text fields keep their normal editing keys; **Alt+Delete** keeps its fill shortcut. At least one layer remains in a texture set.
 
 ## Decals, textures and the material library
 See [Textures, decals and the material library](Textures-and-decals.md): click a decal and then the model to place bolts, vents, labels and more; use grunge maps in masks and materials; start from ready-made leathers, metals, fabrics and more.

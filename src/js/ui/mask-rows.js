@@ -87,7 +87,7 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
       ms.value=Array.isArray(r.maps)?'only:'+r.maps[0]:r.maps==='all'?'all':'base';ms.onchange=()=>ed(x=>{x.maps=ms.value==='all'?'all':ms.value==='base'?'base':[ms.value.slice(5)];});
       box.append(el('div',{class:'frow'},el('label',{text:'Changes'}),ms));}
     else box.append(el('p',{class:'note',text:'A filter changes everything below it in the mask.'}));return;}
-  if(r.kind==='filter'){box.append(S('ms_r',r.own==='grow'?'Grow (−: shrink)':r.own==='warp'?'Amount':'Length',...(r.own==='grow'?['r',-12,12,1]:['r',0,24,.5]),v=>String(v)));
+  if(r.kind==='filter'){box.append(chk('ms_uvWrap','UV wrap',p.uvWrap!==false,v=>ed(x=>{x.p.uvWrap=v;})),S('ms_r',r.own==='grow'?'Grow (−: shrink)':r.own==='warp'?'Amount':'Length',...(r.own==='grow'?['r',-12,12,1]:['r',0,24,.5]),v=>String(v)));
     if(r.own!=='grow')box.append(S('ms_scale','Noise size','scale',1,40,.5),S('ms_seed','Seed','seed',1,99,1,v=>String(v)));
     box.append(el('p',{class:'note',text:r.own==='grow'?'Makes the white parts bigger (or smaller, below 0).':r.own==='warp'?'Pushes the mask around with a noise, to break up clean edges.':'Smears the mask along a noise, like dripping or flowing.'}));return;}
   if(r.kind==='paint'){box.append(el('p',{class:'note',text:'Paint on the model or the canvas: white shows the layer, black hides it. The eraser takes paint away (back to the rows below).'}),
@@ -116,6 +116,7 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
   if(r.kind==='ref'){const os=allNodes(doc.root).filter(n=>n!==L&&n.mask);box.append(sel('ms_ref','Layer',os.map(o=>[o.name,o.name]),'name'),inv(),el('p',{class:'note',text:'Follows that layer’s mask, live.'}));}
   if(r.kind==='gen'){
     const choose=sel('ms_g','Preset',MS_GENS,'g'),input=choose.querySelector('select');input.onchange=()=>{ed(x=>Object.assign(x.p,['light','linear','radial','comic'].includes(input.value)?msGenDefaults(input.value):{g:input.value}));renderLayers();renderMatEd(true);};box.append(choose);
+    box.append(chk('ms_uvWrap','UV wrap',p.uvWrap!==false,v=>ed(x=>{x.p.uvWrap=v;})));
     const fresh=['light','linear','radial','comic'].includes(p.g);
     if(fresh){for(const [k,v] of Object.entries(msGenDefaults(p.g)))if(p[k]==null)p[k]=v;
       if(p.g==='light'||p.g==='comic')box.append(S('ms_lightAz','Light horizontal angle','lightAz',-180,180,1,v=>v+'°'),S('ms_lightEl','Light elevation','lightEl',-90,90,1,v=>v+'°'),S('ms_wrap','Light wrap','width',0,1,.01,pct),S('ms_occ','Cavity shading','occlude',0,1,.01,pct));

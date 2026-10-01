@@ -1,7 +1,7 @@
 /* ================= Filters and adjustments =================
    Every one previews live on the canvas (unless previews are off), works on the map being viewed,
    and stays inside the selection. fxDialog is filterDialog with room for custom controls. */
-const FX={};function fxDef(id,o){o.id=id;FX[id]=o;return o;}
+const FX={};function fxDef(id,o){o.id=id;o.checks=[...(o.checks||[]),['uvWrap','UV wrap',true]];const render=o.render;if(render)o.render=(src,dst,v,ctx)=>withUVWrap(!v||v.uvWrap!==false,[src],()=>render(src,dst,v,ctx));FX[id]=o;return o;}
 /* starting settings of a filter */
 function fxDefaults(o){const v={};for(const d of o.defs||[])v[d.key]=d.value;for(const [k,,on] of o.checks||[])v[k]=on;if(o.init)Object.assign(v,o.init());return v;}
 /* settings as saved (no caches) */
@@ -11,7 +11,7 @@ function fxControls(o,v,upd,ctx){const body=[],sliders=[];
   if(o.note)body.push(el('p',{class:'note',text:o.note}));
   if(o.controls)body.push(...o.controls(v,upd,ctx));
   for(const d of o.defs||[]){const s=makeSlider(Object.assign({},d,{value:v[d.key],id:'fx_'+d.key,onInput:x=>{v[d.key]=x;upd();}}));sliders.push([s,d]);body.push(s.el);}
-  for(const [key,label] of o.checks||[])body.push(chk('fx_'+key,label,!!v[key],x=>{v[key]=x;upd();}));
+  for(const [key,label] of o.checks||[])body.push(chk('fx_'+key,label,key==='uvWrap'?v[key]!==false:!!v[key],x=>{v[key]=x;upd();}));
   const reset=sliders.length?el('button',{class:'btn sm',text:'Reset',onclick:()=>{for(const [s,d] of sliders){v[d.key]=d.value;s.set(d.value);}upd();}}):null;
   return {body,reset};}
 /* one-off filter on the active layer (or mask); "Keep editable" makes a filter layer instead */

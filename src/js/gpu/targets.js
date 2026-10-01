@@ -1,7 +1,12 @@
 /* ================= Targets ================= */
+let uvWrapScope=null;
+/* Repeat only while evaluating an effect; never change the document or a pooled texture permanently. */
+function uvWrapTarget(t){if(!uvWrapScope||!t||!t.tex)return;if(!uvWrapScope.saved.has(t)){gl.bindTexture(gl.TEXTURE_2D,t.tex);uvWrapScope.saved.set(t,[gl.getTexParameter(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S),gl.getTexParameter(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T)]);}setWrap(t,uvWrapScope.on);}
+function withUVWrap(on,targets,fn){const previous=uvWrapScope,old=doc.wrap,scope={on:!!on,docWrap:old,saved:new Map()};uvWrapScope=scope;doc.wrap=scope.on;
+  try{for(const t of targets)uvWrapTarget(t);return fn();}finally{for(const [t,wrap] of scope.saved)if(t.tex){gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,wrap[0]);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,wrap[1]);}doc.wrap=old;uvWrapScope=previous;}}
 function texFmt(depth){return depth===32?{i:gl.RGBA32F,t:gl.FLOAT}:depth===16?{i:gl.RGBA16F,t:gl.HALF_FLOAT}:{i:gl.RGBA8,t:gl.UNSIGNED_BYTE};}
 function makeTarget(w,h,depth,wrap){
-  depth=depth||doc.depth; if(wrap===undefined)wrap=doc.wrap;
+  depth=depth||doc.depth; if(wrap===undefined)wrap=uvWrapScope?uvWrapScope.docWrap:doc.wrap;
   const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);const F=texFmt(depth);
   gl.texImage2D(gl.TEXTURE_2D,0,F.i,w,h,0,gl.RGBA,F.t,null);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);

@@ -84,7 +84,7 @@ function renderAnimFx(){const A=A_();const box=tlParts.fxbox;if(!box||ui.mode!==
   const o=FX[tr.id],extra=el('div',{class:'dlg-grid afxextra'});
   try{const ctx={src:A.frames[A.cur].target};if(o.note)extra.append(el('p',{class:'note',text:o.note}));
     if(o.controls)extra.append(...o.controls(tr.v,afxTouch,ctx));
-    for(const [key,label] of o.checks||[])extra.append(chk('afx_ck_'+key,label,!!tr.v[key],x=>{tr.v[key]=x;afxTouch();}));}catch(e){}
+    for(const [key,label] of o.checks||[])extra.append(chk('afx_ck_'+key,label,key==='uvWrap'?tr.v[key]!==false:!!tr.v[key],x=>{tr.v[key]=x;afxTouch();}));}catch(e){}
   if(extra.children.length)ed.append(extra);}
 /* (0.45, Kenn) the effect picker: a small window with the effects in sections (Blurs, Patterns, Artistic…) and a search box */
 const AFX_SECTIONS=()=>{const nm={'Blur and sharpen':'Blurs'};const out=[['Animated',AFX_IDS.slice(0,7)]];
