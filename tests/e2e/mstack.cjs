@@ -19,7 +19,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const drag=async(x0,y0,x1,y1)=>{const a=await scr(x0,y0),c=await scr(x1,y1);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.move(c[0],c[1],{steps:8});await p.mouse.up();await W(150);};
  const setFG=async hx=>{await p.evaluate(()=>__gs.showPanel('color'));await p.fill('#hex',hx);await p.press('#hex','Enter');};
  const comp=(k,pts)=>p.evaluate(([k,pts])=>{const t=__gs.compositeMap(k),d=__gs.readRGBA8(t),W=__gs.doc.w;__gs.release(t);return pts.map(([x,y])=>Array.from(d.slice((y*W+x)*4,(y*W+x)*4+4)));},[k,pts]);
- await p.evaluate(()=>__gs.newDoc(128,128,8,[1,1,1],'mstack',false));await W(300);
+ await p.evaluate(()=>__gs.newDoc(128,128,8,[1,1,1],'mstack',false));await W(300); await p.click('#modeTabs [data-mode=p3d]');await W(1500);
  await p.evaluate(()=>__gs.act('addLayer'));await W();await setFG('#e02020');await p.evaluate(()=>{document.activeElement.blur();__gs.act('fill');});await W(200);
  const L=()=>'__gs.doc.active';
  const px=(k,x,y)=>comp(k,[[x,y]]).then(r=>r[0]);

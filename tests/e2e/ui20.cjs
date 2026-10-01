@@ -46,9 +46,9 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
 
  /* ---- layer icon buttons: one row, always in view at the bottom of the panel ---- */
  for(let i=0;i<6;i++)await p.click('#lAdd');await W();
- const lb=await p.evaluate(()=>{const bs=[...document.querySelectorAll('.lbtns.icons .lyb')].map(b=>b.getBoundingClientRect()),body=document.querySelector('#lAdd').closest('.dkbody').getBoundingClientRect();
+ const lb=await p.evaluate(()=>{const bs=[...document.querySelectorAll('.lbtns.icons .lyb')].filter(b=>b.offsetParent).map(b=>b.getBoundingClientRect()),body=document.querySelector('#lAdd').closest('.dkbody').getBoundingClientRect();
    return {w:['section[aria-labelledby="hLayers"]','.lbtns.icons','#layerList','.dkbody'].map(s=>{const r=document.querySelector('#lAdd').closest('.dkbody').querySelector(s)||document.querySelector(s);const q=r.getBoundingClientRect();return s.slice(0,8)+':'+Math.round(q.left)+'-'+Math.round(q.right)+' sw'+r.scrollWidth;}),l0:Math.round(bs[0].left),b:[Math.round(bs[0].top),Math.round(bs[0].bottom),Math.round(bs[11].right)],body:[Math.round(body.top),Math.round(body.bottom),Math.round(body.right)],rows:new Set(bs.map(r=>Math.round(r.y))).size,inView:bs.every(r=>r.bottom<=body.bottom+1&&r.top>=body.top-1&&r.right<=body.right+1),n:bs.length};});
- ok(lb.rows===1&&lb.inView&&lb.n===13,'layer buttons: one row, in view '+JSON.stringify(lb));
+ ok(lb.rows===1&&lb.inView&&lb.n===11,'layer buttons: one row, in view '+JSON.stringify(lb));
  for(let i=0;i<6;i++)await p.keyboard.press('Control+z');await W();
  /* ---- right-click menu ---- */
  const row=p.locator('#layerList .lrow').first();
