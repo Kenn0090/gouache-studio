@@ -83,6 +83,7 @@
         "ui/mask-rows",
         "layers/mat-convert",
         "layers/smart",
+        "layers/smart-workshop",
         "files/p3-project",
         "layers/materials",
         "layers/mat-import",

@@ -1,0 +1,27 @@
+const {chromium}=require('playwright'),path=require('path');
+let failures=0;const ok=(v,s)=>{console.log((v?'PASS ':'FAIL ')+s);if(!v)failures++;};
+(async()=>{const b=await chromium.launch({channel:'msedge',headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});const p=await b.newPage({viewport:{width:1440,height:1000}}),errors=[];
+ await p.addInitScript(()=>localStorage.setItem('gs.p3d',JSON.stringify({size:128,layout:'3d'})));p.on('pageerror',e=>errors.push(e.message));p.on('console',m=>{if(m.type()==='error'&&/shader|compile|link/i.test(m.text()))errors.push(m.text());});
+ await p.route('**/*',r=>r.request().url().startsWith('file:')?r.continue():r.fulfill({body:'',contentType:'text/javascript'}));await p.goto('file://'+path.resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForFunction(()=>window.__gs);
+ await p.evaluate(()=>{const G=__gs;G.closeWelcome();G.newDoc(128,128,8,[1,1,1],'Generators',false);window.testFill=G.cmdNewFillLayer();window.testRow=G.msAdd(testFill,'gen',{p:G.msGenDefaults('linear')});});
+ const checks=await p.evaluate(()=>{const G=__gs,read=changes=>{Object.assign(testRow.p,changes);testFill.mask._key=null;G.msUpdate(testFill);const d=G.readRGBA8(testFill.mask.target);return Array.from(d).filter((v,i)=>i%4===0);};
+  const a=read({gradAxis:'x',gradStyle:'linear'}),rev=read({gradFrom:1,gradTo:0}),inv=read({gradFrom:0,gradTo:1,inv:true}),bands=read({inv:false,gradStyle:'bands',bands:4}),equal=read({gradStyle:'linear',gradFrom:.5,gradTo:.5}),radial=read({...G.msGenDefaults('radial')});
+  return {ramp:a[64*128]<5&&a[64*128+127]>250,reverse:a.every((v,i)=>Math.abs(v+rev[i]-255)<=1),invert:a.every((v,i)=>Math.abs(v+inv[i]-255)<=1),bands:new Set(bands).size<=4,equal:new Set(equal).size===2,radial:radial[64*128+64]>radial[0]+100};});for(const [k,v]of Object.entries(checks))ok(v,k+' gradient output');
+ await p.evaluate(()=>{const G=__gs;G.setMode('p3d');G.useModel(G.primMesh('sphere',0));window.testFill=G.cmdNewFillLayer();window.testRow=G.msAdd(testFill,'gen',{p:G.msGenDefaults('light')});});
+ const three=await p.evaluate(()=>{const G=__gs,read=changes=>{Object.assign(testRow.p,changes);testFill.mask._key=null;G.msUpdate(testFill);return G.readRGBA8(testFill.mask.target);},diff=(a,b)=>a.reduce((s,v,i)=>s+Math.abs(v-b[i]),0);const a=read({lightAz:-90,lightEl:0}),b=read({lightAz:90}),shadow=read({...G.msGenDefaults('comic'),comicStyle:'shadow'}),dots=read({comicStyle:'dots',dotSize:.8,dots:12}),dense=read({dots:64});return {light:diff(a,b)>50000,comic:diff(shadow,dots)>50000,density:diff(dots,dense)>50000};});for(const [k,v]of Object.entries(three))ok(v,k+' changes rendered pixels');
+ async function drag(id,read){const l=p.locator('#'+id);await l.scrollIntoViewIfNeeded();await l.evaluate(e=>window.draggedSlider=e);const r=await l.boundingBox();await p.mouse.move(r.x+r.width*.25,r.y+r.height/2);await p.mouse.down();await p.mouse.move(r.x+r.width*.75,r.y+r.height/2,{steps:15});const result=await p.evaluate(read);await p.mouse.up();ok(result,'real pointer drag '+id);}
+ await p.evaluate(()=>{Object.assign(testRow.p,__gs.msGenDefaults('comic'));__gs.renderMatEd(true);});
+ await drag('ms_dots',()=>testRow.p.dots>70&&draggedSlider.isConnected);
+ await drag('ms_op',()=>testRow.op>.65&&draggedSlider.isConnected);
+ await p.evaluate(()=>{__gs.ui.msSel=null;testFill.editMask=false;__gs.matEd.openAll=true;__gs.renderMatEd(true);});
+ await drag('fl_v_rough',()=>testFill.fill.maps.rough.v>.65&&draggedSlider.isConnected);
+ await drag('pxf_tslide',()=>testFill.fill.xf.s[0]<.03&&draggedSlider.isConnected);
+ await p.evaluate(()=>{testFill.fill.recol.mode='multi';testFill.fill.recol.n=2;__gs.recolBuild(document.querySelector('.recolBox'),testFill);});await drag('rc_n',()=>testFill.fill.recol.n>=3&&draggedSlider.isConnected);await p.waitForTimeout(800);await p.evaluate(()=>__gs.undo());ok(await p.evaluate(()=>testFill.fill.recol.n===2),'recolour slider undo restores its value');
+ await p.evaluate(()=>{testFill.mask.stack=[];window.testRow=__gs.msAdd(testFill,'grad',{p:{axis:'x',from:0,to:1,inv:false}});});const legacy=await p.evaluate(()=>{const G=__gs;G.msUpdate(testFill);const a=G.readRGBA8(testFill.mask.target);Object.assign(testRow.p,{from:1,to:0});testFill.mask._key=null;G.msUpdate(testFill);const b=G.readRGBA8(testFill.mask.target);return a.every((v,i)=>i%4!==0||Math.abs(v+b[i]-255)<=1);});ok(legacy,'existing gradient endpoints reverse the fade');
+ await p.evaluate(()=>{__gs.showPanel('shading');document.querySelector('#post_grain').click();});await drag('post_grain_amt',()=>__gs.postOf().grain.amt>.65&&draggedSlider.isConnected);
+ await p.evaluate(()=>{__gs.setMode('paint');__gs.showPanel('brushes');});
+ await drag('bFlow',()=>__gs.brush.flow>.65&&draggedSlider.isConnected);
+ await p.evaluate(()=>{__gs.setMode('anim');__gs.afxAdd('filmGrain');});await drag('afx_amt',()=>__gs.afxList()[0].v.amt>.65&&draggedSlider.isConnected);
+ await p.evaluate(()=>__gs.dlgGenerate(19));await drag('vg_wid',()=>+draggedSlider.value>+draggedSlider.min+(+draggedSlider.max-+draggedSlider.min)*.65&&draggedSlider.isConnected);await p.click('#dlgCancel');
+ ok(errors.length===0,'no app or shader errors '+errors.join(' | '));await b.close();process.exit(failures?1:0);
+})().catch(e=>{console.error(e);process.exit(1);});

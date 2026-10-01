@@ -56,7 +56,7 @@ function recolBuild(box,L){const W=L.fill;if(!W.recol)W.recol=RC_DEF();const r=W
     seg([['off','Off'],['simple','One colour'],['main','Main colour'],['multi','Several'],['custom','Custom']],r.mode,mode,'Recolour mode'));
   if(r.mode==='simple')box.append(el('div',{class:'frow'},el('label',{text:'Colour'}),colourBtn('rc_tint',()=>r.tint,c=>ed(()=>{r.tint=c;}),'Recolour colour')));
   if(r.mode==='main'||r.mode==='multi'||r.mode==='custom'){
-    if(r.mode==='multi')box.append(makeSlider({id:'rc_n',label:'Colours',min:2,max:4,step:1,value:Math.max(2,Math.min(4,r.n||3)),fmt:v=>String(v),onInput:v=>ed(()=>{r.n=Math.round(v);recolDetect(L,r.n);},true)}).el);
+    if(r.mode==='multi')box.append(makeSlider({id:'rc_n',label:'Colours',min:2,max:4,step:1,value:Math.max(2,Math.min(4,r.n||3)),fmt:v=>String(v),onInput:v=>ed(()=>{r.n=Math.round(v);recolDetect(L,r.n);}),onChange:()=>recolBuild(box,L)}).el);
     r.pairs.forEach((p,i)=>box.append(el('div',{class:'frow rcpair'},el('span',{class:'note',text:r.mode==='main'?'Main colour':'Colour '+(i+1)}),
       colourBtn('rc_f'+i,()=>p.f,c=>ed(()=>{p.f=c;}),'Colour to change'),el('span',{class:'note',text:'→'}),colourBtn('rc_t'+i,()=>p.t,c=>ed(()=>{p.t=c;}),'New colour'),
       r.mode==='custom'&&r.pairs.length>1?el('button',{class:'btn sm',text:'×',title:'Remove','aria-label':'Remove this colour',onclick:()=>ed(()=>{r.pairs.splice(i,1);},true)}):null)));

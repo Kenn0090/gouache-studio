@@ -182,7 +182,9 @@ function smNeeds(o){if(o.lib)return true;for(const r of (o.mask&&o.mask.rows)||[
 async function smResolveMask(m){for(const r of m.rows||[]){const g=r.p&&r.p.grunge;if(g&&!r.img){const it=txItems().find(x=>x.kind==='photo'&&x.id===g);if(it){r.img=smCap(await txTarget(it));r.p.name=it.name;}}}}
 async function smResolveNode(o){
   if(o.lib){const rec=gmRecs.find(r=>r.bundled&&r.bundled.file===o.lib+'.gmat');
-    if(rec){if(!(rec.fill&&rec.imgs))await gmLoad(rec);o.fill=fillClone(rec.fill);o.fillImg={};const T=matRecTargets(rec);for(const k in T){const c=smCap(T[k]);if(c)o.fillImg[k]=c;}}}
+    if(rec){if(!(rec.fill&&rec.imgs))await gmLoad(rec);o.fill=fillClone(rec.fill);
+      if(o.libAdjust){const a=fillClone(o.libAdjust),tile=a.tile;delete a.tile;const maps=a.maps;delete a.maps;Object.assign(o.fill,a);if(tile!=null)for(const k in o.fill.maps)o.fill.maps[k].tile=tile;if(maps)for(const k in maps)o.fill.maps[k]=Object.assign({},o.fill.maps[k]||{},maps[k]);}
+      o.fillImg={};const T=matRecTargets(rec);for(const k in T){const c=smCap(T[k]);if(c)o.fillImg[k]=c;}}}
   if(o.mask)await smResolveMask(o.mask);
   for(const c of o.kids||[])await smResolveNode(c);}
 function smBuiltins(){return SM_BUILTIN.concat(SM_LIB).map(([name,kids])=>({id:'sb:'+name,kind:'smart',builtin:true,name,tree:{t:'G',name,open:true,kids:kids.slice()}}));}

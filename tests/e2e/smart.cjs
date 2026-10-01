@@ -20,7 +20,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('#modeTabs [data-mode=p3d]');await W(1200);
  await p.evaluate(()=>{__gs.useModel(__gs.primMesh('sphere',1));__gs.showPanel('mats');});await W(900);
  const g=await p.evaluate(()=>({sm:document.querySelectorAll('#smGrid .mattile').length,mk:document.querySelectorAll('#smMaskGrid .mattile').length,names:[...document.querySelectorAll('#smGrid .mattile span')].map(s=>s.textContent).join()}));
- ok(g.sm===28&&g.mk>=17&&/Gun Metal/.test(g.names)&&/Leather/.test(g.names),'Materials tab lists the 28 built-in smart materials and the smart masks '+JSON.stringify(g));
+ ok(g.sm===34&&g.mk>=23&&/Gun Metal/.test(g.names)&&/Leather/.test(g.names),'Materials tab lists the 34 built-in smart materials and the smart masks '+JSON.stringify(g));
  const n0=await p.evaluate(()=>__gs.allLayers().length);
  await p.click('#smGrid .mattile:has-text("Gun Metal")');await p.click('#lFill');await W(900);
  let a=await p.evaluate(()=>{const G=__gs.doc.active;return {type:G.type,name:G.name,kids:G.children.map(c=>c.name+':'+(c.fill?'fill':'px')+':'+(c.mask&&c.mask.stack?c.mask.stack.map(r=>r.kind).join('+'):'-')).join(' | ')};});

@@ -86,7 +86,7 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSize; uv.y=1.0-uv.y; float asp=uSize.x/uSi
     a=clamp((a+exp(-rr*rr/0.0025)*glow*0.12)*uInt,0.0,1.0); res=vec4(ramp(clamp(0.35+0.6*a,0.0,1.0),uPal)*a,a); }
   else if(uKind==11){ float e=1.0-pow(1.0-min(uT*1.8,1.0),2.0); float R=0.4*uScale; float rot=lean*1.2-0.5; mat2 Rm=mat2(cos(rot),-sin(rot),sin(rot),cos(rot)); vec2 q=Rm*pc; q.y+=0.12*uScale;
     float phi=atan(q.y,q.x); float s=(phi-0.15*3.14159)/(0.7*3.14159); float w=(0.03+0.09*wid)*uScale*pow(sin(3.14159*clamp(s,0.0,1.0)),0.9)+0.0015;
-    float d=length(q)-R+(vnp(vec2(s*14.0+uSeed,3.0),vec2(64.0,64.0))-0.5)*uTurb*0.03; float a=1.0-smoothstep(0.0,1.0,abs(d+w*0.4)/w);
+    float d=length(q)-R+(vnp(vec2(s*14.0+uSeed,3.0),vec2(64.0,64.0))-0.5)*uTurb*0.03; float a=1.0-smoothstep(0.0,0.7+soft,abs(d+w*0.4)/w);
     float vis=smoothstep(e-1.0,e-0.3,s)*(1.0-smoothstep(e-0.03,e,s))*step(0.0,s)*step(s,1.0); float life=1.0-smoothstep(0.6,1.0,uT);
     float head=smoothstep(e-1.0,e,s); float heat=clamp(a*(0.35+0.9*head)*uInt,0.0,1.0); float halo=exp(-pow(d/(w*3.0+0.001),2.0))*glow*0.25*vis;
     float al=clamp((a*vis*uInt+halo)*life,0.0,1.0); res=vec4(ramp(clamp(heat*0.9+0.1,0.0,1.0),uPal)*al,al); }

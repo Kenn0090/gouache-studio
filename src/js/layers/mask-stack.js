@@ -10,7 +10,7 @@
 const MS_MODES=[['normal','Normal','Norm'],['multiply','Multiply','Mult'],['add','Add','Add'],['subtract','Subtract','Sub'],['screen','Screen','Scrn'],['min','Min (darker)','Min'],['max','Max (lighter)','Max'],['overlay','Overlay','Ovl']];
 const msModeIx=m=>Math.max(0,MS_MODES.findIndex(x=>x[0]===m));
 const MS_GENS=[['edge','Edge wear'],['dirt','Dirt in cavities'],['dust','Dust on top'],['moss','Moss'],['rust','Rust streaks'],['water','Water line'],['slime','Slime'],['crud','Crud'],
-  ['chips','Chipped paint'],['scratch','Scratches'],['snow','Snow on top'],['soot','Soot'],['drips','Drips and leaks'],['bleach','Sun-bleached']];
+  ['chips','Chipped paint'],['scratch','Scratches'],['snow','Snow on top'],['soot','Soot'],['drips','Drips and leaks'],['bleach','Sun-bleached'],['light','Light'],['linear','Linear gradient'],['radial','Radial gradient'],['comic','Comic shading']];
 const MS_NOISES=[['clouds','Clouds'],['cells','Cells'],['grunge','Grunge'],['scratches','Scratches'],['streaks','Streaks'],['dots','Dots'],['fibres','Fibres']];
 /* what each row kind is: its title, and its settings when new */
 const MS_KINDS={
@@ -87,13 +87,13 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; float m=0.0,cov=1.0;
   if(uKind==0){ vec4 c=texture(uT,uv); m=c.a>1e-5?dot(c.rgb/c.a,vec3(0.299,0.587,0.114)):0.0; }
   else if(uKind==1) m=uV;
   else if(uKind==2){ float d=dot(surfN(),normalize(uDir)); m=smoothstep(uA-uB,uA+uB,d); }
-  else if(uKind==3){ vec3 P=surfP(uv); float t=dot(P,abs(uDir)); if(uDir.x+uDir.y+uDir.z<0.0) t=1.0-t; m=clamp((t-uA)/max(uB-uA,1e-3),0.0,1.0); }
+  else if(uKind==3){ vec3 P=surfP(uv); float t=dot(P,abs(uDir)); if(uDir.x+uDir.y+uDir.z<0.0) t=1.0-t; float span=uB-uA; m=abs(span)<1e-4?step(uA,t):clamp((t-uA)/span,0.0,1.0); }
   else { vec3 q=surfQ(uv)*uScale; float n=noiseOf(uType,q); m=clamp((n-0.5)*uC+0.5+uV,0.0,1.0); }
   if(uNeg==1) m=1.0-m; o=vec4(vec3(m)*cov,cov); }`;
 /* generators: the Mask Builder presets, made from curvature, AO, direction and height with noise to break them up */
 const FS_MSGEN=MS_NOISE_GLSL+MS_SURF_GLSL+`
 uniform sampler2D uCurv; uniform int uHasCurv; uniform sampler2D uAO; uniform int uHasAO; uniform int uG; uniform float uAmt; uniform float uWidth; uniform float uBreak; uniform float uCon; uniform float uScale; uniform int uNeg; uniform float uDist;
-uniform sampler2D uCurv2; uniform int uHasCurv2;
+uniform sampler2D uCurv2; uniform int uHasCurv2; uniform vec4 uLight; uniform vec4 uGrad; uniform vec3 uAxis; uniform vec3 uCenter; uniform vec4 uComic; uniform int uComicMode;
 float curvOf(vec2 uv){ float c=uHasCurv==1?texture(uCurv,uv).r:0.5; if(uHasCurv2==1) c=clamp(c+(texture(uCurv2,uv).r-0.5)*1.5,0.0,1.0); return c; }
 float aoOf(vec2 uv){ return uHasAO==1?texture(uAO,uv).r:1.0; }
 void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(); vec3 q=surfQ(uv)*uScale;
@@ -114,7 +114,29 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(); vec3 q=sur
   else if(uG==10) b=smoothstep(0.25-w*0.3,0.75-w*0.3,up)*1.2;
   else if(uG==11) b=(1.0-smoothstep(0.0,0.5+w*0.5,P.y))*0.7+occ*0.6;
   else if(uG==12) b=(edge*0.4+cav*0.4+occ*0.3)*fbm(vec3(q.x*4.0,q.y*0.12,q.z*4.0))*(1.0+w*1.5);
-  else b=smoothstep(-0.2,0.9,up)*(0.4+w*0.8)*(0.7+fbm(q*0.5)*0.6);
+  else if(uG==13) b=smoothstep(-0.2,0.9,up)*(0.4+w*0.8)*(0.7+fbm(q*0.5)*0.6);
+  if(uG>=14){
+    float lambert=clamp((dot(N,normalize(uLight.xyz))+uWidth*.6)/(1.0+uWidth*.6),0.0,1.0);
+    lambert*=mix(1.0,ao,clamp(uLight.w,0.0,1.0));
+    if(uG==14)b=lambert;
+    else if(uG==15||uG==16){
+      float pos=dot(P,abs(uAxis));if(uAxis.x+uAxis.y+uAxis.z<0.0)pos=1.0-pos;
+      if(uG==16)pos=length(P-uCenter)/.8660254;
+      float span=uGrad.y-uGrad.x;float t=abs(span)<.0001?step(uGrad.x,pos):clamp((pos-uGrad.x)/span,0.0,1.0);
+      if(uGrad.z>.5&&uGrad.z<1.5)t=t*t*(3.0-2.0*t);
+      if(uGrad.z>1.5)t=floor(t*(uGrad.w-1.0)+.0001)/max(1.0,uGrad.w-1.0);
+      b=uG==16?1.0-t:t;
+    }else{
+      float bands=max(2.0,uComic.x),shade=floor(lambert*(bands-1.0)+.0001)/(bands-1.0);
+      vec3 an=abs(N);vec2 plane=an.x>an.y&&an.x>an.z?P.zy:an.y>an.z?P.xz:P.xy;
+      float angle=uComic.w*.0174532925;plane=mat2(cos(angle),sin(angle),-sin(angle),cos(angle))*plane;
+      vec2 cell=fract(plane*uComic.y)-.5;float d=length(cell),radius=clamp(uComic.z*(1.0-lambert),.0,.48),aa=max(fwidth(d),.003);
+      float dots=(1.0-smoothstep(max(0.0,radius-aa),radius+aa,d))*step(.015,radius);
+      b=uComicMode==1?1.0-step(.5,lambert):uComicMode==2?dots:clamp((1.0-shade)*.65+dots*.35,0.0,1.0);
+    }
+    b=clamp((b-.5)*uCon+.5+(uAmt-.5)*2.0+(n-.5)*uBreak,0.0,1.0);
+    if(uNeg==1)b=1.0-b;o=vec4(vec3(b),1.0);return;
+  }
   float v=b+(n-0.5)*uBreak*1.2, thr=1.0-uAmt, s=0.35/max(uCon,0.3);
   float m=smoothstep(thr-s,thr+s,v); if(uNeg==1) m=1.0-m; o=vec4(vec3(m),1.0); }`;
 /* our own mask filters: grow/shrink (min/max around), warp (pushed by noise), slope blur (smeared along a noise) */
@@ -187,6 +209,9 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
   if(r.kind==='gen'){const o=out(),curv=msMeshTex('curv')||msMeshTex('cv:curv')||msDocMap('curv',ctx)||msModelCurv(),ao=msMeshTex('ao')||msMeshTex('cv:ao')||msDocMap('ao',ctx);
     const ac=p.anchor?msAnchorCurv(p.anchor,ctx):null;
     run(P.gen,o,Object.assign({uG:{int:Math.max(0,MS_GENS.findIndex(g=>g[0]===p.g))},uCurv:curv?curv.tex:dummy,uHasCurv:{int:curv?1:0},uCurv2:ac?ac.tex:dummy,uHasCurv2:{int:ac?1:0},uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},
+      uLight:[Math.sin((p.lightAz??-35)*Math.PI/180)*Math.cos((p.lightEl??45)*Math.PI/180),Math.sin((p.lightEl??45)*Math.PI/180),Math.cos((p.lightAz??-35)*Math.PI/180)*Math.cos((p.lightEl??45)*Math.PI/180),p.occlude??.25],
+      uGrad:[p.gradFrom??0,p.gradTo??1,['linear','smooth','bands'].indexOf(p.gradStyle||'smooth'),p.bands??3],uAxis:MS_AXES[p.gradAxis||'up']||[0,1,0],uCenter:[p.centerX??.5,p.centerY??.5,p.centerZ??.5],
+      uComic:[p.bands??3,p.dots??28,p.dotSize??.45,p.dotAngle??45],uComicMode:{int:['shade','shadow','dots'].indexOf(p.comicStyle||'shade')},
       uAmt:p.amount,uWidth:p.width,uBreak:p.breakup,uCon:p.contrast,uDist:p.distort||0,uScale:p.scale||6,uSeed:p.seed||1,uNeg:{int:p.inv?1:0}},msPx(r,ctx)));return {t:o,pooled:true};}
   return null;}
 /* a filter row on the picture so far */
@@ -289,3 +314,5 @@ function msEdit(L,row,fn,label){if(msEd.L!==L||!msEd.snap){msCommit();msEd.L=L;m
 function msCommit(){clearTimeout(msEd.timer);msEd.timer=0;const L=msEd.L,b=msEd.snap;msEd.snap=null;if(!L||!b)return;const a=msSnap(L);
   if(JSON.stringify(a.stack&&a.stack.map(x=>x.d))===JSON.stringify(b.stack&&b.stack.map(x=>x.d))&&JSON.stringify(a.cfx.map(x=>x.d))===JSON.stringify(b.cfx.map(x=>x.d)))return;
   pushUndo({label:msEd.label,refs:[L],masks:[a.mask].filter(Boolean),undo(){msRestore(L,b);},redo(){msRestore(L,a);}});}
+
+function msGenDefaults(g){return Object.assign(MS_KINDS.gen.p(),{g},['light','linear','radial','comic'].includes(g)?{amount:.5,width:.25,breakup:0,contrast:1,lightAz:-35,lightEl:45,occlude:.25,gradAxis:'up',gradFrom:0,gradTo:1,gradStyle:'smooth',centerX:.5,centerY:.5,centerZ:.5,bands:3,dots:28,dotSize:.45,dotAngle:45,comicStyle:'shade'}:{});}
