@@ -979,3 +979,12 @@ body.tabfull #docTabs{display:none!important}
 #lOp::-moz-range-track{height:4px;background:linear-gradient(to right,var(--accent) var(--v,100%),var(--line-2) var(--v,100%))}
 #lOp::-webkit-slider-thumb{margin-top:-4px}
 #lChipRow{flex-wrap:nowrap;align-items:center;justify-content:space-between}#lChipRow .lockrow{margin-left:auto}
+
+/* Generator preview beside the controls; keep Make frames accessible on smaller displays. */
+.dialog:has(.vfxdlg){width:min(800px,96vw);overflow:hidden}
+.vfxdlg{display:grid;grid-template-columns:240px minmax(0,1fr);gap:16px;max-height:calc(100vh - 210px);overflow:auto;padding-right:4px;align-items:start}
+.vfxdlg>canvas{grid-column:1;grid-row:1;width:240px!important;height:240px!important}
+.vfxdlg>.chips{grid-column:1;grid-row:2;align-self:start}
+.vfxdlg>.dlg-grid{grid-column:2;grid-row:1 / span 2;min-width:0}
+.vfxdlg .srow>label{width:118px;flex-shrink:0}
+@media(max-width:650px){.vfxdlg{grid-template-columns:minmax(0,1fr)}.vfxdlg>canvas,.vfxdlg>.chips,.vfxdlg>.dlg-grid{grid-column:1;grid-row:auto}.vfxdlg>canvas{justify-self:center}}
