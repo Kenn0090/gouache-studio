@@ -31,7 +31,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* Grunge goes to Textures with its transparency */
  const n0=await p.evaluate(()=>__gs.tx.mine.length);
  await p.evaluate(()=>__gs.ttMake(null,'grunge','My canvas'));await W(600);
- const g=await p.evaluate(()=>{const r=__gs.tx.mine[__gs.tx.mine.length-1];let a0=0,a1=0;for(let i=3;i<r.data.length;i+=4){if(r.data[i]===0)a0++;else a1++;}return {n:__gs.tx.mine.length,name:r.name,a0,a1};});
+ const g=await p.evaluate(async()=>{const r=await __gs.txRead(__gs.tx.mine[__gs.tx.mine.length-1]);let a0=0,a1=0;for(let i=3;i<r.data.length;i+=4){if(r.data[i]===0)a0++;else a1++;}return {n:__gs.tx.mine.length,name:r.name,a0,a1};});
  ok(g.n===n0+1&&g.name==='My canvas','Grunge: the texture is saved in Textures '+JSON.stringify(g));
  ok(g.a0>0&&g.a1>0,'the transparent parts stay transparent '+JSON.stringify(g));
  /* Decal goes through the Convert tab and keeps its cut-out */

@@ -169,6 +169,11 @@ const store={db:null,
   tx(mode,fn,sn){sn=sn||'sets';return this.open().then(db=>new Promise((res,rej)=>{const t=db.transaction(sn,mode);const req=fn(t.objectStore(sn));t.oncomplete=()=>res(req&&req.result);t.onerror=()=>rej(t.error);}));},
   put(d,sn){return this.tx('readwrite',st=>st.put(d),sn).catch(()=>{});},
   del(id,sn){return this.tx('readwrite',st=>st.delete(id),sn).catch(()=>{});},
+  getRaw(id,sn){return this.tx('readonly',st=>st.get(id),sn);},
+  /* Read one record at a time. Library lists retain metadata, not every packed image. */
+  scanRaw(sn,select){return this.open().then(db=>new Promise((res,rej)=>{const out=[],t=db.transaction(sn,'readonly'),r=t.objectStore(sn).openCursor();
+    r.onsuccess=()=>{const c=r.result;if(!c)return;try{const v=select(c.value);if(v!==undefined)out.push(v);c.continue();}catch(e){t.abort();rej(e);}};
+    t.oncomplete=()=>res(out);t.onerror=t.onabort=()=>rej(t.error||new Error('Could not read the library.'));}));},
   all(sn){return this.tx('readonly',st=>st.getAll(),sn).catch(()=>[]);}
 };
 function serializeSet(set){const tips=[],idx=new Map();

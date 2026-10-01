@@ -38,17 +38,17 @@ fxDef('warp',{title:'Warp',note:'Pushes the picture around with a smooth noise: 
   render(src,dst,v){run(pxd('warp'),dst,{uSrc:src.tex,uAmt:v.amt,uSize:v.size,uSeed:v.seed,uMode:{int:v.mode==='turb'?1:0},uWrap:fxdWrap()});}});
 /* (0.39, Kenn) the slope can come from a picture: drop one on the box, or pick from the Textures library */
 function fxdAllTex(){return [...tx.mine.map(rec=>({kind:'mine',id:rec.id,name:rec.name,rec})),...TX_PHOTO.map(([id,name])=>({kind:'photo',id,name})),...TX_GEN.map(([id,name])=>({kind:'gen',id,name}))];}
-function fxdGuideTex(v){const g=v.gimg;if(!g)return null;const key=g.kind+':'+g.id,t=tx.cache.get(key);if(t)return t;
+function fxdGuideTex(v){const g=v.gimg;if(!g)return null;txCachePin(g);const key=g.kind+':'+g.id,t=txCacheGet(key);if(t)return t;
   if(!g._busy){g._busy=true;txLoad().then(()=>{const it=fxdAllTex().find(x=>x.kind===g.kind&&x.id===g.id);return it&&txTarget(it);}).then(r=>{g._busy=false;if(r)changedAll();}).catch(()=>{g._busy=false;});}
   return null;}
 function fxdPickTexture(done){txLoad().then(()=>{const items=fxdAllTex();
-  const grid=el('div',{class:'fxdpick'},...items.map(it=>{const img=el('img',{alt:'',width:64,height:64,draggable:'false'});img._tx=it;txSeen.observe(img);
-    return el('button',{class:'mattile txtile',type:'button',title:it.name,onclick:()=>{closeDialog();done({kind:it.kind,id:it.id,name:it.name});}},img,el('span',{text:it.name}));}));
-  openDialog({title:'Pick a texture',body:grid,okLabel:'Close'});});}
+  const grid=el('div',{class:'fxdpick'},...items.map(it=>{const img=el('img',{alt:'',width:64,height:64,draggable:'false'});img._tx=it;txObserve(img);
+    return el('button',{class:'mattile txtile',type:'button',title:it.name,onclick:()=>{txForget(grid);closeDialog();done({kind:it.kind,id:it.id,name:it.name});}},img,el('span',{text:it.name}));}));
+  openDialog({title:'Pick a texture',body:grid,okLabel:'Close',onOk:()=>txForget(grid),onCancel:()=>txForget(grid)});txPruneObserved();});}
 async function fxdDropFiles(files,done){const f=[...files].find(x=>/^image\//.test(x.type)||/\.(png|jpe?g|webp|tga|bmp|tiff?)$/i.test(x.name));if(!f)return;
-  try{await txLoad();const t=await fileTarget(f);const rec=await txAddTarget(t,baseName(f.name));if(typeof renderTextures==='function')renderTextures();done({kind:'mine',id:rec.id,name:rec.name});}catch(e){toast('Could not read that picture: '+(e.message||e));}}
+  let t;try{await txLoad();t=await fileTarget(f);const rec=await txAddTarget(t,baseName(f.name));t=null;if(typeof renderTextures==='function')renderTextures();done({kind:'mine',id:rec.id,name:rec.name});}catch(e){if(t)disposeTarget(t);toast('Could not read that picture: '+(e.message||e));}}
 function fxdGuideRow(v,upd){const name=el('span',{class:'note',text:v.gimg?v.gimg.name:'No picture yet'});
-  const set=g=>{v.gimg=g;name.textContent=g.name;txLoad().then(()=>{const it=fxdAllTex().find(x=>x.kind===g.kind&&x.id===g.id);return it&&txTarget(it);}).then(()=>upd());};
+  const set=g=>{v.gimg=g;txCachePin(g);name.textContent=g.name;txLoad().then(()=>{const it=fxdAllTex().find(x=>x.kind===g.kind&&x.id===g.id);return it&&txTarget(it);}).then(()=>upd()).catch(e=>toast('Could not read that texture: '+(e.message||e)));};
   const drop=el('div',{class:'fxddrop',id:'fxdDrop',tabindex:'0',title:'Drop a picture here'},el('b',{text:'Drop a picture'}),el('small',{text:'or click to browse'}));
   drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
   drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');fxdDropFiles(e.dataTransfer.files,set);});

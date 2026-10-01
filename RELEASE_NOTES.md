@@ -1,7 +1,7 @@
-# Gouache Studio 0.46.7
+# Gouache Studio 0.46.8
 
-- Painting reuses unchanged layers inside nested groups. Effects below cached layers no longer force full redraws of every plain stroke; dependent effects and masks keep the full redraw path.
-- Large save images are packed in a background worker and read back asynchronously from the graphics card, reducing work on the main UI thread. Existing project files stay compatible, including lossless masks and 16-bit height.
-- Saving briefly holds edits and tab changes while capturing a consistent document. Animation playback waits during capture and resumes afterward.
-- Unused scratch textures are trimmed during idle time. Layer pixels, undo history and textures still in use are preserved.
-- Performance monitor now reports tracked texture storage, scratch reuse, partial/full redraw counts, GPU frame timings when available and save preparation stages.
+- The Textures shelf uses small previews instead of loading full images while you browse. All 99 built-in photo textures have bundled previews; generated patterns use temporary small previews.
+- Imported textures stay packed until needed. New imports save a preview, and older imports create one when first shown and reuse it after reopening the app.
+- Repeated requests share one texture load. Older unused full textures leave the cache during idle time, reducing graphics memory use.
+- Applied textures and picture guides stay available for masks, layers, material channels, stencils and filters. Texture packs still export full-resolution originals.
+- Thumbnail work runs in small batches and stops tracking tiles removed by searching, changing categories or closing the texture picker.

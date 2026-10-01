@@ -3,6 +3,7 @@
 //   dist/                - the desktop app's frontend (libraries and fonts bundled locally, works offline)
 import zlib from 'zlib';
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -29,7 +30,17 @@ const GMATS = fs.existsSync(r('assets/materials')) ? fs.readdirSync(r('assets/ma
   let b = fs.readFileSync(r('assets/materials/' + f)); if (b[0] === 0x1f && b[1] === 0x8b) b = zlib.gunzipSync(b);
   const j = JSON.parse(b.toString('utf8')); return { file: f, name: j.name || f.replace(/\.gmat$/, ''), thumb: j.thumb || '', credit: j.credit || '', kind: j.kind || 'material', cat: j.cat || 'Other' };
 }) : [];
-const js = `const APP_VERSION='${APP_VERSION}';\nconst GM_BUNDLED=${JSON.stringify(GMATS).replace(/<\//g, '<\\/')};\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\nconst CHANGELOG_MD=${JSON.stringify(CHANGELOG).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
+/* Small shelf previews are separate from originals in both offline and one-page builds.
+   Stale previews are ignored so replacing a texture cannot show an unrelated picture. */
+const TX_PREVIEW_DATA = {};
+if (fs.existsSync(r('assets/grunge/previews.json'))) {
+  const previews = JSON.parse(read('assets/grunge/previews.json'));
+  for (const [slug, p] of Object.entries(previews.items || {})) {
+    const file = r(`assets/grunge/${slug}.webp`);
+    if (fs.existsSync(file) && crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex') === p.sha256) TX_PREVIEW_DATA[slug] = p.image;
+  }
+}
+const js = `const APP_VERSION='${APP_VERSION}';\nconst TX_PREVIEWS=${JSON.stringify(TX_PREVIEW_DATA)};\nconst GM_BUNDLED=${JSON.stringify(GMATS).replace(/<\//g, '<\\/')};\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\nconst CHANGELOG_MD=${JSON.stringify(CHANGELOG).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
 const css = read('src/styles/app.css');
 const tpl = read('src/index.template.html');
 const assemble = head => tpl.replace(/<!--VERSION-->/g, APP_VERSION).replace('<!--HEAD-->', () => head).replace('<!--STYLE-->', () => css).replace('<!--SCRIPT-->', () => js);

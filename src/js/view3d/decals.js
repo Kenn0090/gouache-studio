@@ -127,7 +127,7 @@ function dcIndicator(hit,pos,n){let c=dcInd.el;if(!pos){if(c)c.hidden=true;retur
   x.shadowBlur=26;x.lineWidth=1;x.stroke();x.shadowBlur=0;
   const m=at(0,0);if(m){x.fillStyle='#fff';x.beginPath();x.arc(m[0],m[1],2.5,0,7);x.fill();}}
 /* your own decals: kept in the textures store, marked as decals */
-async function dcLoad(){if(dc.loaded)return;dc.loaded=true;try{dc.mine=((await store.all('textures'))||[]).filter(r=>r.decal).sort((a,b)=>(a.t||0)-(b.t||0));}catch(e){dc.mine=[];}renderDecals();}
+async function dcLoad(){if(dc.loaded)return;dc.loaded=true;try{const rows=await store.scanRaw('textures',r=>r.decal?r:undefined);dc.mine=[];for(const r of rows){try{dc.mine.push(await pxDeep(r,false));}catch(e){console.warn('decal',e);}}dc.mine.sort((a,b)=>(a.t||0)-(b.t||0));}catch(e){dc.mine=[];}renderDecals();}
 async function dcImport(){const fs=await pickFiles('image/*',true,'Pictures (PNG with transparency works best)',['png','webp','jpg','jpeg','tga']);let n=0;
   for(const f of fs){try{const t=await fileTarget(f);const rec={id:'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:baseName(f.name),t:Date.now(),decal:true,w:t.w,h:t.h,data:captureRegionNow(t,0,0,t.w,t.h).data};disposeTarget(t);
       dc.mine.push(rec);await store.put(rec,'textures');n++;}catch(e){toast('Could not read '+f.name+': '+(e.message||e));}}
