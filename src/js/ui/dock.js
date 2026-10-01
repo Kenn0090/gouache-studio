@@ -34,9 +34,13 @@ const WS_PRESETS={
   minimal:{name:'Minimal',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1}],icons:['color','matEd','shading','brushes','stencils','mats','textures','decals','envs','tool','maps','layers','chan','hist'],floats:[]}};
 /* (0.28, Kenn) each top tab has its own workspace, and the drop-down follows the tab */
 for(const [k,n] of [['animation','Animation'],['bake','Bake'],['convert','Convert'],['brush','Brush']])WS_PRESETS[k]=Object.assign(JSON.parse(JSON.stringify(WS_PRESETS.painting)),{name:n});
+/* Brush creation keeps its previews and settings together, with painting brushes below the canvas. */
+WS_PRESETS.brush={name:'Brush',tb:{side:'left',cols:1},opt:true,w:420,groups:[{tabs:MODE_GROUP.slice(),active:'brushtab',f:3.5},{tabs:['color'],f:1}],shelf:{tabs:['brushes'],h:230,f:1},icons:['layers','hist','maps','chan','matEd','shading','tool','stencils','mats','textures','decals','envs','p3bake'],floats:[]};
 const WS_MODE_DEF={paint:'painting',p3d:'texturing',anim:'animation',bake:'bake',convert:'convert',brush:'brush'};
 const dk={ws:'painting',L:null,custom:{},saved:{},lock:false,flyout:null,drag:null,modeWs:{}};
 (()=>{try{const s=JSON.parse(localStorage.getItem('gs.dock')||'{}');if(s.ws)dk.ws=s.ws;if(s.modeWs)dk.modeWs=s.modeWs;if(s.col2&&s.col2.groups)dk.col2=s.col2;dk.saved=s.saved||{};dk.custom=s.custom||{};dk.lock=!!s.lock;
+  /* Upgrade the old copied Paint layout once; retain custom arrangements. */
+  if(!localStorage.getItem('gs.brushLayout464')){const L=dk.saved.brush;if(L&&L.groups&&L.groups.length===5&&L.groups[0].tabs.includes('brushtab')&&L.groups[1].tabs.includes('color')&&L.groups[2].tabs.includes('brushes'))delete dk.saved.brush;localStorage.setItem('gs.brushLayout464','1');}
   /* 0.36: the asset panels moved to the bottom shelf in 3D Paint */
   if(!localStorage.getItem('gs.layout371')){localStorage.setItem('gs.layout371','1');
     /* 0.37.1: Bake Maps and Shader join the texture sets tab; Stencils became a switch in Brushes */

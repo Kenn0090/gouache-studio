@@ -27,7 +27,7 @@ $('#app').append(stTools);
   document.body.classList.toggle('tbright',dk.L.tb.side==='right');};}
 /* the animation timeline: taller = bigger frame pictures */
 const stTl=(()=>{let v=72;try{v=+(localStorage.getItem('gs.tlSize')||72)||72;}catch(e){}return {v};})();
-function stSetTl(v){stTl.v=Math.round(clamp(v,48,240));document.documentElement.style.setProperty('--fcs',stTl.v+'px');try{localStorage.setItem('gs.tlSize',String(stTl.v));}catch(e){}}
+function stSetTl(v){stTl.v=Math.round(clamp(v,48,240));document.documentElement.style.setProperty('--fcs',stTl.v+'px');CELL=stTl.v+4;if(ui.mode==='anim')renderTimeline();try{localStorage.setItem('gs.tlSize',String(stTl.v));}catch(e){}}
 {const tl=$('#timeline'),bar=el('div',{class:'sttl',role:'separator','aria-orientation':'horizontal','aria-label':'Timeline height',title:'Drag to make the timeline taller (double-click to reset)'});
   bar.addEventListener('dblclick',()=>stSetTl(72));
   bar.addEventListener('pointerdown',e=>{if(e.button!==0)return;e.preventDefault();const v0=stTl.v,y0=e.clientY;document.body.classList.add('stvresize');

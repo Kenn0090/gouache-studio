@@ -1,7 +1,7 @@
 /* ================= Animation mode: timeline, panel, preview window ================= */
 document.querySelectorAll('#modeTabs [data-mode]').forEach(b=>b.addEventListener('click',()=>{setMode(b.dataset.mode);syncModeTabs();b.blur();}));
 function syncModeTabs(){document.querySelectorAll('#modeTabs [data-mode]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.mode===ui.mode)));}
-const CELL=76;ui.fsel=null;/* frame range picked with Shift+click, for tagging */
+let CELL=76;ui.fsel=null;/* frame range picked with Shift+click, for tagging */
 const tl=$('#timeline');
 const ic=(p,t)=>'<svg viewBox="0 0 24 24" aria-hidden="true">'+p+'</svg>'+(t?'<span>'+t+'</span>':'');
 function tlBtn(html,title,fn,cls){const b=el('button',{class:'tlb'+(cls?' '+cls:''),title,'aria-label':title});b.innerHTML=html;b.addEventListener('click',fn);return b;}

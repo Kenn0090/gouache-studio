@@ -53,6 +53,12 @@ function afxMarks(){const A=A_();if(!A||!tlParts.fxbox)return;const L=afxList();
   tlParts.fxstrips.querySelectorAll('.afxstrip').forEach((st,i)=>{if(L[i])afxStripFill(st,L[i],A);});
   const tr=L[afxUI.sel];if(!tr)return;tlParts.fxedit.querySelectorAll('.afxdia').forEach(d=>{const ks=tr.keys[d.dataset.key],has=ks&&ks.some(k=>k.f===A.cur);
     d.classList.toggle('on',!!has);d.classList.toggle('mid',!has&&!!(ks&&ks.length));d.title=has?'Remove the keyframe on this frame':'Keyframe this slider on this frame';});}
+/* Keep the frame being edited inside the key viewport, which is narrower than the frames. */
+function afxRevealKey(f){const sc=tlParts.fxstrips.parentNode,left=f*CELL,right=left+CELL;
+  if(left<sc.scrollLeft||right>sc.scrollLeft+sc.clientWidth)sc.scrollLeft=left-sc.clientWidth/2+CELL/2;}
+function afxSyncScroll(){const sc=tlParts.fxstrips.parentNode,frames=tlParts.scroll,A=A_();
+  sc.scrollLeft=frames.scrollLeft+Math.max(0,(frames.clientWidth-sc.clientWidth)/2);
+  if(A&&A.cur*CELL>=frames.scrollLeft&&A.cur*CELL<frames.scrollLeft+frames.clientWidth)afxRevealKey(A.cur);}
 function renderAnimFx(){const A=A_();const box=tlParts.fxbox;if(!box||ui.mode!=='anim'||!A)return;
   const L=afxList(),hd=tlParts.fxhead;
   hd.querySelector('.fxcount').textContent=L.length?L.length+(L.length===1?' effect':' effects'):'';
@@ -85,7 +91,7 @@ function renderAnimFx(){const A=A_();const box=tlParts.fxbox;if(!box||ui.mode!==
   try{const ctx={src:A.frames[A.cur].target};if(o.note)extra.append(el('p',{class:'note',text:o.note}));
     if(o.controls)extra.append(...o.controls(tr.v,afxTouch,ctx));
     for(const [key,label] of o.checks||[])extra.append(chk('afx_ck_'+key,label,key==='uvWrap'?tr.v[key]!==false:!!tr.v[key],x=>{tr.v[key]=x;afxTouch();}));}catch(e){}
-  if(extra.children.length)ed.append(extra);}
+  if(extra.children.length)ed.append(extra);afxSyncScroll();}
 /* (0.45, Kenn) the effect picker: a small window with the effects in sections (Blurs, Patterns, Artistic…) and a search box */
 const AFX_SECTIONS=()=>{const nm={'Blur and sharpen':'Blurs'};const out=[['Animated',AFX_IDS.slice(0,7)]];
   for(const [g,ids] of FX_KINDS())out.push([nm[g]||g,ids]);
@@ -117,9 +123,10 @@ function afxAddMenu(){const btn=el('button',{class:'tlchip afxaddbtn',type:'butt
   tlParts.fxedit=el('div',{class:'afxedit'});
   tlParts.fxbox=el('div',{class:'afxbox'},el('div',{class:'afxlist'},tlParts.fxrows,el('div',{class:'afxscroll'},tlParts.fxstrips)),tlParts.fxedit);
   const grip=el('div',{class:'afxresize',role:'separator','aria-label':'Resize effect settings',title:'Drag to widen the effect settings'});tlParts.fxbox.insertBefore(grip,tlParts.fxedit);
-  grip.addEventListener('pointerdown',e=>{e.preventDefault();grip.setPointerCapture(e.pointerId);const x=e.clientX,w=tlParts.fxedit.getBoundingClientRect().width;const move=ev=>{tlParts.fxedit.style.setProperty('--afx-width',clamp(w+x-ev.clientX,250,Math.max(250,tl.clientWidth-180))+'px');};const end=()=>{grip.removeEventListener('pointermove',move);grip.removeEventListener('pointerup',end);grip.removeEventListener('pointercancel',end);};grip.addEventListener('pointermove',move);grip.addEventListener('pointerup',end);grip.addEventListener('pointercancel',end);});
+  grip.addEventListener('pointerdown',e=>{e.preventDefault();grip.setPointerCapture(e.pointerId);const x=e.clientX,w=tlParts.fxedit.getBoundingClientRect().width;const move=ev=>{tlParts.fxedit.style.setProperty('--afx-width',clamp(w+x-ev.clientX,250,Math.max(250,tl.clientWidth-360))+'px');};const end=()=>{grip.removeEventListener('pointermove',move);grip.removeEventListener('pointerup',end);grip.removeEventListener('pointercancel',end);};grip.addEventListener('pointermove',move);grip.addEventListener('pointerup',end);grip.addEventListener('pointercancel',end);});
   tl.append(hd,tlParts.fxbox);
-  tlParts.scroll.addEventListener('scroll',()=>{tlParts.fxstrips.parentNode.scrollLeft=tlParts.scroll.scrollLeft;});})();
+  tlParts.scroll.addEventListener('scroll',afxSyncScroll);
+  new ResizeObserver(()=>{if(ui.mode==='anim'&&A_())afxSyncScroll();}).observe(tlParts.fxstrips.parentNode);})();
 /* every frame as it looks with the effects on (used by export) */
 function afxRenderAll(A){if(!afxActive())return A.frames.map(F=>frameCanvas(F));
   const keep=A.cur,out=[];try{for(let i=0;i<A.frames.length;i++){A.cur=i;afxApply();dirtyComp=true;out.push(frameCanvas(A.frames[i],freshComposite()));}}
