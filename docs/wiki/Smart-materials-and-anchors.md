@@ -33,3 +33,11 @@ An **anchor point** lets masks higher up follow what you painted lower down, lik
 3. Generators (Edge wear, Dirt in cavities…) can also **follow an anchor**: in the generator's settings, pick the anchor under *Also follow anchor*. The generator then finds edges and cavities in the painted height as well as in the baked maps.
 
 Everything stays live: paint more on the anchored layer and the masks above follow.
+
+## Workshop examples
+
+Six additional materials use the bundled library and live, editable masks: **Worn painted metal**, **Weathered leather**, **Aged wood**, **Abandoned concrete**, **Stylized armour**, and **Comic book**. Their names begin with **Workshop ·** in Materials. Matching masks are **Exposed metal**, **Leather scuffs**, **Faded wood**, **Damp recesses**, **Armour edge highlights**, and **Comic halftone**.
+
+Bake curvature and AO for each model before applying them. Library image layers use triplanar projection, so their scale and surface detail can be adjusted without changing the UV layout. Change individual layer opacity to reduce chips, dirt, cracks or moss. The armour also works with the Toon shader for a stronger illustrated appearance; a smart material does not change the model's shader automatically.
+
+Comic book uses an ochre base, dark ink shadows, printed dots, cream highlights and curvature-driven ink edges. Its Light and Comic shading masks remain editable: change the direction, elevation, dot density and dot size in Properties. These masks use a chosen light direction independently of the viewport's environment lighting. Comic book and Comic halftone require version 0.46.1 or later when exported and imported elsewhere.

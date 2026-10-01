@@ -56,7 +56,7 @@ function fxAddMenu(e,start){const L=doc.active;if(!L||!(isLayer(L)||L.type==='gr
       it('Picture…',add('image')),
       it('From anchor',sub('From anchor',msAnchorNames().length?msAnchorNames().map(nm=>it(nm,add('anchor',{p:{name:nm,ch:'height',inv:false}}))):[el('p',{class:'note',style:'padding:6px 10px;max-width:240px',text:'No anchor points yet. Select a layer’s own thumbnail, press ✦ and choose Anchor point.'})]),true),
       it('Another layer’s mask',sub('Another layer’s mask',others.length?others.map(o=>it(o.name,add('ref',{p:{name:o.name}}))):[el('p',{class:'note',style:'padding:6px 10px',text:'No other layer has a mask.'})]),true),
-      it('Generator',sub('Generator',MS_GENS.map(([k,t])=>it(t,add('gen',{p:Object.assign(MS_KINDS.gen.p(),{g:k})})))),true),
+      it('Generator',sub('Generator',MS_GENS.map(([k,t])=>it(t,add('gen',{p:msGenDefaults(k)})))),true),
       sep(),it('Filter',sub('Filter',filters(true)),true),
       /* (0.27, Kenn: filter layers on masks) every filter, in the Filter Gallery's folders; it works on the rows below it */
       it('All filters',sub('All filters',maskGroups()),true)]);}
@@ -114,11 +114,22 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
   if(r.kind==='image')box.append(el('div',{class:'row wrap'},el('span',{class:'note',text:p.name||'No picture'}),el('button',{class:'btn sm',text:'Choose picture…',onclick:()=>msPickImage(L,r)})),
     S('ms_tile','Tile','tile',.25,16,.25,v=>v+'×'),inv(),pxfBox(L,r,PXF_MODES));
   if(r.kind==='ref'){const os=allNodes(doc.root).filter(n=>n!==L&&n.mask);box.append(sel('ms_ref','Layer',os.map(o=>[o.name,o.name]),'name'),inv(),el('p',{class:'note',text:'Follows that layer’s mask, live.'}));}
-  if(r.kind==='gen'){const has=[msMeshTex('curv')&&'curvature',msMeshTex('ao')&&'AO',v3.mesh&&'the model'].filter(Boolean);
-    box.append(sel('ms_g','Preset',MS_GENS,'g'),S('ms_amt','Amount','amount',0,1,.01,pct),S('ms_w','Width','width',0,1,.01,pct),S('ms_brk','Breakup','breakup',0,1,.01,pct),S('ms_dist','Distort','distort',0,1,.01,pct),S('ms_con','Contrast','contrast',.3,6,.05),
-      S('ms_scale','Noise size','scale',.5,40,.5),S('ms_seed','Seed','seed',1,99,1,v=>String(v)),inv(),
-      sel('ms_ganc','Also follow anchor',[['','None'],...msAnchorNames().map(x=>[x,x])],'anchor'),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),
-      el('p',{class:'note',text:'Uses '+(has.length?has.join(', '):'the document’s maps')+'. Bake curvature and AO for the best results.'}));}}
+  if(r.kind==='gen'){
+    const choose=sel('ms_g','Preset',MS_GENS,'g'),input=choose.querySelector('select');input.onchange=()=>{ed(x=>Object.assign(x.p,['light','linear','radial','comic'].includes(input.value)?msGenDefaults(input.value):{g:input.value}));renderLayers();renderMatEd(true);};box.append(choose);
+    const fresh=['light','linear','radial','comic'].includes(p.g);
+    if(fresh){for(const [k,v] of Object.entries(msGenDefaults(p.g)))if(p[k]==null)p[k]=v;
+      if(p.g==='light'||p.g==='comic')box.append(S('ms_lightAz','Light horizontal angle','lightAz',-180,180,1,v=>v+'°'),S('ms_lightEl','Light elevation','lightEl',-90,90,1,v=>v+'°'),S('ms_wrap','Light wrap','width',0,1,.01,pct),S('ms_occ','Cavity shading','occlude',0,1,.01,pct));
+      if(p.g==='linear'||p.g==='radial'){if(p.g==='linear')box.append(sel('ms_gradAxis','Direction',[['up','Bottom to top'],['down','Top to bottom'],['x','Left to right'],['-x','Right to left'],['z','Back to front'],['-z','Front to back']],'gradAxis'));
+        else box.append(S('ms_centerX','Centre X','centerX',0,1,.01,pct),S('ms_centerY','Centre Y','centerY',0,1,.01,pct),S('ms_centerZ','Centre Z','centerZ',0,1,.01,pct));
+        const style=sel('ms_gradStyle','Falloff',[['linear','Linear'],['smooth','Smooth'],['bands','Stepped']],'gradStyle');style.querySelector('select').addEventListener('change',()=>renderMatEd(true));box.append(S('ms_gradFrom','Start','gradFrom',0,1,.01,pct),S('ms_gradTo','End','gradTo',0,1,.01,pct),style);if(p.gradStyle==='bands')box.append(S('ms_bands','Bands','bands',2,8,1,v=>String(v)));
+      }
+      if(p.g==='comic'){const style=sel('ms_comicStyle','Style',[['shade','Shading and dots'],['shadow','Solid ink shadows'],['dots','Halftone dots']],'comicStyle');style.querySelector('select').addEventListener('change',()=>renderMatEd(true));box.append(style);if(p.comicStyle==='shade')box.append(S('ms_bands','Shading bands','bands',2,6,1,v=>String(v)));if(p.comicStyle!=='shadow')box.append(S('ms_dots','Dot density','dots',4,120,1,v=>String(v)),S('ms_dotSize','Dot size','dotSize',0,.8,.01,pct),S('ms_dotAngle','Dot angle','dotAngle',-180,180,1,v=>v+'°'));}
+      box.append(S('ms_amt','Offset','amount',0,1,.01,pct),S('ms_con','Contrast','contrast',.3,6,.05),inv(),el('p',{class:'note',text:p.g==='light'||p.g==='comic'?'Follows surface normals; Cavity shading uses baked AO. Change the angles to move the mask across the model.':'Follows the model’s bounds. On a flat canvas it follows the image. Start and End can be reversed.'}));
+    }else{const has=[msMeshTex('curv')&&'curvature',msMeshTex('ao')&&'AO',v3.mesh&&'the model'].filter(Boolean);
+      box.append(S('ms_amt','Amount','amount',0,1,.01,pct),S('ms_w','Width','width',0,1,.01,pct),S('ms_brk','Breakup','breakup',0,1,.01,pct),S('ms_dist','Distort','distort',0,1,.01,pct),S('ms_con','Contrast','contrast',.3,6,.05),S('ms_scale','Noise size','scale',.5,40,.5),S('ms_seed','Seed','seed',1,99,1,v=>String(v)),inv(),sel('ms_ganc','Also follow anchor',[['','None'],...msAnchorNames().map(x=>[x,x])],'anchor'),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),el('p',{class:'note',text:'Uses '+(has.length?has.join(', '):'the document’s maps')+'. Bake curvature and AO for the best results.'}));
+    }
+  }}
+
 $('#lFxAdd').addEventListener('click',fxAddMenu);
 
 /* a row's projection: its mode, and the offset/rotation/scale fields (the gizmo or the 2D handles move them too) */
