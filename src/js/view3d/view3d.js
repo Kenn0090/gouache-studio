@@ -99,7 +99,7 @@ const P3={mesh:prog3(VS_3D,FS_3D),line:prog3(VS_3D,FS_3DLINE),uv:prog3(VS_UV,FS_
 /* ---- settings (kept in the document) ---- */
 const V3D_DEFAULTS={model:'plane',detail:0,unlit:null,uvs:1,disp:0,sunAz:40,sunEl:45,sunI:1,skyI:1,expo:1,bg:'dark',clip:true,wire:false,showUV:false,litUV:false,spin:false,fov:40,ortho:false,
   env:'studio',envRot:0,envI:1,envBg:false,envBlur:.35,envSun:0,tone:'filmic'};
-const v3={on:false,mesh:null,gpu:null,tex:{},cam:{yaw:.5,pitch:.25,dist:3.2,tx:0,ty:0,tz:0},dirty:true,mapsDirty:true,editDirty:true,lastFull:0,fbo:null,imported:null};
+const v3={on:false,mesh:null,gpu:null,tex:{},cam:{yaw:.5,pitch:.25,dist:3.2,tx:0,ty:0,tz:0},dirty:true,postDirty:false,mapsDirty:true,editDirty:true,lastFull:0,fbo:null,imported:null};
 function v3s(){if(!doc.v3d)doc.v3d=Object.assign({},V3D_DEFAULTS);else if(doc.v3d.tone===undefined){for(const k in V3D_DEFAULTS)if(!(k in doc.v3d))doc.v3d[k]=V3D_DEFAULTS[k];}return doc.v3d;}
 const v3Unlit=()=>{const s=v3s();return s.unlit==null?doc.maps.length<2:s.unlit;};
 
@@ -128,27 +128,58 @@ function v3LoadModel(keepCam){const s=v3s();if(s.model==='dplane'){s.model='plan
   const m=s.model==='imported'&&v3.imported?subdivideMesh(v3.imported,s.detail||0):primMesh(PRIMS[s.model]?s.model:'plane',s.detail||0);v3SetMesh(m,keepCam);}
 
 /* ---- maps as textures for the model: the map being painted updates every frame, the rest a few times a second ---- */
-function v3MapTex(k,src){let t=v3.tex[k];if(!t||t.w!==doc.w||t.h!==doc.h||t.depth!==src.depth){if(t)disposeTarget(t);t=v3.tex[k]=makeTarget(doc.w,doc.h,src.depth,true);}
-  blit(src,t,0,0,doc.w,doc.h,0,0);gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.generateMipmap(gl.TEXTURE_2D);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
+const v3Work={copies:0,partialCopies:0,copyPixels:0,mipPixels:0,scenes:0,postPasses:0,postReuses:0};
+let P_V3MIP=null;
+/* Draw into a separate patch before copying to a mip level: sampling an attached texture would be feedback.
+   Power-of-two levels use the same 2x2 average as generateMipmap; odd dimensions keep the driver's path. */
+function v3PatchMips(t,r){if(!P_V3MIP)P_V3MIP=program(`uniform sampler2D uSrc; uniform int uLevel; uniform vec2 uOrigin;
+void main(){ ivec2 p=(ivec2(gl_FragCoord.xy)+ivec2(uOrigin))*2, sz=textureSize(uSrc,uLevel)-1;
+o=(texelFetch(uSrc,min(p,sz),uLevel)+texelFetch(uSrc,min(p+ivec2(1,0),sz),uLevel)+texelFetch(uSrc,min(p+ivec2(0,1),sz),uLevel)+texelFetch(uSrc,min(p+ivec2(1),sz),uLevel))*0.25; }`);
+  let [x,y,w,h]=r,x1=x+w,y1=y+h,W=t.w,H=t.h,level=0,patch=null;
+  try{while(W>1||H>1){const nx=Math.floor(x/2),ny=Math.floor(y/2);x1=Math.ceil(x1/2);y1=Math.ceil(y1/2);W=Math.max(1,W>>1);H=Math.max(1,H>>1);w=x1-nx;h=y1-ny;
+      if(!patch)patch=makeTarget(w,h,t.depth,false);
+      run(P_V3MIP,{fbo:patch.fbo,w,h},{uSrc:t.tex,uLevel:{int:level},uOrigin:[nx,ny]});
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,t.fbo);gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t.tex,++level);
+      blit(patch,t,0,0,w,h,nx,ny);v3Work.mipPixels+=w*h;x=nx;y=ny;}}
+  finally{gl.bindFramebuffer(gl.FRAMEBUFFER,t.fbo);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t.tex,0);gl.bindFramebuffer(gl.FRAMEBUFFER,null);disposeTarget(patch);}}
+function v3MapTex(k,src,region){let t=v3.tex[k];if(!t||t.w!==doc.w||t.h!==doc.h||t.depth!==src.depth){if(t)disposeTarget(t);t=v3.tex[k]=makeTarget(doc.w,doc.h,src.depth,true);region=null;}
+  const partial=region&&t.hasMips&&!(t.w&(t.w-1))&&!(t.h&(t.h-1))&&region[2]*region[3]<t.w*t.h*.25;
+  const r=partial?region:[0,0,doc.w,doc.h];if(r[2]<=0||r[3]<=0)return t;
+  blit(src,t,r[0],r[1],r[2],r[3],r[0],r[1]);v3Work.copies++;v3Work.copyPixels+=r[2]*r[3];
+  if(partial){v3Work.partialCopies++;v3PatchMips(t,r);}else{gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.generateMipmap(gl.TEXTURE_2D);t.hasMips=true;let w=t.w,h=t.h;while(w>1||h>1){w=Math.max(1,w>>1);h=Math.max(1,h>>1);v3Work.mipPixels+=w*h;}}
+  gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
   if(anisoExt)gl.texParameterf(gl.TEXTURE_2D,anisoExt.TEXTURE_MAX_ANISOTROPY_EXT,Math.min(qual('aniso'),anisoMax));return t;}
 const anisoExt=gl.getExtension('EXT_texture_filter_anisotropic'),anisoMax=anisoExt?gl.getParameter(anisoExt.MAX_TEXTURE_MAX_ANISOTROPY_EXT):1;
 function v3Needed(){if(v3Unlit())return doc.maps.filter(k=>k==='base'||k==='ao');return doc.maps.filter(k=>k!=='normal'&&k!=='height'&&k!=='curv').concat(doc.maps.includes('height')||doc.maps.includes('normal')||meshNormalBase()?['nfinal']:[]);}
 function v3Refresh(){if(!v3.on)return;if(ui.mode==='bake'){bakeV3Refresh();return;}if(ui.mode==='convert'){cvV3Refresh();return;}const now=performance.now(),gap=stroke?({fast:1e9,balanced:Math.max(qual('refresh'),900)}[prefs.paintSpeed]||qual('refresh')):0,full=v3.mapsDirty&&(!stroke||now-v3.lastFull>gap);/* (0.30) Painting speed Fast: the other maps update on the model when the stroke ends */
   const plain=doc.view===doc.map&&compOut&&ui.mode!=='anim';
   const one0=k=>{if(k==='nfinal'){const t=normalComposite(false,null);v3MapTex(k,t);release(t);return;}
-    if(k===doc.map&&plain&&!panState){v3MapTex(k,compOut);return;}
+    if(k===doc.map&&plain&&!panState){const q=v3.mapRegion;v3MapTex(k,compOut,!full&&q&&q.root===doc.root&&q.tex===v3.tex&&q.map===k?q.r:null);return;}
     if(ui.mode==='anim'&&k==='base'){v3MapTex(k,compOut);return;}
     const t=compositeMap(k);v3MapTex(k,t);release(t);};
   const one=k=>{if(typeof pnBegin==='function')pnBegin(k);try{one0(k);}finally{panState=null;}};
   if(full){for(const k of v3Needed())one(k);if(v3s().disp&&doc.maps.includes('height')){const t=compositeMap('height');v3MapTex('height',t);release(t);}
     v3.mapsDirty=false;v3.editDirty=false;v3.lastFull=now;v3.dirty=true;v3SgDerive();}
   else if(v3.editDirty){const k=ui.mode==='anim'?'base':doc.map;if(v3Needed().includes(k))one(k);if(k==='height'&&stroke&&now-v3.lastFull>gap){one('nfinal');}v3.editDirty=false;v3.dirty=true;if(['base','spec','gloss'].includes(k))v3SgDerive();}
-  if(typeof pnTick==='function')pnTick(one,full);}
+  v3.mapRegion=null;if(typeof pnTick==='function')pnTick(one,full);}
 /* Specular/Gloss documents shade the model with the equivalent base/metal/rough */
 function v3SgDerive(){if(doc.workflow!=='spec'||!v3.tex.base||ui.mode==='anim')return;const T=v3.tex,r=sgAsMR(T.base,doc.maps.includes('spec')?T.spec:null,doc.maps.includes('gloss')?T.gloss:null);
   v3MapTex('sgBase',r.base);v3MapTex('sgMetal',r.metal);v3MapTex('sgRough',r.rough);for(const k in r)release(r[k]);}
 /* called by composite(): the document changed */
-function v3Changed(){if(!v3.on)return;v3.editDirty=true;v3.mapsDirty=true;}
+function v3Changed(rects){if(!v3.on)return;const s=stroke;
+  /* Only independent, single-channel strokes can leave the other maps untouched. End-of-stroke, undo,
+     masks, normal/height, converters and external edits still invalidate the complete material. */
+  if(s&&s.viewportIndependent===undefined)s.viewportIndependent=doc.map!=='base'||!allNodes().some(n=>n.visible&&n.clip);
+  const safe=s&&s.viewportIndependent&&['brush','erase','dodge','burn'].includes(s.o.tool)&&!s.L.maskOf&&!s.L.quick&&!preview&&!s.o.extras?.length&&doc.workflow!=='spec'&&doc.view===doc.map&&
+    !['height','normal','curv'].includes(doc.map)&&!['anim','bake','convert'].includes(ui.mode)&&strokeCacheSafe()&&!compNeedsAll(doc.root.children,doc.map);
+  if(!safe){v3.mapRegion=null;v3.editDirty=true;v3.mapsDirty=true;return;}
+  let r=null;
+  if(!doc.wrap){if(!rects&&s.space&&s.space.viewportBounds){const b=s.space.viewportBounds(s);rects=b&&[[b[0],b[1],b[2]-b[0],b[3]-b[1]]];}
+    if(rects?.length){let x=doc.w,y=doc.h,x1=0,y1=0;for(const b of rects){x=Math.min(x,b[0]);y=Math.min(y,b[1]);x1=Math.max(x1,b[0]+b[2]);y1=Math.max(y1,b[1]+b[3]);}
+      x=clamp(Math.floor(x),0,doc.w);y=clamp(Math.floor(y),0,doc.h);x1=clamp(Math.ceil(x1),x,doc.w);y1=clamp(Math.ceil(y1),y,doc.h);r=[x,y,x1-x,y1-y];}}
+  const q=v3.mapRegion,same=q&&q.root===doc.root&&q.tex===v3.tex&&q.map===doc.map;
+  if(v3.editDirty&&(!same||!q.r))r=null;else if(same&&q.r&&r){const a=q.r,x=Math.min(a[0],r[0]),y=Math.min(a[1],r[1]);r=[x,y,Math.max(a[0]+a[2],r[0]+r[2])-x,Math.max(a[1]+a[3],r[1]+r[3])-y];}
+  v3.mapRegion={root:doc.root,tex:v3.tex,map:doc.map,r};v3.editDirty=true;}
 
 /* ---- camera ---- */
 const m4=()=>new Float32Array(16);
@@ -156,8 +187,8 @@ const m4=()=>new Float32Array(16);
 /* (0.32.1) view snaps: the camera looks at the model from one side (yaw turns around, pitch goes up and down) */
 const V3_VIEWS=[['front','Front'],['back','Back'],['left','Left'],['right','Right'],['top','Top'],['bottom','Bottom']];
 function v3SnapView(k){const c=v3.cam,Q=Math.PI/2,P={front:[0,0],back:[Math.PI,0],left:[-Q,0],right:[Q,0],top:[c.yaw,1.5699],bottom:[c.yaw,-1.5699]}[k];if(!P)return;
-  c.yaw=P[0];c.pitch=P[1];v3.dirty=true;requestRender(true);toast(V3_VIEWS.find(v=>v[0]===k)[1]+' view');}
-function v3SetOrtho(on){const s=v3s();s.ortho=!!on;const b=document.getElementById('v3Proj');if(b){b.textContent=on?'Orthographic':'Perspective';b.setAttribute('aria-pressed',String(!!on));}v3.dirty=true;requestRender(true);
+  c.yaw=P[0];c.pitch=P[1];v3.dirty=true;requestRender();toast(V3_VIEWS.find(v=>v[0]===k)[1]+' view');}
+function v3SetOrtho(on){const s=v3s();s.ortho=!!on;const b=document.getElementById('v3Proj');if(b){b.textContent=on?'Orthographic':'Perspective';b.setAttribute('aria-pressed',String(!!on));}v3.dirty=true;requestRender();
   if(on&&v3.rt)toast('Ray traced mode still looks through a perspective camera.');}
 window.addEventListener('keydown',e=>{if(!v3.on&&ui.mode!=='p3d')return;if(!v3.hover||isTypingTarget(e.target)||e.altKey||e.metaKey)return;
   const m={Numpad1:['front','back'],Numpad3:['right','left'],Numpad7:['top','bottom']}[e.code];
@@ -208,7 +239,7 @@ function v3MeshU(C,common,it,flip){const {s,bake,sg,EU,eye,a,e}=C,T=it.T||{},bas
     const hm=(ok('rough')?1:0)|(ok('metal')?2:0)|(ok('nfinal')?4:0)|(ok('ao')?8:0)|(ok('emis')?16:0)|(ok('opac')?64:0)|(it.thick?128:0);
     return Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:ok('metal')?T.metal.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,uThick:it.thick?it.thick.tex:dummy,...EU,...shadeUniforms(bake?null:it.sh||v3ShadeOf(doc)),
       uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});}
-function v3Render(F,flip){const g=v3.gpu;if(!g)return;const C=v3Ctx(),{s,bake}=C;
+function v3Render(F,flip){const g=v3.gpu;if(!g)return;v3Work.scenes++;F.sceneFlip=!!flip;const C=v3Ctx(),{s,bake}=C;
   gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);const bg=BG3[s.bg]||BG3.dark,tr=!!(v3.transparent);gl.clearColor(bg[0],bg[1],bg[2],tr?0:1);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
   const {mv,T0,eye}=C,V=m4look(eye,[v3.cam.tx,v3.cam.ty,v3.cam.tz],[0,1,0]),Pm=v3Proj(F.w/F.h,.02,100);if(flip)Pm[5]=-Pm[5];const VP=m4mul(Pm,V);
@@ -230,7 +261,7 @@ function v3Render(F,flip){const g=v3.gpu;if(!g)return;const C=v3Ctx(),{s,bake}=C
   if(!bake&&(v3.paintOn||ui.mode==='p3d'))drawMir3(VP);
   gl.bindVertexArray(vao);gl.disable(gl.DEPTH_TEST);
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,F.rf);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
-  if(!bake&&typeof v3Post==='function')v3Post(F);}
+  if(F.px)F.px.valid=false;if(!bake&&typeof v3Post==='function')v3Post(F);v3.postDirty=false;}
 /* after the 2D view: refresh maps if needed, redraw the model if anything changed, copy it into the pane */
 /* (0.31.1) how big the model is drawn while painting: 1 full, .75, .5 (older setting paintHalf = .5) */
 function paintScale(){return prefs.paintScale||(prefs.paintHalf?.5:1);}
@@ -240,7 +271,7 @@ function draw3D(){if(!v3.on)return;if(v3.pop){drawPop();return;}const pane=$('#p
   const ps=paintScale(),lite=!!(stroke&&ps<1&&!v3.rt),W=lite?Math.max(1,Math.round(w*ps)):w,H=lite?Math.max(1,Math.round(h*ps)):h,F=v3Targets(W,H,lite);
   /* Ray traced mode: a sample more each frame until it is clean (the normal view meanwhile while it prepares) */
   const rtr=v3.rt&&!v3Unlit()&&ui.mode!=='bake'&&ui.mode!=='convert'&&typeof rtViewDraw==='function'?rtViewDraw(F):null;
-  if(rtr===true)requestRender();else if(rtr===null&&v3.dirty){v3Render(F);v3.dirty=false;}
+  if(rtr===true)requestRender();else if(rtr===null){if(v3.dirty){v3Render(F);v3.dirty=false;}else if(v3.postDirty){if(!v3Post(F,true))v3Render(F);v3.postDirty=false;}}
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.rf);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,null);gl.blitFramebuffer(0,0,W,H,x0,0,x0+w,h,gl.COLOR_BUFFER_BIT,lite?gl.LINEAR:gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
   if(v3s().spin&&!v3.drag){v3.cam.yaw+=.006;v3.dirty=true;requestRender();}}
 /* the model's UV layout over the 2D canvas */
@@ -402,7 +433,7 @@ function pop3D(out,quiet){if(out){if(v3.pop)return;const w=window.open('about:bl
 function drawPop(){const p=v3.pop;if(p.win.closed){pop3D(false);return;}const dpr=p.win.devicePixelRatio||1,w=Math.max(1,Math.round(p.win.innerWidth*dpr)),h=Math.max(1,Math.round(p.win.innerHeight*dpr));
   if(p.cv.width!==w||p.cv.height!==h){p.cv.width=w;p.cv.height=h;v3.dirty=true;}
   if(!v3.mesh)v3LoadModel();v3Refresh();const F=v3Targets(w,h);
-  if(v3.dirty&&!p.busy){v3Render(F,true);v3.dirty=false;p.busy=true;
+  if((v3.dirty||v3.postDirty)&&!p.busy){if(v3.dirty||F.sceneFlip!==true||!v3Post(F,true))v3Render(F,true);v3.dirty=false;v3.postDirty=false;p.busy=true;
     asyncRead(F.rf,0,0,w,h,gl.UNSIGNED_BYTE,Uint8Array,w*h*4,buf=>{p.busy=false;if(v3.pop!==p||p.cv.width!==w||p.cv.height!==h){requestRender();return;}
-      p.ctx.putImageData(new ImageData(new Uint8ClampedArray(buf.buffer),w,h),0,0);if(v3.dirty)requestRender();});}
+      p.ctx.putImageData(new ImageData(new Uint8ClampedArray(buf.buffer),w,h),0,0);if(v3.dirty||v3.postDirty)requestRender();});}
   if(v3s().spin&&!v3.drag){v3.cam.yaw+=.006;v3.dirty=true;requestRender();}}
