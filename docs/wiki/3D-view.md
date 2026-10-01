@@ -109,3 +109,5 @@ At the bottom of the **Shader** panel, tick an effect to switch it on and open i
 ## Animated film grain
 
 In post-processing, enable Film grain and **Animate grain**, then choose its frame rate. Grain changes while the view is open and during turntable output. Disable Animate grain for a fixed grain pattern.
+
+With the camera and model still, new grain frames reuse the rendered scene and its bloom and occlusion. Moving the camera or changing the material refreshes them. This also works in a detached 3D window.

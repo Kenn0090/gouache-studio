@@ -42,7 +42,26 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
   useProg(P.depth,{uVP:{m4:VP},uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uCamP:eye});gl.bindVertexArray(g.vao);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);gl.bindVertexArray(vao);
   gl.disable(gl.DEPTH_TEST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
   const mirs=mir3Mats(),mesh=v3.mesh,R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:g.count/3};/* 3D Paint: only the active texture set takes paint */
-  return {w,h,buf:M.buf,yup:true,
+  /* A small screen-space index, built once per stroke, bounds the UV triangles touched by the brush.
+     Per-frame queries visit at most 256 cells, rather than transforming a high-poly mesh again.
+     Displacement, mirrored painting, tiled UVs and near-plane intersections keep full texture updates. */
+  let bins;
+  const viewportBounds=st=>{if(useH||mirs.length>1||uvs!==1)return null;
+    if(bins===undefined){bins=new Float32Array(16*16*4);for(let i=0;i<bins.length;i+=4){bins[i]=bins[i+1]=1;}
+      const p=mesh.pos,uv=mesh.uv,ix=mesh.idx,n=p.length/3,sx=new Float32Array(n),sy=new Float32Array(n),ok=new Uint8Array(n);
+      for(let i=0;i<n;i++){const X=p[i*3],Y=p[i*3+1],Z=p[i*3+2],cw=VP[3]*X+VP[7]*Y+VP[11]*Z+VP[15];if(cw<=1e-6)continue;ok[i]=1;
+        sx[i]=((VP[0]*X+VP[4]*Y+VP[8]*Z+VP[12])/cw*.5+.5)*w;sy[i]=((VP[1]*X+VP[5]*Y+VP[9]*Z+VP[13])/cw*.5+.5)*h;}
+      for(let t=R.start*3;t<(R.start+R.count)*3;t+=3){const a=ix[t],c=ix[t+1],d=ix[t+2];if(!ok[a]||!ok[c]||!ok[d]){bins=null;break;}
+        const u0=Math.min(uv[a*2],uv[c*2],uv[d*2]),v0=Math.min(uv[a*2+1],uv[c*2+1],uv[d*2+1]),u1=Math.max(uv[a*2],uv[c*2],uv[d*2]),v1=Math.max(uv[a*2+1],uv[c*2+1],uv[d*2+1]);
+        if(u0<0||v0<0||u1>1||v1>1){bins=null;break;}
+        const x0=Math.max(0,Math.floor((Math.min(sx[a],sx[c],sx[d])-8)/w*16)),x1=Math.min(15,Math.floor((Math.max(sx[a],sx[c],sx[d])+8)/w*16)),
+          y0=Math.max(0,Math.floor((Math.min(sy[a],sy[c],sy[d])-8)/h*16)),y1=Math.min(15,Math.floor((Math.max(sy[a],sy[c],sy[d])+8)/h*16));
+        for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const j=(y*16+x)*4;bins[j]=Math.min(bins[j],u0);bins[j+1]=Math.min(bins[j+1],v0);bins[j+2]=Math.max(bins[j+2],u1);bins[j+3]=Math.max(bins[j+3],v1);}}}
+    if(!bins)return null;const b=st.bb;if(!b||b[2]<b[0])return [0,0,0,0];
+    const x0=clamp(Math.floor(b[0]/w*16),0,15),x1=clamp(Math.floor(b[2]/w*16),0,15),y0=clamp(Math.floor(b[1]/h*16),0,15),y1=clamp(Math.floor(b[3]/h*16),0,15);let u0=1,v0=1,u1=0,v1=0;
+    for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const j=(y*16+x)*4;u0=Math.min(u0,bins[j]);v0=Math.min(v0,bins[j+1]);u1=Math.max(u1,bins[j+2]);v1=Math.max(v1,bins[j+3]);}
+    return u1<u0?[0,0,0,0]:[u0*doc.w-2,v0*doc.h-2,u1*doc.w+2,v1*doc.h+2];};
+  return {w,h,buf:M.buf,yup:true,viewportBounds,
     sync(){bindTarget(strokeT);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
       const stU=st3Uniforms(w,h);for(const Mi of mirs){useProg(P.proj,Object.assign({uVPm:{m4:VP},uStroke:M.buf.tex,uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uMir:{m4:Mi}},stU));
       bindTarget(strokeT);gl.enable(gl.BLEND);gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);gl.disable(gl.CULL_FACE);
@@ -50,7 +69,7 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
       for(let j=0;j<uvs;j++)for(let i=0;i<uvs;i++){gl.uniform2f(loc,i,j);gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);}}
       gl.bindVertexArray(vao);gl.blendEquation(gl.FUNC_ADD);gl.disable(gl.BLEND);},
     /* the part of the texture this stroke can have touched: triangles whose screen position meets the stroke */
-    bbox(st){const b=st&&st.bb;if(!b||b[2]<b[0]||mirs.length>1)return [0,0,doc.w,doc.h];/* (a stencil only takes paint away, so the box still holds) */let x0=1,y0=1,x1=0,y1=0;const p=mesh.pos,uv=mesh.uv,ix=mesh.idx,n=p.length/3,sx=new Float32Array(n),sy=new Float32Array(n),ok=new Uint8Array(n);
+    bbox(st){if(bins&&st){const cached=viewportBounds(st);if(cached)return cached;}const b=st&&st.bb;if(!b||b[2]<b[0]||mirs.length>1)return [0,0,doc.w,doc.h];/* (a stencil only takes paint away, so the box still holds) */let x0=1,y0=1,x1=0,y1=0;const p=mesh.pos,uv=mesh.uv,ix=mesh.idx,n=p.length/3,sx=new Float32Array(n),sy=new Float32Array(n),ok=new Uint8Array(n);
       for(let i=0;i<n;i++){const X=p[i*3],Y=p[i*3+1],Z=p[i*3+2],cw=VP[3]*X+VP[7]*Y+VP[11]*Z+VP[15];if(cw<=1e-6)continue;ok[i]=1;sx[i]=((VP[0]*X+VP[4]*Y+VP[8]*Z+VP[12])/cw*.5+.5)*w;sy[i]=((VP[1]*X+VP[5]*Y+VP[9]*Z+VP[13])/cw*.5+.5)*h;}
       const pad=Math.max(8,(s.disp||0)*w*.2);
       for(let t=R.start*3;t<(R.start+R.count)*3;t+=3){const a=ix[t],c=ix[t+1],d=ix[t+2];if(!ok[a]||!ok[c]||!ok[d])continue;

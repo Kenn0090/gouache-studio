@@ -24,6 +24,8 @@ function perfUpdate(){perfGpuPoll();if(!perf.on)return;const F=perf.frames,now=p
     'Tracked textures: '+fmtBytes(G.bytes)+' · reusable scratch '+fmtBytes(G.spare)+' (driver/view buffers excluded)',
     'GPU frame: '+(!perfGpu.ext?'unavailable':gs.length?(gs.reduce((a,s)=>a+s.ms,0)/gs.length).toFixed(1)+' ms average · '+Math.max(...gs.map(s=>s.ms)).toFixed(1)+' ms slowest':'waiting for samples'),
     'Redraws: '+compStats.parts+' regions · '+compStats.full+' full · '+compStats.cacheHits+' cached groups',
+    '3D textures: '+v3Work.partialCopies+' regional / '+v3Work.copies+' copies · '+(v3Work.copyPixels/1e6).toFixed(1)+'M copied pixels · '+(v3Work.mipPixels/1e6).toFixed(1)+'M mip pixels',
+    '3D rendering: '+v3Work.scenes+' scenes · '+v3Work.postPasses+' post passes · '+v3Work.postReuses+' reused scenes',
     S?'Last save preparation: '+(S.total/1000).toFixed(2)+' s · crop '+(S.bounds/1000).toFixed(2)+' s · GPU read '+(S.read/1000).toFixed(2)+' s · pack '+(S.pack/1000).toFixed(2)+' s · '+S.images+' images':'Last save preparation: —'].join('\n');}
 setInterval(perfUpdate,500);
 function togglePerf(){perf.on=!perf.on;perfBox.hidden=!perf.on;perf.frames=[];perfLong=[];if(perf.on){perfUpdate();requestRender(true);}}

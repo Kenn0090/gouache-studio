@@ -93,7 +93,7 @@ function compositeStrokePart(){const s=stroke;if(!s||!strokeCacheSafe()||!s.comp
       const acc=acquire();clearTarget(acc,mapDefault(doc.map));const out=compositeList(doc.root.children,acc);blit(out,compOut,x0,y0,x1-x0,y1-y0,x0,y0);release(out);});}
     finally{compPart=false;maskOverride=new Map();tmp.forEach(release);}
   }else try{for(const r of rs)scissorDo(r,()=>{const acc=acquire();clearTarget(acc,mapDefault(doc.map));const out=compositeList(doc.root.children,acc);blit(out,compOut,r[0],r[1],r[2],r[3],r[0],r[1]);release(out);});}finally{compPart=false;}
-  compOut.mipDirty=true;v3Changed();return true;}
+  compOut.mipDirty=true;v3Changed(rs);return true;}
 function composite(){if(compositeStrokePart())return;compStats.full++;if(compOut)release(compOut);maskOverride=new Map();const tmp=[];maskViewLive=false;if(typeof msUpdateAll==='function')msUpdateAll();
   if(stroke&&stroke.L.maskOf&&!strokeLive(stroke.o)){const lm=acquire();tmp.push(lm);run(P.merge,lm,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,...tintU(),uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},selU(stroke.o),tonalU(stroke.o)));
     /* a Paint row of a mask with rows: the whole stack again, with the row as it is being painted */

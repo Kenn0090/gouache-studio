@@ -73,28 +73,30 @@ function postTex(w,h,filter){const t=gl.createTexture();gl.bindTexture(gl.TEXTUR
 function postFreeT(t){if(!t)return;gl.deleteTexture(t.tex);gl.deleteFramebuffer(t.fbo);}
 function v3PostFree(F){const X=F&&F.px;if(!X)return;postFreeT(X.a);postFreeT(X.b0);postFreeT(X.b1);postFreeT(X.ao0);postFreeT(X.ao1);if(X.dt){gl.deleteTexture(X.dt);gl.deleteFramebuffer(X.df);}F.px=null;}
 /* run after the model is resolved into F.rf; the result goes back into F.rf */
-function v3Post(F){const s=v3s();if(!postActive(s))return;const p=postOf(s),needD=p.dof.on||p.ao.on;
+function v3Post(F,reuse){const s=v3s();if(!postActive(s))return false;const p=postOf(s),needD=p.dof.on||p.ao.on;
+  if(reuse&&(!F.px?.valid||F.px.w!==F.w||F.px.h!==F.h||F.px.key!==JSON.stringify(p)))return false;
   if(!P_PC){P_PAO=program(FS_POSTAO);P_PAOB=program(FS_POSTAOB);P_PTH=program(FS_POSTTH);P_PBL=program(FS_POSTBL);P_PC=program(FS_POSTC);}
   let X=F.px;if(X&&(X.w!==F.w||X.h!==F.h)){v3PostFree(F);X=null;}
   if(!X){X=F.px={w:F.w,h:F.h,a:postTex(F.w,F.h,gl.LINEAR),b0:postTex(Math.max(1,F.w>>1),Math.max(1,F.h>>1),gl.LINEAR),b1:postTex(Math.max(1,F.w>>1),Math.max(1,F.h>>1),gl.LINEAR)};}
   gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.bindVertexArray(vao);
-  gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.rf);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,X.a.fbo);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);
-  if(needD){if(!X.dt){X.dt=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,X.dt);gl.texImage2D(gl.TEXTURE_2D,0,gl.DEPTH_COMPONENT24,F.w,F.h,0,gl.DEPTH_COMPONENT,gl.UNSIGNED_INT,null);
+  if(!reuse){gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.rf);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,X.a.fbo);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);}
+  if(!reuse&&needD){if(!X.dt){X.dt=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,X.dt);gl.texImage2D(gl.TEXTURE_2D,0,gl.DEPTH_COMPONENT24,F.w,F.h,0,gl.DEPTH_COMPONENT,gl.UNSIGNED_INT,null);
       gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
       X.df=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,X.df);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.TEXTURE_2D,X.dt,0);}
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,X.df);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.DEPTH_BUFFER_BIT,gl.NEAREST);}
-  if(p.bloom.on){run(P_PTH,X.b0,{uSrc:X.a.tex,uT:p.bloom.thr});const st=1+p.bloom.rad*5;
+  if(!reuse&&p.bloom.on){v3Work.postPasses+=5;run(P_PTH,X.b0,{uSrc:X.a.tex,uT:p.bloom.thr});const st=1+p.bloom.rad*5;
     for(let i=0;i<2;i++){run(P_PBL,X.b1,{uSrc:X.b0.tex,uDir:[st/X.b0.w,0]});run(P_PBL,X.b0,{uSrc:X.b1.tex,uDir:[0,st/X.b0.h]});}}
   const sm=v3s(),c=v3.cam,foc=Math.max(.01,c.dist*(1+p.dof.focus)),tanH=2*Math.tan(sm.fov*Math.PI/360),oh=sm.ortho?2*c.dist*Math.tan(sm.fov*Math.PI/360):1,tanH0=tanH,oh0=oh;
-  if(p.ao.on&&X.dt){if(!X.ao0){X.ao0=postTex(F.w,F.h,gl.LINEAR);X.ao1=postTex(F.w,F.h,gl.LINEAR);}
+  if(!reuse&&p.ao.on&&X.dt){v3Work.postPasses+=3;if(!X.ao0){X.ao0=postTex(F.w,F.h,gl.LINEAR);X.ao1=postTex(F.w,F.h,gl.LINEAR);}
     run(P_PAO,X.ao0,{uDepth:X.dt,uPx:[1/F.w,1/F.h],uAsp:F.w/F.h,uOrtho:sm.ortho?1:0,uTan:tanH0,uOH:oh0,uR:p.ao.rad});
     const st=1+p.ao.soft*2.5;run(P_PAOB,X.ao1,{uSrc:X.ao0.tex,uDepth:X.dt,uDir:[st/F.w,0],uOrtho:sm.ortho?1:0});run(P_PAOB,X.ao0,{uSrc:X.ao1.tex,uDepth:X.dt,uDir:[0,st/F.h],uOrtho:sm.ortho?1:0});}
+  const seed=postGrainSeed(p.grain);v3Work.postPasses++;if(reuse)v3Work.postReuses++;
   run(P_PC,{fbo:F.rf,w:F.w,h:F.h},{uSrc:X.a.tex,uBloom:X.b0.tex,uDepth:needD&&X.dt?X.dt:dummy,uAO:p.ao.on&&X.ao0?X.ao0.tex:dummy,uPx:[1/F.w,1/F.h],uAsp:F.w/F.h,uOrtho:sm.ortho?1:0,uTan:tanH,uOH:oh,
     uA:[p.ao.on?1:0,p.ao.amt,p.ao.rad,0],uD:[p.dof.on?1:0,p.dof.amt,foc,0],uB:[p.bloom.on?1:0,p.bloom.amt,p.grain.col,0],uG:p.grade.on?[p.grade.exp,p.grade.con,p.grade.sat,p.grade.warm]:[0,0,0,0],
-    uV:[p.vig.on?p.vig.amt:0,p.vig.soft,p.grain.on?p.grain.amt:0,p.ca.on?p.ca.amt:0],uS:[p.sharp.on?p.sharp.amt:0,postGrainSeed(p.grain),p.grade.on?1:0,p.grain.size*Math.max(1,F.h/1080)],uL:[p.look.on?p.look.mode:0,p.look.amt,p.look.lv,0]});
-  gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
+    uV:[p.vig.on?p.vig.amt:0,p.vig.soft,p.grain.on?p.grain.amt:0,p.ca.on?p.ca.amt:0],uS:[p.sharp.on?p.sharp.amt:0,seed,p.grade.on?1:0,p.grain.size*Math.max(1,F.h/1080)],uL:[p.look.on?p.look.mode:0,p.look.amt,p.look.lv,0]});
+  X.valid=true;X.key=JSON.stringify(p);X.seed=seed;gl.bindFramebuffer(gl.FRAMEBUFFER,null);return true;}
 /* ---- the settings, in the Shader panel ---- */
-function postEdit(k,key,v){const s=v3s();if(!s.post)s.post={};s.post[k]=Object.assign({},s.post[k]||{},{[key]:v});v3.dirty=true;requestRender(true);}
+function postEdit(k,key,v){const s=v3s();if(!s.post)s.post={};s.post[k]=Object.assign({},s.post[k]||{},{[key]:v});v3.dirty=true;requestRender();}
 const POST_SL={bloom:[['amt','Amount',0,2,.01],['thr','Threshold',0,1,.01],['rad','Spread',0,1,.01]],ao:[['amt','Strength',0,1,.01],['rad','Radius',.02,1,.01],['soft','Smoothness',0,1,.01]],dof:[['amt','Blur',0,1,.01],['focus','Focus distance',-.8,1.5,.01]],
   sharp:[['amt','Amount',0,1,.01]],grade:[['exp','Exposure',-2,2,.01],['con','Contrast',-.5,.8,.01],['sat','Saturation',-1,1,.01],['warm','Warmth',-1,1,.01]],vig:[['amt','Amount',0,1,.01],['soft','Softness',0,1,.01]],ca:[['amt','Amount',0,1,.01]],look:[['amt','Strength',0,1,.01],['lv','Levels (posterize)',2,12,1]],grain:[['amt','Amount',0,1,.01],['size','Grain size',.6,4,.05],['col','Colour noise',0,1,.01]]};
 function postBox(){const P=postOf(),box=el('div',{class:'dlg-grid',id:'postBox'});
@@ -104,9 +106,12 @@ function postBox(){const P=postOf(),box=el('div',{class:'dlg-grid',id:'postBox'}
     if(k==='grain')sl.append(chk('post_grain_animated','Animate grain',!!P.grain.animated,v=>postEdit('grain','animated',v)),makeSlider({id:'post_grain_speed',label:'Frames per second',min:1,max:60,step:1,value:P.grain.speed,fmt:v=>String(v),onInput:v=>postEdit('grain','speed',v)}).el);
     if(k==='look'){const ms=el('select',{id:'post_look_mode','aria-label':'Filter look'});for(const [v,t] of POST_LOOKS)ms.append(el('option',{value:String(v),text:t}));ms.value=String(P.look.mode);ms.onchange=()=>postEdit('look','mode',+ms.value);sl.prepend(ms);}
     row.append(sl);box.append(row);}
-  box.append(el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:'postReset',text:'Reset post processing',title:'Turn every effect off and put the sliders back',onclick:()=>{const s=v3s();delete s.post;v3.dirty=true;requestRender(true);renderShading();}})));
+  box.append(el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:'postReset',text:'Reset post processing',title:'Turn every effect off and put the sliders back',onclick:()=>{const s=v3s();delete s.post;v3.dirty=true;requestRender();renderShading();}})));
   return box;}
 
 function postGrainSeed(g){if(v3.postSeed)return g.animated?v3.postSeed:7.13;return g.animated?7.13+Math.floor(performance.now()/1000*(g.speed||24))*3.17:7.13;}
 /* Request view-only redraws; painting composites and idle views are left alone. */
-setInterval(()=>{if(document.hidden||!v3.on||ui.mode==='bake'||ui.mode==='convert')return;const g=postOf().grain;if(!g.on||!g.animated||g.amt<=0)return;v3.dirty=true;requestRender();},1000/60);
+function postGrainTick(){if(document.hidden||!v3.on||ui.mode==='bake'||ui.mode==='convert')return;const g=postOf().grain;if(!g.on||!g.animated||g.amt<=0)return;
+  if(!v3.rt&&v3.postDirty||v3.fbo?.px?.seed===postGrainSeed(g))return;
+  if(v3.rt)v3.dirty=true;else v3.postDirty=true;requestRender();}
+setInterval(postGrainTick,1000/60);

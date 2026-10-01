@@ -28,7 +28,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const tones={};await p.evaluate(()=>{__gs.v3s().expo=3;__gs.v3.dirty=true;});
  for(const t of ['filmic','aces','agx','khr','neutral','none']){await p.evaluate(t=>{__gs.doc.v3d=__gs.doc.v3d||{};__gs.v3s().tone=t;__gs.v3.dirty=true;},t);await W(300);tones[t]=await shot();}
  for(const t in tones)ok(mean(tones[t])>15&&mean(tones[t])<245,'tone '+t+' draws a picture (mean '+mean(tones[t]).toFixed(0)+')');
- ok(diff(tones.aces,tones.filmic)>200,'ACES differs from Filmic');ok(diff(tones.agx,tones.aces)>200,'AgX differs from ACES');ok(diff(tones.khr,tones.neutral)>200,'PBR Neutral differs from Soft');
+ ok(Math.abs(mean(tones.aces)-mean(tones.filmic))>.5,'ACES changes the average output from Filmic');ok(diff(tones.agx,tones.aces)>200,'AgX differs from ACES');ok(diff(tones.khr,tones.neutral)>200,'PBR Neutral differs from Soft');
  await p.evaluate(()=>{__gs.v3s().tone='filmic';__gs.v3s().expo=1;__gs.v3.dirty=true;});await W(300);
  await p.evaluate(()=>__gs.showPanel('shading'));await W(400);
  ok(await p.evaluate(()=>!!document.getElementById('v3Tone')||!!document.getElementById('shTone')||document.querySelector('select[aria-label="Tone mapping"]')),'the tone list is in the panel');
@@ -37,7 +37,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const savePng=async(a,w,h,f)=>{const d=await p.evaluate(([a,w,h])=>{const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d'),im=x.createImageData(w,h);for(let y=0;y<h;y++)im.data.set(a.slice((h-1-y)*w*4,(h-y)*w*4),y*w*4);x.putImageData(im,0,0);return c.toDataURL('image/png');},[a,w,h]);require('fs').writeFileSync(f,Buffer.from(d.split(',')[1],'base64'));};
  if(process.env.PNG){await savePng(base,320,240,process.env.PNG+'-base.png');await savePng(ao,320,240,process.env.PNG+'-ao.png');for(const t in tones)await savePng(tones[t],240,180,process.env.PNG+'-tone-'+t+'.png');}
  ok(diff(base,ao)>150&&mean(ao)<mean(base)-0.3,'occlusion darkens creases ('+mean(base).toFixed(1)+' → '+mean(ao).toFixed(1)+')');
- await p.evaluate(()=>{document.getElementById('post_ao').click();document.getElementById('post_grain').click();});await W(500);const g1=await shot(320,240);
+ await p.evaluate(()=>{document.getElementById('post_ao').click();document.getElementById('post_grain').click();__gs.postEdit('grain','animated',true);});await W(500);const g1=await shot(320,240);
  ok(diff(base,g1)>1000,'film grain adds noise');
  await p.evaluate(()=>{__gs.v3.postSeed=3.3;__gs.v3.dirty=true;});await W(300);const g2=await shot(320,240);
  ok(diff(g1,g2)>1000,'a different seed gives different grain');

@@ -44,6 +44,7 @@ For seamless textures: strokes, blurs and patterns wrap across the edges, and th
 - Undo and model memory, plus tracked texture storage and the scratch storage available for reuse. Texture figures are estimates; they exclude driver overhead, mesh buffers and the 3D view's own buffers. The Preferences memory limit applies to undo and models, not to graphics memory.
 - Graphics-card frame time when supported. **Unavailable** means this browser or graphics driver does not expose that measurement. CPU work per frame and GPU time measure different parts of rendering.
 - Partial redraws, full redraws and reused layer/group composites, counted since startup.
+- 3D texture copies and smaller mip-level pixel work, plus scene draws, post-processing passes and reused scenes, counted since startup. These work counts help compare the same stroke or animated grain with different settings.
 - The last document's save preparation time, including waiting for image readbacks and packing images. File writing and preparation of a whole multi-set 3D project are separate from these figures.
 
 Frame rate can be low when the app is idle because it draws on demand. Compare measurements while repeating the same painting or camera movement.
@@ -56,6 +57,10 @@ Released scratch textures are trimmed when work has been idle for about ten seco
 Painting on big canvases (8k, 16k) only redraws the parts your brush touches, and symmetry paints each side's area separately, so custom and textured brushes stay quick.
 
 Unchanged layers underneath the brush can also be reused inside nested groups. Effects below that cached part no longer force a full redraw of each plain stroke. Filters above the brush, live converters, document-driven masks and anchor/reference dependencies keep a conservative redraw path; wrapping still redraws the full texture region to preserve seams.
+
+The 3D view keeps unchanged material maps while painting an independent single-channel stroke. Small changes update only the affected texture region and its mip levels on power-of-two textures. Painting on the model uses a screen-space triangle index built once per stroke; low-poly meshes with large UV triangles may still need a full texture update. Masks, multi-channel strokes, normal/height edits, dependent effects, mirrored or displaced projection and repeated UVs retain full texture updates where needed. Ending a stroke refreshes the complete material.
+
+Animated film grain reuses the finished scene, bloom and occlusion while the camera and material stay still. Each new grain frame runs the final post-processing pass only, including in detached 3D windows. Camera movement, material changes, resizing and changed post settings refresh the scene. Grain follows its chosen frame rate; static grain does no animation work. Camera snaps, projection changes and post controls no longer ask the document to re-composite.
 
 - **Hide the 3D view** or the Material view when you don't need them. They add work to every change.
 - **Use cheaper filters while painting:** slow filters (painterly, lens and surface blur, live converters) catch up after each stroke. If painting under them still drags, hide their filter layers.

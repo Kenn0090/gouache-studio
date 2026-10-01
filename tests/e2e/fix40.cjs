@@ -52,7 +52,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('#vp_lit');await W(300);
  /* post processing */
  await p.evaluate(()=>__gs.showPanel('shading'));await W(400);
- ok(await p.evaluate(()=>!!document.getElementById('postBox')&&document.querySelectorAll('#postBox .postfx').length===8),'the Shader panel has 8 post effects');
+ ok(await p.evaluate(()=>!!document.getElementById('postBox')&&document.querySelectorAll('#postBox .postfx').length===9),'the Shader panel has 9 post effects, including Filter look');
  await p.evaluate(()=>{document.getElementById('post_vig').click();});await W(400);
  const wv=await shot();
  ok(lum(wv,3,3,160)<lum(base,3,3,160)-30,'Vignette darkens the corners');
