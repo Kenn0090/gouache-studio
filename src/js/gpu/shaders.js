@@ -80,6 +80,7 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 st=texelFetch(uStrokeTex,p,0);
 const FS_COMP=CH_STROKE+`
 uniform sampler2D uBase; uniform sampler2D uLayer; uniform sampler2D uStrokeTex; uniform sampler2D uMask; uniform sampler2D uMask2; uniform sampler2D uLMask;
 uniform int uMode; uniform int uUseMask; uniform int uUseMask2; uniform int uUseLMask; uniform float uOpacity;
+uniform bool uSolid; uniform vec4 uSolidColor;
 vec3 screenB(vec3 b,vec3 s){ return b+s-b*s; }
 vec3 hardLight(vec3 b,vec3 s){ return mix(b*2.0*s,screenB(b,2.0*s-1.0),step(vec3(0.5),s)); }
 vec3 dodge(vec3 b,vec3 s){ vec3 r=min(vec3(1.0),b/max(vec3(1.0)-s,vec3(1e-5))); return mix(r,vec3(0.0),step(b,vec3(0.0))); }
@@ -108,7 +109,7 @@ vec3 blendFn(vec3 b,vec3 s){
   if(uMode==25) return mix(min(b/max(s,vec3(1e-5)),vec3(1.0)),vec3(1.0),step(s,vec3(0.0)));
   return s; }
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy);
-  vec4 b=texelFetch(uBase,p,0); vec4 s=texelFetch(uLayer,p,0);
+  vec4 b=texelFetch(uBase,p,0); vec4 s=uSolid?uSolidColor:texelFetch(uLayer,p,0);
   if(uStroke!=0){ vec4 st=texelFetch(uStrokeTex,p,0); gSC=uStrokeTint==1?st.rgb:uStrokeColor; s=applyStroke(s,selCov(p,st.a)); }
   s*=uOpacity; if(uUseLMask==1) s*=texelFetch(uLMask,p,0).r;
   if(uUseMask==1) s*=texelFetch(uMask,p,0).a*(uUseMask2==1?texelFetch(uMask2,p,0).r:1.0);

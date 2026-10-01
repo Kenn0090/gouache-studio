@@ -46,6 +46,8 @@ function wfApply(S){restoreTree(S.tree);for(const x of S.layers){x.L.maps=Object
 function wfSwitch(to,how){const from=doc.workflow||'metal';if(to===from)return;if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
   if(ui.mode!=='paint'){toast('Switch to Paint first.');return;}
   if(typeof xf!=='undefined'&&xf)xfCommit();if(doc.map!=='base')setEditMap('base');
+  /* Workflow stashes own writable images; expand only the channels being moved into those stashes. */
+  for(const L of wfLayers())for(const k of ['base',...WF_KEYS[from]])if(mapSolid(L,k))ensureMapTarget(L,k);
   const before=wfSnap(),oldK=WF_KEYS[from],newK=WF_KEYS[to],had=oldK.filter(k=>doc.maps.includes(k)),made=[];
   let res=null;
   if(how!=='restore'){/* the finished look, converted */

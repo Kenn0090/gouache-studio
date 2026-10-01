@@ -123,7 +123,7 @@ function smoothSel(r){modifySel('Smooth selection',0,tmp=>{const b=acquireS();ga
 /* selection from an image: what = 0 alpha, 1 red, 2 green, 3 blue, 4 luminosity */
 function loadSelFrom(tex,what,mode,label,inv){if(selBusy())return;const t=acquireS();run(P.loadsel,t,{uSrc:tex,uWhat:{int:what},uInv:!!inv});applyShape(t,mode,fullRect(),label);release(t);}
 function selectLayerPixels(n,mode){n=n||doc.active;if(!n){toast('Select a layer first.');return;}
-  if(isLayer(n)){loadSelFrom(n.target.tex,0,mode||'new','Select layer pixels');return;}
+  if(isLayer(n)){loadSelFrom((mapT(n,doc.map)||emptyFor(mapDepth(doc.map))).tex,0,mode||'new','Select layer pixels');return;}
   const r=renderNodes(n.children);loadSelFrom(r.tex,0,mode||'new','Select group pixels');release(r);}
 function selectMask(n,mode){if(!n||!n.mask){toast('This has no mask.');return;}loadSelFrom(n.mask.target.tex,1,mode||'new','Select mask');}
 function freshComposite(){if(dirtyComp){composite();dirtyComp=false;}return compOut;}

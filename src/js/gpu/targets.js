@@ -23,9 +23,11 @@ function makeTarget(w,h,depth,wrap){
 }
 function disposeTarget(t){if(!t)return;gpuTargets.delete(t._gpuRef);gl.deleteTexture(t.tex);gl.deleteFramebuffer(t.fbo);t.tex=null;t.fbo=null;}
 function setWrap(t,rep){gl.bindTexture(gl.TEXTURE_2D,t.tex);const wm=rep?gl.REPEAT:gl.CLAMP_TO_EDGE;gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,wm);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,wm);}
-function bindTarget(t){gl.bindFramebuffer(gl.FRAMEBUFFER,t?t.fbo:null);gl.viewport(0,0,t?t.w:cv.width,t?t.h:cv.height);}
-function clearTarget(t,c){bindTarget(t);c=c||[0,0,0,0];gl.clearColor(c[0],c[1],c[2],c[3]);gl.clear(gl.COLOR_BUFFER_BIT);}
-function blit(src,dst,sx,sy,w,h,dx,dy){gl.bindFramebuffer(gl.READ_FRAMEBUFFER,src.fbo);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,dst.fbo);gl.blitFramebuffer(sx,sy,sx+w,sy+h,dx,dy,dx+w,dy+h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
+/* Opacity proofs are conservative: any write invalidates them unless the complete result is known. */
+function bindTarget(t){if(t)t.opaque=false;gl.bindFramebuffer(gl.FRAMEBUFFER,t?t.fbo:null);gl.viewport(0,0,t?t.w:cv.width,t?t.h:cv.height);}
+function clearTarget(t,c){bindTarget(t);c=c||[0,0,0,0];gl.clearColor(c[0],c[1],c[2],c[3]);gl.clear(gl.COLOR_BUFFER_BIT);if(t)t.opaque=c[3]===1&&!gl.isEnabled(gl.SCISSOR_TEST);}
+function blit(src,dst,sx,sy,w,h,dx,dy){const opaque=!!src.opaque;dst.opaque=opaque&&sx>=0&&sy>=0&&sx+w<=src.w&&sy+h<=src.h&&dx===0&&dy===0&&w===dst.w&&h===dst.h&&!gl.isEnabled(gl.SCISSOR_TEST);gl.bindFramebuffer(gl.READ_FRAMEBUFFER,src.fbo);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,dst.fbo);gl.blitFramebuffer(sx,sy,sx+w,sy+h,dx,dy,dx+w,dy+h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
+function imageOpaque(bytes,depth){const step=depth===16?8:4;for(let i=step-1;i<bytes.length;i+=step)if(depth===16?bytes[i]!==60||bytes[i-1]!==0:bytes[i]!==255)return false;return bytes.length>0;}
 /* Undo snapshots live in system RAM (typed arrays), not in video memory.
    8-bit layers: 4 bytes per pixel. 16-bit layers: stored as half floats, 8 bytes per pixel. */
 let halfRead=null;
@@ -64,7 +66,7 @@ function captureRegion(src,x,y,w,h){const n=w*h*4;
    The file worker converts float pixels to half-float bytes. */
 function readRegionAsync(src,x,y,w,h){return new Promise((resolve,reject)=>{if(gl.isContextLost()){reject(new Error('The graphics context was lost.'));return;}
   asyncRead(src.fbo,x,y,w,h,src.depth===16?gl.FLOAT:gl.UNSIGNED_BYTE,src.depth===16?Float32Array:Uint8Array,w*h*4,resolve,reject);});}
-function restoreRegion(snap,dst,x,y){gl.bindTexture(gl.TEXTURE_2D,dst.tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
+function restoreRegion(snap,dst,x,y){dst.opaque=false;gl.bindTexture(gl.TEXTURE_2D,dst.tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
   if(snap.depth===16)gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,snap.w,snap.h,gl.RGBA,gl.HALF_FLOAT,snap.data);
   else gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,snap.w,snap.h,gl.RGBA,gl.UNSIGNED_BYTE,snap.data);
   gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);}
@@ -104,6 +106,6 @@ const dummy=(()=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.
 
 const CH_DEF={uChanMode:{int:0},uChan:[1,1,1,1]};
 const SEL_DEF={uSelTex:dummy,uUseSel:false,uTonalRange:{int:1},uProtect:true};
-P.comp.defaults=Object.assign({uMask2:dummy,uLMask:dummy,uUseMask2:false,uUseLMask:false,uStrokeTint:false},CH_DEF,SEL_DEF);P.merge.defaults=Object.assign({uStrokeTint:false},CH_DEF,SEL_DEF);P.stamp.defaults={uTint:{int:0},uDabCol:[0,0,0]};P.smudge.defaults=Object.assign({},CH_DEF,SEL_DEF);
+P.comp.defaults=Object.assign({uSolid:false,uSolidColor:[0,0,0,0],uMask2:dummy,uLMask:dummy,uUseMask2:false,uUseLMask:false,uStrokeTint:false},CH_DEF,SEL_DEF);P.merge.defaults=Object.assign({uStrokeTint:false},CH_DEF,SEL_DEF);P.stamp.defaults={uTint:{int:0},uDabCol:[0,0,0]};P.smudge.defaults=Object.assign({},CH_DEF,SEL_DEF);
 P.mix.defaults={uM:dummy,uUseM:false};P.resample.defaults={uOutside:[0,0,0,0]};P.view.defaults={uShow:[1,1,1,0],uSingle:{int:-1},uMaskView:false,uSel:dummy,uSelMode:{int:0},uTime:0,uPx:1,uWrap:false,uUnder:dummy,uUseUnder:false,uBg:[0,0,0,0]};
 P.shift.defaults={uWrap:false,uOutside:[0,0,0,0]};P.grad.defaults={uShape:{int:0},uDither:false,uOpacity:1,uGray:false,uBase:dummy,uUseBase:false,uSelTex:dummy,uUseSel:false};P.fillcov.defaults={uSelTex:dummy,uUseSel:false};P.lockcov.defaults={uSelTex:dummy,uUseSel:false};P.texcov.defaults={uSelTex:dummy,uUseSel:false};P.xform.defaults={uOutside:[0,0,0,0],uInterp:{int:2},uSS:{int:1},uWrap:false,uRect:[0,0,0,0],uBase:dummy,uUseBase:false};P.mesh.defaults={uOutside:[0,0,0,0],uInterp:{int:2},uOff:[0,0]};P.proj.defaults={uAlphaOnly:true};P.selop.defaults={uShape:dummy,uOldOn:true};P.loadsel.defaults={uInv:false};P.cropsel.defaults={uSel:dummy,uUseSel:false};

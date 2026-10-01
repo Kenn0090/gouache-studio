@@ -209,3 +209,7 @@ Tile controls now reach **1000**, including material image tiling and projection
 Click a slider's displayed value to type an exact number. Press Enter or move focus to apply; Escape cancels. Percentages use 0–100 values, and brush size uses pixels. The value is limited to that control's supported range.
 
 With the tiling chain locked, typing either U or V sets both axes to the same number and updates both displayed fields immediately. Unlock the chain to edit each axis independently.
+
+## Large material stacks
+
+Uniform material channel values and flat bump channels use compact storage. Opaque materials can skip the rows they cover while compositing, and supported projected brush strokes composite their affected UV area. Masks, transparency and effects retain the necessary layers underneath. Image-based detail still needs texture memory. Height brush buffers are created when you start editing height. See [Preferences and performance](Preferences-and-performance.md#material-stacks-at-high-resolution).

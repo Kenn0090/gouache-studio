@@ -81,7 +81,7 @@ function applyCropBox(c){const nw=clamp(Math.round(c.w),1,MAX_DIM),nh=clamp(Math
   const maskNodes=everyNode().filter(n=>n.mask),mObjs=maskNodes.map(n=>n.mask),texts=rot?[]:layers.filter(L=>L.text),grads=rot?[]:layers.filter(L=>L.grad);
   const draw=(src,outside)=>{const t=makeTarget(nw,nh,src.depth,doc.wrap);run(P.xform,t,{uSrc:src.tex,uH0:H.slice(0,3),uH1:H.slice(3,6),uH2:H.slice(6,9),uInterp:{int:rot?2:0},uSS:{int:1},uWrap:false,uDoc:[nw,nh],uOutside:outside});return t;};
   /* every map of every layer (frames too) */
-  const mapsOf=L=>L.maps?Object.assign({},...Object.keys(L.maps).filter(k=>L.maps[k]&&!L.maps[k].empty).map(k=>({[k]:L.maps[k]}))):{base:L.target};
+  const mapsOf=L=>Object.fromEntries(mapKeysOf(L).map(k=>[k,mapT(L,k)]));
   const oldT=layers.map(mapsOf),newT=oldT.map(ms=>Object.fromEntries(Object.entries(ms).map(([k,t])=>[k,draw(t,[0,0,0,0])]))),newM=mObjs.map(m=>draw(m.target,[1,1,1,1]));
   const oldM=mObjs.map(m=>m.target),oldSize=[doc.w,doc.h],newSize=[nw,nh];
   const set=(sz,ts,ms,dir)=>{if(doc.cage){doc.cage=null;cageFlatOff();}if(typeof bakeReset==='function')bakeReset();doc.w=sz[0];doc.h=sz[1];layers.forEach((L,i)=>{L.maps=Object.assign({},ts[i]);L.target=L.maps.base;});mObjs.forEach((m,i)=>m.target=ms[i]);

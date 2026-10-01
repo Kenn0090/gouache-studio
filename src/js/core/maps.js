@@ -28,14 +28,20 @@ function mapModeOf(n,k){if(n.type==='group')return n.mode;if(k==='base')return n
   /* (0.28.1, Kenn) a material ("Hide the bumps below", on unless unticked) replaces the height under it instead of adding to it */
   if(k==='height'&&n.fill&&n.fill.coverH!==false)return 0;const m=n.mapModes&&n.mapModes[k];return m!=null?m:MAP_DEFS[k].blend;}
 function setMapModeOf(n,k,m){if(k==='base'||n.type==='group'){n.mode=m;return;}n.mapModes=n.mapModes||{};n.mapModes[k]=m;}
-const mapT=(L,k)=>L.maps?L.maps[k]:(k==='base'?L.target:null);
-const hasMap=(L,k)=>{const t=mapT(L,k);return !!t&&!t.empty;};
-function mapKeysOf(L){return L.maps?Object.keys(L.maps).filter(k=>L.maps[k]&&!L.maps[k].empty):['base'];}
+/* Uniform fill channels stay as four numbers. Consumers that need pixels materialize them on demand;
+   the compositor and thumbnails read the numbers directly. Writing a channel removes its compact value. */
+const mapSolid=(L,k)=>L._fillSolid&&L._fillSolid[k];
+function mapT(L,k,compact){const t=L.maps?L.maps[k]:(k==='base'?L.target:null);return !compact&&mapSolid(L,k)?ensureMapTarget(L,k):t;}
+const hasMap=(L,k)=>{const t=mapT(L,k,true);return !!mapSolid(L,k)||!!t&&!t.empty;};
+function mapKeysOf(L){return [...new Set([...(L.maps?Object.keys(L.maps).filter(k=>L.maps[k]&&!L.maps[k].empty):['base']),...Object.keys(L._fillSolid||{})])];}
+function setMapSolid(L,k,c){const t=L.maps&&L.maps[k];if(t&&!t.empty)disposeTarget(t);if(!L.maps)L.maps={};delete L.maps[k];
+  (L._fillSolid||(L._fillSolid={}))[k]=c.slice();if(k===doc.map)L.target=emptyFor(mapDepth(k));}
 /* shared, never-written empty images, one per bit depth */
 const emptyTs={};
 function emptyFor(d){let t=emptyTs[d];if(!t||t.w!==doc.w||t.h!==doc.h){if(t)disposeTarget(t);t=makeTarget(doc.w,doc.h,d);t.empty=true;emptyTs[d]=t;}return t;}
 function resetEmpties(){for(const d in emptyTs){disposeTarget(emptyTs[d]);delete emptyTs[d];}}
-function ensureMapTarget(L,k){if(!L.maps)L.maps={base:L.target};let t=L.maps[k];if(!t||t.empty){t=makeTarget(doc.w,doc.h,mapDepth(k));L.maps[k]=t;if(k===doc.map)L.target=t;}return t;}
+function ensureMapTarget(L,k){if(!L.maps)L.maps={base:L.target};let t=L.maps[k];if(!t||t.empty){t=makeTarget(doc.w,doc.h,mapDepth(k));L.maps[k]=t;if(k===doc.map)L.target=t;}
+  const c=mapSolid(L,k);if(c){clearTarget(t,c);delete L._fillSolid[k];}return t;}
 /* before writing to L.target */
 function ensureTarget(L){if(L&&L.maps&&L.target&&L.target.empty)ensureMapTarget(L,doc.map);return L&&L.target;}
 function paintLayers(){return allLayers(paintRoot());}
@@ -60,14 +66,15 @@ function compositeMap(k){const prev=pool;pool=auxFor(mapDepth(k)).pool;const acc
 /* ---- adding and removing maps (undoable) ---- */
 function setDocMaps(keys,label,defs){keys=MAP_ORDER.filter(k=>keys.includes(k)||k==='base');const before=doc.maps.slice(),removed=before.filter(k=>!keys.includes(k));
   const defB=Object.assign({},doc.mapDef),defA=Object.assign({},doc.mapDef,defs||{});
-  if(removed.includes(doc.map))setEditMap('base');const stash=new Map();
+  if(removed.includes(doc.map))setEditMap('base');const stash=new Map(),solidStash=[];
   for(const L of paintLayers())for(const k of removed)if(L.maps&&L.maps[k]){stash.set(L.maps[k],[L,k]);delete L.maps[k];}
+  for(const L of paintLayers())for(const k of removed){const c=mapSolid(L,k);if(c){solidStash.push([L,k,c]);delete L._fillSolid[k];}}
   const apply=(ks,df)=>{doc.maps=ks.slice();doc.mapDef=Object.assign({},df);if(!doc.maps.includes(doc.map))setEditMap('base');if(!doc.maps.includes(doc.view)&&doc.view!=='material'&&doc.view!=='nfinal')doc.view=doc.map;
     if((doc.view==='material'||doc.view==='nfinal')&&doc.maps.length<2)doc.view=doc.map;syncTargets();changedAll();refreshMapsUI();buildBrushPanel();};
   let applied=true;apply(keys,defA);
   pushUndo({label:label||'Maps',refs:[],
-    undo(){for(const [t,[L,k]] of stash)L.maps[k]=t;applied=false;apply(before,defB);},
-    redo(){for(const [t,[L,k]] of stash)delete L.maps[k];applied=true;apply(keys,defA);},
+    undo(){for(const [t,[L,k]] of stash)L.maps[k]=t;for(const [L,k,c] of solidStash)setMapSolid(L,k,c);applied=false;apply(before,defB);},
+    redo(){for(const [t,[L,k]] of stash)delete L.maps[k];for(const [L,k] of solidStash)delete L._fillSolid[k];applied=true;apply(keys,defA);},
     drop(){if(applied)for(const t of stash.keys())disposeTarget(t);}});}
 
 /* ---- normal map and lit material view ---- */

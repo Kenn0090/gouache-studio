@@ -74,3 +74,11 @@ Preferences › **Engine quality**: Low, Medium, High (the normal setting) or Ul
 
 ## Smaller files
 Every picture in documents, 3D Paint projects, autosaves and materials is packed without losing anything, so files are much smaller than before. **Smaller files** (Preferences › Files, on by default) also keeps colour and grey maps as high-quality WebP when that is smaller; the difference is too small to see. Normal maps, Height, masks and baked maps always stay exact. Turn it off if you need every colour pixel exact.
+
+## Material stacks at high resolution
+
+Uniform fill colours and values stay as channel values, including the flat height and normal used by **Hide the bumps below**. They expand into pixel images when a tool needs to edit those pixels. Material thumbnails, material setting undo and saving keep them compact. Old uniform fill images also become compact when their project is reopened.
+
+Compositing skips rows completely covered by a proven opaque material with Normal blending. Transparent images, masks, clipping, other blend modes, projection coverage and live effects preserve the required rows underneath. Textured material detail still uses image storage, so stacks with many unique high-resolution images can still consume substantial graphics memory.
+
+Supported brush strokes on the model composite their conservative UV area instead of the entire texture, then update that area in the viewport. Complex effects and projections retain the full update path. Height brush buffers are created only when height becomes the edited channel. These changes reduce work and memory pressure; actual frame rates depend on the graphics card and model.
