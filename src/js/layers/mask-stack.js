@@ -10,7 +10,7 @@
 const MS_MODES=[['normal','Normal','Norm'],['multiply','Multiply','Mult'],['add','Add','Add'],['subtract','Subtract','Sub'],['screen','Screen','Scrn'],['min','Min (darker)','Min'],['max','Max (lighter)','Max'],['overlay','Overlay','Ovl']];
 const msModeIx=m=>Math.max(0,MS_MODES.findIndex(x=>x[0]===m));
 const MS_GENS=[['edge','Edge wear'],['dirt','Dirt in cavities'],['dust','Dust on top'],['moss','Moss'],['rust','Rust streaks'],['water','Water line'],['slime','Slime'],['crud','Crud'],
-  ['chips','Chipped paint'],['scratch','Scratches'],['snow','Snow on top'],['soot','Soot'],['drips','Drips and leaks'],['bleach','Sun-bleached'],['light','Light'],['linear','Linear gradient'],['radial','Radial gradient'],['comic','Comic shading']];
+  ['chips','Chipped paint'],['scratch','Scratches'],['snow','Snow on top'],['soot','Soot'],['drips','Drips and leaks'],['bleach','Sun-bleached'],['light','Light'],['linear','Linear gradient'],['radial','Radial gradient'],['comic','Comic shading'],['builder','Mask builder']];
 const MS_NOISES=[['clouds','Clouds'],['cells','Cells'],['grunge','Grunge'],['scratches','Scratches'],['streaks','Streaks'],['dots','Dots'],['fibres','Fibres']];
 /* what each row kind is: its title, and its settings when new */
 const MS_KINDS={
@@ -94,6 +94,7 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; float m=0.0,cov=1.0;
 const FS_MSGEN=MS_NOISE_GLSL+MS_SURF_GLSL+`
 uniform sampler2D uCurv; uniform int uHasCurv; uniform sampler2D uAO; uniform int uHasAO; uniform int uG; uniform float uAmt; uniform float uWidth; uniform float uBreak; uniform float uCon; uniform float uScale; uniform int uNeg; uniform float uDist;
 uniform sampler2D uCurv2; uniform int uHasCurv2; uniform vec4 uLight; uniform vec4 uGrad; uniform vec3 uAxis; uniform vec3 uCenter; uniform vec4 uComic; uniform int uComicMode;
+uniform vec4 uBuilder; uniform vec3 uBuilderExtra; uniform vec4 uBuilderRange; uniform sampler2D uHeight; uniform sampler2D uThick; uniform sampler2D uWorldN; uniform sampler2D uPosition; uniform int uHasHeight; uniform int uHasThick; uniform int uHasWorldN; uniform int uHasPosition;
 float curvOf(vec2 uv){ float c=uHasCurv==1?texture(uCurv,uv).r:0.5; if(uHasCurv2==1) c=clamp(c+(texture(uCurv2,uv).r-0.5)*1.5,0.0,1.0); return c; }
 float aoOf(vec2 uv){ return uHasAO==1?texture(uAO,uv).r:1.0; }
 void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(); vec3 q=surfQ(uv)*uScale;
@@ -101,6 +102,12 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(); vec3 q=sur
   if(uDist>0.0){ vec2 dd=vec2(fbm(q*0.45+vec3(3.1,0.0,1.7)),fbm(q*0.45+vec3(0.0,7.7,4.2)))-0.5; uv+=dd*uDist*0.05; }
   float c=curvOf(uv),edge=clamp((c-0.5)*2.0,0.0,1.0),cav=clamp((0.5-c)*2.0,0.0,1.0),ao=aoOf(uv),occ=1.0-ao,up=dot(N,vec3(0.0,1.0,0.0)),n=fbm(q),w=uWidth;
   float b=0.0;
+  if(uG==18){vec3 bn=uHasWorldN==1?normalize(texture(uWorldN,uv).rgb*2.0-1.0+1e-5):N;
+    vec3 bp=uHasPosition==1?texture(uPosition,uv).rgb:P;float pos=dot(bp,abs(uAxis));if(uAxis.x+uAxis.y+uAxis.z<0.0)pos=1.0-pos;
+    float span=uBuilderRange.y-uBuilderRange.x;float gradient=abs(span)<.0001?step(uBuilderRange.x,pos):clamp((pos-uBuilderRange.x)/span,0.0,1.0);
+    float h=uHasHeight==1?texture(uHeight,uv).r:0.0,thin=uHasThick==1?1.0-texture(uThick,uv).r:0.0;
+    b=clamp(edge*uBuilder.x+cav*uBuilder.y+occ*uBuilder.z+smoothstep(-uWidth,uWidth+.0001,dot(bn,uAxis))*uBuilder.w+gradient*uBuilderExtra.x+h*uBuilderExtra.y+thin*uBuilderExtra.z,0.0,1.0);
+    b=clamp((b-.5)*uCon+.5+(uAmt-.5)*2.0+(n-.5)*uBreak,0.0,1.0);if(uNeg==1)b=1.0-b;o=vec4(vec3(b),1.0);return;}
   if(uG==0) b=edge*(0.6+w*1.4);
   else if(uG==1) b=(occ*1.3+cav*0.8)*(0.6+w);
   else if(uG==2) b=smoothstep(0.1,0.9,up)*(0.6+w*0.8)-occ*0.2;
@@ -208,7 +215,9 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
     run(msProgs().anc,o,{uT:T.tex,uM:A.mask&&A.mask.enabled!==false?A.mask.target.tex:dummy,uUseM:{int:A.mask&&A.mask.enabled!==false&&ch==='shape'?1:0},uCh:{int:ch==='shape'?1:0},uNeg:{int:p.inv?1:0}});return {t:o,pooled:true};}
   if(r.kind==='gen'){const o=out(),curv=msMeshTex('curv')||msMeshTex('cv:curv')||msDocMap('curv',ctx)||msModelCurv(),ao=msMeshTex('ao')||msMeshTex('cv:ao')||msDocMap('ao',ctx);
     const ac=p.anchor?msAnchorCurv(p.anchor,ctx,p.uvWrap!==false):null;
-    withUVWrap(p.uvWrap!==false,[curv,ac,ao],()=>run(P.gen,o,Object.assign({uG:{int:Math.max(0,MS_GENS.findIndex(g=>g[0]===p.g))},uCurv:curv?curv.tex:dummy,uHasCurv:{int:curv?1:0},uCurv2:ac?ac.tex:dummy,uHasCurv2:{int:ac?1:0},uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},
+    const height=p.g==='builder'&&(msMeshTex('height')||msDocMap('height',ctx)),thick=p.g==='builder'&&msMeshTex('thick'),wn=p.g==='builder'&&msMeshTex('wnormal'),pos=p.g==='builder'&&msMeshTex('position');
+    withUVWrap(p.uvWrap!==false,[curv,ac,ao,height,thick,wn,pos],()=>run(P.gen,o,Object.assign({uG:{int:Math.max(0,MS_GENS.findIndex(g=>g[0]===p.g))},uCurv:curv?curv.tex:dummy,uHasCurv:{int:curv?1:0},uCurv2:ac?ac.tex:dummy,uHasCurv2:{int:ac?1:0},uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},
+      uBuilder:[p.edgeWeight??1,p.cavityWeight??0,p.aoWeight??0,p.directionWeight??0],uBuilderExtra:[p.positionWeight??0,p.heightWeight??0,p.thicknessWeight??0],uBuilderRange:[p.positionFrom??0,p.positionTo??1,0,1],uHeight:height?height.tex:dummy,uThick:thick?thick.tex:dummy,uWorldN:wn?wn.tex:dummy,uPosition:pos?pos.tex:dummy,uHasHeight:{int:height?1:0},uHasThick:{int:thick?1:0},uHasWorldN:{int:wn?1:0},uHasPosition:{int:pos?1:0},
       uLight:[Math.sin((p.lightAz??-35)*Math.PI/180)*Math.cos((p.lightEl??45)*Math.PI/180),Math.sin((p.lightEl??45)*Math.PI/180),Math.cos((p.lightAz??-35)*Math.PI/180)*Math.cos((p.lightEl??45)*Math.PI/180),p.occlude??.25],
       uGrad:[p.gradFrom??0,p.gradTo??1,['linear','smooth','bands'].indexOf(p.gradStyle||'smooth'),p.bands??3],uAxis:MS_AXES[p.gradAxis||'up']||[0,1,0],uCenter:[p.centerX??.5,p.centerY??.5,p.centerZ??.5],
       uComic:[p.bands??3,p.dots??28,p.dotSize??.45,p.dotAngle??45],uComicMode:{int:['shade','shadow','dots'].indexOf(p.comicStyle||'shade')},
@@ -315,4 +324,4 @@ function msCommit(){clearTimeout(msEd.timer);msEd.timer=0;const L=msEd.L,b=msEd.
   if(JSON.stringify(a.stack&&a.stack.map(x=>x.d))===JSON.stringify(b.stack&&b.stack.map(x=>x.d))&&JSON.stringify(a.cfx.map(x=>x.d))===JSON.stringify(b.cfx.map(x=>x.d)))return;
   pushUndo({label:msEd.label,refs:[L],masks:[a.mask].filter(Boolean),undo(){msRestore(L,b);},redo(){msRestore(L,a);}});}
 
-function msGenDefaults(g){return Object.assign(MS_KINDS.gen.p(),{g},['light','linear','radial','comic'].includes(g)?{amount:.5,width:.25,breakup:0,contrast:1,lightAz:-35,lightEl:45,occlude:.25,gradAxis:'up',gradFrom:0,gradTo:1,gradStyle:'smooth',centerX:.5,centerY:.5,centerZ:.5,bands:3,dots:28,dotSize:.45,dotAngle:45,comicStyle:'shade'}:{});}
+function msGenDefaults(g){return Object.assign(MS_KINDS.gen.p(),{g},g==='builder'?{amount:.5,width:.25,breakup:.2,contrast:1,edgeWeight:1,cavityWeight:0,aoWeight:0,directionWeight:0,positionWeight:0,heightWeight:0,thicknessWeight:0,gradAxis:'up',positionFrom:0,positionTo:1}:['light','linear','radial','comic'].includes(g)?{amount:.5,width:.25,breakup:0,contrast:1,lightAz:-35,lightEl:45,occlude:.25,gradAxis:'up',gradFrom:0,gradTo:1,gradStyle:'smooth',centerX:.5,centerY:.5,centerZ:.5,bands:3,dots:28,dotSize:.45,dotAngle:45,comicStyle:'shade'}:{});}

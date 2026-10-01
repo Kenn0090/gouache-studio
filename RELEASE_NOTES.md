@@ -1,9 +1,9 @@
-More direct mask controls and viewport shortcuts in 3D Paint.
+Precise values, better mask Levels, and a larger texture workshop.
 
-- Right-click a mask thumbnail for Generators, Anchor points, Levels and Invert.
-- Add a generator, create a layer anchor, or read an existing anchor directly from the menu.
-- Press M to return to Lit material view without changing the paint channel, tool or camera.
-- Delete and Backspace remove selected layers in 3D Paint, including with an active selection or mask.
-- New texture sets start with a greyish-white non-metal base material.
-- Escape closes layer context menus and their submenus.
-- UV wrap is on by default for generators and filters. Samples repeat across texture edges; switch it off in Properties or the filter settings without changing the document's tile mode.
+- Click any slider value to type an exact number. Enter applies; Escape cancels. Percentage inputs use percentages, and brush size uses pixels.
+- Locked U/V tiling updates both numbers immediately when either is typed.
+- Mask Levels uses the mask's own histogram, responds to handle dragging, and records the correct state for undo.
+- Added a live mesh-map Mask builder with independent edge, cavity, AO, direction, position, height and thin-area strengths, plus grunge breakup and anchor input.
+- Added 24 curated CC0 damage textures: photographed gashes, scraped paint, chipped coatings and scanned grunge, plus four mixed damage presets. Original sources and processing are documented.
+- Added eight repeatable fabric and geometric patterns.
+- Textures now has Scratches, Grunge, Fabric and Patterns categories, search, and S/M/L thumbnail sizing.

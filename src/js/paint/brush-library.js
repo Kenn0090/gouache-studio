@@ -57,13 +57,23 @@ function renderLibrary(){const box=$('#libBody');box.replaceChildren();
 function makeSlider(o){
   const to=o.map?o.map.to:v=>v,from=o.map?o.map.from:v=>v,fmt=o.fmt||(v=>String(v));
   const inp=el('input',{type:'range',id:o.id,min:o.min,max:o.max,step:o.step});inp.value=to(o.value);
-  const out=el('output',{for:o.id,text:fmt(o.value)});
-  inp.addEventListener('input',()=>{const v=from(parseFloat(inp.value));out.textContent=fmt(v);o.onInput(v);});
+  let value=o.value,editing=false;
+  const out=el('output',{for:o.id,text:fmt(value),tabindex:'0',role:'button',title:'Click to type a precise value','aria-label':o.label+' value: click to type'});
+  const show=v=>{value=v;if(!editing)out.textContent=fmt(v);};
+  const typeValue=()=>{if(editing)return;editing=true;
+    const scale=o.numericScale||(fmt===pct?100:1),lo=from(+o.min),hi=from(+o.max);
+    const number=el('input',{type:'number',class:'slider-value',id:o.id+'_value','aria-label':o.label+' precise value',step:'any',min:String(Math.min(lo,hi)*scale),max:String(Math.max(lo,hi)*scale),value:String(Math.round(value*scale*1e8)/1e8)});
+    let done=false;const finish=cancel=>{if(done)return;done=true;const n=number.valueAsNumber;editing=false;
+      if(cancel||!Number.isFinite(n)){show(value);return;}const v=clamp(n/scale,Math.min(lo,hi),Math.max(lo,hi));inp.value=to(v);show(v);o.onInput(v);if(o.onChange)o.onChange(v);};
+    number.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();e.stopPropagation();finish(e.key==='Escape');}});
+    number.addEventListener('blur',()=>finish(false));out.replaceChildren(number);number.focus();number.select();};
+  out.addEventListener('click',typeValue);out.addEventListener('keydown',e=>{if(e.target===out&&(e.key==='Enter'||e.key===' ')){e.preventDefault();typeValue();}});
+  inp.addEventListener('input',()=>{const v=from(parseFloat(inp.value));show(v);o.onInput(v);});
   if(o.onChange)inp.addEventListener('change',()=>o.onChange(from(parseFloat(inp.value))));
-  return {el:el('div',{class:'srow'},el('label',{for:o.id,text:o.label}),inp,out),set(v){inp.value=to(v);out.textContent=fmt(v);}};
+  return {el:el('div',{class:'srow'},el('label',{for:o.id,text:o.label}),inp,out),set(v){inp.value=to(v);show(v);}};
 }
 function chk(id,label,checked,onChange){const i=el('input',{type:'checkbox',id});i.checked=checked;i.addEventListener('change',()=>onChange(i.checked));return el('label',{class:'chk',for:id},i,el('span',{text:label}));}
-const pct=v=>Math.round(v*100)+'%';
+const pct=v=>Number((v*100).toFixed(2))+'%';
 /* the largest brush: 5000 px, or more in Preferences */
 const brushMax=()=>(typeof prefs!=='undefined'&&prefs.maxBrush)||5000;
 const sizeMap={to:v=>Math.round(Math.pow(clamp((v-1)/(brushMax()-1),0,1),1/2.6)*1000),from:u=>Math.max(1,Math.round(1+(brushMax()-1)*Math.pow(u/1000,2.6)))};

@@ -81,8 +81,9 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
     makeSlider({id:'ms_op',label:'Opacity',min:0,max:1,step:.01,value:r.op==null?1:r.op,fmt:pct,onInput:v=>{ed(x=>{x.op=v;});const e=document.querySelector('.msrow.on .msop');if(e)e.textContent=String(Math.round(v*100));}}).el);
   /* filters take the settings of the filter itself */
   if(r.kind==='filter'&&!r.own){const F=FX[r.fx];if(!F){box.append(el('p',{class:'note',text:'This filter is not available.'}));return;}
-    if(!msEd.snap||msEd.L!==L){msCommit();msEd.L=L;msEd.snap=msSnap(L);msEd.label='Change '+F.title.toLowerCase();}
-    r.v=r.v||fxDefaults(F);const c=fxControls(F,r.v,()=>ed(()=>{}),{});box.append(...c.body);if(c.reset)box.append(el('div',{class:'frow'},c.reset));
+    r.v=r.v||fxDefaults(F);const draft=fxClean(r.v),ctx={};
+    if(where==='m'&&(r.fx==='levels'||r.fx==='curves')){const t=msEval(L,{upTo:L.mask.stack.indexOf(r)});try{ctx._h=histogramOf(t);}finally{release(t);}}
+    const c=fxControls(F,draft,()=>ed(x=>{x.v=fxClean(draft);}),ctx);box.append(...c.body);if(c.reset)box.append(el('div',{class:'frow'},c.reset));
     if(where==='c'){const ms=el('select',{id:'ms_maps','aria-label':'Maps it changes'},el('option',{value:'all',text:'Every map but the normal'}),el('option',{value:'base',text:'Base colour only'}),...doc.maps.filter(k=>k!=='base').map(k=>el('option',{value:'only:'+k,text:MAP_DEFS[k].label+' only'})));
       ms.value=Array.isArray(r.maps)?'only:'+r.maps[0]:r.maps==='all'?'all':'base';ms.onchange=()=>ed(x=>{x.maps=ms.value==='all'?'all':ms.value==='base'?'base':[ms.value.slice(5)];});
       box.append(el('div',{class:'frow'},el('label',{text:'Changes'}),ms));}
@@ -115,6 +116,11 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
     S('ms_tile','Tile','tile',.25,16,.25,v=>v+'×'),inv(),pxfBox(L,r,PXF_MODES));
   if(r.kind==='ref'){const os=allNodes(doc.root).filter(n=>n!==L&&n.mask);box.append(sel('ms_ref','Layer',os.map(o=>[o.name,o.name]),'name'),inv(),el('p',{class:'note',text:'Follows that layer’s mask, live.'}));}
   if(r.kind==='gen'){
+    if(p.g==='builder'){for(const [k,v] of Object.entries(msGenDefaults('builder')))if(p[k]==null)p[k]=v;
+      box.append(el('div',{class:'sub',text:'Mesh-map mask builder'}),chk('ms_uvWrap','UV wrap',p.uvWrap!==false,v=>ed(x=>{x.p.uvWrap=v;})),...[
+        ['edgeWeight','Curvature edges'],['cavityWeight','Curvature cavities'],['aoWeight','AO cavities'],['directionWeight','Facing direction'],['positionWeight','Position gradient'],['heightWeight','Height'],['thicknessWeight','Thin areas']].map(([k,l])=>S('ms_'+k,l,k,0,1,.01,pct)),
+        sel('ms_gradAxis','Direction',[['up','Up'],['down','Down'],['x','Right'],['-x','Left'],['z','Front'],['-z','Back']],'gradAxis'),S('ms_positionFrom','Position start','positionFrom',0,1,.01,pct),S('ms_positionTo','Position end','positionTo',0,1,.01,pct),S('ms_w','Direction softness','width',0,1,.01,pct),S('ms_amt','Offset','amount',0,1,.01,pct),S('ms_con','Contrast','contrast',.3,6,.05),S('ms_brk','Grunge breakup','breakup',0,1,.01,pct),S('ms_scale','Grunge scale','scale',.5,40,.5),S('ms_seed','Seed','seed',1,99,1),S('ms_dist','Distort mesh maps','distort',0,1,.01,pct),inv(),sel('ms_ganc','Also follow anchor',[['','None'],...msAnchorNames().map(x=>[x,x])],'anchor'),
+        el('p',{class:'note',text:'Combines mesh maps with separate strengths. Baked world normal and position take priority; otherwise direction and position follow the model. Bake curvature, AO, height and thickness for those inputs. Add a picture row above this generator in Multiply to use a library grunge.'}));return;}
     const choose=sel('ms_g','Preset',MS_GENS,'g'),input=choose.querySelector('select');input.onchange=()=>{ed(x=>Object.assign(x.p,['light','linear','radial','comic'].includes(input.value)?msGenDefaults(input.value):{g:input.value}));renderLayers();renderMatEd(true);};box.append(choose);
     box.append(chk('ms_uvWrap','UV wrap',p.uvWrap!==false,v=>ed(x=>{x.p.uvWrap=v;})));
     const fresh=['light','linear','radial','comic'].includes(p.g);

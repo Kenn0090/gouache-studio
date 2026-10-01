@@ -50,3 +50,15 @@ A material covers the bumps (height and normal detail) of the layers under it, s
 ## Turn the canvas into a texture (0.38)
 
 In Paint, use File › **Turn canvas into a texture…**, the **From canvas…** button in Textures, or right-click a layer › **Turn layer into a texture…**. Choose Grunge, Decal, Material, Brush tip or Stencil. Transparency is kept, and with a selection only that area is used. Decal and Material open the Convert tab: make the maps and press **Turn into material**. A decal keeps its cut-out.
+
+## Texture workshop
+
+The Textures shelf has **Scratches**, **Grunge**, **Fabric** and **Patterns** categories, alongside All, Yours, Photo grunge and Generated. Search narrows the current category. **S / M / L** changes thumbnail size independently of Materials. Category and thumbnail size are remembered.
+
+Twenty-four additional grayscale textures include photographed gashes, scraped paint, chipped coatings, ragged scratch brush marks and scanned grunge. Four **Mixed** presets combine scored paint, gashed coating, grime with gashes and extreme chipped damage. Individual source textures remain available. Search for **Mixed** to find the combinations.
+
+Sources are [Public Domain Pictures](https://www.publicdomainpictures.net/en/view-image.php?image=20754), [Poly Haven](https://polyhaven.com/license), [ambientCG](https://docs.ambientcg.com/license/) and ElDuderino's [scratch and damaged paint brushes on OpenGameArt](https://opengameart.org/content/scratch-damaged-paint-brush). All selected assets are CC0. Source authors, original links, processing notes and source/output hashes are recorded per texture in `assets/grunge/workshop-sources.json`. Textures are cropped and contrast-adjusted; the brush layouts and Mixed presets are derived compositions.
+
+These are grayscale masks, rather than complete PBR material sets. Right-click to use one in a mask or material channel. Bright scratches reveal a masked material; use Invert when dark cuts are needed. In a Height channel, adjust the layer's height strength to control the depth.
+
+Generated patterns include twill, herringbone, knit and basket weave, plus checkerboard, chevron, hexagons and scales. These are procedural grayscale patterns that repeat, and can be used in masks, height or other channels.

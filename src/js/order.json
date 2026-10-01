@@ -88,6 +88,7 @@
         "layers/materials",
         "layers/mat-import",
         "ui/lib-drag",
+        "ui/texture-workshop-library",
         "ui/textures",
         "view3d/decals",
         "view3d/env-panel",
