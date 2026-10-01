@@ -1046,3 +1046,13 @@ body:not(.animmode):not(.bakemode):not(.convmode):not(.brushmode) .dkbody>.sec[a
 
 /* Frame thumbnails keep a complete row above the original side-by-side effects area. */
 #timeline>.tlscroll{flex:0 0 auto;min-height:calc(var(--fcs,72px) + 28px)}
+
+/* Brush maker reference layout: creation first, painting controls directly underneath. */
+.btpainting{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:10px;min-width:0}
+.btpainting>.sec-actions{display:flex;gap:5px;justify-content:center;flex-wrap:wrap}
+.btpainting>#brushBody{max-height:220px;overflow:auto;padding-right:8px;min-height:0}
+.btpainting #brushPrev{height:56px;box-sizing:border-box}
+body.brushmode section[aria-labelledby="hColor"]>*:not(.sec-h):not(.crow){display:none}
+body.brushmode section[aria-labelledby="hColor"]{gap:4px;padding-top:4px;padding-bottom:4px}
+body.brushmode .dkshelf .sec:has(#libBody){display:block}
+body.brushmode .dkshelf .sec:has(#libBody)>#libBody{height:100%;max-height:none}

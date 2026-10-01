@@ -35,12 +35,13 @@ const WS_PRESETS={
 /* (0.28, Kenn) each top tab has its own workspace, and the drop-down follows the tab */
 for(const [k,n] of [['animation','Animation'],['bake','Bake'],['convert','Convert'],['brush','Brush']])WS_PRESETS[k]=Object.assign(JSON.parse(JSON.stringify(WS_PRESETS.painting)),{name:n});
 /* Brush creation keeps its previews and settings together, with painting brushes below the canvas. */
-WS_PRESETS.brush={name:'Brush',tb:{side:'left',cols:1},opt:true,w:420,groups:[{tabs:MODE_GROUP.slice(),active:'brushtab',f:3.5},{tabs:['color'],f:1}],shelf:{tabs:['brushes'],h:230,f:1},icons:['layers','hist','maps','chan','matEd','shading','tool','stencils','mats','textures','decals','envs','p3bake'],floats:[]};
+WS_PRESETS.brush={name:'Brush',tb:{side:'left',cols:1},opt:true,w:420,groups:[{tabs:['color'],f:.45},{tabs:MODE_GROUP.slice(),active:'brushtab',f:5}],shelf:{tabs:['brushes'],h:230,f:1},icons:['layers','hist','maps','chan','matEd','shading','tool','stencils','mats','textures','decals','envs','p3bake'],floats:[]};
 const WS_MODE_DEF={paint:'painting',p3d:'texturing',anim:'animation',bake:'bake',convert:'convert',brush:'brush'};
 const dk={ws:'painting',L:null,custom:{},saved:{},lock:false,flyout:null,drag:null,modeWs:{}};
 (()=>{try{const s=JSON.parse(localStorage.getItem('gs.dock')||'{}');if(s.ws)dk.ws=s.ws;if(s.modeWs)dk.modeWs=s.modeWs;if(s.col2&&s.col2.groups)dk.col2=s.col2;dk.saved=s.saved||{};dk.custom=s.custom||{};dk.lock=!!s.lock;
   /* Upgrade the old copied Paint layout once; retain custom arrangements. */
   if(!localStorage.getItem('gs.brushLayout464')){const L=dk.saved.brush;if(L&&L.groups&&L.groups.length===5&&L.groups[0].tabs.includes('brushtab')&&L.groups[1].tabs.includes('color')&&L.groups[2].tabs.includes('brushes'))delete dk.saved.brush;localStorage.setItem('gs.brushLayout464','1');}
+  if(!localStorage.getItem('gs.brushLayout466')){const L=dk.saved.brush;if(L&&L.groups&&L.groups.length===2&&L.groups[0].tabs.includes('brushtab')&&L.groups[1].tabs.length===1&&L.groups[1].tabs[0]==='color')delete dk.saved.brush;localStorage.setItem('gs.brushLayout466','1');}
   /* 0.36: the asset panels moved to the bottom shelf in 3D Paint */
   if(!localStorage.getItem('gs.layout371')){localStorage.setItem('gs.layout371','1');
     /* 0.37.1: Bake Maps and Shader join the texture sets tab; Stencils became a switch in Brushes */
@@ -60,7 +61,16 @@ function dkFix(L){const seen=new Set();const keep=a=>a.filter(id=>PANELS[id]&&!s
 /* the panels themselves, found once (while redrawing they are briefly off the page) */
 const dkSecs={};const dkSec=id=>dkSecs[id]||(dkSecs[id]=document.querySelector(PANELS[id].sel));
 /* (0.45, Kenn) the brush library and the brush settings are one panel everywhere except 3D Paint, where the settings keep their own panel beside the colour */
-function brushMergeSync(){const tool=$('#toolSec'),bb=$('#brushBody'),title=dk.toolTitle;if(!tool||!bb)return;const sep=ui.mode==='p3d',home=$('#hBrush'),pw=$('#brushPrev')&&$('#brushPrev').parentNode;
+function brushMergeSync(){if(ui.mode==='brush'&&dk.btPaintControls){const box=$('#btBody');if(box&&dk.btPaintControls.parentNode!==box)box.append(dk.btPaintControls);}
+  const tool=$('#toolSec'),bb=$('#brushBody'),title=dk.toolTitle;if(!tool||!bb)return;const sep=ui.mode==='p3d',home=$('#hBrush'),pw=$('#brushPrev')&&$('#brushPrev').parentNode;
+  const actions=dk.brushActions||(dk.brushActions=home.querySelector('.sec-actions'));
+  if(ui.mode==='brush'){const box=$('#btBody');if(!box||!pw)return;
+    const mount=dk.btPaintControls||(dk.btPaintControls=el('div',{id:'btPaintControls',class:'btpainting','aria-label':'Painting brush controls'}));
+    if(mount.parentNode!==box)box.append(mount);
+    if(actions&&actions.parentNode!==mount)mount.append(actions);if(pw.parentNode!==mount)mount.append(pw);if(bb.parentNode!==mount)mount.append(bb);
+    return;}
+  if(actions&&actions.parentNode!==home)home.append(actions);
+  const librarySec=dkSec('brushes');if(pw&&pw.parentNode!==librarySec)librarySec.append(pw);
   if(sep){if(bb.parentNode!==tool)tool.append(bb);const ht=$('#hTool');if(title&&ht&&title.parentNode!==ht)ht.prepend(title);}
   else if(pw){if(bb.previousElementSibling!==pw)pw.after(bb);if(title&&home&&title.parentNode!==home)home.prepend(title);}}
 /* ---- building the page structure once ---- */

@@ -1,4 +1,5 @@
-# Gouache Studio 0.46.5
+# Gouache Studio 0.46.6
 
-- Kept animation frame thumbnails in a dedicated row above the Effects panel so the frames cannot be covered by effect controls.
-- Preserved the original Effects layout: effect list and key tracks on the left, amount sliders on the right, with the width divider still available.
+- Arranged Brush maker like the requested reference: creation previews and settings above the painting brush actions, stroke preview and brush controls.
+- Painting brush controls now scroll within Brush maker and return to their usual panels when switching modes.
+- Compact colour swatches sit above Brush maker; the brush-tip library stays below the canvas.
