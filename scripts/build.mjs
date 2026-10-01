@@ -37,7 +37,9 @@ const assemble = head => tpl.replace(/<!--VERSION-->/g, APP_VERSION).replace('<!
 /* the bundled HDRIs (assets/hdri): the desktop app loads them as files; the one-page web version carries them inside the page */
 const HDRIS = fs.existsSync(r('assets/hdri')) ? fs.readdirSync(r('assets/hdri')).filter(f => f.endsWith('.hdr')) : [];
 const GRUNGE = fs.existsSync(r('assets/grunge')) ? fs.readdirSync(r('assets/grunge')).filter(f => f.endsWith('.webp')) : [];
+const BRUSHPACKS = fs.existsSync(r('assets/brushes')) ? fs.readdirSync(r('assets/brushes')).filter(f => f.endsWith('.webp')) : [];
 const hdriTags = () => HDRIS.map(f => `<script type="text/plain" id="hdri_${f.replace(/_1k\.hdr$/, '')}">${fs.readFileSync(r('assets/hdri/' + f)).toString('base64')}</script>`)
+  .concat(BRUSHPACKS.map(f => `<script type="text/plain" id="br_${f.replace(/\.webp$/, '')}">${fs.readFileSync(r('assets/brushes/' + f)).toString('base64')}</script>`))
   .concat(GRUNGE.map(f => `<script type="text/plain" id="gr_${f.replace(/\.webp$/, '')}">${fs.readFileSync(r('assets/grunge/' + f)).toString('base64')}</script>`)).join('\n');
 function buildWeb() {
   fs.mkdirSync(r('dist-web'), { recursive: true });
@@ -56,6 +58,7 @@ function buildDesktop() {
   for (const f of HDRIS) copy('assets/hdri/' + f, `${out}/hdri/${f}`);
   for (const g of GMATS) copy('assets/materials/' + g.file, `${out}/materials/${g.file}`);
   for (const f of GRUNGE) copy('assets/grunge/' + f, `${out}/grunge/${f}`);
+  for (const f of BRUSHPACKS) copy('assets/brushes/' + f, `${out}/brushes/${f}`);
   // UI fonts bundled so the app looks right offline
   const fonts = [
     ['@fontsource/instrument-sans', 'Instrument Sans', [400, 500, 600]],

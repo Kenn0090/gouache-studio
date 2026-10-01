@@ -441,6 +441,8 @@ body.convmode #mapsSec,body.convmode .sec[aria-labelledby="hLayers"],body.convmo
 .nohints .hint{display:none}
 .kbdlg{display:flex;flex-direction:column;gap:8px;min-width:0}
 .dialog.kbwide{width:min(560px,100%)}
+/* (0.45) Preferences: the window is wide enough for its rows, nothing scrolls sideways */
+.dialog:has(.prefs){width:min(560px,96vw);overflow-x:hidden}.prefs,.prefpanel,.prefpanel>*{min-width:0}
 .kbsearch{width:100%}
 .kblist{max-height:56vh;overflow:auto;padding-right:4px}
 .kbrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 4px;border-radius:5px}
@@ -868,13 +870,15 @@ body.m-p3d #toast{top:54px;z-index:40}
 .fillcard.open>.fillbody{display:grid;gap:6px}
 /* 0.37.1: the 3D · Split · 2D · UV switch sits at the lower right; the layer list starts right under its buttons */
 .vpstrip{left:auto;right:14px;bottom:36px;transform:none}
-body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]{grid-template-rows:auto auto minmax(0,1fr) auto auto auto;align-content:stretch}
+body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]{grid-template-rows:auto auto auto auto minmax(0,1fr) auto;align-content:stretch}
 body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.sec-h{order:0}
 body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.lbtns{order:1}
-body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.llist{order:2;align-content:start}
-body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.sub{order:3}
-body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.lprops{order:4}
-body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>#maskRow{order:5}
+body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.lprops{order:2}
+body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>#maskRow{order:3}
+body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.llist{order:4;align-content:start}
+body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>.sub{order:5}
+/* (0.45) Paint has no Properties panel, so the fill-layer and effect buttons are 3D Paint only */
+body:not(.m-p3d) #lFill,body:not(.m-p3d) #lFxAdd{display:none}
 .stbrush{display:grid;gap:6px;padding:6px 0;border-top:1px solid var(--line)}
 .stdrop{border:1.5px dashed var(--line-2);border-radius:10px;padding:14px 10px;text-align:center;color:var(--muted);cursor:pointer;font-size:12px}
 .stdrop:hover,.stdrop.over{border-color:var(--accent,#e0524d);color:var(--text)}
@@ -896,7 +900,7 @@ body.m-p3d .dkbody>.sec[aria-labelledby="hLayers"]>#maskRow{order:5}
 
 /* 0.37.2 preferences tabs, reset rows, Brushes in the wide shelf: tips on the left, a small preview and the settings on the right */
 .preftabs{display:flex;flex-wrap:wrap;gap:4px}.preftabs .segb{flex:1 1 auto}
-.prefpanel{max-height:56vh;overflow:auto;padding-right:4px;min-width:min(520px,80vw)}
+.prefpanel{max-height:56vh;overflow:auto;overflow-x:hidden;padding-right:4px}
 .resetrow,.prefreset{justify-content:flex-end}
 .dkshelf .sec:has(#libBody){display:grid;grid-template-columns:minmax(0,1fr) 270px;grid-template-rows:auto auto auto 1fr;column-gap:14px;align-items:start;min-height:0}
 .dkshelf .sec:has(#libBody)>.sec-h{grid-column:1/-1}
@@ -945,3 +949,21 @@ body.tabfull #docTabs{display:none!important}
 .afxedit{flex:0 0 360px}.afxtop{display:flex;gap:8px;align-items:center;margin-bottom:4px}
 .afxsl{display:flex;align-items:center;gap:4px}.afxsl>*:last-child{flex:1}
 .afxdia{background:none;border:0;color:var(--dim,#888);cursor:pointer;font-size:14px}.afxdia.on{color:var(--accent)}.afxdia.mid{color:var(--accent);opacity:.5}
+
+/* 0.45: the effect picker in the Animation tab */
+.afxmenu{position:fixed;z-index:90;display:grid;gap:8px;padding:10px;background:var(--panel);border:1px solid var(--line-2);border-radius:10px;box-shadow:0 18px 50px rgba(0,0,0,.55);max-height:min(460px,70vh)}
+.afxmenu .afxsearch{width:100%}
+.afxmbody{display:grid;grid-template-columns:150px minmax(0,1fr);gap:10px;min-height:0;overflow:hidden}
+.afxnav{display:grid;gap:2px;align-content:start;overflow:auto;max-height:360px}
+.afxsec{display:flex;justify-content:space-between;align-items:center;gap:6px;text-align:left;background:transparent;border:0;border-radius:6px;padding:5px 8px;color:var(--muted);cursor:pointer}
+.afxsec i{font-style:normal;font-size:10px;opacity:.6}
+.afxsec:hover{background:var(--raise);color:var(--text)}.afxsec.on{background:var(--accent-soft);color:var(--text)}
+.afxgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:4px;align-content:start;overflow:auto;max-height:360px}
+.afxfx{background:var(--ground);border:1px solid var(--line);border-radius:6px;padding:7px 8px;text-align:left;cursor:pointer;color:var(--text)}
+.afxfx:hover,.afxfx:focus-visible{border-color:var(--accent);background:var(--raise)}
+
+/* 0.45: the layer controls are now above the list, so they take less room: blend and opacity side by side, clip and locks on one line */
+.lprops{grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:6px 8px;align-items:center}
+.lprops>.chips{grid-column:1/-1;flex-wrap:nowrap;align-items:center}
+.lprops .lockrow{margin-left:auto}.lprops .lockrow .lab{margin-right:2px}
+#hBrush>span:not(#brushTitle):not(.sec-actions){display:none}

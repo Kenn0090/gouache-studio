@@ -269,5 +269,7 @@ function idColourMask(n){if(!(doc.meshMaps&&doc.meshMaps.id)){toast('Bake an ID 
   const bar=document.querySelector('.lbtns.icons'),list=$('#layerList'),head=$('#hLayers');
   if(bar&&list&&head){const b=el('button',{class:'btn sm lbtnflip',type:'button'});head.append(b);
     const place=q=>{const in3=q===undefined?ui.mode==='p3d':!!q,tp=top||in3;b.hidden=in3;if(tp)list.before(bar);else{const sub=list.nextElementSibling;(sub&&sub.classList.contains('sub')?sub:list).after(bar);}
+      /* (0.45, Kenn) blend mode, opacity, locks and the mask buttons sit above the list, under the layer buttons */
+      const lp=document.querySelector('.lprops'),mr=$('#maskRow');if(lp)list.before(lp);if(mr)list.before(mr);
       bar.classList.toggle('top',tp);b.textContent=top?'▼':'▲';b.title=top?'Move the layer buttons to the bottom':'Move the layer buttons to the top';b.setAttribute('aria-label',b.title);};
     b.addEventListener('click',()=>{top=!top;try{localStorage.setItem('gs.lbtnTop',top?'1':'0');}catch(e){}place();});place();window.lbtnPlace=place;}}

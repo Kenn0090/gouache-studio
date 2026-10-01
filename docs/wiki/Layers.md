@@ -2,6 +2,8 @@
 
 ## Basics
 
+The blend mode, opacity, clip, lock buttons and the mask buttons sit at the top of the Layers panel, right above the list, so the list gets the room at the bottom. (The Properties panel for fill layers and mask effects belongs to 3D Paint; the Paint tab is the plain Photoshop-style app.)
+
 ![The Layers panel, with a fill layer and the icon buttons.](images/layers-panel.png)
 *The Layers panel, with a fill layer (its mask shows where it is painted) and the icon buttons at the bottom.*
 
