@@ -7,6 +7,7 @@
   --ui:"Instrument Sans","Segoe UI",system-ui,-apple-system,sans-serif;
   --mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
 }
+.meshmapbadge{display:inline-flex;vertical-align:middle;margin-right:5px;color:#92c9e8}
 [hidden]{display:none!important}
 html,body{height:100%}
 body{margin:0;background:var(--ground);color:var(--text);font:12.5px/1.4 var(--ui);overflow:hidden;-webkit-font-smoothing:antialiased}

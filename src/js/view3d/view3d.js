@@ -68,7 +68,7 @@ void main(){ vec4 b=texture(uBase,vT+uPB); float a=b.a; if((uHas&64)!=0) a*=text
     float an=clamp(uShP.x,-0.95,0.95), ar=rough*rough, ax=max(ar*(1.0+an),0.002), ay=max(ar*(1.0-an),0.002), th=dot(Ts,H)/ax, bh=dot(Bs,H)/ay, q=th*th+bh*bh+NdH*NdH; D=1.0/(PI*ax*ay*q*q); }
   /* Correlated Smith visibility retains grazing highlights without excess energy. */
   float vis=0.5/max(NdL*sqrt(NdV*NdV*(1.0-a2)+a2)+NdV*sqrt(NdL*NdL*(1.0-a2)+a2),0.0001);
-  float visibility=studioVisibility(vP,Ng,L);
+  float visibility=uSunI>0.0&&(NdL>0.0||uSh==1)?studioVisibility(vP,Ng,L):1.0;
   vec3 F=F0+(1.0-F0)*pow(1.0-VdH,5.0);
   vec3 spec=D*vis*F, dif=(1.0-F)*(1.0-metal)*alb/PI;
   float thick=(uHas&128)!=0?texture(uThick,vT).r:uShP.w;
@@ -165,7 +165,7 @@ o=(texelFetch(uSrc,min(p,sz),uLevel)+texelFetch(uSrc,min(p+ivec2(1,0),sz),uLevel
 function v3MapTex(k,src,region){const mono=doc.w*doc.h>=67108864&&MAP_DEFS[k]?.grey,packed=!!src.packed&&!mono;let t=v3.tex[k];if(!t||t.w!==doc.w||t.h!==doc.h||t.depth!==src.depth||!!t.packed!==packed||!!t.mono!==!!mono){if(t)disposeTarget(t);t=v3.tex[k]=makeTarget(doc.w,doc.h,src.depth,true,packed,mono);region=null;}
   const partial=region&&t.hasMips&&!(t.w&(t.w-1))&&!(t.h&(t.h-1))&&region[2]*region[3]<t.w*t.h*.25;
   const r=partial?region:[0,0,doc.w,doc.h];if(r[2]<=0||r[3]<=0)return t;
-  blit(src,t,r[0],r[1],r[2],r[3],r[0],r[1]);t._studioVer=(t._studioVer||0)+1;v3Work.copies++;v3Work.copyPixels+=r[2]*r[3];
+  blit(src,t,r[0],r[1],r[2],r[3],r[0],r[1]);if(k==='base')t._studioOpaque=studioOpaqueBase();t._studioVer=(t._studioVer||0)+1;v3Work.copies++;v3Work.copyPixels+=r[2]*r[3];
   if(partial){v3Work.partialCopies++;v3PatchMips(t,r);}else{gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.generateMipmap(gl.TEXTURE_2D);t.hasMips=true;let w=t.w,h=t.h;while(w>1||h>1){w=Math.max(1,w>>1);h=Math.max(1,h>>1);v3Work.mipPixels+=w*h;}}
   gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
   if(anisoExt)gl.texParameterf(gl.TEXTURE_2D,anisoExt.TEXTURE_MAX_ANISOTROPY_EXT,Math.min(qual('aniso'),anisoMax));return t;}

@@ -1,12 +1,6 @@
-# Gouache Studio 0.47.0
+# Gouache Studio 0.47.1
 
-- Twenty new Drawing and painting brushes: graphite pencils, charcoal, pastel, watercolour, gouache, acrylic, oil, palette knife, fan, ink, marker and crayon.
-- Eight new artwork fonts, with all sixteen artwork families bundled for offline desktop use.
-- Shift-click connects brush endpoints; Shift-drag draws horizontal or vertical lines in Paint and 3D Paint.
-- Studio lighting presets, fill and rim lights, balanced PBR reflections and real mesh shadows.
-- Improved Skin shader with thickness-driven transmission, surface roughness, scatter depth, broad highlights and oily sheen.
-- Transparent shadow floor placed under the mesh, with height, direction, light height, softness, opacity and colour controls.
-- Rename texture sets without losing their mesh material connections. Names are saved in projects and used in exports.
-- Static FBX export with UVs, normals, material slots and texture-file links. Engine exports can include each set's assigned mesh maps.
-- Material preview model from Kenn's supplied mesh, framed for viewing, with optional preview material and normal, curvature, height, thickness and AO maps.
-- Preserve 16-bit PNG data-map samples during import, including interlaced PNGs. Preview copies are 2K; original supplied files are unchanged.
+- Faster 3D painting with studio shadows: colour strokes over opaque materials reuse the shadow map. Inactive key lights skip shadow work; alpha and displacement strokes update shadows less often while dragging and refresh on release.
+- Edit baked or imported mesh maps from Maps using **Edit in 2D**. A marked layer opens at the map's original resolution; right-click it and choose **Send to 3D Paint as mesh map** to update materials and generators. Links survive project saves and texture-set renames, and returning a map supports undo/redo. Height maps keep 16-bit precision.
+- Heal now samples visible layers by default, so 3D painting can repair a material from a separate paint layer. **Sample visible layers** can be disabled to sample only the active layer. Spot healing and Alt-click source healing both work, with adjustable opacity.
+- Paint and 3D Paint brush cursors show only the brush outline, without the centre crosshair.

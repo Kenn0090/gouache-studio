@@ -20,6 +20,10 @@ Each texture set has the PBR maps **base colour, roughness, metallic, height and
 
 ### Imported mesh maps
 
+Use **Edit in 2D** beside an assigned map in **Maps**, or in the 3D Paint panel's mesh-map list, to repair bake errors. It opens a separate Paint document at the map's source dimensions and preserves your existing painting. A blue map icon marks the linked layer. Height maps open in the Height channel with 16-bit precision.
+
+After editing, right-click the marked layer and choose **Send to 3D Paint as mesh map**. The original texture set receives the edited map and its materials, masks and generators update. This is one undo step in 3D Paint. The map retains its original dimensions even if you resized the repair document. Save the repair document as `.gouache` and the 3D project as `.gouache3d` to retain their connection; texture-set renames keep the link. Open the original project before returning a saved edit.
+
 The **Maps** panel has slots for Normal, Ambient occlusion, Curvature, curvature edges/creases, Thickness, World normal, Position, ID, Height, Roughness and Metallic. Drop a file into its slot or press **Import…**. Use **Replace…**, **View** or **×** to change, inspect or remove an assigned map. Maps belong to the selected texture set and are saved inside the project. They feed masks, generators and material channels using **Mesh map** as the source; imported tangent normals provide the model's normal detail automatically.
 
 The **Mesh maps** tab in the Material Library shelf shows the assigned maps as thumbnails. Click a thumbnail to inspect it on the model, or drag it into a Maps slot. **Import mesh maps…** identifies standard map names such as `robot_AO` and `robot_curvature`; unnamed files can be dropped directly into a slot.

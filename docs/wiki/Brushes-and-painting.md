@@ -54,6 +54,10 @@ Uses the same settings as the brush. On a document with several maps, it can era
 Smudges and mixes paint. **Strength** is how far the colour is dragged. **Paint load** adds some of the foreground colour as you blend, like a loaded brush.
 
 ## Healing brushes (J)
+
+**Sample visible layers** is on by default: heal visible material detail onto a separate paint layer, including on the model in 3D Paint. Untick it to use only the active layer's pixels. Areas outside the stroke remain untouched. **Opacity** controls the strength of the repair; the faint stroke preview is separate from that strength. Selections and masks still limit coverage, and Undo removes the repair.
+
+Brush cursors in Paint and 3D Paint show the brush outline without a centre crosshair. The source marker for Healing and Clone still identifies the Alt-click sample point.
 Fix flaws, seams and specks without leaving a smear, like Photoshop's healing brushes. The tool has two modes (in the options bar or Tool settings):
 - **Spot:** paint over the flaw. When you let go, it is replaced with clean texture from nearby, found by itself.
 - **Healing:** **Alt+click** where to copy from (a cross marks it), then paint where it should go. **Aligned** keeps the same distance between the source and the brush for every stroke; untick it to start from the source each time.
