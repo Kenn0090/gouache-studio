@@ -38,7 +38,7 @@ async function saveDoc(forceAsk){if(stroke){return;}toast('Saving…');try{await
       doc.filePath=path;doc.name=baseName(fileNameOf(path));platform.recentAdd(path);markSaved();updateStatus();toast('Saved '+path);return;}
     const r=await deliver(slug(doc.name)+'.gouache',blob);toast(deliveredText(r,'Document'));if(r.ok)markSaved();}
   catch(e){console.error(e);toast('The document could not be saved: '+(e.message||e));}}
-function markSaved(){doc.savedAt=hist.undo.length?hist.undo[hist.undo.length-1]:null;updateTitle();}
+function markSaved(){doc.savedAt=hist.undo.length?hist.undo[hist.undo.length-1]:null;if(doc.projectAssets)doc.projectAssets._saved=doc.projectAssets._ver||0;updateTitle();}
 function updateTitle(){platform.setTitle((doc.name||'Untitled')+(doc.filePath?' — '+doc.filePath:'')+' — Gouache Studio');}
 /* Recent files: files/recent.js */
 

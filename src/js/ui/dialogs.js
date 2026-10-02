@@ -76,7 +76,7 @@ function dlgNew(){const f=sizeFields(1024,1024,false);let depth=doc.depth,bgMode
   /* the template row and note only matter for Paint and Animation */
   {const kids=[...body.children],ti=kids.indexOf(onlyPaint[0]);if(ti>=0)onlyPaint.push(kids[ti+1],kids[ti+2]);}stUpd();
   openDialog({title:'New document',body,okLabel:'Create',onOk(){const r=np.read();if(!r)return false;const dpiNew=np.dpi();
-    if(start==='p3d'){const n=r[0];setTimeout(()=>p3NewProject(n),0);return;}
+    if(start==='p3d'){const n=r[0];setTimeout(async()=>{if(await p3NewProject(n))dlgP3ProjectSetup();},0);return;}
     if(start==='brush'){if(ui.mode!=='brush'&&!setMode('brush',true))return;btNewCanvas(Math.max(64,Math.min(4096,r[0])));return;}
     if(depth===16&&r[0]*r[1]>=268435456){toast('Use 8-bit colour for a 16K square document. Height still keeps 16-bit precision.');return false;}
     if(start==='paint'&&ui.mode!=='paint'&&typeof setMode==='function'&&!setMode('paint',true))return;

@@ -43,8 +43,8 @@ function buildP3Panel(){p3BakePanel();if(typeof stBrushRender==='function')stBru
     el('p',{class:'note',text:'Hold Alt over the model to pick its colour. Left/Right arrow keys step through the shades in the Color panel. Double-click empty space to reframe.'}),
     el('div',{class:'sub',text:'Project'}),el('div',{class:'chips'},el('button',{class:'btn sm',text:'Save project',title:'Save the model and all texture sets as a .gouache3d project (Ctrl+S here)',onclick:()=>saveP3Project(false)}),el('button',{class:'btn sm',text:'Open project…',onclick:()=>pickFile('open')})),
     el('div',{class:'sub',text:'Select on the model'}),sel3Box(),
-    el('div',{class:'sub',text:'Texture size'}),seg([[1024,'1K'],[2048,'2K'],[4096,'4K']],doc.w,v=>p3Resize(+v),'Texture size'));}
-function p3Resize(n){if(n===doc.w&&n===doc.h)return;if(n>MAX_DIM){toast('This computer cannot edit textures that large.');return;}p3.size=n;p3Save();resizeImageDoc(n,n);for(const L of paintLayers())if(L.fill)fillRender(L);buildP3Panel();}
+    el('div',{class:'sub',text:'Texture size · '+p3Resolution()}),seg([[1024,'1K'],[2048,'2K'],[4096,'4K'],...(doc.w>4096?[[doc.w,Math.round(doc.w/1024)+'K']]:[])],doc.w,v=>p3Resize(+v),'Texture size'));p3ResolutionSync();}
+function p3Resize(n){if(n===doc.w&&n===doc.h)return;if(n>MAX_DIM){toast('This computer cannot edit textures that large.');return;}resizeImageDoc(n,n);if(doc.w!==n||doc.h!==n)return;p3.size=n;p3Save();for(const L of paintLayers())if(L.fill)fillRender(L);buildP3Panel();}
 
 /* ---- texture sets: one per material of the model, each its own canvas of maps (like Substance Painter) ----
    The active set's canvas is the live document; the others are set aside (docState) with the textures they
@@ -249,8 +249,9 @@ function sendToP3(only){if(ui.mode!=='paint'){toast('Send to 3D Paint works from
   if(only)only.visible=vis;
   /* every map keeps only what shows in the base colour (a sticker has one outline) */
   if(imgs.base)for(const k in imgs)if(k!=='base'){const t=acquireD(imgs[k].depth);run(p3StickerProg(),t,{uSrc:imgs[k].tex,uM:imgs.base.tex});blit(t,imgs[k],0,0,t.w,t.h,0,0);release(t);}
-  const aspect=doc.h/doc.w;
+  const aspect=doc.h/doc.w,assets=doc.projectAssets||[];
   if(!setMode('p3d',true)){for(const k in imgs)disposeTarget(imgs[k]);return;}
+  for(const a of assets)paRemember(a.kind,a.rec,doc,true);
   /* (0.27, Kenn) a live sticker: a material whose pictures are projected onto the model from where you are looking,
      see-through where the painting is, with the move/turn/scale gizmo; right-click › Convert to pixels fixes it */
   const chans={};for(const k in imgs)if(doc.maps.includes(k)&&!FILL_SKIP.includes(k))chans[k]={on:true,src:'image',name:name,tile:1,rot:0};

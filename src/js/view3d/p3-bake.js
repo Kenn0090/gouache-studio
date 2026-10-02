@@ -55,7 +55,7 @@ async function p3Bake(ks,size,which){p3bk.lastArgs={ks:ks.slice(),size,which:whi
   p3bk.last={t:Date.now(),sets:done};
   toast('Baked '+ks.length+' map'+(ks.length>1?'s':'')+' for '+done+' texture set'+(done>1?'s':'')+' in '+((performance.now()-t0)/1000).toFixed(1)+' s. The mesh maps are updated.');}
 /* after a bake: everything that reads the mesh maps is worked out again */
-function p3MeshMapsChanged(){if(typeof msEpoch!=='undefined')msEpoch++;
+function p3MeshMapsChanged(){if(typeof msEpoch!=='undefined')msEpoch++;if(typeof p3MapsRender==='function')p3MapsRender();if(typeof paRefresh==='function')paRefresh();
   for(const L of paintLayers())if(L.fill&&L.fill.maps&&Object.values(L.fill.maps).some(m=>m&&m.on&&(m.src==='baked'||m.src==='conv')))fillRender(L);
   changedAll();}
 /* Send the active set's bake to the Paint canvas (to clean up by hand) */

@@ -15,7 +15,7 @@ function matSaveFromFill(L,f){const name=(L.name||'Material').trim(),imgs={};
   for(const k in L._fillImg||{}){const s=f.maps[k];if(!s||!s.on||s.src!=='image')continue;const t=L._fillImg[k];imgs[k]={w:t.w,h:t.h,data:captureRegionNow(t,0,0,t.w,t.h).data};}
   const old=matLib.list.find(r=>r.name===name),rec={id:old?old.id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name,t:old?old.t:Date.now(),fill:fillClone(f),imgs};
   if(old){if(old._t)for(const k in old._t)disposeTarget(old._t[k]);matLib.list[matLib.list.indexOf(old)]=rec;}else matLib.list.push(rec);
-  store.put(rec,'materials');renderMats();toast((old?'Updated':'Saved')+' “'+name+'” in Materials.');}
+  paRemember('mat',rec).catch(e=>toast('Could not add the material to Projects: '+e.message));store.put(rec,'materials');renderMats();toast((old?'Updated':'Saved')+' “'+name+'” in Materials.');}
 function matDelete(rec){confirmDlg('Delete material','Delete the material “'+rec.name+'” from Materials? Layers that use it keep it.','Delete',()=>{
   const i=matLib.list.indexOf(rec);if(i>=0)matLib.list.splice(i,1);if(rec._t)for(const k in rec._t)disposeTarget(rec._t[k]);store.del(rec.id,'materials');renderMats();});}
 /* .gmat: the material as gzipped JSON, its images as PNG or WebP */

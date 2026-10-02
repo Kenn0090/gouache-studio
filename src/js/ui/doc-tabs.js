@@ -10,7 +10,7 @@ const dtab={tabs:[],live:0,main:0,seq:0,sig:''};
 const dtTab=id=>dtab.tabs.find(t=>t.id===id);
 const dtLive=()=>dtTab(dtab.live);
 function dtName(t){const d=t.state?t.state.doc:(tabDocs.paint?tabDocs.paint.doc:doc);return d.name||'Untitled';}
-function dtUnsaved(t){if(!t.state){try{return !asPaintSaved();}catch(e){return false;}}const u=t.state.undo;return !!(u.length&&u[u.length-1]!==t.state.doc.savedAt);}
+function dtUnsaved(t){if(!t.state){try{return !asPaintSaved();}catch(e){return false;}}return !paDocSaved(t.state.undo,t.state.doc);}
 function dtPristine(){return ui.mode==='paint'&&!hist.undo.length&&!hist.redo.length&&!doc.filePath&&(doc.name||'Untitled')==='Untitled'&&!doc.anim;}
 /* ---- the layout: a tab bar over the canvas area, which can be empty while the canvas is in another window ---- */
 const dtWrap=el('div',{id:'workWrap'}),dtBar=el('div',{id:'docTabs',role:'tablist','aria-label':'Open documents'}),dtSlot=el('div',{id:'workSlot'});

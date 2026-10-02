@@ -4,6 +4,8 @@
    dragged to another group, between groups, onto the icon column (one click away), or off the dock to float.
    The arrangement is a workspace: Painting, Texturing, 3D Paint, Minimal or your own, remembered per workspace. */
 const PANELS={
+  projects:{title:'Projects',sel:'#paSec',avail:m=>m==='p3d'||m==='paint',icon:'<path d="M3 6h7l2 2h9v11H3z"/>'},
+  meshmaps:{title:'Mesh maps',sel:'#mmSec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="m4 4 16 16M4 20 20 4"/>'},
   p3d:{title:'3D Paint',sel:'#p3dSec',avail:m=>m==='p3d',mode:true},
   hist:{title:'History',sel:'#histSec',avail:m=>m!=='convert',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>'},
   matEd:{title:'Properties',sel:'#matEdSec',avail:m=>m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M8 15l8-8M9 9h.01"/>'},
@@ -56,7 +58,7 @@ function dkFix(L){const seen=new Set();const keep=a=>a.filter(id=>PANELS[id]&&!s
   if(!L.shelf)L.shelf={tabs:[],f:1,h:170};if(!L.fold)L.fold={};
   for(const g of L.groups)g.tabs=keep(g.tabs);L.shelf.tabs=keep(L.shelf.tabs);for(const f of L.floats)f.tabs=keep(f.tabs);L.icons=keep(L.icons||[]);L.hidden=keep(L.hidden||[]);
   L.groups=L.groups.filter(g=>g.tabs.length);L.floats=L.floats.filter(f=>f.tabs.length);
-  for(const id of PANEL_IDS)if(!seen.has(id)){const home=WS_PRESETS.painting.groups.find(g=>g.tabs.includes(id));const g=L.groups.find(g=>home&&g.tabs.some(t=>home.tabs.includes(t)));if(g)g.tabs.push(id);else L.groups.push({tabs:[id],f:1});}
+  for(const id of PANEL_IDS)if(!seen.has(id)){if(id==='projects'||id==='meshmaps'){L.shelf.tabs.push(id);continue;}const home=WS_PRESETS.painting.groups.find(g=>g.tabs.includes(id));const g=L.groups.find(g=>home&&g.tabs.some(t=>home.tabs.includes(t)));if(g)g.tabs.push(id);else L.groups.push({tabs:[id],f:1});}
   return L;}
 /* the panels themselves, found once (while redrawing they are briefly off the page) */
 const dkSecs={};const dkSec=id=>dkSecs[id]||(dkSecs[id]=document.querySelector(PANELS[id].sel));
@@ -154,7 +156,7 @@ function dkRender(){brushMergeSync();const keepSc=dkScrollSave(),L=dk.L,dock=$('
   if(dk.flyout)dkFlyoutEl(dk.flyout);
   for(const id of PANEL_IDS){const s=dkSec(id);if(!s.parentElement||s.parentElement===dk.park||!s.isConnected)dk.park.append(s);}
   dkFoldBtns();if(dk.wbar)dk.wbar.hidden=dk.wbar.hidden||!!(L.fold&&L.fold.dock);
-  dkScrollRestore(keepSc);requestAnimationFrame(()=>dkScrollRestore(keepSc));
+  dkScrollRestore(keepSc);requestAnimationFrame(()=>dkScrollRestore(keepSc));if(typeof paRefresh==='function')paRefresh();
   if(typeof resizeGL==='function')requestAnimationFrame(()=>{resizeGL();if(typeof drawSV==='function')drawSV();});}
 function dkTabs(tabs,active,where,onPick){const strip=el('div',{class:'dktabs',role:'tablist'});
   for(const id of tabs){const on=id===active,b=el('button',{class:'dktab'+(on?' on':''),role:'tab','aria-selected':String(on),text:id==='tool'?(dk.toolTitle.textContent||'Tool settings'):PANELS[id].title});

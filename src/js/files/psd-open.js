@@ -1,4 +1,21 @@
 /* ================= PSD open ================= */
+/* Placing a PSD retains its tree in one new folder, with a single undo step. All offsets
+   use the document's overall fit, so separate layers and masks stay aligned. */
+async function placePSD(buf,name){needLib('agPsd','PSD');const psd=agPsd.readPsd(buf,{useImageData:true,skipThumbnail:true});
+  if(!(psd.width>0&&psd.height>0)||psd.width>MAX_DIM||psd.height>MAX_DIM)throw new Error('This PSD is larger than this computer can edit.');
+  const root=doc.root,S=Math.min(1,doc.w/psd.width,doc.h/psd.height),off=[Math.round((doc.w-psd.width*S)/2),Math.round((doc.h-psd.height*S)/2)],G=newGroupObj(name||'PSD'),items=[],notes=new Set();
+  const mask=m=>{if(!m?.imageData?.width)return null;const mk=makeMask((m.defaultColor||0)/255),tex=uploadMask(m.imageData);try{run(P.maskplace,mk.target,{uMask:tex,uRect:[off[0]+(m.left||0)*S,off[1]+(m.top||0)*S,m.imageData.width*S,m.imageData.height*S],uDef:(m.defaultColor||0)/255});}finally{gl.deleteTexture(tex);}mk.enabled=!m.disabled;return mk;};
+  const build=async(list,parent)=>{for(const l of list||[]){if(l.adjustment){notes.add('Adjustment layers were skipped.');continue;}let n;
+    if(l.children){n=newGroupObj(l.name||'Group');n.open=l.opened!==false;n.mode=(!l.blendMode||l.blendMode==='pass through')?-1:(PS_MODE[l.blendMode]||0);}
+    else{n=newLayerObj(l.name||'Layer');doc.count--;n.mode=PS_MODE[l.blendMode]||0;n.clip=!!l.clipping;n.lockAlpha=!!l.transparencyProtected;items.push(n);}
+    Object.assign(n,{visible:!l.hidden,opacity:clamp((l.opacity??1)*(l.fillOpacity??1),0,1),mask:mask(l.mask)});insertNode(n,parent);
+    if(l.vectorMask)notes.add('Vector masks were skipped.');if(l.effects&&!l.effects.disabled&&Object.keys(l.effects).some(k=>!['disabled','scale'].includes(k)))notes.add('Photoshop layer effects were not imported.');if(l.text||l.placedLayer)notes.add('Text and smart objects were imported as pixels.');if(l.blendMode&&l.blendMode!=='pass through'&&!(l.blendMode in PS_MODE))notes.add('Unsupported blend modes use Normal.');
+    if(l.children)await build(l.children,n);else if(l.imageData?.width>0&&l.imageData?.height>0){const raw={w:l.imageData.width,h:l.imageData.height,data:l.imageData.data,bits:psd.bitsPerChannel||8},tex=uploadStraight(raw);
+      try{if(S===1)premultInto(n.target,tex,[off[0]+(l.left||0),off[1]+(l.top||0)],null);else{const t=makeTarget(raw.w,raw.h,doc.depth,false);try{premultInto(t,tex,[0,0],null);run(P.resample,n.target,{uSrc:t.tex,uOffset:[off[0]+(l.left||0)*S,off[1]+(l.top||0)*S],uScale:[1/S,1/S],uTaps:{int:Math.min(8,Math.ceil(1/S))},uOutside:[0,0,0,0]});}finally{disposeTarget(t);}}}finally{gl.deleteTexture(tex);}}
+    await tick();if(doc.root!==root)throw new Error('The document changed during import. Try again.');}};
+  try{await build(psd.children,G);if(!items.length&&psd.imageData){const L=newLayerObj('Background');doc.count--;drawRawInto(L.target,{w:psd.width,h:psd.height,data:psd.imageData.data,bits:psd.bitsPerChannel||8},true);insertNode(L,G);items.push(L);}if(!items.length)throw new Error('This PSD contains no readable pixel layers.');
+    structOp('Place layered PSD',()=>{insertNode(G,doc.root);selectOnly(G);});changedAll();toast('Placed “'+name+'”: '+items.length+' layers in a folder.'+(notes.size?' '+[...notes].join(' '):''));return G;
+  }catch(e){const dispose=n=>{if(n.children)n.children.forEach(dispose);disposeLayer(n);};dispose(G);throw e;}}
 function psdMask(m){if(!m||!m.imageData||!(m.imageData.width>0))return null;const mk=makeMask((m.defaultColor||0)/255),tex=uploadMask(m.imageData);
   run(P.maskplace,mk.target,{uMask:tex,uRect:[m.left||0,m.top||0,m.imageData.width,m.imageData.height],uDef:(m.defaultColor||0)/255});gl.deleteTexture(tex);mk.enabled=!m.disabled;return mk;}
 async function openPSD(buf,name){

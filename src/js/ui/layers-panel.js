@@ -49,6 +49,7 @@ function syncLayerProps(){const A=doc.active,grp=A&&A.type==='group';if(ui.tool=
   $('#lDel').disabled=!A;$('#lUp').disabled=!A||i>=p.children.length-1;$('#lDown').disabled=!A||i<=0;$('#lUngroup').disabled=!grp;
 }
 function renderLayers(){
+  if(typeof paRefresh==='function')paRefresh();
   const list=$('#layerList'),keep=[];for(let e=list;e&&e!==document.body;e=e.parentElement)if(e.scrollTop)keep.push([e,e.scrollTop]);
   list.replaceChildren();
   for(const {n,depth,clipped} of displayRows()){const grp=n.type==='group';

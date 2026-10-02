@@ -1,5 +1,11 @@
 # What's new in Gouache Studio
 
+## 0.46.12
+
+3D Paint now displays its actual texture-set resolution, including 8K and 16K. File New offers a model and mesh-map setup window; Maps has labeled import/drop slots for replacing maps later. The Library shelf gains Mesh maps and Projects tabs. Project assets include live layers, source textures and created/converted assets, with compressed records saved inside the document. Imported mesh maps retain their source dimensions and work with normal shading, masks and live material channels.
+
+PSD placement and canvas drops preserve layer folders, names, visibility, opacity, supported blend modes and pixel masks, with one undo step. File Open remains layered; unsupported Photoshop features are reported. Desktop 8K/16K checks and material-memory, shelf and project round-trip regressions passed.
+
 ## 0.46.11
 
 Lower memory use when adding textured materials in large 3D Paint documents. Material layers keep their source textures and settings, sharing temporary full-size images when needed. At 8K and 16K, scalar viewport channels use one channel at full resolution, and large brush buffers wait until an edit needs them. The desktop 16K height path keeps half-float precision with compact value and transparency storage.

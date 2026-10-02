@@ -14,7 +14,7 @@ function disposeDocState(s){if(!s)return;const walk=g=>{for(const n of g.childre
 function blankTabDoc(w,h,name){for(const k of Object.keys(aux))delete aux[k];for(const k of Object.keys(emptyTs))delete emptyTs[k];sel.t=null;sel.active=false;hist.undo=[];hist.redo=[];compOut=null;
   for(const k of Object.keys(doc))delete doc[k];
   Object.assign(doc,{w,h,depth:8,wrap:false,name,root:{type:'group',children:[],isRoot:true,visible:true,opacity:1,mode:-1},active:null,sel:new Set(),count:0,
-    maps:['base'],map:'base',view:'base',mapDef:{},nrmStr:8,light:{az:135,el:40},v3d:null,anim:null,cage:null,workflow:'metal'});
+    maps:['base'],map:'base',view:'base',mapDef:{},nrmStr:8,light:{az:135,el:40},v3d:null,anim:null,cage:null,workflow:'metal',projectAssets:[]});
   allocAux();groupCount=0;const L=newLayerObj('Layer');insertNode(L,doc.root);selectOnly(L);}
 /* the tab's canvas size: its own, or the painting's the first time */
 function tabDocEnter(key,w,h,name){if(tabDocs.paint)return;const v3d=doc.v3d,wf=doc.workflow;tabDocs.paint=docState();tabDocs.key=key;
