@@ -41,13 +41,13 @@ function wfCanRestore(to){return wfLayers().some(L=>L.wfStash&&L.wfStash[to]);}
 function wfSnap(){return {tree:snapTree(),layers:wfLayers().map(L=>({L,maps:Object.assign({},L.maps),stash:L.wfStash?Object.keys(L.wfStash).reduce((o,k)=>(o[k]=Object.assign({},L.wfStash[k]),o),{}):null,blank:!!L.blankBase,target:L.target})),
   maps:doc.maps.slice(),mapDef:Object.assign({},doc.mapDef),wf:doc.workflow,map:doc.map,view:doc.view};}
 function wfApply(S){restoreTree(S.tree);for(const x of S.layers){x.L.maps=Object.assign({},x.maps);x.L.wfStash=x.stash?Object.keys(x.stash).reduce((o,k)=>(o[k]=Object.assign({},x.stash[k]),o),{}):null;if(x.blank)x.L.blankBase=true;else delete x.L.blankBase;}
-  doc.maps=S.maps.slice();doc.mapDef=Object.assign({},S.mapDef);doc.workflow=S.wf;doc.map=S.map;doc.view=S.view;useAux(mapDepth(doc.map));syncTargets();changedAll();renderLayers();refreshMapsUI();buildBrushPanel();}
+  doc.maps=S.maps.slice();doc.mapDef=Object.assign({},S.mapDef);doc.workflow=S.wf;doc.map=S.map;doc.view=S.view;useAux(mapDepth(doc.map),true);syncTargets();changedAll();renderLayers();refreshMapsUI();buildBrushPanel();}
 /* how = 'convert' (the current look into new layers) or 'restore' (the layers set aside the last time) */
 function wfSwitch(to,how){const from=doc.workflow||'metal';if(to===from)return;if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
   if(ui.mode!=='paint'){toast('Switch to Paint first.');return;}
   if(typeof xf!=='undefined'&&xf)xfCommit();if(doc.map!=='base')setEditMap('base');
   /* Workflow stashes own writable images; expand only the channels being moved into those stashes. */
-  for(const L of wfLayers())for(const k of ['base',...WF_KEYS[from]])if(mapSolid(L,k))ensureMapTarget(L,k);
+  for(const L of wfLayers())for(const k of ['base',...WF_KEYS[from]])if(mapSolid(L,k)||mapLive(L,k))ensureMapTarget(L,k);
   const before=wfSnap(),oldK=WF_KEYS[from],newK=WF_KEYS[to],had=oldK.filter(k=>doc.maps.includes(k)),made=[];
   let res=null;
   if(how!=='restore'){/* the finished look, converted */
@@ -68,7 +68,7 @@ function wfSwitch(to,how){const from=doc.workflow||'metal';if(to===from)return;i
     for(const k of Object.keys(res))release(res[k]);
     for(const G of made.reverse())insertNode(G,doc.root);}
   doc.workflow=to;doc.maps=MAP_ORDER.filter(k=>(doc.maps.includes(k)&&!oldK.includes(k))||newK.includes(k));
-  useAux(mapDepth(doc.map));syncTargets();
+  useAux(mapDepth(doc.map),true);syncTargets();
   const after=wfSnap();
   pushUndo({label:'Switch to '+WF_NAMES[to],refs:[],undo(){wfApply(before);},redo(){wfApply(after);}});
   changedAll();renderLayers();refreshMapsUI();buildBrushPanel();if(typeof v3Changed==='function')v3Changed();

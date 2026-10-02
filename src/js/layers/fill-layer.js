@@ -58,9 +58,12 @@ void main(){ vP=aP; vN=aN; gl_Position=vec4((aT*uUVs-uShift)*2.0-1.0,0.0,1.0); }
 const FS_FILLDIL=`uniform sampler2D uSrc; void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); vec4 c=texelFetch(uSrc,p,0); if(c.a>0.5){ o=c; return; }
   vec4 acc=vec4(0.0); for(int j=-1;j<=1;j++)for(int i=-1;i<=1;i++){ vec4 n=texelFetch(uSrc,clamp(p+ivec2(i,j),ivec2(0),s-1),0); if(n.a>0.5) acc+=vec4(n.rgb,1.0); }
   o=acc.a>0.0?vec4(acc.rgb/acc.a,1.0):vec4(0.0); }`;
-let P_FILLPOS=null,fillPosC=null;
+let P_FILLPOS=null,fillPosC=null,fillPosLimit='';
 function fillPosMaps(){const m=v3.mesh,g=v3.gpu;if(!m||!g||m.noUV)return null;const R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:m.idx.length/3},uvs=(v3s().uvs)||1;
   const key=[m.name,m.idx.length,R.start,R.count,doc.w,doc.h,uvs].join();if(fillPosC&&fillPosC.key===key&&fillPosC.m===m)return fillPosC;
+  /* The desktop renderer cannot allocate a 2 GiB or larger image. Position maps use four 32-bit channels. */
+  if(doc.w*doc.h>=134217728){if(fillPosLimit!==key){fillPosLimit=key;toast('3D projection needs smaller textures on this renderer. At 16K, use UV projection.');}return null;}
+  fillPosLimit='';
   if(fillPosC){disposeTarget(fillPosC.pos);disposeTarget(fillPosC.nrm);}
   if(!P_FILLPOS)P_FILLPOS={pos:prog3(VS_FILLPOS,'in vec3 vP; in vec3 vN; void main(){ o=vec4(vP,1.0); }'),nrm:prog3(VS_FILLPOS,'in vec3 vP; in vec3 vN; void main(){ o=vec4(normalize(vN),1.0); }'),dil:program(FS_FILLDIL)};
   /* 32-bit float images must be read unfiltered (nearest), or they read as zero */
@@ -71,15 +74,32 @@ function fillPosMaps(){const m=v3.mesh,g=v3.gpu;if(!m||!g||m.noUV)return null;co
     /* a few texels of padding past the UV edges, so seams don't show */
     for(let n=0;n<4;n++){run(P_FILLPOS.dil,tmp,{uSrc:t.tex});blit(tmp,t,0,0,doc.w,doc.h,0,0);}}
   disposeTarget(tmp);fillPosC={key,m,pos,nrm};return fillPosC;}
+/* A live image channel is rendered into a borrowed output, never into every material layer. */
+function fillLiveSource(L,k){const f=L.fill,s=f&&f.maps[k];if(!s||!s.on||!['image','baked','conv'].includes(s.src)||k==='base'&&fillTintOn(f))return null;
+  const t=s.src==='image'?L._fillImg&&L._fillImg[k]:doc.meshMaps&&doc.meshMaps[s.mm];return t&&t.tex?t:null;}
+function fillLiveOpaque(L,k){const f=L.fill,s=f&&f.maps[k],img=fillLiveSource(L,k);return !!img&&!f.decal&&(!pxfIs3D(f.proj)||s.src!=='image')&&(MAP_DEFS[k].grey||k==='normal'||!!img.opaque);}
+let P_FILLCOMP=null;
+/* UV sampling can feed the composite directly. Quantize as the former intermediate texture did. */
+function fillCompProgram(){if(!P_FILLCOMP){const sample=FS_FILLIMG.replace('void main(){ vec4 s;','vec4 fillSample(){ vec4 s;').replace(/o=([^;]+);\s*(?:return;)?/g,'return $1;');
+    P_FILLCOMP=program(sample+`uniform int uFillDepth;
+vec4 fillQuant(vec4 c){ if(uFillDepth==16) return vec4(unpackHalf2x16(packHalf2x16(c.rg)),unpackHalf2x16(packHalf2x16(c.ba))); return roundEven(clamp(c,0.0,1.0)*255.0)/255.0; }
+`+FS_COMP.replace('texelFetch(uLayer,p,0)','fillQuant(fillSample())'));P_FILLCOMP.defaults=P.comp.defaults;}return P_FILLCOMP;}
+function fillCompUniforms(L,k){const f=L.fill,s=f.maps[k],bk=s.src==='baked'||s.src==='conv';return Object.assign({uSrc:fillLiveSource(L,k).tex,uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uGrey:{int:MAP_DEFS[k].grey?1:0},uPos:dummy,uNrm:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0},uFillDepth:{int:mapDepth(k)}},pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf));}
+function fillDrawMap(L,k,T){const f=L.fill,s=f.maps[k],grey=MAP_DEFS[k].grey,bk=s.src==='baked'||s.src==='conv',img=fillLiveSource(L,k),tri=pxfIs3D(f.proj)&&!bk?fillPosMaps():null;
+  if(!img){clearTarget(T);return;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
+  run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
+    uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}},(tri&&!bk?pxfUniforms(f.proj,f.xf):pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf))));T.opaque=(!tri||bk)&&!f.decal&&(grey||k==='normal'||!!img.opaque);
+}
 /* redraw a fill layer's maps from its settings (image maps need their picture in memory) */
-function fillRender(L,only){const f=L.fill;if(!f)return;const tri=pxfIs3D(f.proj)?fillPosMaps():null;
+function fillRender(L,only){const f=L.fill;if(!f)return;
   for(const k of fillMapsOf()){if(only&&k!==only)continue;const s=f.maps[k]||(f.maps[k]=fillDefaults().maps[k]);
     /* Hide the bumps below: a flat height and normal even where the material has none of its own (decals only cover their outline) */
     if(!s.on&&f.coverH!==false&&!f.decal&&(k==='height'||k==='normal')&&doc.maps.includes(k)){setMapSolid(L,k,fillSolidColor(k,k==='normal'?[.5,.5,1,1]:[.5,.5,.5,1]));continue;}
-    if(!s.on){const t=mapT(L,k,true);if(t&&!t.empty)disposeTarget(t);delete L.maps[k];if(L._fillSolid)delete L._fillSolid[k];if(k===doc.map)L.target=emptyFor(mapDepth(k));continue;}
+    if(!s.on){const t=mapT(L,k,true);if(t&&!t.empty)disposeTarget(t);delete L.maps[k];if(L._fillSolid)delete L._fillSolid[k];if(L._fillLive)delete L._fillLive[k];if(k===doc.map)L.target=emptyFor(mapDepth(k));continue;}
     if(s.src==='value'&&!(k==='base'&&fillTintOn(f))){const c=k==='normal'?[.5,.5,1]:MAP_DEFS[k].grey?[s.v,s.v,s.v]:(s.c||[s.v,s.v,s.v]);setMapSolid(L,k,fillSolidColor(k,[...c,1]));continue;}
     if(k==='normal'&&!(s.src==='baked'||s.src==='conv'?doc.meshMaps&&doc.meshMaps[s.mm]:L._fillImg&&L._fillImg[k])){setMapSolid(L,k,fillSolidColor(k,[.5,.5,1,1]));continue;}
-    const T=ensureMapTarget(L,k),grey=MAP_DEFS[k].grey;
+    if(fillLiveSource(L,k)){setMapLive(L,k);continue;}
+    if(L._fillLive)delete L._fillLive[k];const tri=pxfIs3D(f.proj)?fillPosMaps():null,T=ensureMapTarget(L,k),grey=MAP_DEFS[k].grey;
     if(s.src==='image'||s.src==='baked'||s.src==='conv'){const bk=s.src==='baked'||s.src==='conv',img=bk?doc.meshMaps&&doc.meshMaps[s.mm]:L._fillImg&&L._fillImg[k];if(!img){if(k==='normal')clearTarget(T,[.5,.5,1,1]);continue;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
       run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
         uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}},(tri&&!bk?pxfUniforms(f.proj,f.xf):pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf))));T.opaque=(!tri||bk)&&!f.decal&&(grey||k==='normal'||!!img.opaque);continue;}
@@ -109,14 +129,14 @@ function cmdNewFillLayer(preset){if(ui.mode==='anim'){toast('Fill layers are ava
 const MAT_CH=['base','rough','metal','height','normal','emis','opac','spec','gloss','ao'];
 const matEd={L:null,snap:null,timer:0,shown:null,open:{},openAll:(()=>{try{return localStorage.getItem('gs.matOpen')==='all';}catch(e){return false;}})()};
 function matEdSnap(L){const keys=fillMapsOf(),S={};for(const k of keys){const t=mapT(L,k,true);S[k]=!mapSolid(L,k)&&t&&!t.empty?captureRegion(t,0,0,doc.w,doc.h):null;}
-  return {f:fillClone(L.fill),C:fillClone(L._fillSolid||{}),S,I:Object.assign({},L._fillImg||{}),n:L.name,keys};}
+  return {f:fillClone(L.fill),C:fillClone(L._fillSolid||{}),V:fillClone(L._fillLive||{}),S,I:Object.assign({},L._fillImg||{}),n:L.name,keys};}
 function matEdBegin(L){if(matEd.snap&&matEd.L===L)return;matEdCommit();matEd.L=L;matEd.snap=matEdSnap(L);}
 function matEdCommit(){clearTimeout(matEd.timer);matEd.timer=0;const L=matEd.L,B=matEd.snap;matEd.snap=null;if(!L||!B||!L.fill)return;
   const I=L._fillImg||{},sameImg=Object.keys(I).length===Object.keys(B.I).length&&Object.keys(I).every(k=>I[k]===B.I[k]);
   if(JSON.stringify(B.f)===JSON.stringify(L.fill)&&B.n===L.name&&sameImg)return;
   const A=matEdSnap(L),keys=[...new Set([...B.keys,...A.keys])];
   const put=X=>{L.fill=fillClone(X.f);L._fillImg=Object.assign({},X.I);L.name=X.n;
-    for(const k of keys){const s=X.S[k];if(X.C[k])setMapSolid(L,k,X.C[k]);else if(s)restoreRegion(s,ensureMapTarget(L,k),0,0);else{const t=mapT(L,k,true);if(t&&!t.empty)disposeTarget(t);delete L.maps[k];if(L._fillSolid)delete L._fillSolid[k];if(k===doc.map)L.target=emptyFor(mapDepth(k));}}
+    for(const k of keys){const s=X.S[k];if(X.V[k])setMapLive(L,k);else if(X.C[k])setMapSolid(L,k,X.C[k]);else if(s)restoreRegion(s,ensureMapTarget(L,k),0,0);else{const t=mapT(L,k,true);if(t&&!t.empty)disposeTarget(t);delete L.maps[k];if(L._fillSolid)delete L._fillSolid[k];if(L._fillLive)delete L._fillLive[k];if(k===doc.map)L.target=emptyFor(mapDepth(k));}}
     L.lookVer=(L.lookVer||0)+1;changed(L);renderLayers();if(matEd.shown===L)renderMatEd(true);};
   pushUndo({label:'Material',refs:[L],snaps:[...Object.values(B.S),...Object.values(A.S)].filter(Boolean),undo(){put(B);},redo(){put(A);}});}
 /* images a channel shows: its own picture, or the baked mesh map it uses */
@@ -211,7 +231,7 @@ async function fillPickImage(L,k,s,done){const fs=await pickFiles('image/*',fals
 function fillNoMask(){const n=doc.active;return ui.mode!=='bake'&&!sel.quick&&isLayer(n)&&!!n.fill&&!n.mask&&!n.fx;}
 function fillMaskEdit(n){if(isLayer(n)&&n.fill&&n.mask&&!n.editMask)n.editMask=true;}
 /* Convert to pixels: the layer keeps what it shows now and becomes a normal layer */
-function fillRasterize(L){if(!L||!L.fill)return;const f=L.fill;for(const k of Object.keys(L._fillSolid||{}))ensureMapTarget(L,k);L.fill=null;pushUndo({label:'Convert fill to pixels',refs:[L],undo(){L.fill=f;renderLayers();},redo(){L.fill=null;renderLayers();}});renderLayers();}
+function fillRasterize(L){if(!L||!L.fill)return;const f=L.fill;for(const k of mapKeysOf(L))if(mapSolid(L,k)||mapLive(L,k))ensureMapTarget(L,k);L.fill=null;pushUndo({label:'Convert fill to pixels',refs:[L],undo(){L.fill=f;renderLayers();},redo(){L.fill=null;renderLayers();}});renderLayers();}
 /* ---- a small preview ball of a material (drawn on the CPU: base colour or its image, roughness, metallic, height bumps) ---- */
 const matImgCPU=new WeakMap();
 function matImgPixels(t){if(!t)return null;let c=matImgCPU.get(t);if(c)return c;const n=512,tmp=makeTarget(n,n,8,false);run(P.resample,tmp,{uSrc:t.tex,uOffset:[0,0],uScale:[t.w/n,t.h/n],uTaps:{int:8},uOutside:[0,0,0,0]});

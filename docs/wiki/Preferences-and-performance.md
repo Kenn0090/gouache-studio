@@ -34,6 +34,8 @@ For seamless textures: strokes, blurs and patterns wrap across the edges, and th
 ## Bit depth
 **Image › 8 bits / 16 bits per channel**, or click **8-bit / 16-bit** in the status bar. 16-bit (half float) avoids banding in smooth gradients and heavy adjustments, but needs twice the graphics memory (a 16k × 16k layer is 2 GB). If there isn't enough, the switch stops and tells you, and the picture stays as it was. The Height map is always 16-bit when the graphics card supports it.
 
+At 16K square, use **8-bit colour**: the desktop renderer cannot allocate a full 16-bit colour image that large. Height retains 16-bit precision using compact value and transparency storage. Unsupported new documents and depth switches show a message before replacing the current document.
+
 ## Performance monitor
 
 ![The performance monitor.](images/performance-monitor.png)
@@ -79,6 +81,10 @@ Every picture in documents, 3D Paint projects, autosaves and materials is packed
 
 Uniform fill colours and values stay as channel values, including the flat height and normal used by **Hide the bumps below**. They expand into pixel images when a tool needs to edit those pixels. Material thumbnails, material setting undo and saving keep them compact. Old uniform fill images also become compact when their project is reopened.
 
-Compositing skips rows completely covered by a proven opaque material with Normal blending. Transparent images, masks, clipping, other blend modes, projection coverage and live effects preserve the required rows underneath. Textured material detail still uses image storage, so stacks with many unique high-resolution images can still consume substantial graphics memory.
+Image material layers keep their source textures and settings without storing an expanded document-size image for every channel of every layer. Simple opaque UV channels can be sampled directly during compositing; other cases share temporary images. Thumbnails, material edits, undo and duplicates retain the recipes. Saved projects keep ordinary pixel data for compatibility, and new versions reopen marked recipes without expanding them; material source images are stored losslessly to preserve their result.
 
-Supported brush strokes on the model composite their conservative UV area instead of the entire texture, then update that area in the viewport. Complex effects and projections retain the full update path. Height brush buffers are created only when height becomes the edited channel. These changes reduce work and memory pressure; actual frame rates depend on the graphics card and model.
+Compositing skips rows completely covered by a proven opaque material with Normal blending. Transparent images, masks, clipping, other blend modes, projection coverage and live effects preserve the required rows underneath. Textured material sources still use image storage, so stacks with many unique high-resolution images can consume substantial graphics memory. Converting materials to pixels, applying masks and resizing can expand those channels.
+
+Supported brush strokes on the model composite their conservative UV area instead of the entire texture, then update that area in the viewport. Complex effects and projections retain the full update path. At 8K and above, unused brush buffers wait until an edit needs them. Roughness, metallic and other scalar viewport channels keep one value per pixel at full resolution, with regional mip updates. These changes reduce work and memory pressure; actual frame rates depend on the graphics card and model.
+
+Six textured library materials, projected painting and undo were tested at 8K and 16K in the Windows desktop app on an RTX 4080. 16K full refreshes remain slower and require substantial memory. Use UV projection at 16K: triplanar and other 3D material projections need position maps that exceed the renderer's allocation limit at that size. The app shows a message and follows UVs instead of allocating those maps.

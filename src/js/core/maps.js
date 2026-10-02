@@ -31,17 +31,22 @@ function setMapModeOf(n,k,m){if(k==='base'||n.type==='group'){n.mode=m;return;}n
 /* Uniform fill channels stay as four numbers. Consumers that need pixels materialize them on demand;
    the compositor and thumbnails read the numbers directly. Writing a channel removes its compact value. */
 const mapSolid=(L,k)=>L._fillSolid&&L._fillSolid[k];
-function mapT(L,k,compact){const t=L.maps?L.maps[k]:(k==='base'?L.target:null);return !compact&&mapSolid(L,k)?ensureMapTarget(L,k):t;}
-const hasMap=(L,k)=>{const t=mapT(L,k,true);return !!mapSolid(L,k)||!!t&&!t.empty;};
-function mapKeysOf(L){return [...new Set([...(L.maps?Object.keys(L.maps).filter(k=>L.maps[k]&&!L.maps[k].empty):['base']),...Object.keys(L._fillSolid||{})])];}
+const mapLive=(L,k)=>!!(L._fillLive&&L._fillLive[k]);
+function mapT(L,k,compact){const t=L.maps?L.maps[k]:(k==='base'?L.target:null);return !compact&&(mapSolid(L,k)||mapLive(L,k))?ensureMapTarget(L,k):t;}
+const hasMap=(L,k)=>{const t=mapT(L,k,true);return !!mapSolid(L,k)||mapLive(L,k)||!!t&&!t.empty;};
+function mapKeysOf(L){return [...new Set([...(L.maps?Object.keys(L.maps).filter(k=>L.maps[k]&&!L.maps[k].empty):['base']),...Object.keys(L._fillSolid||{}),...Object.keys(L._fillLive||{})])];}
 function setMapSolid(L,k,c){const t=L.maps&&L.maps[k];if(t&&!t.empty)disposeTarget(t);if(!L.maps)L.maps={};delete L.maps[k];
+  if(L._fillLive)delete L._fillLive[k];
   (L._fillSolid||(L._fillSolid={}))[k]=c.slice();if(k===doc.map)L.target=emptyFor(mapDepth(k));}
+/* Image fills keep their source and recipe; expanded document-size images are borrowed only while used. */
+function setMapLive(L,k){const t=L.maps&&L.maps[k];if(t&&!t.empty)disposeTarget(t);if(!L.maps)L.maps={};delete L.maps[k];if(L._fillSolid)delete L._fillSolid[k];
+  (L._fillLive||(L._fillLive={}))[k]=true;if(k===doc.map)L.target=emptyFor(mapDepth(k));}
 /* shared, never-written empty images, one per bit depth */
 const emptyTs={};
-function emptyFor(d){let t=emptyTs[d];if(!t||t.w!==doc.w||t.h!==doc.h){if(t)disposeTarget(t);t=makeTarget(doc.w,doc.h,d);t.empty=true;emptyTs[d]=t;}return t;}
+function emptyFor(d){let t=emptyTs[d];if(!t||t.w!==doc.w||t.h!==doc.h){if(t)disposeTarget(t);t=makeTarget(doc.w,doc.h,d,undefined,packedHeight(d));t.empty=true;emptyTs[d]=t;}return t;}
 function resetEmpties(){for(const d in emptyTs){disposeTarget(emptyTs[d]);delete emptyTs[d];}}
-function ensureMapTarget(L,k){if(!L.maps)L.maps={base:L.target};let t=L.maps[k];if(!t||t.empty){t=makeTarget(doc.w,doc.h,mapDepth(k));L.maps[k]=t;if(k===doc.map)L.target=t;}
-  const c=mapSolid(L,k);if(c){clearTarget(t,c);delete L._fillSolid[k];}return t;}
+function ensureMapTarget(L,k){if(!L.maps)L.maps={base:L.target};let t=L.maps[k];if(!t||t.empty){t=makeTarget(doc.w,doc.h,mapDepth(k),undefined,k==='height'&&packedHeight(mapDepth(k)));L.maps[k]=t;if(k===doc.map)L.target=t;}
+  const c=mapSolid(L,k);if(c){clearTarget(t,c);delete L._fillSolid[k];}if(mapLive(L,k)){fillDrawMap(L,k,t);delete L._fillLive[k];}return t;}
 /* before writing to L.target */
 function ensureTarget(L){if(L&&L.maps&&L.target&&L.target.empty)ensureMapTarget(L,doc.map);return L&&L.target;}
 function paintLayers(){return allLayers(paintRoot());}
@@ -51,7 +56,7 @@ function setEditMap(k,keepView){if(!doc.maps.includes(k))return;if(ui.mode==='an
   if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
   if(typeof xf!=='undefined'&&xf)xfCommit();if(typeof gsess!=='undefined'&&gsess)gradCommit();
   const prev=doc.map;if(k!==prev){for(const L of paintLayers())if(L.maps&&L.target&&!L.target.empty)L.maps[prev]=L.target;
-    doc.map=k;useAux(mapDepth(k));if(compOut){release(compOut);compOut=acquire();}syncTargets();}
+    doc.map=k;useAux(mapDepth(k),true);if(compOut){release(compOut);compOut=acquire();}syncTargets();}
   if(!keepView)doc.view=k;
   if(typeof chanRestricted==='function'&&chanRestricted())selectChannel(-1);
   changedAll();refreshMapsUI();buildBrushPanel();}
@@ -66,15 +71,16 @@ function compositeMap(k){const prev=pool;pool=auxFor(mapDepth(k)).pool;const acc
 /* ---- adding and removing maps (undoable) ---- */
 function setDocMaps(keys,label,defs){keys=MAP_ORDER.filter(k=>keys.includes(k)||k==='base');const before=doc.maps.slice(),removed=before.filter(k=>!keys.includes(k));
   const defB=Object.assign({},doc.mapDef),defA=Object.assign({},doc.mapDef,defs||{});
-  if(removed.includes(doc.map))setEditMap('base');const stash=new Map(),solidStash=[];
+  if(removed.includes(doc.map))setEditMap('base');const stash=new Map(),solidStash=[],liveStash=[];
   for(const L of paintLayers())for(const k of removed)if(L.maps&&L.maps[k]){stash.set(L.maps[k],[L,k]);delete L.maps[k];}
   for(const L of paintLayers())for(const k of removed){const c=mapSolid(L,k);if(c){solidStash.push([L,k,c]);delete L._fillSolid[k];}}
+  for(const L of paintLayers())for(const k of removed)if(mapLive(L,k)){liveStash.push([L,k]);delete L._fillLive[k];}
   const apply=(ks,df)=>{doc.maps=ks.slice();doc.mapDef=Object.assign({},df);if(!doc.maps.includes(doc.map))setEditMap('base');if(!doc.maps.includes(doc.view)&&doc.view!=='material'&&doc.view!=='nfinal')doc.view=doc.map;
     if((doc.view==='material'||doc.view==='nfinal')&&doc.maps.length<2)doc.view=doc.map;syncTargets();changedAll();refreshMapsUI();buildBrushPanel();};
   let applied=true;apply(keys,defA);
   pushUndo({label:label||'Maps',refs:[],
-    undo(){for(const [t,[L,k]] of stash)L.maps[k]=t;for(const [L,k,c] of solidStash)setMapSolid(L,k,c);applied=false;apply(before,defB);},
-    redo(){for(const [t,[L,k]] of stash)delete L.maps[k];for(const [L,k] of solidStash)delete L._fillSolid[k];applied=true;apply(keys,defA);},
+    undo(){for(const [t,[L,k]] of stash)L.maps[k]=t;for(const [L,k,c] of solidStash)setMapSolid(L,k,c);for(const [L,k] of liveStash)setMapLive(L,k);applied=false;apply(before,defB);},
+    redo(){for(const [t,[L,k]] of stash)delete L.maps[k];for(const [L,k] of solidStash)delete L._fillSolid[k];for(const [L,k] of liveStash)delete L._fillLive[k];applied=true;apply(keys,defA);},
     drop(){if(applied)for(const t of stash.keys())disposeTarget(t);}});}
 
 /* ---- normal map and lit material view ---- */

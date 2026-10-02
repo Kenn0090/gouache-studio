@@ -50,7 +50,7 @@ function fxApplyLayer(n,base,k,mt){const on=n.fx.stack.filter(it=>it.on!==false)
     if(mode===0)run(P.mix,out,{uA:base.tex,uB:cur.tex,uT:n.opacity,uM:mt||dummy,uUseM:!!mt});
     else run(P.comp,out,{uBase:base.tex,uLayer:cur.tex,uStrokeTex:strokeT.tex,uMask:dummy,uUseMask:false,uLMask:mt||dummy,uUseLMask:!!mt,uMode:{int:mode},uOpacity:n.opacity,uStroke:{int:0},uStrokeColor:[0,0,0],uStrokeOpacity:0,uLockAlpha:false});
     release(cur);}
-  if(heavy){n._fxc=n._fxc||{};let t=n._fxc[k];if(!t||t.w!==doc.w||t.h!==doc.h||t.depth!==out.depth){if(t)disposeTarget(t);t=n._fxc[k]=makeTarget(doc.w,doc.h,out.depth);}blit(out,t,0,0,doc.w,doc.h,0,0);}
+  if(heavy){n._fxc=n._fxc||{};let t=n._fxc[k];if(!t||t.w!==doc.w||t.h!==doc.h||t.depth!==out.depth){if(t)disposeTarget(t);t=n._fxc[k]=makeTarget(doc.w,doc.h,out.depth,undefined,out.packed);}blit(out,t,0,0,doc.w,doc.h,0,0);}
   return out;}
 function dropFxCache(n){if(n&&n._fxc){for(const k in n._fxc)disposeTarget(n._fxc[k]);n._fxc=null;}}
 /* filter layers clipped to layer i (applied to that layer's own image) */

@@ -2,6 +2,9 @@
 /* Two steps so a change that doesn't fit in graphics memory can't break the picture: first every new texture is made
    (plus room for the working textures), and only if the GPU managed all of them is anything copied and the old ones freed. */
 function rebuildLayers(newW,newH,depth,draw){
+  if(depth===16&&newW*newH>=268435456)return false;
+  /* Preserve existing pixel-resampling/canvas-border semantics before changing the recipe's dimensions. */
+  for(const L of everyLayer())for(const k of Object.keys(L._fillLive||{}))ensureMapTarget(L,k);
   const jobs=[];
   for(const L of everyLayer()){if(!L.maps)L.maps={base:L.target};for(const k of Object.keys(L.maps)){const t=L.maps[k];if(!t||t.empty){delete L.maps[k];continue;}
       jobs.push({src:t,d:k==='height'&&canFloat?16:depth,m:false,set:nt=>{L.maps[k]=nt;}});}}
@@ -11,7 +14,7 @@ function rebuildLayers(newW,newH,depth,draw){
   for(const d in aux){const pl=aux[d].pool;for(const t of pl.free.splice(0)){pl.all.splice(pl.all.indexOf(t),1);disposeTarget(t);}} /* spare room first */
   while(gl.getError()!==gl.NO_ERROR);
   const made=[];let bad=false;
-  for(const j of jobs){j.nt=makeTarget(newW,newH,j.d);made.push(j.nt);if(gl.getError()!==gl.NO_ERROR||gl.isContextLost()){bad=true;break;}}
+  for(const j of jobs){j.nt=makeTarget(newW,newH,j.d,undefined,j.d===16&&depth===8&&newW*newH>=268435456);made.push(j.nt);if(gl.getError()!==gl.NO_ERROR||gl.isContextLost()){bad=true;break;}}
   if(!bad)for(let i=0;i<5;i++){const t=makeTarget(newW,newH,depth);made.push(t);if(gl.getError()!==gl.NO_ERROR){bad=true;break;}}
   if(bad){for(const t of made)disposeTarget(t);while(gl.getError()!==gl.NO_ERROR);return false;}
   for(const t of made.splice(jobs.length))disposeTarget(t);
@@ -31,12 +34,14 @@ function resizeCanvasDoc(w,h,ax,ay){const ox=Math.round((w-doc.w)*ax),oy=Math.ro
 function resizeImageDoc(w,h){const fx=w/doc.w,fy=h/doc.h,sx=doc.w/w,sy=doc.h/h,taps=Math.min(8,Math.max(1,Math.ceil(Math.max(sx,sy))));
   if(!rebuildLayers(w,h,doc.depth,(s,d)=>run(P.resample,d,{uSrc:s.tex,uOffset:[0,0],uScale:[sx,sy],uTaps:{int:taps}}))){toast(NO_GPU_MEM);return;}for(const L of everyLayer())if(L.text){const f=(fx+fy)/2,t=L.text;t.x=Math.round(t.x*fx);t.y=Math.round(t.y*fy);t.size=Math.max(1,Math.round(t.size*f));t.outline=(t.outline||0)*f;t.tracking=(t.tracking||0)*f;renderText(L);}for(const L of everyLayer())if(L.grad){for(const k of ['a','b']){L.grad[k][0]*=fx;L.grad[k][1]*=fy;}renderLiveGrad(L);}fit();changedAll();updateStatus();toast('Image resampled to '+w+' × '+h+'. Undo history was cleared.');}
 function setDepth(d){if(d===doc.depth)return;if(d===16&&!canFloat){toast('This GPU cannot render to 16-bit float textures, so 16-bit mode is unavailable.');return;}
+  if(d===16&&doc.w*doc.h>=268435456){toast('Use 8-bit colour for a 16K square document. Height still keeps 16-bit precision.');return;}
   if(!rebuildLayers(doc.w,doc.h,d,(s,t)=>run(P.resample,t,{uSrc:s.tex,uOffset:[0,0],uScale:[1,1],uTaps:{int:1}}))){toast(d===16?'Not enough graphics memory for 16-bit at this canvas size ('+doc.w+' × '+doc.h+'). The picture is still 8-bit and unchanged.':NO_GPU_MEM);return;}changedAll();updateStatus();
   toast(d===16?'Now 16 bits per channel (half float). Soft gradients and glazes will not band.':'Now 8 bits per channel.');}
 function toggleTile(){doc.wrap=!doc.wrap;const all=[strokeT,beforeT,scratchT,previewT,...pool.all,...everyLayer().flatMap(l=>l.maps?Object.values(l.maps):[l.target]),...Object.values(emptyTs),...auxTargets(),...everyNode().filter(n=>n.mask).map(n=>n.mask.target),sel.t];all.forEach(t=>setWrap(t,doc.wrap));
   $('#tileBtn').setAttribute('aria-pressed',String(doc.wrap));fit();requestRender(true);toast(doc.wrap?'Tile mode on: strokes wrap across edges.':'Tile mode off.');}
 
 function newDoc(w,h,depth,bg,name,wrap,tpl){
+  if(depth===16&&w*h>=268435456){toast('Use 8-bit colour for a 16K square document. Height still keeps 16-bit precision.');return false;}
   if(ui.mode==='brush'||tabDocs.paint)setMode('paint',true);
   if(tedit){tedit=null;ted.hidden=true;}if(tsess){clearTimeout(tsess.timer);tsess=null;}
   if(ui.mode==='bake'){bakeExit();ui.mode='paint';document.body.classList.remove('bakemode');syncModeTabs();}

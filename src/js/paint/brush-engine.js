@@ -18,6 +18,7 @@ function strokeTints(o){if(o.tool!=='brush'||o.noTint||!o.color)return false;con
   return grey?(o.valJitter||0)>0:((o.hueJitter||0)+(o.satJitter||0)+(o.valJitter||0))>0;}
 const tintU=()=>({uStrokeTint:!!(stroke&&stroke.tint)});
 function beginStroke(L,x,y,p,o){
+  if(strokeT.w===1&&strokeT.h===1&&doc.w*doc.h>=67108864)useAux(L.target.depth);
   const W=doc.w,H=doc.h;
   /* Big canvases: plain painting copies only the part of the layer the stroke covered, when it ends (endStroke), and
      clears only what the last stroke left in strokeT, instead of the whole canvas each time (a 16k canvas is 1 GB). */

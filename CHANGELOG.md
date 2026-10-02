@@ -1,5 +1,11 @@
 # What's new in Gouache Studio
 
+## 0.46.11
+
+Lower memory use when adding textured materials in large 3D Paint documents. Material layers keep their source textures and settings, sharing temporary full-size images when needed. At 8K and 16K, scalar viewport channels use one channel at full resolution, and large brush buffers wait until an edit needs them. The desktop 16K height path keeps half-float precision with compact value and transparency storage.
+
+Tested six library materials, projected painting, camera navigation and undo at 8K and 16K in the Windows desktop renderer on an RTX 4080. Material settings, masks, effects, duplication and project compatibility also have regression checks. 16K still needs substantial graphics memory: use 8-bit colour and UV projection there. Oversized 16-bit colour and 3D projection allocations now show a message instead of attempting unsupported graphics images.
+
 ## 0.46.10
 
 Less graphics-memory pressure from uniform material channels and flat bumps. Opaque material stacks skip covered rows, and supported model brush strokes composite only the affected texture area. Height brush buffers are created when height is edited. Files, masks, undo and duplicates preserve the material data.

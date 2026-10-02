@@ -78,6 +78,7 @@ function dlgNew(){const f=sizeFields(1024,1024,false);let depth=doc.depth,bgMode
   openDialog({title:'New document',body,okLabel:'Create',onOk(){const r=np.read();if(!r)return false;const dpiNew=np.dpi();
     if(start==='p3d'){const n=r[0];setTimeout(()=>p3NewProject(n),0);return;}
     if(start==='brush'){if(ui.mode!=='brush'&&!setMode('brush',true))return;btNewCanvas(Math.max(64,Math.min(4096,r[0])));return;}
+    if(depth===16&&r[0]*r[1]>=268435456){toast('Use 8-bit colour for a 16K square document. Height still keeps 16-bit precision.');return false;}
     if(start==='paint'&&ui.mode!=='paint'&&typeof setMode==='function'&&!setMode('paint',true))return;
     if(start==='anim'&&ui.mode!=='paint'&&ui.mode!=='anim'&&typeof setMode==='function'&&!setMode('paint',true))return;const bg=bgMode==='white'?[1,1,1]:bgMode==='fg'?ui.fg.slice():null;if(typeof dtNewTab==='function'&&!dtNewTab())return;if(tpl==='brush'){newBrushDoc(r[0],r[1]);return;}newDoc(r[0],r[1],depth,bg,typeof dtUntitled==='function'?dtUntitled():'Untitled',tile,tpl==='custom'?'hand':tpl);doc.dpi=dpiNew;if(tpl==='custom')setTimeout(dlgMaps,0);if(start==='anim'&&ui.mode!=='anim')setMode('anim');}});}
 /* ---- New document presets (0.26.1): textures, screens, phones, social, paper, photo, books, cards, posters, film ---- */
