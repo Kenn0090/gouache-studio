@@ -79,7 +79,7 @@ function applyCropBox(c){const nw=clamp(Math.round(c.w),1,MAX_DIM),nh=clamp(Math
   else{const co=Math.cos(c.ang),si=Math.sin(c.ang);H=[co,-si,c.cx-co*nw/2+si*nh/2, si,co,c.cy-si*nw/2-co*nh/2, 0,0,1];}
   const layers=everyLayer();if(rot)for(const L of layers)if(L.text||L.grad)rasterizeText(L);
   const maskNodes=everyNode().filter(n=>n.mask),mObjs=maskNodes.map(n=>n.mask),texts=rot?[]:layers.filter(L=>L.text),grads=rot?[]:layers.filter(L=>L.grad);
-  const draw=(src,outside)=>{const t=makeTarget(nw,nh,src.depth,doc.wrap);run(P.xform,t,{uSrc:src.tex,uH0:H.slice(0,3),uH1:H.slice(3,6),uH2:H.slice(6,9),uInterp:{int:rot?2:0},uSS:{int:1},uWrap:false,uDoc:[nw,nh],uOutside:outside});return t;};
+  const draw=(src,outside)=>{const t=makeTarget(nw,nh,src.depth,doc.wrap,src.packed);run(P.xform,t,{uSrc:src.tex,uH0:H.slice(0,3),uH1:H.slice(3,6),uH2:H.slice(6,9),uInterp:{int:rot?2:0},uSS:{int:1},uWrap:false,uDoc:[nw,nh],uOutside:outside});return t;};
   /* every map of every layer (frames too) */
   const mapsOf=L=>Object.fromEntries(mapKeysOf(L).map(k=>[k,mapT(L,k)]));
   const oldT=layers.map(mapsOf),newT=oldT.map(ms=>Object.fromEntries(Object.entries(ms).map(([k,t])=>[k,draw(t,[0,0,0,0])]))),newM=mObjs.map(m=>draw(m.target,[1,1,1,1]));

@@ -92,7 +92,7 @@ const FS_3DLINE=`uniform vec4 uCol; void main(){ o=uCol; }`;
 const VS_UV=`#version 300 es
 layout(location=2) in vec2 aT; uniform vec2 uOrigin; uniform vec2 uExtent; uniform vec2 uViewport; uniform vec2 uShift;
 void main(){ vec2 p=uOrigin+(aT+uShift)*uExtent; gl_Position=vec4(p.x/uViewport.x*2.0-1.0,1.0-p.y/uViewport.y*2.0,0.0,1.0); }`;
-function prog3(vs,fs){const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,vs));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS_HEAD+fs));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return {p,locs:{}};}
+function prog3(vs,fs){const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,vs));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS_HEAD+fs));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return {p,locs:{},fs,vs};}
 const FS_3DSEL=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform sampler2D uSel; void main(){ float m=texture(uSel,fract(vT)).r; if(m<0.02) discard; o=vec4(1.0,0.62,0.22,0.32*m); }`;
 const P3={mesh:prog3(VS_3D,FS_3D),line:prog3(VS_3D,FS_3DLINE),uv:prog3(VS_UV,FS_3DLINE),sel:prog3(VS_3D,FS_3DSEL)};
 
@@ -137,12 +137,13 @@ void main(){ ivec2 p=(ivec2(gl_FragCoord.xy)+ivec2(uOrigin))*2, sz=textureSize(u
 o=(texelFetch(uSrc,min(p,sz),uLevel)+texelFetch(uSrc,min(p+ivec2(1,0),sz),uLevel)+texelFetch(uSrc,min(p+ivec2(0,1),sz),uLevel)+texelFetch(uSrc,min(p+ivec2(1),sz),uLevel))*0.25; }`);
   let [x,y,w,h]=r,x1=x+w,y1=y+h,W=t.w,H=t.h,level=0,patch=null;
   try{while(W>1||H>1){const nx=Math.floor(x/2),ny=Math.floor(y/2);x1=Math.ceil(x1/2);y1=Math.ceil(y1/2);W=Math.max(1,W>>1);H=Math.max(1,H>>1);w=x1-nx;h=y1-ny;
-      if(!patch)patch=makeTarget(w,h,t.depth,false);
-      run(P_V3MIP,{fbo:patch.fbo,w,h},{uSrc:t.tex,uLevel:{int:level},uOrigin:[nx,ny]});
+      if(!patch)patch=makeTarget(w,h,t.depth,false,t.packed,t.mono);
+      run(P_V3MIP,{fbo:patch.fbo,w,h,packed:t.packed,mono:t.mono},{uSrc:t.tex,uLevel:{int:level},uOrigin:[nx,ny]});
       gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,t.fbo);gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t.tex,++level);
       blit(patch,t,0,0,w,h,nx,ny);v3Work.mipPixels+=w*h;x=nx;y=ny;}}
   finally{gl.bindFramebuffer(gl.FRAMEBUFFER,t.fbo);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t.tex,0);gl.bindFramebuffer(gl.FRAMEBUFFER,null);disposeTarget(patch);}}
-function v3MapTex(k,src,region){let t=v3.tex[k];if(!t||t.w!==doc.w||t.h!==doc.h||t.depth!==src.depth){if(t)disposeTarget(t);t=v3.tex[k]=makeTarget(doc.w,doc.h,src.depth,true);region=null;}
+/* Material shading reads one value from roughness, metal, AO, opacity and height. Keep full resolution. */
+function v3MapTex(k,src,region){const mono=doc.w*doc.h>=67108864&&MAP_DEFS[k]?.grey,packed=!!src.packed&&!mono;let t=v3.tex[k];if(!t||t.w!==doc.w||t.h!==doc.h||t.depth!==src.depth||!!t.packed!==packed||!!t.mono!==!!mono){if(t)disposeTarget(t);t=v3.tex[k]=makeTarget(doc.w,doc.h,src.depth,true,packed,mono);region=null;}
   const partial=region&&t.hasMips&&!(t.w&(t.w-1))&&!(t.h&(t.h-1))&&region[2]*region[3]<t.w*t.h*.25;
   const r=partial?region:[0,0,doc.w,doc.h];if(r[2]<=0||r[3]<=0)return t;
   blit(src,t,r[0],r[1],r[2],r[3],r[0],r[1]);v3Work.copies++;v3Work.copyPixels+=r[2]*r[3];

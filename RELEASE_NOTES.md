@@ -1,7 +1,7 @@
-# Gouache Studio 0.46.10
+# Gouache Studio 0.46.11
 
-- Uniform material colours and values, including flat height and normal channels, no longer allocate a full-size image per layer. This reduces graphics-memory pressure in large 3D Paint stacks.
-- Opaque materials skip the layers they completely cover. Masks, transparency, blend modes, decals and effects keep the underlying layers when needed.
-- Supported brush strokes directly on the model now composite only the affected texture area, as well as updating that area in the viewport.
-- Height painting buffers are allocated when you edit height, rather than whenever the viewport displays it.
-- Saving preserves compatibility with previous Gouache files. Existing uniform fill images become compact when reopened; undo, duplicates, masks, resizing and pixel conversion keep their channel data.
+- Textured material layers keep their source images and settings, sharing full-size working images instead of retaining expanded copies for every channel in every layer. This addresses the freeze when adding materials at 8K.
+- At 8K and 16K, scalar viewport channels use less storage at full resolution. Large brush buffers wait until an edit needs them.
+- The 16K desktop height path retains 16-bit precision using compact value and transparency storage.
+- Six library materials, painting directly on the model, camera navigation and undo passed at 8K and 16K in the Windows desktop renderer on an RTX 4080. Material edits, masks, effects, duplication and file compatibility also passed regression checks.
+- 16K still needs substantial graphics memory and full updates take longer. Use 8-bit colour and UV projection at that size: full 16-bit colour and 3D projection position maps exceed the renderer's allocation limit and now show a message.

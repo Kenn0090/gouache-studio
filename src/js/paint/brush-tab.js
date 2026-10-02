@@ -10,7 +10,7 @@ function docState(){return {doc:Object.assign({},doc),view:Object.assign({},view
   compOut,empties:Object.assign({},emptyTs),groupCount};}
 function setDocState(s){for(const k of Object.keys(doc))delete doc[k];Object.assign(doc,s.doc);Object.assign(view,s.view);hist.undo=s.undo;hist.redo=s.redo;Object.assign(sel,s.sel);
   for(const k of Object.keys(aux))delete aux[k];Object.assign(aux,s.aux);compOut=s.compOut;for(const k of Object.keys(emptyTs))delete emptyTs[k];Object.assign(emptyTs,s.empties);
-  groupCount=s.groupCount;useAux(mapDepth(doc.map||'base'));syncTargets();}
+  groupCount=s.groupCount;useAux(mapDepth(doc.map||'base'),true);syncTargets();}
 /* a new white sketch (the painting document must already be set aside: nothing of it is disposed here) */
 function freshSketch(size){for(const k of Object.keys(aux))delete aux[k];for(const k of Object.keys(emptyTs))delete emptyTs[k];sel.t=null;hist.undo=[];hist.redo=[];
   for(const k of Object.keys(doc))delete doc[k];

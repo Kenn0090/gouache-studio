@@ -17,10 +17,12 @@ const sel={t:null,active:false,bb:null,quick:false,L:null,node:{name:'Quick mask
 /* Working images come in sets per bit depth (8-bit documents still edit height at 16 bits).
    pool is the current set's pool of spare document-size images; every image remembers its pool. */
 const aux={};let pool=null;
-function auxFor(d){return aux[d]||(aux[d]={depth:d,pool:{free:[],all:[],depth:d}});}
+const packedHeight=d=>d===16&&doc.depth===8&&doc.w*doc.h>=268435456;
+function auxFor(d){return aux[d]||(aux[d]={depth:d,pool:{free:[],all:[],depth:d,packed:packedHeight(d)}});}
 /* Compositing height needs scratch outputs, but its four brush buffers are needed only when editing it. */
-function useAux(d){const a=auxFor(d);if(!a.strokeT)for(const k of ['strokeT','beforeT','scratchT','previewT'])a[k]=makeTarget(doc.w,doc.h,d);strokeT=a.strokeT;beforeT=a.beforeT;scratchT=a.scratchT;previewT=a.previewT;pool=a.pool;}
-function acquireIn(pl){let t=pl.free.pop();if(!t){t=makeTarget(doc.w,doc.h,pl.depth);t.pool=pl;pl.all.push(t);}if(uvWrapScope)uvWrapTarget(t);return t;}
+function useAux(d,viewOnly){const a=auxFor(d),small=viewOnly&&doc.w*doc.h>=67108864,w=small?1:doc.w,h=small?1:doc.h;
+  if(!a.strokeT||!small&&(a.strokeT.w!==w||a.strokeT.h!==h)){for(const k of ['strokeT','beforeT','scratchT','previewT']){disposeTarget(a[k]);a[k]=makeTarget(w,h,d,undefined,packedHeight(d));}}strokeT=a.strokeT;beforeT=a.beforeT;scratchT=a.scratchT;previewT=a.previewT;pool=a.pool;}
+function acquireIn(pl){let t=pl.free.pop();if(!t){if(doc.w*doc.h>=67108864)trimPools();t=makeTarget(doc.w,doc.h,pl.depth,undefined,pl.packed);t.pool=pl;pl.all.push(t);}if(uvWrapScope)uvWrapTarget(t);return t;}
 function acquire(){return acquireIn(pool);}
 function acquireD(d){return acquireIn(auxFor(d).pool);}
 function release(t){const pl=t&&t.pool;if(pl&&t.tex&&pl.all.includes(t)&&!pl.free.includes(t)){t.idleAt=performance.now();pl.free.push(t);schedulePoolTrim();}}
@@ -40,7 +42,7 @@ function trimPools(budget=POOL_SPARE_BYTES){const pools=new Set(gpuLiveTargets()
 function auxTargets(){const out=[];for(const d in aux){const a=aux[d];out.push(a.strokeT,a.beforeT,a.scratchT,a.previewT,...a.pool.all);}return out.filter(Boolean);}
 function allocAux(){
   auxTargets().forEach(disposeTarget);for(const d in aux)delete aux[d];if(typeof resetEmpties==='function')resetEmpties();
-  auxFor(doc.depth);useAux(mapDepth(doc.map||'base'));
+  auxFor(doc.depth);useAux(mapDepth(doc.map||'base'),true);
   compOut=acquire();clearTarget(compOut);
   disposeTarget(sel.t);sel.t=makeTarget(doc.w,doc.h);clearTarget(sel.t,[0,0,0,1]);
   sel.active=false;sel.bb=null;sel.quick=false;sel.L={target:sel.t,lockAlpha:false,quick:true};

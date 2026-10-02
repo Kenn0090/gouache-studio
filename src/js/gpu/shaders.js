@@ -325,7 +325,26 @@ void main(){ ivec2 sz=textureSize(uSrc,0); int n=uAxis==0?sz.y:sz.x; int k=int(g
   o=vec4(step(0.002,m)); }`;
 
 function compile(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;}
-function program(fs,vs){const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,vs||VS_FULL));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS_HEAD+fs));gl.bindAttribLocation(p,0,'a');gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return {p,locs:{}};}
+/* Height needs one half-float value plus coverage, rather than three copies of the value.
+   RG16F avoids WebView2/D3D11's single-resource limit at 16K, preserving both 16-bit values. */
+function packedShaderSource(src,fragment,names){let declarations='';
+  src=src.replace(/uniform\s+(?:highp\s+)?sampler2D\s+([^;]+);/g,(all,list)=>{for(const name of list.split(',').map(s=>s.trim())){if(!/^\w+$/.test(name))throw new Error('Unsupported packed sampler: '+name);names.add(name);
+      declarations+=`uniform highp sampler2D ${name}; uniform bool gsPacked_${name}; uniform bool gsMono_${name};
+vec4 gsDecode_${name}(vec4 c){return gsMono_${name}?vec4(c.rrr,1.0):gsPacked_${name}?vec4(c.rrr,c.g):c;}
+vec4 gsFetch_${name}(ivec2 p,int l){return gsDecode_${name}(texelFetch(${name},p,l));}
+vec4 gsTex_${name}(vec2 p){return gsDecode_${name}(texture(${name},p));}
+${fragment?`vec4 gsTex_${name}(vec2 p,float b){return gsDecode_${name}(texture(${name},p,b));}`:''}
+vec4 gsLod_${name}(vec2 p,float l){return gsDecode_${name}(textureLod(${name},p,l));}
+vec4 gsGrad_${name}(vec2 p,vec2 x,vec2 y){return gsDecode_${name}(textureGrad(${name},p,x,y));}
+`;}
+    return '';});
+  for(const name of names)for(const [fn,to] of [['texelFetch','gsFetch'],['textureLod','gsLod'],['textureGrad','gsGrad'],['texture','gsTex']])src=src.replace(new RegExp('\\b'+fn+'\\(\\s*'+name+'\\s*,','g'),to+'_'+name+'(');
+  if(fragment){src=src.replace(/void\s+main\s*\(\s*\)/,'void gsOriginalMain()');src+=`\nuniform bool gsPackedOut; uniform int gsPackedTint; uniform sampler2D gsPackedDst; uniform vec2 gsPackedOrigin;
+void main(){gsOriginalMain();if(gsPackedOut){if(gsPackedTint!=0){vec4 c=texelFetch(gsPackedDst,ivec2(gl_FragCoord.xy-gsPackedOrigin),0);vec4 d=vec4(c.rrr,c.g);if(gsPackedTint==1)o=vec4(o.rgb*(1.0-d.a)+d.rgb*d.a,d.a);else o=vec4(o.rgb+d.rgb*(1.0-o.a),max(o.a,d.a));}o=vec4(o.r,o.a,0.0,o.a);}}`;}
+  return src.startsWith('#version')?src.replace(/^(#version[^\n]*\n)/,'$1'+declarations):declarations+src;}
+function packedProgram(prog){if(prog.packedShader)return prog;if(!prog.packedVariant){if(!prog.fs)throw new Error('This graphics operation does not support packed height.');const names=new Set(),fs=packedShaderSource(prog.fs,true,names),vs=packedShaderSource(prog.vs||VS_FULL,false,names),p=program(fs,vs);
+    Object.assign(p,{packedShader:true,packNames:[...names],defaults:prog.defaults,tiled:prog.tiled,_n:prog._n});prog.packedVariant=p;}return prog.packedVariant;}
+function program(fs,vs){const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,vs||VS_FULL));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS_HEAD+fs));gl.bindAttribLocation(p,0,'a');gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return {p,locs:{},fs,vs};}
 const P={
   stamp:program(FS_STAMP,VS_STAMP), smudge:program(FS_SMUDGE,VS_STAMP), merge:program(FS_MERGE), comp:program(FS_COMP),
   view:program(FS_VIEW,VS_VIEW), resample:program(FS_RESAMPLE), adjust:program(FS_ADJUST), blur:program(FS_BLUR),
@@ -333,7 +352,7 @@ const P={
   poly:program(FS_ONE,VS_POLY), rcopy:program(FS_RCOPY), selop:program(FS_SELOP), shift:program(FS_SHIFT), morph:program(FS_MORPH), thresh:program(FS_THRESH),
   selmix:program(FS_SELMIX), loadsel:program(FS_LOADSEL), cropsel:program(FS_CROPSEL),
   onion:program(FS_ONION), grad:program(FS_GRAD), fillcov:program(FS_FILLCOV), nrm:program(FS_NRM), mat:program(FS_MAT), lockcov:program(FS_LOCKCOV), texcov:program(FS_TEXCOV), xform:program(FS_XFORM), proj:program(FS_PROJ), mesh:(()=>{const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,VS_MESH));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS_HEAD+FS_MESH));
-    gl.bindAttribLocation(p,0,'a');gl.bindAttribLocation(p,1,'b');gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return {p,locs:{}};})()
+    gl.bindAttribLocation(p,0,'a');gl.bindAttribLocation(p,1,'b');gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return {p,locs:{},fs:FS_MESH,vs:VS_MESH};})()
 };
 const vao=gl.createVertexArray();gl.bindVertexArray(vao);
 const vbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vbo);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([0,0,1,0,0,1,1,1]),gl.STATIC_DRAW);

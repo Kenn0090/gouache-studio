@@ -6,11 +6,11 @@
    8-bit images as bytes, 16-bit images as half floats. */
 const GF_MAGIC=[71,79,85,65,67,72,69,0],GF_VERSION=1;
 function readRegion(t,x,y,w,h){gl.bindFramebuffer(gl.FRAMEBUFFER,t.fbo);let out;
-  if(t.depth===16){const f=new Float32Array(w*h*4);gl.readPixels(x,y,w,h,gl.RGBA,gl.FLOAT,f);out=new Uint16Array(f.length);for(let i=0;i<f.length;i++)out[i]=f2h(f[i]);out=new Uint8Array(out.buffer);}
+  if(t.depth===16){const f=new Float32Array(w*h*4);gl.readPixels(x,y,w,h,gl.RGBA,gl.FLOAT,f);packedRead(t,f);out=new Uint16Array(f.length);for(let i=0;i<f.length;i++)out[i]=f2h(f[i]);out=new Uint8Array(out.buffer);}
   else{out=new Uint8Array(w*h*4);gl.readPixels(x,y,w,h,gl.RGBA,gl.UNSIGNED_BYTE,out);}
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);return out;}
 function writeRegion(t,x,y,w,h,bytes){t.opaque=false;gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
-  if(t.depth===16)gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,w,h,gl.RGBA,gl.HALF_FLOAT,new Uint16Array(bytes.buffer,bytes.byteOffset,w*h*4));
+  if(t.depth===16)gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,w,h,t.packed?gl.RG:gl.RGBA,gl.HALF_FLOAT,packedUpload(t,new Uint16Array(bytes.buffer,bytes.byteOffset,w*h*4)));
   else gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,w,h,gl.RGBA,gl.UNSIGNED_BYTE,bytes);
   gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);t.mipDirty=true;t.opaque=x===0&&y===0&&w===t.w&&h===t.h&&imageOpaque(bytes,t.depth);}
 /* in the Bake or Convert tab, the painting is what gets saved */
@@ -43,9 +43,11 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
     {const ms=await msEncode(n,put,putRaw);if(ms.stack)base.mstack=ms.stack;if(ms.cfx)base.cfx=ms.cfx;}
     if(n.type==='group'){const kids=[];for(const c of n.children)kids.push(await node(c));return Object.assign(base,{t:'G',open:n.open,kids});}
     if(n.fx)return Object.assign(base,{t:'F',clip:n.clip,mapModes:n.mapModes||{},fx:{map:n.fx.map,stack:fxCleanStack(n.fx.stack)}});
-    const maps={};for(const k of mapKeysOf(n)){const color=mapSolid(n,k),r=color?await putSolid(k,color):await put(mapT(n,k),false,PX_LOSSY.has(k));if(r)maps[k]=r;}
+    const maps={};for(const k of mapKeysOf(n)){let r;const color=mapSolid(n,k);
+      if(mapLive(n,k)){const tmp=acquireD(mapDepth(k));try{fillDrawMap(n,k,tmp);r=await put(tmp,true,PX_LOSSY.has(k));r.live=1;}finally{release(tmp);}}
+      else r=color?await putSolid(k,color):await put(mapT(n,k),false,PX_LOSSY.has(k));if(r)maps[k]=r;}
     /* a material layer's own images (so it stays editable after opening) */
-    let fillImg;if(n.fill&&n._fillImg){fillImg={};for(const k in n._fillImg){const t=n._fillImg[k],c=await pack(t,0,0,t.w,t.h,PX_LOSSY.has(k));blobs.push(c.bytes);fillImg[k]={o:off,n:c.bytes.length,w:t.w,h:t.h,f:c.f};off+=c.bytes.length;}}
+    let fillImg;if(n.fill&&n._fillImg){fillImg={};for(const k in n._fillImg){const t=n._fillImg[k],c=await pack(t,0,0,t.w,t.h,!mapLive(n,k)&&PX_LOSSY.has(k));blobs.push(c.bytes);fillImg[k]={o:off,n:c.bytes.length,w:t.w,h:t.h,f:c.f};off+=c.bytes.length;}}
     return Object.assign(base,{t:'L',clip:n.clip,lock:n.lockAlpha,mapModes:n.mapModes||{},maps,text:n.text?cloneText(n.text):undefined,grad:n.grad||undefined,array:n.array||undefined,arrBox:n.array?n.arrBox:undefined,styles:n.styles||undefined,shape:n.shape||undefined,fill:n.fill||undefined,idSel:n.idSel||undefined,fillImg,hold:n.frame?n.hold:undefined});};
   const R=paintRoot(),kids=[];for(const c of R.children){kids.push(await node(c));await tick();}
   const all=allLayers(R),active=doc.active&&!doc.active.frame?allNodes(R).indexOf(doc.active):-1;
@@ -63,7 +65,7 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
 function isGouache(buf){const u=new Uint8Array(buf,0,Math.min(8,buf.byteLength));return u.length===8&&GF_MAGIC.every((v,i)=>u[i]===v);}
 function gfHead(buf){if(!isGouache(buf))throw new Error('This is not a Gouache Studio document.');const dv=new DataView(buf),ver=dv.getUint32(8,true),hl=dv.getUint32(12,true);
   if(ver>GF_VERSION)throw new Error('This document was saved by a newer Gouache Studio. Update the app to open it.');
-  const head=JSON.parse(new TextDecoder().decode(new Uint8Array(buf,16,hl)));if(head.w>MAX_DIM||head.h>MAX_DIM)throw new Error('This document is larger than this computer can edit.');return {head,data:16+hl};}
+  const head=JSON.parse(new TextDecoder().decode(new Uint8Array(buf,16,hl)));if(head.w>MAX_DIM||head.h>MAX_DIM)throw new Error('This document is larger than this computer can edit.');if(head.depth===16&&head.w*head.h>=268435456)throw new Error('This renderer needs 8-bit colour for 16K square documents; height can keep 16-bit precision.');return {head,data:16+hl};}
 async function openGouache(buf,name){const {head,data}=gfHead(buf);if(tabDocs.paint)setMode('paint',true);
   const depth=head.depth===16&&!canFloat?8:head.depth;
   newDoc(head.w,head.h,depth,false,head.name||name,!!head.wrap);
@@ -106,9 +108,9 @@ async function gfReadInto(buf,head,data){
     if(o.t==='G'){n=newGroupObj(o.name);n.open=o.open!==false;}
     else if(o.t==='F'){n=newFxLayerObj(o.name,(o.fx.stack||[]).filter(it=>it.conv?CONVERTERS[it.conv]:FX[it.id]),o.fx.map);n.clip=!!o.clip;n.mapModes=Object.assign({},o.mapModes||{});}
     else{n=newLayerObj(o.name,!!o.fill);n.clip=!!o.clip;n.lockAlpha=!!o.lock;n.mapModes=Object.assign({},o.mapModes||{});
-      for(const k in o.maps||{}){if(k!=='base'&&!doc.maps.includes(k))continue;await img(o.maps[k],()=>ensureMapTarget(n,k),o.fill?n:null,k);}
       if(o.text)n.text=o.text;if(o.grad)n.grad=o.grad;if(o.array){n.array=o.array;n.arrBox=o.arrBox||null;}if(o.styles)n.styles=o.styles;if(o.shape)n.shape=o.shape;if(o.fill)n.fill=o.fill;if(o.idSel)n.idSel=o.idSel;
-      if(o.fillImg){n._fillImg={};for(const k in o.fillImg){const r=o.fillImg[k],raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),r.w,r.h,8,r.f),t=makeTarget(r.w,r.h,8,true);writeRegion(t,0,0,r.w,r.h,raw);n._fillImg[k]=t;}}}
+      if(o.fillImg){n._fillImg={};for(const k in o.fillImg){const r=o.fillImg[k],raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),r.w,r.h,8,r.f),t=makeTarget(r.w,r.h,8,true);writeRegion(t,0,0,r.w,r.h,raw);n._fillImg[k]=t;}}
+      for(const k in o.maps||{}){if(k!=='base'&&!doc.maps.includes(k))continue;const r=o.maps[k];if(r.live&&fillLiveSource(n,k))setMapLive(n,k);else await img(r,()=>ensureMapTarget(n,k),o.fill?n:null,k);}}
     Object.assign(n,{visible:o.vis!==false,opacity:o.op==null?1:o.op,mode:o.mode==null?(o.t==='G'?-1:0):o.mode});n.lockPx=!!o.lockPx;n.lockPos=!!o.lockPos;n.lockAll=!!o.lockAll;n.smSrc=o.smSrc;n.smMaskSrc=o.smMaskSrc;
     if(o.mask){n.mask=makeMask(1);n.mask.enabled=o.mask.en!==false;if(o.mask.lk===0)n.mask.link=false;await img(o.mask.img,n.mask.target);}
     await msDecode(n,o,img,async r=>{const raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),r.w,r.h,r.d||8,r.f),t=makeTarget(r.w,r.h,8,true);writeRegion(t,0,0,r.w,r.h,raw);return t;});

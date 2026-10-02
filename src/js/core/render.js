@@ -30,19 +30,21 @@ function strokeCacheFor(list,k){if(!strokeCacheSafe())return null;const i=stroke
 function dropStrokeCache(s){if(s&&s.cache){for(const maps of s.cache.values())for(const k in maps)if(maps[k].t)disposeTarget(maps[k].t);s.cache=null;}}
 /* A proven opaque, normal-blended fill completely replaces the rows below in this channel.
    Masks, projection holes, clipped effects and live looks keep the full ordering. */
-function compVisibleStart(list,k){for(let i=list.length-1;i>=0;i--){const n=list[i],c=mapSolid(n,k),t=mapT(n,k,true);if(n.type==='layer'&&n.visible&&(c?c[3]===1:n.fill&&t&&t.opaque)&&n.opacity===1&&mapModeOf(n,k)===0&&!n.clip&&!maskTexOf(n)&&!n.fx&&!lookTouches(n,k)&&!(n.cfx&&cfxOn(n,k))&&!clippedFx(list,i,k).length&&!(panState&&n.id===panState.id&&panState.maps.has(k))&&!(preview&&preview.L===n)&&!(stroke&&stroke.L===n))return i;}return 0;}
+function compVisibleStart(list,k){for(let i=list.length-1;i>=0;i--){const n=list[i],c=mapSolid(n,k),t=mapT(n,k,true);if(n.type==='layer'&&n.visible&&(c?c[3]===1:n.fill&&(mapLive(n,k)?fillLiveOpaque(n,k):t&&t.opaque))&&n.opacity===1&&mapModeOf(n,k)===0&&!n.clip&&!maskTexOf(n)&&!n.fx&&!lookTouches(n,k)&&!(n.cfx&&cfxOn(n,k))&&!clippedFx(list,i,k).length&&!(panState&&n.id===panState.id&&panState.maps.has(k))&&!(preview&&preview.L===n)&&!(stroke&&stroke.L===n))return i;}return 0;}
 function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
   let start=compVisibleStart(list,k);const cache=strokeCacheFor(list,k),sc=cache&&cache.i>start?cache:null;compStats.skipped+=start;
   if(sc&&sc.t&&sc.t.depth===acc.depth){blit(sc.t,acc,0,0,doc.w,doc.h,0,0);start=sc.i;compStats.cacheHits++;}
-  for(let i=start;i<list.length;i++){if(sc&&i===sc.i&&!sc.t&&!compPart){sc.t=makeTarget(doc.w,doc.h,acc.depth);blit(acc,sc.t,0,0,doc.w,doc.h,0,0);}
+  for(let i=start;i<list.length;i++){if(sc&&i===sc.i&&!sc.t&&!compPart){sc.t=makeTarget(doc.w,doc.h,acc.depth,undefined,acc.packed);blit(acc,sc.t,0,0,doc.w,doc.h,0,0);}
     const n=list[i],clipped=clipBaseOf(list,i);
     if(!n.visible)continue;if(clipped&&!clipped.visible)continue;
     const mt=maskTexOf(n);
     /* filter layer: changes what is below it (clipped ones are applied to their base layer instead) */
     if(n.type==='layer'&&n.fx){if(clipped||n.fx.map!==k)continue;const r=fxApplyLayer(n,acc,k,mt);if(r!==acc){release(acc);acc=r;}continue;}
-    if(n.type==='layer'){const lk=lookTouches(n,k),cf=clippedFx(list,i,k),cx=n.cfx&&cfxOn(n,k);let solid=mapSolid(n,k),T=edit?n.target:mapT(n,k,true);
+    if(n.type==='layer'){const lk=lookTouches(n,k),cf=clippedFx(list,i,k),cx=n.cfx&&cfxOn(n,k);let live=null,solid=mapSolid(n,k),T=edit?n.target:mapT(n,k,true);
+      const direct=mapLive(n,k)&&fillLiveOpaque(n,k)&&n.opacity===1&&mapModeOf(n,k)===0&&!mt&&!clipped&&(!pxfIs3D(n.fill.proj)||n.fill.maps[k].src!=='image')&&!lk&&!cf.length&&!cx&&!(panState&&n.id===panState.id&&panState.maps.has(k))&&!(preview&&preview.L===n)&&!(stroke&&stroke.L===n);
+      if(mapLive(n,k)&&!direct){live=acquireD(mapDepth(k));fillDrawMap(n,k,live);T=live;}
       if(solid&&(lk||cf.length||cx||panState&&n.id===panState.id&&panState.maps.has(k)||preview&&preview.L===n)){T=mapT(n,k);solid=null;}
-      if((!T||T.empty)&&!lk&&!solid)continue;if(!T||T.empty)T=emptyFor(mapDepth(k));
+      if((!T||T.empty)&&!lk&&!solid&&!direct)continue;if(!T||T.empty)T=solid||direct?{tex:dummy}:emptyFor(mapDepth(k));
       let src=(edit&&preview&&!preview.off&&preview.L===n&&!preview.isMask)?previewT:T,own=null;const out=acquire(),cm=clipped?maskTexOf(clipped):null;
       let st=(stroke&&stroke.L===n&&!strokeLive(stroke.o))?stroke:null,ex=null,lkM=false;
       if(st&&!edit){ex=(st.o.extras||[]).find(e=>e.key===k)||null;if(!ex)st=null;}
@@ -55,10 +57,10 @@ function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
         if(lk&&mt&&n.styles&&anyStyle(n)){const m=lkMasked(src,mt);if(own)release(own);own=m;src=m;lkM=true;}
         if(lk){const r=layerLook(n,src,k,src===T,lkM?mt:null);if(r.t!==src){if(own)release(own);own=r.pooled?r.t:null;src=r.t;}}}
       compStats.layerPixels+=compPart?compPartPixels:doc.w*doc.h;
-      run(P.comp,out,Object.assign({uSolid:!!solid,uSolidColor:solid||[0,0,0,0],uBase:acc.tex,uLayer:src.tex,uStrokeTex:strokeT.tex,uMask:clipped?(mapT(clipped,'base')||emptyFor(8)).tex:dummy,uUseMask:!!clipped,uMask2:cm||dummy,uUseMask2:!!cm,uLMask:mt||dummy,uUseLMask:!!mt&&!lkM,
+      run(direct?fillCompProgram():P.comp,out,Object.assign(direct?fillCompUniforms(n,k):{},{uSolid:!!solid,uSolidColor:solid||[0,0,0,0],uBase:acc.tex,uLayer:src.tex,uStrokeTex:strokeT.tex,uMask:clipped?(mapT(clipped,'base')||emptyFor(8)).tex:dummy,uUseMask:!!clipped,uMask2:cm||dummy,uUseMask2:!!cm,uLMask:mt||dummy,uUseLMask:!!mt&&!lkM,
         uMode:{int:mapModeOf(n,k)},uOpacity:n.opacity,uStroke:{int:st?(ex?ex.mode:strokeMode(st.o)):0},uStrokeTint:!!(st&&!ex&&st.tint),uStrokeColor:st?(ex?ex.color:st.o.color):[0,0,0],uStrokeOpacity:st?st.o.opacity:0,uLockAlpha:ex?false:n.lockAlpha},
         edit?chanU(st&&st.o):chanU(null),ex?st.exU:selU(st&&st.o),edit?tonalU(st&&st.o):{}));
-      if(own)release(own);if(pn)release(pn);release(acc);acc=out;}
+      if(own)release(own);if(pn)release(pn);if(live)release(live);release(acc);acc=out;}
     else if(n.mode<0&&!(panState&&n.id===panState.id&&panState.maps.has(k))){
       if(n.opacity>=.999&&!mt)acc=compositeList(n.children,acc,k);
       else{const x=acquire();blit(acc,x,0,0,doc.w,doc.h,0,0);const r=compositeList(n.children,x,k),out=acquire();run(P.mix,out,{uA:acc.tex,uB:r.tex,uT:n.opacity,uM:mt||dummy,uUseM:!!mt});release(acc);release(r);acc=out;}}
@@ -151,7 +153,7 @@ function scheduleThumb(n){if(n){n.lookVer=(n.lookVer||0)+1;if(n.frame)frameDirty
 let chanThumbDirty=true;
 function renderThumb(target,canvas,solid){const s=Math.min(40/doc.w,40/doc.h),tw=doc.w*s,th=doc.h*s;clearTarget(thumbT);
   if(solid)scissorDo([Math.round((40-tw)/2),Math.round((40-th)/2),Math.round(tw),Math.round(th)],()=>clearTarget(thumbT,solid));
-  else run(P.resample,thumbT,{uSrc:target.tex,uOffset:[(40-tw)/2,(40-th)/2],uScale:[1/s,1/s],uTaps:{int:Math.min(8,Math.ceil(1/s))}});
+  else run(P.resample,thumbT,{uSrc:target.tex,uOffset:[(40-tw)/2,(40-th)/2],uScale:[target.w/tw,target.h/th],uTaps:{int:Math.min(8,Math.ceil(target.w/tw))}});
   /* collected when the GPU is done, so thumbnails never make painting wait */
   asyncRead(thumbT.fbo,0,0,40,40,gl.UNSIGNED_BYTE,Uint8Array,40*40*4,buf=>{if(typeof canvas==='function'){canvas(buf);return;}
     const img=new ImageData(40,40);const d=img.data;
@@ -161,7 +163,7 @@ function flushThumbs(){
   for(const n of thumbQ){if(n.type==='layer'&&n.target&&n.target.tex){let t=n.target;
       /* a layer with only one other map (a sent bake or conversion) shows that map instead of an empty square */
       if(doc.map==='base'&&isBlankBase(n)&&n.maps){const ks=Object.keys(n.maps).filter(k=>k!=='base'&&n.maps[k]&&!n.maps[k].empty&&n.maps[k].tex);if(ks.length===1)t=n.maps[ks[0]];}
-      renderThumb(t,n.thumb,mapSolid(n,doc.map));}
+      if(mapLive(n,doc.map)){const small=!pxfIs3D(n.fill.proj),tmp=small?makeTarget(40,40,mapDepth(doc.map),false):acquireD(mapDepth(doc.map));fillDrawMap(n,doc.map,tmp);renderThumb(tmp,n.thumb);if(small)disposeTarget(tmp);else release(tmp);}else renderThumb(t,n.thumb,mapSolid(n,doc.map));}
     if(n.mask&&n.mask.target.tex)renderThumb(n.mask.target,n.mask.thumb);}
   thumbQ.clear();
   if(chanThumbDirty&&compOut&&typeof drawChannelThumbs==='function'){chanThumbDirty=false;drawChannelThumbs();}

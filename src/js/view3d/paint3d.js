@@ -11,7 +11,7 @@ const P3_MAPS=['base','rough','metal','height','normal'];
 /* a new texture set: the PBR maps, a base material (a fill layer) and an empty layer to paint on */
 function p3Setup(name){doc.maps=P3_MAPS.slice();doc.workflow='metal';doc.name=name||'3D Paint';syncTargets();
   const P=paintLayers()[0];P.name='Paint';
-  const B=newLayerObj('Base material');doc.count--;B.fill=fillDefaults();Object.assign(B.fill.maps.base,{on:true,src:'value',c:[.82,.82,.82]});
+  const B=newLayerObj('Base material',true);doc.count--;B.fill=fillDefaults();Object.assign(B.fill.maps.base,{on:true,src:'value',c:[.82,.82,.82]});
   Object.assign(B.fill.maps.rough,{on:true,v:.6});Object.assign(B.fill.maps.metal,{on:true,v:0});B.fill.maps.height.on=false;fillRender(B);
   insertNode(B,doc.root,0);selectOnly(P);hist.undo=[];hist.redo=[];doc.p3=true;}
 function p3dEnter(){p3.was={on:v3.on,paintOn:v3.paintOn,imported:v3.imported,cam:Object.assign({},v3.cam),tex:v3.tex,ws:dk.ws};if(v3.pop)pop3D(false,true);

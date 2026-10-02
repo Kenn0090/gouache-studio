@@ -196,6 +196,6 @@ function layerLook(n,src,k,cacheable,mt){const P=lkProgs();let c=n._lk;const key
     if(m!=null){out=acquireD(Math.max(body.depth===32?16:body.depth,k==='height'?mapDepth('height'):8));tmp.push(out);
       run(P.style,out,Object.assign({uSrc:body.tex,uD:c.sd.tex,uShape:c.shape.tex,uMap:{int:m}},styleUniforms(n.styles)));}}
   if(out===src)return {t:src,cached:false};
-  if(cacheable){let e=c.maps[k];if(!e||e.t.depth!==out.depth){if(e)disposeTarget(e.t);e=c.maps[k]={t:makeTarget(doc.w,doc.h,out.depth,false)};}
+  if(cacheable){let e=c.maps[k];if(!e||e.t.depth!==out.depth){if(e)disposeTarget(e.t);e=c.maps[k]={t:makeTarget(doc.w,doc.h,out.depth,false,out.packed)};}
     blit(out,e.t,0,0,doc.w,doc.h,0,0);e.key=key;tmp.forEach(release);return {t:e.t,cached:true};}
   tmp.forEach(t=>{if(t!==out)release(t);});return {t:out,cached:false,pooled:true};}
