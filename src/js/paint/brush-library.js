@@ -89,6 +89,7 @@ function buildBrushPanel(){
   if(ui.tool==='crop'){buildCropPanel(box);return;}
   if(ui.tool==='cage'){buildCagePanel(box);return;}
   if(ui.tool==='array'){buildArrayPanel(box);return;}
+  if(ui.tool==='liquify'){buildLiquifyPanel(box);return;}
   if(ui.tool==='shape'){buildShapePanel(box);return;}
   if(ui.tool==='move'){buildMovePanel(box);return;}
   if(ui.tool==='gradient'||ui.tool==='gbucket'){buildGradPanel(box);return;}

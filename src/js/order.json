@@ -11,6 +11,7 @@
     "paint/brush-engine",
     "paint/straight-lines",
     "paint/heal",
+    "paint/liquify",
     "ui/color",
     "ui/color-modes",
     "paint/brush-library",
