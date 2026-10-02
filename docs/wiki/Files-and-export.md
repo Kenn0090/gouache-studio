@@ -83,3 +83,10 @@ If a model you opened with **Import model** or **Load…** is saved again in ano
 
 ## Autosave
 Every open document tab has its own recovery copy, not only the one you are working on. Saving or closing a tab removes its copy.
+
+
+## Artwork fonts offline
+
+The Text tool now includes Anton, Bebas Neue, Patrick Hand, Kalam, Libre Baskerville, Orbitron, Space Grotesk and Cormorant Garamond. These and the eight existing artwork families are bundled for offline desktop use. Each font's SIL Open Font License is shipped beside it; source links are recorded in assets/fonts/manifest.json.
+
+16-bit PNG data maps retain their source sample values on import, including interlaced PNGs. Very large 16-bit colour images are checked against the renderer's allocation limits before decoding.

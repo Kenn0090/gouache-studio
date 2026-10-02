@@ -327,7 +327,7 @@ void main(){ ivec2 sz=textureSize(uSrc,0); int n=uAxis==0?sz.y:sz.x; int k=int(g
 function compile(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;}
 /* Height needs one half-float value plus coverage, rather than three copies of the value.
    RG16F avoids WebView2/D3D11's single-resource limit at 16K, preserving both 16-bit values. */
-function packedShaderSource(src,fragment,names){let declarations='';
+function packedShaderSource(src,fragment,names,inputOnly){let declarations='';
   src=src.replace(/uniform\s+(?:highp\s+)?sampler2D\s+([^;]+);/g,(all,list)=>{for(const name of list.split(',').map(s=>s.trim())){if(!/^\w+$/.test(name))throw new Error('Unsupported packed sampler: '+name);names.add(name);
       declarations+=`uniform highp sampler2D ${name}; uniform bool gsPacked_${name}; uniform bool gsMono_${name};
 vec4 gsDecode_${name}(vec4 c){return gsMono_${name}?vec4(c.rrr,1.0):gsPacked_${name}?vec4(c.rrr,c.g):c;}
@@ -339,10 +339,10 @@ vec4 gsGrad_${name}(vec2 p,vec2 x,vec2 y){return gsDecode_${name}(textureGrad(${
 `;}
     return '';});
   for(const name of names)for(const [fn,to] of [['texelFetch','gsFetch'],['textureLod','gsLod'],['textureGrad','gsGrad'],['texture','gsTex']])src=src.replace(new RegExp('\\b'+fn+'\\(\\s*'+name+'\\s*,','g'),to+'_'+name+'(');
-  if(fragment){src=src.replace(/void\s+main\s*\(\s*\)/,'void gsOriginalMain()');src+=`\nuniform bool gsPackedOut; uniform int gsPackedTint; uniform sampler2D gsPackedDst; uniform vec2 gsPackedOrigin;
+  if(fragment&&!inputOnly){src=src.replace(/void\s+main\s*\(\s*\)/,'void gsOriginalMain()');src+=`\nuniform bool gsPackedOut; uniform int gsPackedTint; uniform sampler2D gsPackedDst; uniform vec2 gsPackedOrigin;
 void main(){gsOriginalMain();if(gsPackedOut){if(gsPackedTint!=0){vec4 c=texelFetch(gsPackedDst,ivec2(gl_FragCoord.xy-gsPackedOrigin),0);vec4 d=vec4(c.rrr,c.g);if(gsPackedTint==1)o=vec4(o.rgb*(1.0-d.a)+d.rgb*d.a,d.a);else o=vec4(o.rgb+d.rgb*(1.0-o.a),max(o.a,d.a));}o=vec4(o.r,o.a,0.0,o.a);}}`;}
   return src.startsWith('#version')?src.replace(/^(#version[^\n]*\n)/,'$1'+declarations):declarations+src;}
-function packedProgram(prog){if(prog.packedShader)return prog;if(!prog.packedVariant){if(!prog.fs)throw new Error('This graphics operation does not support packed height.');const names=new Set(),fs=packedShaderSource(prog.fs,true,names),vs=packedShaderSource(prog.vs||VS_FULL,false,names),p=program(fs,vs);
+function packedProgram(prog){if(prog.packedShader)return prog;if(!prog.packedVariant){if(!prog.fs)throw new Error('This graphics operation does not support packed height.');const names=new Set(),fs=packedShaderSource(prog.fs,true,names,!!prog.decodeOnly),vs=packedShaderSource(prog.vs||VS_FULL,false,names),p=program(fs,vs);
     Object.assign(p,{packedShader:true,packNames:[...names],defaults:prog.defaults,tiled:prog.tiled,_n:prog._n});prog.packedVariant=p;}return prog.packedVariant;}
 function program(fs,vs){const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,vs||VS_FULL));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS_HEAD+fs));gl.bindAttribLocation(p,0,'a');gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return {p,locs:{},fs,vs};}
 const P={

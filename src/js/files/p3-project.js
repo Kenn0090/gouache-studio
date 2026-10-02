@@ -10,7 +10,7 @@ async function encodeP3Project(){if(ui.mode!=='p3d')throw new Error('Open the 3D
   try{for(let i=0;i<p3.sets.length;i++){const S=p3.sets[i];let bytes;
       if(i===p3.cur)bytes=new Uint8Array(await (await encodeGouacheNow({lean:true})).arrayBuffer());
       else if(S.state){const mine=docState();setDocState(S.state);try{bytes=new Uint8Array(await (await encodeGouacheNow({lean:true})).arrayBuffer());}finally{S.state=docState();setDocState(mine);}}
-      sets.push(Object.assign({name:S.name,hid:!!S.hidden},bytes?put(bytes):{empty:true}));}}
+      sets.push(Object.assign({name:S.name,material:p3Binding(S),hid:!!S.hidden},bytes?put(bytes):{empty:true}));}}
   finally{tabDocs.hold=false;requestRender(true);}
   let mesh=null;if(v3s().model==='imported'&&v3.imported){const c=await streamThrough(meshPack(v3.imported),'deflate-raw');mesh=Object.assign({name:v3.imported.name},put(c));}
   const head={app:'Gouache Studio',v:G3_VERSION,name:p3.name||'3D Paint',size:p3.size,cur:p3.cur,sets,mesh,v3d:doc.v3d,cam:Object.assign({},v3.cam),mir3:Object.assign({},mir3)};
@@ -24,8 +24,8 @@ async function saveP3Project(forceAsk){if(stroke)return;toast('Saving the 3D Pai
     const r=await deliver(nm,blob);toast(deliveredText(r,'Project'));if(r.ok)p3.savedAt=p3Sig();}
   catch(e){console.error(e);toast('The project could not be saved: '+(e.message||e));}}
 /* something to tell whether there is unsaved work */
-const p3Sig=()=>p3.sets.map((S,i)=>{const u=i===p3.cur?hist.undo:(S.state?S.state.undo:[]),D=i===p3.cur?doc:S.state?.doc;return u.length+':'+(u[u.length-1]||{}).label+':'+(D?.meshMapVer||0)+':'+(D?.projectAssets?._ver||0);}).join('|');
-function p3AskReplace(fresh){if(!p3.started||p3Sig()===p3.savedAt||p3.sets.every((S,i)=>{const D=i===p3.cur?doc:S.state?.doc;return !(i===p3.cur?hist.undo.length:S.state?.undo.length)&&!D?.meshMapVer&&!D?.projectAssets?._ver;}))return Promise.resolve(true);
+const p3Sig=()=>p3.sets.map((S,i)=>{const u=i===p3.cur?hist.undo:(S.state?S.state.undo:[]),D=i===p3.cur?doc:S.state?.doc;return S.name+':'+p3Binding(S)+':'+u.length+':'+(u[u.length-1]||{}).label+':'+(D?.meshMapVer||0)+':'+(D?.projectAssets?._ver||0);}).join('|');
+function p3AskReplace(fresh){if(!p3.started||p3Sig()===p3.savedAt||!p3.metadataVer&&p3.sets.every((S,i)=>{const D=i===p3.cur?doc:S.state?.doc;return !(i===p3.cur?hist.undo.length:S.state?.undo.length)&&!D?.meshMapVer&&!D?.projectAssets?._ver;}))return Promise.resolve(true);
   return new Promise(res=>openDialog({title:'Replace the 3D Paint project?',body:el('p',{class:'note',text:fresh?'A new project clears the texture sets in 3D Paint (the model stays). Save first (Ctrl+S in the 3D Paint tab) if you want to keep them.':'Opening a project replaces the model and texture sets in 3D Paint. Save first (Ctrl+S in the 3D Paint tab) if you want to keep them.'}),okLabel:fresh?'Start new':'Open anyway',onOk(){res(true);},onCancel(){res(false);}}));}
 async function openP3Project(buf,name,path){if(!isP3Proj(buf))throw new Error('This is not a Gouache Studio 3D Paint project.');const dv=new DataView(buf),ver=dv.getUint32(8,true),hl=dv.getUint32(12,true);
   if(ver>G3_VERSION)throw new Error('This project was saved by a newer Gouache Studio. Update the app to open it.');
@@ -33,12 +33,12 @@ async function openP3Project(buf,name,path){if(!isP3Proj(buf))throw new Error('T
   if(ui.mode!=='p3d'&&!setMode('p3d',true))return;if(!(await p3AskReplace()))return;
   /* put away what is there now */
   const old=docState();for(const S of p3.sets){if(S.state)disposeDocState(S.state);if(S.tex)for(const k in S.tex)disposeTarget(S.tex[k]);}for(const k in v3.tex)disposeTarget(v3.tex[k]);v3.tex={};
-  p3.sets=[];p3.size=head.size||p3.size;
+  p3.sets=[];p3.metadataVer=0;p3.size=head.size||p3.size;
   const states=[];
   for(const rec of head.sets||[]){let st=null;
     if(!rec.empty){const b=buf.slice(data+rec.o,data+rec.o+rec.n),{head:h,data:d}=gfHead(b);blankTabDoc(h.w,h.h,rec.name);for(const L of everyNode())disposeLayer(L);doc.root.children=[];doc.count=0;
       await gfReadInto(b,h,d);doc.p3=true;doc.name=rec.name;hist.undo=[];hist.redo=[];st=docState();}
-    states.push(st);p3.sets.push({name:rec.name,state:st,tex:null,missing:false,hidden:!!rec.hid});}
+    states.push(st);p3.sets.push({name:rec.name,material:rec.material||rec.name,state:st,tex:null,missing:false,hidden:!!rec.hid});}
   if(!p3.sets.length)throw new Error('This project has no texture sets.');
   disposeDocState(old);
   p3.cur=clamp(head.cur||0,0,p3.sets.length-1);const A=p3.sets[p3.cur];
@@ -58,8 +58,8 @@ async function p3NewProject(size){size=Math.max(64,Math.min(MAX_DIM,Math.round(s
   if(!p3.started){p3.size=size;p3Save();if(ui.mode!=='p3d'&&!setMode('p3d'))return false;p3.savedAt=p3Sig();return true;}
   if(ui.mode!=='p3d'&&!setMode('p3d',true))return;if(!(await p3AskReplace(true)))return;
   const old=docState();for(const S of p3.sets){if(S.state)disposeDocState(S.state);if(S.tex)for(const k in S.tex)disposeTarget(S.tex[k]);}for(const k in v3.tex)disposeTarget(v3.tex[k]);v3.tex={};
-  const names=p3.sets.filter(S=>!S.missing).map(S=>S.name);p3.size=size;p3Save();
-  p3.sets=(names.length?names:['default']).map(n=>({name:n,state:null,tex:null,missing:false}));p3.cur=0;
+  const names=p3.sets.filter(S=>!S.missing).map(S=>({name:S.name,material:p3Binding(S)}));p3.metadataVer=0;p3.size=size;p3Save();
+  p3.sets=(names.length?names:[{name:'default',material:'default'}]).map(n=>({...n,state:null,tex:null,missing:false}));p3.cur=0;
   blankTabDoc(size,size,p3.sets[0].name);p3Setup(p3.sets[0].name);disposeDocState(old);
   p3.name=null;p3.path=null;p3.savedAt=p3Sig();p3SyncSets();
   v3.mapsDirty=true;v3.dirty=true;fit();changedAll();renderLayers();buildP3Panel();requestRender(true);toast('New 3D Paint project: '+size+' × '+size+' textures.');return true;}

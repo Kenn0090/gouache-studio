@@ -41,6 +41,8 @@ if (fs.existsSync(r('assets/grunge/previews.json'))) {
   }
 }
 const js = `const APP_VERSION='${APP_VERSION}';\nconst TX_PREVIEWS=${JSON.stringify(TX_PREVIEW_DATA)};\nconst GM_BUNDLED=${JSON.stringify(GMATS).replace(/<\//g, '<\\/')};\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\nconst CHANGELOG_MD=${JSON.stringify(CHANGELOG).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
+const studioFonts=JSON.parse(read('assets/fonts/manifest.json'));
+const studioFontCss=studioFonts.map(f=>`@font-face{font-family:"${f.family}";font-style:normal;font-weight:${f.weight};font-display:swap;src:url(${f.file}) format("truetype")}`).join('\n');
 const css = read('src/styles/app.css');
 const tpl = read('src/index.template.html');
 const assemble = head => tpl.replace(/<!--VERSION-->/g, APP_VERSION).replace('<!--HEAD-->', () => head).replace('<!--STYLE-->', () => css).replace('<!--SCRIPT-->', () => js);
@@ -49,13 +51,16 @@ const assemble = head => tpl.replace(/<!--VERSION-->/g, APP_VERSION).replace('<!
 const HDRIS = fs.existsSync(r('assets/hdri')) ? fs.readdirSync(r('assets/hdri')).filter(f => f.endsWith('.hdr')) : [];
 const GRUNGE = fs.existsSync(r('assets/grunge')) ? fs.readdirSync(r('assets/grunge')).filter(f => f.endsWith('.webp')) : [];
 const BRUSHPACKS = fs.existsSync(r('assets/brushes')) ? fs.readdirSync(r('assets/brushes')).filter(f => f.endsWith('.webp')) : [];
+const STUDIO = fs.readdirSync(r('assets/studio')).filter(f => /\.(png|gz)$/.test(f));
 const hdriTags = () => HDRIS.map(f => `<script type="text/plain" id="hdri_${f.replace(/_1k\.hdr$/, '')}">${fs.readFileSync(r('assets/hdri/' + f)).toString('base64')}</script>`)
   .concat(BRUSHPACKS.map(f => `<script type="text/plain" id="br_${f.replace(/\.webp$/, '')}">${fs.readFileSync(r('assets/brushes/' + f)).toString('base64')}</script>`))
-  .concat(GRUNGE.map(f => `<script type="text/plain" id="gr_${f.replace(/\.webp$/, '')}">${fs.readFileSync(r('assets/grunge/' + f)).toString('base64')}</script>`)).join('\n');
+  .concat(GRUNGE.map(f => `<script type="text/plain" id="gr_${f.replace(/\.webp$/, '')}">${fs.readFileSync(r('assets/grunge/' + f)).toString('base64')}</script>`)).concat(STUDIO.map(f => `<script type="text/plain" id="studio_${f.replace(/[^a-z0-9]/gi,'_')}">${fs.readFileSync(r('assets/studio/'+f)).toString('base64')}</script>`)).join('\n');
 function buildWeb() {
   fs.mkdirSync(r('dist-web'), { recursive: true });
+  for(const f of studioFonts){copy('assets/fonts/'+f.file,'dist-web/fonts/'+f.file);copy('assets/fonts/'+f.license,'dist-web/fonts/'+f.license);}
+  fs.writeFileSync(r('dist-web/fonts/studio.css'),studioFontCss);
   for (const g of GMATS) copy('assets/materials/' + g.file, `dist-web/materials/${g.file}`);
-  fs.writeFileSync(r('dist-web/index.html'), assemble(read('src/head.web.html')).replace('<!--HDRI-->', () => hdriTags()));
+  fs.writeFileSync(r('dist-web/index.html'), assemble(read('src/head.web.html')+'<link rel="stylesheet" href="fonts/studio.css">').replace('<!--HDRI-->', () => hdriTags()));
   console.log('web     -> dist-web/index.html');
 }
 
@@ -69,18 +74,20 @@ function buildDesktop() {
   for (const f of HDRIS) copy('assets/hdri/' + f, `${out}/hdri/${f}`);
   for (const g of GMATS) copy('assets/materials/' + g.file, `${out}/materials/${g.file}`);
   for (const f of GRUNGE) copy('assets/grunge/' + f, `${out}/grunge/${f}`);
+  for(const f of STUDIO) copy('assets/studio/'+f,`${out}/studio/${f}`);
+  for(const f of studioFonts){copy('assets/fonts/'+f.file,`${out}/fonts/${f.file}`);copy('assets/fonts/'+f.license,`${out}/fonts/${f.license}`);}
   for (const f of BRUSHPACKS) copy('assets/brushes/' + f, `${out}/brushes/${f}`);
   // UI fonts bundled so the app looks right offline
   const fonts = [
     ['@fontsource/instrument-sans', 'Instrument Sans', [400, 500, 600]],
     ['@fontsource/jetbrains-mono', 'JetBrains Mono', [400, 500]],
   ];
-  let fontCss = '';
+  let fontCss = studioFontCss+'\n';
   for (const [pkg, family, weights] of fonts) {
     for (const w of weights) {
       const file = `${pkg.split('/')[1]}-latin-${w}-normal.woff2`;
       copy(`node_modules/${pkg}/files/${file}`, `${out}/fonts/${file}`);
-      fontCss += `@font-face{font-family:"${family}";font-style:normal;font-weight:${w};font-display:swap;src:url(fonts/${file}) format("woff2")}\n`;
+      fontCss += `@font-face{font-family:"${family}";font-style:normal;font-weight:${w};font-display:swap;src:url(${file}) format("woff2")}\n`;
     }
   }
   fs.writeFileSync(r(`${out}/fonts/fonts.css`), fontCss);

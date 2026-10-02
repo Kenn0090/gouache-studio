@@ -1,8 +1,8 @@
 /* ================= Text tool + fonts ================= */
 const FONT_STACKS={'Sans':'system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif','Serif':'Georgia,"Times New Roman",serif','Mono':'"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace','Instrument Sans':'"Instrument Sans",system-ui,sans-serif'};
-const GFONTS=['Bangers','Cinzel','Lilita One','Press Start 2P','Pirata One','Caveat','Oswald','Fredoka'];
+const GFONTS=['Bangers','Cinzel','Lilita One','Press Start 2P','Pirata One','Caveat','Oswald','Fredoka','Anton','Bebas Neue','Patrick Hand','Kalam','Libre Baskerville','Orbitron','Space Grotesk','Cormorant Garamond'];
 const userFonts=[];let gfontsLoaded=false;
-function loadGFonts(){if(gfontsLoaded)return;gfontsLoaded=true;const fam=GFONTS.map(f=>'family='+f.replace(/ /g,'+')+(['Oswald','Cinzel','Fredoka','Caveat'].includes(f)?':wght@400;700':'')).join('&');
+function loadGFonts(){if(gfontsLoaded)return;gfontsLoaded=true;if(platform.isDesktop)return;const fam=GFONTS.map(f=>'family='+f.replace(/ /g,'+')+(['Oswald','Cinzel','Fredoka','Caveat'].includes(f)?':wght@400;700':'')).join('&');
   document.head.append(el('link',{rel:'stylesheet',href:'https://fonts.googleapis.com/css2?'+fam+'&display=swap'}));}
 function fontCss(n){return FONT_STACKS[n]||('"'+n+'",system-ui,sans-serif');}
 function textFont(t){return (t.italic?'italic ':'')+(t.bold?700:400)+' '+t.size+'px '+fontCss(t.font);}

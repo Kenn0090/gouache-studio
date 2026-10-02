@@ -27,3 +27,10 @@ Saving (Ctrl+S) and exporting are for documents, so they're not used in the Brus
 The Brush workspace shows the **live brush tip** beside the **test stroke** at the top of Brush maker. Name/save controls and the new brush settings sit underneath; the painting brush library is below the drawing canvas. The previews stay visible when scrolling the creation controls. Saved tips are in the expandable **Your saved tips** section. Use **Reset this workspace** in the workspace dropdown to restore this arrangement if you have a custom layout.
 
 Below **Your saved tips**, Brush maker also contains **Save brush**, **Import .ABR**, **Make tip**, the painting stroke preview and painting brush settings. These painting controls scroll independently and return to their normal panels when leaving Brush mode. The colour swatches sit above Brush maker; the brush-tip library remains below the canvas.
+
+
+## Drawing and painting brushes
+
+The brush library includes twenty presets under **Drawing and painting**: graphite pencils, charcoal, pastel, watercolour, gouache, acrylic, oil, palette knife, fan, ink, marker and crayon. Eight original tips provide pencil, charcoal, pastel, wash, bristle, knife, nib and fan shapes. Presets vary spacing, grain, pressure response, angle, scatter and deposit settings; they use the existing brush engine rather than a fluid-paint simulation.
+
+In Paint, **Shift-click** joins your last brush endpoint to the new point. **Shift-drag** draws horizontally or vertically, with smoothing and lazy mouse bypassed for the straight segment. Each completed line is one undo step. The same actions are available in 3D Paint.

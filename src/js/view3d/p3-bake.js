@@ -42,9 +42,9 @@ async function p3Bake(ks,size,which){p3bk.lastArgs={ks:ks.slice(),size,which:whi
   C.size=size;const by={},t0=performance.now();let done=0,cancelled=false;
   try{await p3WithBakeDoc(size,size,async()=>{
     for(const n in bk.byMat||{})if(bk.byMat[n].res!==bk.res)for(const k in bk.byMat[n].res)disposeTarget(bk.byMat[n].res[k]);bk.byMat=null;
-    for(const n of which){const i=names?names.indexOf(n):-1,L=names&&i>=0?meshSubset(model,i):model;if(done)bk.res={};
+    for(const n of which){const binding=p3Binding(p3.sets.find(S=>S.name===n)||{name:n}),i=names?names.indexOf(binding):-1,L=names&&i>=0?meshSubset(model,i):model;if(done)bk.res={};
       const r=await runBake(L,ks,{quiet:true});if(r==='cancelled'||!Object.keys(bk.res).length){cancelled=true;return;}
-      by[names?n:'*']={res:bk.res,kinds:bk.kinds,opts:bk.opts,src:bk.src};done++;}});}
+      by[names?binding:'*']={res:bk.res,kinds:bk.kinds,opts:bk.opts,src:bk.src};done++;}});}
   finally{if(!p3bk.useHigh)C.high=keep.high;if(keep.cage&&!C.cage)C.cage=keep.cage;}
   if(cancelled&&!done)return;
   /* the Bake tab keeps them for fine-tuning */
@@ -59,5 +59,5 @@ function p3MeshMapsChanged(){if(typeof msEpoch!=='undefined')msEpoch++;if(typeof
   for(const L of paintLayers())if(L.fill&&L.fill.maps&&Object.values(L.fill.maps).some(m=>m&&m.on&&(m.src==='baked'||m.src==='conv')))fillRender(L);
   changedAll();}
 /* Send the active set's bake to the Paint canvas (to clean up by hand) */
-function p3BakeToPaint(){const S=p3.sets[p3.cur];if(bk.byMat&&S&&bk.byMat[S.name])bakeShowMat(S.name);if(!Object.keys(bk.res).length){toast('Bake first.');return;}
+function p3BakeToPaint(){const S=p3.sets[p3.cur];if(bk.byMat&&S&&bk.byMat[p3Binding(S)])bakeShowMat(p3Binding(S));if(!Object.keys(bk.res).length){toast('Bake first.');return;}
   bakeSend();toast('Sent the bake'+(S&&bk.byMat?' of “'+S.name+'”':'')+' to the Paint canvas as layers.');}

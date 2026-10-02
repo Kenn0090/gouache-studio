@@ -63,7 +63,7 @@ const GLTF_TEX={label:'glTF',normal:'gl',name:n=>n+'_{s}',outs:[
   {s:'BaseColor',rgb:'base',a:'opac?'},{s:'ORM',ch:['ao','rough','metal'],need:['ao','rough','metal']},{s:'Normal',rgb:'normal'},{s:'Emissive',rgb:'emis'}]};
 /* groups of triangles by texture set (material); names as the sets are called */
 function mxGroups(m,sets){const T=m.idx.length/3,names=m.matNames||[],by=new Map();
-  for(let t=0;t<T;t++){const nm=m.triMat&&names[m.triMat[t]]!=null?names[m.triMat[t]]:(sets[0]||'Material');const key=sets.includes(nm)?nm:(sets.length===1?sets[0]:nm);let a=by.get(key);if(!a)by.set(key,a=[]);a.push(m.idx[t*3],m.idx[t*3+1],m.idx[t*3+2]);}
+  for(let t=0;t<T;t++){const binding=m.triMat&&names[m.triMat[t]]!=null?names[m.triMat[t]]:(sets[0]||'Material'),nm=ui.mode==='p3d'?(p3.sets.find(S=>p3Binding(S)===binding)?.name||binding):binding;const key=sets.includes(nm)?nm:(sets.length===1?sets[0]:nm);let a=by.get(key);if(!a)by.set(key,a=[]);a.push(m.idx[t*3],m.idx[t*3+1],m.idx[t*3+2]);}
   return [...by].map(([name,idx])=>({name,idx:new Uint32Array(idx)}));}
 /* glTF binary: positions, normals, UVs, one primitive per material, textures inside */
 function mxGLB(m,groups,tex,name){const parts=[],views=[],acc=[];let off=0;
