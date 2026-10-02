@@ -63,8 +63,8 @@ function inDoc(n){if(n&&n.frame)return !!(doc.anim&&doc.anim.frames.includes(n))
   while(c&&!roots.includes(c)){const p=c.parent;if(!p||!p.children.includes(c))return false;c=p;}return roots.includes(c);}
 function isAncestor(a,n){let c=n.parent;while(c){if(c===a)return true;c=c.parent;}return false;}
 function activeLayer(){return isLayer(doc.active)?doc.active:null;}
-function makeMask(fill){const m={target:makeTarget(doc.w,doc.h),enabled:true,thumb:thumbCanvas()};m.thumb.className='mthumb';clearTarget(m.target,[fill,fill,fill,1]);return m;}
-function cloneMask(m){if(!m)return null;const c=makeMask(1);blit(m.target,c.target,0,0,doc.w,doc.h,0,0);c.enabled=m.enabled;
+function makeMask(fill,mono){const m={target:makeTarget(doc.w,doc.h,doc.depth,false,false,!!mono),enabled:true,thumb:thumbCanvas()};m.thumb.className='mthumb';clearTarget(m.target,[fill,fill,fill,1]);return m;}
+function cloneMask(m){if(!m)return null;const c=makeMask(1,m.target.mono);blit(m.target,c.target,0,0,doc.w,doc.h,0,0);c.enabled=m.enabled;
   /* its rows too, each with its own copy of its picture */
   if(m.stack){c._rows=new Set();c.stack=m.stack.map(r=>{const x=Object.assign({},r,{id:'r'+(++msSeq),p:JSON.parse(JSON.stringify(r.p||{})),v:r.v?JSON.parse(JSON.stringify(r.v)):r.v});
     if(r.t){x.t=makeTarget(r.t.w,r.t.h,r.t.depth,r.kind==='image');blit(r.t,x.t,0,0,r.t.w,r.t.h,0,0);}c._rows.add(x);return x;});}
@@ -80,7 +80,7 @@ function topSelected(){const sel=doc.sel;return allNodes().filter(n=>sel.has(n)&
 function snapTree(){const m=new Map();const walk=g=>{m.set(g,g.children.slice());for(const c of g.children)if(c.type==='group')walk(c);};walk(doc.root);return {m,active:doc.active,sel:[...doc.sel]};}
 function restoreTree(t){for(const [g,ch] of t.m){g.children=ch.slice();for(const c of ch)c.parent=g;}doc.active=t.active;doc.sel=new Set(t.sel);}
 function layersOfSnap(t){const out=new Set();for(const ch of t.m.values())for(const c of ch)out.add(c);return out;}
-function structOp(label,fn){const before=snapTree();if(fn()===false)return false;const after=snapTree();
+function structOp(label,fn){if(typeof pathFlush==='function')pathFlush();const before=snapTree();if(fn()===false)return false;const after=snapTree();
   pushUndo({label,refs:[...new Set([...layersOfSnap(before),...layersOfSnap(after)])],undo(){restoreTree(before);},redo(){restoreTree(after);}});
   changedAll();return true;}
 

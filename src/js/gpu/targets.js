@@ -31,7 +31,7 @@ function blit(src,dst,sx,sy,w,h,dx,dy){const opaque=!!src.opaque,proof=opaque&&s
   if(!!src.packed!==!!dst.packed||!!src.mono!==!!dst.mono){const copy=()=>run(P.resample,dst,{uSrc:src.tex,uOffset:[dx-sx,dy-sy],uScale:[1,1],uTaps:{int:1}});if(scissorNow)copy();else scissorDo([dx,dy,w,h],copy);dst.opaque=proof;return;}
   dst.opaque=proof;gl.bindFramebuffer(gl.READ_FRAMEBUFFER,src.fbo);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,dst.fbo);gl.blitFramebuffer(sx,sy,sx+w,sy+h,dx,dy,dx+w,dy+h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
 function packedRead(t,u){if(t.packed||t.mono)for(let i=0;i<u.length;i+=4){const a=t.mono?(u instanceof Uint16Array?0x3c00:t.depth===8?255:1):u[i+1];u[i+1]=u[i+2]=u[i];u[i+3]=a;}return u;}
-function packedUpload(t,u){if(!t.packed)return u;const out=new Uint16Array(u.length/2);for(let i=0,j=0;i<u.length;i+=4){out[j++]=u[i];out[j++]=u[i+3];}return out;}
+function packedUpload(t,u){if(t.mono){const out=new u.constructor(u.length/4);for(let i=0;i<out.length;i++)out[i]=u[i*4];return out;}if(!t.packed)return u;const out=new Uint16Array(u.length/2);for(let i=0,j=0;i<u.length;i+=4){out[j++]=u[i];out[j++]=u[i+3];}return out;}
 function imageOpaque(bytes,depth){const step=depth===16?8:4;for(let i=step-1;i<bytes.length;i+=step)if(depth===16?bytes[i]!==60||bytes[i-1]!==0:bytes[i]!==255)return false;return bytes.length>0;}
 /* Undo snapshots live in system RAM (typed arrays), not in video memory.
    8-bit layers: 4 bytes per pixel. 16-bit layers: stored as half floats, 8 bytes per pixel. */
@@ -72,8 +72,8 @@ function captureRegion(src,x,y,w,h){const n=w*h*4;
 function readRegionAsync(src,x,y,w,h){return new Promise((resolve,reject)=>{if(gl.isContextLost()){reject(new Error('The graphics context was lost.'));return;}
   asyncRead(src.fbo,x,y,w,h,src.depth===16?gl.FLOAT:gl.UNSIGNED_BYTE,src.depth===16?Float32Array:Uint8Array,w*h*4,u=>resolve(packedRead(src,u)),reject);});}
 function restoreRegion(snap,dst,x,y){dst.opaque=false;gl.bindTexture(gl.TEXTURE_2D,dst.tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
-  if(snap.depth===16)gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,snap.w,snap.h,dst.packed?gl.RG:gl.RGBA,gl.HALF_FLOAT,packedUpload(dst,snap.data));
-  else gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,snap.w,snap.h,gl.RGBA,gl.UNSIGNED_BYTE,snap.data);
+  if(snap.depth===16)gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,snap.w,snap.h,dst.mono?gl.RED:dst.packed?gl.RG:gl.RGBA,gl.HALF_FLOAT,packedUpload(dst,snap.data));
+  else gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,snap.w,snap.h,dst.mono?gl.RED:gl.RGBA,gl.UNSIGNED_BYTE,packedUpload(dst,snap.data));
   gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);}
 /* draw only inside a rectangle (x, y, w, h in the target's pixels) */
 let scissorNow=null;

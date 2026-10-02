@@ -127,4 +127,6 @@ Bakes are stored as OpenGL normals, like everything else in the app. Pick the en
 
 ## Multiple high-poly files
 
+You can rotate the viewport while a bake runs. Bake pauses restore the shared renderer’s clipping and drawing state before handing control back to the view, preventing black flashes and clipped frames.
+
 Use **Add mesh…** beside High-poly to add another file. Each file keeps its original position in the model. Remove individual files with × in the list. **Load…** replaces the high-poly set; dropping another `_high` file adds it.

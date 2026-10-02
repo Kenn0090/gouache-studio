@@ -40,13 +40,14 @@ let lkPanelFor=null;
 function syncLayerProps(){const A=doc.active,grp=A&&A.type==='group';if(ui.tool==='text'&&textPanelFor!==activeText()&&!fontState)buildBrushPanel();
   if(ui.tool==='gradient'&&gradPanelFor!==activeGrad()){gradPanelFor=activeGrad();buildBrushPanel();drawXfOverlay();}
   if((ui.tool==='array'||ui.tool==='shape')&&lkPanelFor!==doc.active){lkPanelFor=doc.active;buildBrushPanel();drawXfOverlay();}
+  if((ui.tool==='pen'||ui.tool==='path')&&pathPanelFor!==doc.active)buildBrushPanel();
   $('#lModeName').textContent=A?modeLabel(mapModeOf(A,doc.map)):'Normal';modeBtn.disabled=!A;renderMaskRow();
   if(A){opSlider.set(A.opacity);$('#lClip').checked=!!A.clip;$('#lLock').checked=!!A.lockAlpha;}
   $('#lClip').disabled=$('#lLock').disabled=!isLayer(A);
   const tops=topSelected(),p=A&&A.parent,i=p?p.children.indexOf(A):-1;
   const mb=$('#lMerge'),mt=tops.length>1?'Merge '+tops.length+' layers':grp?'Merge group':'Merge down';mb.title=mt+' (Ctrl+E)';mb.setAttribute('aria-label',mt);
   mb.disabled=!(tops.length>1||grp||(isLayer(A)&&i>0&&isLayer(p.children[i-1])));
-  $('#lDel').disabled=!A;$('#lUp').disabled=!A||i>=p.children.length-1;$('#lDown').disabled=!A||i<=0;$('#lUngroup').disabled=!grp;
+  $('#lDel').disabled=!A;$('#lClear').disabled=!A||grp&&!A.mask;$('#lUp').disabled=!A||i>=p.children.length-1;$('#lDown').disabled=!A||i<=0;$('#lUngroup').disabled=!grp;
 }
 function renderLayers(){
   if(typeof paRefresh==='function')paRefresh();
@@ -184,10 +185,10 @@ function cmdGroup(){const tops=topSelected();if(!tops.length)return;
 function cmdUngroup(){const G=doc.active;if(!G||G.type!=='group'){toast('Select a group to ungroup.');return;}
   structOp('Ungroup',()=>{const p=G.parent,i=p.children.indexOf(G),ch=G.children.slice();detachNode(G);p.children.splice(i,0,...ch);ch.forEach(c=>c.parent=p);doc.sel=new Set(ch);doc.active=ch[ch.length-1]||p.children[Math.max(0,i-1)]||null;});}
 function cloneNode(n){if(n.type==='layer'&&n.fx){const L=newFxLayerObj(n.name+' copy',JSON.parse(JSON.stringify(fxCleanStack(n.fx.stack))),n.fx.map);Object.assign(L,{opacity:n.opacity,mode:n.mode,clip:n.clip,visible:n.visible,mask:cloneMask(n.mask)});L.mapModes=Object.assign({},n.mapModes);return L;}
-  if(n.type==='layer'){const L=newLayerObj(n.name+' copy',!!n.fill);Object.assign(L,{opacity:n.opacity,mode:n.mode,clip:n.clip,lockAlpha:n.lockAlpha,visible:n.visible,mask:cloneMask(n.mask),text:n.text?cloneText(n.text):null,grad:n.grad?cloneGrad(n.grad):null,array:n.array?JSON.parse(JSON.stringify(n.array)):null,arrBox:n.arrBox||null,styles:n.styles?JSON.parse(JSON.stringify(n.styles)):null,shape:n.shape?JSON.parse(JSON.stringify(n.shape)):null,fill:n.fill?JSON.parse(JSON.stringify(n.fill)):null});if(n.meshEdit){L.meshEdit=Object.assign({},n.meshEdit);L.baked=true;L.meshMap=n.meshEdit.key;}if(n._fillImg){L._fillImg={};for(const k in n._fillImg){const s=n._fillImg[k],t=makeTarget(s.w,s.h,8,true);blit(s,t,0,0,s.w,s.h,0,0);L._fillImg[k]=t;}}for(const k of mapKeysOf(n)){const c=mapSolid(n,k);if(mapLive(n,k))setMapLive(L,k);else if(c)setMapSolid(L,k,c);else blit(mapT(n,k),ensureMapTarget(L,k),0,0,doc.w,doc.h,0,0);}L.mapModes=Object.assign({},n.mapModes);L.target=L.maps[doc.map]||emptyFor(mapDepth(doc.map));if(L.text)L.text.bbox=layoutText(L.text);return L;}
+  if(n.type==='layer'){const L=newLayerObj(n.name+' copy',!!n.fill);Object.assign(L,{opacity:n.opacity,mode:n.mode,clip:n.clip,lockAlpha:n.lockAlpha,visible:n.visible,mask:cloneMask(n.mask),text:n.text?cloneText(n.text):null,grad:n.grad?cloneGrad(n.grad):null,array:n.array?JSON.parse(JSON.stringify(n.array)):null,arrBox:n.arrBox||null,styles:n.styles?JSON.parse(JSON.stringify(n.styles)):null,shape:n.shape?JSON.parse(JSON.stringify(n.shape)):null,fill:n.fill?JSON.parse(JSON.stringify(n.fill)):null});if(n.path)L.path=pathCopy(n.path);if(n.materialPaint)L.materialPaint=n.materialPaint;if(n.meshEdit){L.meshEdit=Object.assign({},n.meshEdit);L.baked=true;L.meshMap=n.meshEdit.key;}if(n._fillImg){L._fillImg={};for(const k in n._fillImg){const s=n._fillImg[k],t=makeTarget(s.w,s.h,8,true);blit(s,t,0,0,s.w,s.h,0,0);L._fillImg[k]=t;}}for(const k of mapKeysOf(n)){const c=mapSolid(n,k);if(mapLive(n,k))setMapLive(L,k);else if(c)setMapSolid(L,k,c);else blit(mapT(n,k),ensureMapTarget(L,k),0,0,doc.w,doc.h,0,0);}L.mapModes=Object.assign({},n.mapModes);L.target=L.maps[doc.map]||emptyFor(mapDepth(doc.map));if(L.text)L.text.bbox=layoutText(L.text);return L;}
   const G=newGroupObj(n.name+' copy');Object.assign(G,{opacity:n.opacity,mode:n.mode,visible:n.visible,open:n.open,mask:cloneMask(n.mask)});for(const c of n.children){const cc=cloneNode(c);cc.name=c.name;insertNode(cc,G);}return G;}
 function cmdDuplicate(){const tops=topSelected();if(!tops.length)return;
-  structOp('Duplicate',()=>{const clones=[];for(const n of tops){const c=cloneNode(n);insertNode(c,n.parent,n.parent.children.indexOf(n)+1);clones.push(c);}doc.sel=new Set(clones);doc.active=clones[clones.length-1];});}
+  structOp('Duplicate',()=>{const clones=[];for(const n of tops){const c=cloneNode(n);if(n.path){c.path=pathCopy(n.path);c._pathSamples=n._pathSamples;}insertNode(c,n.parent,n.parent.children.indexOf(n)+1);clones.push(c);}doc.sel=new Set(clones);doc.active=clones[clones.length-1];});if(doc.active?.path)buildBrushPanel();}
 function cmdDelete(){const tops=topSelected();if(!tops.length)return;
   const remaining=allLayers().filter(L=>!tops.some(t=>t===L||isAncestor(t,L)));if(!remaining.length){toast('Keep at least one layer in the document.');return;}
   structOp(tops.length>1?'Delete layers':'Delete',()=>{const ref=tops[0],p=ref.parent,i=p.children.indexOf(ref);for(const n of tops)detachNode(n);
@@ -230,6 +231,7 @@ function cmdFlatten(){const hid=hiddenNodes(doc.root,[]),count=hid.reduce((s,n)=
   openDialog({title:'Flatten image?',body:el('p',{class:'note',text:'Flattening combines everything visible into one layer and discards '+count+' hidden layer'+(count===1?'':'s')+'. You can undo this.'}),okLabel:'Flatten',onOk:go});}
 $('#lAdd').addEventListener('click',()=>cmdAddLayer());$('#lGroup').addEventListener('click',()=>{if(doc.sel.size>1||(doc.active&&topSelected().length))cmdGroup();else cmdNewGroup();});
 $('#lUngroup').addEventListener('click',cmdUngroup);$('#lDup').addEventListener('click',cmdDuplicate);$('#lDel').addEventListener('click',cmdDelete);
+$('#lClear').addEventListener('click',cmdClearLayer);
 $('#lMerge').addEventListener('click',cmdMerge);$('#lUp').addEventListener('click',()=>cmdMove(1));$('#lDown').addEventListener('click',()=>cmdMove(-1));
 /* right-click a layer: masks, layer styles (each adds that style and opens it), filters, array, and the usual commands */
 function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)&&!n.fx,grp=n.type==='group',anim=ui.mode==='anim';

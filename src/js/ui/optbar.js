@@ -3,12 +3,13 @@
    strength / exposure), flow, hardness, pen pressure, symmetry and the other maps the brush paints. Everything
    else stays in the Tool settings panel. */
 let optSliders={};
-const OPT_PAINT=['brush','erase','smudge','dodge','burn','heal','clone'];
+const OPT_PAINT=['brush','erase','smudge','dodge','burn','heal','clone','material'];
 function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren();bar.classList.remove('xfoptions');optSliders={};xfQuickFields=[];
   const t=ui.tool,title=$('#brushTitle')?$('#brushTitle').textContent:'';
   const slim=ui.mode==='p3d'&&OPT_PAINT.includes(t);bar.classList.toggle('slim',slim);
   if(!slim)bar.append(el('span',{class:'optname',text:title||t}));
   if(xf&&!xf.move){buildXfOptBar(bar);return;}
+  if(t==='pen'||t==='path'){bar.append(el('button',{class:'btn sm',text:'New path',onclick:pathNewButton}),el('button',{class:'btn sm',text:'Finish path',onclick:pathFinish}),el('span',{class:'optnote',text:'Click points · drag for curves · Enter to finish'}),el('button',{class:'btn sm',text:'Path settings',onclick:()=>showPanel('tool')}));return;}
   if(!OPT_PAINT.includes(t)||ui.mode==='convert'){bar.append(el('span',{class:'optnote',text:'More settings in the Tool settings panel.'}),el('button',{class:'btn sm',text:'Tool settings',onclick:()=>showPanel('tool')}));return;}
   const sm=t==='smudge',tonal=t==='dodge'||t==='burn';
   if(typeof activePreset!=='undefined')bar.append(el('button',{class:'optpreset',title:'Pick a brush in the Brushes panel',onclick:()=>showPanel('brushes')},

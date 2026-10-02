@@ -1,5 +1,8 @@
 # End-to-end tests
 
+- `paths-material.cjs` checks native mouse-driven material painting in 2D/3D, all channels in one undo, compact saved coverage, editable Pen handles, selections/fills/strokes, duplication, saved paths, camera-independent surface painting and UV seams. `GS_LARGE=1` with `GS_NATIVE_CDP` adds actual 8K/16K material brush and undo checks on hardware.
+- `bake-canvas.cjs` interleaves rotating viewport frames with GPU baking and compares baked pixels exactly. It also checks Clear layer undo, Preferences resizing/reopening, and stable 8K canvas mip filtering during strokes.
+
 - `paint-repairs.cjs` uses the offline desktop frontend, optionally a native WebView2 instance via `GS_NATIVE_CDP`. It checks source-size baked-map editing, the layer icon/context action, persistent return links through 2D/3D saves and set renames, undo/redo, 16-bit height, project isolation, actual 3D spot/source healing on a blank layer over a material, outline-only cursors, and reuse of studio shadows during colour strokes. `large-materials.cjs` additionally checks real floor-shadow reuse during native 8K/16K projected strokes when `GS_LARGE=1`.
 
 - `project-maps-psd.cjs` exercises the offline desktop frontend: New 3D Paint setup, 4K/8K/16K resolution labels, source-size map imports and file drops, map-driven normals/masks/materials, shelf assignment, per-set isolation, compressed project assets, save/reopen, actual canvas/material conversion flows, asset-only dirty tracking, and layered PSD placement/fit/undo. Set `GS_NATIVE_CDP` to an isolated desktop WebView2 instance; add `GS_PROJECT_LARGE=1` for real 8K/16K hardware checks with six materials and the Projects shelf open.

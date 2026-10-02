@@ -2,6 +2,8 @@
 
 ## Preferences (Ctrl+K)
 
+Drag the lower-right corner of Preferences to resize the window. Tabs, settings and Save/Cancel remain accessible; settings scroll inside the window. The next opening remembers its size.
+
 ![Preferences.](images/preferences-memory.png)
 *Preferences, with Memory and disk at the bottom (desktop app).*
 
@@ -29,6 +31,8 @@ Like Photoshop's memory and scratch disk settings.
 Everything takes effect when you press **Save**. The performance monitor's last line shows the memory in use.
 
 ## Tile mode (Shift+T)
+
+On large canvases, brush strokes now keep the same mip filtering as the idle view. Updating just the affected mip regions prevents the temporary blur and quality snap while painting at 8K.
 For seamless textures: strokes, blurs and patterns wrap across the edges, and the canvas shows neighbouring copies so seams are easy to spot. See also *Filter › Offset* and *Make seamless*.
 
 ## Bit depth
