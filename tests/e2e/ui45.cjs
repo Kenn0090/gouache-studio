@@ -22,7 +22,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>{const a=document.querySelector('#libBody').closest('section'),b=document.querySelector('#brushBody').closest('section');return a===b&&!!a.offsetParent&&document.querySelector('#brushBody').offsetParent!==null;}),'brush library and brush settings are one panel');
  await W(600);
  const sets=await p.evaluate(()=>__gs.library.map(s=>[s.name,s.presets.length]));
- ok(sets.some(s=>s[0]==='Basic media'&&s[1]>=10)&&sets.some(s=>s[0]==='Smoke and clouds'&&s[1]>=20)&&sets.reduce((a,s)=>a+s[1],0)>=100,'free brush packs are in the library '+JSON.stringify(sets));
+ ok(sets.some(s=>s[0]==='Basic media'&&s[1]>=15)&&sets.some(s=>s[0]==='Smoke and clouds'&&s[1]>=20)&&sets.reduce((a,s)=>a+s[1],0)>=100,'free brush packs are in the library '+JSON.stringify(sets));
  const bright=await p.evaluate(()=>{const s=__gs.library.find(s=>s.name==='Smoke and clouds'),t=s.presets[0].tip;let m=0;for(const v of t.alpha)m=Math.max(m,v);return [t.w,m];});
  ok(bright[0]===192&&bright[1]>100,'a pack tip carries a real picture');
  await p.click('#libBody .libset:nth-child(4) .tiles button');await W(200);
