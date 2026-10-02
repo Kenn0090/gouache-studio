@@ -1,5 +1,10 @@
 # What's new in Gouache Studio
 
+## 0.47.3
+
+- Show toolbar arrows only on tools with multiple alternatives: Spot/Source Healing, Dodge/Burn and Gradient/Fill. Each menu contains its own group; Brush, Eraser, Blend and Clone keep plain icons and normal clicks.
+- Healing menu choices switch and remember the actual Spot/Source mode in Paint and 3D Paint. Hold, drag-to-select, keyboard access and saved brush settings continue to work.
+
 ## 0.47.2
 
 - Add corner arrows to the painting tools. Click an arrow or hold the left mouse button on a tool to open a compact menu with tool icons, names and shortcuts. Switch by clicking, or hold, drag and release; each tool keeps its own brush settings.
