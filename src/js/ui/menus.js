@@ -46,7 +46,7 @@ const checked={ws_painting:()=>dk.ws==='painting',ws_texturing:()=>dk.ws==='text
 const pop=$('#menuPop');let openName=null;
 /* (0.31) Layer is a menu of its own again, like Photoshop; Maps lives at the end of the Image menu */
 MENUS.Image.push('-',['Maps','sub',MENUS.Maps]);delete MENUS.Maps;
-const menuBtns={};for(const name in MENUS){const b=el('button',{text:name,'aria-haspopup':'true','aria-expanded':'false'});b.addEventListener('click',()=>openName===name?closeMenu():openMenu(name));b.addEventListener('mouseenter',()=>{if(openName&&openName!==name)openMenu(name);});menuBtns[name]=b;$('#menus').append(b);}
+const menuBtns={};for(const name in MENUS){const b=el('button',{text:name,'aria-haspopup':'true','aria-expanded':'false'});b.addEventListener('click',()=>openName===name?closeMenu():openMenu(name));b.addEventListener('mouseenter',()=>{if(menuBtns[openName]&&openName!==name)openMenu(name);});menuBtns[name]=b;$('#menus').append(b);}
 /* a menu entry; ['Name','sub',[entries]] opens a fly-out to the right */
 const flyEl=el('div',{id:'menuSub',role:'menu',hidden:true});document.body.append(flyEl);
 function flyHide(){flyEl.hidden=true;}
@@ -70,7 +70,7 @@ function openMenu(name){closeMenu();const b=menuBtns[name];
   pop.replaceChildren(...menuList(MENUS[name],name));
   if(name==='File'&&typeof fileMenuExtras==='function')fileMenuExtras(pop);
   const r=b.getBoundingClientRect();pop.hidden=false;pop.style.left=Math.min(r.left,window.innerWidth-pop.offsetWidth-8)+'px';pop.style.top=(r.bottom+3)+'px';b.setAttribute('aria-expanded','true');openName=name;}
-function closeMenu(){flyHide();pop.hidden=true;if(!openName)return;menuBtns[openName]?.setAttribute('aria-expanded','false');openName=null;}
+function closeMenu(){flyHide();pop.hidden=true;if(pop.classList.contains('tool-menu'))toolMenuClosed();if(!openName)return;menuBtns[openName]?.setAttribute('aria-expanded','false');openName=null;}
 document.addEventListener('pointerdown',e=>{if(openName&&!pop.contains(e.target)&&!flyEl.contains(e.target)&&!$('#menus').contains(e.target))closeMenu();});
 pop.addEventListener('keydown',e=>{const items=[...pop.querySelectorAll('.mi:not([disabled])')];const i=items.indexOf(document.activeElement);
   if(e.key==='ArrowDown'){e.preventDefault();(items[i+1]||items[0]).focus();}if(e.key==='ArrowUp'){e.preventDefault();(items[i-1]||items[items.length-1]).focus();}});

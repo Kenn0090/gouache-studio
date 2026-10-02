@@ -1,5 +1,10 @@
 # What's new in Gouache Studio
 
+## 0.47.2
+
+- Add corner arrows to the painting tools. Click an arrow or hold the left mouse button on a tool to open a compact menu with tool icons, names and shortcuts. Switch by clicking, or hold, drag and release; each tool keeps its own brush settings.
+- Give Gradient/Paint bucket the same menu. Quick clicks and existing shortcuts keep working, with keyboard access and menus that fit either side of the toolbar in Paint and 3D Paint.
+
 ## 0.47.1
 
 - Reuse studio shadow depth during colour strokes over opaque materials, skip inactive key-light shadows, and limit alpha/displacement shadow refreshes while painting. Final shadows refresh when the stroke ends.

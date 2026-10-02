@@ -20,6 +20,10 @@ Pick a preset from the **Brush** panel, or change the settings:
 **Built-in presets:** Round, Soft air, Chalk, Ink, Flat bristle, Sponge, Foliage, Grass and Splatter, plus the blend presets Blender, Wet mix and Bristle blend.
 
 ## Each tool keeps its own brush
+The painting tools in the toolbar have a small corner arrow. **Click the arrow**, or **hold the left mouse button on the icon**, to open a compact menu of Brush, Eraser, Blend, Healing brush, Clone stamp, Dodge and Burn. Click a tool to switch, or keep holding, drag onto it and release. A quick click on the main icon still selects it normally. Click outside or press **Esc** to close the menu. With an icon focused, **Down** or **Right** opens it; use **Up/Down** and **Enter** to choose. The Gradient/Paint bucket group has the same arrow and hold menu.
+
+Blend works on the flat texture canvas; its menu entry is unavailable in the **3D-only** layout. Choose **Split** or **2D** to use it on the texture.
+
 The Brush, Eraser, Blend, Dodge/Burn, Healing brush and Clone stamp each remember their own brush and settings (size, opacity, tip, spacing, jitter…), also for next time. Switching tools no longer carries one brush across. Tick **All tools share the brush tip** (Tool settings) to keep the same tip (with its angle, roundness and flips) on every tool while the other settings stay per tool.
 
 Brushes go up to **5000 px** (**]** and the Size slider); Preferences › **Largest brush size** allows more.
