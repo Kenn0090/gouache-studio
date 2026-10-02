@@ -27,6 +27,12 @@ async function bpLoad(){if(bpDone)return;bpDone=true;
     renderLibrary();}catch(e){console.error('brush pack',e);}}
 /* our own: tips drawn in code, then settings that make them feel like pencil, charcoal, pastel, dry paint */
 const BP_TIPS={
+  /* dry ink: a blob with long fibre gaps and a ragged edge, so strokes come out streaky and scratchy like a scanned ink brush */
+  inkdry:genTip('Dry ink',128,128,(x,w,h,R)=>{x.beginPath();x.ellipse(w/2,h/2,w*.45,h*.4,0,0,7);x.fill();x.globalCompositeOperation='destination-out';
+    for(let i=0;i<34;i++){const py=h*.1+R()*h*.8,len=w*(.35+R()*.65),x0=R()>.5?-4:w-len+4;x.globalAlpha=.9+R()*.1;x.fillRect(x0,py,len,1.2+R()*3.2);}
+    for(let i=0;i<150;i++){x.globalAlpha=.5+R()*.5;x.fillRect(R()*w,R()*h,1+R()*3,1+R()*2);}}),
+  inkbrush:genTip('Ink brush',256,96,(x,w,h,R)=>{for(let i=0;i<40;i++){const py=h*.1+R()*h*.8,len=w*(.5+R()*.5),x0=(w-len)/2+(R()-.5)*w*.12;x.globalAlpha=.7+R()*.3;x.fillRect(x0,py,len,1.4+R()*3);}
+    x.globalCompositeOperation='destination-out';for(let i=0;i<45;i++){x.globalAlpha=.8+R()*.2;x.fillRect(R()*w,R()*h,8+R()*40,1+R()*1.6);}}),
   dry:genTip('Dry brush',160,256,(x,w,h,R)=>{for(let i=0;i<260;i++){const px=R()*w,len=h*(.5+R()*.5);x.globalAlpha=.2+R()*.6;x.fillRect(px,(h-len)/2+R()*10,1+R()*2.4,len);}}),
   stipple:genTip('Stipple',128,128,(x,w,h,R)=>{for(let i=0;i<60;i++){const a=R()*6.283,rr=Math.sqrt(R())*w*.46;x.globalAlpha=.5+R()*.5;x.beginPath();x.arc(w/2+Math.cos(a)*rr,h/2+Math.sin(a)*rr,1+R()*3,0,7);x.fill();}}),
   hatch:genTip('Hatching',192,192,(x,w,h)=>{x.globalAlpha=.9;x.lineWidth=2.5;for(let i=-4;i<9;i++){x.beginPath();x.moveTo(i*24,h);x.lineTo(i*24+h*.6,0);x.stroke();}}),
@@ -44,7 +50,10 @@ const BP_BASIC=[
   {name:'Oil paint',size:46,hardness:.6,spacing:.04,grain:.25,pSize:true,pOpacity:false,minSize:.5,smoothing:.35,flow:1},
   {name:'Wash',size:140,hardness:0,spacing:.08,flow:.12,buildup:true,pSize:false,pOpacity:true,smoothing:.4},
   {name:'Marker',size:20,hardness:1,spacing:.04,pSize:false,pOpacity:false,flow:.9,opacity:.85,smoothing:.4},
-  {name:'Fine liner',size:3,hardness:1,spacing:.03,pSize:true,minSize:.3,smoothing:.6}
+  {name:'Fine liner',size:3,hardness:1,spacing:.03,pSize:true,minSize:.3,smoothing:.6},
+  {name:'Dry ink pen',tip:BP_TIPS.inkdry,size:16,spacing:.05,followDir:true,pSize:true,minSize:.25,smoothing:.55,flow:1},
+  {name:'Dry ink brush',tip:BP_TIPS.inkbrush,size:48,spacing:.03,followDir:true,pSize:true,minSize:.35,smoothing:.5,flow:1},
+  {name:'Scratchy liner',tip:BP_TIPS.inkdry,size:9,spacing:.05,followDir:true,sizeJitter:.12,pSize:true,minSize:.2,smoothing:.6,grain:.35}
 ].map(p=>Object.assign({tool:'brush'},p));
 {const at=library.findIndex(s=>s.id==='builtin')+1;library.splice(at,0,{id:'bp_basic',name:'Basic media',builtin:true,presets:BP_BASIC,tips:[]});}
 setTimeout(bpLoad,0);

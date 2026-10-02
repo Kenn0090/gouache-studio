@@ -35,7 +35,7 @@ The brush cursor shows the tip's real shape (turn it off in Preferences), and th
 ## Brush library
 The **Brushes** panel holds the brush library and, under it, the settings of the brush you picked (size, spacing, scatter and the rest), all in one panel. In 3D Paint the settings keep their own panel beside Colour.
 
-Besides the built-in brushes there are **Basic media** (pencils, charcoal, pastel, dry brush, stipple, hatching, fur, oil paint, wash, marker, fine liner) and six sets of **particle and mark tips**: Dirt and scorch, Smoke and clouds, Lightning and sparks, Glints and stars, Swooshes and cracks, and Fire and flashes. The particle tips are 81 free (CC0) pictures from Kenney's Particle Pack and Smoke Particles ([kenney.nl](https://kenney.nl)); thank you, Kenney Vleugels. Paint with them as they are, or change size, spacing, scatter and angle jitter like any brush.
+Besides the built-in brushes there are **Basic media** (pencils, charcoal, pastel, dry brush, stipple, hatching, fur, oil paint, wash, marker, fine liner, and three scratchy dry-ink brushes) and six sets of **particle and mark tips**: Dirt and scorch, Smoke and clouds, Lightning and sparks, Glints and stars, Swooshes and cracks, and Fire and flashes. The particle tips are 81 free (CC0) pictures from Kenney's Particle Pack and Smoke Particles ([kenney.nl](https://kenney.nl)); thank you, Kenney Vleugels. Paint with them as they are, or change size, spacing, scatter and angle jitter like any brush.
 
 ## Your own brushes
 - **Save brush** stores the current settings in **My brushes**. That includes which extra maps the brush paints and their values (see [Maps and PBR](Maps-and-PBR.md)).
