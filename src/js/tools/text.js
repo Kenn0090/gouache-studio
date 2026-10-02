@@ -42,7 +42,7 @@ function setTextProp(k,v){ui.textStyle[k]=Array.isArray(v)?v.slice():v;const L=a
 /* on-canvas editor */
 const ted=el('textarea',{class:'texted',spellcheck:'false','aria-label':'Text',wrap:'off'});ted.hidden=true;stage.append(ted);
 let tedit=null;
-function positionEditor(){if(!tedit||!tedit.L.text)return;const t=tedit.L.text,b=t.bbox||layoutText(t),z=view.zoom,half=(b.lh-(b.asc+b.desc))/2;
+function positionEditor(){if(!tedit||!tedit.L.text)return;if(vxA())vxReset(true);const t=tedit.L.text,b=t.bbox||layoutText(t),z=view.zoom,half=(b.lh-(b.asc+b.desc))/2;
   Object.assign(ted.style,{left:(view.x+b.bx*z)+'px',top:(view.y+b.by*z)+'px',width:Math.max(b.bw,t.size*.8)*z+'px',height:(b.bh+b.lh*.2)*z+'px',
     paddingLeft:(b.pad+b.fx)*z+'px',paddingRight:b.pad*z+'px',paddingTop:Math.max(0,(b.pad-half)*z)+'px',paddingBottom:'0px',
     fontFamily:fontCss(t.font),fontSize:t.size*z+'px',fontWeight:t.bold?700:400,fontStyle:t.italic?'italic':'normal',lineHeight:b.lh*z+'px',letterSpacing:(t.tracking||0)*z+'px',textAlign:t.align});}

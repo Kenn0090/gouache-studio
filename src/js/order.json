@@ -138,6 +138,7 @@
     "ui/doc-tabs",
     "ui/stretch",
     "ui/rulers",
+    "ui/view-flip",
     "ui/welcome",
     "ui/setup",
     "ui/tool-menus",

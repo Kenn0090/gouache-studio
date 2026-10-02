@@ -60,7 +60,7 @@ function healMarker(){let m=document.getElementById('healMark');const on=(ui.too
   if(!on){if(m)m.hidden=true;return;}
   if(!m){m=el('div',{id:'healMark',class:'healmark','aria-hidden':'true'});stage.appendChild(m);}
   let [x,y]=heal.src;if(stroke&&heal.off&&(stroke.o.tool==='heal'||stroke.o.tool==='clone')&&!stroke.space&&ptr&&ptr.mode==='paint'){x=ptr.rx+heal.off[0];y=ptr.ry+heal.off[1];}
-  m.hidden=false;m.style.transform='translate('+(view.x+x*view.zoom-8)+'px,'+(view.y+y*view.zoom-8)+'px)';}
+  m.hidden=false;{const q=toScreen(x,y);m.style.transform='translate('+(q[0]-8)+'px,'+(q[1]-8)+'px)';}}
 
 /* ---- spot healing: find a clean place nearby with texture like the edge of the stroke ---- */
 function hlDown(src,x,y,w,h,st,max){const sw=Math.max(1,Math.ceil(w/st)),sh=Math.max(1,Math.ceil(h/st)),t=makeTarget(sw,sh,8,false);

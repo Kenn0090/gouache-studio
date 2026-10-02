@@ -15,7 +15,7 @@ const guides=()=>doc.guides||(doc.guides=[]);
 const rlH=el('canvas',{class:'ruler rh','aria-hidden':'true'}),rlV=el('canvas',{class:'ruler rv','aria-hidden':'true'}),
   rlC=el('button',{class:'ruler rc',title:'Ruler units',text:'px','aria-label':'Ruler units'}),gdC=el('canvas',{class:'guidecv','aria-hidden':'true'});
 stage.append(gdC,rlH,rlV,rlC);
-const rlVis=()=>rl.on&&ui.mode!=='p3d';
+const rlVis=()=>rl.on&&ui.mode!=='p3d'&&!vxA();
 function rlSync(){for(const e of [rlH,rlV,rlC])e.hidden=!rlVis();rlC.textContent=rl.unit;rl.sig='';}
 function toggleRulers(on){rl.on=on===undefined?!rl.on:!!on;rlStore();rlSync();toast(rl.on?'Rulers on (Ctrl+R hides them). Drag from a ruler to make a guide.':'Rulers off.');}
 function rlSize(c,w,h){const r=devicePixelRatio||1;if(c.width!==Math.round(w*r)||c.height!==Math.round(h*r)){c.width=Math.round(w*r);c.height=Math.round(h*r);}c.style.width=w+'px';c.style.height=h+'px';const g=c.getContext('2d');g.setTransform(r,0,0,r,0,0);return g;}
@@ -35,7 +35,7 @@ function rlDraw(g,len,horiz){const bg=rlCol('--panel'),ln=rlCol('--line-2'),tx=r
 function gdScreen(G){return G.o==='h'?view.y+G.p*view.zoom:view.x+G.p*view.zoom;}
 function gdDraw(){const W=stage.clientWidth,H=stage.clientHeight,g=rlSize(gdC,W,H);g.clearRect(0,0,W,H);
   const list=guides().slice();if(rl.drag&&rl.drag.g&&!list.includes(rl.drag.g))list.push(rl.drag.g);
-  if(!rl.show&&!rl.drag)return;
+  if((!rl.show&&!rl.drag)||vxA())return;
   for(const G of list){const s=Math.round(gdScreen(G))+.5,act=(rl.drag&&rl.drag.g===G)||rl.hover===G;g.strokeStyle=act?'#8fe3ff':'#29b6f6';g.lineWidth=1;if(rl.lock&&!act)g.setLineDash([4,3]);else g.setLineDash([]);
     g.beginPath();if(G.o==='h'){g.moveTo(0,s);g.lineTo(W,s);}else{g.moveTo(s,0);g.lineTo(s,H);}g.stroke();}
   if(rl.drag&&rl.drag.g){const G=rl.drag.g,u=G.p/rlPPU(rl.unit),t=(rl.unit==='px'?Math.round(u):u.toFixed(2))+' '+rl.unit,s=gdScreen(G);
@@ -53,7 +53,7 @@ function gdRecord(label,before){const after=JSON.stringify(guides());if(after===
   pushUndo({label,refs:[],undo(){doc.guides=JSON.parse(JSON.stringify(b));rl.sig='';},redo(){doc.guides=JSON.parse(JSON.stringify(a));rl.sig='';}});}
 function gdAdd(o,p){const before=JSON.stringify(guides());guides().push({o,p});gdRecord('New guide',before);rl.sig='';}
 function gdClear(){if(!guides().length){toast('There are no guides.');return;}const before=JSON.stringify(guides());doc.guides=[];gdRecord('Clear guides',before);rl.sig='';toast('Guides cleared.');}
-function gdAt(sx,sy){if(!rl.show)return null;let best=null,bd=GD_NEAR+1;for(const G of guides()){const d=Math.abs((G.o==='h'?sy:sx)-gdScreen(G));if(d<bd){bd=d;best=G;}}return best;}
+function gdAt(sx,sy){if(!rl.show||vxA())return null;let best=null,bd=GD_NEAR+1;for(const G of guides()){const d=Math.abs((G.o==='h'?sy:sx)-gdScreen(G));if(d<bd){bd=d;best=G;}}return best;}
 function gdPos(e,o){const r=stage.getBoundingClientRect(),s=o==='h'?e.clientY-r.top:e.clientX-r.left,p=(s-(o==='h'?view.y:view.x))/view.zoom;
   /* whole pixels; Shift snaps to the ruler's ticks */
   if(e.shiftKey){const st=rlStep()*rlPPU(rl.unit)/5;return Math.round(p/st)*st;}return Math.round(p);}
@@ -89,7 +89,7 @@ function dlgNewGuide(){let o='v',unit=rl.unit;const inp=el('input',{type:'number
   openDialog({title:'New guide',body,okLabel:'Add',onOk(){gdAdd(o,+inp.value*rlPPU(unit));if(!rl.show){rl.show=true;rlStore();}}});}
 /* snapping for selections, crop, shapes, gradients and arrays (painting never snaps) */
 const GD_SNAP_TOOLS=['crop','shape','gradient','array'];
-function gdSnapOn(){return rl.snap&&(GD_SNAP_TOOLS.includes(ui.tool)||isSelTool(ui.tool))&&ui.mode!=='p3d'&&!(ptr&&(ptr.mode==='selmove'||ptr.mode==='lasso'));}
+function gdSnapOn(){return rl.snap&&(GD_SNAP_TOOLS.includes(ui.tool)||isSelTool(ui.tool))&&ui.mode!=='p3d'&&!vxA()&&!(ptr&&(ptr.mode==='selmove'||ptr.mode==='lasso'));}
 function gdSnap(x,y){const tol=GD_SNAP/view.zoom;let bx=null,dx=tol,by=null,dy=tol;
   const xs=[0,doc.w],ys=[0,doc.h];if(rl.show)for(const G of guides())(G.o==='v'?xs:ys).push(G.p);
   for(const v of xs){const d=Math.abs(x-v);if(d<dx){dx=d;bx=v;}}for(const v of ys){const d=Math.abs(y-v);if(d<dy){dy=d;by=v;}}

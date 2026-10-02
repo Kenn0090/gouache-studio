@@ -4,7 +4,7 @@ const isSelTool=t=>SEL_TOOLS.includes(t);
 let polyLasso=null; /* polygonal lasso in progress: {pts,mode,last,time} */
 function modeFromMods(e){if(e.shiftKey&&e.altKey)return 'int';if(e.shiftKey)return 'add';if(e.altKey)return 'sub';return ui.selMode;}
 function cancelSelTool(){polyLasso=null;if(ptr&&(ptr.mode==='marq'||ptr.mode==='lasso'||ptr.mode==='selmove')){if(ptr.mode==='selmove'&&ptr.snap){blit(ptr.snap,sel.t,0,0,doc.w,doc.h,0,0);release(ptr.snap);}ptr=null;}drawSelOverlay();}
-const toScreen=(x,y)=>[view.x+x*view.zoom,view.y+y*view.zoom];
+const toScreen=(x,y)=>{const A=vxA();return A?[view.x+view.zoom*(A[0]*x+A[1]*y),view.y+view.zoom*(A[2]*x+A[3]*y)]:[view.x+x*view.zoom,view.y+y*view.zoom];};
 
 /* pointer down on the canvas with a selection tool (called from view-input) */
 function selPointerDown(e,ix,iy){
