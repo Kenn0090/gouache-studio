@@ -2,7 +2,7 @@
 
 ## Projects and Mesh maps
 
-The Material Library shelf includes **Projects**, for live layer materials, source textures and assets created in the current document, and **Mesh maps**, for the maps attached to the active 3D Paint texture set. Projects supports search, texture/material filters and thumbnail sizing. Click or drag an asset onto the layers to reuse it. Created project assets are included in `.gouache` and `.gouache3d` saves; they are kept compressed until used.
+In 3D Paint, the Material Library shelf includes **Projects**, for live layer materials, source textures and assets created in the current document, and **Mesh maps**, for the maps attached to the active texture set. Projects is available only in 3D Paint. It supports search, texture/material filters and thumbnail sizing. Click or drag an asset onto the layers to reuse it. Created project assets are included in `.gouache` and `.gouache3d` saves; they are kept compressed until used.
 
 Assign mesh maps through the **Maps** panel's labeled drop slots. Imported maps retain their source size and are available to masks, generators and material channels. See [3D Paint](3D-Paint.md) for setup and assignment.
 
