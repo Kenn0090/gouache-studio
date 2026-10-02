@@ -10,7 +10,7 @@ async function encodeP3Project(){if(ui.mode!=='p3d')throw new Error('Open the 3D
   try{for(let i=0;i<p3.sets.length;i++){const S=p3.sets[i];let bytes;
       if(i===p3.cur)bytes=new Uint8Array(await (await encodeGouacheNow({lean:true})).arrayBuffer());
       else if(S.state){const mine=docState();setDocState(S.state);try{bytes=new Uint8Array(await (await encodeGouacheNow({lean:true})).arrayBuffer());}finally{S.state=docState();setDocState(mine);}}
-      sets.push(Object.assign({name:S.name,material:p3Binding(S),hid:!!S.hidden},bytes?put(bytes):{empty:true}));}}
+      sets.push(Object.assign({name:S.name,material:p3Binding(S),meshEditID:S.meshEditID,hid:!!S.hidden},bytes?put(bytes):{empty:true}));}}
   finally{tabDocs.hold=false;requestRender(true);}
   let mesh=null;if(v3s().model==='imported'&&v3.imported){const c=await streamThrough(meshPack(v3.imported),'deflate-raw');mesh=Object.assign({name:v3.imported.name},put(c));}
   const head={app:'Gouache Studio',v:G3_VERSION,name:p3.name||'3D Paint',size:p3.size,cur:p3.cur,sets,mesh,v3d:doc.v3d,cam:Object.assign({},v3.cam),mir3:Object.assign({},mir3)};
@@ -38,7 +38,7 @@ async function openP3Project(buf,name,path){if(!isP3Proj(buf))throw new Error('T
   for(const rec of head.sets||[]){let st=null;
     if(!rec.empty){const b=buf.slice(data+rec.o,data+rec.o+rec.n),{head:h,data:d}=gfHead(b);blankTabDoc(h.w,h.h,rec.name);for(const L of everyNode())disposeLayer(L);doc.root.children=[];doc.count=0;
       await gfReadInto(b,h,d);doc.p3=true;doc.name=rec.name;hist.undo=[];hist.redo=[];st=docState();}
-    states.push(st);p3.sets.push({name:rec.name,material:rec.material||rec.name,state:st,tex:null,missing:false,hidden:!!rec.hid});}
+    states.push(st);p3.sets.push({name:rec.name,material:rec.material||rec.name,meshEditID:rec.meshEditID,state:st,tex:null,missing:false,hidden:!!rec.hid});}
   if(!p3.sets.length)throw new Error('This project has no texture sets.');
   disposeDocState(old);
   p3.cur=clamp(head.cur||0,0,p3.sets.length-1);const A=p3.sets[p3.cur];

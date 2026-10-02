@@ -7,9 +7,10 @@
    symmetry and the 3D mirror all shape it); the healing happens when you let go.
    How: S = the layer shifted by the offset; D = layer − S where it is known (outside the stroke), filled into
    the stroke smoothly with a pull-push pyramid; result = S + D inside the stroke. */
-const heal={mode:'spot',aligned:true,src:null,off:null,start:null};
+const heal={mode:'spot',aligned:true,sampleAll:true,src:null,off:null,start:null};
 try{const s=JSON.parse(localStorage.getItem('gs.heal')||'{}');if(s.mode==='spot'||s.mode==='source')heal.mode=s.mode;if(s.aligned===false)heal.aligned=false;}catch(e){}
-function healSave(){try{localStorage.setItem('gs.heal',JSON.stringify({mode:heal.mode,aligned:heal.aligned}));}catch(e){}}
+try{heal.sampleAll=JSON.parse(localStorage.getItem('gs.heal')||'{}').sampleAll!==false;}catch(e){}
+function healSave(){try{localStorage.setItem('gs.heal',JSON.stringify({mode:heal.mode,aligned:heal.aligned,sampleAll:heal.sampleAll}));}catch(e){}}
 const HL_GLSL=`uniform sampler2D uT; uniform sampler2D uM; uniform vec2 uOff; uniform int uWrap;
 bool srcAt(ivec2 q, out vec4 s){ ivec2 sz=textureSize(uT,0); ivec2 r=q+ivec2(uOff);
   if(uWrap==1) r=ivec2(mod(vec2(r),vec2(sz))); else if(any(lessThan(r,ivec2(0)))||any(greaterThanEqual(r,sz))){ s=vec4(0); return false; }
@@ -17,8 +18,8 @@ bool srcAt(ivec2 q, out vec4 s){ ivec2 sz=textureSize(uT,0); ivec2 r=q+ivec2(uOf
 float wAt(float m){ return 1.0-smoothstep(0.0,0.3,m); }
 `;
 /* the stroke's coverage, times the selection */
-const FS_HLMASK=`uniform sampler2D uStrokeTex; uniform sampler2D uSelTex; uniform int uUseSel;
-void main(){ ivec2 q=ivec2(gl_FragCoord.xy); float m=texelFetch(uStrokeTex,q,0).a; if(uUseSel==1) m*=texelFetch(uSelTex,q,0).r; o=vec4(m); }`;
+const FS_HLMASK=`uniform sampler2D uStrokeTex; uniform sampler2D uSelTex; uniform int uUseSel; uniform float uOpacity;
+void main(){ ivec2 q=ivec2(gl_FragCoord.xy); float m=texelFetch(uStrokeTex,q,0).a*uOpacity; if(uUseSel==1) m*=texelFetch(uSelTex,q,0).r; o=vec4(m); }`;
 /* first step down: the known differences (weighted) or the weights */
 const FS_HLPULL0=HL_GLSL+`uniform int uWhich;
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy)*2, sz=textureSize(uT,0); vec4 a=vec4(0); float ws=0.0;
@@ -33,11 +34,11 @@ const FS_HLPUSH=`uniform sampler2D uA; uniform sampler2D uB; uniform sampler2D u
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy); float w=texelFetch(uB,p,0).r; vec4 v=w>1e-6?texelFetch(uA,p,0)/w:vec4(0);
   if(uHasC==0){ o=v; return; } vec4 up=texture(uC,gl_FragCoord.xy*0.5/vec2(textureSize(uC,0))); o=mix(up,v,clamp(w*2.0,0.0,1.0)); }`;
 /* the result, full size */
-const FS_HLFINAL=HL_GLSL+`uniform sampler2D uC;
-void main(){ ivec2 q=ivec2(gl_FragCoord.xy); vec4 t=texelFetch(uT,q,0); float m=texelFetch(uM,q,0).r; vec4 s;
-  if(m<=0.0||!srcAt(q,s)){ o=t; return; }
+const FS_HLFINAL=HL_GLSL+`uniform sampler2D uC; uniform sampler2D uDst;
+void main(){ ivec2 q=ivec2(gl_FragCoord.xy); vec4 t=texelFetch(uT,q,0),dst=texelFetch(uDst,q,0); float m=texelFetch(uM,q,0).r; vec4 s;
+  if(m<=0.0||!srcAt(q,s)){ o=dst; return; }
   vec4 up=texture(uC,gl_FragCoord.xy*0.5/vec2(textureSize(uC,0))); vec4 d=mix(up,t-s,clamp(wAt(m)*2.0,0.0,1.0)); vec4 r=s+d;
-  r.a=clamp(r.a,0.0,1.0); r.rgb=clamp(r.rgb,vec3(0.0),vec3(r.a)); o=mix(t,r,m); }`;
+  r.a=clamp(r.a,0.0,1.0); r.rgb=clamp(r.rgb,vec3(0.0),vec3(r.a)); o=mix(dst,r,m); }`;
 /* a small copy of part of a target for the search: block average (uMax 0) or block maximum (uMax 1) */
 const FS_HLDOWN=`uniform sampler2D uSrc; uniform vec2 uOrg; uniform int uSt; uniform int uMax;
 void main(){ ivec2 sz=textureSize(uSrc,0), b=ivec2(uOrg)+ivec2(floor(gl_FragCoord.xy))*uSt; vec4 a=vec4(0); float n=0.0; int k=max(1,uSt/8);
@@ -93,27 +94,31 @@ function healFindOffset(T,M,bb){const W=doc.w,H=doc.h;
 
 /* ---- the healing itself ---- */
 function hlPyramid(W,H){const lv=[];let w=W,h=H;while(w>2||h>2){w=Math.max(1,Math.ceil(w/2));h=Math.max(1,Math.ceil(h/2));const d=canFloat?16:8;lv.push({w,h,a:makeTarget(w,h,d,false),b:makeTarget(w,h,d,false),c:makeTarget(w,h,d,false)});if(lv.length>14)break;}return lv;}
-function hlHealOne(T,M,off,lv){const PR=hlProgs(),old=acquireD(T.depth);blit(T,old,0,0,T.w,T.h,0,0);
-  const U={uT:old.tex,uM:M.tex,uOff:off,uWrap:{int:doc.wrap?1:0}};
+function hlHealOne(T,M,off,lv,source){const PR=hlProgs(),old=acquireD(T.depth);blit(T,old,0,0,T.w,T.h,0,0);
+  const U={uT:(source||old).tex,uM:M.tex,uOff:off,uWrap:{int:doc.wrap?1:0}};
   run(PR.pull0,lv[0].a,Object.assign({uWhich:{int:0}},U));run(PR.pull0,lv[0].b,Object.assign({uWhich:{int:1}},U));
   for(let k=1;k<lv.length;k++){run(PR.pull,lv[k].a,{uA:lv[k-1].a.tex});run(PR.pull,lv[k].b,{uA:lv[k-1].b.tex});}
   for(let k=lv.length-1;k>=0;k--)run(PR.push,lv[k].c,{uA:lv[k].a.tex,uB:lv[k].b.tex,uC:k<lv.length-1?lv[k+1].c.tex:dummy,uHasC:{int:k<lv.length-1?1:0}});
-  run(PR.fin,T,Object.assign({uC:lv[0].c.tex},U));return old;}
+  run(PR.fin,T,Object.assign({uC:lv[0].c.tex,uDst:old.tex},U));return old;}
+/* Never sample the temporary white stroke preview, and keep material data off the destination outside the stroke. */
+function healVisibleMap(k){const st=stroke;stroke=null;try{return compositeMap(k);}finally{stroke=st;}}
 /* called by endStroke for the heal tool, instead of the normal merge; returns the undo parts of the other maps */
 function healApply(s,x0,y0,bw,bh,record){const L=s.L,W=doc.w,H=doc.h,parts=[];if(bw<=0||bh<=0)return {parts,ok:false};
-  const M=acquireD(doc.depth);run(hlProgs().mask,M,Object.assign({uStrokeTex:strokeT.tex},selU(s.o)));
-  let off=heal.mode==='source'?heal.off:healFindOffset(L.target,M,[x0,y0,x0+bw,y0+bh]);
-  if(!off){release(M);toast(heal.mode==='source'?'Alt+click where to copy from first.':'No clean area nearby to copy from. Try a smaller spot, or the Healing brush (Alt+click a source).');return {parts,ok:false};}
+  const M=acquireD(doc.depth);run(hlProgs().mask,M,Object.assign({uStrokeTex:strokeT.tex,uOpacity:s.o.healOpacity??s.o.opacity},selU(s.o)));
+  const sample=heal.sampleAll&&!L.maskOf&&!L.quick,source=sample?healVisibleMap(doc.map):null;
+  let off=heal.mode==='source'?heal.off:healFindOffset(source||L.target,M,[x0,y0,x0+bw,y0+bh]);
+  if(!off){if(source)release(source);release(M);toast(heal.mode==='source'?'Alt+click where to copy from first.':'No clean area nearby to copy from. Try a smaller spot, or the Healing brush (Alt+click a source).');return {parts,ok:false};}
   const lv=hlPyramid(W,H),maps=!L.maskOf&&!L.quick&&L.maps?Object.keys(L.maps).filter(k=>{const t=L.maps[k];return t&&!t.empty&&t.tex;}):[];
   try{
-    const primary=hlHealOne(L.target,M,off,lv);release(primary);
-    for(const k of maps){const T=L.maps[k];if(T===L.target)continue;const old=hlHealOne(T,M,off,lv);
-      if(record)parts.push({k,before:captureRegion(old,x0,y0,bw,bh),after:captureRegion(T,x0,y0,bw,bh)});release(old);}
-  }finally{for(const l of lv){disposeTarget(l.a);disposeTarget(l.b);disposeTarget(l.c);}release(M);}
+    const primary=hlHealOne(L.target,M,off,lv,source);release(primary);
+    for(const k of maps){const T=L.maps[k];if(T===L.target)continue;const src=sample?healVisibleMap(k):null;let old;
+      try{old=hlHealOne(T,M,off,lv,src);if(record)parts.push({k,before:captureRegion(old,x0,y0,bw,bh),after:captureRegion(T,x0,y0,bw,bh)});}finally{if(src)release(src);if(old)release(old);}}
+  }finally{for(const l of lv){disposeTarget(l.a);disposeTarget(l.b);disposeTarget(l.c);}if(source)release(source);release(M);}
   heal.last={off:off.slice()};return {parts,ok:true};}
 
 /* ---- tool settings ---- */
 function buildHealPanel(box){$('#brushTitle').textContent=heal.mode==='spot'?'Spot healing brush':'Healing brush';
+  box.append(chk('hlSample','Sample visible layers',heal.sampleAll,v=>{heal.sampleAll=v;healSave();}));
   box.append(seg([['spot','Spot','Paint over a flaw: it takes clean texture from nearby by itself'],['source','Healing','Alt+click where to copy from, then paint']],heal.mode,v=>{heal.mode=v;healSave();buildBrushPanel();if(typeof buildOptBar==='function')buildOptBar();healMarker();},'Heal mode'));
   if(heal.mode==='source')box.append(el('div',{class:'chips'},chk('hlAl','Aligned',heal.aligned,v=>{heal.aligned=v;heal.off=null;healSave();})),
     el('p',{class:'note',text:heal.src?'Alt+click to pick a new source. Aligned: the source moves along with each stroke.':'Alt+click where to copy from (on the canvas or the model).'}));

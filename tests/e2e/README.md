@@ -1,5 +1,7 @@
 # End-to-end tests
 
+- `paint-repairs.cjs` uses the offline desktop frontend, optionally a native WebView2 instance via `GS_NATIVE_CDP`. It checks source-size baked-map editing, the layer icon/context action, persistent return links through 2D/3D saves and set renames, undo/redo, 16-bit height, project isolation, actual 3D spot/source healing on a blank layer over a material, outline-only cursors, and reuse of studio shadows during colour strokes. `large-materials.cjs` additionally checks real floor-shadow reuse during native 8K/16K projected strokes when `GS_LARGE=1`.
+
 - `project-maps-psd.cjs` exercises the offline desktop frontend: New 3D Paint setup, 4K/8K/16K resolution labels, source-size map imports and file drops, map-driven normals/masks/materials, shelf assignment, per-set isolation, compressed project assets, save/reopen, actual canvas/material conversion flows, asset-only dirty tracking, and layered PSD placement/fit/undo. Set `GS_NATIVE_CDP` to an isolated desktop WebView2 instance; add `GS_PROJECT_LARGE=1` for real 8K/16K hardware checks with six materials and the Projects shelf open.
 
 Each `*.cjs` file drives the web build (`dist-web/index.html?debug`) in Chromium with a software GPU (SwiftShader) and checks results by reading pixels back. The `?debug` flag exposes `window.__gs` hooks (see `src/js/core/boot.js`).

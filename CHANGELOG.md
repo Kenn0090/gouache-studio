@@ -1,5 +1,12 @@
 # What's new in Gouache Studio
 
+## 0.47.1
+
+- Reuse studio shadow depth during colour strokes over opaque materials, skip inactive key-light shadows, and limit alpha/displacement shadow refreshes while painting. Final shadows refresh when the stroke ends.
+- Maps gains **Edit in 2D**. The source-size Paint document has a marked mesh-map layer and a **Send to 3D Paint as mesh map** context action. Return links persist through saves and texture-set renames; updates refresh generators/materials, support undo/redo, and preserve source dimensions and 16-bit height precision.
+- Heal samples visible layers by default, allowing repairs on a blank layer above a material. Spot and Alt-click source healing retain coverage outside the repair, respect opacity, and support undo/redo.
+- Remove the centre crosshair from Paint and 3D Paint brush cursors while retaining the brush outline.
+
 ## 0.47.0
 
 - Twenty new Drawing and painting brushes: graphite pencils, charcoal, pastel, watercolour, gouache, acrylic, oil, palette knife, fan, ink, marker and crayon.

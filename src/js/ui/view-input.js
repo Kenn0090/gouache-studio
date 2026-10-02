@@ -14,7 +14,7 @@ $('#tileBtn').addEventListener('click',toggleTile);
 
 const bc=$('#brushCursor');let lastPos=null,spaceDown=false,ptr=null;
 function refreshCursor(){if(typeof healMarker==='function')healMarker();if(!lastPos){bc.hidden=true;return;}const paint=['brush','erase','smudge','dodge','burn','heal','clone'].includes(ui.tool)&&!spaceDown&&!(ptr&&ptr.mode==='pan');
-  if(!paint){bc.hidden=true;return;}const d=Math.max(3,brush.size*view.zoom);bc.hidden=false;bc.style.width=d+'px';bc.style.height=d+'px';tipCursor(bc,d);bc.style.transform='translate('+(lastPos[0]-d/2)+'px,'+(lastPos[1]-d/2)+'px)';}
+  if(!paint){bc.hidden=true;if(cv.style.cursor==='none')cv.style.cursor='';return;}cv.style.cursor='none';const d=Math.max(3,brush.size*view.zoom);bc.hidden=false;bc.style.width=d+'px';bc.style.height=d+'px';tipCursor(bc,d);bc.style.transform='translate('+(lastPos[0]-d/2)+'px,'+(lastPos[1]-d/2)+'px)';}
 /* Preferences › Show the brush tip's shape as the cursor: the tip's outline, at the brush size, turned and squashed like the dabs */
 const tipOutlineCache=new Map();
 function tipOutline(tip,d){const n=clamp(Math.round(d/4)*4,8,512),key=tip.id+':'+n;let c=tipOutlineCache.get(key);if(c)return c;
@@ -43,7 +43,7 @@ function paintOpts(et){
   if(et.isMask){const g=lum3(o.color);o.color=[g,g,g];o.noTint=true;/* a mask's Paint row really erases (back to what is below it) */if(o.tool==='erase'&&!et.L.mrow){o.tool='brush';o.color=(et.erase||[1,1,1]).slice();}}
   o.extras=strokeExtras(o,et);
   /* the heal brush: a faint grey trail while painting; the healing happens on release, on every map */
-  if(o.tool==='heal')Object.assign(o,{color:[.6,.6,.6],opacity:.45,noTint:true,extras:[],buildup:false,hueJitter:0,satJitter:0,valJitter:0,chan:null});
+  if(o.tool==='heal')Object.assign(o,{color:[.6,.6,.6],healOpacity:o.opacity,opacity:.45,noTint:true,extras:[],buildup:false,hueJitter:0,satJitter:0,valJitter:0,chan:null});
   if(o.tool==='clone')Object.assign(o,{noTint:true,extras:[],buildup:false,hueJitter:0,satJitter:0,valJitter:0,chan:null});
   if(ui.tool!=='erase'&&(ui.tool==='brush'||brush.charge>0))pushRecent(ui.fg);
   return o;}

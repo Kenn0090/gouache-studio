@@ -117,6 +117,8 @@ With the camera and model still, new grain frames reuse the rendered scene and i
 
 The Shader panel and viewport Settings offer **Soft studio**, **Product** and **Neutral** presets. Adjust the key-light colour, Fill light and Rim light. **Mesh shadows** uses a cached directional shadow map; moving the camera reuses it. Lighting, displacement and opacity changes refresh it when needed.
 
+Colour strokes over opaque material layers also reuse the shadow map. Alpha and displacement strokes refresh shadows at most about every 80 milliseconds while painting, with a final refresh on release. Without an active key light or shadow floor, shadow rendering is skipped.
+
 Enable **Transparent shadow floor** to receive the mesh's shadow on an otherwise invisible floor. Its starting height follows the bottom of the mesh. **Floor height** moves it above or below that point; **Place floor under mesh** restores the automatic position. **Shadow direction** turns the key light around the model and **Light height** changes the shadow's length. **Floor shadow softness**, **Shadow opacity** and the colour swatch control its appearance separately from the mesh's shadow softness. The floor appears in the real-time Lit viewport and its PNG screenshots. The separate Ray traced view and Render window use their existing renderer.
 
 The Skin shader has **Natural**, **Soft** and **Wax** presets, with Surface roughness, Scatter depth and Transmission controls alongside scatter colour, strength, softness and oil. An assigned Thickness map varies transmission across the surface. These are real-time approximations for viewing materials.

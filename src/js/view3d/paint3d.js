@@ -315,6 +315,7 @@ function p3MeshLayer(k){const M=doc.meshMaps,L=newLayerObj(k==='normal'?'Mesh no
   L.meshMap=k;L.baked=true;return L;}
 function p3MeshMapsBox(){const M=doc.meshMaps||{},ks=Object.keys(M);if(!ks.length)return el('p',{class:'note',text:'None yet. Press Bake mesh maps (or bake in the Bake tab and press Send to 3D Paint): the baked maps land here, per texture set.'});
   return el('div',{class:'p3mm'},...ks.map(k=>el('div',{class:'p3mmrow'},el('span',{text:msMeshName(k)}),
+    el('button',{class:'btn sm',text:'Edit in 2D',onclick:()=>p3MapEdit(k)}),
     el('button',{class:'btn sm',text:'Add as layer',onclick:()=>{const L=p3MeshLayer(k);structOp('Add mesh map layer',()=>{insertNode(L,doc.root);selectOnly(L);});changed(L);}}))));}
 /* ---- a 3D Paint layer to the Paint canvas and back (0.25) ----
    Right-click a layer in 3D Paint › Edit in the Paint canvas: its content (every map, without its mask, opacity
