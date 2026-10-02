@@ -5,7 +5,7 @@
 const KB_EXTRA=[
   ['tool:pen','Pen','Tools','P',()=>setTool('pen')],['tool:path','Surface Path','Tools','',()=>setTool('path')],['tool:material','Material brush','Tools','',()=>setTool('material')],
   ['tool:brush','Brush','Tools','B',()=>setTool('brush')],['tool:erase','Eraser','Tools','E',()=>setTool('erase')],['tool:smudge','Blend / smudge','Tools','S',()=>setTool('smudge')],['tool:heal','Healing brush','Tools','J',()=>setTool('heal')],['tool:clone','Clone stamp','Tools','Y',()=>setTool('clone')],
-  ['tool:picker','Eyedropper','Tools','I',()=>setTool('picker')],['tool:hand','Hand','Tools','H',()=>setTool('hand')],['tool:move','Move','Tools','V',()=>setTool('move')],
+  ['tool:liquify','Liquify','Tools','Ctrl+Shift+X',()=>setTool('liquify')],['tool:picker','Eyedropper','Tools','I',()=>setTool('picker')],['tool:hand','Hand','Tools','H',()=>setTool('hand')],['tool:move','Move','Tools','V',()=>setTool('move')],
   ['tool:gradient','Gradient / fill','Tools','G',()=>setTool(ui.fillKind||'gradient')],['tool:dodge','Dodge / burn','Tools','O',()=>setTool(ui.tonal||'dodge')],['tool:crop','Crop','Tools','C',()=>setTool('crop')],
   ['tool:text','Text','Tools','T',()=>setTool('text')],['tool:shape','Shape','Tools','U',()=>setTool('shape')],['tool:array','Array','Tools','',()=>setTool('array')],['tool:marquee','Marquee','Tools','M',()=>setTool('marquee')],['tool:lasso','Lasso','Tools','L',()=>setTool('lasso')],['tool:wand','Magic wand','Tools','W',()=>setTool('wand')],
   ['paint:smaller','Brush smaller','Painting','[',()=>kbBrushSize(-1)],['paint:bigger','Brush bigger','Painting',']',()=>kbBrushSize(1)],
@@ -38,7 +38,7 @@ function kbHandle(e){const combo=kbCombo(e);if(!combo)return false;
   return false;}
 /* the editor's categories (0.25): menus and tools sorted into groups that are easier to scan */
 const KB_CATS=[['tools-paint','Painting tools'],['tools-sel','Selection tools'],['tools-other','Other tools'],['brush','Brush and colour'],['File','Files'],['Edit','Edit and history'],['Image','Image and canvas'],['Maps','Maps'],['Layer','Layers'],['Select','Selections'],['Adjust','Adjustments'],['Filter','Filters'],['View','View and 3D'],['Window','Panels and workspaces']];
-function kbCat(c){const id=c[0];if(id.startsWith('tool:')){const t=id.slice(5);return ['brush','erase','smudge','heal','clone','dodge','picker','gradient'].includes(t)?'tools-paint':['marquee','lasso','wand'].includes(t)?'tools-sel':'tools-other';}
+function kbCat(c){const id=c[0];if(id.startsWith('tool:')){const t=id.slice(5);return ['brush','erase','smudge','heal','clone','liquify','dodge','picker','gradient'].includes(t)?'tools-paint':['marquee','lasso','wand'].includes(t)?'tools-sel':'tools-other';}
   if(id.startsWith('paint:'))return 'brush';return KB_CATS.some(k=>k[0]===c[2])?c[2]:'Edit';}
 function dlgKeys(){const list=el('div',{class:'kblist'}),search=el('input',{type:'search',placeholder:'Search all commands or keys',class:'kbsearch','aria-label':'Search commands'}),cats=el('div',{class:'kbcats',role:'tablist','aria-label':'Categories'});
   let capture=null,cat='all',pending=null;

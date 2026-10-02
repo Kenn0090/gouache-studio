@@ -1,5 +1,12 @@
 # What's new in Gouache Studio
 
+## 0.50.0
+
+Liquify: push, pinch, bloat and twirl the paint with a brush, like Clip Studio Paint.
+
+- **Liquify tool** (toolbar button after Clone stamp, or Ctrl+Shift+X). Modes: **Push** (drag the paint along), **Pinch** and **Bloat** (hold to pull in or swell out), **Twirl** clockwise or counter-clockwise (hold to swirl) and **Restore** (softly undoes the change you made in this stroke). Size and Strength are in the bar above the canvas.
+- Every map of the layer moves together, so a material stays in step. A selection limits the effect, and each stroke is one undo step.
+
 ## 0.49.0
 
 Big PSD files open, the picture can be turned and flipped, and Transform warp has its own key. This release also carries the three dry-ink brushes from 0.45.2, which never went out because the version number had slipped back.

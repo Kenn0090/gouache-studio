@@ -57,5 +57,5 @@ MENUS.View.splice(MENUS.View.indexOf('-')+0,0,'-',['Rotate view left 15°','view
 MENUS.Image.splice(MENUS.Image.findIndex(i=>i[1]==='cropSel')+1,0,'-',['Rotate canvas 90° clockwise','canvasCW'],['Rotate canvas 90° counter-clockwise','canvasCCW'],['Rotate canvas 180°','canvas180'],['Flip canvas left-right','canvasFH','Ctrl+Alt+Shift+H'],['Flip canvas top-bottom','canvasFV','Ctrl+Alt+Shift+V']);
 MENUS.Edit.splice(MENUS.Edit.findIndex(i=>i[1]==='freeTransform')+1,0,['Transform warp','xfWarp','Ctrl+Alt+T'],['Flip layer left-right','flipLH','Ctrl+Alt+H'],['Flip layer top-bottom','flipLV','Ctrl+Alt+V']);
 /* these keys are run by the shortcut editor itself (the other built-in keys live in their own handlers) */
-const KB_AUTO=['viewRotL','viewRotR','viewFlip','viewRotReset','canvasFH','canvasFV','flipLH','flipLV','xfWarp'];
+const KB_AUTO=['tool:liquify','viewRotL','viewRotR','viewFlip','viewRotReset','canvasFH','canvasFV','flipLH','flipLV','xfWarp'];
 kbCmds=null;

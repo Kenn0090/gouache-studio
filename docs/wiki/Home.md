@@ -17,6 +17,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 - [Selections, transforms and crop](Selections-transforms-and-crop.md)
 - [Rulers and guides](Rulers-and-guides.md): rulers in pixels, inches or centimetres, guides, snapping
 - [Rotate and flip](Rotate-and-flip)
+- [Liquify](Liquify)
 - [Fills and gradients](Fills-and-gradients.md)
 - [Cage painting and symmetry](Cage-painting-and-symmetry.md): paint through a cage onto slanted or curved shapes; mirror and radial symmetry
 
