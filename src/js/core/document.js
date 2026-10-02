@@ -6,7 +6,7 @@ const PSD_KEYS=['norm','mul ','scrn','over','dark','lite','div ','idiv','hLit','
 const PS_MODE={'normal':0,'darken':4,'multiply':1,'color burn':7,'linear burn':17,'darker color':18,'lighten':5,'screen':2,'color dodge':6,'linear dodge':12,'lighter color':19,
   'overlay':3,'soft light':9,'hard light':8,'vivid light':20,'linear light':21,'pin light':22,'hard mix':23,'difference':10,'exclusion':11,'subtract':24,'divide':25,'hue':13,'saturation':14,'color':15,'luminosity':16};
 const doc={w:1024,h:1024,depth:8,wrap:false,name:'Untitled',root:{type:'group',children:[],isRoot:true,visible:true,opacity:1,mode:-1},active:null,sel:new Set(),count:0,maps:['base'],map:'base',view:'base',mapDef:{},nrmStr:8,light:{az:135,el:40},workflow:'metal'};
-const view={zoom:1,x:0,y:0};
+const view={zoom:1,x:0,y:0,rot:0,flip:false};
 let compOut=null,strokeT=null,beforeT=null,scratchT=null,previewT=null;
 let stroke=null, preview=null, dirtyComp=true, raf=0, lid=0, groupCount=0;
 const hist={undo:[],redo:[]};

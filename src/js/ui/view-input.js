@@ -3,12 +3,12 @@ const work=$('#work');
 /* (0.37) in 3D Paint the 3D view is on the left and the flat texture on the right: how far the flat view starts from the left, in canvas pixels */
 function stageOx(d){const w=document.getElementById('work');if(!w||!w.classList.contains('p3left')||typeof v3==='undefined'||!v3.on||v3.pop||w.classList.contains('v3full'))return 0;const p=document.getElementById('pane3d');return p?p.clientWidth*(d===undefined?dprNow():d):0;}
 function resizeGL(){const d=Math.min(window.devicePixelRatio||1,typeof qual==='function'?qual('dpr'):2);const w=Math.max(1,Math.round(work.clientWidth*d)),h=Math.max(1,Math.round(work.clientHeight*d));if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}requestRender();}
-function fit(){const W=stage.clientWidth,H=stage.clientHeight,[DW,DH]=viewDims(),pad=doc.wrap&&!ui.cageFlat?90:48;view.zoom=clamp(Math.min((W-pad)/DW,(H-pad)/DH),.02,32);view.x=(W-DW*view.zoom)/2;view.y=(H-DH*view.zoom)/2;updateStatus();refreshCursor();requestRender();}
-function actual(){const W=stage.clientWidth,H=stage.clientHeight,[DW,DH]=viewDims();view.zoom=1;view.x=Math.round((W-DW)/2);view.y=Math.round((H-DH)/2);updateStatus();refreshCursor();requestRender();}
+function fit(){const W=stage.clientWidth,H=stage.clientHeight,[DW,DH]=viewDims(),pad=doc.wrap&&!ui.cageFlat?90:48,[BW,BH]=vxBox(DW,DH);view.zoom=clamp(Math.min((W-pad)/BW,(H-pad)/BH),.02,32);vxCentre(W,H,DW,DH);updateStatus();refreshCursor();requestRender();}
+function actual(){const W=stage.clientWidth,H=stage.clientHeight,[DW,DH]=viewDims();view.zoom=1;vxCentre(W,H,DW,DH);if(!vxA()){view.x=Math.round(view.x);view.y=Math.round(view.y);}updateStatus();refreshCursor();requestRender();}
 function zoomAt(f,sx,sy){const z=clamp(view.zoom*f,.02,64),k=z/view.zoom;view.x=sx-(sx-view.x)*k;view.y=sy-(sy-view.y)*k;view.zoom=z;updateStatus();refreshCursor();requestRender();}
-function toImage(cx,cy){const r=stage.getBoundingClientRect();return [(cx-r.left-view.x)/view.zoom,(cy-r.top-view.y)/view.zoom];}
+function toImage(cx,cy){const r=stage.getBoundingClientRect(),vx=(cx-r.left-view.x)/view.zoom,vy=(cy-r.top-view.y)/view.zoom,A=vxA();if(!A)return [vx,vy];const f=view.flip?-1:1,c=Math.cos(view.rot),s=Math.sin(view.rot);return [f*(c*vx+s*vy),-s*vx+c*vy];}
 function updateStatus(){if(typeof p3ResolutionSync==='function')p3ResolutionSync();$('#stDoc').textContent=doc.w+' × '+doc.h+' px';$('#stDepth').textContent=doc.depth+'-bit';$('#stDepth').title=doc.depth===16?'16 bits per channel (half float). Click for 8-bit.':(canFloat?'8 bits per channel. Click for 16-bit.':'8 bits per channel. 16-bit is not supported on this GPU.');
-  $('#stZoom').textContent=(view.zoom*100).toFixed(view.zoom<.1?1:0)+'%';$('#stFmt').textContent='WebGL2 · '+(doc.depth===16?'RGBA16F':'RGBA8')+' layers';$('#docName').textContent=doc.name;updateTitle();if(typeof fileLocUpdate==='function')fileLocUpdate();}
+  $('#stZoom').textContent=(view.zoom*100).toFixed(view.zoom<.1?1:0)+'%'+(vxA()?' · '+vxDeg()+'°'+(view.flip?' flipped':''):'');$('#stFmt').textContent='WebGL2 · '+(doc.depth===16?'RGBA16F':'RGBA8')+' layers';$('#docName').textContent=doc.name;updateTitle();if(typeof fileLocUpdate==='function')fileLocUpdate();}
 $('#stDepth').addEventListener('click',()=>setDepth(doc.depth===16?8:16));
 $('#tileBtn').addEventListener('click',toggleTile);
 
@@ -50,6 +50,7 @@ function paintOpts(et){
 cv.addEventListener('pointerdown',e=>{
   if(ptr)return;closeMenu();const pan=e.button===1||spaceDown||ui.tool==='hand';if(!pan&&e.button!==0)return;
   e.preventDefault();cv.setPointerCapture(e.pointerId);showPressure(e);
+  if(rotHold||(spaceDown&&e.shiftKey)){ptr=vxDragStart(e);stage.classList.add('panning');return;}
   if(pan){ptr={mode:'pan',id:e.pointerId,sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y};stage.classList.add('panning');refreshCursor();return;}
   let [ix,iy]=toImage(e.clientX,e.clientY);if(typeof gdSnapOn==='function'&&gdSnapOn()&&!e.altKey)[ix,iy]=gdSnap(ix,iy);
   if(ui.cageFlat&&!['brush','erase','smudge','dodge','burn','heal','clone','picker'].includes(ui.tool)&&!e.altKey){toast('Only painting works in the flat cage view. Press F to go back to the canvas.');return;}
@@ -96,6 +97,7 @@ cv.addEventListener('pointermove',e=>{
   if(ptr.mode==='marq'||ptr.mode==='lasso'||ptr.mode==='selmove'){selPointerMove(e,mx,my);return;}
   if(ptr.mode==='arr'){arrPointerMove(e,mx,my);return;}
   if(ptr.mode==='shape'){shapePointerMove(e,mx,my);return;}
+  if(ptr.mode==='vrot'){vxDragMove(e);return;}
   if(ptr.mode==='pan'){view.x=ptr.vx+e.clientX-ptr.sx;view.y=ptr.vy+e.clientY-ptr.sy;requestRender();return;}
   if(ptr.mode==='tmove'){const [mx2,my2]=toImage(e.clientX,e.clientY),dx=mx2-ptr.sx,dy=my2-ptr.sy;if(!ptr.moved&&Math.hypot(dx,dy)*view.zoom<4)return;
     if(!ptr.moved){ptr.moved=true;textBegin(ptr.L);}ptr.L.text.x=Math.round(ptr.ox+dx);ptr.L.text.y=Math.round(ptr.oy+dy);renderText(ptr.L);return;}
@@ -148,6 +150,7 @@ window.addEventListener('keydown',e=>{
     if(k==='n'&&e.shiftKey){e.preventDefault();cmdAddLayer();return;}if(k==='g'){e.preventDefault();e.shiftKey?cmdUngroup():cmdGroup();return;}if(k==='j'){e.preventDefault();cmdDuplicate();return;}if(k==='n'&&e.altKey){e.preventDefault();dlgNew();return;}
     if(map[k]){e.preventDefault();actions[map[k]]();}return;}
   if(e.altKey&&/^Digit[2-6]$/.test(e.code)){e.preventDefault();selectChannel(+e.code.slice(5)-3,false);return;}
+  if(!m&&!e.altKey&&!e.shiftKey&&k==='r'){e.preventDefault();rotHold=true;stage.classList.add('grab');return;}
   if(e.code==='Space'){e.preventDefault();if(!spaceDown){spaceDown=true;stage.classList.add('grab');refreshCursor();}return;}
   const tools={b:'brush',e:'erase',s:'smudge',i:'picker',h:'hand',u:'shape',j:'heal',y:'clone',p:'pen'};
   if(tools[k]){setTool(tools[k]);return;}
@@ -156,8 +159,8 @@ window.addEventListener('keydown',e=>{
   /* Delete: with a selection it clears what is selected (like Photoshop); without one it deletes the layer. Alt+Delete fills. */
   if((k==='delete'||k==='backspace')&&ui.mode!=='bake'&&ui.mode!=='convert'){e.preventDefault();if(e.altKey)fillLayer();else if((sel.active&&!sel.quick)||ui.mode==='anim'||ui.mode==='brush')clearLayer();else cmdDelete();}
 });
-window.addEventListener('keyup',e=>{if(e.code==='Space'){spaceDown=false;if(ui.tool!=='hand')stage.classList.remove('grab');refreshCursor();}});
-window.addEventListener('blur',()=>{spaceDown=false;stage.classList.toggle('grab',ui.tool==='hand');});
+window.addEventListener('keyup',e=>{if(e.key==='r'||e.key==='R'){rotHold=false;if(!spaceDown&&ui.tool!=='hand')stage.classList.remove('grab');}if(e.code==='Space'){spaceDown=false;if(ui.tool!=='hand')stage.classList.remove('grab');refreshCursor();}});
+window.addEventListener('blur',()=>{spaceDown=false;rotHold=false;stage.classList.toggle('grab',ui.tool==='hand');});
 new ResizeObserver(()=>{resizeGL();drawSV();}).observe(stage);new ResizeObserver(()=>resizeGL()).observe(work);
 new ResizeObserver(()=>drawSV()).observe(svC);
 cv.addEventListener('webglcontextlost',e=>{e.preventDefault();toast('The GPU context was lost. Reload the page to continue.');});

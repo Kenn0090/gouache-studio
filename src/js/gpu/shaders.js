@@ -5,8 +5,8 @@ const VS_STAMP=`#version 300 es
 in vec2 a; uniform vec2 uCenter; uniform float uExtent; uniform vec2 uSize;
 void main(){ vec2 p=uCenter+(a*2.0-1.0)*uExtent; gl_Position=vec4(p/uSize*2.0-1.0,0.0,1.0); }`;
 const VS_VIEW=`#version 300 es
-in vec2 a; uniform vec2 uOrigin; uniform vec2 uExtent; uniform vec2 uViewport; uniform vec2 uUV0; uniform vec2 uUV1; out vec2 vUV;
-void main(){ vec2 p=uOrigin+a*uExtent; vUV=mix(uUV0,uUV1,a); gl_Position=vec4(p.x/uViewport.x*2.0-1.0,1.0-p.y/uViewport.y*2.0,0.0,1.0); }`;
+in vec2 a; uniform vec2 uOrigin; uniform vec2 uExtent; uniform vec2 uViewport; uniform vec2 uUV0; uniform vec2 uUV1; uniform vec4 uR; out vec2 vUV;
+void main(){ vec2 q=a*uExtent; vec2 p=uOrigin+vec2(uR.x*q.x+uR.y*q.y,uR.z*q.x+uR.w*q.y); vUV=mix(uUV0,uUV1,a); gl_Position=vec4(p.x/uViewport.x*2.0-1.0,1.0-p.y/uViewport.y*2.0,0.0,1.0); }`;
 const FS_HEAD=`#version 300 es
 precision highp float; precision highp int; precision highp sampler2D;
 out vec4 o;
@@ -144,6 +144,8 @@ void main(){ vec2 ss=vec2(textureSize(uSrc,0)); vec2 lo=(gl_FragCoord.xy-0.5-uOf
     if(sp.x<0.0||sp.y<0.0||sp.x>ss.x||sp.y>ss.y){ acc+=uOutside; continue; }
     acc+=texture(uSrc,sp/ss); } }
   o=acc/float(n*n); }`;
+const FS_AXF=`uniform sampler2D uSrc; uniform vec2 uX; uniform vec2 uY; uniform vec2 uB;
+void main(){ vec2 d=gl_FragCoord.xy; vec2 s=vec2(dot(uX,d),dot(uY,d))+uB; o=texelFetch(uSrc,ivec2(floor(s)),0); }`;
 const FS_ADJUST=`uniform sampler2D uSrc; uniform float uExposure; uniform float uBright; uniform float uContrast; uniform float uSat; uniform float uHue; uniform float uTemp;
 vec3 hueRot(vec3 c,float a){ vec3 k=vec3(0.57735); float cs=cos(a), sn=sin(a); return c*cs+cross(k,c)*sn+k*dot(k,c)*(1.0-cs); }
 void main(){ vec4 c=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0); if(c.a<=1e-6){ o=c; return; } vec3 r=c.rgb/c.a;
@@ -347,7 +349,7 @@ function packedProgram(prog){if(prog.packedShader)return prog;if(!prog.packedVar
 function program(fs,vs){const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,vs||VS_FULL));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS_HEAD+fs));gl.bindAttribLocation(p,0,'a');gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return {p,locs:{},fs,vs};}
 const P={
   stamp:program(FS_STAMP,VS_STAMP), smudge:program(FS_SMUDGE,VS_STAMP), merge:program(FS_MERGE), comp:program(FS_COMP),
-  view:program(FS_VIEW,VS_VIEW), resample:program(FS_RESAMPLE), adjust:program(FS_ADJUST), blur:program(FS_BLUR),
+  view:program(FS_VIEW,VS_VIEW), resample:program(FS_RESAMPLE), axf:program(FS_AXF), adjust:program(FS_ADJUST), blur:program(FS_BLUR),
   sharpen:program(FS_SHARPEN), poster:program(FS_POSTER), invert:program(FS_INVERT), place:program(FS_PLACE), mix:program(FS_MIX), chmerge:program(FS_CHMERGE), maskplace:program(FS_MASKPLACE), applymask:program(FS_APPLYMASK),
   poly:program(FS_ONE,VS_POLY), rcopy:program(FS_RCOPY), selop:program(FS_SELOP), shift:program(FS_SHIFT), morph:program(FS_MORPH), thresh:program(FS_THRESH),
   selmix:program(FS_SELMIX), loadsel:program(FS_LOADSEL), cropsel:program(FS_CROPSEL),

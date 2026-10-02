@@ -124,9 +124,9 @@ function drawView(){
   if(z<1&&T===compOut){if(compOut.mipDirty){gl.generateMipmap(gl.TEXTURE_2D);compOut.mipDirty=false;compOut.hasMips=true;}gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);}
   else gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,z>=2?gl.NEAREST:gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,z>=2?gl.NEAREST:gl.LINEAR);
-  const ox=view.x*dpr+stageOx(dpr),oy=view.y*dpr,ew=DW*z*dpr,eh=DH*z*dpr,t=doc.wrap&&!fl;
+  const ox=view.x*dpr+stageOx(dpr),oy=view.y*dpr,ew=DW*z*dpr,eh=DH*z*dpr,t=doc.wrap&&!fl,A=vxA()||[1,0,0,1];
   const sh=chan.show,n=sh.filter(Boolean).length,single=n===1?sh.indexOf(1):-1;
-  run(P.view,null,{uComp:T.tex,uOrigin:t?[ox-ew,oy-eh]:[ox,oy],uExtent:t?[ew*3,eh*3]:[ew,eh],uViewport:[cv.width,cv.height],
+  run(P.view,null,{uComp:T.tex,uR:A,uOrigin:t?[ox-(A[0]*ew+A[1]*eh),oy-(A[2]*ew+A[3]*eh)]:[ox,oy],uExtent:t?[ew*3,eh*3]:[ew,eh],uViewport:[cv.width,cv.height],
     uUV0:t?[-1,-1]:[0,0],uUV1:t?[2,2]:[1,1],uChk1:[.235,.247,.271],uChk2:[.188,.2,.22],uChkSize:Math.max(4,8*dpr),
     uShow:sh,uSingle:{int:vs.mask?-1:single},uMaskView:vs.mask,...(fl?{}:selViewU(z,dpr,t)),...(fl?{}:animViewU(vs))});
   gl.bindTexture(gl.TEXTURE_2D,T.tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
