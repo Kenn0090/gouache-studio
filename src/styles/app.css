@@ -39,6 +39,16 @@ button{cursor:pointer}
 .tool:hover{background:var(--raise);color:var(--text)}
 .tool[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
 .tool svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.has-tool-menu{touch-action:none}
+.tool-arrow{position:absolute;right:0;bottom:0;width:12px;height:12px;cursor:pointer}
+.tool-arrow::after{content:'';position:absolute;right:3px;bottom:3px;border-top:5px solid currentColor;border-left:5px solid transparent;opacity:.8}
+.tool-arrow:hover::after,.tool[aria-expanded="true"] .tool-arrow::after{opacity:1;color:var(--accent)}
+#menuPop.tool-menu{min-width:190px;width:max-content}
+.tool-menu .mi{grid-template-columns:20px 1fr auto;gap:8px;padding:7px 9px}
+.tool-menu .mi[aria-checked="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.tool-menu .mi[aria-checked="true"]:hover,.tool-menu .mi[aria-checked="true"]:focus-visible{background:var(--accent);color:var(--accent-ink)}
+.tool-menu-icon{display:grid;place-items:center}
+.tool-menu-icon svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .tsep{width:22px;height:1px;background:var(--line);margin:4px 0}
 .mini-sw{position:relative;width:30px;height:30px;margin-top:4px}
 .mini-sw span{position:absolute;width:18px;height:18px;border-radius:4px;border:1px solid rgba(255,255,255,.25)}

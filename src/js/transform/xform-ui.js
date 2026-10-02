@@ -142,7 +142,7 @@ function xfKeys(e,m,k){if(!xf||xf.move)return false;
 ui.fillKind='gradient';ui.tonal='dodge';ui.tonalRange=1;ui.tonalExposure=.5;ui.tonalProtect=true;
 function updateGroupButtons(t){const G=window.__groupIcons;if(!G)return;
   for(const [pair,cur] of [[['gradient','bucket','gbucket'],ui.fillKind],[['dodge','burn'],ui.tonal]]){const b=document.querySelector('.tool[data-group="'+pair[0]+'"]');if(!b)continue;
-    b.dataset.tool=cur;b.innerHTML='<svg viewBox="0 0 24 24">'+G[cur]+'</svg>';b.setAttribute('aria-pressed',String(pair.includes(t)));}}
+    b.dataset.tool=cur;b.querySelector('svg').innerHTML=G[cur];b.setAttribute('aria-pressed',String(pair.includes(t)));if(b.classList.contains('has-tool-menu'))toolMenuDecorate(b);}}
 document.querySelectorAll('.tool[data-tool="gradient"],.tool[data-tool="dodge"]').forEach(b=>{b.dataset.group=b.dataset.tool;});
 
 function xfContextMenu(e){if(!xf||xf.move)return;e.preventDefault();closeMenu();openName=':transform';

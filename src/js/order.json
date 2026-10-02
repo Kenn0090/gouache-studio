@@ -138,6 +138,7 @@
     "ui/rulers",
     "ui/welcome",
     "ui/setup",
+    "ui/tool-menus",
     "core/boot"
   ]
 }
