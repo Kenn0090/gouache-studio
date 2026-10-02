@@ -320,6 +320,6 @@ function dlgCvMaterial(){if(!cvS.src){toast('Pick a source first.');return;}
       el('p',{class:'note',text:'Base colour'+(made.length?', '+made.join(', '):'')+'. Saved in Materials so every 3D Paint project can use it; tick more maps above to include them.'}),
       el('div',{class:'sub',text:'Picture size'}),seg([[1024,'1K'],[2048,'2K'],[4096,'4K'],[0,'Full size']],max,v=>{max=+v;},'Picture size'),
       chk('cvMatAdd','Also add it to 3D Paint now (a new material layer in the texture set)',add,v=>{add=v;})),
-    okLabel:'Make material',onOk(){const rec=cvMaterialRec(name.trim(),max);matLib.list.push(rec);store.put(rec,'materials');if(typeof renderMats==='function')renderMats();
-      if(add&&setMode('p3d',true)){matApply(rec);toast('“'+rec.name+'” is in Materials and on a new layer in 3D Paint.');}
+    okLabel:'Make material',onOk(){const rec=cvMaterialRec(name.trim(),max);matLib.list.push(rec);store.put(rec,'materials');if(typeof renderMats==='function')renderMats();const made=paRemember('mat',rec);made.catch(e=>toast('Could not add the material to Projects: '+e.message));
+      if(add&&setMode('p3d',true)){doc.projectAssets=doc.projectAssets||[];const owner=docState().doc;paTrack(owner.projectAssets,made.then(a=>paRemember('mat',a.rec,owner,true))).catch(e=>toast('Could not add the material to Projects: '+e.message));matApply(rec);toast('“'+rec.name+'” is in Materials and on a new layer in 3D Paint.');}
       else toast('Saved “'+rec.name+'” in Materials. Add it from the Materials tab in 3D Paint.');}});}

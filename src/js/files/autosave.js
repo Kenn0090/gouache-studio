@@ -17,13 +17,13 @@ const asDB={open(){if(this.db)return Promise.resolve(this.db);return new Promise
 /* (0.27) read the painting's history without swapping documents: the tab bar asks every 0.7 s, and a swap rebuilt
    the panels (a Material slider was taken from under the mouse mid-drag) */
 function asPaintPeek(fn){const S=tabDocs.paint&&!tabDocs.inPaint?tabDocs.paint:null;return S?fn(S.undo||[],S.doc):fn(hist.undo,doc);}
-const asPaintSig=()=>asPaintPeek(u=>u.length?u[u.length-1]:null);
-const asPaintSaved=()=>asPaintPeek((u,d)=>!u.length||u[u.length-1]===d.savedAt);
+const asPaintSig=()=>asPaintPeek(paDocSig);
+const asPaintSaved=()=>asPaintPeek(paDocSaved);
 const asPaintName=()=>asPaintPeek((u,d)=>d.name||'Untitled');
 /* (0.27) every open document tab is autosaved, each under its own key (the live one too) */
 const asPaintKind=()=>typeof dtab!=='undefined'&&dtab.live?'tab:'+dtab.live:'paint';
-const asTabSig=t=>{const u=t.state&&t.state.undo;return u&&u.length?u[u.length-1]:null;};
-const asTabSaved=t=>{const u=t.state.undo;return !u.length||u[u.length-1]===t.state.doc.savedAt;};
+const asTabSig=t=>t.state?paDocSig(t.state.undo,t.state.doc):null;
+const asTabSaved=t=>paDocSaved(t.state.undo,t.state.doc);
 const asTabsWaiting=()=>typeof dtab==='undefined'?[]:dtab.tabs.filter(t=>t.state&&asTabSig(t)&&asTabSig(t)!==as.last['tab:'+t.id]);
 async function asWrite(kind,name,blob){const t=Date.now();
   if(platform.isDesktop){const dir=await asDir(),sep=dir.includes('\\')?'\\':'/',file=dir+sep+(kind==='p3d'?'3D Paint - ':'Paint - ')+asSlug(name)+(kind.startsWith('tab:')?' ['+kind.slice(4)+']':'')+(kind==='p3d'?'.gouache3d':'.gouache');

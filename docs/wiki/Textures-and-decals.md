@@ -1,5 +1,13 @@
 # Textures, decals and the material library
 
+## Projects and Mesh maps
+
+The Material Library shelf includes **Projects**, for live layer materials, source textures and assets created in the current document, and **Mesh maps**, for the maps attached to the active 3D Paint texture set. Projects supports search, texture/material filters and thumbnail sizing. Click or drag an asset onto the layers to reuse it. Created project assets are included in `.gouache` and `.gouache3d` saves; they are kept compressed until used.
+
+Assign mesh maps through the **Maps** panel's labeled drop slots. Imported maps retain their source size and are available to masks, generators and material channels. See [3D Paint](3D-Paint.md) for setup and assignment.
+
+Placing or dropping a **PSD** on the painting canvas now imports a folder of layers rather than its flattened preview. Names, folders, visibility, opacity, supported blend modes and pixel masks carry over, and the import undoes in one step. **File › Open** also keeps layers. Texture-library, mask and conversion imports still use the PSD's composite because those operations need a single texture. Adjustment layers, vector masks and Photoshop layer effects are reported as unsupported; text and smart objects use raster images.
+
 ## Textures panel
 The **Textures** panel (next to Materials) holds grunge maps and textures you can use anywhere.
 

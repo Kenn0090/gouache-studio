@@ -30,7 +30,7 @@ async function decodeFile(file){const ext=extOf(file.name);
   if(ext==='psd'){needLib('agPsd','PSD');const psd=agPsd.readPsd(await file.arrayBuffer(),{useImageData:true,skipThumbnail:true,skipLayerImageData:true});
     if(!psd.imageData)throw new Error('This PSD was saved without a flattened image. Use File › Open to bring in its layers.');return {w:psd.width,h:psd.height,data:psd.imageData.data,bits:psd.bitsPerChannel||8};}
   return loadImageEl(file);}
-function askReplace(){if(!hist.undo.length||hist.undo[hist.undo.length-1]===doc.savedAt)return Promise.resolve(true);return new Promise(res=>{openDialog({title:'Replace the current painting?',
+function askReplace(){if(paDocSaved(hist.undo,doc))return Promise.resolve(true);return new Promise(res=>{openDialog({title:'Replace the current painting?',
   body:el('p',{class:'note',text:'Opening a file replaces what is on the canvas. Use File › Save first if you want to keep it.'}),okLabel:'Open anyway',onOk(){res(true);},onCancel(){res(false);}});});}
 async function handleFile(file,mode,path){const ext=extOf(file.name);loadStart(file.name);
   try{if(!['abr','ttf','otf','woff','woff2'].includes(ext)){loadBusy(mode==='open'?'Opening…':'Placing…');await loadPaint();}if(ext==='abr'){await importABR(file);return;}
@@ -39,7 +39,7 @@ async function handleFile(file,mode,path){const ext=extOf(file.name);loadStart(f
     if(mode==='open'&&(ext==='gouache3d'||isP3Proj(await file.slice(0,8).arrayBuffer()))){await openP3Project(await file.arrayBuffer(),baseName(file.name),path);if(path)platform.recentAdd(path);return;}
     if(mode==='open'){if(tabDocs.paint&&!setMode('paint',true))return;if(!(await askReplace()))return;const head=await file.slice(0,8).arrayBuffer();if(ext==='gouache'||isGouache(head)){await openGouache(await file.arrayBuffer(),baseName(file.name));doc.filePath=path||null;markSaved();}else if(ext==='psd'){await openPSD(await file.arrayBuffer(),baseName(file.name));doc.filePath=path||null;}else{openRaw(await decodeFile(file),baseName(file.name));doc.filePath=null;}
       if(path)platform.recentAdd(path);updateTitle();}
-    else if(ui.mode==='anim')toast('To bring images into an animation, use Import in the timeline.');else placeRaw(await decodeFile(file),baseName(file.name)||'Pasted image');}
+    else if(ui.mode==='anim')toast('To bring images into an animation, use Import in the timeline.');else if(ext==='psd')await placePSD(await file.arrayBuffer(),baseName(file.name));else placeRaw(await decodeFile(file),baseName(file.name)||'Pasted image');}
   catch(e){console.error(e);toast(e.message||String(e));}finally{loadEnd();}}
 let fileMode='open';
 const OPEN_FILTERS={open:[{name:'Images and documents',extensions:['gouache','gouache3d','psd','png','jpg','jpeg','webp','gif','bmp','tga','dds','tif','tiff']},{name:'Brushes and fonts',extensions:['abr','ttf','otf','woff','woff2']}],

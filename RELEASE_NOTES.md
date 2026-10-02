@@ -1,7 +1,8 @@
-# Gouache Studio 0.46.11
+# Gouache Studio 0.46.12
 
-- Textured material layers keep their source images and settings, sharing full-size working images instead of retaining expanded copies for every channel in every layer. This addresses the freeze when adding materials at 8K.
-- At 8K and 16K, scalar viewport channels use less storage at full resolution. Large brush buffers wait until an edit needs them.
-- The 16K desktop height path retains 16-bit precision using compact value and transparency storage.
-- Six library materials, painting directly on the model, camera navigation and undo passed at 8K and 16K in the Windows desktop renderer on an RTX 4080. Material edits, masks, effects, duplication and file compatibility also passed regression checks.
-- 16K still needs substantial graphics memory and full updates take longer. Use 8-bit colour and UV projection at that size: full 16-bit colour and 3D projection position maps exceed the renderer's allocation limit and now show a message.
+- 3D Paint shows the active document resolution in the viewport and texture-size settings, including 8K and 16K.
+- New 3D Paint documents offer a setup window for importing a model and assigning mesh maps to a texture set. Later, use the labeled drop slots in Maps to import, replace, inspect or remove maps.
+- The Material Library shelf has Mesh maps and Projects tabs. Projects lists live layer materials, source textures, textures made from the canvas and converted materials. Click or drag an asset onto the layers to reuse it.
+- Project assets and imported mesh maps are included in project saves. Assets remain compressed until used; mesh maps retain their source resolution to avoid unnecessary 8K/16K copies.
+- Placing or dropping a PSD keeps its layers and folders, with names, visibility, opacity, blend modes and pixel masks. The entire import can be undone together. File Open continues to preserve layers. Photoshop adjustment layers, vector masks and layer effects are reported as unsupported; text and smart objects use their raster images.
+- Validated in the Windows desktop renderer on an RTX 4080 at 8K and 16K with six material layers, an imported mesh map and the Projects shelf open. Import, save/reopen, map-driven materials/masks, PSD undo and existing material-performance checks passed.

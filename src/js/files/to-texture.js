@@ -25,7 +25,7 @@ function dlgToTexture(L){
     onOk(){ttMake(L,type,(name||'Texture').trim()||'Texture');}});}
 async function ttMake(L,type,name){
   const t=ttSource(L);if(!t){toast('Nothing to turn into a texture: the area is empty.');return;}
-  if(type==='grunge'){try{await txAddTarget(t,name);}catch(e){disposeTarget(t);toast('Could not save the texture: '+(e.message||e));return;}
+  if(type==='grunge'){doc.projectAssets=doc.projectAssets||[];const owner=docState().doc;try{const rec=await txAddTarget(t,name),raw=await store.getRaw(rec.id,'textures');await paRemember('tex',raw,owner,true);}catch(e){disposeTarget(t);toast('Could not save the texture: '+(e.message||e));return;}
     if(typeof renderTextures==='function')renderTextures();if(typeof showPanel==='function')try{showPanel('textures');}catch(e){}toast('Added “'+name+'” to Textures.');return;}
   if(type==='tip'){const S=Math.min(512,Math.max(t.w,t.h)),s=makeTarget(S,S,8,false);copyScaled(t,s);const d=captureRegionNow(s,0,0,S,S).data;disposeTarget(s);disposeTarget(t);
     const v=new Uint8Array(S*S);for(let i=0;i<S*S;i++)v[i]=Math.round((d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11)*(d[i*4+3]/255));

@@ -10,11 +10,27 @@ The column beside the view works like the rest of the dock: drag its tabs out (t
 ## Getting started
 **File › New** can start a new 3D Paint project straight away: choose **Start in: 3D Paint** at the top of the New document window. The width you type is the texture size, and the model you have loaded stays.
 
+After creating it, **Set up 3D Paint project** lets you import a model, select a texture set and drop mesh-map files onto their channels. Press **Done** to continue; maps can also be assigned later in **Maps**. The viewport badge and texture-size heading show the active set's actual width and height, with 8K and 16K clearly labeled.
+
 1. Click **3D Paint** at the top right.
 2. Pick a model in the **3D Paint** panel: one of the shapes, or **Import a model** (OBJ, glTF, GLB or FBX). You can also drop a model file on the view.
 3. Paint with a left drag. New texture sets start with a greyish-white, non-metal **Base material** (a fill layer) and an empty **Paint** layer.
 
 Each texture set has the PBR maps **base colour, roughness, metallic, height and normal**. The Layers panel works as in Paint: layers, groups, masks, fill layers, layer styles and a blend mode per map.
+
+### Imported mesh maps
+
+The **Maps** panel has slots for Normal, Ambient occlusion, Curvature, curvature edges/creases, Thickness, World normal, Position, ID, Height, Roughness and Metallic. Drop a file into its slot or press **Import…**. Use **Replace…**, **View** or **×** to change, inspect or remove an assigned map. Maps belong to the selected texture set and are saved inside the project. They feed masks, generators and material channels using **Mesh map** as the source; imported tangent normals provide the model's normal detail automatically.
+
+The **Mesh maps** tab in the Material Library shelf shows the assigned maps as thumbnails. Click a thumbnail to inspect it on the model, or drag it into a Maps slot. **Import mesh maps…** identifies standard map names such as `robot_AO` and `robot_curvature`; unnamed files can be dropped directly into a slot.
+
+Imported maps retain their own dimensions, so a 2K map does not become a separate 16K image just because the document is 16K. Effects sample the map over the texture's UVs. At 16K, import mesh-map images at 8 bits per channel; smaller height images may retain 16-bit precision.
+
+### Projects shelf
+
+**Projects** sits in the Material Library shelf. It shows materials from the current layer stack, their source textures, and textures/materials created in the document. **Turn canvas into a texture**, **Turn into material** and **Send to 3D Paint** register their assets here. Filter by **Textures** or **Materials**, search by name, and use **S / M / L** to change thumbnail size. Click an asset or drag it onto the layers to reuse it; a texture dragged onto a mask fills that mask.
+
+Created assets are saved inside the document or texture set, independently of the computer's reusable library. Live layer entries follow the layer stack. Stored project assets remain compressed until used, and browsing only draws small previews.
 
 ## Moving around
 Choose the style under **Navigation**:

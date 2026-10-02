@@ -27,6 +27,7 @@ async function encodeGouacheNow(opts){if(gfSaving)throw new Error('A document is
     return await encodeGouacheData(opts,stats);}finally{stats.total=performance.now()-t;gfSaveStats.last=stats;gfSaving=false;tabDocs.hold=held;
     for(const win of surfaces)if(win&&!win.closed)win.removeEventListener('keydown',keys,true);covers.forEach(c=>c.remove());requestRender(true);}}
 async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let off=0;/* lean: a 3D Paint texture set (no model, no bake fixes) */
+  await paReady();
   const pack=async(t,x,y,w,h,lossy)=>{let time=performance.now();const raw=await readRegionAsync(t,x,y,w,h);stats.read+=performance.now()-time;stats.bytes+=raw.byteLength;
     time=performance.now();const c=await pxPack(raw,w,h,t.depth,lossy,true);stats.pack+=performance.now()-time;stats.images++;return c;};
   /* pictures are packed (files/pixel-pack.js): lossless, or WebP for colour and grey maps with Smaller files on */
@@ -57,8 +58,9 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
   /* the 3D view's settings, and an imported model so it comes back with the document */
   let meshRec=null;if(!opts.lean&&typeof v3!=='undefined'&&v3.imported){const c=await streamThrough(meshPack(v3.imported),'deflate-raw');blobs.push(c);meshRec={o:off,n:c.length,name:v3.imported.name};off+=c.length;}
   const bakeMaps={};if(!opts.lean)for(const k of ['skew','offset'])if(bk.maps[k]){const r=await put(bk.maps[k],true);if(r)bakeMaps[k]=r;}
-  const meshMaps={};for(const k in doc.meshMaps||{}){const r=await put(doc.meshMaps[k],true);if(r)meshMaps[k]=r;}
-  const head={p3:!!doc.p3,meshMaps,bakeMaps,cage:cageClone(doc.cage),v3d:doc.v3d||null,v3shade:doc.v3shade||null,guides:doc.guides&&doc.guides.length?doc.guides:undefined,dpi:doc.dpi||undefined,mesh:meshRec,app:'Gouache Studio',v:GF_VERSION,w:doc.w,h:doc.h,depth:doc.depth,wrap:doc.wrap,name:doc.name,
+  const meshMaps={};for(const k in doc.meshMaps||{}){const t=doc.meshMaps[k];if(!t||t.empty)continue;const r=await putRaw(t);r.r=[0,0,t.w,t.h];meshMaps[k]=r;}
+  const projectAssets=paEncode(bytes=>{const r={o:off,n:bytes.length};blobs.push(bytes);off+=bytes.length;return r;});
+  const head={p3:!!doc.p3,meshMaps,meshMapInfo:doc.meshMapInfo,projectAssets,bakeMaps,cage:cageClone(doc.cage),v3d:doc.v3d||null,v3shade:doc.v3shade||null,guides:doc.guides&&doc.guides.length?doc.guides:undefined,dpi:doc.dpi||undefined,mesh:meshRec,app:'Gouache Studio',v:GF_VERSION,w:doc.w,h:doc.h,depth:doc.depth,wrap:doc.wrap,name:doc.name,
     maps:doc.maps,map:doc.map,view:doc.view,mapDef:doc.mapDef,workflow:doc.workflow,nrmStr:doc.nrmStr,light:doc.light,tex:texCfg,kids,active,anim,layers:all.length};
   const hj=new TextEncoder().encode(JSON.stringify(head)),pre=new Uint8Array(16);pre.set(GF_MAGIC,0);const dv=new DataView(pre.buffer);dv.setUint32(8,GF_VERSION,true);dv.setUint32(12,hj.length,true);
   return new Blob([pre,hj,...blobs],{type:'application/octet-stream'});}
@@ -117,7 +119,8 @@ async function gfReadInto(buf,head,data){
     if(parent)insertNode(n,parent);
     if(o.t==='G')for(const c of o.kids||[])await mk(c,n);
     return n;};
-  if(head.meshMaps&&Object.keys(head.meshMaps).length){doc.meshMaps={};for(const k in head.meshMaps){const r=head.meshMaps[k],t=makeTarget(doc.w,doc.h,r.d===16&&canFloat?16:8,false);await img(r,t);doc.meshMaps[k]=t;}}
+  doc.meshMapInfo=head.meshMapInfo||{};doc.projectAssets=paDecode(head.projectAssets,r=>new Uint8Array(buf.slice(data+r.o,data+r.o+r.n)));
+  if(head.meshMaps&&Object.keys(head.meshMaps).length){doc.meshMaps={};for(const k in head.meshMaps){const r=head.meshMaps[k],w=r.w||doc.w,h=r.h||doc.h,t=makeTarget(w,h,r.d===16&&canFloat?16:8,false);await img(r,t);doc.meshMaps[k]=t;}}
   for(const o of head.kids||[]){await mk(o,doc.root);await tick();}
   if(!allLayers().length){const L=newLayerObj('Background');insertNode(L,doc.root);}
   syncTargets();
