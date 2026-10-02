@@ -3,6 +3,7 @@
    The built-in keys are still handled where they always were; kbHandle() runs first and only steps in for keys
    the user changed: a new key runs its command, and a command's old key stops working once it has moved. */
 const KB_EXTRA=[
+  ['tool:pen','Pen','Tools','P',()=>setTool('pen')],['tool:path','Surface Path','Tools','',()=>setTool('path')],['tool:material','Material brush','Tools','',()=>setTool('material')],
   ['tool:brush','Brush','Tools','B',()=>setTool('brush')],['tool:erase','Eraser','Tools','E',()=>setTool('erase')],['tool:smudge','Blend / smudge','Tools','S',()=>setTool('smudge')],['tool:heal','Healing brush','Tools','J',()=>setTool('heal')],['tool:clone','Clone stamp','Tools','Y',()=>setTool('clone')],
   ['tool:picker','Eyedropper','Tools','I',()=>setTool('picker')],['tool:hand','Hand','Tools','H',()=>setTool('hand')],['tool:move','Move','Tools','V',()=>setTool('move')],
   ['tool:gradient','Gradient / fill','Tools','G',()=>setTool(ui.fillKind||'gradient')],['tool:dodge','Dodge / burn','Tools','O',()=>setTool(ui.tonal||'dodge')],['tool:crop','Crop','Tools','C',()=>setTool('crop')],

@@ -8,13 +8,13 @@ function rebuildLayers(newW,newH,depth,draw){
   const jobs=[];
   for(const L of everyLayer()){if(!L.maps)L.maps={base:L.target};for(const k of Object.keys(L.maps)){const t=L.maps[k];if(!t||t.empty){delete L.maps[k];continue;}
       jobs.push({src:t,d:k==='height'&&canFloat?16:depth,m:false,set:nt=>{L.maps[k]=nt;}});}}
-  for(const n of everyNode())if(n.mask)jobs.push({src:n.mask.target,d:depth,m:true,set:nt=>{n.mask.target=nt;}});
+  for(const n of everyNode())if(n.mask)jobs.push({src:n.mask.target,d:depth,mono:n.mask.target.mono,m:true,set:nt=>{n.mask.target=nt;}});
   /* mask rows with pictures of their own (Paint rows; pictures keep their size) */
   for(const n of everyNode())if(n.mask&&n.mask.stack)for(const r of n.mask.stack)if(r.t&&r.kind!=='image')jobs.push({src:r.t,d:depth,m:false,row:true,set:nt=>{r.t=nt;}});
   for(const d in aux){const pl=aux[d].pool;for(const t of pl.free.splice(0)){pl.all.splice(pl.all.indexOf(t),1);disposeTarget(t);}} /* spare room first */
   while(gl.getError()!==gl.NO_ERROR);
   const made=[];let bad=false;
-  for(const j of jobs){j.nt=makeTarget(newW,newH,j.d,undefined,j.d===16&&depth===8&&newW*newH>=268435456);made.push(j.nt);if(gl.getError()!==gl.NO_ERROR||gl.isContextLost()){bad=true;break;}}
+  for(const j of jobs){j.nt=makeTarget(newW,newH,j.d,undefined,j.d===16&&depth===8&&newW*newH>=268435456,j.mono);made.push(j.nt);if(gl.getError()!==gl.NO_ERROR||gl.isContextLost()){bad=true;break;}}
   if(!bad)for(let i=0;i<5;i++){const t=makeTarget(newW,newH,depth);made.push(t);if(gl.getError()!==gl.NO_ERROR){bad=true;break;}}
   if(bad){for(const t of made)disposeTarget(t);while(gl.getError()!==gl.NO_ERROR);return false;}
   for(const t of made.splice(jobs.length))disposeTarget(t);
@@ -30,9 +30,9 @@ function rebuildLayers(newW,newH,depth,draw){
 const NO_GPU_MEM='Not enough graphics memory for that. Nothing was changed. Try fewer layers or a smaller canvas.';
 function resizeCanvasDoc(w,h,ax,ay){const ox=Math.round((w-doc.w)*ax),oy=Math.round((h-doc.h)*ay);
   for(const L of everyLayer())for(const k of Object.keys(L._fillSolid||{}))ensureMapTarget(L,k);
-  if(!rebuildLayers(w,h,doc.depth,(s,d,m)=>run(P.resample,d,{uSrc:s.tex,uOffset:[ox,oy],uScale:[1,1],uTaps:{int:1},uOutside:m?[1,1,1,1]:[0,0,0,0]}))){toast(NO_GPU_MEM);return;}for(const L of everyLayer()){if(L.text){L.text.x+=ox;L.text.y+=oy;renderText(L);}if(L.grad){for(const k of ['a','b']){L.grad[k][0]+=ox;L.grad[k][1]+=oy;}renderLiveGrad(L);}}fit();changedAll();updateStatus();toast('Canvas is now '+w+' × '+h+'. Undo history was cleared.');}
+  if(!rebuildLayers(w,h,doc.depth,(s,d,m)=>run(P.resample,d,{uSrc:s.tex,uOffset:[ox,oy],uScale:[1,1],uTaps:{int:1},uOutside:m?[1,1,1,1]:[0,0,0,0]}))){toast(NO_GPU_MEM);return;}for(const L of everyLayer()){if(L.text){L.text.x+=ox;L.text.y+=oy;renderText(L);}if(L.grad){for(const k of ['a','b']){L.grad[k][0]+=ox;L.grad[k][1]+=oy;}renderLiveGrad(L);}}if(typeof pathResize==='function')pathResize(1,1,ox,oy);fit();changedAll();updateStatus();toast('Canvas is now '+w+' × '+h+'. Undo history was cleared.');}
 function resizeImageDoc(w,h){const fx=w/doc.w,fy=h/doc.h,sx=doc.w/w,sy=doc.h/h,taps=Math.min(8,Math.max(1,Math.ceil(Math.max(sx,sy))));
-  if(!rebuildLayers(w,h,doc.depth,(s,d)=>run(P.resample,d,{uSrc:s.tex,uOffset:[0,0],uScale:[sx,sy],uTaps:{int:taps}}))){toast(NO_GPU_MEM);return;}for(const L of everyLayer())if(L.text){const f=(fx+fy)/2,t=L.text;t.x=Math.round(t.x*fx);t.y=Math.round(t.y*fy);t.size=Math.max(1,Math.round(t.size*f));t.outline=(t.outline||0)*f;t.tracking=(t.tracking||0)*f;renderText(L);}for(const L of everyLayer())if(L.grad){for(const k of ['a','b']){L.grad[k][0]*=fx;L.grad[k][1]*=fy;}renderLiveGrad(L);}fit();changedAll();updateStatus();toast('Image resampled to '+w+' × '+h+'. Undo history was cleared.');}
+  if(!rebuildLayers(w,h,doc.depth,(s,d)=>run(P.resample,d,{uSrc:s.tex,uOffset:[0,0],uScale:[sx,sy],uTaps:{int:taps}}))){toast(NO_GPU_MEM);return;}for(const L of everyLayer())if(L.text){const f=(fx+fy)/2,t=L.text;t.x=Math.round(t.x*fx);t.y=Math.round(t.y*fy);t.size=Math.max(1,Math.round(t.size*f));t.outline=(t.outline||0)*f;t.tracking=(t.tracking||0)*f;renderText(L);}for(const L of everyLayer())if(L.grad){for(const k of ['a','b']){L.grad[k][0]*=fx;L.grad[k][1]*=fy;}renderLiveGrad(L);}if(typeof pathResize==='function')pathResize(fx,fy,0,0);fit();changedAll();updateStatus();toast('Image resampled to '+w+' × '+h+'. Undo history was cleared.');}
 function setDepth(d){if(d===doc.depth)return;if(d===16&&!canFloat){toast('This GPU cannot render to 16-bit float textures, so 16-bit mode is unavailable.');return;}
   if(d===16&&doc.w*doc.h>=268435456){toast('Use 8-bit colour for a 16K square document. Height still keeps 16-bit precision.');return;}
   if(!rebuildLayers(doc.w,doc.h,d,(s,t)=>run(P.resample,t,{uSrc:s.tex,uOffset:[0,0],uScale:[1,1],uTaps:{int:1}}))){toast(d===16?'Not enough graphics memory for 16-bit at this canvas size ('+doc.w+' × '+doc.h+'). The picture is still 8-bit and unchanged.':NO_GPU_MEM);return;}changedAll();updateStatus();

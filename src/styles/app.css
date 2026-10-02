@@ -1083,3 +1083,10 @@ body.brushmode .dkshelf .sec:has(#libBody){display:block}
 body.brushmode .dkshelf .sec:has(#libBody)>#libBody{height:100%;max-height:none}
 
 #optBar.xfoptions{flex-wrap:wrap}.xfquick{width:60px}.xfquicklabel{font-size:11px;color:var(--muted)}
+.path-overlay{position:absolute;pointer-events:none;z-index:6;}
+body:not(.m-p3d) .tool[data-tool="path"]{display:none;}
+body.m-bake .tool[data-tool="pen"],body.m-bake .tool[data-tool="material"],body.m-convert .tool[data-tool="pen"],body.m-convert .tool[data-tool="material"],body.m-anim .tool[data-tool="pen"],body.m-anim .tool[data-tool="material"]{display:none;}
+.dialog:has(.prefs){box-sizing:border-box;resize:both;min-width:min(360px,94vw);min-height:300px;max-width:94vw;max-height:94vh;height:min(680px,88vh);overflow:hidden;grid-template-rows:auto minmax(0,1fr) auto;}
+.dialog:has(.prefs) #dlgBody{min-height:0;overflow:hidden;}
+.dialog:has(.prefs) .prefs{height:100%;min-height:0;grid-template-rows:auto minmax(0,1fr);}
+.dialog:has(.prefs) .prefpanel{max-height:none;min-height:0;overflow:auto;align-content:start;}

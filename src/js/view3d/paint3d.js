@@ -287,7 +287,7 @@ function p3mmCycle(dir){const K=p3mmKeys();if(!K.length){toast('No mesh maps yet
   const L=[null,...K],i=Math.max(0,L.indexOf(p3mm.k)),k=L[(i+dir+L.length)%L.length];p3mmSet(k);
   toast('Showing: '+(k?P3_MESHMAP_NAMES[k]||k:'the material'));}
 function p3ShowLit(){closeMenu();ui.viewMask=false;libIdShow(false);p3mmSet(null);v3s().unlit=false;v3.rt=false;setView('material');build3dPane();v3.mapsDirty=true;v3.dirty=true;requestRender(true);}
-window.addEventListener('keydown',e=>{if(ui.mode!=='p3d'||!modal.hidden||isTypingTarget(e.target)||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('#menuPop.tool-menu:not([hidden])'))return;
+window.addEventListener('keydown',e=>{if(typeof pathKeys==='function'&&pathKeys(e))return;if(ui.mode!=='p3d'||!modal.hidden||isTypingTarget(e.target)||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('#menuPop.tool-menu:not([hidden])'))return;
   if((e.key==='m'||e.key==='M')&&!e.shiftKey){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat)p3ShowLit();}
   else if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat){closeMenu();cmdDelete();}}
   else if(e.key==='c'||e.key==='C'){e.preventDefault();e.stopImmediatePropagation();p3mmCycle(e.shiftKey?-1:1);}

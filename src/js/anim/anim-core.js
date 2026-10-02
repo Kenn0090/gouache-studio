@@ -16,7 +16,7 @@ const A_=()=>doc.anim;
 /* ---- switching modes ---- */
 function setMode(m,quiet){if(m===ui.mode)return true;
   if(preview||selLive){toast('Apply or cancel the open dialog first.');return false;}
-  if(stroke)return false;if(typeof bk!=='undefined'&&bk.busy){toast('Wait for the bake to finish, or cancel it.');return false;}
+  if(stroke||typeof pathEdit!=='undefined'&&pathEdit.drag)return false;if(typeof bk!=='undefined'&&bk.busy){toast('Wait for the bake to finish, or cancel it.');return false;}if(typeof pathFlush==='function')pathFlush();
   if(typeof xf!=='undefined'&&xf)xfCommit();if(typeof gsess!=='undefined'&&gsess)gradCommit();if(typeof tedit!=='undefined'&&tedit)closeTextEditor();textCommit();cancelSelTool();stopPlay();
   if(typeof cageFlatOff==='function')cageFlatOff();
   if(m==='anim'&&(doc.map!=='base'||doc.view!=='base')){setEditMap('base');if(doc.map!=='base')return false;}

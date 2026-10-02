@@ -1,5 +1,14 @@
 # What's new in Gouache Studio
 
+## 0.48.0
+
+- Paint a library material’s colour, roughness, metallic, height, normal and other enabled channels together. Material strokes share one compact coverage mask and retain the editable material recipe, with one undo per stroke.
+- Add the Pen tool: editable Bézier points and handles, open/closed paths, brush strokes, fills, selections, point pressure and saved path layers.
+- Add Surface Path in 3D Paint: editable curves attached to the mesh, width/hardness/opacity and point-pressure controls, and colour or library material along the path. Strokes cross UV seams and remain fixed when the camera rotates. This release supports Paint along path.
+- Fix black flashes while rotating the model during baking by restoring the shared graphics state at each bake pause.
+- Keep 8K canvas detail stable while painting. Dirty regions update their mip levels without switching the canvas to a blurrier filter during strokes.
+- Add Clear layer for painted channels, material coverage and path strokes, with undo. Preferences can be resized from its corner and remembers its size.
+
 ## 0.47.3
 
 - Show toolbar arrows only on tools with multiple alternatives: Spot/Source Healing, Dodge/Burn and Gradient/Fill. Each menu contains its own group; Brush, Eraser, Blend and Clone keep plain icons and normal clicks.

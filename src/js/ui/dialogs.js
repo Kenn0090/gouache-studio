@@ -4,10 +4,10 @@ const modal=$('#modal');let dlg=null;
    so what they change stays in view. o.dim keeps the old darkened, centred look (none use it now). */
 const dlgPos={};const dlgKey=t=>String(t||'').split(':')[0].trim();
 function dlgPlace(){const d=$('#modal .dialog'),p=dlgPos[dlgKey(dlg&&dlg.title)]||[0,0];d.style.transform=p[0]||p[1]?'translate('+p[0]+'px,'+p[1]+'px)':'';}
-function openDialog(o){closeMenu();dlg=o;delete dlgPos[dlgKey(o.title)];$('#modal .dialog').classList.remove('kbwide');$('#dlgTitle').textContent=o.title;$('#dlgBody').replaceChildren(o.body);modal.classList.toggle('float',!o.dim);modal.classList.toggle('wide',!!o.wide);dlgPlace();
+function openDialog(o){closeMenu();dlg=o;delete dlgPos[dlgKey(o.title)];const panel=$('#modal .dialog');panel.style.width=panel.style.height='';panel.classList.remove('kbwide');if(o.title==='Preferences')try{const s=JSON.parse(localStorage.getItem('gs.prefSize')||'null');if(s){panel.style.width=Math.min(innerWidth*.94,Math.max(360,s[0]))+'px';panel.style.height=Math.min(innerHeight*.94,Math.max(300,s[1]))+'px';}}catch(e){}$('#dlgTitle').textContent=o.title;$('#dlgBody').replaceChildren(o.body);modal.classList.toggle('float',!o.dim);modal.classList.toggle('wide',!!o.wide);dlgPlace();
   const ok=$('#dlgOk');ok.hidden=!o.okLabel;ok.textContent=o.okLabel||'';$('#dlgCancel').textContent=o.cancelLabel||'Cancel';modal.hidden=false;
   const f=o.body.querySelector('input,button,select');if(f)f.focus();}
-function closeDialog(){modal.hidden=true;dlg=null;}
+function closeDialog(){if(dlg?.title==='Preferences'){const d=$('#modal .dialog');try{localStorage.setItem('gs.prefSize',JSON.stringify([d.offsetWidth,d.offsetHeight]));}catch(e){}}modal.hidden=true;dlg=null;}
 (h=>{h.addEventListener('pointerdown',e=>{if(e.button!==0||!dlg)return;e.preventDefault();const k=dlgKey(dlg.title),p0=(dlgPos[k]||[0,0]).slice(),x0=e.clientX,y0=e.clientY,d=$('#modal .dialog'),r0=d.getBoundingClientRect();h.setPointerCapture(e.pointerId);
   const mv=ev=>{/* keep the title bar on screen */let dx=ev.clientX-x0,dy=ev.clientY-y0;dx=clamp(dx,-r0.left-r0.width+80,window.innerWidth-r0.left-80);dy=clamp(dy,-r0.top,window.innerHeight-r0.top-40);dlgPos[k]=[p0[0]+dx,p0[1]+dy];dlgPlace();};
   const up=()=>{h.removeEventListener('pointermove',mv);h.removeEventListener('pointerup',up);h.removeEventListener('pointercancel',up);};h.addEventListener('pointermove',mv);h.addEventListener('pointerup',up);h.addEventListener('pointercancel',up);});

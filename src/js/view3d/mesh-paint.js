@@ -78,12 +78,12 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
       if(x1<x0)return [0,0,0,0];if(uvs>1||x0<0||y0<0||x1>1||y1>1)return [0,0,doc.w,doc.h];
       return [x0*doc.w-2,y0*doc.h-2,x1*doc.w+2,y1*doc.h+2];}};}
 /* ---- pointer on the 3D view ---- */
-const MESH_TOOLS=['brush','erase','dodge','burn','heal','clone'];
+const MESH_TOOLS=['brush','erase','dodge','burn','heal','clone','material'];
 function meshPaintReady(e){return v3.paintOn&&MESH_TOOLS.includes(ui.tool)&&!e.altKey&&e.button===0&&v3.gpu&&v3.mesh&&!v3.mesh.noUV;}
 function meshPt(hit,e){const r=hit.getBoundingClientRect();return [e.clientX-r.left,r.height-(e.clientY-r.top)];}
 function meshDown(hit,e){if(stroke||preview||selLive)return false;if(typeof bk!=='undefined'&&bk.busy&&ui.mode==='bake'){toast('Wait for the bake to finish.');return true;}
-  if(fillNoMask())return true;
-  const et=ui.mode==='bake'?bakeEditTarget():editTarget(),o=paintOpts(et);if(!o)return true;
+  if(ui.tool==='material')materialBrushTarget();if(fillNoMask())return true;
+  const et=ui.mode==='bake'?bakeEditTarget():editTarget();if(ui.mode!=='bake'&&lockStop(et))return true;const o=paintOpts(et);if(!o)return true;
   const r=hit.getBoundingClientRect(),w=Math.max(1,Math.round(r.width)),h=Math.max(1,Math.round(r.height)),sp=meshSpace(w,h);if(!sp)return true;
   if(o.tool==='heal'||o.tool==='clone'){const pk=v3PickAt(hit,e);if(!pk)return true;if(!healBegin(pk.uv[0]*doc.w,pk.uv[1]*doc.h,o.tool))return true;}
   o.space=sp;o.sym=null;const [x,y]=meshPt(hit,e),p=pressureOf(e),line=brushLineStart(et,x,y,p,e,'mesh');v3.mstroke={id:e.pointerId,sx:x,sy:y,sp:p,rx:x,ry:y,line};beginStroke(et.L,line.x,line.y,line.p,o);if(line.joined)addPoint(x,y,p);return true;}

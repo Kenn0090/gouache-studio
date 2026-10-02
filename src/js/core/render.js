@@ -50,14 +50,14 @@ function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
       if(st&&!edit){ex=(st.o.extras||[]).find(e=>e.key===k)||null;if(!ex)st=null;}
       let pn=null;if(panState&&n.id===panState.id&&panState.maps.has(k)){pn=panShift(src);src=pn;}
       if(cf.length||lk||cx){/* the live stroke goes in first, so clipped filters and the layer's array and styles apply to it too */
-        if(st){own=acquire();run(P.merge,own,Object.assign({uSrc:src.tex,uStrokeTex:strokeT.tex,uStroke:{int:ex?ex.mode:strokeMode(st.o)},uStrokeColor:ex?ex.color:st.o.color,uStrokeTint:!ex&&!!st.tint,uStrokeOpacity:st.o.opacity,uLockAlpha:ex?false:n.lockAlpha},
-          edit?chanU(st.o):chanU(null),ex?st.exU:selU(st.o),edit?tonalU(st.o):{}));src=own;st=null;ex=null;}
+        if(st){own=acquire();run(strokeMergeProgram(st),own,Object.assign({uSrc:src.tex,uStrokeTex:strokeT.tex,uStroke:{int:ex?ex.mode:strokeMode(st.o)},uStrokeColor:ex?ex.color:st.o.color,uStrokeTint:!ex&&!!st.tint,uStrokeOpacity:st.o.opacity,uLockAlpha:ex?false:n.lockAlpha},
+          edit?chanU(st.o):chanU(null),ex?st.exU:selU(st.o),edit?tonalU(st.o):{},strokeMaterialU(st,k)));src=own;st=null;ex=null;}
         if(cx){const r=cfxApply(n,src,k,own?'live':src!==T?'off':undefined);if(r!==src){if(own)release(own);own=r;src=r;}}
         for(const f of cf){const r=fxApplyLayer(f,src,k,maskTexOf(f));if(r!==src){if(own)release(own);own=r;src=r;}}
         if(lk&&mt&&n.styles&&anyStyle(n)){const m=lkMasked(src,mt);if(own)release(own);own=m;src=m;lkM=true;}
         if(lk){const r=layerLook(n,src,k,src===T,lkM?mt:null);if(r.t!==src){if(own)release(own);own=r.pooled?r.t:null;src=r.t;}}}
       compStats.layerPixels+=compPart?compPartPixels:doc.w*doc.h;
-      run(direct?fillCompProgram():P.comp,out,Object.assign(direct?fillCompUniforms(n,k):{},{uSolid:!!solid,uSolidColor:solid||[0,0,0,0],uBase:acc.tex,uLayer:src.tex,uStrokeTex:strokeT.tex,uMask:clipped?(mapT(clipped,'base')||emptyFor(8)).tex:dummy,uUseMask:!!clipped,uMask2:cm||dummy,uUseMask2:!!cm,uLMask:mt||dummy,uUseLMask:!!mt&&!lkM,
+      run(st?.o.material?materialStrokeProgram(true):direct?fillCompProgram():P.comp,out,Object.assign(direct?fillCompUniforms(n,k):{},strokeMaterialU(st,k),{uSolid:!!solid,uSolidColor:solid||[0,0,0,0],uBase:acc.tex,uLayer:src.tex,uStrokeTex:strokeT.tex,uMask:clipped?(mapT(clipped,'base')||emptyFor(8)).tex:dummy,uUseMask:!!clipped,uMask2:cm||dummy,uUseMask2:!!cm,uLMask:mt||dummy,uUseLMask:!!mt&&!lkM,
         uMode:{int:mapModeOf(n,k)},uOpacity:n.opacity,uStroke:{int:st?(ex?ex.mode:strokeMode(st.o)):0},uStrokeTint:!!(st&&!ex&&st.tint),uStrokeColor:st?(ex?ex.color:st.o.color):[0,0,0],uStrokeOpacity:st?st.o.opacity:0,uLockAlpha:ex?false:n.lockAlpha},
         edit?chanU(st&&st.o):chanU(null),ex?st.exU:selU(st&&st.o),edit?tonalU(st&&st.o):{}));
       if(own)release(own);if(pn)release(pn);if(live)release(live);release(acc);acc=out;}
@@ -86,7 +86,7 @@ function maskPartOK(s){const L=s.L.maskOf,M=L&&L.mask;if(!M||strokeLive(s.o)||ui
   if(idx>1&&!(M._pre&&M._pre.key===msKey(L)+'|'+idx))return false;
   return true;}
 function compositeStrokePart(){const s=stroke;if(!s||!strokeCacheSafe()||!s.compDone||!compOut||compOut.w!==doc.w||compOut.h!==doc.h||(s.L.maskOf&&!maskPartOK(s))||s.L.quick||preview||ui.mode==='anim'||ui.mode==='bake'||doc.view==='material'||doc.view==='nfinal'||compNeedsAll(doc.root.children,doc.map))return false;
-  let F=s.fd;if(F==='all'){if(s.L.maskOf||(s.o.extras||[]).length||strokeLive(s.o))return false;const b=s.space&&s.space.viewportBounds&&!doc.wrap&&s.space.viewportBounds(s);if(!b)return false;F=[b];}else s.fd=null;if(!F||!F.length)return true;
+  let F=s.fd;if(F==='all'){if(s.L.maskOf&&!maskPartOK(s)||(s.o.extras||[]).length&&!s.o.material||strokeLive(s.o))return false;const b=s.space&&s.space.viewportBounds&&!doc.wrap&&s.space.viewportBounds(s);if(!b)return false;F=[b];}else s.fd=null;if(!F||!F.length)return true;
   const rs=doc.wrap?[[0,0,doc.w,doc.h]]:F.map(f=>{const x=Math.max(0,Math.floor(f[0])),y=Math.max(0,Math.floor(f[1]));return [x,y,Math.min(doc.w,Math.ceil(f[2]))-x,Math.min(doc.h,Math.ceil(f[3]))-y];}).filter(r=>r[2]>0&&r[3]>0);
   if(!rs.length)return true;
   if(typeof msUpdateAll==='function')msUpdateAll();
@@ -100,7 +100,7 @@ function compositeStrokePart(){const s=stroke;if(!s||!strokeCacheSafe()||!s.comp
       const acc=acquire();clearTarget(acc,mapDefault(doc.map));const out=compositeList(doc.root.children,acc);blit(out,compOut,x0,y0,x1-x0,y1-y0,x0,y0);release(out);});}
     finally{compPart=false;maskOverride=new Map();tmp.forEach(release);}
   }else try{for(const r of rs)scissorDo(r,()=>{const acc=acquire();clearTarget(acc,mapDefault(doc.map));const out=compositeList(doc.root.children,acc);blit(out,compOut,r[0],r[1],r[2],r[3],r[0],r[1]);release(out);});}finally{compPart=false;}
-  compOut.mipDirty=true;v3Changed(rs);return true;}
+  compOut.mipDirty=true;if(compOut.hasMips&&!(doc.w&(doc.w-1))&&!(doc.h&(doc.h-1))){for(const r of rs)v3PatchMips(compOut,r);compOut.mipDirty=false;}v3Changed(rs);return true;}
 function composite(){if(compositeStrokePart())return;compStats.full++;if(compOut)release(compOut);maskOverride=new Map();const tmp=[];maskViewLive=false;if(typeof msUpdateAll==='function')msUpdateAll();
   if(stroke&&stroke.L.maskOf&&!strokeLive(stroke.o)){const lm=acquire();tmp.push(lm);run(P.merge,lm,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,...tintU(),uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},selU(stroke.o),tonalU(stroke.o)));
     /* a Paint row of a mask with rows: the whole stack again, with the row as it is being painted */
@@ -116,11 +116,12 @@ function viewSource(){const A=doc.active;if(ui.viewMask&&A&&A.mask){
     if(preview&&!preview.off&&preview.isMask&&preview.L===A)return {t:previewT,mask:true};return {t:A.mask.target,mask:true};}
   return {t:compOut,mask:false};}
 function drawView(){
+  /* A view owns its clear and quad state, even when an asynchronous baker has yielded. */
+  gl.disable(gl.SCISSOR_TEST);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.disable(gl.BLEND);gl.colorMask(true,true,true,true);gl.bindVertexArray(vao);
   bindTarget(null);gl.clearColor(themeGround[0],themeGround[1],themeGround[2],1);gl.clear(gl.COLOR_BUFFER_BIT);
   const dpr=dprNow(),z=view.zoom,vs=viewSource(),fl=cageFlatActive(),bv=ui.mode==='bake'?bakeViewTex():ui.mode==='convert'?cvViewTex():null,T=bv||(fl?cageRenderFlat(vs.t):vs.t),DW=fl?fl.fw:doc.w,DH=fl?fl.fh:doc.h;
   gl.bindTexture(gl.TEXTURE_2D,T.tex);
-  if(z<1&&T===compOut&&compOut.mipDirty&&stroke&&doc.w*doc.h>=16777216)gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); /* big canvas: the smaller copies are made once the stroke ends */
-  else if(z<1&&T===compOut){if(compOut.mipDirty){gl.generateMipmap(gl.TEXTURE_2D);compOut.mipDirty=false;}gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);}
+  if(z<1&&T===compOut){if(compOut.mipDirty){gl.generateMipmap(gl.TEXTURE_2D);compOut.mipDirty=false;compOut.hasMips=true;}gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);}
   else gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,z>=2?gl.NEAREST:gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,z>=2?gl.NEAREST:gl.LINEAR);
   const ox=view.x*dpr+stageOx(dpr),oy=view.y*dpr,ew=DW*z*dpr,eh=DH*z*dpr,t=doc.wrap&&!fl;

@@ -6,7 +6,7 @@ const bt={paint:null,sketch:null,size:512,guides:true,editing:null,name:'',v3was
   set:{spacing:.2,sizeJitter:0,angleJitter:0,scatter:0,hueJitter:0,satJitter:0,valJitter:0,pSize:true,followDir:false},
   tip:null,sig:null,timer:0,prev:null};
 /* everything that belongs to one document */
-function docState(){return {doc:Object.assign({},doc),view:Object.assign({},view),undo:hist.undo,redo:hist.redo,sel:Object.assign({},sel),aux:Object.assign({},aux),
+function docState(){if(typeof pathFlush==='function')pathFlush();return {doc:Object.assign({},doc),view:Object.assign({},view),undo:hist.undo,redo:hist.redo,sel:Object.assign({},sel),aux:Object.assign({},aux),
   compOut,empties:Object.assign({},emptyTs),groupCount};}
 function setDocState(s){for(const k of Object.keys(doc))delete doc[k];Object.assign(doc,s.doc);Object.assign(view,s.view);hist.undo=s.undo;hist.redo=s.redo;Object.assign(sel,s.sel);
   for(const k of Object.keys(aux))delete aux[k];Object.assign(aux,s.aux);compOut=s.compOut;for(const k of Object.keys(emptyTs))delete emptyTs[k];Object.assign(emptyTs,s.empties);

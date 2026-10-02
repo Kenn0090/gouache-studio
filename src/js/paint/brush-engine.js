@@ -94,13 +94,13 @@ function endStroke(record){
   const healing=s.o.tool==='heal',cloning=s.o.tool==='clone';
   const x0=clamp(Math.floor(s.bb[0]),0,W),y0=clamp(Math.floor(s.bb[1]),0,H),x1=clamp(Math.ceil(s.bb[2]),0,W),y1=clamp(Math.ceil(s.bb[3]),0,H),bw=x1-x0,bh=y1-y0,R=[x0,y0,bw,bh];
   if(s.lazy&&bw>0&&bh>0)blit(L.target,beforeT,x0,y0,bw,bh,x0,y0);
-  if(s.o.tool!=='smudge'&&!healing&&!cloning&&bw>0&&bh>0)scissorDo(R,()=>run(P.merge,L.target,{uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(s.o)},...tonalU(s.o),uStrokeColor:s.o.color,uStrokeTint:!!s.tint,uStrokeOpacity:s.o.opacity,uLockAlpha:L.lockAlpha,...chanU(s.o),...selU(s.o)}));
+  if(s.o.tool!=='smudge'&&!healing&&!cloning&&bw>0&&bh>0)scissorDo(R,()=>run(strokeMergeProgram(s),L.target,{uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(s.o)},...tonalU(s.o),uStrokeColor:s.o.color,uStrokeTint:!!s.tint,uStrokeOpacity:s.o.opacity,uLockAlpha:L.lockAlpha,...chanU(s.o),...selU(s.o),...strokeMaterialU(s)}));
   if(s.o.tool!=='smudge')strokeT.dirtyR=s.space?'all':R;
   /* the heal brush heals every map of the layer where the stroke went */
   const parts=healing?healApply(s,x0,y0,bw,bh,record).parts:cloning&&s.clone?cloneEnd(s,x0,y0,bw,bh,record):[];
   for(const e of (healing||cloning?[]:s.o.extras||[])){if(!(bw>0&&bh>0))break;const T=mapT(L,e.key),old=acquireD(T.depth);blit(T,old,x0,y0,bw,bh,x0,y0);
     if(record&&bw>0&&bh>0)parts.push({k:e.key,before:captureRegion(old,x0,y0,bw,bh)});
-    scissorDo(R,()=>run(P.merge,T,Object.assign({uSrc:old.tex,uStrokeTex:strokeT.tex,uStroke:{int:e.mode},uStrokeColor:e.color,uStrokeOpacity:s.o.opacity,uLockAlpha:false},chanU(null),s.exU)));release(old);
+    scissorDo(R,()=>run(strokeMergeProgram(s),T,Object.assign({uSrc:old.tex,uStrokeTex:strokeT.tex,uStroke:{int:e.mode},uStrokeColor:e.color,uStrokeOpacity:s.o.opacity,uLockAlpha:false},chanU(null),s.exU,strokeMaterialU(s,e.key))));release(old);
     if(parts.length&&parts[parts.length-1].k===e.key)parts[parts.length-1].after=captureRegion(T,x0,y0,bw,bh);}
   if(s.lockT)release(s.lockT);dropStrokeCache(s);
   stroke=null;

@@ -83,6 +83,8 @@ function buildBrushPanel(){
   const box=$('#brushBody');box.replaceChildren();const sm=ui.tool==='smudge',isText=ui.tool==='text',isSel=isSelTool(ui.tool),isXf=!!(xf&&!xf.move),isOther=['crop','move','gradient','bucket','gbucket','cage','array','shape'].includes(ui.tool),noBrush=isText||isSel||isXf||isOther;
   $('#libBody').hidden=noBrush;$('.prevwrap').hidden=noBrush;$('#abrBtn').hidden=noBrush;$('#saveBrushBtn').hidden=noBrush||ui.tool==='dodge'||ui.tool==='burn';$('#tipBtn').hidden=noBrush;
   if(isText){$('#brushTitle').textContent='Text';buildTextPanel(box);return;}
+  if(ui.tool==='material')buildMaterialBrushPanel(box);
+  if(ui.tool==='pen'||ui.tool==='path'){$('#libBody').hidden=false;$('.prevwrap').hidden=false;$('#saveBrushBtn').hidden=true;$('#abrBtn').hidden=false;$('#tipBtn').hidden=false;pathPanel(box);return;}
   if(isXf){buildXfPanel(box);return;}
   if(ui.tool==='crop'){buildCropPanel(box);return;}
   if(ui.tool==='cage'){buildCagePanel(box);return;}
@@ -94,7 +96,7 @@ function buildBrushPanel(){
   if(isSel){buildSelectPanel(box);return;}
   const healing=ui.tool==='heal'||ui.tool==='clone';if(ui.tool==='heal')buildHealPanel(box);else if(ui.tool==='clone')buildClonePanel(box);
   const tonal=ui.tool==='dodge'||ui.tool==='burn';
-  if(!healing)$('#brushTitle').textContent=sm?'Blend brush':ui.tool==='erase'?'Eraser':tonal?(ui.tool==='dodge'?'Dodge':'Burn'):'Brush';
+  if(!healing)$('#brushTitle').textContent=sm?'Blend brush':ui.tool==='material'?'Material brush':ui.tool==='erase'?'Eraser':tonal?(ui.tool==='dodge'?'Dodge':'Burn'):'Brush';
   if(tonal)box.append(seg([['dodge','Dodge','Lighten (O)'],['burn','Burn','Darken (Shift+O switches)']],ui.tool,v=>{ui.tonal=v;setTool(v);},'Dodge or burn'),
     el('div',{class:'sub',text:'Range'}),seg([[0,'Shadows'],[1,'Midtones'],[2,'Highlights']],ui.tonalRange,v=>{ui.tonalRange=v;},'Range'),
     makeSlider({id:'tExp',label:'Exposure',min:.01,max:1,step:.01,value:ui.tonalExposure,fmt:pct,onInput:v=>{ui.tonalExposure=v;}}).el,
@@ -132,8 +134,8 @@ function buildBrushPanel(){
   box.append(el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:'brushReset',text:'Reset brush',title:'Put this tool’s brush back to its starting settings',onclick:()=>{for(const k of SETTING_KEYS)brush[k]=BRUSH_DEFAULTS[k];activePreset=null;if(typeof tbSaveCur==='function')tbSaveCur();buildBrushPanel();if(typeof buildOptBar==='function')buildOptBar();if(typeof refreshCursor==='function')refreshCursor();toast('Brush back to its starting settings.');}})));
   box.append(det);buildSymSection(box);if((ui.tool==='brush'||ui.tool==='erase')&&ui.mode!=='bake')buildMapBrushSection(box,ui.tool);schedulePreview();
 }
-function applyPreset(p){if(typeof tbSaveCur==='function')tbSaveCur();for(const k of SETTING_KEYS)brush[k]=(k in p)?p[k]:BRUSH_DEFAULTS[k];if(p.maps)applyMapBrush(p.maps);activePreset=p;setTool(p.tool!=='smudge'&&['erase','smudge','dodge','burn','heal','clone'].includes(ui.tool)?ui.tool:(p.tool||'brush'),true);renderLibrary();refreshCursor();}
-function setTool(t,keepPreset){if(t==='text'&&ui.mode==='anim'){toast('Text is available in Paint mode. Frames are single images.');return;}if(t!=='text'&&typeof closeTextEditor==='function')closeTextEditor();if(t!=='lasso'&&typeof polyLasso!=='undefined'&&polyLasso){polyLasso=null;drawSelOverlay();}
+function applyPreset(p){if(typeof tbSaveCur==='function')tbSaveCur();for(const k of SETTING_KEYS)brush[k]=(k in p)?p[k]:BRUSH_DEFAULTS[k];if(p.maps)applyMapBrush(p.maps);activePreset=p;setTool(p.tool!=='smudge'&&['erase','smudge','dodge','burn','heal','clone','material','pen','path'].includes(ui.tool)?ui.tool:(p.tool||'brush'),true);renderLibrary();refreshCursor();}
+function setTool(t,keepPreset){if(t==='path'&&ui.mode!=='p3d'){toast('Surface Path is available in 3D Paint.');return;}if(['pen','material'].includes(t)&&!['paint','p3d'].includes(ui.mode)){toast('This tool is available in Paint and 3D Paint.');return;}if(t==='text'&&ui.mode==='anim'){toast('Text is available in Paint mode. Frames are single images.');return;}if(t!=='text'&&typeof closeTextEditor==='function')closeTextEditor();if(t!=='lasso'&&typeof polyLasso!=='undefined'&&polyLasso){polyLasso=null;drawSelOverlay();}
   if(typeof xf!=='undefined'&&xf&&!xf.move)xfCommit();if(t!=='gradient'&&typeof gsess!=='undefined'&&gsess)gradCommit();if(t!=='array'&&typeof asess!=='undefined'&&asess)arrCommit();if(t!=='shape'&&typeof ssess!=='undefined'&&ssess)shapeCommit();if(t==='gradient'||t==='bucket'||t==='gbucket')ui.fillKind=t;if(t==='dodge'||t==='burn')ui.tonal=t;if(typeof tbSwitch==='function')tbSwitch(t,keepPreset);updateGroupButtons(t);if(typeof crop!=='undefined'){if(t==='crop'&&ui.tool!=='crop')crop=null;else if(t!=='crop')crop=null;}cv.style.cursor='';ui.tool=t;stage.classList.toggle('txt',t==='text');stage.classList.toggle('selt',isSelTool(t));stage.classList.toggle('movet',t==='move');stage.classList.toggle('fillt',t==='gradient'||t==='bucket'||t==='gbucket');document.querySelectorAll('.tool').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t)));
   if(!keepPreset&&activePreset&&(activePreset.tool==='smudge')!==(t==='smudge')){activePreset=null;renderLibrary();}
   stage.classList.toggle('grab',t==='hand');stage.classList.toggle('pick',t==='picker');if(ui.cageFlat&&!['brush','erase','smudge','dodge','burn','heal','clone','picker','hand'].includes(t))cageFlatOff();buildBrushPanel();refreshCursor();if(typeof drawXfOverlay==='function')drawXfOverlay();}

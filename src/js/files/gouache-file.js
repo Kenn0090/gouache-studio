@@ -10,8 +10,8 @@ function readRegion(t,x,y,w,h){gl.bindFramebuffer(gl.FRAMEBUFFER,t.fbo);let out;
   else{out=new Uint8Array(w*h*4);gl.readPixels(x,y,w,h,gl.RGBA,gl.UNSIGNED_BYTE,out);}
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);return out;}
 function writeRegion(t,x,y,w,h,bytes){t.opaque=false;gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
-  if(t.depth===16)gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,w,h,t.packed?gl.RG:gl.RGBA,gl.HALF_FLOAT,packedUpload(t,new Uint16Array(bytes.buffer,bytes.byteOffset,w*h*4)));
-  else gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,w,h,gl.RGBA,gl.UNSIGNED_BYTE,bytes);
+  if(t.depth===16)gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,w,h,t.mono?gl.RED:t.packed?gl.RG:gl.RGBA,gl.HALF_FLOAT,packedUpload(t,new Uint16Array(bytes.buffer,bytes.byteOffset,w*h*4)));
+  else gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,w,h,t.mono?gl.RED:gl.RGBA,gl.UNSIGNED_BYTE,packedUpload(t,bytes));
   gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);t.mipDirty=true;t.opaque=x===0&&y===0&&w===t.w&&h===t.h&&imageOpaque(bytes,t.depth);}
 /* in the Bake or Convert tab, the painting is what gets saved */
 async function encodeGouache(){return tabDocs.paint?withPaintDocAsync(encodeGouacheNow):encodeGouacheNow();}
@@ -27,6 +27,7 @@ async function encodeGouacheNow(opts){if(gfSaving)throw new Error('A document is
     return await encodeGouacheData(opts,stats);}finally{stats.total=performance.now()-t;gfSaveStats.last=stats;gfSaving=false;tabDocs.hold=held;
     for(const win of surfaces)if(win&&!win.closed)win.removeEventListener('keydown',keys,true);covers.forEach(c=>c.remove());requestRender(true);}}
 async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let off=0;/* lean: a 3D Paint texture set (no model, no bake fixes) */
+  if(typeof pathFlush==='function')pathFlush();
   await paReady();
   const pack=async(t,x,y,w,h,lossy)=>{let time=performance.now();const raw=await readRegionAsync(t,x,y,w,h);stats.read+=performance.now()-time;stats.bytes+=raw.byteLength;
     time=performance.now();const c=await pxPack(raw,w,h,t.depth,lossy,true);stats.pack+=performance.now()-time;stats.images++;return c;};
@@ -37,9 +38,9 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
      The colour hint lets new versions reopen uniform maps without expanding their storage. */
   const putSolid=async(k,color)=>{const d=mapDepth(k),time=performance.now(),c=await pxPackSolid(color,doc.w,doc.h,d);stats.pack+=performance.now()-time;stats.images++;stats.bytes+=doc.w*doc.h*(d===16?8:4);
     blobs.push(c.bytes);const r={o:off,n:c.bytes.length,r:[0,0,doc.w,doc.h],d,f:c.f,c:color};off+=c.bytes.length;return r;};
-  const mask=async n=>n.mask?{en:n.mask.enabled,lk:n.mask.link===false?0:undefined,img:await put(n.mask.target,true)}:null;
+  const mask=async n=>n.mask?{en:n.mask.enabled,mono:n.mask.target.mono||undefined,lk:n.mask.link===false?0:undefined,img:await put(n.mask.target,true)}:null;
   const putRaw=async t=>{const c=await pack(t,0,0,t.w,t.h,false);blobs.push(c.bytes);const r={o:off,n:c.bytes.length,w:t.w,h:t.h,d:t.depth,f:c.f};off+=c.bytes.length;return r;};
-  const node=async n=>{const base={name:n.name,vis:n.visible,op:n.opacity,mode:n.mode,mask:await mask(n),lockPx:n.lockPx||undefined,lockPos:n.lockPos||undefined,lockAll:n.lockAll||undefined,smSrc:n.smSrc||undefined,smMaskSrc:n.smMaskSrc||undefined,meshEdit:n.meshEdit||undefined};
+  const node=async n=>{const base={name:n.name,vis:n.visible,op:n.opacity,mode:n.mode,mask:await mask(n),lockPx:n.lockPx||undefined,lockPos:n.lockPos||undefined,lockAll:n.lockAll||undefined,smSrc:n.smSrc||undefined,smMaskSrc:n.smMaskSrc||undefined,meshEdit:n.meshEdit||undefined,materialPaint:n.materialPaint||undefined};
     /* mask rows and content effects (0.23) */
     {const ms=await msEncode(n,put,putRaw);if(ms.stack)base.mstack=ms.stack;if(ms.cfx)base.cfx=ms.cfx;}
     if(n.type==='group'){const kids=[];for(const c of n.children)kids.push(await node(c));return Object.assign(base,{t:'G',open:n.open,kids});}
@@ -49,7 +50,7 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
       else r=color?await putSolid(k,color):await put(mapT(n,k),false,PX_LOSSY.has(k));if(r)maps[k]=r;}
     /* a material layer's own images (so it stays editable after opening) */
     let fillImg;if(n.fill&&n._fillImg){fillImg={};for(const k in n._fillImg){const t=n._fillImg[k],c=await pack(t,0,0,t.w,t.h,!mapLive(n,k)&&PX_LOSSY.has(k));blobs.push(c.bytes);fillImg[k]={o:off,n:c.bytes.length,w:t.w,h:t.h,f:c.f};off+=c.bytes.length;}}
-    return Object.assign(base,{t:'L',clip:n.clip,lock:n.lockAlpha,mapModes:n.mapModes||{},maps,text:n.text?cloneText(n.text):undefined,grad:n.grad||undefined,array:n.array||undefined,arrBox:n.array?n.arrBox:undefined,styles:n.styles||undefined,shape:n.shape||undefined,fill:n.fill||undefined,idSel:n.idSel||undefined,fillImg,hold:n.frame?n.hold:undefined});};
+    return Object.assign(base,{t:'L',clip:n.clip,lock:n.lockAlpha,mapModes:n.mapModes||{},maps,text:n.text?cloneText(n.text):undefined,grad:n.grad||undefined,array:n.array||undefined,arrBox:n.array?n.arrBox:undefined,styles:n.styles||undefined,shape:n.shape||undefined,path:n.path||undefined,fill:n.fill||undefined,idSel:n.idSel||undefined,fillImg,hold:n.frame?n.hold:undefined});};
   const R=paintRoot(),kids=[];for(const c of R.children){kids.push(await node(c));await tick();}
   const all=allLayers(R),active=doc.active&&!doc.active.frame?allNodes(R).indexOf(doc.active):-1;
   const A=doc.anim;let anim=null;
@@ -110,11 +111,11 @@ async function gfReadInto(buf,head,data){
     if(o.t==='G'){n=newGroupObj(o.name);n.open=o.open!==false;}
     else if(o.t==='F'){n=newFxLayerObj(o.name,(o.fx.stack||[]).filter(it=>it.conv?CONVERTERS[it.conv]:FX[it.id]),o.fx.map);n.clip=!!o.clip;n.mapModes=Object.assign({},o.mapModes||{});}
     else{n=newLayerObj(o.name,!!o.fill);n.clip=!!o.clip;n.lockAlpha=!!o.lock;n.mapModes=Object.assign({},o.mapModes||{});
-      if(o.text)n.text=o.text;if(o.grad)n.grad=o.grad;if(o.array){n.array=o.array;n.arrBox=o.arrBox||null;}if(o.styles)n.styles=o.styles;if(o.shape)n.shape=o.shape;if(o.fill)n.fill=o.fill;if(o.idSel)n.idSel=o.idSel;
+      if(o.text)n.text=o.text;if(o.grad)n.grad=o.grad;if(o.array){n.array=o.array;n.arrBox=o.arrBox||null;}if(o.styles)n.styles=o.styles;if(o.shape)n.shape=o.shape;if(o.path)n.path=o.path;if(o.fill)n.fill=o.fill;if(o.idSel)n.idSel=o.idSel;
       if(o.fillImg){n._fillImg={};for(const k in o.fillImg){const r=o.fillImg[k],raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),r.w,r.h,8,r.f),t=makeTarget(r.w,r.h,8,true);writeRegion(t,0,0,r.w,r.h,raw);n._fillImg[k]=t;}}
       for(const k in o.maps||{}){if(k!=='base'&&!doc.maps.includes(k))continue;const r=o.maps[k];if(r.live&&fillLiveSource(n,k))setMapLive(n,k);else await img(r,()=>ensureMapTarget(n,k),o.fill?n:null,k);}}
-    Object.assign(n,{visible:o.vis!==false,opacity:o.op==null?1:o.op,mode:o.mode==null?(o.t==='G'?-1:0):o.mode});n.lockPx=!!o.lockPx;n.lockPos=!!o.lockPos;n.lockAll=!!o.lockAll;n.smSrc=o.smSrc;n.smMaskSrc=o.smMaskSrc;if(o.meshEdit&&typeof o.meshEdit.setID==='string'&&typeof o.meshEdit.key==='string'){n.meshEdit=Object.assign({},o.meshEdit);n.meshMap=o.meshEdit.key;n.baked=true;}
-    if(o.mask){n.mask=makeMask(1);n.mask.enabled=o.mask.en!==false;if(o.mask.lk===0)n.mask.link=false;await img(o.mask.img,n.mask.target);}
+    Object.assign(n,{visible:o.vis!==false,opacity:o.op==null?1:o.op,mode:o.mode==null?(o.t==='G'?-1:0):o.mode});n.lockPx=!!o.lockPx;n.lockPos=!!o.lockPos;n.lockAll=!!o.lockAll;n.smSrc=o.smSrc;n.smMaskSrc=o.smMaskSrc;n.materialPaint=o.materialPaint;if(o.meshEdit&&typeof o.meshEdit.setID==='string'&&typeof o.meshEdit.key==='string'){n.meshEdit=Object.assign({},o.meshEdit);n.meshMap=o.meshEdit.key;n.baked=true;}
+    if(o.mask){n.mask=makeMask(1,o.mask.mono);n.mask.enabled=o.mask.en!==false;if(o.mask.lk===0)n.mask.link=false;await img(o.mask.img,n.mask.target);}
     await msDecode(n,o,img,async r=>{const raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),r.w,r.h,r.d||8,r.f),t=makeTarget(r.w,r.h,8,true);writeRegion(t,0,0,r.w,r.h,raw);return t;});
     if(parent)insertNode(n,parent);
     if(o.t==='G')for(const c of o.kids||[])await mk(c,n);

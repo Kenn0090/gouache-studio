@@ -3,7 +3,7 @@
    opacity, tip, spacing, jitter…), so switching tools no longer carries one brush across. With "All tools share
    the brush tip" on, the tip (and its angle, roundness and flips) stays the same across tools while the other
    settings stay per tool. Kept on this computer between sessions (the tip by name). */
-const TB_TOOLS=['brush','erase','smudge','dodge','heal','clone'];
+const TB_TOOLS=['brush','erase','smudge','dodge','heal','clone','material'];
 const TB_TIP=['tip','angle','roundness','flipX','flipY'];
 const tbGroup=t=>t==='burn'?'dodge':t;
 const toolBrush={cur:'brush',slots:{},share:false};

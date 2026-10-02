@@ -9,6 +9,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 
 ## Painting
 - [Brushes and painting](Brushes-and-painting.md): brushes, presets, colour jitter, making your own tips, Photoshop brushes, pen pressure, eraser, blend, healing brushes, clone stamp, dodge and burn
+- [Paths and material painting](Paths-and-material-painting.md): material brush, editable Pen curves, surface paths and Clear layer
 - [Layers](Layers.md): layers, groups, masks, fill layers, the right-click menu, blend modes, clipping, text, live gradients
 - [Masks and effects](Masks-and-effects.md): rows under a layer's mask (paint, mesh maps, ID colours, noise, generators, filters), content effects, the live mask, mesh maps from a material
 - [Smart materials, smart masks and anchor points](Smart-materials-and-anchors.md): whole folders of layers or masks saved to reuse; masks that follow what you painted lower down
