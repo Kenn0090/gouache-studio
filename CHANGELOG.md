@@ -1,5 +1,9 @@
 # What's new in Gouache Studio
 
+## 0.46.13
+
+The Projects tab appears only in 3D Paint's Material Library shelf. It no longer appears on the 2D Paint canvas, including saved layouts and after switching between workspaces.
+
 ## 0.46.12
 
 3D Paint now displays its actual texture-set resolution, including 8K and 16K. File New offers a model and mesh-map setup window; Maps has labeled import/drop slots for replacing maps later. The Library shelf gains Mesh maps and Projects tabs. Project assets include live layers, source textures and created/converted assets, with compressed records saved inside the document. Imported mesh maps retain their source dimensions and work with normal shading, masks and live material channels.

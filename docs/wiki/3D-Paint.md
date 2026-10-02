@@ -28,7 +28,7 @@ Imported maps retain their own dimensions, so a 2K map does not become a separat
 
 ### Projects shelf
 
-**Projects** sits in the Material Library shelf. It shows materials from the current layer stack, their source textures, and textures/materials created in the document. **Turn canvas into a texture**, **Turn into material** and **Send to 3D Paint** register their assets here. Filter by **Textures** or **Materials**, search by name, and use **S / M / L** to change thumbnail size. Click an asset or drag it onto the layers to reuse it; a texture dragged onto a mask fills that mask.
+**Projects** sits in the Material Library shelf in 3D Paint only. It shows materials from the current layer stack, their source textures, and textures/materials created in the document. **Turn canvas into a texture**, **Turn into material** and **Send to 3D Paint** register their assets here. Filter by **Textures** or **Materials**, search by name, and use **S / M / L** to change thumbnail size. Click an asset or drag it onto the layers to reuse it; a texture dragged onto a mask fills that mask.
 
 Created assets are saved inside the document or texture set, independently of the computer's reusable library. Live layer entries follow the layer stack. Stored project assets remain compressed until used, and browsing only draws small previews.
 

@@ -4,7 +4,7 @@
    dragged to another group, between groups, onto the icon column (one click away), or off the dock to float.
    The arrangement is a workspace: Painting, Texturing, 3D Paint, Minimal or your own, remembered per workspace. */
 const PANELS={
-  projects:{title:'Projects',sel:'#paSec',avail:m=>m==='p3d'||m==='paint',icon:'<path d="M3 6h7l2 2h9v11H3z"/>'},
+  projects:{title:'Projects',sel:'#paSec',avail:m=>m==='p3d',icon:'<path d="M3 6h7l2 2h9v11H3z"/>'},
   meshmaps:{title:'Mesh maps',sel:'#mmSec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="m4 4 16 16M4 20 20 4"/>'},
   p3d:{title:'3D Paint',sel:'#p3dSec',avail:m=>m==='p3d',mode:true},
   hist:{title:'History',sel:'#histSec',avail:m=>m!=='convert',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>'},
