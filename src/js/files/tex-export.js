@@ -73,7 +73,7 @@ const TEX_PRESETS={
     {s:'Opacity',what:'Opacity',grey:'opac'}]}};
 const pascal=n=>(String(n||'Texture').replace(/\.[a-z0-9]+$/i,'').match(/[A-Za-z0-9]+/g)||['Texture']).map(w=>w[0].toUpperCase()+w.slice(1)).join('');
 const snake=n=>(String(n||'texture').replace(/\.[a-z0-9]+$/i,'').match(/[A-Za-z0-9]+/g)||['texture']).map(w=>w.toLowerCase()).join('_');
-const texCfg={preset:'unreal',normal:'preset',size:0,fmt:'png',h16:true,name:'',allSets:true,model:'none'};
+const texCfg={preset:'unreal',normal:'preset',size:0,fmt:'png',h16:true,name:'',allSets:true,model:'none',meshMaps:false};
 /* a baked mesh map (3D Paint) stands in for a map the document doesn't paint, like AO in the ORM file */
 const texMesh=k=>doc.meshMaps&&doc.meshMaps[k]&&!doc.maps.includes(k)?doc.meshMaps[k]:null;
 /* which files this document produces with a preset */
@@ -110,7 +110,7 @@ async function encodeTex(W,H,f,C,fmt,bits){
 /* build every file of a preset: [{name,data}] */
 async function buildTextures(pr,name){const W=doc.w,H=doc.h,S=texCfg.size||0,nw=S||W,nh=S?Math.max(1,Math.round(S*H/W)):H;
   const cache={},has=k=>doc.maps.includes(k);
-  const grey=k=>{if(k==='one')return null;const kk=k==='smooth'?'rough':k;const mm=texMesh(kk);if(!has(kk)&&!mm)return null;if(!cache[kk]){if(mm)cache[kk]=readMapF(mm,1);else{const t=compositeMap(kk);cache[kk]=readMapF(t,1);release(t);}}return cache[kk];};
+  const grey=k=>{if(k==='one')return null;const kk=k==='smooth'?'rough':k;const mm=texMesh(kk);if(!has(kk)&&!mm)return null;if(!cache[kk]){if(mm)cache[kk]=resampleF(readMapF(mm,1),mm.w,mm.h,1,W,H,false);else{const t=compositeMap(kk);cache[kk]=readMapF(t,1);release(t);}}return cache[kk];};
   const def=k=>k==='zero'?0:k==='one'?1:k==='smooth'?1-mapDefault('rough')[0]:has(k)?mapDefault(k)[0]:(MAP_DEFS[k].def!=null?MAP_DEFS[k].def:0);
   const files=[],ext=texCfg.fmt,n=W*H;
   for(const o of texOutputs(pr)){let f,C;
@@ -138,20 +138,21 @@ function dlgExportTextures(){if(stroke||preview||selLive){toast('Finish the curr
   const setNm=()=>ui.mode==='p3d'&&texCfg.allSets&&p3.sets.filter(S=>!S.missing).length>1?(texCfg.name||'Texture')+'_'+doc.name:(texCfg.name||'Texture');
   const draw=()=>{const pr=TEX_PRESETS[texCfg.preset],outs=texOutputs(pr),flip=texNormalFlip(pr);list.replaceChildren(...outs.map(o=>el('div',{class:'texrow'},
       el('code',{text:pr.name(setNm()).replace('{s}',o.s)+'.'+texCfg.fmt}),el('span',{class:'dim',text:o.rgb==='normal'?'Normal ('+(flip?'DirectX':'OpenGL')+')':o.what}))));
+    if(texCfg.meshMaps)for(const [k,t] of Object.entries(doc.meshMaps||{})){if(k.startsWith('cv:')||!t)continue;list.append(el('div',{class:'texrow'},el('code',{text:pr.name(setNm()).replace('{s}',meshExportSuffix(k))+'.'+texCfg.fmt}),el('span',{class:'dim',text:(P3_MESHMAP_NAMES[k]||k)+' · '+t.w+' × '+t.h})));}
     if(doc.maps.length<2)list.append(el('p',{class:'note',text:'This document only has base colour. Add maps with Image › Document maps… to export roughness, metallic, height and normal too.'}));};
   if((TEX_PRESETS[texCfg.preset].wf||'metal')!==(doc.workflow||'metal'))texCfg.preset=texPresetsFor()[0][0];
   if(!TEX_PRESETS[texCfg.preset])texCfg.preset=texPresetsFor()[0][0];
   const own=el('div',{class:'chips'},el('button',{class:'btn sm',id:'txNewPreset',text:'New preset…',title:'Your own files and channel packing',onclick:()=>{closeDialog();dlgTexPreset(texCfg.preset);}}),
     TEX_PRESETS[texCfg.preset].user?el('button',{class:'btn sm',id:'txEditPreset',text:'Edit preset…',onclick:()=>{closeDialog();dlgTexPreset(texCfg.preset);}}):null);
   /* (0.27) the model too, with its textures connected */
-  const modelRow=mxHasModel()?[sel('txModel','Model',[['none','No model'],['glb','.glb (textures inside)'],['obj','.obj + .mtl']],texCfg.model||'none',v=>{texCfg.model=v;}),
-    el('p',{class:'note',text:'The model goes with the textures: .glb has them inside and connected (Blender, Godot, Unreal, Unity with glTFast); .obj + .mtl points to the texture files.'})]:[];
+  const modelRow=mxHasModel()?[sel('txModel','Model',[['none','No model'],['glb','.glb (textures inside)'],['obj','.obj + .mtl'],['fbx','.fbx (mesh + texture links)']],texCfg.model||'none',v=>{texCfg.model=v;}),
+    el('p',{class:'note',text:'The model goes with the textures. GLB embeds them; OBJ and FBX link to the exported files. FBX exports the static mesh, UVs, normals and material slots.'})]:[];
   body.append(sel('txPreset','Engine',texPresetsFor().map(([k,p])=>[k,p.label]),texCfg.preset,v=>{texCfg.preset=v;closeDialog();dlgExportTextures();}),own,
     el('div',{class:'frow'},el('label',{for:'txName',text:'Name'}),nameIn),
     sel('txNrm','Normal map',[['preset','Engine default'],['gl','OpenGL (green up)'],['dx','DirectX (green down)']],texCfg.normal,v=>{texCfg.normal=v;}),
     sel('txSize','Size',sizes,texCfg.size,v=>{texCfg.size=+v;}),
     sel('txFmt','Format',[['png','PNG'],['tga','TGA']],texCfg.fmt,v=>{texCfg.fmt=v;}),
-    chk('txH16','Height at 16 bits (PNG)',texCfg.h16,v=>{texCfg.h16=v;}),
+    chk('txH16','Height at 16 bits (PNG)',texCfg.h16,v=>{texCfg.h16=v;}),chk('txMeshMaps','Include assigned mesh maps',texCfg.meshMaps,v=>{texCfg.meshMaps=v;draw();}),el('p',{class:'note',text:'Mesh maps export at their original size unless you choose an export size. They have a Mesh_ prefix and belong to their texture set.'}),
     ui.mode==='p3d'&&p3.sets.filter(S=>!S.missing).length>1?chk('txAll','Every texture set (files named after each set)',texCfg.allSets,v=>{texCfg.allSets=v;draw();}):null,
     ...modelRow,...esRow(()=>{closeDialog();dlgExportTextures();}),el('div',{class:'sub',text:'Files'}),list);draw();
   openDialog({title:'Export textures',body,okLabel:platform.isDesktop?(esActive()?'Export and send':'Choose folder…'):'Export',onOk(){exportTextures();}});}
@@ -160,17 +161,25 @@ async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.
   toast('Exporting textures…');await tick();
   try{let files=[];const bySet={},glTex={};
     /* each texture set (3D Paint), or the document; the model needs glTF-shaped textures too */
-    const one=async(setName,fileName)=>{const fs=await buildTextures(pr,fileName);bySet[setName]=fs;files.push(...fs);
+    const one=async(setName,fileName)=>{const fs=await buildTextures(pr,fileName);bySet[setName]=fs;files.push(...fs);if(texCfg.meshMaps)files.push(...await buildMeshMapTextures(pr,fileName));
       if(wantModel&&texCfg.model==='glb'){const g=await buildTextures(GLTF_TEX,pascal(fileName)),T={};for(const f of g)T[f.suffix]=f;T.alpha=doc.maps.includes('opac');glTex[setName]=T;}};
     const sets=ui.mode==='p3d'?p3.sets.filter(S=>!S.missing):[];
     if(ui.mode==='p3d'&&(texCfg.allSets||wantModel)&&sets.length>1){const back=p3.cur;
-      for(let i=0;i<p3.sets.length;i++){if(p3.sets[i].missing)continue;p3SwitchSet(i,true);await one(p3.sets[i].name,name+'_'+p3.sets[i].name);}p3SwitchSet(back,true);}
+      try{for(let i=0;i<p3.sets.length;i++){if(p3.sets[i].missing)continue;p3SwitchSet(i,true);await one(p3.sets[i].name,name+'_'+p3.sets[i].name);}}finally{p3SwitchSet(back,true);}}
     else await one(ui.mode==='p3d'&&p3.sets[p3.cur]?p3.sets[p3.cur].name:(doc.name||name),name);
     if(wantModel){const m=mxModel(),setNames=Object.keys(bySet),groups=mxGroups(m,setNames),mn=pascal(name);
       if(texCfg.model==='glb')files=files.concat([{name:mn+'.glb',data:mxGLB(m,groups,glTex,mn)}]);
+      else if(texCfg.model==='fbx')files.push({name:mn+'.fbx',data:mxFBX(m,groups,bySet,mn,pr)});
       else{const o=mxOBJ(m,groups,bySet,mn,pr);files.push({name:mn+'.obj',data:o.obj},{name:mn+'.mtl',data:o.mtl});}}
     if(!files.length){toast('Nothing to export.');return;}
     if(dir){const sep=dir.includes('\\')?'\\':'/';for(const f of files)await platform.writeFile(dir.replace(/[\\/]$/,'')+sep+f.name,f.data);toast('Saved '+files.length+' files to '+dir);await esAfter(dir,files,name);}
     else{const r=await deliver(pascal(name)+'_'+(pr.user?'custom':texCfg.preset)+'.zip',await makeZipMulti(files));toast(deliveredText(r,'Textures'));}
     return files;}
   catch(e){console.error(e);toast('Export failed: '+(e.message||e));}}
+
+const meshExportSuffix=k=>'Mesh_'+({normal:'Normal',height:'Height',ao:'AO',curv:'Curvature',curvEdge:'CurvatureEdges',curvCrease:'CurvatureCreases',thick:'Thickness',wnormal:'WorldNormal',position:'Position',id:'ID',rough:'Roughness',metal:'Metallic'}[k]||pascal(k));
+async function buildMeshMapTextures(pr,name){const files=[];for(const [k,t] of Object.entries(doc.meshMaps||{})){if(!t||k.startsWith('cv:'))continue;
+ const C=['normal','wnormal','position','id'].includes(k)?3:1,raw=readMapF(t,C===3?4:1);let f=C===3?dropAlpha(raw,t.w*t.h):raw;
+ if(k==='normal'&&texNormalFlip(pr))for(let i=1;i<f.length;i+=3)f[i]=1-f[i];
+ const W=texCfg.size||t.w,H=texCfg.size?Math.max(1,Math.round(texCfg.size*t.h/t.w)):t.h,r=resampleF(f,t.w,t.h,C,W,H,false),bits=k==='height'&&texCfg.h16&&texCfg.fmt==='png'?16:8;
+ const blob=await encodeTex(W,H,r,C,texCfg.fmt,bits),suffix=meshExportSuffix(k);files.push({suffix,name:pr.name(name).replace('{s}',suffix)+'.'+texCfg.fmt,data:new Uint8Array(await blob.arrayBuffer())});await tick();}return files;}

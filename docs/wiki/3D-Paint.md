@@ -231,3 +231,12 @@ With the tiling chain locked, typing either U or V sets both axes to the same nu
 Uniform material channel values and flat bump channels use compact storage. Image materials keep their original source textures and editable settings, sharing temporary full-size channel images when needed. Opaque materials can skip the rows they cover while compositing, and supported projected brush strokes composite their affected UV area. Masks, transparency and effects retain the necessary layers underneath. At 8K and 16K, scalar viewport maps keep full resolution while using less storage; large brush buffers are created when editing needs them. See [Preferences and performance](Preferences-and-performance.md#material-stacks-at-high-resolution).
 
 The Windows desktop renderer supports 16K UV textures with 8-bit colour and 16-bit height. Full 16-bit colour at 16K square exceeds its image allocation limit. The position maps needed for triplanar and other 3D material projections also exceed that limit at 16K, so use UV projection at that size; images fall back to UVs with a message. These limits are checked before attempting those allocations. 16K still uses substantial graphics memory and full material refreshes take longer than at 8K.
+
+
+## Material preview and texture-set names
+
+New 3D Paint sessions start with **Material preview**, the supplied UV mesh framed at an angle for viewing materials. Existing projects keep their model. **Load preview maps** adds its base material and normal, curvature, height, thickness and AO maps; the supplied ORM is separated into AO, roughness and metallic. Bundled maps are 2K copies, with 16-bit height preserved. The original source files are unchanged. Mesh maps remain assigned to their texture set for masks and generators.
+
+Double-click a texture-set name, or use **Rename**, to change its displayed name and exported texture names. Renaming preserves its connection to the original mesh material slot and is saved in the project.
+
+With the brush, **Shift-click** connects the previous stroke endpoint to the new point through the visible mesh projection. **Shift-drag** constrains a stroke horizontally or vertically in the view. Lines use the normal brush and one undo step. Changing the camera, model, layer, channel or mask starts a new endpoint, avoiding a connection from a different painting context.

@@ -1,0 +1,114 @@
+[
+  {
+    "family": "Bangers",
+    "file": "bangers.ttf",
+    "weight": "400",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/bangers/Bangers-Regular.ttf",
+    "license": "bangers-OFL.txt"
+  },
+  {
+    "family": "Cinzel",
+    "file": "cinzel.ttf",
+    "weight": "100 900",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/cinzel/Cinzel%5Bwght%5D.ttf",
+    "license": "cinzel-OFL.txt"
+  },
+  {
+    "family": "Lilita One",
+    "file": "lilitaone.ttf",
+    "weight": "400",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/lilitaone/LilitaOne-Regular.ttf",
+    "license": "lilitaone-OFL.txt"
+  },
+  {
+    "family": "Press Start 2P",
+    "file": "pressstart2p.ttf",
+    "weight": "400",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/pressstart2p/PressStart2P-Regular.ttf",
+    "license": "pressstart2p-OFL.txt"
+  },
+  {
+    "family": "Pirata One",
+    "file": "pirataone.ttf",
+    "weight": "400",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/pirataone/PirataOne-Regular.ttf",
+    "license": "pirataone-OFL.txt"
+  },
+  {
+    "family": "Caveat",
+    "file": "caveat.ttf",
+    "weight": "100 900",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/caveat/Caveat%5Bwght%5D.ttf",
+    "license": "caveat-OFL.txt"
+  },
+  {
+    "family": "Oswald",
+    "file": "oswald.ttf",
+    "weight": "100 900",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/oswald/Oswald%5Bwght%5D.ttf",
+    "license": "oswald-OFL.txt"
+  },
+  {
+    "family": "Fredoka",
+    "file": "fredoka.ttf",
+    "weight": "100 900",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/fredoka/Fredoka%5Bwdth%2Cwght%5D.ttf",
+    "license": "fredoka-OFL.txt"
+  },
+  {
+    "family": "Anton",
+    "file": "anton.ttf",
+    "weight": "400",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/anton/Anton-Regular.ttf",
+    "license": "anton-OFL.txt"
+  },
+  {
+    "family": "Bebas Neue",
+    "file": "bebasneue.ttf",
+    "weight": "400",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/bebasneue/BebasNeue-Regular.ttf",
+    "license": "bebasneue-OFL.txt"
+  },
+  {
+    "family": "Patrick Hand",
+    "file": "patrickhand.ttf",
+    "weight": "400",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/patrickhand/PatrickHand-Regular.ttf",
+    "license": "patrickhand-OFL.txt"
+  },
+  {
+    "family": "Kalam",
+    "file": "kalam.ttf",
+    "weight": "400",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/kalam/Kalam-Regular.ttf",
+    "license": "kalam-OFL.txt"
+  },
+  {
+    "family": "Libre Baskerville",
+    "file": "librebaskerville.ttf",
+    "weight": "100 900",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/librebaskerville/LibreBaskerville%5Bwght%5D.ttf",
+    "license": "librebaskerville-OFL.txt"
+  },
+  {
+    "family": "Orbitron",
+    "file": "orbitron.ttf",
+    "weight": "100 900",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/orbitron/Orbitron%5Bwght%5D.ttf",
+    "license": "orbitron-OFL.txt"
+  },
+  {
+    "family": "Space Grotesk",
+    "file": "spacegrotesk.ttf",
+    "weight": "100 900",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/spacegrotesk/SpaceGrotesk%5Bwght%5D.ttf",
+    "license": "spacegrotesk-OFL.txt"
+  },
+  {
+    "family": "Cormorant Garamond",
+    "file": "cormorantgaramond.ttf",
+    "weight": "100 900",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/cormorantgaramond/CormorantGaramond%5Bwght%5D.ttf",
+    "license": "cormorantgaramond-OFL.txt"
+  }
+]

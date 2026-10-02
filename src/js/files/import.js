@@ -24,6 +24,7 @@ function openRaw(raw,name){const s=Math.min(1,MAX_DIM/raw.w,MAX_DIM/raw.h),depth
   toast('Opened '+raw.w+' × '+raw.h+(raw.bits>8?' at 16 bits per channel':'')+(s<1?', scaled to fit '+MAX_DIM+' px':'')+'.');}
 function placeRaw(raw,name){const L=cmdAddLayer(name);drawRawInto(L.target,raw,true);changed(L);toast('Placed “'+name+'” as a new layer.');}
 async function decodeFile(file){const ext=extOf(file.name);
+  if(ext==='png'){const h=new Uint8Array(await file.slice(0,29).arrayBuffer());if(h.length===29&&h[24]===16)return decodePNG16(await file.arrayBuffer());}
   if(ext==='tga')return decodeTGA(await file.arrayBuffer());
   if(ext==='dds')return decodeDDS(await file.arrayBuffer());
   if(ext==='tif'||ext==='tiff')return decodeTIFF(await file.arrayBuffer());

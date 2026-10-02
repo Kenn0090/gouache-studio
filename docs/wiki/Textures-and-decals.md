@@ -80,3 +80,10 @@ Your imported textures stay packed on this computer. The shelf loads names and p
 Unused full textures leave the shelf cache after about ten idle seconds. The cache also trims older entries when it passes 128 MiB or 16 textures. Picture guides used by filters stay available while referenced, including by undo history. Masks, material channels, layers and stencils own their images independently of the shelf cache.
 
 For contributors: `python scripts/texture-previews.py` (Pillow required) regenerates `assets/grunge/previews.json`. The build verifies source hashes, so new or changed images without an up-to-date preview use a small resized decode instead.
+
+
+## Mesh maps in engine exports
+
+Tick **Mesh maps** in Export textures to include each exported texture set's assigned maps. Names use a separate **Mesh** suffix, such as T_Hero_Mesh_Curvature.png, so a baked normal or height cannot overwrite the finished material channel. At **Document / source size**, mesh maps retain their imported dimensions; choosing an export size resamples them. Height PNG exports preserve 16-bit data. Normal-map green channels follow the selected engine convention.
+
+The model format list includes **FBX**: a static binary mesh with positions, normals, UVs, material slots and external texture-file links. Renamed texture sets supply the exported material names. Rigging, animation and embedded texture images are not exported.
