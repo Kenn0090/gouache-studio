@@ -1,8 +1,7 @@
-# Gouache Studio 0.51.3
+# Gouache Studio 0.51.4
 
-- **Favorites:** a floating or docked panel for tools, brushes, textures, materials and smart masks. Drag items into it, then search, filter, click or drag them to use them. Separate saved collections for 2D canvas and 3D Paint.
-- **Shift+B:** swap the last two brush presets, including their remembered session sizes.
-- **2D texture workflow:** canvas and layer-row drops create layers; folder drops place textures inside the group; mask-thumbnail drops add editable picture rows. Properties now works in 2D Paint.
-- **Canvas compass:** shows the rotation angle; drag to rotate, Shift to snap, click the angle or double-click the dial to straighten.
+- **Text on rotated canvases:** the editing box and caret follow canvas rotation and mirror. Adding or editing text no longer straightens the view.
+- **Gradient banding:** higher-precision lookup, smooth Gradient map interpolation, stable large-coordinate dithering and accurate low-opacity/transparent rounding. Canvas display dithering reduces visible steps in high-precision and zoomed-out gradients without changing exported pixels.
+- **Gasa Pen and Gasa Manga Pen:** retain the current pen alongside a thinner, sharper and less smoothed manga variant with light ink bleed. Old built-in favorites migrate to the new name.
 
-Validated with real mouse and keyboard interactions in the native Windows desktop app.
+Validated in the native Windows desktop app, including text placement/editing/undo, 8K/16K-coordinate gradient strips, gradient precision and map interpolation, transparency, pressure linework and ink bleed.

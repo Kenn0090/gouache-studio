@@ -8,6 +8,10 @@ Fills similar colours with the foreground colour.
 - **Selection:** with a selection active, the fill stays inside it.
 - **Other maps:** in multi-map documents, it also fills the other maps that are switched on (*Also fill* in the panel).
 
+## Gradient quality
+
+Gradients use a high-precision colour lookup with smooth interpolation, including the Gradient map filter. Keep Dither enabled for 8-bit painting: stable per-pixel rounding breaks up bands even at 8K/16K coordinates and handles transparency and low opacity. The canvas also dithers its final display conversion, helping high-precision and zoomed-out gradients look smooth; this display step does not modify saved or exported pixels. Resolution alone does not increase colour precision. Use 16-bit documents when preserving finer tonal differences in the stored texture matters.
+
 ## Gradient tool
 
 ![Dragging a gradient.](images/gradient.png)

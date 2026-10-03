@@ -2,7 +2,9 @@
 
 **Recent brushes** lists the last twelve presets used in this session. Each preset remembers its edited size separately for each tool. **Default size** restores that preset's original size without changing opacity, flow or other settings.
 
-The **Gasa Gaya Pen** makes pressure-tapered, opaque ink lines with lightly rough edges. **Ink bleed** keeps the narrow nib shape while ink wets a small fringe around its edges as you linger. Pressure affects the buildup; a quick click adds no bead at release.
+The **Gasa Pen** makes pressure-tapered, opaque ink lines with lightly rough edges. **Ink bleed** keeps the narrow nib shape while ink wets a small fringe around its edges as you linger. Pressure affects the buildup; a quick click adds no bead at release.
+
+**Basic media > Gasa Manga Pen** is the slimmer alternative: a narrow nib, sharper pressure taper and less smoothing for sketchy manga or fine marker linework. Both Gasa pens retain slight Ink bleed while held. The original preset remains as Gasa Pen; existing built-in Favorites follow its new name.
 
 **Liquify** Size and Strength can be dragged or entered precisely. Tool settings and the top options bar stay synchronized while you paint.
 
@@ -26,7 +28,7 @@ Pick a preset from the **Brush** panel, or change the settings:
 
 **Built-in presets:** Round, Soft air, Chalk, Ink, Flat bristle, Sponge, Foliage, Grass and Splatter, plus the blend presets Blender, Wet mix and Bristle blend.
 
-**Basic media › Gasa Gaya Pen** combines fine solid ink with a soft asymmetric, tapered nib. Pressure controls line width down to a fine point, while Ink bleed gradually wets its edges as the nib lingers. The tip has rounded irregular sides rather than a geometric triangular stamp.
+**Basic media › Gasa Pen** combines fine solid ink with a soft asymmetric, tapered nib. Pressure controls line width down to a fine point, while Ink bleed gradually wets its edges as the nib lingers. The tip has rounded irregular sides rather than a geometric triangular stamp.
 
 ## Each tool keeps its own brush
 Only toolbar tools with multiple options have a small corner arrow. Each menu contains that tool's own alternatives: **Spot healing / Healing brush**, **Dodge / Burn**, or **Gradient / Paint bucket / Gradient bucket**. Brush, Eraser, Blend and Clone stamp have plain icons. **Click an arrow**, or **hold the left mouse button on its icon**, to open its menu. Click an option to switch, or keep holding, drag onto it and release. A quick click on the main icon selects it normally. Click outside or press **Esc** to close the menu. With a grouped icon focused, **Down** or **Right** opens it; use **Up/Down** and **Enter** to choose. Healing choices also update and remember the Spot/Source mode shown in Tool settings and the options bar.
@@ -47,8 +49,8 @@ The **Brushes** panel holds the brush library and, under it, the settings of the
 Besides the built-in brushes there are **Basic media** (pencils, charcoal, pastel, dry brush, stipple, hatching, fur, oil paint, wash, marker, fine liner, and three scratchy dry-ink brushes) and six sets of **particle and mark tips**: Dirt and scorch, Smoke and clouds, Lightning and sparks, Glints and stars, Swooshes and cracks, and Fire and flashes. The particle tips are 81 free (CC0) pictures from Kenney's Particle Pack and Smoke Particles ([kenney.nl](https://kenney.nl)); thank you, Kenney Vleugels. Paint with them as they are, or change size, spacing, scatter and angle jitter like any brush.
 
 ## Your own brushes
-### Gasa Gaya Pen
-Find **Gasa Gaya Pen** in **Brushes › Basic media**. This original preset combines a fine ink pen with a solid marker: a crisp, subtly irregular nib, close dab spacing, full opacity and pressure-controlled width down to a fine point. It starts at 9 px. Increase Size for bold contours or black fills; use a small size for hatching. Pressure changes width without making the ink pale. With a mouse, the line keeps a consistent width. Size, Min size and Smoothing remain editable like other brushes.
+### Gasa Pen
+Find **Gasa Pen** in **Brushes › Basic media**. This original preset combines a fine ink pen with a solid marker: a crisp, subtly irregular nib, close dab spacing, full opacity and pressure-controlled width down to a fine point. It starts at 9 px. Increase Size for bold contours or black fills; use a small size for hatching. Pressure changes width without making the ink pale. With a mouse, the line keeps a consistent width. Size, Min size and Smoothing remain editable like other brushes.
 
 - **Save brush** stores the current settings in **My brushes**. That includes which extra maps the brush paints and their values (see [Maps and PBR](Maps-and-PBR.md)).
 - **Import .ABR** loads Photoshop brush sets. Tips come across, and the settings that map cleanly are kept.

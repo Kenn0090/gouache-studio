@@ -56,9 +56,10 @@ vec3 hsl2rgb(vec3 h){ if(h.y<1e-5) return vec3(h.z); float q=h.z<0.5?h.z*(1.0+h.
 void main(){ vec4 c=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0); if(c.a<=1e-6){ o=c; return; } vec3 h=rgb2hsl(st(c));
   if(uColorize==1){ h.x=uHue; h.y=clamp(uSat,0.0,1.0); } else { h.x=fract(h.x+uHue); h.y=clamp(h.y*(1.0+uSat),0.0,1.0); }
   h.z=uLight>0.0?mix(h.z,1.0,uLight):h.z*(1.0+uLight); o=vec4(hsl2rgb(h)*c.a,c.a); }`,
-  gmap:GL_ST+`uniform sampler2D uSrc; uniform sampler2D uLut; uniform int uRev;
+  gmap:GL_ST+GS_DITHER+`uniform sampler2D uSrc; uniform sampler2D uLut; uniform int uRev; uniform int uDither;
 void main(){ vec4 c=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0); if(c.a<=1e-6){ o=c; return; } float l=lumOf(st(c)); if(uRev==1) l=1.0-l;
-  vec4 g=texture(uLut,vec2((l*511.0+0.5)/512.0,0.5)); o=vec4(clamp(g.rgb,0.0,1.0)*c.a,c.a); }`,
+  int n=textureSize(uLut,0).x-1;float x=clamp(l,0.0,1.0)*float(n);int i=int(floor(x));
+  vec4 g=mix(texelFetch(uLut,ivec2(i,0),0),texelFetch(uLut,ivec2(min(i+1,n),0),0),x-float(i));o=vec4(clamp(g.rgb,0.0,1.0)*c.a,c.a);if(uDither==1)o=gsQuantize(o,ivec2(gl_FragCoord.xy)); }`,
   thresh:GL_ST+`uniform sampler2D uSrc; uniform float uT; void main(){ vec4 c=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0); float v=lumOf(st(c))>=uT?1.0:0.0; o=vec4(vec3(v)*c.a,c.a); }`,
   desat:GL_ST+`uniform sampler2D uSrc; void main(){ vec4 c=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0); o=vec4(vec3(lumOf(st(c)))*c.a,c.a); }`,
   /* ---- blurs ---- */

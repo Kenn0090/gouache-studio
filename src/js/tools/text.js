@@ -42,8 +42,8 @@ function setTextProp(k,v){ui.textStyle[k]=Array.isArray(v)?v.slice():v;const L=a
 /* on-canvas editor */
 const ted=el('textarea',{class:'texted',spellcheck:'false','aria-label':'Text',wrap:'off'});ted.hidden=true;stage.append(ted);
 let tedit=null;
-function positionEditor(){if(!tedit||!tedit.L.text)return;if(vxA())vxReset(true);const t=tedit.L.text,b=t.bbox||layoutText(t),z=view.zoom,half=(b.lh-(b.asc+b.desc))/2;
-  Object.assign(ted.style,{left:(view.x+b.bx*z)+'px',top:(view.y+b.by*z)+'px',width:Math.max(b.bw,t.size*.8)*z+'px',height:(b.bh+b.lh*.2)*z+'px',
+function positionEditor(){if(!tedit||!tedit.L.text)return;const t=tedit.L.text,b=t.bbox||layoutText(t),z=view.zoom,half=(b.lh-(b.asc+b.desc))/2,A=vxA()||[1,0,0,1];
+  Object.assign(ted.style,{left:(view.x+(A[0]*b.bx+A[1]*b.by)*z)+'px',top:(view.y+(A[2]*b.bx+A[3]*b.by)*z)+'px',transformOrigin:'0 0',transform:'matrix('+[A[0],A[2],A[1],A[3],0,0].join(',')+')',width:Math.max(b.bw,t.size*.8)*z+'px',height:(b.bh+b.lh*.2)*z+'px',
     paddingLeft:(b.pad+b.fx)*z+'px',paddingRight:b.pad*z+'px',paddingTop:Math.max(0,(b.pad-half)*z)+'px',paddingBottom:'0px',
     fontFamily:fontCss(t.font),fontSize:t.size*z+'px',fontWeight:t.bold?700:400,fontStyle:t.italic?'italic':'normal',lineHeight:b.lh*z+'px',letterSpacing:(t.tracking||0)*z+'px',textAlign:t.align});}
 function openTextEditor(L,isNew,treeBefore){if(tedit)closeTextEditor();if(!isNew)textBegin(L);tedit={L,isNew,treeBefore};ted.value=L.text.content;ted.hidden=false;positionEditor();

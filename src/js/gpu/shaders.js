@@ -117,7 +117,12 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy);
   vec3 Cs=s.a>1e-6?clamp(s.rgb/s.a,0.0,1.0):vec3(0.0); vec3 Cb=b.a>1e-6?clamp(b.rgb/b.a,0.0,1.0):vec3(0.0);
   vec3 B=clamp(blendFn(Cb,Cs),0.0,1.0);
   o=vec4(s.rgb*(1.0-b.a)+b.rgb*(1.0-s.a)+s.a*b.a*B, s.a+b.a*(1.0-s.a)); }`;
-const FS_VIEW=`in vec2 vUV; uniform sampler2D uComp; uniform vec3 uChk1; uniform vec3 uChk2; uniform float uChkSize; uniform vec4 uShow; uniform int uSingle; uniform int uMaskView;
+/* Integer hashing stays evenly distributed at 8K/16K; stochastic rounding is
+   unbiased and preserves exact 8-bit values, including transparent/opaque ends. */
+const GS_DITHER=`float gsNoise(ivec2 p){uint h=uint(p.x)*0x9e3779b9u^uint(p.y)*0x85ebca6bu;h^=h>>16;h*=0x7feb352du;h^=h>>15;h*=0x846ca68bu;h^=h>>16;return float(h>>8)/16777216.0;}
+vec4 gsQuantize(vec4 c,ivec2 p){return floor(clamp(c,0.0,1.0)*255.0+gsNoise(p))/255.0;}
+`;
+const FS_VIEW=GS_DITHER+`in vec2 vUV; uniform sampler2D uComp; uniform vec3 uChk1; uniform vec3 uChk2; uniform float uChkSize; uniform vec4 uShow; uniform int uSingle; uniform int uMaskView;
 uniform sampler2D uSel; uniform int uSelMode; uniform float uTime; uniform float uPx; uniform int uWrap;
 uniform sampler2D uUnder; uniform int uUseUnder; uniform vec4 uBg;
 float selAt(vec2 dp){ ivec2 sz=textureSize(uSel,0); ivec2 q=ivec2(floor(dp));
@@ -135,7 +140,7 @@ void main(){ vec4 c=texture(uComp,vUV); vec2 q=floor(gl_FragCoord.xy/uChkSize); 
       bool e=selAt(dp+vec2(d,0.0))<0.5||selAt(dp-vec2(d,0.0))<0.5||selAt(dp+vec2(0.0,d))<0.5||selAt(dp-vec2(0.0,d))<0.5;
       if(e){ float k=mod(floor((gl_FragCoord.x+gl_FragCoord.y)/4.0-uTime*6.0),2.0); col=vec3(k*0.92+0.04); } } }
   if(any(lessThan(vUV,vec2(0.0)))||any(greaterThan(vUV,vec2(1.0)))) col*=0.78;
-  o=vec4(col,1.0); }`;
+  o=gsQuantize(vec4(col,1.0),ivec2(gl_FragCoord.xy)); }`;
 const FS_RESAMPLE=`uniform sampler2D uSrc; uniform vec2 uOffset; uniform vec2 uScale; uniform int uTaps; uniform vec4 uOutside;
 void main(){ vec2 ss=vec2(textureSize(uSrc,0)); vec2 lo=(gl_FragCoord.xy-0.5-uOffset)*uScale; vec2 hi=(gl_FragCoord.xy+0.5-uOffset)*uScale;
   vec4 acc=vec4(0.0); int n=max(uTaps,1);
@@ -258,9 +263,8 @@ const FS_ONION=`uniform sampler2D uSrc; uniform vec3 uTint; uniform int uUseTint
 void main(){ vec4 c=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0); if(uUseTint==1&&c.a>1e-6){ vec3 s=c.rgb/c.a; float l=dot(s,vec3(0.299,0.587,0.114)); c.rgb=mix(vec3(l),uTint,0.65)*c.a; } o=c*uAlpha; }`;
 /* ---- gradients ---- */
 /* uLut: 1-pixel-high strip of straight colour + alpha along the gradient; shapes 0 linear 1 radial 2 angle 3 reflected 4 diamond */
-const FS_GRAD=`uniform sampler2D uLut; uniform vec2 uA; uniform vec2 uB; uniform int uShape; uniform int uDither; uniform float uOpacity; uniform int uGray;
+const FS_GRAD=GS_DITHER+`uniform sampler2D uLut; uniform vec2 uA; uniform vec2 uB; uniform int uShape; uniform int uDither; uniform float uOpacity; uniform int uGray;
 uniform sampler2D uBase; uniform int uUseBase; uniform sampler2D uSelTex; uniform int uUseSel;
-float h12(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
 void main(){ vec2 p=gl_FragCoord.xy; vec2 d=uB-uA; float L2=max(dot(d,d),1e-6), L=sqrt(L2); vec2 v=p-uA; float t;
   if(uShape==0) t=dot(v,d)/L2;
   else if(uShape==1) t=length(v)/L;
@@ -270,11 +274,10 @@ void main(){ vec2 p=gl_FragCoord.xy; vec2 d=uB-uA; float L2=max(dot(d,d),1e-6), 
   t=clamp(t,0.0,1.0); int n=textureSize(uLut,0).x-1; float x=t*float(n); int i=int(floor(x)); float f=x-float(i);
   vec4 c=mix(texelFetch(uLut,ivec2(i,0),0),texelFetch(uLut,ivec2(min(i+1,n),0),0),f);
   if(uGray==1) c.rgb=vec3(dot(c.rgb,vec3(0.299,0.587,0.114)));
-  if(uDither==1){ float r=(h12(p)+h12(p+vec2(17.3,5.1))-1.0)/255.0; c.rgb+=r; }
   c=clamp(c,0.0,1.0); vec4 g=vec4(c.rgb*c.a,c.a)*uOpacity;
   if(uUseSel==1) g*=texelFetch(uSelTex,ivec2(p),0).r;
   if(uUseBase==1){ vec4 b=texelFetch(uBase,ivec2(p),0); g=g+b*(1.0-g.a); }
-  o=g; }`;
+  o=uDither==1?gsQuantize(g,ivec2(p)):g; }`;
 /* paint bucket: lay a colour over the old pixels by a coverage image */
 const FS_FILLCOV=`uniform sampler2D uOld; uniform sampler2D uCov; uniform vec4 uColor; uniform sampler2D uSelTex; uniform int uUseSel;
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy); float k=texelFetch(uCov,p,0).r; if(uUseSel==1) k*=texelFetch(uSelTex,p,0).r;

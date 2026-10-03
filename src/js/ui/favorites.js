@@ -2,6 +2,7 @@
 const favoritesState={lists:{paint:[],p3d:[]},query:'',filter:'all'};
 try{const saved=JSON.parse(localStorage.getItem('gs.favorites')||'{}');for(const key of ['paint','p3d'])if(Array.isArray(saved[key]))favoritesState.lists[key]=saved[key].filter(r=>r&&['brush','tool','mat','smart','smask','tex'].includes(r.kind)&&typeof r.name==='string'&&(r.kind==='brush'?typeof r.set==='string':typeof r.id==='string')).slice(0,200);}catch(e){}
 const favoritesScope=()=>ui.mode==='p3d'?'p3d':'paint';
+{let renamed=false;for(const list of Object.values(favoritesState.lists))for(const ref of list)if(ref.kind==='brush'&&ref.set==='bp_basic'&&ref.name==='Gasa Gaya Pen'){ref.name='Gasa Pen';renamed=true;}if(renamed)favoritesSave();}
 function favoritesSave(){try{localStorage.setItem('gs.favorites',JSON.stringify(favoritesState.lists));}catch(e){toast('Could not save Favorites on this computer.');}}
 function favoritesRef(kind,rec){if(kind==='tool')return {kind,id:rec.id,name:rec.name};if(kind==='brush'){const set=library.find(s=>s.presets.includes(rec));return set?{kind,set:set.id,name:rec.name,index:set.presets.indexOf(rec)}:null;}if(!['mat','smart','smask','tex'].includes(kind))return null;return {kind,id:rec.id,name:rec.name,textureKind:kind==='tex'?rec.kind:undefined};}
 function favoritesKey(ref){return ref.kind+':'+(ref.set||ref.textureKind||'')+':'+(ref.id||ref.name);}

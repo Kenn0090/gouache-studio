@@ -1,5 +1,7 @@
 # Rotate and flip
 
+Text creation and editing follow the rotated or mirrored canvas. The on-canvas editor and caret use the same orientation as the artwork; opening text no longer straightens the view.
+
 The **canvas compass** in the lower-left corner of 2D Paint follows the current view angle. Drag its dial to rotate freely, hold Shift to snap to 15-degree steps, and click the angle or double-click the dial to straighten the view. Rotation affects the view only, preserving artwork and undo history.
 
 **View only** (View menu): turn what you see without changing the picture.

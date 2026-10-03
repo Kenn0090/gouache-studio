@@ -1,5 +1,11 @@
 # What's new in Gouache Studio
 
+## 0.51.4
+
+- **Rotated text:** creating, typing and reopening text now follows the canvas rotation and mirror instead of resetting the view. The editor and caret stay aligned with the artwork.
+- **Smoother gradients:** higher-precision colour lookup and interpolation remove lookup steps, including Gradient map. Stable dithering works across large coordinates, transparent gradients and low opacity; display dithering also reduces banding when viewing high-precision or zoomed-out gradients.
+- **Gasa brushes:** the existing pen is now Gasa Pen. Gasa Manga Pen adds a substantially thinner nib, sharper pressure taper and less smoothing for sketchy manga linework, retaining slight ink bleed. Existing built-in pen favorites keep working under the new name.
+
 ## 0.51.3
 
 - **Favorites:** open Window > Favorites, then drag toolbar tools, brushes, textures, materials and smart masks into the panel. Float or dock it, search and filter its contents. 2D canvas and 3D Paint have separate saved collections.

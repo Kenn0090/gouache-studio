@@ -24,3 +24,4 @@ if(window.__gs)Object.assign(window.__gs,{program,drawView,dprNow,cvCanvas:cv,pa
 if(window.__gs)Object.assign(window.__gs,{liqDown,liqDab,liqFlush,liqUp});
 
 if(window.__gs)Object.assign(window.__gs,{favoritesState,favoritesAdd,favoritesResolve,renderFavorites});
+if(window.__gs)Object.assign(window.__gs,{drawGradient,gradDef,gradAt,positionEditor,closeTextEditor,renderText});
