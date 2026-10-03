@@ -53,7 +53,7 @@ function xfStart(opts){opts=opts||{};if(xf)return true;
       if(useSel){src=acquireD(d);run(P.cropsel,src,{uSrc:orig.tex,uSel:sel.t.tex,uOff:[0,0],uUseSel:true});
         base=acquireD(d);if(opts.copy)blit(orig,base,0,0,doc.w,doc.h,0,0);else{const clearT=acquireD(d);clearTarget(clearT);run(P.selmix,base,{uOld:orig.tex,uNew:clearT.tex,uSel:sel.t.tex});release(clearT);}}
       const b=contentBounds(src);if(b)rect=rUnion(rect,b);
-      items.push({node:L,t:()=>mapT(L,k),orig,src,base,outside:[0,0,0,0]});}
+      items.push({node:L,key:k,t:()=>mapT(L,k),orig,src,base,outside:[0,0,0,0]});}
       if(!useSel&&L.mask&&L.mask.link!==false){const m=L.mask,mo=acquireD(m.target.depth);blit(m.target,mo,0,0,doc.w,doc.h,0,0);items.push({node:L,t:()=>m.target,orig:mo,src:mo,base:null,outside:[1,1,1,1],full:true,mask:m});}}
     if(!rect){for(const it of items)freeItem(it);toast(useSel?'There are no pixels inside the selection to transform.':'The layer is empty, so there is nothing to transform.');return false;}}
   let selItem=null;if(useSel&&!pick.maskOnly){const o=acquireD(sel.t.depth);blit(sel.t,o,0,0,doc.w,doc.h,0,0);selItem={orig:o,bb:sel.bb.slice()};}
@@ -68,6 +68,11 @@ function xfRegion(it,bb){const r=it.full?fullRect():rUnion(xf.rect,bb);return do
 function xfSS(){if(xf.warp)return 1;const q=xf.q,w=xf.rect[2]-xf.rect[0],h=xf.rect[3]-xf.rect[1];
   const sx=Math.min(Math.hypot(q[2]-q[0],q[3]-q[1]),Math.hypot(q[4]-q[6],q[5]-q[7]))/w,sy=Math.min(Math.hypot(q[6]-q[0],q[7]-q[1]),Math.hypot(q[4]-q[2],q[5]-q[3]))/h;
   return clamp(Math.ceil(1/Math.max(1e-3,Math.min(sx,sy))),1,4);}
+let P_XF_CONTENT_SEL=null;
+function xfContentSelection(H){if(!P_XF_CONTENT_SEL)P_XF_CONTENT_SEL=program(FS_XFORM.replace('o=c; }','o=vec4(vec3(c.a>0.0?1.0:0.0),1.0); }'));
+  clearTarget(sel.t,[0,0,0,1]);const items=xf.items.filter(it=>!it.mask&&it.key===doc.map);
+  for(const it of items)run(P_XF_CONTENT_SEL,sel.t,{uSrc:it.src.tex,uH0:H.slice(0,3),uH1:H.slice(3,6),uH2:H.slice(6,9),uInterp:{int:0},uSS:{int:1},uWrap:doc.wrap,uRect:xf.rect,uDoc:[doc.w,doc.h],uOutside:[0,0,0,0],uBase:dummy,uUseBase:false},{blend:'max'});
+  sel.bb=contentBounds(sel.t,false);sel.active=!!sel.bb;selChanged();}
 function xfRender(fast){if(!xf)return;const bb=xfOutBB(),prev=xf.dirty;xf.dirty=bb;
   const interp=fast&&ui.xfInterp===2?1:ui.xfInterp,ss=fast?1:xfSS();
   const H=xf.warp?null:inv3(rectToQuad(xf.rect,xf.q));if(!xf.warp&&!H)return;
@@ -80,7 +85,7 @@ function xfRender(fast){if(!xf)return;const bb=xfOutBB(),prev=xf.dirty;xf.dirty=
   if(xf.selItem){const si=xf.selItem;
     if(xf.warp)warpDraw({src:si.orig,outside:[0,0,0,1],base:null},sel.t,1);
     else run(P.xform,sel.t,{uSrc:si.orig.tex,uH0:H.slice(0,3),uH1:H.slice(3,6),uH2:H.slice(6,9),uInterp:{int:1},uSS:{int:1},uWrap:doc.wrap,uRect:xf.rect,uDoc:[doc.w,doc.h],uOutside:[0,0,0,1]});
-    sel.bb=rToDoc(rGrow(bb,1));selChanged();}
+    sel.bb=rToDoc(rGrow(bb,1));selChanged();if(xf.contentSel&&!xf.warp)xfContentSelection(H);}
   requestRender(true);}
 
 /* ---- finishing ---- */
@@ -95,7 +100,7 @@ function xfCommit(){if(!xf)return;const s=xf;xfRender(false);xf=null;
     undo(){for(const st of steps)restoreRegion(st.b,st.it.t(),st.r[0],st.r[1]);if(selStep){restoreSel(selStep.b,selStep.r[0],selStep.r[1]);sel.bb=selStep.bbB;sel.active=true;selChanged();}},
     redo(){for(const st of steps)restoreRegion(st.a,st.it.t(),st.r[0],st.r[1]);if(selStep){restoreSel(selStep.a,selStep.r[0],selStep.r[1]);sel.bb=selStep.bbA;sel.active=true;selChanged();}}});
   for(const it of s.items)freeItem(it);if(s.selItem)release(s.selItem.orig);
-  xfEnd(refs);}
+  xfEnd(refs);if(s.contentSel&&sel.active)setTool('move');}
 function xfCancel(){if(!xf)return;const s=xf;xf=null;
   for(const it of s.items){blit(it.orig,it.t(),0,0,doc.w,doc.h,0,0);freeItem(it);}
   if(s.selItem){blit(s.selItem.orig,sel.t,0,0,doc.w,doc.h,0,0);sel.bb=s.selItem.bb;release(s.selItem.orig);selChanged();}

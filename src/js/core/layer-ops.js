@@ -26,10 +26,11 @@ function fillLayer(){const et=needTarget();if(!et)return;const g=lum3(ui.fg),c=e
   const oth=fillOthers(et,mapBrushColor);if(selOn(et)){fillSel(et,c,'Fill selection',oth);return;}fullRecord(et.L,'Fill',()=>clearTarget(et.target,c),null,oth);}
 function clearLayer(){const et=needTarget();if(!et)return;const c=et.isMask?[1,1,1,1]:[0,0,0,0];
   const oth=fillOthers(et,null);if(selOn(et)){fillSel(et,c,et.isMask?'Clear mask selection':'Delete selection',oth);return;}fullRecord(et.L,et.isMask?'Reset mask':'Clear layer',()=>clearTarget(et.target,c),null,oth);}
-function cmdClearLayer(){if(stroke||preview||selLive){toast('Finish the current edit first.');return;}const n=doc.active;if(!n||n.fx)return;if(typeof lockStop==='function'&&lockStop({node:n,L:n}))return;
+function cmdClearLayer(){if(stroke||preview||selLive){toast('Finish the current edit first.');return;}const n=doc.active;if(!n||n.fx||!isLayer(n))return;if(typeof lockStop==='function'&&lockStop({node:n,L:n}))return;
+  if(xf)xfCommit();
   if(n.path){pathChange(P=>P.mode='none','Clear path layer');return;}
   if(n.fill){const old=n.mask,edit=n.editMask,m=makeMask(0,true);n.mask=m;n.editMask=false;pushUndo({label:'Clear material layer',refs:[n],masks:[old,m].filter(Boolean),undo(){n.mask=old;n.editMask=edit;},redo(){n.mask=m;n.editMask=false;}});changed(n);return;}
-  const et=needTarget();if(!et)return;if(et.isMask){clearLayer();return;}const keys=mapKeysOf(n),rect=keys.reduce((r,k)=>rUnion(r,contentBounds(mapT(n,k))),null);if(!rect)return;
+  const edit=n.editMask;n.editMask=false;let et;try{et=needTarget();}finally{n.editMask=edit;}if(!et)return;const keys=mapKeysOf(n),rect=keys.reduce((r,k)=>rUnion(r,contentBounds(mapT(n,k))),null);if(!rect)return;
   const current=doc.map,others=keys.filter(k=>k!==current).map(k=>({k,apply:T=>clearTarget(T)}));fullRecord(n,'Clear layer',()=>clearTarget(n.target),rect,others);}
 function chanLimit(et){if(et.isMask||!chanRestricted())return;run(P.chmerge,scratchT,{uOld:et.target.tex,uNew:previewT.tex,uChan:chan.edit});blit(scratchT,previewT,0,0,doc.w,doc.h,0,0);}
 function applyPreview(label){const et=preview.et;fullRecord(et.L,label,()=>blit(previewT,et.target,0,0,doc.w,doc.h,0,0),selRect(et));preview=null;requestRender(true);}

@@ -8,7 +8,7 @@ ui.wandTol=32;ui.wandContig=true;ui.wandAll=false;
 
 /* working images at the selection's own bit depth */
 const acquireS=()=>acquireD(sel.t?sel.t.depth:doc.depth);
-function selChanged(){requestRender();updateSelStatus();}
+function selChanged(){requestRender();updateSelStatus();for(const id of ['ob_flip_h','ob_flip_v']){const b=$('#'+id);if(b)b.disabled=!doc.active||(ui.tool!=='move'&&!sel.active);}}
 function updateSelStatus(){const p=$('#stSel');if(!p)return;
   if(sel.quick){p.hidden=false;p.textContent='Quick mask';p.title='Painting the selection: black hides, white selects. Press Q to turn it back into a selection.';return;}
   if(sel.active&&sel.bb){const b=sel.bb;p.hidden=false;p.textContent='Selection '+(b[2]-b[0])+' × '+(b[3]-b[1]);p.title='Ctrl+D deselects. Ctrl+Shift+I inverts.';return;}

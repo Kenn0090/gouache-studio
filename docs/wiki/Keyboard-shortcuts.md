@@ -1,5 +1,7 @@
 # Keyboard shortcuts
 
+**Help › Search commands** (**Ctrl+Shift+P**) searches tools, filters and menu actions. Choose a result, or use the arrow keys and Enter. Results show your current shortcuts. **Ctrl+Q** clears the active layer's contents without deleting the layer.
+
 All of these can be changed in **Edit › Keyboard shortcuts…**. The commands are sorted into **categories** (Painting tools, Selection tools, Other tools, Brush and colour, Files, Edit and history, Layers, Selections, Adjustments, Filters, View and 3D, Panels and workspaces…): pick one on the left, or **search** all of them. Click a command's key, then press the new one (Esc cancels). **×** removes a key and **↺** puts the default back. Keys you changed are highlighted. If the key is already used by another command, you're asked first: **Use it here** moves it (the other command is left without a key). Keys used twice are marked ⚠. **Photoshop keys** sets the keys that differ from Photoshop's (for example Hue/Saturation on Ctrl+U), **Save to file…** and **Load from file…** keep and share your key sets, and **Reset all** goes back to the defaults. The menus and the hint line at the bottom of the canvas always show your keys; **View › Shortcut hints** hides that line.
 
 ![Keyboard shortcuts.](images/keyboard-shortcuts.png)

@@ -389,7 +389,7 @@ function v3NavOf(hit,e){const b=e.button,paint=v3CanPaint();
 function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault());
   hit.addEventListener('pointerdown',e=>{if(v3.mstroke&&!stroke)v3.mstroke=null;/* a stroke that never started must not block turning */
     if(v3.mstroke&&v3.mstroke.id!==e.pointerId)meshUp();/* one whose release was missed is finished now */v3.drag=null;
-    e.preventDefault();/* no text selection or native drag from here: a double-click used to select text, and the next press dragged it, taking the mouse away */
+    e.preventDefault();hit.tabIndex=0;hit.focus({preventScroll:true});/* release toolbar/dropdown keyboard focus when returning to the viewport */
     try{hit.setPointerCapture(e.pointerId);}catch(er){}
     /* mask mode: Paint must be on to paint; Box, Lasso and Polygon draw shapes */
     /* the projection gizmo (a material or mask row projected from 3D) */

@@ -10,6 +10,7 @@ Pick a preset from the **Brush** panel, or change the settings:
 - **Spacing:** the distance between dabs.
 - **Grain:** a paper-like break-up of the stroke.
 - **Smoothing:** steadies wobbly lines.
+- **End ink:** adds a small rounded ink deposit where a brush stroke ends. Zero turns it off; it is saved with the brush and included in the stroke's Undo step.
 - **Pen pressure:** can drive **Size** (down to *Min size*), **Opacity**, or **Build-up**, where overlapping dabs keep adding paint within one stroke. **Curve** makes the pressure response softer or firmer.
 - **Tip shape & dynamics:** Angle, Roundness, Size jitter, Angle jitter, Scatter, Count, Follow stroke, Scatter both axes and Random flip.
 - **Colour jitter** (in the same section): **Hue**, **Saturation** and **Brightness** vary the colour of every dab around your brush colour. Tick **Once per stroke** to change the colour only once per stroke instead. It is saved with the brush. On grey maps (roughness, height…) only Brightness applies.
@@ -18,6 +19,8 @@ Pick a preset from the **Brush** panel, or change the settings:
 *Hue jitter: every dab gets its own colour.*
 
 **Built-in presets:** Round, Soft air, Chalk, Ink, Flat bristle, Sponge, Foliage, Grass and Splatter, plus the blend presets Blender, Wet mix and Bristle blend.
+
+**Basic media › Gasa Gaya Pen** combines fine solid ink with a soft asymmetric, tapered nib. Pressure controls line width down to a fine point, while End ink adds a modest marker-like deposit at lift-off. The tip has rounded irregular sides rather than a geometric triangular stamp.
 
 ## Each tool keeps its own brush
 Only toolbar tools with multiple options have a small corner arrow. Each menu contains that tool's own alternatives: **Spot healing / Healing brush**, **Dodge / Burn**, or **Gradient / Paint bucket / Gradient bucket**. Brush, Eraser, Blend and Clone stamp have plain icons. **Click an arrow**, or **hold the left mouse button on its icon**, to open its menu. Click an option to switch, or keep holding, drag onto it and release. A quick click on the main icon selects it normally. Click outside or press **Esc** to close the menu. With a grouped icon focused, **Down** or **Right** opens it; use **Up/Down** and **Enter** to choose. Healing choices also update and remember the Spot/Source mode shown in Tool settings and the options bar.

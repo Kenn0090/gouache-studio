@@ -47,14 +47,15 @@ function syncLayerProps(){const A=doc.active,grp=A&&A.type==='group';if(ui.tool=
   const tops=topSelected(),p=A&&A.parent,i=p?p.children.indexOf(A):-1;
   const mb=$('#lMerge'),mt=tops.length>1?'Merge '+tops.length+' layers':grp?'Merge group':'Merge down';mb.title=mt+' (Ctrl+E)';mb.setAttribute('aria-label',mt);
   mb.disabled=!(tops.length>1||grp||(isLayer(A)&&i>0&&isLayer(p.children[i-1])));
-  $('#lDel').disabled=!A;$('#lClear').disabled=!A||grp&&!A.mask;$('#lUp').disabled=!A||i>=p.children.length-1;$('#lDown').disabled=!A||i<=0;$('#lUngroup').disabled=!grp;
+  $('#lDel').disabled=!A;$('#lClear').disabled=!A||grp||A.fx;$('#lUp').disabled=!A||i>=p.children.length-1;$('#lDown').disabled=!A||i<=0;$('#lUngroup').disabled=!grp;
 }
 function renderLayers(){
   if(typeof paRefresh==='function')paRefresh();
   const list=$('#layerList'),keep=[];for(let e=list;e&&e!==document.body;e=e.parentElement)if(e.scrollTop)keep.push([e,e.scrollTop]);
   list.replaceChildren();
   for(const {n,depth,clipped} of displayRows()){const grp=n.type==='group';
-    const eye=el('button',{class:'eye',title:n.visible?'Hide':'Show','aria-label':(n.visible?'Hide ':'Show ')+n.name});eye.innerHTML=n.visible?eyeOn:eyeOff;
+    const hidden=!effVisible(n),inherited=hidden&&n.visible;
+    const eye=el('button',{class:'eye'+(!n.visible?' off':''),title:(n.visible?'Hide':'Show')+(inherited?' (hidden by its group)':''),'aria-label':(n.visible?'Hide ':'Show ')+n.name,'aria-pressed':String(n.visible)});eye.innerHTML=n.visible?eyeOn:eyeOff;
     eye.addEventListener('click',e=>{e.stopPropagation();n.visible=!n.visible;renderLayers();requestRender(true);});
     const meta=[];if(grp){meta.push(n.mode<0?'pass':MODES[n.mode]);const om=doc.maps.length>1&&ui.mode!=='anim'?onlyMapOf(n):null;if(om)meta.push(MAP_SHORT[om]);}else{const mm=mapModeOf(n,doc.map);if(mm!==(doc.map==='base'?0:MAP_DEFS[doc.map].blend))meta.push(MODES[mm].replace(' (Add)',''));}
     if(n.text)meta.unshift('text');if(n.grad)meta.unshift('gradient');if(n.shape)meta.unshift('shape');if(n.fill)meta.unshift('fill');if(n.array&&n.array.on!==false)meta.unshift('array');if(n.opacity<1)meta.push(Math.round(n.opacity*100)+'%');if(n.lockAll)meta.push('locked');else{if(n.lockPx)meta.push('pixels locked');if(n.lockPos)meta.push('position locked');if(n.lockAlpha)meta.push('lock alpha');}
@@ -76,7 +77,8 @@ function renderLayers(){
       lk.addEventListener('pointerdown',e=>e.stopPropagation());lk.addEventListener('click',e=>{e.stopPropagation();n.mask.link=n.mask.link===false?true:false;toast(n.mask.link===false?'Mask unlinked from the layer.':'Mask linked to the layer.');renderLayers();});
       thumbs.append(lk,mt);}
     icon=thumbs;
-    const row=el('div',{class:'lrow'+(grp?' group':'')+(clipped?' clip':'')+(effVisible(n)?'':' hid'),role:'option',tabindex:'0',style:'--depth:'+depth},eye,icon,name,el('div',{class:'lmeta',text:(grp?n.children.length+' · ':'')+meta.join(' · ')}));
+    const badge=hidden?el('span',{class:'hiddenbadge',text:inherited?'Hidden by group':'Hidden',title:inherited?'Show the parent group to see this layer.':'Click the crossed-out eye to show this layer.'}):null;
+    const row=el('div',{class:'lrow'+(grp?' group':'')+(clipped?' clip':'')+(hidden?' hid':''),role:'option',tabindex:'0','aria-label':n.name+(hidden?', '+(inherited?'hidden by group':'hidden'):''),style:'--depth:'+depth},eye,icon,el('div',{class:'lnamewrap'},name,badge),el('div',{class:'lmeta',text:(grp?n.children.length+' · ':'')+meta.join(' · ')}));
     if(!grp&&!n.fx&&n.styles&&STYLE_ORDER.some(k=>n.styles[k]&&n.styles[k].on)){const fx=el('button',{class:'fxbadge',text:'fx',title:'Layer style: click to change','aria-label':'Layer style of '+n.name});
       fx.addEventListener('pointerdown',e=>e.stopPropagation());fx.addEventListener('click',e=>{e.stopPropagation();selectOnly(n);updateRowClasses();dlgLayerStyle();});row.append(fx);}
     row._node=n;
@@ -262,7 +264,7 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
   if(!anim&&ui.mode==='paint'&&n.meshEdit)items.push(it('Send to 3D Paint as mesh map · '+(P3_MESHMAP_NAMES[n.meshEdit.key]||n.meshEdit.key),()=>paintMeshMapBack(n)));
   if(ui.mode==='p3d'&&typeof p3LayerToPaint==='function')items.push(sep(),it('Edit in the Paint canvas',()=>p3LayerToPaint(n)));
   if(!anim)items.push(it('New fill layer',cmdNewFillLayer));
-  items.push(sep(),it(grp?'Ungroup':'Group into folder',grp?cmdUngroup:cmdGroup,grp?'Ctrl+Shift+G':'Ctrl+G',anim),it('Duplicate',cmdDuplicate,'Ctrl+J',anim),it(grp?'Merge group':'Merge down',cmdMerge,'Ctrl+E',anim),it('Delete',cmdDelete,'Del',anim));
+  items.push(sep(),it(grp?'Ungroup':'Group into folder',grp?cmdUngroup:cmdGroup,grp?'Ctrl+Shift+G':'Ctrl+G',anim),it('Duplicate',cmdDuplicate,'Ctrl+J',anim),it('Clear layer contents',cmdClearLayer,kbKeyOf('clearContents'),anim||!lay||lockedPx(n)),it(grp?'Merge group':'Merge down',cmdMerge,'Ctrl+E',anim),it('Delete',cmdDelete,'Del',anim));
   flyHide();pop.replaceChildren(...items);pop.hidden=false;
   pop.style.left=Math.max(4,Math.min(e.clientX,window.innerWidth-pop.offsetWidth-8))+'px';pop.style.top=Math.max(4,Math.min(e.clientY+4,window.innerHeight-pop.offsetHeight-8))+'px';
   const off=ev=>{if(!pop.contains(ev.target)&&!flyEl.contains(ev.target)){pop.hidden=true;flyHide();document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}
