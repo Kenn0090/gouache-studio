@@ -1,6 +1,5 @@
-# Gouache Studio 0.50.0
+# Gouache Studio 0.50.1
 
-Liquify: push, pinch, bloat and twirl the paint with a brush, like Clip Studio Paint.
+- **High resolution painting fix:** strokes no longer turn blocky or show checkerboard rectangles while painting on a zoomed-out canvas. Verified in the desktop app at 8K and 16K.
 
-- **Liquify tool** (toolbar button after Clone stamp, or Ctrl+Shift+X). Modes: **Push** (drag the paint along), **Pinch** and **Bloat** (hold to pull in or swell out), **Twirl** clockwise or counter-clockwise (hold to swirl) and **Restore** (softly undoes the change you made in this stroke). Size and Strength are in the bar above the canvas.
-- Every map of the layer moves together, so a material stays in step. A selection limits the effect, and each stroke is one undo step.
+- **Gasa Gaya Pen:** a new preset in **Brushes › Basic media**, combining a sharp ink pen with a fine marker. Pressure tapers the width while the ink stays solid. Increase Size for bold outlines and black fills.
