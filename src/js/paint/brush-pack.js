@@ -27,6 +27,7 @@ async function bpLoad(){if(bpDone)return;bpDone=true;
     renderLibrary();}catch(e){console.error('brush pack',e);}}
 /* our own: tips drawn in code, then settings that make them feel like pencil, charcoal, pastel, dry paint */
 const BP_TIPS={
+  gasamanga:genTip('Gasa manga narrow nib',128,128,(x,w,h,R)=>{x.save();x.scale(w,h);x.beginPath();x.moveTo(.46,.065);x.bezierCurveTo(.485,.025,.515,.045,.535,.105);x.bezierCurveTo(.57,.28,.615,.59,.635,.77);x.bezierCurveTo(.65,.875,.59,.93,.525,.92);x.bezierCurveTo(.465,.915,.385,.91,.365,.82);x.bezierCurveTo(.355,.72,.405,.31,.46,.065);x.closePath();x.fill();x.restore();const d=x.getImageData(0,0,w,h),a=d.data;for(let y=1;y<h-1;y++)for(let i=1;i<w-1;i++){const k=(y*w+i)*4+3;if(a[k]>0&&Math.min(a[k-4],a[k+4],a[k-w*4],a[k+w*4])<240&&R()<.5)a[k]*=.45+R()*.4;}x.putImageData(d,0,0);}),
   gasapen:genTip('Gasa Gaya tapered nib',128,128,(x,w,h,R)=>{x.save();x.scale(w,h);x.beginPath();x.moveTo(.43,.09);x.bezierCurveTo(.49,.04,.57,.055,.62,.14);x.bezierCurveTo(.69,.27,.78,.44,.84,.59);x.bezierCurveTo(.93,.79,.79,.91,.63,.9);x.bezierCurveTo(.5,.89,.36,.92,.24,.85);x.bezierCurveTo(.1,.77,.14,.63,.2,.51);x.bezierCurveTo(.27,.37,.35,.18,.43,.09);x.closePath();x.fill();x.restore();const d=x.getImageData(0,0,w,h),a=d.data;for(let y=1;y<h-1;y++)for(let i=1;i<w-1;i++){const k=(y*w+i)*4+3;if(a[k]>0&&Math.min(a[k-4],a[k+4],a[k-w*4],a[k+w*4])<240&&R()<.35)a[k]*=.55+R()*.35;}x.putImageData(d,0,0);}),
   /* dry ink: a blob with long fibre gaps and a ragged edge, so strokes come out streaky and scratchy like a scanned ink brush */
   inkdry:genTip('Dry ink',128,128,(x,w,h,R)=>{x.beginPath();x.ellipse(w/2,h/2,w*.45,h*.4,0,0,7);x.fill();x.globalCompositeOperation='destination-out';
@@ -52,10 +53,12 @@ const BP_BASIC=[
   {name:'Wash',size:140,hardness:0,spacing:.08,flow:.12,buildup:true,pSize:false,pOpacity:true,smoothing:.4},
   {name:'Marker',size:20,hardness:1,spacing:.04,pSize:false,pOpacity:false,flow:.9,opacity:.85,smoothing:.4},
   {name:'Fine liner',size:3,hardness:1,spacing:.03,pSize:true,minSize:.3,smoothing:.6},
-  {name:'Gasa Gaya Pen',tip:BP_TIPS.gasapen,size:9,hardness:1,spacing:.025,pSize:true,minSize:.04,pOpacity:false,smoothing:.45,flow:1,opacity:1,grain:0,endInk:.18},
+  {name:'Gasa Pen',tip:BP_TIPS.gasapen,size:9,hardness:1,spacing:.025,pSize:true,minSize:.04,pOpacity:false,smoothing:.45,flow:1,opacity:1,grain:0,endInk:.18},
+  {name:'Gasa Manga Pen',tip:BP_TIPS.gasamanga,size:7,hardness:1,roundness:.35,spacing:.02,pSize:true,minSize:.025,pOpacity:false,smoothing:.18,flow:1,opacity:1,grain:.025,endInk:.14},
   {name:'Dry ink pen',tip:BP_TIPS.inkdry,size:16,spacing:.05,followDir:true,pSize:true,minSize:.25,smoothing:.55,flow:1},
   {name:'Dry ink brush',tip:BP_TIPS.inkbrush,size:48,spacing:.03,followDir:true,pSize:true,minSize:.35,smoothing:.5,flow:1},
   {name:'Scratchy liner',tip:BP_TIPS.inkdry,size:9,spacing:.05,followDir:true,sizeJitter:.12,pSize:true,minSize:.2,smoothing:.6,grain:.35}
 ].map(p=>Object.assign({tool:'brush'},p));
+BP_TIPS.gasapen.name='Gasa tapered nib';
 {const at=library.findIndex(s=>s.id==='builtin')+1;library.splice(at,0,{id:'bp_basic',name:'Basic media',builtin:true,presets:BP_BASIC,tips:[]});}
 setTimeout(bpLoad,0);

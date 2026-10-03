@@ -30,13 +30,13 @@ function gradAt(def,t){if(def.reverse)t=1-t;const s=def.stops.slice().sort((x,y)
   if(t<=s[0].p)c=s[0].c;else if(t>=s[s.length-1].p)c=s[s.length-1].c;else{let k=0;while(k<s.length-2&&t>s[k+1].p)k++;const f=(t-s[k].p)/Math.max(1e-6,s[k+1].p-s[k].p);c=mixMethod(s[k].c,s[k+1].c,f,def.method);}
   if(t<=A[0].p)a=A[0].a;else if(t>=A[A.length-1].p)a=A[A.length-1].a;else{let k=0;while(k<A.length-2&&t>A[k+1].p)k++;const f=(t-A[k].p)/Math.max(1e-6,A[k+1].p-A[k].p);a=A[k].a+(A[k+1].a-A[k].a)*f;}
   return [c[0],c[1],c[2],a];}
-const LUT_N=512;let lutTex=null;
+const LUT_N=2048;let lutTex=null;
 function uploadLut(def){const d=new Float32Array(LUT_N*4);for(let i=0;i<LUT_N;i++){const c=gradAt(def,i/(LUT_N-1));d.set(c,i*4);}
   if(!lutTex){lutTex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,lutTex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);}
-  gl.bindTexture(gl.TEXTURE_2D,lutTex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA16F,LUT_N,1,0,gl.RGBA,gl.FLOAT,d);return lutTex;}
+  gl.bindTexture(gl.TEXTURE_2D,lutTex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,LUT_N,1,0,gl.RGBA,gl.FLOAT,d);return lutTex;}
 /* draw a gradient into dst; o = {base, opacity, sel, gray} */
 function drawGradient(dst,g,o){o=o||{};const tex=uploadLut(g.def);
-  run(P.grad,dst,{uLut:tex,uA:g.a,uB:g.b,uShape:{int:Math.max(0,GRAD_SHAPES.indexOf(g.def.shape))},uDither:!!g.def.dither&&doc.depth===8,uOpacity:o.opacity==null?1:o.opacity,uGray:!!o.gray,
+  run(P.grad,dst,{uLut:tex,uA:g.a,uB:g.b,uShape:{int:Math.max(0,GRAD_SHAPES.indexOf(g.def.shape))},uDither:!!g.def.dither&&dst.depth===8,uOpacity:o.opacity==null?1:o.opacity,uGray:!!o.gray,
     uBase:o.base?o.base.tex:dummy,uUseBase:!!o.base,uSelTex:o.sel?sel.t.tex:dummy,uUseSel:!!o.sel});}
 function renderLiveGrad(L){if(!L.grad)return;drawGradient(mapT(L,'base'),L.grad);scheduleThumb(L);requestRender(true);}
 /* a CSS preview of a definition */

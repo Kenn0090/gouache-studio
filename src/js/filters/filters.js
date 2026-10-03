@@ -136,7 +136,7 @@ fxDef('gradMap',{title:'Gradient map',note:'Replaces each brightness with a colo
   controls:(v,upd)=>{const s=el('select',{id:'gmSel'},el('option',{value:'cur',text:'Current gradient (Gradient tool)'}),...GRAD_BUILTIN.map((p,i)=>el('option',{value:i,text:p.name})));s.value=String(v.pick);
     const set=()=>{v.pick=s.value==='cur'?'cur':+s.value;v.def=cloneGrad(v.pick==='cur'?ui.grad:presetDef(GRAD_BUILTIN[v.pick]));};if(!v.def)set();
     s.addEventListener('change',()=>{set();upd();});return [el('div',{class:'frow'},el('label',{for:'gmSel',text:'Gradient'}),s)];},
-  render(src,dst,v){const def=v.def||presetDef(GRAD_BUILTIN[2]);run(P.f_gmap,dst,{uSrc:src.tex,uLut:uploadLut(def),uRev:!!v.rev});}});
+  render(src,dst,v){const def=v.def||presetDef(GRAD_BUILTIN[2]);run(P.f_gmap,dst,{uSrc:src.tex,uLut:uploadLut(def),uRev:!!v.rev,uDither:!!def.dither&&dst.depth===8});}});
 fxDef('threshold',{title:'Threshold',defs:[{key:'t',label:'Level',min:1,max:255,step:1,value:128}],render(src,dst,v){run(P.f_thresh,dst,{uSrc:src.tex,uT:v.t/255});}});
 fxDef('desat',{title:'Desaturate',render(src,dst){run(P.f_desat,dst,{uSrc:src.tex});}});
 fxDef('invert',{title:'Invert',render(src,dst){run(P.invert,dst,{uSrc:src.tex});}});

@@ -1,5 +1,7 @@
 # End-to-end tests
 
+- `paint0514.cjs` checks native rotated/mirrored text creation, editor alignment, reopening and undo; legacy Gasa favorite migration; real pressure strokes and bleed for both Gasa pens; high-precision interpolation and Gradient map; premultiplied transparency/low opacity; and 8K/16K horizontal/vertical gradient strips. Strips exercise the full coordinate range without allocating multi-gigabyte full documents.
+
 - `favorites0513.cjs` checks real native pointer drags for brushes, toolbar tools, textures and materials; separate saved collections; docking and floating; Shift+B with remembered sizes; 2D canvas/layer/folder/mask drops and undo; mask Properties; and compass rotation/reset.
 
 - `paths-material.cjs` checks native mouse-driven material painting in 2D/3D, all channels in one undo, compact saved coverage, editable Pen handles, selections/fills/strokes, duplication, saved paths, camera-independent surface painting and UV seams. `GS_LARGE=1` with `GS_NATIVE_CDP` adds actual 8K/16K material brush and undo checks on hardware.
