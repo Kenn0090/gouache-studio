@@ -1,5 +1,6 @@
 const {chromium}=require('playwright'),fs=require('fs'),path=require('path'),http=require('http');
 const root=path.resolve(__dirname,'../../dist'),out=path.resolve(__dirname,'out/paint051');let fails=0;
+fs.mkdirSync(out,{recursive:true});
 const ok=(v,m)=>{console.log((v?'PASS ':'FAIL ')+m);if(!v)fails++;};
 (async()=>{
 const server=http.createServer((req,res)=>{const f=path.resolve(root,'.'+new URL(req.url,'http://localhost').pathname);if(!f.startsWith(root+path.sep)||!fs.existsSync(f)){res.writeHead(404);return res.end();}res.setHeader('Content-Type',f.endsWith('.html')?'text/html':'application/octet-stream');fs.createReadStream(f).pipe(res);});await new Promise(r=>server.listen(0,'127.0.0.1',r));const url='http://127.0.0.1:'+server.address().port;
