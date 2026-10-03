@@ -1,5 +1,9 @@
 # Gouache Studio: notes for Claude
 
+## Shared official releases (Codex and Claude)
+
+Read `AGENTS.md` before publishing. Kenn has both agents working on the app: use the current official GitHub `main` and latest release for version decisions, keep all four version files together, and add every visible change to `CHANGELOG.md` (**Help > What's new**) and `RELEASE_NOTES.md` (updater). Old branch history and the historical version notes below must not cause a version downgrade or overwrite another agent's work.
+
 Read this first. It carries over everything from the long first conversation that built the app (versions 0.1 to 0.13).
 
 ## The person
