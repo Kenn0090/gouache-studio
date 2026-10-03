@@ -38,6 +38,9 @@ The **Brushes** panel holds the brush library and, under it, the settings of the
 Besides the built-in brushes there are **Basic media** (pencils, charcoal, pastel, dry brush, stipple, hatching, fur, oil paint, wash, marker, fine liner, and three scratchy dry-ink brushes) and six sets of **particle and mark tips**: Dirt and scorch, Smoke and clouds, Lightning and sparks, Glints and stars, Swooshes and cracks, and Fire and flashes. The particle tips are 81 free (CC0) pictures from Kenney's Particle Pack and Smoke Particles ([kenney.nl](https://kenney.nl)); thank you, Kenney Vleugels. Paint with them as they are, or change size, spacing, scatter and angle jitter like any brush.
 
 ## Your own brushes
+### Gasa Gaya Pen
+Find **Gasa Gaya Pen** in **Brushes › Basic media**. This original preset combines a fine ink pen with a solid marker: a crisp, subtly irregular nib, close dab spacing, full opacity and pressure-controlled width down to a fine point. It starts at 9 px. Increase Size for bold contours or black fills; use a small size for hatching. Pressure changes width without making the ink pale. With a mouse, the line keeps a consistent width. Size, Min size and Smoothing remain editable like other brushes.
+
 - **Save brush** stores the current settings in **My brushes**. That includes which extra maps the brush paints and their values (see [Maps and PBR](Maps-and-PBR.md)).
 - **Import .ABR** loads Photoshop brush sets. Tips come across, and the settings that map cleanly are kept.
 - **Make tip** (or **Edit › Make brush tip…**) turns what you drew into a brush tip, like Photoshop's *Define Brush Preset*: give it a name and choose the **visible canvas** or the **active layer**. Dark paints and white doesn't; on a see-through layer, whatever is painted becomes the tip. With a selection, only the selected part is used. **Layer › Make brush tip from layer** does the same from the active layer in one click.

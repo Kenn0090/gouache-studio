@@ -154,13 +154,18 @@ let P_V3MIP=null;
 function v3PatchMips(t,r){if(!P_V3MIP)P_V3MIP=program(`uniform sampler2D uSrc; uniform int uLevel; uniform vec2 uOrigin;
 void main(){ ivec2 p=(ivec2(gl_FragCoord.xy)+ivec2(uOrigin))*2, sz=textureSize(uSrc,uLevel)-1;
 o=(texelFetch(uSrc,min(p,sz),uLevel)+texelFetch(uSrc,min(p+ivec2(1,0),sz),uLevel)+texelFetch(uSrc,min(p+ivec2(0,1),sz),uLevel)+texelFetch(uSrc,min(p+ivec2(1),sz),uLevel))*0.25; }`);
+  /* texelFetch at levels above zero is only valid while the sampler exposes mip levels.
+     The canvas returns pooled images to LINEAR after drawing; the 3D textures already use mips. */
+  gl.bindTexture(gl.TEXTURE_2D,t.tex);const minFilter=gl.getTexParameter(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
   let [x,y,w,h]=r,x1=x+w,y1=y+h,W=t.w,H=t.h,level=0,patch=null;
   try{while(W>1||H>1){const nx=Math.floor(x/2),ny=Math.floor(y/2);x1=Math.ceil(x1/2);y1=Math.ceil(y1/2);W=Math.max(1,W>>1);H=Math.max(1,H>>1);w=x1-nx;h=y1-ny;
       if(!patch)patch=makeTarget(w,h,t.depth,false,t.packed,t.mono);
       run(P_V3MIP,{fbo:patch.fbo,w,h,packed:t.packed,mono:t.mono},{uSrc:t.tex,uLevel:{int:level},uOrigin:[nx,ny]});
       gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,t.fbo);gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t.tex,++level);
       blit(patch,t,0,0,w,h,nx,ny);v3Work.mipPixels+=w*h;x=nx;y=ny;}}
-  finally{gl.bindFramebuffer(gl.FRAMEBUFFER,t.fbo);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t.tex,0);gl.bindFramebuffer(gl.FRAMEBUFFER,null);disposeTarget(patch);}}
+  finally{gl.bindFramebuffer(gl.FRAMEBUFFER,t.fbo);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t.tex,0);gl.bindFramebuffer(gl.FRAMEBUFFER,null);disposeTarget(patch);
+    gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,minFilter);}}
 /* Material shading reads one value from roughness, metal, AO, opacity and height. Keep full resolution. */
 function v3MapTex(k,src,region){const mono=doc.w*doc.h>=67108864&&MAP_DEFS[k]?.grey,packed=!!src.packed&&!mono;let t=v3.tex[k];if(!t||t.w!==doc.w||t.h!==doc.h||t.depth!==src.depth||!!t.packed!==packed||!!t.mono!==!!mono){if(t)disposeTarget(t);t=v3.tex[k]=makeTarget(doc.w,doc.h,src.depth,true,packed,mono);region=null;}
   const partial=region&&t.hasMips&&!(t.w&(t.w-1))&&!(t.h&(t.h-1))&&region[2]*region[3]<t.w*t.h*.25;

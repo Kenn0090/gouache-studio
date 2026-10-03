@@ -1,5 +1,11 @@
 # What's new in Gouache Studio
 
+## 0.50.1
+
+- Fixed blocky strokes and checkerboard rectangles in the zoomed-out canvas while painting at high resolution. Regional preview updates now expose all mip levels while reading them, then restore the texture's sampling mode. Painted layer pixels remain unchanged; full-image regeneration is still avoided during continuing strokes.
+- Added Gasa Gaya Pen to Basic media: an original fine pen/marker preset with a crisp nib, solid ink and pressure taper, based on Kenn's visual references.
+- Verified colour/alpha mip parity and actual brush preview/pixel preservation in the native desktop app at 8K and 16K.
+
 ## 0.50.0
 
 Liquify: push, pinch, bloat and twirl the paint with a brush, like Clip Studio Paint.

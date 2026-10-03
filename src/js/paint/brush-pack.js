@@ -27,6 +27,7 @@ async function bpLoad(){if(bpDone)return;bpDone=true;
     renderLibrary();}catch(e){console.error('brush pack',e);}}
 /* our own: tips drawn in code, then settings that make them feel like pencil, charcoal, pastel, dry paint */
 const BP_TIPS={
+  gasapen:genTip('Gasa Gaya nib',128,128,(x,w,h,R)=>{x.beginPath();for(let i=0;i<128;i++){const a=i/128*Math.PI*2,r=w*(.475+(R()-.5)*.008),px=w/2+Math.cos(a)*r,py=h/2+Math.sin(a)*r;if(i)x.lineTo(px,py);else x.moveTo(px,py);}x.closePath();x.fill();}),
   /* dry ink: a blob with long fibre gaps and a ragged edge, so strokes come out streaky and scratchy like a scanned ink brush */
   inkdry:genTip('Dry ink',128,128,(x,w,h,R)=>{x.beginPath();x.ellipse(w/2,h/2,w*.45,h*.4,0,0,7);x.fill();x.globalCompositeOperation='destination-out';
     for(let i=0;i<34;i++){const py=h*.1+R()*h*.8,len=w*(.35+R()*.65),x0=R()>.5?-4:w-len+4;x.globalAlpha=.9+R()*.1;x.fillRect(x0,py,len,1.2+R()*3.2);}
@@ -51,6 +52,7 @@ const BP_BASIC=[
   {name:'Wash',size:140,hardness:0,spacing:.08,flow:.12,buildup:true,pSize:false,pOpacity:true,smoothing:.4},
   {name:'Marker',size:20,hardness:1,spacing:.04,pSize:false,pOpacity:false,flow:.9,opacity:.85,smoothing:.4},
   {name:'Fine liner',size:3,hardness:1,spacing:.03,pSize:true,minSize:.3,smoothing:.6},
+  {name:'Gasa Gaya Pen',tip:BP_TIPS.gasapen,size:9,hardness:1,spacing:.025,pSize:true,minSize:.04,pOpacity:false,smoothing:.45,flow:1,opacity:1,grain:0},
   {name:'Dry ink pen',tip:BP_TIPS.inkdry,size:16,spacing:.05,followDir:true,pSize:true,minSize:.25,smoothing:.55,flow:1},
   {name:'Dry ink brush',tip:BP_TIPS.inkbrush,size:48,spacing:.03,followDir:true,pSize:true,minSize:.35,smoothing:.5,flow:1},
   {name:'Scratchy liner',tip:BP_TIPS.inkdry,size:9,spacing:.05,followDir:true,sizeJitter:.12,pSize:true,minSize:.2,smoothing:.6,grain:.35}
