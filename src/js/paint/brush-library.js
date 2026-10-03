@@ -43,6 +43,14 @@ const PRESETS=[
 ];
 const library=[{id:'builtin',name:'Built-in',builtin:true,presets:PRESETS,tips:[]}];
 let activePreset=null;
+/* Session history and size choices belong to a preset, even after editing its settings. */
+const brushSession={source:null,recent:[],sizes:new WeakMap()};
+function brushSessionGroup(t){const g=typeof tbGroup==='function'?tbGroup(t||ui.tool):(t||ui.tool);return typeof TB_TOOLS!=='undefined'&&TB_TOOLS.includes(g)?g:typeof toolBrush!=='undefined'?toolBrush.cur:'brush';}
+function brushRememberSize(){const p=brushSession.source;if(!p)return;let sizes=brushSession.sizes.get(p);if(!sizes)brushSession.sizes.set(p,sizes={});sizes[brushSessionGroup()]=brush.size;}
+function brushRecent(p){brushSession.recent=[p,...brushSession.recent.filter(x=>x!==p)].slice(0,12);}
+function brushDefaultSize(){brush.size=clamp(brushSession.source?.size||BRUSH_DEFAULTS.size,1,brushMax());brushRememberSize();if(sizeSlider)sizeSlider.set(brush.size);refreshCursor();schedulePreview();}
+function brushDefaultSizeButton(id){return el('button',{class:'btn sm',id,text:'Default size',title:'Restore '+(brushSession.source?.name||'the brush')+' size ('+(brushSession.source?.size||BRUSH_DEFAULTS.size)+'px)',onclick:brushDefaultSize});}
+function brushLibraryTile(p,recent){const key=recent?'_recentThumb':'_thumb',theme=key+'Theme';if(p[theme]!==themeKey()){p[key]=null;p[theme]=themeKey();}return el('button',{title:p.name+(p.tool==='smudge'?' (blend)':''),'aria-label':p.name,class:p===activePreset?'on':null,onclick:()=>applyPreset(p)},p[key]||(p[key]=tileCanvas(p)));}
 function tileCanvas(p){const c=el('canvas',{width:64,height:64});const x=c.getContext('2d');
   if(p.tip&&p.tip.canvas){const t=p.tip,s=54/Math.max(t.w,t.h);x.drawImage(t.canvas,32-t.w*s/2,32-t.h*s/2,t.w*s,t.h*s);}
   else{const h=clamp(p.hardness==null?.85:p.hardness,0,.98),g=x.createRadialGradient(32,32,0,32,32,26);g.addColorStop(0,'#fff');g.addColorStop(h,'#fff');g.addColorStop(1,'rgba(255,255,255,0)');
@@ -50,9 +58,11 @@ function tileCanvas(p){const c=el('canvas',{width:64,height:64});const x=c.getCo
     if(p.grain){x.globalCompositeOperation='destination-out';const R=rng(3);for(let i=0;i<260;i++){x.globalAlpha=R()*.8;x.fillRect(R()*64,R()*64,2,2);}}}
   x.globalCompositeOperation='source-in';x.globalAlpha=1;const cs=getComputedStyle(document.documentElement);x.fillStyle=(cs.getPropertyValue(p.tool==='smudge'?'--accent':'--text').trim())||(p.tool==='smudge'?'#e2a453':'#e1e3e7');x.fillRect(0,0,64,64);return c;}
 function renderLibrary(){const box=$('#libBody');box.replaceChildren();
+  brushSession.recent=brushSession.recent.filter(p=>library.some(s=>s.presets.includes(p)));
+  if(brushSession.recent.length)box.append(el('div',{class:'libset',id:'recentBrushes'},el('div',{class:'libset-h'},el('span',{text:'Recent brushes'})),el('div',{class:'tiles'},...brushSession.recent.map(p=>brushLibraryTile(p,true)))));
   for(const set of library){const head=el('div',{class:'libset-h'},el('span',{text:set.builtin?set.name:set.name+' · '+set.presets.length}),set.builtin?null:el('button',{text:'Remove','aria-label':'Remove brush set '+set.name,onclick:()=>removeSet(set)}));
     const tiles=el('div',{class:'tiles'});
-    for(const p of set.presets){const b=el('button',{title:p.name+(p.tool==='smudge'?' (blend)':''),'aria-label':p.name,class:p===activePreset?'on':null,onclick:()=>applyPreset(p)});if(p._thumbTheme!==themeKey()){p._thumb=null;p._thumbTheme=themeKey();}b.append(p._thumb||(p._thumb=tileCanvas(p)));tiles.append(b);}
+    for(const p of set.presets)tiles.append(brushLibraryTile(p,false));
     box.append(el('div',{class:'libset'},head,tiles));}}
 function makeSlider(o){
   const to=o.map?o.map.to:v=>v,from=o.map?o.map.from:v=>v,fmt=o.fmt||(v=>String(v));
@@ -78,7 +88,7 @@ const pct=v=>Number((v*100).toFixed(2))+'%';
 const brushMax=()=>(typeof prefs!=='undefined'&&prefs.maxBrush)||5000;
 const sizeMap={to:v=>Math.round(Math.pow(clamp((v-1)/(brushMax()-1),0,1),1/2.6)*1000),from:u=>Math.max(1,Math.round(1+(brushMax()-1)*Math.pow(u/1000,2.6)))};
 let sizeSlider=null,dynOpen=false;
-function brushEdited(){if(activePreset){activePreset=null;renderLibrary();}schedulePreview();}
+function brushEdited(key){brushRememberSize();if(activePreset&&key!=='size'){activePreset=null;renderLibrary();}schedulePreview();}
 function buildBrushPanel(){
   const box=$('#brushBody');box.replaceChildren();const sm=ui.tool==='smudge',isText=ui.tool==='text',isSel=isSelTool(ui.tool),isXf=!!(xf&&!xf.move),isOther=['crop','move','gradient','bucket','gbucket','cage','array','shape'].includes(ui.tool),noBrush=isText||isSel||isXf||isOther;
   $('#libBody').hidden=noBrush;$('.prevwrap').hidden=noBrush;$('#abrBtn').hidden=noBrush;$('#saveBrushBtn').hidden=noBrush||ui.tool==='dodge'||ui.tool==='burn';$('#tipBtn').hidden=noBrush;
@@ -102,13 +112,14 @@ function buildBrushPanel(){
     el('div',{class:'sub',text:'Range'}),seg([[0,'Shadows'],[1,'Midtones'],[2,'Highlights']],ui.tonalRange,v=>{ui.tonalRange=v;},'Range'),
     makeSlider({id:'tExp',label:'Exposure',min:.01,max:1,step:.01,value:ui.tonalExposure,fmt:pct,onInput:v=>{ui.tonalExposure=v;}}).el,
     el('div',{class:'chips'},chk('tProt','Protect tones',ui.tonalProtect,v=>{ui.tonalProtect=v;})));
-  const S=(id,label,key,min,max,step,fmt,map)=>makeSlider({id,label,min,max,step,value:brush[key],fmt,map,onInput:v=>{brush[key]=v;brushEdited();if(key==='size')refreshCursor();}});
+  const S=(id,label,key,min,max,step,fmt,map)=>makeSlider({id,label,min,max,step,value:brush[key],fmt,map,onInput:v=>{brush[key]=v;brushEdited(key);if(key==='size')refreshCursor();}});
   const C=(id,label,key,rebuild)=>chk(id,label,!!brush[key],v=>{brush[key]=v;brushEdited();if(rebuild)buildBrushPanel();});
   box.append(el('div',{class:'chips'},chk('bShareTip','All tools share the brush tip',toolBrush.share,v=>tbSetShare(v))));
   box.append(el('div',{class:'sub',text:'Tip: '+(brush.tip?brush.tip.name+' ('+brush.tip.w+'×'+brush.tip.h+')':'round')+(activePreset?' · preset “'+activePreset.name+'”':'')}));
   /* (0.37.1) in 3D Paint the top bar already has size, opacity, flow and hardness: the panel keeps the rest */
   const bar3=ui.mode==='p3d'&&!sm&&!tonal;sizeSlider=null;
   if(!bar3){sizeSlider=S('bSize','Size','size',0,1000,1,v=>v+'px',sizeMap);box.append(sizeSlider.el);}
+  box.append(brushDefaultSizeButton('bDefaultSize'));
   if(sm)box.append(S('bStr','Strength','strength',0,1,.01,pct).el,S('bCharge','Paint load','charge',0,1,.01,pct).el);
   else if(!tonal&&!bar3)box.append(S('bOp','Opacity','opacity',0,1,.01,pct).el);
   if(!bar3)box.append(S('bFlow','Flow','flow',.01,1,.01,pct).el);
@@ -133,10 +144,10 @@ function buildBrushPanel(){
     S('bSatJ','Saturation','satJitter',0,1,.01,pct).el,
     S('bVJ','Brightness','valJitter',0,1,.01,pct).el,
     el('div',{class:'chips'},C('bJS','Once per stroke','jitterPerStroke'))));
-  box.append(el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:'brushReset',text:'Reset brush',title:'Put this tool’s brush back to its starting settings',onclick:()=>{for(const k of SETTING_KEYS)brush[k]=BRUSH_DEFAULTS[k];activePreset=null;if(typeof tbSaveCur==='function')tbSaveCur();buildBrushPanel();if(typeof buildOptBar==='function')buildOptBar();if(typeof refreshCursor==='function')refreshCursor();toast('Brush back to its starting settings.');}})));
+  box.append(el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:'brushReset',text:'Reset brush',title:'Put this tool’s brush back to its starting settings',onclick:()=>{for(const k of SETTING_KEYS)brush[k]=BRUSH_DEFAULTS[k];brushSession.source=null;activePreset=null;if(typeof tbSaveCur==='function')tbSaveCur();buildBrushPanel();if(typeof buildOptBar==='function')buildOptBar();if(typeof refreshCursor==='function')refreshCursor();toast('Brush back to its starting settings.');}})));
   box.append(det);buildSymSection(box);if((ui.tool==='brush'||ui.tool==='erase')&&ui.mode!=='bake')buildMapBrushSection(box,ui.tool);schedulePreview();
 }
-function applyPreset(p){if(typeof tbSaveCur==='function')tbSaveCur();for(const k of SETTING_KEYS)brush[k]=(k in p)?p[k]:BRUSH_DEFAULTS[k];if(p.maps)applyMapBrush(p.maps);activePreset=p;setTool(p.tool!=='smudge'&&['erase','smudge','dodge','burn','heal','clone','material','pen','path'].includes(ui.tool)?ui.tool:(p.tool||'brush'),true);renderLibrary();refreshCursor();}
+function applyPreset(p){if(typeof tbSaveCur==='function')tbSaveCur();const t=p.tool!=='smudge'&&['erase','smudge','dodge','burn','heal','clone','material','pen','path'].includes(ui.tool)?ui.tool:(p.tool||'brush');for(const k of SETTING_KEYS)brush[k]=(k in p)?p[k]:BRUSH_DEFAULTS[k];const size=brushSession.sizes.get(p)?.[brushSessionGroup(t)];if(size!==undefined)brush.size=size;if(p.maps)applyMapBrush(p.maps);brushSession.source=p;brushRecent(p);activePreset=p;setTool(t,true);renderLibrary();refreshCursor();}
 function setTool(t,keepPreset){if(t==='path'&&ui.mode!=='p3d'){toast('Surface Path is available in 3D Paint.');return;}if(['pen','material'].includes(t)&&!['paint','p3d'].includes(ui.mode)){toast('This tool is available in Paint and 3D Paint.');return;}if(t==='text'&&ui.mode==='anim'){toast('Text is available in Paint mode. Frames are single images.');return;}if(t!=='text'&&typeof closeTextEditor==='function')closeTextEditor();if(t!=='lasso'&&typeof polyLasso!=='undefined'&&polyLasso){polyLasso=null;drawSelOverlay();}
   if(typeof xf!=='undefined'&&xf&&!xf.move)xfCommit();if(t!=='gradient'&&typeof gsess!=='undefined'&&gsess)gradCommit();if(t!=='array'&&typeof asess!=='undefined'&&asess)arrCommit();if(t!=='shape'&&typeof ssess!=='undefined'&&ssess)shapeCommit();if(t==='gradient'||t==='bucket'||t==='gbucket')ui.fillKind=t;if(t==='dodge'||t==='burn')ui.tonal=t;if(typeof tbSwitch==='function')tbSwitch(t,keepPreset);updateGroupButtons(t);if(typeof crop!=='undefined'){if(t==='crop'&&ui.tool!=='crop')crop=null;else if(t!=='crop')crop=null;}cv.style.cursor='';ui.tool=t;stage.classList.toggle('txt',t==='text');stage.classList.toggle('selt',isSelTool(t));stage.classList.toggle('movet',t==='move');stage.classList.toggle('fillt',t==='gradient'||t==='bucket'||t==='gbucket');document.querySelectorAll('.tool').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t)));
   if(!keepPreset&&activePreset&&(activePreset.tool==='smudge')!==(t==='smudge')){activePreset=null;renderLibrary();}
@@ -189,7 +200,7 @@ function deserializeSet(d){const tips=d.tips.map(t=>makeTip(t.name,t.w,t.h,t.alp
 function saveSet(set){store.put(serializeSet(set));}
 function addSet(set){library.push(set);renderLibrary();saveSet(set);}
 function removeSet(set){const i=library.indexOf(set);if(i<0)return;library.splice(i,1);
-  if(set.presets.some(p=>p===activePreset)||(brush.tip&&set.tips.includes(brush.tip)))applyPreset(PRESETS[0]);
+  if(set.presets.some(p=>p===activePreset||p===brushSession.source)||(brush.tip&&set.tips.includes(brush.tip)))applyPreset(PRESETS[0]);
   for(const t of set.tips)if(!library.some(s2=>s2.tips.includes(t)))disposeTip(t);store.del(set.id);renderLibrary();toast('Removed “'+set.name+'”.');}
 /* save the current settings as a brush in "My brushes" (kept per browser / per computer) */
 function dlgSaveBrush(){const inp=el('input',{type:'text',id:'sbName',value:activePreset?activePreset.name+' 2':'My brush',maxlength:40});
@@ -198,6 +209,6 @@ function dlgSaveBrush(){const inp=el('input',{type:'text',id:'sbName',value:acti
   openDialog({title:'Save brush',body,okLabel:'Save',onOk(){const name=inp.value.trim();if(!name){toast('Give the brush a name.');return false;}
     let set=library.find(s=>s.id==='mine');if(!set){set={id:'mine',name:'My brushes',presets:[],tips:[]};library.push(set);}
     const p={name,tool:ui.tool};for(const k of SETTING_KEYS)p[k]=brush[k];p.maps=mapBrushSnapshot();
-    if(p.tip&&!set.tips.includes(p.tip))set.tips.push(p.tip);set.presets.push(p);activePreset=p;renderLibrary();saveSet(set);toast('Saved brush “'+name+'”.');}});}
+    if(p.tip&&!set.tips.includes(p.tip))set.tips.push(p.tip);set.presets.push(p);brushSession.source=p;brushRecent(p);activePreset=p;renderLibrary();saveSet(set);toast('Saved brush “'+name+'”.');}});}
 $('#saveBrushBtn').addEventListener('click',dlgSaveBrush);
 async function loadSavedSets(){try{const all=await store.all();for(const d of all||[]){try{library.push(deserializeSet(d));}catch(e){}}renderLibrary();}catch(e){}}

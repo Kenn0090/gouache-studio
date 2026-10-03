@@ -21,8 +21,9 @@ function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren
   bar.append(el('span',{class:'optsep'}));
   const S=(key,label,min,max,step,fmt,map,get,set)=>{const sl=makeSlider({id:'ob_'+key,label,min,max,step,value:get?get():brush[key],fmt,map,onInput:v=>{if(set)set(v);else brush[key]=v;
       if(key==='size'){if(sizeSlider)sizeSlider.set(v);refreshCursor();}else{const s=document.getElementById({opacity:'bOp',flow:'bFlow',hardness:'bHard',strength:'bStr'}[key]);if(s){s.value=v;const o=s.nextSibling;if(o)o.textContent=fmt(v);}}
-      if(!set)brushEdited();}});sl.el.classList.add('optslider');optSliders[key]={sl,get:get||(()=>brush[key])};bar.append(sl.el);};
+      if(!set)brushEdited(key);}});sl.el.classList.add('optslider');optSliders[key]={sl,get:get||(()=>brush[key])};bar.append(sl.el);};
   S('size','Size',0,1000,1,v=>Math.round(v)+'px',typeof sizeMap!=='undefined'?sizeMap:undefined);
+  bar.append(brushDefaultSizeButton('ob_default_size'));
   if(tonal)S('exposure','Exposure',.01,1,.01,pct,null,()=>ui.tonalExposure,v=>{ui.tonalExposure=v;});
   else if(sm)S('strength','Strength',0,1,.01,pct);else S('opacity','Opacity',0,1,.01,pct);
   S('flow','Flow',.01,1,.01,pct);if(!brush.tip)S('hardness','Hardness',0,1,.01,pct);
@@ -55,7 +56,7 @@ function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren
 function optMore(v){if(v===undefined){try{return localStorage.getItem('gs.optMore')==='1';}catch(e){return false;}}try{localStorage.setItem('gs.optMore',v?'1':'0');}catch(e){}return v;}
 /* keep the bar's values in step when the brush changes elsewhere */
 function optSync(){for(const k in optSliders){const o=optSliders[k];o.sl.set(o.get());}}
-{const bbp=buildBrushPanel;buildBrushPanel=function(){bbp();buildOptBar();if(!OPT_PAINT.includes(ui.tool))dkActivate('tool');};const be=brushEdited;brushEdited=function(){be();optSync();};const rc=refreshCursor;refreshCursor=function(){rc();optSync();};}
+{const bbp=buildBrushPanel;buildBrushPanel=function(){bbp();buildOptBar();if(!OPT_PAINT.includes(ui.tool))dkActivate('tool');};const be=brushEdited;brushEdited=function(key){be(key);optSync();};const rc=refreshCursor;refreshCursor=function(){rc();optSync();};}
 
 /* Live transform controls above the canvas, kept in step with handle drags. */
 let xfQuickFields=[];

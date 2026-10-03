@@ -1,10 +1,9 @@
-# Gouache Studio 0.51.0
+# Gouache Studio 0.51.1
 
-- **Canvas navigation:** hold R and drag for free rotation; add Shift for 15° steps. Precise angles accept decimals. Space pans properly after painting following dropdown use.
-- **Layers:** hidden layers are clearer. Right-click **Clear layer contents**, or press **Ctrl+Q**, to empty a layer without deleting it. Undo and layer locks work as expected.
-- **Selections:** flip left/right or top/bottom from the options bar. The selection fits the flipped artwork and switches to Move so you can drag it immediately.
-- **New document:** Portrait and Landscape buttons make vertical and horizontal canvases easy to choose.
-- **Help search:** **Ctrl+Shift+P** finds and runs tools, filters and menu commands.
-- **Gasa Gaya Pen:** refined tapered marker nib, fine pressure-sensitive contours and a small rounded ink pool at the end. Adjust it with **End ink** in Tool settings.
+- **Gasa Gaya Pen:** fine pressure taper, slight edge roughness and pressure-scaled End ink on drawn strokes. Clicking keeps the nib shape instead of turning into a round dot.
+- **New canvas colour:** choose a background with a colour picker or hex value.
+- **Recent brushes:** quickly return to the last twelve presets used.
+- **Brush sizes:** presets remember individual sizes per tool during the session. Default size restores the preset size without resetting other settings.
+- **Liquify:** Size and Strength now stay changed and synchronized between Tool settings and the options bar, including precise input.
 
-These changes were checked in the native Windows desktop app. The 0.50.1 high-resolution painting fixes remain included.
+Checked in the native Windows desktop app, including real Liquify deformation and undo.

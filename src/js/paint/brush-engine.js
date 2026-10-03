@@ -81,7 +81,7 @@ function fdAdd(s,r){const L=s.fd||(s.fd=[]),near=Math.max(64,(r[2]-r[0])*2);
   for(const f of L)if(r[0]<=f[2]+near&&r[2]>=f[0]-near&&r[1]<=f[3]+near&&r[3]>=f[1]-near){f[0]=Math.min(f[0],r[0]);f[1]=Math.min(f[1],r[1]);f[2]=Math.max(f[2],r[2]);f[3]=Math.max(f[3],r[3]);return;}
   L.push(r.slice());if(L.length>12){const u=L.reduce((a,f)=>[Math.min(a[0],f[0]),Math.min(a[1],f[1]),Math.max(a[2],f[2]),Math.max(a[3],f[3])]);s.fd=[u];}}
 function addPoint(x,y,p){
-  const s=stroke;if(!s)return;if(p>0)s.inkPressure=p;const dx=x-s.x,dy=y-s.y,len=Math.hypot(dx,dy);
+  const s=stroke;if(!s)return;if(p>0)s.inkPressure=p;const dx=x-s.x,dy=y-s.y,len=Math.hypot(dx,dy);s.distance=(s.distance||0)+len;
   if(len<1e-4){s.p=p;return;}
   if(len>0.5)s.dir=Math.atan2(dy,dx);
   let t=s.carry,guard=0;
@@ -92,7 +92,7 @@ function endStroke(record){
   const s=stroke;if(!s)return;const L=s.L,W=doc.w,H=doc.h;
   /* A marker deposits a little extra ink where the nib lifts. The terminal dab uses
      the same tip, selection, symmetry and map pipeline and belongs to this undo step. */
-  if(s.o.tool==='brush'&&s.o.endInk>0){const p=s.p>0?s.p:(s.inkPressure||0),r=radiusAt(p),ink=clamp(s.o.endInk,0,.5),tip=s.o.tip,hard=s.o.hardness;
+  if(s.o.tool==='brush'&&s.o.endInk>0&&(s.distance||0)>.5){const p=s.p>0?s.p:(s.inkPressure||0),r=radiusAt(p),ink=clamp(s.o.endInk,0,.5),tip=s.o.tip,hard=s.o.hardness;
     /* Ink spreads into a soft round bead, rather than a larger copy of the nib. */
     s.o.tip=null;s.o.hardness=.8;
     try{const yup=!!(s.space&&s.space.yup);for(const c of symCopies(s.sym,s.SW,s.SH,s.x,s.y,0,1,yup?-1:1,0,0))stampOne(c[0],c[1],r*(.87+ink),alphaAt(p),c[2],c[3],c[4],0,0);if(s.space)s.spaceDirty=true;}

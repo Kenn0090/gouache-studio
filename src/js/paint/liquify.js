@@ -59,14 +59,17 @@ function liqUp(){const s=liqS;liqS=null;ptr=null;if(!s)return;s.dirty=s.dirty;li
   finally{for(const it of s.items)release(it.orig);release(s.D);release(s.tmp);}
   changed(s.L.maskOf||s.L);refreshCursor();}
 function liqSetMode(m){liq.mode=m;liqSave();if(typeof buildBrushPanel==='function')buildBrushPanel();if(typeof buildOptBar==='function')buildOptBar();}
+let liqPanelSliders={};
+function liqSetSetting(key,v){liq[key]=v;liqSave();const id=key==='size'?'lqSize':'lqStr';if(liqPanelSliders[id])liqPanelSliders[id].set(v);refreshCursor();}
 function buildLiquifyPanel(box){$('#brushTitle').textContent='Liquify';
+  liqPanelSliders={};
   box.append(seg(LIQ_MODES,liq.mode,liqSetMode,'Liquify mode'));
-  const sl=(id,label,min,max,step,v,fmt,set)=>{const s=makeSlider({id,label,min,max,step,value:v,fmt,onInput:x=>{set(x);liqSave();refreshCursor();if(optSliders[id])optSliders[id].sl.set(x);}});box.append(el('div',{class:'frow'},el('label',{for:id,text:label}),s.el));return s;};
-  sl('lqSize','Size',10,1500,1,liq.size,v=>Math.round(v)+'px',v=>{liq.size=v;});sl('lqStr','Strength',.05,1,.01,liq.strength,pct,v=>{liq.strength=v;});
+  const sl=(id,key,label,min,max,step,fmt)=>{const s=makeSlider({id,label,min,max,step,value:liq[key],fmt,onInput:x=>liqSetSetting(key,x)});liqPanelSliders[id]=s;box.append(s.el);};
+  sl('lqSize','size','Size',10,1500,1,v=>Math.round(v)+'px');sl('lqStr','strength','Strength',.05,1,.01,pct);
   box.append(el('p',{class:'note',text:'Push: drag the paint along. Pinch, Bloat and Twirl keep working while you hold the button. Restore softly undoes the change you just made in this stroke. Every map of the layer moves together; a selection limits it.'}));}
 function buildLiquifyOpt(bar){bar.append(...LIQ_MODES.map(([v,l,t])=>el('button',{class:'optchip'+(liq.mode===v?' on':''),'aria-pressed':String(liq.mode===v),title:t,text:l,onclick:()=>liqSetMode(v)})),el('span',{class:'optsep'}));
-  const mk=(id,label,min,max,step,v,fmt,set)=>{const s=makeSlider({id:'ob_'+id,label,min,max,step,value:v,fmt,onInput:x=>{set(x);liqSave();refreshCursor();const o=document.getElementById(id);if(o){o.value=x;const w=o.nextSibling;if(w)w.textContent=fmt(x);}}});s.el.classList.add('optslider');optSliders[id]={sl:s,get:()=>v};bar.append(s.el);};
-  mk('lqSize','Size',10,1500,1,liq.size,v=>Math.round(v)+'px',v=>{liq.size=v;});mk('lqStr','Strength',.05,1,.01,liq.strength,pct,v=>{liq.strength=v;});}
+  const mk=(id,key,label,min,max,step,fmt)=>{const s=makeSlider({id:'ob_'+id,label,min,max,step,value:liq[key],fmt,onInput:x=>liqSetSetting(key,x)});s.el.classList.add('optslider');optSliders[id]={sl:s,get:()=>liq[key]};bar.append(s.el);};
+  mk('lqSize','size','Size',10,1500,1,v=>Math.round(v)+'px');mk('lqStr','strength','Strength',.05,1,.01,pct);}
 (function(){const c=document.querySelector('#tools .tool[data-tool="clone"]');if(!c)return;
   const b=el('button',{class:'tool','data-tool':'liquify',title:'Liquify (Ctrl+Shift+X): push, pinch, bloat and twirl the paint','aria-label':'Liquify','aria-pressed':'false'});
   b.innerHTML='<svg viewBox="0 0 24 24"><path d="M3 8.5c3-3 5 3 8 0s5-3 10 0M3 15.5c3-3 5 3 8 0s5-3 10 0"/><path d="M12 19.5v2M9 21h6"/></svg>';
