@@ -1,3 +1,9 @@
+# Gouache Studio 0.51.5
+
+- **Animation:** Shift+D duplicates the current frame; Ctrl+D deselects and Ctrl+Shift+D reselects. Held keys do not create repeated copies.
+
+Validated frame pixels and hold duration, undo/redo, selection shortcuts and typing safety in the Windows desktop app.
+
 # Gouache Studio 0.51.4
 
 - **Text on rotated canvases:** the editing box and caret follow canvas rotation and mirror. Adding or editing text no longer straightens the view.

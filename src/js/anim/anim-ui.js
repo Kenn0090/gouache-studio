@@ -20,7 +20,7 @@ const tlParts={};
   framesMenu.addEventListener('change',()=>{const v=framesMenu.value;framesMenu.value='';framesMenu.blur();if(v==='rev')reverseFrames();if(v==='pp')pingPongFrames();if(v==='rep')dlgNumber('Repeat','How many more times?',1,1,64,repeatFrames);if(v==='hold')dlgNumber('Set the hold','How many beats should each frame stay?',1,1,99,setRangeHold);});
   const ctr=el('div',{class:'tlctrl'},tlBtn(ic(P1),'First frame',()=>showFrame(0)),tlBtn(ic(P2),'Previous frame (,)',()=>stepFrame(-1)),tlParts.play,tlBtn(ic(PN),'Next frame (.)',()=>stepFrame(1)),tlBtn(ic(PE),'Last frame',()=>showFrame(A_().frames.length-1)),
     el('span',{class:'tlsep'}),fps,el('span',{class:'tlsep'}),el('label',{class:'dim',text:'Hold ×'}),tlParts.hold,el('span',{class:'tlsep'}),
-    el('button',{class:'btn sm',text:'+ Frame',title:'New blank frame after this one',onclick:addFrame}),el('button',{class:'btn sm',text:'Duplicate',title:'Copy this frame',onclick:duplicateFrame}),el('button',{class:'btn sm',text:'Quick dupli…',title:'Make a number of copies of this frame in one go',onclick:dlgQuickDupli}),framesMenu,el('button',{class:'btn sm',text:'Delete',onclick:deleteFrame}),
+    el('button',{class:'btn sm',text:'+ Frame',title:'New blank frame after this one',onclick:addFrame}),el('button',{class:'btn sm',text:'Duplicate',title:'Copy this frame (Shift+D)',onclick:duplicateFrame}),el('button',{class:'btn sm',text:'Quick dupli…',title:'Make a number of copies of this frame in one go',onclick:dlgQuickDupli}),framesMenu,el('button',{class:'btn sm',text:'Delete',onclick:deleteFrame}),
     el('span',{class:'tlsep'}),tlParts.onion,el('button',{class:'btn sm',text:'Preview',title:'Live preview window',onclick:togglePreviewWin}),imp,el('button',{class:'btn sm primary',text:'Export…',title:'Sprite sheet / flipbook export',onclick:dlgExportSheet}),tlParts.info);
   tlParts.ruler=el('div',{class:'tlruler',title:'Click or drag to scrub through the animation'});tlParts.tags=el('div',{class:'tltags'});tlParts.frames=el('div',{class:'tlframes',role:'listbox','aria-label':'Frames'});
   tlParts.scroll=el('div',{class:'tlscroll'},tlParts.ruler,tlParts.tags,tlParts.frames);tlRulerEvents();
@@ -122,9 +122,9 @@ function drawPreviewWin(){if(!pw)return;const A=A_();if(!A)return;const {s}=pwSe
 
 /* ---- keys in Animation mode; returns true if used ---- */
 function animKeys(e,m,k){if(ui.mode!=='anim')return false;
-  /* (0.28, Kenn) Ctrl+F new frame, Ctrl+D duplicate, Delete removes it, , and . step, Space plays, Ctrl+Shift+←/→ moves it */
+  /* (0.28, Kenn) Ctrl+F new frame, Shift+D duplicate, Delete removes it, , and . step, Space plays, Ctrl+Shift+←/→ moves it */
   if(m&&!e.shiftKey&&!e.altKey&&k==='f'){e.preventDefault();addFrame();return true;}
-  if(m&&!e.shiftKey&&!e.altKey&&k==='d'){e.preventDefault();duplicateFrame();return true;}
+  if(!m&&e.shiftKey&&!e.altKey&&k==='d'){e.preventDefault();if(!e.repeat)duplicateFrame();return true;}
   if(m&&e.shiftKey&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();const A=A_();if(A){const to=clamp(A.cur+(e.key==='ArrowLeft'?-1:1),0,A.frames.length-1);if(to!==A.cur)moveFrame(A.cur,to);}return true;}
   if(m&&['n','g','e'].includes(k)||(m&&k==='j')){e.preventDefault();toast('Layers are not used in Animation mode. Switch to Paint mode (top right) for layers.');return true;}
   if(m||e.altKey)return false;

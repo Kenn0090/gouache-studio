@@ -35,7 +35,8 @@ Animations are saved in .gouache files. They're also stored inside PSDs exported
 Animation mode paints base colour only, so switch to Paint mode for the other maps.
 
 ## Frame shortcuts
-- **Ctrl+F** new frame, **Ctrl+D** duplicate the frame, **Delete** removes the frame (when nothing is selected)
+- **Ctrl+D** deselect, **Ctrl+Shift+D** reselect
+- **Ctrl+F** new frame, **Shift+D** duplicate the frame, **Delete** removes the frame (when nothing is selected)
 - **,** and **.** step to the previous and next frame
 - **Space** plays and stops (hold Space and drag to pan, as before)
 - **Ctrl+Shift+Left/Right** moves the frame earlier or later

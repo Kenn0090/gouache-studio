@@ -1,5 +1,9 @@
 # What's new in Gouache Studio
 
+## 0.51.5
+
+- **Animation shortcuts:** Shift+D duplicates the current frame. Ctrl+D deselects and Ctrl+Shift+D reselects, including in Animation. Holding Shift+D creates only one copy per press. The Duplicate button shows its shortcut.
+
 ## 0.51.4
 
 - **Rotated text:** creating, typing and reopening text now follows the canvas rotation and mirror instead of resetting the view. The editor and caret stay aligned with the artwork.
