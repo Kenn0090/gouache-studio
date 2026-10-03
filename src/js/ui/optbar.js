@@ -11,6 +11,7 @@ function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren
   if(xf&&!xf.move){buildXfOptBar(bar);return;}
   if(t==='pen'||t==='path'){bar.append(el('button',{class:'btn sm',text:'New path',onclick:pathNewButton}),el('button',{class:'btn sm',text:'Finish path',onclick:pathFinish}),el('span',{class:'optnote',text:'Click points · drag for curves · Enter to finish'}),el('button',{class:'btn sm',text:'Path settings',onclick:()=>showPanel('tool')}));return;}
   if(t==='liquify'){buildLiquifyOpt(bar);return;}
+  if(t==='move'||SEL_TOOLS.includes(t)){bar.append(el('button',{class:'btn sm',id:'ob_flip_h',text:'Flip horizontal',title:'Flip selected pixels left-right (Ctrl+Alt+H)',disabled:!doc.active||(t!=='move'&&!sel.active),onclick:()=>flipLayers(true)}),el('button',{class:'btn sm',id:'ob_flip_v',text:'Flip vertical',title:'Flip selected pixels top-bottom (Ctrl+Alt+V)',disabled:!doc.active||(t!=='move'&&!sel.active),onclick:()=>flipLayers(false)}));}
   if(!OPT_PAINT.includes(t)||ui.mode==='convert'){bar.append(el('span',{class:'optnote',text:'More settings in the Tool settings panel.'}),el('button',{class:'btn sm',text:'Tool settings',onclick:()=>showPanel('tool')}));return;}
   const sm=t==='smudge',tonal=t==='dodge'||t==='burn';
   if(typeof activePreset!=='undefined')bar.append(el('button',{class:'optpreset',title:'Pick a brush in the Brushes panel',onclick:()=>showPanel('brushes')},

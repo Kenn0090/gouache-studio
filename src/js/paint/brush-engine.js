@@ -1,7 +1,7 @@
 /* ================= Brush engine ================= */
 const BRUSH_DEFAULTS={size:24,opacity:1,flow:1,hardness:.85,spacing:.06,grain:0,smoothing:.25,pSize:true,pOpacity:false,minSize:.2,buildup:false,curve:0,strength:.6,charge:0,
   tip:null,angle:0,roundness:1,flipX:false,flipY:false,randFlipX:false,randFlipY:false,sizeJitter:0,angleJitter:0,scatter:0,count:1,bothAxes:false,followDir:false,
-  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0};
+  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,endInk:0};
 /* lazy mouse: the brush follows the pointer on a string of R pixels, so it only moves once the string is pulled tight */
 function lazyStep(s,x,y,R){if(!(R>0))return [x,y];if(s.lx===undefined){s.lx=s.sx;s.ly=s.sy;}const dx=x-s.lx,dy=y-s.ly,d=Math.hypot(dx,dy);if(d<=R)return null;s.lx+=dx*(d-R)/d;s.ly+=dy*(d-R)/d;return [s.lx,s.ly];}
 const brush=Object.assign({},BRUSH_DEFAULTS);
@@ -81,7 +81,7 @@ function fdAdd(s,r){const L=s.fd||(s.fd=[]),near=Math.max(64,(r[2]-r[0])*2);
   for(const f of L)if(r[0]<=f[2]+near&&r[2]>=f[0]-near&&r[1]<=f[3]+near&&r[3]>=f[1]-near){f[0]=Math.min(f[0],r[0]);f[1]=Math.min(f[1],r[1]);f[2]=Math.max(f[2],r[2]);f[3]=Math.max(f[3],r[3]);return;}
   L.push(r.slice());if(L.length>12){const u=L.reduce((a,f)=>[Math.min(a[0],f[0]),Math.min(a[1],f[1]),Math.max(a[2],f[2]),Math.max(a[3],f[3])]);s.fd=[u];}}
 function addPoint(x,y,p){
-  const s=stroke;if(!s)return;const dx=x-s.x,dy=y-s.y,len=Math.hypot(dx,dy);
+  const s=stroke;if(!s)return;if(p>0)s.inkPressure=p;const dx=x-s.x,dy=y-s.y,len=Math.hypot(dx,dy);
   if(len<1e-4){s.p=p;return;}
   if(len>0.5)s.dir=Math.atan2(dy,dx);
   let t=s.carry,guard=0;
@@ -90,6 +90,13 @@ function addPoint(x,y,p){
 }
 function endStroke(record){
   const s=stroke;if(!s)return;const L=s.L,W=doc.w,H=doc.h;
+  /* A marker deposits a little extra ink where the nib lifts. The terminal dab uses
+     the same tip, selection, symmetry and map pipeline and belongs to this undo step. */
+  if(s.o.tool==='brush'&&s.o.endInk>0){const p=s.p>0?s.p:(s.inkPressure||0),r=radiusAt(p),ink=clamp(s.o.endInk,0,.5),tip=s.o.tip,hard=s.o.hardness;
+    /* Ink spreads into a soft round bead, rather than a larger copy of the nib. */
+    s.o.tip=null;s.o.hardness=.8;
+    try{const yup=!!(s.space&&s.space.yup);for(const c of symCopies(s.sym,s.SW,s.SH,s.x,s.y,0,1,yup?-1:1,0,0))stampOne(c[0],c[1],r*(.87+ink),alphaAt(p),c[2],c[3],c[4],0,0);if(s.space)s.spaceDirty=true;}
+    finally{s.o.tip=tip;s.o.hardness=hard;}}
   if(s.space){s.spaceDirty=false;s.space.sync();const b=s.space.bbox(s);s.bb=doc.wrap?[0,0,W,H]:[b[0]-2,b[1]-2,b[2]+2,b[3]+2];}
   const healing=s.o.tool==='heal',cloning=s.o.tool==='clone';
   const x0=clamp(Math.floor(s.bb[0]),0,W),y0=clamp(Math.floor(s.bb[1]),0,H),x1=clamp(Math.ceil(s.bb[2]),0,W),y1=clamp(Math.ceil(s.bb[3]),0,H),bw=x1-x0,bh=y1-y0,R=[x0,y0,bw,bh];

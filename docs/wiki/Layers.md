@@ -9,7 +9,9 @@ The blend mode, opacity, clip, lock buttons and the mask buttons sit at the top 
 
 - The icon buttons under the list: **new layer** (Ctrl+Shift+N), **new fill layer**, **new filter layer**, **add mask**, **layer style**, **group**, **ungroup**, **duplicate** (Ctrl+J), **merge**, **move up / down** and **delete**. Hover a button to see its name.
 - **Delete** (or Backspace) deletes the selected layers. With a selection active it clears the selection instead, like Photoshop.
-- **Clear layer** (eraser-shaped button) clears a paint layer’s channels, material coverage, or path painting with undo. Material recipes and path geometry remain editable.
+- **Clear layer contents** (right-click the layer, **Ctrl+Q**, or the eraser-shaped button) clears a paint layer’s channels, material coverage, or path painting with undo. The layer stays in place. Material recipes and path geometry remain editable. It clears the entire layer even with an active selection; **Delete** still clears just selected pixels. Pixel locks are respected.
+
+Hidden layers have a **Hidden** badge and a highlighted crossed-out eye. A visible child inside a hidden folder shows **Hidden by group**.
 - **Right-click a layer** for a menu: add or delete its mask, switch on a layer style (it opens the Layer style dialog on that style), add a filter layer, the Array tool, group, duplicate, merge, convert to pixels and delete.
 
   ![The right-click layer menu.](images/layer-menu.png)

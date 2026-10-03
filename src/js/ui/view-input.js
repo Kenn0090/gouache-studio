@@ -13,7 +13,7 @@ $('#stDepth').addEventListener('click',()=>setDepth(doc.depth===16?8:16));
 $('#tileBtn').addEventListener('click',toggleTile);
 
 const bc=$('#brushCursor');let lastPos=null,spaceDown=false,ptr=null;
-function refreshCursor(){if(typeof healMarker==='function')healMarker();if(!lastPos){bc.hidden=true;return;}const paint=['brush','erase','smudge','dodge','burn','heal','clone','material','liquify'].includes(ui.tool)&&!spaceDown&&!(ptr&&ptr.mode==='pan');
+function refreshCursor(){if(typeof healMarker==='function')healMarker();if(!lastPos){bc.hidden=true;return;}const paint=['brush','erase','smudge','dodge','burn','heal','clone','material','liquify'].includes(ui.tool)&&!spaceDown&&!rotHold&&!(ptr&&['pan','vrot'].includes(ptr.mode));
   if(!paint){bc.hidden=true;if(cv.style.cursor==='none')cv.style.cursor='';return;}cv.style.cursor='none';const lq=ui.tool==='liquify',d=Math.max(3,(lq?liq.size:brush.size)*view.zoom);bc.hidden=false;bc.style.width=d+'px';bc.style.height=d+'px';if(lq){bc.classList.remove('tipcur');if(bc.firstChild)bc.replaceChildren();}else tipCursor(bc,d);bc.style.transform='translate('+(lastPos[0]-d/2)+'px,'+(lastPos[1]-d/2)+'px)';}
 /* Preferences › Show the brush tip's shape as the cursor: the tip's outline, at the brush size, turned and squashed like the dabs */
 const tipOutlineCache=new Map();
@@ -49,7 +49,7 @@ function paintOpts(et){
   return o;}
 cv.addEventListener('pointerdown',e=>{
   if(ptr)return;closeMenu();const pan=e.button===1||spaceDown||ui.tool==='hand';if(!pan&&e.button!==0)return;
-  e.preventDefault();cv.setPointerCapture(e.pointerId);showPressure(e);
+  e.preventDefault();cv.tabIndex=0;cv.focus({preventScroll:true});cv.setPointerCapture(e.pointerId);showPressure(e);
   if(rotHold||(spaceDown&&e.shiftKey)){ptr=vxDragStart(e);stage.classList.add('panning');return;}
   if(pan){ptr={mode:'pan',id:e.pointerId,sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y};stage.classList.add('panning');refreshCursor();return;}
   let [ix,iy]=toImage(e.clientX,e.clientY);if(typeof gdSnapOn==='function'&&gdSnapOn()&&!e.altKey)[ix,iy]=gdSnap(ix,iy);
@@ -152,7 +152,7 @@ window.addEventListener('keydown',e=>{
     if(k==='n'&&e.shiftKey){e.preventDefault();cmdAddLayer();return;}if(k==='g'){e.preventDefault();e.shiftKey?cmdUngroup():cmdGroup();return;}if(k==='j'){e.preventDefault();cmdDuplicate();return;}if(k==='n'&&e.altKey){e.preventDefault();dlgNew();return;}
     if(map[k]){e.preventDefault();actions[map[k]]();}return;}
   if(e.altKey&&/^Digit[2-6]$/.test(e.code)){e.preventDefault();selectChannel(+e.code.slice(5)-3,false);return;}
-  if(!m&&!e.altKey&&!e.shiftKey&&k==='r'){e.preventDefault();rotHold=true;stage.classList.add('grab');return;}
+  if(!m&&!e.altKey&&!e.shiftKey&&k==='r'&&!['p3d','bake','convert'].includes(ui.mode)){e.preventDefault();rotHold=true;stage.classList.add('grab');refreshCursor();return;}
   if(e.code==='Space'){e.preventDefault();if(!spaceDown){spaceDown=true;stage.classList.add('grab');refreshCursor();}return;}
   const tools={b:'brush',e:'erase',s:'smudge',i:'picker',h:'hand',u:'shape',j:'heal',y:'clone',p:'pen'};
   if(tools[k]){setTool(tools[k]);return;}
@@ -161,7 +161,7 @@ window.addEventListener('keydown',e=>{
   /* Delete: with a selection it clears what is selected (like Photoshop); without one it deletes the layer. Alt+Delete fills. */
   if((k==='delete'||k==='backspace')&&ui.mode!=='bake'&&ui.mode!=='convert'){e.preventDefault();if(e.altKey)fillLayer();else if((sel.active&&!sel.quick)||ui.mode==='anim'||ui.mode==='brush')clearLayer();else cmdDelete();}
 });
-window.addEventListener('keyup',e=>{if(e.key==='r'||e.key==='R'){rotHold=false;if(!spaceDown&&ui.tool!=='hand')stage.classList.remove('grab');}if(e.code==='Space'){spaceDown=false;if(ui.tool!=='hand')stage.classList.remove('grab');refreshCursor();}});
+window.addEventListener('keyup',e=>{if(e.key==='r'||e.key==='R'){rotHold=false;if(!spaceDown&&ui.tool!=='hand')stage.classList.remove('grab');refreshCursor();}if(e.code==='Space'){spaceDown=false;if(ui.tool!=='hand')stage.classList.remove('grab');refreshCursor();}});
 window.addEventListener('blur',()=>{spaceDown=false;rotHold=false;stage.classList.toggle('grab',ui.tool==='hand');});
 new ResizeObserver(()=>{resizeGL();drawSV();}).observe(stage);new ResizeObserver(()=>resizeGL()).observe(work);
 new ResizeObserver(()=>drawSV()).observe(svC);

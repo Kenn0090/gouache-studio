@@ -5,7 +5,7 @@ const MENUS={
   Image:[['Canvas size…','canvasSize'],['Image size…','imageSize'],['Crop to selection','cropSel'],'-',['8 bits per channel','depth8'],['16 bits per channel (half float)','depth16']],
   Maps:[['Document maps…','maps'],'-',['Convert tab…','convertTab'],['Height from base colour…','cvHeight'],['Normal from base colour…','cvNormal'],['Roughness from base colour…','cvRough'],'-',
     ['Ambient occlusion from height…','cvAO'],['Curvature from height…','cvCurv'],'-',['Curvature from normal…','cvCurvN'],['Ambient occlusion from normal…','cvAON'],['Height from normal…','cvHfN'],['Flip normal green (DirectX ↔ OpenGL)','flipG'],'-',['Bake from high poly…','bake']],
-  Layer:[['New','sub',[['Layer','addLayer','Ctrl+Shift+N'],['Group','newGroup'],['Fill layer…','newFill'],['Filter layer…','newFx']]],['Duplicate','dupLayer','Ctrl+J'],['Delete','delLayer','Del'],'-',
+  Layer:[['New','sub',[['Layer','addLayer','Ctrl+Shift+N'],['Group','newGroup'],['Fill layer…','newFill'],['Filter layer…','newFx']]],['Duplicate','dupLayer','Ctrl+J'],['Clear layer contents','clearContents','Ctrl+Q'],['Delete','delLayer','Del'],'-',
     ['Layer style…','layerStyle'],['Array…','arrayTool'],['Edit filter layer…','editFx'],'-',
     ['Layer mask','sub',[['Reveal all','addMask'],['Hide all','addMaskHide'],['Apply mask','applyMask'],['Delete mask','deleteMask']]],'-',
     ['Group selected','group','Ctrl+G'],['Ungroup','ungroup','Ctrl+Shift+G'],'-',
@@ -41,7 +41,8 @@ Object.assign(actions,{gallery:()=>dlgGallery(),warp:()=>fxMenu('warp'),slopeBlu
   pn_color:()=>togglePanel('color'),pn_brushes:()=>togglePanel('brushes'),pn_tool:()=>togglePanel('tool'),pn_maps:()=>togglePanel('maps'),pn_layers:()=>togglePanel('layers'),pn_chan:()=>togglePanel('chan'),
   optBarToggle:()=>{dk.L.opt=!dk.L.opt;dkRender();dkSave();},tbCols:()=>dkToolbar({cols:dk.L.tb.cols===2?1:2}),tbSide:()=>dkToolbar({side:dk.L.tb.side==='right'?'left':'right'})});
 Object.assign(actions,{makeTip:()=>dlgMakeTip(),keys:()=>dlgKeys(),hints:()=>toggleHints(),cageTool:()=>{if(ui.cageFlat)cageFlatOff();setTool('cage');},cageFlat:()=>toggleCageFlat(),symX:()=>symToggleX()});
-const LAYER_ONLY=['addLayer','newGroup','group','ungroup','dupLayer','delLayer','addMask','addMaskHide','applyMask','deleteMask','merge','mergeGroup','mergeVisible','flatten','rasterize','place','tipFromLayer','selLayer'];
+actions.clearContents=cmdClearLayer;
+const LAYER_ONLY=['clearContents','addLayer','newGroup','group','ungroup','dupLayer','delLayer','addMask','addMaskHide','applyMask','deleteMask','merge','mergeGroup','mergeVisible','flatten','rasterize','place','tipFromLayer','selLayer'];
 const checked={ws_painting:()=>dk.ws==='painting',ws_texturing:()=>dk.ws==='texturing',ws_paint3d:()=>dk.ws==='paint3d',ws_minimal:()=>dk.ws==='minimal',wsLock:()=>dk.lock,pn_color:()=>panelShown('color'),pn_brushes:()=>panelShown('brushes'),pn_tool:()=>panelShown('tool'),pn_maps:()=>panelShown('maps'),pn_layers:()=>panelShown('layers'),pn_chan:()=>panelShown('chan'),optBarToggle:()=>dk.L&&dk.L.opt,tbCols:()=>dk.L&&dk.L.tb.cols===2,tbSide:()=>dk.L&&dk.L.tb.side==='right',hints:()=>!prefs.hideHints,view3d:()=>v3.on,perf:()=>perf.on,depth8:()=>doc.depth===8,depth16:()=>doc.depth===16,tile:()=>doc.wrap,quickMask:()=>sel.quick};
 const pop=$('#menuPop');let openName=null;
 /* (0.31) Layer is a menu of its own again, like Photoshop; Maps lives at the end of the Image menu */

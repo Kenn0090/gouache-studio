@@ -1,5 +1,7 @@
 # Files, saving and export
 
+In **New document**, choose **Portrait (vertical)** or **Landscape (horizontal)** beside Width and Height. Existing dimensions swap without changing units or DPI; a square becomes 2:3 or 3:2. Square 3D Paint and Brush workspaces keep their existing texture workflow.
+
 ## .gouache documents
 **Save** (Ctrl+S) and **Save as** (Ctrl+Shift+S) write a **.gouache** file. It keeps everything:
 - layers, groups, masks, blend modes;

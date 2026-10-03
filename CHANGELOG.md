@@ -1,5 +1,16 @@
 # What's new in Gouache Studio
 
+## 0.51.0
+
+- Hold R and drag to rotate the canvas freely. Shift constrains rotation to 15-degree steps; the angle dialog accepts tenths of a degree. Painting returns keyboard focus to the canvas so Space pans after using dropdowns.
+- Hidden layers show a clear Hidden badge and highlighted crossed-out eye. Children in hidden folders explain that they are Hidden by group.
+- New documents have Portrait (vertical) and Landscape (horizontal) buttons that preserve dimensions, units and DPI. Square texture and brush workspaces keep their existing workflow.
+- Added Help > Search commands (Ctrl+Shift+P) for tools, filters and menu actions, with current shortcuts and keyboard navigation.
+- Horizontal and vertical flip buttons are available above the canvas with selection tools and Move. Flipped selected artwork becomes the active pixel selection and switches to Move, ready to drag. Undo restores the original selection and artwork.
+- Added Clear layer contents to the layer right-click and Layer menus, with Ctrl+Q. Clears all painted channels while keeping the layer and respecting locks, with Undo; an active selection does not limit it.
+- Refined Gasa Gaya Pen with a soft asymmetric tapered nib, sharp pressure-sensitive ink lines and a modest rounded deposit at lift-off. The new End ink brush control adjusts or disables the deposit and saves with brush presets.
+- Verified these interactions in the native Windows desktop app, including pixel selection parity, dragging flipped artwork, clear/undo across channels and marker ink undo.
+
 ## 0.50.1
 
 - Fixed blocky strokes and checkerboard rectangles in the zoomed-out canvas while painting at high resolution. Regional preview updates now expose all mip levels while reading them, then restore the texture's sampling mode. Painted layer pixels remain unchanged; full-image regeneration is still avoided during continuing strokes.

@@ -103,7 +103,7 @@ function buildXfPanel(box){$('#brushTitle').textContent=xf.warp?'Warp':'Transfor
   box.append(el('div',{class:'sub',text:xf.warp?'Drag a grid point to bend the image; click a point to show its curve handles and drag those for finer bends.':
     'Corners scale proportionally (Shift stretches freely). Sides scale one way. Drag outside to rotate (Shift snaps 15°). Ctrl+drag a side to skew, Ctrl+drag a corner to distort. Alt works from the centre. Drag the centre mark to rotate around another point.'}));
   xfPanelSync();}
-function xfFlip(h){const q=xf.q,P=i=>[q[i*2],q[i*2+1]];const o=h?[1,0,3,2]:[3,2,1,0];xf.q=o.flatMap(i=>P(i));xfRender(false);drawXfOverlay();xfPanelSync();}
+function xfFlip(h){const q=xf.q,P=i=>[q[i*2],q[i*2+1]];const o=h?[1,0,3,2]:[3,2,1,0];xf.q=o.flatMap(i=>P(i));xf.contentSel=!!xf.selItem;xfRender(false);drawXfOverlay();xfPanelSync();}
 function xfRot90(dir){const H=rectToQuad(xf.rect,xf.q),pd=apply3(H,xf.pivot[0],xf.pivot[1]),q=xf.q;xf.q=[];
   for(let i=0;i<8;i+=2){const x=q[i]-pd[0],y=q[i+1]-pd[1];xf.q.push(pd[0]-dir*y,pd[1]+dir*x);}xfRender(false);drawXfOverlay();xfPanelSync();}
 function freeTransform(){if(xf)return;if(xfStart()){xfRender(false);toast('Transform: drag the handles, Enter applies, Esc cancels.');}}
