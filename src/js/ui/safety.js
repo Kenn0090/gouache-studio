@@ -9,8 +9,9 @@ async function reloadApp(){const go=async()=>{try{await autosaveNow(true);}catch
   confirmDlg('Reload the app?','You have unsaved changes. A recovery copy is kept, and the welcome screen offers it back after the reload.','Reload',go);}
 /* (0.40, Kenn) Tab hides every panel so the canvas or the 3D view fills the window; Tab again brings them back */
 function toggleTabFull(force){const on=force===undefined?!document.body.classList.contains('tabfull'):!!force;document.body.classList.toggle('tabfull',on);
-  if(on)toast('Panels hidden. Press Tab to bring them back.');
+  if(on)toast('Canvas-only view. Press F, Tab or Escape to bring panels back.');
   try{window.dispatchEvent(new Event('resize'));if(typeof fit==='function')fit();requestRender(true);}catch(err){}}
+actions.canvasFull=()=>toggleTabFull();actions.frame3d=()=>{if(v3.on){v3Frame();v3.dirty=true;requestRender(true);}};
 window.addEventListener('keydown',e=>{const m=(e.ctrlKey||e.metaKey)&&!e.altKey,r=e.key==='r'||e.key==='R';
   if(e.key==='F5'||e.key==='BrowserRefresh'||(m&&r)){e.preventDefault();e.stopImmediatePropagation();
     if(m&&r&&e.shiftKey){if(modal.hidden)reloadApp();}

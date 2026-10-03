@@ -1,5 +1,12 @@
 # What's new in Gouache Studio
 
+## 0.51.2
+
+- **Liquify:** fixed the second Twirl direction and Restore. Restore paints back the latest deformation after release and remains undoable. Bracket keys now change Liquify Size and synchronize its controls.
+- **Gasa Gaya Pen:** Ink bleed keeps the narrow nib shape and gradually wets its edges while held. Pressure controls buildup; no round blob is added when lifting.
+- **Alt eyedropper:** holding Alt shows the eyedropper cursor; releasing restores the brush.
+- **Canvas-only view:** F hides panels to fill the app window with the canvas; F, Tab or Escape restores them. Flat cage view and framing the 3D model move to Shift+F.
+
 ## 0.51.1
 
 - **Gasa Gaya Pen:** sharp pressure taper and lightly rough ink edges. Single clicks keep the nib shape; End ink pooling is reserved for drawn strokes and responds to pressure.

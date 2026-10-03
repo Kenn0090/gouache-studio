@@ -25,7 +25,7 @@ const MENUS={
     ['Edges and relief','sub',[['Emboss…','emboss'],['Find edges…','edges'],['Edge wear…','edgeWear']]],
     ['Noise and render','sub',[['Add noise…','noise'],['Render clouds…','clouds'],['Render cells…','cells']]],
     ['Tiling','sub',[['Offset…','offset'],['Tile…','tile_fx'],['Make seamless…','seamless']]]],
-  View:[['Fit on screen','fit','Ctrl+0'],['Actual pixels','actual','Ctrl+1'],['Tile mode','tile','Shift+T'],['3D view','view3d','F3'],'-',['Cage tool','cageTool','K'],['Flat cage view','cageFlat','F'],['Symmetry: left–right','symX','Shift+X'],'-',['Shortcut hints','hints'],['Performance monitor','perf']],
+  View:[['Canvas-only view','canvasFull','F'],['Frame 3D model','frame3d','Shift+F'],['Fit on screen','fit','Ctrl+0'],['Actual pixels','actual','Ctrl+1'],['Tile mode','tile','Shift+T'],['3D view','view3d','F3'],'-',['Cage tool','cageTool','K'],['Flat cage view','cageFlat','Shift+F'],['Symmetry: left–right','symX','Shift+X'],'-',['Shortcut hints','hints'],['Performance monitor','perf']],
   Window:[['Workspace: Painting','ws_painting'],['Workspace: Texturing','ws_texturing'],['Workspace: 3D Paint','ws_paint3d'],['Workspace: Minimal','ws_minimal'],['Save workspace…','wsSave'],['Reset workspace','wsReset'],['Lock panels','wsLock'],'-',
     ['Color','pn_color'],['Brushes','pn_brushes'],['Tool settings','pn_tool'],['Maps','pn_maps'],['Layers','pn_layers'],['Channels','pn_chan'],'-',['Options bar','optBarToggle'],['Toolbar: two columns','tbCols'],['Toolbar on the right','tbSide']],
   Help:[] /* filled by ui/help.js */

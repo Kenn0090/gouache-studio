@@ -1101,3 +1101,5 @@ body.m-bake .tool[data-tool="pen"],body.m-bake .tool[data-tool="material"],body.
 .dialog:has(.prefs) #dlgBody{min-height:0;overflow:hidden;}
 .dialog:has(.prefs) .prefs{height:100%;min-height:0;grid-template-rows:auto minmax(0,1fr);}
 .dialog:has(.prefs) .prefpanel{max-height:none;min-height:0;overflow:auto;align-content:start;}
+
+body.tabfull .dkfloat,body.tabfull .dkfly,body.tabfull .dkicons{display:none!important}

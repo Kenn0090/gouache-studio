@@ -10,7 +10,7 @@ const KB_EXTRA=[
   ['tool:text','Text','Tools','T',()=>setTool('text')],['tool:shape','Shape','Tools','U',()=>setTool('shape')],['tool:array','Array','Tools','',()=>setTool('array')],['tool:marquee','Marquee','Tools','M',()=>setTool('marquee')],['tool:lasso','Lasso','Tools','L',()=>setTool('lasso')],['tool:wand','Magic wand','Tools','W',()=>setTool('wand')],
   ['paint:smaller','Brush smaller','Painting','[',()=>kbBrushSize(-1)],['paint:bigger','Brush bigger','Painting',']',()=>kbBrushSize(1)],
   ['paint:swap','Swap colours','Painting','X',()=>swapColors()],['paint:reset','Black and white colours','Painting','D',()=>{ui.bg=[1,1,1];setFG([0,0,0]);}]];
-function kbBrushSize(d){brush.size=clamp(Math.round(brush.size*(d>0?1.15:1/1.15)+d),1,brushMax());if(sizeSlider)sizeSlider.set(brush.size);refreshCursor();schedulePreview();}
+function kbBrushSize(d){if(ui.tool==='liquify'){liqSetSetting('size',clamp(Math.round(liq.size*(d>0?1.15:1/1.15)+d),10,1500));return;}brush.size=clamp(Math.round(brush.size*(d>0?1.15:1/1.15)+d),1,brushMax());brushRememberSize();if(sizeSlider)sizeSlider.set(brush.size);refreshCursor();schedulePreview();}
 /* Photoshop's keys where they differ from this app's (the rest already match) */
 const KB_PHOTOSHOP={hueSat:'Ctrl+U',adjust:'',mergeVisible:'Ctrl+Shift+E',export:'Ctrl+Alt+Shift+W',imageSize:'Ctrl+Alt+I',canvasSize:'Ctrl+Alt+C',selFeather:'Shift+F6',new:'Ctrl+N','tool:smudge':''};
 let kbCmds=null;
