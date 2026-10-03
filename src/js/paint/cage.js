@@ -91,12 +91,12 @@ function toggleCageFlat(){if(ui.cageFlat){cageFlatOff();return;}const C=cageOf()
 function cageFlatOff(){if(!ui.cageFlat)return;ui.cageFlat=false;cageBanner(false);if(cageSavedView){Object.assign(view,cageSavedView);cageSavedView=null;updateStatus();refreshCursor();}else fit();requestRender(true);drawXfOverlay();}
 let cageBan=null;
 function cageBanner(on){if(!cageBan){cageBan=el('div',{id:'cageBanner',role:'status'});stage.append(cageBan);}
-  cageBan.hidden=!on;if(on){const C=cageOf();cageBan.replaceChildren(el('b',{text:'Flat cage view'}),document.createTextNode(' · '+C.fw+' × '+C.fh+' · what you paint here is bent back onto the canvas · '),el('button',{class:'btn sm',text:'Back to canvas (F)',onclick:cageFlatOff}));}}
+  cageBan.hidden=!on;if(on){const C=cageOf();cageBan.replaceChildren(el('b',{text:'Flat cage view'}),document.createTextNode(' · '+C.fw+' × '+C.fh+' · what you paint here is bent back onto the canvas · '),el('button',{class:'btn sm',text:'Back to canvas (Shift+F)',onclick:cageFlatOff}));}}
 
 /* ---------- starting a stroke through the cage ---------- */
 /* returns false (don't paint), null (paint normally) or the starting point in flat space */
 function cageStrokeStart(o,ix,iy){const C=cageOf();
-  if(ui.cageFlat&&C){if(o.tool==='smudge'){toast('The blend brush works on the canvas, not in the flat view. Press F to go back.');return false;}
+  if(ui.cageFlat&&C){if(o.tool==='smudge'){toast('The blend brush works on the canvas, not in the flat view. Press Shift+F to go back.');return false;}
     o.space=cageSpace(C);return {x:ix,y:iy,kind:'flat'};}
   if(!C||!C.on||o.tool==='smudge')return null;
   const m=cageInv(C,ix,iy);if(!m)return null;o.space=cageSpace(C);o.cageRs=1/Math.max(m.s,1e-3);return {x:m.x,y:m.y,kind:'bend'};}
@@ -157,7 +157,7 @@ function cageKeys(e,m,k){
   if(ui.cageFlat&&e.key==='Escape'){e.preventDefault();cageFlatOff();return true;}
   if(m||e.altKey||ui.mode==='bake')return false;
   if(k==='k'&&!e.shiftKey){if(ui.cageFlat)cageFlatOff();setTool('cage');return true;}
-  if(k==='f'&&!e.shiftKey){toggleCageFlat();return true;}
+  if(k==='f'&&e.shiftKey){toggleCageFlat();return true;}
   if(k==='x'&&e.shiftKey){symToggleX();return true;}
   if(ui.tool==='cage'&&cageOf()&&cageOf().active&&e.key.startsWith('Arrow')){e.preventDefault();const C=cageOf(),[i,j]=C.active,s=e.shiftKey?10:1,d={ArrowLeft:[-s,0],ArrowRight:[s,0],ArrowUp:[0,-s],ArrowDown:[0,s]}[e.key];
     const before=cageClone(C);C.A[j][i]=[C.A[j][i][0]+d[0],C.A[j][i][1]+d[1]];cageRecord('Move cage point',before);cageChanged();return true;}

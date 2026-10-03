@@ -53,7 +53,7 @@ function newLayerObj(name,compact){doc.count++;const B=compact?emptyFor(mapDepth
   if(doc.map&&doc.map!=='base'&&ui.mode!=='anim'){T=compact?emptyFor(mapDepth(doc.map)):makeTarget(doc.w,doc.h,mapDepth(doc.map));if(!compact)maps[doc.map]=T;}
   return {type:'layer',id:++lid,name:name||('Layer '+doc.count),target:T,maps,mapModes:{},visible:true,opacity:1,mode:0,clip:false,lockAlpha:false,thumb:thumbCanvas(),parent:null};}
 function newGroupObj(name){return {type:'group',id:++lid,name:name||('Group '+(++groupCount)),children:[],open:true,visible:true,opacity:1,mode:-1,clip:false,lockAlpha:false,parent:null};}
-function disposeLayer(n){if(n._fxc)dropFxCache(n);if(n._cxc)cfxDrop(n);if(n._lk)lookFree(n);if(n.maps)for(const k in n.maps){const t=n.maps[k];if(t&&!t.empty)disposeTarget(t);}if(n.target&&!n.target.empty)disposeTarget(n.target);if(n.mask)maskDispose(n.mask);if(n._fillImg){for(const k in n._fillImg)disposeTarget(n._fillImg[k]);n._fillImg=null;}}
+function disposeLayer(n){if(typeof liqClearRestore==='function'&&liqRestore&&(liqRestore.L===n||liqRestore.L.maskOf===n))liqClearRestore();if(n._fxc)dropFxCache(n);if(n._cxc)cfxDrop(n);if(n._lk)lookFree(n);if(n.maps)for(const k in n.maps){const t=n.maps[k];if(t&&!t.empty)disposeTarget(t);}if(n.target&&!n.target.empty)disposeTarget(n.target);if(n.mask)maskDispose(n.mask);if(n._fillImg){for(const k in n._fillImg)disposeTarget(n._fillImg[k]);n._fillImg=null;}}
 const isLayer=n=>!!n&&n.type==='layer';
 function insertNode(n,parent,i){n.parent=parent;const c=parent.children;c.splice(i==null?c.length:clamp(i,0,c.length),0,n);}
 function detachNode(n){const p=n.parent;if(!p)return -1;const i=p.children.indexOf(n);if(i>=0)p.children.splice(i,1);return i;}

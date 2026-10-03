@@ -43,3 +43,5 @@ node baketab.cjs              # one test: prints PASS/FAIL lines, then ALL PASSE
 - `ui0510.cjs`: desktop-compatible regression for canvas keyboard focus, R rotation, portrait/landscape creation, Help search, hidden-layer indicators, lasso flips with artwork selection and immediate dragging, clear contents/locks/undo and tapered Gasa Gaya marker ink. Set `GS_NATIVE_CDP` to an isolated desktop WebView2 instance for native testing. Writes drawn pen samples into `out/ui0510/`.
 
 - `brush0511.cjs` checks custom new-canvas colours, recent presets, per-preset and per-tool session sizes, default-size restoration, stationary nib dabs and synchronized Liquify controls with real deformation and undo. Set `GS_NATIVE_CDP` to an isolated desktop test instance.
+
+- `brush0512.cjs` checks both twirl directions and undo, Restore across strokes, stale restore protection, pressure-dependent narrow edge bleed, no lift bead, Alt cursor, F/Escape layout and text entry, and Liquify bracket sizing. Set `GS_NATIVE_CDP` to an isolated desktop test instance.

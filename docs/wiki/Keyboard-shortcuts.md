@@ -115,3 +115,7 @@ All of these can be changed in **Edit › Keyboard shortcuts…**. The commands 
 - **C / Shift+C** in 3D Paint: step through the baked mesh maps on the model; **Esc** goes back to the material
 - Animation: **Ctrl+F**, **Ctrl+D**, **Delete**, **,** and **.**, **Space**, **Ctrl+Shift+Left/Right** (see [Animation](Animation.md#frame-shortcuts))
 - **Alt+click** a tick box in a list: only that one; Alt+click it again: everything else
+
+- **F:** toggle canvas-only view; **Escape** or **Tab** restores panels. **Shift+F** toggles Flat cage view, or frames the model in 3D Paint.
+- **Alt:** show the eyedropper cursor temporarily; release it to return to the brush.
+- **[ / ]:** shrink/grow the active brush, including Liquify.

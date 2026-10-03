@@ -125,7 +125,7 @@ function buildBrushPanel(){
   if(!bar3)box.append(S('bFlow','Flow','flow',.01,1,.01,pct).el);
   if(!brush.tip&&!bar3)box.append(S('bHard','Hardness','hardness',0,1,.01,pct).el);
   box.append(S('bSpace','Spacing','spacing',.01,1.5,.01,pct).el,S('bGrain','Grain','grain',0,1,.01,pct).el,S('bSmooth','Smoothing','smoothing',0,1,.01,pct).el,S('bLazy','Lazy mouse','lazy',0,200,1,v=>v?v+' px':'off').el);
-  if(ui.tool==='brush')box.append(S('bEndInk','End ink','endInk',0,.5,.01,pct).el);
+  if(ui.tool==='brush')box.append(S('bEndInk','Ink bleed','endInk',0,.5,.01,pct).el);
   box.append(el('div',{class:'sub',text:'Pen pressure'}));
   box.append(el('div',{class:'chips'},C('bPS','Size','pSize',true),C('bPO','Opacity','pOpacity'),sm?null:C('bBU','Build-up','buildup')));
   if(brush.pSize)box.append(S('bMin','Min size','minSize',0,1,.01,pct).el);

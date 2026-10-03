@@ -41,6 +41,7 @@ function toggleTile(){doc.wrap=!doc.wrap;const all=[strokeT,beforeT,scratchT,pre
   $('#tileBtn').setAttribute('aria-pressed',String(doc.wrap));fit();requestRender(true);toast(doc.wrap?'Tile mode on: strokes wrap across edges.':'Tile mode off.');}
 
 function newDoc(w,h,depth,bg,name,wrap,tpl){
+  if(typeof liqClearRestore==='function')liqClearRestore();
   if(depth===16&&w*h>=268435456){toast('Use 8-bit colour for a 16K square document. Height still keeps 16-bit precision.');return false;}
   if(ui.mode==='brush'||tabDocs.paint)setMode('paint',true);
   if(tedit){tedit=null;ted.hidden=true;}if(tsess){clearTimeout(tsess.timer);tsess=null;}

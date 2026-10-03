@@ -18,6 +18,7 @@ function strokeTints(o){if(o.tool!=='brush'||o.noTint||!o.color)return false;con
   return grey?(o.valJitter||0)>0:((o.hueJitter||0)+(o.satJitter||0)+(o.valJitter||0))>0;}
 const tintU=()=>({uStrokeTint:!!(stroke&&stroke.tint)});
 function beginStroke(L,x,y,p,o){
+  if(typeof liqClearRestore==='function')liqClearRestore();
   if(strokeT.w===1&&strokeT.h===1&&doc.w*doc.h>=67108864)useAux(L.target.depth);
   const W=doc.w,H=doc.h;
   /* Big canvases: plain painting copies only the part of the layer the stroke covered, when it ends (endStroke), and
@@ -37,7 +38,19 @@ function beginStroke(L,x,y,p,o){
     if(L.lockAlpha){const lt=acquireD(doc.depth);run(P.lockcov,lt,Object.assign({uA:mapT(L,'base').tex},selU(o)));stroke.lockT=lt;stroke.exU={uSelTex:lt.tex,uUseSel:true};}
     else stroke.exU=selU(o);}
   if(o.tool==='clone')cloneBegin(stroke);
-  stamp(x,y,p);stroke.carry=spacingAt(p);requestRender(true);
+  stamp(x,y,p);stroke.carry=spacingAt(p);if(o.tool==='brush'&&o.endInk>0){stroke.inkAnchor=[x,y];stroke.inkSince=performance.now();stroke.inkFrame=requestAnimationFrame(brushInkLoop);}requestRender(true);
+}
+/* Ink wets the paper while the nib lingers, rather than adding a dot at release.
+   A bounded, local stamp uses the normal selection, symmetry, maps and undo path. */
+function brushInkLoop(now){const s=stroke;if(!s||!s.inkAnchor)return;
+  if(now-(s.inkTick||0)>=33){s.inkTick=now;const age=(now-s.inkSince)/1000;
+    const pressure=pcurve(s.p,s.o),charge=clamp((age-.12)/1.25,0,1)*clamp(s.o.endInk/.18,0,2)*(.15+.85*pressure);
+    if(charge>0&&Math.abs(charge-(s.inkCharge||0))>.007){s.inkCharge=charge;const r=radiusAt(s.p),yup=!!(s.space&&s.space.yup),ang0=-(s.o.angle||0)*Math.PI/180+(s.o.followDir?(yup?-s.dir:s.dir):0),ang=yup?-ang0:ang0;
+      /* Preserve the narrow nib; ink wets only a small fringe of its own shape. */
+      const radius=r*(1+Math.min(.16,Math.sqrt(charge)*.12));
+      for(const c of symCopies(s.sym,s.SW,s.SH,s.x+r*.015,s.y-r*.015,ang,s.o.flipX?-1:1,(s.o.flipY?-1:1)*(yup?-1:1),0,0))stampOne(c[0],c[1],radius,alphaAt(s.p)*clamp(.3+charge,0,1),c[2],c[3],c[4],0,0);
+      if(s.space)s.spaceDirty=true;requestRender(true);}}
+  s.inkFrame=requestAnimationFrame(brushInkLoop);
 }
 function stamp(x,y,p){
   const s=stroke,o=s.o,r0=radiusAt(p),a=alphaAt(p);
@@ -81,7 +94,8 @@ function fdAdd(s,r){const L=s.fd||(s.fd=[]),near=Math.max(64,(r[2]-r[0])*2);
   for(const f of L)if(r[0]<=f[2]+near&&r[2]>=f[0]-near&&r[1]<=f[3]+near&&r[3]>=f[1]-near){f[0]=Math.min(f[0],r[0]);f[1]=Math.min(f[1],r[1]);f[2]=Math.max(f[2],r[2]);f[3]=Math.max(f[3],r[3]);return;}
   L.push(r.slice());if(L.length>12){const u=L.reduce((a,f)=>[Math.min(a[0],f[0]),Math.min(a[1],f[1]),Math.max(a[2],f[2]),Math.max(a[3],f[3])]);s.fd=[u];}}
 function addPoint(x,y,p){
-  const s=stroke;if(!s)return;if(p>0)s.inkPressure=p;const dx=x-s.x,dy=y-s.y,len=Math.hypot(dx,dy);s.distance=(s.distance||0)+len;
+  const s=stroke;if(!s)return;const dx=x-s.x,dy=y-s.y,len=Math.hypot(dx,dy);
+  if(s.inkAnchor&&Math.hypot(x-s.inkAnchor[0],y-s.inkAnchor[1])>Math.max(.5,radiusAt(p)*.12)){s.inkAnchor=[x,y];s.inkSince=performance.now();s.inkCharge=0;}
   if(len<1e-4){s.p=p;return;}
   if(len>0.5)s.dir=Math.atan2(dy,dx);
   let t=s.carry,guard=0;
@@ -90,13 +104,7 @@ function addPoint(x,y,p){
 }
 function endStroke(record){
   const s=stroke;if(!s)return;const L=s.L,W=doc.w,H=doc.h;
-  /* A marker deposits a little extra ink where the nib lifts. The terminal dab uses
-     the same tip, selection, symmetry and map pipeline and belongs to this undo step. */
-  if(s.o.tool==='brush'&&s.o.endInk>0&&(s.distance||0)>.5){const p=s.p>0?s.p:(s.inkPressure||0),r=radiusAt(p),ink=clamp(s.o.endInk,0,.5),tip=s.o.tip,hard=s.o.hardness;
-    /* Ink spreads into a soft round bead, rather than a larger copy of the nib. */
-    s.o.tip=null;s.o.hardness=.8;
-    try{const yup=!!(s.space&&s.space.yup);for(const c of symCopies(s.sym,s.SW,s.SH,s.x,s.y,0,1,yup?-1:1,0,0))stampOne(c[0],c[1],r*(.87+ink),alphaAt(p),c[2],c[3],c[4],0,0);if(s.space)s.spaceDirty=true;}
-    finally{s.o.tip=tip;s.o.hardness=hard;}}
+  if(s.inkFrame)cancelAnimationFrame(s.inkFrame);
   if(s.space){s.spaceDirty=false;s.space.sync();const b=s.space.bbox(s);s.bb=doc.wrap?[0,0,W,H]:[b[0]-2,b[1]-2,b[2]+2,b[3]+2];}
   const healing=s.o.tool==='heal',cloning=s.o.tool==='clone';
   const x0=clamp(Math.floor(s.bb[0]),0,W),y0=clamp(Math.floor(s.bb[1]),0,H),x1=clamp(Math.ceil(s.bb[2]),0,W),y1=clamp(Math.ceil(s.bb[3]),0,H),bw=x1-x0,bh=y1-y0,R=[x0,y0,bw,bh];

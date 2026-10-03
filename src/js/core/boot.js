@@ -20,3 +20,5 @@ if(window.__gs)Object.assign(window.__gs,{v3Work,v3MapTex,v3PatchMips,v3Refresh,
 if(window.__gs)Object.assign(window.__gs,{txRead,txLoad,txCacheTrim,txCacheDrop,txCachePin,txCachePinned,txThumb,txMakeThumb,txMeta,txExportPack,txImport,txSaveThumb,txObserved,txPruneObserved,renderTextures,TX_PHOTO,TX_PREVIEWS,store,fxdGuideTex,fxdPickTexture,dcLoad});
 if(window.__gs)Object.assign(window.__gs,{materialBrush,materialBrushUse,materialPaintOpts,paintOpts,materialBrushTarget,pathEdit,pathNew,pathCopy,pathSamples,pathNearest,pathMeshIndex,pathRender,pathRecord,pathChange,pathActive,pathFinish,pathNewButton,pathPanel,bkIdleState,bkYield,matPick,matSel,matRecTargets});
 if(window.__gs)Object.assign(window.__gs,{program,drawView,dprNow,cvCanvas:cv,pathSplit,cmdClearLayer,pathFlush});
+
+if(window.__gs)Object.assign(window.__gs,{liqDown,liqDab,liqFlush,liqUp});
