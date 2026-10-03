@@ -1,5 +1,11 @@
 # Brushes and painting
 
+**Recent brushes** lists the last twelve presets used in this session. Each preset remembers its edited size separately for each tool. **Default size** restores that preset's original size without changing opacity, flow or other settings.
+
+The **Gasa Gaya Pen** makes pressure-tapered, opaque ink lines with lightly rough edges. **End ink** controls a small pressure-scaled deposit after a drawn stroke. Single clicks preserve the nib shape without adding a round terminal bead.
+
+**Liquify** Size and Strength can be dragged or entered precisely. Tool settings and the top options bar stay synchronized while you paint.
+
 ## Brush tool (B)
 
 ![The brush panel.](images/brush-panel.png)

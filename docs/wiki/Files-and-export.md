@@ -3,6 +3,8 @@
 In **New document**, choose **Portrait (vertical)** or **Landscape (horizontal)** beside Width and Height. Existing dimensions swap without changing units or DPI; a square becomes 2:3 or 3:2. Square 3D Paint and Brush workspaces keep their existing texture workflow.
 
 ## .gouache documents
+For a Paint or Animation canvas, choose **Custom colour** under Background in **New document**, then use the colour picker or enter a hex colour. The background is filled with that colour without changing your foreground paint colour.
+
 **Save** (Ctrl+S) and **Save as** (Ctrl+Shift+S) write a **.gouache** file. It keeps everything:
 - layers, groups, masks, blend modes;
 - every map;

@@ -1,5 +1,13 @@
 # What's new in Gouache Studio
 
+## 0.51.1
+
+- **Gasa Gaya Pen:** sharp pressure taper and lightly rough ink edges. Single clicks keep the nib shape; End ink pooling is reserved for drawn strokes and responds to pressure.
+- **New canvas colour:** choose Custom colour with a picker or precise hex value.
+- **Recent brushes:** the last twelve presets are available at the top of the brush library.
+- **Brush sizes:** each preset remembers its size per tool during the session. Default size restores only its original size.
+- **Liquify:** Size and Strength retain edits and precise input; the top bar and Tool settings stay synchronized.
+
 ## 0.51.0
 
 - Hold R and drag to rotate the canvas freely. Shift constrains rotation to 15-degree steps; the angle dialog accepts tenths of a degree. Painting returns keyboard focus to the canvas so Space pans after using dropdowns.
