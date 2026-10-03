@@ -7,7 +7,7 @@ function fit(){const W=stage.clientWidth,H=stage.clientHeight,[DW,DH]=viewDims()
 function actual(){const W=stage.clientWidth,H=stage.clientHeight,[DW,DH]=viewDims();view.zoom=1;vxCentre(W,H,DW,DH);if(!vxA()){view.x=Math.round(view.x);view.y=Math.round(view.y);}updateStatus();refreshCursor();requestRender();}
 function zoomAt(f,sx,sy){const z=clamp(view.zoom*f,.02,64),k=z/view.zoom;view.x=sx-(sx-view.x)*k;view.y=sy-(sy-view.y)*k;view.zoom=z;updateStatus();refreshCursor();requestRender();}
 function toImage(cx,cy){const r=stage.getBoundingClientRect(),vx=(cx-r.left-view.x)/view.zoom,vy=(cy-r.top-view.y)/view.zoom,A=vxA();if(!A)return [vx,vy];const f=view.flip?-1:1,c=Math.cos(view.rot),s=Math.sin(view.rot);return [f*(c*vx+s*vy),-s*vx+c*vy];}
-function updateStatus(){if(typeof p3ResolutionSync==='function')p3ResolutionSync();$('#stDoc').textContent=doc.w+' × '+doc.h+' px';$('#stDepth').textContent=doc.depth+'-bit';$('#stDepth').title=doc.depth===16?'16 bits per channel (half float). Click for 8-bit.':(canFloat?'8 bits per channel. Click for 16-bit.':'8 bits per channel. 16-bit is not supported on this GPU.');
+function updateStatus(){if(typeof vxCompassSync==='function')vxCompassSync();if(typeof p3ResolutionSync==='function')p3ResolutionSync();$('#stDoc').textContent=doc.w+' × '+doc.h+' px';$('#stDepth').textContent=doc.depth+'-bit';$('#stDepth').title=doc.depth===16?'16 bits per channel (half float). Click for 8-bit.':(canFloat?'8 bits per channel. Click for 16-bit.':'8 bits per channel. 16-bit is not supported on this GPU.');
   $('#stZoom').textContent=(view.zoom*100).toFixed(view.zoom<.1?1:0)+'%'+(vxA()?' · '+vxDeg()+'°'+(view.flip?' flipped':''):'');$('#stFmt').textContent='WebGL2 · '+(doc.depth===16?'RGBA16F':'RGBA8')+' layers';$('#docName').textContent=doc.name;updateTitle();if(typeof fileLocUpdate==='function')fileLocUpdate();}
 $('#stDepth').addEventListener('click',()=>setDepth(doc.depth===16?8:16));
 $('#tileBtn').addEventListener('click',toggleTile);
@@ -136,6 +136,7 @@ window.addEventListener('keydown',e=>{
   if(e.key==='Alt'){altPickDown=true;refreshCursor();return;}
   if(kbHandle(e))return;
   const m=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();
+  if(!m&&!e.altKey&&e.shiftKey&&k==='b'){e.preventDefault();if(!e.repeat)brushSwapLast();return;}
   if(e.key==='F3'){e.preventDefault();toggle3D();return;}
   if(!m&&!e.altKey&&!e.shiftKey&&k==='f'){e.preventDefault();if(!e.repeat)toggleTabFull();return;}
   if(e.key==='Escape'&&document.body.classList.contains('tabfull')){e.preventDefault();toggleTabFull(false);return;}

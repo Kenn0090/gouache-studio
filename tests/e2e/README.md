@@ -1,5 +1,7 @@
 # End-to-end tests
 
+- `favorites0513.cjs` checks real native pointer drags for brushes, toolbar tools, textures and materials; separate saved collections; docking and floating; Shift+B with remembered sizes; 2D canvas/layer/folder/mask drops and undo; mask Properties; and compass rotation/reset.
+
 - `paths-material.cjs` checks native mouse-driven material painting in 2D/3D, all channels in one undo, compact saved coverage, editable Pen handles, selections/fills/strokes, duplication, saved paths, camera-independent surface painting and UV seams. `GS_LARGE=1` with `GS_NATIVE_CDP` adds actual 8K/16K material brush and undo checks on hardware.
 - `bake-canvas.cjs` interleaves rotating viewport frames with GPU baking and compares baked pixels exactly. It also checks Clear layer undo, Preferences resizing/reopening, and stable 8K canvas mip filtering during strokes.
 

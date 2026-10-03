@@ -1,8 +1,8 @@
-# Gouache Studio 0.51.2
+# Gouache Studio 0.51.3
 
-- **Liquify:** both Twirl directions work. Restore paints back the latest deformation after release, supports selection limits and undo, and stops applying after another edit. Bracket keys now resize Liquify and update its sliders.
-- **Gasa Gaya Pen:** Ink bleed retains the skinny tapered nib and adds slight edge wetting while you linger. Pressure controls buildup. Lifting adds no round bead.
-- **Alt:** temporarily shows the eyedropper cursor.
-- **F:** toggles canvas-only view. F, Tab or Escape restores panels; Shift+F toggles Flat cage view or frames the 3D model.
+- **Favorites:** a floating or docked panel for tools, brushes, textures, materials and smart masks. Drag items into it, then search, filter, click or drag them to use them. Separate saved collections for 2D canvas and 3D Paint.
+- **Shift+B:** swap the last two brush presets, including their remembered session sizes.
+- **2D texture workflow:** canvas and layer-row drops create layers; folder drops place textures inside the group; mask-thumbnail drops add editable picture rows. Properties now works in 2D Paint.
+- **Canvas compass:** shows the rotation angle; drag to rotate, Shift to snap, click the angle or double-click the dial to straighten.
 
-Validated in the native Windows desktop app.
+Validated with real mouse and keyboard interactions in the native Windows desktop app.

@@ -1,5 +1,12 @@
 # What's new in Gouache Studio
 
+## 0.51.3
+
+- **Favorites:** open Window > Favorites, then drag toolbar tools, brushes, textures, materials and smart masks into the panel. Float or dock it, search and filter its contents. 2D canvas and 3D Paint have separate saved collections.
+- **Brush switching:** Shift+B swaps the last two presets and recalls their individual session sizes. The shortcut can be changed in Keyboard shortcuts.
+- **2D texture layers and masks:** drag a texture onto the canvas or layer stack to add a layer, into a folder to group it, or onto a mask thumbnail to add an editable picture row. Mask Properties are now available in 2D Paint.
+- **Canvas compass:** see the rotation angle, drag its dial to rotate freely, hold Shift for 15-degree steps, or click the angle/double-click the dial to straighten the view.
+
 ## 0.51.2
 
 - **Liquify:** fixed the second Twirl direction and Restore. Restore paints back the latest deformation after release and remains undoable. Bracket keys now change Liquify Size and synchronize its controls.

@@ -22,3 +22,5 @@ if(window.__gs)Object.assign(window.__gs,{materialBrush,materialBrushUse,materia
 if(window.__gs)Object.assign(window.__gs,{program,drawView,dprNow,cvCanvas:cv,pathSplit,cmdClearLayer,pathFlush});
 
 if(window.__gs)Object.assign(window.__gs,{liqDown,liqDab,liqFlush,liqUp});
+
+if(window.__gs)Object.assign(window.__gs,{favoritesState,favoritesAdd,favoritesResolve,renderFavorites});

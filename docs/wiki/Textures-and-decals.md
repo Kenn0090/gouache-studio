@@ -8,6 +8,10 @@ Assign mesh maps through the **Maps** panel's labeled drop slots. Imported maps 
 
 Placing or dropping a **PSD** on the painting canvas now imports a folder of layers rather than its flattened preview. Names, folders, visibility, opacity, supported blend modes and pixel masks carry over, and the import undoes in one step. **File › Open** also keeps layers. Texture-library, mask and conversion imports still use the PSD's composite because those operations need a single texture. Adjustment layers, vector masks and Photoshop layer effects are reported as unsupported; text and smart objects use raster images.
 
+## 2D layer stacks and masks
+
+In 2D Paint, drag a shelf texture onto the canvas or an ordinary layer row to create a texture layer. Drop between rows to choose its position, or in the middle of a folder row to place it inside the group. Drop on the mask thumbnail to add a Picture row to that mask. Its size, rotation and invert controls open in Properties, which is now available in 2D Paint. Layer and mask additions support undo. To add a mask first, select its layer and click Add mask.
+
 ## Textures panel
 The **Textures** panel (next to Materials) holds grunge maps and textures you can use anywhere.
 

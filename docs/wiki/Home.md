@@ -5,6 +5,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 ## Start here
 - [Getting started](Getting-started.md): installing, updates, a tour of the screen, your first document, document tabs and windows
 - [Keyboard shortcuts](Keyboard-shortcuts.md)
+- [Favorites](Favorites.md): separate 2D/3D collections, tools and library items, docking and brush swapping
 - [Panels and workspaces](Panels-and-workspaces.md): the options bar, the dock, floating panels, workspaces, the Filter Gallery
 
 ## Painting

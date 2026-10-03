@@ -124,6 +124,7 @@
     "ui/ticks",
     "core/tabdoc",
     "ui/keys",
+    "ui/favorites",
     "ui/dock",
     "ui/history",
     "tools/paths",

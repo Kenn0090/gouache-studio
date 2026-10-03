@@ -12,6 +12,19 @@ function vxSet(rot,flip,pivot){const W=stage.clientWidth,H=stage.clientHeight,r=
   const A=vxA()||[1,0,0,1],z=view.zoom;view.x=W/2-z*(A[0]*p[0]+A[1]*p[1]);view.y=H/2-z*(A[2]*p[0]+A[3]*p[1]);
   updateStatus();refreshCursor();if(typeof rl!=='undefined')rl.sig='';requestRender();}
 const vxDeg=()=>Math.round(view.rot*180/Math.PI*10)/10;
+/* A view compass: drag around its centre, Shift snaps, double-click straightens. */
+const vxCompass=el('div',{id:'canvasCompass',class:'canvas-compass'},
+  el('button',{class:'compass-dial','aria-label':'Rotate canvas view',title:'Drag to rotate the view. Shift snaps to 15°. Double-click to straighten.'}),
+  el('button',{class:'compass-angle','aria-label':'Reset canvas rotation',title:'Reset canvas rotation',text:'0°'}));
+vxCompass.querySelector('.compass-dial').innerHTML='<svg viewBox="0 0 60 60" aria-hidden="true"><circle cx="30" cy="30" r="25"/><path class="compass-ticks" d="M30 3v6M30 51v6M3 30h6M51 30h6"/><g class="compass-needle"><path class="compass-north" d="M30 9 24 31 30 27 36 31z"/><path class="compass-south" d="m30 51-6-20 6 4 6-4z"/></g><circle cx="30" cy="30" r="2"/></svg>';
+stage.append(vxCompass);
+function vxCompassSync(){vxCompass.hidden=ui.mode!=='paint';vxCompass.querySelector('.compass-needle').setAttribute('transform','rotate('+vxDeg()+' 30 30)');vxCompass.querySelector('.compass-angle').textContent=vxDeg()+'°';}
+vxCompass.querySelector('.compass-angle').onclick=()=>vxSet(0,view.flip);
+const vxDial=vxCompass.querySelector('.compass-dial');let vxCompassDrag=null;
+vxDial.addEventListener('pointerdown',e=>{if(e.button!==0)return;e.preventDefault();e.stopPropagation();const r=vxDial.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,s=stage.getBoundingClientRect();vxCompassDrag={id:e.pointerId,cx,cy,a:Math.atan2(e.clientY-cy,e.clientX-cx),rot:view.rot,p:toImage(s.left+s.width/2,s.top+s.height/2)};vxDial.setPointerCapture(e.pointerId);});
+vxDial.addEventListener('pointermove',e=>{const d=vxCompassDrag;if(!d||d.id!==e.pointerId)return;e.stopPropagation();let r=d.rot+Math.atan2(e.clientY-d.cy,e.clientX-d.cx)-d.a;if(e.shiftKey)r=Math.round(r/(Math.PI/12))*Math.PI/12;vxSet(r,view.flip,d.p);});
+const vxCompassEnd=e=>{if(vxCompassDrag&&vxCompassDrag.id===e.pointerId){vxCompassDrag=null;e.stopPropagation();}};
+vxDial.addEventListener('pointerup',vxCompassEnd);vxDial.addEventListener('pointercancel',vxCompassEnd);vxDial.addEventListener('lostpointercapture',vxCompassEnd);vxDial.ondblclick=()=>vxSet(0,view.flip);
 function vxRotate(deg){vxSet(view.rot+deg*Math.PI/180,view.flip);toast('View turned to '+vxDeg()+'°'+(view.flip?' (flipped)':'')+'. Alt+0 puts it straight.');}
 function vxFlip(){vxSet(-view.rot,!view.flip);toast(view.flip?'View flipped left-right. The picture itself is unchanged. Press the same key to flip back.':'View flipped back.');}
 function vxReset(quiet){if(!view.rot&&!view.flip)return;vxSet(0,false);if(!quiet)toast('View straight again.');}
