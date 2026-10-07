@@ -1,3 +1,9 @@
+## 0.51.18
+
+- Type values beyond the normal slider range for spacing, scatter, lazy mouse distance, angle, weld width/spacing, tiling, bump strength, stencil scale and supported 3D lighting/height and filter strengths.
+- Keep typed values visible while the slider thumb stays within its normal range; retain valid limits for opacity and hardness.
+- Synchronise precise numeric values between the brush panel and top bar.
+
 ## 0.51.17
 
 - Preview mirrored and radial brush copies directly on visible mesh surfaces.

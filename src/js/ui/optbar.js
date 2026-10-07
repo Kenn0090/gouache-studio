@@ -19,8 +19,8 @@ function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren
       if(t._url){const s=el('span',{class:'optdot tipimg'});s.style.webkitMaskImage=s.style.maskImage='url('+t._url+')';return s;}}
       return el('span',{class:'optdot'+(brush.tip?' tip':''),style:brush.hardness<.5&&!brush.tip?'opacity:.7;filter:blur(1px)':''});})(),el('span',{text:activePreset?activePreset.name:(brush.tip?brush.tip.name:'Custom')})));
   bar.append(el('span',{class:'optsep'}));
-  const S=(key,label,min,max,step,fmt,map,get,set)=>{const sl=makeSlider({id:'ob_'+key,label,min,max,step,value:get?get():brush[key],fmt,map,onInput:v=>{if(set)set(v);else brush[key]=v;
-      if(key==='size'){if(sizeSlider)sizeSlider.set(v);refreshCursor();}else{const s=document.getElementById({opacity:'bOp',flow:'bFlow',hardness:'bHard',strength:'bStr'}[key]);if(s){s.value=v;const o=s.nextSibling;if(o)o.textContent=fmt(v);}}
+  const S=(key,label,min,max,step,fmt,map,get,set)=>{const sl=makeSlider({id:'ob_'+key,label,min,max,step,value:get?get():brush[key],fmt,map,...brushNumericRange(key),onInput:v=>{if(set)set(v);else brush[key]=v;
+      if(key==='size'){if(sizeSlider)sizeSlider.set(v);refreshCursor();}else{const s=document.getElementById({opacity:'bOp',flow:'bFlow',hardness:'bHard',strength:'bStr',spacing:'bSpace',smoothing:'bSmooth',lazy:'bLazy',grain:'bGrain',sizeJitter:'bSJ',angleJitter:'bAJ'}[key]);if(s)s._gsSlider?.set(v);}
       if(!set)brushEdited(key);}});sl.el.classList.add('optslider');optSliders[key]={sl,get:get||(()=>brush[key])};bar.append(sl.el);};
   S('size','Size',0,1000,1,v=>Math.round(v)+'px',typeof sizeMap!=='undefined'?sizeMap:undefined);
   bar.append(brushDefaultSizeButton('ob_default_size'));
@@ -46,7 +46,7 @@ function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren
   bar.append(el('button',{class:'optchip optmore'+(more?' on':''),id:'obMore','aria-expanded':String(more),title:more?'Show fewer settings':'Show more brush settings',text:more?'Less ▴':'More ▾',onclick:()=>{optMore(!more);buildOptBar();if(typeof dkGrid==='function'&&dk.L)dkGrid();if(typeof resizeGL==='function'){resizeGL();fit();}}}));
   if(!more)return;
   bar.append(el('span',{class:'optbreak'}));
-  const X=(key,label,min,max,step,fmt,id)=>{S(key,label,min,max,step,fmt);const o=optSliders[key];o.sl.el.querySelector('input').addEventListener('input',()=>{const s=document.getElementById(id);if(s){s.value=brush[key];const n=s.nextSibling;if(n)n.textContent=fmt(brush[key]);}});};
+  const X=(key,label,min,max,step,fmt,id)=>S(key,label,min,max,step,fmt);
   X('spacing','Spacing',.01,1.5,.01,pct,'bSpace');X('smoothing','Smoothing',0,1,.01,pct,'bSmooth');X('lazy','Lazy mouse',0,200,1,v=>v?v+' px':'off','bLazy');X('grain','Grain',0,1,.01,pct,'bGrain');
   X('sizeJitter','Size jitter',0,1,.01,pct,'bSJ');X('angleJitter','Angle jitter',0,1,.01,pct,'bAJ');
   bar.append(el('span',{class:'optsep'}));

@@ -197,13 +197,13 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
         if(!mks.length)row.append(el('p',{class:'note',text:'No baked maps in this texture set yet. Bake in the Bake tab and press Send to 3D Paint.'}));
         else{const pick=el('select',{id:'fl_mm_'+k,'aria-label':MAP_DEFS[k].label+' from the baked map'},...mks.map(x=>el('option',{value:x,text:(typeof P3_MESHMAP_NAMES!=='undefined'&&P3_MESHMAP_NAMES[x])||x})));
           pick.value=M[s.mm]?s.mm:mks[0];pick.onchange=()=>edit(()=>{s.mm=pick.value;},k);row.append(pick);
-          if(k==='height')row.append(makeSlider({id:'fl_hs',label:'Bump strength',min:0,max:4,step:.05,value:W.hStr==null?1:W.hStr,fmt:pct,onInput:v=>edit(()=>{W.hStr=v;},k)}).el);}}
+          if(k==='height')row.append(makeSlider({id:'fl_hs',label:'Bump strength',min:0,max:4,numericMax:20,step:.05,value:W.hStr==null?1:W.hStr,fmt:pct,onInput:v=>edit(()=>{W.hStr=v;},k)}).el);}}
       else{const has=!!(L._fillImg&&L._fillImg[k]);
         row.append(el('div',{class:'row wrap'},el('span',{class:'note',text:s.name||(isN?'No normal map yet':'No image')}),el('button',{class:'btn sm',text:'Choose image…',id:'fl_img_'+k,onclick:()=>{matEdBegin(L);fillPickImage(L,k,s,()=>edit(()=>{},k,true));}})));
-        if(has)row.append(makeSlider({id:'fl_t_'+k,label:W.proj==='tri'?'Scale':'Tile',min:.25,max:1000,step:.25,value:s.tile||1,fmt:v=>v+'×',onInput:v=>edit(()=>{s.tile=v;},k)}).el,
+        if(has)row.append(makeSlider({id:'fl_t_'+k,label:W.proj==='tri'?'Scale':'Tile',min:.25,max:1000,numericMin:.01,numericMax:10000,step:.25,value:s.tile||1,fmt:v=>v+'×',onInput:v=>edit(()=>{s.tile=v;},k)}).el,
           makeSlider({id:'fl_r_'+k,label:'Turn',min:-180,max:180,step:1,value:s.rot||0,fmt:v=>v+'°',onInput:v=>edit(()=>{s.rot=v;},k)}).el);
         else if(s.name)row.append(el('p',{class:'note',text:'Choose the image again to change its tiling.'}));
-        if(k==='height'&&has)row.append(makeSlider({id:'fl_hs',label:'Bump strength',min:0,max:4,step:.05,value:W.hStr==null?1:W.hStr,fmt:pct,onInput:v=>edit(()=>{W.hStr=v;},k)}).el,
+        if(k==='height'&&has)row.append(makeSlider({id:'fl_hs',label:'Bump strength',min:0,max:4,numericMax:20,step:.05,value:W.hStr==null?1:W.hStr,fmt:pct,onInput:v=>edit(()=>{W.hStr=v;},k)}).el,
           el('p',{class:'note',text:'Height makes bump detail: the normal follows it, on the model and in exported normal maps.'}));}}
     box.append(card);}
   box.append(chk('fl_cover','Hide the bumps below',W.coverH!==false,v=>edit(()=>{W.coverH=v;},null)),

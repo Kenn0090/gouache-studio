@@ -33,5 +33,5 @@ function materialBrushTarget(){if(ui.tool!=='material')return null;const n=doc.a
   if(L.mask)maskDispose(L.mask);L.materialPaint=key;L.mask=makeMask(0,true);L.editMask=false;L.fill.coverH=false;fillRender(L);changed(L);return L;}
 function buildMaterialBrushPanel(box){box.append(el('div',{class:'sub',text:'Painting material'}),el('p',{class:'note',text:materialBrush.rec?.name||'Select a material in the Materials shelf.'}),
   el('button',{class:'btn sm',id:'mbPick',text:'Choose from Materials',onclick:()=>showPanel('mats')}),
-  makeSlider({id:'mbTile',label:'Material tiling',min:.05,max:100,step:.05,value:materialBrush.tile,fmt:v=>v.toFixed(2)+'×',onInput:v=>{materialBrush.tile=v;}}).el,
+  makeSlider({id:'mbTile',label:'Material tiling',min:.05,max:100,numericMax:1000,step:.05,value:materialBrush.tile,fmt:v=>v.toFixed(2)+'×',onInput:v=>{materialBrush.tile=v;}}).el,
   el('p',{class:'note',text:'Each stroke paints the material’s enabled channels together. Undo removes them together.'}));}
