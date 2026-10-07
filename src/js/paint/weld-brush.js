@@ -30,7 +30,7 @@ function weldNormalImage(){
 }
 function weldTipGet(){if(weldTip)return weldTip;weldTip=genTip('Weld bead',128,128,(x,w,h)=>{
   const g=x.createRadialGradient(w/2,h/2,0,w/2,h/2,w*.49);
-  g.addColorStop(0,.5);g.addColorStop(.32,.62);g.addColorStop(.48,.82);g.addColorStop(.58,1);g.addColorStop(.7,.82);g.addColorStop(.88,.28);g.addColorStop(1,0);
+  g.addColorStop(0,'rgba(255,255,255,.5)');g.addColorStop(.32,'rgba(255,255,255,.62)');g.addColorStop(.48,'rgba(255,255,255,.82)');g.addColorStop(.58,'rgba(255,255,255,1)');g.addColorStop(.7,'rgba(255,255,255,.82)');g.addColorStop(.88,'rgba(255,255,255,.28)');g.addColorStop(1,'rgba(255,255,255,0)');
   x.fillStyle=g;x.fillRect(0,0,w,h);
 });return weldTip;}
 function weldMaterial(style){const h=weldOptions.height,heat=weldOptions.heat,base=style.color.map((v,i)=>Math.min(1,v+(i===0?heat*.35:i===1?heat*.12:0)));return {id:'weld:'+style.id+':'+h.toFixed(2)+':'+heat.toFixed(2),name:'Weld · '+style.name,fill:{proj:'uv',triSharp:4,hStr:1,maps:{
