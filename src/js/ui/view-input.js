@@ -55,6 +55,7 @@ cv.addEventListener('pointerdown',e=>{
   if(rotHold||(spaceDown&&e.shiftKey)){ptr=vxDragStart(e);stage.classList.add('panning');return;}
   if(pan){ptr={mode:'pan',id:e.pointerId,sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y};stage.classList.add('panning');refreshCursor();return;}
   if(ui.tool==='zoom'){const r=stage.getBoundingClientRect();zoomAt(e.shiftKey?.5:2,e.clientX-r.left,e.clientY-r.top);return;}
+  if(symCentreDown(e))return;
   let [ix,iy]=toImage(e.clientX,e.clientY);if(typeof gdSnapOn==='function'&&gdSnapOn()&&!e.altKey)[ix,iy]=gdSnap(ix,iy);
   if(ui.tool==='liquify'&&!e.altKey&&ui.mode!=='bake'&&ui.mode!=='convert'){liqDown(e,ix,iy);return;}
   if(ui.cageFlat&&!['brush','erase','smudge','dodge','burn','heal','clone','picker'].includes(ui.tool)&&!e.altKey){toast('Only painting works in the flat cage view. Press F to go back to the canvas.');return;}
@@ -96,7 +97,7 @@ cv.addEventListener('pointermove',e=>{
   if(typeof gdSnapOn==='function'&&gdSnapOn()&&!e.altKey)[mx,my]=gdSnap(mx,my);
   if(!ptr&&polyLasso){polyMove(e,mx,my);return;}
   if(!ptr){if(ui.tool==='cage'&&!ui.cageFlat)cageHover(e);else if(xf&&!xf.move)xfHover(e);else if(ui.tool==='crop'&&crop)cropHover(e);else if(ui.tool==='gradient')gradHover(e);else if(ui.tool==='array')arrHover(e);else if(ui.tool==='shape')shapeHover(e);}
-  if(ptr&&e.pointerId===ptr.id){if(ptr.mode==='cvq'){cvPointerMove(e,mx,my);return;}if(ptr.mode==='cage'){cagePointerMove(e,mx,my);return;}if(ptr.mode==='xf'){xfPointerMove(e,mx,my);return;}if(ptr.mode==='crop'){cropPointerMove(e,mx,my);return;}if(ptr.mode==='movedrag'){movePointerMove(e,mx,my);return;}if(ptr.mode==='grad'){gradPointerMove(e,mx,my);return;}if(ptr.mode==='gbucket'){gbucketMove(e,mx,my);return;}}
+  if(ptr&&e.pointerId===ptr.id){if(ptr.mode==='symcentre'){symCentreMove(mx,my);return;}if(ptr.mode==='cvq'){cvPointerMove(e,mx,my);return;}if(ptr.mode==='cage'){cagePointerMove(e,mx,my);return;}if(ptr.mode==='xf'){xfPointerMove(e,mx,my);return;}if(ptr.mode==='crop'){cropPointerMove(e,mx,my);return;}if(ptr.mode==='movedrag'){movePointerMove(e,mx,my);return;}if(ptr.mode==='grad'){gradPointerMove(e,mx,my);return;}if(ptr.mode==='gbucket'){gbucketMove(e,mx,my);return;}}
   if(!ptr||e.pointerId!==ptr.id)return;
   if(ptr.mode==='marq'||ptr.mode==='lasso'||ptr.mode==='selmove'){selPointerMove(e,mx,my);return;}
   if(ptr.mode==='arr'){arrPointerMove(e,mx,my);return;}
@@ -119,7 +120,7 @@ cv.addEventListener('pointermove',e=>{
     if(brush.lazy>0&&stroke&&!ev.shiftKey){const q=lazyStep(ptr,ix,iy,brush.lazy/view.zoom);if(!q)continue;ix=q[0];iy=q[1];}
     const step=ev.shiftKey?1:k;ptr.sx+=(ix-ptr.sx)*step;ptr.sy+=(iy-ptr.sy)*step;ptr.sp+=(p-ptr.sp)*Math.max(k,.4);addPoint(ptr.sx,ptr.sy,ptr.sp);}
 });
-function endPtr(e){if(!ptr||e.pointerId!==ptr.id)return;if(ptr.mode==='liq'){liqUp();return;}if(ptr.mode==='cvq'){ptr=null;return;}if(ptr.mode==='cage'){cagePointerUp();return;}if(ptr.mode==='xf'){xfPointerUp();return;}if(ptr.mode==='crop'){cropPointerUp();return;}if(ptr.mode==='movedrag'){movePointerUp();return;}if(ptr.mode==='grad'){gradPointerUp();return;}if(ptr.mode==='gbucket'){gbucketUp();return;}if(ptr.mode==='marq'||ptr.mode==='lasso'||ptr.mode==='selmove'){selPointerUp(e);refreshCursor();return;}if(ptr.mode==='paint'){if(brush.smoothing>0)addPoint(brush.lazy>0?ptr.sx:ptr.rx,brush.lazy>0?ptr.sy:ptr.ry,ptr.sp);brushLineRemember(ptr.line,brush.lazy>0?ptr.sx:ptr.rx,brush.lazy>0?ptr.sy:ptr.ry,ptr.sp);endStroke(true);}
+function endPtr(e){if(!ptr||e.pointerId!==ptr.id)return;if(ptr.mode==='symcentre'){symCentreUp(e);return;}if(ptr.mode==='liq'){liqUp();return;}if(ptr.mode==='cvq'){ptr=null;return;}if(ptr.mode==='cage'){cagePointerUp();return;}if(ptr.mode==='xf'){xfPointerUp();return;}if(ptr.mode==='crop'){cropPointerUp();return;}if(ptr.mode==='movedrag'){movePointerUp();return;}if(ptr.mode==='grad'){gradPointerUp();return;}if(ptr.mode==='gbucket'){gbucketUp();return;}if(ptr.mode==='marq'||ptr.mode==='lasso'||ptr.mode==='selmove'){selPointerUp(e);refreshCursor();return;}if(ptr.mode==='paint'){if(brush.smoothing>0)addPoint(brush.lazy>0?ptr.sx:ptr.rx,brush.lazy>0?ptr.sy:ptr.ry,ptr.sp);brushLineRemember(ptr.line,brush.lazy>0?ptr.sx:ptr.rx,brush.lazy>0?ptr.sy:ptr.ry,ptr.sp);endStroke(true);}
   if(ptr.mode==='arr'){arrPointerUp();return;}
   if(ptr.mode==='shape'){shapePointerUp(e);return;}
   if(ptr.mode==='tmove'){const t=ptr;ptr=null;if(t.moved){textCommit();changed(t.L);}else openTextEditor(t.L,false);refreshCursor();return;}

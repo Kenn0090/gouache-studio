@@ -1,3 +1,9 @@
+# Gouache Studio 0.51.15
+
+- Choose Canvas or Screen alignment for 2D mirror symmetry, including rotated and flipped canvas views.
+- Drag the on-canvas symmetry centre or reset it with Centre.
+- Show radial symmetry rays and an axis-centred ring in 3D, with a highlighted copy count and axis.
+
 # Gouache Studio 0.51.14
 
 - Reduce repeated-stroke pauses in large layered documents by reusing released GPU layer-cache buffers. Idle memory trimming can still reclaim these buffers.
