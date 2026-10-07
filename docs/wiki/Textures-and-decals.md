@@ -1,5 +1,11 @@
 # Textures, decals and the material library
 
+## Material previews
+
+Use **S**, **M** or **L** in the Materials shelf to change the tile size. Hover a material to see a larger preview. From 0.51.6, all 200 bundled material thumbnails are rendered at **768 × 768**. Live hover previews render at least 768 pixels across, and material editor and saved-material preview balls render at least 256 pixels while retaining their compact panel sizes.
+
+Preview balls include colour, normal, roughness, metallic and height texture detail. The original material textures and document resolution are unchanged. Bundled preview images load separately as needed in the desktop app.
+
 ## Projects and Mesh maps
 
 In 3D Paint, the Material Library shelf includes **Projects**, for live layer materials, source textures and assets created in the current document, and **Mesh maps**, for the maps attached to the active texture set. Projects is available only in 3D Paint. It supports search, texture/material filters and thumbnail sizing. Click or drag an asset onto the layers to reuse it. Created project assets are included in `.gouache` and `.gouache3d` saves; they are kept compressed until used.
