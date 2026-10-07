@@ -69,19 +69,19 @@ function makeSlider(o){
   const to=o.map?o.map.to:v=>v,from=o.map?o.map.from:v=>v,fmt=o.fmt||(v=>String(v));
   const inp=el('input',{type:'range',id:o.id,min:o.min,max:o.max,step:o.step});inp.value=to(o.value);
   let value=o.value,editing=false;
-  const out=el('output',{for:o.id,text:fmt(value),tabindex:'0',role:'button',title:'Click to type a precise value','aria-label':o.label+' value: click to type'});
+  const out=el('output',{for:o.id,text:fmt(value),tabindex:'0',role:'button',title:'Click to type a precise value'+(o.numericMin!==undefined||o.numericMax!==undefined?' beyond the slider range':''),'aria-label':o.label+' value: click to type'});
   const show=v=>{value=v;if(!editing)out.textContent=fmt(v);};
   const typeValue=()=>{if(editing)return;editing=true;
-    const scale=o.numericScale||(fmt===pct?100:1),lo=from(+o.min),hi=from(+o.max);
-    const number=el('input',{type:'number',class:'slider-value',id:o.id+'_value','aria-label':o.label+' precise value',step:'any',min:String(Math.min(lo,hi)*scale),max:String(Math.max(lo,hi)*scale),value:String(Math.round(value*scale*1e8)/1e8)});
+    const scale=o.numericScale||(fmt===pct?100:1),a=from(+o.min),b=from(+o.max),lo=o.numericMin??Math.min(a,b),hi=o.numericMax??Math.max(a,b);
+    const number=el('input',{type:'number',class:'slider-value',id:o.id+'_value','aria-label':o.label+' precise value',step:'any',min:String(lo*scale),max:String(hi*scale),value:String(Math.round(value*scale*1e8)/1e8)});
     let done=false;const finish=cancel=>{if(done)return;done=true;const n=number.valueAsNumber;editing=false;
-      if(cancel||!Number.isFinite(n)){show(value);return;}const v=clamp(n/scale,Math.min(lo,hi),Math.max(lo,hi));inp.value=to(v);show(v);o.onInput(v);if(o.onChange)o.onChange(v);};
+      if(cancel||!Number.isFinite(n)){show(value);return;}const v=clamp(n/scale,lo,hi);inp.value=to(v);show(v);o.onInput(v);if(o.onChange)o.onChange(v);};
     number.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();e.stopPropagation();finish(e.key==='Escape');}});
     number.addEventListener('blur',()=>finish(false));out.replaceChildren(number);number.focus();number.select();};
   out.addEventListener('click',typeValue);out.addEventListener('keydown',e=>{if(e.target===out&&(e.key==='Enter'||e.key===' ')){e.preventDefault();typeValue();}});
   inp.addEventListener('input',()=>{const v=from(parseFloat(inp.value));show(v);o.onInput(v);});
   if(o.onChange)inp.addEventListener('change',()=>o.onChange(from(parseFloat(inp.value))));
-  return {el:el('div',{class:'srow'},el('label',{for:o.id,text:o.label}),inp,out),set(v){inp.value=to(v);show(v);}};
+  const control={el:el('div',{class:'srow'},el('label',{for:o.id,text:o.label}),inp,out),set(v){inp.value=to(v);show(v);}};inp._gsSlider=control;return control;
 }
 function chk(id,label,checked,onChange){const i=el('input',{type:'checkbox',id});i.checked=checked;i.addEventListener('change',()=>onChange(i.checked));return el('label',{class:'chk',for:id},i,el('span',{text:label}));}
 const pct=v=>Number((v*100).toFixed(2))+'%';
@@ -89,7 +89,8 @@ const pct=v=>Number((v*100).toFixed(2))+'%';
 const brushMax=()=>(typeof prefs!=='undefined'&&prefs.maxBrush)||5000;
 const sizeMap={to:v=>Math.round(Math.pow(clamp((v-1)/(brushMax()-1),0,1),1/2.6)*1000),from:u=>Math.max(1,Math.round(1+(brushMax()-1)*Math.pow(u/1000,2.6)))};
 let sizeSlider=null,dynOpen=false;
-function brushEdited(key){brushRememberSize();if(activePreset&&key!=='size'){activePreset=null;renderLibrary();}schedulePreview();}
+function brushNumericRange(key){return ({spacing:{numericMax:10},scatter:{numericMax:20},lazy:{numericMax:2000},angle:{numericMin:-1080,numericMax:1080}})[key]||{};}
+function brushEdited(key){if(typeof optSync==='function')optSync();brushRememberSize();if(activePreset&&key!=='size'){activePreset=null;renderLibrary();}schedulePreview();}
 function buildBrushPanel(){
   const box=$('#brushBody');box.replaceChildren();const sm=ui.tool==='smudge',isText=ui.tool==='text',isSel=isSelTool(ui.tool),isXf=!!(xf&&!xf.move),isOther=['crop','move','gradient','bucket','gbucket','cage','array','shape'].includes(ui.tool),noBrush=isText||isSel||isXf||isOther;
   $('#libBody').hidden=noBrush;$('.prevwrap').hidden=noBrush;$('#abrBtn').hidden=noBrush;$('#saveBrushBtn').hidden=noBrush||ui.tool==='dodge'||ui.tool==='burn';$('#tipBtn').hidden=noBrush;
@@ -113,7 +114,7 @@ function buildBrushPanel(){
     el('div',{class:'sub',text:'Range'}),seg([[0,'Shadows'],[1,'Midtones'],[2,'Highlights']],ui.tonalRange,v=>{ui.tonalRange=v;},'Range'),
     makeSlider({id:'tExp',label:'Exposure',min:.01,max:1,step:.01,value:ui.tonalExposure,fmt:pct,onInput:v=>{ui.tonalExposure=v;}}).el,
     el('div',{class:'chips'},chk('tProt','Protect tones',ui.tonalProtect,v=>{ui.tonalProtect=v;})));
-  const S=(id,label,key,min,max,step,fmt,map)=>makeSlider({id,label,min,max,step,value:brush[key],fmt,map,onInput:v=>{brush[key]=v;brushEdited(key);if(key==='size')refreshCursor();}});
+  const S=(id,label,key,min,max,step,fmt,map)=>makeSlider({id,label,min,max,step,value:brush[key],fmt,map,...brushNumericRange(key),onInput:v=>{brush[key]=v;brushEdited(key);if(key==='size')refreshCursor();}});
   const C=(id,label,key,rebuild)=>chk(id,label,!!brush[key],v=>{brush[key]=v;brushEdited();if(rebuild)buildBrushPanel();});
   box.append(el('div',{class:'chips'},chk('bShareTip','All tools share the brush tip',toolBrush.share,v=>tbSetShare(v))));
   box.append(el('div',{class:'sub',text:'Tip: '+(brush.tip?brush.tip.name+' ('+brush.tip.w+'×'+brush.tip.h+')':'round')+(activePreset?' · preset “'+activePreset.name+'”':'')}));

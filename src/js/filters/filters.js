@@ -10,7 +10,7 @@ const fxClean=v=>JSON.parse(JSON.stringify(v,(k,x)=>k[0]==='_'?undefined:x));
 function fxControls(o,v,upd,ctx){const body=[],sliders=[];
   if(o.note)body.push(el('p',{class:'note',text:o.note}));
   if(o.controls)body.push(...o.controls(v,upd,ctx));
-  for(const d of o.defs||[]){const s=makeSlider(Object.assign({},d,{value:v[d.key],id:'fx_'+d.key,onInput:x=>{v[d.key]=x;upd();}}));sliders.push([s,d]);body.push(s.el);}
+  for(const d of o.defs||[]){const s=makeSlider(Object.assign({},d,d.fmt===pct&&d.min>=0&&/^(Strength|Contrast|Intensity)$/.test(d.label)&&d.numericMax===undefined?{numericMax:d.max*4}:{},{value:v[d.key],id:'fx_'+d.key,onInput:x=>{v[d.key]=x;upd();}}));sliders.push([s,d]);body.push(s.el);}
   for(const [key,label] of o.checks||[])body.push(chk('fx_'+key,label,key==='uvWrap'?v[key]!==false:!!v[key],x=>{v[key]=x;upd();}));
   const reset=sliders.length?el('button',{class:'btn sm',text:'Reset',onclick:()=>{for(const [s,d] of sliders){v[d.key]=d.value;s.set(d.value);}upd();}}):null;
   return {body,reset};}

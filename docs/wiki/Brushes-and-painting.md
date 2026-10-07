@@ -131,3 +131,7 @@ The brush panel's **Symmetry** buttons mirror your strokes left–right, top–b
 In documents with more than one map, one stroke can paint base colour, roughness, height and others together. See [Maps and PBR](Maps-and-PBR.md).
 
 Both Liquify Twirl directions rotate in opposite directions. **Restore** paints back the latest Liquify deformation after release; another edit invalidates that restore reference. Restore is undoable and obeys the selection.
+
+## Precise values beyond slider ranges
+
+Click a slider value, type a number and press Enter or click away to apply it. Escape cancels; an empty entry retains the previous value. The slider thumb keeps its normal drag range while its displayed value retains the number you entered. For example, type 200 for 200% brush spacing. Supported extended controls include spacing, scatter, lazy mouse distance, angle, weld width and ripple spacing, material tiling, bump strength, stencil scale and selected 3D lighting/height and filter strengths. Each retains a practical numeric limit. Opacity, hardness and other bounded controls retain their valid ranges. The top bar and brush panel show the same value.
