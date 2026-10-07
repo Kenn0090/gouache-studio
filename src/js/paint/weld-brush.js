@@ -33,7 +33,7 @@ function weldTipGet(){if(weldTip)return weldTip;weldTip=genTip('Weld bead',192,9
 function weldMaterial(style){const h=weldOptions.height,heat=weldOptions.heat,base=style.color.map((v,i)=>Math.min(1,v+(i===0?heat*.35:i===1?heat*.12:0)));return {id:'weld:'+style.id+':'+h.toFixed(2)+':'+heat.toFixed(2),name:'Weld · '+style.name,fill:{proj:'uv',triSharp:4,hStr:1,maps:{
   base:{on:true,src:'value',c:base},rough:{on:true,src:'value',v:style.rough},metal:{on:true,src:'value',v:1},
   height:{on:true,src:'value',v:.5+h*.5},normal:{on:true,src:'image',tile:1}}},imgs:{normal:weldNormalImage()}};}
-async function weldUse(style){if(weldBusy)return;weldBusy=true;try{
+async function weldUse(style){if(weldBusy)return;style=weldSet(style.id);weldBusy=true;try{
   const ok=await materialBrushUse(weldMaterial(style));if(!ok)return;
   applyPreset({name:'Weld · '+style.name,tool:'material',tip:weldTipGet(),size:weldOptions.width,hardness:.92,flow:1,opacity:1,spacing:weldOptions.spacing,
     pSize:true,minSize:.55,pOpacity:false,smoothing:.2,followDir:true,angleJitter:weldOptions.irregularity*16,sizeJitter:weldOptions.irregularity*.2,scatter:weldOptions.irregularity*.08,buildup:false});
