@@ -1,5 +1,9 @@
 # What's new in Gouache Studio
 
+## 0.51.9
+
+- **Weld bead normal detail:** weld strokes now carry a generated, rippled surface normal alongside their metallic colour, roughness and raised height.
+
 ## 0.51.8
 
 - **High-resolution 3D painting:** on documents of 16 megapixels or more with at least four layers, the viewport automatically limits redraws to about 30 fps while painting. Every pointer sample still paints; choose Best in Painting speed for full-rate viewport redraws.
