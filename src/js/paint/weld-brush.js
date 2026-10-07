@@ -57,11 +57,15 @@ function weldPathRender(L){if(!pathValid(L))return;weldPathPixels(L);const P=L.p
     L.opacity=P.opacity;L.name=rec.name+' path';changed(L);
   }finally{disposeTarget(coverage);}}
 function weldLiveUpdate(key,value){weldOptions[key]=value;weldNormalPixels=null;const L=typeof pathActive==='function'?pathActive():null;if(L?.path?.weld){const b=pathCopy(L.path);weldPathUpdate(L);clearTimeout(L._pathTimer);if(!L._pathBefore)L._pathBefore=b;L._pathTimer=setTimeout(()=>{const old=L._pathBefore;L._pathBefore=null;if(old)pathRecord(L,old,'Weld '+key);},400);}}
+const weldCoverageWarm=new Set();
+function weldWarmMask(){const depth=doc.depth;if(weldCoverageWarm.has(depth))return;const mask=makeTarget(1,1,depth,false,false,true),rgba=makeTarget(1,1,depth,false);
+  try{blit(mask,rgba,0,0,1,1,0,0);run(P.merge,mask,{uSrc:rgba.tex,uStrokeTex:dummy,uStroke:{int:0},uStrokeColor:[1,1,1],uStrokeOpacity:1,uLockAlpha:false,...chanU(null),...selU(null)});captureRegionNow(mask,0,0,1,1);weldCoverageWarm.add(depth);}
+  finally{disposeTarget(mask);disposeTarget(rgba);}}
 async function weldUse(style){if(weldBusy)return;style=weldSet(style.id);weldBusy=true;try{
-  const ok=await materialBrushUse(weldMaterial(style));if(!ok)return;
+  const ok=await materialBrushUse(weldMaterial(style));if(!ok)return;weldWarmMask();
   applyPreset({name:'Weld · '+style.name,tool:'material',tip:weldTipGet(),size:weldOptions.width,hardness:.92,flow:1,opacity:1,spacing:weldOptions.spacing,
     pSize:true,minSize:.55,pOpacity:false,smoothing:.2,followDir:true,angleJitter:weldOptions.irregularity*16,sizeJitter:weldOptions.irregularity*.2,scatter:weldOptions.irregularity*.08,buildup:false});
-  toast(style.name+' ready. Paint directly on a pixel layer to add a raised metal bead.');weldToolsRender();
+  toast(style.name+' ready. Paint a shared mask to reveal the raised metal bead.');weldToolsRender();
  }finally{weldBusy=false;}}
 function weldCard(style){const cv=el('canvas',{width:112,height:54,role:'img','aria-label':style.name+' bead preview'}),x=cv.getContext('2d');
   x.fillStyle='#202329';x.fillRect(0,0,112,54);x.strokeStyle='#58606a';x.lineWidth=1;x.beginPath();x.moveTo(4,43);x.lineTo(108,43);x.stroke();

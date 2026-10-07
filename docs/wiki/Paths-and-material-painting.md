@@ -35,3 +35,5 @@ This version implements **Paint along path**. Ribbon, Filled-path, Erase-path an
 ## Clear layer
 
 The eraser-shaped **Clear layer** button in Layers clears all painted channels together. On a material it removes coverage while retaining the editable recipe. On a path it clears the rendered stroke/fill while keeping the editable geometry. Undo restores the appearance.
+
+Weld brush painting uses one shared coverage mask on its material layer. Repeated strokes reuse that layer; undo and redo affect all its enabled channels together. Existing pixel weld layers and editable weld paths retain their original format. Small weld strokes refresh only the changed 3D preview area, and mask shaders are prepared when selecting the tool.

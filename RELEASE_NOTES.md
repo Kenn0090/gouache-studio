@@ -1,3 +1,9 @@
+# Gouache Studio 0.51.16
+
+- Restore weld brush painting to one shared mask that reveals the material across its channels.
+- Reduce pauses at stroke start and release with partial undo capture, prepared mask shaders and regional 3D preview refreshes.
+- Preserve undo, redo, saved projects and existing editable weld paths.
+
 # Gouache Studio 0.51.15
 
 - Choose Canvas or Screen alignment for 2D mirror symmetry, including rotated and flipped canvas views.
