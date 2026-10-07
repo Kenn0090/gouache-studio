@@ -47,7 +47,7 @@ void main(){vec3 b=vec3(1.0-vBary.x-vBary.y,vBary);vec2 uv=uvAt(vFace,0)*b.x+uvA
  for(int y=-4;y<=4;y++)for(int x=-4;x<=4;x++){vec2 p=vec2(x,y)/4.0;float weight=uBox==1?1.0:exp(-dot(p,p)*4.5);
  vec2 tap=walkUV(vFace,b,baryUV(vFace,uv+p*uRadius/uSize));acc+=textureLod(uSrc,tap,0.0)*weight;total+=weight;}
  o=acc/total;}`;
-function seamBlurDispose(){if(!seamBlurCache)return;const c=seamBlurCache;gl.deleteTexture(c.tex);gl.deleteBuffer(c.vb);gl.deleteVertexArray(c.vao);seamBlurCache=null;}
+function seamBlurDispose(){if(!seamBlurCache)return;const c=seamBlurCache;gl.deleteTexture(c.tex);gl.deleteBuffer(c.vb);gl.deleteVertexArray(c.vao);if(c.pad)disposeTarget(c.pad);seamBlurCache=null;}
 function seamBlurMesh(){const m=v3.mesh;if(!m||!v3.gpu||m.noUV||v3s().uvs!==1)return null;const R=p3Range();
  if(seamBlurCache?.mesh===m&&seamBlurCache.start===R.start&&seamBlurCache.count===R.count)return seamBlurCache;
  seamBlurDispose();const n=R.count;if(!n)return null;const width=Math.min(1024,gl.getParameter(gl.MAX_TEXTURE_SIZE)),height=Math.ceil(n*5/width);
@@ -72,10 +72,33 @@ function seamBlurMesh(){const m=v3.mesh;if(!m||!v3.gpu||m.noUV||v3s().uvs!==1)re
  const V=gl.createVertexArray(),vb=gl.createBuffer();gl.bindVertexArray(V);gl.bindBuffer(gl.ARRAY_BUFFER,vb);gl.bufferData(gl.ARRAY_BUFFER,vertices,gl.STATIC_DRAW);
  for(const [a,size,off] of [[0,2,0],[1,1,8],[2,2,12]]){gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,size,gl.FLOAT,false,20,off);}gl.bindVertexArray(vao);
  return seamBlurCache={mesh:m,start:R.start,count:R.count,tex,vao:V,vb};}
+/* The view's bilinear and mip reads straddle atlas edges. Keep a short, nearest-island
+   apron on filtered output, including transparent layers; alpha is coverage, not a UV mask.
+   Encode pixel owners in RGBA8 so 4K/16K coordinates do not lose half-float precision. */
+let seamPadPrograms=null;
+const SEAM_OWNER_GLSL=`ivec2 ownerAt(sampler2D img,ivec2 p){ivec4 b=ivec4(round(texelFetch(img,p,0)*255.0));return ivec2(b.x*256+b.y,b.z*256+b.w)-1;}
+vec4 ownerPack(ivec2 p){ivec2 v=p+1;return vec4(v.x/256,v.x%256,v.y/256,v.y%256)/255.0;}`;
+function seamBlurPadding(C,dst,region){if(!seamPadPrograms)seamPadPrograms={
+ seed:prog3(VS_SEAMBLUR,SEAM_OWNER_GLSL+`void main(){o=ownerPack(ivec2(gl_FragCoord.xy));}`),
+ grow:program(SEAM_OWNER_GLSL+`uniform sampler2D uOwners;
+ void main(){ivec2 p=ivec2(gl_FragCoord.xy),size=textureSize(uOwners,0),best=ivec2(-1);float distance=1e20;
+ for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){ivec2 q=p+ivec2(x,y);if(any(lessThan(q,ivec2(0)))||any(greaterThanEqual(q,size)))continue;
+ ivec2 owner=ownerAt(uOwners,q);if(any(lessThan(owner,ivec2(0))))continue;vec2 delta=vec2(owner-p);float d=dot(delta,delta);
+ if(d<distance){distance=d;best=owner;}}o=any(lessThan(best,ivec2(0)))?vec4(0):ownerPack(best);}`),
+ apply:program(SEAM_OWNER_GLSL+`uniform sampler2D uOwners;uniform sampler2D uSrc;uniform vec2 uOffset;
+ void main(){ivec2 p=ivec2(gl_FragCoord.xy)+ivec2(uOffset),owner=ownerAt(uOwners,p);vec2 delta=vec2(owner-p);
+ o=texelFetch(uSrc,all(greaterThanEqual(owner,ivec2(0)))&&dot(delta,delta)<=64.0?owner:p,0);}`)};
+ if(!C.pad||C.pad.w!==dst.w||C.pad.h!==dst.h){if(C.pad)disposeTarget(C.pad);C.pad=makeTarget(dst.w,dst.h,8,false);
+  const tmp=makeTarget(dst.w,dst.h,8,false);try{clearTarget(C.pad,[0,0,0,0]);useProg(seamPadPrograms.seed,{});bindTarget(C.pad);
+   gl.disable(gl.BLEND);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.bindVertexArray(C.vao);gl.drawArrays(gl.TRIANGLES,0,C.count*3);gl.bindVertexArray(vao);
+   for(let i=0;i<8;i++){run(seamPadPrograms.grow,tmp,{uOwners:C.pad.tex});blit(tmp,C.pad,0,0,dst.w,dst.h,0,0);}
+  }finally{disposeTarget(tmp);}}
+ const r=region||[0,0,dst.w,dst.h],tmp=makeTarget(r[2],r[3],dst.depth,false,dst.packed,dst.mono);
+ try{run(seamPadPrograms.apply,tmp,{uOwners:C.pad.tex,uSrc:dst.tex,uOffset:r.slice(0,2)});blit(tmp,dst,0,0,r[2],r[3],r[0],r[1]);}finally{disposeTarget(tmp);}}
 function meshConnectedBlur(src,dst,x,y,box){if(ui.mode!=='p3d'||src.w!==doc.w||src.h!==doc.h||dst.w!==src.w||dst.h!==src.h||!v3.mesh)return false;
  const C=seamBlurMesh();if(!C)return false;if(!seamBlurProgram)seamBlurProgram=prog3(VS_SEAMBLUR,FS_SEAMBLUR);
  /* Preserve atlas pixels outside the mesh. In-place filters borrow their source. */
  let read=src,tmp=null;if(src===dst){tmp=makeTarget(src.w,src.h,src.depth,false,src.packed,src.mono);blit(src,tmp,0,0,src.w,src.h,0,0);read=tmp;}else blit(src,dst,0,0,src.w,src.h,0,0);
  try{useProg(seamBlurProgram,{uFaces:C.tex,uSrc:read.tex,uSize:[src.w,src.h],uRadius:box?[x,y]:[x*3,y*3],uBox:{int:box?1:0}},!!dst.packed);
   bindTarget(dst);gl.disable(gl.BLEND);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.bindVertexArray(C.vao);gl.drawArrays(gl.TRIANGLES,0,C.count*3);
- }finally{gl.bindVertexArray(vao);if(tmp)disposeTarget(tmp);}return true;}
+ }finally{gl.bindVertexArray(vao);if(tmp)disposeTarget(tmp);}seamBlurPadding(C,dst);return true;}

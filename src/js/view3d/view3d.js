@@ -168,10 +168,12 @@ o=(texelFetch(uSrc,min(p,sz),uLevel)+texelFetch(uSrc,min(p+ivec2(1,0),sz),uLevel
     gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,minFilter);}}
 /* Material shading reads one value from roughness, metal, AO, opacity and height. Keep full resolution. */
 function v3MapTex(k,src,region){const mono=doc.w*doc.h>=67108864&&MAP_DEFS[k]?.grey,packed=!!src.packed&&!mono;let t=v3.tex[k];if(!t||t.w!==doc.w||t.h!==doc.h||t.depth!==src.depth||!!t.packed!==packed||!!t.mono!==!!mono){if(t)disposeTarget(t);t=v3.tex[k]=makeTarget(doc.w,doc.h,src.depth,true,packed,mono);region=null;}
+  const edges=ui.mode==='p3d'&&v3s().uvs===1&&!v3.mesh?.noUV&&src.w===doc.w&&src.h===doc.h?seamBlurMesh():null;
   const partial=region&&t.hasMips&&!(t.w&(t.w-1))&&!(t.h&(t.h-1))&&region[2]*region[3]<t.w*t.h*.25;
   const r=partial?region:[0,0,doc.w,doc.h];if(r[2]<=0||r[3]<=0)return t;
-  blit(src,t,r[0],r[1],r[2],r[3],r[0],r[1]);if(k==='base')t._studioOpaque=studioOpaqueBase();t._studioVer=(t._studioVer||0)+1;v3Work.copies++;v3Work.copyPixels+=r[2]*r[3];
-  if(partial){v3Work.partialCopies++;v3PatchMips(t,r);}else{gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.generateMipmap(gl.TEXTURE_2D);t.hasMips=true;let w=t.w,h=t.h;while(w>1||h>1){w=Math.max(1,w>>1);h=Math.max(1,h>>1);v3Work.mipPixels+=w*h;}}
+  blit(src,t,r[0],r[1],r[2],r[3],r[0],r[1]);let border=r;
+  if(edges){if(partial){const x=Math.max(0,r[0]-8),y=Math.max(0,r[1]-8);border=[x,y,Math.min(doc.w,r[0]+r[2]+8)-x,Math.min(doc.h,r[1]+r[3]+8)-y];}seamBlurPadding(edges,t,partial?border:null);}if(k==='base')t._studioOpaque=studioOpaqueBase();t._studioVer=(t._studioVer||0)+1;v3Work.copies++;v3Work.copyPixels+=r[2]*r[3];
+  if(partial){v3Work.partialCopies++;v3PatchMips(t,border);}else{gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.generateMipmap(gl.TEXTURE_2D);t.hasMips=true;let w=t.w,h=t.h;while(w>1||h>1){w=Math.max(1,w>>1);h=Math.max(1,h>>1);v3Work.mipPixels+=w*h;}}
   gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
   if(anisoExt)gl.texParameterf(gl.TEXTURE_2D,anisoExt.TEXTURE_MAX_ANISOTROPY_EXT,Math.min(qual('aniso'),anisoMax));return t;}
 const anisoExt=gl.getExtension('EXT_texture_filter_anisotropic'),anisoMax=anisoExt?gl.getParameter(anisoExt.MAX_TEXTURE_MAX_ANISOTROPY_EXT):1;
