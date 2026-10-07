@@ -1,5 +1,11 @@
 # What's new in Gouache Studio
 
+## 0.51.7
+
+- **Weld brush:** the Projects shelf has a Weld brush tab with TIG, MIG and tack bead presets. Strokes paint metallic colour, roughness and raised height together; bead height is adjustable.
+- **Magnifying glass:** press Z, click to zoom in around the pointer, or Shift-click to zoom out. The toolbar button and Keyboard shortcuts list include the tool.
+- **Pen pressure:** 2D and 3D painting now keep the parent pen event's pressure when coalesced samples omit pen metadata, improving compatibility with Windows Ink tablets.
+
 ## 0.51.6
 
 - **Sharper material previews:** all 200 bundled material thumbnails now render at 768 × 768. Library hover previews render at 768 pixels or higher; editor and saved-material preview balls render at least 256 pixels, keeping the same compact panel layout.

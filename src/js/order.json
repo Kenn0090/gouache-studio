@@ -96,6 +96,7 @@
     "files/p3-project",
     "layers/materials",
     "layers/mat-import",
+    "paint/weld-brush",
     "ui/lib-drag",
     "ui/texture-workshop-library",
     "ui/textures",

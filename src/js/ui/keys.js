@@ -5,7 +5,7 @@
 const KB_EXTRA=[
   ['tool:pen','Pen','Tools','P',()=>setTool('pen')],['tool:path','Surface Path','Tools','',()=>setTool('path')],['tool:material','Material brush','Tools','',()=>setTool('material')],
   ['tool:brush','Brush','Tools','B',()=>setTool('brush')],['tool:erase','Eraser','Tools','E',()=>setTool('erase')],['tool:smudge','Blend / smudge','Tools','S',()=>setTool('smudge')],['tool:heal','Healing brush','Tools','J',()=>setTool('heal')],['tool:clone','Clone stamp','Tools','Y',()=>setTool('clone')],
-  ['tool:liquify','Liquify','Tools','Ctrl+Shift+X',()=>setTool('liquify')],['tool:picker','Eyedropper','Tools','I',()=>setTool('picker')],['tool:hand','Hand','Tools','H',()=>setTool('hand')],['tool:move','Move','Tools','V',()=>setTool('move')],
+  ['tool:liquify','Liquify','Tools','Ctrl+Shift+X',()=>setTool('liquify')],['tool:picker','Eyedropper','Tools','I',()=>setTool('picker')],['tool:hand','Hand','Tools','H',()=>setTool('hand')],['tool:move','Move','Tools','V',()=>setTool('move')],['tool:zoom','Magnifying glass','Tools','Z',()=>setTool('zoom')],
   ['tool:gradient','Gradient / fill','Tools','G',()=>setTool(ui.fillKind||'gradient')],['tool:dodge','Dodge / burn','Tools','O',()=>setTool(ui.tonal||'dodge')],['tool:crop','Crop','Tools','C',()=>setTool('crop')],
   ['tool:text','Text','Tools','T',()=>setTool('text')],['tool:shape','Shape','Tools','U',()=>setTool('shape')],['tool:array','Array','Tools','',()=>setTool('array')],['tool:marquee','Marquee','Tools','M',()=>setTool('marquee')],['tool:lasso','Lasso','Tools','L',()=>setTool('lasso')],['tool:wand','Magic wand','Tools','W',()=>setTool('wand')],
   ['paint:lastBrush','Swap last two brushes','Painting','Shift+B',brushSwapLast],
