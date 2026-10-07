@@ -9,7 +9,7 @@ Source: Kenn's requests and Georgian Avasilcutei's feedback in this conversation
 - Lazy mouse: stop the abrupt release tail in 2D and 3D. Continue evaluating tether feel and stroke latency.
 - Layer performance: investigate the reported PSD with 22 layers and Multiply/Burn blend modes. The friend's PSD must be located or provided before claiming a diagnosis.
 - Texture clicks should add a picture to the selected mask; clicks with a colour thumbnail selected still create a layer.
-- Weld brush should paint directly onto an ordinary pixel layer, without automatically creating a fill layer or mask. Editable surface paths currently retain their separate coverage-based path representation; follow up with a pixel-backed editable weld path.
+- Weld brush should paint directly onto an ordinary pixel layer, without automatically creating a fill layer or mask. Editable weld paths also regenerate ordinary pixel channels from their saved recipe, with disposable coverage used only during rendering.
 - Weld appearance: compare overlapping rounded/crescent bead profiles and spacing against the supplied examples, including seams and grazing-light views. Do not equate a procedural preview thumbnail with validated model appearance.
 - Live path controls: weld sliders update selected surface paths (0.51.11); verify undo, reopening and ordinary brush-to-path behavior.
 

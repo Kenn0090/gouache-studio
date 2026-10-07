@@ -19,7 +19,7 @@ vec3 baryWorld(int t,vec3 p){vec3 a=pointAt(t,0),b=pointAt(t,1)-a,c=pointAt(t,2)
 /* Keep bilinear reads inside the chosen triangle instead of reading empty atlas gutters. */
 vec2 seamReadUV(int t,vec3 b){vec2 a=uvAt(t,0)*uSize,c=uvAt(t,1)*uSize,d=uvAt(t,2)*uSize;
  float area=abs((c.x-a.x)*(d.y-a.y)-(c.y-a.y)*(d.x-a.x));
- vec3 inset=.51*vec3(abs(c.x-d.x)+abs(c.y-d.y),abs(d.x-a.x)+abs(d.y-a.y),abs(a.x-c.x)+abs(a.y-c.y))/max(area,1e-8);
+ vec3 inset=1.01*vec3(abs(c.x-d.x)+abs(c.y-d.y),abs(d.x-a.x)+abs(d.y-a.y),abs(a.x-c.x)+abs(a.y-c.y))/max(area,1e-8);
  float sum=dot(inset,vec3(1));if(sum>=.9)return (a+c+d)/(3.0*uSize);
  vec3 w=max(b-inset,vec3(0));float total=dot(w,vec3(1));b=total>1e-8?inset+w*((1.0-sum)/total):vec3(1.0/3.0);
  return (a*b.x+c*b.y+d*b.z)/uSize;}

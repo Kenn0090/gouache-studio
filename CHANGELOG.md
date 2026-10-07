@@ -2,7 +2,7 @@
 
 ## 0.51.12
 
-- **Weld pixel painting:** the weld brush paints enabled channels directly onto a plain pixel layer, without creating a fill layer or coverage mask.
+- **Weld pixel painting:** the weld brush paints enabled channels directly onto a plain pixel layer, without creating a fill layer or coverage mask. Editable weld paths retain their route and controls while regenerating ordinary pixel channels.
 - **Independent workspaces:** Paint and 3D Paint remember panel arrangements separately, even when using the same preset. The workspace menu shows layouts relevant to the current mode and keeps the Paint canvas in place.
 - **Texture masks:** clicking a texture adds it to the selected mask; clicking with a colour thumbnail selected still creates a layer.
 - **Lazy mouse:** releasing a stroke no longer draws an abrupt tail from the tether to the cursor.
