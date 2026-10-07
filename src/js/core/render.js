@@ -35,7 +35,7 @@ function compVisibleStart(list,k){for(let i=list.length-1;i>=0;i--){const n=list
 function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
   let start=compVisibleStart(list,k);const cache=strokeCacheFor(list,k),sc=cache&&cache.i>start?cache:null;compStats.skipped+=start;
   if(sc&&sc.t&&sc.t.depth===acc.depth){blit(sc.t,acc,0,0,doc.w,doc.h,0,0);start=sc.i;compStats.cacheHits++;}
-  for(let i=start;i<list.length;i++){if(sc&&i===sc.i&&!sc.t&&!compPart){sc.t=makeTarget(doc.w,doc.h,acc.depth,undefined,acc.packed);blit(acc,sc.t,0,0,doc.w,doc.h,0,0);}
+  for(let i=start;i<list.length;i++){if(sc&&i===sc.i&&!sc.t&&!compPart&&!scissorNow){sc.t=makeTarget(doc.w,doc.h,acc.depth,undefined,acc.packed);blit(acc,sc.t,0,0,doc.w,doc.h,0,0);}
     const n=list[i],clipped=clipBaseOf(list,i);
     if(!n.visible)continue;if(clipped&&!clipped.visible)continue;
     const mt=maskTexOf(n);
@@ -58,7 +58,7 @@ function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
         if(lk&&mt&&n.styles&&anyStyle(n)){const m=lkMasked(src,mt);if(own)release(own);own=m;src=m;lkM=true;}
         if(lk){const r=layerLook(n,src,k,src===T,lkM?mt:null);if(r.t!==src){if(own)release(own);own=r.pooled?r.t:null;src=r.t;}}}
       compStats.layerPixels+=compPart?compPartPixels:doc.w*doc.h;
-      run(st?.o.material?materialStrokeProgram(true):direct?fillCompProgram():P.comp,out,Object.assign(direct?fillCompUniforms(n,k):{},strokeMaterialU(st,k),{uSolid:!!solid,uSolidColor:solid||[0,0,0,0],uBase:acc.tex,uLayer:src.tex,uStrokeTex:strokeT.tex,uMask:clipped?(mapT(clipped,'base')||emptyFor(8)).tex:dummy,uUseMask:!!clipped,uMask2:cm||dummy,uUseMask2:!!cm,uLMask:mt||dummy,uUseLMask:!!mt&&!lkM,
+      run(st?.o.material?materialStrokeProgram(true,!!st.o.material.weldPaint):direct?fillCompProgram():P.comp,out,Object.assign(direct?fillCompUniforms(n,k):{},strokeMaterialU(st,k),{uSolid:!!solid,uSolidColor:solid||[0,0,0,0],uBase:acc.tex,uLayer:src.tex,uStrokeTex:strokeT.tex,uMask:clipped?(mapT(clipped,'base')||emptyFor(8)).tex:dummy,uUseMask:!!clipped,uMask2:cm||dummy,uUseMask2:!!cm,uLMask:mt||dummy,uUseLMask:!!mt&&!lkM,
         uMode:{int:mapModeOf(n,k)},uOpacity:n.opacity,uStroke:{int:st?(ex?ex.mode:strokeMode(st.o)):0},uStrokeTint:!!(st&&!ex&&st.tint),uStrokeColor:st?(ex?ex.color:st.o.color):[0,0,0],uStrokeOpacity:st?st.o.opacity:0,uLockAlpha:ex?false:n.lockAlpha},
         edit?chanU(st&&st.o):chanU(null),ex?st.exU:selU(st&&st.o),edit?tonalU(st&&st.o):{}));
       if(own)release(own);if(pn)release(pn);if(live)release(live);release(acc);acc=out;}

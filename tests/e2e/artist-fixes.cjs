@@ -43,6 +43,7 @@ const ok=(v,m)=>{console.log((v?'PASS ':'FAIL ')+m);if(!v)fails++;};
   g.writeRegion(src,0,0,S,S,px);g.seamBlurDispose();g.v3.mesh.setRanges=[{name:g.p3Binding(g.p3.sets[g.p3.cur]),start:0,count:2}];g.meshConnectedBlur(src,dst,radius,radius,false);const isolated=read(lx);
   const error=g.gl.getError();g.disposeTarget(src);g.disposeTarget(dst);return {used,left,right,outside,box,boxLeft,boxRight,inPlace,inValue,isolated,heightValue,error,size:S,mode:g.mode};});
  console.log('Seams',seam);ok(seam.used&&seam.left[2]>30&&seam.right[0]>30&&Math.abs(seam.left[0]-seam.right[2])<20,'Gaussian taps cross a geometric join between separated UV islands');ok(seam.left[3]>245&&seam.right[3]>245&&seam.outside[3]>245,'blur avoids dark or transparent atlas gutters');ok(seam.box&&seam.boxLeft[2]>30&&seam.boxRight[0]>30,'box blur also follows connected UV islands');ok(seam.inPlace&&Math.abs(seam.inValue[0]-seam.left[0])<3,'in-place seam blur avoids sampling its own output');ok(seam.isolated[2]<3&&seam.isolated[0]>245,'texture set boundary does not bleed into the adjacent set');ok(seam.heightValue[0]>.05&&seam.heightValue[0]<.95&&seam.heightValue[3]>.95,'packed height maps remain supported by in-place seam blur');ok(seam.error===0&&errors.length===0,'no WebGL or application errors');if(errors.length)console.log(errors);
+ const tipCopy=await p.evaluate(()=>{const g=__gs,tip=g.weldTipGet(),t=g.pathTipCopy(tip),px=g.captureRegionNow(t,0,0,t.w,t.h).data;let delta=0;for(let i=0;i<tip.alpha.length;i++)delta=Math.max(delta,Math.abs(px[i*4+3]-tip.alpha[i]));g.disposeTarget(t);return delta;});ok(tipCopy<=1,'path tip alpha matches the original brush tip at every pixel');
  const weldPath=await p.evaluate(async()=>{const g=__gs;await g.weldUse(g.WELD_STYLES[0]);g.setTool('path');const L=g.pathNew('3d'),m=g.v3.mesh;
   g.pathChange(P=>{P.points=[[-.75,0,0],[-.15,0,0]].map(p=>{const q=g.pathNearest(m,p);return {p:q.p,n:q.n,pressure:1,in:[0,0,0],out:[0,0,0]};});},'Weld route');
   const covered=()=>g.readRGBA8(g.mapT(L,'base')).reduce((n,v,i)=>n+(i%4===3&&v>0?1:0),0),before=covered();
@@ -51,5 +52,25 @@ const ok=(v,m)=>{console.log((v?'PASS ':'FAIL ')+m);if(!v)fails++;};
   return {plain:!L.fill&&!L.mask,before,wider,restored,reopened:!!R&&!R.fill&&!R.mask&&R.path.points.length===2&&!!R._fillImg?.pathTip};});
  console.log('Weld path',weldPath);ok(weldPath.plain&&weldPath.before>0&&weldPath.wider>weldPath.before&&weldPath.restored===weldPath.before&&weldPath.reopened,'editable weld path has ordinary channels, live width, undo and saved recipe without a mask');
  ok(errors.length===0,'saving and reopening the weld project raises no application errors');if(errors.length)console.log(errors);
+
+ const weldPerf=await p.evaluate(async()=>{const g=__gs;g.prefs.paintSpeed='best';g.doc.wrap=false;g.setEditMap('base');await g.weldUse(g.WELD_STYLES[0]);g.cmdAddLayer();const L=g.doc.active;
+  g.composite();g.v3Refresh();const o=g.paintOpts(g.editTarget());Object.assign(o,{size:10,pSize:false,smoothing:0});
+  g.beginStroke(L,24,40,1,o);g.composite();g.v3Refresh();
+  const before=g.v3Work.copyPixels,work=g.runStat.px;
+  for(let i=0;i<3;i++){g.addPoint(28+i*4,40,1);g.composite();g.v3Refresh();}
+  const copied=g.v3Work.copyPixels-before,pixels=g.runStat.px-work,keys=['base','rough','metal','nfinal'],saved={};
+  for(const k of keys)saved[k]=g.captureRegionNow(g.v3.tex[k],0,0,g.doc.w,g.doc.h).data;
+  g.v3.mapsDirty=true;g.v3.lastFull=0;g.v3Refresh();let maxDelta=0;const deltas={};
+  for(const k of keys){const b=g.captureRegionNow(g.v3.tex[k],0,0,g.doc.w,g.doc.h).data;let delta=0,at=0;for(let i=0;i<b.length;i++){const d=Math.abs(b[i]-saved[k][i]);if(d>delta){delta=d;at=i;}maxDelta=Math.max(maxDelta,d);}deltas[k]={delta,x:Math.floor(at/4)%g.doc.w,y:Math.floor(at/4/g.doc.w),channel:at%4,full:b[at],patch:saved[k][at]};}
+  g.endStroke(true);g.composite();g.v3Refresh();const released=!g.v3.mapsDirty;
+  g.doc.wrap=true;g.beginStroke(L,30,45,1,o);g.composite();const fallback=g.v3.mapsDirty&&!g.v3.mapRegion;g.endStroke(false);g.doc.wrap=false;g.composite();g.v3Refresh();const fullBefore=g.v3Work.copyPixels;Object.assign(o,{size:96});g.beginStroke(L,64,64,1,o);g.composite();g.v3Refresh();const large=g.v3Work.copyPixels-fullBefore>=g.doc.w*g.doc.h*4&&!g.v3.mapsDirty;g.endStroke(false);
+  return {large,deltas,copied,pixels,fullCopies:g.doc.w*g.doc.h*4*3,maxDelta,released,fallback,error:g.gl.getError()};});
+ console.log('Weld preview work',weldPerf);ok(weldPerf.copied<weldPerf.fullCopies*.25&&weldPerf.maxDelta<=1&&weldPerf.released&&weldPerf.fallback&&weldPerf.large&&weldPerf.error===0,'weld patches update live colour, roughness, metal and normals with identical full-refresh pixels and safe fallback');
+ const zoom=await p.evaluate(async()=>{const g=__gs;g.doc.wrap=false;g.setEditMap('base');g.setTool('brush');g.v3s().disp=0;g.v3s().uvs=1;Object.assign(g.v3.cam,{yaw:0,pitch:0,tx:0,ty:0,tz:0});
+  const counts=[];for(const ortho of [false,true]){g.v3s().ortho=ortho;for(const dist of [3,1.5]){g.v3.cam.dist=dist;g.cmdAddLayer();const L=g.doc.active,o=g.paintOpts(g.editTarget()),sp=g.meshSpace(256,256);Object.assign(o,{space:sp,cageRs:g.meshBrushScale(256),size:48,pSize:false,tip:null,hardness:1,flow:1,opacity:1,smoothing:0,extras:[]});
+    g.beginStroke(L,128,128,1,o);g.endStroke(false);counts.push(g.readRGBA8(L.target).reduce((n,v,i)=>n+(i%4===3&&v>128?1:0),0));}}
+  return {counts,scaleRatio:(g.v3.cam.dist=3,g.meshBrushScale(256))/(g.v3.cam.dist=1.5,g.meshBrushScale(256)),error:g.gl.getError()};});
+ console.log('Model brush zoom',zoom);ok(zoom.counts.every(n=>n>0)&&Math.abs(zoom.counts[0]-zoom.counts[1])<=4&&Math.abs(zoom.counts[2]-zoom.counts[3])<=4&&Math.abs(zoom.scaleRatio-.5)<.001&&zoom.error===0,'zoom preserves the model brush footprint in perspective and orthographic views');
+ ok(errors.length===0,'weld preview and zoom changes raise no application errors');if(errors.length)console.log(errors);
  await b.close();await new Promise(r=>server.close(r));process.exit(fails?1:0);
 })().catch(e=>{console.error(e);process.exit(1);});

@@ -31,9 +31,14 @@ function pathSamples(P,surface){const out=[],pts=P.points,n=pts.length;if(n<2)re
   return out;}
 function sub3d(a,b){return a.map((v,i)=>v-b[i]);}
 function pathValid(L){return L.path.kind!=='3d'||!!(v3.mesh&&v3.gpu&&!v3.mesh.noUV&&pathMeshIndex(v3.mesh).sig===L.path.mesh);}
+let P_PATHTIPCOPY=null;
+function pathTipCopy(tip){const t=makeTarget(tip.w,tip.h,8,false);
+  if(tip.fbo)blit(tip,t,0,0,tip.w,tip.h,0,0);
+  else{if(!P_PATHTIPCOPY)P_PATHTIPCOPY=program('uniform sampler2D uTip; uniform vec2 uTipSize; void main(){float a=texture(uTip,gl_FragCoord.xy/uTipSize).r; o=vec4(a);}');run(P_PATHTIPCOPY,t,{uTip:tip.tex,uTipSize:[tip.w,tip.h]});}
+  return t;}
 function pathNew(kind){const L=newLayerObj(kind==='3d'?'Surface path':'Pen path',true),P={kind,points:[],closed:false,mode:kind==='3d'?'stroke':'none',width:kind==='3d'?(v3.mesh?.radius||1)*(brush.tip?.name==='Weld bead'&&typeof weldOptions!=='undefined'?weldOptions.width/100:.035):brush.size,hardness:brush.hardness,opacity:brush.opacity,spacing:brush.spacing,angle:brush.angle||0,roundness:brush.roundness||1,pressure:true};
   if(kind==='3d')P.mesh=pathMeshIndex(v3.mesh).sig;L.path=P;L.fill=fillDefaults();for(const k in L.fill.maps)L.fill.maps[k].on=false;L.fill.maps.base={on:true,src:'value',c:ui.fg.slice()};L.fill.coverH=false;L.fill.proj='uv';fillRender(L);
-  L.mask=makeMask(0,true);L.editMask=false;const tip=brush.tip;if(tip?.tex){L._fillImg={pathTip:makeTarget(tip.w,tip.h,8,false)};blit(tip,L._fillImg.pathTip,0,0,tip.w,tip.h,0,0);P.tipName=tip.name;}if(kind==='3d'&&(brush.tip?.name==='Weld bead'||weldOptions.pathMode)&&typeof weldPathSetup==='function'){weldPathSetup(L);weldOptions.pathMode=false;}
+  L.mask=makeMask(0,true);L.editMask=false;const tip=brush.tip;if(tip?.tex){L._fillImg={pathTip:pathTipCopy(tip)};P.tipName=tip.name;}if(kind==='3d'&&(brush.tip?.name==='Weld bead'||weldOptions.pathMode)&&typeof weldPathSetup==='function'){weldPathSetup(L);weldOptions.pathMode=false;}
   structOp('New '+(kind==='3d'?'surface':'Pen')+' path',()=>{const [p,i]=insertPoint();insertNode(L,p,i);selectOnly(L);});pathEdit.L=L;pathEdit.point=-1;pathEdit.drawing=true;return L;}
 function pathRecord(L,before,label){const after=pathCopy(L.path);if(JSON.stringify(before)===JSON.stringify(after))return;
   const put=p=>{L.path=pathCopy(p);selectOnly(L);pathEdit.L=L;pathEdit.point=-1;pathEdit.drawing=false;pathEdit.drag=null;delete L._pathPreview;if(L.path.weld&&typeof weldPathUpdate==='function'){Object.assign(weldOptions,L.path.weld);weldPathUpdate(L);}else pathRender(L);if(pathToolOn())buildBrushPanel();};pushUndo({label:label||'Edit path',refs:[L],undo(){put(before);},redo(){put(after);}});changed(L);}

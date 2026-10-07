@@ -44,7 +44,7 @@ function weldPathPixels(L){if(!L.fill&&!L.mask)return;
   for(const k in L.maps){if(L.maps[k]&&!L.maps[k].empty)disposeTarget(L.maps[k]);}L.maps={};L.target=emptyFor(mapDepth(doc.map));}
 function weldPathSetup(L){const style=WELD_STYLES.find(s=>s.id===weldOptions.style)||WELD_STYLES[0];weldPathPixels(L);
   L.path.weld={style:style.id,height:weldOptions.height,width:weldOptions.width,spacing:weldOptions.spacing,irregularity:weldOptions.irregularity,heat:weldOptions.heat};
-  const tip=weldTipGet();if(L._fillImg?.pathTip)disposeTarget(L._fillImg.pathTip);L._fillImg=L._fillImg||{};L._fillImg.pathTip=makeTarget(tip.w,tip.h,8,false);blit(tip,L._fillImg.pathTip,0,0,tip.w,tip.h,0,0);
+  const tip=weldTipGet();if(L._fillImg?.pathTip)disposeTarget(L._fillImg.pathTip);L._fillImg=L._fillImg||{};L._fillImg.pathTip=pathTipCopy(tip);
   L.path.tipName=tip.name;L.path.width=(v3.mesh?.radius||1)*weldOptions.width/100;L.path.spacing=weldOptions.spacing;L.name='Weld · '+style.name+' path';}
 function weldPathUpdate(L){if(!L?.path?.weld)return;const P=L.path;P.weld={style:weldOptions.style,height:weldOptions.height,width:weldOptions.width,spacing:weldOptions.spacing,irregularity:weldOptions.irregularity,heat:weldOptions.heat};
   P.width=(v3.mesh?.radius||1)*weldOptions.width/100;P.spacing=weldOptions.spacing;weldPathRender(L);}
