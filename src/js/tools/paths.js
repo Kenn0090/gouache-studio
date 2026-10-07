@@ -25,7 +25,7 @@ function pathTriPoint(m,t,p){const ids=[0,1,2].map(i=>m.idx[t*3+i]),A=ids.map(i=
 function pathNearest(m,p,range){const C=pathMeshIndex(m),R=range||p3Range(),distance=N=>N.lo.reduce((s,x,i)=>s+Math.pow(Math.max(x-p[i],0,p[i]-N.hi[i]),2),0);let best=null;
   const visit=N=>{if(best&&distance(N)>best.d)return;if(N.l){let a=N.l,b=N.r;if(distance(a)>distance(b))[a,b]=[b,a];visit(a);visit(b);}else for(let i=N.a;i<N.b;i++){const t=C.ids[i];if(t<R.start||t>=R.start+R.count)continue;const q=pathTriPoint(m,t,p);if(!best||q.d<best.d)best=q;}};visit(C.tree);return best;}
 function pathCurve(a,b,t){const h=a.out||a.p.map(()=>0),j=b.in||b.p.map(()=>0),s=1-t;return a.p.map((x,i)=>s*s*s*x+3*s*s*t*(x+h[i])+3*s*t*t*(b.p[i]+j[i])+t*t*t*b.p[i]);}
-function pathSamples(P,surface){const out=[],pts=P.points,n=pts.length;if(n<2)return out;const count=n-1+(P.closed?1:0),radius=P.width/2,stepRadius=surface&&P.weld?radius*Math.max(.15,P.spacing||.2):radius*.4;
+function pathSamples(P,surface){const out=[],pts=P.points,n=pts.length;if(n<2)return out;const count=n-1+(P.closed?1:0),radius=P.width/2,stepRadius=surface&&P.weld?radius*Math.min(1.2,Math.max(.3,(P.spacing||.2)*3)):radius*.4;
   for(let i=0;i<count;i++){const a=pts[i],b=pts[(i+1)%n],length=Math.hypot(...sub3d(b.p,a.p))+Math.hypot(...(a.out||[]))+Math.hypot(...(b.in||[])),steps=clamp(Math.ceil(length/Math.max(surface?stepRadius:.8,.0001)),4,256);
     for(let j=0;j<=steps;j++){if(i&&j===0)continue;const t=j/steps,p=pathCurve(a,b,t),q=surface?pathNearest(v3.mesh,p):{p};if(!q)continue;out.push({p:q.p,n:q.n,pressure:(a.pressure??1)*(1-t)+(b.pressure??1)*t,segment:i,t});}}
   return out;}
