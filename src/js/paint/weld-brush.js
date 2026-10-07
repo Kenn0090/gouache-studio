@@ -60,4 +60,4 @@ function weldShelfContent(){const grid=el('div',{class:'matgrid weld-grid'});for
   return el('div',{class:'weld-shelf'},el('p',{class:'note',text:'Choose a bead profile, then paint the weld material or use the editable Surface Path tool in 3D Paint. Surface paths keep control points so you can adjust the route.'}),select,grid,el('div',{class:'chips'},path),width.el,height.el,spacing.el,irregularity.el,heat.el,
     el('p',{class:'note',text:'Heat tint warms the metal colour. Height controls the raised material channel; visible relief depends on layer height strength and 3D material settings.'}));}
 
-function weldToolsRender(){const box=document.getElementById('weldToolsBody');if(box&&typeof weldShelfContent==='function')box.replaceChildren(weldShelfContent());}
+function weldToolsRender(){const L=typeof pathActive==='function'?pathActive():null;if(L?.path?.weld)Object.assign(weldOptions,L.path.weld);const box=document.getElementById('weldToolsBody');if(box&&typeof weldShelfContent==='function')box.replaceChildren(weldShelfContent());}
