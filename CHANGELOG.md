@@ -1,5 +1,10 @@
 # What's new in Gouache Studio
 
+## 0.51.8
+
+- **High-resolution 3D painting:** on documents of 16 megapixels or more with at least four layers, the viewport automatically limits redraws to about 30 fps while painting. Every pointer sample still paints; choose Best in Painting speed for full-rate viewport redraws.
+- **Weld bead height:** the control now starts at the displayed default and keeps each preset in sync.
+
 ## 0.51.7
 
 - **Weld brush:** the Projects shelf has a Weld brush tab with TIG, MIG and tack bead presets. Strokes paint metallic colour, roughness and raised height together; bead height is adjustable.

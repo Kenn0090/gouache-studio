@@ -1,8 +1,8 @@
 /* A procedural material brush for painting raised, metallic weld beads. */
 const WELD_STYLES=[
   {id:'tig',name:'TIG bead',detail:'Fine, even ripples',size:18,spacing:.17,rough:.3,color:[.58,.6,.62],height:.68},
-  {id:'mig',name:'MIG bead',detail:'Wider, heavier bead',size:30,spacing:.2,rough:.38,color:[.48,.5,.52],height:.72},
-  {id:'tack',name:'Tack weld',detail:'Short overlapping welds',size:25,spacing:.48,rough:.42,color:[.65,.58,.42],height:.66}
+  {id:'mig',name:'MIG bead',detail:'Wider, heavier bead',size:30,spacing:.2,rough:.38,color:[.48,.5,.52],height:.68},
+  {id:'tack',name:'Tack weld',detail:'Short overlapping welds',size:25,spacing:.48,rough:.42,color:[.65,.58,.42],height:.68}
 ];
 let weldTip=null,weldBusy=false;
 function weldTipGet(){if(weldTip)return weldTip;weldTip=genTip('Weld bead',192,96,(x,w,h)=>{
@@ -26,7 +26,7 @@ function weldCard(style){const cv=el('canvas',{width:112,height:54,role:'img','a
   x.lineCap='round';x.lineJoin='round';x.lineWidth=style.id==='mig'?13:style.id==='tack'?10:8;x.strokeStyle='#87909a';x.beginPath();x.moveTo(12,34);x.bezierCurveTo(22,17,30,17,39,30);x.bezierCurveTo(49,43,57,39,66,26);x.bezierCurveTo(77,12,88,17,100,30);x.stroke();
   x.lineWidth=2;x.strokeStyle='#d5d7d8';x.beginPath();x.moveTo(15,31);x.bezierCurveTo(25,19,31,19,39,30);x.bezierCurveTo(50,42,58,37,67,26);x.bezierCurveTo(78,14,88,18,98,29);x.stroke();
   const b=el('button',{class:'mattile weld-card',type:'button',title:'Select '+style.name+' and start painting raised metallic weld beads'},cv,el('span',{text:style.name}),el('small',{text:style.detail}));b.onclick=()=>weldUse(style);return b;}
-function weldShelfContent(){const height=makeSlider({id:'weldHeight',label:'Bead height',min:0,max:1,step:.01,value:.36,fmt:v=>Math.round(v*100)+'%',onInput:v=>{for(const s of WELD_STYLES)s.height=.35+v*.8;}});
+function weldShelfContent(){const height=makeSlider({id:'weldHeight',label:'Bead height',min:0,max:1,step:.01,value:.68,fmt:v=>Math.round(v*100)+'%',onInput:v=>{for(const s of WELD_STYLES)s.height=v;}});
   const grid=el('div',{class:'matgrid weld-grid'});for(const s of WELD_STYLES)grid.append(weldCard(s));
   return el('div',{class:'weld-shelf'},el('p',{class:'note',text:'Paint raised metallic beads on a layer’s colour thumbnail. The brush adds a metallic base, roughness and height channel together; adjust bead size in Brush and height here.'}),grid,height.el,
     el('p',{class:'note',text:'Bead height changes the material’s height value. The visible relief depends on the layer’s height strength and the 3D material settings.'}));}
