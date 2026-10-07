@@ -58,3 +58,5 @@ Mirrored dabs are true mirror images, so shaped and rotated brush tips flip the 
 *Radial symmetry with 8 copies.*
 
 In **3D Paint**, the radial control highlights its active copy count and axis. **Show guides** displays spokes and a ring around that axis, using the same centre offsets as your strokes.
+
+**Show copy cursors** previews mirrored and radial brush footprints on visible mesh surfaces while hovering or painting. It is separate from **Show guides**: hide the planes and radial ring while keeping the copy cursors visible. Copy cursors disappear during navigation or when leaving the viewport.

@@ -24,6 +24,22 @@ const ok=(v,m)=>{console.log((v?'PASS ':'FAIL ')+m);if(!v)fails++;};
 
  const bar=await p.evaluate(()=>{const g=__gs;g.setMode('p3d');g.mir3.radial=7;g.mir3BarSync();const r=document.getElementById('mir3Rad');return {value:r?.value,on:r?.classList.contains('on'),label:r?.getAttribute('aria-label'),overlay:g.cageOverlay()};});ok(bar.value==='7'&&bar.on&&bar.label.includes('7 radial copies around Z'),'3D radial state highlights the active count and axis, including odd counts');
  ok(bar.overlay==='', 'canvas symmetry guides stay hidden in the full 3D viewport');
+ const cursors=await p.evaluate(()=>{const g=__gs;g.useModel(g.primMesh('sphere'));g.v3.paintOn=true;g.setTool('brush');g.brush.size=32;g.v3s().disp=0;g.v3s().ortho=true;Object.assign(g.v3.cam,{yaw:0,pitch:0,dist:3,tx:0,ty:0,tz:0});Object.assign(g.mir3,{x:false,y:false,z:false,off:[0,0,0],radial:6,axis:'z',show:false,cursors:true});g.composite();g.v3Refresh();
+ const hit=document.getElementById('v3Hit'),r=hit.getBoundingClientRect(),F=g.v3Targets(256,256,false),gl=g.gl;
+ const read=()=>{const a=new Uint8Array(256*256*4);gl.bindFramebuffer(gl.FRAMEBUFFER,F.rf);gl.readPixels(0,0,256,256,gl.RGBA,gl.UNSIGNED_BYTE,a);gl.bindFramebuffer(gl.FRAMEBUFFER,null);return a;};
+ g.mir3.cursors=false;g.v3Render(F);const base=read();g.mir3.cursors=true;g.mir3CursorMove(hit,{clientX:r.left+r.width*.62,clientY:r.top+r.height*.5});
+ let reads=0;const orig=gl.readPixels;gl.readPixels=function(...a){reads++;return orig.apply(this,a);};g.v3Render(F);gl.readPixels=orig;const copies=read();
+ const changed=a=>{let n=0;for(let i=0;i<a.length;i+=4)if(Math.max(...[0,1,2].map(k=>Math.abs(a[i+k]-base[i+k])))>8)n++;return n;};
+ const pixels=changed(copies),points=[];for(let y=0;y<256;y++)for(let x=0;x<256;x++){const i=(y*256+x)*4;if(Math.max(...[0,1,2].map(k=>Math.abs(copies[i+k]-base[i+k])))>8)points.push([x,y]);}
+ const sectors=new Set(points.map(([x,y])=>Math.round((Math.atan2(y-128,x-128)+Math.PI*2)/(Math.PI*2)*6)%6));
+ g.mir3.cursors=false;g.v3Render(F);const hidden=changed(read());g.mir3.cursors=true;g.mir3CursorMove(hit,{clientX:r.left+r.width*.62,clientY:r.top+r.height*.5,altKey:true});g.v3Render(F);const alt=changed(read());
+ g.mir3CursorMove(hit,null);g.v3Render(F);const left=changed(read());const limits=[];for(const n of [3,7,16]){g.mir3.radial=n;g.mir3.x=n===16;g.v3s().ortho=n!==7;g.mir3CursorMove(hit,{clientX:r.left+r.width*.62,clientY:r.top+r.height*.5});g.v3Render(F);limits.push(gl.getError()===0&&changed(read())>0);}g.mir3.x=false;g.mir3.radial=6;g.v3s().ortho=true;g.mir3CursorMove(hit,null);g.mir3BarSync();return {limits,pixels,sectors:[...sectors],hidden,alt,left,reads,error:gl.getError(),matrices:g.mir3Mats().length};});console.log('Surface cursors',cursors);
+ ok(cursors.pixels>20&&cursors.sectors.length===5&&cursors.matrices===6,'five visible surface cursors preview six radial copies while guides are hidden');
+ ok(cursors.hidden===0&&cursors.alt===0&&cursors.left===0,'copy cursors hide independently, during navigation and when leaving the viewport');
+ ok(cursors.limits.every(Boolean),'odd radial counts, perspective view and the 32-copy mirror/radial limit render correctly');
+ ok(cursors.reads===0&&cursors.error===0,'surface cursor rendering needs no synchronous pixel readbacks and raises no WebGL errors');
+ await p.click('#mir3More');const toggles=await p.evaluate(()=>({guides:document.getElementById('mir3Show')?.checked,cursors:!!document.getElementById('mir3Cursors')}));ok(toggles.cursors,'3D symmetry settings offer an independent copy cursor switch');
+ await p.evaluate(()=>{const g=__gs;g.mir3.cursors=true;g.mir3.show=false;g.requestRender();});const hoverBox=await p.locator('#v3Hit').boundingBox();await p.mouse.move(hoverBox.x+hoverBox.width*.62,hoverBox.y+hoverBox.height*.5);await p.waitForTimeout(150);
  await p.screenshot({path:path.join(__dirname,'symmetry-preview.local.png')});
  ok(errors.length===0,'no application errors');if(errors.length)console.log(errors);await b.close();await new Promise(r=>server.close(r));process.exitCode=fails?1:0;
 })().catch(e=>{console.error(e);process.exit(1);});
