@@ -1,5 +1,9 @@
 # What's new in Gouache Studio
 
+## 0.51.14
+
+- Reduce repeated-stroke pauses in large layered documents by reusing released GPU layer-cache buffers. Idle memory trimming can still reclaim these buffers.
+
 ## 0.51.13
 
 - Copy brush-tip alpha correctly into editable paths instead of reading the screen framebuffer.

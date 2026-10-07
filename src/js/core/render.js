@@ -28,14 +28,14 @@ function strokeCacheSafe(){if(!stroke)return false;if(stroke.cacheSafe===undefin
   return stroke.cacheSafe;}
 function strokeCacheFor(list,k){if(!strokeCacheSafe())return null;const i=strokeBranch(list);if(i<1)return null;
   const c=stroke.cache||(stroke.cache=new Map());let maps=c.get(list);if(!maps)c.set(list,maps={});return maps[k]||(maps[k]={i,t:null});}
-function dropStrokeCache(s){if(s&&s.cache){for(const maps of s.cache.values())for(const k in maps)if(maps[k].t)disposeTarget(maps[k].t);s.cache=null;}}
+function dropStrokeCache(s){if(s&&s.cache){for(const maps of s.cache.values())for(const k in maps)if(maps[k].t)release(maps[k].t);s.cache=null;}}
 /* A proven opaque, normal-blended fill completely replaces the rows below in this channel.
    Masks, projection holes, clipped effects and live looks keep the full ordering. */
 function compVisibleStart(list,k){for(let i=list.length-1;i>=0;i--){const n=list[i],c=mapSolid(n,k),t=mapT(n,k,true);if(n.type==='layer'&&n.visible&&(c?c[3]===1:n.fill&&(mapLive(n,k)?fillLiveOpaque(n,k):t&&t.opaque))&&n.opacity===1&&mapModeOf(n,k)===0&&!n.clip&&!maskTexOf(n)&&!n.fx&&!lookTouches(n,k)&&!(n.cfx&&cfxOn(n,k))&&!clippedFx(list,i,k).length&&!(panState&&n.id===panState.id&&panState.maps.has(k))&&!(preview&&preview.L===n)&&!(stroke&&stroke.L===n))return i;}return 0;}
 function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
   let start=compVisibleStart(list,k);const cache=strokeCacheFor(list,k),sc=cache&&cache.i>start?cache:null;compStats.skipped+=start;
   if(sc&&sc.t&&sc.t.depth===acc.depth){blit(sc.t,acc,0,0,doc.w,doc.h,0,0);start=sc.i;compStats.cacheHits++;}
-  for(let i=start;i<list.length;i++){if(sc&&i===sc.i&&!sc.t&&!compPart&&!scissorNow){sc.t=makeTarget(doc.w,doc.h,acc.depth,undefined,acc.packed);blit(acc,sc.t,0,0,doc.w,doc.h,0,0);}
+  for(let i=start;i<list.length;i++){if(sc&&i===sc.i&&!sc.t&&!compPart&&!scissorNow){sc.t=acquireD(acc.depth);blit(acc,sc.t,0,0,doc.w,doc.h,0,0);}
     const n=list[i],clipped=clipBaseOf(list,i);
     if(!n.visible)continue;if(clipped&&!clipped.visible)continue;
     const mt=maskTexOf(n);
