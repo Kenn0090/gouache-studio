@@ -16,16 +16,17 @@ void main(){ vec2 t=aT*uUVs; vec3 p=aP; if(uUseH==1&&uDisp!=0.0){ float h=textur
 /* uMir: for mirror and radial painting, the texel looks up the brush where its mirror image is (identity otherwise) */
 const FS_3DPROJ=`in vec3 vP; in vec3 vN; uniform mat4 uVPm; uniform sampler2D uStroke; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform mat4 uMir;
 uniform int uSt; uniform sampler2D uStT; uniform vec2 uStC; uniform vec2 uStHalf; uniform float uStRot; uniform vec2 uScr; uniform int uStTile; uniform int uStInv;
-void main(){ vec3 q=(uMir*vec4(vP,1.0)).xyz, nq=mat3(uMir)*vN; vec4 c=uVPm*vec4(q,1.0); if(c.w<=1e-6){ o=vec4(0); return; } vec2 s=c.xy/c.w*0.5+0.5;
+void main(){ vec3 q=(uMir*vec4(vP,1.0)).xyz; vec4 c=uVPm*vec4(q,1.0); if(c.w<=1e-6){ o=vec4(0); return; } vec2 s=c.xy/c.w*0.5+0.5;
   if(s.x<0.0||s.y<0.0||s.x>1.0||s.y>1.0){ o=vec4(0); return; }
   ivec2 ds=textureSize(uDepth,0); float z=texelFetch(uDepth,clamp(ivec2(s*vec2(ds)),ivec2(0),ds-1),0).r; float d=length(q-uCamP);
   if(z<=0.0||d>z*1.006+0.004){ o=vec4(0); return; }
-  float f=abs(dot(normalize(nq),normalize(uCamP-q))); vec4 t=texture(uStroke,s);
+  vec4 t=texture(uStroke,s);
   /* stencil: 1 = mask (light parts let paint through), 2 = colour (paints the picture itself) */
   if(uSt>0){ vec2 pp=s*uScr-uStC; float cr=cos(uStRot),sr=sin(uStRot); vec2 l=vec2(cr*pp.x-sr*pp.y,sr*pp.x+cr*pp.y)/(2.0*uStHalf)+0.5;
     if(uStTile==1) l=fract(l); else if(l.x<0.0||l.y<0.0||l.x>1.0||l.y>1.0){ o=vec4(0); return; }
     vec4 m=texture(uStT,vec2(l.x,1.0-l.y));/* pictures are stored top row first */ if(uSt==1){ float k=m.a>1e-5?dot(m.rgb/m.a,vec3(0.299,0.587,0.114))*m.a:0.0; t.a*=uStInv==1?1.0-k:k; } else { vec3 c=m.a>1e-5?m.rgb/m.a:vec3(0.0); t.rgb=uStInv==1?1.0-c:c; t.a*=m.a; } }
-  o=vec4(t.rgb,t.a*smoothstep(0.04,0.22,f)); }`;
+  /* Depth determines visibility. Shading normals must not fade a visible bevel out of the stroke. */
+  o=t; }`;
 const VS_3DD=VS_3D.replace('out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;','out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;');
 let P3P=null;
 function p3p(){if(!P3P)P3P={depth:prog3(VS_3DD,FS_3DDEPTH.replace('void main','in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan;\nvoid main')),proj:prog3(VS_3DPROJ,FS_3DPROJ)};return P3P;}

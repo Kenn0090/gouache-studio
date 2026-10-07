@@ -53,3 +53,5 @@ node baketab.cjs              # one test: prints PASS/FAIL lines, then ALL PASSE
 - `mesh-seams.cjs` checks smooth-gradient preservation across coarse and dense triangulation, Gaussian/box blur across folded mirrored UV islands, and projected brush coverage at hard-normal joins with exact undo/redo. Serves the offline desktop frontend in Edge; `GS_HARDWARE=1` uses D3D11.
 
 - `blur-seam-layer.cjs` reproduces bright UV seams on transparent painted layers without blur and with Box/Gaussian Blur attached. It samples the actual 3D base texture at island boundaries with bilinear filtering and mip levels 1/2, compares regional updates with full refreshes, checks distant atlas pixels, and verifies original layer pixels are unchanged. Serves the offline desktop frontend in Edge; `GS_HARDWARE=1` uses D3D11.
+
+- `paint-bevel-seams.cjs` reproduces reduced projected brush opacity on a visible steep bevel between separated UV islands. Checks full brush coverage, protection of an occluded surface, exact undo/redo and graphics errors. Offline desktop frontend in Edge; `GS_HARDWARE=1` uses D3D11.
