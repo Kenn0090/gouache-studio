@@ -1,5 +1,6 @@
 # Gouache Studio 0.51.13
 
+- Correct the brush-tip alpha used by editable weld paths.
 - Reduce weld painting preview stutters by updating changed material regions and using a lighter weld shader.
 - Keep the 3D brush size consistent on the model when zooming, with a matching cursor.
 

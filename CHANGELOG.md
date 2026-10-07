@@ -2,6 +2,7 @@
 
 ## 0.51.13
 
+- Copy brush-tip alpha correctly into editable paths instead of reading the screen framebuffer.
 - Reduce weld painting preview work by refreshing the changed colour, roughness, metal and normal regions instead of whole textures. Use a lighter weld shader prepared when the tool is selected.
 - Keep the 3D brush footprint independent of viewport zoom, with the cursor following the projected brush size.
 

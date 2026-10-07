@@ -32,3 +32,5 @@ if(window.__gs)Object.assign(window.__gs,{weldPathUpdate});
 if(window.__gs)Object.assign(window.__gs,{p3Sig});
 
 if(window.__gs)Object.assign(window.__gs,{meshBrushScale,v3s,runStat});
+
+if(window.__gs)Object.assign(window.__gs,{pathTipCopy,weldTipGet});
