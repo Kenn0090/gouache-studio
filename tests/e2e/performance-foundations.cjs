@@ -24,6 +24,15 @@ let failures=0;const ok=(v,m)=>{console.log((v?'PASS ':'FAIL ')+m);if(!v)failure
   console.log(kind,JSON.stringify(r));ok(r.max<=1,kind+' matches full compositor across the whole image');ok(r.undoOK,kind+' undo/redo retains pixels');ok(r.error===0,kind+' has no graphics errors');
   if(['blur-above','dependent-mask'].includes(kind))ok(r.partial===0,kind+' uses conservative full redraw');else ok(r.partial>0&&r.px<r.fullPx*(kind==='wrapped'?.8:.6),kind+' reduces shader pixel work');
  }
+ for(const depth of [8,16]){
+  const reuse=await p.evaluate(depth=>{const G=__gs;G.newDoc(128,128,depth,[.2,.3,.4],'Cache reuse',false);const L=G.newLayerObj('Paint');G.insertNode(L,G.doc.root);G.selectOnly(L);G.composite();
+   const o={...G.brush,tool:'brush',size:10,color:[.8,.1,.2],pSize:false,smoothing:0,tip:null,sym:null};let released=true,stable=true,warm=0;const pixels=[];
+   for(let i=0;i<6;i++){G.beginStroke(L,32+i*8,48,1,o);G.composite();const s=G.strokeNow(),t=s.cache?.get(G.doc.root.children)?.base?.t;
+    if(!t||!t.pool)throw Error('Expected a pooled complete prefix');const n=t.pool.all.length;if(i===0)warm=n;else stable=stable&&n<=warm;
+    G.endStroke(true);released=released&&!!t.tex&&t.pool.free.includes(t)&&!s.cache;G.composite();pixels.push(G.readRGBA8(L.target)[(48*128+32+i*8)*4+3]);}
+   const before=G.readRGBA8(L.target);G.undo();G.redo();const same=G.readRGBA8(L.target).every((v,i)=>v===before[i]);return {released,stable,pixels,same,error:G.gl.getError()};},depth);
+  console.log('cache reuse',depth,reuse);ok(reuse.released&&reuse.stable&&reuse.pixels.every(v=>v>0)&&reuse.same&&reuse.error===0,depth+'-bit repeated strokes reuse released prefix buffers and retain pixels/undo');
+ }
  const pack=await p.evaluate(async()=>{const G=__gs,W=256,raw=new Uint8Array(W*W*4);for(let i=0;i<raw.length;i++)raw[i]=(i*17+(i>>9))&255;
   const packed=await G.pxPack(raw,W,W,8,false),out=await G.pxUnpack(packed.bytes,W,W,8,packed.f);const same=raw.every((v,i)=>v===out[i]);
   const floats=new Float32Array(W*W*4);for(let i=0;i<floats.length;i++)floats[i]=(i%101)/100;const expected=G.pxBytes(floats,16),half=await G.pxPack(floats,W,W,16,false),back=await G.pxUnpack(half.bytes,W,W,16,half.f);
