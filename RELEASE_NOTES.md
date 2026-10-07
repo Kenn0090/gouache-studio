@@ -1,3 +1,7 @@
+# Gouache Studio 0.51.9
+
+- Weld bead strokes now include generated surface normal detail for a rippled, formed-metal appearance alongside the existing raised height and metallic channels.
+
 # Gouache Studio 0.51.8
 
 - High-resolution 3D painting automatically caps redraw rate for large, multi-layer documents without dropping brush samples; Best restores full-rate redraws.

@@ -4,7 +4,19 @@ const WELD_STYLES=[
   {id:'mig',name:'MIG bead',detail:'Wider, heavier bead',size:30,spacing:.2,rough:.38,color:[.48,.5,.52],height:.68},
   {id:'tack',name:'Tack weld',detail:'Short overlapping welds',size:25,spacing:.48,rough:.42,color:[.65,.58,.42],height:.68}
 ];
-let weldTip=null,weldBusy=false;
+let weldTip=null,weldBusy=false,weldNormalPixels=null;
+function weldNormalImage(){
+  if(weldNormalPixels)return {w:192,h:96,data:weldNormalPixels};
+  const w=192,h=96,pixels=new Uint8Array(w*h*4),tau=Math.PI*2;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const u=(x+.5)/w-.5,v=(y+.5)/h,across=u/.18,ripple=.88+.12*Math.sin(v*tau*8),gaussian=Math.exp(-2*across*across);
+    const dzdx=.72*(-4*across/.18)*gaussian*ripple,dzdy=.72*gaussian*.12*Math.cos(v*tau*8)*tau*8;
+    let nx=-dzdx,ny=-dzdy,nz=1,len=Math.hypot(nx,ny,nz)||1;nx/=len;ny/=len;nz/=len;
+    const i=(y*w+x)*4;pixels[i]=Math.round((nx*.5+.5)*255);pixels[i+1]=Math.round((ny*.5+.5)*255);
+    pixels[i+2]=Math.round((nz*.5+.5)*255);pixels[i+3]=255;
+  }
+  weldNormalPixels=pixels;return {w,h,data:pixels};
+}
 function weldTipGet(){if(weldTip)return weldTip;weldTip=genTip('Weld bead',192,96,(x,w,h)=>{
   x.beginPath();x.moveTo(w*.025,h*.5);x.bezierCurveTo(w*.03,h*.2,w*.12,h*.12,w*.2,h*.2);
   for(let i=0;i<8;i++){const a=w*(.2+i*.1),b=a+w*.05;x.bezierCurveTo(a+w*.012,h*.34,a+w*.035,h*.68,b,h*.78);x.bezierCurveTo(b+w*.018,h*.86,b+w*.032,h*.86,a+w*.1,h*.78);}
@@ -13,8 +25,7 @@ function weldTipGet(){if(weldTip)return weldTip;weldTip=genTip('Weld bead',192,9
   x.bezierCurveTo(w*.08,h*.11,w*.025,h*.26,w*.025,h*.5);x.closePath();x.fill();});return weldTip;}
 function weldMaterial(style){const h=style.height;return {id:'weld:'+style.id+':'+h.toFixed(2),name:style.name,fill:{proj:'uv',triSharp:4,hStr:1,maps:{
   base:{on:true,src:'value',c:style.color},rough:{on:true,src:'value',v:style.rough},metal:{on:true,src:'value',v:1},
-  height:{on:true,src:'value',v:.5+h*.5},normal:{on:false}
-}},imgs:{}};}
+  height:{on:true,src:'value',v:.5+h*.5},normal:{on:true,src:'image',tile:1}}},imgs:{normal:weldNormalImage()}};}
 async function weldUse(style){if(weldBusy)return;weldBusy=true;try{
   const ok=await materialBrushUse(weldMaterial(style));if(!ok)return;
   applyPreset({name:'Weld · '+style.name,tool:'material',tip:weldTipGet(),size:style.size,hardness:.92,flow:1,opacity:1,spacing:style.spacing,
