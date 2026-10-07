@@ -1,3 +1,8 @@
+## 0.51.20
+
+- Fix thin bright UV seams on ordinary painted layers in 3D Paint, including layers with Box Blur or Gaussian Blur attached.
+- Extend texture edge pixels into a small UV border so texture sampling stays continuous at full resolution and in the first two smaller previews. Original layer pixels remain editable and unchanged.
+
 ## 0.51.19
 
 - Preserve smooth detail through seam-aware Gaussian and box blur instead of shifting samples at every triangle edge.

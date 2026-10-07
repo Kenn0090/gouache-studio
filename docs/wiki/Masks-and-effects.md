@@ -94,3 +94,7 @@ The builder reads the texture set's baked mesh maps. World normal and position t
 Use a library grunge picture row above the builder in Multiply for a specific scratch or dirt pattern. Keep a paint row above it for touch-ups. All strengths and settings stay editable and save with projects and smart masks.
 
 Mask Levels reads the input mask below its row, including for its histogram and Auto. The simple handles and slider layout both update the actual mask. In the Sliders layout, typed black/white values use 0–255; midtones uses gamma.
+
+In **3D Paint**, Box Blur and Gaussian Blur with **Mesh seams** enabled also extend the filtered result eight pixels outside the active mesh’s UV islands. This prevents the 3D preview from mixing empty border pixels into painted edges. It applies to effects attached to a layer as well as filter layers; the original paint is retained. Very distant views can still blend wider areas of the atlas, and separate texture sets are not connected by this option.
+
+The 3D Paint preview applies the same eight-pixel UV border to ordinary paint and material maps, even without a blur effect. Small painting updates refresh the affected border and smaller previews together; this does not alter the original layer.
