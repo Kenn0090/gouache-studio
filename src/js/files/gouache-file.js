@@ -49,7 +49,7 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
       if(mapLive(n,k)){const tmp=acquireD(mapDepth(k));try{fillDrawMap(n,k,tmp);r=await put(tmp,true,PX_LOSSY.has(k));r.live=1;}finally{release(tmp);}}
       else r=color?await putSolid(k,color):await put(mapT(n,k),false,PX_LOSSY.has(k));if(r)maps[k]=r;}
     /* a material layer's own images (so it stays editable after opening) */
-    let fillImg;if(n.fill&&n._fillImg){fillImg={};for(const k in n._fillImg){const t=n._fillImg[k],c=await pack(t,0,0,t.w,t.h,!mapLive(n,k)&&PX_LOSSY.has(k));blobs.push(c.bytes);fillImg[k]={o:off,n:c.bytes.length,w:t.w,h:t.h,f:c.f};off+=c.bytes.length;}}
+    let fillImg;if((n.fill||n.path)&&n._fillImg){fillImg={};for(const k in n._fillImg){const t=n._fillImg[k],c=await pack(t,0,0,t.w,t.h,!mapLive(n,k)&&PX_LOSSY.has(k));blobs.push(c.bytes);fillImg[k]={o:off,n:c.bytes.length,w:t.w,h:t.h,f:c.f};off+=c.bytes.length;}}
     return Object.assign(base,{t:'L',clip:n.clip,lock:n.lockAlpha,mapModes:n.mapModes||{},maps,text:n.text?cloneText(n.text):undefined,grad:n.grad||undefined,array:n.array||undefined,arrBox:n.array?n.arrBox:undefined,styles:n.styles||undefined,shape:n.shape||undefined,path:n.path||undefined,fill:n.fill||undefined,idSel:n.idSel||undefined,fillImg,hold:n.frame?n.hold:undefined});};
   const R=paintRoot(),kids=[];for(const c of R.children){kids.push(await node(c));await tick();}
   const all=allLayers(R),active=doc.active&&!doc.active.frame?allNodes(R).indexOf(doc.active):-1;

@@ -29,3 +29,4 @@ if(window.__gs)Object.assign(window.__gs,{drawGradient,gradDef,gradAt,positionEd
 if(window.__gs)Object.assign(window.__gs,{weldUse,WELD_STYLES,weldOptions,txClick,wsForMode,lazyStep,pressureOf});
 if(window.__gs)Object.assign(window.__gs,{meshConnectedBlur,seamBlurMesh,seamBlurDispose});
 if(window.__gs)Object.assign(window.__gs,{weldPathUpdate});
+if(window.__gs)Object.assign(window.__gs,{p3Sig});
