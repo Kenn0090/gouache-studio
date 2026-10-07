@@ -1,3 +1,9 @@
+# Gouache Studio 0.51.7
+
+- Weld brush tab in the Projects shelf with raised TIG, MIG and tack bead presets, adjustable height and linked metallic material channels.
+- Restore the Z magnifying glass tool, with pointer-centred zoom and Shift-click zoom out.
+- Preserve Wacom pressure when coalesced pointer samples omit pen metadata in 2D and 3D painting.
+
 # Gouache Studio 0.51.6
 
 - Regenerated all 200 bundled material thumbnails at 768 × 768 with sharper surface detail.
