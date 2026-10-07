@@ -1,5 +1,6 @@
 /* ================= Rendering ================= */
-function requestRender(comp){if(comp)dirtyComp=true;if(!raf)raf=requestAnimationFrame(frame);}
+let weldEndPreview=null;
+function requestRender(comp){if(comp){dirtyComp=true;weldEndPreview=null;}if(!raf)raf=requestAnimationFrame(frame);}
 const perf={on:false,frames:[],worst:null,last:0};
 /* (0.30) Painting speed: while a stroke is being drawn, the screen is refreshed at most this often (ms apart).
    The paint itself lands exactly the same; only how often the picture is redrawn changes. */
@@ -10,6 +11,11 @@ function frame(){raf=0;if(typeof tabDocs!=='undefined'&&tabDocs.hold){requestRen
   try{if(stroke&&stroke.spaceDirty){stroke.spaceDirty=false;stroke.space.sync();}if(stroke&&stroke.cloneDirty)cloneUpdate();if(dirtyComp){composite();dirtyComp=false;tc=performance.now();}drawView();drawUVOverlay();draw3D();const tv=performance.now();flushThumbs();if(tedit)positionEditor();
   if(perf.on)perfFrame(t0,tc-t0,tv-tc,performance.now()-tv);}finally{if(gq)perfGpuEnd(gq);}}
 let maskOverride=new Map();
+/* Keep live coverage shared by every material channel, including the 3D preview. */
+function withWeldMask(region,fn){const s=stroke;if(!s?.o.weldMask||!s.L.maskOf||s.L.mrow)return fn();const prev=maskOverride,T=acquireD(s.L.target.depth);
+  const merge=()=>run(P.merge,T,Object.assign({uSrc:s.L.target.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(s.o)},uStrokeColor:s.o.color,...tintU(),uStrokeOpacity:s.o.opacity,uLockAlpha:false},selU(s.o),tonalU(s.o)));
+  try{if(region){const x=Math.max(0,region[0]-1),y=Math.max(0,region[1]-1);scissorDo([x,y,Math.min(doc.w,region[0]+region[2]+1)-x,Math.min(doc.h,region[1]+region[3]+1)-y],merge);}else merge();maskOverride=new Map(prev);maskOverride.set(s.L.maskOf,T.tex);return fn();}
+  finally{maskOverride=prev;release(T);}}
 function maskTexOf(n){if(!n.mask||!n.mask.enabled)return null;return maskOverride.get(n)||n.mask.target.tex;}
 /* selection clipping for a stroke: only when the stroke was started with an active selection */
 /* how a stroke is merged: 1 paint, 2 erase, 3 dodge, 4 burn (plus the dodge/burn settings) */
@@ -96,14 +102,14 @@ function compositeStrokePart(){const s=stroke;if(!s||!strokeCacheSafe()||!s.comp
     let x0=1e9,y0=1e9,x1=0,y1=0;for(const r of rs){x0=Math.min(x0,r[0]);y0=Math.min(y0,r[1]);x1=Math.max(x1,r[0]+r[2]);y1=Math.max(y1,r[1]+r[3]);}
     const tmp=[];maskOverride=new Map();
     try{scissorDo([x0,y0,x1-x0,y1-y0],()=>{const lm=acquire();tmp.push(lm);
-      run(P.merge,lm,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(s.o)},uStrokeColor:s.o.color,...tintU(),uStrokeOpacity:s.o.opacity,uLockAlpha:false},selU(s.o),tonalU(s.o)));
+      run(P.merge,lm,Object.assign({uSrc:s.lazy&&s.L.maskOf?s.L.target.tex:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(s.o)},uStrokeColor:s.o.color,...tintU(),uStrokeOpacity:s.o.opacity,uLockAlpha:false},selU(s.o),tonalU(s.o)));
       if(s.L.mrow){const ev=msEval(s.L.maskOf,{row:s.L.mrow,t:lm});tmp.push(ev);maskOverride.set(s.L.maskOf,ev.tex);}else maskOverride.set(s.L.maskOf,lm.tex);
       const acc=acquire();clearTarget(acc,mapDefault(doc.map));const out=compositeList(doc.root.children,acc);blit(out,compOut,x0,y0,x1-x0,y1-y0,x0,y0);release(out);});}
     finally{compPart=false;maskOverride=new Map();tmp.forEach(release);}
   }else try{for(const r of rs)scissorDo(r,()=>{const acc=acquire();clearTarget(acc,mapDefault(doc.map));const out=compositeList(doc.root.children,acc);blit(out,compOut,r[0],r[1],r[2],r[3],r[0],r[1]);release(out);});}finally{compPart=false;}
   compOut.mipDirty=true;if(compOut.hasMips&&!(doc.w&(doc.w-1))&&!(doc.h&(doc.h-1))){for(const r of rs)v3PatchMips(compOut,r);compOut.mipDirty=false;}v3Changed(rs);return true;}
 function composite(){if(compositeStrokePart())return;compStats.full++;if(compOut)release(compOut);maskOverride=new Map();const tmp=[];maskViewLive=false;if(typeof msUpdateAll==='function')msUpdateAll();
-  if(stroke&&stroke.L.maskOf&&!strokeLive(stroke.o)){const lm=acquire();tmp.push(lm);run(P.merge,lm,Object.assign({uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,...tintU(),uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},selU(stroke.o),tonalU(stroke.o)));
+  if(stroke&&stroke.L.maskOf&&!strokeLive(stroke.o)){const lm=acquire();tmp.push(lm);run(P.merge,lm,Object.assign({uSrc:stroke.lazy&&stroke.L.maskOf?stroke.L.target.tex:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,...tintU(),uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},selU(stroke.o),tonalU(stroke.o)));
     /* a Paint row of a mask with rows: the whole stack again, with the row as it is being painted */
     if(stroke.L.mrow){const ev=msEval(stroke.L.maskOf,{row:stroke.L.mrow,t:lm});tmp.push(ev);maskOverride.set(stroke.L.maskOf,ev.tex);if(ui.viewMask){if(!maskViewT||maskViewT.w!==doc.w||maskViewT.h!==doc.h||maskViewT.depth!==ev.depth){disposeTarget(maskViewT);maskViewT=makeTarget(doc.w,doc.h,ev.depth);}blit(ev,maskViewT,0,0,doc.w,doc.h,0,0);maskViewLive=true;}}
     else{maskOverride.set(stroke.L.maskOf,lm.tex);if(ui.viewMask){if(!maskViewT||maskViewT.w!==doc.w||maskViewT.h!==doc.h||maskViewT.depth!==lm.depth){disposeTarget(maskViewT);maskViewT=makeTarget(doc.w,doc.h,lm.depth);}blit(lm,maskViewT,0,0,doc.w,doc.h,0,0);maskViewLive=true;}}}

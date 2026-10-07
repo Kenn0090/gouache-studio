@@ -23,7 +23,8 @@ function beginStroke(L,x,y,p,o){
   const W=doc.w,H=doc.h;
   /* Big canvases: plain painting copies only the part of the layer the stroke covered, when it ends (endStroke), and
      clears only what the last stroke left in strokeT, instead of the whole canvas each time (a 16k canvas is 1 GB). */
-  const lazy=['brush','erase','dodge','burn'].includes(o.tool)&&!L.maskOf&&!L.quick&&ui.mode!=='bake'&&!o.space;
+  const weldMask=!!o.weldMask&&L.maskOf?.materialPaint?.startsWith('weld:')&&!L.maskObj?.stack;
+  const lazy=['brush','erase','dodge','burn'].includes(o.tool)&&(!L.maskOf||weldMask)&&!L.quick&&ui.mode!=='bake'&&(!o.space||weldMask);
   if(!lazy)blit(L.target,beforeT,0,0,W,H,0,0);
   const tint=strokeTints(o),tc=[0,0,0,0];
   if(o.tool!=='smudge'){const d=strokeT.dirtyR;if(d&&d!=='all'){if(d[2]>0&&d[3]>0)scissorDo(d,()=>clearTarget(strokeT,tint?tc:undefined));}else clearTarget(strokeT,tint?tc:undefined);strokeT.dirtyR=null;}
@@ -125,5 +126,5 @@ function endStroke(record){
       pushUndo(parts.length?withMapParts(r,L,parts,x0,y0):r);}
     scheduleThumb(L.maskOf||L);
   }
-  requestRender(true);
+  requestRender(true);if(typeof v3WeldEnd==='function')v3WeldEnd(s,R);
 }

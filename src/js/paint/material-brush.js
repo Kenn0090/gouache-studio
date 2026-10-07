@@ -20,15 +20,12 @@ async function materialBrushUse(rec){if(!rec){toast('Select a material in the Ma
   if(rec.kind==='smart'||rec.kind==='smask'){toast('Choose a single material for painting.');return false;}
   materialBrush.loading=true;try{if(rec.bundled)await gmLoad(rec);if(!rec.fill)throw new Error('Choose a single material.');materialBrush.rec=rec;matRecTargets(rec);if(rec.weldPaint){packedProgram(materialStrokeProgram(false,true));packedProgram(materialStrokeProgram(true,true));}const need=Object.keys(rec.fill.maps).filter(k=>rec.fill.maps[k].on&&MAP_DEFS[k]&&!doc.maps.includes(k)&&!(doc.workflow==='spec'&&(k==='rough'||k==='metal')));if(need.length)setDocMaps([...doc.maps,...need],'Material brush channels');setTool('material');return true;}
   catch(e){toast('Could not load the material: '+e.message);return false;}finally{materialBrush.loading=false;}}
-function materialPaintOpts(o,et){if(ui.tool!=='material')return o;if(et.isMask&&et.node?.materialPaint){if(!materialBrush.rec||materialBrush.loading)return null;o.tool='brush';o.color=[1,1,1];o.noTint=true;o.chan=null;o.extras=[];return o;}if(et.isMask){toast('Select a layer’s colour thumbnail to start painting a material.');return null;}
+function materialPaintOpts(o,et){if(ui.tool!=='material')return o;if(et.isMask&&et.node?.materialPaint){if(!materialBrush.rec||materialBrush.loading)return null;o.tool='brush';o.color=[1,1,1];o.noTint=true;o.chan=null;o.extras=[];o.weldMask=et.node.materialPaint.startsWith('weld:');return o;}if(et.isMask){toast('Select a layer’s colour thumbnail to start painting a material.');return null;}
   const rec=materialBrush.rec;if(!rec||materialBrush.loading){toast(materialBrush.loading?'The material is loading.':'Choose a material in the shelf, then press Paint material.');return null;}
   o.tool='brush';o.noTint=true;o.chan=null;o.material={weldPaint:!!rec.weldPaint,fill:fillClone(rec.fill),imgs:matRecTargets(rec),tile:materialBrush.tile};
   o.extras=doc.maps.filter(k=>k!==doc.map&&rec.fill.maps[k]?.on).map(k=>({key:k,mode:1,color:[0,0,0]}));return o;}
 function materialBrushTarget(){if(ui.tool!=='material')return null;const n=doc.active,r=materialBrush.rec;if(!r||materialBrush.loading||sel.quick)return null;
-  /* Welds are pixel painting: never create a fill layer or a coverage mask. */
-  if(r.weldPaint){if(n&&isLayer(n)&&!n.fill&&!n.path&&!n.text&&!n.grad&&!n.shape&&!n.fx&&!n.editMask)return n;
-    cmdAddLayer();const L=doc.active;if(!L||!isLayer(L))return null;L.name=r.name;changed(L);return L;}
-  const key=(r.id||r.bundled?.file||r.name)+':'+materialBrush.tile;if(n?.materialPaint===key&&n.fill&&n.mask)return n;if(n?.editMask&&!n.materialPaint)return null;
+  const key=(r.id||r.bundled?.file||r.name)+':'+materialBrush.tile;if(n?.materialPaint===key&&n.fill&&n.mask)return n;if(n?.editMask&&!n.materialPaint&&!r.weldPaint)return null;
   /* Coverage uses one channel per texel. All channels share it and keep the material's
      original small sources, so 8K/16K material strokes do not expand six pixel layers. */
   const f=fillClone(r.fill);for(const k in f.maps)if(f.maps[k].src==='image')f.maps[k].tile=(f.maps[k].tile||1)*materialBrush.tile;
