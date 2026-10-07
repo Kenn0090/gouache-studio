@@ -59,11 +59,11 @@ const ok=(v,m)=>{console.log((v?'PASS ':'FAIL ')+m);if(!v)fails++;};
   for(let i=0;i<3;i++){g.addPoint(28+i*4,40,1);g.composite();g.v3Refresh();}
   const copied=g.v3Work.copyPixels-before,pixels=g.runStat.px-work,keys=['base','rough','metal','nfinal'],saved={};
   for(const k of keys)saved[k]=g.captureRegionNow(g.v3.tex[k],0,0,g.doc.w,g.doc.h).data;
-  g.v3.mapsDirty=true;g.v3.lastFull=0;g.v3Refresh();let maxDelta=0;
-  for(const k of keys){const b=g.captureRegionNow(g.v3.tex[k],0,0,g.doc.w,g.doc.h).data;for(let i=0;i<b.length;i++)maxDelta=Math.max(maxDelta,Math.abs(b[i]-saved[k][i]));}
+  g.v3.mapsDirty=true;g.v3.lastFull=0;g.v3Refresh();let maxDelta=0;const deltas={};
+  for(const k of keys){const b=g.captureRegionNow(g.v3.tex[k],0,0,g.doc.w,g.doc.h).data;let delta=0,at=0;for(let i=0;i<b.length;i++){const d=Math.abs(b[i]-saved[k][i]);if(d>delta){delta=d;at=i;}maxDelta=Math.max(maxDelta,d);}deltas[k]={delta,x:Math.floor(at/4)%g.doc.w,y:Math.floor(at/4/g.doc.w),channel:at%4,full:b[at],patch:saved[k][at]};}
   g.endStroke(true);g.composite();g.v3Refresh();const released=!g.v3.mapsDirty;
   g.doc.wrap=true;g.beginStroke(L,30,45,1,o);g.composite();const fallback=g.v3.mapsDirty&&!g.v3.mapRegion;g.endStroke(false);g.doc.wrap=false;
-  return {copied,pixels,fullCopies:g.doc.w*g.doc.h*4*3,maxDelta,released,fallback,error:g.gl.getError()};});
+  return {deltas,copied,pixels,fullCopies:g.doc.w*g.doc.h*4*3,maxDelta,released,fallback,error:g.gl.getError()};});
  console.log('Weld preview work',weldPerf);ok(weldPerf.copied<weldPerf.fullCopies*.25&&weldPerf.maxDelta<=1&&weldPerf.released&&weldPerf.fallback&&weldPerf.error===0,'weld patches update live colour, roughness, metal and normals with identical full-refresh pixels and safe fallback');
  const zoom=await p.evaluate(async()=>{const g=__gs;g.doc.wrap=false;g.setEditMap('base');g.setTool('brush');g.v3s().disp=0;g.v3s().uvs=1;Object.assign(g.v3.cam,{yaw:0,pitch:0,tx:0,ty:0,tz:0});
   const counts=[];for(const ortho of [false,true]){g.v3s().ortho=ortho;for(const dist of [3,1.5]){g.v3.cam.dist=dist;g.cmdAddLayer();const L=g.doc.active,o=g.paintOpts(g.editTarget()),sp=g.meshSpace(256,256);Object.assign(o,{space:sp,cageRs:g.meshBrushScale(256),size:48,pSize:false,tip:null,hardness:1,flow:1,opacity:1,smoothing:0,extras:[]});
