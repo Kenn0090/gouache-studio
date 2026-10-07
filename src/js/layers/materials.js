@@ -39,7 +39,7 @@ const gmRecs=(typeof GM_BUNDLED!=='undefined'?GM_BUNDLED:[]).filter(g=>g.kind===
 const GM_CATS=['Metal','Leather','Fabric','Plastic & rubber','Wood','Ground & nature','Stone & tile','Paint & ceramic','Other'];
 /* (0.36, Kenn) which kind of material to show: all, yours, the Library, smart materials or smart masks (the shelf's category list) */
 const MAT_VIEWS=[['all','All'],['yours','Yours'],['library','Library'],['smart','Smart materials'],['smask','Smart masks']];
-let matView=(()=>{try{return localStorage.getItem('gs.matView')||'all';}catch(e){return 'all';}})();
+let matView=(()=>{try{const v=localStorage.getItem('gs.matView')||'all';return MAT_VIEWS.some(([k])=>k===v)?v:'all';}catch(e){return 'all';}})();
 let gmCat=(()=>{try{return localStorage.getItem('gs.gmCat')||'Metal';}catch(e){return 'Metal';}})();
 async function gmFetch(file){for(const u of (location.protocol==='file:'?[]:['materials/'+file]).concat([GM_RAW+file])){try{const r=await fetch(u);if(r.ok)return new Uint8Array(await r.arrayBuffer());}catch(e){}}
   throw new Error(platform.isDesktop?'the file is missing':'it could not be downloaded (the web version needs the internet for the library)');}
