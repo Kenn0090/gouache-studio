@@ -1,6 +1,6 @@
 [package]
 name = "gouache-studio"
-version = "0.51.5"
+version = "0.51.6"
 description = "GPU-accelerated hand-painting and texture editor"
 edition = "2021"
 

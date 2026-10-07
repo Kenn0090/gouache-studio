@@ -1,5 +1,10 @@
 # What's new in Gouache Studio
 
+## 0.51.6
+
+- **Sharper material previews:** all 200 bundled material thumbnails now render at 768 × 768. Library hover previews render at 768 pixels or higher; editor and saved-material preview balls render at least 256 pixels, keeping the same compact panel layout.
+- **More visible surface detail:** material preview balls now include normal, roughness and metallic texture maps alongside colour and height. GPU shading samples the original maps without copying them into CPU preview buffers.
+
 ## 0.51.5
 
 - **Animation shortcuts:** Shift+D duplicates the current frame. Ctrl+D deselects and Ctrl+Shift+D reselects, including in Animation. Holding Shift+D creates only one copy per press. The Duplicate button shows its shortcut.

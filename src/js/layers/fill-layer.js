@@ -232,23 +232,29 @@ function fillNoMask(){const n=doc.active;return ui.mode!=='bake'&&!sel.quick&&is
 function fillMaskEdit(n){if(isLayer(n)&&n.fill&&n.mask&&!n.editMask)n.editMask=true;}
 /* Convert to pixels: the layer keeps what it shows now and becomes a normal layer */
 function fillRasterize(L){if(!L||!L.fill)return;const f=L.fill;for(const k of mapKeysOf(L))if(mapSolid(L,k)||mapLive(L,k))ensureMapTarget(L,k);L.fill=null;pushUndo({label:'Convert fill to pixels',refs:[L],undo(){L.fill=f;renderLayers();},redo(){L.fill=null;renderLayers();}});renderLayers();}
-/* ---- a small preview ball of a material (drawn on the CPU: base colour or its image, roughness, metallic, height bumps) ---- */
-const matImgCPU=new WeakMap();
-function matImgPixels(t){if(!t)return null;let c=matImgCPU.get(t);if(c)return c;const n=512,tmp=makeTarget(n,n,8,false);run(P.resample,tmp,{uSrc:t.tex,uOffset:[0,0],uScale:[t.w/n,t.h/n],uTaps:{int:8},uOutside:[0,0,0,0]});
-  const d=captureRegionNow(tmp,0,0,n,n).data;disposeTarget(tmp);c={n,d};matImgCPU.set(t,c);return c;}
-function matPreviewEl(getF,getImgs,size,scale){const S0=size||96,S=Math.round(S0*(scale||Math.min(window.devicePixelRatio||1,2))),cv2=el('canvas',{class:'matprev',width:S,height:S,style:'width:'+S0+'px;height:'+S0+'px','aria-hidden':'true'});
-  const redraw=()=>{const f=getF(),I=getImgs()||{},x=cv2.getContext('2d'),id=x.createImageData(S,S),D=id.data,ch=k=>f.maps[k]&&f.maps[k].on?f.maps[k]:null;
-    const bI=ch('base')&&ch('base').src!=='value'?matImgPixels(I.base):null,hI=ch('height')&&ch('height').src!=='value'?matImgPixels(I.height):null;
-    const bc=ch('base')?(ch('base').c||[.7,.7,.7]):[.72,.72,.72],r=ch('rough')?ch('rough').v:.5,mt=ch('metal')?ch('metal').v:0,hs=f.hStr==null?1:f.hStr;
-    const px1=(im,x,y)=>{const n=im.n,i=(((y%n)+n)%n*n+(((x%n)+n)%n))*4,a=im.d[i+3]/255||1;return [im.d[i]/255/a,im.d[i+1]/255/a,im.d[i+2]/255/a];};
-    const smp=(im,u,v)=>{const n=im.n,fx=u*n-.5,fy=v*n-.5,x0=Math.floor(fx),y0=Math.floor(fy),tx=fx-x0,ty=fy-y0,a=px1(im,x0,y0),b=px1(im,x0+1,y0),c=px1(im,x0,y0+1),d=px1(im,x0+1,y0+1);return [0,1,2].map(k=>(a[k]*(1-tx)+b[k]*tx)*(1-ty)+(c[k]*(1-tx)+d[k]*tx)*ty);};
-    const L=norm3([-.5,.6,.65]),lin=v=>Math.pow(v,2.2);
-    for(let y=0;y<S;y++)for(let x0=0;x0<S;x0++){const nx=(x0+.5)/S*2-1,ny=1-(y+.5)/S*2,rr=nx*nx+ny*ny,p=(y*S+x0)*4;if(rr>1){D[p+3]=0;continue;}
-      let N=[nx,ny,Math.sqrt(1-rr)];const u=.5+Math.atan2(N[0],N[2])/(2*Math.PI),v=.5-Math.asin(N[1])/Math.PI;
-      if(hI){const e=.01,h=q=>smp(hI,q[0]*2,q[1])[0],g0=h([u,v]),gx=h([u+e,v])-g0,gy=h([u,v+e])-g0;N=norm3([N[0]-gx*hs*6,N[1]+gy*hs*6,N[2]]);}
-      const c=(bI?smp(bI,u*2,v):bc).map(lin),H=norm3([L[0],L[1],L[2]+1]),nl=Math.max(0,dot3(N,L)),nh=Math.max(0,dot3(N,H)),sp=Math.pow(nh,2+(1-r)*(1-r)*120)*(1-r*.7)*(.3+mt*.7);
-      /* a simple sky reflected in it (bright above, dark below), blurrier the rougher it is */
-      const Ry=2*N[2]*N[1],env=(.25+.75*clamp(Ry*.5+.5,0,1))*(1-r*.55)+r*.2,fr=Math.pow(1-N[2],3);
-      const amb=.18+.1*N[1];for(let k=0;k<3;k++){const dif=c[k]*(1-mt),spc=mt?c[k]:.04+.5*fr*(1-r);D[p+k]=Math.round(Math.pow(Math.min(1,dif*(nl*.9+amb)+spc*(sp*1.6+env*(mt?1.1:.8))),1/2.2)*255);}D[p+3]=255;}
-    x.putImageData(id,0,0);};
-  redraw();return {el:cv2,redraw};}
+/* Preview shading samples the original material maps on the GPU. Read back only the
+   small finished preview, never a full document or a CPU copy of each material map. */
+let P_MATPREVIEW=null;
+const FS_MATPREVIEW=`uniform vec2 uSize; uniform sampler2D uBase; uniform sampler2D uRough; uniform sampler2D uMetal; uniform sampler2D uHeight; uniform sampler2D uNormal;
+uniform int uBaseOn; uniform int uRoughOn; uniform int uMetalOn; uniform int uHeightOn; uniform int uNormalOn;
+uniform vec3 uColor; uniform float uR; uniform float uM; uniform float uH;
+uniform vec2 uBaseTile; uniform vec2 uRoughTile; uniform vec2 uMetalTile; uniform vec2 uHeightTile; uniform vec2 uNormalTile;
+uniform vec4 uRot; uniform float uNormalRot;
+vec2 uvAt(vec2 uv,vec2 tile,float angle){float a=cos(angle),b=sin(angle);return mat2(a,b,-b,a)*(uv*tile-.5)+.5;}
+vec3 sampleColor(sampler2D im,vec2 uv){vec4 c=texture(im,uv);return c.a>1e-6?c.rgb/c.a:vec3(0);}
+void main(){vec2 q=vec2(gl_FragCoord.x/uSize.x*2.0-1.0,1.0-gl_FragCoord.y/uSize.y*2.0);float rr=dot(q,q);if(rr>=1.0){o=vec4(0);return;}
+vec3 N=vec3(q,sqrt(1.0-rr));vec2 uv=vec2(.5+atan(N.x,N.z)/6.2831853,.5-asin(N.y)/3.1415927);uv.x*=2.0;
+vec3 T=normalize(vec3(N.z,0,-N.x)),B=normalize(cross(N,T));vec3 bump=vec3(0,0,1);
+if(uNormalOn==1){bump=sampleColor(uNormal,uvAt(uv,uNormalTile,uNormalRot))*2.0-1.0;float a=cos(uNormalRot),b=sin(uNormalRot);bump.xy=mat2(a,-b,b,a)*bump.xy;}
+if(uHeightOn==1){vec2 t=uvAt(uv,uHeightTile,uRot.w),e=1.0/vec2(textureSize(uHeight,0));float hx=sampleColor(uHeight,t+vec2(e.x,0)).r-sampleColor(uHeight,t-vec2(e.x,0)).r,hy=sampleColor(uHeight,t+vec2(0,e.y)).r-sampleColor(uHeight,t-vec2(0,e.y)).r;bump.xy+=vec2(-hx,hy)*uH*6.0;}
+N=normalize(T*bump.x+B*bump.y+N*max(bump.z,.001));vec3 c=uBaseOn==1?sampleColor(uBase,uvAt(uv,uBaseTile,uRot.x)):uColor;c=pow(max(c,vec3(0)),vec3(2.2));
+float r=clamp(uRoughOn==1?sampleColor(uRough,uvAt(uv,uRoughTile,uRot.y)).r:uR,.04,1.0),mt=clamp(uMetalOn==1?sampleColor(uMetal,uvAt(uv,uMetalTile,uRot.z)).r:uM,0.0,1.0);
+vec3 L=normalize(vec3(-.5,.6,.65)),H=normalize(L+vec3(0,0,1));float nl=max(0.0,dot(N,L)),nh=max(0.0,dot(N,H)),sp=pow(nh,2.0+(1.0-r)*(1.0-r)*120.0)*(1.0-r*.7)*(.3+mt*.7);
+float Ry=2.0*N.z*N.y,sky=(.25+.75*clamp(Ry*.5+.5,0.0,1.0))*(1.0-r*.55)+r*.2,fr=pow(1.0-clamp(N.z,0.0,1.0),3.0),amb=.18+.1*N.y;
+vec3 spec=mix(vec3(.04+.5*fr*(1.0-r)),c,mt),color=c*(1.0-mt)*(nl*.9+amb)+spec*(sp*1.6+sky*mix(.8,1.1,mt));float alpha=clamp((1.0-rr)*uSize.x*.5,0.0,1.0);o=vec4(pow(clamp(color,0.0,1.0),vec3(1.0/2.2))*alpha,alpha);}`;
+function matPreviewPixels(f,I,S){if(!P_MATPREVIEW)P_MATPREVIEW=program(FS_MATPREVIEW);const U={uSize:[S,S],uColor:f.maps?.base?.on?(f.maps.base.c||[.7,.7,.7]):[.72,.72,.72],uR:f.maps?.rough?.on?(f.maps.rough.v??.5):.5,uM:f.maps?.metal?.on?(f.maps.metal.v??0):0,uH:f.hStr??1},keys=['base','rough','metal','height','normal'],rots=[];
+for(const k of keys){const m=f.maps?.[k],name=k[0].toUpperCase()+k.slice(1),on=!!(m?.on&&m.src!=='value'&&I[k]?.tex);U['u'+name]=on?I[k].tex:dummy;U['u'+name+'On']={int:on?1:0};U['u'+name+'Tile']=[m?.tile??1,m?.tile??1];rots.push((m?.rot||0)*Math.PI/180);}U.uRot=rots.slice(0,4);U.uNormalRot=rots[4];const t=makeTarget(S,S,8,false);try{run(P_MATPREVIEW,t,U);const d=captureRegionNow(t,0,0,S,S).data;for(let i=0;i<d.length;i+=4)if(d[i+3]){const a=255/d[i+3];d[i]=Math.min(255,Math.round(d[i]*a));d[i+1]=Math.min(255,Math.round(d[i+1]*a));d[i+2]=Math.min(255,Math.round(d[i+2]*a));}return d;}finally{disposeTarget(t);}}
+function matPreviewEl(getF,getImgs,size,scale){const S0=size||96,S=scale?Math.round(S0*scale):Math.min(1024,Math.max(256,Math.round(S0*Math.max(window.devicePixelRatio||1,4)))),cv2=el('canvas',{class:'matprev',width:S,height:S,style:'width:'+S0+'px;height:'+S0+'px','aria-hidden':'true'});
+  const redrawGPU=()=>{const x=cv2.getContext('2d'),id=x.createImageData(S,S);id.data.set(matPreviewPixels(getF(),getImgs()||{},S));x.putImageData(id,0,0);};
+  redrawGPU();return {el:cv2,redraw:redrawGPU};
+}

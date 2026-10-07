@@ -26,9 +26,11 @@ const BLENDER_ADDON = fs.existsSync(r('assets/addons/gouache_link.py')) ? read('
 const CHANGELOG = fs.existsSync(r('CHANGELOG.md')) ? read('CHANGELOG.md') : '';
 /* materials shipped with the app (assets/materials/*.gmat): a list with names and previews goes into the page; the
    files themselves are copied next to the desktop app and loaded when first used */
+const MAT_PREVIEWS = fs.existsSync(r('assets/materials/previews.json')) ? JSON.parse(read('assets/materials/previews.json')).items || {} : {};
 const GMATS = fs.existsSync(r('assets/materials')) ? fs.readdirSync(r('assets/materials')).filter(f => f.endsWith('.gmat')).sort().map(f => {
   let b = fs.readFileSync(r('assets/materials/' + f)); if (b[0] === 0x1f && b[1] === 0x8b) b = zlib.gunzipSync(b);
-  const j = JSON.parse(b.toString('utf8')); return { file: f, name: j.name || f.replace(/\.gmat$/, ''), thumb: j.thumb || '', credit: j.credit || '', kind: j.kind || 'material', cat: j.cat || 'Other' };
+  const j = JSON.parse(b.toString('utf8')), p = MAT_PREVIEWS[f], valid = p && p.file === path.basename(p.file) && fs.existsSync(r('assets/material-previews/' + p.file)) && p.sha256 === crypto.createHash('sha256').update(fs.readFileSync(r('assets/materials/' + f))).digest('hex');
+  return { file: f, name: j.name || f.replace(/\.gmat$/, ''), thumb: valid ? 'material-previews/' + p.file : j.thumb || '', preview: valid ? p.file : null, credit: j.credit || '', kind: j.kind || 'material', cat: j.cat || 'Other' };
 }) : [];
 /* Small shelf previews are separate from originals in both offline and one-page builds.
    Stale previews are ignored so replacing a texture cannot show an unrelated picture. */
@@ -60,6 +62,7 @@ function buildWeb() {
   for(const f of studioFonts){copy('assets/fonts/'+f.file,'dist-web/fonts/'+f.file);copy('assets/fonts/'+f.license,'dist-web/fonts/'+f.license);}
   fs.writeFileSync(r('dist-web/fonts/studio.css'),studioFontCss);
   for (const g of GMATS) copy('assets/materials/' + g.file, `dist-web/materials/${g.file}`);
+  for (const g of GMATS) if(g.preview) copy('assets/material-previews/' + g.preview, `dist-web/material-previews/${g.preview}`);
   fs.writeFileSync(r('dist-web/index.html'), assemble(read('src/head.web.html')+'<link rel="stylesheet" href="fonts/studio.css">').replace('<!--HDRI-->', () => hdriTags()));
   console.log('web     -> dist-web/index.html');
 }
@@ -73,6 +76,7 @@ function buildDesktop() {
   copy('node_modules/ag-psd/dist/bundle.js', `${out}/vendor/ag-psd.js`);
   for (const f of HDRIS) copy('assets/hdri/' + f, `${out}/hdri/${f}`);
   for (const g of GMATS) copy('assets/materials/' + g.file, `${out}/materials/${g.file}`);
+  for (const g of GMATS) if(g.preview) copy('assets/material-previews/' + g.preview, `${out}/material-previews/${g.preview}`);
   for (const f of GRUNGE) copy('assets/grunge/' + f, `${out}/grunge/${f}`);
   for(const f of STUDIO) copy('assets/studio/'+f,`${out}/studio/${f}`);
   for(const f of studioFonts){copy('assets/fonts/'+f.file,`${out}/fonts/${f.file}`);copy('assets/fonts/'+f.license,`${out}/fonts/${f.license}`);}
