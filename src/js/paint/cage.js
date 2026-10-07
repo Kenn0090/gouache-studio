@@ -11,7 +11,7 @@
    Symmetry mirrors each dab (left–right, top–bottom, both, or radial) around a centre in the space
    being painted: the document, or the cage's flat space. */
 ui.cageNx=4;ui.cageNy=4;ui.cageKind='quad';ui.cagePersp=true;ui.cageFlat=false;
-ui.sym={mode:'off',n:6,cx:.5,cy:.5};
+ui.sym={mode:'off',n:6,cx:.5,cy:.5,align:'canvas'};
 let cageST=null,cageViewT=null,cageGL=null,cageSavedView=null;
 
 /* ---------- the surface ---------- */
@@ -102,9 +102,13 @@ function cageStrokeStart(o,ix,iy){const C=cageOf();
   const m=cageInv(C,ix,iy);if(!m)return null;o.space=cageSpace(C);o.cageRs=1/Math.max(m.s,1e-3);return {x:m.x,y:m.y,kind:'bend'};}
 
 /* ---------- symmetry ---------- */
-function symFor(o){const S=ui.sym;if(S.mode==='off')return null;return {mode:S.mode,n:clamp(Math.round(S.n),2,32),cx:S.cx,cy:S.cy};}
+function symBasis(o){if(ui.sym.align!=='screen'||(o?.space&&!ui.cageFlat))return 0;const A=vxA();return A?Math.atan2(A[1],A[0]):0;}
+function symFor(o){const S=ui.sym;if(S.mode==='off')return null;return {mode:S.mode,n:clamp(Math.round(S.n),2,32),cx:S.cx,cy:S.cy,basis:symBasis(o)};}
 /* copies of a dab: [x, y, angle, flipX, flipY, dx, dy] */
 function symCopies(sym,W,H,x,y,ang,fx,fy,dx,dy){const out=[[x,y,ang,fx,fy,dx,dy]];if(!sym)return out;const cx=sym.cx*W,cy=sym.cy*H;
+  if(sym.basis&&sym.mode!=='radial'){const a=sym.basis,c=Math.cos(a),s=Math.sin(a),rx=x-cx,ry=y-cy;
+    const copies=symCopies({...sym,basis:0},W,H,cx+c*rx+s*ry,cy-s*rx+c*ry,ang-a,fx,fy,c*dx+s*dy,-s*dx+c*dy);
+    return copies.map((p,i)=>i===0?out[0]:[cx+c*(p[0]-cx)-s*(p[1]-cy),cy+s*(p[0]-cx)+c*(p[1]-cy),p[2]+a,p[3],p[4],c*p[5]-s*p[6],s*p[5]+c*p[6]]);}
   if(sym.mode==='radial'){for(let k=1;k<sym.n;k++){const t=k*2*Math.PI/sym.n,c=Math.cos(t),s=Math.sin(t),rx=x-cx,ry=y-cy;
       out.push([cx+c*rx-s*ry,cy+s*rx+c*ry,ang+t,fx,fy,c*dx-s*dy,s*dx+c*dy]);}return out;}
   if(sym.mode==='x'||sym.mode==='xy')out.push([2*cx-x,y,-ang,-fx,fy,-dx,dy]);
@@ -117,10 +121,19 @@ function symToggleX(){setSym(ui.sym.mode==='x'?'off':'x');toast(ui.sym.mode==='x
 function buildSymSection(box){const S=ui.sym;
   box.append(el('div',{class:'sub',text:'Symmetry'}),seg(SYM_MODES.map(m=>[m[0],m[1]]),S.mode,v=>setSym(v),'Symmetry'));
   if(S.mode==='off')return;
-  if(S.mode==='radial')box.append(makeSlider({id:'symN',label:'Copies',min:2,max:24,step:1,value:S.n,fmt:v=>String(v),onInput:v=>{S.n=v;drawXfOverlay();}}).el);
-  if(S.mode!=='y')box.append(makeSlider({id:'symCx',label:'Centre ↔',min:0,max:1,step:.005,value:S.cx,fmt:pct,onInput:v=>{S.cx=v;drawXfOverlay();}}).el);
-  if(S.mode!=='x')box.append(makeSlider({id:'symCy',label:'Centre ↕',min:0,max:1,step:.005,value:S.cy,fmt:pct,onInput:v=>{S.cy=v;drawXfOverlay();}}).el);
-  box.append(el('div',{class:'hint2',text:'Mirrors around the document, or around the cage when you paint through one. Shift+X turns left–right on and off.'}));}
+  box.append(seg([['canvas','Canvas'],['screen','Screen']],S.align||'canvas',v=>{S.align=v;drawXfOverlay();},'Symmetry alignment'));
+  box.append(el('div',{class:'hint2',id:'symStatus',text:S.mode==='radial'?Math.round(S.n)+' radial copies':'Mirror symmetry on'}));
+  if(S.mode==='radial')box.append(makeSlider({id:'symN',label:'Copies',min:2,max:24,step:1,value:S.n,fmt:v=>String(v),onInput:v=>{S.n=v;const status=document.getElementById('symStatus');if(status)status.textContent=Math.round(v)+' radial copies';drawXfOverlay();}}).el);
+  box.append(makeSlider({id:'symCx',label:'Centre ↔',min:0,max:1,step:.005,value:S.cx,fmt:pct,onInput:v=>{S.cx=v;drawXfOverlay();}}).el);
+  box.append(makeSlider({id:'symCy',label:'Centre ↕',min:0,max:1,step:.005,value:S.cy,fmt:pct,onInput:v=>{S.cy=v;drawXfOverlay();}}).el);
+  box.append(el('button',{class:'btn sm',text:'Centre',title:'Reset the symmetry centre',onclick:()=>{S.cx=S.cy=.5;buildBrushPanel();drawXfOverlay();}}));
+  box.append(el('div',{class:'hint2',text:'Drag the centre circle to move symmetry. Canvas follows canvas rotation; Screen keeps the mirror axes upright. Painting through a bent cage uses its local axes. Shift+X toggles left–right.'}));}
+const SYM_PAINT_TOOLS=['brush','erase','smudge','dodge','burn','heal','clone','material'];
+function symCentreDown(e){if(ui.sym.mode==='off'||!SYM_PAINT_TOOLS.includes(ui.tool)||e.altKey||e.shiftKey||e.ctrlKey||e.metaKey||xf||selLive||ui.mode==='convert'||(cageOf()?.on!==false&&cageOf()&&!ui.cageFlat))return false;
+  const [W,H]=viewDims(),p=scrPt([ui.sym.cx*W,ui.sym.cy*H]),r=stage.getBoundingClientRect();if(Math.hypot(e.clientX-r.left-p[0],e.clientY-r.top-p[1])>9)return false;
+  ptr={mode:'symcentre',id:e.pointerId,cx:ui.sym.cx,cy:ui.sym.cy};return true;}
+function symCentreMove(x,y){const [W,H]=viewDims();ui.sym.cx=clamp(x/W,0,1);ui.sym.cy=clamp(y/H,0,1);drawXfOverlay();}
+function symCentreUp(e){if(e.type==='pointercancel'){ui.sym.cx=ptr.cx;ui.sym.cy=ptr.cy;}ptr=null;buildBrushPanel();drawXfOverlay();refreshCursor();}
 
 /* ---------- the Cage tool ---------- */
 function cageClone(C){return C?{nx:C.nx,ny:C.ny,persp:!!C.persp,on:C.on!==false,A:C.A.map(r=>r.map(p=>[p[0],p[1]]))}:null;}
@@ -184,8 +197,8 @@ function buildCagePanel(box){$('#brushTitle').textContent='Cage';const C=cageOf(
 function cagePanelSync(){const i=$('#cgInfo'),C=cageOf();if(i&&C)i.textContent='Flat size '+C.fw+' × '+C.fh+' px · '+(C.nx===1&&C.ny===1?'4 corners':C.nx+' × '+C.ny+' grid');}
 
 /* ---------- on-canvas overlay ---------- */
-function cageOverlay(){let s='';const C=cageOf(),f=p=>scrPt(p).map(v=>v.toFixed(1)).join(' ');
-  const paintTool=['brush','erase','smudge','dodge','burn'].includes(ui.tool);
+function cageOverlay(){if($('#work').classList.contains('v3full'))return '';let s='';const C=cageOf(),f=p=>scrPt(p).map(v=>v.toFixed(1)).join(' ');
+  const paintTool=SYM_PAINT_TOOLS.includes(ui.tool);
   if(ui.cageFlat&&C){const W=C.fw,H=C.fh;s+='<path class="cgf" d="M'+f([0,0])+'L'+f([W,0])+'L'+f([W,H])+'L'+f([0,H])+'Z"/>';}
   else if(C&&(ui.tool==='cage'||(paintTool&&C.on!==false))){cageMesh(C);const full=ui.tool==='cage',seg=16;let d='';
     const line=(fn)=>{let q='M'+f(fn(0));for(let k=1;k<=seg;k++)q+='L'+f(fn(k/seg));return q;};
@@ -195,10 +208,10 @@ function cageOverlay(){let s='';const C=cageOf(),f=p=>scrPt(p).map(v=>v.toFixed(
     if(full)for(let j=0;j<=C.ny;j++)for(let i=0;i<=C.nx;i++){const q=scrPt(C.A[j][i]),on=C.active&&C.active[0]===i&&C.active[1]===j;s+='<rect class="hs'+(on?' on':'')+'" x="'+(q[0]-4)+'" y="'+(q[1]-4)+'" width="8" height="8"/>';}}
   if(ptr&&ptr.mode==='cage'&&ptr.kind==='new'){const a=scrPt([ptr.x0,ptr.y0]),b=scrPt([ptr.x1,ptr.y1]);s+='<rect class="ln" x="'+Math.min(a[0],b[0])+'" y="'+Math.min(a[1],b[1])+'" width="'+Math.abs(b[0]-a[0])+'" height="'+Math.abs(b[1]-a[1])+'"/>';}
   /* symmetry guides, in the space being painted */
-  const S=ui.sym;if(S.mode!=='off'&&paintTool){const [W,H]=viewDims(),cx=S.cx*W,cy=S.cy*H;let d='';
-    if(S.mode==='radial'){const R=Math.hypot(W,H);for(let k=0;k<S.n;k++){const t=k*2*Math.PI/S.n-Math.PI/2;d+='M'+f([cx,cy])+'L'+f([cx+Math.cos(t)*R,cy+Math.sin(t)*R]);}}
-    else{if(S.mode!=='y')d+='M'+f([cx,0])+'L'+f([cx,H]);if(S.mode!=='x')d+='M'+f([0,cy])+'L'+f([W,cy]);}
-    s+='<path class="sym" d="'+d+'"/>';}
+  const S=ui.sym;if(S.mode!=='off'&&paintTool){const [W,H]=viewDims(),cx=S.cx*W,cy=S.cy*H,a=symBasis({space:C&&C.on!==false&&!ui.cageFlat}),c=Math.cos(a),sn=Math.sin(a),R=Math.hypot(W,H);const q=(x,y)=>[cx+c*x-sn*y,cy+sn*x+c*y];let d='';
+    if(S.mode==='radial'){const R=Math.hypot(W,H);for(let k=0;k<S.n;k++){const t=k*2*Math.PI/S.n-Math.PI/2;d+='M'+f([cx,cy])+'L'+f(q(Math.cos(t)*R,Math.sin(t)*R));}}
+    else{if(S.mode!=='y')d+='M'+f(q(0,-R))+'L'+f(q(0,R));if(S.mode!=='x')d+='M'+f(q(-R,0))+'L'+f(q(R,0));}
+    s+='<path class="sym" d="'+d+'"/>';if(!C||C.on===false||ui.cageFlat){const p=scrPt([cx,cy]);s+='<circle class="sym-centre" cx="'+p[0]+'" cy="'+p[1]+'" r="7"/>';}}
   /* Brush tab: centre cross and circle, to keep tips centred and round */
   if(ui.mode==='brush'&&bt.guides&&!ui.cageFlat){const [W,H]=viewDims(),c=[W/2,H/2],r=Math.min(W,H)*.43,q=[];for(let k=0;k<=48;k++){const t=k/48*Math.PI*2;q.push((k?'L':'M')+f([c[0]+Math.cos(t)*r,c[1]+Math.sin(t)*r]));}
     s+='<path class="guide" d="M'+f([W/2,0])+'L'+f([W/2,H])+'M'+f([0,H/2])+'L'+f([W,H/2])+q.join('')+'"/>';}

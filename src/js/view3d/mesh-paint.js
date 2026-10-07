@@ -134,7 +134,7 @@ function v3HoverPick(hit,e){if(prefs.altPick===false||ui.mode==='bake'||ui.mode=
    Mirrors across X, Y and/or Z planes (each can be moved off centre, snapping to the centre and to steps), and
    radial copies around an axis. The copies are matrices: every texel also takes the brush where its mirror image is. */
 const mir3=Object.assign({x:false,y:false,z:false,off:[0,0,0],radial:0,axis:'y',snap:true,show:true},(()=>{try{return JSON.parse(localStorage.getItem('gs.mir3d')||'{}');}catch(e){return {};}})());
-function mir3Save(){try{localStorage.setItem('gs.mir3d',JSON.stringify(mir3));}catch(e){}v3.dirty=true;requestRender();}
+function mir3Save(){mir3RadSync();try{localStorage.setItem('gs.mir3d',JSON.stringify(mir3));}catch(e){}v3.dirty=true;requestRender();}
 const mir3On=()=>mir3.x||mir3.y||mir3.z||mir3.radial>1;
 function mir3Mats(){const I=()=>{const m=m4();m[0]=m[5]=m[10]=m[15]=1;return m;};let L=[I()];const o=mir3.off;
   ['x','y','z'].forEach((a,i)=>{if(!mir3[a])return;const R=I();R[i*5]=-1;R[12+i]=2*o[i];L=L.concat(L.map(M=>m4mul(R,M)));});
@@ -145,10 +145,17 @@ function mir3Mats(){const I=()=>{const m=m4();m[0]=m[5]=m[10]=m[15]=1;return m;}
   return L.slice(0,32);}
 /* the mirror planes on the model, as outlines */
 let mir3VB=null;
-function drawMir3(VP){if(!mir3.show||!(mir3.x||mir3.y||mir3.z)||!v3.mesh)return;const r=(v3.mesh.radius||1.2)*1.15,o=mir3.off,pts=[];
+function mir3GuidePoints(r){const o=mir3.off,pts=[];
   ['x','y','z'].forEach((a,i)=>{if(!mir3[a])return;const u=(i+1)%3,v=(i+2)%3,c=[[-r,-r],[r,-r],[r,r],[-r,r]];
     for(let k=0;k<4;k++){const A=c[k],B=c[(k+1)%4];for(const P of [A,B]){const p=[0,0,0];p[i]=o[i];p[u]=P[0];p[v]=P[1];pts.push(...p);}}
     for(const P of [[0,-r],[0,r],[-r,0],[r,0]]){const p=[0,0,0];p[i]=o[i];p[u]=P[0];p[v]=P[1];pts.push(...p);}});
+  if(mir3.radial>1){const ax=['x','y','z'].indexOf(mir3.axis),u=(ax+1)%3,v=(ax+2)%3,n=mir3.radial|0;
+    const point=(a)=>{const p=o.slice();p[u]+=Math.cos(a)*r;p[v]+=Math.sin(a)*r;return p;};
+    const lo=o.slice(),hi=o.slice();lo[ax]-=r;hi[ax]+=r;pts.push(...lo,...hi);
+    for(let k=0;k<n;k++)pts.push(...o,...point(k*2*Math.PI/n));
+    for(let k=0;k<64;k++)pts.push(...point(k*2*Math.PI/64),...point((k+1)*2*Math.PI/64));}
+  return pts;}
+function drawMir3(VP){if(!mir3.show||!mir3On()||!v3.mesh)return;const pts=mir3GuidePoints((v3.mesh.radius||1.2)*1.15);
   if(!pts.length)return;if(!mir3VB){mir3VB={vao:gl.createVertexArray(),vb:gl.createBuffer()};}
   gl.bindVertexArray(mir3VB.vao);gl.bindBuffer(gl.ARRAY_BUFFER,mir3VB.vb);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(pts),gl.DYNAMIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,12,0);
   for(const a of [1,2,3])gl.disableVertexAttribArray(a);gl.vertexAttrib3f(1,0,1,0);gl.vertexAttrib2f(2,0,0);gl.vertexAttrib4f(3,1,0,0,1);
@@ -164,18 +171,19 @@ function mir3Box(noAxes){const box=el('div',{class:'dlg-grid',id:'mir3Box'}),red
     onInput:v=>{mir3.off[i]=snapV(v);mir3Save();},onChange:()=>redo()}).el);});
   box.append(makeSlider({id:'mir3r',label:'Radial copies',min:1,max:16,step:1,value:Math.max(1,mir3.radial),fmt:v=>v<2?'off':v+'×',onInput:v=>{mir3.radial=v<2?0:v;mir3Save();},onChange:()=>redo()}).el);
   if(mir3.radial>1)box.append(seg([['x','Around X'],['y','Around Y'],['z','Around Z']],mir3.axis,v=>{mir3.axis=v;mir3Save();redo();},'Radial axis'));
-  box.append(el('div',{class:'chips'},chk('mir3Snap','Snap planes',!!mir3.snap,v=>{mir3.snap=v;mir3Save();}),chk('mir3Show','Show planes',!!mir3.show,v=>{mir3.show=v;mir3Save();}),
+  box.append(el('div',{class:'chips'},chk('mir3Snap','Snap planes',!!mir3.snap,v=>{mir3.snap=v;mir3Save();}),chk('mir3Show','Show guides',!!mir3.show,v=>{mir3.show=v;mir3Save();}),
     el('button',{class:'btn sm',text:'Centre',onclick:()=>{mir3.off=[0,0,0];mir3Save();redo();}})));
   return box;}
 
 /* 3D Paint: the mirror sits in the 3D view's top bar (X, Y, Z, radial copies; ▾ opens the planes and snapping) */
 function mir3Bar(){const wrap=el('span',{class:'v3mir',id:'v3Mir'}),pop=el('div',{class:'v3set v3mirpop',id:'v3MirPop',hidden:true});
   const tg=(k,l)=>el('button',{class:'btn sm'+(mir3[k]?' on':''),id:'mir3_'+k,'aria-pressed':String(!!mir3[k]),text:l,title:'Mirror painting across the '+k.toUpperCase()+' plane',onclick:()=>{mir3[k]=!mir3[k];mir3Save();mir3BarSync();}});
-  const rad=el('select',{id:'mir3Rad','aria-label':'Radial copies',title:'Radial painting: copies around an axis'},el('option',{value:0,text:'Radial off'}),...[2,3,4,5,6,8,10,12,16].map(n=>el('option',{value:n,text:n+'× radial'})));
+  const rad=el('select',{id:'mir3Rad',class:mir3.radial>1?'on':'','aria-label':'Radial copies',title:'Radial painting: copies around an axis'},el('option',{value:0,text:'Radial off'}),...Array.from({length:15},(_,i)=>i+2).map(n=>el('option',{value:n,text:n+'× radial · '+mir3.axis.toUpperCase()})));
   rad.value=String(mir3.radial>1?mir3.radial:0);rad.onchange=()=>{mir3.radial=+rad.value;mir3Save();mir3BarSync();};
   const more=el('button',{class:'btn sm',id:'mir3More',text:'▾',title:'Mirror planes, radial axis and snapping','aria-expanded':'false',onclick:()=>{pop.hidden=!pop.hidden;more.setAttribute('aria-expanded',String(!pop.hidden));if(!pop.hidden){const bar=wrap.closest('.v3bar');if(bar)pop.style.top=(bar.offsetTop+bar.offsetHeight+6)+'px';const r=wrap.getBoundingClientRect(),pr=(bar||wrap).parentNode.getBoundingClientRect();pop.style.left=Math.max(8,r.left-pr.left)+'px';}if(!pop.hidden)pop.replaceChildren(el('div',{class:'sub',text:'Mirror'}),mir3Box(true));}});
   wrap.append(el('span',{class:'v3lab',text:'Mirror'}),tg('x','X'),tg('y','Y'),tg('z','Z'),rad,more);return {wrap,pop};}
-function mir3BarSync(){for(const k of ['x','y','z']){const b=document.getElementById('mir3_'+k);if(b){b.classList.toggle('on',!!mir3[k]);b.setAttribute('aria-pressed',String(!!mir3[k]));}}
+function mir3RadSync(){const r=document.getElementById('mir3Rad');if(!r)return;const on=mir3.radial>1;r.value=String(on?mir3.radial:0);r.classList.toggle('on',on);r.title=on?mir3.radial+' radial copies around '+mir3.axis.toUpperCase():'Radial symmetry off';r.setAttribute('aria-label',r.title);for(const opt of r.options)if(+opt.value>1)opt.textContent=opt.value+'× radial · '+mir3.axis.toUpperCase();}
+function mir3BarSync(){mir3RadSync();for(const k of ['x','y','z']){const b=document.getElementById('mir3_'+k);if(b){b.classList.toggle('on',!!mir3[k]);b.setAttribute('aria-pressed',String(!!mir3[k]));}}
   const r=document.getElementById('mir3Rad');if(r)r.value=String(mir3.radial>1?mir3.radial:0);const p=document.getElementById('v3MirPop');if(p&&!p.hidden&&!p.contains(document.activeElement))p.replaceChildren(el('div',{class:'sub',text:'Mirror'}),mir3Box(true));
   v3.dirty=true;requestRender();}
 

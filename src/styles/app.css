@@ -1109,3 +1109,6 @@ body.tabfull .dkfloat,body.tabfull .dkfly,body.tabfull .dkicons{display:none!imp
 
 .favorite-tool-icon{display:block;width:48px;height:48px;margin:12px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}.favorite-tool-fallback{font-size:30px;line-height:48px}
 .canvas-compass{position:absolute;left:16px;bottom:20px;z-index:8;display:flex;flex-direction:column;align-items:center;gap:2px;pointer-events:auto}.canvas-compass[hidden]{display:none}.compass-dial{width:58px;height:58px;padding:0;border:0;background:#202328dd;border-radius:50%;cursor:grab;touch-action:none}.compass-dial:active{cursor:grabbing}.compass-dial svg{width:100%;height:100%;fill:none;stroke:#83909d;stroke-width:1}.compass-north{fill:#ef6565;stroke:none}.compass-south{fill:#aeb8c2;stroke:none}.compass-angle{border:1px solid #525861;border-radius:4px;background:#202328dd;color:#e4e8ed;font-size:11px;padding:2px 6px;cursor:pointer}.texture-drop{outline:2px dashed #ef6565;outline-offset:-5px}
+
+#xfOverlay .sym-centre,.sym-centre{fill:var(--panel,#20252b);stroke:#62cfff;stroke-width:2;}
+#mir3Rad.on{border-color:#62cfff;color:#62cfff;background:var(--panel,#20252b);}
