@@ -23,3 +23,4 @@ jobs:
       - run: node tests/e2e/numeric-sliders.cjs
       - run: node tests/e2e/mesh-seams.cjs
       - run: node tests/e2e/blur-seam-layer.cjs
+      - run: node tests/e2e/paint-bevel-seams.cjs

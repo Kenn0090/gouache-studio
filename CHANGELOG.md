@@ -1,3 +1,8 @@
+## 0.51.21
+
+- Keep projected brush opacity consistent across visible steep bevels and hard edges in 3D Paint, instead of fading coverage based on shading normals.
+- Retain depth checks to protect hidden surfaces, UV seam padding, and exact paint undo/redo. Existing unpainted pixels in saved strokes need to be repainted.
+
 ## 0.51.20
 
 - Fix thin bright UV seams on ordinary painted layers in 3D Paint, including layers with Box Blur or Gaussian Blur attached.
