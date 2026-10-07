@@ -62,7 +62,7 @@ function seamBlurMesh(){const m=v3.mesh;if(!m||!v3.gpu||m.noUV||v3s().uvs!==1)re
 function meshConnectedBlur(src,dst,x,y,box){if(ui.mode!=='p3d'||src.w!==doc.w||src.h!==doc.h||dst.w!==src.w||dst.h!==src.h||!v3.mesh)return false;
  const C=seamBlurMesh();if(!C)return false;if(!seamBlurProgram)seamBlurProgram=prog3(VS_SEAMBLUR,FS_SEAMBLUR);
  /* Preserve atlas pixels outside the mesh. In-place filters borrow their source. */
- let read=src,tmp=null;if(src===dst){tmp=acquireD(src.depth);blit(src,tmp,0,0,src.w,src.h,0,0);read=tmp;}else blit(src,dst,0,0,src.w,src.h,0,0);
- try{useProg(seamBlurProgram,{uFaces:C.tex,uSrc:read.tex,uSize:[src.w,src.h],uRadius:box?[x,y]:[x*3,y*3],uBox:{int:box?1:0}});
+ let read=src,tmp=null;if(src===dst){tmp=makeTarget(src.w,src.h,src.depth,false,src.packed,src.mono);blit(src,tmp,0,0,src.w,src.h,0,0);read=tmp;}else blit(src,dst,0,0,src.w,src.h,0,0);
+ try{useProg(seamBlurProgram,{uFaces:C.tex,uSrc:read.tex,uSize:[src.w,src.h],uRadius:box?[x,y]:[x*3,y*3],uBox:{int:box?1:0}},!!dst.packed);
   bindTarget(dst);gl.disable(gl.BLEND);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.bindVertexArray(C.vao);gl.drawArrays(gl.TRIANGLES,0,C.count*3);
- }finally{gl.bindVertexArray(vao);if(tmp)release(tmp);}return true;}
+ }finally{gl.bindVertexArray(vao);if(tmp)disposeTarget(tmp);}return true;}
