@@ -185,14 +185,14 @@ function v3Refresh(){if(!v3.on)return;if(ui.mode==='bake'){bakeV3Refresh();retur
   const one=k=>{if(typeof pnBegin==='function')pnBegin(k);try{one0(k);}finally{panState=null;}};
   if(full){for(const k of v3Needed())one(k);if(v3s().disp&&doc.maps.includes('height')){const t=compositeMap('height');v3MapTex('height',t);release(t);}
     v3.mapsDirty=false;v3.editDirty=false;v3.lastFull=now;v3.dirty=true;v3SgDerive();}
-  else if(v3.editDirty&&v3.mapRegion?.weld&&v3.mapRegion.r){const q=v3.mapRegion,r=q.r;
-    if(q.root===doc.root&&q.tex===v3.tex&&q.map===doc.map){
+  else if(v3.editDirty&&stroke&&v3.mapRegion?.weld&&v3.mapRegion.r){const q=v3.mapRegion,r=q.r;
+    if(q.root===doc.root&&q.tex===v3.tex&&q.map===doc.map&&r[2]*r[3]<doc.w*doc.h*.25&&!(doc.w&(doc.w-1))&&!(doc.h&(doc.h-1))&&v3Needed().every(k=>v3.tex[k]?.hasMips)){
       const keys=new Set([doc.map,...stroke.o.extras.map(e=>e.key)]),needed=v3Needed();
       for(const k of keys){if(!needed.includes(k)&&!(k==='height'&&v3s().disp))continue;
         const t=k===doc.map&&plain?compOut:scissorDo(r,()=>compositeMap(k));v3MapTex(k,t,r);if(t!==compOut)release(t);}
       if(keys.has('height')||keys.has('normal')){const t=normalComposite(false,null,r);v3MapTex('nfinal',t,r);release(t);}
       v3.editDirty=false;v3.dirty=true;
-    }else{v3.mapsDirty=true;v3Refresh();}}
+    }else{v3.mapRegion=null;v3.mapsDirty=true;v3.lastFull=-Infinity;v3Refresh();}}
   else if(v3.editDirty){const k=ui.mode==='anim'?'base':doc.map;if(v3Needed().includes(k))one(k);if(k==='height'&&stroke&&now-v3.lastFull>gap){one('nfinal');}v3.editDirty=false;v3.dirty=true;if(['base','spec','gloss'].includes(k))v3SgDerive();}
   v3.mapRegion=null;if(typeof pnTick==='function')pnTick(one,full);}
 /* Specular/Gloss documents shade the model with the equivalent base/metal/rough */
