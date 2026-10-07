@@ -1,5 +1,12 @@
 # What's new in Gouache Studio
 
+## 0.51.11
+
+- **Weld tools shelf:** put weld controls in a dedicated Tools tab after Materials, Textures, Decals, Environments, Projects and Mesh Maps.
+- **Live weld editing:** weld profile sliders update selected paths as you adjust them; the bead uses a round halo-like profile and spaced overlapping stamps.
+- **Surface seam coverage:** weld paths continue over adjacent faces at hard mesh splits.
+
+
 ## 0.51.10
 
 - **Weld tools in Materials Library:** bead profiles now live in a Tools view with controls for width, raised height, ripple spacing, irregularity and heat tint. The Projects shelf is reserved for document assets.

@@ -1,3 +1,7 @@
+# Gouache Studio 0.51.11
+
+- Give weld tools their own shelf tab, improve the round bead profile, update selected weld paths live, and extend surface coverage across hard seams.
+
 # Gouache Studio 0.51.10
 
 - Move weld profiles from the Projects shelf to Materials Library → Tools, with bead width, height, ripple spacing, irregularity and heat tint controls. Add Walking the Cup, Convex, Concave, Angular and Double Weld profiles alongside TIG, MIG and Tack.
