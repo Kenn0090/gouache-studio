@@ -34,7 +34,7 @@ const MODE_GROUP=['p3d','brushtab','conv','bake','anim'];
 const WS_PRESETS={
   painting:{name:'Paint',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['color','matEd','shading'],f:1.05},{tabs:['brushes','stencils','mats','textures','decals','envs','tool'],f:1.25},{tabs:['maps','p3bake'],f:.45},{tabs:['layers','chan','hist'],f:1.6}],icons:[],floats:[]},
   texturing:{name:'3D Paint',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:[...MODE_GROUP,'p3bake','shading'],f:1.2},{tabs:['layers','maps','chan','hist'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','projects','meshmaps','weldtools'],f:1,h:260},icons:[],floats:[]},
-  paint3d:{name:'3D Paint (big view)',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:[...MODE_GROUP,'p3bake','shading'],f:1.2},{tabs:['layers','maps','chan','hist'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','projects','meshmaps','weldtools','brushes'],f:1,h:260},icons:[],floats:[]},
+  paint3d:{name:'3D Paint (big view)',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:[...MODE_GROUP,'p3bake','shading'],f:1.2},{tabs:['layers','maps','chan','hist'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','projects','meshmaps','brushes','weldtools'],f:1,h:260},icons:[],floats:[]},
   minimal:{name:'Minimal',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1}],icons:['color','matEd','shading','brushes','stencils','mats','textures','decals','envs','tool','maps','layers','chan','hist'],floats:[]}};
 /* (0.28, Kenn) each top tab has its own workspace, and the drop-down follows the tab */
 for(const [k,n] of [['animation','Animation'],['bake','Bake'],['convert','Convert'],['brush','Brush']])WS_PRESETS[k]=Object.assign(JSON.parse(JSON.stringify(WS_PRESETS.painting)),{name:n});
@@ -61,6 +61,7 @@ function dkFix(L){const seen=new Set();const keep=a=>a.filter(id=>PANELS[id]&&!s
   for(const g of L.groups)g.tabs=keep(g.tabs);L.shelf.tabs=keep(L.shelf.tabs);for(const f of L.floats)f.tabs=keep(f.tabs);L.icons=keep(L.icons||[]);L.hidden=keep(L.hidden||[]);
   L.groups=L.groups.filter(g=>g.tabs.length);L.floats=L.floats.filter(f=>f.tabs.length);
   for(const id of PANEL_IDS)if(!seen.has(id)){if(id==='favorites'){L.hidden.push(id);continue;}if(['mats','textures','decals','envs','projects','meshmaps','weldtools'].includes(id)){L.shelf.tabs.push(id);continue;}const home=WS_PRESETS.painting.groups.find(g=>g.tabs.includes(id));const g=L.groups.find(g=>home&&g.tabs.some(t=>home.tabs.includes(t)));if(g)g.tabs.push(id);else L.groups.push({tabs:[id],f:1});}
+  if(ui.mode==='p3d'&&L.shelf){const order=['mats','textures','decals','envs','projects','meshmaps'];L.shelf.tabs=[...order.filter(id=>L.shelf.tabs.includes(id)),...L.shelf.tabs.filter(id=>!order.includes(id)&&id!=='weldtools'),'weldtools'];}
   return L;}
 /* the panels themselves, found once (while redrawing they are briefly off the page) */
 const dkSecs={};const dkSec=id=>dkSecs[id]||(dkSecs[id]=document.querySelector(PANELS[id].sel));
