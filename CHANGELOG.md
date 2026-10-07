@@ -1,5 +1,11 @@
 # What's new in Gouache Studio
 
+## 0.51.10
+
+- **Weld tools in Materials Library:** bead profiles now live in a Tools view with controls for width, raised height, ripple spacing, irregularity and heat tint. The Projects shelf is reserved for document assets.
+- **More weld profiles:** TIG, MIG, Walking the Cup, Convex, Concave, Angular, Double Weld and Tack.
+
+
 ## 0.51.9
 
 - **Weld bead normal detail:** weld strokes now carry a generated, rippled surface normal alongside their metallic colour, roughness and raised height.
