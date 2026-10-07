@@ -1,3 +1,8 @@
+# Gouache Studio 0.51.17
+
+- Preview mirrored and radial brush copies directly on visible mesh surfaces.
+- Hide symmetry planes and radial guides while keeping copy cursors visible with separate display controls.
+
 # Gouache Studio 0.51.16
 
 - Restore weld brush painting to one shared mask that reveals the material across its channels.

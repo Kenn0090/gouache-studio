@@ -94,7 +94,7 @@ function meshMove(hit,e){const m=v3.mstroke;if(!m||e.pointerId!==m.id||!stroke)r
   for(const ev of (evs.length?evs:[e])){let [x,y]=meshPt(hit,ev);const p=pressureOf(ev,e);if(m.line)[x,y]=brushLineSnap(m.line,x,y,ev.shiftKey);m.rx=x;m.ry=y;if(brush.lazy>0&&!ev.shiftKey){const q=lazyStep(m,x,y,brush.lazy);if(!q)continue;x=q[0];y=q[1];}const step=ev.shiftKey?1:k;m.sx+=(x-m.sx)*step;m.sy+=(y-m.sy)*step;m.sp+=(p-m.sp)*Math.max(k,.4);addPoint(m.sx,m.sy,m.sp);}}
 function meshUp(e){const m=v3.mstroke;if(!m||(e&&e.pointerId!==m.id))return;v3.mstroke=null;if(stroke){if(brush.smoothing>0)addPoint(brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);brushLineRemember(m.line,brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);endStroke(true);}}
 /* round cursor showing the brush size over the model */
-function meshCursor(hit,e){let c=v3.curEl;if(!c||!c.isConnected){c=v3.curEl=el('div',{class:'v3cur'});hit.parentNode.append(c);}
+function meshCursor(hit,e){mir3CursorMove(hit,e);let c=v3.curEl;if(!c||!c.isConnected){c=v3.curEl=el('div',{class:'v3cur'});hit.parentNode.append(c);}
   if(!e||!v3.paintOn||!MESH_TOOLS.includes(ui.tool)||e.altKey||v3.drag){c.hidden=true;hit.style.cursor=e&&e.altKey&&prefs.altPick!==false&&!['heal','clone'].includes(ui.tool)?brushPickerCursor:'';return;}hit.style.cursor='none';const r=hit.getBoundingClientRect(),pr=hit.parentNode.getBoundingClientRect(),d=Math.max(3,brush.size*meshBrushScale(r.height));
   c.hidden=false;c.style.width=c.style.height=d+'px';c.style.transform='translate('+(e.clientX-pr.left-d/2)+'px,'+(e.clientY-pr.top-d/2)+'px)';tipCursor(c,d);}
 /* ---- what is under the pointer: the model's UV there (and how far away), from a one-pixel render ---- */
@@ -133,7 +133,7 @@ function v3HoverPick(hit,e){if(prefs.altPick===false||ui.mode==='bake'||ui.mode=
 /* ---- mirror and radial painting on the model ----
    Mirrors across X, Y and/or Z planes (each can be moved off centre, snapping to the centre and to steps), and
    radial copies around an axis. The copies are matrices: every texel also takes the brush where its mirror image is. */
-const mir3=Object.assign({x:false,y:false,z:false,off:[0,0,0],radial:0,axis:'y',snap:true,show:true},(()=>{try{return JSON.parse(localStorage.getItem('gs.mir3d')||'{}');}catch(e){return {};}})());
+const mir3=Object.assign({x:false,y:false,z:false,off:[0,0,0],radial:0,axis:'y',snap:true,show:true,cursors:true},(()=>{try{return JSON.parse(localStorage.getItem('gs.mir3d')||'{}');}catch(e){return {};}})());
 function mir3Save(){mir3RadSync();try{localStorage.setItem('gs.mir3d',JSON.stringify(mir3));}catch(e){}v3.dirty=true;requestRender();}
 const mir3On=()=>mir3.x||mir3.y||mir3.z||mir3.radial>1;
 function mir3Mats(){const I=()=>{const m=m4();m[0]=m[5]=m[10]=m[15]=1;return m;};let L=[I()];const o=mir3.off;
@@ -162,6 +162,48 @@ function drawMir3(VP){if(!mir3.show||!mir3On()||!v3.mesh)return;const pts=mir3Gu
   gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);
   useProg(P3.line,{uVP:{m4:VP},uUVs:1,uH:dummy,uDisp:0,uUseH:false,uCol:[.35,.8,1,.4]});gl.drawArrays(gl.LINES,0,pts.length/3);
   gl.depthMask(true);gl.disable(gl.BLEND);gl.bindVertexArray(vao);}
+/* Surface cursor copies share painting's projection and visibility test. One GPU pass
+   draws all copies; hovering does not synchronously read pixels back to the CPU. */
+let mir3CursorHover=null,mir3CursorGPU=null,mir3CursorDepth=null;
+function mir3CursorMove(hit,e){const active=e&&v3.paintOn&&MESH_TOOLS.includes(ui.tool)&&!e.altKey&&!v3.drag;
+  const r=active&&hit.getBoundingClientRect();mir3CursorHover=active?{hit,x:(e.clientX-r.left)/r.width,y:1-(e.clientY-r.top)/r.height}:null;
+  if(mir3.cursors&&mir3On()){v3.dirty=true;requestRender();}}
+const FS_MIR3CURSOR=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan;
+uniform mat4 uLookupVP; uniform mat4 uCopies[32]; uniform int uCopyCount;
+uniform sampler2D uCursorDepth; uniform vec3 uCamP; uniform vec2 uCursorCentre;
+uniform vec2 uCursorScreen; uniform float uCursorRadius; uniform float uCursorEdge;
+void main(){float a=0.0;for(int i=1;i<32;i++){if(i>=uCopyCount)break;
+ vec3 q=(uCopies[i]*vec4(vP,1.0)).xyz;vec4 c=uLookupVP*vec4(q,1.0);if(c.w<=1e-6)continue;
+ vec2 s=c.xy/c.w*.5+.5;if(any(lessThan(s,vec2(0)))||any(greaterThan(s,vec2(1))))continue;
+ float d=abs(length((s-uCursorCentre)*uCursorScreen)-uCursorRadius);if(d>uCursorEdge*1.65)continue;
+ ivec2 ds=textureSize(uCursorDepth,0);float z=texelFetch(uCursorDepth,clamp(ivec2(s*vec2(ds)),ivec2(0),ds-1),0).r;
+ if(z<=0.0||length(q-uCamP)>z*1.006+.004)continue;
+ vec3 nq=mat3(uCopies[i])*vN;float facing=abs(dot(normalize(nq),normalize(uCamP-q)));
+ a=max(a,(1.0-smoothstep(uCursorEdge*.65,uCursorEdge*1.65,d))*smoothstep(.04,.22,facing));}
+ if(a<.01)discard;o=vec4(.35,.8,1.0,a*.95);}`;
+function drawMir3Cursors(F,common){const hover=mir3CursorHover,g=v3.gpu;
+  if(!hover||!hover.hit.isConnected||!mir3.cursors||!mir3On()||!v3.paintOn||!MESH_TOOLS.includes(ui.tool)||v3.drag||!g||v3.mesh?.noUV)return;
+  const r=hover.hit.getBoundingClientRect();if(!r.width||!r.height)return;
+  if(!mir3CursorGPU)mir3CursorGPU=prog3(VS_3DD,FS_MIR3CURSOR);
+  let D=mir3CursorDepth;if(!D||D.w!==F.w||D.h!==F.h){if(D){gl.deleteTexture(D.tex);gl.deleteFramebuffer(D.fb);gl.deleteRenderbuffer(D.rb);}
+    D=mir3CursorDepth={w:F.w,h:F.h,tex:gl.createTexture(),fb:gl.createFramebuffer(),rb:gl.createRenderbuffer()};
+    gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,D.w,D.h,0,gl.RGBA,gl.FLOAT,null);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+    gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,D.tex,0);
+    gl.bindRenderbuffer(gl.RENDERBUFFER,D.rb);gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT24,D.w,D.h);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,D.rb);}
+  const {VP,eye}=v3ViewProj(F.w,F.h),depthU={...common,uVP:{m4:VP},uCamP:eye};
+  const key=[g,...VP,common.uUVs,common.uH,common.uDisp,common.uUseH,v3Work.copies,v3Work.partialCopies];
+  if(!D.key||key.some((x,i)=>x!==D.key[i])){D.key=key;
+  gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.viewport(0,0,D.w,D.h);gl.clearColor(0,0,0,0);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.depthMask(true);gl.disable(gl.BLEND);gl.bindVertexArray(g.vao);
+  useProg(p3p().depth,depthU);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);}
+  gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.bindVertexArray(g.vao);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);gl.depthMask(false);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+  const copies=mir3Mats(),matrices=new Float32Array(copies.length*16);copies.forEach((m,i)=>matrices.set(m,i*16));
+  useProg(mir3CursorGPU,{...common,uLookupVP:{m4:VP},'uCopies[0]':{m4:matrices},uCopyCount:{int:copies.length},uCursorDepth:D.tex,uCamP:eye,
+    uCursorCentre:[hover.x,hover.y],uCursorScreen:[F.w,F.h],uCursorRadius:Math.max(3,brush.size*meshBrushScale(r.height))*F.h/r.height/2,uCursorEdge:Math.max(.75,F.h/r.height)});
+  const R=ui.mode==='p3d'?p3Range():{start:0,count:g.count/3};gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);
+  gl.depthMask(true);gl.disable(gl.BLEND);gl.bindVertexArray(vao);}
 /* the Mirror section (3D Paint panel, and the 3D view's settings in Paint) */
 function mir3Box(noAxes){const box=el('div',{class:'dlg-grid',id:'mir3Box'}),redo=()=>{const n=mir3Box(noAxes);box.replaceWith(n);if(noAxes)mir3BarSync();};
   const tg=(k,l)=>el('button',{class:'optchip'+(mir3[k]?' on':''),id:'mir3_'+k,'aria-pressed':String(!!mir3[k]),text:l,onclick:()=>{mir3[k]=!mir3[k];mir3Save();redo();}});
@@ -171,7 +213,7 @@ function mir3Box(noAxes){const box=el('div',{class:'dlg-grid',id:'mir3Box'}),red
     onInput:v=>{mir3.off[i]=snapV(v);mir3Save();},onChange:()=>redo()}).el);});
   box.append(makeSlider({id:'mir3r',label:'Radial copies',min:1,max:16,step:1,value:Math.max(1,mir3.radial),fmt:v=>v<2?'off':v+'×',onInput:v=>{mir3.radial=v<2?0:v;mir3Save();},onChange:()=>redo()}).el);
   if(mir3.radial>1)box.append(seg([['x','Around X'],['y','Around Y'],['z','Around Z']],mir3.axis,v=>{mir3.axis=v;mir3Save();redo();},'Radial axis'));
-  box.append(el('div',{class:'chips'},chk('mir3Snap','Snap planes',!!mir3.snap,v=>{mir3.snap=v;mir3Save();}),chk('mir3Show','Show guides',!!mir3.show,v=>{mir3.show=v;mir3Save();}),
+  box.append(el('div',{class:'chips'},chk('mir3Snap','Snap planes',!!mir3.snap,v=>{mir3.snap=v;mir3Save();}),chk('mir3Show','Show guides',!!mir3.show,v=>{mir3.show=v;mir3Save();}),chk('mir3Cursors','Show copy cursors',!!mir3.cursors,v=>{mir3.cursors=v;mir3Save();}),
     el('button',{class:'btn sm',text:'Centre',onclick:()=>{mir3.off=[0,0,0];mir3Save();redo();}})));
   return box;}
 
