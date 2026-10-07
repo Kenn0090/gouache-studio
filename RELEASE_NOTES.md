@@ -1,3 +1,11 @@
+# Gouache Studio 0.51.6
+
+- Regenerated all 200 bundled material thumbnails at 768 × 768 with sharper surface detail.
+- Higher-resolution Library hover, material editor and saved-material preview balls.
+- Preview shading now includes normal, roughness and metallic texture maps, plus colour and height, using GPU rendering and releasing temporary preview buffers after every redraw.
+
+Validated preview dimensions, normal-map shading, transparent edges and repeated redraw memory usage in the Windows desktop app. Material files and document textures retain their original resolution.
+
 # Gouache Studio 0.51.5
 
 - **Animation:** Shift+D duplicates the current frame; Ctrl+D deselects and Ctrl+Shift+D reselects. Held keys do not create repeated copies.

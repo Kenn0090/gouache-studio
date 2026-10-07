@@ -207,18 +207,18 @@ function smaskBuiltins(){return SMASK_BUILTIN.concat(SMASK_LIB).map(([name,mask]
 
 /* ---- a small picture for the tiles: the bottom material as a ball, the layers above painted on where their
    generators would put them (edges at the rim, cavities low, dust on top, patterns as noise) ---- */
-function smPreviewEl(rec,S){S=S||56;if(rec.thumb){const i=el('img',{class:'matprev',src:rec.thumb,width:S,height:S,alt:''});return i;}
-  const kids=rec.tree?rec.tree.kids:[],base=kids.find(k=>k.fill&&k.fill.maps.base)||kids[0],cv2=el('canvas',{class:'matprev',width:S,height:S,'aria-hidden':'true'});
-  const bf=base&&base.fill?Object.assign({maps:{}},base.fill):{maps:{base:{on:true,c:[.6,.6,.6]}}},pv=matPreviewEl(()=>bf,()=>({}),S),x=cv2.getContext('2d');x.drawImage(pv.el,0,0);
+function smPreviewEl(rec,S){const S0=S||56;if(rec.thumb){const i=el('img',{class:'matprev',src:rec.thumb,width:S0,height:S0,alt:''});return i;}S=Math.min(1024,Math.max(256,S0*4));
+  const kids=rec.tree?rec.tree.kids:[],base=kids.find(k=>k.fill&&k.fill.maps.base)||kids[0],cv2=el('canvas',{class:'matprev',width:S,height:S,style:'width:'+S0+'px;height:'+S0+'px','aria-hidden':'true'});
+  const bf=base&&base.fill?Object.assign({maps:{}},base.fill):{maps:{base:{on:true,c:[.6,.6,.6]}}},pv=matPreviewEl(()=>bf,()=>({}),S,1),x=cv2.getContext('2d');x.drawImage(pv.el,0,0,S,S);
   const id=x.getImageData(0,0,S,S),D=id.data,h=(a,b)=>{const s=Math.sin(a*12.9898+b*78.233)*43758.5453;return s-Math.floor(s);},vn=(u,v)=>{const i=Math.floor(u),j=Math.floor(v),f=u-i,g=v-j;return (h(i,j)*(1-f)+h(i+1,j)*f)*(1-g)+(h(i,j+1)*(1-f)+h(i+1,j+1)*f)*g;};
   for(const k of kids){if(k===base||!k.fill||!k.fill.maps.base||!k.mask)continue;const c=k.fill.maps.base.c||[.5,.5,.5],row=(k.mask.rows||[]).find(r=>r.kind==='gen'||r.kind==='noise'),op=k.op==null?1:k.op;
-    for(let y=0;y<S;y++)for(let x0=0;x0<S;x0++){const nx=(x0+.5)/S*2-1,ny=1-(y+.5)/S*2,rr=nx*nx+ny*ny;if(rr>1)continue;const nz=Math.sqrt(1-rr),n=vn(x0/5,y/5);let m=0;
+    for(let y=0;y<S;y++)for(let x0=0;x0<S;x0++){const nx=(x0+.5)/S*2-1,ny=1-(y+.5)/S*2,rr=nx*nx+ny*ny;if(rr>1)continue;const nz=Math.sqrt(1-rr),n=vn(x0/S*S0/5,y/S*S0/5);let m=0;
       if(row&&row.kind==='gen'){const g=row.p.g;m=g==='edge'||g==='chips'?(1-nz)*1.6+(n-.5):g==='dust'||g==='snow'||g==='moss'?ny*1.4+(n-.5)*.8:(nz*.6+ny*-.6)+(n-.5)}else m=n*1.3-.2;
       m=clamp((m-.5)*3+.5,0,1)*op;const p=(y*S+x0)*4;for(let j=0;j<3;j++)D[p+j]=D[p+j]*(1-m)+Math.pow(c[j],1/2.2)*255*m;}}
   x.putImageData(id,0,0);return cv2;}
-function smaskPreviewEl(rec,S){S=S||56;const cv2=el('canvas',{class:'matprev',width:S,height:S,'aria-hidden':'true'}),x=cv2.getContext('2d'),id=x.createImageData(S,S),D=id.data;
+function smaskPreviewEl(rec,S){const S0=S||56;S=Math.min(1024,Math.max(256,S0*4));const cv2=el('canvas',{class:'matprev',width:S,height:S,style:'width:'+S0+'px;height:'+S0+'px','aria-hidden':'true'}),x=cv2.getContext('2d'),id=x.createImageData(S,S),D=id.data;
   const rows=rec.mask.rows||[],g=(rows.find(r=>r.kind==='gen')||{p:{}}).p.g;
-  for(let y=0;y<S;y++)for(let x0=0;x0<S;x0++){const nx=(x0+.5)/S*2-1,ny=1-(y+.5)/S*2,rr=nx*nx+ny*ny,p=(y*S+x0)*4;if(rr>1){D[p+3]=0;continue;}const nz=Math.sqrt(1-rr),n=Math.abs(Math.sin(x0*1.7+y*.9)*Math.cos(y*1.3-x0*.4));
+  for(let y=0;y<S;y++)for(let x0=0;x0<S;x0++){const nx=(x0+.5)/S*2-1,ny=1-(y+.5)/S*2,rr=nx*nx+ny*ny,p=(y*S+x0)*4;if(rr>1){D[p+3]=0;continue;}const nz=Math.sqrt(1-rr),n=Math.abs(Math.sin((x0*1.7+y*.9)*S0/S)*Math.cos((y*1.3-x0*.4)*S0/S));
     let m=g==='edge'||g==='chips'?(1-nz)*1.7+(n-.5)*.6:g==='dust'?ny*1.4+(n-.5)*.5:g==='dirt'?(-ny*.5+.5)*.9+(n-.5)*.6:n;m=clamp((m-.5)*3+.5,0,1);D[p]=D[p+1]=D[p+2]=40+m*200;D[p+3]=255;}
   x.putImageData(id,0,0);return cv2;}
 

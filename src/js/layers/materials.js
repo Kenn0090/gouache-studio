@@ -81,7 +81,7 @@ async function matReplace(rec){const L=doc.active;
 let matPopEl=null,matPopT=0;
 function matPopHide(){clearTimeout(matPopT);if(matPopEl){matPopEl.remove();matPopEl=null;}}
 function matPopShow(kind,rec,tile){matPopHide();matPopT=setTimeout(()=>{
-  const S=176;let pv;
+  const S=192;let pv;
   const info=[];
   if(kind==='smart')pv=smPreviewEl(rec,S);else if(kind==='smask')pv=smaskPreviewEl(rec,S);
   else if(rec.fill&&(rec.imgs||!rec.bundled)){pv=matPreviewEl(()=>rec.fill,()=>matRecTargets(rec),S).el;}
@@ -117,7 +117,7 @@ function renderMats(){const box=document.getElementById('matBody');if(!box)retur
     ...(mats.length&&(matView==='all'||matView==='yours')?[el('div',{class:'sub',text:'Yours'}),el('div',{class:'matgrid',id:'matMine'},...mats.map(tile))]:[]),
     ...(gmRecs.length&&(matView==='all'||matView==='library')?[el('div',{class:'sub',text:'Library ('+gmRecs.length+')'}),segChips([...GM_CATS.filter(c=>gmRecs.some(r=>r.cat===c)).map(c=>[c,c+' '+gmRecs.filter(r=>r.cat===c).length]),['all','All']],()=>gmCat,v=>{gmCat=v;try{localStorage.setItem('gs.gmCat',v);}catch(e){}renderMats();}),
       el('div',{class:'matgrid',id:'matLib'},...gmRecs.filter(r=>gmCat==='all'||r.cat===gmCat).map(rec=>{const b=mark(el('button',{class:'mattile',id:'gm_'+rec.bundled.file.replace(/\.gmat$/,''),title:rec.name+(rec.credit?' ('+rec.credit+')':'')+': click to highlight, then press the fill layer button, or drag it onto the layers. Double-click to swap it into the selected material layer',onclick:()=>matPick('mat',rec,b),ondblclick:()=>matReplace(rec)},
-      el('img',{src:rec.thumb,alt:'',width:tw,height:tw,class:'gmthumb',draggable:'false'}),el('span',{text:rec.name})),'mat',rec);return b;}))]:[]),
+      el('img',{src:rec.thumb,alt:'',width:tw,height:tw,class:'gmthumb',draggable:'false',loading:'lazy',decoding:'async'}),el('span',{text:rec.name})),'mat',rec);return b;}))]:[]),
     ...(matView==='all'||matView==='library'?[el('div',{class:'sub',text:'Built in'}),el('div',{class:'matgrid'},...matBuiltins().map(tile))]:[]),
     ...(matView==='all'||matView==='smart'?[el('div',{class:'sub',text:'Smart materials'}),el('div',{class:'matgrid',id:'smGrid'},...smarts.map(r=>stile(r,false)),...smBuiltins().map(r=>stile(r,false)))]:[]),
     ...(matView==='all'||matView==='smask'?[el('div',{class:'sub',text:'Smart masks'}),el('div',{class:'matgrid',id:'smMaskGrid'},...smasks.map(r=>stile(r,true)),...smaskBuiltins().map(r=>stile(r,true)))]:[]),

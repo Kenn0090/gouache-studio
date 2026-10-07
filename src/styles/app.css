@@ -826,7 +826,7 @@ body.sharp #menuSub{border-radius:0}
 .mattile .matprev{width:var(--tw,56px);height:var(--tw,56px)}
 .matsize{margin-left:auto}.matsize button{padding:2px 8px}
 .matpop{position:fixed;z-index:60;width:200px;padding:10px;background:var(--raise);border:1px solid var(--line-2);border-radius:10px;box-shadow:0 14px 34px rgba(0,0,0,.5);display:grid;gap:5px;pointer-events:none}
-.matpop .matprev{width:176px;height:176px;border-radius:50%}.matpop .mpname{font-weight:600}.matpop .mpsub{font-size:10.5px;color:var(--muted)}
+.matpop .matprev{width:192px;height:192px;border-radius:50%}.matpop .mpname{font-weight:600}.matpop .mpsub{font-size:10.5px;color:var(--muted)}
 .matpop .mpline{font-size:11px;line-height:1.35}.matpop .dim{color:var(--faint)}body.sharp .matpop{border-radius:0}
 
 /* 0.30 fold arrows and the bottom shelf */
