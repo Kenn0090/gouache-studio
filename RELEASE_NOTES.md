@@ -1,3 +1,9 @@
+# Gouache Studio 0.51.19
+
+- Preserve smooth detail through seam-aware Gaussian and box blur instead of shifting samples at every triangle edge.
+- Follow the first surface edge crossed by each blur sample and support longer walks through densely triangulated models.
+- Keep empty UV gutters and separate texture sets out of connected surface blur.
+
 # Gouache Studio 0.51.18
 
 - Type values beyond the normal slider range for spacing, scatter, lazy mouse distance, angle, weld width/spacing, tiling, bump strength, stencil scale and supported 3D lighting/height and filter strengths.

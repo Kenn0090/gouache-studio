@@ -49,3 +49,5 @@ node baketab.cjs              # one test: prints PASS/FAIL lines, then ALL PASSE
 - `brush0511.cjs` checks custom new-canvas colours, recent presets, per-preset and per-tool session sizes, default-size restoration, stationary nib dabs and synchronized Liquify controls with real deformation and undo. Set `GS_NATIVE_CDP` to an isolated desktop test instance.
 
 - `brush0512.cjs` checks both twirl directions and undo, Restore across strokes, stale restore protection, pressure-dependent narrow edge bleed, no lift bead, Alt cursor, F/Escape layout and text entry, and Liquify bracket sizing. Set `GS_NATIVE_CDP` to an isolated desktop test instance.
+
+- `mesh-seams.cjs` checks smooth-gradient preservation across coarse and dense triangulation, Gaussian/box blur across folded mirrored UV islands, and projected brush coverage at hard-normal joins with exact undo/redo. Serves the offline desktop frontend in Edge; `GS_HARDWARE=1` uses D3D11.
