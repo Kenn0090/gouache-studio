@@ -1,5 +1,10 @@
 # What's new in Gouache Studio
 
+## 0.51.13
+
+- Reduce weld painting preview work by refreshing the changed colour, roughness, metal and normal regions instead of whole textures. Use a lighter weld shader prepared when the tool is selected.
+- Keep the 3D brush footprint independent of viewport zoom, with the cursor following the projected brush size.
+
 ## 0.51.12
 
 - **Weld pixel painting:** the weld brush paints enabled channels directly onto a plain pixel layer, without creating a fill layer or coverage mask. Editable weld paths retain their route and controls while regenerating ordinary pixel channels.

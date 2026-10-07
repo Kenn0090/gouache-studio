@@ -51,5 +51,25 @@ const ok=(v,m)=>{console.log((v?'PASS ':'FAIL ')+m);if(!v)fails++;};
   return {plain:!L.fill&&!L.mask,before,wider,restored,reopened:!!R&&!R.fill&&!R.mask&&R.path.points.length===2&&!!R._fillImg?.pathTip};});
  console.log('Weld path',weldPath);ok(weldPath.plain&&weldPath.before>0&&weldPath.wider>weldPath.before&&weldPath.restored===weldPath.before&&weldPath.reopened,'editable weld path has ordinary channels, live width, undo and saved recipe without a mask');
  ok(errors.length===0,'saving and reopening the weld project raises no application errors');if(errors.length)console.log(errors);
+
+ const weldPerf=await p.evaluate(async()=>{const g=__gs;g.prefs.paintSpeed='best';g.doc.wrap=false;g.setEditMap('base');await g.weldUse(g.WELD_STYLES[0]);g.cmdAddLayer();const L=g.doc.active;
+  g.composite();g.v3Refresh();const o=g.paintOpts(g.editTarget());Object.assign(o,{size:10,pSize:false,smoothing:0});
+  g.beginStroke(L,24,40,1,o);g.composite();g.v3Refresh();
+  const before=g.v3Work.copyPixels,work=g.runStat.px;
+  for(let i=0;i<3;i++){g.addPoint(28+i*4,40,1);g.composite();g.v3Refresh();}
+  const copied=g.v3Work.copyPixels-before,pixels=g.runStat.px-work,keys=['base','rough','metal','nfinal'],saved={};
+  for(const k of keys)saved[k]=g.captureRegionNow(g.v3.tex[k],0,0,g.doc.w,g.doc.h).data;
+  g.v3.mapsDirty=true;g.v3.lastFull=0;g.v3Refresh();let maxDelta=0;
+  for(const k of keys){const b=g.captureRegionNow(g.v3.tex[k],0,0,g.doc.w,g.doc.h).data;for(let i=0;i<b.length;i++)maxDelta=Math.max(maxDelta,Math.abs(b[i]-saved[k][i]));}
+  g.endStroke(true);g.composite();g.v3Refresh();const released=!g.v3.mapsDirty;
+  g.doc.wrap=true;g.beginStroke(L,30,45,1,o);g.composite();const fallback=g.v3.mapsDirty&&!g.v3.mapRegion;g.endStroke(false);g.doc.wrap=false;
+  return {copied,pixels,fullCopies:g.doc.w*g.doc.h*4*3,maxDelta,released,fallback,error:g.gl.getError()};});
+ console.log('Weld preview work',weldPerf);ok(weldPerf.copied<weldPerf.fullCopies*.25&&weldPerf.maxDelta<=1&&weldPerf.released&&weldPerf.fallback&&weldPerf.error===0,'weld patches update live colour, roughness, metal and normals with identical full-refresh pixels and safe fallback');
+ const zoom=await p.evaluate(async()=>{const g=__gs;g.doc.wrap=false;g.setEditMap('base');g.setTool('brush');g.v3s().disp=0;g.v3s().uvs=1;Object.assign(g.v3.cam,{yaw:0,pitch:0,tx:0,ty:0,tz:0});
+  const counts=[];for(const ortho of [false,true]){g.v3s().ortho=ortho;for(const dist of [3,1.5]){g.v3.cam.dist=dist;g.cmdAddLayer();const L=g.doc.active,o=g.paintOpts(g.editTarget()),sp=g.meshSpace(256,256);Object.assign(o,{space:sp,cageRs:g.meshBrushScale(256),size:48,pSize:false,tip:null,hardness:1,flow:1,opacity:1,smoothing:0,extras:[]});
+    g.beginStroke(L,128,128,1,o);g.endStroke(false);counts.push(g.readRGBA8(L.target).reduce((n,v,i)=>n+(i%4===3&&v>128?1:0),0));}}
+  return {counts,scaleRatio:(g.v3.cam.dist=3,g.meshBrushScale(256))/(g.v3.cam.dist=1.5,g.meshBrushScale(256)),error:g.gl.getError()};});
+ console.log('Model brush zoom',zoom);ok(zoom.counts.every(n=>n>0)&&Math.abs(zoom.counts[0]-zoom.counts[1])<=4&&Math.abs(zoom.counts[2]-zoom.counts[3])<=4&&Math.abs(zoom.scaleRatio-.5)<.001&&zoom.error===0,'zoom preserves the model brush footprint in perspective and orthographic views');
+ ok(errors.length===0,'weld preview and zoom changes raise no application errors');if(errors.length)console.log(errors);
  await b.close();await new Promise(r=>server.close(r));process.exit(fails?1:0);
 })().catch(e=>{console.error(e);process.exit(1);});

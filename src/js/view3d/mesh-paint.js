@@ -80,19 +80,22 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
 /* ---- pointer on the 3D view ---- */
 const MESH_TOOLS=['brush','erase','dodge','burn','heal','clone','material'];
 function meshPaintReady(e){return v3.paintOn&&MESH_TOOLS.includes(ui.tool)&&!e.altKey&&e.button===0&&v3.gpu&&v3.mesh&&!v3.mesh.noUV;}
+/* Brush size is measured against a fixed 512-pixel model diameter, not the zoomed viewport.
+   Perspective and orthographic cameras share the same scale at their target plane. */
+function meshBrushScale(h){const radius=v3.mesh?.radius||1,depth=Math.max(.001,v3.cam.dist),half=Math.tan(v3s().fov*Math.PI/360);return h*radius/(512*depth*Math.max(.001,half));}
 function meshPt(hit,e){const r=hit.getBoundingClientRect();return [e.clientX-r.left,r.height-(e.clientY-r.top)];}
 function meshDown(hit,e){if(stroke||preview||selLive)return false;if(typeof bk!=='undefined'&&bk.busy&&ui.mode==='bake'){toast('Wait for the bake to finish.');return true;}
   if(ui.tool==='material')materialBrushTarget();if(fillNoMask())return true;
   const et=ui.mode==='bake'?bakeEditTarget():editTarget();if(ui.mode!=='bake'&&lockStop(et))return true;const o=paintOpts(et);if(!o)return true;
   const r=hit.getBoundingClientRect(),w=Math.max(1,Math.round(r.width)),h=Math.max(1,Math.round(r.height)),sp=meshSpace(w,h);if(!sp)return true;
   if(o.tool==='heal'||o.tool==='clone'){const pk=v3PickAt(hit,e);if(!pk)return true;if(!healBegin(pk.uv[0]*doc.w,pk.uv[1]*doc.h,o.tool))return true;}
-  o.space=sp;o.sym=null;const [x,y]=meshPt(hit,e),p=pressureOf(e),line=brushLineStart(et,x,y,p,e,'mesh');v3.mstroke={id:e.pointerId,sx:x,sy:y,sp:p,rx:x,ry:y,line};beginStroke(et.L,line.x,line.y,line.p,o);if(line.joined)addPoint(x,y,p);return true;}
+  o.space=sp;o.cageRs=meshBrushScale(h);o.sym=null;const [x,y]=meshPt(hit,e),p=pressureOf(e),line=brushLineStart(et,x,y,p,e,'mesh');v3.mstroke={id:e.pointerId,sx:x,sy:y,sp:p,rx:x,ry:y,line};beginStroke(et.L,line.x,line.y,line.p,o);if(line.joined)addPoint(x,y,p);return true;}
 function meshMove(hit,e){const m=v3.mstroke;if(!m||e.pointerId!==m.id||!stroke)return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];const k=1-brush.smoothing*.93;
   for(const ev of (evs.length?evs:[e])){let [x,y]=meshPt(hit,ev);const p=pressureOf(ev,e);if(m.line)[x,y]=brushLineSnap(m.line,x,y,ev.shiftKey);m.rx=x;m.ry=y;if(brush.lazy>0&&!ev.shiftKey){const q=lazyStep(m,x,y,brush.lazy);if(!q)continue;x=q[0];y=q[1];}const step=ev.shiftKey?1:k;m.sx+=(x-m.sx)*step;m.sy+=(y-m.sy)*step;m.sp+=(p-m.sp)*Math.max(k,.4);addPoint(m.sx,m.sy,m.sp);}}
 function meshUp(e){const m=v3.mstroke;if(!m||(e&&e.pointerId!==m.id))return;v3.mstroke=null;if(stroke){if(brush.smoothing>0)addPoint(brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);brushLineRemember(m.line,brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);endStroke(true);}}
 /* round cursor showing the brush size over the model */
 function meshCursor(hit,e){let c=v3.curEl;if(!c||!c.isConnected){c=v3.curEl=el('div',{class:'v3cur'});hit.parentNode.append(c);}
-  if(!e||!v3.paintOn||!MESH_TOOLS.includes(ui.tool)||e.altKey||v3.drag){c.hidden=true;hit.style.cursor=e&&e.altKey&&prefs.altPick!==false&&!['heal','clone'].includes(ui.tool)?brushPickerCursor:'';return;}hit.style.cursor='none';const r=hit.getBoundingClientRect(),pr=hit.parentNode.getBoundingClientRect(),d=Math.max(3,brush.size);
+  if(!e||!v3.paintOn||!MESH_TOOLS.includes(ui.tool)||e.altKey||v3.drag){c.hidden=true;hit.style.cursor=e&&e.altKey&&prefs.altPick!==false&&!['heal','clone'].includes(ui.tool)?brushPickerCursor:'';return;}hit.style.cursor='none';const r=hit.getBoundingClientRect(),pr=hit.parentNode.getBoundingClientRect(),d=Math.max(3,brush.size*meshBrushScale(r.height));
   c.hidden=false;c.style.width=c.style.height=d+'px';c.style.transform='translate('+(e.clientX-pr.left-d/2)+'px,'+(e.clientY-pr.top-d/2)+'px)';tipCursor(c,d);}
 /* ---- what is under the pointer: the model's UV there (and how far away), from a one-pixel render ---- */
 const FS_3DPICK=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform vec3 uCamP; uniform float uSet; uniform int uOrtho; uniform vec3 uFwd; void main(){ o=vec4(fract(vT),uOrtho==1?dot(vP-uCamP,uFwd):length(vP-uCamP),1.0+uSet); }`;

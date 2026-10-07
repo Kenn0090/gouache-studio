@@ -30,3 +30,5 @@ if(window.__gs)Object.assign(window.__gs,{weldUse,WELD_STYLES,weldOptions,txClic
 if(window.__gs)Object.assign(window.__gs,{meshConnectedBlur,seamBlurMesh,seamBlurDispose});
 if(window.__gs)Object.assign(window.__gs,{weldPathUpdate});
 if(window.__gs)Object.assign(window.__gs,{p3Sig});
+
+if(window.__gs)Object.assign(window.__gs,{meshBrushScale,v3s,runStat});
