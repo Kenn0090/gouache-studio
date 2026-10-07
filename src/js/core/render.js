@@ -35,7 +35,7 @@ function compVisibleStart(list,k){for(let i=list.length-1;i>=0;i--){const n=list
 function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
   let start=compVisibleStart(list,k);const cache=strokeCacheFor(list,k),sc=cache&&cache.i>start?cache:null;compStats.skipped+=start;
   if(sc&&sc.t&&sc.t.depth===acc.depth){blit(sc.t,acc,0,0,doc.w,doc.h,0,0);start=sc.i;compStats.cacheHits++;}
-  for(let i=start;i<list.length;i++){if(sc&&i===sc.i&&!sc.t&&!compPart){sc.t=makeTarget(doc.w,doc.h,acc.depth,undefined,acc.packed);blit(acc,sc.t,0,0,doc.w,doc.h,0,0);}
+  for(let i=start;i<list.length;i++){if(sc&&i===sc.i&&!sc.t&&!compPart&&!scissorNow){sc.t=makeTarget(doc.w,doc.h,acc.depth,undefined,acc.packed);blit(acc,sc.t,0,0,doc.w,doc.h,0,0);}
     const n=list[i],clipped=clipBaseOf(list,i);
     if(!n.visible)continue;if(clipped&&!clipped.visible)continue;
     const mt=maskTexOf(n);
