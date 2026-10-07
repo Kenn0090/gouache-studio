@@ -6,6 +6,7 @@
 const PANELS={
   favorites:{title:'Favorites',sel:'#favoritesSec',avail:m=>!['bake','convert'].includes(m),icon:'<path d="m12 3 3 6 6 1-4.5 4.5 1 6.5-5.5-3-5.5 3 1-6.5L3 10l6-1z"/>'},
   projects:{title:'Projects',sel:'#paSec',avail:m=>m==='p3d',icon:'<path d="M3 6h7l2 2h9v11H3z"/>'},
+  weldtools:{title:'Tools',sel:'#weldToolsSec',avail:m=>m==='p3d',icon:'<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="8" cy="17" r="1.8"/>'},
   meshmaps:{title:'Mesh maps',sel:'#mmSec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="m4 4 16 16M4 20 20 4"/>'},
   p3d:{title:'3D Paint',sel:'#p3dSec',avail:m=>m==='p3d',mode:true},
   hist:{title:'History',sel:'#histSec',avail:m=>m!=='convert',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>'},
@@ -32,8 +33,8 @@ const MODE_GROUP=['p3d','brushtab','conv','bake','anim'];
 /* the built-in workspaces: extra = 3D view on and how wide, painting on the model */
 const WS_PRESETS={
   painting:{name:'Paint',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['color','matEd','shading'],f:1.05},{tabs:['brushes','stencils','mats','textures','decals','envs','tool'],f:1.25},{tabs:['maps','p3bake'],f:.45},{tabs:['layers','chan','hist'],f:1.6}],icons:[],floats:[]},
-  texturing:{name:'3D Paint',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:[...MODE_GROUP,'p3bake','shading'],f:1.2},{tabs:['layers','maps','chan','hist'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','brushes'],f:1,h:260},icons:[],floats:[]},
-  paint3d:{name:'3D Paint (big view)',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:[...MODE_GROUP,'p3bake','shading'],f:1.2},{tabs:['layers','maps','chan','hist'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','brushes'],f:1,h:260},icons:[],floats:[]},
+  texturing:{name:'3D Paint',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:[...MODE_GROUP,'p3bake','shading'],f:1.2},{tabs:['layers','maps','chan','hist'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','projects','meshmaps','weldtools'],f:1,h:260},icons:[],floats:[]},
+  paint3d:{name:'3D Paint (big view)',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:[...MODE_GROUP,'p3bake','shading'],f:1.2},{tabs:['layers','maps','chan','hist'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','projects','meshmaps','weldtools','brushes'],f:1,h:260},icons:[],floats:[]},
   minimal:{name:'Minimal',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1}],icons:['color','matEd','shading','brushes','stencils','mats','textures','decals','envs','tool','maps','layers','chan','hist'],floats:[]}};
 /* (0.28, Kenn) each top tab has its own workspace, and the drop-down follows the tab */
 for(const [k,n] of [['animation','Animation'],['bake','Bake'],['convert','Convert'],['brush','Brush']])WS_PRESETS[k]=Object.assign(JSON.parse(JSON.stringify(WS_PRESETS.painting)),{name:n});
@@ -59,7 +60,7 @@ function dkFix(L){const seen=new Set();const keep=a=>a.filter(id=>PANELS[id]&&!s
   if(!L.shelf)L.shelf={tabs:[],f:1,h:170};if(!L.fold)L.fold={};
   for(const g of L.groups)g.tabs=keep(g.tabs);L.shelf.tabs=keep(L.shelf.tabs);for(const f of L.floats)f.tabs=keep(f.tabs);L.icons=keep(L.icons||[]);L.hidden=keep(L.hidden||[]);
   L.groups=L.groups.filter(g=>g.tabs.length);L.floats=L.floats.filter(f=>f.tabs.length);
-  for(const id of PANEL_IDS)if(!seen.has(id)){if(id==='favorites'){L.hidden.push(id);continue;}if(id==='projects'||id==='meshmaps'){L.shelf.tabs.push(id);continue;}const home=WS_PRESETS.painting.groups.find(g=>g.tabs.includes(id));const g=L.groups.find(g=>home&&g.tabs.some(t=>home.tabs.includes(t)));if(g)g.tabs.push(id);else L.groups.push({tabs:[id],f:1});}
+  for(const id of PANEL_IDS)if(!seen.has(id)){if(id==='favorites'){L.hidden.push(id);continue;}if(['mats','textures','decals','envs','projects','meshmaps','weldtools'].includes(id)){L.shelf.tabs.push(id);continue;}const home=WS_PRESETS.painting.groups.find(g=>g.tabs.includes(id));const g=L.groups.find(g=>home&&g.tabs.some(t=>home.tabs.includes(t)));if(g)g.tabs.push(id);else L.groups.push({tabs:[id],f:1});}
   return L;}
 /* the panels themselves, found once (while redrawing they are briefly off the page) */
 const dkSecs={};const dkSec=id=>dkSecs[id]||(dkSecs[id]=document.querySelector(PANELS[id].sel));
@@ -81,6 +82,7 @@ function dkInit(){
   /* Tool settings get a panel of their own, split from the brush library */
   const bs=dkSec('brushes'),hb=$('#hBrush'),title=$('#brushTitle');dk.toolTitle=title;
   const tool=el('section',{class:'sec',id:'toolSec','aria-labelledby':'hTool'},el('div',{class:'sec-h',id:'hTool'},title));tool.append($('#brushBody'));bs.after(tool);hb.prepend(el('span',{text:'Brushes'}));
+  const weldtools=el('section',{class:'sec',id:'weldToolsSec','aria-labelledby':'hWeldTools'},el('div',{class:'sec-h',id:'hWeldTools'},el('span',{text:'Tools'})),el('div',{id:'weldToolsBody',class:'dlg-grid'}));bs.after(weldtools);dkSecs.weldtools=weldtools;
   const panel=document.querySelector('aside.panel');panel.id='dock';panel.setAttribute('aria-label','Panels');
   dk.park=el('div',{id:'dkPark',hidden:true});document.body.append(dk.park);for(const id of PANEL_IDS)dk.park.append(dkSec(id));panel.replaceChildren();
   dk.icons=el('nav',{id:'dkIcons','aria-label':'Panels kept as icons'});panel.before(dk.icons);
@@ -148,7 +150,7 @@ function dkRender(){brushMergeSync();const keepSc=dkScrollSave(),L=dk.L,dock=$('
   if(!dk.dock2){dk.dock2=el('aside',{class:'panel',id:'dock2','aria-label':'Colour and brushes'});$('#app').append(dk.dock2);}
   dk.dock2.replaceChildren();dk.dock2.hidden=!dkCol2On();
   if(dkCol2On()){const g2=dk.col2.groups.filter(g=>dkAvail(g).length);g2.forEach((g,i)=>{if(i)dk.dock2.append(dkSplit(g2[i-1],g));dk.dock2.append(dkGroup(g));});}
-  dkShelfRender();
+  dkShelfRender();if(typeof weldToolsRender==='function')weldToolsRender();
   dk.icons.replaceChildren(...L.icons.filter(id=>dkIn(id)).map(id=>{const b=el('button',{class:'dkicon'+(dk.flyout===id?' on':''),title:PANELS[id].title,'aria-label':PANELS[id].title,'aria-pressed':String(dk.flyout===id)});
     b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+(PANELS[id].icon||'')+'</svg>';b.onclick=()=>dkFlyout(dk.flyout===id?null:id);b.addEventListener('pointerdown',e=>dkDragStart(e,id,{icons:true}));return b;}));
   for(const n of [...document.querySelectorAll('.dkfloat')])n.remove();
