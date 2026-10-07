@@ -124,6 +124,7 @@ async function txExportPack(){if(!tx.mine.length){toast('Import some textures fi
 function txDelete(rec){confirmDlg('Delete texture','Delete “'+rec.name+'” from Textures? Layers that use it keep it.','Delete',()=>{const i=tx.mine.indexOf(rec);if(i>=0)tx.mine.splice(i,1);
   txCacheDrop('mine:'+rec.id);tx.thumbs.delete('mine:'+rec.id);store.del(rec.id,'textures');renderTextures();});}
 /* ---- the uses ---- */
+function txClick(it){return doc.active?.editMask?txToMask(it):txToLayer(it);}
 async function txToMask(it){const L=doc.active;if(!isLayer(L)&&!(L&&L.type==='group')){toast('Select a layer first: the texture goes into its mask.');return;}
   const t=txCopy(await txTarget(it)),r=msAdd(L,'image',{p:{name:it.name}},'Add '+it.name.toLowerCase()+' to the mask');if(!r){disposeTarget(t);return;}
   msEdit(L,r,x=>{x.t=t;x.p.name=it.name;});(L.mask._rows||(L.mask._rows=new Set())).add(r);if(typeof msCommit==='function')msCommit();if(ui.mode==='paint')msSelect(L,'m',r.id);renderLayers();if(typeof renderMatEd==='function')renderMatEd(true);
@@ -168,7 +169,7 @@ function txForget(root){for(const img of root.querySelectorAll('img')){img._txCa
 function txPruneObserved(){for(const img of txObserved)if(!img.isConnected){txSeen.unobserve(img);txObserved.delete(img);}}
 const txSeen=new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting){txSeen.unobserve(e.target);txObserved.delete(e.target);if(e.target.isConnected)txThumb(e.target._tx,e.target);}});
 function renderTextures(){const box=$('#txBody');if(!box)return;if(!tx.loaded){txLoad();}const tw=MT_SIZES[tx.size]||64;box.style.setProperty('--tw',tw+'px');
-  const tile=it=>{const img=el('img',{alt:'',width:72,height:72,draggable:'false'});img._tx=it;txObserve(img);const b=el('button',{class:'mattile txtile',title:it.name+' (click: new layer. Right-click: more uses. Drag onto the layers)',id:'tx_'+it.kind+'_'+it.id,onclick:()=>txToLayer(it),oncontextmenu:e=>{e.preventDefault();txMenu(e,it);}},img,el('span',{text:it.name}));b._libDrag=['tex',it];return b;};
+  const tile=it=>{const img=el('img',{alt:'',width:72,height:72,draggable:'false'});img._tx=it;txObserve(img);const b=el('button',{class:'mattile txtile',title:it.name+' (click: selected mask or new layer. Right-click: more uses. Drag onto the layers)',id:'tx_'+it.kind+'_'+it.id,onclick:()=>txClick(it),oncontextmenu:e=>{e.preventDefault();txMenu(e,it);}},img,el('span',{text:it.name}));b._libDrag=['tex',it];return b;};
   const items=txItems();
   const category=el('select',{id:'txCategory','aria-label':'Texture category'},el('option',{value:'all',text:'All categories'}),...TX_CATEGORIES.map(k=>el('option',{value:k,text:k})));category.value=tx.category;category.addEventListener('change',()=>{tx.category=category.value;try{localStorage.setItem('gs.txCategory',tx.category);}catch(e){}renderTextures();});
   const search=el('input',{type:'search',id:'txSearch',placeholder:'Search textures','aria-label':'Search textures',value:tx.query});search.addEventListener('input',()=>{tx.query=search.value;const start=search.selectionStart;renderTextures();const next=$('#txSearch');next.focus();try{next.setSelectionRange(start,start);}catch(e){}});

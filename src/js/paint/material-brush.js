@@ -22,6 +22,9 @@ function materialPaintOpts(o,et){if(ui.tool!=='material')return o;if(et.isMask&&
   o.tool='brush';o.noTint=true;o.chan=null;o.material={fill:fillClone(rec.fill),imgs:matRecTargets(rec),tile:materialBrush.tile};
   o.extras=doc.maps.filter(k=>k!==doc.map&&rec.fill.maps[k]?.on).map(k=>({key:k,mode:1,color:[0,0,0]}));return o;}
 function materialBrushTarget(){if(ui.tool!=='material')return null;const n=doc.active,r=materialBrush.rec;if(!r||materialBrush.loading||sel.quick)return null;
+  /* Welds are pixel painting: never create a fill layer or a coverage mask. */
+  if(r.weldPaint){if(n&&isLayer(n)&&!n.fill&&!n.path&&!n.text&&!n.grad&&!n.shape&&!n.fx&&!n.editMask)return n;
+    cmdAddLayer();const L=doc.active;if(!L||!isLayer(L))return null;L.name=r.name;changed(L);return L;}
   const key=(r.id||r.bundled?.file||r.name)+':'+materialBrush.tile;if(n?.materialPaint===key&&n.fill&&n.mask)return n;if(n?.editMask&&!n.materialPaint)return null;
   /* Coverage uses one channel per texel. All channels share it and keep the material's
      original small sources, so 8K/16K material strokes do not expand six pixel layers. */

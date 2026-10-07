@@ -176,13 +176,13 @@ fxDef('quantize',{title:'Quantize',note:'Reduces the image to a palette of colou
     run(P.f_quant,dst,{uSrc:src.tex,uPal:palU(pal,64),uN:{int:pal.length},uDither:v.d*.9/Math.cbrt(pal.length)});}});
 
 /* ---- blur and sharpen ---- */
-fxDef('blur',{title:'Gaussian blur',defs:[{key:'r',label:'Radius',min:.5,max:100,step:.5,value:6,fmt:px}],render(src,dst,v){gaussian(src,dst,v.r);}});
+fxDef('blur',{title:'Gaussian blur',checks:[['meshSeams','Across mesh seams',true]],defs:[{key:'r',label:'Radius',min:.5,max:100,step:.5,value:6,fmt:px}],render(src,dst,v){if(v.meshSeams!==false&&typeof meshConnectedBlur==='function'&&meshConnectedBlur(src,dst,Math.max(.3,v.r/2.2),Math.max(.3,v.r/2.2),false))return;gaussian(src,dst,v.r);}});
 fxDef('sharpen',{title:'Sharpen',defs:[{key:'a',label:'Amount',min:0,max:3,step:.05,value:.8,fmt:pct},{key:'r',label:'Radius',min:.5,max:12,step:.5,value:1.5,fmt:px}],
   render(src,dst,v){const b=acquire();gaussian(src,b,v.r);run(P.sharpen,dst,{uSrc:src.tex,uBlur:b.tex,uAmount:v.a});release(b);}});
 fxDef('surfBlur',{title:'Surface blur',heavy:true,note:'Smooths areas of similar colour but keeps edges sharp.',defs:[{key:'r',label:'Radius',min:1,max:12,step:1,value:5,fmt:px},{key:'t',label:'Threshold',min:1,max:100,step:1,value:20}],
   render(src,dst,v){run(P.f_surface,dst,{uSrc:src.tex,uR:{int:v.r},uT:v.t/255*2.2,uWrap:!!doc.wrap});}});
-fxDef('boxBlur',{title:'Box blur',note:'An even, flat blur: every pixel in the box counts the same.',defs:[{key:'x',label:'Width',min:0,max:256,step:1,value:6,fmt:px},{key:'y',label:'Height',min:0,max:256,step:1,value:6,fmt:px}],
-  render(src,dst,v){const t=acquire();run(P.f_box,t,{uSrc:src.tex,uDir:[1,0],uR:{int:v.x},uWrap:!!doc.wrap});run(P.f_box,dst,{uSrc:t.tex,uDir:[0,1],uR:{int:v.y},uWrap:!!doc.wrap});release(t);}});
+fxDef('boxBlur',{title:'Box blur',checks:[['meshSeams','Across mesh seams',true]],note:'An even, flat blur: every pixel in the box counts the same.',defs:[{key:'x',label:'Width',min:0,max:256,step:1,value:6,fmt:px},{key:'y',label:'Height',min:0,max:256,step:1,value:6,fmt:px}],
+  render(src,dst,v){if(v.meshSeams!==false&&typeof meshConnectedBlur==='function'&&meshConnectedBlur(src,dst,v.x,v.y,true))return;const t=acquire();run(P.f_box,t,{uSrc:src.tex,uDir:[1,0],uR:{int:v.x},uWrap:!!doc.wrap});run(P.f_box,dst,{uSrc:t.tex,uDir:[0,1],uR:{int:v.y},uWrap:!!doc.wrap});release(t);}});
 fxDef('radialBlur',{title:'Radial blur',init:()=>({zoom:0}),controls:(v,upd)=>[seg([[0,'Spin'],[1,'Zoom']],v.zoom,x=>{v.zoom=x;upd();},'Method')],
   defs:[{key:'a',label:'Amount',min:0,max:100,step:1,value:12},{key:'cx',label:'Centre across',min:0,max:100,step:1,value:50,fmt:v=>v+'%'},{key:'cy',label:'Centre down',min:0,max:100,step:1,value:50,fmt:v=>v+'%'}],
   render(src,dst,v){run(P.f_radial,dst,{uSrc:src.tex,uC:[doc.w*v.cx/100,doc.h*v.cy/100],uAmt:v.zoom?v.a/100:v.a/100*1.2,uZoom:{int:v.zoom}});}});

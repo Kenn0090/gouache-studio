@@ -83,6 +83,7 @@
     "view3d/panner",
     "view3d/mesh-paint",
     "view3d/paint3d",
+    "view3d/mesh-seams",
     "view3d/mesh-map-edit",
     "view3d/vp-strip",
     "view3d/mask-tools",
