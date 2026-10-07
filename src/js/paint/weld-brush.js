@@ -45,7 +45,7 @@ async function weldUse(style){if(weldBusy)return;style=weldSet(style.id);weldBus
   const ok=await materialBrushUse(weldMaterial(style));if(!ok)return;
   applyPreset({name:'Weld · '+style.name,tool:'material',tip:weldTipGet(),size:weldOptions.width,hardness:.92,flow:1,opacity:1,spacing:weldOptions.spacing,
     pSize:true,minSize:.55,pOpacity:false,smoothing:.2,followDir:true,angleJitter:weldOptions.irregularity*16,sizeJitter:weldOptions.irregularity*.2,scatter:weldOptions.irregularity*.08,buildup:false});
-  toast(style.name+' ready. Paint on the material thumbnail to add a raised metal bead.');
+  toast(style.name+' ready. Paint on the material thumbnail to add a raised metal bead.');weldToolsRender();
  }finally{weldBusy=false;}}
 function weldCard(style){const cv=el('canvas',{width:112,height:54,role:'img','aria-label':style.name+' bead preview'}),x=cv.getContext('2d');
   x.fillStyle='#202329';x.fillRect(0,0,112,54);x.strokeStyle='#58606a';x.lineWidth=1;x.beginPath();x.moveTo(4,43);x.lineTo(108,43);x.stroke();
