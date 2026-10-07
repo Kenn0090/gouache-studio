@@ -50,7 +50,7 @@ function weldPathUpdate(L){if(!L?.path?.weld)return;const P=L.path;P.weld={style
   P.width=(v3.mesh?.radius||1)*weldOptions.width/100;P.spacing=weldOptions.spacing;weldPathRender(L);}
 function weldPathRender(L){if(!pathValid(L))return;weldPathPixels(L);const P=L.path,options=P.weld,style=WELD_STYLES.find(s=>s.id===options.style)||WELD_STYLES[0],rec=weldMaterial(style,options);
   const coverage=makeTarget(doc.w,doc.h,8,false,false,true);
-  try{clearTarget(coverage,[0,0,0,1]);if(P.points.length>=2&&P.mode!=='none')pathSurfaceMask(L,pathSamples(P,true),coverage);
+  try{clearTarget(coverage,[0,0,0,1]);if(P.points.length>=2&&P.mode!=='none')pathSurfaceMask(L,pathSamples(P,true),coverage,true);
     if(!P_WELDPIXELS)P_WELDPIXELS=program('uniform sampler2D uCoverage; uniform vec3 uColor; void main(){float a=texelFetch(uCoverage,ivec2(gl_FragCoord.xy),0).r; o=vec4(uColor*a,a);}');
     for(const k of doc.maps){const v=rec.fill.maps[k];if(!v?.on)continue;const color=MAP_DEFS[k].grey?[v.v,v.v,v.v]:v.c;
       run(P_WELDPIXELS,ensureMapTarget(L,k),{uCoverage:coverage.tex,uColor:color});}
