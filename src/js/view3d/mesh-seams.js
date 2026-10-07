@@ -16,28 +16,36 @@ vec3 baryUV(int t,vec2 p){vec2 a=uvAt(t,0),b=uvAt(t,1)-a,c=uvAt(t,2)-a,q=p-a;flo
 vec3 baryWorld(int t,vec3 p){vec3 a=pointAt(t,0),b=pointAt(t,1)-a,c=pointAt(t,2)-a,q=p-a;
  float bb=dot(b,b),bc=dot(b,c),cc=dot(c,c),d=bb*cc-bc*bc;if(abs(d)<1e-16)return vec3(1,0,0);
  float y=(cc*dot(q,b)-bc*dot(q,c))/d,z=(bb*dot(q,c)-bc*dot(q,b))/d;return vec3(1.0-y-z,y,z);}
-/* Keep bilinear reads inside the chosen triangle instead of reading empty atlas gutters. */
+/* Only atlas borders need an inset. Interior triangle edges share the same pixels.
+   Move a sample the minimum distance towards the inset triangle; never remap its interior. */
 vec2 seamReadUV(int t,vec3 b){vec2 a=uvAt(t,0)*uSize,c=uvAt(t,1)*uSize,d=uvAt(t,2)*uSize;
- float area=abs((c.x-a.x)*(d.y-a.y)-(c.y-a.y)*(d.x-a.x));
+ float area=abs((c.x-a.x)*(d.y-a.y)-(c.y-a.y)*(d.x-a.x));int borders=int(faceData(t,3).w);
  vec3 inset=1.01*vec3(abs(c.x-d.x)+abs(c.y-d.y),abs(d.x-a.x)+abs(d.y-a.y),abs(a.x-c.x)+abs(a.y-c.y))/max(area,1e-8);
- float sum=dot(inset,vec3(1));if(sum>=.9)return (a+c+d)/(3.0*uSize);
- vec3 w=max(b-inset,vec3(0));float total=dot(w,vec3(1));b=total>1e-8?inset+w*((1.0-sum)/total):vec3(1.0/3.0);
- return (a*b.x+c*b.y+d*b.z)/uSize;}
-vec2 walkUV(int t,vec3 b){for(int step=0;step<12;step++){
- int e=b.x<b.y?(b.x<b.z?0:2):(b.y<b.z?1:2);if(b[e]>=-0.00001)break;
+ for(int k=0;k<3;k++)if((borders&(1<<k))==0)inset[k]=0.0;
+ float sum=dot(inset,vec3(1));if(sum>=.99)return (a+c+d)/(3.0*uSize);
+ vec3 centre=inset+vec3((1.0-sum)/3.0);float shift=0.0;
+ for(int k=0;k<3;k++)if(b[k]<inset[k])shift=max(shift,(inset[k]-b[k])/max(centre[k]-b[k],1e-8));
+ b=mix(b,centre,clamp(shift,0.0,1.0));return (a*b.x+c*b.y+d*b.z)/uSize;}
+vec2 walkUV(int t,vec3 anchor,vec3 b){for(int step=0;step<64;step++){
+ /* Follow the first edge crossed by the segment, rather than the most negative
+    endpoint coordinate (which can select an unrelated edge at triangle corners). */
+ int e=-1;float first=2.0;for(int k=0;k<3;k++)if(b[k]<-0.00001){float f=max(0.0,anchor[k])/max(anchor[k]-b[k],1e-8);if(f<first){first=f;e=k;}}
+ if(e<0)break;
  vec4 links=faceData(t,1);int next=int(e==0?links.z:e==1?links.w:faceData(t,2).w);
- if(next<0){b=max(b,vec3(0));b/=max(dot(b,vec3(1)),1e-8);break;}
+ vec3 crossing=mix(anchor,b,clamp(first,0.0,1.0));
+ if(next<0){b=crossing;break;}
  vec3 a=pointAt(t,(e+1)%3),c=pointAt(t,(e+2)%3),op=pointAt(t,e),edge=c-a;float len=length(edge);if(len<1e-8)break;edge/=len;
  vec3 p=pointAt(t,0)*b.x+pointAt(t,1)*b.y+pointAt(t,2)*b.z,side=op-a-edge*dot(op-a,edge);
+ vec3 hit=pointAt(t,0)*crossing.x+pointAt(t,1)*crossing.y+pointAt(t,2)*crossing.z;
  float distance=-dot(p-a,normalize(side));vec3 nside=vec3(0);float longest=0.0;
  for(int k=0;k<3;k++){vec3 s=pointAt(next,k)-a;s-=edge*dot(s,edge);float d=dot(s,s);if(d>longest){longest=d;nside=s;}}
- if(longest<1e-16)break;p=a+edge*dot(p-a,edge)+normalize(nside)*distance;t=next;b=baryWorld(t,p);
+ if(longest<1e-16)break;p=a+edge*dot(p-a,edge)+normalize(nside)*distance;t=next;b=baryWorld(t,p);anchor=baryWorld(t,hit);
  }
  b=max(b,vec3(0));b/=max(dot(b,vec3(1)),1e-8);return seamReadUV(t,b);}
 void main(){vec3 b=vec3(1.0-vBary.x-vBary.y,vBary);vec2 uv=uvAt(vFace,0)*b.x+uvAt(vFace,1)*b.y+uvAt(vFace,2)*b.z;
  vec4 acc=vec4(0);float total=0.0;
  for(int y=-4;y<=4;y++)for(int x=-4;x<=4;x++){vec2 p=vec2(x,y)/4.0;float weight=uBox==1?1.0:exp(-dot(p,p)*4.5);
- vec2 tap=walkUV(vFace,baryUV(vFace,uv+p*uRadius/uSize));acc+=textureLod(uSrc,tap,0.0)*weight;total+=weight;}
+ vec2 tap=walkUV(vFace,b,baryUV(vFace,uv+p*uRadius/uSize));acc+=textureLod(uSrc,tap,0.0)*weight;total+=weight;}
  o=acc/total;}`;
 function seamBlurDispose(){if(!seamBlurCache)return;const c=seamBlurCache;gl.deleteTexture(c.tex);gl.deleteBuffer(c.vb);gl.deleteVertexArray(c.vao);seamBlurCache=null;}
 function seamBlurMesh(){const m=v3.mesh;if(!m||!v3.gpu||m.noUV||v3s().uvs!==1)return null;const R=p3Range();
@@ -49,10 +57,15 @@ function seamBlurMesh(){const m=v3.mesh;if(!m||!v3.gpu||m.noUV||v3s().uvs!==1)re
   /* UDIM/tiled layouts need their own tile-aware topology. Preserve the ordinary filter there. */
   if(uv.some(q=>q.some(v=>v<0||v>1))){return null;}
   data.set([...uv[0],...uv[1]],i*20);data.set([...uv[2],-1,-1],i*20+4);
-  for(let k=0;k<3;k++){const v=ids[k];data.set([m.pos[v*3],m.pos[v*3+1],m.pos[v*3+2],k===0?-1:0],i*20+8+k*4);
+  let borders=0;for(let k=0;k<3;k++){const v=ids[k];data.set([m.pos[v*3],m.pos[v*3+1],m.pos[v*3+2],k===0?-1:0],i*20+8+k*4);
    const edge=topo.ep.get(topo.ek(topo.pid[ids[(k+1)%3]],topo.pid[ids[(k+2)%3]],topo.NP));
-   if(edge?.length===2){const other=edge[0]===t?edge[1]:edge[0];if(other>=R.start&&other<R.start+n)data[i*20+(k===0?6:k===1?7:11)]=other-R.start;}
-   vertices.set([...uv[k],i,k===1?1:0,k===2?1:0],(i*3+k)*5);}}
+   let continuous=false;
+   if(edge?.length===2){const other=edge[0]===t?edge[1]:edge[0];if(other>=R.start&&other<R.start+n){data[i*20+(k===0?6:k===1?7:11)]=other-R.start;
+    continuous=true;for(let j=1;j<=2;j++){const v=ids[(k+j)%3];let found=false;
+     for(let h=0;h<3;h++){const w=m.idx[other*3+h];if(topo.pid[v]===topo.pid[w]&&Math.abs(m.uv[v*2]-m.uv[w*2])<1e-6&&Math.abs(m.uv[v*2+1]-m.uv[w*2+1])<1e-6){found=true;break;}}
+     if(!found){continuous=false;break;}}}}
+   if(!continuous)borders|=1<<k;
+   vertices.set([...uv[k],i,k===1?1:0,k===2?1:0],(i*3+k)*5);}data[i*20+15]=borders;}
  const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,width,height,0,gl.RGBA,gl.FLOAT,data);
  for(const p of [gl.TEXTURE_MIN_FILTER,gl.TEXTURE_MAG_FILTER])gl.texParameteri(gl.TEXTURE_2D,p,gl.NEAREST);
  for(const p of [gl.TEXTURE_WRAP_S,gl.TEXTURE_WRAP_T])gl.texParameteri(gl.TEXTURE_2D,p,gl.CLAMP_TO_EDGE);

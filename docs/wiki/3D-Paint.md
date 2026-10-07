@@ -244,3 +244,10 @@ New 3D Paint sessions start with **Material preview**, the supplied UV mesh fram
 Double-click a texture-set name, or use **Rename**, to change its displayed name and exported texture names. Renaming preserves its connection to the original mesh material slot and is saved in the project.
 
 With the brush, **Shift-click** connects the previous stroke endpoint to the new point through the visible mesh projection. **Shift-drag** constrains a stroke horizontally or vertically in the view. Lines use the normal brush and one undo step. Changing the camera, model, layer, channel or mask starts a new endpoint, avoiding a connection from a different painting context.
+
+
+## Painting and blur across UV seams
+
+A brush stroke projects onto the visible surface of the selected texture set, including separate or mirrored UV islands and hard-normal joins. The empty space between islands on the flat texture stays clear. Separate texture sets remain independent; select a set to edit its layers.
+
+Gaussian and Box blur have an **Across mesh seams** option. In 3D Paint, with a single 0-1 UV tile and UV tiling set to 1, their samples follow connected triangles across island boundaries and folded surfaces. Internal triangle edges keep their original sample positions, so dense triangulation no longer distorts smooth detail. Surface boundaries clamp samples and UV gutters are excluded. Turn the option off for ordinary image-space blur. UDIM layouts and cross-texture-set filtering are not supported by this option.

@@ -21,3 +21,4 @@ jobs:
       - run: node tests/e2e/artist-fixes.cjs
       - run: node tests/e2e/symmetry.cjs
       - run: node tests/e2e/numeric-sliders.cjs
+      - run: node tests/e2e/mesh-seams.cjs
