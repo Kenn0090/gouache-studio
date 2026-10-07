@@ -25,3 +25,6 @@ if(window.__gs)Object.assign(window.__gs,{liqDown,liqDab,liqFlush,liqUp});
 
 if(window.__gs)Object.assign(window.__gs,{favoritesState,favoritesAdd,favoritesResolve,renderFavorites});
 if(window.__gs)Object.assign(window.__gs,{drawGradient,gradDef,gradAt,positionEditor,closeTextEditor,renderText});
+
+if(window.__gs)Object.assign(window.__gs,{weldUse,WELD_STYLES,weldOptions,txClick,wsForMode,lazyStep,pressureOf});
+if(window.__gs)Object.assign(window.__gs,{meshConnectedBlur,seamBlurMesh,seamBlurDispose});

@@ -41,8 +41,8 @@ for(const [k,n] of [['animation','Animation'],['bake','Bake'],['convert','Conver
 /* Brush creation keeps its previews and settings together, with painting brushes below the canvas. */
 WS_PRESETS.brush={name:'Brush',tb:{side:'left',cols:1},opt:true,w:420,groups:[{tabs:['color'],f:.45},{tabs:MODE_GROUP.slice(),active:'brushtab',f:5}],shelf:{tabs:['brushes'],h:230,f:1},icons:['layers','hist','maps','chan','matEd','shading','tool','stencils','mats','textures','decals','envs','p3bake'],floats:[]};
 const WS_MODE_DEF={paint:'painting',p3d:'texturing',anim:'animation',bake:'bake',convert:'convert',brush:'brush'};
-const dk={ws:'painting',L:null,custom:{},saved:{},lock:false,flyout:null,drag:null,modeWs:{}};
-(()=>{try{const s=JSON.parse(localStorage.getItem('gs.dock')||'{}');if(s.ws)dk.ws=s.ws;if(s.modeWs)dk.modeWs=s.modeWs;if(s.col2&&s.col2.groups)dk.col2=s.col2;dk.saved=s.saved||{};dk.custom=s.custom||{};dk.lock=!!s.lock;
+const dk={ws:'painting',L:null,custom:{},saved:{},lock:false,flyout:null,drag:null,modeWs:{},modeLayouts:{},layoutMode:null};
+(()=>{try{const s=JSON.parse(localStorage.getItem('gs.dock')||'{}');if(s.ws)dk.ws=s.ws;if(s.modeWs)dk.modeWs=s.modeWs;if(s.col2&&s.col2.groups)dk.col2=s.col2;dk.modeLayouts=s.modeLayouts||{};dk.saved=s.saved||{};dk.custom=s.custom||{};dk.lock=!!s.lock;
   /* Upgrade the old copied Paint layout once; retain custom arrangements. */
   if(!localStorage.getItem('gs.brushLayout464')){const L=dk.saved.brush;if(L&&L.groups&&L.groups.length===5&&L.groups[0].tabs.includes('brushtab')&&L.groups[1].tabs.includes('color')&&L.groups[2].tabs.includes('brushes'))delete dk.saved.brush;localStorage.setItem('gs.brushLayout464','1');}
   if(!localStorage.getItem('gs.brushLayout466')){const L=dk.saved.brush;if(L&&L.groups&&L.groups.length===2&&L.groups[0].tabs.includes('brushtab')&&L.groups[1].tabs.length===1&&L.groups[1].tabs[0]==='color')delete dk.saved.brush;localStorage.setItem('gs.brushLayout466','1');}
@@ -54,7 +54,8 @@ const dk={ws:'painting',L:null,custom:{},saved:{},lock:false,flyout:null,drag:nu
   if(!localStorage.getItem('gs.layout37')){localStorage.setItem('gs.layout37','1');delete dk.saved.texturing;delete dk.saved.paint3d;if(dk.col2)delete dk.col2;}}catch(e){}})();
 const dkClone=o=>JSON.parse(JSON.stringify(o));
 function dkPreset(ws){return dkClone(WS_PRESETS[ws]||dk.custom[ws]||WS_PRESETS.painting);}
-function dkSave(){if(dk.L)dk.saved[dk.ws]=dk.L;try{localStorage.setItem('gs.dock',JSON.stringify({ws:dk.ws,modeWs:dk.modeWs,saved:dk.saved,custom:dk.custom,lock:dk.lock,col2:dk.col2}));}catch(e){}}
+function dkLayoutFor(m,ws){const own=dk.modeLayouts[m]?.[ws];return own?dkClone(own):dk.saved[ws]?dkClone(dk.saved[ws]):dkPreset(ws);}
+function dkSave(){if(dk.L){const m=dk.layoutMode||ui.mode;(dk.modeLayouts[m]||(dk.modeLayouts[m]={}))[dk.ws]=dkClone(dk.L);}try{localStorage.setItem('gs.dock',JSON.stringify({ws:dk.ws,modeWs:dk.modeWs,modeLayouts:dk.modeLayouts,saved:dk.saved,custom:dk.custom,lock:dk.lock,col2:dk.col2}));}catch(e){}}
 /* every panel is in exactly one place: a group, a float, the icons, or hidden */
 function dkFix(L){const seen=new Set();const keep=a=>a.filter(id=>PANELS[id]&&!seen.has(id)&&seen.add(id));
   if(!L.shelf)L.shelf={tabs:[],f:1,h:170};if(!L.fold)L.fold={};
@@ -90,7 +91,7 @@ function dkInit(){
   const grip=el('div',{class:'tbgrip',title:'Drag to the other side of the window. Double-click for one or two columns.'});$('#tools').prepend(grip);
   grip.addEventListener('dblclick',()=>dkToolbar({cols:dk.L.tb.cols===2?1:2}));
   grip.addEventListener('pointerdown',e=>{if(dk.lock)return;e.preventDefault();const up=ev=>{window.removeEventListener('pointerup',up);const side=ev.clientX>window.innerWidth/2?'right':'left';if(side!==dk.L.tb.side)dkToolbar({side});};window.addEventListener('pointerup',up);});
-  dkApply(dk.saved[dk.ws]?dkClone(dk.saved[dk.ws]):dkPreset(dk.ws),true);
+  dk.ws=wsForMode(ui.mode);dk.layoutMode=ui.mode;dkApply(dkLayoutFor(ui.mode,dk.ws),true);
   window.addEventListener('pointermove',dkDragMove);window.addEventListener('pointerup',dkDragEnd);
   new ResizeObserver(()=>{for(const f of dk.L.floats)dkKeepOnScreen(f);}).observe(document.body);}
 /* ---- applying a layout ---- */
@@ -273,18 +274,17 @@ function dkDragEnd(){const d=dk.drag;dk.drag=null;if(!d||!d.on)return;d.ghost.re
   if(d.to.group&&d.to.group.tabs.includes(d.id)&&d.to.group.tabs.length===1)return;
   dkMove(d.id,d.to);}
 /* ---- workspaces ---- */
-function wsList(){return [...Object.keys(WS_PRESETS).map(k=>[k,WS_PRESETS[k].name]),...Object.keys(dk.custom).map(k=>[k,dk.custom[k].name||k])];}
-function setWorkspace(ws,quiet){if(!WS_PRESETS[ws]&&!dk.custom[ws])return;dk.ws=ws;dk.flyout=null;dkApply(dk.saved[ws]?dkClone(dk.saved[ws]):dkPreset(ws));syncWsSel();if(!quiet)toast('Workspace: '+(WS_PRESETS[ws]||dk.custom[ws]).name+'.');}
-function resetWorkspace(){delete dk.saved[dk.ws];dk.flyout=null;dkApply(dkPreset(dk.ws));toast('Workspace reset.');}
+function wsList(){const allowed=ui.mode==='paint'?['painting','minimal']:ui.mode==='p3d'?['texturing','paint3d','minimal']:[WS_MODE_DEF[ui.mode]||'painting','minimal'];return [...allowed.map(k=>[k,WS_PRESETS[k].name]),...Object.keys(dk.custom).map(k=>[k,dk.custom[k].name||k])];}
+function setWorkspace(ws,quiet){if(!WS_PRESETS[ws]&&!dk.custom[ws])return;if(dk.L)dkSave();dk.ws=ws;dk.layoutMode=ui.mode;dk.modeWs[ui.mode]=ws;dk.flyout=null;dkApply(dkLayoutFor(ui.mode,ws));syncWsSel();if(!quiet)toast('Workspace: '+(WS_PRESETS[ws]||dk.custom[ws]).name+'.');}
+function resetWorkspace(){if(dk.modeLayouts[ui.mode])delete dk.modeLayouts[ui.mode][dk.ws];dk.flyout=null;dkApply(dkPreset(dk.ws));toast('Workspace reset.');}
 function saveWorkspaceAs(){const inp=el('input',{type:'text',value:'My workspace','aria-label':'Name'});
   openDialog({title:'Save workspace',body:el('div',{class:'dlg-grid'},el('p',{class:'note',text:'Saves where every panel is, the toolbar and the options bar.'}),inp),okLabel:'Save',onOk(){const n=inp.value.trim();if(!n)return false;const id='c_'+n.toLowerCase().replace(/[^a-z0-9]+/g,'_');
-    dk.custom[id]=Object.assign(dkClone(dk.L),{name:n});delete dk.saved[id];dk.ws=id;dkSave();syncWsSel();toast('Saved the workspace “'+n+'”.');}});setTimeout(()=>{inp.focus();inp.select();},0);}
-function deleteWorkspace(){if(!dk.custom[dk.ws]){toast('Built-in workspaces can be reset, not deleted.');return;}const n=dk.custom[dk.ws].name;delete dk.custom[dk.ws];delete dk.saved[dk.ws];setWorkspace('painting');toast('Deleted the workspace “'+n+'”.');}
+    dk.custom[id]=Object.assign(dkClone(dk.L),{name:n});delete dk.saved[id];dkSave();dk.ws=id;dk.modeWs[ui.mode]=id;dkSave();syncWsSel();toast('Saved the workspace “'+n+'”.');}});setTimeout(()=>{inp.focus();inp.select();},0);}
+function deleteWorkspace(){if(!dk.custom[dk.ws]){toast('Built-in workspaces can be reset, not deleted.');return;}const n=dk.custom[dk.ws].name;delete dk.custom[dk.ws];delete dk.saved[dk.ws];for(const m in dk.modeLayouts)delete dk.modeLayouts[m][dk.ws];setWorkspace(WS_MODE_DEF[ui.mode]||'painting');toast('Deleted the workspace “'+n+'”.');}
 function toggleLockPanels(){dk.lock=!dk.lock;dkSave();document.body.classList.toggle('dklock',dk.lock);toast(dk.lock?'Panels locked: tabs and bars can’t be dragged.':'Panels unlocked.');}
 /* 3D view and painting on the model for Texturing and 3D Paint */
 function dkWorkspaceExtras(){const x=dk.L.extra||{};if(typeof toggle3D!=='function')return;
-  if(x.v3&&ui.mode==='paint'){if(!v3.on)toggle3D(true);if(!v3.pop)$('#work').style.setProperty('--pane3d',Math.round($('#work').clientWidth*x.v3)+'px');if(x.paint3d)v3.paintOn=true;if(typeof build3dPane==='function')build3dPane();}
-  else if(!x.v3&&v3.on&&ui.mode==='paint'&&dk.prevExtra&&dk.prevExtra.v3)toggle3D(false);
+  /* A panel arrangement must not replace the Paint canvas with a model viewport. */
   dk.prevExtra=x;resizeGL();fit();requestRender(true);}
 function syncWsSel(){const s=$('#wsSel');if(!s)return;s.replaceChildren(...wsList().map(([k,n])=>el('option',{value:k,text:n})),el('option',{value:'',disabled:true,text:'──────────'}),
   el('option',{value:':save',text:'Save workspace…'}),el('option',{value:':reset',text:'Reset this workspace'}),el('option',{value:':delete',text:'Delete this workspace'}));s.value=dk.ws;}
@@ -331,7 +331,7 @@ window.addEventListener('beforeunload',()=>{for(const p of dk.pops){p.closing=tr
 
 /* the workspace a tab uses (the one last picked while in it, else its own) */
 function wsForMode(m){const w=dk.modeWs[m]||WS_MODE_DEF[m]||'painting';return WS_PRESETS[w]||dk.custom[w]?w:(WS_MODE_DEF[m]||'painting');}
-function dkModeWs(){const w=wsForMode(ui.mode);if(w!==dk.ws){if(dk.L)dkSave();setWorkspace(w,true);}else syncWsSel();}
+function dkModeWs(){const w=wsForMode(ui.mode);if(w!==dk.ws||dk.layoutMode!==ui.mode){if(dk.L)dkSave();setWorkspace(w,true);}else syncWsSel();}
 {const sm=setMode;setMode=function(m,q){const r=sm(m,q);if(r!==false&&ui.mode===m)dkModeWs();return r;};}
 
 {const favoriteDockRender=dkRender;dkRender=function(){favoriteDockRender();renderFavorites();};}

@@ -1,3 +1,10 @@
+# Gouache Studio 0.51.12
+
+- Weld brush strokes paint ordinary pixel layers without adding a fill layer or mask.
+- Paint and 3D Paint retain independent panel layouts, with simpler layout menus.
+- Texture clicks use the selected mask, and lazy mouse no longer jumps to the cursor on release.
+- Gaussian and box blur can follow connected mesh triangles across UV seams within a single-tile texture set.
+
 # Gouache Studio 0.51.11
 
 - Give weld tools their own shelf tab, improve the round bead profile, update selected weld paths live, and extend surface coverage across hard seams.

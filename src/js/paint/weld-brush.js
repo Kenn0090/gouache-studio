@@ -33,7 +33,7 @@ function weldTipGet(){if(weldTip)return weldTip;weldTip=genTip('Weld bead',128,1
   g.addColorStop(0,'rgba(255,255,255,.5)');g.addColorStop(.32,'rgba(255,255,255,.62)');g.addColorStop(.48,'rgba(255,255,255,.82)');g.addColorStop(.58,'rgba(255,255,255,1)');g.addColorStop(.7,'rgba(255,255,255,.82)');g.addColorStop(.88,'rgba(255,255,255,.28)');g.addColorStop(1,'rgba(255,255,255,0)');
   x.fillStyle=g;x.fillRect(0,0,w,h);
 });return weldTip;}
-function weldMaterial(style){const h=weldOptions.height,heat=weldOptions.heat,base=style.color.map((v,i)=>Math.min(1,v+(i===0?heat*.35:i===1?heat*.12:0)));return {id:'weld:'+style.id+':'+h.toFixed(2)+':'+heat.toFixed(2),name:'Weld · '+style.name,fill:{proj:'uv',triSharp:4,hStr:1,maps:{
+function weldMaterial(style){const h=weldOptions.height,heat=weldOptions.heat,base=style.color.map((v,i)=>Math.min(1,v+(i===0?heat*.35:i===1?heat*.12:0)));return {weldPaint:true,id:'weld:'+style.id+':'+h.toFixed(2)+':'+heat.toFixed(2),name:'Weld · '+style.name,fill:{proj:'uv',triSharp:4,hStr:1,maps:{
   base:{on:true,src:'value',c:base},rough:{on:true,src:'value',v:style.rough},metal:{on:true,src:'value',v:1},
   height:{on:true,src:'value',v:.5+h*.5},normal:{on:false,src:'image',tile:1}}},imgs:{normal:weldNormalImage()}};}
 function weldPathSetup(L){const style=WELD_STYLES.find(s=>s.id===weldOptions.style)||WELD_STYLES[0],rec=weldMaterial(style),im=rec.imgs.normal,t=makeTarget(im.w,im.h,8,true);writeRegion(t,0,0,im.w,im.h,im.data);L.fill=rec.fill;L.fill.name=rec.name;L._fillImg=Object.assign(L._fillImg||{},{normal:t});L.fill.coverH=false;L.fill.proj='uv';L.path.weld={style:style.id,height:weldOptions.height,width:weldOptions.width,spacing:weldOptions.spacing,irregularity:weldOptions.irregularity,heat:weldOptions.heat};const tip=weldTipGet();if(L._fillImg?.pathTip)disposeTarget(L._fillImg.pathTip);L._fillImg.pathTip=makeTarget(tip.w,tip.h,8,false);blit(tip,L._fillImg.pathTip,0,0,tip.w,tip.h,0,0);L.path.tipName=tip.name;L.path.width=(v3.mesh?.radius||1)*weldOptions.width/100;L.path.spacing=weldOptions.spacing;fillRender(L);L.name=rec.name+' path';}
@@ -45,7 +45,7 @@ async function weldUse(style){if(weldBusy)return;style=weldSet(style.id);weldBus
   const ok=await materialBrushUse(weldMaterial(style));if(!ok)return;
   applyPreset({name:'Weld · '+style.name,tool:'material',tip:weldTipGet(),size:weldOptions.width,hardness:.92,flow:1,opacity:1,spacing:weldOptions.spacing,
     pSize:true,minSize:.55,pOpacity:false,smoothing:.2,followDir:true,angleJitter:weldOptions.irregularity*16,sizeJitter:weldOptions.irregularity*.2,scatter:weldOptions.irregularity*.08,buildup:false});
-  toast(style.name+' ready. Paint on the material thumbnail to add a raised metal bead.');weldToolsRender();
+  toast(style.name+' ready. Paint directly on a pixel layer to add a raised metal bead.');weldToolsRender();
  }finally{weldBusy=false;}}
 function weldCard(style){const cv=el('canvas',{width:112,height:54,role:'img','aria-label':style.name+' bead preview'}),x=cv.getContext('2d');
   x.fillStyle='#202329';x.fillRect(0,0,112,54);x.strokeStyle='#58606a';x.lineWidth=1;x.beginPath();x.moveTo(4,43);x.lineTo(108,43);x.stroke();
@@ -57,7 +57,7 @@ function weldShelfContent(){const grid=el('div',{class:'matgrid weld-grid'});for
   const row=(label,key,min,max,step,unit)=>makeSlider({id:'weld-'+key,label,min,max,step,value:weldOptions[key],fmt:v=>v.toFixed(key==='width'?0:2)+(unit||''),onInput:v=>weldLiveUpdate(key,v)});
   const width=row('Bead width','width',4,48,1,' px'),height=row('Bead height','height',0,1,.01,''),spacing=row('Ripple spacing','spacing',.06,.55,.01,''),irregularity=row('Irregularity','irregularity',0,1,.01,''),heat=row('Heat tint','heat',0,.65,.01,'');
   const path=el('button',{class:'btn',type:'button',text:'Draw on a 3D surface path',title:'Activate the editable 3D surface path tool'},);path.onclick=()=>{if(typeof setTool==='function'){weldOptions.pathMode=true;setTool('path');toast('Weld path is ready. Draw on the model; the weld controls update the path live.');}else toast('Open 3D Paint to use Surface Path.');};
-  return el('div',{class:'weld-shelf'},el('p',{class:'note',text:'Choose a bead profile, then paint the weld material or use the editable Surface Path tool in 3D Paint. Surface paths keep control points so you can adjust the route.'}),select,grid,el('div',{class:'chips'},path),width.el,height.el,spacing.el,irregularity.el,heat.el,
+  return el('div',{class:'weld-shelf'},el('p',{class:'note',text:'Choose a bead profile, then paint directly on a pixel layer or use the editable Surface Path tool in 3D Paint. Surface paths keep control points so you can adjust the route.'}),select,grid,el('div',{class:'chips'},path),width.el,height.el,spacing.el,irregularity.el,heat.el,
     el('p',{class:'note',text:'Heat tint warms the metal colour. Height controls the raised material channel; visible relief depends on layer height strength and 3D material settings.'}));}
 
 function weldToolsRender(){const L=typeof pathActive==='function'?pathActive():null;if(L?.path?.weld)Object.assign(weldOptions,L.path.weld);const box=document.getElementById('weldToolsBody');if(box&&typeof weldShelfContent==='function')box.replaceChildren(weldShelfContent());}
