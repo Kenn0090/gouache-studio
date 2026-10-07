@@ -5,7 +5,8 @@ const perf={on:false,frames:[],worst:null,last:0};
    The paint itself lands exactly the same; only how often the picture is redrawn changes. */
 const PAINT_GAP={balanced:33,fast:70};let lastPaintFrame=0;
 function frame(){raf=0;if(typeof tabDocs!=='undefined'&&tabDocs.hold){requestRender();return;}const t0=performance.now();
-  if(stroke&&PAINT_GAP[prefs.paintSpeed]&&t0-lastPaintFrame<PAINT_GAP[prefs.paintSpeed]){requestRender();return;}lastPaintFrame=t0;const gq=perf.on?perfGpuBegin():null;let tc=t0;
+  const autoPaintGap=prefs.paintSpeed!=='best'&&stroke?.space?.viewportBounds&&doc.w*doc.h>=16777216&&allLayers().length>=4?33:0,gap=PAINT_GAP[prefs.paintSpeed]||autoPaintGap;
+  if(stroke&&gap&&t0-lastPaintFrame<gap){requestRender();return;}lastPaintFrame=t0;const gq=perf.on?perfGpuBegin():null;let tc=t0;
   try{if(stroke&&stroke.spaceDirty){stroke.spaceDirty=false;stroke.space.sync();}if(stroke&&stroke.cloneDirty)cloneUpdate();if(dirtyComp){composite();dirtyComp=false;tc=performance.now();}drawView();drawUVOverlay();draw3D();const tv=performance.now();flushThumbs();if(tedit)positionEditor();
   if(perf.on)perfFrame(t0,tc-t0,tv-tc,performance.now()-tv);}finally{if(gq)perfGpuEnd(gq);}}
 let maskOverride=new Map();

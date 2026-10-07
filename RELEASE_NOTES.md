@@ -1,3 +1,8 @@
+# Gouache Studio 0.51.8
+
+- High-resolution 3D painting automatically caps redraw rate for large, multi-layer documents without dropping brush samples; Best restores full-rate redraws.
+- Align Weld bead-height control with its selected presets.
+
 # Gouache Studio 0.51.7
 
 - Weld brush tab in the Projects shelf with raised TIG, MIG and tack bead presets, adjustable height and linked metallic material channels.
