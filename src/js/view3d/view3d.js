@@ -4,9 +4,9 @@
    3D pane; the 2D view draws first and the 3D picture is copied into the pane's part. */
 const VS_3D=`#version 300 es
 layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec2 aT; layout(location=3) in vec4 aTan; layout(location=4) in vec3 aD;
-uniform mat4 uVP; uniform float uUVs; uniform sampler2D uH; uniform float uDisp; uniform int uUseH;
+uniform mat4 uVP; uniform float uUVs; uniform sampler2D uH; uniform float uDisp; uniform int uUseH; uniform int uUseUDIM; uniform vec2 uUDIMTile;
 out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;
-void main(){ vec2 t=aT*uUVs; vec3 p=aP; if(uUseH==1&&uDisp!=0.0){ float h=textureLod(uH,t,0.0).r-0.5; p+=aD*h*uDisp; }
+void main(){ vec2 t=aT*uUVs; vec3 p=aP; if(uUseH==1&&uDisp!=0.0){ float h=textureLod(uH,uUseUDIM==1?fract(t):t,0.0).r-0.5; p+=aD*h*uDisp; }
   vP=p; vN=aN; vT=t; vTan=aTan; gl_Position=uVP*vec4(p,1.0); }`;
 /* tone mapping: 0 soft, 1 filmic (quick ACES fit), 2 ACES (full), 3 AgX, 4 PBR Neutral (Khronos), 5 none */
 const TONE_GLSL=`vec3 acesHill(vec3 c){ const mat3 I=mat3(0.59719,0.07600,0.02840, 0.35458,0.90834,0.13383, 0.04823,0.01566,0.83777); const mat3 O=mat3(1.60475,-0.10208,-0.00327, -0.53108,1.10813,-0.07276, -0.07367,-0.00605,1.07602);
@@ -21,6 +21,7 @@ vec3 tone(vec3 c){ if(uTone==1){ c*=0.6; return clamp((c*(2.51*c+0.03))/(c*(2.43
 const TONE_LIST=[['filmic','Filmic',1],['aces','ACES',2],['agx','AgX',3],['khr','PBR Neutral',4],['neutral','Soft',0],['none','None (linear)',5]];
 const toneInt=s=>{const t=TONE_LIST.find(x=>x[0]===(s&&s.tone));return t?t[2]:1;};
 const FS_3D=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan;
+uniform int uUseUDIM; uniform vec2 uUDIMTile;
 uniform sampler2D uBase; uniform sampler2D uRough; uniform sampler2D uMetal; uniform sampler2D uNrm; uniform sampler2D uAO; uniform sampler2D uEmis; uniform sampler2D uOpac; uniform sampler2D uThick;
 uniform int uUseSafeMip;
 uniform int uFlipY; uniform int uHas; uniform vec2 uDef; uniform vec3 uCam; uniform vec3 uSun; uniform float uSunI; uniform float uSkyI; uniform float uExpo; uniform int uUnlit; uniform int uClip;
@@ -49,15 +50,15 @@ void mapGrad(vec2 uv,out vec2 dx,out vec2 dy){dx=dFdx(uv);dy=dFdy(uv);if(uUseSaf
  vec2 x=dx*vec2(sz),y=dy*vec2(sz);float lod=max(0.0,0.5*log2(max(dot(x,x),dot(y,y))));
  if(lod>maxLod){float k=exp2(maxLod-lod);dx*=k;dy*=k;}}
 vec4 mapSample(sampler2D tex,vec2 uv){vec2 dx,dy;mapGrad(uv,dx,dy);return textureGrad(tex,uv,dx,dy);}
-void main(){ vec4 b=mapSample(uBase,vT+uPB); float a=b.a; if((uHas&64)!=0) a*=mapSample(uOpac,vT+uPO).r;
+void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv=uUseUDIM==1?fract(vT):vT; vec4 b=mapSample(uBase,uv+uPB); float a=b.a; if((uHas&64)!=0) a*=mapSample(uOpac,uv+uPO).r;
   if(uClip==1&&a<0.5) discard; vec3 alb=b.a>1e-5?b.rgb/b.a:vec3(0.0);
-  if(uUnlit==1){ vec3 c=alb; if((uHas&8)!=0) c*=mapSample(uAO,vT+uPA).r; o=vec4(c,1.0); return; }
+  if(uUnlit==1){ vec3 c=alb; if((uHas&8)!=0) c*=mapSample(uAO,uv+uPA).r; o=vec4(c,1.0); return; }
   alb=lin(alb);
   vec3 Ng=normalize(vN),N=Ng; vec3 T=normalize(vTan.xyz-Ng*dot(Ng,vTan.xyz)), B=cross(Ng,T)*vTan.w;
-  if((uHas&4)!=0){ vec3 n=mapSample(uNrm,vT+uPN).rgb*2.0-1.0; N=normalize(T*n.x+B*n.y+Ng*n.z); }
+  if((uHas&4)!=0){ vec3 n=mapSample(uNrm,uv+uPN).rgb*2.0-1.0; N=normalize(T*n.x+B*n.y+Ng*n.z); }
   /* which side faces the camera, from the surface itself (not the triangles' winding, which differs between models) */
   { vec3 Nf=normalize(cross(dFdx(vP),dFdy(vP))); if(dot(Nf,uCam-vP)<0.0) Nf=-Nf; if(dot(Ng,Nf)<0.0){ N=-N; Ng=-Ng; } }
-  float rough=clamp((uHas&1)!=0?mapSample(uRough,vT+uPR).r:uDef.x,0.04,1.0), metal=(uHas&2)!=0?mapSample(uMetal,vT+uPM).r:uDef.y, ao=(uHas&8)!=0?mapSample(uAO,vT+uPA).r:1.0;
+  float rough=clamp((uHas&1)!=0?mapSample(uRough,uv+uPR).r:uDef.x,0.04,1.0), metal=(uHas&2)!=0?mapSample(uMetal,uv+uPM).r:uDef.y, ao=(uHas&8)!=0?mapSample(uAO,uv+uPA).r:1.0;
   vec3 V=normalize(uCam-vP), L=normalize(uSun), H=normalize(L+V);
   float NdL=max(dot(N,L),0.0), NdV=max(dot(N,V),1e-3), NdH=max(dot(N,H),0.0), VdH=max(dot(V,H),0.0);
   vec3 F0=mix(vec3(0.04),alb,metal), col=vec3(0.0);
@@ -67,7 +68,7 @@ void main(){ vec4 b=mapSample(uBase,vT+uPB); float a=b.a; if((uHas&64)!=0) a*=ma
     vec3 base=mix(alb*lin(uShC),alb,clamp(band,0.0,1.0));
     float sp=step(1.0-uShP.z*0.05,NdH)*(1.0-rough*0.5)*step(0.01,uShP.z); float rim=smoothstep(1.0-uShP.w,1.0,1.0-NdV)*uShP.w;
     vec3 amb=envDif(N)*0.25; col=base*(0.75+0.25*uEnvI)+base*amb*ao+vec3(sp)+alb*rim;
-    if((uHas&16)!=0) col+=lin(mapSample(uEmis,vT+uPE).rgb)*2.0; o=vec4(pow(clamp(col*uExpo,0.0,1.0),vec3(1.0/2.2)),1.0); return; }
+    if((uHas&16)!=0) col+=lin(mapSample(uEmis,uv+uPE).rgb)*2.0; o=vec4(pow(clamp(col*uExpo,0.0,1.0),vec3(1.0/2.2)),1.0); return; }
   /* ---- the lit shaders ---- */
   float a2=pow(rough,4.0), dd=NdH*NdH*(a2-1.0)+1.0, D=a2/(PI*dd*dd);
   vec3 Ts=T,Bs=B;
@@ -78,7 +79,7 @@ void main(){ vec4 b=mapSample(uBase,vT+uPB); float a=b.a; if((uHas&64)!=0) a*=ma
   float visibility=uSunI>0.0&&(NdL>0.0||uSh==1)?studioVisibility(vP,Ng,L):1.0;
   vec3 F=F0+(1.0-F0)*pow(1.0-VdH,5.0);
   vec3 spec=D*vis*F, dif=(1.0-F)*(1.0-metal)*alb/PI;
-  float thick=(uHas&128)!=0?mapSample(uThick,vT).r:uShP.w;
+  float thick=(uHas&128)!=0?mapSample(uThick,uv).r:uShP.w;
   if(uSh==1){ /* RGB diffuse wrap and thickness attenuation; two surface specular lobes. */
     vec3 Ns=normalize(mix(N,Ng,uShP.z)),sss=clamp(uShC,0.02,1.0),wrap=uShP.x*vec3(0.8,0.38,0.18);
     vec3 dl=max((vec3(dot(Ns,L))+wrap)/(1.0+wrap),0.0)/(1.0+wrap);
@@ -112,7 +113,7 @@ void main(){ vec4 b=mapSample(uBase,vT+uPB); float a=b.a; if((uHas&64)!=0) a*=ma
     if(m==1){ o=vec4(pow(dcol,vec3(1.0/2.2)),1.0); return; } if(m==2){ o=vec4(pow(scol,vec3(1.0/2.2)),1.0); return; } if(m==3){ o=vec4(vec3(1.0-rough),1.0); return; }
     if(m==4){ col=envS*uSkyI*ao; col*=uExpo; col=tone(col); o=vec4(pow(clamp(col,0.0,1.0),vec3(1.0/2.2)),1.0); return; } }
   col+=(envD*ao+envS*specAO)*uSkyI;
-  if((uHas&16)!=0) col+=lin(mapSample(uEmis,vT+uPE).rgb)*2.0;
+  if((uHas&16)!=0) col+=lin(mapSample(uEmis,uv+uPE).rgb)*2.0;
   col*=uExpo; col=tone(col); o=vec4(pow(clamp(col,0.0,1.0),vec3(1.0/2.2)),1.0); }`;
 const FS_3DLINE=`uniform vec4 uCol; void main(){ o=uCol; }`;
 const VS_UV=`#version 300 es
@@ -285,7 +286,7 @@ function v3MeshU(C,common,it,flip,safeMip=null){const {s,bake,sg,EU,eye,a,e}=C,T
     const ok=k=>T[k]&&(bake||(sg&&(k==='rough'||k==='metal'))||(k==='nfinal'?doc.maps.includes('height')||doc.maps.includes('normal')||!!meshNormalBase():doc.maps.includes(k)));
     if(!bake&&!it.thick&&!it.sh&&doc.meshMaps&&doc.meshMaps.thick)it.thick=doc.meshMaps.thick;
     const hm=(ok('rough')?1:0)|(ok('metal')?2:0)|(ok('nfinal')?4:0)|(ok('ao')?8:0)|(ok('emis')?16:0)|(ok('opac')?64:0)|(it.thick?128:0);
-    return Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uUseSafeMip:useSafeMip,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:ok('metal')?T.metal.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,uThick:useSafeMip?safeMip.tex:it.thick?it.thick.tex:dummy,...EU,...shadeUniforms(bake?null:it.sh||v3ShadeOf(doc)),
+    return Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uUseUDIM:!!it.udim,uUDIMTile:it.udim?[it.udim.u,it.udim.v]:[0,0],uUseSafeMip:useSafeMip,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:ok('metal')?T.metal.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,uThick:useSafeMip?safeMip.tex:it.thick?it.thick.tex:dummy,...EU,...shadeUniforms(bake?null:it.sh||v3ShadeOf(doc)),
       uStudioFill:s.studioFill||0,uStudioRim:s.studioRim||0,uLightColor:s.lightColor||[1,1,1],uShadow:dummy,uShadowVP:{m4:m4()},uShadowOn:0,uShadowSoft:1,...common,uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});}
 function v3Render(F,flip){const g=v3.gpu;if(!g)return;v3Work.scenes++;F.sceneFlip=!!flip;const C=v3Ctx(),{s,bake}=C,list=v3List(C),SU=studioShadowPrepare(C,list);
   const activeRange=!bake&&ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():null,safeMip=activeRange&&typeof seamMipLimit==='function'?seamMipLimit(activeRange):null;
@@ -293,7 +294,7 @@ function v3Render(F,flip){const g=v3.gpu;if(!g)return;v3Work.scenes++;F.sceneFli
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
   const {mv,T0,eye}=C,V=m4look(eye,[v3.cam.tx,v3.cam.ty,v3.cam.tz],[0,1,0]),Pm=v3Proj(F.w/F.h,.02,100);if(flip)Pm[5]=-Pm[5];const VP=m4mul(Pm,V);
   if(!tr&&!v3.bunlitBg&&typeof envDrawBg==='function')envDrawBg(F,VP,flip);
-  const common={...SU,uVP:{m4:VP},uUVs:bake?1:s.uvs,uH:T0.height&&s.disp?T0.height.tex:dummy,uDisp:s.disp*.3,uUseH:!!(!bake&&T0.height&&s.disp&&doc.maps.includes('height'))};
+  const common={...SU,uVP:{m4:VP},uUVs:bake?1:(p3.udim?1:s.uvs),uUseUDIM:false,uUDIMTile:[0,0],uH:T0.height&&s.disp?T0.height.tex:dummy,uDisp:s.disp*.3,uUseH:!!(!bake&&T0.height&&s.disp&&doc.maps.includes('height'))};
   if(s.wire){gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);}gl.bindVertexArray(g.vao);
   for(const it of list){const T=it.T||{},base=T.base||null;if(!base||!it.count)continue;
     const itSafeMip=safeMip&&it.start===activeRange.start&&it.count===activeRange.count?safeMip:null;
@@ -459,15 +460,15 @@ for(const t of ['keydown','keyup'])window.addEventListener(t,e=>{if(e.key==='Alt
 
 /* ---- importing a model ---- */
 async function v3DropModel(files){const f=files.find(x=>isModelName(x.name));if(!f)return;loadStart(f.name);
-  try{const m=await parseModelFile(f,files);v3.imported=m;v3s().model='imported';if(!v3.on)toggle3D(true);v3SetMesh(m);build3dPane();toast('Loaded “'+m.name+'”: '+m.tris.toLocaleString()+' triangles.'+(m.noUV?' It has no UVs, so the textures cannot map onto it.':''));}
+  try{const m=await parseModelFile(f,files,{udim:ui.mode==='p3d'&&p3.udim});v3.imported=m;v3s().model='imported';if(!v3.on)toggle3D(true);v3SetMesh(m);build3dPane();toast('Loaded “'+m.name+'”: '+m.tris.toLocaleString()+' triangles.'+(m.uvSetName?' · UV '+m.uvSetName:'')+(m.noUV?' It has no UVs, so the textures cannot map onto it.':''));}
   catch(e){console.warn(e);toast('This model could not be loaded: '+(e.message||e));}finally{loadEnd();}}
 async function importModel(){const done=m=>{v3.imported=m;v3s().model='imported';v3SetMesh(m);build3dPane();toast('Loaded “'+m.name+'”: '+m.tris.toLocaleString()+' triangles.'+(m.noUV?' It has no UVs, so the textures cannot map onto it.':''));};
   if(platform.isDesktop){try{const p=await platform.openDialog([{name:'3D models',extensions:['obj','glb','gltf','fbx','OBJ','GLB','GLTF','FBX']}]);if(!p)return;loadStart(fileNameOf(p));
       try{const bytes=await platform.readFile(p);const dir=p.replace(/[\\/][^\\/]*$/,''),sep=p.includes('\\')?'\\':'/';
-        done(await mwTag(await parseModelBytes(fileNameOf(p),bytes,async u=>{const b=await platform.readFile(dir+sep+u);return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);}),p));}finally{loadEnd();}}
+        done(await mwTag(await parseModelBytes(fileNameOf(p),bytes,async u=>{const b=await platform.readFile(dir+sep+u);return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);},{udim:ui.mode==='p3d'&&p3.udim}),p));}finally{loadEnd();}}
     catch(e){console.warn(e);toast('This model could not be loaded: '+(e.message||e));}return;}
   const f=el('input',{type:'file',accept:'.obj,.glb,.gltf,.fbx',multiple:true});f.onchange=async()=>{const fs=[...f.files],file=fs.find(x=>isModelName(x.name));if(!file)return;loadStart(file.name);
-    try{done(await parseModelFile(file,fs));}catch(e){console.warn(e);toast('This model could not be loaded: '+(e.message||e));}finally{loadEnd();}};f.click();}
+    try{done(await parseModelFile(file,fs,{udim:ui.mode==='p3d'&&p3.udim}));}catch(e){console.warn(e);toast('This model could not be loaded: '+(e.message||e));}finally{loadEnd();}};f.click();}
 /* ---- its own window (second screen): the GPU draws it here and the picture is copied into that window ---- */
 function pop3D(out,quiet){if(out){if(v3.pop)return;const w=window.open('about:blank','gouache3d','width=960,height=720');
     if(!w){toast('The window could not be opened.');return;}
@@ -486,3 +487,4 @@ function drawPop(){const p=v3.pop;if(p.win.closed){pop3D(false);return;}const dp
     asyncRead(F.rf,0,0,w,h,gl.UNSIGNED_BYTE,Uint8Array,w*h*4,buf=>{p.busy=false;if(v3.pop!==p||p.cv.width!==w||p.cv.height!==h){requestRender();return;}
       p.ctx.putImageData(new ImageData(new Uint8ClampedArray(buf.buffer),w,h),0,0);if(v3.dirty||v3.postDirty)requestRender();});}
   if(v3s().spin&&!v3.drag){v3.cam.yaw+=.006;v3.dirty=true;requestRender();}}
+

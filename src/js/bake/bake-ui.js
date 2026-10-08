@@ -10,24 +10,25 @@ const BAKE_NAMES={normal:'Normal',ao:'Ambient occlusion',curv:'Curvature',curvEd
 /* read a model file (OBJ, glTF, GLB, FBX) */
 const MODEL_EXTS=['obj','glb','gltf','fbx'];
 const isModelName=n=>MODEL_EXTS.includes(extOf(n));
-async function parseModelBytes(name,bytes,sib){const mb=(bytes.byteLength/1048576).toFixed(1),ext=extOf(name);
+async function parseModelBytes(name,bytes,sib,options={}){const mb=(bytes.byteLength/1048576).toFixed(1),ext=extOf(name);
   const prog=(f,phase)=>{if(phase==='finish')loadBusy('Preparing the model (normals and tangents)…');else loadSet(f,'Building the model from '+name+' · '+Math.round(f*100)+'%');};
   if(ext==='obj'){loadSet(0,'Building the model from '+name+' ('+mb+' MB)…');await loadPaint();return parseOBJAsync(bytes,baseName(name),prog);}
   loadBusy('Building the model from '+name+' ('+mb+' MB)…');await loadPaint();const buf=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength);if(ext==='glb'||ext==='gltf')return parseGLTF(buf,baseName(name),sib);
-  if(ext==='fbx'){const head=new TextDecoder().decode(bytes.subarray(0,20));if(!head.startsWith('Kaydara FBX Binary'))throw new Error('this FBX is saved as text (ASCII). Export it as binary FBX, OBJ or glTF.');return parseFBX(buf,baseName(name),prog);}
+  if(ext==='fbx'){const head=new TextDecoder().decode(bytes.subarray(0,20));if(!head.startsWith('Kaydara FBX Binary'))throw new Error('this FBX is saved as text (ASCII). Export it as binary FBX, OBJ or glTF.');return parseFBX(buf,baseName(name),prog,options);}
   throw new Error('use an OBJ, glTF, GLB or FBX file.');}
 /* dropped File objects (other dropped files serve as a glTF's .bin and textures) */
-async function parseModelFile(file,all){const sib=async u=>{const f=(all||[]).find(x=>x.name===u||x.name===u.split('/').pop());if(!f)throw new Error('“'+u+'” was not dropped with the glTF.');return await f.arrayBuffer();};
-  return parseModelBytes(file.name,await readFileObj(file),sib);}
-async function bakePickModel(){
+async function parseModelFile(file,all,options={}){const sib=async u=>{const f=(all||[]).find(x=>x.name===u||x.name===u.split('/').pop());if(!f)throw new Error('“'+u+'” was not dropped with the glTF.');return await f.arrayBuffer();};
+  return parseModelBytes(file.name,await readFileObj(file),sib,options);}
+async function bakePickModel(options={}){
   if(platform.isDesktop){const p=await platform.openDialog([{name:'3D models',extensions:['obj','glb','gltf','fbx','OBJ','GLB','GLTF','FBX']}]);if(!p)return null;
     loadStart(fileNameOf(p));try{
     const bytes=await platform.readFile(p);
-    const dir=p.replace(/[\\/][^\\/]*$/,''),sep=p.includes('\\')?'\\':'/';return await mwTag(await parseModelBytes(fileNameOf(p),bytes,async u=>{const b=await platform.readFile(dir+sep+u);return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);}),p);}finally{loadEnd();}}
-  return new Promise((res,rej)=>{const f=el('input',{type:'file',accept:'.obj,.glb,.gltf,.fbx'});f.onchange=async()=>{const file=f.files[0];if(!file){res(null);return;}loadStart(file.name);try{res(await parseModelFile(file,[...f.files]));}catch(e){rej(e);}finally{loadEnd();}};f.click();});}
+    const dir=p.replace(/[\\/][^\\/]*$/,''),sep=p.includes('\\')?'\\':'/';return await mwTag(await parseModelBytes(fileNameOf(p),bytes,async u=>{const b=await platform.readFile(dir+sep+u);return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);},options),p);}finally{loadEnd();}}
+  return new Promise((res,rej)=>{const f=el('input',{type:'file',accept:'.obj,.glb,.gltf,.fbx'});f.onchange=async()=>{const file=f.files[0];if(!file){res(null);return;}loadStart(file.name);try{res(await parseModelFile(file,[...f.files],options));}catch(e){rej(e);}finally{loadEnd();}};f.click();});}
 /* the model shown in the 3D view, at its own detail (not subdivided) */
 function bakeViewModel(){const s=v3s();if(s.model==='imported'&&v3.imported)return v3.imported;return primMesh(PRIMS[s.model]?s.model:'plane',0);}
 /* put a model into the low-poly's space */
 function bakeAlign(m,low){const s=m.xf.s,c=m.xf.ctr,ls=low.xf.s,lc=low.xf.ctr,pos=new Float32Array(m.pos.length);
   for(let i=0;i<pos.length;i+=3)for(let k=0;k<3;k++)pos[i+k]=(m.pos[i+k]/s+c[k]-lc[k])*ls;return Object.assign({},m,{pos});}
 const partBase=n=>String(n||'').replace(/[_\-\s.]*(low|high|lo|hi|lp|hp)(poly)?$/i,'').toLowerCase();
+

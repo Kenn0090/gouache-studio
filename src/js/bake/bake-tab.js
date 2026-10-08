@@ -137,10 +137,11 @@ function bakeIdSource(M){const s=bakeCfg.idSrc||'auto',h=bakeIdHas(M),T=M.idx.le
   else if(h.vertex)M.col=M.vcol;
   return {missing};}
 /* ---- one bake per material (texture set): the low-poly's triangles of that material, the same vertices ---- */
-function meshSubset(L,k){const T=L.idx.length/3,M=L.triMat,keep=[];for(let t=0;t<T;t++)if(!M||M[t]===k)keep.push(t);
-  const idx=new Uint32Array(keep.length*3),per=(a,w)=>{if(!a)return a;const o=new a.constructor(keep.length*w);keep.forEach((t,i)=>{for(let c=0;c<w;c++)o[i*w+c]=a[t*w+c];});return o;};
+function meshSubset(L,k,tile=null){const T=L.idx.length/3,M=L.triMat,keep=[];for(let t=0;t<T;t++)if((k==null||!M||M[t]===k)&&(!tile||(()=>{const ix=L.idx,uv=L.uv,a=ix[t*3],b=ix[t*3+1],c=ix[t*3+2],q=p3UdimAddress((uv[a*2]+uv[b*2]+uv[c*2])/3,(uv[a*2+1]+uv[b*2+1]+uv[c*2+1])/3);return q&&q.id===tile.id;})()))keep.push(t);
+  const idx=new Uint32Array(keep.length*3),uv=tile&&L.uv?new Float32Array(L.uv):L.uv;if(tile&&uv)for(let i=0;i<uv.length;i+=2){uv[i]-=tile.u;uv[i+1]-=tile.v;}
+  const per=(a,w)=>{if(!a)return a;const o=new a.constructor(keep.length*w);keep.forEach((t,i)=>{for(let c=0;c<w;c++)o[i*w+c]=a[t*w+c];});return o;};
   keep.forEach((t,i)=>{idx[i*3]=L.idx[t*3];idx[i*3+1]=L.idx[t*3+1];idx[i*3+2]=L.idx[t*3+2];});
-  return Object.assign({},L,{idx,tris:keep.length,triPart:per(L.triPart,1),triCol:per(L.triCol,3),triMat:per(L.triMat,1),whole:L,setRanges:null,_topo:null});}
+  return Object.assign({},L,{idx,uv,tris:keep.length,triPart:per(L.triPart,1),triCol:per(L.triCol,3),triMat:per(L.triMat,1),whole:L,setRanges:null,_topo:null});}
 const bkMats=L=>(L&&L.matNames&&L.matNames.length>1&&L.triMat)?L.matNames:null;
 async function runBakeSets(L,ks){const names=bkMats(L);if(!names){bk.byMat=null;return runBake(L,ks);}
   for(const n in bk.byMat||{})if(n!==bk.matShow)for(const k in bk.byMat[n].res)disposeTarget(bk.byMat[n].res[k]);bk.byMat={};const t0=performance.now();
@@ -400,3 +401,4 @@ function bakeMergeHigh(list){if(list.length===1)return list[0];if(!list.length)r
 function bakeAddHigh(m){if(bk.busy){toast('Wait for the bake to finish.');return;}const list=(bakeCfg.highMeshes|| (bakeCfg.high?[bakeCfg.high]:[])).concat(m);const high=bakeMergeHigh(list);bakeCfg.highMeshes=list;bakeCfg.high=high;bk.hgKey=null;bkHighViewFree();bakeRefresh();toast('Added '+m.name+' · '+list.length+' high-poly meshes.');}
 function bakeHighList(){const box=el('div',{class:'highmeshes',id:'bkHighMeshes'}),list=bakeCfg.highMeshes||(bakeCfg.high?[bakeCfg.high]:[]);
   list.forEach((m,i)=>box.append(el('div',{class:'highmesh'},el('span',{text:m.name+' · '+m.tris.toLocaleString()+' triangles',title:m.name}),el('button',{class:'btn sm',text:'×','aria-label':'Remove high-poly '+m.name,disabled:bk.busy,onclick:()=>{if(bk.busy)return;const next=list.filter((_,j)=>j!==i);const high=bakeMergeHigh(next);bakeCfg.highMeshes=next;bakeCfg.high=high;bk.hgKey=null;bkHighViewFree();bakeRefresh();}}))));return box;}
+

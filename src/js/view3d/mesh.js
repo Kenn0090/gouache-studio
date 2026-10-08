@@ -194,7 +194,7 @@ function meshUnpack(bytes,name){const b=bytes.buffer.slice(bytes.byteOffset,byte
   return r;}
 
 /* ---- FBX (binary, as written by Blender, Maya, 3ds Max, Unity and Unreal) ---- */
-async function parseFBX(buf,name,onProgress){const u8=new Uint8Array(buf),dv=new DataView(buf);
+async function parseFBX(buf,name,onProgress,options={}){const u8=new Uint8Array(buf),dv=new DataView(buf);
   const sig='Kaydara FBX Binary';if(new TextDecoder().decode(u8.subarray(0,18))!==sig){
     if(/FBXHeaderExtension|; FBX/.test(new TextDecoder().decode(u8.subarray(0,400))))throw new Error('This is a text (ASCII) FBX. Export it as binary FBX, glTF or OBJ.');throw new Error('This does not look like an FBX file.');}
   const ver=dv.getUint32(23,true),big=ver>=7500,pending=[];
@@ -225,11 +225,14 @@ async function parseFBX(buf,name,onProgress){const u8=new Uint8Array(buf),dv=new
   const mul=(a,b)=>{const r=new Array(16).fill(0);for(let i=0;i<4;i++)for(let j=0;j<4;j++)for(let k=0;k<4;k++)r[j*4+i]+=a[k*4+i]*b[j*4+k];return r;};
   const localM=m=>{let M=mul(rot(m.pre),rot(m.r));M=mul(M,[m.s[0],0,0,0,0,m.s[1],0,0,0,0,m.s[2],0,0,0,0,1]);M[12]+=m.t[0];M[13]+=m.t[1];M[14]+=m.t[2];return M;};
   const world=id=>{let M=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],g=0;while(models[id]&&g++<64){M=mul(localM(models[id]),M);id=parent[id];}return M;};
-  const layer=(g,k,data,index)=>{const L=kid(g,k);if(!L)return null;const d=val((kid(L,data)||{props:[]}).props[0]);if(!d)return null;
-    return {d,idx:val((kid(L,index)||{props:[]}).props[0]),map:(kid(L,'MappingInformationType')||{props:['']}).props[0],ref:(kid(L,'ReferenceInformationType')||{props:['']}).props[0]};};
+  const layerNode=(L,data,index)=>{if(!L)return null;const d=val((kid(L,data)||{props:[]}).props[0]);if(!d)return null;
+    return {d,idx:val((kid(L,index)||{props:[]}).props[0]),map:(kid(L,'MappingInformationType')||{props:['']}).props[0],ref:(kid(L,'ReferenceInformationType')||{props:['']}).props[0],name:(kid(L,'Name')||{props:['']}).props[0]};};
+  const layer=(g,k,data,index)=>layerNode(kid(g,k),data,index);
+  const uvLayers=g=>(g.kids||[]).filter(n=>n.name==='LayerElementUV').map(n=>layerNode(n,'UV','UVIndex')).filter(Boolean);
+  const bestUdimUV=layers=>layers.reduce((best,L)=>{let n=0;for(let i=0;i<L.d.length;i+=2)if(L.d[i]<0||L.d[i]>=1||1-L.d[i+1]<0||1-L.d[i+1]>=1)n++;return !best||n>best.outside?{L,outside:n}:best;},null)?.L;
   const parts=[];let noUV=false;
   for(const [id,g] of Object.entries(geoms)){const V=val((kid(g,'Vertices')||{props:[]}).props[0]),PI=val((kid(g,'PolygonVertexIndex')||{props:[]}).props[0]);if(!V||!PI)continue;
-    const N=layer(g,'LayerElementNormal','Normals','NormalsIndex'),U=layer(g,'LayerElementUV','UV','UVIndex');if(!U)noUV=true;
+    const N=layer(g,'LayerElementNormal','Normals','NormalsIndex'),Us=uvLayers(g),U=options.udim?(bestUdimUV(Us)||Us[0]):Us[0];if(!U)noUV=true;
     const CL=layer(g,'LayerElementColor','Colors','ColorIndex');
     const ML=kid(g,'LayerElementMaterial'),MA=ML?val((kid(ML,'Materials')||{props:[]}).props[0]):null,Mall=ML&&/AllSame/.test((kid(ML,'MappingInformationType')||{props:['']}).props[0]),mdl=models[geoOf[id]],tmat=[];let poly=0;
     const mnm=()=>{const k=MA?(Mall?MA[0]:MA[poly]):0;return (mdl&&mdl.mats[k])||(mdl&&mdl.mats[0])||'default';};
@@ -243,9 +246,9 @@ async function parseFBX(buf,name,onProgress){const u8=new Uint8Array(buf),dv=new
       if(CL){const k=at(CL,pv,vi)*4;vcol[i*4]=CL.d[k];vcol[i*4+1]=CL.d[k+1];vcol[i*4+2]=CL.d[k+2];vcol[i*4+3]=1;}
       pv++;if(last){const mm=mnm();for(let k=p0+1;k+1<=i;k++){idx.p3(p0,k,k+1);tmat.push(mm);}p0=i+1;poly++;}
       if((i&1048575)===1048575){if(onProgress)onProgress(i/cnt);await new Promise(r=>setTimeout(r,0));}}
-    const pname=models[geoOf[id]]?models[geoOf[id]].name:('mesh'+id);parts.push({pos,nrm,uv,idx:idx.out(),hasN:!!N,pname,tmat,vc:vcol,cnt});}
+    const pname=models[geoOf[id]]?models[geoOf[id]].name:('mesh'+id);parts.push({pos,nrm,uv,idx:idx.out(),hasN:!!N,pname,tmat,vc:vcol,cnt,uvSetName:U&&U.name});}
   if(!parts.length)throw new Error('No meshes were found in this FBX file.');
-  const m=mergeParts(parts);if(parts.some(p=>!p.hasN))m.nrm=null;const r=meshFinish(m,name);r.noUV=noUV;partsInfo(r,parts);matsInfo(r,parts);
+  const m=mergeParts(parts);if(parts.some(p=>!p.hasN))m.nrm=null;const r=meshFinish(m,name);r.noUV=noUV;r.uvSetName=parts.find(p=>p.uvSetName)?.uvSetName||'';partsInfo(r,parts);matsInfo(r,parts);
   if(parts.some(p=>p.vc)){const o=new Float32Array(r.pos.length/3*4).fill(1);let q=0;for(const p of parts){if(p.vc)o.set(p.vc,q*4);q+=p.cnt;}r.vcol=o;}
   r.triCol=new Float32Array(r.triPart.length*3);r.triPart.forEach((p,i)=>r.triCol.set(idColor(r.partNames[p]),i*3));return r;}
 /* which material each triangle uses (texture sets in 3D Paint): per part one name (mname) or one per triangle (tmat) */
@@ -265,3 +268,4 @@ function meshGroupByMat(m){if(m.setRanges)return m.setRanges;const T=m.idx.lengt
   m.setRanges=nm.map((name,k)=>({name,start:st[k],count:cnt[k]}));return m.setRanges;}
 /* which part (object) each triangle came from, by name */
 function partsInfo(r,parts){const names=[];let T=0;for(const p of parts)T+=p.idx.length/3;const tp=new Uint32Array(T);let o=0;for(const p of parts){let k=names.indexOf(p.pname);if(k<0){k=names.length;names.push(p.pname);}const n=p.idx.length/3;tp.fill(k,o,o+n);o+=n;}r.partNames=names;r.triPart=tp;}
+

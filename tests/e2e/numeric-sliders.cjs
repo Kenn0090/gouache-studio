@@ -12,7 +12,7 @@ const ok=(v,m)=>{console.log((v?'PASS ':'FAIL ')+m);if(!v)fails++;};
  await p.evaluate(()=>{__gs.closeWelcome();__gs.prefs.level='full';document.body.classList.remove('lv-beginner');});
 
 
- await p.evaluate(()=>{const g=__gs;g.setMode('paint');g.setWorkspace('painting');g.newDoc(128,128,8,null,'Numeric values',false);g.setTool('brush');g.buildOptBar();g.showPanel('tool');});
+ await p.evaluate(()=>{const g=__gs;g.setMode('paint');g.setWorkspace('painting');g.newDoc(128,128,8,null,'Numeric values',false);g.brush.tip=null;g.setTool('brush');g.buildOptBar();g.showPanel('tool');});
  const type=async(id,value,key='Enter')=>{await p.locator('#'+id+' + output').click();await p.locator('#'+id+'_value').fill(value);await p.locator('#'+id+'_value').press(key);};
  await type('bSpace','200');const spacing=await p.evaluate(()=>({value:__gs.brush.spacing,text:document.querySelector('#bSpace + output').textContent,thumb:document.getElementById('bSpace').value,max:document.getElementById('bSpace').max}));ok(spacing.value===2&&spacing.text==='200%'&&spacing.thumb===spacing.max&&spacing.max==='1.5','typed 200% spacing retains its value while the thumb stays at its normal endpoint');
  const strokes=await p.evaluate(()=>{const g=__gs,paint=spacing=>{g.cmdAddLayer();const L=g.doc.active,o=g.paintOpts(g.editTarget());Object.assign(o,{size:6,pSize:false,pOpacity:false,opacity:1,flow:1,hardness:1,tip:null,smoothing:0,spacing,sym:null});g.beginStroke(L,10,32,1,o);g.addPoint(118,32,1);g.endStroke(false);return g.readRGBA8(L.target).reduce((n,v,i)=>n+(i%4===3&&v>128?1:0),0);};return {entered:paint(g.brush.spacing),endpoint:paint(1.5)};});ok(strokes.entered>0&&strokes.entered<strokes.endpoint,'painting actually uses the typed spacing beyond the slider endpoint');

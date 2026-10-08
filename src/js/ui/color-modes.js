@@ -58,9 +58,18 @@ function cmWheelPick(e,start){const c=cmW.c,r=c.getBoundingClientRect(),k=cmW.si
   let [a,b,kk]=cmBary(p,G);a=Math.max(0,a);b=Math.max(0,b);kk=Math.max(0,kk);const n=a+b+kk||1;a/=n;b/=n;const v=clamp(a+b,0,1),s=v>1e-4?clamp(a/v,0,1):ui.hsv[1];setHSV(ui.hsv[0],s,v);}
 /* ---- swatches ---- */
 const CM_SWATCH_DEFAULT=['#000000','#3a3a3a','#6e6e6e','#a0a0a0','#d2d2d2','#ffffff','#5c2e1f','#8b4a2b','#c47a44','#e8b27a','#f3dcb5','#7a1f1f','#c0392b','#e8664f','#f2a07b','#8a5a00','#d4a017','#f5d76e','#2f5d1e','#4f8a2b','#8cc152','#1e5a5a','#2e8b8b','#7fc4c4','#1f3a6e','#2e5fa8','#6b9bd8','#3e2a6e','#6a4aa8','#a98bd8','#6e1f4f','#a8327a','#e07ab4'];
+const CM_GAME_PALETTES={
+  'sunset-harbor':{name:'Sunset Harbor',colors:['#211738','#45315f','#78508b','#b66b8b','#e58a76','#ffba83','#ffe0a3','#fff2cf','#29485b','#397c83','#5bb39a','#a9d987','#4b385f','#9a5875','#d17f79','#e6b767']},
+  'mosslight':{name:'Mosslight',colors:['#172321','#283b32','#3d5a40','#62834d','#91a85c','#c5c875','#eee0a0','#f7f0d4','#30464a','#466a70','#6b9290','#a7b9a0','#513d49','#79505b','#ad6e67','#dba17a']},
+  'candy-circuit':{name:'Candy Circuit',colors:['#201f45','#3d3474','#6651a0','#a45ca8','#e26a9a','#ff9e91','#ffd17f','#fff3b0','#174b64','#1f8190','#35b5a0','#8be0b2','#40395e','#6c5687','#b36e9c','#f0a9b6']},
+  'ember-forest':{name:'Ember Forest',colors:['#211a27','#44303b','#70424a','#a54f45','#d66b3e','#f49b45','#ffd16c','#fff0ad','#263c36','#395c43','#58834b','#89a85a','#5b3644','#8e4e45','#c97852','#e8ae73']},
+  'twilight-arcade':{name:'Twilight Arcade',colors:['#17172b','#29264b','#443b77','#6855a4','#9671c4','#ce8ec9','#f4a8b7','#ffe0c2','#143a54','#176b78','#23979a','#52c1a6','#61788f','#8ba8ad','#c5d6b4','#eff3cb']}
+};
 const cmSw=(()=>{try{const a=JSON.parse(localStorage.getItem('gs.swatches')||'null');return Array.isArray(a)?a:CM_SWATCH_DEFAULT.slice();}catch(e){return CM_SWATCH_DEFAULT.slice();}})();
+let cmPalette=(()=>{try{return localStorage.getItem('gs.palette')||'';}catch(e){return '';}})();
 function cmSwStore(){try{localStorage.setItem('gs.swatches',JSON.stringify(cmSw));}catch(e){}}
-function cmDrawSwatches(box){box.replaceChildren(...cmSw.map((hx,i)=>el('button',{class:'cmsw'+(hx===toHex(ui.fg)?' on':''),style:'background:'+hx,title:hx+' · right-click to remove','aria-label':'Use '+hx,onclick:()=>setFG(fromHex(hx)),
+function cmUsePalette(key){const p=CM_GAME_PALETTES[key];if(!p)return false;cmPalette=key;cmSw.splice(0,cmSw.length,...p.colors);cmSwStore();try{localStorage.setItem('gs.palette',key);}catch(e){}cm.mode='swatches';cmStore();cmShow();cmFitGroup();return true;}
+function cmDrawSwatches(box){const picker=el('select',{class:'cmsel',id:'cmPaletteSelect','aria-label':'Colour palette',title:'Choose a game-inspired colour palette'},el('option',{value:'',text:'Choose palette…'}),...Object.entries(CM_GAME_PALETTES).map(([k,p])=>el('option',{value:k,text:p.name})));picker.value=cmPalette;picker.addEventListener('change',()=>{if(picker.value)cmUsePalette(picker.value);});box.replaceChildren(picker,...cmSw.map((hx,i)=>el('button',{class:'cmsw'+(hx===toHex(ui.fg)?' on':''),style:'background:'+hx,title:hx+' · right-click to remove','aria-label':'Use '+hx,onclick:()=>setFG(fromHex(hx)),
     oncontextmenu:ev=>{ev.preventDefault();cmSw.splice(i,1);cmSwStore();cmDrawSwatches(box);}})),
   el('button',{class:'cmsw add',title:'Add the current colour','aria-label':'Add the current colour',text:'+',onclick:()=>{const hx=toHex(ui.fg);if(!cmSw.includes(hx)){cmSw.push(hx);cmSwStore();}cmDrawSwatches(box);}}),
   el('button',{class:'btn sm cmswreset',text:'Reset',title:'Back to the built-in swatches',onclick:()=>{cmSw.splice(0,cmSw.length,...CM_SWATCH_DEFAULT);cmSwStore();cmDrawSwatches(box);}}));}
@@ -99,3 +108,4 @@ function cmFitGroup(){const sec=$('#hColor').parentElement,box=sec.closest('.dkg
 cmBuild();cmShow();
 {const rc=refreshColor;refreshColor=function(){rc.apply(this,arguments);cmRefresh();};}
 new ResizeObserver(()=>{cmW.ring=null;cmRefresh();}).observe($('#hColor').parentElement);
+

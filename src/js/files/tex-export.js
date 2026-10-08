@@ -165,8 +165,8 @@ async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.
       if(wantModel&&texCfg.model==='glb'){const g=await buildTextures(GLTF_TEX,pascal(fileName)),T={};for(const f of g)T[f.suffix]=f;T.alpha=doc.maps.includes('opac');glTex[setName]=T;}};
     const sets=ui.mode==='p3d'?p3.sets.filter(S=>!S.missing):[];
     if(ui.mode==='p3d'&&(texCfg.allSets||wantModel)&&sets.length>1){const back=p3.cur;
-      try{for(let i=0;i<p3.sets.length;i++){if(p3.sets[i].missing)continue;p3SwitchSet(i,true);await one(p3.sets[i].name,name+'_'+p3.sets[i].name);}}finally{p3SwitchSet(back,true);}}
-    else await one(ui.mode==='p3d'&&p3.sets[p3.cur]?p3.sets[p3.cur].name:(doc.name||name),name);
+      try{for(let i=0;i<p3.sets.length;i++){if(p3.sets[i].missing)continue;p3SwitchSet(i,true);const S=p3.sets[i];await one(S.name,S.tile?name+'_'+S.tile.id:name+'_'+S.name);}}finally{p3SwitchSet(back,true);}}
+    else{const S=ui.mode==='p3d'&&p3.sets[p3.cur];await one(S?S.name:(doc.name||name),S&&S.tile?name+'_'+S.tile.id:name);}
     if(wantModel){const m=mxModel(),setNames=Object.keys(bySet),groups=mxGroups(m,setNames),mn=pascal(name);
       if(texCfg.model==='glb')files=files.concat([{name:mn+'.glb',data:mxGLB(m,groups,glTex,mn)}]);
       else if(texCfg.model==='fbx')files.push({name:mn+'.fbx',data:mxFBX(m,groups,bySet,mn,pr)});
@@ -183,3 +183,4 @@ async function buildMeshMapTextures(pr,name){const files=[];for(const [k,t] of O
  if(k==='normal'&&texNormalFlip(pr))for(let i=1;i<f.length;i+=3)f[i]=1-f[i];
  const W=texCfg.size||t.w,H=texCfg.size?Math.max(1,Math.round(texCfg.size*t.h/t.w)):t.h,r=resampleF(f,t.w,t.h,C,W,H,false),bits=k==='height'&&texCfg.h16&&texCfg.fmt==='png'?16:8;
  const blob=await encodeTex(W,H,r,C,texCfg.fmt,bits),suffix=meshExportSuffix(k);files.push({suffix,name:pr.name(name).replace('{s}',suffix)+'.'+texCfg.fmt,data:new Uint8Array(await blob.arrayBuffer())});await tick();}return files;}
+
