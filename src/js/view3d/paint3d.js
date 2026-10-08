@@ -16,14 +16,14 @@ function p3Setup(name,startMaterial,workflow){workflow=workflow||p3.workflow||'m
   if(workflow==='spec'){Object.assign(B.fill.maps.spec,{on:true,src:'value',c:mat.spec.slice()});Object.assign(B.fill.maps.gloss,{on:true,v:mat.gloss});B.fill.maps.rough.on=false;B.fill.maps.metal.on=false;}
   else{Object.assign(B.fill.maps.rough,{on:true,v:mat.rough});Object.assign(B.fill.maps.metal,{on:true,v:mat.metal});B.fill.maps.spec.on=false;B.fill.maps.gloss.on=false;}B.fill.maps.height.on=false;fillRender(B);
   insertNode(B,doc.root,0);selectOnly(P);hist.undo=[];hist.redo=[];doc.p3=true;}
-function p3dEnter(){p3.was={on:v3.on,paintOn:v3.paintOn,imported:v3.imported,cam:Object.assign({},v3.cam),tex:v3.tex,ws:dk.ws};if(v3.pop)pop3D(false,true);
+function p3dEnter(){const firstStart=!p3.started;p3.was={on:v3.on,paintOn:v3.paintOn,imported:v3.imported,cam:Object.assign({},v3.cam),tex:v3.tex,ws:dk.ws};if(v3.pop)pop3D(false,true);
   /* its workspace comes with the tab (dkModeWs in dock.js) */
   const S=p3.sets[p3.cur];v3.tex=(S&&S.tex)||{};if(S)S.tex=null;v3.mapsDirty=true;
   tabDocEnter('p3d',p3.size,p3.size,S?S.name:'3D Paint');if(!doc.p3)p3Setup(S?S.name:null,p3.startMaterial);
   doc.v3d=p3.v3d||(p3.v3d=Object.assign({},V3D_DEFAULTS,{model:'matpreview',detail:0,unlit:false,showUV:true,litUV:true,envSun:.55,studioFill:.22,studioRim:.2}));
-  v3.imported=p3.imported;v3.mesh=null;if(p3.cam)Object.assign(v3.cam,p3.cam);
+  v3.imported=p3.imported;if(firstStart&&p3.v3d.model==='imported'&&v3.imported)doc.v3d.model='imported';v3.mesh=null;if(p3.cam)Object.assign(v3.cam,p3.cam);
   v3.paintOn=true;if(!MESH_TOOLS.includes(ui.tool))setTool('brush');
-  $('#docName').textContent=doc.name;v3.on=false;p3ApplyLayout();if(!p3.cam)v3Frame();p3.started=true;buildP3Panel();}
+  $('#docName').textContent=doc.name;v3.on=false;p3ApplyLayout();if(!p3.cam)v3Frame();if(firstStart&&v3.on&&doc.v3d.model==='imported'&&v3.imported){if(!v3.mesh||v3.mesh.name!==v3.imported.name)v3LoadModel(true);v3Frame();requestRender(true);}p3.started=true;buildP3Panel();}
 function p3dExit(){p3.cam=Object.assign({},v3.cam);p3.imported=v3.imported;p3.v3d=doc.v3d;const S=p3.sets[p3.cur];if(S)S.tex=v3.tex;v3.tex=(p3.was&&p3.was.tex)||{};v3.mapsDirty=true;tabDocExit('p3d');
   const w=p3.was||{};v3.imported=w.imported||null;v3.mesh=null;if(w.cam)Object.assign(v3.cam,w.cam);v3.paintOn=!!w.paintOn;
   $('#work').classList.remove('v3full');toggle3D(!!w.on);if(typeof vpStripSync==='function')vpStripSync(false);if(v3.on){v3LoadModel(true);build3dPane();}}

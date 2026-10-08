@@ -1,3 +1,10 @@
+## 0.51.24
+
+- Remove the recently added denim and cloth-fold smart materials.
+- Add original polygon, angular-chip, dry-rake and painterly alpha brushes based on the supplied visual references.
+- Add adjustable colour-stop counts and per-stop colour input to gradient ramps.
+- Ensure an imported mesh is active and visible when the first 3D Paint project opens.
+
 ## 0.51.21
 
 - Keep projected brush opacity consistent across visible steep bevels and hard edges in 3D Paint, instead of fading coverage based on shading normals.
@@ -752,3 +759,4 @@ Desktop app, self-updates
 ## 0.51.23
 
 - Add five original procedural smart masks: chunky paint wear, poster pigment breakup, stylized edge chips, denim abrasion and cloth crease breakup.
+

@@ -1,3 +1,10 @@
+# Gouache Studio 0.51.24
+
+- Remove the recently added denim and cloth-fold smart materials at the artist's request.
+- Add original polygon, angular-chip, dry-rake and painterly alpha brushes inspired by the supplied references.
+- Add a colour-stop count and direct colour editing to the gradient ramp.
+- Load and frame a selected imported mesh when a new 3D Paint project first opens.
+
 # Gouache Studio 0.51.21
 
 - Keep projected brush opacity consistent across visible steep bevels and hard edges in 3D Paint, instead of fading coverage based on shading normals.
@@ -110,3 +117,4 @@ Validated in the native Windows desktop app, including text placement/editing/un
 
 - Add five procedural smart masks for stylized paint breakup, edge chipping, denim abrasion and cloth creases.
 - Retain the 0.51.22 UDIM, sprite-workflow, brush and textile additions.
+
