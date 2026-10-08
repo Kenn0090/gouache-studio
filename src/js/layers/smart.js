@@ -177,27 +177,6 @@ const SM_LIB=[
     SM_L('Scratches','scratched-black-plastic',[.15,.15,.16],{mask:SM_M(SM_IMG('tangled-scratches',1,false,'multiply',1),SM_GEN('edge',.5,.5,.5)),op:.9})]],
   ['Molten Rock',[SM_L('Rock','black-rock',[.1,.1,.11]),
     SM_L('Lava','lava',[.9,.35,.05],{mask:SM_M(SM_IMG('cracks-1',1,false,'normal',1))})]]];
-/* Original procedural textile presets: no external or paid texture packs are required. */
-const SM_DENIM=[
-  ['Indigo Denim',[.055,.12,.28],28],['Faded Denim',[.27,.34,.43],22],['Black Denim',[.035,.045,.07],34],
-  ['Stonewashed Denim',[.31,.36,.42],18],['Teal Denim',[.035,.22,.25],25]
-].map(([name,c,s],i)=>[name,[
-  SM_F(name,{base:{c},rough:{v:.88},metal:{v:0},height:{v:.47}}),
-  SM_F('Twill weave',{base:{c:c.map(v=>Math.min(1,v*1.16+.035))},rough:{v:.82},height:{v:.56}},
-    {mask:SM_M(SM_NOISE('fibres',s,2.1,-.05,'normal',.72,{seed:17+i,tri:true}))}),
-  SM_F('Thread wear',{base:{c:c.map(v=>Math.min(1,v*1.48+.12))},rough:{v:.94},height:{v:.51}},
-    {mask:SM_M(SM_GEN('edge',.32,.44,.7,{seed:31+i}),SM_NOISE('scratches',s*.7,2.3,.12,'multiply',.55,{seed:41+i})),op:.45})
-]]);
-const SM_CLOTH_WRINKLES=Array.from({length:10},(_,i)=>{
-  const scale=5+i*2.25,amount=.3+i*.045,rough=.76+(i%4)*.045;
-  const base=SM_F('Cloth base',{base:{c:[.48,.43,.36]},rough:{v:rough},metal:{v:0},height:{v:.5}});
-  const folds=SM_F('Fold relief',{height:{v:.5+amount*.22},rough:{v:Math.min(.98,rough+.08)}},
-    {mask:SM_M(SM_NOISE(i%2?'streaks':'fibres',scale,1.45+(i%3)*.25,-.08,'normal',.45+amount*.35,{seed:51+i,tri:true}))});
-  const wear=SM_F('Soft fold wear',{base:{c:[.56,.51,.44]},rough:{v:.9}},
-    {mask:SM_M(SM_NOISE('clouds',scale*.58,1.8,-.1,'multiply',.38,{seed:71+i,tri:true})),op:.35});
-  return [`Cloth folds ${String(i+1).padStart(2,'0')}`,[base,folds,wear]];
-});
-SM_LIB.push(...SM_DENIM,...SM_CLOTH_WRINKLES);
 /* fetch what a description points at: library materials and grunge pictures */
 function smNeeds(o){if(o.lib)return true;for(const r of (o.mask&&o.mask.rows)||[])if(r.p&&r.p.grunge&&!r.img)return true;for(const c of o.kids||[])if(smNeeds(c))return true;return false;}
 async function smResolveMask(m){for(const r of m.rows||[]){const g=r.p&&r.p.grunge;if(g&&!r.img){const it=txItems().find(x=>x.kind==='photo'&&x.id===g);if(it){r.img=smCap(await txTarget(it));r.p.name=it.name;}}}}
@@ -256,4 +235,3 @@ async function smImgsIn(o){if(!o||typeof o!=='object')return o;if(o.png&&o.w&&o.
     const c=document.createElement('canvas');c.width=o.w;c.height=o.h;const x=c.getContext('2d');x.drawImage(img,0,0);const d=x.getImageData(0,0,o.w,o.h).data,out=new Uint8Array(d.length);
     for(let i=0;i<d.length;i+=4){const a=d[i+3];out[i]=d[i]*a/255;out[i+1]=d[i+1]*a/255;out[i+2]=d[i+2]*a/255;out[i+3]=a;}return {w:o.w,h:o.h,data:out};}
   if(Array.isArray(o)){const a=[];for(const v of o)a.push(await smImgsIn(v));return a;}const r={};for(const k in o)r[k]=await smImgsIn(o[k]);return r;}
-

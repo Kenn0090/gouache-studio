@@ -33,6 +33,11 @@ const TIPS={
 TIPS.scratch=genTip('Scratch cluster',192,192,(x,w,h,R)=>{for(let i=0;i<15;i++){const cx=w*(.18+R()*.64),cy=h*(.12+R()*.76),len=12+R()*66;x.globalAlpha=.25+R()*.75;x.lineWidth=.8+R()*2.7;x.beginPath();x.moveTo(cx-len/2,cy+(R()-.5)*8);x.lineTo(cx+len/2,cy+(R()-.5)*8);x.stroke();}});
 TIPS.abstract=genTip('Abstract shards',192,192,(x,w,h,R)=>{for(let i=0;i<20;i++){const cx=w*(.12+R()*.76),cy=h*(.12+R()*.76),s=3+R()*16;x.globalAlpha=.2+R()*.8;x.beginPath();x.moveTo(cx-s,cy-s*.4);x.lineTo(cx+s,cy-s*.7);x.lineTo(cx+s*.35,cy+s);x.closePath();x.fill();}});
 TIPS.stitch=genTip('Running stitch',160,96,(x,w,h)=>{x.lineCap='round';x.lineWidth=13;x.beginPath();x.moveTo(16,h*.5);x.lineTo(w-16,h*.5);x.stroke();x.globalCompositeOperation='destination-out';x.lineWidth=5;x.beginPath();x.moveTo(w*.5,h*.5);x.lineTo(w*.5+1,h*.5);x.stroke();});
+TIPS.poly=genTip('Polygon alpha',256,256,(x,w,h)=>{x.beginPath();x.moveTo(w*.28,h*.18);x.lineTo(w*.94,h*.28);x.lineTo(w*.68,h*.91);x.lineTo(w*.22,h*.88);x.closePath();x.fill();});
+TIPS.angular=genTip('Angular paint shards',256,256,(x,w,h,R)=>{for(let i=0;i<28;i++){const cx=w*(.08+R()*.84),cy=h*(.08+R()*.84),s=5+R()*25,lean=(R()-.5)*s*1.8;x.globalAlpha=.32+R()*.68;x.beginPath();x.moveTo(cx-s,cy-s*.45);x.lineTo(cx+lean,cy-s*(.55+R()*.65));x.lineTo(cx+s,cy+s*(.35+R()*.6));x.lineTo(cx-s*.38,cy+s*.18);x.closePath();x.fill();}});
+TIPS.chip=genTip('Torn angular edge',256,256,(x,w,h,R)=>{x.beginPath();x.moveTo(w*.08,h*.22);x.lineTo(w*.92,h*.18);x.lineTo(w*.94,h*.5);for(let i=10;i>=0;i--){const px=w*(.08+i*.084);x.lineTo(px,h*(.62+R()*.17));x.lineTo(px-w*.025,h*(.53+R()*.11));}x.closePath();x.fill();x.globalCompositeOperation='destination-out';for(let i=0;i<22;i++){const cx=w*(.1+R()*.8),cy=h*(.28+R()*.3),r=2+R()*9;x.beginPath();x.moveTo(cx-r,cy-r);x.lineTo(cx+r,cy-r*.4);x.lineTo(cx+r*.25,cy+r);x.closePath();x.fill();}});
+TIPS.rake=genTip('Dry rake marks',256,256,(x,w,h,R)=>{for(let i=0;i<15;i++){const y=h*(.18+i*.045),x0=w*(.08+R()*.08),x1=w*(.74+R()*.19);x.globalAlpha=.35+R()*.58;x.lineWidth=1+R()*5;x.beginPath();x.moveTo(x0,y+(R()-.5)*8);x.lineTo(x1,y+(R()-.5)*10);x.stroke();}for(let i=0;i<10;i++){const cx=w*(.12+R()*.76),cy=h*(.18+R()*.65);x.globalAlpha=.28+R()*.45;x.beginPath();x.moveTo(cx,cy);x.lineTo(cx+(R()-.5)*42,cy+4+R()*24);x.stroke();}});
+TIPS.painterly=genTip('Painterly block stroke',256,256,(x,w,h,R)=>{x.beginPath();x.moveTo(w*.2,h*.08);x.quadraticCurveTo(w*.43,h*.02,w*.79,h*.12);x.lineTo(w*.83,h*.82);x.quadraticCurveTo(w*.52,h*.96,w*.22,h*.88);x.closePath();x.fill();for(let i=0;i<55;i++){const y=h*(.08+R()*.84),xx=w*(.18+R()*.68);x.globalCompositeOperation='destination-out';x.globalAlpha=.12+R()*.38;x.lineWidth=1+R()*4;x.beginPath();x.moveTo(xx,y);x.lineTo(xx+(R()-.5)*24,y+(R()-.5)*42);x.stroke();}x.globalCompositeOperation='source-over';});
 const PRESETS=[
   {name:'Pixel pencil',tool:'brush',tip:TIPS.pixel,size:1,hardness:1,spacing:1,pSize:false,pOpacity:false,smoothing:0,grain:0},
   {name:'Square pixel brush',tool:'brush',tip:TIPS.pixel,size:12,hardness:1,spacing:.15,pSize:false,pOpacity:false,smoothing:0,grain:0},
@@ -41,6 +46,11 @@ const PRESETS=[
   {name:'Grunge wear',tool:'brush',tip:TIPS.sponge,size:96,hardness:.65,flow:.58,spacing:.3,grain:.68,sizeJitter:.32,angleJitter:.5,scatter:.2,pSize:false,pOpacity:true,buildup:true},
   {name:'Abstract shards',tool:'brush',tip:TIPS.abstract,size:66,hardness:.85,spacing:.46,followDir:true,angleJitter:.35,sizeJitter:.22,scatter:.3,count:2,pSize:true,minSize:.4},
   {name:'Running stitch',tool:'brush',tip:TIPS.stitch,size:18,hardness:1,spacing:.8,followDir:true,pSize:false,pOpacity:false,smoothing:.2},
+  {name:'Polygon Stamp',tool:'brush',tip:TIPS.poly,size:62,hardness:1,spacing:.82,angleJitter:.08,sizeJitter:.04,pSize:false,pOpacity:false,smoothing:0},
+  {name:'Angular Shards',tool:'brush',tip:TIPS.angular,size:76,hardness:.9,spacing:.48,angleJitter:.34,sizeJitter:.24,scatter:.28,count:2,pSize:true,minSize:.4,pOpacity:true},
+  {name:'Chipped Poster',tool:'brush',tip:TIPS.chip,size:92,hardness:.86,spacing:.7,followDir:true,angleJitter:.12,sizeJitter:.12,pSize:true,minSize:.5,pOpacity:true},
+  {name:'Dry Rake',tool:'brush',tip:TIPS.rake,size:92,hardness:.72,spacing:.52,followDir:true,angleJitter:.08,sizeJitter:.08,pSize:true,minSize:.55,pOpacity:true,grain:.18},
+  {name:'Painterly Block',tool:'brush',tip:TIPS.painterly,size:86,hardness:.72,spacing:.34,followDir:true,angleJitter:.06,sizeJitter:.12,pSize:true,minSize:.45,pOpacity:true,grain:.22},
   {name:'Round',tool:'brush',size:24,hardness:.85,spacing:.06,pSize:true,minSize:.2,smoothing:.25},
   {name:'Soft air',tool:'brush',size:110,hardness:0,flow:.16,spacing:.06,pSize:false,pOpacity:true,buildup:true,smoothing:.2},
   {name:'Chalk',tool:'brush',size:40,hardness:.75,spacing:.05,grain:.8,pSize:true,pOpacity:true,minSize:.35,smoothing:.2},
@@ -55,6 +65,38 @@ const PRESETS=[
   {name:'Bristle blend',tool:'smudge',tip:TIPS.bristle,size:44,spacing:.04,followDir:true,strength:.6,charge:.15,pSize:false,pOpacity:true}
 ];
 const library=[{id:'builtin',name:'Built-in',builtin:true,presets:PRESETS,tips:[]}];
+const USER_BRUSH_ASSETS=[
+  ...Array.from({length:10},(_,i)=>({file:'B'+(i+1)+'.png',name:'B'+(i+1),size:88,spacing:.36,followDir:true,grain:.12})),
+  ...Array.from({length:10},(_,i)=>({file:'Stroke_'+String(i+1).padStart(2,'0')+'.png',name:'Stroke '+String(i+1).padStart(2,'0'),size:72,spacing:.62,followDir:true,angleJitter:.03})),
+  {file:'CHIP.png',name:'Chip scatter',size:84,spacing:.8,angleJitter:.08,sizeJitter:.12},
+  {file:'Poly_01.png',name:'Poly 01',size:62,spacing:.82,angleJitter:.04,sizeJitter:.04}
+];
+let userBrushLoadPromise=null;
+function loadUserBrushAssets(){
+  if(userBrushLoadPromise)return userBrushLoadPromise;
+  userBrushLoadPromise=(async()=>{
+  if(library[0].presets.some(p=>p._userAsset))return;
+  const loaded=[];
+  for(const a of USER_BRUSH_ASSETS)try{
+    const id='user_brush_'+a.file.replace(/[^a-z0-9]/gi,'_'),embedded=document.getElementById(id);
+    let blob;if(embedded){const raw=atob(embedded.textContent.trim()),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);blob=new Blob([bytes]);}
+    else{const res=await fetch('./brushes/user/'+a.file);if(!res.ok){console.warn('Missing bundled brush asset '+a.file+': '+res.status);continue;}blob=await res.blob();}
+    const bmp=await createImageBitmap(blob),scale=Math.min(1,1024/Math.max(bmp.width,bmp.height)),c=document.createElement('canvas');
+    c.width=Math.max(1,Math.round(bmp.width*scale));c.height=Math.max(1,Math.round(bmp.height*scale));
+    const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bmp,0,0,c.width,c.height);bmp.close?.();
+    const d=x.getImageData(0,0,c.width,c.height).data;let x0=c.width,y0=c.height,x1=-1,y1=-1;
+    const lum=(i)=>Math.round((d[i]*.2126+d[i+1]*.7152+d[i+2]*.0722)*d[i+3]/255),full=new Uint8Array(c.width*c.height);
+    for(let y=0;y<c.height;y++)for(let xx=0;xx<c.width;xx++){const v=lum((y*c.width+xx)*4);full[y*c.width+xx]=v;if(v>8){x0=Math.min(x0,xx);y0=Math.min(y0,y);x1=Math.max(x1,xx);y1=Math.max(y1,y);}}
+    if(x1<0)continue;const pad=3;x0=Math.max(0,x0-pad);y0=Math.max(0,y0-pad);x1=Math.min(c.width-1,x1+pad);y1=Math.min(c.height-1,y1+pad);
+    const w=x1-x0+1,h=y1-y0+1,alpha=new Uint8Array(w*h);
+    for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++)alpha[y*w+xx]=full[(y+y0)*c.width+xx+x0];
+    const tip=makeTip(a.name,w,h,alpha),p={name:a.name,tool:'brush',tip,size:a.size,hardness:.95,spacing:a.spacing,followDir:a.followDir,
+      angleJitter:a.angleJitter||0,sizeJitter:a.sizeJitter||0,grain:a.grain||0,pSize:false,pOpacity:true,smoothing:.12,_userAsset:true};
+    loaded.push(p);
+  }catch(e){console.warn('Could not load bundled brush '+a.file,e);}
+  if(loaded.length){library[0].presets.push(...loaded);renderLibrary();}
+  })();return userBrushLoadPromise;
+}
 let activePreset=null;
 /* Session history and size choices belong to a preset, even after editing its settings. */
 const brushSession={source:null,recent:[],sizes:new WeakMap()};
@@ -226,5 +268,6 @@ function dlgSaveBrush(){const inp=el('input',{type:'text',id:'sbName',value:acti
     const p={name,tool:ui.tool};for(const k of SETTING_KEYS)p[k]=brush[k];p.maps=mapBrushSnapshot();
     if(p.tip&&!set.tips.includes(p.tip))set.tips.push(p.tip);set.presets.push(p);brushSession.source=p;brushRecent(p);activePreset=p;renderLibrary();saveSet(set);toast('Saved brush “'+name+'”.');}});}
 $('#saveBrushBtn').addEventListener('click',dlgSaveBrush);
-async function loadSavedSets(){try{const all=await store.all();for(const d of all||[]){try{library.push(deserializeSet(d));}catch(e){}}renderLibrary();}catch(e){}}
+async function loadSavedSets(){try{const all=await store.all();for(const d of all||[]){try{library.push(deserializeSet(d));}catch(e){}}renderLibrary();await loadUserBrushAssets();}catch(e){}}
+loadUserBrushAssets();
 

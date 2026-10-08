@@ -121,9 +121,10 @@ function drawGradBar(){const d=panelDef(),b=gradBar;if(!b)return;b.strip.style.b
       m.addEventListener('pointerdown',e=>stopDrag(e,kind,i,row));row.append(m);});};
   mk(d.stops,'c');mk(d.alphas,'a');
   const st=ui.gradStop,list=st.kind==='c'?d.stops:d.alphas,s=list[Math.min(st.i,list.length-1)];b.info.replaceChildren();
+  if(b.count)b.count.value=String(d.stops.length);
   if(!s)return;
   const loc=el('input',{class:'num',type:'number',min:0,max:100,step:1,value:Math.round(s.p*100),'aria-label':'Location %',id:'gsLoc'});loc.addEventListener('change',()=>{s.p=clamp(+loc.value/100,0,1);defChanged();});
-  if(st.kind==='c')b.info.append(el('span',{class:'swatch',style:'background:'+toHex(s.c)}),el('button',{class:'btn sm',text:'Use foreground',title:'Set this stop to the foreground colour',onclick:()=>{s.c=ui.fg.slice();defChanged();}}));
+  if(st.kind==='c'){const color=el('input',{id:'gsColor',type:'color',value:toHex(s.c),'aria-label':'Selected stop colour',title:'Choose this colour stop'});color.addEventListener('focus',()=>{const L=editedGrad();if(L)gradBegin(L);});color.addEventListener('input',()=>{const L=editedGrad();if(L&&!gsess)gradBegin(L);s.c=fromHex(color.value);if(L){renderLiveGrad(L);gradTouch();renderLayers();}if(gradBar&&gradBar.strip)gradBar.strip.style.background=gradCss(panelDef())+', repeating-conic-gradient(#555 0 25%, #333 0 50%) 0 0/10px 10px';});color.addEventListener('change',()=>{defChanged();});b.info.append(el('label',{for:'gsColor',text:'Colour'}),color,el('button',{class:'btn sm',text:'Use foreground',title:'Set this stop to the foreground colour',onclick:()=>{s.c=ui.fg.slice();defChanged();}}));}
   else{const op=el('input',{class:'num',type:'number',min:0,max:100,step:1,value:Math.round(s.a*100),'aria-label':'Opacity %',id:'gsOp'});op.addEventListener('change',()=>{s.a=clamp(+op.value/100,0,1);defChanged();});b.info.append(el('label',{for:'gsOp',text:'Opacity %'}),op);}
   b.info.append(el('label',{for:'gsLoc',text:'Location %'}),loc);
   if(list.length>2)b.info.append(el('button',{class:'xbtn',text:'×',title:'Remove this stop','aria-label':'Remove stop',onclick:()=>{list.splice(list.indexOf(s),1);ui.gradStop.i=0;defChanged();}}));}
@@ -143,7 +144,8 @@ function buildGradPanel(box){gradPanelBox=box;const L=editedGrad(),d=panelDef(),
   const addAt=(row,kind)=>row.addEventListener('pointerdown',e=>{if(e.target!==row)return;const r=row.getBoundingClientRect(),p=clamp((e.clientX-r.left)/r.width,0,1),dd=panelDef();
     if(kind==='c'){dd.stops.push({p,c:ui.fg.slice()});ui.gradStop={kind:'c',i:dd.stops.length-1};}else{dd.alphas.push({p,a:gradAt(Object.assign({},dd,{reverse:false}),p)[3]});ui.gradStop={kind:'a',i:dd.alphas.length-1};}defChanged();});
   addAt(crow,'c');addAt(arow,'a');
-  gradBar={strip,arow,crow,info};box.append(el('div',{class:'gbar'},arow,strip,crow),info);drawGradBar();
+  const stopCount=el('input',{id:'gStopCount',type:'number',min:2,max:16,step:1,value:d.stops.length,'aria-label':'Number of colour stops'});stopCount.addEventListener('change',()=>{const n=clamp(Math.round(+stopCount.value||2),2,16),dd=panelDef(),L=editedGrad();if(L)gradBegin(L);const sample=Object.assign({},dd,{reverse:false});dd.stops=Array.from({length:n},(_,i)=>{const p=i/(n-1);return {p,c:gradAt(sample,p).slice(0,3)};});ui.gradStop={kind:'c',i:Math.min(ui.gradStop.i,n-1)};stopCount.value=String(n);defChanged();});
+  gradBar={strip,arow,crow,info,count:stopCount};box.append(el('div',{class:'frow'},el('label',{for:'gStopCount',text:'Colour stops'}),stopCount),el('div',{class:'gbar'},arow,strip,crow),info);drawGradBar();
   const pre=el('div',{class:'gpresets'});
   const addPre=(pr,user)=>{const dd=pr.dyn?presetDef(pr):pr.def;const b=el('button',{class:'gpre',title:pr.name+(user?' (right-click to remove)':''),'aria-label':pr.name,style:'background:'+gradCss(dd)+', repeating-conic-gradient(#555 0 25%, #333 0 50%) 0 0/8px 8px'});
     b.addEventListener('click',()=>{const nd=presetDef(pr);nd.shape=panelDef().shape;nd.method=panelDef().method;nd.dither=panelDef().dither;
