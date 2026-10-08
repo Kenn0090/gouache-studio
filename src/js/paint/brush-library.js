@@ -71,7 +71,10 @@ const USER_BRUSH_ASSETS=[
   {file:'CHIP.png',name:'Chip scatter',size:84,spacing:.8,angleJitter:.08,sizeJitter:.12},
   {file:'Poly_01.png',name:'Poly 01',size:62,spacing:.82,angleJitter:.04,sizeJitter:.04}
 ];
-async function loadUserBrushAssets(){
+let userBrushLoadPromise=null;
+function loadUserBrushAssets(){
+  if(userBrushLoadPromise)return userBrushLoadPromise;
+  userBrushLoadPromise=(async()=>{
   if(library[0].presets.some(p=>p._userAsset))return;
   const loaded=[];
   for(const a of USER_BRUSH_ASSETS)try{
@@ -92,6 +95,7 @@ async function loadUserBrushAssets(){
     loaded.push(p);
   }catch(e){console.warn('Could not load bundled brush '+a.file,e);}
   if(loaded.length){library[0].presets.push(...loaded);renderLibrary();}
+  })();return userBrushLoadPromise;
 }
 let activePreset=null;
 /* Session history and size choices belong to a preset, even after editing its settings. */
