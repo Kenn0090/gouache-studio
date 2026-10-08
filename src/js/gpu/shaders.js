@@ -180,9 +180,9 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); float t=uT*(uUseM==1?texelFetch(uM,
 const FS_CHMERGE=`uniform sampler2D uOld; uniform sampler2D uNew; uniform vec4 uChan;
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 a=texelFetch(uOld,p,0),b=texelFetch(uNew,p,0);
   vec3 ac=a.a>1e-6?a.rgb/a.a:vec3(0.0),bc=b.a>1e-6?b.rgb/b.a:vec3(0.0); float na=mix(a.a,b.a,uChan.a); o=vec4(mix(ac,bc,uChan.rgb)*na,na); }`;
-const FS_MASKPLACE=`uniform sampler2D uMask; uniform vec4 uRect; uniform float uDef;
-void main(){ ivec2 mp=ivec2(floor(gl_FragCoord.xy)-uRect.xy); float m=uDef;
-  if(mp.x>=0&&mp.y>=0&&mp.x<int(uRect.z)&&mp.y<int(uRect.w)) m=texelFetch(uMask,mp,0).r; o=vec4(vec3(m),1.0); }`;
+const FS_MASKPLACE=`uniform sampler2D uMask; uniform vec4 uRect; uniform vec2 uSourceOffset; uniform float uDef;
+void main(){ ivec2 local=ivec2(floor(gl_FragCoord.xy)-uRect.xy),mp=local+ivec2(uSourceOffset); float m=uDef;
+  if(local.x>=0&&local.y>=0&&local.x<int(uRect.z)&&local.y<int(uRect.w)&&mp.x>=0&&mp.y>=0&&mp.x<textureSize(uMask,0).x&&mp.y<textureSize(uMask,0).y) m=texelFetch(uMask,mp,0).r; o=vec4(vec3(m),1.0); }`;
 const FS_APPLYMASK=`uniform sampler2D uSrc; uniform sampler2D uM;
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy); o=texelFetch(uSrc,p,0)*texelFetch(uM,p,0).r; }`;
 const FS_INVERT=`uniform sampler2D uSrc;
