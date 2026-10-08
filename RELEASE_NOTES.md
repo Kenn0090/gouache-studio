@@ -1,5 +1,6 @@
 # Gouache Studio 0.51.24
 
+- Bundle the supplied B1–B10 and Stroke_01–10 alpha images, plus CHIP and Poly_01, as built-in brush presets.
 - Remove the recently added denim and cloth-fold smart materials at the artist's request.
 - Add original polygon, angular-chip, dry-rake and painterly alpha brushes inspired by the supplied references.
 - Add a colour-stop count and direct colour editing to the gradient ramp.

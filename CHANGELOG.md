@@ -1,5 +1,6 @@
 ## 0.51.24
 
+- Bundle the supplied B1–B10 and Stroke_01–10 alpha images, plus CHIP and Poly_01, as built-in brush presets.
 - Remove the recently added denim and cloth-fold smart materials.
 - Add original polygon, angular-chip, dry-rake and painterly alpha brushes based on the supplied visual references.
 - Add adjustable colour-stop counts and per-stop colour input to gradient ramps.
