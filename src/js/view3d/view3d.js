@@ -351,7 +351,7 @@ function toggle3D(on){v3.on=on===undefined?!v3.on:!!on;$('#work').classList.togg
   if(v3.on){if(!v3.pop)build3dPane();v3.mapsDirty=true;v3.editDirty=true;v3.dirty=true;if(!v3.mesh)v3LoadModel();}
   resizeGL();fit();requestRender(true);}
 function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.replaceChildren();
-  const models=el('select',{id:'v3Model','aria-label':'Model'},...Object.entries(PRIMS).map(([k,[l]])=>el('option',{value:k,text:l})),
+  const models=el('select',{id:'v3Model','aria-label':'Model',title:s.model==='imported'?'Imported mesh active. Primitive startup models are disabled; use Import to replace the mesh.':'Choose a startup primitive or import a mesh.'},...Object.entries(PRIMS).map(([k,[l]])=>el('option',{value:k,text:l,disabled:s.model==='imported'})),
     ...(v3.imported?[el('option',{value:'imported',text:v3.imported.name})]:[]),el('option',{value:'__import',text:'Import a model (OBJ, glTF, GLB, FBX)…'}));
   models.value=s.model;models.onchange=()=>{if(models.value==='__import'){models.value=s.model;importModel();return;}s.model=models.value;v3LoadModel();};
   /* mesh density: in the toolbar, since height only shows on a dense mesh */

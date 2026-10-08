@@ -1,3 +1,7 @@
+## 0.51.25
+
+- Disable built-in startup primitives after importing a mesh in 3D Paint, keep the imported mesh selected, and retain the Import option for replacing it.
+
 ## 0.51.24
 
 - Bundle the supplied B1–B10 and Stroke_01–10 alpha images, plus CHIP and Poly_01, as built-in brush presets.
