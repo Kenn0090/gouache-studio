@@ -82,11 +82,11 @@ async function loadUserBrushAssets(){
     c.width=Math.max(1,Math.round(bmp.width*scale));c.height=Math.max(1,Math.round(bmp.height*scale));
     const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bmp,0,0,c.width,c.height);bmp.close?.();
     const d=x.getImageData(0,0,c.width,c.height).data;let x0=c.width,y0=c.height,x1=-1,y1=-1;
-    const lum=(i)=>Math.round((d[i]*.2126+d[i+1]*.7152+d[i+2]*.0722)*d[i+3]/255);
-    for(let y=0;y<c.height;y++)for(let xx=0;xx<c.width;xx++)if(lum((y*c.width+xx)*4)>8){x0=Math.min(x0,xx);y0=Math.min(y0,y);x1=Math.max(x1,xx);y1=Math.max(y1,y);}
+    const lum=(i)=>Math.round((d[i]*.2126+d[i+1]*.7152+d[i+2]*.0722)*d[i+3]/255),full=new Uint8Array(c.width*c.height);
+    for(let y=0;y<c.height;y++)for(let xx=0;xx<c.width;xx++){const v=lum((y*c.width+xx)*4);full[y*c.width+xx]=v;if(v>8){x0=Math.min(x0,xx);y0=Math.min(y0,y);x1=Math.max(x1,xx);y1=Math.max(y1,y);}}
     if(x1<0)continue;const pad=3;x0=Math.max(0,x0-pad);y0=Math.max(0,y0-pad);x1=Math.min(c.width-1,x1+pad);y1=Math.min(c.height-1,y1+pad);
     const w=x1-x0+1,h=y1-y0+1,alpha=new Uint8Array(w*h);
-    for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++)alpha[y*w+xx]=lum(((y+y0)*c.width+xx+x0)*4);
+    for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++)alpha[y*w+xx]=full[(y+y0)*c.width+xx+x0];
     const tip=makeTip(a.name,w,h,alpha),p={name:a.name,tool:'brush',tip,size:a.size,hardness:.95,spacing:a.spacing,followDir:a.followDir,
       angleJitter:a.angleJitter||0,sizeJitter:a.sizeJitter||0,grain:a.grain||0,pSize:false,pOpacity:true,smoothing:.12,_userAsset:true};
     loaded.push(p);
