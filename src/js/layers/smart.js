@@ -212,6 +212,11 @@ function smBuiltins(){return SM_BUILTIN.concat(SM_LIB).map(([name,kids])=>({id:'
 const SMASK_BUILTIN=[['Worn edges',SM_M(SM_GEN('edge',.5,.5,.55),SM_NOISE('grunge',8,2,.1,'multiply',.7))],['Dirty cavities',SM_M(SM_GEN('dirt',.5,.55,.5),SM_NOISE('clouds',6,1.5,.1,'multiply',.7))],
   ['Dusty top',SM_M(SM_GEN('dust',.5,.5,.5),SM_NOISE('clouds',5,1.5,.1,'multiply',.7))],['Scratched',SM_M(SM_NOISE('scratches',3,2,0))],['Chipped paint',SM_M(SM_GEN('chips',.5,.5,.5))]];
 const SMASK_LIB=[
+  ['Chunky paint wear',SM_M(SM_GEN('chips',.46,.54,.62,{seed:81}),SM_NOISE('cells',8,2.2,-.06,'multiply',.68,{seed:83,tri:true}))],
+  ['Poster pigment breakup',SM_M(SM_NOISE('clouds',4.5,1.75,-.13,'normal',.72,{seed:85,tri:true}),SM_NOISE('dots',18,1.6,.08,'multiply',.4,{seed:87,tri:true}))],
+  ['Stylized edge chips',SM_M(SM_GEN('edge',.48,.38,.68,{seed:89}),SM_NOISE('grunge',9,2.1,.03,'multiply',.62,{seed:91,tri:true}))],
+  ['Denim abrasion',SM_M(SM_GEN('edge',.4,.32,.7,{seed:93}),SM_NOISE('scratches',24,2.4,-.04,'multiply',.84,{seed:95,tri:true}))],
+  ['Cloth crease breakup',SM_M(SM_NOISE('fibres',12,1.65,-.1,'normal',.7,{seed:97,tri:true}),SM_NOISE('streaks',7,1.4,.02,'multiply',.46,{seed:99,tri:true}))],
   ['Scratched edges',SM_M(SM_GEN('edge',.5,.45,.55),SM_IMG('light-scratches',2,false,'multiply',.9))],
   ['Scuffed edges',SM_M(SM_GEN('edge',.5,.5,.6),SM_IMG('brush-smears',1,false,'multiply',.9))],
   ['Rust streaks',SM_M(SM_IMG('leaks-3',1,false,'normal',1),SM_GEN('dirt',.5,.5,.5))],

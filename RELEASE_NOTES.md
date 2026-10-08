@@ -106,3 +106,7 @@ Validated in the native Windows desktop app, including text placement/editing/un
 - Consolidate the earlier local painting updates: seam-aware paint and blur, better surface coverage at angles and bevels, smoother weld painting, visible symmetry cursors, extended numeric slider entry, and PBR/Spec Gloss project setup with mesh maps and bake integration.
 - Keep the existing Grunge Mixer, smart-mask/material library, and texture drag-and-drop workflow in the same update.
 
+# Gouache Studio 0.51.23
+
+- Add five procedural smart masks for stylized paint breakup, edge chipping, denim abrasion and cloth creases.
+- Retain the 0.51.22 UDIM, sprite-workflow, brush and textile additions.
