@@ -65,6 +65,34 @@ const PRESETS=[
   {name:'Bristle blend',tool:'smudge',tip:TIPS.bristle,size:44,spacing:.04,followDir:true,strength:.6,charge:.15,pSize:false,pOpacity:true}
 ];
 const library=[{id:'builtin',name:'Built-in',builtin:true,presets:PRESETS,tips:[]}];
+const USER_BRUSH_ASSETS=[
+  ...Array.from({length:10},(_,i)=>({file:'B'+(i+1)+'.png',name:'B'+(i+1),size:88,spacing:.36,followDir:true,grain:.12})),
+  ...Array.from({length:10},(_,i)=>({file:'Stroke_'+String(i+1).padStart(2,'0')+'.png',name:'Stroke '+String(i+1).padStart(2,'0'),size:72,spacing:.62,followDir:true,angleJitter:.03})),
+  {file:'CHIP.png',name:'Chip scatter',size:84,spacing:.8,angleJitter:.08,sizeJitter:.12},
+  {file:'Poly_01.png',name:'Poly 01',size:62,spacing:.82,angleJitter:.04,sizeJitter:.04}
+];
+async function loadUserBrushAssets(){
+  if(library[0].presets.some(p=>p._userAsset))return;
+  const loaded=[];
+  for(const a of USER_BRUSH_ASSETS)try{
+    const id='user_brush_'+a.file.replace(/[^a-z0-9]/gi,'_'),embedded=document.getElementById(id);
+    let blob;if(embedded){const raw=atob(embedded.textContent.trim()),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);blob=new Blob([bytes]);}
+    else{const res=await fetch('./brushes/user/'+a.file);if(!res.ok)continue;blob=await res.blob();}
+    const bmp=await createImageBitmap(blob),scale=Math.min(1,1024/Math.max(bmp.width,bmp.height)),c=document.createElement('canvas');
+    c.width=Math.max(1,Math.round(bmp.width*scale));c.height=Math.max(1,Math.round(bmp.height*scale));
+    const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bmp,0,0,c.width,c.height);bmp.close?.();
+    const d=x.getImageData(0,0,c.width,c.height).data;let x0=c.width,y0=c.height,x1=-1,y1=-1;
+    const lum=(i)=>Math.round((d[i]*.2126+d[i+1]*.7152+d[i+2]*.0722)*d[i+3]/255);
+    for(let y=0;y<c.height;y++)for(let xx=0;xx<c.width;xx++)if(lum((y*c.width+xx)*4)>8){x0=Math.min(x0,xx);y0=Math.min(y0,y);x1=Math.max(x1,xx);y1=Math.max(y1,y);}
+    if(x1<0)continue;const pad=3;x0=Math.max(0,x0-pad);y0=Math.max(0,y0-pad);x1=Math.min(c.width-1,x1+pad);y1=Math.min(c.height-1,y1+pad);
+    const w=x1-x0+1,h=y1-y0+1,alpha=new Uint8Array(w*h);
+    for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++)alpha[y*w+xx]=lum(((y+y0)*c.width+xx+x0)*4);
+    const tip=makeTip(a.name,w,h,alpha),p={name:a.name,tool:'brush',tip,size:a.size,hardness:.95,spacing:a.spacing,followDir:a.followDir,
+      angleJitter:a.angleJitter||0,sizeJitter:a.sizeJitter||0,grain:a.grain||0,pSize:false,pOpacity:true,smoothing:.12,_userAsset:true};
+    loaded.push(p);
+  }catch(e){}
+  if(loaded.length){library[0].presets.push(...loaded);renderLibrary();}
+}
 let activePreset=null;
 /* Session history and size choices belong to a preset, even after editing its settings. */
 const brushSession={source:null,recent:[],sizes:new WeakMap()};
@@ -236,5 +264,6 @@ function dlgSaveBrush(){const inp=el('input',{type:'text',id:'sbName',value:acti
     const p={name,tool:ui.tool};for(const k of SETTING_KEYS)p[k]=brush[k];p.maps=mapBrushSnapshot();
     if(p.tip&&!set.tips.includes(p.tip))set.tips.push(p.tip);set.presets.push(p);brushSession.source=p;brushRecent(p);activePreset=p;renderLibrary();saveSet(set);toast('Saved brush “'+name+'”.');}});}
 $('#saveBrushBtn').addEventListener('click',dlgSaveBrush);
-async function loadSavedSets(){try{const all=await store.all();for(const d of all||[]){try{library.push(deserializeSet(d));}catch(e){}}renderLibrary();}catch(e){}}
+async function loadSavedSets(){try{const all=await store.all();for(const d of all||[]){try{library.push(deserializeSet(d));}catch(e){}}renderLibrary();await loadUserBrushAssets();}catch(e){}}
+setTimeout(loadUserBrushAssets,0);
 

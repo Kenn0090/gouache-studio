@@ -53,10 +53,27 @@ const assemble = head => tpl.replace(/<!--VERSION-->/g, APP_VERSION).replace('<!
 const HDRIS = fs.existsSync(r('assets/hdri')) ? fs.readdirSync(r('assets/hdri')).filter(f => f.endsWith('.hdr')) : [];
 const GRUNGE = fs.existsSync(r('assets/grunge')) ? fs.readdirSync(r('assets/grunge')).filter(f => f.endsWith('.webp')) : [];
 const BRUSHPACKS = fs.existsSync(r('assets/brushes')) ? fs.readdirSync(r('assets/brushes')).filter(f => f.endsWith('.webp')) : [];
+/* Pack the supplied brush alphas efficiently for desktop and self-contained web builds. */
+function bmpMaskPng(b) {
+  const i16=o=>b.readUInt16LE(o),i32=o=>b.readInt32LE(o),offset=i32(10),dib=i32(14),w=i32(18),rawH=i32(22),bits=i16(28),compression=i32(30);
+  if(w<1||!rawH||bits!==8||compression!==0)throw new Error('Unsupported brush BMP: expected an uncompressed 8-bit image');
+  const h=Math.abs(rawH),topDown=rawH<0,paletteAt=14+dib,row=Math.floor((w*bits+31)/32)*4,raw=Buffer.alloc((w+1)*h);
+  for(let y=0;y<h;y++){const sy=topDown?y:h-1-y,dst=y*(w+1),src=offset+sy*row;for(let x=0;x<w;x++){const ix=b[src+x],p=paletteAt+ix*4,B=b[p],G=b[p+1],R=b[p+2];raw[dst+1+x]=Math.round(.2126*R+.7152*G+.0722*B);}}
+  const crcTable=Array.from({length:256},(_,n)=>{let c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;return c>>>0;});
+  const chunk=(name,data)=>{const t=Buffer.from(name),len=Buffer.alloc(4),crc=Buffer.alloc(4);len.writeUInt32BE(data.length);let c=0xffffffff;for(const v of t)c=crcTable[(c^v)&255]^(c>>>8);for(const v of data)c=crcTable[(c^v)&255]^(c>>>8);crc.writeUInt32BE((c^0xffffffff)>>>0);return Buffer.concat([len,t,data,crc]);};
+  const ihdr=Buffer.alloc(13);ihdr.writeUInt32BE(w,0);ihdr.writeUInt32BE(h,4);ihdr[8]=8;ihdr[9]=0;
+  return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),chunk('IHDR',ihdr),chunk('IDAT',zlib.deflateSync(raw)),chunk('IEND',Buffer.alloc(0))]);
+}
+const USER_BRUSHES=fs.existsSync(r('assets/brushes/user'))?fs.readdirSync(r('assets/brushes/user')).filter(f=>/\.(png|bmp)$/i.test(f)).sort().map(f=>{
+  const src=fs.readFileSync(r('assets/brushes/user/'+f)),out=f.replace(/\.bmp$/i,'.png');
+  return {file:out,data:/\.bmp$/i.test(f)?bmpMaskPng(src):src};
+}):[];
+function userBrushTag(f) { const x=USER_BRUSHES.find(v=>v.file===f);return '<script type="text/plain" id="user_brush_'+f.replace(/[^a-z0-9]/gi,'_')+'">'+x.data.toString('base64')+'</script>'; }
+
 const STUDIO = fs.readdirSync(r('assets/studio')).filter(f => /\.(png|gz)$/.test(f));
 const hdriTags = () => HDRIS.map(f => `<script type="text/plain" id="hdri_${f.replace(/_1k\.hdr$/, '')}">${fs.readFileSync(r('assets/hdri/' + f)).toString('base64')}</script>`)
   .concat(BRUSHPACKS.map(f => `<script type="text/plain" id="br_${f.replace(/\.webp$/, '')}">${fs.readFileSync(r('assets/brushes/' + f)).toString('base64')}</script>`))
-  .concat(GRUNGE.map(f => `<script type="text/plain" id="gr_${f.replace(/\.webp$/, '')}">${fs.readFileSync(r('assets/grunge/' + f)).toString('base64')}</script>`)).concat(STUDIO.map(f => `<script type="text/plain" id="studio_${f.replace(/[^a-z0-9]/gi,'_')}">${fs.readFileSync(r('assets/studio/'+f)).toString('base64')}</script>`)).join('\n');
+  .concat(GRUNGE.map(f => `<script type="text/plain" id="gr_${f.replace(/\.webp$/, '')}">${fs.readFileSync(r('assets/grunge/' + f)).toString('base64')}</script>`)).concat(STUDIO.map(f => `<script type="text/plain" id="studio_${f.replace(/[^a-z0-9]/gi,'_')}">${fs.readFileSync(r('assets/studio/'+f)).toString('base64')}</script>`)).concat(USER_BRUSHES.map(x=>userBrushTag(x.file))).join('\n');
 function buildWeb() {
   fs.mkdirSync(r('dist-web'), { recursive: true });
   for(const f of studioFonts){copy('assets/fonts/'+f.file,'dist-web/fonts/'+f.file);copy('assets/fonts/'+f.license,'dist-web/fonts/'+f.license);}
@@ -81,6 +98,7 @@ function buildDesktop() {
   for(const f of STUDIO) copy('assets/studio/'+f,`${out}/studio/${f}`);
   for(const f of studioFonts){copy('assets/fonts/'+f.file,`${out}/fonts/${f.file}`);copy('assets/fonts/'+f.license,`${out}/fonts/${f.license}`);}
   for (const f of BRUSHPACKS) copy('assets/brushes/' + f, `${out}/brushes/${f}`);
+  for (const f of USER_BRUSHES) { const p=out+'/brushes/user/'+f.file; fs.mkdirSync(r(path.dirname(p)), { recursive: true }); fs.writeFileSync(r(p), f.data); }
   // UI fonts bundled so the app looks right offline
   const fonts = [
     ['@fontsource/instrument-sans', 'Instrument Sans', [400, 500, 600]],
