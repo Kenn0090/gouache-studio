@@ -90,7 +90,7 @@ async function loadUserBrushAssets(){
     const tip=makeTip(a.name,w,h,alpha),p={name:a.name,tool:'brush',tip,size:a.size,hardness:.95,spacing:a.spacing,followDir:a.followDir,
       angleJitter:a.angleJitter||0,sizeJitter:a.sizeJitter||0,grain:a.grain||0,pSize:false,pOpacity:true,smoothing:.12,_userAsset:true};
     loaded.push(p);
-  }catch(e){}
+  }catch(e){console.warn('Could not load bundled brush '+a.file,e);}
   if(loaded.length){library[0].presets.push(...loaded);renderLibrary();}
 }
 let activePreset=null;
@@ -265,5 +265,5 @@ function dlgSaveBrush(){const inp=el('input',{type:'text',id:'sbName',value:acti
     if(p.tip&&!set.tips.includes(p.tip))set.tips.push(p.tip);set.presets.push(p);brushSession.source=p;brushRecent(p);activePreset=p;renderLibrary();saveSet(set);toast('Saved brush “'+name+'”.');}});}
 $('#saveBrushBtn').addEventListener('click',dlgSaveBrush);
 async function loadSavedSets(){try{const all=await store.all();for(const d of all||[]){try{library.push(deserializeSet(d));}catch(e){}}renderLibrary();await loadUserBrushAssets();}catch(e){}}
-setTimeout(loadUserBrushAssets,0);
+loadUserBrushAssets();
 
