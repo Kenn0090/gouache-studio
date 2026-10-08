@@ -28,4 +28,3 @@ const ok=(v,m)=>{console.log((v?'PASS ':'FAIL ')+m);if(!v)fails++;};
  await type('weld-width','80');ok(await p.evaluate(()=>__gs.weldOptions.width===80),'weld width accepts a precise value above its slider range');
  ok(errors.length===0,'no application errors');if(errors.length)console.log(errors);await b.close();await new Promise(r=>server.close(r));process.exitCode=fails?1:0;
 })().catch(e=>{console.error(e);process.exit(1);});
-
