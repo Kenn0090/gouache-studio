@@ -26,7 +26,7 @@ const MENUS={
     ['Noise and render','sub',[['Add noise…','noise'],['Render clouds…','clouds'],['Render cells…','cells']]],
     ['Tiling','sub',[['Offset…','offset'],['Tile…','tile_fx'],['Make seamless…','seamless']]]],
   View:[['Canvas-only view','canvasFull','F'],['Frame 3D model','frame3d','Shift+F'],['Fit on screen','fit','Ctrl+0'],['Actual pixels','actual','Ctrl+1'],['Tile mode','tile','Shift+T'],['3D view','view3d','F3'],'-',['Cage tool','cageTool','K'],['Flat cage view','cageFlat','Shift+F'],['Symmetry: left–right','symX','Shift+X'],'-',['Shortcut hints','hints'],['Performance monitor','perf']],
-  Window:[['Workspace: Painting','ws_painting'],['Workspace: Texturing','ws_texturing'],['Workspace: 3D Paint','ws_paint3d'],['Workspace: Minimal','ws_minimal'],['Save workspace…','wsSave'],['Reset workspace','wsReset'],['Lock panels','wsLock'],'-',
+  Window:[['Panel layout: Paint','ws_painting'],['Panel layout: Texturing','ws_texturing'],['Panel layout: Large 3D','ws_paint3d'],['Panel layout: Minimal','ws_minimal'],['Save panel layout…','wsSave'],['Reset panel layout','wsReset'],['Lock panels','wsLock'],'-',
     ['Color','pn_color'],['Brushes','pn_brushes'],['Tool settings','pn_tool'],['Maps','pn_maps'],['Layers','pn_layers'],['Channels','pn_chan'],'-',['Options bar','optBarToggle'],['Toolbar: two columns','tbCols'],['Toolbar on the right','tbSide']],
   Help:[] /* filled by ui/help.js */
 };
@@ -65,7 +65,9 @@ const FILE_NOT={paint:['impModel','p3BakeMenu','impSheet','impSeq','impGif','exp
   brush:['impModel','p3BakeMenu','place','savePsdAs','sendP3','expTex','impSheet','impSeq','impGif','expSheet']};
 function menuTidy(list){const o=[];for(const it of list){if(it==='-'&&(!o.length||o[o.length-1]==='-'))continue;o.push(it);}while(o.length&&o[o.length-1]==='-')o.pop();return o;}
 function menuList(list,name){let l=list.filter(it=>platform.isDesktop||it==='-'||!['recent','checkUpdates'].includes(it[1]));
-  if(name==='File'){const no=FILE_NOT[ui.mode]||[];l=menuTidy(l.filter(it=>it==='-'||!no.includes(it[1])));}return l.map(menuEntry);}
+  if(name==='File'){const no=FILE_NOT[ui.mode]||[];l=menuTidy(l.filter(it=>it==='-'||!no.includes(it[1])));}
+  if(name==='View'){if(ui.mode==='p3d')l=menuTidy(l.filter(it=>it==='-'||it[1]!=='view3d'));else l=l.map(it=>it!=='-'&&it[1]==='view3d'?['3D preview beside canvas',...it.slice(1)]:it);}
+  return l.map(menuEntry);}
 function menuFlat(list){const o=[];for(const it of list){if(it==='-')continue;if(it[1]==='sub')o.push(...menuFlat(it[2]));else o.push(it);}return o;}
 function openMenu(name){closeMenu();const b=menuBtns[name];
   pop.replaceChildren(...menuList(MENUS[name],name));

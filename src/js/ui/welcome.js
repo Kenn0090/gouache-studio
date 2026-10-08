@@ -8,7 +8,7 @@ const EXAMPLES=[
     for(const n of ['Gun Metal','Dust']){const rec=smBuiltins().find(r=>r.name.toLowerCase()===n.toLowerCase());if(rec)smApply(rec);}}}];
 const welcomeOn=()=>!prefs.noWelcome;
 /* where to start: each tab of the app (Kenn: choose the starting section right after the splash) */
-const WELCOME_MODES=[['paint','Paint','Photoshop-style painting and texture maps','▨'],['p3d','3D Paint','Paint a model with texture sets and materials','◈'],['anim','Animation','Flipbooks and sprite sheets','▶'],
+const WELCOME_MODES=[['paint','2D Paint','Paint textures on a flat canvas; the 3D preview is optional','▨'],['p3d','3D Paint','Paint directly on a model with texture sets and materials','◈'],['anim','Animation','Flipbooks and sprite sheets','▶'],
   ['bake','Bake','Bake maps from a high-poly model','◎'],['convert','Convert','Normal, height, AO and more from a photo','◐'],['brush','Brush','Draw your own brush tips','✎']];
 function welcomeGo(m,remember){if(remember){prefs.startMode=m;savePrefs();}closeWelcome();if(ui.mode!==m)setMode(m);}
 function closeWelcome(){const w=document.getElementById('welcome');if(w)w.remove();document.removeEventListener('keydown',welcomeKey,true);}

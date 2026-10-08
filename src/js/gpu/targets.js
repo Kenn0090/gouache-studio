@@ -41,8 +41,8 @@ let halfRead=null;
    up as a hitch. Instead the copy goes into a GPU buffer with a fence; the bytes are collected a
    frame or two later, when the GPU is done. Anything that needs them sooner waits only then. */
 const pendingReads=new Set();
-function asyncRead(fbo,x,y,w,h,type,ctor,n,done,failed){const buf=gl.createBuffer();gl.bindBuffer(gl.PIXEL_PACK_BUFFER,buf);gl.bufferData(gl.PIXEL_PACK_BUFFER,n*ctor.BYTES_PER_ELEMENT,gl.STREAM_READ);
-  gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);gl.readPixels(x,y,w,h,gl.RGBA,type,0);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+function asyncRead(fbo,x,y,w,h,type,ctor,n,done,failed,format=gl.RGBA){const buf=gl.createBuffer();gl.bindBuffer(gl.PIXEL_PACK_BUFFER,buf);gl.bufferData(gl.PIXEL_PACK_BUFFER,n*ctor.BYTES_PER_ELEMENT,gl.STREAM_READ);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);gl.readPixels(x,y,w,h,format,type,0);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
   const fence=gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE,0);gl.flush();
   const job={buf,fence,fail(){if(!pendingReads.delete(job))return;gl.deleteBuffer(buf);gl.deleteSync(fence);if(failed)failed(new Error('The graphics card could not return the image. Please try saving again.'));},
     finish(){if(gl.isContextLost()){job.fail();return;}if(!pendingReads.delete(job))return;const out=new ctor(n);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,buf);gl.getBufferSubData(gl.PIXEL_PACK_BUFFER,0,out);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);
@@ -53,7 +53,8 @@ function schedulePoll(){if(!pollTimer&&pendingReads.size)pollTimer=setTimeout(po
 function pollReads(){pollTimer=0;for(const j of [...pendingReads]){const s=gl.clientWaitSync(j.fence,0,0);if(s===gl.WAIT_FAILED||gl.isContextLost())j.fail();else if(s===gl.ALREADY_SIGNALED||s===gl.CONDITION_SATISFIED)j.finish();}schedulePoll();}
 /* immediate read, for code that needs the pixels right away */
 function captureRegionNow(src,x,y,w,h){gl.bindFramebuffer(gl.FRAMEBUFFER,src.fbo);let u;
-  if(src.depth===16){const f=new Float32Array(w*h*4);gl.readPixels(x,y,w,h,gl.RGBA,gl.FLOAT,f);packedRead(src,f);u=new Uint16Array(f.length);for(let i=0;i<f.length;i++)u[i]=f2h(f[i]);}
+  if(src.mono){gl.bindFramebuffer(gl.FRAMEBUFFER,null);const staged=makeTarget(w,h,src.depth,false,false);run(P.maskplace,staged,{uMask:src.tex,uRect:[0,0,w,h],uSourceOffset:[x,y],uDef:0});const result=captureRegionNow(staged,0,0,w,h);disposeTarget(staged);return result;}
+  else if(src.depth===16){const f=new Float32Array(w*h*4);gl.readPixels(x,y,w,h,gl.RGBA,gl.FLOAT,f);packedRead(src,f);u=new Uint16Array(f.length);for(let i=0;i<f.length;i++)u[i]=f2h(f[i]);}
   else{u=new Uint8Array(w*h*4);gl.readPixels(x,y,w,h,gl.RGBA,gl.UNSIGNED_BYTE,u);packedRead(src,u);}
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);return {w,h,depth:src.depth===16?16:8,data:u,bytes:u.byteLength};}
 /* an undo snapshot: its pixels arrive asynchronously; reading .data before then waits for them */
@@ -61,11 +62,15 @@ function makeSnap(w,h,depth,bytes){const s={w,h,depth,bytes,_d:null,_job:null,
   get data(){if(this._job)this._job.finish();return this._d;},set data(v){this._d=v;},get resident(){return !!(this._d||this._job);}};return s;}
 function captureRegion(src,x,y,w,h){const n=w*h*4;
   if(src.depth===16){
+    if(src.mono){const staged=makeTarget(w,h,16,false,false);run(P.maskplace,staged,{uMask:src.tex,uRect:[0,0,w,h],uSourceOffset:[x,y],uDef:0});const s=makeSnap(w,h,16,n*2);
+      s._job=asyncRead(staged.fbo,0,0,w,h,gl.FLOAT,Float32Array,n,f=>{const u=new Uint16Array(n);for(let i=0;i<n;i++)u[i]=f2h(f[i]);s._job=null;s._d=packedRead(staged,u);disposeTarget(staged);},()=>disposeTarget(staged));return s;}
     if(halfRead===null)halfRead=gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_FORMAT)===gl.RGBA&&gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_TYPE)===gl.HALF_FLOAT;
     const s=makeSnap(w,h,16,n*2);
     s._job=halfRead?asyncRead(src.fbo,x,y,w,h,gl.HALF_FLOAT,Uint16Array,n,u=>{s._job=null;s._d=packedRead(src,u);})
       :asyncRead(src.fbo,x,y,w,h,gl.FLOAT,Float32Array,n,f=>{packedRead(src,f);const u=new Uint16Array(n);for(let i=0;i<n;i++)u[i]=f2h(f[i]);s._job=null;s._d=u;});
     return s;}
+  if(src.mono){const staged=makeTarget(w,h,8,false,false);run(P.maskplace,staged,{uMask:src.tex,uRect:[0,0,w,h],uSourceOffset:[x,y],uDef:0});const s=makeSnap(w,h,8,n);
+    s._job=asyncRead(staged.fbo,0,0,w,h,gl.UNSIGNED_BYTE,Uint8Array,n,u=>{s._job=null;s._d=packedRead(staged,u);disposeTarget(staged);},()=>disposeTarget(staged));return s;}
   const s=makeSnap(w,h,8,n);s._job=asyncRead(src.fbo,x,y,w,h,gl.UNSIGNED_BYTE,Uint8Array,n,u=>{s._job=null;s._d=packedRead(src,u);});return s;}
 /* File reads wait for the fence instead of forcing an undo snapshot's .data getter early.
    The file worker converts float pixels to half-float bytes. */
@@ -118,6 +123,6 @@ const dummy=(()=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.
 
 const CH_DEF={uChanMode:{int:0},uChan:[1,1,1,1]};
 const SEL_DEF={uSelTex:dummy,uUseSel:false,uTonalRange:{int:1},uProtect:true};
-P.comp.defaults=Object.assign({uSolid:false,uSolidColor:[0,0,0,0],uMask2:dummy,uLMask:dummy,uUseMask2:false,uUseLMask:false,uStrokeTint:false},CH_DEF,SEL_DEF);P.merge.defaults=Object.assign({uStrokeTint:false},CH_DEF,SEL_DEF);P.stamp.defaults={uTint:{int:0},uDabCol:[0,0,0]};P.smudge.defaults=Object.assign({},CH_DEF,SEL_DEF);
+P.comp.defaults=Object.assign({uSolid:false,uSolidColor:[0,0,0,0],uMask2:dummy,uLMask:dummy,uUseMask2:false,uUseLMask:false,uStrokeTint:false},CH_DEF,SEL_DEF);P.merge.defaults=Object.assign({uStrokeTint:false,uSrcOrigin:{iv2:[0,0]}},CH_DEF,SEL_DEF);P.stamp.defaults={uTint:{int:0},uDabCol:[0,0,0]};P.smudge.defaults=Object.assign({},CH_DEF,SEL_DEF);
 P.mix.defaults={uM:dummy,uUseM:false};P.resample.defaults={uOutside:[0,0,0,0]};P.view.defaults={uR:[1,0,0,1],uShow:[1,1,1,0],uSingle:{int:-1},uMaskView:false,uSel:dummy,uSelMode:{int:0},uTime:0,uPx:1,uWrap:false,uUnder:dummy,uUseUnder:false,uBg:[0,0,0,0]};
-P.shift.defaults={uWrap:false,uOutside:[0,0,0,0]};P.grad.defaults={uShape:{int:0},uDither:false,uOpacity:1,uGray:false,uBase:dummy,uUseBase:false,uSelTex:dummy,uUseSel:false};P.fillcov.defaults={uSelTex:dummy,uUseSel:false};P.lockcov.defaults={uSelTex:dummy,uUseSel:false};P.texcov.defaults={uSelTex:dummy,uUseSel:false};P.xform.defaults={uOutside:[0,0,0,0],uInterp:{int:2},uSS:{int:1},uWrap:false,uRect:[0,0,0,0],uBase:dummy,uUseBase:false};P.mesh.defaults={uOutside:[0,0,0,0],uInterp:{int:2},uOff:[0,0]};P.proj.defaults={uAlphaOnly:true};P.selop.defaults={uShape:dummy,uOldOn:true};P.loadsel.defaults={uInv:false};P.cropsel.defaults={uSel:dummy,uUseSel:false};
+P.shift.defaults={uWrap:false,uOutside:[0,0,0,0]};P.maskplace.defaults={uSourceOffset:[0,0]};P.grad.defaults={uShape:{int:0},uDither:false,uOpacity:1,uGray:false,uBase:dummy,uUseBase:false,uSelTex:dummy,uUseSel:false};P.fillcov.defaults={uSelTex:dummy,uUseSel:false};P.lockcov.defaults={uSelTex:dummy,uUseSel:false};P.texcov.defaults={uSelTex:dummy,uUseSel:false};P.xform.defaults={uOutside:[0,0,0,0],uInterp:{int:2},uSS:{int:1},uWrap:false,uRect:[0,0,0,0],uBase:dummy,uUseBase:false};P.mesh.defaults={uOutside:[0,0,0,0],uInterp:{int:2},uOff:[0,0]};P.proj.defaults={uAlphaOnly:true};P.selop.defaults={uShape:dummy,uOldOn:true};P.loadsel.defaults={uInv:false};P.cropsel.defaults={uSel:dummy,uUseSel:false};

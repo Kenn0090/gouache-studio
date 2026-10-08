@@ -75,8 +75,8 @@ void main(){ vec2 size=vec2(textureSize(uSrc,0)); vec2 uv=gl_FragCoord.xy/size;
   if(uChanMode==1){ vec3 oc=dst.a>1e-6?dst.rgb/dst.a:vec3(0.0),rc=r.a>1e-6?r.rgb/r.a:vec3(0.0); float na=mix(dst.a,r.a,uChan.a); r=vec4(mix(oc,rc,uChan.rgb)*na,na); }
   if(uLockAlpha==1){ vec3 c=r.a>1e-6?r.rgb/r.a:vec3(0.0); r=vec4(c*dst.a,dst.a); }
   o=r; }`;
-const FS_MERGE=CH_STROKE+`uniform sampler2D uSrc; uniform sampler2D uStrokeTex;
-void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 st=texelFetch(uStrokeTex,p,0); gSC=uStrokeTint==1?st.rgb:uStrokeColor; o=applyStroke(texelFetch(uSrc,p,0),selCov(p,st.a)); }`;
+const FS_MERGE=CH_STROKE+`uniform sampler2D uSrc; uniform sampler2D uStrokeTex; uniform ivec2 uSrcOrigin;
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 st=texelFetch(uStrokeTex,p,0); gSC=uStrokeTint==1?st.rgb:uStrokeColor; o=applyStroke(texelFetch(uSrc,p-uSrcOrigin,0),selCov(p,st.a)); }`;
 const FS_COMP=CH_STROKE+`
 uniform sampler2D uBase; uniform sampler2D uLayer; uniform sampler2D uStrokeTex; uniform sampler2D uMask; uniform sampler2D uMask2; uniform sampler2D uLMask;
 uniform int uMode; uniform int uUseMask; uniform int uUseMask2; uniform int uUseLMask; uniform float uOpacity;
@@ -180,9 +180,9 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); float t=uT*(uUseM==1?texelFetch(uM,
 const FS_CHMERGE=`uniform sampler2D uOld; uniform sampler2D uNew; uniform vec4 uChan;
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 a=texelFetch(uOld,p,0),b=texelFetch(uNew,p,0);
   vec3 ac=a.a>1e-6?a.rgb/a.a:vec3(0.0),bc=b.a>1e-6?b.rgb/b.a:vec3(0.0); float na=mix(a.a,b.a,uChan.a); o=vec4(mix(ac,bc,uChan.rgb)*na,na); }`;
-const FS_MASKPLACE=`uniform sampler2D uMask; uniform vec4 uRect; uniform float uDef;
-void main(){ ivec2 mp=ivec2(floor(gl_FragCoord.xy)-uRect.xy); float m=uDef;
-  if(mp.x>=0&&mp.y>=0&&mp.x<int(uRect.z)&&mp.y<int(uRect.w)) m=texelFetch(uMask,mp,0).r; o=vec4(vec3(m),1.0); }`;
+const FS_MASKPLACE=`uniform sampler2D uMask; uniform vec4 uRect; uniform vec2 uSourceOffset; uniform float uDef;
+void main(){ ivec2 local=ivec2(floor(gl_FragCoord.xy)-uRect.xy),mp=local+ivec2(uSourceOffset); float m=uDef;
+  if(local.x>=0&&local.y>=0&&local.x<int(uRect.z)&&local.y<int(uRect.w)&&mp.x>=0&&mp.y>=0&&mp.x<textureSize(uMask,0).x&&mp.y<textureSize(uMask,0).y) m=texelFetch(uMask,mp,0).r; o=vec4(vec3(m),1.0); }`;
 const FS_APPLYMASK=`uniform sampler2D uSrc; uniform sampler2D uM;
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy); o=texelFetch(uSrc,p,0)*texelFetch(uM,p,0).r; }`;
 const FS_INVERT=`uniform sampler2D uSrc;

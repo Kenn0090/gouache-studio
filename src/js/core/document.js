@@ -20,8 +20,10 @@ const aux={};let pool=null;
 const packedHeight=d=>d===16&&doc.depth===8&&doc.w*doc.h>=268435456;
 function auxFor(d){return aux[d]||(aux[d]={depth:d,pool:{free:[],all:[],depth:d,packed:packedHeight(d)}});}
 /* Compositing height needs scratch outputs, but its four brush buffers are needed only when editing it. */
-function useAux(d,viewOnly){const a=auxFor(d),small=viewOnly&&doc.w*doc.h>=67108864,w=small?1:doc.w,h=small?1:doc.h;
-  if(!a.strokeT||!small&&(a.strokeT.w!==w||a.strokeT.h!==h)){for(const k of ['strokeT','beforeT','scratchT','previewT']){disposeTarget(a[k]);a[k]=makeTarget(w,h,d,undefined,packedHeight(d));}}strokeT=a.strokeT;beforeT=a.beforeT;scratchT=a.scratchT;previewT=a.previewT;pool=a.pool;}
+function useAux(d,viewOnly,paintOnly){const a=auxFor(d),large=doc.w*doc.h>=67108864,small=viewOnly&&large,w=small?1:doc.w,h=small?1:doc.h,local=large&&(small||paintOnly),sw=local?1:w,sh=local?1:h;
+  const ensure=(k,W,H)=>{if(!a[k]||a[k].w!==W||a[k].h!==H){disposeTarget(a[k]);a[k]=makeTarget(W,H,d,undefined,packedHeight(d));}};
+  ensure('strokeT',w,h);ensure('beforeT',local?1:w,local?1:h);ensure('scratchT',sw,sh);ensure('previewT',sw,sh);
+  strokeT=a.strokeT;beforeT=a.beforeT;scratchT=a.scratchT;previewT=a.previewT;pool=a.pool;}
 function acquireIn(pl){let t=pl.free.pop();if(!t){if(doc.w*doc.h>=67108864)trimPools();t=makeTarget(doc.w,doc.h,pl.depth,undefined,pl.packed);t.pool=pl;pl.all.push(t);}if(uvWrapScope)uvWrapTarget(t);return t;}
 function acquire(){return acquireIn(pool);}
 function acquireD(d){return acquireIn(auxFor(d).pool);}
@@ -69,7 +71,7 @@ function cloneMask(m){if(!m)return null;const c=makeMask(1,m.target.mono);blit(m
   if(m.stack){c._rows=new Set();c.stack=m.stack.map(r=>{const x=Object.assign({},r,{id:'r'+(++msSeq),p:JSON.parse(JSON.stringify(r.p||{})),v:r.v?JSON.parse(JSON.stringify(r.v)):r.v});
     if(r.t){x.t=makeTarget(r.t.w,r.t.h,r.t.depth,r.kind==='image');blit(r.t,x.t,0,0,r.t.w,r.t.h,0,0);}c._rows.add(x);return x;});}
   return c;}
-function editTarget(){if(sel.quick){useAux(sel.t.depth);return {node:sel.node,target:sel.t,isMask:true,L:sel.L};}const n=doc.active;if(!n)return null;fillMaskEdit(n);if(n.fx&&!n.editMask)return null;if(isLayer(n)&&!n.editMask){ensureTarget(n);useAux(n.target.depth);if(doc.map==='base')delete n.blankBase;}else if(n.mask&&n.editMask)useAux(n.mask.target.depth);
+function editTarget(){if(sel.quick){useAux(sel.t.depth);return {node:sel.node,target:sel.t,isMask:true,L:sel.L};}const n=doc.active;if(!n)return null;fillMaskEdit(n);if(n.fx&&!n.editMask)return null;if(isLayer(n)&&!n.editMask){ensureTarget(n);useAux(n.target.depth,false,['brush','erase','dodge','burn'].includes(ui.tool));if(doc.map==='base')delete n.blankBase;}else if(n.mask&&n.editMask)useAux(n.mask.target.depth);
   /* a mask with rows: painting goes into its Paint row */
   if(n.editMask&&n.mask&&n.mask.stack){const r=msPaintRow(n);return {node:n,target:r.t,isMask:true,L:{target:r.t,lockAlpha:false,maskOf:n,maskObj:n.mask,mrow:r}};}
   if(n.editMask&&n.mask)return {node:n,target:n.mask.target,isMask:true,L:{target:n.mask.target,lockAlpha:false,maskOf:n,maskObj:n.mask}};

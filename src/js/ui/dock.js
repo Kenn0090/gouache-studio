@@ -32,14 +32,14 @@ const PANEL_IDS=Object.keys(PANELS);
 const MODE_GROUP=['p3d','brushtab','conv','bake','anim'];
 /* the built-in workspaces: extra = 3D view on and how wide, painting on the model */
 const WS_PRESETS={
-  painting:{name:'Paint',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['color','matEd','shading'],f:1.05},{tabs:['brushes','stencils','mats','textures','decals','envs','tool'],f:1.25},{tabs:['maps','p3bake'],f:.45},{tabs:['layers','chan','hist'],f:1.6}],icons:[],floats:[]},
-  texturing:{name:'3D Paint',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:[...MODE_GROUP,'p3bake','shading'],f:1.2},{tabs:['layers','maps','chan','hist'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','projects','meshmaps','weldtools'],f:1,h:260},icons:[],floats:[]},
-  paint3d:{name:'3D Paint (big view)',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:[...MODE_GROUP,'p3bake','shading'],f:1.2},{tabs:['layers','maps','chan','hist'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','projects','meshmaps','brushes','weldtools'],f:1,h:260},icons:[],floats:[]},
-  minimal:{name:'Minimal',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1}],icons:['color','matEd','shading','brushes','stencils','mats','textures','decals','envs','tool','maps','layers','chan','hist'],floats:[]}};
+  painting:{name:'Panels: Paint',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['color','matEd','shading'],f:1.05},{tabs:['brushes','stencils','mats','textures','decals','envs','tool'],f:1.25},{tabs:['maps','p3bake'],f:.45},{tabs:['layers','chan','hist'],f:1.6}],icons:[],floats:[]},
+  texturing:{name:'Panels: 3D Paint',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:[...MODE_GROUP,'p3bake','shading'],f:1.2},{tabs:['layers','maps','chan','hist'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','projects','meshmaps','weldtools'],f:1,h:260},icons:[],floats:[]},
+  paint3d:{name:'Panels: Large 3D',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:[...MODE_GROUP,'p3bake','shading'],f:1.2},{tabs:['layers','maps','chan','hist'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','projects','meshmaps','brushes','weldtools'],f:1,h:260},icons:[],floats:[]},
+  minimal:{name:'Panels: Minimal',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1}],icons:['color','matEd','shading','brushes','stencils','mats','textures','decals','envs','tool','maps','layers','chan','hist'],floats:[]}};
 /* (0.28, Kenn) each top tab has its own workspace, and the drop-down follows the tab */
-for(const [k,n] of [['animation','Animation'],['bake','Bake'],['convert','Convert'],['brush','Brush']])WS_PRESETS[k]=Object.assign(JSON.parse(JSON.stringify(WS_PRESETS.painting)),{name:n});
+for(const [k,n] of [['animation','Animation'],['bake','Bake'],['convert','Convert'],['brush','Brush']])WS_PRESETS[k]=Object.assign(JSON.parse(JSON.stringify(WS_PRESETS.painting)),{name:'Panels: '+n});
 /* Brush creation keeps its previews and settings together, with painting brushes below the canvas. */
-WS_PRESETS.brush={name:'Brush',tb:{side:'left',cols:1},opt:true,w:420,groups:[{tabs:['color'],f:.45},{tabs:MODE_GROUP.slice(),active:'brushtab',f:5}],shelf:{tabs:['brushes'],h:230,f:1},icons:['layers','hist','maps','chan','matEd','shading','tool','stencils','mats','textures','decals','envs','p3bake'],floats:[]};
+WS_PRESETS.brush={name:'Panels: Brush',tb:{side:'left',cols:1},opt:true,w:420,groups:[{tabs:['color'],f:.45},{tabs:MODE_GROUP.slice(),active:'brushtab',f:5}],shelf:{tabs:['brushes'],h:230,f:1},icons:['layers','hist','maps','chan','matEd','shading','tool','stencils','mats','textures','decals','envs','p3bake'],floats:[]};
 const WS_MODE_DEF={paint:'painting',p3d:'texturing',anim:'animation',bake:'bake',convert:'convert',brush:'brush'};
 const dk={ws:'painting',L:null,custom:{},saved:{},lock:false,flyout:null,drag:null,modeWs:{},modeLayouts:{},layoutMode:null};
 (()=>{try{const s=JSON.parse(localStorage.getItem('gs.dock')||'{}');if(s.ws)dk.ws=s.ws;if(s.modeWs)dk.modeWs=s.modeWs;if(s.col2&&s.col2.groups)dk.col2=s.col2;dk.modeLayouts=s.modeLayouts||{};dk.saved=s.saved||{};dk.custom=s.custom||{};dk.lock=!!s.lock;
@@ -164,7 +164,7 @@ function dkRender(){brushMergeSync();const keepSc=dkScrollSave(),L=dk.L,dock=$('
   dkScrollRestore(keepSc);requestAnimationFrame(()=>dkScrollRestore(keepSc));if(typeof paRefresh==='function')paRefresh();
   if(typeof resizeGL==='function')requestAnimationFrame(()=>{resizeGL();if(typeof drawSV==='function')drawSV();});}
 function dkTabs(tabs,active,where,onPick){const strip=el('div',{class:'dktabs',role:'tablist'});
-  for(const id of tabs){const on=id===active,b=el('button',{class:'dktab'+(on?' on':''),role:'tab','aria-selected':String(on),text:id==='tool'?(dk.toolTitle.textContent||'Tool settings'):PANELS[id].title});
+  for(const id of tabs){const on=id===active,label=id==='tool'?(dk.toolTitle.textContent||'Tool settings'):PANELS[id].title,b=el('button',{class:'dktab'+(on?' on':''),role:'tab','aria-selected':String(on),text:label,title:(on?'Current panel: ':'Show panel: ')+label+'. Drag to move it.'});
     b.addEventListener('click',()=>onPick(id));if(!where.popped)b.addEventListener('pointerdown',e=>dkDragStart(e,id,where));strip.append(b);}
   const more=el('button',{class:'dkmore','aria-label':'Panel options',title:'Panel options',text:'⋯'});more.onclick=e=>dkMenu(e,active,where);strip.append(more);return strip;}
 function dkGroup(g){const av=dkAvail(g);let a=av.includes(g.active)?g.active:av[0];
@@ -211,7 +211,7 @@ function dkFloatEl(f){const av=f.tabs.filter(id=>dkIn(id));if(!av.length)return;
 function dkFlyout(id){dk.flyout=id;dkRender();}
 function dkFlyoutEl(id){const b=[...dk.icons.children].find(x=>x.title===PANELS[id].title),r=(b||dk.icons).getBoundingClientRect(),s=dkSec(id);s.classList.remove('dk-off');
   const w=el('div',{class:'dkfloat flyout',style:`top:${Math.max(40,Math.min(r.top,window.innerHeight-420))}px;right:${window.innerWidth-dk.icons.getBoundingClientRect().left+4}px;width:300px;max-height:${window.innerHeight-90}px`},
-    el('div',{class:'dktabs'},el('span',{class:'dktab on',text:PANELS[id].title}),el('button',{class:'dkmore',text:'✕','aria-label':'Close',onclick:()=>dkFlyout(null)})),el('div',{class:'dkbody'},s));
+    el('div',{class:'dktabs'},el('span',{class:'dktab on',text:PANELS[id].title}),el('button',{class:'dkmore',text:'✕','aria-label':'Close panel pop-out',title:'Close this panel pop-out',onclick:()=>dkFlyout(null)})),el('div',{class:'dkbody'},s));
   document.body.append(w);}
 document.addEventListener('pointerdown',e=>{if(dk.flyout&&!e.target.closest('.flyout,#dkIcons,#modal,.fontpop,#menuPop'))dkFlyout(null);},true);
 /* ---- the ⋯ menu of a group ---- */

@@ -4,6 +4,13 @@ const BRUSH_DEFAULTS={size:24,opacity:1,flow:1,hardness:.85,spacing:.06,grain:0,
   hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,endInk:0};
 /* lazy mouse: the brush follows the pointer on a string of R pixels, so it only moves once the string is pulled tight */
 function lazyStep(s,x,y,R){if(!(R>0))return [x,y];if(s.lx===undefined){s.lx=s.sx;s.ly=s.sy;}const dx=x-s.lx,dy=y-s.ly,d=Math.hypot(dx,dy);if(d<=R)return null;s.lx+=dx*(d-R)/d;s.ly+=dy*(d-R)/d;return [s.lx,s.ly];}
+/* Keep stabilization consistent across pointer sample rates. At 60 Hz this matches the
+   original response; coalesced 120/240 Hz samples no longer make the stroke feel heavier. */
+function strokeSmooth(s,x,y,p,amount,time,bypass){
+  const response=clamp(amount,0,1)*.93,now=Number.isFinite(time)?time:performance.now();
+  const dt=s.smoothAt==null?1000/60:clamp(now-s.smoothAt,1,100),scale=dt/(1000/60),k=1-Math.pow(response,scale);
+  const pressureK=1-Math.pow(Math.min(response,.6),scale);
+  s.smoothAt=now;const pos=bypass?1:k;s.sx+=(x-s.sx)*pos;s.sy+=(y-s.sy)*pos;s.sp+=(p-s.sp)*pressureK;return [s.sx,s.sy,s.sp];}
 const brush=Object.assign({},BRUSH_DEFAULTS);
 function pcurve(p,o){return Math.pow(clamp(p,0,1),Math.pow(2,-o.curve*1.6));}
 function radiusAt(p){const o=stroke.o;let r=o.size/2*(stroke.rs||1);if(o.pSize)r*=o.minSize+(1-o.minSize)*pcurve(p,o);return Math.max(.5,r);}
@@ -19,20 +26,26 @@ function strokeTints(o){if(o.tool!=='brush'||o.noTint||!o.color)return false;con
 const tintU=()=>({uStrokeTint:!!(stroke&&stroke.tint)});
 function beginStroke(L,x,y,p,o){
   if(typeof liqClearRestore==='function')liqClearRestore();
-  if(strokeT.w===1&&strokeT.h===1&&doc.w*doc.h>=67108864)useAux(L.target.depth);
   const W=doc.w,H=doc.h;
   /* Big canvases: plain painting copies only the part of the layer the stroke covered, when it ends (endStroke), and
      clears only what the last stroke left in strokeT, instead of the whole canvas each time (a 16k canvas is 1 GB). */
   const weldMask=!!o.weldMask&&L.maskOf?.materialPaint?.startsWith('weld:')&&!L.maskObj?.stack;
   const lazy=['brush','erase','dodge','burn'].includes(o.tool)&&(!L.maskOf||weldMask)&&!L.quick&&ui.mode!=='bake'&&(!o.space||weldMask);
+  if(strokeT.w===1&&strokeT.h===1&&doc.w*doc.h>=67108864)useAux(L.target.depth,false,lazy);
+  else if(!lazy&&(beforeT.w!==W||beforeT.h!==H))useAux(L.target.depth,false);
   if(!lazy)blit(L.target,beforeT,0,0,W,H,0,0);
-  const tint=strokeTints(o),tc=[0,0,0,0];
-  if(o.tool!=='smudge'){const d=strokeT.dirtyR;if(d&&d!=='all'){if(d[2]>0&&d[3]>0)scissorDo(d,()=>clearTarget(strokeT,tint?tc:undefined));}else clearTarget(strokeT,tint?tc:undefined);strokeT.dirtyR=null;}
+  const tint=strokeTints(o),tc=[0,0,0,0];let clearBox=null;
+  if(o.tool!=='smudge'){
+    const d=strokeT.dirtyR;
+    if(d&&d!=='all'){if(d[2]>0&&d[3]>0){scissorDo(d,()=>clearTarget(strokeT,tint?tc:undefined));clearBox=[d[0],d[1],d[0]+d[2],d[1]+d[3]];}}
+    else if(d==='all'||doc.wrap){clearTarget(strokeT,tint?tc:undefined);clearBox=[0,0,W,H];}
+    strokeT.dirtyR=null;
+  }
   /* o.space: the stroke is stamped somewhere else (a cage's flat space, the screen over the 3D model) and drawn into strokeT by space.sync() */
   const cg=o.tool!=='smudge'&&o.space?o.space:null;if(cg)clearTarget(cg.buf,tint?tc:undefined);
   const SW=cg?cg.w:W,SH=cg?cg.h:H;
   const gx=Math.max(1,Math.round(W/6)),gy=Math.max(1,Math.round(H/6));
-  stroke={lazy,fd:o.space?'all':null,L,o,x,y,p,lsx:x,lsy:y,dir:0,carry:0,bb:[W,H,0,0],gScale:[W/gx,H/gy],gPeriod:[gx,gy],space:cg,rs:cg?(o.cageRs||1):1,SW,SH,sym:o.sym||null,tint,grey:doc.map!=='base'};
+  stroke={lazy,fd:o.space?'all':null,L,o,x,y,p,lsx:x,lsy:y,dir:0,carry:0,bb:[W,H,0,0],clearBox,gScale:[W/gx,H/gy],gPeriod:[gx,gy],space:cg,rs:cg?(o.cageRs||1):1,SW,SH,sym:o.sym||null,tint,grey:doc.map!=='base'};
   if(tint&&o.jitterPerStroke)stroke.dabCol=jitterColor(o.color,o,stroke.grey);
   /* other maps painted by the same stroke: make sure the layer has an image there; with Lock alpha they follow the base colour's shape */
   if(o.extras&&o.extras.length){for(const e of o.extras)ensureMapTarget(L,e.key);
@@ -83,12 +96,31 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy){
     for(const c of copies)run(P.smudge,s.L.target,Object.assign({},U,{uCenter:c,uSrc:scratchT.tex,uDelta:[dx,dy],uAlpha:a,uStrength:o.strength,uCharge:o.charge,uColor:o.color,uLockAlpha:s.L.lockAlpha},chanU(o),selU(o)));
   } else {
     const dst=s.space?s.space.buf:strokeT;
+    if(dst===strokeT&&!doc.wrap)for(const c of copies)clearStrokeBufferRegion(s,[c[0]-ext,c[1]-ext,c[0]+ext,c[1]+ext]);
     for(const c of copies){if(s.tint)run(P.stamp,dst,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:2},uDabCol:s.dabCol}),{blend:'tintfirst'});
       run(P.stamp,dst,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:s.tint?1:0},uDabCol:s.dabCol||[0,0,0]}),{blend:o.buildup?'over':s.tint?'tintmax':'max'});}
   }
   for(const [cx,cy] of copies){const b=s.bb;b[0]=Math.min(b[0],cx-ext-1);b[1]=Math.min(b[1],cy-ext-1);b[2]=Math.max(b[2],cx+ext+1);b[3]=Math.max(b[3],cy+ext+1);}
   /* what changed since the last frame, so only that part of the picture is composited again */
   if(s.fd!=='all')for(const [cx,cy] of copies){const e=ext+(o.tool==='smudge'?Math.hypot(dx,dy):0)+3;fdAdd(s,[cx-e,cy-e,cx+e,cy+e]);}
+}
+/* The stroke texture only needs initialized pixels where this stroke can merge. Grow a cleared
+   rectangle as dabs extend the stroke, clearing just its newly exposed strips instead of the
+   entire (potentially 8K or 16K) canvas at pointer-down. */
+function clearStrokeBufferRegion(s,r){
+  const W=doc.w,H=doc.h,x0=clamp(Math.floor(r[0]),0,W),y0=clamp(Math.floor(r[1]),0,H),x1=clamp(Math.ceil(r[2]),0,W),y1=clamp(Math.ceil(r[3]),0,H);
+  if(x1<=x0||y1<=y0)return;
+  const b=s.clearBox;
+  if(!b){scissorDo([x0,y0,x1-x0,y1-y0],()=>clearTarget(strokeT));s.clearBox=[x0,y0,x1,y1];return;}
+  const nx0=Math.min(b[0],x0),ny0=Math.min(b[1],y0),nx1=Math.max(b[2],x1),ny1=Math.max(b[3],y1);
+  if(nx0===b[0]&&ny0===b[1]&&nx1===b[2]&&ny1===b[3])return;
+  const clear=(x,y,w,h)=>{if(w>0&&h>0)scissorDo([x,y,w,h],()=>clearTarget(strokeT));};
+  clear(nx0,ny0,nx1-nx0,Math.max(0,b[1]-ny0));
+  clear(nx0,b[3],nx1-nx0,Math.max(0,ny1-b[3]));
+  const iy0=Math.max(ny0,b[1]),iy1=Math.min(ny1,b[3]);
+  clear(nx0,iy0,Math.max(0,b[0]-nx0),iy1-iy0);
+  clear(b[2],iy0,Math.max(0,nx1-b[2]),iy1-iy0);
+  s.clearBox=[nx0,ny0,nx1,ny1];
 }
 /* changed areas are kept as a few separate boxes (symmetry paints far apart: one box around both would be most of the canvas) */
 function fdAdd(s,r){const L=s.fd||(s.fd=[]),near=Math.max(64,(r[2]-r[0])*2);
@@ -109,8 +141,10 @@ function endStroke(record){
   if(s.space){s.spaceDirty=false;s.space.sync();const b=s.space.bbox(s);s.bb=doc.wrap?[0,0,W,H]:[b[0]-2,b[1]-2,b[2]+2,b[3]+2];}
   const healing=s.o.tool==='heal',cloning=s.o.tool==='clone';
   const x0=clamp(Math.floor(s.bb[0]),0,W),y0=clamp(Math.floor(s.bb[1]),0,H),x1=clamp(Math.ceil(s.bb[2]),0,W),y1=clamp(Math.ceil(s.bb[3]),0,H),bw=x1-x0,bh=y1-y0,R=[x0,y0,bw,bh];
-  if(s.lazy&&bw>0&&bh>0)blit(L.target,beforeT,x0,y0,bw,bh,x0,y0);
-  if(s.o.tool!=='smudge'&&!healing&&!cloning&&bw>0&&bh>0)scissorDo(R,()=>run(strokeMergeProgram(s),L.target,{uSrc:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(s.o)},...tonalU(s.o),uStrokeColor:s.o.color,uStrokeTint:!!s.tint,uStrokeOpacity:s.o.opacity,uLockAlpha:L.lockAlpha,...chanU(s.o),...selU(s.o),...strokeMaterialU(s)}));
+  /* A normal stroke needs only a small before-image of its painted area for merging and undo. */
+  let lazySrc=null,lazyBefore=null;
+  if(s.lazy&&bw>0&&bh>0){lazySrc=makeTarget(bw,bh,L.target.depth,false,packedHeight(L.target.depth));blit(L.target,lazySrc,x0,y0,bw,bh,0,0);if(record)lazyBefore=captureRegion(lazySrc,0,0,bw,bh);}
+  if(s.o.tool!=='smudge'&&!healing&&!cloning&&bw>0&&bh>0){scissorDo(R,()=>run(strokeMergeProgram(s),L.target,{uSrc:s.lazy?lazySrc.tex:beforeT.tex,uSrcOrigin:{iv2:s.lazy?[x0,y0]:[0,0]},uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(s.o)},...tonalU(s.o),uStrokeColor:s.o.color,uStrokeTint:!!s.tint,uStrokeOpacity:s.o.opacity,uLockAlpha:L.lockAlpha,...chanU(s.o),...selU(s.o),...strokeMaterialU(s)}));if(lazySrc)disposeTarget(lazySrc);}
   if(s.o.tool!=='smudge')strokeT.dirtyR=s.space?'all':R;
   /* the heal brush heals every map of the layer where the stroke went */
   const parts=healing?healApply(s,x0,y0,bw,bh,record).parts:cloning&&s.clone?cloneEnd(s,x0,y0,bw,bh,record):[];
@@ -121,7 +155,7 @@ function endStroke(record){
   if(s.lockT)release(s.lockT);dropStrokeCache(s);
   stroke=null;
   if(record){
-    if(bw>0&&bh>0){const r=regionRecord(L,captureRegion(beforeT,x0,y0,bw,bh),captureRegion(L.target,x0,y0,bw,bh),x0,y0,bw,bh,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?'Blend':s.o.tool==='dodge'?'Dodge':s.o.tool==='burn'?'Burn':healing?'Heal':cloning?'Clone':'Brush stroke');
+    if(bw>0&&bh>0){const r=regionRecord(L,lazyBefore||captureRegion(beforeT,x0,y0,bw,bh),captureRegion(L.target,x0,y0,bw,bh),x0,y0,bw,bh,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?'Blend':s.o.tool==='dodge'?'Dodge':s.o.tool==='burn'?'Burn':healing?'Heal':cloning?'Clone':'Brush stroke');
       if(L.onRecord)L.onRecord(r,[x0,y0,bw,bh]);
       pushUndo(parts.length?withMapParts(r,L,parts,x0,y0):r);}
     scheduleThumb(L.maskOf||L);

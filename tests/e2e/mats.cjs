@@ -4,7 +4,7 @@ const OLD=__dirname+'/';
 const OUT=__dirname+'/out/';
 let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
 (async()=>{
- const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const b=await chromium.launch({...(process.env.GS_BROWSER_EXECUTABLE?{executablePath:process.env.GS_BROWSER_EXECUTABLE}:{}),args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();
  await p.addInitScript(()=>{try{localStorage.setItem('gs.p3d',JSON.stringify({size:256,layout:'3d'}));}catch(e){}});
  await p.route('**/*',r=>{const u=r.request().url();
@@ -38,6 +38,9 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('.filldlg .segb:text-is("Triplanar")');await W(500);
  ok(await p.evaluate(()=>!!__gs.fillPosMaps()),'triplanar uses the model (positions and normals per texel)');
  const c2=await count();ok(c2.r>500&&c2.b>500&&(c2.r!==c1.r||c2.b!==c1.b),'triplanar lays the image out differently '+JSON.stringify(c2));
+ const triNormal=await p.evaluate(()=>{const g=__gs,L=g.doc.active;g.useModel(g.primMesh('cube',0));const img=g.makeTarget(8,8,8,false),px=new Uint8Array(8*8*4);for(let y=0;y<8;y++)for(let x=0;x<8;x++){const nx=.25+.5*x/7,ny=.35+.3*y/7,nz=Math.sqrt(Math.max(.01,1-nx*nx-ny*ny)),i=(y*8+x)*4;px.set([Math.round((nx*.5+.5)*255),Math.round((ny*.5+.5)*255),Math.round((nz*.5+.5)*255),255],i);}g.writeRegion(img,0,0,8,8,px);L._fillImg.normal=img;L.fill.maps.normal={...(L.fill.maps.normal||{}),on:true,src:'image',tile:1,rot:0};L.fill.proj='tri';L.fill.xf={t:[0,0,0],r:[0,0,0],s:[1,1,1]};g.fillRender(L);const data=g.readRGBA8(g.mapT(L,'normal'));let min=[255,255,255],max=[0,0,0],covered=0;for(let i=0;i<data.length;i+=4)if(data[i+3]){covered++;for(let k=0;k<3;k++){min[k]=Math.min(min[k],data[i+k]);max[k]=Math.max(max[k],data[i+k]);}}const base={min,max,covered};L.fill.xf={t:[0,0,0],r:[27,41,19],s:[1.7,.8,1.2]};g.fillRender(L);const rotated=g.readRGBA8(g.mapT(L,'normal'));let changed=0;for(let i=0;i<data.length;i+=4)if(data[i+3]&&rotated[i+3])for(let k=0;k<3;k++)if(Math.abs(data[i+k]-rotated[i+k])>8)changed++;return {...base,changed,error:g.gl.getError()};});
+ ok(triNormal.covered>100&&triNormal.max.some((v,i)=>v-triNormal.min[i]>20),'triplanar normal samples are transformed into each mesh tangent frame '+JSON.stringify(triNormal));
+ ok(triNormal.changed>100&&triNormal.error===0,'rotated and scaled triplanar normal projection updates without graphics errors');
  /* height from an image makes bumps: the final normal is no longer flat */
  await p.evaluate(()=>{const r=[...document.querySelectorAll('.filldlg .fillrow')].find(r=>r.textContent.includes('Height'));const c=r.querySelector('input[type=checkbox]');c.click();});await W(300);
  await p.evaluate(()=>{const r=[...document.querySelectorAll('.filldlg .fillrow')].find(r=>r.textContent.includes('Height'));[...r.querySelectorAll('button')].find(x=>x.textContent==='Image').setAttribute('id','hImgSeg');});
@@ -74,6 +77,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const g0=await green();await p.mouse.move(cx-20,cy);await p.mouse.down();await p.mouse.move(cx+40,cy,{steps:8});await p.mouse.up();await W(400);const g1=await green();
  await p.mouse.move(cx-100,cy+40);await p.mouse.down();await p.mouse.move(cx+120,cy+40,{steps:16});await p.mouse.up();await W(400);const g2=await green();
  ok(g1-g0<400&&g2>g1+300,'lazy mouse: a short move stays on the string, a long one paints ('+g0+', '+g1+', '+g2+')');
+ const smoothRate=await p.evaluate(()=>{const run=hz=>{const s={sx:0,sy:0,sp:1,smoothAt:0};for(let i=1;i<=hz;i++)__gs.strokeSmooth(s,100*i/hz,50*i/hz,.5,.65,i*1000/hz,false);return [s.sx,s.sy,s.sp];};const a=run(60),b=run(120);return [Math.hypot(a[0]-b[0],a[1]-b[1]),Math.abs(a[2]-b[2])];});
+ ok(smoothRate[0]<.5&&smoothRate[1]<1e-6,'brush stabilization is consistent at 60 Hz and 120 Hz ('+smoothRate.join(', ')+')');
  await p.evaluate(()=>{__gs.brush.lazy=0;});
  /* ---- mesh maps: a channel from a baked map, and a mask from one ---- */
  await p.evaluate(()=>{const d=__gs.doc,t=__gs.makeTarget(d.w,d.h);__gs.clearTarget(t,[.2,.2,.2,1]);d.meshMaps={ao:t};__gs.showPanel('matEd');});await W(200);
