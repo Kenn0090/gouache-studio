@@ -77,7 +77,7 @@ async function loadUserBrushAssets(){
   for(const a of USER_BRUSH_ASSETS)try{
     const id='user_brush_'+a.file.replace(/[^a-z0-9]/gi,'_'),embedded=document.getElementById(id);
     let blob;if(embedded){const raw=atob(embedded.textContent.trim()),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);blob=new Blob([bytes]);}
-    else{const res=await fetch('./brushes/user/'+a.file);if(!res.ok)continue;blob=await res.blob();}
+    else{const res=await fetch('./brushes/user/'+a.file);if(!res.ok){console.warn('Missing bundled brush asset '+a.file+': '+res.status);continue;}blob=await res.blob();}
     const bmp=await createImageBitmap(blob),scale=Math.min(1,1024/Math.max(bmp.width,bmp.height)),c=document.createElement('canvas');
     c.width=Math.max(1,Math.round(bmp.width*scale));c.height=Math.max(1,Math.round(bmp.height*scale));
     const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bmp,0,0,c.width,c.height);bmp.close?.();
