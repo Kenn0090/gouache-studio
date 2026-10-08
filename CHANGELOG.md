@@ -742,3 +742,10 @@ Selections, transforms, crop, fills, gradients, dodge/burn, flipbooks
 ## 0.1
 
 Desktop app, self-updates
+## 0.51.22
+
+- Add multi-tile UDIM painting, baking, project persistence, UV-channel selection and UDIM-named texture exports.
+- Add a sprite-focused Animate new-document setup, 16-colour indie palettes, swatch-first color controls and pixel brushes.
+- Add square, scratch, grunge-wear, abstract-shard and running-stitch brush presets, five denim smart materials and ten cloth-fold variants.
+- Consolidate recent local improvements to seam-aware painting and blur, angled surface coverage, weld responsiveness, symmetry cursors, numeric slider values and pipeline-aware 3D project setup.
+

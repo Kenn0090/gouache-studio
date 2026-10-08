@@ -9,14 +9,14 @@ v3.paintOn=false;
 const FS_3DDEPTH=`uniform vec3 uCamP; void main(){ o=vec4(length(vP-uCamP),0.0,0.0,1.0); }`;
 const VS_3DPROJ=`#version 300 es
 layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec2 aT; layout(location=4) in vec3 aD;
-uniform float uUVs; uniform vec2 uShift; uniform sampler2D uH; uniform float uDisp; uniform int uUseH;
-out vec3 vP; out vec3 vN;
-void main(){ vec2 t=aT*uUVs; vec3 p=aP; if(uUseH==1&&uDisp!=0.0){ float h=textureLod(uH,t,0.0).r-0.5; p+=aD*h*uDisp; }
-  vP=p; vN=aN; vec2 q=t-uShift; gl_Position=vec4(q*2.0-1.0,0.0,1.0); }`;
+uniform float uUVs; uniform vec2 uShift; uniform sampler2D uH; uniform float uDisp; uniform int uUseH; uniform int uUseUDIM;
+out vec3 vP; out vec3 vN; out vec2 vT;
+void main(){ vec2 t=aT*uUVs; vec3 p=aP; if(uUseH==1&&uDisp!=0.0){ float h=textureLod(uH,uUseUDIM==1?fract(t):t,0.0).r-0.5; p+=aD*h*uDisp; }
+  vP=p; vN=aN; vT=t; vec2 q=(uUseUDIM==1?fract(t):t)-uShift; gl_Position=vec4(q*2.0-1.0,0.0,1.0); }`;
 /* uMir: for mirror and radial painting, the texel looks up the brush where its mirror image is (identity otherwise) */
-const FS_3DPROJ=`in vec3 vP; in vec3 vN; uniform mat4 uVPm; uniform sampler2D uStroke; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform mat4 uMir; uniform int uAlign;
+const FS_3DPROJ=`in vec3 vP; in vec3 vN; in vec2 vT; uniform mat4 uVPm; uniform sampler2D uStroke; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform mat4 uMir; uniform int uAlign; uniform int uUseUDIM; uniform vec2 uUDIMTile;
 uniform int uSt; uniform sampler2D uStT; uniform vec2 uStC; uniform vec2 uStHalf; uniform float uStRot; uniform vec2 uScr; uniform int uStTile; uniform int uStInv;
-void main(){ vec3 q=(uMir*vec4(vP,1.0)).xyz; vec4 c=uVPm*vec4(q,1.0); if(c.w<=1e-6){ o=vec4(0); return; } vec2 s=c.xy/c.w*0.5+0.5;
+void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec3 q=(uMir*vec4(vP,1.0)).xyz; vec4 c=uVPm*vec4(q,1.0); if(c.w<=1e-6){ o=vec4(0); return; } vec2 s=c.xy/c.w*0.5+0.5;
   if(s.x<0.0||s.y<0.0||s.x>1.0||s.y>1.0){ o=vec4(0); return; }
   ivec2 ds=textureSize(uDepth,0); float z=texelFetch(uDepth,clamp(ivec2(s*vec2(ds)),ivec2(0),ds-1),0).r; float d=length(q-uCamP);
   /* Surface wrap projects onto front-facing mesh surfaces even when a raised lip occludes
@@ -43,9 +43,9 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
     M.dt=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,M.dt);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,w,h,0,gl.RGBA,gl.FLOAT,null);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
     gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,M.dt,0);M.rb=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,M.rb);gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT24,w,h);
     gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,M.rb);gl.bindFramebuffer(gl.FRAMEBUFFER,null);v3.mp=M;}
-  const s=v3s(),bake=ui.mode==='bake',T=v3.tex,{VP,eye}=v3ViewProj(w,h),useH=!bake&&!!(T.height&&s.disp&&doc.maps.includes('height')),uvs=bake?1:s.uvs;
+  const s=v3s(),bake=ui.mode==='bake',T=v3.tex,{VP,eye}=v3ViewProj(w,h),useH=!bake&&!!(T.height&&s.disp&&doc.maps.includes('height')),udim=ui.mode==='p3d'&&!!p3.udim&&!!p3.sets[p3.cur]?.tile,udimTile=udim?p3.sets[p3.cur].tile:{u:0,v:0},uvs=bake?1:(p3.udim?1:s.uvs);
   gl.bindFramebuffer(gl.FRAMEBUFFER,M.fb);gl.viewport(0,0,w,h);gl.clearColor(0,0,0,0);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.BLEND);
-  useProg(P.depth,{uVP:{m4:VP},uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uCamP:eye});gl.bindVertexArray(g.vao);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);gl.bindVertexArray(vao);
+  useProg(P.depth,{uVP:{m4:VP},uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uCamP:eye});gl.bindVertexArray(g.vao);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);gl.bindVertexArray(vao);
   gl.disable(gl.DEPTH_TEST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
   const mirs=mir3Mats(),mesh=v3.mesh,R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:g.count/3};/* 3D Paint: only the active texture set takes paint */
   /* A small screen-space index, built once per stroke, bounds the UV triangles touched by the brush.
@@ -69,7 +69,7 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
     return u1<u0?[0,0,0,0]:[u0*doc.w-2,v0*doc.h-2,u1*doc.w+2,v1*doc.h+2];};
   return {w,h,buf:M.buf,yup:true,viewportBounds,
     sync(){bindTarget(strokeT);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
-      const stU=st3Uniforms(w,h);for(const Mi of mirs){useProg(P.proj,Object.assign({uVPm:{m4:VP},uStroke:M.buf.tex,uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uMir:{m4:Mi}},stU));
+      const stU=st3Uniforms(w,h);for(const Mi of mirs){useProg(P.proj,Object.assign({uVPm:{m4:VP},uStroke:M.buf.tex,uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v],uMir:{m4:Mi}},stU));
       bindTarget(strokeT);gl.enable(gl.BLEND);gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);gl.disable(gl.CULL_FACE);
       const loc=gl.getUniformLocation(P.proj.p,'uShift'),alignLoc=gl.getUniformLocation(P.proj.p,'uAlign');gl.bindVertexArray(g.vao);
       const align=v3s().paintAlign==='camera'?0:1;gl.uniform1i(alignLoc,align);
@@ -92,6 +92,7 @@ function meshPaintReady(e){return v3.paintOn&&MESH_TOOLS.includes(ui.tool)&&!e.a
 function meshBrushScale(h){const radius=v3.mesh?.radius||1,depth=Math.max(.001,v3.cam.dist),half=Math.tan(v3s().fov*Math.PI/360);return h*radius/(512*depth*Math.max(.001,half));}
 function meshPt(hit,e){const r=hit.getBoundingClientRect();return [e.clientX-r.left,r.height-(e.clientY-r.top)];}
 function meshDown(hit,e){if(stroke||preview||selLive)return false;if(typeof bk!=='undefined'&&bk.busy&&ui.mode==='bake'){toast('Wait for the bake to finish.');return true;}
+  if(ui.mode==='p3d'&&p3.udim){const pk=v3PickAt(hit,e),R=pk&&v3.mesh?.setRanges?.[pk.set],i=pk&&pk.tile&&p3.sets.findIndex(S=>p3Binding(S)===(R&&R.name)&&S.tile&&S.tile.id===pk.tile.id);if(i>=0&&i!==p3.cur)p3SwitchSet(i,true);}
   if(ui.tool==='material')materialBrushTarget();if(fillNoMask())return true;
   const et=ui.mode==='bake'?bakeEditTarget():editTarget();if(ui.mode!=='bake'&&lockStop(et))return true;const o=paintOpts(et);if(!o)return true;
   const r=hit.getBoundingClientRect(),w=Math.max(1,Math.round(r.width)),h=Math.max(1,Math.round(r.height)),sp=meshSpace(w,h);if(!sp)return true;
@@ -105,7 +106,7 @@ function meshCursor(hit,e){mir3CursorMove(hit,e);let c=v3.curEl;if(!c||!c.isConn
   if(!e||!v3.paintOn||!MESH_TOOLS.includes(ui.tool)||e.altKey||v3.drag){c.hidden=true;hit.style.cursor=e&&e.altKey&&prefs.altPick!==false&&!['heal','clone'].includes(ui.tool)?brushPickerCursor:'';return;}hit.style.cursor='none';const r=hit.getBoundingClientRect(),pr=hit.parentNode.getBoundingClientRect(),d=Math.max(3,brush.size*meshBrushScale(r.height));
   c.hidden=false;c.style.width=c.style.height=d+'px';c.style.transform='translate('+(e.clientX-pr.left-d/2)+'px,'+(e.clientY-pr.top-d/2)+'px)';tipCursor(c,d);}
 /* ---- what is under the pointer: the model's UV there (and how far away), from a one-pixel render ---- */
-const FS_3DPICK=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform vec3 uCamP; uniform float uSet; uniform int uOrtho; uniform vec3 uFwd; void main(){ o=vec4(fract(vT),uOrtho==1?dot(vP-uCamP,uFwd):length(vP-uCamP),1.0+uSet); }`;
+const FS_3DPICK=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform vec3 uCamP; uniform float uSet; uniform int uOrtho; uniform vec3 uFwd; void main(){ o=vec4(vT,uOrtho==1?dot(vP-uCamP,uFwd):length(vP-uCamP),1.0+uSet); }`;
 let P3PICK=null;
 function v3PickAt(hit,e){const g=v3.gpu;if(!g||!v3.mesh)return null;if(!P3PICK)P3PICK=prog3(VS_3DD,FS_3DPICK);
   const r=hit.getBoundingClientRect(),w=Math.max(1,r.width),h=Math.max(1,r.height),px=e.clientX-r.left,py=h-(e.clientY-r.top);if(px<0||py<0||px>w||py>h)return null;
@@ -113,18 +114,18 @@ function v3PickAt(hit,e){const g=v3.gpu;if(!g||!v3.mesh)return null;if(!P3PICK)P
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
     K.fb=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,K.fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,K.t,0);
     K.rb=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,K.rb);gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT24,1,1);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,K.rb);}
-  const s=v3s(),bake=ui.mode==='bake'||ui.mode==='convert',T=v3.tex,{VP,eye}=v3ViewProj(w,h),useH=!bake&&!!(T.height&&s.disp&&doc.maps.includes('height')),uvs=bake?1:s.uvs;
+  const s=v3s(),bake=ui.mode==='bake'||ui.mode==='convert',T=v3.tex,{VP,eye}=v3ViewProj(w,h),useH=!bake&&!!(T.height&&s.disp&&doc.maps.includes('height')),uvs=bake?1:(ui.mode==='p3d'&&p3.udim?1:s.uvs);
   /* a projection that blows the pixel under the pointer up to the whole (1×1) target */
   const cx=2*px/w-1,cy=2*py/h-1,M=m4();M[0]=w;M[5]=h;M[10]=1;M[15]=1;M[12]=-w*cx;M[13]=-h*cy;const VPp=m4mul(M,VP);
   gl.bindFramebuffer(gl.FRAMEBUFFER,K.fb);gl.viewport(0,0,1,1);gl.clearColor(0,0,0,0);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.BLEND);
   const rs=ui.mode==='p3d'&&v3.mesh.setRanges?v3.mesh.setRanges:[{start:0,count:g.count/3}];gl.bindVertexArray(g.vao);
-  rs.forEach((R,k)=>{useProg(P3PICK,{uVP:{m4:VPp},uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uCamP:eye,uSet:k,uOrtho:{int:s.ortho?1:0},uFwd:norm3(sub3([v3.cam.tx,v3.cam.ty,v3.cam.tz],eye))});gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);});gl.bindVertexArray(vao);
+  rs.forEach((R,k)=>{useProg(P3PICK,{uVP:{m4:VPp},uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:ui.mode==='p3d'&&p3.udim,uCamP:eye,uSet:k,uOrtho:{int:s.ortho?1:0},uFwd:norm3(sub3([v3.cam.tx,v3.cam.ty,v3.cam.tz],eye))});gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);});gl.bindVertexArray(vao);
   gl.disable(gl.DEPTH_TEST);const out=new Float32Array(4);gl.readPixels(0,0,1,1,gl.RGBA,gl.FLOAT,out);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
-  if(out[3]<.5)return null;const dist=out[2],ray=v3Ray(w,h,px,py);
+  if(out[3]<.5)return null;const dist=out[2],ray=v3Ray(w,h,px,py),tile=p3UdimAddress(out[0],out[1]),uv=p3.udim&&tile?tile.uv:[out[0]-Math.floor(out[0]),out[1]-Math.floor(out[1])];
   if(s.ortho){/* the rays run side by side: each starts on the camera's plane at the pointer */
     const c=v3.cam,f=norm3(sub3([c.tx,c.ty,c.tz],eye)),r=norm3(cross3(f,[0,1,0])),u=cross3(r,f),hh=c.dist*Math.tan(s.fov*Math.PI/360),ox=(2*px/w-1)*hh*w/h,oy=(2*py/h-1)*hh,o=[eye[0]+r[0]*ox+u[0]*oy,eye[1]+r[1]*ox+u[1]*oy,eye[2]+r[2]*ox+u[2]*oy];
-    return {uv:[out[0],out[1]],set:Math.round(out[3]-1),dist,pos:[o[0]+f[0]*dist,o[1]+f[1]*dist,o[2]+f[2]*dist],dir:f,eye:o};}
-  return {uv:[out[0],out[1]],set:Math.round(out[3]-1),dist,pos:[eye[0]+ray[0]*dist,eye[1]+ray[1]*dist,eye[2]+ray[2]*dist],dir:ray,eye};}
+    return {uv,tile,set:Math.round(out[3]-1),dist,pos:[o[0]+f[0]*dist,o[1]+f[1]*dist,o[2]+f[2]*dist],dir:f,eye:o};}
+  return {uv,tile,set:Math.round(out[3]-1),dist,pos:[eye[0]+ray[0]*dist,eye[1]+ray[1]*dist,eye[2]+ray[2]*dist],dir:ray,eye};}
 /* the direction from the camera through a pixel of the view */
 function v3Ray(w,h,px,py){const s=v3s(),eye=v3Eye(),c=v3.cam,f=norm3(sub3([c.tx,c.ty,c.tz],eye)),r=norm3(cross3(f,[0,1,0])),u=cross3(r,f),t=Math.tan(s.fov*Math.PI/360),x=(2*px/w-1)*t*w/h,y=(2*py/h-1)*t;
   return norm3([f[0]+r[0]*x+u[0]*y,f[1]+r[1]*x+u[1]*y,f[2]+r[2]*x+u[2]*y]);}
@@ -301,3 +302,4 @@ function st3Drag(d,e,hit){const r=hit.getBoundingClientRect(),dx=e.clientX-d.x,d
   else if(d.how==='stscale')st3.scale=clamp(st3.scale*Math.exp((dx-dy)*.005),.02,8);
   else{const cx=r.left+st3.x*r.width,cy=r.top+st3.y*r.height,a0=Math.atan2(d.y-cy,d.x-cx),a1=Math.atan2(e.clientY-cy,e.clientX-cx);st3.rot=((st3.rot+(a1-a0)*180/Math.PI+540)%360)-180;}
   st3Overlay();}
+

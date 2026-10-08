@@ -10,10 +10,10 @@ async function encodeP3Project(){if(ui.mode!=='p3d')throw new Error('Open the 3D
   try{for(let i=0;i<p3.sets.length;i++){const S=p3.sets[i];let bytes;
       if(i===p3.cur)bytes=new Uint8Array(await (await encodeGouacheNow({lean:true})).arrayBuffer());
       else if(S.state){const mine=docState();setDocState(S.state);try{bytes=new Uint8Array(await (await encodeGouacheNow({lean:true})).arrayBuffer());}finally{S.state=docState();setDocState(mine);}}
-      sets.push(Object.assign({name:S.name,material:p3Binding(S),meshEditID:S.meshEditID,hid:!!S.hidden},bytes?put(bytes):{empty:true}));}}
+      sets.push(Object.assign({name:S.name,material:p3Binding(S),tile:S.tile||null,meshEditID:S.meshEditID,hid:!!S.hidden},bytes?put(bytes):{empty:true}));}}
   finally{tabDocs.hold=false;requestRender(true);}
   let mesh=null;if(v3s().model==='imported'&&v3.imported){const c=await streamThrough(meshPack(v3.imported),'deflate-raw');mesh=Object.assign({name:v3.imported.name},put(c));}
-  const head={app:'Gouache Studio',v:G3_VERSION,name:p3.name||'3D Paint',size:p3.size,cur:p3.cur,sets,mesh,v3d:doc.v3d,cam:Object.assign({},v3.cam),mir3:Object.assign({},mir3)};
+  const head={app:'Gouache Studio',v:G3_VERSION,name:p3.name||'3D Paint',size:p3.size,cur:p3.cur,udim:!!p3.udim,sets,mesh,v3d:doc.v3d,cam:Object.assign({},v3.cam),mir3:Object.assign({},mir3)};
   const hj=new TextEncoder().encode(JSON.stringify(head)),pre=new Uint8Array(16);pre.set(G3_MAGIC,0);const dv=new DataView(pre.buffer);dv.setUint32(8,G3_VERSION,true);dv.setUint32(12,hj.length,true);
   return new Blob([pre,hj,...blobs],{type:'application/octet-stream'});}
 async function saveP3Project(forceAsk){if(stroke)return;toast('Saving the 3D Paint project…');
@@ -33,12 +33,12 @@ async function openP3Project(buf,name,path){if(!isP3Proj(buf))throw new Error('T
   if(ui.mode!=='p3d'&&!setMode('p3d',true))return;if(!(await p3AskReplace()))return;
   /* put away what is there now */
   const old=docState();for(const S of p3.sets){if(S.state)disposeDocState(S.state);if(S.tex)for(const k in S.tex)disposeTarget(S.tex[k]);}for(const k in v3.tex)disposeTarget(v3.tex[k]);v3.tex={};
-  p3.sets=[];p3.metadataVer=0;p3.size=head.size||p3.size;
+  p3.sets=[];p3.metadataVer=0;p3.size=head.size||p3.size;p3.udim=!!head.udim;
   const states=[];
   for(const rec of head.sets||[]){let st=null;
     if(!rec.empty){const b=buf.slice(data+rec.o,data+rec.o+rec.n),{head:h,data:d}=gfHead(b);blankTabDoc(h.w,h.h,rec.name);for(const L of everyNode())disposeLayer(L);doc.root.children=[];doc.count=0;
       await gfReadInto(b,h,d);doc.p3=true;doc.name=rec.name;hist.undo=[];hist.redo=[];st=docState();}
-    states.push(st);p3.sets.push({name:rec.name,material:rec.material||rec.name,meshEditID:rec.meshEditID,state:st,tex:null,missing:false,hidden:!!rec.hid});}
+    states.push(st);p3.sets.push({name:rec.name,material:rec.material||rec.name,tile:rec.tile||null,meshEditID:rec.meshEditID,state:st,tex:null,missing:false,hidden:!!rec.hid});}
   if(!p3.sets.length)throw new Error('This project has no texture sets.');
   disposeDocState(old);
   p3.cur=clamp(head.cur||0,0,p3.sets.length-1);const A=p3.sets[p3.cur];
@@ -55,7 +55,7 @@ async function openP3Project(buf,name,path){if(!isP3Proj(buf))throw new Error('T
 /* (0.27) File › New with "Start in: 3D Paint": a fresh project at the chosen texture size on the same model
    (every texture set starts again with its base material) */
 async function p3NewProject(size,options){options=options||{};size=Math.max(64,Math.min(MAX_DIM,Math.round(size||2048)));
-  p3.setup=options.setup||'pbr';p3.workflow=options.workflow||'metal';
+  p3.setup=options.setup||'pbr';p3.workflow=options.workflow||'metal';p3.udim=!!options.udim;
   if(!p3.started){p3.size=size;p3.startMaterial=options.startMaterial||'neutral';if(options.imported)p3.imported=options.imported;if(options.modelKey)p3.v3d=Object.assign({},V3D_DEFAULTS,{model:options.modelKey});p3Save();if(ui.mode!=='p3d'&&!setMode('p3d'))return false;p3.savedAt=p3Sig();return true;}
   if(ui.mode!=='p3d'&&!setMode('p3d',true))return;if(!(await p3AskReplace(true)))return;
   const old=docState(),modelChanged=(options.imported&&options.imported!==p3.imported)||(options.modelKey&&options.modelKey!==v3s().model);for(const S of p3.sets){if(S.state)disposeDocState(S.state);if(S.tex)for(const k in S.tex)disposeTarget(S.tex[k]);}for(const k in v3.tex)disposeTarget(v3.tex[k]);v3.tex={};
@@ -66,3 +66,4 @@ async function p3NewProject(size,options){options=options||{};size=Math.max(64,M
   blankTabDoc(size,size,p3.sets[0].name);p3Setup(p3.sets[0].name,p3.startMaterial,p3.workflow);doc.v3d=p3.v3d||doc.v3d;disposeDocState(old);
   p3.name=null;p3.path=null;p3.savedAt=p3Sig();p3SyncSets();
   v3.mapsDirty=true;v3.dirty=true;fit();changedAll();renderLayers();buildP3Panel();requestRender(true);toast('New 3D Paint project: '+size+' × '+size+' textures.');return true;}
+

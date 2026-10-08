@@ -5,7 +5,7 @@
    zoom); Alt over the model picks its colour. Layouts: 3D only, 3D beside the flat texture, or the flat
    texture only. Colour and Brushes sit in their own column beside the viewport (dock.js, dock2). */
 const P3_PREFS=(()=>{try{return JSON.parse(localStorage.getItem('gs.p3d')||'{}');}catch(e){return {};}})();
-const p3={size:P3_PREFS.size||2048,layout:P3_PREFS.layout||'split',was:null,v3d:null,imported:null,cam:null,started:false,sets:[],cur:0,blank:null,setup:'pbr',workflow:'metal'};
+const p3={size:P3_PREFS.size||2048,layout:P3_PREFS.layout||'split',was:null,v3d:null,imported:null,cam:null,started:false,sets:[],cur:0,blank:null,setup:'pbr',workflow:'metal',udim:false};
 function p3Save(){try{localStorage.setItem('gs.p3d',JSON.stringify({size:p3.size,layout:p3.layout}));}catch(e){}}
 const P3_MAPS=['base','rough','metal','height','normal'],P3_MAPS_SPEC=['base','spec','gloss','height','normal'];
 /* a new texture set: the PBR maps, a base material (a fill layer) and an empty layer to paint on */
@@ -38,7 +38,7 @@ function buildP3Panel(){p3BakePanel();if(typeof stBrushRender==='function')stBru
     ...(v3.imported?[el('option',{value:'imported',text:v3.imported.name})]:[]),el('option',{value:'__import',text:'Import a model (OBJ, glTF, GLB, FBX)…'}));
   models.value=s.model;models.onchange=()=>{if(models.value==='__import'){models.value=s.model;importModel().then(()=>{p3.imported=v3.imported;buildP3Panel();});return;}s.model=models.value;v3LoadModel();buildP3Panel();};
   box.append(el('div',{class:'sub',text:'Model'}),models,s.model==='matpreview'?el('button',{class:'btn sm',id:'p3PreviewMaps',text:'Load preview material and mesh maps',onclick:()=>studioPreviewMaps()}):null,
-    el('div',{class:'sub',text:'Texture sets'}),p3SetsBox(),el('p',{class:'note',text:p3.sets.length>1?'One set of maps per material of the model. Click a set to paint it.':'The model has one material, so one texture set.'}),
+    el('div',{class:'sub',text:'Texture sets'}),p3SetsBox(),el('p',{class:'note',text:p3.udim?'Each material has a paintable texture set for every detected UV tile. A stroke starts on the tile under the cursor.':'One set of maps per material of the model. Click a set to paint it.'}),
     el('div',{class:'sub',text:'Layout'}),seg([['3d','3D'],['split','3D + 2D'],['2d','2D']],p3.layout,p3SetLayout,'Viewport layout'),
     el('div',{class:'sub',text:'Navigation'}),seg([['substance','Substance Painter'],['coat','3D-Coat']],v3nav.mode,v=>{setNav3d(v);buildP3Panel();},'Navigation style'),
     el('div',{class:'sub',text:'Brush alignment'}),seg([['wrap','Surface wrap'],['camera','Camera']],s.paintAlign||'wrap',v=>{s.paintAlign=v;v3.dirty=true;requestRender(true);buildP3Panel();},'3D brush alignment'),el('p',{class:'note',text:(s.paintAlign||'wrap')==='wrap'?'Surface wrap follows the stroke across front-facing surfaces, including those behind a raised edge.':'Camera projects the stroke from the view and only paints the depth-visible surface.'}),
@@ -63,21 +63,23 @@ function p3UdimTiles(mesh,range){if(!mesh||!mesh.uv||!mesh.idx)return [];const s
   return [...found.values()].sort((a,b)=>a.id-b.id);}
 function p3Blank(){if(!p3.blank){const t=makeTarget(4,4,8,true);clearTarget(t,[.82,.82,.82,1]);p3.blank={base:t};}return p3.blank;}
 /* what to draw: every set's triangles with that set's textures */
-function p3DrawList(){const m=v3.mesh,rs=m&&m.setRanges;if(!rs||rs.length<2){if(p3.sets.length===1&&p3.sets[0].hidden)return [];return [{T:v3.tex,start:0,count:m?m.idx.length/3:0,sh:v3ShadeOf(doc),thick:doc.meshMaps&&doc.meshMaps.thick||null}];}
-  return rs.filter(r=>{const S=p3.sets.find(x=>p3Binding(x)===r.name);return !(S&&S.hidden);}).map(r=>{const i=p3.sets.findIndex(S=>p3Binding(S)===r.name);const T=i===p3.cur?v3.tex:(i>=0&&p3.sets[i].tex&&p3.sets[i].tex.base?p3.sets[i].tex:p3Blank());
-    /* each set has its own shader, and skin reads its own baked thickness */
-    const D=i===p3.cur?doc:(i>=0&&p3.sets[i].state?p3.sets[i].state.doc:null),mm=D&&D.meshMaps;return {T,start:r.start,count:r.count,sh:D?v3ShadeOf(D):null,thick:mm&&mm.thick||null};});}
+function p3DrawList(){const m=v3.mesh,rs=m&&m.setRanges||[{name:p3Binding(p3.sets[0]||{name:'default'}),start:0,count:m?m.idx.length/3:0}];
+  const out=[];for(const r of rs){const materialSets=p3.sets.map((S,i)=>({S,i})).filter(x=>p3Binding(x.S)===r.name&&!x.S.hidden);
+    for(const {S,i} of materialSets){const T=i===p3.cur?v3.tex:(S.tex&&S.tex.base?S.tex:p3Blank()),D=i===p3.cur?doc:(S.state&&S.state.doc),mm=D&&D.meshMaps;
+      out.push({T,start:r.start,count:r.count,sh:D?v3ShadeOf(D):null,thick:mm&&mm.thick||null,udim:p3.udim?S.tile:null});}}
+  return out;}
 /* a texture of set k (range index k of the model), for picking */
 function p3SetTex(k,map){const rs=v3.mesh&&v3.mesh.setRanges,nm=rs&&rs[k]?rs[k].name:null,i=nm?p3.sets.findIndex(S=>p3Binding(S)===nm):p3.cur;
   const T=i===p3.cur||i<0?v3.tex:p3.sets[i].tex;return T&&T[map];}
 /* the model's materials decide the sets; work on a set is kept by name (a set whose material is gone stays, marked, until deleted) */
-function p3SyncSets(){const rs=v3.mesh?meshGroupByMat(v3.mesh):[{name:'default'}],names=rs.map(r=>r.name),tilesByName=new Map(rs.map(r=>[r.name,p3UdimTiles(v3.mesh,r)]));
-  if(!p3.sets.length){p3.sets=names.map(n=>({name:n,state:null,tex:null,missing:false}));p3.cur=0;doc.name=p3.sets[0].name;}
+function p3SyncSets(){const rs=v3.mesh?meshGroupByMat(v3.mesh):[{name:'default',start:0,count:v3.mesh?v3.mesh.idx.length/3:0}],names=rs.map(r=>r.name),tilesByName=new Map(rs.map(r=>[r.name,p3UdimTiles(v3.mesh,r)]));
+  if(!p3.sets.length){p3.sets=names.flatMap(n=>(p3.udim?(tilesByName.get(n)||[]):[]).map(t=>({name:n+' · '+t.id,material:n,tile:t,state:null,tex:null,missing:false})));if(!p3.sets.length)p3.sets=names.map(n=>({name:n,state:null,tex:null,missing:false}));p3.cur=0;doc.name=p3.sets[0].name;}
   else{/* a single set from a plain shape carries over to the first material of a model */
     if(p3.sets.length===1&&!names.includes(p3Binding(p3.sets[0]))&&p3Binding(p3.sets[0])==='default'){const S=p3.sets[0];S.material=names[0];if(S.name==='default')S.name=names[0];doc.name=S.name;}
-    for(const n of names)if(!p3.sets.some(S=>p3Binding(S)===n))p3.sets.push({name:n,state:null,tex:null,missing:false});
+    if(p3.udim)for(const S of p3.sets){const ts=tilesByName.get(p3Binding(S))||[];if(!S.tile&&ts.length){S.tile=ts[0];if(S.name===p3Binding(S)||S.name==='default')S.name=p3Binding(S)+' · '+S.tile.id;}}
+    for(const n of names){const tiles=p3.udim?(tilesByName.get(n)||[]):[];const wanted=tiles.length?tiles:[null];for(const tile of wanted)if(!p3.sets.some(S=>p3Binding(S)===n&&((S.tile&&tile&&S.tile.id===tile.id)||(!S.tile&&!tile))))p3.sets.push({name:tile?n+' · '+tile.id:n,material:n,tile,state:null,tex:null,missing:false});}
     for(const S of p3.sets)S.missing=!names.includes(p3Binding(S));
-    if(p3.sets[p3.cur].missing){const i=p3.sets.findIndex(S=>!S.missing);if(i>=0)p3SwitchSet(i,true);}}
+    if(p3.sets[p3.cur]?.missing){const i=p3.sets.findIndex(S=>!S.missing);if(i>=0)p3SwitchSet(i,true);}}
   for(const S of p3.sets)S.udimTiles=tilesByName.get(p3Binding(S))||[];
   $('#docName').textContent=doc.name;}
 function p3SwitchSet(i,quiet){if(i===p3.cur||!p3.sets[i])return;if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
@@ -101,7 +103,7 @@ function p3EyeBtn(S){const b=el('button',{class:'eye p3eye',title:S.hidden?'Show
   b.innerHTML=S.hidden?eyeOff:eyeOn;b.addEventListener('click',ev=>{ev.stopPropagation();S.hidden=!S.hidden;v3.dirty=true;requestRender(true);buildP3Panel();});return b;}
 function p3SetsBox(){const box=el('div',{class:'p3sets',role:'listbox','aria-label':'Texture sets'});
   p3.sets.forEach((S,i)=>{const on=i===p3.cur,tiles=(S.udimTiles||[]).map(t=>t.id);const row=el('div',{class:'p3set'+(on?' on':'')+(S.missing?' missing':''),role:'option','aria-selected':String(on),tabindex:'0',title:S.missing?'This material is not on the current model':'Paint on '+S.name+(tiles.length?' · UV tiles '+tiles.join(', '):'')},
-      p3EyeBtn(S),el('span',{class:'p3sn',text:S.name,ondblclick:ev=>{ev.stopPropagation();p3RenameDialog(i);}}),tiles.length?el('span',{class:'p3udims',text:tiles.join(' · '),'aria-label':'UV tiles '+tiles.join(', '),title:'UDIM tiles detected: '+tiles.join(', ')}):null,el('button',{class:'btn sm p3rename',text:'Rename',title:'Name this texture set',onclick:ev=>{ev.stopPropagation();p3RenameDialog(i);}}),el('button',{class:'btn sm p3del',text:'×','aria-label':'Delete '+S.name,title:'Delete this texture set',onclick:ev=>{ev.stopPropagation();p3DeleteSet(i);}}));
+      p3EyeBtn(S),el('span',{class:'p3sn',text:S.name,ondblclick:ev=>{ev.stopPropagation();p3RenameDialog(i);}}),S.tile?el('span',{class:'p3udims',text:String(S.tile.id),'aria-label':'UDIM '+S.tile.id,title:'UDIM tile '+S.tile.id}):tiles.length?el('span',{class:'p3udims',text:tiles.join(' · '),'aria-label':'UV tiles '+tiles.join(', '),title:'UDIM tiles detected: '+tiles.join(', ')}):null,el('button',{class:'btn sm p3rename',text:'Rename',title:'Name this texture set',onclick:ev=>{ev.stopPropagation();p3RenameDialog(i);}}),el('button',{class:'btn sm p3del',text:'×','aria-label':'Delete '+S.name,title:'Delete this texture set',onclick:ev=>{ev.stopPropagation();p3DeleteSet(i);}}));
     row.addEventListener('click',()=>{if(!S.missing)p3SwitchSet(i);});row.addEventListener('keydown',ev=>{if((ev.key==='Enter'||ev.key===' ')&&!S.missing){ev.preventDefault();p3SwitchSet(i);}});box.append(row);});
   return box;}
 
@@ -308,7 +310,7 @@ window.addEventListener('keydown',e=>{if(typeof pathKeys==='function'&&pathKeys(
 function p3ReceiveBake(mesh,by,ks,asLayers){if(ui.mode!=='p3d'&&!setMode('p3d',true))return;
   if(mesh&&mesh!==v3.imported){v3.imported=p3.imported=mesh;v3s().model='imported';v3.mesh=null;v3LoadModel();}
   const back=p3.sets[p3.cur]&&p3.sets[p3.cur].name;let n=0;
-  for(let i=0;i<p3.sets.length;i++){const S=p3.sets[i],res=by[p3Binding(S)]||by['*'];if(!res||S.missing)continue;p3SwitchSet(i,true);p3ApplyBake(res,ks,asLayers);n++;}
+  for(let i=0;i<p3.sets.length;i++){const S=p3.sets[i],binding=p3Binding(S),res=(S.tile&&by[binding+'@'+S.tile.id])||by[binding]||by['*'];if(!res||S.missing)continue;p3SwitchSet(i,true);p3ApplyBake(res,ks,asLayers);n++;}
   const j=p3.sets.findIndex(S=>S.name===back);if(j>=0)p3SwitchSet(j,true);buildP3Panel();
   toast(n?'Sent the bake to '+n+' texture set'+(n>1?'s':'')+(asLayers?', as mesh maps and layers.':', as mesh maps.'):'No texture set matched the baked materials.');}
 function p3ApplyBake(res,ks,asLayers){const M=doc.meshMaps||(doc.meshMaps={});
@@ -365,3 +367,4 @@ function p3RenameSet(i,name){const S=p3.sets[i];name=String(name||'').trim();if(
  const old=S.name;if(old===name)return true;S.material=p3Binding(S);S.name=name;p3.metadataVer=(p3.metadataVer||0)+1;if(i===p3.cur)doc.name=name;else if(S.state)S.state.doc.name=name;
  withPaintDoc(()=>{for(const n of allNodes())if(n.p3link?.set===old)n.p3link.set=name;});updateStatus();buildP3Panel();v3.dirty=true;requestRender();return true;}
 function p3RenameDialog(i){const S=p3.sets[i];if(!S)return;const input=el('input',{id:'p3SetName',value:S.name,type:'text','aria-label':'Texture set name'});openDialog({title:'Name texture set',body:el('div',{class:'dlg-grid'},input,el('p',{class:'note',text:'This name is used in the project and exported textures. Each texture set needs a different name.'})),okLabel:'Rename',onOk(){if(!p3RenameSet(i,input.value))toast('Use a non-empty, unique texture set name and finish the current edit first.');}});input.focus();input.select();}
+

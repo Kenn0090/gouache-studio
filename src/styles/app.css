@@ -737,6 +737,7 @@ body.gdhov-h #brushCursor,body.gdhov-v #brushCursor{display:none}
 .cmnum{width:52px}
 .cmnudge{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}.cmnudge .btn{padding-left:2px;padding-right:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cmswatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(22px,1fr));gap:4px}
+.cmsel{grid-column:1/-1;width:100%;min-width:0}
 .cmsw{aspect-ratio:1;border:1px solid var(--line-2);border-radius:4px;padding:0;cursor:pointer}
 .cmsw.on{outline:2px solid var(--text);outline-offset:1px}.cmsw.add{background:none;color:var(--muted);font-size:15px;line-height:1}
 .cmswreset{grid-column:span 3}
@@ -1118,3 +1119,4 @@ body.tabfull .dkfloat,body.tabfull .dkfly,body.tabfull .dkicons{display:none!imp
 
 #xfOverlay .sym-centre,.sym-centre{fill:var(--panel,#20252b);stroke:#62cfff;stroke-width:2;}
 #mir3Rad.on{border-color:#62cfff;color:#62cfff;background:var(--panel,#20252b);}
+

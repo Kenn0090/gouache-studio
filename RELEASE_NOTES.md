@@ -98,3 +98,11 @@ Validated frame pixels and hold duration, undo/redo, selection shortcuts and typ
 - **Gasa Pen and Gasa Manga Pen:** retain the current pen alongside a thinner, sharper and less smoothed manga variant with light ink bleed. Old built-in favorites migrate to the new name.
 
 Validated in the native Windows desktop app, including text placement/editing/undo, 8K/16K-coordinate gradient strips, gradient precision and map interpolation, transparency, pressure linework and ink bleed.
+# Gouache Studio 0.51.22
+
+- Add UDIM texture sets: select the intended FBX UV channel, paint across detected tiles, bake tile-specific mesh maps, save projects and export tile-numbered textures. The resizable 3D project setup includes UDIM workflow selection.
+- Add an Animate sprite-document setup with pixel-art canvas sizes, frame-rate selection, transparent 8-bit canvases, five game palettes and pixel-first swatches.
+- Add crisp square and pixel brushes, original scratch, grunge-wear, abstract and running-stitch brushes, plus five denim smart materials and ten procedural cloth-fold smart materials.
+- Consolidate the earlier local painting updates: seam-aware paint and blur, better surface coverage at angles and bevels, smoother weld painting, visible symmetry cursors, extended numeric slider entry, and PBR/Spec Gloss project setup with mesh maps and bake integration.
+- Keep the existing Grunge Mixer, smart-mask/material library, and texture drag-and-drop workflow in the same update.
+

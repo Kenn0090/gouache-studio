@@ -4,12 +4,12 @@ let tipSeq=0;
 function downscaleAlpha(a,w,h,W,H){const out=new Uint8Array(W*H),sx=w/W,sy=h/H;
   for(let y=0;y<H;y++){const y0=Math.floor(y*sy),y1=Math.max(y0+1,Math.floor((y+1)*sy));for(let x=0;x<W;x++){const x0=Math.floor(x*sx),x1=Math.max(x0+1,Math.floor((x+1)*sx));let sum=0,n=0;
     for(let yy=y0;yy<y1&&yy<h;yy++)for(let xx=x0;xx<x1&&xx<w;xx++){sum+=a[yy*w+xx];n++;}out[y*W+x]=n?Math.round(sum/n):0;}}return out;}
-function makeTip(name,w,h,alpha){
+function makeTip(name,w,h,alpha,nearest=false){
   let W=w,H=h,A=alpha;const mx=Math.max(w,h);
   if(mx>1024){const s=1024/mx;W=Math.max(1,Math.round(w*s));H=Math.max(1,Math.round(h*s));A=downscaleAlpha(alpha,w,h,W,H);}
   const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
   gl.texImage2D(gl.TEXTURE_2D,0,gl.R8,W,H,0,gl.RED,gl.UNSIGNED_BYTE,A);gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);gl.generateMipmap(gl.TEXTURE_2D);
-  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,nearest?gl.NEAREST_MIPMAP_NEAREST:gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,nearest?gl.NEAREST:gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   const c=document.createElement('canvas');c.width=W;c.height=H;const cx=c.getContext('2d'),id=cx.createImageData(W,H);
   for(let i=0;i<A.length;i++){id.data[i*4]=255;id.data[i*4+1]=255;id.data[i*4+2]=255;id.data[i*4+3]=A[i];}cx.putImageData(id,0,0);
@@ -19,6 +19,8 @@ function disposeTip(t){if(t&&t.tex){gl.deleteTexture(t.tex);t.tex=null;}}
 function genTip(name,w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#fff';x.strokeStyle='#fff';
   draw(x,w,h,rng(name.length*7919+w));const d=x.getImageData(0,0,w,h).data;const a=new Uint8Array(w*h);for(let i=0;i<a.length;i++)a[i]=d[i*4+3];return makeTip(name,w,h,a);}
 const TIPS={
+  pixel:makeTip('Pixel square',16,16,new Uint8Array(256).fill(255),true),
+  square:genTip('Square brush',128,128,(x,w,h)=>x.fillRect(8,8,w-16,h-16)),
   bristle:genTip('Flat bristle',96,256,(x,w,h,R)=>{for(let i=0;i<150;i++){const y=h*.03+R()*h*.94,len=w*(.55+R()*.45),x0=(w-len)/2+(R()-.5)*8;x.globalAlpha=.25+R()*.6;x.fillRect(x0,y,len,1+R()*2.2);}}),
   sponge:genTip('Sponge',256,256,(x,w,h,R)=>{for(let i=0;i<420;i++){const a=R()*6.283,rr=Math.sqrt(R())*w*.44;x.globalAlpha=.25+R()*.5;x.beginPath();x.arc(w/2+Math.cos(a)*rr,h/2+Math.sin(a)*rr,2+R()*9,0,7);x.fill();}}),
   leaf:genTip('Leaf',160,256,(x,w,h)=>{x.beginPath();x.moveTo(w/2,4);x.bezierCurveTo(w*1.02,h*.28,w*.86,h*.78,w/2,h-4);x.bezierCurveTo(w*.14,h*.78,-w*.02,h*.28,w/2,4);x.fill();
@@ -27,7 +29,18 @@ const TIPS={
     x.quadraticCurveTo(bx-bw*.5+bend*.3,(h+top)/2,bx+bend,top);x.quadraticCurveTo(bx+bw*.5+bend*.3,(h+top)/2,bx+bw,h);x.closePath();x.fill();}}),
   splatter:genTip('Splatter',256,256,(x,w,h,R)=>{for(let i=0;i<90;i++){const a=R()*6.283,rr=Math.pow(R(),.7)*w*.45,s=rr<w*.15?4+R()*14:1+R()*5;x.globalAlpha=.8+R()*.2;x.beginPath();x.arc(w/2+Math.cos(a)*rr,h/2+Math.sin(a)*rr,s,0,7);x.fill();}})
 };
+/* Original, deterministic alpha tips for the material/stylized brush set. */
+TIPS.scratch=genTip('Scratch cluster',192,192,(x,w,h,R)=>{for(let i=0;i<15;i++){const cx=w*(.18+R()*.64),cy=h*(.12+R()*.76),len=12+R()*66;x.globalAlpha=.25+R()*.75;x.lineWidth=.8+R()*2.7;x.beginPath();x.moveTo(cx-len/2,cy+(R()-.5)*8);x.lineTo(cx+len/2,cy+(R()-.5)*8);x.stroke();}});
+TIPS.abstract=genTip('Abstract shards',192,192,(x,w,h,R)=>{for(let i=0;i<20;i++){const cx=w*(.12+R()*.76),cy=h*(.12+R()*.76),s=3+R()*16;x.globalAlpha=.2+R()*.8;x.beginPath();x.moveTo(cx-s,cy-s*.4);x.lineTo(cx+s,cy-s*.7);x.lineTo(cx+s*.35,cy+s);x.closePath();x.fill();}});
+TIPS.stitch=genTip('Running stitch',160,96,(x,w,h)=>{x.lineCap='round';x.lineWidth=13;x.beginPath();x.moveTo(16,h*.5);x.lineTo(w-16,h*.5);x.stroke();x.globalCompositeOperation='destination-out';x.lineWidth=5;x.beginPath();x.moveTo(w*.5,h*.5);x.lineTo(w*.5+1,h*.5);x.stroke();});
 const PRESETS=[
+  {name:'Pixel pencil',tool:'brush',tip:TIPS.pixel,size:1,hardness:1,spacing:1,pSize:false,pOpacity:false,smoothing:0,grain:0},
+  {name:'Square pixel brush',tool:'brush',tip:TIPS.pixel,size:12,hardness:1,spacing:.15,pSize:false,pOpacity:false,smoothing:0,grain:0},
+  {name:'Square brush',tool:'brush',tip:TIPS.square,size:32,hardness:1,spacing:.16,pSize:true,minSize:.35,pOpacity:false,smoothing:.15},
+  {name:'Fine scratches',tool:'brush',tip:TIPS.scratch,size:74,hardness:.8,spacing:.24,followDir:true,angleJitter:.08,sizeJitter:.18,scatter:.08,pSize:true,minSize:.45,pOpacity:true},
+  {name:'Grunge wear',tool:'brush',tip:TIPS.sponge,size:96,hardness:.65,flow:.58,spacing:.3,grain:.68,sizeJitter:.32,angleJitter:.5,scatter:.2,pSize:false,pOpacity:true,buildup:true},
+  {name:'Abstract shards',tool:'brush',tip:TIPS.abstract,size:66,hardness:.85,spacing:.46,followDir:true,angleJitter:.35,sizeJitter:.22,scatter:.3,count:2,pSize:true,minSize:.4},
+  {name:'Running stitch',tool:'brush',tip:TIPS.stitch,size:18,hardness:1,spacing:.8,followDir:true,pSize:false,pOpacity:false,smoothing:.2},
   {name:'Round',tool:'brush',size:24,hardness:.85,spacing:.06,pSize:true,minSize:.2,smoothing:.25},
   {name:'Soft air',tool:'brush',size:110,hardness:0,flow:.16,spacing:.06,pSize:false,pOpacity:true,buildup:true,smoothing:.2},
   {name:'Chalk',tool:'brush',size:40,hardness:.75,spacing:.05,grain:.8,pSize:true,pOpacity:true,minSize:.35,smoothing:.2},
@@ -214,3 +227,4 @@ function dlgSaveBrush(){const inp=el('input',{type:'text',id:'sbName',value:acti
     if(p.tip&&!set.tips.includes(p.tip))set.tips.push(p.tip);set.presets.push(p);brushSession.source=p;brushRecent(p);activePreset=p;renderLibrary();saveSet(set);toast('Saved brush “'+name+'”.');}});}
 $('#saveBrushBtn').addEventListener('click',dlgSaveBrush);
 async function loadSavedSets(){try{const all=await store.all();for(const d of all||[]){try{library.push(deserializeSet(d));}catch(e){}}renderLibrary();}catch(e){}}
+
