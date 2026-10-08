@@ -21,6 +21,9 @@ function setMode(m,quiet){if(m===ui.mode)return true;
   if(typeof cageFlatOff==='function')cageFlatOff();
   if(m==='anim'&&(doc.map!=='base'||doc.view!=='base')){setEditMap('base');if(doc.map!=='base')return false;}
   const from=ui.mode;
+  /* Carry the 3D Paint project's imported low-poly into Bake before p3dExit restores the
+     previous workspace's model. Bake uses this as its low source and displays it in the view. */
+  if(from==='p3d'&&m==='bake'&&p3.imported)bakeCfg.low=p3.imported;
   if(from==='p3d')p3dExit();if(from==='bake')bakeExit();if(from==='convert')convertExit();if(from==='brush')brushTabExit();
   if(from==='anim'){doc.root=doc.paintRoot;doc.paintRoot=null;const s=doc.paintSel||{active:null,sel:[]};doc.active=s.active;doc.sel=new Set(s.sel);ui.mode='paint';}
   if(m==='anim'){if(!doc.anim)doc.anim=makeAnim();doc.paintRoot=doc.root;doc.paintSel={active:doc.active,sel:[...doc.sel]};doc.root=animRoot;ui.mode='anim';showFrame(doc.anim.cur,true);}

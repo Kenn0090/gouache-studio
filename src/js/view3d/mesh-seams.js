@@ -1,7 +1,7 @@
 /* Mesh-connected blur. Each tap walks welded triangle edges in surface space,
    then reads that triangle's UVs. Atlas neighbours and 0..1 wrapping are unrelated
    to surface neighbours; disconnected surfaces and texture sets never share taps. */
-let seamBlurCache=null,seamBlurProgram=null;
+let seamBlurCache=null,seamBlurProgram=null,seamLodProgram=null;
 const VS_SEAMBLUR=`#version 300 es
 layout(location=0) in vec2 aUV; layout(location=1) in float aFace; layout(location=2) in vec2 aBary;
 out vec2 vBary; flat out int vFace;
@@ -47,8 +47,8 @@ void main(){vec3 b=vec3(1.0-vBary.x-vBary.y,vBary);vec2 uv=uvAt(vFace,0)*b.x+uvA
  for(int y=-4;y<=4;y++)for(int x=-4;x<=4;x++){vec2 p=vec2(x,y)/4.0;float weight=uBox==1?1.0:exp(-dot(p,p)*4.5);
  vec2 tap=walkUV(vFace,b,baryUV(vFace,uv+p*uRadius/uSize));acc+=textureLod(uSrc,tap,0.0)*weight;total+=weight;}
  o=acc/total;}`;
-function seamBlurDispose(){if(!seamBlurCache)return;const c=seamBlurCache;gl.deleteTexture(c.tex);gl.deleteBuffer(c.vb);gl.deleteVertexArray(c.vao);if(c.pad)disposeTarget(c.pad);seamBlurCache=null;}
-function seamBlurMesh(){const m=v3.mesh;if(!m||!v3.gpu||m.noUV||v3s().uvs!==1)return null;const R=p3Range();
+function seamBlurDispose(){if(!seamBlurCache)return;const c=seamBlurCache;gl.deleteTexture(c.tex);gl.deleteBuffer(c.vb);gl.deleteVertexArray(c.vao);if(c.pad)disposeTarget(c.pad);if(c.safeLod)disposeTarget(c.safeLod);seamBlurCache=null;}
+function seamBlurMesh(range){const m=v3.mesh;if(!m||!v3.gpu||m.noUV||v3s().uvs!==1)return null;const R=range||p3Range();
  if(seamBlurCache?.mesh===m&&seamBlurCache.start===R.start&&seamBlurCache.count===R.count)return seamBlurCache;
  seamBlurDispose();const n=R.count;if(!n)return null;const width=Math.min(1024,gl.getParameter(gl.MAX_TEXTURE_SIZE)),height=Math.ceil(n*5/width);
  if(height>gl.getParameter(gl.MAX_TEXTURE_SIZE))return null;
@@ -72,6 +72,22 @@ function seamBlurMesh(){const m=v3.mesh;if(!m||!v3.gpu||m.noUV||v3s().uvs!==1)re
  const V=gl.createVertexArray(),vb=gl.createBuffer();gl.bindVertexArray(V);gl.bindBuffer(gl.ARRAY_BUFFER,vb);gl.bufferData(gl.ARRAY_BUFFER,vertices,gl.STATIC_DRAW);
  for(const [a,size,off] of [[0,2,0],[1,1,8],[2,2,12]]){gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,size,gl.FLOAT,false,20,off);}gl.bindVertexArray(vao);
  return seamBlurCache={mesh:m,start:R.start,count:R.count,tex,vao:V,vb};}
+/* A per-texel mip limit keeps hardware filtering inside the current UV island. */
+const FS_SEAMLOD=`in vec2 vBary; flat in int vFace; uniform highp sampler2D uFaces; uniform vec2 uSize;
+vec4 faceData(int t,int k){int i=t*5+k,w=textureSize(uFaces,0).x;return texelFetch(uFaces,ivec2(i%w,i/w),0);}
+vec2 uvAt(int t,int k){vec4 a=faceData(t,0);return k==0?a.xy:k==1?a.zw:faceData(t,1).xy;}
+void main(){int t=vFace;vec3 b=vec3(1.0-vBary.x-vBary.y,vBary);vec2 a=uvAt(t,0)*uSize,c=uvAt(t,1)*uSize,d=uvAt(t,2)*uSize;
+ float area=abs((c.x-a.x)*(d.y-a.y)-(c.y-a.y)*(d.x-a.x));int borders=int(faceData(t,3).w);float distance=1e20;
+ if((borders&1)!=0)distance=min(distance,b.x*area/max(length(c-d),1e-8));
+ if((borders&2)!=0)distance=min(distance,b.y*area/max(length(d-a),1e-8));
+ if((borders&4)!=0)distance=min(distance,b.z*area/max(length(a-c),1e-8));
+ float lod=distance>=1e19?16.0:clamp(floor(log2(max(distance,1.0))),0.0,16.0);o=vec4(lod/16.0,0.0,0.0,1.0);}`;
+function seamMipLimit(range){const C=seamBlurMesh(range);if(!C)return null;
+ if(!C.safeLod||C.safeLod.w!==doc.w||C.safeLod.h!==doc.h){if(C.safeLod)disposeTarget(C.safeLod);C.safeLod=makeTarget(doc.w,doc.h,8,false,false,true);clearTarget(C.safeLod,[0,0,0,0]);
+  gl.bindTexture(gl.TEXTURE_2D,C.safeLod.tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);setWrap(C.safeLod,false);
+  if(!seamLodProgram)seamLodProgram=prog3(VS_SEAMBLUR,FS_SEAMLOD);bindTarget(C.safeLod);gl.disable(gl.BLEND);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);
+  useProg(seamLodProgram,{uFaces:C.tex,uSize:[doc.w,doc.h]});gl.bindVertexArray(C.vao);gl.drawArrays(gl.TRIANGLES,0,C.count*3);gl.bindVertexArray(vao);}
+ return C.safeLod;}
 /* The view's bilinear and mip reads straddle atlas edges. Keep a short, nearest-island
    apron on filtered output, including transparent layers; alpha is coverage, not a UV mask.
    Encode pixel owners in RGBA8 so 4K/16K coordinates do not lose half-float precision. */

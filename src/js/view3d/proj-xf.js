@@ -28,16 +28,16 @@ function pxfModel(){const m=v3.mesh;if(!m)return {c:[0,0,0],S:1};if(!m._bb){cons
 const pxfUnit=(mode,S)=>mode==='tri'?1:mode==='world'?S:S/2;
 /* where the projection sits in the world (for the gizmo) */
 function pxfCenter(xf){const {c}=pxfModel();return [c[0]+xf.t[0],c[1]+xf.t[1],c[2]+xf.t[2]];}
-/* uniforms for the shaders: uProj, uInv (world → projection space), uUvM (texture coordinates → projected ones) */
+/* uniforms for the shaders: uInv maps world to projection space; uNrmInv applies its inverse-transpose to normals. */
 const pxfNorm=x=>{const d=pxfDef();if(!x)return d;return {t:[0,1,2].map(i=>+((x.t||[])[i]||0)),r:[0,1,2].map(i=>+((x.r||[])[i]||0)),s:[0,1,2].map(i=>{const v=+((x.s||[])[i]);return isFinite(v)&&v?v:1;})};};
 function pxfUniforms(mode,xf){const X=pxfNorm(xf),{c,S}=pxfModel(),k=pxfUnit(mode,S),R=pxfRot(X.r);
-  const o=[c[0]+X.t[0],c[1]+X.t[1],c[2]+X.t[2]],d=[0,1,2].map(i=>(X.s[i]||1)*k),inv=new Float32Array(16);
-  for(let i=0;i<3;i++){let tr=0;for(let j=0;j<3;j++){const v=R[j][i]/d[i];inv[j*4+i]=v;tr-=v*o[j];}inv[12+i]=tr;}inv[15]=1;
+  const o=[c[0]+X.t[0],c[1]+X.t[1],c[2]+X.t[2]],d=[0,1,2].map(i=>(X.s[i]||1)*k),inv=new Float32Array(16),nrmInv=new Float32Array(9);
+  for(let i=0;i<3;i++){let tr=0;for(let j=0;j<3;j++){const v=R[j][i]/d[i];inv[j*4+i]=v;nrmInv[j*3+i]=R[j][i]*d[i];tr-=v*o[j];}inv[12+i]=tr;}inv[15]=1;
   /* UV: offset, turn and scale around the middle of the texture */
   const a=(X.r[2]||0)*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a),su=X.s[0]||1,sv=X.s[1]||1,A=[[ca/su,sa/su],[-sa/sv,ca/sv]];
   const cx=.5+X.t[0],cy=.5+X.t[1],b=[.5-(A[0][0]*cx+A[0][1]*cy),.5-(A[1][0]*cx+A[1][1]*cy)];
   const uvm=new Float32Array([A[0][0],A[1][0],0,A[0][1],A[1][1],0,b[0],b[1],1]);
-  return {uProj:{int:PXF_IX[mode]||0},uInv:{m4:inv},uUvM:{m3:uvm}};}
+  return {uProj:{int:PXF_IX[mode]||0},uInv:{m4:inv},uNrmInv:{m3:nrmInv},uUvM:{m3:uvm}};}
 /* the four corners of the UV frame, in texture units (0..1), for the 2D handles */
 function pxfUvCorners(xf){const X=pxfNorm(xf),a=(X.r[2]||0)*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a),su=X.s[0]||1,sv=X.s[1]||1;
   return [[-.5,-.5],[.5,-.5],[.5,.5],[-.5,.5]].map(([x,y])=>{const px=x*su,py=y*sv;return [.5+X.t[0]+ca*px-sa*py,.5+X.t[1]+sa*px+ca*py];});}

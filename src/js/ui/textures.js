@@ -16,7 +16,7 @@ const TX_PHOTO=[['streaks','Streaks'],['rings','Water rings'],['specks','Specks'
   ['rust-pits-1','Rust pits 1'],['rust-pits-2','Rust pits 2'],['rust-pits-3','Rust pits 3'],['rust-pits-4','Rust pits 4'],['rust-pits-5','Rust pits 5'],['rust-pits-6','Rust pits 6'],['rust-pits-7','Rust pits 7'],
   ['worn-paint-1','Worn paint 1'],['worn-paint-2','Worn paint 2'],['worn-paint-3','Worn paint 3'],['frost-veins','Frost veins']];
 TX_PHOTO.push(...TX_WORKSHOP.map(r=>[r.slug,r.name,r.category]));
-const tx={category:(()=>{try{return localStorage.getItem('gs.txCategory')||'all';}catch(e){return 'all';}})(),query:'',show:(()=>{try{return localStorage.getItem('gs.txShow')||'all';}catch(e){return 'all';}})(),size:(()=>{try{return localStorage.getItem('gs.txSize')||'m';}catch(e){return 'm';}})(),mine:[],loaded:false,loading:null,cache:new Map(),used:new Map(),pending:new Map(),pins:new Map(),owners:new WeakMap(),thumbs:new Map(),thumbPending:new Map(),thumbQueue:[],thumbJobs:0,cacheTimer:0,cacheLimit:128*1024*1024,cacheCount:16,stats:{loads:0,unpacks:0,previews:0,coalesced:0}};
+const tx={category:(()=>{try{return localStorage.getItem('gs.txCategory')||'all';}catch(e){return 'all';}})(),query:'',show:(()=>{try{return localStorage.getItem('gs.txShow')||'all';}catch(e){return 'all';}})(),size:(()=>{try{return localStorage.getItem('gs.txSize')||'m';}catch(e){return 'm';}})(),selected:'',mine:[],loaded:false,loading:null,cache:new Map(),used:new Map(),pending:new Map(),pins:new Map(),owners:new WeakMap(),thumbs:new Map(),thumbPending:new Map(),thumbQueue:[],thumbJobs:0,cacheTimer:0,cacheLimit:128*1024*1024,cacheCount:16,stats:{loads:0,unpacks:0,previews:0,coalesced:0}};
 /* seamless grey patterns: periodic noise so every one tiles */
 const FS_TXGEN=`uniform int uKind; uniform float uSeed; uniform vec2 uOut; uniform vec2 uPhase;
 float hs(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7))+uSeed*13.17)*43758.5453); }
@@ -124,7 +124,7 @@ async function txExportPack(){if(!tx.mine.length){toast('Import some textures fi
 function txDelete(rec){confirmDlg('Delete texture','Delete “'+rec.name+'” from Textures? Layers that use it keep it.','Delete',()=>{const i=tx.mine.indexOf(rec);if(i>=0)tx.mine.splice(i,1);
   txCacheDrop('mine:'+rec.id);tx.thumbs.delete('mine:'+rec.id);store.del(rec.id,'textures');renderTextures();});}
 /* ---- the uses ---- */
-function txClick(it){return doc.active?.editMask?txToMask(it):txToLayer(it);}
+function txClick(it){if(ui.mode==='paint'&&doc.active?.editMask)return txToMask(it);if(ui.mode==='paint'){tx.selected=it.kind+':'+it.id;renderTextures();toast('Selected “'+it.name+'”. Drag it onto the canvas or a layer to add it.');return;}return doc.active?.editMask?txToMask(it):txToLayer(it);}
 async function txToMask(it){const L=doc.active;if(!isLayer(L)&&!(L&&L.type==='group')){toast('Select a layer first: the texture goes into its mask.');return;}
   const t=txCopy(await txTarget(it)),r=msAdd(L,'image',{p:{name:it.name}},'Add '+it.name.toLowerCase()+' to the mask');if(!r){disposeTarget(t);return;}
   msEdit(L,r,x=>{x.t=t;x.p.name=it.name;});(L.mask._rows||(L.mask._rows=new Set())).add(r);if(typeof msCommit==='function')msCommit();if(ui.mode==='paint')msSelect(L,'m',r.id);renderLayers();if(typeof renderMatEd==='function')renderMatEd(true);
@@ -138,6 +138,54 @@ async function txToChannel(it,k){const L=doc.active;if(!isLayer(L)||!L.fill){toa
 const FS_TXLAYER=`uniform sampler2D uSrc; uniform vec2 uDoc; uniform float uScale;
 void main(){ vec2 sz=vec2(textureSize(uSrc,0)); vec2 uv=gl_FragCoord.xy/(sz*uScale); o=texture(uSrc,uv); }`;
 let P_TXLAYER=null;
+/* Grunge Mixer: combine reusable grayscale sources into one seamless library texture. */
+const FS_TXMIX=`uniform sampler2D uA; uniform sampler2D uB; uniform float uMix; uniform float uScale; uniform int uMode; uniform int uInvert;
+float blend1(float a,float b){if(uMode==1)return a*b;if(uMode==2)return a+b-a*b;if(uMode==3)return min(1.0,a+b);if(uMode==4)return abs(a-b);if(uMode==5)return a<.5?2.0*a*b:1.0-2.0*(1.0-a)*(1.0-b);if(uMode==6)return min(a,b);if(uMode==7)return max(a,b);return b;}
+void main(){vec2 uv=gl_FragCoord.xy/vec2(textureSize(uA,0));float a=texture(uA,uv).r;float b=texture(uB,fract(uv*uScale)).r;if(uInvert==1)b=1.0-b;float r=mix(a,blend1(a,b),uMix);o=vec4(r,r,r,1.0);}`;
+let P_TXMIX=null;
+const TX_MIX_MODES=[['normal','Normal'],['multiply','Multiply'],['screen','Screen'],['add','Add'],['difference','Difference'],['overlay','Overlay'],['min','Min'],['max','Max']];
+const txMix={rows:[],busy:false,seq:0,queued:null,add:null};
+function txMixThumb(t,S=512){const s=makeTarget(S,S,8,false);copyScaled(t,s);const d=captureRegionNow(s,0,0,S,S).data;disposeTarget(s);const c=document.createElement('canvas');c.width=c.height=S;const im=c.getContext('2d').createImageData(S,S);for(let i=0;i<S*S;i++){const p=i*4,a=d[p+3]||1;im.data[p]=Math.min(255,d[p]*255/a);im.data[p+1]=Math.min(255,d[p+1]*255/a);im.data[p+2]=Math.min(255,d[p+2]*255/a);im.data[p+3]=255;}c.getContext('2d').putImageData(im,0,0);return c.toDataURL('image/png');}
+function txMixOpen(){
+  const body=el('div',{class:'dlg-grid'}),sources=[...TX_GEN.map(([id,name])=>({kind:'gen',id,name})),...TX_PHOTO.map(([id,name])=>({kind:'photo',id,name})),...tx.mine.map(rec=>({kind:'mine',id:rec.id,name:rec.name,rec}))];
+  if(!sources.length){toast('No grunge sources are available yet.');return;}
+  if(!txMix.rows.length)txMix.rows=[{id:'photo:grime',mode:'multiply',op:.75,scale:1,inv:false},{id:'gen:clouds',mode:'normal',op:.55,scale:1,inv:false}];
+  let previewImg,rowsBox,status,drawTimer=0,addBtn;
+  const getSource=id=>sources.find(s=>s.kind+':'+s.id===id)||sources[0];
+  const schedule=()=>{clearTimeout(drawTimer);drawTimer=setTimeout(()=>txMixDraw(false),100);};
+  const buildRows=()=>{rowsBox.replaceChildren(...txMix.rows.map((r,i)=>{
+    const src=el('select',{'aria-label':'Grunge source '+(i+1),title:'Scroll the mouse wheel over this list to change grunge'},...sources.map(s=>el('option',{value:s.kind+':'+s.id,text:s.name+' · '+(s.kind==='gen'?'Generated':s.kind==='photo'?'Photo':'Yours')})));r.id=getSource(r.id).kind+':'+getSource(r.id).id;src.value=r.id;src.onchange=()=>{r.id=src.value;schedule();};src.addEventListener('wheel',e=>{e.preventDefault();e.stopPropagation();if(!e.deltaY)return;const ix=clamp(src.selectedIndex+(e.deltaY>0?1:-1),0,sources.length-1);if(ix===src.selectedIndex)return;src.selectedIndex=ix;r.id=src.value;schedule();},{passive:false});
+    const mode=el('select',{'aria-label':'Blend mode',disabled:i===0},...TX_MIX_MODES.map(([v,t])=>el('option',{value:v,text:t})));mode.value=r.mode;mode.addEventListener('input',()=>{r.mode=mode.value;schedule();});mode.addEventListener('change',()=>{r.mode=mode.value;schedule();});
+    const opacity=makeSlider({id:'txmix_op_'+i,label:'Opacity',min:0,max:1,step:.01,value:r.op,fmt:pct,onInput:v=>{r.op=v;schedule();}}).el;const opacityInput=opacity.querySelector('input');if(opacityInput)opacityInput.disabled=i===0;
+    const scale=makeSlider({id:'txmix_scale_'+i,label:'Scale',min:.25,max:8,step:.05,value:r.scale,fmt:v=>v.toFixed(2)+'×',onInput:v=>{r.scale=v;schedule();}}).el;
+    return el('div',{class:'txmix-row'},el('div',{class:'row wrap'},el('strong',{text:'Layer '+(i+1)}),el('span',{class:'note',text:i===0?'Base texture':'Blend into layer below'}),el('button',{class:'btn sm',text:'Remove',disabled:txMix.rows.length<=2,onclick:()=>{txMix.rows.splice(i,1);buildRows();schedule();}})),el('label',{class:'txmix-field'},el('span',{text:'Texture'}),src),el('label',{class:'txmix-field'},el('span',{text:'Blend mode'}),mode),el('div',{class:'txmix-field'},chk('txmix_inv_'+i,'Invert',!!r.inv,v=>{r.inv=v;schedule();})),opacity,scale);
+  }));if(addBtn)addBtn.disabled=txMix.rows.length>=4;};
+  async function txMixRender(size){
+    const rows=txMix.rows.slice();if(rows.length<2)throw new Error('Add at least two sources.');if(!P_TXMIX)P_TXMIX=program(FS_TXMIX);
+    let acc=null;
+    try{for(let i=0;i<rows.length;i++){
+      const r=rows[i],src=await txTarget(getSource(r.id));
+      if(!acc){acc=makeTarget(size,size,8,true);run(P_TXMIX,acc,{uA:src.tex,uB:src.tex,uMix:1,uScale:r.scale,uMode:{int:0},uInvert:!!r.inv});setWrap(acc,true);continue;}
+      const out=makeTarget(size,size,8,true);run(P_TXMIX,out,{uA:acc.tex,uB:src.tex,uMix:r.op,uScale:r.scale,uMode:{int:Math.max(0,TX_MIX_MODES.findIndex(x=>x[0]===r.mode))},uInvert:!!r.inv});setWrap(out,true);disposeTarget(acc);acc=out;
+    }return acc;}catch(e){if(acc)disposeTarget(acc);throw e;}
+  }
+  async function txMixDraw(save){if(txMix.busy){txMix.queued=save;return;}const seq=++txMix.seq;txMix.busy=true;status.textContent=save?'Creating texture…':'Updating preview…';try{
+    const t=await txMixRender(save?1024:512);if(seq!==txMix.seq){disposeTarget(t);return;}
+    if(save){const meta=await txAddTarget(t,'Grunge Mix '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}));tx.show='mine';tx.category='all';tx.query='';renderTextures();closeDialog();toast('Saved “'+meta.name+'” to Textures › Yours.');}
+    else{previewImg.src=txMixThumb(t);status.textContent='Live preview · 512 px';disposeTarget(t);}
+  }catch(e){status.textContent='Could not build the mix: '+(e.message||e);toast(status.textContent);}finally{txMix.busy=false;if(txMix.queued!==null){const next=txMix.queued;txMix.queued=null;txMixDraw(next);}}}
+  rowsBox=el('div',{class:'dlg-grid'});previewImg=el('img',{class:'txmix-preview',alt:'Grunge mix preview'});status=el('p',{class:'note',text:'Preparing preview…'});
+  const zoom=makeSlider({id:'txmix_zoom',label:'Preview zoom',min:50,max:300,step:10,value:100,fmt:v=>v+'%',onInput:v=>{previewImg.style.width=Math.round(280*v/100)+'px';previewImg.style.height=Math.round(280*v/100)+'px';}}).el;
+  const dropZone=el('div',{class:'txmix-preview-wrap txmix-drop',title:'Drag a texture from the Textures shelf here to add it to the mix'},previewImg,el('span',{class:'txmix-drop-hint',text:'Drop a texture here to add it'}));
+  txMix.add=it=>{if(txMix.rows.length>=4){toast('The Grunge Mixer supports up to four sources.');return;}const valid=sources.find(s=>s.kind===it.kind&&s.id===it.id);if(!valid){toast('That texture is not available in this mixer.');return;}txMix.rows.push({id:valid.kind+':'+valid.id,mode:'multiply',op:.5,scale:1,inv:false});buildRows();schedule();};
+  addBtn=el('button',{class:'btn sm',text:'Add source',onclick:()=>{const used=new Set(txMix.rows.map(r=>r.id));const next=sources.find(s=>!used.has(s.kind+':'+s.id))||sources[0];txMix.rows.push({id:next.kind+':'+next.id,mode:'multiply',op:.5,scale:1,inv:false});buildRows();schedule();}});
+  const randomize=()=>{for(let i=0;i<txMix.rows.length;i++){const r=txMix.rows[i],src=sources[Math.floor(Math.random()*sources.length)];r.id=src.kind+':'+src.id;r.op=i===0?1:.2+Math.random()*.75;r.scale=.5+Math.random()*3.5;r.inv=Math.random()<.3;if(i>0)r.mode=TX_MIX_MODES[1+Math.floor(Math.random()*(TX_MIX_MODES.length-1))][0];}buildRows();schedule();};
+  buildRows();const stack=el('div',{class:'txmix-stack'},rowsBox,el('div',{class:'chips'},addBtn,el('button',{class:'btn sm',text:'Randomize',title:'Randomize textures, blend modes, opacity, scale, and inversion',onclick:randomize}),el('span',{class:'note',text:'2–4 layers · 1024 px saved texture'})));
+  const preview=el('div',{class:'txmix-preview-panel'},el('strong',{text:'Live preview'}),dropZone,zoom,status);
+  body.append(el('p',{class:'note txmix-intro',text:'Stack generated, photo, and your own grunge maps. Each layer blends into the one below it; controls update the tiled preview live.'}),el('div',{class:'txmix-layout'},stack,preview));
+  openDialog({title:'Grunge Mixer',body,cancelLabel:'Close',wide:true});schedule();
+  const save=el('button',{class:'btn',text:'Save to Textures › Yours',onclick:()=>txMixDraw(true)});body.append(save);
+}
 async function txToLayer(it,at){if(ui.mode!=='paint'&&ui.mode!=='p3d'){toast('Switch to Paint or 3D Paint first.');return;}
   const src=await txTarget(it);if(!P_TXLAYER)P_TXLAYER=program(FS_TXLAYER);
   const A=doc.active,parent=at?at.parent:A?(A.parent||doc.root):doc.root,idx=at?at.index:A?parent.children.indexOf(A)+1:doc.root.children.length,L=newLayerObj(it.name);
@@ -169,12 +217,12 @@ function txForget(root){for(const img of root.querySelectorAll('img')){img._txCa
 function txPruneObserved(){for(const img of txObserved)if(!img.isConnected){txSeen.unobserve(img);txObserved.delete(img);}}
 const txSeen=new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting){txSeen.unobserve(e.target);txObserved.delete(e.target);if(e.target.isConnected)txThumb(e.target._tx,e.target);}});
 function renderTextures(){const box=$('#txBody');if(!box)return;if(!tx.loaded){txLoad();}const tw=MT_SIZES[tx.size]||64;box.style.setProperty('--tw',tw+'px');
-  const tile=it=>{const img=el('img',{alt:'',width:72,height:72,draggable:'false'});img._tx=it;txObserve(img);const b=el('button',{class:'mattile txtile',title:it.name+' (click: selected mask or new layer. Right-click: more uses. Drag onto the layers)',id:'tx_'+it.kind+'_'+it.id,onclick:()=>txClick(it),oncontextmenu:e=>{e.preventDefault();txMenu(e,it);}},img,el('span',{text:it.name}));b._libDrag=['tex',it];return b;};
+  const tile=it=>{const img=el('img',{alt:'',width:72,height:72,draggable:'false'});img._tx=it;txObserve(img);const key=it.kind+':'+it.id,b=el('button',{class:'mattile txtile'+(tx.selected===key?' on':''),title:it.name+' (click to select; drag onto canvas or layer to add. Right-click: more uses)',id:'tx_'+it.kind+'_'+it.id,onclick:()=>txClick(it),oncontextmenu:e=>{e.preventDefault();txMenu(e,it);}},img,el('span',{text:it.name}));b._libDrag=['tex',it];return b;};
   const items=txItems();
   const category=el('select',{id:'txCategory','aria-label':'Texture category'},el('option',{value:'all',text:'All categories'}),...TX_CATEGORIES.map(k=>el('option',{value:k,text:k})));category.value=tx.category;category.addEventListener('change',()=>{tx.category=category.value;try{localStorage.setItem('gs.txCategory',tx.category);}catch(e){}renderTextures();});
   const search=el('input',{type:'search',id:'txSearch',placeholder:'Search textures','aria-label':'Search textures',value:tx.query});search.addEventListener('input',()=>{tx.query=search.value;const start=search.selectionStart;renderTextures();const next=$('#txSearch');next.focus();try{next.setSelectionRange(start,start);}catch(e){}});
   box.replaceChildren(segChips([['all','All'],['mine','Yours'],['photo','Photo grunge'],['gen','Generated']],()=>tx.show,v=>{tx.show=v;try{localStorage.setItem('gs.txShow',v);}catch(e){}renderTextures();}),
     el('div',{class:'row wrap'},category,search),el('p',{class:'note',text:items.length+' textures'}),
-    el('div',{class:'chips'},el('button',{class:'btn sm',id:'txFromCanvas',text:'From canvas…',title:'Turn the Paint canvas or the selection into a texture',onclick:()=>{if(ui.mode==='paint')dlgToTexture();else toast('Switch to the Paint tab first.');}}),el('button',{class:'btn sm',id:'txImport',text:'Import…',title:'Pictures, or a .gtex texture pack',onclick:txImport}),el('button',{class:'btn sm',id:'txExport',text:'Export pack…',title:'All your textures in one .gtex file to share',onclick:txExportPack}),el('div',{class:'seg matsize',role:'radiogroup','aria-label':'Texture thumbnail size'},...['s','m','l'].map(k=>el('button',{id:'txSize_'+k,type:'button',role:'radio','aria-checked':String(tx.size===k),text:k.toUpperCase(),class:tx.size===k?'on':'',onclick:()=>{tx.size=k;try{localStorage.setItem('gs.txSize',k);}catch(e){}renderTextures();}})))),
+    el('div',{class:'chips'},el('button',{class:'btn sm',id:'txGrungeMix',text:'Grunge Mixer…',title:'Combine grunge textures with live preview',onclick:txMixOpen}),el('button',{class:'btn sm',id:'txFromCanvas',text:'From canvas…',title:'Turn the Paint canvas or the selection into a texture',onclick:()=>{if(ui.mode==='paint')dlgToTexture();else toast('Switch to the Paint tab first.');}}),el('button',{class:'btn sm',id:'txImport',text:'Import…',title:'Pictures, or a .gtex texture pack',onclick:txImport}),el('button',{class:'btn sm',id:'txExport',text:'Export pack…',title:'All your textures in one .gtex file to share',onclick:txExportPack}),el('div',{class:'seg matsize',role:'radiogroup','aria-label':'Texture thumbnail size'},...['s','m','l'].map(k=>el('button',{id:'txSize_'+k,type:'button',role:'radio','aria-checked':String(tx.size===k),text:k.toUpperCase(),class:tx.size===k?'on':'',onclick:()=>{tx.size=k;try{localStorage.setItem('gs.txSize',k);}catch(e){}renderTextures();}})))),
     items.length?el('div',{class:'matgrid',id:'txGrid'},...items.map(tile)):el('p',{class:'note',text:'No textures match these filters. Choose All categories or clear the search.'}),
     el('p',{class:'note',text:'Click a texture for what to do with it. Sources: ambientCG, Poly Haven, Public Domain Pictures and OpenGameArt (CC0).'}));txPruneObserved();}
