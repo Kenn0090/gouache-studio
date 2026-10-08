@@ -749,3 +749,6 @@ Desktop app, self-updates
 - Add square, scratch, grunge-wear, abstract-shard and running-stitch brush presets, five denim smart materials and ten cloth-fold variants.
 - Consolidate recent local improvements to seam-aware painting and blur, angled surface coverage, weld responsiveness, symmetry cursors, numeric slider values and pipeline-aware 3D project setup.
 
+## 0.51.23
+
+- Add five original procedural smart masks: chunky paint wear, poster pigment breakup, stylized edge chips, denim abrasion and cloth crease breakup.
