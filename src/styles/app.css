@@ -805,12 +805,13 @@ body.libdragging,body.libdragging *{cursor:grabbing!important;user-select:none}
 .p3resolution{position:absolute;right:12px;bottom:6px;z-index:8;padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:12px;pointer-events:none}
 .p3resolution.large{border-color:var(--accent);font-weight:600}
 .meshslots{display:grid;gap:6px}
-.meshslot{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:4px 6px;align-items:center;padding:8px;border:1px dashed var(--line);border-radius:5px;min-width:0}
+/* (0.51.31) name and file on their own lines, the buttons wrap below: the label is no longer squeezed under them */
+.meshslot{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;padding:8px;border:1px dashed var(--line);border-radius:5px;min-width:0}
 .meshslot.filled{border-style:solid}
 .meshslot.dropon{border-color:var(--accent);background:var(--hover)}
-.meshslotname{grid-column:1;font-size:12px;font-weight:600}
-.meshslotfile{grid-column:1;grid-row:2;font-size:11px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.meshslot>.btn{grid-row:1 / 3}
+.meshslotname{flex:1 1 100%;font-size:12px;font-weight:600}
+.meshslotfile{flex:1 1 100%;font-size:11px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meshslot>.btn{flex:0 0 auto}
 .projectgrid .mattile small{display:block;font-size:10px;color:var(--dim)}
 .projectgrid .mattile img{object-fit:contain}
 .weld-shelf{display:grid;gap:10px;padding-top:8px}.weld-grid{grid-template-columns:repeat(auto-fit,minmax(132px,1fr))}.weld-card{min-height:112px}.weld-card canvas{width:100%;height:54px;border-radius:4px}.weld-card small{display:block;color:var(--dim);font-size:10px}
