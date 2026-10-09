@@ -18,13 +18,13 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const shader=()=>p.evaluate(()=>({kind:__gs.doc.v3shade&&__gs.doc.v3shade.kind,wf:__gs.doc.workflow,maps:__gs.doc.maps.join()}));
  let s=await shader();
  ok(s.wf==='metal'&&s.kind==='std','PBR project starts with the Standard shader '+JSON.stringify(s));
- /* choosing Spec/Gloss in the Shader panel on a metal texture set is refused with a message */
+ /* choosing Spec/Gloss in the Shader panel on a metal texture set converts the set */
  await p.evaluate(()=>{__gs.showPanel('shading');const sel=document.getElementById('shKind');sel.value='specgloss';sel.dispatchEvent(new Event('change',{bubbles:true}));});await W(1200);
  const asked=await p.evaluate(()=>{const m=document.getElementById('modal');if(m&&!m.hidden){document.getElementById('dlgCancel').click();return true;}return false;});await W(800);
  s=await shader();
  const said=await p.evaluate(()=>document.body.innerText.includes('needs a new 3D Paint project'));
  s=await shader();
- ok(s.wf==='metal'&&s.kind==='std'&&said,'Shader › Spec/Gloss on a metal texture set says so and does not change it '+JSON.stringify(s)+' message:'+said);
+ ok(s.wf==='spec'&&s.kind==='specgloss'&&!said,'Shader › Spec/Gloss on a metal texture set converts it '+JSON.stringify(s));
  /* a Specular/Glossiness project replaces the set */
  await p.evaluate(()=>__gs.p3NewProject(256,{setup:'spec',workflow:'spec',startMaterial:'neutral'}));await W(1500);
  await p.evaluate(()=>{const b=document.querySelector('.dlg .btn.primary, #dlgOk, .dlg button.ok');if(b)b.click();});await W(800);
