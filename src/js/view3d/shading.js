@@ -31,7 +31,13 @@ function renderShading(){const box=document.getElementById('shadeBody');if(!box)
   const colr=(key,label)=>el('div',{class:'frow'},el('span',{text:label}),colourBtn('sh_'+key,()=>P[key],c=>setP(key,c),label));
   const who=ui.mode==='p3d'&&typeof p3!=='undefined'&&p3.sets[p3.cur]?'texture set “'+p3.sets[p3.cur].name+'”':'this document';
   /* a drop-down list of the shaders (Kenn); each keeps its own settings below it */
-  const tabs=el('select',{id:'shKind',class:'shsel','aria-label':'Shader'},...SHADERS.map(([id,l])=>el('option',{value:id,text:l})));tabs.value=k;tabs.onchange=()=>{shadeEdit(d=>{d.kind=tabs.value;});renderShading();};
+  const tabs=el('select',{id:'shKind',class:'shsel','aria-label':'Shader'},...SHADERS.map(([id,l])=>el('option',{value:id,text:l})));tabs.value=k;tabs.onchange=()=>{const v=tabs.value,apply=()=>{shadeEdit(d=>{d.kind=v;});renderShading();};
+    /* (0.51.30) Spec/Gloss is the project's workflow too: its maps (Diffuse, Specular, Glossiness) replace the metal ones, as in the Maps dialog */
+    if(v==='specgloss'&&doc.workflow!=='spec'){
+      /* switching a texture set's workflow is not built for 3D Paint yet: say so instead of showing a Spec/Gloss shader on metal maps */
+      if(ui.mode==='p3d'){toast('This texture set has Metal/Rough maps. Spec/Gloss needs a new 3D Paint project with Specular / Glossiness.');renderShading();return;}
+      wfAsk('spec',()=>{if(doc.workflow==='spec')apply();else renderShading();});renderShading();return;}
+    apply();};
   const body=el('div',{class:'dlg-grid'});
   if(k==='std')body.append(el('p',{class:'note',text:'Physically based shading (metal/roughness), lit by the environment chosen below.'}));
   if(k==='skin')body.append(seg([['natural','Natural skin'],['soft','Soft skin'],['wax','Wax']],null,id=>{const presets={natural:{scatter:.5,strength:.6,soft:.5,oil:.3,surface:.45,depth:1,transmission:.5,col:[.85,.25,.18]},soft:{scatter:.7,strength:.8,soft:.65,oil:.15,surface:.55,depth:1.4,transmission:.35,col:[1,.35,.22]},wax:{scatter:.85,strength:.9,soft:.8,oil:.1,surface:.3,depth:.6,transmission:.8,col:[1,.72,.4]}};shadeEdit(d=>{d.p.skin=presets[id];});renderShading();},'Skin preset'),sl('surface','Surface roughness',.08,1),sl('depth','Scatter depth',.1,4,.05,v=>v.toFixed(2)),sl('transmission','Transmission'),sl('scatter','Scatter'),sl('strength','Strength'),sl('soft','Softness'),sl('oil','Oily sheen'),colr('col','Subsurface colour'),
