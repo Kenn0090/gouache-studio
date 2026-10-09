@@ -1,3 +1,7 @@
+## 0.51.28
+
+- Choosing Specular / Glossiness when creating a 3D Paint project now starts it with the Spec/Gloss viewer shader. PBR projects start with the Standard shader. The shader can still be changed per texture set.
+
 ## 0.51.27
 
 - Fix first-time 3D Paint project creation so a mesh selected in the new-project dialog becomes the active viewport mesh; do not leave the default plane loaded.

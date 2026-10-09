@@ -54,13 +54,13 @@ async function openP3Project(buf,name,path){if(!isP3Proj(buf))throw new Error('T
 
 /* (0.27) File › New with "Start in: 3D Paint": a fresh project at the chosen texture size on the same model
    (every texture set starts again with its base material) */
-async function p3NewProject(size,options){options=options||{};size=Math.max(64,Math.min(MAX_DIM,Math.round(size||2048)));
+async function p3NewProject(size,options){options=options||{};size=Math.max(64,Math.min(MAX_DIM,Math.round(size||2048)));const modelKey=options.imported?'imported':options.modelKey;
   p3.setup=options.setup||'pbr';p3.workflow=options.workflow||'metal';p3.udim=!!options.udim;
-  if(!p3.started){const modelKey=options.imported?'imported':options.modelKey;p3.size=size;p3.startMaterial=options.startMaterial||'neutral';if(options.imported)p3.imported=v3.imported=options.imported;else if(modelKey==='imported'&&p3.imported)v3.imported=p3.imported;if(modelKey)p3.v3d=Object.assign({},V3D_DEFAULTS,{model:modelKey});p3Save();if(ui.mode!=='p3d'&&!setMode('p3d'))return false;if(modelKey==='imported'&&v3.imported){doc.v3d=Object.assign({},V3D_DEFAULTS,p3.v3d);v3.mesh=null;v3LoadModel();}p3.savedAt=p3Sig();return true;}
+  if(!p3.started){p3.size=size;p3.startMaterial=options.startMaterial||'neutral';if(options.imported)p3.imported=v3.imported=options.imported;else if(modelKey==='imported'&&p3.imported)v3.imported=p3.imported;if(modelKey)p3.v3d=Object.assign({},V3D_DEFAULTS,{model:modelKey});p3Save();if(ui.mode!=='p3d'&&!setMode('p3d'))return false;if(modelKey==='imported'&&v3.imported){doc.v3d=Object.assign({},V3D_DEFAULTS,p3.v3d);v3.mesh=null;v3LoadModel();}p3.savedAt=p3Sig();return true;}
   if(ui.mode!=='p3d'&&!setMode('p3d',true))return;if(!(await p3AskReplace(true)))return;
-  const old=docState(),modelChanged=(options.imported&&options.imported!==p3.imported)||(options.modelKey&&options.modelKey!==v3s().model);for(const S of p3.sets){if(S.state)disposeDocState(S.state);if(S.tex)for(const k in S.tex)disposeTarget(S.tex[k]);}for(const k in v3.tex)disposeTarget(v3.tex[k]);v3.tex={};
+  const old=docState(),modelChanged=(options.imported&&options.imported!==p3.imported)||(modelKey&&modelKey!==v3s().model);for(const S of p3.sets){if(S.state)disposeDocState(S.state);if(S.tex)for(const k in S.tex)disposeTarget(S.tex[k]);}for(const k in v3.tex)disposeTarget(v3.tex[k]);v3.tex={};
   p3.startMaterial=options.startMaterial||'neutral';if(options.imported)p3.imported=v3.imported=options.imported;
-  if(modelChanged){p3.sets=[];p3.cur=0;p3.v3d=Object.assign({},p3.v3d||doc.v3d||V3D_DEFAULTS,{model:options.modelKey||'imported'});doc.v3d=p3.v3d;v3.mesh=null;v3LoadModel(true);}
+  if(modelChanged){p3.sets=[];p3.cur=0;p3.v3d=Object.assign({},p3.v3d||doc.v3d||V3D_DEFAULTS,{model:modelKey||'imported'});doc.v3d=p3.v3d;v3.mesh=null;v3LoadModel(true);}
   const names=p3.sets.filter(S=>!S.missing).map(S=>({name:S.name,material:p3Binding(S)}));p3.metadataVer=0;p3.size=size;p3Save();
   p3.sets=(names.length?names:[{name:'default',material:'default'}]).map(n=>({...n,state:null,tex:null,missing:false}));p3.cur=0;
   blankTabDoc(size,size,p3.sets[0].name);p3Setup(p3.sets[0].name,p3.startMaterial,p3.workflow);doc.v3d=p3.v3d||doc.v3d;disposeDocState(old);

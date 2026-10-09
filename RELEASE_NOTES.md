@@ -1,3 +1,7 @@
+# Gouache Studio 0.51.28
+
+- Choosing Specular / Glossiness when creating a 3D Paint project now starts it with the Spec/Gloss viewer shader, and the Properties panel shows Spec Gloss inputs with a coloured Specular. PBR projects start with the Standard shader.
+
 # Gouache Studio 0.51.24
 
 - Bundle the supplied B1–B10 and Stroke_01–10 alpha images, plus CHIP and Poly_01, as built-in brush presets.
