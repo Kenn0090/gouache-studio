@@ -1,3 +1,7 @@
+## 0.51.27
+
+- Fix first-time 3D Paint project creation so a mesh selected in the new-project dialog becomes the active viewport mesh; do not leave the default plane loaded.
+
 ## 0.51.26
 
 - Hide the startup primitive dropdown once an imported mesh is active in 3D Paint. Show a Replace mesh button instead, so the viewport stays focused on the imported asset.
