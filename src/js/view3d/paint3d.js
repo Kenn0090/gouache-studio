@@ -10,6 +10,8 @@ function p3Save(){try{localStorage.setItem('gs.p3d',JSON.stringify({size:p3.size
 const P3_MAPS=['base','rough','metal','height','normal'],P3_MAPS_SPEC=['base','spec','gloss','height','normal'];
 /* a new texture set: the PBR maps, a base material (a fill layer) and an empty layer to paint on */
 function p3Setup(name,startMaterial,workflow){workflow=workflow||p3.workflow||'metal';p3.workflow=workflow;const keys=workflow==='spec'?P3_MAPS_SPEC:P3_MAPS;doc.maps=keys.slice();doc.workflow=workflow;doc.p3Setup=p3.setup||'pbr';doc.name=name||'3D Paint';syncTargets();
+  /* the viewer shader follows the template: Spec/Gloss starts with the Spec/Gloss shader, PBR with Standard (the set's shader can still be changed in the Shader panel) */
+  doc.v3shade=workflow==='spec'?{kind:'specgloss',p:{}}:{kind:'std',p:{}};
   const P=paintLayers()[0];P.name='Paint';
   const mats={neutral:{c:[.82,.82,.82],rough:.6,metal:0,spec:[.22,.22,.22],gloss:.4},steel:{c:[.48,.5,.53],rough:.28,metal:1,spec:[.72,.72,.72],gloss:.72},polymer:{c:[.12,.22,.3],rough:.38,metal:0,spec:[.22,.22,.22],gloss:.62}},mat=mats[startMaterial]||mats.neutral;
   const B=newLayerObj('Base material',true);doc.count--;B.fill=fillDefaults();Object.assign(B.fill.maps.base,{on:true,src:'value',c:mat.c.slice()});
