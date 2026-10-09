@@ -6,7 +6,8 @@
 - A Metal/Rough Library material added to a Spec/Gloss project is converted (values and pictures) as it is added, and a Spec/Gloss material in a Metal/Rough project likewise.
 - **Baker:** 16× anti-aliasing is the default; flat surfaces bake to exactly flat instead of flipping between two values in patches; normals are renormalised after averaging; the high-poly's normals keep full precision; rays no longer slip between touching triangles.
 - **Compare with a normal map** in the Bake tab: pick a map made in Marmoset (or anywhere) and see the average angle difference plus a difference picture.
-- The Bake button is now big and bold at the top of the Bake panel and stays in view. Send to Paint, Send to 3D Paint and Export sit right under it.
+- The Bake button is now big, orange and has a flame on it, at the top of the Bake panel, and stays in view. While baking it turns into Cancel and fills with the progress. Send to Paint, Send to 3D Paint and Export sit right under it.
+- The Bake panel is one wide panel in two columns (models, maps and sending on the left, the settings on the right), so everything fits without scrolling. History is now a tab beside it instead of a pane taking half the height. Old saved Bake layouts are reset once.
 - **Wrinkle textures:** eight seamless wrinkle maps in the Textures panel (category Wrinkles) for shirts, sleeves, skin and leather.
 - **42 new texture brushes**, angular and abstract: shard drips, jagged edges, torn zigzags, fractures, grunge scratches, shard sprays, shards, cut streaks, faceted blobs and shattered glass.
 

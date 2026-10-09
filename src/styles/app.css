@@ -1122,13 +1122,38 @@ body.tabfull .dkfloat,body.tabfull .dkfly,body.tabfull .dkicons{display:none!imp
 #mir3Rad.on{border-color:#62cfff;color:#62cfff;background:var(--panel,#20252b);}
 
 
-/* (0.52) Bake tab: one bar that stays at the top, with a big Bake button and the send buttons under it */
-.bkbar{position:sticky;top:0;z-index:5;display:flex;flex-direction:column;gap:6px;padding:8px 0 10px;margin:-2px 0 8px;background:var(--panel);border-bottom:1px solid var(--line)}
-.bkbar #bkGo{width:100%;min-height:52px;font-size:20px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;border-radius:8px}
-.bkbar #bkGo.primary{box-shadow:0 2px 0 rgba(0,0,0,.35),0 0 0 1px var(--accent)}
+/* (0.52) Bake tab: one bar that stays at the top, with a stylish Bake button and the send buttons under it */
+.bkbar{position:sticky;top:0;z-index:5;display:flex;flex-direction:column;gap:7px;padding:8px 0 10px;margin:-2px 0 8px;background:var(--panel);border-bottom:1px solid var(--line)}
+.bkbar #bkGo{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:54px;padding:0 18px;border:0;border-radius:12px;
+  font-size:21px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#2a1704;text-shadow:0 1px 0 rgba(255,255,255,.35);
+  background:linear-gradient(180deg,#ffd27a 0%,#f2a93f 48%,#d57f1c 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -3px 0 rgba(120,60,0,.35),0 3px 0 rgba(0,0,0,.4),0 6px 18px rgba(226,164,83,.28);
+  transition:transform .08s,box-shadow .15s,filter .15s}
+.bkbar #bkGo:hover:not(:disabled){filter:brightness(1.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -3px 0 rgba(120,60,0,.35),0 3px 0 rgba(0,0,0,.4),0 8px 24px rgba(226,164,83,.45)}
+.bkbar #bkGo:active:not(:disabled){transform:translateY(2px);box-shadow:inset 0 2px 4px rgba(0,0,0,.35),0 1px 0 rgba(0,0,0,.4)}
+.bkbar #bkGo .bkico{width:26px;height:26px;fill:#7a3a00;flex:none;filter:drop-shadow(0 1px 0 rgba(255,255,255,.4))}.bkbar #bkGo .bkico .in{fill:#fff3c9}
+.bkbar #bkGo .bkl{position:relative;z-index:1}
+.bkbar #bkGo .bkfill{position:absolute;inset:0 auto 0 0;width:0;background:rgba(255,255,255,.0);pointer-events:none}
+.bkbar #bkGo.busy{background:linear-gradient(180deg,#5b6068 0%,#3d4249 55%,#2d3137 100%);color:#f2f2f2;text-shadow:0 1px 0 rgba(0,0,0,.5);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 3px 0 rgba(0,0,0,.4)}
+.bkbar #bkGo.busy .bkico{fill:#f2a93f;animation:bkpulse 1s ease-in-out infinite}.bkbar #bkGo.busy .bkico .in{fill:#ffe9a8}
+.bkbar #bkGo.busy .bkfill{width:var(--p,0%);background:linear-gradient(90deg,rgba(242,169,63,.55),rgba(255,210,122,.75));transition:width .15s}
+@keyframes bkpulse{50%{transform:scale(1.18)}}
 .bkbar .bksend{display:grid;grid-template-columns:1fr 1fr auto;gap:6px}
-.bkbar .bksend .btn{min-height:34px;font-weight:600}
+.bkbar .bksend .btn{min-height:32px;font-weight:600}
 .bkbar #bkProg{margin:0}.bkbar #bkProg[hidden]{display:none}
 /* (0.52) Spec/Gloss materials in the Library carry a small corner icon */
 .mattile{position:relative}
 .mattile .sgbadge{position:absolute;top:3px;right:3px;padding:0 4px;border-radius:4px;background:var(--accent);color:var(--accent-ink);font-size:9px;font-weight:800;letter-spacing:.03em;line-height:14px;pointer-events:none;box-shadow:0 1px 2px rgba(0,0,0,.5)}
+/* (0.52) Bake panel in two columns (they stack when the dock is narrow) */
+.bkcols{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:flex-start}
+.bkcol{flex:1 1 235px;min-width:225px;display:flex;flex-direction:column;gap:6px}
+.bkcol>.sub{margin-top:4px}
+.bkcol .chips{gap:4px}.bkcol .chips label,.bkcol .chips .chip{font-size:12px}
+.bkcol .frow{margin:0}.bkcol .dlg-grid{gap:6px}
+.bkcol .note{margin:0;font-size:11.5px;line-height:1.35}
+.highmeshes[hidden]{display:none}
+.bkcol .frow{display:grid;grid-template-columns:74px minmax(0,1fr);gap:6px;align-items:center}
+.bkcol .frow>label{margin:0}
+.bkcol .bkmodel{flex-wrap:nowrap}
+#bkColA{flex-grow:1.35}.bkcol .bkmodel select{flex:1 1 80px}

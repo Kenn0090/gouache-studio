@@ -38,6 +38,8 @@ const WS_PRESETS={
   minimal:{name:'Panels: Minimal',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1}],icons:['color','matEd','shading','brushes','stencils','mats','textures','decals','envs','tool','maps','layers','chan','hist'],floats:[]}};
 /* (0.28, Kenn) each top tab has its own workspace, and the drop-down follows the tab */
 for(const [k,n] of [['animation','Animation'],['bake','Bake'],['convert','Convert'],['brush','Brush']])WS_PRESETS[k]=Object.assign(JSON.parse(JSON.stringify(WS_PRESETS.painting)),{name:'Panels: '+n});
+/* (0.52, Kenn) the Bake tab: one tall panel with everything in view; History is only a tab beside it, not a pane that takes half the height */
+WS_PRESETS.bake={name:'Panels: Bake',tb:{side:'left',cols:1},opt:true,w:580,groups:[{tabs:[...MODE_GROUP,'hist'],active:'bake',f:1}],icons:[],floats:[]};
 /* Brush creation keeps its previews and settings together, with painting brushes below the canvas. */
 WS_PRESETS.brush={name:'Panels: Brush',tb:{side:'left',cols:1},opt:true,w:420,groups:[{tabs:['color'],f:.45},{tabs:MODE_GROUP.slice(),active:'brushtab',f:5}],shelf:{tabs:['brushes'],h:230,f:1},icons:['layers','hist','maps','chan','matEd','shading','tool','stencils','mats','textures','decals','envs','p3bake'],floats:[]};
 const WS_MODE_DEF={paint:'painting',p3d:'texturing',anim:'animation',bake:'bake',convert:'convert',brush:'brush'};
@@ -51,6 +53,7 @@ const dk={ws:'painting',L:null,custom:{},saved:{},lock:false,flyout:null,drag:nu
     /* 0.37.1: Bake Maps and Shader join the texture sets tab; Stencils became a switch in Brushes */
     for(const n of ['texturing','paint3d']){const L=dk.saved[n];if(!L)continue;const all=[...(L.groups||[]),L.shelf].filter(Boolean);for(const g of all)g.tabs=(g.tabs||[]).filter(t=>!['p3bake','shading','stencils'].includes(t));const g0=(L.groups||[]).find(g=>g.tabs.includes('p3d'))||(L.groups||[])[0];if(g0)g0.tabs.push('p3bake','shading');if(L.shelf&&L.shelf.h<240)L.shelf.h=260;}
     if(dk.col2)for(const g of dk.col2.groups)g.tabs=g.tabs.filter(t=>!['shading','stencils'].includes(t));}
+  if(!localStorage.getItem('gs.layout520')){localStorage.setItem('gs.layout520','1');delete dk.saved.bake;if(dk.modeLayouts&&dk.modeLayouts.bake)delete dk.modeLayouts.bake;}
   if(!localStorage.getItem('gs.layout37')){localStorage.setItem('gs.layout37','1');delete dk.saved.texturing;delete dk.saved.paint3d;if(dk.col2)delete dk.col2;}}catch(e){}})();
 const dkClone=o=>JSON.parse(JSON.stringify(o));
 function dkPreset(ws){return dkClone(WS_PRESETS[ws]||dk.custom[ws]||WS_PRESETS.painting);}

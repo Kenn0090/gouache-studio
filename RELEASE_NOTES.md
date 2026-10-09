@@ -3,7 +3,7 @@
 - Spec/Gloss is redone: switching converts each layer in place, so a material keeps its Specular colour and Glossiness and editing them changes the model. The ray-traced render follows them too.
 - Ten traditional Spec/Gloss materials in the Library, with their own tag and an S/G icon. Library materials are converted when added to the other workflow.
 - Baker: 16x anti-aliasing by default, exactly flat surfaces, cleaner normals, and a Compare tool for normal maps made elsewhere.
-- A big, bold Bake button at the top of the Bake panel, with Send to Paint, Send to 3D Paint and Export under it.
+- A stylish Bake button at the top of the Bake panel (it fills with progress while baking), with Send to Paint, Send to 3D Paint and Export under it. The panel is now two columns with History as a tab, so everything is in view without scrolling.
 - Eight wrinkle textures and 42 new angular texture brushes.
 
 # Gouache Studio 0.51.31

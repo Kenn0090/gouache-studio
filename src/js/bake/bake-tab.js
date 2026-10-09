@@ -282,6 +282,10 @@ function bakeDrawCage(common){if(!bk.showCage||ui.mode!=='bake')return;const g=b
 /* the Bake tab's canvas size (a change clears the bake) */
 function bakeSizeSeg(){const ps=paintDocSize(),opts=[[0,'Painting ('+ps[0]+(ps[0]===ps[1]?'':'×'+ps[1])+')'],[512,'512'],[1024,'1K'],[2048,'2K'],[4096,'4K'],[8192,'8K']];
   const g=seg(opts,bakeCfg.size||0,v=>{if(bk.busy){toast('Wait for the bake to finish.');buildBakePanel();return;}bakeCfg.size=v||null;bakeReset();const bs=bakeSize();tabDocResize(bs[0],bs[1],'Bake');bk.dirty=true;buildBakePanel();requestRender(true);},'Bake size');g.classList.add('themeseg');g.id='bkSize';return g;}
+/* (0.52) the Bake button: a flame, big letters, and the progress fills the button while it runs */
+function bakeGoButton(){const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('class','bkico');svg.setAttribute('aria-hidden','true');
+  svg.innerHTML='<path d="M12 2.5c3.4 4.3 6.6 6.8 6.6 11.2a6.6 6.6 0 0 1-13.2 0c0-2.6 1.2-4.2 2.6-5.7.3 1.7 1 2.6 1.9 3 .2-3.2 .8-5.6 2.1-8.5z"/><path class="in" d="M12 11.5c1.5 1.7 2.7 2.8 2.7 4.5a2.7 2.7 0 0 1-5.4 0c0-1.2.7-2 1.3-2.8.4.8.9 1.1 1.4 1.1z"/>';
+  const b=el('button',{class:'btn primary',id:'bkGo',type:'button'},el('span',{class:'bkfill','aria-hidden':'true'}),svg,el('span',{class:'bkl',text:'Bake'}));return b;}
 /* which maps to send or export, and the buttons */
 function bakeSendOff(){const have=bakeSendable(),t=bakeCfg.send||{},on=k=>t[k]!==undefined?t[k]:!(k==='curvEdge'||k==='curvCrease');return bk.busy||!have.length||!have.some(on);}
 /* (0.52) the three buttons sit under Bake: they are off while a bake runs or nothing is ticked */
@@ -291,8 +295,8 @@ function bakeSendBox(){const box=el('div',{class:'dlg-grid',id:'bkSendBox'}),hav
   if(!have.length){box.append(el('p',{class:'note',text:'Bake first: the maps you bake can then be ticked here.'}));return box;}
   const on=k=>t[k]!==undefined?t[k]:!(k==='curvEdge'||k==='curvCrease');
   box.append(el('div',{class:'chips'},...have.map(k=>chk('bks_'+k,BAKE_NAMES[k],on(k),v=>{t[k]=v;bakeSendSync();}))),
-    chk('bkP3Layers','3D Paint: also add them as layers (they always become the set’s mesh maps)',!!bakeCfg.p3Layers,v=>{bakeCfg.p3Layers=v;}),
-    el('p',{class:'note',text:'They arrive as plain layers (no folders), scaled to the painting when its size differs. In the browser, Export gives a zip.'}));
+    chk('bkP3Layers','Also as layers in 3D Paint',!!bakeCfg.p3Layers,v=>{bakeCfg.p3Layers=v;}));
+  box.title='Sent maps arrive as plain layers (no folders), scaled to the painting when its size differs. In 3D Paint they always become the set’s mesh maps. In the browser, Export gives a zip.';
   return box;}
 /* (0.52, Kenn) one bar at the top that stays in view: a big Bake button, the progress, and Send to Paint · Send to 3D Paint · Export */
 function bakeActionBar(go,prog){return el('div',{class:'bkbar',id:'bkBar'},go,prog,
@@ -326,14 +330,14 @@ async function bakeCompare(){const R=bk.res&&bk.res.normal;if(!R){toast('Bake th
 
 function bakeProgUI(){const box=$('#bkProg');if(!box)return;const p=bk.prog;
   if(p||bk.regionBusy){box.hidden=false;box.querySelector('.bakebar div').style.width=((p?p.f:0.5)*100).toFixed(1)+'%';box.querySelector('.note').textContent=p?p.msg:'Updating where you painted…';}
-  else box.hidden=true;const b=$('#bkGo');if(b){b.textContent=bk.busy?'Cancel':'Bake';b.classList.toggle('primary',!bk.busy);}bakeSendSync();}
+  else box.hidden=true;const b=$('#bkGo');if(b){const l=b.querySelector('.bkl');if(l)l.textContent=bk.busy?'Cancel':'Bake';b.classList.toggle('primary',!bk.busy);b.classList.toggle('busy',!!bk.busy);b.style.setProperty('--p',((p?p.f:bk.busy?.5:0)*100).toFixed(1)+'%');}bakeSendSync();}
 function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChildren();const C=bakeCfg;
   const row=(label,ctrl)=>el('div',{class:'frow'},el('label',{text:label}),ctrl);
   const modelSel=(key,opts)=>{const s=el('select',{'aria-label':key,id:'bk_'+key});const draw=()=>{s.replaceChildren(...opts().map(([v,t])=>el('option',{value:v,text:t})));s.value=C[key]&&C[key].name?'file':opts()[0][0];};
     const load=async()=>{try{const m=await bakePickModel();if(m)bakeSetModel(key,m);}catch(e){console.warn(e);toast('This model could not be loaded: '+(e.message||e));}draw();info();};
     s.onchange=async()=>{if(s.value==='load'){await load();return;}if(s.value!=='file'){C[key]=null;if(key==='high')C.highMeshes=[];}info();if(key==='low')bakeSyncMesh();};draw();
     const btn=el('button',{class:'btn sm',text:'Load…',id:'bk_'+key+'Load',title:'Load a model file (OBJ, glTF, GLB, FBX), or drop one here'});btn.onclick=load;
-    const wrap=el('div',{class:'bkmodel'},s,btn);if(key==='high')wrap.append(el('button',{class:'btn sm',id:'bk_highAdd',text:'Add mesh…',disabled:bk.busy,onclick:async()=>{try{const m=await bakePickModel();if(m)bakeAddHigh(m);}catch(e){toast('Could not add this mesh: '+(e.message||e));}}}));bakeDropZone(wrap,key);return wrap;};
+    const wrap=el('div',{class:'bkmodel'},s,btn);if(key==='high')wrap.append(el('button',{class:'btn sm',id:'bk_highAdd',text:'Add…',title:'Add another high-poly mesh to bake together',disabled:bk.busy,onclick:async()=>{try{const m=await bakePickModel();if(m)bakeAddHigh(m);}catch(e){toast('Could not add this mesh: '+(e.message||e));}}}));bakeDropZone(wrap,key);return wrap;};
   const lowOpts=()=>[['view','Model in the 3D view ('+bakeViewModel().name+')'],...(C.low?[['file',C.low.name+' · '+C.low.tris.toLocaleString()+' triangles']]:[]),['load','Load a model file…']];
   const highOpts=()=>[['none','None: bake the low-poly on its own'],...(C.high?[['file',C.high.name+' · '+C.high.tris.toLocaleString()+' triangles']]:[]),['load','Load a model file…']];
   const cageOpts=()=>[['none','Push out by the front distance'],...(C.cage?[['file',C.cage.name]]:[]),['load','Load a cage model…']];
@@ -342,7 +346,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
     if(C.cage&&(C.cage.verts!==L.verts||C.cage.tris!==L.tris))bits.push('The cage must be the low-poly pushed outwards: same vertices and triangles ('+L.verts+' / '+L.tris+'). This one does not match.');
     if(C.match){const lp=new Set((L.partNames||[]).map(partBase)),hp=new Set(((C.high||{}).partNames||[]).map(partBase));const both=[...lp].filter(x=>hp.has(x));
       bits.push(both.length?'Matching '+both.length+' part'+(both.length>1?'s':'')+' by name: '+both.slice(0,6).join(', ')+(both.length>6?'…':'')+'.':'No part names match between the models (use names like “crate_low” and “crate_high”).');}
-    bits.push('Bakes at the document size, '+doc.w+' × '+doc.h+'.');inf.textContent=bits.join(' ');};
+    inf.textContent=bits.join(' ');};
   const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:C[key],fmt,onInput:v=>{C[key]=v;}}).el;
   const on=k=>chk('bk_'+k,'Bake '+BAKE_NAMES[k].toLowerCase(),!!C.kinds[k],v=>{C.kinds[k]=v;tabs.replaceWith(tabs=tabBar());const m=document.getElementById('bkm_'+k);if(m)m.checked=v;});
   const note=t=>el('p',{class:'note',text:t});
@@ -354,10 +358,9 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
   const tabPage=()=>{const T=C.tab,pg=el('div',{class:'dlg-grid bktab',id:'bkTab_'+T});
     if(T==='general')pg.append(el('div',{class:'sub',text:'Size'}),bakeSizeSeg(),
       makeSlider({id:'bkFront',label:'Front',min:0,max:20,step:.1,value:C.front,fmt:v=>v.toFixed(1)+'%',onInput:v=>{C.front=v;bakeCageDirty();}}).el,S('bkBack','Back','back',0,20,.1,v=>v.toFixed(1)+'%'),
-      chk('bkAvg','Average ray directions (no gaps at hard edges)',C.average,v=>{C.average=v;bakeCageDirty();}),
+      chk('bkAvg','Average ray directions',C.average,v=>{C.average=v;bakeCageDirty();}),
       el('div',{class:'sub',text:'Anti-aliasing'}),seg([[1,'1×'],[2,'4×'],[4,'16×']],C.ss,v=>{C.ss=v;},'Anti-aliasing'),S('bkPad','Padding','pad',0,64,1,v=>v+'px'),
-      el('div',{class:'sub',text:'Send to the document as'}),seg([['layers','Layers'],['maps','Maps only']],C.sendAs==='maps'?'maps':'layers',v=>{C.sendAs=v;},'Send as'),
-      note(C.sendAs==='maps'?'':'Layers: each bake is also a layer in the base colour, so you can blend them (curvature on Overlay over AO). AO, curvature and height go into their own maps too.'),
+      el('div',{class:'sub',text:'Send to the document as',title:'Layers: each bake is also a layer in the base colour, so you can blend them (curvature on Overlay over AO). AO, curvature and height go into their own maps too.'}),seg([['layers','Layers'],['maps','Maps only']],C.sendAs==='maps'?'maps':'layers',v=>{C.sendAs=v;},'Send as'),
       el('div',{class:'chips'},chk('bkAuto','Send results automatically',C.autoSend,v=>{C.autoSend=v;}),chk('bkRepl','Replace the last baked layers',C.replace,v=>{C.replace=v;})));
     if(T==='normal')pg.append(on('normal'),note('Tangent-space normal, OpenGL style (green up). For engines that want DirectX, flip green when exporting (File › Export textures).'));
     if(T==='ao')pg.append(on('ao'),S('bkRays','Rays','rays',8,256,8,v=>String(v)),S('bkAoD','Reach','aoDist',1,100,1,v=>v+'%'),S('bkAoS','Spread','aoSpread',.1,1,.05,pct),
@@ -381,37 +384,40 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
   /* (0.28, Kenn) every map to bake in one list; Alt + click keeps only that one, again flips (ui/ticks.js) */
   const BK_LIST=['normal','ao','curv','height','thick','wnormal','position','id'];
   const list=()=>el('div',{class:'chips bklist',id:'bkList',title:'Alt + click: only this one. Alt + click again: all the others.'},...BK_LIST.map(k=>chk('bkm_'+k,BAKE_NAMES[k],!!C.kinds[k],v=>{C.kinds[k]=v;tabs.replaceWith(tabs=tabBar());page.replaceWith(page=tabPage());})));
-  const go=el('button',{class:'btn primary',id:'bkGo',text:'Bake'});
+  const go=bakeGoButton();
   go.onclick=()=>{if(bk.busy){if(bk.prog)bk.prog.cancelled=true;return;}const L=bkLow();const ks=Object.keys(C.kinds).filter(k=>C.kinds[k]);if(!ks.length){toast('Pick at least one map.');return;}if(C.perMat!==false&&bkMats(L))runBakeSets(L,ks);else{bk.byMat=null;runBake(L,ks);}};
   const prog=el('div',{id:'bkProg',hidden:true},el('p',{class:'note'}),el('div',{class:'bakebar'},el('div')));
-  box.append(el('p',{class:'note',text:'Drop model files here: names ending in _low, _high and _cage go to the right place.'}),row('Low-poly',modelSel('low',lowOpts)),row('High-poly',modelSel('high',highOpts)),bakeHighList(),row('Cage',modelSel('cage',cageOpts)),
-    chk('bkMatch','Match parts by name (“_low” bakes only against its “_high”)',C.match,v=>{C.match=v;info();}),
-    el('div',{class:'chips'},chk('bkShowCage','Show the cage on the model',bk.showCage,v=>{bk.showCage=v;v3.dirty=true;requestRender();})),
-    ...(C.high?[row('Show high-poly',(()=>{const g=seg([['off','Off'],['over','See-through'],['only','Only']],bk.showHigh||'off',v=>{bk.showHigh=v;v3.dirty=true;requestRender();},'Show the high-poly');g.id='bkShowHigh';return g;})())]:[]),
-    el('div',{class:'sub',text:'Maps to bake'}),list(),tabs,page,
-    bkMats(bkLow())?chk('bkPerMat','Bake each material separately ('+bkMats(bkLow()).length+' materials: one set of maps per texture set)',C.perMat!==false,v=>{C.perMat=v;}):null,
+  /* (0.52, Kenn) two columns so it all fits without scrolling: models, maps and sending on the left, the settings of each map on the right */
+  const colA=el('div',{class:'bkcol',id:'bkColA'}),colB=el('div',{class:'bkcol',id:'bkColB'});box.append(el('div',{class:'bkcols'},colA,colB));
+  colA.append(el('div',{class:'sub',text:'Models',title:'Drop model files on the panel: names ending in _low, _high and _cage go to the right place.'}),row('Low-poly',modelSel('low',lowOpts)),row('High-poly',modelSel('high',highOpts)),bakeHighList(),row('Cage',modelSel('cage',cageOpts)),
+    el('div',{class:'chips'},chk('bkMatch','Match parts by name',C.match,v=>{C.match=v;info();}),chk('bkShowCage','Show the cage',bk.showCage,v=>{bk.showCage=v;v3.dirty=true;requestRender();})),
+    ...(C.high?[row('High-poly view',(()=>{const g=seg([['off','Off'],['over','See-through'],['only','Only']],bk.showHigh||'off',v=>{bk.showHigh=v;v3.dirty=true;requestRender();},'Show the high-poly');g.id='bkShowHigh';return g;})())]:[]),
+    inf,
+    el('div',{class:'sub',text:'Maps to bake'}),list(),
+    bkMats(bkLow())?chk('bkPerMat','Bake each material separately ('+bkMats(bkLow()).length+')',C.perMat!==false,v=>{C.perMat=v;}):null,
     bkMats(bkLow())&&C.perMat!==false?bkMatEyes(C):null,
     bk.byMat?row('Material',(()=>{const s=el('select',{id:'bkMat','aria-label':'Material'},...Object.keys(bk.byMat).map(n=>el('option',{value:n,text:n})));s.value=bk.matShow;s.onchange=()=>bakeShowMat(s.value);return s;})()):null,
-    bakeSendBox(),
-    inf);
+    bakeSendBox().valueOf());
+  colA.replaceChildren(...[...colA.childNodes].filter(n=>n.nodeType!==3||n.textContent!=='null'));
+  colB.append(el('div',{class:'sub',text:'Settings'}),tabs,page);
   box.prepend(bakeActionBar(go,prog));bakeSendSync();
   info();
   /* what to look at */
   const have=Object.keys(bk.res).filter(k=>k!=='mcurv'&&k!=='gcurv');
   if(have.length||bk.maps.skew||bk.maps.offset){const opts=[['material','Material (lit)'],...have.map(k=>[k,k==='curv'?'Curvature':BAKE_NAMES[k]]),...Object.keys(BK_PAINT).filter(k=>bk.maps[k]).map(k=>[k,BK_PAINT[k].name+' map'])];
     const s=el('select',{id:'bkShow','aria-label':'Show'},...opts.map(([v,t])=>el('option',{value:v,text:t})));s.value=opts.some(o=>o[0]===bk.show)?bk.show:'material';
-    s.onchange=()=>{bk.show=s.value;bk.dirty=true;requestRender();};box.append(row('Show',s),...(bk.res.normal?[el('button',{class:'btn',id:'bkCompare',text:'Compare with a normal map…',title:'Pick a normal map made elsewhere (Marmoset…) and see how far the baked one is from it',onclick:bakeCompare})]:[]),el('p',{class:'note',text:'C steps through them on the model (Shift+C backwards).'}));
-    if(bk.show==='material')box.append(el('div',{class:'chips'},chk('bkDocBase','Use the document’s base colour on the model',bk.docBase,v=>{bk.docBase=v;v3.mapsDirty=true;bk.dirty=true;requestRender(true);})));}
-  if(bk.stale.size)box.append(el('p',{class:'note warn',text:[...bk.stale].map(k=>BAKE_NAMES[k]).join(' and ')+' will update on the next full bake.'}));
+    s.onchange=()=>{bk.show=s.value;bk.dirty=true;requestRender();};colA.append(row('Show',s),...(bk.res.normal?[el('button',{class:'btn',id:'bkCompare',text:'Compare with a normal map…',title:'Pick a normal map made elsewhere (Marmoset…) and see how far the baked one is from it',onclick:bakeCompare})]:[]),el('p',{class:'note',text:'C steps through the maps on the model.'}));
+    if(bk.show==='material')colA.append(el('div',{class:'chips'},chk('bkDocBase','Use the document’s base colour',bk.docBase,v=>{bk.docBase=v;v3.mapsDirty=true;bk.dirty=true;requestRender(true);})));}
+  if(bk.stale.size)colA.append(el('p',{class:'note warn',text:[...bk.stale].map(k=>BAKE_NAMES[k]).join(' and ')+' will update on the next full bake.'}));
   /* fixing */
-  box.append(el('div',{class:'sub',text:'Fix the bake'}),seg([['off','Off'],['skew','Skew'],['offset','Offset']],bk.paint||'off',v=>{bk.paint=v==='off'?null:v;
+  colB.append(el('div',{class:'sub',text:'Fix the bake'}),seg([['off','Off'],['skew','Skew'],['offset','Offset']],bk.paint||'off',v=>{bk.paint=v==='off'?null:v;
       if(bk.paint){bakeMapT(bk.paint,true);v3.paintOn=true;if(!['brush','erase'].includes(ui.tool))setTool('brush');}bk.dirty=true;buildBakePanel();if(v3.on)build3dPane();requestRender();},'Paint fixes'));
-  if(bk.paint==='skew')box.append(el('p',{class:'note',text:'Paint black over details that come out smeared or leaning (screws, bolts, panel lines): the rays there shoot straight out of the surface. White keeps the averaged direction, which avoids gaps at hard edges. The Eraser paints white.'}));
-  if(bk.paint==='offset')box.append(el('p',{class:'note',text:'Grey keeps Front and Back. Lighter reaches further (for parts of the high-poly that were missed); darker reaches less far (for detail leaking in from nearby parts). The Eraser paints grey.'}));
-  if(bk.paint){const vk=bk.paint,val=bk.val||(bk.val={skew:0,offset:.85});box.append(makeSlider({id:'bkPaintVal',label:'Paint',min:0,max:1,step:.01,value:val[vk],fmt:v=>v<.02?'black':v>.98?'white':Math.round(v*100)+'%',onInput:v=>{val[vk]=v;}}).el);}
-  if(bk.paint)box.append(el('p',{class:'note',text:'Paint on the model in the 3D view (Alt+drag turns it) or on the map on the left. After each stroke the bake updates where you painted.'}));
+  if(bk.paint==='skew')colB.append(el('p',{class:'note',text:'Paint black over details that come out smeared or leaning (screws, bolts, panel lines): the rays there shoot straight out of the surface. White keeps the averaged direction, which avoids gaps at hard edges. The Eraser paints white.'}));
+  if(bk.paint==='offset')colB.append(el('p',{class:'note',text:'Grey keeps Front and Back. Lighter reaches further (for parts of the high-poly that were missed); darker reaches less far (for detail leaking in from nearby parts). The Eraser paints grey.'}));
+  if(bk.paint){const vk=bk.paint,val=bk.val||(bk.val={skew:0,offset:.85});colB.append(makeSlider({id:'bkPaintVal',label:'Paint',min:0,max:1,step:.01,value:val[vk],fmt:v=>v<.02?'black':v>.98?'white':Math.round(v*100)+'%',onInput:v=>{val[vk]=v;}}).el);}
+  if(bk.paint)colB.append(el('p',{class:'note',text:'Paint on the model in the 3D view (Alt+drag turns it) or on the map on the left. After each stroke the bake updates where you painted.'}));
   const bt=(t,f,dis)=>{const b=el('button',{class:'btn sm',text:t});b.disabled=!!dis;b.onclick=f;return b;};
-  box.append(el('div',{class:'row wrap'},bt('Estimate offset',bakeEstimateOffset,!C.high||bk.busy),bt('Clear skew',()=>bakeClearMap('skew'),!bk.maps.skew),bt('Clear offset',()=>bakeClearMap('offset'),!bk.maps.offset)));
+  colB.append(el('div',{class:'row wrap'},bt('Estimate offset',bakeEstimateOffset,!C.high||bk.busy),bt('Clear skew',()=>bakeClearMap('skew'),!bk.maps.skew),bt('Clear offset',()=>bakeClearMap('offset'),!bk.maps.offset)));
   bakeProgUI();}
 
 /* Keep the file coordinates of every high mesh; normalising each import separately must not move it. */
@@ -428,6 +434,6 @@ function bakeMergeHigh(list){if(list.length===1)return list[0];if(!list.length)r
     vo+=n;to+=t;}
   for(let i=0;i<r.pos.length;i+=3)r.radius=Math.max(r.radius,Math.hypot(r.pos[i],r.pos[i+1],r.pos[i+2]));return r;}
 function bakeAddHigh(m){if(bk.busy){toast('Wait for the bake to finish.');return;}const list=(bakeCfg.highMeshes|| (bakeCfg.high?[bakeCfg.high]:[])).concat(m);const high=bakeMergeHigh(list);bakeCfg.highMeshes=list;bakeCfg.high=high;bk.hgKey=null;bkHighViewFree();bakeRefresh();toast('Added '+m.name+' · '+list.length+' high-poly meshes.');}
-function bakeHighList(){const box=el('div',{class:'highmeshes',id:'bkHighMeshes'}),list=bakeCfg.highMeshes||(bakeCfg.high?[bakeCfg.high]:[]);
+function bakeHighList(){const box=el('div',{class:'highmeshes',id:'bkHighMeshes'}),list=bakeCfg.highMeshes||(bakeCfg.high?[bakeCfg.high]:[]);box.hidden=list.length<2;
   list.forEach((m,i)=>box.append(el('div',{class:'highmesh'},el('span',{text:m.name+' · '+m.tris.toLocaleString()+' triangles',title:m.name}),el('button',{class:'btn sm',text:'×','aria-label':'Remove high-poly '+m.name,disabled:bk.busy,onclick:()=>{if(bk.busy)return;const next=list.filter((_,j)=>j!==i);const high=bakeMergeHigh(next);bakeCfg.highMeshes=next;bakeCfg.high=high;bk.hgKey=null;bkHighViewFree();bakeRefresh();}}))));return box;}
 

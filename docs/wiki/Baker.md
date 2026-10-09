@@ -22,6 +22,8 @@ The **Bake** tab (top right, or **Maps › Bake from high poly…**) copies the 
 ## The top bar
 The **Bake** button is big and bold at the top of the panel and stays in view while you scroll. **Send to Paint**, **Send to 3D Paint** and **Export…** sit right under it (they switch on once there is a bake and something is ticked). The ticks for which maps to send are further down under *Maps to send or export*.
 
+The Bake panel is one wide panel in two columns, so everything is in view without scrolling on a normal screen: models, maps to bake, sending and the Show list on the left, and the settings of each map on the right. **History** is only a tab beside it. If you make the panel narrower, the columns stack.
+
 ## Settings: one tab per map
 Under the model rows, the tabs hold the settings. A dot marks the maps that will be baked; tick **Bake …** at the top of a tab to turn a map on or off.
 - **General:** Front, Back, Average ray directions, Anti-aliasing, Padding, and how bakes are sent to the document (below).
@@ -138,4 +140,4 @@ Bakes are stored as OpenGL normals, like everything else in the app. Pick the en
 
 You can rotate the viewport while a bake runs. Bake pauses restore the shared renderer’s clipping and drawing state before handing control back to the view, preventing black flashes and clipped frames.
 
-Use **Add mesh…** beside High-poly to add another file. Each file keeps its original position in the model. Remove individual files with × in the list. **Load…** replaces the high-poly set; dropping another `_high` file adds it.
+Use **Add…** beside High-poly to add another file. Each file keeps its original position in the model. Remove individual files with × in the list. **Load…** replaces the high-poly set; dropping another `_high` file adds it.
