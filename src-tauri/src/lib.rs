@@ -49,6 +49,8 @@ pub fn run() {
                     })
                     .build()?;
                 let _ = w.set_title("Gouache Studio");
+                // TEST BUILD ONLY: open the web console at start-up to show any error
+                w.open_devtools();
                 altmenu::install(&w);
             }
             Ok(())
