@@ -1,3 +1,8 @@
+# Gouache Studio 0.51.30
+
+- 3D Paint texture sets can switch between Metal/Roughness and Specular/Glossiness. Choosing Specular / Glossiness in the Shader panel converts the set's maps and switches the viewer shader. Undo and redo cover the switch, and switching back restores the set's material.
+- Material preview and sliders follow Specular and Glossiness on Spec/Gloss sets.
+
 # Gouache Studio 0.51.29
 
 - On Spec/Gloss 3D Paint projects the material preview now follows the Specular colour and Glossiness, so changes show straight away.

@@ -1,3 +1,9 @@
+## 0.51.30
+
+- A 3D Paint texture set can now be converted between Metal/Roughness and Specular/Glossiness. Choosing Specular / Glossiness in the Shader panel converts the set's maps and switches the viewer to the Spec/Gloss shader. Undo and redo cover the switch, and switching back restores the set aside.
+- Choosing Spec/Gloss in the Shader panel no longer leaves the viewer on the Spec/Gloss shader while the maps are still Metal/Roughness.
+- Material preview and sliders follow Specular and Glossiness on Spec/Gloss sets.
+
 ## 0.51.29
 
 - The material preview in the Material editor now follows Specular colour and Glossiness on Spec/Gloss 3D Paint projects, so edits show on screen straight away.
