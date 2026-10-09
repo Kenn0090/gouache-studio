@@ -4,3 +4,5 @@ dist-web/
 src-tauri/target/
 src-tauri/gen/schemas/
 *.log
+
+.claude/settings.local.json
