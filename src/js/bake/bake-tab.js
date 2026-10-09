@@ -283,21 +283,50 @@ function bakeDrawCage(common){if(!bk.showCage||ui.mode!=='bake')return;const g=b
 function bakeSizeSeg(){const ps=paintDocSize(),opts=[[0,'Painting ('+ps[0]+(ps[0]===ps[1]?'':'×'+ps[1])+')'],[512,'512'],[1024,'1K'],[2048,'2K'],[4096,'4K'],[8192,'8K']];
   const g=seg(opts,bakeCfg.size||0,v=>{if(bk.busy){toast('Wait for the bake to finish.');buildBakePanel();return;}bakeCfg.size=v||null;bakeReset();const bs=bakeSize();tabDocResize(bs[0],bs[1],'Bake');bk.dirty=true;buildBakePanel();requestRender(true);},'Bake size');g.classList.add('themeseg');g.id='bkSize';return g;}
 /* which maps to send or export, and the buttons */
+function bakeSendOff(){const have=bakeSendable(),t=bakeCfg.send||{},on=k=>t[k]!==undefined?t[k]:!(k==='curvEdge'||k==='curvCrease');return bk.busy||!have.length||!have.some(on);}
+/* (0.52) the three buttons sit under Bake: they are off while a bake runs or nothing is ticked */
+function bakeSendSync(){const off=bakeSendOff();for(const id of ['bkSend','bkSendP3','bkExport']){const b=document.getElementById(id);if(b)b.disabled=off;}}
 function bakeSendBox(){const box=el('div',{class:'dlg-grid',id:'bkSendBox'}),have=bakeSendable(),t=bakeCfg.send||(bakeCfg.send={});
-  box.append(el('div',{class:'sub',text:'Send to the painting, or export'}));
+  box.append(el('div',{class:'sub',text:'Maps to send or export'}));
   if(!have.length){box.append(el('p',{class:'note',text:'Bake first: the maps you bake can then be ticked here.'}));return box;}
   const on=k=>t[k]!==undefined?t[k]:!(k==='curvEdge'||k==='curvCrease');
-  const none=()=>!have.some(on),send=el('button',{class:'btn',id:'bkSend',text:'Send to Paint',title:'Add the ticked maps to the painting as layers',disabled:bk.busy||none(),onclick:bakeSend}),
-    exp=el('button',{class:'btn',id:'bkExport',text:'Export…',title:'Save the ticked maps as image files',disabled:bk.busy||none(),onclick:bakeExport});
-  box.append(el('div',{class:'chips'},...have.map(k=>chk('bks_'+k,BAKE_NAMES[k],on(k),v=>{t[k]=v;send.disabled=exp.disabled=bk.busy||none();const p=document.getElementById('bkSendP3');if(p)p.disabled=send.disabled;}))),
-    el('div',{class:'row wrap'},send,el('button',{class:'btn',id:'bkSendP3',text:'Send to 3D Paint',title:'Send the low-poly and the ticked maps to 3D Paint: each material’s maps to its own texture set',disabled:bk.busy||none(),onclick:bakeSendP3}),exp),
+  box.append(el('div',{class:'chips'},...have.map(k=>chk('bks_'+k,BAKE_NAMES[k],on(k),v=>{t[k]=v;bakeSendSync();}))),
     chk('bkP3Layers','3D Paint: also add them as layers (they always become the set’s mesh maps)',!!bakeCfg.p3Layers,v=>{bakeCfg.p3Layers=v;}),
     el('p',{class:'note',text:'They arrive as plain layers (no folders), scaled to the painting when its size differs. In the browser, Export gives a zip.'}));
   return box;}
+/* (0.52, Kenn) one bar at the top that stays in view: a big Bake button, the progress, and Send to Paint · Send to 3D Paint · Export */
+function bakeActionBar(go,prog){return el('div',{class:'bkbar',id:'bkBar'},go,prog,
+  el('div',{class:'bksend'},el('button',{class:'btn',id:'bkSend',text:'Send to Paint',title:'Add the ticked maps to the painting as layers',onclick:bakeSend}),
+    el('button',{class:'btn',id:'bkSendP3',text:'Send to 3D Paint',title:'Send the low-poly and the ticked maps to 3D Paint: each material’s maps to its own texture set',onclick:bakeSendP3}),
+    el('button',{class:'btn',id:'bkExport',text:'Export…',title:'Save the ticked maps as image files',onclick:bakeExport})));}
+
+/* ---- (0.52) Compare: another program's normal map (Marmoset…) against the baked one ----
+   Every pixel gets the angle between the two normals; white = 10° or more. Both green directions are tried and the closer one is used. */
+const FS_NCMP=`uniform sampler2D uA; uniform sampler2D uB; uniform int uFlip; uniform int uStat;
+void main(){ vec2 uv=gl_FragCoord.xy/vec2(textureSize(uA,0)); vec3 a=normalize(texture(uA,uv).rgb*2.0-1.0+vec3(1e-6)), b=texture(uB,uv).rgb*2.0-1.0; if(uFlip==1) b.y=-b.y; b=normalize(b+vec3(1e-6));
+  float deg=degrees(acos(clamp(dot(a,b),-1.0,1.0))); float off=max(degrees(acos(clamp(a.z,-1.0,1.0))),degrees(acos(clamp(b.z,-1.0,1.0))));
+  o=uStat==1?vec4(clamp(deg/10.0,0.0,1.0),clamp(off/10.0,0.0,1.0),0.0,1.0):vec4(vec3(clamp(deg/10.0,0.0,1.0)),1.0); }`;
+let P_NCMP=null;
+function bakeCompareStats(d){let sum=0,n=0,u1=0,u2=0,u5=0;for(let i=0;i<d.length;i+=4){if(d[i+1]<5)continue;const a=d[i]/255*10;sum+=a;n++;if(a<1)u1++;if(a<2)u2++;if(a<5)u5++;}
+  return {n,mean:n?sum/n:0,u1:n?u1/n:1,u2:n?u2/n:1,u5:n?u5/n:1};}
+async function bakeCompare(){const R=bk.res&&bk.res.normal;if(!R){toast('Bake the normal map first.');return;}
+  const fs=await pickFiles('image/*',false,'A normal map',['png','jpg','jpeg','webp','tga','tif','tiff','bmp']),f=fs[0];if(!f)return;
+  let t;try{t=await fileTarget(f);}catch(e){toast('Could not read '+f.name+': '+(e.message||e));return;}
+  try{if(!P_NCMP)P_NCMP=program(FS_NCMP);gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    const W=R.w,H=R.h,tries=[0,1].map(fl=>{const o=makeTarget(W,H,8,false),q=makeTarget(W,H,8,false);run(P_NCMP,q,{uA:R.tex,uB:t.tex,uFlip:{int:fl},uStat:{int:1}});const st=bakeCompareStats(readRGBA8(q));disposeTarget(q);run(P_NCMP,o,{uA:R.tex,uB:t.tex,uFlip:{int:fl},uStat:{int:0}});return {fl,o,st};});
+    tries.sort((a,b)=>a.st.mean-b.st.mean);const best=tries[0];for(const x of tries)if(x!==best)disposeTarget(x.o);
+    const st=best.st,pc=v=>Math.round(v*100)+'%';
+    withPaintDoc(()=>{const L=newLayerObj('Normal difference (white = 10° or more)');copyScaled(best.o,ensureMapTarget(L,'base'));L.baked=true;insertNode(L,doc.root);syncTargets();changedAll();renderLayers();});
+    disposeTarget(best.o);
+    const body=el('div',{class:'dlg-grid'},el('p',{class:'note',text:f.name+' against the baked normal map'+(best.fl?' (its green channel points the other way, so it was flipped to compare)':'')+':'}),
+      el('p',{text:'Average difference: '+st.mean.toFixed(2)+'°'}),el('p',{text:'Within 1°: '+pc(st.u1)+' · within 2°: '+pc(st.u2)+' · within 5°: '+pc(st.u5)}),
+      el('p',{class:'note',text:'Counted where either map is not flat. A picture of the difference was added to the painting as a new layer: white is 10° or more.'}));
+    openDialog({title:'Compare normal maps',body,okLabel:'OK',cancelLabel:null});
+  }finally{disposeTarget(t);}}
 
 function bakeProgUI(){const box=$('#bkProg');if(!box)return;const p=bk.prog;
   if(p||bk.regionBusy){box.hidden=false;box.querySelector('.bakebar div').style.width=((p?p.f:0.5)*100).toFixed(1)+'%';box.querySelector('.note').textContent=p?p.msg:'Updating where you painted…';}
-  else box.hidden=true;const b=$('#bkGo');if(b){b.textContent=bk.busy?'Cancel':'Bake';b.classList.toggle('primary',!bk.busy);}}
+  else box.hidden=true;const b=$('#bkGo');if(b){b.textContent=bk.busy?'Cancel':'Bake';b.classList.toggle('primary',!bk.busy);}bakeSendSync();}
 function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChildren();const C=bakeCfg;
   const row=(label,ctrl)=>el('div',{class:'frow'},el('label',{text:label}),ctrl);
   const modelSel=(key,opts)=>{const s=el('select',{'aria-label':key,id:'bk_'+key});const draw=()=>{s.replaceChildren(...opts().map(([v,t])=>el('option',{value:v,text:t})));s.value=C[key]&&C[key].name?'file':opts()[0][0];};
@@ -362,16 +391,16 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
     el('div',{class:'sub',text:'Maps to bake'}),list(),tabs,page,
     bkMats(bkLow())?chk('bkPerMat','Bake each material separately ('+bkMats(bkLow()).length+' materials: one set of maps per texture set)',C.perMat!==false,v=>{C.perMat=v;}):null,
     bkMats(bkLow())&&C.perMat!==false?bkMatEyes(C):null,
-    el('div',{class:'row wrap'},go),
     bk.byMat?row('Material',(()=>{const s=el('select',{id:'bkMat','aria-label':'Material'},...Object.keys(bk.byMat).map(n=>el('option',{value:n,text:n})));s.value=bk.matShow;s.onchange=()=>bakeShowMat(s.value);return s;})()):null,
     bakeSendBox(),
-    prog,inf);
+    inf);
+  box.prepend(bakeActionBar(go,prog));bakeSendSync();
   info();
   /* what to look at */
   const have=Object.keys(bk.res).filter(k=>k!=='mcurv'&&k!=='gcurv');
   if(have.length||bk.maps.skew||bk.maps.offset){const opts=[['material','Material (lit)'],...have.map(k=>[k,k==='curv'?'Curvature':BAKE_NAMES[k]]),...Object.keys(BK_PAINT).filter(k=>bk.maps[k]).map(k=>[k,BK_PAINT[k].name+' map'])];
     const s=el('select',{id:'bkShow','aria-label':'Show'},...opts.map(([v,t])=>el('option',{value:v,text:t})));s.value=opts.some(o=>o[0]===bk.show)?bk.show:'material';
-    s.onchange=()=>{bk.show=s.value;bk.dirty=true;requestRender();};box.append(row('Show',s),el('p',{class:'note',text:'C steps through them on the model (Shift+C backwards).'}));
+    s.onchange=()=>{bk.show=s.value;bk.dirty=true;requestRender();};box.append(row('Show',s),...(bk.res.normal?[el('button',{class:'btn',id:'bkCompare',text:'Compare with a normal map…',title:'Pick a normal map made elsewhere (Marmoset…) and see how far the baked one is from it',onclick:bakeCompare})]:[]),el('p',{class:'note',text:'C steps through them on the model (Shift+C backwards).'}));
     if(bk.show==='material')box.append(el('div',{class:'chips'},chk('bkDocBase','Use the document’s base colour on the model',bk.docBase,v=>{bk.docBase=v;v3.mapsDirty=true;bk.dirty=true;requestRender(true);})));}
   if(bk.stale.size)box.append(el('p',{class:'note warn',text:[...bk.stale].map(k=>BAKE_NAMES[k]).join(' and ')+' will update on the next full bake.'}));
   /* fixing */

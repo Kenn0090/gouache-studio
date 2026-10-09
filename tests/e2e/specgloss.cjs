@@ -33,7 +33,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.wfSwitch('spec','convert'));await W(400);
  let st=await p.evaluate(()=>({wf:__gs.doc.workflow,maps:__gs.doc.maps.join(),groups:__gs.doc.root.children.map(n=>n.name).join('|')}));
  ok(st.wf==='spec'&&st.maps==='base,spec,gloss,height,normal','workflow and maps switched '+JSON.stringify(st));
- ok(/Diffuse \(converted\)/.test(st.groups)&&/Specular \(converted\)/.test(st.groups)&&/Glossiness \(converted\)/.test(st.groups),'one converted group per map');
+ ok(!/converted/.test(st.groups)&&/Layer 2/.test(st.groups),'the layers stay where they are, converted in place '+st.groups);
  const D=[await cpx('base',20,60),await cpx('base',100,60)],S=[await cpx('spec',20,60),await cpx('spec',100,60)],G=await cpx('gloss',100,60);
  ok(D[0][0]<10&&D[1][0]>190,'diffuse: black on metal, red elsewhere '+JSON.stringify(D));
  ok(S[0][0]>180&&S[0][1]<80&&Math.abs(S[1][0]-S[1][2])<4&&S[1][0]>45&&S[1][0]<70,'specular: the red on metal, dark grey elsewhere '+JSON.stringify(S));
@@ -43,10 +43,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(dl(look0[0],look1[0])<14&&dl(look0[1],look1[1])<14,'the material looks the same after switching '+JSON.stringify([look0,look1]));
  await p.screenshot({path:OUT+'sg-switch.png'});
  // back, restoring the layers
- await p.evaluate(()=>__gs.wfSwitch('metal','restore'));await W(400);
+ await p.evaluate(()=>__gs.wfSwitch('metal','convert'));await W(400);
  st=await p.evaluate(()=>({wf:__gs.doc.workflow,maps:__gs.doc.maps.join(),groups:__gs.doc.root.children.map(n=>n.name).join('|')}));
- ok(st.wf==='metal'&&st.maps==='base,rough,metal,height,normal'&&!/converted/.test(st.groups),'restored: back to Metal/Rough, converted groups gone '+JSON.stringify(st));
- const m1=[await cpx('metal',20,60),await cpx('base',100,60),await cpx('rough',100,60)];ok(m1[0][0]>250&&m1[1][0]>190&&Math.abs(m1[2][0]-51)<3,'restored maps are the originals '+JSON.stringify(m1));
+ ok(st.wf==='metal'&&st.maps==='base,rough,metal,height,normal'&&!/converted/.test(st.groups),'back to Metal/Rough '+JSON.stringify(st));
+ const m1=[await cpx('metal',20,60),await cpx('base',100,60),await cpx('rough',100,60)];ok(m1[0][0]>245&&m1[1][0]>185&&Math.abs(m1[1][0]-200)<8&&Math.abs(m1[2][0]-51)<4,'converted back: the maps match the originals '+JSON.stringify(m1));
  // undo / redo the switch
  await p.evaluate(()=>__gs.undo());await W(300);ok(await p.evaluate(()=>__gs.doc.workflow)==='spec','undo goes back to Specular/Gloss');
  await p.evaluate(()=>__gs.undo());await W(300);ok(await p.evaluate(()=>__gs.doc.workflow)==='metal'&&(await cpx('metal',20,60))[0]>250,'undo again: the original document');

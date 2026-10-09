@@ -80,7 +80,7 @@ async function bvhCached(h,build){if(!platform.isDesktop)return build();const T=
   return B;}
 /* the high-poly on the GPU: tree nodes, triangle corners, corner normals and colours.
    Each texture is filled a band of rows at a time from one small buffer, so even a high-poly of
-   tens of millions of triangles needs little memory beyond the model itself; normals and colours
+   tens of millions of triangles needs little memory beyond the model itself; normals (above three million triangles) and colours
    are stored at half precision, and colours only when ID colours are baked */
 function bkBandTex(texels,half,fill){const w=Math.min(BK_TW,Math.max(1,texels)),h=Math.max(1,Math.ceil(texels/BK_TW)),max=gl.getParameter(gl.MAX_TEXTURE_SIZE);
   if(h>max)throw new Error('the high-poly has too many triangles for this graphics card ('+Math.floor(max*BK_TW/3).toLocaleString()+' at most)');
@@ -98,7 +98,8 @@ async function bkHighGPU(h,onStep,needCol){const T=h.idx.length/3;onStep('Sortin
   /* corners: texel k*3+v is corner v of the k-th triangle in tree order */
   const corners=(src,stride,w)=>(b,t0,t1)=>{for(let q=t0;q<t1;q++){const k=(q/3)|0,t=o[k],vi=I[t*3+q-k*3],d=(q-t0)*4;for(let c=0;c<3;c++)b[d+c]=src[vi*stride+c];if(w)b[d+3]=w(t);}};
   const tris=bkBandTex(T*3,false,corners(h.pos,3,t=>h.bakePart?h.bakePart[t]:0));
-  const nrm=bkBandTex(T*3,true,corners(h.nrm,3,null));
+  /* (0.52) normals stay at full precision unless the model is huge: half precision moved flat faces by a hair, enough to flip an 8-bit value */
+  const nrm=bkBandTex(T*3,T>3000000,corners(h.nrm,3,null));
   let col;if(needCol){col=bkBandTex(T*3,true,(b,t0,t1)=>{for(let q=t0;q<t1;q++){const k=(q/3)|0,t=o[k],vi=I[t*3+q-k*3],d=(q-t0)*4;
       if(h.col){b[d]=h.col[vi*4];b[d+1]=h.col[vi*4+1];b[d+2]=h.col[vi*4+2];}else{const c=h.triCol&&h.triCol.length?[h.triCol[t*3],h.triCol[t*3+1],h.triCol[t*3+2]]:partCol(h.triPart?h.triPart[t]:0);b[d]=c[0];b[d+1]=c[1];b[d+2]=c[2];}b[d+3]=1;}});}
   else col=bkBandTex(1,true,()=>{});
@@ -107,7 +108,9 @@ const partCol=(()=>{const cache={};return p=>cache[p]||(cache[p]=idColor('part '
 function bkFreeHigh(g){if(!g)return;for(const k of ['nodes','tris','nrm','col'])gl.deleteTexture(g[k]);}
 
 /* ---- shaders ---- */
-const BK_TRACE=`uniform highp sampler2D uNodes; uniform highp sampler2D uTris; uniform highp sampler2D uTN; uniform highp sampler2D uTC;
+/* a hair of slack at triangle edges: a ray exactly between two triangles must hit one of them, or it leaves a speck */
+const BK_TRACE=`const float BK_EDGE=2e-5;
+uniform highp sampler2D uNodes; uniform highp sampler2D uTris; uniform highp sampler2D uTN; uniform highp sampler2D uTC;
 int bkPart=-1; int bkSkip=-1;
 vec4 bkF(highp sampler2D s,int i){ return texelFetch(s,ivec2(i%${BK_TW},i/${BK_TW}),0); }
 bool bkBox(vec3 o,vec3 inv,vec3 a,vec3 b,float tmax){ vec3 t0=(a-o)*inv,t1=(b-o)*inv; vec3 lo=min(t0,t1),hi=max(t0,t1);
@@ -119,8 +122,8 @@ int bkTrace(vec3 o,vec3 d,float tmax,bool any,out float tHit,out vec2 bc){ int s
   while(sp>0&&guard<40000){ guard++; int ni=st[--sp]; vec4 a=bkF(uNodes,ni*2),b=bkF(uNodes,ni*2+1); if(!bkBox(o,inv,a.xyz,b.xyz,tHit)) continue;
     if(b.w<0.0){ int e=int(-b.w+0.5),c=e%8,s=int(a.w+0.5)+(e/8)*1048576;
       for(int k=0;k<4;k++){ if(k>=c) break; int t=s+k; if(t==bkSkip) continue; vec4 w0=bkF(uTris,t*3); if(bkPart>=0&&int(w0.w+0.5)!=bkPart) continue; vec3 v0=w0.xyz,v1=bkF(uTris,t*3+1).xyz,v2=bkF(uTris,t*3+2).xyz;
-        vec3 e1=v1-v0,e2=v2-v0,p=cross(d,e2); float det=dot(e1,p); if(abs(det)<1e-12) continue; float id=1.0/det; vec3 s0=o-v0; float u=dot(s0,p)*id; if(u<0.0||u>1.0) continue;
-        vec3 q=cross(s0,e1); float v=dot(d,q)*id; if(v<0.0||u+v>1.0) continue; float tt=dot(e2,q)*id; if(tt>1e-6&&tt<tHit){ tHit=tt; hit=t; bc=vec2(u,v); if(any) return hit; } } }
+        vec3 e1=v1-v0,e2=v2-v0,p=cross(d,e2); float det=dot(e1,p); if(abs(det)<1e-12) continue; float id=1.0/det; vec3 s0=o-v0; float u=dot(s0,p)*id; if(u<-BK_EDGE||u>1.0+BK_EDGE) continue;
+        vec3 q=cross(s0,e1); float v=dot(d,q)*id; if(v<-BK_EDGE||u+v>1.0+BK_EDGE) continue; float tt=dot(e2,q)*id; if(tt>1e-6&&tt<tHit){ tHit=tt; hit=t; bc=vec2(u,v); if(any) return hit; } } }
     else if(sp<62){ int r=int(b.w+0.5),ax=int(a.w+0.5); if(d[ax]<0.0){ st[sp++]=ni+1; st[sp++]=r; } else { st[sp++]=r; st[sp++]=ni+1; } } }
   return hit; }
 vec3 bkNrm(int t,vec2 bc){ return normalize(bkF(uTN,t*3).xyz*(1.0-bc.x-bc.y)+bkF(uTN,t*3+1).xyz*bc.x+bkF(uTN,t*3+2).xyz*bc.y); }
@@ -222,7 +225,11 @@ void main(){ ivec2 q=(ivec2(gl_FragCoord.xy)-ivec2(uOff))*uSS; vec4 acc=vec4(0);
 const BK_FS_DIL=`uniform sampler2D uSrc; void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); vec4 c=texelFetch(uSrc,p,0); if(c.a>0.0){ o=c; return; }
   vec4 acc=vec4(0); for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){ ivec2 q=clamp(p+ivec2(x,y),ivec2(0),s-1); vec4 n=texelFetch(uSrc,q,0); if(n.a>0.0) acc+=vec4(n.rgb/n.a,1.0); }
   o=acc.a>0.0?vec4(acc.rgb/acc.a,1.0):vec4(0); }`;
-const BK_FS_FIN=`uniform sampler2D uSrc; uniform vec4 uEmpty; void main(){ vec4 c=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0); o=c.a>0.0?vec4(c.rgb/c.a,1.0):uEmpty; }`;
+/* (0.52) a baked normal map is renormalised after the samples are averaged, and a flat surface is snapped to exactly flat:
+   128 sits on the rounding edge of 8 bits, so the faintest float error used to flip a flat panel between 127 and 128 in patches */
+const BK_FS_FIN=`uniform sampler2D uSrc; uniform vec4 uEmpty; uniform int uNorm; void main(){ vec4 c=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0); if(c.a<=0.0){ o=uEmpty; return; } vec3 v=c.rgb/c.a;
+  if(uNorm==1){ vec3 n=v*2.0-1.0; float l=length(n); if(l>1e-4) n/=l; else n=vec3(0.0,0.0,1.0); if(abs(n.x)<0.0013) n.x=0.0; if(abs(n.y)<0.0013) n.y=0.0; n=normalize(vec3(n.xy,max(n.z,1e-3))); v=n*0.5+0.5; }
+  o=vec4(v,1.0); }`;
 let BKP=null;
 function bkPrograms(){if(BKP)return BKP;const mk=(vs,fs,head)=>{const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,vs));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,head?fs:FS_HEAD+fs));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return {p,locs:{}};};
   BKP={uv:mk(BK_VS_UV,BK_FS_UV,true),hit:mk(VS_FULL,FS_HEAD.replace('out vec4 o;','')+'layout(location=2) out vec4 o;\n'+BK_FS_HIT,true),out:mk(VS_FULL,BK_FS_OUT),down:mk(VS_FULL,BK_FS_DOWN),dil:mk(VS_FULL,BK_FS_DIL),fin:mk(VS_FULL,BK_FS_FIN),gcurv:mk(VS_FULL,BK_FS_GCURV)};return BKP;}
@@ -269,7 +276,9 @@ const nextTick=()=>new Promise(r=>setTimeout(r,0));
 function bkIdleState(){gl.disable(gl.SCISSOR_TEST);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.disable(gl.BLEND);gl.depthMask(true);gl.colorMask(true,true,true,true);gl.bindVertexArray(vao);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,cv.width,cv.height);}
 async function bkYield(){bkIdleState();await nextTick();bkIdleState();}
 /* bake: low and high (already in the same space), settings; returns {kind: target} at size W×H */
-async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.sizeH||o.size,SS=o.ss,FW=W*SS,FH=H*SS,TILE=Math.min(1024,Math.max(FW,FH));
+/* anti-aliasing steps down when the oversized image would be too big for the graphics card */
+function bkSamples(ss,size){let n=Math.max(1,Math.min(4,ss|0||1));while(n>1&&size*n>16384)n--;return n;}
+async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.sizeH||o.size,SS=bkSamples(o.ss,Math.max(W,H)),FW=W*SS,FH=H*SS,TILE=Math.min(1024,Math.max(FW,FH));
   /* low-poly only: rays find the low-poly itself (a hair's breadth away), so AO, thickness, ID and the rest work the same */
   const self=false,solo=!high;if(solo){o=Object.assign({},o,{front:.003,back:.003,cage:null,average:false,match:false});low.vertCurv=meshCurvature(low);}
   const hg=o.hg||await bkHighGPU(high||low,progress.step,o.kinds.includes('id'));if(progress.cancelled){if(!o.hg)bkFreeHigh(hg);return null;}
@@ -320,6 +329,6 @@ async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.si
     for(let i=keep&&o.pad>0?1:0;i<o.pad;i++){run(P.dil,b,{uSrc:a.tex});const t=a;a=b;b=t;if(i%16===15)await bkYield();}
     const fin=makeTarget(W,H,k==='height'||k==='position'?16:outDepth,false);
     const empty=k==='normal'?[.5,.5,1,1]:k==='height'||k==='gcurv'?[.5,.5,.5,1]:k==='ao'||k==='thick'?[1,1,1,1]:[0,0,0,1];
-    run(P.fin,fin,{uSrc:a.tex,uEmpty:empty});if(a!==acc[k])disposeTarget(a);if(b!==acc[k])disposeTarget(b);results[k]=fin;}
+    run(P.fin,fin,{uSrc:a.tex,uEmpty:empty,uNorm:{int:k==='normal'?1:0}});if(a!==acc[k])disposeTarget(a);if(b!==acc[k])disposeTarget(b);results[k]=fin;}
   return results;}
   finally{if(!o.acc)for(const k in acc)if(acc[k].tex)disposeTarget(acc[k]);bkFreeMRT(G);bkFreeMRT(HB);bkFreeMRT(OUT);if(!o.hg)bkFreeHigh(hg);bkFreeLow(lg);bkIdleState();}}

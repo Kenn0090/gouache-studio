@@ -8,8 +8,14 @@ function matBuiltins(){return (typeof P3_MATERIALS!=='undefined'?P3_MATERIALS:[]
 async function matLoad(){if(matLib.loaded)return;matLib.loaded=true;try{const all=await store.all('materials');matLib.list=(all||[]).sort((a,b)=>(a.t||0)-(b.t||0));}catch(e){matLib.list=[];}renderMats();}
 /* a record's images as graphics-card textures (made when first needed) */
 function matRecTargets(rec){if(rec._t)return rec._t;const o={};for(const k in rec.imgs||{}){const im=rec.imgs[k],t=makeTarget(im.w,im.h,8,true);writeRegion(t,0,0,im.w,im.h,im.data);o[k]=t;}return rec._t=o;}
-function matApply(rec){const f=rec.fill,maps={};for(const k in f.maps)maps[k]=Object.assign({},f.maps[k]);
-  const L=cmdNewFillLayer({name:rec.name,maps,proj:f.proj,triSharp:f.triSharp,hStr:f.hStr,xf:f.xf,rep:f.rep,front:f.front,decal:f.decal,imgs:matRecTargets(rec)});if(L&&!(ui.mode==='p3d'||v3.on))toast('Added “'+rec.name+'”. It shows on the model in the 3D view or 3D Paint.');return L;}
+function matApply(rec){const f=rec.fill;let maps={},imgs=null,temp=null,note='';
+  /* (0.52) a Metal/Rough material in a Spec/Gloss document (or the other way round) is converted as it is added */
+  const want=doc.workflow==='spec'?'spec':'metal',cv=ui.mode==='bake'||ui.mode==='convert'?null:wfMatConvert(rec,want);
+  if(cv&&cv.converted){maps=cv.maps;temp={};for(const k in cv.imgs){const im=cv.imgs[k];if(rec.imgs&&rec.imgs[k]===im)continue;const t=makeTarget(im.w,im.h,8,true);writeRegion(t,0,0,im.w,im.h,im.data);temp[k]=t;}
+    imgs=Object.assign({},matRecTargets(rec),temp);for(const k of ['rough','metal','spec','gloss'])if(!maps[k]||!maps[k].on)delete imgs[k];note=' It was converted to '+(want==='spec'?'Spec/Gloss':'Metal/Rough')+'.';}
+  else{for(const k in f.maps)maps[k]=Object.assign({},f.maps[k]);imgs=matRecTargets(rec);}
+  const L=cmdNewFillLayer({name:rec.name,maps,proj:f.proj,triSharp:f.triSharp,hStr:f.hStr,xf:f.xf,rep:f.rep,front:f.front,decal:f.decal,imgs});
+  if(temp)for(const k in temp)disposeTarget(temp[k]);if(L&&note)toast('Added “'+rec.name+'”.'+note);if(L&&!note&&!(ui.mode==='p3d'||v3.on))toast('Added “'+rec.name+'”. It shows on the model in the 3D view or 3D Paint.');return L;}
 /* from the material editor */
 function matSaveFromFill(L,f){const name=(L.name||'Material').trim(),imgs={};
   for(const k in L._fillImg||{}){const s=f.maps[k];if(!s||!s.on||s.src!=='image')continue;const t=L._fillImg[k];imgs[k]={w:t.w,h:t.h,data:captureRegionNow(t,0,0,t.w,t.h).data};}
@@ -34,7 +40,7 @@ async function gmatImgs(j){const imgs={};
   return imgs;}
 /* ---- the Library: materials shipped with the app (assets/materials, e.g. from ambientCG), loaded when first used ---- */
 const GM_RAW='https://raw.githubusercontent.com/Kenn0090/gouache-studio/main/assets/materials/';
-const gmRecs=(typeof GM_BUNDLED!=='undefined'?GM_BUNDLED:[]).filter(g=>g.kind==='material').map(g=>({id:'s:'+g.file,name:g.name,builtin:true,bundled:g,thumb:g.thumb,credit:g.credit,cat:g.cat||'Other'}));
+const gmRecs=(typeof GM_BUNDLED!=='undefined'?GM_BUNDLED:[]).filter(g=>g.kind==='material').map(g=>({id:'s:'+g.file,name:g.name,builtin:true,bundled:g,thumb:g.thumb,credit:g.credit,cat:g.cat||'Other',wf:g.wf||''}));
 /* the Library's categories (Kenn: "almost triple the amount", so it is split up) */
 const GM_CATS=['Metal','Leather','Fabric','Plastic & rubber','Wood','Ground & nature','Stone & tile','Paint & ceramic','Other'];
 /* (0.36, Kenn) which kind of material to show: all, yours, the Library, smart materials or smart masks (the shelf's category list) */
@@ -115,9 +121,9 @@ function renderMats(){const box=document.getElementById('matBody');if(!box)retur
   box.classList.toggle('one',matView!=='all');
   box.replaceChildren(el('div',{class:'chips'},el('button',{class:'btn sm',id:'matNew',text:'New material…',title:'A new material layer, with the material editor',onclick:()=>cmdNewFillLayer()}),el('button',{class:'btn sm',id:'matPaint',text:'Paint material',disabled:matSel.kind!=='mat',onclick:()=>materialBrushUse(matSel.rec)}),el('button',{class:'btn sm',text:'Import…',title:'A .gmat file saved from Gouache Studio',onclick:matImport}),el('button',{class:'btn sm',id:'matFromTex',text:'From textures…',title:'Make a material from downloaded textures (a folder, images or a .zip)',onclick:()=>dlgMatFromTextures()}),matSearchBox(),sizeSeg),segChips(MAT_VIEWS,()=>matView,v=>{matView=v;try{localStorage.setItem('gs.matView',v);}catch(e){}renderMats();}),
     ...(mats.length&&(matView==='all'||matView==='yours')?[el('div',{class:'sub',text:'Yours'}),el('div',{class:'matgrid',id:'matMine'},...mats.map(tile))]:[]),
-    ...(gmRecs.length&&(matView==='all'||matView==='library')?[el('div',{class:'sub',text:'Library ('+gmRecs.length+')'}),segChips([...GM_CATS.filter(c=>gmRecs.some(r=>r.cat===c)).map(c=>[c,c+' '+gmRecs.filter(r=>r.cat===c).length]),['all','All']],()=>gmCat,v=>{gmCat=v;try{localStorage.setItem('gs.gmCat',v);}catch(e){}renderMats();}),
-      el('div',{class:'matgrid',id:'matLib'},...gmRecs.filter(r=>gmCat==='all'||r.cat===gmCat).map(rec=>{const b=mark(el('button',{class:'mattile',id:'gm_'+rec.bundled.file.replace(/\.gmat$/,''),title:rec.name+(rec.credit?' ('+rec.credit+')':'')+': click to highlight, then press the fill layer button, or drag it onto the layers. Double-click to swap it into the selected material layer',onclick:()=>matPick('mat',rec,b),ondblclick:()=>matReplace(rec)},
-      el('img',{src:rec.thumb,alt:'',width:tw,height:tw,class:'gmthumb',draggable:'false',loading:'lazy',decoding:'async'}),el('span',{text:rec.name})),'mat',rec);return b;}))]:[]),
+    ...(gmRecs.length&&(matView==='all'||matView==='library')?[el('div',{class:'sub',text:'Library ('+gmRecs.length+')'}),segChips([...(gmRecs.some(r=>r.wf==='spec')?[['sg','Spec/Gloss '+gmRecs.filter(r=>r.wf==='spec').length]]:[]),...GM_CATS.filter(c=>gmRecs.some(r=>r.cat===c)).map(c=>[c,c+' '+gmRecs.filter(r=>r.cat===c).length]),['all','All']],()=>gmCat,v=>{gmCat=v;try{localStorage.setItem('gs.gmCat',v);}catch(e){}renderMats();}),
+      el('div',{class:'matgrid',id:'matLib'},...gmRecs.filter(r=>gmCat==='all'||(gmCat==='sg'?r.wf==='spec':r.cat===gmCat)).map(rec=>{const b=mark(el('button',{class:'mattile',id:'gm_'+rec.bundled.file.replace(/\.gmat$/,''),title:rec.name+(rec.credit?' ('+rec.credit+')':'')+': click to highlight, then press the fill layer button, or drag it onto the layers. Double-click to swap it into the selected material layer',onclick:()=>matPick('mat',rec,b),ondblclick:()=>matReplace(rec)},
+      el('img',{src:rec.thumb,alt:'',width:tw,height:tw,class:'gmthumb',draggable:'false',loading:'lazy',decoding:'async'}),el('span',{text:rec.name}),...(rec.wf==='spec'?[el('span',{class:'sgbadge',text:'S/G',title:'A Spec/Gloss material (Diffuse, Specular, Glossiness)'})]:[])),'mat',rec);return b;}))]:[]),
     ...(matView==='all'||matView==='library'?[el('div',{class:'sub',text:'Built in'}),el('div',{class:'matgrid'},...matBuiltins().map(tile))]:[]),
     ...(matView==='all'||matView==='smart'?[el('div',{class:'sub',text:'Smart materials'}),el('div',{class:'matgrid',id:'smGrid'},...smarts.map(r=>stile(r,false)),...smBuiltins().map(r=>stile(r,false)))]:[]),
     ...(matView==='all'||matView==='smask'?[el('div',{class:'sub',text:'Smart masks'}),el('div',{class:'matgrid',id:'smMaskGrid'},...smasks.map(r=>stile(r,true)),...smaskBuiltins().map(r=>stile(r,true)))]:[]),

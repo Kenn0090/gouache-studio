@@ -1121,3 +1121,14 @@ body.tabfull .dkfloat,body.tabfull .dkfly,body.tabfull .dkicons{display:none!imp
 #xfOverlay .sym-centre,.sym-centre{fill:var(--panel,#20252b);stroke:#62cfff;stroke-width:2;}
 #mir3Rad.on{border-color:#62cfff;color:#62cfff;background:var(--panel,#20252b);}
 
+
+/* (0.52) Bake tab: one bar that stays at the top, with a big Bake button and the send buttons under it */
+.bkbar{position:sticky;top:0;z-index:5;display:flex;flex-direction:column;gap:6px;padding:8px 0 10px;margin:-2px 0 8px;background:var(--panel);border-bottom:1px solid var(--line)}
+.bkbar #bkGo{width:100%;min-height:52px;font-size:20px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;border-radius:8px}
+.bkbar #bkGo.primary{box-shadow:0 2px 0 rgba(0,0,0,.35),0 0 0 1px var(--accent)}
+.bkbar .bksend{display:grid;grid-template-columns:1fr 1fr auto;gap:6px}
+.bkbar .bksend .btn{min-height:34px;font-weight:600}
+.bkbar #bkProg{margin:0}.bkbar #bkProg[hidden]{display:none}
+/* (0.52) Spec/Gloss materials in the Library carry a small corner icon */
+.mattile{position:relative}
+.mattile .sgbadge{position:absolute;top:3px;right:3px;padding:0 4px;border-radius:4px;background:var(--accent);color:var(--accent-ink);font-size:9px;font-weight:800;letter-spacing:.03em;line-height:14px;pointer-events:none;box-shadow:0 1px 2px rgba(0,0,0,.5)}

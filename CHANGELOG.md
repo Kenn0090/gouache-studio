@@ -1,3 +1,15 @@
+## 0.52.0
+
+- **Spec/Gloss is redone.** Switching a document or a 3D Paint texture set between Metal/Rough and Spec/Gloss now converts every layer where it sits. Before, the converted look was stacked on top as frozen groups, so editing the material underneath changed nothing and the Specular stayed grey. Now a material keeps its Specular colour and Glossiness, editing them changes the map and the model, and undo covers the whole switch.
+- The ray-traced render now follows the Specular colour and Glossiness of a Spec/Gloss set.
+- **Ten Spec/Gloss materials** in the Library (Gold, Rose gold, Copper, Bronze, Jade with blue shine, Purple lacquer, Pearl car paint, Red velvet, Teal satin, Beetle shell). They are made the traditional way, with a body colour and a different shine colour. They have their own **Spec/Gloss** tag and a small S/G icon on the tile.
+- A Metal/Rough Library material added to a Spec/Gloss project is converted (values and pictures) as it is added, and a Spec/Gloss material in a Metal/Rough project likewise.
+- **Baker:** 16× anti-aliasing is the default; flat surfaces bake to exactly flat instead of flipping between two values in patches; normals are renormalised after averaging; the high-poly's normals keep full precision; rays no longer slip between touching triangles.
+- **Compare with a normal map** in the Bake tab: pick a map made in Marmoset (or anywhere) and see the average angle difference plus a difference picture.
+- The Bake button is now big and bold at the top of the Bake panel and stays in view. Send to Paint, Send to 3D Paint and Export sit right under it.
+- **Wrinkle textures:** eight seamless wrinkle maps in the Textures panel (category Wrinkles) for shirts, sleeves, skin and leather.
+- **42 new texture brushes**, angular and abstract: shard drips, jagged edges, torn zigzags, fractures, grunge scratches, shard sprays, shards, cut streaks, faceted blobs and shattered glass.
+
 ## 0.51.31
 
 - The mesh-map import rows in the Maps tab show their labels above the buttons instead of under them.

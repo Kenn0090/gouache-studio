@@ -19,6 +19,9 @@ The **Bake** tab (top right, or **Maps › Bake from high poly…**) copies the 
   - Tick **Send results to layers automatically** to have every bake go straight into the document.
   - **Replace the last baked layers** swaps the previous bake's layers for the new ones, instead of piling them up.
 
+## The top bar
+The **Bake** button is big and bold at the top of the panel and stays in view while you scroll. **Send to Paint**, **Send to 3D Paint** and **Export…** sit right under it (they switch on once there is a bake and something is ticked). The ticks for which maps to send are further down under *Maps to send or export*.
+
 ## Settings: one tab per map
 Under the model rows, the tabs hold the settings. A dot marks the maps that will be baked; tick **Bake …** at the top of a tab to turn a map on or off.
 - **General:** Front, Back, Average ray directions, Anti-aliasing, Padding, and how bakes are sent to the document (below).
@@ -98,10 +101,16 @@ Choose High-poly **None** to bake AO, **curvature from the model's own shape**, 
 
 ## Quality
 - **Rays and reach** (AO and Thickness tabs): how many rays each pixel sends. More rays are smoother but slower. Reach is how far those rays look.
-- **Anti-aliasing:** 1×, 4× or 16× samples per pixel. A pixel's AO and thickness rays are shared out over its samples, so anti-aliasing smooths the edges without multiplying the time AO and thickness take.
+- **Anti-aliasing:** 1×, 4× or 16× samples per pixel. 16× is the default. For very large maps it steps down by itself so the oversized image still fits the graphics card. A pixel's AO and thickness rays are shared out over its samples, so anti-aliasing smooths the edges without multiplying the time AO and thickness take.
 - **Padding:** extends colour past the UV edges so seams don't show.
 
 Baking runs on the graphics card in small pieces with a progress bar and **Cancel**, so the app stays responsive.
+
+## Clean normal maps
+A baked normal map is renormalised after the samples are averaged, flat surfaces come out exactly flat (128, 128, 255), the high-poly's normals keep full precision (up to three million triangles) and rays no longer slip between touching triangles. This keeps flat panels free of speckle.
+
+## Compare with another normal map
+After a bake, **Compare with a normal map…** (under *Show*) asks for a normal map made elsewhere, for example in Marmoset Toolbag. It tries both green directions, tells you the average angle between the two maps and how much of the picture is within 1°, 2° and 5°, and adds a grey difference picture to the painting (white = 10° or more).
 
 ## Big high-polys
 Before the first bake the high-poly is sorted into a **search tree** (*Sorting triangles…*), so each ray only tests the few triangles near it. This runs in the background, and the tree is kept for later bakes of the same models. The desktop app also saves it in the **disk cache** (see [Preferences and performance](Preferences-and-performance.md)), so baking the same high-poly after a restart skips this step. High-polys of about 20 million triangles work on a card like an RTX 4080; the app says so if one is too big for the card.

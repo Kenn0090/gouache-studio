@@ -25,16 +25,26 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  if(dlg)await p.evaluate(()=>document.getElementById('dlgCancel').click());await W(900);
  s=await st();
  ok(s.wf==='spec'&&s.maps==='base,spec,gloss,height,normal'&&s.shade==='specgloss','converted to Specular/Gloss with the Spec/Gloss shader '+JSON.stringify(s));
- const groups=await p.evaluate(()=>__gs.doc.root.children.map(n=>n.name));
- ok(['Diffuse (converted)','Specular (converted)','Glossiness (converted)'].every(g=>groups.includes(g)),'one converted group per map '+groups.join('|'));
- /* undo brings the Metal/Rough maps back, redo converts again */
- await p.evaluate(()=>__gs.undo());await W(600);s=await st();
- ok(s.wf==='metal'&&s.maps==='base,rough,metal,height,normal'&&s.shade==='std','undo returns to Metal/Rough and the Standard shader '+JSON.stringify(s));
- await p.evaluate(()=>__gs.redo());await W(600);s=await st();
- ok(s.wf==='spec'&&s.shade==='specgloss','redo converts to Specular/Gloss again');
- /* switching back restores the material that was set aside */
- await p.evaluate(()=>__gs.wfSwitch('metal','restore'));await W(600);s=await st();
- ok(s.wf==='metal'&&/Base material/.test(s.layers),'switching back restores the Base material '+JSON.stringify(s));
+ ok(/^Base material\|Paint$/.test(s.layers),'the layers stay as they were, nothing stacked on top '+s.layers);
+ /* the material stays live: its Specular colour is editable and shows in the Specular map and on the model */
+ const cp=k=>p.evaluate(k=>{const t=__gs.compositeMap(k);const d=__gs.readRGBA8(t);__gs.release(t);const i=(100*__gs.doc.w+150)*4;return [d[i],d[i+1],d[i+2]];},k);
+ const fillOn=await p.evaluate(()=>{const m=__gs.allLayers().find(L=>L.name==='Base material').fill.maps;return {spec:m.spec.on,gloss:m.gloss.on,rough:m.rough.on,metal:m.metal.on};});
+ ok(fillOn.spec&&fillOn.gloss&&!fillOn.rough&&!fillOn.metal,'the material now has Specular and Glossiness, not Metal/Rough '+JSON.stringify(fillOn));
+ const shot=async()=>{const bx=await p.locator('#v3Hit').boundingBox();return (await p.screenshot({clip:{x:bx.x+bx.width/2-60,y:bx.y+bx.height/2-60,width:120,height:120}})).toString('base64');};
+ const before=await shot();const s0=await cp('spec');
+ await p.evaluate(()=>{const L=__gs.allLayers().find(L=>L.name==='Base material');__gs.selectOnly(L);__gs.showPanel('matEd');__gs.renderMatEd(true);});await W(400);
+ await p.evaluate(()=>{const b=document.getElementById('fl_c_spec');b&&b.click();});await W(300);
+ await p.evaluate(()=>{const h=document.getElementById('cp_hex');if(h){h.value='#ff2000';h.dispatchEvent(new Event('input',{bubbles:true}));h.dispatchEvent(new Event('change',{bubbles:true}));h.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));}});await W(900);
+ const s1=await cp('spec');
+ ok(s1[0]>200&&s1[1]<80&&s1[0]>s0[0]+100,'changing the Specular colour changes the Specular map '+JSON.stringify([s0,s1]));
+ await p.evaluate(()=>{document.activeElement&&document.activeElement.blur();document.body.click();});await W(900);
+ const after=await shot();
+ ok(before!==after,'and the model in the 3D view changes');
+ /* switching back converts again */
+ await p.evaluate(()=>__gs.wfSwitch('metal','convert'));await W(600);s=await st();
+ ok(s.wf==='metal'&&s.shade==='std'&&/^Base material\|Paint$/.test(s.layers),'switching back converts the material again '+JSON.stringify(s));
+ const m=await p.evaluate(()=>{const f=__gs.allLayers().find(L=>L.name==='Base material').fill.maps;return {metal:f.metal.on&&f.metal.v,rough:f.rough.on,base:f.base.c};});
+ ok(m.metal>.5&&m.rough,'the red Specular became a coloured metal '+JSON.stringify(m));
  ok(errs.length===0,'no page errors '+errs.slice(0,3).join(' | '));
  console.log(fails?'FAILED '+fails:'ALL PASSED');await b.close();process.exit(fails?1:0);
 })().catch(e=>{console.error(e);process.exit(1);});
