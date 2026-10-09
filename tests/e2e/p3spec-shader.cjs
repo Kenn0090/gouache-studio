@@ -26,7 +26,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  s=await shader();
  ok(s.wf==='spec'&&s.kind==='specgloss'&&!said,'Shader › Spec/Gloss on a metal texture set converts it '+JSON.stringify(s));
  /* a Specular/Glossiness project replaces the set */
- await p.evaluate(()=>__gs.p3NewProject(256,{setup:'spec',workflow:'spec',startMaterial:'neutral'}));await W(1500);
+ /* not awaited: the project waits for the Replace dialog, which the next step confirms */
+ await p.evaluate(()=>{__gs.p3NewProject(256,{setup:'spec',workflow:'spec',startMaterial:'neutral'});});await W(1500);
  await p.evaluate(()=>{const b=document.querySelector('.dlg .btn.primary, #dlgOk, .dlg button.ok');if(b)b.click();});await W(800);
  s=await shader();
  ok(s.wf==='spec'&&s.kind==='specgloss'&&s.maps==='base,spec,gloss,height,normal','Spec/Gloss project starts with the Spec/Gloss shader '+JSON.stringify(s));
