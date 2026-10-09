@@ -1,3 +1,7 @@
+## 0.51.26
+
+- Hide the startup primitive dropdown once an imported mesh is active in 3D Paint. Show a Replace mesh button instead, so the viewport stays focused on the imported asset.
+
 ## 0.51.25
 
 - Disable built-in startup primitives after importing a mesh in 3D Paint, keep the imported mesh selected, and retain the Import option for replacing it.
