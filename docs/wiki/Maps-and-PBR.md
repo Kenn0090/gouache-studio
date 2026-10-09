@@ -32,8 +32,9 @@ Documents are **Metal/Rough** by default. A **Specular/Gloss** document paints t
 ![Workflow in Document maps.](images/maps-workflow.png)
 *Maps › Document maps with the Specular/Gloss workflow.*
 
-- **Switching** converts the finished look (all layers together) into new groups, one per map: *Diffuse (converted)*, *Specular (converted)* and *Glossiness (converted)* (or *Base colour*, *Metallic* and *Roughness* going the other way). The maps your layers had before are set aside, not deleted: when you switch back, you're asked whether to **bring them back** exactly as they were or **convert** the current look again. Height, normal, AO and the other maps are not touched. Switching is one undo step. (Set-aside layers are kept until you close the document; they are not saved in the file.)
-- The material view and the 3D view shade a Specular/Gloss document correctly; it looks the same as its Metal/Rough version.
+- **Switching** converts every layer where it sits: nothing is stacked on top. A material layer with plain values gets new Diffuse, Specular and Glossiness values (or Base colour, Metallic and Roughness going the other way) and stays editable, so changing its Specular colour still changes the model. Painted layers are converted pixel by pixel. A material with pictures becomes a plain layer. One undo step takes the switch back.
+- The material view, the 3D view and the ray-traced render shade a Specular/Gloss document correctly: the Specular colour is the colour of the reflections, as in the traditional workflow (a brown body with a yellow shine reads as gold).
+- **Library materials follow the project.** A Metal/Rough material added to a Spec/Gloss document is converted as it goes in, and the other way round. The Library has ten Spec/Gloss materials with their own **Spec/Gloss** tag and a small S/G icon on each tile.
 - Brushes that paint several maps at once get **Specular** (a colour) and **Glossiness** values.
 - The **Convert tab** sends **Glossiness** (inverted roughness) and **Specular** (grey, with the photo's colour where it's metal) to a Specular/Gloss document.
 - **Export textures** offers the Specular/Gloss presets (see [Files and export](Files-and-export.md)).

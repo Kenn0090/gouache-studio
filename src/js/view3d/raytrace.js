@@ -19,12 +19,13 @@ async function rtScene(){const m=v3.mesh;if(!m||m.noUV)return null;if(rt.mesh===
   finally{rt.building=false;}}
 /* every texture set's maps in one texture array (rebuilt when the maps change) */
 const RT_MAPS=[['base',[0,0,0,0]],['rough',null],['metal',null],['nfinal',[.5,.5,1,1]]];
-function rtMaterials(g){const list=ui.mode==='p3d'&&typeof p3DrawList==='function'?p3DrawList():[{T:v3.tex}],key=v3.lastFull+':'+list.length+':'+(doc.maps||[]).join();
+function rtMaterials(g){const list=ui.mode==='p3d'&&typeof p3DrawList==='function'?p3DrawList():[{T:v3.tex}],key=v3.lastFull+':'+list.length+':'+(doc.maps||[]).join()+':'+(doc.workflow||'');
   if(rt.mat&&rt.matKey===key)return rt.mat;const S=1024,L=list.length*4;if(rt.mat)gl.deleteTexture(rt.mat);
   const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D_ARRAY,tex);gl.texImage3D(gl.TEXTURE_2D_ARRAY,0,gl.RGBA8,S,S,L,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
-  const fb=gl.createFramebuffer(),has=k=>k==='nfinal'?doc.maps.includes('height')||doc.maps.includes('normal')||!!meshNormalBase():doc.maps.includes(k);
+  const fb=gl.createFramebuffer(),sgW=doc.workflow==='spec',sgK={base:'sgBase',metal:'sgMetal',rough:'sgRough'},has=k=>k==='nfinal'?doc.maps.includes('height')||doc.maps.includes('normal')||!!meshNormalBase():doc.maps.includes(k)||(sgW&&(k==='metal'||k==='rough'));
   list.forEach((it,i)=>{const T=it.T||{};RT_MAPS.forEach(([k,def],j)=>{gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,fb);gl.framebufferTextureLayer(gl.DRAW_FRAMEBUFFER,gl.COLOR_ATTACHMENT0,tex,0,i*4+j);
-    const src=T[k];if(src&&src.fbo&&has(k)){gl.bindFramebuffer(gl.READ_FRAMEBUFFER,src.fbo);gl.blitFramebuffer(0,0,src.w,src.h,0,0,S,S,gl.COLOR_BUFFER_BIT,gl.LINEAR);}
+    /* (0.52) a Spec/Gloss set is traced with the base / metal / rough the viewer derives from its Specular and Glossiness */
+    const src=sgW&&sgK[k]&&T[sgK[k]]?T[sgK[k]]:T[k];if(src&&src.fbo&&has(k)){gl.bindFramebuffer(gl.READ_FRAMEBUFFER,src.fbo);gl.blitFramebuffer(0,0,src.w,src.h,0,0,S,S,gl.COLOR_BUFFER_BIT,gl.LINEAR);}
     else{const d=def||[mapDefault(k)[0],0,0,1];gl.viewport(0,0,S,S);gl.clearColor(d[0],d[1],d[2],d[3]);gl.clear(gl.COLOR_BUFFER_BIT);}});});
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.deleteFramebuffer(fb);gl.bindTexture(gl.TEXTURE_2D_ARRAY,tex);gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
   gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_MAG_FILTER,gl.LINEAR);

@@ -54,6 +54,7 @@ Find **Gasa Pen** in **Brushes › Basic media**. This original preset combines 
 
 - **Save brush** stores the current settings in **My brushes**. That includes which extra maps the brush paints and their values (see [Maps and PBR](Maps-and-PBR.md)).
 - **Import .ABR** loads Photoshop brush sets. Tips come across, and the settings that map cleanly are kept.
+- **Texture brushes:** 42 angular, abstract tips come with the app: shard drips, jagged edges, torn zigzags, fractures, grunge scratches, shard sprays, shards, cut streaks, faceted blobs and shattered glass. Pick them in the brush list like any preset.
 - **Make tip** (or **Edit › Make brush tip…**) turns what you drew into a brush tip, like Photoshop's *Define Brush Preset*: give it a name and choose the **visible canvas** or the **active layer**. Dark paints and white doesn't; on a see-through layer, whatever is painted becomes the tip. With a selection, only the selected part is used. **Layer › Make brush tip from layer** does the same from the active layer in one click.
 - **Brush tab:** a whole tab for drawing tips, with a live test stroke and your saved tips (see [Brush tab](Brush-tab.md)).
 - **Brush tip template:** *File › New document*, template **Brush tip**, gives a white 512 × 512 canvas with a black brush and a banner: paint in black, then press **Make brush** (or **Clear** to start again).

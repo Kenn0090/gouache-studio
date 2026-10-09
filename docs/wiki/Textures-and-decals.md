@@ -32,6 +32,9 @@ Click a texture to see what it can do:
 - **Stencil** (3D Paint): paint through it onto the model.
 - **Brush tip:** a custom brush tip made from it.
 
+### Wrinkles
+Eight seamless generated wrinkle maps (category **Wrinkles**): soft folds, sharp creases, folds fanning from pinch points, fine skin and leather, crumpled paper, a bunched sleeve, drag creases and crumpled foil. Use them as a mask picture, a material height or a stencil to put wrinkles on shirts and sleeves.
+
 ## Decals (3D Paint)
 The **Decals** panel has bolts, rivets, cross and slot screws, a vent grille, a round vent, a warning label, hazard stripes, a serial plate, a crack, a bullet hole and scratches.
 

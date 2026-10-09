@@ -22,10 +22,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.showPanel('mats'));await W(500);
  const cats=await p.evaluate(()=>document.querySelectorAll('#matBody .chip').length);
  await p.locator('#matBody .chip',{hasText:'Metal'}).first().click();await W(300);const metal=await p.evaluate(()=>document.querySelectorAll('#matLib .mattile').length);
- ok(cats>=9&&metal===58,'the Library is split into categories ('+cats+' buttons; Metal shows '+metal+')');
+ ok(cats>=9&&metal===62,'the Library is split into categories ('+cats+' buttons; Metal shows '+metal+')');
  await p.locator('#matBody .chip',{hasText:/^All$/}).last().click();await W(500);
  const n=await p.evaluate(()=>({tiles:document.querySelectorAll('#matLib .mattile').length,thumbs:[...document.querySelectorAll('#matLib img')].filter(i=>i.naturalWidth>0).length}));
- ok(n.tiles===200&&n.thumbs===200,'the Library shows 200 materials with previews '+JSON.stringify(n));
+ ok(n.tiles===210&&n.thumbs===210,'the Library shows 210 materials with previews '+JSON.stringify(n));
  await p.locator('#matSec').screenshot({path:OUT+'lib-panel.png'});
  await p.click('#gm_brown-leather');await p.click('#lFill');for(let i=0;i<60;i++){if(await p.evaluate(()=>__gs.doc.active&&__gs.doc.active.name==='Brown leather'))break;await W(250);}
  const L=await p.evaluate(()=>{const L=__gs.doc.active;return {name:L.name,ch:Object.keys(L.fill.maps).filter(k=>L.fill.maps[k].on&&L.fill.maps[k].src==='image').join(','),imgs:Object.keys(L._fillImg||{}).join(',')};});

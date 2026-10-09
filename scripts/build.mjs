@@ -30,7 +30,7 @@ const MAT_PREVIEWS = fs.existsSync(r('assets/materials/previews.json')) ? JSON.p
 const GMATS = fs.existsSync(r('assets/materials')) ? fs.readdirSync(r('assets/materials')).filter(f => f.endsWith('.gmat')).sort().map(f => {
   let b = fs.readFileSync(r('assets/materials/' + f)); if (b[0] === 0x1f && b[1] === 0x8b) b = zlib.gunzipSync(b);
   const j = JSON.parse(b.toString('utf8')), p = MAT_PREVIEWS[f], valid = p && p.file === path.basename(p.file) && fs.existsSync(r('assets/material-previews/' + p.file)) && p.sha256 === crypto.createHash('sha256').update(fs.readFileSync(r('assets/materials/' + f))).digest('hex');
-  return { file: f, name: j.name || f.replace(/\.gmat$/, ''), thumb: valid ? 'material-previews/' + p.file : j.thumb || '', preview: valid ? p.file : null, credit: j.credit || '', kind: j.kind || 'material', cat: j.cat || 'Other' };
+  return { file: f, name: j.name || f.replace(/\.gmat$/, ''), thumb: valid ? 'material-previews/' + p.file : j.thumb || '', preview: valid ? p.file : null, credit: j.credit || '', kind: j.kind || 'material', cat: j.cat || 'Other', wf: j.wf || '' };
 }) : [];
 /* Small shelf previews are separate from originals in both offline and one-page builds.
    Stale previews are ignored so replacing a texture cannot show an unrelated picture. */
