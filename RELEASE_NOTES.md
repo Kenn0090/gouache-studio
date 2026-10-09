@@ -1,3 +1,8 @@
+# Gouache Studio 0.51.31
+
+- Mesh-map import rows in the Maps tab show their labels above the buttons instead of under them.
+- Spec/Gloss 3D Paint sets show their Specular colour on the 3D model, so a coloured Specular now appears in the viewport. The ray-traced render is not updated yet.
+
 # Gouache Studio 0.51.30
 
 - 3D Paint texture sets can switch between Metal/Roughness and Specular/Glossiness. Choosing Specular / Glossiness in the Shader panel converts the set's maps and switches the viewer shader. Undo and redo cover the switch, and switching back restores the set's material.

@@ -1,3 +1,8 @@
+## 0.51.31
+
+- The mesh-map import rows in the Maps tab show their labels above the buttons instead of under them.
+- A Spec/Gloss 3D Paint set shows its Specular colour in the 3D viewport as the reflection colour, so a coloured Specular now appears on the model. The ray-traced render is not updated yet.
+
 ## 0.51.30
 
 - A 3D Paint texture set can now be converted between Metal/Roughness and Specular/Glossiness. Choosing Specular / Glossiness in the Shader panel converts the set's maps and switches the viewer to the Spec/Gloss shader. Undo and redo cover the switch, and switching back restores the set aside.
