@@ -145,7 +145,7 @@ function liveMaskKeep(){if(!lm.on)return;const L=lm.L,M=lm.M;if(!M.mask.stack.le
       el('strong',{text:'Apply to the layer'}),el('span',{class:'note',text:'Cut the layer to it: what is outside is erased. No mask is added.'})));
   openDialog({title:'Keep the live mask',body:pick,okLabel:null,cancelLabel:'Cancel'});}
 function liveBarRow(){const M=lm.M,S=M.mask.stack;
-  const chips=S.map(r=>{const b=el('button',{class:'chip'+(ui.msSel&&ui.msSel.id===r.id?' on':''),text:msRowTitle(r),title:'Change it in Properties',onclick:()=>{ui.msSel={L:M,where:'m',id:r.id};showPanel('matEd');renderMatEd(true);maskBarSync();}});
+  const chips=S.map(r=>{const b=el('button',{class:'chip'+(ui.msSel&&ui.msSel.id===r.id?' on':''),text:msRowTitle(r),title:'Change it in the Material editor',onclick:()=>{ui.msSel={L:M,where:'m',id:r.id};showPanel('matEd');renderMatEd(true);maskBarSync();}});
     const x=el('button',{class:'msdel',text:'✕','aria-label':'Remove '+msRowTitle(r),onclick:()=>liveRemove(r.id)});return el('span',{class:'lmchip'},b,x);});
   const mks=msMeshKeys(),mm=el('select',{id:'lmMesh','aria-label':'Add a mesh map'},el('option',{value:'',text:'+ Mesh map'}),...mks.map(k=>el('option',{value:k,text:msMeshName(k)})));mm.onchange=()=>{if(mm.value)liveAdd('mesh',{p:{k:mm.value,inv:false}});};
   const gn=el('select',{id:'lmGen','aria-label':'Add a generator'},el('option',{value:'',text:'+ Generator'}),...MS_GENS.map(([k,t])=>el('option',{value:k,text:t})));gn.onchange=()=>{if(gn.value)liveAdd('gen',{p:Object.assign(MS_KINDS.gen.p(),{g:gn.value})});};

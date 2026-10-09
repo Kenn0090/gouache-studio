@@ -200,7 +200,7 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
     if(s.on){const srcs=[...(isN?[]:[['value',grey?'Value':'Colour']]),['image','Image'],['baked','Mesh map'],['conv','Converted']];
       row.append(seg(srcs,s.src,v=>{if(v==='image'&&!(L._fillImg&&L._fillImg[k])){matEdBegin(L);fillPickImage(L,k,s,()=>edit(()=>{},k,true));return;}
         edit(()=>{s.src=v;if(v==='baked'&&!(M[s.mm]&&!s.mm.startsWith('cv:')))s.mm=mks.find(x=>x===k)||(isN?'normal':mks.find(x=>x!=='normal'))||mks[0];if(v==='conv'&&!(M[s.mm]&&s.mm.startsWith('cv:')))s.mm=cks.find(x=>x==='cv:'+k)||cks[0];},k,true);},'Fill '+MAP_DEFS[k].label+' with'));
-      if(s.src==='value'&&!isN){if(grey)row.append(makeSlider({id:'fl_v_'+k,label:k==='metal'?'Metallic':k==='rough'?'Roughness':k==='height'?'Height':'Level',min:0,max:1,step:.01,value:s.v,fmt:pct,onInput:v=>edit(()=>{s.v=v;},k)}).el);
+      if(s.src==='value'&&!isN){if(grey)row.append(makeSlider({id:'fl_v_'+k,label:k==='metal'?'Metallic':k==='rough'?'Roughness':k==='height'?'Height':k==='gloss'?'Glossiness':'Level',min:0,max:1,step:.01,value:s.v,fmt:pct,onInput:v=>edit(()=>{s.v=v;},k)}).el);
         else row.append(el('div',{class:'frow'},el('label',{text:'Colour'}),colourBtn('fl_c_'+k,()=>s.c||[.5,.5,.5],c=>edit(()=>{s.c=c;},k),MAP_DEFS[k].label+' colour')));}
       else if(s.src==='conv'){
         /* the maps made by Filter › Mesh maps from material, as tiles */
@@ -265,7 +265,19 @@ float r=clamp(uRoughOn==1?sampleColor(uRough,uvAt(uv,uRoughTile,uRot.y)).r:uR,.0
 vec3 L=normalize(vec3(-.5,.6,.65)),H=normalize(L+vec3(0,0,1));float nl=max(0.0,dot(N,L)),nh=max(0.0,dot(N,H)),sp=pow(nh,2.0+(1.0-r)*(1.0-r)*120.0)*(1.0-r*.7)*(.3+mt*.7);
 float Ry=2.0*N.z*N.y,sky=(.25+.75*clamp(Ry*.5+.5,0.0,1.0))*(1.0-r*.55)+r*.2,fr=pow(1.0-clamp(N.z,0.0,1.0),3.0),amb=.18+.1*N.y;
 vec3 spec=mix(vec3(.04+.5*fr*(1.0-r)),c,mt),color=c*(1.0-mt)*(nl*.9+amb)+spec*(sp*1.6+sky*mix(.8,1.1,mt));float alpha=clamp((1.0-rr)*uSize.x*.5,0.0,1.0);o=vec4(pow(clamp(color,0.0,1.0),vec3(1.0/2.2))*alpha,alpha);}`;
+/* (0.51) Spec/Gloss material: the same conversion the viewer makes (FS_SG2MR in core/workflow.js), on the material's own values,
+   so the preview shows its Specular colour and Glossiness */
+function matSgValues(f){const val=k=>{const s=f.maps?.[k];return s&&s.on&&s.src==='value'?s:null;};
+  const D=f.maps?.base?.on?(f.maps.base.c||[.7,.7,.7]):[.72,.72,.72],sp=val('spec'),gl=val('gloss');
+  const S=sp?(sp.c||[.22,.22,.22]):[.22,.22,.22],g=gl?gl.v:(f.maps?.gloss?.v??.5);
+  const lin=c=>Math.pow(Math.max(c,0),2.2),lum=c=>Math.sqrt(.299*c[0]*c[0]+.587*c[1]*c[1]+.114*c[2]*c[2]);
+  const Dl=D.map(lin),Sl=S.map(lin),oms=1-Math.max(...Sl),dl=lum(Dl),sl=lum(Sl);
+  let m=0;if(sl>=.04){const a=.04,b=dl*oms/(1-a)+sl-2*a,c=a-sl,q=Math.max(b*b-4*a*c,0);m=Math.min(1,Math.max(0,(-b+Math.sqrt(q))/(2*a)));}
+  const bd=Dl.map(x=>x*oms/(1-.04)/Math.max(1-m,1e-4)),bs=Sl.map(x=>(x-.04*(1-m))/Math.max(m,1e-4));
+  const B=[0,1,2].map(i=>Math.min(1,Math.max(0,bd[i]+(bs[i]-bd[i])*m*m)));
+  return {color:B.map(x=>Math.pow(x,1/2.2)),metal:m,rough:Math.min(1,Math.max(0,1-g))};}
 function matPreviewPixels(f,I,S){if(!P_MATPREVIEW)P_MATPREVIEW=program(FS_MATPREVIEW);const U={uSize:[S,S],uColor:f.maps?.base?.on?(f.maps.base.c||[.7,.7,.7]):[.72,.72,.72],uR:f.maps?.rough?.on?(f.maps.rough.v??.5):.5,uM:f.maps?.metal?.on?(f.maps.metal.v??0):0,uH:f.hStr??1},keys=['base','rough','metal','height','normal'],rots=[];
+  if(doc.workflow==='spec'){const sg=matSgValues(f);U.uColor=sg.color;U.uR=sg.rough;U.uM=sg.metal;}
 for(const k of keys){const m=f.maps?.[k],name=k[0].toUpperCase()+k.slice(1),on=!!(m?.on&&m.src!=='value'&&I[k]?.tex);U['u'+name]=on?I[k].tex:dummy;U['u'+name+'On']={int:on?1:0};U['u'+name+'Tile']=[m?.tile??1,m?.tile??1];rots.push((m?.rot||0)*Math.PI/180);}U.uRot=rots.slice(0,4);U.uNormalRot=rots[4];const t=makeTarget(S,S,8,false);try{run(P_MATPREVIEW,t,U);const d=captureRegionNow(t,0,0,S,S).data;for(let i=0;i<d.length;i+=4)if(d[i+3]){const a=255/d[i+3];d[i]=Math.min(255,Math.round(d[i]*a));d[i+1]=Math.min(255,Math.round(d[i+1]*a));d[i+2]=Math.min(255,Math.round(d[i+2]*a));}return d;}finally{disposeTarget(t);}}
 function matPreviewEl(getF,getImgs,size,scale){const S0=size||96,S=scale?Math.round(S0*scale):Math.min(1024,Math.max(256,Math.round(S0*Math.max(window.devicePixelRatio||1,4)))),cv2=el('canvas',{class:'matprev',width:S,height:S,style:'width:'+S0+'px;height:'+S0+'px','aria-hidden':'true'});
   const redrawGPU=()=>{const x=cv2.getContext('2d'),id=x.createImageData(S,S);id.data.set(matPreviewPixels(getF(),getImgs()||{},S));x.putImageData(id,0,0);};

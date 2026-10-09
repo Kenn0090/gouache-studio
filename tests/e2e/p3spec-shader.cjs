@@ -23,6 +23,16 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{const b=document.querySelector('.dlg .btn.primary, #dlgOk, .dlg button.ok');if(b)b.click();});await W(800);
  s=await shader();
  ok(s.wf==='spec'&&s.kind==='specgloss'&&s.maps==='base,spec,gloss,height,normal','Spec/Gloss project starts with the Spec/Gloss shader '+JSON.stringify(s));
+ /* the material editor's preview and sliders follow Glossiness and Specular */
+ const pv=()=>p.evaluate(()=>{const c=document.querySelector('#matEdBody .matprev');if(!c)return null;const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let r=0,g=0,b=0;for(let i=0;i<d.length;i+=4){r+=d[i];g+=d[i+1];b+=d[i+2];}return [r,g,b];});
+ const setGloss=v=>p.evaluate(v=>{const i=document.getElementById('fl_v_gloss');i.value=v;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));},v);
+ await p.evaluate(()=>{__gs.selectOnly(__gs.allLayers().find(L=>L.name==='Base material'));__gs.renderMatEd(true);});await W(300);
+ const label=await p.evaluate(()=>[...document.querySelectorAll('#matEdBody .fillhead .nm')].map(e=>e.textContent).join('|'));
+ ok(/Glossiness/.test(label)&&!/Level/.test(label),'Glossiness is labelled Glossiness');
+ await setGloss('0.05');await W(400);const rough=await pv();
+ await setGloss('0.95');await W(400);const shiny=await pv();
+ ok(rough&&shiny&&(rough[0]!==shiny[0]||rough[1]!==shiny[1]||rough[2]!==shiny[2]),'the preview changes with Glossiness '+JSON.stringify([rough,shiny]));
+ ok(await p.evaluate(()=>[...document.querySelectorAll('button,[role=tab],.dktab,.dkhead,h2,h3')].some(e=>e.textContent.trim()==='Material editor')),'the panel is called Material editor');
  const panel=await p.evaluate(()=>{__gs.selectOnly(__gs.allLayers().find(L=>L.name==='Base material'));__gs.showPanel('matEd');__gs.renderMatEd(true);const t=document.getElementById('matEdBody')?.textContent||'';return {spec:/Spec Gloss parameters/.test(t),spec2:/Specular/.test(t)&&/Glossiness/.test(t)};});
  ok(panel.spec&&panel.spec2,'Properties shows Spec Gloss inputs '+JSON.stringify(panel));
  console.log(fails?'FAILED '+fails:'ALL PASSED');await b.close();process.exit(fails?1:0);
