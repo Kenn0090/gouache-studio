@@ -1,3 +1,9 @@
+## 0.52.1
+
+- **Start-up fix.** Some computers could get stuck on the loading screen after updating to 0.52.0. The eight new wrinkle textures had been added into the same graphics program as the older generated textures, which made that program much slower to prepare on some graphics drivers. Each wrinkle texture is now its own small program, prepared only when it is shown, and the older textures are back to how they were.
+- **Safer start-up.** Every step of starting the app is now guarded: if one fails the rest still starts, and a short notice says what went wrong. If the loading screen is still up after 15 seconds it now says where it stopped and offers **Reset the saved panel layouts and restart** instead of loading forever.
+- The bundled brush tip files B2 to B10 have the same capital letters everywhere, so all 64 bundled brush tips load.
+
 ## 0.52.0
 
 - **Spec/Gloss is redone.** Switching a document or a 3D Paint texture set between Metal/Rough and Spec/Gloss now converts every layer where it sits. Before, the converted look was stacked on top as frozen groups, so editing the material underneath changed nothing and the Specular stayed grey. Now a material keeps its Specular colour and Glossiness, editing them changes the map and the model, and undo covers the whole switch.
