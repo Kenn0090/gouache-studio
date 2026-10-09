@@ -1,3 +1,9 @@
+## 0.51.29
+
+- The material preview in the Material editor now follows Specular colour and Glossiness on Spec/Gloss 3D Paint projects, so edits show on screen straight away.
+- The glossiness slider is labelled Glossiness instead of Level.
+- The Properties panel is now called Material editor, in the panel tab and in messages that point to it.
+
 ## 0.51.28
 
 - Choosing Specular / Glossiness when creating a 3D Paint project now starts it with the Spec/Gloss viewer shader. PBR projects start with the Standard shader. The shader can still be changed per texture set.

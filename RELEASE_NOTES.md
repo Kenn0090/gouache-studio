@@ -1,3 +1,9 @@
+# Gouache Studio 0.51.29
+
+- On Spec/Gloss 3D Paint projects the material preview now follows the Specular colour and Glossiness, so changes show straight away.
+- The glossiness slider is labelled Glossiness instead of Level.
+- The Properties panel is renamed Material editor.
+
 # Gouache Studio 0.51.28
 
 - Choosing Specular / Glossiness when creating a 3D Paint project now starts it with the Spec/Gloss viewer shader, and the Properties panel shows Spec Gloss inputs with a coloured Specular. PBR projects start with the Standard shader.
