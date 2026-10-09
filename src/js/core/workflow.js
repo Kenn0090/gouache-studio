@@ -39,12 +39,13 @@ function wfLayers(){return paintLayers().filter(L=>L.maps);}
 function wfCanRestore(to){return wfLayers().some(L=>L.wfStash&&L.wfStash[to]);}
 /* one undo step: the tree, each layer's maps and stashes, the document's map list and workflow */
 function wfSnap(){return {tree:snapTree(),layers:wfLayers().map(L=>({L,maps:Object.assign({},L.maps),stash:L.wfStash?Object.keys(L.wfStash).reduce((o,k)=>(o[k]=Object.assign({},L.wfStash[k]),o),{}):null,blank:!!L.blankBase,target:L.target})),
-  maps:doc.maps.slice(),mapDef:Object.assign({},doc.mapDef),wf:doc.workflow,map:doc.map,view:doc.view};}
+  maps:doc.maps.slice(),mapDef:Object.assign({},doc.mapDef),wf:doc.workflow,map:doc.map,view:doc.view,shade:doc.v3shade?JSON.parse(JSON.stringify(doc.v3shade)):null};}
 function wfApply(S){restoreTree(S.tree);for(const x of S.layers){x.L.maps=Object.assign({},x.maps);x.L.wfStash=x.stash?Object.keys(x.stash).reduce((o,k)=>(o[k]=Object.assign({},x.stash[k]),o),{}):null;if(x.blank)x.L.blankBase=true;else delete x.L.blankBase;}
-  doc.maps=S.maps.slice();doc.mapDef=Object.assign({},S.mapDef);doc.workflow=S.wf;doc.map=S.map;doc.view=S.view;useAux(mapDepth(doc.map),true);syncTargets();changedAll();renderLayers();refreshMapsUI();buildBrushPanel();}
+  doc.maps=S.maps.slice();doc.mapDef=Object.assign({},S.mapDef);doc.workflow=S.wf;doc.map=S.map;doc.view=S.view;doc.v3shade=S.shade?JSON.parse(JSON.stringify(S.shade)):null;useAux(mapDepth(doc.map),true);syncTargets();changedAll();renderLayers();refreshMapsUI();buildBrushPanel();}
 /* how = 'convert' (the current look into new layers) or 'restore' (the layers set aside the last time) */
 function wfSwitch(to,how){const from=doc.workflow||'metal';if(to===from)return;if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
-  if(ui.mode!=='paint'){toast('Switch to Paint first.');return;}
+  /* (0.51.31) also a 3D Paint texture set: the switch works on the set's own look, like the 2D document */
+  if(ui.mode!=='paint'&&ui.mode!=='p3d'){toast('Switch to Paint or 3D Paint first.');return;}
   if(typeof xf!=='undefined'&&xf)xfCommit();if(doc.map!=='base')setEditMap('base');
   /* Workflow stashes own writable images; expand only the channels being moved into those stashes. */
   for(const L of wfLayers())for(const k of ['base',...WF_KEYS[from]])if(mapSolid(L,k)||mapLive(L,k))ensureMapTarget(L,k);
@@ -68,6 +69,8 @@ function wfSwitch(to,how){const from=doc.workflow||'metal';if(to===from)return;i
     for(const k of Object.keys(res))release(res[k]);
     for(const G of made.reverse())insertNode(G,doc.root);}
   doc.workflow=to;doc.maps=MAP_ORDER.filter(k=>(doc.maps.includes(k)&&!oldK.includes(k))||newK.includes(k));
+  /* (0.51.31) the viewer shader follows the workflow, and the switch undoes it too */
+  if(to==='spec')doc.v3shade={kind:'specgloss',p:{}};else if(doc.v3shade&&doc.v3shade.kind==='specgloss')doc.v3shade={kind:'std',p:{}};
   useAux(mapDepth(doc.map),true);syncTargets();
   const after=wfSnap();
   pushUndo({label:'Switch to '+WF_NAMES[to],refs:[],undo(){wfApply(before);},redo(){wfApply(after);}});
