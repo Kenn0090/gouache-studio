@@ -22,7 +22,7 @@ const TONE_LIST=[['filmic','Filmic',1],['aces','ACES',2],['agx','AgX',3],['khr',
 const toneInt=s=>{const t=TONE_LIST.find(x=>x[0]===(s&&s.tone));return t?t[2]:1;};
 const FS_3D=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan;
 uniform int uUseUDIM; uniform vec2 uUDIMTile;
-uniform sampler2D uBase; uniform sampler2D uRough; uniform sampler2D uMetal; uniform sampler2D uNrm; uniform sampler2D uAO; uniform sampler2D uEmis; uniform sampler2D uOpac; uniform sampler2D uThick; uniform sampler2D uSpec;
+uniform sampler2D uBase; uniform sampler2D uRough; uniform sampler2D uMetal; uniform sampler2D uNrm; uniform sampler2D uAO; uniform sampler2D uEmis; uniform sampler2D uOpac; uniform sampler2D uThick;
 uniform int uUseSafeMip;
 uniform int uFlipY; uniform int uHas; uniform vec2 uDef; uniform vec3 uCam; uniform vec3 uSun; uniform float uSunI; uniform float uSkyI; uniform float uExpo; uniform int uUnlit; uniform int uClip;
 /* the HDRI (0.26): 6 levels from sharp to fully rough, and the diffuse light */
@@ -63,7 +63,8 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
   float NdL=max(dot(N,L),0.0), NdV=max(dot(N,V),1e-3), NdH=max(dot(N,H),0.0), VdH=max(dot(V,H),0.0);
   /* a Specular colour map (Spec/Gloss) sets the reflection colour directly (flag 256); otherwise it follows the metal amount */
   vec3 F0=mix(vec3(0.04),alb,metal);
-  if((uHas&256)!=0){ vec4 sp=mapSample(uSpec,uv); vec3 sc=sp.a>1e-5?sp.rgb/sp.a:vec3(0.04); F0=lin(sc); }
+  /* the Specular map comes in on the Metallic slot: a Spec/Gloss set has no Metallic map, and graphics cards that allow only 16 textures in a shader (common on Windows) cannot take a 17th */
+  if((uHas&256)!=0){ vec4 sp=mapSample(uMetal,uv); vec3 sc=sp.a>1e-5?sp.rgb/sp.a:vec3(0.04); F0=lin(sc); }
   vec3 col=vec3(0.0);
   /* ---- toon and cel: flat bands of light from the key light (the sun's direction) ---- */
   if(uSh==4||uSh==5){ float l=dot(N,L)*0.5+0.5, band;
@@ -289,8 +290,8 @@ function v3List(C){const {g,pre,mv,bake,T0}=C;
 function v3MeshU(C,common,it,flip,safeMip=null){const {s,bake,sg,EU,eye,a,e}=C,T=it.T||{},base=T.base,useSafeMip=!!(safeMip&&!it.thick);
     const ok=k=>T[k]&&(bake||(sg&&(k==='rough'||k==='metal'))||(k==='nfinal'?doc.maps.includes('height')||doc.maps.includes('normal')||!!meshNormalBase():doc.maps.includes(k)));
     if(!bake&&!it.thick&&!it.sh&&doc.meshMaps&&doc.meshMaps.thick)it.thick=doc.meshMaps.thick;
-    const hm=(ok('rough')?1:0)|(ok('metal')?2:0)|(ok('nfinal')?4:0)|(ok('ao')?8:0)|(ok('emis')?16:0)|(ok('opac')?64:0)|(it.thick?128:0)|(ok('spec')?256:0);
-    return Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uUseUDIM:!!it.udim,uUDIMTile:it.udim?[it.udim.u,it.udim.v]:[0,0],uUseSafeMip:useSafeMip,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:ok('metal')?T.metal.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,uThick:useSafeMip?safeMip.tex:it.thick?it.thick.tex:dummy,uSpec:ok('spec')?T.spec.tex:dummy,...EU,...shadeUniforms(bake?null:it.sh||v3ShadeOf(doc)),
+    const mOK=ok('metal')&&!(sg&&ok('spec')),hm=(ok('rough')?1:0)|(mOK?2:0)|(ok('nfinal')?4:0)|(ok('ao')?8:0)|(ok('emis')?16:0)|(ok('opac')?64:0)|(it.thick?128:0)|(ok('spec')&&!mOK?256:0);
+    return Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uUseUDIM:!!it.udim,uUDIMTile:it.udim?[it.udim.u,it.udim.v]:[0,0],uUseSafeMip:useSafeMip,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:mOK?T.metal.tex:ok('spec')?T.spec.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,uThick:useSafeMip?safeMip.tex:it.thick?it.thick.tex:dummy,...EU,...shadeUniforms(bake?null:it.sh||v3ShadeOf(doc)),
       uStudioFill:s.studioFill||0,uStudioRim:s.studioRim||0,uLightColor:s.lightColor||[1,1,1],uShadow:dummy,uShadowVP:{m4:m4()},uShadowOn:0,uShadowSoft:1,...common,uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});}
 function v3Render(F,flip){const g=v3.gpu;if(!g)return;v3Work.scenes++;F.sceneFlip=!!flip;const C=v3Ctx(),{s,bake}=C,list=v3List(C),SU=studioShadowPrepare(C,list);
   const activeRange=!bake&&ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():null,safeMip=activeRange&&typeof seamMipLimit==='function'?seamMipLimit(activeRange):null;

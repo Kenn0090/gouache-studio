@@ -1159,3 +1159,11 @@ body.tabfull .dkfloat,body.tabfull .dkfly,body.tabfull .dkicons{display:none!imp
 #bkColA{flex-grow:1.35}.bkcol .bkmodel select{flex:1 1 80px}
 
 .spmsg{max-width:420px;text-align:center;line-height:1.4}.spmsg .spbtn{margin-top:10px;padding:8px 14px;border:1px solid rgba(255,255,255,.25);border-radius:8px;background:rgba(255,255,255,.08);color:#e9e6e1;font:13px system-ui,sans-serif;cursor:pointer}.spmsg .spbtn:hover{background:rgba(255,255,255,.16)}
+
+/* (0.52) mesh map slots: an empty one is a single compact line (name and Import…); a filled one adds its file and View / Edit buttons */
+.meshslots{gap:4px}
+.meshslot{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 6px;align-items:center;padding:4px 8px}
+.meshslotname{grid-column:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meshslotbtns{grid-column:2;display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end}
+.meshslotfile{grid-column:1/-1}
+.meshslot:not(.filled) .meshslotfile{display:none}
