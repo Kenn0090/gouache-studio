@@ -10,6 +10,8 @@ The column beside the view works like the rest of the dock: drag its tabs out (t
 ## Getting started
 **File › New** can start a new 3D Paint project straight away: choose **Start in: 3D Paint** at the top of the New document window. The width you type is the texture size, and the model you have loaded stays.
 
+The New project window also lets you pick the **Project setup** (Hand-painted, PBR or Specular / Glossiness); a Spec/Gloss project lists Specular and Glossiness instead of Metallic and Roughness everywhere (Maps list, Also paint, the channel drop-down). Once you have chosen your own low-poly mesh, the built-in shape drop-down is disabled. **Add a high-poly** there to have the Bake tab ready with both models, in case you have no maps to import.
+
 After creating it, **Set up 3D Paint project** lets you import a model, select a texture set and drop mesh-map files onto their channels. Press **Done** to continue; maps can also be assigned later in **Maps**. The viewport badge and texture-size heading show the active set's actual width and height, with 8K and 16K clearly labeled.
 
 1. Click **3D Paint** at the top right.
@@ -47,6 +49,14 @@ Choose the style under **Navigation**:
 | Zoom | Alt + right drag, or the wheel | Ctrl + right drag, or the wheel |
 
 Double-click empty space to frame the model again. The same navigation works in Paint's 3D view.
+
+### Painter-style brush and view controls
+These follow Substance Painter's own shortcuts (Preferences › Painting › *Substance Painter style mouse controls on the model* turns the Ctrl drags off):
+- **Ctrl + right drag**: brush **size** (left/right) and **hardness** (up/down). A ring shows the result and a label gives the numbers.
+- **Ctrl + left drag**: brush **flow** (left/right) and **rotation** (up/down). The same Ctrl drags work on the flat texture.
+- **Stencil**: **S + left drag** turns it (**Shift** snaps to 90°), **S + middle drag** moves it, **S + right drag** scales it. Hold **N** to paint without the stencil.
+- **F1** 3D + 2D · **F2** 3D only · **F3** 2D only · **F4** swaps the two sides · **F5** perspective · **F6** orthographic. (In 3D Paint F1 is not the user guide; use **Help › User guide**.)
+- **[** and **]** change the size, **Shift + right drag** turns the sky, **F** frames the model.
 
 ## Picking colours and shades
 - **Hold Alt over the model** (without clicking) to pick its colour there. Alt + drag still turns the model.

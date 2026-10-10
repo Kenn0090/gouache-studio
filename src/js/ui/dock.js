@@ -56,12 +56,23 @@ const dk={ws:'painting',L:null,custom:{},saved:{},lock:false,flyout:null,drag:nu
   if(!localStorage.getItem('gs.layout520')){localStorage.setItem('gs.layout520','1');delete dk.saved.bake;if(dk.modeLayouts&&dk.modeLayouts.bake)delete dk.modeLayouts.bake;}
   if(!localStorage.getItem('gs.layout37')){localStorage.setItem('gs.layout37','1');delete dk.saved.texturing;delete dk.saved.paint3d;if(dk.col2)delete dk.col2;}}catch(e){}})();
 const dkClone=o=>JSON.parse(JSON.stringify(o));
+/* (0.53, Kenn) "drag tabs to any side of the viewport": the right dock (L.groups), the bottom shelf, and now a left and a top dock (L.edges). Each dock lays its groups out in a column or in a row (dir). */
+const DK_EDGES=['left','top'];
+const dkEdgeGroups=()=>DK_EDGES.flatMap(k=>dk.L&&dk.L.edges&&dk.L.edges[k]?dk.L.edges[k].groups:[]);
+const dkAllGroups=()=>[...dk.L.groups,...dkEdgeGroups()];
+const dkEdgeOn=k=>!!(dk.L&&dk.L.edges&&dk.L.edges[k]&&dk.L.edges[k].groups.some(g=>dkAvail(g).length));
+function dkAreaOf(g){return g&&g._e?g._e:g&&g._c2?'col2':dk.L.shelf===g?'shelf':'right';}
+function dkDirOf(k){return k==='right'?dk.L.dir:dk.L.edges[k].dir;}
+function dkSetDir(k,dir){if(k==='right')dk.L.dir=dir;else dk.L.edges[k].dir=dir;dkRender();dkSave();}
 function dkPreset(ws){return dkClone(WS_PRESETS[ws]||dk.custom[ws]||WS_PRESETS.painting);}
 function dkLayoutFor(m,ws){const own=dk.modeLayouts[m]?.[ws];return own?dkClone(own):dk.saved[ws]?dkClone(dk.saved[ws]):dkPreset(ws);}
 function dkSave(){if(dk.L){const m=dk.layoutMode||ui.mode;(dk.modeLayouts[m]||(dk.modeLayouts[m]={}))[dk.ws]=dkClone(dk.L);}try{localStorage.setItem('gs.dock',JSON.stringify({ws:dk.ws,modeWs:dk.modeWs,modeLayouts:dk.modeLayouts,saved:dk.saved,custom:dk.custom,lock:dk.lock,col2:dk.col2}));}catch(e){}}
 /* every panel is in exactly one place: a group, a float, the icons, or hidden */
 function dkFix(L){const seen=new Set();const keep=a=>a.filter(id=>PANELS[id]&&!seen.has(id)&&seen.add(id));
   if(!L.shelf)L.shelf={tabs:[],f:1,h:170};if(!L.fold)L.fold={};
+  /* (0.53) panels can also dock to the left and to the top of the viewport */
+  if(!L.edges)L.edges={};for(const k of DK_EDGES){const E=L.edges[k]||(L.edges[k]={groups:[]});if(!E.groups)E.groups=[];if(!E.dir)E.dir=k==='top'?'row':'col';if(!(E.w>0))E.w=280;if(!(E.h>0))E.h=200;for(const g of E.groups){g.tabs=keep(g.tabs||[]);g._e=k;}E.groups=E.groups.filter(g=>g.tabs.length);}
+  if(L.dir!=='row')L.dir='col';
   for(const g of L.groups)g.tabs=keep(g.tabs);L.shelf.tabs=keep(L.shelf.tabs);for(const f of L.floats)f.tabs=keep(f.tabs);L.icons=keep(L.icons||[]);L.hidden=keep(L.hidden||[]);
   L.groups=L.groups.filter(g=>g.tabs.length);L.floats=L.floats.filter(f=>f.tabs.length);
   for(const id of PANEL_IDS)if(!seen.has(id)){if(id==='favorites'){L.hidden.push(id);continue;}if(['mats','textures','decals','envs','projects','meshmaps','weldtools'].includes(id)){L.shelf.tabs.push(id);continue;}const home=WS_PRESETS.painting.groups.find(g=>g.tabs.includes(id));const g=L.groups.find(g=>home&&g.tabs.some(t=>home.tabs.includes(t)));if(g)g.tabs.push(id);else L.groups.push({tabs:[id],f:1});}
@@ -106,11 +117,12 @@ function dkGrid(){const L=dk.L,app=$('#app'),F=L.fold||{},shOn=!!(L.shelf&&dkAva
   const left=L.tb.side!=='right';
   const c2=dkCol2On()&&dk.col2.groups.some(g=>dkAvail(g).length)?(F.dock2?26:dk.col2.w)+'px':'0px';
   const dw=hasDock?(F.dock?26:L.w)+'px':'0px';
-  app.style.gridTemplateColumns=left?`${tw} minmax(0,1fr) ${c2} ${ic} ${dw}`:`minmax(0,1fr) ${tw} ${c2} ${ic} ${dw}`;
-  app.style.gridTemplateRows=`38px ${L.opt?(F.opt?'26px':'minmax(36px,auto)'):'0px'} minmax(0,1fr) auto ${shOn?(F.shelf?26:clamp(L.shelf.h||170,90,Math.max(90,window.innerHeight*.6))):0}px 26px`;
+  const lw=dkEdgeOn('left')?Math.round(clamp(L.edges.left.w,140,Math.max(140,window.innerWidth*.6)))+'px':'0px',th=dkEdgeOn('top')?Math.round(clamp(L.edges.top.h,90,Math.max(90,window.innerHeight*.6)))+'px':'0px';
+  app.style.gridTemplateColumns=left?`${tw} ${lw} minmax(0,1fr) ${c2} ${ic} ${dw}`:`${lw} minmax(0,1fr) ${tw} ${c2} ${ic} ${dw}`;
+  app.style.gridTemplateRows=`38px ${L.opt?(F.opt?'26px':'minmax(36px,auto)'):'0px'} ${th} minmax(0,1fr) auto ${shOn?(F.shelf?26:clamp(L.shelf.h||170,90,Math.max(90,window.innerHeight*.6))):0}px 26px`;
   /* (0.38.2, Kenn) like Substance: the shelf sits under the viewport only; the right-hand panels run all the way down */
-  const sh='"shelf shelf dock2 icons dock"';
-  app.style.gridTemplateAreas=left?`"head head head head head" "opt opt opt opt opt" "tools work dock2 icons dock" "tools tl dock2 icons dock" ${sh} "status status status status status"`:`"head head head head head" "opt opt opt opt opt" "work tools dock2 icons dock" "tl tools dock2 icons dock" ${sh} "status status status status status"`;}
+  const sh='"shelf shelf shelf dock2 icons dock"';
+  app.style.gridTemplateAreas=left?`"head head head head head head" "opt opt opt opt opt opt" "tools dockt dockt dock2 icons dock" "tools dockl work dock2 icons dock" "tools dockl tl dock2 icons dock" ${sh} "status status status status status status"`:`"head head head head head head" "opt opt opt opt opt opt" "dockt dockt tools dock2 icons dock" "dockl work tools dock2 icons dock" "dockl tl tools dock2 icons dock" ${sh} "status status status status status status"`;}
 /* ---- (0.30) fold arrows on every docked bar and column, and the bottom shelf ---- */
 const DK_FOLDS=[['dock','#dock','Panels',()=>dk.L.groups.some(g=>dkAvail(g).length)&&dk.L.w>0,()=>['›','‹']],
   ['dock2','#dock2','Colour and brushes',()=>dkCol2On()&&dk.col2.groups.some(g=>dkAvail(g).length),()=>['›','‹']],
@@ -148,8 +160,13 @@ function dkScrollSave(){const m={};for(const b of document.querySelectorAll('.dk
 function dkScrollRestore(m){if(!m)return;for(const b of document.querySelectorAll('.dkbody')){const v=[...b.children].find(c=>!c.classList.contains('dk-off'));const k=dkSecKey(v);if(k&&m[k])b.scrollTop=m[k];}}
 function dkRender(){brushMergeSync();const keepSc=dkScrollSave(),L=dk.L,dock=$('#dock');dkGrid();
   for(const id of PANEL_IDS){const s=dkSec(id);s.classList.remove('dk-off');}
-  dock.replaceChildren();const gs=L.groups.filter(g=>dkAvail(g).length);
-  gs.forEach((g,i)=>{if(i)dock.append(dkSplit(gs[i-1],g));dock.append(dkGroup(g));});
+  dock.replaceChildren();const gs=L.groups.filter(g=>dkAvail(g).length);dock.classList.toggle('dkrow',L.dir==='row');
+  gs.forEach((g,i)=>{if(i)dock.append(dkSplit(gs[i-1],g,L.dir==='row'));dock.append(dkGroup(g));});
+  /* the left and top docks */
+  for(const k of DK_EDGES){const E=L.edges[k],id=k==='left'?'dockL':'dockT';let n=dk['dock_'+k];if(!n){n=dk['dock_'+k]=el('aside',{class:'panel dkedge dkedge-'+k,id,'aria-label':k==='left'?'Panels on the left':'Panels on top'});$('#app').append(n);
+      const bar=dk['bar_'+k]=dkEdgeBar(k);$('#app').append(bar);}
+    const ge=E.groups.filter(g=>dkAvail(g).length);n.replaceChildren();n.hidden=!ge.length;n.classList.toggle('dkrow',E.dir==='row');dk['bar_'+k].hidden=!ge.length;
+    ge.forEach((g,i)=>{if(i)n.append(dkSplit(ge[i-1],g,E.dir==='row'));n.append(dkGroup(g));});}
   if(!dk.wbar){dk.wbar=dkWidthBar();$('#app').append(dk.wbar);}dk.wbar.hidden=!gs.length||!(L.w>0);
   /* the second column (3D Paint) */
   if(!dk.dock2){dk.dock2=el('aside',{class:'panel',id:'dock2','aria-label':'Colour and brushes'});$('#app').append(dk.dock2);}
@@ -188,10 +205,18 @@ function dkWidthBar(){const s=el('div',{class:'dkwidth',role:'separator','aria-o
     const mv=ev=>dkSetWidth(w0-(ev.clientX-x0));
     const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);document.body.classList.remove('dkresizing');dkSave();};window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);});
   return s;}
-function dkSplit(a,b){const s=el('div',{class:'dksplit',role:'separator','aria-orientation':'horizontal',title:'Drag to resize'});
-  s.addEventListener('pointerdown',e=>{if(dk.lock||a.min||b.min)return;e.preventDefault();const A=s.previousSibling,B=s.nextSibling,ha=A.getBoundingClientRect().height,hb=B.getBoundingClientRect().height,tot=a.f+b.f,y0=e.clientY;
-    const mv=ev=>{const d=clamp(ev.clientY-y0,-ha+40,hb-40),na=(ha+d)/(ha+hb)*tot;a.f=na;b.f=tot-na;A.style.flex=a.f+' 1 0px';B.style.flex=b.f+' 1 0px';};
+function dkSplit(a,b,row){const s=el('div',{class:'dksplit'+(row?' h':''),role:'separator','aria-orientation':row?'vertical':'horizontal',title:'Drag to resize'});
+  s.addEventListener('pointerdown',e=>{if(dk.lock||a.min||b.min)return;e.preventDefault();const A=s.previousSibling,B=s.nextSibling,ra=A.getBoundingClientRect(),rb=B.getBoundingClientRect(),ha=row?ra.width:ra.height,hb=row?rb.width:rb.height,tot=a.f+b.f,y0=row?e.clientX:e.clientY;
+    const mv=ev=>{const d=clamp((row?ev.clientX:ev.clientY)-y0,-ha+40,hb-40),na=(ha+d)/(ha+hb)*tot;a.f=na;b.f=tot-na;A.style.flex=a.f+' 1 0px';B.style.flex=b.f+' 1 0px';};
     const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);dkSave();};window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);});
+  return s;}
+/* the inner edge of the left or top dock: drag to make it wider / taller (double-click: back to the usual size) */
+function dkSetEdge(k,v){const E=dk.L.edges[k];if(k==='left')E.w=Math.round(clamp(v,140,stMaxW(0)));else E.h=Math.round(clamp(v,90,Math.max(90,window.innerHeight*.6)));dkGrid();if(typeof resizeGL==='function'){resizeGL();fit();}if(typeof drawSV==='function')drawSV();}
+function dkEdgeBar(k){const left=k==='left',s=el('div',{class:'dkebar dkebar-'+k,role:'separator','aria-orientation':left?'vertical':'horizontal','aria-label':left?'Left dock width':'Top dock height',title:'Drag to resize (double-click: usual size)'});
+  s.addEventListener('dblclick',()=>{if(dk.lock)return;dkSetEdge(k,left?280:200);dkSave();});
+  s.addEventListener('pointerdown',e=>{if(dk.lock||e.button!==0)return;e.preventDefault();const E=dk.L.edges[k],v0=left?E.w:E.h,p0=left?e.clientX:e.clientY;document.body.classList.add(left?'dkresizing':'stvresize');
+    const mv=ev=>dkSetEdge(k,v0+((left?ev.clientX:ev.clientY)-p0));
+    const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);document.body.classList.remove('dkresizing','stvresize');dkSave();};window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);});
   return s;}
 /* ---- floating panels (inside the window) ---- */
 function dkKeepOnScreen(f){f.x=clamp(f.x,0,Math.max(0,window.innerWidth-120));f.y=clamp(f.y,38,Math.max(38,window.innerHeight-60));}
@@ -218,28 +243,31 @@ function dkFlyoutEl(id){const b=[...dk.icons.children].find(x=>x.title===PANELS[
   document.body.append(w);}
 document.addEventListener('pointerdown',e=>{if(dk.flyout&&!e.target.closest('.flyout,#dkIcons,#modal,.fontpop,#menuPop'))dkFlyout(null);},true);
 /* ---- the ⋯ menu of a group ---- */
-function dkMenu(e,id,where){const inShelf=dk.L.shelf.tabs.includes(id),items=[inShelf?['Back into the dock',()=>dkMove(id,{newGroup:dk.L.groups.length})]:['Move to the bottom shelf',()=>dkMove(id,{group:dk.L.shelf})],['Float “'+PANELS[id].title+'”',()=>dkMove(id,{float:{x:e.clientX-320,y:e.clientY+10}})],['Keep as an icon',()=>dkMove(id,{icons:true})],['Close',()=>dkMove(id,{hidden:true})]];
+function dkMenu(e,id,where){const inShelf=dk.L.shelf.tabs.includes(id),items=[inShelf?['Back into the dock',()=>dkMove(id,{newGroup:dk.L.groups.length})]:['Move to the bottom shelf',()=>dkMove(id,{group:dk.L.shelf})],['Dock to the left',()=>dkMove(id,{edge:'left'})],['Dock to the top',()=>dkMove(id,{edge:'top'})],['Dock to the right',()=>dkMove(id,{newGroup:dk.L.groups.length})],['Float “'+PANELS[id].title+'”',()=>dkMove(id,{float:{x:e.clientX-320,y:e.clientY+10}})],['Keep as an icon',()=>dkMove(id,{icons:true})],['Close',()=>dkMove(id,{hidden:true})]];
   if(where.group)items.push([where.group.min?'Unfold group':'Fold group',()=>{where.group.min=!where.group.min;dkRender();dkSave();}]);
+  /* (0.53) groups of a dock side by side or stacked */
+  if(where.group){const k=dkAreaOf(where.group);if(k==='right'||k==='left'||k==='top'){const row=dkDirOf(k)==='row';items.push([row?'Stack the panel groups vertically':'Put the panel groups side by side',()=>dkSetDir(k,row?'col':'row')]);}}
   const pop=$('#menuPop');closeMenu();pop.replaceChildren(...items.map(([t,f])=>el('button',{class:'mi',role:'menuitem',onclick:()=>{pop.hidden=true;f();}},el('span'),el('span',{text:t}),el('span'))));
   pop.hidden=false;pop.style.left=Math.min(e.clientX,window.innerWidth-pop.offsetWidth-8)+'px';pop.style.top=(e.clientY+6)+'px';
   const off=ev=>{if(!pop.contains(ev.target)){pop.hidden=true;document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}
 /* take a panel out of wherever it is and put it somewhere else */
-function dkRemove(id){const L=dk.L;if(dkCol2On()){for(const g of dk.col2.groups)g.tabs=g.tabs.filter(t=>t!==id);dk.col2.groups=dk.col2.groups.filter(g=>g.tabs.length);}for(const g of L.groups)g.tabs=g.tabs.filter(t=>t!==id);if(L.shelf)L.shelf.tabs=L.shelf.tabs.filter(t=>t!==id);for(const f of L.floats)f.tabs=f.tabs.filter(t=>t!==id);L.icons=L.icons.filter(t=>t!==id);L.hidden=L.hidden.filter(t=>t!==id);if(dk.flyout===id)dk.flyout=null;}
+function dkRemove(id){const L=dk.L;if(dkCol2On()){for(const g of dk.col2.groups)g.tabs=g.tabs.filter(t=>t!==id);dk.col2.groups=dk.col2.groups.filter(g=>g.tabs.length);}for(const g of L.groups)g.tabs=g.tabs.filter(t=>t!==id);for(const k of DK_EDGES){const E=L.edges[k];for(const g of E.groups)g.tabs=g.tabs.filter(t=>t!==id);E.groups=E.groups.filter(g=>g.tabs.length);}if(L.shelf)L.shelf.tabs=L.shelf.tabs.filter(t=>t!==id);for(const f of L.floats)f.tabs=f.tabs.filter(t=>t!==id);L.icons=L.icons.filter(t=>t!==id);L.hidden=L.hidden.filter(t=>t!==id);if(dk.flyout===id)dk.flyout=null;}
 function dkMove(id,to){const L=dk.L;dkRemove(id);
   if(to.group){to.group.tabs.splice(to.index==null?to.group.tabs.length:to.index,0,id);to.group.active=id;to.group.min=false;}
+  else if(to.edge){const E=L.edges[to.edge];E.groups.splice(to.index==null?E.groups.length:to.index,0,{tabs:[id],active:id,f:1,_e:to.edge});}
   else if(to.newGroup!=null){L.groups.splice(to.newGroup,0,{tabs:[id],active:id,f:1});}
   else if(to.newGroup2!=null){dk.col2.groups.splice(to.newGroup2,0,{tabs:[id],active:id,f:1,_c2:true});}
   else if(to.float){L.floats.push({tabs:[id],active:id,x:to.float.x,y:to.float.y,w:300,h:Math.min(420,window.innerHeight-120)});}
   else if(to.icons)L.icons.push(id);else if(to.hidden)L.hidden.push(id);
-  if(!L.groups.some(g=>g.tabs.length)&&!to.group&&to.newGroup==null&&to.newGroup2==null&&L.icons.length===0)L.groups.push({tabs:[],f:1});
+  if(!L.groups.some(g=>g.tabs.length)&&!to.group&&to.newGroup==null&&to.newGroup2==null&&!to.edge&&L.icons.length===0)L.groups.push({tabs:[],f:1});
   dkApply(L,true);}
 /* show a panel (Window menu, tests): brings it back into the dock and to the front */
-function showPanel(id){if(id==='tool'&&ui.mode!=='p3d')id='brushes';const L=dk.L;if(dkCol2On()&&dkC2Has(id)){const g2=dk.col2.groups.find(g=>g.tabs.includes(id));if(g2){g2.active=id;g2.min=false;dkRender();return;}}let g=L.groups.find(g=>g.tabs.includes(id));const f=L.floats.find(f=>f.tabs.includes(id));
+function showPanel(id){if(id==='tool'&&ui.mode!=='p3d')id='brushes';const L=dk.L;if(dkCol2On()&&dkC2Has(id)){const g2=dk.col2.groups.find(g=>g.tabs.includes(id));if(g2){g2.active=id;g2.min=false;dkRender();return;}}let g=dkAllGroups().find(g=>g.tabs.includes(id));const f=L.floats.find(f=>f.tabs.includes(id));
   if(f){f.active=id;dkRender();return;}if(!g&&L.shelf&&L.shelf.tabs.includes(id)){L.shelf.active=id;L.shelf.min=false;if(L.fold&&L.fold.shelf){L.fold.shelf=false;dkGrid();}dkRender();dkSave();return;}if(L.icons.includes(id)){dkFlyout(id);return;}
   if(!g){L.hidden=L.hidden.filter(t=>t!==id);const home=WS_PRESETS.painting.groups.findIndex(x=>x.tabs.includes(id));g=L.groups.find(x=>x.tabs.some(t=>(WS_PRESETS.painting.groups[home]||{tabs:[]}).tabs.includes(t)));
     if(g)g.tabs.push(id);else{g={tabs:[id],f:1};L.groups.push(g);}}
   g.active=id;g.min=false;dkRender();dkSave();}
-function panelShown(id){const L=dk.L;if(dkCol2On()&&dkC2Has(id))return true;return L.groups.some(g=>g.tabs.includes(id))||(L.shelf&&L.shelf.tabs.includes(id))||L.floats.some(f=>f.tabs.includes(id))||L.icons.includes(id);}
+function panelShown(id){const L=dk.L;if(dkCol2On()&&dkC2Has(id))return true;return dkAllGroups().some(g=>g.tabs.includes(id))||(L.shelf&&L.shelf.tabs.includes(id))||L.floats.some(f=>f.tabs.includes(id))||L.icons.includes(id);}
 function togglePanel(id){if(panelShown(id)&&!dk.L.icons.includes(id)){dkMove(id,{hidden:true});}else showPanel(id);}
 /* ---- dragging a tab ---- */
 function dkDragStart(e,id,where){if(dk.lock||e.button!==0)return;dk.drag={id,where,x:e.clientX,y:e.clientY,on:false,ghost:null,hint:null,to:null};}
@@ -255,10 +283,17 @@ function dkDragMove(e){const d=dk.drag;if(!d)return;if(!d.on){if(Math.hypot(e.cl
   else if(t&&t.closest('#dock')){const gEl=t.closest('.dkgrp'),grs=[...dock.querySelectorAll('.dkgrp')];
     if(gEl){const r=gEl.getBoundingClientRect(),g=gEl._g,i=dk.L.groups.indexOf(g);
       if(t.closest('.dktabs')){const T=dkTabSlot(gEl,g,d.id,e.clientX);to={group:g,index:T.index};box=T.box;}
-      else if(e.clientY<r.top+r.height*.28){to={newGroup:i};box={left:r.left,top:r.top-4,width:r.width,height:10};}
-      else if(e.clientY>r.bottom-r.height*.28){to={newGroup:i+1};box={left:r.left,top:r.bottom-6,width:r.width,height:10};}
+      else if(dk.L.dir==='row'?e.clientX<r.left+r.width*.28:e.clientY<r.top+r.height*.28){to={newGroup:i};box=dk.L.dir==='row'?{left:r.left-4,top:r.top,width:10,height:r.height}:{left:r.left,top:r.top-4,width:r.width,height:10};}
+      else if(dk.L.dir==='row'?e.clientX>r.right-r.width*.28:e.clientY>r.bottom-r.height*.28){to={newGroup:i+1};box=dk.L.dir==='row'?{left:r.right-6,top:r.top,width:10,height:r.height}:{left:r.left,top:r.bottom-6,width:r.width,height:10};}
       else{to={group:g};box=r;}}
     else if(grs.length){const r=dock.getBoundingClientRect();to={newGroup:dk.L.groups.length};box={left:r.left,top:r.bottom-12,width:r.width,height:10};}}
+  else if(t&&t.closest('.dkedge')){const k=t.closest('.dkedge').classList.contains('dkedge-left')?'left':'top',E=dk.L.edges[k],G=E.groups,row=E.dir==='row',nEl=dk['dock_'+k],gEl=t.closest('.dkgrp');
+    if(gEl){const r=gEl.getBoundingClientRect(),g=gEl._g,i=G.indexOf(g);
+      if(t.closest('.dktabs')){const T=dkTabSlot(gEl,g,d.id,e.clientX);to={group:g,index:T.index};box=T.box;}
+      else if(row?e.clientX<r.left+r.width*.28:e.clientY<r.top+r.height*.28){to={edge:k,index:i};box=row?{left:r.left-4,top:r.top,width:10,height:r.height}:{left:r.left,top:r.top-4,width:r.width,height:10};}
+      else if(row?e.clientX>r.right-r.width*.28:e.clientY>r.bottom-r.height*.28){to={edge:k,index:i+1};box=row?{left:r.right-6,top:r.top,width:10,height:r.height}:{left:r.left,top:r.bottom-6,width:r.width,height:10};}
+      else{to={group:g};box=r;}}
+    else{to={edge:k};box=nEl.getBoundingClientRect();}}
   else if(t&&t.closest('#dock2')&&dkCol2On()){const gEl=t.closest('.dkgrp'),d2=dk.dock2,G=dk.col2.groups;
     if(gEl){const r=gEl.getBoundingClientRect(),g=gEl._g,i=G.indexOf(g);
       if(t.closest('.dktabs')){const T=dkTabSlot(gEl,g,d.id,e.clientX);to={group:g,index:T.index};box=T.box;}
@@ -268,7 +303,14 @@ function dkDragMove(e){const d=dk.drag;if(!d)return;if(!d.on){if(Math.hypot(e.cl
     else{const r=d2.getBoundingClientRect();to={newGroup2:G.length};box={left:r.left,top:r.bottom-12,width:r.width,height:10};}}
   else if(t&&t.closest('#dkShelf')){const gEl=t.closest('.dkgrp'),S=dk.L.shelf;
     if(gEl&&t.closest('.dktabs')){const T=dkTabSlot(gEl,S,d.id,e.clientX);to={group:S,index:T.index};box=T.box;}else{to={group:S};box=(gEl||dk.shelf).getBoundingClientRect();}}
-  else if(t&&t.closest('#workWrap')&&e.clientY>$('#workWrap').getBoundingClientRect().bottom-Math.min(90,$('#workWrap').getBoundingClientRect().height*.2)){const r=$('#workWrap').getBoundingClientRect();to={group:dk.L.shelf};box={left:r.left,top:r.bottom-8,width:r.width,height:10};}
+  else if(t&&t.closest('#workWrap')){const r=$('#workWrap').getBoundingClientRect(),band=56,bb=Math.min(90,r.height*.2),
+      c=[['left',e.clientX-r.left,band],['right',r.right-e.clientX,band],['top',e.clientY-r.top,band],['bottom',r.bottom-e.clientY,bb]].filter(x=>x[1]<x[2]).sort((a,b)=>a[1]-b[1])[0];
+    if(c){const k=c[0],w=Math.min(220,r.width*.3),h=Math.min(160,r.height*.3);
+      if(k==='bottom'){to={group:dk.L.shelf};box={left:r.left,top:r.bottom-8,width:r.width,height:10};}
+      else if(k==='left'){to={edge:'left'};box={left:r.left,top:r.top,width:w,height:r.height};}
+      else if(k==='top'){to={edge:'top'};box={left:r.left,top:r.top,width:r.width,height:h};}
+      else{to={newGroup:dk.L.groups.length};box={left:r.right-w,top:r.top,width:w,height:r.height};}}
+    else to={float:{x:e.clientX-40,y:e.clientY-12}};}
   else if(t&&t.closest('.dkfloat:not(.flyout)')){/* onto another floating panel: join it */const fe=t.closest('.dkfloat');const f=dk.L.floats[[...document.querySelectorAll('.dkfloat:not(.flyout)')].indexOf(fe)];if(f){to={floatJoin:f};box=fe.getBoundingClientRect();}}
   else{to={float:{x:e.clientX-40,y:e.clientY-12}};}
   d.to=to;if(box){Object.assign(d.hint.style,{left:box.left+'px',top:box.top+'px',width:box.width+'px',height:box.height+'px'});d.hint.hidden=false;}else d.hint.hidden=true;}
@@ -293,7 +335,7 @@ function syncWsSel(){const s=$('#wsSel');if(!s)return;s.replaceChildren(...wsLis
   el('option',{value:':save',text:'Save workspace…'}),el('option',{value:':reset',text:'Reset this workspace'}),el('option',{value:':delete',text:'Delete this workspace'}));s.value=dk.ws;}
 function dkModeChanged(){if(dk.L)dkRender();}
 /* bring a panel to the front of its group if it is in the dock (without moving it) */
-function dkActivate(id){if(!dk.L)return;const g=(dkCol2On()&&dk.col2.groups.find(g=>g.tabs.includes(id)))||dk.L.groups.find(g=>g.tabs.includes(id));if(g&&g.active!==id){g.active=id;g.min=false;dkRender();}}
+function dkActivate(id){if(!dk.L)return;const g=(dkCol2On()&&dk.col2.groups.find(g=>g.tabs.includes(id)))||dkAllGroups().find(g=>g.tabs.includes(id));if(g&&g.active!==id){g.active=id;g.min=false;dkRender();}}
 
 /* ---- panels in windows of their own (a second monitor) ---- */
 dk.pops=[];dk.popSeq=0;

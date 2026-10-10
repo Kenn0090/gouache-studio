@@ -1,3 +1,10 @@
+# Gouache Studio 0.53.0
+
+- Panels can be docked to the left, top or right of the viewport (drag a tab to an edge, or use the panel's ⋯ menu), and any dock can lay its groups out vertically or side by side.
+- 3D Paint gets Substance Painter style controls: Ctrl + right drag for brush size and hardness, Ctrl + left drag for flow and rotation, S + drag for the stencil, N to ignore it, F1 to F6 for the view layout and perspective.
+- Spec/Gloss projects list Specular and Glossiness (not Metallic and Roughness) everywhere, and Glossiness can be adjusted.
+- The New 3D Paint Project window locks the shape drop-down once your own mesh is chosen, and can take a high-poly to set up baking.
+
 # Gouache Studio 0.52.2
 
 - Fixes the app staying on the loading screen on graphics cards that allow only 16 textures per shader. The 3D viewer shader used 17 since 0.51.31; the Specular map now shares the Metallic slot.
