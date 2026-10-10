@@ -1,3 +1,10 @@
+## 0.54.0
+
+- **UV check on import.** A low-poly you load (in the New 3D Paint Project window, the Bake tab, or dropped on the 3D view) is checked. No UVs: a window says so and offers **Auto unwrap** or **Continue without UVs**. Overlapping islands, parts outside the 0–1 square or very uneven texel size: a window lists them and offers **Optimize layout**, **Auto unwrap instead** or **Keep as they are**.
+- **Auto unwrap.** Cuts the model into pieces where the surface turns, flattens them (a straight projection when nearly flat, LSCM otherwise), gives every piece the same texel size and packs them into the 0–1 square with a gap that follows the texture size. One square per material or one shared square.
+- **Review in the Bake tab.** A new **UVs** card shows the layout (overlaps in red), a numbered **checker on the model**, **Style** and **Seam angle**, **Padding**, a **Seed** with **Re-roll** and **Best of 24** (repacks the same pieces 24 ways and keeps the tightest), **Optimize layout** for a model's own islands, and **Original UVs** to go back.
+- **Export model with UVs…** (File menu and the UVs card): OBJ, glTF binary and binary FBX, with UVs, normals and a material group per material.
+
 ## 0.53.1
 
 - **Spec/Gloss now really works in 3D Paint.** The Glossiness did nothing on the model: 3D Paint was reading a leftover Roughness instead. Now Glossiness sets how sharp the reflection is, and the Specular colour is the colour of the reflection, so a blue shine on a green jade or a gold shine on a brown body show up. The ten Spec/Gloss Library materials have new preview pictures that show it.
