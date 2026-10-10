@@ -28,6 +28,8 @@ After editing, right-click the marked layer and choose **Send to 3D Paint as mes
 
 The **Maps** panel has slots for Normal, Ambient occlusion, Curvature, curvature edges/creases, Thickness, World normal, Position, ID, Height, Roughness and Metallic. Drop a file into its slot or press **Import…**. Use **Replace…**, **View** or **×** to change, inspect or remove an assigned map. Maps belong to the selected texture set and are saved inside the project. They feed masks, generators and material channels using **Mesh map** as the source; imported tangent normals provide the model's normal detail automatically.
 
+In the **Maps** tab the mesh maps are one quiet line each: a dot (filled when a map is there), its name and size, and small icons to view it on the model, edit it in 2D, replace it or remove it. An empty one just says **Import…**; drop a file on any row.
+
 The **Mesh maps** tab in the Material Library shelf shows the assigned maps as thumbnails. Click a thumbnail to inspect it on the model, or drag it into a Maps slot. **Import mesh maps…** identifies standard map names such as `robot_AO` and `robot_curvature`; unnamed files can be dropped directly into a slot.
 
 Imported maps retain their own dimensions, so a 2K map does not become a separate 16K image just because the document is 16K. Effects sample the map over the texture's UVs. At 16K, import mesh-map images at 8 bits per channel; smaller height images may retain 16-bit precision.

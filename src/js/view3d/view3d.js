@@ -287,7 +287,7 @@ function v3List(C){const {g,pre,mv,bake,T0}=C;
   if(bake&&typeof bakeHighHidesLow==='function'&&bakeHighHidesLow())list=[];
   return list;}
 /* the uniforms for one texture set's draw */
-function v3MeshU(C,common,it,flip,safeMip=null){const {s,bake,sg,EU,eye,a,e}=C,T=it.T||{},base=T.base,useSafeMip=!!(safeMip&&!it.thick);
+function v3MeshU(C,common,it,flip,safeMip=null){const {s,bake,EU,eye,a,e}=C,sg=it.sg!==undefined?it.sg:C.sg,T=it.T||{},base=T.base,useSafeMip=!!(safeMip&&!it.thick);
     const ok=k=>T[k]&&(bake||(sg&&(k==='rough'||k==='metal'))||(k==='nfinal'?doc.maps.includes('height')||doc.maps.includes('normal')||!!meshNormalBase():doc.maps.includes(k)));
     if(!bake&&!it.thick&&!it.sh&&doc.meshMaps&&doc.meshMaps.thick)it.thick=doc.meshMaps.thick;
     const mOK=ok('metal')&&!(sg&&ok('spec')),hm=(ok('rough')?1:0)|(mOK?2:0)|(ok('nfinal')?4:0)|(ok('ao')?8:0)|(ok('emis')?16:0)|(ok('opac')?64:0)|(it.thick?128:0)|(ok('spec')&&!mOK?256:0);

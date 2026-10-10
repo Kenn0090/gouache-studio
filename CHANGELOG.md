@@ -1,3 +1,9 @@
+## 0.53.1
+
+- **Spec/Gloss now really works in 3D Paint.** The Glossiness did nothing on the model: 3D Paint was reading a leftover Roughness instead. Now Glossiness sets how sharp the reflection is, and the Specular colour is the colour of the reflection, so a blue shine on a green jade or a gold shine on a brown body show up. The ten Spec/Gloss Library materials have new preview pictures that show it.
+- **Switching to Spec/Gloss updates the Material editor.** After choosing Spec/Gloss in the Shader panel (or undoing it, or switching texture sets), the editor still listed Roughness and Metallic. It now lists only Diffuse, Specular and Glossiness in a Spec/Gloss project, and only the PBR channels in a PBR one. The Recolour note and new texture sets follow too.
+- **A quieter Maps tab.** Each mesh map is one slim line: dot, name, size and small icons (view, edit in 2D, replace, remove). Empty ones just say Import…
+
 ## 0.53.0
 
 - **Panels dock to any side.** Drag a tab to the left, top or right edge of the viewport (a strip shows where it will land) and it docks there; the bottom edge is still the shelf. **⋯ › Dock to the left / top / right** does the same without dragging. A dock goes away when it is empty, and each workspace remembers its docks.

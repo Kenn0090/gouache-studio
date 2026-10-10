@@ -36,6 +36,7 @@ Documents are **Metal/Rough** by default. A **Specular/Gloss** document paints t
 - The material view, the 3D view and the ray-traced render shade a Specular/Gloss document correctly: the Specular colour is the colour of the reflections, as in the traditional workflow (a brown body with a yellow shine reads as gold).
 - **Library materials follow the project.** A Metal/Rough material added to a Spec/Gloss document is converted as it goes in, and the other way round. The Library has ten Spec/Gloss materials with their own **Spec/Gloss** tag and a small S/G icon on each tile.
 - Brushes that paint several maps at once get **Specular** (a colour) and **Glossiness** values.
+- **In 3D Paint** the model is shaded from the Specular colour (the reflection colour, so a non-metal can have a blue or gold shine) and the Glossiness (1 = a sharp mirror-like reflection, 0 = a wide matte one). The Material editor of a Spec/Gloss project lists only Diffuse, Specular and Glossiness (no Roughness or Metallic); switching a project's shader to Spec/Gloss updates it straight away.
 - The **Convert tab** sends **Glossiness** (inverted roughness) and **Specular** (grey, with the photo's colour where it's metal) to a Specular/Gloss document.
 - **Export textures** offers the Specular/Gloss presets (see [Files and export](Files-and-export.md)).
 

@@ -189,7 +189,7 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
     t1.querySelector('.fillhead').append(chk('fl_tint_on','',!!TN.on,v=>edit(()=>{TN.on=v;if(v&&!TN.amt)TN.amt=.7;matEd.open.fl_tint=v;},'base',true)));
     t1.querySelector('.v').textContent=TN.on?(TN.mode||'multiply')+' '+Math.round(TN.amt*100)+'%':'off';t2.querySelector('.v').textContent=fillTintOn({adj:AJ})?'on':'contrast, brightness…';
     box.append(el('div',{class:'sub',text:'Tint & adjust'}),t1,t2);}
-  const M=doc.meshMaps||{},mks=Object.keys(M).filter(k=>!k.startsWith('cv:')),cks=Object.keys(M).filter(k=>k.startsWith('cv:')),keys=MAT_CH.filter(k=>fillMapsOf().includes(k));
+  const M=doc.meshMaps||{},mks=Object.keys(M).filter(k=>!k.startsWith('cv:')),cks=Object.keys(M).filter(k=>k.startsWith('cv:')),keys=MAT_CH.filter(k=>fillMapsOf().includes(k)&&!(doc.workflow==='spec'?k==='rough'||k==='metal':k==='spec'||k==='gloss'));/* (0.53.1) only the channels of this project's workflow: no Roughness or Metallic in Spec/Gloss, no Specular or Glossiness in PBR */
   if(ui.mode==='p3d'&&doc.p3){const spec=doc.workflow==='spec',hand=doc.p3Setup==='handpainted';box.append(el('div',{class:'sub p3-material-section',text:(hand?'Hand-painted · ':'')+(spec?'Spec Gloss parameters':'PBR parameters')}));}
   for(const k of keys){const s=W.maps[k]||(W.maps[k]=fillDefaults().maps[k]),grey=MAP_DEFS[k].grey,isN=k==='normal';
     const row=el('div',{class:'fillbody'}),open=!!(s.on&&(matEd.open[k]||matEd.openAll)),card=el('div',{class:'fillcard fillrow'+(open?' open':'')+(s.on?'':' off')});

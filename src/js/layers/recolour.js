@@ -68,7 +68,7 @@ function recolBuild(box,L){const W=L.fill;if(!W.recol)W.recol=RC_DEF();const r=W
   box.append(makeSlider({id:'rc_con',label:'Contrast',min:.2,max:2.5,step:.01,value:r.con==null?1:r.con,fmt:v=>Math.round(v*100)+'%',onInput:v=>ed(()=>{r.con=v;})}).el,
     makeSlider({id:'rc_bri',label:'Brightness',min:-.5,max:.5,step:.01,value:r.bri||0,fmt:v=>(v>0?'+':'')+Math.round(v*100),onInput:v=>ed(()=>{r.bri=v;})}).el,
     makeSlider({id:'rc_sat',label:'Saturation',min:0,max:2,step:.01,value:r.sat==null?1:r.sat,fmt:v=>Math.round(v*100)+'%',onInput:v=>ed(()=>{r.sat=v;})}).el,
-    el('p',{class:'note',text:'Only the base colour changes. Roughness, metal and the normal map keep their detail.'}));}
+    el('p',{class:'note',text:doc.workflow==='spec'?'Only the diffuse colour changes. The specular, glossiness and the normal map keep their detail.':'Only the base colour changes. Roughness, metal and the normal map keep their detail.'}));}
 {const rm=renderMatEd;renderMatEd=function(force){rm.apply(this,arguments);const box=document.getElementById('matEdBody'),L=doc.active;
   if(!box||matEd.shownRow||!isLayer(L)||!L.fill||!box.querySelector('.matHead')||box.querySelector('.recolBox'))return;
   const b=el('div',{class:'recolBox dlg-grid'});const cover=box.querySelector('#fl_cover');(cover?cover.closest('label'):null)?cover.closest('label').before(b):box.append(b);recolBuild(b,L);};}
