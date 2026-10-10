@@ -122,3 +122,8 @@ All of these can be changed in **Edit › Keyboard shortcuts…**. The commands 
 - **F:** toggle canvas-only view; **Escape** or **Tab** restores panels. **Shift+F** toggles Flat cage view, or frames the model in 3D Paint.
 - **Alt:** show the eyedropper cursor temporarily; release it to return to the brush.
 - **[ / ]:** shrink/grow the active brush, including Liquify.
+
+## Added in 0.53 (3D Paint, like Substance Painter)
+- **Ctrl + right drag** on the model: brush size and hardness. **Ctrl + left drag**: flow and rotation.
+- **S + drag** (left turns, middle moves, right scales) the stencil; **Shift+S** snaps the turn; **N** (held) ignores the stencil.
+- **F1** 3D + 2D, **F2** 3D only, **F3** 2D only, **F4** swap sides, **F5** perspective, **F6** orthographic (in 3D Paint; the user guide stays in the Help menu there).

@@ -242,7 +242,7 @@ function mir3BarSync(){mir3RadSync();for(const k of ['x','y','z']){const b=docum
    Hold S over the view: S+left-drag turns it, S+right-drag scales it, S+middle-drag moves it (like Substance Painter).
    Its place is kept relative to the view: centre (0..1 from the top left), height as a share of the view's height. */
 const st3={img:null,name:'',mode:'mask',x:.5,y:.5,scale:.6,rot:0,show:.35,tile:false,invert:false,sKey:false,list:[]};
-function st3Uniforms(w,h){if(!st3.img||st3.mode==='off')return {uSt:{int:0},uStT:dummy,uStC:[0,0],uStHalf:[1,1],uStRot:0,uScr:[w,h],uStTile:{int:0},uStInv:{int:0}};
+function st3Uniforms(w,h){if(!st3.img||st3.mode==='off'||st3.nKey)return {uSt:{int:0},uStT:dummy,uStC:[0,0],uStHalf:[1,1],uStRot:0,uScr:[w,h],uStTile:{int:0},uStInv:{int:0}};
   const S=st3.scale*h,a=st3.img.w/st3.img.h;return {uSt:{int:st3.mode==='colour'?2:1},uStT:st3.img.tex,uStC:[st3.x*w,(1-st3.y)*h],uStHalf:[S*a/2,S/2],uStRot:st3.rot*Math.PI/180,uScr:[w,h],uStTile:{int:st3.tile?1:0},uStInv:{int:st3.invert?1:0}};}
 /* the picture shown over the view (a plain canvas, so it costs the GPU nothing) */
 function st3Overlay(){const hit=document.getElementById('v3Hit');let c=st3.el;
@@ -300,6 +300,6 @@ window.addEventListener('keydown',e=>{if((e.key==='x'||e.key==='X')&&!e.ctrlKey&
 function st3Drag(d,e,hit){const r=hit.getBoundingClientRect(),dx=e.clientX-d.x,dy=e.clientY-d.y;
   if(d.how==='stmove'){st3.x+=dx/r.width;st3.y+=dy/r.height;}
   else if(d.how==='stscale')st3.scale=clamp(st3.scale*Math.exp((dx-dy)*.005),.02,8);
-  else{const cx=r.left+st3.x*r.width,cy=r.top+st3.y*r.height,a0=Math.atan2(d.y-cy,d.x-cx),a1=Math.atan2(e.clientY-cy,e.clientX-cx);st3.rot=((st3.rot+(a1-a0)*180/Math.PI+540)%360)-180;}
+  else{const cx=r.left+st3.x*r.width,cy=r.top+st3.y*r.height,a0=Math.atan2(d.y-cy,d.x-cx),a1=Math.atan2(e.clientY-cy,e.clientX-cx);st3.rot=((st3.rot+(a1-a0)*180/Math.PI+540)%360)-180;if(e.shiftKey)st3.rot=Math.round(st3.rot/90)*90;}
   st3Overlay();}
 

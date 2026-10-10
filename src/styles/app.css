@@ -501,6 +501,18 @@ body.brushmode #mapsSec,body.brushmode .sec[aria-labelledby="hChan"],body.brushm
 /* ---- dock, tabs, floating panels, icons ---- */
 .panel#dock{display:flex;flex-direction:column;overflow:hidden}
 #app>#dock2{grid-area:dock2;display:flex;flex-direction:column;overflow:hidden}#app>#dock2[hidden]{display:none}
+/* (0.53) panels docked to the left or top of the viewport; any dock can lay its groups side by side (.dkrow) */
+#app>#dockL{grid-area:dockl;display:flex;flex-direction:column;overflow:hidden;border-left:0;border-right:1px solid var(--line)}
+#app>#dockT{grid-area:dockt;display:flex;flex-direction:row;overflow:hidden;border-left:0;border-bottom:1px solid var(--line)}
+#app>.dkedge[hidden]{display:none}
+#app>.dkrow{flex-direction:row}#app>#dockT:not(.dkrow){flex-direction:column}
+.dkrow>.dkgrp{min-width:0}
+.dksplit.h{height:auto;width:6px;border-block:0;border-inline:1px solid var(--line);cursor:col-resize}
+.dksplit.h::after{left:1px;top:50%;width:2px;height:26px;margin:-13px 0 0 0}
+#app>.dkebar{z-index:5;background:transparent}#app>.dkebar[hidden]{display:none}
+#app>.dkebar-left{grid-area:dockl;justify-self:end;align-self:stretch;width:6px;cursor:col-resize}
+#app>.dkebar-top{grid-area:dockt;align-self:end;justify-self:stretch;height:6px;cursor:row-resize}
+.dkebar:hover,body.dkresizing .dkebar-left,body.stvresize .dkebar-top{background:color-mix(in srgb,var(--accent) 45%,transparent)!important}
 #app>.dkwidth{grid-area:dock;justify-self:start;align-self:stretch;width:6px;cursor:col-resize;z-index:5}
 #app>.dkwidth[hidden]{display:none}
 .dkwidth:hover,body.dkresizing .dkwidth{background:color-mix(in srgb,var(--accent) 45%,transparent)}
@@ -1167,3 +1179,11 @@ body.tabfull .dkfloat,body.tabfull .dkfly,body.tabfull .dkicons{display:none!imp
 .meshslotbtns{grid-column:2;display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end}
 .meshslotfile{grid-column:1/-1}
 .meshslot:not(.filled) .meshslotfile{display:none}
+/* (0.53) Substance Painter style brush adjusting on the 3D view */
+.pcadj{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:12}
+.pcadj[hidden]{display:none}
+.pcadj .pcring,.pcadj .pcin{position:absolute;border-radius:50%;transform:translate(-50%,-50%);left:0;top:0}
+.pcadj .pcring{width:var(--d);height:var(--d);border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.75),inset 0 0 0 1px rgba(0,0,0,.45)}
+.pcadj .pcin{width:calc(var(--d)*var(--hf));height:calc(var(--d)*var(--hf));border:1px dashed rgba(255,255,255,.85);box-shadow:0 0 0 1px rgba(0,0,0,.5)}
+.pcadj .pctick{position:absolute;left:0;top:0;width:2px;height:calc(var(--d)/2);background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.6);transform-origin:0 0;transform:rotate(var(--a)) translateX(-1px)}
+.pcadj .pclbl{position:absolute;left:0;top:calc(var(--d)/2 + 10px);transform:translateX(-50%);white-space:nowrap;padding:3px 9px;border-radius:10px;background:rgba(20,22,26,.92);border:1px solid var(--line-2);font:600 12px system-ui,sans-serif;color:#fff}

@@ -65,5 +65,5 @@ async function p3NewProject(size,options){options=options||{};size=Math.max(64,M
   p3.sets=(names.length?names:[{name:'default',material:'default'}]).map(n=>({...n,state:null,tex:null,missing:false}));p3.cur=0;
   blankTabDoc(size,size,p3.sets[0].name);p3Setup(p3.sets[0].name,p3.startMaterial,p3.workflow);doc.v3d=p3.v3d||doc.v3d;disposeDocState(old);
   p3.name=null;p3.path=null;p3.savedAt=p3Sig();p3SyncSets();
-  v3.mapsDirty=true;v3.dirty=true;fit();changedAll();renderLayers();buildP3Panel();requestRender(true);toast('New 3D Paint project: '+size+' × '+size+' textures.');return true;}
+  v3.mapsDirty=true;v3.dirty=true;fit();changedAll();renderLayers();refreshMapsUI();buildBrushPanel();if(typeof renderMatEd==='function')renderMatEd(true);buildP3Panel();requestRender(true);toast('New 3D Paint project: '+size+' × '+size+' textures.');return true;}
 

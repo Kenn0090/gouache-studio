@@ -1,3 +1,11 @@
+## 0.53.0
+
+- **Panels dock to any side.** Drag a tab to the left, top or right edge of the viewport (a strip shows where it will land) and it docks there; the bottom edge is still the shelf. **⋯ › Dock to the left / top / right** does the same without dragging. A dock goes away when it is empty, and each workspace remembers its docks.
+- **Vertical or side by side.** On any dock, **⋯ › Put the panel groups side by side** (or **Stack the panel groups vertically**) switches how its groups are laid out. The new left and top docks resize from their inner edge (double-click for the usual size).
+- **Substance Painter style controls in 3D Paint.** **Ctrl + right drag** sets the brush size (left/right) and hardness (up/down), with a ring showing the result; **Ctrl + left drag** sets flow and rotation (it works on the flat texture too). Stencils: **S + left drag** turns (Shift snaps to 90°), **S + middle drag** moves, **S + right drag** scales, and holding **N** paints without the stencil. **F1** 3D + 2D, **F2** 3D only, **F3** 2D only, **F4** swaps the two sides, **F5** perspective, **F6** orthographic. A Preferences switch turns the Ctrl drags off.
+- **Spec/Gloss lists are right.** A new Spec/Gloss project (or switching a set) now shows Specular and Glossiness in the Maps list, the channel drop-down and Also paint, and the Metallic and Roughness entries are gone. Glossiness can be adjusted like any other channel.
+- **New 3D Paint Project window:** once you choose your own low-poly mesh, the built-in shape drop-down is disabled. A new **Optional high-poly** row sets up the Bake window with both models when the project is created, for when you have no maps to import.
+
 ## 0.52.2
 
 - **The real fix for the stuck loading screen.** The 3D viewer's shader had grown to 17 textures when the Specular map was added in 0.51.31. Many Windows graphics cards allow only 16 in one shader, so the shader failed to build while the app was starting and the loading screen never ended. The Specular map now comes in through the Metallic slot (a Spec/Gloss set has no Metallic map), so the shader is back to 16. A new test checks that no shader goes above 16 textures.

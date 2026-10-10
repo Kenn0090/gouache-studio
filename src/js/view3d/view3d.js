@@ -347,7 +347,7 @@ function drawUVOverlay(){if(!v3.on||!v3.gpu)return;if(v3s().litUV&&ui.mode!=='ba
   gl.bindVertexArray(vao);gl.disable(gl.BLEND);}
 
 /* ---- the pane: toolbar, settings, camera controls ---- */
-function toggle3D(on){v3.on=on===undefined?!v3.on:!!on;$('#work').classList.toggle('p3left',ui.mode==='p3d');document.body.classList.toggle('m-p3d',ui.mode==='p3d');const pane=$('#pane3d'),sp=$('#split3d'),work=$('#work');
+function toggle3D(on){v3.on=on===undefined?!v3.on:!!on;$('#work').classList.toggle('p3left',ui.mode==='p3d'&&!(typeof pcSwapped==='function'&&pcSwapped()));document.body.classList.toggle('m-p3d',ui.mode==='p3d');const pane=$('#pane3d'),sp=$('#split3d'),work=$('#work');
   if(v3.on&&ui.mode==='anim'&&false)return;
   if(!v3.on&&v3.pop)pop3D(false,true);
   pane.hidden=!v3.on||!!v3.pop;sp.hidden=!v3.on||!!v3.pop;const p3k=ui.mode==='p3d'?'gs.pane3dp':'gs.pane3d';let w=320;try{w=+localStorage.getItem(p3k)||0;}catch(e){}if(!w)w=Math.round(work.clientWidth*(ui.mode==='p3d'?.5:.42));
@@ -411,6 +411,7 @@ const v3CanPaint=()=>v3.paintOn&&MESH_TOOLS.includes(ui.tool)&&!!v3.gpu&&!!v3.me
 function v3NavHint(){return v3nav.mode==='coat'?'right-drag turns, middle moves, Ctrl+right zooms':'Alt+left turns, Alt+middle moves, Alt+right zooms';}
 function v3NavOf(hit,e){const b=e.button,paint=v3CanPaint();
   if(st3.sKey&&st3.img)return b===0?'strot':b===2?'stscale':'stmove';
+  {const pb=pcNavOf(e,paint);if(pb)return pb;}
   /* (0.27, Kenn) turn the sky (HDRI) like Substance Painter: Shift+right-drag (3D-Coat navigation: Shift+Alt+right-drag) */
   if(b===2&&e.shiftKey&&(v3nav.mode!=='coat'||e.altKey))return 'sky';
   if(v3nav.mode==='coat'){if(b===2)return e.ctrlKey?'zoom':e.shiftKey?'pan':'turn';if(b===1)return 'pan';if(e.altKey)return 'turn';
@@ -434,6 +435,7 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     if(!e.buttons){if(v3.mstroke)meshUp();if(v3.drag)v3.drag=null;}
     if(v3.mstroke){meshMove(hit,e);return;}const d=v3.drag;
     if(!d){if(e.altKey&&!e.buttons)v3HoverPick(hit,e);return;}
+    if(d.how==='bsize'||d.how==='bflow'){pcAdjust(d,e,hit);d.x=e.clientX;d.y=e.clientY;return;}
     if(d.how.startsWith('st')){st3Drag(d,e,hit);d.x=e.clientX;d.y=e.clientY;return;}
     const dx=e.clientX-d.x,dy=e.clientY-d.y;d.x=e.clientX;d.y=e.clientY;const c=v3.cam;
     if(d.how==='sky'){envTurnBy(dx*.5);return;}
