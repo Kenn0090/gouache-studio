@@ -234,7 +234,8 @@ function bakeViewTex(){const t=bkEnsure('view2d',8),live=stroke&&stroke.L&&strok
 function bakeV3Refresh(){if(bk.docBase&&v3.mapsDirty){const t=compositeMap('base');v3MapTex('base',t);release(t);v3.mapsDirty=false;bk.dirty=true;}
   const live=stroke&&stroke.L&&stroke.L.bakeMap;if(!bk.dirty&&!live&&!bk.busy&&v3.btex)return;
   const tint=bkEnsure('tint',8),r=bk.res,T={};let unlit=false;
-  if(bk.show==='material'){bakeTint(tint,bk.docBase?(v3.tex.base||null):null,bk.paint,bk.paint==='skew'?1:2);T.base=tint;if(r.normal)T.nfinal=r.normal;if(r.ao)T.ao=r.ao;}
+  if(bk.uvCheck&&typeof uvCheckerTarget==='function'){T.base=uvCheckerTarget();unlit=false;}
+  else if(bk.show==='material'){bakeTint(tint,bk.docBase?(v3.tex.base||null):null,bk.paint,bk.paint==='skew'?1:2);T.base=tint;if(r.normal)T.nfinal=r.normal;if(r.ao)T.ao=r.ao;}
   else if(BK_PAINT[bk.show]){bakeTint(tint,null,bk.show,3);T.base=tint;unlit=true;}
   else{bakeTint(tint,r[bk.show]||null,bk.paint,bk.paint==='skew'?1:2);T.base=tint;unlit=true;}
   v3.btex=T;v3.bunlit=unlit;bk.dirty=false;v3.dirty=true;}
@@ -248,7 +249,7 @@ function bakeSetModel(key,m){if(bk.busy){toast("Wait for the bake to finish.");r
 function bakeGuessSlot(name){const n=baseName(name).toLowerCase();if(/cage/.test(n))return 'cage';if(/(^|[_\-\s.])(high|hi|hp)(poly)?($|[_\-\s.\d])|highpoly/.test(n))return 'high';if(/(^|[_\-\s.])(low|lo|lp)(poly)?($|[_\-\s.\d])|lowpoly/.test(n))return 'low';return null;}
 async function bakeDropFiles(files,key){files=[...files];const models=files.filter(f=>isModelName(f.name));if(!models.length){toast('Drop an OBJ, glTF, GLB or FBX model.');return;}
   for(const f of models){let k=key||bakeGuessSlot(f.name);if(!k){if(models.length>1){toast('Name the files “…_low” and “…_high”, or drop each one on its row.');continue;}k=bakeCfg.high?'low':'high';}
-    loadStart(f.name);try{const m=await parseModelFile(f,files);if(k==='high'&&bakeCfg.high)bakeAddHigh(m);else bakeSetModel(k,m);}catch(e){console.warn(e);toast('“'+f.name+'” could not be loaded: '+(e.message||e));}finally{loadEnd();}}}
+    loadStart(f.name);try{let m=await parseModelFile(f,files);if(k==='low')m=await uvImportCheck(m);if(k==='high'&&bakeCfg.high)bakeAddHigh(m);else bakeSetModel(k,m);}catch(e){console.warn(e);toast('“'+f.name+'” could not be loaded: '+(e.message||e));}finally{loadEnd();}}}
 function bakeDropZone(node,key){node.addEventListener('dragover',e=>{if([...e.dataTransfer.types].includes('Files')){e.preventDefault();e.stopPropagation();node.classList.add('dropon');}});
   node.addEventListener('dragleave',()=>node.classList.remove('dropon'));
   node.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();node.classList.remove('dropon');bakeDropFiles(e.dataTransfer.files,key);});}
@@ -334,7 +335,7 @@ function bakeProgUI(){const box=$('#bkProg');if(!box)return;const p=bk.prog;
 function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChildren();const C=bakeCfg;
   const row=(label,ctrl)=>el('div',{class:'frow'},el('label',{text:label}),ctrl);
   const modelSel=(key,opts)=>{const s=el('select',{'aria-label':key,id:'bk_'+key});const draw=()=>{s.replaceChildren(...opts().map(([v,t])=>el('option',{value:v,text:t})));s.value=C[key]&&C[key].name?'file':opts()[0][0];};
-    const load=async()=>{try{const m=await bakePickModel();if(m)bakeSetModel(key,m);}catch(e){console.warn(e);toast('This model could not be loaded: '+(e.message||e));}draw();info();};
+    const load=async()=>{try{const m=await bakePickModel(key==='low'?{uv:true}:{});if(m)bakeSetModel(key,m);}catch(e){console.warn(e);toast('This model could not be loaded: '+(e.message||e));}draw();info();};
     s.onchange=async()=>{if(s.value==='load'){await load();return;}if(s.value!=='file'){C[key]=null;if(key==='high')C.highMeshes=[];}info();if(key==='low')bakeSyncMesh();};draw();
     const btn=el('button',{class:'btn sm',text:'Load…',id:'bk_'+key+'Load',title:'Load a model file (OBJ, glTF, GLB, FBX), or drop one here'});btn.onclick=load;
     const wrap=el('div',{class:'bkmodel'},s,btn);if(key==='high')wrap.append(el('button',{class:'btn sm',id:'bk_highAdd',text:'Add…',title:'Add another high-poly mesh to bake together',disabled:bk.busy,onclick:async()=>{try{const m=await bakePickModel();if(m)bakeAddHigh(m);}catch(e){toast('Could not add this mesh: '+(e.message||e));}}}));bakeDropZone(wrap,key);return wrap;};
@@ -388,7 +389,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
   go.onclick=()=>{if(bk.busy){if(bk.prog)bk.prog.cancelled=true;return;}const L=bkLow();const ks=Object.keys(C.kinds).filter(k=>C.kinds[k]);if(!ks.length){toast('Pick at least one map.');return;}if(C.perMat!==false&&bkMats(L))runBakeSets(L,ks);else{bk.byMat=null;runBake(L,ks);}};
   const prog=el('div',{id:'bkProg',hidden:true},el('p',{class:'note'}),el('div',{class:'bakebar'},el('div')));
   /* (0.52, Kenn) two columns so it all fits without scrolling: models, maps and sending on the left, the settings of each map on the right */
-  const colA=el('div',{class:'bkcol',id:'bkColA'}),colB=el('div',{class:'bkcol',id:'bkColB'});box.append(el('div',{class:'bkcols'},colA,colB));
+  const colA=el('div',{class:'bkcol',id:'bkColA'}),colB=el('div',{class:'bkcol',id:'bkColB'});const uvc=uvCard(bkLow());if(uvc)box.append(uvc);box.append(el('div',{class:'bkcols'},colA,colB));
   colA.append(el('div',{class:'sub',text:'Models',title:'Drop model files on the panel: names ending in _low, _high and _cage go to the right place.'}),row('Low-poly',modelSel('low',lowOpts)),row('High-poly',modelSel('high',highOpts)),bakeHighList(),row('Cage',modelSel('cage',cageOpts)),
     el('div',{class:'chips'},chk('bkMatch','Match parts by name',C.match,v=>{C.match=v;info();}),chk('bkShowCage','Show the cage',bk.showCage,v=>{bk.showCage=v;v3.dirty=true;requestRender();})),
     ...(C.high?[row('High-poly view',(()=>{const g=seg([['off','Off'],['over','See-through'],['only','Only']],bk.showHigh||'off',v=>{bk.showHigh=v;v3.dirty=true;requestRender();},'Show the high-poly');g.id='bkShowHigh';return g;})())]:[]),
