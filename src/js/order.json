@@ -86,6 +86,7 @@
     "view3d/mesh-seams",
     "view3d/mesh-map-edit",
     "view3d/vp-strip",
+    "view3d/painter-controls",
     "view3d/mask-tools",
     "view3d/proj-xf",
     "view3d/proj-gizmo",

@@ -1167,3 +1167,11 @@ body.tabfull .dkfloat,body.tabfull .dkfly,body.tabfull .dkicons{display:none!imp
 .meshslotbtns{grid-column:2;display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end}
 .meshslotfile{grid-column:1/-1}
 .meshslot:not(.filled) .meshslotfile{display:none}
+/* (0.53) Substance Painter style brush adjusting on the 3D view */
+.pcadj{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:12}
+.pcadj[hidden]{display:none}
+.pcadj .pcring,.pcadj .pcin{position:absolute;border-radius:50%;transform:translate(-50%,-50%);left:0;top:0}
+.pcadj .pcring{width:var(--d);height:var(--d);border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.75),inset 0 0 0 1px rgba(0,0,0,.45)}
+.pcadj .pcin{width:calc(var(--d)*var(--hf));height:calc(var(--d)*var(--hf));border:1px dashed rgba(255,255,255,.85);box-shadow:0 0 0 1px rgba(0,0,0,.5)}
+.pcadj .pctick{position:absolute;left:0;top:0;width:2px;height:calc(var(--d)/2);background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.6);transform-origin:0 0;transform:rotate(var(--a)) translateX(-1px)}
+.pcadj .pclbl{position:absolute;left:0;top:calc(var(--d)/2 + 10px);transform:translateX(-50%);white-space:nowrap;padding:3px 9px;border-radius:10px;background:rgba(20,22,26,.92);border:1px solid var(--line-2);font:600 12px system-ui,sans-serif;color:#fff}
