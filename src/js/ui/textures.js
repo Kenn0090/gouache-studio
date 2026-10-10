@@ -242,8 +242,8 @@ function txMenu(e,it){const pop=$('#menuPop');closeMenu();const L=doc.active,has
   const item=(t,f,dis,tip)=>el('button',{class:'mi',role:'menuitem',disabled:!!dis,title:tip||'',onclick:()=>{pop.hidden=true;f();}},el('span'),el('span',{text:t}),el('span'));
   pop.replaceChildren(el('div',{class:'mh',text:it.name}),
     item('Add to the mask (picture row)',()=>txToMask(it),!hasL,'Select a layer first'),
-    ...(typeof txIsNormal==='function'&&txIsNormal(it)?[item('Material normal channel',()=>txToChannel(it,'normal'),!mat,'Select a material layer first'),item('New layer in the Normal map',()=>txToLayer(it))]:[...(mat?[el('div',{class:'mh',text:'Material channel'}),...TX_CHANNELS.map(([k,l])=>item(l,()=>txToChannel(it,k)))]:[item('Material channel…',()=>{},true,'Select a material layer first')]),
-    el('div',{class:'msep'}),item('New layer',()=>txToLayer(it)),item('Stencil (3D Paint)',()=>txToStencil(it),ui.mode!=='p3d','Stencils are in 3D Paint'),item('Brush tip',()=>txToTip(it))]),
+    ...(mat?[el('div',{class:'mh',text:'Material channel'}),...TX_CHANNELS.map(([k,l])=>item(l,()=>txToChannel(it,k)))]:[item('Material channel…',()=>{},true,'Select a material layer first')]),
+    el('div',{class:'msep'}),item('New layer',()=>txToLayer(it)),item('Stencil (3D Paint)',()=>txToStencil(it),ui.mode!=='p3d','Stencils are in 3D Paint'),item('Brush tip',()=>txToTip(it)),
     ...(it.kind==='mine'?[el('div',{class:'msep'}),item('Delete…',()=>txDelete(it.rec))]:[]));
   pop.hidden=false;pop.style.left=Math.min(e.clientX,innerWidth-pop.offsetWidth-8)+'px';pop.style.top=Math.min(e.clientY+4,innerHeight-pop.offsetHeight-8)+'px';
   const off=ev=>{if(!pop.contains(ev.target)){pop.hidden=true;document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}
