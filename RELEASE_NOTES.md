@@ -1,3 +1,8 @@
+# Gouache Studio 0.52.1
+
+- Fixes the app getting stuck on the loading screen after updating to 0.52.0 on some computers (the wrinkle textures now prepare separately).
+- Start-up is safer: a failing step no longer stops the rest, and a loading screen that takes more than 15 seconds says where it stopped and offers to reset the saved panel layouts.
+
 # Gouache Studio 0.52.0
 
 - Spec/Gloss is redone: switching converts each layer in place, so a material keeps its Specular colour and Glossiness and editing them changes the model. The ray-traced render follows them too.

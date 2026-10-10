@@ -7,6 +7,16 @@
 
 <!--HDRI-->
 <div id="splash" aria-hidden="true"><div class="spcard"><i class="spdab"></i><div class="spname">Gouache <small>Studio</small></div><div class="spver">Version <!--VERSION--></div><div class="spbar"><i></i></div><div class="spmsg">Loading…</div></div></div>
+<script>
+/* (0.52) if the app is still on the start-up screen after 15 seconds, say so, show what went wrong, and offer to reset the saved panel layouts */
+(function(){var errs=window.__gsErrors=window.__gsErrors||[];window.__gsStage='script';
+window.addEventListener('error',function(e){errs.push((e.message||'error')+(e.filename?' ('+String(e.filename).split('/').pop()+':'+e.lineno+')':''));});
+window.addEventListener('unhandledrejection',function(e){errs.push('promise: '+((e.reason&&e.reason.message)||e.reason));});
+setTimeout(function(){var s=document.getElementById('splash');if(!s||s.classList.contains('out'))return;var m=s.querySelector('.spmsg');if(!m)return;
+m.textContent='This is taking longer than usual. Stopped at: '+window.__gsStage+(errs.length?'. Problem: '+errs[0]:'.');
+var b=document.createElement('button');b.className='spbtn';b.textContent='Reset the saved panel layouts and restart';b.onclick=function(){try{Object.keys(localStorage).filter(function(k){return /^gs\.(dock|shelf|layout|col2|pane|dk)/.test(k);}).forEach(function(k){localStorage.removeItem(k);});}catch(e){}location.reload();};
+m.appendChild(document.createElement('br'));m.appendChild(b);},15000);})();
+</script>
 <div id="app">
   <header class="bar">
     <div class="brand"><i class="dab" aria-hidden="true"></i>Gouache <small>Studio</small></div>

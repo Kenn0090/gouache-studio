@@ -26,9 +26,6 @@ vec2 hs2(vec2 p){ return vec2(hs(p),hs(p+vec2(19.3,7.9))); }
 float vn(vec2 p,float P){ vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f);
   return mix(mix(hs(mod(i,P)),hs(mod(i+vec2(1,0),P)),f.x),mix(hs(mod(i+vec2(0,1),P)),hs(mod(i+vec2(1,1),P)),f.x),f.y); }
 float fbm(vec2 p,float P){ float v=0.0,a=0.5; for(int i=0;i<6;i++){ v+=a*vn(p,P); p*=2.0; P*=2.0; a*=0.5; } return v/0.984; }
-float vn2(vec2 p,vec2 P){ vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f);
-  return mix(mix(hs(mod(i,P)),hs(mod(i+vec2(1,0),P)),f.x),mix(hs(mod(i+vec2(0,1),P)),hs(mod(i+vec2(1,1),P)),f.x),f.y); }
-float fbm2(vec2 p,vec2 P){ float v=0.0,a=0.5; for(int i=0;i<5;i++){ v+=a*vn2(p,P); p*=2.0; P*=2.0; a*=0.5; } return v/0.969; }
 vec3 vor(vec2 p,float P){ vec2 i=floor(p),f=fract(p); float d1=9.0,d2=9.0; float id=0.0;
   for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){ vec2 g=vec2(x,y),c=mod(i+g,P); vec2 o=hs2(c); float d=length(g+o-f); if(d<d1){ d2=d1; d1=d; id=hs(c+3.1); } else if(d<d2) d2=d; }
   return vec3(d1,d2,id); }
@@ -51,23 +48,49 @@ void main(){ vec2 uv=gl_FragCoord.xy/uOut+uPhase; float v=0.0;
   else if(uKind==16)v=mod(floor(uv.x*16.0)+floor(uv.y*16.0),2.0);
   else if(uKind==17){float x=abs(fract(uv.x*8.0)*2.0-1.0);v=step(.5,fract(uv.y*8.0+x*.5));}
   else if(uKind==18){vec2 g=uv*vec2(12.0,13.85640646);vec2 a=mod(g,vec2(1.0,1.73205))-.5*vec2(1.0,1.73205),b=mod(g-vec2(.5,.866025),vec2(1.0,1.73205))-.5*vec2(1.0,1.73205);vec2 f=dot(a,a)<dot(b,b)?a:b;float d=max(abs(f.x),dot(abs(f),vec2(.5,.866025)));v=1.0-smoothstep(.42,.47,d);}
-  else if(uKind==19){vec2 g=uv*vec2(12.0,16.0);g.x+=mod(floor(g.y),2.0)*.5;vec2 f=fract(g)-vec2(.5,0.0);float d=length(f);v=1.0-smoothstep(.47,.5,d);}
-  else { /* wrinkles: stretched, warped ridges (periodic, so they tile); creases run along a direction and taper out */
-    vec2 w=vec2(fbm(uv*3.0,3.0),fbm(uv*3.0+vec2(7.7,2.3),3.0))-0.5; const float TP=6.2831853;
-    if(uKind==20){ vec2 Pp=vec2(2.0,5.0); float base=fbm2(uv*Pp+w*0.5,Pp); float amp=0.55+0.9*fbm2(uv*vec2(2.0,2.0)+vec2(3.1,1.7),vec2(2.0,2.0)); v=0.5+0.5*sin(TP*(uv.x+4.0*uv.y)+(base-0.5)*8.0)*amp*0.9; }
-    else if(uKind==21){ vec2 Pp=vec2(3.0,16.0); float r=1.0-abs(2.0*fbm2(uv*Pp+w*vec2(0.5,0.3),Pp)-1.0); float m=fbm2(uv*vec2(3.0,3.0)+vec2(5.0,2.0),vec2(3.0,3.0)); v=pow(r,3.0)*(0.5+0.8*m); }
-    else if(uKind==22){ /* folds fanning out from pinch points (a button, an elbow) */
+  else {vec2 g=uv*vec2(12.0,16.0);g.x+=mod(floor(g.y),2.0)*.5;vec2 f=fract(g)-vec2(.5,0.0);float d=length(f);v=1.0-smoothstep(.47,.5,d);}
+  v=clamp(v,0.0,1.0); o=vec4(v,v,v,1.0); }`;
+/* (0.52) wrinkles: one small program per kind (#define WK), so no graphics driver has to compile all of them at once */
+const FS_TXWR=`uniform float uSeed; uniform vec2 uOut; uniform vec2 uPhase;
+float hs(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7))+uSeed*13.17)*43758.5453); }
+vec2 hs2(vec2 p){ return vec2(hs(p),hs(p+vec2(19.3,7.9))); }
+float vn(vec2 p,float P){ vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f);
+  return mix(mix(hs(mod(i,P)),hs(mod(i+vec2(1,0),P)),f.x),mix(hs(mod(i+vec2(0,1),P)),hs(mod(i+vec2(1,1),P)),f.x),f.y); }
+float fbm(vec2 p,float P){ float v=0.0,a=0.5; for(int i=0;i<6;i++){ v+=a*vn(p,P); p*=2.0; P*=2.0; a*=0.5; } return v/0.984; }
+float vn2(vec2 p,vec2 P){ vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f);
+  return mix(mix(hs(mod(i,P)),hs(mod(i+vec2(1,0),P)),f.x),mix(hs(mod(i+vec2(0,1),P)),hs(mod(i+vec2(1,1),P)),f.x),f.y); }
+float fbm2(vec2 p,vec2 P){ float v=0.0,a=0.5; for(int i=0;i<5;i++){ v+=a*vn2(p,P); p*=2.0; P*=2.0; a*=0.5; } return v/0.969; }
+vec3 vor(vec2 p,float P){ vec2 i=floor(p),f=fract(p); float d1=9.0,d2=9.0; float id=0.0;
+  for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){ vec2 g=vec2(x,y),c=mod(i+g,P); vec2 o=hs2(c); float d=length(g+o-f); if(d<d1){ d2=d1; d1=d; id=hs(c+3.1); } else if(d<d2) d2=d; }
+  return vec3(d1,d2,id); }
+void main(){ vec2 uv=gl_FragCoord.xy/uOut+uPhase; float v=0.0;
+  vec2 w=vec2(fbm(uv*3.0,3.0),fbm(uv*3.0+vec2(7.7,2.3),3.0))-0.5; const float TP=6.2831853;
+#if WK==20
+{ vec2 Pp=vec2(2.0,5.0); float base=fbm2(uv*Pp+w*0.5,Pp); float amp=0.55+0.9*fbm2(uv*vec2(2.0,2.0)+vec2(3.1,1.7),vec2(2.0,2.0)); v=0.5+0.5*sin(TP*(uv.x+4.0*uv.y)+(base-0.5)*8.0)*amp*0.9; }
+#elif WK==21
+{ vec2 Pp=vec2(3.0,16.0); float r=1.0-abs(2.0*fbm2(uv*Pp+w*vec2(0.5,0.3),Pp)-1.0); float m=fbm2(uv*vec2(3.0,3.0)+vec2(5.0,2.0),vec2(3.0,3.0)); v=pow(r,3.0)*(0.5+0.8*m); }
+#elif WK==22
+{ /* folds fanning out from pinch points (a button, an elbow) */
       vec2 g=uv*5.0+w*0.5,i=floor(g),f=fract(g); float d1=9.0,id=0.0; vec2 dv=vec2(0.0);
       for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){ vec2 q=vec2(x,y),c=mod(i+q,5.0); vec2 o=hs2(c)*0.6+0.2; vec2 d=q+o-f; float dl=length(d); if(dl<d1){ d1=dl; dv=d; id=hs(c+3.1); } }
       float ang=atan(dv.y,dv.x),k=5.0+floor(id*4.0); float fold=1.0-abs(sin(ang*k*0.5+id*TP+w.x*3.0)); v=mix(0.45,pow(fold,2.0),smoothstep(0.7,0.05,d1))*(0.4+0.6*smoothstep(0.0,0.12,d1)); }
-    else if(uKind==23){ vec2 P1=vec2(14.0,22.0),P2=vec2(22.0,14.0); float r1=1.0-abs(2.0*fbm2(uv*P1+w*0.8,P1)-1.0),r2=1.0-abs(2.0*fbm2(uv.yx*P2+w.yx*0.8,P2)-1.0); v=pow(max(r1*0.85,r2),2.5)*(0.75+0.25*fbm(uv*40.0,40.0)); }
-    else if(uKind==24){ vec3 c=vor(uv*5.0+w*0.9,5.0); v=0.3+0.45*c.z+0.2*(1.0-c.x)+0.2*smoothstep(0.0,0.3,c.y-c.x); }
-    else if(uKind==25){ float n=fbm(uv*5.0+vec2(1.3,4.1),5.0); float a=TP*(uv.x+8.0*uv.y)+w.x*11.0+n*3.0; float taper=0.35+0.9*smoothstep(0.2,0.8,fbm(uv*3.0+vec2(2.2,8.8),3.0)); v=0.5+0.5*sin(a)*taper; }
-    else if(uKind==26){ vec2 Pp=vec2(3.0,14.0); vec2 q=vec2(3.0*(uv.x+uv.y),14.0*uv.y); float r=1.0-abs(2.0*fbm2(q+w*vec2(0.6,0.4),Pp)-1.0); float m=fbm2(uv*vec2(3.0,3.0)+vec2(9.0,4.0),vec2(3.0,3.0)); v=pow(r,2.4)*(0.45+0.9*m); }
-    else { vec3 c=vor(uv*11.0+w*1.2,11.0); float fac=hs(vec2(c.z*91.7,c.z*13.1)); v=0.2+0.45*fac+0.35*smoothstep(0.0,0.2,c.y-c.x)*(0.5+0.5*(1.0-c.x)); } }
+#elif WK==23
+{ vec2 P1=vec2(14.0,22.0),P2=vec2(22.0,14.0); float r1=1.0-abs(2.0*fbm2(uv*P1+w*0.8,P1)-1.0),r2=1.0-abs(2.0*fbm2(uv.yx*P2+w.yx*0.8,P2)-1.0); v=pow(max(r1*0.85,r2),2.5)*(0.75+0.25*fbm(uv*40.0,40.0)); }
+#elif WK==24
+{ vec3 c=vor(uv*5.0+w*0.9,5.0); v=0.3+0.45*c.z+0.2*(1.0-c.x)+0.2*smoothstep(0.0,0.3,c.y-c.x); }
+#elif WK==25
+{ float n=fbm(uv*5.0+vec2(1.3,4.1),5.0); float a=TP*(uv.x+8.0*uv.y)+w.x*11.0+n*3.0; float taper=0.35+0.9*smoothstep(0.2,0.8,fbm(uv*3.0+vec2(2.2,8.8),3.0)); v=0.5+0.5*sin(a)*taper; }
+#elif WK==26
+{ vec2 Pp=vec2(3.0,14.0); vec2 q=vec2(3.0*(uv.x+uv.y),14.0*uv.y); float r=1.0-abs(2.0*fbm2(q+w*vec2(0.6,0.4),Pp)-1.0); float m=fbm2(uv*vec2(3.0,3.0)+vec2(9.0,4.0),vec2(3.0,3.0)); v=pow(r,2.4)*(0.45+0.9*m); }
+#else
+{ vec3 c=vor(uv*11.0+w*1.2,11.0); float fac=hs(vec2(c.z*91.7,c.z*13.1)); v=0.2+0.45*fac+0.35*smoothstep(0.0,0.2,c.y-c.x)*(0.5+0.5*(1.0-c.x)); }
+#endif
   v=clamp(v,0.0,1.0); o=vec4(v,v,v,1.0); }`;
+const P_TXWR={};
 let P_TXGEN=null;
-function txGenTarget(k,S,phase){if(!P_TXGEN)P_TXGEN=program(FS_TXGEN);const i=TX_GEN.findIndex(g=>g[0]===k),t=makeTarget(S,S,8,true);run(P_TXGEN,t,{uKind:{int:i},uSeed:1,uOut:[S,S],uPhase:phase||[0,0]});setWrap(t,true);return t;}
+function txGenTarget(k,S,phase){const i=TX_GEN.findIndex(g=>g[0]===k),t=makeTarget(S,S,8,true);
+  if(i>=20){const pr=P_TXWR[i]||(P_TXWR[i]=program(FS_TXWR.replace('void main(){','#define WK '+i+'\nvoid main(){')));run(pr,t,{uSeed:1,uOut:[S,S],uPhase:phase||[0,0]});}
+  else{if(!P_TXGEN)P_TXGEN=program(FS_TXGEN);run(P_TXGEN,t,{uKind:{int:i},uSeed:1,uOut:[S,S],uPhase:phase||[0,0]});}setWrap(t,true);return t;}
 /* the shipped photo grunge: files next to the desktop app, or inside the page for the web version */
 async function txPhotoBytes(slug){const tag=document.getElementById('gr_'+slug);if(tag){const b=atob(tag.textContent.trim()),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;}
   const r=await fetch('grunge/'+slug+'.webp');if(!r.ok)throw new Error('missing');return new Uint8Array(await r.arrayBuffer());}
