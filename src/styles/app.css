@@ -1187,3 +1187,19 @@ body.tabfull .dkfloat,body.tabfull .dkfly,body.tabfull .dkicons{display:none!imp
 .pcadj .pcin{width:calc(var(--d)*var(--hf));height:calc(var(--d)*var(--hf));border:1px dashed rgba(255,255,255,.85);box-shadow:0 0 0 1px rgba(0,0,0,.5)}
 .pcadj .pctick{position:absolute;left:0;top:0;width:2px;height:calc(var(--d)/2);background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.6);transform-origin:0 0;transform:rotate(var(--a)) translateX(-1px)}
 .pcadj .pclbl{position:absolute;left:0;top:calc(var(--d)/2 + 10px);transform:translateX(-50%);white-space:nowrap;padding:3px 9px;border-radius:10px;background:rgba(20,22,26,.92);border:1px solid var(--line-2);font:600 12px system-ui,sans-serif;color:#fff}
+/* (0.53.1) Maps tab: one quiet line per mesh map */
+.meshslots{gap:1px}
+.meshslot{display:grid;grid-template-columns:8px minmax(0,1fr) auto auto;gap:0 8px;align-items:center;padding:3px 6px;min-height:26px;border:0;border-radius:5px;background:transparent}
+.meshslot:hover{background:var(--hover)}
+.meshslot.filled,.meshslot.dropon{border:0}.meshslot.dropon{background:var(--accent-soft)}
+.msdot{width:7px;height:7px;border-radius:50%;border:1.5px solid var(--faint);box-sizing:border-box}
+.meshslot.filled .msdot{background:var(--accent);border-color:var(--accent)}
+.meshslotname{grid-column:auto;font-size:12px;font-weight:500;color:var(--faint)}
+.meshslot.filled .meshslotname{color:var(--text)}
+.meshslotsize{font-size:10.5px;color:var(--faint);font-variant-numeric:tabular-nums}
+.meshslotbtns{grid-column:auto;display:flex;gap:1px;flex-wrap:nowrap}
+.msbtn{width:22px;height:22px;padding:0;border:0;border-radius:4px;background:transparent;color:var(--faint);display:flex;align-items:center;justify-content:center;opacity:.55}
+.msbtn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.meshslot:hover .msbtn,.msbtn:focus-visible{opacity:1}.msbtn:hover{background:var(--accent-soft);color:var(--text)}
+.mslink{border:0;background:transparent;color:var(--accent);font-size:11px;padding:2px 4px;border-radius:4px;opacity:.8}.mslink:hover{opacity:1;background:var(--accent-soft)}
+#meshMapSlots .sub{margin:2px 0 4px}

@@ -1,3 +1,10 @@
+# Gouache Studio 0.53.1
+
+- Spec/Gloss now works on the 3D model: Glossiness changes how sharp the reflection is and the Specular colour tints it. The Spec/Gloss Library previews were redone.
+- Switching a project to Spec/Gloss updates the Material editor (no more Roughness or Metallic there).
+- 19 seamless 4096 px metal normal maps (bare metal, dents, brushed metal, galvanized) under the Normals tag in Textures.
+- The Maps tab is tidier: one slim line per mesh map.
+
 # Gouache Studio 0.53.0
 
 - Panels can be docked to the left, top or right of the viewport (drag a tab to an edge, or use the panel's ⋯ menu), and any dock can lay its groups out vertically or side by side.

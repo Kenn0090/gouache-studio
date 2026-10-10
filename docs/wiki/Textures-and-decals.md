@@ -32,6 +32,15 @@ Click a texture to see what it can do:
 - **Stencil** (3D Paint): paint through it onto the model.
 - **Brush tip:** a custom brush tip made from it.
 
+### Normal maps (metal)
+Nineteen seamless, generated **normal maps**, 4096 × 4096, under the tag **Normals** (made the way Substance Painter's metal normals are used: as extra surface detail, not as colour):
+- **Bare metal:** machined, sanded, cast, worn.
+- **Dents:** small dings, large dents, hammered, hail, beaten panel.
+- **Brushed metal:** fine, coarse, vertical, cross, wavy.
+- **Galvanized:** large spangle, fine spangle, hot-dip, diamond plate, corrugated sheet.
+
+Right-click one: **Material normal channel** puts it into the selected material's Normal channel (set its Tiling in the Material editor); **New layer in the Normal map** adds it as a layer that only changes the normal map. Clicking or dragging one onto the layers does the second. Your own imported pictures with "normal" in their name are filed under Normals too.
+
 ### Wrinkles
 Eight seamless generated wrinkle maps (category **Wrinkles**): soft folds, sharp creases, folds fanning from pinch points, fine skin and leather, crumpled paper, a bunched sleeve, drag creases and crumpled foil. Use them as a mask picture, a material height or a stencil to put wrinkles on shirts and sleeves.
 

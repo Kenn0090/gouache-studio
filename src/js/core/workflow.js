@@ -44,7 +44,7 @@ function wfSnap(){const J=o=>o?JSON.parse(JSON.stringify(o)):null;return {tree:s
 function wfApply(S){restoreTree(S.tree);const J=o=>o?JSON.parse(JSON.stringify(o)):o;
   for(const x of S.layers){x.L.maps=Object.assign({},x.maps);x.L.wfStash=x.stash?Object.keys(x.stash).reduce((o,k)=>(o[k]=Object.assign({},x.stash[k]),o),{}):null;if(x.blank)x.L.blankBase=true;else delete x.L.blankBase;
     x.L.fill=J(x.fill);if(x.solid)x.L._fillSolid=J(x.solid);else delete x.L._fillSolid;if(x.live)x.L._fillLive=J(x.live);else delete x.L._fillLive;if(x.img)x.L._fillImg=Object.assign({},x.img);}
-  doc.maps=S.maps.slice();doc.mapDef=Object.assign({},S.mapDef);doc.workflow=S.wf;doc.map=S.map;doc.view=S.view;doc.v3shade=S.shade?JSON.parse(JSON.stringify(S.shade)):null;useAux(mapDepth(doc.map),true);syncTargets();changedAll();renderLayers();refreshMapsUI();buildBrushPanel();if(typeof renderMatEd==='function')renderMatEd(true);}
+  doc.maps=S.maps.slice();doc.mapDef=Object.assign({},S.mapDef);doc.workflow=S.wf;doc.map=S.map;doc.view=S.view;doc.v3shade=S.shade?JSON.parse(JSON.stringify(S.shade)):null;useAux(mapDepth(doc.map),true);syncTargets();changedAll();renderLayers();refreshMapsUI();buildBrushPanel();if(typeof renderMatEd==='function')renderMatEd(true);if(typeof renderShading==='function')renderShading();}
 
 /* ---- (0.52) converting in place: every layer keeps its place, a material stays a live material ----
    A Metal/Rough layer turns into the Specular/Gloss layer that looks the same (and back). Fill layers whose channels are plain
@@ -152,10 +152,11 @@ function wfSwitch(to,how){const from=doc.workflow||'metal';if(to===from)return;i
   if(how==='restore'){doc.workflow=to;doc.maps=MAP_ORDER.filter(k=>(doc.maps.includes(k)&&!oldK.includes(k))||newK.includes(k));}
   /* (0.51.31) the viewer shader follows the workflow, and the switch undoes it too */
   if(to==='spec')doc.v3shade={kind:'specgloss',p:{}};else if(doc.v3shade&&doc.v3shade.kind==='specgloss')doc.v3shade={kind:'std',p:{}};
+  if(ui.mode==='p3d'&&typeof p3!=='undefined'&&p3.sets)p3.workflow=to;/* new texture sets follow the workflow chosen last */
   useAux(mapDepth(doc.map),true);syncTargets();
   const after=wfSnap();
   pushUndo({label:'Switch to '+WF_NAMES[to],refs:[],undo(){wfApply(before);},redo(){wfApply(after);}});
-  changedAll();renderLayers();refreshMapsUI();buildBrushPanel();if(typeof v3Changed==='function')v3Changed();
+  changedAll();renderLayers();refreshMapsUI();buildBrushPanel();if(typeof renderMatEd==='function')renderMatEd(true);if(typeof renderShading==='function')renderShading();if(typeof buildOptBar==='function')buildOptBar();if(typeof v3Changed==='function')v3Changed();
   toast(how==='restore'?'Back to '+WF_NAMES[to]+': your layers are as they were.':'Now '+WF_NAMES[to]+'. '+(live?live+' material layer'+(live>1?'s':'')+' stay'+(live>1?'':'s')+' editable. ':'')+(pixels+raster?(pixels+raster)+' painted layer'+(pixels+raster>1?'s were':' was')+' converted pixel by pixel'+(raster?' ('+raster+' material'+(raster>1?'s':'')+' with pictures became plain layers)':'')+'.':''));}
 /* asks restore or convert when layers from before are set aside */
 function wfAsk(to,after){if(!wfCanRestore(to)){wfSwitch(to,'convert');if(after)after();return;}

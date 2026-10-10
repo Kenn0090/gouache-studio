@@ -102,6 +102,7 @@
     "ui/lib-drag",
     "ui/texture-workshop-library",
     "ui/textures",
+    "ui/textures-normals",
     "ui/project-shelf",
     "view3d/decals",
     "view3d/env-panel",

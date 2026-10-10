@@ -67,8 +67,10 @@ function p3Blank(){if(!p3.blank){const t=makeTarget(4,4,8,true);clearTarget(t,[.
 /* what to draw: every set's triangles with that set's textures */
 function p3DrawList(){const m=v3.mesh,rs=m&&m.setRanges||[{name:p3Binding(p3.sets[0]||{name:'default'}),start:0,count:m?m.idx.length/3:0}];
   const out=[];for(const r of rs){const materialSets=p3.sets.map((S,i)=>({S,i})).filter(x=>p3Binding(x.S)===r.name&&!x.S.hidden);
-    for(const {S,i} of materialSets){const T=i===p3.cur?v3.tex:(S.tex&&S.tex.base?S.tex:p3Blank()),D=i===p3.cur?doc:(S.state&&S.state.doc),mm=D&&D.meshMaps;
-      out.push({T,start:r.start,count:r.count,sh:D?v3ShadeOf(D):null,thick:mm&&mm.thick||null,udim:p3.udim?S.tile:null});}}
+    for(const {S,i} of materialSets){const T0=i===p3.cur?v3.tex:(S.tex&&S.tex.base?S.tex:p3Blank()),D=i===p3.cur?doc:(S.state&&S.state.doc),mm=D&&D.meshMaps;
+      /* (0.53.1) a Spec/Gloss set is shaded from its Glossiness (as 1 - roughness) and its Specular colour; before, 3D Paint read the Roughness picture left over from Metal/Rough, so Glossiness did nothing */
+      const sg=!!(D&&D.workflow==='spec'&&T0.sgRough&&typeof v3Unlit==='function'&&!v3Unlit()),T=sg?Object.assign({},T0,{metal:null,rough:T0.sgRough}):T0;
+      out.push({T,sg,start:r.start,count:r.count,sh:D?v3ShadeOf(D):null,thick:mm&&mm.thick||null,udim:p3.udim?S.tile:null});}}
   return out;}
 /* a texture of set k (range index k of the model), for picking */
 function p3SetTex(k,map){const rs=v3.mesh&&v3.mesh.setRanges,nm=rs&&rs[k]?rs[k].name:null,i=nm?p3.sets.findIndex(S=>p3Binding(S)===nm):p3.cur;
@@ -90,7 +92,7 @@ function p3SwitchSet(i,quiet){if(i===p3.cur||!p3.sets[i])return;if(stroke||previ
   if(B.state){setDocState(B.state);B.state=null;}else{blankTabDoc(p3.size,p3.size,B.name);p3Setup(B.name);}
   doc.v3d=p3.v3d;v3.tex=B.tex||{};B.tex=null;p3.cur=i;v3.mapsDirty=true;v3.editDirty=true;v3.dirty=true;
   $('#docName').textContent=doc.name;if(typeof selChanged==='function')selChanged();
-  renderLayers();refreshChanUI();refreshMapsUI();buildBrushPanel();changedAll();fit();updateStatus();buildP3Panel();requestRender(true);if(!quiet)toast('Texture set “'+B.name+'”.');}
+  renderLayers();refreshChanUI();refreshMapsUI();buildBrushPanel();if(typeof renderMatEd==='function')renderMatEd(true);if(typeof renderShading==='function')renderShading();changedAll();fit();updateStatus();buildP3Panel();requestRender(true);if(!quiet)toast('Texture set “'+B.name+'”.');}
 /* deleting a set whose material is still on the model starts that set again, empty */
 function p3DeleteSet(i){const S=p3.sets[i];if(!S)return;if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
   const onModel=!S.missing;confirmDlg('Delete texture set','Delete the set “'+S.name+'” and everything painted on it?'+(onModel?' Its part of the model starts again with a new, empty set.':'')+' This can’t be undone.','Delete',()=>{
