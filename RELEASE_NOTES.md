@@ -1,3 +1,8 @@
+# Gouache Studio 0.52.2
+
+- Fixes the app staying on the loading screen on graphics cards that allow only 16 textures per shader. The 3D viewer shader used 17 since 0.51.31; the Specular map now shares the Metallic slot.
+- The Maps tab is more compact: empty mesh-map slots are single lines.
+
 # Gouache Studio 0.52.1
 
 - Fixes the app getting stuck on the loading screen after updating to 0.52.0 on some computers (the wrinkle textures now prepare separately).

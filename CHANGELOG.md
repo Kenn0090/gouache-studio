@@ -1,3 +1,8 @@
+## 0.52.2
+
+- **The real fix for the stuck loading screen.** The 3D viewer's shader had grown to 17 textures when the Specular map was added in 0.51.31. Many Windows graphics cards allow only 16 in one shader, so the shader failed to build while the app was starting and the loading screen never ended. The Specular map now comes in through the Metallic slot (a Spec/Gloss set has no Metallic map), so the shader is back to 16. A new test checks that no shader goes above 16 textures.
+- The Maps tab is shorter and tidier: an empty mesh-map slot is one line (name and Import…) instead of a tall box, and a filled one shows its file and the View / Edit buttons.
+
 ## 0.52.1
 
 - **Start-up fix.** Some computers could get stuck on the loading screen after updating to 0.52.0. The eight new wrinkle textures had been added into the same graphics program as the older generated textures, which made that program much slower to prepare on some graphics drivers. Each wrinkle texture is now its own small program, prepared only when it is shown, and the older textures are back to how they were.
