@@ -5,6 +5,29 @@ The **Bake** tab (top right, or **Maps › Bake from high poly…**) copies the 
 ![The Bake tab.](images/bake-tab.png)
 *The Bake tab: settings on the right, the bake on the model in the middle, the baked map on the left.*
 
+## UVs: checking and auto unwrap
+Every model you load as a low-poly (in the New 3D Paint Project window, the Bake tab, or dropped on the 3D view) has its UVs checked.
+- **No UVs:** a window says so and offers **Auto unwrap** or **Continue without UVs** (you can look at the model, but not paint or bake it).
+- **Bad UVs:** if islands overlap, parts lie outside the 0–1 square or the texel size is very uneven, a window lists the problems and offers **Optimize layout** (pack the islands you have again so they stop overlapping), **Auto unwrap instead**, or **Keep as they are**. In the New 3D Paint Project window the same choice is a drop-down under the mesh.
+
+**Auto unwrap** cuts the model into pieces where the surface turns, flattens each piece, gives all pieces the same texel size, and packs them into the 0–1 square with a gap that grows with the texture size (about 8 px at 1K, 16 px at 2K, 32 px at 4K) so mipmaps do not bleed. It works best on hard-surface props and weapons; very organic shapes are stretched a little more.
+
+**Review it in the Bake tab.** The **UVs** card (above the models) shows the layout flat, with overlaps in red, and puts a numbered checker on the model so you can spot stretching:
+- **Style** and **Seam angle:** Hard surface cuts at every noticeable edge, Organic cuts less.
+- **Padding:** the gap between pieces, in pixels. **Layout:** one square per material (each becomes its own texture set in 3D Paint) or one shared square.
+- **Seed and Re-roll:** every seed starts the pieces in another order and packs in another order, so Re-roll gives a different, valid layout; type a seed to come back to one you liked.
+- **Best of 24:** tries 24 ways of packing the same pieces and keeps the tightest.
+- **Optimize layout** packs a model's own islands again; **Original UVs** goes back to the file's UVs.
+- **Export model with UVs…** (also in the File menu): OBJ, glTF binary (.glb) or binary FBX, with the UVs, normals and one material group per material, at the file's own size or as shown in the app.
+
+**The fun part (0.55):**
+- **On the model:** Off, **Checker**, **Stretch** (green = a perfect fit, yellow to red = stretched) or **Texel size** (blue = small, green = right, red = big). The same colours are drawn in the flat picture, and the seams are white lines on the model.
+- **Seam angle** re-cuts live while you drag it (for very big models the update waits until you let go).
+- **Roll the dice:** 12 layouts at once, each with how much of the square it uses and how many pieces it has. The tightest is marked *best*. Click a tile to use it; the ★ pins a layout so it stays when you roll again. Rolling needs a model that was auto unwrapped.
+- **Unfold:** the slider (or **Play**) slides the model open into the flat layout; a model with several materials shows each material's square side by side. The cage and high-poly are hidden while unfolded.
+
+When the UVs change, baked maps from before are cleared (they no longer fit); bake again. Paint you already made in 3D Paint does not follow new UVs.
+
 ## The Bake tab
 - The **3D view** shows the low-poly large in the middle. While a bake runs you watch it fill in on the model, piece by piece, and you can turn the model as it goes. **Cancel** stops it at any point.
 - The **canvas** on the left shows the baked map.

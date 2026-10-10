@@ -19,7 +19,9 @@ async function parseModelBytes(name,bytes,sib,options={}){const mb=(bytes.byteLe
 /* dropped File objects (other dropped files serve as a glTF's .bin and textures) */
 async function parseModelFile(file,all,options={}){const sib=async u=>{const f=(all||[]).find(x=>x.name===u||x.name===u.split('/').pop());if(!f)throw new Error('“'+u+'” was not dropped with the glTF.');return await f.arrayBuffer();};
   return parseModelBytes(file.name,await readFileObj(file),sib,options);}
-async function bakePickModel(options={}){
+/* options.uv: check the UVs of the picked model (the low-poly); options.uv==='quiet': only read them, the window asks later */
+async function bakePickModel(options={}){const m=await bakePickModelRaw(options);if(m&&options.uv===true&&typeof uvImportCheck==='function')return await uvImportCheck(m);if(m&&options.uv==='quiet'&&typeof uvAn==='function')uvAn(m);return m;}
+async function bakePickModelRaw(options={}){
   if(platform.isDesktop){const p=await platform.openDialog([{name:'3D models',extensions:['obj','glb','gltf','fbx','OBJ','GLB','GLTF','FBX']}]);if(!p)return null;
     loadStart(fileNameOf(p));try{
     const bytes=await platform.readFile(p);

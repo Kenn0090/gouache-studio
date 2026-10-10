@@ -1,3 +1,17 @@
+# Gouache Studio 0.55.0
+
+- Review an unwrap with colour: stretch (green to red) or texel size (blue to red) on the model and in the layout, with the seams as white lines.
+- The Seam angle slider re-cuts live while you drag it.
+- Roll the dice: 12 layouts at once with their scores, click one to use it, pin favourites.
+- Unfold: slide the model open into its flat layout and back, with a Play button.
+
+# Gouache Studio 0.54.0
+
+- New models are checked for UVs. No UVs: Auto unwrap or continue without. Overlapping or stretched UVs: Optimize layout, Auto unwrap instead, or keep them.
+- Auto unwrap cuts, flattens and packs the model (one square per material or shared) with padding that follows the texture size.
+- Review it in the Bake tab: layout picture with overlaps, checker on the model, seam angle, padding, seed with Re-roll, and Best of 24.
+- Export model with UVs as OBJ, glTF binary or FBX.
+
 # Gouache Studio 0.53.1
 
 - Spec/Gloss now works on the 3D model: Glossiness changes how sharp the reflection is and the Specular colour tints it. The Spec/Gloss Library previews were redone.
