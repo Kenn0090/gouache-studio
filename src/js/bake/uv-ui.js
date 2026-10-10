@@ -4,7 +4,7 @@
    tab (the card under the models): the layout drawn flat, a checker on the model, Seed + Re-roll to pack again,
    the seam angle, the padding, one square per material or a shared one, Best of 24, and Revert.
    Each mesh carries its own history: m.uwSrc (the mesh before any change), m.uwRes (the cut and flattened pieces), m.uwOpt. */
-const uvw={open:false,checker:false,showOverlap:true,busy:false};
+const uvw={open:false,view:'off',showOverlap:true,busy:false,gal:[],anim:false,rollNote:''};
 const uvSizeNow=()=>{try{return bakeCfg&&bakeCfg.size||2048;}catch(e){return 2048;}};
 /* the analysis is cached on the mesh (it is the same until the UVs change) */
 function uvAn(m){if(!m)return null;if(!m._uvAn)m._uvAn=uwAnalyze(m,{udim:typeof p3!=='undefined'&&ui.mode==='p3d'&&!!p3.udim,mask:true});return m._uvAn;}
@@ -13,9 +13,9 @@ const uvWorst=an=>an&&an.issues.find(i=>i.kind!=='none')||null;
 function uvDialog(title,body,okLabel,cancelLabel){return new Promise(res=>{let done=false;const fin=v=>{if(!done){done=true;res(v);}};
   body._pick=v=>{fin(v);closeDialog();};openDialog({title,body,okLabel,cancelLabel,onOk(){fin('ok');},onCancel(){fin('cancel');}});});}
 /* ---- running an unwrap ---- */
-async function uvRunUnwrap(m,optIn){const src=m.uwSrc||m,opt=Object.assign(uwDefaults(),m.uwOpt||{},{size:uvSizeNow()},optIn||{});
-  loadStart('Unwrapping “'+(src.name||'model')+'”');try{const res=await uwUnwrap(src,opt,(msg,f)=>{loadBusy(msg);}),lay=uwLayout(src,res,opt),nm=uwBuild(src,res,lay);
-    nm.uwSrc=src;nm.uwRes=res;nm.uwOpt=Object.assign({},res.opt,{packSeed:lay.packSeed});nm.name=src.name;nm.xf=src.xf;return nm;}finally{loadEnd();}}
+async function uvRunUnwrap(m,optIn,quiet){const src=m.uwSrc||m,opt=Object.assign(uwDefaults(),m.uwOpt||{},{size:uvSizeNow()},optIn||{});
+  if(!quiet)loadStart('Unwrapping “'+(src.name||'model')+'”');try{const res=await uwUnwrap(src,opt,quiet?null:(msg,f)=>{loadBusy(msg);}),lay=uwLayout(src,res,opt),nm=uwBuild(src,res,lay);
+    nm.uwSrc=src;nm.uwRes=res;nm.uwOpt=Object.assign({},res.opt,{packSeed:lay.packSeed});nm.name=src.name;nm.xf=src.xf;return nm;}finally{if(!quiet)loadEnd();}}
 /* just the layout again from the charts already cut (a new pack seed, padding or layout) */
 function uvRelayout(m,optIn){const src=m.uwSrc,res=m.uwRes;if(!src||!res)return null;const opt=Object.assign({},m.uwOpt,{size:uvSizeNow()},optIn||{}),lay=uwLayout(src,res,opt),nm=uwBuild(src,res,lay);
   nm.uwSrc=src;nm.uwRes=res;nm.uwOpt=Object.assign({},res.opt,opt,{packSeed:lay.packSeed});nm.xf=src.xf;nm.name=src.name;return nm;}
@@ -49,8 +49,9 @@ function uvDialogState(m){if(!m)return null;const an=uvAn(m);return {none:an.non
 /* ---- the preview picture ---- */
 function uvIslandsOf(m){return m._uvIsl||(m._uvIsl=uwIslands(m));}
 function uvDrawPreview(cv,m){const S=cv.width,x=cv.getContext('2d');x.fillStyle='#17181c';x.fillRect(0,0,S,S);
-  if(uvw.checker){const n=16,c=S/n;for(let i=0;i<n;i++)for(let j=0;j<n;j++){x.fillStyle=(i+j)&1?'#2a2d34':'#20232a';x.fillRect(i*c,j*c,c,c);}}
+  if(uvw.view==='check'){const n=16,c=S/n;for(let i=0;i<n;i++)for(let j=0;j<n;j++){x.fillStyle=(i+j)&1?'#2a2d34':'#20232a';x.fillRect(i*c,j*c,c,c);}}
   if(!m||m.noUV){x.fillStyle='#8a8f99';x.font='12px sans-serif';x.textAlign='center';x.fillText('No UVs',S/2,S/2);return;}
+  if(uvw.view==='stretch'||uvw.view==='texel'){x.drawImage(uvHeatCanvas(m,uvw.view,S,true),0,0);const an0=uvAn(m);if(uvw.showOverlap&&an0&&an0.mask){const G=an0.mask.S,bd=an0.mask.bad,u=S/G;x.fillStyle='rgba(255,40,255,.7)';for(let i=0;i<G*G;i++)if(bd[i])x.fillRect((i%G)*u,Math.floor(i/G)*u,Math.ceil(u),Math.ceil(u));}x.strokeStyle='#6a6f7a';x.lineWidth=1;x.strokeRect(.5,.5,S-1,S-1);return;}
   const I=m.idx,T=I.length/3,UV=m.uv,isl=uvIslandsOf(m),pal=['#e06c6c','#6cc06c','#6c9ce0','#e0c05c','#c06cc0','#5cc0c0','#f0a060','#a0a0a8'];
   /* draw by island so each is one colour; a big model draws lines only when it is small enough */
   x.globalAlpha=.55;for(let t=0;t<T;t++){x.fillStyle=pal[isl.ids[t]%pal.length];x.beginPath();for(let k=0;k<3;k++){const v=I[t*3+k],px=UV[v*2]*S,py=UV[v*2+1]*S;k?x.lineTo(px,py):x.moveTo(px,py);}x.closePath();x.fill();}
@@ -61,7 +62,7 @@ function uvDrawPreview(cv,m){const S=cv.width,x=cv.getContext('2d');x.fillStyle=
 function uvCard(L){if(!L||!L.pos)return null;const an=uvAn(L),A=L.uvAuto,worst=uvWorst(an),flagged=an.none||!!worst||!!A;
   const card=el('div',{class:'uvcard',id:'uvCard'});
   const util=A?Math.round(A.util*100):0,chips=[];if(an.none)chips.push('No UVs');else{chips.push(an.islands+' island'+(an.islands===1?'':'s'));if(A)chips.push(util+'% of the square used');if(an.overlapPct>1)chips.push(Math.round(an.overlapPct)+'% overlap');}
-  const head=el('div',{class:'uvhead'},el('div',{class:'sub',text:'UVs'}),el('span',{class:'uvstat'+(an.none||worst?' warn':''),text:chips.join(' · ')}),
+  const head=el('div',{class:'uvhead'},el('div',{class:'sub',text:'UVs'}),el('span',{class:'uvstat'+(an.none||worst?' warn':''),id:'uvStat',text:chips.join(' · ')}),
     el('button',{class:'btn sm',id:'uvToggle',text:uvw.open||an.none?'Hide':'Review…',hidden:an.none,onclick:()=>{uvw.open=!uvw.open;buildBakePanel();}}));card.append(head);
   if(an.none){card.append(uvLine('This low-poly has no UVs, so nothing can be baked onto it.'),el('div',{class:'chips'},el('button',{class:'btn primary',id:'uvAuto',text:'Auto unwrap',disabled:uvw.busy,onclick:()=>uvAct('unwrap')})));return card;}
   if(worst&&!uvw.open)card.append(uvLine(worst.text+' Optimize packs the islands again; Re-roll tries another layout.'));
@@ -74,36 +75,36 @@ function uvCard(L){if(!L||!L.pos)return null;const an=uvAn(L),A=L.uvAuto,worst=u
   const padVal=O.padding||uwAutoPad(uvSizeNow());
   const ctl=el('div',{class:'uvctl'},
     ...(own?[]:[el('div',{class:'frow'},el('label',{text:'Style'}),(()=>{const s=el('select',{id:'uvPreset','aria-label':'Unwrap style'},...Object.entries(UW_PRESETS).map(([k,v])=>el('option',{value:k,text:v.label})));s.value=O.preset||'balanced';s.onchange=()=>uvAct('unwrap',{preset:s.value,angle:UW_PRESETS[s.value].angle,flat:UW_PRESETS[s.value].flat});return s;})()),
-      makeSlider({id:'uvAngle',label:'Seam angle',min:30,max:89,step:1,value:O.angle,fmt:v=>Math.round(v)+'°',onInput:()=>{},onChange:v=>uvAct('unwrap',{angle:Math.round(v)})}).el]),
+      makeSlider({id:'uvAngle',label:'Seam angle',min:30,max:89,step:1,value:O.angle,fmt:v=>Math.round(v)+'°',onInput:v=>uvLive({angle:Math.round(v)}),onChange:v=>{clearTimeout(uvLiveTimer);uvLiveOpt=null;uvAct('unwrap',{angle:Math.round(v)},{quiet:true});}}).el]),
     makeSlider({id:'uvPad',label:'Padding',min:2,max:64,step:1,value:padVal,fmt:v=>Math.round(v)+' px',onInput:()=>{},onChange:v=>uvAct('layout',{padding:Math.round(v)})}).el,
     el('div',{class:'frow'},el('label',{text:'Layout'}),seg([['material','One square per material'],['shared','Shared square']],O.layout||'material',v=>uvAct('layout',{layout:v}),'Layout')),
     el('div',{class:'frow uvseed'},el('label',{for:'uvSeed',text:'Seed'}),seedIn,el('button',{class:'btn sm',id:'uvRoll',text:'Re-roll',title:'Try another layout (another seed)',onclick:()=>uvAct(own?'repack':'reroll')}),
       el('button',{class:'btn sm',id:'uvBest',text:'Best of 24',title:'Try 24 ways of packing the same pieces and keep the tightest',onclick:()=>uvAct('best')})),
-    el('div',{class:'chips'},chk('uvChecker','Checker on the model',uvw.checker,v=>{uvw.checker=v;uvCheckerSync();uvDrawPreview(cv,L);}),chk('uvOverlap','Show overlaps',uvw.showOverlap,v=>{uvw.showOverlap=v;uvDrawPreview(cv,L);})),
+    el('div',{class:'frow'},el('label',{text:'On the model'}),seg([['off','Off'],['check','Checker'],['stretch','Stretch'],['texel','Texel size']],uvw.view,v=>{uvw.view=v;uvViewSync();uvDrawPreview(cv,L);},'Show on the model')),
+    el('div',{class:'chips'},chk('uvOverlap','Show overlaps',uvw.showOverlap,v=>{uvw.showOverlap=v;uvDrawPreview(cv,L);})),
+    el('div',{class:'frow uvfoldrow'},makeSlider({id:'uvFold',label:'Unfold',min:0,max:1,step:.01,value:bk.fold||0,fmt:pct,onInput:v=>{uvw.anim=false;uvFoldSet(v);}}).el,el('button',{class:'btn sm',id:'uvPlay',text:uvw.anim?'Pause':'Play',title:'Unfold the model into its layout and fold it back',onclick:()=>uvFoldPlay()})),
+    el('div',{class:'chips'},el('button',{class:'btn sm primary',id:'uvDice',text:'Roll the dice ('+UV_ROLLS+')',title:'Cut and pack '+UV_ROLLS+' different layouts and show them all',disabled:uvw.busy||own,onclick:()=>uvRoll()}),el('span',{class:'note',id:'uvRollNote',text:uvw.rollNote||''})),
     el('div',{class:'chips'},el('button',{class:'btn sm',id:'uvOpt',text:'Optimize layout',title:'Pack the islands again so they stop overlapping and fill the square',onclick:()=>uvAct('repack')}),
       el('button',{class:'btn sm',id:'uvRevert',text:'Original UVs',hidden:!(L.uwSrc&&!L.uwSrc.noUV),onclick:()=>uvAct('revert')}),
       el('button',{class:'btn sm',id:'uvExport',text:'Export model with UVs…',onclick:()=>dlgExportUV()})));
-  card.append(el('div',{class:'uvreview'},cv,ctl));
+  card.append(el('div',{class:'uvreview'},cv,ctl));uvw.keepEl=true;
+  if(uvw.gal.length)card.append(uvGalleryEl());
   if(an.issues.length)card.append(el('ul',{class:'uvissues'},...an.issues.filter(i=>i.kind!=='none').map(i=>el('li',{text:i.text}))));
   return card;}
 /* the buttons of the card */
-async function uvAct(what,optIn){if(uvw.busy)return;const old=(typeof bkLow==='function'?bkLow():null);if(!old)return;uvw.busy=true;
+async function uvAct(what,optIn,flags){const quiet=!!(flags&&flags.quiet);if(uvw.busy)return;const old=(typeof bkLow==='function'?bkLow():null);if(!old)return;uvw.busy=true;
   try{let nm=null;const o=optIn||{};
-    if(what==='unwrap'){nm=await uvRunUnwrap(old.uwSrc?old:Object.assign({},old,{noUV:true,uwSrc:null}),Object.assign({},o,{seed:o.seed||(old.uwOpt&&old.uwOpt.seed)||1}));}
+    if(what==='unwrap'){nm=await uvRunUnwrap(old.uwSrc?old:Object.assign({},old,{noUV:true,uwSrc:null}),Object.assign({},o,{seed:o.seed||(old.uwOpt&&old.uwOpt.seed)||1}),quiet);}
     else if(what==='reroll'){const seed=o.seed||((old.uwOpt&&old.uwOpt.seed)||1)+1;nm=await uvRunUnwrap(old,Object.assign({},o,{seed,packSeed:null}));}
     else if(what==='layout'){nm=old.uwRes?uvRelayout(old,o):uvRepackOwn(old,o);}
     else if(what==='repack'){const seed=o.seed||((old.uwOpt&&old.uwOpt.packSeed)||0)+1;nm=old.uwRes?uvRelayout(old,Object.assign({},o,{packSeed:seed,seed:old.uwOpt.seed})):uvRepackOwn(old,Object.assign({},o,{packSeed:seed,seed}));}
     else if(what==='best'){let best=null,bu=-1;const base=old.uwOpt&&old.uwOpt.packSeed||0;for(let k=0;k<24;k++){const ps=base+k+1,c=old.uwRes?uvRelayout(old,{packSeed:ps}):uvRepackOwn(old,{packSeed:ps});if(c&&c.uvAuto.util>bu){bu=c.uvAuto.util;best=c;}if(k%4===3)await uwYield();}nm=best;if(best)toast('Best of 24: '+Math.round(bu*100)+'% of the square used.');}
     else if(what==='revert'){const s=old.uwSrc;if(s){nm=Object.assign({},s);delete nm.uwSrc;delete nm.uwRes;delete nm.uwOpt;delete nm.uvAuto;delete nm._uvAn;delete nm._uvIsl;}}
-    if(nm){nm._uvAn=null;nm._uvIsl=null;uvReplaceMesh(old,nm);uvCheckerSync();}
-  }catch(e){console.warn(e);toast('The unwrap did not work: '+(e.message||e));}finally{uvw.busy=false;if(ui.mode==='bake')buildBakePanel();}}
+    if(nm){nm._uvAn=null;nm._uvIsl=null;nm._uvMet=null;nm._uvStamp=(old._uvStamp||0)+1;uvReplaceMesh(old,nm);uvViewSync();}
+  }catch(e){console.warn(e);toast('The unwrap did not work: '+(e.message||e));}finally{uvw.busy=false;if(ui.mode==='bake'){if(quiet&&uvw.keepEl)uvRefreshCard();else buildBakePanel();}}}
+/* a light refresh while dragging: only the picture and the numbers change, not the controls under the pointer */
+function uvRefreshCard(){const m=bkLow(),cv=$('#uvPrev');if(cv&&m)uvDrawPreview(cv,m);const st=$('#uvStat');if(st&&m){const an=uvAn(m),A=m.uvAuto;st.textContent=an.none?'No UVs':an.islands+' island'+(an.islands===1?'':'s')+(A?' · '+Math.round(A.util*100)+'% of the square used':'')+(an.overlapPct>1?' · '+Math.round(an.overlapPct)+'% overlap':'');}}
 /* the checker on the model in the 3D view */
-let uvCheckerT=null;
-function uvCheckerTarget(){if(uvCheckerT)return uvCheckerT;const S=1024,c=document.createElement('canvas');c.width=c.height=S;const x=c.getContext('2d'),n=16,s=S/n;
-  for(let i=0;i<n;i++)for(let j=0;j<n;j++){x.fillStyle=(i+j)&1?'#d9d9de':'#8c8f99';x.fillRect(i*s,j*s,s,s);}
-  x.font='bold 40px sans-serif';x.fillStyle='#2b2d33';x.textAlign='center';x.textBaseline='middle';for(let i=0;i<n;i+=2)for(let j=0;j<n;j+=2)x.fillText(String(i/2+1+(j/2)*8),(i+.5)*s+s,(j+.5)*s+s);
-  const t=makeTarget(S,S,8,true);const tex=uploadStraight({w:S,h:S,data:new Uint8Array(x.getImageData(0,0,S,S).data.buffer),bits:8});try{premultInto(t,tex,[0,0],null);}finally{gl.deleteTexture(tex);}setWrap(t,true);uvCheckerT=t;return t;}
-function uvCheckerSync(){bk.uvCheck=!!uvw.checker;bk.dirty=true;if(typeof v3!=='undefined')v3.dirty=true;if(typeof requestRender==='function')requestRender(true);}
 /* ---- exporting the model with its UVs ---- */
 function uvExportMesh(){const m=ui.mode==='bake'?bkLow():(typeof mxModel==='function'?mxModel():null);return m&&m.pos?m:null;}
 function dlgExportUV(){const m=uvExportMesh();if(!m){toast('Load a model first.');return;}if(m.noUV){toast('This model has no UVs yet: unwrap it first.');return;}

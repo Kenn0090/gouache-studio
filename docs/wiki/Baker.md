@@ -20,6 +20,12 @@ Every model you load as a low-poly (in the New 3D Paint Project window, the Bake
 - **Optimize layout** packs a model's own islands again; **Original UVs** goes back to the file's UVs.
 - **Export model with UVs…** (also in the File menu): OBJ, glTF binary (.glb) or binary FBX, with the UVs, normals and one material group per material, at the file's own size or as shown in the app.
 
+**The fun part (0.55):**
+- **On the model:** Off, **Checker**, **Stretch** (green = a perfect fit, yellow to red = stretched) or **Texel size** (blue = small, green = right, red = big). The same colours are drawn in the flat picture, and the seams are white lines on the model.
+- **Seam angle** re-cuts live while you drag it (for very big models the update waits until you let go).
+- **Roll the dice:** 12 layouts at once, each with how much of the square it uses and how many pieces it has. The tightest is marked *best*. Click a tile to use it; the ★ pins a layout so it stays when you roll again. Rolling needs a model that was auto unwrapped.
+- **Unfold:** the slider (or **Play**) slides the model open into the flat layout; a model with several materials shows each material's square side by side. The cage and high-poly are hidden while unfolded.
+
 When the UVs change, baked maps from before are cleared (they no longer fit); bake again. Paint you already made in 3D Paint does not follow new UVs.
 
 ## The Bake tab

@@ -173,8 +173,8 @@ const UW_PRESETS={hard:{label:'Hard surface',angle:50,flat:20},balanced:{label:'
 function uwDefaults(){return {preset:'balanced',angle:66,flat:20,seed:1,packSeed:null,size:2048,padding:0,layout:'material',iters:400,lscmMax:60000,rotate:true,minTris:6};}
 /* padding in pixels: about one pixel per mip level, and more for bigger textures (8 px at 1K, 16 at 2K, 32 at 4K) */
 const uwAutoPad=size=>Math.max(4,Math.round(size/128));
-async function uwUnwrap(m,optIn,progress){const opt=Object.assign(uwDefaults(),optIn||{}),rng=uwRng(opt.seed*7919+3),pr=progress||(()=>{});
-  pr('Reading the model…',0);await uwYield();const topo=uwTopo(m);
+async function uwUnwrap(m,optIn,progress,topoIn){const opt=Object.assign(uwDefaults(),optIn||{}),rng=uwRng(opt.seed*7919+3),pr=progress||(()=>{});
+  pr('Reading the model…',0);await uwYield();const topo=topoIn||m._uwTopo||(m._uwTopo=uwTopo(m));
   pr('Cutting into pieces…',.1);await uwYield();let seg=uwSegment(m,topo,opt,rng);seg=uwMerge(m,topo,seg,opt);
   const flats=[];let k=0;for(const C of seg.charts){flats.push(uwFlatten(m,topo,C,opt));if(++k%25===0){pr('Flattening…',.25+.5*k/seg.charts.length);await uwYield();}}
   return {topo,seg,flats,opt:Object.assign({},opt)};}
@@ -204,7 +204,7 @@ function uwBuild(m,res,lay){const {topo,seg,flats}=res,I=m.idx,T=I.length/3,N=m.
       /* a corner is a new vertex per (original vertex, chart): normals and colours stay exactly as they were */
       const key=c>=0?c*N+v:-1-v;let nv=map.get(key);if(nv===undefined){nv=next++;map.set(key,nv);src.push(v);uv.push(u0,1-u1);}newIdx[t*3+k]=nv;}}
   const M=src.length,copy=(a,w)=>{if(!a)return a;const o=new Float32Array(M*w);for(let i=0;i<M;i++)for(let j=0;j<w;j++)o[i*w+j]=a[src[i]*w+j];return o;};
-  const r=Object.assign({},m,{pos:copy(m.pos,3),nrm:copy(m.nrm,3),uv:Float32Array.from(uv),idx:newIdx,vcol:copy(m.vcol,4),pcol:copy(m.pcol,4),noUV:false,verts:M,_uvAn:null,_uvIsl:null});
+  const r=Object.assign({},m,{pos:copy(m.pos,3),nrm:copy(m.nrm,3),uv:Float32Array.from(uv),idx:newIdx,vcol:copy(m.vcol,4),pcol:copy(m.pcol,4),noUV:false,verts:M,_uvAn:null,_uvIsl:null,_uwTopo:null,_uvMet:null});
   r.tan=tangentsOf(r.pos,r.nrm,r.uv,r.idx);delete r.sub;r.uvAuto={opt:res.opt,seed:lay.seed,packSeed:lay.packSeed,util:lay.util,charts:flats.length};return r;}
 /* ---- reading the UVs a model came with ---- */
 /* which UV island (connected piece) every triangle belongs to */
@@ -249,4 +249,4 @@ function uwRepack(m,optIn){const opt=Object.assign(uwDefaults(),optIn||{}),isl=u
   const uv=new Float32Array(UV.length),seen=new Uint8Array(UV.length/2);
   for(let t=0;t<T;t++){const b=ib[isl.ids[t]],p=place[isl.ids[t]];for(let k=0;k<3;k++){const v=I[t*3+k];if(seen[v])continue;seen[v]=1;
     let x=(UV[v*2]-b.x0)*p.s,y=(UV[v*2+1]-b.y0)*p.s;if(p.rot){const w=(b.x1-b.x0)*p.s;const tx=x;x=y;y=w-tx;}uv[v*2]=p.x+p.gap/2+x;uv[v*2+1]=p.y+p.gap/2+y;}}
-  const r=Object.assign({},m,{uv,_uvAn:null,_uvIsl:null});r.tan=tangentsOf(r.pos,r.nrm,r.uv,r.idx);r.uvAuto={opt,seed:opt.seed,packSeed:opt.packSeed==null?opt.seed:opt.packSeed,util:ng?util/ng:0,charts:isl.count,repack:true};return r;}
+  const r=Object.assign({},m,{uv,_uvAn:null,_uvIsl:null,_uvMet:null});r.tan=tangentsOf(r.pos,r.nrm,r.uv,r.idx);r.uvAuto={opt,seed:opt.seed,packSeed:opt.packSeed==null?opt.seed:opt.packSeed,util:ng?util/ng:0,charts:isl.count,repack:true};return r;}

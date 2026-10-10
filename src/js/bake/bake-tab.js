@@ -234,7 +234,8 @@ function bakeViewTex(){const t=bkEnsure('view2d',8),live=stroke&&stroke.L&&strok
 function bakeV3Refresh(){if(bk.docBase&&v3.mapsDirty){const t=compositeMap('base');v3MapTex('base',t);release(t);v3.mapsDirty=false;bk.dirty=true;}
   const live=stroke&&stroke.L&&stroke.L.bakeMap;if(!bk.dirty&&!live&&!bk.busy&&v3.btex)return;
   const tint=bkEnsure('tint',8),r=bk.res,T={};let unlit=false;
-  if(bk.uvCheck&&typeof uvCheckerTarget==='function'){T.base=uvCheckerTarget();unlit=false;}
+  if(bk.uvCheck&&typeof uvViewTarget==='function'){const vt=uvViewTarget();if(vt){T.base=vt.t;unlit=vt.unlit;}}
+  if(T.base);
   else if(bk.show==='material'){bakeTint(tint,bk.docBase?(v3.tex.base||null):null,bk.paint,bk.paint==='skew'?1:2);T.base=tint;if(r.normal)T.nfinal=r.normal;if(r.ao)T.ao=r.ao;}
   else if(BK_PAINT[bk.show]){bakeTint(tint,null,bk.show,3);T.base=tint;unlit=true;}
   else{bakeTint(tint,r[bk.show]||null,bk.paint,bk.paint==='skew'?1:2);T.base=tint;unlit=true;}

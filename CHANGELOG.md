@@ -1,3 +1,10 @@
+## 0.55.0
+
+- **Stretch colours.** In the UVs card, **On the model** has Off, Checker, **Stretch** and **Texel size**. Stretch tints the model and the flat layout from green (a perfect fit) through yellow to red (very stretched); Texel size from blue (small) through green to red (big). The seams show as white lines on the model.
+- **Live seam angle.** Dragging the Seam angle slider re-cuts the model while you drag, so the seams and colours follow your hand.
+- **Dice gallery.** **Roll the dice** cuts and packs 12 different layouts at once and shows them as tiles with their score (how much of the square is used) and number of pieces. The tightest one is marked **best**. Click a tile to use it; the star pins a layout so it stays when you roll again.
+- **Unfold.** An **Unfold** slider and a **Play** button slide the model open along its seams into the flat layout and back (each material side by side). The cage and high-poly are hidden while it is unfolded.
+
 ## 0.54.0
 
 - **UV check on import.** A low-poly you load (in the New 3D Paint Project window, the Bake tab, or dropped on the 3D view) is checked. No UVs: a window says so and offers **Auto unwrap** or **Continue without UVs**. Overlapping islands, parts outside the 0–1 square or very uneven texel size: a window lists them and offers **Optimize layout**, **Auto unwrap instead** or **Keep as they are**.

@@ -1,3 +1,10 @@
+# Gouache Studio 0.55.0
+
+- Review an unwrap with colour: stretch (green to red) or texel size (blue to red) on the model and in the layout, with the seams as white lines.
+- The Seam angle slider re-cuts live while you drag it.
+- Roll the dice: 12 layouts at once with their scores, click one to use it, pin favourites.
+- Unfold: slide the model open into its flat layout and back, with a Play button.
+
 # Gouache Studio 0.54.0
 
 - New models are checked for UVs. No UVs: Auto unwrap or continue without. Overlapping or stretched UVs: Optimize layout, Auto unwrap instead, or keep them.

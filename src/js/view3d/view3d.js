@@ -5,9 +5,12 @@
 const VS_3D=`#version 300 es
 layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec2 aT; layout(location=3) in vec4 aTan; layout(location=4) in vec3 aD;
 uniform mat4 uVP; uniform float uUVs; uniform sampler2D uH; uniform float uDisp; uniform int uUseH; uniform int uUseUDIM; uniform vec2 uUDIMTile;
+uniform float uMorph; uniform vec3 uMorphOff;
 out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;
-void main(){ vec2 t=aT*uUVs; vec3 p=aP; if(uUseH==1&&uDisp!=0.0){ float h=textureLod(uH,uUseUDIM==1?fract(t):t,0.0).r-0.5; p+=aD*h*uDisp; }
-  vP=p; vN=aN; vT=t; vTan=aTan; gl_Position=uVP*vec4(p,1.0); }`;
+void main(){ vec2 t=aT*uUVs; vec3 p=aP; vec3 nn=aN; if(uUseH==1&&uDisp!=0.0){ float h=textureLod(uH,uUseUDIM==1?fract(t):t,0.0).r-0.5; p+=aD*h*uDisp; }
+  /* (0.55) unfold: the model slides into its flat UV layout (Bake tab review) */
+  if(uMorph>0.0){ float k=uMorph*uMorph*(3.0-2.0*uMorph); p=mix(p,vec3((aT.x-0.5)*2.2,(0.5-aT.y)*2.2,0.0)+uMorphOff,k); nn=normalize(mix(aN,vec3(0.0,0.0,1.0),k)); }
+  vP=p; vN=nn; vT=t; vTan=aTan; gl_Position=uVP*vec4(p,1.0); }`;
 /* tone mapping: 0 soft, 1 filmic (quick ACES fit), 2 ACES (full), 3 AgX, 4 PBR Neutral (Khronos), 5 none */
 const TONE_GLSL=`vec3 acesHill(vec3 c){ const mat3 I=mat3(0.59719,0.07600,0.02840, 0.35458,0.90834,0.13383, 0.04823,0.01566,0.83777); const mat3 O=mat3(1.60475,-0.10208,-0.00327, -0.53108,1.10813,-0.07276, -0.07367,-0.00605,1.07602);
   c=I*(c/0.6); vec3 a=c*(c+0.0245786)-0.000090537; vec3 b=c*(0.983729*c+0.4329510)+0.238081; return clamp(O*(a/b),0.0,1.0); }
@@ -285,6 +288,8 @@ function v3List(C){const {g,pre,mv,bake,T0}=C;
   let list=!bake&&pre?pre:[{T:T0,start:0,count:g.count/3,sh:bake?null:v3ShadeOf(doc)}];
   if(mv){const R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():null;list=list.map(it=>!R||it.start===R.start?{T:{base:mv},start:it.start,count:it.count,unlit:true}:it);}
   if(bake&&typeof bakeHighHidesLow==='function'&&bakeHighHidesLow())list=[];
+  /* unfolded: one draw per material, side by side (each has its own UV square) */
+  if(bake&&bk.fold>0&&list.length===1&&v3.mesh&&v3.mesh.setRanges&&v3.mesh.setRanges.length>1){const it=list[0],n=v3.mesh.setRanges.length;list=v3.mesh.setRanges.map((r,k)=>Object.assign({},it,{start:r.start,count:r.count,off:(k-(n-1)/2)*2.6}));}
   return list;}
 /* the uniforms for one texture set's draw */
 function v3MeshU(C,common,it,flip,safeMip=null){const {s,bake,EU,eye,a,e}=C,sg=it.sg!==undefined?it.sg:C.sg,T=it.T||{},base=T.base,useSafeMip=!!(safeMip&&!it.thick);
@@ -292,7 +297,7 @@ function v3MeshU(C,common,it,flip,safeMip=null){const {s,bake,EU,eye,a,e}=C,sg=i
     if(!bake&&!it.thick&&!it.sh&&doc.meshMaps&&doc.meshMaps.thick)it.thick=doc.meshMaps.thick;
     const mOK=ok('metal')&&!(sg&&ok('spec')),hm=(ok('rough')?1:0)|(mOK?2:0)|(ok('nfinal')?4:0)|(ok('ao')?8:0)|(ok('emis')?16:0)|(ok('opac')?64:0)|(it.thick?128:0)|(ok('spec')&&!mOK?256:0);
     return Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uUseUDIM:!!it.udim,uUDIMTile:it.udim?[it.udim.u,it.udim.v]:[0,0],uUseSafeMip:useSafeMip,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:mOK?T.metal.tex:ok('spec')?T.spec.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,uThick:useSafeMip?safeMip.tex:it.thick?it.thick.tex:dummy,...EU,...shadeUniforms(bake?null:it.sh||v3ShadeOf(doc)),
-      uStudioFill:s.studioFill||0,uStudioRim:s.studioRim||0,uLightColor:s.lightColor||[1,1,1],uShadow:dummy,uShadowVP:{m4:m4()},uShadowOn:0,uShadowSoft:1,...common,uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});}
+      uMorph:bake&&bk.fold>0?bk.fold:0,uMorphOff:[it.off||0,0,0],uStudioFill:s.studioFill||0,uStudioRim:s.studioRim||0,uLightColor:s.lightColor||[1,1,1],uShadow:dummy,uShadowVP:{m4:m4()},uShadowOn:0,uShadowSoft:1,...common,uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});}
 function v3Render(F,flip){const g=v3.gpu;if(!g)return;v3Work.scenes++;F.sceneFlip=!!flip;const C=v3Ctx(),{s,bake}=C,list=v3List(C),SU=studioShadowPrepare(C,list);
   const activeRange=!bake&&ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():null,safeMip=activeRange&&typeof seamMipLimit==='function'?seamMipLimit(activeRange):null;
   gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);const bg=BG3[s.bg]||BG3.dark,tr=!!(v3.transparent);gl.clearColor(bg[0],bg[1],bg[2],tr?0:1);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
@@ -313,7 +318,7 @@ function v3Render(F,flip){const g=v3.gpu;if(!g)return;v3Work.scenes++;F.sceneFli
     gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);useProg(P3.sel,Object.assign({},common,{uSel:sel.t.tex}));gl.bindVertexArray(g.vao);
     gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);gl.depthMask(true);gl.disable(gl.BLEND);}
   if(s.wire){useProg(P3.line,Object.assign({},common,{uCol:[.95,.7,.35,1]}));gl.bindVertexArray(g.evao);gl.drawElements(gl.LINES,g.ecount,gl.UNSIGNED_INT,0);}
-  if(bake){bakeDrawHigh(common);bakeDrawCage(common);}
+  if(bake&&!(bk.fold>0)){bakeDrawHigh(common);bakeDrawCage(common);}
   if(!bake&&(v3.paintOn||ui.mode==='p3d')){drawMir3(VP);drawMir3Cursors(F,common);}
   gl.bindVertexArray(vao);gl.disable(gl.DEPTH_TEST);
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,F.rf);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
