@@ -88,7 +88,7 @@ function uvCard(L){uvBigHide();if(!L||!L.pos)return null;const an=uvAn(L),A=L.uv
   const seg2=(id,opts,val,fn)=>seg(opts,val,fn,id);
   const padVal=O.padding||uwAutoPad(uvSizeNow());
   const ctl=el('div',{class:'uvctl'},
-    ...(own?[]:[el('div',{class:'frow'},el('label',{text:'Style'}),(()=>{const s=el('select',{id:'uvPreset','aria-label':'Unwrap style'},...Object.entries(UW_PRESETS).map(([k,v])=>el('option',{value:k,text:v.label})));s.value=O.preset||'balanced';s.onchange=()=>uvAct('unwrap',{preset:s.value,angle:UW_PRESETS[s.value].angle,flat:UW_PRESETS[s.value].flat});return s;})()),
+    ...(own?[]:[el('div',{class:'frow'},el('label',{text:'Style'}),(()=>{const s=el('select',{id:'uvPreset','aria-label':'Unwrap style'},...Object.entries(UW_PRESETS).map(([k,v])=>el('option',{value:k,text:v.label})));s.value=O.preset||'balanced';s.onchange=()=>uvAct('unwrap',uwPresetOpts(s.value));return s;})()),
       makeSlider({id:'uvAngle',label:'Seam angle',min:30,max:89,step:1,value:O.angle,fmt:v=>Math.round(v)+'°',onInput:v=>uvLive({angle:Math.round(v)}),onChange:v=>{clearTimeout(uvLiveTimer);uvLiveOpt=null;uvAct('unwrap',{angle:Math.round(v)},{quiet:true});}}).el]),
     makeSlider({id:'uvPad',label:'Padding',min:2,max:64,step:1,value:padVal,fmt:v=>Math.round(v)+' px',onInput:()=>{},onChange:v=>uvAct('layout',{padding:Math.round(v)})}).el,
     el('div',{class:'frow'},el('label',{text:'Layout'}),seg([['material','One square per material'],['shared','Shared square']],O.layout||'material',v=>uvAct('layout',{layout:v}),'Layout')),

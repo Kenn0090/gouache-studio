@@ -1,3 +1,7 @@
+# Gouache Studio 0.55.2
+
+- New Artist style in the unwrap Style list: fewer, bigger, upright pieces with seams on hard edges, tuned on hand-made unwraps. About 3 times fewer pieces than Balanced.
+
 # Gouache Studio 0.55.1
 
 - Re-rolling and unwrapping show a progress bar with a Stop button and no longer freeze the app; rolling the dice is about 3 times faster.

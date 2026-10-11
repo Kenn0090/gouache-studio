@@ -1,3 +1,8 @@
+## 0.55.2
+
+- **Artist style unwrap.** A new **Artist style** choice in the UVs card's Style list, tuned on 20 hand-made unwraps (a backpack, jackets, a helmet, swords, shoes, a face…). It cuts into fewer, bigger pieces, joins small neighbours while they can still lie flat (so the seams that are left follow the hard edges), stands each piece upright so the model's up is the texture's up (when that costs little space), shrinks a very long piece a little so it stops limiting everyone else's size, and cuts a piece that would stretch too much with a straight seam through the middle. On the 20 models it makes about 3 times fewer pieces than Balanced with the same low stretch.
+- **Seam angle goes up to 89° for it.** Artist style starts at 89° (big pieces); lower it for more, smaller pieces.
+
 ## 0.55.1
 
 - **Re-rolling no longer freezes the app.** Rolling the dice, Re-roll and unwrapping now show a real progress bar (which layout, which step) with a **Stop** button, and the app stays responsive while they work. The long steps give way many times a second, the pictures in the gallery are drawn about 30 times faster, and packing the pieces is several times faster. On a 69,000-triangle helmet, rolling the dice took 24 s with a 3 s freeze before; it now takes 9 s with no freeze longer than a fifth of a second.

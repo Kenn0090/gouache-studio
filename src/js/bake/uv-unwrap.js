@@ -151,11 +151,16 @@ function uwHull(pts){const n=pts.length/2,idx=[];for(let i=0;i<n;i++)idx.push(i)
   for(let k=idx.length-1;k>=0;k--){const i=idx[k];while(up.length>=2&&cr(up[up.length-2],up[up.length-1],i)<=0)up.pop();up.push(i);}
   lo.pop();up.pop();return lo.concat(up);}
 /* turn a flattened chart to its smallest box; returns the box and the turned points */
-function uwFit(F,keepAxes){const n=F.u.length;let pts=new Float64Array(n*2);for(let i=0;i<n;i++){pts[i*2]=F.u[i];pts[i*2+1]=F.v[i];}
+function uwFit(F,keepAxes,straight){const n=F.u.length;let pts=new Float64Array(n*2);for(let i=0;i<n;i++){pts[i*2]=F.u[i];pts[i*2+1]=F.v[i];}
   const h=n>2?uwHull(pts):[],cands=[0];if(!keepAxes)for(let k=0;k<h.length;k++){const a=h[k],b=h[(k+1)%h.length],ang=Math.atan2(pts[b*2+1]-pts[a*2+1],pts[b*2]-pts[a*2]);if(isFinite(ang))cands.push(-ang);}
   let best=null;const seen=new Set();for(const ang of cands){const key=Math.round(ang*1000);if(seen.has(key))continue;seen.add(key);const c=Math.cos(ang),s=Math.sin(ang);let x0=1e30,x1=-1e30,y0=1e30,y1=-1e30;
     for(let i=0;i<n;i++){const x=pts[i*2]*c-pts[i*2+1]*s,y=pts[i*2]*s+pts[i*2+1]*c;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
     const w=x1-x0,hh=y1-y0,sc=w*hh;if(!best||sc<best.sc-1e-12)best={ang,c,s,x0,y0,w,h:hh,sc};}
+  /* artist style: level the piece's main edge direction when that costs at most 15% more box */
+  if(straight){const tries=[];if(F.up&&F.up.strength>1e-9)tries.push([F.up.ang,1.3]);const dm=uwDominant(F);if(dm!=null)tries.push([dm,1.15]);
+    for(const [th,tol] of tries){const c=Math.cos(th),s=Math.sin(th);let x0=1e30,x1=-1e30,y0=1e30,y1=-1e30;
+      for(let i=0;i<n;i++){const x=pts[i*2]*c-pts[i*2+1]*s,y=pts[i*2]*s+pts[i*2+1]*c;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
+      const w=x1-x0,hh=y1-y0,sc=w*hh;if(sc<=best.sc*tol){best={ang:th,c,s,x0,y0,w,h:hh,sc};break;}}}
   const out=new Float64Array(n*2);for(let i=0;i<n;i++){out[i*2]=pts[i*2]*best.c-pts[i*2+1]*best.s-best.x0;out[i*2+1]=pts[i*2]*best.s+pts[i*2+1]*best.c-best.y0;}
   return {pts:out,w:best.w,h:best.h};}
 /* MaxRects (best short side fit): rects = [{w,h}], returns positions or null when they do not fit the unit square */
@@ -187,25 +192,34 @@ function uwPack(boxes,size,padPx,seed,opt={}){const n=boxes.length;if(!n)return 
   const rects=boxes.map(b=>({w:b.w*bs,h:b.h*bs}));let used=0;for(const r of rects)used+=r.w*r.h;
   return {scale:bs,pos:best||[],gap,util:used,order};}
 /* ---- the whole unwrap ---- */
-const UW_PRESETS={hard:{label:'Hard surface',angle:50,flat:20},balanced:{label:'Balanced',angle:66,flat:20},organic:{label:'Organic',angle:82,flat:12}};
-function uwDefaults(){return {preset:'balanced',angle:66,flat:20,seed:1,packSeed:null,size:2048,padding:0,layout:'material',iters:400,lscmMax:60000,rotate:true,minTris:6};}
+const UW_PRESETS={artist:Object.assign({label:'Artist style'},UW_ARTIST),hard:{label:'Hard surface',angle:50,flat:20,artist:false,straighten:false,flex:0},balanced:{label:'Balanced',angle:66,flat:20,artist:false,straighten:false,flex:0},organic:{label:'Organic',angle:82,flat:12,artist:false,straighten:false,flex:0}};
+/* everything a preset sets (the label is only for the list) */
+const uwPresetOpts=k=>{const o=Object.assign({},UW_PRESETS[k]);delete o.label;o.preset=k;return o;};
+function uwDefaults(){return {preset:'balanced',angle:66,flat:20,seed:1,packSeed:null,size:2048,padding:0,layout:'material',iters:400,lscmMax:60000,rotate:true,minTris:6,artist:false,straighten:false,defBudget:1.2,stretchMax:1.5,qMax:3,flex:0};}
 /* padding in pixels: about one pixel per mip level, and more for bigger textures (8 px at 1K, 16 at 2K, 32 at 4K) */
 const uwAutoPad=size=>Math.max(4,Math.round(size/128));
 async function uwUnwrap(m,optIn,progress,topoIn){const opt=Object.assign(uwDefaults(),optIn||{}),rng=uwRng(opt.seed*7919+3),pr=progress||(()=>{});
   pr('Reading the model…',0);await uwYield();const topo=topoIn||m._uwTopo||(m._uwTopo=uwTopo(m));
-  pr('Cutting into pieces…',.1);await uwYield();if(uwStop.on)throw new Error('Stopped');let seg=uwSegment(m,topo,opt,rng);seg=uwMerge(m,topo,seg,opt);
-  const flats=[];let k=0;uwLast=performance.now();for(const C of seg.charts){flats.push(await uwAsync(uwFlattenG(m,topo,C,opt)));k++;if(uwDue()){pr('Flattening… '+k+' of '+seg.charts.length,.25+.7*k/seg.charts.length);await uwYield();uwLast=performance.now();if(uwStop.on)throw new Error('Stopped');}}
+  pr('Cutting into pieces…',.1);await uwYield();if(uwStop.on)throw new Error('Stopped');let seg=uwSegment(m,topo,opt,rng);seg=uwMerge(m,topo,seg,opt);if(opt.artist){pr('Joining pieces like an artist…',.18);await uwYield();seg=uwArtistMerge(m,topo,seg,opt,()=>{});if(uwStop.on)throw new Error('Stopped');}
+  const flats=[],leaves=[];let k=0;uwLast=performance.now();for(const C of seg.charts){if(opt.artist){for(const r of await uwAsync(uwFlattenSplitG(m,topo,C,opt))){flats.push(r.F);leaves.push(r.C);}}else{flats.push(await uwAsync(uwFlattenG(m,topo,C,opt)));leaves.push(C);}k++;if(uwDue()){pr('Flattening… '+k+' of '+seg.charts.length,.25+.7*k/seg.charts.length);await uwYield();uwLast=performance.now();if(uwStop.on)throw new Error('Stopped');}}
+  if(opt.artist){seg.charts=leaves;leaves.forEach((c,i)=>{c.id=i;for(const t of c.tris)seg.chart[t]=i;});}
   return {topo,seg,flats,opt:Object.assign({},opt)};}
 /* place the flattened charts (cheap, so re-rolling the pack or changing padding does not flatten again) */
 function uwLayout(m,res,optIn){const opt=Object.assign({},res.opt,optIn||{}),{topo,seg,flats}=res,pad=opt.padding||uwAutoPad(opt.size),mats=m.triMat?[...new Set(seg.charts.map(c=>c.mat))].sort((a,b)=>a-b):[0];
   /* give every chart the texel density of the whole model (same scale from 3D area to flat area), then the tightest box */
   let A3=0,A2=0;for(const f of flats){A3+=f.a3;A2+=f.a2;}
-  const fit=flats.map((f,i)=>{const sc=f.a2>0?Math.sqrt(f.a3/f.a2):1,o=uwFit({u:f.u,v:f.v},opt.keepAxes);for(let j=0;j<o.pts.length;j++)o.pts[j]*=sc;return {pts:o.pts,w:o.w*sc,h:o.h*sc,i};});
+  const fit=flats.map((f,i)=>{const sc=f.a2>0?Math.sqrt(f.a3/f.a2):1,o=uwFit({u:f.u,v:f.v,tris:f.tris,up:opt.straighten?uwUpAngle(m,f):null},opt.keepAxes,opt.straighten);for(let j=0;j<o.pts.length;j++)o.pts[j]*=sc;return {pts:o.pts,w:o.w*sc,h:o.h*sc,i};});
   const groups=opt.layout==='shared'?[mats.slice()]:mats.map(x=>[x]);
   const placed=new Array(flats.length),report=[];let util=0,sumScale=0;
   for(const grp of groups){const idxs=[];fit.forEach((f,i)=>{if(grp.includes(seg.charts[i].mat))idxs.push(i);});if(!idxs.length)continue;
     const boxes=idxs.map(i=>({w:fit[i].w,h:fit[i].h}));
     let pack=uwPack(boxes,opt.size,pad,opt.packSeed==null?opt.seed:opt.packSeed,opt);
+    /* artist style: a very long piece decides the scale for all the others; artists shrink such pieces a little (down to 60%) and keep the rest big */
+    if(opt.flex>0){const flex=opt.flex,pseed=opt.packSeed==null?opt.seed:opt.packSeed;
+      for(let round=0;round<3;round++){const fs=idxs.map((ci,bi)=>{const dim=Math.max(fit[ci].w,fit[ci].h)*pack.scale;return dim>.5?Math.max(1-flex,.5/dim):1;});
+        if(!fs.some(f=>f<.98))break;const nb=idxs.map((ci,bi)=>({w:fit[ci].w*fs[bi],h:fit[ci].h*fs[bi]})),p2=uwPack(nb,opt.size,pad,pseed,opt);
+        if(p2.util<=pack.util*1.03)break;
+        idxs.forEach((ci,bi)=>{const F=fit[ci],f=fs[bi];if(f<1){for(let q=0;q<F.pts.length;q++)F.pts[q]*=f;F.w*=f;F.h*=f;}});boxes.splice(0,boxes.length,...nb);pack=p2;}}
     idxs.forEach((ci,bi)=>{const p=pack.pos[bi]||{x:0,y:0,rot:false};placed[ci]={x:p.x,y:p.y,rot:p.rot,s:pack.scale,gap:pack.gap};});
     report.push({mats:grp,util:pack.util,scale:pack.scale});util+=pack.util;sumScale+=pack.scale;}
   /* the uv of every chart corner */

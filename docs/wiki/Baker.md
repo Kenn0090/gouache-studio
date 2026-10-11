@@ -15,6 +15,7 @@ Every model you load as a low-poly (in the New 3D Paint Project window, the Bake
 **Review it in the Bake tab.** The **UVs** card (above the models) shows the layout flat, with overlaps in red, and puts a numbered checker on the model so you can spot stretching:
 - **Style** and **Seam angle:** Hard surface cuts at every noticeable edge, Organic cuts less.
 - **Padding:** the gap between pieces, in pixels. **Layout:** one square per material (each becomes its own texture set in 3D Paint) or one shared square.
+- **Style:** Hard surface, Balanced, Organic or **Artist style**. Artist style makes fewer, bigger pieces (about 3 times fewer than Balanced), joins small neighbours while they can lie flat so the seams stay on hard edges, stands pieces upright, shrinks a very long piece a little and splits a piece that would stretch too much with a straight cut. It was tuned on 20 hand-made unwraps; it is slower than the other styles on big models (a few seconds, with the progress bar).
 - **Seed and Re-roll:** every seed starts the pieces in another order and packs in another order, so Re-roll gives a different, valid layout; type a seed to come back to one you liked.
 - **Best of 24:** tries 24 ways of packing the same pieces and keeps the tightest.
 - **Optimize layout** packs a model's own islands again; **Original UVs** goes back to the file's UVs.
