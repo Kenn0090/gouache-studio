@@ -188,7 +188,12 @@ pub fn backup_copy(path: String) -> Result<Option<String>, String> {
         None => format!("{}.backup", stem),
     };
     let dst = p.with_file_name(name);
-    fs::copy(&p, &dst).map_err(|e| e.to_string())?;
+    // A hard link keeps the old version under the backup name without copying it (instant, even for big files). Saving writes a new
+    // file and renames it over the original, so the backup keeps the old contents. If linking is not possible, copy as before.
+    let _ = fs::remove_file(&dst);
+    if fs::hard_link(&p, &dst).is_err() {
+        fs::copy(&p, &dst).map_err(|e| e.to_string())?;
+    }
     Ok(Some(dst.to_string_lossy().to_string()))
 }
 

@@ -50,22 +50,25 @@ async function pxPackCore(raw,w,h,depth,lossy,small,solid){if(solid)return {byte
   return {bytes:z,f:'p'};}
 /* A single worker keeps prediction, half-float conversion and image encoding off the UI thread.
    Small images stay local. Existing callers retain their input; save readbacks transfer ownership. */
-const pxWorkerState={worker:null,unavailable:false,seq:0,jobs:new Map(),completed:0};
-function pxWorkerGet(){const S=pxWorkerState;if(S.worker||S.unavailable)return S.worker;
+const pxWorkerState={worker:null,pool:[],unavailable:false,seq:0,jobs:new Map(),completed:0};
+/* (0.57) a few packing workers, not one: saving hands every layer's picture to whichever is least busy */
+function pxWorkerGet(){const S=pxWorkerState;if(S.pool.length||S.unavailable)return S.pool.length?S.pool.reduce((a,b)=>b.busy<a.busy?b:a):null;
   let url;try{const src='const pxMed='+pxMed.toString()+';let pxWebpOk=null;const _f32=new Float32Array(1),_u32=new Uint32Array(_f32.buffer);\n'+
     [f2h,pxBytes,pxPredict,pxSolidPredict,pxWebp,streamThrough,pxPackCore].map(f=>f.toString()).join('\n')+
     '\nonmessage=async e=>{const {id,args}=e.data;try{const result=await pxPackCore(...args);postMessage({id,result},[result.bytes.buffer]);}catch(e){postMessage({id,error:e.message||String(e)});}};';
-    url=URL.createObjectURL(new Blob([src],{type:'text/javascript'}));const worker=new Worker(url);
-    worker.onmessage=e=>{const {id,result,error}=e.data,j=S.jobs.get(id);if(!j)return;S.jobs.delete(id);if(error)j.reject(new Error(error));else{S.completed++;j.resolve(result);}};
-    worker.onerror=e=>{e.preventDefault();for(const j of S.jobs.values())j.reject(new Error('Image packing failed. Please try saving again.'));S.jobs.clear();worker.terminate();S.worker=null;S.unavailable=true;};
-    S.worker=worker;return worker;
-  }catch(e){S.unavailable=true;return null;}finally{if(url)URL.revokeObjectURL(url);}}
+    url=URL.createObjectURL(new Blob([src],{type:'text/javascript'}));const n=Math.max(1,Math.min(4,(navigator.hardwareConcurrency||4)-2));
+    const fail=e=>{e.preventDefault();for(const j of S.jobs.values())j.reject(new Error('Image packing failed. Please try saving again.'));S.jobs.clear();for(const w of S.pool)w.terminate();S.pool=[];S.worker=null;S.unavailable=true;};
+    for(let i=0;i<n;i++){const worker=new Worker(url);worker.busy=0;
+      worker.onmessage=e=>{const {id,result,error}=e.data,j=S.jobs.get(id);if(!j)return;S.jobs.delete(id);worker.busy--;if(error)j.reject(new Error(error));else{S.completed++;j.resolve(result);}};
+      worker.onerror=fail;S.pool.push(worker);}
+    S.worker=S.pool[0];return S.worker;
+  }catch(e){for(const w of S.pool)w.terminate();S.pool=[];S.worker=null;S.unavailable=true;return null;}finally{if(url)URL.revokeObjectURL(url);}}
 async function pxPack(raw,w,h,depth,lossy,owned=false){const worker=w*h>=65536?pxWorkerGet():null;
   if(!worker)return pxPackCore(raw,w,h,depth,lossy,pxSmall());
   const bytes=owned?raw:raw.slice(),S=pxWorkerState,id=++S.seq;
-  return new Promise((resolve,reject)=>{S.jobs.set(id,{resolve,reject});try{worker.postMessage({id,args:[bytes,w,h,depth,lossy,pxSmall()]},[bytes.buffer]);}catch(e){S.jobs.delete(id);reject(e);}});}
+  return new Promise((resolve,reject)=>{S.jobs.set(id,{resolve,reject});worker.busy++;try{worker.postMessage({id,args:[bytes,w,h,depth,lossy,pxSmall()]},[bytes.buffer]);}catch(e){S.jobs.delete(id);worker.busy--;reject(e);}});}
 async function pxPackSolid(color,w,h,depth){const args=[null,w,h,depth,false,false,color],worker=w*h>=65536?pxWorkerGet():null;if(!worker)return pxPackCore(...args);
-  const S=pxWorkerState,id=++S.seq;return new Promise((resolve,reject)=>{S.jobs.set(id,{resolve,reject});try{worker.postMessage({id,args});}catch(e){S.jobs.delete(id);reject(e);}});}
+  const S=pxWorkerState,id=++S.seq;return new Promise((resolve,reject)=>{S.jobs.set(id,{resolve,reject});worker.busy++;try{worker.postMessage({id,args});}catch(e){S.jobs.delete(id);worker.busy--;reject(e);}});}
 /* unpack a stored picture back to raw pixels; f missing = an older file (plain deflate) */
 async function pxUnpack(u8,w,h,depth,f){if(f==='w')return pxWebpDecode(u8,w,h);const raw=await streamThrough(u8,'deflate-raw',true);return f==='p'?pxUnpredict(raw,w,h,depth):raw;}
 /* a picture in a .gmat: WebP for colour and grey channels with Smaller files on (smaller than PNG), else PNG */

@@ -29,17 +29,21 @@ async function encodeGouacheNow(opts){if(gfSaving)throw new Error('A document is
 async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let off=0;/* lean: a 3D Paint texture set (no model, no bake fixes) */
   if(typeof pathFlush==='function')pathFlush();
   await paReady();
-  const pack=async(t,x,y,w,h,lossy)=>{let time=performance.now();const raw=await readRegionAsync(t,x,y,w,h);stats.read+=performance.now()-time;stats.bytes+=raw.byteLength;
-    time=performance.now();const c=await pxPack(raw,w,h,t.depth,lossy,true);stats.pack+=performance.now()-time;stats.images++;return c;};
+  /* (0.57) saving is a pipeline: pictures are read back one at a time, and each goes to a packing worker straight away (a few run at once)
+     while the next is being read. File positions are given out at the end, in the order the pictures were made. */
+  const later=[],flying=new Set(),cap=Math.max(2,(pxWorkerState.pool.length||1)+1);
+  const defer=(pr,r)=>{const e=pr.then(c=>{r.n=c.bytes.length;if(c.f)r.f=c.f;return c.bytes;});later.push({e,r});const tr=e.then(()=>{},()=>{}).then(()=>flying.delete(tr));flying.add(tr);return r;};
+  const throttle=async()=>{const t0=performance.now();while(flying.size>=cap)await Promise.race([...flying]);stats.pack+=performance.now()-t0;};
+  const pack=async(t,x,y,w,h,lossy)=>{await throttle();const time=performance.now(),raw=await readRegionAsync(t,x,y,w,h);stats.read+=performance.now()-time;stats.bytes+=raw.byteLength;stats.images++;
+    return {pr:pxPack(raw,w,h,t.depth,lossy,true)};};
   /* pictures are packed (files/pixel-pack.js): lossless, or WebP for colour and grey maps with Smaller files on */
   const put=async(t,full,lossy)=>{if(!t||t.empty)return null;const start=performance.now(),b=full?[0,0,doc.w,doc.h]:await contentBoundsAsync(t);stats.bounds+=performance.now()-start;if(!b)return null;
-    const [x,y]=b,w=b[2]-b[0],h=b[3]-b[1],c=await pack(t,x,y,w,h,lossy);blobs.push(c.bytes);const r={o:off,n:c.bytes.length,r:[x,y,w,h],d:t.depth,f:c.f};off+=c.bytes.length;return r;};
+    const [x,y]=b,w=b[2]-b[0],h=b[3]-b[1],{pr}=await pack(t,x,y,w,h,lossy);return defer(pr,{r:[x,y,w,h],d:t.depth});};
   /* Keep ordinary pixel blobs for older app versions, without allocating/readback of a full GPU image.
      The colour hint lets new versions reopen uniform maps without expanding their storage. */
-  const putSolid=async(k,color)=>{const d=mapDepth(k),time=performance.now(),c=await pxPackSolid(color,doc.w,doc.h,d);stats.pack+=performance.now()-time;stats.images++;stats.bytes+=doc.w*doc.h*(d===16?8:4);
-    blobs.push(c.bytes);const r={o:off,n:c.bytes.length,r:[0,0,doc.w,doc.h],d,f:c.f,c:color};off+=c.bytes.length;return r;};
+  const putSolid=async(k,color)=>{const d=mapDepth(k);stats.images++;stats.bytes+=doc.w*doc.h*(d===16?8:4);return defer(pxPackSolid(color,doc.w,doc.h,d),{r:[0,0,doc.w,doc.h],d,c:color});};
+  const putRaw=async t=>{const {pr}=await pack(t,0,0,t.w,t.h,false);return defer(pr,{w:t.w,h:t.h,d:t.depth});};
   const mask=async n=>n.mask?{en:n.mask.enabled,mono:n.mask.target.mono||undefined,lk:n.mask.link===false?0:undefined,img:await put(n.mask.target,true)}:null;
-  const putRaw=async t=>{const c=await pack(t,0,0,t.w,t.h,false);blobs.push(c.bytes);const r={o:off,n:c.bytes.length,w:t.w,h:t.h,d:t.depth,f:c.f};off+=c.bytes.length;return r;};
   const node=async n=>{const base={name:n.name,vis:n.visible,op:n.opacity,mode:n.mode,mask:await mask(n),lockPx:n.lockPx||undefined,lockPos:n.lockPos||undefined,lockAll:n.lockAll||undefined,smSrc:n.smSrc||undefined,smMaskSrc:n.smMaskSrc||undefined,meshEdit:n.meshEdit||undefined,materialPaint:n.materialPaint||undefined};
     /* mask rows and content effects (0.23) */
     {const ms=await msEncode(n,put,putRaw);if(ms.stack)base.mstack=ms.stack;if(ms.cfx)base.cfx=ms.cfx;}
@@ -49,7 +53,7 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
       if(mapLive(n,k)){const tmp=acquireD(mapDepth(k));try{fillDrawMap(n,k,tmp);r=await put(tmp,true,PX_LOSSY.has(k));r.live=1;}finally{release(tmp);}}
       else r=color?await putSolid(k,color):await put(mapT(n,k),false,PX_LOSSY.has(k));if(r)maps[k]=r;}
     /* a material layer's own images (so it stays editable after opening) */
-    let fillImg;if((n.fill||n.path)&&n._fillImg){fillImg={};for(const k in n._fillImg){const t=n._fillImg[k],c=await pack(t,0,0,t.w,t.h,!mapLive(n,k)&&PX_LOSSY.has(k));blobs.push(c.bytes);fillImg[k]={o:off,n:c.bytes.length,w:t.w,h:t.h,f:c.f};off+=c.bytes.length;}}
+    let fillImg;if((n.fill||n.path)&&n._fillImg){fillImg={};for(const k in n._fillImg){const t=n._fillImg[k],{pr}=await pack(t,0,0,t.w,t.h,!mapLive(n,k)&&PX_LOSSY.has(k));fillImg[k]=defer(pr,{w:t.w,h:t.h});}}
     return Object.assign(base,{t:'L',clip:n.clip,lock:n.lockAlpha,mapModes:n.mapModes||{},maps,text:n.text?cloneText(n.text):undefined,grad:n.grad||undefined,array:n.array||undefined,arrBox:n.array?n.arrBox:undefined,styles:n.styles||undefined,shape:n.shape||undefined,path:n.path||undefined,fill:n.fill||undefined,idSel:n.idSel||undefined,fillImg,hold:n.frame?n.hold:undefined});};
   const R=paintRoot(),kids=[];for(const c of R.children){kids.push(await node(c));await tick();}
   const all=allLayers(R),active=doc.active&&!doc.active.frame?allNodes(R).indexOf(doc.active):-1;
@@ -57,10 +61,12 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
   if(A){const frames=[];for(const F of A.frames)frames.push(await node(F));
     anim={frames,fps:A.fps,cur:A.cur,onion:A.onion,tags:A.tags.map(t=>{const [a,b]=tagRange(t);return {name:t.name,from:a,to:b,mode:t.mode,color:t.color};}),mode:ui.mode,bg:ui.animBg,fxl:afxSave()};}
   /* the 3D view's settings, and an imported model so it comes back with the document */
-  let meshRec=null;if(!opts.lean&&typeof v3!=='undefined'&&v3.imported){const c=await streamThrough(meshPack(v3.imported),'deflate-raw');blobs.push(c);meshRec={o:off,n:c.length,name:v3.imported.name};off+=c.length;}
+  let meshRec=null;if(!opts.lean&&typeof v3!=='undefined'&&v3.imported){const c=await streamThrough(meshPack(v3.imported),'deflate-raw');meshRec=defer(Promise.resolve({bytes:c}),{name:v3.imported.name});}
   const bakeMaps={};if(!opts.lean)for(const k of ['skew','offset'])if(bk.maps[k]){const r=await put(bk.maps[k],true);if(r)bakeMaps[k]=r;}
   const meshMaps={};for(const k in doc.meshMaps||{}){const t=doc.meshMaps[k];if(!t||t.empty)continue;const r=await putRaw(t);r.r=[0,0,t.w,t.h];meshMaps[k]=r;}
-  const projectAssets=paEncode(bytes=>{const r={o:off,n:bytes.length};blobs.push(bytes);off+=bytes.length;return r;});
+  const projectAssets=paEncode(bytes=>defer(Promise.resolve({bytes}),{}));
+  /* every picture is packed now: give each its place in the file, in the order it was made */
+  {const t0=performance.now();for(const d of later){const bytes=await d.e;d.r.o=off;off+=bytes.length;blobs.push(bytes);}stats.pack+=performance.now()-t0;}
   const head={p3:!!doc.p3,meshMaps,meshMapInfo:doc.meshMapInfo,projectAssets,bakeMaps,cage:cageClone(doc.cage),v3d:doc.v3d||null,v3shade:doc.v3shade||null,guides:doc.guides&&doc.guides.length?doc.guides:undefined,dpi:doc.dpi||undefined,mesh:meshRec,app:'Gouache Studio',v:GF_VERSION,w:doc.w,h:doc.h,depth:doc.depth,wrap:doc.wrap,name:doc.name,
     maps:doc.maps,map:doc.map,view:doc.view,mapDef:doc.mapDef,workflow:doc.workflow,nrmStr:doc.nrmStr,light:doc.light,tex:texCfg,kids,active,anim,layers:all.length};
   const hj=new TextEncoder().encode(JSON.stringify(head)),pre=new Uint8Array(16);pre.set(GF_MAGIC,0);const dv=new DataView(pre.buffer);dv.setUint32(8,GF_VERSION,true);dv.setUint32(12,hj.length,true);
