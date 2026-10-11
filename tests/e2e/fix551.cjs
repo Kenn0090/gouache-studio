@@ -50,6 +50,20 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{__gs.prefs.undoSettings=true;});h0=await hl();await p.evaluate(()=>__gs.setSym('y'));
  ok(await hl()===h0+1,'with the preference on, it is');
  await p.evaluate(()=>__gs.undo());ok(await p.evaluate(()=>__gs.ui.sym.mode)==='x','and Undo puts the symmetry back ('+await p.evaluate(()=>__gs.ui.sym.mode)+')');
+ // ---- each document keeps its own brushes
+ const bt=await p.evaluate(async()=>{const G=__gs;G.setTool('brush');G.brush.size=77;G.brush.opacity=.4;const t0=G.dtab().tabs[0].id;
+   G.dtNewTab();G.newDoc(256,256,8,[1,1,1],'Third',false,'hand');G.dtab&&0;await new Promise(r=>setTimeout(r,300));const fresh={s:G.brush.size,o:G.brush.opacity};
+   G.brush.size=33;G.dtActivate(t0);await new Promise(r=>setTimeout(r,300));return {fresh,back:{s:G.brush.size,o:G.brush.opacity}};});
+ ok(bt.fresh.s===24&&bt.fresh.o===1,'a new document starts with the starting brush ('+JSON.stringify(bt.fresh)+')');
+ ok(bt.back.s===77&&Math.abs(bt.back.o-.4)<.01,'and going back to the first one brings its own brush back ('+JSON.stringify(bt.back)+')');
+ // ---- undo covers brush settings and colour when switched on
+ await p.evaluate(()=>{__gs.prefs.undoSettings=true;});await p.waitForTimeout(800);
+ let u0=await hl();await p.evaluate(()=>{__gs.brush.size=120;});await p.waitForTimeout(1900);
+ ok(await hl()===u0+1,'with the preference on, a brush size change becomes an undo step');
+ await p.evaluate(()=>__gs.undo());await p.waitForTimeout(300);ok(await p.evaluate(()=>__gs.brush.size)===77,'and Undo gives the old size back ('+await p.evaluate(()=>__gs.brush.size)+')');
+ u0=await hl();await p.evaluate(()=>{__gs.ui.fg=[.1,.8,.2];});await p.waitForTimeout(1900);
+ ok(await hl()===u0+1,'a colour change is an undo step too');
+ await p.evaluate(()=>{__gs.prefs.undoSettings=false;});
  // ---- liquify follows symmetry
  await p.evaluate(()=>{const G=__gs;G.prefs.undoSettings=false;G.ui.sym.mode='x';G.ui.sym.n=6;G.ui.sym.cx=.5;G.ui.sym.cy=.5;G.setTool('liquify');});await p.waitForTimeout(300);
  ok(await p.evaluate(()=>!!document.getElementById('symCx')),'the Liquify panel shows the symmetry settings');

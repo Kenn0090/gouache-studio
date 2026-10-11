@@ -23,6 +23,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  s=await state();ok(!s.badFill.length&&!s.bad.length,'a smart material is converted layer by layer ('+s.badFill.join(',')+')');
  await p.evaluate(async()=>{const sm=__gs.smBuiltins();await __gs.smApply(sm[sm.length-1]);});await p.waitForTimeout(4000);
  s=await state();ok(!s.badFill.length&&!s.bad.length,'and so is a Library-based one ('+s.badFill.join(',')+')');
+ const pics=await p.evaluate(()=>__gs.allLayers().filter(x=>x.fill&&['spec','gloss'].some(k=>x.fill.maps[k]&&x.fill.maps[k].on&&x.fill.maps[k].src==='image')).length);
+ ok(pics>=1,'Library pictures inside the smart material became Specular/Glossiness pictures ('+pics+' layers)');
  // the Material editor never lists them
  await p.click('text=Base material');await p.waitForTimeout(500);
  const t=await p.evaluate(()=>document.querySelector('#matEdSec').innerText);ok(!/Roughness|Metallic/.test(t),'the Material editor shows no Roughness or Metallic');

@@ -3,7 +3,7 @@
 - Re-rolling and unwrapping show a progress bar with a Stop button and no longer freeze the app; rolling the dice is about 3 times faster.
 - Hover the UV picture in the Bake tab for a big view of it.
 - Spec/Gloss projects no longer get Roughness or Metallic from materials: they are converted as they are added.
-- Symmetry is kept per document; radial symmetry takes any number of rays; Reset centre; Liquify follows symmetry; an optional preference makes undo cover symmetry changes.
+- Each document keeps its own brushes and symmetry; radial symmetry takes any number of rays; Reset centre; Liquify follows symmetry; an optional preference makes undo cover symmetry, brush and colour changes.
 - Drag over the eyes in the Layers panel to hide or show several layers.
 - Closing the desktop window asks to save unsaved work. New document and Recent files are tidier.
 

@@ -30,18 +30,18 @@ function dtPlaceWork(){const L=dtLive(),inPop=!!(L&&L.win),holder=inPop?L.win.ho
   resizeGL();requestRender(true);}
 /* ---- switching ---- */
 function dtBusy(){return !!(tabDocs.hold||stroke||ptr||preview||(typeof xf!=='undefined'&&xf)||(typeof selLive!=='undefined'&&selLive)||(typeof crop!=='undefined'&&crop)||!modal.hidden);}
-function dtLeave(){const L=dtLive();if(!L)return;dtShot(L);L.state=docState();dtab.live=0;}
+function dtLeave(){const L=dtLive();if(!L)return;dtShot(L);L.state=docState();try{L.tb=tbDocGet();}catch(e){}dtab.live=0;}
 function dtActivate(id){if(id===dtab.live){const t=dtTab(id);if(t&&ui.mode!=='paint')setMode('paint',true);return true;}const t=dtTab(id);if(!t||!t.state)return false;
   if(ui.mode!=='paint'&&!setMode('paint',true))return false;if(dtBusy()){toast('Finish or cancel what you are doing first (a stroke, transform, crop or dialog).');return false;}
   if(typeof matEdFlush==='function')try{matEdFlush();}catch(e){}
-  dtLeave();setDocState(t.state);t.state=null;dtab.live=id;dtPlaceWork();dtAfterSwitch();return true;}
+  dtLeave();setDocState(t.state);t.state=null;dtab.live=id;try{tbDocPut(t.tb);}catch(e){}t.tb=null;dtPlaceWork();dtAfterSwitch();return true;}
 function dtAfterSwitch(){$('#docName').textContent=doc.name;const tb=$('#tileBtn');if(tb)tb.setAttribute('aria-pressed',String(!!doc.wrap));
   for(const f of ['changedAll','refreshMapsUI','updateStatus','selChanged','renderHistory','updateTitle','fileLocUpdate','tipBanner'])if(typeof window[f]==='function')try{window[f]();}catch(e){console.warn(f,e);}
   if(typeof rl!=='undefined')rl.sig='';if(typeof v3!=='undefined'){v3.mapsDirty=true;v3.dirty=true;}resizeGL();requestRender(true);dtRender();}
 /* a new document or an opened file goes into a tab of its own (the untouched start-up document is reused) */
 function dtNewTab(){if(ui.mode!=='paint'&&!setMode('paint',true))return false;if(stroke||preview){toast('Finish what you are doing first.');return false;}if(typeof xf!=='undefined'&&xf&&typeof xfCommit==='function')xfCommit();
   if(dtPristine())return true;
-  dtLeave();blankTabDoc(doc.w||1024,doc.h||1024,'Untitled');const t={id:++dtab.seq,state:null,win:null,shot:null};
+  dtLeave();blankTabDoc(doc.w||1024,doc.h||1024,'Untitled');try{tbDocReset();}catch(e){}const t={id:++dtab.seq,state:null,win:null,shot:null};
   const i=dtab.tabs.findIndex(x=>x.id===dtab.main);dtab.tabs.splice(i<0?dtab.tabs.length:i+1,0,t);dtab.live=t.id;dtPlaceWork();dtRender();return true;}
 /* new documents are Untitled, Untitled-2, Untitled-3… so the tabs can be told apart */
 function dtUntitled(){const names=new Set(dtab.tabs.filter(t=>t.id!==dtab.live).map(dtName));if(!names.has('Untitled'))return 'Untitled';let i=2;while(names.has('Untitled-'+i))i++;return 'Untitled-'+i;}

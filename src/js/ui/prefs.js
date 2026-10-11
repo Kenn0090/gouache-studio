@@ -24,7 +24,7 @@ function dlgPrefs(startTab){
       chk('pAltPick','Alt picks a colour (Alt+click on the canvas, Alt over the model)',S.altPk,v=>{S.altPk=v;}),
       chk('pPainterCtl','3D Paint: Substance Painter mouse controls on the model (Ctrl + right-drag: size and hardness; Ctrl + left-drag: flow and rotation)',S.pCtl,v=>{S.pCtl=v;}),
       chk('pTipCur','Show the brush tip’s shape as the cursor',S.tipCur,v=>{S.tipCur=v;}),
-      chk('pUndoSet','Undo also covers symmetry settings (moving the centre, rays, mode)',S.undoSet,v=>{S.undoSet=v;}),
+      chk('pUndoSet','Undo also covers settings (symmetry, brush size and other brush settings, colour)',S.undoSet,v=>{S.undoSet=v;}),
       el('div',{class:'sub',text:'Largest brush size'}),seg([[5000,'5000 px'],[10000,'10000 px'],[20000,'20000 px']],S.maxB,v=>{S.maxB=+v;},'Largest brush size'),
       el('p',{class:'note',text:'Very big brushes paint slowly on large documents.'}),
       el('button',{class:'btn sm',text:'Keyboard shortcuts…',onclick:()=>{th.save();savePrefs();dlgKeys();}})],

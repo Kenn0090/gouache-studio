@@ -52,7 +52,7 @@ The **Symmetry** buttons are in the brush panel for the Brush, Eraser, Blend, Do
 - **Canvas** turns mirror axes with canvas rotation. **Screen** keeps them upright when you turn or flip the canvas. Bent cages keep their own local axes.
 - **Shift+X** turns left–right symmetry on and off.
 - **Liquify** follows the same symmetry settings.
-- Symmetry belongs to the document: a new or opened document starts with it off, and each tab keeps its own mode, centre and rays. **Preferences › Painting › Undo also covers symmetry settings** makes changing them an undo step (off by default).
+- Symmetry belongs to the document: a new or opened document starts with it off, and each tab keeps its own mode, centre and rays. **Preferences › Painting › Undo also covers settings** makes changing them an undo step (off by default); it also covers brush settings and colours. Each document also keeps its own brushes.
 
 Mirrored dabs are true mirror images, so shaped and rotated brush tips flip the right way. When you paint through a cage, symmetry works inside the cage: it mirrors across the middle of the cage's flat rectangle, so the two halves of a slanted panel match.
 
