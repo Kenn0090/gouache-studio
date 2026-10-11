@@ -32,13 +32,15 @@ function smBuild(o){let n;
     if(o.styles)n.styles=smClone(o.styles);if(o.cfx)n.cfx=o.cfx.map(r=>Object.assign(msRow('filter'),smClone(r),{id:'r'+(++msSeq)}));}
   Object.assign(n,{visible:o.vis!==false,opacity:o.op==null?1:o.op,mode:o.mode==null?(o.t==='G'?-1:0):o.mode,clip:!!o.clip,mapModes:Object.assign({},o.mapModes||{})});
   if(o.mask)n.mask=smBuildMask(o.mask);return n;}
+/* a smart material made in the other workflow (Roughness and Metallic in a Spec/Gloss project) is converted layer by layer as it is added */
+function smFitWorkflow(n){const go=x=>{if(x.fill){wfFillFit(x);fillRender(x);}for(const c of x.children||[])go(c);};go(n);}
 /* the maps a description needs (added to the document if missing) */
 function smMapsOf(o,out){out=out||new Set();if(o.fill)for(const k in o.fill.maps||{})if(o.fill.maps[k].on!==false)out.add(k);for(const k in o.maps||{})out.add(k);for(const c of o.kids||[])smMapsOf(c,out);return out;}
 /* Materials tab › a smart material: the folder goes above the active layer (a selection becomes its mask) */
 function smApplyNow(rec){if(ui.mode==='anim'){toast('Smart materials are for Paint and 3D Paint.');return;}if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
-  const need=[...smMapsOf(rec.tree)].filter(k=>MAP_DEFS[k]&&!doc.maps.includes(k)&&!FILL_SKIP.includes(k)&&!(doc.workflow==='spec'&&(k==='rough'||k==='metal')));
+  const need=[...smMapsOf(rec.tree)].filter(k=>MAP_DEFS[k]&&!doc.maps.includes(k)&&!FILL_SKIP.includes(k)&&!WF_KEYS[doc.workflow==='spec'?'metal':'spec'].includes(k));
   if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the smart material');
-  const n=smBuild(rec.tree);n.name=rec.name;if(!rec.builtin)n.smSrc=rec.id;const fromSel=sel.active&&!sel.quick&&!n.mask;
+  const n=smBuild(rec.tree);smFitWorkflow(n);n.name=rec.name;if(!rec.builtin)n.smSrc=rec.id;const fromSel=sel.active&&!sel.quick&&!n.mask;
   if(fromSel){n.mask=makeMask(0);run(P.loadsel,n.mask.target,{uSrc:sel.t.tex,uWhat:{int:1},uInv:false});}
   /* above the selected layer or folder (not inside a folder that happens to be selected) */
   const A=doc.active,P=insertAt?insertAt.parent:A&&A.parent?A.parent:doc.root,I=insertAt?insertAt.index:A&&A.parent?P.children.indexOf(A)+1:P.children.length;
@@ -182,9 +184,14 @@ function smNeeds(o){if(o.lib)return true;for(const r of (o.mask&&o.mask.rows)||[
 async function smResolveMask(m){for(const r of m.rows||[]){const g=r.p&&r.p.grunge;if(g&&!r.img){const it=txItems().find(x=>x.kind==='photo'&&x.id===g);if(it){r.img=smCap(await txTarget(it));r.p.name=it.name;}}}}
 async function smResolveNode(o){
   if(o.lib){const rec=gmRecs.find(r=>r.bundled&&r.bundled.file===o.lib+'.gmat');
-    if(rec){if(!(rec.fill&&rec.imgs))await gmLoad(rec);o.fill=fillClone(rec.fill);
+    if(rec){if(!(rec.fill&&rec.imgs))await gmLoad(rec);
+      /* a Library material made for the other workflow is converted (values and pictures) as it is fetched */
+      const cv=ui.mode==='bake'||ui.mode==='convert'?null:wfMatConvert(rec,doc.workflow==='spec'?'spec':'metal'),conv=cv&&cv.converted;
+      o.fill=fillClone(conv?Object.assign({},rec.fill,{maps:cv.maps}):rec.fill);
       if(o.libAdjust){const a=fillClone(o.libAdjust),tile=a.tile;delete a.tile;const maps=a.maps;delete a.maps;Object.assign(o.fill,a);if(tile!=null)for(const k in o.fill.maps)o.fill.maps[k].tile=tile;if(maps)for(const k in maps)o.fill.maps[k]=Object.assign({},o.fill.maps[k]||{},maps[k]);}
-      o.fillImg={};const T=matRecTargets(rec);for(const k in T){const c=smCap(T[k]);if(c)o.fillImg[k]=c;}}}
+      o.fillImg={};const T=matRecTargets(rec);for(const k in T){const c=smCap(T[k]);if(c)o.fillImg[k]=c;}
+      if(conv){for(const k in cv.imgs){const im=cv.imgs[k];if(rec.imgs&&rec.imgs[k]===im)continue;const t=makeTarget(im.w,im.h,8,true);writeRegion(t,0,0,im.w,im.h,im.data);const c=smCap(t);disposeTarget(t);if(c)o.fillImg[k]=c;}
+        for(const k of ['rough','metal','spec','gloss'])if(!o.fill.maps[k]||!o.fill.maps[k].on)delete o.fillImg[k];}}}
   if(o.mask)await smResolveMask(o.mask);
   for(const c of o.kids||[])await smResolveNode(c);}
 function smBuiltins(){return SM_BUILTIN.concat(SM_LIB).map(([name,kids])=>({id:'sb:'+name,kind:'smart',builtin:true,name,tree:{t:'G',name,open:true,kids:kids.slice()}}));}

@@ -47,10 +47,12 @@ Press **F** (or **View › Flat cage view**) to see what's inside the cage strai
 ## Symmetry
 The **Symmetry** buttons are in the brush panel for the Brush, Eraser, Blend, Dodge and Burn:
 - **Left–right**, **Top–bottom** or **Both** mirror each dab across the dashed blue guide lines.
-- **Radial** repeats the dab around the centre, with 2 to 24 **Copies**.
-- **Centre ↔ / ↕** moves the mirror lines. You can also drag the blue centre circle on the canvas; **Centre** resets it.
+- **Radial** repeats the dab around the centre. The **Rays** slider goes from 2 to 24; type any number from 2 to 128 in the box under it.
+- **Centre ↔ / ↕** moves the mirror lines. You can also drag the blue centre circle on the canvas; **Reset centre** puts it back in the middle.
 - **Canvas** turns mirror axes with canvas rotation. **Screen** keeps them upright when you turn or flip the canvas. Bent cages keep their own local axes.
 - **Shift+X** turns left–right symmetry on and off.
+- **Liquify** follows the same symmetry settings.
+- Symmetry belongs to the document: a new or opened document starts with it off, and each tab keeps its own mode, centre and rays. **Preferences › Painting › Undo also covers settings** makes changing them an undo step (off by default); it also covers brush settings and colours. Each document also keeps its own brushes.
 
 Mirrored dabs are true mirror images, so shaped and rotated brush tips flip the right way. When you paint through a cage, symmetry works inside the cage: it mirrors across the middle of the cage's flat rectangle, so the two halves of a slanted panel match.
 

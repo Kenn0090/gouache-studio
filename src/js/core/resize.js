@@ -40,7 +40,7 @@ function setDepth(d){if(d===doc.depth)return;if(d===16&&!canFloat){toast('This G
 function toggleTile(){doc.wrap=!doc.wrap;const all=[strokeT,beforeT,scratchT,previewT,...pool.all,...everyLayer().flatMap(l=>l.maps?Object.values(l.maps):[l.target]),...Object.values(emptyTs),...auxTargets(),...everyNode().filter(n=>n.mask).map(n=>n.mask.target),sel.t];all.forEach(t=>setWrap(t,doc.wrap));
   $('#tileBtn').setAttribute('aria-pressed',String(doc.wrap));fit();requestRender(true);toast(doc.wrap?'Tile mode on: strokes wrap across edges.':'Tile mode off.');}
 
-function newDoc(w,h,depth,bg,name,wrap,tpl){
+function newDoc(w,h,depth,bg,name,wrap,tpl){symReset();
   if(typeof liqClearRestore==='function')liqClearRestore();
   if(depth===16&&w*h>=268435456){toast('Use 8-bit colour for a 16K square document. Height still keeps 16-bit precision.');return false;}
   if(ui.mode==='brush'||tabDocs.paint)setMode('paint',true);

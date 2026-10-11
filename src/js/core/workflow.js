@@ -111,6 +111,11 @@ function wfMatConvert(rec,to){const from=wfMatIsSg(rec)?'spec':'metal';
   M.base=Object.assign({},M.base,{on:true,src:'image'});M[nA]=mk({});M[nC]=mk({});M[A].on=false;M[C].on=false;
   delete I[A];delete I[C];I.base={w,h,data:D};I[nA]={w,h,data:X};I[nC]={w,h,data:Y};
   return {maps:M,imgs:I,converted:true};}
+/* (0.55.1) a material layer that arrives with the other workflow's channels (Roughness and Metallic in a Spec/Gloss project, or the other way round)
+   is converted where it stands, so the project never gets channels it does not use; pictures that cannot be converted are switched off */
+function wfFillFit(L){const f=L&&L.fill;if(!f||!f.maps||ui.mode==='bake'||ui.mode==='convert')return;
+  const to=doc.workflow==='spec'?'spec':'metal',from=to==='spec'?'metal':'spec',M=f.maps;if(!WF_KEYS[from].some(k=>M[k]&&M[k].on))return;
+  if(['base',...WF_KEYS[from]].every(k=>!M[k]||!M[k].on||M[k].src==='value'))wfFillConvert(L,from,to,Object.keys(M));else for(const k of WF_KEYS[from])if(M[k])M[k].on=false;}
 /* a painted layer, pixel by pixel; returns true when it held Metal/Rough (or Spec/Gloss) pictures */
 function wfLayerConvert(L,from,to){const A=from==='metal'?'metal':'spec',C=from==='metal'?'rough':'gloss',nA=to==='spec'?'spec':'metal',nC=to==='spec'?'gloss':'rough';
   const real=k=>{const t=L.maps&&L.maps[k];return t&&!t.empty?t:null;};

@@ -7,10 +7,10 @@ const bt={paint:null,sketch:null,size:512,guides:true,editing:null,name:'',v3was
   tip:null,sig:null,timer:0,prev:null};
 /* everything that belongs to one document */
 function docState(){if(typeof pathFlush==='function')pathFlush();return {doc:Object.assign({},doc),view:Object.assign({},view),undo:hist.undo,redo:hist.redo,sel:Object.assign({},sel),aux:Object.assign({},aux),
-  compOut,empties:Object.assign({},emptyTs),groupCount};}
+  compOut,empties:Object.assign({},emptyTs),groupCount,sym:Object.assign({},ui.sym)};}
 function setDocState(s){for(const k of Object.keys(doc))delete doc[k];Object.assign(doc,s.doc);Object.assign(view,s.view);hist.undo=s.undo;hist.redo=s.redo;Object.assign(sel,s.sel);
   for(const k of Object.keys(aux))delete aux[k];Object.assign(aux,s.aux);compOut=s.compOut;for(const k of Object.keys(emptyTs))delete emptyTs[k];Object.assign(emptyTs,s.empties);
-  groupCount=s.groupCount;useAux(mapDepth(doc.map||'base'),true);syncTargets();}
+  groupCount=s.groupCount;if(s.sym)Object.assign(ui.sym,s.sym);useAux(mapDepth(doc.map||'base'),true);syncTargets();}
 /* a new white sketch (the painting document must already be set aside: nothing of it is disposed here) */
 function freshSketch(size){for(const k of Object.keys(aux))delete aux[k];for(const k of Object.keys(emptyTs))delete emptyTs[k];sel.t=null;hist.undo=[];hist.redo=[];
   for(const k of Object.keys(doc))delete doc[k];

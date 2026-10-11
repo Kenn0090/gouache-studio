@@ -11,7 +11,7 @@ function disposeDocState(s){if(!s)return;const walk=g=>{for(const n of g.childre
   for(const d in s.aux){const a=s.aux[d];for(const k of ['strokeT','beforeT','scratchT','previewT'])disposeTarget(a[k]);for(const t of a.pool.all)disposeTarget(t);}
   for(const d in s.empties)disposeTarget(s.empties[d]);if(s.sel&&s.sel.t)disposeTarget(s.sel.t);}
 /* a blank document of the given size, with one empty layer */
-function blankTabDoc(w,h,name){for(const k of Object.keys(aux))delete aux[k];for(const k of Object.keys(emptyTs))delete emptyTs[k];sel.t=null;sel.active=false;hist.undo=[];hist.redo=[];compOut=null;
+function blankTabDoc(w,h,name){symReset();for(const k of Object.keys(aux))delete aux[k];for(const k of Object.keys(emptyTs))delete emptyTs[k];sel.t=null;sel.active=false;hist.undo=[];hist.redo=[];compOut=null;
   for(const k of Object.keys(doc))delete doc[k];
   Object.assign(doc,{w,h,depth:8,wrap:false,name,root:{type:'group',children:[],isRoot:true,visible:true,opacity:1,mode:-1},active:null,sel:new Set(),count:0,
     maps:['base'],map:'base',view:'base',mapDef:{},nrmStr:8,light:{az:135,el:40},v3d:null,anim:null,cage:null,workflow:'metal',projectAssets:[]});

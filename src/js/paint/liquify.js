@@ -42,7 +42,10 @@ function liqDown(e,ix,iy){
   liqS={L,et,items,D,tmp,last:[ix,iy],bb:null,pos:[ix,iy],t:performance.now(),dabs:0,restoring:liq.mode==='restore'};
   ptr={mode:'liq',id:e.pointerId};liqDab(ix,iy,0,0,1);liqFlush();liqLoop();}
 /* one dab at x,y (dx,dy = how far the pointer moved for it; amount = time-based share for the hold modes) */
-function liqDab(x,y,dx,dy,amount){const s=liqS,r=liq.size/2,mode=['push','pinch','bloat','cw','ccw','restore'].indexOf(liq.mode);if(!s)return;
+/* (0.55.1) Liquify follows the symmetry settings: each dab is repeated at its mirrored (or rotated) places */
+function liqDab(x,y,dx,dy,amount){const sym=symFor(null);if(!sym||!liqS)return liqDab1(x,y,dx,dy,amount);
+  for(const c of symCopies(sym,doc.w,doc.h,x,y,0,1,1,dx,dy))liqDab1(c[0],c[1],c[5],c[6],amount);}
+function liqDab1(x,y,dx,dy,amount){const s=liqS,r=liq.size/2,mode=['push','pinch','bloat','cw','ccw','restore'].indexOf(liq.mode);if(!s)return;
   const twirl=mode===3||mode===4,shaderMode=mode===5?4:twirl?3:mode;
   const K=mode===0?0:mode===5?liq.strength*amount:twirl?liq.strength*amount*.04*(liq.mode==='cw'?-1:1):liq.strength*amount*.12;
   const bx=Math.max(0,Math.floor(x-r-1)),by=Math.max(0,Math.floor(y-r-1)),bw=Math.min(doc.w,Math.ceil(x+r+1))-bx,bh=Math.min(doc.h,Math.ceil(y+r+1))-by;if(bw<=0||bh<=0)return;
@@ -73,7 +76,8 @@ function buildLiquifyPanel(box){$('#brushTitle').textContent='Liquify';
   box.append(seg(LIQ_MODES,liq.mode,liqSetMode,'Liquify mode'));
   const sl=(id,key,label,min,max,step,fmt)=>{const s=makeSlider({id,label,min,max,step,value:liq[key],fmt,onInput:x=>liqSetSetting(key,x)});liqPanelSliders[id]=s;box.append(s.el);};
   sl('lqSize','size','Size',10,1500,1,v=>Math.round(v)+'px');sl('lqStr','strength','Strength',.05,1,.01,pct);
-  box.append(el('p',{class:'note',text:'Push: drag the paint along. Pinch, Bloat and Twirl keep working while you hold the button. Restore paints back the latest Liquify deformation, until another edit is made. Every map of the layer moves together; a selection limits it.'}));}
+  box.append(el('p',{class:'note',text:'Push: drag the paint along. Pinch, Bloat and Twirl keep working while you hold the button. Restore paints back the latest Liquify deformation, until another edit is made. Every map of the layer moves together; a selection limits it.'}));
+  if(typeof buildSymSection==='function')buildSymSection(box);}
 function buildLiquifyOpt(bar){bar.append(...LIQ_MODES.map(([v,l,t])=>el('button',{class:'optchip'+(liq.mode===v?' on':''),'aria-pressed':String(liq.mode===v),title:t,text:l,onclick:()=>liqSetMode(v)})),el('span',{class:'optsep'}));
   const mk=(id,key,label,min,max,step,fmt)=>{const s=makeSlider({id:'ob_'+id,label,min,max,step,value:liq[key],fmt,onInput:x=>liqSetSetting(key,x)});s.el.classList.add('optslider');optSliders[id]={sl:s,get:()=>liq[key]};bar.append(s.el);};
   mk('lqSize','size','Size',10,1500,1,v=>Math.round(v)+'px');mk('lqStr','strength','Strength',.05,1,.01,pct);}

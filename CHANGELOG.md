@@ -1,3 +1,16 @@
+## 0.55.1
+
+- **Re-rolling no longer freezes the app.** Rolling the dice, Re-roll and unwrapping now show a real progress bar (which layout, which step) with a **Stop** button, and the app stays responsive while they work. The long steps give way many times a second, the pictures in the gallery are drawn about 30 times faster, and packing the pieces is several times faster. On a 69,000-triangle helmet, rolling the dice took 24 s with a 3 s freeze before; it now takes 9 s with no freeze longer than a fifth of a second.
+- **A bigger look at the UVs.** Hover the small UV picture in the Bake tab's UVs card and a large one (up to 640 px) appears beside it, with the island count and how much of the square is used. It follows the chosen view (layout, checker, stretch or texel size).
+- **Spec/Gloss projects no longer get Roughness or Metallic.** Smart materials, Library materials, decals and plain material layers made for Metal/Rough are now converted to Specular and Glossiness as they are added (and the other way round in a Metal/Rough project), so the Material editor and the maps stay clean.
+- **Each document keeps its own brushes.** A new document starts with the starting brush for every tool, and each tab remembers the brushes of all its tools (size, opacity, tip and the rest) while you switch between tabs.
+- **Symmetry belongs to the document.** A new or opened document starts with symmetry off, and each tab keeps its own mode, centre and rays instead of carrying them across.
+- **Radial symmetry: any number of rays** (2 to 128): type it in the new box under the Rays slider. **Reset centre** is a clearer button, and **Liquify now follows symmetry** (mirrored and radial) like the brush.
+- **Undo can cover settings.** Preferences › Painting › *Undo also covers settings* makes a change of symmetry (mode, rays, alignment, centre), of the brush (size, opacity and the rest) or of the colour an undo step (off by default). Brush and colour changes count once you stop adjusting for a moment.
+- **Drag over the eyes** in the Layers panel: press an eye and drag down the list to hide or show every layer you pass.
+- **Closing the desktop window asks to save.** Unsaved documents (and an unsaved 3D Paint project) get a Save / Don’t save / Cancel question before the app quits.
+- **Tidier windows.** New document is grouped into **Start in**, **Size** and **Canvas**. Recent files no longer has overlapping buttons.
+
 ## 0.55.0
 
 - **Stretch colours.** In the UVs card, **On the model** has Off, Checker, **Stretch** and **Texel size**. Stretch tints the model and the flat layout from green (a perfect fit) through yellow to red (very stretched); Texel size from blue (small) through green to red (big). The seams show as white lines on the model.

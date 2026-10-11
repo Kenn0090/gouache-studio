@@ -127,7 +127,8 @@ function cmdNewFillLayer(preset){if(ui.mode==='anim'){toast('Fill layers are ava
   if(preset&&preset.maps){for(const k in L.fill.maps)L.fill.maps[k].on=false;for(const k in preset.maps)if(L.fill.maps[k])Object.assign(L.fill.maps[k],{on:true,src:'value'},preset.maps[k]);
     for(const k of ['proj','triSharp','hStr','xf','rep','front','decal'])if(preset[k]!=null)L.fill[k]=JSON.parse(JSON.stringify(preset[k]));L.fill.name=preset.name;
     if(preset.imgs){L._fillImg={};for(const k in preset.imgs){const s=preset.imgs[k],t=makeTarget(s.w,s.h,8,true);blit(s,t,0,0,s.w,s.h,0,0);L._fillImg[k]=t;}}
-    const need=Object.keys(preset.maps).filter(k=>preset.maps[k].on!==false&&!doc.maps.includes(k)&&MAP_DEFS[k]&&!(doc.workflow==='spec'&&(k==='rough'||k==='metal')));
+    wfFillFit(L);
+    const need=Object.keys(L.fill.maps).filter(k=>L.fill.maps[k].on&&!doc.maps.includes(k)&&MAP_DEFS[k]&&!(WF_KEYS[doc.workflow==='spec'?'metal':'spec'].includes(k)));
     if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the material');}
   fillRender(L);
   /* (0.27, Kenn: "materials shouldn't have a mask by default") a mask only when there is a selection to keep it in;
