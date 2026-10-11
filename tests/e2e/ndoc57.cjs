@@ -13,7 +13,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.act('new'));await p.waitForTimeout(400);
  ok(await p.evaluate(()=>document.querySelectorAll('.dlg-new .dsec').length===3),'three boxed sections');
  await p.screenshot({path:'/tmp/ndoc1.png'});
- await p.click('.dfields .chips .chip:has-text("2048")');await p.waitForTimeout(150);
+ await p.click('.dlg-new .chips .chip:text-is("2048")');await p.waitForTimeout(150);
  ok((await p.inputValue('#dW'))==='2048','a size button fills in the size');
  await p.click('#dlgBody .chip:text("Storyboard")');await p.waitForTimeout(300);
  ok(await p.evaluate(()=>!document.querySelector('#dSbBox').hidden),'Storyboard shows its options');

@@ -89,7 +89,7 @@ function dlgNew(){if(ui.mode==='p3d'){dlgP3New();return;}const f=sizeFields(1024
   const tileChk=chk('dTile','Seamless tile mode',false,v=>{tile=v;});
   const bgColour=el('input',{id:'dBgColour',type:'color',value:toHex(ui.bg),'aria-label':'Canvas colour'}),bgHex=el('input',{id:'dBgHex',type:'text',value:toHex(ui.bg),maxlength:7,'aria-label':'Canvas colour hex'});
   const bgHead=el('div',{class:'sub',text:'Background'}),bgCustom=el('div',{class:'frow'},el('label',{for:'dBgColour',text:'Canvas colour'}),bgColour,bgHex);
-  const bgUpd=()=>{const hide=start==='p3d'||start==='brush'||tpl==='brush';bgHead.hidden=bgSeg.hidden=hide;bgCustom.hidden=hide||bgMode!=='custom';};
+  let bgGrp=null;const bgUpd=()=>{const hide=start==='p3d'||start==='brush'||tpl==='brush';bgHead.hidden=bgSeg.hidden=hide;if(bgGrp)bgGrp.hidden=hide;bgCustom.hidden=hide||bgMode!=='custom';};
   const bgSeg=seg([['white','White'],['fg','Foreground color'],['custom','Custom colour'],['clear','Transparent']],()=>bgMode,v=>{bgMode=v;bgUpd();});
   bgColour.addEventListener('input',()=>{bgHex.value=bgColour.value;});bgHex.addEventListener('input',()=>{const c=fromHex(bgHex.value);if(c)bgColour.value=toHex(c);});
   const TPL_NOTES={pbrsg:'Diffuse, specular, glossiness, height and normal (the Specular/Gloss workflow).',brush:'A black-and-white canvas for drawing a brush tip: paint in black, then press Make brush.',hand:'Base colour only.',pbr:'Base colour, roughness, metallic, height and normal.',custom:'Choose the maps after creating.'};const tplNote=el('p',{class:'note',text:TPL_NOTES.hand});
@@ -116,17 +116,17 @@ function dlgNew(){if(ui.mode==='p3d'){dlgP3New();return;}const f=sizeFields(1024
     if(v==='storyboard'){const gi=NEW_PRESETS.findIndex(g=>g[0]==='Storyboard');np.pick(gi,0);sbDrawThumb(...np.px());}};
   const stNote=el('p',{class:'note',id:'dStartNote',text:NEW_START_NOTES[start]});
   let stUpd=null;const stSeg=seg(NEW_START,()=>start,v=>{if(v==='p3d'){closeDialog();dlgP3New();return;}start=v;if(v==='anim'&&!spriteTemplateApplied)spritePreset.dispatchEvent(new Event('change'));stUpd();if(v==='brush'&&$('#dH'))$('#dH').value=$('#dW').value;});stSeg.id='dStart';
-  const prevBox=el('div',{class:'dprev',id:'dPrev'}),prevI=el('i'),prevT=el('span',{class:'dprev-t'});prevBox.append(el('span',{class:'dprev-s'},prevI),prevT);
-  np.listeners.push((W,H)=>{const k=70/Math.max(W,H,1);prevI.style.width=Math.max(6,Math.round(W*k))+'px';prevI.style.height=Math.max(6,Math.round(H*k))+'px';prevT.textContent=W+' × '+H+' px';});np.px();np.listeners[np.listeners.length-1](...np.px());
-  /* sections are boxed cards with a heading, so the window reads as groups rather than one long list */
-  const sec=(title,sub,...kids)=>el('section',{class:'dsec'},el('h4',{class:'dsec-h',text:title}),...(sub?[el('p',{class:'dsec-s',text:sub})]:[]),...kids);
-  const secStart=sec('Start in','',stSeg,stNote,spriteBox),
-    secSize=sec('Size','Pick a preset, a size button, or type your own.',el('div',{class:'dsize'},el('div',{class:'dfields'},np.el,f.presets,f.row,np.orientation,np.units),prevBox)),
-    secCanvas=sec('Canvas','',tplHead,tplSeg,tplNote,sbBox,el('div',{class:'sub',text:'Bit depth'}),seg([[8,'8-bit'],[16,'16-bit float',!canFloat]],()=>depth,v=>{depth=v;}),bgHead,bgSeg,bgCustom,tileChk);
+  /* (0.57) the original layout, with a clearer order: each section has a strong heading, and inside it related controls sit together in labelled groups */
+  const sec=(title,...kids)=>el('section',{class:'dsec'},el('h4',{class:'dsec-h',text:title}),el('div',{class:'dsec-b'},...kids));
+  const grp=(label,...kids)=>el('div',{class:'dgrp'},...(label?[el('div',{class:'dgl',text:label})]:[]),...kids);
+  const secStart=sec('Start in',stSeg,stNote,spriteBox),
+    secSize=sec('Size',grp('',np.el,f.presets),grp('Dimensions',f.row,np.orientation),grp('',np.units)),
+    secCanvas=sec('Canvas',grp('Template',tplSeg,tplNote,sbBox),grp('Bit depth',seg([[8,'8-bit'],[16,'16-bit float',!canFloat]],()=>depth,v=>{depth=v;})),(bgGrp=grp('Background',bgSeg,bgCustom)),grp('',tileChk));
+  bgUpd();
   const body=el('div',{class:'dlg-grid dlg-new'},secStart,secSize,secCanvas);
-  const hideIf=()=>{for(const x of [tplHead,tplSeg,tplNote])x.hidden=start==='p3d'||start==='brush'||start==='anim';sbBox.hidden=tpl!=='storyboard'||start!=='paint';np.orientation.hidden=start==='p3d'||start==='brush'||start==='anim';};
+  const hideIf=()=>{for(const x of [tplSeg,tplNote,tplSeg.closest?.('.dgrp')])if(x)x.hidden=start==='p3d'||start==='brush'||start==='anim';sbBox.hidden=tpl!=='storyboard'||start!=='paint';np.orientation.hidden=start==='p3d'||start==='brush'||start==='anim';};
   stUpd=()=>{stNote.textContent=NEW_START_NOTES[start];hideIf();spriteBox.hidden=start!=='anim';bgUpd();};stUpd();
-  openDialog({title:'New document',body,wide:true,okLabel:'Create',onOk(){const r=np.read();if(!r)return false;const dpiNew=np.dpi();
+  openDialog({title:'New document',body,okLabel:'Create',onOk(){const r=np.read();if(!r)return false;const dpiNew=np.dpi();
     if(start==='p3d'){const n=r[0];setTimeout(()=>dlgP3New(),0);return;}
     if(start==='brush'){if(ui.mode!=='brush'&&!setMode('brush',true))return;btNewCanvas(Math.max(64,Math.min(4096,r[0])));return;}
     if(depth===16&&r[0]*r[1]>=268435456){toast('Use 8-bit colour for a 16K square document. Height still keeps 16-bit precision.');return false;}
