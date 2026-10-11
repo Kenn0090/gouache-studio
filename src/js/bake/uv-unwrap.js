@@ -16,7 +16,7 @@ const uwYield=()=>new Promise(r=>setTimeout(r,0));
 let uwLast=0;const uwStop={on:false};
 const uwDue=()=>{const t=performance.now();if(t-uwLast>14){uwLast=t;return true;}return false;};
 function uwSync(g){let r;while(!(r=g.next()).done);return r.value;}
-async function uwAsync(g){let r;while(!(r=g.next()).done){await uwYield();uwLast=performance.now();if(uwStop.on)throw new Error('Stopped');}return r.value;}
+async function uwAsync(g){let r,v;while(!(r=g.next(v)).done){v=undefined;if(r.value&&typeof r.value.then==='function')v=await r.value;else await uwYield();uwLast=performance.now();if(uwStop.on)throw new Error('Stopped');}return r.value;}
 /* ---- topology: weld vertices that sit at the same place, find each triangle's neighbours ---- */
 function uwTopo(m){const P=m.pos,I=m.idx,T=I.length/3,N=P.length/3,q=1e5,wmap=new Map(),wv=new Uint32Array(N);let W=0;
   for(let i=0;i<N;i++){const k=Math.round(P[i*3]*q)+','+Math.round(P[i*3+1]*q)+','+Math.round(P[i*3+2]*q);let w=wmap.get(k);if(w===undefined){w=W++;wmap.set(k,w);}wv[i]=w;}
@@ -85,8 +85,8 @@ function uwMerge(m,topo,seg,opt){const {T,tw,area,deg,adj}=topo,{chart,charts}=s
   seg.charts=charts.filter(c=>c.tris.length);seg.charts.forEach((c,i)=>{c.id=i;for(const t of c.tris)chart[t]=i;});return seg;}
 /* ---- 2. flatten one chart ---- */
 function uwFlatten(m,topo,C,opt){return uwSync(uwFlattenG(m,topo,C,opt));}
-function* uwFlattenG(m,topo,C,opt){const P=m.pos,I=m.idx,{tw,deg}=topo,vid=new Map(),cv=[],tr=[];
-  for(const t of C.tris){const l=[];for(let k=0;k<3;k++){const w=tw[t*3+k];let i=vid.get(w);if(i===undefined){i=cv.length;vid.set(w,i);cv.push(I[t*3+k]);}l.push(i);}tr.push(l);}
+function* uwFlattenG(m,topo,C,opt){const P=m.pos,I=m.idx,{tw,deg}=topo,vid=new Map(),cv=[],tr=[],cls=topo.cutCtx?uwCornerClasses(C,topo):null;
+  C.tris.forEach((t,ti)=>{const l=[];for(let k=0;k<3;k++){const w=cls?cls[ti*3+k]:tw[t*3+k];let i=vid.get(w);if(i===undefined){i=cv.length;vid.set(w,i);cv.push(I[t*3+k]);}l.push(i);}tr.push(l);});
   const n=cv.length,L=Math.hypot(C.nx,C.ny,C.nz)||1,N=[C.nx/L,C.ny/L,C.nz/L];
   /* a flat basis for the chart: u along the chart's longest direction (PCA of the points projected onto the plane) */
   const ref=Math.abs(N[1])<.9?[0,1,0]:[1,0,0];let ux=ref[1]*N[2]-ref[2]*N[1],uy=ref[2]*N[0]-ref[0]*N[2],uz=ref[0]*N[1]-ref[1]*N[0];let ul=Math.hypot(ux,uy,uz)||1;ux/=ul;uy/=ul;uz/=ul;
@@ -100,9 +100,33 @@ function* uwFlattenG(m,topo,C,opt){const P=m.pos,I=m.idx,{tw,deg}=topo,vid=new M
   let dev=1;for(const t of C.tris){const d=(topo.nx[t]*N[0]+topo.ny[t]*N[1]+topo.nz[t]*N[2]);if(d<dev)dev=d;}
   let U=X,V=Y,method='plane';
   if(dev<Math.cos(opt.flat*Math.PI/180)&&n>3&&n<=opt.lscmMax){const r=yield* uwLSCMG(m,cv,tr,X,Y,opt);if(r){U=r.u;V=r.v;method='lscm';}}
+  /* a conformal map of a bucket shape lies on itself: lay the cloth flat instead (triangle after triangle), then relax */
+  if(topo.arap&&opt.unfold&&opt.unroll!==false&&n>14&&tr.length>24){const ov=uwSelfOverlap({tris:tr,u:U,v:V});
+    if(ov>(opt.overlapMax===undefined?.012:opt.overlapMax)){
+      const X3=new Float64Array(n*3);for(let i=0;i<n;i++){X3[i*3]=P[cv[i]*3];X3[i*3+1]=P[cv[i]*3+1];X3[i*3+2]=P[cv[i]*3+2];}
+      const tw2=new Int32Array(tr.length*3);tr.forEach((l,i)=>{tw2[i*3]=l[0];tw2[i*3+1]=l[1];tw2[i*3+2]=l[2];});
+      const sg=(A,B)=>{let q=0;for(const [a,b,c] of tr)q+=(A[b]-A[a])*(B[c]-B[a])-(A[c]-A[a])*(B[b]-B[a]);return q;},ref=sg(U,V);
+      /* where the cloth is first laid down matters: the middle, and each end of the long direction; the one that ends up flattest is worked on */
+      const first=new Int32Array(n).fill(-1);tr.forEach((l,i)=>{for(const q of l)if(first[q]<0)first[q]=i;});let mnx=0,mxx=0;for(let i=1;i<n;i++){if(X[i]<X[mnx])mnx=i;if(X[i]>X[mxx])mxx=i;}
+      const starts=[-1,first[mnx],first[mxx]].slice(0,opt.unrollStarts||3);let best=null;
+      for(const st of starts){const r=uwUnroll(m,cv,tr,X,Y,st);if(r.reached<n*.98)continue;const Uf=r.U,Vf=r.V;if(ref*sg(Uf,Vf)<0)for(let i=0;i<n;i++)Vf[i]=-Vf[i];
+        yield uwArap(tr.length,n,tw2,X3,Uf,Vf,new Int32Array(tr.length),1,{strength:starts.length>1?30:opt.unrollStrength||100,pin:false},()=>{});
+        const o=uwSelfOverlap({tris:tr,u:Uf,v:Vf});if(!best||o<best.o)best={o,U:Uf,V:Vf};}
+      if(best){if(starts.length>1)yield uwArap(tr.length,n,tw2,X3,best.U,best.V,new Int32Array(tr.length),1,{strength:opt.unrollStrength||100,pin:false},()=>{});
+        const Uf=best.U,Vf=best.V,ov2=uwSelfOverlap({tris:tr,u:Uf,v:Vf}),e1=uwChartEnergy(m,{verts:cv,tris:tr,u:U,v:V}).stretch,e2=uwChartEnergy(m,{verts:cv,tris:tr,u:Uf,v:Vf}).stretch;
+        if(ov2<ov*.6&&e2<e1*1.5+.3){U=Uf;V=Vf;method=method+'+unroll';}}}}
+  /* pieces that came out folded over (or very stretched) are worked on with as-rigid-as-possible relaxation; only the asynchronous unwrap can wait for it */
+  if(topo.arap&&opt.unfold&&n>8&&tr.length>12){let pos=0,neg=0,flips=0,pa=0,na=0;const sg=new Int8Array(tr.length);
+    for(let i=0;i<tr.length;i++){const [a,b,c]=tr[i],ar=((U[b]-U[a])*(V[c]-V[a])-(U[c]-U[a])*(V[b]-V[a]));sg[i]=ar>0?1:ar<0?-1:0;if(ar>0){pos++;pa+=ar;}else if(ar<0){neg++;na-=ar;}}
+    flips=Math.min(pa,na)/Math.max(1e-30,pa+na)>0.03?Math.min(pos,neg):0;/* only a piece that is really folded over (3% of its area) is worth the work */
+    if(flips>0){const X3=new Float64Array(n*3);for(let i=0;i<n;i++){X3[i*3]=P[cv[i]*3];X3[i*3+1]=P[cv[i]*3+1];X3[i*3+2]=P[cv[i]*3+2];}
+      const tw2=new Int32Array(tr.length*3);tr.forEach((l,i)=>{tw2[i*3]=l[0];tw2[i*3+1]=l[1];tw2[i*3+2]=l[2];});const Uf=Float64Array.from(U),Vf=Float64Array.from(V);
+      yield uwArap(tr.length,n,tw2,X3,Uf,Vf,new Int32Array(tr.length),1,{strength:opt.unfoldStrength||60,pin:false},()=>{});
+      /* kept only when it helps (the flat pieces' stretch, with folded triangles counted as very stretched) */
+      if(uwChartEnergy(m,{verts:cv,tris:tr,u:Uf,v:Vf}).stretch<uwChartEnergy(m,{verts:cv,tris:tr,u:U,v:V}).stretch*.98){U=Uf;V=Vf;method=method+'+arap';}}}
   /* the surface area in 3D and in the flat chart, so every chart can be given the same texel density */
   let a3=0,a2=0;for(let i=0;i<tr.length;i++){a3+=topo.area[C.tris[i]];const [p,q,r]=tr[i];a2+=Math.abs((U[q]-U[p])*(V[r]-V[p])-(U[r]-U[p])*(V[q]-V[p]))/2;}
-  return {verts:cv,tris:tr,u:U,v:V,a3,a2,method};}
+  return {verts:cv,tris:tr,u:U,v:V,a3,a2,method,split:!!cls};}
 /* LSCM with two pinned corners (the farthest pair of the projection), solved by preconditioned conjugate gradients; null when it folds over */
 function uwLSCM(m,cv,tr,X,Y,opt){return uwSync(uwLSCMG(m,cv,tr,X,Y,opt));}
 function* uwLSCMG(m,cv,tr,X,Y,opt){const P=m.pos,n=cv.length,T=tr.length;
@@ -143,7 +167,9 @@ function* uwLSCMG(m,cv,tr,X,Y,opt){const P=m.pos,n=cv.length,T=tr.length;
   /* every triangle must keep the orientation the projection gave it, or the result is thrown away */
   let sign=0;for(const r of rows){const [a,b,c]=r.v;const s0=(X[b]-X[a])*(Y[c]-Y[a])-(X[c]-X[a])*(Y[b]-Y[a]);if(Math.abs(s0)>1e-12){sign=s0>0?1:-1;break;}}
   let bad=0;for(const r of rows){const [a,b,c]=r.v,s1=(u[b]-u[a])*(v[c]-v[a])-(u[c]-u[a])*(v[b]-v[a]);if(sign*s1<=0)bad++;}
-  if(bad>0)return null;for(let i=0;i<n;i++)if(!isFinite(u[i])||!isFinite(v[i]))return null;return {u,v};}
+  /* the solution may come out as a mirror image of the straight projection: turn it back */
+  if(bad>rows.length/2){for(let i=0;i<n;i++)u[i]=-u[i];bad=rows.length-bad;}
+  if(bad>Math.floor(rows.length*(opt.flipTol||0)))return null;for(let i=0;i<n;i++)if(!isFinite(u[i])||!isFinite(v[i]))return null;return {u,v};}
 /* ---- 3. place every chart: same texel density, tightest box, packed ---- */
 function uwHull(pts){const n=pts.length/2,idx=[];for(let i=0;i<n;i++)idx.push(i);idx.sort((a,b)=>pts[a*2]-pts[b*2]||pts[a*2+1]-pts[b*2+1]);
   const cr=(o,a,b)=>(pts[a*2]-pts[o*2])*(pts[b*2+1]-pts[o*2+1])-(pts[a*2+1]-pts[o*2+1])*(pts[b*2]-pts[o*2]),lo=[],up=[];
@@ -192,17 +218,17 @@ function uwPack(boxes,size,padPx,seed,opt={}){const n=boxes.length;if(!n)return 
   const rects=boxes.map(b=>({w:b.w*bs,h:b.h*bs}));let used=0;for(const r of rects)used+=r.w*r.h;
   return {scale:bs,pos:best||[],gap,util:used,order};}
 /* ---- the whole unwrap ---- */
-const UW_PRESETS={artist:Object.assign({label:'Artist style'},UW_ARTIST),hard:{label:'Hard surface',angle:50,flat:20,artist:false,straighten:false,flex:0},balanced:{label:'Balanced',angle:66,flat:20,artist:false,straighten:false,flex:0},organic:{label:'Organic',angle:82,flat:12,artist:false,straighten:false,flex:0}};
+const UW_PRESETS={artist:Object.assign({label:'Artist style',cut:false},UW_ARTIST),clothing:Object.assign({label:'Clothing (pattern)'},UW_CLOTH),hard:{label:'Hard surface',angle:50,flat:20,artist:false,cut:false,straighten:false,flex:0},balanced:{label:'Balanced',angle:66,flat:20,artist:false,cut:false,straighten:false,flex:0},organic:{label:'Organic',angle:82,flat:12,artist:false,cut:false,straighten:false,flex:0}};
 /* everything a preset sets (the label is only for the list) */
 const uwPresetOpts=k=>{const o=Object.assign({},UW_PRESETS[k]);delete o.label;o.preset=k;return o;};
-function uwDefaults(){return {preset:'balanced',angle:66,flat:20,seed:1,packSeed:null,size:2048,padding:0,layout:'material',iters:400,lscmMax:60000,rotate:true,minTris:6,artist:false,straighten:false,defBudget:1.2,stretchMax:1.5,qMax:3,flex:0};}
+function uwDefaults(){return {preset:'balanced',angle:66,flat:20,seed:1,packSeed:null,size:2048,padding:0,layout:'material',iters:400,lscmMax:60000,rotate:true,minTris:6,artist:false,straighten:false,defBudget:1.2,stretchMax:1.5,qMax:3,flex:0,smooth:true,cut:false,coneThr:.9,maxSlits:40,flipTol:0,creaseDeg:0,creaseMin:14,unfold:false,unfoldStrength:60};}
 /* padding in pixels: about one pixel per mip level, and more for bigger textures (8 px at 1K, 16 at 2K, 32 at 4K) */
 const uwAutoPad=size=>Math.max(4,Math.round(size/128));
 async function uwUnwrap(m,optIn,progress,topoIn){const opt=Object.assign(uwDefaults(),optIn||{}),rng=uwRng(opt.seed*7919+3),pr=progress||(()=>{});
-  pr('Reading the model…',0);await uwYield();const topo=topoIn||m._uwTopo||(m._uwTopo=uwTopo(m));
-  pr('Cutting into pieces…',.1);await uwYield();if(uwStop.on)throw new Error('Stopped');let seg=uwSegment(m,topo,opt,rng);seg=uwMerge(m,topo,seg,opt);if(opt.artist){pr('Joining pieces like an artist…',.18);await uwYield();seg=uwArtistMerge(m,topo,seg,opt,()=>{});if(uwStop.on)throw new Error('Stopped');}
-  const flats=[],leaves=[];let k=0;uwLast=performance.now();for(const C of seg.charts){if(opt.artist){for(const r of await uwAsync(uwFlattenSplitG(m,topo,C,opt))){flats.push(r.F);leaves.push(r.C);}}else{flats.push(await uwAsync(uwFlattenG(m,topo,C,opt)));leaves.push(C);}k++;if(uwDue()){pr('Flattening… '+k+' of '+seg.charts.length,.25+.7*k/seg.charts.length);await uwYield();uwLast=performance.now();if(uwStop.on)throw new Error('Stopped');}}
-  if(opt.artist){seg.charts=leaves;leaves.forEach((c,i)=>{c.id=i;for(const t of c.tris)seg.chart[t]=i;});}
+  pr('Reading the model…',0);await uwYield();const topo=topoIn||m._uwTopo||(m._uwTopo=uwTopo(m));topo.arap=true;
+  pr('Cutting into pieces…',.1);await uwYield();if(uwStop.on)throw new Error('Stopped');let seg;if(opt.cut){pr('Cutting like a tailor…',.12);await uwYield();seg=uwCutSegment(m,topo,opt);topo.cutCtx=seg.ctx;}else{topo.cutCtx=null;seg=uwSegment(m,topo,opt,rng);seg=uwMerge(m,topo,seg,opt);if(opt.smooth!==false)seg=uwSmoothCharts(m,topo,seg,opt);}if(opt.artist){pr('Joining pieces like an artist…',.18);await uwYield();seg=uwArtistMerge(m,topo,seg,opt,()=>{});if(opt.smooth!==false)seg=uwSmoothCharts(m,topo,seg,opt,12);if(uwStop.on)throw new Error('Stopped');}
+  const flats=[],leaves=[];let k=0;uwLast=performance.now();for(const C of seg.charts){if(opt.artist||opt.cut){for(const r of await uwAsync(opt.cut?uwCutRefineG(m,topo,opt,C,seg):uwFlattenSplitG(m,topo,C,opt))){flats.push(r.F);leaves.push(r.C);}}else{flats.push(await uwAsync(uwFlattenG(m,topo,C,opt)));leaves.push(C);}k++;if(uwDue()){pr('Flattening… '+k+' of '+seg.charts.length,.25+.7*k/seg.charts.length);await uwYield();uwLast=performance.now();if(uwStop.on)throw new Error('Stopped');}}
+  if(opt.artist||opt.cut){seg.charts=leaves;leaves.forEach((c,i)=>{c.id=i;for(const t of c.tris)seg.chart[t]=i;});}
   return {topo,seg,flats,opt:Object.assign({},opt)};}
 /* place the flattened charts (cheap, so re-rolling the pack or changing padding does not flatten again) */
 function uwLayout(m,res,optIn){const opt=Object.assign({},res.opt,optIn||{}),{topo,seg,flats}=res,pad=opt.padding||uwAutoPad(opt.size),mats=m.triMat?[...new Set(seg.charts.map(c=>c.mat))].sort((a,b)=>a-b):[0];
@@ -220,6 +246,8 @@ function uwLayout(m,res,optIn){const opt=Object.assign({},res.opt,optIn||{}),{to
         if(!fs.some(f=>f<.98))break;const nb=idxs.map((ci,bi)=>({w:fit[ci].w*fs[bi],h:fit[ci].h*fs[bi]})),p2=uwPack(nb,opt.size,pad,pseed,opt);
         if(p2.util<=pack.util*1.03)break;
         idxs.forEach((ci,bi)=>{const F=fit[ci],f=fs[bi];if(f<1){for(let q=0;q<F.pts.length;q++)F.pts[q]*=f;F.w*=f;F.h*=f;}});boxes.splice(0,boxes.length,...nb);pack=p2;}}
+    /* the real outlines, not their boxes: pieces fill each other's corners */
+    if(opt.shapePack!==false&&idxs.length>=3&&idxs.length<=400){const sp=uwShapePack(idxs.map(ci=>({pts:fit[ci].pts,tris:flats[ci].tris,w:fit[ci].w,h:fit[ci].h})),boxes,opt.size,pad,opt,pack);if(sp)pack=sp;}
     idxs.forEach((ci,bi)=>{const p=pack.pos[bi]||{x:0,y:0,rot:false};placed[ci]={x:p.x,y:p.y,rot:p.rot,s:pack.scale,gap:pack.gap};});
     report.push({mats:grp,util:pack.util,scale:pack.scale});util+=pack.util;sumScale+=pack.scale;}
   /* the uv of every chart corner */
@@ -229,12 +257,13 @@ function uwLayout(m,res,optIn){const opt=Object.assign({},res.opt,optIn||{}),{to
 /* a new mesh with the charts' UVs: corners that cross a seam become separate vertices; everything else about the mesh is kept */
 function uwBuild(m,res,lay){const {topo,seg,flats}=res,I=m.idx,T=I.length/3,N=m.pos.length/3,map=new Map(),src=[],newIdx=new Uint32Array(I.length),uv=[],chartOf=seg.chart;
   /* for each chart: welded vertex -> its place in the chart's flat points */
-  const local=flats.map(()=>new Map());flats.forEach((F,c)=>{F.tris.forEach((l,ti)=>{const t=seg.charts[c].tris[ti];for(let k=0;k<3;k++)local[c].set(topo.tw[t*3+k],l[k]);});});
+  const local=flats.map(()=>new Map());flats.forEach((F,c)=>{if(F.split)return;F.tris.forEach((l,ti)=>{const t=seg.charts[c].tris[ti];for(let k=0;k<3;k++)local[c].set(topo.tw[t*3+k],l[k]);});});
+  const tpos=new Int32Array(T);seg.charts.forEach(C=>{C.tris.forEach((t,i)=>{tpos[t]=i;});});
   let next=0;
   for(let t=0;t<T;t++){const c=chartOf[t];for(let k=0;k<3;k++){const v=I[t*3+k];let u0=0,u1=0;
-      if(c>=0){const li=local[c].get(topo.tw[t*3+k]);u0=lay.uvs[c][li*2];u1=lay.uvs[c][li*2+1];}
+      let li=-1;if(c>=0){li=flats[c].split?flats[c].tris[tpos[t]][k]:local[c].get(topo.tw[t*3+k]);u0=lay.uvs[c][li*2];u1=lay.uvs[c][li*2+1];}
       /* a corner is a new vertex per (original vertex, chart): normals and colours stay exactly as they were */
-      const key=c>=0?c*N+v:-1-v;let nv=map.get(key);if(nv===undefined){nv=next++;map.set(key,nv);src.push(v);uv.push(u0,1-u1);}newIdx[t*3+k]=nv;}}
+      const key=c>=0?(flats[c].split?c+'|'+v+'|'+li:c*N+v):-1-v;let nv=map.get(key);if(nv===undefined){nv=next++;map.set(key,nv);src.push(v);uv.push(u0,1-u1);}newIdx[t*3+k]=nv;}}
   const M=src.length,copy=(a,w)=>{if(!a)return a;const o=new Float32Array(M*w);for(let i=0;i<M;i++)for(let j=0;j<w;j++)o[i*w+j]=a[src[i]*w+j];return o;};
   const r=Object.assign({},m,{pos:copy(m.pos,3),nrm:copy(m.nrm,3),uv:Float32Array.from(uv),idx:newIdx,vcol:copy(m.vcol,4),pcol:copy(m.pcol,4),noUV:false,verts:M,_uvAn:null,_uvIsl:null,_uwTopo:null,_uvMet:null});
   r.tan=tangentsOf(r.pos,r.nrm,r.uv,r.idx);delete r.sub;r.uvAuto={opt:res.opt,seed:lay.seed,packSeed:lay.packSeed,util:lay.util,charts:flats.length};return r;}

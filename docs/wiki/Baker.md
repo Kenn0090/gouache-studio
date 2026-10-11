@@ -24,6 +24,12 @@ Every model you load as a low-poly (in the New 3D Paint Project window, the Bake
 **The fun part (0.55):**
 - **On the model:** Off, **Checker**, **Stretch** (green = a perfect fit, yellow to red = stretched) or **Texel size** (blue = small, green = right, red = big). The same colours are drawn in the flat picture, and the seams are white lines on the model.
 - **Seam angle** re-cuts live while you drag it (for very big models the update waits until you let go).
+- **Clothing (pattern) style:** finds the closed loops of a garment (where a sleeve meets the body, cuffs, hems), cuts along them, and puts one seam down the length of each tube along hard edges, so a sleeve unrolls into a flat panel like a sewing pattern. A piece that still stretches too much gets one more cut at its most stretched spot.
+  - A piece that lies on itself after flattening (the body of a jacket, with its shoulders) is laid flat triangle by triangle instead, and any overlap that is left is cut away: side seams under the arms (front and back panels), thin plates cut front from back, and a small patch cut loose along the shortest seam where two layers still lie on each other. The cuts are kept only when the pieces come out flatter.
+  - Pieces are packed by their real outline, so small pieces fill the corners of big ones.
+  - Check overlaps also finds a piece that covers itself.
+- **Relax:** evens out the stretching inside each piece without moving the seams. *Strength* sets how long it works; *Keep outlines* leaves each piece's border where it is (only the inside moves); with it off the piece can change shape and the pieces are packed again if they now overlap.
+- **Check overlaps / Fix overlaps:** counts the faces that share space with another piece or fold over inside their own piece, and shows them in red on the layout and on the model (On the model › Overlaps). Fix relaxes folded pieces and packs the pieces apart.
 - **Bigger preview:** hover the small UV picture and a large one (up to 640 px) appears beside it.
 - **Progress and Stop:** unwrapping, Re-roll and Roll the dice show a progress bar with a **Stop** button, and the app stays responsive while they work.
 - **Roll the dice:** 12 layouts at once, each with how much of the square it uses and how many pieces it has. The tightest is marked *best*. Click a tile to use it; the ★ pins a layout so it stays when you roll again. Rolling needs a model that was auto unwrapped.

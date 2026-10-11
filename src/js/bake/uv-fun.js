@@ -44,9 +44,12 @@ let uvViewT=null,uvViewKey='';
 function uvViewTarget(){const m=(typeof bkLow==='function')?bkLow():null,v=uvw.view;if(!m||m.noUV||!v||v==='off')return null;
   const key=v+'|'+(m.uv&&m.uv.length)+'|'+(m._uvStamp||0)+'|'+(m.uvAuto?m.uvAuto.packSeed+':'+m.uvAuto.seed:'');if(uvViewT&&uvViewKey===key&&uvViewT.mesh===m)return uvViewT;
   if(uvViewT){disposeTarget(uvViewT.t);uvViewT=null;}
-  let cv;if(v==='check')cv=uvCheckerCanvas();else cv=uvHeatCanvas(m,v,1024,true);
+  let cv;if(v==='check')cv=uvCheckerCanvas();else if(v==='overlap')cv=uvOverlapCanvas(m,1024,uvOvl(m));else cv=uvHeatCanvas(m,v,1024,true);
   const t=makeTarget(cv.width,cv.height,8,true),tex=uploadStraight({w:cv.width,h:cv.height,data:new Uint8Array(cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data.buffer),bits:8});try{premultInto(t,tex,[0,0],null);}finally{gl.deleteTexture(tex);}setWrap(t,true);
   uvViewKey=key;uvViewT={t,unlit:v!=='check',mesh:m};return uvViewT;}
+/* the overlap check of a mesh, kept until the mesh changes */
+function uvOvl(m){if(!uvw.ovl||uvw.ovl.mesh!==m||uvw.ovl.stamp!==(m._uvStamp||0))uvw.ovl={mesh:m,stamp:m._uvStamp||0,res:uvOverlapCheck(m)};return uvw.ovl.res;}
+function uvOvlNote(r){return r.none?'':(r.faces?r.faces.toLocaleString()+' face'+(r.faces===1?'':'s')+' overlap ('+r.pct.toFixed(1)+'%)'+(r.folded?', '+r.folded+' folded over':'')+'.':'No overlaps.');}
 function uvCheckerCanvas(){const S=1024,c=document.createElement('canvas');c.width=c.height=S;const x=c.getContext('2d'),n=16,s=S/n;
   for(let i=0;i<n;i++)for(let j=0;j<n;j++){x.fillStyle=(i+j)&1?'#d9d9de':'#8c8f99';x.fillRect(i*s,j*s,s,s);}
   x.font='bold 40px sans-serif';x.fillStyle='#2b2d33';x.textAlign='center';x.textBaseline='middle';for(let i=0;i<n;i+=2)for(let j=0;j<n;j+=2)x.fillText(String(i/2+1+(j/2)*8),(i+.5)*s+s,(j+.5)*s+s);return c;}
@@ -56,7 +59,7 @@ const UV_ROLLS=12;
 async function uvRoll(){const old=bkLow();if(!old||uvw.busy)return;const src=old.uwSrc||(old.noUV?old:null);if(!src){toast('Rolling needs a model that was auto unwrapped (or has no UVs).');return;}
   uvw.busy=true;uwStop.on=false;const big=src.tris>150000,n=big?4:src.tris>40000?6:UV_ROLLS,base=(old.uwOpt&&old.uwOpt.seed)||1,topo=src._uwTopo||(src._uwTopo=uwTopo(src)),opt0=Object.assign(uwDefaults(),old.uwOpt||{},{size:uvSizeNow()}),keep=uvw.gal.filter(g=>g.pin),out=[];
   loadStart('Rolling the dice');loadCancel(()=>{uwStop.on=true;});
-  try{for(let k=0;k<n;k++){const seed=base+1+k*7+Math.floor(Math.random()*5),o=Object.assign({},opt0,{seed,packSeed:null}),msg='Layout '+(k+1)+' of '+n;
+  try{for(let k=0;k<n;k++){const seed=base+1+k*7+Math.floor(Math.random()*5),o=Object.assign({},opt0,{seed,packSeed:null,shapeMs:300}),msg='Layout '+(k+1)+' of '+n;
       loadSet(k/n,msg);const res=await uwUnwrap(src,o,(t,f)=>loadSet((k+f)/n,msg+' · '+t),topo);
       loadSet((k+.95)/n,msg+' · placing the pieces…');await uwYield();if(uwStop.on)throw new Error('Stopped');
       const lay=uwLayout(src,res,o);out.push({seed,opt:o,res,lay,util:lay.util,charts:res.flats.length,thumb:uvThumb(res,lay)});await uwYield();}

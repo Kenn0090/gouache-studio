@@ -21,7 +21,22 @@ async function uvRunUnwrap(m,optIn,quiet){const src=m.uwSrc||m,opt=Object.assign
 function uvRelayout(m,optIn){const src=m.uwSrc,res=m.uwRes;if(!src||!res)return null;const opt=Object.assign({},m.uwOpt,{size:uvSizeNow()},optIn||{}),lay=uwLayout(src,res,opt),nm=uwBuild(src,res,lay);
   nm.uwSrc=src;nm.uwRes=res;nm.uwOpt=Object.assign({},res.opt,opt,{packSeed:lay.packSeed});nm.xf=src.xf;nm.name=src.name;return nm;}
 /* the model's own UVs, packed again (the islands keep their shapes) */
-function uvRepackOwn(m,optIn){const src=m.uwSrc||m,opt=Object.assign(uwDefaults(),m.uwOpt||{},{size:uvSizeNow()},optIn||{}),nm=uwRepack(src,opt);nm.uwSrc=src;nm.uwOpt=Object.assign({},opt,{packSeed:nm.uvAuto.packSeed,repack:true});nm.xf=src.xf;nm.name=src.name;return nm;}
+function uvRepackOwn(m,optIn){const src=m.uvRelaxed?m:(m.uwSrc||m),opt=Object.assign(uwDefaults(),m.uwOpt||{},{size:uvSizeNow()},optIn||{}),nm=uwRepack(src,opt);nm.uwSrc=m.uwSrc||src;nm.uvRelaxed=m.uvRelaxed;nm.uwOpt=Object.assign({},opt,{packSeed:nm.uvAuto.packSeed,repack:true});nm.xf=src.xf;nm.name=src.name;return nm;}
+/* Relax: the pieces keep their seams and their place but lose their stretching */
+async function uvRunRelax(m,o){const opt={strength:o.strength||uvw.relaxStr||50,pin:o.pin!==undefined?o.pin:uvw.relaxPin!==false};
+  loadStart('Relaxing “'+(m.name||'model')+'”');loadCancel(()=>{uwStop.on=true;});
+  try{const nm=await uwRelax(m,opt,(msg,f)=>loadSet(f,msg));nm.uvRelaxed=true;nm.uwSrc=m.uwSrc||m;nm.uwRes=null;nm.uwOpt=Object.assign({},m.uwOpt||{},{relaxed:true});nm.xf=m.xf;nm.name=m.name;nm.uvAuto=Object.assign({},m.uvAuto||{},{relaxed:true});
+    /* a free relax changes the pieces' shapes: pack them again if they now overlap more than before */
+    if(!opt.pin&&uvOverlapCheck(nm).faces>uvOverlapCheck(m).faces){const rp=uvRepackOwn(nm,{packSeed:((m.uwOpt&&m.uwOpt.packSeed)||0)+1});rp.uvRelaxed=true;rp.xf=m.xf;rp.name=m.name;Object.assign(nm,{uv:rp.uv,tan:rp.tan,uvAuto:Object.assign({},m.uvAuto||{},{relaxed:true,util:rp.uvAuto.util}),_uvAn:null,_uvIsl:null,_uvMet:null});}
+    const a0=uvMetrics(m),a1=uvMetrics(nm);let s0=0,s1=0;for(const s of a0.str)s0+=s;for(const s of a1.str)s1+=s;
+    if(s1>=s0*.999){toast('The stretching is already as even as Relax can make it ('+(s0/a0.str.length).toFixed(2)+').');return null;}
+    toast('Relaxed: stretch '+(s0/a0.str.length).toFixed(2)+' → '+(s1/a1.str.length).toFixed(2)+(m.uwRes?'. Style and Re-roll start the unwrap again.':'.'));return nm;}
+  finally{loadEnd();}}
+/* Fix overlaps: fold-overs are relaxed away when they can be, then the pieces are packed again */
+async function uvFixOverlap(m){let cur=m;const r0=uvOverlapCheck(m);
+  if(r0.folded>0){loadStart('Fixing overlaps');try{const nr=await uwRelax(cur,{strength:60,pin:false},(msg,f)=>loadSet(f,msg));nr.uvRelaxed=true;nr.uwSrc=m.uwSrc||m;nr.uwRes=null;nr.uwOpt=Object.assign({},m.uwOpt||{},{relaxed:true});nr.xf=m.xf;nr.name=m.name;nr.uvAuto=m.uvAuto;cur=nr;}finally{loadEnd();}}
+  const nm=cur.uwRes?uvRelayout(cur,{packSeed:((cur.uwOpt&&cur.uwOpt.packSeed)||0)+1,seed:cur.uwOpt.seed}):uvRepackOwn(cur,{packSeed:((cur.uwOpt&&cur.uwOpt.packSeed)||0)+1});
+  const r1=uvOverlapCheck(nm);toast(r1.faces?'Fixed '+(r0.faces-r1.faces)+' faces; '+r1.faces+' still overlap.':'No overlaps now.');return nm;}
 /* swap a model for its new version everywhere it is in use */
 function uvReplaceMesh(old,nm){if(!old||!nm||old===nm)return nm;
   const C=typeof bakeCfg!=='undefined'?bakeCfg:null;if(C&&C.low===old)C.low=nm;if(typeof v3!=='undefined'){if(v3.imported===old)v3.imported=nm;}
@@ -52,6 +67,7 @@ function uvIslandsOf(m){return m._uvIsl||(m._uvIsl=uwIslands(m));}
 function uvDrawPreview(cv,m){const S=cv.width,x=cv.getContext('2d',{willReadFrequently:true});x.fillStyle='#17181c';x.fillRect(0,0,S,S);
   if(uvw.view==='check'){const n=16,c=S/n;for(let i=0;i<n;i++)for(let j=0;j<n;j++){x.fillStyle=(i+j)&1?'#2a2d34':'#20232a';x.fillRect(i*c,j*c,c,c);}}
   if(!m||m.noUV){x.fillStyle='#8a8f99';x.font='12px sans-serif';x.textAlign='center';x.fillText('No UVs',S/2,S/2);return;}
+  if(uvw.view==='overlap'){x.drawImage(uvOverlapCanvas(m,S,uvOvl(m)),0,0);x.strokeStyle='#6a6f7a';x.lineWidth=1;x.strokeRect(.5,.5,S-1,S-1);return;}
   if(uvw.view==='stretch'||uvw.view==='texel'){x.drawImage(uvHeatCanvas(m,uvw.view,S,true),0,0);const an0=uvAn(m);if(uvw.showOverlap&&an0&&an0.mask){const G=an0.mask.S,bd=an0.mask.bad,u=S/G;x.fillStyle='rgba(255,40,255,.7)';for(let i=0;i<G*G;i++)if(bd[i])x.fillRect((i%G)*u,Math.floor(i/G)*u,Math.ceil(u),Math.ceil(u));}x.strokeStyle='#6a6f7a';x.lineWidth=1;x.strokeRect(.5,.5,S-1,S-1);return;}
   const I=m.idx,T=I.length/3,UV=m.uv,isl=uvIslandsOf(m),pal=[[224,108,108],[108,192,108],[108,156,224],[224,192,92],[192,108,192],[92,192,192],[240,160,96],[160,160,168]];
   /* the islands (one colour each) and, when the model is small enough, the edges: written into pixels by hand, which is far quicker than the canvas for a big model */
@@ -94,8 +110,13 @@ function uvCard(L){uvBigHide();if(!L||!L.pos)return null;const an=uvAn(L),A=L.uv
     el('div',{class:'frow'},el('label',{text:'Layout'}),seg([['material','One square per material'],['shared','Shared square']],O.layout||'material',v=>uvAct('layout',{layout:v}),'Layout')),
     el('div',{class:'frow uvseed'},el('label',{for:'uvSeed',text:'Seed'}),seedIn,el('button',{class:'btn sm',id:'uvRoll',text:'Re-roll',title:'Try another layout (another seed)',onclick:()=>uvAct(own?'repack':'reroll')}),
       el('button',{class:'btn sm',id:'uvBest',text:'Best of 24',title:'Try 24 ways of packing the same pieces and keep the tightest',onclick:()=>uvAct('best')})),
-    el('div',{class:'frow'},el('label',{text:'On the model'}),seg([['off','Off'],['check','Checker'],['stretch','Stretch'],['texel','Texel size']],uvw.view,v=>{uvw.view=v;uvViewSync();uvDrawPreview(cv,L);},'Show on the model')),
+    el('div',{class:'frow'},el('label',{text:'On the model'}),seg([['off','Off'],['check','Checker'],['stretch','Stretch'],['texel','Texel size'],['overlap','Overlaps']],uvw.view,v=>{uvw.view=v;uvViewSync();uvDrawPreview(cv,L);},'Show on the model')),
     el('div',{class:'chips'},chk('uvOverlap','Show overlaps',uvw.showOverlap,v=>{uvw.showOverlap=v;uvDrawPreview(cv,L);})),
+    el('div',{class:'frow uvovl'},el('button',{class:'btn sm',id:'uvCheck',text:'Check overlaps',title:'Find faces that share space with another piece, or fold over inside their own piece; they show in red on the layout and the model',onclick:()=>{uvw.view='overlap';uvw.showOverlap=true;uvw.ovl=null;uvViewSync();uvw.ovlNote=uvOvlNote(uvOvl(L));buildBakePanel();}}),
+      el('button',{class:'btn sm',id:'uvFixOvl',text:'Fix overlaps',title:'Relax folded pieces, then pack the pieces again so they stop overlapping',disabled:uvw.busy,onclick:()=>uvAct('fixoverlap')}),el('span',{class:'note',id:'uvOvlNote',text:uvw.ovlNote||''})),
+    el('div',{class:'frow uvrelax'},el('button',{class:'btn sm primary',id:'uvRelax',text:'Relax',title:'Even out the stretching inside each piece. The seams and the pieces\' places stay',disabled:uvw.busy,onclick:()=>uvAct('relax',{strength:uvw.relaxStr||50,pin:uvw.relaxPin!==false})}),
+      makeSlider({id:'uvRelaxStr',label:'Strength',min:1,max:100,step:1,value:uvw.relaxStr||50,fmt:v=>Math.round(v)+'',onInput:v=>{uvw.relaxStr=Math.round(v);}}).el,
+      chk('uvRelaxPin','Keep outlines',uvw.relaxPin!==false,v=>{uvw.relaxPin=v;})),
     el('div',{class:'frow uvfoldrow'},makeSlider({id:'uvFold',label:'Unfold',min:0,max:1,step:.01,value:bk.fold||0,fmt:pct,onInput:v=>{uvw.anim=false;uvFoldSet(v);}}).el,el('button',{class:'btn sm',id:'uvPlay',text:uvw.anim?'Pause':'Play',title:'Unfold the model into its layout and fold it back',onclick:()=>uvFoldPlay()})),
     el('div',{class:'chips'},el('button',{class:'btn sm primary',id:'uvDice',text:'Roll the dice ('+UV_ROLLS+')',title:'Cut and pack '+UV_ROLLS+' different layouts and show them all',disabled:uvw.busy||own,onclick:()=>uvRoll()}),el('span',{class:'note',id:'uvRollNote',text:uvw.rollNote||''})),
     el('div',{class:'chips'},el('button',{class:'btn sm',id:'uvOpt',text:'Optimize layout',title:'Pack the islands again so they stop overlapping and fill the square',onclick:()=>uvAct('repack')}),
@@ -113,8 +134,10 @@ async function uvAct(what,optIn,flags){const quiet=!!(flags&&flags.quiet);if(uvw
     else if(what==='layout'){nm=old.uwRes?uvRelayout(old,o):uvRepackOwn(old,o);}
     else if(what==='repack'){const seed=o.seed||((old.uwOpt&&old.uwOpt.packSeed)||0)+1;nm=old.uwRes?uvRelayout(old,Object.assign({},o,{packSeed:seed,seed:old.uwOpt.seed})):uvRepackOwn(old,Object.assign({},o,{packSeed:seed,seed}));}
     else if(what==='best'){let best=null,bu=-1;const base=old.uwOpt&&old.uwOpt.packSeed||0;for(let k=0;k<24;k++){const ps=base+k+1,c=old.uwRes?uvRelayout(old,{packSeed:ps}):uvRepackOwn(old,{packSeed:ps});if(c&&c.uvAuto.util>bu){bu=c.uvAuto.util;best=c;}if(k%4===3)await uwYield();}nm=best;if(best)toast('Best of 24: '+Math.round(bu*100)+'% of the square used.');}
+    else if(what==='relax'){nm=await uvRunRelax(old,o);}
+    else if(what==='fixoverlap'){nm=await uvFixOverlap(old);}
     else if(what==='revert'){const s=old.uwSrc;if(s){nm=Object.assign({},s);delete nm.uwSrc;delete nm.uwRes;delete nm.uwOpt;delete nm.uvAuto;delete nm._uvAn;delete nm._uvIsl;}}
-    if(nm){nm._uvAn=null;nm._uvIsl=null;nm._uvMet=null;nm._uvStamp=(old._uvStamp||0)+1;uvReplaceMesh(old,nm);uvViewSync();}
+    if(nm){nm._uvAn=null;nm._uvIsl=null;nm._uvMet=null;nm._uvStamp=(old._uvStamp||0)+1;uvw.ovl=null;uvw.ovlNote=what==='fixoverlap'?uvOvlNote(uvOvl(nm)):'';uvReplaceMesh(old,nm);uvViewSync();}
   }catch(e){if(e&&e.message==='Stopped')toast('Stopped. The model is as it was.');else{console.warn(e);toast('The unwrap did not work: '+(e.message||e));}}finally{uvw.busy=false;if(ui.mode==='bake'){if(quiet&&uvw.keepEl)uvRefreshCard();else buildBakePanel();}}}
 /* a light refresh while dragging: only the picture and the numbers change, not the controls under the pointer */
 function uvRefreshCard(){const m=bkLow(),cv=$('#uvPrev');if(cv&&m)uvDrawPreview(cv,m);const st=$('#uvStat');if(st&&m){const an=uvAn(m),A=m.uvAuto;st.textContent=an.none?'No UVs':an.islands+' island'+(an.islands===1?'':'s')+(A?' · '+Math.round(A.util*100)+'% of the square used':'')+(an.overlapPct>1?' · '+Math.round(an.overlapPct)+'% overlap':'');}}
