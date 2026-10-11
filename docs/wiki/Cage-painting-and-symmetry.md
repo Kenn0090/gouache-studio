@@ -62,3 +62,5 @@ Mirrored dabs are true mirror images, so shaped and rotated brush tips flip the 
 In **3D Paint**, the radial control highlights its active copy count and axis. **Show guides** displays spokes and a ring around that axis, using the same centre offsets as your strokes.
 
 **Show copy cursors** previews mirrored and radial brush footprints on visible mesh surfaces while hovering or painting. It is separate from **Show guides**: hide the planes and radial ring while keeping the copy cursors visible. Copy cursors disappear during navigation or when leaving the viewport.
+
+**Radial rays and the centre (0.57).** In the 2D canvas, type the number of rays in the options bar (2 to 128); the ↺ button next to it resets the symmetry. Hover the blue centre point: it lights up, the brush circle hides, and a pop-out offers **Reset centre**, the rays and **Reset all symmetry**. Drag the point to move it.

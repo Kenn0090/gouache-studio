@@ -72,3 +72,5 @@ The app can't be reloaded by accident any more: **F5** does nothing and **Ctrl+R
 
 ## Saving
 **Ctrl+S** saves a `.gouache` file, which keeps everything: layers, maps, masks, filter layers, text, gradients, animation and the 3D model. The status bar shows where the file is saved (click it to see it in Explorer), and the top of the **File** menu says so too. The File menu also lists your **recent Paint documents** and **recent 3D Paint projects**, each with its folder and when it was saved; **All recent files…** shows the whole list, with **Show in folder**. **Autosave** keeps recovery copies every few minutes (see [Preferences](Preferences-and-performance.md#autosave-and-backups)). See [Files, saving and export](Files-and-export.md) for PSD and other formats.
+
+**Storyboard template (0.57).** In **New document**, the Canvas section has a **Storyboard** template: choose the panels per page, the panel shape, caption lines and a title strip. You get a locked "Storyboard frames" layer and an empty "Sketch" layer to draw on.
