@@ -108,6 +108,7 @@
     "bake/bake-gpu",
     "bake/uv-artist",
     "bake/uv-unwrap",
+    "bake/uv-pack",
     "bake/bake-ui",
     "bake/bake-tab",
     "bake/bake-highview",

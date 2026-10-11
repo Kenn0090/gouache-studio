@@ -25,11 +25,17 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
    for(let i=0;i<n;i++){const a=i*2,b=i*2+1,c=i*2+2,d=i*2+3;I.push(a,c,b,b,c,d);}
    const sp={name:'spiral',pos:Float32Array.from(P),nrm:new Float32Array(P.length).map((v,i)=>i%3===2?1:0),idx:Uint32Array.from(I),uv:Float32Array.from(UV),tris:I.length/3,noUV:false};
    const sc=G.uvOverlapCheck(sp);out.spiral={faces:sc.faces,folded:sc.folded};
+   /* shape-aware packing: an L-shaped piece with small squares that fit into its corner */
+   const sq=(w)=>({pts:Float64Array.from([0,0,w,0,w,w,0,w]),tris:[[0,1,2],[0,2,3]],w,h:w});
+   const L={pts:Float64Array.from([0,0,1,0,1,.5,.5,.5,.5,1,0,1]),tris:[[0,1,2],[0,2,3],[0,3,4],[0,4,5]],w:1,h:1};
+   const shapes=[L,sq(.45),sq(.45),sq(.45),sq(.45)],boxes=shapes.map(s=>({w:s.w,h:s.h})),base=G.uwPack(boxes,1024,8,0,{rotate:true}),sp=G.uwShapePack(shapes,boxes,1024,8,{rotate:true},base);
+   out.shape={base:+base.scale.toFixed(3),shape:sp?+sp.scale.toFixed(3):null};
    return out;});
  console.log(JSON.stringify(r));
  ok(r.bucket.islands<=10,'the bucket is cut into a handful of pieces ('+r.bucket.islands+')');
  ok(r.bucket.pct<3,'the bucket lies flat with almost no overlap ('+r.bucket.pct+'% of faces)');
  ok(r.spiral.faces>0&&r.spiral.folded>0,'the overlap check sees a piece that covers itself ('+JSON.stringify(r.spiral)+')');
+ ok(r.shape.shape&&r.shape.shape>r.shape.base*1.05,'pieces tuck into the corner of an L-shaped piece ('+JSON.stringify(r.shape)+')');
  ok(errs.length===0,'no page errors '+errs.join('|'));
  await b.close();console.log(fails?'FAILED '+fails:'ALL PASSED');process.exit(fails?1:0);
 })();

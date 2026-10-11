@@ -218,27 +218,49 @@ function uwCutSegment(m,topo,opt,onStep){const {T,tw,deg,nx,ny,nz,area}=topo,P=m
   return {chart,charts,ctx:{adj,te,cut,ea,eb,e0,e1,cost,cnt,ve,onCut:(()=>{const o=new Uint8Array(Wn);for(let e=0;e<E;e++)if(cut[e]){o[ea[e]]=1;o[eb[e]]=1;}return o;})()}};}
 
 /* cut a chart further: a slit from its most stretched corner out to the nearest seam or border, along hard edges where it can; then the pieces that result */
-function uwSlit(m,topo,C,ctx,seg,F,byScale){const {tw,wv}=topo,{adj,te,cut,ea,eb,e0,e1,cost,cnt,ve,onCut}=ctx,chart=seg.chart,id=C.id,en=uwChartEnergy(m,F,topo);let sv=byScale?en.vs:en.ve;if(byScale==='overlap'){const fl=new Uint8Array(F.tris.length);uwSelfOverlap(F,fl);sv=new Float64Array(F.verts.length);F.tris.forEach((t,i)=>{if(fl[i])for(const q of t)sv[q]+=1+Math.min(1,en.ve[q]*.001);});}
+function uwSlit(m,topo,C,ctx,seg,F,byScale){const {tw,wv}=topo,{adj,te,cut,ea,eb,e0,e1,cost,cnt,ve,onCut}=ctx,chart=seg.chart,id=C.id,en=uwChartEnergy(m,F,topo);let sv=byScale?en.vs:en.ve;if(byScale==='overlap'){const fl=new Uint8Array(F.tris.length);uwSelfOverlap(F,fl);sv=new Float64Array(F.verts.length);
+    /* where the cloth lies on itself, the surface is a saddle (more angle around a point than a plane has: the armpit between arm and body): the cut starts at the middle of the saddle */
+    const ang=uwCornerAngles(m,topo),asum=new Map(),cnts=new Map();for(const t of C.tris)for(let k=0;k<3;k++){const w=tw[t*3+k];asum.set(w,(asum.get(w)||0)+ang[t*3+k]);}
+    const sad=w=>{const a=asum.get(w);return a===undefined||onCut[w]?0:Math.max(0,a-2*Math.PI);};const K=new Map();
+    for(const w of asum.keys()){let q=sad(w);for(let i=cnt[w];i<cnt[w+1];i++){const e=ve[i],o=ea[e]===w?eb[e]:ea[e];q+=sad(o)*.6;}K.set(w,q);}
+    const flagged=new Set();F.tris.forEach((t,i)=>{if(fl[i])for(const q of t)flagged.add(wv[F.verts[q]]);});
+    F.verts.forEach((v,i)=>{const w=wv[v];sv[i]=(flagged.has(w)?1:0)*(1e-6+(K.get(w)||0));});}
   let bi=-1,bv=0;for(let i=0;i<sv.length;i++){const w=wv[F.verts[i]];if(onCut[w])continue;if(sv[i]>bv){bv=sv[i];bi=i;}}
   if(bi<0)return null;const start=wv[F.verts[bi]];
   /* Dijkstra inside the chart from that corner to a corner that touches a seam or border */
   const inC=new Set(C.tris),dist=new Map([[start,0]]),prev=new Map(),h=uwHeap();h.push(0,start);let hit=-1;
-  while(h.size()){const [d,w]=h.pop();if(d>dist.get(w))continue;if(w!==start&&onCut[w]){hit=w;break;}
+  /* a saddle is opened to the edge of the piece (a side seam), not to the nearest seam a step away */
+  let edgeV=null;if(byScale==='overlap'){edgeV=new Set();for(const t of C.tris)for(let k=0;k<3;k++){const o=adj[t*3+k];if(o<0||!inC.has(o)){edgeV.add(tw[t*3+k]);edgeV.add(tw[t*3+(k+1)%3]);}}}
+  while(h.size()){const [d,w]=h.pop();if(d>dist.get(w))continue;if(w!==start&&(edgeV?edgeV.has(w):onCut[w])){hit=w;break;}
     for(let i=cnt[w];i<cnt[w+1];i++){const e=ve[i];const t0=e0[e],t1=e1[e];if(!(inC.has(t0)||(t1>=0&&inC.has(t1))))continue;if(cut[e])continue;const o=ea[e]===w?eb[e]:ea[e],nd=d+cost[e];if(nd<(dist.has(o)?dist.get(o):1e30)){dist.set(o,nd);prev.set(o,[w,e]);h.push(nd,o);}}}
-  if(hit<0)return null;let w=hit,n=0;while(w!==start){const [p,e]=prev.get(w);cut[e]=1;onCut[ea[e]]=1;onCut[eb[e]]=1;w=p;n++;}
+  if(hit<0)return null;let w=hit,n=0;const undoL=[];while(w!==start){const [p,e]=prev.get(w);undoL.push([e,onCut[ea[e]],onCut[eb[e]],cut[e]]);cut[e]=1;onCut[ea[e]]=1;onCut[eb[e]]=1;w=p;n++;}
+  const undo=()=>{for(let i=undoL.length-1;i>=0;i--){const [e,a,b,c]=undoL[i];cut[e]=c;onCut[ea[e]]=a;onCut[eb[e]]=b;}};
   /* the pieces now */
   const out=[],seen=new Set();let nid=0;
   for(const s0 of C.tris){if(seen.has(s0))continue;const P2={id:-1,tris:[],mat:C.mat,nx:0,ny:0,nz:0,area:0,kids:null},st=[s0];seen.add(s0);
     while(st.length){const t=st.pop();P2.tris.push(t);P2.nx+=topo.nx[t]*topo.area[t];P2.ny+=topo.ny[t]*topo.area[t];P2.nz+=topo.nz[t]*topo.area[t];P2.area+=topo.area[t];
       for(let k=0;k<3;k++){const o=adj[t*3+k];if(o>=0&&inC.has(o)&&!seen.has(o)&&!cut[te[t*3+k]]){seen.add(o);st.push(o);}}}
     out.push(P2);}
-  return out;}
-function* uwCutRefineG(m,topo,opt,C,seg,depth,hist){depth=depth||0;const F=yield* uwFlattenG(m,topo,C,opt),lim=opt.stretchMax||1.8;
-  if(C.tris.length<10||depth>=opt.maxSlits)return [{C,F}];const st=uwChartStretch(m,F),ov=uwSelfOverlap(F);if(st<=lim&&ov<(opt.overlapMax===undefined?.012:opt.overlapMax))return [{C,F}];
-  /* more slits only while they help: three in a row that change nothing end it */
-  const score=st+10*ov;if(hist&&score>hist.score*.97){hist={score:Math.min(hist.score,score),bad:hist.bad+1};if(hist.bad>=3)return [{C,F}];}else hist={score,bad:0};
-  const parts=uwSlit(m,topo,C,seg.ctx,seg,F,st<=lim?(ov>.012?'overlap':true):false);if(!parts)return [{C,F}];
-  const out=[];for(const c of parts)for(const x of yield* uwCutRefineG(m,topo,opt,c,seg,depth+1,hist))out.push(x);return out;}
+  out.undo=undo;return out;}
+function* uwCutRefineG(m,topo,opt,C,seg,depth){depth=depth||0;const lim=opt.stretchMax||1.8,thr=opt.overlapMax===undefined?.012:opt.overlapMax,undos=[];
+  let cur=C,F,best=null,bad=0,last=0;
+  for(;;){F=yield* uwFlattenG(m,topo,cur,opt);if(cur.tris.length<10||depth+undos.length>=opt.maxSlits)break;
+    const st=uwChartStretch(m,F),ov=uwSelfOverlap(F),score=st+10*ov;last=score;
+    if(!best||score<best.score*.99){best={C:cur,F,score,n:undos.length};bad=0;}else bad++;
+    if(st<=lim&&ov<thr)break;
+    /* more cuts only while they help: a few in a row that change nothing end it */
+    if(bad>=(opt.slitPatience||5))break;
+    const parts=uwSlit(m,topo,cur,seg.ctx,seg,F,st<=lim?(ov>.012?'overlap':true):false);if(!parts)break;
+    if(parts.length>1){
+      /* a cut that divides the piece (a side seam: front and back): kept only when a lot overlapped and the pieces lie clearly flatter */
+      if(st<=lim&&ov<(opt.splitOverlap||.08)){parts.undo();break;}
+      const out=[];for(const c of parts)for(const x of yield* uwCutRefineG(m,topo,opt,c,seg,depth+undos.length+1))out.push(x);
+      if(st<=lim){let ow=0,tt=0;for(const x of out){const n=x.C.tris.length;ow+=uwSelfOverlap(x.F)*n;tt+=n;}if(ow/Math.max(tt,1)>ov*.6){parts.undo();break;}}
+      return out;}
+    undos.push(parts.undo);cur=parts[0];}
+  /* the last layout is not the best one seen (a cut made it worse): take those cuts back */
+  if(best&&best.C!==cur&&best.score<last*.97){while(undos.length>best.n)undos.pop()();return [{C:best.C,F:best.F}];}
+  return [{C:cur,F}];}
 
 /* ---- pelts and sewing patterns: find the closed loops (0.56) ----
    Measure how far every point of a shell is from its biggest opening (the hem, say) and cut the shell into rings of equal distance. Following the rings

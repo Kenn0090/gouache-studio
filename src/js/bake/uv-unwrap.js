@@ -246,6 +246,8 @@ function uwLayout(m,res,optIn){const opt=Object.assign({},res.opt,optIn||{}),{to
         if(!fs.some(f=>f<.98))break;const nb=idxs.map((ci,bi)=>({w:fit[ci].w*fs[bi],h:fit[ci].h*fs[bi]})),p2=uwPack(nb,opt.size,pad,pseed,opt);
         if(p2.util<=pack.util*1.03)break;
         idxs.forEach((ci,bi)=>{const F=fit[ci],f=fs[bi];if(f<1){for(let q=0;q<F.pts.length;q++)F.pts[q]*=f;F.w*=f;F.h*=f;}});boxes.splice(0,boxes.length,...nb);pack=p2;}}
+    /* the real outlines, not their boxes: pieces fill each other's corners */
+    if(opt.shapePack!==false&&idxs.length>=3&&idxs.length<=400){const sp=uwShapePack(idxs.map(ci=>({pts:fit[ci].pts,tris:flats[ci].tris,w:fit[ci].w,h:fit[ci].h})),boxes,opt.size,pad,opt,pack);if(sp)pack=sp;}
     idxs.forEach((ci,bi)=>{const p=pack.pos[bi]||{x:0,y:0,rot:false};placed[ci]={x:p.x,y:p.y,rot:p.rot,s:pack.scale,gap:pack.gap};});
     report.push({mats:grp,util:pack.util,scale:pack.scale});util+=pack.util;sumScale+=pack.scale;}
   /* the uv of every chart corner */
