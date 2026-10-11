@@ -32,7 +32,7 @@ function uwShapeTry(shapes,order,s,G,m,allowRot){const WG=((G+31)>>5)+1,occ=new 
     if(!best)return null;uwShapePlace(occ,WG,best.R,best.x,best.y);pos[i]={x:best.x,y:best.y,rot:best.rot===1};}
   return pos;}
 /* shapes: [{pts,tris,w,h}] in model units (as the boxes); base: the box packer's answer. Returns a pack like uwPack's, or null when it does not help. */
-function uwShapePack(shapes,boxes,size,padPx,opt,base){const n=shapes.length,G=n>60?384:512,gapC=padPx/size*G,m=Math.max(1,Math.round(gapC/2)),allowRot=opt.rotate!==false,t0=performance.now(),limit=opt.shapeMs||6000;
+function uwShapePack(shapes,boxes,size,padPx,opt,base){const n=shapes.length,G=n>60?384:512,gapC=padPx/size*G,m=Math.max(1,Math.round(gapC/2)),allowRot=opt.rotate!==false,t0=performance.now(),limit=opt.shapeMs||3000;
   const areaOf=F=>{let a=0;for(const [p,q,r] of F.tris)a+=Math.abs((F.pts[q*2]-F.pts[p*2])*(F.pts[r*2+1]-F.pts[p*2+1])-(F.pts[r*2]-F.pts[p*2])*(F.pts[q*2+1]-F.pts[p*2+1]))/2;return a;};
   const ar=shapes.map(areaOf),order=shapes.map((_,i)=>i).sort((a,b)=>ar[b]-ar[a]);let totalShape=0;for(const a of ar)totalShape+=a;
   const hi0=Math.sqrt(1/Math.max(totalShape,1e-12))*.98;let lo=base.scale,hi=Math.min(base.scale*1.7,hi0),best=null,bs=0;
