@@ -101,7 +101,7 @@ function* uwFlattenG(m,topo,C,opt){const P=m.pos,I=m.idx,{tw,deg}=topo,vid=new M
   let U=X,V=Y,method='plane';
   if(dev<Math.cos(opt.flat*Math.PI/180)&&n>3&&n<=opt.lscmMax){const r=yield* uwLSCMG(m,cv,tr,X,Y,opt);if(r){U=r.u;V=r.v;method='lscm';}}
   /* a conformal map of a bucket shape lies on itself: lay the cloth flat instead (triangle after triangle), then relax */
-  if(topo.arap&&opt.unfold&&opt.unroll!==false&&n>40&&tr.length>60){const ov=uwSelfOverlap({tris:tr,u:U,v:V});
+  if(topo.arap&&opt.unfold&&opt.unroll!==false&&n>14&&tr.length>24){const ov=uwSelfOverlap({tris:tr,u:U,v:V});
     if(ov>(opt.overlapMax===undefined?.012:opt.overlapMax)){
       const X3=new Float64Array(n*3);for(let i=0;i<n;i++){X3[i*3]=P[cv[i]*3];X3[i*3+1]=P[cv[i]*3+1];X3[i*3+2]=P[cv[i]*3+2];}
       const tw2=new Int32Array(tr.length*3);tr.forEach((l,i)=>{tw2[i*3]=l[0];tw2[i*3+1]=l[1];tw2[i*3+2]=l[2];});

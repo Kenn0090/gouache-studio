@@ -65,7 +65,7 @@ function uwChartEnergy(m,F){const P=m.pos,{verts,tris,u,v}=F,n=tris.length,E=new
   for(let i=0;i<n;i++){const [a,b,c]=tris[i];let e;if(E[i]<0||SG[i]!==maj)e=400;else e=E[i]*k;/* 400 = a stretch of 20 */s2+=e*A3[i];const ex=Math.max(0,e-1)*A3[i];ve[a]+=ex;ve[b]+=ex;ve[c]+=ex;if(A3[i]>0&&AA[i]>0){const dv=Math.abs(Math.log(AA[i]/A3[i]/k))*A3[i];vs[a]+=dv;vs[b]+=dv;vs[c]+=dv;}}
   return {stretch:a3>0?Math.sqrt(s2/a3):1,ve,vs};}
 /* how much of a flattened chart lies on top of itself: the share of covered pixels that two triangles reach (a spiral has no flipped triangles and still overlaps) */
-function uwSelfOverlap(F,flags){const {tris,u,v}=F,n=tris.length;if(n<30)return 0;let x0=1e30,y0=1e30,x1=-1e30,y1=-1e30;for(let i=0;i<u.length;i++){if(u[i]<x0)x0=u[i];if(u[i]>x1)x1=u[i];if(v[i]<y0)y0=v[i];if(v[i]>y1)y1=v[i];}
+function uwSelfOverlap(F,flags){const {tris,u,v}=F,n=tris.length;if(n<20)return 0;let x0=1e30,y0=1e30,x1=-1e30,y1=-1e30;for(let i=0;i<u.length;i++){if(u[i]<x0)x0=u[i];if(u[i]>x1)x1=u[i];if(v[i]<y0)y0=v[i];if(v[i]>y1)y1=v[i];}
   const S=256,sc=(S-2)/Math.max(x1-x0,y1-y0,1e-12),cov=new Uint8Array(S*S);let covered=0,over=0;
   for(let i=0;i<n;i++){const [a,b,c]=tris[i],ax=(u[a]-x0)*sc+1,ay=(v[a]-y0)*sc+1,bx=(u[b]-x0)*sc+1,by=(v[b]-y0)*sc+1,cx=(u[c]-x0)*sc+1,cy=(v[c]-y0)*sc+1,den=(by-cy)*(ax-cx)+(cx-bx)*(ay-cy);if(Math.abs(den)<1e-9)continue;
     const xa=Math.max(0,Math.floor(Math.min(ax,bx,cx))),xb=Math.min(S-1,Math.ceil(Math.max(ax,bx,cx))),ya=Math.max(0,Math.floor(Math.min(ay,by,cy))),yb=Math.min(S-1,Math.ceil(Math.max(ay,by,cy)));
@@ -242,25 +242,122 @@ function uwSlit(m,topo,C,ctx,seg,F,byScale){const {tw,wv}=topo,{adj,te,cut,ea,eb
       for(let k=0;k<3;k++){const o=adj[t*3+k];if(o>=0&&inC.has(o)&&!seen.has(o)&&!cut[te[t*3+k]]){seen.add(o);st.push(o);}}}
     out.push(P2);}
   out.undo=undo;return out;}
-function* uwCutRefineG(m,topo,opt,C,seg,depth){depth=depth||0;const lim=opt.stretchMax||1.8,thr=opt.overlapMax===undefined?.012:opt.overlapMax,undos=[];
+function* uwCutRefineG(m,topo,opt,C,seg,depth,sdepth){depth=depth||0;sdepth=sdepth||0;const lim=opt.stretchMax||1.8,thr=opt.overlapMax===undefined?.012:opt.overlapMax,none=opt.noOverlap===undefined?.004:opt.noOverlap,undos=[];
   let cur=C,F,best=null,bad=0,last=0;
-  for(;;){F=yield* uwFlattenG(m,topo,cur,opt);if(cur.tris.length<10||depth+undos.length>=opt.maxSlits)break;
+  /* still lying on itself after the relief cuts: cut it where the two layers are apart (a seam), and flatten the pieces */
+  const split=function*(){if(!best||best.ov<=none||best.ov*best.C.tris.length<(opt.splitMinTris||10)||sdepth>=(opt.splitDepth||6)||best.C.tris.length<(opt.splitMinChart||40))return null;
+    while(undos.length>best.n)undos.pop()();
+    for(let rank=-1;rank<(opt.splitTries||2);rank++){const sp=rank<0?(opt.sideSeams===false?null:uwSideSeams(m,topo,best.C,seg.ctx,opt)):uwSplitByOverlap(m,topo,best.C,seg.ctx,best.F,opt,rank);if(!sp)continue;
+      const out=[];for(const c of sp)for(const x of yield* uwCutRefineG(m,topo,opt,c,seg,depth+undos.length+1,sdepth+1))out.push(x);
+      let ow=0,tt=0;for(const x of out){const n=x.C.tris.length;ow+=uwSelfOverlap(x.F)*n;tt+=n;}
+      if(ow/Math.max(tt,1)<=best.ov*.6||ow/Math.max(tt,1)<=none)return out;sp.undo();}
+    return null;};
+  const fopt=sdepth>0?Object.assign({},opt,{unrollStarts:1}):opt;/* pieces cut out of a bigger one are flattened with one start only: it is quicker */
+  for(;;){F=yield* uwFlattenG(m,topo,cur,fopt);if(cur.tris.length<10||depth+undos.length>=opt.maxSlits)break;
     const st=uwChartStretch(m,F),ov=uwSelfOverlap(F),score=st+10*ov;last=score;
-    if(!best||score<best.score*.99){best={C:cur,F,score,n:undos.length};bad=0;}else bad++;
-    if(st<=lim&&ov<thr)break;
+    if(!best||score<best.score*.99){best={C:cur,F,score,ov,n:undos.length};bad=0;}else bad++;
+    if(st<=lim&&ov<=none)break;
+    if(st<=lim&&ov<thr&&sdepth>=(opt.splitDepth||6))break;
     /* more cuts only while they help: a few in a row that change nothing end it */
     if(bad>=(opt.slitPatience||5))break;
     const parts=uwSlit(m,topo,cur,seg.ctx,seg,F,st<=lim?(ov>.012?'overlap':true):false);if(!parts)break;
     if(parts.length>1){
       /* a cut that divides the piece (a side seam: front and back): kept only when a lot overlapped and the pieces lie clearly flatter */
       if(st<=lim&&ov<(opt.splitOverlap||.08)){parts.undo();break;}
-      const out=[];for(const c of parts)for(const x of yield* uwCutRefineG(m,topo,opt,c,seg,depth+undos.length+1))out.push(x);
+      const out=[];for(const c of parts)for(const x of yield* uwCutRefineG(m,topo,opt,c,seg,depth+undos.length+1,sdepth))out.push(x);
       if(st<=lim){let ow=0,tt=0;for(const x of out){const n=x.C.tris.length;ow+=uwSelfOverlap(x.F)*n;tt+=n;}if(ow/Math.max(tt,1)>ov*.6){parts.undo();break;}}
       return out;}
     undos.push(parts.undo);cur=parts[0];}
+  if(!best)return [{C:cur,F}];
+  const alt=yield* split();if(alt)return alt;
   /* the last layout is not the best one seen (a cut made it worse): take those cuts back */
-  if(best&&best.C!==cur&&best.score<last*.97){while(undos.length>best.n)undos.pop()();return [{C:best.C,F:best.F}];}
+  if(best.C!==cur&&best.score<last*.97){while(undos.length>best.n)undos.pop()();return [{C:best.C,F:best.F}];}
   return [{C:cur,F}];}
+
+/* pairs of triangles of a flattened chart that cover the same pixel (the one below, the one above): where the cloth lies on itself */
+function uwOverlapPairs(F,max){const {tris,u,v}=F,n=tris.length,pairs=[];if(n<30)return pairs;let x0=1e30,y0=1e30,x1=-1e30,y1=-1e30;for(let i=0;i<u.length;i++){if(u[i]<x0)x0=u[i];if(u[i]>x1)x1=u[i];if(v[i]<y0)y0=v[i];if(v[i]>y1)y1=v[i];}
+  const S=256,sc=(S-2)/Math.max(x1-x0,y1-y0,1e-12),first=new Int32Array(S*S).fill(-1),two=new Uint8Array(S*S);
+  for(let i=0;i<n;i++){const [a,b,c]=tris[i],ax=(u[a]-x0)*sc+1,ay=(v[a]-y0)*sc+1,bx=(u[b]-x0)*sc+1,by=(v[b]-y0)*sc+1,cx=(u[c]-x0)*sc+1,cy=(v[c]-y0)*sc+1,den=(by-cy)*(ax-cx)+(cx-bx)*(ay-cy);if(Math.abs(den)<1e-9)continue;
+    const xa=Math.max(0,Math.floor(Math.min(ax,bx,cx))),xb=Math.min(S-1,Math.ceil(Math.max(ax,bx,cx))),ya=Math.max(0,Math.floor(Math.min(ay,by,cy))),yb=Math.min(S-1,Math.ceil(Math.max(ay,by,cy)));
+    for(let y=ya;y<=yb;y++)for(let x=xa;x<=xb;x++){const qx=x+.5-cx,qy=y+.5-cy,w1=((by-cy)*qx+(cx-bx)*qy)/den,w2=((cy-ay)*qx+(ax-cx)*qy)/den,w3=1-w1-w2;if(w1>0&&w2>0&&w3>0){const p=y*S+x;if(first[p]<0)first[p]=i;else if(!two[p]&&pairs.length<max){two[p]=1;pairs.push([first[p],i]);}}}}
+  return pairs;}
+/* cut the chart where the two layers that lie on each other are apart on the model: the shortest seam (a minimum cut, edges costing what the cut tree charges
+   for them, so hard edges are cheap) between the triangles below and the triangles above. The chart falls into pieces, each flattened on its own. */
+function uwSplitByOverlap(m,topo,C,ctx,F,opt,rank){opt=opt||{};rank=rank||0;const pairs=uwOverlapPairs(F,4000);if(pairs.length<6)return null;
+  const tris=C.tris,n=tris.length,{adj,te,cut,cost,ea,eb}=ctx,lt=new Map();tris.forEach((t,i)=>lt.set(t,i));
+  /* one overlap at a time: the biggest connected run of overlapping triangles */
+  const inPair=new Uint8Array(n);for(const [i,j] of pairs){inPair[i]=1;inPair[j]=1;}const blob=new Int32Array(n).fill(-1),bsz=[];
+  for(let s0=0;s0<n;s0++){if(!inPair[s0]||blob[s0]>=0)continue;const id=bsz.length,st=[s0];blob[s0]=id;let c=0;while(st.length){const i=st.pop();c++;for(let k=0;k<3;k++){const o=adj[tris[i]*3+k];if(o<0)continue;const j=lt.get(o);if(j!==undefined&&inPair[j]&&blob[j]<0){blob[j]=id;st.push(j);}}}bsz.push(c);}
+  const bord=bsz.map((c,q)=>q).sort((a,b)=>bsz[b]-bsz[a]);if(rank>=bord.length)return null;const bb=bord[rank];
+  /* which sheet every overlapping triangle belongs to: the triangle next to it is on the same sheet, the one it lies on is on the other */
+  const partner=new Map();for(const [i,j] of pairs)if(blob[i]===bb||blob[j]===bb){(partner.get(i)||partner.set(i,[]).get(i)).push(j);(partner.get(j)||partner.set(j,[]).get(j)).push(i);}
+  const vote=new Int8Array(n);for(const [i0] of pairs){if(blob[i0]!==bb||vote[i0])continue;vote[i0]=1;const q=[i0];
+    while(q.length){const i=q.pop();for(let k=0;k<3;k++){const o=adj[tris[i]*3+k];if(o<0)continue;const j=lt.get(o);if(j!==undefined&&partner.has(j)&&!vote[j]){vote[j]=vote[i];q.push(j);}}
+      for(const j of partner.get(i)||[])if(!vote[j]){vote[j]=-vote[i];q.push(j);}}}
+  let ns=0,nt=0;for(let i=0;i<n;i++){if(vote[i]>0)ns++;else if(vote[i]<0)nt++;}
+  /* the smaller sheet is the one that is cut loose; it is grown by a couple of rings so the seam around it is a smooth loop, not the ragged edge of the overlap */
+  if(ns<nt)for(let i=0;i<n;i++)vote[i]=-vote[i];
+  {let ring=[];for(let i=0;i<n;i++)if(vote[i]<0)ring.push(i);for(let r=0;r<(opt.splitGrow===undefined?1:opt.splitGrow);r++){const nx2=[];for(const i of ring)for(let k=0;k<3;k++){const o=adj[tris[i]*3+k];if(o<0)continue;const j=lt.get(o);if(j!==undefined&&vote[j]===0){vote[j]=-1;nx2.push(j);}}ring=nx2;}}
+  ns=0;nt=0;
+  const edges=[];for(let i=0;i<n;i++){const t=tris[i];for(let k=0;k<3;k++){const o=adj[t*3+k];if(o<0)continue;const j=lt.get(o);if(j===undefined||j<i)continue;const e=te[t*3+k];if(e<0||cut[e])continue;edges.push([i,j,Math.max(cost[e],1e-9)]);}}
+  const SRC=n,SNK=n+1,BIG=1e9;for(let i=0;i<n;i++){if(vote[i]>0){edges.push([SRC,i,BIG]);ns++;}else if(vote[i]<0){edges.push([i,SNK,BIG]);nt++;}}
+  if(!ns||!nt)return null;const side=uwMaxFlowSide(n,edges,SRC,SNK);
+  /* the pieces: connected runs of triangles on one side; the edges between the two sides become seams */
+  const comp=new Int32Array(n).fill(-1),parts=[];
+  for(let s0=0;s0<n;s0++){if(comp[s0]>=0)continue;const id=parts.length,P2={id:-1,tris:[],mat:C.mat,nx:0,ny:0,nz:0,area:0,kids:null},st=[s0];comp[s0]=id;
+    while(st.length){const i=st.pop(),t=tris[i];P2.tris.push(t);P2.nx+=topo.nx[t]*topo.area[t];P2.ny+=topo.ny[t]*topo.area[t];P2.nz+=topo.nz[t]*topo.area[t];P2.area+=topo.area[t];
+      for(let k=0;k<3;k++){const o=adj[t*3+k];if(o<0)continue;const j=lt.get(o);if(j===undefined||comp[j]>=0||side[j]!==side[i]||cut[te[t*3+k]])continue;comp[j]=id;st.push(j);}}
+    parts.push(P2);}
+  /* a fragment smaller than a few percent of the chart is not worth a seam: it joins the piece it touches most */
+  const minT=opt.splitMinTrisPiece||10;for(let pass=0;pass<4;pass++){let any=false;
+    for(let q=0;q<parts.length;q++){const P2=parts[q];if(!P2||P2.tris.length>=minT)continue;const touch=new Map();
+      for(const t of P2.tris){const i=lt.get(t);for(let k=0;k<3;k++){const o=adj[t*3+k];if(o<0)continue;const j=lt.get(o);if(j===undefined||comp[j]===comp[i]||cut[te[t*3+k]])continue;touch.set(comp[j],(touch.get(comp[j])||0)+1);}}
+      let bq=-1,bc=0;for(const [c2,c] of touch)if(c>bc){bc=c;bq=c2;}if(bq<0||!parts[bq])continue;
+      for(const t of P2.tris){comp[lt.get(t)]=bq;parts[bq].tris.push(t);parts[bq].nx+=topo.nx[t]*topo.area[t];parts[bq].ny+=topo.ny[t]*topo.area[t];parts[bq].nz+=topo.nz[t]*topo.area[t];parts[bq].area+=topo.area[t];}parts[q]=null;any=true;}
+    if(!any)break;}
+  const live=parts.filter(Boolean);live.forEach((P2,i)=>{for(const t of P2.tris)comp[lt.get(t)]=i;});parts.length=0;for(const P2 of live)parts.push(P2);
+  if(parts.length<2||parts.length>6)return null;
+  {let small=1e9;for(const q of parts)small=Math.min(small,q.tris.length);if(small<(opt.splitPatchMin||10))return null;}
+  const {onCut}=ctx,undoL=[];for(let i=0;i<n;i++){const t=tris[i];for(let k=0;k<3;k++){const o=adj[t*3+k];if(o<0)continue;const j=lt.get(o);if(j===undefined||comp[j]===comp[i])continue;const e=te[t*3+k];if(cut[e])continue;
+      undoL.push([e,onCut[ea[e]],onCut[eb[e]]]);cut[e]=1;onCut[ea[e]]=1;onCut[eb[e]]=1;}}
+  parts.undo=()=>{for(let i=undoL.length-1;i>=0;i--){const [e,a,b]=undoL[i];cut[e]=0;onCut[ea[e]]=a;onCut[eb[e]]=b;}};return parts;}
+
+/* a side seam: the way a tailor opens an armhole. Each opening of the chart that has another piece on its far side (a sleeve) is joined to the hem by a second
+   cut, from the point of the opening opposite to where the first cut leaves it. "Down" is the direction from the first cut to that point, so no up axis is
+   needed. The chart falls into front and back panels. */
+function uwSideSeams(m,topo,C,ctx,opt){opt=opt||{};const tris=C.tris,{te,cut,cost,ea,eb,cnt,ve,e0,e1,onCut}=ctx,I=m.idx,P=m.pos,inC=new Set(tris);
+  const wpos=new Map();for(const t of tris)for(let k=0;k<3;k++)if(!wpos.has(topo.tw[t*3+k]))wpos.set(topo.tw[t*3+k],I[t*3+k]*3);
+  const par=new Map(),fd=x=>{while(par.get(x)!==x){par.set(x,par.get(par.get(x)));x=par.get(x);}return x;};
+  const bedge=[];let hasNb=new Set();
+  for(const t of tris)for(let k=0;k<3;k++){const o=topo.adj[t*3+k];if(o>=0&&inC.has(o))continue;const e=te[t*3+k];if(e<0)continue;const a=ea[e],b=eb[e];bedge.push([a,b,o>=0]);for(const q of [a,b])if(!par.has(q))par.set(q,q);const x=fd(a),y=fd(b);if(x!==y)par.set(x,y);}
+  const loops=new Map();for(const [a,b,nb] of bedge){const r=fd(a);let L=loops.get(r);if(!L){L={vs:new Set(),nb:false};loops.set(r,L);}L.vs.add(a);L.vs.add(b);if(nb)L.nb=true;}
+  const list=[...loops.values()].sort((a,b)=>b.vs.size-a.vs.size);if(list.length<2)return null;const main=list[0];
+  /* where the existing cuts inside the chart reach each opening */
+  const inner=new Set();for(const t of tris)for(let k=0;k<3;k++){const e=te[t*3+k];if(e>=0&&cut[e]&&topo.adj[t*3+k]>=0&&inC.has(topo.adj[t*3+k])){inner.add(ea[e]);inner.add(eb[e]);}}
+  const dist=(a,b)=>{const pa=wpos.get(a),pb=wpos.get(b);return Math.hypot(P[pa]-P[pb],P[pa+1]-P[pb+1],P[pa+2]-P[pb+2]);};
+  const added=[];let nseam=0;
+  for(const L of list){if(L===main||!L.nb||L.vs.size<10)continue;
+    let p1=-1;for(const w of L.vs)if(inner.has(w)){p1=w;break;}if(p1<0)continue;
+    let p2=-1,bd=-1;for(const w of L.vs){const d=dist(p1,w);if(d>bd){bd=d;p2=w;}}if(p2<0||bd<1e-9)continue;
+    const a=wpos.get(p1),b=wpos.get(p2),dx=(P[b]-P[a])/bd,dy=(P[b+1]-P[a+1])/bd,dz=(P[b+2]-P[a+2])/bd;
+    /* the cheapest way from p2 to the main opening, going mostly along "down" and ending below p2 */
+    const D=new Map([[p2,0]]),prev=new Map(),h=uwHeap();h.push(0,p2);let hit=-1;
+    while(h.size()){const [d,w]=h.pop();if(d>D.get(w))continue;
+      if(w!==p2&&main.vs.has(w)){const q=wpos.get(w);if((P[q]-P[b])*dx+(P[q+1]-P[b+1])*dy+(P[q+2]-P[b+2])*dz>bd*.3){hit=w;break;}}
+      for(let i=cnt[w];i<cnt[w+1];i++){const e=ve[i];if(!(inC.has(e0[e])||(e1[e]>=0&&inC.has(e1[e]))))continue;if(cut[e]&&!(main.vs.has(ea[e])&&main.vs.has(eb[e])))continue;
+        const o=ea[e]===w?eb[e]:ea[e],qa=wpos.get(w),qb=wpos.get(o);if(qb===undefined)continue;const ex=P[qb]-P[qa],ey=P[qb+1]-P[qa+1],ez=P[qb+2]-P[qa+2],len=Math.hypot(ex,ey,ez)||1e-12,c=(ex*dx+ey*dy+ez*dz)/len;
+        const nd=d+len*(c<-.2?10:1+3*(1-Math.max(0,c)))*(cost[e]/Math.max(len,1e-12)>0?1:1);if(nd<(D.has(o)?D.get(o):1e30)){D.set(o,nd);prev.set(o,[w,e]);h.push(nd,o);}}}
+    if(hit<0)continue;let w=hit;while(w!==p2){const [pw,e]=prev.get(w);if(!cut[e])added.push([e,cut[e],onCut[ea[e]],onCut[eb[e]]]);w=pw;}nseam++;}
+  if(!nseam)return null;
+  for(const [e] of added){cut[e]=1;onCut[ea[e]]=1;onCut[eb[e]]=1;}
+  const undo=()=>{for(let i=added.length-1;i>=0;i--){const [e,c,a,b]=added[i];cut[e]=c;onCut[ea[e]]=a;onCut[eb[e]]=b;}};
+  /* the panels now */
+  const out=[],seen=new Set();
+  for(const s0 of tris){if(seen.has(s0))continue;const P2={id:-1,tris:[],mat:C.mat,nx:0,ny:0,nz:0,area:0,kids:null},st=[s0];seen.add(s0);
+    while(st.length){const t=st.pop();P2.tris.push(t);P2.nx+=topo.nx[t]*topo.area[t];P2.ny+=topo.ny[t]*topo.area[t];P2.nz+=topo.nz[t]*topo.area[t];P2.area+=topo.area[t];
+      for(let k=0;k<3;k++){const o=ctx.adj[t*3+k];if(o>=0&&inC.has(o)&&!seen.has(o)&&!cut[te[t*3+k]]){seen.add(o);st.push(o);}}}
+    out.push(P2);}
+  out.undo=undo;if(out.length<2){undo();return null;}return out;}
 
 /* ---- pelts and sewing patterns: find the closed loops (0.56) ----
    Measure how far every point of a shell is from its biggest opening (the hem, say) and cut the shell into rings of equal distance. Following the rings

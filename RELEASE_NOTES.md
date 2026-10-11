@@ -9,6 +9,7 @@
 - Check overlaps also finds a piece that covers itself.
 - Pieces are packed by their real shape, so small pieces fill the corners of big ones and the picture is used better (3 to 12 points more covered on the sample models).
 - Cloth bunched under an armpit gets a side seam, which lowers the overlap on jackets.
+- Clothing style avoids overlaps inside a piece: it adds side seams under the arms (front and back panels, like a sewing pattern) and cuts out any small sheet that still lies on another.
 
 # Gouache Studio 0.55.2
 
