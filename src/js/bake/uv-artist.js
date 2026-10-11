@@ -5,8 +5,8 @@
    "developable" (can lie flat without stretching: the angle defect at inner corners stays small), joining across soft edges first
    so the seams that are left sit on the hard edges. After flattening, a joined piece that still stretches too much is split
    back into the pieces it was made from. */
-const UW_CLOTH={angle:60,flat:20,artist:false,cut:true,straighten:true,defBudget:2.5,stretchMax:1.8,qMax:99,flex:0.3,smooth:false,coneThr:.9,flipTol:.04,maxSlits:60};
-const UW_ARTIST={angle:89,flat:20,artist:true,straighten:true,defBudget:2.5,stretchMax:2.2,qMax:99,flex:0.4};
+const UW_CLOTH={unfold:true,creaseDeg:55,creaseMin:30,angle:60,flat:20,artist:false,cut:true,straighten:true,defBudget:2.5,stretchMax:1.8,qMax:99,flex:0.3,smooth:false,coneThr:.9,flipTol:.04,maxSlits:60};
+const UW_ARTIST={unfold:true,angle:89,flat:20,artist:true,straighten:true,defBudget:2.5,stretchMax:2.2,qMax:99,flex:0.4};
 /* the angle at every triangle corner */
 function uwCornerAngles(m,topo){const P=m.pos,I=m.idx,T=topo.T,out=new Float32Array(T*3);
   for(let t=0;t<T;t++)for(let k=0;k<3;k++){const a=I[t*3+k]*3,b=I[t*3+(k+1)%3]*3,c=I[t*3+(k+2)%3]*3;
@@ -149,15 +149,17 @@ function uwSmoothCharts(m,topo,seg,opt,rounds){const {T,adj,tw,nx,ny,nz,area,deg
    hard edges where there are some. A piece that still stretches too much is cut again by the flatten step. */
 function uwCutSegment(m,topo,opt,onStep){const {T,tw,deg,nx,ny,nz,area}=topo,P=m.pos,I=m.idx,Wn=topo.W,mat=m.triMat||null,ang=uwCornerAngles(m,topo);
   /* triangle neighbours, but never across two materials */
-  const grp=opt.reeb===false?null:uwReebPieces(m,topo,opt);
-  const adj=Int32Array.from(topo.adj);if(mat||grp)for(let t=0;t<T;t++)for(let k=0;k<3;k++){const o=adj[t*3+k];if(o>=0&&((mat&&mat[o]!==mat[t])||(grp&&grp[o]!==grp[t])))adj[t*3+k]=-1;}
+  const grp=opt.reeb===false?null:uwReebPieces(m,topo,opt),crease=opt.creaseDeg?uwCreaseMask(m,topo,opt):null;
+  const adj=Int32Array.from(topo.adj);if(crease)for(let t=0;t<T;t++)for(let k=0;k<3;k++)if(crease[t*3+k])adj[t*3+k]=-1;
+  if(mat||grp)for(let t=0;t<T;t++)for(let k=0;k<3;k++){const o=adj[t*3+k];if(o>=0&&((mat&&mat[o]!==mat[t])||(grp&&grp[o]!==grp[t])))adj[t*3+k]=-1;}
   const WX=new Float64Array(Wn*3);for(let t=0;t<T;t++)for(let k=0;k<3;k++){const w=tw[t*3+k],v=I[t*3+k];WX[w*3]=P[v*3];WX[w*3+1]=P[v*3+1];WX[w*3+2]=P[v*3+2];}
   /* edges */
   const em=new Map(),ea=[],eb=[],e0=[],e1=[];const te=new Int32Array(T*3).fill(-1);
   for(let t=0;t<T;t++){if(deg[t])continue;for(let k=0;k<3;k++){const a=tw[t*3+k],b=tw[t*3+(k+1)%3],key=a<b?a*Wn+b:b*Wn+a;let e=em.get(key);if(e===undefined){e=ea.length;em.set(key,e);ea.push(a);eb.push(b);e0.push(t);e1.push(-1);}else if(e1[e]<0)e1[e]=t;else e1[e]=-2;te[t*3+k]=e;}}
+  const creaseEdge=(t,u)=>{if(!crease)return false;for(let k=0;k<3;k++)if(topo.adj[t*3+k]===u&&crease[t*3+k])return true;return false;};
   const E=ea.length,cut=new Uint8Array(E),len=new Float64Array(E),cost=new Float64Array(E),bnd=new Uint8Array(E);
   for(let e=0;e<E;e++){const a=ea[e],b=eb[e];len[e]=Math.hypot(WX[a*3]-WX[b*3],WX[a*3+1]-WX[b*3+1],WX[a*3+2]-WX[b*3+2]);
-    const border=e1[e]<0||(grp&&grp[e0[e]]!==grp[e1[e]])||(mat&&mat[e0[e]]!==mat[e1[e]]);bnd[e]=border?1:0;let hard=0;if(!border){const t=e0[e],u=e1[e],d=nx[t]*nx[u]+ny[t]*ny[u]+nz[t]*nz[u];hard=Math.min(1,Math.acos(Math.max(-1,Math.min(1,d)))*180/Math.PI/55);}
+    const border=e1[e]<0||(grp&&grp[e0[e]]!==grp[e1[e]])||(mat&&mat[e0[e]]!==mat[e1[e]])||(crease&&creaseEdge(e0[e],e1[e]));bnd[e]=border?1:0;let hard=0;if(!border){const t=e0[e],u=e1[e],d=nx[t]*nx[u]+ny[t]*ny[u]+nz[t]*nz[u];hard=Math.min(1,Math.acos(Math.max(-1,Math.min(1,d)))*180/Math.PI/55);}
     cost[e]=border?0:len[e]*(1+3*(1-hard));if(border)cut[e]=1;}
   /* vertex → edges */
   const cnt=new Int32Array(Wn+1);for(let e=0;e<E;e++){cnt[ea[e]+1]++;cnt[eb[e]+1]++;}for(let i=0;i<Wn;i++)cnt[i+1]+=cnt[i];const ve=new Int32Array(cnt[Wn]),fill=cnt.slice(0,Wn);for(let e=0;e<E;e++){ve[fill[ea[e]]++]=e;ve[fill[eb[e]]++]=e;}
@@ -235,6 +237,7 @@ function* uwCutRefineG(m,topo,opt,C,seg,depth){depth=depth||0;const F=yield* uwF
    Returns, for every triangle, the number of the piece it belongs to. */
 function uwReebPieces(m,topo,opt){const {T,tw,deg,area}=topo,Wn=topo.W,P=m.pos,I=m.idx,mat=m.triMat||null;
   const adj=Int32Array.from(topo.adj);if(mat)for(let t=0;t<T;t++)for(let k=0;k<3;k++){const o=adj[t*3+k];if(o>=0&&mat[o]!==mat[t])adj[t*3+k]=-1;}
+  const crease=opt.creaseDeg?uwCreaseMask(m,topo,opt):null;if(crease)for(let t=0;t<T;t++)for(let k=0;k<3;k++)if(crease[t*3+k])adj[t*3+k]=-1;
   const grp=new Int32Array(T).fill(-1);let ng=0;
   /* shells */
   const sh=new Int32Array(T).fill(-1);const shells=[];
@@ -282,7 +285,13 @@ function uwReebPieces(m,topo,opt){const {T,tw,deg,area}=topo,Wn=topo.W,P=m.pos,I
     for(const N of nodes){for(const o of N.up){if(cutLink.has(N.id+'>'+o))continue;const a=ff(N.id),b=ff(o);if(a!==b)pp[a]=b;}}
     /* small rings follow the bigger ring they were put with */
     for(const N of nodes){if(N.area<tot*minFrac){const r=pf(N.id);if(r!==N.id){const a=ff(N.id),b=ff(r);if(a!==b)pp[a]=b;}}}
-    const pid=new Map();for(const t of L){const r=ff(node.get(t));let g=pid.get(r);if(g===undefined){g=ng++;pid.set(r,g);}grp[t]=g;}}
+    const pid=new Map();for(const t of L){const r=ff(node.get(t));let g=pid.get(r);if(g===undefined){g=ng++;pid.set(r,g);}grp[t]=g;}
+    if(opt.reebCut!==false)uwSlideSplits(m,topo,adj,L,node,nodes,cutLink,grp,opt);
+    /* a piece that is only a sliver of the shell (a ring that happened to split twice) joins the piece it shares the most border with */
+    for(let pass=0;pass<4;pass++){const parea=new Map(),touch=new Map();for(const t of L){const g=grp[t];parea.set(g,(parea.get(g)||0)+area[t]);}
+      for(const t of L)for(let k=0;k<3;k++){const o=adj[t*3+k];if(o<0||grp[o]===grp[t])continue;const key=grp[t]+'>'+grp[o];touch.set(key,(touch.get(key)||0)+1);}
+      const move=new Map();for(const [g,a] of parea){if(a>=tot*(opt.reebSliver||.065))continue;let best=-1,bc=0;for(const [key,c] of touch){const [x,y]=key.split('>').map(Number);if(x===g&&c>bc){bc=c;best=y;}}if(best>=0&&parea.get(best)>a)move.set(g,best);}
+      if(!move.size)break;for(const t of L)if(move.has(grp[t]))grp[t]=move.get(grp[t]);}}
   /* the rings' borders are staircases: even them out (a triangle with two sides in another piece joins it) */
   for(let r=0;r<8;r++){let n=0;for(let t=0;t<T;t++){if(deg[t])continue;const g=grp[t],cs=[-1,-1,-1];let same=0;for(let k=0;k<3;k++){const o=adj[t*3+k];cs[k]=o>=0?grp[o]:-1;if(cs[k]===g)same++;}
       if(same>1)continue;let B=-1;for(let k=0;k<3;k++){if(cs[k]<0||cs[k]===g)continue;let c=0;for(let q=0;q<3;q++)if(cs[q]===cs[k])c++;if(c>=2){B=cs[k];break;}}
@@ -297,3 +306,55 @@ function uwCornerClasses(C,topo){const cx=topo.cutCtx,{adj,te,cut}=cx,{tw}=topo,
   for(let i=0;i<n;i++){const t=tris[i];for(let k=0;k<3;k++){const o=adj[t*3+k];if(o<0||cut[te[t*3+k]])continue;const j=lt.get(o);if(j===undefined)continue;
     for(const kk of [k,(k+1)%3]){const w=tw[t*3+kk];for(let q=0;q<3;q++)if(tw[o*3+q]===w){un(i*3+kk,j*3+q);break;}}}}
   const out=new Int32Array(n*3);for(let i=0;i<out.length;i++)out[i]=f(i);return out;}
+
+/* ---- sharp creases that run a long way are seams (0.56) ----
+   A cuff, a pocket flap, a collar, a zipper tape: each is outlined by a row of sharp edges (a pattern maker would cut right there).
+   Sharp edges (opt.creaseDeg, 70° by default) that join into a chain of at least a dozen edges become cuts. Returns a mask over triangle sides. */
+function uwCreaseMask(m,topo,opt){let deg=opt.creaseDeg||70,mask=null;/* a model that is creased everywhere (pleats, stitching) gets a higher threshold until the cuts are a few percent of its edges */
+  for(let i=0;i<5;i++){mask=uwCreaseMask1(m,topo,Object.assign({},opt,{creaseDeg:deg}));let n=0,tot=0;for(let q=0;q<mask.length;q++){if(topo.adj[q]>=0){tot++;if(mask[q])n++;}}if(!tot||n/tot<(opt.creaseShare||.045))break;deg+=10;}
+  return mask;}
+function uwCreaseMask1(m,topo,opt){const {T,tw,adj,nx,ny,nz,deg}=topo,I=m.idx,P=m.pos,Wn=topo.W,cdeg=opt.creaseDeg||70,mat=m.triMat||null;
+  const mask=new Uint8Array(T*3),cr=Math.cos(cdeg*Math.PI/180),par=new Int32Array(Wn);for(let i=0;i<Wn;i++)par[i]=i;const f=x=>{while(par[x]!==x){par[x]=par[par[x]];x=par[x];}return x;};
+  const list=[];let sum=0,cnt=0;
+  for(let t=0;t<T;t++){if(deg[t])continue;for(let k=0;k<3;k++){const o=adj[t*3+k];if(o<t||o<0)continue;const a=I[t*3+k]*3,b=I[t*3+(k+1)%3]*3,len=Math.hypot(P[a]-P[b],P[a+1]-P[b+1],P[a+2]-P[b+2]);sum+=len;cnt++;
+      if(nx[t]*nx[o]+ny[t]*ny[o]+nz[t]*nz[o]<cr){list.push([t,k,o,len]);const x=f(tw[t*3+k]),y=f(tw[t*3+(k+1)%3]);if(x!==y)par[x]=y;}}}
+  const avg=cnt?sum/cnt:0,cl=new Map(),ce=new Map();
+  for(const [t,k,o,len] of list){const r=f(tw[t*3+k]);cl.set(r,(cl.get(r)||0)+len);ce.set(r,(ce.get(r)||0)+1);}
+  const minE=opt.creaseMin||14;
+  for(const [t,k,o] of list){const r=f(tw[t*3+k]);if(ce.get(r)>=minE&&cl.get(r)>=avg*minE){mask[t*3+k]=1;/* the other side of the edge */for(let q=0;q<3;q++)if(adj[o*3+q]===t){mask[o*3+q]=1;break;}}}
+  return mask;}
+
+/* ---- the shortest loop: slide a split to where the tube is narrowest (0.56) ----
+   A ring found by distance can sit crooked across a sleeve. Between the part of the garment below the split and the sleeve above it, the shortest
+   closed loop of edges that separates them is the sleeve's root as a tailor would cut it. It is found as a minimum cut (maximum flow) on the triangles
+   in a window around the split, an edge costing its length. */
+function uwMaxFlowSide(n,edges,S,Tn){/* edges: [a,b,cap] undirected; returns a Uint8Array: 1 = on the source side after the cut */
+  const m=edges.length*2,to=new Int32Array(m),cap=new Float64Array(m),nx=new Int32Array(m),head=new Int32Array(n+2).fill(-1);let c=0;
+  const add=(a,b,w)=>{to[c]=b;cap[c]=w;nx[c]=head[a];head[a]=c++;to[c]=a;cap[c]=w;nx[c]=head[b];head[b]=c++;};
+  for(const [a,b,w] of edges)add(a,b,w);
+  const lvl=new Int32Array(n+2),cur=new Int32Array(n+2),q=new Int32Array(n+2);
+  const bfs=()=>{lvl.fill(-1);lvl[S]=0;let h=0,t=0;q[t++]=S;while(h<t){const u=q[h++];for(let e=head[u];e>=0;e=nx[e])if(cap[e]>1e-12&&lvl[to[e]]<0){lvl[to[e]]=lvl[u]+1;q[t++]=to[e];}}return lvl[Tn]>=0;};
+  const dfs=(u,f)=>{if(u===Tn)return f;for(;cur[u]>=0;cur[u]=nx[cur[u]]){const e=cur[u],v=to[e];if(cap[e]>1e-12&&lvl[v]===lvl[u]+1){const d=dfs(v,Math.min(f,cap[e]));if(d>1e-12){cap[e]-=d;cap[e^1]+=d;return d;}}}return 0;};
+  let guard=0;while(bfs()&&guard++<400){for(let i=0;i<n+2;i++)cur[i]=head[i];let f;while((f=dfs(S,1e30))>1e-12);}
+  const side=new Uint8Array(n+2);const st=[S];side[S]=1;while(st.length){const u=st.pop();for(let e=head[u];e>=0;e=nx[e])if(cap[e]>1e-12&&!side[to[e]]){side[to[e]]=1;st.push(to[e]);}}
+  return side;}
+
+function uwSlideSplits(m,topo,adj,L,node,nodes,cutLink,grp,opt){const P=m.pos,I=m.idx,W=opt.reebWindow||2;
+  const len=(t,k)=>{const a=I[t*3+k]*3,b=I[t*3+(k+1)%3]*3;return Math.hypot(P[a]-P[b],P[a+1]-P[b+1],P[a+2]-P[b+2]);};
+  const subtree=(r)=>{const seen=new Set([r]),st=[r];while(st.length){const x=st.pop();for(const o of nodes[x].up)if(!seen.has(o)){seen.add(o);st.push(o);}}return seen;};
+  const links=[...cutLink].map(k=>k.split('>').map(Number)).sort((a,b)=>nodes[b[1]].area-nodes[a[1]].area);
+  for(const [A,B] of links){if(nodes[A].band>=nodes[B].band)continue;const k=nodes[A].band,sub=subtree(B);
+    const free=[],freeIdx=new Map();const state=new Map();/* 0 free, 1 source, 2 sink */
+    for(const t of L){const nd=node.get(t),band=nodes[nd].band,inSub=sub.has(nd);let st;
+      if(inSub){st=band>=k+1+W?2:(band<=k+W?0:2);if(band>k+W)st=2;}
+      else{st=(band>=k-W&&band<=k&&!sub.has(nd)&&grp[t]===grp[nodes[A].tris[0]])?0:1;}
+      state.set(t,st);if(st===0){freeIdx.set(t,free.length);free.push(t);}}
+    if(free.length<8||free.length>40000)continue;
+    const nF=free.length,Sn=nF,Tn=nF+1,edges=[];let toSink=0;
+    /* in a tube of even width every loop is as short as the next: prefer the one nearest the junction */
+    const dev=t=>1+(opt.reebBias||.25)*Math.max(0,nodes[node.get(t)].band-k);
+    for(const t of free){const i=freeIdx.get(t);for(let q=0;q<3;q++){const o=adj[t*3+q];if(o<0)continue;const so=state.get(o);if(so===undefined)continue;const w=len(t,q)*Math.min(dev(t),dev(o));
+        if(so===0){const j=freeIdx.get(o);if(j>i)edges.push([i,j,w]);}else if(so===1)edges.push([i,Sn,w]);else{edges.push([i,Tn,w]);toSink++;}}}
+    if(!toSink)continue;
+    const side=uwMaxFlowSide(nF+2,edges,Sn,Tn),gA=grp[nodes[A].tris[0]],gB=grp[nodes[B].tris[0]];
+    for(let i=0;i<nF;i++)grp[free[i]]=side[i]?gA:gB;}}

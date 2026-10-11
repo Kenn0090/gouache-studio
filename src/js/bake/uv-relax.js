@@ -10,16 +10,22 @@ function uvWeld(m){const P=m.pos,UV=m.uv,n=P.length/3,key=new Map(),wid=new Int3
   return {wid,W};}
 async function uwRelax(m,optIn,pr){const opt=Object.assign({strength:50,pin:true},optIn||{}),I=m.idx,T=I.length/3,P=m.pos,UV=m.uv,{wid,W}=uvWeld(m),isl=uwIslands(m);
   pr=pr||(()=>{});
-  const U=new Float64Array(W),V=new Float64Array(W),X=new Float64Array(W*3),isw=new Int32Array(W).fill(-1);
+  const U=new Float64Array(W),V=new Float64Array(W),X=new Float64Array(W*3);
   for(let i=0;i<wid.length;i++){const w=wid[i];U[w]=UV[i*2];V[w]=UV[i*2+1];X[w*3]=P[i*3];X[w*3+1]=P[i*3+1];X[w*3+2]=P[i*3+2];}
-  const ou=Float64Array.from(U),ov=Float64Array.from(V);
-  const tw=new Int32Array(T*3),ng=isl.count,a2=new Float64Array(ng),a3=new Float64Array(ng),sa=new Float64Array(ng);
-  for(let t=0;t<T;t++){const a=wid[I[t*3]],b=wid[I[t*3+1]],c=wid[I[t*3+2]];tw[t*3]=a;tw[t*3+1]=b;tw[t*3+2]=c;const id=isl.ids[t];isw[a]=isw[b]=isw[c]=id;
+  const tw=new Int32Array(T*3);for(let t=0;t<T;t++){tw[t*3]=wid[I[t*3]];tw[t*3+1]=wid[I[t*3+1]];tw[t*3+2]=wid[I[t*3+2]];}
+  await uwArap(T,W,tw,X,U,V,isl.ids,isl.count,opt,pr);
+  const uv=new Float32Array(UV.length);for(let i=0;i<wid.length;i++){const w=wid[i];uv[i*2]=U[w];uv[i*2+1]=V[w];}
+  const r=Object.assign({},m,{uv,_uvAn:null,_uvIsl:null,_uvMet:null});r.tan=tangentsOf(r.pos,r.nrm,r.uv,r.idx);return r;}
+/* the engine: triangles tw (3 corners each, indices into W points), the points' places X (3 numbers each) and their flat places U,V (changed in place), the piece of every triangle */
+async function uwArap(T,W,tw,X,U,V,ids,ng,opt,pr){
+  const ou=Float64Array.from(U),ov=Float64Array.from(V),isw=new Int32Array(W).fill(-1);
+  const a2=new Float64Array(ng),a3=new Float64Array(ng),sa=new Float64Array(ng);
+  for(let t=0;t<T;t++){const a=tw[t*3],b=tw[t*3+1],c=tw[t*3+2],id=ids[t];isw[a]=isw[b]=isw[c]=id;
     const ar=((U[b]-U[a])*(V[c]-V[a])-(U[c]-U[a])*(V[b]-V[a]))/2;a2[id]+=Math.abs(ar);sa[id]+=ar;
     const ux=X[b*3]-X[a*3],uy=X[b*3+1]-X[a*3+1],uz=X[b*3+2]-X[a*3+2],vx=X[c*3]-X[a*3],vy=X[c*3+1]-X[a*3+1],vz=X[c*3+2]-X[a*3+2];a3[id]+=Math.hypot(uy*vz-uz*vy,uz*vx-ux*vz,ux*vy-uy*vx)/2;}
   /* every triangle's own flat shape (its true lengths, times the piece's scale), the way a flat triangle of that shape would lie, and the weights of its three edges */
   const xs=new Float64Array(T*6),cw=new Float64Array(T*3),ok=new Uint8Array(T);
-  for(let t=0;t<T;t++){const id=isl.ids[t],s=a3[id]>0?Math.sqrt(a2[id]/a3[id]):1,ori=sa[id]<0?-1:1,a=tw[t*3],b=tw[t*3+1],c=tw[t*3+2];
+  for(let t=0;t<T;t++){const id=ids[t],s=a3[id]>0?Math.sqrt(a2[id]/a3[id]):1,ori=sa[id]<0?-1:1,a=tw[t*3],b=tw[t*3+1],c=tw[t*3+2];
     const e1=[X[b*3]-X[a*3],X[b*3+1]-X[a*3+1],X[b*3+2]-X[a*3+2]],e2=[X[c*3]-X[a*3],X[c*3+1]-X[a*3+1],X[c*3+2]-X[a*3+2]],l1=Math.hypot(...e1),cr=Math.hypot(e1[1]*e2[2]-e1[2]*e2[1],e1[2]*e2[0]-e1[0]*e2[2],e1[0]*e2[1]-e1[1]*e2[0]);
     if(l1<1e-14||cr<1e-14||a===b||b===c||a===c)continue;ok[t]=1;const d=(e1[0]*e2[0]+e1[1]*e2[1]+e1[2]*e2[2])/l1;
     xs[t*6+2]=l1*s;xs[t*6+4]=d*s;xs[t*6+5]=ori*cr/l1*s;
@@ -63,8 +69,7 @@ async function uwRelax(m,optIn,pr){const opt=Object.assign({strength:50,pin:true
   if(!opt.pin){const cx0=new Float64Array(ng),cy0=new Float64Array(ng),cx1=new Float64Array(ng),cy1=new Float64Array(ng),n=new Float64Array(ng);
     for(let w=0;w<W;w++){const i=isw[w];if(i<0||!has[w])continue;cx0[i]+=ou[w];cy0[i]+=ov[w];cx1[i]+=U[w];cy1[i]+=V[w];n[i]++;}
     for(let w=0;w<W;w++){const i=isw[w];if(i<0||!n[i]||!has[w])continue;U[w]+=cx0[i]/n[i]-cx1[i]/n[i];V[w]+=cy0[i]/n[i]-cy1[i]/n[i];}}
-  const uv=new Float32Array(UV.length);for(let i=0;i<wid.length;i++){const w=wid[i];uv[i*2]=U[w];uv[i*2+1]=V[w];}
-  const r=Object.assign({},m,{uv,_uvAn:null,_uvIsl:null,_uvMet:null});r.tan=tangentsOf(r.pos,r.nrm,r.uv,r.idx);return r;}
+}
 
 /* ---- overlap check ---- */
 function uvOverlapCheck(m,S){const I=m.idx,T=I.length/3,UV=m.uv;if(!m.uv||m.noUV)return {none:true,faces:0,pct:0,folded:0,pixels:0,S:0,bad:null,cover:null};

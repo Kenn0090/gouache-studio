@@ -16,7 +16,7 @@ const uwYield=()=>new Promise(r=>setTimeout(r,0));
 let uwLast=0;const uwStop={on:false};
 const uwDue=()=>{const t=performance.now();if(t-uwLast>14){uwLast=t;return true;}return false;};
 function uwSync(g){let r;while(!(r=g.next()).done);return r.value;}
-async function uwAsync(g){let r;while(!(r=g.next()).done){await uwYield();uwLast=performance.now();if(uwStop.on)throw new Error('Stopped');}return r.value;}
+async function uwAsync(g){let r,v;while(!(r=g.next(v)).done){v=undefined;if(r.value&&typeof r.value.then==='function')v=await r.value;else await uwYield();uwLast=performance.now();if(uwStop.on)throw new Error('Stopped');}return r.value;}
 /* ---- topology: weld vertices that sit at the same place, find each triangle's neighbours ---- */
 function uwTopo(m){const P=m.pos,I=m.idx,T=I.length/3,N=P.length/3,q=1e5,wmap=new Map(),wv=new Uint32Array(N);let W=0;
   for(let i=0;i<N;i++){const k=Math.round(P[i*3]*q)+','+Math.round(P[i*3+1]*q)+','+Math.round(P[i*3+2]*q);let w=wmap.get(k);if(w===undefined){w=W++;wmap.set(k,w);}wv[i]=w;}
@@ -100,6 +100,14 @@ function* uwFlattenG(m,topo,C,opt){const P=m.pos,I=m.idx,{tw,deg}=topo,vid=new M
   let dev=1;for(const t of C.tris){const d=(topo.nx[t]*N[0]+topo.ny[t]*N[1]+topo.nz[t]*N[2]);if(d<dev)dev=d;}
   let U=X,V=Y,method='plane';
   if(dev<Math.cos(opt.flat*Math.PI/180)&&n>3&&n<=opt.lscmMax){const r=yield* uwLSCMG(m,cv,tr,X,Y,opt);if(r){U=r.u;V=r.v;method='lscm';}}
+  /* pieces that came out folded over (or very stretched) are worked on with as-rigid-as-possible relaxation; only the asynchronous unwrap can wait for it */
+  if(topo.arap&&opt.unfold&&n>8&&tr.length>12){let pos=0,neg=0,flips=0;const sg=new Int8Array(tr.length);
+    for(let i=0;i<tr.length;i++){const [a,b,c]=tr[i],ar=((U[b]-U[a])*(V[c]-V[a])-(U[c]-U[a])*(V[b]-V[a]));sg[i]=ar>0?1:ar<0?-1:0;if(ar>0)pos++;else if(ar<0)neg++;}
+    flips=Math.min(pos,neg);
+    if(flips>0){const X3=new Float64Array(n*3);for(let i=0;i<n;i++){X3[i*3]=P[cv[i]*3];X3[i*3+1]=P[cv[i]*3+1];X3[i*3+2]=P[cv[i]*3+2];}
+      const tw2=new Int32Array(tr.length*3);tr.forEach((l,i)=>{tw2[i*3]=l[0];tw2[i*3+1]=l[1];tw2[i*3+2]=l[2];});const Uf=Float64Array.from(U),Vf=Float64Array.from(V);
+      yield uwArap(tr.length,n,tw2,X3,Uf,Vf,new Int32Array(tr.length),1,{strength:opt.unfoldStrength||60,pin:false},()=>{});
+      U=Uf;V=Vf;method=method+'+arap';}}
   /* the surface area in 3D and in the flat chart, so every chart can be given the same texel density */
   let a3=0,a2=0;for(let i=0;i<tr.length;i++){a3+=topo.area[C.tris[i]];const [p,q,r]=tr[i];a2+=Math.abs((U[q]-U[p])*(V[r]-V[p])-(U[r]-U[p])*(V[q]-V[p]))/2;}
   return {verts:cv,tris:tr,u:U,v:V,a3,a2,method,split:!!cls};}
@@ -197,11 +205,11 @@ function uwPack(boxes,size,padPx,seed,opt={}){const n=boxes.length;if(!n)return 
 const UW_PRESETS={artist:Object.assign({label:'Artist style',cut:false},UW_ARTIST),clothing:Object.assign({label:'Clothing (pattern)'},UW_CLOTH),hard:{label:'Hard surface',angle:50,flat:20,artist:false,cut:false,straighten:false,flex:0},balanced:{label:'Balanced',angle:66,flat:20,artist:false,cut:false,straighten:false,flex:0},organic:{label:'Organic',angle:82,flat:12,artist:false,cut:false,straighten:false,flex:0}};
 /* everything a preset sets (the label is only for the list) */
 const uwPresetOpts=k=>{const o=Object.assign({},UW_PRESETS[k]);delete o.label;o.preset=k;return o;};
-function uwDefaults(){return {preset:'balanced',angle:66,flat:20,seed:1,packSeed:null,size:2048,padding:0,layout:'material',iters:400,lscmMax:60000,rotate:true,minTris:6,artist:false,straighten:false,defBudget:1.2,stretchMax:1.5,qMax:3,flex:0,smooth:true,cut:false,coneThr:.9,maxSlits:40,flipTol:0};}
+function uwDefaults(){return {preset:'balanced',angle:66,flat:20,seed:1,packSeed:null,size:2048,padding:0,layout:'material',iters:400,lscmMax:60000,rotate:true,minTris:6,artist:false,straighten:false,defBudget:1.2,stretchMax:1.5,qMax:3,flex:0,smooth:true,cut:false,coneThr:.9,maxSlits:40,flipTol:0,creaseDeg:0,creaseMin:14,unfold:false,unfoldStrength:60};}
 /* padding in pixels: about one pixel per mip level, and more for bigger textures (8 px at 1K, 16 at 2K, 32 at 4K) */
 const uwAutoPad=size=>Math.max(4,Math.round(size/128));
 async function uwUnwrap(m,optIn,progress,topoIn){const opt=Object.assign(uwDefaults(),optIn||{}),rng=uwRng(opt.seed*7919+3),pr=progress||(()=>{});
-  pr('Reading the model…',0);await uwYield();const topo=topoIn||m._uwTopo||(m._uwTopo=uwTopo(m));
+  pr('Reading the model…',0);await uwYield();const topo=topoIn||m._uwTopo||(m._uwTopo=uwTopo(m));topo.arap=true;
   pr('Cutting into pieces…',.1);await uwYield();if(uwStop.on)throw new Error('Stopped');let seg;if(opt.cut){pr('Cutting like a tailor…',.12);await uwYield();seg=uwCutSegment(m,topo,opt);topo.cutCtx=seg.ctx;}else{topo.cutCtx=null;seg=uwSegment(m,topo,opt,rng);seg=uwMerge(m,topo,seg,opt);if(opt.smooth!==false)seg=uwSmoothCharts(m,topo,seg,opt);}if(opt.artist){pr('Joining pieces like an artist…',.18);await uwYield();seg=uwArtistMerge(m,topo,seg,opt,()=>{});if(opt.smooth!==false)seg=uwSmoothCharts(m,topo,seg,opt,12);if(uwStop.on)throw new Error('Stopped');}
   const flats=[],leaves=[];let k=0;uwLast=performance.now();for(const C of seg.charts){if(opt.artist||opt.cut){for(const r of await uwAsync(opt.cut?uwCutRefineG(m,topo,opt,C,seg):uwFlattenSplitG(m,topo,C,opt))){flats.push(r.F);leaves.push(r.C);}}else{flats.push(await uwAsync(uwFlattenG(m,topo,C,opt)));leaves.push(C);}k++;if(uwDue()){pr('Flattening… '+k+' of '+seg.charts.length,.25+.7*k/seg.charts.length);await uwYield();uwLast=performance.now();if(uwStop.on)throw new Error('Stopped');}}
   if(opt.artist||opt.cut){seg.charts=leaves;leaves.forEach((c,i)=>{c.id=i;for(const t of c.tris)seg.chart[t]=i;});}
