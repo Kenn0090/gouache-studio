@@ -1,3 +1,15 @@
+# Gouache Studio 0.57.0
+
+- Undo can cover hiding layers, opacity, blend mode, rename and locks (new Preferences choice, off by default).
+- Radial symmetry: type the number of rays in the options bar, with a reset button.
+- Hover the symmetry centre: it lights up, and a pop-out offers Reset centre, rays and Reset all symmetry.
+- The unwrap Style list stays available so you can try another style again.
+- No left tool column in the Bake and Convert tabs: more room to work.
+- New document window: clearer section headings and labelled groups, larger size buttons.
+- New Storyboard template with panels, numbers, captions and a title strip on a locked layer, plus Sketch layer.
+- Faster saving: several packing workers at once, one graphics wait per layer for its edges, instant backups on Windows.
+- Artist style on weapons: small pieces join their neighbour and bent strips are cut straight (pistol 116 to about 78 pieces).
+
 # Gouache Studio 0.56.0
 
 - New Clothing (pattern) style: cuts along the closed loops of a garment (sleeves, cuffs, hem) and one seam down each tube, like a sewing pattern.

@@ -22,7 +22,7 @@ function quadBB(q){return [Math.min(q[0],q[2],q[4],q[6]),Math.min(q[1],q[3],q[5]
 function isParallelogram(q){const s=Math.hypot(q[4]-q[0],q[5]-q[1])+1;return Math.abs(q[0]+q[4]-q[2]-q[6])<1e-4*s&&Math.abs(q[1]+q[5]-q[3]-q[7])<1e-4*s;}
 
 /* ---- where is there content? column and row projections on the GPU, then two tiny readbacks ---- */
-let projT=null;
+let projT=null,projT2=null;
 function contentBounds(t,alphaOnly){const W=doc.w,H=doc.h,n=Math.max(W,H);
   if(!projT||projT.w<n){disposeTarget(projT);projT=makeTargetRaw(n,1);}
   const read=(axis,len)=>{bindTarget(projT);gl.viewport(0,0,len,1);run(P.proj,projT,{uSrc:t.tex,uAxis:{int:axis},uAlphaOnly:alphaOnly!==false});
@@ -32,9 +32,12 @@ function contentBounds(t,alphaOnly){const W=doc.w,H=doc.h,n=Math.max(W,H);
 /* Saving needs the same exact crop, but must not synchronously wait on either projection. */
 async function contentBoundsAsync(t,alphaOnly){const W=doc.w,H=doc.h,n=Math.max(W,H);
   if(!projT||projT.w<n){disposeTarget(projT);projT=makeTargetRaw(n,1);}
-  const read=async(axis,len)=>{run(P.proj,projT,{uSrc:t.tex,uAxis:{int:axis},uAlphaOnly:alphaOnly!==false});
-    const u=await readRegionAsync(projT,0,0,len,1);let a=-1,b=-1;for(let i=0;i<len;i++)if(u[i*4]>127){if(a<0)a=i;b=i;}return a<0?null:[a,b+1];};
-  const cx=await read(0,W);if(!cx)return null;const cy=await read(1,H);return cy?[cx[0],cy[0],cx[1],cy[1]]:null;}
+  if(!projT2||projT2.w<n){disposeTarget(projT2);projT2=makeTargetRaw(n,1);}
+  /* (0.57) both projections are drawn first and read together, so the GPU is waited on once instead of twice */
+  run(P.proj,projT,{uSrc:t.tex,uAxis:{int:0},uAlphaOnly:alphaOnly!==false});run(P.proj,projT2,{uSrc:t.tex,uAxis:{int:1},uAlphaOnly:alphaOnly!==false});
+  const span=(u,len)=>{let a=-1,b=-1;for(let i=0;i<len;i++)if(u[i*4]>127){if(a<0)a=i;b=i;}return a<0?null:[a,b+1];};
+  const [ux,uy]=await Promise.all([readRegionAsync(projT,0,0,W,1),readRegionAsync(projT2,0,0,H,1)]),cx=span(ux,W),cy=span(uy,H);
+  return cx&&cy?[cx[0],cy[0],cx[1],cy[1]]:null;}
 
 /* ---- starting a session ---- */
 function xfLayers(){if(doc.active&&doc.active.editMask&&doc.active.mask)return {maskOnly:doc.active};

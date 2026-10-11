@@ -59,7 +59,7 @@ const UV_ROLLS=12;
 async function uvRoll(){const old=bkLow();if(!old||uvw.busy)return;const src=old.uwSrc||(old.noUV?old:null);if(!src){toast('Rolling needs a model that was auto unwrapped (or has no UVs).');return;}
   uvw.busy=true;uwStop.on=false;const big=src.tris>150000,n=big?4:src.tris>40000?6:UV_ROLLS,base=(old.uwOpt&&old.uwOpt.seed)||1,topo=src._uwTopo||(src._uwTopo=uwTopo(src)),opt0=Object.assign(uwDefaults(),old.uwOpt||{},{size:uvSizeNow()}),keep=uvw.gal.filter(g=>g.pin),out=[];
   loadStart('Rolling the dice');loadCancel(()=>{uwStop.on=true;});
-  try{for(let k=0;k<n;k++){const seed=base+1+k*7+Math.floor(Math.random()*5),o=Object.assign({},opt0,{seed,packSeed:null,shapeMs:300}),msg='Layout '+(k+1)+' of '+n;
+  try{for(let k=0;k<n;k++){const seed=base+1+k*7+Math.floor(Math.random()*5),o=Object.assign({},opt0,{seed,packSeed:null,shapeMs:300,absorbMs:800}),msg='Layout '+(k+1)+' of '+n;
       loadSet(k/n,msg);const res=await uwUnwrap(src,o,(t,f)=>loadSet((k+f)/n,msg+' · '+t),topo);
       loadSet((k+.95)/n,msg+' · placing the pieces…');await uwYield();if(uwStop.on)throw new Error('Stopped');
       const lay=uwLayout(src,res,o);out.push({seed,opt:o,res,lay,util:lay.util,charts:res.flats.length,thumb:uvThumb(res,lay)});await uwYield();}
