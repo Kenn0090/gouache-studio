@@ -101,13 +101,14 @@ function* uwFlattenG(m,topo,C,opt){const P=m.pos,I=m.idx,{tw,deg}=topo,vid=new M
   let U=X,V=Y,method='plane';
   if(dev<Math.cos(opt.flat*Math.PI/180)&&n>3&&n<=opt.lscmMax){const r=yield* uwLSCMG(m,cv,tr,X,Y,opt);if(r){U=r.u;V=r.v;method='lscm';}}
   /* pieces that came out folded over (or very stretched) are worked on with as-rigid-as-possible relaxation; only the asynchronous unwrap can wait for it */
-  if(topo.arap&&opt.unfold&&n>8&&tr.length>12){let pos=0,neg=0,flips=0;const sg=new Int8Array(tr.length);
-    for(let i=0;i<tr.length;i++){const [a,b,c]=tr[i],ar=((U[b]-U[a])*(V[c]-V[a])-(U[c]-U[a])*(V[b]-V[a]));sg[i]=ar>0?1:ar<0?-1:0;if(ar>0)pos++;else if(ar<0)neg++;}
-    flips=Math.min(pos,neg);
+  if(topo.arap&&opt.unfold&&n>8&&tr.length>12){let pos=0,neg=0,flips=0,pa=0,na=0;const sg=new Int8Array(tr.length);
+    for(let i=0;i<tr.length;i++){const [a,b,c]=tr[i],ar=((U[b]-U[a])*(V[c]-V[a])-(U[c]-U[a])*(V[b]-V[a]));sg[i]=ar>0?1:ar<0?-1:0;if(ar>0){pos++;pa+=ar;}else if(ar<0){neg++;na-=ar;}}
+    flips=Math.min(pa,na)/Math.max(1e-30,pa+na)>0.03?Math.min(pos,neg):0;/* only a piece that is really folded over (3% of its area) is worth the work */
     if(flips>0){const X3=new Float64Array(n*3);for(let i=0;i<n;i++){X3[i*3]=P[cv[i]*3];X3[i*3+1]=P[cv[i]*3+1];X3[i*3+2]=P[cv[i]*3+2];}
       const tw2=new Int32Array(tr.length*3);tr.forEach((l,i)=>{tw2[i*3]=l[0];tw2[i*3+1]=l[1];tw2[i*3+2]=l[2];});const Uf=Float64Array.from(U),Vf=Float64Array.from(V);
       yield uwArap(tr.length,n,tw2,X3,Uf,Vf,new Int32Array(tr.length),1,{strength:opt.unfoldStrength||60,pin:false},()=>{});
-      U=Uf;V=Vf;method=method+'+arap';}}
+      /* kept only when it helps (the flat pieces' stretch, with folded triangles counted as very stretched) */
+      if(uwChartEnergy(m,{verts:cv,tris:tr,u:Uf,v:Vf}).stretch<uwChartEnergy(m,{verts:cv,tris:tr,u:U,v:V}).stretch*.98){U=Uf;V=Vf;method=method+'+arap';}}}
   /* the surface area in 3D and in the flat chart, so every chart can be given the same texel density */
   let a3=0,a2=0;for(let i=0;i<tr.length;i++){a3+=topo.area[C.tris[i]];const [p,q,r]=tr[i];a2+=Math.abs((U[q]-U[p])*(V[r]-V[p])-(U[r]-U[p])*(V[q]-V[p]))/2;}
   return {verts:cv,tris:tr,u:U,v:V,a3,a2,method,split:!!cls};}
