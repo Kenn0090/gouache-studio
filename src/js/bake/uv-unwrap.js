@@ -100,6 +100,22 @@ function* uwFlattenG(m,topo,C,opt){const P=m.pos,I=m.idx,{tw,deg}=topo,vid=new M
   let dev=1;for(const t of C.tris){const d=(topo.nx[t]*N[0]+topo.ny[t]*N[1]+topo.nz[t]*N[2]);if(d<dev)dev=d;}
   let U=X,V=Y,method='plane';
   if(dev<Math.cos(opt.flat*Math.PI/180)&&n>3&&n<=opt.lscmMax){const r=yield* uwLSCMG(m,cv,tr,X,Y,opt);if(r){U=r.u;V=r.v;method='lscm';}}
+  /* a conformal map of a bucket shape lies on itself: lay the cloth flat instead (triangle after triangle), then relax */
+  if(topo.arap&&opt.unfold&&opt.unroll!==false&&n>40&&tr.length>60){const ov=uwSelfOverlap({tris:tr,u:U,v:V});
+    if(ov>(opt.overlapMax===undefined?.012:opt.overlapMax)){
+      const X3=new Float64Array(n*3);for(let i=0;i<n;i++){X3[i*3]=P[cv[i]*3];X3[i*3+1]=P[cv[i]*3+1];X3[i*3+2]=P[cv[i]*3+2];}
+      const tw2=new Int32Array(tr.length*3);tr.forEach((l,i)=>{tw2[i*3]=l[0];tw2[i*3+1]=l[1];tw2[i*3+2]=l[2];});
+      const sg=(A,B)=>{let q=0;for(const [a,b,c] of tr)q+=(A[b]-A[a])*(B[c]-B[a])-(A[c]-A[a])*(B[b]-B[a]);return q;},ref=sg(U,V);
+      /* where the cloth is first laid down matters: the middle, and each end of the long direction; the one that ends up flattest is worked on */
+      const first=new Int32Array(n).fill(-1);tr.forEach((l,i)=>{for(const q of l)if(first[q]<0)first[q]=i;});let mnx=0,mxx=0;for(let i=1;i<n;i++){if(X[i]<X[mnx])mnx=i;if(X[i]>X[mxx])mxx=i;}
+      const starts=[-1,first[mnx],first[mxx]].slice(0,opt.unrollStarts||3);let best=null;
+      for(const st of starts){const r=uwUnroll(m,cv,tr,X,Y,st);if(r.reached<n*.98)continue;const Uf=r.U,Vf=r.V;if(ref*sg(Uf,Vf)<0)for(let i=0;i<n;i++)Vf[i]=-Vf[i];
+        yield uwArap(tr.length,n,tw2,X3,Uf,Vf,new Int32Array(tr.length),1,{strength:starts.length>1?30:opt.unrollStrength||100,pin:false},()=>{});
+        const o=uwSelfOverlap({tris:tr,u:Uf,v:Vf});if(!best||o<best.o)best={o,U:Uf,V:Vf};}
+      if(best){if(starts.length>1)yield uwArap(tr.length,n,tw2,X3,best.U,best.V,new Int32Array(tr.length),1,{strength:opt.unrollStrength||100,pin:false},()=>{});
+        const Uf=best.U,Vf=best.V,ov2=uwSelfOverlap({tris:tr,u:Uf,v:Vf}),e1=uwChartEnergy(m,{verts:cv,tris:tr,u:U,v:V}).stretch,e2=uwChartEnergy(m,{verts:cv,tris:tr,u:Uf,v:Vf}).stretch;
+        if(window.__cutDbg)window.__cutDbg.push({unroll:1,n,ov,ov2,e1:+e1.toFixed(2),e2:+e2.toFixed(2)});
+        if(ov2<ov*.6&&e2<e1*1.5+.3){U=Uf;V=Vf;method=method+'+unroll';}}}}
   /* pieces that came out folded over (or very stretched) are worked on with as-rigid-as-possible relaxation; only the asynchronous unwrap can wait for it */
   if(topo.arap&&opt.unfold&&n>8&&tr.length>12){let pos=0,neg=0,flips=0,pa=0,na=0;const sg=new Int8Array(tr.length);
     for(let i=0;i<tr.length;i++){const [a,b,c]=tr[i],ar=((U[b]-U[a])*(V[c]-V[a])-(U[c]-U[a])*(V[b]-V[a]));sg[i]=ar>0?1:ar<0?-1:0;if(ar>0){pos++;pa+=ar;}else if(ar<0){neg++;na-=ar;}}

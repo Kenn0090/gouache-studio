@@ -78,12 +78,12 @@ function uvOverlapCheck(m,S){const I=m.idx,T=I.length/3,UV=m.uv;if(!m.uv||m.noUV
   const each=(t,fn)=>{const [ax,ay,bx,by,cx,cy]=tri[t],den=(by-cy)*(ax-cx)+(cx-bx)*(ay-cy);if(Math.abs(den)<1e-12)return;
     const x0=Math.max(0,Math.floor(Math.min(ax,bx,cx))),x1=Math.min(S-1,Math.ceil(Math.max(ax,bx,cx))),y0=Math.max(0,Math.floor(Math.min(ay,by,cy))),y1=Math.min(S-1,Math.ceil(Math.max(ay,by,cy)));
     const sgv=den>0?1:-1;for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const qx=x+.5-cx,qy=y+.5-cy,w1=((by-cy)*qx+(cx-bx)*qy)/den,w2=((cy-ay)*qx+(ax-cx)*qy)/den,w3=1-w1-w2;if(w1>0&&w2>0&&w3>0)fn(y*S+x,sgv);}};
-  for(let t=0;t<T;t++){const id=isl.ids[t]+1;each(t,(p,s)=>{cover[p]=Math.min(255,cover[p]+1);if(!owner[p]){owner[p]=id;sgn[p]=s;}else if(owner[p]!==id||sgn[p]!==s)bad[p]=1;});}
+  for(let t=0;t<T;t++){const id=isl.ids[t]+1;each(t,(p,s)=>{cover[p]=Math.min(255,cover[p]+1);if(!owner[p]){owner[p]=id;sgn[p]=s;}else bad[p]=1;});}
   let faces=0,folded=0,px=0;const flag=new Uint8Array(T);
   for(let t=0;t<T;t++){let hit=0;each(t,(p)=>{if(bad[p])hit=1;});if(hit){flag[t]=1;faces++;}}
   for(let p=0;p<S*S;p++)if(bad[p])px++;
   /* a fold: two layers of the same piece */
-  for(let t=0;t<T;t++){if(!flag[t])continue;const id=isl.ids[t]+1;let f=0;each(t,(p,s)=>{if(bad[p]&&owner[p]===id&&sgn[p]!==s)f=1;});if(f)folded++;}
+  for(let t=0;t<T;t++){if(!flag[t])continue;const id=isl.ids[t]+1;let f=0;each(t,(p,s)=>{if(bad[p]&&owner[p]===id)f=1;});if(f)folded++;}
   let covered=0;for(let p=0;p<S*S;p++)if(cover[p])covered++;
   return {none:false,faces,flag,pct:T?faces/T*100:0,folded,pixels:px,pixelPct:covered?px/covered*100:0,S,bad,cover};}
 /* the check as a picture: grey where one layer covers, red where pieces overlap */

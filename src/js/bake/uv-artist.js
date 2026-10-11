@@ -61,9 +61,17 @@ function uwChartEnergy(m,F){const P=m.pos,{verts,tris,u,v}=F,n=tris.length,E=new
   for(let i=0;i<n;i++){const [a,b,c]=tris[i],pa=verts[a]*3,pb=verts[b]*3,pc=verts[c]*3,x1=u[a],y1=v[a],x2=u[b],y2=v[b],x3=u[c],y3=v[c],A=((x2-x1)*(y3-y1)-(x3-x1)*(y2-y1))/2;
     const ux=P[pb]-P[pa],uy=P[pb+1]-P[pa+1],uz=P[pb+2]-P[pa+2],wx=P[pc]-P[pa],wy=P[pc+1]-P[pa+1],wz=P[pc+2]-P[pa+2],t3=Math.hypot(uy*wz-uz*wy,uz*wx-ux*wz,ux*wy-uy*wx)/2;A3[i]=t3;AA[i]=Math.abs(A);SG[i]=A>0?1:A<0?-1:0;if(A>0)pos+=t3;else neg+=t3;
     if(Math.abs(A)<1e-14){E[i]=-1;continue;}let ss=0,st=0;for(let k=0;k<3;k++){const q=P[pa+k],r=P[pb+k],s=P[pc+k],Ss=(q*(y2-y3)+r*(y3-y1)+s*(y1-y2))/(2*A),St=(q*(x3-x2)+r*(x1-x3)+s*(x2-x1))/(2*A);ss+=Ss*Ss;st+=St*St;}E[i]=(ss+st)/2;}
-  const maj=pos>=neg?1:-1;let a3=0,a2=0;for(let i=0;i<n;i++){a3+=A3[i];a2+=AA[i];}const k=a2>0&&a3>0?a2/a3:1;let s2=0;
-  for(let i=0;i<n;i++){const [a,b,c]=tris[i];let e;if(E[i]<0||SG[i]!==maj)e=400;else e=E[i]*k;/* 400 = a stretch of 20 */s2+=e*A3[i];const ex=Math.max(0,e-1)*A3[i];ve[a]+=ex;ve[b]+=ex;ve[c]+=ex;}
-  return {stretch:a3>0?Math.sqrt(s2/a3):1,ve};}
+  const maj=pos>=neg?1:-1;let a3=0,a2=0;for(let i=0;i<n;i++){a3+=A3[i];a2+=AA[i];}const k=a2>0&&a3>0?a2/a3:1;let s2=0;const vs=new Float64Array(verts.length);
+  for(let i=0;i<n;i++){const [a,b,c]=tris[i];let e;if(E[i]<0||SG[i]!==maj)e=400;else e=E[i]*k;/* 400 = a stretch of 20 */s2+=e*A3[i];const ex=Math.max(0,e-1)*A3[i];ve[a]+=ex;ve[b]+=ex;ve[c]+=ex;if(A3[i]>0&&AA[i]>0){const dv=Math.abs(Math.log(AA[i]/A3[i]/k))*A3[i];vs[a]+=dv;vs[b]+=dv;vs[c]+=dv;}}
+  return {stretch:a3>0?Math.sqrt(s2/a3):1,ve,vs};}
+/* how much of a flattened chart lies on top of itself: the share of covered pixels that two triangles reach (a spiral has no flipped triangles and still overlaps) */
+function uwSelfOverlap(F,flags){const {tris,u,v}=F,n=tris.length;if(n<30)return 0;let x0=1e30,y0=1e30,x1=-1e30,y1=-1e30;for(let i=0;i<u.length;i++){if(u[i]<x0)x0=u[i];if(u[i]>x1)x1=u[i];if(v[i]<y0)y0=v[i];if(v[i]>y1)y1=v[i];}
+  const S=256,sc=(S-2)/Math.max(x1-x0,y1-y0,1e-12),cov=new Uint8Array(S*S);let covered=0,over=0;
+  for(let i=0;i<n;i++){const [a,b,c]=tris[i],ax=(u[a]-x0)*sc+1,ay=(v[a]-y0)*sc+1,bx=(u[b]-x0)*sc+1,by=(v[b]-y0)*sc+1,cx=(u[c]-x0)*sc+1,cy=(v[c]-y0)*sc+1,den=(by-cy)*(ax-cx)+(cx-bx)*(ay-cy);if(Math.abs(den)<1e-9)continue;
+    const xa=Math.max(0,Math.floor(Math.min(ax,bx,cx))),xb=Math.min(S-1,Math.ceil(Math.max(ax,bx,cx))),ya=Math.max(0,Math.floor(Math.min(ay,by,cy))),yb=Math.min(S-1,Math.ceil(Math.max(ay,by,cy)));
+    for(let y=ya;y<=yb;y++)for(let x=xa;x<=xb;x++){const qx=x+.5-cx,qy=y+.5-cy,w1=((by-cy)*qx+(cx-bx)*qy)/den,w2=((cy-ay)*qx+(ax-cx)*qy)/den,w3=1-w1-w2;if(w1>0&&w2>0&&w3>0){const p=y*S+x;if(!cov[p]){cov[p]=1;covered++;}else if(cov[p]===1){cov[p]=2;over++;}}}}
+  if(flags)for(let i=0;i<n;i++){const [a,b,c]=tris[i],px=Math.floor(((u[a]+u[b]+u[c])/3-x0)*sc+1),py=Math.floor(((v[a]+v[b]+v[c])/3-y0)*sc+1);flags[i]=px>=0&&px<S&&py>=0&&py<S&&cov[py*S+px]===2?1:0;}
+  return covered?over/covered:0;}
 function uwChartStretch(m,F){return uwChartEnergy(m,F).stretch;}
 /* flatten a chart; one that stretches too much is split: a joined chart back into the pieces it was made of, a single piece
    by cutting it again with a tighter angle (a big cone can swallow a whole dome that cannot lie flat) */
@@ -149,7 +157,7 @@ function uwSmoothCharts(m,topo,seg,opt,rounds){const {T,adj,tw,nx,ny,nz,area,deg
    hard edges where there are some. A piece that still stretches too much is cut again by the flatten step. */
 function uwCutSegment(m,topo,opt,onStep){const {T,tw,deg,nx,ny,nz,area}=topo,P=m.pos,I=m.idx,Wn=topo.W,mat=m.triMat||null,ang=uwCornerAngles(m,topo);
   /* triangle neighbours, but never across two materials */
-  const grp=opt.reeb===false?null:uwReebPieces(m,topo,opt),crease=opt.creaseDeg?uwCreaseMask(m,topo,opt):null;
+  const grp=opt.reeb===false?null:uwReebPieces(m,topo,opt),crease=opt.creaseDeg?uwCreaseMask(m,topo,opt):null;uwAbsorbGroups(m,topo,grp,crease,opt);
   const adj=Int32Array.from(topo.adj);if(crease)for(let t=0;t<T;t++)for(let k=0;k<3;k++)if(crease[t*3+k])adj[t*3+k]=-1;
   if(mat||grp)for(let t=0;t<T;t++)for(let k=0;k<3;k++){const o=adj[t*3+k];if(o>=0&&((mat&&mat[o]!==mat[t])||(grp&&grp[o]!==grp[t])))adj[t*3+k]=-1;}
   const WX=new Float64Array(Wn*3);for(let t=0;t<T;t++)for(let k=0;k<3;k++){const w=tw[t*3+k],v=I[t*3+k];WX[w*3]=P[v*3];WX[w*3+1]=P[v*3+1];WX[w*3+2]=P[v*3+2];}
@@ -160,7 +168,7 @@ function uwCutSegment(m,topo,opt,onStep){const {T,tw,deg,nx,ny,nz,area}=topo,P=m
   const E=ea.length,cut=new Uint8Array(E),len=new Float64Array(E),cost=new Float64Array(E),bnd=new Uint8Array(E);
   for(let e=0;e<E;e++){const a=ea[e],b=eb[e];len[e]=Math.hypot(WX[a*3]-WX[b*3],WX[a*3+1]-WX[b*3+1],WX[a*3+2]-WX[b*3+2]);
     const border=e1[e]<0||(grp&&grp[e0[e]]!==grp[e1[e]])||(mat&&mat[e0[e]]!==mat[e1[e]])||(crease&&creaseEdge(e0[e],e1[e]));bnd[e]=border?1:0;let hard=0;if(!border){const t=e0[e],u=e1[e],d=nx[t]*nx[u]+ny[t]*ny[u]+nz[t]*nz[u];hard=Math.min(1,Math.acos(Math.max(-1,Math.min(1,d)))*180/Math.PI/55);}
-    cost[e]=border?0:len[e]*(1+3*(1-hard));if(border)cut[e]=1;}
+    cost[e]=border?0:len[e]*(1+(opt.hardBonus===undefined?3:opt.hardBonus)*(1-hard));if(border)cut[e]=1;}
   /* vertex → edges */
   const cnt=new Int32Array(Wn+1);for(let e=0;e<E;e++){cnt[ea[e]+1]++;cnt[eb[e]+1]++;}for(let i=0;i<Wn;i++)cnt[i+1]+=cnt[i];const ve=new Int32Array(cnt[Wn]),fill=cnt.slice(0,Wn);for(let e=0;e<E;e++){ve[fill[ea[e]]++]=e;ve[fill[eb[e]]++]=e;}
   const onBorder=new Uint8Array(Wn),defect=new Float64Array(Wn),asum=new Float64Array(Wn);
@@ -186,6 +194,7 @@ function uwCutSegment(m,topo,opt,onStep){const {T,tw,deg,nx,ny,nz,area}=topo,P=m
     /* thin out cones: keep one per neighbourhood so a rounded corner does not ask for ten seams */
     const kept=[],taken=new Set();for(const w of cones){if(taken.has(w))continue;kept.push(w);taken.add(w);for(let i=cnt[w];i<cnt[w+1];i++){const e=ve[i],o=ea[e]===w?eb[e]:ea[e];taken.add(o);for(let j=cnt[o];j<cnt[o+1];j++){const e2=ve[j];taken.add(ea[e2]);taken.add(eb[e2]);}}}
     for(const w of kept)terms.push({vs:[w],len:1});
+    if(window.__cutDbg)window.__cutDbg.push({tris:sh.tris.length,terms:terms.map(t=>t.len).slice(0,12),nt:terms.length});
     if(terms.length<2)continue;
     const termOf=new Int32Array(Wn).fill(-1);terms.forEach((t,i)=>{for(const w of t.vs)termOf[w]=i;});
     for(const w of verts)inS[w]=0;for(const w of terms[0].vs)inS[w]=1;const done=new Uint8Array(terms.length);done[0]=1;let left=terms.length-1,guard=0;
@@ -195,7 +204,7 @@ function uwCutSegment(m,topo,opt,onStep){const {T,tw,deg,nx,ny,nz,area}=topo,P=m
       let hit=-1;
       while(h.size()){const [d,w]=h.pop();if(d>dist[w])continue;if(!inS[w]&&termOf[w]>=0&&!done[termOf[w]]){hit=w;break;}
         for(let i=cnt[w];i<cnt[w+1];i++){const e=ve[i],o=ea[e]===w?eb[e]:ea[e],nd=d+cost[e];if(nd<dist[o]){dist[o]=nd;prev[o]=w;pe[o]=e;h.push(nd,o);}}}
-      if(hit<0)break;
+      if(hit<0){if(window.__cutDbg)window.__cutDbg.push({noHit:1,left,terms:terms.length,tris:sh.tris.length});break;}
       const ti=termOf[hit];done[ti]=1;left--;let w=hit,pl=0;while(w>=0&&!inS[w]){const e=pe[w];if(e>=0){cut[e]=1;pl++;}inS[w]=1;w=prev[w];}
       for(const v of terms[ti].vs)inS[v]=1;
       if(onStep)onStep();}
@@ -210,8 +219,8 @@ function uwCutSegment(m,topo,opt,onStep){const {T,tw,deg,nx,ny,nz,area}=topo,P=m
   return {chart,charts,ctx:{adj,te,cut,ea,eb,e0,e1,cost,cnt,ve,onCut:(()=>{const o=new Uint8Array(Wn);for(let e=0;e<E;e++)if(cut[e]){o[ea[e]]=1;o[eb[e]]=1;}return o;})()}};}
 
 /* cut a chart further: a slit from its most stretched corner out to the nearest seam or border, along hard edges where it can; then the pieces that result */
-function uwSlit(m,topo,C,ctx,seg,F){const {tw,wv}=topo,{adj,te,cut,ea,eb,e0,e1,cost,cnt,ve,onCut}=ctx,chart=seg.chart,id=C.id,en=uwChartEnergy(m,F,topo);
-  let bi=-1,bv=0;for(let i=0;i<en.ve.length;i++){const w=wv[F.verts[i]];if(onCut[w])continue;if(en.ve[i]>bv){bv=en.ve[i];bi=i;}}
+function uwSlit(m,topo,C,ctx,seg,F,byScale){const {tw,wv}=topo,{adj,te,cut,ea,eb,e0,e1,cost,cnt,ve,onCut}=ctx,chart=seg.chart,id=C.id,en=uwChartEnergy(m,F,topo);let sv=byScale?en.vs:en.ve;if(byScale==='overlap'){const fl=new Uint8Array(F.tris.length);uwSelfOverlap(F,fl);sv=new Float64Array(F.verts.length);F.tris.forEach((t,i)=>{if(fl[i])for(const q of t)sv[q]+=1+Math.min(1,en.ve[q]*.001);});}
+  let bi=-1,bv=0;for(let i=0;i<sv.length;i++){const w=wv[F.verts[i]];if(onCut[w])continue;if(sv[i]>bv){bv=sv[i];bi=i;}}
   if(bi<0)return null;const start=wv[F.verts[bi]];
   /* Dijkstra inside the chart from that corner to a corner that touches a seam or border */
   const inC=new Set(C.tris),dist=new Map([[start,0]]),prev=new Map(),h=uwHeap();h.push(0,start);let hit=-1;
@@ -225,10 +234,12 @@ function uwSlit(m,topo,C,ctx,seg,F){const {tw,wv}=topo,{adj,te,cut,ea,eb,e0,e1,c
       for(let k=0;k<3;k++){const o=adj[t*3+k];if(o>=0&&inC.has(o)&&!seen.has(o)&&!cut[te[t*3+k]]){seen.add(o);st.push(o);}}}
     out.push(P2);}
   return out;}
-function* uwCutRefineG(m,topo,opt,C,seg,depth){depth=depth||0;const F=yield* uwFlattenG(m,topo,C,opt),lim=opt.stretchMax||1.8;
-  if(C.tris.length<10||depth>=opt.maxSlits||uwChartStretch(m,F)<=lim)return [{C,F}];
-  const parts=uwSlit(m,topo,C,seg.ctx,seg,F);if(!parts)return [{C,F}];
-  const out=[];for(const c of parts)for(const x of yield* uwCutRefineG(m,topo,opt,c,seg,depth+1))out.push(x);return out;}
+function* uwCutRefineG(m,topo,opt,C,seg,depth,hist){depth=depth||0;const F=yield* uwFlattenG(m,topo,C,opt),lim=opt.stretchMax||1.8;
+  if(C.tris.length<10||depth>=opt.maxSlits)return [{C,F}];const st=uwChartStretch(m,F),ov=uwSelfOverlap(F);if(st<=lim&&ov<(opt.overlapMax===undefined?.012:opt.overlapMax))return [{C,F}];
+  /* more slits only while they help: three in a row that change nothing end it */
+  const score=st+10*ov;if(hist&&score>hist.score*.97){hist={score:Math.min(hist.score,score),bad:hist.bad+1};if(hist.bad>=3)return [{C,F}];}else hist={score,bad:0};
+  const parts=uwSlit(m,topo,C,seg.ctx,seg,F,st<=lim?(ov>.012?'overlap':true):false);if(!parts)return [{C,F}];
+  const out=[];for(const c of parts)for(const x of yield* uwCutRefineG(m,topo,opt,c,seg,depth+1,hist))out.push(x);return out;}
 
 /* ---- pelts and sewing patterns: find the closed loops (0.56) ----
    Measure how far every point of a shell is from its biggest opening (the hem, say) and cut the shell into rings of equal distance. Following the rings
@@ -299,6 +310,22 @@ function uwReebPieces(m,topo,opt){const {T,tw,deg,area}=topo,Wn=topo.W,P=m.pos,I
     if(!n)break;}
   return grp;}
 
+/* a small piece that hugs one neighbour along most of its outline is not worth a seam of its own: a tailor would have cut it together with that piece.
+   Works on the pieces found by uwReebPieces, before the cuts are planned (a piece joined afterwards would bring a loop of its own that no cut reaches). */
+function uwAbsorbGroups(m,topo,grp,crease,opt){if(!grp||opt.absorb===false)return;const {T,deg,adj}=topo,mat=m.triMat||null,lim=opt.absorbTris||260,share=opt.absorbShare||.6;
+  for(let pass=0;pass<4;pass++){
+    /* the pieces as they stand: triangles joined over every edge that is not a piece border, a material change or a crease */
+    const pc=new Int32Array(T).fill(-1),pg=[],pt=[];
+    for(let s=0;s<T;s++){if(deg[s]||pc[s]>=0)continue;const id=pg.length,st=[s],list=[];pc[s]=id;pg.push(grp[s]);pt.push(list);
+      while(st.length){const t=st.pop();list.push(t);for(let k=0;k<3;k++){const o=adj[t*3+k];if(o<0||deg[o]||pc[o]>=0||grp[o]!==grp[t]||(mat&&mat[o]!==mat[t])||(crease&&crease[t*3+k]))continue;pc[o]=id;st.push(o);}}}
+    const move=new Map();
+    for(let g=0;g<pg.length;g++){const list=pt[g];if(list.length>=lim)continue;const per=new Map();let perim=0,cre=0;
+      for(const t of list)for(let k=0;k<3;k++){const o=adj[t*3+k];if(o>=0&&pc[o]===g)continue;perim++;if(o<0||deg[o])continue;per.set(pc[o],(per.get(pc[o])||0)+1);if((crease&&crease[t*3+k])||(mat&&mat[o]!==mat[t]))cre++;}
+      let best=-1,bn=0;for(const [og,n] of per)if(n>bn){bn=n;best=og;}
+      if(best<0||bn<perim*share||cre>bn*.25||pt[best].length<list.length*2||pg[best]===pg[g])continue;move.set(g,best);}
+    for(const [g,b] of [...move])if(move.has(b))move.delete(g);
+    if(!move.size)break;for(const [g,b] of move)for(const t of pt[g])grp[t]=pg[b];}}
+
 /* a corner of a triangle belongs to the same place on the flat chart as the corners next to it, unless a seam (or a slit) lies between them */
 function uwCornerClasses(C,topo){const cx=topo.cutCtx,{adj,te,cut}=cx,{tw}=topo,tris=C.tris,n=tris.length,lt=new Map();tris.forEach((t,i)=>lt.set(t,i));
   const par=new Int32Array(n*3);for(let i=0;i<par.length;i++)par[i]=i;const f=x=>{while(par[x]!==x){par[x]=par[par[x]];x=par[x];}return x;};
@@ -323,6 +350,25 @@ function uwCreaseMask1(m,topo,opt){const {T,tw,adj,nx,ny,nz,deg}=topo,I=m.idx,P=
   const minE=opt.creaseMin||14;
   for(const [t,k,o] of list){const r=f(tw[t*3+k]);if(ce.get(r)>=minE&&cl.get(r)>=avg*minE){mask[t*3+k]=1;/* the other side of the edge */for(let q=0;q<3;q++)if(adj[o*3+q]===t){mask[o*3+q]=1;break;}}}
   return mask;}
+
+/* ---- unrolling (0.56) ----
+   A conformal map (LSCM) of a bucket shape, a tube with a flat shoulder on top, fans out around the neck and lies on itself. A tailor lays the cloth flat
+   instead: every triangle is put down against the one before it with its true shape, front after front. Where the fronts meet there are small gaps and
+   overlaps; as-rigid-as-possible relaxation closes them. Returns the flat places (U,V) for the chart's corners. */
+function uwUnroll(m,cv,tr,X,Y,start){const P=m.pos,n=cv.length,T=tr.length,U=Float64Array.from(X),V=Float64Array.from(Y),set=new Uint8Array(n),done=new Uint8Array(T);
+  const d3=(a,b)=>Math.hypot(P[cv[a]*3]-P[cv[b]*3],P[cv[a]*3+1]-P[cv[b]*3+1],P[cv[a]*3+2]-P[cv[b]*3+2]);
+  const em=new Map();for(let t=0;t<T;t++)for(let k=0;k<3;k++){const a=tr[t][k],b=tr[t][(k+1)%3],key=a<b?a*n+b:b*n+a;let l=em.get(key);if(!l){l=[];em.set(key,l);}l.push(t);}
+  /* start in the middle of the chart */
+  let cx=0,cy=0,cz=0;for(let i=0;i<n;i++){cx+=P[cv[i]*3];cy+=P[cv[i]*3+1];cz+=P[cv[i]*3+2];}cx/=n;cy/=n;cz/=n;
+  let s0=start>=0?start:0,bd=1e30;if(!(start>=0))for(let t=0;t<T;t++){const [a,b,c]=tr[t];const mx=(P[cv[a]*3]+P[cv[b]*3]+P[cv[c]*3])/3-cx,my=(P[cv[a]*3+1]+P[cv[b]*3+1]+P[cv[c]*3+1])/3-cy,mz=(P[cv[a]*3+2]+P[cv[b]*3+2]+P[cv[c]*3+2])/3-cz,d=mx*mx+my*my+mz*mz;if(d<bd){bd=d;s0=t;}}
+  const q=[s0];done[s0]=1;{const [a,b,c]=tr[s0],L=d3(a,b),dc=d3(a,c),db=d3(b,c);U[a]=0;V[a]=0;U[b]=L;V[b]=0;const x=(dc*dc-db*db+L*L)/(2*L);U[c]=x;V[c]=Math.sqrt(Math.max(0,dc*dc-x*x));set[a]=set[b]=set[c]=1;}
+  for(let qi=0;qi<q.length;qi++){const t=q[qi];
+    for(let k=0;k<3;k++){const a=tr[t][k],b=tr[t][(k+1)%3],key=a<b?a*n+b:b*n+a,l=em.get(key);if(!l)continue;
+      for(const t2 of l){if(done[t2])continue;done[t2]=1;q.push(t2);const c2=tr[t2].find(v=>v!==a&&v!==b);if(c2===undefined||set[c2])continue;
+        const ex=U[b]-U[a],ey=V[b]-V[a],L=Math.hypot(ex,ey);if(L<1e-18)continue;const d1=d3(a,c2),d2=d3(b,c2),x=(d1*d1-d2*d2+L*L)/(2*L),y=-Math.sqrt(Math.max(0,d1*d1-x*x));
+        /* the third corner of this triangle lies on the other side of the edge from the corner of the triangle it came from */
+        const ox=ex/L,oy=ey/L;U[c2]=U[a]+x*ox-y*oy;V[c2]=V[a]+x*oy+y*ox;set[c2]=1;}}}
+  return {U,V,reached:set.reduce((a,b)=>a+b,0)};}
 
 /* ---- the shortest loop: slide a split to where the tube is narrowest (0.56) ----
    A ring found by distance can sit crooked across a sleeve. Between the part of the garment below the split and the sleeve above it, the shortest
