@@ -10,6 +10,24 @@ mod files;
 mod undo_spill;
 mod updates;
 
+use std::sync::atomic::{AtomicBool, Ordering};
+use tauri::Emitter;
+
+
+/// While the page is running it asks to be told when the window is closed (so it can ask about unsaved work).
+/// Off by default, so a page that never loaded can still be closed.
+static CLOSE_GUARD: AtomicBool = AtomicBool::new(false);
+
+#[tauri::command]
+fn close_guard(on: bool) {
+    CLOSE_GUARD.store(on, Ordering::SeqCst);
+}
+
+/// Quit for real (the page calls this once it has asked about unsaved work).
+#[tauri::command]
+fn quit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}
 
 #[tauri::command]
 fn set_title(window: tauri::WebviewWindow, title: String) -> Result<(), String> {
@@ -31,6 +49,18 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(updates::Pending::default())
         .manage(undo_spill::CacheDir::default())
+        .on_window_event(|window, event| {
+            // Closing the main window: when the page asked for it, hold the close and let the page ask
+            // "save your changes?" first (it calls quit_app when the answer is in).
+            if window.label() == "main" {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    if CLOSE_GUARD.load(Ordering::SeqCst) {
+                        api.prevent_close();
+                        let _ = window.emit("gs-close", ());
+                    }
+                }
+            }
+        })
         .setup(|app| {
             // Start each session with an empty undo folder in the default cache (a chosen folder is
             // cleared when the interface sets it at start-up).
@@ -55,6 +85,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             set_title,
+            close_guard,
+            quit_app,
             launch_file,
             files::read_file,
             files::file_size,

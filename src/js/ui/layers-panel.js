@@ -49,6 +49,13 @@ function syncLayerProps(){const A=doc.active,grp=A&&A.type==='group';if(ui.tool=
   mb.disabled=!(tops.length>1||grp||(isLayer(A)&&i>0&&isLayer(p.children[i-1])));
   $('#lDel').disabled=!A;$('#lClear').disabled=!A||grp||A.fx;$('#lUp').disabled=!A||i>=p.children.length-1;$('#lDown').disabled=!A||i<=0;$('#lUngroup').disabled=!grp;
 }
+/* (0.55.1) press an eye and drag down the list: every layer you pass gets the same state (shown or hidden) as the first one */
+function eyeSweep(n0,b0){const want=!n0.visible,seen=new Set();
+  const set=(n,b)=>{if(seen.has(n))return;seen.add(n);if(n.visible===want)return;n.visible=want;if(b){b.classList.toggle('off',!want);b.innerHTML=want?eyeOn:eyeOff;b.setAttribute('aria-pressed',String(want));}requestRender(true);};
+  set(n0,b0);
+  const mv=ev=>{const t=document.elementFromPoint(ev.clientX,ev.clientY),b=t&&t.closest?t.closest('.eye'):null;if(b&&b._node)set(b._node,b);};
+  const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);renderLayers();requestRender(true);};
+  window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up);}
 function renderLayers(){
   if(typeof paRefresh==='function')paRefresh();
   const list=$('#layerList'),keep=[];for(let e=list;e&&e!==document.body;e=e.parentElement)if(e.scrollTop)keep.push([e,e.scrollTop]);
@@ -56,7 +63,9 @@ function renderLayers(){
   for(const {n,depth,clipped} of displayRows()){const grp=n.type==='group';
     const hidden=!effVisible(n),inherited=hidden&&n.visible;
     const eye=el('button',{class:'eye'+(!n.visible?' off':''),title:(n.visible?'Hide':'Show')+(inherited?' (hidden by its group)':''),'aria-label':(n.visible?'Hide ':'Show ')+n.name,'aria-pressed':String(n.visible)});eye.innerHTML=n.visible?eyeOn:eyeOff;
-    eye.addEventListener('click',e=>{e.stopPropagation();n.visible=!n.visible;renderLayers();requestRender(true);});
+    eye._node=n;
+    eye.addEventListener('pointerdown',e=>{if(e.button!==0)return;e.stopPropagation();e.preventDefault();eyeSweep(n,eye);});
+    eye.addEventListener('click',e=>{e.stopPropagation();if(e.detail!==0)return;/* keyboard: Enter or Space */n.visible=!n.visible;renderLayers();requestRender(true);});
     const meta=[];if(grp){meta.push(n.mode<0?'pass':MODES[n.mode]);const om=doc.maps.length>1&&ui.mode!=='anim'?onlyMapOf(n):null;if(om)meta.push(MAP_SHORT[om]);}else{const mm=mapModeOf(n,doc.map);if(mm!==(doc.map==='base'?0:MAP_DEFS[doc.map].blend))meta.push(MODES[mm].replace(' (Add)',''));}
     if(n.text)meta.unshift('text');if(n.grad)meta.unshift('gradient');if(n.shape)meta.unshift('shape');if(n.fill)meta.unshift('fill');if(n.array&&n.array.on!==false)meta.unshift('array');if(n.opacity<1)meta.push(Math.round(n.opacity*100)+'%');if(n.lockAll)meta.push('locked');else{if(n.lockPx)meta.push('pixels locked');if(n.lockPos)meta.push('position locked');if(n.lockAlpha)meta.push('lock alpha');}
     /* which maps this layer has something in (so a layer painted only in Height is easy to find) */

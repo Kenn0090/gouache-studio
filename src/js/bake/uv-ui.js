@@ -14,7 +14,8 @@ function uvDialog(title,body,okLabel,cancelLabel){return new Promise(res=>{let d
   body._pick=v=>{fin(v);closeDialog();};openDialog({title,body,okLabel,cancelLabel,onOk(){fin('ok');},onCancel(){fin('cancel');}});});}
 /* ---- running an unwrap ---- */
 async function uvRunUnwrap(m,optIn,quiet){const src=m.uwSrc||m,opt=Object.assign(uwDefaults(),m.uwOpt||{},{size:uvSizeNow()},optIn||{});
-  if(!quiet)loadStart('Unwrapping “'+(src.name||'model')+'”');try{const res=await uwUnwrap(src,opt,quiet?null:(msg,f)=>{loadBusy(msg);}),lay=uwLayout(src,res,opt),nm=uwBuild(src,res,lay);
+  if(!quiet){loadStart('Unwrapping “'+(src.name||'model')+'”');loadCancel(()=>{uwStop.on=true;});}try{const res=await uwUnwrap(src,opt,quiet?null:(msg,f)=>{loadSet(f,msg);});
+    if(!quiet){loadSet(.96,'Placing the pieces…');await uwYield();}const lay=uwLayout(src,res,opt);if(!quiet){loadSet(.99,'Building the model…');await uwYield();}if(uwStop.on)throw new Error('Stopped');const nm=uwBuild(src,res,lay);
     nm.uwSrc=src;nm.uwRes=res;nm.uwOpt=Object.assign({},res.opt,{packSeed:lay.packSeed});nm.name=src.name;nm.xf=src.xf;return nm;}finally{if(!quiet)loadEnd();}}
 /* just the layout again from the charts already cut (a new pack seed, padding or layout) */
 function uvRelayout(m,optIn){const src=m.uwSrc,res=m.uwRes;if(!src||!res)return null;const opt=Object.assign({},m.uwOpt,{size:uvSizeNow()},optIn||{}),lay=uwLayout(src,res,opt),nm=uwBuild(src,res,lay);
@@ -48,18 +49,31 @@ async function uvImportCheck(m,ctx={}){if(!m||!m.pos)return m;const an=uvAn(m);
 function uvDialogState(m){if(!m)return null;const an=uvAn(m);return {none:an.none,issues:an.issues.map(i=>i.text),bad:!an.none&&an.issues.some(i=>i.kind==='overlap'||i.kind==='outside')};}
 /* ---- the preview picture ---- */
 function uvIslandsOf(m){return m._uvIsl||(m._uvIsl=uwIslands(m));}
-function uvDrawPreview(cv,m){const S=cv.width,x=cv.getContext('2d');x.fillStyle='#17181c';x.fillRect(0,0,S,S);
+function uvDrawPreview(cv,m){const S=cv.width,x=cv.getContext('2d',{willReadFrequently:true});x.fillStyle='#17181c';x.fillRect(0,0,S,S);
   if(uvw.view==='check'){const n=16,c=S/n;for(let i=0;i<n;i++)for(let j=0;j<n;j++){x.fillStyle=(i+j)&1?'#2a2d34':'#20232a';x.fillRect(i*c,j*c,c,c);}}
   if(!m||m.noUV){x.fillStyle='#8a8f99';x.font='12px sans-serif';x.textAlign='center';x.fillText('No UVs',S/2,S/2);return;}
   if(uvw.view==='stretch'||uvw.view==='texel'){x.drawImage(uvHeatCanvas(m,uvw.view,S,true),0,0);const an0=uvAn(m);if(uvw.showOverlap&&an0&&an0.mask){const G=an0.mask.S,bd=an0.mask.bad,u=S/G;x.fillStyle='rgba(255,40,255,.7)';for(let i=0;i<G*G;i++)if(bd[i])x.fillRect((i%G)*u,Math.floor(i/G)*u,Math.ceil(u),Math.ceil(u));}x.strokeStyle='#6a6f7a';x.lineWidth=1;x.strokeRect(.5,.5,S-1,S-1);return;}
-  const I=m.idx,T=I.length/3,UV=m.uv,isl=uvIslandsOf(m),pal=['#e06c6c','#6cc06c','#6c9ce0','#e0c05c','#c06cc0','#5cc0c0','#f0a060','#a0a0a8'];
-  /* draw by island so each is one colour; a big model draws lines only when it is small enough */
-  x.globalAlpha=.55;for(let t=0;t<T;t++){x.fillStyle=pal[isl.ids[t]%pal.length];x.beginPath();for(let k=0;k<3;k++){const v=I[t*3+k],px=UV[v*2]*S,py=UV[v*2+1]*S;k?x.lineTo(px,py):x.moveTo(px,py);}x.closePath();x.fill();}
-  x.globalAlpha=1;if(T<=40000){x.strokeStyle='rgba(255,255,255,.18)';x.lineWidth=.5;for(let t=0;t<T;t++){x.beginPath();for(let k=0;k<3;k++){const v=I[t*3+k],px=UV[v*2]*S,py=UV[v*2+1]*S;k?x.lineTo(px,py):x.moveTo(px,py);}x.closePath();x.stroke();}}
+  const I=m.idx,T=I.length/3,UV=m.uv,isl=uvIslandsOf(m),pal=[[224,108,108],[108,192,108],[108,156,224],[224,192,92],[192,108,192],[92,192,192],[240,160,96],[160,160,168]];
+  /* the islands (one colour each) and, when the model is small enough, the edges: written into pixels by hand, which is far quicker than the canvas for a big model */
+  const img=x.getImageData(0,0,S,S),d=img.data;
+  for(let t=0;t<T;t++){const c=pal[isl.ids[t]%pal.length];uvFillTri(d,S,UV[I[t*3]*2]*S,UV[I[t*3]*2+1]*S,UV[I[t*3+1]*2]*S,UV[I[t*3+1]*2+1]*S,UV[I[t*3+2]*2]*S,UV[I[t*3+2]*2+1]*S,c[0],c[1],c[2],.55);}
+  if(T<=(S>=480?120000:40000)){for(let t=0;t<T;t++)for(let k=0;k<3;k++){const a=I[t*3+k],b=I[t*3+(k+1)%3];if(a<b)uvLinePx(d,S,UV[a*2]*S,UV[a*2+1]*S,UV[b*2]*S,UV[b*2+1]*S,.18);}}
+  x.putImageData(img,0,0);
   const an=uvAn(m);if(uvw.showOverlap&&an&&an.mask){const G=an.mask.S,bd=an.mask.bad,u=S/G;x.fillStyle='rgba(255,40,40,.75)';for(let i=0;i<G*G;i++)if(bd[i])x.fillRect((i%G)*u,Math.floor(i/G)*u,Math.ceil(u),Math.ceil(u));}
   x.strokeStyle='#6a6f7a';x.lineWidth=1;x.strokeRect(.5,.5,S-1,S-1);}
+/* hovering the small picture shows a big one beside it (as large as fits, up to 640 px) */
+let uvBigEl=null,uvBigTimer=0;
+function uvBigHide(){clearTimeout(uvBigTimer);if(uvBigEl)uvBigEl.hidden=true;}
+function uvBigShow(anchor){clearTimeout(uvBigTimer);uvBigTimer=setTimeout(()=>{const m=bkLow();if(!m||!anchor.isConnected)return;
+    const r=anchor.getBoundingClientRect(),room=Math.max(r.left,innerWidth-r.right),S=Math.max(320,Math.min(640,innerHeight-90,room-30)),left=r.left-S-24>=8;
+    if(!uvBigEl){uvBigEl=el('div',{class:'uvbig',id:'uvBig','aria-hidden':'true'},el('canvas',{id:'uvBigCv'}),el('div',{class:'uvbigcap',id:'uvBigCap'}));document.body.append(uvBigEl);}
+    const cv=uvBigEl.querySelector('canvas');if(cv.width!==S){cv.width=cv.height=S;}cv.style.width=cv.style.height=S+'px';uvDrawPreview(cv,m);
+    const an=uvAn(m),A=m.uvAuto;uvBigEl.querySelector('.uvbigcap').textContent=(an.none?'No UVs':an.islands+' island'+(an.islands===1?'':'s')+(A?' · '+Math.round(A.util*100)+'% of the square used':'')+(an.overlapPct>1?' · '+Math.round(an.overlapPct)+'% overlap':''));
+    uvBigEl.hidden=false;const h=uvBigEl.offsetHeight;uvBigEl.style.left=(left?r.left-S-24:Math.min(innerWidth-S-24,r.right+12))+'px';uvBigEl.style.top=Math.max(8,Math.min(innerHeight-h-8,r.top+r.height/2-h/2))+'px';},160);}
+/* a thin white line blended into the pixels */
+function uvLinePx(d,S,x0,y0,x1,y1,al){const n=Math.max(1,Math.ceil(Math.max(Math.abs(x1-x0),Math.abs(y1-y0))));for(let i=0;i<=n;i++){const px=Math.floor(x0+(x1-x0)*i/n),py=Math.floor(y0+(y1-y0)*i/n);if(px<0||py<0||px>=S||py>=S)continue;const o=(py*S+px)*4;d[o]+=(255-d[o])*al;d[o+1]+=(255-d[o+1])*al;d[o+2]+=(255-d[o+2])*al;}}
 /* ---- the card in the Bake tab ---- */
-function uvCard(L){if(!L||!L.pos)return null;const an=uvAn(L),A=L.uvAuto,worst=uvWorst(an),flagged=an.none||!!worst||!!A;
+function uvCard(L){uvBigHide();if(!L||!L.pos)return null;const an=uvAn(L),A=L.uvAuto,worst=uvWorst(an),flagged=an.none||!!worst||!!A;
   const card=el('div',{class:'uvcard',id:'uvCard'});
   const util=A?Math.round(A.util*100):0,chips=[];if(an.none)chips.push('No UVs');else{chips.push(an.islands+' island'+(an.islands===1?'':'s'));if(A)chips.push(util+'% of the square used');if(an.overlapPct>1)chips.push(Math.round(an.overlapPct)+'% overlap');}
   const head=el('div',{class:'uvhead'},el('div',{class:'sub',text:'UVs'}),el('span',{class:'uvstat'+(an.none||worst?' warn':''),id:'uvStat',text:chips.join(' · ')}),
@@ -69,7 +83,7 @@ function uvCard(L){if(!L||!L.pos)return null;const an=uvAn(L),A=L.uvAuto,worst=u
   if(!uvw.open&&!worst&&!A){return card;}
   if(!uvw.open&&(worst||A)){card.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'uvOpt',text:'Optimize layout',onclick:()=>uvAct('repack')}),el('button',{class:'btn sm',id:'uvRoll',text:'Re-roll',onclick:()=>uvAct('reroll')})));return card;}
   /* the full review */
-  const O=Object.assign(uwDefaults(),L.uwOpt||{}),own=!L.uwRes,cv=el('canvas',{id:'uvPrev',width:240,height:240,class:'uvprev'});uvDrawPreview(cv,L);
+  const O=Object.assign(uwDefaults(),L.uwOpt||{}),own=!L.uwRes,cv=el('canvas',{id:'uvPrev',width:240,height:240,class:'uvprev',title:'Hover for a bigger view',onpointerenter:()=>uvBigShow(cv),onpointerleave:uvBigHide});uvDrawPreview(cv,L);
   const seedIn=el('input',{type:'number',id:'uvSeed',min:1,max:99999,step:1,value:String(O.seed||1),'aria-label':'Seed',onchange:()=>uvAct(own?'repack':'reroll',{seed:Math.max(1,Math.round(+seedIn.value||1))})});
   const seg2=(id,opts,val,fn)=>seg(opts,val,fn,id);
   const padVal=O.padding||uwAutoPad(uvSizeNow());
@@ -92,7 +106,7 @@ function uvCard(L){if(!L||!L.pos)return null;const an=uvAn(L),A=L.uvAuto,worst=u
   if(an.issues.length)card.append(el('ul',{class:'uvissues'},...an.issues.filter(i=>i.kind!=='none').map(i=>el('li',{text:i.text}))));
   return card;}
 /* the buttons of the card */
-async function uvAct(what,optIn,flags){const quiet=!!(flags&&flags.quiet);if(uvw.busy)return;const old=(typeof bkLow==='function'?bkLow():null);if(!old)return;uvw.busy=true;
+async function uvAct(what,optIn,flags){const quiet=!!(flags&&flags.quiet);if(uvw.busy)return;const old=(typeof bkLow==='function'?bkLow():null);if(!old)return;uvw.busy=true;uwStop.on=false;
   try{let nm=null;const o=optIn||{};
     if(what==='unwrap'){nm=await uvRunUnwrap(old.uwSrc?old:Object.assign({},old,{noUV:true,uwSrc:null}),Object.assign({},o,{seed:o.seed||(old.uwOpt&&old.uwOpt.seed)||1}),quiet);}
     else if(what==='reroll'){const seed=o.seed||((old.uwOpt&&old.uwOpt.seed)||1)+1;nm=await uvRunUnwrap(old,Object.assign({},o,{seed,packSeed:null}));}
@@ -101,7 +115,7 @@ async function uvAct(what,optIn,flags){const quiet=!!(flags&&flags.quiet);if(uvw
     else if(what==='best'){let best=null,bu=-1;const base=old.uwOpt&&old.uwOpt.packSeed||0;for(let k=0;k<24;k++){const ps=base+k+1,c=old.uwRes?uvRelayout(old,{packSeed:ps}):uvRepackOwn(old,{packSeed:ps});if(c&&c.uvAuto.util>bu){bu=c.uvAuto.util;best=c;}if(k%4===3)await uwYield();}nm=best;if(best)toast('Best of 24: '+Math.round(bu*100)+'% of the square used.');}
     else if(what==='revert'){const s=old.uwSrc;if(s){nm=Object.assign({},s);delete nm.uwSrc;delete nm.uwRes;delete nm.uwOpt;delete nm.uvAuto;delete nm._uvAn;delete nm._uvIsl;}}
     if(nm){nm._uvAn=null;nm._uvIsl=null;nm._uvMet=null;nm._uvStamp=(old._uvStamp||0)+1;uvReplaceMesh(old,nm);uvViewSync();}
-  }catch(e){console.warn(e);toast('The unwrap did not work: '+(e.message||e));}finally{uvw.busy=false;if(ui.mode==='bake'){if(quiet&&uvw.keepEl)uvRefreshCard();else buildBakePanel();}}}
+  }catch(e){if(e&&e.message==='Stopped')toast('Stopped. The model is as it was.');else{console.warn(e);toast('The unwrap did not work: '+(e.message||e));}}finally{uvw.busy=false;if(ui.mode==='bake'){if(quiet&&uvw.keepEl)uvRefreshCard();else buildBakePanel();}}}
 /* a light refresh while dragging: only the picture and the numbers change, not the controls under the pointer */
 function uvRefreshCard(){const m=bkLow(),cv=$('#uvPrev');if(cv&&m)uvDrawPreview(cv,m);const st=$('#uvStat');if(st&&m){const an=uvAn(m),A=m.uvAuto;st.textContent=an.none?'No UVs':an.islands+' island'+(an.islands===1?'':'s')+(A?' · '+Math.round(A.util*100)+'% of the square used':'')+(an.overlapPct>1?' · '+Math.round(an.overlapPct)+'% overlap':'');}}
 /* the checker on the model in the 3D view */

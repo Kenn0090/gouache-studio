@@ -12,6 +12,11 @@
    Everything here is plain functions on a mesh (pos, nrm, uv, idx, triMat, ...) with no drawing. */
 function uwRng(seed){let s=(seed>>>0)||1;return()=>{s^=s<<13;s>>>=0;s^=s>>>17;s^=s<<5;s>>>=0;return s/4294967296;};}
 const uwYield=()=>new Promise(r=>setTimeout(r,0));
+/* long steps are generators that give way (yield) when about 14 ms have passed, so the app stays alive and the progress bar can move; the plain functions run them straight through */
+let uwLast=0;const uwStop={on:false};
+const uwDue=()=>{const t=performance.now();if(t-uwLast>14){uwLast=t;return true;}return false;};
+function uwSync(g){let r;while(!(r=g.next()).done);return r.value;}
+async function uwAsync(g){let r;while(!(r=g.next()).done){await uwYield();uwLast=performance.now();if(uwStop.on)throw new Error('Stopped');}return r.value;}
 /* ---- topology: weld vertices that sit at the same place, find each triangle's neighbours ---- */
 function uwTopo(m){const P=m.pos,I=m.idx,T=I.length/3,N=P.length/3,q=1e5,wmap=new Map(),wv=new Uint32Array(N);let W=0;
   for(let i=0;i<N;i++){const k=Math.round(P[i*3]*q)+','+Math.round(P[i*3+1]*q)+','+Math.round(P[i*3+2]*q);let w=wmap.get(k);if(w===undefined){w=W++;wmap.set(k,w);}wv[i]=w;}
@@ -79,7 +84,8 @@ function uwMerge(m,topo,seg,opt){const {T,tw,area,deg,adj}=topo,{chart,charts}=s
       for(const t of C.tris){chart[t]=D.id;D.tris.push(t);}D.nx+=C.nx;D.ny+=C.ny;D.nz+=C.nz;D.area+=C.area;for(const v of a.V)b.V.add(v);for(const e of a.E)b.E.add(e);C.tris=[];break;}}
   seg.charts=charts.filter(c=>c.tris.length);seg.charts.forEach((c,i)=>{c.id=i;for(const t of c.tris)chart[t]=i;});return seg;}
 /* ---- 2. flatten one chart ---- */
-function uwFlatten(m,topo,C,opt){const P=m.pos,I=m.idx,{tw,deg}=topo,vid=new Map(),cv=[],tr=[];
+function uwFlatten(m,topo,C,opt){return uwSync(uwFlattenG(m,topo,C,opt));}
+function* uwFlattenG(m,topo,C,opt){const P=m.pos,I=m.idx,{tw,deg}=topo,vid=new Map(),cv=[],tr=[];
   for(const t of C.tris){const l=[];for(let k=0;k<3;k++){const w=tw[t*3+k];let i=vid.get(w);if(i===undefined){i=cv.length;vid.set(w,i);cv.push(I[t*3+k]);}l.push(i);}tr.push(l);}
   const n=cv.length,L=Math.hypot(C.nx,C.ny,C.nz)||1,N=[C.nx/L,C.ny/L,C.nz/L];
   /* a flat basis for the chart: u along the chart's longest direction (PCA of the points projected onto the plane) */
@@ -93,12 +99,13 @@ function uwFlatten(m,topo,C,opt){const P=m.pos,I=m.idx,{tw,deg}=topo,vid=new Map
   /* the largest normal deviation decides whether a straight projection is good enough */
   let dev=1;for(const t of C.tris){const d=(topo.nx[t]*N[0]+topo.ny[t]*N[1]+topo.nz[t]*N[2]);if(d<dev)dev=d;}
   let U=X,V=Y,method='plane';
-  if(dev<Math.cos(opt.flat*Math.PI/180)&&n>3&&n<=opt.lscmMax){const r=uwLSCM(m,cv,tr,X,Y,opt);if(r){U=r.u;V=r.v;method='lscm';}}
+  if(dev<Math.cos(opt.flat*Math.PI/180)&&n>3&&n<=opt.lscmMax){const r=yield* uwLSCMG(m,cv,tr,X,Y,opt);if(r){U=r.u;V=r.v;method='lscm';}}
   /* the surface area in 3D and in the flat chart, so every chart can be given the same texel density */
   let a3=0,a2=0;for(let i=0;i<tr.length;i++){a3+=topo.area[C.tris[i]];const [p,q,r]=tr[i];a2+=Math.abs((U[q]-U[p])*(V[r]-V[p])-(U[r]-U[p])*(V[q]-V[p]))/2;}
   return {verts:cv,tris:tr,u:U,v:V,a3,a2,method};}
 /* LSCM with two pinned corners (the farthest pair of the projection), solved by preconditioned conjugate gradients; null when it folds over */
-function uwLSCM(m,cv,tr,X,Y,opt){const P=m.pos,n=cv.length,T=tr.length;
+function uwLSCM(m,cv,tr,X,Y,opt){return uwSync(uwLSCMG(m,cv,tr,X,Y,opt));}
+function* uwLSCMG(m,cv,tr,X,Y,opt){const P=m.pos,n=cv.length,T=tr.length;
   /* local 2D frame of each triangle (an exact copy of its shape) */
   const rows=[];for(let i=0;i<T;i++){const [a,b,c]=tr[i],pa=cv[a]*3,pb=cv[b]*3,pc=cv[c]*3;
     const ex=P[pb]-P[pa],ey=P[pb+1]-P[pa+1],ez=P[pb+2]-P[pa+2],fx=P[pc]-P[pa],fy=P[pc+1]-P[pa+1],fz=P[pc+2]-P[pa+2];
@@ -114,16 +121,21 @@ function uwLSCM(m,cv,tr,X,Y,opt){const P=m.pos,n=cv.length,T=tr.length;
   const u=Float64Array.from(X),v=Float64Array.from(Y),fixed=new Uint8Array(n);fixed[p0]=1;fixed[p1]=1;
   /* residual rows: Re = sum wr*u - wi*v, Im = sum wi*u + wr*v ; minimise their squares */
   const R=rows.length,res=new Float64Array(R*2),g=new Float64Array(n*2),diag=new Float64Array(n*2);
-  for(const r of rows)for(let j=0;j<3;j++){const i=r.v[j];diag[i*2]+=r.wr[j]*r.wr[j]+r.wi[j]*r.wi[j];diag[i*2+1]+=r.wi[j]*r.wi[j]+r.wr[j]*r.wr[j];}
-  const Ax=(uu,vv,out)=>{for(let k=0;k<R;k++){const r=rows[k];let re=0,im=0;for(let j=0;j<3;j++){const i=r.v[j];re+=r.wr[j]*uu[i]-r.wi[j]*vv[i];im+=r.wi[j]*uu[i]+r.wr[j]*vv[i];}out[k*2]=re;out[k*2+1]=im;}};
-  const ATr=(rr,out)=>{out.fill(0);for(let k=0;k<R;k++){const r=rows[k],re=rr[k*2],im=rr[k*2+1];for(let j=0;j<3;j++){const i=r.v[j];out[i*2]+=r.wr[j]*re+r.wi[j]*im;out[i*2+1]+=-r.wi[j]*re+r.wr[j]*im;}}};
+  /* the rows as flat arrays: the loops below run hundreds of times */
+  const RV=new Int32Array(R*3),WR=new Float64Array(R*3),WI=new Float64Array(R*3);
+  rows.forEach((r,k)=>{for(let j=0;j<3;j++){RV[k*3+j]=r.v[j];WR[k*3+j]=r.wr[j];WI[k*3+j]=r.wi[j];}});
+  for(let q=0;q<R*3;q++){const i=RV[q],w=WR[q]*WR[q]+WI[q]*WI[q];diag[i*2]+=w;diag[i*2+1]+=w;}
+  const Ax=(uu,vv,out)=>{for(let k=0,o=0;k<R;k++,o+=3){const a=RV[o],b=RV[o+1],c=RV[o+2];
+    out[k*2]=WR[o]*uu[a]-WI[o]*vv[a]+WR[o+1]*uu[b]-WI[o+1]*vv[b]+WR[o+2]*uu[c]-WI[o+2]*vv[c];
+    out[k*2+1]=WI[o]*uu[a]+WR[o]*vv[a]+WI[o+1]*uu[b]+WR[o+1]*vv[b]+WI[o+2]*uu[c]+WR[o+2]*vv[c];}};
+  const ATr=(rr,out)=>{out.fill(0);for(let k=0,o=0;k<R;k++,o+=3){const re=rr[k*2],im=rr[k*2+1];for(let j=0;j<3;j++){const i=RV[o+j];out[i*2]+=WR[o+j]*re+WI[o+j]*im;out[i*2+1]+=-WI[o+j]*re+WR[o+j]*im;}}};
   /* conjugate gradients on the normal equations for the free unknowns */
   const dU=new Float64Array(n),dV=new Float64Array(n),tmp=new Float64Array(R*2),tmp2=new Float64Array(n*2);
   Ax(u,v,res);ATr(res,g);for(let i=0;i<n;i++)if(fixed[i]){g[i*2]=0;g[i*2+1]=0;}
   const z=new Float64Array(n*2),pp=new Float64Array(n*2),Ap=new Float64Array(n*2);let rz=0;
   for(let i=0;i<n*2;i++){z[i]=g[i]/(diag[i]||1);pp[i]=z[i];rz+=g[i]*z[i];}
   const g0=Math.sqrt(g.reduce((s,x)=>s+x*x,0))||1;
-  for(let it=0;it<opt.iters&&rz>0;it++){for(let i=0;i<n;i++){dU[i]=pp[i*2];dV[i]=pp[i*2+1];}Ax(dU,dV,tmp);ATr(tmp,Ap);for(let i=0;i<n;i++)if(fixed[i]){Ap[i*2]=0;Ap[i*2+1]=0;}
+  for(let it=0;it<opt.iters&&rz>0;it++){if(uwDue())yield;for(let i=0;i<n;i++){dU[i]=pp[i*2];dV[i]=pp[i*2+1];}Ax(dU,dV,tmp);ATr(tmp,Ap);for(let i=0;i<n;i++)if(fixed[i]){Ap[i*2]=0;Ap[i*2+1]=0;}
     let pAp=0;for(let i=0;i<n*2;i++)pAp+=pp[i]*Ap[i];if(pAp<=1e-30)break;const al=rz/pAp;
     for(let i=0;i<n;i++){u[i]-=al*pp[i*2];v[i]-=al*pp[i*2+1];}for(let i=0;i<n*2;i++)g[i]-=al*Ap[i];
     let gn=0,rz2=0;for(let i=0;i<n*2;i++){z[i]=g[i]/(diag[i]||1);rz2+=g[i]*z[i];gn+=g[i]*g[i];}if(Math.sqrt(gn)<g0*1e-5)break;
@@ -151,10 +163,15 @@ function uwMaxRects(rects,order,allowRot){let free=[{x:0,y:0,w:1,h:1}];const pos
   for(const i of order){const r=rects[i];let bx=null,bs=1e30,bl=1e30,rot=false;
     for(const f of free){for(const tryRot of allowRot?[false,true]:[false]){const w=tryRot?r.h:r.w,h=tryRot?r.w:r.h;if(w<=f.w+1e-9&&h<=f.h+1e-9){const ss=Math.min(f.w-w,f.h-h),ls=Math.max(f.w-w,f.h-h);if(ss<bs-1e-12||(Math.abs(ss-bs)<1e-12&&ls<bl)){bs=ss;bl=ls;bx={x:f.x,y:f.y};rot=tryRot;}}}}
     if(!bx)return null;const w=rot?r.h:r.w,h=rot?r.w:r.h;pos[i]={x:bx.x,y:bx.y,rot};
-    const nf=[];for(const f of free){if(bx.x>=f.x+f.w||bx.x+w<=f.x||bx.y>=f.y+f.h||bx.y+h<=f.y){nf.push(f);continue;}
-      if(bx.x>f.x)nf.push({x:f.x,y:f.y,w:bx.x-f.x,h:f.h});if(bx.x+w<f.x+f.w)nf.push({x:bx.x+w,y:f.y,w:f.x+f.w-bx.x-w,h:f.h});
-      if(bx.y>f.y)nf.push({x:f.x,y:f.y,w:f.w,h:bx.y-f.y});if(bx.y+h<f.y+f.h)nf.push({x:f.x,y:bx.y+h,w:f.w,h:f.y+f.h-bx.y-h});}
-    free=nf.filter((a,ai)=>{for(let bi=0;bi<nf.length;bi++){if(bi===ai)continue;const b=nf[bi];if(a.x>=b.x-1e-12&&a.y>=b.y-1e-12&&a.x+a.w<=b.x+b.w+1e-12&&a.y+a.h<=b.y+b.h+1e-12&&(bi<ai||!(b.x>=a.x-1e-12&&b.y>=a.y-1e-12&&b.x+b.w<=a.x+a.w+1e-12&&b.y+b.h<=a.y+a.h+1e-12)))return false;}return true;});}
+    const keep=[],fr=[];for(const f of free){if(bx.x>=f.x+f.w||bx.x+w<=f.x||bx.y>=f.y+f.h||bx.y+h<=f.y){keep.push(f);continue;}
+      if(bx.x>f.x)fr.push({x:f.x,y:f.y,w:bx.x-f.x,h:f.h});if(bx.x+w<f.x+f.w)fr.push({x:bx.x+w,y:f.y,w:f.x+f.w-bx.x-w,h:f.h});
+      if(bx.y>f.y)fr.push({x:f.x,y:f.y,w:f.w,h:bx.y-f.y});if(bx.y+h<f.y+f.h)fr.push({x:f.x,y:bx.y+h,w:f.w,h:f.y+f.h-bx.y-h});}
+    /* only the new pieces can sit inside another free rectangle (the untouched ones were already free of that) */
+    const inside=(a,b)=>a.x>=b.x-1e-12&&a.y>=b.y-1e-12&&a.x+a.w<=b.x+b.w+1e-12&&a.y+a.h<=b.y+b.h+1e-12;
+    free=keep;for(let ai=0;ai<fr.length;ai++){const a=fr[ai];let drop=false;
+      for(let bi=0;bi<keep.length&&!drop;bi++)if(inside(a,keep[bi]))drop=true;
+      for(let bi=0;bi<fr.length&&!drop;bi++){if(bi!==ai&&inside(a,fr[bi])&&(bi<ai||!inside(fr[bi],a)))drop=true;}
+      if(!drop)free.push(a);}}
   return pos;}
 /* pack islands (each {w,h} in model units) into the unit square: the biggest scale that fits, with a gap of padPx pixels at size px */
 function uwPack(boxes,size,padPx,seed,opt={}){const n=boxes.length;if(!n)return {scale:1,pos:[],util:0};const rng=uwRng(seed*2654435761+17),gap=padPx/size,allowRot=opt.rotate!==false;
@@ -163,7 +180,8 @@ function uwPack(boxes,size,padPx,seed,opt={}){const n=boxes.length;if(!n)return 
   const fit=s=>{const rects=boxes.map(b=>({w:b.w*s+gap,h:b.h*s+gap}));return uwMaxRects(rects,order,allowRot);};
   let area=0;for(const b of boxes)area+=b.w*b.h;let hi=Math.sqrt(1/Math.max(area,1e-12)),lo=hi*.02;
   /* the tightest packing cannot beat the total area, so the answer sits between a small guess and the area bound */
-  let best=null,bs=0;for(let k=0;k<22;k++){const mid=(lo+hi)/2,p=fit(mid);if(p){best=p;bs=mid;lo=mid;}else hi=mid;}
+  let best=null,bs=0;let steps=22;{const t=hi*.4,p=fit(t);if(p){lo=t;best=p;bs=t;steps=15;}}/* most layouts fill 40% or more of the square: start the search there */
+  for(let k=0;k<steps;k++){const mid=(lo+hi)/2,p=fit(mid);if(p){best=p;bs=mid;lo=mid;}else hi=mid;}
   if(!best){bs=lo;best=fit(lo);}
   if(!best){bs=lo*.5;best=fit(bs);}
   const rects=boxes.map(b=>({w:b.w*bs,h:b.h*bs}));let used=0;for(const r of rects)used+=r.w*r.h;
@@ -175,8 +193,8 @@ function uwDefaults(){return {preset:'balanced',angle:66,flat:20,seed:1,packSeed
 const uwAutoPad=size=>Math.max(4,Math.round(size/128));
 async function uwUnwrap(m,optIn,progress,topoIn){const opt=Object.assign(uwDefaults(),optIn||{}),rng=uwRng(opt.seed*7919+3),pr=progress||(()=>{});
   pr('Reading the model…',0);await uwYield();const topo=topoIn||m._uwTopo||(m._uwTopo=uwTopo(m));
-  pr('Cutting into pieces…',.1);await uwYield();let seg=uwSegment(m,topo,opt,rng);seg=uwMerge(m,topo,seg,opt);
-  const flats=[];let k=0;for(const C of seg.charts){flats.push(uwFlatten(m,topo,C,opt));if(++k%25===0){pr('Flattening…',.25+.5*k/seg.charts.length);await uwYield();}}
+  pr('Cutting into pieces…',.1);await uwYield();if(uwStop.on)throw new Error('Stopped');let seg=uwSegment(m,topo,opt,rng);seg=uwMerge(m,topo,seg,opt);
+  const flats=[];let k=0;uwLast=performance.now();for(const C of seg.charts){flats.push(await uwAsync(uwFlattenG(m,topo,C,opt)));k++;if(uwDue()){pr('Flattening… '+k+' of '+seg.charts.length,.25+.7*k/seg.charts.length);await uwYield();uwLast=performance.now();if(uwStop.on)throw new Error('Stopped');}}
   return {topo,seg,flats,opt:Object.assign({},opt)};}
 /* place the flattened charts (cheap, so re-rolling the pack or changing padding does not flatten again) */
 function uwLayout(m,res,optIn){const opt=Object.assign({},res.opt,optIn||{}),{topo,seg,flats}=res,pad=opt.padding||uwAutoPad(opt.size),mats=m.triMat?[...new Set(seg.charts.map(c=>c.mat))].sort((a,b)=>a-b):[0];

@@ -12,6 +12,8 @@
    being painted: the document, or the cage's flat space. */
 ui.cageNx=4;ui.cageNy=4;ui.cageKind='quad';ui.cagePersp=true;ui.cageFlat=false;
 ui.sym={mode:'off',n:6,cx:.5,cy:.5,align:'canvas'};
+/* (0.55.1) symmetry belongs to the document: a new or opened one starts with it off, and each tab keeps its own (docState) */
+function symReset(){Object.assign(ui.sym,{mode:'off',n:6,cx:.5,cy:.5,align:'canvas'});}
 let cageST=null,cageViewT=null,cageGL=null,cageSavedView=null;
 
 /* ---------- the surface ---------- */
@@ -103,7 +105,7 @@ function cageStrokeStart(o,ix,iy){const C=cageOf();
 
 /* ---------- symmetry ---------- */
 function symBasis(o){if(ui.sym.align!=='screen'||(o?.space&&!ui.cageFlat))return 0;const A=vxA();return A?Math.atan2(A[1],A[0]):0;}
-function symFor(o){const S=ui.sym;if(S.mode==='off')return null;return {mode:S.mode,n:clamp(Math.round(S.n),2,32),cx:S.cx,cy:S.cy,basis:symBasis(o)};}
+function symFor(o){const S=ui.sym;if(S.mode==='off')return null;return {mode:S.mode,n:clamp(Math.round(S.n),2,128),cx:S.cx,cy:S.cy,basis:symBasis(o)};}
 /* copies of a dab: [x, y, angle, flipX, flipY, dx, dy] */
 function symCopies(sym,W,H,x,y,ang,fx,fy,dx,dy){const out=[[x,y,ang,fx,fy,dx,dy]];if(!sym)return out;const cx=sym.cx*W,cy=sym.cy*H;
   if(sym.basis&&sym.mode!=='radial'){const a=sym.basis,c=Math.cos(a),s=Math.sin(a),rx=x-cx,ry=y-cy;
@@ -116,24 +118,34 @@ function symCopies(sym,W,H,x,y,ang,fx,fy,dx,dy){const out=[[x,y,ang,fx,fy,dx,dy]
   if(sym.mode==='xy')out.push([2*cx-x,2*cy-y,ang,-fx,-fy,-dx,-dy]);
   return out;}
 const SYM_MODES=[['off','Off'],['x','Left–right'],['y','Top–bottom'],['xy','Both'],['radial','Radial']];
-function setSym(mode){ui.sym.mode=mode;buildBrushPanel();drawXfOverlay();requestRender();}
+/* (0.55.1) with Preferences › Undo also covers symmetry settings, a change of mode, rays, centre or alignment is one undo step */
+function symPush(label,before,after){if(!prefs.undoSettings||JSON.stringify(before)===JSON.stringify(after))return;
+  const put=v=>{Object.assign(ui.sym,v);if(typeof buildOptBar==='function')buildOptBar();buildBrushPanel();drawXfOverlay();requestRender();};
+  pushUndo({label,refs:[],undo(){put(before);},redo(){put(after);}});}
+function symChange(label,fn){const before=Object.assign({},ui.sym);fn();symPush(label,before,Object.assign({},ui.sym));}
+/* a slider that is dragged: one undo step from where the drag began */
+function symTrack(inp,label){let before=null;inp.addEventListener('pointerdown',()=>{before=Object.assign({},ui.sym);});inp.addEventListener('change',()=>{if(before)symPush(label,before,Object.assign({},ui.sym));before=null;});}
+function setSym(mode){symChange('Symmetry',()=>{ui.sym.mode=mode;});buildBrushPanel();drawXfOverlay();requestRender();}
 function symToggleX(){setSym(ui.sym.mode==='x'?'off':'x');toast(ui.sym.mode==='x'?'Symmetry: left–right':'Symmetry off');}
 function buildSymSection(box){const S=ui.sym;
   box.append(el('div',{class:'sub',text:'Symmetry'}),seg(SYM_MODES.map(m=>[m[0],m[1]]),S.mode,v=>setSym(v),'Symmetry'));
   if(S.mode==='off')return;
-  box.append(seg([['canvas','Canvas'],['screen','Screen']],S.align||'canvas',v=>{S.align=v;drawXfOverlay();},'Symmetry alignment'));
+  box.append(seg([['canvas','Canvas'],['screen','Screen']],S.align||'canvas',v=>{symChange('Symmetry alignment',()=>{S.align=v;});drawXfOverlay();},'Symmetry alignment'));
   box.append(el('div',{class:'hint2',id:'symStatus',text:S.mode==='radial'?Math.round(S.n)+' radial copies':'Mirror symmetry on'}));
-  if(S.mode==='radial')box.append(makeSlider({id:'symN',label:'Copies',min:2,max:24,step:1,value:S.n,fmt:v=>String(v),onInput:v=>{S.n=v;const status=document.getElementById('symStatus');if(status)status.textContent=Math.round(v)+' radial copies';drawXfOverlay();}}).el);
-  box.append(makeSlider({id:'symCx',label:'Centre ↔',min:0,max:1,step:.005,value:S.cx,fmt:pct,onInput:v=>{S.cx=v;drawXfOverlay();}}).el);
-  box.append(makeSlider({id:'symCy',label:'Centre ↕',min:0,max:1,step:.005,value:S.cy,fmt:pct,onInput:v=>{S.cy=v;drawXfOverlay();}}).el);
-  box.append(el('button',{class:'btn sm',text:'Centre',title:'Reset the symmetry centre',onclick:()=>{S.cx=S.cy=.5;buildBrushPanel();drawXfOverlay();}}));
+  if(S.mode==='radial'){const setN=v=>{S.n=clamp(Math.round(v)||2,2,128);const status=document.getElementById('symStatus');if(status)status.textContent=S.n+' radial copies';drawXfOverlay();};
+    const sl=makeSlider({id:'symN',label:'Rays',min:2,max:24,step:1,value:Math.min(24,S.n),fmt:v=>String(v),onInput:v=>{setN(v);num.value=S.n;},onChange:()=>{}});
+    const num=el('input',{type:'number',id:'symNum',min:2,max:128,step:1,value:String(S.n),class:'symnum','aria-label':'Number of rays (2 to 128)',title:'Type any number of rays, 2 to 128',onchange:()=>{symChange('Symmetry rays',()=>setN(+num.value));num.value=S.n;sl.set(Math.min(24,S.n));}});
+    symTrack(sl.el.querySelector('input'),'Symmetry rays');
+    box.append(sl.el,el('div',{class:'frow'},el('label',{for:'symNum',text:'Any number'}),num));}
+  for(const [k,id,lb] of [['cx','symCx','Centre ↔'],['cy','symCy','Centre ↕']]){const c=makeSlider({id,label:lb,min:0,max:1,step:.005,value:S[k],fmt:pct,onInput:v=>{S[k]=v;drawXfOverlay();}});symTrack(c.el.querySelector('input'),'Move symmetry centre');box.append(c.el);}
+  box.append(el('button',{class:'btn sm',id:'symReset',text:'Reset centre',title:'Put the symmetry centre back in the middle of the canvas',onclick:()=>{symChange('Reset symmetry centre',()=>{S.cx=S.cy=.5;});buildBrushPanel();drawXfOverlay();}}));
   box.append(el('div',{class:'hint2',text:'Drag the centre circle to move symmetry. Canvas follows canvas rotation; Screen keeps the mirror axes upright. Painting through a bent cage uses its local axes. Shift+X toggles left–right.'}));}
-const SYM_PAINT_TOOLS=['brush','erase','smudge','dodge','burn','heal','clone','material'];
+const SYM_PAINT_TOOLS=['brush','erase','smudge','dodge','burn','heal','clone','material','liquify'];
 function symCentreDown(e){if(ui.sym.mode==='off'||!SYM_PAINT_TOOLS.includes(ui.tool)||e.altKey||e.shiftKey||e.ctrlKey||e.metaKey||xf||selLive||ui.mode==='convert'||(cageOf()?.on!==false&&cageOf()&&!ui.cageFlat))return false;
   const [W,H]=viewDims(),p=scrPt([ui.sym.cx*W,ui.sym.cy*H]),r=stage.getBoundingClientRect();if(Math.hypot(e.clientX-r.left-p[0],e.clientY-r.top-p[1])>9)return false;
   ptr={mode:'symcentre',id:e.pointerId,cx:ui.sym.cx,cy:ui.sym.cy};return true;}
 function symCentreMove(x,y){const [W,H]=viewDims();ui.sym.cx=clamp(x/W,0,1);ui.sym.cy=clamp(y/H,0,1);drawXfOverlay();}
-function symCentreUp(e){if(e.type==='pointercancel'){ui.sym.cx=ptr.cx;ui.sym.cy=ptr.cy;}ptr=null;buildBrushPanel();drawXfOverlay();refreshCursor();}
+function symCentreUp(e){if(e.type==='pointercancel'){ui.sym.cx=ptr.cx;ui.sym.cy=ptr.cy;}else symPush('Move symmetry centre',Object.assign({},ui.sym,{cx:ptr.cx,cy:ptr.cy}),Object.assign({},ui.sym));ptr=null;buildBrushPanel();drawXfOverlay();refreshCursor();}
 
 /* ---------- the Cage tool ---------- */
 function cageClone(C){return C?{nx:C.nx,ny:C.ny,persp:!!C.persp,on:C.on!==false,A:C.A.map(r=>r.map(p=>[p[0],p[1]]))}:null;}

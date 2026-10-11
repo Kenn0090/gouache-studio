@@ -144,6 +144,7 @@
     "layers/locks",
     "ui/key-helper",
     "ui/doc-tabs",
+    "ui/close-guard",
     "ui/stretch",
     "ui/rulers",
     "ui/view-flip",

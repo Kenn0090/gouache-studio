@@ -104,10 +104,11 @@ function dlgNew(){if(ui.mode==='p3d'){dlgP3New();return;}const f=sizeFields(1024
   const stNote=el('p',{class:'note',id:'dStartNote',text:NEW_START_NOTES[start]});
   const onlyPaint=[np.orientation,tplHead,tplSeg,tplNote];const stUpd=()=>{stNote.textContent=NEW_START_NOTES[start];for(const x of onlyPaint)x.hidden=start==='p3d'||start==='brush'||(start==='anim'&&x!==np.orientation);spriteBox.hidden=start!=='anim';bgUpd();};
   const stSeg=seg(NEW_START,()=>start,v=>{if(v==='p3d'){closeDialog();dlgP3New();return;}start=v;if(v==='anim'&&!spriteTemplateApplied)spritePreset.dispatchEvent(new Event('change'));stUpd();if(v==='brush'&&$('#dH'))$('#dH').value=$('#dW').value;});stSeg.id='dStart';
-  const body=el('div',{class:'dlg-grid'},el('div',{class:'sub',text:'Start in'}),stSeg,stNote,spriteBox,np.el,f.row,np.orientation,np.units,f.presets,tplHead,tplSeg,tplNote,
-    el('div',{class:'sub',text:'Bit depth'}),seg([[8,'8-bit'],[16,'16-bit float',!canFloat]],()=>depth,v=>{depth=v;}),
-    bgHead,bgSeg,bgCustom,
-    tileChk);
+  /* (0.55.1) three titled sections, so it is clear what belongs together: where to start, how big, and what the canvas is made of */
+  const sec=(title,...kids)=>el('section',{class:'dsec'},el('h4',{class:'dsec-h',text:title}),...kids);
+  const body=el('div',{class:'dlg-grid dlg-new'},sec('Start in',stSeg,stNote,spriteBox),
+    sec('Size',np.el,f.row,np.orientation,np.units,f.presets),
+    sec('Canvas',tplHead,tplSeg,tplNote,el('div',{class:'sub',text:'Bit depth'}),seg([[8,'8-bit'],[16,'16-bit float',!canFloat]],()=>depth,v=>{depth=v;}),bgHead,bgSeg,bgCustom,tileChk));
   /* the template row and note only matter for Paint and Animation */
   {const kids=[...body.children],ti=kids.indexOf(onlyPaint[1]);if(ti>=0)onlyPaint.push(kids[ti+1],kids[ti+2]);}stUpd();
   openDialog({title:'New document',body,okLabel:'Create',onOk(){const r=np.read();if(!r)return false;const dpiNew=np.dpi();

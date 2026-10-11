@@ -1,3 +1,12 @@
+# Gouache Studio 0.55.1
+
+- Re-rolling and unwrapping show a progress bar with a Stop button and no longer freeze the app; rolling the dice is about 3 times faster.
+- Hover the UV picture in the Bake tab for a big view of it.
+- Spec/Gloss projects no longer get Roughness or Metallic from materials: they are converted as they are added.
+- Symmetry is kept per document; radial symmetry takes any number of rays; Reset centre; Liquify follows symmetry; an optional preference makes undo cover symmetry changes.
+- Drag over the eyes in the Layers panel to hide or show several layers.
+- Closing the desktop window asks to save unsaved work. New document and Recent files are tidier.
+
 # Gouache Studio 0.55.0
 
 - Review an unwrap with colour: stretch (green to red) or texel size (blue to red) on the model and in the layout, with the seams as white lines.

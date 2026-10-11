@@ -36,7 +36,7 @@ const platform={
   launchFile(){return this.invoke('launch_file').catch(()=>null);},
   engineInfo(){return this.invoke('engine_info').catch(()=>null);},
   updateCheck(){return this.invoke('update_check');},
-  updateInstall(){return this.invoke('update_install');},
+  updateInstall(){this.invoke('close_guard',{on:false}).catch(()=>{});return this.invoke('update_install');},
   /* progress callback gets (bytesReceived, totalBytes|null); resolves to an unsubscribe function */
   onUpdateProgress(cb){return TAURI.event.listen('update-progress',e=>cb(e.payload[0],e.payload[1]));}
 };

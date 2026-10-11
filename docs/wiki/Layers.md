@@ -17,7 +17,7 @@ Hidden layers have a **Hidden** badge and a highlighted crossed-out eye. A visib
   ![The right-click layer menu.](images/layer-menu.png)
 - **Selecting:** click to select a layer; Ctrl or Shift+click selects several. Drag to reorder, or drop onto a group to move a layer inside it.
 - **Rename:** double-click a layer's name.
-- **Visibility:** the eye button hides or shows a layer.
+- **Visibility:** the eye button hides or shows a layer. Press an eye and drag down the list to hide or show every layer you pass.
 - **Layer properties** (above the list):
   - **Blend mode:** hover a mode to preview it before choosing.
   - **Opacity.**

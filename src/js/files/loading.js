@@ -3,11 +3,13 @@
    then a moving bar while the file is turned into layers or a model. The moving bar is a CSS
    animation, so it keeps moving even while the app is busy reading the file. */
 let loadBox=null,loadDepth=0;
-function loadEls(){if(!loadBox){loadBox=el('div',{id:'loadBox',role:'status','aria-live':'polite',hidden:true},el('div',{class:'lb-name'}),el('div',{class:'lb-msg'}),el('div',{class:'lb-bar'},el('div')));document.body.append(loadBox);}return loadBox;}
+function loadEls(){if(!loadBox){loadBox=el('div',{id:'loadBox',role:'status','aria-live':'polite',hidden:true},el('div',{class:'lb-name'}),el('div',{class:'lb-msg'}),el('div',{class:'lb-bar'},el('div')),el('button',{class:'btn sm lb-x',type:'button',hidden:true,text:'Stop'}));document.body.append(loadBox);}return loadBox;}
 function loadStart(name){const b=loadEls();loadDepth++;b.hidden=false;b.querySelector('.lb-name').textContent=name||'';loadSet(0,'Reading…');}
 function loadSet(f,msg){const b=loadEls();b.hidden=false;const bar=b.querySelector('.lb-bar');bar.classList.remove('busy');bar.firstChild.style.width=(clamp(f,0,1)*100).toFixed(1)+'%';if(msg)b.querySelector('.lb-msg').textContent=msg;}
 function loadBusy(msg){const b=loadEls();b.hidden=false;b.querySelector('.lb-bar').classList.add('busy');if(msg)b.querySelector('.lb-msg').textContent=msg;}
-function loadEnd(){loadDepth=Math.max(0,loadDepth-1);if(!loadDepth&&loadBox)loadBox.hidden=true;}
+function loadEnd(){loadDepth=Math.max(0,loadDepth-1);if(!loadDepth&&loadBox){loadBox.hidden=true;loadCancel(null);}}
+/* a Stop button under the bar for work that can be given up (null removes it) */
+function loadCancel(fn){const b=loadEls().querySelector('.lb-x');b.hidden=!fn;b.onclick=fn?()=>{b.textContent='Stopping…';fn();}:null;if(fn)b.textContent='Stop';}
 /* let the bar show before a long, blocking step */
 const loadPaint=()=>new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));
 /* read a dropped or picked File with progress */
