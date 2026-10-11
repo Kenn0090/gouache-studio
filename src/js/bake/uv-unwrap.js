@@ -202,7 +202,7 @@ async function uwUnwrap(m,optIn,progress,topoIn){const opt=Object.assign(uwDefau
   pr('Reading the model…',0);await uwYield();const topo=topoIn||m._uwTopo||(m._uwTopo=uwTopo(m));
   pr('Cutting into pieces…',.1);await uwYield();if(uwStop.on)throw new Error('Stopped');let seg=uwSegment(m,topo,opt,rng);seg=uwMerge(m,topo,seg,opt);if(opt.artist){pr('Joining pieces like an artist…',.18);await uwYield();seg=uwArtistMerge(m,topo,seg,opt,()=>{});if(uwStop.on)throw new Error('Stopped');}
   const flats=[],leaves=[];let k=0;uwLast=performance.now();for(const C of seg.charts){if(opt.artist){for(const r of await uwAsync(uwFlattenSplitG(m,topo,C,opt))){flats.push(r.F);leaves.push(r.C);}}else{flats.push(await uwAsync(uwFlattenG(m,topo,C,opt)));leaves.push(C);}k++;if(uwDue()){pr('Flattening… '+k+' of '+seg.charts.length,.25+.7*k/seg.charts.length);await uwYield();uwLast=performance.now();if(uwStop.on)throw new Error('Stopped');}}
-  if(opt.artist&&leaves.length!==seg.charts.length){seg.charts=leaves;leaves.forEach((c,i)=>{c.id=i;for(const t of c.tris)seg.chart[t]=i;});}
+  if(opt.artist){seg.charts=leaves;leaves.forEach((c,i)=>{c.id=i;for(const t of c.tris)seg.chart[t]=i;});}
   return {topo,seg,flats,opt:Object.assign({},opt)};}
 /* place the flattened charts (cheap, so re-rolling the pack or changing padding does not flatten again) */
 function uwLayout(m,res,optIn){const opt=Object.assign({},res.opt,optIn||{}),{topo,seg,flats}=res,pad=opt.padding||uwAutoPad(opt.size),mats=m.triMat?[...new Set(seg.charts.map(c=>c.mat))].sort((a,b)=>a-b):[0];
