@@ -10,6 +10,9 @@
 - **Fewer fragments.** A small piece that hugs one neighbour along most of its outline (for example the patch under a sleeve) joins that neighbour instead of getting its own seams. Pieces divided by a real crease or a material change are left alone.
 - **Check overlaps** now also finds a piece that covers itself, and Fix overlaps relaxes it.
 
+- **Pieces are packed by their real outline.** Until now every piece was packed as a rectangle, so the empty corners of a bent piece (a torso with armhole notches) stayed empty. Now each outline is drawn on a fine grid and small pieces tuck into the corners of big ones, which lets the pieces grow. On the sample models the picture is covered 3 to 12 points more (Backpack 37% to 49%); a wide torso that fills the picture's width cannot grow, so the jacket changes little.
+- **Cloth bunched under an armpit gets a side seam.** Where the surface is a saddle (the armpit between arm and body) it cannot lie flat, so the cut now runs from the middle of the saddle out to the edge of the piece, like a side seam. The cut is taken back if it makes the layout worse. On the sample jacket the leftover overlap fell from 3.4% to 2.3%.
+
 ## 0.55.2
 
 - **Artist style unwrap.** A new **Artist style** choice in the UVs card's Style list, tuned on 20 hand-made unwraps (a backpack, jackets, a helmet, swords, shoes, a face…). It cuts into fewer, bigger pieces, joins small neighbours while they can still lie flat (so the seams that are left follow the hard edges), stands each piece upright so the model's up is the texture's up (when that costs little space), shrinks a very long piece a little so it stops limiting everyone else's size, and cuts a piece that would stretch too much with a straight seam through the middle. On the 20 models it makes about 3 times fewer pieces than Balanced with the same low stretch.

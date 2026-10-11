@@ -7,6 +7,8 @@
 - The Clothing style lays a bucket-shaped garment flat instead of letting it lie on itself: the sample jacket torso is now one clean sheet with a third of the stretch.
 - Small pieces that hug a neighbour join it instead of getting their own seams.
 - Check overlaps also finds a piece that covers itself.
+- Pieces are packed by their real shape, so small pieces fill the corners of big ones and the picture is used better (3 to 12 points more covered on the sample models).
+- Cloth bunched under an armpit gets a side seam, which lowers the overlap on jackets.
 
 # Gouache Studio 0.55.2
 
