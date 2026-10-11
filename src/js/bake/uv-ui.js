@@ -104,7 +104,11 @@ function uvCard(L){uvBigHide();if(!L||!L.pos)return null;const an=uvAn(L),A=L.uv
   const seg2=(id,opts,val,fn)=>seg(opts,val,fn,id);
   const padVal=O.padding||uwAutoPad(uvSizeNow());
   const ctl=el('div',{class:'uvctl'},
-    ...(own?[]:[el('div',{class:'frow'},el('label',{text:'Style'}),(()=>{const s=el('select',{id:'uvPreset','aria-label':'Unwrap style'},...Object.entries(UW_PRESETS).map(([k,v])=>el('option',{value:k,text:v.label})));s.value=O.preset||'balanced';s.onchange=()=>uvAct('unwrap',uwPresetOpts(s.value));return s;})()),
+    /* (0.57) the style can always be changed again, to try another: a model with its own UVs asks first, since a style replaces them */
+    el('div',{class:'frow'},el('label',{text:'Style'}),(()=>{const mine=own,ask=own&&!L.uwSrc,s=el('select',{id:'uvPreset','aria-label':'Unwrap style'},...(mine?[el('option',{value:'own',text:L.uwSrc?'Current UVs':'Your own UVs'})]:[]),...Object.entries(UW_PRESETS).map(([k,v])=>el('option',{value:k,text:v.label})));
+      s.value=mine?'own':(O.preset||'balanced');
+      s.onchange=async()=>{if(s.value==='own')return;if(ask){const r=await uvDialog('Unwrap again?',el('div',{class:'dlg-grid'},uvLine('This model has its own UVs. Choosing a style cuts and flattens it again and replaces them. The Original UVs button brings them back.')),'Unwrap','Keep my UVs');if(r!=='ok'){s.value='own';return;}}uvAct('unwrap',uwPresetOpts(s.value));};return s;})()),
+    ...(own?[]:[
       makeSlider({id:'uvAngle',label:'Seam angle',min:30,max:89,step:1,value:O.angle,fmt:v=>Math.round(v)+'°',onInput:v=>uvLive({angle:Math.round(v)}),onChange:v=>{clearTimeout(uvLiveTimer);uvLiveOpt=null;uvAct('unwrap',{angle:Math.round(v)},{quiet:true});}}).el]),
     makeSlider({id:'uvPad',label:'Padding',min:2,max:64,step:1,value:padVal,fmt:v=>Math.round(v)+' px',onInput:()=>{},onChange:v=>uvAct('layout',{padding:Math.round(v)})}).el,
     el('div',{class:'frow'},el('label',{text:'Layout'}),seg([['material','One square per material'],['shared','Shared square']],O.layout||'material',v=>uvAct('layout',{layout:v}),'Layout')),

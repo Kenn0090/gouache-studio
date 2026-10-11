@@ -39,6 +39,8 @@ function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren
     bar.append(el('span',{class:'optsep'}),tg('Paints: '+cur+(pm.length?' + '+pm.length:''),pm.length>0,()=>showPanel('tool'),'Which maps the brush paints, and every other brush setting (Brush tab)'));return;}
   bar.append(tg('Pressure: size',brush.pSize,()=>{brush.pSize=!brush.pSize;brushEdited();buildBrushPanel();},'Pen pressure changes the size'));
   const sy=el('select',{class:'optsel','aria-label':'Symmetry',title:'Symmetry'},...SYM_MODES.map(([k,l])=>el('option',{value:k,text:'Symmetry: '+l})));sy.value=ui.sym.mode;sy.onchange=()=>setSym(sy.value);bar.append(sy);
+  if(ui.sym.mode==='radial'){const rn=el('input',{type:'number',class:'optnum',id:'obRays',min:2,max:128,step:1,value:String(Math.round(ui.sym.n)),'aria-label':'Number of rays (2 to 128)',title:'Rays: how many copies of the stroke (2 to 128)'});rn.onchange=()=>symSetRays(rn.value);bar.append(rn);}
+  if(ui.sym.mode!=='off')bar.append(el('button',{class:'optchip',id:'obSymReset',text:'↺',title:'Reset symmetry: centre in the middle, six rays, aligned with the canvas','aria-label':'Reset symmetry',onclick:symResetAll}));
   const mb=typeof mapBrushTargets==='function'?mapBrushTargets():[];
   if(doc.maps.length>1&&(t==='brush'||t==='erase')&&ui.mode!=='anim')bar.append(tg(mb.length?'Also paints: '+mb.map(k=>MAP_DEFS[k].label).join(', '):'Also paint other maps…',mb.length>0,()=>showPanel('tool'),'Which other maps this brush paints (Tool settings)'));
   /* More: a second row with the settings you change now and then (spacing, smoothing, jitter, pressure…) */

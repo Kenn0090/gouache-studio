@@ -96,6 +96,7 @@ cv.addEventListener('pointermove',e=>{
   let [mx,my]=toImage(e.clientX,e.clientY);$('#stPos').textContent=(mx>=0&&my>=0&&mx<doc.w&&my<doc.h)?Math.floor(mx)+', '+Math.floor(my):'–';
   if(typeof gdSnapOn==='function'&&gdSnapOn()&&!e.altKey)[mx,my]=gdSnap(mx,my);
   if(!ptr&&polyLasso){polyMove(e,mx,my);return;}
+  if(!ptr&&typeof symHover==='function')symHover(e);
   if(!ptr){if(ui.tool==='cage'&&!ui.cageFlat)cageHover(e);else if(xf&&!xf.move)xfHover(e);else if(ui.tool==='crop'&&crop)cropHover(e);else if(ui.tool==='gradient')gradHover(e);else if(ui.tool==='array')arrHover(e);else if(ui.tool==='shape')shapeHover(e);}
   if(ptr&&e.pointerId===ptr.id){if(ptr.mode==='symcentre'){symCentreMove(mx,my);return;}if(ptr.mode==='cvq'){cvPointerMove(e,mx,my);return;}if(ptr.mode==='cage'){cagePointerMove(e,mx,my);return;}if(ptr.mode==='xf'){xfPointerMove(e,mx,my);return;}if(ptr.mode==='crop'){cropPointerMove(e,mx,my);return;}if(ptr.mode==='movedrag'){movePointerMove(e,mx,my);return;}if(ptr.mode==='grad'){gradPointerMove(e,mx,my);return;}if(ptr.mode==='gbucket'){gbucketMove(e,mx,my);return;}}
   if(!ptr||e.pointerId!==ptr.id)return;

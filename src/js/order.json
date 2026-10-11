@@ -136,6 +136,7 @@
     "ui/favorites",
     "ui/dock",
     "ui/history",
+    "ui/layer-undo",
     "tools/paths",
     "ui/view-input",
     "ui/optbar",
