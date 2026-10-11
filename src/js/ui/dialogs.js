@@ -100,23 +100,38 @@ function dlgNew(){if(ui.mode==='p3d'){dlgP3New();return;}const f=sizeFields(1024
   const spriteBox=el('div',{class:'spriteDocOptions'},el('div',{class:'sub',text:'Sprite setup'}),el('div',{class:'frow'},el('label',{for:'dSpritePreset',text:'Template'}),spritePreset),el('div',{class:'frow'},el('label',{for:'dSpritePalette',text:'Game palette'}),spritePalette),el('div',{class:'frow'},el('label',{for:'dSpriteFPS',text:'Frame rate'}),spriteFPS,el('span',{class:'dim',text:'fps'})),el('p',{class:'note',text:'Creates a transparent 8-bit canvas, opens the animation timeline and puts the chosen palette in the colour swatches.'}));
   const spriteSizes={pixel32:[32,32],pixel64:[64,64],pixel128:[128,128],sheet256:[256,256],sheet512:[512,512],hd:[512,512]};
   let spriteTemplateApplied=false;spritePreset.addEventListener('change',()=>{const s=spriteSizes[spritePreset.value];if(s){$('#dW').value=s[0];$('#dH').value=s[1];depth=8;bgMode='clear';spriteTemplateApplied=true;bgUpd();}});if(start==='anim')spritePreset.dispatchEvent(new Event('change'));
-  const tplHead=el('div',{class:'sub',text:'Template'}),tplSeg=seg([['hand','Hand-painted'],['pbr','PBR'],['pbrsg','PBR spec/gloss'],['brush','Brush tip'],['custom','Custom…']],()=>tpl,v=>{tpl=v;tplNote.textContent=TPL_NOTES[v];bgUpd();if(v==='brush'){$('#dW').value=512;$('#dH').value=512;}});
+  /* (0.57) templates are cards with a short line each; the storyboard card comes with its own options and a picture of the page */
+  const TPLS=[['hand','Hand-painted','Base colour only'],['pbr','PBR','Colour, roughness, metal, height, normal'],['pbrsg','PBR spec/gloss','Diffuse, specular, glossiness'],['storyboard','Storyboard','Panels, numbers and captions'],['brush','Brush tip','Black and white tip'],['custom','Custom…','Pick the maps after']];
+  TPL_NOTES.storyboard='A page of panel frames with numbers and caption lines, on a locked layer. Draw on the Sketch layer above it.';
+  const sbO=Object.assign({},SB_DEFAULT),sbThumb=el('canvas',{id:'dSbThumb',class:'sbthumb',width:220,height:170,'aria-label':'Storyboard page preview'});
+  const sbDrawThumb=(W,H)=>{const k=Math.min(220/W,170/H),c=document.createElement('canvas');c.width=Math.max(1,Math.round(W*k));c.height=Math.max(1,Math.round(H*k));sbDraw(c,sbO);sbThumb.width=c.width;sbThumb.height=c.height;const x=sbThumb.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(c,0,0);};
+  const sbSel=(id,label,opts,key)=>{const s=el('select',{id,'aria-label':label},...opts.map(o=>el('option',{value:o[0],text:o[1]})));s.value=sbO[key];s.onchange=()=>{sbO[key]=s.value;sbDrawThumb(...np.px());};return el('div',{class:'frow'},el('label',{for:id,text:label}),s);};
+  const sbBox=el('div',{class:'sbopts',id:'dSbBox',hidden:true},el('div',{class:'sbcol'},sbSel('dSbLayout','Panels on the page',SB_LAYOUTS,'layout'),sbSel('dSbAspect','Panel shape',SB_ASPECTS,'aspect'),
+    chk('dSbCap','Caption lines under each panel',true,v=>{sbO.captions=v;sbDrawThumb(...np.px());}),chk('dSbHead','Title strip (project, scene, page, date)',true,v=>{sbO.header=v;sbDrawThumb(...np.px());}),
+    el('p',{class:'note',text:'Pick the page size above; the panels are fitted to it. Rotate the page with Portrait or Landscape.'})),sbThumb);
+  np.listeners.push((W,H)=>{if(tpl==='storyboard')sbDrawThumb(W,H);});
+  const tplHead=el('div',{class:'sub',text:'Template'}),tplSeg=(()=>{const w=el('div',{class:'chips'}),draw=()=>{w.replaceChildren(...TPLS.map(([v,l,d])=>el('button',{class:'chip'+(v===tpl?' on':''),title:d,text:l,onclick:()=>pickTpl(v)})));};w.redraw=draw;draw();return w;})();
+  const pickTpl=v=>{tpl=v;tplNote.textContent=TPL_NOTES[v];tplSeg.redraw();sbBox.hidden=v!=='storyboard';bgUpd();
+    if(v==='brush'){$('#dW').value=512;$('#dH').value=512;np.px();}
+    if(v==='storyboard'){const gi=NEW_PRESETS.findIndex(g=>g[0]==='Storyboard');np.pick(gi,0);sbDrawThumb(...np.px());}};
   const stNote=el('p',{class:'note',id:'dStartNote',text:NEW_START_NOTES[start]});
-  const onlyPaint=[np.orientation,tplHead,tplSeg,tplNote];const stUpd=()=>{stNote.textContent=NEW_START_NOTES[start];for(const x of onlyPaint)x.hidden=start==='p3d'||start==='brush'||(start==='anim'&&x!==np.orientation);spriteBox.hidden=start!=='anim';bgUpd();};
-  const stSeg=seg(NEW_START,()=>start,v=>{if(v==='p3d'){closeDialog();dlgP3New();return;}start=v;if(v==='anim'&&!spriteTemplateApplied)spritePreset.dispatchEvent(new Event('change'));stUpd();if(v==='brush'&&$('#dH'))$('#dH').value=$('#dW').value;});stSeg.id='dStart';
-  /* (0.55.1) three titled sections, so it is clear what belongs together: where to start, how big, and what the canvas is made of */
-  const sec=(title,...kids)=>el('section',{class:'dsec'},el('h4',{class:'dsec-h',text:title}),...kids);
-  const body=el('div',{class:'dlg-grid dlg-new'},sec('Start in',stSeg,stNote,spriteBox),
-    sec('Size',np.el,f.row,np.orientation,np.units,f.presets),
-    sec('Canvas',tplHead,tplSeg,tplNote,el('div',{class:'sub',text:'Bit depth'}),seg([[8,'8-bit'],[16,'16-bit float',!canFloat]],()=>depth,v=>{depth=v;}),bgHead,bgSeg,bgCustom,tileChk));
-  /* the template row and note only matter for Paint and Animation */
-  {const kids=[...body.children],ti=kids.indexOf(onlyPaint[1]);if(ti>=0)onlyPaint.push(kids[ti+1],kids[ti+2]);}stUpd();
-  openDialog({title:'New document',body,okLabel:'Create',onOk(){const r=np.read();if(!r)return false;const dpiNew=np.dpi();
+  let stUpd=null;const stSeg=seg(NEW_START,()=>start,v=>{if(v==='p3d'){closeDialog();dlgP3New();return;}start=v;if(v==='anim'&&!spriteTemplateApplied)spritePreset.dispatchEvent(new Event('change'));stUpd();if(v==='brush'&&$('#dH'))$('#dH').value=$('#dW').value;});stSeg.id='dStart';
+  const prevBox=el('div',{class:'dprev',id:'dPrev'}),prevI=el('i'),prevT=el('span',{class:'dprev-t'});prevBox.append(el('span',{class:'dprev-s'},prevI),prevT);
+  np.listeners.push((W,H)=>{const k=70/Math.max(W,H,1);prevI.style.width=Math.max(6,Math.round(W*k))+'px';prevI.style.height=Math.max(6,Math.round(H*k))+'px';prevT.textContent=W+' × '+H+' px';});np.px();np.listeners[np.listeners.length-1](...np.px());
+  /* sections are boxed cards with a heading, so the window reads as groups rather than one long list */
+  const sec=(title,sub,...kids)=>el('section',{class:'dsec'},el('h4',{class:'dsec-h',text:title}),...(sub?[el('p',{class:'dsec-s',text:sub})]:[]),...kids);
+  const secStart=sec('Start in','',stSeg,stNote,spriteBox),
+    secSize=sec('Size','Pick a preset, a size button, or type your own.',el('div',{class:'dsize'},el('div',{class:'dfields'},np.el,f.presets,f.row,np.orientation,np.units),prevBox)),
+    secCanvas=sec('Canvas','',tplHead,tplSeg,tplNote,sbBox,el('div',{class:'sub',text:'Bit depth'}),seg([[8,'8-bit'],[16,'16-bit float',!canFloat]],()=>depth,v=>{depth=v;}),bgHead,bgSeg,bgCustom,tileChk);
+  const body=el('div',{class:'dlg-grid dlg-new'},secStart,secSize,secCanvas);
+  const hideIf=()=>{for(const x of [tplHead,tplSeg,tplNote])x.hidden=start==='p3d'||start==='brush'||start==='anim';sbBox.hidden=tpl!=='storyboard'||start!=='paint';np.orientation.hidden=start==='p3d'||start==='brush'||start==='anim';};
+  stUpd=()=>{stNote.textContent=NEW_START_NOTES[start];hideIf();spriteBox.hidden=start!=='anim';bgUpd();};stUpd();
+  openDialog({title:'New document',body,wide:true,okLabel:'Create',onOk(){const r=np.read();if(!r)return false;const dpiNew=np.dpi();
     if(start==='p3d'){const n=r[0];setTimeout(()=>dlgP3New(),0);return;}
     if(start==='brush'){if(ui.mode!=='brush'&&!setMode('brush',true))return;btNewCanvas(Math.max(64,Math.min(4096,r[0])));return;}
     if(depth===16&&r[0]*r[1]>=268435456){toast('Use 8-bit colour for a 16K square document. Height still keeps 16-bit precision.');return false;}
     if(start==='paint'&&ui.mode!=='paint'&&typeof setMode==='function'&&!setMode('paint',true))return;
-    if(start==='anim'&&ui.mode!=='paint'&&ui.mode!=='anim'&&typeof setMode==='function'&&!setMode('paint',true))return;const bg=start==='anim'?null:bgMode==='white'?[1,1,1]:bgMode==='fg'?ui.fg.slice():bgMode==='custom'?fromHex(bgHex.value):null;if(start!=='anim'&&bgMode==='custom'&&!bg){toast('Enter a valid canvas colour, such as #f4e9dc.');return false;}if(typeof dtNewTab==='function'&&!dtNewTab())return;try{tbDocReset();}catch(e){}if(tpl==='brush'){newBrushDoc(r[0],r[1]);return;}newDoc(r[0],r[1],start==='anim'?8:depth,bg,typeof dtUntitled==='function'?dtUntitled():'Untitled',tile,start==='anim'?'hand':tpl==='custom'?'hand':tpl);doc.dpi=dpiNew;if(tpl==='custom'&&start!=='anim')setTimeout(dlgMaps,0);if(start==='anim'){if(ui.mode!=='anim')setMode('anim');setFps(+spriteFPS.value||12);cmUsePalette(spritePalette.value);const pal=CM_GAME_PALETTES[spritePalette.value];if(pal)setFG(fromHex(pal.colors[0]));}}});}
+    if(start==='anim'&&ui.mode!=='paint'&&ui.mode!=='anim'&&typeof setMode==='function'&&!setMode('paint',true))return;const bg=start==='anim'?null:bgMode==='white'?[1,1,1]:bgMode==='fg'?ui.fg.slice():bgMode==='custom'?fromHex(bgHex.value):null;if(start!=='anim'&&bgMode==='custom'&&!bg){toast('Enter a valid canvas colour, such as #f4e9dc.');return false;}if(typeof dtNewTab==='function'&&!dtNewTab())return;try{tbDocReset();}catch(e){}if(tpl==='brush'){newBrushDoc(r[0],r[1]);return;}newDoc(r[0],r[1],start==='anim'?8:depth,bg,typeof dtUntitled==='function'?dtUntitled():'Untitled',tile,start==='anim'?'hand':tpl==='custom'||tpl==='storyboard'?'hand':tpl);doc.dpi=dpiNew;if(tpl==='storyboard'&&start==='paint')sbApply(sbO);if(tpl==='custom'&&start!=='anim')setTimeout(dlgMaps,0);if(start==='anim'){if(ui.mode!=='anim')setMode('anim');setFps(+spriteFPS.value||12);cmUsePalette(spritePalette.value);const pal=CM_GAME_PALETTES[spritePalette.value];if(pal)setFG(fromHex(pal.colors[0]));}}});}
 /* ---- New document presets (0.26.1): textures, screens, phones, social, paper, photo, books, cards, posters, film ---- */
 const NEW_PRESETS=[
   ['Textures',[['256 × 256',256,256],['512 × 512',512,512],['1K (1024)',1024,1024],['2K (2048)',2048,2048],['4K (4096)',4096,4096],['8K (8192)',8192,8192],['16K (16384)',16384,16384],['2K × 1K (2:1)',2048,1024],['4K × 2K (2:1)',4096,2048]]],
@@ -128,13 +143,14 @@ const NEW_PRESETS=[
   ['Books and comics',[['Book 6 × 9 in',6,9,'in'],['Book 5.5 × 8.5 in',5.5,8.5,'in'],['Book 5 × 8 in',5,8,'in'],['Children’s book 8.5 × 8.5 in',8.5,8.5,'in'],['Comic page (US, 6.625 × 10.25 in)',6.625,10.25,'in'],['Comic cover with bleed (6.875 × 10.5 in)',6.875,10.5,'in'],['Manga (B6, 128 × 182 mm)',128,182,'mm'],['Webtoon strip (800 × 1280)',800,1280]]],
   ['Cards',[['Trading card (2.5 × 3.5 in)',2.5,3.5,'in'],['Trading card with bleed (2.75 × 3.75 in)',2.75,3.75,'in'],['Tarot card (2.75 × 4.75 in)',2.75,4.75,'in'],['Business card (3.5 × 2 in)',3.5,2,'in'],['Postcard (6 × 4 in)',6,4,'in'],['Greeting card (5 × 7 in)',5,7,'in']]],
   ['Posters',[['Poster 11 × 17 in',11,17,'in'],['Poster 18 × 24 in',18,24,'in'],['Poster 24 × 36 in',24,36,'in'],['Movie poster (27 × 40 in)',27,40,'in']]],
+  ['Storyboard',[['Storyboard page · Letter landscape',11,8.5,'in'],['Storyboard page · A4 landscape',297,210,'mm'],['Storyboard page · Letter portrait',8.5,11,'in'],['Single panel 16:9',1920,1080],['Single panel 2.39:1 (cinema)',1920,804],['Single panel 4:3',1600,1200],['Single panel 9:16 (vertical)',1080,1920]]],
   ['Film and video',[['Cinema 2K DCI',2048,1080],['Cinema 4K DCI',4096,2160],['Widescreen 2.39:1 (1920 × 804)',1920,804],['Storyboard panel (16:9)',1920,1080],['Concept art (3:2, 3000 × 2000)',3000,2000]]]];
 const NEW_UNITS=[['px','Pixels'],['in','Inches'],['cm','Centimetres'],['mm','Millimetres']];
 function newPresetBox(f){const iw=f.row.querySelector('#dW'),ih=f.row.querySelector('#dH'),dimLab=f.row.querySelector('.dim');let unit='px',dpi=72;
   const per=u=>({px:1,in:dpi,cm:dpi/2.54,mm:dpi/25.4}[u]);const fmt=v=>unit==='px'?String(Math.round(v)):String(+v.toFixed(3));
   const px=()=>[Math.round(+iw.value*per(unit)),Math.round(+ih.value*per(unit))];
   const orientation=el('div',{class:'frow neworientation',role:'group','aria-label':'Canvas orientation'}),orientButtons=[];
-  const info=el('span',{class:'dim'});const upd=()=>{const [W,H]=px();info.textContent=unit==='px'?'= '+(W/dpi).toFixed(2)+' × '+(H/dpi).toFixed(2)+' in at '+dpi+' DPI':'= '+W+' × '+H+' px';dimLab.textContent=unit;for(const [b,portrait] of orientButtons){const on=portrait?H>W:W>H;b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));}};
+  const info=el('span',{class:'dim'}),listeners=[];const upd=()=>{const [W,H]=px();listeners.forEach(fn=>fn(W,H));info.textContent=unit==='px'?'= '+(W/dpi).toFixed(2)+' × '+(H/dpi).toFixed(2)+' in at '+dpi+' DPI':'= '+W+' × '+H+' px';dimLab.textContent=unit;for(const [b,portrait] of orientButtons){const on=portrait?H>W:W>H;b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));}};
   const sel=el('select',{'aria-label':'Preset'},el('option',{value:'',text:'Custom size'}),...NEW_PRESETS.map(([g,list],gi)=>{const og=el('optgroup',{label:g});list.forEach(([n],i)=>og.append(el('option',{value:gi+':'+i,text:n})));return og;}));
   const us=el('select',{'aria-label':'Units'},...NEW_UNITS.map(([u,n])=>el('option',{value:u,text:n})));
   const di=el('input',{class:'num',type:'number',min:1,max:9600,value:dpi,'aria-label':'Resolution in DPI'});
@@ -149,7 +165,8 @@ function newPresetBox(f){const iw=f.row.querySelector('#dW'),ih=f.row.querySelec
   for(const i of [iw,ih])i.addEventListener('input',()=>{sel.value='';upd();});
   for(const b of f.presets.querySelectorAll('button'))b.addEventListener('click',()=>{if(unit!=='px')setUnit('px');sel.value='';setTimeout(upd,0);});
   iw.step=ih.step='any';upd();
-  return {orientation,el:el('div',{class:'frow'},el('label',{text:'Preset'}),sel),units:el('div',{class:'frow'},el('label',{text:'Units'}),us,el('label',{text:'DPI'}),di,swap,info),dpi:()=>dpi,
+  const pick=(gi,i)=>{sel.value=gi+':'+i;sel.dispatchEvent(new Event('change'));};
+  return {listeners,pick,px,orientation,el:el('div',{class:'frow'},el('label',{text:'Preset'}),sel),units:el('div',{class:'frow'},el('label',{text:'Units'}),us,el('label',{text:'DPI'}),di,swap,info),dpi:()=>dpi,
     read(){const [W,H]=px();if(!(W>=1&&H>=1&&W<=MAX_DIM&&H<=MAX_DIM)){toast('That is '+W+' × '+H+' px. Width and height must be between 1 and '+MAX_DIM+' px'+(unit!=='px'?' (try a lower DPI).':'.'));return null;}return [W,H];}};}
 /* the brush-tip template: white, 8-bit, black brush, and a banner with Make brush */
 function newBrushDoc(w,h){newDoc(w||512,h||512,8,[1,1,1],'Brush tip',false,'hand');doc.brushTpl=true;ui.bg=[1,1,1];setFG([0,0,0]);setTool('brush');tipBanner();}

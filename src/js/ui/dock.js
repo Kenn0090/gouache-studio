@@ -111,8 +111,8 @@ function dkInit(){
 /* ---- applying a layout ---- */
 function dkApply(L,first){dk.L=dkFix(L);dkRender();if(!first)dkWorkspaceExtras();dkSave();}
 function dkToolbar(o){Object.assign(dk.L.tb,o);dkRender();dkSave();resizeGL();fit();}
-function dkGrid(){const L=dk.L,app=$('#app'),F=L.fold||{},shOn=!!(L.shelf&&dkAvail(L.shelf).length),hasDock=L.groups.some(g=>dkAvail(g).length)&&L.w>0,ic=L.icons.length?'38px':'0px',tw=F.tools?'26px':L.tb.cols===2?'82px':'46px';
-  document.body.classList.toggle('tb2',L.tb.cols===2);document.body.classList.toggle('noopt',!L.opt);
+function dkGrid(){const L=dk.L,app=$('#app'),F=L.fold||{},shOn=!!(L.shelf&&dkAvail(L.shelf).length),hasDock=L.groups.some(g=>dkAvail(g).length)&&L.w>0,ic=L.icons.length?'38px':'0px',noTools=ui.mode==='bake'||ui.mode==='convert',tw=noTools?'0px':F.tools?'26px':L.tb.cols===2?'82px':'46px';
+  document.body.classList.toggle('tb2',L.tb.cols===2);document.body.classList.toggle('notools',noTools);document.body.classList.toggle('noopt',!L.opt);
   for(const k of ['dock','dock2','tools','opt','shelf'])app.classList.toggle('f-'+k,!!F[k]);
   const left=L.tb.side!=='right';
   const c2=dkCol2On()&&dk.col2.groups.some(g=>dkAvail(g).length)?(F.dock2?26:dk.col2.w)+'px':'0px';
