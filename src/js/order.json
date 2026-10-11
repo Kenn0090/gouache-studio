@@ -127,6 +127,7 @@
     "ui/menus",
     "bake/uv-ui",
     "bake/uv-fun",
+    "bake/uv-relax",
     "ui/help",
     "ui/ticks",
     "core/tabdoc",

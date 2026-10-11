@@ -1,3 +1,10 @@
+# Gouache Studio 0.56.0
+
+- New Clothing (pattern) style: cuts along the closed loops of a garment (sleeves, cuffs, hem) and one seam down each tube, like a sewing pattern.
+- Cleaner seams in every style: no more saw-teeth or thin fingers along the borders.
+- Relax button: evens out stretching inside each piece without moving the seams.
+- Check overlaps button: shows overlapping and folded faces in red on the layout and the model; Fix overlaps packs them apart.
+
 # Gouache Studio 0.55.2
 
 - New Artist style in the unwrap Style list: fewer, bigger, upright pieces with seams on hard edges, tuned on hand-made unwraps. About 3 times fewer pieces than Balanced.

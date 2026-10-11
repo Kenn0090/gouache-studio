@@ -44,9 +44,12 @@ let uvViewT=null,uvViewKey='';
 function uvViewTarget(){const m=(typeof bkLow==='function')?bkLow():null,v=uvw.view;if(!m||m.noUV||!v||v==='off')return null;
   const key=v+'|'+(m.uv&&m.uv.length)+'|'+(m._uvStamp||0)+'|'+(m.uvAuto?m.uvAuto.packSeed+':'+m.uvAuto.seed:'');if(uvViewT&&uvViewKey===key&&uvViewT.mesh===m)return uvViewT;
   if(uvViewT){disposeTarget(uvViewT.t);uvViewT=null;}
-  let cv;if(v==='check')cv=uvCheckerCanvas();else cv=uvHeatCanvas(m,v,1024,true);
+  let cv;if(v==='check')cv=uvCheckerCanvas();else if(v==='overlap')cv=uvOverlapCanvas(m,1024,uvOvl(m));else cv=uvHeatCanvas(m,v,1024,true);
   const t=makeTarget(cv.width,cv.height,8,true),tex=uploadStraight({w:cv.width,h:cv.height,data:new Uint8Array(cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data.buffer),bits:8});try{premultInto(t,tex,[0,0],null);}finally{gl.deleteTexture(tex);}setWrap(t,true);
   uvViewKey=key;uvViewT={t,unlit:v!=='check',mesh:m};return uvViewT;}
+/* the overlap check of a mesh, kept until the mesh changes */
+function uvOvl(m){if(!uvw.ovl||uvw.ovl.mesh!==m||uvw.ovl.stamp!==(m._uvStamp||0))uvw.ovl={mesh:m,stamp:m._uvStamp||0,res:uvOverlapCheck(m)};return uvw.ovl.res;}
+function uvOvlNote(r){return r.none?'':(r.faces?r.faces.toLocaleString()+' face'+(r.faces===1?'':'s')+' overlap ('+r.pct.toFixed(1)+'%)'+(r.folded?', '+r.folded+' folded over':'')+'.':'No overlaps.');}
 function uvCheckerCanvas(){const S=1024,c=document.createElement('canvas');c.width=c.height=S;const x=c.getContext('2d'),n=16,s=S/n;
   for(let i=0;i<n;i++)for(let j=0;j<n;j++){x.fillStyle=(i+j)&1?'#d9d9de':'#8c8f99';x.fillRect(i*s,j*s,s,s);}
   x.font='bold 40px sans-serif';x.fillStyle='#2b2d33';x.textAlign='center';x.textBaseline='middle';for(let i=0;i<n;i+=2)for(let j=0;j<n;j+=2)x.fillText(String(i/2+1+(j/2)*8),(i+.5)*s+s,(j+.5)*s+s);return c;}
