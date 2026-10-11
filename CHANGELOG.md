@@ -6,6 +6,10 @@
 - **Check overlaps.** A **Check overlaps** button finds faces that share space with another piece or fold over inside their own piece, shows how many, and paints them red on the layout and on the model (**On the model › Overlaps**). **Fix overlaps** relaxes folded pieces and packs the pieces apart.
 - **LSCM no longer throws a piece away when the result comes out mirrored.** A flattened piece that came out as a mirror image of the first guess was counted as all flipped and replaced by a straight projection; it is now turned back.
 
+- **The torso no longer lies on itself.** A garment shaped like a bucket (a tube with a flat shoulder on top) used to come out of the flattening fanned around the neck, with a fifth of it on top of itself and no folded triangle to give it away. Now, when a piece overlaps itself, the cloth is laid flat triangle by triangle (from three different starting points; the flattest wins) and smoothed. On the sample jacket the torso is one wide sheet like a hand-made unwrap, with shoulders and armhole notches, its stretch drops from 2.6 to 1.2 and the overlap from 21% to about 3%.
+- **Fewer fragments.** A small piece that hugs one neighbour along most of its outline (for example the patch under a sleeve) joins that neighbour instead of getting its own seams. Pieces divided by a real crease or a material change are left alone.
+- **Check overlaps** now also finds a piece that covers itself, and Fix overlaps relaxes it.
+
 ## 0.55.2
 
 - **Artist style unwrap.** A new **Artist style** choice in the UVs card's Style list, tuned on 20 hand-made unwraps (a backpack, jackets, a helmet, swords, shoes, a face…). It cuts into fewer, bigger pieces, joins small neighbours while they can still lie flat (so the seams that are left follow the hard edges), stands each piece upright so the model's up is the texture's up (when that costs little space), shrinks a very long piece a little so it stops limiting everyone else's size, and cuts a piece that would stretch too much with a straight seam through the middle. On the 20 models it makes about 3 times fewer pieces than Balanced with the same low stretch.

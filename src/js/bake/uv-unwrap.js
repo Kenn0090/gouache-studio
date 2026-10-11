@@ -114,7 +114,6 @@ function* uwFlattenG(m,topo,C,opt){const P=m.pos,I=m.idx,{tw,deg}=topo,vid=new M
         const o=uwSelfOverlap({tris:tr,u:Uf,v:Vf});if(!best||o<best.o)best={o,U:Uf,V:Vf};}
       if(best){if(starts.length>1)yield uwArap(tr.length,n,tw2,X3,best.U,best.V,new Int32Array(tr.length),1,{strength:opt.unrollStrength||100,pin:false},()=>{});
         const Uf=best.U,Vf=best.V,ov2=uwSelfOverlap({tris:tr,u:Uf,v:Vf}),e1=uwChartEnergy(m,{verts:cv,tris:tr,u:U,v:V}).stretch,e2=uwChartEnergy(m,{verts:cv,tris:tr,u:Uf,v:Vf}).stretch;
-        if(window.__cutDbg)window.__cutDbg.push({unroll:1,n,ov,ov2,e1:+e1.toFixed(2),e2:+e2.toFixed(2)});
         if(ov2<ov*.6&&e2<e1*1.5+.3){U=Uf;V=Vf;method=method+'+unroll';}}}}
   /* pieces that came out folded over (or very stretched) are worked on with as-rigid-as-possible relaxation; only the asynchronous unwrap can wait for it */
   if(topo.arap&&opt.unfold&&n>8&&tr.length>12){let pos=0,neg=0,flips=0,pa=0,na=0;const sg=new Int8Array(tr.length);

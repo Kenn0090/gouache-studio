@@ -194,7 +194,6 @@ function uwCutSegment(m,topo,opt,onStep){const {T,tw,deg,nx,ny,nz,area}=topo,P=m
     /* thin out cones: keep one per neighbourhood so a rounded corner does not ask for ten seams */
     const kept=[],taken=new Set();for(const w of cones){if(taken.has(w))continue;kept.push(w);taken.add(w);for(let i=cnt[w];i<cnt[w+1];i++){const e=ve[i],o=ea[e]===w?eb[e]:ea[e];taken.add(o);for(let j=cnt[o];j<cnt[o+1];j++){const e2=ve[j];taken.add(ea[e2]);taken.add(eb[e2]);}}}
     for(const w of kept)terms.push({vs:[w],len:1});
-    if(window.__cutDbg)window.__cutDbg.push({tris:sh.tris.length,terms:terms.map(t=>t.len).slice(0,12),nt:terms.length});
     if(terms.length<2)continue;
     const termOf=new Int32Array(Wn).fill(-1);terms.forEach((t,i)=>{for(const w of t.vs)termOf[w]=i;});
     for(const w of verts)inS[w]=0;for(const w of terms[0].vs)inS[w]=1;const done=new Uint8Array(terms.length);done[0]=1;let left=terms.length-1,guard=0;
@@ -204,7 +203,7 @@ function uwCutSegment(m,topo,opt,onStep){const {T,tw,deg,nx,ny,nz,area}=topo,P=m
       let hit=-1;
       while(h.size()){const [d,w]=h.pop();if(d>dist[w])continue;if(!inS[w]&&termOf[w]>=0&&!done[termOf[w]]){hit=w;break;}
         for(let i=cnt[w];i<cnt[w+1];i++){const e=ve[i],o=ea[e]===w?eb[e]:ea[e],nd=d+cost[e];if(nd<dist[o]){dist[o]=nd;prev[o]=w;pe[o]=e;h.push(nd,o);}}}
-      if(hit<0){if(window.__cutDbg)window.__cutDbg.push({noHit:1,left,terms:terms.length,tris:sh.tris.length});break;}
+      if(hit<0)break;
       const ti=termOf[hit];done[ti]=1;left--;let w=hit,pl=0;while(w>=0&&!inS[w]){const e=pe[w];if(e>=0){cut[e]=1;pl++;}inS[w]=1;w=prev[w];}
       for(const v of terms[ti].vs)inS[v]=1;
       if(onStep)onStep();}

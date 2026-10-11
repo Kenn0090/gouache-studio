@@ -4,6 +4,9 @@
 - Cleaner seams in every style: no more saw-teeth or thin fingers along the borders.
 - Relax button: evens out stretching inside each piece without moving the seams.
 - Check overlaps button: shows overlapping and folded faces in red on the layout and the model; Fix overlaps packs them apart.
+- The Clothing style lays a bucket-shaped garment flat instead of letting it lie on itself: the sample jacket torso is now one clean sheet with a third of the stretch.
+- Small pieces that hug a neighbour join it instead of getting their own seams.
+- Check overlaps also finds a piece that covers itself.
 
 # Gouache Studio 0.55.2
 
