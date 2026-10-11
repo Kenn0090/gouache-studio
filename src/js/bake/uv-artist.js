@@ -242,12 +242,14 @@ function uwSlit(m,topo,C,ctx,seg,F,byScale){const {tw,wv}=topo,{adj,te,cut,ea,eb
       for(let k=0;k<3;k++){const o=adj[t*3+k];if(o>=0&&inC.has(o)&&!seen.has(o)&&!cut[te[t*3+k]]){seen.add(o);st.push(o);}}}
     out.push(P2);}
   out.undo=undo;return out;}
-function* uwCutRefineG(m,topo,opt,C,seg,depth,sdepth){depth=depth||0;sdepth=sdepth||0;const lim=opt.stretchMax||1.8,thr=opt.overlapMax===undefined?.012:opt.overlapMax,none=opt.noOverlap===undefined?.004:opt.noOverlap,undos=[];
+function* uwCutRefineG(m,topo,opt,C,seg,depth,sdepth){depth=depth||0;sdepth=sdepth||0;
+  /* a thin plate is cut front from back before anything else */
+  if(!depth&&!sdepth&&opt.thinPlates!==false){const th=uwSplitThin(m,topo,C,seg.ctx);if(th){const out=[];for(const c of th)for(const x of yield* uwCutRefineG(m,topo,opt,c,seg,0,1))out.push(x);return out;}}const lim=opt.stretchMax||1.8,thr=opt.overlapMax===undefined?.012:opt.overlapMax,none=opt.noOverlap===undefined?.004:opt.noOverlap,undos=[];
   let cur=C,F,best=null,bad=0,last=0;
   /* still lying on itself after the relief cuts: cut it where the two layers are apart (a seam), and flatten the pieces */
   const split=function*(){if(!best||best.ov<=none||best.ov*best.C.tris.length<(opt.splitMinTris||10)||sdepth>=(opt.splitDepth||6)||best.C.tris.length<(opt.splitMinChart||40))return null;
     while(undos.length>best.n)undos.pop()();
-    for(let rank=-1;rank<(opt.splitTries||2);rank++){const sp=rank<0?(opt.sideSeams===false?null:uwSideSeams(m,topo,best.C,seg.ctx,opt)):uwSplitByOverlap(m,topo,best.C,seg.ctx,best.F,opt,rank);if(!sp)continue;
+    for(let rank=-2;rank<(opt.splitTries||2);rank++){const sp=rank===-2?uwSplitThin(m,topo,best.C,seg.ctx):rank<0?(opt.sideSeams===false?null:uwSideSeams(m,topo,best.C,seg.ctx,opt)):uwSplitByOverlap(m,topo,best.C,seg.ctx,best.F,opt,rank);if(!sp)continue;
       const out=[];for(const c of sp)for(const x of yield* uwCutRefineG(m,topo,opt,c,seg,depth+undos.length+1,sdepth+1))out.push(x);
       let ow=0,tt=0;for(const x of out){const n=x.C.tris.length;ow+=uwSelfOverlap(x.F)*n;tt+=n;}
       if(ow/Math.max(tt,1)<=best.ov*.6||ow/Math.max(tt,1)<=none)return out;sp.undo();}
@@ -320,6 +322,26 @@ function uwSplitByOverlap(m,topo,C,ctx,F,opt,rank){opt=opt||{};rank=rank||0;cons
   {let small=1e9;for(const q of parts)small=Math.min(small,q.tris.length);if(small<(opt.splitPatchMin||10))return null;}
   const {onCut}=ctx,undoL=[];for(let i=0;i<n;i++){const t=tris[i];for(let k=0;k<3;k++){const o=adj[t*3+k];if(o<0)continue;const j=lt.get(o);if(j===undefined||comp[j]===comp[i])continue;const e=te[t*3+k];if(cut[e])continue;
       undoL.push([e,onCut[ea[e]],onCut[eb[e]]]);cut[e]=1;onCut[ea[e]]=1;onCut[eb[e]]=1;}}
+  parts.undo=()=>{for(let i=undoL.length-1;i>=0;i--){const [e,a,b]=undoL[i];cut[e]=0;onCut[ea[e]]=a;onCut[eb[e]]=b;}};return parts;}
+
+/* a thin plate (a sword guard, a badge, a belt buckle) has a front and a back in one piece, and they lie on top of each other when it is flattened. When the
+   normals of a piece fall in two opposite groups, it is cut in two halfway through the plate, front from back (the rim goes to the nearer half). */
+function uwSplitThin(m,topo,C,ctx){const tris=C.tris,n=tris.length;if(n<40)return null;const {nx,ny,nz,area}=topo,P=m.pos,I=m.idx,{te,cut,ea,eb,onCut,adj}=ctx;
+  let xx=0,xy=0,xz=0,yy=0,yz=0,zz=0,A=0;for(const t of tris){const a=area[t];xx+=a*nx[t]*nx[t];xy+=a*nx[t]*ny[t];xz+=a*nx[t]*nz[t];yy+=a*ny[t]*ny[t];yz+=a*ny[t]*nz[t];zz+=a*nz[t]*nz[t];A+=a;}
+  let ax=1,ay=.3,az=.1;for(let it=0;it<30;it++){const bx=xx*ax+xy*ay+xz*az,by=xy*ax+yy*ay+yz*az,bz=xz*ax+yz*ay+zz*az,l=Math.hypot(bx,by,bz)||1;ax=bx/l;ay=by/l;az=bz/l;}
+  let along=0,pos=0,neg=0;for(const t of tris){const d=nx[t]*ax+ny[t]*ay+nz[t]*az;along+=area[t]*Math.abs(d);if(d>.5)pos+=area[t];else if(d<-.5)neg+=area[t];}
+  if(along<A*.75||pos<A*.3||neg<A*.3)return null;
+  const key=new Float64Array(n);let lo=1e30,hi=-1e30;tris.forEach((t,i)=>{const a=I[t*3]*3,b=I[t*3+1]*3,c=I[t*3+2]*3;key[i]=((P[a]+P[b]+P[c])*ax+(P[a+1]+P[b+1]+P[c+1])*ay+(P[a+2]+P[b+2]+P[c+2])*az)/3;if(key[i]<lo)lo=key[i];if(key[i]>hi)hi=key[i];});
+  /* the middle of the plate: where the two groups of normals swap */
+  let sp=0,sn=0,kp=0,kn=0;tris.forEach((t,i)=>{const d=nx[t]*ax+ny[t]*ay+nz[t]*az;if(d>.5){sp+=area[t];kp+=area[t]*key[i];}else if(d<-.5){sn+=area[t];kn+=area[t]*key[i];}});
+  const mid=(kp/sp+kn/sn)/2,side=new Uint8Array(n);tris.forEach((t,i)=>{side[i]=key[i]>mid?1:0;});
+  const lt=new Map();tris.forEach((t,i)=>lt.set(t,i));const comp=new Int32Array(n).fill(-1),parts=[];
+  for(let s0=0;s0<n;s0++){if(comp[s0]>=0)continue;const id=parts.length,P2={id:-1,tris:[],mat:C.mat,nx:0,ny:0,nz:0,area:0,kids:null},st=[s0];comp[s0]=id;
+    while(st.length){const i=st.pop(),t=tris[i];P2.tris.push(t);P2.nx+=nx[t]*area[t];P2.ny+=ny[t]*area[t];P2.nz+=nz[t]*area[t];P2.area+=area[t];
+      for(let k=0;k<3;k++){const o=adj[t*3+k];if(o<0)continue;const j=lt.get(o);if(j===undefined||comp[j]>=0||side[j]!==side[i]||cut[te[t*3+k]])continue;comp[j]=id;st.push(j);}}
+    parts.push(P2);}
+  if(parts.length<2)return null;
+  const undoL=[];for(let i=0;i<n;i++){const t=tris[i];for(let k=0;k<3;k++){const o=adj[t*3+k];if(o<0)continue;const j=lt.get(o);if(j===undefined||comp[j]===comp[i])continue;const e=te[t*3+k];if(cut[e])continue;undoL.push([e,onCut[ea[e]],onCut[eb[e]]]);cut[e]=1;onCut[ea[e]]=1;onCut[eb[e]]=1;}}
   parts.undo=()=>{for(let i=undoL.length-1;i>=0;i--){const [e,a,b]=undoL[i];cut[e]=0;onCut[ea[e]]=a;onCut[eb[e]]=b;}};return parts;}
 
 /* a side seam: the way a tailor opens an armhole. Each opening of the chart that has another piece on its far side (a sleeve) is joined to the hem by a second

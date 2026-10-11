@@ -15,6 +15,8 @@
 
 - **No overlap inside a piece.** When a piece still lies on itself after flattening, the Clothing style now keeps cutting until it does not. First choice is a **side seam** the way a tailor opens an armhole: from the point of the armhole opposite to the shoulder cut down toward the hem, so a sweater becomes a front panel and a back panel (a jacket also gets a side panel under the arm). If that is not enough, it cuts out the smallest sheet of the overlap along the shortest seam around it. Every cut is kept only when the pieces lie clearly flatter, and taken back otherwise. Overlap across the whole model on the sample garments: jacket 1.5% to 0.03% of the covered pixels, sweater 0%, coats and the other jackets 0.1 to 0.3%.
 
+- **Thin plates are cut front from back.** A sword guard or a badge has a front and a back; in the Clothing style they are now cut in two before the rest of the work, so they no longer lie on each other.
+
 ## 0.55.2
 
 - **Artist style unwrap.** A new **Artist style** choice in the UVs card's Style list, tuned on 20 hand-made unwraps (a backpack, jackets, a helmet, swords, shoes, a face…). It cuts into fewer, bigger pieces, joins small neighbours while they can still lie flat (so the seams that are left follow the hard edges), stands each piece upright so the model's up is the texture's up (when that costs little space), shrinks a very long piece a little so it stops limiting everyone else's size, and cuts a piece that would stretch too much with a straight seam through the middle. On the 20 models it makes about 3 times fewer pieces than Balanced with the same low stretch.
