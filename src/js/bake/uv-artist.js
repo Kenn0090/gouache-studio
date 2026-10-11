@@ -6,7 +6,7 @@
    so the seams that are left sit on the hard edges. After flattening, a joined piece that still stretches too much is split
    back into the pieces it was made from. */
 const UW_CLOTH={unfold:true,creaseDeg:55,creaseMin:30,angle:60,flat:20,artist:false,cut:true,straighten:true,defBudget:2.5,stretchMax:1.8,qMax:99,flex:0.3,smooth:false,coneThr:.9,flipTol:.04,maxSlits:60};
-const UW_ARTIST={unfold:true,angle:89,flat:20,artist:true,straighten:true,defBudget:2.5,stretchMax:2.2,qMax:99,flex:0.4};
+const UW_ARTIST={fillMin:.3,absorbSmall:true,unfold:true,angle:89,flat:20,artist:true,straighten:true,defBudget:2.5,stretchMax:2.2,qMax:99,flex:0.4};
 /* the angle at every triangle corner */
 function uwCornerAngles(m,topo){const P=m.pos,I=m.idx,T=topo.T,out=new Float32Array(T*3);
   for(let t=0;t<T;t++)for(let k=0;k<3;k++){const a=I[t*3+k]*3,b=I[t*3+(k+1)%3]*3,c=I[t*3+(k+2)%3]*3;
@@ -75,8 +75,14 @@ function uwSelfOverlap(F,flags){const {tris,u,v}=F,n=tris.length;if(n<20)return 
 function uwChartStretch(m,F){return uwChartEnergy(m,F).stretch;}
 /* flatten a chart; one that stretches too much is split: a joined chart back into the pieces it was made of, a single piece
    by cutting it again with a tighter angle (a big cone can swallow a whole dome that cannot lie flat) */
+/* how much of its best-fitting rectangle a flattened piece fills: a bent ribbon fills very little of it, and wastes the square */
+function uwBoxFill(F){const {tris,u,v}=F,n=tris.length;let a=0;for(let i=0;i<n;i++){const [p,q,r]=tris[i];a+=Math.abs((u[q]-u[p])*(v[r]-v[p])-(u[r]-u[p])*(v[q]-v[p]))/2;}
+  const fit=uwFit(F,false,false);return a/Math.max(1e-12,fit.w*fit.h);}
 function* uwFlattenSplitG(m,topo,C,opt,depth){depth=depth||0;const F=yield* uwFlattenG(m,topo,C,opt),lim=opt.stretchMax||1.5;
   if(C.tris.length<8)return [{C,F}];
+  /* a long bent piece (a ribbon around a curve) is cut across, so each part can lie straight */
+  if(opt.fillMin&&C.tris.length>=(opt.fillMinTris||40)&&depth<6&&uwBoxFill(F)<opt.fillMin){const parts=uwSplitPlane(m,topo,C);
+    if(parts&&parts.length>=2&&parts.every(c=>c.tris.length>=6)){const out=[];for(const c of parts)for(const x of yield* uwFlattenSplitG(m,topo,c,opt,depth+1))out.push(x);return out;}}
   if(uwChartStretch(m,F)<=lim)return [{C,F}];
   if(C.kids&&C.kids.length){const out=[];for(const k of C.kids)for(const x of yield* uwFlattenSplitG(m,topo,k,opt,depth)){out.push(x);}return out;}
   if(depth>=6)return [{C,F}];
@@ -544,3 +550,23 @@ function uwSlideSplits(m,topo,adj,L,node,nodes,cutLink,grp,opt){const P=m.pos,I=
     if(!toSink)continue;
     const side=uwMaxFlowSide(nF+2,edges,Sn,Tn),gA=grp[nodes[A].tris[0]],gB=grp[nodes[B].tris[0]];
     for(let i=0;i<nF;i++)grp[free[i]]=side[i]?gA:gB;}}
+
+/* ---------- small pieces join their neighbour (0.57, the weapons pass) ----------
+   Hand-made weapon unwraps have about half as many pieces as the Artist style gave: screws, little plates and trims that
+   the artist left on the piece next to them. After the pieces are flattened, each very small one is tried on the neighbour it
+   shares the most border with: the two are flattened together, and the join is kept only when the result does not stretch
+   much more than the neighbour did and does not lie on itself. */
+function* uwAbsorbSmallG(m,topo,opt,items,budgetMs){const {adj,area,nx,ny,nz}=topo,T=topo.T,mat=m.triMat||null,lim=(opt.stretchMax||1.5)*1.25,thr=opt.smallPiece||.004,t0=performance.now();
+  const owner=new Int32Array(T).fill(-1),alive=items.map(()=>true),A=items.map(it=>{let a=0;for(const t of it.C.tris)a+=area[t];return a;});let total=0;for(const a of A)total+=a;
+  items.forEach((it,i)=>{for(const t of it.C.tris)owner[t]=i;});const tried=new Set();let merged=0;
+  for(;;){if(performance.now()-t0>budgetMs)break;
+    let s=-1;for(let i=0;i<items.length;i++)if(alive[i]&&!tried.has(i)&&A[i]<total*thr&&(s<0||A[i]<A[s]))s=i;if(s<0)break;tried.add(s);
+    const share=new Map();let border=0;for(const t of items[s].C.tris)for(let k=0;k<3;k++){const o=adj[t*3+k];if(o<0)continue;const ow=owner[o];if(ow===s||ow<0)continue;border++;share.set(ow,(share.get(ow)||0)+1);}
+    if(!border)continue;
+    const cand=[...share.entries()].filter(([j,n])=>alive[j]&&n>=border*.25&&(!mat||items[j].C.mat===items[s].C.mat)).sort((a,b)=>b[1]-a[1]).slice(0,2);
+    for(const [j] of cand){if(performance.now()-t0>budgetMs)break;
+      const tris=items[j].C.tris.concat(items[s].C.tris);let nxs=0,nys=0,nzs=0,ar=0;for(const t of tris){nxs+=nx[t]*area[t];nys+=ny[t]*area[t];nzs+=nz[t]*area[t];ar+=area[t];}
+      const C={id:-1,tris,mat:items[j].C.mat,nx:nxs,ny:nys,nz:nzs,area:ar,kids:null},F=yield* uwFlattenG(m,topo,C,opt),st=uwChartStretch(m,F),base=Math.max(uwChartStretch(m,items[j].F),1.2);
+      if(st<=Math.min(lim,base*1.3)&&uwSelfOverlap(F,null)<(opt.overlapMax||.012)&&!(opt.fillMin&&C.tris.length>=(opt.fillMinTris||40)&&uwBoxFill(F)<opt.fillMin*.9)){
+        items[j]={C,F};alive[s]=false;A[j]=ar;for(const t of items[s].C.tris)owner[t]=j;for(const t of tris)owner[t]=j;tried.delete(j);merged++;break;}}}
+  return items.filter((_,i)=>alive[i]);}
