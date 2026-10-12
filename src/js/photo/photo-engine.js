@@ -11,7 +11,7 @@ function phDefaults(){return {
   sharp:{amt:0,rad:1,detail:25,mask:0},nr:{lum:0,col:0},
   vig:{amt:0,mid:50,feather:50,round:0},grain:{amt:0,size:25,rough:50},
   geo:{dist:0,ca:0,angle:0,flipH:false,flipV:false,vert:0,horiz:0,scale:0,crop:[0,0,1,1],aspect:'original',auto:true},
-  pts:[],local:[],spots:[],rm:[],lens:{on:false,focus:50,range:14,amount:40,hl:30},relight:{on:false,x:.3,y:.3,z:.35,int:70,rad:60,hue:40,sat:15,amb:25,dep:50},bw:false};}
+  pts:[],local:[],spots:[],rm:[],lens:{on:false,focus:50,range:14,amount:40,hl:30},relight:{on:false,x:.3,y:.3,z:.35,int:70,rad:60,hue:40,sat:15,amb:25,dep:50,type:0,ax:.5,ay:.5,cone:45,soft:40,shad:0,shine:0,gloss:30,rim:0,ambH:0,ambS:0,more:[]},bw:false};}
 const phClone=s=>JSON.parse(JSON.stringify(s));
 /* a tone curve through its points (smooth, never going backwards) as 256 values */
 function phCurveLut(pts){const p=pts.slice().sort((a,b)=>a[0]-b[0]),n=p.length,out=new Float32Array(256);
@@ -28,7 +28,7 @@ uniform vec2 uSz; uniform vec2 uSrcSz; uniform vec4 uCrop; uniform float uAng; u
 uniform float uTemp; uniform float uTint; uniform float uExp; uniform float uCon; uniform float uHi; uniform float uSh; uniform float uWh; uniform float uBl;
 uniform float uTex; uniform float uCla; uniform float uDeh; uniform float uVib; uniform float uSat; uniform float uSharp; uniform float uSharpMask; uniform float uNRL; uniform float uNRC;
 uniform vec4 uMix[8]; uniform vec4 uGSh; uniform vec4 uGMid; uniform vec4 uGHi; uniform vec2 uGBal; uniform vec4 uVig; uniform vec3 uGrain; uniform float uBW; uniform float uUseCurve; uniform float uSeed;
-uniform sampler2D uDepth; uniform float uHasD; uniform float uLensOut; uniform vec4 uRL; uniform vec4 uRL2; uniform vec3 uRL3; uniform float uSN; uniform vec4 uSA[16]; uniform vec4 uSB[16]; uniform float uPN; uniform vec4 uPA[8]; uniform vec4 uPB[8]; uniform float uLN; uniform float uLShow; uniform sampler2D uLB; uniform vec4 uLA[8]; uniform vec4 uLG[8]; uniform vec4 uLC[8]; uniform vec4 uLD[8]; uniform vec4 uLE[8]; uniform vec4 uLF[8]; uniform vec4 uLT[8]; uniform vec4 uLH[8];
+uniform sampler2D uDepth; uniform float uHasD; uniform float uLensOut; uniform vec4 uRG; uniform vec4 uRG2; uniform vec3 uRAm; uniform vec4 uRA[4]; uniform vec4 uRB[4]; uniform vec4 uRC[4]; uniform vec4 uRD[4]; uniform float uSN; uniform vec4 uSA[16]; uniform vec4 uSB[16]; uniform float uPN; uniform vec4 uPA[8]; uniform vec4 uPB[8]; uniform float uLN; uniform float uLShow; uniform sampler2D uLB; uniform vec4 uLA[8]; uniform vec4 uLG[8]; uniform vec4 uLC[8]; uniform vec4 uLD[8]; uniform vec4 uLE[8]; uniform vec4 uLF[8]; uniform vec4 uLT[8]; uniform vec4 uLH[8];
 float lum(vec3 c){ return dot(c,vec3(0.2126,0.7152,0.0722)); }
 vec3 s2l(vec3 c){ return mix(c/12.92,pow((c+0.055)/1.055,vec3(2.4)),step(0.04045,c)); }
 vec3 l2s(vec3 c){ c=max(c,0.0); return mix(c*12.92,1.055*pow(c,vec3(1.0/2.4))-0.055,step(0.0031308,c)); }
@@ -97,11 +97,25 @@ void main(){
       if(uLT[li].w>0.0){ e2+=(e2-ba)*uLT[li].w*2.5; }
       float L3=lum(e2); vec3 hs=rgb2hsl(clamp(e2,0.0,1.0)); float sk=1.0+uLF[li].z+uLF[li].w*(1.0-hs.y); e2=vec3(L3)+(e2-vec3(L3))*max(0.0,sk);
       e=mix(e,e2,clamp(w,0.0,1.0)); } }
-  /* relight: a light you place on the picture, shading the depth map as a surface (slopes come ready from a smooth pass) */
-  if(uRL2.w>.5&&uHasD>.5){ float ar=uSrcSz.x/uSrcSz.y; vec3 sd=texture(uDepth,sp).rgb;
-    float dsc=uRL2.z; vec3 nn=normalize(vec3(-sd.x*dsc,-sd.y*dsc,1.0)); vec3 tl=vec3((uRL.xy-sp)*vec2(ar,1.0),(uRL.z+dsc*.5)-sd.z*dsc*.5); float dist=length(tl);
-    float dif=max(dot(nn,tl/max(dist,1e-4)),0.0); float fall=1.0/(1.0+pow(dist/max(uRL2.x,.02),2.0));
-    e=e*((1.0-uRL2.y)+uRL.w*uRL3*dif*fall*2.2); e+=(hash(gl_FragCoord.xy)-.5)/255.0; }
+  /* relight: up to four lights (point, spot or sun) on the picture, shading the depth map as a surface (slopes come ready from a smooth pass).
+     Shadows march across the depth map toward each light; shine is a highlight; rim lights the edges that face the light. */
+  if(uRG2.z>.5&&uHasD>.5){ float ar=uSrcSz.x/uSrcSz.y; vec3 sd=texture(uDepth,sp).rgb; float dsc=uRG.y;
+    vec3 nn=normalize(vec3(-sd.x*dsc,-sd.y*dsc,1.0)); float h0=sd.z*dsc*.5; vec3 lit=vec3(0.0); vec3 spc=vec3(0.0); vec3 rimc=vec3(0.0); float jit=hash(gl_FragCoord.xy+7.0);
+    for(int i=0;i<4;i++){ if(float(i)>=uRG2.z) break;
+      vec4 A=uRA[i]; vec4 B=uRB[i]; vec3 col=uRC[i].rgb; float zL=A.z+dsc*.5; vec3 tl; float fall=1.0; float cone=1.0; vec2 dUV; float rayTop;
+      if(B.y>1.5){ vec2 dd=(A.xy-uRD[i].xy)*vec2(ar,1.0); float dl=max(length(dd),1e-4); float el=mix(.12,1.5,clamp(A.z,0.0,1.0)); tl=normalize(vec3(dd/dl*cos(el),sin(el)));
+        dUV=(dd/dl)/vec2(ar,1.0)*.4; rayTop=h0+tan(el)*.4; }
+      else{ tl=vec3((A.xy-sp)*vec2(ar,1.0),zL-h0); float dist=length(tl); fall=1.0/(1.0+pow(dist/max(B.x,.02),2.0)); tl/=max(dist,1e-4); dUV=A.xy-sp; rayTop=zL;
+        if(B.y>.5){ vec3 ax=normalize(vec3((uRD[i].xy-A.xy)*vec2(ar,1.0),-zL)); cone=smoothstep(B.z,B.w,dot(-tl,ax)); } }
+      float dif=max(dot(nn,tl),0.0);
+      if(uRG.z>0.0&&dif>0.0&&cone>0.0){ float sh=1.0;
+        for(int k=0;k<14;k++){ float t=(float(k)+.5+jit)/14.0; vec2 pp=sp+dUV*t; if(pp.x<0.0||pp.y<0.0||pp.x>1.0||pp.y>1.0) break; float hs=texture(uDepth,pp).b*dsc*.5; float rz=mix(h0,rayTop,t);
+          sh=min(sh,clamp(.5+(rz-hs+.015)*12.0/(t+.15),0.0,1.0)); }
+        dif*=mix(1.0,sh,uRG.z); }
+      float w=A.w*fall*cone; lit+=col*w*dif*(B.y>1.5?1.1:2.2);
+      if(uRG.w>0.0&&dif>0.0){ vec3 hv=normalize(tl+vec3(0.0,0.0,1.0)); spc+=col*w*pow(max(dot(nn,hv),0.0),uRG2.x)*uRG.w; }
+      if(uRG2.y>0.0){ float m=length(nn.xy); vec2 tx=tl.xy; rimc+=col*w*uRG2.y*smoothstep(.02,.35,m)*pow(max(dot(normalize(nn.xy+1e-5),normalize(tx+1e-5)),0.0),1.5); } }
+    e=e*((1.0-uRG.x)*uRAm+lit)+spc*.55+rimc*.7; e+=(hash(gl_FragCoord.xy)-.5)/255.0; }
   e=clamp(e,0.0,1.0);
   /* tone curves: all channels, then each colour channel */
   if(uUseCurve>.5){ e=vec3(texture(uCM,vec2(e.r*255.0/256.0+.5/256.0,.5)).r,texture(uCM,vec2(e.g*255.0/256.0+.5/256.0,.5)).r,texture(uCM,vec2(e.b*255.0/256.0+.5/256.0,.5)).r);
@@ -233,8 +247,14 @@ function phSpotUniforms(s){const L=(s.spots||[]).slice(0,16),A=new Float32Array(
 /* depth: the grey picture (near = white) and what uses it */
 function phDummyTex(){if(!PH.dummy){PH.dummy=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,PH.dummy);gl.texImage2D(gl.TEXTURE_2D,0,gl.R8,1,1,0,gl.RED,gl.UNSIGNED_BYTE,new Uint8Array([128]));gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);}return PH.dummy;}
 function phHsvRGB(h,s,v){const f=n=>{const k=(n+h/60)%6;return v-v*s*Math.max(0,Math.min(k,4-k,1));};return [f(5),f(3),f(1)];}
-function phDepthUniforms(s,opts){const R=s.relight||{},on=!!(R.on&&opts.depth),c=phHsvRGB(R.hue==null?40:R.hue,(R.sat==null?15:R.sat)/100,1);
-  return {uDepth:opts.depth||phDummyTex(),uHasD:opts.depth?1:0,uLensOut:opts.lensOut?1:0,uRL:[R.x||0,R.y||0,R.z==null?.35:R.z,(R.int==null?70:R.int)/100],uRL2:[Math.max(.02,(R.rad||60)/100),(R.amb==null?25:R.amb)/100,(R.dep==null?50:R.dep)/100*2,on?1:0],uRL3:c};}
+/* a light's settings to what the shader reads (x, y, height, intensity | reach, type, cone | colour | aim) */
+function phLightDefaults(){return {x:.3,y:.3,z:.35,int:70,rad:60,hue:40,sat:15,type:0,ax:.5,ay:.5,cone:45,soft:40};}
+function phLightZ(z){z=z==null?.35:z;return z>1.5?z/100:z;}
+function phDepthUniforms(s,opts){const R=s.relight||{},on=!!(R.on&&opts.depth),D=phLightDefaults(),list=[R,...(Array.isArray(R.more)?R.more.filter(l=>l&&l.on!==false):[])].slice(0,4),A=[],B=[],C=[],E=[];
+  for(let i=0;i<4;i++){const l=Object.assign({},D,list[i]||{}),c=phHsvRGB(l.hue,l.sat/100,1),ca=Math.cos(l.cone*Math.PI/180),ci=Math.cos(l.cone*(1-l.soft/100*.9)*Math.PI/180);
+    A.push(l.x,l.y,phLightZ(l.z),l.int/100);B.push(Math.max(.02,l.rad/100),l.type|0,ca,ci);C.push(c[0],c[1],c[2],0);E.push(l.ax,l.ay,0,0);}
+  const am=phHsvRGB(R.ambH||0,(R.ambS||0)/100,1);
+  return {uDepth:opts.depth||phDummyTex(),uHasD:opts.depth?1:0,uLensOut:opts.lensOut?1:0,uRG:[(R.amb==null?25:R.amb)/100,(R.dep==null?50:R.dep)/100*2,(R.shad||0)/100,(R.shine||0)/100],uRG2:[Math.max(2,(R.gloss==null?30:R.gloss)),(R.rim||0)/100,on?list.length:0,0],uRAm:[am[0],am[1],am[2]],uRA:{v4a:A},uRB:{v4a:B},uRC:{v4a:C},uRD:{v4a:E}};}
 const FS_PHLENS=`uniform sampler2D uT; uniform vec2 uSz; uniform vec4 uL; uniform float uShow;
 float coc(float d){ return smoothstep(0.0,1.0,max(abs(d-uL.x)-uL.y*.35,0.0)/max(uL.y,.02)); }
 void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec4 c0=texture(uT,uv); if(uShow>.5){ o=vec4(vec3(c0.a),1.0); return; } float r0=coc(c0.a)*uL.z; vec3 acc=c0.rgb;

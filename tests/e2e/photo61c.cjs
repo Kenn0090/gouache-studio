@@ -44,7 +44,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{const s=__gs.phS();s.lens.on=true;__gs.phApply(__gs.phClone(s),'both');});await p.waitForTimeout(300);
  const ex=await p.evaluate(async()=>{const c=await __gs.phRenderFull(__gs.phP(),{mode:'orig'});return [c.width,c.height];});ok(ex[0]===320,'export works with both on '+ex);
  await p.evaluate(()=>__gs.phSidecarFlush());
- ok(await p.evaluate(()=>!!JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('gs.ph.')))).dp),'the depth map is saved with the photo');
+ ok(await p.evaluate(()=>!!JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('gs.ph.')))).dq),'the depth map is saved with the photo (16 bits)');
  ok(!errs.length,'no page errors '+errs.join('|'));
  await p.screenshot({path:'/tmp/photo_depth.png'});
  await b.close();srv.close();console.log(fails?'FAILS '+fails:'ALL PASS');process.exit(fails?1:0);

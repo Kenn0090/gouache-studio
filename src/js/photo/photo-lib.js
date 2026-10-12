@@ -36,9 +36,26 @@ function phPresetAmount(v){ph.preAmt=v;const p=phP();if(!p||!p._pre||p._pre.res!
 function phSavePreset(){const p=phP();if(!p)return;const inp=el('input',{type:'text',id:'phPreName',value:'My look','aria-label':'Preset name'});
   openDialog({title:'Save preset',body:el('div',{class:'dlg-grid'},inp,el('p',{class:'note',text:'Saves this photo’s edits (not the crop or turn) so you can use them on other photos.'})),okLabel:'Save',onOk(){const n=inp.value.trim();if(!n)return false;const s=phClone(p.s);delete s.geo;const l=phUserPresets();l.push([n,s]);try{localStorage.setItem('gs.phPresets',JSON.stringify(l));}catch(e){}phBuildPre();toast('Saved the preset “'+n+'”.');}});setTimeout(()=>{inp.focus();inp.select();},0);}
 /* a small picture of the current photo with each preset, so you can choose by eye */
-function phPreThumb(patch,key){const p=phP();if(!p||!p.psrc)return '';const S=96;ph.tc=ph.tc||{};const ck=p.id+'|'+key;if(ph.tc[ck])return ph.tc[ck];
+/* with no photo open the little pictures show a built-in sample scene (sky, sun, hills, a house and a face) so every look can be judged */
+function phSampleCanvas(){const W=240,H=160,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+  let q=g.createLinearGradient(0,0,0,H*.62);q.addColorStop(0,'#3d78c8');q.addColorStop(.7,'#a9cdf0');q.addColorStop(1,'#f5d9a8');g.fillStyle=q;g.fillRect(0,0,W,H);
+  q=g.createRadialGradient(176,40,2,176,40,34);q.addColorStop(0,'#fffbe6');q.addColorStop(.25,'#ffe9a0');q.addColorStop(1,'rgba(255,220,140,0)');g.fillStyle=q;g.fillRect(100,0,140,100);
+  g.fillStyle='rgba(255,255,255,.9)';for(const [x,y,r] of [[50,34,13],[64,30,16],[80,35,12],[150,64,9],[160,61,11]]){g.beginPath();g.arc(x,y,r,0,7);g.fill();}
+  g.fillStyle='#6f8c9c';g.beginPath();g.moveTo(0,104);g.lineTo(50,70);g.lineTo(92,100);g.lineTo(140,66);g.lineTo(200,104);g.lineTo(240,84);g.lineTo(240,120);g.lineTo(0,120);g.fill();
+  q=g.createLinearGradient(0,96,0,H);q.addColorStop(0,'#5d9a45');q.addColorStop(1,'#2e5b2a');g.fillStyle=q;g.fillRect(0,100,W,60);
+  g.fillStyle='#d9d2c4';g.fillRect(22,84,56,38);g.fillStyle='#b5412f';g.beginPath();g.moveTo(16,86);g.lineTo(50,58);g.lineTo(84,86);g.fill();g.fillStyle='#4a3224';g.fillRect(44,100,13,22);g.fillStyle='#f4e08a';g.fillRect(28,92,10,10);g.fillRect(62,92,10,10);
+  g.fillStyle='#caa27a';g.fillRect(120,126,8,20);
+  g.fillStyle='#2f4a7a';g.beginPath();g.moveTo(104,H);g.quadraticCurveTo(124,116,144,H);g.fill();
+  q=g.createRadialGradient(121,104,3,124,108,16);q.addColorStop(0,'#f1c9a4');q.addColorStop(1,'#c58c66');g.fillStyle=q;g.beginPath();g.ellipse(124,108,13,16,0,0,7);g.fill();
+  g.fillStyle='#3b2a20';g.beginPath();g.ellipse(124,98,14,9,0,Math.PI,0);g.fill();g.fillStyle='#2a2a2a';g.fillRect(118,106,3,2);g.fillRect(127,106,3,2);g.fillStyle='#a1493f';g.fillRect(120,115,9,2);
+  g.fillStyle='#e0452e';g.beginPath();g.arc(196,128,6,0,7);g.fill();g.fillStyle='#f2c230';g.beginPath();g.arc(208,134,5,0,7);g.fill();g.fillStyle='#8a4fb8';g.beginPath();g.arc(186,138,5,0,7);g.fill();
+  return c;}
+function phSampleTarget(){if(ph.sample)return ph.sample;const c=phSampleCanvas(),t=makeTarget(c.width,c.height,8,false);phUploadInto({w:c.width,h:c.height,bm:c},t);return ph.sample=t;}
+function phPreThumb(patch,key){const p=phP();const S=96;ph.tc=ph.tc||{};const ck=(p&&p.psrc?p.id:'sample')+'|'+key;if(ph.tc[ck])return ph.tc[ck];
+  if(!p||!p.psrc){const sm=phSampleTarget(),k=S/sm.w,w=Math.round(sm.w*k),h=Math.round(sm.h*k);return phThumbOf(sm,w,h,patch,ck);}
   if(!p.small){const k=Math.min(1,S*2/Math.max(p.pw,p.ph)),w=Math.max(2,Math.round(p.pw*k)),h=Math.max(2,Math.round(p.ph*k));p.small=makeTarget(w,h,8,false);run(P.resample,p.small,{uSrc:p.psrc.tex,uOffset:[0,0],uScale:[p.pw/w,p.ph/h],uTaps:{int:Math.min(8,Math.max(1,Math.ceil(p.pw/w)))}});}
-  const sm=p.small,k=Math.min(1,S/Math.max(sm.w,sm.h)),w=Math.max(2,Math.round(sm.w*k)),h=Math.max(2,Math.round(sm.h*k)),t=makeTarget(w,h,8,false),s=phMerge(phDefaults(),patch);s.geo=phDefaults().geo;
+  const sm=p.small,k=Math.min(1,S/Math.max(sm.w,sm.h)),w=Math.max(2,Math.round(sm.w*k)),h=Math.max(2,Math.round(sm.h*k));return phThumbOf(sm,w,h,patch,ck);}
+function phThumbOf(sm,w,h,patch,ck){const t=makeTarget(w,h,8,false),s=phMerge(phDefaults(),patch);s.geo=phDefaults().geo;
   try{phRender(sm,t,s);const d=captureRegionNow(t,0,0,w,h).data,c=document.createElement('canvas');c.width=w;c.height=h;const id=new ImageData(w,h);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,j=(y*w+x)*4;id.data[j]=d[i];id.data[j+1]=d[i+1];id.data[j+2]=d[i+2];id.data[j+3]=255;}c.getContext('2d').putImageData(id,0,0);return ph.tc[ck]=c.toDataURL('image/jpeg',.8);}
   finally{disposeTarget(t);}}
 function phBuildPre(){const box=$('#phPreBody');if(!box)return;box.replaceChildren();const p=phP();
@@ -47,7 +64,7 @@ function phBuildPre(){const box=$('#phPreBody');if(!box)return;box.replaceChildr
   const lazy=[],mk=(name,patch,key)=>{const img=el('img',{alt:''}),on=p&&p._pre&&p._pre.name===name;lazy.push([img,patch,key]);return el('button',{class:'phpre'+(on?' on':''),title:name,onclick:()=>phApplyPreset(patch,name)},img,el('span',{text:name}));};
   for(const [grp,list] of PH_PRESETS)box.append(el('div',{class:'sub',text:grp}),el('div',{class:'phpregrid'},...list.map(([n,pt])=>mk(n,pt,'b:'+n))));
   const u=phUserPresets();if(u.length)box.append(el('div',{class:'sub',text:'My presets'}),el('div',{class:'phpregrid'},...u.map(([n,s],i)=>{const b=mk(n,s,'u:'+n);b.append(el('i',{class:'phprex',title:'Delete this preset',text:'×',onclick:e=>{e.stopPropagation();const l=phUserPresets();l.splice(i,1);localStorage.setItem('gs.phPresets',JSON.stringify(l));phBuildPre();}}));return b;})));
-  if(!p)box.append(el('p',{class:'note',text:'Open a photo to see the presets on it.'}));
+  if(!p)box.append(el('p',{class:'note',text:'These pictures show a sample scene. Open a photo to see the presets on it.'}));
   /* the little pictures are made a few at a time, so a long list opens at once */
   const tok=ph.preTok=(ph.preTok||0)+1;let i=0;const step=()=>{if(tok!==ph.preTok||!box.isConnected)return;for(let n=0;n<4&&i<lazy.length;n++,i++){const [img,patch,key]=lazy[i];img.src=phPreThumb(patch,key);}if(i<lazy.length)setTimeout(step,16);};step();}
 /* ---- history and snapshots ---- */
@@ -103,17 +120,24 @@ async function phRenderFull(p,opt){const dec=await phDecode(p.file),t=makeTarget
       for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=(y*W+x)*4,j=(y*W+x)*4;d[j]=px[i];d[j+1]=px[i+1];d[j+2]=px[i+2];d[j+3]=255;}
       const c=document.createElement('canvas');c.width=W;c.height=H;c.getContext('2d').putImageData(id,0,0);return c;}finally{disposeTarget(out);}}finally{disposeTarget(t);}}
 const PH_FMT=[['jpg','JPEG','image/jpeg'],['png','PNG','image/png'],['webp','WebP','image/webp']];
-function dlgPhotoExport(){if(!ph.photos.length){toast('Open a photo first.');return;}const o={scope:ph.sel.size>1?'sel':'one',fmt:'jpg',q:90,mode:'orig',long:2048,pct:50,up:false};
+function dlgPhotoExport(){if(!ph.photos.length){toast('Open a photo first.');return;}const o={scope:ph.sel.size>1?'sel':'one',fmt:'jpg',q:90,mode:'orig',long:2048,pct:50,up:false,upScale:0,upDetail:100};
   const sel=(id,label,opts,get,set)=>{const s=el('select',{id,'aria-label':label},...opts.map(([v,t])=>el('option',{value:String(v),text:t})));s.value=String(get());s.onchange=()=>{set(s.value);upd();};return el('div',{class:'frow'},el('label',{for:id,text:label}),s);};
-  const note=el('p',{class:'note',id:'phExNote'}),upd=()=>{const p=phP();if(!p)return;const [cw,ch]=phOutSize(p.s,p.w,p.h);let W=cw,H=ch;if(o.mode==='long'){const k=Math.min(1,o.long/Math.max(cw,ch));W=Math.round(cw*k);H=Math.round(ch*k);}else if(o.mode==='pct'){W=Math.round(cw*o.pct/100);H=Math.round(ch*o.pct/100);}note.textContent='Current photo comes out at '+W+' × '+H+' px.';};
+  const note=el('p',{class:'note',id:'phExNote'}),upd=()=>{const p=phP();if(!p)return;const [cw,ch]=phOutSize(p.s,p.w,p.h);let W=cw,H=ch;if(o.mode==='long'){const k=Math.min(1,o.long/Math.max(cw,ch));W=Math.round(cw*k);H=Math.round(ch*k);}else if(o.mode==='pct'){W=Math.round(cw*o.pct/100);H=Math.round(ch*o.pct/100);}note.textContent='Current photo comes out at '+W+' × '+H+' px'+(o.upScale?' before enlarging.':'.');upSize=[W,H];if(upBox)upBox.refresh();};
+  let upSize=[1,1],upBox=null,upFull=null;
   const q=makeSlider({id:'phExQ',label:'Quality',min:40,max:100,step:1,value:o.q,fmt:v=>Math.round(v)+'',onInput:v=>{o.q=Math.round(v);}});
+  upd();upBox=aiUpBox({size:()=>upSize,max:16384,allowNone:true,scale:0,onChange:st=>{o.upScale=st.scale;o.upDetail=st.strength;upd();},
+    crop:async n=>{const p=phP();const c=await phRenderFull(p,{mode:'orig'}),W=c.width,H=c.height,x=Math.max(0,Math.round((W-n)/2)),y=Math.max(0,Math.round((H-n)/2)),d=c.getContext('2d').getImageData(x,y,Math.min(n,W),Math.min(n,H));return {w:d.width,h:d.height,data:d.data};}});
+  const upBoxEl=upBox.el;
   const body=el('div',{class:'dlg-grid'},sel('phExScope','Photos',[['one','This photo'],['sel','Selected photos'],['all','All photos']],()=>o.scope,v=>{o.scope=v;}),sel('phExFmt','Format',PH_FMT.map(f=>[f[0],f[1]]),()=>o.fmt,v=>{o.fmt=v;}),q.el,
     sel('phExSize','Size',[['orig','Original size'],['long','Longest side…'],['pct','Percent']],()=>o.mode,v=>{o.mode=v;}),
     el('div',{class:'frow'},el('label',{for:'phExLong',text:'Longest side'}),el('input',{id:'phExLong',type:'number',class:'num',value:String(o.long),min:'16',max:String(MAX_DIM),onchange(){o.long=Math.max(16,Math.min(MAX_DIM,+this.value||2048));upd();}}),el('span',{class:'dim',text:'px'}),el('label',{for:'phExPct',text:'Percent'}),el('input',{id:'phExPct',type:'number',class:'num',value:String(o.pct),min:'1',max:'400',onchange(){o.pct=Math.max(1,Math.min(400,+this.value||50));upd();}})),
-    note,el('p',{class:'note',text:'The photo files are not changed. Edits are applied to a copy.'}));
+    note,el('div',{class:'sub',text:'Make it bigger (AI)'}),upBoxEl,el('p',{class:'note',text:'The photo files are not changed. Edits are applied to a copy.'}));
   upd();openDialog({title:'Export photos',body,okLabel:'Export',onOk(){setTimeout(()=>phExportRun(o),0);}});}
-async function phExportRun(o){const idx=o.scope==='all'?ph.photos.map((_,i)=>i):o.scope==='sel'&&ph.sel.size?[...ph.sel].sort((a,b)=>a-b):[ph.cur];const F=PH_FMT.find(f=>f[0]===o.fmt),files=[];loadStart('Exporting photos');
-  try{let k=0;for(const i of idx){const p=ph.photos[i];if(!p)continue;loadSet(k/idx.length,p.name);const c=await phRenderFull(p,o),blob=await new Promise(r=>c.toBlob(r,F[2],o.q/100));if(!blob)throw new Error('This format is not available here.');
+let phExStop=false;
+async function phExportRun(o){const idx=o.scope==='all'?ph.photos.map((_,i)=>i):o.scope==='sel'&&ph.sel.size?[...ph.sel].sort((a,b)=>a-b):[ph.cur];const F=PH_FMT.find(f=>f[0]===o.fmt),files=[];phExStop=false;loadStart('Exporting photos');loadCancel(()=>{phExStop=true;});
+  try{let k=0;for(const i of idx){const p=ph.photos[i];if(!p)continue;loadSet(k/idx.length,p.name);let c=await phRenderFull(p,o);if(o.upScale){if(!(aiHas('engine')&&aiHas('upscale')))throw new Error('The upscaler add-on is not installed (File › AI add-ons).');if(!aiUpSize(c.width,c.height,o.upScale,16384).ok)throw new Error('“'+p.name+'” would be bigger than 16384 px after enlarging.');
+        const g=c.getContext('2d').getImageData(0,0,c.width,c.height),res=await aiUpscale({w:g.width,h:g.height,data:g.data},o.upScale,{strength:o.upDetail,stop:()=>phExStop},f=>loadSet((k+f)/idx.length,p.name+' · enlarging'));c=aiUpCanvas(res);}
+        const blob=await new Promise(r=>c.toBlob(r,F[2],o.q/100));if(!blob)throw new Error('This format is not available here.');
       files.push({name:(p.name.replace(/\.[^.]+$/,'')||'photo')+'-edit.'+F[0],data:new Uint8Array(await blob.arrayBuffer()),blob});k++;await new Promise(r=>setTimeout(r,0));}
     loadSet(.95,'Saving…');
     if(platform.isDesktop){if(files.length===1){const r=await deliver(files[0].name,files[0].blob);toast(deliveredText(r,'Photo'));}else{const dir=await platform.pickFolder();if(!dir)return;const sep=dir.includes('\\')?'\\':'/';for(const f of files)await platform.writeFile(dir.replace(/[\\/]$/,'')+sep+f.name,f.data);toast('Saved '+files.length+' photos in '+dir);}}

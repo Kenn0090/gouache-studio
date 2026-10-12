@@ -1333,3 +1333,9 @@ body.photomode #docTabs{display:none!important}
 .aihead{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.aihead b{flex:1;min-width:140px}.aistat{font-size:12px;opacity:.8}.aicred a{color:var(--accent)}
 #xfOv .phrm{fill:none;stroke:rgba(255,80,80,.45);stroke-linecap:round;stroke-linejoin:round}
 .phpreamt{padding:4px 2px 8px}.phpre.on{outline:2px solid var(--accent);border-radius:6px}
+/* AI upscaler box (0.62) */
+.aiup{display:grid;gap:8px}
+.aiupcmp{display:flex;gap:8px;align-items:flex-start;overflow:auto}
+.aiupc{max-width:49%;width:auto;height:auto;border:1px solid var(--line-2);border-radius:6px;background:#111;image-rendering:auto}
+.aiup.off .aiupcmp,.aiup.off #aiUpPNote,.aiup.off #aiUpPrev{display:none}
+.aiup .note.warn{color:var(--danger,#e5655a)}

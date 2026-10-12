@@ -33,16 +33,16 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>[...document.querySelectorAll('.ruler')].every(r=>r.hidden||r.offsetParent===null)),'no rulers in 3D Paint');
  ok(await p.evaluate(()=>{const t=document.querySelector('#vpStrip').getBoundingClientRect(),w=document.querySelector('#work').getBoundingClientRect();return t.left>w.left+w.width*.6;}),'3D · Split · 2D · UV sits at the lower right');
  /* layer list starts under the buttons */
- ok(await p.evaluate(()=>{const l=document.querySelector('#layerList').getBoundingClientRect(),b=document.querySelector('.lbtns.top');return !!b&&l.top-b.getBoundingClientRect().bottom<40;}),'the layer list starts right under its buttons');
+ ok(await p.evaluate(()=>{const l=document.querySelector('#layerList').getBoundingClientRect(),b=document.querySelector('.lbtns.top');const m=document.querySelector('#maskRow'),bb=b&&b.getBoundingClientRect();return !!b&&bb.bottom<=l.top&&l.top-(m?m.getBoundingClientRect().bottom:bb.bottom)<16;}),'the layer list starts right under its buttons and chips (no gap)');
  /* Bake Maps and Shader are tabs beside the texture sets */
  const lay=await p.evaluate(()=>({g:__gs.dk.L.groups.map(g=>g.tabs.join('+')),c2:__gs.dk.col2.groups.map(g=>g.tabs.join('+')),sh:__gs.dk.L.shelf.tabs.join('+')}));
  ok(lay.g[0].includes('p3d')&&lay.g[0].includes('p3bake')&&lay.g[0].includes('shading'),'Bake Maps and Shader sit in the texture sets group '+JSON.stringify(lay));
  ok(!lay.c2.join().includes('shading')&&!lay.c2.join().includes('stencils')&&!lay.sh.includes('stencils'),'Shader left the side column; Stencils has no tab of its own');
- /* F re-centres the model */
+ /* Shift+F re-centres the model (plain F is Canvas-only view since 0.51.2) */
  await p.evaluate(()=>{document.activeElement&&document.activeElement.blur();const c=__gs.v3.cam;c.tx=2;c.ty=1;c.dist*=3;});
- await p.mouse.move(300,300);await p.keyboard.press('f');await W(300);
+ await p.mouse.move(300,300);await p.keyboard.press('Shift+F');await W(300);
  const cam=await p.evaluate(()=>{const c=__gs.v3.cam;return [c.tx,c.ty,c.dist,__gs.ui.mode];});
- ok(cam[0]===0&&cam[1]===0&&cam[2]<20,'F brings the model back to the middle '+JSON.stringify(cam));
+ ok(cam[0]===0&&cam[1]===0&&cam[2]<20,'Shift+F brings the model back to the middle '+JSON.stringify(cam));
  /* stencil switch in Brushes, with a drop zone */
  await p.evaluate(()=>__gs.showPanel('brushes'));await W(300);
  ok(await p.evaluate(()=>{const b=document.querySelector('#stBrush');return !!b&&!b.hidden&&!!b.querySelector('#stUse');}),'Brushes has a Use a stencil switch');

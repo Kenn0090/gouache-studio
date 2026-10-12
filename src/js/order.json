@@ -126,6 +126,7 @@
     "ai/ai-paint",
     "ai/ai-ui",
     "ai/ai-convert",
+    "ai/ai-upscale",
     "photo/photo-engine",
     "photo/photo-tab",
     "photo/photo-raw",

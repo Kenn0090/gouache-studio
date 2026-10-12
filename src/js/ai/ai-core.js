@@ -16,8 +16,11 @@ const AI_PARTS={
   depth:{title:'Depth (Lens blur, Relight, height from a photo)',use:'Works out how far away each part of a photo is. Lens blur and Relight use it, and so does the Convert tab’s height map.',license:'Apache 2.0',credit:'Depth Anything V2 Small, ONNX by onnx-community',link:'https://huggingface.co/onnx-community/depth-anything-v2-small',
     files:[{n:'depth.onnx',url:AI_HF('onnx-community/depth-anything-v2-small','4472b7362082ad9968fee890ca0f1e5aca36b93d','onnx/model.onnx'),size:99060839,sha:'afb6a5c28f3b6bf1618c6e43f02073ef9dfdc70e937502d51603e57b0a1df10c'}]},
   lama:{title:'Remove',use:'Takes an object out of a picture and fills the gap from what is around it.',license:'Apache 2.0',credit:'LaMa by Samsung AI Center, ONNX by Carve',link:'https://huggingface.co/Carve/LaMa-ONNX',
-    files:[{n:'lama.onnx',url:AI_HF('Carve/LaMa-ONNX','c3c0c9e468934d62e79c329e35d82dd09ff8c444','lama_fp32.onnx'),size:208044816,sha:'1faef5301d78db7dda502fe59966957ec4b79dd64e16f03ed96913c7a4eb68d6'}]}};
-const AI_ORDER=['engine','sam','depth','lama'];
+    files:[{n:'lama.onnx',url:AI_HF('Carve/LaMa-ONNX','c3c0c9e468934d62e79c329e35d82dd09ff8c444','lama_fp32.onnx'),size:208044816,sha:'1faef5301d78db7dda502fe59966957ec4b79dd64e16f03ed96913c7a4eb68d6'}]}
+  ,upscale:{title:'Upscale (make pictures bigger)',use:'Makes a picture 2×, 4× or 8× bigger and adds believable detail. Used in Photo (when exporting), Paint (Image › Upscale) and Convert.',license:'BSD 3-Clause',credit:'Real-ESRGAN by Xintao Wang et al., ONNX export by SceneWorks',link:'https://huggingface.co/SceneWorks/real-esrgan-onnx',
+    files:[{n:'real_esrgan_x2.onnx',url:AI_HF('SceneWorks/real-esrgan-onnx','09f741bac80a246b407da3ee902bf5f3291b602f','real_esrgan_x2.onnx'),size:67073434,sha:'7115ba92e8a1bfa63d68558ef006ef3d91273a068d321b1439f8bb1c9179002c'},
+      {n:'real_esrgan_x4.onnx',url:AI_HF('SceneWorks/real-esrgan-onnx','09f741bac80a246b407da3ee902bf5f3291b602f','real_esrgan_x4.onnx'),size:67051616,sha:'5c586662929cbc686c1a5c38d9c060dbdb4ea5863a1f7672b8c0761e6b89c033'}]}};
+const AI_ORDER=['engine','sam','depth','lama','upscale'];
 const AI={have:{},sess:{},used:{},ort:null,ortP:null,busy:null,urlFix:null,dev:null};
 const aiMB=b=>b>=1e8?Math.round(b/1e6)+' MB':(b/1e6).toFixed(b<1e7?1:0)+' MB';
 const aiSize=id=>AI_PARTS[id].files.reduce((a,f)=>a+f.size,0);
