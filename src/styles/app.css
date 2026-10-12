@@ -1329,3 +1329,6 @@ body.photomode #hint{display:none!important}
 #phFilter{width:auto;max-width:150px;min-width:0}
 body.photomode #optBar{display:none}
 body.photomode #docTabs{display:none!important}
+.airow{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:6px 0}.airow.on{border-color:var(--accent)}
+.aihead{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.aihead b{flex:1;min-width:140px}.aistat{font-size:12px;opacity:.8}.aicred a{color:var(--accent)}
+#xfOv .phrm{fill:none;stroke:rgba(255,80,80,.45);stroke-linecap:round;stroke-linejoin:round}

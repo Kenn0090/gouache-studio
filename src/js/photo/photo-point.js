@@ -6,7 +6,7 @@ function phRgb2Hsl(r,g,b){const mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/
 function phSampleAt(ix,iy){const p=phP(),M=phMapper();if(!p||!p.psrc||!M)return null;const sp=M.fwd(ix/doc.w,iy/doc.h),x=Math.max(0,Math.min(p.psrc.w-1,Math.floor(sp[0]*p.psrc.w))),y=Math.max(0,Math.min(p.psrc.h-1,Math.floor(sp[1]*p.psrc.h))),
     r=3,x0=Math.max(0,x-1),y0=Math.max(0,y-1),w=Math.min(r,p.psrc.w-x0),h=Math.min(r,p.psrc.h-y0),d=captureRegionNow(p.psrc,x0,y0,w,h).data;let R=0,G=0,B=0;const n=w*h;
   for(let i=0;i<n;i++){const a=d[i*4+3]/255||1;R+=d[i*4]/255/a;G+=d[i*4+1]/255/a;B+=d[i*4+2]/255/a;}return phRgb2Hsl(R/n,G/n,B/n);}
-function phPickAt(ix,iy){const k=ph.pick;ph.pick=null;stage.classList.remove('phpicking');if(!k)return;const c=phSampleAt(ix,iy);if(!c)return;
+function phPickAt(ix,iy,e){const k=ph.pick;if(k==='aisubject'){phAiClick(ix,iy,e);return;}ph.pick=null;if(k==='lensfocus'){stage.classList.remove('phpicking');const d=phDepthAt(ix,iy);if(d!=null){phS().lens.focus=Math.round(d);phCommit('Lens focus');phBuildPanel();phDirty();}return;}stage.classList.remove('phpicking');if(!k)return;const c=phSampleAt(ix,iy);if(!c)return;
   if(k==='mask'){const m=phSelMask();if(m){m.rng=m.rng||{};m.rng.kind='col';m.rng.h=Math.round(c[0]);m.rng.hr=m.rng.hr||30;phCommit('Mask colour');phBuildPanel();phDirty();}return;}
   const s=phS();if(!s.pts)s.pts=[];if(s.pts.length>=8){toast('Eight colour points at most.');return;}
   s.pts.push({id:'c'+Date.now().toString(36),on:true,h:+c[0].toFixed(1),s:+c[1].toFixed(3),l:+c[2].toFixed(3),range:40,dh:0,ds:0,dl:0});ph.open.point=true;phCommit('Add colour point');phBuildPanel();phDirty();}

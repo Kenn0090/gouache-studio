@@ -1,17 +1,19 @@
 /* ================= Photo tab: the crop box on the picture, keys, dropping photos ================= */
 const PH_HANDLES=['tl','t','tr','r','br','b','bl','l'];
 function phHandlePts(c){const [x0,y0,x1,y1]=c,mx=(x0+x1)/2,my=(y0+y1)/2;return {tl:[x0,y0],t:[mx,y0],tr:[x1,y0],r:[x1,my],br:[x1,y1],b:[mx,y1],bl:[x0,y1],l:[x0,my]};}
-function phOverlay(f){if(ui.mode==='photo'&&!ph.crop&&typeof phLocalOverlay==='function')return phLocalOverlay(f)+(typeof phSpotOverlay==='function'?phSpotOverlay(f):'');if(ui.mode!=='photo'||!ph.crop||!phP())return '';const c=phS().geo.crop,W=doc.w,H=doc.h,P=([x,y])=>f([x*W,y*H]);
+function phOverlay(f){if(ui.mode==='photo'&&!ph.crop&&typeof phLocalOverlay==='function')return phLocalOverlay(f)+(typeof phSpotOverlay==='function'?phSpotOverlay(f):'')+(typeof phRmOverlay==='function'?phRmOverlay(f):'')+(typeof phRelightOverlay==='function'?phRelightOverlay(f):'');if(ui.mode!=='photo'||!ph.crop||!phP())return '';const c=phS().geo.crop,W=doc.w,H=doc.h,P=([x,y])=>f([x*W,y*H]);
   const q=[[c[0],c[1]],[c[2],c[1]],[c[2],c[3]],[c[0],c[3]]].map(P),outer=[[0,0],[1,0],[1,1],[0,1]].map(P);
   let s='<path class="phdim" fill-rule="evenodd" d="M'+outer.join('L')+'ZM'+q.join('L')+'Z"/><path class="phcrop" d="M'+q.join('L')+'Z"/>';
   let g='';for(const t of [1/3,2/3]){g+='M'+P([c[0]+(c[2]-c[0])*t,c[1]])+'L'+P([c[0]+(c[2]-c[0])*t,c[3]])+'M'+P([c[0],c[1]+(c[3]-c[1])*t])+'L'+P([c[2],c[1]+(c[3]-c[1])*t]);}
   s+='<path class="phgrid" d="'+g+'"/>';const hp=phHandlePts(c);for(const k of PH_HANDLES){const [a,b]=P(hp[k]).split(' ').map(Number);s+='<rect class="phhandle" x="'+(a-5)+'" y="'+(b-5)+'" width="10" height="10"/>';}return s;}
 function phPointerDown(e,ix,iy){const p=phP();if(!p)return false;
-  if(ph.pick&&!ph.crop&&e.button===0){phPickAt(ix,iy);return true;}
+  if(ph.pick&&!ph.crop&&e.button===0){phPickAt(ix,iy,e);return true;}
   if(ph.crop){const c=phS().geo.crop,W=doc.w,H=doc.h,r=stage.getBoundingClientRect(),hp=phHandlePts(c);let hit=null,bd=14;
     for(const k of PH_HANDLES){const sp=scrPt([hp[k][0]*W,hp[k][1]*H]),d=Math.hypot(e.clientX-r.left-sp[0],e.clientY-r.top-sp[1]);if(d<bd){bd=d;hit=k;}}
     const nx=ix/W,ny=iy/H;if(!hit&&nx>c[0]&&nx<c[2]&&ny>c[1]&&ny<c[3])hit='move';
     if(hit){ptr={mode:'phcrop',id:e.pointerId,h:hit,c0:c.slice(),nx0:nx,ny0:ny};return true;}}
+  if(!ph.crop&&!e.altKey&&e.button===0&&phRelightDown(e,ix,iy))return true;
+  if(!ph.crop&&!e.altKey&&e.button===0&&ph.rm&&ph.rm.on&&phRmDown(e,ix,iy))return true;
   if(!ph.crop&&!e.altKey&&e.button===0&&ph.sp&&ph.sp.tool&&phSpotDown(e,ix,iy))return true;
   if(!ph.crop&&!e.altKey&&e.button===0&&typeof phLocalDown==='function'&&phLocalDown(e,ix,iy))return true;
   ptr={mode:'pan',id:e.pointerId,sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y};stage.classList.add('panning');return true;}

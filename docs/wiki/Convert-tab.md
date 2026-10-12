@@ -46,3 +46,6 @@ Only the normal map is in colour; everything else is grey. **Canvas shows** swit
 - **Export files…** saves the maps as PNG files (height at 16 bits). On the desktop you choose a folder; in the browser they download as a zip.
 
 The **Maps** menu's converters (Normal from base colour, AO from height…) open this tab with the right source and map already chosen. For a conversion that keeps updating while you paint, add it to a [filter layer](Filter-layers.md) instead.
+
+## Height from AI depth
+Tick **Height from AI depth** (under *This image is*) to make the height map from the photo's depth, worked out by the AI Depth add-on, instead of from its brightness. It works well for photos of scenes and objects with real depth. See [AI add-ons](AI-add-ons.md).

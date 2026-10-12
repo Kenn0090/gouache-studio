@@ -55,3 +55,6 @@ During Free transform, right-click the canvas for Scale, Rotate, Skew, Shear, Di
 With a marquee selection, switch to **Move (V)** and **Alt+drag** to copy the selected pixels on their existing layers while keeping the originals. A regular drag moves them. Shift keeps the drag straight, and Undo/Redo includes the selection position.
 
 An active transform shows quick controls above the canvas: mode, position, width/height, linked scaling, angle, skew, resampling, Apply and Cancel. Warp shows grid size and Reset warp. Changing the warp grid resamples the current bend onto the new grid rather than clearing it; the top controls stay in step with the side panel.
+
+## AI selections
+**Select › Select subject (AI)…** (click the subject, click more to add, Alt+click to take away, Esc to finish) and **Select › Select sky (AI)** make a selection from what you see. **Edit › Remove selection (AI)** takes the selected thing out of the current layer and fills it from its surroundings. They need the optional [AI add-ons](AI-add-ons.md).
