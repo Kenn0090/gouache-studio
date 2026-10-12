@@ -15,6 +15,14 @@ function writeRegion(t,x,y,w,h,bytes){t.opaque=false;gl.bindTexture(gl.TEXTURE_2
   gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);t.mipDirty=true;t.opaque=x===0&&y===0&&w===t.w&&h===t.h&&imageOpaque(bytes,t.depth);}
 /* in the Bake or Convert tab, the painting is what gets saved */
 async function encodeGouache(){return tabDocs.paint?withPaintDocAsync(encodeGouacheNow):encodeGouacheNow();}
+/* (0.59, Kenn) a saved document remembers the session around it: the panel layout, the zoom and place of the view, and the tool */
+function gfSession(){if(prefs.saveSession===false||!dk.L||ui.mode==='bake'||ui.mode==='convert'||ui.mode==='p3d')return undefined;
+  try{return {mode:ui.mode,ws:dk.ws,layout:dkClone(dk.L),view:{zoom:view.zoom,x:view.x,y:view.y},tool:ui.tool};}catch(e){return undefined;}}
+function gfApplySession(s){try{if(!s||s.mode!==ui.mode||!s.layout)return;
+  const same=JSON.stringify(dk.L)===JSON.stringify(s.layout);if(!same){if(WS_PRESETS[s.ws]||dk.custom[s.ws]){dk.ws=s.ws;dk.modeWs[ui.mode]=s.ws;}dkApply(dkClone(s.layout));if(typeof syncWsSel==='function')syncWsSel();}
+  if(s.view&&s.view.zoom>0){view.zoom=s.view.zoom;view.x=s.view.x;view.y=s.view.y;updateStatus();requestRender(true);}
+  if(s.tool&&s.tool!==ui.tool&&!['pen','material','path','text'].includes(s.tool))setTool(s.tool);
+  if(!same)toast('Brought back the panel layout saved with this file.');}catch(e){console.warn('session not restored',e);}}
 let gfSaving=false;
 const gfSaveStats={last:null};
 /* Do not let a layer/tab change while its pixels and editable settings are being read. The UI thread
@@ -69,7 +77,7 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
   const projectAssets=paEncode(bytes=>defer(Promise.resolve({bytes}),{}));
   /* every picture is packed now: give each its place in the file, in the order it was made */
   {const t0=performance.now();for(const d of later){const bytes=await d.e;d.r.o=off;off+=bytes.length;blobs.push(bytes);}stats.pack+=performance.now()-t0;}
-  const head={p3:!!doc.p3,meshMaps,meshMapInfo:doc.meshMapInfo,projectAssets,bakeMaps,cage:cageClone(doc.cage),v3d:doc.v3d||null,v3shade:doc.v3shade||null,guides:doc.guides&&doc.guides.length?doc.guides:undefined,dpi:doc.dpi||undefined,mesh:meshRec,app:'Gouache Studio',v:GF_VERSION,w:doc.w,h:doc.h,depth:doc.depth,wrap:doc.wrap,name:doc.name,
+  const head={session:opts.lean?undefined:gfSession(),p3:!!doc.p3,meshMaps,meshMapInfo:doc.meshMapInfo,projectAssets,bakeMaps,cage:cageClone(doc.cage),v3d:doc.v3d||null,v3shade:doc.v3shade||null,guides:doc.guides&&doc.guides.length?doc.guides:undefined,dpi:doc.dpi||undefined,mesh:meshRec,app:'Gouache Studio',v:GF_VERSION,w:doc.w,h:doc.h,depth:doc.depth,wrap:doc.wrap,name:doc.name,
     maps:doc.maps,map:doc.map,view:doc.view,mapDef:doc.mapDef,workflow:doc.workflow,nrmStr:doc.nrmStr,light:doc.light,tex:texCfg,kids,active,anim,layers:all.length};
   const hj=new TextEncoder().encode(JSON.stringify(head)),pre=new Uint8Array(16);pre.set(GF_MAGIC,0);const dv=new DataView(pre.buffer);dv.setUint32(8,GF_VERSION,true);dv.setUint32(12,hj.length,true);
   return new Blob([pre,hj,...blobs],{type:'application/octet-stream'});}
@@ -96,6 +104,7 @@ async function openGouache(buf,name){const {head,data}=gfHead(buf);if(tabDocs.pa
   if(head.map&&head.map!=='base'&&doc.maps.includes(head.map))setEditMap(head.map);
   if(head.view&&head.view!==doc.map&&(head.view==='material'||head.view==='nfinal'||head.view==='normal'))doc.view=head.view==='normal'?'nfinal':head.view;
   changedAll();updateStatus();fit();refreshMapsUI();buildBrushPanel();if(animMode)setMode('anim',true);
+  if(head.session&&prefs.restoreSession!==false)gfApplySession(head.session);
   if(v3.on){v3.mesh=null;if(!v3.pop)build3dPane();else build3dPane();v3.mapsDirty=true;v3.dirty=true;requestRender(true);}
   toast('Opened “'+(head.name||name)+'”.');}
 /* the maps, settings and layers of a document into the current (blank, right-sized) one; returns the image and layer readers */
