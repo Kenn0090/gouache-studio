@@ -32,3 +32,15 @@ function aiSkyGuess(img){const W=Math.min(160,img.w),k=W/img.w,w=W,h=Math.max(2,
   const pos=[],cols=[.2,.5,.8];for(const cx of cols){let found=null;for(let y=1;y<h&&!found;y++){const x=Math.round(cx*(w-1)),i=y*w+x;if(seen[i]&&seen[i-w]){let run=0;while(y+run<h&&seen[(y+run)*w+x])run++;found=[x,y+Math.floor(run/2)];}}if(found)pos.push({x:(found[0]+.5)/k,y:(found[1]+.5)/k,pos:true});}
   if(!pos.length)return null;let bottom=null;for(let y=h-2;y>h*.5&&!bottom;y--){const x=Math.round(w/2);if(!seen[y*w+x]){bottom={x:(x+.5)/k,y:(y+.5)/k,pos:false};}}
   const m=new Uint8Array(w*h);for(let i=0;i<w*h;i++)m[i]=seen[i]?255:0;return {points:bottom?pos.concat([bottom]):pos,cover:n/(w*h),guess:{w,h,data:m}};}
+
+/* the sky as a mask: the plain sky areas decide where it may be, the model draws the exact edge. E is an embedding with E.img. */
+async function aiSkyMask(E,W,H){const g=aiSkyGuess(E.img);if(!g)return null;const m=await aiSamMask(E,g.points,W,H);
+  const G=g.guess,gu=new Uint8Array(W*H);let agree=0,tot=0;for(let y=0;y<H;y++){const gy=Math.min(G.h-1,Math.floor((y+.5)/H*G.h));for(let x=0;x<W;x++){const gv=G.data[gy*G.w+Math.min(G.w-1,Math.floor((x+.5)/W*G.w))];gu[y*W+x]=gv;if(gv>127){tot++;if(m.data[y*W+x]>127)agree++;}}}
+  const R=Math.max(3,Math.round(H*.035)),near=phMaxFilter(gu,W,H,R);
+  if(tot&&agree/tot>.5){for(let i=0;i<W*H;i++)m.data[i]=Math.min(m.data[i],near[i]);}else m.data=phBoxBlur(gu,W,H,Math.max(2,Math.round(H*.006)));
+  return {mask:m,points:g.points};}
+/* a square maximum over radius r (separable), and a box blur: small helpers for the AI masks */
+function phMaxFilter(a,w,h,r){const t=new Uint8Array(w*h),o=new Uint8Array(w*h);for(let y=0;y<h;y++)for(let x=0;x<w;x++){let m=0;const x0=Math.max(0,x-r),x1=Math.min(w-1,x+r);for(let i=x0;i<=x1;i++){const v=a[y*w+i];if(v>m)m=v;}t[y*w+x]=m;}
+  for(let y=0;y<h;y++){const y0=Math.max(0,y-r),y1=Math.min(h-1,y+r);for(let x=0;x<w;x++){let m=0;for(let j=y0;j<=y1;j++){const v=t[j*w+x];if(v>m)m=v;}o[y*w+x]=m;}}return o;}
+function phBoxBlur(a,w,h,r){const t=new Float32Array(w*h),o=new Uint8Array(w*h);for(let y=0;y<h;y++){let s=0;const row=y*w;for(let x=-r;x<w;x++){const add=x+r<w?a[row+x+r]:0,rem=x-r-1>=0?a[row+x-r-1]:0;s+=add-rem;if(x>=0)t[row+x]=s/(2*r+1);}}
+  for(let x=0;x<w;x++){let s=0;for(let y=-r;y<h;y++){const add=y+r<h?t[(y+r)*w+x]:0,rem=y-r-1>=0?t[(y-r-1)*w+x]:0;s+=add-rem;if(y>=0)o[y*w+x]=Math.round(s/(2*r+1));}}return o;}

@@ -27,18 +27,11 @@ function phRmOverlay(f){const r=ph.rm;if(ui.mode!=='photo'||ph.crop||!r.on)retur
 function phRmScreenR(){const M=phMapper();if(!M)return 5;const a=scrPt([doc.w/2,doc.h/2]),sp=M.fwd(.5,.5),q=M.inv(sp[0],sp[1]+ph.rm.size/2),b=scrPt([q[0]*doc.w,q[1]*doc.h]);return Math.hypot(b[0]-a[0],b[1]-a[1]);}
 async function phRmRun(pts){const p=phP();if(!p||!p.psrc)return;
   await aiBusy('Removing',async prog=>{const W=p.pw,H=p.ph,r=ph.rm,rad=r.size*H/2;let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const q of pts){x0=Math.min(x0,q[0]*W-rad);y0=Math.min(y0,q[1]*H-rad);x1=Math.max(x1,q[0]*W+rad);y1=Math.max(y1,q[1]*H+rad);}
-    const side=Math.min(Math.min(W,H),Math.max(192,Math.max(x1-x0,y1-y0)*2.2)),cx=(x0+x1)/2,cy=(y0+y1)/2,sx=clamp(cx-side/2,0,W-side),sy=clamp(cy-side/2,0,H-side),S=512,k=S/side;
-    const img=aiPixels(p.psrc,Math.max(W,H)),c=new OffscreenCanvas(img.w,img.h);c.getContext('2d').putImageData(new ImageData(img.data,img.w,img.h),0,0);
-    const cc=new OffscreenCanvas(S,S),cx2=cc.getContext('2d',{willReadFrequently:true});cx2.imageSmoothingQuality='high';cx2.drawImage(c,sx,sy,side,side,0,0,S,S);const px=cx2.getImageData(0,0,S,S).data;
-    const mc=new OffscreenCanvas(S,S),mx=mc.getContext('2d',{willReadFrequently:true});mx.fillStyle='#000';mx.fillRect(0,0,S,S);mx.strokeStyle=mx.fillStyle='#fff';mx.lineCap='round';mx.lineJoin='round';mx.lineWidth=rad*2*k;
-    mx.beginPath();pts.forEach((q,i)=>{const X=(q[0]*W-sx)*k,Y=(q[1]*H-sy)*k;if(i)mx.lineTo(X,Y);else mx.moveTo(X,Y);});if(pts.length===1){mx.arc((pts[0][0]*W-sx)*k,(pts[0][1]*H-sy)*k,rad*k,0,7);mx.fill();}else mx.stroke();
-    const md=mx.getImageData(0,0,S,S).data,hole=new Uint8Array(S*S);for(let i=0;i<S*S;i++)hole[i]=md[i*4]>127?255:0;
-    const grown=phMaxFilter(hole,S,S,Math.max(3,Math.round(S*.012))),ort=await aiEngine(),sess=await aiSession('lama','lama.onnx'),f=new Float32Array(3*S*S),mk=new Float32Array(S*S);
-    for(let i=0;i<S*S;i++){f[i]=px[i*4]/255;f[S*S+i]=px[i*4+1]/255;f[2*S*S+i]=px[i*4+2]/255;mk[i]=grown[i]>127?1:0;}prog(.2);
-    const out=await sess.run({image:new ort.Tensor('float32',f,[1,3,S,S]),mask:new ort.Tensor('float32',mk,[1,1,S,S])}),o=out.output.data;prog(.9);
-    const soft=phBoxBlur(grown,S,S,Math.max(2,Math.round(S*.008))),rgba=new Uint8ClampedArray(S*S*4);
-    for(let i=0;i<S*S;i++){rgba[i*4]=o[i];rgba[i*4+1]=o[S*S+i];rgba[i*4+2]=o[2*S*S+i];rgba[i*4+3]=Math.max(soft[i],grown[i]>127&&soft[i]>200?soft[i]:soft[i]);}
-    const id='r'+Date.now().toString(36)+Math.floor(Math.random()*999);PH_PATCH[id]={rect:[sx/W,sy/H,side/W,side/H],rgba,v:1};
+    const img=aiPixels(p.psrc,Math.max(W,H)),mc=new OffscreenCanvas(img.w,img.h),mx=mc.getContext('2d',{willReadFrequently:true});mx.fillStyle='#000';mx.fillRect(0,0,img.w,img.h);mx.strokeStyle=mx.fillStyle='#fff';mx.lineCap='round';mx.lineJoin='round';mx.lineWidth=rad*2*img.w/W;
+    const X=q=>q[0]*img.w,Y=q=>q[1]*img.h;mx.beginPath();pts.forEach((q,i)=>{if(i)mx.lineTo(X(q),Y(q));else mx.moveTo(X(q),Y(q));});if(pts.length===1){mx.arc(X(pts[0]),Y(pts[0]),rad*img.w/W,0,7);mx.fill();}else mx.stroke();
+    const md=mx.getImageData(0,0,img.w,img.h).data,hole=new Uint8Array(img.w*img.h);for(let i=0;i<hole.length;i++)hole[i]=md[i*4]>127?255:0;
+    const k=img.w/W,patch=await aiInpaintPatch(img,hole,[Math.max(0,x0*k),Math.max(0,y0*k),Math.min(img.w,x1*k),Math.min(img.h,y1*k)],prog);
+    const id='r'+Date.now().toString(36)+Math.floor(Math.random()*999);PH_PATCH[id]={rect:patch.rect,rgba:patch.rgba,v:1};
     const s=phS();if(!s.rm)s.rm=[];s.rm.push(id);phCommit('Remove');phRmSync(p);phDirty();phBuildPanel();});}
 function phRmPanel(){const r=ph.rm,s=phS(),list=(s&&s.rm)||[],need=!aiHas('engine')||!aiHas('lama'),body=[];
   if(need)body.push(el('p',{class:'note',text:'Remove needs the AI add-on (File › AI add-ons).'}),el('div',{class:'phlmbtns'},el('button',{class:'btn sm primary',text:'AI add-ons…',onclick:dlgAddons})));

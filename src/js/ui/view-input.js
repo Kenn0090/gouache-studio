@@ -59,6 +59,7 @@ cv.addEventListener('pointerdown',e=>{
   if(symCentreDown(e))return;
   if(typeof perspDown==='function'&&perspDown(e))return;
   let [ix,iy]=toImage(e.clientX,e.clientY);if(typeof gdSnapOn==='function'&&gdSnapOn()&&!e.altKey)[ix,iy]=gdSnap(ix,iy);
+  if(aiPS.on&&ui.mode==='paint'&&e.button===0){aiPaintClick(e,ix,iy);return;}
   if(ui.tool==='liquify'&&!e.altKey&&ui.mode!=='bake'&&ui.mode!=='convert'){liqDown(e,ix,iy);return;}
   if(ui.cageFlat&&!['brush','erase','smudge','dodge','burn','heal','clone','picker'].includes(ui.tool)&&!e.altKey){toast('Only painting works in the flat cage view. Press F to go back to the canvas.');return;}
   if(ui.mode==='convert'){cvPointerDown(e,ix,iy);return;}
