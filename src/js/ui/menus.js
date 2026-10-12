@@ -42,7 +42,7 @@ Object.assign(actions,{gallery:()=>dlgGallery(),warp:()=>fxMenu('warp'),slopeBlu
   optBarToggle:()=>{dk.L.opt=!dk.L.opt;dkRender();dkSave();},tbCols:()=>dkToolbar({cols:dk.L.tb.cols===2?1:2}),tbSide:()=>dkToolbar({side:dk.L.tb.side==='right'?'left':'right'})});
 Object.assign(actions,{makeTip:()=>dlgMakeTip(),keys:()=>dlgKeys(),hints:()=>toggleHints(),cageTool:()=>{if(ui.cageFlat)cageFlatOff();setTool('cage');},cageFlat:()=>toggleCageFlat(),symX:()=>symToggleX()});
 actions.clearContents=cmdClearLayer;
-const LAYER_ONLY=['clearContents','addLayer','newGroup','group','ungroup','dupLayer','delLayer','addMask','addMaskHide','applyMask','deleteMask','merge','mergeGroup','mergeVisible','flatten','rasterize','place','tipFromLayer','selLayer'];
+const LAYER_ONLY=['mergeVisible','flatten','tipFromLayer'];/* (0.58) the other layer commands work inside a frame */
 const checked={ws_painting:()=>dk.ws==='painting',ws_texturing:()=>dk.ws==='texturing',ws_paint3d:()=>dk.ws==='paint3d',ws_minimal:()=>dk.ws==='minimal',wsLock:()=>dk.lock,pn_color:()=>panelShown('color'),pn_brushes:()=>panelShown('brushes'),pn_tool:()=>panelShown('tool'),pn_maps:()=>panelShown('maps'),pn_layers:()=>panelShown('layers'),pn_chan:()=>panelShown('chan'),optBarToggle:()=>dk.L&&dk.L.opt,tbCols:()=>dk.L&&dk.L.tb.cols===2,tbSide:()=>dk.L&&dk.L.tb.side==='right',hints:()=>!prefs.hideHints,view3d:()=>v3.on,perf:()=>perf.on,depth8:()=>doc.depth===8,depth16:()=>doc.depth===16,tile:()=>doc.wrap,quickMask:()=>sel.quick};
 const pop=$('#menuPop');let openName=null;
 /* (0.31) Layer is a menu of its own again, like Photoshop; Maps lives at the end of the Image menu */

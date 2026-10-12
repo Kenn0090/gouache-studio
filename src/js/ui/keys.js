@@ -32,7 +32,7 @@ function kbCombo(e){let k=e.key;if(['Control','Shift','Alt','Meta'].includes(k))
 function kbHandle(e){const combo=kbCombo(e);if(!combo)return false;
   let mine=Object.keys(kbUser).find(id=>kbUser[id]===combo);if(!mine&&typeof KB_AUTO!=='undefined')mine=KB_AUTO.find(id=>!(id in kbUser)&&kbDefault(id)===combo);
   if(!mine&&!Object.keys(kbUser).length)return false;
-  if(mine){const c=kbCommands().find(c=>c[0]===mine);if(c){e.preventDefault();if(ui.mode==='anim'&&LAYER_ONLY.includes(mine)){toast('Layers are not used in Animation mode.');return true;}c[4]();return true;}}
+  if(mine){const c=kbCommands().find(c=>c[0]===mine);if(c){e.preventDefault();c[4]();return true;}}
   /* the built-in key of a command that was moved (or cleared) does nothing now */
   const moved=kbCommands().find(c=>c[3]===combo&&c[0] in kbUser&&kbUser[c[0]]!==combo);
   if(moved){e.preventDefault();return true;}

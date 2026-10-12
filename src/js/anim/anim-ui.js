@@ -126,7 +126,6 @@ function animKeys(e,m,k){if(ui.mode!=='anim')return false;
   if(m&&!e.shiftKey&&!e.altKey&&k==='f'){e.preventDefault();addFrame();return true;}
   if(!m&&e.shiftKey&&!e.altKey&&k==='d'){e.preventDefault();if(!e.repeat)duplicateFrame();return true;}
   if(m&&e.shiftKey&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();const A=A_();if(A){const to=clamp(A.cur+(e.key==='ArrowLeft'?-1:1),0,A.frames.length-1);if(to!==A.cur)moveFrame(A.cur,to);}return true;}
-  if(m&&(k==='n'?e.shiftKey:['g','e','j'].includes(k))){e.preventDefault();toast('Layers are not used in Animation mode. Switch to Paint mode (top right) for layers.');return true;}
   if(m||e.altKey)return false;
   if((k==='delete'||k==='backspace')&&!(sel.active&&!sel.quick)){e.preventDefault();deleteFrame();return true;}
   if(k===','){stepFrame(-1);return true;}if(k==='.'){stepFrame(1);return true;}

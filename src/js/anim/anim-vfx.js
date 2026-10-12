@@ -301,15 +301,15 @@ function vfxGenInto(T,opt,t,base){if(!VFX_ONESHOT.includes(opt.kind))t-=Math.flo
     uP1:[opt.spd,opt.wid,opt.hei,opt.lean],uP2:[opt.cnt,opt.soft,opt.glow,opt.flick],uP3:[opt.cont,opt.bright,opt.spike,opt.rot||0],uC1:opt.c1||[1,.35,.05],uC2:opt.c2||[1,.95,.6],
     uBase:base?base.tex:dummy,uUseBase:base?1:0,uFlip:0,uMuzzle:[opt.burst||0,opt.flashTime??1,opt.smoke||0,0]});}
 function vfxGenerate(opt){const A=A_();if(!A)return;const n=clamp(Math.round(opt.n)||8,2,256);if(!animMemOk(n))return;
-  const src=curFrame();let base=null;if(opt.useBase&&contentBounds(src.target)){base=acquire();blit(src.target,base,0,0,doc.w,doc.h,0,0);}
-  const one=VFX_ONESHOT.includes(opt.kind),list=[];for(let i=0;i<n;i++){const F=newFrame();vfxGenInto(F.target,opt,one?i/(n-1):i/n,base);list.push(F);}
+  const src=curFrame();let base=null;if(opt.useBase){const ft=frameFlat(src);if(contentBounds(ft)){base=acquire();blit(ft,base,0,0,doc.w,doc.h,0,0);}release(ft);}
+  const one=VFX_ONESHOT.includes(opt.kind),list=[];for(let i=0;i<n;i++){const F=newFrame();vfxGenInto(frameLayer(F).target,opt,one?i/(n-1):i/n,base);list.push(F);}
   if(base)release(base);
   putFrames(list,!!opt.replace,'Generate '+VFX_KINDS[opt.kind][1].toLowerCase());}
 function dlgGenerate(kind,initial){if(!ensureAnimMode())return;const cur={o:initial||vfxOpts(kind||0)};
   const body=el('div',{class:'dlg-grid vfxdlg'});const pv=el('canvas',{class:'slicepv',width:240,height:240,style:'width:240px;height:240px;background:#111;border-radius:6px;align-self:center'});
   let t=0,tmp=null,stop=false,raf=0;
-  const draw=()=>{const A=A_();if(!A)return;const o=cur.o;if(!tmp)tmp=makeTarget(doc.w,doc.h,8);const src=curFrame();const base=o.useBase&&contentBounds(src.target)?src.target:null;
-    vfxGenInto(tmp,o,VFX_ONESHOT.includes(o.kind)?Math.min(1,(t%1.25)/1.0):(t%1),base);const c=document.createElement('canvas');c.width=doc.w;c.height=doc.h;const px=readRGBA8(tmp),id=new ImageData(doc.w,doc.h);
+  const draw=()=>{const A=A_();if(!A)return;const o=cur.o;if(!tmp)tmp=makeTarget(doc.w,doc.h,8);const src=curFrame(),ft=o.useBase?frameFlat(src):null,base=ft&&contentBounds(ft)?ft:null;
+    try{vfxGenInto(tmp,o,VFX_ONESHOT.includes(o.kind)?Math.min(1,(t%1.25)/1.0):(t%1),base);}finally{if(ft)release(ft);}const c=document.createElement('canvas');c.width=doc.w;c.height=doc.h;const px=readRGBA8(tmp),id=new ImageData(doc.w,doc.h);
     for(let i=0;i<px.length;i+=4){const a=px[i+3];if(a){id.data[i]=Math.min(255,px[i]*255/a);id.data[i+1]=Math.min(255,px[i+1]*255/a);id.data[i+2]=Math.min(255,px[i+2]*255/a);id.data[i+3]=a;}}
     c.getContext('2d').putImageData(id,0,0);const x=pv.getContext('2d');x.clearRect(0,0,240,240);x.fillStyle='#111';x.fillRect(0,0,240,240);const s=Math.min(240/doc.w,240/doc.h);x.drawImage(c,120-doc.w*s/2,120-doc.h*s/2,doc.w*s,doc.h*s);};
   const tick=()=>{if(stop)return;t+=1/Math.max(2,cur.o.n)/1.5;try{draw();}catch(e){}raf=setTimeout(tick,90);};
@@ -338,13 +338,13 @@ function dlgGenerate(kind,initial){if(!ensureAnimMode())return;const cur={o:init
 function spinFrames(n,deg){const A=A_();if(!A)return;n=clamp(Math.round(n)||8,2,256);if(!animMemOk(n))return;
   const src=frameCanvas(curFrame()),W=doc.w,H=doc.h,list=[];
   for(let i=0;i<n;i++){const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');x.translate(W/2,H/2);x.rotate(i*deg/n*Math.PI/180);x.drawImage(src,-W/2,-H/2);
-    const d=x.getImageData?c.getContext('2d').getImageData(0,0,W,H):null;const F=newFrame(),tex=uploadStraight({w:W,h:H,data:d.data,bits:8});premultInto(F.target,tex,[0,0],null);gl.deleteTexture(tex);list.push(F);}
+    const d=x.getImageData?c.getContext('2d').getImageData(0,0,W,H):null;const F=newFrame(),tex=uploadStraight({w:W,h:H,data:d.data,bits:8});premultInto(frameLayer(F).target,tex,[0,0],null);gl.deleteTexture(tex);list.push(F);}
   putFrames(list,false,'Spin frame');}
 /* make the loop seamless: the first k frames fade in from the last k, and the last k are dropped */
 function seamlessLoop(k){const A=A_();if(!A)return;const [a,b]=animRange(),n=b-a+1;k=clamp(Math.round(k)||1,1,Math.floor((n-1)/2));
   if(n<3){toast('Needs at least three frames.');return;}if(n<=2*k){toast('Too few frames for that overlap.');return;}
   animOp('Seamless loop',A=>{const fr=A.frames.slice();for(let j=0;j<k;j++){const tail=fr[b-k+1+j],head=fr[a+j],F=newFrame();
-      run(P.mix,F.target,{uA:tail.target.tex,uB:head.target.tex,uT:j/k,uM:dummy.tex||dummy,uUseM:false});F.hold=head.hold;fr[a+j]=F;frameDirty(F);}
+      const ta=frameFlat(tail),tb=frameFlat(head);run(P.mix,frameLayer(F).target,{uA:ta.tex,uB:tb.tex,uT:j/k,uM:dummy.tex||dummy,uUseM:false});release(ta);release(tb);F.hold=head.hold;fr[a+j]=F;frameDirty(F);}
     fr.splice(b-k+1,k);A.frames=fr;A.cur=clamp(A.cur,0,fr.length-1);ui.fsel=null;});
   toast('Loop made seamless: '+k+' frames now fade from the end into the start.');}
 function cutFrameGrid(){if(!ensureAnimMode())return;const c=frameCanvas(curFrame()),id=c.getContext('2d').getImageData(0,0,c.width,c.height);importSheet({w:c.width,h:c.height,data:id.data,bits:8});}

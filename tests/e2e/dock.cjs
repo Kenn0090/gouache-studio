@@ -52,6 +52,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.mouse.move(sp.x+100,sp.y+3);await p.mouse.down();await p.mouse.move(sp.x+100,sp.y+63,{steps:5});await p.mouse.up();await W(200);
  ok(JSON.stringify((await L()).groups.map(g=>g.f))!==JSON.stringify(f0),'the bar between groups resizes them');
  // Window menu hides and shows a panel
+ await p.evaluate(()=>__gs.setDocMaps(['base','height','rough']));await W(300);
  await p.evaluate(()=>__gs.act('pn_maps'));await W(200);ok(!(await p.evaluate(()=>!!document.querySelector('#dock #mapsSec'))),'Window › Maps hides it');
  await p.evaluate(()=>__gs.act('pn_maps'));await W(200);ok(await p.evaluate(()=>!!document.querySelector('#dock #mapsSec')),'and shows it again');
  // the arrangement is remembered after a restart

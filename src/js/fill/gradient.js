@@ -73,7 +73,7 @@ function gradPointerDown(e,ix,iy){const [sx,sy]=stageXY(e),hit=gradHit(sx,sy);
   if(hit){gradBegin(hit.L);ptr={mode:'grad',id:e.pointerId,hit,m0:[ix,iy],moved:false,g0:cloneGrad(hit.L.grad)};return;}
   const A=activeGrad();
   if(A){gradBegin(A);ptr={mode:'grad',id:e.pointerId,hit:{type:'redraw',L:A},m0:[ix,iy],moved:false,g0:cloneGrad(A.grad)};return;}
-  if(ui.gradLive&&ui.mode!=='anim'){/* a new live gradient layer, shown while dragging; one undo step when done */
+  if(ui.gradLive){/* a new live gradient layer, shown while dragging; one undo step when done */
     const L=newLayerObj('Gradient');L.grad={def:cloneGrad(ui.grad),a:[ix,iy],b:[ix+1,iy]};const [p,i]=insertPoint();insertNode(L,p,i);
     if(sel.active&&!sel.quick){L.mask=makeMask(1);run(P.loadsel,L.mask.target,{uSrc:sel.t.tex,uWhat:{int:1},uInv:false});}
     const prev=doc.active,prevSel=[...doc.sel];selectOnly(L);

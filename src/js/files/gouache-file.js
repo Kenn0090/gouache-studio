@@ -44,10 +44,12 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
   const putSolid=async(k,color)=>{const d=mapDepth(k);stats.images++;stats.bytes+=doc.w*doc.h*(d===16?8:4);return defer(pxPackSolid(color,doc.w,doc.h,d),{r:[0,0,doc.w,doc.h],d,c:color});};
   const putRaw=async t=>{const {pr}=await pack(t,0,0,t.w,t.h,false);return defer(pr,{w:t.w,h:t.h,d:t.depth});};
   const mask=async n=>n.mask?{en:n.mask.enabled,mono:n.mask.target.mono||undefined,lk:n.mask.link===false?0:undefined,img:await put(n.mask.target,true)}:null;
-  const node=async n=>{const base={name:n.name,vis:n.visible,op:n.opacity,mode:n.mode,mask:await mask(n),lockPx:n.lockPx||undefined,lockPos:n.lockPos||undefined,lockAll:n.lockAll||undefined,smSrc:n.smSrc||undefined,smMaskSrc:n.smMaskSrc||undefined,meshEdit:n.meshEdit||undefined,materialPaint:n.materialPaint||undefined};
+  const sharedSeen=new Map();
+  const node=async n=>{if(n.shared&&n.type!=='group'){if(sharedSeen.has(n))return {t:'R',sid:sharedSeen.get(n),name:n.name};sharedSeen.set(n,sharedSeen.size+1);}/* (0.58) a layer shared by every frame is stored once */
+    const base={sid:sharedSeen.get(n),name:n.name,vis:n.visible,op:n.opacity,mode:n.mode,mask:await mask(n),lockPx:n.lockPx||undefined,lockPos:n.lockPos||undefined,lockAll:n.lockAll||undefined,smSrc:n.smSrc||undefined,smMaskSrc:n.smMaskSrc||undefined,meshEdit:n.meshEdit||undefined,materialPaint:n.materialPaint||undefined};
     /* mask rows and content effects (0.23) */
     {const ms=await msEncode(n,put,putRaw);if(ms.stack)base.mstack=ms.stack;if(ms.cfx)base.cfx=ms.cfx;}
-    if(n.type==='group'){const kids=[];for(const c of n.children)kids.push(await node(c));return Object.assign(base,{t:'G',open:n.open,kids});}
+    if(n.type==='group'){const kids=[];for(const c of n.children)kids.push(await node(c));return Object.assign(base,{t:'G',open:n.open,kids,hold:n.frame?n.hold:undefined});}
     if(n.fx)return Object.assign(base,{t:'F',clip:n.clip,mapModes:n.mapModes||{},fx:{map:n.fx.map,stack:fxCleanStack(n.fx.stack)}});
     const maps={};for(const k of mapKeysOf(n)){let r;const color=mapSolid(n,k);
       if(mapLive(n,k)){const tmp=acquireD(mapDepth(k));try{fillDrawMap(n,k,tmp);r=await put(tmp,true,PX_LOSSY.has(k));r.live=1;}finally{release(tmp);}}
@@ -87,7 +89,7 @@ async function openGouache(buf,name){const {head,data}=gfHead(buf);if(tabDocs.pa
   for(const k in head.bakeMaps||{}){const t=bakeMapT(k,true);await img(head.bakeMaps[k],t);}
   let animMode=false;
   if(head.anim&&head.anim.frames&&head.anim.frames.length){const an=head.anim,frames=[];
-    for(const o of an.frames){const F=await mk(o,null);F.frame=true;F.hold=o.hold||1;F.parent=null;frames.push(F);}
+    for(const o of an.frames){const F=frameUpgrade(await mk(o,null));F.frame=true;F.open=true;F.hold=o.hold||1;F.parent=null;frames.push(F);}
     doc.anim=makeAnim(frames);doc.anim.fps=an.fps||12;doc.anim.cur=clamp(an.cur||0,0,frames.length-1);if(an.onion)doc.anim.onion=Object.assign(doc.anim.onion,an.onion);
     doc.anim.tags=(an.tags||[]).filter(t=>frames[t.from]&&frames[t.to]).map(t=>({name:t.name,from:frames[t.from],to:frames[t.to],mode:t.mode||'loop',color:t.color||TAG_COLORS[0]}));
     if(an.bg)ui.animBg=an.bg;doc.anim.fxl=afxLoad(an.fxl);animMode=an.mode==='anim';}
@@ -113,7 +115,9 @@ async function gfReadInto(buf,head,data){
     if(r.d===16){const hv=new Uint16Array(raw.buffer,raw.byteOffset,n),lut=h2fLut();for(let i=0;i<n;i++)out[i]=clamp(Math.round(lut[hv[i]]*255),0,255);}
     else for(let i=0;i<n;i++)out[i]=f2h(raw[i]/255);
     writeRegion(t,x,y,w,h,new Uint8Array(out.buffer));};
+  const sharedMap=new Map();
   const mk=async(o,parent)=>{let n;
+    if(o.t==='R'){const sh=sharedMap.get(o.sid);if(sh&&parent)insertNode(sh,parent);return sh;}
     if(o.t==='G'){n=newGroupObj(o.name);n.open=o.open!==false;}
     else if(o.t==='F'){n=newFxLayerObj(o.name,(o.fx.stack||[]).filter(it=>it.conv?CONVERTERS[it.conv]:FX[it.id]),o.fx.map);n.clip=!!o.clip;n.mapModes=Object.assign({},o.mapModes||{});}
     else{n=newLayerObj(o.name,!!o.fill);n.clip=!!o.clip;n.lockAlpha=!!o.lock;n.mapModes=Object.assign({},o.mapModes||{});
@@ -123,6 +127,7 @@ async function gfReadInto(buf,head,data){
     Object.assign(n,{visible:o.vis!==false,opacity:o.op==null?1:o.op,mode:o.mode==null?(o.t==='G'?-1:0):o.mode});n.lockPx=!!o.lockPx;n.lockPos=!!o.lockPos;n.lockAll=!!o.lockAll;n.smSrc=o.smSrc;n.smMaskSrc=o.smMaskSrc;n.materialPaint=o.materialPaint;if(o.meshEdit&&typeof o.meshEdit.setID==='string'&&typeof o.meshEdit.key==='string'){n.meshEdit=Object.assign({},o.meshEdit);n.meshMap=o.meshEdit.key;n.baked=true;}
     if(o.mask){n.mask=makeMask(1,o.mask.mono);n.mask.enabled=o.mask.en!==false;if(o.mask.lk===0)n.mask.link=false;await img(o.mask.img,n.mask.target);}
     await msDecode(n,o,img,async r=>{const raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),r.w,r.h,r.d||8,r.f),t=makeTarget(r.w,r.h,8,true);writeRegion(t,0,0,r.w,r.h,raw);return t;});
+    if(o.sid){n.shared=true;sharedMap.set(o.sid,n);}
     if(parent)insertNode(n,parent);
     if(o.t==='G')for(const c of o.kids||[])await mk(c,n);
     return n;};

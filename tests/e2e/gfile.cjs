@@ -48,9 +48,9 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  // 16-bit document + anim
  await p.evaluate(()=>__gs.newDoc(64,48,16,[1,0,0],'anim16',false));await p.evaluate(()=>__gs.setMode('anim',true));
  await setFG('#00ff00');await drag(10,10,50,40);
- const b2=await p.evaluate(async()=>{const px=__gs.readRGBA8(__gs.anim.frames[0].target);const b=await __gs.encodeGouache();window.__gbuf=await b.arrayBuffer();return Array.from(px.slice((20*64+30)*4,(20*64+30)*4+4));});
+ const b2=await p.evaluate(async()=>{const px=__gs.readRGBA8(__gs.frameLayer(__gs.anim.frames[0]).target);const b=await __gs.encodeGouache();window.__gbuf=await b.arrayBuffer();return Array.from(px.slice((20*64+30)*4,(20*64+30)*4+4));});
  await p.evaluate(()=>__gs.newDoc(50,50,8,[1,1,1],'x',false));await p.evaluate(async()=>{await __gs.openGouache(window.__gbuf,'t');});await p.waitForTimeout(300);
- const a2=await p.evaluate(()=>({mode:__gs.mode,n:__gs.anim&&__gs.anim.frames.length,d:__gs.doc.depth,px:Array.from(__gs.readRGBA8(__gs.anim.frames[0].target).slice((20*64+30)*4,(20*64+30)*4+4))}));
+ const a2=await p.evaluate(()=>({mode:__gs.mode,n:__gs.anim&&__gs.anim.frames.length,d:__gs.doc.depth,px:Array.from(__gs.readRGBA8(__gs.frameLayer(__gs.anim.frames[0]).target).slice((20*64+30)*4,(20*64+30)*4+4))}));
  ok(a2.mode==='anim'&&a2.n===1&&a2.d===16&&JSON.stringify(a2.px)===JSON.stringify(b2),'anim 16-bit roundtrip '+JSON.stringify([a2,b2]));
  ok(errs.length===0,'no errors '+errs.slice(0,3).join('\n'));
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();})();

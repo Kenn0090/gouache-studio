@@ -157,7 +157,7 @@ function releaseSelView(){if(selViewTmp){release(selViewTmp);selViewTmp=null;}}
 /* thumbnails */
 const thumbT=makeTargetRaw(40,40);const thumbBuf=new Uint8Array(40*40*4);const thumbQ=new Set();
 function makeTargetRaw(w,h){const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);const fbo=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0);return gpuTrack({tex,fbo,w,h,depth:8});}
-function scheduleThumb(n){if(n){n.lookVer=(n.lookVer||0)+1;if(n.frame)frameDirty(n);thumbQ.add(n);chanThumbDirty=true;}requestRender();}
+function scheduleThumb(n){if(n){n.lookVer=(n.lookVer||0)+1;if(doc.anim&&ui.mode==='anim'){if(n.shared)doc.anim.frames.forEach(frameDirty);else{const F=curFrame();if(F)frameDirty(F);}}thumbQ.add(n);chanThumbDirty=true;}requestRender();}
 let chanThumbDirty=true;
 function renderThumb(target,canvas,solid){const s=Math.min(40/doc.w,40/doc.h),tw=doc.w*s,th=doc.h*s;clearTarget(thumbT);
   if(solid)scissorDo([Math.round((40-tw)/2),Math.round((40-th)/2),Math.round(tw),Math.round(th)],()=>clearTarget(thumbT,solid));
