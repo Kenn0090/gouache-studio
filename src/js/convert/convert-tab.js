@@ -91,7 +91,7 @@ function cvBlur(src,dst,r,tmpName){if(r<=.25){run(P.f_rs,dst,{uSrc:src.tex,uOut:
 function cvDown(src,f,name){let cur=src,w=doc.w,h=doc.h,i=0;while(f>1){w=Math.max(1,Math.ceil(w/2));h=Math.max(1,Math.ceil(h/2));const t=cvT(name+'_'+(i++),w,h);run(P.f_rs,t,{uSrc:cur.tex,uOut:[w,h]});cur=t;f/=2;}return cur;}
 
 /* ---------- source ---------- */
-function cvSetSource(t,name,own){cvS.decal=false;if(cvS.src&&cvS.srcOwn)disposeTarget(cvS.src);cvS.src=t;cvS.srcOwn=!!own;cvS.srcName=name||'Texture';cvS.srcVer++;cvS.cache.pois=null;cvS.cache.pyr={};
+function cvSetSource(t,name,own){cvS.decal=false;if(cvS.src&&cvS.srcOwn)disposeTarget(cvS.src);cvS.src=t;cvS.srcOwn=!!own;cvS.srcName=name||'Texture';cvS.srcVer++;cvS.cache.pois=null;cvS.cache.depthT=null;cvS.aiDepth=false;cvS.cache.pyr={};
   cvDetect();cvS.prepDirty=true;cvAllDirty();cvS.thumbs=null;if(ui.mode==='convert'){buildConvertPanel();fitSoon();}}
 const fitSoon=()=>requestAnimationFrame(()=>{fit();requestRender(true);});
 /* a snapshot of a document map or the active layer */
@@ -163,6 +163,7 @@ function cvPois(){if(cvS.cache.pois&&cvS.cache.poisDx===cvS.dx)return cvS.cache.
 /* ---------- each output ---------- */
 const CV_MAKE={
   height(dst){const v=cvS.v.height,P2=cvP();
+    if(cvS.aiDepth&&cvS.cache.depthT){const src=cvS.cache.depthT,b=cvT('hb');cvBlur(src,b,1.5,'btB');run(P2.adjh,dst,{uH:src.tex,uB:b.tex,uCon:v.con,uSharp:v.sharp||0,uInv:!!cvS.inv});if(v.smooth>.25){const t=cvT('hs');cvBlur(dst,t,v.smooth,'btB');blit(t,dst,0,0,doc.w,doc.h,0,0);}return;}
     if(cvS.kind==='photo'){const t=cvT('hraw');cvBands(t,v,v.con);const b=cvT('hb');cvBlur(t,b,1.5,'btB');run(P2.adjh,dst,{uH:t.tex,uB:b.tex,uCon:1,uSharp:v.sharp,uInv:false});}
     else{const src=cvS.kind==='normal'?cvPois():cvLum();const b=cvT('hb');cvBlur(src,b,1.5,'btB');run(P2.adjh,dst,{uH:src.tex,uB:b.tex,uCon:v.con,uSharp:v.sharp||0,uInv:cvS.kind==='height'&&!!cvS.inv});}
     if(v.smooth>.25){const t=cvT('hs');cvBlur(dst,t,v.smooth,'btB');blit(t,dst,0,0,doc.w,doc.h,0,0);}},
@@ -264,6 +265,7 @@ function buildConvertPanel(){const box=$('#convBody');if(!box)return;box.replace
   box.append(el('p',{class:'note',text:'Pick a source or drop an image here, say what it is, then tick the maps to make and fine-tune each one. Everything previews live.'}),row('Source',el('div',{class:'bkmodel'},src,lb)));
   if(!cvS.src){box.append(el('p',{class:'note warn',text:'No source yet.'}));return;}
   box.append(el('div',{class:'sub',text:'This image is'+(cvS.guess?' (it looks like: '+CV_KINDS.find(k=>k[0]===cvS.guess)[1].toLowerCase()+')':'')}),seg(CV_KINDS,cvS.kind,k=>cvSetKind(k),'Source type'));
+  if(cvS.kind!=='normal')box.append(el('div',{class:'chips'},chk('cvAiD','Height from AI depth (needs the AI add-on)',!!(cvS.aiDepth&&cvS.cache.depthT),v=>cvAiDepth(v))));
   if(cvS.kind==='normal')box.append(el('div',{class:'chips'},chk('cvDX','Green points down (DirectX)',cvS.dx,v=>{cvS.dx=v;cvS.cache.pois=null;cvAllDirty();})));
   if(cvS.kind!=='normal'){const tb=el('div',{class:'cvthumbs',id:'cvThumbs'});for(const [inv,label] of [[false,'Bumps out'],[true,'Bumps in']]){const b=el('button',{class:'cvthumb'+(cvS.inv===inv?' on':''),title:'Light areas '+(inv?'sink in':'come forward')},el('canvas',{width:112,height:112}),el('span',{text:label}));
       b.onclick=()=>{cvS.inv=inv;cvAllDirty();buildConvertPanel();};tb.append(b);}

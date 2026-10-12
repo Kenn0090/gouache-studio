@@ -123,6 +123,7 @@
     "ai/ai-sam",
     "ai/ai-depth",
     "ai/ai-ui",
+    "ai/ai-convert",
     "photo/photo-engine",
     "photo/photo-tab",
     "photo/photo-raw",
