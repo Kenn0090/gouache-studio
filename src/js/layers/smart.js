@@ -19,7 +19,7 @@ function smImg(im){if(!im)return null;const t=makeTarget(im.w,im.h,8,false);writ
 function smFit(im,depth){const s=smImg(im);if(!s)return null;const d=makeTarget(doc.w,doc.h,depth||8,false);if(s.w===doc.w&&s.h===doc.h)copyScaled(s,d);else run(P.resample,d,{uSrc:s.tex,uOffset:[0,0],uScale:[s.w/doc.w,s.h/doc.h],uTaps:{int:Math.min(8,Math.max(1,Math.ceil(s.w/doc.w)))},uOutside:[0,0,0,0]});disposeTarget(s);return d;}
 function smBuildMask(o){const m=makeMask(o.rows?0:1);m.enabled=o.en!==false;
   if(o.rows){m.stack=[];m._rows=new Set();for(const d of o.rows){const r=Object.assign(msRow(d.kind),smClone(d),{id:'r'+(++msSeq)});delete r.img;
-      if(d.img){r.t=d.kind==='image'?smImg(d.img):smFit(d.img,m.target.depth);if(r.t&&d.kind==='image')setWrap(r.t,true);}else if(d.kind==='paint'){r.t=makeTarget(doc.w,doc.h,m.target.depth);clearTarget(r.t,[0,0,0,0]);}
+      if(d.img){r.t=d.kind==='image'?smImg(d.img):smFit(d.img,m.target.depth);if(r.t&&d.kind==='image')setWrap(r.t,true);}else if(d._imgT&&d.kind==='image'){r.t=txCopy(d._imgT);}else if(d.kind==='paint'){r.t=makeTarget(doc.w,doc.h,m.target.depth);clearTarget(r.t,[0,0,0,0]);}
       m.stack.push(r);m._rows.add(r);}m._key=null;}
   else if(o.img){const t=smFit(o.img,m.target.depth);if(t){copyScaled(t,m.target);disposeTarget(t);}}
   return m;}
@@ -27,7 +27,8 @@ function smBuild(o){let n;
   if(o.t==='G'){n=newGroupObj(o.name);n.open=o.open!==false;for(const k of o.kids||[]){const c=smBuild(k);insertNode(c,n);}}
   else{n=newLayerObj(o.name);doc.count--;
     if(o.fill){n.fill=Object.assign(fillDefaults(),fillClone(o.fill));const D=fillDefaults().maps;for(const k in D)n.fill.maps[k]=Object.assign({},D[k],o.fill.maps&&o.fill.maps[k]||{on:false});
-      if(o.fillImg&&Object.keys(o.fillImg).length){n._fillImg={};for(const k in o.fillImg){const t=smImg(o.fillImg[k]);if(t){setWrap(t,true);n._fillImg[k]=t;}}}fillRender(n);}
+      if(o._fillT||(o.fillImg&&Object.keys(o.fillImg).length)){n._fillImg={};for(const k in o._fillT||{})n._fillImg[k]=txCopy(o._fillT[k]);
+        for(const k in o.fillImg||{}){const t=smImg(o.fillImg[k]);if(t){setWrap(t,true);if(n._fillImg[k])disposeTarget(n._fillImg[k]);n._fillImg[k]=t;}}}fillRender(n);}
     else for(const k in o.maps||{}){if(!doc.maps.includes(k)&&k!=='base')continue;const t=smFit(o.maps[k],mapDepth(k));if(t){copyScaled(t,ensureMapTarget(n,k));disposeTarget(t);}}
     if(o.styles)n.styles=smClone(o.styles);if(o.cfx)n.cfx=o.cfx.map(r=>Object.assign(msRow('filter'),smClone(r),{id:'r'+(++msSeq)}));}
   Object.assign(n,{visible:o.vis!==false,opacity:o.op==null?1:o.op,mode:o.mode==null?(o.t==='G'?-1:0):o.mode,clip:!!o.clip,mapModes:Object.assign({},o.mapModes||{})});
@@ -52,7 +53,7 @@ function smApply(rec){if(!smNeeds(rec.tree))return smApplyNow(rec);
   return (async()=>{const t=JSON.parse(JSON.stringify(rec.tree));try{await smResolveNode(t);}catch(e){toast('Could not load “'+rec.name+'”: '+(e.message||e));return null;}
     insertAt=at;try{return smApplyNow(Object.assign({},rec,{tree:t}));}finally{insertAt=null;}})();}
 /* Materials tab › a smart mask: it becomes the active layer's mask */
-function smMaskApply(rec){if(!(rec.mask.rows||[]).some(r=>r.p&&r.p.grunge&&!r.img))return smMaskApplyNow(rec);
+function smMaskApply(rec){if(!(rec.mask.rows||[]).some(r=>r.p&&r.p.grunge&&!r.img&&!r._imgT))return smMaskApplyNow(rec);
   const L=doc.active;if(!L||L.fx||ui.mode==='anim'){toast('Select a layer first.');return;}
   toast('Loading “'+rec.name+'”…');return (async()=>{const m=JSON.parse(JSON.stringify(rec.mask));try{await smResolveMask(m);}catch(e){toast('Could not load “'+rec.name+'”: '+(e.message||e));return;}
     if(doc.active!==L)return;smMaskApplyNow(Object.assign({},rec,{mask:m}));})();}
@@ -181,7 +182,7 @@ const SM_LIB=[
     SM_L('Lava','lava',[.9,.35,.05],{mask:SM_M(SM_IMG('cracks-1',1,false,'normal',1))})]]];
 /* fetch what a description points at: library materials and grunge pictures */
 function smNeeds(o){if(o.lib)return true;for(const r of (o.mask&&o.mask.rows)||[])if(r.p&&r.p.grunge&&!r.img)return true;for(const c of o.kids||[])if(smNeeds(c))return true;return false;}
-async function smResolveMask(m){for(const r of m.rows||[]){const g=r.p&&r.p.grunge;if(g&&!r.img){const it=txItems().find(x=>x.kind==='photo'&&x.id===g);if(it){r.img=smCap(await txTarget(it));r.p.name=it.name;}}}}
+async function smResolveMask(m){for(const r of m.rows||[]){const g=r.p&&r.p.grunge;if(g&&!r.img){const it=txItems().find(x=>x.kind==='photo'&&x.id===g);if(it){/* (0.58) the picture stays on the graphics card: copying it there is instant, reading it back to the CPU and uploading it again was the slow part */Object.defineProperty(r,'_imgT',{value:await txTarget(it),enumerable:false,writable:true});r.p.name=it.name;}}}}
 async function smResolveNode(o){
   if(o.lib){const rec=gmRecs.find(r=>r.bundled&&r.bundled.file===o.lib+'.gmat');
     if(rec){if(!(rec.fill&&rec.imgs))await gmLoad(rec);
@@ -189,7 +190,7 @@ async function smResolveNode(o){
       const cv=ui.mode==='bake'||ui.mode==='convert'?null:wfMatConvert(rec,doc.workflow==='spec'?'spec':'metal'),conv=cv&&cv.converted;
       o.fill=fillClone(conv?Object.assign({},rec.fill,{maps:cv.maps}):rec.fill);
       if(o.libAdjust){const a=fillClone(o.libAdjust),tile=a.tile;delete a.tile;const maps=a.maps;delete a.maps;Object.assign(o.fill,a);if(tile!=null)for(const k in o.fill.maps)o.fill.maps[k].tile=tile;if(maps)for(const k in maps)o.fill.maps[k]=Object.assign({},o.fill.maps[k]||{},maps[k]);}
-      o.fillImg={};const T=matRecTargets(rec);for(const k in T){const c=smCap(T[k]);if(c)o.fillImg[k]=c;}
+      o.fillImg={};const T=matRecTargets(rec),ft={};for(const k in T)if(T[k]&&!T[k].empty)ft[k]=T[k];Object.defineProperty(o,'_fillT',{value:ft,enumerable:false,writable:true});/* (0.58) copied on the graphics card, not read back */
       if(conv){for(const k in cv.imgs){const im=cv.imgs[k];if(rec.imgs&&rec.imgs[k]===im)continue;const t=makeTarget(im.w,im.h,8,true);writeRegion(t,0,0,im.w,im.h,im.data);const c=smCap(t);disposeTarget(t);if(c)o.fillImg[k]=c;}
         for(const k of ['rough','metal','spec','gloss'])if(!o.fill.maps[k]||!o.fill.maps[k].on)delete o.fillImg[k];}}}
   if(o.mask)await smResolveMask(o.mask);
