@@ -329,7 +329,12 @@ void main(){ ivec2 sz=textureSize(uSrc,0); int n=uAxis==0?sz.y:sz.x; int k=int(g
   for(int i=0;i<16384;i++){ if(i>=n) break; vec4 c=texelFetch(uSrc,uAxis==0?ivec2(k,i):ivec2(i,k),0); m=max(m,uAlphaOnly==1?c.a:c.r); }
   o=vec4(step(0.002,m)); }`;
 
-function compile(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;}
+/* Programs are compiled in the background: we only start the compile here and look at the result the first time a program is used
+   (progOk). Asking right away made the page wait for each one in turn, which took seconds at start-up on some graphics drivers. */
+const glParallel=gl.getExtension('KHR_parallel_shader_compile');
+function compile(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);return s;}
+function progOk(prog){if(prog._ok)return prog;if(prog._sh){for(const sh of prog._sh)if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(sh));}
+  if(!gl.getProgramParameter(prog.p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(prog.p));prog._ok=true;prog._sh=null;return prog;}
 /* Height needs one half-float value plus coverage, rather than three copies of the value.
    RG16F avoids WebView2/D3D11's single-resource limit at 16K, preserving both 16-bit values. */
 function packedShaderSource(src,fragment,names,inputOnly){let declarations='';
@@ -349,15 +354,15 @@ void main(){gsOriginalMain();if(gsPackedOut){if(gsPackedTint!=0){vec4 c=texelFet
   return src.startsWith('#version')?src.replace(/^(#version[^\n]*\n)/,'$1'+declarations):declarations+src;}
 function packedProgram(prog){if(prog.packedShader)return prog;if(!prog.packedVariant){if(!prog.fs)throw new Error('This graphics operation does not support packed height.');const names=new Set(),fs=packedShaderSource(prog.fs,true,names,!!prog.decodeOnly),vs=packedShaderSource(prog.vs||VS_FULL,false,names),p=program(fs,vs);
     Object.assign(p,{packedShader:true,packNames:[...names],defaults:prog.defaults,tiled:prog.tiled,_n:prog._n});prog.packedVariant=p;}return prog.packedVariant;}
-function program(fs,vs){const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,vs||VS_FULL));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS_HEAD+fs));gl.bindAttribLocation(p,0,'a');gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return {p,locs:{},fs,vs};}
+function program(fs,vs){const p=gl.createProgram(),v=compile(gl.VERTEX_SHADER,vs||VS_FULL),f=compile(gl.FRAGMENT_SHADER,FS_HEAD+fs);gl.attachShader(p,v);gl.attachShader(p,f);gl.bindAttribLocation(p,0,'a');gl.linkProgram(p);return {p,locs:{},fs,vs,_sh:[v,f]};}
 const P={
   stamp:program(FS_STAMP,VS_STAMP), smudge:program(FS_SMUDGE,VS_STAMP), merge:program(FS_MERGE), comp:program(FS_COMP),
   view:program(FS_VIEW,VS_VIEW), resample:program(FS_RESAMPLE), axf:program(FS_AXF), adjust:program(FS_ADJUST), blur:program(FS_BLUR),
   sharpen:program(FS_SHARPEN), poster:program(FS_POSTER), invert:program(FS_INVERT), place:program(FS_PLACE), mix:program(FS_MIX), chmerge:program(FS_CHMERGE), maskplace:program(FS_MASKPLACE), applymask:program(FS_APPLYMASK),
   poly:program(FS_ONE,VS_POLY), rcopy:program(FS_RCOPY), selop:program(FS_SELOP), shift:program(FS_SHIFT), morph:program(FS_MORPH), thresh:program(FS_THRESH),
   selmix:program(FS_SELMIX), loadsel:program(FS_LOADSEL), cropsel:program(FS_CROPSEL),
-  onion:program(FS_ONION), grad:program(FS_GRAD), fillcov:program(FS_FILLCOV), nrm:program(FS_NRM), mat:program(FS_MAT), lockcov:program(FS_LOCKCOV), texcov:program(FS_TEXCOV), xform:program(FS_XFORM), proj:program(FS_PROJ), mesh:(()=>{const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,VS_MESH));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS_HEAD+FS_MESH));
-    gl.bindAttribLocation(p,0,'a');gl.bindAttribLocation(p,1,'b');gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return {p,locs:{},fs:FS_MESH,vs:VS_MESH};})()
+  onion:program(FS_ONION), grad:program(FS_GRAD), fillcov:program(FS_FILLCOV), nrm:program(FS_NRM), mat:program(FS_MAT), lockcov:program(FS_LOCKCOV), texcov:program(FS_TEXCOV), xform:program(FS_XFORM), proj:program(FS_PROJ), mesh:(()=>{const p=gl.createProgram(),v=compile(gl.VERTEX_SHADER,VS_MESH),f=compile(gl.FRAGMENT_SHADER,FS_HEAD+FS_MESH);gl.attachShader(p,v);gl.attachShader(p,f);
+    gl.bindAttribLocation(p,0,'a');gl.bindAttribLocation(p,1,'b');gl.linkProgram(p);return {p,locs:{},fs:FS_MESH,vs:VS_MESH,_sh:[v,f]};})()
 };
 const vao=gl.createVertexArray();gl.bindVertexArray(vao);
 const vbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vbo);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([0,0,1,0,0,1,1,1]),gl.STATIC_DRAW);

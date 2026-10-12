@@ -9,7 +9,7 @@ function gpuLiveTargets(){const out=[];for(const ref of gpuTargets){const t=ref.
 const gpuBytes=t=>t.w*t.h*(t.mono?(t.depth===32?4:t.depth===16?2:1):t.packed?4:t.depth===32?16:t.depth===16?8:4);
 function gpuMemory(){let bytes=0,spare=0;const targets=gpuLiveTargets();for(const t of targets){bytes+=gpuBytes(t);if(t.pool&&t.pool.free.includes(t))spare+=gpuBytes(t);}return {bytes,spare,targets:targets.length};}
 /* Repeat only while evaluating an effect; never change the document or a pooled texture permanently. */
-function uvWrapTarget(t){if(!uvWrapScope||!t||!t.tex)return;if(!uvWrapScope.saved.has(t)){gl.bindTexture(gl.TEXTURE_2D,t.tex);uvWrapScope.saved.set(t,[gl.getTexParameter(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S),gl.getTexParameter(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T)]);}setWrap(t,uvWrapScope.on);}
+function uvWrapTarget(t){if(!uvWrapScope||!t||!t.tex)return;if(!uvWrapScope.saved.has(t)){gl.bindTexture(gl.TEXTURE_2D,t.tex);uvWrapScope.saved.set(t,[texParam(gl.TEXTURE_WRAP_S),texParam(gl.TEXTURE_WRAP_T)]);}setWrap(t,uvWrapScope.on);}
 function withUVWrap(on,targets,fn){const previous=uvWrapScope,old=doc.wrap,scope={on:!!on,docWrap:old,saved:new Map()};uvWrapScope=scope;doc.wrap=scope.on;
   try{for(const t of targets)uvWrapTarget(t);return fn();}finally{for(const [t,wrap] of scope.saved)if(t.tex){gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,wrap[0]);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,wrap[1]);}doc.wrap=old;uvWrapScope=previous;}}
 function texFmt(depth){return depth===32?{i:gl.RGBA32F,t:gl.FLOAT}:depth===16?{i:gl.RGBA16F,t:gl.HALF_FLOAT}:{i:gl.RGBA8,t:gl.UNSIGNED_BYTE};}
@@ -103,6 +103,7 @@ function run(prog,target,u,opts){runStat.n++;{const a=target?(scissorNow?Math.mi
 function useProg(prog,u,packedOut){
   if(prog.defaults)u=Object.assign({},prog.defaults,u);
   if(packedOut||Object.values(u).some(v=>v instanceof WebGLTexture&&(gpuTextureTargets.get(v)?.packed||gpuTextureTargets.get(v)?.mono))){prog=packedProgram(prog);u=Object.assign({gsPackedTint:{int:0},gsPackedDst:dummy},u,{gsPackedOut:!!packedOut});for(const k of prog.packNames){const t=gpuTextureTargets.get(u[k]);u['gsPacked_'+k]=!!t?.packed;u['gsMono_'+k]=!!t?.mono;}}
+  if(!prog._ok)progOk(prog);
   gl.useProgram(prog.p);let unit=0;
   for(const k in u){const v=u[k];let l=prog.locs[k];if(l===undefined)l=prog.locs[k]=gl.getUniformLocation(prog.p,k);if(l===null)continue;
     if(v==null)throw new Error('Missing graphics input: '+k);

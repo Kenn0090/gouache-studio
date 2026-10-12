@@ -126,7 +126,7 @@ const FS_3DLINE=`uniform vec4 uCol; void main(){ o=uCol; }`;
 const VS_UV=`#version 300 es
 layout(location=2) in vec2 aT; uniform vec2 uOrigin; uniform vec2 uExtent; uniform vec2 uViewport; uniform vec2 uShift;
 void main(){ vec2 p=uOrigin+(aT+uShift)*uExtent; gl_Position=vec4(p.x/uViewport.x*2.0-1.0,1.0-p.y/uViewport.y*2.0,0.0,1.0); }`;
-function prog3(vs,fs){const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,vs));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,FS_HEAD+fs));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return {p,locs:{},fs,vs};}
+function prog3(vs,fs){const p=gl.createProgram(),v=compile(gl.VERTEX_SHADER,vs),f=compile(gl.FRAGMENT_SHADER,FS_HEAD+fs);gl.attachShader(p,v);gl.attachShader(p,f);gl.linkProgram(p);return {p,locs:{},fs,vs,_sh:[v,f]};}
 const FS_3DSEL=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform sampler2D uSel; void main(){ float m=texture(uSel,fract(vT)).r; if(m<0.02) discard; o=vec4(1.0,0.62,0.22,0.32*m); }`;
 const P3={mesh:Object.assign(prog3(VS_3D,FS_3D),{decodeOnly:true}),line:prog3(VS_3D,FS_3DLINE),uv:prog3(VS_UV,FS_3DLINE),sel:prog3(VS_3D,FS_3DSEL)};
 
@@ -171,16 +171,20 @@ void main(){ ivec2 p=(ivec2(gl_FragCoord.xy)+ivec2(uOrigin))*2, sz=textureSize(u
 o=(texelFetch(uSrc,min(p,sz),uLevel)+texelFetch(uSrc,min(p+ivec2(1,0),sz),uLevel)+texelFetch(uSrc,min(p+ivec2(0,1),sz),uLevel)+texelFetch(uSrc,min(p+ivec2(1),sz),uLevel))*0.25; }`);
   /* texelFetch at levels above zero is only valid while the sampler exposes mip levels.
      The canvas returns pooled images to LINEAR after drawing; the 3D textures already use mips. */
-  gl.bindTexture(gl.TEXTURE_2D,t.tex);const minFilter=gl.getTexParameter(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER);
+  gl.bindTexture(gl.TEXTURE_2D,t.tex);const minFilter=texParam(gl.TEXTURE_MIN_FILTER);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
   let [x,y,w,h]=r,x1=x+w,y1=y+h,W=t.w,H=t.h,level=0,patch=null;
   try{while(W>1||H>1){const nx=Math.floor(x/2),ny=Math.floor(y/2);x1=Math.ceil(x1/2);y1=Math.ceil(y1/2);W=Math.max(1,W>>1);H=Math.max(1,H>>1);w=x1-nx;h=y1-ny;
-      if(!patch)patch=makeTarget(w,h,t.depth,false,t.packed,t.mono);
+      if(!patch)patch=v3MipPatch(w,h,t);
       run(P_V3MIP,{fbo:patch.fbo,w,h,packed:t.packed,mono:t.mono},{uSrc:t.tex,uLevel:{int:level},uOrigin:[nx,ny]});
       gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,t.fbo);gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t.tex,++level);
       blit(patch,t,0,0,w,h,nx,ny);v3Work.mipPixels+=w*h;x=nx;y=ny;}}
-  finally{gl.bindFramebuffer(gl.FRAMEBUFFER,t.fbo);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t.tex,0);gl.bindFramebuffer(gl.FRAMEBUFFER,null);disposeTarget(patch);
+  finally{gl.bindFramebuffer(gl.FRAMEBUFFER,t.fbo);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t.tex,0);gl.bindFramebuffer(gl.FRAMEBUFFER,null);v3MipPatchFree(patch);
     gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,minFilter);}}
+/* the patch picture is kept for the next frame (made at the first size, reused while it is big enough) instead of being created and deleted every frame */
+let v3MipPatchKept=null;
+function v3MipPatch(w,h,t){const k=v3MipPatchKept;if(k&&k.depth===t.depth&&!!k.packed===!!t.packed&&!!k.mono===!!t.mono&&k.w>=w&&k.h>=h){v3MipPatchKept=null;return k;}if(k){disposeTarget(k);v3MipPatchKept=null;}return makeTarget(Math.max(w,64),Math.max(h,64),t.depth,false,t.packed,t.mono);}
+function v3MipPatchFree(p){if(!p)return;if(v3MipPatchKept&&v3MipPatchKept!==p)disposeTarget(v3MipPatchKept);v3MipPatchKept=p;}
 /* Material shading reads one value from roughness, metal, AO, opacity and height. Keep full resolution. */
 function v3MapTex(k,src,region){const mono=doc.w*doc.h>=67108864&&MAP_DEFS[k]?.grey,packed=!!src.packed&&!mono;let t=v3.tex[k];if(!t||t.w!==doc.w||t.h!==doc.h||t.depth!==src.depth||!!t.packed!==packed||!!t.mono!==!!mono){if(t)disposeTarget(t);t=v3.tex[k]=makeTarget(doc.w,doc.h,src.depth,true,packed,mono);region=null;}
   const edges=ui.mode==='p3d'&&v3s().uvs===1&&!v3.mesh?.noUV&&src.w===doc.w&&src.h===doc.h?seamBlurMesh():null;
