@@ -1,3 +1,10 @@
+# Gouache Studio 0.60.0
+
+- New Photo tab (after 2D Paint): a Lightroom-style editor for JPEG, PNG, WebP, TIFF and RAW photos. Your originals are never changed; edits are saved beside the photo.
+- Develop panel: Basic, Tone curve, Colour mixer, Point colour, Colour grading, Detail with noise reduction, Effects, and Geometry (crop, straighten, keystone, lens distortion).
+- Masks: linear, radial and brush masks with their own sliders and luminance or colour range. Spot removal (heal or clone). Auto tone, Auto level and Auto upright.
+- Presets, History, Snapshots, Copy and Paste edits, star ratings and filter, Export to JPEG, PNG or WebP, and To Paint.
+
 # Gouache Studio 0.59.0
 
 - 8K texture size in 3D Paint and in the Bake mesh maps window (where the computer allows it).
