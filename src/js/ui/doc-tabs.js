@@ -89,7 +89,7 @@ function dtRender(){const L=dtLive();dtab.sig=dtSig();dtBar.replaceChildren(...d
       el('span',{class:'dtname',text:(t.win?'↗ ':'')+nm}),el('span',{class:'dtdot',text:un?'•':''}),
       el('button',{class:'dtx',title:'Close','aria-label':'Close '+nm,text:'×',onclick:e=>{e.stopPropagation();dtClose(t.id);}}));
     b.addEventListener('pointerdown',e=>dtDragStart(e,t,b));b.addEventListener('auxclick',e=>{if(e.button===1){e.preventDefault();dtClose(t.id);}});
-    return b;}),el('button',{class:'dtnew',title:'New document (Ctrl+Alt+N)','aria-label':'New document',text:'+',onclick:()=>actions.new()}));
+    return b;}),el('button',{class:'dtnew',title:'New document (Ctrl+N)','aria-label':'New document',text:'+',onclick:()=>actions.new()}));
   for(const t of dtab.tabs)if(t.win){t.win.name.textContent=dtName(t)+(dtUnsaved(t)?' •':'');try{t.win.w.document.title=dtName(t)+' — Gouache Studio';}catch(e){}}}
 function dtSig(){return dtab.live+'|'+dtab.tabs.map(t=>t.id+':'+dtName(t)+':'+dtUnsaved(t)+':'+!!t.win).join(',');}
 setInterval(()=>{if(dtSig()!==dtab.sig)dtRender();for(const t of dtab.tabs)if(t.win&&t.win.w.closed&&!t.win.closing)dtDock(t.id);},700);

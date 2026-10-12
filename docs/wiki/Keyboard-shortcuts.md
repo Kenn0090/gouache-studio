@@ -51,7 +51,7 @@ All of these can be changed in **Edit › Keyboard shortcuts…**. The commands 
 | Ctrl+Shift+C | Copy merged (everything visible) |
 | Ctrl+T | Free transform (Enter applies, Esc cancels) |
 | Ctrl+K | Preferences |
-| Ctrl+Alt+N | New document |
+| Ctrl+N (or Ctrl+Alt+N) | New document |
 | Ctrl+O | Open |
 | Ctrl+S / Ctrl+Shift+S | Save / Save as (.gouache) |
 | Ctrl+Shift+E | Export an image |
