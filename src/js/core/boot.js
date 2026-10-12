@@ -8,7 +8,9 @@ bootStep('panels',()=>{dkInit();syncWsSel();setTimeout(dkReopenPops,500);{const 
 bootStep('document',()=>{newDoc(1024,1024,8,[1,1,1],'Untitled',false);
 updateStatus();requestRender(true);
 refreshMapsUI();});
-bootStep('desktop',()=>{if(platform.isDesktop){setTimeout(()=>checkForUpdates(false),4000);platform.launchFile().then(p=>{if(p){closeWelcome();openPath(p,'open');}});}});
+bootStep('desktop',()=>{if(platform.isDesktop){setTimeout(()=>checkForUpdates(false),4000);platform.launchFile().then(p=>{if(p){closeWelcome();openPath(p,'open');}});
+  /* (0.58) a document opened from Explorer while the app runs arrives here, and opens as another tab */
+  if(typeof TAURI!=='undefined'&&TAURI&&TAURI.event)TAURI.event.listen('gs-open-file',e=>{if(e&&e.payload){closeWelcome();openPath(e.payload,'open');}});}});
 window.__gsStage='ready';bootDone();
 bootStep('lists',()=>{renderMats();renderTextures();renderDecals();renderEnvs();renderHistory();renderMatEd();});
 if(window.__gsErrors&&window.__gsErrors.length)setTimeout(()=>{try{toast('Part of the app did not start properly ('+window.__gsErrors[0]+'). In the panel layout list at the top, “Reset this workspace” may help.');}catch(e){}},1500);

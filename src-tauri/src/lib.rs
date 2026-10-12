@@ -7,6 +7,7 @@
 mod altmenu;
 mod engine;
 mod files;
+mod single;
 mod undo_spill;
 mod updates;
 
@@ -37,13 +38,15 @@ fn set_title(window: tauri::WebviewWindow, title: String) -> Result<(), String> 
 /// The file the app was started with (double-clicking a .gouache file in Explorer), if any.
 #[tauri::command]
 fn launch_file() -> Option<String> {
-    std::env::args()
-        .skip(1)
-        .find(|a| !a.starts_with('-') && std::path::Path::new(a).is_file())
+    single::file_arg()
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Already running? Hand this start's file to that copy and quit, so a double-clicked document opens as another tab there.
+    if single::hand_over() {
+        return;
+    }
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -81,6 +84,19 @@ pub fn run() {
                 let _ = w.set_title("Gouache Studio");
                 altmenu::install(&w);
             }
+            // Later starts (a document opened from Explorer) arrive here: show the window and tell the page which file to open.
+            let handle = app.handle().clone();
+            single::listen(move |path| {
+                use tauri::Manager as _;
+                if let Some(w) = handle.get_webview_window("main") {
+                    let _ = w.unminimize();
+                    let _ = w.show();
+                    let _ = w.set_focus();
+                    if let Some(p) = path {
+                        let _ = w.emit("gs-open-file", p);
+                    }
+                }
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
