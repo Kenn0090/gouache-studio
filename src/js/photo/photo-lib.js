@@ -36,9 +36,26 @@ function phPresetAmount(v){ph.preAmt=v;const p=phP();if(!p||!p._pre||p._pre.res!
 function phSavePreset(){const p=phP();if(!p)return;const inp=el('input',{type:'text',id:'phPreName',value:'My look','aria-label':'Preset name'});
   openDialog({title:'Save preset',body:el('div',{class:'dlg-grid'},inp,el('p',{class:'note',text:'Saves this photo’s edits (not the crop or turn) so you can use them on other photos.'})),okLabel:'Save',onOk(){const n=inp.value.trim();if(!n)return false;const s=phClone(p.s);delete s.geo;const l=phUserPresets();l.push([n,s]);try{localStorage.setItem('gs.phPresets',JSON.stringify(l));}catch(e){}phBuildPre();toast('Saved the preset “'+n+'”.');}});setTimeout(()=>{inp.focus();inp.select();},0);}
 /* a small picture of the current photo with each preset, so you can choose by eye */
-function phPreThumb(patch,key){const p=phP();if(!p||!p.psrc)return '';const S=96;ph.tc=ph.tc||{};const ck=p.id+'|'+key;if(ph.tc[ck])return ph.tc[ck];
+/* with no photo open the little pictures show a built-in sample scene (sky, sun, hills, a house and a face) so every look can be judged */
+function phSampleCanvas(){const W=240,H=160,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+  let q=g.createLinearGradient(0,0,0,H*.62);q.addColorStop(0,'#3d78c8');q.addColorStop(.7,'#a9cdf0');q.addColorStop(1,'#f5d9a8');g.fillStyle=q;g.fillRect(0,0,W,H);
+  q=g.createRadialGradient(176,40,2,176,40,34);q.addColorStop(0,'#fffbe6');q.addColorStop(.25,'#ffe9a0');q.addColorStop(1,'rgba(255,220,140,0)');g.fillStyle=q;g.fillRect(100,0,140,100);
+  g.fillStyle='rgba(255,255,255,.9)';for(const [x,y,r] of [[50,34,13],[64,30,16],[80,35,12],[150,64,9],[160,61,11]]){g.beginPath();g.arc(x,y,r,0,7);g.fill();}
+  g.fillStyle='#6f8c9c';g.beginPath();g.moveTo(0,104);g.lineTo(50,70);g.lineTo(92,100);g.lineTo(140,66);g.lineTo(200,104);g.lineTo(240,84);g.lineTo(240,120);g.lineTo(0,120);g.fill();
+  q=g.createLinearGradient(0,96,0,H);q.addColorStop(0,'#5d9a45');q.addColorStop(1,'#2e5b2a');g.fillStyle=q;g.fillRect(0,100,W,60);
+  g.fillStyle='#d9d2c4';g.fillRect(22,84,56,38);g.fillStyle='#b5412f';g.beginPath();g.moveTo(16,86);g.lineTo(50,58);g.lineTo(84,86);g.fill();g.fillStyle='#4a3224';g.fillRect(44,100,13,22);g.fillStyle='#f4e08a';g.fillRect(28,92,10,10);g.fillRect(62,92,10,10);
+  g.fillStyle='#caa27a';g.fillRect(120,126,8,20);
+  g.fillStyle='#2f4a7a';g.beginPath();g.moveTo(104,H);g.quadraticCurveTo(124,116,144,H);g.fill();
+  q=g.createRadialGradient(121,104,3,124,108,16);q.addColorStop(0,'#f1c9a4');q.addColorStop(1,'#c58c66');g.fillStyle=q;g.beginPath();g.ellipse(124,108,13,16,0,0,7);g.fill();
+  g.fillStyle='#3b2a20';g.beginPath();g.ellipse(124,98,14,9,0,Math.PI,0);g.fill();g.fillStyle='#2a2a2a';g.fillRect(118,106,3,2);g.fillRect(127,106,3,2);g.fillStyle='#a1493f';g.fillRect(120,115,9,2);
+  g.fillStyle='#e0452e';g.beginPath();g.arc(196,128,6,0,7);g.fill();g.fillStyle='#f2c230';g.beginPath();g.arc(208,134,5,0,7);g.fill();g.fillStyle='#8a4fb8';g.beginPath();g.arc(186,138,5,0,7);g.fill();
+  return c;}
+function phSampleTarget(){if(ph.sample)return ph.sample;const c=phSampleCanvas(),t=makeTarget(c.width,c.height,8,false);phUploadInto({w:c.width,h:c.height,bm:c},t);return ph.sample=t;}
+function phPreThumb(patch,key){const p=phP();const S=96;ph.tc=ph.tc||{};const ck=(p&&p.psrc?p.id:'sample')+'|'+key;if(ph.tc[ck])return ph.tc[ck];
+  if(!p||!p.psrc){const sm=phSampleTarget(),k=S/sm.w,w=Math.round(sm.w*k),h=Math.round(sm.h*k);return phThumbOf(sm,w,h,patch,ck);}
   if(!p.small){const k=Math.min(1,S*2/Math.max(p.pw,p.ph)),w=Math.max(2,Math.round(p.pw*k)),h=Math.max(2,Math.round(p.ph*k));p.small=makeTarget(w,h,8,false);run(P.resample,p.small,{uSrc:p.psrc.tex,uOffset:[0,0],uScale:[p.pw/w,p.ph/h],uTaps:{int:Math.min(8,Math.max(1,Math.ceil(p.pw/w)))}});}
-  const sm=p.small,k=Math.min(1,S/Math.max(sm.w,sm.h)),w=Math.max(2,Math.round(sm.w*k)),h=Math.max(2,Math.round(sm.h*k)),t=makeTarget(w,h,8,false),s=phMerge(phDefaults(),patch);s.geo=phDefaults().geo;
+  const sm=p.small,k=Math.min(1,S/Math.max(sm.w,sm.h)),w=Math.max(2,Math.round(sm.w*k)),h=Math.max(2,Math.round(sm.h*k));return phThumbOf(sm,w,h,patch,ck);}
+function phThumbOf(sm,w,h,patch,ck){const t=makeTarget(w,h,8,false),s=phMerge(phDefaults(),patch);s.geo=phDefaults().geo;
   try{phRender(sm,t,s);const d=captureRegionNow(t,0,0,w,h).data,c=document.createElement('canvas');c.width=w;c.height=h;const id=new ImageData(w,h);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,j=(y*w+x)*4;id.data[j]=d[i];id.data[j+1]=d[i+1];id.data[j+2]=d[i+2];id.data[j+3]=255;}c.getContext('2d').putImageData(id,0,0);return ph.tc[ck]=c.toDataURL('image/jpeg',.8);}
   finally{disposeTarget(t);}}
 function phBuildPre(){const box=$('#phPreBody');if(!box)return;box.replaceChildren();const p=phP();
@@ -47,7 +64,7 @@ function phBuildPre(){const box=$('#phPreBody');if(!box)return;box.replaceChildr
   const lazy=[],mk=(name,patch,key)=>{const img=el('img',{alt:''}),on=p&&p._pre&&p._pre.name===name;lazy.push([img,patch,key]);return el('button',{class:'phpre'+(on?' on':''),title:name,onclick:()=>phApplyPreset(patch,name)},img,el('span',{text:name}));};
   for(const [grp,list] of PH_PRESETS)box.append(el('div',{class:'sub',text:grp}),el('div',{class:'phpregrid'},...list.map(([n,pt])=>mk(n,pt,'b:'+n))));
   const u=phUserPresets();if(u.length)box.append(el('div',{class:'sub',text:'My presets'}),el('div',{class:'phpregrid'},...u.map(([n,s],i)=>{const b=mk(n,s,'u:'+n);b.append(el('i',{class:'phprex',title:'Delete this preset',text:'×',onclick:e=>{e.stopPropagation();const l=phUserPresets();l.splice(i,1);localStorage.setItem('gs.phPresets',JSON.stringify(l));phBuildPre();}}));return b;})));
-  if(!p)box.append(el('p',{class:'note',text:'Open a photo to see the presets on it.'}));
+  if(!p)box.append(el('p',{class:'note',text:'These pictures show a sample scene. Open a photo to see the presets on it.'}));
   /* the little pictures are made a few at a time, so a long list opens at once */
   const tok=ph.preTok=(ph.preTok||0)+1;let i=0;const step=()=>{if(tok!==ph.preTok||!box.isConnected)return;for(let n=0;n<4&&i<lazy.length;n++,i++){const [img,patch,key]=lazy[i];img.src=phPreThumb(patch,key);}if(i<lazy.length)setTimeout(step,16);};step();}
 /* ---- history and snapshots ---- */
