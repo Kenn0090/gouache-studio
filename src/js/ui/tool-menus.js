@@ -1,8 +1,12 @@
 /* Corner arrows and press-and-hold menus use the same setTool path as a normal click,
    so each painting tool keeps its own tip and settings. No work runs while painting. */
-const TOOL_MENU_LABELS={heal:'Healing brush','heal:spot':'Spot healing brush','heal:source':'Healing brush (source)',dodge:'Dodge',burn:'Burn',gradient:'Gradient',bucket:'Paint bucket',gbucket:'Gradient bucket'};
-const TOOL_MENU_GROUPS={heal:{name:'Healing brushes',tools:['heal:spot','heal:source']},dodge:{name:'Dodge / Burn',tools:['dodge','burn']},gradient:{name:'Fill tools',tools:['gradient','bucket','gbucket']}};
+const TOOL_MENU_LABELS={marquee:'Marquee','marquee:rect':'Rectangular marquee','marquee:ellipse':'Elliptical marquee',lasso:'Lasso','lasso:free':'Lasso','lasso:poly':'Polygonal lasso',heal:'Healing brush','heal:spot':'Spot healing brush','heal:source':'Healing brush (source)',dodge:'Dodge',burn:'Burn',gradient:'Gradient',bucket:'Paint bucket',gbucket:'Gradient bucket'};
+/* (0.58, Kenn) the marquee and the lasso have their other shapes in the tool menu too, not only on Shift+M and Shift+L */
+const TOOL_MENU_GROUPS={marquee:{name:'Marquee',tools:['marquee:rect','marquee:ellipse']},lasso:{name:'Lasso',tools:['lasso:free','lasso:poly']},heal:{name:'Healing brushes',tools:['heal:spot','heal:source']},dodge:{name:'Dodge / Burn',tools:['dodge','burn']},gradient:{name:'Fill tools',tools:['gradient','bucket','gbucket']}};
 const toolMenuState={owner:null,press:null,block:null,icons:{}};
+/* a tool with several shapes: which one is on, and how to switch */
+const toolModeNow=(tool)=>tool==='heal'?heal.mode:tool==='marquee'?ui.marquee:tool==='lasso'?ui.lasso:null;
+function toolModeSet(tool,mode){if(tool==='heal'){heal.mode=mode;healSave();}else if(tool==='marquee'||tool==='lasso'){ui[tool]=mode;if(typeof updateSelIcons==='function')updateSelIcons();}}
 function toolMenuTools(b){const g=TOOL_MENU_GROUPS[b.dataset.group||b.dataset.tool];return g&&g.tools.length>1?g.tools:null;}
 function toolMenuDecorate(b){if(!toolMenuTools(b)){if(b.classList.contains('has-tool-menu')){b.classList.remove('has-tool-menu');b.querySelector('.tool-arrow')?.remove();for(const a of ['aria-haspopup','aria-controls','aria-expanded'])b.removeAttribute(a);}return;}
   b.classList.add('has-tool-menu');b.setAttribute('aria-haspopup','menu');b.setAttribute('aria-controls','menuPop');b.setAttribute('aria-expanded',String(toolMenuState.owner===b));
@@ -13,8 +17,8 @@ function toolMenuClosed(){if(toolMenuState.owner)toolMenuState.owner.setAttribut
 function toolMenuCancelPress(){const p=toolMenuState.press;if(p)clearTimeout(p.timer);toolMenuState.press=null;}
 function toolMenuOpen(b,keyboard){const tools=toolMenuTools(b);if(!tools)return;
   closeMenu();toolMenuState.owner=b;openName=':tools';b.setAttribute('aria-expanded','true');pop.classList.add('tool-menu');pop.setAttribute('aria-label',TOOL_MENU_GROUPS[b.dataset.group||b.dataset.tool].name);
-  pop.replaceChildren(...tools.map(t=>{const [tool,mode]=t.split(':'),key=!mode||heal.mode===mode?kbKeyOf('tool:'+tool):'',icon=el('span',{class:'tool-menu-icon','aria-hidden':'true'});icon.innerHTML=toolMenuState.icons[tool]||'';
-    return el('button',{class:'mi tool-menu-item',role:'menuitemradio','aria-checked':String(ui.tool===tool&&(!mode||heal.mode===mode)),'data-tool-choice':t,onclick:()=>{closeMenu();if(mode){heal.mode=mode;healSave();}setTool(tool);if(mode)healMarker();b.focus();}},icon,el('span',{text:TOOL_MENU_LABELS[t]}),key?el('kbd',{text:key}):el('span'));}));
+  pop.replaceChildren(...tools.map(t=>{const [tool,mode]=t.split(':'),key=!mode||toolModeNow(tool)===mode?kbKeyOf('tool:'+tool):'',icon=el('span',{class:'tool-menu-icon','aria-hidden':'true'});icon.innerHTML=(tool==='marquee'||tool==='lasso')&&typeof SEL_ICONS!=='undefined'?'<svg viewBox="0 0 24 24">'+SEL_ICONS[mode]+'</svg>':toolMenuState.icons[tool]||'';
+    return el('button',{class:'mi tool-menu-item',role:'menuitemradio','aria-checked':String(ui.tool===tool&&(!mode||toolModeNow(tool)===mode)),'data-tool-choice':t,onclick:()=>{closeMenu();if(mode)toolModeSet(tool,mode);setTool(tool);if(mode&&tool==='heal')healMarker();if(mode&&typeof buildBrushPanel==='function')buildBrushPanel();b.focus();}},icon,el('span',{text:TOOL_MENU_LABELS[t]}),key?el('kbd',{text:key}):el('span'));}));
   pop.hidden=false;const r=b.getBoundingClientRect(),w=pop.offsetWidth,h=pop.offsetHeight;
   pop.style.left=Math.max(4,Math.min(r.right+4+w<=innerWidth-4?r.right+4:r.left-w-4,innerWidth-w-4))+'px';pop.style.top=Math.max(4,Math.min(r.top,innerHeight-h-4))+'px';
   if(keyboard)(pop.querySelector('[aria-checked="true"]:not([disabled])')||pop.querySelector('button:not([disabled])'))?.focus();}

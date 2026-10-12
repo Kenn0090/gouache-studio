@@ -21,7 +21,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.keyboard.press('Control+Alt+n');await p.waitForTimeout(200);
  await p.fill('#dW','128');await p.fill('#dH','96');await p.click('button.chip:has-text("PBR")');await p.click('#dlgOk');await p.waitForTimeout(400);
  // base: dark background with a bright disc
- await setFG('#202020');await p.keyboard.press('Alt+Backspace');await setFG('#e0e0e0');await p.keyboard.press('b');await p.evaluate(()=>{__gs.brush.size=40;__gs.brush.hardness=.9;__gs.brush.pSize=false;});await drag(64,48,65,48);
+ await setFG('#202020');await p.keyboard.press('Alt+Backspace');await setFG('#e0e0e0');await p.keyboard.press('b');await p.evaluate(()=>{__gs.brush.tip=null;__gs.brush.size=40;__gs.brush.hardness=.9;__gs.brush.pSize=false;});await drag(64,48,65,48);
  const comp=async(k,pts)=>p.evaluate(([k,pts])=>{const t=__gs.compositeMap(k),d=__gs.readRGBA8(t),W=__gs.doc.w;__gs.release(t);return pts.map(([x,y])=>Array.from(d.slice((y*W+x)*4,(y*W+x)*4+4)));},[k,pts]);
  const run=async(id,setup)=>{await p.evaluate(id=>__gs.dlgConvert(id),id);await p.waitForTimeout(300);if(setup)await setup();await p.click('#dlgOk');await p.waitForTimeout(300);};
  const nl=()=>p.evaluate(()=>__gs.allLayers().length);

@@ -54,7 +54,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const bt=await p.evaluate(async()=>{const G=__gs;G.setTool('brush');G.brush.size=77;G.brush.opacity=.4;const t0=G.dtab().tabs[0].id;
    G.dtNewTab();G.newDoc(256,256,8,[1,1,1],'Third',false,'hand');G.dtab&&0;await new Promise(r=>setTimeout(r,300));const fresh={s:G.brush.size,o:G.brush.opacity};
    G.brush.size=33;G.dtActivate(t0);await new Promise(r=>setTimeout(r,300));return {fresh,back:{s:G.brush.size,o:G.brush.opacity}};});
- ok(bt.fresh.s===24&&bt.fresh.o===1,'a new document starts with the starting brush ('+JSON.stringify(bt.fresh)+')');
+ ok(bt.fresh.s===9&&bt.fresh.o===1,'a new document starts with the starting brush ('+JSON.stringify(bt.fresh)+')');
  ok(bt.back.s===77&&Math.abs(bt.back.o-.4)<.01,'and going back to the first one brings its own brush back ('+JSON.stringify(bt.back)+')');
  // ---- undo covers brush settings and colour when switched on
  await p.evaluate(()=>{__gs.prefs.undoSettings=true;});await p.waitForTimeout(800);

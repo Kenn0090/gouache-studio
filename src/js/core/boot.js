@@ -1,7 +1,7 @@
 /* ================= Boot ================= */
 /* (0.52) every start-up step is guarded: one that fails is noted (and shown if the start-up screen stays) but cannot stop the rest or keep the splash up */
 const bootStep=(n,f)=>{window.__gsStage=n;try{f();}catch(e){console.error('start-up: '+n,e);(window.__gsErrors=window.__gsErrors||[]).push(n+': '+(e&&e.message||e));}};
-bootStep('brushes',()=>{renderLibrary();buildBrushPanel();applyPreset(PRESETS[0]);loadSavedSets();loadSavedFonts();refreshChanUI();});
+bootStep('brushes',()=>{renderLibrary();buildBrushPanel();applyPreset(startingBrush());loadSavedSets();loadSavedFonts();refreshChanUI();});
 bootStep('colour',()=>{setFG(ui.fg);renderRecent();resizeGL();});
 bootStep('panels',()=>{dkInit();syncWsSel();setTimeout(dkReopenPops,500);{const s=$('#wsSel');s.onchange=()=>{const v=s.value;if(v===':save')saveWorkspaceAs();else if(v===':reset')resetWorkspace();else if(v===':delete')deleteWorkspace();else if(v){setWorkspace(v);dk.modeWs[ui.mode]=v;dkSave();}syncWsSel();};}if(dk.lock)document.body.classList.add('dklock');});
 /* 0.25: a blank document and the welcome screen (the cobblestone tile is an example there) */

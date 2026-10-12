@@ -35,7 +35,9 @@ function tbApply(S){const keep={};if(toolBrush.share)for(const k of TB_TIP)keep[
 function tbDocGet(){tbSaveCur();return {cur:toolBrush.cur,slots:Object.assign({},toolBrush.slots)};}
 function tbDocRefresh(){if(typeof renderLibrary==='function')renderLibrary();if(typeof buildBrushPanel==='function')buildBrushPanel();if(typeof buildOptBar==='function')buildOptBar();if(typeof refreshCursor==='function')refreshCursor();}
 function tbDocPut(s){if(!s)return tbDocReset();toolBrush.slots=Object.assign({},s.slots);toolBrush.cur=s.cur;tbApply(toolBrush.slots[toolBrush.cur]);swRebase();tbDocRefresh();}
-function tbDocReset(){toolBrush.slots={};const g=tbGroup(ui.tool);toolBrush.cur=TB_TOOLS.includes(g)?g:'brush';tbApply(null);swRebase();tbDocRefresh();}
+/* (0.58, Kenn: "make Gasa the default brush") the brush a new app or document starts with */
+function startingBrush(){return tbFindPreset('Gasa Pen')||PRESETS[0];}
+function tbDocReset(){toolBrush.slots={};const g=tbGroup(ui.tool);toolBrush.cur=TB_TOOLS.includes(g)?g:'brush';tbApply(null);if(toolBrush.cur==='brush'){const sb=startingBrush();if(sb){brushSession.sizes.delete(sb);applyPreset(sb);}}swRebase();tbDocRefresh();}
 
 /* ---- (0.55.1) Preferences › Undo also covers settings: brush settings and colours ----
    Watches the brush and the colours; after they have held still for a moment, a change becomes one undo step. Switching tool or
