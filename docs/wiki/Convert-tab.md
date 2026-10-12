@@ -47,5 +47,8 @@ Only the normal map is in colour; everything else is grey. **Canvas shows** swit
 
 The **Maps** menu's converters (Normal from base colour, AO from height…) open this tab with the right source and map already chosen. For a conversion that keeps updating while you paint, add it to a [filter layer](Filter-layers.md) instead.
 
+## Upscale (AI)
+Press **Upscale (AI)…** under the source to make the picture 2×, 4× or 8× bigger with the Upscale add-on (File › AI add-ons). The source is replaced by the bigger picture, so every map is made at the bigger size. *AI detail* mixes in a plain enlargement for a more natural look; *Preview* shows a before/after. The Convert tab takes pictures up to the app's size limit.
+
 ## Height from AI depth
 Tick **Height from AI depth** (under *This image is*) to make the height map from the photo's depth, worked out by the AI Depth add-on, instead of from its brightness. It works well for photos of scenes and objects with real depth. See [AI add-ons](AI-add-ons.md).

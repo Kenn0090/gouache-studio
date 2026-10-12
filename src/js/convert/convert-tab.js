@@ -264,6 +264,7 @@ function buildConvertPanel(){const box=$('#convBody');if(!box)return;box.replace
   const lb=el('button',{class:'btn sm',text:'Load…',id:'cvLoad',title:'Load an image, or drop one here'});lb.onclick=cvPickFile;
   box.append(el('p',{class:'note',text:'Pick a source or drop an image here, say what it is, then tick the maps to make and fine-tune each one. Everything previews live.'}),row('Source',el('div',{class:'bkmodel'},src,lb)));
   if(!cvS.src){box.append(el('p',{class:'note warn',text:'No source yet.'}));return;}
+  box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'cvUpscale',text:'Upscale (AI)…',title:'Make the picture 2×, 4× or 8× bigger with AI, so every map is made at the bigger size',onclick:()=>cvAiUpscale()})));
   box.append(el('div',{class:'sub',text:'This image is'+(cvS.guess?' (it looks like: '+CV_KINDS.find(k=>k[0]===cvS.guess)[1].toLowerCase()+')':'')}),seg(CV_KINDS,cvS.kind,k=>cvSetKind(k),'Source type'));
   if(cvS.kind!=='normal')box.append(el('div',{class:'chips'},chk('cvAiD','Height from AI depth (needs the AI add-on)',!!(cvS.aiDepth&&cvS.cache.depthT),v=>cvAiDepth(v))));
   if(cvS.kind==='normal')box.append(el('div',{class:'chips'},chk('cvDX','Green points down (DirectX)',cvS.dx,v=>{cvS.dx=v;cvS.cache.pois=null;cvAllDirty();})));
