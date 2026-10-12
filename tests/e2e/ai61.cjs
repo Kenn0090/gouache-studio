@@ -19,7 +19,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>__gs.AI.have.engine&&__gs.AI.have.sam),'they are found again after a refresh');
  // the add-ons window
  await p.evaluate(()=>__gs.dlgAddons());await p.waitForSelector('.airow',{timeout:30000});await p.waitForTimeout(300);
- ok((await p.evaluate(()=>document.querySelectorAll('.airow').length))===4,'the add-ons window lists the four parts');
+ ok((await p.evaluate(()=>document.querySelectorAll('.airow').length))===5,'the add-ons window lists the five parts');
  ok((await p.evaluate(()=>document.querySelectorAll('.airow.on').length))===2,'two of them show as installed');
  await p.screenshot({path:'/tmp/ai_window.png'});await p.click('#dlgCancel');
  // a picture: sky on top, grass below, a red ball
