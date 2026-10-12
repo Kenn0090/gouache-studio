@@ -62,7 +62,7 @@ function menuEntry(it){if(it==='-')return el('div',{class:'msep'});
 /* (0.29) the File menu shows what fits the section you are in: 3D Paint has no PSD or sprite sheets, Paint has no frames, and so on */
 const FILE_NOT={paint:['impModel','p3BakeMenu','impSheet','impSeq','impGif','expSheet','expVideo'],anim:['impModel','p3BakeMenu','sendP3'],p3d:['place','savePsdAs','export','sendP3','importAbr','impSheet','impSeq','impGif','expSheet'],
   bake:['impModel','p3BakeMenu','place','savePsdAs','sendP3','importAbr','impSheet','impSeq','impGif','expSheet','expTex'],convert:['impModel','p3BakeMenu','place','savePsdAs','sendP3','importAbr','impSheet','impSeq','impGif','expSheet','expTex'],
-  brush:['impModel','p3BakeMenu','place','savePsdAs','sendP3','expTex','impSheet','impSeq','impGif','expSheet']};
+  brush:['impModel','p3BakeMenu','place','savePsdAs','sendP3','expTex','impSheet','impSeq','impGif','expSheet'],photo:['impModel','p3BakeMenu','place','savePsdAs','sendP3','importAbr','impSheet','impSeq','impGif','expSheet','expTex','expVideo']};
 function menuTidy(list){const o=[];for(const it of list){if(it==='-'&&(!o.length||o[o.length-1]==='-'))continue;o.push(it);}while(o.length&&o[o.length-1]==='-')o.pop();return o;}
 function menuList(list,name){let l=list.filter(it=>platform.isDesktop||it==='-'||!['recent','checkUpdates'].includes(it[1]));
   if(name==='File'){const no=FILE_NOT[ui.mode]||[];l=menuTidy(l.filter(it=>it==='-'||!no.includes(it[1])));}

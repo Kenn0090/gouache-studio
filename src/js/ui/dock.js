@@ -4,12 +4,12 @@
    dragged to another group, between groups, onto the icon column (one click away), or off the dock to float.
    The arrangement is a workspace: Painting, Texturing, 3D Paint, Minimal or your own, remembered per workspace. */
 const PANELS={
-  favorites:{title:'Favorites',sel:'#favoritesSec',avail:m=>!['bake','convert'].includes(m),icon:'<path d="m12 3 3 6 6 1-4.5 4.5 1 6.5-5.5-3-5.5 3 1-6.5L3 10l6-1z"/>'},
+  favorites:{title:'Favorites',sel:'#favoritesSec',avail:m=>!['bake','convert','photo'].includes(m),icon:'<path d="m12 3 3 6 6 1-4.5 4.5 1 6.5-5.5-3-5.5 3 1-6.5L3 10l6-1z"/>'},
   projects:{title:'Projects',sel:'#paSec',avail:m=>m==='p3d',icon:'<path d="M3 6h7l2 2h9v11H3z"/>'},
   weldtools:{title:'Tools',sel:'#weldToolsSec',avail:m=>m==='p3d',icon:'<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="8" cy="17" r="1.8"/>'},
   meshmaps:{title:'Mesh maps',sel:'#mmSec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="m4 4 16 16M4 20 20 4"/>'},
   p3d:{title:'3D Paint',sel:'#p3dSec',avail:m=>m==='p3d',mode:true},
-  hist:{title:'History',sel:'#histSec',avail:m=>m!=='convert',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>'},
+  hist:{title:'History',sel:'#histSec',avail:m=>m!=='convert'&&m!=='photo',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>'},
   matEd:{title:'Material editor',sel:'#matEdSec',avail:m=>m==='p3d'||m==='paint',icon:'<circle cx="12" cy="12" r="8"/><path d="M8 15l8-8M9 9h.01"/>'},
   shading:{title:'Shader',sel:'#shadeSec',avail:m=>m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" opacity=".35"/>'},
   stencils:{title:'Stencils',sel:'#st3Sec',avail:m=>false,icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 15l3-4 2 3 1.5-2 1.5 3"/>'},
@@ -20,16 +20,20 @@ const PANELS={
   decals:{title:'Decals',sel:'#dcSec',avail:m=>m==='p3d',icon:'<circle cx="12" cy="12" r="7"/><path d="M9 9l6 6M15 9l-6 6"/>'},
   brushtab:{title:'Brush maker',sel:'#brushTabSec',avail:m=>m==='brush',mode:true},
   conv:{title:'Convert',sel:'#convSec',avail:m=>m==='convert',mode:true},
+  photo:{title:'Develop',sel:'#photoSec',avail:m=>m==='photo',mode:true},
+  phhist:{title:'History',sel:'#phHistSec',avail:m=>m==='photo',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>'},
+  phlib:{title:'Photos',sel:'#phLibSec',avail:m=>m==='photo',icon:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-8 8"/>'},
+  phpre:{title:'Presets',sel:'#phPreSec',avail:m=>m==='photo',icon:'<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="8" cy="17" r="1.8"/>'},
   bake:{title:'Bake',sel:'#bakeSec',avail:m=>m==='bake',mode:true},
   anim:{title:'Animation',sel:'#animSec',avail:m=>m==='anim',mode:true},
-  color:{title:'Color',sel:'section[aria-labelledby="hColor"]',avail:m=>m!=='convert'&&m!=='bake',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16" opacity=".5"/>'},
-  brushes:{title:'Brushes',sel:'section[aria-labelledby="hBrush"]',avail:m=>m!=='convert'&&m!=='bake',icon:'<path d="m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z"/>'},
+  color:{title:'Color',sel:'section[aria-labelledby="hColor"]',avail:m=>m!=='convert'&&m!=='bake'&&m!=='photo',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16" opacity=".5"/>'},
+  brushes:{title:'Brushes',sel:'section[aria-labelledby="hBrush"]',avail:m=>m!=='convert'&&m!=='bake'&&m!=='photo',icon:'<path d="m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z"/>'},
   tool:{title:'Tool settings',sel:'#toolSec',avail:m=>m==='p3d',icon:'<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="8" cy="17" r="1.8"/>'},
   maps:{title:'Maps',sel:'#mapsSec',avail:m=>(m==='paint'&&doc.maps.length>1)||m==='p3d',icon:'<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>'},
   layers:{title:'Layers',sel:'section[aria-labelledby="hLayers"]',avail:m=>m==='paint'||m==='brush'||m==='p3d'||m==='anim',icon:'<path d="M12 4 3 9l9 5 9-5-9-5z"/><path d="m3 14 9 5 9-5"/>'},
   chan:{title:'Channels',sel:'section[aria-labelledby="hChan"]',avail:m=>m==='paint'||m==='p3d',icon:'<circle cx="9" cy="10" r="5"/><circle cx="15" cy="10" r="5"/><circle cx="12" cy="15" r="5"/>'}};
 const PANEL_IDS=Object.keys(PANELS);
-const MODE_GROUP=['p3d','brushtab','conv','bake','anim'];
+const MODE_GROUP=['p3d','brushtab','conv','bake','anim','photo'];
 /* the built-in workspaces: extra = 3D view on and how wide, painting on the model */
 const WS_PRESETS={
   painting:{name:'Panels: Paint',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_GROUP.slice(),f:1.4},{tabs:['color','matEd','shading'],f:1.05},{tabs:['brushes','stencils','mats','textures','decals','envs','tool'],f:1.25},{tabs:['maps','p3bake'],f:.45},{tabs:['layers','chan','hist'],f:1.6}],icons:[],floats:[]},
@@ -42,7 +46,9 @@ for(const [k,n] of [['animation','Animation'],['bake','Bake'],['convert','Conver
 WS_PRESETS.bake={name:'Panels: Bake',tb:{side:'left',cols:1},opt:true,w:580,groups:[{tabs:[...MODE_GROUP,'hist'],active:'bake',f:1}],icons:[],floats:[]};
 /* Brush creation keeps its previews and settings together, with painting brushes below the canvas. */
 WS_PRESETS.brush={name:'Panels: Brush',tb:{side:'left',cols:1},opt:true,w:420,groups:[{tabs:['color'],f:.45},{tabs:MODE_GROUP.slice(),active:'brushtab',f:5}],shelf:{tabs:['brushes'],h:230,f:1},icons:['layers','hist','maps','chan','matEd','shading','tool','stencils','mats','textures','decals','envs','p3bake'],floats:[]};
-const WS_MODE_DEF={paint:'painting',p3d:'texturing',anim:'animation',bake:'bake',convert:'convert',brush:'brush'};
+/* (0.60) the Photo tab: Develop on the right with its history, the photos and presets underneath the picture */
+WS_PRESETS.photo={name:'Panels: Photo',tb:{side:'left',cols:1},opt:true,w:380,groups:[{tabs:[...MODE_GROUP,'phhist'],active:'photo',f:1}],shelf:{tabs:['phlib','phpre'],h:170,f:1},icons:[],floats:[]};
+const WS_MODE_DEF={paint:'painting',p3d:'texturing',anim:'animation',bake:'bake',convert:'convert',brush:'brush',photo:'photo'};
 const dk={ws:'painting',L:null,custom:{},saved:{},lock:false,flyout:null,drag:null,modeWs:{},modeLayouts:{},layoutMode:null};
 (()=>{try{const s=JSON.parse(localStorage.getItem('gs.dock')||'{}');if(s.ws)dk.ws=s.ws;if(s.modeWs)dk.modeWs=s.modeWs;if(s.col2&&s.col2.groups)dk.col2=s.col2;dk.modeLayouts=s.modeLayouts||{};dk.saved=s.saved||{};dk.custom=s.custom||{};dk.lock=!!s.lock;
   /* Upgrade the old copied Paint layout once; retain custom arrangements. */
@@ -111,7 +117,7 @@ function dkInit(){
 /* ---- applying a layout ---- */
 function dkApply(L,first){dk.L=dkFix(L);dkRender();if(!first)dkWorkspaceExtras();dkSave();}
 function dkToolbar(o){Object.assign(dk.L.tb,o);dkRender();dkSave();resizeGL();fit();}
-function dkGrid(){const L=dk.L,app=$('#app'),F=L.fold||{},shOn=!!(L.shelf&&dkAvail(L.shelf).length),hasDock=L.groups.some(g=>dkAvail(g).length)&&L.w>0,ic=L.icons.length?'38px':'0px',noTools=ui.mode==='bake'||ui.mode==='convert',tw=noTools?'0px':F.tools?'26px':L.tb.cols===2?'82px':'46px';
+function dkGrid(){const L=dk.L,app=$('#app'),F=L.fold||{},shOn=!!(L.shelf&&dkAvail(L.shelf).length),hasDock=L.groups.some(g=>dkAvail(g).length)&&L.w>0,ic=L.icons.length?'38px':'0px',noTools=ui.mode==='bake'||ui.mode==='convert'||ui.mode==='photo',tw=noTools?'0px':F.tools?'26px':L.tb.cols===2?'82px':'46px';
   document.body.classList.toggle('tb2',L.tb.cols===2);document.body.classList.toggle('notools',noTools);document.body.classList.toggle('noopt',!L.opt);
   for(const k of ['dock','dock2','tools','opt','shelf'])app.classList.toggle('f-'+k,!!F[k]);
   const left=L.tb.side!=='right';

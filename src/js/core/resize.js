@@ -47,6 +47,7 @@ function newDoc(w,h,depth,bg,name,wrap,tpl){symReset();
   if(tedit){tedit=null;ted.hidden=true;}if(tsess){clearTimeout(tsess.timer);tsess=null;}
   if(ui.mode==='bake'){bakeExit();ui.mode='paint';document.body.classList.remove('bakemode');syncModeTabs();}
   if(ui.mode==='convert'){convertExit();ui.mode='paint';document.body.classList.remove('convmode');syncModeTabs();}
+  if(ui.mode==='photo'){photoExit();ui.mode='paint';document.body.classList.remove('photomode');syncModeTabs();}
   if(typeof cvReset==='function')cvReset();
   if(typeof bakeReset==='function')bakeReset();
   if(ui.mode==='anim'){stopPlay();doc.root=doc.paintRoot;doc.paintRoot=null;ui.mode='paint';document.body.classList.remove('animmode');syncModeTabs();}

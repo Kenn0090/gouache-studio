@@ -71,9 +71,11 @@ const USER_BRUSHES=fs.existsSync(r('assets/brushes/user'))?fs.readdirSync(r('ass
 function userBrushTag(f) { const x=USER_BRUSHES.find(v=>v.file===f);return '<script type="text/plain" id="user_brush_'+f.replace(/[^a-z0-9]/gi,'_')+'">'+x.data.toString('base64')+'</script>'; }
 
 const STUDIO = fs.readdirSync(r('assets/studio')).filter(f => /\.(png|gz)$/.test(f));
-const hdriTags = () => HDRIS.map(f => `<script type="text/plain" id="hdri_${f.replace(/_1k\.hdr$/, '')}">${fs.readFileSync(r('assets/hdri/' + f)).toString('base64')}</script>`)
+const RAWFILES = fs.existsSync(r('assets/raw/worker.js')) ? ['worker.js','libraw.wasm'] : [];
+const rawTags = () => RAWFILES.map(f => `<script type="text/plain" id="raw_${f.replace(/\W/g,'_')}">${(f.endsWith('.wasm') ? zlib.gzipSync(fs.readFileSync(r('assets/raw/' + f)), { level: 9 }) : fs.readFileSync(r('assets/raw/' + f))).toString('base64')}</script>`);
+const hdriTags = () => rawTags().concat(HDRIS.map(f => `<script type="text/plain" id="hdri_${f.replace(/_1k\.hdr$/, '')}">${fs.readFileSync(r('assets/hdri/' + f)).toString('base64')}</script>`)
   .concat(BRUSHPACKS.map(f => `<script type="text/plain" id="br_${f.replace(/\.webp$/, '')}">${fs.readFileSync(r('assets/brushes/' + f)).toString('base64')}</script>`))
-  .concat(GRUNGE.map(f => `<script type="text/plain" id="gr_${f.replace(/\.webp$/, '')}">${fs.readFileSync(r('assets/grunge/' + f)).toString('base64')}</script>`)).concat(STUDIO.map(f => `<script type="text/plain" id="studio_${f.replace(/[^a-z0-9]/gi,'_')}">${fs.readFileSync(r('assets/studio/'+f)).toString('base64')}</script>`)).concat(USER_BRUSHES.map(x=>userBrushTag(x.file))).join('\n');
+  .concat(GRUNGE.map(f => `<script type="text/plain" id="gr_${f.replace(/\.webp$/, '')}">${fs.readFileSync(r('assets/grunge/' + f)).toString('base64')}</script>`)).concat(STUDIO.map(f => `<script type="text/plain" id="studio_${f.replace(/[^a-z0-9]/gi,'_')}">${fs.readFileSync(r('assets/studio/'+f)).toString('base64')}</script>`)).concat(USER_BRUSHES.map(x=>userBrushTag(x.file)))).join('\n');
 function buildWeb() {
   fs.mkdirSync(r('dist-web'), { recursive: true });
   for(const f of studioFonts){copy('assets/fonts/'+f.file,'dist-web/fonts/'+f.file);copy('assets/fonts/'+f.license,'dist-web/fonts/'+f.license);}
@@ -95,6 +97,7 @@ function buildDesktop() {
   for (const g of GMATS) copy('assets/materials/' + g.file, `${out}/materials/${g.file}`);
   for (const g of GMATS) if(g.preview) copy('assets/material-previews/' + g.preview, `${out}/material-previews/${g.preview}`);
   for (const f of GRUNGE) copy('assets/grunge/' + f, `${out}/grunge/${f}`);
+  for (const f of RAWFILES) copy('assets/raw/' + f, `${out}/raw/${f}`);
   for(const f of STUDIO) copy('assets/studio/'+f,`${out}/studio/${f}`);
   for(const f of studioFonts){copy('assets/fonts/'+f.file,`${out}/fonts/${f.file}`);copy('assets/fonts/'+f.license,`${out}/fonts/${f.license}`);}
   for (const f of BRUSHPACKS) copy('assets/brushes/' + f, `${out}/brushes/${f}`);

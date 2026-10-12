@@ -777,7 +777,7 @@ body.sharp .dialog,body.sharp #menuPop,body.sharp .khcard,body.sharp .ascount{bo
 /* 0.26.2 document tabs and document windows */
 #workWrap{display:flex;flex-direction:column;min-height:0;min-width:0}
 #docTabs{display:flex;align-items:stretch;gap:1px;min-height:28px;padding:3px 6px 0;background:var(--panel);border-bottom:1px solid var(--line-2);overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
-body.bakemode #docTabs>*,body.convmode #docTabs>*,body.animmode #docTabs>*,body.brushmode #docTabs>*,body.p3dmode #docTabs>*{visibility:hidden}
+body.photomode #docTabs>*,body.bakemode #docTabs>*,body.convmode #docTabs>*,body.animmode #docTabs>*,body.brushmode #docTabs>*,body.p3dmode #docTabs>*{visibility:hidden}
 .dtab{display:flex;align-items:center;gap:4px;max-width:220px;padding:0 4px 0 10px;border:1px solid transparent;border-bottom:0;border-radius:6px 6px 0 0;color:var(--muted);cursor:pointer;user-select:none;white-space:nowrap;touch-action:none}
 .dtab:hover{background:var(--raise);color:var(--text)}
 .dtab.on{background:var(--ground);border-color:var(--line-2);color:var(--text)}
@@ -1143,19 +1143,19 @@ body.tabfull .dkfloat,body.tabfull .dkfly,body.tabfull .dkicons{display:none!imp
 /* (0.52) Bake tab: one bar that stays at the top, with a stylish Bake button and the send buttons under it */
 .bkbar{position:sticky;top:0;z-index:5;display:flex;flex-direction:column;gap:7px;padding:8px 0 10px;margin:-2px 0 8px;background:var(--panel);border-bottom:1px solid var(--line)}
 .bkbar #bkGo{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:54px;padding:0 18px;border:0;border-radius:12px;
-  font-size:21px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#2a1704;text-shadow:0 1px 0 rgba(255,255,255,.35);
-  background:linear-gradient(180deg,#ffd27a 0%,#f2a93f 48%,#d57f1c 100%);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -3px 0 rgba(120,60,0,.35),0 3px 0 rgba(0,0,0,.4),0 6px 18px rgba(226,164,83,.28);
+  font-size:21px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);text-shadow:0 1px 0 rgba(255,255,255,.25);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 70%,#fff) 0%,var(--accent) 48%,color-mix(in srgb,var(--accent) 78%,#000) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -3px 0 color-mix(in srgb,var(--accent) 45%,#000),0 3px 0 rgba(0,0,0,.4),0 6px 18px color-mix(in srgb,var(--accent) 30%,transparent);
   transition:transform .08s,box-shadow .15s,filter .15s}
-.bkbar #bkGo:hover:not(:disabled){filter:brightness(1.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -3px 0 rgba(120,60,0,.35),0 3px 0 rgba(0,0,0,.4),0 8px 24px rgba(226,164,83,.45)}
+.bkbar #bkGo:hover:not(:disabled){filter:brightness(1.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -3px 0 color-mix(in srgb,var(--accent) 45%,#000),0 3px 0 rgba(0,0,0,.4),0 8px 24px color-mix(in srgb,var(--accent) 50%,transparent)}
 .bkbar #bkGo:active:not(:disabled){transform:translateY(2px);box-shadow:inset 0 2px 4px rgba(0,0,0,.35),0 1px 0 rgba(0,0,0,.4)}
-.bkbar #bkGo .bkico{width:26px;height:26px;fill:#7a3a00;flex:none;filter:drop-shadow(0 1px 0 rgba(255,255,255,.4))}.bkbar #bkGo .bkico .in{fill:#fff3c9}
+.bkbar #bkGo .bkico{width:26px;height:26px;fill:var(--accent-ink);flex:none;filter:drop-shadow(0 1px 0 rgba(255,255,255,.4))}.bkbar #bkGo .bkico .in{fill:color-mix(in srgb,var(--accent) 30%,#fff)}
 .bkbar #bkGo .bkl{position:relative;z-index:1}
 .bkbar #bkGo .bkfill{position:absolute;inset:0 auto 0 0;width:0;background:rgba(255,255,255,.0);pointer-events:none}
 .bkbar #bkGo.busy{background:linear-gradient(180deg,#5b6068 0%,#3d4249 55%,#2d3137 100%);color:#f2f2f2;text-shadow:0 1px 0 rgba(0,0,0,.5);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 3px 0 rgba(0,0,0,.4)}
-.bkbar #bkGo.busy .bkico{fill:#f2a93f;animation:bkpulse 1s ease-in-out infinite}.bkbar #bkGo.busy .bkico .in{fill:#ffe9a8}
-.bkbar #bkGo.busy .bkfill{width:var(--p,0%);background:linear-gradient(90deg,rgba(242,169,63,.55),rgba(255,210,122,.75));transition:width .15s}
+.bkbar #bkGo.busy .bkico{fill:var(--accent);animation:bkpulse 1s ease-in-out infinite}.bkbar #bkGo.busy .bkico .in{fill:color-mix(in srgb,var(--accent) 40%,#fff)}
+.bkbar #bkGo.busy .bkfill{width:var(--p,0%);background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 55%,transparent),color-mix(in srgb,var(--accent) 75%,transparent));transition:width .15s}
 @keyframes bkpulse{50%{transform:scale(1.18)}}
 .bkbar .bksend{display:grid;grid-template-columns:1fr 1fr auto;gap:6px}
 .bkbar .bksend .btn{min-height:32px;font-weight:600}
@@ -1268,3 +1268,50 @@ body.notools #tools{display:none!important}
 .persp{stroke:rgba(80,200,255,.55);stroke-width:1;fill:none}
 .persp-h{stroke:rgba(255,190,70,.8);stroke-width:1.2;stroke-dasharray:6 4;fill:none}
 .persp-vp{fill:rgba(80,200,255,.25);stroke:#50c8ff;stroke-width:2;cursor:grab}
+
+/* ---- Photo tab (0.60) ---- */
+.phbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.phbar .btn.on{background:var(--accent);color:var(--accent-ink)}
+.phempty{display:grid;gap:12px;padding:18px 6px;justify-items:start;color:var(--muted)}
+.phhisto{border:1px solid var(--line-2);border-radius:8px;background:#0c0c0e;padding:4px}
+.phhisto canvas{display:block;width:100%;height:70px}
+.phs{border-top:1px solid var(--line-2)}
+.phs>summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:9px 2px;font-weight:650;font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;list-style:none}
+.phs>summary::-webkit-details-marker{display:none}
+.phs>summary::before{content:"▸";margin-right:8px;font-size:10px;color:var(--muted);display:inline-block;transition:transform .12s}
+.phs[open]>summary::before{transform:rotate(90deg)}
+.phs>summary span{flex:1}
+.phsreset{background:none;border:0;color:var(--muted);cursor:pointer;font-size:14px;padding:0 6px}
+.phsreset:hover{color:var(--text)}
+.phsbody{padding:2px 2px 12px;gap:8px}
+.phcurve{display:grid;gap:8px;justify-items:center}
+.phcurvetabs{justify-self:stretch}
+.phcv{width:100%;max-width:260px;aspect-ratio:1;background:#0c0c0e;border:1px solid var(--line-2);border-radius:6px;touch-action:none;cursor:crosshair}
+.phband input[type=range]{accent-color:var(--phc,var(--accent))}
+.phstrip{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px}
+.phthumb{position:relative;flex:none;width:112px;border:2px solid transparent;border-radius:8px;background:none;padding:0;display:grid;gap:3px;color:var(--muted);text-align:center;font-size:11px}
+.phthumb img{width:100%;height:76px;object-fit:cover;border-radius:6px;display:block;background:#111}
+.phthumb span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px}
+.phthumb.on{border-color:var(--accent)}
+.phthumb.sel{outline:2px solid color-mix(in srgb,var(--accent) 50%,transparent)}
+.phtx{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-style:normal;font-size:13px;line-height:18px;display:none}
+.phthumb:hover .phtx{display:block}
+.phpregrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.phpre{position:relative;border:1px solid var(--line-2);border-radius:8px;background:none;padding:0;overflow:hidden;color:var(--text);font-size:11px;display:grid;text-align:center}
+.phpre img{width:100%;height:64px;object-fit:cover;display:block;background:#111}
+.phpre span{padding:3px 2px}
+.phpre:hover{border-color:var(--accent)}
+.phprex{position:absolute;top:2px;right:2px;font-style:normal;width:16px;height:16px;line-height:16px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:12px;display:none}
+.phpre:hover .phprex{display:block}
+.phrow{display:flex;gap:6px;align-items:center}
+.phhist{display:grid;gap:2px;max-height:300px;overflow:auto}
+.phhi{text-align:left;background:none;border:0;color:var(--muted);padding:4px 8px;border-radius:6px;font-size:12px}
+.phhi.on{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--text)}
+.phhi:hover{color:var(--text)}
+#xfOv .phdim{fill:rgba(0,0,0,.55);stroke:none}
+#xfOv .phcrop{fill:none;stroke:#fff;stroke-width:1.5}
+#xfOv .phgrid{fill:none;stroke:rgba(255,255,255,.4);stroke-width:1}
+#xfOv .phhandle{fill:#fff;stroke:#000;stroke-width:1}
+body.photomode #tools{display:none!important}
+body.photomode #hint{display:none!important}
+body.photomode #optBar{visibility:hidden}

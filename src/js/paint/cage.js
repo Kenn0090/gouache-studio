@@ -234,6 +234,7 @@ function cageOverlay(){if($('#work').classList.contains('v3full'))return '';let 
     else{if(S.mode!=='y')d+='M'+f(q(0,-R))+'L'+f(q(0,R));if(S.mode!=='x')d+='M'+f(q(-R,0))+'L'+f(q(R,0));}
     s+='<path class="sym" d="'+d+'"/>';if(!C||C.on===false||ui.cageFlat){const p=scrPt([cx,cy]);if(ui.symHot)s+='<circle class="sym-ring" cx="'+p[0]+'" cy="'+p[1]+'" r="'+SYM_HIT+'"/>';s+='<circle class="sym-centre'+(ui.symHot?' hot':'')+'" cx="'+p[0]+'" cy="'+p[1]+'" r="'+(ui.symHot?9:7)+'"/>';}}
   if(typeof perspOverlay==='function'&&(ui.mode==='paint'||ui.mode==='anim'))s+=perspOverlay(f);
+  if(ui.mode==='photo'&&typeof phOverlay==='function')s+=phOverlay(f);
   /* Brush tab: centre cross and circle, to keep tips centred and round */
   if(ui.mode==='brush'&&bt.guides&&!ui.cageFlat){const [W,H]=viewDims(),c=[W/2,H/2],r=Math.min(W,H)*.43,q=[];for(let k=0;k<=48;k++){const t=k/48*Math.PI*2;q.push((k?'L':'M')+f([c[0]+Math.cos(t)*r,c[1]+Math.sin(t)*r]));}
     s+='<path class="guide" d="M'+f([W/2,0])+'L'+f([W/2,H])+'M'+f([0,H/2])+'L'+f([W,H/2])+q.join('')+'"/>';}
