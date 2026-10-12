@@ -48,7 +48,7 @@ function buildP3Panel(){p3BakePanel();if(typeof stBrushRender==='function')stBru
     el('p',{class:'note',text:'Shift-click joins the previous brush endpoint. Hold Shift while dragging for a straight line. Hold Alt over the model to pick its colour. Left/Right arrow keys step through the shades in the Color panel. Double-click empty space to reframe.'}),
     el('div',{class:'sub',text:'Project'}),el('div',{class:'chips'},el('button',{class:'btn sm',text:'Save project',title:'Save the model and all texture sets as a .gouache3d project (Ctrl+S here)',onclick:()=>saveP3Project(false)}),el('button',{class:'btn sm',text:'Open project…',onclick:()=>pickFile('open')})),
     el('div',{class:'sub',text:'Select on the model'}),sel3Box(),
-    el('div',{class:'sub',text:'Texture size · '+p3Resolution()}),seg([[1024,'1K'],[2048,'2K'],[4096,'4K'],...(doc.w>4096?[[doc.w,Math.round(doc.w/1024)+'K']]:[])],doc.w,v=>p3Resize(+v),'Texture size'));p3ResolutionSync();}
+    el('div',{class:'sub',text:'Texture size · '+p3Resolution()}),seg([[1024,'1K'],[2048,'2K'],[4096,'4K'],...(MAX_DIM>=8192?[[8192,'8K']]:[]),...(doc.w>4096&&doc.w!==8192?[[doc.w,Math.round(doc.w/1024)+'K']]:[])],doc.w,v=>p3Resize(+v),'Texture size'));p3ResolutionSync();}
 function p3Resize(n){if(n===doc.w&&n===doc.h)return;if(n>MAX_DIM){toast('This computer cannot edit textures that large.');return;}resizeImageDoc(n,n);if(doc.w!==n||doc.h!==n)return;p3.size=n;p3Save();for(const L of paintLayers())if(L.fill)fillRender(L);buildP3Panel();}
 
 /* ---- texture sets: one per material of the model, each its own canvas of maps (like Substance Painter) ----

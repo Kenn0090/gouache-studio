@@ -94,3 +94,8 @@ Every open document tab has its own recovery copy, not only the one you are work
 The Text tool now includes Anton, Bebas Neue, Patrick Hand, Kalam, Libre Baskerville, Orbitron, Space Grotesk and Cormorant Garamond. These and the eight existing artwork families are bundled for offline desktop use. Each font's SIL Open Font License is shipped beside it; source links are recorded in assets/fonts/manifest.json.
 
 16-bit PNG data maps retain their source sample values on import, including interlaced PNGs. Very large 16-bit colour images are checked against the renderer's allocation limits before decoding.
+
+## The session is saved with the file (0.59)
+
+A .gouache file also keeps your panel layout, the zoom and place of the view and the current tool, and brings them back when you open it. Preferences › Files has two switches: **Keep my panel layout, zoom and tool in the file when I save** and **Bring that layout back when I open a file that has one**.
+

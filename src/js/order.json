@@ -10,6 +10,7 @@
     "core/workflow",
     "paint/brush-engine",
     "paint/straight-lines",
+    "paint/perspective",
     "paint/heal",
     "paint/liquify",
     "ui/color",

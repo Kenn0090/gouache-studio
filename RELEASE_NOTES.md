@@ -1,3 +1,9 @@
+# Gouache Studio 0.59.0
+
+- 8K texture size in 3D Paint and in the Bake mesh maps window (where the computer allows it).
+- Perspective guides: 1, 2 or 3 vanishing points with a horizon; drag the points; strokes snap to the guide lines; saved with the document.
+- A saved document remembers the panel layout, the zoom and place of the view, and the tool (two switches in Preferences › Files).
+
 # Gouache Studio 0.58.0
 
 - Layers in Animation: each frame is a stack of layers; share a layer across all frames; saved with the file; pen, shape and text tools work.

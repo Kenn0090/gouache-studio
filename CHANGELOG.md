@@ -1,3 +1,9 @@
+## 0.59.0
+
+- **8K in 3D Paint.** The texture size choice in 3D Paint (and the Bake mesh maps window) now offers 8K, on computers that can edit textures that large.
+- **Perspective guides.** View › **Perspective guides…** puts one, two or three vanishing points with a horizon over your canvas, with lines fanning out from each point. Drag a point on the canvas (the horizon between the first two stays level) or type its place, and change how many lines are drawn. With **Strokes snap to the guide lines** on, a stroke you start towards a vanishing point runs exactly along the line to it; hold Shift for the usual straight horizontal and vertical lines instead. The guides are saved with the document and Undo covers them. (Free Transform already has Perspective and Distort for correcting a picture.)
+- **Saved documents remember the session.** A .gouache file now keeps the panel layout, the zoom and place of the view, and the tool, and brings them back when you open it (a toast says so). Two switches in Preferences › Files turn this off: one for saving the layout, one for restoring it.
+
 ## 0.58.0
 
 - **Layers in Animation.** Every frame is now a stack of layers, shown in the normal Layers panel (blend modes, opacity, masks, locks, styles, groups). A new frame has the same layers as the one before it, empty. Pick **Show in every frame** in a layer's right-click menu to share a layer (a fixed background, a character base): painting on it changes it in every frame; **Delete from every frame** removes it. Frames are saved and reopened with their layers (a shared layer is stored once), and old animations open as one layer per frame. Pen, Shape and Text tools work in Animation now.
