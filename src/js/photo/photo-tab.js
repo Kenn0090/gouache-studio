@@ -24,7 +24,7 @@ function phSizeDoc(){const p=phP();if(!p)return;const s=ph.crop?Object.assign({}
 function phUpdate(){const p=phP();if(!p||!p.psrc)return;{const base=ph.show==='before'?phDefaultsKeepGeo(p.s):p.s;if((p._rmKey||'')!==(base.rm||[]).join(',')){const keep=p.s;p.s=base;try{phRmSync(p);}finally{p.s=keep;}}}if(!ph.dirty&&ph.out&&ph.out.w===doc.w&&ph.out.h===doc.h)return;
   if(!ph.out||ph.out.w!==doc.w||ph.out.h!==doc.h){if(ph.out)disposeTarget(ph.out);ph.out=makeTarget(doc.w,doc.h,phDepth(),false);}
   let s=ph.show==='before'?phDefaultsKeepGeo(p.s):p.s;if(ph.crop)s=Object.assign({},s,{geo:Object.assign({},s.geo,{crop:[0,0,1,1]})});
-  phRender(p.psrc,ph.out,s,{seed:p.seed||0,showId:ph.show!=='before'&&ph.lm&&ph.lm.show?ph.lm.sel:null,clip:!!ph.clipWarn});ph.dirty=false;phHistSoon();}
+  phRender(p.psrc,ph.out,s,{depth:phDepthTex(p),showDepth:!!ph.showDepth,seed:p.seed||0,showId:ph.show!=='before'&&ph.lm&&ph.lm.show?ph.lm.sel:null,clip:!!ph.clipWarn});ph.dirty=false;phHistSoon();}
 /* the original picture keeps its turn and crop; only the edits go */
 function phDefaultsKeepGeo(s){const d=phDefaults();d.geo=phClone(s.geo);return d;}
 function phDirty(){ph.dirty=true;requestRender(true);}

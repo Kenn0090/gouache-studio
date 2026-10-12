@@ -62,9 +62,9 @@ function phPaste(toSelected){if(!ph.clip){toast('Copy a photo’s edits first (C
 /* ---- edits saved beside the photo (Lightroom keeps edits next to the photos too) ---- */
 const phScKey=p=>'gs.ph.'+p.name+'.'+(p.file?p.file.size:0);
 async function phSidecarLoad(p){try{let txt=null;if(p.path&&platform.isDesktop){try{const b=await platform.readFile(p.path+'.gphoto');txt=new TextDecoder().decode(b);}catch(e){}}
-    if(!txt)txt=localStorage.getItem(phScKey(p));if(!txt)return;const o=JSON.parse(txt);if(!o||!o.s)return;p.s=phMerge(phDefaults(),o.s);p.snaps=o.snaps||[];p.rating=o.r|0;p.flag=o.f|0;phAiUnpack(o.ai);phRmUnpack(o.rmp);setTimeout(phBuildLib,0);p.hist={list:[{label:'Open',s:phClone(phDefaults())},{label:'Saved edits',s:phClone(p.s)}],i:1};
+    if(!txt)txt=localStorage.getItem(phScKey(p));if(!txt)return;const o=JSON.parse(txt);if(!o||!o.s)return;p.s=phMerge(phDefaults(),o.s);p.snaps=o.snaps||[];p.rating=o.r|0;p.flag=o.f|0;phAiUnpack(o.ai);phRmUnpack(o.rmp);phDepthUnpack(p,o.dp);setTimeout(phBuildLib,0);p.hist={list:[{label:'Open',s:phClone(phDefaults())},{label:'Saved edits',s:phClone(p.s)}],i:1};
     if(phP()===p){phAfterSet();phRenderHist();}}catch(e){console.warn('edits not read',e);}}
-function phSidecarWrite(p){if(!p)return;const o=JSON.stringify({v:1,app:'Gouache Studio',s:p.s,snaps:p.snaps,r:p.rating|0,f:p.flag|0,ai:phAiPack(p),rmp:phRmPack(p)});const def=JSON.stringify(phDefaults());
+function phSidecarWrite(p){if(!p)return;const o=JSON.stringify({v:1,app:'Gouache Studio',s:p.s,snaps:p.snaps,r:p.rating|0,f:p.flag|0,ai:phAiPack(p),rmp:phRmPack(p),dp:phDepthPack(p)});const def=JSON.stringify(phDefaults());
   try{if(JSON.stringify(p.s)===def&&!p.snaps.length&&!p.rating&&!p.flag){localStorage.removeItem(phScKey(p));}else localStorage.setItem(phScKey(p),o);}catch(e){}
   if(p.path&&platform.isDesktop&&(JSON.stringify(p.s)!==def||p.rating||p.flag))platform.writeFile(p.path+'.gphoto',new TextEncoder().encode(o)).catch(()=>{});}
 let phSCT=0;function phSidecarSoon(){clearTimeout(phSCT);phSCT=setTimeout(()=>phSidecarWrite(phP()),1200);}
@@ -72,7 +72,7 @@ function phSidecarFlush(){clearTimeout(phSCT);if(phP())phSidecarWrite(phP());}
 /* ---- export ---- */
 async function phRenderFull(p,opt){const dec=await phDecode(p.file),t=makeTarget(dec.w,dec.h,phDecDepth(dec),false);try{phUploadInto(dec,t);phRmApply(t,p.s.rm);if(dec.bm&&dec.bm.close)dec.bm.close();
     const [cw,ch]=phOutSize(p.s,dec.w,dec.h);let W=cw,H=ch;if(opt.mode==='long'){const k=opt.long/Math.max(cw,ch);if(k<1||opt.up){W=Math.max(1,Math.round(cw*k));H=Math.max(1,Math.round(ch*k));}}else if(opt.mode==='pct'){W=Math.max(1,Math.round(cw*opt.pct/100));H=Math.max(1,Math.round(ch*opt.pct/100));}
-    W=Math.min(W,MAX_DIM);H=Math.min(H,MAX_DIM);const out=makeTarget(W,H,8,false);try{phRender(t,out,p.s,{seed:p.seed||0});const px=readRGBA8(out),id=new ImageData(W,H),d=id.data;
+    W=Math.min(W,MAX_DIM);H=Math.min(H,MAX_DIM);const out=makeTarget(W,H,8,false);try{phRender(t,out,p.s,{depth:phDepthTex(p),seed:p.seed||0});const px=readRGBA8(out),id=new ImageData(W,H),d=id.data;
       for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=(y*W+x)*4,j=(y*W+x)*4;d[j]=px[i];d[j+1]=px[i+1];d[j+2]=px[i+2];d[j+3]=255;}
       const c=document.createElement('canvas');c.width=W;c.height=H;c.getContext('2d').putImageData(id,0,0);return c;}finally{disposeTarget(out);}}finally{disposeTarget(t);}}
 const PH_FMT=[['jpg','JPEG','image/jpeg'],['png','PNG','image/png'],['webp','WebP','image/webp']];

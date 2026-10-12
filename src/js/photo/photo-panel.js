@@ -24,6 +24,8 @@ function phBuildPanel(){const box=$('#photoBody');if(!box)return;box.replaceChil
       el('div',{class:'sub',text:'Presence'}),phSl('tex','Texture',-100,100,1),phSl('cla','Clarity',-100,100,1),phSl('dehaze','Dehaze',-100,100,1),phSl('vib','Vibrance',-100,100,1),phSl('sat','Saturation',-100,100,1),
       chk('phBW','Black & white',!!s.bw,v=>{phSet('bw',v,'Black & white');})],phResetKeys(['temp','tint','exp','con','hi','sh','wh','bl','tex','cla','dehaze','vib','sat','bw'],'Basic')),
     phSec('ai','AI tools',phAiPanel(),null),
+    phSec('lens','Lens blur',phLensPanel(),()=>{const n=phClone(phS());n.lens=phDefaults().lens;phApply(n,'Reset lens blur');}),
+    phSec('relight','Relight',phRelightPanel(),()=>{const n=phClone(phS());n.relight=phDefaults().relight;phApply(n,'Reset relight');}),
     phSec('remove','Remove',phRmPanel(),()=>{const n=phClone(phS());n.rm=[];phApply(n,'Undo removals');}),
     phSec('spots','Spot removal',phSpotPanel(),()=>{const n=phClone(phS());n.spots=[];ph.sp.sel=null;phApply(n,'Remove spots');}),
     phSec('local','Masks',phLocalPanel(),()=>{const n=phClone(phS());n.local=[];ph.lm.sel=null;ph.lm.tool=null;phApply(n,'Remove masks');}),
