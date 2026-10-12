@@ -79,7 +79,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const nU=await p.evaluate(async()=>{const n=__gs.hist.undo.length;__gs.undo();__gs.undo();__gs.undo();await new Promise(r=>setTimeout(r,400));return n-__gs.hist.undo.length;});ok(nU===3,'three quick undos undo three steps '+nU);
  await p.screenshot({path:'/tmp/claude-0/-home-user-gouache-studio/b50c4247-fe44-5859-b749-7be7a4db9b43/scratchpad/ui261b.png'});
  /* big-canvas speed-ups: while painting (with symmetry) only the new parts are composited, and the result matches a full redraw */
- await p.evaluate(()=>{__gs.newDoc(512,512,8,[1,1,1],'Perf',false);for(let i=0;i<2;i++)__gs.act('addLayer');__gs.act('symX');__gs.setTool('brush');__gs.brush.size=24;});await W(300);
+ await p.evaluate(()=>{__gs.newDoc(512,512,8,[1,1,1],'Perf',false);for(let i=0;i<2;i++)__gs.act('addLayer');__gs.act('symX');__gs.setTool('brush');__gs.brush.tip=null;__gs.brush.endInk=0;__gs.brush.smoothing=.25;__gs.brush.grain=0;__gs.brush.size=24;});await W(300);
  {const a=await scr(60,100),c=await scr(200,300);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.move(c[0],c[1],{steps:10});await W(300);
   const same=await p.evaluate(()=>{const A=__gs.readRGBA8(__gs.compOut()),t=__gs.compositeMap('base'),B=__gs.readRGBA8(t);__gs.release(t);let d=0,n=0;for(let i=0;i<A.length;i++){const e=Math.abs(A[i]-B[i]);if(e>d)d=e;if(e>2)n++;}return [d,n];});
   ok(await p.evaluate(()=>__gs.compStats().parts>0),'…the quick partial redraw was used');
