@@ -6,7 +6,7 @@ function brushLineContext(et,space){return {root:doc.root,layer:et.L,target:et.L
 function brushLineSame(a,b){return a&&Object.keys(b).every(k=>a[k]===b[k]);}
 function brushLineStart(et,x,y,p,e,space){const context=brushLineContext(et,space),old=brushLineAnchor,joined=!!(e.shiftKey&&brushLineSame(old?.context,context));
   return {context,ox:x,oy:y,x:joined?old.x:x,y:joined?old.y:y,p:joined?old.p:p,joined,axis:null};}
-function brushLineSnap(line,x,y,shift){if(!shift){line.axis=null;return [x,y];}const dx=x-line.ox,dy=y-line.oy;
+function brushLineSnap(line,x,y,shift){{const ps=typeof perspSnap==='function'?perspSnap(line,x,y,shift):null;if(ps)return ps;}if(!shift){line.axis=null;return [x,y];}const dx=x-line.ox,dy=y-line.oy;
   if(!line.axis&&Math.hypot(dx,dy)>2)line.axis=Math.abs(dx)>=Math.abs(dy)?'x':'y';
   return line.axis==='x'?[x,line.oy]:line.axis==='y'?[line.ox,y]:[line.ox,line.oy];}
 function brushLineRemember(line,x,y,p){if(line)brushLineAnchor={context:line.context,x,y,p};}

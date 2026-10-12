@@ -1263,3 +1263,8 @@ body.notools #tools{display:none!important}
 .sbopts[hidden]{display:none}
 .sbcol{display:grid;gap:8px;min-width:0}
 .sbthumb{background:#fff;border:1px solid var(--line-2);border-radius:4px;max-width:170px;height:auto;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+
+/* perspective guides (0.59) */
+.persp{stroke:rgba(80,200,255,.55);stroke-width:1;fill:none}
+.persp-h{stroke:rgba(255,190,70,.8);stroke-width:1.2;stroke-dasharray:6 4;fill:none}
+.persp-vp{fill:rgba(80,200,255,.25);stroke:#50c8ff;stroke-width:2;cursor:grab}
