@@ -6,4 +6,8 @@ async function aiDepthRun(img){const ort=await aiEngine(),sess=await aiSession('
   const out=await sess.run({[sess.inputNames[0]]:new ort.Tensor('float32',f,[1,3,h,w])}),o=out[sess.outputNames[0]],d=o.data,n=w*h;let mn=1e9,mx=-1e9;for(let i=0;i<n;i++){const v=d[i];if(v<mn)mn=v;if(v>mx)mx=v;}
   /* leave out the extreme 0.5% each side so one odd pixel does not squash the range */
   const sorted=Float32Array.from(d.subarray(0,n)).sort(),lo=sorted[Math.floor(n*.005)],hi=sorted[Math.floor(n*.995)],r=Math.max(1e-6,hi-lo),u8=new Uint8Array(n);
-  for(let i=0;i<n;i++)u8[i]=Math.round(clamp((d[i]-lo)/r,0,1)*255);return {w,h,data:u8};}
+  const fl=new Float32Array(n);for(let i=0;i<n;i++){const v=clamp((d[i]-lo)/r,0,1);fl[i]=v;u8[i]=Math.round(v*255);}return {w,h,data:u8,f:fl};}
+/* a gentle blur of a float picture (a few texels), to take out model noise and old 8-bit steps */
+function aiBlurFloat(a,w,h,sig){const R=Math.max(1,Math.ceil(sig*3)),k=new Float32Array(R*2+1);let sum=0;for(let i=-R;i<=R;i++){k[i+R]=Math.exp(-i*i/(2*sig*sig));sum+=k[i+R];}for(let i=0;i<k.length;i++)k[i]/=sum;
+  const t=new Float32Array(w*h),o=new Float32Array(w*h);for(let y=0;y<h;y++)for(let x=0;x<w;x++){let s=0;for(let i=-R;i<=R;i++)s+=a[y*w+Math.min(w-1,Math.max(0,x+i))]*k[i+R];t[y*w+x]=s;}
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){let s=0;for(let i=-R;i<=R;i++)s+=t[Math.min(h-1,Math.max(0,y+i))*w+x]*k[i+R];o[y*w+x]=s;}return o;}

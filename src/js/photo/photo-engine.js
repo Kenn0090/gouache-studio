@@ -97,12 +97,11 @@ void main(){
       if(uLT[li].w>0.0){ e2+=(e2-ba)*uLT[li].w*2.5; }
       float L3=lum(e2); vec3 hs=rgb2hsl(clamp(e2,0.0,1.0)); float sk=1.0+uLF[li].z+uLF[li].w*(1.0-hs.y); e2=vec3(L3)+(e2-vec3(L3))*max(0.0,sk);
       e=mix(e,e2,clamp(w,0.0,1.0)); } }
-  /* relight: a light you place on the picture, shading the depth map as a surface */
-  if(uRL2.w>.5&&uHasD>.5){ float ar=uSrcSz.x/uSrcSz.y; vec2 px=1.0/vec2(textureSize(uDepth,0)); float d0=texture(uDepth,sp).r;
-    float ddx=(texture(uDepth,sp+vec2(px.x*2.0,0.0)).r-texture(uDepth,sp-vec2(px.x*2.0,0.0)).r)/(4.0*px.x*ar), ddy=(texture(uDepth,sp+vec2(0.0,px.y*2.0)).r-texture(uDepth,sp-vec2(0.0,px.y*2.0)).r)/(4.0*px.y);
-    float dsc=uRL2.z; vec3 nn=normalize(vec3(-ddx*dsc,-ddy*dsc,1.0)); vec3 tl=vec3((uRL.xy-sp)*vec2(ar,1.0),uRL.z-d0*dsc*.5); float dist=length(tl);
+  /* relight: a light you place on the picture, shading the depth map as a surface (slopes come ready from a smooth pass) */
+  if(uRL2.w>.5&&uHasD>.5){ float ar=uSrcSz.x/uSrcSz.y; vec3 sd=texture(uDepth,sp).rgb;
+    float dsc=uRL2.z; vec3 nn=normalize(vec3(-sd.x*dsc,-sd.y*dsc,1.0)); vec3 tl=vec3((uRL.xy-sp)*vec2(ar,1.0),(uRL.z+dsc*.5)-sd.z*dsc*.5); float dist=length(tl);
     float dif=max(dot(nn,tl/max(dist,1e-4)),0.0); float fall=1.0/(1.0+pow(dist/max(uRL2.x,.02),2.0));
-    e=e*((1.0-uRL2.y)+uRL.w*uRL3*dif*fall*2.2); }
+    e=e*((1.0-uRL2.y)+uRL.w*uRL3*dif*fall*2.2); e+=(hash(gl_FragCoord.xy)-.5)/255.0; }
   e=clamp(e,0.0,1.0);
   /* tone curves: all channels, then each colour channel */
   if(uUseCurve>.5){ e=vec3(texture(uCM,vec2(e.r*255.0/256.0+.5/256.0,.5)).r,texture(uCM,vec2(e.g*255.0/256.0+.5/256.0,.5)).r,texture(uCM,vec2(e.b*255.0/256.0+.5/256.0,.5)).r);
@@ -122,6 +121,8 @@ void main(){
   for(int pi=0;pi<8;pi++){ if(float(pi)>=uPN)break; vec3 hp=rgb2hsl(clamp(e,0.0,1.0)); float rg=uPA[pi].w;
     float dh=abs(mod(hp.x-uPA[pi].x+180.0,360.0)-180.0); float wgt=(1.0-smoothstep(rg*.4,rg,dh))*(1.0-smoothstep(.25+rg/240.0,.5+rg/160.0,abs(hp.y-uPA[pi].y)))*(1.0-smoothstep(.3+rg/200.0,.6+rg/120.0,abs(hp.z-uPA[pi].z)))*smoothstep(0.02,0.1,hp.y);
     hp.x+=uPB[pi].x*wgt*40.0; hp.y=clamp(hp.y*(1.0+uPB[pi].y*wgt),0.0,1.0); hp.z=clamp(hp.z+uPB[pi].z*wgt*.3*mix(.5,1.0,hp.y),0.0,1.0); e=hsl2rgb(hp); }
+  /* black and white (before grading, so toning like sepia still works) */
+  if(uBW>.5){ float g=lum(e); e=vec3(g); }
   /* colour grading: tints for shadows, middle, highlights */
   L=lum(e);
   { float bal=uGBal.x*.4; float ws=1.0-smoothstep(.0,.5+bal,L),wh=smoothstep(.5+bal,1.0,L),wm=1.0-ws-wh; wm=max(wm,0.0);
@@ -132,12 +133,10 @@ void main(){
   /* vignette */
   if(uVig.x!=0.0){ vec2 vq=(uv-.5)*2.0; vq.x*=mix(1.0,uSz.x/uSz.y,uVig.w); float r=length(vq)/1.41; float v=smoothstep(uVig.y,uVig.y+uVig.z+.001,r); e=uVig.x<0.0?e*(1.0+uVig.x*v):mix(e,vec3(1.0),uVig.x*v*.8); }
   if(wShow>0.0)e=mix(e,vec3(.9,.1,.1),clamp(wShow,0.0,1.0)*.55);
-  /* black and white */
-  if(uBW>.5){ float g=lum(e); e=vec3(g); }
   /* grain */
   if(uGrain.x>0.0){ vec2 gp=floor(gl_FragCoord.xy/max(1.0,uGrain.y)); float n=hash(gp)-.5; n=mix(n,(hash(gp*1.7+3.1)-.5),uGrain.z*.0); e+=n*uGrain.x*.35*(1.0-abs(lum(e)-.5)*1.2); }
   e=clamp(e,0.0,1.0); if(uClip>.5){ if(max(e.r,max(e.g,e.b))>=.995)e=vec3(1.0,.1,.1); else if(min(e.r,min(e.g,e.b))<=.005)e=vec3(.1,.3,1.0); }
-  o=vec4(e,(uLensOut>.5&&uHasD>.5)?texture(uDepth,sp).r:1.0);
+  o=vec4(e,(uLensOut>.5&&uHasD>.5)?texture(uDepth,sp).b:1.0);
 }`;
 const PH={prog:null,lutM:null,lutC:null,cache:{},lutKey:''};
 function phProg(){if(!PH.prog)PH.prog=program(FS_PHOTO);return PH.prog;}
