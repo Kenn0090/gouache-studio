@@ -1315,3 +1315,13 @@ body.notools #tools{display:none!important}
 body.photomode #tools{display:none!important}
 body.photomode #hint{display:none!important}
 body.photomode #optBar{visibility:hidden}
+
+#xfOv .phlm{fill:none;stroke:#ffd45e;stroke-width:1.6;stroke-dasharray:6 4}
+#xfOv .phlmh{fill:#ffd45e;stroke:#000;stroke-width:1}
+.phlmbtns{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0}
+.phlmrow{display:flex;align-items:center;gap:6px;padding:3px 4px;border-radius:6px}
+.phlmrow.on{background:var(--accent-soft);outline:1px solid var(--accent)}
+.phlmname{flex:1;text-align:left;background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:3px 4px}
+.phpsw{width:18px;height:18px;border-radius:50%;border:1px solid var(--line);flex:none}
+#stage.phpicking{cursor:crosshair}
+#xfOv .phlm.dim{stroke:#fff;stroke-opacity:.7}

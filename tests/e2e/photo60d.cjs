@@ -1,0 +1,30 @@
+/* 0.60: Photo tab Point colour */
+const {chromium}=require('playwright');
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const p=await (await b.newContext({viewport:{width:1500,height:950}})).newPage();
+ await p.route('**/*',r=>r.request().url().startsWith('file:')?r.continue():r.abort());
+ const errs=[];p.on('pageerror',e=>errs.push(e.message));
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');
+ await p.waitForFunction(()=>{const s=document.getElementById('splash');return !s||s.hidden||getComputedStyle(s).display==='none'||getComputedStyle(s).visibility==='hidden'||+getComputedStyle(s).opacity===0;},null,{timeout:60000});
+ await p.waitForTimeout(800);await p.evaluate(()=>document.querySelector('.welcome')?.remove());
+ await p.click('#modeTabs [data-mode="photo"]');await p.waitForTimeout(600);
+ await p.evaluate(async()=>{const c=new OffscreenCanvas(300,200),x=c.getContext('2d');x.fillStyle='#808080';x.fillRect(0,0,300,200);x.fillStyle='#c03030';x.fillRect(0,0,100,200);x.fillStyle='#3050c0';x.fillRect(200,0,100,200);
+  const blob=await c.convertToBlob({type:'image/png'});await __gs.phAddFiles([new File([blob],'c.png',{type:'image/png'})]);});await p.waitForTimeout(1000);
+ const px=async(x,y)=>p.evaluate(([x,y])=>{__gs.phViewTex();const d=__gs.readRGBA8(__gs.ph.out),W=__gs.ph.out.w,i=(y*W+x)*4;return [d[i],d[i+1],d[i+2]];},[x,y]);
+ const r0=await px(50,100),b0=await px(250,100),g0=await px(150,100);
+ const samp=await p.evaluate(()=>__gs.phSampleAt(50,100));ok(samp&&(samp[0]<8||samp[0]>352)&&samp[1]>.4,'picking reads the colour of the original '+JSON.stringify(samp));
+ await p.evaluate(()=>{__gs.phPickStart('pt');__gs.phPickAt(50,100);});await p.waitForTimeout(300);
+ ok(await p.evaluate(()=>__gs.phS().pts.length)===1,'a colour point is added');
+ await p.evaluate(()=>{const q=__gs.phS().pts[0];q.ds=-100;__gs.phApply(__gs.phClone(__gs.phS()),'x');});await p.waitForTimeout(300);
+ const r1=await px(50,100),b1=await px(250,100),g1=await px(150,100);
+ const sat=c=>Math.max(...c)-Math.min(...c);
+ ok(sat(r1)<sat(r0)-40,'taking the saturation of the picked red down greys it ('+sat(r0)+' → '+sat(r1)+')');
+ ok(Math.abs(sat(b1)-sat(b0))<6&&Math.abs(g1[0]-g0[0])<4,'blue and grey are left alone ('+sat(b0)+' → '+sat(b1)+')');
+ await p.evaluate(()=>{const q=__gs.phS().pts[0];q.ds=0;q.dh=60;__gs.phApply(__gs.phClone(__gs.phS()),'y');});await p.waitForTimeout(300);
+ const r2=await px(50,100);ok(r2[1]>r0[1]+15,'a hue shift turns the red toward orange/yellow ('+r0+' → '+r2+')');
+ ok(await p.evaluate(()=>!!document.querySelector('#phs_point')),'there is a Point colour section');
+ ok(!errs.length,'no page errors '+errs.join('|'));
+ await b.close();console.log(fails?'FAILS '+fails:'ALL PASS');process.exit(fails?1:0);
+})();

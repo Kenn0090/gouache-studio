@@ -24,7 +24,7 @@ function phSizeDoc(){const p=phP();if(!p)return;const s=ph.crop?Object.assign({}
 function phUpdate(){const p=phP();if(!p||!p.psrc)return;if(!ph.dirty&&ph.out&&ph.out.w===doc.w&&ph.out.h===doc.h)return;
   if(!ph.out||ph.out.w!==doc.w||ph.out.h!==doc.h){if(ph.out)disposeTarget(ph.out);ph.out=makeTarget(doc.w,doc.h,phDepth(),false);}
   let s=ph.show==='before'?phDefaultsKeepGeo(p.s):p.s;if(ph.crop)s=Object.assign({},s,{geo:Object.assign({},s.geo,{crop:[0,0,1,1]})});
-  phRender(p.psrc,ph.out,s,{seed:p.seed||0});ph.dirty=false;phHistSoon();}
+  phRender(p.psrc,ph.out,s,{seed:p.seed||0,showId:ph.show!=='before'&&ph.lm&&ph.lm.show?ph.lm.sel:null});ph.dirty=false;phHistSoon();}
 /* the original picture keeps its turn and crop; only the edits go */
 function phDefaultsKeepGeo(s){const d=phDefaults();d.geo=phClone(s.geo);return d;}
 function phDirty(){ph.dirty=true;requestRender(true);}
@@ -47,7 +47,7 @@ async function phAddFiles(files){let first=-1;loadStart('Opening photos');try{le
     catch(e){console.warn(e);toast('“'+f.name+'” could not be opened: '+(e.message||e));}await new Promise(r=>setTimeout(r,0));}}finally{loadEnd();}
   phBuildLib();if(first>=0&&(ph.cur<0||ph.cur>=ph.photos.length))await phSelect(first);else if(first>=0)await phSelect(first);}
 async function phSelect(i){if(i<0||i>=ph.photos.length)return;if(ph.cur===i&&phP()&&phP().psrc)return;phSidecarFlush();const old=phP();if(old&&old.psrc){disposeTarget(old.psrc);old.psrc=null;}
-  ph.cur=i;const p=phP();loadStart('Opening '+p.name);
+  ph.cur=i;if(ph.lm){ph.lm.sel=null;ph.lm.tool=null;}if(ph.sp){ph.sp.sel=null;ph.sp.tool=false;}const p=phP();loadStart('Opening '+p.name);
   try{const dec=await phDecode(p.file),k=Math.min(1,phPreviewMax()/Math.max(dec.w,dec.h));p.w=dec.w;p.h=dec.h;p.pw=Math.max(2,Math.round(dec.w*k));p.ph=Math.max(2,Math.round(dec.h*k));
     const full=makeTarget(dec.w,dec.h,phDecDepth(dec),false);try{phUploadInto(dec,full);p.psrc=makeTarget(p.pw,p.ph,phDecDepth(dec),false);
       if(k===1)blit(full,p.psrc,0,0,dec.w,dec.h,0,0);else run(P.resample,p.psrc,{uSrc:full.tex,uOffset:[0,0],uScale:[dec.w/p.pw,dec.h/p.ph],uTaps:{int:Math.min(8,Math.max(1,Math.ceil(dec.w/p.pw)))}});}finally{disposeTarget(full);}

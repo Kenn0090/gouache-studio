@@ -18,12 +18,16 @@ function phBuildPanel(){const box=$('#photoBody');if(!box)return;box.replaceChil
   const s=p.s;
   box.append(el('div',{class:'phhisto'},el('canvas',{id:'phHisto',width:300,height:70,'aria-label':'Histogram'})),
     phSec('light','Basic',[
+      el('div',{class:'phlmbtns'},el('button',{class:'btn sm',text:'Auto tone',title:'Set exposure, contrast and the tone sliders from the picture',onclick:phAutoTone})),
       el('div',{class:'sub',text:'White balance'}),phSl('temp','Temperature',-100,100,1),phSl('tint','Tint',-100,100,1),
       el('div',{class:'sub',text:'Tone'}),phSl('exp','Exposure',-5,5,.01,{fmt:v=>(v>0?'+':'')+v.toFixed(2)}),phSl('con','Contrast',-100,100,1),phSl('hi','Highlights',-100,100,1),phSl('sh','Shadows',-100,100,1),phSl('wh','Whites',-100,100,1),phSl('bl','Blacks',-100,100,1),
       el('div',{class:'sub',text:'Presence'}),phSl('tex','Texture',-100,100,1),phSl('cla','Clarity',-100,100,1),phSl('dehaze','Dehaze',-100,100,1),phSl('vib','Vibrance',-100,100,1),phSl('sat','Saturation',-100,100,1),
       chk('phBW','Black & white',!!s.bw,v=>{phSet('bw',v,'Black & white');})],phResetKeys(['temp','tint','exp','con','hi','sh','wh','bl','tex','cla','dehaze','vib','sat','bw'],'Basic')),
+    phSec('spots','Spot removal',phSpotPanel(),()=>{const n=phClone(phS());n.spots=[];ph.sp.sel=null;phApply(n,'Remove spots');}),
+    phSec('local','Masks',phLocalPanel(),()=>{const n=phClone(phS());n.local=[];ph.lm.sel=null;ph.lm.tool=null;phApply(n,'Remove masks');}),
     phSec('curve','Tone curve',[phCurveEditor()],phResetKeys(['curve'],'Tone curve')),
     phSec('mix','Colour mixer',phMixer(),phResetKeys(['mix'],'Colour mixer')),
+    phSec('point','Point colour',phPointPanel(),()=>{const n=phClone(phS());n.pts=[];phApply(n,'Remove colour points');}),
     phSec('grade','Colour grading',phGrading(),phResetKeys(['grade'],'Colour grading')),
     phSec('detail','Detail',[el('div',{class:'sub',text:'Sharpening'}),phSl('sharp.amt','Amount',0,150,1,{fmt:v=>Math.round(v)}),phSl('sharp.rad','Radius',.5,3,.1,{fmt:v=>v.toFixed(1)}),phSl('sharp.mask','Masking',0,100,1,{fmt:v=>Math.round(v)}),
       el('div',{class:'sub',text:'Noise reduction'}),phSl('nr.lum','Luminance',0,100,1,{fmt:v=>Math.round(v)}),phSl('nr.col','Colour',0,100,1,{fmt:v=>Math.round(v)})],phResetKeys(['sharp','nr'],'Detail')),
@@ -63,6 +67,7 @@ function phGeometry(){const p=phP(),g=p.s.geo;
   return [el('div',{class:'frow'},el('label',{for:'phAspect',text:'Crop shape'}),asp),
     el('div',{class:'frow'},el('button',{class:'btn sm'+(ph.crop?' primary':''),id:'phCropBtn',text:ph.crop?'Done cropping':'Crop…',title:'Drag the corners and edges on the photo',onclick:()=>phCropToggle()}),
       el('button',{class:'btn sm',text:'Reset crop',onclick:()=>{const n=phClone(p.s);n.geo.crop=[0,0,1,1];n.geo.aspect='original';phApply(n,'Reset crop');}})),
+    el('div',{class:'frow'},el('button',{class:'btn sm',text:'Auto level',title:'Find the horizon or the walls and straighten the picture',onclick:phAutoLevel})),
     phSl('geo.angle','Straighten',-45,45,.1,{fmt:v=>v.toFixed(1)+'°'}),phSl('geo.vert','Vertical',-100,100,1),phSl('geo.horiz','Horizontal',-100,100,1),phSl('geo.scale','Scale',-50,100,1),
     el('div',{class:'frow'},chk('phFH','Flip across',!!g.flipH,v=>phSet('geo.flipH',v,'Flip')),chk('phFV','Flip down',!!g.flipV,v=>phSet('geo.flipV',v,'Flip')),chk('phAuto','Fill the frame',g.auto!==false,v=>phSet('geo.auto',v,'Fill the frame')))];}
 /* the biggest crop of that shape, kept around the middle of the old one */

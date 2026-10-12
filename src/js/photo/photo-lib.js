@@ -44,7 +44,7 @@ function phBuildLib(){phBuildPre();phRenderHist();const box=$('#phLibBody');if(!
 function phRemove(i){const p=ph.photos[i];if(!p)return;phSidecarFlush();if(p.psrc)disposeTarget(p.psrc);if(p.small)disposeTarget(p.small);ph.photos.splice(i,1);ph.sel.clear();
   if(ph.cur===i){ph.cur=-1;if(ph.photos.length)phSelect(Math.min(i,ph.photos.length-1));else{if(ph.out){disposeTarget(ph.out);ph.out=null;}phBuildPanel();phDirty();}}else if(ph.cur>i)ph.cur--;phBuildLib();}
 /* ---- copy and paste edits ---- */
-const PH_GROUPS=[['Basic',['temp','tint','exp','con','hi','sh','wh','bl','tex','cla','dehaze','vib','sat','bw']],['Tone curve',['curve']],['Colour mixer',['mix']],['Colour grading',['grade']],['Detail',['sharp','nr']],['Effects',['vig','grain']],['Crop and turn',['geo']]];
+const PH_GROUPS=[['Basic',['temp','tint','exp','con','hi','sh','wh','bl','tex','cla','dehaze','vib','sat','bw']],['Tone curve',['curve']],['Colour mixer',['mix']],['Point colour',['pts']],['Colour grading',['grade']],['Detail',['sharp','nr']],['Effects',['vig','grain']],['Masks',['local']],['Spot removal',['spots']],['Crop and turn',['geo']]];
 function phCopy(){const p=phP();if(!p)return;ph.clip=phClone(p.s);toast('Copied the edits of “'+p.name+'”.');}
 function phPaste(toSelected){if(!ph.clip){toast('Copy a photo’s edits first (Copy button).');return;}const targets=toSelected&&ph.sel.size?[...ph.sel]:[ph.cur];if(!targets.length||targets[0]<0)return;
   const on=new Set(PH_GROUPS.filter(g=>g[0]!=='Crop and turn').map(g=>g[0])),list=el('div',{class:'dlg-grid'},el('p',{class:'note',text:'Paste onto '+targets.length+' photo'+(targets.length===1?'':'s')+'. Pick what to paste.'}),
