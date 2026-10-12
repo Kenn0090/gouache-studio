@@ -47,7 +47,7 @@ WS_PRESETS.bake={name:'Panels: Bake',tb:{side:'left',cols:1},opt:true,w:580,grou
 /* Brush creation keeps its previews and settings together, with painting brushes below the canvas. */
 WS_PRESETS.brush={name:'Panels: Brush',tb:{side:'left',cols:1},opt:true,w:420,groups:[{tabs:['color'],f:.45},{tabs:MODE_HID.slice(),active:'brushtab',f:5}],shelf:{tabs:['brushes'],h:230,f:1},icons:['layers','hist','maps','chan','matEd','shading','tool','stencils','mats','textures','decals','envs','p3bake'],floats:[]};
 /* (0.60) the Photo tab: Develop on the right with its history, the photos and presets underneath the picture */
-WS_PRESETS.photo={name:'Panels: Photo',tb:{side:'left',cols:1},opt:true,w:380,groups:[{tabs:[...MODE_GROUP,'phhist'],active:'photo',f:1}],shelf:{tabs:['phlib','phpre'],h:170,f:1},icons:[],floats:[]};
+WS_PRESETS.photo={name:'Panels: Photo',tb:{side:'left',cols:1},opt:false,w:380,groups:[{tabs:[...MODE_GROUP,'phhist'],active:'photo',f:1}],shelf:{tabs:['phlib','phpre'],h:170,f:1},icons:[],floats:[]};
 const WS_MODE_DEF={paint:'painting',p3d:'texturing',anim:'animation',bake:'bake',convert:'convert',brush:'brush',photo:'photo'};
 const dk={ws:'painting',L:null,custom:{},saved:{},lock:false,flyout:null,drag:null,modeWs:{},modeLayouts:{},layoutMode:null};
 (()=>{try{const s=JSON.parse(localStorage.getItem('gs.dock')||'{}');if(s.ws)dk.ws=s.ws;if(s.modeWs)dk.modeWs=s.modeWs;if(s.col2&&s.col2.groups)dk.col2=s.col2;dk.modeLayouts=s.modeLayouts||{};dk.saved=s.saved||{};dk.custom=s.custom||{};dk.lock=!!s.lock;

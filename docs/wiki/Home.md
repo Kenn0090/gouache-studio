@@ -26,6 +26,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 - [Maps and PBR](Maps-and-PBR.md): base colour, roughness, metallic, height, normal and more; the Maps panel; painting several maps at once
 - [Convert tab](Convert-tab.md): CrazyBump-style map making from a photo or another map
 - [Brush tab](Brush-tab.md): draw your own brush tips on a canvas of their own
+- [Photo tab](Photo-tab.md): Lightroom-style editing of JPEG and RAW photos: light and colour, curves, masks, spot removal, crop and tilt, presets, export
 - [Converters and filters](Converters-and-filters.md): make one map from another; every adjustment and filter, including the Embroidery patch
 - [Textures, decals and the material library](Textures-and-decals.md): grunge maps and textures, decals on the model, ready-made materials (and who made them)
 - [Filter layers](Filter-layers.md): filters you can change later, smart filters, live converters, pattern layers

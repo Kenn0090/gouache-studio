@@ -1314,7 +1314,7 @@ body.notools #tools{display:none!important}
 #xfOv .phhandle{fill:#fff;stroke:#000;stroke-width:1}
 body.photomode #tools{display:none!important}
 body.photomode #hint{display:none!important}
-body.photomode #optBar{visibility:hidden}
+
 
 #xfOv .phlm{fill:none;stroke:#ffd45e;stroke-width:1.6;stroke-dasharray:6 4}
 #xfOv .phlmh{fill:#ffd45e;stroke:#000;stroke-width:1}
@@ -1326,3 +1326,6 @@ body.photomode #optBar{visibility:hidden}
 #stage.phpicking{cursor:crosshair}
 #xfOv .phlm.dim{stroke:#fff;stroke-opacity:.7}
 .phthumb{position:relative}.phthumb .phstars{position:absolute;left:4px;top:3px;font-style:normal;font-size:11px;color:#ffd45e;text-shadow:0 1px 2px #000;pointer-events:none}.phthumb.rej img{opacity:.35}
+#phFilter{width:auto;max-width:150px;min-width:0}
+body.photomode #optBar{display:none}
+body.photomode #docTabs{display:none!important}
