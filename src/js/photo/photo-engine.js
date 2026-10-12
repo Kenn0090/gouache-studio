@@ -10,7 +10,7 @@ function phDefaults(){return {
   grade:{sh:{h:220,s:0,l:0},mid:{h:40,s:0,l:0},hi:{h:50,s:0,l:0},blend:50,bal:0},
   sharp:{amt:0,rad:1,detail:25,mask:0},nr:{lum:0,col:0},
   vig:{amt:0,mid:50,feather:50,round:0},grain:{amt:0,size:25,rough:50},
-  geo:{angle:0,flipH:false,flipV:false,vert:0,horiz:0,scale:0,crop:[0,0,1,1],aspect:'original',auto:true},
+  geo:{dist:0,ca:0,angle:0,flipH:false,flipV:false,vert:0,horiz:0,scale:0,crop:[0,0,1,1],aspect:'original',auto:true},
   pts:[],local:[],spots:[],bw:false};}
 const phClone=s=>JSON.parse(JSON.stringify(s));
 /* a tone curve through its points (smooth, never going backwards) as 256 values */
@@ -23,8 +23,8 @@ function phCurveLut(pts){const p=pts.slice().sort((a,b)=>a[0]-b[0]),n=p.length,o
     const h=dx[i],s=(x-p[i][0])/h,s2=s*s,s3=s2*s;out[k]=Math.min(1,Math.max(0,(2*s3-3*s2+1)*p[i][1]+(s3-2*s2+s)*h*t[i]+(-2*s3+3*s2)*p[i+1][1]+(s3-s2)*h*t[i+1]));}
   return out;}
 const phIsId=pts=>pts.length===2&&pts[0][0]===0&&pts[0][1]===0&&pts[1][0]===1&&pts[1][1]===1;
-const FS_PHOTO=`uniform sampler2D uSrc; uniform sampler2D uBA; uniform sampler2D uBB; uniform sampler2D uBC; uniform sampler2D uCM; uniform sampler2D uCC;
-uniform vec2 uSz; uniform vec2 uSrcSz; uniform vec4 uCrop; uniform float uAng; uniform vec2 uKey; uniform vec2 uFlip; uniform float uZoom;
+const FS_PHOTO=`uniform sampler2D uSrc; uniform sampler2D uDN; uniform sampler2D uBA; uniform sampler2D uBB; uniform sampler2D uBC; uniform sampler2D uCM; uniform sampler2D uCC;
+uniform vec2 uSz; uniform vec2 uSrcSz; uniform vec4 uCrop; uniform float uAng; uniform vec2 uKey; uniform vec2 uFlip; uniform float uZoom; uniform float uDist; uniform float uCA; uniform float uClip;
 uniform float uTemp; uniform float uTint; uniform float uExp; uniform float uCon; uniform float uHi; uniform float uSh; uniform float uWh; uniform float uBl;
 uniform float uTex; uniform float uCla; uniform float uDeh; uniform float uVib; uniform float uSat; uniform float uSharp; uniform float uSharpMask; uniform float uNRL; uniform float uNRC;
 uniform vec4 uMix[8]; uniform vec4 uGSh; uniform vec4 uGMid; uniform vec4 uGHi; uniform vec2 uGBal; uniform vec4 uVig; uniform vec3 uGrain; uniform float uBW; uniform float uUseCurve; uniform float uSeed;
@@ -45,8 +45,10 @@ void main(){
   vec2 q=(p-.5); q.x*=uSrcSz.x/uSrcSz.y;
   q/= uZoom; float ca=cos(uAng),sa=sin(uAng); q=vec2(ca*q.x+sa*q.y,-sa*q.x+ca*q.y);
   q.x*=1.0+uKey.x*q.y; q.y*=1.0+uKey.y*q.x;
+  q*=1.0+uDist*dot(q,q);
   q.x/=uSrcSz.x/uSrcSz.y; vec2 sp=q+.5; if(uFlip.x>.5)sp.x=1.0-sp.x; if(uFlip.y>.5)sp.y=1.0-sp.y;
   vec3 s=texture(uSrc,sp).rgb;
+  if(uCA!=0.0){ vec2 cd=(sp-.5)*uCA*.0002; s.r=texture(uSrc,sp+cd).r; s.b=texture(uSrc,sp-cd).b; }
   /* spot removal: patches of the picture taken from somewhere else, healed to the light around them */
   if(uSN>0.0){ vec2 Pn=(sp-.5)*vec2(uSrcSz.x/uSrcSz.y,1.0); vec3 cs=s;
     for(int si=0;si<16;si++){ if(float(si)>=uSN)break; vec2 Cn=(uSA[si].xy-.5)*vec2(uSrcSz.x/uSrcSz.y,1.0); float d=length(Pn-Cn); float r=uSA[si].z; if(d>=r)continue;
@@ -55,9 +57,8 @@ void main(){
       cs=mix(cs,clamp(c2,0.0,1.0),w); }
     s=cs; }
   vec3 ba=texture(uBA,sp).rgb;
-  /* noise reduction */
-  if(uNRL>0.0||uNRC>0.0){ float d=length(s-ba); float w=exp(-d*d*40.0); vec3 sm=ba; float l0=lum(s),l1=lum(ba); vec3 cs=sm+(l0-l1);
-    s=mix(s,mix(sm,cs,1.0-uNRC),clamp(max(uNRL,uNRC)*w,0.0,1.0)); }
+  /* noise reduction: the picture comes from a filtered copy (made in an earlier pass) */
+  if(uNRL>0.0||uNRC>0.0)s=texture(uDN,sp).rgb;
   vec3 c=s2l(s);
   /* white balance and exposure in linear light */
   c*=vec3(1.0+uTemp*.35,1.0-uTint*.18,1.0-uTemp*.35); c*=exp2(uExp);
@@ -129,7 +130,8 @@ void main(){
   if(uBW>.5){ float g=lum(e); e=vec3(g); }
   /* grain */
   if(uGrain.x>0.0){ vec2 gp=floor(gl_FragCoord.xy/max(1.0,uGrain.y)); float n=hash(gp)-.5; n=mix(n,(hash(gp*1.7+3.1)-.5),uGrain.z*.0); e+=n*uGrain.x*.35*(1.0-abs(lum(e)-.5)*1.2); }
-  o=vec4(clamp(e,0.0,1.0),1.0);
+  e=clamp(e,0.0,1.0); if(uClip>.5){ if(max(e.r,max(e.g,e.b))>=.995)e=vec3(1.0,.1,.1); else if(min(e.r,min(e.g,e.b))<=.005)e=vec3(.1,.3,1.0); }
+  o=vec4(e,1.0);
 }`;
 const PH={prog:null,lutM:null,lutC:null,cache:{},lutKey:''};
 function phProg(){if(!PH.prog)PH.prog=program(FS_PHOTO);return PH.prog;}
@@ -139,6 +141,22 @@ function phLuts(s){const key=JSON.stringify(s.curve);if(PH.lutKey===key&&PH.lutM
   const m=phCurveLut(s.curve.m),r=phCurveLut(s.curve.r),g=phCurveLut(s.curve.g),b=phCurveLut(s.curve.b),A=new Uint8Array(256*4),B=new Uint8Array(256*4);
   for(let i=0;i<256;i++){A[i*4]=A[i*4+1]=A[i*4+2]=Math.round(m[i]*255);A[i*4+3]=255;B[i*4]=Math.round(r[i]*255);B[i*4+1]=Math.round(g[i]*255);B[i*4+2]=Math.round(b[i]*255);B[i*4+3]=255;}
   PH.lutM=phLutTex(PH.lutM,m,A);PH.lutC=phLutTex(PH.lutC,g,B);}
+
+/* noise reduction pass: an edge-keeping blur, tighter for brightness and wider for colour */
+const FS_PHDN=`uniform sampler2D uSrc; uniform vec2 uPx; uniform float uL; uniform float uC; uniform float uStep;
+vec3 ycc(vec3 c){ return vec3(dot(c,vec3(.299,.587,.114)),dot(c,vec3(-.1687,-.3313,.5)),dot(c,vec3(.5,-.4187,-.0813))); }
+void main(){ vec2 uv=gl_FragCoord.xy*uPx; vec3 c0=texture(uSrc,uv).rgb; vec3 y0=ycc(c0);
+  float sl=.015+.11*uL,sc=.02+.16*uC; float wl=0.0,wc=0.0,al=0.0; vec2 ac=vec2(0.0);
+  for(int j=-3;j<=3;j++)for(int i=-3;i<=3;i++){ vec2 o=vec2(float(i),float(j));
+    vec3 c1=texture(uSrc,uv+o*uPx*uStep).rgb; vec3 y1=ycc(c1); float sp=exp(-dot(o,o)/8.0);
+    float dl=y1.x-y0.x; float w1=sp*exp(-dl*dl/(2.0*sl*sl)); wl+=w1; al+=w1*y1.x;
+    vec3 c2=texture(uSrc,uv+o*uPx*uStep*2.2).rgb; vec3 y2=ycc(c2); vec2 dc=y2.yz-y0.yz; float dd=dl*0.0+(y2.x-y0.x); float w2=sp*exp(-(dot(dc,dc)*4.0+dd*dd)/(2.0*sc*sc)); wc+=w2; ac+=w2*y2.yz; }
+  float yl=mix(y0.x,al/max(wl,1e-4),uL); vec2 cc=mix(y0.yz,ac/max(wc,1e-4),uC);
+  vec3 rgb=vec3(yl+1.402*cc.y,yl-.34414*cc.x-.71414*cc.y,yl+1.772*cc.x); o=vec4(clamp(rgb,0.0,1.0),1.0); }`;
+PH.dnProg=null;
+function phDenoise(src,s,sc){const L=s.nr.lum/100,C=s.nr.col/100;if(!(L>0||C>0))return src;
+  if(!PH.dnProg)PH.dnProg=program(FS_PHDN);let t=PH.cache.dn;if(!t||t.w!==src.w||t.h!==src.h||t.depth!==src.depth){if(t)disposeTarget(t);t=PH.cache.dn=makeTarget(src.w,src.h,src.depth,false);}
+  run(PH.dnProg,t,{uSrc:src.tex,uPx:[1/src.w,1/src.h],uL:L,uC:C,uStep:Math.max(1,sc*.9)});return t;}
 /* a blurred copy of src (made smaller for big radii: the shader reads it at the same coordinates) */
 function phBlurred(src,sigma,name){const k=Math.max(1,Math.floor(sigma/7)),w=Math.max(2,Math.round(src.w/k)),h=Math.max(2,Math.round(src.h/k)),sg=Math.max(.3,sigma/k);
   let c=PH.cache[name];if(!c||c.w!==w||c.h!==h||c.depth!==src.depth){if(c)disposeTarget(c);c=PH.cache[name]=makeTarget(w,h,src.depth,false);}
@@ -157,11 +175,11 @@ function phOutSize(s,w,h){const c=s.geo.crop;return [Math.max(1,Math.round(w*(c[
 /* draw the edited picture; src: the photo (w×h), dst: the output target */
 function phRender(src,dst,s,opts){opts=opts||{};phLuts(s);const sc=Math.max(src.w,src.h)/2000;
   const LM=(s.local||[]).filter(m=>m.on!==false).slice(0,8),lad=k=>LM.some(m=>m.adj&&m.adj[k]),
-    needA=s.sharp.amt>0||s.tex!==0||s.nr.lum>0||s.nr.col>0||lad('tex')||lad('sharp'),needB=s.cla!==0||lad('cla'),needC=s.dehaze!==0||lad('dehaze');
+    needA=s.sharp.amt>0||s.tex!==0||lad('tex')||lad('sharp'),needB=s.cla!==0||lad('cla'),needC=s.dehaze!==0||lad('dehaze');
   const ba=needA?phBlurred(src,Math.max(.6,(s.sharp.amt>0&&s.tex===0?s.sharp.rad*1.2:1.6)*sc*(s.tex!==0||lad('tex')?2:1)),'ba'):src,bb=needB?phBlurred(src,28*sc,'bb'):src,bc=needC?phBlurred(src,70*sc,'bc'):src;
-  const g=phGeo(s,src.w,src.h),G=s.grade,mix=new Float32Array(32);for(let i=0;i<8;i++){mix[i*4]=s.mix.h[i]/100;mix[i*4+1]=s.mix.s[i]/100;mix[i*4+2]=s.mix.l[i]/100;}
+  const dnT=phDenoise(src,s,sc),g=phGeo(s,src.w,src.h),G=s.grade,mix=new Float32Array(32);for(let i=0;i<8;i++){mix[i*4]=s.mix.h[i]/100;mix[i*4+1]=s.mix.s[i]/100;mix[i*4+2]=s.mix.l[i]/100;}
   const useCurve=!(phIsId(s.curve.m)&&phIsId(s.curve.r)&&phIsId(s.curve.g)&&phIsId(s.curve.b));
-  run(phProg(),dst,Object.assign({uSrc:src.tex,uBA:ba.tex,uBB:bb.tex,uBC:bc.tex,uCM:PH.lutM,uCC:PH.lutC,uSz:[dst.w,dst.h],uSrcSz:[src.w,src.h],uCrop:s.geo.crop,uAng:g.a,uKey:[s.geo.horiz/100*.5,s.geo.vert/100*.5],uFlip:[s.geo.flipH?1:0,s.geo.flipV?1:0],uZoom:g.zoom,
+  run(phProg(),dst,Object.assign({uSrc:src.tex,uDN:dnT.tex,uBA:ba.tex,uBB:bb.tex,uBC:bc.tex,uCM:PH.lutM,uCC:PH.lutC,uSz:[dst.w,dst.h],uSrcSz:[src.w,src.h],uCrop:s.geo.crop,uAng:g.a,uKey:[s.geo.horiz/100*.5,s.geo.vert/100*.5],uFlip:[s.geo.flipH?1:0,s.geo.flipV?1:0],uZoom:g.zoom,uDist:s.geo.dist/100*.6,uCA:s.geo.ca,uClip:opts.clip?1:0,
     uTemp:s.temp/100,uTint:s.tint/100,uExp:s.exp,uCon:s.con/100,uHi:s.hi/100,uSh:s.sh/100,uWh:s.wh/100,uBl:s.bl/100,uTex:s.tex/100,uCla:s.cla/100,uDeh:s.dehaze/100,uVib:s.vib/100,uSat:s.sat/100,
     uSharp:s.sharp.amt/150,uSharpMask:s.sharp.mask/100,uNRL:s.nr.lum/100,uNRC:s.nr.col/100,uMix:{v4a:mix},
     uGSh:[G.sh.h,G.sh.s/100,G.sh.l/100,0],uGMid:[G.mid.h,G.mid.s/100,G.mid.l/100,0],uGHi:[G.hi.h,G.hi.s/100,G.hi.l/100,0],uGBal:[G.bal/100,G.blend/100],

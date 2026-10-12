@@ -1325,3 +1325,4 @@ body.photomode #optBar{visibility:hidden}
 .phpsw{width:18px;height:18px;border-radius:50%;border:1px solid var(--line);flex:none}
 #stage.phpicking{cursor:crosshair}
 #xfOv .phlm.dim{stroke:#fff;stroke-opacity:.7}
+.phthumb{position:relative}.phthumb .phstars{position:absolute;left:4px;top:3px;font-style:normal;font-size:11px;color:#ffd45e;text-shadow:0 1px 2px #000;pointer-events:none}.phthumb.rej img{opacity:.35}

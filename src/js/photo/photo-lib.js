@@ -32,14 +32,20 @@ function phSnapshot(){const p=phP();if(!p)return;const inp=el('input',{type:'tex
   openDialog({title:'New snapshot',body:el('div',{class:'dlg-grid'},inp),okLabel:'Save',onOk(){const n=inp.value.trim()||'Snapshot';p.snaps.push({name:n,s:phClone(p.s)});phSidecarSoon();phRenderHist();}});setTimeout(()=>{inp.focus();inp.select();},0);}
 /* ---- the photos strip ---- */
 ph.sel=new Set();
+const PH_FILTERS=[['all','All photos'],['r1','★ and up'],['r3','★★★ and up'],['r5','★★★★★'],['pick','Picked'],['rej','Rejected'],['edited','Edited']];
+function phShown(p){const f=ph.filter||'all',r=p.rating|0;return f==='all'?true:f==='pick'?p.flag>0:f==='rej'?p.flag<0:f==='edited'?JSON.stringify(p.s)!==JSON.stringify(phDefaults()):r>=(+f.slice(1));}
+function phRate(n){const p=phP();if(!p)return;p.rating=n;phSidecarSoon();phBuildLib();toast(n?'★'.repeat(n):'No stars');}
+function phFlag(v){const p=phP();if(!p)return;p.flag=p.flag===v?0:v;phSidecarSoon();phBuildLib();toast(p.flag>0?'Picked':p.flag<0?'Rejected':'Flag removed');}
+function phStep(d){let i=ph.cur+d;while(i>=0&&i<ph.photos.length&&!phShown(ph.photos[i]))i+=d;if(i>=0&&i<ph.photos.length)phSelect(i);}
 function phBuildLib(){phBuildPre();phRenderHist();const box=$('#phLibBody');if(!box)return;box.replaceChildren();
   const bar=el('div',{class:'phbar'},el('button',{class:'btn sm primary',text:'Add photos…',onclick:phOpenDialog}),el('button',{class:'btn sm',text:'Paste edits to selected',title:'Paste the copied edits onto every selected photo (click with Ctrl or Shift to select several)',onclick:()=>phPaste(true)}),el('button',{class:'btn sm',text:'Export…',onclick:()=>dlgPhotoExport()}),
     el('span',{class:'dim',text:ph.photos.length?ph.photos.length+' photo'+(ph.photos.length===1?'':'s'):''}));
   const strip=el('div',{class:'phstrip',role:'listbox','aria-label':'Photos'});
-  ph.photos.forEach((p,i)=>{const b=el('button',{class:'phthumb'+(i===ph.cur?' on':'')+(ph.sel.has(i)?' sel':''),role:'option','aria-selected':String(i===ph.cur),title:p.name+' · '+p.w+' × '+p.h,
+  ph.photos.forEach((p,i)=>{if(!phShown(p))return;const b=el('button',{class:'phthumb'+(p.flag<0?' rej':'')+(i===ph.cur?' on':'')+(ph.sel.has(i)?' sel':''),role:'option','aria-selected':String(i===ph.cur),title:p.name+' · '+p.w+' × '+p.h,
       onclick:e=>{if(e.ctrlKey||e.metaKey){ph.sel.has(i)?ph.sel.delete(i):ph.sel.add(i);phBuildLib();return;}if(e.shiftKey&&ph.cur>=0){const a=Math.min(ph.cur,i),z=Math.max(ph.cur,i);for(let k=a;k<=z;k++)ph.sel.add(k);phBuildLib();return;}ph.sel.clear();phSelect(i);}},
-      el('img',{src:p.thumb,alt:p.name}),el('span',{text:p.name}),el('i',{class:'phtx',title:'Remove from this list','aria-label':'Remove '+p.name,text:'×',onclick:e=>{e.stopPropagation();phRemove(i);}}));strip.append(b);});
+      el('img',{src:p.thumb,alt:p.name}),el('span',{text:p.name}),el('em',{class:'phstars',text:(p.flag>0?'⚑ ':p.flag<0?'✕ ':'')+'★'.repeat(p.rating|0)}),el('i',{class:'phtx',title:'Remove from this list','aria-label':'Remove '+p.name,text:'×',onclick:e=>{e.stopPropagation();phRemove(i);}}));strip.append(b);});
   if(!ph.photos.length)strip.append(el('p',{class:'note',text:'Add photos, or drop them on the picture. Click one to edit it.'}));
+  const fsel=el('select',{id:'phFilter','aria-label':'Show',title:'Show only some photos'},...PH_FILTERS.map(([v,t])=>el('option',{value:v,text:t})));fsel.value=ph.filter||'all';fsel.onchange=()=>{ph.filter=fsel.value;phBuildLib();};bar.append(fsel);
   box.append(bar,strip);}
 function phRemove(i){const p=ph.photos[i];if(!p)return;phSidecarFlush();if(p.psrc)disposeTarget(p.psrc);if(p.small)disposeTarget(p.small);ph.photos.splice(i,1);ph.sel.clear();
   if(ph.cur===i){ph.cur=-1;if(ph.photos.length)phSelect(Math.min(i,ph.photos.length-1));else{if(ph.out){disposeTarget(ph.out);ph.out=null;}phBuildPanel();phDirty();}}else if(ph.cur>i)ph.cur--;phBuildLib();}
@@ -56,11 +62,11 @@ function phPaste(toSelected){if(!ph.clip){toast('Copy a photo’s edits first (C
 /* ---- edits saved beside the photo (Lightroom keeps edits next to the photos too) ---- */
 const phScKey=p=>'gs.ph.'+p.name+'.'+(p.file?p.file.size:0);
 async function phSidecarLoad(p){try{let txt=null;if(p.path&&platform.isDesktop){try{const b=await platform.readFile(p.path+'.gphoto');txt=new TextDecoder().decode(b);}catch(e){}}
-    if(!txt)txt=localStorage.getItem(phScKey(p));if(!txt)return;const o=JSON.parse(txt);if(!o||!o.s)return;p.s=phMerge(phDefaults(),o.s);p.snaps=o.snaps||[];p.hist={list:[{label:'Open',s:phClone(phDefaults())},{label:'Saved edits',s:phClone(p.s)}],i:1};
+    if(!txt)txt=localStorage.getItem(phScKey(p));if(!txt)return;const o=JSON.parse(txt);if(!o||!o.s)return;p.s=phMerge(phDefaults(),o.s);p.snaps=o.snaps||[];p.rating=o.r|0;p.flag=o.f|0;setTimeout(phBuildLib,0);p.hist={list:[{label:'Open',s:phClone(phDefaults())},{label:'Saved edits',s:phClone(p.s)}],i:1};
     if(phP()===p){phAfterSet();phRenderHist();}}catch(e){console.warn('edits not read',e);}}
-function phSidecarWrite(p){if(!p)return;const o=JSON.stringify({v:1,app:'Gouache Studio',s:p.s,snaps:p.snaps});const def=JSON.stringify(phDefaults());
-  try{if(JSON.stringify(p.s)===def&&!p.snaps.length){localStorage.removeItem(phScKey(p));}else localStorage.setItem(phScKey(p),o);}catch(e){}
-  if(p.path&&platform.isDesktop&&JSON.stringify(p.s)!==def)platform.writeFile(p.path+'.gphoto',new TextEncoder().encode(o)).catch(()=>{});}
+function phSidecarWrite(p){if(!p)return;const o=JSON.stringify({v:1,app:'Gouache Studio',s:p.s,snaps:p.snaps,r:p.rating|0,f:p.flag|0});const def=JSON.stringify(phDefaults());
+  try{if(JSON.stringify(p.s)===def&&!p.snaps.length&&!p.rating&&!p.flag){localStorage.removeItem(phScKey(p));}else localStorage.setItem(phScKey(p),o);}catch(e){}
+  if(p.path&&platform.isDesktop&&(JSON.stringify(p.s)!==def||p.rating||p.flag))platform.writeFile(p.path+'.gphoto',new TextEncoder().encode(o)).catch(()=>{});}
 let phSCT=0;function phSidecarSoon(){clearTimeout(phSCT);phSCT=setTimeout(()=>phSidecarWrite(phP()),1200);}
 function phSidecarFlush(){clearTimeout(phSCT);if(phP())phSidecarWrite(phP());}
 /* ---- export ---- */

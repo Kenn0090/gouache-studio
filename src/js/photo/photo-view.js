@@ -29,9 +29,11 @@ function phCropUp(){ptr=null;phCommit('Crop');phSidecarSoon();}
 window.addEventListener('keydown',e=>{if(ui.mode!=='photo'||isTypingTarget(e.target)||document.getElementById('modal')&&!document.getElementById('modal').hidden)return;const k=e.key,m=e.ctrlKey||e.metaKey;let used=true;
   if(k==='\\'&&!e.repeat)phShow('before');
   else if(m&&e.shiftKey&&(k==='c'||k==='C'))phCopy();else if(m&&e.shiftKey&&(k==='v'||k==='V'))phPaste(false);
-  else if(!m&&!e.altKey&&k==='ArrowRight')phSelect(ph.cur+1);else if(!m&&!e.altKey&&k==='ArrowLeft')phSelect(ph.cur-1);
+  else if(!m&&!e.altKey&&k==='ArrowRight')phStep(1);else if(!m&&!e.altKey&&k==='ArrowLeft')phStep(-1);
+  else if(!m&&!e.altKey&&!e.shiftKey&&/^[0-5]$/.test(k))phRate(+k);else if(!m&&!e.altKey&&!e.shiftKey&&(k==='p'||k==='P'))phFlag(1);else if(!m&&!e.altKey&&!e.shiftKey&&(k==='x'||k==='X'))phFlag(-1);
   else if(!m&&!e.altKey&&!e.shiftKey&&(k==='c'||k==='C'))phCropToggle();else if(k==='Escape'&&ph.crop)phCropToggle();else if(k==='Enter'&&ph.crop)phCropToggle();
   else if(m&&(k==='o'||k==='O')){phOpenDialog();}
+  else if(!m&&!e.altKey&&(k==='j'||k==='J')){ph.clipWarn=!ph.clipWarn;phDirty();toast(ph.clipWarn?'Clipping shown: red = too bright, blue = too dark':'Clipping hidden');}
   else used=false;if(used){e.preventDefault();e.stopImmediatePropagation();}},true);
 window.addEventListener('keyup',e=>{if(ui.mode==='photo'&&e.key==='\\'){phShow('edit');}},true);
 /* Undo and Redo follow the photo's own history in this tab */

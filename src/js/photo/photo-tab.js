@@ -24,7 +24,7 @@ function phSizeDoc(){const p=phP();if(!p)return;const s=ph.crop?Object.assign({}
 function phUpdate(){const p=phP();if(!p||!p.psrc)return;if(!ph.dirty&&ph.out&&ph.out.w===doc.w&&ph.out.h===doc.h)return;
   if(!ph.out||ph.out.w!==doc.w||ph.out.h!==doc.h){if(ph.out)disposeTarget(ph.out);ph.out=makeTarget(doc.w,doc.h,phDepth(),false);}
   let s=ph.show==='before'?phDefaultsKeepGeo(p.s):p.s;if(ph.crop)s=Object.assign({},s,{geo:Object.assign({},s.geo,{crop:[0,0,1,1]})});
-  phRender(p.psrc,ph.out,s,{seed:p.seed||0,showId:ph.show!=='before'&&ph.lm&&ph.lm.show?ph.lm.sel:null});ph.dirty=false;phHistSoon();}
+  phRender(p.psrc,ph.out,s,{seed:p.seed||0,showId:ph.show!=='before'&&ph.lm&&ph.lm.show?ph.lm.sel:null,clip:!!ph.clipWarn});ph.dirty=false;phHistSoon();}
 /* the original picture keeps its turn and crop; only the edits go */
 function phDefaultsKeepGeo(s){const d=phDefaults();d.geo=phClone(s.geo);return d;}
 function phDirty(){ph.dirty=true;requestRender(true);}
@@ -42,7 +42,7 @@ function phThumb(dec){const S=140,k=Math.min(1,S/Math.max(dec.w,dec.h)),c=docume
     const px=captureRegionNow(sm,0,0,sm.w,sm.h).data,id=new ImageData(sm.w,sm.h);for(let y=0;y<sm.h;y++)for(let xx=0;xx<sm.w;xx++){const i=(y*sm.w+xx)*4,j=(y*sm.w+xx)*4,a=px[i+3]||1;id.data[j]=px[i]*255/a;id.data[j+1]=px[i+1]*255/a;id.data[j+2]=px[i+2]*255/a;id.data[j+3]=255;}x.putImageData(id,0,0);}finally{disposeTarget(t);disposeTarget(sm);}}
   return c.toDataURL('image/jpeg',.82);}
 async function phAddFiles(files){let first=-1;loadStart('Opening photos');try{let k=0;for(const f of files){loadSet(k++/files.length,f.name);
-    try{const dec=await phDecode(f,{quick:true}),p={id:++ph.seq,name:f.name,file:f,path:f.gsPath||null,w:dec.w,h:dec.h,s:phDefaults(),thumb:phThumb(dec),hist:null,snaps:[],seed:ph.seq*7.13,rating:0};
+    try{const dec=await phDecode(f,{quick:true}),p={id:++ph.seq,name:f.name,file:f,path:f.gsPath||null,w:dec.w,h:dec.h,s:phDefaults(),thumb:phThumb(dec),hist:null,snaps:[],seed:ph.seq*7.13,rating:0,flag:0};
       if(dec.bm&&dec.bm.close)dec.bm.close();phSidecarLoad(p);ph.photos.push(p);if(first<0)first=ph.photos.length-1;}
     catch(e){console.warn(e);toast('“'+f.name+'” could not be opened: '+(e.message||e));}await new Promise(r=>setTimeout(r,0));}}finally{loadEnd();}
   phBuildLib();if(first>=0&&(ph.cur<0||ph.cur>=ph.photos.length))await phSelect(first);else if(first>=0)await phSelect(first);}

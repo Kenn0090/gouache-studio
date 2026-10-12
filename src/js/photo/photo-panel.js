@@ -68,7 +68,7 @@ function phGeometry(){const p=phP(),g=p.s.geo;
     el('div',{class:'frow'},el('button',{class:'btn sm'+(ph.crop?' primary':''),id:'phCropBtn',text:ph.crop?'Done cropping':'Crop…',title:'Drag the corners and edges on the photo',onclick:()=>phCropToggle()}),
       el('button',{class:'btn sm',text:'Reset crop',onclick:()=>{const n=phClone(p.s);n.geo.crop=[0,0,1,1];n.geo.aspect='original';phApply(n,'Reset crop');}})),
     el('div',{class:'frow'},el('button',{class:'btn sm',text:'Auto level',title:'Find the horizon or the walls and straighten the picture',onclick:phAutoLevel})),
-    phSl('geo.angle','Straighten',-45,45,.1,{fmt:v=>v.toFixed(1)+'°'}),phSl('geo.vert','Vertical',-100,100,1),phSl('geo.horiz','Horizontal',-100,100,1),phSl('geo.scale','Scale',-50,100,1),
+    phSl('geo.angle','Straighten',-45,45,.1,{fmt:v=>v.toFixed(1)+'°'}),phSl('geo.vert','Vertical',-100,100,1),phSl('geo.horiz','Horizontal',-100,100,1),phSl('geo.dist','Lens distortion',-100,100,1),phSl('geo.ca','Colour fringing',-100,100,1),phSl('geo.scale','Scale',-50,100,1),
     el('div',{class:'frow'},chk('phFH','Flip across',!!g.flipH,v=>phSet('geo.flipH',v,'Flip')),chk('phFV','Flip down',!!g.flipV,v=>phSet('geo.flipV',v,'Flip')),chk('phAuto','Fill the frame',g.auto!==false,v=>phSet('geo.auto',v,'Fill the frame')))];}
 /* the biggest crop of that shape, kept around the middle of the old one */
 function phFitCrop(c,ratio,pr){const cw=c[2]-c[0],ch=c[3]-c[1],cx=(c[0]+c[2])/2,cy=(c[1]+c[3])/2;let w=cw,h=cw*pr/ratio;if(h>ch+1e-6){h=ch;w=ch*ratio/pr;}w=Math.min(w,1);h=Math.min(h,1);

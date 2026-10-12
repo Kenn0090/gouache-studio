@@ -7,7 +7,7 @@ const PH_LADJ=[['exp','Exposure',-5,5,.01],['con','Contrast',-100,100,1],['hi','
 /* where an output position (0..1 over the shown picture) lands on the original, and back (the same steps as the shader) */
 function phFwd(s,ar,zoom,u,v){const g=s.geo,c=g.crop,a=g.angle*Math.PI/180,kx=g.horiz/100*.5,ky=g.vert/100*.5;
   let qx=(c[0]+(c[2]-c[0])*u-.5)*ar/zoom,qy=(c[1]+(c[3]-c[1])*v-.5)/zoom;const ca=Math.cos(a),sa=Math.sin(a),rx=ca*qx+sa*qy,ry=-sa*qx+ca*qy;qx=rx;qy=ry;
-  qx*=1+kx*qy;qy*=1+ky*qx;let sx=qx/ar+.5,sy=qy+.5;if(g.flipH)sx=1-sx;if(g.flipV)sy=1-sy;return [sx,sy];}
+  qx*=1+kx*qy;qy*=1+ky*qx;{const d=(g.dist||0)/100*.6,r2=qx*qx+qy*qy;qx*=1+d*r2;qy*=1+d*r2;}let sx=qx/ar+.5,sy=qy+.5;if(g.flipH)sx=1-sx;if(g.flipV)sy=1-sy;return [sx,sy];}
 function phInv(s,ar,zoom,sx,sy){let u=.5,v=.5;const e=1e-4;
   for(let i=0;i<14;i++){const a=phFwd(s,ar,zoom,u,v),rx=a[0]-sx,ry=a[1]-sy;if(Math.abs(rx)+Math.abs(ry)<1e-7)break;
     const b=phFwd(s,ar,zoom,u+e,v),c=phFwd(s,ar,zoom,u,v+e),j11=(b[0]-a[0])/e,j21=(b[1]-a[1])/e,j12=(c[0]-a[0])/e,j22=(c[1]-a[1])/e,det=j11*j22-j12*j21;if(Math.abs(det)<1e-9)break;
