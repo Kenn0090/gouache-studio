@@ -1,3 +1,9 @@
+# Gouache Studio 0.62.0
+
+- AI upscaler (optional download, File › AI add-ons): make pictures 2x, 4x or 8x bigger. Photo export, Paint (Image › Upscale) and Convert; AI detail slider and a before/after preview.
+- Relight: up to four lights (point, spotlight, sun) with colour, shadows, shine, rim light, a coloured dark side, and ready-made lightings (Golden hour, Studio, Neon and more).
+- Photo presets show a sample picture when no photo is open.
+
 # Gouache Studio 0.61.1
 
 - Photo: Relight no longer shows steps; presets swap instead of piling up, with an Amount slider; 68 presets in total.

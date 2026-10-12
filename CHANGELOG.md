@@ -1,3 +1,10 @@
+## 0.62.0
+
+- **AI upscaler (new optional download, 134 MB).** Make a picture **2×, 4× or 8× bigger** with believable extra detail (Real-ESRGAN, free for any use; it runs on your computer and nothing is sent anywhere). Get it in **File › AI add-ons**. Where to use it: in the **Photo tab**, **Export…** has *Make it bigger (AI)*; in the **Paint tab**, **Image › Upscale (AI)…** opens a bigger copy in a new tab and leaves your document alone; in the **Convert tab**, **Upscale (AI)…** swaps the source for a bigger picture so every map is made at the bigger size. 8× is two passes (4× then 2×). **AI detail** mixes in a plain smooth enlargement (100% is full AI, lower is more natural). **Preview** shows a before/after of the middle of the picture at its real size. Big pictures are done in tiles, the window shows the new size first and warns when it is over the app's limit, and Stop ends the job.
+- **Relight has many more options.** Up to **four lights**, each a **point light**, a **spotlight** (a cone you aim with its small square, with Cone angle and Soft edge) or the **sun** (parallel light; a low sun gives long shadows), each with its own colour. New **Shadows** (things in the picture shade what is behind them), **Shine** with Tightness, **Rim light** on the edges that face the light, and a colour for the dark side. **Ready-made lighting…** sets everything in one click: Golden hour, Window light, Studio (two lights), Spotlight, Moonlight, Sunset rim light, Neon, Candle and Overhead. The Height slider now has the right range (older files still open correctly).
+- **Preset pictures with no photo.** The little pictures in the Photo tab's Presets show a sample scene when no photo is open, instead of empty boxes.
+- Fixed and tidied tests only (no change for you): the 3D Paint layer-list and Shift+F checks follow the current layout.
+
 ## 0.61.1
 
 - **Photo – Relight is smooth.** The stepping (banding) when you move the light is gone: the depth guess is now stored with finer detail and smoothed, and the light always sits above the surface.
