@@ -111,7 +111,7 @@ function dlgExportSheet(){if(!doc.anim){toast('Switch to Animation mode (top rig
   const sel=(id,label,opts,val,fn)=>{const s=el('select',{id,'aria-label':label},...opts.map(([v,t])=>el('option',{value:String(v),text:t})));s.value=String(val);s.addEventListener('change',()=>{fn(s.value);upd();syncGrid();});return [el('label',{for:id,text:label}),s];};
   const numI=(id,label,val,max,fn)=>{const i=el('input',{class:'num',type:'number',min:0,max,value:val,id,'aria-label':label});i.addEventListener('change',()=>{fn(clamp(+i.value||0,0,max));upd();});return [el('label',{for:id,text:label}),i];};
   const rangeOpts=[[-1,'All frames'],...A.tags.map((t,i)=>[i,'Tag: '+t.name])];
-  const expBtns=[el('button',{class:'btn primary',text:'Export sheet',onclick:()=>exportSheet()}),el('button',{class:'btn',text:'PNG sequence',onclick:()=>exportSequence()}),el('button',{class:'btn',text:'GIF',onclick:()=>exportGif()})];
+  const expBtns=[el('button',{class:'btn primary',text:'Export sheet',onclick:()=>exportSheet()}),el('button',{class:'btn',text:'PNG sequence',onclick:()=>exportSequence()}),el('button',{class:'btn',text:'GIF',onclick:()=>exportGif()}),el('button',{class:'btn',text:'Video…',title:'MP4, MOV or WebM',onclick:()=>{clearTimeout(animTimer);closeDialog();setTimeout(dlgExportVideo,0);}})];
   /* (0.41, Kenn) export frame rate and in-between frames (blend or motion) */
   const retimeNote=el('div',{class:'note'});let rtToken=0;
   async function retime(){const my=++rtToken;const rate=exRate(st.rate,A0.fps);

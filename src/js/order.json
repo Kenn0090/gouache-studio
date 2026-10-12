@@ -38,6 +38,7 @@
     "anim/anim-core",
     "anim/anim-ui",
     "anim/anim-io",
+    "anim/anim-video",
     "anim/anim-fx",
     "anim/anim-vfx",
     "anim/anim-vfx-gallery",
