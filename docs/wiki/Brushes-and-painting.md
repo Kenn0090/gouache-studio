@@ -136,3 +136,8 @@ Both Liquify Twirl directions rotate in opposite directions. **Restore** paints 
 ## Precise values beyond slider ranges
 
 Click a slider value, type a number and press Enter or click away to apply it. Escape cancels; an empty entry retains the previous value. The slider thumb keeps its normal drag range while its displayed value retains the number you entered. For example, type 200 for 200% brush spacing. Supported extended controls include spacing, scatter, lazy mouse distance, angle, weld width and ripple spacing, material tiling, bump strength, stencil scale and selected 3D lighting/height and filter strengths. Each retains a practical numeric limit. Opacity, hardness and other bounded controls retain their valid ranges. The top bar and brush panel show the same value.
+
+## Perspective guides (0.59)
+
+View › **Perspective guides…** opens a small window. Choose 1, 2 or 3 vanishing points. The points and a dashed horizon are drawn over the canvas with lines fanning out from each point. Drag a point to move it, or type its place; **Lines** changes how many are drawn. With **Strokes snap to the guide lines** on, a stroke that starts towards a vanishing point is held exactly on the line to it (hold Shift for straight horizontal and vertical lines instead). The guides belong to the document, are saved with it, and Undo covers them.
+
