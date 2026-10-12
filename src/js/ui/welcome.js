@@ -11,7 +11,7 @@ const welcomeOn=()=>!prefs.noWelcome;
 const WELCOME_MODES=[['paint','2D Paint','Paint textures on a flat canvas; the 3D preview is optional','▨'],['photo','Photo','Edit photos like Lightroom','◑'],['p3d','3D Paint','Paint directly on a model with texture sets and materials','◈'],['anim','Animation','Flipbooks and sprite sheets','▶'],
   ['bake','Bake','Bake maps from a high-poly model','◎'],['convert','Convert','Normal, height, AO and more from a photo','◐'],['brush','Brush','Draw your own brush tips','✎']];
 function welcomeGo(m,remember){if(remember){prefs.startMode=m;savePrefs();}closeWelcome();if(ui.mode!==m)setMode(m);}
-function closeWelcome(){const w=document.getElementById('welcome');if(w)w.remove();document.removeEventListener('keydown',welcomeKey,true);}
+function closeWelcome(){const w=document.getElementById('welcome');if(w){w.remove();if(typeof aiOfferOnce==='function')setTimeout(aiOfferOnce,700);}document.removeEventListener('keydown',welcomeKey,true);}
 function welcomeKey(e){if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeWelcome();}}
 async function showWelcome(){closeWelcome();
   const act=(label,sub,id,fn)=>el('button',{class:'wact',id,onclick:()=>{closeWelcome();fn();}},el('b',{text:label}),el('span',{text:sub}));

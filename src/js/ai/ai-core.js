@@ -18,7 +18,7 @@ const AI_PARTS={
   lama:{title:'Remove',use:'Takes an object out of a picture and fills the gap from what is around it.',license:'Apache 2.0',credit:'LaMa by Samsung AI Center, ONNX by Carve',link:'https://huggingface.co/Carve/LaMa-ONNX',
     files:[{n:'lama.onnx',url:AI_HF('Carve/LaMa-ONNX','c3c0c9e468934d62e79c329e35d82dd09ff8c444','lama_fp32.onnx'),size:208044816,sha:'1faef5301d78db7dda502fe59966957ec4b79dd64e16f03ed96913c7a4eb68d6'}]}};
 const AI_ORDER=['engine','sam','depth','lama'];
-const AI={have:{},sess:{},ort:null,ortP:null,busy:null,urlFix:null,dev:null};
+const AI={have:{},sess:{},used:{},ort:null,ortP:null,busy:null,urlFix:null,dev:null};
 const aiMB=b=>b>=1e8?Math.round(b/1e6)+' MB':(b/1e6).toFixed(b<1e7?1:0)+' MB';
 const aiSize=id=>AI_PARTS[id].files.reduce((a,f)=>a+f.size,0);
 /* ---- storage ---- */
@@ -52,10 +52,10 @@ async function aiEngine(){if(AI.ort)return AI.ort;if(AI.ortP)return AI.ortP;
     const ort=await import(js);ort.env.wasm.wasmPaths={mjs,wasm};ort.env.wasm.numThreads=1;ort.env.wasm.proxy=false;ort.env.logLevel='error';AI.ort=ort;return ort;})();
   try{return await AI.ortP;}catch(e){AI.ortP=null;throw e;}}
 /* a model ready to run. Tries the graphics card first, falls back to the processor. */
-async function aiSession(part,file){const key=part+'/'+file;if(AI.sess[key])return AI.sess[key];
+async function aiSession(part,file){const key=part+'/'+file;if(AI.sess[key]){AI.used[key]=Date.now();return AI.sess[key];}
   const ort=await aiEngine(),v=await aiDB.get(key);if(!v)throw new Error('This AI model is not installed. Open File › AI add-ons.');
   const pref=(typeof prefs!=='undefined'&&prefs.aiDevice)||'auto',dev=await aiGPU(),tries=(pref==='cpu'||!dev.gpu)?['wasm']:pref==='gpu'?['webgpu']:['webgpu','wasm'];let err=null;
-  for(const ep of tries){try{const s=await ort.InferenceSession.create(new Uint8Array(v.buf),{executionProviders:[ep],graphOptimizationLevel:'all'});s._ep=ep;AI.sess[key]=s;AI.lastEp=ep;return s;}catch(e){err=e;console.warn('AI: '+ep+' failed for '+key,e);}}
+  for(const ep of tries){try{const s=await ort.InferenceSession.create(new Uint8Array(v.buf),{executionProviders:[ep],graphOptimizationLevel:'all'});s._ep=ep;AI.sess[key]=s;AI.used[key]=Date.now();AI.lastEp=ep;return s;}catch(e){err=e;console.warn('AI: '+ep+' failed for '+key,e);}}
   throw new Error('This AI model could not start: '+((err&&err.message)||err));}
 function aiFree(part){for(const k of Object.keys(AI.sess))if(!part||k.startsWith(part+'/')){try{AI.sess[k].release&&AI.sess[k].release();}catch(e){}delete AI.sess[k];}}
 /* run with the loading bar showing */
@@ -65,3 +65,6 @@ async function aiBusy(label,fn){if(AI.busy)throw new Error('Another AI job is st
 function aiPixels(t,maxSide){const k=Math.min(1,maxSide/Math.max(t.w,t.h)),w=Math.max(2,Math.round(t.w*k)),h=Math.max(2,Math.round(t.h*k));let src=t,tmp=null;
   if(k<1){tmp=makeTarget(w,h,8,false);run(P.resample,tmp,{uSrc:t.tex,uOffset:[0,0],uScale:[t.w/w,t.h/h],uTaps:{int:Math.min(8,Math.max(1,Math.ceil(t.w/w)))}});src=tmp;}
   try{const d=captureRegionNow(src,0,0,src.w,src.h).data,out=new Uint8ClampedArray(w*h*4);for(let i=0;i<w*h;i++){const a=d[i*4+3]||0;if(a>0){const m=255/a;out[i*4]=Math.min(255,d[i*4]*m);out[i*4+1]=Math.min(255,d[i*4+1]*m);out[i*4+2]=Math.min(255,d[i*4+2]*m);out[i*4+3]=a;}}return {w,h,data:out};}finally{if(tmp)disposeTarget(tmp);}}
+
+/* models not used for a few minutes give their memory back */
+setInterval(()=>{const now=Date.now();for(const k of Object.keys(AI.sess))if(!AI.busy&&now-(AI.used[k]||0)>180000){try{AI.sess[k].release&&AI.sess[k].release();}catch(e){}delete AI.sess[k];}},30000);

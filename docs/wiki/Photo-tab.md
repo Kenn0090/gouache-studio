@@ -14,6 +14,9 @@ Your original file is never changed. The edits are small settings saved beside i
 
 ## Develop panel
 - **Basic**: Auto tone, White balance (Temperature, Tint), Tone (Exposure, Contrast, Highlights, Shadows, Whites, Blacks), Presence (Texture, Clarity, Dehaze, Vibrance, Saturation), Black & white. Double-click a slider's name to reset it; the ↺ button on a section resets the whole section.
+- **AI tools** (needs the [AI add-ons](AI-add-ons.md)): **Select subject…** and **Select sky** make masks.
+- **Lens blur** and **Relight** (AI add-on: Depth): blur by distance, or add a light to the picture.
+- **Remove** (AI add-on): paint over something and it is filled from what is around it.
 - **Spot removal**: press *Remove spots…*, click a blemish. The patch is copied from a clean place nearby (picked for you; drag the dashed circle to choose another) and either **Healed** (matched to the light around it) or **Cloned**. Size, Feather and Opacity can be changed.
 - **Masks**: change one part of the picture only. See below.
 - **Tone curve**: all channels or red, green, blue. Click to add points, drag them; right-click (or double-click) a point to remove it.
@@ -59,4 +62,4 @@ Add a mask with **Linear**, **Radial** or **Brush**, then use its sliders (Expos
 | Ctrl+Shift+C / V | Copy / paste edits |
 
 ## Credits
-RAW files are read with [LibRaw](https://www.libraw.org) through the `libraw-wasm` package (LGPL 2.1 / CDDL 1.0 and ISC). Not yet in this tab: panoramas, HDR merge, AVIF and JPEG XL export, and the optional AI features (subject and sky selection, Remove, Relight, Lens Blur).
+RAW files are read with [LibRaw](https://www.libraw.org) through the `libraw-wasm` package (LGPL 2.1 / CDDL 1.0 and ISC). Not yet in this tab: panoramas, HDR merge, AVIF and JPEG XL export. The AI features are described in [AI add-ons](AI-add-ons.md).
