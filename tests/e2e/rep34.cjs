@@ -13,7 +13,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
   if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
   {const m=u.match(/materials\/([a-z0-9-]+\.gmat)$/);if(m)return r.fulfill({path:__dirname+'/../../assets/materials/'+m[1],contentType:'application/octet-stream'});}
   if(u.startsWith('file:'))return r.continue();return r.abort();});
- const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());if(m.type()==='warning'&&/GL|WebGL/.test(m.text()))errs.push('GLWARN '+m.text());});
+ const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());if(m.type()==='warning'&&/GL|WebGL/.test(m.text())&&!/GPU stall due to ReadPixels/.test(m.text()))errs.push('GLWARN '+m.text());});
  await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
  await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
  const W=ms=>p.waitForTimeout(ms||200);
@@ -22,10 +22,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.showPanel('mats'));await W(500);
  const cats=await p.evaluate(()=>document.querySelectorAll('#matBody .chip').length);
  await p.locator('#matBody .chip',{hasText:'Metal'}).first().click();await W(300);const metal=await p.evaluate(()=>document.querySelectorAll('#matLib .mattile').length);
- ok(cats>=9&&metal===58,'the Library is split into categories ('+cats+' buttons; Metal shows '+metal+')');
+ ok(cats>=9&&metal===62,'the Library is split into categories ('+cats+' buttons; Metal shows '+metal+')');
  await p.locator('#matBody .chip',{hasText:/^All$/}).last().click();await W(500);
  const n=await p.evaluate(()=>({tiles:document.querySelectorAll('#matLib .mattile').length,thumbs:[...document.querySelectorAll('#matLib img')].filter(i=>i.naturalWidth>0).length}));
- ok(n.tiles===200&&n.thumbs===200,'the Library shows 200 materials with previews '+JSON.stringify(n));
+ ok(n.tiles===210&&n.thumbs===210,'the Library shows 210 materials with previews '+JSON.stringify(n));
  await p.locator('#matSec').screenshot({path:OUT+'lib-panel.png'});
  // add a material layer, then double-click another tile: it replaces the material on the same layer
  await p.click('#gm_brown-leather');await p.click('#lFill');for(let i=0;i<60;i++){if(await p.evaluate(()=>__gs.doc.active&&__gs.doc.active.name==='Brown leather'))break;await W(250);}

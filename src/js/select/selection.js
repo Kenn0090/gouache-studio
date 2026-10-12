@@ -76,7 +76,7 @@ function rasterPoly(pts,dst,aa){clearTarget(dst,[0,0,0,1]);if(pts.length<6)retur
     for(const [ox,oy] of copies){if(bb[0]+ox>=cx+cw||bb[2]+ox<=cx||bb[1]+oy>=cy+ch||bb[3]+oy<=cy)continue;
       /* toggle-fill: every covered sample flips 0 <-> 1, which gives even-odd filling for any polygon */
       gl.bindFramebuffer(gl.FRAMEBUFFER,useMs?R.msFbo:R.fbo);gl.viewport(0,0,cw,ch);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.useProgram(P.poly.p);gl.uniform2f(gl.getUniformLocation(P.poly.p,'uOrigin'),cx-ox,cy-oy);gl.uniform2f(gl.getUniformLocation(P.poly.p,'uSize'),cw,ch);
+      progOk(P.poly);gl.useProgram(P.poly.p);gl.uniform2f(gl.getUniformLocation(P.poly.p,'uOrigin'),cx-ox,cy-oy);gl.uniform2f(gl.getUniformLocation(P.poly.p,'uSize'),cw,ch);
       gl.enable(gl.BLEND);gl.blendEquation(gl.FUNC_ADD);gl.blendFunc(gl.ONE_MINUS_DST_COLOR,gl.ZERO);
       gl.bindVertexArray(R.vao2);gl.drawArrays(gl.TRIANGLE_FAN,0,n);gl.bindVertexArray(vao);gl.disable(gl.BLEND);
       if(useMs){gl.bindFramebuffer(gl.READ_FRAMEBUFFER,R.msFbo);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,R.fbo);gl.blitFramebuffer(0,0,cw,ch,0,0,cw,ch,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}

@@ -4,20 +4,26 @@ let tipSeq=0;
 function downscaleAlpha(a,w,h,W,H){const out=new Uint8Array(W*H),sx=w/W,sy=h/H;
   for(let y=0;y<H;y++){const y0=Math.floor(y*sy),y1=Math.max(y0+1,Math.floor((y+1)*sy));for(let x=0;x<W;x++){const x0=Math.floor(x*sx),x1=Math.max(x0+1,Math.floor((x+1)*sx));let sum=0,n=0;
     for(let yy=y0;yy<y1&&yy<h;yy++)for(let xx=x0;xx<x1&&xx<w;xx++){sum+=a[yy*w+xx];n++;}out[y*W+x]=n?Math.round(sum/n):0;}}return out;}
-function makeTip(name,w,h,alpha,nearest=false){
-  let W=w,H=h,A=alpha;const mx=Math.max(w,h);
-  if(mx>1024){const s=1024/mx;W=Math.max(1,Math.round(w*s));H=Math.max(1,Math.round(h*s));A=downscaleAlpha(alpha,w,h,W,H);}
-  const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
+/* A tip's picture, its graphics-card texture and its preview canvas are made the first time they are needed (hundreds of tips are
+   built at start-up, and most are never looked at). `gen` makes the grey picture on demand (the drawn tips). */
+function tipTexture(A,W,H,nearest){const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
   gl.texImage2D(gl.TEXTURE_2D,0,gl.R8,W,H,0,gl.RED,gl.UNSIGNED_BYTE,A);gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);gl.generateMipmap(gl.TEXTURE_2D);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,nearest?gl.NEAREST_MIPMAP_NEAREST:gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,nearest?gl.NEAREST:gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
-  const c=document.createElement('canvas');c.width=W;c.height=H;const cx=c.getContext('2d'),id=cx.createImageData(W,H);
-  for(let i=0;i<A.length;i++){id.data[i*4]=255;id.data[i*4+1]=255;id.data[i*4+2]=255;id.data[i*4+3]=A[i];}cx.putImageData(id,0,0);
-  return {id:'t'+(++tipSeq),name,w:W,h:H,alpha:A,tex,canvas:c};
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return tex;}
+function tipCanvas(A,W,H){const c=document.createElement('canvas');c.width=W;c.height=H;const cx=c.getContext('2d'),id=cx.createImageData(W,H),d=id.data;
+  for(let i=0;i<A.length;i++){d[i*4]=255;d[i*4+1]=255;d[i*4+2]=255;d[i*4+3]=A[i];}cx.putImageData(id,0,0);return c;}
+function makeTip(name,w,h,alpha,nearest=false,gen=null){
+  let W=w,H=h,A=alpha||null;const mx=Math.max(w,h);
+  if(A&&mx>1024){const s=1024/mx;W=Math.max(1,Math.round(w*s));H=Math.max(1,Math.round(h*s));A=downscaleAlpha(alpha,w,h,W,H);}
+  const t={id:'t'+(++tipSeq),name,w:W,h:H,_A:A,_gen:gen,_tex:undefined,_cv:null,_nearest:nearest};
+  Object.defineProperty(t,'alpha',{get(){if(!this._A&&this._gen){this._A=this._gen();this._gen=null;}return this._A;},set(v){this._A=v;},enumerable:true,configurable:true});
+  Object.defineProperty(t,'tex',{get(){if(this._tex===undefined)this._tex=tipTexture(this.alpha,this.w,this.h,this._nearest);return this._tex;},set(v){this._tex=v;},enumerable:true,configurable:true});
+  Object.defineProperty(t,'canvas',{get(){if(!this._cv)this._cv=tipCanvas(this.alpha,this.w,this.h);return this._cv;},set(v){this._cv=v;},enumerable:true,configurable:true});
+  return t;
 }
-function disposeTip(t){if(t&&t.tex){gl.deleteTexture(t.tex);t.tex=null;}}
-function genTip(name,w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#fff';x.strokeStyle='#fff';
-  draw(x,w,h,rng(name.length*7919+w));const d=x.getImageData(0,0,w,h).data;const a=new Uint8Array(w*h);for(let i=0;i<a.length;i++)a[i]=d[i*4+3];return makeTip(name,w,h,a);}
+function disposeTip(t){if(t&&t._tex){gl.deleteTexture(t._tex);}if(t)t._tex=null;}
+function genTip(name,w,h,draw){return makeTip(name,w,h,null,false,()=>{const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.fillStyle='#fff';x.strokeStyle='#fff';
+  draw(x,w,h,rng(name.length*7919+w));const d=x.getImageData(0,0,w,h).data;const a=new Uint8Array(w*h);for(let i=0;i<a.length;i++)a[i]=d[i*4+3];return a;});}
 const TIPS={
   pixel:makeTip('Pixel square',16,16,new Uint8Array(256).fill(255),true),
   square:genTip('Square brush',128,128,(x,w,h)=>x.fillRect(8,8,w-16,h-16)),
@@ -128,14 +134,16 @@ function loadUserBrushAssets(){
     c.width=Math.max(1,Math.round(bmp.width*scale));c.height=Math.max(1,Math.round(bmp.height*scale));
     const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bmp,0,0,c.width,c.height);bmp.close?.();
     const d=x.getImageData(0,0,c.width,c.height).data;let x0=c.width,y0=c.height,x1=-1,y1=-1;
-    const lum=(i)=>Math.round((d[i]*.2126+d[i+1]*.7152+d[i+2]*.0722)*d[i+3]/255),full=new Uint8Array(c.width*c.height);
-    for(let y=0;y<c.height;y++)for(let xx=0;xx<c.width;xx++){const v=lum((y*c.width+xx)*4);full[y*c.width+xx]=v;if(v>8){x0=Math.min(x0,xx);y0=Math.min(y0,y);x1=Math.max(x1,xx);y1=Math.max(y1,y);}}
+    const cw=c.width,ch=c.height,full=new Uint8Array(cw*ch);
+    for(let y=0;y<ch;y++){let rx0=cw,rx1=-1;for(let xx=0,i=y*cw*4,o=y*cw;xx<cw;xx++,i+=4,o++){const v=((d[i]*54+d[i+1]*183+d[i+2]*19)*d[i+3]+32640)/65280|0;full[o]=v;if(v>8){if(xx<rx0)rx0=xx;if(xx>rx1)rx1=xx;}}
+      if(rx1>=0){if(rx0<x0)x0=rx0;if(rx1>x1)x1=rx1;if(y<y0)y0=y;if(y>y1)y1=y;}}
     if(x1<0)continue;const pad=3;x0=Math.max(0,x0-pad);y0=Math.max(0,y0-pad);x1=Math.min(c.width-1,x1+pad);y1=Math.min(c.height-1,y1+pad);
     const w=x1-x0+1,h=y1-y0+1,alpha=new Uint8Array(w*h);
     for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++)alpha[y*w+xx]=full[(y+y0)*c.width+xx+x0];
     const tip=makeTip(a.name,w,h,alpha),p={name:a.name,tool:'brush',tip,size:a.size,hardness:.95,spacing:a.spacing,followDir:a.followDir,
       angleJitter:a.angleJitter||0,sizeJitter:a.sizeJitter||0,grain:a.grain||0,pSize:false,pOpacity:true,smoothing:.12,_userAsset:true};
     loaded.push(p);
+    await new Promise(r=>setTimeout(r,0));/* let the page breathe between brushes */
   }catch(e){console.warn('Could not load bundled brush '+a.file,e);}
   if(loaded.length){library[0].presets.push(...loaded);renderLibrary();}
   })();return userBrushLoadPromise;

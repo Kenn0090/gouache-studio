@@ -268,7 +268,7 @@ function dkMove(id,to){const L=dk.L;dkRemove(id);
   if(!L.groups.some(g=>g.tabs.length)&&!to.group&&to.newGroup==null&&to.newGroup2==null&&!to.edge&&L.icons.length===0)L.groups.push({tabs:[],f:1});
   dkApply(L,true);}
 /* show a panel (Window menu, tests): brings it back into the dock and to the front */
-function showPanel(id){if(id==='tool'&&ui.mode!=='p3d')id='brushes';const L=dk.L;if(dkCol2On()&&dkC2Has(id)){const g2=dk.col2.groups.find(g=>g.tabs.includes(id));if(g2){g2.active=id;g2.min=false;dkRender();return;}}let g=dkAllGroups().find(g=>g.tabs.includes(id));const f=L.floats.find(f=>f.tabs.includes(id));
+function showPanel(id){if((id==='mats'||id==='decals'||id==='envs')&&typeof ensureP3Lists==='function')ensureP3Lists();if(id==='tool'&&ui.mode!=='p3d')id='brushes';const L=dk.L;if(dkCol2On()&&dkC2Has(id)){const g2=dk.col2.groups.find(g=>g.tabs.includes(id));if(g2){g2.active=id;g2.min=false;dkRender();return;}}let g=dkAllGroups().find(g=>g.tabs.includes(id));const f=L.floats.find(f=>f.tabs.includes(id));
   if(f){f.active=id;dkRender();return;}if(!g&&L.shelf&&L.shelf.tabs.includes(id)){L.shelf.active=id;L.shelf.min=false;if(L.fold&&L.fold.shelf){L.fold.shelf=false;dkGrid();}dkRender();dkSave();return;}if(L.icons.includes(id)){dkFlyout(id);return;}
   if(!g){L.hidden=L.hidden.filter(t=>t!==id);const home=WS_PRESETS.painting.groups.findIndex(x=>x.tabs.includes(id));g=L.groups.find(x=>x.tabs.some(t=>(WS_PRESETS.painting.groups[home]||{tabs:[]}).tabs.includes(t)));
     if(g)g.tabs.push(id);else{g={tabs:[id],f:1};L.groups.push(g);}}

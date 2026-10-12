@@ -1,14 +1,30 @@
 /* ================= Photo tab: depth map, Lens blur, Relight (0.61) =================
    The depth map is made once per photo (File › AI add-ons: Depth) and saved with the photo's edits. Lens blur blurs by distance from
    the focus you pick; Relight puts a light on the picture and shades it like a surface made from the depth map. */
-function phDepthTex(p){if(!p||!p.depth)return null;const d=p.depth;if(p._dtex&&p._dv===d.v)return p._dtex;if(!p._dtex)p._dtex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,p._dtex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
-  gl.texImage2D(gl.TEXTURE_2D,0,gl.R8,d.w,d.h,0,gl.RED,gl.UNSIGNED_BYTE,d.data);gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);
-  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);p._dv=d.v;return p._dtex;}
+/* The depth map goes to the graphics card as a smooth float picture, and a pass turns it into slopes at the size of the preview
+   (red, green = how steeply the depth changes across and down, blue = depth). Sampling it in the shaders is smooth, so lighting has
+   no steps (the old 8-bit map made terraces). */
+const FS_PHSLOPE=`uniform sampler2D uD; uniform vec2 uSz; uniform vec2 uDsz; uniform float uAr;
+vec4 cubic(float v){ vec4 n=vec4(1.0,2.0,3.0,4.0)-v; vec4 s=n*n*n; float x=s.x; float y=s.y-4.0*s.x; float z=s.z-4.0*s.y+6.0*s.x; float w=6.0-x-y-z; return vec4(x,y,z,w)*(1.0/6.0); }
+float bic(vec2 uv){ vec2 tc=uv*uDsz-.5; vec2 fx=fract(tc); vec2 base=floor(tc)+.5; vec4 cx=cubic(fx.x), cy=cubic(fx.y);
+  vec4 c=base.xxyy+vec2(-.5,1.5).xyxy; vec4 s=vec4(cx.xz+cx.yw,cy.xz+cy.yw); vec4 off=c+vec4(cx.yw,cy.yw)/s;
+  float a=texture(uD,vec2(off.x,off.z)/uDsz).r, b=texture(uD,vec2(off.y,off.z)/uDsz).r, cc=texture(uD,vec2(off.x,off.w)/uDsz).r, d=texture(uD,vec2(off.y,off.w)/uDsz).r;
+  float sx=s.x/(s.x+s.y), sy=s.z/(s.z+s.w); return mix(mix(d,cc,sx),mix(b,a,sx),sy); }
+void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec2 h=1.5/uDsz; float d0=bic(uv);
+  float ddx=(bic(uv+vec2(h.x,0.0))-bic(uv-vec2(h.x,0.0)))/(2.0*h.x*uAr), ddy=(bic(uv+vec2(0.0,h.y))-bic(uv-vec2(0.0,h.y)))/(2.0*h.y);
+  o=vec4(ddx,ddy,d0,1.0); }`;
+let phSlopeProg=null;
+function phDepthTex(p){if(!p||!p.depth)return null;const d=p.depth;if(p._dtex&&p._dv===d.v&&p._dpx===p.pw)return p._dtex;
+  const raw=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,raw);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);gl.texImage2D(gl.TEXTURE_2D,0,gl.R16F,d.w,d.h,0,gl.RED,gl.FLOAT,d.f);gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  if(!phSlopeProg)phSlopeProg=program(FS_PHSLOPE);const W=Math.max(256,Math.min(2048,d.w*3)),H=Math.max(2,Math.round(W*d.h/d.w));
+  if(p._dtarget)disposeTarget(p._dtarget);const t=p._dtarget=makeTarget(W,H,16,false);run(phSlopeProg,t,{uD:raw,uSz:[W,H],uDsz:[d.w,d.h],uAr:p.pw/p.ph});gl.deleteTexture(raw);
+  p._dtex=t.tex;p._dv=d.v;p._dpx=p.pw;return p._dtex;}
 async function phDepthEnsure(){const p=phP();if(!p||!p.psrc)return false;if(p.depth)return true;if(phAiNeed(['engine','depth']))return false;
-  try{await aiBusy('Measuring depth',async prog=>{const img=aiPixels(p.psrc,1024);prog(.2);const d=await aiDepthRun(img);d.v=1;p.depth=d;});phDirty();return true;}
+  try{await aiBusy('Measuring depth',async prog=>{const img=aiPixels(p.psrc,1024);prog(.2);const d=await aiDepthRun(img);d.f=aiBlurFloat(d.f,d.w,d.h,1.5);d.v=1;p.depth=d;});phDirty();return true;}
   catch(err){console.warn(err);toast('The depth map failed: '+(err.message||err));return false;}}
 /* the depth map's value (0..100) under a point on the shown picture */
-function phDepthAt(ix,iy){const p=phP(),M=phMapper();if(!p||!p.depth||!M)return null;const sp=M.fwd(ix/doc.w,iy/doc.h),d=p.depth,x=clamp(Math.floor(sp[0]*d.w),0,d.w-1),y=clamp(Math.floor(sp[1]*d.h),0,d.h-1);return d.data[y*d.w+x]/255*100;}
+function phDepthAt(ix,iy){const p=phP(),M=phMapper();if(!p||!p.depth||!M)return null;const sp=M.fwd(ix/doc.w,iy/doc.h),d=p.depth,x=clamp(Math.floor(sp[0]*d.w),0,d.w-1),y=clamp(Math.floor(sp[1]*d.h),0,d.h-1);return d.f[y*d.w+x]*100;}
 async function phLensOn(v){const s=phS();if(v&&!(await phDepthEnsure()))return;s.lens.on=v;phCommit('Lens blur');phBuildPanel();phDirty();}
 async function phRelightOn(v){const s=phS();if(v&&!(await phDepthEnsure()))return;s.relight.on=v;phCommit('Relight');phBuildPanel();phDirty();drawXfOverlay();}
 function phDSl(obj,key,label,min,max,step,hist,fmt){const sl=makeSlider({id:'phd_'+key,label,min,max,step,value:obj[key],fmt:fmt||(v=>Math.round(v)),onInput:v=>{obj[key]=v;phDirty();drawXfOverlay();phHistLater(hist);},onChange:v=>{obj[key]=v;phDirty();drawXfOverlay();phHistLater(hist);}});return sl.el;}
@@ -32,5 +48,8 @@ function phRelightDown(e,ix,iy){const s=phS();if(!s||!s.relight||!s.relight.on||
   if(Math.hypot(e.clientX-r.left-sp[0],e.clientY-r.top-sp[1])>16)return false;ptr={mode:'phrl',id:e.pointerId,M};return true;}
 function phRelightMove(ix,iy){const R=phS().relight,sp=ptr.M.fwd(ix/doc.w,iy/doc.h);R.x=clamp(sp[0],-.2,1.2);R.y=clamp(sp[1],-.2,1.2);phDirty();drawXfOverlay();}
 function phRelightUp(){ptr=null;phCommit('Move light');phSidecarSoon();drawXfOverlay();}
-function phDepthPack(p){if(!p.depth)return null;const d=p.depth;if(!d.png||d.pngV!==d.v){const c=document.createElement('canvas');c.width=d.w;c.height=d.h;const x=c.getContext('2d'),id=x.createImageData(d.w,d.h);for(let i=0;i<d.w*d.h;i++){id.data[i*4]=id.data[i*4+1]=id.data[i*4+2]=d.data[i];id.data[i*4+3]=255;}x.putImageData(id,0,0);d.png=c.toDataURL('image/png');d.pngV=d.v;}return d.png;}
-async function phDepthUnpack(p,png){if(!png||p.depth)return;try{const bm=await createImageBitmap(await (await fetch(png)).blob()),c=new OffscreenCanvas(bm.width,bm.height),x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bm,0,0);const d=x.getImageData(0,0,bm.width,bm.height).data,data=new Uint8Array(bm.width*bm.height);for(let i=0;i<data.length;i++)data[i]=d[i*4];p.depth={w:bm.width,h:bm.height,data,v:1,png};phDirty();}catch(e){console.warn('depth not read',e);}}
+function phDepthPack(p){if(!p.depth)return null;const d=p.depth;if(!d.png||d.pngV!==d.v){const c=document.createElement('canvas');c.width=d.w;c.height=d.h;const x=c.getContext('2d'),id=x.createImageData(d.w,d.h);for(let i=0;i<d.w*d.h;i++){const v=Math.round(clamp(d.f[i],0,1)*65535);id.data[i*4]=v>>8;id.data[i*4+1]=v&255;id.data[i*4+2]=0;id.data[i*4+3]=255;}x.putImageData(id,0,0);d.png=c.toDataURL('image/png');d.pngV=d.v;}return d.png;}
+/* new files keep 16 bits (two bytes in red and green); files from 0.61.0 hold 8-bit grey, which is blurred a little to lose its steps */
+async function phDepthUnpack(p,png,old){if(!png||p.depth)return;try{const bm=await createImageBitmap(await (await fetch(png)).blob()),c=new OffscreenCanvas(bm.width,bm.height),x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bm,0,0);const d=x.getImageData(0,0,bm.width,bm.height).data,n=bm.width*bm.height,f=new Float32Array(n),u8=new Uint8Array(n);
+  for(let i=0;i<n;i++){f[i]=old?d[i*4]/255:((d[i*4]<<8)|d[i*4+1])/65535;u8[i]=Math.round(f[i]*255);}
+  p.depth={w:bm.width,h:bm.height,data:u8,f:old?aiBlurFloat(f,bm.width,bm.height,2):f,v:1,png:old?null:png};phDirty();}catch(e){console.warn('depth not read',e);}}

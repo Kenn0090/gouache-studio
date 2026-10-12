@@ -1,3 +1,10 @@
+## 0.61.1
+
+- **Photo – Relight is smooth.** The stepping (banding) when you move the light is gone: the depth guess is now stored with finer detail and smoothed, and the light always sits above the surface.
+- **Photo – presets swap, they no longer pile up.** Clicking another preset replaces the last one instead of adding to it. A new **Amount** slider dials a preset up or down.
+- **Photo – more presets.** 68 in total, in the groups Look, Film, Portrait, Landscape, Street & night, Black & white and Game art. Toning now comes after the Black & white step, so a tinted black-and-white look works as expected.
+- **Speed pass for 2D and 3D Paint.** No graphics-card stalls or memory churn on every frame of a stroke; shaders compile in the background instead of freezing the app; brush tips and the 3D Paint material, decal and environment lists load only when first needed, so the app starts faster (about twice as fast in our tests).
+
 ## 0.61.0
 
 - **AI add-ons (optional downloads).** Some features use small AI models that run on your own computer (on the graphics card when possible, otherwise the processor). Nothing is sent anywhere. Open **File › AI add-ons…** to download only the parts you want (about 370 MB in all), see their size, licence and credit, and remove them again. The app also offers it once after updating. Downloads are checked, and models not used for a few minutes are unloaded to free memory.

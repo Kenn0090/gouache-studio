@@ -1,3 +1,8 @@
+# Gouache Studio 0.61.1
+
+- Photo: Relight no longer shows steps; presets swap instead of piling up, with an Amount slider; 68 presets in total.
+- Faster 2D and 3D Paint: smoother strokes, background shader compile, quicker start-up.
+
 # Gouache Studio 0.61.0
 
 - AI add-ons (optional downloads, run on your computer): File › AI add-ons…
