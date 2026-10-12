@@ -25,3 +25,17 @@ function phAutoTone(){const p=phP();if(!p||!p.psrc)return;const sm=phSmall(p.psr
   n.hi=-Math.round(Math.max(0,Math.min(60,(hi90-.82)*250)));n.sh=Math.round(Math.max(0,Math.min(60,(.2-lo10)*250)));
   n.con=Math.round(Math.max(-10,Math.min(30,(.6-(hi99-lo01))*60)));
   phApply(n,'Auto tone');}
+/* Auto upright: fit how near-vertical lines lean against their position (a keystone), and the same for near-horizontal lines */
+function phUprightFit(g,w,h){const ar=w/h,V={n:0,sx:0,sy:0,sxx:0,sxy:0},Hh={n:0,sx:0,sy:0,sxx:0,sxy:0};
+  const add=(A,wt,x,y)=>{A.n+=wt;A.sx+=wt*x;A.sy+=wt*y;A.sxx+=wt*x*x;A.sxy+=wt*x*y;};
+  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const i=y*w+x,gx=(g[i+1]-g[i-1])*2+(g[i-w+1]-g[i-w-1])+(g[i+w+1]-g[i+w-1]),gy=(g[i+w]-g[i-w])*2+(g[i+w-1]-g[i-w-1])+(g[i+w+1]-g[i-w+1]),m=Math.hypot(gx,gy);if(m<.3)continue;
+    const X=(x/w-.5)*ar,Y=y/h-.5;
+    if(Math.abs(gx)>Math.abs(gy)*2.8){const slope=-gy/gx;if(Math.abs(slope)<.4)add(V,m,X,slope);}   /* near-vertical lines: dx/dy against X */
+    else if(Math.abs(gy)>Math.abs(gx)*2.8){const slope=-gx/gy;if(Math.abs(slope)<.4)add(Hh,m,Y,slope);}} /* near-horizontal lines: dy/dx against Y */
+  const fit=A=>{if(A.n<5)return null;const mx=A.sx/A.n,my=A.sy/A.n,vx=A.sxx/A.n-mx*mx;return {a:my-(vx>1e-6?(A.sxy/A.n-mx*my)/vx*mx:0),k:vx>1e-6?(A.sxy/A.n-mx*my)/vx:0,n:A.n};};
+  return {v:fit(V),h:fit(Hh)};}
+function phAutoUpright(mode){const p=phP();if(!p||!p.psrc)return;const sm=phSmall(p.psrc,360),F=phUprightFit(sm.g,sm.w,sm.h);if(!F.v&&!F.h){toast('No clear lines to straighten here.');return;}
+  const n=phClone(p.s),g=n.geo,deg=180/Math.PI,rots=[];if(F.h)rots.push(Math.atan(F.h.a)*deg);if(F.v)rots.push(-Math.atan(F.v.a)*deg);
+  const rot=rots.reduce((a,b)=>a+b,0)/rots.length;g.angle=Math.max(-45,Math.min(45,Math.round((g.angle-rot)*10)/10));
+  if(mode!=='level'){if(F.v)g.horiz=Math.max(-100,Math.min(100,Math.round(F.v.k*200)));if(mode==='full'&&F.h)g.vert=Math.max(-100,Math.min(100,Math.round(F.h.k*200)));}
+  phApply(n,mode==='level'?'Auto level':mode==='full'?'Auto upright (full)':'Auto upright');}
