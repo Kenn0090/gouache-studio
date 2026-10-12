@@ -61,8 +61,8 @@ function insertNode(n,parent,i){n.parent=parent;const c=parent.children;c.splice
 function detachNode(n){const p=n.parent;if(!p)return -1;const i=p.children.indexOf(n);if(i>=0)p.children.splice(i,1);return i;}
 function allLayers(g,out){g=g||doc.root;out=out||[];for(const n of g.children){if(n.type==='group')allLayers(n,out);else out.push(n);}return out;}
 function allNodes(g,out){g=g||doc.root;out=out||[];for(const n of g.children){out.push(n);if(n.type==='group')allNodes(n,out);}return out;}
-function inDoc(n){if(n&&n.frame)return !!(doc.anim&&doc.anim.frames.includes(n));const roots=[doc.root,doc.paintRoot].filter(Boolean);let c=n;
-  while(c&&!roots.includes(c)){const p=c.parent;if(!p||!p.children.includes(c))return false;c=p;}return roots.includes(c);}
+function inDoc(n){if(n&&n.frame)return !!(doc.anim&&doc.anim.frames.includes(n));if(n&&n.shared&&doc.anim&&doc.anim.frames.some(F=>F.children.includes(n)))return true;const roots=[doc.root,doc.paintRoot].filter(Boolean);let c=n;
+  while(c&&!roots.includes(c)){if(c.frame)return !!(doc.anim&&doc.anim.frames.includes(c));const p=c.parent;if(!p||!p.children.includes(c))return false;c=p;}return roots.includes(c);}
 function isAncestor(a,n){let c=n.parent;while(c){if(c===a)return true;c=c.parent;}return false;}
 function activeLayer(){return isLayer(doc.active)?doc.active:null;}
 function makeMask(fill,mono){const m={target:makeTarget(doc.w,doc.h,doc.depth,false,false,!!mono),enabled:true,thumb:thumbCanvas()};m.thumb.className='mthumb';clearTarget(m.target,[fill,fill,fill,1]);return m;}
@@ -89,7 +89,7 @@ function structOp(label,fn){if(typeof pathFlush==='function')pathFlush();const b
 function dropRecords(list){const cands=new Set(),mc=new Set();for(const r of list){r.drop&&r.drop();for(const s of r.snaps||[])if(s.file)platform.spillDelete(s.file);for(const n of r.refs||[])cands.add(n);for(const m of r.masks||[])mc.add(m);}
   const live=new Set(),liveM=new Set();for(const r of [...hist.undo,...hist.redo]){for(const n of r.refs||[]){live.add(n);if(n.mask)liveM.add(n.mask);}for(const m of r.masks||[])liveM.add(m);}
   for(const n of [...allNodes(doc.root),...(doc.paintRoot?allNodes(doc.paintRoot):[])])if(n.mask)liveM.add(n.mask);
-  for(const n of cands)if(!live.has(n)&&!inDoc(n)){disposeLayer(n);if(n.mask)liveM.delete(n.mask);}
+  for(const n of cands)if(!live.has(n)&&!inDoc(n)){if(n.frame&&n.children)for(const c of allNodes(n))if(!live.has(c)&&!inDoc(c)){disposeLayer(c);if(c.mask)liveM.delete(c.mask);}disposeLayer(n);if(n.mask)liveM.delete(n.mask);}
   for(const m of mc)if(!liveM.has(m))maskDispose(m);}
 /* Memory and disk (Edit › Preferences), like Photoshop's memory limit and scratch disk.
    Undo snapshots stay in RAM while they and the loaded models fit within the memory limit. Beyond it the
@@ -141,7 +141,7 @@ function withMapParts(r,L,parts,x,y){const u=r.undo,re=r.redo;r.snaps=[...r.snap
   r.redo=function(){re.call(this);for(const p of parts){const t=mapT(L,p.k);if(t&&!t.empty)restoreRegion(p.after,t,x,y);}};return r;}
 /* undoing a step from the other mode switches to it; a step on another frame shows that frame */
 function undoFocus(r){if(r.mode&&r.mode!==ui.mode)setMode(r.mode,true);
-  if(ui.mode==='anim'&&doc.anim){const f=(r.refs||[]).find(n=>n.frame);if(f){const i=doc.anim.frames.indexOf(f);if(i>=0&&i!==doc.anim.cur&&!r.label.includes('frame'))showFrame(i);}for(const n of r.refs||[])if(n.frame)frameDirty(n);}}
+  if(ui.mode==='anim'&&doc.anim){const fs=(r.refs||[]).map(animFrameOf).filter(Boolean),f=fs.find(F=>doc.anim.frames.indexOf(F)===doc.anim.cur)||fs[0];if(f){const i=doc.anim.frames.indexOf(f);if(i>=0&&i!==doc.anim.cur&&!r.label.includes('frame'))showFrame(i);}for(const F of fs)frameDirty(F);}}
 async function undo(){if(undoBusy){undoQ.push('u');return;}if(typeof stroke!=='undefined'&&stroke)return;if(tedit)closeTextEditor();textCommit();const r=hist.undo[hist.undo.length-1];if(!r){toast('Nothing to undo');return;}
   undoBusy=true;try{await loadSnaps(r);}finally{undoBusy=false;}if(hist.undo[hist.undo.length-1]!==r){undoNext();return;}undoFocus(r);hist.undo.pop();r.undo();hist.redo.push(r);toast('Undo: '+r.label);changedAll();undoNext();}
 async function redo(){if(undoBusy){undoQ.push('r');return;}if(typeof stroke!=='undefined'&&stroke)return;if(tedit)closeTextEditor();textCommit();const r=hist.redo[hist.redo.length-1];if(!r){toast('Nothing to redo');return;}

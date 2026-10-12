@@ -15,11 +15,11 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{__gs.newDoc(200,150,8,[1,1,1],'Anim',false);});
  const scr=async(x,y)=>{const box=await p.locator('#gl').boundingBox();const v=await p.evaluate(()=>({x:__gs.view.x,y:__gs.view.y,z:__gs.view.zoom}));return [box.x+v.x+x*v.z,box.y+v.y+y*v.z];};
  const drag=async(x0,y0,x1,y1,st=10)=>{const a=await scr(x0,y0),c=await scr(x1,y1);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.move(c[0],c[1],{steps:st});await p.mouse.up();await p.waitForTimeout(80);};
- const fpx=async(i,pts)=>p.evaluate(([i,pts])=>{const F=__gs.anim.frames[i],d=__gs.readRGBA8(F.target),W=__gs.doc.w;return pts.map(([x,y])=>d[(y*W+x)*4+3]);},[i,pts]);
+ const fpx=async(i,pts)=>p.evaluate(([i,pts])=>{const F=__gs.anim.frames[i],d=__gs.readRGBA8(__gs.frameLayer(F).target),W=__gs.doc.w;return pts.map(([x,y])=>d[(y*W+x)*4+3]);},[i,pts]);
  const st=()=>p.evaluate(()=>({mode:__gs.mode,n:__gs.anim?__gs.anim.frames.length:0,cur:__gs.anim?__gs.anim.cur:-1,fps:__gs.anim?__gs.anim.fps:0,tags:__gs.anim?__gs.anim.tags.length:0,w:__gs.doc.w,h:__gs.doc.h}));
  // 1. switch to Animation mode
  await p.click('#modeTabs [data-mode=anim]');await p.waitForTimeout(200);let s=await st();
- ok(s.mode==='anim'&&s.n===1&&await p.isVisible('#timeline')&&!(await p.isVisible('#layerList')),'animation mode shows timeline, hides layers '+JSON.stringify(s));
+ ok(s.mode==='anim'&&s.n===1&&await p.isVisible('#timeline')&&(await p.isVisible('#layerList')),'animation mode shows timeline and the layers of the frame '+JSON.stringify(s));
  // 2. paint frame 1, add frame 2 and paint elsewhere
  await p.keyboard.press('b');await p.keyboard.press('d');await drag(20,30,80,30);
  await p.click('button:text-is("+ Frame")');s=await st();ok(s.n===2&&s.cur===1,'new frame '+JSON.stringify(s));
@@ -64,8 +64,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(s.mode==='paint'&&pl==='Background'&&await p.isVisible('#layerList'),'paint mode shows layers again: '+pl);
  await p.click('#modeTabs [data-mode=anim]');await p.click('button:text-is("+ Frame")');await p.click('#modeTabs [data-mode=paint]');await p.keyboard.press('Control+z');s=await st();
  ok(s.mode==='anim'&&s.n===11,'undoing an animation step from Paint mode switches back '+JSON.stringify(s));
- // 12. layer commands are blocked in animation mode
- await p.keyboard.press('Control+Shift+N');ok((await p.textContent('#toast')).includes('Layers are not used'),'new layer blocked in animation mode');
+ // 12. layers work inside a frame
+ await p.keyboard.press('Control+Shift+N');await p.waitForTimeout(300);ok(await p.evaluate(()=>__gs.allLayers(__gs.anim.frames[__gs.anim.cur]).length)===2,'Ctrl+Shift+N adds a layer to the frame');
  console.log(errs.length?errs.join('\n'):'no errors');ok(!errs.length,'no page errors');
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();process.exit(fails?1:0);
 })();

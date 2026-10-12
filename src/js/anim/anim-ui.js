@@ -79,7 +79,8 @@ function drawTimelineThumbs(){const A=A_();if(ui.mode!=='anim'||!A)return;[...tl
 
 /* ---- right-hand Animation panel ---- */
 function renderAnimPanel(){const box=$('#animBody'),A=A_();if(!box)return;box.replaceChildren();if(ui.mode!=='anim'||!A)return;const o=A.onion;
-  box.append(el('div',{class:'sub',text:'Onion skin'}),el('div',{class:'chips'},chk('aoOn','Show',o.on,v=>{o.on=v;renderTimeline();requestRender(true);}),chk('aoTint','Red before, green after',o.tint,v=>{o.tint=v;requestRender(true);})),
+  box.append(el('div',{class:'sub',text:'Onion skin'}),el('div',{class:'chips'},chk('aoOn','Show',o.on,v=>{o.on=v;renderTimeline();requestRender(true);}),chk('aoTint','Tint before and after',o.tint,v=>{o.tint=v;requestRender(true);})),
+    (()=>{const s=el('select',{id:'aoPal','aria-label':'Onion skin colours'},...Object.entries(ONION_PALS).map(([k,v])=>el('option',{value:k,text:v.name})));s.value=o.pal&&ONION_PALS[o.pal]?o.pal:'rg';s.addEventListener('change',()=>{o.pal=s.value;requestRender(true);});return el('div',{class:'frow'},el('label',{for:'aoPal',text:'Colours'}),s);})(),
     makeSlider({id:'aoB',label:'Before',min:0,max:5,step:1,value:o.before,onInput:v=>{o.before=v;requestRender(true);}}).el,
     makeSlider({id:'aoA',label:'After',min:0,max:5,step:1,value:o.after,onInput:v=>{o.after=v;requestRender(true);}}).el,
     makeSlider({id:'aoF',label:'Fade',min:.1,max:.9,step:.05,value:o.fade,fmt:pct,onInput:v=>{o.fade=v;requestRender(true);}}).el,
@@ -126,7 +127,6 @@ function animKeys(e,m,k){if(ui.mode!=='anim')return false;
   if(m&&!e.shiftKey&&!e.altKey&&k==='f'){e.preventDefault();addFrame();return true;}
   if(!m&&e.shiftKey&&!e.altKey&&k==='d'){e.preventDefault();if(!e.repeat)duplicateFrame();return true;}
   if(m&&e.shiftKey&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();const A=A_();if(A){const to=clamp(A.cur+(e.key==='ArrowLeft'?-1:1),0,A.frames.length-1);if(to!==A.cur)moveFrame(A.cur,to);}return true;}
-  if(m&&['n','g','e'].includes(k)||(m&&k==='j')){e.preventDefault();toast('Layers are not used in Animation mode. Switch to Paint mode (top right) for layers.');return true;}
   if(m||e.altKey)return false;
   if((k==='delete'||k==='backspace')&&!(sel.active&&!sel.quick)){e.preventDefault();deleteFrame();return true;}
   if(k===','){stepFrame(-1);return true;}if(k==='.'){stepFrame(1);return true;}

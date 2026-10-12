@@ -51,7 +51,7 @@ All of these can be changed in **Edit › Keyboard shortcuts…**. The commands 
 | Ctrl+Shift+C | Copy merged (everything visible) |
 | Ctrl+T | Free transform (Enter applies, Esc cancels) |
 | Ctrl+K | Preferences |
-| Ctrl+Alt+N | New document |
+| Ctrl+N (or Ctrl+Alt+N) | New document |
 | Ctrl+O | Open |
 | Ctrl+S / Ctrl+Shift+S | Save / Save as (.gouache) |
 | Ctrl+Shift+E | Export an image |
@@ -127,3 +127,5 @@ All of these can be changed in **Edit › Keyboard shortcuts…**. The commands 
 - **Ctrl + right drag** on the model: brush size and hardness. **Ctrl + left drag**: flow and rotation.
 - **S + drag** (left turns, middle moves, right scales) the stencil; **Shift+S** snaps the turn; **N** (held) ignores the stencil.
 - **F1** 3D + 2D, **F2** 3D only, **F3** 2D only, **F4** swap sides, **F5** perspective, **F6** orthographic (in 3D Paint; the user guide stays in the Help menu there).
+
+**Zoom tool (0.58).** Click to zoom in (Shift: out), or drag right to zoom in and left to zoom out.

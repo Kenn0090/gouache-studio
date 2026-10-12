@@ -124,6 +124,8 @@ function fillRender(L,only){const f=L.fill;if(!f)return;
 function cmdNewFillLayer(preset){if(ui.mode==='anim'){toast('Fill layers are available in Paint mode.');return;}
   if(ui.mode!=='paint'&&ui.mode!=='p3d'&&typeof setMode==='function')setMode('paint',true);
   const L=newLayerObj(preset&&preset.name||'Fill '+(++fillCount),true);doc.count--;L.fill=fillDefaults();
+  /* (0.58, Kenn) a new fill layer in 3D Paint is a blank base: mid-grey, 20% roughness, not metal (Spec/Gloss: 80% glossiness) */
+  if(!preset&&ui.mode==='p3d'){const m=L.fill.maps;if(m.base)Object.assign(m.base,{on:true,src:'value',c:[.5,.5,.5]});if(m.rough)Object.assign(m.rough,{on:true,v:.2});if(m.metal)Object.assign(m.metal,{on:true,v:0});if(m.gloss)Object.assign(m.gloss,{on:true,v:.8});if(m.spec)Object.assign(m.spec,{on:true,c:[.22,.22,.22]});}
   if(preset&&preset.maps){for(const k in L.fill.maps)L.fill.maps[k].on=false;for(const k in preset.maps)if(L.fill.maps[k])Object.assign(L.fill.maps[k],{on:true,src:'value'},preset.maps[k]);
     for(const k of ['proj','triSharp','hStr','xf','rep','front','decal'])if(preset[k]!=null)L.fill[k]=JSON.parse(JSON.stringify(preset[k]));L.fill.name=preset.name;
     if(preset.imgs){L._fillImg={};for(const k in preset.imgs){const s=preset.imgs[k],t=makeTarget(s.w,s.h,8,true);blit(s,t,0,0,s.w,s.h,0,0);L._fillImg[k]=t;}}

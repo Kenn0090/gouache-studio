@@ -325,3 +325,5 @@ function msCommit(){clearTimeout(msEd.timer);msEd.timer=0;const L=msEd.L,b=msEd.
   pushUndo({label:msEd.label,refs:[L],masks:[a.mask].filter(Boolean),undo(){msRestore(L,b);},redo(){msRestore(L,a);}});}
 
 function msGenDefaults(g){return Object.assign(MS_KINDS.gen.p(),{g},g==='builder'?{amount:.5,width:.25,breakup:.2,contrast:1,edgeWeight:1,cavityWeight:0,aoWeight:0,directionWeight:0,positionWeight:0,heightWeight:0,thicknessWeight:0,gradAxis:'up',positionFrom:0,positionTo:1}:['light','linear','radial','comic'].includes(g)?{amount:.5,width:.25,breakup:0,contrast:1,lightAz:-35,lightEl:45,occlude:.25,gradAxis:'up',gradFrom:0,gradTo:1,gradStyle:'smooth',centerX:.5,centerY:.5,centerZ:.5,bands:3,dots:28,dotSize:.45,dotAngle:45,comicStyle:'shade'}:{});}
+/* (0.58) the mask shaders are big: compile them while the app is idle after start-up, not when the first smart mask is added */
+(typeof requestIdleCallback==='function'?(f=>requestIdleCallback(f,{timeout:12000})):(f=>setTimeout(f,6000)))(()=>{try{if(!stroke&&!xf)msProgs();}catch(e){}});

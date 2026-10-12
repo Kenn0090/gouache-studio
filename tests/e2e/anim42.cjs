@@ -32,7 +32,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>__gs.afxList().length===1),'undo after keys keeps the effect');
  /* 0.42.1: Dissolve, Glow, stepping an effect with Quick dupli */
  await p.evaluate(()=>{const A=__gs.anim,[w,h]=__gs.docWH(),d=new Uint8ClampedArray(w*h*4);for(let i=0;i<w*h;i++){d[i*4]=200;d[i*4+1]=40;d[i*4+2]=40;d[i*4+3]=255;}
-   const tex=__gs.uploadStraight({w,h,data:d,bits:8});__gs.premultInto(A.frames[0].target,tex,[0,0],null);A.fxl=[];__gs.showFrame(0);});
+   const tex=__gs.uploadStraight({w,h,data:d,bits:8});__gs.premultInto(__gs.frameLayer(A.frames[0]).target,tex,[0,0],null);A.fxl=[];__gs.showFrame(0);});
  const alphaSum=async t=>p.evaluate(t=>{const A=__gs.anim;A.fxl=[];__gs.afxAdd('dissolve');const tr=__gs.afxList()[0];tr.v.t=t;tr.v.sc=8;tr.v.seed=11;const c=__gs.afxRenderAll(A)[0],d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let s=0;for(let i=3;i<d.length;i+=4)s+=d[i];return s/(d.length/4)/255;},t);
  const a0=await alphaSum(0),a5=await alphaSum(.5),a1=await alphaSum(1);
  ok(a0>.95&&a1<.05&&a5>.1&&a5<.9,'dissolve erodes with Amount ('+[a0,a5,a1].map(x=>x.toFixed(2))+')');

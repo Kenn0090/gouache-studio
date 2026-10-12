@@ -6,7 +6,7 @@ function pickFiles(accept,multiple,filterName,exts){return new Promise(async res
       const files=[];for(const path of p){const b=await platform.readFile(path);files.push(new File([b],fileNameOf(path)));}res(files);}catch(e){toast('The file dialog failed: '+(e.message||e));res([]);}return;}
   const inp=el('input',{type:'file',accept,multiple:multiple||null,hidden:true});document.body.append(inp);
   inp.addEventListener('change',()=>{res([...inp.files]);inp.remove();});inp.addEventListener('cancel',()=>{res([]);inp.remove();});inp.click();});}
-async function framesEmpty(){const A=A_();return !A||A.frames.every(F=>!contentBounds(F.target));}
+async function framesEmpty(){const A=A_();return !A||A.frames.every(F=>allLayers(F).every(L=>!contentBounds(L.target)));}
 function ensureAnimMode(){if(ui.mode!=='anim')return setMode('anim',true);return true;}
 /* add or replace frames in one undo step */
 function putFrames(list,replace,label){if(!list.length){toast('No frames were found.');return;}
@@ -34,15 +34,15 @@ async function importSheet(rawIn){if(!ensureAnimMode())return;const given=!!(raw
   draw();openDialog({title:'Frames from a sprite sheet',body,okLabel:'Import',onOk(){
     const cw=Math.floor(raw.w/st.cols),ch=Math.floor(raw.h/st.rows);if(st.resize&&(cw!==doc.w||ch!==doc.h))resizeCanvasDoc(cw,ch,0,0);
     const tex=uploadStraight(raw),list=[];
-    for(let r=0;r<st.rows;r++)for(let c=0;c<st.cols;c++){const F=newFrame();premultInto(F.target,tex,[-c*cw,-r*ch],null);
-      if(st.skip&&!contentBounds(F.target)){disposeLayer(F);continue;}list.push(F);}
+    for(let r=0;r<st.rows;r++)for(let c=0;c<st.cols;c++){const F=newFrame();premultInto(frameLayer(F).target,tex,[-c*cw,-r*ch],null);
+      if(st.skip&&!contentBounds(frameLayer(F).target)){allLayers(F).forEach(disposeLayer);continue;}list.push(F);}
     gl.deleteTexture(tex);putFrames(list,st.replace,'Import sprite sheet');}});}
 /* numbered images -> frames */
 async function importSequence(){if(!ensureAnimMode())return;const files=await pickFiles('image/*,.tga,.dds,.tif,.tiff',true,'Images',['png','jpg','jpeg','webp','tga','dds','tif','tiff','bmp']);if(!files.length)return;
   files.sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));const replace=await framesEmpty();const raws=[];
   for(const f of files){try{raws.push(await decodeFile(f));}catch(e){toast(f.name+': '+e.message);}}if(!raws.length)return;
   if(replace&&(raws[0].w!==doc.w||raws[0].h!==doc.h))resizeCanvasDoc(Math.min(MAX_DIM,raws[0].w),Math.min(MAX_DIM,raws[0].h),0,0);
-  const list=raws.map(raw=>{const F=newFrame(),tex=uploadStraight(raw);premultInto(F.target,tex,[0,0],null);gl.deleteTexture(tex);return F;});
+  const list=raws.map(raw=>{const F=newFrame(),tex=uploadStraight(raw);premultInto(frameLayer(F).target,tex,[0,0],null);gl.deleteTexture(tex);return F;});
   putFrames(list,replace,'Import image sequence');}
 /* GIF -> frames (the browser engine decodes and composites each GIF frame) */
 async function importGif(){if(!ensureAnimMode())return;const [f]=await pickFiles('.gif,image/gif',false,'GIF',['gif']);if(!f)return;
@@ -52,12 +52,12 @@ async function importGif(){if(!ensureAnimMode())return;const [f]=await pickFiles
     for(let i=0;i<n;i++){const {image}=await dec.decode({frameIndex:i});const w=image.displayWidth,h=image.displayHeight;
       if(!size){size=[w,h];if(replace&&(w!==doc.w||h!==doc.h))resizeCanvasDoc(w,h,0,0);}
       const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.drawImage(image,0,0);const d=x.getImageData(0,0,w,h);
-      const F=newFrame(),tex=uploadStraight({w,h,data:d.data,bits:8});premultInto(F.target,tex,[0,0],null);gl.deleteTexture(tex);
+      const F=newFrame(),tex=uploadStraight({w,h,data:d.data,bits:8});premultInto(frameLayer(F).target,tex,[0,0],null);gl.deleteTexture(tex);
       F.hold=Math.max(1,Math.round((image.duration||100000)/1000*A.fps/1000));image.close();list.push(F);}
     dec.close();putFrames(list,replace,'Import GIF');}catch(e){console.error(e);toast('This GIF could not be read: '+(e.message||e));}}
 
 /* ---- reading frames at full size, straight (not premultiplied) colour ---- */
-function frameCanvas(F,T){const W=doc.w,H=doc.h,px=readRGBA8(T||F.target),img=new ImageData(W,H),d=img.data;
+function frameCanvas(F,T){const W=doc.w,H=doc.h,ft=T?null:frameFlat(F),px=readRGBA8(T||ft),img=new ImageData(W,H),d=img.data;if(ft)release(ft);
   for(let i=0;i<d.length;i+=4){const a=px[i+3];if(a){d[i]=Math.min(255,px[i]*255/a);d[i+1]=Math.min(255,px[i+1]*255/a);d[i+2]=Math.min(255,px[i+2]*255/a);d[i+3]=a;}}
   const c=document.createElement('canvas');c.width=W;c.height=H;c.getContext('2d').putImageData(img,0,0);return c;}
 function scaledCanvas(src,s){if(s===1)return src;const c=document.createElement('canvas');c.width=Math.max(1,Math.round(src.width*s));c.height=Math.max(1,Math.round(src.height*s));
@@ -111,7 +111,7 @@ function dlgExportSheet(){if(!doc.anim){toast('Switch to Animation mode (top rig
   const sel=(id,label,opts,val,fn)=>{const s=el('select',{id,'aria-label':label},...opts.map(([v,t])=>el('option',{value:String(v),text:t})));s.value=String(val);s.addEventListener('change',()=>{fn(s.value);upd();syncGrid();});return [el('label',{for:id,text:label}),s];};
   const numI=(id,label,val,max,fn)=>{const i=el('input',{class:'num',type:'number',min:0,max,value:val,id,'aria-label':label});i.addEventListener('change',()=>{fn(clamp(+i.value||0,0,max));upd();});return [el('label',{for:id,text:label}),i];};
   const rangeOpts=[[-1,'All frames'],...A.tags.map((t,i)=>[i,'Tag: '+t.name])];
-  const expBtns=[el('button',{class:'btn primary',text:'Export sheet',onclick:()=>exportSheet()}),el('button',{class:'btn',text:'PNG sequence',onclick:()=>exportSequence()}),el('button',{class:'btn',text:'GIF',onclick:()=>exportGif()})];
+  const expBtns=[el('button',{class:'btn primary',text:'Export sheet',onclick:()=>exportSheet()}),el('button',{class:'btn',text:'PNG sequence',onclick:()=>exportSequence()}),el('button',{class:'btn',text:'GIF',onclick:()=>exportGif()}),el('button',{class:'btn',text:'Video…',title:'MP4, MOV or WebM',onclick:()=>{clearTimeout(animTimer);closeDialog();setTimeout(dlgExportVideo,0);}})];
   /* (0.41, Kenn) export frame rate and in-between frames (blend or motion) */
   const retimeNote=el('div',{class:'note'});let rtToken=0;
   async function retime(){const my=++rtToken;const rate=exRate(st.rate,A0.fps);

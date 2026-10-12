@@ -111,7 +111,7 @@ function shapeInside(s,x,y){if(lineKind(s.kind)){const ax=s.x1-s.x0,ay=s.y1-s.y0
 function shapeHit(sx,sy,ix,iy){const L=activeShape();if(!L)return null;for(const h of shapeHandles(L.shape)){const q=scrPt(h.pos);if(Math.hypot(q[0]-sx,q[1]-sy)<=8)return {L,id:h.id};}
   return shapeInside(L.shape,ix,iy)?{L,id:'move'}:null;}
 function shapeHover(e){const [sx,sy]=stageXY(e),[ix,iy]=toImage(e.clientX,e.clientY),h=shapeHit(sx,sy,ix,iy);cv.style.cursor=!h?'crosshair':h.id==='move'?'move':'grab';}
-function shapePointerDown(e,ix,iy){if(ui.mode==='anim'){toast('Shapes are available in Paint mode.');return;}const [sx,sy]=stageXY(e),h=shapeHit(sx,sy,ix,iy);
+function shapePointerDown(e,ix,iy){const [sx,sy]=stageXY(e),h=shapeHit(sx,sy,ix,iy);
   if(h){shapeBegin(h.L);ptr={mode:'shape',id:e.pointerId,h,m0:[ix,iy],s0:cloneShape(h.L.shape)};return;}
   /* a new shape layer, shown while dragging; one undo step when done */
   const L=newLayerObj(SHAPE_KINDS.find(k=>k[0]===ui.shape.kind)[1]);L.shape=Object.assign(cloneShape(ui.shape),{fill:ui.fg.slice(),line:ui.shape.lineOn?ui.bg.slice():ui.shape.line.slice(),x0:ix,y0:iy,x1:ix,y1:iy,rot:0});
