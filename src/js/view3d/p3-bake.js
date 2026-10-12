@@ -15,7 +15,7 @@ async function p3WithBakeDoc(w,h,fn){const mine=docState(),v3d=doc.v3d,wf=doc.wo
 function dlgP3Bake(){if(ui.mode!=='p3d')return;if(bk.busy){toast('Wait for the bake to finish.');return;}
   const model=bakeViewModel();if(!model||model.noUV){toast('The model has no UVs: nothing can be baked onto it.');return;}
   const C=bakeCfg,sets=p3.sets.filter(S=>!S.missing).map(S=>S.name);if(!p3bk.sets)p3bk.sets={};for(const S of p3.sets)if(S.hidden)p3bk.sets[S.name]=false;/* hidden sets (the eyeball) are left out of the bake unless you tick them */
-  const size=[[doc.w,'Same as the set ('+doc.w+')'],[512,'512'],[1024,'1K'],[2048,'2K'],[4096,'4K']].filter((o,i,a)=>i===0||o[0]!==doc.w);let pick=C.size&&size.some(o=>o[0]===C.size)?C.size:doc.w;
+  const size=[[doc.w,'Same as the set ('+doc.w+')'],[512,'512'],[1024,'1K'],[2048,'2K'],[4096,'4K'],...(MAX_DIM>=8192?[[8192,'8K']]:[])].filter((o,i,a)=>i===0||o[0]!==doc.w);let pick=C.size&&size.some(o=>o[0]===C.size)?C.size:doc.w;
   const kinds=Object.assign({},C.kinds);
   const body=el('div',{class:'dlg-grid',id:'p3bkDlg'});
   const draw=()=>{const hi=C.high;body.replaceChildren(
