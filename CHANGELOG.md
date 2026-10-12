@@ -1,3 +1,14 @@
+## 0.60.0
+
+- **New Photo tab (next to 2D Paint): a Lightroom-style photo editor.** Open JPEG, PNG, WebP, TIFF and **RAW** photos (Canon, Nikon, Sony, Fujifilm, Panasonic, Olympus, Pentax, DNG and more; developed with the camera's white balance at full 16-bit quality). Your original file is never changed: the edits are kept beside it (a `.gphoto` file in the desktop app) and can always be changed or reset. It has its own layout: the Develop panel, a strip of your photos, presets and a history.
+- **Develop panel.** Basic (Auto tone, Temperature, Tint, Exposure, Contrast, Highlights, Shadows, Whites, Blacks, Texture, Clarity, Dehaze, Vibrance, Saturation, Black & white), Tone curve (all channels or red, green, blue), Colour mixer (eight colour bands), **Point colour** (click a colour on the photo and change just that colour), Colour grading, Detail (sharpening and an edge-keeping noise reduction for brightness and colour), Effects (vignette, grain) and Geometry (crop with shapes, Straighten, vertical and horizontal keystone, lens distortion, colour fringing, flips).
+- **Masks (local adjustments).** Linear gradient, Radial gradient and Brush masks, each with its own light and colour sliders, Invert, Amount, a Luminance range or Colour range, and Show the mask. Masks follow your crop and tilt.
+- **Spot removal.** Click a blemish: it is copied from a clean place nearby (picked for you, or drag the dashed circle) and either healed to the light around it or cloned.
+- **Auto level and Auto upright** find the horizon and the walls and straighten the picture (Full also fixes sideways slopes). **Auto tone** sets the Basic sliders from the picture. Press **J** to see clipped highlights (red) and shadows (blue).
+- **Presets, History and Snapshots,** hold the **Backslash** key to see the photo before your edits, **Copy and Paste** edits between photos (choose which groups), star ratings (1–5), pick and reject (P, X) with a filter in the strip, and **Export** to JPEG, PNG or WebP at the original size, a chosen long side or a percentage (several photos make a zip). **To Paint** puts the edited photo on a layer in 2D Paint.
+- File › **Open photos…** and **Export photo…** appear in the Photo tab. The welcome screen has a Photo start card.
+- Coming later for this tab: panoramas, HDR merge, AVIF and JPEG XL export, and optional AI features (subject and sky selection, Remove, Relight, Lens Blur) as an add-on. RAW reading uses LibRaw.
+
 ## 0.59.0
 
 - **8K in 3D Paint.** The texture size choice in 3D Paint (and the Bake mesh maps window) now offers 8K, on computers that can edit textures that large.

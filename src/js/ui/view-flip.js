@@ -3,7 +3,7 @@
    document changes, and every tool still works through the turned view.
    Document: flip or turn the whole canvas (Image menu), and flip a layer (Layer menu), with hotkeys for each. */
 /* the picture's turn and mirror as a 2×2 matrix (screen from picture, without the zoom); null when the view is plain */
-function vxA(){if(!(view.rot||view.flip)||['p3d','bake','convert'].includes(ui.mode))return null;const c=Math.cos(view.rot),s=Math.sin(view.rot),f=view.flip?-1:1;return [c*f,-s,s*f,c];}
+function vxA(){if(!(view.rot||view.flip)||['p3d','bake','convert','photo'].includes(ui.mode))return null;const c=Math.cos(view.rot),s=Math.sin(view.rot),f=view.flip?-1:1;return [c*f,-s,s*f,c];}
 function vxBox(DW,DH){const A=vxA();return A?[Math.abs(A[0])*DW+Math.abs(A[1])*DH,Math.abs(A[2])*DW+Math.abs(A[3])*DH]:[DW,DH];}
 function vxCentre(W,H,DW,DH){const A=vxA()||[1,0,0,1],z=view.zoom;view.x=W/2-z*(A[0]*DW/2+A[1]*DH/2);view.y=H/2-z*(A[2]*DW/2+A[3]*DH/2);}
 /* set the turn and mirror, keeping the point of the picture now in the middle of the window where it is */

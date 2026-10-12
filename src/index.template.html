@@ -24,7 +24,7 @@ m.appendChild(document.createElement('br'));m.appendChild(b);},15000);})();
     <div class="bar-r">
       <span id="docName"></span>
       <select id="wsSel" class="wssel" aria-label="Panel layout" title="Panel layout: choose which panels are shown and where they sit. This does not change Paint or 3D Paint mode."></select>
-      <div class="tabs" id="modeTabs" role="tablist" aria-label="Work mode"><button role="tab" data-mode="paint" aria-selected="true" title="Paint 2D textures on the canvas. The optional 3D preview does not switch to 3D Paint.">2D Paint</button><button role="tab" data-mode="p3d" aria-selected="false" title="Paint directly on a model with texture sets and materials">3D Paint</button><button role="tab" data-mode="anim" aria-selected="false" title="Flipbooks and sprite sheets">Animation</button><button role="tab" data-mode="bake" aria-selected="false" title="Bake maps from a high-poly model and fix the bake">Bake</button><button role="tab" data-mode="convert" aria-selected="false" title="Make normal, height, AO and more from a photo or another map">Convert</button><button role="tab" data-mode="brush" aria-selected="false" title="Draw your own brush tips on a canvas of their own">Brush</button></div>
+      <div class="tabs" id="modeTabs" role="tablist" aria-label="Work mode"><button role="tab" data-mode="paint" aria-selected="true" title="Paint 2D textures on the canvas. The optional 3D preview does not switch to 3D Paint.">2D Paint</button><button role="tab" data-mode="photo" aria-selected="false" title="Edit photos like Lightroom: light, colour, curves, detail, crop and presets">Photo</button><button role="tab" data-mode="p3d" aria-selected="false" title="Paint directly on a model with texture sets and materials">3D Paint</button><button role="tab" data-mode="anim" aria-selected="false" title="Flipbooks and sprite sheets">Animation</button><button role="tab" data-mode="bake" aria-selected="false" title="Bake maps from a high-poly model and fix the bake">Bake</button><button role="tab" data-mode="convert" aria-selected="false" title="Make normal, height, AO and more from a photo or another map">Convert</button><button role="tab" data-mode="brush" aria-selected="false" title="Draw your own brush tips on a canvas of their own">Brush</button></div>
       <button class="toggle" id="tileBtn" aria-pressed="false" title="Seamless tile mode (Shift+T): wraps brush strokes and shows a 3&times;3 repeat"><i></i>Tile mode</button>
     </div>
   </header>
@@ -61,6 +61,22 @@ m.appendChild(document.createElement('br'));m.appendChild(b);},15000);})();
     <section class="sec" id="brushTabSec" aria-labelledby="hBrushTab">
       <div class="sec-h" id="hBrushTab"><span>Brush maker</span></div>
       <div id="btBody" class="dlg-grid"></div>
+    </section>
+    <section class="sec" id="photoSec" aria-labelledby="hPhoto">
+      <div class="sec-h" id="hPhoto"><span>Develop</span></div>
+      <div id="photoBody" class="dlg-grid"></div>
+    </section>
+    <section class="sec" id="phHistSec" aria-labelledby="hPhHist">
+      <div class="sec-h" id="hPhHist"><span>History</span></div>
+      <div id="phHistBody" class="dlg-grid"></div>
+    </section>
+    <section class="sec" id="phLibSec" aria-labelledby="hPhLib">
+      <div class="sec-h" id="hPhLib"><span>Photos</span></div>
+      <div id="phLibBody" class="dlg-grid"></div>
+    </section>
+    <section class="sec" id="phPreSec" aria-labelledby="hPhPre">
+      <div class="sec-h" id="hPhPre"><span>Presets</span></div>
+      <div id="phPreBody" class="dlg-grid"></div>
     </section>
     <section class="sec" id="convSec" aria-labelledby="hConv">
       <div class="sec-h" id="hConv"><span>Convert</span></div>
