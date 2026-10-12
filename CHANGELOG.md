@@ -1,3 +1,18 @@
+## 0.58.0
+
+- **Layers in Animation.** Every frame is now a stack of layers, shown in the normal Layers panel (blend modes, opacity, masks, locks, styles, groups). A new frame has the same layers as the one before it, empty. Pick **Show in every frame** in a layer's right-click menu to share a layer (a fixed background, a character base): painting on it changes it in every frame; **Delete from every frame** removes it. Frames are saved and reopened with their layers (a shared layer is stored once), and old animations open as one layer per frame. Pen, Shape and Text tools work in Animation now.
+- **Video export for animations.** File › **Export animation video…** (and a **Video…** button in the sprite-sheet export): MP4 (H.264 or H.265), MOV (H.264) and WebM (VP9 or AV1). Pick the size, quality, all frames or one tag, how many times to repeat, and a background colour. Every frame keeps its own length (holds), so the timing is exact. Which formats work depends on your computer.
+- **Faster smart masks and smart materials.** The grunge picture behind most smart masks was read back from the graphics card and sent again each time one was added. It now stays on the card (a mask that took about 4 s took about 0.2 s in our test), and the mask shaders are prepared while the app is idle.
+- **New fill layers in 3D Paint start as a blank base**: mid-grey, 20% roughness, not metal (80% glossiness in Spec/Gloss projects).
+- **Ctrl+N opens New document** (Ctrl+Alt+N still works), also in Animation.
+- **Gasa Pen is the starting brush** for the app and for every new document.
+- **The zoom tool drags**: drag right to zoom in, left to zoom out. A click still zooms in.
+- **Marquee and lasso in the tool menu.** Click the corner arrow (or hold the button) to pick the rectangle or ellipse marquee, the freehand or polygonal lasso.
+- **Colour-blind friendly onion skin.** Choose Red/green, Blue/orange or Dark/light in the Animation panel.
+- **No Maps panel for a document that only has its base colour.** It shows up again for PBR and other multi-map documents.
+- **One running copy.** Opening a document from Explorer while Gouache Studio is already open now opens it as another tab in that window instead of starting a second copy.
+- **Faster saving (continued).** Smart-material pictures and masks stay on the graphics card too.
+
 ## 0.57.0
 
 - **Undo can cover layer actions.** A new Preferences choice makes hiding or showing a layer, changing its opacity or blend mode, renaming it and its locks into Undo steps (Ctrl+Z / Ctrl+Shift+Z). It is off by default.

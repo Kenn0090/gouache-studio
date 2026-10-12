@@ -1,3 +1,17 @@
+# Gouache Studio 0.58.0
+
+- Layers in Animation: each frame is a stack of layers; share a layer across all frames; saved with the file; pen, shape and text tools work.
+- Video export for animations: MP4 (H.264, H.265), MOV and WebM, with exact frame timing.
+- Faster smart masks and smart materials; mask shaders get ready while the app is idle.
+- New fill layers in 3D Paint start as a blank mid-grey base with 20% roughness.
+- Ctrl+N opens New document.
+- Gasa Pen is the starting brush.
+- The zoom tool drags (right = in, left = out).
+- Marquee and lasso shapes are in the tool menu.
+- Colour-blind friendly onion skin colours.
+- No Maps panel for base-colour-only documents.
+- Opening a document from Explorer while the app runs opens it as a tab in that window.
+
 # Gouache Studio 0.57.0
 
 - Undo can cover hiding layers, opacity, blend mode, rename and locks (new Preferences choice, off by default).

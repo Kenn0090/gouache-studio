@@ -62,3 +62,16 @@ Use **VFX gallery…** to browse effects, hover over a tile to play its preview,
 Drag the top edge of the timeline to make it taller. Frame thumbnails occupy a separate row above the Effects panel. The effect list and key tracks remain on the left, with amount controls on the right. Drag the divider beside effect settings to make those controls wider. The generator and gallery windows can also be stretched from their bottom-right corner.
 
 The effect keyframe tracks have a horizontal scrollbar beside the settings. Selecting a frame keeps its keys visible, including the last frames of a long animation. Enlarging frame thumbnails also enlarges keyframe spacing. Short timelines can be scrolled vertically to reach every track.
+
+## Layers in a frame (0.58)
+
+Every frame is a stack of layers, shown in the Layers panel. **New frame** copies the layer names, blend modes and order, with empty layers. Right-click a layer › **Show in every frame** to share it: the same layer appears in all frames (a fixed background, a character base) and painting on it changes it everywhere. **Delete from every frame** removes it. **Make separate** gives every frame its own copy again. Pen, Shape and Text tools work in Animation, drawing on layers of the current frame.
+
+## Export a video (0.58)
+
+File › **Export animation video…** makes an MP4 (H.264 or H.265), a MOV (H.264) or a WebM (VP9 or AV1). Choose the size, quality, all frames or one tag, how many times to repeat and a background colour (video cannot be see-through). Every frame keeps its own length. Which formats are available depends on your computer; the window says when one cannot be made at the chosen size.
+
+## Onion skin colours (0.58)
+
+The Animation panel's **Colours** drop-down offers Red/green, Blue/orange (easier for colour-blind people) and Dark/light.
+
