@@ -128,6 +128,8 @@
     "photo/photo-panel",
     "photo/photo-lib",
     "photo/photo-local",
+    "photo/photo-ai",
+    "photo/photo-remove",
     "photo/photo-auto",
     "photo/photo-point",
     "photo/photo-spots",

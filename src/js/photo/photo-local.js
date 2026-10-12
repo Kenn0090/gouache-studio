@@ -18,9 +18,10 @@ function phMapper(){const p=phP();if(!p)return null;const s=ph.crop?Object.assig
 /* the masks */
 function phMasks(){const s=phS();if(!s)return [];if(!s.local)s.local=[];return s.local;}
 function phSelMask(){const id=ph.lm.sel;return phMasks().find(m=>m.id===id)||null;}
-function phMaskName(m){return m.name||(m.type==='lin'?'Linear gradient':m.type==='rad'?'Radial gradient':'Brush');}
+function phMaskName(m){return m.name||(m.type==='lin'?'Linear gradient':m.type==='rad'?'Radial gradient':m.type==='ai'?'AI selection':'Brush');}
+const phBitmapMasks=()=>phMasks().filter(m=>m.type==='brush'||m.type==='ai').length;
 function phNewMask(type){const M=phMapper();if(!M)return;const list=phMasks();
-  if(type==='brush'&&list.filter(m=>m.type==='brush').length>=4){toast('Four brush masks at most on one photo.');return;}
+  if((type==='brush'||type==='ai')&&phBitmapMasks()>=4){toast('Four brushed or AI masks at most on one photo.');return;}
   if(list.length>=8){toast('Eight masks at most on one photo.');return;}
   const id='m'+Date.now().toString(36)+Math.floor(Math.random()*999),m={id,type,on:true,inv:false,amt:100,feather:50,adj:{},rng:{kind:'none',lo:0,hi:100,soft:30,h:0,hr:30}};
   if(type==='lin'){m.a=M.fwd(.5,.3);m.b=M.fwd(.5,.65);m.adj={exp:-.5};}

@@ -11,7 +11,7 @@ function phDefaults(){return {
   sharp:{amt:0,rad:1,detail:25,mask:0},nr:{lum:0,col:0},
   vig:{amt:0,mid:50,feather:50,round:0},grain:{amt:0,size:25,rough:50},
   geo:{dist:0,ca:0,angle:0,flipH:false,flipV:false,vert:0,horiz:0,scale:0,crop:[0,0,1,1],aspect:'original',auto:true},
-  pts:[],local:[],spots:[],bw:false};}
+  pts:[],local:[],spots:[],rm:[],bw:false};}
 const phClone=s=>JSON.parse(JSON.stringify(s));
 /* a tone curve through its points (smooth, never going backwards) as 256 values */
 function phCurveLut(pts){const p=pts.slice().sort((a,b)=>a[0]-b[0]),n=p.length,out=new Float32Array(256);
@@ -201,6 +201,7 @@ function phLocalUniforms(LM,src,opts){const N=8,mk=()=>new Float32Array(N*4),A=m
     T.set([(a.tex||0)/100,(a.cla||0)/100,(a.dehaze||0)/100,(a.sharp||0)/150],o);H.set([(a.wh||0)/100,(a.bl||0)/100,0,0],o);});
   return {uLN:LM.length,uLShow:opts&&opts.showId?LM.findIndex(m=>m.id===opts.showId):-1,uLA:{v4a:A},uLG:{v4a:G},uLC:{v4a:C},uLD:{v4a:D},uLE:{v4a:E},uLF:{v4a:F},uLT:{v4a:T},uLH:{v4a:H},uLB:phBrushTex(brushes,src.w/src.h)};}
 /* the brushed masks: strokes are kept as small lists of points in the settings (so undo and sidecars cover them) and painted here */
+const PH_AI={};
 const PH_BRUSH={tex:null,key:'',w:0,h:0,dummy:null};
 function phBrushDraw(ctx,m,W,H){ctx.clearRect(0,0,W,H);ctx.lineCap='round';ctx.lineJoin='round';
   for(const st of (m.strokes||[])){const pts=st.pts,sz=Math.max(1,st.sz*H),fe=st.fe/100,fl=st.fl/100;
@@ -208,10 +209,11 @@ function phBrushDraw(ctx,m,W,H){ctx.clearRect(0,0,W,H);ctx.lineCap='round';ctx.l
     const dab=(x,y)=>{const g=ctx.createRadialGradient(x,y,sz*.5*(1-fe),x,y,sz*.5);g.addColorStop(0,'rgba(255,255,255,'+fl+')');g.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,sz*.5,0,6.2832);ctx.fill();};
     let px=null,py=null;for(let i=0;i<pts.length;i+=2){const x=pts[i]*W,y=pts[i+1]*H;if(px===null){dab(x,y);}else{const d=Math.hypot(x-px,y-py),n=Math.max(1,Math.ceil(d/(sz*.12)));for(let k=1;k<=n;k++)dab(px+(x-px)*k/n,py+(y-py)*k/n);}px=x;py=y;}}
   ctx.globalCompositeOperation='source-over';}
-function phBrushTex(list,ar){const key=ar.toFixed(4)+JSON.stringify(list.map(m=>[m.id,m.strokes]));
+function phBrushTex(list,ar){const key=ar.toFixed(4)+JSON.stringify(list.map(m=>[m.id,m.strokes,m.aid,PH_AI[m.aid]&&PH_AI[m.aid].v]));
   if(PH_BRUSH.tex&&PH_BRUSH.key===key)return PH_BRUSH.tex;
   const W=ar>=1?1024:Math.max(2,Math.round(1024*ar)),H=ar>=1?Math.max(2,Math.round(1024/ar)):1024,out=new Uint8Array(W*H*4);
-  list.forEach((m,ch)=>{const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d',{willReadFrequently:true});phBrushDraw(x,m,W,H);const d=x.getImageData(0,0,W,H).data;for(let i=0;i<W*H;i++)out[i*4+ch]=d[i*4+3];});
+  list.forEach((m,ch)=>{if(m.type==='ai'){const a=PH_AI[m.aid];if(a){for(let y=0;y<H;y++){const sy=Math.min(a.h-1,Math.floor((y+.5)/H*a.h));for(let x=0;x<W;x++)out[(y*W+x)*4+ch]=a.data[sy*a.w+Math.min(a.w-1,Math.floor((x+.5)/W*a.w))];}}return;}
+    const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d',{willReadFrequently:true});phBrushDraw(x,m,W,H);const d=x.getImageData(0,0,W,H).data;for(let i=0;i<W*H;i++)out[i*4+ch]=d[i*4+3];});
   if(!PH_BRUSH.tex)PH_BRUSH.tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,PH_BRUSH.tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,W,H,0,gl.RGBA,gl.UNSIGNED_BYTE,out);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   PH_BRUSH.key=key;return PH_BRUSH.tex;}
