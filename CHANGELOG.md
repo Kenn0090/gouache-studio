@@ -1,3 +1,11 @@
+## 0.61.0
+
+- **AI add-ons (optional downloads).** Some features use small AI models that run on your own computer (on the graphics card when possible, otherwise the processor). Nothing is sent anywhere. Open **File › AI add-ons…** to download only the parts you want (about 370 MB in all), see their size, licence and credit, and remove them again. The app also offers it once after updating. Downloads are checked, and models not used for a few minutes are unloaded to free memory.
+- **Photo tab – AI tools.** **Select subject…** (click an object; click more to add, Alt+click to take an area away) and **Select sky** make masks with the usual sliders, Invert and range. **Remove…**: paint over something and it is filled from what is around it; each removal can be undone, and it is also applied when you export. **Lens blur** blurs by distance from a focus you pick (with a depth map you can look at), and **Relight** puts a light on the photo that you can drag around; both use a depth map that is saved with the photo.
+- **Paint tab.** **Select › Select subject (AI)…** and **Select › Select sky (AI)** make a selection from what you see, and **Edit › Remove selection (AI)** takes the selected thing out of the current layer and fills it from its surroundings (Undo works).
+- **Convert tab.** Tick **Height from AI depth** to make the height map from the photo's depth instead of its brightness.
+- Models used (all free for any use, credited in the wiki and in the add-ons window): ONNX Runtime (MIT), SlimSAM (Apache 2.0), Depth Anything V2 Small (Apache 2.0) and LaMa (Apache 2.0).
+
 ## 0.60.0
 
 - **New Photo tab (next to 2D Paint): a Lightroom-style photo editor.** Open JPEG, PNG, WebP, TIFF and **RAW** photos (Canon, Nikon, Sony, Fujifilm, Panasonic, Olympus, Pentax, DNG and more; developed with the camera's white balance at full 16-bit quality). Your original file is never changed: the edits are kept beside it (a `.gphoto` file in the desktop app) and can always be changed or reset. It has its own layout: the Develop panel, a strip of your photos, presets and a history.

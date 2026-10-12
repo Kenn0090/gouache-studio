@@ -1,3 +1,10 @@
+# Gouache Studio 0.61.0
+
+- AI add-ons (optional downloads, run on your computer): File › AI add-ons…
+- Photo tab: Select subject, Select sky, Remove (paint over it), Lens blur and Relight.
+- Paint tab: Select subject (AI), Select sky (AI) and Remove selection (AI).
+- Convert tab: height map from AI depth.
+
 # Gouache Studio 0.60.0
 
 - New Photo tab (after 2D Paint): a Lightroom-style editor for JPEG, PNG, WebP, TIFF and RAW photos. Your originals are never changed; edits are saved beside the photo.
