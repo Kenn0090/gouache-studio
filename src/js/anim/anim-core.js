@@ -134,9 +134,11 @@ function togglePlay(){if(playing){stopPlay();return;}const A=A_();if(!A||A.frame
 function stopPlay(){if(!playing)return;clearTimeout(playing.timer);playing=null;renderTimeline();requestRender(true);}
 
 /* ---- onion skin: tinted copies of nearby frames drawn under the current one (view only) ---- */
+/* (0.58, Kenn) colour-blind friendly choices for the onion skin: red and green look alike to many people */
+const ONION_PALS={rg:{name:'Red before, green after',b:[.85,.15,.15],a:[.15,.7,.25]},bo:{name:'Blue before, orange after (colour-blind friendly)',b:[.2,.45,.95],a:[.98,.6,.08]},bw:{name:'Dark before, light after (no colour)',b:[.12,.12,.12],a:[.95,.95,.95]}};
 let onionT=null;
 function buildOnion(){if(onionT){release(onionT);onionT=null;}const A=A_();if(ui.mode!=='anim'||!A||!A.onion.on||playing)return null;
-  const o=A.onion,list=[];for(let k=o.before;k>=1;k--)list.push([A.cur-k,k,[.85,.15,.15]]);for(let k=o.after;k>=1;k--)list.push([A.cur+k,k,[.15,.7,.25]]);
+  const o=A.onion,list=[];const pal=ONION_PALS[o.pal]||ONION_PALS.rg;for(let k=o.before;k>=1;k--)list.push([A.cur-k,k,pal.b]);for(let k=o.after;k>=1;k--)list.push([A.cur+k,k,pal.a]);
   const use=list.filter(([i])=>i>=0&&i<A.frames.length);if(!use.length)return null;
   onionT=acquire();clearTarget(onionT);
   for(const [i,k,tint] of use){const ft=frameFlat(A.frames[i]);try{run(P.onion,onionT,{uSrc:ft.tex,uTint:tint,uUseTint:!!o.tint,uAlpha:Math.pow(o.fade,k)*.9},{blend:'over'});}finally{release(ft);}}
