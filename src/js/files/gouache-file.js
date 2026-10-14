@@ -54,7 +54,7 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
   const mask=async n=>n.mask?{en:n.mask.enabled,mono:n.mask.target.mono||undefined,lk:n.mask.link===false?0:undefined,img:await put(n.mask.target,true)}:null;
   const sharedSeen=new Map();
   const node=async n=>{if(n.shared&&n.type!=='group'){if(sharedSeen.has(n))return {t:'R',sid:sharedSeen.get(n),name:n.name};sharedSeen.set(n,sharedSeen.size+1);}/* (0.58) a layer shared by every frame is stored once */
-    const base={sid:sharedSeen.get(n),name:n.name,vis:n.visible,op:n.opacity,mode:n.mode,mask:await mask(n),lockPx:n.lockPx||undefined,lockPos:n.lockPos||undefined,lockAll:n.lockAll||undefined,smSrc:n.smSrc||undefined,smMaskSrc:n.smMaskSrc||undefined,meshEdit:n.meshEdit||undefined,materialPaint:n.materialPaint||undefined};
+    const base={sid:sharedSeen.get(n),name:n.name,vis:n.visible,op:n.opacity,mapOpacities:n.mapOpacities||undefined,mode:n.mode,mask:await mask(n),lockPx:n.lockPx||undefined,lockPos:n.lockPos||undefined,lockAll:n.lockAll||undefined,smSrc:n.smSrc||undefined,smMaskSrc:n.smMaskSrc||undefined,meshEdit:n.meshEdit||undefined,materialPaint:n.materialPaint||undefined};
     /* mask rows and content effects (0.23) */
     {const ms=await msEncode(n,put,putRaw);if(ms.stack)base.mstack=ms.stack;if(ms.cfx)base.cfx=ms.cfx;}
     if(n.type==='group'){const kids=[];for(const c of n.children)kids.push(await node(c));return Object.assign(base,{t:'G',open:n.open,kids,hold:n.frame?n.hold:undefined});}
@@ -133,7 +133,7 @@ async function gfReadInto(buf,head,data){
       if(o.text)n.text=o.text;if(o.grad)n.grad=o.grad;if(o.array){n.array=o.array;n.arrBox=o.arrBox||null;}if(o.styles)n.styles=o.styles;if(o.shape)n.shape=o.shape;if(o.path)n.path=o.path;if(o.fill)n.fill=o.fill;if(o.idSel)n.idSel=o.idSel;
       if(o.fillImg){n._fillImg={};for(const k in o.fillImg){const r=o.fillImg[k],raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),r.w,r.h,8,r.f),t=makeTarget(r.w,r.h,8,true);writeRegion(t,0,0,r.w,r.h,raw);n._fillImg[k]=t;}}
       for(const k in o.maps||{}){if(k!=='base'&&!doc.maps.includes(k))continue;const r=o.maps[k];if(r.live&&fillLiveSource(n,k))setMapLive(n,k);else await img(r,()=>ensureMapTarget(n,k),o.fill?n:null,k);}}
-    Object.assign(n,{visible:o.vis!==false,opacity:o.op==null?1:o.op,mode:o.mode==null?(o.t==='G'?-1:0):o.mode});n.lockPx=!!o.lockPx;n.lockPos=!!o.lockPos;n.lockAll=!!o.lockAll;n.smSrc=o.smSrc;n.smMaskSrc=o.smMaskSrc;n.materialPaint=o.materialPaint;if(o.meshEdit&&typeof o.meshEdit.setID==='string'&&typeof o.meshEdit.key==='string'){n.meshEdit=Object.assign({},o.meshEdit);n.meshMap=o.meshEdit.key;n.baked=true;}
+    Object.assign(n,{visible:o.vis!==false,opacity:o.op==null?1:o.op,mapOpacities:Object.assign({},o.mapOpacities),mode:o.mode==null?(o.t==='G'?-1:0):o.mode});n.lockPx=!!o.lockPx;n.lockPos=!!o.lockPos;n.lockAll=!!o.lockAll;n.smSrc=o.smSrc;n.smMaskSrc=o.smMaskSrc;n.materialPaint=o.materialPaint;if(o.meshEdit&&typeof o.meshEdit.setID==='string'&&typeof o.meshEdit.key==='string'){n.meshEdit=Object.assign({},o.meshEdit);n.meshMap=o.meshEdit.key;n.baked=true;}
     if(o.mask){n.mask=makeMask(1,o.mask.mono);n.mask.enabled=o.mask.en!==false;if(o.mask.lk===0)n.mask.link=false;await img(o.mask.img,n.mask.target);}
     await msDecode(n,o,img,async r=>{const raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),r.w,r.h,r.d||8,r.f),t=makeTarget(r.w,r.h,8,true);writeRegion(t,0,0,r.w,r.h,raw);return t;});
     if(o.sid){n.shared=true;sharedMap.set(o.sid,n);}
