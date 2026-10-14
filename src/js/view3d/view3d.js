@@ -126,7 +126,7 @@ const FS_3DLINE=`uniform vec4 uCol; void main(){ o=uCol; }`;
 const VS_UV=`#version 300 es
 layout(location=2) in vec2 aT; uniform vec2 uOrigin; uniform vec2 uExtent; uniform vec2 uViewport; uniform vec2 uShift;
 void main(){ vec2 p=uOrigin+(aT+uShift)*uExtent; gl_Position=vec4(p.x/uViewport.x*2.0-1.0,1.0-p.y/uViewport.y*2.0,0.0,1.0); }`;
-function prog3(vs,fs){const p=gl.createProgram(),v=compile(gl.VERTEX_SHADER,vs),f=compile(gl.FRAGMENT_SHADER,FS_HEAD+fs);gl.attachShader(p,v);gl.attachShader(p,f);gl.linkProgram(p);return {p,locs:{},fs,vs,_sh:[v,f]};}
+function prog3(vs,fs,header=FS_HEAD){const p=gl.createProgram(),v=compile(gl.VERTEX_SHADER,vs),f=compile(gl.FRAGMENT_SHADER,header+fs);gl.attachShader(p,v);gl.attachShader(p,f);gl.linkProgram(p);return {p,locs:{},fs,vs,_sh:[v,f]};}
 const FS_3DSEL=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform sampler2D uSel; void main(){ float m=texture(uSel,fract(vT)).r; if(m<0.02) discard; o=vec4(1.0,0.62,0.22,0.32*m); }`;
 const P3={mesh:Object.assign(prog3(VS_3D,FS_3D),{decodeOnly:true}),line:prog3(VS_3D,FS_3DLINE),uv:prog3(VS_UV,FS_3DLINE),sel:prog3(VS_3D,FS_3DSEL)};
 
@@ -312,7 +312,8 @@ function v3Render(F,flip){const g=v3.gpu;if(!g)return;v3Work.scenes++;F.sceneFli
   if(s.wire){gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);}gl.bindVertexArray(g.vao);
   for(const it of list){const T=it.T||{},base=T.base||null;if(!base||!it.count)continue;
     const itSafeMip=safeMip&&it.start===activeRange.start&&it.count===activeRange.count?safeMip:null;
-    if(BV){const U=v3MeshU(C,common,it,flip,itSafeMip);U.uHas={int:U.uHas.int&~4};U.uBevelWidth=bvWidth(bvSettings());useProg(bevelPreviewProgram(),U);gl.bindVertexArray(BV.vao);gl.drawArrays(gl.TRIANGLES,it.start*3,it.count*3);}else{gl.bindVertexArray(g.vao);useProg(P3.mesh,v3MeshU(C,common,it,flip,itSafeMip));gl.drawElements(gl.TRIANGLES,it.count*3,gl.UNSIGNED_INT,it.start*12);}}
+    const U=v3MeshU(C,common,it,flip,itSafeMip),previewU=BV&&bk.opts?.bevel?.on&&bk.res.normal?.tex===U.uNrm?{...U,uHas:{int:U.uHas.int&~4}}:U,rounded=BV?bevelScreen(BV,g,common,previewU,F):null;
+    gl.bindVertexArray(g.vao);useProg(rounded?bevelPreviewProgram():P3.mesh,rounded?{...U,uNrm:rounded.tex}:U);gl.drawElements(gl.TRIANGLES,it.count*3,gl.UNSIGNED_INT,it.start*12);}
   gl.disable(gl.POLYGON_OFFSET_FILL);
   studioFloorDraw(C,VP,F,SU);
   if(!bake&&!mv&&!v3Unlit())v3DrawOutlines(list,common,F,flip);gl.bindVertexArray(g.vao);
@@ -321,7 +322,7 @@ function v3Render(F,flip){const g=v3.gpu;if(!g)return;v3Work.scenes++;F.sceneFli
     gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);useProg(P3.sel,Object.assign({},common,{uSel:sel.t.tex}));gl.bindVertexArray(g.vao);
     gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);gl.depthMask(true);gl.disable(gl.BLEND);}
   if(s.wire){useProg(P3.line,Object.assign({},common,{uCol:[.95,.7,.35,1]}));gl.bindVertexArray(g.evao);gl.drawElements(gl.LINES,g.ecount,gl.UNSIGNED_INT,0);}
-  if(bake&&!(bk.fold>0)){bakeDrawHigh(common);bakeDrawCage(common);}
+  if(bake&&!(bk.fold>0)){bakeDrawHigh(common,F);bakeDrawCage(common);}
   if(!bake&&(v3.paintOn||ui.mode==='p3d')){drawMir3(VP);drawMir3Cursors(F,common);}
   gl.bindVertexArray(vao);gl.disable(gl.DEPTH_TEST);
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,F.rf);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);

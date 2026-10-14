@@ -1,5 +1,7 @@
 # End-to-end tests
 
+- `bevel-scene.cjs` checks scene-aware rounded normals: convex and concave corners, separate-object intersections, same-surface filtering, hard-edge overrides, triangulation independence, physical width conversion, vertex-color radius masks, existing normal detail, thin walls, identities of separately loaded high meshes, background preparation of a 52K-face mesh, and low/high preview parity with actual normal-map bakes. Uses the offline frontend and Edge/SwiftShader. `GS_BEVEL_GPU=1` uses the installed hardware driver; `GS_BEVEL_PROJECT` optionally tests a local `.gouache3d` project's mesh and saves a preview under `out/bevel-scene/`. Those private project files are not committed or uploaded.
+
 - `paint0514.cjs` checks native rotated/mirrored text creation, editor alignment, reopening and undo; legacy Gasa favorite migration; real pressure strokes and bleed for both Gasa pens; high-precision interpolation and Gradient map; premultiplied transparency/low opacity; and 8K/16K horizontal/vertical gradient strips. Strips exercise the full coordinate range without allocating multi-gigabyte full documents.
 
 - `favorites0513.cjs` checks real native pointer drags for brushes, toolbar tools, textures and materials; separate saved collections; docking and floating; Shift+B with remembered sizes; 2D canvas/layer/folder/mask drops and undo; mask Properties; and compass rotation/reset.

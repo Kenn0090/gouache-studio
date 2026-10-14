@@ -15,9 +15,13 @@ function bkHighView(){const C=bakeCfg,low=v3.mesh;if(!C.high||!low)return null;c
   bkHV.mesh=H;bkHV.key=key;return bkHV.g={vao:vaoH,vb,ib,count:H.idx.length};}
 function bkHighViewFree(){const g=bkHV.g;if(g){gl.deleteVertexArray(g.vao);gl.deleteBuffer(g.vb);gl.deleteBuffer(g.ib);}bkHV.g=null;bkHV.mesh=null;bkHV.key=null;}
 const bakeHighHidesLow=()=>ui.mode==='bake'&&bk.showHigh==='only'&&!!bakeCfg.high;
-function bakeDrawHigh(common){if(ui.mode!=='bake'||!bk.showHigh||bk.showHigh==='off'||!bakeCfg.high)return;const g=bkHighView();if(!g)return;if(!P_BKHIGH)P_BKHIGH=prog3(VS_3D,FS_BKHIGH);
-  const see=bk.showHigh==='over';if(see){gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);}
-  const B=bevelPreviewOn()?bevelPreviewGPU(bkHV.mesh,'high'):null;useProg(B?bevelPreviewProgram(true):P_BKHIGH,Object.assign({},common,{uBevelWidth:bvWidth(bvSettings()),uUseH:false,uCamH:v3Eye(),uAlpha:see?.45:1,uTint:see?[1,.72,.45]:[.82,.8,.78]}));if(B){gl.bindVertexArray(B.vao);gl.drawArrays(gl.TRIANGLES,0,B.count);}else{gl.bindVertexArray(g.vao);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);}
+function bakeDrawHigh(common,F){if(ui.mode!=='bake'||!bk.showHigh||bk.showHigh==='off'||!bakeCfg.high)return;const g=bkHighView();if(!g)return;if(!P_BKHIGH)P_BKHIGH=prog3(VS_3D,FS_BKHIGH);
+  const see=bk.showHigh==='over',B=bevelPreviewOn()?bevelPreviewGPU(bkHV.mesh,'high'):null;
+  const rounded=B&&F?bevelScreen(B,g,common,{uHas:{int:0},uClip:false,uNrm:dummy,uBase:dummy,uOpac:dummy},F,true):null;
+  if(see){gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);}
+  const material=rounded?v3MeshU(v3Ctx(),common,{T:{base:bevelClay(see)},start:0,count:g.count/3},false):null;
+  if(rounded){gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);gl.enable(gl.DEPTH_TEST);if(see){gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);}}
+  useProg(rounded?bevelPreviewProgram(true):P_BKHIGH,rounded?{...material,uNrm:rounded.tex,uDef:[.28,0],uUnlit:false,uBVAlpha:see?.45:1,uUseH:false}:{...common,uUseH:false,uCamH:v3Eye(),uAlpha:see?.45:1,uTint:see?[1,.72,.45]:[.82,.8,.78]});gl.bindVertexArray(g.vao);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);
   gl.bindVertexArray(vao);if(see){gl.depthMask(true);gl.disable(gl.BLEND);}}
 /* C steps through what the model shows */
 function bakeShowList(){const have=Object.keys(bk.res).filter(k=>k!=='mcurv'&&k!=='gcurv');return ['material',...have,...Object.keys(BK_PAINT).filter(k=>bk.maps[k])];}

@@ -25,6 +25,7 @@ jobs:
       - run: npm run build
       - run: npm ci --prefix tests/e2e
       - run: node tests/e2e/p3-mask-sets-bevel.cjs
+      - run: node tests/e2e/bevel-scene.cjs
       - run: node tests/e2e/artist-fixes.cjs
       - run: node tests/e2e/symmetry.cjs
       - run: node tests/e2e/numeric-sliders.cjs

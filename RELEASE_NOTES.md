@@ -1,3 +1,9 @@
+# Gouache Studio 0.64.0
+
+- Bake › Normal: bevel shading now rounds convex/concave edges and intersections between separate meshes using the same scene probes in preview and baking.
+- New controls: physical width in millimeters with model-file units, sample quality, authored hard edges, Same surface only, and vertex-color width masking. Existing percentage widths still work.
+- Preview refines in tiles and reports completion. It retains existing normal detail, avoids doubling a previous bevel bake, and shows high-poly specular highlights with material lighting. Large-mesh preparation runs in a worker.
+
 # Gouache Studio 0.63.0
 
 - Mask mode: added a Wireframe toggle to the mask toolbar.

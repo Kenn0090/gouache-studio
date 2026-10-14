@@ -56,6 +56,21 @@ The **Bake** button is big and bold at the top of the panel and stays in view wh
 
 The Bake panel is one wide panel in two columns, so everything is in view without scrolling on a normal screen: models, maps to bake, sending and the Show list on the left, and the settings of each map on the right. **History** is only a tab beside it. If you make the panel narrower, the columns stack.
 
+## Bevel preview and baking
+
+Under **Normal › Bevel shader**, enable the bevel and **Preview before baking**. The material view shows rounded edge shading on the high-poly when supplied, otherwise the low-poly. The preview refines in small pieces; its status says when it is ready. Geometry and the silhouette stay unchanged.
+
+- **Width units:** use a percentage of the model, or millimeters. For millimeters, set **Model file units** to the units used to export the model; importers normalize the viewport size, so the original file scale matters. Changing the width-unit choice preserves the current radius.
+- **Minimum edge angle:** apply the effect where the surface turns more sharply than this angle.
+- **Samples:** more probes give a better estimate of the rounded normal and take longer. Start around 24 and increase for the final bake.
+- **Bevel hard edges:** respect the hard edges authored in the model's corner normals, even when the angle limit would exclude them.
+- **Same surface only:** enabled, other imported objects are ignored. Disabled, intersections can receive rounded shading without merging or making a boolean union. Separately loaded high meshes keep their identities even when their names match.
+- **Vertex color width mask:** choose a channel of the imported vertex colors. Zero removes the bevel, half halves the radius, and one keeps the full width. Models without vertex colors keep the full width.
+
+**Bake bevel normal** creates a tangent-space normal map, including when there is no high-poly. The world-normal bake uses the same rounded normals. Preview turns off after the normal bake so the resulting normal map supplies the shading. Re-enabling preview recalculates the bevel rather than applying it twice to the previous bevel bake. Existing normal detail is retained by the surface probes.
+
+Use widths that fit the part: a shading bevel cannot change a large silhouette or replace modeled forms. This implementation approximates rounded normals with scene probes; it is not a pixel-identical Toolbag shader. Width is currently a global bake setting, with vertex colors for local variation.
+
 ## Settings: one tab per map
 Under the model rows, the tabs hold the settings. A dot marks the maps that will be baked; tick **Bake …** at the top of a tab to turn a map on or off.
 - **General:** Front, Back, Average ray directions, Anti-aliasing, Padding, and how bakes are sent to the document (below).
