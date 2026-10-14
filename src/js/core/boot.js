@@ -47,3 +47,5 @@ if(window.__gs)Object.assign(window.__gs,{pathTipCopy,weldTipGet});
 if(/[?&]debug\b/.test(location.search)){for(const k in P)progOk(P[k]);for(const k in P3)progOk(P3[k]);}
 else{let tries=0;const warm=()=>{let left=0;for(const pr of [...Object.values(P),...Object.values(P3)]){if(pr._ok)continue;try{if(!glParallel||gl.getProgramParameter(pr.p,glParallel.COMPLETION_STATUS_KHR))progOk(pr);else left++;}catch(e){console.warn('graphics program failed',e);pr._ok=true;}}
   if(left&&++tries<40)setTimeout(warm,400);};setTimeout(warm,1500);}
+
+if(window.__gs)Object.assign(window.__gs,{mapOpacityOf,setMapOpacityOf,sel3Grow,sel3Shells,sel3Topo,sel3Draw,p3SyncSets,p3RemoveSet,p3DeleteSet,p3RestoreSets,p3Range,p3SetKey,bevelNormals,bevelPreviewGPU,bevelPreviewProgram,bvSettings,bvWidth,bvGPU,uvAct,uvTransferSet,p3SharedSquare,uvMergeMaterialGroups,uvRepackOwn,maskBarSync,luLook,luFlush,lu});
