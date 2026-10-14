@@ -131,11 +131,55 @@ function uvCard(L){uvBigHide();if(!L||!L.pos)return null;const an=uvAn(L),A=L.uv
   if(an.issues.length)card.append(el('ul',{class:'uvissues'},...an.issues.filter(i=>i.kind!=='none').map(i=>el('li',{text:i.text}))));
   return card;}
 /* the buttons of the card */
-async function uvAct(what,optIn,flags){const quiet=!!(flags&&flags.quiet);if(uvw.busy)return;const old=(typeof bkLow==='function'?bkLow():null);if(!old)return;uvw.busy=true;uwStop.on=false;
+
+/* Shared layout keeps its own painted appearance: each old set is sampled at its old UVs and drawn at the new UVs. */
+let P_UVTRANSFER=null;
+function uvTransferSet(old,nm,S,src,W,H,normal=false){if(!P_UVTRANSFER)P_UVTRANSFER=prog3(`#version 300 es
+layout(location=0) in vec2 aNew; layout(location=1) in vec2 aOld;layout(location=2) in vec4 aOldT;layout(location=3) in vec4 aNewT;layout(location=4) in vec3 aN;
+out vec2 vOld;out vec4 vOldT;out vec4 vNewT;out vec3 vN;
+void main(){vOld=aOld;vOldT=aOldT;vNewT=aNewT;vN=aN;gl_Position=vec4(aNew*2.0-1.0,0.0,1.0);}`,`in vec2 vOld;in vec4 vOldT;in vec4 vNewT;in vec3 vN;uniform sampler2D uSrc;uniform int uNormal;void main(){vec4 c=texture(uSrc,vOld);if(uNormal==1&&c.a>0.0){vec3 N=normalize(vN),T=normalize(vOldT.xyz-N*dot(N,vOldT.xyz)),B=cross(N,T)*vOldT.w,n=c.rgb/c.a*2.0-1.0,w=normalize(T*n.x+B*n.y+N*n.z);vec3 NT=normalize(vNewT.xyz-N*dot(N,vNewT.xyz)),NB=cross(N,NT)*vNewT.w;c.rgb=(normalize(vec3(dot(w,NT),dot(w,NB),dot(w,N)))*0.5+0.5)*c.a;}o=c;}`);
+  const data=[],names=old.matNames||['default'],binding=p3Binding(S);
+  if(old.idx.length!==nm.idx.length)throw new Error('The shared layout changed the face count.');
+  for(let t=0;t<old.idx.length/3;t++){if((names[old.triMat?old.triMat[t]:0]||'default')!==binding)continue;
+    const ids=[0,1,2].map(c=>old.idx[t*3+c]),uv=ids.map(i=>[old.uv[i*2],old.uv[i*2+1]]);
+    if(S.tile){const u=uv.reduce((n,p)=>n+p[0],0)/3,v=uv.reduce((n,p)=>n+p[1],0)/3;if(Math.floor(u)!==S.tile.u||Math.floor(v)!==S.tile.v)continue;}
+    for(let c=0;c<3;c++){const a=ids[c],b=nm.idx[t*3+c];for(let k=0;k<3;k++)if(Math.abs(old.pos[a*3+k]-nm.pos[b*3+k])>1e-5)throw new Error('The shared layout changed the face order.');
+      data.push(nm.uv[b*2],nm.uv[b*2+1],old.uv[a*2]-(S.tile?S.tile.u:0),old.uv[a*2+1]-(S.tile?S.tile.v:0),...old.tan.subarray(a*4,a*4+4),...nm.tan.subarray(b*4,b*4+4),...old.nrm.subarray(a*3,a*3+3));}}
+  const target=makeTarget(W,H,src.depth,false),va=gl.createVertexArray(),vb=gl.createBuffer();clearTarget(target);
+  try{gl.bindVertexArray(va);gl.bindBuffer(gl.ARRAY_BUFFER,vb);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.STATIC_DRAW);
+    for(const [i,n,off] of [[0,2,0],[1,2,2],[2,4,4],[3,4,8],[4,3,12]]){gl.enableVertexAttribArray(i);gl.vertexAttribPointer(i,n,gl.FLOAT,false,60,off*4);}
+    bindTarget(target);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.disable(gl.BLEND);useProg(P_UVTRANSFER,{uSrc:src.tex,uNormal:normal});gl.drawArrays(gl.TRIANGLES,0,data.length/15);return target;
+  }catch(e){disposeTarget(target);throw e;}finally{gl.bindVertexArray(vao);gl.deleteBuffer(vb);gl.deleteVertexArray(va);}}
+function uvMergeMaterialGroups(nm){nm.matNames=['Shared'];nm.triMat=new Uint32Array(nm.idx.length/3);delete nm.setRanges;delete nm._topo;delete nm._shell;return nm;}
+async function p3SharedSquare(old,nm){if(!p3.started||p3.imported!==old)return uvMergeMaterialGroups(nm);
+  const mode=ui.mode;if(mode!=='p3d'&&!setMode('p3d',true))throw new Error('Finish the current edit first.');
+  const sets=p3.sets.slice(),cur=p3.cur,original=docState(),tex=v3.tex,images=[],maps=new Set(),size=p3.size;let committed=false;
+  tabDocs.hold=true;
+  try{for(let i=0;i<sets.length;i++){const S=sets[i];if(S.missing)continue;const state=i===cur?original:S.state;
+      if(state)setDocState(state);else{blankTabDoc(size,size,S.name);p3Setup(S.name);}
+      const rec={name:S.name,images:{}};images.push(rec);for(const k of doc.maps){maps.add(k);let src;if(k==='normal'){const strength=doc.nrmStr;doc.nrmStr=0;try{src=normalComposite(false,null);}finally{doc.nrmStr=strength;}}else src=compositeMap(k);try{rec.images[k]=uvTransferSet(old,nm,S,src,size,size,k==='normal');}finally{release(src);}}
+      if(!state)disposeDocState(docState());setDocState(original);await tick();}
+    setDocState(original);blankTabDoc(size,size,'Shared');p3Setup('Shared');doc.maps=[...maps];if(!doc.maps.includes('base'))doc.maps.unshift('base');syncTargets();
+    for(const L of everyNode())disposeLayer(L);doc.root.children=[];doc.count=0;
+    for(const rec of images){const G=newGroupObj(rec.name);G.mode=0;const L=newLayerObj('Transferred material');
+      for(const k in L.maps)disposeTarget(L.maps[k]);L.maps={};for(const k in rec.images){L.maps[k]=rec.images[k];delete rec.images[k];setMapModeOf(L,k,0);}
+      insertNode(L,G);insertNode(G,doc.root);doc.active=L;doc.sel=new Set([L]);}
+    if(!images.length){const L=newLayerObj('Paint');insertNode(L,doc.root);selectOnly(L);}syncTargets();hist.undo=[];hist.redo=[];doc.v3d=p3.v3d;
+    p3.udim=false;p3.deletedSets=[];p3.sets=[{name:'Shared',material:'Shared',state:null,tex:null,missing:false}];p3.cur=0;p3.metadataVer=(p3.metadataVer||0)+1;
+    for(const S of sets){if(S.state&&S.state!==original)disposeDocState(S.state);if(S.tex)for(const k in S.tex)disposeTarget(S.tex[k]);}
+    disposeDocState(original);for(const k in tex)disposeTarget(tex[k]);v3.tex={};v3.mapsDirty=true;committed=true;uvMergeMaterialGroups(nm);
+    renderLayers();refreshMapsUI();changedAll();return nm;
+  }finally{if(!committed){setDocState(original);v3.tex=tex;}for(const rec of images)for(const k in rec.images)disposeTarget(rec.images[k]);tabDocs.hold=false;if(mode!=='p3d')setMode(mode,true);}}
+
+async function uvAct(what,optIn,flags){const quiet=!!(flags&&flags.quiet);if(uvw.busy)return;const old=(typeof bkLow==='function'?bkLow():null);if(!old)return;let mergeShared=false;
+  if(what==='layout'&&optIn?.layout==='shared'&&(old.matNames||[]).length>1){
+    const body=el('div',{class:'dlg-grid'},uvLine('Pack the UVs into one shared square. Combine the texture sets into one set as well?'),uvLine('Combining transfers each set’s visible material into a group in the new layout. Layers and live effects inside each old set are flattened; save the project first to keep those editable.'),el('button',{class:'btn',id:'uvKeepSets',text:'Keep separate texture sets',onclick:()=>body._pick('separate')}));
+    const choice=await uvDialog('Shared square',body,'Combine texture sets','Cancel');if(choice==='cancel')return;mergeShared=choice==='ok';}
+  uvw.busy=true;uwStop.on=false;
   try{let nm=null;const o=optIn||{};
     if(what==='unwrap'){nm=await uvRunUnwrap(old.uwSrc?old:Object.assign({},old,{noUV:true,uwSrc:null}),Object.assign({},o,{seed:o.seed||(old.uwOpt&&old.uwOpt.seed)||1}),quiet);}
     else if(what==='reroll'){const seed=o.seed||((old.uwOpt&&old.uwOpt.seed)||1)+1;nm=await uvRunUnwrap(old,Object.assign({},o,{seed,packSeed:null}));}
-    else if(what==='layout'){nm=old.uwRes?uvRelayout(old,o):uvRepackOwn(old,o);}
+    else if(what==='layout'){nm=o.layout==='shared'?uvRepackOwn(Object.assign({},old,{uwSrc:null,uwRes:null}),o):old.uwRes?uvRelayout(old,o):uvRepackOwn(old,o);if(nm&&mergeShared)nm=await p3SharedSquare(old,nm);}
     else if(what==='repack'){const seed=o.seed||((old.uwOpt&&old.uwOpt.packSeed)||0)+1;nm=old.uwRes?uvRelayout(old,Object.assign({},o,{packSeed:seed,seed:old.uwOpt.seed})):uvRepackOwn(old,Object.assign({},o,{packSeed:seed,seed}));}
     else if(what==='best'){let best=null,bu=-1;const base=old.uwOpt&&old.uwOpt.packSeed||0;for(let k=0;k<24;k++){const ps=base+k+1,c=old.uwRes?uvRelayout(old,{packSeed:ps}):uvRepackOwn(old,{packSeed:ps});if(c&&c.uvAuto.util>bu){bu=c.uvAuto.util;best=c;}if(k%4===3)await uwYield();}nm=best;if(best)toast('Best of 24: '+Math.round(bu*100)+'% of the square used.');}
     else if(what==='relax'){nm=await uvRunRelax(old,o);}
