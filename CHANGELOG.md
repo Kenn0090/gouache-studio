@@ -1,4 +1,4 @@
-## Unreleased
+## 0.64.0
 
 - Bake › Normal: scene-aware bevel shading now probes surrounding geometry, rounding convex/concave corners and intersections between separate meshes. Preview and normal baking share the calculation.
 - Added millimeter width with model-file units, Samples, Bevel hard edges, Same surface only, and vertex-color width masking. Existing percentage widths remain compatible.

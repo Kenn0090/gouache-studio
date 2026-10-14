@@ -1,4 +1,4 @@
-# Unreleased — scene-aware bevel rework
+# Gouache Studio 0.64.0
 
 - Bake › Normal: bevel shading now rounds convex/concave edges and intersections between separate meshes using the same scene probes in preview and baking.
 - New controls: physical width in millimeters with model-file units, sample quality, authored hard edges, Same surface only, and vertex-color width masking. Existing percentage widths still work.
