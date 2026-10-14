@@ -25,3 +25,4 @@ jobs:
       - run: node tests/e2e/blur-seam-layer.cjs
       - run: node tests/e2e/paint-bevel-seams.cjs
       - run: node tests/e2e/studio-tools.cjs
+      - run: node tests/e2e/p3-mask-sets-bevel.cjs
