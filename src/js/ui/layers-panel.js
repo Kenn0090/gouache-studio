@@ -24,7 +24,7 @@ modePop.addEventListener('keydown',e=>{const items=[...modePop.querySelectorAll(
   if(e.key==='ArrowDown'){e.preventDefault();(items[i+1]||items[0]).focus();}else if(e.key==='ArrowUp'){e.preventDefault();(items[i-1]||items[items.length-1]).focus();}
   else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeModePop();}else if(e.key==='Tab'){e.preventDefault();}});
 document.addEventListener('pointerdown',e=>{if(modeState&&!modePop.contains(e.target)&&e.target!==modeBtn&&!modeBtn.contains(e.target))closeModePop();});
-const opSlider=makeSlider({id:'lOp',label:'Opacity',min:0,max:1,step:.01,value:1,fmt:pct,onInput:v=>{if(doc.active){doc.active.opacity=v;requestRender(true);}}});
+const opSlider=makeSlider({id:'lOp',label:'Opacity',min:0,max:1,step:.01,value:1,fmt:pct,onInput:v=>{if(doc.active){if(ui.mode==='p3d'||doc.p3)setMapOpacityOf(doc.active,doc.map,v);else doc.active.opacity=v;requestRender(true);}}});
 $('#lOpacityRow').append(opSlider.el);
 {const oi=$('#lOp'),fillOp=()=>oi.style.setProperty('--v',(oi.value/oi.max*100)+'%');oi.addEventListener('input',fillOp);const st=opSlider.set;opSlider.set=v=>{st(v);fillOp();};fillOp();}
 $('#lClip').addEventListener('change',e=>{if(isLayer(doc.active)){doc.active.clip=e.target.checked;renderLayers();requestRender(true);}});
@@ -42,7 +42,7 @@ function syncLayerProps(){const A=doc.active,grp=A&&A.type==='group';if(ui.tool=
   if((ui.tool==='array'||ui.tool==='shape')&&lkPanelFor!==doc.active){lkPanelFor=doc.active;buildBrushPanel();drawXfOverlay();}
   if((ui.tool==='pen'||ui.tool==='path')&&pathPanelFor!==doc.active)buildBrushPanel();
   $('#lModeName').textContent=A?modeLabel(mapModeOf(A,doc.map)):'Normal';modeBtn.disabled=!A;renderMaskRow();
-  if(A){opSlider.set(A.opacity);$('#lClip').checked=!!A.clip;$('#lLock').checked=!!A.lockAlpha;}
+  if(A){opSlider.set(ui.mode==='p3d'||doc.p3?mapOpacityOf(A,doc.map):A.opacity);opSlider.el.title=(ui.mode==='p3d'||doc.p3?MAP_DEFS[doc.map].label+' opacity':'Layer opacity');$('#lClip').checked=!!A.clip;$('#lLock').checked=!!A.lockAlpha;}
   $('#lClip').disabled=$('#lLock').disabled=!isLayer(A);
   const tops=topSelected(),p=A&&A.parent,i=p?p.children.indexOf(A):-1;
   const mb=$('#lMerge'),mt=tops.length>1?'Merge '+tops.length+' layers':grp?'Merge group':'Merge down';mb.title=mt+' (Ctrl+E)';mb.setAttribute('aria-label',mt);
@@ -67,9 +67,9 @@ function renderLayers(){
     eye.addEventListener('pointerdown',e=>{if(e.button!==0)return;e.stopPropagation();e.preventDefault();eyeSweep(n,eye);});
     eye.addEventListener('click',e=>{e.stopPropagation();if(e.detail!==0)return;/* keyboard: Enter or Space */n.visible=!n.visible;renderLayers();requestRender(true);});
     const meta=[];if(grp){meta.push(n.mode<0?'pass':MODES[n.mode]);const om=doc.maps.length>1&&ui.mode!=='anim'?onlyMapOf(n):null;if(om)meta.push(MAP_SHORT[om]);}else{const mm=mapModeOf(n,doc.map);if(mm!==(doc.map==='base'?0:MAP_DEFS[doc.map].blend))meta.push(MODES[mm].replace(' (Add)',''));}
-    if(n.shared)meta.unshift('every frame');if(n.text)meta.unshift('text');if(n.grad)meta.unshift('gradient');if(n.shape)meta.unshift('shape');if(n.fill)meta.unshift('fill');if(n.array&&n.array.on!==false)meta.unshift('array');if(n.opacity<1)meta.push(Math.round(n.opacity*100)+'%');if(n.lockAll)meta.push('locked');else{if(n.lockPx)meta.push('pixels locked');if(n.lockPos)meta.push('position locked');if(n.lockAlpha)meta.push('lock alpha');}
+    if(n.shared)meta.unshift('every frame');if(n.text)meta.unshift('text');if(n.grad)meta.unshift('gradient');if(n.shape)meta.unshift('shape');if(n.fill)meta.unshift('fill');if(n.array&&n.array.on!==false)meta.unshift('array');if(mapOpacityOf(n,doc.map)<1)meta.push(Math.round(mapOpacityOf(n,doc.map)*100)+'%');if(n.lockAll)meta.push('locked');else{if(n.lockPx)meta.push('pixels locked');if(n.lockPos)meta.push('position locked');if(n.lockAlpha)meta.push('lock alpha');}
     /* which maps this layer has something in (so a layer painted only in Height is easy to find) */
-    if(n.fx){meta.length=0;const mm=mapModeOf(n,n.fx.map);if(mm)meta.push(MODES[mm].replace(' (Add)',''));if(n.opacity<1)meta.push(Math.round(n.opacity*100)+'%');
+    if(n.fx){meta.length=0;const mm=mapModeOf(n,n.fx.map);if(mm)meta.push(MODES[mm].replace(' (Add)',''));if(mapOpacityOf(n,doc.map)<1)meta.push(Math.round(mapOpacityOf(n,doc.map)*100)+'%');
       meta.unshift(n.fx.stack.filter(it=>it.on!==false).map(fxItemTitle).join(', ')||'no filters');if(doc.maps.length>1)meta.push(MAP_SHORT[n.fx.map]);}
     else if(!grp&&doc.maps.length>1&&ui.mode!=='anim'){const ks=mapKeysOf(n).filter(k=>doc.maps.includes(k)&&!(k==='base'&&isBlankBase(n)));
       if(!ks.includes(doc.map))meta.push('empty in '+MAP_DEFS[doc.map].label.toLowerCase());if(ks.length)meta.push(ks.map(k=>MAP_SHORT[k]).join(' '));}
@@ -195,9 +195,9 @@ function cmdGroup(){const tops=topSelected();if(!tops.length)return;
   toast('Grouped '+tops.length+' item'+(tops.length===1?'':'s')+'.');}
 function cmdUngroup(){const G=doc.active;if(!G||G.type!=='group'){toast('Select a group to ungroup.');return;}
   structOp('Ungroup',()=>{const p=G.parent,i=p.children.indexOf(G),ch=G.children.slice();detachNode(G);p.children.splice(i,0,...ch);ch.forEach(c=>c.parent=p);doc.sel=new Set(ch);doc.active=ch[ch.length-1]||p.children[Math.max(0,i-1)]||null;});}
-function cloneNode(n){if(n.type==='layer'&&n.fx){const L=newFxLayerObj(n.name+' copy',JSON.parse(JSON.stringify(fxCleanStack(n.fx.stack))),n.fx.map);Object.assign(L,{opacity:n.opacity,mode:n.mode,clip:n.clip,visible:n.visible,mask:cloneMask(n.mask)});L.mapModes=Object.assign({},n.mapModes);return L;}
-  if(n.type==='layer'){const L=newLayerObj(n.name+' copy',!!n.fill);Object.assign(L,{opacity:n.opacity,mode:n.mode,clip:n.clip,lockAlpha:n.lockAlpha,visible:n.visible,mask:cloneMask(n.mask),text:n.text?cloneText(n.text):null,grad:n.grad?cloneGrad(n.grad):null,array:n.array?JSON.parse(JSON.stringify(n.array)):null,arrBox:n.arrBox||null,styles:n.styles?JSON.parse(JSON.stringify(n.styles)):null,shape:n.shape?JSON.parse(JSON.stringify(n.shape)):null,fill:n.fill?JSON.parse(JSON.stringify(n.fill)):null});if(n.path)L.path=pathCopy(n.path);if(n.materialPaint)L.materialPaint=n.materialPaint;if(n.meshEdit){L.meshEdit=Object.assign({},n.meshEdit);L.baked=true;L.meshMap=n.meshEdit.key;}if(n._fillImg){L._fillImg={};for(const k in n._fillImg){const s=n._fillImg[k],t=makeTarget(s.w,s.h,8,true);blit(s,t,0,0,s.w,s.h,0,0);L._fillImg[k]=t;}}for(const k of mapKeysOf(n)){const c=mapSolid(n,k);if(mapLive(n,k))setMapLive(L,k);else if(c)setMapSolid(L,k,c);else blit(mapT(n,k),ensureMapTarget(L,k),0,0,doc.w,doc.h,0,0);}L.mapModes=Object.assign({},n.mapModes);L.target=L.maps[doc.map]||emptyFor(mapDepth(doc.map));if(L.text)L.text.bbox=layoutText(L.text);return L;}
-  const G=newGroupObj(n.name+' copy');Object.assign(G,{opacity:n.opacity,mode:n.mode,visible:n.visible,open:n.open,mask:cloneMask(n.mask)});for(const c of n.children){const cc=cloneNode(c);cc.name=c.name;insertNode(cc,G);}return G;}
+function cloneNode(n){if(n.type==='layer'&&n.fx){const L=newFxLayerObj(n.name+' copy',JSON.parse(JSON.stringify(fxCleanStack(n.fx.stack))),n.fx.map);Object.assign(L,{opacity:n.opacity,mode:n.mode,clip:n.clip,visible:n.visible,mask:cloneMask(n.mask)});L.mapModes=Object.assign({},n.mapModes);L.mapOpacities=Object.assign({},n.mapOpacities);return L;}
+  if(n.type==='layer'){const L=newLayerObj(n.name+' copy',!!n.fill);Object.assign(L,{opacity:n.opacity,mode:n.mode,clip:n.clip,lockAlpha:n.lockAlpha,visible:n.visible,mask:cloneMask(n.mask),text:n.text?cloneText(n.text):null,grad:n.grad?cloneGrad(n.grad):null,array:n.array?JSON.parse(JSON.stringify(n.array)):null,arrBox:n.arrBox||null,styles:n.styles?JSON.parse(JSON.stringify(n.styles)):null,shape:n.shape?JSON.parse(JSON.stringify(n.shape)):null,fill:n.fill?JSON.parse(JSON.stringify(n.fill)):null});if(n.path)L.path=pathCopy(n.path);if(n.materialPaint)L.materialPaint=n.materialPaint;if(n.meshEdit){L.meshEdit=Object.assign({},n.meshEdit);L.baked=true;L.meshMap=n.meshEdit.key;}if(n._fillImg){L._fillImg={};for(const k in n._fillImg){const s=n._fillImg[k],t=makeTarget(s.w,s.h,8,true);blit(s,t,0,0,s.w,s.h,0,0);L._fillImg[k]=t;}}for(const k of mapKeysOf(n)){const c=mapSolid(n,k);if(mapLive(n,k))setMapLive(L,k);else if(c)setMapSolid(L,k,c);else blit(mapT(n,k),ensureMapTarget(L,k),0,0,doc.w,doc.h,0,0);}L.mapModes=Object.assign({},n.mapModes);L.mapOpacities=Object.assign({},n.mapOpacities);L.target=L.maps[doc.map]||emptyFor(mapDepth(doc.map));if(L.text)L.text.bbox=layoutText(L.text);return L;}
+  const G=newGroupObj(n.name+' copy');G.mapOpacities=Object.assign({},n.mapOpacities);Object.assign(G,{opacity:n.opacity,mode:n.mode,visible:n.visible,open:n.open,mask:cloneMask(n.mask)});for(const c of n.children){const cc=cloneNode(c);cc.name=c.name;insertNode(cc,G);}return G;}
 function cmdDuplicate(){const tops=topSelected();if(!tops.length)return;
   structOp('Duplicate',()=>{const clones=[];for(const n of tops){const c=cloneNode(n);if(n.path){c.path=pathCopy(n.path);c._pathSamples=n._pathSamples;}insertNode(c,n.parent,n.parent.children.indexOf(n)+1);clones.push(c);}doc.sel=new Set(clones);doc.active=clones[clones.length-1];});if(doc.active?.path)buildBrushPanel();}
 function cmdDelete(){const tops=topSelected();if(!tops.length)return;
@@ -218,15 +218,15 @@ function cmdMergeDown(){const L=doc.active;if(!isLayer(L))return;const p=L.paren
     const M=mergedLayer(lower.name,[lower],{opacity:lower.opacity,mode:lower.mode,visible:lower.visible,clip:lower.clip,lockAlpha:lower.lockAlpha,mask:cloneMask(lower.mask)},k=>{
       if(!hasMap(lower,k))return null;const d=mapDepth(k),prev=pool;pool=auxFor(d).pool;const B=acquire();blit(mapT(lower,k),B,0,0,doc.w,doc.h,0,0);
       const R=k===L.fx.map&&L.visible?fxApplyLayer(L,B,k,maskTexOf(L)):B;if(R!==B)release(B);pool=prev;return R;});
-    M.mapModes=Object.assign({},lower.mapModes);structOp('Merge filter down',()=>{const at=p.children.indexOf(lower);detachNode(L);detachNode(lower);insertNode(M,p,at);selectOnly(M);});return;}
+    M.mapModes=Object.assign({},lower.mapModes);M.mapOpacities=Object.assign({},lower.mapOpacities);structOp('Merge filter down',()=>{const at=p.children.indexOf(lower);detachNode(L);detachNode(lower);insertNode(M,p,at);selectOnly(M);});return;}
   
   const M=mergedLayer(lower.name,[L,lower],{opacity:lower.opacity,mode:lower.mode,visible:lower.visible,clip:lower.clip,lockAlpha:lower.lockAlpha,mask:cloneMask(lower.mask)},k=>{
     const d=mapDepth(k),E=emptyFor(d),LT=hasMap(L,k)?mapT(L,k):E,BT=hasMap(lower,k)?mapT(lower,k):E,R=acquireD(d);
-    run(P.comp,R,{uBase:BT.tex,uLayer:LT.tex,uStrokeTex:strokeT.tex,uMask:clipped?mapT(lower,'base').tex:dummy,uUseMask:clipped,uLMask:maskTexOf(L)||dummy,uUseLMask:!!maskTexOf(L),uMode:{int:mapModeOf(L,k)},uOpacity:L.visible?L.opacity:0,uStroke:{int:0},uStrokeColor:[0,0,0],uStrokeOpacity:0,uLockAlpha:false});return R;});
-  M.mapModes=Object.assign({},lower.mapModes);
+    run(P.comp,R,{uBase:BT.tex,uLayer:LT.tex,uStrokeTex:strokeT.tex,uMask:clipped?mapT(lower,'base').tex:dummy,uUseMask:clipped,uLMask:maskTexOf(L)||dummy,uUseLMask:!!maskTexOf(L),uMode:{int:mapModeOf(L,k)},uOpacity:L.visible?mapOpacityOf(L,k):0,uStroke:{int:0},uStrokeColor:[0,0,0],uStrokeOpacity:0,uLockAlpha:false});return R;});
+  M.mapModes=Object.assign({},lower.mapModes);M.mapOpacities=Object.assign({},lower.mapOpacities);
   structOp('Merge down',()=>{const k=p.children.indexOf(lower);detachNode(L);detachNode(lower);insertNode(M,p,k);selectOnly(M);});}
 function cmdMergeGroup(){const G=doc.active;if(!G||G.type!=='group')return;
-  const M=mergedLayer(G.name,G.children,{opacity:G.opacity,mode:Math.max(0,G.mode),visible:G.visible,mask:cloneMask(G.mask)});
+  const M=mergedLayer(G.name,G.children,{mapOpacities:Object.assign({},G.mapOpacities),opacity:G.opacity,mode:Math.max(0,G.mode),visible:G.visible,mask:cloneMask(G.mask)});
   structOp('Merge group',()=>{const p=G.parent,i=p.children.indexOf(G);detachNode(G);insertNode(M,p,i);selectOnly(M);});}
 function cmdMergeSelected(){const tops=topSelected();if(tops.length<2)return;
   const M=mergedLayer('Merged',tops);

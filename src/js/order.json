@@ -107,6 +107,7 @@
     "ui/project-shelf",
     "view3d/decals",
     "view3d/env-panel",
+    "view3d/bevel",
     "bake/bake-gpu",
     "bake/uv-artist",
     "bake/uv-unwrap",

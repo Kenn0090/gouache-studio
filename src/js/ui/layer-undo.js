@@ -3,7 +3,7 @@
    layers (also by dragging down the eyes), locking, renaming, opacity, blend mode, clipping and the mask switch are undo steps too. The layers are looked at
    twice a second; a change that has stopped for half a second becomes one step, and one still waiting becomes its step before any other step is made
    (history.js calls luFlush), so steps stay in order. A change in the layers' number (added, deleted, merged) is left to the steps that do that. */
-const LU_KEYS=['visible','opacity','mode','clip','lockAlpha','lockPx','lockPos','lockAll','name'];
+const LU_KEYS=['visible','opacity','mapOpacities','mode','clip','lockAlpha','lockPx','lockPos','lockAll','name'];
 const lu={last:null,sig:'',pendKey:'',pendAt:0,busy:false};
 const luSig=()=>hist.undo.length+':'+hist.redo.length+':'+(hist.undo.length?hist.undo[hist.undo.length-1].label:'');
 function luSnap(){const m=new Map();for(const n of (typeof allNodes==='function'?allNodes():[])){const o={};for(const k of LU_KEYS)o[k]=n[k];if(n.mask)o.maskOn=n.mask.enabled;m.set(n,o);}return m;}
@@ -11,7 +11,7 @@ function luSnap(){const m=new Map();for(const n of (typeof allNodes==='function'
 function luDiff(a,b){if(a.size!==b.size)return null;const out=[];for(const [n,o] of b){const p=a.get(n);if(!p)return null;for(const k of Object.keys(o))if(p[k]!==o[k])out.push({n,k,before:p[k],after:o[k]});}return out;}
 function luLabel(list){const ks=new Set(list.map(c=>c.k)),nodes=new Set(list.map(c=>c.n));
   if(ks.size===1){const k=[...ks][0],many=nodes.size>1,nm=many?nodes.size+' layers':'“'+[...nodes][0].name+'”';
-    if(k==='visible')return (list[0].after?'Show ':'Hide ')+nm;if(k==='opacity')return 'Opacity of '+nm;if(k==='mode')return 'Blend mode of '+nm;if(k==='name')return 'Rename layer';
+    if(k==='visible')return (list[0].after?'Show ':'Hide ')+nm;if(k==='opacity'||k==='mapOpacities')return 'Opacity of '+nm;if(k==='mode')return 'Blend mode of '+nm;if(k==='name')return 'Rename layer';
     if(k==='clip')return 'Clip '+nm;if(k==='maskOn')return 'Mask switch of '+nm;if(k.startsWith('lock'))return 'Lock '+nm;}
   return 'Layer settings';}
 function luPut(list,which){for(const c of list){const v=c[which];if(c.k==='maskOn'){if(c.n.mask)c.n.mask.enabled=v;}else c.n[c.k]=v;}

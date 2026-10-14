@@ -302,7 +302,7 @@ function v3MeshU(C,common,it,flip,safeMip=null){const {s,bake,EU,eye,a,e}=C,sg=i
     const mOK=ok('metal')&&!(sg&&ok('spec')),hm=(ok('rough')?1:0)|(mOK?2:0)|(ok('nfinal')?4:0)|(ok('ao')?8:0)|(ok('emis')?16:0)|(ok('opac')?64:0)|(it.thick?128:0)|(ok('spec')&&!mOK?256:0);
     return Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uUseUDIM:!!it.udim,uUDIMTile:it.udim?[it.udim.u,it.udim.v]:[0,0],uUseSafeMip:useSafeMip,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:mOK?T.metal.tex:ok('spec')?T.spec.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,uThick:useSafeMip?safeMip.tex:it.thick?it.thick.tex:dummy,...EU,...shadeUniforms(bake?null:it.sh||v3ShadeOf(doc)),
       uMorph:bake&&bk.fold>0?bk.fold:0,uMorphOff:[it.off||0,0,0],uStudioFill:s.studioFill||0,uStudioRim:s.studioRim||0,uLightColor:s.lightColor||[1,1,1],uShadow:dummy,uShadowVP:{m4:m4()},uShadowOn:0,uShadowSoft:1,...common,uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});}
-function v3Render(F,flip){const g=v3.gpu;if(!g)return;v3Work.scenes++;F.sceneFlip=!!flip;const C=v3Ctx(),{s,bake}=C,list=v3List(C),SU=studioShadowPrepare(C,list);
+function v3Render(F,flip){const g=v3.gpu;if(!g)return;v3Work.scenes++;F.sceneFlip=!!flip;const C=v3Ctx(),{s,bake}=C,list=v3List(C),SU=studioShadowPrepare(C,list),BV=typeof bevelPreviewOn==='function'&&bevelPreviewOn()&&!(bk.fold>0)?bevelPreviewGPU(v3.mesh):null;
   const activeRange=!bake&&ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():null,safeMip=activeRange&&typeof seamMipLimit==='function'?seamMipLimit(activeRange):null;
   gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);const bg=BG3[s.bg]||BG3.dark,tr=!!(v3.transparent);gl.clearColor(bg[0],bg[1],bg[2],tr?0:1);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
@@ -312,8 +312,7 @@ function v3Render(F,flip){const g=v3.gpu;if(!g)return;v3Work.scenes++;F.sceneFli
   if(s.wire){gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);}gl.bindVertexArray(g.vao);
   for(const it of list){const T=it.T||{},base=T.base||null;if(!base||!it.count)continue;
     const itSafeMip=safeMip&&it.start===activeRange.start&&it.count===activeRange.count?safeMip:null;
-    useProg(P3.mesh,v3MeshU(C,common,it,flip,itSafeMip));
-    gl.drawElements(gl.TRIANGLES,it.count*3,gl.UNSIGNED_INT,it.start*12);}
+    if(BV){const U=v3MeshU(C,common,it,flip,itSafeMip);U.uHas={int:U.uHas.int&~4};U.uBevelWidth=bvWidth(bvSettings());useProg(bevelPreviewProgram(),U);gl.bindVertexArray(BV.vao);gl.drawArrays(gl.TRIANGLES,it.start*3,it.count*3);}else{gl.bindVertexArray(g.vao);useProg(P3.mesh,v3MeshU(C,common,it,flip,itSafeMip));gl.drawElements(gl.TRIANGLES,it.count*3,gl.UNSIGNED_INT,it.start*12);}}
   gl.disable(gl.POLYGON_OFFSET_FILL);
   studioFloorDraw(C,VP,F,SU);
   if(!bake&&!mv&&!v3Unlit())v3DrawOutlines(list,common,F,flip);gl.bindVertexArray(g.vao);
@@ -376,7 +375,7 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   const viewSel=el('select',{id:'v3ViewSel','aria-label':'Snap the view',title:'Snap the view to a side (Numpad 1 front, 3 right, 7 top; Ctrl for the opposite side)'},el('option',{value:'',text:'View…'}),...V3_VIEWS.map(([k,l])=>el('option',{value:k,text:l})));
   viewSel.onchange=()=>{if(viewSel.value)v3SnapView(viewSel.value);viewSel.value='';};
   const projBtn=el('button',{class:'btn sm',id:'v3Proj',text:s.ortho?'Orthographic':'Perspective',title:'Perspective looks natural; orthographic has no depth shrinking, good for lining things up (Numpad 5)','aria-pressed':String(!!s.ortho),onclick:()=>v3SetOrtho(!v3s().ortho)});
-  const tog=(id,label,key,title)=>{const b=el('button',{class:'btn sm'+(s[key]?' on':''),id,text:label,title,'aria-pressed':String(!!s[key])});b.onclick=()=>{s[key]=!s[key];b.classList.toggle('on',s[key]);b.setAttribute('aria-pressed',String(s[key]));v3.dirty=true;requestRender();};return b;};
+  const tog=(id,label,key,title)=>{const b=el('button',{class:'btn sm'+(s[key]?' on':''),id,text:label,title,'aria-pressed':String(!!s[key])});b.onclick=()=>{s[key]=!s[key];b.classList.toggle('on',s[key]);b.setAttribute('aria-pressed',String(s[key]));v3.dirty=true;requestRender();if(key==='wire'&&typeof maskBarSync==='function')maskBarSync();};return b;};
   const shade=seg([['lit','Lit'],['unlit','Unlit'],['rt','Ray traced']],v3Unlit()?'unlit':v3.rt?'rt':'lit',x=>{s.unlit=x==='unlit';v3.rt=x==='rt';v3.mapsDirty=true;v3.dirty=true;requestRender(true);refresh3dUI();},'Shading');shade.id='v3Shade';
   const gear=el('button',{class:'btn sm',text:'Settings',id:'v3Gear','aria-expanded':'false'});
   const dock=el('button',{class:'btn sm',text:v3.pop?'Dock':'Pop out',id:'v3Pop',title:v3.pop?'Put the 3D view back beside the canvas':'Open the 3D view in its own window (for a second screen)'});dock.onclick=()=>pop3D(!v3.pop);

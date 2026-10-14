@@ -1,3 +1,13 @@
+# Gouache Studio 0.63.0
+
+- Mask mode: added a Wireframe toggle to the mask toolbar.
+- Object selection respects imported object boundaries, including meshes that touch; the fallback separates pieces that only meet at a corner.
+- UV island selection grows across connected faces despite small UV precision differences, and selection caches refresh when UVs change.
+- Texture sets can be deleted without returning on the next refresh. Deletion survives saving and reopening, including deletion of the last set. Restore deleted sets explicitly when needed; empty projects retain their pipeline settings.
+- Shared Square asks whether to combine the texture sets or keep them separate. Combining transfers each set’s visible material into one group in a single set, including normal-map orientation after UV packing. The confirmation explains that the old layer stacks are flattened.
+- 3D Paint layer opacity is independent for each channel and is preserved by duplication, undo and project save/reopen.
+- Bake › Normal: added a Bevel shader with width, minimum edge angle, preview and Bake bevel normal controls. The preview shows the high-poly when supplied, otherwise the low-poly. Preview and baking share the same connected-edge calculation, including edges crossing texture-set boundaries. The silhouette stays unchanged; intersections between separate meshes are not part of this version.
+
 # Gouache Studio 0.62.0
 
 - AI upscaler (optional download, File › AI add-ons): make pictures 2x, 4x or 8x bigger. Photo export, Paint (Image › Upscale) and Convert; AI detail slider and a before/after preview.

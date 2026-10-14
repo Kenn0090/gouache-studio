@@ -52,10 +52,10 @@ function bakePrep(L){const C=bakeCfg;const high=C.high?bakeAlign(C.high,L):null,
     const hn=(high.partNames||['default']).map(n=>ix.has(partBase(n))?ix.get(partBase(n)):9999);high.bakePart=new Float32Array((high.triPart||new Uint32Array(high.tris)).length);(high.triPart||[]).forEach((p,t)=>{high.bakePart[t]=hn[p];});}
   return {low,high,cage};}
 /* the high-poly's search tree, kept between bakes of the same models */
-async function bakeHG(L,high,low,step,needCol){const key=[bakeCfg.high,L.whole||L,!!(bakeCfg.match&&high),needCol?bakeCfg.idSrc||'auto':''],same=k=>k&&k[0]===key[0]&&k[1]===key[1]&&k[2]===key[2]&&(!needCol||k[3]===key[3]);
+async function bakeHG(L,high,low,step,needCol){const source=high||(bvWidth(bakeCfg.bevel)?low.whole||low:low),key=[bakeCfg.high,L.whole||L,!!(bakeCfg.match&&high),needCol?bakeCfg.idSrc||'auto':'',source.idx],same=k=>k&&k[0]===key[0]&&k[1]===key[1]&&k[2]===key[2]&&k[4]===key[4]&&(!needCol||k[3]===key[3]);
   if(bk.hgBuild){const b=bk.hgBuild;try{await b.p;}catch(e){}if(bk.hgBuild===b)bk.hgBuild=null;}
   if(bk.hg&&same(bk.hgKey)&&(!needCol||bk.hg.hasCol))return bk.hg;if(bk.hg){bkFreeHigh(bk.hg);bk.hg=null;bk.hgKey=null;}
-  const b={p:bkHighGPU(high||low,step,needCol)};bk.hgBuild=b;try{bk.hg=await b.p;}finally{if(bk.hgBuild===b)bk.hgBuild=null;}bk.hgKey=key;return bk.hg;}
+  const b={p:bkHighGPU(source,step,needCol)};bk.hgBuild=b;try{bk.hg=await b.p;}finally{if(bk.hgBuild===b)bk.hgBuild=null;}bk.hgKey=key;return bk.hg;}
 /* where curvature comes from: the shape (default), the baked normal, or the document's normal map */
 function bakeCurvSrc(high){const v=bakeCfg.curvSrc||'mesh';if(v==='normal'&&!high)return 'mesh';if(v==='doc'&&!doc.maps.includes('normal'))return 'mesh';return v;}
 function bakeKinds(ks,high){const kinds=ks.filter(k=>k!=='curv');if(ks.includes('curv')){const src=bakeCurvSrc(high);if(src==='mesh')kinds.push(...(high?['cpos','cnrm']:['mcurv']));else if(src==='normal'&&!kinds.includes('normal'))kinds.push('normal');}return kinds;}
@@ -64,7 +64,7 @@ async function runBake(L,ks,opt){opt=opt||{};const C=bakeCfg;if(bk.busy)return;i
   if(L.noUV){toast('The low-poly has no UVs: nothing can be baked onto it.');return;}
   if(C.cage&&(C.cage.verts!==L.verts||C.cage.tris!==(L.whole||L).tris)){toast('The cage does not match the low-poly.');return;}
   const {low,high,cage}=bakePrep(L);
-  if(!high){const skip=ks.filter(k=>k==='normal'||k==='height');if(skip.length)toast('Without a high-poly, '+skip.map(k=>BAKE_NAMES[k].toLowerCase()).join(' and ')+' would be flat, so '+(skip.length>1?'they are':'it is')+' skipped.');ks=ks.filter(k=>k!=='normal'&&k!=='height');if(!ks.length)return;}
+  if(!high){const skip=ks.filter(k=>k==='height'||k==='normal'&&!bvWidth(C.bevel));if(skip.length)toast('Without a high-poly, '+skip.map(k=>BAKE_NAMES[k].toLowerCase()).join(' and ')+' would be flat, so '+(skip.length>1?'they are':'it is')+' skipped.');ks=ks.filter(k=>k!=='height'&&(k!=='normal'||!!bvWidth(C.bevel)));if(!ks.length)return;}
   if(ks.includes('curv')&&bakeCfg.curvSrc!==bakeCurvSrc(high))toast(bakeCfg.curvSrc==='normal'?'Curvature from the baked normal needs a high-poly, so it comes from the shape instead.':'The document has no normal map, so curvature comes from the shape instead.');
   const kinds=bakeKinds(ks,high),inTab=ui.mode==='bake';bk.curvSrc=bakeCurvSrc(high);
   if(kinds.includes('id')){const got=bakeIdSource(high||low);if(got.missing)toast(got.missing);}
@@ -74,7 +74,7 @@ async function runBake(L,ks,opt){opt=opt||{};const C=bakeCfg;if(bk.busy)return;i
   bk.busy=true;bk.prog=prog;bk.tiles=0;bakeProgUI();bakeSyncMesh();const t0=performance.now();await tick();
   /* start from a clean slate: the model fills in as tiles finish */
   for(const k in bk.res)disposeTarget(bk.res[k]);for(const k in bk.acc)disposeTarget(bk.acc[k]);bk.res={};bk.acc={};bk.stale.clear();bk.dirty=true;
-  const o={size:doc.w,sizeH:doc.h,ss:C.ss,front:C.front*.02,back:C.back*.02,average:C.average,cage,match:C.match&&!!high,kinds,
+  const o={bevel:C.bevel?Object.assign({},C.bevel):null,size:doc.w,sizeH:doc.h,ss:C.ss,front:C.front*.02,back:C.back*.02,average:C.average,cage,match:C.match&&!!high,kinds,
     rays:C.rays,aoDist:C.aoDist*.02,thickDist:C.thickDist*.02,pad:C.pad,dx:false,seed:Math.random()*10,aoSpread:C.aoSpread,thickRays:C.thickRays,curvRadius:C.curvRadius,curvStr:C.curvStr};
   let res=null;
   try{prog.step('Baking '+ks.map(k=>BAKE_NAMES[k].toLowerCase()).join(', ')+'…');
@@ -85,6 +85,7 @@ async function runBake(L,ks,opt){opt=opt||{};const C=bakeCfg;if(bk.busy)return;i
   if(!res){for(const k in bk.acc)disposeTarget(bk.acc[k]);bk.acc={};for(const k in bk.res)disposeTarget(bk.res[k]);bk.res={};bk.opts=null;bakeProgUI();bakeRefresh();toast('Bake cancelled.');return 'cancelled';}
   for(const k in bk.res)disposeTarget(bk.res[k]);bk.res=res;bk.kinds=ks;bk.opts=o;bk.src={L,low,high};bakeDerive();
   if(!ks.includes(bk.show)&&bk.show!=='material'&&!BK_PAINT[bk.show])bk.show='material';
+  if(bvWidth(o.bevel)&&ks.includes('normal'))bvSetPreview(false);
   bakeRefresh();if(!opt.quiet)toast('Baked '+ks.length+' map'+(ks.length>1?'s':'')+' in '+((performance.now()-t0)/1000).toFixed(1)+' s.');
   if(!opt.quiet&&(C.autoSend||!inTab))bakeSend();
   if(bk.region){const r=bk.region;bk.region=null;bakeRegion(r);}}
@@ -364,7 +365,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
       el('div',{class:'sub',text:'Anti-aliasing'}),seg([[1,'1×'],[2,'4×'],[4,'16×']],C.ss,v=>{C.ss=v;},'Anti-aliasing'),S('bkPad','Padding','pad',0,64,1,v=>v+'px'),
       el('div',{class:'sub',text:'Send to the document as',title:'Layers: each bake is also a layer in the base colour, so you can blend them (curvature on Overlay over AO). AO, curvature and height go into their own maps too.'}),seg([['layers','Layers'],['maps','Maps only']],C.sendAs==='maps'?'maps':'layers',v=>{C.sendAs=v;},'Send as'),
       el('div',{class:'chips'},chk('bkAuto','Send results automatically',C.autoSend,v=>{C.autoSend=v;}),chk('bkRepl','Replace the last baked layers',C.replace,v=>{C.replace=v;})));
-    if(T==='normal')pg.append(on('normal'),note('Tangent-space normal, OpenGL style (green up). For engines that want DirectX, flip green when exporting (File › Export textures).'));
+    if(T==='normal')pg.append(on('normal'),bevelBakeControls(),note('Tangent-space normal, OpenGL style (green up). For engines that want DirectX, flip green when exporting (File › Export textures).'));
     if(T==='ao')pg.append(on('ao'),S('bkRays','Rays','rays',8,256,8,v=>String(v)),S('bkAoD','Reach','aoDist',1,100,1,v=>v+'%'),S('bkAoS','Spread','aoSpread',.1,1,.05,pct),
       note('Rays: how many each pixel sends (more is smoother, slower). Reach: how far they look. Spread: narrower keeps the shading to deep cavities.'));
     if(T==='curv'){const flip=chk('bkCurvFlip','Flip green',!!C.curvFlip,v=>{C.curvFlip=v;});flip.hidden=C.curvSrc==='mesh';

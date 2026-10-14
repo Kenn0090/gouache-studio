@@ -56,6 +56,35 @@ jobs:
           releaseDraft: false
           prerelease: false
 
+      - name: Verify Windows updater
+        if: steps.ver.outputs.release == 'true'
+        shell: pwsh
+        run: |
+          $releaseVersion = "${{ steps.ver.outputs.version }}"
+          $feedUrl = "https://github.com/Kenn0090/gouache-studio/releases/latest/download/latest.json"
+          $feed = $null
+          for ($attempt = 0; $attempt -lt 6; $attempt++) {
+            try {
+              $candidate = Invoke-RestMethod -Uri $feedUrl -Headers @{ "Cache-Control" = "no-cache" }
+              if ($candidate.version -eq $releaseVersion -or $candidate.version -eq "v$releaseVersion") { $feed = $candidate; break }
+            } catch { }
+            Start-Sleep -Seconds 10
+          }
+          if ($null -eq $feed) { throw "The updater feed does not advertise $releaseVersion." }
+          $platforms = @($feed.platforms.PSObject.Properties | Where-Object { $_.Name.StartsWith("windows-") })
+          if ($platforms.Count -eq 0) { throw "The updater feed has no Windows installer." }
+          foreach ($platform in $platforms) {
+            $entry = $platform.Value
+            if ([string]::IsNullOrWhiteSpace($entry.signature)) { throw "The Windows updater signature is missing." }
+            if ($entry.url -notlike "https://github.com/Kenn0090/gouache-studio/releases/download/v$releaseVersion/*") { throw "The updater points to another release." }
+            $installer = Invoke-WebRequest -Uri $entry.url -Method Head
+            if ($installer.StatusCode -ne 200) { throw "The Windows installer is unavailable." }
+            $signature = (Invoke-WebRequest -Uri ($entry.url + ".sig")).Content
+            if ($signature -is [byte[]]) { $signature = [Text.Encoding]::UTF8.GetString($signature) }
+            if (([string]$signature).Trim() -cne ([string]$entry.signature).Trim()) { throw "The updater signature does not match the installer signature file." }
+          }
+          Write-Host "Verified Windows installer downloads and matching updater signatures for $releaseVersion."
+
       - uses: actions/upload-artifact@v4
         with:
           name: gouache-studio-windows
