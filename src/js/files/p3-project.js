@@ -13,7 +13,7 @@ async function encodeP3Project(){if(ui.mode!=='p3d')throw new Error('Open the 3D
       sets.push(Object.assign({name:S.name,material:p3Binding(S),tile:S.tile||null,meshEditID:S.meshEditID,hid:!!S.hidden},bytes?put(bytes):{empty:true}));}}
   finally{tabDocs.hold=false;requestRender(true);}
   let mesh=null;if(v3s().model==='imported'&&v3.imported){const c=await streamThrough(meshPack(v3.imported),'deflate-raw');mesh=Object.assign({name:v3.imported.name},put(c));}
-  const head={app:'Gouache Studio',v:G3_VERSION,name:p3.name||'3D Paint',size:p3.size,cur:p3.cur,udim:!!p3.udim,deletedSets:p3.deletedSets||[],sets,mesh,v3d:doc.v3d,cam:Object.assign({},v3.cam),mir3:Object.assign({},mir3)};
+  const head={app:'Gouache Studio',v:G3_VERSION,name:p3.name||'3D Paint',size:p3.size,cur:p3.cur,setup:p3.setup,workflow:p3.workflow,udim:!!p3.udim,deletedSets:p3.deletedSets||[],sets,mesh,v3d:doc.v3d,cam:Object.assign({},v3.cam),mir3:Object.assign({},mir3)};
   const hj=new TextEncoder().encode(JSON.stringify(head)),pre=new Uint8Array(16);pre.set(G3_MAGIC,0);const dv=new DataView(pre.buffer);dv.setUint32(8,G3_VERSION,true);dv.setUint32(12,hj.length,true);
   return new Blob([pre,hj,...blobs],{type:'application/octet-stream'});}
 async function saveP3Project(forceAsk){if(stroke)return;toast('Saving the 3D Paint project…');
@@ -33,7 +33,7 @@ async function openP3Project(buf,name,path){if(!isP3Proj(buf))throw new Error('T
   if(ui.mode!=='p3d'&&!setMode('p3d',true))return;if(!(await p3AskReplace()))return;
   /* put away what is there now */
   const old=docState();for(const S of p3.sets){if(S.state)disposeDocState(S.state);if(S.tex)for(const k in S.tex)disposeTarget(S.tex[k]);}for(const k in v3.tex)disposeTarget(v3.tex[k]);v3.tex={};
-  p3.sets=[];p3.metadataVer=0;p3.size=head.size||p3.size;p3.udim=!!head.udim;p3.deletedSets=Array.isArray(head.deletedSets)?head.deletedSets:[];
+  p3.sets=[];p3.metadataVer=0;p3.size=head.size||p3.size;p3.udim=!!head.udim;p3.setup=head.setup||'pbr';p3.workflow=head.workflow||'metal';p3.deletedSets=Array.isArray(head.deletedSets)?head.deletedSets:[];
   const states=[];
   for(const rec of head.sets||[]){let st=null;
     if(!rec.empty){const b=buf.slice(data+rec.o,data+rec.o+rec.n),{head:h,data:d}=gfHead(b);blankTabDoc(h.w,h.h,rec.name);for(const L of everyNode())disposeLayer(L);doc.root.children=[];doc.count=0;
@@ -43,7 +43,7 @@ async function openP3Project(buf,name,path){if(!isP3Proj(buf))throw new Error('T
   disposeDocState(old);
   p3.cur=p3.sets.length?clamp(head.cur||0,0,p3.sets.length-1):-1;const A=p3.sets[p3.cur];
   if(A?.state){setDocState(A.state);A.state=null;}else{blankTabDoc(p3.size,p3.size,A?.name||'No texture sets');p3Setup(A?.name||'No texture sets');}
-  p3.v3d=doc.v3d=Object.assign({},V3D_DEFAULTS,head.v3d||{});if(head.cam)Object.assign(v3.cam,head.cam);if(head.mir3)Object.assign(mir3,head.mir3);p3.cam=Object.assign({},v3.cam);
+  p3.workflow=doc.workflow||p3.workflow;p3.setup=doc.p3Setup||p3.setup;p3.v3d=doc.v3d=Object.assign({},V3D_DEFAULTS,head.v3d||{});if(head.cam)Object.assign(v3.cam,head.cam);if(head.mir3)Object.assign(mir3,head.mir3);p3.cam=Object.assign({},v3.cam);
   v3.imported=null;if(head.mesh){const raw=await streamThrough(new Uint8Array(buf,data+head.mesh.o,head.mesh.n),'deflate-raw',true);v3.imported=meshUnpack(raw,head.mesh.name||'Model');}
   p3.imported=v3.imported;if(doc.v3d.model==='imported'&&!v3.imported)doc.v3d.model='rcube';
   p3.name=head.name||name;p3.path=path||null;p3.started=true;

@@ -38,7 +38,7 @@ async function uvFixOverlap(m){let cur=m;const r0=uvOverlapCheck(m);
   const nm=cur.uwRes?uvRelayout(cur,{packSeed:((cur.uwOpt&&cur.uwOpt.packSeed)||0)+1,seed:cur.uwOpt.seed}):uvRepackOwn(cur,{packSeed:((cur.uwOpt&&cur.uwOpt.packSeed)||0)+1});
   const r1=uvOverlapCheck(nm);toast(r1.faces?'Fixed '+(r0.faces-r1.faces)+' faces; '+r1.faces+' still overlap.':'No overlaps now.');return nm;}
 /* swap a model for its new version everywhere it is in use */
-function uvReplaceMesh(old,nm){if(!old||!nm||old===nm)return nm;
+function uvReplaceMesh(old,nm){if(!old||!nm||old===nm)return nm;delete nm._topo;delete nm._shell;delete nm._bevelN;
   const C=typeof bakeCfg!=='undefined'?bakeCfg:null;if(C&&C.low===old)C.low=nm;if(typeof v3!=='undefined'){if(v3.imported===old)v3.imported=nm;}
   if(typeof p3!=='undefined'&&p3.imported===old)p3.imported=nm;if(typeof rt!=='undefined'&&rt){rt.mesh=null;rt.g=null;}
   if(typeof v3!=='undefined'&&v3.mesh===old){v3SetMesh(nm,true);if(ui.mode==='bake'||ui.mode==='p3d')build3dPane();}
