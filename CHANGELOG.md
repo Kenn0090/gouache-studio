@@ -1,3 +1,9 @@
+## Unreleased
+
+- Bake › Normal: scene-aware bevel shading now probes surrounding geometry, rounding convex/concave corners and intersections between separate meshes. Preview and normal baking share the calculation.
+- Added millimeter width with model-file units, Samples, Bevel hard edges, Same surface only, and vertex-color width masking. Existing percentage widths remain compatible.
+- Bevel preview refines in tiles, reports when it is ready, retains normal detail, and avoids applying a previous bevel bake twice. High-poly preview uses material lighting. Large-mesh hard edges prepare in a worker without duplicating every triangle corner for preview.
+
 ## 0.63.0
 
 - Mask mode: added a Wireframe toggle to the mask toolbar.

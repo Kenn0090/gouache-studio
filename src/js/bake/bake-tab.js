@@ -426,13 +426,14 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
 /* Keep the file coordinates of every high mesh; normalising each import separately must not move it. */
 function bakeMergeHigh(list){if(list.length===1)return list[0];if(!list.length)return null;
   const first=list[0],N=list.reduce((n,m)=>n+m.pos.length/3,0),T=list.reduce((n,m)=>n+m.idx.length/3,0);
-  const r={name:list.length+' high-poly meshes',pos:new Float32Array(N*3),nrm:new Float32Array(N*3),uv:new Float32Array(N*2),tan:new Float32Array(N*4),idx:new Uint32Array(T*3),triPart:new Uint32Array(T),triMat:new Uint32Array(T),partNames:[],matNames:[],xf:first.xf,verts:N,tris:T,radius:0};
+  const r={name:list.length+' high-poly meshes',pos:new Float32Array(N*3),nrm:new Float32Array(N*3),uv:new Float32Array(N*2),tan:new Float32Array(N*4),idx:new Uint32Array(T*3),triPart:new Uint32Array(T),triMat:new Uint32Array(T),bvSurfaceIds:new Uint32Array(T),partNames:[],matNames:[],xf:first.xf,verts:N,tris:T,radius:0};
   for(const key of ['vcol','pcol'])if(list.some(m=>m[key])){r[key]=new Float32Array(N*4);r[key].fill(1);}
   if(list.some(m=>m.triCol)){r.triCol=new Float32Array(T*3);r.triCol.fill(1);}
-  let vo=0,to=0;for(const m of list){const n=m.pos.length/3,t=m.idx.length/3,a=bakeAlign(m,first);
+  let vo=0,to=0,surface=0;for(const m of list){const n=m.pos.length/3,t=m.idx.length/3,a=bakeAlign(m,first);
     r.pos.set(a.pos,vo*3);r.nrm.set(m.nrm,vo*3);r.uv.set(m.uv,vo*2);r.tan.set(m.tan,vo*4);
     for(let i=0;i<m.idx.length;i++)r.idx[to*3+i]=m.idx[i]+vo;
     for(const [names,ids] of [['partNames','triPart'],['matNames','triMat']]){const local=m[names]&&m[names].length?m[names]:[m.name],map=local.map(name=>{let i=r[names].indexOf(name);if(i<0){i=r[names].length;r[names].push(name);}return i;});for(let i=0;i<t;i++)r[ids][to+i]=map[m[ids]?m[ids][i]:0]||0;}
+    const parts=m.bvSurfaceIds||m.triPart,ids=new Map();for(let i=0;i<t;i++){const p=parts?parts[i]:0;if(!ids.has(p))ids.set(p,surface++);r.bvSurfaceIds[to+i]=ids.get(p);}
     for(const key of ['vcol','pcol'])if(m[key]&&r[key])r[key].set(m[key],vo*4);if(m.triCol&&r.triCol)r.triCol.set(m.triCol,to*3);
     vo+=n;to+=t;}
   for(let i=0;i<r.pos.length;i+=3)r.radius=Math.max(r.radius,Math.hypot(r.pos[i],r.pos[i+1],r.pos[i+2]));return r;}

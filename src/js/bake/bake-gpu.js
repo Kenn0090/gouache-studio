@@ -110,8 +110,8 @@ function bkFreeHigh(g){if(!g)return;if(g.bevel)gl.deleteTexture(g.bevel.tex);for
 /* ---- shaders ---- */
 /* a hair of slack at triangle edges: a ray exactly between two triangles must hit one of them, or it leaves a speck */
 const BK_TRACE=`const float BK_EDGE=2e-5;
-uniform highp sampler2D uNodes; uniform highp sampler2D uTris; uniform highp sampler2D uTN; uniform highp sampler2D uTC;
-int bkPart=-1; int bkSkip=-1;
+uniform highp sampler2D uNodes; uniform highp sampler2D uTris; uniform highp sampler2D uTN; uniform highp sampler2D uTC; uniform highp sampler2D uBVInfo;
+int bkPart=-1; int bkSkip=-1; int bkSurface=-1;
 vec4 bkF(highp sampler2D s,int i){ return texelFetch(s,ivec2(i%${BK_TW},i/${BK_TW}),0); }
 bool bkBox(vec3 o,vec3 inv,vec3 a,vec3 b,float tmax){ vec3 t0=(a-o)*inv,t1=(b-o)*inv; vec3 lo=min(t0,t1),hi=max(t0,t1);
   float tn=max(max(lo.x,lo.y),max(lo.z,0.0)), tf=min(min(hi.x,hi.y),min(hi.z,tmax)); return tn<=tf; }
@@ -121,7 +121,7 @@ int bkTrace(vec3 o,vec3 d,float tmax,bool any,out float tHit,out vec2 bc){ int s
   vec3 inv=1.0/(d+vec3(1e-12)); int guard=0;
   while(sp>0&&guard<40000){ guard++; int ni=st[--sp]; vec4 a=bkF(uNodes,ni*2),b=bkF(uNodes,ni*2+1); if(!bkBox(o,inv,a.xyz,b.xyz,tHit)) continue;
     if(b.w<0.0){ int e=int(-b.w+0.5),c=e%8,s=int(a.w+0.5)+(e/8)*1048576;
-      for(int k=0;k<4;k++){ if(k>=c) break; int t=s+k; if(t==bkSkip) continue; vec4 w0=bkF(uTris,t*3); if(bkPart>=0&&int(w0.w+0.5)!=bkPart) continue; vec3 v0=w0.xyz,v1=bkF(uTris,t*3+1).xyz,v2=bkF(uTris,t*3+2).xyz;
+      for(int k=0;k<4;k++){ if(k>=c) break; int t=s+k; if(t==bkSkip) continue; vec4 w0=bkF(uTris,t*3); if(bkPart>=0&&int(w0.w+0.5)!=bkPart) continue; if(bkSurface>=0&&int(bkF(uBVInfo,t*2).x+0.5)!=bkSurface)continue; vec3 v0=w0.xyz,v1=bkF(uTris,t*3+1).xyz,v2=bkF(uTris,t*3+2).xyz;
         vec3 e1=v1-v0,e2=v2-v0,p=cross(d,e2); float det=dot(e1,p); if(abs(det)<1e-12) continue; float id=1.0/det; vec3 s0=o-v0; float u=dot(s0,p)*id; if(u<-BK_EDGE||u>1.0+BK_EDGE) continue;
         vec3 q=cross(s0,e1); float v=dot(d,q)*id; if(v<-BK_EDGE||u+v>1.0+BK_EDGE) continue; float tt=dot(e2,q)*id; if(tt>1e-6&&tt<tHit){ tHit=tt; hit=t; bc=vec2(u,v); if(any) return hit; } } }
     else if(sp<62){ int r=int(b.w+0.5),ax=int(a.w+0.5); if(d[ax]<0.0){ st[sp++]=ni+1; st[sp++]=r; } else { st[sp++]=r; st[sp++]=ni+1; } } }
@@ -173,11 +173,11 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 P=texelFetch(uGP,p,0); if(P.w<
   if(t<0){ oH=vec4(P.xyz,0.5); oHN=vec4(0,0,0,0); return; }
   vec3 hp=org+dir*th; oH=vec4(hp,1.0); oHN=vec4(bkNrm(t,bc),front-th); vec2 tp=bkTriPack(t); o=vec4(tp.x,bc,tp.y); }`;
 /* 3. what each map records (value in rgb, coverage in a) */
-const BK_FS_OUT=BK_TRACE+BEVEL_GLSL+`uniform sampler2D uBevelN;uniform float uBevelWidth;uniform sampler2D uGR; uniform sampler2D uGP; uniform sampler2D uGN; uniform sampler2D uGT; uniform sampler2D uHP; uniform sampler2D uHN; uniform sampler2D uHT;
+const BK_FS_OUT=BK_TRACE+BEVEL_GLSL+`uniform sampler2D uGR; uniform sampler2D uGP; uniform sampler2D uGN; uniform sampler2D uGT; uniform sampler2D uHP; uniform sampler2D uHN; uniform sampler2D uHT;
 uniform int uKind; uniform int uMatch; uniform int uFlipY; uniform float uRange; uniform vec3 uBMin; uniform vec3 uBSize; uniform int uRays; uniform float uDist; uniform uint uSeed; uniform int uSelf; uniform ivec2 uOrg; uniform int uSS; uniform float uSpread;
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 P=texelFetch(uGP,p,0); if(P.w<0.5){ o=vec4(0); return; }
   vec3 Nl=normalize(texelFetch(uGN,p,0).xyz); vec4 H=texelFetch(uHP,p,0),HN=texelFetch(uHN,p,0); bool hit=H.w>0.75; vec3 Nh=hit&&uSelf==0?normalize(HN.xyz):Nl; vec3 X=hit?H.xyz:P.xyz;
-  if(hit&&uBevelWidth>0.0&&(uKind==0||uKind==2||uKind==10)){int t=bkTriUnpack(texelFetch(uHT,p,0));Nh=bvRound(X,Nh,bkF(uTris,t*3).xyz,bkF(uTris,t*3+1).xyz,bkF(uTris,t*3+2).xyz,bkF(uBevelN,t*3),bkF(uBevelN,t*3+1),bkF(uBevelN,t*3+2),uBevelWidth);}
+  if(hit&&uBevelWidth>0.0&&(uKind==0||uKind==2||uKind==10)){vec4 ti=texelFetch(uHT,p,0);Nh=bvShade(X,Nh,bkTriUnpack(ti),ti.yz);}
   if(uKind==0){ /* tangent-space normal */ vec4 Tn=texelFetch(uGT,p,0); vec3 T=normalize(Tn.xyz-Nl*dot(Nl,Tn.xyz)),B=cross(Nl,T)*(Tn.w<0.0?-1.0:1.0);
     vec3 n=vec3(dot(Nh,T),dot(Nh,B),dot(Nh,Nl)); if(n.z<0.0) n.z=0.0; n=normalize(n); if(uFlipY==1) n.y=-n.y; o=vec4(n*0.5+0.5,1.0); return; }
   if(uKind==1){ /* height: how far the high-poly is above (light) or below (dark) the low-poly */ float d=hit?HN.w:0.0; o=vec4(vec3(clamp(0.5+d/(2.0*uRange),0.0,1.0)),1.0); return; }
@@ -283,6 +283,7 @@ async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.si
   /* low-poly only: rays find the low-poly itself (a hair's breadth away), so AO, thickness, ID and the rest work the same */
   const self=false,solo=!high;if(solo){o=Object.assign({},o,{front:.003,back:.003,cage:null,average:false,match:false});low.vertCurv=meshCurvature(low);}
   const source=high||(bvWidth(o.bevel)?low.whole||low:low),hg=o.hg||await bkHighGPU(source,progress.step,o.kinds.includes('id'));if(progress.cancelled){if(!o.hg)bkFreeHigh(hg);return null;}
+  try{await bvPrepareInfo(hg,o.bevel);}catch(e){if(!o.hg)bkFreeHigh(hg);throw e;}if(progress.cancelled){if(!o.hg)bkFreeHigh(hg);return null;}
   const bevelTex=bevelBakeTex(hg,o.bevel);bkIdleState();low.ray=o.cage?o.cage:bkRayDirs(low,o.average);const lg=bkLowGPU(low);
   const kinds=o.kinds.filter(k=>k!=='curv');const outDepth=canFloat?16:8;
   /* o.acc: running sums kept from an earlier bake (re-bake part of it); o.rect: only this part (output pixels) */
@@ -307,12 +308,12 @@ async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.si
     for(let sy=ly0;sy<ly1;sy+=256)for(let sx=lx0;sx<lx1;sx+=256){gl.bindFramebuffer(gl.FRAMEBUFFER,HB.fbo);gl.viewport(0,0,tw,th);gl.scissor(sx,sy,Math.min(256,lx1-sx),Math.min(256,ly1-sy));useProg(P.hit,hitU);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.flush();}
     gl.disable(gl.SCISSOR_TEST);await tick();
     /* 3: each map, then averaged into the final image */
-    for(const k of kinds){if(progress.cancelled)break;const kind=BK_KINDS[k],rayed=k==='ao'||k==='thick',sub=rayed?SUB:Math.max(tw,th);
+    for(const k of kinds){if(progress.cancelled)break;const kind=BK_KINDS[k],rayed=k==='ao'||k==='thick',rounded=!!bevelTex&&(kind===0||kind===2||kind===10),sub=rounded?64:rayed?SUB:Math.max(tw,th);
       gl.bindFramebuffer(gl.FRAMEBUFFER,OUT.fbo);gl.viewport(0,0,tw,th);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.enable(gl.SCISSOR_TEST);
-      const U={uBevelN:bevelTex||dummy,uBevelWidth:bvWidth(o.bevel),uNodes:hg.nodes,uTris:hg.tris,uTN:hg.nrm,uTC:hg.col,uGR:G.tex[3],uGP:G.tex[0],uGN:G.tex[1],uGT:G.tex[2],uHP:HB.tex[0],uHN:HB.tex[1],uHT:HB.tex[2],uKind:{int:kind},uMatch:!!o.match,uFlipY:o.dx,uRange:Math.max(o.front,o.back),
+      const U={...bvUniforms(o.bevel,low.whole||low),uBVInfo:bevelTex||dummy,uNodes:hg.nodes,uTris:hg.tris,uTN:hg.nrm,uTC:hg.col,uGR:G.tex[3],uGP:G.tex[0],uGN:G.tex[1],uGT:G.tex[2],uHP:HB.tex[0],uHN:HB.tex[1],uHT:HB.tex[2],uKind:{int:kind},uMatch:!!o.match,uFlipY:o.dx,uRange:Math.max(o.front,o.back),
         uBMin:bmin,uBSize:bsize,uRays:{int:bkRaysPer(k==='ao'?o.rays:o.thickRays||Math.max(8,o.rays>>1),SS)},uSpread:k==='ao'?(o.aoSpread||1):1,uDist:k==='ao'?o.aoDist:o.thickDist,uSeed:{uint:Math.floor((o.seed||1.3)*1e6)},uSelf:self,uOrg:{iv2:[tx,ty]},uSS:{int:SS}};
       let n=0;for(let sy=ly0;sy<ly1;sy+=sub)for(let sx=lx0;sx<lx1;sx+=sub){gl.bindFramebuffer(gl.FRAMEBUFFER,OUT.fbo);gl.viewport(0,0,tw,th);gl.scissor(sx,sy,Math.min(sub,lx1-sx),Math.min(sub,ly1-sy));useProg(P.out,U);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.flush();
-        if(rayed&&++n%4===0){await bkYield();if(progress.cancelled)break;}gl.enable(gl.SCISSOR_TEST);}
+        if((rayed||rounded)&&++n%4===0){await bkYield();if(progress.cancelled)break;}gl.enable(gl.SCISSOR_TEST);}
       gl.disable(gl.SCISSOR_TEST);
       /* average into the result: output pixels covered by this tile */
       const ox=tx/SS,oy=ty/SS;gl.enable(gl.SCISSOR_TEST);bindTarget(acc[k]);gl.scissor(ox+lx0/SS,oy+ly0/SS,(lx1-lx0)/SS,(ly1-ly0)/SS);
