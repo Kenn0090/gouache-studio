@@ -265,6 +265,7 @@ function meshGroupByMat(m){if(m.setRanges)return m.setRanges;const T=m.idx.lengt
   const idx=new Uint32Array(m.idx.length);for(let i=0;i<T;i++){const t=order[i];idx[i*3]=m.idx[t*3];idx[i*3+1]=m.idx[t*3+1];idx[i*3+2]=m.idx[t*3+2];}m.idx=idx;
   const per=(a,w)=>{if(!a)return a;const o=new a.constructor(a.length);for(let i=0;i<T;i++)for(let c=0;c<w;c++)o[i*w+c]=a[order[i]*w+c];return o;};
   m.triMat=per(M,1);m.triPart=per(m.triPart,1);m.triCol=per(m.triCol,3);
+  delete m._topo;delete m._shell;delete m._uvIsl;
   m.setRanges=nm.map((name,k)=>({name,start:st[k],count:cnt[k]}));return m.setRanges;}
 /* which part (object) each triangle came from, by name */
 function partsInfo(r,parts){const names=[];let T=0;for(const p of parts)T+=p.idx.length/3;const tp=new Uint32Array(T);let o=0;for(const p of parts){let k=names.indexOf(p.pname);if(k<0){k=names.length;names.push(p.pname);}const n=p.idx.length/3;tp.fill(k,o,o+n);o+=n;}r.partNames=names;r.triPart=tp;}
