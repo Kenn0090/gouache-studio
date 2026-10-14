@@ -16,6 +16,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Verify release versions
+        shell: pwsh
+        run: |
+          $releaseVersion = node -p "require('./package.json').version"
+          node scripts/bump.mjs $releaseVersion
+          git diff --exit-code -- package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock
       - run: npm run build
       - run: npm ci --prefix tests/e2e
       - run: node tests/e2e/p3-mask-sets-bevel.cjs

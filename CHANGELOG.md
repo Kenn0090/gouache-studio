@@ -1,3 +1,13 @@
+## 0.63.0
+
+- Mask mode: added a Wireframe toggle to the mask toolbar.
+- Object selection respects imported object boundaries, including meshes that touch; the fallback separates pieces that only meet at a corner.
+- UV island selection grows across connected faces despite small UV precision differences, and selection caches refresh when UVs change.
+- Texture sets can be deleted without returning on the next refresh. Deletion survives saving and reopening, including deletion of the last set. Restore deleted sets explicitly when needed; empty projects retain their pipeline settings.
+- Shared Square asks whether to combine the texture sets or keep them separate. Combining transfers each set’s visible material into one group in a single set, including normal-map orientation after UV packing. The confirmation explains that the old layer stacks are flattened.
+- 3D Paint layer opacity is independent for each channel and is preserved by duplication, undo and project save/reopen.
+- Bake › Normal: added a Bevel shader with width, minimum edge angle, preview and Bake bevel normal controls. The preview shows the high-poly when supplied, otherwise the low-poly. Preview and baking share the same connected-edge calculation, including edges crossing texture-set boundaries. The silhouette stays unchanged; intersections between separate meshes are not part of this version.
+
 ## 0.62.0
 
 - **AI upscaler (new optional download, 134 MB).** Make a picture **2×, 4× or 8× bigger** with believable extra detail (Real-ESRGAN, free for any use; it runs on your computer and nothing is sent anywhere). Get it in **File › AI add-ons**. Where to use it: in the **Photo tab**, **Export…** has *Make it bigger (AI)*; in the **Paint tab**, **Image › Upscale (AI)…** opens a bigger copy in a new tab and leaves your document alone; in the **Convert tab**, **Upscale (AI)…** swaps the source for a bigger picture so every map is made at the bigger size. 8× is two passes (4× then 2×). **AI detail** mixes in a plain smooth enlargement (100% is full AI, lower is more natural). **Preview** shows a before/after of the middle of the picture at its real size. Big pictures are done in tiles, the window shows the new size first and warns when it is over the app's limit, and Stop ends the job.
