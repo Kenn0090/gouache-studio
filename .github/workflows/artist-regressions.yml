@@ -18,6 +18,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm ci --prefix tests/e2e
+      - run: node tests/e2e/p3-mask-sets-bevel.cjs
       - run: node tests/e2e/artist-fixes.cjs
       - run: node tests/e2e/symmetry.cjs
       - run: node tests/e2e/numeric-sliders.cjs
@@ -25,4 +26,3 @@ jobs:
       - run: node tests/e2e/blur-seam-layer.cjs
       - run: node tests/e2e/paint-bevel-seams.cjs
       - run: node tests/e2e/studio-tools.cjs
-      - run: node tests/e2e/p3-mask-sets-bevel.cjs

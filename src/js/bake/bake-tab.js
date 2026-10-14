@@ -52,10 +52,10 @@ function bakePrep(L){const C=bakeCfg;const high=C.high?bakeAlign(C.high,L):null,
     const hn=(high.partNames||['default']).map(n=>ix.has(partBase(n))?ix.get(partBase(n)):9999);high.bakePart=new Float32Array((high.triPart||new Uint32Array(high.tris)).length);(high.triPart||[]).forEach((p,t)=>{high.bakePart[t]=hn[p];});}
   return {low,high,cage};}
 /* the high-poly's search tree, kept between bakes of the same models */
-async function bakeHG(L,high,low,step,needCol){const key=[bakeCfg.high,L.whole||L,!!(bakeCfg.match&&high),needCol?bakeCfg.idSrc||'auto':''],same=k=>k&&k[0]===key[0]&&k[1]===key[1]&&k[2]===key[2]&&(!needCol||k[3]===key[3]);
+async function bakeHG(L,high,low,step,needCol){const source=high||(bvWidth(bakeCfg.bevel)?low.whole||low:low),key=[bakeCfg.high,L.whole||L,!!(bakeCfg.match&&high),needCol?bakeCfg.idSrc||'auto':'',source.idx],same=k=>k&&k[0]===key[0]&&k[1]===key[1]&&k[2]===key[2]&&k[4]===key[4]&&(!needCol||k[3]===key[3]);
   if(bk.hgBuild){const b=bk.hgBuild;try{await b.p;}catch(e){}if(bk.hgBuild===b)bk.hgBuild=null;}
   if(bk.hg&&same(bk.hgKey)&&(!needCol||bk.hg.hasCol))return bk.hg;if(bk.hg){bkFreeHigh(bk.hg);bk.hg=null;bk.hgKey=null;}
-  const b={p:bkHighGPU(high||low,step,needCol)};bk.hgBuild=b;try{bk.hg=await b.p;}finally{if(bk.hgBuild===b)bk.hgBuild=null;}bk.hgKey=key;return bk.hg;}
+  const b={p:bkHighGPU(source,step,needCol)};bk.hgBuild=b;try{bk.hg=await b.p;}finally{if(bk.hgBuild===b)bk.hgBuild=null;}bk.hgKey=key;return bk.hg;}
 /* where curvature comes from: the shape (default), the baked normal, or the document's normal map */
 function bakeCurvSrc(high){const v=bakeCfg.curvSrc||'mesh';if(v==='normal'&&!high)return 'mesh';if(v==='doc'&&!doc.maps.includes('normal'))return 'mesh';return v;}
 function bakeKinds(ks,high){const kinds=ks.filter(k=>k!=='curv');if(ks.includes('curv')){const src=bakeCurvSrc(high);if(src==='mesh')kinds.push(...(high?['cpos','cnrm']:['mcurv']));else if(src==='normal'&&!kinds.includes('normal'))kinds.push('normal');}return kinds;}
@@ -85,7 +85,7 @@ async function runBake(L,ks,opt){opt=opt||{};const C=bakeCfg;if(bk.busy)return;i
   if(!res){for(const k in bk.acc)disposeTarget(bk.acc[k]);bk.acc={};for(const k in bk.res)disposeTarget(bk.res[k]);bk.res={};bk.opts=null;bakeProgUI();bakeRefresh();toast('Bake cancelled.');return 'cancelled';}
   for(const k in bk.res)disposeTarget(bk.res[k]);bk.res=res;bk.kinds=ks;bk.opts=o;bk.src={L,low,high};bakeDerive();
   if(!ks.includes(bk.show)&&bk.show!=='material'&&!BK_PAINT[bk.show])bk.show='material';
-  if(bvWidth(o.bevel)&&ks.includes('normal'))bvSettings().preview=false;
+  if(bvWidth(o.bevel)&&ks.includes('normal'))bvSetPreview(false);
   bakeRefresh();if(!opt.quiet)toast('Baked '+ks.length+' map'+(ks.length>1?'s':'')+' in '+((performance.now()-t0)/1000).toFixed(1)+' s.');
   if(!opt.quiet&&(C.autoSend||!inTab))bakeSend();
   if(bk.region){const r=bk.region;bk.region=null;bakeRegion(r);}}

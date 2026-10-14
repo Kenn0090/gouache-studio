@@ -44,12 +44,14 @@ function bevelBakeTex(hg,o){if(!bvWidth(o))return null;if(hg.bevel&&hg.bevel.ang
   if(hg.bevel)gl.deleteTexture(hg.bevel.tex);const ns=bevelNormals(hg.source,o.angle),order=hg.order;
   const tex=bkBandTex(hg.count*3,false,(b,t0,t1)=>{for(let q=t0;q<t1;q++){const t=order[Math.floor(q/3)],e=q%3;b.set(ns.subarray(t*12+e*4,t*12+e*4+4),(q-t0)*4);}});
   hg.bevel={tex,angle:o.angle};return tex;}
-function bvChanged(){bvSettings().preview=true;v3.dirty=true;requestRender(true);}
+const bvPreviewState={highMode:null};
+function bvSetPreview(value){const o=bvSettings();o.preview=value;if(value&&o.on&&bakeCfg.high){if(bvPreviewState.highMode===null)bvPreviewState.highMode=bk.showHigh||'off';bk.showHigh='only';}else if(bvPreviewState.highMode!==null){if(bk.showHigh==='only')bk.showHigh=bvPreviewState.highMode;bvPreviewState.highMode=null;}v3.dirty=true;requestRender(true);}
+function bvChanged(){bvSetPreview(true);}
 function bevelBakeControls(){const o=bvSettings();return el('div',{class:'dlg-grid',id:'bkBevelControls'},
   el('div',{class:'sub',text:'Bevel shader'}),
   chk('bkBevelOn','Enable bevel',!!o.on,v=>{o.on=v;bvChanged();}),
-  chk('bkBevelPreview','Preview before baking',o.preview!==false,v=>{o.preview=v;v3.dirty=true;requestRender(true);}),
+  chk('bkBevelPreview','Preview before baking',o.preview!==false,v=>bvSetPreview(v)),
   makeSlider({id:'bkBevelWidth',label:'Width (% of model)',min:0,max:5,step:.05,value:o.width,fmt:v=>v.toFixed(2)+'%',onInput:v=>{o.width=v;bvChanged();}}).el,
   makeSlider({id:'bkBevelAngle',label:'Minimum edge angle',min:0,max:180,step:1,value:o.angle,fmt:v=>Math.round(v)+'°',onInput:v=>{o.angle=v;bvChanged();}}).el,
-  el('p',{class:'note',text:'Rounds connected hard edges in shading and bakes them into Normal. The silhouette stays unchanged. For a high-poly, use Show high-poly to preview its edges.'}),
+  el('p',{class:'note',text:'Rounds connected hard edges in shading and bakes them into Normal. The silhouette stays unchanged. Preview shows the high-poly when one is loaded; otherwise it shows the low-poly.'}),
   el('button',{class:'btn',id:'bkBakeBevel',text:'Bake bevel normal',disabled:!!bk.busy,onclick:()=>{o.on=true;runBakeSets(bkLow(),['normal']);}}));}

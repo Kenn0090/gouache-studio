@@ -282,14 +282,14 @@ function bkSamples(ss,size){let n=Math.max(1,Math.min(4,ss|0||1));while(n>1&&siz
 async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.sizeH||o.size,SS=bkSamples(o.ss,Math.max(W,H)),FW=W*SS,FH=H*SS,TILE=Math.min(1024,Math.max(FW,FH));
   /* low-poly only: rays find the low-poly itself (a hair's breadth away), so AO, thickness, ID and the rest work the same */
   const self=false,solo=!high;if(solo){o=Object.assign({},o,{front:.003,back:.003,cage:null,average:false,match:false});low.vertCurv=meshCurvature(low);}
-  const hg=o.hg||await bkHighGPU(high||low,progress.step,o.kinds.includes('id'));if(progress.cancelled){if(!o.hg)bkFreeHigh(hg);return null;}
+  const source=high||(bvWidth(o.bevel)?low.whole||low:low),hg=o.hg||await bkHighGPU(source,progress.step,o.kinds.includes('id'));if(progress.cancelled){if(!o.hg)bkFreeHigh(hg);return null;}
   const bevelTex=bevelBakeTex(hg,o.bevel);bkIdleState();low.ray=o.cage?o.cage:bkRayDirs(low,o.average);const lg=bkLowGPU(low);
   const kinds=o.kinds.filter(k=>k!=='curv');const outDepth=canFloat?16:8;
   /* o.acc: running sums kept from an earlier bake (re-bake part of it); o.rect: only this part (output pixels) */
   const results={},acc=o.acc||{};for(const k of kinds)if(!acc[k]||acc[k].w!==W||acc[k].h!==H){if(acc[k])disposeTarget(acc[k]);acc[k]=makeTarget(W,H,k==='cpos'||k==='cnrm'?32:16,false);if(acc[k].depth===32){/* 32-bit float cannot be filtered on every card */gl.bindTexture(gl.TEXTURE_2D,acc[k].tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);}}
   const RR=o.rect?[Math.max(0,Math.floor(o.rect[0]))*SS,Math.max(0,Math.floor(o.rect[1]))*SS,Math.min(W,Math.ceil(o.rect[2]))*SS,Math.min(H,Math.ceil(o.rect[3]))*SS]:[0,0,FW,FH];
   const G=bkMRT(TILE,TILE,4),HB=bkMRT(TILE,TILE,3),OUT=bkMRT(TILE,TILE,1);
-  let bmin=[1e9,1e9,1e9],bmax=[-1e9,-1e9,-1e9];const src=high||low;for(let i=0;i<src.pos.length;i+=3)for(let c=0;c<3;c++){bmin[c]=Math.min(bmin[c],src.pos[i+c]);bmax[c]=Math.max(bmax[c],src.pos[i+c]);}
+  let bmin=[1e9,1e9,1e9],bmax=[-1e9,-1e9,-1e9];const src=source;for(let i=0;i<src.pos.length;i+=3)for(let c=0;c<3;c++){bmin[c]=Math.min(bmin[c],src.pos[i+c]);bmax[c]=Math.max(bmax[c],src.pos[i+c]);}
   const bsize=bmin.map((v,c)=>Math.max(1e-6,bmax[c]-v));
   const tiles=[];for(let y=0;y<FH;y+=TILE)for(let x=0;x<FW;x+=TILE){const t=[x,y,Math.min(TILE,FW-x),Math.min(TILE,FH-y)];if(t[0]<RR[2]&&t[0]+t[2]>RR[0]&&t[1]<RR[3]&&t[1]+t[3]>RR[1])tiles.push(t);}
   const heavy=kinds.filter(k=>k==='ao'||k==='thick').length,steps=tiles.length*(2+kinds.length+heavy*6);let done=0;const tick=async()=>{done++;progress.set(done/steps);await bkYield();};
