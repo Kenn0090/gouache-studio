@@ -37,7 +37,7 @@ function strokeCacheFor(list,k){if(!strokeCacheSafe())return null;const i=stroke
 function dropStrokeCache(s){if(s&&s.cache){for(const maps of s.cache.values())for(const k in maps)if(maps[k].t)release(maps[k].t);s.cache=null;}}
 /* A proven opaque, normal-blended fill completely replaces the rows below in this channel.
    Masks, projection holes, clipped effects and live looks keep the full ordering. */
-function compVisibleStart(list,k){for(let i=list.length-1;i>=0;i--){const n=list[i],c=mapSolid(n,k),t=mapT(n,k,true);if(n.type==='layer'&&n.visible&&(c?c[3]===1:n.fill&&(mapLive(n,k)?fillLiveOpaque(n,k):t&&t.opaque))&&n.opacity===1&&mapModeOf(n,k)===0&&!n.clip&&!maskTexOf(n)&&!n.fx&&!lookTouches(n,k)&&!(n.cfx&&cfxOn(n,k))&&!clippedFx(list,i,k).length&&!(panState&&n.id===panState.id&&panState.maps.has(k))&&!(preview&&preview.L===n)&&!(stroke&&stroke.L===n))return i;}return 0;}
+function compVisibleStart(list,k){for(let i=list.length-1;i>=0;i--){const n=list[i],c=mapSolid(n,k),t=mapT(n,k,true);if(n.type==='layer'&&n.visible&&(c?c[3]===1:n.fill&&(mapLive(n,k)?fillLiveOpaque(n,k):t&&t.opaque))&&mapOpacityOf(n,k)===1&&mapModeOf(n,k)===0&&!n.clip&&!maskTexOf(n)&&!n.fx&&!lookTouches(n,k)&&!(n.cfx&&cfxOn(n,k))&&!clippedFx(list,i,k).length&&!(panState&&n.id===panState.id&&panState.maps.has(k))&&!(preview&&preview.L===n)&&!(stroke&&stroke.L===n))return i;}return 0;}
 function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
   let start=compVisibleStart(list,k);const cache=strokeCacheFor(list,k),sc=cache&&cache.i>start?cache:null;compStats.skipped+=start;
   if(sc&&sc.t&&sc.t.depth===acc.depth){blit(sc.t,acc,0,0,doc.w,doc.h,0,0);start=sc.i;compStats.cacheHits++;}
@@ -48,7 +48,7 @@ function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
     /* filter layer: changes what is below it (clipped ones are applied to their base layer instead) */
     if(n.type==='layer'&&n.fx){if(clipped||n.fx.map!==k)continue;const r=fxApplyLayer(n,acc,k,mt);if(r!==acc){release(acc);acc=r;}continue;}
     if(n.type==='layer'){const lk=lookTouches(n,k),cf=clippedFx(list,i,k),cx=n.cfx&&cfxOn(n,k);let live=null,solid=mapSolid(n,k),T=edit?n.target:mapT(n,k,true);
-      const direct=mapLive(n,k)&&fillLiveOpaque(n,k)&&n.opacity===1&&mapModeOf(n,k)===0&&!mt&&!clipped&&(!pxfIs3D(n.fill.proj)||n.fill.maps[k].src!=='image')&&!lk&&!cf.length&&!cx&&!(panState&&n.id===panState.id&&panState.maps.has(k))&&!(preview&&preview.L===n)&&!(stroke&&stroke.L===n);
+      const direct=mapLive(n,k)&&fillLiveOpaque(n,k)&&mapOpacityOf(n,k)===1&&mapModeOf(n,k)===0&&!mt&&!clipped&&(!pxfIs3D(n.fill.proj)||n.fill.maps[k].src!=='image')&&!lk&&!cf.length&&!cx&&!(panState&&n.id===panState.id&&panState.maps.has(k))&&!(preview&&preview.L===n)&&!(stroke&&stroke.L===n);
       if(mapLive(n,k)&&!direct){live=acquireD(mapDepth(k));fillDrawMap(n,k,live);T=live;}
       if(solid&&(lk||cf.length||cx||panState&&n.id===panState.id&&panState.maps.has(k)||preview&&preview.L===n)){T=mapT(n,k);solid=null;}
       if((!T||T.empty)&&!lk&&!solid&&!direct)continue;if(!T||T.empty)T=solid||direct?{tex:dummy}:emptyFor(mapDepth(k));
@@ -65,14 +65,14 @@ function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
         if(lk){const r=layerLook(n,src,k,src===T,lkM?mt:null);if(r.t!==src){if(own)release(own);own=r.pooled?r.t:null;src=r.t;}}}
       compStats.layerPixels+=compPart?compPartPixels:doc.w*doc.h;
       run(st?.o.material?materialStrokeProgram(true,!!st.o.material.weldPaint):direct?fillCompProgram():P.comp,out,Object.assign(direct?fillCompUniforms(n,k):{},strokeMaterialU(st,k),{uSolid:!!solid,uSolidColor:solid||[0,0,0,0],uBase:acc.tex,uLayer:src.tex,uStrokeTex:strokeT.tex,uMask:clipped?(mapT(clipped,'base')||emptyFor(8)).tex:dummy,uUseMask:!!clipped,uMask2:cm||dummy,uUseMask2:!!cm,uLMask:mt||dummy,uUseLMask:!!mt&&!lkM,
-        uMode:{int:mapModeOf(n,k)},uOpacity:n.opacity,uStroke:{int:st?(ex?ex.mode:strokeMode(st.o)):0},uStrokeTint:!!(st&&!ex&&st.tint),uStrokeColor:st?(ex?ex.color:st.o.color):[0,0,0],uStrokeOpacity:st?st.o.opacity:0,uLockAlpha:ex?false:n.lockAlpha},
+        uMode:{int:mapModeOf(n,k)},uOpacity:mapOpacityOf(n,k),uStroke:{int:st?(ex?ex.mode:strokeMode(st.o)):0},uStrokeTint:!!(st&&!ex&&st.tint),uStrokeColor:st?(ex?ex.color:st.o.color):[0,0,0],uStrokeOpacity:st?st.o.opacity:0,uLockAlpha:ex?false:n.lockAlpha},
         edit?chanU(st&&st.o):chanU(null),ex?st.exU:selU(st&&st.o),edit?tonalU(st&&st.o):{}));
       if(own)release(own);if(pn)release(pn);if(live)release(live);release(acc);acc=out;}
     else if(n.mode<0&&!(panState&&n.id===panState.id&&panState.maps.has(k))){
-      if(n.opacity>=.999&&!mt)acc=compositeList(n.children,acc,k);
-      else{const x=acquire();blit(acc,x,0,0,doc.w,doc.h,0,0);const r=compositeList(n.children,x,k),out=acquire();run(P.mix,out,{uA:acc.tex,uB:r.tex,uT:n.opacity,uM:mt||dummy,uUseM:!!mt});release(acc);release(r);acc=out;}}
+      if(mapOpacityOf(n,k)>=.999&&!mt)acc=compositeList(n.children,acc,k);
+      else{const x=acquire();blit(acc,x,0,0,doc.w,doc.h,0,0);const r=compositeList(n.children,x,k),out=acquire();run(P.mix,out,{uA:acc.tex,uB:r.tex,uT:mapOpacityOf(n,k),uM:mt||dummy,uUseM:!!mt});release(acc);release(r);acc=out;}}
     else{const g=acquire();clearTarget(g);const r0=compositeList(n.children,g,k),r=panState&&n.id===panState.id&&panState.maps.has(k)?panShift(r0):r0,out=acquire();
-      run(P.comp,out,{uBase:acc.tex,uLayer:r.tex,uStrokeTex:strokeT.tex,uMask:dummy,uUseMask:false,uLMask:mt||dummy,uUseLMask:!!mt,uMode:{int:Math.max(0,n.mode)},uOpacity:n.opacity,uStroke:{int:0},uStrokeColor:[0,0,0],uStrokeOpacity:0,uLockAlpha:false});
+      run(P.comp,out,{uBase:acc.tex,uLayer:r.tex,uStrokeTex:strokeT.tex,uMask:dummy,uUseMask:false,uLMask:mt||dummy,uUseLMask:!!mt,uMode:{int:Math.max(0,n.mode)},uOpacity:mapOpacityOf(n,k),uStroke:{int:0},uStrokeColor:[0,0,0],uStrokeOpacity:0,uLockAlpha:false});
       release(acc);release(r);if(r!==r0)release(r0);acc=out;}}
   return acc;}
 function renderNodes(list){const acc=acquire();clearTarget(acc);return compositeList(list,acc);}
