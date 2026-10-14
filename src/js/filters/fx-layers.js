@@ -45,10 +45,10 @@ function fxApplyLayer(n,base,k,mt){const on=n.fx.stack.filter(it=>it.on!==false)
   if(stroke&&heavy&&c&&c.depth===base.depth){const o=acquire();blit(c,o,0,0,doc.w,doc.h,0,0);return o;}
   let out;
   if(on.length===1&&fxItemGen(on[0])){const g=fxGenImage(on[0],base,k);if(!g)return base;out=acquire();
-    run(P.comp,out,{uBase:base.tex,uLayer:g.tex,uStrokeTex:strokeT.tex,uMask:dummy,uUseMask:false,uLMask:mt||dummy,uUseLMask:!!mt,uMode:{int:mode},uOpacity:n.opacity,uStroke:{int:0},uStrokeColor:[0,0,0],uStrokeOpacity:0,uLockAlpha:false});release(g);}
+    run(P.comp,out,{uBase:base.tex,uLayer:g.tex,uStrokeTex:strokeT.tex,uMask:dummy,uUseMask:false,uLMask:mt||dummy,uUseLMask:!!mt,uMode:{int:mode},uOpacity:mapOpacityOf(n,k),uStroke:{int:0},uStrokeColor:[0,0,0],uStrokeOpacity:0,uLockAlpha:false});release(g);}
   else{const cur=fxStackResult(n,base,k);if(cur===base)return base;out=acquire();
-    if(mode===0)run(P.mix,out,{uA:base.tex,uB:cur.tex,uT:n.opacity,uM:mt||dummy,uUseM:!!mt});
-    else run(P.comp,out,{uBase:base.tex,uLayer:cur.tex,uStrokeTex:strokeT.tex,uMask:dummy,uUseMask:false,uLMask:mt||dummy,uUseLMask:!!mt,uMode:{int:mode},uOpacity:n.opacity,uStroke:{int:0},uStrokeColor:[0,0,0],uStrokeOpacity:0,uLockAlpha:false});
+    if(mode===0)run(P.mix,out,{uA:base.tex,uB:cur.tex,uT:mapOpacityOf(n,k),uM:mt||dummy,uUseM:!!mt});
+    else run(P.comp,out,{uBase:base.tex,uLayer:cur.tex,uStrokeTex:strokeT.tex,uMask:dummy,uUseMask:false,uLMask:mt||dummy,uUseLMask:!!mt,uMode:{int:mode},uOpacity:mapOpacityOf(n,k),uStroke:{int:0},uStrokeColor:[0,0,0],uStrokeOpacity:0,uLockAlpha:false});
     release(cur);}
   if(heavy){n._fxc=n._fxc||{};let t=n._fxc[k];if(!t||t.w!==doc.w||t.h!==doc.h||t.depth!==out.depth){if(t)disposeTarget(t);t=n._fxc[k]=makeTarget(doc.w,doc.h,out.depth,undefined,out.packed);}blit(out,t,0,0,doc.w,doc.h,0,0);}
   return out;}
