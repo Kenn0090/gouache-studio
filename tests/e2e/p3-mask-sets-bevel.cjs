@@ -45,8 +45,8 @@ g.bakeCfg.tab='normal';g.buildBakePanel();const control=!!document.getElementByI
 const ns=g.bevelNormals(m,30),sharp=ns.some(v=>v!==0),flat=g.bevelNormals(m,120).every(v=>v===0);
 m.matNames=['Front','Side'];m.triMat=new Uint32Array([0,0,1,1]);const low={...m},prog={cancelled:false,set(){},step(){}},o={size:64,ss:1,front:.02,back:.02,average:false,match:false,kinds:['normal'],rays:4,aoDist:.1,thickDist:.1,pad:0,dx:false};
 const plain=await g.bakeRun(low,null,o,prog),round=await g.bakeRun({...m},null,{...o,bevel:g.bakeCfg.bevel},prog);
-const a=g.captureRegionNow(plain.normal,31,32,1,1).data,c=g.captureRegionNow(round.normal,31,32,1,1).data,center=g.captureRegionNow(round.normal,16,32,1,1).data;
-const subset=await g.bakeRun(g.meshSubset(m,0),null,{...o,bevel:g.bakeCfg.bevel},prog),sub=g.captureRegionNow(subset.normal,31,32,1,1).data;g.disposeTarget(subset.normal);
+const pixel=(T,x,y)=>Array.from(g.readMapF(T,4).slice((y*T.w+x)*4,(y*T.w+x)*4+4),v=>Math.round(v*255));const a=pixel(plain.normal,31,32),c=pixel(round.normal,31,32),center=pixel(round.normal,16,32);
+const subset=await g.bakeRun(g.meshSubset(m,0),null,{...o,bevel:g.bakeCfg.bevel},prog),sub=pixel(subset.normal,31,32);g.disposeTarget(subset.normal);
 await g.runBake(m,['normal'],{quiet:true});const buttonOutput=!!g.bk.res.normal&&!g.bvSettings().preview;
 g.disposeTarget(plain.normal);g.disposeTarget(round.normal);
 g.useModel(m);g.bvSettings().preview=true;g.bevelPreviewProgram();g.bevelPreviewGPU(m);g.v3Refresh();g.v3Render(g.v3Targets(128,128));
