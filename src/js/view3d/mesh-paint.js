@@ -86,7 +86,7 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
       return [x0*doc.w-2,y0*doc.h-2,x1*doc.w+2,y1*doc.h+2];}};}
 /* ---- pointer on the 3D view ---- */
 const MESH_TOOLS=['brush','erase','dodge','burn','heal','clone','material'];
-function meshPaintReady(e){return v3.paintOn&&MESH_TOOLS.includes(ui.tool)&&!e.altKey&&e.button===0&&v3.gpu&&v3.mesh&&!v3.mesh.noUV;}
+function meshPaintReady(e){return v3.paintOn&&MESH_TOOLS.includes(ui.tool)&&!sel3.armed&&!e.altKey&&!v3PickHeld(e)&&e.button===0&&v3.gpu&&v3.mesh&&!v3.mesh.noUV;}
 /* Brush size is measured against a fixed 512-pixel model diameter, not the zoomed viewport.
    Perspective and orthographic cameras share the same scale at their target plane. */
 function meshBrushScale(h){const radius=v3.mesh?.radius||1,depth=Math.max(.001,v3.cam.dist),half=Math.tan(v3s().fov*Math.PI/360);return h*radius/(512*depth*Math.max(.001,half));}
@@ -103,7 +103,8 @@ function meshMove(hit,e){const m=v3.mstroke;if(!m||e.pointerId!==m.id||!stroke)r
 function meshUp(e){const m=v3.mstroke;if(!m||(e&&e.pointerId!==m.id))return;v3.mstroke=null;if(stroke){if(brush.smoothing>0)addPoint(brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);brushLineRemember(m.line,brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);endStroke(true);}}
 /* round cursor showing the brush size over the model */
 function meshCursor(hit,e){mir3CursorMove(hit,e);let c=v3.curEl;if(!c||!c.isConnected){c=v3.curEl=el('div',{class:'v3cur'});hit.parentNode.append(c);}
-  if(!e||!v3.paintOn||!MESH_TOOLS.includes(ui.tool)||e.altKey||v3.drag){c.hidden=true;hit.style.cursor=e&&e.altKey&&prefs.altPick!==false&&!['heal','clone'].includes(ui.tool)?brushPickerCursor:'';return;}hit.style.cursor='none';const r=hit.getBoundingClientRect(),pr=hit.parentNode.getBoundingClientRect(),d=Math.max(3,brush.size*meshBrushScale(r.height));
+  if(e&&sel3.armed&&!e.altKey){c.hidden=true;hit.style.cursor='crosshair';return;}
+  if(!e||!v3.paintOn||!MESH_TOOLS.includes(ui.tool)||e.altKey||v3PickHeld(e)||v3.drag){c.hidden=true;hit.style.cursor=e&&v3PickHeld(e)?brushPickerCursor:'';return;}hit.style.cursor='none';const r=hit.getBoundingClientRect(),pr=hit.parentNode.getBoundingClientRect(),d=Math.max(3,brush.size*meshBrushScale(r.height));
   c.hidden=false;c.style.width=c.style.height=d+'px';c.style.transform='translate('+(e.clientX-pr.left-d/2)+'px,'+(e.clientY-pr.top-d/2)+'px)';tipCursor(c,d);}
 /* ---- what is under the pointer: the model's UV there (and how far away), from a one-pixel render ---- */
 const FS_3DPICK=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform vec3 uCamP; uniform float uSet; uniform int uOrtho; uniform vec3 uFwd; void main(){ o=vec4(vT,uOrtho==1?dot(vP-uCamP,uFwd):length(vP-uCamP),1.0+uSet); }`;
@@ -132,8 +133,8 @@ function v3Ray(w,h,px,py){const s=v3s(),eye=v3Eye(),c=v3.cam,f=norm3(sub3([c.tx,
 /* hold Alt over the model: its base colour there becomes the foreground colour (Alt+drag still turns) */
 /* it picks when the pointer rests for a moment, not on every movement (each pick waits for the graphics card) */
 let v3PickQ=null;
-function v3HoverPick(hit,e){if(prefs.altPick===false||ui.mode==='bake'||ui.mode==='convert'||stroke||ui.tool==='heal'||ui.tool==='clone')return;const q={clientX:e.clientX,clientY:e.clientY};clearTimeout(v3PickQ);
-  v3PickQ=setTimeout(()=>{const ev=q;v3PickQ=null;if(v3.drag||v3.mstroke||!v3.on)return;const p=v3PickAt(hit,ev);const t=p&&ui.mode==='p3d'&&typeof p3SetTex==='function'?p3SetTex(p.set,'base'):v3.tex.base;if(!p||!t)return;
+function v3HoverPick(hit,e){if(!v3PickHeld(e)||stroke)return;const q={clientX:e.clientX,clientY:e.clientY};clearTimeout(v3PickQ);
+  v3PickQ=setTimeout(()=>{const ev=q;v3PickQ=null;if(!v3PickHeld()||!modal.hidden||v3.drag||v3.mstroke||!v3.on||!v3.hover)return;const p=v3PickAt(hit,ev);const t=p&&ui.mode==='p3d'&&typeof p3SetTex==='function'?p3SetTex(p.set,'base'):v3.tex.base;if(!p||!t)return;
     const x=clamp(Math.floor(p.uv[0]*t.w),0,t.w-1),y=clamp(Math.floor(p.uv[1]*t.h),0,t.h-1),d=captureRegionNow(t,x,y,1,1).data;
     let c=t.depth===16?(()=>{const L=h2fLut();return [L[d[0]],L[d[1]],L[d[2]],L[d[3]]];})():[d[0]/255,d[1]/255,d[2]/255,d[3]/255];
     if(c[3]<.02)return;c=[c[0]/c[3],c[1]/c[3],c[2]/c[3]].map(v=>clamp(v,0,1));if(toHex(c)!==toHex(ui.fg))setFG(c);},60);}
@@ -173,7 +174,7 @@ function drawMir3(VP){if(!mir3.show||!mir3On()||!v3.mesh)return;const pts=mir3Gu
 /* Surface cursor copies share painting's projection and visibility test. One GPU pass
    draws all copies; hovering does not synchronously read pixels back to the CPU. */
 let mir3CursorHover=null,mir3CursorGPU=null,mir3CursorDepth=null;
-function mir3CursorMove(hit,e){const active=e&&v3.paintOn&&MESH_TOOLS.includes(ui.tool)&&!e.altKey&&!v3.drag;
+function mir3CursorMove(hit,e){const active=e&&v3.paintOn&&MESH_TOOLS.includes(ui.tool)&&!sel3.armed&&!e.altKey&&!v3PickHeld(e)&&!v3.drag;
   const r=active&&hit.getBoundingClientRect();mir3CursorHover=active?{hit,x:(e.clientX-r.left)/r.width,y:1-(e.clientY-r.top)/r.height}:null;
   if(mir3.cursors&&mir3On()){v3.dirty=true;requestRender();}}
 const FS_MIR3CURSOR=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan;

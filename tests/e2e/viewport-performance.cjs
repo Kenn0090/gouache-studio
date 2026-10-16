@@ -41,6 +41,7 @@ let failures=0;const ok=(v,m)=>{console.log((v?'PASS ':'FAIL ')+m);if(!v)failure
    G.endStroke(true);G.composite();G.v3Refresh();return {dirty,copy,partial,mip,same,error:G.gl.getError()};},kind);
   console.log(kind,r);ok(r.same&&r.error===0,kind+' viewport texture agrees with full compositing');
   if(kind==='plain')ok(!r.dirty&&r.partial===1&&r.copy<65536*.05&&r.mip<21845*.05,'plain painting avoids unchanged maps and updates less than 5% of texture/mip pixels');
+  else if(kind==='mask')ok(!r.dirty&&r.partial>0&&r.copy<2*65536*.05,'plain mask strokes update only affected material regions');
   else if(kind==='wrapped')ok(!r.dirty&&r.partial===0&&r.copy===65536,'wrapped strokes retain full texture coverage while reusing other maps');
   else ok(r.dirty&&r.partial===0,'complex strokes retain full material updates');
  }

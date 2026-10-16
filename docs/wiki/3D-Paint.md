@@ -61,7 +61,7 @@ These follow Substance Painter's own shortcuts (Preferences › Painting › *Su
 - **[** and **]** change the size, **Shift + right drag** turns the sky, **F** frames the model.
 
 ## Picking colours and shades
-- **Hold Alt over the model** (without clicking) to pick its colour there. Alt + drag still turns the model.
+- **Hold Alt over the model** (without clicking) to pick its colour there. Change **3D Paint: pick colour (hold)** in **Edit › Keyboard shortcuts › Brush and colour** to use another key. Release it to return to painting. Alt + drag still turns the model.
 - **Left / Right arrow keys** step through the shade strip in the Color panel while you paint. Clicking a shade still works, and the strip stays put while you step.
 
 ## Layouts
@@ -105,9 +105,10 @@ To place it, hold **S** over the view:
 **Invert** (or **X** over the model) swaps black and white.
 
 ## Selecting parts of the model
-Under **Select on the model**, choose **Object**, **Material**, **UV island**, **Face** or **Loop**, then **double-click** the model:
-- **Shift + double-click** adds to the selection.
-- **Ctrl + double-click** removes from it.
+Under **Select on the model**, choose **Object**, **Material**, **UV island**, **Face** or **Loop**, press **Select part**, then click the model:
+- **Shift-click** adds to the selection.
+- **Ctrl-click** removes from it.
+- **Done selecting** or **Escape** returns to painting. Double-clicking the model does not create a selection or fill a mask in 3D Paint.
 - **Ctrl + D** deselects.
 
 The selection is tinted on the model and shows on the flat texture too. Painting stays inside it. **Selection to mask** gives the active layer a mask made from it.
@@ -171,7 +172,7 @@ Masks can hold rows (generators, noise, mesh maps, ID colours, filters…) and l
 - **Box**, **Lasso** and **Polygon** select what you can see of the model under the shape you draw. Drag inside the shape to move it; the selection follows when you let go. **Shift** adds, **Ctrl** takes away. For the polygon, click the corners, then double-click, click the first point or press **Enter**. On the flat texture they are the usual selection tools.
 - **ID colour** (like Substance Painter's colour selection): click the model (or the flat texture) to pick colours of the texture set's baked **ID** map. Those colours turn white in the mask, the rest black. **Tolerance** sets how close a colour counts, **Softness** the edge, **Invert** swaps them; click a colour swatch to remove it. It stays with the layer, so you can come back and change it.
 - **Fill white** / **Fill black** (inside the selection, if there is one) and **Invert**.
-- **Double-click:** choose Object, Material, UV island, Face or Loop, then double-click the model. That part turns white in the mask; **Ctrl + double-click** turns it black.
+- **Select part:** choose Object, Material, UV island, Face or Loop, activate **Select part**, then click the model. That part turns white in the mask; **Ctrl-click** turns it black. Use **Done selecting** or **Escape** to return to painting.
 - **Done**, **Esc**, Alt + click again, or clicking the layer's own thumbnail goes back to the material.
 
 ## From Paint

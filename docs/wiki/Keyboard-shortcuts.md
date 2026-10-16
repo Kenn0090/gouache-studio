@@ -4,6 +4,8 @@
 
 **Shift+B** swaps the last two brush presets used, including their individual session sizes.
 
+To change temporary colour picking in **3D Paint**, find **3D Paint: pick colour (hold)** under **Brush and colour**. The default is **Alt**; a letter, combination, or modifier on its own can be assigned. Hold it over the model to sample, then release to resume painting. Alt navigation and 2D Alt-click picking keep their usual controls. Remove the binding with **×** to disable the hold key.
+
 All of these can be changed in **Edit › Keyboard shortcuts…**. The commands are sorted into **categories** (Painting tools, Selection tools, Other tools, Brush and colour, Files, Edit and history, Layers, Selections, Adjustments, Filters, View and 3D, Panels and workspaces…): pick one on the left, or **search** all of them. Click a command's key, then press the new one (Esc cancels). **×** removes a key and **↺** puts the default back. Keys you changed are highlighted. If the key is already used by another command, you're asked first: **Use it here** moves it (the other command is left without a key). Keys used twice are marked ⚠. **Photoshop keys** sets the keys that differ from Photoshop's (for example Hue/Saturation on Ctrl+U), **Save to file…** and **Load from file…** keep and share your key sets, and **Reset all** goes back to the defaults. The menus and the hint line at the bottom of the canvas always show your keys; **View › Shortcut hints** hides that line.
 
 ![Keyboard shortcuts.](images/keyboard-shortcuts.png)

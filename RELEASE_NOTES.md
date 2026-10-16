@@ -1,3 +1,9 @@
+# Gouache Studio 0.64.1
+
+- Change the 3D colour-picker hold key in Edit › Keyboard shortcuts › Brush and colour. Hold the new key to sample, then release to resume painting. Alt navigation still works.
+- Reduced black-mask stroke start/end work: regular brush strokes avoid a full mask copy on press, and smaller plain-mask strokes update the painted material region on release. Undo/redo stays exact; complex mask stacks and dependent filters keep full updates when needed.
+- Removed double-click selection/mask filling on the 3D Paint mesh. Use Select part, then click the desired part; Done selecting or Escape returns to painting. Double-click empty space still reframes.
+
 # Gouache Studio 0.64.0
 
 - Bake › Normal: bevel shading now rounds convex/concave edges and intersections between separate meshes using the same scene probes in preview and baking.

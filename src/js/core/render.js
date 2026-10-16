@@ -12,8 +12,8 @@ function frame(){raf=0;if(typeof tabDocs!=='undefined'&&tabDocs.hold){requestRen
   if(perf.on)perfFrame(t0,tc-t0,tv-tc,performance.now()-tv);}finally{if(gq)perfGpuEnd(gq);}}
 let maskOverride=new Map();
 /* Keep live coverage shared by every material channel, including the 3D preview. */
-function withWeldMask(region,fn){const s=stroke;if(!s?.o.weldMask||!s.L.maskOf||s.L.mrow)return fn();const prev=maskOverride,T=acquireD(s.L.target.depth);
-  const merge=()=>run(P.merge,T,Object.assign({uSrc:s.L.target.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(s.o)},uStrokeColor:s.o.color,...tintU(),uStrokeOpacity:s.o.opacity,uLockAlpha:false},selU(s.o),tonalU(s.o)));
+function withWeldMask(region,fn){const s=stroke;if(!s?.L.maskOf||s.L.mrow||strokeLive(s.o))return fn();const prev=maskOverride,T=acquireD(s.L.target.depth);
+  const merge=()=>run(P.merge,T,Object.assign({uSrc:s.lazy?s.L.target.tex:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(s.o)},uStrokeColor:s.o.color,...tintU(),uStrokeOpacity:s.o.opacity,uLockAlpha:false},selU(s.o),tonalU(s.o)));
   try{if(region){const x=Math.max(0,region[0]-1),y=Math.max(0,region[1]-1);scissorDo([x,y,Math.min(doc.w,region[0]+region[2]+1)-x,Math.min(doc.h,region[1]+region[3]+1)-y],merge);}else merge();maskOverride=new Map(prev);maskOverride.set(s.L.maskOf,T.tex);return fn();}
   finally{maskOverride=prev;release(T);}}
 function maskTexOf(n){if(!n.mask||!n.mask.enabled)return null;return maskOverride.get(n)||n.mask.target.tex;}
@@ -108,7 +108,13 @@ function compositeStrokePart(){const s=stroke;if(!s||!strokeCacheSafe()||!s.comp
     finally{compPart=false;maskOverride=new Map();tmp.forEach(release);}
   }else try{for(const r of rs)scissorDo(r,()=>{const acc=acquire();clearTarget(acc,mapDefault(doc.map));const out=compositeList(doc.root.children,acc);blit(out,compOut,r[0],r[1],r[2],r[3],r[0],r[1]);release(out);});}finally{compPart=false;}
   compOut.mipDirty=true;if(compOut.hasMips&&!(doc.w&(doc.w-1))&&!(doc.h&(doc.h-1))){for(const r of rs)v3PatchMips(compOut,r);compOut.mipDirty=false;}v3Changed(rs);return true;}
-function composite(){if(compositeStrokePart())return;compStats.full++;if(compOut)release(compOut);maskOverride=new Map();const tmp=[];maskViewLive=false;if(typeof msUpdateAll==='function')msUpdateAll();
+/* A committed plain mask changes the material only inside the stroke's full UV bounds.
+   Finish that region before the viewport uses it; filters/references keep the full path. */
+function compositeMaskEnd(){const q=weldEndPreview;if(!q?.mask||stroke||!compOut||q.root!==doc.root||q.tex!==v3.tex||q.map!==doc.map)return false;
+  const r=q.r;maskOverride=new Map();maskViewLive=false;compStats.parts++;compPart=true;compPartPixels=r[2]*r[3];
+  try{scissorDo(r,()=>{const a=acquire();clearTarget(a,mapDefault(doc.map));const t=compositeList(doc.root.children,a);blit(t,compOut,r[0],r[1],r[2],r[3],r[0],r[1]);release(t);});}finally{compPart=false;}
+  compOut.mipDirty=true;if(compOut.hasMips&&!(doc.w&(doc.w-1))&&!(doc.h&(doc.h-1))){v3PatchMips(compOut,r);compOut.mipDirty=false;}v3Changed([r]);return true;}
+function composite(){if(compositeMaskEnd()||compositeStrokePart())return;compStats.full++;if(compOut)release(compOut);maskOverride=new Map();const tmp=[];maskViewLive=false;if(typeof msUpdateAll==='function')msUpdateAll();
   if(stroke&&stroke.L.maskOf&&!strokeLive(stroke.o)){const lm=acquire();tmp.push(lm);run(P.merge,lm,Object.assign({uSrc:stroke.lazy&&stroke.L.maskOf?stroke.L.target.tex:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(stroke.o)},uStrokeColor:stroke.o.color,...tintU(),uStrokeOpacity:stroke.o.opacity,uLockAlpha:false},selU(stroke.o),tonalU(stroke.o)));
     /* a Paint row of a mask with rows: the whole stack again, with the row as it is being painted */
     if(stroke.L.mrow){const ev=msEval(stroke.L.maskOf,{row:stroke.L.mrow,t:lm});tmp.push(ev);maskOverride.set(stroke.L.maskOf,ev.tex);if(ui.viewMask){if(!maskViewT||maskViewT.w!==doc.w||maskViewT.h!==doc.h||maskViewT.depth!==ev.depth){disposeTarget(maskViewT);maskViewT=makeTarget(doc.w,doc.h,ev.depth);}blit(ev,maskViewT,0,0,doc.w,doc.h,0,0);maskViewLive=true;}}
