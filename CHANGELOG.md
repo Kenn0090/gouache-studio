@@ -1,3 +1,9 @@
+## 0.64.1
+
+- 3D Paint: the temporary colour-picker hold key can be changed in Edit › Keyboard shortcuts › Brush and colour. Supports letters, combinations and modifier-only keys, keeps the current brush, and cancels pending samples on release. Alt navigation and 2D colour picking retain their controls.
+- Black-mask painting no longer copies the whole mask on press for regular brush, eraser and dodge/burn strokes. Smaller plain-mask strokes, including projected and group masks, update only their painted material region on release, with exact undo/redo. Complex mask stacks, filters, wrapping and alternate views retain the full update when required for correctness. Projected strokes do not repeat an already-synchronized projection on release.
+- 3D Paint: double-clicking the mesh no longer creates a selection or fills a mask. Object, material, UV-island, face and loop selection use the explicit Select part control followed by a click. Done selecting or Escape returns to painting; double-clicking empty space still frames the model.
+
 ## 0.64.0
 
 - Bake › Normal: scene-aware bevel shading now probes surrounding geometry, rounding convex/concave corners and intersections between separate meshes. Preview and normal baking share the calculation.

@@ -71,7 +71,7 @@ function cloneMask(m){if(!m)return null;const c=makeMask(1,m.target.mono);blit(m
   if(m.stack){c._rows=new Set();c.stack=m.stack.map(r=>{const x=Object.assign({},r,{id:'r'+(++msSeq),p:JSON.parse(JSON.stringify(r.p||{})),v:r.v?JSON.parse(JSON.stringify(r.v)):r.v});
     if(r.t){x.t=makeTarget(r.t.w,r.t.h,r.t.depth,r.kind==='image');blit(r.t,x.t,0,0,r.t.w,r.t.h,0,0);}c._rows.add(x);return x;});}
   return c;}
-function editTarget(){if(sel.quick){useAux(sel.t.depth);return {node:sel.node,target:sel.t,isMask:true,L:sel.L};}const n=doc.active;if(!n)return null;fillMaskEdit(n);if(n.fx&&!n.editMask)return null;if(isLayer(n)&&!n.editMask){ensureTarget(n);useAux(n.target.depth,false,['brush','erase','dodge','burn'].includes(ui.tool));if(doc.map==='base')delete n.blankBase;}else if(n.mask&&n.editMask)useAux(n.mask.target.depth);
+function editTarget(){if(sel.quick){useAux(sel.t.depth);return {node:sel.node,target:sel.t,isMask:true,L:sel.L};}const n=doc.active;if(!n)return null;fillMaskEdit(n);if(n.fx&&!n.editMask)return null;if(isLayer(n)&&!n.editMask){ensureTarget(n);useAux(n.target.depth,false,['brush','erase','dodge','burn'].includes(ui.tool));if(doc.map==='base')delete n.blankBase;}else if(n.mask&&n.editMask)useAux(n.mask.target.depth,false,['brush','erase','dodge','burn'].includes(ui.tool));
   /* a mask with rows: painting goes into its Paint row */
   if(n.editMask&&n.mask&&n.mask.stack){const r=msPaintRow(n);return {node:n,target:r.t,isMask:true,L:{target:r.t,lockAlpha:false,maskOf:n,maskObj:n.mask,mrow:r}};}
   if(n.editMask&&n.mask)return {node:n,target:n.mask.target,isMask:true,L:{target:n.mask.target,lockAlpha:false,maskOf:n,maskObj:n.mask}};

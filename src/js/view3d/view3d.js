@@ -208,7 +208,7 @@ function v3Refresh(){if(!v3.on)return;if(ui.mode==='bake'){bakeV3Refresh();retur
     v3.mapsDirty=false;v3.editDirty=false;v3.lastFull=now;v3.dirty=true;v3SgDerive();}
   else if(v3.editDirty&&(stroke||v3.mapRegion?.finished)&&v3.mapRegion?.weld){const q=v3.mapRegion,r=q.r;
     if(r&&q.root===doc.root&&q.tex===v3.tex&&q.map===doc.map&&r[2]*r[3]<doc.w*doc.h*.25&&!(doc.w&(doc.w-1))&&!(doc.h&(doc.h-1))&&v3Needed().every(k=>v3.tex[k]?.hasMips)){
-      withWeldMask(r,()=>{const maskLayer=stroke?.o.weldMask&&stroke.L.maskOf;const keys=new Set(q.keys|| (maskLayer?Object.keys(maskLayer.fill.maps).filter(k=>maskLayer.fill.maps[k].on):[doc.map,...stroke.o.extras.map(e=>e.key)])),needed=v3Needed();
+      withWeldMask(r,()=>{const maskLayer=stroke?.L.maskOf;const keys=new Set(q.keys|| (maskLayer?doc.maps:[doc.map,...stroke.o.extras.map(e=>e.key)])),needed=v3Needed();
       for(const k of keys){if(!needed.includes(k)&&!(k==='height'&&v3s().disp))continue;
         const t=k===doc.map&&plain?compOut:scissorDo(r,()=>compositeMap(k));v3MapTex(k,t,r);if(t!==compOut)release(t);}
       if(keys.has('height')||keys.has('normal')){const t=normalComposite(false,null,r);v3MapTex('nfinal',t,r);release(t);}});
@@ -220,14 +220,15 @@ function v3Refresh(){if(!v3.on)return;if(ui.mode==='bake'){bakeV3Refresh();retur
 function v3SgDerive(){if(doc.workflow!=='spec'||!v3.tex.base||ui.mode==='anim')return;const T=v3.tex,r=sgAsMR(T.base,doc.maps.includes('spec')?T.spec:null,doc.maps.includes('gloss')?T.gloss:null);
   v3MapTex('sgBase',r.base);v3MapTex('sgMetal',r.metal);v3MapTex('sgRough',r.rough);for(const k in r)release(r[k]);}
 /* called by composite(): the document changed */
-function v3WeldEnd(s,r){if(!v3.on||!s.o.weldMask||!s.viewportIndependent||!s.cacheSafe||!maskPartOK(s)||prefs.paintSpeed==='fast'||doc.wrap||doc.map!=='base'||doc.workflow==='spec'||doc.view!==doc.map||v3.mapsDirty||v3.editDirty||preview||['anim','bake','convert'].includes(ui.mode)||doc.maps.some(k=>compNeedsAll(doc.root.children,k)))return;
+function v3WeldEnd(s,r){const mask=!!s.L.maskOf&&!s.L.mrow&&s.L.maskOf.mask?.enabled;
+  if(!v3.on||!mask||!s.viewportIndependent||!s.cacheSafe||!maskPartOK(s)||prefs.paintSpeed==='fast'||doc.wrap||doc.map!=='base'||doc.workflow==='spec'||doc.view!==doc.map||v3.mapsDirty||v3.editDirty||preview||['anim','bake','convert'].includes(ui.mode)||doc.maps.some(k=>compNeedsAll(doc.root.children,k)))return;
   const x=Math.max(0,r[0]-1),y=Math.max(0,r[1]-1),box=[x,y,Math.min(doc.w,r[0]+r[2]+1)-x,Math.min(doc.h,r[1]+r[3]+1)-y];
-  if(box[2]*box[3]>=doc.w*doc.h*.25)return;weldEndPreview={root:doc.root,tex:v3.tex,map:doc.map,r:box,weld:true,finished:true,keys:Object.keys(s.L.maskOf.fill.maps).filter(k=>s.L.maskOf.fill.maps[k].on)};}
+  if(box[2]*box[3]>=doc.w*doc.h*.25)return;weldEndPreview={root:doc.root,tex:v3.tex,map:doc.map,r:box,weld:true,mask:!s.o.weldMask,finished:true,keys:doc.maps.slice()};}
 function v3Changed(rects){if(!v3.on)return;if(!stroke&&weldEndPreview){const q=weldEndPreview;weldEndPreview=null;if(!v3.mapsDirty&&q.root===doc.root&&q.tex===v3.tex&&q.map===doc.map){v3.mapRegion=q;v3.editDirty=true;return;}}const s=stroke;
   /* Only independent, single-channel strokes can leave the other maps untouched. End-of-stroke, undo,
      masks, normal/height, converters and external edits still invalidate the complete material. */
   if(s&&s.viewportIndependent===undefined)s.viewportIndependent=doc.map!=='base'||!allNodes().some(n=>n.visible&&n.clip);
-  const weldMask=s?.o.weldMask&&s.L.maskOf?.mask?.enabled&&maskPartOK(s);
+  const weldMask=s?.L.maskOf?.mask?.enabled&&!s.L.mrow&&maskPartOK(s);
   const weld=(s?.o.material?.weldPaint||weldMask)&&prefs.paintSpeed!=='fast'&&doc.map==='base'&&!doc.wrap&&
     doc.maps.every(k=>!compNeedsAll(doc.root.children,k));
   const safe=s&&s.viewportIndependent&&['brush','erase','dodge','burn'].includes(s.o.tool)&&(!s.L.maskOf||(weldMask&&weld))&&!s.L.quick&&!preview&&(!s.o.extras?.length||weld)&&doc.workflow!=='spec'&&doc.view===doc.map&&
@@ -409,7 +410,7 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   const info=el('div',{class:'v3info',id:'v3Info'});v3.infoEl=info;
   const hit=el('div',{class:'v3hit',id:'v3Hit'});
   pane.append(hit,bar,box,...(mb?[mb.pop]:[]),info);refresh3dUI();v3Controls(hit);st3.el=null;requestAnimationFrame(st3Overlay);}
-function refresh3dUI(){const i=v3.infoEl;if(!i||!v3.mesh)return;const m=v3.mesh;i.textContent=m.name+' · '+m.tris.toLocaleString()+' triangles'+(m.noUV?' · this model has no UVs, so textures cannot map onto it':v3.paintOn?' · painting: '+v3NavHint()+'; hold Alt over the model to pick its colour':'');}
+function refresh3dUI(){const i=v3.infoEl;if(!i||!v3.mesh)return;const m=v3.mesh;i.textContent=m.name+' · '+m.tris.toLocaleString()+' triangles'+(m.noUV?' · this model has no UVs, so textures cannot map onto it':v3.paintOn?' · painting: '+v3NavHint()+(v3PickKey()?'; hold '+v3PickKey()+' over the model to pick its colour':''):'');}
 /* ---- navigation: Substance Painter style (default) or 3D-Coat style (Preferences, or the 3D Paint panel) ----
    Substance: Alt+left turns, Alt+middle moves, Alt+right zooms; middle or right drag also moves; left paints.
    3D-Coat: right-drag turns (Shift+right moves, Ctrl+right zooms), middle moves, left paints on the model and turns off it.
@@ -417,6 +418,23 @@ function refresh3dUI(){const i=v3.infoEl;if(!i||!v3.mesh)return;const m=v3.mesh;
 const v3nav={mode:(()=>{try{return localStorage.getItem('gs.nav3d')||'substance';}catch(e){return 'substance';}})()};
 function setNav3d(m){v3nav.mode=m;try{localStorage.setItem('gs.nav3d',m);}catch(e){}refresh3dUI();}
 const v3CanPaint=()=>v3.paintOn&&MESH_TOOLS.includes(ui.tool)&&!!v3.gpu&&!!v3.mesh&&!v3.mesh.noUV;
+const v3PickHold={on:false,code:null,hit:null,point:null};
+const v3PickKey=()=>ui.mode==='p3d'&&typeof kbKeyOf==='function'?kbKeyOf('p3:pick'):'Alt';
+function v3PickHeld(e){if(prefs.altPick===false||sel3.armed||['bake','convert'].includes(ui.mode)||['heal','clone'].includes(ui.tool))return false;
+  const key=v3PickKey();if(!key)return false;
+  const mods=e&&typeof kbModifiers==='function'?kbModifiers(e):null;
+  if(/^(Ctrl|Shift|Alt)(\+(Ctrl|Shift|Alt))*$/.test(key))return e?mods===key:v3PickHold.on;
+  const wanted=key.split('+').slice(0,-1).join('+');return v3PickHold.on&&(!e||mods===wanted);}
+function v3PickRelease(){v3PickHold.on=false;v3PickHold.code=null;if(typeof v3PickQ!=='undefined'){clearTimeout(v3PickQ);v3PickQ=null;}
+  if(v3PickHold.hit&&v3PickHold.point)meshCursor(v3PickHold.hit,{...v3PickHold.point,altKey:false,ctrlKey:false,metaKey:false,shiftKey:false});}
+/* Registered before stencil/navigation key handlers, so a reassigned key owns its hold in the viewport. */
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&sel3.armed&&modal.hidden&&!isTypingTarget(e.target)){e.preventDefault();e.stopImmediatePropagation();sel3Arm(false);return;}
+  if(!v3.on||!v3.hover||!modal.hidden||isTypingTarget(e.target)||stroke||sel3.armed||prefs.altPick===false||['bake','convert'].includes(ui.mode)||['heal','clone'].includes(ui.tool))return;
+  const combo=typeof kbCombo==='function'&&(kbCombo(e)||kbModifiers(e));if(v3PickHold.on&&combo!==v3PickKey())v3PickRelease();if(!combo||combo!==v3PickKey())return;
+  e.preventDefault();e.stopImmediatePropagation();v3PickHold.on=true;v3PickHold.code=e.code||e.key;
+  const h=v3PickHold.hit,q=v3PickHold.point;if(h&&q){const p={...q,altKey:e.altKey,ctrlKey:e.ctrlKey,metaKey:e.metaKey,shiftKey:e.shiftKey};meshCursor(h,p);v3HoverPick(h,p);}},true);
+window.addEventListener('keyup',e=>{if(v3PickHold.on&&((e.code||e.key)===v3PickHold.code||['Alt','Control','Meta','Shift'].includes(e.key))){e.preventDefault();v3PickRelease();}},true);
+window.addEventListener('blur',v3PickRelease);
 function v3NavHint(){return v3nav.mode==='coat'?'right-drag turns, middle moves, Ctrl+right zooms':'Alt+left turns, Alt+middle moves, Alt+right zooms';}
 function v3NavOf(hit,e){const b=e.button,paint=v3CanPaint();
   if(st3.sKey&&st3.img)return b===0?'strot':b===2?'stscale':'stmove';
@@ -432,6 +450,8 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     if(v3.mstroke&&v3.mstroke.id!==e.pointerId)meshUp();/* one whose release was missed is finished now */v3.drag=null;
     e.preventDefault();hit.tabIndex=0;hit.focus({preventScroll:true});/* release toolbar/dropdown keyboard focus when returning to the viewport */
     try{hit.setPointerCapture(e.pointerId);}catch(er){}
+    if(e.button===0&&v3PickHeld(e)&&v3PickKey()!=='Alt'){v3HoverPick(hit,e);return;}
+    if(e.button===0&&!e.altKey&&sel3.armed){p3SelectAt(hit,e);return;}
     /* mask mode: Paint must be on to paint; Box, Lasso and Polygon draw shapes */
     /* the projection gizmo (a material or mask row projected from 3D) */
     if(e.button===0&&!e.altKey&&!st3.sKey&&pgzDown(hit,e))return;
@@ -439,11 +459,11 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     let how=v3NavOf(hit,e);
     if(how==='paint'){if(e.button===0&&meshDown(hit,e)&&v3.mstroke)return;how='turn';if(stroke)return;}
     v3.drag={x:e.clientX,y:e.clientY,how,id:e.pointerId,x0:e.clientX,y0:e.clientY,alt:e.altKey&&e.button===0};});
-  hit.addEventListener('pointermove',e=>{if(pgz.drag){if(!e.buttons){pgzUp();return;}pgzMove(hit,e);return;}if(!e.buttons&&pgzHover(hit,e)){meshCursor(hit,null);return;}if(mk3Busy()){mk3Move(hit,e);return;}meshCursor(hit,e);
+  hit.addEventListener('pointermove',e=>{v3PickHold.hit=hit;v3PickHold.point={clientX:e.clientX,clientY:e.clientY};if(pgz.drag){if(!e.buttons){pgzUp();return;}pgzMove(hit,e);return;}if(!e.buttons&&!v3PickHeld(e)&&pgzHover(hit,e)){meshCursor(hit,null);return;}if(mk3Busy()){mk3Move(hit,e);return;}meshCursor(hit,e);
     /* no button held any more: the release went missing (another window, a pen gesture, Alt menu mode); finish instead of sticking */
     if(!e.buttons){if(v3.mstroke)meshUp();if(v3.drag)v3.drag=null;}
     if(v3.mstroke){meshMove(hit,e);return;}const d=v3.drag;
-    if(!d){if(e.altKey&&!e.buttons)v3HoverPick(hit,e);return;}
+    if(!d){if(v3PickHeld(e)&&!e.buttons)v3HoverPick(hit,e);return;}
     if(d.how==='bsize'||d.how==='bflow'){pcAdjust(d,e,hit);d.x=e.clientX;d.y=e.clientY;return;}
     if(d.how.startsWith('st')){st3Drag(d,e,hit);d.x=e.clientX;d.y=e.clientY;return;}
     const dx=e.clientX-d.x,dy=e.clientY-d.y;d.x=e.clientX;d.y=e.clientY;const c=v3.cam;
@@ -455,10 +475,10 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
       if(e.shiftKey){const Q=Math.PI/2;if(Math.abs(d.fp)>Math.PI/4){c.pitch=d.fp>0?1.5699:-1.5699;c.yaw=Math.round(d.fy/Q)*Q;}else{c.pitch=0;c.yaw=Math.round(d.fy/Q)*Q;}}
       else{c.yaw=d.fy;c.pitch=d.fp;}}v3.dirty=true;requestRender();});
   const up=e=>{if(pgz.drag){pgzUp();return;}if(mk3Busy()&&e.type!=='lostpointercapture'){mk3Up(e);return;}if(v3.drag&&e.pointerId!==undefined&&v3.drag.id!==e.pointerId)return;v3.drag=null;meshUp(e);};
-  hit.addEventListener('pointerup',up);hit.addEventListener('pointercancel',up);hit.addEventListener('lostpointercapture',up);hit.addEventListener('pointerleave',()=>{v3.hover=false;meshCursor(hit,null);});hit.addEventListener('pointerenter',()=>{v3.hover=true;});
+  hit.addEventListener('pointerup',up);hit.addEventListener('pointercancel',up);hit.addEventListener('lostpointercapture',up);hit.addEventListener('pointerleave',()=>{v3.hover=false;v3PickRelease();v3PickHold.hit=null;v3PickHold.point=null;meshCursor(hit,null);});hit.addEventListener('pointerenter',()=>{v3.hover=true;});
   hit.addEventListener('wheel',e=>{e.preventDefault();e.stopPropagation();v3.cam.dist=clamp(v3.cam.dist*Math.exp(e.deltaY*.0012),.2,50);v3.dirty=true;requestRender();},{passive:false});
   for(const t of ['selectstart','dragstart'])hit.parentNode.addEventListener(t,e=>e.preventDefault());
-  hit.addEventListener('dblclick',e=>{const s=window.getSelection&&window.getSelection();if(s&&s.rangeCount)s.removeAllRanges();if(maskToolsOn()&&mk3.tool&&mk3.tool!=='paint')return;if(typeof p3SelectAt==='function'&&p3SelectAt(hit,e))return;v3Frame();requestRender();});}
+  hit.addEventListener('dblclick',e=>{const s=window.getSelection&&window.getSelection();if(s&&s.rangeCount)s.removeAllRanges();if(maskToolsOn()&&mk3.tool&&mk3.tool!=='paint')return;if(ui.mode==='p3d'){if(v3PickAt(hit,e))return;}else{if(typeof p3SelectAt==='function'&&p3SelectAt(hit,e))return;}v3Frame();requestRender();});}
 /* a release anywhere (or the window losing focus) ends turning and painting on the model */
 window.addEventListener('pointerup',e=>{if(v3.drag&&v3.drag.id===e.pointerId){const d=v3.drag;v3.drag=null;
     /* a mask tool is on: Alt+click on the model (without turning it) clears the mask */

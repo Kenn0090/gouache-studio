@@ -26,7 +26,7 @@ function p3dEnter(){const firstStart=!p3.started;p3.was={on:v3.on,paintOn:v3.pai
   v3.imported=p3.imported;if(firstStart&&p3.v3d.model==='imported'&&v3.imported)doc.v3d.model='imported';v3.mesh=null;if(p3.cam)Object.assign(v3.cam,p3.cam);
   v3.paintOn=true;if(!MESH_TOOLS.includes(ui.tool))setTool('brush');
   $('#docName').textContent=doc.name;v3.on=false;p3ApplyLayout();if(!p3.cam)v3Frame();if(firstStart&&v3.on&&doc.v3d.model==='imported'&&v3.imported){if(!v3.mesh||v3.mesh.name!==v3.imported.name)v3LoadModel(true);v3Frame();requestRender(true);}p3.started=true;buildP3Panel();}
-function p3dExit(){p3.cam=Object.assign({},v3.cam);p3.imported=v3.imported;p3.v3d=doc.v3d;const S=p3.sets[p3.cur];if(S)S.tex=v3.tex;v3.tex=(p3.was&&p3.was.tex)||{};v3.mapsDirty=true;tabDocExit('p3d');
+function p3dExit(){sel3.armed=false;v3PickRelease();p3.cam=Object.assign({},v3.cam);p3.imported=v3.imported;p3.v3d=doc.v3d;const S=p3.sets[p3.cur];if(S)S.tex=v3.tex;v3.tex=(p3.was&&p3.was.tex)||{};v3.mapsDirty=true;tabDocExit('p3d');
   const w=p3.was||{};v3.imported=w.imported||null;v3.mesh=null;if(w.cam)Object.assign(v3.cam,w.cam);v3.paintOn=!!w.paintOn;
   $('#work').classList.remove('v3full');toggle3D(!!w.on);if(typeof vpStripSync==='function')vpStripSync(false);if(v3.on){v3LoadModel(true);build3dPane();}}
 /* 3D only (the viewport takes the whole painting area), 3D + the flat texture, or the flat texture only */
@@ -45,7 +45,7 @@ function buildP3Panel(){p3BakePanel();if(typeof stBrushRender==='function')stBru
     el('div',{class:'sub',text:'Navigation'}),seg([['substance','Substance Painter'],['coat','3D-Coat']],v3nav.mode,v=>{setNav3d(v);buildP3Panel();},'Navigation style'),
     el('div',{class:'sub',text:'Brush alignment'}),seg([['wrap','Surface wrap'],['camera','Camera']],s.paintAlign||'wrap',v=>{s.paintAlign=v;v3.dirty=true;requestRender(true);buildP3Panel();},'3D brush alignment'),el('p',{class:'note',text:(s.paintAlign||'wrap')==='wrap'?'Surface wrap follows the stroke across front-facing surfaces, including those behind a raised edge.':'Camera projects the stroke from the view and only paints the depth-visible surface.'}),
     el('p',{class:'note',text:v3nav.mode==='coat'?'Left paints. Right-drag turns, middle-drag moves, Ctrl+right-drag zooms (or the wheel). Left-drag off the model turns too.':'Left paints. Alt+left turns, Alt+middle moves, Alt+right zooms (or the wheel). Middle or right drag also moves.'}),
-    el('p',{class:'note',text:'Shift-click joins the previous brush endpoint. Hold Shift while dragging for a straight line. Hold Alt over the model to pick its colour. Left/Right arrow keys step through the shades in the Color panel. Double-click empty space to reframe.'}),
+    el('p',{class:'note',text:'Shift-click joins the previous brush endpoint. Hold Shift while dragging for a straight line. '+(v3PickKey()?'Hold '+v3PickKey()+' over the model to pick its colour (change it in Edit › Keyboard shortcuts).':'Colour picking has no hold key (Edit › Keyboard shortcuts).')+' Left/Right arrow keys step through the shades in the Color panel. Double-click empty space to reframe.'}),
     el('div',{class:'sub',text:'Project'}),el('div',{class:'chips'},el('button',{class:'btn sm',text:'Save project',title:'Save the model and all texture sets as a .gouache3d project (Ctrl+S here)',onclick:()=>saveP3Project(false)}),el('button',{class:'btn sm',text:'Open project…',onclick:()=>pickFile('open')})),
     el('div',{class:'sub',text:'Select on the model'}),sel3Box(),
     el('div',{class:'sub',text:'Texture size · '+p3Resolution()}),seg([[1024,'1K'],[2048,'2K'],[4096,'4K'],...(MAX_DIM>=8192?[[8192,'8K']]:[]),...(doc.w>4096&&doc.w!==8192?[[doc.w,Math.round(doc.w/1024)+'K']]:[])],doc.w,v=>p3Resize(+v),'Texture size'));p3ResolutionSync();}
@@ -124,7 +124,7 @@ function p3SetsBox(){const box=el('div',{class:'p3sets',role:'listbox','aria-lab
    Object (a part of the model file), material, UV island, face (a triangle and its quad partner) or a loop of
    quads crossing the edge you click near. Shift adds, Ctrl removes. The result is an ordinary selection in UV
    space: painting keeps inside it on the model and on the flat canvas, and Add mask turns it into a mask. */
-const sel3={mode:'off'};
+const sel3={mode:'off',armed:false};
 const SEL3_KINDS=[['off','Off'],['object','Object'],['material','Material'],['island','UV island'],['face','Face'],['loop','Loop']];
 /* welded vertices (same place; same place and UV) and which triangles meet at each edge, made once per model */
 function sel3Topo(m){if(m._topo)return m._topo;const n=m.pos.length/3,P=m.pos,U=m.uv,pid=new Uint32Array(n),uid=new Uint32Array(n),pm=new Map(),um=new Map(),q=v=>Math.round(v*1e5),qu=v=>Math.round(v*1e4);
@@ -199,9 +199,11 @@ function p3SelectAt(hit,e){if(sel3.mode==='off'||!v3.mesh||(ui.mode!=='p3d'&&ui.
   if(maskViewTex()){const et=editTarget();if(et&&et.isMask){const v=(e.ctrlKey||e.metaKey)?0:1;fullRecord(et.L,v?'Show part in mask':'Hide part in mask',()=>sel3Draw(m,tris,[et.target,v]));v3.dirty=true;requestRender(true);return true;}}
   const mode=e.shiftKey?'add':(e.ctrlKey||e.metaKey)?'sub':'new',img=sel3Draw(m,tris);
   applyShape(img,mode,fullRect(),'Select '+SEL3_KINDS.find(k=>k[0]===sel3.mode)[1].toLowerCase());release(img);v3.dirty=true;requestRender(true);return true;}
-function sel3Box(){const pick=el('select',{id:'sel3Kind','aria-label':'Double-click on the model selects'},...SEL3_KINDS.map(([k,l])=>el('option',{value:k,text:k==='off'?'Off (double-click reframes)':l})));pick.value=sel3.mode;pick.onchange=()=>{sel3.mode=pick.value;if(ui.mode==='p3d')buildP3Panel();};
-  return el('div',{class:'dlg-grid'},pick,
-  el('p',{class:'note',text:sel3.mode==='off'?'Choose what a double-click on the model selects.':'Double-click the model to select. Shift+double-click adds, Ctrl+double-click removes, Ctrl+D deselects. Painting stays inside the selection.'}));}
+function sel3Arm(on){sel3.armed=!!on&&sel3.mode!=='off';if(ui.mode==='p3d'){buildP3Panel();maskBarSync();}else build3dPane();}
+function sel3PickButton(id){return el('button',{class:'btn sm'+(sel3.armed?' on':''),id,text:sel3.armed?'Done selecting':'Select part',disabled:sel3.mode==='off','aria-pressed':String(sel3.armed),title:'Choose this tool, then click the model. Shift adds, Ctrl removes. Escape returns to painting.',onclick:()=>sel3Arm(!sel3.armed)});}
+function sel3Box(){const pick=el('select',{id:'sel3Kind','aria-label':'Part selection kind'},...SEL3_KINDS.map(([k,l])=>el('option',{value:k,text:l})));pick.value=sel3.mode;pick.onchange=()=>{sel3.mode=pick.value;sel3Arm(false);};
+  return el('div',{class:'dlg-grid'},pick,sel3PickButton('sel3Pick'),
+  el('p',{class:'note',text:'Choose a kind, then Select part and click the model. Shift-click adds, Ctrl-click removes. Done selecting or Escape returns to painting. Double-click does not create a selection in 3D Paint.'}));}
 
 /* ---- materials: ready-made fill layers (colour, roughness, metallic), added above the active layer ---- */
 const P3_MATERIALS=[
@@ -236,7 +238,7 @@ function maskFromMeshMap(L,k){if(!(doc.meshMaps&&doc.meshMaps[k])||!isLayer(L))r
   /* a live row of the mask: it follows the mesh map, and more rows can go on top */
   msAdd(L,'mesh',{p:{k,inv:false}},'Mask from '+(P3_MESHMAP_NAMES[k]||k).toLowerCase());v3.dirty=true;requestRender(true);
   toast('The mask of “'+L.name+'” is now its '+(P3_MESHMAP_NAMES[k]||k).toLowerCase()+'. Alt+click it to see it on the model.');}
-function maskModeExit(){const A=doc.active;if(typeof mk3Reset==='function')mk3Reset();ui.viewMask=false;if(A&&A.mask)A.editMask=false;renderLayers();requestRender(true);v3.dirty=true;}
+function maskModeExit(){const A=doc.active;sel3.armed=false;if(typeof mk3Reset==='function')mk3Reset();ui.viewMask=false;if(A&&A.mask)A.editMask=false;renderLayers();requestRender(true);v3.dirty=true;}
 function maskBarSync(){let bar=document.getElementById('maskBar');
   if(typeof lm!=='undefined'&&lm.on&&doc.active!==lm.L)liveMaskEnd();
   const live=typeof liveOn==='function'&&liveOn(),on=live||!!(ui.viewMask&&doc.active&&doc.active.mask&&ui.mode!=='anim');
@@ -256,14 +258,14 @@ function maskBarSync(){let bar=document.getElementById('maskBar');
       el('button',{class:'btn sm primary',id:'lmKeep',text:'Keep…',onclick:liveMaskKeep}),
       el('button',{class:'btn sm',id:'lmClose',text:'Close',title:'Stop the live mask (nothing is kept)',onclick:()=>liveMaskEnd()}),liveBarRow());
     if(mk3.tool==='id')bar.append(idSelRow());bar.hidden=false;return;}
-  const kinds=SEL3_KINDS.filter(k=>k[0]!=='off'),pick=el('select',{id:'maskSel','aria-label':'Double-click the model to fill'},el('option',{value:'off',text:'Double-click: off'}),...kinds.map(([k,l])=>el('option',{value:k,text:'Double-click: '+l})));
-  pick.value=sel3.mode;pick.onchange=()=>{sel3.mode=pick.value;if(ui.mode==='p3d')buildP3Panel();};
+  const kinds=SEL3_KINDS.filter(k=>k[0]!=='off'),pick=el('select',{id:'maskSel','aria-label':'Mask part selection kind'},el('option',{value:'off',text:'Part selection: off'}),...kinds.map(([k,l])=>el('option',{value:k,text:l})));
+  pick.value=sel3.mode;pick.onchange=()=>{sel3.mode=pick.value;sel3Arm(false);};
   const tools=el('div',{class:'seg',role:'group','aria-label':'Mask tools'},...MK_TOOLS.map(([k,l])=>el('button',{class:'segb',id:'mk_'+k,'aria-pressed':String(mk3.tool===k),text:l,
     title:k==='paint'?'Paint the mask (nothing paints until this is on)':k==='id'?'Pick colours of the baked ID map: they turn white in the mask':'Select with a '+l.toLowerCase()+' (drag inside it to move it)',onclick:()=>maskTool(k)})));
   bar.replaceChildren(el('span',{class:'maskbar-t',text:'Mask of “'+doc.active.name+'”'}),tools,wire,
     el('button',{class:'btn sm',id:'maskWhite',text:'Fill white',title:'Show everything (or the selection)',onclick:()=>maskOp(0,1)}),
     el('button',{class:'btn sm',id:'maskBlack',text:'Fill black',title:'Hide everything (or the selection)',onclick:()=>maskOp(0,0)}),
-    el('button',{class:'btn sm',id:'maskInv',text:'Invert',onclick:()=>maskOp(1)}),pick,
+    el('button',{class:'btn sm',id:'maskInv',text:'Invert',onclick:()=>maskOp(1)}),pick,sel3PickButton('maskSelPick'),
     el('span',{class:'maskbar-n',text:typeof mk3Hint==='function'?mk3Hint():''}),
     el('button',{class:'btn sm primary',id:'maskDone',text:'Done',title:'Back to the material (Esc)',onclick:maskModeExit}));
   if(typeof mk3!=='undefined'&&mk3.tool==='id')bar.append(idSelRow());

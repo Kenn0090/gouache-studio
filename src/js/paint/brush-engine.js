@@ -29,8 +29,7 @@ function beginStroke(L,x,y,p,o){
   const W=doc.w,H=doc.h;
   /* Big canvases: plain painting copies only the part of the layer the stroke covered, when it ends (endStroke), and
      clears only what the last stroke left in strokeT, instead of the whole canvas each time (a 16k canvas is 1 GB). */
-  const weldMask=!!o.weldMask&&L.maskOf?.materialPaint?.startsWith('weld:')&&!L.maskObj?.stack;
-  const lazy=['brush','erase','dodge','burn'].includes(o.tool)&&(!L.maskOf||weldMask)&&!L.quick&&ui.mode!=='bake'&&(!o.space||weldMask);
+  const lazy=['brush','erase','dodge','burn'].includes(o.tool)&&!L.quick&&ui.mode!=='bake'&&(!o.space||!!L.maskOf);
   if(strokeT.w===1&&strokeT.h===1&&doc.w*doc.h>=67108864)useAux(L.target.depth,false,lazy);
   else if(!lazy&&(beforeT.w!==W||beforeT.h!==H))useAux(L.target.depth,false);
   if(!lazy)blit(L.target,beforeT,0,0,W,H,0,0);
@@ -138,7 +137,7 @@ function addPoint(x,y,p){
 function endStroke(record){
   const s=stroke;if(!s)return;const L=s.L,W=doc.w,H=doc.h;
   if(s.inkFrame)cancelAnimationFrame(s.inkFrame);
-  if(s.space){s.spaceDirty=false;s.space.sync();const b=s.space.bbox(s);s.bb=doc.wrap?[0,0,W,H]:[b[0]-2,b[1]-2,b[2]+2,b[3]+2];}
+  if(s.space){if(s.spaceDirty){s.spaceDirty=false;s.space.sync();}const b=s.space.bbox(s);s.bb=doc.wrap?[0,0,W,H]:[b[0]-2,b[1]-2,b[2]+2,b[3]+2];}
   const healing=s.o.tool==='heal',cloning=s.o.tool==='clone';
   const x0=clamp(Math.floor(s.bb[0]),0,W),y0=clamp(Math.floor(s.bb[1]),0,H),x1=clamp(Math.ceil(s.bb[2]),0,W),y1=clamp(Math.ceil(s.bb[3]),0,H),bw=x1-x0,bh=y1-y0,R=[x0,y0,bw,bh];
   /* A normal stroke needs only a small before-image of its painted area for merging and undo. */

@@ -9,6 +9,7 @@ const KB_EXTRA=[
   ['tool:gradient','Gradient / fill','Tools','G',()=>setTool(ui.fillKind||'gradient')],['tool:dodge','Dodge / burn','Tools','O',()=>setTool(ui.tonal||'dodge')],['tool:crop','Crop','Tools','C',()=>setTool('crop')],
   ['tool:text','Text','Tools','T',()=>setTool('text')],['tool:shape','Shape','Tools','U',()=>setTool('shape')],['tool:array','Array','Tools','',()=>setTool('array')],['tool:marquee','Marquee','Tools','M',()=>setTool('marquee')],['tool:lasso','Lasso','Tools','L',()=>setTool('lasso')],['tool:wand','Magic wand','Tools','W',()=>setTool('wand')],
   ['paint:lastBrush','Swap last two brushes','Painting','Shift+B',brushSwapLast],
+  ['p3:pick','3D Paint: pick colour (hold)','Painting','Alt',()=>{}],
   ['paint:smaller','Brush smaller','Painting','[',()=>kbBrushSize(-1)],['paint:bigger','Brush bigger','Painting',']',()=>kbBrushSize(1)],
   ['paint:swap','Swap colours','Painting','X',()=>swapColors()],['paint:reset','Black and white colours','Painting','D',()=>{ui.bg=[1,1,1];setFG([0,0,0]);}]];
 function kbBrushSize(d){if(ui.tool==='liquify'){liqSetSetting('size',clamp(Math.round(liq.size*(d>0?1.15:1/1.15)+d),10,1500));return;}brush.size=clamp(Math.round(brush.size*(d>0?1.15:1/1.15)+d),1,brushMax());brushRememberSize();if(sizeSlider)sizeSlider.set(brush.size);refreshCursor();schedulePreview();}
@@ -21,7 +22,7 @@ function kbCommands(){if(kbCmds)return kbCmds;kbCmds=[];const seen=new Set();
     const key=it[2]&&!/click/i.test(it[2])?it[2]:'';kbCmds.push([it[1],it[0].replace(/…$/,'').replace(/\s*\(.*\)$/,''),name,key,()=>actions[it[1]]()]);}
   kbCmds.push(...KB_EXTRA);return kbCmds;}
 let kbUser=(()=>{try{return JSON.parse(localStorage.getItem('gs.keys')||'{}');}catch(e){return {};}})();
-function kbSave(){try{localStorage.setItem('gs.keys',JSON.stringify(kbUser));}catch(e){}refreshHints();}
+function kbSave(){try{localStorage.setItem('gs.keys',JSON.stringify(kbUser));}catch(e){}if(typeof v3PickRelease==='function')v3PickRelease();refreshHints();if(ui.mode==='p3d'&&typeof buildP3Panel==='function')buildP3Panel();}
 const kbDefault=id=>{const c=kbCommands().find(c=>c[0]===id);return c?c[3]:'';};
 const kbKeyOf=id=>id in kbUser?kbUser[id]:kbDefault(id);
 /* "Ctrl+Shift+N" style name of a key press, or null for a lone modifier */
@@ -32,6 +33,7 @@ function kbCombo(e){let k=e.key;if(['Control','Shift','Alt','Meta'].includes(k))
 function kbHandle(e){const combo=kbCombo(e);if(!combo)return false;
   let mine=Object.keys(kbUser).find(id=>kbUser[id]===combo);if(!mine&&typeof KB_AUTO!=='undefined')mine=KB_AUTO.find(id=>!(id in kbUser)&&kbDefault(id)===combo);
   if(!mine&&!Object.keys(kbUser).length)return false;
+  if(mine==='p3:pick')return false;/* temporary viewport action, handled on key down/up */
   if(mine){const c=kbCommands().find(c=>c[0]===mine);if(c){e.preventDefault();c[4]();return true;}}
   /* the built-in key of a command that was moved (or cleared) does nothing now */
   const moved=kbCommands().find(c=>c[3]===combo&&c[0] in kbUser&&kbUser[c[0]]!==combo);
@@ -40,9 +42,9 @@ function kbHandle(e){const combo=kbCombo(e);if(!combo)return false;
 /* the editor's categories (0.25): menus and tools sorted into groups that are easier to scan */
 const KB_CATS=[['tools-paint','Painting tools'],['tools-sel','Selection tools'],['tools-other','Other tools'],['brush','Brush and colour'],['File','Files'],['Edit','Edit and history'],['Image','Image and canvas'],['Maps','Maps'],['Layer','Layers'],['Select','Selections'],['Adjust','Adjustments'],['Filter','Filters'],['View','View and 3D'],['Window','Panels and workspaces']];
 function kbCat(c){const id=c[0];if(id.startsWith('tool:')){const t=id.slice(5);return ['brush','erase','smudge','heal','clone','liquify','dodge','picker','gradient'].includes(t)?'tools-paint':['marquee','lasso','wand'].includes(t)?'tools-sel':'tools-other';}
-  if(id.startsWith('paint:'))return 'brush';return KB_CATS.some(k=>k[0]===c[2])?c[2]:'Edit';}
+  if(id.startsWith('paint:')||id==='p3:pick')return 'brush';return KB_CATS.some(k=>k[0]===c[2])?c[2]:'Edit';}
 function dlgKeys(){const list=el('div',{class:'kblist'}),search=el('input',{type:'search',placeholder:'Search all commands or keys',class:'kbsearch','aria-label':'Search commands'}),cats=el('div',{class:'kbcats',role:'tablist','aria-label':'Categories'});
-  let capture=null,cat='all',pending=null;
+  let capture=null,cat='all',pending=null,modifier=null;
   const used=()=>{const m=new Map();for(const c of kbCommands()){const k=kbKeyOf(c[0]);if(k)m.set(k,(m.get(k)||0)+1);}return m;};
   const drawCats=()=>{const n={all:kbCommands().length},clash=used();for(const c of kbCommands()){const k=kbCat(c);n[k]=(n[k]||0)+1;}
     cats.replaceChildren(...[['all','All'],...KB_CATS].filter(([k])=>n[k]).map(([k,l])=>el('button',{class:'kbcat'+(cat===k?' on':''),role:'tab','aria-selected':String(cat===k),'data-cat':k,onclick:()=>{cat=k;search.value='';drawCats();draw();}},el('span',{text:l}),el('small',{text:String(n[k])}))));
@@ -63,11 +65,14 @@ function dlgKeys(){const list=el('div',{class:'kblist'}),search=el('input',{type
         el('button',{class:'btn sm',text:'Cancel',onclick:()=>{pending=null;draw();}})));}
     if(!list.children.length)list.append(el('p',{class:'note',text:'No command matches.'}));};
   const kbSet=(id,combo)=>{kbUser[id]=combo===kbDefault(id)?undefined:combo;if(kbUser[id]===undefined)delete kbUser[id];};
-  const onKey=e=>{if(!capture)return;e.preventDefault();e.stopPropagation();if(e.key==='Escape'){capture=null;draw();return;}
-    const combo=kbCombo(e);if(!combo)return;
+  const bindCombo=combo=>{
     const other=kbCommands().find(c=>c[0]!==capture&&kbKeyOf(c[0])===combo);
     if(other){pending={id:capture,combo,other};capture=null;draw();return;}
     kbSet(capture,combo);capture=null;kbSave();drawCats();draw();};
+  const onKey=e=>{if(!capture)return;e.preventDefault();e.stopPropagation();if(e.key==='Escape'){capture=null;modifier=null;draw();return;}
+    const combo=kbCombo(e);if(!combo){if(capture==='p3:pick')modifier={id:capture,combo:kbModifiers(e)};return;}
+    modifier=null;bindCombo(combo);};
+  const onUp=e=>{if(!modifier||modifier.id!==capture)return;e.preventDefault();e.stopPropagation();const m=modifier;modifier=null;if(m.combo)bindCombo(m.combo);};
   search.addEventListener('input',draw);
   const reset=el('button',{class:'btn',text:'Reset all',title:'Back to Gouache Studio’s own keys',onclick:()=>{kbUser={};kbSave();draw();toast('All keys are back to the defaults.');drawCats();}});
   const ps=el('button',{class:'btn',text:'Photoshop keys',title:'Keys as close to Photoshop’s as this app allows',onclick:()=>{kbUser=Object.assign({},KB_PHOTOSHOP);kbSave();drawCats();draw();toast('Photoshop-style keys set.');}});
@@ -75,9 +80,9 @@ function dlgKeys(){const list=el('div',{class:'kblist'}),search=el('input',{type
   const imp=el('button',{class:'btn',text:'Load from file…',onclick:async()=>{const [f]=await pickFiles('.gskeys,.json',false,'Key sets',['gskeys','json']);if(!f)return;
     try{const j=JSON.parse(await f.text());if(!j||!j.keys||typeof j.keys!=='object')throw 0;kbUser={};for(const [id,k] of Object.entries(j.keys))if(typeof k==='string'&&kbCommands().some(c=>c[0]===id))kbUser[id]=k;kbSave();drawCats();draw();toast('Keys loaded from '+f.name+'.');}
     catch(e){toast('That file is not a key set saved by Gouache Studio.');}}});
-  const body=el('div',{class:'kbdlg'},el('p',{class:'note',text:'Pick a category, or search. Click a key, then press the new one (Esc cancels). Keys you changed are highlighted.'}),search,el('div',{class:'kbmain'},cats,list),el('div',{class:'chips'},ps,exp,imp,reset));
+  const body=el('div',{class:'kbdlg'},el('p',{class:'note',text:'Pick a category, or search. Click a key, then press the new one (Esc cancels). Keys you changed are highlighted. The 3D colour picker is held while sampling; it also accepts a modifier such as Alt.'}),search,el('div',{class:'kbmain'},cats,list),el('div',{class:'chips'},ps,exp,imp,reset));
   /* listen on the whole window while open: the button that was clicked is redrawn and loses focus */
-  window.addEventListener('keydown',onKey,true);const off=()=>window.removeEventListener('keydown',onKey,true);drawCats();draw();
+  window.addEventListener('keydown',onKey,true);window.addEventListener('keyup',onUp,true);const off=()=>{window.removeEventListener('keydown',onKey,true);window.removeEventListener('keyup',onUp,true);};drawCats();draw();
   openDialog({title:'Keyboard shortcuts',body,cancelLabel:'Close',onCancel:off});$('#modal .dialog').classList.add('kbwide');setTimeout(()=>search.focus(),0);}
 
 /* the one-line reminder of the main keys at the bottom of the canvas (View › Shortcut hints) */
@@ -88,3 +93,5 @@ function refreshHints(){const h=$('#hint');if(!h)return;document.body.classList.
   h.replaceChildren();let first=true;for(const [k,t] of items){if(k===''&&t!=='wheel zoom')continue;if(!first)h.append(' · ');first=false;if(k)h.append(el('b',{text:k}),' ');h.append(t);}}
 function toggleHints(){prefs.hideHints=!prefs.hideHints;savePrefs();refreshHints();toast(prefs.hideHints?'Shortcut hints hidden (View › Shortcut hints brings them back).':'Shortcut hints shown.');}
 refreshHints();
+/* Modifier-only bindings are useful for temporary actions, not menu commands. */
+function kbModifiers(e){return [e.ctrlKey||e.metaKey?'Ctrl':'',e.shiftKey?'Shift':'',e.altKey?'Alt':''].filter(Boolean).join('+');}

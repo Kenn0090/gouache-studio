@@ -21,7 +21,7 @@ function dlgPrefs(startTab){
   const panels={
     look:()=>[el('div',{class:'sub',text:'Theme'}),th.el,el('div',{class:'sub',text:'Level'}),seg([['beginner','Beginner'],['full','Full']],S.level,v=>{S.level=v;},'Level'),el('p',{class:'note',text:'Beginner hides the less-used tools and panels and shows a Getting started card. Full shows everything.'}),el('button',{class:'btn sm',id:'pLaunch',text:'Launch screen…',onclick:()=>{th.cancel();closeDialog&&closeDialog();showSetup(false);}})],
     paint:()=>[chk('pHints','Show shortcut hints on the canvas',S.hints,v=>{S.hints=v;}),
-      chk('pAltPick','Alt picks a colour (Alt+click on the canvas, Alt over the model)',S.altPk,v=>{S.altPk=v;}),
+      chk('pAltPick','Temporary colour picking (Alt+click in 2D; 3D hold key in Keyboard shortcuts)',S.altPk,v=>{S.altPk=v;}),
       chk('pPainterCtl','3D Paint: Substance Painter mouse controls on the model (Ctrl + right-drag: size and hardness; Ctrl + left-drag: flow and rotation)',S.pCtl,v=>{S.pCtl=v;}),
       chk('pTipCur','Show the brush tip’s shape as the cursor',S.tipCur,v=>{S.tipCur=v;}),
       chk('pUndoSet','Undo also covers settings (layers shown or hidden, locked, renamed, opacity and blend mode; symmetry; brush settings; colour)',S.undoSet,v=>{S.undoSet=v;}),
