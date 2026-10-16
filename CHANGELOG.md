@@ -1,3 +1,9 @@
+## 0.64.2
+
+- 3D Paint viewport Settings now starts with Shaded, Wireframe and Wireframe overlay display choices. Wireframe-only draws hidden-line edges without a material fill; overlay keeps the shaded material beneath the edges. The display choice is saved in the project and stays consistent with the mask toolbar.
+- Viewport Settings scrolls within short viewports without zooming the model or 2D canvas. Opening Settings closes the More menu, keeps the panel on screen, and places it above viewport overlays.
+- Replaced the tiny text-based mask/effect fold marker between the layer eye and folder with a clear SVG chevron, a separate click target and an expanded/collapsed accessibility state.
+
 ## 0.64.1
 
 - 3D Paint: the temporary colour-picker hold key can be changed in Edit › Keyboard shortcuts › Brush and colour. Supports letters, combinations and modifier-only keys, keeps the current brush, and cancels pending samples on release. Alt navigation and 2D colour picking retain their controls.

@@ -131,7 +131,7 @@ const FS_3DSEL=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform sample
 const P3={mesh:Object.assign(prog3(VS_3D,FS_3D),{decodeOnly:true}),line:prog3(VS_3D,FS_3DLINE),uv:prog3(VS_UV,FS_3DLINE),sel:prog3(VS_3D,FS_3DSEL)};
 
 /* ---- settings (kept in the document) ---- */
-const V3D_DEFAULTS={model:'plane',detail:0,unlit:null,uvs:1,disp:0,paintAlign:'wrap',sunAz:40,sunEl:45,sunI:1,skyI:1,expo:1,bg:'dark',clip:true,wire:false,showUV:false,litUV:false,spin:false,fov:40,ortho:false,
+const V3D_DEFAULTS={model:'plane',detail:0,unlit:null,uvs:1,disp:0,paintAlign:'wrap',sunAz:40,sunEl:45,sunI:1,skyI:1,expo:1,bg:'dark',clip:true,wire:false,wireOnly:false,showUV:false,litUV:false,spin:false,fov:40,ortho:false,
   env:'studio',envRot:0,envI:1,envBg:false,envBlur:.35,envSun:0,tone:'filmic',studioFill:.12,studioRim:.08,lightColor:[1,1,1],shadows:true,shadowSoft:1.5,floor:false,floorHeight:0,floorOpacity:.5,floorSoft:2,floorColor:[0,0,0]};
 const v3={on:false,mesh:null,gpu:null,tex:{},cam:{yaw:.5,pitch:.25,dist:3.2,tx:0,ty:0,tz:0},dirty:true,postDirty:false,mapsDirty:true,editDirty:true,lastFull:0,fbo:null,imported:null};
 function v3s(){if(!doc.v3d)doc.v3d=Object.assign({},V3D_DEFAULTS);else{for(const k in V3D_DEFAULTS)if(!(k in doc.v3d))doc.v3d[k]=V3D_DEFAULTS[k];}return doc.v3d;}
@@ -148,7 +148,7 @@ function meshWeldN(m){const n=m.verts,P=new Uint32Array(m.pos.buffer,m.pos.byteO
   for(let i=0;i<n;i++){const g=grp[i];if(g===i){const l=Math.hypot(out[i*3],out[i*3+1],out[i*3+2]);if(l>1e-6){out[i*3]/=l;out[i*3+1]/=l;out[i*3+2]/=l;}else{out[i*3]=N[i*3];out[i*3+1]=N[i*3+1];out[i*3+2]=N[i*3+2];}}}
   for(let i=0;i<n;i++){const g=grp[i];if(g!==i){out[i*3]=out[g*3];out[i*3+1]=out[g*3+1];out[i*3+2]=out[g*3+2];}}
   return out;}
-function v3Upload(m){const g=v3.gpu;if(g){gl.deleteVertexArray(g.vao);gl.deleteBuffer(g.vb);gl.deleteBuffer(g.ib);gl.deleteBuffer(g.eb);gl.deleteVertexArray(g.evao);}
+function v3Upload(m){const g=v3.gpu;if(g){if(g.wireRanges)for(const r of g.wireRanges.values())gl.deleteBuffer(r.b);gl.deleteVertexArray(g.vao);gl.deleteBuffer(g.vb);gl.deleteBuffer(g.ib);gl.deleteBuffer(g.eb);gl.deleteVertexArray(g.evao);}
   const n=m.verts,d=new Float32Array(n*15),wn=meshWeldN(m);for(let i=0;i<n;i++){d.set(m.pos.subarray(i*3,i*3+3),i*15);d.set(m.nrm.subarray(i*3,i*3+3),i*15+3);d.set(m.uv.subarray(i*2,i*2+2),i*15+6);d.set(m.tan.subarray(i*4,i*4+4),i*15+8);d.set(wn.subarray(i*3,i*3+3),i*15+12);}
   const vao=gl.createVertexArray();gl.bindVertexArray(vao);const vb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vb);gl.bufferData(gl.ARRAY_BUFFER,d,gl.STATIC_DRAW);
   const at=(i,sz,o)=>{gl.enableVertexAttribArray(i);gl.vertexAttribPointer(i,sz,gl.FLOAT,false,60,o*4);};at(0,3,0);at(1,3,3);at(2,2,6);at(3,4,8);at(4,3,12);
@@ -303,7 +303,11 @@ function v3MeshU(C,common,it,flip,safeMip=null){const {s,bake,EU,eye,a,e}=C,sg=i
     const mOK=ok('metal')&&!(sg&&ok('spec')),hm=(ok('rough')?1:0)|(mOK?2:0)|(ok('nfinal')?4:0)|(ok('ao')?8:0)|(ok('emis')?16:0)|(ok('opac')?64:0)|(it.thick?128:0)|(ok('spec')&&!mOK?256:0);
     return Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uUseUDIM:!!it.udim,uUDIMTile:it.udim?[it.udim.u,it.udim.v]:[0,0],uUseSafeMip:useSafeMip,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:mOK?T.metal.tex:ok('spec')?T.spec.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,uThick:useSafeMip?safeMip.tex:it.thick?it.thick.tex:dummy,...EU,...shadeUniforms(bake?null:it.sh||v3ShadeOf(doc)),
       uMorph:bake&&bk.fold>0?bk.fold:0,uMorphOff:[it.off||0,0,0],uStudioFill:s.studioFill||0,uStudioRim:s.studioRim||0,uLightColor:s.lightColor||[1,1,1],uShadow:dummy,uShadowVP:{m4:m4()},uShadowOn:0,uShadowSoft:1,...common,uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});}
-function v3Render(F,flip){const g=v3.gpu;if(!g)return;v3Work.scenes++;F.sceneFlip=!!flip;const C=v3Ctx(),{s,bake}=C,list=v3List(C),SU=studioShadowPrepare(C,list),BV=typeof bevelPreviewOn==='function'&&bevelPreviewOn()&&!(bk.fold>0)?bevelPreviewGPU(v3.mesh):null;
+function v3DrawWire(g,list,common){gl.bindVertexArray(g.evao);try{if(ui.mode!=='p3d'){useProg(P3.line,{...common,uCol:[.95,.7,.35,1]});gl.drawElements(gl.LINES,g.ecount,gl.UNSIGNED_INT,0);return;}
+    for(const it of list){if(!it.count)continue;let r;if(it.start===0&&it.count*3===g.count)r={b:g.eb,count:g.ecount};else{const key=it.start+':'+it.count,cache=g.wireRanges||(g.wireRanges=new Map());r=cache.get(key);if(!r){const edges=meshEdges({idx:v3.mesh.idx.subarray(it.start*3,(it.start+it.count)*3)}),b=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,b);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,edges,gl.STATIC_DRAW);r={b,count:edges.length};cache.set(key,r);}}
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,r.b);useProg(P3.line,{...common,uH:it.T?.height?.tex||dummy,uCol:[.95,.7,.35,1]});gl.drawElements(gl.LINES,r.count,gl.UNSIGNED_INT,0);}}
+  finally{gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,g.eb);}}
+function v3Render(F,flip){const g=v3.gpu;if(!g)return;v3Work.scenes++;F.sceneFlip=!!flip;const C=v3Ctx(),{s,bake}=C,list=v3List(C),wireOnly=ui.mode==='p3d'&&s.wire&&s.wireOnly,SU=wireOnly?{}:studioShadowPrepare(C,list),BV=!wireOnly&&typeof bevelPreviewOn==='function'&&bevelPreviewOn()&&!(bk.fold>0)?bevelPreviewGPU(v3.mesh):null;
   const activeRange=!bake&&ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():null,safeMip=activeRange&&typeof seamMipLimit==='function'?seamMipLimit(activeRange):null;
   gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);const bg=BG3[s.bg]||BG3.dark,tr=!!(v3.transparent);gl.clearColor(bg[0],bg[1],bg[2],tr?0:1);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
@@ -312,22 +316,25 @@ function v3Render(F,flip){const g=v3.gpu;if(!g)return;v3Work.scenes++;F.sceneFli
   const common={...SU,uVP:{m4:VP},uUVs:bake?1:(p3.udim?1:s.uvs),uUseUDIM:false,uUDIMTile:[0,0],uH:T0.height&&s.disp?T0.height.tex:dummy,uDisp:s.disp*.3,uUseH:!!(!bake&&T0.height&&s.disp&&doc.maps.includes('height'))};
   if(s.wire){gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);}gl.bindVertexArray(g.vao);
   for(const it of list){const T=it.T||{},base=T.base||null;if(!base||!it.count)continue;
+    if(wireOnly){/* Hidden-line wireframe: surfaces write depth, while the background stays visible. */
+      useProg(P3.line,Object.assign({},common,{uCol:[0,0,0,0],uUseUDIM:!!it.udim,uUDIMTile:it.udim?[it.udim.u,it.udim.v]:[0,0]}));gl.colorMask(false,false,false,false);
+      try{gl.drawElements(gl.TRIANGLES,it.count*3,gl.UNSIGNED_INT,it.start*12);}finally{gl.colorMask(true,true,true,true);}continue;}
     const itSafeMip=safeMip&&it.start===activeRange.start&&it.count===activeRange.count?safeMip:null;
     const U=v3MeshU(C,common,it,flip,itSafeMip),previewU=BV&&bk.opts?.bevel?.on&&bk.res.normal?.tex===U.uNrm?{...U,uHas:{int:U.uHas.int&~4}}:U,rounded=BV?bevelScreen(BV,g,common,previewU,F):null;
     gl.bindVertexArray(g.vao);useProg(rounded?bevelPreviewProgram():P3.mesh,rounded?{...U,uNrm:rounded.tex}:U);gl.drawElements(gl.TRIANGLES,it.count*3,gl.UNSIGNED_INT,it.start*12);}
   gl.disable(gl.POLYGON_OFFSET_FILL);
-  studioFloorDraw(C,VP,F,SU);
-  if(!bake&&!mv&&!v3Unlit())v3DrawOutlines(list,common,F,flip);gl.bindVertexArray(g.vao);
+  if(!wireOnly)studioFloorDraw(C,VP,F,SU);
+  if(!wireOnly&&!bake&&!mv&&!v3Unlit())v3DrawOutlines(list,common,F,flip);gl.bindVertexArray(g.vao);
   /* the selection, tinted on the model (3D Paint, or while painting on the model) */
-  if(!bake&&sel.active&&!sel.quick&&sel.t&&(ui.mode==='p3d'||v3.paintOn)){const R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:g.count/3};
+  if(!wireOnly&&!bake&&sel.active&&!sel.quick&&sel.t&&(ui.mode==='p3d'||v3.paintOn)){const R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:g.count/3};
     gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);useProg(P3.sel,Object.assign({},common,{uSel:sel.t.tex}));gl.bindVertexArray(g.vao);
     gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);gl.depthMask(true);gl.disable(gl.BLEND);}
-  if(s.wire){useProg(P3.line,Object.assign({},common,{uCol:[.95,.7,.35,1]}));gl.bindVertexArray(g.evao);gl.drawElements(gl.LINES,g.ecount,gl.UNSIGNED_INT,0);}
+  if(s.wire)v3DrawWire(g,list,common);
   if(bake&&!(bk.fold>0)){bakeDrawHigh(common,F);bakeDrawCage(common);}
   if(!bake&&(v3.paintOn||ui.mode==='p3d')){drawMir3(VP);drawMir3Cursors(F,common);}
   gl.bindVertexArray(vao);gl.disable(gl.DEPTH_TEST);
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,F.rf);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
-  if(F.px)F.px.valid=false;if(!bake&&typeof v3Post==='function')v3Post(F);v3.postDirty=false;}
+  if(F.px)F.px.valid=false;if(!wireOnly&&!bake&&typeof v3Post==='function')v3Post(F);v3.postDirty=false;}
 /* after the 2D view: refresh maps if needed, redraw the model if anything changed, copy it into the pane */
 /* (0.31.1) how big the model is drawn while painting: 1 full, .75, .5 (older setting paintHalf = .5) */
 function paintScale(){return prefs.paintScale||(prefs.paintHalf?.5:1);}
@@ -336,7 +343,7 @@ function draw3D(){if(!v3.on)return;if(v3.pop){drawPop();return;}const pane=$('#p
   /* (0.30.2) Low power painting: while a stroke is going the model is drawn at half size without smoothing, then stretched */
   const ps=paintScale(),lite=!!(stroke&&ps<1&&!v3.rt),W=lite?Math.max(1,Math.round(w*ps)):w,H=lite?Math.max(1,Math.round(h*ps)):h,F=v3Targets(W,H,lite);
   /* Ray traced mode: a sample more each frame until it is clean (the normal view meanwhile while it prepares) */
-  const rtr=v3.rt&&!v3Unlit()&&ui.mode!=='bake'&&ui.mode!=='convert'&&typeof rtViewDraw==='function'?rtViewDraw(F):null;
+  const rtr=v3.rt&&!v3s().wire&&!v3Unlit()&&ui.mode!=='bake'&&ui.mode!=='convert'&&typeof rtViewDraw==='function'?rtViewDraw(F):null;
   if(rtr===true)requestRender();else if(rtr===null){if(v3.dirty){v3Render(F);v3.dirty=false;}else if(v3.postDirty){if(!v3Post(F,true))v3Render(F);v3.postDirty=false;}}
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.rf);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,null);gl.blitFramebuffer(0,0,W,H,x0,0,x0+w,h,gl.COLOR_BUFFER_BIT,lite?gl.LINEAR:gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
   if(v3s().spin&&!v3.drag){v3.cam.yaw+=.006;v3.dirty=true;requestRender();}}
@@ -365,6 +372,10 @@ function toggle3D(on){v3.on=on===undefined?!v3.on:!!on;$('#work').classList.togg
   work.style.setProperty('--pane3d',full?'100%':v3.on&&!v3.pop?clamp(w,200,work.clientWidth-200)+'px':'0px');if(work.classList.contains('p3left')){sp.style.right='auto';sp.style.left=v3.on?'calc(var(--pane3d) - 3px)':'';}else{sp.style.left='';sp.style.right=v3.on?'calc(var(--pane3d) - 3px)':'';}
   if(v3.on){if(!v3.pop)build3dPane();v3.mapsDirty=true;v3.editDirty=true;v3.dirty=true;if(!v3.mesh)v3LoadModel();}
   resizeGL();fit();requestRender(true);}
+function v3WireMode(){const s=v3s();return s.wire?(s.wireOnly?'wire':'overlay'):'shaded';}
+function v3SetWireMode(mode){const s=v3s();s.wire=mode!=='shaded';s.wireOnly=mode==='wire';if(s.wire)v3.rt=false;
+  const roots=[document,...(v3.pop?[v3.pop.win.document]:[])];for(const root of roots){for(const b of root.querySelectorAll('[data-wire-mode]')){const on=b.dataset.wireMode===mode;b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));}const b=root.getElementById('v3Wire');if(b){b.classList.toggle('on',s.wire);b.setAttribute('aria-pressed',String(s.wire));}if(s.wire){const buttons=root.querySelectorAll('#v3Shade .segb');buttons.forEach((b,i)=>b.setAttribute('aria-pressed',String(i===(v3Unlit()?1:0))));}}
+  v3.dirty=true;requestRender();if(typeof maskBarSync==='function')maskBarSync();}
 function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.replaceChildren();
   const models=el('select',{id:'v3Model','aria-label':'Model',title:s.model==='imported'?'Imported mesh active. Primitive startup models are disabled; use Import to replace the mesh.':'Choose a startup primitive or import a mesh.'},...Object.entries(PRIMS).map(([k,[l]])=>el('option',{value:k,text:l,disabled:s.model==='imported'})),
     ...(v3.imported?[el('option',{value:'imported',text:v3.imported.name})]:[]),el('option',{value:'__import',text:'Import a model (OBJ, glTF, GLB, FBX)…'}));
@@ -378,7 +389,7 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   viewSel.onchange=()=>{if(viewSel.value)v3SnapView(viewSel.value);viewSel.value='';};
   const projBtn=el('button',{class:'btn sm',id:'v3Proj',text:s.ortho?'Orthographic':'Perspective',title:'Perspective looks natural; orthographic has no depth shrinking, good for lining things up (Numpad 5)','aria-pressed':String(!!s.ortho),onclick:()=>v3SetOrtho(!v3s().ortho)});
   const tog=(id,label,key,title)=>{const b=el('button',{class:'btn sm'+(s[key]?' on':''),id,text:label,title,'aria-pressed':String(!!s[key])});b.onclick=()=>{s[key]=!s[key];b.classList.toggle('on',s[key]);b.setAttribute('aria-pressed',String(s[key]));v3.dirty=true;requestRender();if(key==='wire'&&typeof maskBarSync==='function')maskBarSync();};return b;};
-  const shade=seg([['lit','Lit'],['unlit','Unlit'],['rt','Ray traced']],v3Unlit()?'unlit':v3.rt?'rt':'lit',x=>{s.unlit=x==='unlit';v3.rt=x==='rt';v3.mapsDirty=true;v3.dirty=true;requestRender(true);refresh3dUI();},'Shading');shade.id='v3Shade';
+  const shade=seg([['lit','Lit'],['unlit','Unlit'],['rt','Ray traced']],v3Unlit()?'unlit':v3.rt?'rt':'lit',x=>{if(x==='rt'&&s.wire)v3SetWireMode('shaded');s.unlit=x==='unlit';v3.rt=x==='rt';v3.mapsDirty=true;v3.dirty=true;requestRender(true);refresh3dUI();},'Shading');shade.id='v3Shade';
   const gear=el('button',{class:'btn sm',text:'Settings',id:'v3Gear','aria-expanded':'false'});
   const dock=el('button',{class:'btn sm',text:v3.pop?'Dock':'Pop out',id:'v3Pop',title:v3.pop?'Put the 3D view back beside the canvas':'Open the 3D view in its own window (for a second screen)'});dock.onclick=()=>pop3D(!v3.pop);
   const close=el('button',{class:'btn sm',text:'×',title:'Close the 3D view (F3)','aria-label':'Close the 3D view'});close.onclick=()=>{if(ui.mode==='p3d')p3SetLayout('2d');else toggle3D(false);};
@@ -387,14 +398,20 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   const inBake=ui.mode==='bake',lowLab=inBake?el('span',{class:'v3lab',text:'Low-poly: '+bkLow().name,title:'Choose the low-poly in the Bake panel'}):null;
   const mb=ui.mode==='p3d'?mir3Bar():null;
   const wireB=tog('v3Wire','Wireframe','wire','Show the mesh edges'),uvB=tog('v3UV','UVs','showUV','Draw the model’s UV layout over your canvas'),spinB=tog('v3Spin','Spin','spin','Spin the model slowly');
+  wireB.onclick=()=>v3SetWireMode(s.wire?'shaded':'overlay');
   const capB=ui.mode==='bake'||ui.mode==='convert'?[]:[el('button',{class:'btn sm',id:'v3Shot',text:'📷',title:'Screenshot of the 3D view','aria-label':'Screenshot',onclick:()=>dlgScreenshot()}),el('button',{class:'btn sm',id:'v3RenderBtn',text:'Render…',title:'A ray-traced picture, in a window of its own',onclick:()=>dlgRender()}),el('button',{class:'btn sm',id:'v3TT',text:'Turntable…',title:'Record the model turning (video, GIF or PNG frames)',onclick:()=>dlgTurntable()})];
   let bar;
   if(ui.mode==='p3d'){/* 3D Paint (0.37): a slim bar, the rest behind ⋯ */
     const xt=el('div',{class:'v3xtra',id:'v3Xtra',hidden:true},modelControl,detSel,wireB,uvB,spinB,...capB,gear,dock,close),more=el('button',{class:'btn sm',id:'v3More',text:'⋯',title:'More: model, detail, wireframe, spin, screenshot, render, turntable, settings','aria-expanded':'false','aria-label':'More 3D view options'});
     more.onclick=()=>{xt.hidden=!xt.hidden;more.setAttribute('aria-expanded',String(!xt.hidden));more.classList.toggle('on',!xt.hidden);};
+    xt.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});
     bar=el('div',{class:'v3bar slim'},shade,...(mb?[mb.wrap]:[]),viewSel,projBtn,more,xt);}
   else bar=el('div',{class:'v3bar'},...(inBake?[lowLab]:ui.mode==='convert'?[modelControl,detSel]:[modelControl,detSel,shade]),...(mb?[mb.wrap]:[]),...(ui.mode==='convert'||ui.mode==='p3d'?[]:[pbtn]),viewSel,projBtn,wireB,uvB,spinB,...capB,gear,dock,close);
-  const box=el('div',{class:'v3set',hidden:true});
+  const box=el('div',{class:'v3set',id:'v3Settings',hidden:true,'aria-label':'3D viewport settings'});gear.setAttribute('aria-controls','v3Settings');
+  box.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});
+  if(ui.mode==='p3d'){const display=el('div',{class:'v3display',role:'group','aria-label':'Viewport display'});
+    for(const [mode,label] of [['shaded','Shaded'],['wire','Wireframe'],['overlay','Wireframe overlay']])display.append(el('button',{class:'btn sm'+(v3WireMode()===mode?' on':''),'data-wire-mode':mode,'aria-pressed':String(v3WireMode()===mode),text:label,onclick:()=>v3SetWireMode(mode)}));
+    box.append(el('div',{class:'sub',text:'Viewport display'}),display);}
   const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:s[key],fmt,...(['disp','sunI','skyI','envIntensity','studioFill','studioRim'].includes(key)?{numericMax:Math.max(max,1)*4}:{}),onInput:v=>{s[key]=v;if(key==='disp'){v3.mapsDirty=true;if(v>0&&(s.detail||0)<4&&!v3.detAuto){v3.detAuto=true;s.detail=4;if(v3.detSel)v3.detSel.value='4';v3LoadModel(true);toast('Mesh detail raised to ×16 so the height can show. Change it with the Detail menu at the top of the 3D view.');}}v3.dirty=true;requestRender(key==='disp');}}).el;
   box.append(el('div',{class:'sub',text:'Lighting'}),envSettingsBox(S),studioSettingsBox(S),el('div',{class:'sub',text:'Model and camera'}),S('v3Uvs','Tile repeat','uvs',1,8,1,v=>v+'×'),S('v3Disp','Height depth','disp',0,1,.01,pct),S('v3Fov','Lens','fov',15,90,1,v=>v+'°'),
     el('div',{class:'sub',text:'Background'}),seg([['dark','Dark'],['grey','Grey'],['light','Light']],s.bg,x=>{s.bg=x;v3.dirty=true;requestRender();},'Background'),
@@ -406,7 +423,9 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
     seg([['1','Full size'],['0.75','Three quarters'],['0.5','Half size']],String(paintScale()),x=>{prefs.paintScale=x==='1'?undefined:+x;delete prefs.paintHalf;savePrefs();v3.dirty=true;requestRender();},'Model while painting'),
     el('p',{class:'note',text:'Painting speed: Balanced and Fast redraw the picture less often while you paint. The paint is the same. Also in Preferences.'}),
     el('p',{class:'note',text:'Drag to turn, right-drag to move, wheel to zoom, double-click to reframe. Raise Detail (top of the 3D view) to see Height depth push the surface out finely; imported models are subdivided.'}));
-  gear.onclick=()=>{box.hidden=!box.hidden;gear.setAttribute('aria-expanded',String(!box.hidden));/* below the bar, however many rows it wraps onto */if(!box.hidden){box.style.top=(bar.offsetTop+bar.offsetHeight+6)+'px';box.style.maxHeight='calc(100% - '+(bar.offsetTop+bar.offsetHeight+16)+'px)';}};
+  gear.onclick=()=>{box.hidden=!box.hidden;gear.setAttribute('aria-expanded',String(!box.hidden));if(!box.hidden){/* More must not consume all the space above the settings on a short viewport. */
+      const xt=bar.querySelector('#v3Xtra'),more=bar.querySelector('#v3More');if(xt){xt.hidden=true;more.setAttribute('aria-expanded','false');more.classList.remove('on');}
+      const top=Math.min(bar.offsetTop+bar.offsetHeight+6,Math.max(8,pane.clientHeight-140));box.style.top=top+'px';box.style.maxHeight=Math.max(0,pane.clientHeight-top-8)+'px';}};
   const info=el('div',{class:'v3info',id:'v3Info'});v3.infoEl=info;
   const hit=el('div',{class:'v3hit',id:'v3Hit'});
   pane.append(hit,bar,box,...(mb?[mb.pop]:[]),info);refresh3dUI();v3Controls(hit);st3.el=null;requestAnimationFrame(st3Overlay);}

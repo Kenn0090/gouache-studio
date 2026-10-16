@@ -41,6 +41,9 @@ Imported maps retain their own dimensions, so a 2K map does not become a separat
 Created assets are saved inside the document or texture set, independently of the computer's reusable library. Live layer entries follow the layer stack. Stored project assets remain compressed until used, and browsing only draws small previews.
 
 ## Moving around
+
+In the viewport, open **⋯ › Settings**. **Viewport display** is first: choose **Shaded**, **Wireframe** for edges without a material fill, or **Wireframe overlay** for edges over the material. These choices are saved with the project. Settings scroll within the viewport; scrolling there does not zoom the model or the 2D canvas.
+
 Choose the style under **Navigation**:
 
 | | Substance Painter (default) | 3D-Coat |
