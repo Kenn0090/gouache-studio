@@ -1,3 +1,9 @@
+# Gouache Studio 0.64.2
+
+- New Shaded, Wireframe and Wireframe overlay options at the top of 3D Paint viewport Settings. The choice is saved with the project.
+- Scroll through viewport Settings without zooming the model or canvas, including on small windows.
+- Fixed the tiny fold marker between the eye and folder in the layer stack with a clear SVG chevron.
+
 # Gouache Studio 0.64.1
 
 - Change the 3D colour-picker hold key in Edit › Keyboard shortcuts › Brush and colour. Hold the new key to sample, then release to resume painting. Alt navigation still works.

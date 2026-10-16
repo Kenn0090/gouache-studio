@@ -98,7 +98,8 @@ function renderLayers(){
       inp.addEventListener('pointerdown',ev=>ev.stopPropagation());
       const done=()=>{const v=inp.value.trim();if(v&&v!==n.name){n.name=v;n.autoName=false;}renderLayers();};inp.addEventListener('blur',done);inp.addEventListener('keydown',ev=>{ev.stopPropagation();if(ev.key==='Enter')inp.blur();if(ev.key==='Escape'){inp.value=n.name;inp.blur();}});});
     /* a layer with mask rows or content effects: ▾ folds them (like Substance) */
-    if(typeof msRowsEl==='function'&&(msHas(n)||(n.cfx&&n.cfx.length))){const fold=el('button',{class:'msfold'+(n.fxFold?'':' open'),text:n.fxFold?'▸':'▾',title:n.fxFold?'Show its mask and effect rows':'Fold its rows','aria-label':(n.fxFold?'Show':'Fold')+' the rows of '+n.name});
+    if(typeof msRowsEl==='function'&&(msHas(n)||(n.cfx&&n.cfx.length))){const fold=el('button',{class:'msfold'+(n.fxFold?'':' open'),title:n.fxFold?'Show its mask and effect rows':'Fold its rows','aria-label':(n.fxFold?'Show':'Fold')+' the rows of '+n.name,'aria-expanded':String(!n.fxFold)});
+      fold.innerHTML='<svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"><path d="M5 3l4 4-4 4"/></svg>';
       fold.addEventListener('pointerdown',e=>e.stopPropagation());fold.addEventListener('click',e=>{e.stopPropagation();n.fxFold=!n.fxFold;renderLayers();});row.insertBefore(fold,row.children[1]);}
     row.addEventListener('pointerdown',()=>{if(ui.msSel){ui.msSel=null;if(typeof renderMatEd==='function')requestAnimationFrame(()=>renderMatEd(true));}},true);
     list.append(row);if(typeof msRowsEl==='function')for(const r of msRowsEl(n))list.append(r);}

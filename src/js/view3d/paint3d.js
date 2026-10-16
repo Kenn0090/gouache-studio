@@ -250,7 +250,7 @@ function maskBarSync(){let bar=document.getElementById('maskBar');
   if(!on){if(bar)bar.hidden=true;return;}
   if(!bar){bar=el('div',{id:'maskBar',class:'maskbar',role:'toolbar','aria-label':'Mask'});$('#work').append(bar);}
   bar.classList.toggle('live',live);
-  const wire=el('button',{class:'btn sm'+(v3s().wire?' on':''),id:'maskWire',text:'Wireframe',title:'Show mesh edges while editing the mask','aria-pressed':String(!!v3s().wire),onclick:()=>{v3s().wire=!v3s().wire;v3.dirty=true;requestRender(true);maskBarSync();if(v3.on)build3dPane();}});
+  const wire=el('button',{class:'btn sm'+(v3s().wire?' on':''),id:'maskWire',text:'Wireframe',title:'Show mesh edges while editing the mask','aria-pressed':String(!!v3s().wire),onclick:()=>v3SetWireMode(v3s().wire?'shaded':'overlay')});
   if(live){const tools=el('div',{class:'seg',role:'group','aria-label':'Live mask tools'},...MK_TOOLS.filter(t=>t[0]!=='paint').map(([k,l])=>el('button',{class:'segb',id:'mk_'+k,'aria-pressed':String(mk3.tool===k),text:l,onclick:()=>maskTool(k)})));
     bar.replaceChildren(el('span',{class:'maskbar-t',text:'Live mask on “'+lm.L.name+'”'}),tools,wire,
       el('span',{class:'maskbar-n',text:mk3.tool?mk3Hint():'Painting and fills stay inside the live mask.'}),

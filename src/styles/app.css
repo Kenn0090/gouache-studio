@@ -657,7 +657,10 @@ body.noopt .optbar{display:none}
 .mskind{font-size:10px;font-weight:700;width:14px;text-align:center}.msrow.m .mskind,.mskind.m{color:#e0725c}.msrow.c .mskind,.mskind.c{color:#7fb3ea}
 .msmode,.msop{color:var(--muted);font-size:11px}.msop{width:22px;text-align:right}
 .msdel{border:0;background:none;color:var(--muted);cursor:pointer;padding:0 2px;font-size:12px}.msdel:hover{color:var(--text)}
-.msfold{border:0;background:none;color:var(--muted);cursor:pointer;width:14px;padding:0;font-size:10px}
+.msfold{border:0;background:none;color:var(--muted);cursor:pointer;width:18px;height:24px;padding:0;display:grid;place-items:center}
+.msfold svg{display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.msfold.open svg{transform:rotate(90deg)}
+.msfold:hover,.msfold:focus-visible{color:var(--accent);background:var(--raise);border-radius:4px}
 .mshead{display:flex;align-items:center;gap:8px}.mstitle{font-weight:600}
 .maskbar.live{border-color:#4a90d9}.maskbar.live .maskbar-t{color:#7fb3ea}.lmchip{display:inline-flex;align-items:center;gap:2px}
 .bigchoice{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;padding:10px 12px;border-radius:8px;border:1px solid var(--line-2);background:var(--raise);color:var(--text);cursor:pointer;font:inherit}.bigchoice:hover{border-color:var(--accent)}
@@ -909,6 +912,10 @@ body.dcdragging,body.dcdragging *{cursor:grabbing!important;user-select:none}
 /* 0.37: 3D Paint keeps its bars slim */
 .v3xtra{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
 .v3xtra[hidden]{display:none}
+.v3set{z-index:20;box-sizing:border-box;overscroll-behavior:contain;scrollbar-gutter:stable;grid-auto-rows:max-content;align-content:start;min-height:0}
+.v3bar{z-index:10}
+.v3display{display:flex;flex-wrap:wrap;gap:5px}
+.v3xtra{max-height:35vh;overflow-y:auto;overscroll-behavior:contain}
 .optbar.slim{gap:10px}
 /* 0.37: in 3D Paint the 3D view sits on the left, the flat texture on the right */
 #work.p3left #pane3d{right:auto;left:0;border-left:0;border-right:1px solid var(--line-2)}
