@@ -39,7 +39,10 @@ float brushMask(vec2 pix){
   return m; }
 `;
 const CH_STROKE=`
-uniform int uStroke; uniform vec3 uStrokeColor; uniform int uStrokeTint; vec3 gSC; uniform float uStrokeOpacity; uniform float uEdge; uniform float uGlaze; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan;
+uniform int uStroke; uniform vec3 uStrokeColor; uniform int uStrokeTint; vec3 gSC; uniform float uStrokeOpacity; uniform float uEdge; uniform float uGlaze; uniform float uWet;
+/* paint-like mixing (Kubelka-Munk, one constant per channel): blue and yellow give green */
+vec3 kmK(vec3 c){ vec3 R=clamp(pow(max(c,vec3(0.0)),vec3(2.2)),vec3(0.004),vec3(0.996)); return (1.0-R)*(1.0-R)/(2.0*R); }
+vec3 kmB(vec3 k){ vec3 R=1.0+k-sqrt(k*k+2.0*k); return pow(clamp(R,vec3(0.0),vec3(1.0)),vec3(1.0/2.2)); } uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan;
 uniform sampler2D uSelTex; uniform int uUseSel;
 float selCov(ivec2 p, float c){ return uUseSel==1?c*texelFetch(uSelTex,p,0).r:c; }
 /* dodge (3) and burn (4): uTonalRange 0 shadows, 1 midtones, 2 highlights; uProtect keeps hue and saturation */
@@ -66,7 +69,11 @@ vec4 applyStroke(vec4 L, float cov){
   if(uStroke>=3){ if(L.a<=1e-6) return L; vec3 r=tonal(clamp(L.rgb/L.a,0.0,1.0),a,uStroke==3);
     if(uChanMode==1) return chanMix(L,vec4(r,L.a),1.0); return vec4(r*L.a,L.a); }
   if(uChanMode==1&&uStroke!=0){ vec4 t=uStroke==1?vec4(gSC,dot(gSC,vec3(0.299,0.587,0.114))):vec4(0.0); return chanMix(L,t,a); }
-  if(uStroke==1){ if(uLockAlpha==1) return vec4(mix(L.rgb,gSC*L.a,a),L.a); return vec4(gSC*a,a)+L*(1.0-a); }
+  if(uStroke==1){ if(uLockAlpha==1) return vec4(mix(L.rgb,gSC*L.a,a),L.a);
+    /* wet paint: the new colour mixes with the paint it goes over like pigments, even where the stroke is solid */
+    if(uWet>0.0&&L.a>1e-4&&a>0.0){ vec3 Lc=L.rgb/L.a; float na=a+L.a*(1.0-a); float kn=L.a*(1.0-a)/max(na,1e-5); float k=kn+(1.0-kn)*0.4*uWet*L.a;
+      vec3 nc=(gSC*a+Lc*L.a*(1.0-a))/max(na,1e-5); vec3 mc=clamp(mix(kmB(mix(kmK(gSC),kmK(Lc),k)),mix(gSC,Lc,k),0.12)*1.12,0.0,1.0); return vec4(mix(nc,mc,min(1.0,uWet*3.0))*na,na); }
+    return vec4(gSC*a,a)+L*(1.0-a); }
   if(uStroke==2){ if(uLockAlpha==1) return L; return L*(1.0-a); }
   return L; }
 `;

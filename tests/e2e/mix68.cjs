@@ -53,6 +53,19 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>!!document.getElementById('bGlaze')||(__gs.showPanel('tool'),true)),'ok');
  await p.evaluate(()=>__gs.showPanel('tool'));await p.waitForTimeout(300);ok(await p.evaluate(()=>!!document.getElementById('bGlaze')),'Thin pigment is in the brush settings');
  ok(await p.evaluate(()=>['Watercolour glaze','Dual sponge wash','Watercolour dry edge','Wash'].every(n=>__gs.library.flatMap(s=>s.presets).some(x=>x.name===n&&x.glaze>0))),'the watercolour brushes have it on');
+
+ /* ---- 4. the ordinary brush mixes with the paint it goes over (not only the Blend brush) ---- */
+ const wetOver=async(w)=>{await p.evaluate(()=>{__gs.newDoc(300,200,8,[1,1,1],'w',false);});await p.waitForTimeout(300);await p.keyboard.press('Control+Shift+n');await p.waitForTimeout(200);
+  await p.evaluate(()=>{__gs.setTool('brush');Object.assign(__gs.brush,{size:60,hardness:1,opacity:1,flow:1,spacing:.05,smoothing:0,grain:0,tip:null,pSize:false,pOpacity:false,buildup:false,edgeSat:0,glaze:0,wet:0,dual:null});__gs.ui.fg=[.95,.9,.1];});
+  await drag(40,100,260,100);await p.evaluate(w=>{__gs.brush.wet=w;__gs.ui.fg=[.1,.2,.9];},w);await drag(40,100,260,100);
+  return p.evaluate(()=>{const L=__gs.doc.active,d=__gs.readRGBA8(__gs.mapT(L,'base')),W=__gs.doc.w,i=(100*W+150)*4;return [d[i]/255,d[i+1]/255,d[i+2]/255];});};
+ const w0=await wetOver(0),w1=await wetOver(1);
+ ok(Math.abs(w0[2]-.9)<.05&&w0[0]<.15,'a plain brush covers what is under it ('+w0.map(v=>v.toFixed(2))+')');
+ ok(w1[1]-Math.max(w1[0],w1[2])>.03||(w1[0]>.15&&w1[1]>.2),'with Paint mixing the new colour mixes with the paint it goes over ('+w1.map(v=>v.toFixed(2))+')');
+ await p.evaluate(()=>__gs.showPanel('tool'));await p.waitForTimeout(300);
+ ok(await p.evaluate(()=>{__gs.setTool('brush');return true;}),'ok');
+ await p.waitForTimeout(300);ok(await p.evaluate(()=>!!document.getElementById('bWet')),'Paint mixing is in the Brush settings');
+ ok(await p.evaluate(()=>['Oil filbert','Gouache filbert','Palette knife'].every(n=>__gs.library.flatMap(s=>s.presets).some(x=>x.name===n&&x.wet>0))),'the oil, gouache and knife brushes have it on');
  ok(!errs.length,'no errors '+errs.join('|'));
  await b.close();console.log(fails?'FAILS '+fails:'ALL PASS');process.exit(fails?1:0);
 })();

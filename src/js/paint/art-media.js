@@ -14,9 +14,9 @@ const ART_MEDIA=[
  ['Graphite 6B shading','graphite',{size:36,flow:.45,roundness:.45,pSize:true}],['Coloured pencil','graphite',{size:8,flow:.6,grain:.25,pSize:false}],
  ['Charcoal stick','charcoal',{size:50,flow:.8,angle:25,grain:.2,pSize:true}],['Charcoal edge','charcoal',{size:14,roundness:.25,flow:.9,followDir:true,pSize:true}],
  ['Soft pastel','pastel',{size:55,flow:.6,grain:.2,pSize:true}],['Oil pastel','pastel',{size:32,flow:.95,grain:.1,pSize:true}],
- ['Watercolour glaze','wash',{size:115,flow:.35,buildup:true,pSize:true,edgeSat:.6,glaze:.85}],['Dual sponge wash','wash',{size:95,flow:.45,buildup:true,pSize:true,dual:{on:true,tipKey:'b:sponge',size:34,spacing:130,scatter:90,count:2,mode:0,amount:90},edgeSat:.5,glaze:.7}],['Watercolour dry edge','pastel',{size:70,flow:.25,spacing:.08,grain:.4,pSize:true,edgeSat:.5,glaze:.7}],
- ['Gouache filbert','bristle',{size:46,flow:.95,followDir:true,pSize:true}],['Dry acrylic','bristle',{size:64,flow:.7,grain:.45,followDir:true,pSize:true}],
- ['Oil filbert','bristle',{size:40,flow:1,followDir:true,pSize:true}],['Palette knife','knife',{size:64,flow:.95,followDir:true,pSize:true,minSize:.65}],
+ ['Watercolour glaze','wash',{size:115,flow:.35,buildup:true,pSize:true,edgeSat:.6,glaze:.85,wet:.5}],['Dual sponge wash','wash',{size:95,flow:.45,buildup:true,pSize:true,dual:{on:true,tipKey:'b:sponge',size:34,spacing:130,scatter:90,count:2,mode:0,amount:90},edgeSat:.5,glaze:.7}],['Watercolour dry edge','pastel',{size:70,flow:.25,spacing:.08,grain:.4,pSize:true,edgeSat:.5,glaze:.7,wet:.4}],
+ ['Gouache filbert','bristle',{size:46,flow:.95,wet:.4,followDir:true,pSize:true}],['Dry acrylic','bristle',{size:64,flow:.7,wet:.3,grain:.45,followDir:true,pSize:true}],
+ ['Oil filbert','bristle',{size:40,flow:1,wet:.7,followDir:true,pSize:true}],['Palette knife','knife',{size:64,flow:.95,wet:.7,followDir:true,pSize:true,minSize:.65}],
  ['Fan brush','fan',{size:70,flow:.8,followDir:true,pSize:true}],['Reed pen','reed',{size:12,flow:1,angle:35,pSize:true,minSize:.15}],
  ['Brush pen','bristle',{size:15,flow:1,pSize:true,minSize:.04,smoothing:.55}],['Chisel marker','reed',{size:25,flow:.7,opacity:.85,pSize:false,angle:40}],
  ['Crayon','pastel',{size:18,flow:.9,grain:.5,pSize:false}],['Scratchboard ink','graphite',{size:3,flow:1,grain:.05,pSize:true,minSize:.15}]

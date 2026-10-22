@@ -70,6 +70,9 @@ The little stroke preview at the top of the brush settings now **stays at the to
 ## Right-click brush picker (0.67)
 **Right-click** (a click, not a drag) on the canvas, or on the model in 3D Paint, with the Brush, Eraser, Blend, Dodge or Burn tool opens a small window at the pointer with **Size**, **Hardness** and **Opacity** sliders (Strength for Blend, Exposure for Dodge and Burn) and two tabs. **Brushes** shows the whole brush library in its collections, with Recent brushes and a search box: click a brush to use it. **Textures** lists the Textures library: click one to use it as the **brush tip**. Esc or a click outside closes it. Right-drag still moves the view in 3D, and Ctrl+right-click keeps its Substance-style controls. Turn it off in **Preferences › Painting**.
 
+## Paint mixing in the Brush (0.68)
+**Paint mixing** in the Brush settings makes the new colour mix with the paint it goes over, like wet pigment, even where the stroke is solid: blue over yellow turns a dark green and blue over red a deep plum, instead of just covering it. 0 is the plain, covering brush (the default); the oil, gouache and palette-knife brushes have it on. It mixes with the paint on the same layer, on the flat canvas.
+
 ## Thin pigment and edge colour for watercolour (0.68)
 **Thin pigment** in the brush settings makes a stroke behave like a thin layer of real pigment: where the paint is thin it stays bright and keeps its colour (instead of fading to a pale tint), the white paper shines through, and strokes laid over each other show through one another like glazes. At full strength it is the plain colour. **Edge colour** makes the faint edges of a stroke richer and a little deeper, like pigment gathering at the edge of a wash. The watercolour brushes (Watercolour glaze, Dual sponge wash, Watercolour dry edge and Wash) have both switched on; set them to 0 for the old, plain fade. It works on the flat canvas, not yet on the 3D model.
 
