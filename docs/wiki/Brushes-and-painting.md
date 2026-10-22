@@ -70,6 +70,19 @@ The little stroke preview at the top of the brush settings now **stays at the to
 ## Right-click brush picker (0.67)
 **Right-click** (a click, not a drag) on the canvas, or on the model in 3D Paint, with the Brush, Eraser, Blend, Dodge or Burn tool opens a small window at the pointer with **Size**, **Hardness** and **Opacity** sliders (Strength for Blend, Exposure for Dodge and Burn) and two tabs. **Brushes** shows the whole brush library in its collections, with Recent brushes and a search box: click a brush to use it. **Textures** lists the Textures library: click one to use it as the **brush tip**. Esc or a click outside closes it. Right-drag still moves the view in 3D, and Ctrl+right-click keeps its Substance-style controls. Turn it off in **Preferences › Painting**.
 
+## Paint mixing in the Brush (0.68)
+**Paint mixing** in the Brush settings makes the new colour mix with the paint it goes over, like wet pigment, even where the stroke is solid: blue over yellow turns a dark green and blue over red a deep plum, instead of just covering it. 0 is the plain, covering brush (the default); the oil, gouache and palette-knife brushes have it on. It mixes with the paint on the same layer, on the flat canvas.
+
+**Mix colours like** chooses how colours mix: **Pigment** (the default, blue and yellow make green) or **Lab**, a perceptual mix that stays more neutral and never goes dark. It applies to Paint mixing, Pick up paint and the Blend brush.
+
+**Pick up paint** goes further: the brush carries colour along like a loaded brush on wet paint, so dragging through another colour smears it into your stroke. It works like the Blend brush with your colour loaded: a low Opacity gives soft, see-through mixes; a higher Pick up paint drags more of what is under the brush. Oil filbert, Gouache filbert and Palette knife have some. One undo takes back the whole stroke. It doesn't combine with Thin pigment or Edge colour, and works on the flat canvas.
+
+## Bristle brushes (0.68)
+In *Drawing and painting*: **Bristle flat**, **Bristle dry brush** and **Bristle thin pigment**. The tip is made of many hair-fine bristles that run along your stroke, some thicker, some missing and each lighter or darker along its length, so a stroke leaves long fine streaks with the paper showing between them (the dry brush has the most gaps; the thin pigment one is bright and glaze-like). A brush that follows the stroke now also waits for the first couple of pixels, so its first dab already points the right way.
+
+## Thin pigment and edge colour for watercolour (0.68)
+**Thin pigment** in the brush settings makes a stroke behave like a thin layer of real pigment: where the paint is thin it stays bright and keeps its colour (instead of fading to a pale tint), the white paper shines through, and strokes laid over each other show through one another like glazes. At full strength it is the plain colour. **Pigment amount** sets how much pigment the brush carries: 100% is your colour as picked, lower is a thinner, lighter wash, higher is a richer, deeper layer (up to 300%). **Edge colour** makes the faint edges of a stroke richer and a little deeper, like pigment gathering at the edge of a wash. The watercolour brushes (Watercolour glaze, Dual sponge wash, Watercolour dry edge and Wash) have both switched on; set them to 0 for the old, plain fade. It works on the flat canvas, not yet on the 3D model.
+
 ## Dual brush (0.65.1)
 In the brush settings, **Dual brush** (tick *Use a second brush tip as a mask*) lets a second tip shape the first, like Photoshop's Dual Brush. Pick the second **Tip** (built-in, drawing and painting tips, or your own), then its **Size**, **Spacing**, **Scatter**, **Count** and **Amount**. **Multiply** shows the brush only where the second tip is; **Knock out** cuts holes in it. The pattern sits fixed on the canvas for a steady texture; **Random for every dab** gives a stippled look. It saves with your brushes, and the *Dual sponge wash* brush is ready made.
 
@@ -80,7 +93,7 @@ In the brush settings, **Dual brush** (tick *Use a second brush tip as a mask*) 
 Uses the same settings as the brush. On a document with several maps, it can erase from other maps too; see *Also erase from* in the panel.
 
 ## Blend (S)
-Smudges and mixes paint. **Strength** is how far the colour is dragged. **Paint load** adds some of the foreground colour as you blend, like a loaded brush.
+Smudges and mixes paint. **Strength** is how far the colour is dragged. **Paint load** adds some of the foreground colour as you blend, like a loaded brush. **Paint mixing** (on by default, 70%) mixes colours the way real paint does, so blue and yellow blend to green instead of grey. Turn it down to 0 for the plain, screen-style blend. It works on the flat canvas; on the 3D model the blend is still the plain kind.
 
 ## Healing brushes (J)
 

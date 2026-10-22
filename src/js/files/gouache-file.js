@@ -64,7 +64,7 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
       else r=color?await putSolid(k,color):await put(mapT(n,k),false,PX_LOSSY.has(k));if(r)maps[k]=r;}
     /* a material layer's own images (so it stays editable after opening) */
     let fillImg;if((n.fill||n.path)&&n._fillImg){fillImg={};for(const k in n._fillImg){const t=n._fillImg[k],{pr}=await pack(t,0,0,t.w,t.h,!mapLive(n,k)&&PX_LOSSY.has(k));fillImg[k]=defer(pr,{w:t.w,h:t.h});}}
-    return Object.assign(base,{t:'L',clip:n.clip,lock:n.lockAlpha,mapModes:n.mapModes||{},maps,text:n.text?cloneText(n.text):undefined,grad:n.grad||undefined,array:n.array||undefined,arrBox:n.array?n.arrBox:undefined,styles:n.styles||undefined,shape:n.shape||undefined,path:n.path||undefined,fill:n.fill||undefined,idSel:n.idSel||undefined,fillImg,hold:n.frame?n.hold:undefined});};
+    return Object.assign(base,{t:'L',clip:n.clip,lock:n.lockAlpha,mapModes:n.mapModes||{},maps,text:n.text?cloneText(n.text):undefined,grad:n.grad||undefined,array:n.array||undefined,arrBox:n.array?n.arrBox:undefined,styles:n.styles||undefined,shape:n.shape||undefined,path:n.path||undefined,fill:n.fill||undefined,nrm:n.nrm||undefined,idSel:n.idSel||undefined,fillImg,hold:n.frame?n.hold:undefined});};
   const R=paintRoot(),kids=[];for(const c of R.children){kids.push(await node(c));await tick();}
   const all=allLayers(R),active=doc.active&&!doc.active.frame?allNodes(R).indexOf(doc.active):-1;
   const A=doc.anim;let anim=null;
@@ -129,7 +129,7 @@ async function gfReadInto(buf,head,data){
     if(o.t==='R'){const sh=sharedMap.get(o.sid);if(sh&&parent)insertNode(sh,parent);return sh;}
     if(o.t==='G'){n=newGroupObj(o.name);n.open=o.open!==false;}
     else if(o.t==='F'){n=newFxLayerObj(o.name,(o.fx.stack||[]).filter(it=>it.conv?CONVERTERS[it.conv]:FX[it.id]),o.fx.map);n.clip=!!o.clip;n.mapModes=Object.assign({},o.mapModes||{});}
-    else{n=newLayerObj(o.name,!!o.fill);n.clip=!!o.clip;n.lockAlpha=!!o.lock;n.mapModes=Object.assign({},o.mapModes||{});
+    else{n=newLayerObj(o.name,!!o.fill);n.clip=!!o.clip;n.lockAlpha=!!o.lock;n.nrm=!!o.nrm;n.mapModes=Object.assign({},o.mapModes||{});
       if(o.text)n.text=o.text;if(o.grad)n.grad=o.grad;if(o.array){n.array=o.array;n.arrBox=o.arrBox||null;}if(o.styles)n.styles=o.styles;if(o.shape)n.shape=o.shape;if(o.path)n.path=o.path;if(o.fill)n.fill=o.fill;if(o.idSel)n.idSel=o.idSel;
       if(o.fillImg){n._fillImg={};for(const k in o.fillImg){const r=o.fillImg[k],raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),r.w,r.h,8,r.f),t=makeTarget(r.w,r.h,8,true);writeRegion(t,0,0,r.w,r.h,raw);n._fillImg[k]=t;}}
       for(const k in o.maps||{}){if(k!=='base'&&!doc.maps.includes(k))continue;const r=o.maps[k];if(r.live&&fillLiveSource(n,k))setMapLive(n,k);else await img(r,()=>ensureMapTarget(n,k),o.fill?n:null,k);}}

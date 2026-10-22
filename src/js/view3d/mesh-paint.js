@@ -106,7 +106,7 @@ function meshDown(hit,e){if(stroke||preview||selLive)return false;if(typeof bk!=
   if(ui.mode==='p3d'&&p3.udim){const pk=v3PickAt(hit,e),R=pk&&v3.mesh?.setRanges?.[pk.set],i=pk&&pk.tile&&p3.sets.findIndex(S=>p3Binding(S)===(R&&R.name)&&S.tile&&S.tile.id===pk.tile.id);if(i>=0&&i!==p3.cur)p3SwitchSet(i,true);}
   if(ui.mode==='bake'&&(ui.tool==='smudge'||ui.tool==='liquify')){toast('Smudge and Liquify work in 3D Paint, on the model’s texture set.');return true;}
   if(ui.tool==='material')materialBrushTarget();if(fillNoMask())return true;
-  const et=ui.mode==='bake'?bakeEditTarget():editTarget();if(ui.mode!=='bake'&&lockStop(et))return true;const o=paintOpts(et);if(!o)return true;
+  if(typeof npSync==='function')npSync();const et=ui.mode==='bake'?bakeEditTarget():editTarget();if(ui.mode!=='bake'&&lockStop(et))return true;const o=paintOpts(et);if(!o)return true;
   const r=hit.getBoundingClientRect(),w=Math.max(1,Math.round(r.width)),h=Math.max(1,Math.round(r.height)),sp=meshSpace(w,h);if(!sp)return true;
   if(o.tool==='liquify')return meshLiqDown(hit,e,et,o,sp);
   if(o.tool==='smudge'){o.extras=[];o.sym=null;if(!sp.mesh||(typeof p3!=='undefined'&&p3.udim)){toast('Smudge on the model needs a plain texture set (no UDIM tiles).');return true;}}

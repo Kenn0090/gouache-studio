@@ -46,6 +46,9 @@ function paintOpts(et){
   if(o.tool==='dodge'||o.tool==='burn')Object.assign(o,{opacity:ui.tonalExposure,range:ui.tonalRange,protect:ui.tonalProtect});
   if(et.isMask){const g=lum3(o.color);o.color=[g,g,g];o.noTint=true;/* a mask's Paint row really erases (back to what is below it) */if(o.tool==='erase'&&!et.L.mrow){o.tool='brush';o.color=(et.erase||[1,1,1]).slice();}}
   o.extras=strokeExtras(o,et);if(!materialPaintOpts(o,et))return null;
+  /* (0.68) a brush that picks up paint carries colour along like a loaded brush on wet paint: it works as the Blend brush with the brush's own colour loaded */
+  if(o.tool==='brush'&&o.pickup>0&&!et.isMask&&!o.material&&ui.mode!=='bake')Object.assign(o,{tool:'smudge',mixer:true,strength:Math.max(.05,o.opacity),opacity:1,charge:1-o.pickup,paintMix:1,extras:[],hueJitter:0,satJitter:0,valJitter:0});
+  if(typeof npApply==='function')npApply(o,et);
   /* the heal brush: a faint grey trail while painting; the healing happens on release, on every map */
   if(o.tool==='heal')Object.assign(o,{color:[.6,.6,.6],healOpacity:o.opacity,opacity:.45,noTint:true,extras:[],buildup:false,hueJitter:0,satJitter:0,valJitter:0,chan:null});
   if(o.tool==='clone')Object.assign(o,{noTint:true,extras:[],buildup:false,hueJitter:0,satJitter:0,valJitter:0,chan:null});
@@ -94,7 +97,7 @@ cv.addEventListener('pointerdown',e=>{
   if(ui.tool==='picker'||(e.altKey&&prefs.altPick!==false)){ptr={mode:'pick',id:e.pointerId};const q=ui.cageFlat?cageFwd(ix,iy):[ix,iy];pickAt(q[0],q[1]);return;}
   if(typeof maskPaintLocked==='function'&&maskPaintLocked()){toast('Press Paint in the mask bar to paint the mask.');return;}
   if(ui.tool==='material')materialBrushTarget();if(fillNoMask())return;
-  const et=ui.mode==='bake'?bakeEditTarget():editTarget();if(ui.mode!=='bake'&&typeof lockStop==='function'&&lockStop(et))return;const o=paintOpts(et);if(!o)return;const L=et.L,p=pressureOf(e);
+  if(typeof npSync==='function')npSync();const et=ui.mode==='bake'?bakeEditTarget():editTarget();if(ui.mode!=='bake'&&typeof lockStop==='function'&&lockStop(et))return;const o=paintOpts(et);if(!o)return;const L=et.L,p=pressureOf(e);
   if((o.tool==='heal'||o.tool==='clone')&&!healBegin(ix,iy,o.tool))return;const cz=cageStrokeStart(o,ix,iy);if(cz===false)return;const sx=cz?cz.x:ix,sy=cz?cz.y:iy;o.sym=symFor(o);
   const line=cz?null:brushLineStart(et,sx,sy,p,e,'canvas');
   ptr={mode:'paint',id:e.pointerId,sx,sy,sp:p,rx:sx,ry:sy,smoothAt:e.timeStamp,cage:cz?cz.kind:null,ox:sx,oy:sy,lock:null,line};beginStroke(L,line?line.x:sx,line?line.y:sy,line?line.p:p,o);if(line?.joined)addPoint(sx,sy,p);

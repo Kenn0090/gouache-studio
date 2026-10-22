@@ -1,7 +1,7 @@
 /* ================= Brush engine ================= */
 const BRUSH_DEFAULTS={size:24,opacity:1,flow:1,hardness:.85,spacing:.06,grain:0,smoothing:.25,pSize:true,pOpacity:false,minSize:.2,buildup:false,curve:0,strength:.6,charge:0,
   tip:null,angle:0,roundness:1,flipX:false,flipY:false,randFlipX:false,randFlipY:false,sizeJitter:0,angleJitter:0,scatter:0,count:1,bothAxes:false,followDir:false,
-  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,endInk:0,dual:null,pFlow:false};
+  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,pigment:1,wet:0,pickup:0,mixLab:false,paintMix:.7};
 /* lazy mouse: the brush follows the pointer on a string of R pixels, so it only moves once the string is pulled tight */
 function lazyStep(s,x,y,R){if(!(R>0))return [x,y];if(s.lx===undefined){s.lx=s.sx;s.ly=s.sy;}const dx=x-s.lx,dy=y-s.ly,d=Math.hypot(dx,dy);if(d<=R)return null;s.lx+=dx*(d-R)/d;s.ly+=dy*(d-R)/d;return [s.lx,s.ly];}
 /* Keep stabilization consistent across pointer sample rates. At 60 Hz this matches the
@@ -52,7 +52,8 @@ function beginStroke(L,x,y,p,o){
     else stroke.exU=selU(o);}
   if(o.tool==='clone')cloneBegin(stroke);
   if(o.tool==='smudge'&&stroke.space)meshSmudgeBegin(stroke);/* on the 3D model (mesh-pull.js) */
-  stamp(x,y,p);stroke.carry=spacingAt(p);if(o.tool==='brush'&&o.endInk>0){stroke.inkAnchor=[x,y];stroke.inkSince=performance.now();stroke.inkFrame=requestAnimationFrame(brushInkLoop);}requestRender(true);
+  /* a brush that turns with the stroke waits for the first couple of pixels, so its first dab already points the way you are going */
+  if(o.followDir&&(o.tool==='brush'||o.tool==='erase'||o.mixer)&&!o.space){stroke.fdWait=true;stroke.carry=0;}else{stamp(x,y,p);stroke.carry=spacingAt(p);}if(o.tool==='brush'&&o.endInk>0){stroke.inkAnchor=[x,y];stroke.inkSince=performance.now();stroke.inkFrame=requestAnimationFrame(brushInkLoop);}requestRender(true);
 }
 /* Ink wets the paper while the nib lingers, rather than adding a dot at release.
    A bounded, local stamp uses the normal selection, symmetry, maps and undo path. */
@@ -97,7 +98,7 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy){
   } else if(o.tool==='smudge'){
     if(doc.wrap)blit(s.L.target,scratchT,0,0,W,H,0,0);
     else{const x0=clamp(Math.floor(Math.min(x,x-dx)-ext-4),0,W),y0=clamp(Math.floor(Math.min(y,y-dy)-ext-4),0,H),x1=clamp(Math.ceil(Math.max(x,x-dx)+ext+4),0,W),y1=clamp(Math.ceil(Math.max(y,y-dy)+ext+4),0,H);if(x1>x0&&y1>y0)blit(s.L.target,scratchT,x0,y0,x1-x0,y1-y0,x0,y0);}
-    for(const c of copies)run(P.smudge,s.L.target,Object.assign({},U,{uCenter:c,uSrc:scratchT.tex,uDelta:[dx,dy],uAlpha:a,uStrength:o.strength,uCharge:o.charge,uColor:o.color,uLockAlpha:s.L.lockAlpha},chanU(o),selU(o)));
+    for(const c of copies)run(P.smudge,s.L.target,Object.assign({},U,{uCenter:c,uSrc:scratchT.tex,uDelta:[dx,dy],uAlpha:a,uStrength:o.strength,uCharge:o.charge,uPaintMix:o.paintMix||0,uMixLab:o.mixLab?1:0,uNormalMap:{int:doc.map==='normal'?1:0},uColor:o.color,uLockAlpha:s.L.lockAlpha},chanU(o),selU(o)));
   } else {
     const dst=s.space?s.space.buf:strokeT;
     if(dst===strokeT&&!doc.wrap)for(const c of copies)clearStrokeBufferRegion(s,[c[0]-ext,c[1]-ext,c[0]+ext,c[1]+ext]);
@@ -134,13 +135,14 @@ function addPoint(x,y,p){
   const s=stroke;if(!s)return;const dx=x-s.x,dy=y-s.y,len=Math.hypot(dx,dy);
   if(s.inkAnchor&&Math.hypot(x-s.inkAnchor[0],y-s.inkAnchor[1])>Math.max(.5,radiusAt(p)*.12)){s.inkAnchor=[x,y];s.inkSince=performance.now();s.inkCharge=0;}
   if(len<1e-4){s.p=p;return;}
+  if(s.fdWait){if(len<2.5){s.p=p;return;}s.fdWait=false;}
   if(len>0.5)s.dir=Math.atan2(dy,dx);
   let t=s.carry,guard=0;
   while(t<=len&&guard++<20000){const f=t/len,pp=s.p+(p-s.p)*f;stamp(s.x+dx*f,s.y+dy*f,pp);t+=spacingAt(pp);}
   s.carry=t-len;s.x=x;s.y=y;s.p=p;requestRender(true);
 }
 function endStroke(record){
-  const s=stroke;if(!s)return;const L=s.L,W=doc.w,H=doc.h;
+  const s=stroke;if(!s)return;if(s.fdWait){s.fdWait=false;stamp(s.x,s.y,s.p);}const L=s.L,W=doc.w,H=doc.h;
   if(s.inkFrame)cancelAnimationFrame(s.inkFrame);
   if(s.space){if(s.spaceDirty){s.spaceDirty=false;s.space.sync();}const b=s.space.bbox(s);s.bb=doc.wrap?[0,0,W,H]:[b[0]-2,b[1]-2,b[2]+2,b[3]+2];}
   const healing=s.o.tool==='heal',cloning=s.o.tool==='clone';
@@ -159,7 +161,7 @@ function endStroke(record){
   if(s.lockT)release(s.lockT);dropStrokeCache(s);
   stroke=null;
   if(record){
-    if(bw>0&&bh>0){const r=regionRecord(L,lazyBefore||captureRegion(beforeT,x0,y0,bw,bh),captureRegion(L.target,x0,y0,bw,bh),x0,y0,bw,bh,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?'Blend':s.o.tool==='dodge'?'Dodge':s.o.tool==='burn'?'Burn':healing?'Heal':cloning?'Clone':'Brush stroke');
+    if(bw>0&&bh>0){const r=regionRecord(L,lazyBefore||captureRegion(beforeT,x0,y0,bw,bh),captureRegion(L.target,x0,y0,bw,bh),x0,y0,bw,bh,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?(s.o.mixer?'Brush stroke':'Blend'):s.o.tool==='dodge'?'Dodge':s.o.tool==='burn'?'Burn':healing?'Heal':cloning?'Clone':'Brush stroke');
       if(L.onRecord)L.onRecord(r,[x0,y0,bw,bh]);
       pushUndo(parts.length?withMapParts(r,L,parts,x0,y0):r);}
     scheduleThumb(L.maskOf||L);

@@ -10,7 +10,7 @@ const smudge3d=(()=>{const d={mode:'smudge'};try{Object.assign(d,JSON.parse(loca
 const smudge3dSave=()=>{try{localStorage.setItem('gs.smudge3d',JSON.stringify({mode:smudge3d.mode}));}catch(e){}};
 /* uMode 0: Smudge (under the dab, pull from the pixel uDelta behind it); 1: Liquify (pull through the movement map uDisp2) */
 const FS_3DPULL=`in vec3 vP; in vec3 vN; in vec2 vT; uniform mat4 uVPm; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform int uAlign; uniform int uNoBack; uniform int uUseUDIM; uniform vec2 uUDIMTile;
-uniform int uMode; uniform sampler2D uCopy; uniform sampler2D uStroke; uniform vec2 uDelta; uniform float uK; uniform float uCharge; uniform vec3 uColor; uniform int uLockAlpha; uniform float uTol;
+uniform int uMode; uniform sampler2D uCopy; uniform sampler2D uStroke; uniform vec2 uDelta; uniform float uK; uniform float uCharge; uniform vec3 uColor; uniform int uLockAlpha; uniform float uTol; uniform int uNormalMap;
 uniform sampler2D uDisp2; uniform sampler2D uSelTex; uniform int uUseSel;
 void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard;
   vec4 c=uVPm*vec4(vP,1.0); if(c.w<=1e-6) discard; vec2 s=c.xy/c.w*0.5+0.5; if(s.x<0.0||s.y<0.0||s.x>1.0||s.y>1.0) discard;
@@ -30,6 +30,7 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard;
   vec4 pulled=texture(uCopy,sv.gb);
   if(uMode==0) pulled=mix(pulled,vec4(uColor,1.0),uCharge);
   vec4 r=mix(dst,pulled,clamp(k,0.0,1.0));
+  if(uNormalMap==1&&r.a>1e-6){ vec3 nn=r.rgb/r.a*2.0-1.0; float ll=length(nn); nn=ll>1e-4?nn/ll:vec3(0.0,0.0,1.0); r=vec4((nn*0.5+0.5)*r.a,r.a); } /* normals stay unit length */
   if(uLockAlpha==1){ vec3 cc=r.a>1e-6?r.rgb/r.a:vec3(0.0); r=vec4(cc*dst.a,dst.a); }
   o=r; }`;
 let P3PULL=null;
@@ -49,7 +50,7 @@ function meshSmudgeApply(s,cx,cy,ext,dx,dy){const sp=s.space,m=s.msm;if(!sp||!m)
   const rc=meshPullRect(sp,[cx-ext,cy-ext,cx+ext,cy+ext]);if(!rc)return;
   const o=s.o,smear=smudge3d.mode==='smear',k=smear?Math.min(1,o.strength*1.35+.15):o.strength,mul=smear?2.4:1,P=p3pull(),sel=selU(o);
   for(const it of m.items){const T=it.T,colour=(it.k===null?doc.map:it.k)==='base',pre=acquireD(T.depth);blit(T,pre,rc[0],rc[1],rc[2],rc[3],rc[0],rc[1]);
-    scissorDo(rc,()=>sp.pull(P,T,Object.assign({uMode:{int:0},uCopy:pre.tex,uStroke:sp.buf.tex,uDelta:[dx*mul,dy*mul],uK:k,uTol:.12,uCharge:colour?(o.charge||0):0,uColor:o.color||[0,0,0],uLockAlpha:{int:s.L.lockAlpha?1:0}},sel)));
+    scissorDo(rc,()=>sp.pull(P,T,Object.assign({uMode:{int:0},uNormalMap:{int:doc.map==='normal'?1:0},uCopy:pre.tex,uStroke:sp.buf.tex,uDelta:[dx*mul,dy*mul],uK:k,uTol:.12,uCharge:colour?(o.charge||0):0,uColor:o.color||[0,0,0],uLockAlpha:{int:s.L.lockAlpha?1:0}},sel)));
     release(pre);}
   if(!s.L.maskOf&&!s.L.quick)s.L.lookVer=(s.L.lookVer||0)+1;}
 /* at the end: the undo parts of the other maps */
@@ -80,7 +81,7 @@ function meshLiqDab(ml,x,y,dx,dy,amount){const r=liq.size/2*ml.scale,mode=['push
   ml.dirty=ml.dirty?[Math.min(ml.dirty[0],box[0]),Math.min(ml.dirty[1],box[1]),Math.max(ml.dirty[2],box[2]),Math.max(ml.dirty[3],box[3])]:box;ml.dabs++;}
 /* redraw every map from its copy through the movement map, inside what changed */
 function meshLiqFlush(ml){if(!ml.dirty)return;const rc=meshPullRect(ml.sp,ml.dirty);ml.dirty=null;if(!rc)return;const P=p3pull(),sel=selU(ml.o);
-  for(const it of ml.items)scissorDo(rc,()=>ml.sp.pull(P,it.T,Object.assign({uMode:{int:1},uCopy:it.orig.tex,uDisp2:ml.D.tex,uTol:.12,uK:1,uStroke:dummy,uDelta:[0,0],uCharge:0,uColor:[0,0,0],uLockAlpha:{int:0}},sel)));
+  for(const it of ml.items)scissorDo(rc,()=>ml.sp.pull(P,it.T,Object.assign({uMode:{int:1},uNormalMap:{int:doc.map==='normal'?1:0},uCopy:it.orig.tex,uDisp2:ml.D.tex,uTol:.12,uK:1,uStroke:dummy,uDelta:[0,0],uCharge:0,uColor:[0,0,0],uLockAlpha:{int:0}},sel)));
   if(!ml.L.maskOf&&!ml.L.quick)ml.L.lookVer=(ml.L.lookVer||0)+1;requestRender(true);}
 /* the hold modes (pinch, bloat, twirl) keep working while the button is down */
 function meshLiqLoop(ml){const m=v3.mstroke;if(!m||m.ml!==ml)return;const now=performance.now(),dt=Math.min(.1,(now-ml.t)/1000);ml.t=now;

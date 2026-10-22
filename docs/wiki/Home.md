@@ -19,6 +19,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 - [Rulers and guides](Rulers-and-guides.md): rulers in pixels, inches or centimetres, guides, snapping
 - [Rotate and flip](Rotate-and-flip)
 - [Liquify](Liquify)
+- [Normal layers](Normal-layers.md): paint bumps, dents and tilts straight into a normal, on the canvas or the model, and convert to AO and curvature
 - [Fills and gradients](Fills-and-gradients.md)
 - [Cage painting and symmetry](Cage-painting-and-symmetry.md): paint through a cage onto slanted or curved shapes; mirror and radial symmetry
 

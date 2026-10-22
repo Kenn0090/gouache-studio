@@ -38,8 +38,21 @@ float brushMask(vec2 pix){
   if(uUseDual==1){ float dl=texture(uDual,(pix+uDualOff)/uDualSize).r; if(uDualMode==1) dl=1.0-dl; m*=mix(1.0,dl,uDualAmt); }
   return m; }
 `;
+/* paint-like mixing: the hue comes from mixing like pigments (Kubelka-Munk, one constant per channel: blue and yellow give green), but the lightness is kept
+   from the two colours (OKLab), so two bright colours never mix to black */
+const PIGMENT_MIX=`
+uniform float uMixLab; /* 1: mix in perceptual Lab (OKLab) instead of like pigments */
+vec3 pgK(vec3 c){ vec3 R=clamp(pow(max(c,vec3(0.0)),vec3(2.2)),vec3(0.004),vec3(0.996)); return (1.0-R)*(1.0-R)/(2.0*R); }
+vec3 pgB(vec3 k){ vec3 R=1.0+k-sqrt(k*k+2.0*k); return pow(clamp(R,vec3(0.0),vec3(1.0)),vec3(1.0/2.2)); }
+vec3 pgOK(vec3 c){ vec3 l=pow(max(c,vec3(0.0)),vec3(2.2)); vec3 q=pow(vec3(0.4122214708*l.r+0.5363325363*l.g+0.0514459929*l.b,0.2119034982*l.r+0.6806995451*l.g+0.1073969566*l.b,0.0883024619*l.r+0.2817188376*l.g+0.6299787005*l.b),vec3(1.0/3.0));
+  return vec3(0.2104542553*q.x+0.7936177850*q.y-0.0040720468*q.z,1.9779984951*q.x-2.4285922050*q.y+0.4505937099*q.z,0.0259040371*q.x+0.7827717662*q.y-0.8086757660*q.z); }
+vec3 pgRGB(vec3 o){ vec3 q=vec3(o.x+0.3963377774*o.y+0.2158037573*o.z,o.x-0.1055613458*o.y-0.0638541728*o.z,o.x-0.0894841775*o.y-1.2914855480*o.z); vec3 l=q*q*q;
+  vec3 c=vec3(4.0767416621*l.x-3.3077115913*l.y+0.2309699292*l.z,-1.2684380046*l.x+2.6097574011*l.y-0.3413193965*l.z,-0.0041960863*l.x-0.7034186147*l.y+1.7076147010*l.z); return pow(clamp(c,vec3(0.0),vec3(1.0)),vec3(1.0/2.2)); }
+vec3 pgMix(vec3 c1,vec3 c2,float k){ vec3 km=pgB(mix(pgK(c1),pgK(c2),k)); vec3 o1=pgOK(c1),o2=pgOK(c2),ok=pgOK(km); float L=mix(ok.x,mix(o1.x,o2.x,k),0.75); vec3 pig=pgRGB(vec3(L,ok.y,ok.z)); return uMixLab>0.0?mix(pig,pgRGB(mix(o1,o2,k)),uMixLab):pig; }
+`;
 const CH_STROKE=`
-uniform int uStroke; uniform vec3 uStrokeColor; uniform int uStrokeTint; vec3 gSC; uniform float uStrokeOpacity; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan;
+uniform int uStroke; uniform vec3 uStrokeColor; uniform int uStrokeTint; vec3 gSC; uniform float uStrokeOpacity; uniform float uEdge; uniform float uGlaze; uniform float uPig; uniform float uWet;
+${PIGMENT_MIX} uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan;
 uniform sampler2D uSelTex; uniform int uUseSel;
 float selCov(ivec2 p, float c){ return uUseSel==1?c*texelFetch(uSelTex,p,0).r:c; }
 /* dodge (3) and burn (4): uTonalRange 0 shadows, 1 midtones, 2 highlights; uProtect keeps hue and saturation */
@@ -56,10 +69,21 @@ vec4 chanMix(vec4 oldP, vec4 t, float a){
   return vec4(clamp(nc,0.0,1.0)*na,na); }
 vec4 applyStroke(vec4 L, float cov){
   float a=clamp(cov,0.0,1.0)*uStrokeOpacity;
+  /* watercolour edge: where the stroke is faint the pigment gathers, so the colour gets richer and a little deeper there */
+  if(uStroke==1&&uEdge>0.0){ float e=1.0-smoothstep(0.0,0.85,clamp(cov,0.0,1.0)); float l=dot(gSC,vec3(0.299,0.587,0.114));
+    gSC=clamp(mix(vec3(l),gSC,1.0+uEdge*1.5*e)*(1.0-0.2*uEdge*e),0.0,1.0); a=min(1.0,a*(1.0+0.7*uEdge*e)); }
+  /* thin pigment (glaze): the stroke is a layer of pigment as thick as its coverage. Each channel lets light through like T=colour^thickness, so a thin
+     layer stays bright and keeps its hue, the paper shows through and what lies under it stays visible; where the layer is full it is the plain colour */
+  if(uStroke==1&&uGlaze>0.0&&a>0.0&&uChanMode!=1&&uLockAlpha!=1){ vec3 T=pow(max(gSC,vec3(0.02)),vec3(a*uPig)); float As=clamp(1.0-min(min(T.r,T.g),T.b),0.0,1.0);
+    vec3 Cs=As>1e-4?clamp((T-(1.0-As))/As,0.0,1.0):gSC; gSC=mix(gSC,Cs,uGlaze); a=mix(a,As,uGlaze); }
   if(uStroke>=3){ if(L.a<=1e-6) return L; vec3 r=tonal(clamp(L.rgb/L.a,0.0,1.0),a,uStroke==3);
     if(uChanMode==1) return chanMix(L,vec4(r,L.a),1.0); return vec4(r*L.a,L.a); }
   if(uChanMode==1&&uStroke!=0){ vec4 t=uStroke==1?vec4(gSC,dot(gSC,vec3(0.299,0.587,0.114))):vec4(0.0); return chanMix(L,t,a); }
-  if(uStroke==1){ if(uLockAlpha==1) return vec4(mix(L.rgb,gSC*L.a,a),L.a); return vec4(gSC*a,a)+L*(1.0-a); }
+  if(uStroke==1){ if(uLockAlpha==1) return vec4(mix(L.rgb,gSC*L.a,a),L.a);
+    /* wet paint: the new colour mixes with the paint it goes over like pigments, even where the stroke is solid */
+    if(uWet>0.0&&L.a>1e-4&&a>0.0){ vec3 Lc=L.rgb/L.a; float na=a+L.a*(1.0-a); float kn=L.a*(1.0-a)/max(na,1e-5); float k=kn+(1.0-kn)*0.4*uWet*L.a;
+      vec3 nc=(gSC*a+Lc*L.a*(1.0-a))/max(na,1e-5); vec3 mc=pgMix(gSC,Lc,k); return vec4(mix(nc,mc,min(1.0,uWet*3.0))*na,na); }
+    return vec4(gSC*a,a)+L*(1.0-a); }
   if(uStroke==2){ if(uLockAlpha==1) return L; return L*(1.0-a); }
   return L; }
 `;
@@ -67,13 +91,17 @@ const FS_STAMP=CH_BRUSH+`uniform float uAlpha; uniform int uTint; uniform vec3 u
 /* colour-jitter strokes stamp each dab twice: uTint 2 first gives pixels nothing has touched yet the dab's colour
    (so soft edges keep it), then uTint 1 lays the dab over what is there */
 const FS_SMUDGE=CH_BRUSH+`
-uniform sampler2D uSrc; uniform vec2 uDelta; uniform float uAlpha; uniform float uStrength; uniform float uCharge; uniform vec3 uColor; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan;
+uniform sampler2D uSrc; uniform vec2 uDelta; uniform float uAlpha; uniform float uStrength; uniform float uCharge; uniform vec3 uColor; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan; uniform float uPaintMix; uniform int uNormalMap;
 uniform sampler2D uSelTex; uniform int uUseSel;
+${PIGMENT_MIX}
 void main(){ vec2 size=vec2(textureSize(uSrc,0)); vec2 uv=gl_FragCoord.xy/size;
   vec4 dst=texture(uSrc,uv); vec4 pulled=texture(uSrc,uv-uDelta/size);
   float m=brushMask(gl_FragCoord.xy)*uAlpha; if(uUseSel==1) m*=texelFetch(uSelTex,ivec2(gl_FragCoord.xy),0).r;
   vec4 paint=mix(pulled,vec4(uColor,1.0),uCharge);
-  vec4 r=mix(dst,paint,clamp(m*uStrength,0.0,1.0));
+  float tm=clamp(m*uStrength,0.0,1.0); vec4 r=mix(dst,paint,tm);
+  if(uPaintMix>0.0&&uNormalMap==0&&uChanMode!=1&&dst.a>1e-4&&paint.a>1e-4){ vec3 cd=dst.rgb/dst.a,cp=paint.rgb/paint.a; float wp=paint.a*tm,wd=dst.a*(1.0-tm); float k=wp/max(wp+wd,1e-5);
+    vec3 pm=pgMix(cd,cp,k); vec3 lc=r.rgb/max(r.a,1e-5); r=vec4(mix(lc,pm,uPaintMix*clamp(tm*8.0,0.0,1.0))*r.a,r.a); }
+  if(uNormalMap==1&&r.a>1e-6){ vec3 n=r.rgb/r.a*2.0-1.0; float l=length(n); n=l>1e-4?n/l:vec3(0.0,0.0,1.0); r=vec4((n*0.5+0.5)*r.a,r.a); } /* normals stay unit length */
   if(uChanMode==1){ vec3 oc=dst.a>1e-6?dst.rgb/dst.a:vec3(0.0),rc=r.a>1e-6?r.rgb/r.a:vec3(0.0); float na=mix(dst.a,r.a,uChan.a); r=vec4(mix(oc,rc,uChan.rgb)*na,na); }
   if(uLockAlpha==1){ vec3 c=r.a>1e-6?r.rgb/r.a:vec3(0.0); r=vec4(c*dst.a,dst.a); }
   o=r; }`;

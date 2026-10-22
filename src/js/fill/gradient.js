@@ -69,11 +69,11 @@ function gradHit(sx,sy){const L=activeGrad();if(!L)return null;const h=gradHandl
   if(t>0&&t<1&&Math.hypot(sx-A[0]-vx*t,sy-A[1]-vy*t)<6)return {type:'line',t,L};return null;}
 function gradHover(e){const [sx,sy]=stageXY(e),h=gradHit(sx,sy);cv.style.cursor=h?(h.type==='line'?'copy':'grab'):'';}
 function snapAngle(a,b,e){if(!e.shiftKey)return b;const dx=b[0]-a[0],dy=b[1]-a[1],ang=Math.round(Math.atan2(dy,dx)/(Math.PI/4))*(Math.PI/4),d=Math.hypot(dx,dy);return [a[0]+Math.cos(ang)*d,a[1]+Math.sin(ang)*d];}
-function gradPointerDown(e,ix,iy){const [sx,sy]=stageXY(e),hit=gradHit(sx,sy);
+function gradPointerDown(e,ix,iy){if(typeof npSync==='function')npSync();const [sx,sy]=stageXY(e),hit=gradHit(sx,sy);
   if(hit){gradBegin(hit.L);ptr={mode:'grad',id:e.pointerId,hit,m0:[ix,iy],moved:false,g0:cloneGrad(hit.L.grad)};return;}
   const A=activeGrad();
   if(A){gradBegin(A);ptr={mode:'grad',id:e.pointerId,hit:{type:'redraw',L:A},m0:[ix,iy],moved:false,g0:cloneGrad(A.grad)};return;}
-  if(ui.gradLive){/* a new live gradient layer, shown while dragging; one undo step when done */
+  if(ui.gradLive&&!(typeof npSlopeOn==='function'&&npSlopeOn())){/* a new live gradient layer, shown while dragging; one undo step when done */
     const L=newLayerObj('Gradient');L.grad={def:cloneGrad(ui.grad),a:[ix,iy],b:[ix+1,iy]};const [p,i]=insertPoint();insertNode(L,p,i);
     if(sel.active&&!sel.quick){L.mask=makeMask(1);run(P.loadsel,L.mask.target,{uSrc:sel.t.tex,uWhat:{int:1},uInv:false});}
     const prev=doc.active,prevSel=[...doc.sel];selectOnly(L);
@@ -82,7 +82,7 @@ function gradPointerDown(e,ix,iy){const [sx,sy]=stageXY(e),hit=gradHit(sx,sy);
   preview={L:et.node,isMask:et.isMask,et};ptr={mode:'grad',id:e.pointerId,hit:{type:'classic',et},m0:[ix,iy],moved:false,a:[ix,iy],b:[ix,iy]};}
 function gradPointerMove(e,ix,iy){const p=ptr,h=p.hit;if(!p.moved&&Math.hypot(ix-p.m0[0],iy-p.m0[1])*view.zoom<3)return;p.moved=true;
   if(h.type==='classic'){p.b=snapAngle(p.a,[ix,iy],e);const et=h.et;
-    drawGradient(previewT,{def:ui.grad,a:p.a,b:p.b},{base:et.target,opacity:ui.gradOpacity,sel:selOn(et),gray:et.isMask||!!et.L.quick});chanLimit(et);requestRender(true);drawXfOverlay();return;}
+    drawGradient(previewT,{def:(typeof npSlopeOn==='function'&&npSlopeOn()?npSlopeDef():ui.grad),a:p.a,b:p.b},{base:et.target,opacity:ui.gradOpacity,sel:selOn(et),gray:et.isMask||!!et.L.quick});chanLimit(et);requestRender(true);drawXfOverlay();return;}
   const L=h.L,g=L.grad;
   if(h.type==='new'||h.type==='redraw'){g.a=p.m0.slice();g.b=snapAngle(g.a,[ix,iy],e);}
   else if(h.type==='a'){g.a=[p.g0.a[0]+ix-p.m0[0],p.g0.a[1]+iy-p.m0[1]];if(e.shiftKey)g.a=snapAngle(g.b,g.a,e);}
