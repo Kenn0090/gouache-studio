@@ -236,8 +236,9 @@ function buildBrushPanel(){
   box.append(S('bSpace','Spacing','spacing',.01,1.5,.01,pct).el,S('bGrain','Grain','grain',0,1,.01,pct).el,S('bSmooth','Smoothing','smoothing',0,1,.01,pct).el,S('bLazy','Lazy mouse','lazy',0,200,1,v=>v?v+' px':'off').el);
   if(ui.tool==='brush')box.append(S('bEndInk','Ink bleed','endInk',0,.5,.01,pct).el);
   box.append(el('div',{class:'sub',text:'Pen pressure'}));
-  box.append(el('div',{class:'chips'},C('bPS','Size','pSize',true),C('bPO','Opacity','pOpacity'),sm?null:C('bBU','Build-up','buildup')));
+  box.append(el('div',{class:'chips'},C('bPS','Size','pSize',true),C('bPO','Opacity','pOpacity'),sm?null:C('bPF','Flow','pFlow'),sm?null:C('bBU','Build-up','buildup')));
   if(brush.pSize)box.append(S('bMin','Min size','minSize',0,1,.01,pct).el);
+  if(typeof pcGraph==='function')box.append(pcGraph());
   box.append(S('bCurve','Curve','curve',-1,1,.05,v=>v>0.02?'soft':v<-0.02?'firm':'linear').el);
   const det=el('details',{class:'more'});det.open=dynOpen;det.addEventListener('toggle',()=>{dynOpen=det.open;});
   det.append(el('summary',{text:'Tip shape & dynamics'}),el('div',{},

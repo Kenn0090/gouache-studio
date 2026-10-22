@@ -54,6 +54,7 @@ function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren
   X('sizeJitter','Size jitter',0,1,.01,pct,'bSJ');X('angleJitter','Angle jitter',0,1,.01,pct,'bAJ');
   bar.append(el('span',{class:'optsep'}));
   bar.append(tg('Pressure: opacity',brush.pOpacity,()=>{brush.pOpacity=!brush.pOpacity;brushEdited();buildBrushPanel();},'Pen pressure changes the opacity'));
+  if(!sm)bar.append(tg('Pressure: flow',brush.pFlow,()=>{brush.pFlow=!brush.pFlow;brushEdited();buildBrushPanel();},'Pen pressure changes how fast paint builds up (flow)'));
   if(!sm)bar.append(tg('Build-up',brush.buildup,()=>{brush.buildup=!brush.buildup;brushEdited();buildBrushPanel();},'Paint builds up while you hold the pen still'));
   if(brush.pSize)X('minSize','Min size',0,1,.01,pct,'bMin');}
 function optMore(v){if(v===undefined){try{return localStorage.getItem('gs.optMore')==='1';}catch(e){return false;}}try{localStorage.setItem('gs.optMore',v?'1':'0');}catch(e){}return v;}
