@@ -90,6 +90,14 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const prof=await p.evaluate(()=>{const L=__gs.doc.active,d=__gs.readRGBA8(__gs.mapT(L,'base')),W=__gs.doc.w;const col=y=>{const r=[];for(let x=60;x<240;x++)r.push(d[(y*W+x)*4+3]);return r;};const mid=col(150),start=col(46);let tr=0;for(let i=1;i<mid.length;i++)if(Math.abs(mid[i]-mid[i-1])>40)tr++;const wid=a=>a.filter(v=>v>30).length;return {tr,wm:wid(mid),ws:wid(start)};});
  ok(prof.tr>5,'a stroke is made of many separate hairs ('+prof.tr+' changes across it)');
  ok(prof.ws>0&&prof.ws<prof.wm*1.4+8,'the first dab already points along the stroke (width '+prof.ws+' at the start, '+prof.wm+' in the middle)');
+
+ /* ---- 7. how much pigment ---- */
+ const pig=async(v)=>{await p.evaluate(()=>{__gs.newDoc(300,200,8,[1,1,1],'pg',false);});await p.waitForTimeout(300);await p.keyboard.press('Control+Shift+n');await p.waitForTimeout(200);
+  await p.evaluate(v=>{__gs.setTool('brush');Object.assign(__gs.brush,{size:60,hardness:1,opacity:.5,flow:1,spacing:.05,smoothing:0,grain:0,tip:null,pSize:false,pOpacity:false,buildup:false,edgeSat:0,glaze:1,pigment:v,wet:0,pickup:0,dual:null,followDir:false});__gs.ui.fg=[.1,.3,.7];},v);
+  await drag(40,100,260,100);return flat();};
+ const q1=await pig(.4),q2=await pig(1),q3=await pig(2.5);
+ ok(q1.lum>q2.lum&&q2.lum>q3.lum+.02,'more pigment makes the same stroke deeper ('+q1.lum.toFixed(2)+', '+q2.lum.toFixed(2)+', '+q3.lum.toFixed(2)+')');
+ ok(await p.evaluate(()=>{__gs.showPanel('tool');return !!document.getElementById('bPig');}),'Pigment amount is in the brush settings');
  ok(!errs.length,'no errors '+errs.join('|'));
  await b.close();console.log(fails?'FAILS '+fails:'ALL PASS');process.exit(fails?1:0);
 })();

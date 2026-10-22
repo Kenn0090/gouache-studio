@@ -39,7 +39,7 @@ float brushMask(vec2 pix){
   return m; }
 `;
 const CH_STROKE=`
-uniform int uStroke; uniform vec3 uStrokeColor; uniform int uStrokeTint; vec3 gSC; uniform float uStrokeOpacity; uniform float uEdge; uniform float uGlaze; uniform float uWet;
+uniform int uStroke; uniform vec3 uStrokeColor; uniform int uStrokeTint; vec3 gSC; uniform float uStrokeOpacity; uniform float uEdge; uniform float uGlaze; uniform float uPig; uniform float uWet;
 /* paint-like mixing (Kubelka-Munk, one constant per channel): blue and yellow give green */
 vec3 kmK(vec3 c){ vec3 R=clamp(pow(max(c,vec3(0.0)),vec3(2.2)),vec3(0.004),vec3(0.996)); return (1.0-R)*(1.0-R)/(2.0*R); }
 vec3 kmB(vec3 k){ vec3 R=1.0+k-sqrt(k*k+2.0*k); return pow(clamp(R,vec3(0.0),vec3(1.0)),vec3(1.0/2.2)); } uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan;
@@ -64,7 +64,7 @@ vec4 applyStroke(vec4 L, float cov){
     gSC=clamp(mix(vec3(l),gSC,1.0+uEdge*1.5*e)*(1.0-0.2*uEdge*e),0.0,1.0); a=min(1.0,a*(1.0+0.7*uEdge*e)); }
   /* thin pigment (glaze): the stroke is a layer of pigment as thick as its coverage. Each channel lets light through like T=colour^thickness, so a thin
      layer stays bright and keeps its hue, the paper shows through and what lies under it stays visible; where the layer is full it is the plain colour */
-  if(uStroke==1&&uGlaze>0.0&&a>0.0&&uChanMode!=1&&uLockAlpha!=1){ vec3 T=pow(max(gSC,vec3(0.02)),vec3(a)); float As=clamp(1.0-min(min(T.r,T.g),T.b),0.0,1.0);
+  if(uStroke==1&&uGlaze>0.0&&a>0.0&&uChanMode!=1&&uLockAlpha!=1){ vec3 T=pow(max(gSC,vec3(0.02)),vec3(a*uPig)); float As=clamp(1.0-min(min(T.r,T.g),T.b),0.0,1.0);
     vec3 Cs=As>1e-4?clamp((T-(1.0-As))/As,0.0,1.0):gSC; gSC=mix(gSC,Cs,uGlaze); a=mix(a,As,uGlaze); }
   if(uStroke>=3){ if(L.a<=1e-6) return L; vec3 r=tonal(clamp(L.rgb/L.a,0.0,1.0),a,uStroke==3);
     if(uChanMode==1) return chanMix(L,vec4(r,L.a),1.0); return vec4(r*L.a,L.a); }
