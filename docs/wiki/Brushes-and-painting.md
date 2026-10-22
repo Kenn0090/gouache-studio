@@ -73,6 +73,8 @@ The little stroke preview at the top of the brush settings now **stays at the to
 ## Paint mixing in the Brush (0.68)
 **Paint mixing** in the Brush settings makes the new colour mix with the paint it goes over, like wet pigment, even where the stroke is solid: blue over yellow turns a dark green and blue over red a deep plum, instead of just covering it. 0 is the plain, covering brush (the default); the oil, gouache and palette-knife brushes have it on. It mixes with the paint on the same layer, on the flat canvas.
 
+**Mix colours like** chooses how colours mix: **Pigment** (the default, blue and yellow make green) or **Lab**, a perceptual mix that stays more neutral and never goes dark. It applies to Paint mixing, Pick up paint and the Blend brush.
+
 **Pick up paint** goes further: the brush carries colour along like a loaded brush on wet paint, so dragging through another colour smears it into your stroke. It works like the Blend brush with your colour loaded: a low Opacity gives soft, see-through mixes; a higher Pick up paint drags more of what is under the brush. Oil filbert, Gouache filbert and Palette knife have some. One undo takes back the whole stroke. It doesn't combine with Thin pigment or Edge colour, and works on the flat canvas.
 
 ## Bristle brushes (0.68)

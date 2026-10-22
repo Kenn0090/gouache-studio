@@ -41,13 +41,14 @@ float brushMask(vec2 pix){
 /* paint-like mixing: the hue comes from mixing like pigments (Kubelka-Munk, one constant per channel: blue and yellow give green), but the lightness is kept
    from the two colours (OKLab), so two bright colours never mix to black */
 const PIGMENT_MIX=`
+uniform float uMixLab; /* 1: mix in perceptual Lab (OKLab) instead of like pigments */
 vec3 pgK(vec3 c){ vec3 R=clamp(pow(max(c,vec3(0.0)),vec3(2.2)),vec3(0.004),vec3(0.996)); return (1.0-R)*(1.0-R)/(2.0*R); }
 vec3 pgB(vec3 k){ vec3 R=1.0+k-sqrt(k*k+2.0*k); return pow(clamp(R,vec3(0.0),vec3(1.0)),vec3(1.0/2.2)); }
 vec3 pgOK(vec3 c){ vec3 l=pow(max(c,vec3(0.0)),vec3(2.2)); vec3 q=pow(vec3(0.4122214708*l.r+0.5363325363*l.g+0.0514459929*l.b,0.2119034982*l.r+0.6806995451*l.g+0.1073969566*l.b,0.0883024619*l.r+0.2817188376*l.g+0.6299787005*l.b),vec3(1.0/3.0));
   return vec3(0.2104542553*q.x+0.7936177850*q.y-0.0040720468*q.z,1.9779984951*q.x-2.4285922050*q.y+0.4505937099*q.z,0.0259040371*q.x+0.7827717662*q.y-0.8086757660*q.z); }
 vec3 pgRGB(vec3 o){ vec3 q=vec3(o.x+0.3963377774*o.y+0.2158037573*o.z,o.x-0.1055613458*o.y-0.0638541728*o.z,o.x-0.0894841775*o.y-1.2914855480*o.z); vec3 l=q*q*q;
   vec3 c=vec3(4.0767416621*l.x-3.3077115913*l.y+0.2309699292*l.z,-1.2684380046*l.x+2.6097574011*l.y-0.3413193965*l.z,-0.0041960863*l.x-0.7034186147*l.y+1.7076147010*l.z); return pow(clamp(c,vec3(0.0),vec3(1.0)),vec3(1.0/2.2)); }
-vec3 pgMix(vec3 c1,vec3 c2,float k){ vec3 km=pgB(mix(pgK(c1),pgK(c2),k)); vec3 o1=pgOK(c1),o2=pgOK(c2),ok=pgOK(km); float L=mix(ok.x,mix(o1.x,o2.x,k),0.75); return pgRGB(vec3(L,ok.y,ok.z)); }
+vec3 pgMix(vec3 c1,vec3 c2,float k){ vec3 km=pgB(mix(pgK(c1),pgK(c2),k)); vec3 o1=pgOK(c1),o2=pgOK(c2),ok=pgOK(km); float L=mix(ok.x,mix(o1.x,o2.x,k),0.75); vec3 pig=pgRGB(vec3(L,ok.y,ok.z)); return uMixLab>0.0?mix(pig,pgRGB(mix(o1,o2,k)),uMixLab):pig; }
 `;
 const CH_STROKE=`
 uniform int uStroke; uniform vec3 uStrokeColor; uniform int uStrokeTint; vec3 gSC; uniform float uStrokeOpacity; uniform float uEdge; uniform float uGlaze; uniform float uPig; uniform float uWet;

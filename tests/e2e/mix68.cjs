@@ -106,6 +106,17 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{Object.assign(__gs.brush,{hardness:.2,wet:.8,edgeSat:.6,opacity:.8});__gs.ui.fg=[.85,.15,.2];});await drag(30,100,200,100);
  const dark=await p.evaluate(()=>{const L=__gs.doc.active,d=__gs.readRGBA8(__gs.mapT(L,'base')),W=__gs.doc.w;let mn=9,n=0;for(let y=60;y<140;y++)for(let x=40;x<170;x++){const i=(y*W+x)*4,a=d[i+3];if(a<20)continue;const r=(d[i]+255-a)/255,g=(d[i+1]+255-a)/255,b=(d[i+2]+255-a)/255;const l=.299*r+.587*g+.114*b;n++;if(l<mn)mn=l;}return {mn,n};});
  ok(dark.n>1000&&dark.mn>.17,'red over blue has no black edges (darkest pixel '+dark.mn.toFixed(2)+')');
+
+ /* ---- 9. the Lab mixing option ---- */
+ const lab=async(on)=>{await p.evaluate(()=>{__gs.newDoc(300,200,8,[1,1,1],'lb',false);});await p.waitForTimeout(300);await p.keyboard.press('Control+Shift+n');await p.waitForTimeout(200);
+  await p.evaluate(()=>{__gs.setTool('brush');Object.assign(__gs.brush,{size:60,hardness:1,opacity:1,flow:1,spacing:.05,smoothing:0,grain:0,tip:null,pSize:false,pOpacity:false,buildup:false,edgeSat:0,glaze:0,wet:0,pickup:0,dual:null,followDir:false,mixLab:false});__gs.ui.fg=[.1,.2,.9];});
+  await drag(40,100,260,100);await p.evaluate(on=>{__gs.brush.wet=1;__gs.brush.mixLab=on;__gs.ui.fg=[.95,.9,.1];},on);await drag(40,100,260,100);
+  return p.evaluate(()=>{const L=__gs.doc.active,d=__gs.readRGBA8(__gs.mapT(L,'base')),W=__gs.doc.w,i=(100*W+150)*4;return [d[i]/255,d[i+1]/255,d[i+2]/255];});};
+ const pg=await lab(false),lb=await lab(true);
+ ok(pg[1]-Math.max(pg[0],pg[2])>.05,'pigment mixing turns blue and yellow green ('+pg.map(v=>v.toFixed(2))+')');
+ ok(Math.abs(lb[1]-Math.max(lb[0],lb[2]))<.12&&Math.abs(lb[0]-pg[0])>.05,'Lab mixing gives its own, more neutral blend ('+lb.map(v=>v.toFixed(2))+')');
+ await p.evaluate(()=>__gs.showPanel('tool'));await p.waitForTimeout(300);
+ ok(await p.evaluate(()=>[...document.querySelectorAll('#brushBody button')].some(b=>b.textContent==='Lab')),'there is a Pigment / Lab choice in the brush settings');
  ok(!errs.length,'no errors '+errs.join('|'));
  await b.close();console.log(fails?'FAILS '+fails:'ALL PASS');process.exit(fails?1:0);
 })();
