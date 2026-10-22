@@ -1,3 +1,11 @@
+## 0.67.0
+
+- **Right-click brush picker.** Right-click on the canvas or on the 3D model (without dragging) opens a small picker next to the cursor with **Size**, **Opacity** and **Hardness** sliders, your brush collections with a search box, and textures you can use as the brush tip. Hold the button and drag as before and no picker opens. Turn it off in Preferences.
+- **Tear-off menus.** Every menu starts with a dotted **tear off** row. Click it and the menu stays open in a small window you can move; its items and fly-outs work as usual. Drag one torn-off menu's grip onto another to **fuse** them into one column, or drag it out to make its own window again. Click a name to fold it, **×** to close it. They come back next time you start the app; **Window › Close all torn-off menus** clears them.
+- **The brush preview stays in view.** In the brush settings, the stroke preview now stays at the top while the settings scroll under it. **⧉** pops it out into a window you can move and resize over the canvas, and **↗** in that window sends it to a window of its own (second monitor).
+- **Exact window scale.** **View › Window scale › Exact percentage…** and a number box in Preferences › Look take any value from 50% to 300%.
+- **Pen and tablet test** now also shows older mouse, wheel and key events, to find out what a tablet really sends.
+
 ## 0.66.0
 
 - **Dual Brush.** In the brush settings, tick **Dual brush** to let a second brush tip shape the first, like Photoshop's Dual Brush. Pick the second tip (built in, drawing and painting tips, or your own) and set its **Size, Spacing, Scatter, Count and Amount**. **Multiply** shows the brush only where the second tip is; **Knock out** cuts holes in it. The pattern stays fixed on the canvas, or tick **Random for every dab** for a stippled look. It saves with your brushes, and **Dual sponge wash** is a ready-made one.

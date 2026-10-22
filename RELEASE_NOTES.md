@@ -1,3 +1,11 @@
+# Gouache Studio 0.67.0
+
+- Right-click on the canvas or the 3D model opens a brush picker: size, opacity and hardness sliders, brush collections with search, and textures as brush tips.
+- Tear-off menus: click the dotted row at the top of any menu to keep it open in a window you can move; drag them together to fuse them into one column.
+- The brush preview stays in view while you edit a brush, and can pop out into its own window.
+- Window scale accepts an exact percentage (50 to 300).
+- Help › Pen and tablet test shows more of what a tablet sends.
+
 # Gouache Studio 0.66.0
 
 - Dual Brush: a second brush tip shapes the first (Multiply or Knock out), with its own size, spacing, scatter and count. Ready-made Dual sponge wash brush.

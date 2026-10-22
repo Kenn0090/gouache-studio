@@ -64,6 +64,12 @@ Find **Gasa Pen** in **Brushes › Basic media**. This original preset combines 
 
 Brush libraries are stored on your computer and come back each time you open the app.
 
+## The brush preview stays in view and pops out (0.67)
+The little stroke preview at the top of the brush settings now **stays at the top** while the settings scroll under it, so you see every change as you make it. The **⧉** button pops it out into a window you can move (drag the title bar) and resize (drag the corner) over the canvas; the **↗** button in that window moves it into a window of its own for a second monitor. All previews redraw together.
+
+## Right-click brush picker (0.67)
+**Right-click** (a click, not a drag) on the canvas, or on the model in 3D Paint, with the Brush, Eraser, Blend, Dodge or Burn tool opens a small window at the pointer with **Size**, **Hardness** and **Opacity** sliders (Strength for Blend, Exposure for Dodge and Burn) and two tabs. **Brushes** shows the whole brush library in its collections, with Recent brushes and a search box: click a brush to use it. **Textures** lists the Textures library: click one to use it as the **brush tip**. Esc or a click outside closes it. Right-drag still moves the view in 3D, and Ctrl+right-click keeps its Substance-style controls. Turn it off in **Preferences › Painting**.
+
 ## Dual brush (0.65.1)
 In the brush settings, **Dual brush** (tick *Use a second brush tip as a mask*) lets a second tip shape the first, like Photoshop's Dual Brush. Pick the second **Tip** (built-in, drawing and painting tips, or your own), then its **Size**, **Spacing**, **Scatter**, **Count** and **Amount**. **Multiply** shows the brush only where the second tip is; **Knock out** cuts holes in it. The pattern sits fixed on the canvas for a steady texture; **Random for every dab** gives a stippled look. It saves with your brushes, and the *Dual sponge wash* brush is ready made.
 

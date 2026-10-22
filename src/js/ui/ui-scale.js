@@ -12,5 +12,11 @@ async function uiScaleSet(f,quiet){f=clamp(f,.5,3);prefs.uiScale=Math.abs(f-1)<.
 function uiScaleStep(d){const cur=+prefs.uiScale||1;let i=UI_SCALES.findIndex(v=>v>=cur-.001);if(i<0)i=UI_SCALES.length-1;const j=clamp(i+d,0,UI_SCALES.length-1);uiScaleSet(UI_SCALES[j]);}
 for(const p of [75,90,100,110,125,150,175,200])actions['uiScale'+p]=()=>uiScaleSet(p/100);
 actions.uiScaleUp=()=>uiScaleStep(1);actions.uiScaleDown=()=>uiScaleStep(-1);
-MENUS.View.push('-',['Window scale','sub',[['Larger','uiScaleUp'],['Smaller','uiScaleDown'],'-',...[75,90,100,110,125,150,175,200].map(p=>[p+'%','uiScale'+p])]]);
+/* an exact percentage, 50 to 300 */
+function dlgUiScale(){const cur=Math.round((+prefs.uiScale||1)*100),inp=el('input',{type:'number',id:'uiScalePct',class:'num',min:'50',max:'300',step:'1',value:String(cur),'aria-label':'Window scale in percent'});
+  const apply=()=>{const v=clamp(Math.round(+inp.value||100),50,300);inp.value=String(v);uiScaleSet(v/100,true);};
+  inp.addEventListener('change',apply);inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();apply();}});
+  openDialog({title:'Window scale',body:el('div',{class:'dlg-grid'},el('div',{class:'frow'},el('label',{for:'uiScalePct',text:'Scale'}),inp,el('span',{class:'dim',text:'%'})),el('p',{class:'note',text:platform.isDesktop?'Type any value from 50 to 300 and press Enter. 100 is the normal size.':'In a browser use the browser’s zoom (Ctrl and + or −).'})),okLabel:'Apply',onOk(){apply();}});setTimeout(()=>{inp.focus();inp.select();},0);}
+actions.uiScaleCustom=dlgUiScale;
+MENUS.View.push('-',['Window scale','sub',[['Larger','uiScaleUp'],['Smaller','uiScaleDown'],'-',...[75,90,100,110,125,150,175,200].map(p=>[p+'%','uiScale'+p]),'-',['Exact percentage…','uiScaleCustom']]]);
 if(prefs.uiScale)setTimeout(uiScaleApply,300);

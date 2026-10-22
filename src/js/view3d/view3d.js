@@ -466,7 +466,7 @@ function v3NavOf(hit,e){const b=e.button,paint=v3CanPaint();
     if(paint)return v3PickAt(hit,e)?'paint':'turn';return e.shiftKey?'pan':'turn';}
   if(e.altKey)return b===1?'pan':b===2?'zoom':'turn';
   if(b===1||b===2)return 'pan';if(paint)return 'paint';return e.shiftKey?'pan':'turn';}
-function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault());
+function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault());if(typeof bpBind==='function')bpBind(hit);
   hit.addEventListener('pointerdown',e=>{if(v3.mstroke&&!stroke)v3.mstroke=null;/* a stroke that never started must not block turning */
     if(v3.mstroke&&v3.mstroke.id!==e.pointerId)meshUp();/* one whose release was missed is finished now */v3.drag=null;
     e.preventDefault();hit.tabIndex=0;hit.focus({preventScroll:true});/* release toolbar/dropdown keyboard focus when returning to the viewport */

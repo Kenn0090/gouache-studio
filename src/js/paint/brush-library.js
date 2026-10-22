@@ -265,28 +265,32 @@ function setTool(t,keepPreset){if(t==='path'&&ui.mode!=='p3d'){toast('Surface Pa
 document.querySelectorAll('.tool').forEach(b=>b.addEventListener('click',()=>setTool(b.dataset.tool)));
 
 /* live brush preview: runs the real brush engine on a small offscreen canvas */
-const prevC=$('#brushPrev');let prevT=null,prevStroke=null,prevBefore=null,prevScratch=null,prevQueued=false;
+const prevC=$('#brushPrev');const prevFloats=[],prevCache=new WeakMap(),prevRO=new ResizeObserver(()=>schedulePreview());let prevQueued=false;
 function schedulePreview(){if(prevQueued)return;prevQueued=true;requestAnimationFrame(()=>{prevQueued=false;try{drawBrushPreview();}catch(e){console.error(e);}});}
 function drawBrushPreview(){
   if(stroke){schedulePreview();return;}
-  const d=Math.min(window.devicePixelRatio||1,2),W=Math.round(prevC.clientWidth*d),H=Math.round(prevC.clientHeight*d);if(W<20||H<20)return;
-  if(!prevT||prevT.w!==W||prevT.h!==H){[prevT,prevStroke,prevBefore,prevScratch].forEach(disposeTarget);prevT=makeTarget(W,H,8,false);prevStroke=makeTarget(W,H,8,false);prevBefore=makeTarget(W,H,8,false);prevScratch=makeTarget(W,H,8,false);prevC.width=W;prevC.height=H;}
+  drawPreviewOn(prevC,$('#prevNote'));
+  for(let i=prevFloats.length-1;i>=0;i--){const f=prevFloats[i];if(!f.canvas.isConnected||(f.win&&f.win.closed)){prevRO.unobserve(f.canvas);const T=prevCache.get(f.canvas);if(T)[T.t,T.s,T.b,T.x].forEach(disposeTarget);prevFloats.splice(i,1);continue;}drawPreviewOn(f.canvas,f.note);}}
+/* draws the live stroke preview on one canvas (the panel's, the floating one, or the one in its own window) */
+function drawPreviewOn(cv,note){
+  const d=Math.min(window.devicePixelRatio||1,2),W=Math.round(cv.clientWidth*d),H=Math.round(cv.clientHeight*d);if(W<20||H<20)return;
+  let T=prevCache.get(cv);if(!T||T.t.w!==W||T.t.h!==H){if(T)[T.t,T.s,T.b,T.x].forEach(disposeTarget);T={t:makeTarget(W,H,8,false),s:makeTarget(W,H,8,false),b:makeTarget(W,H,8,false),x:makeTarget(W,H,8,false)};prevCache.set(cv,T);cv.width=W;cv.height=H;}
   const tool=ui.tool==='erase'||ui.tool==='smudge'?ui.tool:'brush',scale=Math.min(d,(H*.62)/Math.max(1,brush.size));
   const saved={w:doc.w,h:doc.h,wrap:doc.wrap,strokeT,beforeT,scratchT};
-  doc.w=W;doc.h=H;doc.wrap=false;strokeT=prevStroke;beforeT=prevBefore;scratchT=prevScratch;
+  doc.w=W;doc.h=H;doc.wrap=false;strokeT=T.s;beforeT=T.b;scratchT=T.x;
   try{
-    if(tool==='brush')clearTarget(prevT);
-    else if(tool==='erase')clearTarget(prevT,[ui.fg[0],ui.fg[1],ui.fg[2],1]);
-    else{bindTarget(prevT);gl.enable(gl.SCISSOR_TEST);const n=6;for(let i=0;i<n;i++){const c=i%2?ui.bg:ui.fg,x0=Math.round(i*W/n),x1=Math.round((i+1)*W/n);gl.scissor(x0,0,x1-x0,H);gl.clearColor(c[0],c[1],c[2],1);gl.clear(gl.COLOR_BUFFER_BIT);}gl.disable(gl.SCISSOR_TEST);}
+    if(tool==='brush')clearTarget(T.t);
+    else if(tool==='erase')clearTarget(T.t,[ui.fg[0],ui.fg[1],ui.fg[2],1]);
+    else{bindTarget(T.t);gl.enable(gl.SCISSOR_TEST);const n=6;for(let i=0;i<n;i++){const c=i%2?ui.bg:ui.fg,x0=Math.round(i*W/n),x1=Math.round((i+1)*W/n);gl.scissor(x0,0,x1-x0,H);gl.clearColor(c[0],c[1],c[2],1);gl.clear(gl.COLOR_BUFFER_BIT);}gl.disable(gl.SCISSOR_TEST);}
     const o=Object.assign({},brush,{tool,color:ui.fg.slice(),size:Math.max(1,brush.size*scale),smoothing:0});
-    const L={target:prevT,lockAlpha:false},pad=Math.min(W*.12,o.size*.7+6),N=90;
+    const L={target:T.t,lockAlpha:false},pad=Math.min(W*.12,o.size*.7+6),N=90;
     const pt=i=>{const t=i/N;return [pad+(W-2*pad)*t,H/2+Math.sin(t*Math.PI*2)*H*.2,Math.max(.04,Math.pow(Math.sin(t*Math.PI),.8))];};
     const p0=pt(0);beginStroke(L,p0[0],p0[1],p0[2],o);for(let i=1;i<=N;i++){const q=pt(i);addPoint(q[0],q[1],q[2]);}endStroke(false);
   }finally{Object.assign(doc,{w:saved.w,h:saved.h,wrap:saved.wrap});strokeT=saved.strokeT;beforeT=saved.beforeT;scratchT=saved.scratchT;}
-  const st=toStraight(readPremult(prevT),8),x=prevC.getContext('2d'),id=x.createImageData(W,H);id.data.set(st);x.putImageData(id,0,0);
-  $('#prevNote').textContent=scale<d*.995?'shown at '+Math.round(scale/d*100)+'%':'';
+  const st=toStraight(readPremult(T.t),8),x=cv.getContext('2d'),id=x.createImageData(W,H);id.data.set(st);x.putImageData(id,0,0);
+  if(note)note.textContent=scale<d*.995?'shown at '+Math.round(scale/d*100)+'%':'';
 }
-new ResizeObserver(()=>schedulePreview()).observe(prevC);
+prevRO.observe(prevC);
 
 /* brush library persistence (per browser, best effort) */
 const store={db:null,
