@@ -1,3 +1,13 @@
+# Gouache Studio 0.66.0
+
+- Dual Brush: a second brush tip shapes the first (Multiply or Knock out), with its own size, spacing, scatter and count. Ready-made Dual sponge wash brush.
+- The Watercolour glaze brush now shows its cursor outline.
+- Pen pressure can drive Flow on its own, and a pressure curve graph shapes the response.
+- Colour panel: Harmony swatches (complementary, triadic and more) and three-colour mixing.
+- Close tabs you don't use: every work tab (except 2D Paint) and panel tab has a ×; Window › Sections… and Panels… bring them back.
+- Window scale: make the whole window bigger or smaller (View menu, Preferences).
+- Skip back faces button in the 3D view's ⋯ menu.
+
 # Gouache Studio 0.65.0
 
 - 3D Paint: Smudge, Smear and Liquify now work on the model, on every map of the layer together, with one undo step per stroke.
