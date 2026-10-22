@@ -22,12 +22,14 @@ const tipOutlineCache=new Map();
 function tipOutline(tip,d){const n=clamp(Math.round(d/4)*4,8,512),key=tip.id+':'+n;let c=tipOutlineCache.get(key);if(c)return c;
   const a=tip.w/tip.h,W=a>=1?n:Math.max(2,Math.round(n*a)),H=a>=1?Math.max(2,Math.round(n/a)):n;
   c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');x.drawImage(tip.canvas,0,0,W,H);const A=x.getImageData(0,0,W,H).data,out=x.createImageData(W,H),O=out.data;
-  const on=(i,j)=>i>=0&&j>=0&&i<W&&j<H&&A[(j*W+i)*4+3]>=110;
-  for(let j=0;j<H;j++)for(let i=0;i<W;i++){if(!on(i,j)||(on(i-1,j)&&on(i+1,j)&&on(i,j-1)&&on(i,j+1)))continue;const p=(j*W+i)*4;O[p]=O[p+1]=O[p+2]=O[p+3]=255;}
-  x.putImageData(out,0,0);if(tipOutlineCache.size>32)tipOutlineCache.clear();tipOutlineCache.set(key,c);return c;}
-function tipCursor(elm,d){const t=brush.tip,on=!!(prefs.tipCursor!==false&&t&&t.canvas);elm.classList.toggle('tipcur',on);
+  /* (0.65.1) a soft or faint tip (the watercolour pool) never reaches half strength: draw its outline where it is half as strong as it gets */
+  let mx=0;for(let i=3;i<A.length;i+=4)if(A[i]>mx)mx=A[i];const thr=Math.max(6,Math.min(110,mx*.5));
+  const on=(i,j)=>i>=0&&j>=0&&i<W&&j<H&&A[(j*W+i)*4+3]>=thr;let any=false;
+  for(let j=0;j<H;j++)for(let i=0;i<W;i++){if(!on(i,j)||(on(i-1,j)&&on(i+1,j)&&on(i,j-1)&&on(i,j+1)))continue;const p=(j*W+i)*4;O[p]=O[p+1]=O[p+2]=O[p+3]=255;any=true;}
+  c._empty=!any;x.putImageData(out,0,0);if(tipOutlineCache.size>32)tipOutlineCache.clear();tipOutlineCache.set(key,c);return c;}
+function tipCursor(elm,d){const t=brush.tip;let src=null;const on=!!(prefs.tipCursor!==false&&t&&t.canvas&&(src=tipOutline(t,d))&&!src._empty);elm.classList.toggle('tipcur',on);
   if(!on){if(elm.firstChild)elm.replaceChildren();return;}
-  const src=tipOutline(t,d);let c=elm.firstChild;if(!c||c.tagName!=='CANVAS'){c=document.createElement('canvas');elm.replaceChildren(c);}
+  let c=elm.firstChild;if(!c||c.tagName!=='CANVAS'){c=document.createElement('canvas');elm.replaceChildren(c);}
   if(c._src!==src){c.width=src.width;c.height=src.height;c.getContext('2d').drawImage(src,0,0);c._src=src;}
   const a=t.w/t.h;c.style.width=(a>=1?d:d*a)+'px';c.style.height=(a>=1?d/a:d)+'px';
   c.style.transform='translate(-50%,-50%) rotate('+(brush.angle||0)+'deg) scale('+(brush.flipX?-1:1)+','+(brush.roundness||1)*(brush.flipY?-1:1)+')';}

@@ -64,6 +64,12 @@ Find **Gasa Pen** in **Brushes › Basic media**. This original preset combines 
 
 Brush libraries are stored on your computer and come back each time you open the app.
 
+## Dual brush (0.65.1)
+In the brush settings, **Dual brush** (tick *Use a second brush tip as a mask*) lets a second tip shape the first, like Photoshop's Dual Brush. Pick the second **Tip** (built-in, drawing and painting tips, or your own), then its **Size**, **Spacing**, **Scatter**, **Count** and **Amount**. **Multiply** shows the brush only where the second tip is; **Knock out** cuts holes in it. The pattern sits fixed on the canvas for a steady texture; **Random for every dab** gives a stippled look. It saves with your brushes, and the *Dual sponge wash* brush is ready made.
+
+## Pen pressure and the pressure curve (0.65.1)
+**Pen pressure** has four choices: **Size**, **Opacity** (light pressure paints fainter), **Flow** (light pressure builds paint up more slowly) and **Build-up**. The **Pressure curve** graph shows pressure across and strength up: drag the middle of the curve up for a softer pen or down for a firmer one, double-click for a straight line. The Curve slider under it is the same setting.
+
 ## Eraser (E)
 Uses the same settings as the brush. On a document with several maps, it can erase from other maps too; see *Also erase from* in the panel.
 
@@ -116,6 +122,9 @@ Lightens (Dodge) or darkens (Burn). **Shift+O** switches between them.
 - **Recent colours** remember what you've painted with.
 - **Eyedropper:** the Eyedropper tool (I), or hold **Alt** while painting.
 - **X** swaps the two colours; **D** resets them to black and white.
+
+### Harmony and three-colour mixing (0.65.1)
+Open **Harmony and three-colour mixing** under the Colour panel's shade strip. **Harmony** shows the colours that go with your colour for a scheme you pick (Complementary, Split complementary, Triadic, Tetradic, Analogous, Monochrome): click a swatch to paint with it, Shift+click to use it as the background colour. **Mix three colours** has three corner colours (click a corner swatch to set it to your colour) and a triangle: click or drag in it to mix them in OKLab.
 
 ## Symmetry and cages
 The brush panel's **Symmetry** buttons mirror your strokes left–right, top–bottom, both ways, or radially. To paint onto a slanted or curved part of the texture, lay a cage over it. See [Cage painting and symmetry](Cage-painting-and-symmetry.md).

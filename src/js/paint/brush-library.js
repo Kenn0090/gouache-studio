@@ -236,8 +236,9 @@ function buildBrushPanel(){
   box.append(S('bSpace','Spacing','spacing',.01,1.5,.01,pct).el,S('bGrain','Grain','grain',0,1,.01,pct).el,S('bSmooth','Smoothing','smoothing',0,1,.01,pct).el,S('bLazy','Lazy mouse','lazy',0,200,1,v=>v?v+' px':'off').el);
   if(ui.tool==='brush')box.append(S('bEndInk','Ink bleed','endInk',0,.5,.01,pct).el);
   box.append(el('div',{class:'sub',text:'Pen pressure'}));
-  box.append(el('div',{class:'chips'},C('bPS','Size','pSize',true),C('bPO','Opacity','pOpacity'),sm?null:C('bBU','Build-up','buildup')));
+  box.append(el('div',{class:'chips'},C('bPS','Size','pSize',true),C('bPO','Opacity','pOpacity'),sm?null:C('bPF','Flow','pFlow'),sm?null:C('bBU','Build-up','buildup')));
   if(brush.pSize)box.append(S('bMin','Min size','minSize',0,1,.01,pct).el);
+  if(typeof pcGraph==='function')box.append(pcGraph());
   box.append(S('bCurve','Curve','curve',-1,1,.05,v=>v>0.02?'soft':v<-0.02?'firm':'linear').el);
   const det=el('details',{class:'more'});det.open=dynOpen;det.addEventListener('toggle',()=>{dynOpen=det.open;});
   det.append(el('summary',{text:'Tip shape & dynamics'}),el('div',{},
@@ -254,7 +255,7 @@ function buildBrushPanel(){
     S('bVJ','Brightness','valJitter',0,1,.01,pct).el,
     el('div',{class:'chips'},C('bJS','Once per stroke','jitterPerStroke'))));
   box.append(el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:'brushReset',text:'Reset brush',title:'Put this tool’s brush back to its starting settings',onclick:()=>{for(const k of SETTING_KEYS)brush[k]=BRUSH_DEFAULTS[k];brushSession.source=null;activePreset=null;if(typeof tbSaveCur==='function')tbSaveCur();buildBrushPanel();if(typeof buildOptBar==='function')buildOptBar();if(typeof refreshCursor==='function')refreshCursor();toast('Brush back to its starting settings.');}})));
-  box.append(det);buildSymSection(box);if((ui.tool==='brush'||ui.tool==='erase')&&ui.mode!=='bake')buildMapBrushSection(box,ui.tool);schedulePreview();
+  box.append(det);if(typeof buildDualSection==='function')buildDualSection(box);buildSymSection(box);if((ui.tool==='brush'||ui.tool==='erase')&&ui.mode!=='bake')buildMapBrushSection(box,ui.tool);schedulePreview();
 }
 function applyPreset(p){if(typeof tbSaveCur==='function')tbSaveCur();const t=p.tool!=='smudge'&&['erase','smudge','dodge','burn','heal','clone','material','pen','path'].includes(ui.tool)?ui.tool:(p.tool||'brush');for(const k of SETTING_KEYS)brush[k]=(k in p)?p[k]:BRUSH_DEFAULTS[k];const size=brushSession.sizes.get(p)?.[brushSessionGroup(t)];if(size!==undefined)brush.size=size;if(p.maps)applyMapBrush(p.maps);brushSession.source=p;brushRecent(p);activePreset=p;setTool(t,true);renderLibrary();refreshCursor();}
 function setTool(t,keepPreset){if(t==='path'&&ui.mode!=='p3d'){toast('Surface Path is available in 3D Paint.');return;}if(t==='pen'&&!['paint','p3d','anim'].includes(ui.mode)||t==='material'&&!['paint','p3d'].includes(ui.mode)){toast('This tool is available in Paint and 3D Paint.');return;}if(t!=='text'&&typeof closeTextEditor==='function')closeTextEditor();if(t!=='lasso'&&typeof polyLasso!=='undefined'&&polyLasso){polyLasso=null;drawSelOverlay();}

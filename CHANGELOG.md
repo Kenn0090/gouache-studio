@@ -1,3 +1,13 @@
+## 0.66.0
+
+- **Dual Brush.** In the brush settings, tick **Dual brush** to let a second brush tip shape the first, like Photoshop's Dual Brush. Pick the second tip (built in, drawing and painting tips, or your own) and set its **Size, Spacing, Scatter, Count and Amount**. **Multiply** shows the brush only where the second tip is; **Knock out** cuts holes in it. The pattern stays fixed on the canvas, or tick **Random for every dab** for a stippled look. It saves with your brushes, and **Dual sponge wash** is a ready-made one.
+- **Watercolour glaze now has its cursor outline.** Faint and soft brush tips (like the Watercolour pool) show an outline too.
+- **Pen pressure.** **Flow** is now its own pressure choice next to Size, Opacity and Build-up, and a **pressure curve graph** lets you drag the middle of the curve for a softer or firmer pen (double-click for a straight line).
+- **Colour harmony and three-colour mixing** under the Colour panel's shade strip. Harmony shows Complementary, Split complementary, Triadic, Tetradic, Analogous or Monochrome colours for your colour (click to paint with one, Shift+click for the background colour); Mix three colours has a triangle that blends three corner colours in OKLab.
+- **Close the tabs you don't use.** Every work tab except 2D Paint (Photo, 3D Paint, Animation, Bake, Convert, Brush) and every panel tab has a small **×**. **Window › Sections…** and **Window › Panels…** bring them back, and a closed work tab opens again by itself when something sends you there (for example Send to Bake).
+- **Window scale.** View › Window scale (Larger, Smaller, 75% to 200%) and Preferences › Look make the whole window bigger or smaller; it is remembered. In a browser use the browser's zoom.
+- **Skip back faces** is also a button in the 3D view's **⋯** menu.
+
 ## 0.65.0
 
 - **Smudge, Smear and Liquify on the 3D model.** In 3D Paint the **Blend (smudge)** tool and **Liquify** now work on the model. **Smudge** drags paint along your stroke and blends it; **Smear** (a switch next to Smudge in the options bar) drags a longer streak. **Liquify** pushes, pinches, bloats and twirls the paint (Pinch, Bloat and Twirl keep working while you hold the button). They move paint across the surface and over UV seams, and **every map of the layer moves together** (colour, roughness, height and the rest), with one undo step per stroke. A selection limits them. They work in a plain texture set (not UDIM tiles) and not yet with the 3D mirror; Liquify's Restore mode stays on the flat canvas.
