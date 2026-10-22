@@ -6,7 +6,8 @@
    on screen, crosses UV seams cleanly, and lands on whatever the layer or map being painted is
    (in the Bake tab: the skew or offset map). Alt+drag turns the model, right-drag moves it. */
 v3.paintOn=false;
-const FS_3DDEPTH=`uniform vec3 uCamP; void main(){ o=vec4(length(vP-uCamP),0.0,0.0,1.0); }`;
+/* red: how far away; green, blue: the model's UV there (Smudge and Liquify look up where paint comes from on screen) */
+const FS_3DDEPTH=`uniform vec3 uCamP; void main(){ o=vec4(length(vP-uCamP),vT,1.0); }`;
 const VS_3DPROJ=`#version 300 es
 layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec2 aT; layout(location=4) in vec3 aD;
 uniform float uUVs; uniform vec2 uShift; uniform sampler2D uH; uniform float uDisp; uniform int uUseH; uniform int uUseUDIM;
@@ -70,7 +71,14 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
     const x0=clamp(Math.floor(b[0]/w*16),0,15),x1=clamp(Math.floor(b[2]/w*16),0,15),y0=clamp(Math.floor(b[1]/h*16),0,15),y1=clamp(Math.floor(b[3]/h*16),0,15);let u0=1,v0=1,u1=0,v1=0;
     for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const j=(y*16+x)*4;u0=Math.min(u0,bins[j]);v0=Math.min(v0,bins[j+1]);u1=Math.max(u1,bins[j+2]);v1=Math.max(v1,bins[j+3]);}
     return u1<u0?[0,0,0,0]:[u0*doc.w-2,v0*doc.h-2,u1*doc.w+2,v1*doc.h+2];};
-  return {w,h,buf:M.buf,yup:true,viewportBounds,
+  return {w,h,buf:M.buf,yup:true,viewportBounds,mesh:true,
+    /* draws the model flat in its UV layout into a map with a shader of mesh-pull.js (same visibility rules as painting) */
+    pull(prog,target,extra){useProg(prog,Object.assign({uVPm:{m4:VP},uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v]},extra));
+      bindTarget(target);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);
+      const loc=gl.getUniformLocation(prog.p,'uShift'),alignLoc=gl.getUniformLocation(prog.p,'uAlign'),backLoc=gl.getUniformLocation(prog.p,'uNoBack');gl.bindVertexArray(g.vao);
+      gl.uniform1i(alignLoc,s.paintAlign==='camera'?0:1);gl.uniform1i(backLoc,s.noBack===false?0:1);
+      for(let j=0;j<uvs;j++)for(let i=0;i<uvs;i++){gl.uniform2f(loc,i,j);gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);}
+      gl.bindVertexArray(vao);},
     sync(){bindTarget(strokeT);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
       const stU=st3Uniforms(w,h);for(const Mi of mirs){useProg(P.proj,Object.assign({uVPm:{m4:VP},uStroke:M.buf.tex,uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v],uMir:{m4:Mi}},stU));
       bindTarget(strokeT);gl.enable(gl.BLEND);gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);gl.disable(gl.CULL_FACE);
@@ -88,7 +96,7 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
       if(x1<x0)return [0,0,0,0];if(uvs>1||x0<0||y0<0||x1>1||y1>1)return [0,0,doc.w,doc.h];
       return [x0*doc.w-2,y0*doc.h-2,x1*doc.w+2,y1*doc.h+2];}};}
 /* ---- pointer on the 3D view ---- */
-const MESH_TOOLS=['brush','erase','dodge','burn','heal','clone','material'];
+const MESH_TOOLS=['brush','erase','dodge','burn','smudge','liquify','heal','clone','material'];
 function meshPaintReady(e){return v3.paintOn&&MESH_TOOLS.includes(ui.tool)&&!sel3.armed&&!e.altKey&&!v3PickHeld(e)&&e.button===0&&v3.gpu&&v3.mesh&&!v3.mesh.noUV;}
 /* Brush size is measured against a fixed 512-pixel model diameter, not the zoomed viewport.
    Perspective and orthographic cameras share the same scale at their target plane. */
@@ -96,18 +104,21 @@ function meshBrushScale(h){const radius=v3.mesh?.radius||1,depth=Math.max(.001,v
 function meshPt(hit,e){const r=hit.getBoundingClientRect();return [e.clientX-r.left,r.height-(e.clientY-r.top)];}
 function meshDown(hit,e){if(stroke||preview||selLive)return false;if(typeof bk!=='undefined'&&bk.busy&&ui.mode==='bake'){toast('Wait for the bake to finish.');return true;}
   if(ui.mode==='p3d'&&p3.udim){const pk=v3PickAt(hit,e),R=pk&&v3.mesh?.setRanges?.[pk.set],i=pk&&pk.tile&&p3.sets.findIndex(S=>p3Binding(S)===(R&&R.name)&&S.tile&&S.tile.id===pk.tile.id);if(i>=0&&i!==p3.cur)p3SwitchSet(i,true);}
+  if(ui.mode==='bake'&&(ui.tool==='smudge'||ui.tool==='liquify')){toast('Smudge and Liquify work in 3D Paint, on the model’s texture set.');return true;}
   if(ui.tool==='material')materialBrushTarget();if(fillNoMask())return true;
   const et=ui.mode==='bake'?bakeEditTarget():editTarget();if(ui.mode!=='bake'&&lockStop(et))return true;const o=paintOpts(et);if(!o)return true;
   const r=hit.getBoundingClientRect(),w=Math.max(1,Math.round(r.width)),h=Math.max(1,Math.round(r.height)),sp=meshSpace(w,h);if(!sp)return true;
+  if(o.tool==='liquify')return meshLiqDown(hit,e,et,o,sp);
+  if(o.tool==='smudge'){o.extras=[];o.sym=null;if(!sp.mesh||(typeof p3!=='undefined'&&p3.udim)){toast('Smudge on the model needs a plain texture set (no UDIM tiles).');return true;}}
   if(o.tool==='heal'||o.tool==='clone'){const pk=v3PickAt(hit,e);if(!pk)return true;if(!healBegin(pk.uv[0]*doc.w,pk.uv[1]*doc.h,o.tool))return true;}
   o.space=sp;o.cageRs=meshBrushScale(h);o.sym=null;const [x,y]=meshPt(hit,e),p=pressureOf(e),line=brushLineStart(et,x,y,p,e,'mesh');v3.mstroke={id:e.pointerId,sx:x,sy:y,sp:p,rx:x,ry:y,smoothAt:e.timeStamp,line};beginStroke(et.L,line.x,line.y,line.p,o);if(line.joined)addPoint(x,y,p);return true;}
-function meshMove(hit,e){const m=v3.mstroke;if(!m||e.pointerId!==m.id||!stroke)return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];
+function meshMove(hit,e){const m=v3.mstroke;if(m&&m.liq&&e.pointerId===m.id){meshLiqMove(hit,e);return;}if(!m||e.pointerId!==m.id||!stroke)return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];
   for(const ev of (evs.length?evs:[e])){let [x,y]=meshPt(hit,ev);const p=pressureOf(ev,e);if(m.line)[x,y]=brushLineSnap(m.line,x,y,ev.shiftKey);m.rx=x;m.ry=y;if(brush.lazy>0&&!ev.shiftKey){const q=lazyStep(m,x,y,brush.lazy);if(!q)continue;x=q[0];y=q[1];}strokeSmooth(m,x,y,p,brush.smoothing,ev.timeStamp,ev.shiftKey);addPoint(m.sx,m.sy,m.sp);}}
-function meshUp(e){const m=v3.mstroke;if(!m||(e&&e.pointerId!==m.id))return;v3.mstroke=null;if(stroke){if(brush.smoothing>0)addPoint(brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);brushLineRemember(m.line,brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);endStroke(true);}}
+function meshUp(e){const m=v3.mstroke;if(!m||(e&&e.pointerId!==m.id))return;if(m.liq){meshLiqUp();return;}v3.mstroke=null;if(stroke){if(brush.smoothing>0)addPoint(brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);brushLineRemember(m.line,brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);endStroke(true);}}
 /* round cursor showing the brush size over the model */
 function meshCursor(hit,e){mir3CursorMove(hit,e);let c=v3.curEl;if(!c||!c.isConnected){c=v3.curEl=el('div',{class:'v3cur'});hit.parentNode.append(c);}
   if(e&&sel3.armed&&!e.altKey){c.hidden=true;hit.style.cursor='crosshair';return;}
-  if(!e||!v3.paintOn||!MESH_TOOLS.includes(ui.tool)||e.altKey||v3PickHeld(e)||v3.drag){c.hidden=true;hit.style.cursor=e&&v3PickHeld(e)?brushPickerCursor:'';return;}hit.style.cursor='none';const r=hit.getBoundingClientRect(),pr=hit.parentNode.getBoundingClientRect(),d=Math.max(3,brush.size*meshBrushScale(r.height));
+  if(!e||!v3.paintOn||!MESH_TOOLS.includes(ui.tool)||e.altKey||v3PickHeld(e)||v3.drag){c.hidden=true;hit.style.cursor=e&&v3PickHeld(e)?brushPickerCursor:'';return;}hit.style.cursor='none';const r=hit.getBoundingClientRect(),pr=hit.parentNode.getBoundingClientRect(),d=Math.max(3,(ui.tool==='liquify'?liq.size:brush.size)*meshBrushScale(r.height));
   c.hidden=false;c.style.width=c.style.height=d+'px';c.style.transform='translate('+(e.clientX-pr.left-d/2)+'px,'+(e.clientY-pr.top-d/2)+'px)';tipCursor(c,d);}
 /* ---- what is under the pointer: the model's UV there (and how far away), from a one-pixel render ---- */
 const FS_3DPICK=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform vec3 uCamP; uniform float uSet; uniform int uOrtho; uniform vec3 uFwd; void main(){ o=vec4(vT,uOrtho==1?dot(vP-uCamP,uFwd):length(vP-uCamP),1.0+uSet); }`;

@@ -22,6 +22,7 @@ function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren
   const S=(key,label,min,max,step,fmt,map,get,set)=>{const sl=makeSlider({id:'ob_'+key,label,min,max,step,value:get?get():brush[key],fmt,map,...brushNumericRange(key),onInput:v=>{if(set)set(v);else brush[key]=v;
       if(key==='size'){if(sizeSlider)sizeSlider.set(v);refreshCursor();}else{const s=document.getElementById({opacity:'bOp',flow:'bFlow',hardness:'bHard',strength:'bStr',spacing:'bSpace',smoothing:'bSmooth',lazy:'bLazy',grain:'bGrain',sizeJitter:'bSJ',angleJitter:'bAJ'}[key]);if(s)s._gsSlider?.set(v);}
       if(!set)brushEdited(key);}});sl.el.classList.add('optslider');optSliders[key]={sl,get:get||(()=>brush[key])};bar.append(sl.el);};
+  if(sm&&ui.mode==='p3d'&&typeof smudge3dSeg==='function')bar.append(smudge3dSeg(),el('span',{class:'optsep'}));
   S('size','Size',0,1000,1,v=>Math.round(v)+'px',typeof sizeMap!=='undefined'?sizeMap:undefined);
   bar.append(brushDefaultSizeButton('ob_default_size'));
   if(tonal)S('exposure','Exposure',.01,1,.01,pct,null,()=>ui.tonalExposure,v=>{ui.tonalExposure=v;});
