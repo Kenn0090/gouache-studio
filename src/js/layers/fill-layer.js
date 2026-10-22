@@ -164,6 +164,8 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
   matEd.shownRow=null;
   if(!force&&matEd.shown===L&&box.childElementCount&&!(L&&L.fill&&!box.querySelector('.matHead')))return;
   if(matEd.L&&matEd.L!==L)matEdCommit();matEd.shown=L;
+  /* an adjustment (Hue / Saturation) layer or another filter layer */
+  if(isLayer(L)&&L.fx&&typeof isAdjHsl==='function'){if(isAdjHsl(L))renderAdjEd(box,L);else renderFxPlain(box,L);return;}
   if(!isLayer(L)||!L.fill){box.replaceChildren(el('p',{class:'note',text:'Select a material (fill) layer, or a mask or effect row under a layer, to change it here.'}),
     el('div',{class:'chips'},el('button',{class:'btn sm',id:'matEdNew',text:'New material',onclick:()=>cmdNewFillLayer()}),el('button',{class:'btn sm',text:'Materials…',onclick:()=>showPanel('mats')})));return;}
   const W=L.fill,prev=matPreviewEl(()=>L.fill,()=>fillImgsOf(L));

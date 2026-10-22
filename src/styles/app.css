@@ -1346,3 +1346,7 @@ body.photomode #docTabs{display:none!important}
 .aiupc{max-width:49%;width:auto;height:auto;border:1px solid var(--line-2);border-radius:6px;background:#111;image-rendering:auto}
 .aiup.off .aiupcmp,.aiup.off #aiUpPNote,.aiup.off #aiUpPrev{display:none}
 .aiup .note.warn{color:var(--danger,#e5655a)}
+/* Pen and tablet test (0.62.1) */
+.pentest{height:150px;border:1px dashed var(--line-2);border-radius:8px;background:var(--panel-2,#25282d);display:grid;place-items:center;color:var(--muted);touch-action:none;user-select:none;cursor:crosshair}
+.penrow{display:flex;gap:8px;font-size:12px;padding:2px 0;color:var(--muted)}.penrow.on{color:var(--text)}.penrow b{width:14px;color:var(--accent)}
+.penlog{margin:0;font:11px/1.4 var(--mono,monospace);color:var(--muted);white-space:pre-wrap;min-height:5em}

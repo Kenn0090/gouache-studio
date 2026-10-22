@@ -83,6 +83,18 @@ The **×** on a set deletes it, after asking. If its material is still on the mo
 
 Entering 3D Paint switches to the **Texturing** workspace; going back to Paint brings your previous workspace back.
 
+## Smudge, Smear and Liquify on the model
+The **Blend (smudge)** tool (S) and **Liquify** (Ctrl+Shift+X) work on the model in 3D Paint, on the layer you are editing:
+- **Smudge** drags paint along your stroke and blends it into what is there; **Smear** drags a longer streak (pick one at the top of the tool's settings or in the options bar).
+- **Liquify** pushes, pinches, bloats or twirls the paint (Push, Pinch, Bloat, Twirl ↻ ↺; Restore works on the flat canvas only). Pinch, Bloat and Twirl keep working while you hold the button.
+- They move paint across the surface and over UV seams, and **every map of the layer moves together** (colour, roughness, height…, like Heal and Clone). One undo step per stroke. A selection limits them, and *Skip back faces* applies. They work in a plain texture set (no UDIM tiles), and not yet with the 3D mirror.
+
+## Hue / Saturation layer
+The layer button with the little dial (or **Layer › New › Hue / Saturation layer**) adds an **empty layer** that changes the colour of everything under it. Its **Hue, Saturation and Lightness** sliders (and **Colorize**) are in the **Properties** panel and change the model live; it takes a mask, opacity and blend mode like any layer, and undo covers it. A **Pass through** folder lets it reach the layers below the folder; a Normal folder keeps the effect inside. It is a filter layer with one Hue / Saturation filter, so any such layer gets these sliders. On a grey surface, Hue and Saturation change nothing (there is no colour to change): use Colorize.
+
+## Brush alignment and back faces
+In the 3D Paint panel, **Brush alignment** chooses *Surface wrap* (the stroke follows the surface, including parts behind a raised edge) or *Camera* (only what the camera sees). **Skip back faces** (on by default) stops paint going through a thin part to its far side, or landing on a face that is seen from behind. Turn it off for a model whose faces point the wrong way, or when you want to paint the inside of a part. The choice is saved with the project.
+
 ## Mirror and radial painting
 The mirror sits in the **3D view's top bar**: **X**, **Y** and **Z** turn the mirror planes on, the menu next to them sets **radial** copies, and **▾** opens the plane positions, the radial axis, snapping and showing the planes.
 

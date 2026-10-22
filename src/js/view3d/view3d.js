@@ -131,7 +131,7 @@ const FS_3DSEL=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform sample
 const P3={mesh:Object.assign(prog3(VS_3D,FS_3D),{decodeOnly:true}),line:prog3(VS_3D,FS_3DLINE),uv:prog3(VS_UV,FS_3DLINE),sel:prog3(VS_3D,FS_3DSEL)};
 
 /* ---- settings (kept in the document) ---- */
-const V3D_DEFAULTS={model:'plane',detail:0,unlit:null,uvs:1,disp:0,paintAlign:'wrap',sunAz:40,sunEl:45,sunI:1,skyI:1,expo:1,bg:'dark',clip:true,wire:false,wireOnly:false,showUV:false,litUV:false,spin:false,fov:40,ortho:false,
+const V3D_DEFAULTS={model:'plane',detail:0,unlit:null,uvs:1,disp:0,paintAlign:'wrap',noBack:true,sunAz:40,sunEl:45,sunI:1,skyI:1,expo:1,bg:'dark',clip:true,wire:false,wireOnly:false,showUV:false,litUV:false,spin:false,fov:40,ortho:false,
   env:'studio',envRot:0,envI:1,envBg:false,envBlur:.35,envSun:0,tone:'filmic',studioFill:.12,studioRim:.08,lightColor:[1,1,1],shadows:true,shadowSoft:1.5,floor:false,floorHeight:0,floorOpacity:.5,floorSoft:2,floorColor:[0,0,0]};
 const v3={on:false,mesh:null,gpu:null,tex:{},cam:{yaw:.5,pitch:.25,dist:3.2,tx:0,ty:0,tz:0},dirty:true,postDirty:false,mapsDirty:true,editDirty:true,lastFull:0,fbo:null,imported:null};
 function v3s(){if(!doc.v3d)doc.v3d=Object.assign({},V3D_DEFAULTS);else{for(const k in V3D_DEFAULTS)if(!(k in doc.v3d))doc.v3d[k]=V3D_DEFAULTS[k];}return doc.v3d;}
@@ -457,6 +457,7 @@ window.addEventListener('blur',v3PickRelease);
 function v3NavHint(){return v3nav.mode==='coat'?'right-drag turns, middle moves, Ctrl+right zooms':'Alt+left turns, Alt+middle moves, Alt+right zooms';}
 function v3NavOf(hit,e){const b=e.button,paint=v3CanPaint();
   if(st3.sKey&&st3.img)return b===0?'strot':b===2?'stscale':'stmove';
+  if(typeof penPanBtn==='function'&&penPanBtn(e)&&!e.altKey&&!e.shiftKey)return 'pan';/* the pen's side button moves the view (0.62.1) */
   {const pb=pcNavOf(e,paint);if(pb)return pb;}
   /* (0.27, Kenn) turn the sky (HDRI) like Substance Painter: Shift+right-drag (3D-Coat navigation: Shift+Alt+right-drag) */
   if(b===2&&e.shiftKey&&(v3nav.mode!=='coat'||e.altKey))return 'sky';
@@ -481,6 +482,8 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
   hit.addEventListener('pointermove',e=>{v3PickHold.hit=hit;v3PickHold.point={clientX:e.clientX,clientY:e.clientY};if(pgz.drag){if(!e.buttons){pgzUp();return;}pgzMove(hit,e);return;}if(!e.buttons&&!v3PickHeld(e)&&pgzHover(hit,e)){meshCursor(hit,null);return;}if(mk3Busy()){mk3Move(hit,e);return;}meshCursor(hit,e);
     /* no button held any more: the release went missing (another window, a pen gesture, Alt menu mode); finish instead of sticking */
     if(!e.buttons){if(v3.mstroke)meshUp();if(v3.drag)v3.drag=null;}
+    /* a pen hovering with its side button held moves the view (no tip contact, so no pointerdown arrives) */
+    if(e.pointerType==='pen'&&prefs.penPan!==false&&(e.buttons&6)&&!(e.buttons&1)&&!v3.drag&&!v3.mstroke)v3.drag={x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,how:'pan',id:e.pointerId,alt:false};
     if(v3.mstroke){meshMove(hit,e);return;}const d=v3.drag;
     if(!d){if(v3PickHeld(e)&&!e.buttons)v3HoverPick(hit,e);return;}
     if(d.how==='bsize'||d.how==='bflow'){pcAdjust(d,e,hit);d.x=e.clientX;d.y=e.clientY;return;}

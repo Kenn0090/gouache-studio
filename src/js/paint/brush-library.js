@@ -215,7 +215,8 @@ function buildBrushPanel(){
   if(isSel){buildSelectPanel(box);return;}
   const healing=ui.tool==='heal'||ui.tool==='clone';if(ui.tool==='heal')buildHealPanel(box);else if(ui.tool==='clone')buildClonePanel(box);
   const tonal=ui.tool==='dodge'||ui.tool==='burn';
-  if(!healing)$('#brushTitle').textContent=sm?'Blend brush':ui.tool==='material'?'Material brush':ui.tool==='erase'?'Eraser':tonal?(ui.tool==='dodge'?'Dodge':'Burn'):'Brush';
+  if(sm&&ui.mode==='p3d'&&typeof smudge3dSeg==='function')box.append(smudge3dSeg(),el('p',{class:'note',text:'On the model, Smudge and Smear move paint across the surface and over UV seams, on every map of the layer together. A selection limits them.'}));
+  if(!healing)$('#brushTitle').textContent=sm?(ui.mode==='p3d'&&typeof smudge3d!=='undefined'&&smudge3d.mode==='smear'?'Smear brush':'Blend brush'):ui.tool==='material'?'Material brush':ui.tool==='erase'?'Eraser':tonal?(ui.tool==='dodge'?'Dodge':'Burn'):'Brush';
   if(tonal)box.append(seg([['dodge','Dodge','Lighten (O)'],['burn','Burn','Darken (Shift+O switches)']],ui.tool,v=>{ui.tonal=v;setTool(v);},'Dodge or burn'),
     el('div',{class:'sub',text:'Range'}),seg([[0,'Shadows'],[1,'Midtones'],[2,'Highlights']],ui.tonalRange,v=>{ui.tonalRange=v;},'Range'),
     makeSlider({id:'tExp',label:'Exposure',min:.01,max:1,step:.01,value:ui.tonalExposure,fmt:pct,onInput:v=>{ui.tonalExposure=v;}}).el,

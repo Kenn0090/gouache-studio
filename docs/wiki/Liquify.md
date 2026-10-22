@@ -9,3 +9,6 @@ Push, pinch, bloat and twirl paint with a brush. Pick the **Liquify** tool (the 
 - **Size** and **Strength** are in the bar above the canvas.
 
 Every map of the layer moves together (so a material stays in step), a selection limits where it works, and each stroke is one undo step. Liquify works in Paint, not in the 3D view. Symmetry is not used yet.
+
+## On the 3D model
+In 3D Paint, Liquify (and the Blend/smudge tool, with a Smear mode) works on the model: see [3D Paint](3D-Paint.md#smudge-smear-and-liquify-on-the-model).

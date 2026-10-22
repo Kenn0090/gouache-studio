@@ -1,3 +1,10 @@
+# Gouache Studio 0.65.0
+
+- 3D Paint: Smudge, Smear and Liquify now work on the model, on every map of the layer together, with one undo step per stroke.
+- New Hue / Saturation layer: an empty layer with live Hue, Saturation and Lightness sliders in the Properties panel that changes everything below it.
+- 3D Paint: Skip back faces (on by default) stops paint going through thin parts.
+- The pen's side button now moves the view (2D and 3D); Help › Pen and tablet test shows what your pen sends.
+
 # Gouache Studio 0.64.2
 
 - New Shaded, Wireframe and Wireframe overlay options at the top of 3D Paint viewport Settings. The choice is saved with the project.

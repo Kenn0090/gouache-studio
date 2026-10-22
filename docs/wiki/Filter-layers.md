@@ -3,6 +3,7 @@
 A filter layer changes **everything below it** in its group, without touching any pixels, and you can change it at any time.
 
 ## Making one
+- **Hue / Saturation layer** (the dial button, or Layer › New): an empty layer with live Hue, Saturation and Lightness sliders in the Properties panel. See [3D Paint](3D-Paint.md#hue--saturation-layer).
 - **+ Filter** in the Layers panel, or **Layer › New filter layer…**, adds one above the active layer and opens its editor.
 - **Keep editable** in any filter dialog adds a filter layer **clipped** to the layer you were filtering.
 - **Keep live** in a converter adds a live converter layer.
