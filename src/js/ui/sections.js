@@ -17,3 +17,9 @@ function dlgSections(){const body=el('div',{class:'dlg-grid'},el('p',{class:'not
   ...SECTIONS.map(([m,t])=>chk('sec_'+m,t,!secHidden(m),v=>secSet(m,!v,true))));
   openDialog({title:'Sections',body,okLabel:'',cancelLabel:'Close'});}
 actions.sections=dlgSections;MENUS.Window.push('-',['Sections…','sections']);
+/* Window › Panels…: every panel of the tab you are in, ticked when it is open. Close one with its × and bring it back here. */
+function dlgPanels(){const ids=PANEL_IDS.filter(id=>!PANELS[id].mode&&dkIn(id));
+  const body=el('div',{class:'dlg-grid'},el('p',{class:'note',text:'Tick the panels you want. Each panel tab also has a × to close it.'}),
+    ...ids.map(id=>chk('pnl_'+id,id==='tool'?(dk.toolTitle&&dk.toolTitle.textContent)||'Tool settings':PANELS[id].title,panelShown(id),v=>{if(v)showPanel(id);else dkMove(id,{hidden:true});})));
+  openDialog({title:'Panels',body,okLabel:'',cancelLabel:'Close'});}
+actions.panelsDlg=dlgPanels;MENUS.Window.push(['Panels…','panelsDlg']);

@@ -34,6 +34,11 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{const b=[...document.querySelectorAll('.dktab')].find(b=>b.textContent.replace('×','').trim()==='Channels');b.querySelector('.dkx').click();});await p.waitForTimeout(500);
  ok(!(await tabs()).includes('Channels'),'clicking the × closes the Channels tab');
  await p.evaluate(()=>__gs.showPanel('chan'));await p.waitForTimeout(400);ok((await tabs()).includes('Channels'),'it comes back with the panel menu / Window');
+ // Window › Panels…
+ await p.evaluate(()=>{const b=[...document.querySelectorAll('.dktab')].find(b=>b.textContent.replace('×','').trim()==='Textures');b&&b.querySelector('.dkx').click();});await p.waitForTimeout(400);
+ await p.evaluate(()=>__gs.dlgPanels());await p.waitForTimeout(300);
+ ok(await p.evaluate(()=>document.querySelectorAll('#modal input[type=checkbox]').length>=5&&!!document.getElementById('pnl_textures')&&!document.getElementById('pnl_textures').checked&&document.getElementById('pnl_layers').checked),'Window › Panels… lists the panels, the closed one unticked');
+ await p.evaluate(()=>document.getElementById('pnl_textures').click());await p.waitForTimeout(400);ok((await tabs()).includes('Textures'),'ticking it brings the Textures panel back');
  ok(!errs.length,'no errors '+errs.join('|'));
  await b.close();console.log(fails?'FAILS '+fails:'ALL PASS');process.exit(fails?1:0);
 })();
