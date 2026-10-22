@@ -39,7 +39,7 @@ float brushMask(vec2 pix){
   return m; }
 `;
 const CH_STROKE=`
-uniform int uStroke; uniform vec3 uStrokeColor; uniform int uStrokeTint; vec3 gSC; uniform float uStrokeOpacity; uniform float uEdge; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan;
+uniform int uStroke; uniform vec3 uStrokeColor; uniform int uStrokeTint; vec3 gSC; uniform float uStrokeOpacity; uniform float uEdge; uniform float uGlaze; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan;
 uniform sampler2D uSelTex; uniform int uUseSel;
 float selCov(ivec2 p, float c){ return uUseSel==1?c*texelFetch(uSelTex,p,0).r:c; }
 /* dodge (3) and burn (4): uTonalRange 0 shadows, 1 midtones, 2 highlights; uProtect keeps hue and saturation */
@@ -59,6 +59,10 @@ vec4 applyStroke(vec4 L, float cov){
   /* watercolour edge: where the stroke is faint the pigment gathers, so the colour gets richer and a little deeper there */
   if(uStroke==1&&uEdge>0.0){ float e=1.0-smoothstep(0.0,0.85,clamp(cov,0.0,1.0)); float l=dot(gSC,vec3(0.299,0.587,0.114));
     gSC=clamp(mix(vec3(l),gSC,1.0+uEdge*1.5*e)*(1.0-0.2*uEdge*e),0.0,1.0); a=min(1.0,a*(1.0+0.7*uEdge*e)); }
+  /* thin pigment (glaze): the stroke is a layer of pigment as thick as its coverage. Each channel lets light through like T=colour^thickness, so a thin
+     layer stays bright and keeps its hue, the paper shows through and what lies under it stays visible; where the layer is full it is the plain colour */
+  if(uStroke==1&&uGlaze>0.0&&a>0.0&&uChanMode!=1&&uLockAlpha!=1){ vec3 T=pow(max(gSC,vec3(0.02)),vec3(a)); float As=clamp(1.0-min(min(T.r,T.g),T.b),0.0,1.0);
+    vec3 Cs=As>1e-4?clamp((T-(1.0-As))/As,0.0,1.0):gSC; gSC=mix(gSC,Cs,uGlaze); a=mix(a,As,uGlaze); }
   if(uStroke>=3){ if(L.a<=1e-6) return L; vec3 r=tonal(clamp(L.rgb/L.a,0.0,1.0),a,uStroke==3);
     if(uChanMode==1) return chanMix(L,vec4(r,L.a),1.0); return vec4(r*L.a,L.a); }
   if(uChanMode==1&&uStroke!=0){ vec4 t=uStroke==1?vec4(gSC,dot(gSC,vec3(0.299,0.587,0.114))):vec4(0.0); return chanMix(L,t,a); }

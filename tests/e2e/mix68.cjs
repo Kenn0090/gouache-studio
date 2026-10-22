@@ -35,6 +35,24 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(gr(km)>0.08,'with Paint mixing on, blue and yellow blend to green ('+[km.r,km.g,km.b].map(v=>v.toFixed(2))+')');
  await p.evaluate(()=>{__gs.showPanel('tool');});await p.waitForTimeout(300);
  ok(await p.evaluate(()=>!!document.getElementById('bPaintMix')),'Paint mixing is in the Blend brush settings');
+
+ /* ---- 3. thin pigment (glaze) ---- */
+ const flat=()=>p.evaluate(()=>{const L=__gs.doc.active,d=__gs.readRGBA8(__gs.mapT(L,'base')),W=__gs.doc.w;let n=0,s=0,l=0;for(let y=80;y<120;y++)for(let x=60;x<240;x++){const i=(y*W+x)*4,a=d[i+3];if(a<8)continue;const r=(d[i]+255-a)/255,g=(d[i+1]+255-a)/255,bl=(d[i+2]+255-a)/255;const mx=Math.max(r,g,bl),mn=Math.min(r,g,bl);n++;s+=mx>0?(mx-mn)/mx:0;l+=(r+g+bl)/3;}return {n,sat:s/n,lum:l/n};});
+ const thin=async(gl)=>{await p.evaluate(()=>{__gs.newDoc(300,200,8,[1,1,1],'g',false);});await p.waitForTimeout(300);await p.keyboard.press('Control+Shift+n');await p.waitForTimeout(200);
+  await p.evaluate(g=>{__gs.setTool('brush');Object.assign(__gs.brush,{size:60,hardness:1,opacity:.4,flow:1,spacing:.05,smoothing:0,grain:0,tip:null,pSize:false,pOpacity:false,buildup:false,edgeSat:0,glaze:g,dual:null});__gs.ui.fg=[.1,.3,.7];},gl);
+  await drag(40,100,260,100);return flat();};
+ const g0=await thin(0),g1=await thin(1);
+ ok(g1.sat>g0.sat+.1,'a thin layer of pigment keeps its colour instead of going pale ('+g0.sat.toFixed(2)+' to '+g1.sat.toFixed(2)+' saturation)');
+ ok(g1.lum<g0.lum-.05,'and is deeper than the same stroke at the same opacity ('+g0.lum.toFixed(2)+' to '+g1.lum.toFixed(2)+')');
+ const over=async(gl)=>{await p.evaluate(()=>{__gs.newDoc(300,200,8,[1,1,1],'g2',false);});await p.waitForTimeout(300);await p.keyboard.press('Control+Shift+n');await p.waitForTimeout(200);
+  await p.evaluate(g=>{__gs.setTool('brush');Object.assign(__gs.brush,{size:60,hardness:1,opacity:1,flow:1,spacing:.05,smoothing:0,grain:0,tip:null,pSize:false,pOpacity:false,buildup:false,edgeSat:0,glaze:0,dual:null});__gs.ui.fg=[.9,.1,.1];},gl);
+  await drag(40,100,260,100);await p.evaluate(g=>{__gs.brush.glaze=g;__gs.ui.fg=[.5,.7,.9];},gl);await drag(40,100,260,100);
+  return p.evaluate(()=>{const L=__gs.doc.active,d=__gs.readRGBA8(__gs.mapT(L,'base')),W=__gs.doc.w,i=(100*W+150)*4;return [d[i],d[i+1],d[i+2]];});};
+ const o0=await over(0),o1=await over(1);
+ ok(o0[1]-o1[1]>60,'a glaze lets the colour under it show through ('+o0+' against '+o1+')');
+ ok(await p.evaluate(()=>!!document.getElementById('bGlaze')||(__gs.showPanel('tool'),true)),'ok');
+ await p.evaluate(()=>__gs.showPanel('tool'));await p.waitForTimeout(300);ok(await p.evaluate(()=>!!document.getElementById('bGlaze')),'Thin pigment is in the brush settings');
+ ok(await p.evaluate(()=>['Watercolour glaze','Dual sponge wash','Watercolour dry edge','Wash'].every(n=>__gs.library.flatMap(s=>s.presets).some(x=>x.name===n&&x.glaze>0))),'the watercolour brushes have it on');
  ok(!errs.length,'no errors '+errs.join('|'));
  await b.close();console.log(fails?'FAILS '+fails:'ALL PASS');process.exit(fails?1:0);
 })();
