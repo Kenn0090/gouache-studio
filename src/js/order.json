@@ -16,6 +16,7 @@
     "ui/color",
     "ui/color-modes",
     "paint/brush-library",
+    "paint/dual-brush",
     "paint/brush-pack",
     "paint/art-media",
     "paint/tool-brushes",
