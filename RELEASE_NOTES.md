@@ -1,3 +1,11 @@
+# Gouache Studio 0.68.0
+
+- Normal layers: paint bumps, dents and tilts straight into a normal (Raise, Dent, Direction), on the canvas or on the 3D model. Smudge, selections, the gradient tool (slopes) and Levels work on them.
+- Right-click a layer › Convert to › AO, Curvature, Edges or Creases, with settings and a live preview; the result is a new layer and a mesh map.
+- Brushes can mix paint like pigment (blue over yellow makes green): Paint mixing, Pick up paint, and a Pigment / Lab choice. The Blend brush mixes like paint too.
+- Watercolour: Thin pigment, Pigment amount and Edge colour.
+- New Bristle flat, Bristle dry brush and Bristle thin pigment brushes.
+
 # Gouache Studio 0.67.0
 
 - Right-click on the canvas or the 3D model opens a brush picker: size, opacity and hardness sliders, brush collections with search, and textures as brush tips.
