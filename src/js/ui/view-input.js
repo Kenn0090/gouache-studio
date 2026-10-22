@@ -49,8 +49,10 @@ function paintOpts(et){
   if(o.tool==='clone')Object.assign(o,{noTint:true,extras:[],buildup:false,hueJitter:0,satJitter:0,valJitter:0,chan:null});
   if(ui.tool!=='erase'&&(ui.tool==='brush'||brush.charge>0))pushRecent(ui.fg);
   return o;}
+/* (0.62.1, Kenn: middle click does not work with the tablet) a pen reports its side button as a right click (or only while hovering), never as a middle click; the pen's side button pans like the middle button */
+function penPanBtn(e){return e.pointerType==='pen'&&prefs.penPan!==false&&(e.button===2||(e.buttons&2)>0);}
 cv.addEventListener('pointerdown',e=>{
-  if(ptr)return;closeMenu();const pan=e.button===1||spaceDown||ui.tool==='hand';if(!pan&&e.button!==0)return;
+  if(ptr)return;closeMenu();const pan=e.button===1||penPanBtn(e)||spaceDown||ui.tool==='hand';if(!pan&&e.button!==0)return;
   e.preventDefault();cv.tabIndex=0;cv.focus({preventScroll:true});cv.setPointerCapture(e.pointerId);showPressure(e);
   if(rotHold||(spaceDown&&e.shiftKey)){ptr=vxDragStart(e);stage.classList.add('panning');return;}
   if(pan){ptr={mode:'pan',id:e.pointerId,sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y};stage.classList.add('panning');refreshCursor();return;}
@@ -97,6 +99,10 @@ cv.addEventListener('pointerdown',e=>{
 });
 cv.addEventListener('pointermove',e=>{
   const r=stage.getBoundingClientRect();lastPos=[e.clientX-r.left,e.clientY-r.top];refreshCursor();showPressure(e);
+  /* the pen hovering with its side button held pans the view too (no tip contact, so no pointerdown arrives) */
+  if(e.pointerType==='pen'&&prefs.penPan!==false){const side=(e.buttons&6)>0&&!(e.buttons&1);
+    if(ptr&&ptr.hoverPan){if(!side){ptr=null;stage.classList.remove('panning');refreshCursor();}else{view.x=ptr.vx+e.clientX-ptr.sx;view.y=ptr.vy+e.clientY-ptr.sy;requestRender();return;}}
+    else if(!ptr&&side){ptr={mode:'pan',id:e.pointerId,sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y,hoverPan:true};stage.classList.add('panning');refreshCursor();return;}}
   let [mx,my]=toImage(e.clientX,e.clientY);$('#stPos').textContent=(mx>=0&&my>=0&&mx<doc.w&&my<doc.h)?Math.floor(mx)+', '+Math.floor(my):'–';
   if(typeof gdSnapOn==='function'&&gdSnapOn()&&!e.altKey)[mx,my]=gdSnap(mx,my);
   if(!ptr&&polyLasso){polyMove(e,mx,my);return;}

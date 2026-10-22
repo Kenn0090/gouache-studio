@@ -155,6 +155,7 @@
     "bake/uv-fun",
     "bake/uv-relax",
     "ui/help",
+    "ui/pen-test",
     "ui/ticks",
     "core/tabdoc",
     "ui/keys",

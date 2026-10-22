@@ -457,6 +457,7 @@ window.addEventListener('blur',v3PickRelease);
 function v3NavHint(){return v3nav.mode==='coat'?'right-drag turns, middle moves, Ctrl+right zooms':'Alt+left turns, Alt+middle moves, Alt+right zooms';}
 function v3NavOf(hit,e){const b=e.button,paint=v3CanPaint();
   if(st3.sKey&&st3.img)return b===0?'strot':b===2?'stscale':'stmove';
+  if(typeof penPanBtn==='function'&&penPanBtn(e)&&!e.altKey&&!e.shiftKey)return 'pan';/* the pen's side button moves the view (0.62.1) */
   {const pb=pcNavOf(e,paint);if(pb)return pb;}
   /* (0.27, Kenn) turn the sky (HDRI) like Substance Painter: Shift+right-drag (3D-Coat navigation: Shift+Alt+right-drag) */
   if(b===2&&e.shiftKey&&(v3nav.mode!=='coat'||e.altKey))return 'sky';
@@ -481,6 +482,8 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
   hit.addEventListener('pointermove',e=>{v3PickHold.hit=hit;v3PickHold.point={clientX:e.clientX,clientY:e.clientY};if(pgz.drag){if(!e.buttons){pgzUp();return;}pgzMove(hit,e);return;}if(!e.buttons&&!v3PickHeld(e)&&pgzHover(hit,e)){meshCursor(hit,null);return;}if(mk3Busy()){mk3Move(hit,e);return;}meshCursor(hit,e);
     /* no button held any more: the release went missing (another window, a pen gesture, Alt menu mode); finish instead of sticking */
     if(!e.buttons){if(v3.mstroke)meshUp();if(v3.drag)v3.drag=null;}
+    /* a pen hovering with its side button held moves the view (no tip contact, so no pointerdown arrives) */
+    if(e.pointerType==='pen'&&prefs.penPan!==false&&(e.buttons&6)&&!(e.buttons&1)&&!v3.drag&&!v3.mstroke)v3.drag={x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,how:'pan',id:e.pointerId,alt:false};
     if(v3.mstroke){meshMove(hit,e);return;}const d=v3.drag;
     if(!d){if(v3PickHeld(e)&&!e.buttons)v3HoverPick(hit,e);return;}
     if(d.how==='bsize'||d.how==='bflow'){pcAdjust(d,e,hit);d.x=e.clientX;d.y=e.clientY;return;}
