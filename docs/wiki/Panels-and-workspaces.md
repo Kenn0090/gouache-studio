@@ -41,11 +41,14 @@ Dialogs (Layer style, the Filter Gallery, the material editor, filters…) float
 ## Icons
 Panels kept as **icons** sit in a thin column next to the dock. Click an icon to open its panel beside the column; click elsewhere to close it.
 
+## Tear-off menus (0.67)
+Every menu starts with a dotted **tear off** row. Click it and the menu stays open in a small window you can move anywhere; its items work as in the menu, including the fly-out submenus. To **fuse** menus into one column, drag a menu's grip (the dots at the left of its name) onto another torn-off window; drag it out onto empty space to make a window of its own again. Click a menu's name to fold it, **×** to close it. They are remembered for next time, and **Window › Close all torn-off menus** clears them.
+
 ## Closing tabs you do not use (0.65.1)
 Every work tab at the top except 2D Paint (Photo, 3D Paint, Animation, Bake, Convert, Brush) has a small **×**: click it to close the tab. **Window › Sections…** brings tabs back, and a closed tab opens again by itself when something sends you there (for example Send to Bake). Panel tabs in the docks have an **×** too (shown on the front tab and on hover); close a panel there and bring it back from the Window menu. The pen and the document tabs work as before.
 
 ## Window scale (0.65.1)
-**View › Window scale** (Larger, Smaller, or 75% to 200%) and **Preferences › Look › Window scale** make the whole window bigger or smaller. It is remembered. In a browser use the browser's own zoom (Ctrl and + or −).
+**View › Window scale** (Larger, Smaller, a percentage from 75% to 200%, or **Exact percentage…** for any value from 50 to 300) and **Preferences › Look › Window scale** (pick one, or type the exact percentage) make the whole window bigger or smaller. It is remembered. In a browser use the browser's own zoom (Ctrl and + or −).
 
 ## Window menu
 Shows or hides each panel (a closed panel comes back where it was), the options bar, and the toolbar settings: **two columns** and **on the right**. You can also double-click the grip at the top of the toolbar for two columns, or drag the grip to the other side of the window.

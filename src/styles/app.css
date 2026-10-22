@@ -220,7 +220,7 @@ body.ldragging,body.ldragging *{cursor:grabbing!important}
 .tiles button:hover{border-color:var(--muted)}
 .tiles button.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .tiles canvas{width:100%;height:100%;display:block}
-.prevwrap{position:relative}
+.prevwrap{position:sticky;top:0;z-index:4;background:var(--panel,var(--raise));padding-bottom:4px}
 #brushPrev{display:block;width:100%;height:78px;border-radius:7px;border:1px solid var(--line);background:var(--ground)}
 #prevNote{position:absolute;right:8px;bottom:6px;font:10px var(--mono);color:var(--faint);pointer-events:none}
 .modebtn{display:flex;justify-content:space-between;align-items:center;width:100%;background:var(--ground);border:1px solid var(--line-2);border-radius:5px;padding:5px 8px;text-align:left}
@@ -1367,3 +1367,16 @@ body.photomode #docTabs{display:none!important}
 .bphead{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:4px}.bpset>summary{cursor:pointer;font-size:12px;padding:4px 0;color:var(--text)}
 .bptiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px}.bptile{aspect-ratio:1;padding:3px;border:1px solid var(--line-2);border-radius:8px;background:var(--panel-2,#25282d);cursor:pointer;display:grid;place-items:center}
 .bptile canvas,.bptile img{width:100%;height:100%;object-fit:contain;display:block}.bptile:hover{border-color:var(--accent)}.bptile.on{outline:2px solid var(--accent)}
+/* tear-off menus (0.67) */
+.tearoff{display:block;width:100%;border:0;background:none;color:var(--faint);font:11px var(--mono);letter-spacing:.2em;padding:3px 0 5px;cursor:pointer;text-align:center}.tearoff:hover{color:var(--accent)}
+#tearHost{position:fixed;inset:0;pointer-events:none;z-index:45}.tearcol{position:fixed;pointer-events:auto;width:236px;max-height:calc(100vh - 20px);overflow:auto;background:var(--raise);border:1px solid var(--line-2);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.45);padding:0 0 4px}
+.tearcol.drop{outline:2px solid var(--accent)}.tearcol.flash{outline:2px solid var(--accent);transition:outline .6s}
+.tearhead{display:flex;align-items:center;gap:6px;padding:5px 6px 5px 8px;cursor:grab;position:sticky;top:0;background:var(--raise);z-index:1;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--muted);touch-action:none;user-select:none}.tearhead .tt{flex:1}
+.tearsec-h{display:flex;align-items:center;gap:4px;padding:3px 6px;background:var(--panel-2,rgba(255,255,255,.04));font-size:12px}.tname{flex:1;text-align:left;border:0;background:none;color:var(--text);padding:3px 2px;cursor:pointer;font-weight:600}
+.tgrip{cursor:grab;color:var(--faint);padding:0 3px;touch-action:none;user-select:none}.tx{border:0;background:none;color:var(--muted);cursor:pointer;border-radius:4px;padding:0 5px;font-size:14px;line-height:1.2}.tx:hover{background:rgba(255,255,255,.14);color:var(--text)}
+.tearbody{padding:2px 4px}.tearbody .mi{font-size:12.5px}.tearghost{position:fixed;z-index:70;pointer-events:none;padding:4px 10px;background:var(--accent);color:var(--accent-ink);border-radius:6px;font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+/* brush preview that stays in view and pops out (0.67) */
+.prevpopbtn{position:absolute;top:4px;right:6px;border:0;border-radius:6px;background:rgba(0,0,0,.45);color:#fff;font-size:13px;line-height:1;padding:3px 6px;cursor:pointer;opacity:.7}.prevpopbtn:hover{opacity:1;background:var(--accent);color:var(--accent-ink)}
+.prevfloat{position:fixed;z-index:48;display:flex;flex-direction:column;min-width:240px;min-height:110px;resize:both;overflow:hidden;background:var(--raise);border:1px solid var(--line-2);border-radius:10px;box-shadow:0 12px 34px rgba(0,0,0,.5)}
+.prevfloat.flash{outline:2px solid var(--accent)}.pfhead{display:flex;align-items:center;gap:6px;padding:4px 6px 4px 10px;cursor:grab;font-size:11.5px;color:var(--muted);border-bottom:1px solid var(--line);touch-action:none;user-select:none}.pfhead .pft{flex:1}
+.prevfloat canvas{display:block;flex:1;min-height:0;width:100%;background:var(--ground)}.prevfloat .note{padding:0 8px 3px;font-size:10.5px}
