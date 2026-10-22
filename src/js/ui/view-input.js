@@ -46,6 +46,8 @@ function paintOpts(et){
   if(o.tool==='dodge'||o.tool==='burn')Object.assign(o,{opacity:ui.tonalExposure,range:ui.tonalRange,protect:ui.tonalProtect});
   if(et.isMask){const g=lum3(o.color);o.color=[g,g,g];o.noTint=true;/* a mask's Paint row really erases (back to what is below it) */if(o.tool==='erase'&&!et.L.mrow){o.tool='brush';o.color=(et.erase||[1,1,1]).slice();}}
   o.extras=strokeExtras(o,et);if(!materialPaintOpts(o,et))return null;
+  /* (0.68) a brush that picks up paint carries colour along like a loaded brush on wet paint: it works as the Blend brush with the brush's own colour loaded */
+  if(o.tool==='brush'&&o.pickup>0&&!et.isMask&&!o.material&&ui.mode!=='bake')Object.assign(o,{tool:'smudge',mixer:true,strength:Math.max(.05,o.opacity),opacity:1,charge:1-o.pickup,paintMix:1,extras:[],hueJitter:0,satJitter:0,valJitter:0});
   /* the heal brush: a faint grey trail while painting; the healing happens on release, on every map */
   if(o.tool==='heal')Object.assign(o,{color:[.6,.6,.6],healOpacity:o.opacity,opacity:.45,noTint:true,extras:[],buildup:false,hueJitter:0,satJitter:0,valJitter:0,chan:null});
   if(o.tool==='clone')Object.assign(o,{noTint:true,extras:[],buildup:false,hueJitter:0,satJitter:0,valJitter:0,chan:null});

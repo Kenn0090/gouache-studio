@@ -66,6 +66,21 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>{__gs.setTool('brush');return true;}),'ok');
  await p.waitForTimeout(300);ok(await p.evaluate(()=>!!document.getElementById('bWet')),'Paint mixing is in the Brush settings');
  ok(await p.evaluate(()=>['Oil filbert','Gouache filbert','Palette knife'].every(n=>__gs.library.flatMap(s=>s.presets).some(x=>x.name===n&&x.wet>0))),'the oil, gouache and knife brushes have it on');
+
+ /* ---- 5. a brush that picks up paint carries colour along (it works like the Blend brush loaded with your colour) ---- */
+ const alphaAt=(x)=>p.evaluate(x=>{const L=__gs.doc.active,d=__gs.readRGBA8(__gs.mapT(L,'base')),W=__gs.doc.w;const i=(100*W+x)*4;return [d[i],d[i+1],d[i+2],d[i+3]];},x);
+ await p.evaluate(()=>{__gs.newDoc(300,200,8,[1,1,1],'pk',false);});await p.waitForTimeout(300);await p.keyboard.press('Control+Shift+n');await p.waitForTimeout(200);
+ await p.evaluate(()=>{__gs.setTool('brush');Object.assign(__gs.brush,{size:50,hardness:1,opacity:1,flow:1,spacing:.05,smoothing:0,grain:0,tip:null,pSize:false,pOpacity:false,buildup:false,edgeSat:0,glaze:0,wet:0,pickup:0,dual:null});__gs.ui.fg=[.95,.9,.1];});
+ await drag(30,100,120,100);
+ await p.evaluate(()=>{__gs.brush.pickup=.7;__gs.brush.opacity=.9;__gs.ui.fg=[.1,.2,.9];});
+ await drag(60,100,260,100);
+ const pe=await alphaAt(230),m1=await alphaAt(100);
+ ok(pe[3]>200&&pe[2]>200&&pe[0]<60,'a brush that picks up paint lays down its own colour past the old paint ('+pe+')');
+ ok(m1[3]>200&&!(m1[0]>200&&m1[2]<80),'over the yellow it has mixed with it instead of just leaving yellow ('+m1+')');
+ await p.evaluate(()=>__gs.undo());await p.waitForTimeout(400);
+ const u1=await alphaAt(230),u2=await alphaAt(100);
+ ok(u1[3]===0&&u2[0]>200&&u2[2]<80,'one undo takes the whole stroke back ('+u1+' / '+u2+')');
+ ok(await p.evaluate(()=>{__gs.showPanel('tool');return !!document.getElementById('bPickup');}),'Pick up paint is in the Brush settings');
  ok(!errs.length,'no errors '+errs.join('|'));
  await b.close();console.log(fails?'FAILS '+fails:'ALL PASS');process.exit(fails?1:0);
 })();

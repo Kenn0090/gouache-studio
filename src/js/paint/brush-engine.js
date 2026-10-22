@@ -1,7 +1,7 @@
 /* ================= Brush engine ================= */
 const BRUSH_DEFAULTS={size:24,opacity:1,flow:1,hardness:.85,spacing:.06,grain:0,smoothing:.25,pSize:true,pOpacity:false,minSize:.2,buildup:false,curve:0,strength:.6,charge:0,
   tip:null,angle:0,roundness:1,flipX:false,flipY:false,randFlipX:false,randFlipY:false,sizeJitter:0,angleJitter:0,scatter:0,count:1,bothAxes:false,followDir:false,
-  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,wet:0,paintMix:.7};
+  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,wet:0,pickup:0,paintMix:.7};
 /* lazy mouse: the brush follows the pointer on a string of R pixels, so it only moves once the string is pulled tight */
 function lazyStep(s,x,y,R){if(!(R>0))return [x,y];if(s.lx===undefined){s.lx=s.sx;s.ly=s.sy;}const dx=x-s.lx,dy=y-s.ly,d=Math.hypot(dx,dy);if(d<=R)return null;s.lx+=dx*(d-R)/d;s.ly+=dy*(d-R)/d;return [s.lx,s.ly];}
 /* Keep stabilization consistent across pointer sample rates. At 60 Hz this matches the
@@ -159,7 +159,7 @@ function endStroke(record){
   if(s.lockT)release(s.lockT);dropStrokeCache(s);
   stroke=null;
   if(record){
-    if(bw>0&&bh>0){const r=regionRecord(L,lazyBefore||captureRegion(beforeT,x0,y0,bw,bh),captureRegion(L.target,x0,y0,bw,bh),x0,y0,bw,bh,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?'Blend':s.o.tool==='dodge'?'Dodge':s.o.tool==='burn'?'Burn':healing?'Heal':cloning?'Clone':'Brush stroke');
+    if(bw>0&&bh>0){const r=regionRecord(L,lazyBefore||captureRegion(beforeT,x0,y0,bw,bh),captureRegion(L.target,x0,y0,bw,bh),x0,y0,bw,bh,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?(s.o.mixer?'Brush stroke':'Blend'):s.o.tool==='dodge'?'Dodge':s.o.tool==='burn'?'Burn':healing?'Heal':cloning?'Clone':'Brush stroke');
       if(L.onRecord)L.onRecord(r,[x0,y0,bw,bh]);
       pushUndo(parts.length?withMapParts(r,L,parts,x0,y0):r);}
     scheduleThumb(L.maskOf||L);
