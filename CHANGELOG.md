@@ -1,3 +1,11 @@
+## 0.65.0
+
+- **Smudge, Smear and Liquify on the 3D model.** In 3D Paint the **Blend (smudge)** tool and **Liquify** now work on the model. **Smudge** drags paint along your stroke and blends it; **Smear** (a switch next to Smudge in the options bar) drags a longer streak. **Liquify** pushes, pinches, bloats and twirls the paint (Pinch, Bloat and Twirl keep working while you hold the button). They move paint across the surface and over UV seams, and **every map of the layer moves together** (colour, roughness, height and the rest), with one undo step per stroke. A selection limits them. They work in a plain texture set (not UDIM tiles) and not yet with the 3D mirror; Liquify's Restore mode stays on the flat canvas.
+- **Hue / Saturation layer.** A new layer button (a small dial) and **Layer › New › Hue / Saturation layer** add an empty layer that changes the colour of everything under it. Its **Hue, Saturation and Lightness** sliders (and **Colorize**) are in the Properties panel and change the model live; it takes a mask, opacity and blend mode, and undo covers it. A **Pass through** folder lets it reach the layers below the folder. Any filter layer now shows its settings in the Properties panel with an **Edit filters…** button.
+- **Skip back faces (3D Paint).** New switch under *Brush alignment*, on by default: paint no longer goes through a thin part to its far side or lands on a face seen from behind. Turn it off for models whose faces point the wrong way, or to paint the inside of a part.
+- **Pen and tablet.** The pen's side button now moves the view like the middle mouse button, in 2D and in 3D, also while the pen hovers (a tablet pen never reports a middle click). Preferences › Painting has a switch, and **Help › Pen and tablet test…** shows what your pen and its buttons send.
+- Fixes to older tests only (no change for you): the 3D Paint layer-list and Shift+F checks.
+
 ## 0.64.2
 
 - 3D Paint viewport Settings now starts with Shaded, Wireframe and Wireframe overlay display choices. Wireframe-only draws hidden-line edges without a material fill; overlay keeps the shaded material beneath the edges. The display choice is saved in the project and stays consistent with the mask toolbar.
