@@ -98,6 +98,14 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const q1=await pig(.4),q2=await pig(1),q3=await pig(2.5);
  ok(q1.lum>q2.lum&&q2.lum>q3.lum+.02,'more pigment makes the same stroke deeper ('+q1.lum.toFixed(2)+', '+q2.lum.toFixed(2)+', '+q3.lum.toFixed(2)+')');
  ok(await p.evaluate(()=>{__gs.showPanel('tool');return !!document.getElementById('bPig');}),'Pigment amount is in the brush settings');
+
+ /* ---- 8. no black edges where red goes over blue (feedback from a tester) ---- */
+ await p.evaluate(()=>{__gs.newDoc(300,200,8,[1,1,1],'rb',false);});await p.waitForTimeout(300);await p.keyboard.press('Control+Shift+n');await p.waitForTimeout(200);
+ await p.evaluate(()=>{__gs.setTool('brush');Object.assign(__gs.brush,{size:70,hardness:1,opacity:1,flow:1,spacing:.05,smoothing:0,grain:0,tip:null,pSize:false,pOpacity:false,buildup:false,edgeSat:0,glaze:0,pigment:1,wet:0,pickup:0,dual:null,followDir:false});__gs.ui.fg=[.1,.3,.75];});
+ await drag(100,40,100,160);
+ await p.evaluate(()=>{Object.assign(__gs.brush,{hardness:.2,wet:.8,edgeSat:.6,opacity:.8});__gs.ui.fg=[.85,.15,.2];});await drag(30,100,200,100);
+ const dark=await p.evaluate(()=>{const L=__gs.doc.active,d=__gs.readRGBA8(__gs.mapT(L,'base')),W=__gs.doc.w;let mn=9,n=0;for(let y=60;y<140;y++)for(let x=40;x<170;x++){const i=(y*W+x)*4,a=d[i+3];if(a<20)continue;const r=(d[i]+255-a)/255,g=(d[i+1]+255-a)/255,b=(d[i+2]+255-a)/255;const l=.299*r+.587*g+.114*b;n++;if(l<mn)mn=l;}return {mn,n};});
+ ok(dark.n>1000&&dark.mn>.17,'red over blue has no black edges (darkest pixel '+dark.mn.toFixed(2)+')');
  ok(!errs.length,'no errors '+errs.join('|'));
  await b.close();console.log(fails?'FAILS '+fails:'ALL PASS');process.exit(fails?1:0);
 })();
