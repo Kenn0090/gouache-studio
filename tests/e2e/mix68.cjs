@@ -81,6 +81,15 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const u1=await alphaAt(230),u2=await alphaAt(100);
  ok(u1[3]===0&&u2[0]>200&&u2[2]<80,'one undo takes the whole stroke back ('+u1+' / '+u2+')');
  ok(await p.evaluate(()=>{__gs.showPanel('tool');return !!document.getElementById('bPickup');}),'Pick up paint is in the Brush settings');
+
+ /* ---- 6. the bristle brush tips ---- */
+ await p.evaluate(()=>{__gs.newDoc(300,300,8,[1,1,1],'br',false);});await p.waitForTimeout(300);await p.keyboard.press('Control+Shift+n');await p.waitForTimeout(200);
+ ok(await p.evaluate(()=>['Bristle flat','Bristle dry brush','Bristle thin pigment'].every(n=>__gs.library.flatMap(s=>s.presets).some(x=>x.name===n&&x.tip))),'there are Bristle flat, Bristle dry brush and Bristle thin pigment brushes');
+ await p.evaluate(()=>{__gs.setTool('brush');const pr=__gs.library.flatMap(s=>s.presets).find(x=>x.name==='Bristle flat');__gs.applyPreset(pr);Object.assign(__gs.brush,{size:100,opacity:1,wet:0,pickup:0,pOpacity:false,pSize:false,smoothing:0});__gs.ui.fg=[.05,.15,.5];});
+ await drag(150,40,150,260);
+ const prof=await p.evaluate(()=>{const L=__gs.doc.active,d=__gs.readRGBA8(__gs.mapT(L,'base')),W=__gs.doc.w;const col=y=>{const r=[];for(let x=60;x<240;x++)r.push(d[(y*W+x)*4+3]);return r;};const mid=col(150),start=col(46);let tr=0;for(let i=1;i<mid.length;i++)if(Math.abs(mid[i]-mid[i-1])>40)tr++;const wid=a=>a.filter(v=>v>30).length;return {tr,wm:wid(mid),ws:wid(start)};});
+ ok(prof.tr>5,'a stroke is made of many separate hairs ('+prof.tr+' changes across it)');
+ ok(prof.ws>0&&prof.ws<prof.wm*1.4+8,'the first dab already points along the stroke (width '+prof.ws+' at the start, '+prof.wm+' in the middle)');
  ok(!errs.length,'no errors '+errs.join('|'));
  await b.close();console.log(fails?'FAILS '+fails:'ALL PASS');process.exit(fails?1:0);
 })();

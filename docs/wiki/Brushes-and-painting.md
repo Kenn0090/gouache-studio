@@ -75,6 +75,9 @@ The little stroke preview at the top of the brush settings now **stays at the to
 
 **Pick up paint** goes further: the brush carries colour along like a loaded brush on wet paint, so dragging through another colour smears it into your stroke. It works like the Blend brush with your colour loaded: a low Opacity gives soft, see-through mixes; a higher Pick up paint drags more of what is under the brush. Oil filbert, Gouache filbert and Palette knife have some. One undo takes back the whole stroke. It doesn't combine with Thin pigment or Edge colour, and works on the flat canvas.
 
+## Bristle brushes (0.68)
+In *Drawing and painting*: **Bristle flat**, **Bristle dry brush** and **Bristle thin pigment**. The tip is made of many hair-fine bristles that run along your stroke, some thicker, some missing and each lighter or darker along its length, so a stroke leaves long fine streaks with the paper showing between them (the dry brush has the most gaps; the thin pigment one is bright and glaze-like). A brush that follows the stroke now also waits for the first couple of pixels, so its first dab already points the right way.
+
 ## Thin pigment and edge colour for watercolour (0.68)
 **Thin pigment** in the brush settings makes a stroke behave like a thin layer of real pigment: where the paint is thin it stays bright and keeps its colour (instead of fading to a pale tint), the white paper shines through, and strokes laid over each other show through one another like glazes. At full strength it is the plain colour. **Edge colour** makes the faint edges of a stroke richer and a little deeper, like pigment gathering at the edge of a wash. The watercolour brushes (Watercolour glaze, Dual sponge wash, Watercolour dry edge and Wash) have both switched on; set them to 0 for the old, plain fade. It works on the flat canvas, not yet on the 3D model.
 
