@@ -1,7 +1,7 @@
 /* ================= Brush engine ================= */
 const BRUSH_DEFAULTS={size:24,opacity:1,flow:1,hardness:.85,spacing:.06,grain:0,smoothing:.25,pSize:true,pOpacity:false,minSize:.2,buildup:false,curve:0,strength:.6,charge:0,
   tip:null,angle:0,roundness:1,flipX:false,flipY:false,randFlipX:false,randFlipY:false,sizeJitter:0,angleJitter:0,scatter:0,count:1,bothAxes:false,followDir:false,
-  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,endInk:0,dual:null,pFlow:false};
+  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,endInk:0,dual:null,pFlow:false,edgeSat:0,paintMix:.7};
 /* lazy mouse: the brush follows the pointer on a string of R pixels, so it only moves once the string is pulled tight */
 function lazyStep(s,x,y,R){if(!(R>0))return [x,y];if(s.lx===undefined){s.lx=s.sx;s.ly=s.sy;}const dx=x-s.lx,dy=y-s.ly,d=Math.hypot(dx,dy);if(d<=R)return null;s.lx+=dx*(d-R)/d;s.ly+=dy*(d-R)/d;return [s.lx,s.ly];}
 /* Keep stabilization consistent across pointer sample rates. At 60 Hz this matches the
@@ -97,7 +97,7 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy){
   } else if(o.tool==='smudge'){
     if(doc.wrap)blit(s.L.target,scratchT,0,0,W,H,0,0);
     else{const x0=clamp(Math.floor(Math.min(x,x-dx)-ext-4),0,W),y0=clamp(Math.floor(Math.min(y,y-dy)-ext-4),0,H),x1=clamp(Math.ceil(Math.max(x,x-dx)+ext+4),0,W),y1=clamp(Math.ceil(Math.max(y,y-dy)+ext+4),0,H);if(x1>x0&&y1>y0)blit(s.L.target,scratchT,x0,y0,x1-x0,y1-y0,x0,y0);}
-    for(const c of copies)run(P.smudge,s.L.target,Object.assign({},U,{uCenter:c,uSrc:scratchT.tex,uDelta:[dx,dy],uAlpha:a,uStrength:o.strength,uCharge:o.charge,uColor:o.color,uLockAlpha:s.L.lockAlpha},chanU(o),selU(o)));
+    for(const c of copies)run(P.smudge,s.L.target,Object.assign({},U,{uCenter:c,uSrc:scratchT.tex,uDelta:[dx,dy],uAlpha:a,uStrength:o.strength,uCharge:o.charge,uPaintMix:o.paintMix||0,uColor:o.color,uLockAlpha:s.L.lockAlpha},chanU(o),selU(o)));
   } else {
     const dst=s.space?s.space.buf:strokeT;
     if(dst===strokeT&&!doc.wrap)for(const c of copies)clearStrokeBufferRegion(s,[c[0]-ext,c[1]-ext,c[0]+ext,c[1]+ext]);

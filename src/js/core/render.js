@@ -20,7 +20,7 @@ function maskTexOf(n){if(!n.mask||!n.mask.enabled)return null;return maskOverrid
 /* selection clipping for a stroke: only when the stroke was started with an active selection */
 /* how a stroke is merged: 1 paint, 2 erase, 3 dodge, 4 burn (plus the dodge/burn settings) */
 function strokeMode(o){return o.tool==='erase'?2:o.tool==='dodge'?3:o.tool==='burn'?4:1;}
-function tonalU(o){return o&&(o.tool==='dodge'||o.tool==='burn')?{uTonalRange:{int:o.range},uProtect:!!o.protect}:{};}
+function tonalU(o){return o&&(o.tool==='dodge'||o.tool==='burn')?{uTonalRange:{int:o.range},uProtect:!!o.protect}:o&&o.edgeSat>0&&o.tool==='brush'?{uEdge:o.edgeSat}:{};}
 function selU(o){return o&&o.sel&&sel.t?{uSelTex:sel.t.tex,uUseSel:true}:{uSelTex:dummy,uUseSel:false};}
 function chanU(o){return o&&o.chan?{uChanMode:{int:1},uChan:o.chan}:{uChanMode:{int:0},uChan:[1,1,1,1]};}
 /* composite a list of layers for map k (default: the map being edited) onto acc.

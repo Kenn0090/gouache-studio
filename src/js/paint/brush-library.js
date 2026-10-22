@@ -229,12 +229,12 @@ function buildBrushPanel(){
   const bar3=ui.mode==='p3d'&&!sm&&!tonal;sizeSlider=null;
   if(!bar3){sizeSlider=S('bSize','Size','size',0,1000,1,v=>v+'px',sizeMap);box.append(sizeSlider.el);}
   box.append(brushDefaultSizeButton('bDefaultSize'));
-  if(sm)box.append(S('bStr','Strength','strength',0,1,.01,pct).el,S('bCharge','Paint load','charge',0,1,.01,pct).el);
+  if(sm)box.append(S('bStr','Strength','strength',0,1,.01,pct).el,S('bCharge','Paint load','charge',0,1,.01,pct).el,S('bPaintMix','Paint mixing','paintMix',0,1,.01,pct).el);
   else if(!tonal&&!bar3)box.append(S('bOp','Opacity','opacity',0,1,.01,pct).el);
   if(!bar3)box.append(S('bFlow','Flow','flow',.01,1,.01,pct).el);
   if(!brush.tip&&!bar3)box.append(S('bHard','Hardness','hardness',0,1,.01,pct).el);
   box.append(S('bSpace','Spacing','spacing',.01,1.5,.01,pct).el,S('bGrain','Grain','grain',0,1,.01,pct).el,S('bSmooth','Smoothing','smoothing',0,1,.01,pct).el,S('bLazy','Lazy mouse','lazy',0,200,1,v=>v?v+' px':'off').el);
-  if(ui.tool==='brush')box.append(S('bEndInk','Ink bleed','endInk',0,.5,.01,pct).el);
+  if(ui.tool==='brush')box.append(S('bEndInk','Ink bleed','endInk',0,.5,.01,pct).el,S('bEdgeSat','Edge colour','edgeSat',0,1,.01,pct).el);
   box.append(el('div',{class:'sub',text:'Pen pressure'}));
   box.append(el('div',{class:'chips'},C('bPS','Size','pSize',true),C('bPO','Opacity','pOpacity'),sm?null:C('bPF','Flow','pFlow'),sm?null:C('bBU','Build-up','buildup')));
   if(brush.pSize)box.append(S('bMin','Min size','minSize',0,1,.01,pct).el);

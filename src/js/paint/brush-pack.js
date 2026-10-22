@@ -50,7 +50,7 @@ const BP_BASIC=[
   {name:'Hatching',tip:BP_TIPS.hatch,size:44,spacing:.9,pSize:false,flow:.9},
   {name:'Fur',tip:BP_TIPS.fur,size:70,spacing:.3,followDir:true,sizeJitter:.35,scatter:.3,pSize:false,randFlipX:true},
   {name:'Oil paint',size:46,hardness:.6,spacing:.04,grain:.25,pSize:true,pOpacity:false,minSize:.5,smoothing:.35,flow:1},
-  {name:'Wash',size:140,hardness:0,spacing:.08,flow:.12,buildup:true,pSize:false,pOpacity:true,smoothing:.4},
+  {name:'Wash',size:140,hardness:0,spacing:.08,flow:.12,buildup:true,pSize:false,pOpacity:true,smoothing:.4,edgeSat:.5},
   {name:'Marker',size:20,hardness:1,spacing:.04,pSize:false,pOpacity:false,flow:.9,opacity:.85,smoothing:.4},
   {name:'Fine liner',size:3,hardness:1,spacing:.03,pSize:true,minSize:.3,smoothing:.6},
   {name:'Gasa Pen',tip:BP_TIPS.gasapen,size:9,hardness:1,spacing:.025,pSize:true,minSize:.04,pOpacity:false,smoothing:.45,flow:1,opacity:1,grain:0,endInk:.18},

@@ -70,6 +70,9 @@ The little stroke preview at the top of the brush settings now **stays at the to
 ## Right-click brush picker (0.67)
 **Right-click** (a click, not a drag) on the canvas, or on the model in 3D Paint, with the Brush, Eraser, Blend, Dodge or Burn tool opens a small window at the pointer with **Size**, **Hardness** and **Opacity** sliders (Strength for Blend, Exposure for Dodge and Burn) and two tabs. **Brushes** shows the whole brush library in its collections, with Recent brushes and a search box: click a brush to use it. **Textures** lists the Textures library: click one to use it as the **brush tip**. Esc or a click outside closes it. Right-drag still moves the view in 3D, and Ctrl+right-click keeps its Substance-style controls. Turn it off in **Preferences › Painting**.
 
+## Edge colour for watercolour (0.68)
+In the brush settings, **Edge colour** makes the faint edges of a stroke richer and a little deeper, like pigment gathering at the edge of a wash. The watercolour brushes (Watercolour glaze, Dual sponge wash, Watercolour dry edge and Wash) have it switched on; set it to 0 for the old, plain fade. It works on the flat canvas, not yet on the 3D model.
+
 ## Dual brush (0.65.1)
 In the brush settings, **Dual brush** (tick *Use a second brush tip as a mask*) lets a second tip shape the first, like Photoshop's Dual Brush. Pick the second **Tip** (built-in, drawing and painting tips, or your own), then its **Size**, **Spacing**, **Scatter**, **Count** and **Amount**. **Multiply** shows the brush only where the second tip is; **Knock out** cuts holes in it. The pattern sits fixed on the canvas for a steady texture; **Random for every dab** gives a stippled look. It saves with your brushes, and the *Dual sponge wash* brush is ready made.
 
@@ -80,7 +83,7 @@ In the brush settings, **Dual brush** (tick *Use a second brush tip as a mask*) 
 Uses the same settings as the brush. On a document with several maps, it can erase from other maps too; see *Also erase from* in the panel.
 
 ## Blend (S)
-Smudges and mixes paint. **Strength** is how far the colour is dragged. **Paint load** adds some of the foreground colour as you blend, like a loaded brush.
+Smudges and mixes paint. **Strength** is how far the colour is dragged. **Paint load** adds some of the foreground colour as you blend, like a loaded brush. **Paint mixing** (on by default, 70%) mixes colours the way real paint does, so blue and yellow blend to green instead of grey. Turn it down to 0 for the plain, screen-style blend. It works on the flat canvas; on the 3D model the blend is still the plain kind.
 
 ## Healing brushes (J)
 

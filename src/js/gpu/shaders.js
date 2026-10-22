@@ -39,7 +39,7 @@ float brushMask(vec2 pix){
   return m; }
 `;
 const CH_STROKE=`
-uniform int uStroke; uniform vec3 uStrokeColor; uniform int uStrokeTint; vec3 gSC; uniform float uStrokeOpacity; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan;
+uniform int uStroke; uniform vec3 uStrokeColor; uniform int uStrokeTint; vec3 gSC; uniform float uStrokeOpacity; uniform float uEdge; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan;
 uniform sampler2D uSelTex; uniform int uUseSel;
 float selCov(ivec2 p, float c){ return uUseSel==1?c*texelFetch(uSelTex,p,0).r:c; }
 /* dodge (3) and burn (4): uTonalRange 0 shadows, 1 midtones, 2 highlights; uProtect keeps hue and saturation */
@@ -56,6 +56,9 @@ vec4 chanMix(vec4 oldP, vec4 t, float a){
   return vec4(clamp(nc,0.0,1.0)*na,na); }
 vec4 applyStroke(vec4 L, float cov){
   float a=clamp(cov,0.0,1.0)*uStrokeOpacity;
+  /* watercolour edge: where the stroke is faint the pigment gathers, so the colour gets richer and a little deeper there */
+  if(uStroke==1&&uEdge>0.0){ float e=1.0-smoothstep(0.0,0.85,clamp(cov,0.0,1.0)); float l=dot(gSC,vec3(0.299,0.587,0.114));
+    gSC=clamp(mix(vec3(l),gSC,1.0+uEdge*1.5*e)*(1.0-0.2*uEdge*e),0.0,1.0); a=min(1.0,a*(1.0+0.7*uEdge*e)); }
   if(uStroke>=3){ if(L.a<=1e-6) return L; vec3 r=tonal(clamp(L.rgb/L.a,0.0,1.0),a,uStroke==3);
     if(uChanMode==1) return chanMix(L,vec4(r,L.a),1.0); return vec4(r*L.a,L.a); }
   if(uChanMode==1&&uStroke!=0){ vec4 t=uStroke==1?vec4(gSC,dot(gSC,vec3(0.299,0.587,0.114))):vec4(0.0); return chanMix(L,t,a); }
@@ -67,13 +70,18 @@ const FS_STAMP=CH_BRUSH+`uniform float uAlpha; uniform int uTint; uniform vec3 u
 /* colour-jitter strokes stamp each dab twice: uTint 2 first gives pixels nothing has touched yet the dab's colour
    (so soft edges keep it), then uTint 1 lays the dab over what is there */
 const FS_SMUDGE=CH_BRUSH+`
-uniform sampler2D uSrc; uniform vec2 uDelta; uniform float uAlpha; uniform float uStrength; uniform float uCharge; uniform vec3 uColor; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan;
+uniform sampler2D uSrc; uniform vec2 uDelta; uniform float uAlpha; uniform float uStrength; uniform float uCharge; uniform vec3 uColor; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan; uniform float uPaintMix;
 uniform sampler2D uSelTex; uniform int uUseSel;
+/* paint-like mixing: colours are mixed like pigments (Kubelka-Munk, one constant per channel), so blue and yellow give green */
+vec3 kmToKS(vec3 c){ vec3 R=clamp(pow(max(c,vec3(0.0)),vec3(2.2)),vec3(0.004),vec3(0.996)); return (1.0-R)*(1.0-R)/(2.0*R); }
+vec3 kmFromKS(vec3 k){ vec3 R=1.0+k-sqrt(k*k+2.0*k); return pow(clamp(R,vec3(0.0),vec3(1.0)),vec3(1.0/2.2)); }
 void main(){ vec2 size=vec2(textureSize(uSrc,0)); vec2 uv=gl_FragCoord.xy/size;
   vec4 dst=texture(uSrc,uv); vec4 pulled=texture(uSrc,uv-uDelta/size);
   float m=brushMask(gl_FragCoord.xy)*uAlpha; if(uUseSel==1) m*=texelFetch(uSelTex,ivec2(gl_FragCoord.xy),0).r;
   vec4 paint=mix(pulled,vec4(uColor,1.0),uCharge);
-  vec4 r=mix(dst,paint,clamp(m*uStrength,0.0,1.0));
+  float tm=clamp(m*uStrength,0.0,1.0); vec4 r=mix(dst,paint,tm);
+  if(uPaintMix>0.0&&uChanMode!=1&&dst.a>1e-4&&paint.a>1e-4){ vec3 cd=dst.rgb/dst.a,cp=paint.rgb/paint.a; float wp=paint.a*tm,wd=dst.a*(1.0-tm); float k=wp/max(wp+wd,1e-5);
+    vec3 pm=kmFromKS(mix(kmToKS(cd),kmToKS(cp),k)); vec3 lc=r.rgb/max(r.a,1e-5); r=vec4(mix(lc,pm,uPaintMix*clamp(tm*8.0,0.0,1.0))*r.a,r.a); }
   if(uChanMode==1){ vec3 oc=dst.a>1e-6?dst.rgb/dst.a:vec3(0.0),rc=r.a>1e-6?r.rgb/r.a:vec3(0.0); float na=mix(dst.a,r.a,uChan.a); r=vec4(mix(oc,rc,uChan.rgb)*na,na); }
   if(uLockAlpha==1){ vec3 c=r.a>1e-6?r.rgb/r.a:vec3(0.0); r=vec4(c*dst.a,dst.a); }
   o=r; }`;
