@@ -1360,3 +1360,10 @@ body.photomode #docTabs{display:none!important}
 #modeTabs [data-mode]:hover .modex,#modeTabs [data-mode][aria-selected=true] .modex{opacity:.45}.modex:hover{opacity:1!important;background:rgba(255,255,255,.16)}
 .dktab .dkx{margin-left:6px;padding:0 3px;border-radius:4px;opacity:0;font-size:13px;line-height:1}
 .dktab:hover .dkx,.dktab.on .dkx{opacity:.4}.dkx:hover{opacity:1!important;background:rgba(255,255,255,.16)}
+/* right-click brush picker (0.67) */
+.brushpop{position:fixed;z-index:60;display:flex;flex-direction:column;gap:8px;padding:10px;background:var(--panel,#1e2024);border:1px solid var(--line-2);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.5);overflow:hidden}
+.brushpop .bpsl{display:grid;gap:4px}.brushpop .bptabs{align-self:flex-start}.brushpop .bpbody{display:flex;flex-direction:column;gap:6px;min-height:0;overflow:auto}
+.brushpop input[type=search]{width:100%;box-sizing:border-box}.bplist{display:flex;flex-direction:column;gap:6px;overflow:auto}
+.bphead{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:4px}.bpset>summary{cursor:pointer;font-size:12px;padding:4px 0;color:var(--text)}
+.bptiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px}.bptile{aspect-ratio:1;padding:3px;border:1px solid var(--line-2);border-radius:8px;background:var(--panel-2,#25282d);cursor:pointer;display:grid;place-items:center}
+.bptile canvas,.bptile img{width:100%;height:100%;object-fit:contain;display:block}.bptile:hover{border-color:var(--accent)}.bptile.on{outline:2px solid var(--accent)}
