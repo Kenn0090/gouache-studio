@@ -83,6 +83,9 @@ The **×** on a set deletes it, after asking. If its material is still on the mo
 
 Entering 3D Paint switches to the **Texturing** workspace; going back to Paint brings your previous workspace back.
 
+## Brush alignment and back faces
+In the 3D Paint panel, **Brush alignment** chooses *Surface wrap* (the stroke follows the surface, including parts behind a raised edge) or *Camera* (only what the camera sees). **Skip back faces** (on by default) stops paint going through a thin part to its far side, or landing on a face that is seen from behind. Turn it off for a model whose faces point the wrong way, or when you want to paint the inside of a part. The choice is saved with the project.
+
 ## Mirror and radial painting
 The mirror sits in the **3D view's top bar**: **X**, **Y** and **Z** turn the mirror planes on, the menu next to them sets **radial** copies, and **▾** opens the plane positions, the radial axis, snapping and showing the planes.
 

@@ -14,7 +14,7 @@ out vec3 vP; out vec3 vN; out vec2 vT;
 void main(){ vec2 t=aT*uUVs; vec3 p=aP; if(uUseH==1&&uDisp!=0.0){ float h=textureLod(uH,uUseUDIM==1?fract(t):t,0.0).r-0.5; p+=aD*h*uDisp; }
   vP=p; vN=aN; vT=t; vec2 q=(uUseUDIM==1?fract(t):t)-uShift; gl_Position=vec4(q*2.0-1.0,0.0,1.0); }`;
 /* uMir: for mirror and radial painting, the texel looks up the brush where its mirror image is (identity otherwise) */
-const FS_3DPROJ=`in vec3 vP; in vec3 vN; in vec2 vT; uniform mat4 uVPm; uniform sampler2D uStroke; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform mat4 uMir; uniform int uAlign; uniform int uUseUDIM; uniform vec2 uUDIMTile;
+const FS_3DPROJ=`in vec3 vP; in vec3 vN; in vec2 vT; uniform mat4 uVPm; uniform sampler2D uStroke; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform mat4 uMir; uniform int uAlign; uniform int uNoBack; uniform int uUseUDIM; uniform vec2 uUDIMTile;
 uniform int uSt; uniform sampler2D uStT; uniform vec2 uStC; uniform vec2 uStHalf; uniform float uStRot; uniform vec2 uScr; uniform int uStTile; uniform int uStInv;
 void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec3 q=(uMir*vec4(vP,1.0)).xyz; vec4 c=uVPm*vec4(q,1.0); if(c.w<=1e-6){ o=vec4(0); return; } vec2 s=c.xy/c.w*0.5+0.5;
   if(s.x<0.0||s.y<0.0||s.x>1.0||s.y>1.0){ o=vec4(0); return; }
@@ -23,6 +23,9 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec3 q=
      them in camera depth. Back faces stay protected; Camera keeps strict depth visibility. */
   vec3 n=normalize(mat3(uMir)*vN),viewDir=normalize(uCamP-q);
   /* Keep the wrap active at grazing angles; only reject surfaces clearly facing away. */
+  /* Skip back faces: the real face (from how the position changes across the pixels, turned to the side the vertex normals point to)
+     must look at the camera. Paint then never goes through a thin part to the far side, and never lands on a face seen from behind. */
+  if(uNoBack==1){ vec3 gn=cross(dFdx(vP),dFdy(vP)); if(dot(gn,gn)>1e-24){ gn=normalize(gn); if(dot(gn,vN)<0.0) gn=-gn; if(dot(normalize(mat3(uMir)*gn),viewDir)<=0.0){ o=vec4(0); return; } } }
   if(uAlign==1){if(dot(n,viewDir)<-0.035){o=vec4(0);return;}}
   else if(z<=0.0||d>z*1.006+0.004){o=vec4(0);return;}
   vec4 t=texture(uStroke,s);
@@ -71,8 +74,8 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
     sync(){bindTarget(strokeT);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
       const stU=st3Uniforms(w,h);for(const Mi of mirs){useProg(P.proj,Object.assign({uVPm:{m4:VP},uStroke:M.buf.tex,uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v],uMir:{m4:Mi}},stU));
       bindTarget(strokeT);gl.enable(gl.BLEND);gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);gl.disable(gl.CULL_FACE);
-      const loc=gl.getUniformLocation(P.proj.p,'uShift'),alignLoc=gl.getUniformLocation(P.proj.p,'uAlign');gl.bindVertexArray(g.vao);
-      const align=v3s().paintAlign==='camera'?0:1;gl.uniform1i(alignLoc,align);
+      const loc=gl.getUniformLocation(P.proj.p,'uShift'),alignLoc=gl.getUniformLocation(P.proj.p,'uAlign'),backLoc=gl.getUniformLocation(P.proj.p,'uNoBack');gl.bindVertexArray(g.vao);
+      const align=v3s().paintAlign==='camera'?0:1;gl.uniform1i(alignLoc,align);gl.uniform1i(backLoc,v3s().noBack===false?0:1);
       for(let j=0;j<uvs;j++)for(let i=0;i<uvs;i++){gl.uniform2f(loc,i,j);gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);}}
       gl.bindVertexArray(vao);gl.blendEquation(gl.FUNC_ADD);gl.disable(gl.BLEND);},
     /* the part of the texture this stroke can have touched: triangles whose screen position meets the stroke */

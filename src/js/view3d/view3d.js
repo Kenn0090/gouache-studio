@@ -131,7 +131,7 @@ const FS_3DSEL=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform sample
 const P3={mesh:Object.assign(prog3(VS_3D,FS_3D),{decodeOnly:true}),line:prog3(VS_3D,FS_3DLINE),uv:prog3(VS_UV,FS_3DLINE),sel:prog3(VS_3D,FS_3DSEL)};
 
 /* ---- settings (kept in the document) ---- */
-const V3D_DEFAULTS={model:'plane',detail:0,unlit:null,uvs:1,disp:0,paintAlign:'wrap',sunAz:40,sunEl:45,sunI:1,skyI:1,expo:1,bg:'dark',clip:true,wire:false,wireOnly:false,showUV:false,litUV:false,spin:false,fov:40,ortho:false,
+const V3D_DEFAULTS={model:'plane',detail:0,unlit:null,uvs:1,disp:0,paintAlign:'wrap',noBack:true,sunAz:40,sunEl:45,sunI:1,skyI:1,expo:1,bg:'dark',clip:true,wire:false,wireOnly:false,showUV:false,litUV:false,spin:false,fov:40,ortho:false,
   env:'studio',envRot:0,envI:1,envBg:false,envBlur:.35,envSun:0,tone:'filmic',studioFill:.12,studioRim:.08,lightColor:[1,1,1],shadows:true,shadowSoft:1.5,floor:false,floorHeight:0,floorOpacity:.5,floorSoft:2,floorColor:[0,0,0]};
 const v3={on:false,mesh:null,gpu:null,tex:{},cam:{yaw:.5,pitch:.25,dist:3.2,tx:0,ty:0,tz:0},dirty:true,postDirty:false,mapsDirty:true,editDirty:true,lastFull:0,fbo:null,imported:null};
 function v3s(){if(!doc.v3d)doc.v3d=Object.assign({},V3D_DEFAULTS);else{for(const k in V3D_DEFAULTS)if(!(k in doc.v3d))doc.v3d[k]=V3D_DEFAULTS[k];}return doc.v3d;}
