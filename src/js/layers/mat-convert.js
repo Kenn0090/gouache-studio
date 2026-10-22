@@ -34,6 +34,7 @@ function mcRun(L,cfg){const maps=mcMake(L,cfg);if(!maps){toast('“'+L.name+'”
   const after=Object.assign({},M);
   const lays=[];if(cfg.toLayers)for(const k of made){const Ln=newLayerObj((MC_MAPS.find(x=>x[0]===k)||[k,k])[1]+' (from '+L.name+')');doc.count--;
     const own=k==='rough'||k==='metal'?k:'base';if(own!=='base'&&!doc.maps.includes(own))continue;for(const x of Object.keys(Ln.maps))if(x!==own){disposeTarget(Ln.maps[x]);delete Ln.maps[x];}
+    if(own!==doc.map)Ln.target=emptyFor(mapDepth(doc.map));/* the edited map is another one: the layer has nothing there */
     blit(maps[k],ensureMapTarget(Ln,own),0,0,doc.w,doc.h,0,0);if(own!=='base'){Ln.blankBase=true;setMapModeOf(Ln,own,0);}
     if(k==='ao')Ln.mode=MODES.indexOf('Multiply');else if(own==='base'&&k!=='ao'&&/^curv/.test(k))Ln.mode=MODES.indexOf('Overlay');lays.push(Ln);}
   const fB=L.fill?fillClone(L.fill):null;
@@ -44,21 +45,34 @@ function mcRun(L,cfg){const maps=mcMake(L,cfg);if(!maps){toast('“'+L.name+'”
   pushUndo({label:'Mesh maps from “'+L.name+'”',refs:[L,...lays],undo(){apply(before,fB);for(const n of lays)detachNode(n);changedAll();},redo(){apply(after,fA);for(const n of lays)insertNode(n,P0[0],P0[1]);changedAll();}});
   for(const n of lays)insertNode(n,P0[0],P0[1]);apply(after,fA);for(const k of made)disposeTarget(maps[k]);changedAll();
   toast('Made '+made.map(k=>(MC_MAPS.find(x=>x[0]===k)||[k,k])[1].toLowerCase()).join(', ')+' from “'+L.name+'”.');}
-function dlgMatConvert(L){L=L||doc.active;if(!isLayer(L)||L.fx){toast('Select a material layer first.');return;}const c=mcCfg;
-  const box=el('div',{class:'dlg-grid'},el('p',{class:'note',text:'Reads the height of “'+L.name+'” (or its normal) and makes the maps masks and generators use.'}),el('div',{class:'sub',text:'Make'}),
-    el('div',{class:'chips'},...MC_MAPS.map(([k,t])=>chk('mc_'+k,t,!!c[k],v=>{c[k]=v;}))),
-    makeSlider({id:'mc_r',label:'Radius',min:1,max:32,step:.5,value:c.r,fmt:v=>v+'px',onInput:v=>{c.r=v;}}).el,
-    makeSlider({id:'mc_s',label:'Strength',min:.1,max:4,step:.05,value:c.str,fmt:pct,onInput:v=>{c.str=v;}}).el,
-    makeSlider({id:'mc_aor',label:'AO reach',min:2,max:96,step:1,value:c.aoR,fmt:v=>v+'px',onInput:v=>{c.aoR=v;}}).el,
-    el('div',{class:'sub',text:'Roughness: tops and gaps'}),
-    makeSlider({id:'mc_top',label:'Tops',min:0,max:1,step:.01,value:c.top,fmt:pct,onInput:v=>{c.top=v;}}).el,
-    makeSlider({id:'mc_gap',label:'Gaps',min:0,max:1,step:.01,value:c.gap,fmt:pct,onInput:v=>{c.gap=v;}}).el,
-    el('div',{class:'frow'},el('label',{text:'Bare metal on'}),seg([['edge','Worn edges'],['cav','Cavities']],c.metalOn,v=>{c.metalOn=v;},'Bare metal on')),
-    makeSlider({id:'mc_ma',label:'Metal',min:0,max:1,step:.01,value:c.metalAmt,fmt:pct,onInput:v=>{c.metalAmt=v;}}).el,
+function mcHasSource(L){return isLayer(L)&&!L.fx&&(hasMap(L,'height')||hasMap(L,'normal'));}
+/* (0.68) "Convert to ▸" on any layer that has a height or normal: only: the maps ticked to start with */
+function dlgMatConvert(L,only){L=L||doc.active;if(!isLayer(L)||L.fx){toast('Select a layer with a height or normal first.');return;}
+  const c=Object.assign({},mcCfg);if(only){for(const [k] of MC_MAPS)c[k]=only.includes(k);Object.assign(c,{toMesh:true,toLayers:true,toBaked:false,toMat:false});}
+  const wants=k=>!only||only.includes(k);
+  const showR=!only||only.some(o=>o==='curv'||o==='curvEdge'||o==='curvCrease'),showAo=!only||only.includes('ao'),all=!only;
+  /* a small picture of the first ticked map, redrawn after a short pause whenever a setting changes */
+  const PW=256,PH=Math.max(32,Math.round(PW*doc.h/doc.w)),pv=el('canvas',{class:'mcprev',width:PW,height:PH,'aria-label':'Preview'}),pvNote=el('span',{class:'dim',text:''});let pvT=0;
+  const pvDraw=()=>{clearTimeout(pvT);pvT=setTimeout(()=>{const first=MC_MAPS.map(x=>x[0]).find(k=>c[k]);const g=pv.getContext('2d');if(!first){g.clearRect(0,0,PW,PH);pvNote.textContent='Nothing ticked';return;}
+    try{const pc=Object.assign({},c,{curv:false,ao:false,curvEdge:false,curvCrease:false,rough:false,metal:false});pc[first]=true;const maps=mcMake(L,pc);if(!maps){pvNote.textContent='No height or normal';return;}
+      const t=maps[first],s=makeTarget(PW,PH,8,false);copyScaled(t,s);const d=captureRegionNow(s,0,0,PW,PH).data;disposeTarget(s);for(const k in maps)disposeTarget(maps[k]);
+      const id=g.createImageData(PW,PH);for(let k=0;k<PW*PH;k++){const a=d[k*4+3]||1;id.data[k*4]=d[k*4]*255/a;id.data[k*4+1]=d[k*4+1]*255/a;id.data[k*4+2]=d[k*4+2]*255/a;id.data[k*4+3]=255;}g.putImageData(id,0,0);pvNote.textContent=(MC_MAPS.find(x=>x[0]===first)||[0,first])[1];}catch(e){console.warn('convert preview',e);}},160);};
+  const set=(k,v)=>{c[k]=v;pvDraw();};
+  const box=el('div',{class:'dlg-grid'},el('p',{class:'note',text:'Reads the height of “'+L.name+'” (or its normal) and makes the maps masks and generators use.'}),
+    el('div',{class:'mcpvbox'},pv,pvNote),el('div',{class:'sub',text:'Make'}),
+    el('div',{class:'chips'},...MC_MAPS.filter(([k])=>wants(k)).map(([k,t])=>chk('mc_'+k,t,!!c[k],v=>set(k,v)))),
+    showR?makeSlider({id:'mc_r',label:'Radius',min:1,max:32,step:.5,value:c.r,fmt:v=>v+'px',onInput:v=>set('r',v)}).el:null,
+    makeSlider({id:'mc_s',label:'Strength',min:.1,max:4,step:.05,value:c.str,fmt:pct,onInput:v=>set('str',v)}).el,
+    showAo?makeSlider({id:'mc_aor',label:'AO reach',min:2,max:96,step:1,value:c.aoR,fmt:v=>v+'px',onInput:v=>set('aoR',v)}).el:null,
+    all?el('div',{class:'sub',text:'Roughness: tops and gaps'}):null,
+    all?makeSlider({id:'mc_top',label:'Tops',min:0,max:1,step:.01,value:c.top,fmt:pct,onInput:v=>{c.top=v;}}).el:null,
+    all?makeSlider({id:'mc_gap',label:'Gaps',min:0,max:1,step:.01,value:c.gap,fmt:pct,onInput:v=>{c.gap=v;}}).el:null,
+    all?el('div',{class:'frow'},el('label',{text:'Bare metal on'}),seg([['edge','Worn edges'],['cav','Cavities']],c.metalOn,v=>{c.metalOn=v;},'Bare metal on')):null,
+    all?makeSlider({id:'mc_ma',label:'Metal',min:0,max:1,step:.01,value:c.metalAmt,fmt:pct,onInput:v=>{c.metalAmt=v;}}).el:null,
     el('div',{class:'sub',text:'Send to (any of them)'}),
+    chk('mc_toLayers','New layers (one per map)',c.toLayers,v=>{c.toLayers=v;}),
     chk('mc_toMesh','Mesh maps, as converted maps (masks, generators and the Converted tab use them)',c.toMesh,v=>{c.toMesh=v;}),
-    chk('mc_toBaked','Also add them onto the baked maps',c.toBaked,v=>{c.toBaked=v;}),
-    chk('mc_toLayers','New layers',c.toLayers,v=>{c.toLayers=v;}),
-    L.fill?chk('mc_toMat','Into this material’s own roughness and metallic',c.toMat,v=>{c.toMat=v;}):null);
-  openDialog({title:'Mesh maps from a material',body:box,okLabel:'Make',onOk(){if(!MC_MAPS.some(([k])=>c[k])){toast('Tick at least one map.');return false;}
-    if(!(c.toMesh||c.toBaked||c.toLayers||c.toMat)){toast('Tick where they go.');return false;}mcRun(L,c);}});}
+    all?chk('mc_toBaked','Also add them onto the baked maps',c.toBaked,v=>{c.toBaked=v;}):null,
+    L.fill&&all?chk('mc_toMat','Into this material’s own roughness and metallic',c.toMat,v=>{c.toMat=v;}):null);
+  openDialog({title:only?'Convert “'+L.name+'”':'Mesh maps from a material',body:box,okLabel:'Make',onOk(){if(!MC_MAPS.some(([k])=>c[k])){toast('Tick at least one map.');return false;}
+    if(!(c.toMesh||c.toBaked||c.toLayers||c.toMat)){toast('Tick where they go.');return false;}clearTimeout(pvT);Object.assign(mcCfg,{r:c.r,str:c.str,aoR:c.aoR});if(!only)Object.assign(mcCfg,c);mcRun(L,c);}});pvDraw();}

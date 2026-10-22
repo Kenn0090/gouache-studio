@@ -23,6 +23,7 @@
     "paint/art-media",
     "paint/tool-brushes",
     "paint/map-brush",
+    "paint/normal-paint",
     "paint/material-brush",
     "ui/layers-panel",
     "ui/channels-panel",

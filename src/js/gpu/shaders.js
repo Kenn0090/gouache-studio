@@ -90,7 +90,7 @@ const FS_STAMP=CH_BRUSH+`uniform float uAlpha; uniform int uTint; uniform vec3 u
 /* colour-jitter strokes stamp each dab twice: uTint 2 first gives pixels nothing has touched yet the dab's colour
    (so soft edges keep it), then uTint 1 lays the dab over what is there */
 const FS_SMUDGE=CH_BRUSH+`
-uniform sampler2D uSrc; uniform vec2 uDelta; uniform float uAlpha; uniform float uStrength; uniform float uCharge; uniform vec3 uColor; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan; uniform float uPaintMix;
+uniform sampler2D uSrc; uniform vec2 uDelta; uniform float uAlpha; uniform float uStrength; uniform float uCharge; uniform vec3 uColor; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan; uniform float uPaintMix; uniform int uNormalMap;
 uniform sampler2D uSelTex; uniform int uUseSel;
 ${PIGMENT_MIX}
 void main(){ vec2 size=vec2(textureSize(uSrc,0)); vec2 uv=gl_FragCoord.xy/size;
@@ -98,8 +98,9 @@ void main(){ vec2 size=vec2(textureSize(uSrc,0)); vec2 uv=gl_FragCoord.xy/size;
   float m=brushMask(gl_FragCoord.xy)*uAlpha; if(uUseSel==1) m*=texelFetch(uSelTex,ivec2(gl_FragCoord.xy),0).r;
   vec4 paint=mix(pulled,vec4(uColor,1.0),uCharge);
   float tm=clamp(m*uStrength,0.0,1.0); vec4 r=mix(dst,paint,tm);
-  if(uPaintMix>0.0&&uChanMode!=1&&dst.a>1e-4&&paint.a>1e-4){ vec3 cd=dst.rgb/dst.a,cp=paint.rgb/paint.a; float wp=paint.a*tm,wd=dst.a*(1.0-tm); float k=wp/max(wp+wd,1e-5);
+  if(uPaintMix>0.0&&uNormalMap==0&&uChanMode!=1&&dst.a>1e-4&&paint.a>1e-4){ vec3 cd=dst.rgb/dst.a,cp=paint.rgb/paint.a; float wp=paint.a*tm,wd=dst.a*(1.0-tm); float k=wp/max(wp+wd,1e-5);
     vec3 pm=pgMix(cd,cp,k); vec3 lc=r.rgb/max(r.a,1e-5); r=vec4(mix(lc,pm,uPaintMix*clamp(tm*8.0,0.0,1.0))*r.a,r.a); }
+  if(uNormalMap==1&&r.a>1e-6){ vec3 n=r.rgb/r.a*2.0-1.0; float l=length(n); n=l>1e-4?n/l:vec3(0.0,0.0,1.0); r=vec4((n*0.5+0.5)*r.a,r.a); } /* normals stay unit length */
   if(uChanMode==1){ vec3 oc=dst.a>1e-6?dst.rgb/dst.a:vec3(0.0),rc=r.a>1e-6?r.rgb/r.a:vec3(0.0); float na=mix(dst.a,r.a,uChan.a); r=vec4(mix(oc,rc,uChan.rgb)*na,na); }
   if(uLockAlpha==1){ vec3 c=r.a>1e-6?r.rgb/r.a:vec3(0.0); r=vec4(c*dst.a,dst.a); }
   o=r; }`;
