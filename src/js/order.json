@@ -160,6 +160,7 @@
     "bake/uv-relax",
     "ui/help",
     "ui/pen-test",
+    "ui/sections",
     "ui/harmony",
     "ui/ui-scale",
     "ui/ticks",

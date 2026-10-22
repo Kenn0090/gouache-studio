@@ -1355,3 +1355,8 @@ body.photomode #docTabs{display:none!important}
 /* colour harmony and three-colour mixing (0.65.1) */
 .harmrow{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 8px}.harmsw{width:30px;height:30px;border-radius:7px;border:1px solid var(--line-2);padding:0;cursor:pointer}.harmsw:hover{outline:2px solid var(--accent)}
 .mix3cv{border-radius:8px;display:block;margin-top:6px;cursor:crosshair;touch-action:none}
+/* close buttons on tabs (0.65.1) */
+.modex{margin-left:6px;padding:0 3px;border-radius:4px;opacity:0;font-size:13px;line-height:1}
+#modeTabs [data-mode]:hover .modex,#modeTabs [data-mode][aria-selected=true] .modex{opacity:.45}.modex:hover{opacity:1!important;background:rgba(255,255,255,.16)}
+.dktab .dkx{margin-left:6px;padding:0 3px;border-radius:4px;opacity:0;font-size:13px;line-height:1}
+.dktab:hover .dkx,.dktab.on .dkx{opacity:.4}.dkx:hover{opacity:1!important;background:rgba(255,255,255,.16)}

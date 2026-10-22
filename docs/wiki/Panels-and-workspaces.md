@@ -41,6 +41,12 @@ Dialogs (Layer style, the Filter Gallery, the material editor, filters…) float
 ## Icons
 Panels kept as **icons** sit in a thin column next to the dock. Click an icon to open its panel beside the column; click elsewhere to close it.
 
+## Closing tabs you do not use (0.65.1)
+Every work tab at the top except 2D Paint (Photo, 3D Paint, Animation, Bake, Convert, Brush) has a small **×**: click it to close the tab. **Window › Sections…** brings tabs back, and a closed tab opens again by itself when something sends you there (for example Send to Bake). Panel tabs in the docks have an **×** too (shown on the front tab and on hover); close a panel there and bring it back from the Window menu. The pen and the document tabs work as before.
+
+## Window scale (0.65.1)
+**View › Window scale** (Larger, Smaller, or 75% to 200%) and **Preferences › Look › Window scale** make the whole window bigger or smaller. It is remembered. In a browser use the browser's own zoom (Ctrl and + or −).
+
 ## Window menu
 Shows or hides each panel (a closed panel comes back where it was), the options bar, and the toolbar settings: **two columns** and **on the right**. You can also double-click the grip at the top of the toolbar for two columns, or drag the grip to the other side of the window.
 

@@ -191,7 +191,10 @@ function dkRender(){brushMergeSync();const keepSc=dkScrollSave(),L=dk.L,dock=$('
   if(typeof resizeGL==='function')requestAnimationFrame(()=>{resizeGL();if(typeof drawSV==='function')drawSV();});}
 function dkTabs(tabs,active,where,onPick){const strip=el('div',{class:'dktabs',role:'tablist'});
   for(const id of tabs){const on=id===active,label=id==='tool'?(dk.toolTitle.textContent||'Tool settings'):PANELS[id].title,b=el('button',{class:'dktab'+(on?' on':''),role:'tab','aria-selected':String(on),text:label,title:(on?'Current panel: ':'Show panel: ')+label+'. Drag to move it.'});
-    b.addEventListener('click',()=>onPick(id));if(!where.popped)b.addEventListener('pointerdown',e=>dkDragStart(e,id,where));strip.append(b);}
+    b.addEventListener('click',()=>onPick(id));if(!where.popped)b.addEventListener('pointerdown',e=>dkDragStart(e,id,where));
+    /* (0.65.1) a × to close the tab (not the work tabs' own settings); Window menu or the ⋯ menu brings panels back */
+    if(!where.popped&&!PANELS[id].mode&&!dk.lock)b.append(el('span',{class:'dkx',role:'button','aria-label':'Close '+label,title:'Close this tab (Window menu brings it back)',text:'×',onpointerdown:e=>e.stopPropagation(),onclick:e=>{e.stopPropagation();e.preventDefault();dkMove(id,{hidden:true});}}));
+    strip.append(b);}
   const more=el('button',{class:'dkmore','aria-label':'Panel options',title:'Panel options',text:'⋯'});more.onclick=e=>dkMenu(e,active,where);strip.append(more);return strip;}
 function dkGroup(g){const av=dkAvail(g);let a=av.includes(g.active)?g.active:av[0];
   /* a workspace tab that just became available (entering Bake, Convert…) comes to the front */
