@@ -26,6 +26,7 @@ jobs:
       - run: npm ci --prefix tests/e2e
       - run: node tests/e2e/p3-mask-sets-bevel.cjs
       - run: node tests/e2e/viewport-settings.cjs
+      - run: node tests/e2e/stencil-colour.cjs
       - run: node tests/e2e/mask-picker.cjs
       - run: node tests/e2e/bevel-scene.cjs
       - run: node tests/e2e/artist-fixes.cjs

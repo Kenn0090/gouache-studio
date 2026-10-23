@@ -1,5 +1,7 @@
 # End-to-end tests
 
+- `stencil-colour.cjs` imports a two-colour PNG and paints it through the actual 3D viewport. It checks live and committed texture colours with jitter off, brush opacity combined with source transparency, exact undo/redo, N bypass, Mask mode and greyscale layer masks. `GS_STENCIL_GPU=1` uses the installed graphics driver.
+
 - `viewport-settings.cjs` checks real wireframe-only/overlay pixels, restored GPU colour writes, saved display settings, wheel scrolling on a short viewport without camera/canvas zoom, and SVG mask/effect disclosure controls beside folder icons. `GS_WIRE_GPU=1` uses the installed graphics driver. Visual samples are written under `out/viewport-settings/`.
 
 - `mask-picker.cjs` checks snapshot-free black-mask stroke starts, regional material updates on release, projected/group masks, exact undo/redo, and safe fallbacks for mask stacks, filters, wrapping, mask view and Spec/Gloss. Real keyboard/pointer input tests rebinding the temporary 3D colour picker, persistence, cancellation, retained Alt navigation, and explicit part selection without double-click masking. `GS_MASK_GPU=1` runs the mask cases at 4K on the installed graphics driver; work counts and timings describe that test, not a general frame-rate guarantee.
