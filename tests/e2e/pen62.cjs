@@ -32,6 +32,9 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  // Alt held with the pen's side button (as in Substance Painter, Alt + the tablet's 2nd button): pans too
  a=await vx();await send('mouseMoved',cx,cy,{modifiers:1});await send('mousePressed',cx,cy,{button:'right',buttons:2,clickCount:1,modifiers:1});await send('mouseMoved',cx+50,cy+10,{button:'right',buttons:2,modifiers:1});await send('mouseReleased',cx+50,cy+10,{button:'right',buttons:0,clickCount:1,modifiers:1});
  d=(await vx())-a;ok(Math.abs(d-50)<3,'Alt + the pen side button pans the canvas by '+d);
+ // Ctrl + Alt + the pen's side button zooms (drag up/right to zoom in)
+ const z2=()=>p.evaluate(()=>__gs.view.zoom);let zz=await z2();await send('mouseMoved',cx,cy,{modifiers:3});await send('mousePressed',cx,cy,{button:'right',buttons:2,clickCount:1,modifiers:3});await send('mouseMoved',cx+60,cy-60,{button:'right',buttons:2,modifiers:3});await send('mouseMoved',cx+120,cy-120,{button:'right',buttons:2,modifiers:3});await send('mouseReleased',cx+120,cy-120,{button:'right',buttons:0,clickCount:1,modifiers:3});await p.waitForTimeout(200);
+ ok(await z2()>zz*1.1,'Ctrl + Alt + the pen side button zooms the canvas in ('+zz.toFixed(2)+' to '+(await z2()).toFixed(2)+')');
  // 3D
  await p.click('#modeTabs [data-mode=p3d]');await p.waitForTimeout(1500);
  const cam=()=>p.evaluate(()=>{const c=__gs.v3.cam;return [c.tx,c.ty,c.tz].map(v=>Math.round(v*1000)/1000).join();});
@@ -44,6 +47,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await send('mouseMoved',mx,my,{modifiers:1});await send('mousePressed',mx,my,{button:'right',buttons:2,clickCount:1,modifiers:1});await send('mouseMoved',mx+70,my+25,{button:'right',buttons:2,modifiers:1});await send('mouseReleased',mx+70,my+25,{button:'right',buttons:0,clickCount:1,modifiers:1});await p.waitForTimeout(200);
  ok(await cam()!==c0,'3D: Alt + the pen side button moves the view');
  ok(z0===await p.evaluate(()=>JSON.stringify(Object.assign({},__gs.v3.cam,{tx:0,ty:0,tz:0}))),'and does not zoom or turn it');
+ const dist0=await p.evaluate(()=>__gs.v3.cam.dist);await send('mouseMoved',mx,my,{modifiers:3});await send('mousePressed',mx,my,{button:'right',buttons:2,clickCount:1,modifiers:3});await send('mouseMoved',mx+60,my-60,{button:'right',buttons:2,modifiers:3});await send('mouseMoved',mx+120,my-120,{button:'right',buttons:2,modifiers:3});await send('mouseReleased',mx+120,my-120,{button:'right',buttons:0,clickCount:1,modifiers:3});await p.waitForTimeout(200);
+ ok(await p.evaluate(()=>__gs.v3.cam.dist)!==dist0,'3D: Ctrl + Alt + the pen side button zooms ('+dist0.toFixed(2)+' to '+(await p.evaluate(()=>__gs.v3.cam.dist)).toFixed(2)+')');
  // the test window
  await p.evaluate(()=>__gs.act('penTest'));await p.waitForTimeout(400);
  ok(await p.evaluate(()=>!!document.getElementById('penPad')),'Help › Pen and tablet test opens');

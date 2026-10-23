@@ -60,6 +60,8 @@ cv.addEventListener('pointerdown',e=>{
   if(ptr)return;closeMenu();const pan=e.button===1||penPanBtn(e)||spaceDown||ui.tool==='hand';if(!pan&&e.button!==0)return;
   e.preventDefault();cv.tabIndex=0;cv.focus({preventScroll:true});cv.setPointerCapture(e.pointerId);showPressure(e);
   if(rotHold||(spaceDown&&e.shiftKey)){ptr=vxDragStart(e);stage.classList.add('panning');return;}
+  /* (0.68.2) Ctrl + Alt + the pen's button zooms (Alt + the button pans); drag right or up to zoom in */
+  if(penPanBtn(e)&&e.altKey&&e.ctrlKey){const r=stage.getBoundingClientRect();ptr={mode:'zdrag',id:e.pointerId,x0:e.clientX,y0:e.clientY,sx:e.clientX-r.left,sy:e.clientY-r.top,cum:1,moved:false,shift:false};return;}
   if(pan){ptr={mode:'pan',id:e.pointerId,sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y};stage.classList.add('panning');refreshCursor();return;}
   /* (0.58) the zoom tool: click to zoom in (Shift: out), or drag right/up to zoom in and left/down to zoom out */
   if(ui.tool==='zoom'){const r=stage.getBoundingClientRect();ptr={mode:'zdrag',id:e.pointerId,x0:e.clientX,y0:e.clientY,sx:e.clientX-r.left,sy:e.clientY-r.top,cum:1,moved:false,shift:e.shiftKey};return;}
