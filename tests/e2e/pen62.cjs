@@ -29,6 +29,9 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  // turned off in Preferences
  await p.evaluate(()=>{__gs.prefs.penPan=false;});a=await vx();await send('mousePressed',cx,cy,{button:'right',buttons:2,clickCount:1});await send('mouseMoved',cx+60,cy,{button:'right',buttons:2});await send('mouseReleased',cx+60,cy,{button:'right',buttons:0,clickCount:1});
  ok(await vx()===a,'with the preference off the side button does nothing');await p.evaluate(()=>{delete __gs.prefs.penPan;});
+ // Alt held with the pen's side button (as in Substance Painter, Alt + the tablet's 2nd button): pans too
+ a=await vx();await send('mouseMoved',cx,cy,{modifiers:1});await send('mousePressed',cx,cy,{button:'right',buttons:2,clickCount:1,modifiers:1});await send('mouseMoved',cx+50,cy+10,{button:'right',buttons:2,modifiers:1});await send('mouseReleased',cx+50,cy+10,{button:'right',buttons:0,clickCount:1,modifiers:1});
+ d=(await vx())-a;ok(Math.abs(d-50)<3,'Alt + the pen side button pans the canvas by '+d);
  // 3D
  await p.click('#modeTabs [data-mode=p3d]');await p.waitForTimeout(1500);
  const cam=()=>p.evaluate(()=>{const c=__gs.v3.cam;return [c.tx,c.ty,c.tz].map(v=>Math.round(v*1000)/1000).join();});
@@ -37,6 +40,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await cam()!==c0,'3D: the side button moves the view');
  c0=await cam();await send('mouseMoved',mx,my,{buttons:2});await send('mouseMoved',mx+50,my+20,{buttons:2});await send('mouseMoved',mx+90,my+20,{buttons:2});
  ok(await cam()!==c0,'3D: hovering with the side button moves the view');await send('mouseMoved',mx+90,my+20,{buttons:0});
+ c0=await cam();const z0=await p.evaluate(()=>JSON.stringify(Object.assign({},__gs.v3.cam,{tx:0,ty:0,tz:0})));
+ await send('mouseMoved',mx,my,{modifiers:1});await send('mousePressed',mx,my,{button:'right',buttons:2,clickCount:1,modifiers:1});await send('mouseMoved',mx+70,my+25,{button:'right',buttons:2,modifiers:1});await send('mouseReleased',mx+70,my+25,{button:'right',buttons:0,clickCount:1,modifiers:1});await p.waitForTimeout(200);
+ ok(await cam()!==c0,'3D: Alt + the pen side button moves the view');
+ ok(z0===await p.evaluate(()=>JSON.stringify(Object.assign({},__gs.v3.cam,{tx:0,ty:0,tz:0}))),'and does not zoom or turn it');
  // the test window
  await p.evaluate(()=>__gs.act('penTest'));await p.waitForTimeout(400);
  ok(await p.evaluate(()=>!!document.getElementById('penPad')),'Help › Pen and tablet test opens');

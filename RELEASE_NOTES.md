@@ -1,3 +1,7 @@
+# Gouache Studio 0.68.1
+
+- Pen: Alt + the pen's side button now pans the view in 3D Paint (like Alt + middle click in Substance Painter) and on the canvas. Before, Alt made it zoom.
+
 # Gouache Studio 0.68.0
 
 - Normal layers: paint bumps, dents and tilts straight into a normal (Raise, Dent, Direction), on the canvas or on the 3D model. Smudge, selections, the gradient tool (slopes) and Levels work on them.
