@@ -106,9 +106,9 @@ The mirror sits in the **3D view's top bar**: **X**, **Y** and **Z** turn the mi
 Mirror painting also works in Paint's 3D view (Settings in the 3D view).
 
 ## Stencils (projection painting)
-Stencils have their own tab, **Stencils**, right next to Brushes. A stencil is a picture laid over the view:
-- **Mask**: the brush paints only where the picture is light.
-- **Colour**: the brush paints the picture's own colours onto the model.
+In **Brushes**, turn on **Use a stencil**, then drop a picture on the box or choose **Load image…**. A stencil is a picture laid over the view:
+- **Mask**: paints your selected brush colour only where the picture is light.
+- **Colour**: paints the picture's own colours onto the model's Base colour channel. Choose this to transfer an imported texture; colour jitter is not required. The image's transparency and your brush opacity both apply. Layer masks remain greyscale.
 
 Pick one of the built-in stencils (Grunge, Scratches, Dots, Stripes) or **Load image…**. **Show** sets how visible it is, **Repeat** tiles it.
 

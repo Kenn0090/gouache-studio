@@ -1,3 +1,8 @@
+# Gouache Studio 0.68.4
+
+- Fixed imported stencils painting the brush colour instead of the texture's colours. In 3D Paint, choose **Brushes › Use a stencil › Colour** to paint the image itself; colour jitter is no longer required.
+- Source transparency, brush opacity, undo/redo, Mask mode and the **N** bypass are retained.
+
 # Gouache Studio 0.68.3
 
 - Pen: hold Alt and the pen's side button to pan; let go of Alt with the button still down and the same drag zooms (like Painter). Works in 3D Paint and on the canvas.

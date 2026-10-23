@@ -71,7 +71,7 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
     const x0=clamp(Math.floor(b[0]/w*16),0,15),x1=clamp(Math.floor(b[2]/w*16),0,15),y0=clamp(Math.floor(b[1]/h*16),0,15),y1=clamp(Math.floor(b[3]/h*16),0,15);let u0=1,v0=1,u1=0,v1=0;
     for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const j=(y*16+x)*4;u0=Math.min(u0,bins[j]);v0=Math.min(v0,bins[j+1]);u1=Math.max(u1,bins[j+2]);v1=Math.max(v1,bins[j+3]);}
     return u1<u0?[0,0,0,0]:[u0*doc.w-2,v0*doc.h-2,u1*doc.w+2,v1*doc.h+2];};
-  return {w,h,buf:M.buf,yup:true,viewportBounds,mesh:true,
+  return {w,h,buf:M.buf,yup:true,viewportBounds,mesh:true,colourStencil:!!st3.img&&st3.mode==='colour',
     /* draws the model flat in its UV layout into a map with a shader of mesh-pull.js (same visibility rules as painting) */
     pull(prog,target,extra){useProg(prog,Object.assign({uVPm:{m4:VP},uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v]},extra));
       bindTarget(target);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);

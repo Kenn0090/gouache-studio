@@ -22,6 +22,9 @@ function jitterColor(c,o,grey){const R=()=>Math.random()*2-1;
   let [h,s,v]=rgb2hsv(c[0],c[1],c[2]);h=((h+R()*(o.hueJitter||0)*180)%360+360)%360;s=clamp(s*(1+R()*(o.satJitter||0)),0,1);v=clamp(v*(1+R()*(o.valJitter||0)),0,1);return hsv2rgb(h,s,v);}
 /* strokes with colour jitter keep each dab's colour in strokeT's RGB (straight colour, starting from the brush colour) */
 function strokeTints(o){if(o.tool!=='brush'||o.noTint||!o.color)return false;const grey=doc.map!=='base';if(doc.map==='normal')return false;
+  /* A colour stencil supplies RGB in the projection, even with all colour jitter off.
+     Keep the brush RGB in the screen buffer too, so holding N can bypass it mid-stroke. */
+  if(!grey&&o.space&&o.space.colourStencil)return true;
   return grey?(o.valJitter||0)>0:((o.hueJitter||0)+(o.satJitter||0)+(o.valJitter||0))>0;}
 const tintU=()=>({uStrokeTint:!!(stroke&&stroke.tint)});
 function beginStroke(L,x,y,p,o){
