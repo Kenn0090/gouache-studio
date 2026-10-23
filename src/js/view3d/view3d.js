@@ -196,7 +196,7 @@ function v3MapTex(k,src,region){const mono=doc.w*doc.h>=67108864&&MAP_DEFS[k]?.g
   gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
   if(anisoExt)gl.texParameterf(gl.TEXTURE_2D,anisoExt.TEXTURE_MAX_ANISOTROPY_EXT,Math.min(qual('aniso'),anisoMax));return t;}
 const anisoExt=gl.getExtension('EXT_texture_filter_anisotropic'),anisoMax=anisoExt?gl.getParameter(anisoExt.MAX_TEXTURE_MAX_ANISOTROPY_EXT):1;
-function v3Needed(){if(v3Unlit())return doc.maps.filter(k=>k==='base'||k==='ao');return doc.maps.filter(k=>k!=='normal'&&k!=='height'&&k!=='curv').concat(doc.maps.includes('height')||doc.maps.includes('normal')||meshNormalBase()?['nfinal']:[]);}
+function v3Needed(){const K=v3Unlit()?doc.maps.filter(k=>k==='base'||k==='ao'):doc.maps.filter(k=>k!=='normal'&&k!=='height'&&k!=='curv').concat(doc.maps.includes('height')||doc.maps.includes('normal')||meshNormalBase()?['nfinal']:[]),shown=typeof p3ChannelView==='function'?p3ChannelView():null;if(shown&&!K.includes(shown))K.push(shown);return K;}
 function v3Refresh(){if(!v3.on)return;if(ui.mode==='bake'){bakeV3Refresh();return;}if(ui.mode==='convert'){cvV3Refresh();return;}const now=performance.now(),gap=stroke?({fast:1e9,balanced:Math.max(qual('refresh'),900)}[prefs.paintSpeed]||qual('refresh')):0,full=v3.mapsDirty&&(!stroke||now-v3.lastFull>gap);/* (0.30) Painting speed Fast: the other maps update on the model when the stroke ends */
   const plain=doc.view===doc.map&&compOut&&ui.mode!=='anim';
   const one0=k=>{if(k==='nfinal'){const t=normalComposite(false,null);v3MapTex(k,t);release(t);return;}
@@ -214,7 +214,7 @@ function v3Refresh(){if(!v3.on)return;if(ui.mode==='bake'){bakeV3Refresh();retur
       if(keys.has('height')||keys.has('normal')){const t=normalComposite(false,null,r);v3MapTex('nfinal',t,r);release(t);}});
       v3.editDirty=false;v3.dirty=true;
     }else{v3.mapRegion=null;v3.mapsDirty=true;v3.lastFull=-Infinity;v3Refresh();}}
-  else if(v3.editDirty){const k=ui.mode==='anim'?'base':doc.map;if(v3Needed().includes(k))one(k);if(k==='height'&&stroke&&now-v3.lastFull>gap){one('nfinal');}v3.editDirty=false;v3.dirty=true;if(['base','spec','gloss'].includes(k))v3SgDerive();}
+  else if(v3.editDirty){const k=ui.mode==='anim'?'base':doc.map;if(v3Needed().includes(k))one(k);if((k==='height'||k==='normal')&&stroke&&((typeof p3ChannelView==='function'&&p3ChannelView()==='nfinal')||now-v3.lastFull>gap)){one('nfinal');}v3.editDirty=false;v3.dirty=true;if(['base','spec','gloss'].includes(k))v3SgDerive();}
   v3.mapRegion=null;if(typeof pnTick==='function')pnTick(one,full);}
 /* Specular/Gloss documents shade the model with the equivalent base/metal/rough */
 function v3SgDerive(){if(doc.workflow!=='spec'||!v3.tex.base||ui.mode==='anim')return;const T=v3.tex,r=sgAsMR(T.base,doc.maps.includes('spec')?T.spec:null,doc.maps.includes('gloss')?T.gloss:null);
@@ -280,18 +280,19 @@ function v3Ctx(){const g=v3.gpu,s=v3s();
   /* 3D Paint's per-set list is made before drawing starts (it may create textures, which binds other framebuffers) */
   const pre=ui.mode==='p3d'&&typeof p3DrawList==='function'?p3DrawList():null;
   /* mask view (Alt+click a mask): the active layer's mask on the model, black and white, unlit */
-  const mv=ui.mode!=='bake'&&ui.mode!=='convert'&&typeof maskViewTex==='function'?((typeof idViewTex==='function'&&idViewTex())||maskViewTex()||(typeof p3MeshShowTex==='function'?p3MeshShowTex():null)):null;
+  let mv=ui.mode!=='bake'&&ui.mode!=='convert'&&typeof maskViewTex==='function'?((typeof idViewTex==='function'&&idViewTex())||maskViewTex()||(typeof p3MeshShowTex==='function'?p3MeshShowTex():null)):null;
+  const channel=!mv&&typeof p3ChannelView==='function'?p3ChannelView():null;if(channel)mv=v3.tex[channel]||null;
   const EU=typeof envUniforms==='function'?envUniforms():{uEnvOn:false};/* before binding: may build the HDRI's levels */
   /* (0.51.32) Spec/Gloss: the diffuse colour stays the base, the Specular colour is the reflection colour (uSpec), and the roughness comes from the Glossiness */
   const bake=(ui.mode==='bake'||ui.mode==='convert')&&v3.btex,sg=!bake&&doc.workflow==='spec'&&v3.tex.sgRough&&ui.mode!=='anim'&&!v3Unlit();
   const T0=bake?v3.btex:sg?Object.assign({},v3.tex,{metal:null,rough:v3.tex.sgRough}):v3.tex;
   const a=s.sunAz*Math.PI/180,e=s.sunEl*Math.PI/180;
   const eye=v3Eye();
-  return {g,s,pre,mv,EU,bake,sg,T0,a,e,eye};}
+  return {g,s,pre,mv,channel,EU,bake,sg,T0,a,e,eye};}
 function v3List(C){const {g,pre,mv,bake,T0}=C;
   /* one draw per texture set in 3D Paint (each with its own maps), else the whole model with the document's maps */
   let list=!bake&&pre?pre:[{T:T0,start:0,count:g.count/3,sh:bake?null:v3ShadeOf(doc)}];
-  if(mv){const R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():null;list=list.map(it=>!R||it.start===R.start?{T:{base:mv},start:it.start,count:it.count,unlit:true}:it);}
+  if(mv){const R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():null;list=list.map(it=>C.channel?{...it,T:{base:it.T[C.channel]||p3ChannelDefault(C.channel)},sg:false,sh:null,thick:null,unlit:true}:!R||it.start===R.start?{...it,T:{base:mv},sg:false,sh:null,thick:null,unlit:true}:it);}
   if(bake&&typeof bakeHighHidesLow==='function'&&bakeHighHidesLow())list=[];
   /* unfolded: one draw per material, side by side (each has its own UV square) */
   if(bake&&bk.fold>0&&list.length===1&&v3.mesh&&v3.mesh.setRanges&&v3.mesh.setRanges.length>1){const it=list[0],n=v3.mesh.setRanges.length;list=v3.mesh.setRanges.map((r,k)=>Object.assign({},it,{start:r.start,count:r.count,off:(k-(n-1)/2)*2.6}));}
@@ -334,7 +335,7 @@ function v3Render(F,flip){const g=v3.gpu;if(!g)return;v3Work.scenes++;F.sceneFli
   if(!bake&&(v3.paintOn||ui.mode==='p3d')){drawMir3(VP);drawMir3Cursors(F,common);}
   gl.bindVertexArray(vao);gl.disable(gl.DEPTH_TEST);
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,F.rf);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
-  if(F.px)F.px.valid=false;if(!wireOnly&&!bake&&typeof v3Post==='function')v3Post(F);v3.postDirty=false;}
+  if(F.px)F.px.valid=false;if(!wireOnly&&!bake&&!mv&&typeof v3Post==='function')v3Post(F);v3.postDirty=false;}
 /* after the 2D view: refresh maps if needed, redraw the model if anything changed, copy it into the pane */
 /* (0.31.1) how big the model is drawn while painting: 1 full, .75, .5 (older setting paintHalf = .5) */
 function paintScale(){return prefs.paintScale||(prefs.paintHalf?.5:1);}
@@ -389,7 +390,7 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   viewSel.onchange=()=>{if(viewSel.value)v3SnapView(viewSel.value);viewSel.value='';};
   const projBtn=el('button',{class:'btn sm',id:'v3Proj',text:s.ortho?'Orthographic':'Perspective',title:'Perspective looks natural; orthographic has no depth shrinking, good for lining things up (Numpad 5)','aria-pressed':String(!!s.ortho),onclick:()=>v3SetOrtho(!v3s().ortho)});
   const tog=(id,label,key,title)=>{const b=el('button',{class:'btn sm'+(s[key]?' on':''),id,text:label,title,'aria-pressed':String(!!s[key])});b.onclick=()=>{s[key]=!s[key];b.classList.toggle('on',s[key]);b.setAttribute('aria-pressed',String(s[key]));v3.dirty=true;requestRender();if(key==='wire'&&typeof maskBarSync==='function')maskBarSync();};return b;};
-  const shade=seg([['lit','Lit'],['unlit','Unlit'],['rt','Ray traced']],v3Unlit()?'unlit':v3.rt?'rt':'lit',x=>{if(x==='rt'&&s.wire)v3SetWireMode('shaded');s.unlit=x==='unlit';v3.rt=x==='rt';v3.mapsDirty=true;v3.dirty=true;requestRender(true);refresh3dUI();},'Shading');shade.id='v3Shade';
+  const shade=seg([['lit','Lit'],['unlit','Unlit'],['rt','Ray traced']],v3Unlit()?'unlit':v3.rt?'rt':'lit',x=>{if(ui.mode==='p3d'){if(x==='unlit'){p3SetChannelView('base');return;}p3SetChannelView(null);}if(x==='rt'&&s.wire)v3SetWireMode('shaded');s.unlit=x==='unlit';v3.rt=x==='rt';v3.mapsDirty=true;v3.dirty=true;requestRender(true);refresh3dUI();},'Shading');shade.id='v3Shade';
   const gear=el('button',{class:'btn sm',text:'Settings',id:'v3Gear','aria-expanded':'false'});
   const dock=el('button',{class:'btn sm',text:v3.pop?'Dock':'Pop out',id:'v3Pop',title:v3.pop?'Put the 3D view back beside the canvas':'Open the 3D view in its own window (for a second screen)'});dock.onclick=()=>pop3D(!v3.pop);
   const close=el('button',{class:'btn sm',text:'×',title:'Close the 3D view (F3)','aria-label':'Close the 3D view'});close.onclick=()=>{if(ui.mode==='p3d')p3SetLayout('2d');else toggle3D(false);};
@@ -406,7 +407,7 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
     const xt=el('div',{class:'v3xtra',id:'v3Xtra',hidden:true},modelControl,detSel,wireB,uvB,spinB,backB,...capB,gear,dock,close),more=el('button',{class:'btn sm',id:'v3More',text:'⋯',title:'More: model, detail, wireframe, spin, screenshot, render, turntable, settings','aria-expanded':'false','aria-label':'More 3D view options'});
     more.onclick=()=>{xt.hidden=!xt.hidden;more.setAttribute('aria-expanded',String(!xt.hidden));more.classList.toggle('on',!xt.hidden);};
     xt.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});
-    bar=el('div',{class:'v3bar slim'},shade,...(mb?[mb.wrap]:[]),viewSel,projBtn,more,xt);}
+    bar=el('div',{class:'v3bar slim'},shade,p3ChannelControl(),...(mb?[mb.wrap]:[]),viewSel,projBtn,more,xt);}
   else bar=el('div',{class:'v3bar'},...(inBake?[lowLab]:ui.mode==='convert'?[modelControl,detSel]:[modelControl,detSel,shade]),...(mb?[mb.wrap]:[]),...(ui.mode==='convert'||ui.mode==='p3d'?[]:[pbtn]),viewSel,projBtn,wireB,uvB,spinB,...capB,gear,dock,close);
   const box=el('div',{class:'v3set',id:'v3Settings',hidden:true,'aria-label':'3D viewport settings'});gear.setAttribute('aria-controls','v3Settings');
   box.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});
@@ -429,7 +430,7 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
       const top=Math.min(bar.offsetTop+bar.offsetHeight+6,Math.max(8,pane.clientHeight-140));box.style.top=top+'px';box.style.maxHeight=Math.max(0,pane.clientHeight-top-8)+'px';}};
   const info=el('div',{class:'v3info',id:'v3Info'});v3.infoEl=info;
   const hit=el('div',{class:'v3hit',id:'v3Hit'});
-  pane.append(hit,bar,box,...(mb?[mb.pop]:[]),info);refresh3dUI();v3Controls(hit);st3.el=null;requestAnimationFrame(st3Overlay);}
+  pane.append(hit,bar,box,...(mb?[mb.pop]:[]),info);if(ui.mode==='p3d')p3ChannelSync();refresh3dUI();v3Controls(hit);st3.el=null;requestAnimationFrame(st3Overlay);}
 function refresh3dUI(){const i=v3.infoEl;if(!i||!v3.mesh)return;const m=v3.mesh;i.textContent=m.name+' · '+m.tris.toLocaleString()+' triangles'+(m.noUV?' · this model has no UVs, so textures cannot map onto it':v3.paintOn?' · painting: '+v3NavHint()+(v3PickKey()?'; hold '+v3PickKey()+' over the model to pick its colour':''):'');}
 /* ---- navigation: Substance Painter style (default) or 3D-Coat style (Preferences, or the 3D Paint panel) ----
    Substance: Alt+left turns, Alt+middle moves, Alt+right zooms; middle or right drag also moves; left paints.
@@ -446,7 +447,7 @@ function v3PickHeld(e){if(prefs.altPick===false||sel3.armed||['bake','convert'].
   if(/^(Ctrl|Shift|Alt)(\+(Ctrl|Shift|Alt))*$/.test(key))return e?mods===key:v3PickHold.on;
   const wanted=key.split('+').slice(0,-1).join('+');return v3PickHold.on&&(!e||mods===wanted);}
 function v3PickRelease(){v3PickHold.on=false;v3PickHold.code=null;if(typeof v3PickQ!=='undefined'){clearTimeout(v3PickQ);v3PickQ=null;}
-  if(v3PickHold.hit&&v3PickHold.point)meshCursor(v3PickHold.hit,{...v3PickHold.point,altKey:false,ctrlKey:false,metaKey:false,shiftKey:false});}
+  if(v3PickHold.hit?.isConnected&&v3PickHold.point)meshCursor(v3PickHold.hit,{...v3PickHold.point,altKey:false,ctrlKey:false,metaKey:false,shiftKey:false});else{v3PickHold.hit=null;v3PickHold.point=null;}}
 /* Registered before stencil/navigation key handlers, so a reassigned key owns its hold in the viewport. */
 window.addEventListener('keydown',e=>{if(e.key==='Escape'&&sel3.armed&&modal.hidden&&!isTypingTarget(e.target)){e.preventDefault();e.stopImmediatePropagation();sel3Arm(false);return;}
   if(!v3.on||!v3.hover||!modal.hidden||isTypingTarget(e.target)||stroke||sel3.armed||prefs.altPick===false||['bake','convert'].includes(ui.mode)||['heal','clone'].includes(ui.tool))return;

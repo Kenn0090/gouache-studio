@@ -35,6 +35,7 @@ function cmdNewNormalLayer(){if(ui.mode==='anim'){toast('Normal layers are avail
   L.blankBase=true;L.nrm=true;ensureMapTarget(L,'height');ensureMapTarget(L,'normal');
   structOp('New normal layer',()=>{const [p,i]=insertPoint();insertNode(L,p,i);selectOnly(L);});
   if(ui.tool!=='smudge')setTool('brush');npSync(true);if(typeof buildBrushPanel==='function')buildBrushPanel();
+  if(ui.mode==='p3d'&&typeof p3SetChannelView==='function')p3SetChannelView('nfinal');
   toast('Normal layer added. Paint Raise or Dent to bump the surface, or Direction to tilt it. Settings are in the Brush panel.');return L;}
 /* the Normal paint section of the brush settings */
 function buildNormalSection(box){const L=doc.active;if(!isNormalLayer(L)||ui.mode==='bake')return;

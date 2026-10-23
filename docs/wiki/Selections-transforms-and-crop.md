@@ -58,3 +58,8 @@ An active transform shows quick controls above the canvas: mode, position, width
 
 ## AI selections
 **Select › Select subject (AI)…** (click the subject, click more to add, Alt+click to take away, Esc to finish) and **Select › Select sky (AI)** make a selection from what you see. **Edit › Remove selection (AI)** takes the selected thing out of the current layer and fills it from its surroundings. They need the optional [AI add-ons](AI-add-ons.md).
+## Color Range
+
+Choose **Select › Color Range…** to select matching colours throughout the image. Sample the visible image or the active layer, then click the image preview to choose a colour. **Shift-click** adds another sampled colour; **Alt-click** removes the nearest sample. You can also enter a colour with the colour picker.
+
+**Fuzziness** includes nearby colours with soft coverage. The selection preview shows selected pixels in white; transparent pixels stay unselected. Choose **New**, **Add**, **Subtract** or **Intersect**, and optionally invert the colour range. Preview updates live. **Apply** creates one undo step; **Cancel** restores your previous selection.

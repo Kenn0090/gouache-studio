@@ -204,7 +204,11 @@ Right-click a layer › **Edit in the Paint canvas** sends its content (every ma
 - Your Paint document is saved separately, as before.
 
 ## Seeing the mesh maps (C)
-Press **C** in 3D Paint to see the texture set's baked mesh maps on the model one by one (ambient occlusion, curvature, ID, thickness…), unlit. **Shift+C** goes back one; **Esc** or the label in the corner returns to the material.
+Press **C** in 3D Paint to cycle through channel maps, starting with **Base colour (unlit)**. **Shift+C** goes back one. The viewport channel menu provides the same choices. Viewing a channel does not change the channel your brush edits.
+
+Press **B** to see the texture set's baked mesh maps on the model one by one (ambient occlusion, curvature, ID, thickness…), unlit. **Shift+B** goes back one; **Esc** or the label in the corner returns to the material.
+
+Adding a **Normal layer** opens the **Normal** viewport view, including live normal detail generated from Raise/Dent height strokes and Direction painting. Use **M**, **Lit** in the shading controls, or **Lit** in the viewport channel menu to return to the shaded material and keep painting the normal layer.
 
 Press **M** to return to the **Lit** material view from a mesh map, mask, Unlit or Ray traced view. Your paint channel, tool and camera stay where they were. This shortcut does not run while typing in a field or while a dialog is open.
 
