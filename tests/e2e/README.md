@@ -1,5 +1,7 @@
 # End-to-end tests
 
+- `colour-range-views.cjs` uses actual menu, pointer and keyboard input for Color Range sampling (including Shift/Alt samples), fuzziness, alpha, 16-bit precision, combinations, preview cancellation and exact undo/redo. It checks live Direction/Raise normal pixels, C channel cycling, B baked-map cycling, raw unlit colour, Lit return, per-set channel data, saved inspection state, typing guards and retained 2D shortcuts. `GS_VIEWS_GPU=1` uses the installed graphics driver. Dialog images are saved in `out/colour-range-views/`.
+
 - `stencil-colour.cjs` imports a two-colour PNG and paints it through the actual 3D viewport. It checks live and committed texture colours with jitter off, brush opacity combined with source transparency, exact undo/redo, N bypass, Mask mode and greyscale layer masks. `GS_STENCIL_GPU=1` uses the installed graphics driver.
 
 - `viewport-settings.cjs` checks real wireframe-only/overlay pixels, restored GPU colour writes, saved display settings, wheel scrolling on a short viewport without camera/canvas zoom, and SVG mask/effect disclosure controls beside folder icons. `GS_WIRE_GPU=1` uses the installed graphics driver. Visual samples are written under `out/viewport-settings/`.

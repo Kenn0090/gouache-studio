@@ -10,7 +10,7 @@ const POST_NAMES=[['bloom','Bloom','Bright parts glow'],['ao','Ambient occlusion
   ['ca','Chromatic aberration','Colour fringes towards the edges, like a cheap lens'],['look','Filter look','Live screen filters: greyscale, sepia, invert, black and white, duotone, posterize, night vision, thermal, scanlines, blueprint'],['grain','Film grain','Fine film-style grain: strongest in the mid-tones, with its own size and a touch of colour']];
 const POST_LOOKS=[[1,'Greyscale'],[2,'Sepia'],[3,'Invert'],[4,'Black and white'],[5,'Duotone'],[6,'Posterize'],[7,'Night vision'],[8,'Thermal'],[9,'CRT scanlines'],[10,'Blueprint']];
 function postOf(s){s=s||v3s();const p=s.post||{},o={};for(const k in POST_DEF)o[k]=Object.assign({},POST_DEF[k],p[k]||{});return o;}
-function postActive(s){if(ui.mode==='bake'||ui.mode==='convert')return false;const p=postOf(s);for(const k in p)if(p[k].on)return true;return false;}
+function postActive(s){if(ui.mode==='bake'||ui.mode==='convert'||(ui.mode==='p3d'&&(p3mm.k||p3ChannelView())))return false;const p=postOf(s);for(const k in p)if(p[k].on)return true;return false;}
 const FS_POSTTH=`in vec2 vUV; uniform sampler2D uSrc; uniform float uT;
 void main(){ vec3 c=texture(uSrc,vUV).rgb; float l=max(max(c.r,c.g),c.b); float k=max(l-uT,0.0)/max(l,1e-3); o=vec4(c*k,1.0); }`;
 const FS_POSTBL=`in vec2 vUV; uniform sampler2D uSrc; uniform vec2 uDir;

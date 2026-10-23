@@ -1,3 +1,10 @@
+# Gouache Studio 0.69.0
+
+- **Select › Color Range…**: sampled colours, fuzziness, live previews, invert, selection combinations and undo. Shift-click the image preview to add a sampled colour; Alt-click removes one.
+- New Normal layers in 3D Paint automatically show the final Normal map, including live Raise/Dent and Direction painting. **M** or **Lit** returns to shaded painting.
+- **C / Shift+C** cycles channel views, including unlit Base colour. **B / Shift+B** cycles baked maps. These views preserve your brush and edited channel; 2D Paint shortcuts are retained.
+- Fixed a cursor error when leaving a rebuilt 3D viewport.
+
 # Gouache Studio 0.68.4
 
 - Fixed imported stencils painting the brush colour instead of the texture's colours. In 3D Paint, choose **Brushes › Use a stencil › Colour** to paint the image itself; colour jitter is no longer required.

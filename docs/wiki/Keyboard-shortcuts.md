@@ -117,7 +117,9 @@ All of these can be changed in **Edit › Keyboard shortcuts…**. The commands 
 
 ## Added in 0.28
 - **F1**: the user guide (Help menu)
-- **C / Shift+C** in 3D Paint: step through the baked mesh maps on the model; **Esc** goes back to the material
+- **C / Shift+C** in 3D Paint: next/previous channel view, including unlit Base colour and the final Normal map; the brush's edited channel stays unchanged.
+- **B / Shift+B** in 3D Paint: next/previous baked mesh map; **Esc** goes back to the material. In 2D Paint, B is still Brush and Shift+B swaps the last two presets.
+- **M** in 3D Paint: return to Lit material shading from channel, baked-map or mask inspection.
 - Animation: **Ctrl+F**, **Shift+D**, **Delete**, **,** and **.**, **Space**, **Ctrl+Shift+Left/Right** (see [Animation](Animation.md#frame-shortcuts))
 - **Alt+click** a tick box in a list: only that one; Alt+click it again: everything else
 

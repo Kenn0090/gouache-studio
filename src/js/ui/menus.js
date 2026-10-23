@@ -11,7 +11,7 @@ const MENUS={
     ['Group selected','group','Ctrl+G'],['Ungroup','ungroup','Ctrl+Shift+G'],'-',
     ['Rasterize text, shape or fill','rasterize'],['Make brush tip from layer','tipFromLayer'],'-',
     ['Merge down / selected','merge','Ctrl+E'],['Merge group','mergeGroup'],['Merge visible','mergeVisible'],['Flatten image','flatten']],
-  Select:[['All','selAll','Ctrl+A'],['Deselect','deselect','Ctrl+D'],['Reselect','reselect','Ctrl+Shift+D'],['Invert','selInvert','Ctrl+Shift+I'],'-',['Select subject (AI)…','aiSubject'],['Select sky (AI)','aiSky'],'-',
+  Select:[['All','selAll','Ctrl+A'],['Deselect','deselect','Ctrl+D'],['Reselect','reselect','Ctrl+Shift+D'],['Invert','selInvert','Ctrl+Shift+I'],'-',['Color Range…','selColorRange'],['Select subject (AI)…','aiSubject'],['Select sky (AI)','aiSky'],'-',
     ['Feather…','selFeather'],['Expand…','selExpand'],['Contract…','selContract'],['Smooth…','selSmooth'],'-',['Select layer pixels','selLayer','Ctrl+click thumbnail'],['Load selection…','selLoad'],'-',['Quick mask','quickMask','Q']],
   Adjust:[['Color adjustments…','adjust','Ctrl+U'],['Levels…','levels','Ctrl+L'],['Curves…','curves','Ctrl+M'],['Hue / Saturation…','hueSat'],['Gradient map…','gradMap'],'-',
     ['Invert','invert','Ctrl+I'],['Desaturate','desat','Ctrl+Shift+U'],['Threshold…','threshold'],['Posterize…','posterize'],['Quantize…','quantize']],
@@ -42,6 +42,7 @@ Object.assign(actions,{gallery:()=>dlgGallery(),warp:()=>fxMenu('warp'),slopeBlu
   optBarToggle:()=>{dk.L.opt=!dk.L.opt;dkRender();dkSave();},tbCols:()=>dkToolbar({cols:dk.L.tb.cols===2?1:2}),tbSide:()=>dkToolbar({side:dk.L.tb.side==='right'?'left':'right'})});
 Object.assign(actions,{makeTip:()=>dlgMakeTip(),keys:()=>dlgKeys(),hints:()=>toggleHints(),cageTool:()=>{if(ui.cageFlat)cageFlatOff();setTool('cage');},cageFlat:()=>toggleCageFlat(),symX:()=>symToggleX()});
 actions.clearContents=cmdClearLayer;
+actions.selColorRange=dlgColorRange;
 const LAYER_ONLY=['mergeVisible','flatten','tipFromLayer'];/* (0.58) the other layer commands work inside a frame */
 const checked={ws_painting:()=>dk.ws==='painting',ws_texturing:()=>dk.ws==='texturing',ws_paint3d:()=>dk.ws==='paint3d',ws_minimal:()=>dk.ws==='minimal',wsLock:()=>dk.lock,pn_color:()=>panelShown('color'),pn_brushes:()=>panelShown('brushes'),pn_tool:()=>panelShown('tool'),pn_maps:()=>panelShown('maps'),pn_layers:()=>panelShown('layers'),pn_chan:()=>panelShown('chan'),optBarToggle:()=>dk.L&&dk.L.opt,tbCols:()=>dk.L&&dk.L.tb.cols===2,tbSide:()=>dk.L&&dk.L.tb.side==='right',hints:()=>!prefs.hideHints,view3d:()=>v3.on,perf:()=>perf.on,depth8:()=>doc.depth===8,depth16:()=>doc.depth===16,tile:()=>doc.wrap,quickMask:()=>sel.quick};
 const pop=$('#menuPop');let openName=null;

@@ -1,3 +1,10 @@
+## 0.69.0
+
+- **Color Range.** **Select › Color Range…** selects matching colours throughout an image, with sampled colours, fuzziness, live image/selection previews, invert, and New/Add/Subtract/Intersect. Sample the visible image or active layer; Shift-click adds a colour and Alt-click removes one. Transparency and 16-bit colour precision are retained. Apply is one undo step; Cancel restores the previous selection.
+- **Normal painting in the viewport.** Adding a Normal layer in 3D Paint opens the final Normal map view and shows live Raise/Dent height detail and Direction painting. Use **M**, **Lit**, or the viewport channel menu to return to shaded painting.
+- **Channel and baked-map shortcuts.** In 3D Paint, **C / Shift+C** cycles channel views, including unlit Base colour, and **B / Shift+B** cycles baked maps. Inspection keeps your brush and edited channel unchanged, uses each texture set's own data, and excludes lighting and colour grading. B/C retain their existing 2D Paint actions.
+- Fixed a cursor error when returning from a rebuilt 3D viewport.
+
 ## 0.68.4
 
 - **Imported stencil colours.** In 3D Paint, **Brushes › Use a stencil › Colour** now paints the imported texture's own colours, including with colour jitter off. The live stroke and released paint match; image transparency and brush opacity both apply. **Mask** mode still paints your selected brush colour through the picture, and holding **N** bypasses the stencil.

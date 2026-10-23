@@ -33,6 +33,7 @@
     "core/resize",
     "select/selection",
     "select/select-tools",
+    "select/color-range",
     "transform/xform-core",
     "transform/warp",
     "transform/xform-ui",

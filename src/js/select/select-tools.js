@@ -134,12 +134,12 @@ function openLiveSel(o){if(o.needSel?!needSel():selBusy())return;
   const orig=acquireS();blit(sel.t,orig,0,0,doc.w,doc.h,0,0);const before={active:sel.active,bb:sel.bb&&sel.bb.slice()};
   const L=selLive={overlay:!!o.overlay,on:prefs.livePreview};let queued=false,stale=true;
   const restore=()=>{blit(orig,sel.t,0,0,doc.w,doc.h,0,0);sel.active=before.active;sel.bb=before.bb;selChanged();};
-  const render=()=>{queued=false;if(selLive!==L)return;stale=false;const tmp=acquireS();const r=o.compute(orig,tmp,before);blit(tmp,sel.t,0,0,doc.w,doc.h,0,0);release(tmp);sel.bb=r.bb;sel.active=r.active;selChanged();};
+  const render=()=>{queued=false;if(selLive!==L)return;stale=false;const tmp=acquireS();const r=o.compute(orig,tmp,before);blit(tmp,sel.t,0,0,doc.w,doc.h,0,0);if(o.afterRender)o.afterRender(tmp);release(tmp);sel.bb=r.bb;sel.active=r.active;selChanged();};
   const upd=()=>{stale=true;if(L.on&&!queued){queued=true;requestAnimationFrame(render);}};
   const body=el('div',{class:'dlg-grid'},...o.controls(upd));
   body.append(el('div',{class:'chips'},previewChk('slPrev',L.on,v=>{L.on=v;if(v)render();else{queued=false;stale=true;restore();}}),chk('slOv','Show as red overlay',L.overlay,v=>{L.overlay=v;requestRender();})));
   if(o.note)body.append(el('p',{class:'note',text:o.note}));
-  const finish=()=>{selLive=null;release(orig);selChanged();};
+  const finish=()=>{selLive=null;release(orig);if(o.onFinish)o.onFinish();selChanged();};
   openDialog({title:o.title,body,float:true,okLabel:o.okLabel||'Apply',
     onOk(){if(queued||stale)render();const after={active:sel.active,bb:sel.bb&&sel.bb.slice()},region=rToDoc(rUnion(before.bb,after.bb));
       const bs=region?captureSel(orig,region):null,as=region?captureSel(sel.t,region):null;

@@ -65,11 +65,16 @@ function p3UdimTiles(mesh,range){if(!mesh||!mesh.uv||!mesh.idx)return [];const s
     const q=p3UdimAddress((uv[a*2]+uv[b*2]+uv[c*2])/3,(uv[a*2+1]+uv[b*2+1]+uv[c*2+1])/3);if(q&&!found.has(q.id))found.set(q.id,q);}
   return [...found.values()].sort((a,b)=>a.id-b.id);}
 function p3Blank(){if(!p3.blank){const t=makeTarget(4,4,8,true);clearTarget(t,[.82,.82,.82,1]);p3.blank={base:t};}return p3.blank;}
+/* Build an inactive set's inspected channel once, without selecting that set or changing its undo. */
+function p3CacheChannel(S,i,k){if(!k||i===p3.cur||!S.state||S.channelCache?.has(k))return;const mine=docState(),tex=v3.tex,cur=p3.cur;
+  try{setDocState(S.state);p3.cur=i;v3.tex=S.tex||(S.tex={});const t=k==='nfinal'?normalComposite(false,null):compositeMap(k);try{v3MapTex(k,t);}finally{release(t);}S.channelCache||(S.channelCache=new Set());S.channelCache.add(k);}
+  finally{S.state=docState();setDocState(mine);v3.tex=tex;p3.cur=cur;}}
+function p3ChannelDefault(k){const D=p3.channelDefaults||(p3.channelDefaults={});if(!D[k]){D[k]=makeTarget(4,4,8,true);clearTarget(D[k],k==='nfinal'?[.5,.5,1,1]:k==='base'?[.82,.82,.82,1]:mapDefault(k));}return D[k];}
 /* what to draw: every set's triangles with that set's textures */
 function p3DrawList(){const m=v3.mesh,rs=m&&m.setRanges||[{name:p3Binding(p3.sets[0]||{name:'default'}),start:0,count:m?m.idx.length/3:0}];
   const out=[];for(const r of rs){const materialSets=p3.sets.map((S,i)=>({S,i})).filter(x=>p3Binding(x.S)===r.name&&!x.S.hidden);
     if(!materialSets.length&&!p3.sets.some(S=>p3Binding(S)===r.name&&S.hidden))out.push({T:p3Blank(),start:r.start,count:r.count,sh:null,udim:null});
-    for(const {S,i} of materialSets){const T0=i===p3.cur?v3.tex:(S.tex&&S.tex.base?S.tex:p3Blank()),D=i===p3.cur?doc:(S.state&&S.state.doc),mm=D&&D.meshMaps;
+    for(const {S,i} of materialSets){const shown=p3ChannelView();p3CacheChannel(S,i,shown);const T0=i===p3.cur?v3.tex:(S.tex&&(S.tex.base||(shown&&S.tex[shown]))?S.tex:p3Blank()),D=i===p3.cur?doc:(S.state&&S.state.doc),mm=D&&D.meshMaps;
       /* (0.53.1) a Spec/Gloss set is shaded from its Glossiness (as 1 - roughness) and its Specular colour; before, 3D Paint read the Roughness picture left over from Metal/Rough, so Glossiness did nothing */
       const sg=!!(D&&D.workflow==='spec'&&T0.sgRough&&typeof v3Unlit==='function'&&!v3Unlit()),T=sg?Object.assign({},T0,{metal:null,rough:T0.sgRough}):T0;
       out.push({T,sg,start:r.start,count:r.count,sh:D?v3ShadeOf(D):null,thick:mm&&mm.thick||null,udim:p3.udim?S.tile:null});}}
@@ -91,7 +96,7 @@ function p3SyncSets(){const rs=v3.mesh?meshGroupByMat(v3.mesh):[{name:'default',
   $('#docName').textContent=doc.name;}
 function p3SwitchSet(i,quiet){if(i===p3.cur||!p3.sets[i])return;if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
   if(typeof xf!=='undefined'&&xf)xfCommit();if(typeof gsess!=='undefined'&&gsess)gradCommit();
-  const A=p3.sets[p3.cur],B=p3.sets[i];let orphan=null;if(A){A.state=docState();A.tex=v3.tex;}else{orphan=docState();for(const k in v3.tex)disposeTarget(v3.tex[k]);}
+  const A=p3.sets[p3.cur],B=p3.sets[i];let orphan=null;if(A){A.state=docState();A.tex=v3.tex;A.channelCache=null;}else{orphan=docState();for(const k in v3.tex)disposeTarget(v3.tex[k]);}
   if(B.state){setDocState(B.state);B.state=null;}else{blankTabDoc(p3.size,p3.size,B.name);p3Setup(B.name);}
   if(orphan)disposeDocState(orphan);doc.v3d=p3.v3d;v3.tex=B.tex||{};B.tex=null;p3.cur=i;v3.mapsDirty=true;v3.editDirty=true;v3.dirty=true;
   $('#docName').textContent=doc.name;if(typeof selChanged==='function')selChanged();
@@ -308,23 +313,33 @@ function fitInto(src,dst){const k=Math.min(dst.w/src.w,dst.h/src.h),off=[(dst.w-
    baked normal becomes a layer in the Normal map so its detail shows; with "also as layers", AO and curvature
    arrive as blendable layers too. by: {material name: {map: target}} ('*' = the same for every set). */
 const P3_MESHMAP_NAMES={normal:'Normal',height:'Height',ao:'Ambient occlusion',curv:'Curvature',curvEdge:'Curvature edges',curvCrease:'Curvature creases',thick:'Thickness',wnormal:'World normal',position:'Position',id:'ID',rough:'Roughness',metal:'Metallic'};
-/* C / Shift+C in 3D Paint (Kenn, 0.28): step through the set's baked mesh maps on the model, unlit, like the Bake tab */
+/* Channel inspection changes the viewport, not the channel the brush edits. */
+function p3ChannelKeys(){const K=doc.maps.map(k=>k==='normal'?'nfinal':k);if(doc.maps.includes('height')&&!K.includes('nfinal'))K.push('nfinal');return [...new Set(K)];}
+function p3ChannelView(){if(ui.mode!=='p3d')return null;const k=v3s().channelView;return p3ChannelKeys().includes(k)?k:null;}
+const p3ChannelLabel=k=>k==='nfinal'?'Normal':k==='base'?'Base colour (unlit)':MAP_DEFS[k]?.label||k;
+function p3ChannelSync(){const k=p3ChannelView(),s=document.getElementById('p3ChannelView');if(s)s.value=k||'';
+  document.querySelectorAll('#v3Shade .segb').forEach((b,i)=>b.setAttribute('aria-pressed',String(!p3mm.k&&(k?i===1&&k==='base':i===(v3Unlit()?1:v3.rt?2:0)))));}
+function p3SetChannelView(k){if(ui.mode!=='p3d'||stroke||preview||selLive)return;if(k&&!p3ChannelKeys().includes(k))return;
+  ui.viewMask=false;libIdShow(false);p3mm.k=null;p3mmBadge();v3s().channelView=k||null;v3s().unlit=false;v3.rt=false;v3.mapsDirty=true;v3.dirty=true;p3ChannelSync();requestRender(true);}
+function p3CycleChannel(dir){const K=p3ChannelKeys(),i=K.indexOf(p3ChannelView());if(!K.length)return;p3SetChannelView(K[(i<0?(dir>0?0:K.length-1):(i+dir+K.length)%K.length)]);toast('Channel: '+p3ChannelLabel(p3ChannelView())+' · M for Lit');}
+function p3ChannelControl(){const s=el('select',{id:'p3ChannelView','aria-label':'Viewport channel',title:'C: next channel · Shift+C: previous · B: baked maps · M: Lit'},el('option',{value:'',text:'Lit'}),...p3ChannelKeys().map(k=>el('option',{value:k,text:p3ChannelLabel(k)})));s.value=p3ChannelView()||'';s.onchange=()=>{const k=s.value;s.blur();if(k)p3SetChannelView(k);else p3ShowLit();};return s;}
+/* B / Shift+B: the set's baked mesh maps, unlit, like the Bake tab. */
 const p3mm={k:null};
 const p3mmKeys=()=>Object.keys(doc.meshMaps||{}).filter(k=>doc.meshMaps[k]&&!k.startsWith('cv:'));
 function p3MeshShowTex(){if(libIdView&&ui.mode==='p3d'&&doc.meshMaps&&doc.meshMaps.id)return doc.meshMaps.id;if(ui.mode!=='p3d'||!p3mm.k)return null;const t=doc.meshMaps&&doc.meshMaps[p3mm.k];if(!t){p3mm.k=null;p3mmBadge();return null;}return t;}
 function p3mmBadge(){let b=document.getElementById('p3mmBadge');const on=ui.mode==='p3d'&&!!p3mm.k;
   if(!on){if(b)b.hidden=true;return;}
   if(!b){b=el('button',{id:'p3mmBadge',class:'p3mmbadge',title:'Back to the material (Esc)',onclick:()=>p3mmSet(null)});$('#work').append(b);}
-  b.textContent='Mesh map: '+(P3_MESHMAP_NAMES[p3mm.k]||p3mm.k)+'  ·  C next, Esc back';b.hidden=false;}
-function p3mmSet(k){p3mm.k=k;p3mmBadge();v3.dirty=true;requestRender(true);}
-function p3mmCycle(dir){const K=p3mmKeys();if(!K.length){toast('No mesh maps yet: bake them (Bake mesh maps…) or send bakes from the Bake tab. Then C steps through them.');return;}
+  b.textContent='Mesh map: '+(P3_MESHMAP_NAMES[p3mm.k]||p3mm.k)+'  ·  B next, Esc back';b.hidden=false;}
+function p3mmSet(k){p3mm.k=k;if(k){ui.viewMask=false;libIdShow(false);v3s().channelView=null;v3.rt=false;}p3mmBadge();p3ChannelSync();v3.dirty=true;requestRender(true);}
+function p3mmCycle(dir){const K=p3mmKeys();if(!K.length){toast('No baked maps yet. Bake mesh maps or import them, then B steps through them.');return;}
   const L=[null,...K],i=Math.max(0,L.indexOf(p3mm.k)),k=L[(i+dir+L.length)%L.length];p3mmSet(k);
   toast('Showing: '+(k?P3_MESHMAP_NAMES[k]||k:'the material'));}
-function p3ShowLit(){closeMenu();ui.viewMask=false;libIdShow(false);p3mmSet(null);v3s().unlit=false;v3.rt=false;setView('material');build3dPane();v3.mapsDirty=true;v3.dirty=true;requestRender(true);}
+function p3ShowLit(){if(stroke||preview||selLive)return;closeMenu();ui.viewMask=false;libIdShow(false);v3s().channelView=null;p3mmSet(null);v3s().unlit=false;v3.rt=false;setView('material');build3dPane();v3.mapsDirty=true;v3.dirty=true;requestRender(true);}
 window.addEventListener('keydown',e=>{if(typeof pathKeys==='function'&&pathKeys(e))return;if(ui.mode!=='p3d'||!modal.hidden||isTypingTarget(e.target)||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('#menuPop.tool-menu:not([hidden])'))return;
   if((e.key==='m'||e.key==='M')&&!e.shiftKey){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat)p3ShowLit();}
   else if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat){closeMenu();cmdDelete();}}
-  else if(e.key==='c'||e.key==='C'){e.preventDefault();e.stopImmediatePropagation();p3mmCycle(e.shiftKey?-1:1);}
+  else if(e.key==='c'||e.key==='C'||e.key==='b'||e.key==='B'){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat&&!stroke&&!preview&&!selLive){closeMenu();if(e.key.toLowerCase()==='c')p3CycleChannel(e.shiftKey?-1:1);else p3mmCycle(e.shiftKey?-1:1);}}
   else if(e.key==='Escape'&&p3mm.k&&!ui.viewMask){e.preventDefault();e.stopImmediatePropagation();p3mmSet(null);}},true);
 function p3ReceiveBake(mesh,by,ks,asLayers){if(ui.mode!=='p3d'&&!setMode('p3d',true))return;
   if(mesh&&mesh!==v3.imported){v3.imported=p3.imported=mesh;v3s().model='imported';v3.mesh=null;v3LoadModel();}
