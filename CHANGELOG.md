@@ -1,3 +1,7 @@
+## 0.68.3
+
+- **Pen: let go of Alt to zoom, like Painter.** Hold Alt and press the pen's side button and drag to pan; let go of Alt while the button is still down and the same drag zooms (drag up or right to zoom in, down or left to zoom out); press Alt again to pan. It works in 3D Paint and on the flat canvas.
+
 ## 0.68.2
 
 - **Pen: Ctrl + Alt + the pen's side button zooms.** Alt + the pen's button pans (0.68.1), and holding Ctrl as well now zooms: drag up or right to zoom in, down or left to zoom out. It works in 3D Paint and on the flat canvas.
