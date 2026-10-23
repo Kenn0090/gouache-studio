@@ -1,3 +1,7 @@
+## 0.68.2
+
+- **Pen: Ctrl + Alt + the pen's side button zooms.** Alt + the pen's button pans (0.68.1), and holding Ctrl as well now zooms: drag up or right to zoom in, down or left to zoom out. It works in 3D Paint and on the flat canvas.
+
 ## 0.68.1
 
 - **Pen: Alt + the pen's side button pans in 3D Paint.** As in Substance Painter (Alt + the tablet's second button), holding Alt and pressing the pen's side button now moves the view, in the 3D view and on the flat canvas. Before, Alt turned it into a zoom in 3D.
