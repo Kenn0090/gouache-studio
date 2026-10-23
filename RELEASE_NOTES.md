@@ -1,3 +1,7 @@
+# Gouache Studio 0.68.2
+
+- Pen: Ctrl + Alt + the pen's side button now zooms (drag up or right to zoom in), in 3D Paint and on the canvas. Alt + the button still pans.
+
 # Gouache Studio 0.68.1
 
 - Pen: Alt + the pen's side button now pans the view in 3D Paint (like Alt + middle click in Substance Painter) and on the canvas. Before, Alt made it zoom.
