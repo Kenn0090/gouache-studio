@@ -1,3 +1,7 @@
+# Gouache Studio 0.68.3
+
+- Pen: hold Alt and the pen's side button to pan; let go of Alt with the button still down and the same drag zooms (like Painter). Works in 3D Paint and on the canvas.
+
 # Gouache Studio 0.68.2
 
 - Pen: Ctrl + Alt + the pen's side button now zooms (drag up or right to zoom in), in 3D Paint and on the canvas. Alt + the button still pans.

@@ -32,6 +32,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  // Alt held with the pen's side button (as in Substance Painter, Alt + the tablet's 2nd button): pans too
  a=await vx();await send('mouseMoved',cx,cy,{modifiers:1});await send('mousePressed',cx,cy,{button:'right',buttons:2,clickCount:1,modifiers:1});await send('mouseMoved',cx+50,cy+10,{button:'right',buttons:2,modifiers:1});await send('mouseReleased',cx+50,cy+10,{button:'right',buttons:0,clickCount:1,modifiers:1});
  d=(await vx())-a;ok(Math.abs(d-50)<3,'Alt + the pen side button pans the canvas by '+d);
+ // Alt + the button pans; letting go of Alt with the button still down zooms (like Painter)
+ {const zA=await p.evaluate(()=>__gs.view.zoom),xA=await vx();await send('mouseMoved',cx,cy,{modifiers:1});await send('mousePressed',cx,cy,{button:'right',buttons:2,clickCount:1,modifiers:1});await send('mouseMoved',cx+40,cy,{button:'right',buttons:2,modifiers:1});const xB=await vx();
+  await send('mouseMoved',cx+60,cy-30,{button:'right',buttons:2,modifiers:0});await send('mouseMoved',cx+120,cy-90,{button:'right',buttons:2,modifiers:0});await send('mouseReleased',cx+120,cy-90,{button:'right',buttons:0,clickCount:1,modifiers:0});await p.waitForTimeout(200);
+  ok(Math.abs(xB-xA-40)<3,'with Alt held it pans ('+(xB-xA)+')');ok(await p.evaluate(()=>__gs.view.zoom)>zA*1.1,'then letting go of Alt (button still down) zooms in instead');}
  // Ctrl + Alt + the pen's side button zooms (drag up/right to zoom in)
  const z2=()=>p.evaluate(()=>__gs.view.zoom);let zz=await z2();await send('mouseMoved',cx,cy,{modifiers:3});await send('mousePressed',cx,cy,{button:'right',buttons:2,clickCount:1,modifiers:3});await send('mouseMoved',cx+60,cy-60,{button:'right',buttons:2,modifiers:3});await send('mouseMoved',cx+120,cy-120,{button:'right',buttons:2,modifiers:3});await send('mouseReleased',cx+120,cy-120,{button:'right',buttons:0,clickCount:1,modifiers:3});await p.waitForTimeout(200);
  ok(await z2()>zz*1.1,'Ctrl + Alt + the pen side button zooms the canvas in ('+zz.toFixed(2)+' to '+(await z2()).toFixed(2)+')');
@@ -49,6 +53,9 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(z0===await p.evaluate(()=>JSON.stringify(Object.assign({},__gs.v3.cam,{tx:0,ty:0,tz:0}))),'and does not zoom or turn it');
  const dist0=await p.evaluate(()=>__gs.v3.cam.dist);await send('mouseMoved',mx,my,{modifiers:3});await send('mousePressed',mx,my,{button:'right',buttons:2,clickCount:1,modifiers:3});await send('mouseMoved',mx+60,my-60,{button:'right',buttons:2,modifiers:3});await send('mouseMoved',mx+120,my-120,{button:'right',buttons:2,modifiers:3});await send('mouseReleased',mx+120,my-120,{button:'right',buttons:0,clickCount:1,modifiers:3});await p.waitForTimeout(200);
  ok(await p.evaluate(()=>__gs.v3.cam.dist)!==dist0,'3D: Ctrl + Alt + the pen side button zooms ('+dist0.toFixed(2)+' to '+(await p.evaluate(()=>__gs.v3.cam.dist)).toFixed(2)+')');
+ {const d1=await p.evaluate(()=>__gs.v3.cam.dist);c0=await cam();await send('mouseMoved',mx,my,{modifiers:1});await send('mousePressed',mx,my,{button:'right',buttons:2,clickCount:1,modifiers:1});await send('mouseMoved',mx+40,my+10,{button:'right',buttons:2,modifiers:1});const camB=await cam(),dB=await p.evaluate(()=>__gs.v3.cam.dist);
+  await send('mouseMoved',mx+80,my-30,{button:'right',buttons:2,modifiers:0});await send('mouseMoved',mx+140,my-90,{button:'right',buttons:2,modifiers:0});await send('mouseReleased',mx+140,my-90,{button:'right',buttons:0,clickCount:1,modifiers:0});await p.waitForTimeout(200);
+  ok(camB!==c0&&dB===d1,'3D: with Alt held the pen button pans');ok(await p.evaluate(()=>__gs.v3.cam.dist)<d1,'3D: letting go of Alt (button still down) zooms in');}
  // the test window
  await p.evaluate(()=>__gs.act('penTest'));await p.waitForTimeout(400);
  ok(await p.evaluate(()=>!!document.getElementById('penPad')),'Help › Pen and tablet test opens');

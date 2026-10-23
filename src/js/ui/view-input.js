@@ -62,7 +62,7 @@ cv.addEventListener('pointerdown',e=>{
   if(rotHold||(spaceDown&&e.shiftKey)){ptr=vxDragStart(e);stage.classList.add('panning');return;}
   /* (0.68.2) Ctrl + Alt + the pen's button zooms (Alt + the button pans); drag right or up to zoom in */
   if(penPanBtn(e)&&e.altKey&&e.ctrlKey){const r=stage.getBoundingClientRect();ptr={mode:'zdrag',id:e.pointerId,x0:e.clientX,y0:e.clientY,sx:e.clientX-r.left,sy:e.clientY-r.top,cum:1,moved:false,shift:false};return;}
-  if(pan){ptr={mode:'pan',id:e.pointerId,sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y};stage.classList.add('panning');refreshCursor();return;}
+  if(pan){ptr={mode:'pan',id:e.pointerId,sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y,penAlt:penPanBtn(e)&&e.altKey};stage.classList.add('panning');refreshCursor();return;}
   /* (0.58) the zoom tool: click to zoom in (Shift: out), or drag right/up to zoom in and left/down to zoom out */
   if(ui.tool==='zoom'){const r=stage.getBoundingClientRect();ptr={mode:'zdrag',id:e.pointerId,x0:e.clientX,y0:e.clientY,sx:e.clientX-r.left,sy:e.clientY-r.top,cum:1,moved:false,shift:e.shiftKey};return;}
   if(symCentreDown(e))return;
@@ -116,6 +116,10 @@ cv.addEventListener('pointermove',e=>{
   if(ui.mode==='photo'&&!ptr&&ph.lm&&(ph.lm.tool==='brush'||(ph.rm&&ph.rm.on))){ph.lm.cur=[mx,my];drawXfOverlay();}
   if(!ptr&&typeof symHover==='function')symHover(e);
   if(!ptr){if(ui.tool==='cage'&&!ui.cageFlat)cageHover(e);else if(xf&&!xf.move)xfHover(e);else if(ui.tool==='crop'&&crop)cropHover(e);else if(ui.tool==='gradient')gradHover(e);else if(ui.tool==='array')arrHover(e);else if(ui.tool==='shape')shapeHover(e);}
+  /* (0.68.3) Alt + the pen's button pans; let go of Alt with the button still down and the same drag zooms (press Alt again to pan), like Painter */
+  if(ptr&&ptr.penAlt&&e.pointerId===ptr.id){const r=stage.getBoundingClientRect();
+    if(!e.altKey&&ptr.mode==='pan'){ptr={mode:'zdrag',id:ptr.id,penAlt:true,x0:e.clientX,y0:e.clientY,sx:e.clientX-r.left,sy:e.clientY-r.top,cum:1,moved:true,shift:false};stage.classList.remove('panning');}
+    else if(e.altKey&&ptr.mode==='zdrag'){ptr={mode:'pan',id:ptr.id,penAlt:true,sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y};stage.classList.add('panning');}}
   if(ptr&&e.pointerId===ptr.id){if(ptr.mode==='phcrop'){phCropMove(mx,my);return;}if(ptr.mode==='phlm'){phLocalMove(mx,my);return;}if(ptr.mode==='phsp'){phSpotMove(mx,my);return;}if(ptr.mode==='phrm'){phRmMove(mx,my);return;}if(ptr.mode==='phrl'){phRelightMove(mx,my);return;}if(ptr.mode==='persp'){perspMove(mx,my);return;}if(ptr.mode==='zdrag'){const d=(e.clientX-ptr.x0)-(e.clientY-ptr.y0);if(!ptr.moved&&Math.abs(d)>4)ptr.moved=true;if(ptr.moved){const tot=Math.exp(d*.006);zoomAt(tot/ptr.cum,ptr.sx,ptr.sy);ptr.cum=tot;}return;}if(ptr.mode==='symcentre'){symCentreMove(mx,my);return;}if(ptr.mode==='cvq'){cvPointerMove(e,mx,my);return;}if(ptr.mode==='cage'){cagePointerMove(e,mx,my);return;}if(ptr.mode==='xf'){xfPointerMove(e,mx,my);return;}if(ptr.mode==='crop'){cropPointerMove(e,mx,my);return;}if(ptr.mode==='movedrag'){movePointerMove(e,mx,my);return;}if(ptr.mode==='grad'){gradPointerMove(e,mx,my);return;}if(ptr.mode==='gbucket'){gbucketMove(e,mx,my);return;}}
   if(!ptr||e.pointerId!==ptr.id)return;
   if(ptr.mode==='marq'||ptr.mode==='lasso'||ptr.mode==='selmove'){selPointerMove(e,mx,my);return;}
