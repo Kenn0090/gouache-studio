@@ -458,7 +458,7 @@ window.addEventListener('blur',v3PickRelease);
 function v3NavHint(){return v3nav.mode==='coat'?'right-drag turns, middle moves, Ctrl+right zooms':'Alt+left turns, Alt+middle moves, Alt+right zooms';}
 function v3NavOf(hit,e){const b=e.button,paint=v3CanPaint();
   if(st3.sKey&&st3.img)return b===0?'strot':b===2?'stscale':'stmove';
-  if(typeof penPanBtn==='function'&&penPanBtn(e)&&!e.altKey&&!e.shiftKey)return 'pan';/* the pen's side button moves the view (0.62.1) */
+  if(typeof penPanBtn==='function'&&penPanBtn(e)&&!e.shiftKey)return 'pan';/* the pen's side button moves the view (0.62.1), also with Alt held (0.68.1: Alt + the pen's button is Alt + middle, as in Substance Painter) */
   {const pb=pcNavOf(e,paint);if(pb)return pb;}
   /* (0.27, Kenn) turn the sky (HDRI) like Substance Painter: Shift+right-drag (3D-Coat navigation: Shift+Alt+right-drag) */
   if(b===2&&e.shiftKey&&(v3nav.mode!=='coat'||e.altKey))return 'sky';
