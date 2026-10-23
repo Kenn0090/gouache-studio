@@ -1,3 +1,7 @@
+## 0.68.1
+
+- **Pen: Alt + the pen's side button pans in 3D Paint.** As in Substance Painter (Alt + the tablet's second button), holding Alt and pressing the pen's side button now moves the view, in the 3D view and on the flat canvas. Before, Alt turned it into a zoom in 3D.
+
 ## 0.68.0
 
 - **Normal layers.** **Layer › New › Normal layer** (or the wavy-line button under the layer list) makes a layer you paint bumps, dents and tilts into. In the Brush panel, **Normal paint** has **Raise** and **Dent** (the brush shape is the profile, so a soft brush makes hills and a textured tip makes a textured bump), **Direction** (tilts the surface toward an angle) and a **Strength**. It works in Paint and on the model in 3D Paint. **Smudge** keeps normals the right length, the **marquee and lasso** limit where you paint, the **gradient tool** makes slopes (drag from the low side to the high side) and **Levels** changes the depth. One undo per stroke, and it saves with the file.
