@@ -382,9 +382,9 @@ vec4 gsGrad_${name}(vec2 p,vec2 x,vec2 y){return gsDecode_${name}(textureGrad(${
   if(fragment&&!inputOnly){src=src.replace(/void\s+main\s*\(\s*\)/,'void gsOriginalMain()');src+=`\nuniform bool gsPackedOut; uniform int gsPackedTint; uniform sampler2D gsPackedDst; uniform vec2 gsPackedOrigin;
 void main(){gsOriginalMain();if(gsPackedOut){if(gsPackedTint!=0){vec4 c=texelFetch(gsPackedDst,ivec2(gl_FragCoord.xy-gsPackedOrigin),0);vec4 d=vec4(c.rrr,c.g);if(gsPackedTint==1)o=vec4(o.rgb*(1.0-d.a)+d.rgb*d.a,d.a);else o=vec4(o.rgb+d.rgb*(1.0-o.a),max(o.a,d.a));}o=vec4(o.r,o.a,0.0,o.a);}}`;}
   return src.startsWith('#version')?src.replace(/^(#version[^\n]*\n)/,'$1'+declarations):declarations+src;}
-function packedProgram(prog){if(prog.packedShader)return prog;if(!prog.packedVariant){if(!prog.fs)throw new Error('This graphics operation does not support packed height.');const names=new Set(),fs=packedShaderSource(prog.fs,true,names,!!prog.decodeOnly),vs=packedShaderSource(prog.vs||VS_FULL,false,names),p=program(fs,vs);
+function packedProgram(prog){if(prog.packedShader)return prog;if(!prog.packedVariant){if(!prog.fs)throw new Error('This graphics operation does not support packed height.');const names=new Set(),fs=packedShaderSource(prog.fs,true,names,!!prog.decodeOnly),vs=packedShaderSource(prog.vs||VS_FULL,false,names),p=program(fs,vs,prog.head);
     Object.assign(p,{packedShader:true,packNames:[...names],defaults:prog.defaults,tiled:prog.tiled,_n:prog._n});prog.packedVariant=p;}return prog.packedVariant;}
-function program(fs,vs){const p=gl.createProgram(),v=compile(gl.VERTEX_SHADER,vs||VS_FULL),f=compile(gl.FRAGMENT_SHADER,FS_HEAD+fs);gl.attachShader(p,v);gl.attachShader(p,f);gl.bindAttribLocation(p,0,'a');gl.linkProgram(p);return {p,locs:{},fs,vs,_sh:[v,f]};}
+function program(fs,vs,head){const p=gl.createProgram(),v=compile(gl.VERTEX_SHADER,vs||VS_FULL),f=compile(gl.FRAGMENT_SHADER,(head||FS_HEAD)+fs);gl.attachShader(p,v);gl.attachShader(p,f);gl.bindAttribLocation(p,0,'a');gl.linkProgram(p);return {p,locs:{},fs,vs,_sh:[v,f]};}
 const P={
   stamp:program(FS_STAMP,VS_STAMP), smudge:program(FS_SMUDGE,VS_STAMP), merge:program(FS_MERGE), comp:program(FS_COMP),
   view:program(FS_VIEW,VS_VIEW), resample:program(FS_RESAMPLE), axf:program(FS_AXF), adjust:program(FS_ADJUST), blur:program(FS_BLUR),

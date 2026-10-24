@@ -176,6 +176,20 @@ async function txToChannel(it,k){const L=doc.active;if(!isLayer(L)||!L.fill){toa
   const old=L._fillImg&&L._fillImg[k];L._fillImg=Object.assign({},L._fillImg||{});L._fillImg[k]=t;s.src='image';s.name=it.name;s.on=true;fillRender(L,k);matEdCommit();
   if(old&&!Object.values(L._fillImg).includes(old)){/* kept by undo */}
   renderLayers();if(typeof renderMatEd==='function')renderMatEd(true);toast('“'+it.name+'” is now the '+(TX_CHANNELS.find(c=>c[0]===k)||[0,k])[1].toLowerCase()+' of “'+L.name+'”.');}
+/* (0.70, Kenn) pick a texture from the Textures library for one channel of a material, right from the Material editor */
+function txPickDlg(k){const L=doc.active;if(!isLayer(L)||!L.fill){toast('Select a material layer first.');return;}
+  const st={show:'all',category:'all',query:''},grid=el('div',{class:'matgrid txpick',id:'txPickGrid'}),count=el('p',{class:'note'});
+  const draw=()=>{txForget(grid);const q=st.query.trim().toLowerCase(),g=TX_GEN.map(([id,name])=>({kind:'gen',id,name,category:txCategory(id,name)})),p=TX_PHOTO.map(([id,name,category])=>({kind:'photo',id,name,category:txCategory(id,name,category)})),m=tx.mine.map(rec=>({kind:'mine',id:rec.id,name:rec.name,category:txCategory(rec.id,rec.name,rec.category),rec}));
+    const all=st.show==='gen'?g:st.show==='photo'?p:st.show==='mine'?m:[...m,...p,...g],items=all.filter(it=>(st.category==='all'||it.category===st.category)&&it.name.toLowerCase().includes(q));
+    count.textContent=items.length+' textures. Click one to use it as the '+(MAP_DEFS[k]?MAP_DEFS[k].label:k).toLowerCase()+'.';
+    grid.replaceChildren(...items.map(it=>{const img=el('img',{alt:'',width:72,height:72,draggable:'false'});img._tx=it;txObserve(img);
+      return el('button',{class:'mattile txtile',id:'txp_'+it.kind+'_'+it.id,title:it.name,onclick:()=>{closeDialog();txToChannel(it,k);}},img,el('span',{text:it.name}));}));txPruneObserved();};
+  const category=el('select',{id:'txPickCat','aria-label':'Texture category'},el('option',{value:'all',text:'All categories'}),...TX_CATEGORIES.map(c=>el('option',{value:c,text:c})));category.onchange=()=>{st.category=category.value;draw();};
+  const search=el('input',{type:'search',id:'txPickSearch',placeholder:'Search textures','aria-label':'Search textures'});search.oninput=()=>{st.query=search.value;draw();};
+  if(!tx.loaded)txLoad().then(draw);
+  const body=el('div',{class:'txpickbox'},segChips([['all','All'],['mine','Yours'],['photo','Photo grunge'],['gen','Generated']],()=>st.show,v=>{st.show=v;draw();}),el('div',{class:'row wrap'},category,search),count,grid);
+  grid.style.setProperty('--tw','64px');draw();
+  openDialog({title:'Choose a texture',body,okLabel:null,cancelLabel:'Close',resizable:true});}
 const FS_TXLAYER=`uniform sampler2D uSrc; uniform vec2 uDoc; uniform float uScale;
 void main(){ vec2 sz=vec2(textureSize(uSrc,0)); vec2 uv=gl_FragCoord.xy/(sz*uScale); o=texture(uSrc,uv); }`;
 let P_TXLAYER=null;

@@ -23,10 +23,11 @@ function dlgP3Bake(){if(ui.mode!=='p3d')return;if(bk.busy){toast('Wait for the b
     el('div',{class:'chips'},...P3BK_MAPS.map(k=>chk('p3bk_'+k,BAKE_NAMES[k],!!kinds[k],v=>{kinds[k]=v;}))),
     el('div',{class:'sub',text:'Size'}),seg(size,pick,v=>{pick=+v;},'Bake size'),
     el('div',{class:'sub',text:'High-poly'}),
-    hi?chk('p3bkHigh','Use “'+hi.name+'” ('+hi.tris.toLocaleString()+' triangles)',p3bk.useHigh,v=>{p3bk.useHigh=v;}):el('p',{class:'note',text:'None: the maps come from the model itself (normal and height need a high-poly, so they are skipped).'}),
+    hi?chk('p3bkHigh','Use “'+hi.name+'” ('+hi.tris.toLocaleString()+' triangles)',p3bk.useHigh,v=>{p3bk.useHigh=v;}):el('p',{class:'note',text:'None: the maps come from the model itself (height needs a high-poly, so it is skipped; the normal map only with the Bevel shader below).'}),
     el('div',{class:'chips'},el('button',{class:'btn sm',id:'p3bkLoadHigh',text:hi?'Load another…':'Load a high-poly…',onclick:async()=>{try{const m=await bakePickModel();if(m){bakeSetModel('high',m);p3bk.useHigh=true;draw();}}catch(e){toast('Could not load the model: '+(e.message||e));}}})),
     el('div',{class:'sub',text:'Texture sets'}),
     sets.length>1?el('div',{class:'chips'},...sets.map((n,i)=>chk('p3bkSet'+i,n,p3bk.sets[n]!==false,v=>{p3bk.sets[n]=v;}))):el('p',{class:'note',text:'The model has one texture set.'}),
+    bevelSection(draw,'p3bk'),
     el('div',{class:'sub',text:'Quality'}),seg([[32,'Draft'],[64,'Normal'],[128,'High']],C.rays>=128?128:C.rays<=32?32:64,v=>{C.rays=+v;},'Ray count'),
     chk('p3bkLayers','Also add them as layers (they always become the set’s mesh maps)',!!C.p3Layers,v=>{C.p3Layers=v;}),
     el('p',{class:'note',text:'Masks, generators and materials that use the mesh maps update when the bake is done. The bake also waits in the Bake tab: fine-tune it there (cage, fixes, per-map settings), or send it to the Paint canvas to clean it up.'}));};

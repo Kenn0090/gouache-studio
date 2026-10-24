@@ -5,12 +5,14 @@
 const VS_3D=`#version 300 es
 layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec2 aT; layout(location=3) in vec4 aTan; layout(location=4) in vec3 aD;
 uniform mat4 uVP; uniform float uUVs; uniform sampler2D uH; uniform float uDisp; uniform int uUseH; uniform int uUseUDIM; uniform vec2 uUDIMTile;
-uniform float uMorph; uniform vec3 uMorphOff;
+uniform float uMorph; uniform vec3 uMorphOff; uniform float uSnap;
 out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;
 void main(){ vec2 t=aT*uUVs; vec3 p=aP; vec3 nn=aN; if(uUseH==1&&uDisp!=0.0){ float h=textureLod(uH,uUseUDIM==1?fract(t):t,0.0).r-0.5; p+=aD*h*uDisp; }
   /* (0.55) unfold: the model slides into its flat UV layout (Bake tab review) */
   if(uMorph>0.0){ float k=uMorph*uMorph*(3.0-2.0*uMorph); p=mix(p,vec3((aT.x-0.5)*2.2,(0.5-aT.y)*2.2,0.0)+uMorphOff,k); nn=normalize(mix(aN,vec3(0.0,0.0,1.0),k)); }
-  vP=p; vN=nn; vT=t; vTan=aTan; gl_Position=uVP*vec4(p,1.0); }`;
+  vP=p; vN=nn; vT=t; vTan=aTan; gl_Position=uVP*vec4(p,1.0);
+  /* (0.70) Retro shader: corners snap to a coarse screen grid, the wobble of old consoles */
+  if(uSnap>0.0){ vec2 g=vec2(uSnap); gl_Position.xy=floor(gl_Position.xy/gl_Position.w*g+0.5)/g*gl_Position.w; } }`;
 /* tone mapping: 0 soft, 1 filmic (quick ACES fit), 2 ACES (full), 3 AgX, 4 PBR Neutral (Khronos), 5 none */
 const TONE_GLSL=`vec3 acesHill(vec3 c){ const mat3 I=mat3(0.59719,0.07600,0.02840, 0.35458,0.90834,0.13383, 0.04823,0.01566,0.83777); const mat3 O=mat3(1.60475,-0.10208,-0.00327, -0.53108,1.10813,-0.07276, -0.07367,-0.00605,1.07602);
   c=I*(c/0.6); vec3 a=c*(c+0.0245786)-0.000090537; vec3 b=c*(0.983729*c+0.4329510)+0.238081; return clamp(O*(a/b),0.0,1.0); }
@@ -30,7 +32,7 @@ uniform int uUseSafeMip;
 uniform int uFlipY; uniform int uHas; uniform vec2 uDef; uniform vec3 uCam; uniform vec3 uSun; uniform float uSunI; uniform float uSkyI; uniform float uExpo; uniform int uUnlit; uniform int uClip;
 /* the HDRI (0.26): 6 levels from sharp to fully rough, and the diffuse light */
 uniform int uEnvOn; uniform float uEnvRot; uniform float uEnvI; uniform sampler2D uEnv0; uniform sampler2D uEnv1; uniform sampler2D uEnv2; uniform sampler2D uEnv3; uniform sampler2D uEnv4; uniform sampler2D uEnv5; uniform sampler2D uIrr; uniform int uTone;
-/* the texture set's shader: 0 standard, 1 skin, 2 anisotropic metal, 3 velvet, 4 toon, 5 cel, 6 spec/gloss view; its settings */
+/* the texture set's shader: 0 standard, 1 skin, 2 anisotropic metal, 3 velvet, 4 toon, 5 cel, 6 spec/gloss view, 7 panner, 8 retro (N64 / PSX); its settings */
 uniform vec4 uSkin; uniform int uSh; uniform vec4 uShP; uniform vec4 uShQ; uniform vec3 uShC; uniform vec3 uShD;
 /* the Panner shader (0.40): each map slid by its own offset */
 uniform vec2 uPB; uniform vec2 uPR; uniform vec2 uPM; uniform vec2 uPN; uniform vec2 uPA; uniform vec2 uPE; uniform vec2 uPO;
@@ -52,7 +54,16 @@ void mapGrad(vec2 uv,out vec2 dx,out vec2 dy){dx=dFdx(uv);dy=dFdy(uv);if(uUseSaf
  ivec2 sz=textureSize(uThick,0),p=clamp(ivec2(floor(uv*vec2(sz))),ivec2(0),sz-1);float maxLod=texelFetch(uThick,p,0).r*16.0;
  vec2 x=dx*vec2(sz),y=dy*vec2(sz);float lod=max(0.0,0.5*log2(max(dot(x,x),dot(y,y))));
  if(lod>maxLod){float k=exp2(maxLod-lod);dx*=k;dy*=k;}}
-vec4 mapSample(sampler2D tex,vec2 uv){vec2 dx,dy;mapGrad(uv,dx,dy);return textureGrad(tex,uv,dx,dy);}
+/* (0.70) Retro shader: every map is read as a small grid of texels (uShP.x across), unfiltered, 3-point (N64) or bilinear (uShP.y) */
+vec4 retroSample(sampler2D tex,vec2 uv,vec2 dx,vec2 dy){ vec2 sz=vec2(textureSize(tex,0)); vec2 R=vec2(max(uShP.x,1.0)); R.y*=sz.y/sz.x;
+  vec2 gx=dx*sz,gy=dy*sz; float lod=max(log2(max(sz.x/R.x,1.0)),0.5*log2(max(max(dot(gx,gx),dot(gy,gy)),1.0))); vec2 g=uv*R;
+  if(uShP.y<0.5) return textureLod(tex,(floor(g)+0.5)/R,lod);
+  vec2 q=g-0.5,i=floor(q),f=fract(q);
+  vec4 a=textureLod(tex,(i+vec2(0.5,0.5))/R,lod),b=textureLod(tex,(i+vec2(1.5,0.5))/R,lod),c=textureLod(tex,(i+vec2(0.5,1.5))/R,lod),d=textureLod(tex,(i+vec2(1.5,1.5))/R,lod);
+  if(uShP.y>1.5) return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);
+  return (f.x+f.y<1.0)?a+(b-a)*f.x+(c-a)*f.y:d+(c-d)*(1.0-f.x)+(b-d)*(1.0-f.y); }
+float retroBayer(vec2 p){ ivec2 i=ivec2(mod(p,4.0)); int v=0; for(int k=0;k<2;k++){ int x=(i.x>>k)&1,y=(i.y>>k)&1; v|=(((x^y)<<1)|y)<<(2*(1-k)); } return (float(v)+0.5)/16.0; }
+vec4 mapSample(sampler2D tex,vec2 uv){vec2 dx,dy;mapGrad(uv,dx,dy);if(uSh==8)return retroSample(tex,uv,dx,dy);return textureGrad(tex,uv,dx,dy);}
 void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv=uUseUDIM==1?fract(vT):vT; vec4 b=mapSample(uBase,uv+uPB); float a=b.a; if((uHas&64)!=0) a*=mapSample(uOpac,uv+uPO).r;
   if(uClip==1&&a<0.5) discard; vec3 alb=b.a>1e-5?b.rgb/b.a:vec3(0.0);
   if(uUnlit==1){ vec3 c=alb; if((uHas&8)!=0) c*=mapSample(uAO,uv+uPA).r; o=vec4(c,1.0); return; }
@@ -61,6 +72,11 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
   if((uHas&4)!=0){ vec3 n=mapSample(uNrm,uv+uPN).rgb*2.0-1.0; N=normalize(T*n.x+B*n.y+Ng*n.z); }
   /* which side faces the camera, from the surface itself (not the triangles' winding, which differs between models) */
   { vec3 Nf=normalize(cross(dFdx(vP),dFdy(vP))); if(dot(Nf,uCam-vP)<0.0) Nf=-Nf; if(dot(Ng,Nf)<0.0){ N=-N; Ng=-Ng; } }
+  /* ---- Retro (N64 / PSX): the texture as a small grid, a plain light, banded if asked, fog, 15/16-bit colour with a dither ---- */
+  if(uSh==8){ vec3 Lr=normalize(uSun); float l=max(dot(Ng,Lr),0.0); if(uShQ.x>0.5) l=floor(l*uShQ.x+0.5)/uShQ.x; float amb=uShQ.z;
+    vec3 c=pow(alb,vec3(1.0/2.2))*(amb+(1.0-amb)*l)*1.6*uExpo; if((uHas&16)!=0) c+=mapSample(uEmis,uv+uPE).rgb;
+    float fg=1.0-exp(-length(uCam-vP)*uShQ.y*0.35); c=mix(c,uShD,clamp(fg,0.0,1.0));
+    c=clamp(c,0.0,1.0); c=floor(c*uShC+0.5+(retroBayer(gl_FragCoord.xy)-0.5)*uShP.z)/uShC; o=vec4(clamp(c,0.0,1.0),1.0); return; }
   float rough=clamp((uHas&1)!=0?mapSample(uRough,uv+uPR).r:uDef.x,0.04,1.0), metal=(uHas&2)!=0?mapSample(uMetal,uv+uPM).r:uDef.y, ao=(uHas&8)!=0?mapSample(uAO,uv+uPA).r:1.0;
   vec3 V=normalize(uCam-vP), L=normalize(uSun), H=normalize(L+V);
   float NdL=max(dot(N,L),0.0), NdV=max(dot(N,V),1e-3), NdH=max(dot(N,H),0.0), VdH=max(dot(V,H),0.0);
@@ -126,7 +142,7 @@ const FS_3DLINE=`uniform vec4 uCol; void main(){ o=uCol; }`;
 const VS_UV=`#version 300 es
 layout(location=2) in vec2 aT; uniform vec2 uOrigin; uniform vec2 uExtent; uniform vec2 uViewport; uniform vec2 uShift;
 void main(){ vec2 p=uOrigin+(aT+uShift)*uExtent; gl_Position=vec4(p.x/uViewport.x*2.0-1.0,1.0-p.y/uViewport.y*2.0,0.0,1.0); }`;
-function prog3(vs,fs,header=FS_HEAD){const p=gl.createProgram(),v=compile(gl.VERTEX_SHADER,vs),f=compile(gl.FRAGMENT_SHADER,header+fs);gl.attachShader(p,v);gl.attachShader(p,f);gl.linkProgram(p);return {p,locs:{},fs,vs,_sh:[v,f]};}
+function prog3(vs,fs,header=FS_HEAD){const p=gl.createProgram(),v=compile(gl.VERTEX_SHADER,vs),f=compile(gl.FRAGMENT_SHADER,header+fs);gl.attachShader(p,v);gl.attachShader(p,f);gl.linkProgram(p);return {p,locs:{},fs,vs,head:header===FS_HEAD?undefined:header,_sh:[v,f]};}
 const FS_3DSEL=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform sampler2D uSel; void main(){ float m=texture(uSel,fract(vT)).r; if(m<0.02) discard; o=vec4(1.0,0.62,0.22,0.32*m); }`;
 const P3={mesh:Object.assign(prog3(VS_3D,FS_3D),{decodeOnly:true}),line:prog3(VS_3D,FS_3DLINE),uv:prog3(VS_UV,FS_3DLINE),sel:prog3(VS_3D,FS_3DSEL)};
 
@@ -412,7 +428,7 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   const box=el('div',{class:'v3set',id:'v3Settings',hidden:true,'aria-label':'3D viewport settings'});gear.setAttribute('aria-controls','v3Settings');
   box.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});
   if(ui.mode==='p3d'){const display=el('div',{class:'v3display',role:'group','aria-label':'Viewport display'});
-    for(const [mode,label] of [['shaded','Shaded'],['wire','Wireframe'],['overlay','Wireframe overlay']])display.append(el('button',{class:'btn sm'+(v3WireMode()===mode?' on':''),'data-wire-mode':mode,'aria-pressed':String(v3WireMode()===mode),text:label,onclick:()=>v3SetWireMode(mode)}));
+    for(const [mode,label] of [['shaded','Shaded'],['wire','Wireframe'],['overlay','Wireframe overlay']])display.append(el('button',{class:'btn sm'+(v3WireMode()===mode?' on':''),'data-wire-mode':mode,'aria-pressed':String(v3WireMode()===mode),text:label,onclick:()=>v3SetWireMode(v3WireMode()===mode&&mode!=='shaded'?'shaded':mode)}));/* (0.70) click the active one again to turn it off */
     box.append(el('div',{class:'sub',text:'Viewport display'}),display);}
   const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:s[key],fmt,...(['disp','sunI','skyI','envIntensity','studioFill','studioRim'].includes(key)?{numericMax:Math.max(max,1)*4}:{}),onInput:v=>{s[key]=v;if(key==='disp'){v3.mapsDirty=true;if(v>0&&(s.detail||0)<4&&!v3.detAuto){v3.detAuto=true;s.detail=4;if(v3.detSel)v3.detSel.value='4';v3LoadModel(true);toast('Mesh detail raised to ×16 so the height can show. Change it with the Detail menu at the top of the 3D view.');}}v3.dirty=true;requestRender(key==='disp');}}).el;
   box.append(el('div',{class:'sub',text:'Lighting'}),envSettingsBox(S),studioSettingsBox(S),el('div',{class:'sub',text:'Model and camera'}),S('v3Uvs','Tile repeat','uvs',1,8,1,v=>v+'×'),S('v3Disp','Height depth','disp',0,1,.01,pct),S('v3Fov','Lens','fov',15,90,1,v=>v+'°'),
@@ -425,12 +441,14 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
     seg([['1','Full size'],['0.75','Three quarters'],['0.5','Half size']],String(paintScale()),x=>{prefs.paintScale=x==='1'?undefined:+x;delete prefs.paintHalf;savePrefs();v3.dirty=true;requestRender();},'Model while painting'),
     el('p',{class:'note',text:'Painting speed: Balanced and Fast redraw the picture less often while you paint. The paint is the same. Also in Preferences.'}),
     el('p',{class:'note',text:'Drag to turn, right-drag to move, wheel to zoom, double-click to reframe. Raise Detail (top of the 3D view) to see Height depth push the surface out finely; imported models are subdivided.'}));
-  gear.onclick=()=>{box.hidden=!box.hidden;gear.setAttribute('aria-expanded',String(!box.hidden));if(!box.hidden){/* More must not consume all the space above the settings on a short viewport. */
+  /* (0.70, Kenn) the settings stay in view: open or closed is remembered, so they no longer pop away */
+  const gearSave=()=>{try{localStorage.setItem('gs.v3setOpen',box.hidden?'0':'1');}catch(e){}};
+  gear.onclick=()=>{box.hidden=!box.hidden;gearSave();gear.setAttribute('aria-expanded',String(!box.hidden));if(!box.hidden){/* More must not consume all the space above the settings on a short viewport. */
       const xt=bar.querySelector('#v3Xtra'),more=bar.querySelector('#v3More');if(xt){xt.hidden=true;more.setAttribute('aria-expanded','false');more.classList.remove('on');}
       const top=Math.min(bar.offsetTop+bar.offsetHeight+6,Math.max(8,pane.clientHeight-140));box.style.top=top+'px';box.style.maxHeight=Math.max(0,pane.clientHeight-top-8)+'px';}};
   const info=el('div',{class:'v3info',id:'v3Info'});v3.infoEl=info;
   const hit=el('div',{class:'v3hit',id:'v3Hit'});
-  pane.append(hit,bar,box,...(mb?[mb.pop]:[]),info);if(ui.mode==='p3d')p3ChannelSync();refresh3dUI();v3Controls(hit);st3.el=null;requestAnimationFrame(st3Overlay);}
+  pane.append(hit,bar,box,...(mb?[mb.pop]:[]),info);{let o;try{o=localStorage.getItem('gs.v3setOpen');}catch(e){}if(o==='1'&&(ui.mode==='p3d'||!v3.pop))requestAnimationFrame(()=>{if(box.isConnected&&box.hidden)gear.onclick();});}if(ui.mode==='p3d')p3ChannelSync();refresh3dUI();v3Controls(hit);st3.el=null;requestAnimationFrame(st3Overlay);}
 function refresh3dUI(){const i=v3.infoEl;if(!i||!v3.mesh)return;const m=v3.mesh;i.textContent=m.name+' · '+m.tris.toLocaleString()+' triangles'+(m.noUV?' · this model has no UVs, so textures cannot map onto it':v3.paintOn?' · painting: '+v3NavHint()+(v3PickKey()?'; hold '+v3PickKey()+' over the model to pick its colour':''):'');}
 /* ---- navigation: Substance Painter style (default) or 3D-Coat style (Preferences, or the 3D Paint panel) ----
    Substance: Alt+left turns, Alt+middle moves, Alt+right zooms; middle or right drag also moves; left paints.

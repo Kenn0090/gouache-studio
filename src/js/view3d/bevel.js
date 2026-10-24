@@ -4,6 +4,8 @@
 const BEVEL_GLSL=`
 uniform float uBevelWidth; uniform float uBevelAngle;
 uniform int uBevelSamples; uniform int uBevelHard; uniform int uBevelSame;
+/* (0.70) shaping: profile 0 round, 1 smooth, 2 chamfer, 3 sharp; softness widens the blend; amounts for outer edges, inner corners and where separate meshes meet */
+uniform int uBevelProfile; uniform float uBevelSoft; uniform float uBevelConvex; uniform float uBevelConcave; uniform float uBevelIsect;
 float bvDistance(vec3 p,vec3 a,vec3 b){vec3 e=b-a;return length(p-a-e*clamp(dot(p-a,e)/max(dot(e,e),1e-20),0.0,1.0));}
 vec3 bvGeom(int t){vec3 a=bkF(uTris,t*3).xyz,g=cross(bkF(uTris,t*3+1).xyz-a,bkF(uTris,t*3+2).xyz-a);g=normalize(g+vec3(1e-30));return dot(g,bkF(uTN,t*3).xyz)<0.0?-g:g;}
 bool bvHardAt(int t,vec3 p,float r){if(uBevelHard==0)return false;int bits=int(bkF(uBVInfo,t*2).z+0.5);
@@ -14,6 +16,7 @@ vec3 bvShade(vec3 p,vec3 n,int own,vec2 bc){
   vec3 ng=bvGeom(own),tx=normalize(cross(abs(ng.z)<0.95?vec3(0,0,1):vec3(0,1,0),ng)),ty=cross(ng,tx);
   int savedPart=bkPart,savedSkip=bkSkip,savedSurface=bkSurface;bkPart=-1;bkSkip=-1;bkSurface=uBevelSame==1?int(bkF(uBVInfo,own*2).x+0.5):-1;
   vec3 sum=vec3(0);float total=0.0,cutoff=cos(radians(uBevelAngle));bool hard=bvHardAt(own,p,r);
+  int ownSurf=int(bkF(uBVInfo,own*2).x+0.5);
   /* Three orthogonal chord directions avoid the bias of sampling only the front
      hemisphere. Inverse projected area gives equally oriented faces equal weight. */
   int ns=clamp(uBevelSamples,3,128),per=(ns+2)/3;
@@ -27,7 +30,10 @@ vec3 bvShade(vec3 p,vec3 n,int own,vec2 bc){
       /* Opposite walls of a thin part must not cancel each other. Coplanar
          triangles contribute the original face normal, never a diagonal seam. */
       if(c>-.999&&projected>0.02&&distance<r){bool eligible=c<cutoff-1e-6||hard||bvHardAt(t,q,r);
-        vec3 candidate=eligible&&c<.999999?g:ng;float w=sqrt(max(0.0,1.0-distance*distance/(r*r)))/max(projected,0.2);
+        bool bent=eligible&&c<.999999;vec3 candidate=bent?g:ng;float f=clamp(distance/r,0.0,1.0),base=uBevelProfile==1?smoothstep(0.0,1.0,1.0-f):uBevelProfile==2?1.0-f:uBevelProfile==3?pow(1.0-f,2.5):sqrt(max(0.0,1.0-f*f));
+        base=pow(max(base,0.0),mix(1.0,0.35,uBevelSoft));float w=base/max(projected,0.2);
+        if(bent){ /* outer edges, inner corners, and a meeting of two separate meshes each have their own amount */
+          w*=dot(q-p,ng)<0.0?uBevelConvex:uBevelConcave; if(int(bkF(uBVInfo,t*2).x+0.5)!=ownSurf) w*=uBevelIsect; }
         sum+=candidate*w;total+=w;}
       float advance=th+eps;origin+=d*advance;left-=advance;if(left<=eps)break;
     }
@@ -45,11 +51,13 @@ int bvSurface(vec3 p,vec3 gn,out vec2 bc){int own=-1;float best=-2.0,eps=max(1e-
 }`;
 const BV_UNIT_MM={mm:1,cm:10,m:1000,in:25.4};
 function bvSettings(){const o=bakeCfg.bevel||(bakeCfg.bevel={on:false,preview:true,width:.5,angle:30});
-  for(const [k,v] of Object.entries({samples:24,hardEdges:true,sameSurface:false,mask:'none',unit:'percent',modelUnit:'cm'}))if(o[k]===undefined)o[k]=v;return o;}
-const bevelPreviewOn=()=>ui.mode==='bake'&&bvSettings().on&&bvSettings().preview&&canFloat&&bk.show==='material'&&!bk.uvCheck;
+  for(const [k,v] of Object.entries({samples:24,hardEdges:true,sameSurface:false,mask:'none',unit:'percent',modelUnit:'cm',profile:'round',soft:0,convex:1,concave:1,isect:1}))if(o[k]===undefined)o[k]=v;return o;}
+const bevelPreviewOn=()=>(ui.mode==='bake'&&bvSettings().on&&bvSettings().preview&&canFloat&&bk.show==='material'&&!bk.uvCheck)||(ui.mode==='p3d'&&bvSettings().on&&bvSettings().preview&&canFloat);
+/* the model the width is measured on: the Bake tab's low-poly, or the model in the 3D view (3D Paint) */
+const bvMesh=()=>ui.mode==='bake'&&typeof bkLow==='function'?bkLow():v3.mesh;
 function bvWidth(o,m){if(!o||!o.on)return 0;const w=Math.max(0,+o.width||0);if(o.unit!=='mm')return w*.02;
-  m=m||(typeof bkLow==='function'?bkLow():v3.mesh);return w*(m?.xf?.s||1)/(BV_UNIT_MM[o.modelUnit]||10);}
-function bvUniforms(o,m){return {uBevelWidth:bvWidth(o,m),uBevelAngle:+o?.angle||0,uBevelSamples:{int:Math.max(3,Math.min(128,+o?.samples||24))},uBevelHard:!!o?.hardEdges,uBevelSame:!!o?.sameSurface};}
+  m=m||bvMesh();return w*(m?.xf?.s||1)/(BV_UNIT_MM[o.modelUnit]||10);}
+function bvUniforms(o,m){const num=(v,d)=>v===undefined?d:+v,P={round:0,smooth:1,chamfer:2,sharp:3};return {uBevelProfile:{int:P[o?.profile]||0},uBevelSoft:num(o?.soft,0),uBevelConvex:num(o?.convex,1),uBevelConcave:num(o?.concave,1),uBevelIsect:num(o?.isect,1),uBevelWidth:bvWidth(o,m),uBevelAngle:+o?.angle||0,uBevelSamples:{int:Math.max(3,Math.min(128,+o?.samples||24))},uBevelHard:!!o?.hardEdges,uBevelSame:!!o?.sameSurface};}
 
 /* Hard-edge identity follows the imported corner normals, independent of UVs,
    materials, face triangulation and the user's angle threshold. */
@@ -91,13 +99,15 @@ async function bvPrepareInfo(hg,o){if(!o?.hardEdges||bvHardBitsValid(hg.source))
       w.onmessage=e=>{w.terminate();res(e.data);};w.onerror=e=>{w.terminate();rej(new Error(e.message||'Could not prepare bevel hard edges'));};const P=m.pos.slice(),I=m.idx.slice(),N=m.nrm.slice(),parts=bvParts(m)?.slice();w.postMessage({P,I,N,parts},[P.buffer,I.buffer,N.buffer,...(parts?[parts.buffer]:[])]);});
     if(key.idx===m.idx&&key.pos===m.pos&&key.nrm===m.nrm&&key.parts===bvParts(m))m._bvHardBits={...key,data};
   })();try{await m._bvHardPending;}finally{m._bvHardPending=null;}}
-function bevelBakeTex(hg,o){if(!o||!o.on)return null;const m=hg.source,key=[!!o.hardEdges,o.mask||'none',m.idx,m.pos,m.nrm,m.vcol,m._bvHardBits,bvParts(m)];
+/* (0.70) per-material width: each material takes a share (0 to 100%) of the bevel width, like the vertex colour mask */
+function bvMatShare(o,m,t){const n=m.matNames&&m.triMat?m.matNames[m.triMat[t]]:null,v=n!=null&&o.mats?o.mats[n]:undefined;return v===undefined?1:Math.max(0,Math.min(1,+v));}
+function bevelBakeTex(hg,o){if(!o||!o.on)return null;const m=hg.source,key=[!!o.hardEdges,o.mask||'none',m.idx,m.pos,m.nrm,m.vcol,m._bvHardBits,bvParts(m),JSON.stringify(o.mats||{})+'|'+(m.matNames||[]).join(',')];
   if(hg.bevel&&key.every((v,i)=>v===hg.bevel.key[i]))return hg.bevel.tex;
   if(hg.bevel)gl.deleteTexture(hg.bevel.tex);
   const hard=o.hardEdges?(bvHardBitsValid(m)?m._bvHardBits.data:bvHardBitsBuild(m.pos,m.idx,m.nrm,bvParts(m))):null,mask={r:0,g:1,b:2,a:3}[o.mask],col=m.vcol,I=m.idx,order=hg.order,parts=bvParts(m);
   const tex=bkBandTex(hg.count*2,false,(b,t0,t1)=>{for(let q=t0;q<t1;q++){const t=order[q>>1],p=(q-t0)*4;
     if(q%2===0){b[p]=parts?parts[t]:0;b[p+1]=m.triMat?m.triMat[t]:0;b[p+2]=hard?hard[t]:0;}
-    else for(let c=0;c<3;c++)b[p+c]=mask===undefined||!col?1:Math.max(0,Math.min(1,col[I[t*3+c]*4+mask]));}});
+    else{const share=bvMatShare(o,m,t);for(let c=0;c<3;c++)b[p+c]=share*(mask===undefined||!col?1:Math.max(0,Math.min(1,col[I[t*3+c]*4+mask])));}}});
   hg.bevel={tex,key};return tex;}
 
 /* The scene probes have their own small shader pass. The final material reuses
@@ -134,30 +144,53 @@ function bevelScreen(s,g,common,U,F,high=false){if(!s?.hg||s.error)return null;c
   }
   gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);gl.enable(gl.SCISSOR_TEST);bindTarget(s.out);
   const block=o.samples>32?64:128,nx=Math.ceil(F.w/block),ny=Math.ceil(F.h/block),limit=Math.min(nx*ny,s.tile+2);
-  useProg(P_BVRAY,{...bvUniforms(o,bkLow()),uNodes:s.hg.nodes,uTris:s.hg.tris,uTN:s.hg.nrm,uTC:s.hg.col,uBVInfo:info,uBVPosition:s.G.tex[0],uBVGeometric:s.G.tex[1],uBVInput:s.G.tex[2]});gl.bindVertexArray(vao);
+  useProg(P_BVRAY,{...bvUniforms(o,bvMesh()),uNodes:s.hg.nodes,uTris:s.hg.tris,uTN:s.hg.nrm,uTC:s.hg.col,uBVInfo:info,uBVPosition:s.G.tex[0],uBVGeometric:s.G.tex[1],uBVInput:s.G.tex[2]});gl.bindVertexArray(vao);
   while(s.tile<limit){const x=s.tile%nx*block,y=Math.floor(s.tile/nx)*block;gl.scissor(x,y,Math.min(block,F.w-x),Math.min(block,F.h-y));gl.drawArrays(gl.TRIANGLE_STRIP,0,4);s.tile++;}
   gl.disable(gl.SCISSOR_TEST);gl.flush();bvStatus();if(s.tile<nx*ny){v3.dirty=true;requestAnimationFrame(()=>{v3.dirty=true;requestRender();});}
   gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);return s.out;
 }
 const bvPreviewState={highMode:null};
 function bvSetPreview(value){const o=bvSettings();o.preview=value;if(value&&o.on){bk.show='material';bk.uvCheck=false;bk.dirty=true;}if(value&&o.on&&bakeCfg.high){if(bvPreviewState.highMode===null)bvPreviewState.highMode=bk.showHigh||'off';bk.showHigh='only';}else if(bvPreviewState.highMode!==null){if(bk.showHigh==='only')bk.showHigh=bvPreviewState.highMode;bvPreviewState.highMode=null;}if(!value||!o.on)for(const s of Object.values(bvGPU))if(s)bvScreenFree(s);bvStatus();v3.dirty=true;requestRender(true);}
-function bvStatusText(){const o=bvSettings(),s=bvGPU[bakeCfg.high?'high':'low'];let text='Preview off';
+function bvStatusText(){const o=bvSettings(),s=bvGPU[ui.mode==='bake'&&bakeCfg.high?'high':'low'];let text='Preview off';
   if(o.on&&o.preview){if(s?.error)text='Preview unavailable: '+s.error;else if(!s?.hg||s.infoReady||!s.out)text='Preparing bevel preview…';else{const block=o.samples>32?64:128,total=Math.ceil(s.out.w/block)*Math.ceil(s.out.h/block);text=s.tile<total?'Refining preview · '+Math.round(s.tile/total*100)+'%':'Preview ready';}}
   return text;}
 function bvStatus(){const e=$('#bkBevelStatus');if(e){const text=bvStatusText();if(e.textContent!==text)e.textContent=text;}}
-function bvChanged(){for(const s of Object.values(bvGPU))if(s)s.screenKey=null;bvSetPreview(true);}
-function bvChangeUnit(unit){const o=bvSettings(),m=bkLow(),actual=bvWidth({...o,on:true},m);o.unit=unit;o.width=unit==='mm'?actual*(BV_UNIT_MM[o.modelUnit]||10)/(m.xf?.s||1):actual/.02;bvChanged();buildBakePanel();}
-function bevelBakeControls(){const o=bvSettings(),select=(id,values,value,change)=>{const s=el('select',{id},...values.map(([v,t])=>el('option',{value:v,text:t})));s.value=value;s.onchange=()=>change(s.value);return s;};
-  return el('div',{class:'dlg-grid',id:'bkBevelControls'},el('div',{class:'sub',text:'Bevel shader'}),
-    chk('bkBevelOn','Enable bevel',!!o.on,v=>{o.on=v;bvChanged();}),chk('bkBevelPreview','Preview before baking',o.preview!==false,v=>bvSetPreview(v)),
-    el('label',{text:'Width units'}),select('bkBevelUnit',[['percent','% of model'],['mm','Millimeters']],o.unit,bvChangeUnit),
-    ...(o.unit==='mm'?[el('label',{text:'Model file units'}),select('bkBevelModelUnit',[['mm','Millimeters'],['cm','Centimeters'],['m','Meters'],['in','Inches']],o.modelUnit,v=>{o.modelUnit=v;bvChanged();})]:[]),
+function bvChanged(){for(const s of Object.values(bvGPU))if(s)s.screenKey=null;if(ui.mode==='bake'){bvSetPreview(true);return;}
+  /* 3D Paint: the model in the 3D view shows it live */
+  const o=bvSettings();if(!o.on)for(const s of Object.values(bvGPU))if(s)bvScreenFree(s);bvStatus();v3.dirty=true;requestRender(true);}
+function bvChangeUnit(unit){const o=bvSettings(),m=bvMesh(),actual=bvWidth({...o,on:true},m);o.unit=unit;o.width=unit==='mm'?actual*(BV_UNIT_MM[o.modelUnit]||10)/(m.xf?.s||1):actual/.02;bvChanged();}
+/* (0.70, Kenn) the Bevel shader's settings, shared by the Bake tab, the Shader panel and the 3D Paint Bake window.
+   Like Marmoset Toolbag's: a low-poly with sharp edges gets rounded normals, so no high-poly is needed for them. */
+/* one slider per material of the model: the share of the width it gets (only when the model has several materials) */
+function bevelMatRows(o){const m=bvMesh(),names=m&&m.matNames||[];if(names.length<2)return [];const mats=o.mats||(o.mats={});
+  return [el('div',{class:'sub',text:'Width per material'}),el('p',{class:'note',text:'Each material gets a share of the width above, so hard parts can have a wider bevel than soft ones. 0% leaves a material sharp.'}),
+    ...names.map((n,i)=>makeSlider({id:'bkBevelMat'+i,label:n||'Material '+(i+1),min:0,max:1,step:.01,value:mats[n]===undefined?1:mats[n],fmt:pct,onInput:v=>{mats[n]=v;bvChanged();}}).el)];}
+function bevelFields(o,again){const select=(id,values,value,change)=>{const s=el('select',{id},...values.map(([v,t])=>el('option',{value:v,text:t})));s.value=value;s.onchange=()=>change(s.value);return s;};
+  const ch=()=>{bvChanged();if(again)again();};
+  return [el('label',{text:'Width units'}),select('bkBevelUnit',[['percent','% of model'],['mm','Millimeters']],o.unit,u=>{bvChangeUnit(u);if(again)again();}),
+    ...(o.unit==='mm'?[el('label',{text:'Model file units'}),select('bkBevelModelUnit',[['mm','Millimeters'],['cm','Centimeters'],['m','Meters'],['in','Inches']],o.modelUnit,v=>{o.modelUnit=v;ch();})]:[]),
     makeSlider({id:'bkBevelWidth',label:o.unit==='mm'?'Width (mm)':'Width (% of model)',min:0,max:o.unit==='mm'?Math.max(10,o.width*2):5,step:.01,value:o.width,fmt:v=>v.toFixed(2)+(o.unit==='mm'?' mm':'%'),onInput:v=>{o.width=v;bvChanged();}}).el,
     makeSlider({id:'bkBevelAngle',label:'Minimum edge angle',min:0,max:180,step:1,value:o.angle,fmt:v=>Math.round(v)+'°',onInput:v=>{o.angle=v;bvChanged();}}).el,
     makeSlider({id:'bkBevelSamples',label:'Samples',min:3,max:128,step:1,value:o.samples,fmt:v=>Math.round(v)+' rays',onInput:v=>{o.samples=Math.round(v);bvChanged();}}).el,
+    el('label',{text:'Edge profile'}),select('bkBevelProfile',[['round','Round'],['smooth','Smooth'],['chamfer','Chamfer (straight ramp)'],['sharp','Tight (narrow rounding)']],o.profile,v=>{o.profile=v;bvChanged();}),
+    makeSlider({id:'bkBevelSoft',label:'Softness',min:0,max:1,step:.01,value:o.soft,fmt:pct,onInput:v=>{o.soft=v;bvChanged();}}).el,
+    makeSlider({id:'bkBevelConvex',label:'Outer edges',min:0,max:1.5,step:.01,value:o.convex,fmt:pct,onInput:v=>{o.convex=v;bvChanged();}}).el,
+    makeSlider({id:'bkBevelConcave',label:'Inner corners',min:0,max:1.5,step:.01,value:o.concave,fmt:pct,onInput:v=>{o.concave=v;bvChanged();}}).el,
+    makeSlider({id:'bkBevelIsect',label:'Where meshes meet',min:0,max:1.5,step:.01,value:o.isect,fmt:pct,onInput:v=>{o.isect=v;bvChanged();}}).el,
     chk('bkBevelHard','Bevel hard edges',o.hardEdges,v=>{o.hardEdges=v;bvChanged();}),chk('bkBevelSame','Same surface only',o.sameSurface,v=>{o.sameSurface=v;bvChanged();}),
-    el('label',{text:'Vertex color width mask'}),select('bkBevelMask',[['none','None'],['r','Red'],['g','Green'],['b','Blue'],['a','Alpha']],o.mask,v=>{o.mask=v;bvChanged();}),
+    ...bevelMatRows(o),
+    el('label',{text:'Vertex color width mask'}),select('bkBevelMask',[['none','None'],['r','Red'],['g','Green'],['b','Blue'],['a','Alpha']],o.mask,v=>{o.mask=v;bvChanged();})];}
+function bevelBakeControls(){const o=bvSettings();
+  return el('div',{class:'dlg-grid',id:'bkBevelControls'},el('div',{class:'sub',text:'Bevel shader'}),
+    chk('bkBevelOn','Enable bevel',!!o.on,v=>{o.on=v;bvChanged();}),chk('bkBevelPreview','Preview before baking',o.preview!==false,v=>bvSetPreview(v)),
+    ...bevelFields(o,()=>buildBakePanel()),
     el('p',{class:'note',id:'bkBevelStatus',text:bvStatusText()}),
     el('p',{class:'note',text:'Probes nearby surfaces to round edges and mesh intersections in shading. Same surface only excludes other imported objects. Samples trade speed for quality. The mesh silhouette stays unchanged.'}),
     el('p',{class:'note',text:o.unit==='mm'?'Set Model file units to the units used when exporting your mesh. Vertex colors multiply the width; meshes without vertex colors keep the full width.':'Choose Millimeters for a physical width. Smaller widths usually suit hard-surface details best.'}),
     el('button',{class:'btn',id:'bkBakeBevel',text:'Bake bevel normal',disabled:!!bk.busy,onclick:()=>{o.on=true;runBakeSets(bkLow(),['normal']);}}));}
+/* 3D Paint: the same shader as a section (Shader panel, Bake mesh maps window): live in the 3D view, and baked into the normal map */
+function bevelSection(redraw,idp){const o=bvSettings(),again=()=>{if(redraw)redraw();};
+  return el('div',{class:'dlg-grid',id:(idp||'')+'BevelBox'},el('div',{class:'sub',text:'Bevel shader (rounded edges)'}),
+    el('p',{class:'note',text:'Rounds the sharp edges of a low-poly in its normals, like Marmoset Toolbag, so a high-poly is not needed for them. Shown live on the model, and baked with the Normal map.'}),
+    chk((idp||'')+'BevelOn','Round the edges',!!o.on,v=>{o.on=v;bvChanged();again();}),
+    ...(o.on?[chk((idp||'')+'BevelPrev','Show it in the 3D view',o.preview!==false,v=>{o.preview=v;bvChanged();}),...bevelFields(o,again),el('p',{class:'note',id:'bkBevelStatus',text:bvStatusText()})]:[]));}

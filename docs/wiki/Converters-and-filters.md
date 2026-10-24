@@ -85,6 +85,7 @@ In tile mode they wrap around the edges, so the result stays seamless.
   - **Riso print:** two or three bright inks printed a little out of line, with grain;
   - **B&W print:** hard ink with rough edges on grainy paper;
   - **Pixel / bitmap:** chunky pixels with fewer colours and **pattern** or **diffusion** dithering, or **1-bit** black and white like Photoshop's Bitmap mode.
+  - **Retro pixelate (N64 / PSX):** old-school console textures. Pick Nintendo 64, PlayStation, Saturn, Dreamcast, Game Boy Colour or Chunky 8-colour, then adjust the texel grid (texels across), filtering (none, N64 3-point, bilinear), average or sharp shrinking, red/green/blue colour bits, 4×4 pattern or noise dither, saturation, contrast, brightness, gamma, texel edge lines and a 1-bit see-through cut-out.
 
 ![The new filters on the sample tile.](images/new-filters.png)
 *The 0.17 filters on the sample tile.*

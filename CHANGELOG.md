@@ -1,3 +1,13 @@
+## 0.70.0
+
+- **Textures in the Material editor.** Each channel set to **Image** now has a **Textures…** button next to Choose image…. It opens the Textures library (generated, photo grunge and yours) with a search and categories; click one to use it as that channel, with its Tile and Turn controls. Choosing **Image** no longer forces the file picker open first.
+- **Retro pixelate (N64 / PSX)** filter (Filter › Print, Filter Gallery, filter layers). Pick Nintendo 64, PlayStation, Saturn, Dreamcast, Game Boy Colour or Chunky 8-colour, then adjust: the texel grid size, filtering (none, N64 3-point, bilinear), average or sharp shrinking, separate red/green/blue colour bits, 4×4 pattern or noise dither (per screen pixel or per texel), saturation, contrast, brightness, gamma, texel edge lines, 1-bit see-through cut-out and black and white.
+- **Retro (N64 / PSX) viewport shader.** A new choice in the Shader panel for each texture set: the textures become a small grid of texels with console filtering, colour cut to 15/16 bits with a dither, a plain light with optional light bands, fog and a vertex wobble. Presets for Nintendo 64, PlayStation, Saturn, Dreamcast and Chunky 3-bit.
+- **Bevel shader in 3D Paint.** The Marmoset-style rounded edges (from Bake › Normal) are now also in the Shader panel and the **Bake mesh maps** window. Switch on **Round the edges** to see sharp low-poly edges rounded live on the model, and bake them with the Normal map, with no high-poly needed. Width, minimum edge angle, samples, hard edges and same-surface settings are shared with the Bake tab.
+- **More Bevel shader options.** New **Edge profile** (Round, Smooth, Chamfer, Tight), **Softness**, and separate amounts for **Outer edges**, **Inner corners** and **Where meshes meet** (0% leaves intersections sharp). **Width per material**: on a model with several materials, each gets a share of the width, so hard parts can have a wider bevel than soft ones. All of them work in the Bake tab, the Shader panel and the Bake mesh maps window, and bake with the Normal map.
+- **Viewport settings stay open.** The 3D view's settings panel now remembers whether it was open, so it stays in view until you close it.
+- **Wireframe toggles off.** Clicking Wireframe or Wireframe overlay a second time turns it off again.
+
 ## 0.69.0
 
 - **Color Range.** **Select › Color Range…** selects matching colours throughout an image, with sampled colours, fuzziness, live image/selection previews, invert, and New/Add/Subtract/Intersect. Sample the visible image or active layer; Shift-click adds a colour and Alt-click removes one. Transparency and 16-bit colour precision are retained. Apply is one undo step; Cancel restores the previous selection.
