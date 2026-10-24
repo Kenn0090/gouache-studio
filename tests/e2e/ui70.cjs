@@ -51,12 +51,13 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.locator('[data-wire-mode="overlay"]').click();ok(await p.evaluate(()=>__gs.v3s().wire)===false,'clicking Wireframe overlay again turns it off');
  await p.locator('[data-wire-mode="wire"]').click();await p.locator('[data-wire-mode="wire"]').click();ok(await p.evaluate(()=>__gs.v3s().wire)===false,'Wireframe turns off the same way');
  /* retro shader */
- const grab=()=>p.evaluate(()=>{const G=__gs,F=G.v3Targets(160,160);G.v3Render(F);const a=G.captureRegionNow({fbo:F.rf,w:F.w,h:F.h,depth:8},0,0,F.w,F.h).data;let h=0,levels=new Set();for(let i=0;i<a.length;i+=4){h=(h*31+a[i]+a[i+1]*3+a[i+2]*7)%1000003;levels.add(a[i]);}const sm=[];for(let i=0;i<a.length;i+=8)sm.push(a[i]);return {h,levels:levels.size,err:G.gl.getError(),sm};});
+ const grab=()=>p.evaluate(()=>{const G=__gs,F=G.v3Targets(160,160);G.v3Render(F);const a=G.captureRegionNow({fbo:F.rf,w:F.w,h:F.h,depth:8},0,0,F.w,F.h).data;let h=0,levels=new Set();for(let i=0;i<a.length;i+=4){h=(h*31+a[i]+a[i+1]*3+a[i+2]*7)%1000003;levels.add(a[i]);}const sm=[];for(let i=0;i<a.length;i+=8)sm.push(a[i]);const mid=new Set();for(let y=50;y<110;y++)for(let x=50;x<110;x++)mid.add(a[(y*F.w+x)*4]);return {h,levels:levels.size,mid:mid.size,err:G.gl.getError(),sm};});
+ await p.evaluate(()=>{const G=__gs;G.useModel(G.primMesh('sphere',1));G.v3.dirty=true;});await W(800);/* a smooth sphere: many shades in the standard shader */
  const std=await grab();
  await p.evaluate(()=>{__gs.doc.v3shade={kind:'retro',p:{}};__gs.v3.dirty=true;});await W(300);
  const ret=await grab();
  ok(ret.err===0&&ret.h!==std.h,'the Retro shader draws without graphics errors and looks different');
- ok(ret.levels<std.levels&&ret.levels<=40,'Retro colour is cut to few levels ('+ret.levels+' vs '+std.levels+')');
+ ok(ret.mid<=33&&std.mid>60,'Retro colour is cut to few levels in the middle of the picture ('+ret.mid+' vs '+std.mid+' with the standard shader)');
  await p.evaluate(()=>{__gs.shadeEdit(d=>{d.p.retro={wobble:.8,fog:.5,steps:3};});});await W(300);
  const ret2=await grab();ok(ret2.err===0&&ret2.h!==ret.h,'wobble, fog and light bands change the picture');
  await p.evaluate(()=>{__gs.showPanel('shading');__gs.renderShading();});await W(400);
