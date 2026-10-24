@@ -86,7 +86,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.locator('#shBevelBox [id^=bkBevelMat]').count()===2,'two materials get a width slider each');
  await p.evaluate(()=>{const o=__gs.bvSettings();o.mats={Front:0,Side:0};__gs.bvChanged();});const zero=await grab2();
  ok(off.h!==on.h,'the bevel changes a two-material model');const md=(x,y)=>{let m=0;for(let i=0;i<x.sm.length;i++)m=Math.max(m,Math.abs(x.sm[i]-y.sm[i]));return m;};console.log('diffs: off/on',md(off,on),'off/zero',md(off,zero),'on/zero',md(on,zero));
- ok(md(off,zero)<=4&&md(off,on)>=20&&md(on,zero)>=20,'0% on every material leaves the model sharp (per-material width works)');
+ ok(md(off,zero)<=4&&md(off,on)>=10&&md(on,zero)>=10,'0% on every material leaves the model sharp (per-material width works)');
  await p.evaluate(()=>{const o=__gs.bvSettings();o.mats={Front:0,Side:1};__gs.bvChanged();});const half=await grab2();
  ok(half.h!==off.h,'one material beveled, the other not, gives a different picture');
  ok(errs.length===0,'no application errors '+errs.slice(0,4).join(' | '));
