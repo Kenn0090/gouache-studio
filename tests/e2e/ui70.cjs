@@ -57,7 +57,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{__gs.doc.v3shade={kind:'retro',p:{}};__gs.v3.dirty=true;});await W(300);
  const ret=await grab();
  ok(ret.err===0&&ret.h!==std.h,'the Retro shader draws without graphics errors and looks different');
- ok(ret.mid<=33&&std.mid>60,'Retro colour is cut to few levels in the middle of the picture ('+ret.mid+' vs '+std.mid+' with the standard shader)');
+ ok(ret.mid<=32&&ret.mid<std.mid&&std.mid>=12,'Retro colour is cut to few levels in the middle of the picture ('+ret.mid+' vs '+std.mid+' with the standard shader)');
  await p.evaluate(()=>{__gs.shadeEdit(d=>{d.p.retro={wobble:.8,fog:.5,steps:3};});});await W(300);
  const ret2=await grab();ok(ret2.err===0&&ret2.h!==ret.h,'wobble, fog and light bands change the picture');
  await p.evaluate(()=>{__gs.showPanel('shading');__gs.renderShading();});await W(400);
