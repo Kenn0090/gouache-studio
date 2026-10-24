@@ -1,6 +1,6 @@
 const {chromium}=require('playwright');const OLD=__dirname+'/';
 (async()=>{const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
- const p=await (await b.newContext({viewport:{width:1200,height:700}})).newPage();
+ const p=await (await b.newContext({viewport:{width:1100,height:760}})).newPage();
  await p.addInitScript(()=>{localStorage.setItem('gs.p3d',JSON.stringify({size:128,layout:'3d'}));});
  await p.route('**/*',r=>{const u=r.request().url();
   if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
@@ -8,14 +8,14 @@ const {chromium}=require('playwright');const OLD=__dirname+'/';
   if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
   if(u.startsWith('file:'))return r.continue();return r.abort();});
  await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
- await p.evaluate(()=>{const G=__gs;G.closeWelcome();G.setMode('p3d',true);G.useModel(G.primMesh('cube',1));G.cmdNewFillLayer({name:'Grey',maps:{base:{c:[.7,.7,.72]}}});Object.assign(G.v3s(),{unlit:false,wire:false,spin:false,bg:'dark'});G.v3.cam.yaw=.7;G.v3.cam.pitch=.45;G.mir3.show=false;G.composite();G.v3Refresh();});
- await p.waitForTimeout(800);
- const shot=async(name)=>{let d;for(let i=0;i<(name.includes("on")?14:2);i++){d=await p.evaluate(()=>{const G=__gs,F=G.v3Targets(320,320);G.v3Render(F);const a=G.captureRegionNow({fbo:F.rf,w:F.w,h:F.h,depth:8},0,0,F.w,F.h).data;const c=document.createElement('canvas');c.width=c.height=320;const x=c.getContext('2d'),im=x.createImageData(320,320);for(let y=0;y<320;y++)for(let X=0;X<320;X++){const s=((479-y)*320+X)*4,t=(y*320+X)*4;im.data[t]=a[s];im.data[t+1]=a[s+1];im.data[t+2]=a[s+2];im.data[t+3]=255;}x.putImageData(im,0,0);return c.toDataURL('image/png');});await p.waitForTimeout(700);}
-  require('fs').writeFileSync(name,Buffer.from(d.split(',')[1],'base64'));};
- await shot('out/bev-off.png');
- await p.evaluate(()=>{const o=__gs.bvSettings();Object.assign(o,{on:true,preview:true,width:2.5,angle:30,samples:48});});
- await p.evaluate(()=>{__gs.showPanel('shading');__gs.renderShading();});
- await p.locator('#shBevelOn').count();
- await p.evaluate(()=>{__gs.bvChanged&&__gs.bvChanged();__gs.v3.dirty=true;});
- await p.waitForTimeout(4000);
- await shot('out/bev-on.png');await b.close();})();
+ await p.evaluate(()=>{const G=__gs;G.closeWelcome();G.setMode('p3d',true);G.useModel(G.primMesh('cube',1));G.cmdNewFillLayer({name:'Steel',maps:{base:{c:[.78,.8,.84]},metal:{v:1},rough:{v:.22}}});
+  Object.assign(G.v3s(),{unlit:false,wire:false,spin:false,bg:'dark'});Object.assign(G.v3.cam,{yaw:.75,pitch:.5,dist:3.6});G.mir3.show=false;G.composite();G.v3Refresh();});
+ await p.waitForTimeout(1500);
+ const clip=await p.evaluate(()=>{const r=document.querySelector('#v3Hit').getBoundingClientRect();const s=Math.min(r.width,r.height,560);return {x:r.x+(r.width-s)/2,y:r.y+(r.height-s)/2,width:s,height:s};});
+ await p.screenshot({path:'out/bev-off.png',clip});
+ await p.evaluate(()=>{const o=__gs.bvSettings();Object.assign(o,{on:true,preview:true,width:3,angle:30,samples:48});__gs.bvChanged();});
+ for(let i=0;i<120;i++){await p.waitForTimeout(1500);const t=await p.evaluate(()=>(document.querySelector('#bkBevelStatus')||{}).textContent||'');
+   const ready=await p.evaluate(()=>{const s=__gs.bvStatusText?__gs.bvStatusText():'';return s;});
+   console.log(i,ready||t);if(/ready/i.test(ready||t))break;}
+ await p.waitForTimeout(1500);
+ await p.screenshot({path:'out/bev-on.png',clip});await b.close();})();
