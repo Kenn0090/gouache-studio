@@ -1,0 +1,21 @@
+const {chromium}=require('playwright');const OLD=__dirname+'/';
+(async()=>{const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const p=await (await b.newContext({viewport:{width:1200,height:700}})).newPage();
+ await p.addInitScript(()=>{localStorage.setItem('gs.p3d',JSON.stringify({size:128,layout:'3d'}));});
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
+  if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ await p.evaluate(()=>{const G=__gs;G.closeWelcome();G.setMode('p3d',true);G.useModel(G.primMesh('cube',1));G.cmdNewFillLayer({name:'Grey',maps:{base:{c:[.7,.7,.72]}}});Object.assign(G.v3s(),{unlit:false,wire:false,spin:false,bg:'dark'});G.v3.cam.yaw=.7;G.v3.cam.pitch=.45;G.mir3.show=false;G.composite();G.v3Refresh();});
+ await p.waitForTimeout(800);
+ const shot=async(name)=>{let d;for(let i=0;i<25;i++){d=await p.evaluate(()=>{const G=__gs,F=G.v3Targets(480,480);G.v3Render(F);const a=G.captureRegionNow({fbo:F.rf,w:F.w,h:F.h,depth:8},0,0,F.w,F.h).data;const c=document.createElement('canvas');c.width=c.height=480;const x=c.getContext('2d'),im=x.createImageData(480,480);for(let y=0;y<480;y++)for(let X=0;X<480;X++){const s=((479-y)*480+X)*4,t=(y*480+X)*4;im.data[t]=a[s];im.data[t+1]=a[s+1];im.data[t+2]=a[s+2];im.data[t+3]=255;}x.putImageData(im,0,0);return c.toDataURL('image/png');});await p.waitForTimeout(500);}
+  require('fs').writeFileSync(name,Buffer.from(d.split(',')[1],'base64'));};
+ await shot('out/bev-off.png');
+ await p.evaluate(()=>{const o=__gs.bvSettings();Object.assign(o,{on:true,preview:true,width:2.5,angle:30,samples:48});});
+ await p.evaluate(()=>{__gs.showPanel('shading');__gs.renderShading();});
+ await p.locator('#shBevelOn').count();
+ await p.evaluate(()=>{__gs.bvChanged&&__gs.bvChanged();__gs.v3.dirty=true;});
+ await p.waitForTimeout(3000);
+ await shot('out/bev-on.png');await b.close();})();
