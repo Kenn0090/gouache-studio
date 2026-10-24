@@ -99,13 +99,15 @@ async function bvPrepareInfo(hg,o){if(!o?.hardEdges||bvHardBitsValid(hg.source))
       w.onmessage=e=>{w.terminate();res(e.data);};w.onerror=e=>{w.terminate();rej(new Error(e.message||'Could not prepare bevel hard edges'));};const P=m.pos.slice(),I=m.idx.slice(),N=m.nrm.slice(),parts=bvParts(m)?.slice();w.postMessage({P,I,N,parts},[P.buffer,I.buffer,N.buffer,...(parts?[parts.buffer]:[])]);});
     if(key.idx===m.idx&&key.pos===m.pos&&key.nrm===m.nrm&&key.parts===bvParts(m))m._bvHardBits={...key,data};
   })();try{await m._bvHardPending;}finally{m._bvHardPending=null;}}
-function bevelBakeTex(hg,o){if(!o||!o.on)return null;const m=hg.source,key=[!!o.hardEdges,o.mask||'none',m.idx,m.pos,m.nrm,m.vcol,m._bvHardBits,bvParts(m)];
+/* (0.70) per-material width: each material takes a share (0 to 100%) of the bevel width, like the vertex colour mask */
+function bvMatShare(o,m,t){const n=m.matNames&&m.triMat?m.matNames[m.triMat[t]]:null,v=n!=null&&o.mats?o.mats[n]:undefined;return v===undefined?1:Math.max(0,Math.min(1,+v));}
+function bevelBakeTex(hg,o){if(!o||!o.on)return null;const m=hg.source,key=[!!o.hardEdges,o.mask||'none',m.idx,m.pos,m.nrm,m.vcol,m._bvHardBits,bvParts(m),JSON.stringify(o.mats||{})+'|'+(m.matNames||[]).join(',')];
   if(hg.bevel&&key.every((v,i)=>v===hg.bevel.key[i]))return hg.bevel.tex;
   if(hg.bevel)gl.deleteTexture(hg.bevel.tex);
   const hard=o.hardEdges?(bvHardBitsValid(m)?m._bvHardBits.data:bvHardBitsBuild(m.pos,m.idx,m.nrm,bvParts(m))):null,mask={r:0,g:1,b:2,a:3}[o.mask],col=m.vcol,I=m.idx,order=hg.order,parts=bvParts(m);
   const tex=bkBandTex(hg.count*2,false,(b,t0,t1)=>{for(let q=t0;q<t1;q++){const t=order[q>>1],p=(q-t0)*4;
     if(q%2===0){b[p]=parts?parts[t]:0;b[p+1]=m.triMat?m.triMat[t]:0;b[p+2]=hard?hard[t]:0;}
-    else for(let c=0;c<3;c++)b[p+c]=mask===undefined||!col?1:Math.max(0,Math.min(1,col[I[t*3+c]*4+mask]));}});
+    else{const share=bvMatShare(o,m,t);for(let c=0;c<3;c++)b[p+c]=share*(mask===undefined||!col?1:Math.max(0,Math.min(1,col[I[t*3+c]*4+mask])));}}});
   hg.bevel={tex,key};return tex;}
 
 /* The scene probes have their own small shader pass. The final material reuses
@@ -159,6 +161,10 @@ function bvChanged(){for(const s of Object.values(bvGPU))if(s)s.screenKey=null;i
 function bvChangeUnit(unit){const o=bvSettings(),m=bvMesh(),actual=bvWidth({...o,on:true},m);o.unit=unit;o.width=unit==='mm'?actual*(BV_UNIT_MM[o.modelUnit]||10)/(m.xf?.s||1):actual/.02;bvChanged();}
 /* (0.70, Kenn) the Bevel shader's settings, shared by the Bake tab, the Shader panel and the 3D Paint Bake window.
    Like Marmoset Toolbag's: a low-poly with sharp edges gets rounded normals, so no high-poly is needed for them. */
+/* one slider per material of the model: the share of the width it gets (only when the model has several materials) */
+function bevelMatRows(o){const m=bvMesh(),names=m&&m.matNames||[];if(names.length<2)return [];const mats=o.mats||(o.mats={});
+  return [el('div',{class:'sub',text:'Width per material'}),el('p',{class:'note',text:'Each material gets a share of the width above, so hard parts can have a wider bevel than soft ones. 0% leaves a material sharp.'}),
+    ...names.map((n,i)=>makeSlider({id:'bkBevelMat'+i,label:n||'Material '+(i+1),min:0,max:1,step:.01,value:mats[n]===undefined?1:mats[n],fmt:pct,onInput:v=>{mats[n]=v;bvChanged();}}).el)];}
 function bevelFields(o,again){const select=(id,values,value,change)=>{const s=el('select',{id},...values.map(([v,t])=>el('option',{value:v,text:t})));s.value=value;s.onchange=()=>change(s.value);return s;};
   const ch=()=>{bvChanged();if(again)again();};
   return [el('label',{text:'Width units'}),select('bkBevelUnit',[['percent','% of model'],['mm','Millimeters']],o.unit,u=>{bvChangeUnit(u);if(again)again();}),
@@ -172,6 +178,7 @@ function bevelFields(o,again){const select=(id,values,value,change)=>{const s=el
     makeSlider({id:'bkBevelConcave',label:'Inner corners',min:0,max:1.5,step:.01,value:o.concave,fmt:pct,onInput:v=>{o.concave=v;bvChanged();}}).el,
     makeSlider({id:'bkBevelIsect',label:'Where meshes meet',min:0,max:1.5,step:.01,value:o.isect,fmt:pct,onInput:v=>{o.isect=v;bvChanged();}}).el,
     chk('bkBevelHard','Bevel hard edges',o.hardEdges,v=>{o.hardEdges=v;bvChanged();}),chk('bkBevelSame','Same surface only',o.sameSurface,v=>{o.sameSurface=v;bvChanged();}),
+    ...bevelMatRows(o),
     el('label',{text:'Vertex color width mask'}),select('bkBevelMask',[['none','None'],['r','Red'],['g','Green'],['b','Blue'],['a','Alpha']],o.mask,v=>{o.mask=v;bvChanged();})];}
 function bevelBakeControls(){const o=bvSettings();
   return el('div',{class:'dlg-grid',id:'bkBevelControls'},el('div',{class:'sub',text:'Bevel shader'}),

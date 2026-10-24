@@ -4,6 +4,7 @@
 - New **Retro pixelate (N64 / PSX)** filter with console presets and lots of settings: texel size, filtering, colour bits, dither, cut-out and more.
 - New **Retro (N64 / PSX)** viewport shader: texel grid, console filtering, 15/16-bit colour with dither, light bands, fog and vertex wobble.
 - **Bevel shader in 3D Paint**: round sharp low-poly edges live on the model and bake them into the Normal map without a high-poly. Also in the Bake mesh maps window.
+- Bevel shader options: edge profile, softness, outer edges, inner corners, where meshes meet, and width per material.
 - The 3D view's settings panel stays open once you open it.
 - Wireframe and Wireframe overlay turn off when clicked a second time.
 

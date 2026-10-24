@@ -77,6 +77,17 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.dlgP3Bake());await W(500);
  ok(await p.locator('#p3bkBevelBox').count()===1,'the Bake mesh maps window offers the Bevel shader');
  await p.click('#dlgCancel');await W(200);
+ /* per-material bevel width */
+ await p.evaluate(()=>{const G=__gs,corner=['v -1 -1 0','v 1 -1 0','v 1 1 0','v -1 1 0','v 1 -1 -1','v 1 1 -1','vt 0 0','vt .5 0','vt .5 1','vt 0 1','vt .6 0','vt 1 0','vt 1 1','vt .6 1','vn 0 0 1','vn 1 0 0','o body','usemtl Front','f 1/1/1 2/2/1 3/3/1','f 1/1/1 3/3/1 4/4/1','usemtl Side','f 2/5/2 5/6/2 6/7/2','f 2/5/2 6/7/2 3/8/2'].join('\n');
+   G.useModel(G.parseOBJ(corner,'Corner'));Object.assign(G.bvSettings(),{on:true,preview:true,width:3,angle:30,samples:32,mats:{}});G.bvSettings().on=false;G.bvChanged();G.showPanel('shading');G.renderShading();});await W(1500);
+ const grab2=async()=>{for(let i=0;i<80;i++){const t=await p.evaluate(()=>__gs.bvStatusText());if(/ready|off/i.test(t))break;await W(1000);}await W(1200);return grab();};
+ const off=await grab2();
+ await p.evaluate(()=>{const o=__gs.bvSettings();o.on=true;__gs.bvChanged();__gs.renderShading();});const on=await grab2();
+ ok(await p.locator('#shBevelBox [id^=bkBevelMat]').count()===2,'two materials get a width slider each');
+ await p.evaluate(()=>{const o=__gs.bvSettings();o.mats={Front:0,Side:0};__gs.bvChanged();});const zero=await grab2();
+ ok(off.h!==on.h,'the bevel changes a two-material model');ok(zero.h===off.h,'0% on every material leaves the model sharp (per-material width works)');
+ await p.evaluate(()=>{const o=__gs.bvSettings();o.mats={Front:0,Side:1};__gs.bvChanged();});const half=await grab2();
+ ok(half.h!==off.h,'one material beveled, the other not, gives a different picture');
  ok(errs.length===0,'no application errors '+errs.slice(0,4).join(' | '));
  await b.close();process.exit(fails?1:0);
 })().catch(e=>{console.error(e);process.exit(1);});
