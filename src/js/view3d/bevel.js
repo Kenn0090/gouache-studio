@@ -136,15 +136,20 @@ void main(){ivec2 xy=ivec2(gl_FragCoord.xy);vec4 p=texelFetch(uBVPosition,xy,0);
   for(const p of [P_BVGEOM,P_BVRAY,P_BVCOPY])progOk(p);}
 function bevelScreen(s,g,common,U,F,high=false){if(!s?.hg||s.error)return null;const o=bvSettings();if(o.hardEdges&&!bvHardBitsValid(s.mesh)){if(!s.infoReady)s.infoReady=bvPrepareInfo(s.hg,o).then(()=>{s.infoReady=null;v3.dirty=true;requestRender();}).catch(e=>{s.error=String(e);bvStatus();toast('Bevel preview: '+e.message);});return null;}bvPrograms();const info=bevelBakeTex(s.hg,o);
   const key=[F.w,F.h,...common.uVP.m4,JSON.stringify(o),U.uHas?.int||0,U.uClip||false].join('|');
+  let fresh=false;/* the picture changed (the camera moved): redo all of it at once, roughly, then refine */
   if(s.screenKey!==key||s.inputNormal!==U.uNrm||s.inputBase!==U.uBase){
+    fresh=true;
     if(!s.G||s.G.w!==F.w||s.G.h!==F.h){bvScreenFree(s);s.G=bkMRT(F.w,F.h,3);s.depth=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,s.depth);gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT24,F.w,F.h);gl.bindFramebuffer(gl.FRAMEBUFFER,s.G.fbo);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,s.depth);s.out=makeTarget(F.w,F.h,16,false);}
     bkClear(s.G);gl.clearDepth(1);gl.clear(gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);
     useProg(P_BVGEOM,{...U,...common,uHigh:high,uHas:U.uHas||{int:0},uUseH:false,uMorph:0,uPN:U.uPN||[0,0]});gl.bindVertexArray(g.vao);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);
     gl.disable(gl.DEPTH_TEST);run(P_BVCOPY,s.out,{uSrc:s.G.tex[2]});s.screenKey=key;s.inputNormal=U.uNrm;s.inputBase=U.uBase;s.tile=0;
   }
   gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);gl.enable(gl.SCISSOR_TEST);bindTarget(s.out);
-  const block=o.samples>32?64:128,nx=Math.ceil(F.w/block),ny=Math.ceil(F.h/block),limit=Math.min(nx*ny,s.tile+2);
+  const block=o.samples>32?64:128,nx=Math.ceil(F.w/block),ny=Math.ceil(F.h/block),limit=fresh?0:Math.min(nx*ny,s.tile+2);
   useProg(P_BVRAY,{...bvUniforms(o,bvMesh()),uNodes:s.hg.nodes,uTris:s.hg.tris,uTN:s.hg.nrm,uTC:s.hg.col,uBVInfo:info,uBVPosition:s.G.tex[0],uBVGeometric:s.G.tex[1],uBVInput:s.G.tex[2]});gl.bindVertexArray(vao);
+  if(fresh){/* (0.70) moving the view: every pixel rounded straight away with a few rays, so the bevel never pops in patch by patch; the full quality follows tile by tile once the view is still */
+    gl.disable(gl.SCISSOR_TEST);useProg(P_BVRAY,{...bvUniforms(o,bvMesh()),uBevelSamples:{int:Math.min(6,Math.max(3,o.samples|0))},uNodes:s.hg.nodes,uTris:s.hg.tris,uTN:s.hg.nrm,uTC:s.hg.col,uBVInfo:info,uBVPosition:s.G.tex[0],uBVGeometric:s.G.tex[1],uBVInput:s.G.tex[2]});gl.bindVertexArray(vao);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.enable(gl.SCISSOR_TEST);
+    useProg(P_BVRAY,{...bvUniforms(o,bvMesh()),uNodes:s.hg.nodes,uTris:s.hg.tris,uTN:s.hg.nrm,uTC:s.hg.col,uBVInfo:info,uBVPosition:s.G.tex[0],uBVGeometric:s.G.tex[1],uBVInput:s.G.tex[2]});}
   while(s.tile<limit){const x=s.tile%nx*block,y=Math.floor(s.tile/nx)*block;gl.scissor(x,y,Math.min(block,F.w-x),Math.min(block,F.h-y));gl.drawArrays(gl.TRIANGLE_STRIP,0,4);s.tile++;}
   gl.disable(gl.SCISSOR_TEST);gl.flush();bvStatus();if(s.tile<nx*ny){v3.dirty=true;requestAnimationFrame(()=>{v3.dirty=true;requestRender();});}
   gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);return s.out;

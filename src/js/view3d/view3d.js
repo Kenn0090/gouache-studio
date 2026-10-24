@@ -445,7 +445,10 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   const gearSave=()=>{try{localStorage.setItem('gs.v3setOpen',box.hidden?'0':'1');}catch(e){}};
   gear.onclick=()=>{box.hidden=!box.hidden;gearSave();gear.setAttribute('aria-expanded',String(!box.hidden));if(!box.hidden){/* More must not consume all the space above the settings on a short viewport. */
       const xt=bar.querySelector('#v3Xtra'),more=bar.querySelector('#v3More');if(xt){xt.hidden=true;more.setAttribute('aria-expanded','false');more.classList.remove('on');}
-      const top=Math.min(bar.offsetTop+bar.offsetHeight+6,Math.max(8,pane.clientHeight-140));box.style.top=top+'px';box.style.maxHeight=Math.max(0,pane.clientHeight-top-8)+'px';}};
+      placeBox();}};
+  /* the panel sits just under the toolbar, wherever the toolbar ends up (it can grow when More opens or the window narrows) */
+  const placeBox=()=>{if(box.hidden||!box.isConnected)return;const pr=pane.getBoundingClientRect(),br=bar.getBoundingClientRect(),top=Math.min(br.bottom-pr.top+6,Math.max(8,pane.clientHeight-140));box.style.top=top+'px';box.style.maxHeight=Math.max(0,pane.clientHeight-top-8)+'px';};
+  if(typeof ResizeObserver!=='undefined'){const ro=new ResizeObserver(placeBox);ro.observe(bar);ro.observe(pane);}
   const info=el('div',{class:'v3info',id:'v3Info'});v3.infoEl=info;
   const hit=el('div',{class:'v3hit',id:'v3Hit'});
   pane.append(hit,bar,box,...(mb?[mb.pop]:[]),info);{let o;try{o=localStorage.getItem('gs.v3setOpen');}catch(e){}if(o==='1'&&(ui.mode==='p3d'||!v3.pop))requestAnimationFrame(()=>{if(box.isConnected&&box.hidden)gear.onclick();});}if(ui.mode==='p3d')p3ChannelSync();refresh3dUI();v3Controls(hit);st3.el=null;requestAnimationFrame(st3Overlay);}

@@ -70,6 +70,11 @@ function cmdNewFxLayer(){if(ui.mode==='anim'){toast('Filter layers are for paint
   const L=newFxLayerObj('Filters',[],doc.map);insertNode(L,p,i);selectOnly(L);changedAll();
   fxEditor(L,{isNew:true,parent:p,index:i});}
 
+/* (0.70, Kenn) a Retro (N64 / PSX) layer effect: on top of the stack it changes everything below; clipped, only the layer under it */
+function cmdNewRetroLayer(clip){if(ui.mode==='anim'){toast('Filter layers are for paint mode.');return;}if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
+  const A=doc.active,onLayer=!!(clip&&A&&isLayer(A)&&!isFx(A));if(clip&&!onLayer){toast('Select a layer first: the Retro layer will affect only that layer.');return;}
+  const p=onLayer?A.parent:doc.root,i=onLayer?p.children.indexOf(A)+1:p.children.length,L=newFxLayerObj('Retro (N64 / PSX)',[fxItem('retroPixel')],doc.map);if(onLayer)L.clip=true;
+  insertNode(L,p,i);selectOnly(L);changedAll();fxEditor(L,{isNew:true,parent:p,index:i});}
 /* ---- the editor: every filter in the stack, with its controls, live ---- */
 function fxEditor(L,opts){opts=opts||{};if(!isFx(L))return;if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
   const before=JSON.stringify(fxCleanStack(L.fx.stack));const body=el('div',{class:'dlg-grid fxed'});let open=L.fx.stack.length?L.fx.stack.length-1:-1;
