@@ -4,6 +4,8 @@
 const BEVEL_GLSL=`
 uniform float uBevelWidth; uniform float uBevelAngle;
 uniform int uBevelSamples; uniform int uBevelHard; uniform int uBevelSame;
+/* (0.70) shaping: profile 0 round, 1 smooth, 2 chamfer, 3 sharp; softness widens the blend; amounts for outer edges, inner corners and where separate meshes meet */
+uniform int uBevelProfile; uniform float uBevelSoft; uniform float uBevelConvex; uniform float uBevelConcave; uniform float uBevelIsect;
 float bvDistance(vec3 p,vec3 a,vec3 b){vec3 e=b-a;return length(p-a-e*clamp(dot(p-a,e)/max(dot(e,e),1e-20),0.0,1.0));}
 vec3 bvGeom(int t){vec3 a=bkF(uTris,t*3).xyz,g=cross(bkF(uTris,t*3+1).xyz-a,bkF(uTris,t*3+2).xyz-a);g=normalize(g+vec3(1e-30));return dot(g,bkF(uTN,t*3).xyz)<0.0?-g:g;}
 bool bvHardAt(int t,vec3 p,float r){if(uBevelHard==0)return false;int bits=int(bkF(uBVInfo,t*2).z+0.5);
@@ -14,6 +16,7 @@ vec3 bvShade(vec3 p,vec3 n,int own,vec2 bc){
   vec3 ng=bvGeom(own),tx=normalize(cross(abs(ng.z)<0.95?vec3(0,0,1):vec3(0,1,0),ng)),ty=cross(ng,tx);
   int savedPart=bkPart,savedSkip=bkSkip,savedSurface=bkSurface;bkPart=-1;bkSkip=-1;bkSurface=uBevelSame==1?int(bkF(uBVInfo,own*2).x+0.5):-1;
   vec3 sum=vec3(0);float total=0.0,cutoff=cos(radians(uBevelAngle));bool hard=bvHardAt(own,p,r);
+  int ownSurf=int(bkF(uBVInfo,own*2).x+0.5);
   /* Three orthogonal chord directions avoid the bias of sampling only the front
      hemisphere. Inverse projected area gives equally oriented faces equal weight. */
   int ns=clamp(uBevelSamples,3,128),per=(ns+2)/3;
@@ -27,7 +30,10 @@ vec3 bvShade(vec3 p,vec3 n,int own,vec2 bc){
       /* Opposite walls of a thin part must not cancel each other. Coplanar
          triangles contribute the original face normal, never a diagonal seam. */
       if(c>-.999&&projected>0.02&&distance<r){bool eligible=c<cutoff-1e-6||hard||bvHardAt(t,q,r);
-        vec3 candidate=eligible&&c<.999999?g:ng;float w=sqrt(max(0.0,1.0-distance*distance/(r*r)))/max(projected,0.2);
+        bool bent=eligible&&c<.999999;vec3 candidate=bent?g:ng;float f=clamp(distance/r,0.0,1.0),base=uBevelProfile==1?smoothstep(0.0,1.0,1.0-f):uBevelProfile==2?1.0-f:uBevelProfile==3?pow(1.0-f,2.5):sqrt(max(0.0,1.0-f*f));
+        base=pow(max(base,0.0),mix(1.0,0.35,uBevelSoft));float w=base/max(projected,0.2);
+        if(bent){ /* outer edges, inner corners, and a meeting of two separate meshes each have their own amount */
+          w*=dot(q-p,ng)<0.0?uBevelConvex:uBevelConcave; if(int(bkF(uBVInfo,t*2).x+0.5)!=ownSurf) w*=uBevelIsect; }
         sum+=candidate*w;total+=w;}
       float advance=th+eps;origin+=d*advance;left-=advance;if(left<=eps)break;
     }
@@ -45,13 +51,13 @@ int bvSurface(vec3 p,vec3 gn,out vec2 bc){int own=-1;float best=-2.0,eps=max(1e-
 }`;
 const BV_UNIT_MM={mm:1,cm:10,m:1000,in:25.4};
 function bvSettings(){const o=bakeCfg.bevel||(bakeCfg.bevel={on:false,preview:true,width:.5,angle:30});
-  for(const [k,v] of Object.entries({samples:24,hardEdges:true,sameSurface:false,mask:'none',unit:'percent',modelUnit:'cm'}))if(o[k]===undefined)o[k]=v;return o;}
+  for(const [k,v] of Object.entries({samples:24,hardEdges:true,sameSurface:false,mask:'none',unit:'percent',modelUnit:'cm',profile:'round',soft:0,convex:1,concave:1,isect:1}))if(o[k]===undefined)o[k]=v;return o;}
 const bevelPreviewOn=()=>(ui.mode==='bake'&&bvSettings().on&&bvSettings().preview&&canFloat&&bk.show==='material'&&!bk.uvCheck)||(ui.mode==='p3d'&&bvSettings().on&&bvSettings().preview&&canFloat);
 /* the model the width is measured on: the Bake tab's low-poly, or the model in the 3D view (3D Paint) */
 const bvMesh=()=>ui.mode==='bake'&&typeof bkLow==='function'?bkLow():v3.mesh;
 function bvWidth(o,m){if(!o||!o.on)return 0;const w=Math.max(0,+o.width||0);if(o.unit!=='mm')return w*.02;
   m=m||bvMesh();return w*(m?.xf?.s||1)/(BV_UNIT_MM[o.modelUnit]||10);}
-function bvUniforms(o,m){return {uBevelWidth:bvWidth(o,m),uBevelAngle:+o?.angle||0,uBevelSamples:{int:Math.max(3,Math.min(128,+o?.samples||24))},uBevelHard:!!o?.hardEdges,uBevelSame:!!o?.sameSurface};}
+function bvUniforms(o,m){const num=(v,d)=>v===undefined?d:+v,P={round:0,smooth:1,chamfer:2,sharp:3};return {uBevelProfile:{int:P[o?.profile]||0},uBevelSoft:num(o?.soft,0),uBevelConvex:num(o?.convex,1),uBevelConcave:num(o?.concave,1),uBevelIsect:num(o?.isect,1),uBevelWidth:bvWidth(o,m),uBevelAngle:+o?.angle||0,uBevelSamples:{int:Math.max(3,Math.min(128,+o?.samples||24))},uBevelHard:!!o?.hardEdges,uBevelSame:!!o?.sameSurface};}
 
 /* Hard-edge identity follows the imported corner normals, independent of UVs,
    materials, face triangulation and the user's angle threshold. */
@@ -160,6 +166,11 @@ function bevelFields(o,again){const select=(id,values,value,change)=>{const s=el
     makeSlider({id:'bkBevelWidth',label:o.unit==='mm'?'Width (mm)':'Width (% of model)',min:0,max:o.unit==='mm'?Math.max(10,o.width*2):5,step:.01,value:o.width,fmt:v=>v.toFixed(2)+(o.unit==='mm'?' mm':'%'),onInput:v=>{o.width=v;bvChanged();}}).el,
     makeSlider({id:'bkBevelAngle',label:'Minimum edge angle',min:0,max:180,step:1,value:o.angle,fmt:v=>Math.round(v)+'°',onInput:v=>{o.angle=v;bvChanged();}}).el,
     makeSlider({id:'bkBevelSamples',label:'Samples',min:3,max:128,step:1,value:o.samples,fmt:v=>Math.round(v)+' rays',onInput:v=>{o.samples=Math.round(v);bvChanged();}}).el,
+    el('label',{text:'Edge profile'}),select('bkBevelProfile',[['round','Round'],['smooth','Smooth'],['chamfer','Chamfer (straight ramp)'],['sharp','Tight (narrow rounding)']],o.profile,v=>{o.profile=v;bvChanged();}),
+    makeSlider({id:'bkBevelSoft',label:'Softness',min:0,max:1,step:.01,value:o.soft,fmt:pct,onInput:v=>{o.soft=v;bvChanged();}}).el,
+    makeSlider({id:'bkBevelConvex',label:'Outer edges',min:0,max:1.5,step:.01,value:o.convex,fmt:pct,onInput:v=>{o.convex=v;bvChanged();}}).el,
+    makeSlider({id:'bkBevelConcave',label:'Inner corners',min:0,max:1.5,step:.01,value:o.concave,fmt:pct,onInput:v=>{o.concave=v;bvChanged();}}).el,
+    makeSlider({id:'bkBevelIsect',label:'Where meshes meet',min:0,max:1.5,step:.01,value:o.isect,fmt:pct,onInput:v=>{o.isect=v;bvChanged();}}).el,
     chk('bkBevelHard','Bevel hard edges',o.hardEdges,v=>{o.hardEdges=v;bvChanged();}),chk('bkBevelSame','Same surface only',o.sameSurface,v=>{o.sameSurface=v;bvChanged();}),
     el('label',{text:'Vertex color width mask'}),select('bkBevelMask',[['none','None'],['r','Red'],['g','Green'],['b','Blue'],['a','Alpha']],o.mask,v=>{o.mask=v;bvChanged();})];}
 function bevelBakeControls(){const o=bvSettings();
