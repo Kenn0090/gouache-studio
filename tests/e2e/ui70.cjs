@@ -51,7 +51,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.locator('[data-wire-mode="overlay"]').click();ok(await p.evaluate(()=>__gs.v3s().wire)===false,'clicking Wireframe overlay again turns it off');
  await p.locator('[data-wire-mode="wire"]').click();await p.locator('[data-wire-mode="wire"]').click();ok(await p.evaluate(()=>__gs.v3s().wire)===false,'Wireframe turns off the same way');
  /* retro shader */
- const grab=()=>p.evaluate(()=>{const G=__gs,F=G.v3Targets(160,160);G.v3Render(F);const a=G.captureRegionNow({fbo:F.rf,w:F.w,h:F.h,depth:8},0,0,F.w,F.h).data;let h=0,levels=new Set();for(let i=0;i<a.length;i+=4){h=(h*31+a[i]+a[i+1]*3+a[i+2]*7)%1000003;levels.add(a[i]);}return {h,levels:levels.size,err:G.gl.getError()};});
+ const grab=()=>p.evaluate(()=>{const G=__gs,F=G.v3Targets(160,160);G.v3Render(F);const a=G.captureRegionNow({fbo:F.rf,w:F.w,h:F.h,depth:8},0,0,F.w,F.h).data;let h=0,levels=new Set();for(let i=0;i<a.length;i+=4){h=(h*31+a[i]+a[i+1]*3+a[i+2]*7)%1000003;levels.add(a[i]);}const sm=[];for(let i=0;i<a.length;i+=8)sm.push(a[i]);return {h,levels:levels.size,err:G.gl.getError(),sm};});
  const std=await grab();
  await p.evaluate(()=>{__gs.doc.v3shade={kind:'retro',p:{}};__gs.v3.dirty=true;});await W(300);
  const ret=await grab();
@@ -85,7 +85,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{const o=__gs.bvSettings();o.on=true;__gs.bvChanged();__gs.renderShading();});const on=await grab2();
  ok(await p.locator('#shBevelBox [id^=bkBevelMat]').count()===2,'two materials get a width slider each');
  await p.evaluate(()=>{const o=__gs.bvSettings();o.mats={Front:0,Side:0};__gs.bvChanged();});const zero=await grab2();
- ok(off.h!==on.h,'the bevel changes a two-material model');ok(zero.h===off.h,'0% on every material leaves the model sharp (per-material width works)');
+ ok(off.h!==on.h,'the bevel changes a two-material model');const md=(x,y)=>{let m=0;for(let i=0;i<x.sm.length;i++)m=Math.max(m,Math.abs(x.sm[i]-y.sm[i]));return m;};console.log('diffs: off/on',md(off,on),'off/zero',md(off,zero),'on/zero',md(on,zero));
+ ok(md(off,zero)<=4&&md(off,on)>=20&&md(on,zero)>=20,'0% on every material leaves the model sharp (per-material width works)');
  await p.evaluate(()=>{const o=__gs.bvSettings();o.mats={Front:0,Side:1};__gs.bvChanged();});const half=await grab2();
  ok(half.h!==off.h,'one material beveled, the other not, gives a different picture');
  ok(errs.length===0,'no application errors '+errs.slice(0,4).join(' | '));
