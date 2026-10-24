@@ -1,3 +1,10 @@
+# Gouache Studio 0.70.1
+
+- New **Retro layer (N64 / PSX)**: on top of the stack for everything below, or clipped to one layer (Layer › New, or right-click a layer).
+- Bevel shader: no more patchy preview while the view moves, a **Reset bevel to default** button, and a new **Metal** view button to see any model as polished steel.
+- Retro viewport shader: fixed the washed-out look on light models and added a Brightness control.
+- Fixed the 3D view's settings panel covering the ⋯ button after a project reopened.
+
 # Gouache Studio 0.70.0
 
 - **Textures in the Material editor**: every Image channel has a **Textures…** button that picks from the Textures library.

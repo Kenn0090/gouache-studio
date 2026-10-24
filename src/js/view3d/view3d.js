@@ -33,6 +33,7 @@ uniform int uFlipY; uniform int uHas; uniform vec2 uDef; uniform vec3 uCam; unif
 /* the HDRI (0.26): 6 levels from sharp to fully rough, and the diffuse light */
 uniform int uEnvOn; uniform float uEnvRot; uniform float uEnvI; uniform sampler2D uEnv0; uniform sampler2D uEnv1; uniform sampler2D uEnv2; uniform sampler2D uEnv3; uniform sampler2D uEnv4; uniform sampler2D uEnv5; uniform sampler2D uIrr; uniform int uTone;
 /* the texture set's shader: 0 standard, 1 skin, 2 anisotropic metal, 3 velvet, 4 toon, 5 cel, 6 spec/gloss view, 7 panner, 8 retro (N64 / PSX); its settings */
+uniform int uMetalView; uniform float uMetalRough;
 uniform vec4 uSkin; uniform int uSh; uniform vec4 uShP; uniform vec4 uShQ; uniform vec3 uShC; uniform vec3 uShD;
 /* the Panner shader (0.40): each map slid by its own offset */
 uniform vec2 uPB; uniform vec2 uPR; uniform vec2 uPM; uniform vec2 uPN; uniform vec2 uPA; uniform vec2 uPE; uniform vec2 uPO;
@@ -74,10 +75,12 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
   { vec3 Nf=normalize(cross(dFdx(vP),dFdy(vP))); if(dot(Nf,uCam-vP)<0.0) Nf=-Nf; if(dot(Ng,Nf)<0.0){ N=-N; Ng=-Ng; } }
   /* ---- Retro (N64 / PSX): the texture as a small grid, a plain light, banded if asked, fog, 15/16-bit colour with a dither ---- */
   if(uSh==8){ vec3 Lr=normalize(uSun); float l=max(dot(Ng,Lr),0.0); if(uShQ.x>0.5) l=floor(l*uShQ.x+0.5)/uShQ.x; float amb=uShQ.z;
-    vec3 c=pow(alb,vec3(1.0/2.2))*(amb+(1.0-amb)*l)*1.6*uExpo; if((uHas&16)!=0) c+=mapSample(uEmis,uv+uPE).rgb;
+    vec3 c=pow(alb,vec3(1.0/2.2))*(amb+(1.0-amb)*l)*uShQ.w*uExpo; if((uHas&16)!=0) c+=mapSample(uEmis,uv+uPE).rgb;
     float fg=1.0-exp(-length(uCam-vP)*uShQ.y*0.35); c=mix(c,uShD,clamp(fg,0.0,1.0));
     c=clamp(c,0.0,1.0); c=floor(c*uShC+0.5+(retroBayer(gl_FragCoord.xy)-0.5)*uShP.z)/uShC; o=vec4(clamp(c,0.0,1.0),1.0); return; }
   float rough=clamp((uHas&1)!=0?mapSample(uRough,uv+uPR).r:uDef.x,0.04,1.0), metal=(uHas&2)!=0?mapSample(uMetal,uv+uPM).r:uDef.y, ao=(uHas&8)!=0?mapSample(uAO,uv+uPA).r:1.0;
+  /* (0.70) Metal view: the model as polished steel, whatever its own material, so the shape and the bevel read clearly */
+  if(uMetalView==1){ alb=lin(vec3(0.78,0.8,0.84)); metal=1.0; rough=uMetalRough; ao=1.0; }
   vec3 V=normalize(uCam-vP), L=normalize(uSun), H=normalize(L+V);
   float NdL=max(dot(N,L),0.0), NdV=max(dot(N,V),1e-3), NdH=max(dot(N,H),0.0), VdH=max(dot(V,H),0.0);
   /* a Specular colour map (Spec/Gloss) sets the reflection colour directly (flag 256); otherwise it follows the metal amount */
@@ -148,7 +151,7 @@ const P3={mesh:Object.assign(prog3(VS_3D,FS_3D),{decodeOnly:true}),line:prog3(VS
 
 /* ---- settings (kept in the document) ---- */
 const V3D_DEFAULTS={model:'plane',detail:0,unlit:null,uvs:1,disp:0,paintAlign:'wrap',noBack:true,sunAz:40,sunEl:45,sunI:1,skyI:1,expo:1,bg:'dark',clip:true,wire:false,wireOnly:false,showUV:false,litUV:false,spin:false,fov:40,ortho:false,
-  env:'studio',envRot:0,envI:1,envBg:false,envBlur:.35,envSun:0,tone:'filmic',studioFill:.12,studioRim:.08,lightColor:[1,1,1],shadows:true,shadowSoft:1.5,floor:false,floorHeight:0,floorOpacity:.5,floorSoft:2,floorColor:[0,0,0]};
+  env:'studio',envRot:0,envI:1,envBg:false,envBlur:.35,envSun:0,tone:'filmic',studioFill:.12,studioRim:.08,lightColor:[1,1,1],shadows:true,shadowSoft:1.5,floor:false,floorHeight:0,floorOpacity:.5,floorSoft:2,floorColor:[0,0,0],metalView:false,metalRough:.25};
 const v3={on:false,mesh:null,gpu:null,tex:{},cam:{yaw:.5,pitch:.25,dist:3.2,tx:0,ty:0,tz:0},dirty:true,postDirty:false,mapsDirty:true,editDirty:true,lastFull:0,fbo:null,imported:null};
 function v3s(){if(!doc.v3d)doc.v3d=Object.assign({},V3D_DEFAULTS);else{for(const k in V3D_DEFAULTS)if(!(k in doc.v3d))doc.v3d[k]=V3D_DEFAULTS[k];}return doc.v3d;}
 const v3Unlit=()=>{const s=v3s();return s.unlit==null?doc.maps.length<2:s.unlit;};
@@ -319,7 +322,7 @@ function v3MeshU(C,common,it,flip,safeMip=null){const {s,bake,EU,eye,a,e}=C,sg=i
     if(!bake&&!it.thick&&!it.sh&&doc.meshMaps&&doc.meshMaps.thick)it.thick=doc.meshMaps.thick;
     const mOK=ok('metal')&&!(sg&&ok('spec')),hm=(ok('rough')?1:0)|(mOK?2:0)|(ok('nfinal')?4:0)|(ok('ao')?8:0)|(ok('emis')?16:0)|(ok('opac')?64:0)|(it.thick?128:0)|(ok('spec')&&!mOK?256:0);
     return Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uUseUDIM:!!it.udim,uUDIMTile:it.udim?[it.udim.u,it.udim.v]:[0,0],uUseSafeMip:useSafeMip,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:mOK?T.metal.tex:ok('spec')?T.spec.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,uThick:useSafeMip?safeMip.tex:it.thick?it.thick.tex:dummy,...EU,...shadeUniforms(bake?null:it.sh||v3ShadeOf(doc)),
-      uMorph:bake&&bk.fold>0?bk.fold:0,uMorphOff:[it.off||0,0,0],uStudioFill:s.studioFill||0,uStudioRim:s.studioRim||0,uLightColor:s.lightColor||[1,1,1],uShadow:dummy,uShadowVP:{m4:m4()},uShadowOn:0,uShadowSoft:1,...common,uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});}
+      uMorph:bake&&bk.fold>0?bk.fold:0,uMorphOff:[it.off||0,0,0],uStudioFill:s.studioFill||0,uStudioRim:s.studioRim||0,uLightColor:s.lightColor||[1,1,1],uShadow:dummy,uShadowVP:{m4:m4()},uShadowOn:0,uShadowSoft:1,...common,uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uMetalView:{int:s.metalView?1:0},uMetalRough:s.metalRough||.25,uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});}
 function v3DrawWire(g,list,common){gl.bindVertexArray(g.evao);try{if(ui.mode!=='p3d'){useProg(P3.line,{...common,uCol:[.95,.7,.35,1]});gl.drawElements(gl.LINES,g.ecount,gl.UNSIGNED_INT,0);return;}
     for(const it of list){if(!it.count)continue;let r;if(it.start===0&&it.count*3===g.count)r={b:g.eb,count:g.ecount};else{const key=it.start+':'+it.count,cache=g.wireRanges||(g.wireRanges=new Map());r=cache.get(key);if(!r){const edges=meshEdges({idx:v3.mesh.idx.subarray(it.start*3,(it.start+it.count)*3)}),b=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,b);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,edges,gl.STATIC_DRAW);r={b,count:edges.length};cache.set(key,r);}}
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,r.b);useProg(P3.line,{...common,uCol:[.95,.7,.35,1]});gl.drawElements(gl.LINES,r.count,gl.UNSIGNED_INT,0);}}
@@ -415,6 +418,7 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   const inBake=ui.mode==='bake',lowLab=inBake?el('span',{class:'v3lab',text:'Low-poly: '+bkLow().name,title:'Choose the low-poly in the Bake panel'}):null;
   const mb=ui.mode==='p3d'?mir3Bar():null;
   const wireB=tog('v3Wire','Wireframe','wire','Show the mesh edges'),uvB=tog('v3UV','UVs','showUV','Draw the model’s UV layout over your canvas'),spinB=tog('v3Spin','Spin','spin','Spin the model slowly');
+  const metalB=tog('v3Metal','Metal','metalView','See the model as polished metal, whatever its material: the shape and the bevel show clearly');
   wireB.onclick=()=>v3SetWireMode(s.wire?'shaded':'overlay');
   const capB=ui.mode==='bake'||ui.mode==='convert'?[]:[el('button',{class:'btn sm',id:'v3Shot',text:'📷',title:'Screenshot of the 3D view','aria-label':'Screenshot',onclick:()=>dlgScreenshot()}),el('button',{class:'btn sm',id:'v3RenderBtn',text:'Render…',title:'A ray-traced picture, in a window of its own',onclick:()=>dlgRender()}),el('button',{class:'btn sm',id:'v3TT',text:'Turntable…',title:'Record the model turning (video, GIF or PNG frames)',onclick:()=>dlgTurntable()})];
   let bar;
@@ -423,15 +427,15 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
     const xt=el('div',{class:'v3xtra',id:'v3Xtra',hidden:true},modelControl,detSel,wireB,uvB,spinB,backB,...capB,gear,dock,close),more=el('button',{class:'btn sm',id:'v3More',text:'⋯',title:'More: model, detail, wireframe, spin, screenshot, render, turntable, settings','aria-expanded':'false','aria-label':'More 3D view options'});
     more.onclick=()=>{xt.hidden=!xt.hidden;more.setAttribute('aria-expanded',String(!xt.hidden));more.classList.toggle('on',!xt.hidden);};
     xt.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});
-    bar=el('div',{class:'v3bar slim'},shade,p3ChannelControl(),...(mb?[mb.wrap]:[]),viewSel,projBtn,more,xt);}
-  else bar=el('div',{class:'v3bar'},...(inBake?[lowLab]:ui.mode==='convert'?[modelControl,detSel]:[modelControl,detSel,shade]),...(mb?[mb.wrap]:[]),...(ui.mode==='convert'||ui.mode==='p3d'?[]:[pbtn]),viewSel,projBtn,wireB,uvB,spinB,...capB,gear,dock,close);
+    bar=el('div',{class:'v3bar slim'},shade,metalB,p3ChannelControl(),...(mb?[mb.wrap]:[]),viewSel,projBtn,more,xt);}
+  else bar=el('div',{class:'v3bar'},...(inBake?[lowLab]:ui.mode==='convert'?[modelControl,detSel]:[modelControl,detSel,shade]),...(mb?[mb.wrap]:[]),...(ui.mode==='convert'||ui.mode==='p3d'?[]:[pbtn]),viewSel,projBtn,metalB,wireB,uvB,spinB,...capB,gear,dock,close);
   const box=el('div',{class:'v3set',id:'v3Settings',hidden:true,'aria-label':'3D viewport settings'});gear.setAttribute('aria-controls','v3Settings');
   box.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});
   if(ui.mode==='p3d'){const display=el('div',{class:'v3display',role:'group','aria-label':'Viewport display'});
     for(const [mode,label] of [['shaded','Shaded'],['wire','Wireframe'],['overlay','Wireframe overlay']])display.append(el('button',{class:'btn sm'+(v3WireMode()===mode?' on':''),'data-wire-mode':mode,'aria-pressed':String(v3WireMode()===mode),text:label,onclick:()=>v3SetWireMode(v3WireMode()===mode&&mode!=='shaded'?'shaded':mode)}));/* (0.70) click the active one again to turn it off */
     box.append(el('div',{class:'sub',text:'Viewport display'}),display);}
   const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:s[key],fmt,...(['disp','sunI','skyI','envIntensity','studioFill','studioRim'].includes(key)?{numericMax:Math.max(max,1)*4}:{}),onInput:v=>{s[key]=v;if(key==='disp'){v3.mapsDirty=true;if(v>0&&(s.detail||0)<4&&!v3.detAuto){v3.detAuto=true;s.detail=4;if(v3.detSel)v3.detSel.value='4';v3LoadModel(true);toast('Mesh detail raised to ×16 so the height can show. Change it with the Detail menu at the top of the 3D view.');}}v3.dirty=true;requestRender(key==='disp');}}).el;
-  box.append(el('div',{class:'sub',text:'Lighting'}),envSettingsBox(S),studioSettingsBox(S),el('div',{class:'sub',text:'Model and camera'}),S('v3Uvs','Tile repeat','uvs',1,8,1,v=>v+'×'),S('v3Disp','Height depth','disp',0,1,.01,pct),S('v3Fov','Lens','fov',15,90,1,v=>v+'°'),
+  box.append(el('div',{class:'sub',text:'Lighting'}),envSettingsBox(S),studioSettingsBox(S),el('div',{class:'sub',text:'Model and camera'}),S('v3Uvs','Tile repeat','uvs',1,8,1,v=>v+'×'),S('v3Disp','Height depth','disp',0,1,.01,pct),S('v3Fov','Lens','fov',15,90,1,v=>v+'°'),S('v3MetalRough','Metal view roughness','metalRough',.05,1,.01,pct),
     el('div',{class:'sub',text:'Background'}),seg([['dark','Dark'],['grey','Grey'],['light','Light']],s.bg,x=>{s.bg=x;v3.dirty=true;requestRender();},'Background'),
     chk('v3Clip','Cut out transparent areas',!!s.clip,x=>{s.clip=x;v3.dirty=true;requestRender();}),
     ...(ui.mode==='p3d'||ui.mode==='bake'||ui.mode==='convert'?[]:[el('div',{class:'sub',text:'Mirror painting on the model'}),mir3Box(),el('div',{class:'sub',text:'Select on the model'}),sel3Box()]),
@@ -445,7 +449,10 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   const gearSave=()=>{try{localStorage.setItem('gs.v3setOpen',box.hidden?'0':'1');}catch(e){}};
   gear.onclick=()=>{box.hidden=!box.hidden;gearSave();gear.setAttribute('aria-expanded',String(!box.hidden));if(!box.hidden){/* More must not consume all the space above the settings on a short viewport. */
       const xt=bar.querySelector('#v3Xtra'),more=bar.querySelector('#v3More');if(xt){xt.hidden=true;more.setAttribute('aria-expanded','false');more.classList.remove('on');}
-      const top=Math.min(bar.offsetTop+bar.offsetHeight+6,Math.max(8,pane.clientHeight-140));box.style.top=top+'px';box.style.maxHeight=Math.max(0,pane.clientHeight-top-8)+'px';}};
+      placeBox();}};
+  /* the panel sits just under the toolbar, wherever the toolbar ends up (it can grow when More opens or the window narrows) */
+  const placeBox=()=>{if(box.hidden||!box.isConnected)return;const pr=pane.getBoundingClientRect(),br=bar.getBoundingClientRect(),top=Math.min(br.bottom-pr.top+6,Math.max(8,pane.clientHeight-140));box.style.top=top+'px';box.style.maxHeight=Math.max(0,pane.clientHeight-top-8)+'px';};
+  if(typeof ResizeObserver!=='undefined'){const ro=new ResizeObserver(placeBox);ro.observe(bar);ro.observe(pane);}
   const info=el('div',{class:'v3info',id:'v3Info'});v3.infoEl=info;
   const hit=el('div',{class:'v3hit',id:'v3Hit'});
   pane.append(hit,bar,box,...(mb?[mb.pop]:[]),info);{let o;try{o=localStorage.getItem('gs.v3setOpen');}catch(e){}if(o==='1'&&(ui.mode==='p3d'||!v3.pop))requestAnimationFrame(()=>{if(box.isConnected&&box.hidden)gear.onclick();});}if(ui.mode==='p3d')p3ChannelSync();refresh3dUI();v3Controls(hit);st3.el=null;requestAnimationFrame(st3Overlay);}

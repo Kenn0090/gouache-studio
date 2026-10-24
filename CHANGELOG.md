@@ -1,3 +1,12 @@
+## 0.70.1
+
+- **Retro layer.** **Layer › New › Retro layer (N64 / PSX)** puts a Retro effect on top of the stack, changing everything below it; **Retro layer (this layer only)** (also in a layer's right-click menu) clips it to the selected layer. Both open with the console presets and work in Paint and 3D Paint.
+- **Bevel shader, smoother preview.** Moving the 3D view no longer fills the bevel in patch by patch: the whole picture is rounded at once with a few rays, then refined to full quality off-screen and swapped in when it is complete, so no rectangular patches show.
+- **Reset bevel to default** button in the Bevel shader settings (Shader panel, Bake mesh maps window and Bake tab). It resets every setting except whether the bevel is on.
+- **Metal view.** A **Metal** button in the 3D view shows the model as polished steel whatever its own material, so shape and bevel read clearly. A **Metal view roughness** slider is in the viewport settings.
+- **Retro viewport shader.** Fixed a washed-out, nearly white picture on light models; there is a new **Brightness** control and a lower default.
+- **Viewport settings panel.** Fixed the settings panel opening on top of the ⋯ button after a project reopened; it now sits under the toolbar and follows it when the toolbar resizes.
+
 ## 0.70.0
 
 - **Textures in the Material editor.** Each channel set to **Image** now has a **Textures…** button next to Choose image…. It opens the Textures library (generated, photo grunge and yours) with a search and categories; click one to use it as that channel, with its Tile and Turn controls. Choosing **Image** no longer forces the file picker open first.

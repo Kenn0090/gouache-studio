@@ -8,14 +8,14 @@
 const SHADERS=[['std','Standard'],['skin','Skin'],['aniso','Brushed metal'],['velvet','Velvet'],['toon','Toon'],['cel','Cel'],['specgloss','Spec/Gloss'],['panner','Panner (PBR)'],['retro','Retro (N64 / PSX)']];
 const SH_DEF={std:{},skin:{scatter:.5,strength:.6,soft:.5,thick:.5,oil:.3,surface:.45,depth:1,transmission:.5,col:[.85,.25,.18]},aniso:{amount:.7,dir:0},velvet:{sheen:.8,srough:.5,rim:1,col:[1,1,1]},
   toon:{steps:3,spec:.3,rim:.2,offset:0,col:[.45,.4,.55],outline:2,ocol:[0,0,0]},cel:{thresh:.5,soft:.06,spec:.3,rim:.15,col:[.45,.42,.55],outline:2,ocol:[0,0,0]},specgloss:{view:0},panner:{sx:0,sy:.25,play:true,layer:0,maps:{base:true,rough:true,metal:true,nfinal:true,ao:true,emis:true,opac:true}},
-  retro:{res:32,filt:1,br:5,bg:5,bb:5,dither:.6,steps:0,amb:.35,wobble:0,fog:0,fogc:[.5,.55,.65],preset:'n64'}};
+  retro:{bright:1,res:32,filt:1,br:5,bg:5,bb:5,dither:.6,steps:0,amb:.35,wobble:0,fog:0,fogc:[.5,.55,.65],preset:'n64'}};
 /* (0.70, Kenn) Retro shader: old-school console looks for the viewport */
 const RETRO_SHADER_PRESETS=[['n64','Nintendo 64',{res:32,filt:1,br:5,bg:5,bb:5,dither:.6,steps:0,amb:.4,wobble:0,fog:.25}],['psx','PlayStation',{res:64,filt:0,br:5,bg:5,bb:5,dither:.9,steps:0,amb:.35,wobble:.6,fog:.3}],['saturn','Saturn',{res:64,filt:0,br:5,bg:5,bb:5,dither:0,steps:0,amb:.35,wobble:.2,fog:0}],['dc','Dreamcast',{res:128,filt:2,br:5,bg:6,bb:5,dither:.4,steps:0,amb:.4,wobble:0,fog:0}],['chunky','Chunky 3-bit',{res:16,filt:0,br:1,bg:1,bb:1,dither:.9,steps:3,amb:.3,wobble:.3,fog:0}]];
 function v3ShadeOf(D){const d=D&&D.v3shade;return d&&d.kind?d:{kind:'std',p:{}};}
 function shParams(sh,k){return Object.assign({},SH_DEF[k||sh.kind]||{},(sh.p&&sh.p[k||sh.kind])||{});}
 function shadeUniforms(sh){if(!sh)return Object.assign({uSkin:[.45,1,.5,0],uSh:{int:0},uShP:[0,0,0,.5],uShQ:[0,0,0,0],uShC:[1,1,1],uShD:[0,0,0],uSnap:0},pnUniforms(null));const k=sh.kind,P=shParams(sh),i=Math.max(0,SHADERS.findIndex(x=>x[0]===k));
   const v={skin:[P.scatter,P.strength,P.soft,P.thick],aniso:[P.amount,P.dir,0,.5],velvet:[P.sheen,P.srough,P.rim,.5],toon:[P.steps,0,P.spec,P.rim],cel:[P.thresh,P.soft,P.spec,P.rim],specgloss:[P.view,0,0,.5],retro:[P.res,P.filt,P.dither,0]}[k]||[0,0,0,.5];
-  return Object.assign({uSkin:k==='skin'?[P.surface,P.depth,P.transmission,0]:[.45,1,.5,0],uSh:{int:i},uShP:v,uShQ:k==='retro'?[P.steps||0,P.fog||0,P.amb==null?.35:P.amb,0]:[P.outline||0,P.offset||0,k==='skin'?(P.oil||0):0,0],uShC:k==='retro'?[(1<<P.br)-1,(1<<P.bg)-1,(1<<P.bb)-1]:P.col||[1,1,1],uShD:k==='retro'?P.fogc:P.ocol||[0,0,0],uSnap:k==='retro'&&P.wobble>0?320-280*P.wobble:0},pnUniforms(k==='panner'?P:null));}
+  return Object.assign({uSkin:k==='skin'?[P.surface,P.depth,P.transmission,0]:[.45,1,.5,0],uSh:{int:i},uShP:v,uShQ:k==='retro'?[P.steps||0,P.fog||0,P.amb==null?.35:P.amb,P.bright==null?1:P.bright]:[P.outline||0,P.offset||0,k==='skin'?(P.oil||0):0,0],uShC:k==='retro'?[(1<<P.br)-1,(1<<P.bg)-1,(1<<P.bb)-1]:P.col||[1,1,1],uShD:k==='retro'?P.fogc:P.ocol||[0,0,0],uSnap:k==='retro'&&P.wobble>0?320-280*P.wobble:0},pnUniforms(k==='panner'?P:null));}
 /* the outline for Toon and Cel: the back faces drawn slightly larger, in the outline colour */
 const VS_3DOUT=VS_3D.replace('vec3 p=aP;','vec3 p=aP+aN*uOutW;').replace('uniform mat4 uVP;','uniform mat4 uVP; uniform float uOutW;');
 /* only the faces turned away from the camera are drawn, so it works whichever way the model's faces wind */
@@ -52,7 +52,7 @@ function renderShading(){const box=document.getElementById('shadeBody');if(!box)
     el('div',{class:'chips'},...RETRO_SHADER_PRESETS.map(([id,name,o])=>el('button',{class:'chip'+(P.preset===id?' on':''),id:'shRetro_'+id,text:name,onclick:()=>{shadeEdit(d=>{d.p.retro=Object.assign({},shParams(d,'retro'),o,{preset:id});});renderShading();}}))),
     sl('res','Texture size',4,256,1,v=>v+' texels across'),seg([[0,'None (PSX)'],[1,'3-point (N64)'],[2,'Bilinear']],P.filt,v=>setP('filt',+v),'Texture filtering'),
     sl('br','Red bits',1,8,1,v=>v+' bits'),sl('bg','Green bits',1,8,1,v=>v+' bits'),sl('bb','Blue bits',1,8,1,v=>v+' bits'),sl('dither','Dither',0,1.5,.01),
-    sl('steps','Light bands',0,8,1,v=>v?String(v):'smooth'),sl('amb','Ambient light',0,1,.01),sl('wobble','Vertex wobble',0,1,.01,v=>v?Math.round(v*100)+'%':'off'),sl('fog','Fog',0,1,.01,v=>v?Math.round(v*100)+'%':'off'),colr('fogc','Fog colour'));
+    sl('steps','Light bands',0,8,1,v=>v?String(v):'smooth'),sl('amb','Ambient light',0,1,.01),sl('bright','Brightness',.4,2,.01),sl('wobble','Vertex wobble',0,1,.01,v=>v?Math.round(v*100)+'%':'off'),sl('fog','Fog',0,1,.01,v=>v?Math.round(v*100)+'%':'off'),colr('fogc','Fog colour'));
   if(k==='panner')body.append(...pnPanelRows(P,setP,sl));
   if(ui.mode==='p3d'&&typeof bevelSection==='function')body.append(bevelSection(renderShading,'sh'));
   body.append(el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:'shReset',text:'Reset this shader',title:'Put this shader’s settings back to how they start',onclick:()=>{shadeEdit(d=>{delete d.p[k];});renderShading();}})));
