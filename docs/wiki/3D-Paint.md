@@ -157,6 +157,11 @@ The layer stays live: every change shows straight away on the model, and becomes
 
 **Smart materials** (a whole folder of layers with generated masks, such as Gun metal, Moss or Dust) and **smart masks** are in the Materials tab too: see [Smart materials, smart masks and anchor points](Smart-materials-and-anchors.md).
 
+## Retro shader and Bevel shader
+- **Shader panel › Retro (N64 / PSX):** shows the set as an old console would: a small grid of texels with no, N64 3-point or bilinear filtering, colour cut to a few bits with a dither, a plain light (optionally in bands), fog and a vertex wobble. Pick a console preset, then adjust.
+- **Shader panel › Bevel shader (Round the edges):** like Marmoset Toolbag's. Sharp edges of a low-poly are rounded in the normals, live on the model, so a high-poly is not needed for them. The same settings are in **Bake mesh maps**, where the Normal map bakes the rounded edges. Width, minimum edge angle, samples, hard edges and same-surface-only are shared with the Bake tab.
+- The 3D view's **settings** panel (gear) remembers whether it was open. Click Wireframe or Wireframe overlay again to turn it off.
+
 ## Baking mesh maps here
 **Bake mesh maps…** (3D Paint panel, under *Mesh maps*) bakes without leaving 3D Paint, like Substance Painter's window:
 - **Maps:** Normal, Ambient occlusion, Curvature, Height, Thickness, World-space normal, Position and ID colours.

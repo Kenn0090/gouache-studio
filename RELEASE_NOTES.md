@@ -1,3 +1,12 @@
+# Gouache Studio 0.70.0
+
+- **Textures in the Material editor**: every Image channel has a **Textures…** button that picks from the Textures library.
+- New **Retro pixelate (N64 / PSX)** filter with console presets and lots of settings: texel size, filtering, colour bits, dither, cut-out and more.
+- New **Retro (N64 / PSX)** viewport shader: texel grid, console filtering, 15/16-bit colour with dither, light bands, fog and vertex wobble.
+- **Bevel shader in 3D Paint**: round sharp low-poly edges live on the model and bake them into the Normal map without a high-poly. Also in the Bake mesh maps window.
+- The 3D view's settings panel stays open once you open it.
+- Wireframe and Wireframe overlay turn off when clicked a second time.
+
 # Gouache Studio 0.69.0
 
 - **Select › Color Range…**: sampled colours, fuzziness, live previews, invert, selection combinations and undo. Shift-click the image preview to add a sampled colour; Alt-click removes one.

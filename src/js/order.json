@@ -69,6 +69,7 @@
     "filters/converters",
     "filters/filters",
     "filters/filters-more",
+    "filters/filters-retro",
     "filters/filters-distort",
     "filters/filters-vfx",
     "filters/embroidery",

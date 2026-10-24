@@ -46,9 +46,11 @@ int bvSurface(vec3 p,vec3 gn,out vec2 bc){int own=-1;float best=-2.0,eps=max(1e-
 const BV_UNIT_MM={mm:1,cm:10,m:1000,in:25.4};
 function bvSettings(){const o=bakeCfg.bevel||(bakeCfg.bevel={on:false,preview:true,width:.5,angle:30});
   for(const [k,v] of Object.entries({samples:24,hardEdges:true,sameSurface:false,mask:'none',unit:'percent',modelUnit:'cm'}))if(o[k]===undefined)o[k]=v;return o;}
-const bevelPreviewOn=()=>ui.mode==='bake'&&bvSettings().on&&bvSettings().preview&&canFloat&&bk.show==='material'&&!bk.uvCheck;
+const bevelPreviewOn=()=>(ui.mode==='bake'&&bvSettings().on&&bvSettings().preview&&canFloat&&bk.show==='material'&&!bk.uvCheck)||(ui.mode==='p3d'&&bvSettings().on&&bvSettings().preview&&canFloat);
+/* the model the width is measured on: the Bake tab's low-poly, or the model in the 3D view (3D Paint) */
+const bvMesh=()=>ui.mode==='bake'&&typeof bkLow==='function'?bkLow():v3.mesh;
 function bvWidth(o,m){if(!o||!o.on)return 0;const w=Math.max(0,+o.width||0);if(o.unit!=='mm')return w*.02;
-  m=m||(typeof bkLow==='function'?bkLow():v3.mesh);return w*(m?.xf?.s||1)/(BV_UNIT_MM[o.modelUnit]||10);}
+  m=m||bvMesh();return w*(m?.xf?.s||1)/(BV_UNIT_MM[o.modelUnit]||10);}
 function bvUniforms(o,m){return {uBevelWidth:bvWidth(o,m),uBevelAngle:+o?.angle||0,uBevelSamples:{int:Math.max(3,Math.min(128,+o?.samples||24))},uBevelHard:!!o?.hardEdges,uBevelSame:!!o?.sameSurface};}
 
 /* Hard-edge identity follows the imported corner normals, independent of UVs,
@@ -134,30 +136,43 @@ function bevelScreen(s,g,common,U,F,high=false){if(!s?.hg||s.error)return null;c
   }
   gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);gl.enable(gl.SCISSOR_TEST);bindTarget(s.out);
   const block=o.samples>32?64:128,nx=Math.ceil(F.w/block),ny=Math.ceil(F.h/block),limit=Math.min(nx*ny,s.tile+2);
-  useProg(P_BVRAY,{...bvUniforms(o,bkLow()),uNodes:s.hg.nodes,uTris:s.hg.tris,uTN:s.hg.nrm,uTC:s.hg.col,uBVInfo:info,uBVPosition:s.G.tex[0],uBVGeometric:s.G.tex[1],uBVInput:s.G.tex[2]});gl.bindVertexArray(vao);
+  useProg(P_BVRAY,{...bvUniforms(o,bvMesh()),uNodes:s.hg.nodes,uTris:s.hg.tris,uTN:s.hg.nrm,uTC:s.hg.col,uBVInfo:info,uBVPosition:s.G.tex[0],uBVGeometric:s.G.tex[1],uBVInput:s.G.tex[2]});gl.bindVertexArray(vao);
   while(s.tile<limit){const x=s.tile%nx*block,y=Math.floor(s.tile/nx)*block;gl.scissor(x,y,Math.min(block,F.w-x),Math.min(block,F.h-y));gl.drawArrays(gl.TRIANGLE_STRIP,0,4);s.tile++;}
   gl.disable(gl.SCISSOR_TEST);gl.flush();bvStatus();if(s.tile<nx*ny){v3.dirty=true;requestAnimationFrame(()=>{v3.dirty=true;requestRender();});}
   gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);return s.out;
 }
 const bvPreviewState={highMode:null};
 function bvSetPreview(value){const o=bvSettings();o.preview=value;if(value&&o.on){bk.show='material';bk.uvCheck=false;bk.dirty=true;}if(value&&o.on&&bakeCfg.high){if(bvPreviewState.highMode===null)bvPreviewState.highMode=bk.showHigh||'off';bk.showHigh='only';}else if(bvPreviewState.highMode!==null){if(bk.showHigh==='only')bk.showHigh=bvPreviewState.highMode;bvPreviewState.highMode=null;}if(!value||!o.on)for(const s of Object.values(bvGPU))if(s)bvScreenFree(s);bvStatus();v3.dirty=true;requestRender(true);}
-function bvStatusText(){const o=bvSettings(),s=bvGPU[bakeCfg.high?'high':'low'];let text='Preview off';
+function bvStatusText(){const o=bvSettings(),s=bvGPU[ui.mode==='bake'&&bakeCfg.high?'high':'low'];let text='Preview off';
   if(o.on&&o.preview){if(s?.error)text='Preview unavailable: '+s.error;else if(!s?.hg||s.infoReady||!s.out)text='Preparing bevel preview…';else{const block=o.samples>32?64:128,total=Math.ceil(s.out.w/block)*Math.ceil(s.out.h/block);text=s.tile<total?'Refining preview · '+Math.round(s.tile/total*100)+'%':'Preview ready';}}
   return text;}
 function bvStatus(){const e=$('#bkBevelStatus');if(e){const text=bvStatusText();if(e.textContent!==text)e.textContent=text;}}
-function bvChanged(){for(const s of Object.values(bvGPU))if(s)s.screenKey=null;bvSetPreview(true);}
-function bvChangeUnit(unit){const o=bvSettings(),m=bkLow(),actual=bvWidth({...o,on:true},m);o.unit=unit;o.width=unit==='mm'?actual*(BV_UNIT_MM[o.modelUnit]||10)/(m.xf?.s||1):actual/.02;bvChanged();buildBakePanel();}
-function bevelBakeControls(){const o=bvSettings(),select=(id,values,value,change)=>{const s=el('select',{id},...values.map(([v,t])=>el('option',{value:v,text:t})));s.value=value;s.onchange=()=>change(s.value);return s;};
-  return el('div',{class:'dlg-grid',id:'bkBevelControls'},el('div',{class:'sub',text:'Bevel shader'}),
-    chk('bkBevelOn','Enable bevel',!!o.on,v=>{o.on=v;bvChanged();}),chk('bkBevelPreview','Preview before baking',o.preview!==false,v=>bvSetPreview(v)),
-    el('label',{text:'Width units'}),select('bkBevelUnit',[['percent','% of model'],['mm','Millimeters']],o.unit,bvChangeUnit),
-    ...(o.unit==='mm'?[el('label',{text:'Model file units'}),select('bkBevelModelUnit',[['mm','Millimeters'],['cm','Centimeters'],['m','Meters'],['in','Inches']],o.modelUnit,v=>{o.modelUnit=v;bvChanged();})]:[]),
+function bvChanged(){for(const s of Object.values(bvGPU))if(s)s.screenKey=null;if(ui.mode==='bake'){bvSetPreview(true);return;}
+  /* 3D Paint: the model in the 3D view shows it live */
+  const o=bvSettings();if(!o.on)for(const s of Object.values(bvGPU))if(s)bvScreenFree(s);bvStatus();v3.dirty=true;requestRender(true);}
+function bvChangeUnit(unit){const o=bvSettings(),m=bvMesh(),actual=bvWidth({...o,on:true},m);o.unit=unit;o.width=unit==='mm'?actual*(BV_UNIT_MM[o.modelUnit]||10)/(m.xf?.s||1):actual/.02;bvChanged();}
+/* (0.70, Kenn) the Bevel shader's settings, shared by the Bake tab, the Shader panel and the 3D Paint Bake window.
+   Like Marmoset Toolbag's: a low-poly with sharp edges gets rounded normals, so no high-poly is needed for them. */
+function bevelFields(o,again){const select=(id,values,value,change)=>{const s=el('select',{id},...values.map(([v,t])=>el('option',{value:v,text:t})));s.value=value;s.onchange=()=>change(s.value);return s;};
+  const ch=()=>{bvChanged();if(again)again();};
+  return [el('label',{text:'Width units'}),select('bkBevelUnit',[['percent','% of model'],['mm','Millimeters']],o.unit,u=>{bvChangeUnit(u);if(again)again();}),
+    ...(o.unit==='mm'?[el('label',{text:'Model file units'}),select('bkBevelModelUnit',[['mm','Millimeters'],['cm','Centimeters'],['m','Meters'],['in','Inches']],o.modelUnit,v=>{o.modelUnit=v;ch();})]:[]),
     makeSlider({id:'bkBevelWidth',label:o.unit==='mm'?'Width (mm)':'Width (% of model)',min:0,max:o.unit==='mm'?Math.max(10,o.width*2):5,step:.01,value:o.width,fmt:v=>v.toFixed(2)+(o.unit==='mm'?' mm':'%'),onInput:v=>{o.width=v;bvChanged();}}).el,
     makeSlider({id:'bkBevelAngle',label:'Minimum edge angle',min:0,max:180,step:1,value:o.angle,fmt:v=>Math.round(v)+'°',onInput:v=>{o.angle=v;bvChanged();}}).el,
     makeSlider({id:'bkBevelSamples',label:'Samples',min:3,max:128,step:1,value:o.samples,fmt:v=>Math.round(v)+' rays',onInput:v=>{o.samples=Math.round(v);bvChanged();}}).el,
     chk('bkBevelHard','Bevel hard edges',o.hardEdges,v=>{o.hardEdges=v;bvChanged();}),chk('bkBevelSame','Same surface only',o.sameSurface,v=>{o.sameSurface=v;bvChanged();}),
-    el('label',{text:'Vertex color width mask'}),select('bkBevelMask',[['none','None'],['r','Red'],['g','Green'],['b','Blue'],['a','Alpha']],o.mask,v=>{o.mask=v;bvChanged();}),
+    el('label',{text:'Vertex color width mask'}),select('bkBevelMask',[['none','None'],['r','Red'],['g','Green'],['b','Blue'],['a','Alpha']],o.mask,v=>{o.mask=v;bvChanged();})];}
+function bevelBakeControls(){const o=bvSettings();
+  return el('div',{class:'dlg-grid',id:'bkBevelControls'},el('div',{class:'sub',text:'Bevel shader'}),
+    chk('bkBevelOn','Enable bevel',!!o.on,v=>{o.on=v;bvChanged();}),chk('bkBevelPreview','Preview before baking',o.preview!==false,v=>bvSetPreview(v)),
+    ...bevelFields(o,()=>buildBakePanel()),
     el('p',{class:'note',id:'bkBevelStatus',text:bvStatusText()}),
     el('p',{class:'note',text:'Probes nearby surfaces to round edges and mesh intersections in shading. Same surface only excludes other imported objects. Samples trade speed for quality. The mesh silhouette stays unchanged.'}),
     el('p',{class:'note',text:o.unit==='mm'?'Set Model file units to the units used when exporting your mesh. Vertex colors multiply the width; meshes without vertex colors keep the full width.':'Choose Millimeters for a physical width. Smaller widths usually suit hard-surface details best.'}),
     el('button',{class:'btn',id:'bkBakeBevel',text:'Bake bevel normal',disabled:!!bk.busy,onclick:()=>{o.on=true;runBakeSets(bkLow(),['normal']);}}));}
+/* 3D Paint: the same shader as a section (Shader panel, Bake mesh maps window): live in the 3D view, and baked into the normal map */
+function bevelSection(redraw,idp){const o=bvSettings(),again=()=>{if(redraw)redraw();};
+  return el('div',{class:'dlg-grid',id:(idp||'')+'BevelBox'},el('div',{class:'sub',text:'Bevel shader (rounded edges)'}),
+    el('p',{class:'note',text:'Rounds the sharp edges of a low-poly in its normals, like Marmoset Toolbag, so a high-poly is not needed for them. Shown live on the model, and baked with the Normal map.'}),
+    chk((idp||'')+'BevelOn','Round the edges',!!o.on,v=>{o.on=v;bvChanged();again();}),
+    ...(o.on?[chk((idp||'')+'BevelPrev','Show it in the 3D view',o.preview!==false,v=>{o.preview=v;bvChanged();}),...bevelFields(o,again),el('p',{class:'note',id:'bkBevelStatus',text:bvStatusText()})]:[]));}

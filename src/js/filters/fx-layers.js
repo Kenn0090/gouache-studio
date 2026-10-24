@@ -8,7 +8,7 @@ const FX_KINDS=()=>[
   ['Blur and sharpen',['blur','boxBlur','radialBlur','lensBlur','surfBlur','motionBlur','driftBlur','sharpen','highPass']],
   ['Distort',['warp','slopeBlur','distort']],
   ['Artistic',['filmGrain','dissolve','vfxGlow','oilPaint','painterly','kuwahara','watercolour','charcoal','cutout','mosaic','acid','glass','emboss','edges','noise']],
-  ['Photo and print',['softFocus','cineMono','anaglyph','halftone','engraving','riso','bwPrint','pixelBitmap']],
+  ['Photo and print',['softFocus','cineMono','anaglyph','halftone','engraving','riso','bwPrint','pixelBitmap','retroPixel']],
   ['Patterns',['clouds','cells']],
   ['Tiling',['offset','seamless']]];
 const fxItemTitle=it=>it.conv?CONVERTERS[it.conv].title+' (live)':FX[it.id].title;
