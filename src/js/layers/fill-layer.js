@@ -8,7 +8,7 @@
    the chosen images are L._fillImg[k] (kept in .gouache files). */
 /* projections (0.23.1): 0 UV (uUvM: offset/turn/scale), 1 triplanar, 2 planar, 3 spherical; uInv takes a world position
    into the projection's own space (its offset, rotation and scale) */
-const FS_FILLIMG=`uniform sampler2D uSrc; uniform float uTile; uniform float uRot; uniform int uGrey; uniform int uProj; uniform sampler2D uPos; uniform sampler2D uNrm; uniform sampler2D uTan;
+const FS_FILLIMG=`uniform sampler2D uSrc; uniform float uTile; uniform float uRot; uniform float uUvRot; uniform float uContrast; uniform int uGrey; uniform int uProj; uniform sampler2D uPos; uniform sampler2D uNrm; uniform sampler2D uTan;
 uniform float uSharp; uniform float uHStr; uniform int uHeight; uniform int uNormal; uniform mat4 uInv; uniform mat3 uNrmInv; uniform mat3 uUvM; uniform int uRep; uniform int uFront; uniform int uKeepA; in vec2 vUV;
 vec4 samp(vec2 t){ float c=cos(uRot),s=sin(uRot); t=mat2(c,s,-s,c)*(t-0.5)+0.5; return texture(uSrc,t); }
 vec4 sampL(vec2 t){ float c=cos(uRot),s=sin(uRot); t=mat2(c,s,-s,c)*(t-0.5)+0.5; return textureLod(uSrc,t,0.0); }
@@ -34,9 +34,10 @@ void main(){ vec4 s;
     else { vec3 d=normalize(L+vec3(0.0,0.0,1e-6)); vec2 t=vec2(atan(d.x,d.z)/6.2831853+0.5,0.5-asin(clamp(d.y,-1.0,1.0))/3.1415927); s=sampL(t*uTile); } }
   else s=samp((uUvM*vec3(vUV,1.0)).xy*uTile);
   vec3 c=s.a>1e-6?s.rgb/s.a:vec3(0.0);
-  if(uGrey==1){ float g=dot(c,vec3(0.299,0.587,0.114)); if(uHeight==1) g=clamp(0.5+(g-0.5)*uHStr,0.0,1.0); o=uKeepA==1?vec4(vec3(g)*s.a,s.a):vec4(vec3(g),1.0); return; }
-  if(uNormal==1){ o=uKeepA==1?vec4(c*s.a,s.a):vec4(c,1.0); return; }
-  o=s; }`;
+  if(uGrey==1){ float g=dot(c,vec3(0.299,0.587,0.114)); g=clamp(0.5+(g-0.5)*(1.0+uContrast),0.0,1.0); if(uHeight==1) g=clamp(0.5+(g-0.5)*uHStr,0.0,1.0); o=uKeepA==1?vec4(vec3(g)*s.a,s.a):vec4(vec3(g),1.0); return; }
+  c=clamp(0.5+(c-0.5)*(1.0+uContrast),0.0,1.0);
+  if(uNormal==1){ vec3 n=normalize(c*2.0-1.0); if(uProj==0){ float a=uRot-uUvRot,cs=cos(a),sn=sin(a); n.xy=mat2(cs,-sn,sn,cs)*n.xy; } c=n*0.5+0.5; o=uKeepA==1?vec4(c*s.a,s.a):vec4(c,1.0); return; }
+  o=vec4(c*s.a,s.a); }`;
 let P_FILLIMG=null,fillCount=0;
 /* maps a fill can fill (curvature is a measurement, not a material) */
 /* (0.37.1) Tint & adjust: recolours the material's colour after it is drawn (the mock-up's Recolour section) */
@@ -58,7 +59,7 @@ function fillTintPost(L){const f=L.fill;if(!fillTintOn(f)||!f.maps.base||!f.maps
 const FILL_SKIP=['curv'];
 const fillMapsOf=()=>doc.maps.filter(k=>!FILL_SKIP.includes(k));
 function fillDefaults(){const m={};for(const k of MAP_ORDER){if(FILL_SKIP.includes(k))continue;const d=MAP_DEFS[k].def;
-    m[k]={on:k==='base'||k==='rough'||k==='metal'||k==='spec'||k==='gloss',src:k==='normal'?'image':'value',c:k==='base'?ui.fg.slice():k==='spec'?[.22,.22,.22]:k==='emis'?[0,0,0]:null,v:d==null?.5:d,tile:1,rot:0};}
+    m[k]={on:k==='base'||k==='rough'||k==='metal'||k==='spec'||k==='gloss',src:k==='normal'?'image':'value',c:k==='base'?ui.fg.slice():k==='spec'?[.22,.22,.22]:k==='emis'?[0,0,0]:null,v:d==null?.5:d,tile:1,rot:0,con:0};}
   return {maps:m,proj:'uv',triSharp:4,hStr:1};}
 const fillClone=f=>JSON.parse(JSON.stringify(f));
 /* Match the storage rounding of the previous cleared image, including 8-bit flat normals. */
@@ -96,10 +97,10 @@ function fillCompProgram(){if(!P_FILLCOMP){const sample=FS_FILLIMG.replace('void
     P_FILLCOMP=program(sample+`uniform int uFillDepth;
 vec4 fillQuant(vec4 c){ if(uFillDepth==16) return vec4(unpackHalf2x16(packHalf2x16(c.rg)),unpackHalf2x16(packHalf2x16(c.ba))); return roundEven(clamp(c,0.0,1.0)*255.0)/255.0; }
 `+FS_COMP.replace('texelFetch(uLayer,p,0)','fillQuant(fillSample())'));P_FILLCOMP.defaults=P.comp.defaults;}return P_FILLCOMP;}
-function fillCompUniforms(L,k){const f=L.fill,s=f.maps[k],bk=s.src==='baked'||s.src==='conv';return Object.assign({uSrc:fillLiveSource(L,k).tex,uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uGrey:{int:MAP_DEFS[k].grey?1:0},uPos:dummy,uNrm:dummy,uTan:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0},uFillDepth:{int:mapDepth(k)}},pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf));}
+function fillCompUniforms(L,k){const f=L.fill,s=f.maps[k],bk=s.src==='baked'||s.src==='conv';return Object.assign({uSrc:fillLiveSource(L,k).tex,uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:MAP_DEFS[k].grey?1:0},uPos:dummy,uNrm:dummy,uTan:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0},uFillDepth:{int:mapDepth(k)}},pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf));}
 function fillDrawMap(L,k,T){const f=L.fill,s=f.maps[k],grey=MAP_DEFS[k].grey,bk=s.src==='baked'||s.src==='conv',img=fillLiveSource(L,k),tri=pxfIs3D(f.proj)&&!bk?fillPosMaps():null;
   if(!img){clearTarget(T);return;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
-  run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uTan:tri?tri.tan.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
+  run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uTan:tri?tri.tan.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
     uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}},(tri&&!bk?pxfUniforms(f.proj,f.xf):pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf))));T.opaque=(!tri||bk)&&!f.decal&&(grey||k==='normal'||!!img.opaque);
 }
 /* redraw a fill layer's maps from its settings (image maps need their picture in memory) */
@@ -113,7 +114,7 @@ function fillRender(L,only){const f=L.fill;if(!f)return;
     if(fillLiveSource(L,k)){setMapLive(L,k);continue;}
     if(L._fillLive)delete L._fillLive[k];const tri=pxfIs3D(f.proj)?fillPosMaps():null,T=ensureMapTarget(L,k),grey=MAP_DEFS[k].grey;
     if(s.src==='image'||s.src==='baked'||s.src==='conv'){const bk=s.src==='baked'||s.src==='conv',img=bk?doc.meshMaps&&doc.meshMaps[s.mm]:L._fillImg&&L._fillImg[k];if(!img){if(k==='normal')clearTarget(T,[.5,.5,1,1]);continue;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
-      run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uTan:tri?tri.tan.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
+      run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uTan:tri?tri.tan.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
         uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}},(tri&&!bk?pxfUniforms(f.proj,f.xf):pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf))));T.opaque=(!tri||bk)&&!f.decal&&(grey||k==='normal'||!!img.opaque);continue;}
     if(k==='normal'){clearTarget(T,[.5,.5,1,1]);continue;}
     const c=grey?[s.v,s.v,s.v]:(s.c||[s.v,s.v,s.v]);clearTarget(T,[c[0],c[1],c[2],1]);}
@@ -196,7 +197,7 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
     box.append(el('div',{class:'sub',text:'Tint & adjust'}),t1,t2);}
   const M=doc.meshMaps||{},mks=Object.keys(M).filter(k=>!k.startsWith('cv:')),cks=Object.keys(M).filter(k=>k.startsWith('cv:')),keys=MAT_CH.filter(k=>fillMapsOf().includes(k)&&!(doc.workflow==='spec'?k==='rough'||k==='metal':k==='spec'||k==='gloss'));/* (0.53.1) only the channels of this project's workflow: no Roughness or Metallic in Spec/Gloss, no Specular or Glossiness in PBR */
   if(ui.mode==='p3d'&&doc.p3){const spec=doc.workflow==='spec',hand=doc.p3Setup==='handpainted';box.append(el('div',{class:'sub p3-material-section',text:(hand?'Hand-painted · ':'')+(spec?'Spec Gloss parameters':'PBR parameters')}));}
-  for(const k of keys){const s=W.maps[k]||(W.maps[k]=fillDefaults().maps[k]),grey=MAP_DEFS[k].grey,isN=k==='normal';
+  for(const k of keys){const s=W.maps[k]||(W.maps[k]=fillDefaults().maps[k]),grey=MAP_DEFS[k].grey,isN=k==='normal',inputTex=s.src==='image'?L._fillImg&&L._fillImg[k]:s.src==='baked'||s.src==='conv'?M[s.mm]:null;
     const row=el('div',{class:'fillbody'}),open=!!(s.on&&(matEd.open[k]||matEd.openAll)),card=el('div',{class:'fillcard fillrow'+(open?' open':'')+(s.on?'':' off')});
     const sumTxt=!s.on?'Off':s.src==='value'?(grey?Math.round(s.v*100)/100:'Colour'):s.src==='baked'?'Mesh map':s.src==='conv'?'Converted':(s.name?'Image':'No image'),sw=s.on&&s.src==='value'?(grey?[s.v,s.v,s.v]:(s.c||[.5,.5,.5])):[.5,.5,.5];
     card.append(el('div',{class:'fillhead',onclick:e=>{if(e.target.closest('.chk'))return;matEd.open[k]=!card.classList.contains('open');card.classList.toggle('open',matEd.open[k]);}},
@@ -222,7 +223,8 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
           makeSlider({id:'fl_r_'+k,label:'Turn',min:-180,max:180,step:1,value:s.rot||0,fmt:v=>v+'°',onInput:v=>edit(()=>{s.rot=v;},k)}).el);
         else if(s.name)row.append(el('p',{class:'note',text:'Choose the image again to change its tiling.'}));
         if(k==='height'&&has)row.append(makeSlider({id:'fl_hs',label:'Bump strength',min:0,max:4,numericMax:20,step:.05,value:W.hStr==null?1:W.hStr,fmt:pct,onInput:v=>edit(()=>{W.hStr=v;},k)}).el,
-          el('p',{class:'note',text:'Height makes bump detail: the normal follows it, on the model and in exported normal maps.'}));}}
+          el('p',{class:'note',text:'Height makes bump detail: the normal follows it, on the model and in exported normal maps.'}));}
+      if(inputTex)row.append(makeSlider({id:'fl_con_'+k,label:'Contrast',min:-1,max:1,step:.01,value:s.con||0,fmt:v=>Math.round(v*100)+'%',onInput:v=>edit(()=>{s.con=v;},k)}).el);}
     box.append(card);}
   box.append(chk('fl_cover','Hide the bumps below',W.coverH!==false,v=>edit(()=>{W.coverH=v;},null)),
     el('p',{class:'note',text:'On: this material covers the height and normal detail of the layers under it. Off: its bumps are added on top of theirs.'}));

@@ -159,6 +159,7 @@ window.addEventListener('keydown',e=>{
   if(!modal.hidden||typing)return;
   if(e.key==='Alt'){altPickDown=true;refreshCursor();return;}
   if(kbHandle(e))return;
+  if(e.key==='F2'&&ui.mode!=='anim'&&(ui.mode!=='p3d'||t.closest&&t.closest('#layerList .lrow'))&&layerRenameStart(doc.active)){e.preventDefault();return;}
   const m=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();
   if(!m&&!e.altKey&&e.shiftKey&&k==='b'){e.preventDefault();if(!e.repeat)brushSwapLast();return;}
   if(e.key==='F3'){e.preventDefault();toggle3D();return;}

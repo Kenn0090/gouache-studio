@@ -62,7 +62,7 @@ Under **Normal › Bevel shader**, enable the bevel and **Preview before baking*
 
 - **Width units:** use a percentage of the model, or millimeters. For millimeters, set **Model file units** to the units used to export the model; importers normalize the viewport size, so the original file scale matters. Changing the width-unit choice preserves the current radius.
 - **Minimum edge angle:** apply the effect where the surface turns more sharply than this angle.
-- **Samples:** more probes give a better estimate of the rounded normal and take longer. Start around 24 and increase for the final bake.
+- **Samples:** more probes give a better estimate of the rounded normal and take longer. The default is now 48; increase it for the final bake when you need extra smoothness.
 - **Bevel hard edges:** respect the hard edges authored in the model's corner normals, even when the angle limit would exclude them.
 - **Same surface only:** enabled, other imported objects are ignored. Disabled, intersections can receive rounded shading without merging or making a boolean union. Separately loaded high meshes keep their identities even when their names match.
 - **Vertex color width mask:** choose a channel of the imported vertex colors. Zero removes the bevel, half halves the radius, and one keeps the full width. Models without vertex colors keep the full width.
@@ -113,10 +113,12 @@ Each map arrives as a **plain layer** (no folders), so you can set blend modes b
 
 ## ID colours
 In the **ID** tab, *ID colours from* chooses where the ID map's colours come from:
-- **Separate meshes:** one colour per object in the file.
+- **Separate meshes:** one stable, distinct colour per mesh object, even when two objects share a name.
 - **Materials:** one colour per material.
+- **UV islands:** one colour per connected UV island.
 - **Vertex colours:** the colours painted on the high-poly's vertices (OBJ, glTF, FBX).
 - **Polypaint:** ZBrush polypaint. Export the OBJ from ZBrush with Polypaint on.
+- **Auto:** vertex colours, then materials, then separate meshes.
 
 The tab lists what the loaded model has.
 

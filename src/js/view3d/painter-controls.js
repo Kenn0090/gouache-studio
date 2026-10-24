@@ -31,6 +31,7 @@ window.addEventListener('keyup',e=>{if((e.key==='n'||e.key==='N')&&st3.nKey){st3
 const pcSwapped=()=>{try{return localStorage.getItem('gs.p3swap')==='1';}catch(e){return false;}};
 function pcSwap(){const on=!pcSwapped();try{localStorage.setItem('gs.p3swap',on?'1':'0');}catch(e){}const w=$('#work');if(w)w.classList.toggle('p3left',!on);if(typeof resizeGL==='function')resizeGL();fit();v3.dirty=true;requestRender(true);toast(on?'The flat texture is on the left, the 3D view on the right.':'The 3D view is on the left, the flat texture on the right.');}
 window.addEventListener('keydown',e=>{if(!pcOn()||isTypingTarget(e.target)||e.ctrlKey||e.altKey||e.metaKey||e.shiftKey)return;
+  if(e.key==='F2'&&e.target.closest&&e.target.closest('#layerList .lrow'))return;
   const m={F1:()=>p3SetLayout('split'),F2:()=>p3SetLayout('3d'),F3:()=>p3SetLayout('2d'),F4:pcSwap,F5:()=>v3SetOrtho(false),F6:()=>v3SetOrtho(true)}[e.key];
   if(!m||document.getElementById('modal')&&!document.getElementById('modal').hidden)return;e.preventDefault();e.stopImmediatePropagation();m();},true);
 

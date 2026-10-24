@@ -131,5 +131,6 @@ All of these can be changed in **Edit › Keyboard shortcuts…**. The commands 
 - **Ctrl + right drag** on the model: brush size and hardness. **Ctrl + left drag**: flow and rotation.
 - **S + drag** (left turns, middle moves, right scales) the stencil; **Shift+S** snaps the turn; **N** (held) ignores the stencil.
 - **F1** 3D + 2D, **F2** 3D only, **F3** 2D only, **F4** swap sides, **F5** perspective, **F6** orthographic (in 3D Paint; the user guide stays in the Help menu there).
+- **Shift+W** toggles wireframe overlay in the 3D view. **F2** renames the selected layer; in 3D Paint, focus its row in Layers first so F2 keeps its 3D-only layout shortcut elsewhere.
 
 **Zoom tool (0.58).** Click to zoom in (Shift: out), or drag right to zoom in and left to zoom out.

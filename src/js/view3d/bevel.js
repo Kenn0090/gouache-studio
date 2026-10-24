@@ -51,7 +51,8 @@ int bvSurface(vec3 p,vec3 gn,out vec2 bc){int own=-1;float best=-2.0,eps=max(1e-
 }`;
 const BV_UNIT_MM={mm:1,cm:10,m:1000,in:25.4};
 function bvSettings(){const o=bakeCfg.bevel||(bakeCfg.bevel={on:false,preview:true,width:.5,angle:30});
-  for(const [k,v] of Object.entries({samples:24,hardEdges:true,sameSurface:false,mask:'none',unit:'percent',modelUnit:'cm',profile:'round',soft:0,convex:1,concave:1,isect:1}))if(o[k]===undefined)o[k]=v;return o;}
+  if(o._sampleQuality===undefined){if(o.samples===undefined||o.samples===24)o.samples=48;o._sampleQuality=1;}
+  for(const [k,v] of Object.entries({samples:48,hardEdges:true,sameSurface:false,mask:'none',unit:'percent',modelUnit:'cm',profile:'round',soft:0,convex:1,concave:1,isect:1}))if(o[k]===undefined)o[k]=v;return o;}
 const bevelPreviewOn=()=>(ui.mode==='bake'&&bvSettings().on&&bvSettings().preview&&canFloat&&bk.show==='material'&&!bk.uvCheck)||(ui.mode==='p3d'&&bvSettings().on&&bvSettings().preview&&canFloat);
 /* the model the width is measured on: the Bake tab's low-poly, or the model in the 3D view (3D Paint) */
 const bvMesh=()=>ui.mode==='bake'&&typeof bkLow==='function'?bkLow():v3.mesh;
@@ -70,7 +71,7 @@ function bevelNormals(m,angle,hardEdges=false){const cached=m._bevelN;if(cached&
     for(let e=0;e<3;e++){const x=key(ids[e]),y=key(ids[(e+1)%3]),k=part+'|'+(x<y?x+'|'+y:y+'|'+x),list=edges.get(k);if(list)list.push([t,e]);else edges.set(k,[[t,e]]);}}
   const cutoff=Math.cos(Math.max(0,Math.min(180,+angle||0))*Math.PI/180);
   for(const list of edges.values()){if(list.length!==2)continue;const [a,b]=list,N0=normals.subarray(a[0]*3,a[0]*3+3),N1=normals.subarray(b[0]*3,b[0]*3+3),d=dot3(N0,N1);let hard=false;
-    if(hardEdges&&m.nrm)for(let e=0;e<2;e++){const i=I[a[0]*3+(a[1]+e)%3];for(let k=0;k<2;k++){const j=I[b[0]*3+(b[1]+k)%3];if(key(i)===key(j)&&dot3(m.nrm.subarray(i*3,i*3+3),m.nrm.subarray(j*3,j*3+3))<.9999)hard=true;}}
+    if(hardEdges&&m.nrm)for(let e=0;e<2;e++){const i=I[a[0]*3+(a[1]+e)%3];for(let k=0;k<2;k++){const j=I[b[0]*3+(b[1]+k)%3];if(key(i)===key(j)&&dot3(m.nrm.subarray(i*3,i*3+3),m.nrm.subarray(j*3,j*3+3))<Math.cos(5*Math.PI/180))hard=true;}}
     if((d>=cutoff-1e-6&&!hard)||d<-.9999||d>.999999)continue;
     for(const [own,other] of [[a,b],[b,a]]){const p=own[0]*12+own[1]*4;out.set(normals.subarray(other[0]*3,other[0]*3+3),p);out[p+3]=1;}}
   m._bevelN={idx:m.idx,pos:m.pos,nrm:m.nrm,angle,hardEdges,data:out};return out;}
@@ -87,7 +88,7 @@ function bvHardBitsBuild(P,I,N,parts){const T=I.length/3,E=I.length,bits=new Uin
       if((parts?parts[ft]:0)===part&&same(a,fa)&&same(b,fb))break;h=(h+1)&mask;}
     if(first[h]<0){first[h]=e;continue;}const f=first[h],ft=Math.floor(f/3);
     if(second[h]!==-1){bits[ft]&=~(1<<(f%3));if(second[h]>=0)bits[Math.floor(second[h]/3)]&=~(1<<(second[h]%3));second[h]=-2;continue;}
-    second[h]=e;let hard=false;for(const i of [I[e],end(e)])for(const j of [I[f],end(f)])if(same(i,j)&&N[i*3]*N[j*3]+N[i*3+1]*N[j*3+1]+N[i*3+2]*N[j*3+2]<.9999)hard=true;
+    second[h]=e;let hard=false;for(const i of [I[e],end(e)])for(const j of [I[f],end(f)])if(same(i,j)&&N[i*3]*N[j*3]+N[i*3+1]*N[j*3+1]+N[i*3+2]*N[j*3+2]<Math.cos(5*Math.PI/180))hard=true;
     if(hard){const x=face(t),y=face(ft);if(Math.abs(x[0]*y[0]+x[1]*y[1]+x[2]*y[2])<.999999){bits[t]|=1<<(e%3);bits[ft]|=1<<(f%3);}}
   }return bits;}
 const bvParts=m=>m.bvSurfaceIds||m.triPart;
@@ -173,7 +174,7 @@ function bevelMatRows(o){const m=bvMesh(),names=m&&m.matNames||[];if(names.lengt
   return [el('div',{class:'sub',text:'Width per material'}),el('p',{class:'note',text:'Each material gets a share of the width above, so hard parts can have a wider bevel than soft ones. 0% leaves a material sharp.'}),
     ...names.map((n,i)=>makeSlider({id:'bkBevelMat'+i,label:n||'Material '+(i+1),min:0,max:1,step:.01,value:mats[n]===undefined?1:mats[n],fmt:pct,onInput:v=>{mats[n]=v;bvChanged();}}).el)];}
 /* (0.70) back to how the Bevel shader starts (it stays on or off as it was) */
-const BV_DEFAULTS={width:.5,angle:30,samples:24,hardEdges:true,sameSurface:false,mask:'none',unit:'percent',modelUnit:'cm',profile:'round',soft:0,convex:1,concave:1,isect:1};
+const BV_DEFAULTS={width:.5,angle:30,samples:48,hardEdges:true,sameSurface:false,mask:'none',unit:'percent',modelUnit:'cm',profile:'round',soft:0,convex:1,concave:1,isect:1,_sampleQuality:1};
 function bvResetDefaults(again){const o=bvSettings();Object.assign(o,BV_DEFAULTS);o.mats={};bvChanged();if(again)again();}
 function bevelFields(o,again){const select=(id,values,value,change)=>{const s=el('select',{id},...values.map(([v,t])=>el('option',{value:v,text:t})));s.value=value;s.onchange=()=>change(s.value);return s;};
   const ch=()=>{bvChanged();if(again)again();};

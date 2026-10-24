@@ -42,7 +42,7 @@ Created assets are saved inside the document or texture set, independently of th
 
 ## Moving around
 
-In the viewport, open **⋯ › Settings**. **Viewport display** is first: choose **Shaded**, **Wireframe** for edges without a material fill, or **Wireframe overlay** for edges over the material. These choices are saved with the project. Settings scroll within the viewport; scrolling there does not zoom the model or the 2D canvas.
+In the viewport, open **⋯ › Settings**. **Viewport display** is first: choose **Shaded**, **Wireframe** for edges without a material fill, or **Wireframe overlay** for edges over the material. **Shift+W** toggles the overlay. Wireframe set while editing a mask returns to its previous view when you leave mask mode. These choices are saved with the project. Settings scroll within the viewport; scrolling there does not zoom the model or the 2D canvas.
 
 Choose the style under **Navigation**:
 
@@ -141,14 +141,14 @@ A new material covers the whole model and has **no mask**. If a selection is act
 
 ![The Material panel beside Colour, and the Materials tab.](images/material-panel.png)
 
-- **Channels:** base colour, roughness, metallic, height, normal, emissive and opacity. Each one is a colour or value, an **Image** (with **Tile** and **Turn**), or a **Mesh map**: one of the texture set's baked maps (AO, curvature, thickness…), laid over the model as baked.
+- **Channels:** base colour, roughness, metallic, height, normal, emissive and opacity. Each one is a colour or value, an **Image** (with **Tile**, **Turn** and **Contrast**), or a **Mesh map**: one of the texture set's baked maps (AO, curvature, thickness…), laid over the model as baked. Contrast is available for every image-backed input, including baked and converted maps.
 - **Height** makes bump detail on the model (the normal follows it), with a **Bump strength** slider.
 - **Projection:**
   - *UV* follows the model's UVs.
   - *Triplanar* projects images from three sides and blends them, so there are no seams. **Blend** sets how soft the joins are.
   - *Planar* projects straight from one direction, like a slide projector: good for decals and logos. **Repeat** tiles it; **Front faces only** keeps it off the parts facing away.
   - *Spherical* wraps it around from a centre point.
-- **Moving, turning and scaling a projection:** with the layer selected, a **gizmo** sits on the model for Triplanar, Planar and Spherical. The arrows move it, the rings turn it, the small boxes scale it along one axis and the middle box scales it evenly. For *UV*, a frame shows on the flat canvas: drag a corner to scale (Shift keeps the proportions), the round handle to turn, and inside with the Move tool (or Ctrl) to move. **Offset**, **Rotation** and **Scale** are also in Properties, with **Reset**. Each drag is one undo step.
+- **Moving, turning and scaling a projection:** with the layer selected, a **gizmo** sits on the model for Triplanar, Planar and Spherical. The arrows move it, the rings turn it, the small boxes scale it along one axis and the middle box scales it evenly. For *UV*, a frame shows on the flat canvas: drag a corner to scale (Shift keeps the proportions), the round handle to turn, and inside with the Move tool (or Ctrl) to move. **Offset**, **Rotation** and **Scale** are also in Properties, with **Reset**. This rotates the material projection; each image channel can also have its own **Turn**. Each drag is one undo step.
 
   ![The projection gizmo.](images/proj-gizmo.png)
 - **Save to Materials** keeps the material, with its images, on this computer for other layers and projects. In the Materials tab, **⤓** exports one as a **.gmat** file and **Import…** brings one in.

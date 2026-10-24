@@ -37,7 +37,7 @@ function pxfUniforms(mode,xf){const X=pxfNorm(xf),{c,S}=pxfModel(),k=pxfUnit(mod
   const a=(X.r[2]||0)*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a),su=X.s[0]||1,sv=X.s[1]||1,A=[[ca/su,sa/su],[-sa/sv,ca/sv]];
   const cx=.5+X.t[0],cy=.5+X.t[1],b=[.5-(A[0][0]*cx+A[0][1]*cy),.5-(A[1][0]*cx+A[1][1]*cy)];
   const uvm=new Float32Array([A[0][0],A[1][0],0,A[0][1],A[1][1],0,b[0],b[1],1]);
-  return {uProj:{int:PXF_IX[mode]||0},uInv:{m4:inv},uNrmInv:{m3:nrmInv},uUvM:{m3:uvm}};}
+  return {uProj:{int:PXF_IX[mode]||0},uInv:{m4:inv},uNrmInv:{m3:nrmInv},uUvM:{m3:uvm},uUvRot:(X.r[2]||0)*Math.PI/180};}
 /* the four corners of the UV frame, in texture units (0..1), for the 2D handles */
 function pxfUvCorners(xf){const X=pxfNorm(xf),a=(X.r[2]||0)*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a),su=X.s[0]||1,sv=X.s[1]||1;
   return [[-.5,-.5],[.5,-.5],[.5,.5],[-.5,.5]].map(([x,y])=>{const px=x*su,py=y*sv;return [.5+X.t[0]+ca*px-sa*py,.5+X.t[1]+sa*px+ca*py];});}

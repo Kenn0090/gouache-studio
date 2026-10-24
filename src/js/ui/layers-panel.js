@@ -4,6 +4,11 @@ const modeBtn=$('#lModeBtn'),modePop=el('div',{class:'modepop',role:'listbox','a
 let modeState=null;
 const modeLabel=m=>m<0?'Pass through':MODES[m];
 function previewMode(m){if(!modeState)return;if(!prefs.livePreview&&m!==modeState.orig)return;setMapModeOf(modeState.node,modeState.k,m);requestRender(true);}
+function layerRenameStart(n,row){if(!n)return false;row=row||[...$('#layerList').querySelectorAll('.lrow')].find(r=>r._node===n);const name=row&&row.querySelector('.lname');if(!name||name.querySelector('input'))return false;
+  const inp=el('input',{value:n.name,'aria-label':'Layer name'});name.replaceChildren(inp);inp.focus();inp.select();let cancelled=false;
+  inp.addEventListener('pointerdown',e=>e.stopPropagation());
+  inp.addEventListener('blur',()=>{if(!inp.isConnected)return;if(cancelled){renderLayers();return;}const v=inp.value.trim();if(v&&v!==n.name){n.name=v;n.autoName=false;changed(n);}else renderLayers();});
+  inp.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'){e.preventDefault();inp.blur();}else if(e.key==='Escape'){e.preventDefault();cancelled=true;inp.blur();}});return true;}
 function closeModePop(commit){if(!modeState)return;const st=modeState;modeState=null;modePop.hidden=true;modeBtn.setAttribute('aria-expanded','false');
   setMapModeOf(st.node,st.k,commit==null?st.orig:commit);renderLayers();requestRender(true);if(commit==null)modeBtn.focus();}
 function openModePop(){const n=doc.active;if(!n)return;if(modeState){closeModePop();return;}closeMenu();
@@ -94,9 +99,7 @@ function renderLayers(){
     row.addEventListener('pointerdown',e=>layerPointerDown(e,n,row));
     row.addEventListener('contextmenu',e=>{e.preventDefault();const maskHit=!!(n.mask&&e.target.closest('.mthumb'));if(maskHit||!doc.sel.has(n)){selectOnly(n);if(maskHit){n.editMask=true;ui.msSel=null;}updateRowClasses();syncLayerProps();}layerMenu(e,n);});
     row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selectOnly(n);updateRowClasses();}});
-    name.addEventListener('dblclick',e=>{e.stopPropagation();const inp=el('input',{value:n.name,'aria-label':'Name'});name.replaceChildren(inp);inp.focus();inp.select();
-      inp.addEventListener('pointerdown',ev=>ev.stopPropagation());
-      const done=()=>{const v=inp.value.trim();if(v&&v!==n.name){n.name=v;n.autoName=false;}renderLayers();};inp.addEventListener('blur',done);inp.addEventListener('keydown',ev=>{ev.stopPropagation();if(ev.key==='Enter')inp.blur();if(ev.key==='Escape'){inp.value=n.name;inp.blur();}});});
+    name.addEventListener('dblclick',e=>{e.stopPropagation();layerRenameStart(n,row);});
     /* a layer with mask rows or content effects: ▾ folds them (like Substance) */
     if(typeof msRowsEl==='function'&&(msHas(n)||(n.cfx&&n.cfx.length))){const fold=el('button',{class:'msfold'+(n.fxFold?'':' open'),title:n.fxFold?'Show its mask and effect rows':'Fold its rows','aria-label':(n.fxFold?'Show':'Fold')+' the rows of '+n.name,'aria-expanded':String(!n.fxFold)});
       fold.innerHTML='<svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"><path d="M5 3l4 4-4 4"/></svg>';
@@ -112,6 +115,7 @@ function renderMaskRow(){const A=doc.active,row=$('#maskRow');row.replaceChildre
     chk('mEn','Mask on',A.mask.enabled,v=>{A.mask.enabled=v;renderLayers();requestRender(true);}),
     chk('mView','View mask',!!ui.viewMask,v=>{ui.viewMask=v;if(v)A.editMask=true;renderLayers();requestRender();}),
     isLayer(A)?el('button',{class:'btn sm',text:'Apply',title:'Bake the mask into the layer’s transparency',onclick:cmdApplyMask}):null,
+    el('button',{class:'btn sm',text:'Clear mask',title:'Replace this mask with white (reveal all)',onclick:()=>cmdClearMask(A)}),
     el('button',{class:'btn sm',text:'Delete mask',onclick:cmdDeleteMask})].filter(Boolean));}
 function maskRecord(n,oldM,newM,label){return {label,refs:[n],masks:[oldM,newM].filter(Boolean),undo(){n.mask=oldM;n.editMask=!!oldM&&n.editMask;if(!oldM)ui.viewMask=false;},redo(){n.mask=newM;n.editMask=!!newM;if(!newM)ui.viewMask=false;}};}
 function cmdAddMask(fill){const n=doc.active;if(!n){toast('Select a layer or group first.');return;}if(n.mask){toast('This already has a mask.');return;}
@@ -119,6 +123,9 @@ function cmdAddMask(fill){const n=doc.active;if(!n){toast('Select a layer or gro
   const r=maskRecord(n,null,m,fromSel?(fill?'Add mask from selection':'Add mask hiding selection'):'Add mask');r.redo();pushUndo(r);changed(n);
   toast(fromSel?(fill?'Mask added: the selection stays visible.':'Mask added: the selection is hidden.'):fill?'Mask added. Paint black to hide.':'Hide-all mask added. Paint white to reveal.');}
 function cmdDeleteMask(){const n=doc.active;if(!n||!n.mask)return;const r=maskRecord(n,n.mask,null,'Delete mask');r.redo();pushUndo(r);changed(n);}
+function cmdClearMask(n=doc.active){if(!n||!n.mask)return;const old=n.mask,next=makeMask(1),edit=n.editMask,view=ui.viewMask;next.enabled=old.enabled;
+  const r={label:'Clear mask',refs:[n],masks:[old,next],undo(){n.mask=old;n.editMask=edit;ui.viewMask=view;},redo(){n.mask=next;n.editMask=edit;ui.viewMask=view;}};
+  r.redo();pushUndo(r);changed(n);toast('Mask cleared to white.');}
 /* the mask is baked into every map the layer has */
 function cmdApplyMask(){const L=doc.active;if(!isLayer(L)||!L.mask)return;const W=doc.w,H=doc.h,m=L.mask,steps=[];
   for(const k of mapKeysOf(L)){const T=mapT(L,k),before=captureRegion(T,0,0,W,H),tmp=acquireD(T.depth);run(P.applymask,tmp,{uSrc:T.tex,uM:m.target.tex});blit(tmp,T,0,0,W,H,0,0);release(tmp);steps.push({k,before,after:captureRegion(T,0,0,W,H)});}
@@ -253,7 +260,7 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
   if(ui.mode==='p3d'&&n.mask&&!n.fx&&e.target&&e.target.closest('.mthumb')){
     const generators=flyItem('Generators',()=>MS_GENS.map(([k,title])=>it(title,()=>{selectOnly(n);msAdd(n,'gen',{p:msGenDefaults(k)});})));generators.setAttribute('aria-label','Generators');
     const anchors=flyItem('Anchor points',()=>{const names=msAnchorNames();return [it('Add anchor point to this layer',()=>{selectOnly(n);cfxAddAnchor(n);},null,!lay),sep(),head('Use an anchor in this mask'),...(names.length?names.map(name=>it('From “'+name+'”',()=>{selectOnly(n);msAdd(n,'anchor',{p:{name,ch:'height',inv:false}});})): [it('No anchor points yet',()=>{},null,true)])];});anchors.setAttribute('aria-label','Anchor points');items.push(generators,anchors,it('Levels',()=>{selectOnly(n);msAdd(n,'filter',{fx:'levels'});}),it('Invert',()=>{selectOnly(n);msAdd(n,'filter',{fx:'invert'});}),sep());}
-  {if(n.mask)items.push(it('Delete mask',cmdDeleteMask),...(typeof msHas==='function'&&msHas(n)?[it('Flatten mask (keep the result, drop its rows)',()=>msFlatten(n))]:[]));else items.push(it('Add mask',()=>cmdAddMask(1)),it('Add black mask (hide all)',()=>cmdAddMask(0)),...(lay&&typeof liveMaskStart==='function'?[it('Live mask…',()=>liveMaskStart(n))]:[]));}
+  {if(n.mask)items.push(it('Clear mask (reveal all)',()=>cmdClearMask(n)),it('Delete mask',()=>{if(doc.active===n)cmdDeleteMask();else{selectOnly(n);cmdDeleteMask();}}),...(typeof msHas==='function'&&msHas(n)?[it('Flatten mask (keep the result, drop its rows)',()=>msFlatten(n))]:[]));else items.push(it('Add mask',()=>cmdAddMask(1)),it('Add black mask (hide all)',()=>cmdAddMask(0)),...(lay&&typeof liveMaskStart==='function'?[it('Live mask…',()=>liveMaskStart(n))]:[]));}
   if(lay){items.push(sep(),flyItem('Layer style',()=>[...STYLE_ORDER.map(k=>it(STYLE_DEFS[k].label+(n.styles&&n.styles[k]&&n.styles[k].on?' ✓':''),()=>dlgLayerStyle(k,true))),sep(),it('All styles…',()=>dlgLayerStyle())]));
     items.push(sep(),it('Filter this layer ▸',()=>{selectOnly(n);n.editMask=false;renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);}),
       it('Filter its mask ▸',()=>{selectOnly(n);if(!n.mask)msAdd(n,'fill',{p:{v:1}});n.editMask=true;renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);}),

@@ -1,3 +1,14 @@
+## 0.71.0
+
+- **Viewport shadows.** Increased shadow-map resolution for sharper shadows, up to the graphics card's supported texture size.
+- **Bevel shader.** Raised the default sample count from 24 to 48 and made hard-edge detection less sensitive to tiny normal differences. Older saved defaults receive the updated sample count.
+- **Material inputs.** Image, baked and converted textures now have a per-channel Contrast control. The material's projection rotation also rotates tangent-space normal maps correctly.
+- **Mask editing.** The mask toolbar sits below the viewport controls and settings. Leaving mask or live-mask mode restores the wireframe mode that was active before editing.
+- **Layers.** Press F2 to rename the selected layer. Clear mask replaces the mask with white, and Undo restores its previous contents.
+- **Bake IDs.** Separate meshes now receive distinct ID colors, including separately loaded meshes with matching names. Added UV-island IDs.
+- **Wireframe.** Shift+W toggles the wireframe overlay and opens the 3D view when needed.
+- **Suggestions.** Help › Send a suggestion opens a message box and prepares a GitHub issue form. Submitting the form requires a GitHub account.
+
 ## 0.70.1
 
 - **Retro layer.** **Layer › New › Retro layer (N64 / PSX)** puts a Retro effect on top of the stack, changing everything below it; **Retro layer (this layer only)** (also in a layer's right-click menu) clips it to the selected layer. Both open with the console presets and work in Paint and 3D Paint.

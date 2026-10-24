@@ -25,7 +25,7 @@ const MENUS={
     ['Edges and relief','sub',[['Emboss…','emboss'],['Find edges…','edges'],['Edge wear…','edgeWear']]],
     ['Noise and render','sub',[['Add noise…','noise'],['Render clouds…','clouds'],['Render cells…','cells']]],
     ['Tiling','sub',[['Offset…','offset'],['Tile…','tile_fx'],['Make seamless…','seamless']]]],
-  View:[['Canvas-only view','canvasFull','F'],['Frame 3D model','frame3d','Shift+F'],['Fit on screen','fit','Ctrl+0'],['Actual pixels','actual','Ctrl+1'],['Tile mode','tile','Shift+T'],['Perspective guides…','perspDlg'],['3D view','view3d','F3'],'-',['Cage tool','cageTool','K'],['Flat cage view','cageFlat','Shift+F'],['Symmetry: left–right','symX','Shift+X'],'-',['Shortcut hints','hints'],['Performance monitor','perf']],
+  View:[['Canvas-only view','canvasFull','F'],['Frame 3D model','frame3d','Shift+F'],['Fit on screen','fit','Ctrl+0'],['Actual pixels','actual','Ctrl+1'],['Tile mode','tile','Shift+T'],['Perspective guides…','perspDlg'],['3D view','view3d','F3'],['Wireframe overlay','wireToggle','Shift+W'],'-',['Cage tool','cageTool','K'],['Flat cage view','cageFlat','Shift+F'],['Symmetry: left–right','symX','Shift+X'],'-',['Shortcut hints','hints'],['Performance monitor','perf']],
   Window:[['Panel layout: Paint','ws_painting'],['Panel layout: Texturing','ws_texturing'],['Panel layout: Large 3D','ws_paint3d'],['Panel layout: Minimal','ws_minimal'],['Save panel layout…','wsSave'],['Reset panel layout','wsReset'],['Lock panels','wsLock'],'-',
     ['Color','pn_color'],['Brushes','pn_brushes'],['Tool settings','pn_tool'],['Maps','pn_maps'],['Layers','pn_layers'],['Channels','pn_chan'],'-',['Options bar','optBarToggle'],['Toolbar: two columns','tbCols'],['Toolbar on the right','tbSide']],
   Help:[] /* filled by ui/help.js */
@@ -41,6 +41,7 @@ Object.assign(actions,{gallery:()=>dlgGallery(),warp:()=>fxMenu('warp'),slopeBlu
   pn_color:()=>togglePanel('color'),pn_brushes:()=>togglePanel('brushes'),pn_tool:()=>togglePanel('tool'),pn_maps:()=>togglePanel('maps'),pn_layers:()=>togglePanel('layers'),pn_chan:()=>togglePanel('chan'),
   optBarToggle:()=>{dk.L.opt=!dk.L.opt;dkRender();dkSave();},tbCols:()=>dkToolbar({cols:dk.L.tb.cols===2?1:2}),tbSide:()=>dkToolbar({side:dk.L.tb.side==='right'?'left':'right'})});
 Object.assign(actions,{makeTip:()=>dlgMakeTip(),keys:()=>dlgKeys(),hints:()=>toggleHints(),cageTool:()=>{if(ui.cageFlat)cageFlatOff();setTool('cage');},cageFlat:()=>toggleCageFlat(),symX:()=>symToggleX()});
+Object.assign(actions,{wireToggle:()=>{if(!v3.on)toggle3D(true);v3SetWireMode(v3WireMode()==='overlay'?'shaded':'overlay');}});
 actions.clearContents=cmdClearLayer;
 actions.selColorRange=dlgColorRange;
 const LAYER_ONLY=['mergeVisible','flatten','tipFromLayer'];/* (0.58) the other layer commands work inside a frame */

@@ -447,7 +447,7 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
     el('p',{class:'note',text:'Drag to turn, right-drag to move, wheel to zoom, double-click to reframe. Raise Detail (top of the 3D view) to see Height depth push the surface out finely; imported models are subdivided.'}));
   /* (0.70, Kenn) the settings stay in view: open or closed is remembered, so they no longer pop away */
   const gearSave=()=>{try{localStorage.setItem('gs.v3setOpen',box.hidden?'0':'1');}catch(e){}};
-  gear.onclick=()=>{box.hidden=!box.hidden;gearSave();gear.setAttribute('aria-expanded',String(!box.hidden));if(!box.hidden){/* More must not consume all the space above the settings on a short viewport. */
+  gear.onclick=()=>{box.hidden=!box.hidden;gearSave();gear.setAttribute('aria-expanded',String(!box.hidden));if(typeof maskBarSync==='function')maskBarSync();if(!box.hidden){/* More must not consume all the space above the settings on a short viewport. */
       const xt=bar.querySelector('#v3Xtra'),more=bar.querySelector('#v3More');if(xt){xt.hidden=true;more.setAttribute('aria-expanded','false');more.classList.remove('on');}
       placeBox();}};
   /* the panel sits just under the toolbar, wherever the toolbar ends up (it can grow when More opens or the window narrows) */
