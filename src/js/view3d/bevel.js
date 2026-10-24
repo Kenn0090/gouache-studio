@@ -117,7 +117,7 @@ const bvClay={};
 function bevelClay(see){const key=see?'over':'solid';if(!bvClay[key]){bvClay[key]=makeTarget(1,1,8,false);clearTarget(bvClay[key],see?[1,.72,.45,1]:[.62,.62,.64,1]);}return bvClay[key];}
 function bvScreenMaterial(fs){return fs.replace('if((uHas&4)!=0){ vec3 n=mapSample(uNrm,uv+uPN).rgb*2.0-1.0; N=normalize(T*n.x+B*n.y+Ng*n.z); }','{ vec4 rounded=texelFetch(uNrm,ivec2(gl_FragCoord.xy),0); if(rounded.a>0.0)N=normalize(rounded.xyz); }');}
 function bevelFreeGPU(s){if(!s)return;s.disposed=true;if(s.hg)bkFreeHigh(s.hg);bvScreenFree(s);}
-function bvScreenFree(s){if(s.G){bkFreeMRT(s.G);gl.deleteRenderbuffer(s.depth);s.G=null;}if(s.out){disposeTarget(s.out);s.out=null;}s.screenKey=null;}
+function bvScreenFree(s){if(s.G){bkFreeMRT(s.G);gl.deleteRenderbuffer(s.depth);s.G=null;}if(s.out){disposeTarget(s.out);s.out=null;}if(s.hq){disposeTarget(s.hq);s.hq=null;}s.screenKey=null;}
 function bevelPreviewGPU(m,slot='low'){if(!m)return null;let s=bvGPU[slot];if(s&&s.mesh===m&&s.idx===m.idx&&s.pos===m.pos&&s.nrm===m.nrm)return s;
   bevelFreeGPU(s);s=bvGPU[slot]={mesh:m,idx:m.idx,pos:m.pos,nrm:m.nrm,hg:null,disposed:false};
   s.ready=bkHighGPU(m,()=>{},false).then(async hg=>{if(s.disposed){bkFreeHigh(hg);return;}s.hg=hg;await bvPrepareInfo(hg,bvSettings());if(!s.disposed){v3.dirty=true;requestRender();}}).catch(e=>{if(!s.disposed){s.error=String(e);if(s.hg){bkFreeHigh(s.hg);s.hg=null;}bvScreenFree(s);bvStatus();toast('Bevel preview: '+e.message);}});bvStatus();return s;}
@@ -139,18 +139,20 @@ function bevelScreen(s,g,common,U,F,high=false){if(!s?.hg||s.error)return null;c
   let fresh=false;/* the picture changed (the camera moved): redo all of it at once, roughly, then refine */
   if(s.screenKey!==key||s.inputNormal!==U.uNrm||s.inputBase!==U.uBase){
     fresh=true;
-    if(!s.G||s.G.w!==F.w||s.G.h!==F.h){bvScreenFree(s);s.G=bkMRT(F.w,F.h,3);s.depth=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,s.depth);gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT24,F.w,F.h);gl.bindFramebuffer(gl.FRAMEBUFFER,s.G.fbo);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,s.depth);s.out=makeTarget(F.w,F.h,16,false);}
+    if(!s.G||s.G.w!==F.w||s.G.h!==F.h){bvScreenFree(s);s.G=bkMRT(F.w,F.h,3);s.depth=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,s.depth);gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT24,F.w,F.h);gl.bindFramebuffer(gl.FRAMEBUFFER,s.G.fbo);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,s.depth);s.out=makeTarget(F.w,F.h,16,false);s.hq=makeTarget(F.w,F.h,16,false);}
     bkClear(s.G);gl.clearDepth(1);gl.clear(gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);
     useProg(P_BVGEOM,{...U,...common,uHigh:high,uHas:U.uHas||{int:0},uUseH:false,uMorph:0,uPN:U.uPN||[0,0]});gl.bindVertexArray(g.vao);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);
     gl.disable(gl.DEPTH_TEST);run(P_BVCOPY,s.out,{uSrc:s.G.tex[2]});s.screenKey=key;s.inputNormal=U.uNrm;s.inputBase=U.uBase;s.tile=0;
   }
-  gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);gl.enable(gl.SCISSOR_TEST);bindTarget(s.out);
+  gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);gl.enable(gl.SCISSOR_TEST);bindTarget(fresh?s.out:s.hq);/* the full-quality result is drawn off-screen and swapped in when complete, so no patches show */
   const block=o.samples>32?64:128,nx=Math.ceil(F.w/block),ny=Math.ceil(F.h/block),limit=fresh?0:Math.min(nx*ny,s.tile+2);
   useProg(P_BVRAY,{...bvUniforms(o,bvMesh()),uNodes:s.hg.nodes,uTris:s.hg.tris,uTN:s.hg.nrm,uTC:s.hg.col,uBVInfo:info,uBVPosition:s.G.tex[0],uBVGeometric:s.G.tex[1],uBVInput:s.G.tex[2]});gl.bindVertexArray(vao);
   if(fresh){/* (0.70) moving the view: every pixel rounded straight away with a few rays, so the bevel never pops in patch by patch; the full quality follows tile by tile once the view is still */
-    gl.disable(gl.SCISSOR_TEST);useProg(P_BVRAY,{...bvUniforms(o,bvMesh()),uBevelSamples:{int:Math.min(6,Math.max(3,o.samples|0))},uNodes:s.hg.nodes,uTris:s.hg.tris,uTN:s.hg.nrm,uTC:s.hg.col,uBVInfo:info,uBVPosition:s.G.tex[0],uBVGeometric:s.G.tex[1],uBVInput:s.G.tex[2]});gl.bindVertexArray(vao);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.enable(gl.SCISSOR_TEST);
+    gl.disable(gl.SCISSOR_TEST);useProg(P_BVRAY,{...bvUniforms(o,bvMesh()),uBevelSamples:{int:Math.min(8,Math.max(3,o.samples|0))},uNodes:s.hg.nodes,uTris:s.hg.tris,uTN:s.hg.nrm,uTC:s.hg.col,uBVInfo:info,uBVPosition:s.G.tex[0],uBVGeometric:s.G.tex[1],uBVInput:s.G.tex[2]});gl.bindVertexArray(vao);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.enable(gl.SCISSOR_TEST);
     useProg(P_BVRAY,{...bvUniforms(o,bvMesh()),uNodes:s.hg.nodes,uTris:s.hg.tris,uTN:s.hg.nrm,uTC:s.hg.col,uBVInfo:info,uBVPosition:s.G.tex[0],uBVGeometric:s.G.tex[1],uBVInput:s.G.tex[2]});}
+  const tile0=s.tile;
   while(s.tile<limit){const x=s.tile%nx*block,y=Math.floor(s.tile/nx)*block;gl.scissor(x,y,Math.min(block,F.w-x),Math.min(block,F.h-y));gl.drawArrays(gl.TRIANGLE_STRIP,0,4);s.tile++;}
+  if(!fresh&&tile0<nx*ny&&s.tile>=nx*ny){const t=s.out;s.out=s.hq;s.hq=t;}
   gl.disable(gl.SCISSOR_TEST);gl.flush();bvStatus();if(s.tile<nx*ny){v3.dirty=true;requestAnimationFrame(()=>{v3.dirty=true;requestRender();});}
   gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);return s.out;
 }
@@ -170,6 +172,9 @@ function bvChangeUnit(unit){const o=bvSettings(),m=bvMesh(),actual=bvWidth({...o
 function bevelMatRows(o){const m=bvMesh(),names=m&&m.matNames||[];if(names.length<2)return [];const mats=o.mats||(o.mats={});
   return [el('div',{class:'sub',text:'Width per material'}),el('p',{class:'note',text:'Each material gets a share of the width above, so hard parts can have a wider bevel than soft ones. 0% leaves a material sharp.'}),
     ...names.map((n,i)=>makeSlider({id:'bkBevelMat'+i,label:n||'Material '+(i+1),min:0,max:1,step:.01,value:mats[n]===undefined?1:mats[n],fmt:pct,onInput:v=>{mats[n]=v;bvChanged();}}).el)];}
+/* (0.70) back to how the Bevel shader starts (it stays on or off as it was) */
+const BV_DEFAULTS={width:.5,angle:30,samples:24,hardEdges:true,sameSurface:false,mask:'none',unit:'percent',modelUnit:'cm',profile:'round',soft:0,convex:1,concave:1,isect:1};
+function bvResetDefaults(again){const o=bvSettings();Object.assign(o,BV_DEFAULTS);o.mats={};bvChanged();if(again)again();}
 function bevelFields(o,again){const select=(id,values,value,change)=>{const s=el('select',{id},...values.map(([v,t])=>el('option',{value:v,text:t})));s.value=value;s.onchange=()=>change(s.value);return s;};
   const ch=()=>{bvChanged();if(again)again();};
   return [el('label',{text:'Width units'}),select('bkBevelUnit',[['percent','% of model'],['mm','Millimeters']],o.unit,u=>{bvChangeUnit(u);if(again)again();}),
@@ -184,7 +189,7 @@ function bevelFields(o,again){const select=(id,values,value,change)=>{const s=el
     makeSlider({id:'bkBevelIsect',label:'Where meshes meet',min:0,max:1.5,step:.01,value:o.isect,fmt:pct,onInput:v=>{o.isect=v;bvChanged();}}).el,
     chk('bkBevelHard','Bevel hard edges',o.hardEdges,v=>{o.hardEdges=v;bvChanged();}),chk('bkBevelSame','Same surface only',o.sameSurface,v=>{o.sameSurface=v;bvChanged();}),
     ...bevelMatRows(o),
-    el('label',{text:'Vertex color width mask'}),select('bkBevelMask',[['none','None'],['r','Red'],['g','Green'],['b','Blue'],['a','Alpha']],o.mask,v=>{o.mask=v;bvChanged();})];}
+    el('label',{text:'Vertex color width mask'}),select('bkBevelMask',[['none','None'],['r','Red'],['g','Green'],['b','Blue'],['a','Alpha']],o.mask,v=>{o.mask=v;bvChanged();}),el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:'bkBevelReset',text:'Reset bevel to default',title:'Put every Bevel shader setting back to how it starts',onclick:()=>bvResetDefaults(again)}))];}
 function bevelBakeControls(){const o=bvSettings();
   return el('div',{class:'dlg-grid',id:'bkBevelControls'},el('div',{class:'sub',text:'Bevel shader'}),
     chk('bkBevelOn','Enable bevel',!!o.on,v=>{o.on=v;bvChanged();}),chk('bkBevelPreview','Preview before baking',o.preview!==false,v=>bvSetPreview(v)),
