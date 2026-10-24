@@ -74,7 +74,7 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
   { vec3 Nf=normalize(cross(dFdx(vP),dFdy(vP))); if(dot(Nf,uCam-vP)<0.0) Nf=-Nf; if(dot(Ng,Nf)<0.0){ N=-N; Ng=-Ng; } }
   /* ---- Retro (N64 / PSX): the texture as a small grid, a plain light, banded if asked, fog, 15/16-bit colour with a dither ---- */
   if(uSh==8){ vec3 Lr=normalize(uSun); float l=max(dot(Ng,Lr),0.0); if(uShQ.x>0.5) l=floor(l*uShQ.x+0.5)/uShQ.x; float amb=uShQ.z;
-    vec3 c=pow(alb,vec3(1.0/2.2))*(amb+(1.0-amb)*l)*1.6*uExpo; if((uHas&16)!=0) c+=mapSample(uEmis,uv+uPE).rgb;
+    vec3 c=pow(alb,vec3(1.0/2.2))*(amb+(1.0-amb)*l)*uShQ.w*uExpo; if((uHas&16)!=0) c+=mapSample(uEmis,uv+uPE).rgb;
     float fg=1.0-exp(-length(uCam-vP)*uShQ.y*0.35); c=mix(c,uShD,clamp(fg,0.0,1.0));
     c=clamp(c,0.0,1.0); c=floor(c*uShC+0.5+(retroBayer(gl_FragCoord.xy)-0.5)*uShP.z)/uShC; o=vec4(clamp(c,0.0,1.0),1.0); return; }
   float rough=clamp((uHas&1)!=0?mapSample(uRough,uv+uPR).r:uDef.x,0.04,1.0), metal=(uHas&2)!=0?mapSample(uMetal,uv+uPM).r:uDef.y, ao=(uHas&8)!=0?mapSample(uAO,uv+uPA).r:1.0;
