@@ -66,7 +66,7 @@ const pxfShow=(v,tiling)=>tiling?1/(v||1):v;
 function pxfLockBtn(){const b=el('button',{class:'btn sm pxflock',id:'pxfLock','aria-label':'Keep the scale proportions'});
   const paint=()=>{const on=pxfLocked();b.textContent=on?'🔗':'⛓';b.classList.toggle('on',on);b.title=on?'Locked: the scale numbers move together. Click to unlock.':'Unlocked: each scale number is separate. Click to lock.';};
   paint();b.addEventListener('click',()=>{try{localStorage.setItem('gs.pxfLock',pxfLocked()?'0':'1');}catch(e){}paint();});return b;}
-function pxfRotationSliderSync(box,X){for(let i=0;i<3;i++){const sl=box.querySelector('#pxf_rslide'+i);if(!sl||document.activeElement===sl)continue;const v=+X.r[i]||0;sl.min=String(Math.min(-180,Math.floor(v/180)*180));sl.max=String(Math.max(180,Math.ceil(v/180)*180));sl.value=String(v);}}
+function pxfRotationSliderSync(box,X){for(let i=0;i<3;i++){const sl=box.querySelector('#pxf_rslide'+i);if(!sl)continue;const v=+X.r[i]||0;sl.min=String(Math.min(-180,Math.floor(v/180)*180));sl.max=String(Math.max(180,Math.ceil(v/180)*180));sl.value=String(v);}}
 function pxfFields(get,edit,mode,onReset,size){const til=!size,X=get(),is3=pxfIs3D(mode),box=el('div',{class:'pxf'});
   const num=(id,label,val,step,set)=>{const i=el('input',{type:'number',id,step:String(step),value:String(Math.round(val*1000)/1000),'aria-label':label,title:label});
     i.addEventListener('change',()=>{const v=parseFloat(i.value);if(!isFinite(v))return;edit(x=>set(x,v));const Y=get();pxfRotationSliderSync(box,Y);for(let k=0;k<(is3?3:2);k++){const e=box.querySelector('#pxf_s'+k);if(e)e.value=String(Math.round(pxfShow(Y.s[k],til)*1000)/1000);}const sl=box.querySelector('#pxf_tslide');if(sl)sl.value=String(Math.log10(pxfShow(Y.s[0],true)));});return i;};
