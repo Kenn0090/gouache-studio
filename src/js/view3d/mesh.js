@@ -268,6 +268,18 @@ function meshGroupByMat(m){if(m.setRanges)return m.setRanges;const T=m.idx.lengt
   m.triMat=per(M,1);m.triPart=per(m.triPart,1);m.triIdPart=per(m.triIdPart||m.triPart,1);m.triCol=per(m.triCol,3);
   delete m._topo;delete m._shell;delete m._uvIsl;
   m.setRanges=nm.map((name,k)=>({name,start:st[k],count:cnt[k]}));return m.setRanges;}
+/* Connected pieces keep distinct ID colours even when an exporter joins them in
+   one object. Weld positions across normal/UV seams, preserve authored objects,
+   and join only through a shared edge (point contacts stay separate). */
+function meshIdParts(m){const authored=m.triIdPart||m.triPart,c=m._idShells;if(c&&c.pos===m.pos&&c.idx===m.idx&&c.authored===authored)return c;
+ const P=m.pos,I=m.idx,T=I.length/3,parent=Uint32Array.from({length:T},(_,i)=>i),find=t=>{while(parent[t]!==t){parent[t]=parent[parent[t]];t=parent[t];}return t;};
+ let cap=16;while(cap<I.length*1.25)cap*=2;const edges=new Int32Array(cap).fill(-1),mask=cap-1,q=(i,k)=>Math.round(P[i*3+k]*1e5),same=(a,b)=>q(a,0)===q(b,0)&&q(a,1)===q(b,1)&&q(a,2)===q(b,2),end=e=>I[Math.floor(e/3)*3+(e%3+1)%3],before=(a,b)=>q(a,0)<q(b,0)||q(a,0)===q(b,0)&&(q(a,1)<q(b,1)||q(a,1)===q(b,1)&&q(a,2)<q(b,2));
+ for(let e=0;e<I.length;e++){const t=Math.floor(e/3),part=authored?authored[t]:0;let a=I[e],b=end(e);if(!before(a,b))[a,b]=[b,a];let h=part;
+   for(let k=0;k<3;k++){h=Math.imul(h^q(a,k),16777619);h=Math.imul(h^q(b,k),2246822519);}h=(h^(h>>>16))&mask;
+   while(edges[h]>=0){const f=edges[h],ft=Math.floor(f/3);let x=I[f],y=end(f);if(!before(x,y))[x,y]=[y,x];if((authored?authored[ft]:0)===part&&same(a,x)&&same(b,y)){const u=find(t),v=find(ft);if(u!==v)parent[u]=v;break;}h=(h+1)&mask;}if(edges[h]<0)edges[h]=e;}
+ const ids=new Uint32Array(T),names=[],roots=new Map(),counts=new Map(),source=m.idPartNames||m.partNames||[m.name||'Mesh'];
+ for(let t=0;t<T;t++){const r=find(t);let id=roots.get(r);if(id===undefined){id=names.length;roots.set(r,id);const part=authored?authored[t]:0,n=(counts.get(part)||0)+1;counts.set(part,n);names.push((source[part]||m.name||'Mesh')+' · piece '+n);}ids[t]=id;}
+ return m._idShells={pos:m.pos,idx:m.idx,authored,ids,names};}
 /* Part names can repeat, so keep the match-by-name parts and unique mesh IDs separately. */
 function partsInfo(r,parts){const names=[],idNames=[],idKeys=new Map();let T=0;for(const p of parts)T+=p.idx.length/3;const tp=new Uint32Array(T),ti=new Uint32Array(T);let o=0;for(const p of parts){let k=names.indexOf(p.pname);if(k<0){k=names.length;names.push(p.pname);}const key=p.meshKey||'name:'+p.pname;let id=idKeys.get(key);if(id===undefined){id=idNames.length;idKeys.set(key,id);idNames.push(p.pname||('Mesh '+(id+1)));}const n=p.idx.length/3;tp.fill(k,o,o+n);ti.fill(id,o,o+n);o+=n;}r.partNames=names;r.triPart=tp;r.idPartNames=idNames;r.triIdPart=ti;}
 

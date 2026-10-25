@@ -25,6 +25,8 @@ function bakeDrawHigh(common,F){if(ui.mode!=='bake'||!bk.showHigh||bk.showHigh==
   gl.bindVertexArray(vao);if(see){gl.depthMask(true);gl.disable(gl.BLEND);}}
 /* C steps through what the model shows */
 function bakeShowList(){const have=Object.keys(bk.res).filter(k=>k!=='mcurv'&&k!=='gcurv');return ['material',...have,...Object.keys(BK_PAINT).filter(k=>bk.maps[k])];}
-function bakeCycleShow(dir){const L=bakeShowList();if(L.length<2){toast('Bake first: C steps through the baked maps on the model.');return;}const i=L.indexOf(bk.show);bk.show=L[(i+dir+L.length)%L.length];bk.dirty=true;v3.dirty=true;requestRender();
+function bakeCycleShow(dir){uvw.view='off';bk.uvCheck=false;const L=bakeShowList();if(L.length<2){toast('Bake first: C steps through the baked maps on the model.');return;}const i=L.indexOf(bk.show);bk.show=L[(i+dir+L.length)%L.length];bk.dirty=true;v3.dirty=true;requestRender();
   if(typeof buildBakePanel==='function')buildBakePanel();toast('Showing: '+(bk.show==='material'?'the material (lit)':bk.show==='curv'?'Curvature':BAKE_NAMES[bk.show]||(BK_PAINT[bk.show]?BK_PAINT[bk.show].name+' map':bk.show)));}
 window.addEventListener('keydown',e=>{if(ui.mode!=='bake'||(e.key!=='c'&&e.key!=='C')||e.ctrlKey||e.metaKey||e.altKey||isTypingTarget(e.target))return;e.preventDefault();e.stopImmediatePropagation();bakeCycleShow(e.shiftKey?-1:1);},true);
+
+window.addEventListener('keydown',e=>{if(ui.mode==='bake'&&e.key==='Escape'&&!isTypingTarget(e.target)&&modal.hidden&&(bk.uvCheck||bk.show!=='material')){e.preventDefault();e.stopImmediatePropagation();v3ShowMaterial();}},true);

@@ -172,7 +172,7 @@ async function txToMask(it){const L=doc.active;if(!isLayer(L)&&!(L&&L.type==='gr
   toast('Added “'+it.name+'” to the mask of “'+L.name+'”. Its settings (size, turn, invert) are in the Material editor.');}
 const TX_CHANNELS=[['base','Base colour'],['rough','Roughness'],['metal','Metallic'],['height','Height'],['ao','Ambient occlusion'],['emis','Emissive'],['opac','Opacity']];
 async function txToChannel(it,k){const L=doc.active;if(!isLayer(L)||!L.fill){toast('Select a material layer first.');return;}
-  const t=txCopy(await txTarget(it));matEdBegin(L);const s=L.fill.maps[k]||(L.fill.maps[k]={on:true,src:'value',v:.5,tile:1});
+  const root=doc.root,W=L.fill,t=txCopy(await txTarget(it));if(doc.root!==root||L.fill!==W){disposeTarget(t);toast('The material changed while the texture was loading. Drop it again.');return;}matEdBegin(L);const s=L.fill.maps[k]||(L.fill.maps[k]={on:true,src:'value',v:.5,tile:1});
   const old=L._fillImg&&L._fillImg[k];L._fillImg=Object.assign({},L._fillImg||{});L._fillImg[k]=t;s.src='image';s.name=it.name;s.on=true;fillRender(L,k);matEdCommit();
   if(old&&!Object.values(L._fillImg).includes(old)){/* kept by undo */}
   renderLayers();if(typeof renderMatEd==='function')renderMatEd(true);toast('“'+it.name+'” is now the '+(TX_CHANNELS.find(c=>c[0]===k)||[0,k])[1].toLowerCase()+' of “'+L.name+'”.');}

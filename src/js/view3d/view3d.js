@@ -34,6 +34,7 @@ uniform int uFlipY; uniform int uHas; uniform vec2 uDef; uniform vec3 uCam; unif
 uniform int uEnvOn; uniform float uEnvRot; uniform float uEnvI; uniform sampler2D uEnv0; uniform sampler2D uEnv1; uniform sampler2D uEnv2; uniform sampler2D uEnv3; uniform sampler2D uEnv4; uniform sampler2D uEnv5; uniform sampler2D uIrr; uniform int uTone;
 /* the texture set's shader: 0 standard, 1 skin, 2 anisotropic metal, 3 velvet, 4 toon, 5 cel, 6 spec/gloss view, 7 panner, 8 retro (N64 / PSX); its settings */
 uniform int uMetalView; uniform float uMetalRough;
+uniform int uBevelMaterial; uniform float uBevelMetal; uniform float uBevelRough;
 uniform vec4 uSkin; uniform int uSh; uniform vec4 uShP; uniform vec4 uShQ; uniform vec3 uShC; uniform vec3 uShD;
 /* the Panner shader (0.40): each map slid by its own offset */
 uniform vec2 uPB; uniform vec2 uPR; uniform vec2 uPM; uniform vec2 uPN; uniform vec2 uPA; uniform vec2 uPE; uniform vec2 uPO;
@@ -81,6 +82,7 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
   float rough=clamp((uHas&1)!=0?mapSample(uRough,uv+uPR).r:uDef.x,0.04,1.0), metal=(uHas&2)!=0?mapSample(uMetal,uv+uPM).r:uDef.y, ao=(uHas&8)!=0?mapSample(uAO,uv+uPA).r:1.0;
   /* (0.70) Metal view: the model as polished steel, whatever its own material, so the shape and the bevel read clearly */
   if(uMetalView==1){ alb=lin(vec3(0.78,0.8,0.84)); metal=1.0; rough=uMetalRough; ao=1.0; }
+  if(uBevelMaterial==1){ alb=lin(vec3(0.62,0.64,0.68));metal=uBevelMetal;rough=uBevelRough;ao=1.0; }
   vec3 V=normalize(uCam-vP), L=normalize(uSun), H=normalize(L+V);
   float NdL=max(dot(N,L),0.0), NdV=max(dot(N,V),1e-3), NdH=max(dot(N,H),0.0), VdH=max(dot(V,H),0.0);
   /* a Specular colour map (Spec/Gloss) sets the reflection colour directly (flag 256); otherwise it follows the metal amount */
@@ -322,12 +324,12 @@ function v3MeshU(C,common,it,flip,safeMip=null){const {s,bake,EU,eye,a,e}=C,sg=i
     if(!bake&&!it.thick&&!it.sh&&doc.meshMaps&&doc.meshMaps.thick)it.thick=doc.meshMaps.thick;
     const mOK=ok('metal')&&!(sg&&ok('spec')),hm=(ok('rough')?1:0)|(mOK?2:0)|(ok('nfinal')?4:0)|(ok('ao')?8:0)|(ok('emis')?16:0)|(ok('opac')?64:0)|(it.thick?128:0)|(ok('spec')&&!mOK?256:0);
     return Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uUseUDIM:!!it.udim,uUDIMTile:it.udim?[it.udim.u,it.udim.v]:[0,0],uUseSafeMip:useSafeMip,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:mOK?T.metal.tex:ok('spec')?T.spec.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,uThick:useSafeMip?safeMip.tex:it.thick?it.thick.tex:dummy,...EU,...shadeUniforms(bake?null:it.sh||v3ShadeOf(doc)),
-      uMorph:bake&&bk.fold>0?bk.fold:0,uMorphOff:[it.off||0,0,0],uStudioFill:s.studioFill||0,uStudioRim:s.studioRim||0,uLightColor:s.lightColor||[1,1,1],uShadow:dummy,uShadowVP:{m4:m4()},uShadowOn:0,uShadowSoft:1,...common,uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uMetalView:{int:s.metalView?1:0},uMetalRough:s.metalRough||.25,uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});}
+      uMorph:bake&&bk.fold>0?bk.fold:0,uMorphOff:[it.off||0,0,0],uStudioFill:s.studioFill||0,uStudioRim:s.studioRim||0,uLightColor:s.lightColor||[1,1,1],uShadow:dummy,uShadowVP:{m4:m4()},uShadowOn:0,uShadowSoft:1,...common,uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uMetalView:{int:s.metalView?1:0},uMetalRough:s.metalRough||.25,uBevelMaterial:{int:bevelPreviewOn()&&bvSettings().previewMaterial?1:0},uBevelMetal:bvSettings().previewMetal||0,uBevelRough:bvSettings().previewRough??.25,uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});}
 function v3DrawWire(g,list,common){gl.bindVertexArray(g.evao);try{if(ui.mode!=='p3d'){useProg(P3.line,{...common,uCol:[.95,.7,.35,1]});gl.drawElements(gl.LINES,g.ecount,gl.UNSIGNED_INT,0);return;}
     for(const it of list){if(!it.count)continue;let r;if(it.start===0&&it.count*3===g.count)r={b:g.eb,count:g.ecount};else{const key=it.start+':'+it.count,cache=g.wireRanges||(g.wireRanges=new Map());r=cache.get(key);if(!r){const edges=meshEdges({idx:v3.mesh.idx.subarray(it.start*3,(it.start+it.count)*3)}),b=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,b);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,edges,gl.STATIC_DRAW);r={b,count:edges.length};cache.set(key,r);}}
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,r.b);useProg(P3.line,{...common,uCol:[.95,.7,.35,1]});gl.drawElements(gl.LINES,r.count,gl.UNSIGNED_INT,0);}}
   finally{gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,g.eb);}}
-function v3Render(F,flip){const g=v3.gpu;if(!g)return;v3Work.scenes++;F.sceneFlip=!!flip;const C=v3Ctx(),{s,bake}=C,list=v3List(C),wireOnly=ui.mode==='p3d'&&s.wire&&s.wireOnly,SU=wireOnly?{}:studioShadowPrepare(C,list),BV=!wireOnly&&typeof bevelPreviewOn==='function'&&bevelPreviewOn()&&!(bk.fold>0)?bevelPreviewGPU(v3.mesh):null;
+function v3Render(F,flip){const g=v3.gpu;if(!g)return;gl.blendEquation(gl.FUNC_ADD);v3Work.scenes++;F.sceneFlip=!!flip;const C=v3Ctx(),{s,bake}=C,list=v3List(C),wireOnly=ui.mode==='p3d'&&s.wire&&s.wireOnly,SU=wireOnly?{}:studioShadowPrepare(C,list),BV=!wireOnly&&typeof bevelPreviewOn==='function'&&bevelPreviewOn()&&!(bk.fold>0)?bevelPreviewGPU(v3.mesh):null;
   const activeRange=!bake&&ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():null,safeMip=activeRange&&typeof seamMipLimit==='function'?seamMipLimit(activeRange):null;
   gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);const bg=BG3[s.bg]||BG3.dark,tr=!!(v3.transparent);gl.clearColor(bg[0],bg[1],bg[2],tr?0:1);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
@@ -349,6 +351,7 @@ function v3Render(F,flip){const g=v3.gpu;if(!g)return;v3Work.scenes++;F.sceneFli
   if(!wireOnly&&!bake&&sel.active&&!sel.quick&&sel.t&&(ui.mode==='p3d'||v3.paintOn)){const R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:g.count/3};
     gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);useProg(P3.sel,Object.assign({},common,{uSel:sel.t.tex}));gl.bindVertexArray(g.vao);
     gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);gl.depthMask(true);gl.disable(gl.BLEND);}
+  if(!bake)sel3HoverDraw(g,common,F);
   if(s.wire)v3DrawWire(g,list,common);
   if(bake&&!(bk.fold>0)){bakeDrawHigh(common,F);bakeDrawCage(common);}
   if(!bake&&(v3.paintOn||ui.mode==='p3d')){drawMir3(VP);drawMir3Cursors(F,common);}
@@ -396,6 +399,7 @@ function v3WireMode(){const s=v3s();return s.wire?(s.wireOnly?'wire':'overlay'):
 function v3SetWireMode(mode){const s=v3s();s.wire=mode!=='shaded';s.wireOnly=mode==='wire';if(s.wire)v3.rt=false;
   const roots=[document,...(v3.pop?[v3.pop.win.document]:[])];for(const root of roots){for(const b of root.querySelectorAll('[data-wire-mode]')){const on=b.dataset.wireMode===mode;b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));}const b=root.getElementById('v3Wire');if(b){b.classList.toggle('on',s.wire);b.setAttribute('aria-pressed',String(s.wire));}if(s.wire){const buttons=root.querySelectorAll('#v3Shade .segb');buttons.forEach((b,i)=>b.setAttribute('aria-pressed',String(i===(v3Unlit()?1:0))));}}
   v3.dirty=true;requestRender();if(typeof maskBarSync==='function')maskBarSync();}
+function v3ShowMaterial(){if(ui.mode==='p3d'){p3ShowLit();return;}if(ui.mode==='bake'){uvw.view='off';bk.uvCheck=false;bk.show='material';bk.dirty=true;buildBakePanel();}ui.viewMask=false;v3s().unlit=false;v3.rt=false;setView('material');v3.mapsDirty=true;v3.dirty=true;requestRender(true);}
 function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.replaceChildren();
   const models=el('select',{id:'v3Model','aria-label':'Model',title:s.model==='imported'?'Imported mesh active. Primitive startup models are disabled; use Import to replace the mesh.':'Choose a startup primitive or import a mesh.'},...Object.entries(PRIMS).map(([k,[l]])=>el('option',{value:k,text:l,disabled:s.model==='imported'})),
     ...(v3.imported?[el('option',{value:'imported',text:v3.imported.name})]:[]),el('option',{value:'__import',text:'Import a model (OBJ, glTF, GLB, FBX)…'}));
@@ -409,8 +413,9 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   viewSel.onchange=()=>{if(viewSel.value)v3SnapView(viewSel.value);viewSel.value='';};
   const projBtn=el('button',{class:'btn sm',id:'v3Proj',text:s.ortho?'Orthographic':'Perspective',title:'Perspective looks natural; orthographic has no depth shrinking, good for lining things up (Numpad 5)','aria-pressed':String(!!s.ortho),onclick:()=>v3SetOrtho(!v3s().ortho)});
   const tog=(id,label,key,title)=>{const b=el('button',{class:'btn sm'+(s[key]?' on':''),id,text:label,title,'aria-pressed':String(!!s[key])});b.onclick=()=>{s[key]=!s[key];b.classList.toggle('on',s[key]);b.setAttribute('aria-pressed',String(s[key]));v3.dirty=true;requestRender();if(key==='wire'&&typeof maskBarSync==='function')maskBarSync();};return b;};
-  const shade=seg([['lit','Lit'],['unlit','Unlit'],['rt','Ray traced']],v3Unlit()?'unlit':v3.rt?'rt':'lit',x=>{if(ui.mode==='p3d'){if(x==='unlit'){p3SetChannelView('base');return;}p3SetChannelView(null);}if(x==='rt'&&s.wire)v3SetWireMode('shaded');s.unlit=x==='unlit';v3.rt=x==='rt';v3.mapsDirty=true;v3.dirty=true;requestRender(true);refresh3dUI();},'Shading');shade.id='v3Shade';
+  const shade=seg([['lit','Lit'],['unlit','Unlit'],['rt','Ray traced']],v3Unlit()?'unlit':v3.rt?'rt':'lit',x=>{if(ui.mode==='p3d'){if(x==='unlit'){p3SetChannelView('base');return;}if(x==='lit'){p3ShowLit();return;}p3SetChannelView(null);}if(x==='rt'&&s.wire)v3SetWireMode('shaded');s.unlit=x==='unlit';v3.rt=x==='rt';v3.mapsDirty=true;v3.dirty=true;requestRender(true);refresh3dUI();},'Shading');shade.id='v3Shade';
   const gear=el('button',{class:'btn sm',text:'Settings',id:'v3Gear','aria-expanded':'false'});
+  const materialB=el('button',{class:'btn sm',id:'v3Material',text:'Material',title:'Return to the lit material and turn off map and UV previews',onclick:v3ShowMaterial});
   const dock=el('button',{class:'btn sm',text:v3.pop?'Dock':'Pop out',id:'v3Pop',title:v3.pop?'Put the 3D view back beside the canvas':'Open the 3D view in its own window (for a second screen)'});dock.onclick=()=>pop3D(!v3.pop);
   const close=el('button',{class:'btn sm',text:'×',title:'Close the 3D view (F3)','aria-label':'Close the 3D view'});close.onclick=()=>{if(ui.mode==='p3d')p3SetLayout('2d');else toggle3D(false);};
   const pbtn=el('button',{class:'btn sm'+(v3.paintOn?' on':''),id:'v3Paint',text:'Paint',title:'Paint on the model with the brush (Alt+drag turns it, right-drag moves it)','aria-pressed':String(v3.paintOn)});
@@ -424,11 +429,11 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   let bar;
   if(ui.mode==='p3d'){/* 3D Paint (0.37): a slim bar, the rest behind ⋯ */
     const backB=tog('v3NoBack','Skip back faces','noBack','Paint never goes through a thin part to its far side, or lands on a face seen from behind');if(s.noBack===undefined){s.noBack=true;backB.classList.add('on');backB.setAttribute('aria-pressed','true');}
-    const xt=el('div',{class:'v3xtra',id:'v3Xtra',hidden:true},modelControl,detSel,wireB,uvB,spinB,backB,...capB,gear,dock,close),more=el('button',{class:'btn sm',id:'v3More',text:'⋯',title:'More: model, detail, wireframe, spin, screenshot, render, turntable, settings','aria-expanded':'false','aria-label':'More 3D view options'});
+    const xt=el('div',{class:'v3xtra',id:'v3Xtra',hidden:true},modelControl,detSel,wireB,uvB,spinB,backB,...capB,dock,close),more=el('button',{class:'btn sm',id:'v3More',text:'⋯',title:'More: model, detail, wireframe, spin, screenshot, render, turntable','aria-expanded':'false','aria-label':'More 3D view options'});
     more.onclick=()=>{xt.hidden=!xt.hidden;more.setAttribute('aria-expanded',String(!xt.hidden));more.classList.toggle('on',!xt.hidden);};
     xt.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});
-    bar=el('div',{class:'v3bar slim'},shade,metalB,p3ChannelControl(),...(mb?[mb.wrap]:[]),viewSel,projBtn,more,xt);}
-  else bar=el('div',{class:'v3bar'},...(inBake?[lowLab]:ui.mode==='convert'?[modelControl,detSel]:[modelControl,detSel,shade]),...(mb?[mb.wrap]:[]),...(ui.mode==='convert'||ui.mode==='p3d'?[]:[pbtn]),viewSel,projBtn,metalB,wireB,uvB,spinB,...capB,gear,dock,close);
+    bar=el('div',{class:'v3bar slim'},shade,metalB,p3ChannelControl(),...(mb?[mb.wrap]:[]),viewSel,projBtn,gear,more,xt);}
+  else bar=el('div',{class:'v3bar'},...(inBake?[lowLab]:ui.mode==='convert'?[modelControl,detSel]:[modelControl,detSel,shade]),...(mb?[mb.wrap]:[]),...(ui.mode==='convert'||ui.mode==='p3d'?[]:[pbtn]),viewSel,projBtn,materialB,metalB,wireB,uvB,spinB,...capB,gear,dock,close);
   const box=el('div',{class:'v3set',id:'v3Settings',hidden:true,'aria-label':'3D viewport settings'});gear.setAttribute('aria-controls','v3Settings');
   box.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});
   if(ui.mode==='p3d'){const display=el('div',{class:'v3display',role:'group','aria-label':'Viewport display'});
@@ -499,7 +504,7 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     e.preventDefault();hit.tabIndex=0;hit.focus({preventScroll:true});/* release toolbar/dropdown keyboard focus when returning to the viewport */
     try{hit.setPointerCapture(e.pointerId);}catch(er){}
     if(e.button===0&&v3PickHeld(e)&&v3PickKey()!=='Alt'){v3HoverPick(hit,e);return;}
-    if(e.button===0&&!e.altKey&&sel3.armed){p3SelectAt(hit,e);return;}
+    if(e.button===0&&!e.altKey&&sel3.armed){sel3HoverClear();p3SelectAt(hit,e);return;}
     /* mask mode: Paint must be on to paint; Box, Lasso and Polygon draw shapes */
     /* the projection gizmo (a material or mask row projected from 3D) */
     if(e.button===0&&!e.altKey&&!st3.sKey&&pgzDown(hit,e))return;
@@ -507,7 +512,7 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     let how=v3NavOf(hit,e);
     if(how==='paint'){if(e.button===0&&meshDown(hit,e)&&v3.mstroke)return;how='turn';if(stroke)return;}
     v3.drag={x:e.clientX,y:e.clientY,how,id:e.pointerId,x0:e.clientX,y0:e.clientY,alt:e.altKey&&e.button===0,penAlt:how==='pan'&&e.altKey&&typeof penPanBtn==='function'&&penPanBtn(e)};});
-  hit.addEventListener('pointermove',e=>{v3PickHold.hit=hit;v3PickHold.point={clientX:e.clientX,clientY:e.clientY};if(pgz.drag){if(!e.buttons){pgzUp();return;}pgzMove(hit,e);return;}if(!e.buttons&&!v3PickHeld(e)&&pgzHover(hit,e)){meshCursor(hit,null);return;}if(mk3Busy()){mk3Move(hit,e);return;}meshCursor(hit,e);
+  hit.addEventListener('pointermove',e=>{sel3HoverMove(hit,e);v3PickHold.hit=hit;v3PickHold.point={clientX:e.clientX,clientY:e.clientY};if(pgz.drag){if(!e.buttons){pgzUp();return;}pgzMove(hit,e);return;}if(!e.buttons&&!v3PickHeld(e)&&pgzHover(hit,e)){meshCursor(hit,null);return;}if(mk3Busy()){mk3Move(hit,e);return;}meshCursor(hit,e);
     /* no button held any more: the release went missing (another window, a pen gesture, Alt menu mode); finish instead of sticking */
     if(!e.buttons){if(v3.mstroke)meshUp();if(v3.drag)v3.drag=null;}
     /* a pen hovering with its side button held moves the view (no tip contact, so no pointerdown arrives) */
@@ -527,7 +532,7 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
       if(e.shiftKey){const Q=Math.PI/2;if(Math.abs(d.fp)>Math.PI/4){c.pitch=d.fp>0?1.5699:-1.5699;c.yaw=Math.round(d.fy/Q)*Q;}else{c.pitch=0;c.yaw=Math.round(d.fy/Q)*Q;}}
       else{c.yaw=d.fy;c.pitch=d.fp;}}v3.dirty=true;requestRender();});
   const up=e=>{if(pgz.drag){pgzUp();return;}if(mk3Busy()&&e.type!=='lostpointercapture'){mk3Up(e);return;}if(v3.drag&&e.pointerId!==undefined&&v3.drag.id!==e.pointerId)return;v3.drag=null;meshUp(e);};
-  hit.addEventListener('pointerup',up);hit.addEventListener('pointercancel',up);hit.addEventListener('lostpointercapture',up);hit.addEventListener('pointerleave',()=>{v3.hover=false;v3PickRelease();v3PickHold.hit=null;v3PickHold.point=null;meshCursor(hit,null);});hit.addEventListener('pointerenter',()=>{v3.hover=true;});
+  hit.addEventListener('pointerup',up);hit.addEventListener('pointercancel',up);hit.addEventListener('lostpointercapture',up);hit.addEventListener('pointerleave',()=>{sel3HoverClear();v3.hover=false;v3PickRelease();v3PickHold.hit=null;v3PickHold.point=null;meshCursor(hit,null);});hit.addEventListener('pointerenter',()=>{v3.hover=true;});
   hit.addEventListener('wheel',e=>{e.preventDefault();e.stopPropagation();v3.cam.dist=clamp(v3.cam.dist*Math.exp(e.deltaY*.0012),.2,50);v3.dirty=true;requestRender();},{passive:false});
   for(const t of ['selectstart','dragstart'])hit.parentNode.addEventListener(t,e=>e.preventDefault());
   hit.addEventListener('dblclick',e=>{const s=window.getSelection&&window.getSelection();if(s&&s.rangeCount)s.removeAllRanges();if(maskToolsOn()&&mk3.tool&&mk3.tool!=='paint')return;if(ui.mode==='p3d'){if(v3PickAt(hit,e))return;}else{if(typeof p3SelectAt==='function'&&p3SelectAt(hit,e))return;}v3Frame();requestRender();});}

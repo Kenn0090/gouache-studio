@@ -30,6 +30,8 @@ jobs:
       - run: node tests/e2e/colour-range-views.cjs
       - run: node tests/e2e/mask-picker.cjs
       - run: node tests/e2e/bevel-scene.cjs
+      - run: node tests/e2e/bevel72.cjs
+      - run: node tests/e2e/viewport72.cjs
       - run: node tests/e2e/artist-fixes.cjs
       - run: node tests/e2e/symmetry.cjs
       - run: node tests/e2e/numeric-sliders.cjs

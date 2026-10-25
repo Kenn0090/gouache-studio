@@ -912,6 +912,7 @@ body.dcdragging,body.dcdragging *{cursor:grabbing!important;user-select:none}
 /* 0.37: 3D Paint keeps its bars slim */
 .v3xtra{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
 .v3xtra[hidden]{display:none}
+.fillcard.material-drop{outline:2px solid var(--accent,#e3a45d);outline-offset:-2px;background:var(--hover,#343942)}
 .v3set{z-index:20;box-sizing:border-box;overscroll-behavior:contain;scrollbar-gutter:stable;grid-auto-rows:max-content;align-content:start;min-height:0}
 .v3bar{z-index:10}
 .v3display{display:flex;flex-wrap:wrap;gap:5px}

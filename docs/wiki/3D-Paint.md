@@ -292,3 +292,7 @@ A brush stroke projects onto the visible surface of the selected texture set, in
 Gaussian and Box blur have an **Across mesh seams** option. In 3D Paint, with a single 0-1 UV tile and UV tiling set to 1, their samples follow connected triangles across island boundaries and folded surfaces. Internal triangle edges keep their original sample positions, so dense triangulation no longer distorts smooth detail. Surface boundaries clamp samples and UV gutters are excluded. Turn the option off for ordinary image-space blur. UDIM layouts and cross-texture-set filtering are not supported by this option.
 
 Projected painting keeps brush opacity on visible bevels and hard edges; shading normals no longer fade those pixels. Depth visibility still prevents painting through hidden surfaces. If an older saved stroke contains an unpainted strip, repaint that strip after updating: the original stroke’s missing pixels cannot be recovered automatically.
+
+When **Select part** is active, hovering highlights the faces that the chosen Object, Material, UV island, Face or Loop mode would select. The preview does not alter the mask.
+
+Drop an image file or a texture-library tile onto a channel in **Material editor** to assign that image; an inactive channel turns on automatically. Undo restores the previous input.

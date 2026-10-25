@@ -69,7 +69,7 @@ Under **Normal › Bevel shader**, enable the bevel and **Preview before baking*
 
 **Bake bevel normal** creates a tangent-space normal map, including when there is no high-poly. The world-normal bake uses the same rounded normals. Preview turns off after the normal bake so the resulting normal map supplies the shading. Re-enabling preview recalculates the bevel rather than applying it twice to the previous bevel bake. Existing normal detail is retained by the surface probes.
 
-Use widths that fit the part: a shading bevel cannot change a large silhouette or replace modeled forms. This implementation approximates rounded normals with scene probes; it is not a pixel-identical Toolbag shader. Width is currently a global bake setting, with vertex colors for local variation.
+Use widths that fit the part: a shading bevel cannot change a large silhouette or replace modeled forms. Connected edges blend by their distance and imported smooth normals; separate-object intersections use scene probes. The result depends on the source geometry and its imported normals. Width is shared by the bake, with per-material shares and vertex colors for local variation. **Use preview material**, **Preview metalness** and **Preview roughness** let you inspect highlights without changing your material or baked maps.
 
 ## Settings: one tab per map
 Under the model rows, the tabs hold the settings. A dot marks the maps that will be baked; tick **Bake …** at the top of a tab to turn a map on or off.
@@ -113,7 +113,7 @@ Each map arrives as a **plain layer** (no folders), so you can set blend modes b
 
 ## ID colours
 In the **ID** tab, *ID colours from* chooses where the ID map's colours come from:
-- **Separate meshes:** one stable, distinct colour per mesh object, even when two objects share a name.
+- **Separate meshes:** one stable, distinct colour per disconnected piece, including several pieces joined into one imported object. Shared UV or normal seams do not split a piece; objects with identical names stay distinct.
 - **Materials:** one colour per material.
 - **UV islands:** one colour per connected UV island.
 - **Vertex colours:** the colours painted on the high-poly's vertices (OBJ, glTF, FBX).
@@ -190,3 +190,5 @@ Bakes are stored as OpenGL normals, like everything else in the app. Pick the en
 You can rotate the viewport while a bake runs. Bake pauses restore the shared renderer’s clipping and drawing state before handing control back to the view, preventing black flashes and clipped frames.
 
 Use **Add…** beside High-poly to add another file. Each file keeps its original position in the model. Remove individual files with × in the list. **Load…** replaces the high-poly set; dropping another `_high` file adds it.
+
+Use **Material** in the viewport toolbar (or **Escape**) to turn off UV and bake-map inspection. Clicking an active UV inspection mode again also turns it off.

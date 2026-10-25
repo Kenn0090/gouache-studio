@@ -129,14 +129,14 @@ const BK_SEND_ORDER=['normal','height','ao','curv','curvEdge','curvCrease','thic
 /* ---- where the ID map's colours come from (Other tab): separate meshes (parts), materials, vertex colours,
    or ZBrush polypaint; Auto uses vertex colours, else material colours, else one colour per part ---- */
 const BK_ID_SRC=[['auto','Auto'],['part','Separate meshes'],['mat','Materials'],['uv','UV islands'],['vertex','Vertex colours'],['poly','Polypaint']];
-function bakeIdHas(M){const n=M?M.pos.length/3:0,T=M?M.idx.length/3:0,parts=M&&(M.idPartNames||M.partNames)||[],partIds=M&&(M.triIdPart||M.triPart);
+function bakeIdHas(M){const n=M?M.pos.length/3:0,T=M?M.idx.length/3:0,pieces=M?meshIdParts(M):null,parts=pieces?.names||[],partIds=pieces?.ids;
   return {part:!!(M&&parts.length>1&&partIds&&partIds.length===T),partCount:parts.length,mat:!!(M&&M.matNames&&M.matNames.length>1&&M.triMat&&M.triMat.length===T),
     vertex:!!(M&&M.vcol&&M.vcol.length===n*4),poly:!!(M&&M.pcol&&M.pcol.length===n*4),uv:!!(M&&!M.noUV&&M.uv&&M.uv.length===n*2)};}
 function bakeIdPalette(M,count,tag,names){let seed=2166136261;for(const c of String(tag)+'|'+(M.name||'mesh')+'|'+(names||[]).join('|'))seed=Math.imul(seed^c.charCodeAt(0),16777619);
   const rand=()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};
   const hue0=rand(),rgb=(h,s,v)=>{h=((h%1)+1)%1*6;const i=Math.floor(h),f=h-i,p=v*(1-s),q=v*(1-s*f),t=v*(1-s*(1-f));return [[v,t,p],[q,v,p],[p,v,t],[p,q,v],[t,p,v],[v,p,q]][i%6];};
   return Array.from({length:Math.max(1,count)},(_,i)=>rgb(hue0+i*.618033988749895,.72+rand()*.22,.82+rand()*.16));}
-function bakeIdSource(M){const requested=bakeCfg.idSrc||'auto',h=bakeIdHas(M),T=M.idx.length/3,parts=M.idPartNames||M.partNames||['mesh'],partIds=M.triIdPart||M.triPart;let missing=null;
+function bakeIdSource(M){const requested=bakeCfg.idSrc||'auto',h=bakeIdHas(M),T=M.idx.length/3,parts=meshIdParts(M).names,partIds=meshIdParts(M).ids;let missing=null;
   const per=(ids,names,tag)=>{const list=names&&names.length?names:['mesh'],colors=bakeIdPalette(M,list.length,tag,list),o=new Float32Array(T*3);for(let t=0;t<T;t++){const id=ids&&ids.length===T?ids[t]|0:0;o.set(colors[id]||colors[0],t*3);}return o;};
   const setPart=()=>{M.triCol=per(partIds,parts,'mesh');},setMat=()=>{M.triCol=per(M.triMat,M.matNames||['material'],'material');},fallback=()=>h.mat?setMat():setPart();
   M.col=null;M.triCol=null;let s=requested;
@@ -389,7 +389,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
     if(T==='position')pg.append(on('position'),note('Where each point is inside the model’s box, as a colour gradient (red = X, green = Y, blue = Z). Masks use it for gradients from bottom to top or side to side.'));
     if(T==='id'){const M=C.high||bkLow(),h=bakeIdHas(M),have=[h.part&&'separate meshes ('+h.partCount+')',h.mat&&'materials ('+M.matNames.length+')',h.uv&&'UVs',h.vertex&&'vertex colours',h.poly&&'polypaint'].filter(Boolean),sources=BK_ID_SRC.filter(([k])=>k!=='uv'||h.uv);
       pg.append(on('id'),el('div',{class:'sub',text:'ID colours from'}),(()=>{const g=seg(sources,C.idSrc||'auto',v=>{C.idSrc=v;},'ID colours from');g.classList.add('themeseg');g.id='bkIdSrc';return g;})(),
-        note('The '+(C.high?'high-poly':'low-poly')+' has: '+(have.length?have.join(', '):'one mesh, no materials or colours')+'. Separate meshes: one unique colour per object. Materials: one colour per material. UV islands: one colour per connected UV island. Vertex colours: the colours painted on its vertices. Polypaint: ZBrush polypaint (export the OBJ with Polypaint on). Auto: vertex colours, then materials, then separate meshes.'),
+        note('The '+(C.high?'high-poly':'low-poly')+' has: '+(have.length?have.join(', '):'one mesh, no materials or colours')+'. Separate meshes: one unique colour per disconnected piece, including pieces joined into one imported object. Materials: one colour per material. UV islands: one colour per connected UV island. Vertex colours: the colours painted on its vertices. Polypaint: ZBrush polypaint (export the OBJ with Polypaint on). Auto: vertex colours, then materials, then separate meshes.'),
         note('In 3D Paint, masks can pick these colours: Alt+click a mask, then ID colour.'));}
     return pg;};
   let tabs=tabBar(),page=tabPage();
@@ -418,7 +418,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
   const have=Object.keys(bk.res).filter(k=>k!=='mcurv'&&k!=='gcurv');
   if(have.length||bk.maps.skew||bk.maps.offset){const opts=[['material','Material (lit)'],...have.map(k=>[k,k==='curv'?'Curvature':BAKE_NAMES[k]]),...Object.keys(BK_PAINT).filter(k=>bk.maps[k]).map(k=>[k,BK_PAINT[k].name+' map'])];
     const s=el('select',{id:'bkShow','aria-label':'Show'},...opts.map(([v,t])=>el('option',{value:v,text:t})));s.value=opts.some(o=>o[0]===bk.show)?bk.show:'material';
-    s.onchange=()=>{bk.show=s.value;bk.dirty=true;requestRender();};colA.append(row('Show',s),...(bk.res.normal?[el('button',{class:'btn',id:'bkCompare',text:'Compare with a normal map…',title:'Pick a normal map made elsewhere (Marmoset…) and see how far the baked one is from it',onclick:bakeCompare})]:[]),el('p',{class:'note',text:'C steps through the maps on the model.'}));
+    s.onchange=()=>{bk.show=s.value;uvw.view='off';bk.uvCheck=false;bk.dirty=true;v3.dirty=true;requestRender();};colA.append(row('Show',s),...(bk.res.normal?[el('button',{class:'btn',id:'bkCompare',text:'Compare with a normal map…',title:'Pick a normal map made elsewhere (Marmoset…) and see how far the baked one is from it',onclick:bakeCompare})]:[]),el('p',{class:'note',text:'C steps through the maps on the model.'}));
     if(bk.show==='material')colA.append(el('div',{class:'chips'},chk('bkDocBase','Use the document’s base colour',bk.docBase,v=>{bk.docBase=v;v3.mapsDirty=true;bk.dirty=true;requestRender(true);})));}
   if(bk.stale.size)colA.append(el('p',{class:'note warn',text:[...bk.stale].map(k=>BAKE_NAMES[k]).join(' and ')+' will update on the next full bake.'}));
   /* fixing */

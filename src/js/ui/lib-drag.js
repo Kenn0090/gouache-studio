@@ -9,9 +9,10 @@ document.addEventListener('pointerdown',e=>{if(e.button!==0)return;const t=e.tar
 /* (0.37.2, Kenn) Ctrl + drag over the model shows the ID map so you can see which colour the material lands on */
 let libIdView=false;
 function libIdShow(on){on=!!on&&ui.mode==='p3d'&&!!(doc.meshMaps&&doc.meshMaps.id);if(on===libIdView)return;libIdView=on;if(typeof v3!=='undefined'){v3.dirty=true;requestRender(true);}}
-function libClear(){stage.classList.remove('texture-drop');const pn=document.getElementById('pane3d');if(pn)pn.classList.remove('libover');document.querySelectorAll('.lrow.drop-into,.lrow.drop-mask,.meshslot.dropon,.txmix-drop.dropon').forEach(r=>r.classList.remove('drop-into','drop-mask','dropon'));dropLine.hidden=true;const f=$('#favoritesBody');if(f)f.classList.remove('dropon');}
+function libClear(){stage.classList.remove('texture-drop');const pn=document.getElementById('pane3d');if(pn)pn.classList.remove('libover');document.querySelectorAll('.lrow.drop-into,.lrow.drop-mask,.meshslot.dropon,.txmix-drop.dropon,.fillrow.material-drop').forEach(r=>r.classList.remove('drop-into','drop-mask','dropon','material-drop'));dropLine.hidden=true;const f=$('#favoritesBody');if(f)f.classList.remove('dropon');}
 /* where a drop at (x, y) goes: {mask: layer} for smart masks, {at: {parent, index}} for the rest */
 function libTarget(x,y,D){D=D||libDrag.d;
+  const channel=document.elementFromPoint(x,y)?.closest('[data-material-channel]');if(D.kind==='tex'&&channel&&isLayer(doc.active)&&doc.active.fill)return {materialChannel:channel.dataset.materialChannel,row:channel};
   const favorite=document.elementFromPoint(x,y)?.closest('#favoritesBody');if(favorite)return {favorite:true};
   const mixer=document.elementFromPoint(x,y)?.closest('.txmix-drop');if(D.kind==='tex'&&mixer)return {mix:true,row:mixer};
   if(D.kind==='brush'||D.kind==='tool')return null;
@@ -34,6 +35,7 @@ window.addEventListener('pointermove',e=>{const D=libDrag.d;if(!D||e.pointerId!=
   const T=libTarget(e.clientX,e.clientY);D.target=T;libIdShow(!!(T&&T.mesh&&D.ctrl));if(!T)return;
   if(T.favorite){$('#favoritesBody').classList.add('dropon');return;}
   if(T.mix){T.row.classList.add('dropon');return;}
+  if(T.materialChannel){T.row.classList.add('material-drop');return;}
   if(T.canvas){stage.classList.add('texture-drop');return;}
   if(T.meshSlot){T.row.classList.add('dropon');return;}
   if(T.mesh){const pn=document.getElementById('pane3d');if(pn)pn.classList.add('libover');return;}
@@ -48,7 +50,7 @@ function libDrop(e){const D=libDrag.d;if(!D||e.pointerId!==D.id)return;libDrag.d
   D.ctrl=e.ctrlKey||e.metaKey;const T=libTarget(e.clientX,e.clientY,D);if(!T)return;if(T.mix){if(typeof txMix.add==='function')txMix.add(D.rec);return;}libApply(D.kind,D.rec,T);}
 window.addEventListener('pointerup',libDrop,true);window.addEventListener('pointercancel',e=>{if(libDrag.d&&e.pointerId===libDrag.d.id){libDrag.d=null;libGhost.hidden=true;libClear();libIdShow(false);document.body.classList.remove('libdragging');}},true);
 /* also used by tests */
-function libApply(kind,rec,T){if(T.favorite)return favoritesAdd(kind,rec);if(kind==='meshmap')return p3MapLibraryDrop(rec,T.meshSlot);if(kind==='project')return paUse(rec,T);if(rec&&rec.bundled&&!(rec.fill&&rec.imgs)){gmLoad(rec).then(()=>libApply(kind,rec,T)).catch(e=>toast('Could not load “'+rec.name+'”: '+(e.message||e)));return;}if(T.mesh)return libMeshDrop(kind,rec,T);
+function libApply(kind,rec,T){if(T.materialChannel&&kind==='tex')return txToChannel(rec,T.materialChannel);if(T.favorite)return favoritesAdd(kind,rec);if(kind==='meshmap')return p3MapLibraryDrop(rec,T.meshSlot);if(kind==='project')return paUse(rec,T);if(rec&&rec.bundled&&!(rec.fill&&rec.imgs)){gmLoad(rec).then(()=>libApply(kind,rec,T)).catch(e=>toast('Could not load “'+rec.name+'”: '+(e.message||e)));return;}if(T.mesh)return libMeshDrop(kind,rec,T);
   if(kind==='smask'){const n=T.mask;if(!n)return;selectOnly(n);renderLayers();smMaskApply(rec);return;}
   if(kind==='tex'){if(T.mask){selectOnly(T.mask);renderLayers();return txToMask(rec);}return txToLayer(rec,T.at);}
   insertAt=T.at;try{return kind==='smart'?smApply(rec):matApply(rec);}finally{insertAt=null;}}
