@@ -121,7 +121,7 @@ int bkTrace(vec3 o,vec3 d,float tmax,bool any,out float tHit,out vec2 bc){ int s
   vec3 inv=1.0/(d+vec3(1e-12)); int guard=0;
   while(sp>0&&guard<40000){ guard++; int ni=st[--sp]; vec4 a=bkF(uNodes,ni*2),b=bkF(uNodes,ni*2+1); if(!bkBox(o,inv,a.xyz,b.xyz,tHit)) continue;
     if(b.w<0.0){ int e=int(-b.w+0.5),c=e%8,s=int(a.w+0.5)+(e/8)*1048576;
-      for(int k=0;k<4;k++){ if(k>=c) break; int t=s+k; if(t==bkSkip) continue; vec4 w0=bkF(uTris,t*3); if(bkPart>=0&&int(w0.w+0.5)!=bkPart) continue; if(bkSurface>=0&&int(bkF(uBVInfo,t*2).x+0.5)!=bkSurface)continue; vec3 v0=w0.xyz,v1=bkF(uTris,t*3+1).xyz,v2=bkF(uTris,t*3+2).xyz;
+      for(int k=0;k<4;k++){ if(k>=c) break; int t=s+k; if(t==bkSkip) continue; vec4 w0=bkF(uTris,t*3); if(bkPart>=0&&int(w0.w+0.5)!=bkPart) continue; if(bkSurface>=0&&int(bkF(uBVInfo,t*3).x+0.5)!=bkSurface)continue; vec3 v0=w0.xyz,v1=bkF(uTris,t*3+1).xyz,v2=bkF(uTris,t*3+2).xyz;
         vec3 e1=v1-v0,e2=v2-v0,p=cross(d,e2); float det=dot(e1,p); if(abs(det)<1e-12) continue; float id=1.0/det; vec3 s0=o-v0; float u=dot(s0,p)*id; if(u<-BK_EDGE||u>1.0+BK_EDGE) continue;
         vec3 q=cross(s0,e1); float v=dot(d,q)*id; if(v<-BK_EDGE||u+v>1.0+BK_EDGE) continue; float tt=dot(e2,q)*id; if(tt>1e-6&&tt<tHit){ tHit=tt; hit=t; bc=vec2(u,v); if(any) return hit; } } }
     else if(sp<62){ int r=int(b.w+0.5),ax=int(a.w+0.5); if(d[ax]<0.0){ st[sp++]=ni+1; st[sp++]=r; } else { st[sp++]=r; st[sp++]=ni+1; } } }

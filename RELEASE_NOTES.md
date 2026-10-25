@@ -1,3 +1,14 @@
+# Gouache Studio 0.72.0
+
+- **Smoother bevels.** Connected edges now blend continuously across face diagonals and curved rims, using the model's smooth normals. Separate-object intersections retain scene-aware rounding. Added preview-only **Metalness** and **Roughness** controls.
+- **Viewport Settings.** Settings is directly visible in Paint, 3D Paint, Bake and Convert, including detached 3D views. Starting a new 3D project refreshes the controls for that project.
+- **Sharper shadows.** Choose **Automatic, 1K, 2K, 4K, 8K or 16K** shadow resolution in Settings, within the graphics card's limit. Shadow coverage fits the model more closely and filtered comparisons soften pixel steps.
+- **Safer tabs.** Document and panel tabs close from their right-click menus. Document save confirmations and Ctrl+W remain available.
+- **Material image drops.** Drop an image file onto any material channel, including an inactive one. Dragging a texture from the library onto a channel also assigns it there, with Undo.
+- **Selection hover.** Select part previews the faces under the pointer before changing the mask. The highlight leaves mask pixels untouched.
+- **Separate mesh IDs.** Disconnected pieces receive distinct ID colours even when an exporter combines them into one object. UV and normal seams do not split a connected piece.
+- **Exit texture inspection.** The viewport's **Material** button clears bake-map and UV previews. Active UV inspection buttons toggle off; Escape returns from bake inspection and 3D Paint channel inspection.
+
 # Gouache Studio 0.71.0
 
 - Sharper viewport shadows, within the graphics card's texture-size limit.

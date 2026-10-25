@@ -37,7 +37,7 @@ function dtActivate(id){if(id===dtab.live){const t=dtTab(id);if(t&&ui.mode!=='pa
   dtLeave();setDocState(t.state);t.state=null;dtab.live=id;try{tbDocPut(t.tb);}catch(e){}t.tb=null;dtPlaceWork();dtAfterSwitch();return true;}
 function dtAfterSwitch(){$('#docName').textContent=doc.name;const tb=$('#tileBtn');if(tb)tb.setAttribute('aria-pressed',String(!!doc.wrap));
   for(const f of ['changedAll','refreshMapsUI','updateStatus','selChanged','renderHistory','updateTitle','fileLocUpdate','tipBanner'])if(typeof window[f]==='function')try{window[f]();}catch(e){console.warn(f,e);}
-  if(typeof rl!=='undefined')rl.sig='';if(typeof v3!=='undefined'){v3.mapsDirty=true;v3.dirty=true;}resizeGL();requestRender(true);dtRender();}
+  if(typeof rl!=='undefined')rl.sig='';if(typeof v3!=='undefined'){v3.mapsDirty=true;v3.dirty=true;if(v3.on)build3dPane();}resizeGL();requestRender(true);dtRender();}
 /* a new document or an opened file goes into a tab of its own (the untouched start-up document is reused) */
 function dtNewTab(){if(ui.mode!=='paint'&&!setMode('paint',true))return false;if(stroke||preview){toast('Finish what you are doing first.');return false;}if(typeof xf!=='undefined'&&xf&&typeof xfCommit==='function')xfCommit();
   if(dtPristine())return true;
@@ -86,9 +86,8 @@ window.addEventListener('beforeunload',()=>{for(const t of dtab.tabs)if(t.win){t
 /* ---- the tab bar ---- */
 function dtRender(){const L=dtLive();dtab.sig=dtSig();dtBar.replaceChildren(...dtab.tabs.map(t=>{const on=t.id===dtab.live,un=dtUnsaved(t),nm=dtName(t);
     const b=el('div',{class:'dtab'+(on?' on':'')+(t.win?' popped':''),role:'tab','aria-selected':String(on),title:nm+(un?' (not saved)':'')+(t.win?' · in its own window':' · drag down out of the bar for a window of its own')},
-      el('span',{class:'dtname',text:(t.win?'↗ ':'')+nm}),el('span',{class:'dtdot',text:un?'•':''}),
-      el('button',{class:'dtx',title:'Close','aria-label':'Close '+nm,text:'×',onclick:e=>{e.stopPropagation();dtClose(t.id);}}));
-    b.addEventListener('pointerdown',e=>dtDragStart(e,t,b));b.addEventListener('auxclick',e=>{if(e.button===1){e.preventDefault();dtClose(t.id);}});
+      el('span',{class:'dtname',text:(t.win?'↗ ':'')+nm}),el('span',{class:'dtdot',text:un?'•':''}));
+    b.addEventListener('pointerdown',e=>dtDragStart(e,t,b));b.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();const pop=$('#menuPop');closeMenu();pop.replaceChildren(el('button',{class:'mi',role:'menuitem',onclick:()=>{closeMenu();dtClose(t.id);}},el('span'),el('span',{text:'Close document'}),el('span',{text:'Ctrl+W'})));pop.hidden=false;pop.style.left=Math.min(e.clientX,window.innerWidth-pop.offsetWidth-8)+'px';pop.style.top=Math.min(e.clientY+6,window.innerHeight-pop.offsetHeight-8)+'px';});
     return b;}),el('button',{class:'dtnew',title:'New document (Ctrl+N)','aria-label':'New document',text:'+',onclick:()=>actions.new()}));
   for(const t of dtab.tabs)if(t.win){t.win.name.textContent=dtName(t)+(dtUnsaved(t)?' •':'');try{t.win.w.document.title=dtName(t)+' — Gouache Studio';}catch(e){}}}
 function dtSig(){return dtab.live+'|'+dtab.tabs.map(t=>t.id+':'+dtName(t)+':'+dtUnsaved(t)+':'+!!t.win).join(',');}

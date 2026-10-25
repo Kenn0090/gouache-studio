@@ -199,6 +199,10 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
   if(ui.mode==='p3d'&&doc.p3){const spec=doc.workflow==='spec',hand=doc.p3Setup==='handpainted';box.append(el('div',{class:'sub p3-material-section',text:(hand?'Hand-painted · ':'')+(spec?'Spec Gloss parameters':'PBR parameters')}));}
   for(const k of keys){const s=W.maps[k]||(W.maps[k]=fillDefaults().maps[k]),grey=MAP_DEFS[k].grey,isN=k==='normal',inputTex=s.src==='image'?L._fillImg&&L._fillImg[k]:s.src==='baked'||s.src==='conv'?M[s.mm]:null;
     const row=el('div',{class:'fillbody'}),open=!!(s.on&&(matEd.open[k]||matEd.openAll)),card=el('div',{class:'fillcard fillrow'+(open?' open':'')+(s.on?'':' off')});
+    card.dataset.materialChannel=k;card.title='Drop an image here for '+MAP_DEFS[k].label;
+    card.addEventListener('dragover',e=>{if(![...e.dataTransfer.types].includes('Files'))return;e.preventDefault();e.stopPropagation();e.dataTransfer.dropEffect='copy';card.classList.add('material-drop');});
+    card.addEventListener('dragleave',e=>{if(!card.contains(e.relatedTarget))card.classList.remove('material-drop');});
+    card.addEventListener('drop',async e=>{e.preventDefault();e.stopPropagation();card.classList.remove('material-drop');const f=[...e.dataTransfer.files].find(fillImageFile);if(!f){toast('Drop an image onto a material channel.');return;}await fillUseImage(L,k,s,f,()=>{edit(()=>{s.on=true;matEd.open[k]=true;},k,true);matEdCommit();});});
     const sumTxt=!s.on?'Off':s.src==='value'?(grey?Math.round(s.v*100)/100:'Colour'):s.src==='baked'?'Mesh map':s.src==='conv'?'Converted':(s.name?'Image':'No image'),sw=s.on&&s.src==='value'?(grey?[s.v,s.v,s.v]:(s.c||[.5,.5,.5])):[.5,.5,.5];
     card.append(el('div',{class:'fillhead',onclick:e=>{if(e.target.closest('.chk'))return;matEd.open[k]=!card.classList.contains('open');card.classList.toggle('open',matEd.open[k]);}},
       el('span',{class:'chev',text:'▸'}),el('span',{class:'sw',style:'background:rgb('+sw.map(x=>Math.round(clamp(x,0,1)*255)).join(',')+')'}),el('span',{class:'nm',text:MAP_DEFS[k].label}),el('span',{class:'v',text:String(sumTxt)}),
@@ -240,9 +244,11 @@ function dlgFillLayer(L){L=L||doc.active;if(!isLayer(L)||!L.fill){toast('Select 
 function matEdFollow(){if((matEd.shown!==doc.active&&!(matEd.shown===null&&matEd.shownRow&&typeof msRowOf==='function'&&ui.msSel&&msRowOf(ui.msSel)===matEd.shownRow))||(doc.active&&doc.active.fill&&!document.querySelector('#matEdBody .matHead')))renderMatEd();}
 {const ur=updateRowClasses;updateRowClasses=function(...a){const r=ur.apply(this,a);matEdFollow();return r;};}
 {const rl=renderLayers;renderLayers=function(...a){const r=rl.apply(this,a);if((matEd.shown!==doc.active&&!(matEd.shown===null&&matEd.shownRow&&typeof msRowOf==='function'&&ui.msSel&&msRowOf(ui.msSel)===matEd.shownRow))||(doc.active&&doc.active.fill&&!document.querySelector('#matEdBody .matHead')))renderMatEd();return r;};}
-async function fillPickImage(L,k,s,done){const fs=await pickFiles('image/*',false,'Images',['png','jpg','jpeg','webp','tga','tif','tiff','bmp','psd','exr','hdr']);const f=fs[0];if(!f){if(!(L._fillImg&&L._fillImg[k])&&k!=='normal')s.src='value';done();return;}
-  let t;try{t=await fileTarget(f);}catch(e){toast('Could not read '+f.name+': '+(e.message||e));if(k!=='normal')s.src='value';done();return;}
-  setWrap(t,true);L._fillImg=L._fillImg||{};L._fillImg[k]=t;s.src='image';s.name=f.name;done();}
+const fillImageFile=f=>/^image\//.test(f.type)||/\.(png|jpe?g|webp|tga|tiff?|bmp|psd|exr|hdr|dds)$/i.test(f.name);
+async function fillUseImage(L,k,s,f,done){const root=doc.root,W=L.fill;let t;try{t=await fileTarget(f);}catch(e){toast('Could not read '+f.name+': '+(e.message||e));return;}
+  if(doc.root!==root||L.fill!==W||W.maps[k]!==s){disposeTarget(t);toast('The material changed while the image was loading. Drop it again.');return;}
+  matEdBegin(L);setWrap(t,true);L._fillImg=L._fillImg||{};L._fillImg[k]=t;s.src='image';s.name=f.name;done();}
+async function fillPickImage(L,k,s,done){const fs=await pickFiles('image/*',false,'Images',['png','jpg','jpeg','webp','tga','tif','tiff','bmp','psd','exr','hdr']);const f=fs[0];if(!f){done();return;}await fillUseImage(L,k,s,f,done);}
 /* painting, filters and fills on a fill layer go to its mask */
 /* painting, filling or a gradient on a material without a mask: the material itself is made from its settings,
    so the paint goes into a new black mask (Kenn: paint white to reveal, like Substance) (one undo step) */

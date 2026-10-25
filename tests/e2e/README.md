@@ -65,3 +65,6 @@ node baketab.cjs              # one test: prints PASS/FAIL lines, then ALL PASSE
 - `blur-seam-layer.cjs` reproduces bright UV seams on transparent painted layers without blur and with Box/Gaussian Blur attached. It samples the actual 3D base texture at island boundaries with bilinear filtering and mip levels 1/2, compares regional updates with full refreshes, checks distant atlas pixels, and verifies original layer pixels are unchanged. Serves the offline desktop frontend in Edge; `GS_HARDWARE=1` uses D3D11.
 
 - `paint-bevel-seams.cjs` reproduces reduced projected brush opacity on a visible steep bevel between separated UV islands. Checks full brush coverage, protection of an occluded surface, exact undo/redo and graphics errors. Offline desktop frontend in Edge; `GS_HARDWARE=1` uses D3D11.
+
+- `bevel72.cjs` checks continuity around every segment of a smooth cylindrical rim and invariance to ray sample count on connected edges. `GS_BEVEL_MODEL` optionally reads a private local FBX to inspect disconnected-piece ID colours and render a metal bevel preview; the model is never committed.
+- `viewport72.cjs` drives Settings in all main viewport modes, image-file drops and undo, real GPU shadow-target resizing, inspection exit controls, mask hover pixels, preview shading parameters, and right-click tab closing with unsaved-document confirmation.
