@@ -101,3 +101,5 @@ Sent bakes and conversions hold just one map each (a normal, an AO…). Their gr
 Shape layers, live arrays (copies in a line, grid or circle) and layer styles (shadows, glows, stroke, overlay, bevel) have a page of their own: [Shapes, arrays and layer styles](Shapes-arrays-and-layer-styles.md).
 
 Document and panel tabs use **right-click › Close** instead of a close button beside the tab name. Closing an unsaved document still asks whether to save; **Ctrl+W** also closes the active document. Closed panels can be reopened from the Window menu.
+
+The material’s **Rotation** slider turns all its channels together. UV projection has one angle; Triplanar, Planar and Spherical projections have separate X, Y and Z sliders. You can also type an exact angle. Sliders follow viewport-handle changes, Reset and Undo.

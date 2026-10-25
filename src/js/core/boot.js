@@ -54,3 +54,5 @@ if(window.__gs)Object.assign(window.__gs,{BEVEL_GLSL,BK_TRACE,VS_FULL,bvUniforms
 if(window.__gs)Object.assign(window.__gs,{meshIdParts,fillUseImage,sel3HitTriangles,sel3HoverState,sel3HoverMove,sel3HoverClear,sel3Arm,studioShadowSize,studioShadowMatrix,v3ShowMaterial,uvViewSync,uvw,p3mm,p3mmSet,p3ShowLit,v3MeshU,v3Ctx,dtRender,dtab,dtClose});
 
 if(window.__gs)Object.assign(window.__gs,{parseFBX,build3dPane,toggle3D,libTarget,sel3HoverDraw,p3SelectAt,meshFinish});
+
+if(window.__gs)Object.assign(window.__gs,{pxfSyncFields});

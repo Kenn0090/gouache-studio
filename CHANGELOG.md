@@ -1,3 +1,7 @@
+## 0.72.1
+
+- Added a draggable **Rotation** slider for the whole material in UV projection, plus **X/Y/Z rotation sliders** for Triplanar, Planar and Spherical projections. Exact angle entry, viewport handles, Reset and Undo stay synchronized.
+
 ## 0.72.0
 
 - **Smoother bevels.** Connected edges now blend continuously across face diagonals and curved rims, using the model's smooth normals. Separate-object intersections retain scene-aware rounding. Added preview-only **Metalness** and **Roughness** controls.
