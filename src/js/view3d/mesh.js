@@ -83,7 +83,7 @@ function subdivideMesh(m,d){let cur=m;for(let l=0;l<d;l++){if(cur.idx.length/3*4
   if(cur===m)return m;const r=meshFinish(cur,m.name);r.noUV=m.noUV;
   /* each triangle became 4^levels triangles in a row: per-triangle data is repeated */
   const f=cur.idx.length/m.idx.length,rep=(a,w)=>{if(!a)return a;const T=a.length/w,o=new a.constructor(a.length*f);for(let t=0;t<T;t++)for(let j=0;j<f;j++)for(let c=0;c<w;c++)o[(t*f+j)*w+c]=a[t*w+c];return o;};
-  r.triMat=rep(m.triMat,1);r.matNames=m.matNames;r.triPart=rep(m.triPart,1);r.partNames=m.partNames;r.triCol=rep(m.triCol,3);
+  r.triMat=rep(m.triMat,1);r.matNames=m.matNames;r.triPart=rep(m.triPart,1);r.partNames=m.partNames;r.triIdPart=rep(m.triIdPart||m.triPart,1);r.idPartNames=(m.idPartNames||m.partNames||[]).slice();r.triCol=rep(m.triCol,3);
   /* the texture sets' triangle ranges grow the same way */
   if(m.setRanges)r.setRanges=m.setRanges.map(R=>({name:R.name,start:R.start*f,count:R.count*f}));
   r.src=m;r.subF=f;/* triangle t here came from triangle floor(t/subF) of the model as loaded */return r;}
@@ -130,7 +130,7 @@ function objReader(name){const P=grow(Float32Array),T=grow(Float32Array),N=grow(
     /* read b[s..e) line by line; returns where the last complete line ended */
     feed(b,s,e,final){let i=s;for(;;){let j=b.indexOf(10,i);if(j<0||j>=e){if(final&&i<e){line(b,i,e);return e;}return i;}line(b,i,j);i=j+1;}},
     finish(){if(!idx.n)throw new Error('This OBJ file has no faces.');const m={pos:pos.out(),uv:uv.out(),idx:idx.out(),nrm:hasN?nrm.out():null};
-      const r=meshFinish(m,name);r.noUV=!hasT;r.triCol=tc.out();r.partNames=pn;r.triPart=tp.out();r.matNames=mn;r.triMat=tm.out();matCompact(r);
+      const r=meshFinish(m,name);r.noUV=!hasT;r.triCol=tc.out();r.partNames=pn;r.triPart=tp.out();r.idPartNames=pn.slice();r.triIdPart=new Uint32Array(r.triPart);r.matNames=mn;r.triMat=tm.out();matCompact(r);
       const V=vpi.out(),perV=(src,n)=>{const o=new Float32Array(V.length*4);for(let q=0;q<V.length;q++){const p=V[q];if(p*3+2<n){o[q*4]=src[p*3];o[q*4+1]=src[p*3+1];o[q*4+2]=src[p*3+2];}else{o[q*4]=o[q*4+1]=o[q*4+2]=1;}o[q*4+3]=1;}return o;};
       if(hasVC)r.vcol=perV(VC.a,VC.n);if(PC.n)r.pcol=perV(PC.a,PC.n);return r;}};}
 function parseOBJ(text,name){const b=typeof text==='string'?new TextEncoder().encode(text):text,R=objReader(name);R.feed(b,0,b.length,true);return R.finish();}
@@ -170,7 +170,7 @@ async function parseGLTF(buf,name,readSibling){let json,bin=null;const u8=new Ui
       const vc=at.COLOR_0!==undefined?acc(at.COLOR_0):null,vn=vc?vc.length/cnt:0,mat=pr.material!==undefined&&json.materials?json.materials[pr.material]:null;
       const fc=mat&&mat.pbrMetallicRoughness&&mat.pbrMetallicRoughness.baseColorFactor?mat.pbrMetallicRoughness.baseColorFactor.slice(0,3):idColor((mat&&mat.name)||(json.meshes[n.mesh].name||'mesh'+n.mesh)+':'+parts.length);
       const tcol=[];for(let t=0;t<idx.length;t+=3){if(vc){for(let c=0;c<3;c++)tcol.push((vc[idx[t]*vn+c]+vc[idx[t+1]*vn+c]+vc[idx[t+2]*vn+c])/3);}else tcol.push(fc[0],fc[1],fc[2]);}
-      parts.push({pos,nrm:nr?nrm:null,uv:tc?Array.from(tc):new Array(cnt*2).fill(0),idx,tcol,vc:vc?Array.from({length:cnt*4},(_,q)=>{const c=q&3,v=q>>2;return c===3?1:(c<vn?vc[v*vn+c]:1);}):null,cnt,pname:n.name||json.meshes[n.mesh].name||('mesh'+n.mesh),mname:mat?(mat.name||('Material '+pr.material)):'default'});}
+      parts.push({pos,nrm:nr?nrm:null,uv:tc?Array.from(tc):new Array(cnt*2).fill(0),idx,tcol,vc:vc?Array.from({length:cnt*4},(_,q)=>{const c=q&3,v=q>>2;return c===3?1:(c<vn?vc[v*vn+c]:1);}):null,cnt,pname:n.name||json.meshes[n.mesh].name||('mesh'+n.mesh),meshKey:'node:'+ni,mname:mat?(mat.name||('Material '+pr.material)):'default'});}
     for(const c of n.children||[])visit(c,W);};
   const scene=json.scenes?json.scenes[json.scene||0]:{nodes:(json.nodes||[]).map((_,i)=>i)};const I=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
   for(const r of scene.nodes)visit(r,I);
@@ -180,17 +180,18 @@ async function parseGLTF(buf,name,readSibling){let json,bin=null;const u8=new Ui
   if(parts.some(p=>p.vc)){const o=new Float32Array(r.pos.length/3*4).fill(1);let q=0;for(const p of parts){if(p.vc)o.set(p.vc,q*4);q+=p.cnt;}r.vcol=o;}return r;}
 
 /* ---- keeping an imported model inside a .gouache file ---- */
-function meshPack(m){const n=m.pos.length,u=m.uv.length,x=m.idx.length,T=x/3,hasM=!!m.triMat,hasP=!!m.triPart,js=new TextEncoder().encode(JSON.stringify({matNames:m.matNames||null,partNames:m.partNames||null}));
-  const out=new Uint8Array(16+(n*2+u)*4+x*4+(hasM?T*4:0)+(hasP?T*4:0)+4+js.length),dv=new DataView(out.buffer);
-  dv.setUint32(0,n,true);dv.setUint32(4,u,true);dv.setUint32(8,x,true);dv.setUint32(12,(hasM?1:0)|(hasP?2:0)|4,true);let o=16;
+function meshPack(m){const n=m.pos.length,u=m.uv.length,x=m.idx.length,T=x/3,hasM=!!m.triMat,hasP=!!m.triPart,hasI=!!m.triIdPart,js=new TextEncoder().encode(JSON.stringify({matNames:m.matNames||null,partNames:m.partNames||null,idPartNames:m.idPartNames||null}));
+  const out=new Uint8Array(16+(n*2+u)*4+x*4+(hasM?T*4:0)+(hasP?T*4:0)+(hasI?T*4:0)+4+js.length),dv=new DataView(out.buffer);
+  dv.setUint32(0,n,true);dv.setUint32(4,u,true);dv.setUint32(8,x,true);dv.setUint32(12,(hasM?1:0)|(hasP?2:0)|4|(hasI?8:0),true);let o=16;
   for(const a of [m.pos,m.nrm,m.uv]){new Float32Array(out.buffer,o,a.length).set(a);o+=a.length*4;}new Uint32Array(out.buffer,o,x).set(m.idx);o+=x*4;
   /* materials (texture sets) and parts per triangle, and their names */
-  if(hasM){new Uint32Array(out.buffer,o,T).set(m.triMat);o+=T*4;}if(hasP){new Uint32Array(out.buffer,o,T).set(m.triPart);o+=T*4;}dv.setUint32(o,js.length,true);out.set(js,o+4);return out;}
+  if(hasM){new Uint32Array(out.buffer,o,T).set(m.triMat);o+=T*4;}if(hasP){new Uint32Array(out.buffer,o,T).set(m.triPart);o+=T*4;}if(hasI){new Uint32Array(out.buffer,o,T).set(m.triIdPart);o+=T*4;}dv.setUint32(o,js.length,true);out.set(js,o+4);return out;}
 function meshUnpack(bytes,name){const b=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),dv=new DataView(b),n=dv.getUint32(0,true),u=dv.getUint32(4,true),x=dv.getUint32(8,true),fl=dv.getUint32(12,true);let o=16;
   const f=len=>{const a=new Float32Array(b.slice(o,o+len*4));o+=len*4;return a;};const pos=f(n),nrm=f(n),uv=f(u),idx=new Uint32Array(b.slice(o,o+x*4));o+=x*4;
   const r=meshFinish({pos,nrm,uv,idx},name),T=x/3;
-  if(fl&1){r.triMat=new Uint32Array(b.slice(o,o+T*4));o+=T*4;}if(fl&2){r.triPart=new Uint32Array(b.slice(o,o+T*4));o+=T*4;}
-  if(fl&4){const l=dv.getUint32(o,true),j=JSON.parse(new TextDecoder().decode(new Uint8Array(b,o+4,l)));if(j.matNames)r.matNames=j.matNames;if(j.partNames)r.partNames=j.partNames;}
+  if(fl&1){r.triMat=new Uint32Array(b.slice(o,o+T*4));o+=T*4;}if(fl&2){r.triPart=new Uint32Array(b.slice(o,o+T*4));o+=T*4;}if(fl&8){r.triIdPart=new Uint32Array(b.slice(o,o+T*4));o+=T*4;}
+  let meta={};if(fl&4){const l=dv.getUint32(o,true);meta=JSON.parse(new TextDecoder().decode(new Uint8Array(b,o+4,l)));if(meta.matNames)r.matNames=meta.matNames;if(meta.partNames)r.partNames=meta.partNames;if(meta.idPartNames)r.idPartNames=meta.idPartNames;}
+  if(!r.triIdPart)r.triIdPart=r.triPart?new Uint32Array(r.triPart):new Uint32Array(T);if(!r.idPartNames)r.idPartNames=(r.partNames||[]).slice();
   return r;}
 
 /* ---- FBX (binary, as written by Blender, Maya, 3ds Max, Unity and Unreal) ---- */
@@ -246,7 +247,7 @@ async function parseFBX(buf,name,onProgress,options={}){const u8=new Uint8Array(
       if(CL){const k=at(CL,pv,vi)*4;vcol[i*4]=CL.d[k];vcol[i*4+1]=CL.d[k+1];vcol[i*4+2]=CL.d[k+2];vcol[i*4+3]=1;}
       pv++;if(last){const mm=mnm();for(let k=p0+1;k+1<=i;k++){idx.p3(p0,k,k+1);tmat.push(mm);}p0=i+1;poly++;}
       if((i&1048575)===1048575){if(onProgress)onProgress(i/cnt);await new Promise(r=>setTimeout(r,0));}}
-    const pname=models[geoOf[id]]?models[geoOf[id]].name:('mesh'+id);parts.push({pos,nrm,uv,idx:idx.out(),hasN:!!N,pname,tmat,vc:vcol,cnt,uvSetName:U&&U.name});}
+    const pname=models[geoOf[id]]?models[geoOf[id]].name:('mesh'+id);parts.push({pos,nrm,uv,idx:idx.out(),hasN:!!N,pname,meshKey:'geometry:'+id,tmat,vc:vcol,cnt,uvSetName:U&&U.name});}
   if(!parts.length)throw new Error('No meshes were found in this FBX file.');
   const m=mergeParts(parts);if(parts.some(p=>!p.hasN))m.nrm=null;const r=meshFinish(m,name);r.noUV=noUV;r.uvSetName=parts.find(p=>p.uvSetName)?.uvSetName||'';partsInfo(r,parts);matsInfo(r,parts);
   if(parts.some(p=>p.vc)){const o=new Float32Array(r.pos.length/3*4).fill(1);let q=0;for(const p of parts){if(p.vc)o.set(p.vc,q*4);q+=p.cnt;}r.vcol=o;}
@@ -264,9 +265,9 @@ function meshGroupByMat(m){if(m.setRanges)return m.setRanges;const T=m.idx.lengt
   const pos=st.slice(),order=new Uint32Array(T);for(let t=0;t<T;t++)order[pos[M[t]]++]=t;
   const idx=new Uint32Array(m.idx.length);for(let i=0;i<T;i++){const t=order[i];idx[i*3]=m.idx[t*3];idx[i*3+1]=m.idx[t*3+1];idx[i*3+2]=m.idx[t*3+2];}m.idx=idx;
   const per=(a,w)=>{if(!a)return a;const o=new a.constructor(a.length);for(let i=0;i<T;i++)for(let c=0;c<w;c++)o[i*w+c]=a[order[i]*w+c];return o;};
-  m.triMat=per(M,1);m.triPart=per(m.triPart,1);m.triCol=per(m.triCol,3);
+  m.triMat=per(M,1);m.triPart=per(m.triPart,1);m.triIdPart=per(m.triIdPart||m.triPart,1);m.triCol=per(m.triCol,3);
   delete m._topo;delete m._shell;delete m._uvIsl;
   m.setRanges=nm.map((name,k)=>({name,start:st[k],count:cnt[k]}));return m.setRanges;}
-/* which part (object) each triangle came from, by name */
-function partsInfo(r,parts){const names=[];let T=0;for(const p of parts)T+=p.idx.length/3;const tp=new Uint32Array(T);let o=0;for(const p of parts){let k=names.indexOf(p.pname);if(k<0){k=names.length;names.push(p.pname);}const n=p.idx.length/3;tp.fill(k,o,o+n);o+=n;}r.partNames=names;r.triPart=tp;}
+/* Part names can repeat, so keep the match-by-name parts and unique mesh IDs separately. */
+function partsInfo(r,parts){const names=[],idNames=[],idKeys=new Map();let T=0;for(const p of parts)T+=p.idx.length/3;const tp=new Uint32Array(T),ti=new Uint32Array(T);let o=0;for(const p of parts){let k=names.indexOf(p.pname);if(k<0){k=names.length;names.push(p.pname);}const key=p.meshKey||'name:'+p.pname;let id=idKeys.get(key);if(id===undefined){id=idNames.length;idKeys.set(key,id);idNames.push(p.pname||('Mesh '+(id+1)));}const n=p.idx.length/3;tp.fill(k,o,o+n);ti.fill(id,o,o+n);o+=n;}r.partNames=names;r.triPart=tp;r.idPartNames=idNames;r.triIdPart=ti;}
 

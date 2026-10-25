@@ -1,3 +1,14 @@
+# Gouache Studio 0.71.0
+
+- Sharper viewport shadows, within the graphics card's texture-size limit.
+- Bevel shader: 48 default samples and more tolerant hard-edge detection.
+- Per-channel **Contrast** for image, baked and converted material textures; material rotation now correctly rotates normal maps.
+- The mask toolbar stays clear of viewport controls and settings. Leaving mask mode restores the previous wireframe mode.
+- Press **F2** to rename the selected layer. **Clear mask** reveals the whole layer and can be undone.
+- Separate-mesh ID bakes now distinguish meshes even when their names match. Added **UV islands** as an ID source.
+- **Shift+W** toggles wireframe overlay and opens the 3D view if needed.
+- **Help › Send a suggestion** prepares a GitHub issue from an in-app message. GitHub sign-in is required to submit it.
+
 # Gouache Studio 0.70.1
 
 - New **Retro layer (N64 / PSX)**: on top of the stack for everything below, or clipped to one layer (Layer › New, or right-click a layer).

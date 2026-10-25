@@ -24,7 +24,11 @@ function dlgAbout(){const link=(t,u)=>el('button',{class:'btn sm',text:t,onclick
     el('p',{class:'note',text:(platform.isDesktop?'Desktop app, updates itself.':'Browser version.')+' The HDRIs are by Poly Haven artists (CC0): see the guide’s 3D view page.'}),
     el('div',{class:'chips'},link('User guide',HELP_GUIDE),link('What’s new',HELP_REPO+'/releases'),link('Source code',HELP_REPO))),okLabel:null,cancelLabel:'Close'});}
 MENUS.Help.push(['User guide (online)','helpGuide','F1'],['What’s new…','whatsNew'],['Keyboard shortcuts…','keys'],'-',['Report a problem or ask for a feature','helpIssue'],['Welcome screen and examples…','welcome'],'-',['About Gouache Studio','about']);
-Object.assign(actions,{helpGuide:()=>openLink(HELP_GUIDE),whatsNew:dlgWhatsNew,helpIssue:()=>openLink(HELP_REPO+'/issues/new'),about:dlgAbout});
+function dlgHelpIssue(){const message=el('textarea',{id:'helpSuggestionText',rows:'7',placeholder:'What would you like to see or report?','aria-label':'Suggestion or problem'});
+  openDialog({title:'Send a suggestion',body:el('div',{class:'dlg-grid'},el('p',{class:'note',text:'Continue to GitHub to submit. GitHub asks you to sign in; no email address is shown in the app.'}),message),okLabel:'Continue to GitHub',cancelLabel:'Cancel',onOk(){const text=message.value.trim();if(!text){toast('Write a suggestion or problem first.');message.focus();return false;}
+    const body='Please describe your suggestion or problem:\n\n'+text+'\n\n---\nSent from Gouache Studio.';openLink(HELP_REPO+'/issues/new?title='+encodeURIComponent('Suggestion or problem')+'&body='+encodeURIComponent(body));}});message.focus();}
+MENUS.Help.push(['User guide (online)','helpGuide','F1'],['What’s new…','whatsNew'],['Keyboard shortcuts…','keys'],'-',['Send a suggestion…','helpIssue'],['Welcome screen and examples…','welcome'],'-',['About Gouache Studio','about']);
+Object.assign(actions,{helpGuide:()=>openLink(HELP_GUIDE),whatsNew:dlgWhatsNew,helpIssue:dlgHelpIssue,about:dlgAbout});
 /* Search the same commands and current shortcuts shown by the menus and shortcut editor. */
 function helpCommandText(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
 function helpCommandNear(a,b){if(Math.abs(a.length-b.length)>1)return false;let prev=Array.from({length:b.length+1},(_,i)=>i);for(let i=0;i<a.length;i++){const row=[i+1];for(let j=0;j<b.length;j++)row[j+1]=Math.min(row[j]+1,prev[j+1]+1,prev[j]+(a[i]===b[j]?0:1));prev=row;}return prev[b.length]<=1;}

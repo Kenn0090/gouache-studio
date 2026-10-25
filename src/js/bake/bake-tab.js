@@ -128,21 +128,30 @@ async function bakeRegion(rect){if(!bk.opts||!bk.src)return;const r=[Math.max(0,
 const BK_SEND_ORDER=['normal','height','ao','curv','curvEdge','curvCrease','thick','wnormal','position','id'];
 /* ---- where the ID map's colours come from (Other tab): separate meshes (parts), materials, vertex colours,
    or ZBrush polypaint; Auto uses vertex colours, else material colours, else one colour per part ---- */
-const BK_ID_SRC=[['auto','Auto'],['part','Separate meshes'],['mat','Materials'],['vertex','Vertex colours'],['poly','Polypaint']];
-function bakeIdHas(M){const n=M?M.pos.length/3:0;return {part:!!(M&&M.partNames&&M.partNames.length>1),mat:!!(M&&M.matNames&&M.matNames.length>1),vertex:!!(M&&M.vcol&&M.vcol.length===n*4),poly:!!(M&&M.pcol&&M.pcol.length===n*4)};}
-function bakeIdSource(M){const s=bakeCfg.idSrc||'auto',h=bakeIdHas(M),T=M.idx.length/3,per=(ids,names)=>{const o=new Float32Array(T*3);for(let t=0;t<T;t++)o.set(idColor(names[ids?ids[t]:0]||'part '+t),t*3);return o;};
-  M.col=null;let missing=null;
-  if(s==='vertex'||s==='poly'){const a=s==='vertex'?M.vcol:M.pcol;if(h[s])M.col=a;else missing=(s==='vertex'?'This model has no vertex colours':'This model has no polypaint (export it from ZBrush as OBJ with Polypaint on)')+', so the ID uses its parts and materials.';}
-  else if(s==='part')M.triCol=per(M.triPart,M.partNames||['part']);
-  else if(s==='mat')M.triCol=per(M.triMat,M.matNames||['material']);
-  else if(h.vertex)M.col=M.vcol;
-  return {missing};}
+const BK_ID_SRC=[['auto','Auto'],['part','Separate meshes'],['mat','Materials'],['uv','UV islands'],['vertex','Vertex colours'],['poly','Polypaint']];
+function bakeIdHas(M){const n=M?M.pos.length/3:0,T=M?M.idx.length/3:0,parts=M&&(M.idPartNames||M.partNames)||[],partIds=M&&(M.triIdPart||M.triPart);
+  return {part:!!(M&&parts.length>1&&partIds&&partIds.length===T),partCount:parts.length,mat:!!(M&&M.matNames&&M.matNames.length>1&&M.triMat&&M.triMat.length===T),
+    vertex:!!(M&&M.vcol&&M.vcol.length===n*4),poly:!!(M&&M.pcol&&M.pcol.length===n*4),uv:!!(M&&!M.noUV&&M.uv&&M.uv.length===n*2)};}
+function bakeIdPalette(M,count,tag,names){let seed=2166136261;for(const c of String(tag)+'|'+(M.name||'mesh')+'|'+(names||[]).join('|'))seed=Math.imul(seed^c.charCodeAt(0),16777619);
+  const rand=()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};
+  const hue0=rand(),rgb=(h,s,v)=>{h=((h%1)+1)%1*6;const i=Math.floor(h),f=h-i,p=v*(1-s),q=v*(1-s*f),t=v*(1-s*(1-f));return [[v,t,p],[q,v,p],[p,v,t],[p,q,v],[t,p,v],[v,p,q]][i%6];};
+  return Array.from({length:Math.max(1,count)},(_,i)=>rgb(hue0+i*.618033988749895,.72+rand()*.22,.82+rand()*.16));}
+function bakeIdSource(M){const requested=bakeCfg.idSrc||'auto',h=bakeIdHas(M),T=M.idx.length/3,parts=M.idPartNames||M.partNames||['mesh'],partIds=M.triIdPart||M.triPart;let missing=null;
+  const per=(ids,names,tag)=>{const list=names&&names.length?names:['mesh'],colors=bakeIdPalette(M,list.length,tag,list),o=new Float32Array(T*3);for(let t=0;t<T;t++){const id=ids&&ids.length===T?ids[t]|0:0;o.set(colors[id]||colors[0],t*3);}return o;};
+  const setPart=()=>{M.triCol=per(partIds,parts,'mesh');},setMat=()=>{M.triCol=per(M.triMat,M.matNames||['material'],'material');},fallback=()=>h.mat?setMat():setPart();
+  M.col=null;M.triCol=null;let s=requested;
+  if(s==='auto')s=h.vertex?'vertex':h.mat?'mat':'part';
+  if(s==='vertex'||s==='poly'){const a=s==='vertex'?M.vcol:M.pcol;if(h[s])M.col=a;else{missing=(s==='vertex'?'This model has no vertex colours':'This model has no polypaint (export it from ZBrush as OBJ with Polypaint on)')+', so the ID uses materials or separate meshes.';fallback();}}
+  else if(s==='part')setPart();
+  else if(s==='mat')setMat();
+  else if(s==='uv'){if(h.uv){const I=uwIslands(M),names=Array.from({length:I.count},(_,i)=>'UV island '+(i+1));M.triCol=per(I.ids,names,'uv');}else{missing='This model has no usable UVs, so the ID uses materials or separate meshes.';fallback();}}
+  return {missing,source:s};}
 /* ---- one bake per material (texture set): the low-poly's triangles of that material, the same vertices ---- */
 function meshSubset(L,k,tile=null){const T=L.idx.length/3,M=L.triMat,keep=[];for(let t=0;t<T;t++)if((k==null||!M||M[t]===k)&&(!tile||(()=>{const ix=L.idx,uv=L.uv,a=ix[t*3],b=ix[t*3+1],c=ix[t*3+2],q=p3UdimAddress((uv[a*2]+uv[b*2]+uv[c*2])/3,(uv[a*2+1]+uv[b*2+1]+uv[c*2+1])/3);return q&&q.id===tile.id;})()))keep.push(t);
   const idx=new Uint32Array(keep.length*3),uv=tile&&L.uv?new Float32Array(L.uv):L.uv;if(tile&&uv)for(let i=0;i<uv.length;i+=2){uv[i]-=tile.u;uv[i+1]-=tile.v;}
   const per=(a,w)=>{if(!a)return a;const o=new a.constructor(keep.length*w);keep.forEach((t,i)=>{for(let c=0;c<w;c++)o[i*w+c]=a[t*w+c];});return o;};
   keep.forEach((t,i)=>{idx[i*3]=L.idx[t*3];idx[i*3+1]=L.idx[t*3+1];idx[i*3+2]=L.idx[t*3+2];});
-  return Object.assign({},L,{idx,uv,tris:keep.length,triPart:per(L.triPart,1),triCol:per(L.triCol,3),triMat:per(L.triMat,1),whole:L,setRanges:null,_topo:null});}
+  return Object.assign({},L,{idx,uv,tris:keep.length,triPart:per(L.triPart,1),triIdPart:per(L.triIdPart,1),triCol:per(L.triCol,3),triMat:per(L.triMat,1),whole:L,setRanges:null,_topo:null});}
 const bkMats=L=>(L&&L.matNames&&L.matNames.length>1&&L.triMat)?L.matNames:null;
 async function runBakeSets(L,ks){const names=bkMats(L);if(!names){bk.byMat=null;return runBake(L,ks);}
   for(const n in bk.byMat||{})if(n!==bk.matShow)for(const k in bk.byMat[n].res)disposeTarget(bk.byMat[n].res[k]);bk.byMat={};const t0=performance.now();
@@ -378,9 +387,9 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
     if(T==='thick')pg.append(on('thick'),S('bkThR','Rays','thickRays',8,256,8,v=>String(v)),S('bkThD','Reach','thickDist',1,100,1,v=>v+'%'),note('White is thick, dark is thin. Reach: how deep it looks.'));
     if(T==='wnormal')pg.append(on('wnormal'),note('The direction each point faces in the world (red = X, green = Y, blue = Z), not bent by the UVs. Masks use it for things like dust on top.'));
     if(T==='position')pg.append(on('position'),note('Where each point is inside the model’s box, as a colour gradient (red = X, green = Y, blue = Z). Masks use it for gradients from bottom to top or side to side.'));
-    if(T==='id'){const M=C.high||bkLow(),h=bakeIdHas(M),have=[h.part&&'separate meshes ('+M.partNames.length+')',h.mat&&'materials ('+M.matNames.length+')',h.vertex&&'vertex colours',h.poly&&'polypaint'].filter(Boolean);
-      pg.append(on('id'),el('div',{class:'sub',text:'ID colours from'}),(()=>{const g=seg(BK_ID_SRC,C.idSrc||'auto',v=>{C.idSrc=v;},'ID colours from');g.classList.add('themeseg');g.id='bkIdSrc';return g;})(),
-        note('The '+(C.high?'high-poly':'low-poly')+' has: '+(have.length?have.join(', '):'one mesh, no materials or colours')+'. Separate meshes: one colour per object in the file. Materials: one per material. Vertex colours: the colours painted on its vertices. Polypaint: ZBrush polypaint (export the OBJ with Polypaint on). Auto: vertex colours if it has them, else material colours.'),
+    if(T==='id'){const M=C.high||bkLow(),h=bakeIdHas(M),have=[h.part&&'separate meshes ('+h.partCount+')',h.mat&&'materials ('+M.matNames.length+')',h.uv&&'UVs',h.vertex&&'vertex colours',h.poly&&'polypaint'].filter(Boolean),sources=BK_ID_SRC.filter(([k])=>k!=='uv'||h.uv);
+      pg.append(on('id'),el('div',{class:'sub',text:'ID colours from'}),(()=>{const g=seg(sources,C.idSrc||'auto',v=>{C.idSrc=v;},'ID colours from');g.classList.add('themeseg');g.id='bkIdSrc';return g;})(),
+        note('The '+(C.high?'high-poly':'low-poly')+' has: '+(have.length?have.join(', '):'one mesh, no materials or colours')+'. Separate meshes: one unique colour per object. Materials: one colour per material. UV islands: one colour per connected UV island. Vertex colours: the colours painted on its vertices. Polypaint: ZBrush polypaint (export the OBJ with Polypaint on). Auto: vertex colours, then materials, then separate meshes.'),
         note('In 3D Paint, masks can pick these colours: Alt+click a mask, then ID colour.'));}
     return pg;};
   let tabs=tabBar(),page=tabPage();
@@ -426,16 +435,17 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
 /* Keep the file coordinates of every high mesh; normalising each import separately must not move it. */
 function bakeMergeHigh(list){if(list.length===1)return list[0];if(!list.length)return null;
   const first=list[0],N=list.reduce((n,m)=>n+m.pos.length/3,0),T=list.reduce((n,m)=>n+m.idx.length/3,0);
-  const r={name:list.length+' high-poly meshes',pos:new Float32Array(N*3),nrm:new Float32Array(N*3),uv:new Float32Array(N*2),tan:new Float32Array(N*4),idx:new Uint32Array(T*3),triPart:new Uint32Array(T),triMat:new Uint32Array(T),bvSurfaceIds:new Uint32Array(T),partNames:[],matNames:[],xf:first.xf,verts:N,tris:T,radius:0};
+  const r={name:list.length+' high-poly meshes',pos:new Float32Array(N*3),nrm:new Float32Array(N*3),uv:new Float32Array(N*2),tan:new Float32Array(N*4),idx:new Uint32Array(T*3),triPart:new Uint32Array(T),triIdPart:new Uint32Array(T),triMat:new Uint32Array(T),bvSurfaceIds:new Uint32Array(T),partNames:[],idPartNames:[],matNames:[],xf:first.xf,verts:N,tris:T,radius:0};
   for(const key of ['vcol','pcol'])if(list.some(m=>m[key])){r[key]=new Float32Array(N*4);r[key].fill(1);}
   if(list.some(m=>m.triCol)){r.triCol=new Float32Array(T*3);r.triCol.fill(1);}
-  let vo=0,to=0,surface=0;for(const m of list){const n=m.pos.length/3,t=m.idx.length/3,a=bakeAlign(m,first);
+  let vo=0,to=0,surface=0,meshNo=0;for(const m of list){const n=m.pos.length/3,t=m.idx.length/3,a=bakeAlign(m,first),idNames=m.idPartNames||m.partNames||[m.name||'mesh'],idIds=m.triIdPart||m.triPart,idMap=new Map();
+    for(let i=0;i<t;i++){const id=Math.min(Math.max(0,idIds&&idIds.length===t?idIds[i]|0:0),Math.max(0,idNames.length-1));let mapped=idMap.get(id);if(mapped===undefined){mapped=r.idPartNames.length;idMap.set(id,mapped);r.idPartNames.push((meshNo+1)+' · '+(m.name||'Mesh')+' / '+(idNames[id]||('part '+(id+1))));}r.triIdPart[to+i]=mapped;}
     r.pos.set(a.pos,vo*3);r.nrm.set(m.nrm,vo*3);r.uv.set(m.uv,vo*2);r.tan.set(m.tan,vo*4);
     for(let i=0;i<m.idx.length;i++)r.idx[to*3+i]=m.idx[i]+vo;
     for(const [names,ids] of [['partNames','triPart'],['matNames','triMat']]){const local=m[names]&&m[names].length?m[names]:[m.name],map=local.map(name=>{let i=r[names].indexOf(name);if(i<0){i=r[names].length;r[names].push(name);}return i;});for(let i=0;i<t;i++)r[ids][to+i]=map[m[ids]?m[ids][i]:0]||0;}
     const parts=m.bvSurfaceIds||m.triPart,ids=new Map();for(let i=0;i<t;i++){const p=parts?parts[i]:0;if(!ids.has(p))ids.set(p,surface++);r.bvSurfaceIds[to+i]=ids.get(p);}
     for(const key of ['vcol','pcol'])if(m[key]&&r[key])r[key].set(m[key],vo*4);if(m.triCol&&r.triCol)r.triCol.set(m.triCol,to*3);
-    vo+=n;to+=t;}
+    vo+=n;to+=t;meshNo++;}
   for(let i=0;i<r.pos.length;i+=3)r.radius=Math.max(r.radius,Math.hypot(r.pos[i],r.pos[i+1],r.pos[i+2]));return r;}
 function bakeAddHigh(m){if(bk.busy){toast('Wait for the bake to finish.');return;}const list=(bakeCfg.highMeshes|| (bakeCfg.high?[bakeCfg.high]:[])).concat(m);const high=bakeMergeHigh(list);bakeCfg.highMeshes=list;bakeCfg.high=high;bk.hgKey=null;bkHighViewFree();bakeRefresh();toast('Added '+m.name+' · '+list.length+' high-poly meshes.');}
 function bakeHighList(){const box=el('div',{class:'highmeshes',id:'bkHighMeshes'}),list=bakeCfg.highMeshes||(bakeCfg.high?[bakeCfg.high]:[]);box.hidden=list.length<2;

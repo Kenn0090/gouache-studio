@@ -21,7 +21,7 @@ const {chromium}=require('playwright');const OLD=__dirname+'/';let fails=0;const
  ok(await p.locator('#bkBevelReset').count()===1,'the Bevel shader has a Reset button');
  await p.locator('#bkBevelReset').click();await W(600);
  const o=await p.evaluate(()=>{const o=__gs.bvSettings();return {on:o.on,width:o.width,angle:o.angle,samples:o.samples,profile:o.profile,soft:o.soft,convex:o.convex,isect:o.isect,mats:Object.keys(o.mats||{}).length};});
- ok(o.on===true&&o.width===.5&&o.angle===30&&o.samples===24&&o.profile==='round'&&o.soft===0&&o.convex===1&&o.isect===1&&o.mats===0,'Reset puts every bevel setting back to default and keeps it on '+JSON.stringify(o));
+ ok(o.on===true&&o.width===.5&&o.angle===30&&o.samples===48&&o.profile==='round'&&o.soft===0&&o.convex===1&&o.isect===1&&o.mats===0,'Reset puts every bevel setting back to default and keeps it on '+JSON.stringify(o));
  /* no patches: after a camera move the whole picture is rounded at once */
  await p.evaluate(()=>{Object.assign(__gs.bvSettings(),{on:true,preview:true,width:4,samples:32});__gs.bvChanged();});
  for(let i=0;i<120;i++){await W(1000);if(/ready/i.test(await p.evaluate(()=>__gs.bvStatusText())))break;}

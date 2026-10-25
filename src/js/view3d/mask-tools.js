@@ -4,7 +4,7 @@
    selection to move it); on the model the shape selects the parts of the model you can see under it, and a drag
    inside the shape moves it (the selection follows when you let go). Fill white / Fill black then fill the
    selection, and painting stays inside it. Shift adds to the selection, Ctrl takes away. */
-const mk3={tool:null,pts:null,draw:null,move:null,el:null};
+const mk3={tool:null,pts:null,draw:null,move:null,el:null,wireWas:null};
 const MK_TOOLS=[['paint','Paint'],['box','Box'],['lasso','Lasso'],['poly','Polygon'],['id','ID colour']];
 const maskToolsOn=()=>!!(ui.viewMask&&doc.active&&doc.active.mask&&ui.mode!=='anim'&&ui.mode!=='bake');
 const maskPaintLocked=()=>maskToolsOn()&&mk3.tool!=='paint';

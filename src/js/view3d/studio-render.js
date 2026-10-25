@@ -18,7 +18,7 @@ function studioBounds(m){let b=studioShadow.bounds.get(m);if(b)return b;const lo
  for(let i=0;i<m.pos.length;i+=3)for(let j=0;j<3;j++){lo[j]=Math.min(lo[j],m.pos[i+j]);hi[j]=Math.max(hi[j],m.pos[i+j]);}b={lo,hi};studioShadow.bounds.set(m,b);return b;}
 function studioFloorY(){const m=v3.mesh;if(!m)return -1;return studioBounds(m).lo[1]-(v3s().disp||0)*.15+(v3s().floorHeight||0);}
 function studioShadowPrepare(C,list){const s=C.s,S=studioShadow,keyLight=C.EU?.uEnvOn?(s.envSun||0):s.sunI,on=s.shadows!==false&&(s.floor||keyLight>0)&&!C.bake&&!C.mv&&!v3Unlit();if(!on)return {uShadow:dummy,uShadowVP:{m4:m4()},uShadowOn:0,uShadowSoft:1};
- const m=v3.mesh,size=['low','medium'].includes(prefs.quality)?1024:2048;
+ const m=v3.mesh,requested=['low','medium'].includes(prefs.quality)?2048:4096,size=Math.min(requested,gl.getParameter(gl.MAX_TEXTURE_SIZE)||2048);
  const params=JSON.stringify([s.sunAz,s.sunEl,s.disp,s.uvs,s.clip,size,list.map(t=>[t.start,t.count,s.disp?studioTextureID(t.T.height):0,s.clip&&!t.T.base?._studioOpaque?studioTextureID(t.T.base):0,s.clip?studioTextureID(t.T.opac):0])]);
  const key=params+JSON.stringify(list.map(t=>[s.disp?t.T.height?._studioVer||0:0,s.clip&&!t.T.base?._studioOpaque?t.T.base?._studioVer||0:0,s.clip?t.T.opac?._studioVer||0:0]));
  const throttle=stroke&&S.mesh===m&&S.params===params&&performance.now()-S.updated<80;
