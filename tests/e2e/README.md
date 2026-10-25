@@ -68,3 +68,5 @@ node baketab.cjs              # one test: prints PASS/FAIL lines, then ALL PASSE
 
 - `bevel72.cjs` checks continuity around every segment of a smooth cylindrical rim and invariance to ray sample count on connected edges. `GS_BEVEL_MODEL` optionally reads a private local FBX to inspect disconnected-piece ID colours and render a metal bevel preview; the model is never committed.
 - `viewport72.cjs` drives Settings in all main viewport modes, image-file drops and undo, real GPU shadow-target resizing, inspection exit controls, mask hover pixels, preview shading parameters, and right-click tab closing with unsaved-document confirmation.
+
+- `material-rotation.cjs` drags the whole-material UV Rotation slider and checks rendered pixels before pointer release, exact angle entry beyond one turn, viewport-handle synchronization, Reset, Undo and independent X/Y/Z controls for 3D projections.
