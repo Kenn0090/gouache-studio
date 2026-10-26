@@ -29,7 +29,7 @@ cv.addEventListener('webglcontextlost',e=>{e.preventDefault();if(gpuHealth.lost)
 cv.addEventListener('webglcontextrestored',()=>{gpuLogAdd('context restored');toast('The graphics card came back. Restart the app to be safe.');});
 
 /* graphics memory: warn once when the textures we track get near what the card can hold */
-function gpuBudget(){if(gpuHealth.vram)return gpuHealth.vram;try{const v=+localStorage.getItem('gs.vram2');if(v>0)return v*1048576;}catch(e){}return 6*1073741824;}
+function gpuBudget(){try{const g=+localStorage.getItem('gs.vramSet');if(g>0)return g*1073741824;}catch(e){}if(gpuHealth.vram)return gpuHealth.vram;try{const v=+localStorage.getItem('gs.vram2');if(v>0)return v*1048576;}catch(e){}return 6*1073741824;}
 setInterval(()=>{if(gpuHealth.lost||gpuHealth.warned||document.hidden)return;const G=gpuMemory(),b=gpuBudget();
   if(G.bytes>b*0.75){gpuHealth.warned=true;gpuLogAdd('memory high');toast('Graphics memory is nearly full ('+fmtBytes(G.bytes)+' of about '+fmtBytes(b)+'). Close tabs, use a smaller canvas or 8-bit, or lower the 3D quality to avoid a black screen.');}},5000);
 
@@ -74,13 +74,20 @@ function ghReportText(r){const I=gpuInfo(),G=gpuMemory(),log=gpuLogRead().filter
     'Drawing back-end: '+gpuBackend.kind+' · WebGPU: '+(r&&r.webgpu||'checking…'),
     r&&r.brush?(r.brush.error?'Brush test failed: '+r.brush.error:'Current brush ('+r.brush.size+' px, '+r.brush.tip+', spacing '+r.brush.spacing+'%): '+(1000/r.brush.plainMs).toFixed(0)+' dabs a second'+(r.brush.dualMs?' · with dual brush '+(1000/r.brush.dualMs).toFixed(0)+' dabs a second':'')):'',
     r?(r.error?'Test failed: '+r.error:'Speed test at 4096²: heavy shader '+r.shaderMs.toFixed(1)+' ms · layer blend '+r.blendMs.toFixed(1)+' ms · room for '+(r.capped?'at least ':'about ')+r.fit+' MB of pictures'):'',
+    gpuHealth.sample?'Painting sample (10 s, taken '+gpuHealth.sample.at+'):\n'+gpuHealth.sample.text:'',
     log.length?'Recent events: '+log.map(x=>new Date(x.t).toLocaleString()+' '+x.kind+' ('+x.doc+', '+x.layers+' layers, '+x.tracked+')').join('; '):''].filter(Boolean).join('\n');}
 function dlgGpuReport(){const pre=el('pre',{class:'note',style:'white-space:pre-wrap;user-select:text;max-height:320px;overflow:auto'}),text0=ghReportText(null);pre.textContent=text0+'\n\nRunning the speed test…';
   const sel=el('select',{id:'ghPref',onchange:e=>{try{localStorage.setItem('gs.gpuPref',e.target.value);}catch(x){}note.textContent='Restart the app to use this choice.';}},
     ...[['high-performance','Fastest card (recommended)'],['default','Let the system decide'],['low-power','Power saving card']].map(([v,t])=>el('option',{value:v,text:t,selected:gpuPrefGet()===v})));
   const note=el('p',{class:'note',text:''});let txt=text0;
-  openDialog({title:'Graphics card report',okLabel:'Copy report',cancelLabel:'Close',body:el('div',{class:'dlg-grid'},pre,el('label',{text:'Which graphics card to ask for: '},sel),note),
+  const vsel=el('select',{id:'ghVram',onchange:e=>{try{if(e.target.value==='0')localStorage.removeItem('gs.vramSet');else localStorage.setItem('gs.vramSet',e.target.value);}catch(x){}gpuHealth.warned=false;note.textContent='Saved. The memory warning now uses '+fmtBytes(gpuBudget())+'.';}},
+    ...[['0','Not sure (assume 6 GB)'],['4','4 GB'],['6','6 GB'],['8','8 GB'],['10','10 GB'],['12','12 GB'],['16','16 GB'],['24','24 GB']].map(([v,t])=>{let cur='0';try{cur=localStorage.getItem('gs.vramSet')||'0';}catch(x){}return el('option',{value:v,text:t,selected:cur===v});}));
+  const rec=el('button',{class:'btn sm',text:'Record 10 seconds of painting…',title:'Closes this window, you paint for 10 seconds, then the report comes back with what the app was doing',onclick:()=>{closeDialog();ghRecord();}});
+  openDialog({title:'Graphics card report',okLabel:'Copy report',cancelLabel:'Close',body:el('div',{class:'dlg-grid'},pre,el('label',{text:'Which graphics card to ask for: '},sel),el('label',{text:'Your card’s memory (for the warning): '},vsel),rec,note),
     onOk(){try{navigator.clipboard.writeText(txt);toast('Report copied.');}catch(e){}return false;}});
   setTimeout(async()=>{const r=await ghTest();txt=ghReportText(r);pre.textContent=txt;},50);}
+/* 10 seconds of the performance monitor while the person paints, kept for the report */
+function ghRecord(){const was=perf.on;perf.on=true;perf.frames=[];toast('Recording: paint now for 10 seconds…');requestRender(true);
+  setTimeout(()=>{perfUpdate();gpuHealth.sample={at:new Date().toLocaleTimeString(),text:perfBox.textContent};perf.on=was;perfBox.hidden=!was;dlgGpuReport();},10000);}
 MENUS.Help.splice(MENUS.Help.length-1,0,['Graphics card report…','gpuReport']);
 Object.assign(actions,{gpuReport:dlgGpuReport});

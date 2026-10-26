@@ -1,3 +1,9 @@
+## 0.74.2
+
+- **Copy and paste masks.** Right-click a layer (or use the buttons under the layer list) and choose **Copy mask**, then **Paste mask** on any other layer or folder of the same picture size. The whole mask comes across, including its rows. One Undo removes it.
+- **Large 3D projects stay smoother.** At 4096 px or more, the other maps update on the model at most every 150 ms while you paint, even on Ultra. Before, Ultra refreshed all maps about 12 times a second.
+- **Graphics card report:** choose how much memory your card has (the memory warning used a guess of 6 GB), and **Record 10 seconds of painting** adds what the app was doing while you painted (frame time split into composite, view and thumbnails) to the report.
+
 ## 0.74.1
 
 - **Faster textured brushes.** The empty parts of a brush tip (most of a bristle or sponge tip) no longer cost grain and dual-brush work per pixel. Painted results are identical.

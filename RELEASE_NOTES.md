@@ -1,3 +1,9 @@
+# Gouache Studio 0.74.2
+
+- **Copy and paste masks** from one layer to another (right-click a layer, or the buttons under the layer list).
+- **Smoother large 3D projects** on Ultra quality: the model's maps refresh less often while you paint at 4096 px and above.
+- **Graphics card report** lets you set your card's memory and record 10 seconds of painting to see where the time goes.
+
 # Gouache Studio 0.74.1
 
 - **Faster textured brushes** (dual brush, grain): empty parts of the tip are skipped. Results look the same.
