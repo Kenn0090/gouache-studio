@@ -1,6 +1,6 @@
 ## 0.73.0
 
-- **Slider controls.** Hold Ctrl while dragging to snap to increments of 5, or hold Ctrl and use the mouse wheel to step by 5. Hold Shift while dragging for one-tenth speed. Change the Ctrl increment in Edit > Preferences > Painting. Percent sliders use percentage points; mapped sliders use their displayed values.
+- **Slider controls.** Hold Ctrl while dragging to snap to increments of 5, and keep Ctrl held while using the mouse wheel to change the snap increment (5, 10, 15...). A small indicator shows the active increment; releasing Ctrl restores the starting increment. Hold Shift while dragging for one-tenth speed. Change the Ctrl increment in Edit > Preferences > Painting. Percent sliders use percentage points; mapped sliders use their displayed values.
 
 - **Textures as mask layers.** Drop image files or library textures onto a black mask thumbnail or its mask rows to add separate editable picture layers. Multiple files add one row each; existing mask contents are preserved and each drop can be undone.
 - **Mask texture contrast.** Every picture row has a live Contrast slider in the Material editor, alongside tiling, rotation and projection controls.
