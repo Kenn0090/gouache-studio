@@ -21,7 +21,7 @@ const MS_KINDS={
   dir:{title:'Direction',p:()=>({axis:'up',angle:50,soft:15,inv:false})},
   grad:{title:'Gradient',p:()=>({axis:'up',from:0,to:1,inv:false})},
   noise:{title:'Noise',p:()=>({type:'grunge',scale:6,contrast:1.5,level:0,seed:1,tri:true,inv:false})},
-  image:{title:'Picture',p:()=>({tile:1,rot:0,tri:false,inv:false,name:''})},
+  image:{title:'Picture',p:()=>({tile:1,rot:0,contrast:0,tri:false,inv:false,name:''})},
   ref:{title:'Another mask',p:()=>({name:''})},
   gen:{title:'Generator',p:()=>({g:'edge',amount:.5,width:.5,breakup:.5,contrast:1.5,scale:6,seed:1,inv:false,anchor:'',uvWrap:true})},
   /* anchor points (0.24): 'anchorpt' marks a layer's content (a blue row); 'anchor' reads it in a mask */
@@ -203,7 +203,7 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
   if(r.kind==='ref'){const o=r._ref&&r._ref.mask&&inDoc(r._ref)?r._ref:(allNodes(doc.root).find(n=>n.name===p.name&&n.mask&&n!==L)||null);if(!o||o===L||(guard||[]).includes(o))return null;r._ref=o;
     if(msHas(o))msUpdate(o,[...(guard||[]),L]);return lum(o.mask.target.tex,p.inv);}
   if(r.kind==='image'){if(!r.t)return null;if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);const pm=pxfRowMode(r),tri=pxfIs3D(pm)&&typeof fillPosMaps==='function'?fillPosMaps():null,o=out();
-    run(P_FILLIMG,o,Object.assign({uSrc:r.t.tex,uTile:Math.max(.05,p.tile||1),uRot:(p.rot||0)*Math.PI/180,uGrey:{int:1},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uSharp:4,uHStr:1,uHeight:{int:0},uNormal:{int:0},uRep:{int:p.rep===false?0:1},uFront:{int:p.front?1:0}},
+    run(P_FILLIMG,o,Object.assign({uSrc:r.t.tex,uTile:Math.max(.05,p.tile||1),uRot:(p.rot||0)*Math.PI/180,uContrast:p.contrast??0,uKeepA:{int:0},uGrey:{int:1},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uSharp:4,uHStr:1,uHeight:{int:0},uNormal:{int:0},uRep:{int:p.rep===false?0:1},uFront:{int:p.front?1:0}},
       tri?pxfUniforms(pm,p.xf):pxfUniforms('uv',pxfIs3D(pm)?null:p.xf)));
     if(p.inv){const o2=out();run(P.src,o2,Object.assign({uKind:{int:0},uT:o.tex,uNeg:{int:1},uSeed:0},ctx.surf));release(o);return {t:o2,pooled:true};}return {t:o,pooled:true};}
   if(r.kind==='id'){const M=doc.meshMaps&&doc.meshMaps.id;if(!M||!p.cols.length)return null;if(!P_IDSEL)P_IDSEL=program(FS_IDSEL);const o=out(),cols=new Float32Array(24);p.cols.slice(0,8).forEach((c,i)=>cols.set(c,i*3));
@@ -327,3 +327,9 @@ function msCommit(){clearTimeout(msEd.timer);msEd.timer=0;const L=msEd.L,b=msEd.
 function msGenDefaults(g){return Object.assign(MS_KINDS.gen.p(),{g},g==='builder'?{amount:.5,width:.25,breakup:.2,contrast:1,edgeWeight:1,cavityWeight:0,aoWeight:0,directionWeight:0,positionWeight:0,heightWeight:0,thicknessWeight:0,gradAxis:'up',positionFrom:0,positionTo:1}:['light','linear','radial','comic'].includes(g)?{amount:.5,width:.25,breakup:0,contrast:1,lightAz:-35,lightEl:45,occlude:.25,gradAxis:'up',gradFrom:0,gradTo:1,gradStyle:'smooth',centerX:.5,centerY:.5,centerZ:.5,bands:3,dots:28,dotSize:.45,dotAngle:45,comicStyle:'shade'}:{});}
 /* (0.58) the mask shaders are big: compile them while the app is idle after start-up, not when the first smart mask is added */
 (typeof requestIdleCallback==='function'?(f=>requestIdleCallback(f,{timeout:12000})):(f=>setTimeout(f,6000)))(()=>{try{if(!stroke&&!xf)msProgs();}catch(e){}});
+
+/* A dropped texture stays editable as a picture row; adding it is one undo step. */
+function msAddImageTarget(L,t,name){
+  matFlush();const r=msAdd(L,'image',{t,p:Object.assign(MS_KINDS.image.p(),{name})},'Add '+name+' to the mask');
+  if(!r){disposeTarget(t);return null;}L.fxFold=false;msSelect(L,'m',r.id);renderLayers();renderMatEd(true);requestRender(true);return r;
+}

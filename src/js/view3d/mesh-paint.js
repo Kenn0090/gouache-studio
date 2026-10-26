@@ -318,3 +318,8 @@ function st3Drag(d,e,hit){const r=hit.getBoundingClientRect(),dx=e.clientX-d.x,d
   else{const cx=r.left+st3.x*r.width,cy=r.top+st3.y*r.height,a0=Math.atan2(d.y-cy,d.x-cx),a1=Math.atan2(e.clientY-cy,e.clientX-cx);st3.rot=((st3.rot+(a1-a0)*180/Math.PI+540)%360)-180;if(e.shiftKey)st3.rot=Math.round(st3.rot/90)*90;}
   st3Overlay();}
 
+
+function meshBackfaceControl(id){const control=chk(id,'Paint back faces',v3s().noBack===false,on=>{
+  v3s().noBack=!on;for(const root of [document,...(v3.pop?[v3.pop.win.document]:[])])for(const input of root.querySelectorAll('[data-backface-paint]'))input.checked=on;
+  v3.dirty=true;requestRender(true);
+});control.querySelector('input').setAttribute('data-backface-paint','');return control;}

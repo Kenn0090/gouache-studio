@@ -41,21 +41,23 @@ function meshPullRect(sp,bb){const rc=sp.bbox({bb:[bb[0]-2,bb[1]-2,bb[2]+2,bb[3]
 /* ---- Smudge and Smear ---- */
 /* a copy of every map as it was, so the undo step can hold all of them (the primary map's copy is beforeT) */
 function meshSmudgeBegin(s){const L=s.L,items=[];
-  const add=(k,T)=>{const bef=k===null?beforeT:acquireD(T.depth);if(k!==null)blit(T,bef,0,0,T.w,T.h,0,0);items.push({k,T,bef});};
+  const add=(k,T)=>{const bef=k===null?beforeT:acquireD(T.depth);if(k!==null)blit(T,bef,0,0,T.w,T.h,0,0);const pre=acquireD(T.depth);blit(T,pre,0,0,T.w,T.h,0,0);items.push({k,T,bef,pre});};
   add(null,L.target);
   if(!L.maskOf&&!L.quick&&L.maps)for(const k of Object.keys(L.maps)){const T=L.maps[k];if(!T||T===L.target||T.empty||!T.tex)continue;add(k,T);}
   s.msm={items};}
+/* Keep a full source per map: the previous screen pixel may live on a distant UV island.
+   After each dab only copy changed texels back, so subsequent dabs see current paint. */
 /* one dab: cx,cy = where it is on screen, ext = its reach, dx,dy = how far the brush moved since the last dab */
 function meshSmudgeApply(s,cx,cy,ext,dx,dy){const sp=s.space,m=s.msm;if(!sp||!m)return;
   const rc=meshPullRect(sp,[cx-ext,cy-ext,cx+ext,cy+ext]);if(!rc)return;
   const o=s.o,smear=smudge3d.mode==='smear',k=smear?Math.min(1,o.strength*1.35+.15):o.strength,mul=smear?2.4:1,P=p3pull(),sel=selU(o);
-  for(const it of m.items){const T=it.T,colour=(it.k===null?doc.map:it.k)==='base',pre=acquireD(T.depth);blit(T,pre,rc[0],rc[1],rc[2],rc[3],rc[0],rc[1]);
-    scissorDo(rc,()=>sp.pull(P,T,Object.assign({uMode:{int:0},uNormalMap:{int:doc.map==='normal'?1:0},uCopy:pre.tex,uStroke:sp.buf.tex,uDelta:[dx*mul,dy*mul],uK:k,uTol:.12,uCharge:colour?(o.charge||0):0,uColor:o.color||[0,0,0],uLockAlpha:{int:s.L.lockAlpha?1:0}},sel)));
-    release(pre);}
+  for(const it of m.items){const T=it.T,colour=(it.k===null?doc.map:it.k)==='base',pre=it.pre;
+    scissorDo(rc,()=>sp.pull(P,T,Object.assign({uMode:{int:0},uNormalMap:{int:(it.k===null?doc.map:it.k)==='normal'?1:0},uCopy:pre.tex,uStroke:sp.buf.tex,uDelta:[dx*mul,dy*mul],uK:k,uTol:.12,uCharge:colour?(o.charge||0):0,uColor:o.color||[0,0,0],uLockAlpha:{int:s.L.lockAlpha?1:0}},sel)));
+    blit(T,pre,rc[0],rc[1],rc[2],rc[3],rc[0],rc[1]);}
   if(!s.L.maskOf&&!s.L.quick)s.L.lookVer=(s.L.lookVer||0)+1;}
 /* at the end: the undo parts of the other maps */
 function meshSmudgeEnd(s,x0,y0,bw,bh,record){const parts=[];
-  for(const it of s.msm.items){if(it.k===null)continue;if(record&&bw>0&&bh>0)parts.push({k:it.k,before:captureRegion(it.bef,x0,y0,bw,bh),after:captureRegion(it.T,x0,y0,bw,bh)});release(it.bef);}
+  for(const it of s.msm.items){release(it.pre);if(it.k===null)continue;if(record&&bw>0&&bh>0)parts.push({k:it.k,before:captureRegion(it.bef,x0,y0,bw,bh),after:captureRegion(it.T,x0,y0,bw,bh)});release(it.bef);}
   s.msm=null;return parts;}
 /* Smudge or Smear, shown where the Blend brush's settings are (3D Paint only) */
 function smudge3dSeg(){return seg([['smudge','Smudge','Blend paint along the stroke'],['smear','Smear','Drag a longer streak of paint']],smudge3d.mode,v=>{smudge3d.mode=v;smudge3dSave();if(typeof buildBrushPanel==='function')buildBrushPanel();if(typeof buildOptBar==='function')buildOptBar();},'Smudge or Smear');}

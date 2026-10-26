@@ -74,7 +74,7 @@ function pxfFields(get,edit,mode,onReset,size){const til=!size,X=get(),is3=pxfIs
   const rowL=(label,...ins)=>el('div',{class:'pxfrow'},el('span',{class:'pxfl'},label+' ',pxfLockBtn()),...ins);
   const rotation=i=>{const label=is3?'Rotation '+'XYZ'[i]:'Rotation',sl=el('input',{type:'range',id:'pxf_rslide'+i,min:'-180',max:'180',step:'0.001','aria-label':label+' slider',title:label+' in degrees'});
     sl.addEventListener('input',()=>{const v=+sl.value;edit(x=>{x.r[i]=v;});const field=box.querySelector('#pxf_r'+i);if(field)field.value=String(get().r[i]);});
-    return el('div',{class:'pxfrow '+(is3?'rsl':'tsl')},...(is3?[el('span',{class:'pxfl',text:'XYZ'[i]})]:[]),sl);};
+    sliderGestures(sl);return el('div',{class:'pxfrow '+(is3?'rsl':'tsl')},...(is3?[el('span',{class:'pxfl',text:'XYZ'[i]})]:[]),sl);};
   if(is3){box.append(row('Offset',...[0,1,2].map(i=>num('pxf_t'+i,'Offset '+'XYZ'[i],X.t[i],.01,(x,v)=>{x.t[i]=v;}))),
     row('Rotation',...[0,1,2].map(i=>num('pxf_r'+i,'Rotation '+'XYZ'[i],X.r[i],1,(x,v)=>{x.r[i]=v;}))),
     ...[0,1,2].map(rotation),
@@ -85,6 +85,7 @@ function pxfFields(get,edit,mode,onReset,size){const til=!size,X=get(),is3=pxfIs
   /* (0.34, Kenn) a slider for the tiling: log scale from 0.1 to 1000 repeats; with the lock on it moves every axis */
   if(til){const cnt=is3?3:2,sl=el('input',{type:'range',id:'pxf_tslide',min:'-1',max:'3',step:'0.01',value:String(Math.log10(pxfShow(X.s[0],true))),'aria-label':'Tiling slider',title:'Tiling: drag to repeat the picture more or less'});
     sl.addEventListener('input',()=>{const v=Math.pow(10,parseFloat(sl.value));edit(x=>pxfSetScale(x,0,v,cnt,true));const Y=get();for(let i=0;i<cnt;i++){const e=document.getElementById('pxf_s'+i);if(e)e.value=String(Math.round(1000/(Y.s[i]||1))/1000);}});
+    sliderGestures(sl,{to:Math.log10,from:v=>Math.pow(10,v),get:()=>pxfShow(get().s[0],true)});
     [...box.querySelectorAll('.pxfrow')].pop()?.after(el('div',{class:'pxfrow tsl'},sl));}
   pxfRotationSliderSync(box,X);for(const i of box.querySelectorAll('input[id^=pxf_s]'))i.dataset.til=til?'1':'0';
   if(!is3&&ui.mode==='p3d')box.append(el('div',{class:'chips'},chk('pxf2Show','Show the frame on the flat texture',pxf2.show,v=>{pxf2.show=v;if(typeof drawXfOverlay==='function')drawXfOverlay();requestRender(true);})));

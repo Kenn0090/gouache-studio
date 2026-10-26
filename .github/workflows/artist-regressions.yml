@@ -33,6 +33,8 @@ jobs:
       - run: node tests/e2e/bevel72.cjs
       - run: node tests/e2e/viewport72.cjs
       - run: node tests/e2e/material-rotation.cjs
+      - run: node tests/e2e/mask-paint-tools.cjs
+      - run: node tests/e2e/slider-gestures.cjs
       - run: node tests/e2e/artist-fixes.cjs
       - run: node tests/e2e/symmetry.cjs
       - run: node tests/e2e/numeric-sliders.cjs

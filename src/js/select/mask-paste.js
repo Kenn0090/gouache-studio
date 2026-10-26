@@ -32,14 +32,15 @@ async function pasteImageIntoMask(et,file){let t;try{t=await fileTarget(file);}c
   const s=Math.min(1,doc.w/t.w,doc.h/t.h),w=Math.round(t.w*s),h=Math.round(t.h*s),x=Math.round((doc.w-w)/2),y=Math.round((doc.h-h)/2);
   pictureIntoMask(et,t,x,y,w,h,'Paste into mask');disposeTarget(t);transformPasted(x,y,w,h);toast('Pasted into the mask. Move or scale it, then press Enter.');}
 /* an image file dropped on a mask thumbnail: stretched to fill the mask */
-async function dropFileIntoMask(n,file){let t;try{t=await fileTarget(file);}catch(e){toast('Could not read '+file.name+': '+(e.message||e));return;}
-  const et=maskTargetOf(n);if(!et){disposeTarget(t);return;}pictureIntoMask(et,t,0,0,doc.w,doc.h,'Image into mask');disposeTarget(t);renderLayers();
-  toast(file.name+' is now the mask of “'+n.name+'” (stretched to fit). Filter › Tile repeats it.');}
+async function dropFileIntoMask(n,file){const root=doc.root,mask=n.mask;let t;try{t=await fileTarget(file);}catch(e){toast('Could not read '+file.name+': '+(e.message||e));return;}
+  if(doc.root!==root||!inDoc(n)||n.mask!==mask){disposeTarget(t);toast('The mask changed while the image was loading. Drop it again.');return;}
+  setWrap(t,true);if(msAddImageTarget(n,t,file.name))toast('Added “'+file.name+'” as a mask layer. Contrast and projection are in the Material editor.');}
 /* a layer dragged onto a mask thumbnail (or Alt+dropped on a row): its picture becomes that mask */
 function layerIntoMask(src,n){if(src===n){toast('A layer can’t become its own mask.');return;}if(!isLayer(src)){toast('Drag a layer (not a group) onto the mask.');return;}const t=mapT(src,'base');
   const et=maskTargetOf(n);if(!et)return;pictureIntoMask(et,t,0,0,doc.w,doc.h,'Layer into mask');renderLayers();
   toast('“'+src.name+'” copied into the mask of “'+n.name+'”.');}
 /* image files dropped on the layer list: onto a mask thumbnail, or Alt+drop onto a row */
-(l=>{const target=e=>{const r=e.target.closest&&e.target.closest('.lrow');if(!r||!r._node)return null;return (e.target.closest('.mthumb')||e.altKey)?r._node:null;};
-  l.addEventListener('dragover',e=>{if(![...e.dataTransfer.types].includes('Files'))return;const n=target(e);if(n){e.preventDefault();e.stopPropagation();}});
-  l.addEventListener('drop',e=>{const n=target(e),f=[...e.dataTransfer.files].find(f=>!isModelName(f.name));if(!n||!f)return;e.preventDefault();e.stopPropagation();dropFileIntoMask(n,f);});})($('#layerList'));
+(l=>{const target=e=>{const m=e.target.closest&&e.target.closest('.msrow.m');if(m?._ms)return m._ms.L;const r=e.target.closest&&e.target.closest('.lrow');if(!r||!r._node)return null;return (e.target.closest('.mthumb')||e.altKey)?r._node:null;};
+  l.addEventListener('dragover',e=>{if(![...e.dataTransfer.types].includes('Files'))return;const n=target(e);l.querySelectorAll('.drop-mask').forEach(r=>r.classList.remove('drop-mask'));if(n){e.preventDefault();e.stopPropagation();e.dataTransfer.dropEffect='copy';e.target.closest('.lrow,.msrow')?.classList.add('drop-mask');}});
+  l.addEventListener('dragleave',e=>{if(!l.contains(e.relatedTarget))l.querySelectorAll('.drop-mask').forEach(r=>r.classList.remove('drop-mask'));});
+  l.addEventListener('drop',e=>{const n=target(e),fs=[...e.dataTransfer.files].filter(f=>!isModelName(f.name));l.querySelectorAll('.drop-mask').forEach(r=>r.classList.remove('drop-mask'));if(!n||!fs.length)return;e.preventDefault();e.stopPropagation();(async()=>{for(const f of fs)await dropFileIntoMask(n,f);})();});})($('#layerList'));

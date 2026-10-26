@@ -29,7 +29,7 @@ function vxRotate(deg){vxSet(view.rot+deg*Math.PI/180,view.flip);toast('View tur
 function vxFlip(){vxSet(-view.rot,!view.flip);toast(view.flip?'View flipped left-right. The picture itself is unchanged. Press the same key to flip back.':'View flipped back.');}
 function vxReset(quiet){if(!view.rot&&!view.flip)return;vxSet(0,false);if(!quiet)toast('View straight again.');}
 function dlgRotateView(){const inp=el('input',{type:'number',class:'num',min:-180,max:180,step:1,value:String(vxDeg()),'aria-label':'Angle in degrees'}),rng=el('input',{type:'range',min:-180,max:180,step:1,value:String(vxDeg()),'aria-label':'Angle'});
-  inp.step=rng.step='.1';const set=v=>{v=clamp(+v||0,-180,180);inp.value=rng.value=String(v);vxSet(v*Math.PI/180,view.flip);};inp.oninput=()=>set(inp.value);rng.oninput=()=>set(rng.value);
+  inp.step=rng.step='.1';const set=v=>{v=clamp(+v||0,-180,180);inp.value=rng.value=String(v);vxSet(v*Math.PI/180,view.flip);};inp.oninput=()=>set(inp.value);rng.oninput=()=>set(rng.value);sliderGestures(rng);
   openDialog({title:'Rotate view',okLabel:'Done',cancelLabel:'Straighten',body:el('div',{class:'dlg-grid'},el('div',{class:'frow'},el('label',{text:'Angle'}),inp,el('span',{text:'°'})),rng,
     el('p',{class:'note',text:'Turns only what you see. You can also hold R and drag on the canvas, or hold Shift + Space and drag.'})),onOk(){},onCancel(){vxReset(true);}});}
 /* Hold R and drag freely; Shift deliberately constrains to 15-degree angles. */
@@ -70,5 +70,5 @@ MENUS.View.splice(MENUS.View.indexOf('-')+0,0,'-',['Rotate view left 15°','view
 MENUS.Image.splice(MENUS.Image.findIndex(i=>i[1]==='cropSel')+1,0,'-',['Rotate canvas 90° clockwise','canvasCW'],['Rotate canvas 90° counter-clockwise','canvasCCW'],['Rotate canvas 180°','canvas180'],['Flip canvas left-right','canvasFH','Ctrl+Alt+Shift+H'],['Flip canvas top-bottom','canvasFV','Ctrl+Alt+Shift+V']);
 MENUS.Edit.splice(MENUS.Edit.findIndex(i=>i[1]==='freeTransform')+1,0,['Transform warp','xfWarp','Ctrl+Alt+T'],['Flip layer left-right','flipLH','Ctrl+Alt+H'],['Flip layer top-bottom','flipLV','Ctrl+Alt+V']);
 /* these keys are run by the shortcut editor itself (the other built-in keys live in their own handlers) */
-const KB_AUTO=['clearContents','searchCommands','tool:liquify','viewRotL','viewRotR','viewFlip','viewRotReset','canvasFH','canvasFV','flipLH','flipLV','xfWarp','wireToggle'];
+const KB_AUTO=['tool:brush','clearContents','searchCommands','tool:liquify','viewRotL','viewRotR','viewFlip','viewRotReset','canvasFH','canvasFV','flipLH','flipLV','xfWarp','wireToggle'];
 kbCmds=null;
