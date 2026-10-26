@@ -1,3 +1,9 @@
+# Gouache Studio 0.74.3
+
+- **Saving no longer hangs.** A stuck save now stops with a message instead of freezing the window.
+- **Faster saves** of big projects, and **no freeze when drag-selecting model parts**.
+- The Graphics card report shows the last save's timings.
+
 # Gouache Studio 0.74.2
 
 - **Copy and paste masks** from one layer to another (right-click a layer, or the buttons under the layer list).

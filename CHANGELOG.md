@@ -1,3 +1,10 @@
+## 0.74.3
+
+- **Saving can no longer hang the app.** If the graphics card does not return a picture within a minute, or a packing worker stops answering for two minutes, the save stops with a clear message and the window works again (before, the window stayed covered and had to be closed from Task Manager).
+- **Faster saving of big projects.** Empty and flat maps skip the WebP trial, which saves seconds per map at 4096 px.
+- **Drag-selecting model parts no longer freezes.** A fast drag over the model asks the graphics card for at most about 20 ms of lookups per mouse move, and catches up on the next move.
+- **Graphics card report** now shows the last save's timings (graphics read, packing, finding edges) and the 3D view's buffer size.
+
 ## 0.74.2
 
 - **Copy and paste masks.** Right-click a layer (or use the buttons under the layer list) and choose **Copy mask**, then **Paste mask** on any other layer or folder of the same picture size. The whole mask comes across, including its rows. One Undo removes it.
