@@ -33,6 +33,19 @@ function gpuBudget(){if(gpuHealth.vram)return gpuHealth.vram;try{const v=+localS
 setInterval(()=>{if(gpuHealth.lost||gpuHealth.warned||document.hidden)return;const G=gpuMemory(),b=gpuBudget();
   if(G.bytes>b*0.75){gpuHealth.warned=true;gpuLogAdd('memory high');toast('Graphics memory is nearly full ('+fmtBytes(G.bytes)+' of about '+fmtBytes(b)+'). Close tabs, use a smaller canvas or 8-bit, or lower the 3D quality to avoid a black screen.');}},5000);
 
+/* how fast this card draws the CURRENT brush: dabs go into a private 1024×1024 picture (the document is not touched) */
+function ghBrushTest(){const B=brush,out={},T=1024,wait=()=>{};let t=null;
+  try{t=makeTarget(T,T,8);const r=Math.max(.5,(B.size||40)/2),tip=B.tip&&B.tip.tex?B.tip:null,ext=r*(tip?1.4143:1)+2,gx=Math.max(1,Math.round(T/6)),step=Math.max(.5,(B.spacing||.1)*2*r);
+    const U={uRadius:r,uExtent:ext,uSize:[T,T],uHard:B.hardness,uGrain:B.grain||0,uGrainScale:[T/gx,T/gx],uPeriod:[gx,gx],uUseTip:!!tip,uTip:tip?tip.tex:dummy,uAngle:0,uRound:B.roundness||1,uFlip:[1,1],uTipAspect:tip?tip.w/tip.h:1};
+    const sync=()=>{const b=new Uint8Array(4);gl.bindFramebuffer(gl.FRAMEBUFFER,t.fbo);gl.readPixels(0,0,1,1,gl.RGBA,gl.UNSIGNED_BYTE,b);};
+    const pass=(dual,n)=>{const D=dual?dualUniforms(B.dual,false):null;if(dual&&!D)return null;clearTarget(t);sync();const t0=performance.now();
+      for(let i=0;i<n;i++){const d=i*step,x=60+d%(T-120),y=120+((d/(T-120))|0)%6*140;run(P.stamp,t,Object.assign({},U,D||{},{uCenter:[x,y],uAlpha:1,uTint:{int:0},uDabCol:[0,0,0]}),{blend:'max'});}
+      sync();return performance.now()-t0;};
+    pass(false,20);/* warm-up */
+    const n=300,plain=pass(false,n);out.size=Math.round(B.size||40);out.spacing=Math.round((B.spacing||.1)*1000)/10;out.tip=tip?'tip picture':'round';
+    out.plainMs=plain/n;const dual=B.dual&&B.dual.on?pass(true,n):null;if(dual!==null)out.dualMs=dual/n;
+  }catch(e){out.error=String(e.message||e);}finally{if(t)disposeTarget(t);}
+  return out;}
 /* ---- speed test ---- */
 const GH_FS=`in vec2 vUV; uniform float uN; void main(){vec2 p=vUV*8.0;float a=0.0;for(int i=0;i<int(uN);i++){p=vec2(sin(p.y*1.3+a),cos(p.x*1.7-a))*1.1+p*0.3;a+=dot(p,p)*0.01;}o=vec4(fract(a),0.5,0.5,1.0);}`;
 let ghProg=null;
@@ -51,7 +64,7 @@ async function ghTest(){const out={},wait=()=>new Promise(r=>setTimeout(r,30));g
   /* the test stops at 24 pictures (3 GB): reaching that says the card has at least that much, not how much */
   out.capped=held.length>=24;
   if(!out.capped&&out.fit>=1024){gpuHealth.vram=out.fit*1048576*1.25;try{localStorage.setItem('gs.vram2',String(Math.round(out.fit*1.25)));}catch(e){}}
-  out.webgpu=await ghWebGPU();return out;}
+  out.brush=ghBrushTest();out.webgpu=await ghWebGPU();return out;}
 function ghReportText(r){const I=gpuInfo(),G=gpuMemory(),log=gpuLogRead().filter(x=>x.kind!=='start').slice(-5);
   return ['Gouache Studio '+(typeof APP_VERSION!=='undefined'?APP_VERSION:''),
     'Graphics card: '+I.renderer+(I.software?'  (SOFTWARE — no real graphics card in use)':''),'Vendor: '+I.vendor,'Driver/API: '+I.version,
@@ -59,6 +72,7 @@ function ghReportText(r){const I=gpuInfo(),G=gpuMemory(),log=gpuLogRead().filter
     'Document: '+doc.w+'×'+doc.h+' '+doc.depth+'-bit · '+allLayers().length+' layers · '+doc.maps.length+' maps · mode '+ui.mode,
     'Tracked graphics memory: '+fmtBytes(G.bytes)+' in '+G.targets+' pictures (budget '+fmtBytes(gpuBudget())+')',
     'Drawing back-end: '+gpuBackend.kind+' · WebGPU: '+(r&&r.webgpu||'checking…'),
+    r&&r.brush?(r.brush.error?'Brush test failed: '+r.brush.error:'Current brush ('+r.brush.size+' px, '+r.brush.tip+', spacing '+r.brush.spacing+'%): '+(1000/r.brush.plainMs).toFixed(0)+' dabs a second'+(r.brush.dualMs?' · with dual brush '+(1000/r.brush.dualMs).toFixed(0)+' dabs a second':'')):'',
     r?(r.error?'Test failed: '+r.error:'Speed test at 4096²: heavy shader '+r.shaderMs.toFixed(1)+' ms · layer blend '+r.blendMs.toFixed(1)+' ms · room for '+(r.capped?'at least ':'about ')+r.fit+' MB of pictures'):'',
     log.length?'Recent events: '+log.map(x=>new Date(x.t).toLocaleString()+' '+x.kind+' ('+x.doc+', '+x.layers+' layers, '+x.tracked+')').join('; '):''].filter(Boolean).join('\n');}
 function dlgGpuReport(){const pre=el('pre',{class:'note',style:'white-space:pre-wrap;user-select:text;max-height:320px;overflow:auto'}),text0=ghReportText(null);pre.textContent=text0+'\n\nRunning the speed test…';
