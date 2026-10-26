@@ -5,11 +5,12 @@
 const G3_MAGIC=[71,79,85,65,67,72,69,51],G3_VERSION=1;
 const isP3Proj=buf=>{const u=new Uint8Array(buf,0,Math.min(8,buf.byteLength));return u.length===8&&G3_MAGIC.every((v,i)=>u[i]===v);};
 /* every set as a .gouache blob (the others are stepped into for a moment; the screen holds still meanwhile) */
-async function encodeP3Project(){if(ui.mode!=='p3d')throw new Error('Open the 3D Paint tab first.');const blobs=[];let off=0;const put=b=>{blobs.push(b);const r={o:off,n:b.length};off+=b.length;return r;};
+async function encodeP3Project(){if(ui.mode!=='p3d')throw new Error('Open the 3D Paint tab first.');const blobs=[];let off=0;/* (0.74.4) a set stays a Blob (the browser keeps big ones outside the page's memory) instead of being copied into a second big array */
+  const put=b=>{const n=b.size!==undefined?b.size:b.length;blobs.push(b);const r={o:off,n};off+=n;return r;};
   const sets=[];tabDocs.hold=true;ghProject=true;
   try{for(let i=0;i<p3.sets.length;i++){const S=p3.sets[i];let bytes;ghCrumb('save: texture set '+(i+1)+' of '+p3.sets.length,true);
-      if(i===p3.cur)bytes=new Uint8Array(await (await encodeGouacheNow({lean:true})).arrayBuffer());
-      else if(S.state){const mine=docState();setDocState(S.state);try{bytes=new Uint8Array(await (await encodeGouacheNow({lean:true})).arrayBuffer());}finally{S.state=docState();setDocState(mine);}}
+      if(i===p3.cur)bytes=await encodeGouacheNow({lean:true});
+      else if(S.state){const mine=docState();setDocState(S.state);try{bytes=await encodeGouacheNow({lean:true});}finally{S.state=docState();setDocState(mine);}}
       sets.push(Object.assign({name:S.name,material:p3Binding(S),tile:S.tile||null,meshEditID:S.meshEditID,hid:!!S.hidden},bytes?put(bytes):{empty:true}));}}
   finally{tabDocs.hold=false;ghProject=false;requestRender(true);}
   let mesh=null;if(v3s().model==='imported'&&v3.imported){ghCrumb('save: packing the model ('+Math.round((v3.imported.idx?v3.imported.idx.length:0)/3)+' triangles)',true);const c=await streamThrough(meshPack(v3.imported),'deflate-raw');mesh=Object.assign({name:v3.imported.name},put(c));}
