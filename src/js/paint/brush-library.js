@@ -176,6 +176,8 @@ function renderLibrary(){const box=$('#libBody');box.replaceChildren();
 const sliderSnap={step:0,badge:null};
 function sliderSnapReset(){sliderSnap.step=0;if(sliderSnap.badge)sliderSnap.badge.remove();sliderSnap.badge=null;}
 window.addEventListener('keyup',e=>{if(!e.ctrlKey&&!e.metaKey)sliderSnapReset();});window.addEventListener('blur',sliderSnapReset);
+/* Preferences › Painting › "Sliders always move in steps": steps by default, Ctrl then moves smoothly (off unless turned on) */
+const sliderSteps=ctrl=>prefs.sliderAlways?!ctrl:ctrl;
 function sliderIncrement(){const n=Number(prefs.sliderIncrement);return Number.isFinite(n)&&n>0?n:5;}
 function sliderGestures(inp,o={}){
   const from=o.from||((v)=>v),to=o.to||((v)=>v),scale=o.scale||1,step=Math.max(1e-12,parseFloat(inp.step)||1),win=inp.ownerDocument.defaultView;
@@ -188,11 +190,11 @@ function sliderGestures(inp,o={}){
     const next=clamp(to(v),lo,hi);inp.value=String(Number(next.toFixed(10)));inp.dispatchEvent(new Event('input',{bubbles:true}));};
   const finish=e=>{if(!drag||e&&e.pointerId!==undefined&&e.pointerId!==drag.id)return;const d=drag;drag=null;if(e?.type==='blur')sliderSnapReset();win.removeEventListener('blur',finish);if(inp.hasPointerCapture(d.id))inp.releasePointerCapture(d.id);if(inp.value!==d.before)inp.dispatchEvent(new Event('change',{bubbles:true}));};
   inp.addEventListener('pointerdown',e=>{if(e.button!==0||inp.disabled)return;e.preventDefault();e.stopPropagation();inp.focus({preventScroll:true});const [lo,hi]=bounds(),r=inp.getBoundingClientRect(),width=Math.max(1,r.width-12),x=clamp(e.clientX-r.left-6,0,width),raw=lo+x/width*(hi-lo),value=clamp(to(current()),lo,hi),thumb=6+(value-lo)/(hi-lo||1)*width;
-    drag={id:e.pointerId,x:e.clientX,raw:e.shiftKey||Math.abs(e.clientX-r.left-thumb)<=8?value:raw,before:inp.value,width};inp.setPointerCapture(e.pointerId);win.addEventListener('blur',finish);emit(drag.raw,e.ctrlKey||e.metaKey,e.shiftKey);});
-  inp.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;e.preventDefault();e.stopPropagation();const [lo,hi]=bounds();drag.raw=clamp(drag.raw+(e.clientX-drag.x)/drag.width*(hi-lo)*(e.shiftKey?.1:1),lo,hi);drag.x=e.clientX;emit(drag.raw,e.ctrlKey||e.metaKey,e.shiftKey);});
+    drag={id:e.pointerId,x:e.clientX,raw:e.shiftKey||Math.abs(e.clientX-r.left-thumb)<=8?value:raw,before:inp.value,width};inp.setPointerCapture(e.pointerId);win.addEventListener('blur',finish);emit(drag.raw,sliderSteps(e.ctrlKey||e.metaKey),e.shiftKey);});
+  inp.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;e.preventDefault();e.stopPropagation();const [lo,hi]=bounds();drag.raw=clamp(drag.raw+(e.clientX-drag.x)/drag.width*(hi-lo)*(e.shiftKey?.1:1),lo,hi);drag.x=e.clientX;emit(drag.raw,sliderSteps(e.ctrlKey||e.metaKey),e.shiftKey);});
   inp.addEventListener('pointerup',finish);inp.addEventListener('pointercancel',finish);inp.addEventListener('lostpointercapture',finish);
   inp.addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey)||inp.disabled||!(e.deltaY||e.deltaX))return;e.preventDefault();e.stopPropagation();const sign=(e.deltaY||e.deltaX)<0?1:-1;sliderSnap.step=Math.max(Math.min(5,sliderIncrement()),Math.min(1000000,Number((snapStep()+sign*5).toFixed(3))));snapShow();},{passive:false});
-  inp.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','PageUp','PageDown'].includes(e.key))return;e.preventDefault();e.stopPropagation();const sign=['ArrowRight','ArrowUp','PageUp'].includes(e.key)?1:-1,[lo,hi]=bounds(),ctrl=e.ctrlKey||e.metaKey;
+  inp.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','PageUp','PageDown'].includes(e.key))return;e.preventDefault();e.stopPropagation();const sign=['ArrowRight','ArrowUp','PageUp'].includes(e.key)?1:-1,[lo,hi]=bounds(),ctrl=sliderSteps(e.ctrlKey||e.metaKey);
     if(ctrl){inp.value=String(Number(clamp(to(current()+sign*snapStep()/scale),lo,hi).toFixed(10)));inp.dispatchEvent(new Event('input',{bubbles:true}));}
     else emit(to(current())+sign*step*(e.shiftKey?.1:e.key.startsWith('Page')?10:1),false,e.shiftKey);inp.dispatchEvent(new Event('change',{bubbles:true}));});
 }
