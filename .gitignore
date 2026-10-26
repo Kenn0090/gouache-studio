@@ -6,3 +6,5 @@ src-tauri/gen/schemas/
 *.log
 
 .claude/settings.local.json
+out/
+tests/e2e/_*.cjs
