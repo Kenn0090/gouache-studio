@@ -1,3 +1,12 @@
+## 0.74.0
+
+- **Graphics card resets are handled.** If Windows resets the graphics card, a clear message offers to restart the app, and autosave no longer runs afterwards (so a black picture can't replace your last good recovery copy). The welcome screen offers the autosave back.
+- **Fastest graphics card.** The app asks Windows for the high-performance card. You can change this in Help > Graphics card report.
+- **Graphics memory warning.** A message appears before graphics memory fills up, which is the usual cause of a black screen at 4096 px.
+- **Help > Graphics card report.** Shows the card, driver, memory and WebGPU support, runs a short 4096 px speed test, keeps a small log of card resets, and has a Copy button for sending to us.
+- **Faster dual brush.** Build-up and flow strokes now use the batched path too.
+- **Faster 3D painting at large sizes.** While you paint on the model, only the part of the texture the stroke can reach is cleared and updated, including with mirror painting. This cuts the work per frame a lot at 4096 px.
+
 ## 0.73.3
 
 - **Drag-select multiple model parts in Mask mode.** With Select part active, drag across the model to include each Object, Material, UV island, Face or Loop you pass over in one mask edit. Ctrl-drag hides them; one Undo restores the previous mask.

@@ -1,3 +1,9 @@
+# Gouache Studio 0.74.0
+
+- **Steadier on big canvases.** 3D painting at 4096 px only updates the part of the texture you are painting (also with mirror), and dual brush with build-up or flow is faster.
+- **Graphics card resets.** The app now explains what happened and offers a restart; autosave is kept safe.
+- **Help > Graphics card report** shows your card, memory and a speed test, and you can copy it to send to us.
+
 # Gouache Studio 0.73.3
 
 - **Select several model parts at once.** In Mask mode, drag with Select part active to include each Object, Material, UV island, Face or Loop you pass over. Ctrl-drag hides them. The full drag is one undoable mask edit.
