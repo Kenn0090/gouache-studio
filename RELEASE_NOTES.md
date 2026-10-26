@@ -1,5 +1,6 @@
 # Gouache Studio 0.74.1
 
+- **Faster textured brushes** (dual brush, grain): empty parts of the tip are skipped. Results look the same.
 - **Fixed a too-early graphics memory warning.** On cards with 8 GB or more it could appear far too soon after running Help > Graphics card report.
 
 # Gouache Studio 0.74.0

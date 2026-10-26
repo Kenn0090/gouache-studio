@@ -33,6 +33,7 @@ float brushMask(vec2 pix){
     float h=clamp(min(uHard,1.0-1.2/max(r,1.2)),0.0,0.995);
     m=1.0-smoothstep(h,1.0,d);
   }
+  if(m<=0.0) return 0.0; /* nothing to grain or knock out (most of a bristle tip's square is empty) */
   if(uGrain>0.0){ vec2 q=pix/uGrainScale; float n=vnoise(q,uPeriod)*0.6+vnoise(q*2.0,uPeriod*2.0)*0.4;
     m*=clamp(mix(1.0,n*2.3-0.5,uGrain),0.0,1.0); }
   if(uUseDual==1){ float dl=texture(uDual,(pix+uDualOff)/uDualSize).r; if(uDualMode==1) dl=1.0-dl; m*=mix(1.0,dl,uDualAmt); }

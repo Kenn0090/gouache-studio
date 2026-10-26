@@ -1,5 +1,6 @@
 ## 0.74.1
 
+- **Faster textured brushes.** The empty parts of a brush tip (most of a bristle or sponge tip) no longer cost grain and dual-brush work per pixel. Painted results are identical.
 - **Graphics memory warning is no longer too early.** The speed test stops at 3 GB, and the app took that as the card's size, so the "memory nearly full" warning could appear at about 2.9 GB on an 8 GB card. The warning now assumes 6 GB unless the test finds the card's real limit, and the report says "at least" when the test is cut short.
 
 ## 0.74.0
