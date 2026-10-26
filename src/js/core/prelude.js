@@ -8,7 +8,7 @@ const cv=$('#gl'), stage=$('#stage');
 let toastTimer=0;
 function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{t.hidden=true;},2800);}
 
-const gl=cv.getContext('webgl2',{alpha:false,antialias:false,depth:false,stencil:false,premultipliedAlpha:false});
+const gl=cv.getContext('webgl2',{powerPreference:(()=>{try{return localStorage.getItem('gs.gpuPref')||'high-performance';}catch(e){return 'high-performance';}})(),alpha:false,antialias:false,depth:false,stencil:false,premultipliedAlpha:false});
 if(!gl){stage.append(el('div',{class:'fatal',text:'This editor needs WebGL2, which this browser or device does not provide. Try a current version of Chrome, Edge or Firefox with hardware acceleration turned on.'}));return;}
 /* Asking the graphics card for a texture setting (getTexParameter) makes the page wait for everything queued before it. We note what
    we set ourselves instead, and read that back (texParam). */

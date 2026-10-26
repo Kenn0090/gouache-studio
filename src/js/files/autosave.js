@@ -38,7 +38,7 @@ async function asWithTab(t,fn){if(!t.state||stroke||preview)return null;const co
   const mine=docState();let r=null;tabDocs.hold=true;
   try{setDocState(t.state);r=await fn();}catch(e){console.warn('autosave tab',e);}
   finally{t.state=docState();setDocState(mine);tabDocs.hold=false;cover.remove();requestRender(true);}return r;}
-async function autosaveNow(force){if(as.busy||stroke||preview||(typeof tabDocs!=='undefined'&&tabDocs.hold)||(typeof bk!=='undefined'&&bk.busy))return false;as.busy=true;let n=0;
+async function autosaveNow(force){if((typeof gpuHealth!=='undefined'&&gpuHealth.lost)||as.busy||stroke||preview||(typeof tabDocs!=='undefined'&&tabDocs.hold)||(typeof bk!=='undefined'&&bk.busy))return false;as.busy=true;let n=0;
   try{/* the painting */
     const pk=asPaintKind(),sig=asPaintSig();if(sig&&(force||sig!==as.last[pk])){if(asPaintSaved()){await asClear(pk);}
       else{if(prefs.autosaveOver&&platform.isDesktop&&withPaintDoc(()=>doc.filePath&&extOf(doc.filePath)==='gouache'))await withPaintDocAsync(()=>saveDoc(false));

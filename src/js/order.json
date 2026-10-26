@@ -163,6 +163,7 @@
     "bake/uv-fun",
     "bake/uv-relax",
     "ui/help",
+    "ui/gpu-health",
     "ui/pen-test",
     "ui/tear-menus",
     "ui/brush-pop",

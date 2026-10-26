@@ -196,4 +196,3 @@ window.addEventListener('keyup',e=>{if(e.key==='Alt'){altPickDown=false;refreshC
 window.addEventListener('blur',()=>{spaceDown=false;rotHold=false;altPickDown=false;stage.classList.toggle('grab',ui.tool==='hand');refreshCursor();});
 new ResizeObserver(()=>{resizeGL();drawSV();}).observe(stage);new ResizeObserver(()=>resizeGL()).observe(work);
 new ResizeObserver(()=>drawSV()).observe(svC);
-cv.addEventListener('webglcontextlost',e=>{e.preventDefault();toast('The GPU context was lost. Reload the page to continue.');});
