@@ -1,3 +1,7 @@
+## 0.73.2
+
+- **Clear mask hides all.** Clear mask now resets the mask to black instead of revealing the whole layer. Undo restores the old mask and its rows; paint white to reveal areas again.
+
 ## 0.73.1
 
 - **Dual brush picker.** Choose the second alpha from searchable thumbnails of every brush in the main library. Saved and imported brushes appear immediately; removed brushes disappear without restarting.

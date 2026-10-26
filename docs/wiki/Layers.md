@@ -48,7 +48,7 @@ Click the mask thumbnail to paint the mask. **Shift+click** turns the mask off o
 
 **Right-click › Mask from mesh map** makes the mask from a baked map of the texture set: AO, curvature, thickness or height.
 
-A mask can hold **rows** (paint, mesh maps, ID colours, noise, generators, filters), listed under the layer, and a layer can have **content effects**. See [Masks and effects](Masks-and-effects.md). **Clear mask** replaces it with white to reveal the whole layer (undo restores the old mask and its rows); **Apply mask** bakes it into the layer; **Delete mask** removes it.
+A mask can hold **rows** (paint, mesh maps, ID colours, noise, generators, filters), listed under the layer, and a layer can have **content effects**. See [Masks and effects](Masks-and-effects.md). **Clear mask** replaces it with black to hide the whole layer (undo restores the old mask and its rows; paint white to reveal parts again); **Apply mask** bakes it into the layer; **Delete mask** removes it.
 
 **Pictures into a mask** (light shows the layer, dark and see-through parts hide it):
 - **Paste:** click the mask thumbnail, then **Ctrl+V**. A copied part (or an image copied in another program) lands in the mask with Free transform on: move or scale it, then press **Enter**. This works in the quick mask (Q) too.
