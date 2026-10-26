@@ -44,13 +44,14 @@ const pendingReads=new Set();
 function asyncRead(fbo,x,y,w,h,type,ctor,n,done,failed,format=gl.RGBA){const buf=gl.createBuffer();gl.bindBuffer(gl.PIXEL_PACK_BUFFER,buf);gl.bufferData(gl.PIXEL_PACK_BUFFER,n*ctor.BYTES_PER_ELEMENT,gl.STREAM_READ);
   gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);gl.readPixels(x,y,w,h,format,type,0);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
   const fence=gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE,0);gl.flush();
-  const job={buf,fence,fail(){if(!pendingReads.delete(job))return;gl.deleteBuffer(buf);gl.deleteSync(fence);if(failed)failed(new Error('The graphics card could not return the image. Please try saving again.'));},
+  const job={buf,fence,t0:performance.now(),fail(){if(!pendingReads.delete(job))return;gl.deleteBuffer(buf);gl.deleteSync(fence);if(failed)failed(new Error('The graphics card could not return the image. Please try saving again.'));},
     finish(){if(gl.isContextLost()){job.fail();return;}if(!pendingReads.delete(job))return;const out=new ctor(n);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,buf);gl.getBufferSubData(gl.PIXEL_PACK_BUFFER,0,out);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);
     gl.deleteBuffer(buf);gl.deleteSync(fence);done(out);}};
   pendingReads.add(job);schedulePoll();return job;}
 let pollTimer=0;
 function schedulePoll(){if(!pollTimer&&pendingReads.size)pollTimer=setTimeout(pollReads,4);}
-function pollReads(){pollTimer=0;for(const j of [...pendingReads]){const s=gl.clientWaitSync(j.fence,0,0);if(s===gl.WAIT_FAILED||gl.isContextLost())j.fail();else if(s===gl.ALREADY_SIGNALED||s===gl.CONDITION_SATISFIED)j.finish();}schedulePoll();}
+/* (0.74.3) a graphics card that never answers must not leave a save waiting for ever: give up after a minute */
+function pollReads(){pollTimer=0;const now=performance.now();for(const j of [...pendingReads]){const s=gl.clientWaitSync(j.fence,0,0);if(s===gl.WAIT_FAILED||gl.isContextLost()||now-j.t0>60000)j.fail();else if(s===gl.ALREADY_SIGNALED||s===gl.CONDITION_SATISFIED)j.finish();}schedulePoll();}
 /* immediate read, for code that needs the pixels right away */
 function captureRegionNow(src,x,y,w,h){gl.bindFramebuffer(gl.FRAMEBUFFER,src.fbo);let u;
   if(src.mono){gl.bindFramebuffer(gl.FRAMEBUFFER,null);const staged=makeTarget(w,h,src.depth,false,false);run(P.maskplace,staged,{uMask:src.tex,uRect:[0,0,w,h],uSourceOffset:[x,y],uDef:0});const result=captureRegionNow(staged,0,0,w,h);disposeTarget(staged);return result;}

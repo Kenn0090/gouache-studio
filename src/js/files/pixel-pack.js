@@ -67,7 +67,11 @@ function pxWorkerGet(){const S=pxWorkerState;if(S.pool.length||S.unavailable)ret
 async function pxPack(raw,w,h,depth,lossy,owned=false){const worker=w*h>=65536?pxWorkerGet():null;
   if(!worker)return pxPackCore(raw,w,h,depth,lossy,pxSmall());
   const bytes=owned?raw:raw.slice(),S=pxWorkerState,id=++S.seq;
-  return new Promise((resolve,reject)=>{S.jobs.set(id,{resolve,reject});worker.busy++;try{worker.postMessage({id,args:[bytes,w,h,depth,lossy,pxSmall()]},[bytes.buffer]);}catch(e){S.jobs.delete(id);worker.busy--;reject(e);}});}
+  return new Promise((resolve,reject)=>{const job={resolve:v=>{clearTimeout(job.to);resolve(v);},reject:e=>{clearTimeout(job.to);reject(e);},worker};S.jobs.set(id,job);worker.busy++;
+    /* (0.74.3) a packing worker that never answers (out of memory on a 4096 px picture) must not hold a save for ever: after two minutes it is dropped, with every job it still had */
+    job.to=setTimeout(()=>{try{worker.terminate();}catch(e){}S.pool=S.pool.filter(w=>w!==worker);if(S.worker===worker)S.worker=null;
+      for(const [jid,j] of [...S.jobs])if(j.worker===worker){S.jobs.delete(jid);j.reject(new Error('Packing a picture took too long, so the save was stopped. Try again, or turn off Smaller files in Preferences › Files.'));}},120000);
+    try{worker.postMessage({id,args:[bytes,w,h,depth,lossy,pxSmall()]},[bytes.buffer]);}catch(e){S.jobs.delete(id);worker.busy--;job.reject(e);}});}
 async function pxPackSolid(color,w,h,depth){const args=[null,w,h,depth,false,false,color],worker=w*h>=65536?pxWorkerGet():null;if(!worker)return pxPackCore(...args);
   const S=pxWorkerState,id=++S.seq;return new Promise((resolve,reject)=>{S.jobs.set(id,{resolve,reject});worker.busy++;try{worker.postMessage({id,args});}catch(e){S.jobs.delete(id);worker.busy--;reject(e);}});}
 /* unpack a stored picture back to raw pixels; f missing = an older file (plain deflate) */
