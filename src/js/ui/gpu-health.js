@@ -14,6 +14,10 @@ function gpuLogRead(){try{return JSON.parse(localStorage.getItem('gs.gpuLog')||'
 function gpuLogAdd(kind){try{const G=gpuMemory(),l=gpuLogRead();l.push({t:Date.now(),kind,renderer:gpuInfo().renderer,doc:doc.w+'x'+doc.h+' '+doc.depth+'-bit',layers:allLayers().length,maps:doc.maps.length,mode:ui.mode,tracked:Math.round(G.bytes/1048576)+' MB',targets:G.targets});
   localStorage.setItem('gs.gpuLog',JSON.stringify(l.slice(-20)));}catch(e){}}
 gpuLogAdd('start');
+/* the drawing back-end in use; a WebGPU or native one is planned (docs/native-renderer-plan.md) and will switch this */
+const gpuBackend={kind:'webgl2'};
+/* does this machine offer WebGPU (the planned next step)? asked once, shown in the report */
+async function ghWebGPU(){try{if(!navigator.gpu)return 'not available';const a=await navigator.gpu.requestAdapter({powerPreference:'high-performance'});if(!a)return 'no adapter';const i=a.info||{},l=a.limits||{};return 'available — '+[i.vendor,i.architecture,i.description].filter(Boolean).join(' ')+' · max buffer '+fmtBytes(l.maxBufferSize||0)+' · timestamp query '+(a.features&&a.features.has('timestamp-query')?'yes':'no');}catch(e){return 'error: '+(e.message||e);}}
 
 cv.addEventListener('webglcontextlost',e=>{e.preventDefault();if(gpuHealth.lost)return;gpuHealth.lost=true;gpuLogAdd('context lost');
   try{if(typeof as!=='undefined')as.busy=true;}catch(err){}
@@ -45,13 +49,14 @@ async function ghTest(){const out={},wait=()=>new Promise(r=>setTimeout(r,30));g
   const held=[];try{for(let i=0;i<24;i++){const x=makeTarget(4096,4096,16);held.push(x);if(gl.getError()!==gl.NO_ERROR){break;}}}catch(e){}
   out.fit=held.length*128;for(const x of held)disposeTarget(x);
   if(out.fit>=1024){gpuHealth.vram=out.fit*1048576*1.25;try{localStorage.setItem('gs.vram',String(Math.round(out.fit*1.25)));}catch(e){}}
-  return out;}
+  out.webgpu=await ghWebGPU();return out;}
 function ghReportText(r){const I=gpuInfo(),G=gpuMemory(),log=gpuLogRead().filter(x=>x.kind!=='start').slice(-5);
   return ['Gouache Studio '+(typeof APP_VERSION!=='undefined'?APP_VERSION:''),
     'Graphics card: '+I.renderer+(I.software?'  (SOFTWARE — no real graphics card in use)':''),'Vendor: '+I.vendor,'Driver/API: '+I.version,
     'Largest texture: '+I.maxTex+' · samplers: '+I.maxSamplers+' · float targets: '+(I.float?'yes':'no'),'Card preference: '+I.pref+' · 3D quality: '+I.quality,
     'Document: '+doc.w+'×'+doc.h+' '+doc.depth+'-bit · '+allLayers().length+' layers · '+doc.maps.length+' maps · mode '+ui.mode,
     'Tracked graphics memory: '+fmtBytes(G.bytes)+' in '+G.targets+' pictures (budget '+fmtBytes(gpuBudget())+')',
+    'Drawing back-end: '+gpuBackend.kind+' · WebGPU: '+(r&&r.webgpu||'checking…'),
     r?(r.error?'Test failed: '+r.error:'Speed test at 4096²: heavy shader '+r.shaderMs.toFixed(1)+' ms · layer blend '+r.blendMs.toFixed(1)+' ms · room for about '+r.fit+' MB of pictures'):'',
     log.length?'Recent events: '+log.map(x=>new Date(x.t).toLocaleString()+' '+x.kind+' ('+x.doc+', '+x.layers+' layers, '+x.tracked+')').join('; '):''].filter(Boolean).join('\n');}
 function dlgGpuReport(){const pre=el('pre',{class:'note',style:'white-space:pre-wrap;user-select:text;max-height:320px;overflow:auto'}),text0=ghReportText(null);pre.textContent=text0+'\n\nRunning the speed test…';
