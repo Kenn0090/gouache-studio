@@ -1,3 +1,7 @@
+# Gouache Studio 0.74.1
+
+- **Fixed a too-early graphics memory warning.** On cards with 8 GB or more it could appear far too soon after running Help > Graphics card report.
+
 # Gouache Studio 0.74.0
 
 - **Steadier on big canvases.** 3D painting at 4096 px only updates the part of the texture you are painting (also with mirror), and dual brush with build-up or flow is faster.

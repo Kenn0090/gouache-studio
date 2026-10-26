@@ -29,7 +29,7 @@ cv.addEventListener('webglcontextlost',e=>{e.preventDefault();if(gpuHealth.lost)
 cv.addEventListener('webglcontextrestored',()=>{gpuLogAdd('context restored');toast('The graphics card came back. Restart the app to be safe.');});
 
 /* graphics memory: warn once when the textures we track get near what the card can hold */
-function gpuBudget(){if(gpuHealth.vram)return gpuHealth.vram;try{const v=+localStorage.getItem('gs.vram');if(v>0)return v*1048576;}catch(e){}return 6*1073741824;}
+function gpuBudget(){if(gpuHealth.vram)return gpuHealth.vram;try{const v=+localStorage.getItem('gs.vram2');if(v>0)return v*1048576;}catch(e){}return 6*1073741824;}
 setInterval(()=>{if(gpuHealth.lost||gpuHealth.warned||document.hidden)return;const G=gpuMemory(),b=gpuBudget();
   if(G.bytes>b*0.75){gpuHealth.warned=true;gpuLogAdd('memory high');toast('Graphics memory is nearly full ('+fmtBytes(G.bytes)+' of about '+fmtBytes(b)+'). Close tabs, use a smaller canvas or 8-bit, or lower the 3D quality to avoid a black screen.');}},5000);
 
@@ -48,7 +48,9 @@ async function ghTest(){const out={},wait=()=>new Promise(r=>setTimeout(r,30));g
   /* 3: how many 4096² half-float pictures (128 MB each) the card takes before it refuses */
   const held=[];try{for(let i=0;i<24;i++){const x=makeTarget(4096,4096,16);held.push(x);if(gl.getError()!==gl.NO_ERROR){break;}}}catch(e){}
   out.fit=held.length*128;for(const x of held)disposeTarget(x);
-  if(out.fit>=1024){gpuHealth.vram=out.fit*1048576*1.25;try{localStorage.setItem('gs.vram',String(Math.round(out.fit*1.25)));}catch(e){}}
+  /* the test stops at 24 pictures (3 GB): reaching that says the card has at least that much, not how much */
+  out.capped=held.length>=24;
+  if(!out.capped&&out.fit>=1024){gpuHealth.vram=out.fit*1048576*1.25;try{localStorage.setItem('gs.vram2',String(Math.round(out.fit*1.25)));}catch(e){}}
   out.webgpu=await ghWebGPU();return out;}
 function ghReportText(r){const I=gpuInfo(),G=gpuMemory(),log=gpuLogRead().filter(x=>x.kind!=='start').slice(-5);
   return ['Gouache Studio '+(typeof APP_VERSION!=='undefined'?APP_VERSION:''),
@@ -57,7 +59,7 @@ function ghReportText(r){const I=gpuInfo(),G=gpuMemory(),log=gpuLogRead().filter
     'Document: '+doc.w+'×'+doc.h+' '+doc.depth+'-bit · '+allLayers().length+' layers · '+doc.maps.length+' maps · mode '+ui.mode,
     'Tracked graphics memory: '+fmtBytes(G.bytes)+' in '+G.targets+' pictures (budget '+fmtBytes(gpuBudget())+')',
     'Drawing back-end: '+gpuBackend.kind+' · WebGPU: '+(r&&r.webgpu||'checking…'),
-    r?(r.error?'Test failed: '+r.error:'Speed test at 4096²: heavy shader '+r.shaderMs.toFixed(1)+' ms · layer blend '+r.blendMs.toFixed(1)+' ms · room for about '+r.fit+' MB of pictures'):'',
+    r?(r.error?'Test failed: '+r.error:'Speed test at 4096²: heavy shader '+r.shaderMs.toFixed(1)+' ms · layer blend '+r.blendMs.toFixed(1)+' ms · room for '+(r.capped?'at least ':'about ')+r.fit+' MB of pictures'):'',
     log.length?'Recent events: '+log.map(x=>new Date(x.t).toLocaleString()+' '+x.kind+' ('+x.doc+', '+x.layers+' layers, '+x.tracked+')').join('; '):''].filter(Boolean).join('\n');}
 function dlgGpuReport(){const pre=el('pre',{class:'note',style:'white-space:pre-wrap;user-select:text;max-height:320px;overflow:auto'}),text0=ghReportText(null);pre.textContent=text0+'\n\nRunning the speed test…';
   const sel=el('select',{id:'ghPref',onchange:e=>{try{localStorage.setItem('gs.gpuPref',e.target.value);}catch(x){}note.textContent='Restart the app to use this choice.';}},

@@ -1,3 +1,7 @@
+## 0.74.1
+
+- **Graphics memory warning is no longer too early.** The speed test stops at 3 GB, and the app took that as the card's size, so the "memory nearly full" warning could appear at about 2.9 GB on an 8 GB card. The warning now assumes 6 GB unless the test finds the card's real limit, and the report says "at least" when the test is cut short.
+
 ## 0.74.0
 
 - **Graphics card resets are handled.** If Windows resets the graphics card, a clear message offers to restart the app, and autosave no longer runs afterwards (so a black picture can't replace your last good recovery copy). The welcome screen offers the autosave back.
