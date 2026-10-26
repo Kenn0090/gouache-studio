@@ -166,10 +166,9 @@ function txDelete(rec){confirmDlg('Delete texture','Delete “'+rec.name+'” fr
   txCacheDrop('mine:'+rec.id);tx.thumbs.delete('mine:'+rec.id);store.del(rec.id,'textures');renderTextures();});}
 /* ---- the uses ---- */
 function txClick(it){if(ui.mode==='paint'&&doc.active?.editMask)return txToMask(it);if(ui.mode==='paint'){tx.selected=it.kind+':'+it.id;renderTextures();toast('Selected “'+it.name+'”. Drag it onto the canvas or a layer to add it.');return;}return doc.active?.editMask?txToMask(it):txToLayer(it);}
-async function txToMask(it){const L=doc.active;if(!isLayer(L)&&!(L&&L.type==='group')){toast('Select a layer first: the texture goes into its mask.');return;}
-  const t=txCopy(await txTarget(it)),r=msAdd(L,'image',{p:{name:it.name}},'Add '+it.name.toLowerCase()+' to the mask');if(!r){disposeTarget(t);return;}
-  msEdit(L,r,x=>{x.t=t;x.p.name=it.name;});(L.mask._rows||(L.mask._rows=new Set())).add(r);if(typeof msCommit==='function')msCommit();if(ui.mode==='paint')msSelect(L,'m',r.id);renderLayers();if(typeof renderMatEd==='function')renderMatEd(true);
-  toast('Added “'+it.name+'” to the mask of “'+L.name+'”. Its settings (size, turn, invert) are in the Material editor.');}
+async function txToMask(it,target=doc.active){const L=target;if(!isLayer(L)&&!(L&&L.type==='group')){toast('Select a layer first: the texture goes into its mask.');return;}
+  const root=doc.root,mask=L.mask,t=txCopy(await txTarget(it));if(doc.root!==root||!inDoc(L)||L.mask!==mask){disposeTarget(t);toast('The mask changed while the texture was loading. Drop it again.');return;}
+  if(msAddImageTarget(L,t,it.name))toast('Added “'+it.name+'” as a mask layer. Adjust its contrast and projection in the Material editor.');}
 const TX_CHANNELS=[['base','Base colour'],['rough','Roughness'],['metal','Metallic'],['height','Height'],['ao','Ambient occlusion'],['emis','Emissive'],['opac','Opacity']];
 async function txToChannel(it,k){const L=doc.active;if(!isLayer(L)||!L.fill){toast('Select a material layer first.');return;}
   const root=doc.root,W=L.fill,t=txCopy(await txTarget(it));if(doc.root!==root||L.fill!==W){disposeTarget(t);toast('The material changed while the texture was loading. Drop it again.');return;}matEdBegin(L);const s=L.fill.maps[k]||(L.fill.maps[k]={on:true,src:'value',v:.5,tile:1});

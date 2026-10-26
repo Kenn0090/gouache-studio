@@ -70,3 +70,7 @@ node baketab.cjs              # one test: prints PASS/FAIL lines, then ALL PASSE
 - `viewport72.cjs` drives Settings in all main viewport modes, image-file drops and undo, real GPU shadow-target resizing, inspection exit controls, mask hover pixels, preview shading parameters, and right-click tab closing with unsaved-document confirmation.
 
 - `material-rotation.cjs` drags the whole-material UV Rotation slider and checks rendered pixels before pointer release, exact angle entry beyond one turn, viewport-handle synchronization, Reset, Undo and independent X/Y/Z controls for 3D projections.
+
+- `mask-paint-tools.cjs` checks native image and library pointer drops onto black masks and mask rows, multiple image layers, live contrast and exact undo, the default Paint shortcut, synchronized backface settings, smudge across distant mirrored UV islands, normal normalization and multi-map undo/redo.
+
+- `slider-gestures.cjs` checks real Ctrl snapping, temporary Ctrl-wheel snap increments during a held drag, Shift precision and modifier transitions, percentage and mapped units, preference validation/save/reset/cancel/reload, and material Rotation synchronization/Undo.

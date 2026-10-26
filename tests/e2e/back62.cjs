@@ -36,7 +36,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.selectOption('#p3Model','plane');await W(900);
  const stroke=async()=>{await p.mouse.move(cx-60,cy);await p.mouse.down();await p.mouse.move(cx+60,cy,{steps:10});await p.mouse.up();await W(500);};
  await p.evaluate(()=>{const s=__gs.v3s();s.paintAlign='camera';__gs.v3.dirty=true;});
- ok(await p.evaluate(()=>{const c=document.getElementById('p3NoBack');return !!c&&c.checked&&__gs.v3s().noBack!==false;}),'Skip back faces is on by default');
+ ok(await p.evaluate(()=>{const c=document.getElementById('p3BackfacePaint');return !!c&&!c.checked&&__gs.v3s().noBack!==false;}),'Skip back faces is on by default');
  // seen from behind with Camera alignment, the plane's far side used to take paint
  await p.evaluate(()=>{__gs.v3s().noBack=false;Object.assign(__gs.v3.cam,{yaw:Math.PI,pitch:0});__gs.v3.dirty=true;});await W(500);
  const base=await red();await stroke();const off=await red();ok(off>base+100,'with it off, the back of the plane takes paint (+'+(off-base)+' px)');
@@ -47,7 +47,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{Object.assign(__gs.v3.cam,{yaw:0,pitch:0});__gs.v3.dirty=true;});await W(500);
  await stroke();const fr=await red();ok(fr>on+100,'and the front still paints ('+fr+' px)');
  // the checkbox changes the setting
- await p.evaluate(()=>{const c=document.getElementById('p3NoBack');c.click();});await W(200);
+ await p.evaluate(()=>{const c=document.getElementById('p3BackfacePaint');c.click();});await W(200);
  ok(await p.evaluate(()=>__gs.v3s().noBack===false),'the checkbox turns it off');
  ok(!errs.length,'no errors '+errs.join('|'));
  await b.close();console.log(fails?'FAILS '+fails:'ALL PASS');process.exit(fails?1:0);

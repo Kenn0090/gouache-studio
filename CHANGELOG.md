@@ -1,3 +1,13 @@
+## 0.73.0
+
+- **Slider controls.** Hold Ctrl while dragging to snap to increments of 5, and keep Ctrl held while using the mouse wheel to change the snap increment (5, 10, 15...). A small indicator shows the active increment; releasing Ctrl restores the starting increment. Hold Shift while dragging for one-tenth speed. Change the Ctrl increment in Edit > Preferences > Painting. Percent sliders use percentage points; mapped sliders use their displayed values.
+
+- **Textures as mask layers.** Drop image files or library textures onto a black mask thumbnail or its mask rows to add separate editable picture layers. Multiple files add one row each; existing mask contents are preserved and each drop can be undone.
+- **Mask texture contrast.** Every picture row has a live Contrast slider in the Material editor, alongside tiling, rotation and projection controls.
+- **Backface painting is easier to find.** Paint back faces is available in viewport Settings, Brush Tool settings and the 3D Paint panel, with all controls synchronized. It starts off to protect back-facing surfaces.
+- **Paint brush shortcut: 1.** Existing custom key bindings are preserved. The Photoshop shortcut preset still uses B.
+- **Reliable 3D smudge.** Smudge and Smear sample current paint across distant UV islands instead of partially initialized copies. Normal maps stay normalized and one Undo restores all affected maps.
+
 ## 0.72.1
 
 - Added a draggable **Rotation** slider for the whole material in UV projection, plus **X/Y/Z rotation sliders** for Triplanar, Planar and Spherical projections. Exact angle entry, viewport handles, Reset and Undo stay synchronized.

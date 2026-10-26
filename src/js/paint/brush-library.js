@@ -171,6 +171,31 @@ function renderLibrary(){const box=$('#libBody');box.replaceChildren();
     const tiles=el('div',{class:'tiles'});
     for(const p of set.presets)tiles.append(brushLibraryTile(p,false));
     box.append(el('div',{class:'libset'},head,tiles));}}
+/* Shared range gestures use displayed units: five percentage points, degrees or pixels.
+   Keep mapped sliders (brush size, tiling) in their value space when snapping. Ctrl-wheel adjusts the temporary snap increment. */
+const sliderSnap={step:0,badge:null};
+function sliderSnapReset(){sliderSnap.step=0;if(sliderSnap.badge)sliderSnap.badge.remove();sliderSnap.badge=null;}
+window.addEventListener('keyup',e=>{if(!e.ctrlKey&&!e.metaKey)sliderSnapReset();});window.addEventListener('blur',sliderSnapReset);
+function sliderIncrement(){const n=Number(prefs.sliderIncrement);return Number.isFinite(n)&&n>0?n:5;}
+function sliderGestures(inp,o={}){
+  const from=o.from||((v)=>v),to=o.to||((v)=>v),scale=o.scale||1,step=Math.max(1e-12,parseFloat(inp.step)||1),win=inp.ownerDocument.defaultView;
+  const snapStep=()=>sliderSnap.step||sliderIncrement(),snapShow=()=>{if(sliderSnap.badge&&sliderSnap.badge.ownerDocument!==inp.ownerDocument)sliderSnapReset();const b=sliderSnap.badge||inp.ownerDocument.createElement('div'),r=inp.getBoundingClientRect();b.className='slider-snap-status';b.setAttribute('role','status');const text='Snap: '+Number(snapStep().toFixed(3));if(b.textContent!==text)b.textContent=text;b.style.left=Math.max(8,Math.min(r.right-90,win.innerWidth-110))+'px';b.style.top=Math.max(8,r.top-28)+'px';if(!b.isConnected)inp.ownerDocument.body.append(b);sliderSnap.badge=b;};
+  let drag=null;inp.step='any';inp.style.touchAction='none';inp.title=(inp.title?inp.title+' · ':'')+'Ctrl: snap. Ctrl + wheel: change the snap increment by 5. Shift: precise drag.';
+  const bounds=()=>[inp.min===''?0:+inp.min,inp.max===''?100:+inp.max],current=()=>o.get?o.get():from(+inp.value);
+  const emit=(raw,ctrl,fine)=>{const [lo,hi]=bounds();let v=from(clamp(raw,lo,hi));
+    if(ctrl){v=Math.round(v*scale/snapStep())*snapStep()/scale;snapShow();}
+    else{sliderSnapReset();const q=step*(fine?.1:1);v=from(lo+Math.round((to(v)-lo)/q)*q);}
+    const next=clamp(to(v),lo,hi);inp.value=String(Number(next.toFixed(10)));inp.dispatchEvent(new Event('input',{bubbles:true}));};
+  const finish=e=>{if(!drag||e&&e.pointerId!==undefined&&e.pointerId!==drag.id)return;const d=drag;drag=null;if(e?.type==='blur')sliderSnapReset();win.removeEventListener('blur',finish);if(inp.hasPointerCapture(d.id))inp.releasePointerCapture(d.id);if(inp.value!==d.before)inp.dispatchEvent(new Event('change',{bubbles:true}));};
+  inp.addEventListener('pointerdown',e=>{if(e.button!==0||inp.disabled)return;e.preventDefault();e.stopPropagation();inp.focus({preventScroll:true});const [lo,hi]=bounds(),r=inp.getBoundingClientRect(),width=Math.max(1,r.width-12),x=clamp(e.clientX-r.left-6,0,width),raw=lo+x/width*(hi-lo),value=clamp(to(current()),lo,hi),thumb=6+(value-lo)/(hi-lo||1)*width;
+    drag={id:e.pointerId,x:e.clientX,raw:e.shiftKey||Math.abs(e.clientX-r.left-thumb)<=8?value:raw,before:inp.value,width};inp.setPointerCapture(e.pointerId);win.addEventListener('blur',finish);emit(drag.raw,e.ctrlKey||e.metaKey,e.shiftKey);});
+  inp.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;e.preventDefault();e.stopPropagation();const [lo,hi]=bounds();drag.raw=clamp(drag.raw+(e.clientX-drag.x)/drag.width*(hi-lo)*(e.shiftKey?.1:1),lo,hi);drag.x=e.clientX;emit(drag.raw,e.ctrlKey||e.metaKey,e.shiftKey);});
+  inp.addEventListener('pointerup',finish);inp.addEventListener('pointercancel',finish);inp.addEventListener('lostpointercapture',finish);
+  inp.addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey)||inp.disabled||!(e.deltaY||e.deltaX))return;e.preventDefault();e.stopPropagation();const sign=(e.deltaY||e.deltaX)<0?1:-1;sliderSnap.step=Math.max(Math.min(5,sliderIncrement()),Math.min(1000000,Number((snapStep()+sign*5).toFixed(3))));snapShow();},{passive:false});
+  inp.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','PageUp','PageDown'].includes(e.key))return;e.preventDefault();e.stopPropagation();const sign=['ArrowRight','ArrowUp','PageUp'].includes(e.key)?1:-1,[lo,hi]=bounds(),ctrl=e.ctrlKey||e.metaKey;
+    if(ctrl){inp.value=String(Number(clamp(to(current()+sign*snapStep()/scale),lo,hi).toFixed(10)));inp.dispatchEvent(new Event('input',{bubbles:true}));}
+    else emit(to(current())+sign*step*(e.shiftKey?.1:e.key.startsWith('Page')?10:1),false,e.shiftKey);inp.dispatchEvent(new Event('change',{bubbles:true}));});
+}
 function makeSlider(o){
   const to=o.map?o.map.to:v=>v,from=o.map?o.map.from:v=>v,fmt=o.fmt||(v=>String(v));
   const inp=el('input',{type:'range',id:o.id,min:o.min,max:o.max,step:o.step});inp.value=to(o.value);
@@ -187,6 +212,8 @@ function makeSlider(o){
   out.addEventListener('click',typeValue);out.addEventListener('keydown',e=>{if(e.target===out&&(e.key==='Enter'||e.key===' ')){e.preventDefault();typeValue();}});
   inp.addEventListener('input',()=>{const v=from(parseFloat(inp.value));show(v);o.onInput(v);});
   if(o.onChange)inp.addEventListener('change',()=>o.onChange(from(parseFloat(inp.value))));
+  const percent=v=>String(fmt(v)).match(/([-+]?\d+(?:\.\d+)?)\s*%/),pc=percent(1),half=pc?null:percent(.5),gestureScale=o.numericScale||(fmt===pct?100:pc?Math.abs(+pc[1])||1:half?Math.abs(+half[1])*2||1:1);
+  sliderGestures(inp,{to,from,scale:gestureScale,get:()=>value});
   const control={el:el('div',{class:'srow'},el('label',{for:o.id,text:o.label}),inp,out),set(v){inp.value=to(v);show(v);}};inp._gsSlider=control;return control;
 }
 function chk(id,label,checked,onChange){const i=el('input',{type:'checkbox',id});i.checked=checked;i.addEventListener('change',()=>onChange(i.checked));return el('label',{class:'chk',for:id},i,el('span',{text:label}));}
@@ -213,6 +240,7 @@ function buildBrushPanel(){
   if(ui.tool==='gradient'||ui.tool==='gbucket'){buildGradPanel(box);return;}
   if(ui.tool==='bucket'){buildBucketPanel(box);return;}
   if(isSel){buildSelectPanel(box);return;}
+  if(ui.mode==='p3d'||v3.on)box.append(el('div',{class:'sub',text:'3D painting'}),meshBackfaceControl('brushBackfacePaint'));
   const healing=ui.tool==='heal'||ui.tool==='clone';if(ui.tool==='heal')buildHealPanel(box);else if(ui.tool==='clone')buildClonePanel(box);
   const tonal=ui.tool==='dodge'||ui.tool==='burn';
   if(sm&&ui.mode==='p3d'&&typeof smudge3dSeg==='function')box.append(smudge3dSeg(),el('p',{class:'note',text:'On the model, Smudge and Smear move paint across the surface and over UV seams, on every map of the layer together. A selection limits them.'}));

@@ -29,9 +29,9 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.mouse.dblclick(g.x+g.width/2,g.y+g.height/2);ok(await p.evaluate(()=>__gs.brush.curve===0),'double-click makes it straight again');
  // 3D bar
  await p.click('#modeTabs [data-mode=p3d]');await p.waitForTimeout(1500);
- ok(await p.evaluate(()=>!!document.getElementById('v3NoBack')&&document.getElementById('v3NoBack').classList.contains('on')),'3D bar: Skip back faces button, on by default');
- await p.evaluate(()=>document.getElementById('v3More').click());await p.waitForTimeout(200);await p.evaluate(()=>document.getElementById('v3NoBack').click());await p.waitForTimeout(200);
- ok(await p.evaluate(()=>__gs.v3s().noBack===false),'clicking it turns the option off');
+ ok(await p.evaluate(()=>!!document.getElementById('v3BackfacePaint')&&!document.getElementById('v3BackfacePaint').checked),'backface painting is in Settings and disabled by default');
+ await p.evaluate(()=>{document.getElementById('v3Gear').click();document.getElementById('v3BackfacePaint').click();});await p.waitForTimeout(200);
+ ok(await p.evaluate(()=>__gs.v3s().noBack===false),'Settings enables painting back faces');
  ok(!errs.length,'no errors '+errs.join('|'));
  await b.close();console.log(fails?'FAILS '+fails:'ALL PASS');process.exit(fails?1:0);
 })();
