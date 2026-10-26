@@ -1,3 +1,8 @@
+## 0.74.4
+
+- **Lighter project saving.** Saving a 3D Paint project no longer makes a second full copy of each texture set in memory. The saved file is exactly the same. This should help big 4096 px projects that spiked memory while saving.
+- **The app now remembers where a save stopped.** If the app dies during a save, the next Help > Graphics card report says which step it reached (for example which picture, and how much memory the page was using), so the cause can be found.
+
 ## 0.74.3
 
 - **Saving can no longer hang the app.** If the graphics card does not return a picture within a minute, or a packing worker stops answering for two minutes, the save stops with a clear message and the window works again (before, the window stayed covered and had to be closed from Task Manager).

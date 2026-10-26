@@ -1,3 +1,8 @@
+# Gouache Studio 0.74.4
+
+- **Lighter project saving:** big 3D Paint projects use less memory while saving. The file is unchanged.
+- **Help > Graphics card report** now says where the last save stopped if the app died during it.
+
 # Gouache Studio 0.74.3
 
 - **Saving no longer hangs.** A stuck save now stops with a message instead of freezing the window.
