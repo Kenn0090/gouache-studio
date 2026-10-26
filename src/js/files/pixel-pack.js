@@ -46,7 +46,8 @@ function pxBytes(raw,depth){if(depth!==16||!(raw instanceof Float32Array))return
 function pxSolidPredict(c,w,h,depth){const n=w*h,out=new Uint8Array(n*(depth===16?8:4));for(let i=0;i<4;i++){const v=depth===16?f2h(c[i]):Math.round(c[i]*255);if(depth===16){out[i*2*n]=v>>8;out[(i*2+1)*n]=v&255;}else out[i*n]=v;}return out;}
 async function pxPackCore(raw,w,h,depth,lossy,small,solid){if(solid)return {bytes:await streamThrough(pxSolidPredict(solid,w,h,depth),'deflate-raw'),f:'p'};
   raw=pxBytes(raw,depth);const z=await streamThrough(pxPredict(raw,w,h,depth),'deflate-raw');
-  if(lossy&&depth!==16&&small&&w*h>=4096){const wb=await pxWebp(raw,w,h);if(wb&&wb.length<z.length*.8)return {bytes:wb,f:'w'};}
+  /* (0.74.3) an empty or flat map is already tiny after deflate: trying WebP on it only costs seconds at 4096 px */
+  if(lossy&&depth!==16&&small&&w*h>=4096&&z.length>w*h*.03){const wb=await pxWebp(raw,w,h);if(wb&&wb.length<z.length*.8)return {bytes:wb,f:'w'};}
   return {bytes:z,f:'p'};}
 /* A single worker keeps prediction, half-float conversion and image encoding off the UI thread.
    Small images stay local. Existing callers retain their input; save readbacks transfer ownership. */

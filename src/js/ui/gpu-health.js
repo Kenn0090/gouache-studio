@@ -71,6 +71,8 @@ function ghReportText(r){const I=gpuInfo(),G=gpuMemory(),log=gpuLogRead().filter
     'Largest texture: '+I.maxTex+' · samplers: '+I.maxSamplers+' · float targets: '+(I.float?'yes':'no'),'Card preference: '+I.pref+' · 3D quality: '+I.quality,
     'Document: '+doc.w+'×'+doc.h+' '+doc.depth+'-bit · '+allLayers().length+' layers · '+doc.maps.length+' maps · mode '+ui.mode,
     'Tracked graphics memory: '+fmtBytes(G.bytes)+' in '+G.targets+' pictures (budget '+fmtBytes(gpuBudget())+')',
+    (()=>{const S=typeof gfSaveStats!=='undefined'&&gfSaveStats.last;return S&&S.images?'Last save: '+(S.total/1000).toFixed(1)+' s in all · GPU read '+(S.read/1000).toFixed(1)+' s · waiting for packing '+(S.pack/1000).toFixed(1)+' s · finding edges '+(S.bounds/1000).toFixed(1)+' s · '+S.images+' pictures, '+fmtBytes(S.bytes):'';})(),
+    (()=>{const F=typeof v3!=='undefined'&&v3.fbo;return F?'3D view buffer: '+F.w+'×'+F.h+' with '+F.S+'× smoothing':'';})(),
     'Drawing back-end: '+gpuBackend.kind+' · WebGPU: '+(r&&r.webgpu||'checking…'),
     r&&r.brush?(r.brush.error?'Brush test failed: '+r.brush.error:'Current brush ('+r.brush.size+' px, '+r.brush.tip+', spacing '+r.brush.spacing+'%): '+(1000/r.brush.plainMs).toFixed(0)+' dabs a second'+(r.brush.dualMs?' · with dual brush '+(1000/r.brush.dualMs).toFixed(0)+' dabs a second':'')):'',
     r?(r.error?'Test failed: '+r.error:'Speed test at 4096²: heavy shader '+r.shaderMs.toFixed(1)+' ms · layer blend '+r.blendMs.toFixed(1)+' ms · room for '+(r.capped?'at least ':'about ')+r.fit+' MB of pictures'):'',

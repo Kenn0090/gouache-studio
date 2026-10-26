@@ -205,10 +205,12 @@ function sel3DragDown(hit,e){if(!sel3.armed||!ui.viewMask||!doc.active?.mask)ret
   sel3Drag={id:e.pointerId,mesh:s.m,O:s.O,f:s.f,R:s.R,seeds:new Map(),tris:new Set(),x:e.clientX,y:e.clientY,hide:e.ctrlKey||e.metaKey,root:doc.root};sel3DragSeed(sel3Drag,s);sel3DragPreview();return true;}
 function sel3DragBusy(){return !!sel3Drag;}
 function sel3DragPreview(){if(!sel3Drag||!sel3Drag.tris.size)return;const H=sel3HoverState;H.mesh=sel3Drag.mesh;H.root=sel3Drag.root;H.tris=[...sel3Drag.tris];H.upload=true;v3.dirty=true;requestRender();}
+/* each look-up under the pointer renders the model and waits for the answer, so a fast drag must not ask 64 times in one move:
+   (0.74.3) a time budget per move; whatever is left of the gap is picked up by the next move, which starts where this one stopped */
 function sel3DragMove(hit,e){const d=sel3Drag;if(!d||e.pointerId!==d.id)return;if(!e.buttons){sel3DragUp(e,true);return;}
-  const dx=e.clientX-d.x,dy=e.clientY-d.y,dist=Math.hypot(dx,dy),steps=Math.min(64,Math.ceil(dist/12));let changed=false;
-  for(let i=1;i<=steps;i++){const s=sel3HitSeed(hit,{clientX:d.x+dx*i/steps,clientY:d.y+dy*i/steps});const n=d.seeds.size;sel3DragSeed(d,s);if(d.seeds.size!==n)changed=true;}
-  d.x=e.clientX;d.y=e.clientY;if(changed)sel3DragPreview();}
+  const dx=e.clientX-d.x,dy=e.clientY-d.y,dist=Math.hypot(dx,dy),steps=Math.min(64,Math.ceil(dist/12)),t0=performance.now();let changed=false,done=0;
+  for(let i=1;i<=steps;i++){const s=sel3HitSeed(hit,{clientX:d.x+dx*i/steps,clientY:d.y+dy*i/steps});const n=d.seeds.size;sel3DragSeed(d,s);if(d.seeds.size!==n)changed=true;done=i;if(performance.now()-t0>20)break;}
+  d.x+=dx*done/(steps||1);d.y+=dy*done/(steps||1);if(done>=steps){d.x=e.clientX;d.y=e.clientY;}if(changed)sel3DragPreview();}
 function sel3DragUp(e,cancel,hit){const d=sel3Drag;if(!d||e&&e.pointerId!==undefined&&e.pointerId!==d.id)return;if(!cancel&&e&&hit&&Math.hypot(e.clientX-d.x,e.clientY-d.y)>.5)sel3DragMoveEnd(d,e,hit);
   sel3Drag=null;sel3HoverClear();if(cancel||d.root!==doc.root||d.mesh!==v3.mesh||!d.tris.size)return;const et=editTarget();if(!et||!et.isMask||!ui.viewMask)return;const v=d.hide?0:1,tris=[...d.tris];
   fullRecord(et.L,v?'Show part in mask':'Hide part in mask',()=>sel3Draw(d.mesh,tris,[et.target,v]));v3.dirty=true;requestRender(true);}
