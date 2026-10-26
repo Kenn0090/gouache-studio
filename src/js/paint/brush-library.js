@@ -212,7 +212,8 @@ function makeSlider(o){
   out.addEventListener('click',typeValue);out.addEventListener('keydown',e=>{if(e.target===out&&(e.key==='Enter'||e.key===' ')){e.preventDefault();typeValue();}});
   inp.addEventListener('input',()=>{const v=from(parseFloat(inp.value));show(v);o.onInput(v);});
   if(o.onChange)inp.addEventListener('change',()=>o.onChange(from(parseFloat(inp.value))));
-  sliderGestures(inp,{to,from,scale:o.numericScale||(fmt===pct?100:1),get:()=>value});
+  const percent=v=>String(fmt(v)).match(/([-+]?\d+(?:\.\d+)?)\s*%/),pc=percent(1),half=pc?null:percent(.5),gestureScale=o.numericScale||(fmt===pct?100:pc?Math.abs(+pc[1])||1:half?Math.abs(+half[1])*2||1:1);
+  sliderGestures(inp,{to,from,scale:gestureScale,get:()=>value});
   const control={el:el('div',{class:'srow'},el('label',{for:o.id,text:o.label}),inp,out),set(v){inp.value=to(v);show(v);}};inp._gsSlider=control;return control;
 }
 function chk(id,label,checked,onChange){const i=el('input',{type:'checkbox',id});i.checked=checked;i.addEventListener('change',()=>onChange(i.checked));return el('label',{class:'chk',for:id},i,el('span',{text:label}));}
