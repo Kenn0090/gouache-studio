@@ -57,6 +57,7 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
   /* A small screen-space index, built once per stroke, bounds the UV triangles touched by the brush.
      Per-frame queries visit at most 256 cells, rather than transforming a high-poly mesh again.
      Displacement, mirrored painting, tiled UVs and near-plane intersections keep full texture updates. */
+  let SPo;/* the object returned below (sync may be called without it, so it is not found through `this`) */
   let bins;/* one grid per mirror image of the model (a texel is painted where its mirror image meets the brush) */
   const viewportBounds=st=>{if(p3Bounds.off||useH||uvs!==1||mirs.length>4)return null;
     if(bins===undefined){bins=[];const p=mesh.pos,uv=mesh.uv,ix=mesh.idx,n=p.length/3;
@@ -75,7 +76,7 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
     const x0=clamp(Math.floor(b[0]/w*16),0,15),x1=clamp(Math.floor(b[2]/w*16),0,15),y0=clamp(Math.floor(b[1]/h*16),0,15),y1=clamp(Math.floor(b[3]/h*16),0,15);let u0=1,v0=1,u1=0,v1=0;
     for(const B of bins)for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const j=(y*16+x)*4;u0=Math.min(u0,B[j]);v0=Math.min(v0,B[j+1]);u1=Math.max(u1,B[j+2]);v1=Math.max(v1,B[j+3]);}
     return u1<u0?[0,0,0,0]:[u0*doc.w-2,v0*doc.h-2,u1*doc.w+2,v1*doc.h+2];};
-  return {w,h,buf:M.buf,yup:true,viewportBounds,mesh:true,colourStencil:!!st3.img&&st3.mode==='colour',
+  return SPo={w,h,buf:M.buf,yup:true,viewportBounds,mesh:true,colourStencil:!!st3.img&&st3.mode==='colour',
     /* draws the model flat in its UV layout into a map with a shader of mesh-pull.js (same visibility rules as painting) */
     pull(prog,target,extra){useProg(prog,Object.assign({uVPm:{m4:VP},uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v]},extra));
       bindTarget(target);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);
@@ -87,10 +88,10 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
        mirror). While a brush stroke is under way only the part of the texture its box can reach is cleared and drawn (the box
        only grows, and the last one is kept so nothing stale is left behind). */
     sync(){const st=stroke&&stroke.space&&stroke.space.buf===M.buf?stroke:null,b=st&&!doc.wrap?viewportBounds(st):null;
-      if(!b)return this.syncAll();
+      if(!b)return SPo.syncAll();
       const W=doc.w,H=doc.h,x0=clamp(Math.floor(b[0]),0,W),y0=clamp(Math.floor(b[1]),0,H),x1=clamp(Math.ceil(b[2]),0,W),y1=clamp(Math.ceil(b[3]),0,H),q=st.syncR;
       const r=q?[Math.min(q[0],x0),Math.min(q[1],y0),Math.max(q[2],x1),Math.max(q[3],y1)]:(x1>x0&&y1>y0?[x0,y0,x1,y1]:null);
-      if(!r)return;st.syncR=r;scissorDo([r[0],r[1],r[2]-r[0],r[3]-r[1]],()=>this.syncAll());},
+      if(!r)return;st.syncR=r;scissorDo([r[0],r[1],r[2]-r[0],r[3]-r[1]],()=>SPo.syncAll());},
     syncAll(){bindTarget(strokeT);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
       const stU=st3Uniforms(w,h);for(const Mi of mirs){useProg(P.proj,Object.assign({uVPm:{m4:VP},uStroke:M.buf.tex,uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v],uMir:{m4:Mi}},stU));
       bindTarget(strokeT);gl.enable(gl.BLEND);gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);gl.disable(gl.CULL_FACE);
