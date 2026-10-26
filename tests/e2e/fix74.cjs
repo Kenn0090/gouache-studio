@@ -1,5 +1,5 @@
 /* 0.74: 3D painting only clears and projects the part of the texture a stroke can reach, also with mirror painting; pixels must equal the full update. */
-const {chromium}=require('/opt/node22/lib/node_modules/playwright'),fs=require('fs'),path=require('path'),http=require('http');
+const {chromium}=require('playwright'),fs=require('fs'),path=require('path'),http=require('http');
 const root=path.resolve(__dirname,'../../dist');let fails=0;
 const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
 (async()=>{
