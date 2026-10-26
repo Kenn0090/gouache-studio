@@ -38,6 +38,8 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec3 q=
   o=t; }`;
 const VS_3DD=VS_3D.replace('out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;','out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;');
 let P3P=null;
+/* p3Bounds.off: tests turn the stroke-box shortcuts off to compare against the full texture update */
+const p3Bounds={off:false};
 function p3p(){if(!P3P)P3P={depth:prog3(VS_3DD,FS_3DDEPTH.replace('void main','in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan;\nvoid main')),proj:prog3(VS_3DPROJ,FS_3DPROJ)};return P3P;}
 function v3ViewProj(w,h){const s=v3s(),eye=v3Eye(),V=m4look(eye,[v3.cam.tx,v3.cam.ty,v3.cam.tz],[0,1,0]),Pm=v3Proj(w/h,.02,100);return {VP:m4mul(Pm,V),eye};}
 /* the screen buffer the brush stamps into, and how far away the model is at each pixel */
@@ -55,21 +57,23 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
   /* A small screen-space index, built once per stroke, bounds the UV triangles touched by the brush.
      Per-frame queries visit at most 256 cells, rather than transforming a high-poly mesh again.
      Displacement, mirrored painting, tiled UVs and near-plane intersections keep full texture updates. */
-  let bins;
-  const viewportBounds=st=>{if(useH||mirs.length>1||uvs!==1)return null;
-    if(bins===undefined){bins=new Float32Array(16*16*4);for(let i=0;i<bins.length;i+=4){bins[i]=bins[i+1]=1;}
-      const p=mesh.pos,uv=mesh.uv,ix=mesh.idx,n=p.length/3,sx=new Float32Array(n),sy=new Float32Array(n),ok=new Uint8Array(n);
-      for(let i=0;i<n;i++){const X=p[i*3],Y=p[i*3+1],Z=p[i*3+2],cw=VP[3]*X+VP[7]*Y+VP[11]*Z+VP[15];if(cw<=1e-6)continue;ok[i]=1;
-        sx[i]=((VP[0]*X+VP[4]*Y+VP[8]*Z+VP[12])/cw*.5+.5)*w;sy[i]=((VP[1]*X+VP[5]*Y+VP[9]*Z+VP[13])/cw*.5+.5)*h;}
-      for(let t=R.start*3;t<(R.start+R.count)*3;t+=3){const a=ix[t],c=ix[t+1],d=ix[t+2];if(!ok[a]||!ok[c]||!ok[d]){bins=null;break;}
-        const u0=Math.min(uv[a*2],uv[c*2],uv[d*2]),v0=Math.min(uv[a*2+1],uv[c*2+1],uv[d*2+1]),u1=Math.max(uv[a*2],uv[c*2],uv[d*2]),v1=Math.max(uv[a*2+1],uv[c*2+1],uv[d*2+1]);
-        if(u0<0||v0<0||u1>1||v1>1){bins=null;break;}
-        const x0=Math.max(0,Math.floor((Math.min(sx[a],sx[c],sx[d])-8)/w*16)),x1=Math.min(15,Math.floor((Math.max(sx[a],sx[c],sx[d])+8)/w*16)),
-          y0=Math.max(0,Math.floor((Math.min(sy[a],sy[c],sy[d])-8)/h*16)),y1=Math.min(15,Math.floor((Math.max(sy[a],sy[c],sy[d])+8)/h*16));
-        for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const j=(y*16+x)*4;bins[j]=Math.min(bins[j],u0);bins[j+1]=Math.min(bins[j+1],v0);bins[j+2]=Math.max(bins[j+2],u1);bins[j+3]=Math.max(bins[j+3],v1);}}}
+  let bins;/* one grid per mirror image of the model (a texel is painted where its mirror image meets the brush) */
+  const viewportBounds=st=>{if(p3Bounds.off||useH||uvs!==1||mirs.length>4)return null;
+    if(bins===undefined){bins=[];const p=mesh.pos,uv=mesh.uv,ix=mesh.idx,n=p.length/3;
+      for(const Mi of mirs){const B=new Float32Array(16*16*4);for(let i=0;i<B.length;i+=4){B[i]=B[i+1]=1;}
+        const sx=new Float32Array(n),sy=new Float32Array(n),ok=new Uint8Array(n);
+        for(let i=0;i<n;i++){const X0=p[i*3],Y0=p[i*3+1],Z0=p[i*3+2],X=Mi[0]*X0+Mi[4]*Y0+Mi[8]*Z0+Mi[12],Y=Mi[1]*X0+Mi[5]*Y0+Mi[9]*Z0+Mi[13],Z=Mi[2]*X0+Mi[6]*Y0+Mi[10]*Z0+Mi[14],cw=VP[3]*X+VP[7]*Y+VP[11]*Z+VP[15];if(cw<=1e-6)continue;ok[i]=1;
+          sx[i]=((VP[0]*X+VP[4]*Y+VP[8]*Z+VP[12])/cw*.5+.5)*w;sy[i]=((VP[1]*X+VP[5]*Y+VP[9]*Z+VP[13])/cw*.5+.5)*h;}
+        for(let t=R.start*3;t<(R.start+R.count)*3;t+=3){const a=ix[t],c=ix[t+1],d=ix[t+2];if(!ok[a]||!ok[c]||!ok[d]){bins=null;break;}
+          const u0=Math.min(uv[a*2],uv[c*2],uv[d*2]),v0=Math.min(uv[a*2+1],uv[c*2+1],uv[d*2+1]),u1=Math.max(uv[a*2],uv[c*2],uv[d*2]),v1=Math.max(uv[a*2+1],uv[c*2+1],uv[d*2+1]);
+          if(u0<0||v0<0||u1>1||v1>1){bins=null;break;}
+          const x0=Math.max(0,Math.floor((Math.min(sx[a],sx[c],sx[d])-8)/w*16)),x1=Math.min(15,Math.floor((Math.max(sx[a],sx[c],sx[d])+8)/w*16)),
+            y0=Math.max(0,Math.floor((Math.min(sy[a],sy[c],sy[d])-8)/h*16)),y1=Math.min(15,Math.floor((Math.max(sy[a],sy[c],sy[d])+8)/h*16));
+          for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const j=(y*16+x)*4;B[j]=Math.min(B[j],u0);B[j+1]=Math.min(B[j+1],v0);B[j+2]=Math.max(B[j+2],u1);B[j+3]=Math.max(B[j+3],v1);}}
+        if(!bins)break;bins.push(B);}}
     if(!bins)return null;const b=st.bb;if(!b||b[2]<b[0])return [0,0,0,0];
     const x0=clamp(Math.floor(b[0]/w*16),0,15),x1=clamp(Math.floor(b[2]/w*16),0,15),y0=clamp(Math.floor(b[1]/h*16),0,15),y1=clamp(Math.floor(b[3]/h*16),0,15);let u0=1,v0=1,u1=0,v1=0;
-    for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const j=(y*16+x)*4;u0=Math.min(u0,bins[j]);v0=Math.min(v0,bins[j+1]);u1=Math.max(u1,bins[j+2]);v1=Math.max(v1,bins[j+3]);}
+    for(const B of bins)for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const j=(y*16+x)*4;u0=Math.min(u0,B[j]);v0=Math.min(v0,B[j+1]);u1=Math.max(u1,B[j+2]);v1=Math.max(v1,B[j+3]);}
     return u1<u0?[0,0,0,0]:[u0*doc.w-2,v0*doc.h-2,u1*doc.w+2,v1*doc.h+2];};
   return {w,h,buf:M.buf,yup:true,viewportBounds,mesh:true,colourStencil:!!st3.img&&st3.mode==='colour',
     /* draws the model flat in its UV layout into a map with a shader of mesh-pull.js (same visibility rules as painting) */
@@ -79,7 +83,15 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
       gl.uniform1i(alignLoc,s.paintAlign==='camera'?0:1);gl.uniform1i(backLoc,s.noBack===false?0:1);
       for(let j=0;j<uvs;j++)for(let i=0;i<uvs;i++){gl.uniform2f(loc,i,j);gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);}
       gl.bindVertexArray(vao);},
-    sync(){bindTarget(strokeT);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
+    /* The projection covers the whole texture, which at 4096 px is tens of millions of heavy fragments per frame (times each
+       mirror). While a brush stroke is under way only the part of the texture its box can reach is cleared and drawn (the box
+       only grows, and the last one is kept so nothing stale is left behind). */
+    sync(){const st=stroke&&stroke.space&&stroke.space.buf===M.buf?stroke:null,b=st&&!doc.wrap?viewportBounds(st):null;
+      if(!b)return this.syncAll();
+      const W=doc.w,H=doc.h,x0=clamp(Math.floor(b[0]),0,W),y0=clamp(Math.floor(b[1]),0,H),x1=clamp(Math.ceil(b[2]),0,W),y1=clamp(Math.ceil(b[3]),0,H),q=st.syncR;
+      const r=q?[Math.min(q[0],x0),Math.min(q[1],y0),Math.max(q[2],x1),Math.max(q[3],y1)]:(x1>x0&&y1>y0?[x0,y0,x1,y1]:null);
+      if(!r)return;st.syncR=r;scissorDo([r[0],r[1],r[2]-r[0],r[3]-r[1]],()=>this.syncAll());},
+    syncAll(){bindTarget(strokeT);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
       const stU=st3Uniforms(w,h);for(const Mi of mirs){useProg(P.proj,Object.assign({uVPm:{m4:VP},uStroke:M.buf.tex,uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v],uMir:{m4:Mi}},stU));
       bindTarget(strokeT);gl.enable(gl.BLEND);gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);gl.disable(gl.CULL_FACE);
       const loc=gl.getUniformLocation(P.proj.p,'uShift'),alignLoc=gl.getUniformLocation(P.proj.p,'uAlign'),backLoc=gl.getUniformLocation(P.proj.p,'uNoBack');gl.bindVertexArray(g.vao);

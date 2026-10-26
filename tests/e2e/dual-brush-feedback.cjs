@@ -23,7 +23,8 @@ const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
    const old=draw(false),fast=draw(true);G.dualWork.enabled=true;let max=0;for(let i=0;i<old.data.length;i++)max=Math.max(max,Math.abs(old.data[i]-fast.data[i]));return {max,calls:[old.calls,fast.calls],batches:fast.batches};},kind);
   ok(result.max===0,kind+' matches unbatched stroke pixels exactly ('+JSON.stringify(result)+')');
   if(kind==='pressure')ok(result.batches>0&&result.calls[1]<result.calls[0]/5,'dense strokes reduce graphics submissions by over 80%');
-  if(['buildup','tint','smudge'].includes(kind))ok(result.batches===0,kind+' keeps its compatible ordered path');
+  if(['tint','smudge'].includes(kind))ok(result.batches===0,kind+' keeps its compatible ordered path');
+  if(kind==='buildup')ok(result.batches>0,'build-up strokes batch too and keep exact pixels');
  }
  const cache=await p.evaluate(()=>{const G=__gs;G.newDoc(160,100);G.cmdAddLayer();let reads=0;const dual={on:true,get tipKey(){reads++;return 'b:sponge';},size:20,spacing:150,scatter:80,count:1,mode:0,amount:100};const o={...G.brush,tool:'brush',color:[0,0,0],size:32,spacing:.01,pSize:false,tip:null,dual};G.beginStroke(G.doc.active,20,50,1,o);G.addPoint(140,50,1);G.endStroke(false);return reads;});
  ok(cache===1,'secondary tip lookup runs once for a low-spacing stroke ('+cache+')');

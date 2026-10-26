@@ -59,13 +59,13 @@ function buildDualSection(box,S){const d=brush.dual,set=patch=>{brush.dual=Objec
   det.append(el('summary',{text:'Dual brush'}),body);box.append(det);if(on)renderDualPicker();}
 let dualOpen=false;
 /* Dense max-coverage strokes can submit many independent dabs in one draw. Each
-   instance retains its own pressure, angle, flips and random mask offset. Ordered
-   buildup, tinted strokes and smudge keep the ordinary path. Flush within the
+   instance retains its own pressure, angle, flips and random mask offset. Build-up and
+   flow strokes batch too (instances blend in order); tinted strokes and smudge keep the ordinary path. Flush within the
    pointer sample, before projection, compositing or undo can read the coverage. */
 const dualWork={enabled:true,batches:0,dabs:0};
 let dualBatchGPU=null;
-function dualBatchStart(s){if(!dualWork.enabled||!s.dualU||s.tint||s.o.buildup||s.o.pFlow||!['brush','erase','dodge','burn'].includes(s.o.tool))return;
-  const dst=s.space?s.space.buf:strokeT;if(dst.packed)return;s.dualBatch={dst,data:[],u:null};}
+function dualBatchStart(s){if(!dualWork.enabled||!s.dualU||s.tint||!['brush','erase','dodge','burn'].includes(s.o.tool))return;
+  const dst=s.space?s.space.buf:strokeT;if(dst.packed)return;s.dualBatch={dst,data:[],u:null,over:!!(s.o.buildup||s.o.pFlow)};}
 function dualBatchFlush(s){const b=s.dualBatch;s.dualBatch=null;if(!b||!b.data.length)return;
   if(!dualBatchGPU){
     const vs=`#version 300 es
@@ -78,7 +78,7 @@ function dualBatchFlush(s){const b=s.dualBatch;s.dualBatch=null;if(!b||!b.data.l
     gl.bindBuffer(gl.ARRAY_BUFFER,buffer);for(const [at,n,offset] of [[1,4,0],[2,4,16],[3,2,32]]){gl.enableVertexAttribArray(at);gl.vertexAttribPointer(at,n,gl.FLOAT,false,40,offset);gl.vertexAttribDivisor(at,1);}
     dualBatchGPU={prog,array,buffer};gl.bindVertexArray(vao);}
   const g=dualBatchGPU,u={...P.stamp.defaults,...b.u};for(const k of ['uCenter','uRadius','uExtent','uAngle','uAlpha','uFlip','uDualOff'])delete u[k];
-  useProg(g.prog,u);bindTarget(b.dst);gl.bindVertexArray(g.array);gl.bindBuffer(gl.ARRAY_BUFFER,g.buffer);gl.enable(gl.BLEND);gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);
+  useProg(g.prog,u);bindTarget(b.dst);gl.bindVertexArray(g.array);gl.bindBuffer(gl.ARRAY_BUFFER,g.buffer);gl.enable(gl.BLEND);if(b.over){gl.blendEquation(gl.FUNC_ADD);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);}else{gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);}
   try{gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(b.data),gl.STREAM_DRAW);gl.drawArraysInstanced(gl.TRIANGLE_STRIP,0,4,b.data.length/10);dualWork.batches++;dualWork.dabs+=b.data.length/10;
     runStat.n++;const area=scissorNow?Math.min(b.dst.w*b.dst.h,scissorNow[2]*scissorNow[3]):b.dst.w*b.dst.h;runStat.px+=area;runStat.by.dualBatch=(runStat.by.dualBatch||0)+area;}
   finally{gl.disable(gl.BLEND);gl.bindVertexArray(vao);}
