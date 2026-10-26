@@ -220,6 +220,9 @@ body.ldragging,body.ldragging *{cursor:grabbing!important}
 .tiles button:hover{border-color:var(--muted)}
 .tiles button.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .tiles canvas{width:100%;height:100%;display:block}
+.dual-tip-grid{max-height:230px;overflow-y:auto;overscroll-behavior:contain;display:grid;gap:10px;padding:2px}
+.dual-tip-grid .libset-h{margin-bottom:5px}
+#stFps{min-width:7ch}
 .prevwrap{position:sticky;top:0;z-index:4;background:var(--panel,var(--raise));padding-bottom:4px}
 #brushPrev{display:block;width:100%;height:78px;border-radius:7px;border:1px solid var(--line);background:var(--ground)}
 #prevNote{position:absolute;right:8px;bottom:6px;font:10px var(--mono);color:var(--faint);pointer-events:none}

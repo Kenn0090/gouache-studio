@@ -1,3 +1,10 @@
+## 0.73.1
+
+- **Dual brush picker.** Choose the second alpha from searchable thumbnails of every brush in the main library. Saved and imported brushes appear immediately; removed brushes disappear without restarting.
+- **Reliable dual-brush toggle.** Turning dual brush off, switching to a plain brush, or removing its second tip restores normal painting immediately.
+- **Dense dual-brush strokes.** Compatible strokes submit dabs together to reduce graphics calls at low spacing while retaining pressure, scatter, symmetry, random masks and Undo. Build-up, colour jitter and smudge keep their ordered painting paths.
+- **Status-bar FPS.** The redraw rate appears beside the document dimensions. It reports Idle when the canvas needs no redraw and supports display rates above 60 Hz. Actual speed depends on the document, display and graphics hardware.
+
 ## 0.73.0
 
 - **Slider controls.** Hold Ctrl while dragging to snap to increments of 5, and keep Ctrl held while using the mouse wheel to change the snap increment (5, 10, 15...). A small indicator shows the active increment; releasing Ctrl restores the starting increment. Hold Shift while dragging for one-tenth speed. Change the Ctrl increment in Edit > Preferences > Painting. Percent sliders use percentage points; mapped sliders use their displayed values.

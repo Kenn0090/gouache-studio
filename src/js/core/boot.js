@@ -56,3 +56,4 @@ if(window.__gs)Object.assign(window.__gs,{meshIdParts,fillUseImage,sel3HitTriang
 if(window.__gs)Object.assign(window.__gs,{parseFBX,build3dPane,toggle3D,libTarget,sel3HoverDraw,p3SelectAt,meshFinish});
 
 if(window.__gs)Object.assign(window.__gs,{pxfSyncFields});
+if(window.__gs)Object.assign(window.__gs,{dualTip,dualTexOf,dualCache,dualWork,renderDualPicker,dualLibraryKey,renderLibrary,makeTip,serializeSet,deserializeSet,addSet,removeSet,perfCadence,perfFrame,perfStatusRate});

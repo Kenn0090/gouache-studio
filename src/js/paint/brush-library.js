@@ -170,7 +170,7 @@ function renderLibrary(){const box=$('#libBody');box.replaceChildren();
   for(const set of library){const head=el('div',{class:'libset-h'},el('span',{text:set.builtin?set.name:set.name+' · '+set.presets.length}),set.builtin?null:el('button',{text:'Remove','aria-label':'Remove brush set '+set.name,onclick:()=>removeSet(set)}));
     const tiles=el('div',{class:'tiles'});
     for(const p of set.presets)tiles.append(brushLibraryTile(p,false));
-    box.append(el('div',{class:'libset'},head,tiles));}}
+    box.append(el('div',{class:'libset'},head,tiles));}if(typeof renderDualPicker==='function')queueMicrotask(renderDualPicker);}
 /* Shared range gestures use displayed units: five percentage points, degrees or pixels.
    Keep mapped sliders (brush size, tiling) in their value space when snapping. Ctrl-wheel adjusts the temporary snap increment. */
 const sliderSnap={step:0,badge:null};

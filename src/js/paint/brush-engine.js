@@ -48,6 +48,8 @@ function beginStroke(L,x,y,p,o){
   const SW=cg?cg.w:W,SH=cg?cg.h:H;
   const gx=Math.max(1,Math.round(W/6)),gy=Math.max(1,Math.round(H/6));
   stroke={lazy,fd:o.space?'all':null,L,o,x,y,p,lsx:x,lsy:y,dir:0,carry:0,bb:[W,H,0,0],clearBox,gScale:[W/gx,H/gy],gPeriod:[gx,gy],space:cg,rs:cg?(o.cageRs||1):1,SW,SH,sym:o.sym||null,tint,grey:doc.map!=='base'};
+  /* Resolve the library and repeating mask once, rather than per dab at low spacing. */
+  stroke.dualU=typeof dualUniforms==='function'?dualUniforms(o.dual,false):null;
   if(tint&&o.jitterPerStroke)stroke.dabCol=jitterColor(o.color,o,stroke.grey);
   /* other maps painted by the same stroke: make sure the layer has an image there; with Lock alpha they follow the base colour's shape */
   if(o.extras&&o.extras.length){for(const e of o.extras)ensureMapTarget(L,e.key);
@@ -94,7 +96,7 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy){
   if(!copies.length)return;
   const U={uRadius:r,uExtent:ext,uSize:[W,H],uHard:o.hardness,uGrain:o.grain,uGrainScale:s.gScale,uPeriod:s.gPeriod,
     uUseTip:!!tip,uTip:tip?tip.tex:dummy,uAngle:ang,uRound:o.roundness||1,uFlip:[fx,fy],uTipAspect:tip?tip.w/tip.h:1};
-  if(o.dual&&o.dual.on&&typeof dualUniforms==='function'){const du=dualUniforms(o.dual);if(du)Object.assign(U,du);}
+  if(s.dualU){if(o.dual.random)s.dualU.uDualOff=[Math.random()*s.dualU.uDualSize[0],Math.random()*s.dualU.uDualSize[1]];Object.assign(U,s.dualU);}
   if(o.tool==='smudge'&&s.space){/* on the 3D model: the dab goes into the screen buffer, then pulls paint through the model's UVs (mesh-pull.js) */
     clearTarget(s.space.buf);for(const c of copies)run(P.stamp,s.space.buf,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:0},uDabCol:[0,0,0]}),{blend:'max'});
     for(const c of copies)meshSmudgeApply(s,c[0],c[1],ext,dx,dy);
@@ -105,7 +107,9 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy){
   } else {
     const dst=s.space?s.space.buf:strokeT;
     if(dst===strokeT&&!doc.wrap)for(const c of copies)clearStrokeBufferRegion(s,[c[0]-ext,c[1]-ext,c[0]+ext,c[1]+ext]);
-    for(const c of copies){if(s.tint)run(P.stamp,dst,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:2},uDabCol:s.dabCol}),{blend:'tintfirst'});
+    if(s.dualBatch){s.dualBatch.u=U;for(const c of copies)s.dualBatch.data.push(c[0],c[1],r,ext,ang,a,fx,fy,...U.uDualOff);
+      if(s.dualBatch.data.length>=10240){dualBatchFlush(s);dualBatchStart(s);}}
+    else for(const c of copies){if(s.tint)run(P.stamp,dst,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:2},uDabCol:s.dabCol}),{blend:'tintfirst'});
       run(P.stamp,dst,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:s.tint?1:0},uDabCol:s.dabCol||[0,0,0]}),{blend:o.buildup||o.pFlow?'over':s.tint?'tintmax':'max'});}
   }
   for(const [cx,cy] of copies){const b=s.bb;b[0]=Math.min(b[0],cx-ext-1);b[1]=Math.min(b[1],cy-ext-1);b[2]=Math.max(b[2],cx+ext+1);b[3]=Math.max(b[3],cy+ext+1);}
@@ -141,7 +145,9 @@ function addPoint(x,y,p){
   if(s.fdWait){if(len<2.5){s.p=p;return;}s.fdWait=false;}
   if(len>0.5)s.dir=Math.atan2(dy,dx);
   let t=s.carry,guard=0;
-  while(t<=len&&guard++<20000){const f=t/len,pp=s.p+(p-s.p)*f;stamp(s.x+dx*f,s.y+dy*f,pp);t+=spacingAt(pp);}
+  if(typeof dualBatchStart==='function')dualBatchStart(s);
+  try{while(t<=len&&guard++<20000){const f=t/len,pp=s.p+(p-s.p)*f;stamp(s.x+dx*f,s.y+dy*f,pp);t+=spacingAt(pp);}}
+  finally{if(s.dualBatch)dualBatchFlush(s);}
   s.carry=t-len;s.x=x;s.y=y;s.p=p;requestRender(true);
 }
 function endStroke(record){

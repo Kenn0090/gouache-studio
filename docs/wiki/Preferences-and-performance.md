@@ -42,6 +42,8 @@ At 16K square, use **8-bit colour**: the desktop renderer cannot allocate a full
 
 ## Performance monitor
 
+The status bar shows **FPS** beside the document dimensions. This measures actual canvas redraws during activity, including rates above 60 Hz. **Idle** means no redraw is needed; the app does not keep drawing an unchanged canvas just to drive the counter. Dense dual-brush strokes group compatible dabs into fewer graphics calls. Achieved FPS depends on the document, display refresh rate and graphics hardware.
+
 ![The performance monitor.](images/performance-monitor.png)
 *The performance monitor.*
 

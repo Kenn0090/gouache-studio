@@ -124,6 +124,10 @@ const dummy=(()=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.
 
 const CH_DEF={uChanMode:{int:0},uChan:[1,1,1,1]};
 const SEL_DEF={uSelTex:dummy,uUseSel:false,uTonalRange:{int:1},uProtect:true};
+/* Uniforms survive draws. Reset the secondary mask for every caller, including
+   previews and tools that share the stamp/smudge programs. Bind a safe sampler too. */
+const DUAL_UNIFORM_DEFAULTS={uUseDual:false,uDual:dummy,uDualSize:[1,1],uDualOff:[0,0],uDualMode:{int:0},uDualAmt:0};
 P.comp.defaults=Object.assign({uEdge:0,uGlaze:0,uPig:1,uWet:0,uMixLab:0,uSolid:false,uSolidColor:[0,0,0,0],uMask2:dummy,uLMask:dummy,uUseMask2:false,uUseLMask:false,uStrokeTint:false},CH_DEF,SEL_DEF);P.merge.defaults=Object.assign({uEdge:0,uGlaze:0,uPig:1,uWet:0,uMixLab:0,uStrokeTint:false,uSrcOrigin:{iv2:[0,0]}},CH_DEF,SEL_DEF);P.stamp.defaults={uTint:{int:0},uDabCol:[0,0,0]};P.smudge.defaults=Object.assign({uPaintMix:0,uMixLab:0,uNormalMap:{int:0}},CH_DEF,SEL_DEF);
+Object.assign(P.stamp.defaults,DUAL_UNIFORM_DEFAULTS);Object.assign(P.smudge.defaults,DUAL_UNIFORM_DEFAULTS);
 P.mix.defaults={uM:dummy,uUseM:false};P.resample.defaults={uOutside:[0,0,0,0]};P.view.defaults={uR:[1,0,0,1],uShow:[1,1,1,0],uSingle:{int:-1},uMaskView:false,uSel:dummy,uSelMode:{int:0},uTime:0,uPx:1,uWrap:false,uUnder:dummy,uUseUnder:false,uBg:[0,0,0,0]};
 P.shift.defaults={uWrap:false,uOutside:[0,0,0,0]};P.maskplace.defaults={uSourceOffset:[0,0]};P.grad.defaults={uShape:{int:0},uDither:false,uOpacity:1,uGray:false,uBase:dummy,uUseBase:false,uSelTex:dummy,uUseSel:false};P.fillcov.defaults={uSelTex:dummy,uUseSel:false};P.lockcov.defaults={uSelTex:dummy,uUseSel:false};P.texcov.defaults={uSelTex:dummy,uUseSel:false};P.xform.defaults={uOutside:[0,0,0,0],uInterp:{int:2},uSS:{int:1},uWrap:false,uRect:[0,0,0,0],uBase:dummy,uUseBase:false};P.mesh.defaults={uOutside:[0,0,0,0],uInterp:{int:2},uOff:[0,0]};P.proj.defaults={uAlphaOnly:true};P.selop.defaults={uShape:dummy,uOldOn:true};P.loadsel.defaults={uInv:false};P.cropsel.defaults={uSel:dummy,uUseSel:false};

@@ -9,7 +9,7 @@ function frame(){raf=0;if(typeof tabDocs!=='undefined'&&tabDocs.hold){requestRen
   const autoPaintGap=prefs.paintSpeed!=='best'&&stroke?.space?.viewportBounds&&doc.w*doc.h>=16777216&&allLayers().length>=4?33:0,gap=PAINT_GAP[prefs.paintSpeed]||autoPaintGap;
   if(stroke&&gap&&t0-lastPaintFrame<gap){requestRender();return;}lastPaintFrame=t0;const gq=perf.on?perfGpuBegin():null;let tc=t0;
   try{if(stroke&&stroke.spaceDirty){stroke.spaceDirty=false;stroke.space.sync();}if(stroke&&stroke.cloneDirty)cloneUpdate();if(dirtyComp){composite();dirtyComp=false;tc=performance.now();}drawView();drawUVOverlay();draw3D();const tv=performance.now();flushThumbs();if(tedit)positionEditor();
-  if(perf.on)perfFrame(t0,tc-t0,tv-tc,performance.now()-tv);}finally{if(gq)perfGpuEnd(gq);}}
+  perfFrame(t0,tc-t0,tv-tc,performance.now()-tv);}finally{if(gq)perfGpuEnd(gq);}}
 let maskOverride=new Map();
 /* Keep live coverage shared by every material channel, including the 3D preview. */
 function withWeldMask(region,fn){const s=stroke;if(!s?.L.maskOf||s.L.mrow||strokeLive(s.o))return fn();const prev=maskOverride,T=acquireD(s.L.target.depth);

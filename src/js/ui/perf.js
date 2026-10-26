@@ -10,9 +10,15 @@ function perfGpuPoll(){const G=perfGpu;if(!G.ext)return;const bad=gl.getParamete
   for(const q of G.pending){if(bad||gl.getQueryParameter(q,gl.QUERY_RESULT_AVAILABLE)){if(!bad)G.samples.push({t:performance.now(),ms:gl.getQueryParameter(q,gl.QUERY_RESULT)/1e6});gl.deleteQuery(q);}else keep.push(q);}
   G.pending=keep;if(bad)G.samples=[];else G.samples=G.samples.filter(s=>s.t>performance.now()-10000);}
 try{new PerformanceObserver(l=>{for(const e of l.getEntries())perfLong.push({t:performance.now(),ms:e.duration});}).observe({entryTypes:['longtask']});}catch(e){}
-function perfFrame(t0,comp,viewMs,thumbs){const now=performance.now();perf.frames.push({t:now,dt:perf.last?now-perf.last:0,comp,view:viewMs,thumbs,stroke:!!stroke,view2:doc.view});perf.last=now;
+const perfCadence=[];
+/* Count real canvas frames, not an extra animation loop that would redraw an idle
+   document just to measure the display refresh rate. Keep diagnostics opt-in. */
+function perfFrame(t0,comp,viewMs,thumbs){perfCadence.push(t0);if(perfCadence.length>2048)perfCadence.splice(0,1024);if(!perf.on)return;
+  const now=performance.now();perf.frames.push({t:now,dt:perf.last?now-perf.last:0,comp,view:viewMs,thumbs,stroke:!!stroke,view2:doc.view});perf.last=now;
   const cut=now-10000;perf.frames=perf.frames.filter(f=>f.t>cut);perfLong=perfLong.filter(f=>f.t>cut);}
-function perfUpdate(){perfGpuPoll();if(!perf.on)return;const F=perf.frames,now=performance.now();
+function perfStatusRate(now){const recent=perfCadence.filter(t=>t>now-1000&&t<=now);if(recent.length<2)return recent.length?1:null;const span=recent[recent.length-1]-recent[0];return span>0?Math.round((recent.length-1)*1000/span):null;}
+function perfUpdate(){const now=performance.now(),status=$('#stFps');let drop=0;while(drop<perfCadence.length&&perfCadence[drop]<now-1000)drop++;if(drop)perfCadence.splice(0,drop);
+  if(status){const fps=perfStatusRate(now);status.textContent=fps===null?'Idle':fps+' FPS';}if(perf.on||perfGpu.pending.length)perfGpuPoll();if(!perf.on)return;const F=perf.frames;
   const recent=F.filter(f=>f.t>now-1000),fps=recent.length,work=recent.length?recent.reduce((s,f)=>s+f.comp+f.view+f.thumbs,0)/recent.length:0;
   const w=F.reduce((a,f)=>!a||f.comp+f.view+f.thumbs>a.comp+a.view+a.thumbs?f:a,null),lt=perfLong.reduce((a,f)=>Math.max(a,f.ms),0);
   const layers=allLayers().length,maps=doc.maps.length,G=gpuMemory(),S=gfSaveStats.last,gs=perfGpu.samples;
