@@ -6,23 +6,24 @@ const G3_MAGIC=[71,79,85,65,67,72,69,51],G3_VERSION=1;
 const isP3Proj=buf=>{const u=new Uint8Array(buf,0,Math.min(8,buf.byteLength));return u.length===8&&G3_MAGIC.every((v,i)=>u[i]===v);};
 /* every set as a .gouache blob (the others are stepped into for a moment; the screen holds still meanwhile) */
 async function encodeP3Project(){if(ui.mode!=='p3d')throw new Error('Open the 3D Paint tab first.');const blobs=[];let off=0;const put=b=>{blobs.push(b);const r={o:off,n:b.length};off+=b.length;return r;};
-  const sets=[];tabDocs.hold=true;
-  try{for(let i=0;i<p3.sets.length;i++){const S=p3.sets[i];let bytes;
+  const sets=[];tabDocs.hold=true;ghProject=true;
+  try{for(let i=0;i<p3.sets.length;i++){const S=p3.sets[i];let bytes;ghCrumb('save: texture set '+(i+1)+' of '+p3.sets.length,true);
       if(i===p3.cur)bytes=new Uint8Array(await (await encodeGouacheNow({lean:true})).arrayBuffer());
       else if(S.state){const mine=docState();setDocState(S.state);try{bytes=new Uint8Array(await (await encodeGouacheNow({lean:true})).arrayBuffer());}finally{S.state=docState();setDocState(mine);}}
       sets.push(Object.assign({name:S.name,material:p3Binding(S),tile:S.tile||null,meshEditID:S.meshEditID,hid:!!S.hidden},bytes?put(bytes):{empty:true}));}}
-  finally{tabDocs.hold=false;requestRender(true);}
-  let mesh=null;if(v3s().model==='imported'&&v3.imported){const c=await streamThrough(meshPack(v3.imported),'deflate-raw');mesh=Object.assign({name:v3.imported.name},put(c));}
+  finally{tabDocs.hold=false;ghProject=false;requestRender(true);}
+  let mesh=null;if(v3s().model==='imported'&&v3.imported){ghCrumb('save: packing the model ('+Math.round((v3.imported.idx?v3.imported.idx.length:0)/3)+' triangles)',true);const c=await streamThrough(meshPack(v3.imported),'deflate-raw');mesh=Object.assign({name:v3.imported.name},put(c));}
   const head={app:'Gouache Studio',v:G3_VERSION,name:p3.name||'3D Paint',size:p3.size,cur:p3.cur,setup:p3.setup,workflow:p3.workflow,udim:!!p3.udim,deletedSets:p3.deletedSets||[],sets,mesh,v3d:doc.v3d,cam:Object.assign({},v3.cam),mir3:Object.assign({},mir3)};
   const hj=new TextEncoder().encode(JSON.stringify(head)),pre=new Uint8Array(16);pre.set(G3_MAGIC,0);const dv=new DataView(pre.buffer);dv.setUint32(8,G3_VERSION,true);dv.setUint32(12,hj.length,true);
+  ghCrumb('save: encoded',true);
   return new Blob([pre,hj,...blobs],{type:'application/octet-stream'});}
 async function saveP3Project(forceAsk){if(stroke)return;toast('Saving the 3D Paint project…');
-  try{await tick();const blob=await encodeP3Project(),bytes=new Uint8Array(await blob.arrayBuffer()),nm=slug(p3.name||'3D Paint')+'.gouache3d';
-    if(platform.isDesktop&&p3.path&&!forceAsk){await platform.writeFile(p3.path,bytes);p3.savedAt=p3Sig();toast('Saved '+p3.path);return;}
+  try{await tick();ghCrumb('save: project starting',true);const blob=await encodeP3Project();ghCrumb('save: joining the project ('+Math.round(blob.size/1048576)+' MB)',true);const bytes=new Uint8Array(await blob.arrayBuffer()),nm=slug(p3.name||'3D Paint')+'.gouache3d';
+    if(platform.isDesktop&&p3.path&&!forceAsk){ghCrumb('save: writing the file ('+Math.round(bytes.length/1048576)+' MB)',true);await platform.writeFile(p3.path,bytes);ghCrumb('save: finished',true);p3.savedAt=p3Sig();toast('Saved '+p3.path);return;}
     if(platform.isDesktop){const path=await platform.saveAs(nm,bytes,'Gouache Studio 3D Paint project');if(!path){toast('Save cancelled.');return;}
       p3.path=path;p3.name=baseName(fileNameOf(path));platform.recentAdd(path);if(typeof fileLocUpdate==='function')fileLocUpdate();p3.savedAt=p3Sig();toast('Saved '+path);return;}
     const r=await deliver(nm,blob);toast(deliveredText(r,'Project'));if(r.ok)p3.savedAt=p3Sig();}
-  catch(e){console.error(e);toast('The project could not be saved: '+(e.message||e));}}
+  catch(e){console.error(e);ghCrumb('save: failed',true);toast('The project could not be saved: '+(e.message||e));}}
 /* something to tell whether there is unsaved work */
 const p3Sig=()=>JSON.stringify(p3.deletedSets||[])+':'+(p3.metadataVer||0)+'|'+p3.sets.map((S,i)=>{const u=i===p3.cur?hist.undo:(S.state?S.state.undo:[]),D=i===p3.cur?doc:S.state?.doc;return S.name+':'+p3Binding(S)+':'+u.length+':'+(u[u.length-1]||{}).label+':'+(D?.meshMapVer||0)+':'+(D?.projectAssets?._ver||0);}).join('|');
 function p3AskReplace(fresh){if(!p3.started||p3Sig()===p3.savedAt||!p3.metadataVer&&p3.sets.every((S,i)=>{const D=i===p3.cur?doc:S.state?.doc;return !(i===p3.cur?hist.undo.length:S.state?.undo.length)&&!D?.meshMapVer&&!D?.projectAssets?._ver;}))return Promise.resolve(true);

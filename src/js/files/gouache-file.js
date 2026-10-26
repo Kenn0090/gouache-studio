@@ -32,7 +32,7 @@ async function encodeGouacheNow(opts){if(gfSaving)throw new Error('A document is
   const surfaces=[...new Set([window,work.ownerDocument.defaultView,...dk.pops.map(p=>p.win),...dtab.tabs.map(t=>t.win&&t.win.w),v3.pop&&v3.pop.win])].filter(w=>w&&!w.closed),covers=[];
   const stats={bounds:0,read:0,pack:0,images:0,bytes:0,total:0},t=performance.now();
   try{for(const win of surfaces){win.addEventListener('keydown',keys,true);const c=win.document.createElement('div');c.className='ascover';win.document.body.append(c);covers.push(c);}tabDocs.hold=true;
-    return await encodeGouacheData(opts,stats);}finally{stats.total=performance.now()-t;gfSaveStats.last=stats;gfSaving=false;tabDocs.hold=held;
+    return await encodeGouacheData(opts,stats);}finally{if(!ghProject)ghCrumb('save: finished',true);stats.total=performance.now()-t;gfSaveStats.last=stats;gfSaving=false;tabDocs.hold=held;
     for(const win of surfaces)if(win&&!win.closed)win.removeEventListener('keydown',keys,true);covers.forEach(c=>c.remove());requestRender(true);}}
 async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let off=0;/* lean: a 3D Paint texture set (no model, no bake fixes) */
   if(typeof pathFlush==='function')pathFlush();
@@ -42,7 +42,7 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
   const later=[],flying=new Set(),cap=Math.max(2,(pxWorkerState.pool.length||1)+1);
   const defer=(pr,r)=>{const e=pr.then(c=>{r.n=c.bytes.length;if(c.f)r.f=c.f;return c.bytes;});later.push({e,r});const tr=e.then(()=>{},()=>{}).then(()=>flying.delete(tr));flying.add(tr);return r;};
   const throttle=async()=>{const t0=performance.now();while(flying.size>=cap)await Promise.race([...flying]);stats.pack+=performance.now()-t0;};
-  const pack=async(t,x,y,w,h,lossy)=>{await throttle();const time=performance.now(),raw=await readRegionAsync(t,x,y,w,h);stats.read+=performance.now()-time;stats.bytes+=raw.byteLength;stats.images++;
+  const pack=async(t,x,y,w,h,lossy)=>{await throttle();ghCrumb('save: picture '+(stats.images+1)+' ('+w+'×'+h+', '+Math.round(stats.bytes/1048576)+' MB read so far)');const time=performance.now(),raw=await readRegionAsync(t,x,y,w,h);stats.read+=performance.now()-time;stats.bytes+=raw.byteLength;stats.images++;
     return {pr:pxPack(raw,w,h,t.depth,lossy,true)};};
   /* pictures are packed (files/pixel-pack.js): lossless, or WebP for colour and grey maps with Smaller files on */
   const put=async(t,full,lossy)=>{if(!t||t.empty)return null;const start=performance.now(),b=full?[0,0,doc.w,doc.h]:await contentBoundsAsync(t);stats.bounds+=performance.now()-start;if(!b)return null;

@@ -14,6 +14,14 @@ function gpuLogRead(){try{return JSON.parse(localStorage.getItem('gs.gpuLog')||'
 function gpuLogAdd(kind){try{const G=gpuMemory(),l=gpuLogRead();l.push({t:Date.now(),kind,renderer:gpuInfo().renderer,doc:doc.w+'x'+doc.h+' '+doc.depth+'-bit',layers:allLayers().length,maps:doc.maps.length,mode:ui.mode,tracked:Math.round(G.bytes/1048576)+' MB',targets:G.targets});
   localStorage.setItem('gs.gpuLog',JSON.stringify(l.slice(-20)));}catch(e){}}
 gpuLogAdd('start');
+/* A trail of save steps that survives a crash: the page cannot log anything once its process is gone, so the step is written
+   (at most every 400 ms) to localStorage. The next start finds a save that never finished and says where it stopped. */
+let ghCrumbAt=0,ghCrumbStep='',ghProject=false;/* ghProject: a whole 3D Paint project is being encoded (its sets are not the end of the save) */
+function ghCrumb(step,force){const now=Date.now();if(!force&&step===ghCrumbStep&&now-ghCrumbAt<400)return;if(!force&&now-ghCrumbAt<400&&/^save: picture/.test(step))return;ghCrumbAt=now;ghCrumbStep=step;
+  try{const m=performance.memory;localStorage.setItem('gs.crumb',JSON.stringify({t:now,step,heap:m?Math.round(m.usedJSHeapSize/1048576):undefined,lim:m?Math.round(m.jsHeapSizeLimit/1048576):undefined,doc:doc.w+'x'+doc.h,layers:allLayers().length,gpu:Math.round(gpuMemory().bytes/1048576)}));}catch(e){}}
+(function(){try{const c=JSON.parse(localStorage.getItem('gs.crumb')||'null');if(c&&/^save:/.test(c.step)&&!/finished|failed|cancel|encoded/.test(c.step)){const l=gpuLogRead();l.push({t:c.t,kind:'last session stopped during: '+c.step+(c.heap?' (page memory '+c.heap+' of '+c.lim+' MB)':''),renderer:'',doc:c.doc,layers:c.layers,maps:0,mode:'',tracked:c.gpu+' MB',targets:0});localStorage.setItem('gs.log.crumb','1');localStorage.setItem('gs.gpuLog',JSON.stringify(l.slice(-20)));}
+  localStorage.removeItem('gs.crumb');}catch(e){}})();
+
 /* the drawing back-end in use; a WebGPU or native one is planned (docs/native-renderer-plan.md) and will switch this */
 const gpuBackend={kind:'webgl2'};
 /* does this machine offer WebGPU (the planned next step)? asked once, shown in the report */
@@ -72,6 +80,7 @@ function ghReportText(r){const I=gpuInfo(),G=gpuMemory(),log=gpuLogRead().filter
     'Document: '+doc.w+'×'+doc.h+' '+doc.depth+'-bit · '+allLayers().length+' layers · '+doc.maps.length+' maps · mode '+ui.mode,
     'Tracked graphics memory: '+fmtBytes(G.bytes)+' in '+G.targets+' pictures (budget '+fmtBytes(gpuBudget())+')',
     (()=>{const S=typeof gfSaveStats!=='undefined'&&gfSaveStats.last;return S&&S.images?'Last save: '+(S.total/1000).toFixed(1)+' s in all · GPU read '+(S.read/1000).toFixed(1)+' s · waiting for packing '+(S.pack/1000).toFixed(1)+' s · finding edges '+(S.bounds/1000).toFixed(1)+' s · '+S.images+' pictures, '+fmtBytes(S.bytes):'';})(),
+    (()=>{const e=gpuLogRead().filter(x=>/^last session stopped/.test(x.kind)).pop();return e?'The app stopped while saving ('+new Date(e.t).toLocaleString()+'): '+e.kind.replace('last session stopped during: ',''):'';})(),
     (()=>{const F=typeof v3!=='undefined'&&v3.fbo;return F?'3D view buffer: '+F.w+'×'+F.h+' with '+F.S+'× smoothing':'';})(),
     'Drawing back-end: '+gpuBackend.kind+' · WebGPU: '+(r&&r.webgpu||'checking…'),
     r&&r.brush?(r.brush.error?'Brush test failed: '+r.brush.error:'Current brush ('+r.brush.size+' px, '+r.brush.tip+', spacing '+r.brush.spacing+'%): '+(1000/r.brush.plainMs).toFixed(0)+' dabs a second'+(r.brush.dualMs?' · with dual brush '+(1000/r.brush.dualMs).toFixed(0)+' dabs a second':'')):'',
