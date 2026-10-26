@@ -194,7 +194,7 @@ Masks can hold rows (generators, noise, mesh maps, ID colours, filters…) and l
 - **Box**, **Lasso** and **Polygon** select what you can see of the model under the shape you draw. Drag inside the shape to move it; the selection follows when you let go. **Shift** adds, **Ctrl** takes away. For the polygon, click the corners, then double-click, click the first point or press **Enter**. On the flat texture they are the usual selection tools.
 - **ID colour** (like Substance Painter's colour selection): click the model (or the flat texture) to pick colours of the texture set's baked **ID** map. Those colours turn white in the mask, the rest black. **Tolerance** sets how close a colour counts, **Softness** the edge, **Invert** swaps them; click a colour swatch to remove it. It stays with the layer, so you can come back and change it.
 - **Fill white** / **Fill black** (inside the selection, if there is one) and **Invert**.
-- **Select part:** choose Object, Material, UV island, Face or Loop, activate **Select part**, then click the model. That part turns white in the mask; **Ctrl-click** turns it black. Use **Done selecting** or **Escape** to return to painting.
+- **Select part:** choose Object, Material, UV island, Face or Loop, activate **Select part**, then click one part or drag across the model to include several. The parts turn white in the mask; **Ctrl-click** or **Ctrl-drag** turns them black. Use **Done selecting** or **Escape** to return to painting.
 - **Done**, **Esc**, Alt + click again, or clicking the layer's own thumbnail goes back to the material.
 
 ## From Paint

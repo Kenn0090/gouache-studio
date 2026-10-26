@@ -1,3 +1,7 @@
+# Gouache Studio 0.73.3
+
+- **Select several model parts at once.** In Mask mode, drag with Select part active to include each Object, Material, UV island, Face or Loop you pass over. Ctrl-drag hides them. The full drag is one undoable mask edit.
+
 # Gouache Studio 0.73.2
 
 - **Clear mask hides all.** Clearing a mask now resets it to black instead of revealing the whole layer. Undo restores the previous mask and its rows; paint white to reveal areas again.

@@ -1,3 +1,7 @@
+## 0.73.3
+
+- **Drag-select multiple model parts in Mask mode.** With Select part active, drag across the model to include each Object, Material, UV island, Face or Loop you pass over in one mask edit. Ctrl-drag hides them; one Undo restores the previous mask.
+
 ## 0.73.2
 
 - **Clear mask hides all.** Clear mask now resets the mask to black instead of revealing the whole layer. Undo restores the old mask and its rows; paint white to reveal areas again.

@@ -504,7 +504,7 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     e.preventDefault();hit.tabIndex=0;hit.focus({preventScroll:true});/* release toolbar/dropdown keyboard focus when returning to the viewport */
     try{hit.setPointerCapture(e.pointerId);}catch(er){}
     if(e.button===0&&v3PickHeld(e)&&v3PickKey()!=='Alt'){v3HoverPick(hit,e);return;}
-    if(e.button===0&&!e.altKey&&sel3.armed){sel3HoverClear();p3SelectAt(hit,e);return;}
+    if(e.button===0&&!e.altKey&&sel3.armed){sel3HoverClear();if(sel3DragDown(hit,e))return;p3SelectAt(hit,e);return;}
     /* mask mode: Paint must be on to paint; Box, Lasso and Polygon draw shapes */
     /* the projection gizmo (a material or mask row projected from 3D) */
     if(e.button===0&&!e.altKey&&!st3.sKey&&pgzDown(hit,e))return;
@@ -512,7 +512,7 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     let how=v3NavOf(hit,e);
     if(how==='paint'){if(e.button===0&&meshDown(hit,e)&&v3.mstroke)return;how='turn';if(stroke)return;}
     v3.drag={x:e.clientX,y:e.clientY,how,id:e.pointerId,x0:e.clientX,y0:e.clientY,alt:e.altKey&&e.button===0,penAlt:how==='pan'&&e.altKey&&typeof penPanBtn==='function'&&penPanBtn(e)};});
-  hit.addEventListener('pointermove',e=>{sel3HoverMove(hit,e);v3PickHold.hit=hit;v3PickHold.point={clientX:e.clientX,clientY:e.clientY};if(pgz.drag){if(!e.buttons){pgzUp();return;}pgzMove(hit,e);return;}if(!e.buttons&&!v3PickHeld(e)&&pgzHover(hit,e)){meshCursor(hit,null);return;}if(mk3Busy()){mk3Move(hit,e);return;}meshCursor(hit,e);
+  hit.addEventListener('pointermove',e=>{v3PickHold.hit=hit;v3PickHold.point={clientX:e.clientX,clientY:e.clientY};if(sel3DragBusy()){sel3DragMove(hit,e);return;}sel3HoverMove(hit,e);if(pgz.drag){if(!e.buttons){pgzUp();return;}pgzMove(hit,e);return;}if(!e.buttons&&!v3PickHeld(e)&&pgzHover(hit,e)){meshCursor(hit,null);return;}if(mk3Busy()){mk3Move(hit,e);return;}meshCursor(hit,e);
     /* no button held any more: the release went missing (another window, a pen gesture, Alt menu mode); finish instead of sticking */
     if(!e.buttons){if(v3.mstroke)meshUp();if(v3.drag)v3.drag=null;}
     /* a pen hovering with its side button held moves the view (no tip contact, so no pointerdown arrives) */
@@ -531,7 +531,7 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
       if(d.fy==null){d.fy=c.yaw;d.fp=c.pitch;}d.fy-=dx*.008;d.fp=clamp(d.fp+dy*.008,-1.55,1.55);
       if(e.shiftKey){const Q=Math.PI/2;if(Math.abs(d.fp)>Math.PI/4){c.pitch=d.fp>0?1.5699:-1.5699;c.yaw=Math.round(d.fy/Q)*Q;}else{c.pitch=0;c.yaw=Math.round(d.fy/Q)*Q;}}
       else{c.yaw=d.fy;c.pitch=d.fp;}}v3.dirty=true;requestRender();});
-  const up=e=>{if(pgz.drag){pgzUp();return;}if(mk3Busy()&&e.type!=='lostpointercapture'){mk3Up(e);return;}if(v3.drag&&e.pointerId!==undefined&&v3.drag.id!==e.pointerId)return;v3.drag=null;meshUp(e);};
+  const up=e=>{if(pgz.drag){pgzUp();return;}if(sel3DragBusy()){sel3DragUp(e,e.type!=='pointerup',hit);return;}if(mk3Busy()&&e.type!=='lostpointercapture'){mk3Up(e);return;}if(v3.drag&&e.pointerId!==undefined&&v3.drag.id!==e.pointerId)return;v3.drag=null;meshUp(e);};
   hit.addEventListener('pointerup',up);hit.addEventListener('pointercancel',up);hit.addEventListener('lostpointercapture',up);hit.addEventListener('pointerleave',()=>{sel3HoverClear();v3.hover=false;v3PickRelease();v3PickHold.hit=null;v3PickHold.point=null;meshCursor(hit,null);});hit.addEventListener('pointerenter',()=>{v3.hover=true;});
   hit.addEventListener('wheel',e=>{e.preventDefault();e.stopPropagation();v3.cam.dist=clamp(v3.cam.dist*Math.exp(e.deltaY*.0012),.2,50);v3.dirty=true;requestRender();},{passive:false});
   for(const t of ['selectstart','dragstart'])hit.parentNode.addEventListener(t,e=>e.preventDefault());
@@ -543,7 +543,7 @@ window.addEventListener('pointerup',e=>{if(v3.drag&&v3.drag.id===e.pointerId){co
     /* the heal brush: Alt+click on the model (without turning it) sets where to copy from */
     if(d.alt&&(ui.tool==='heal'||ui.tool==='clone')&&Math.hypot(e.clientX-d.x0,e.clientY-d.y0)<4){const hit=document.getElementById('v3Hit'),pk=hit&&v3PickAt(hit,e);
       if(pk){if(ui.tool==='heal'&&heal.mode==='spot'){heal.mode='source';healSave();buildBrushPanel();buildOptBar();}healSetSource(pk.uv[0]*doc.w,pk.uv[1]*doc.h,ui.mode==='p3d'?pk.set:null);}}}if(v3.mstroke&&v3.mstroke.id===e.pointerId)meshUp(e);},true);
-window.addEventListener('blur',()=>{v3.drag=null;if(v3.mstroke)meshUp();});
+window.addEventListener('blur',()=>{v3.drag=null;if(sel3DragBusy())sel3DragUp(null,true);if(v3.mstroke)meshUp();});
 /* Alt on its own must not hand the keyboard to the window menu (Windows), which made the model seem locked */
 for(const t of ['keydown','keyup'])window.addEventListener(t,e=>{if(e.key==='Alt')e.preventDefault();},true);
 /* dragging the divider */

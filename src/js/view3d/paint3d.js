@@ -132,6 +132,7 @@ function p3SetsBox(){const box=el('div',{class:'p3sets',role:'listbox','aria-lab
    space: painting keeps inside it on the model and on the flat canvas, and Add mask turns it into a mask. */
 const sel3={mode:'off',armed:false};
 const sel3HoverState={tris:null,mesh:null,root:null,frame:0,buffer:null};
+let sel3Drag=null;
 const SEL3_KINDS=[['off','Off'],['object','Object'],['material','Material'],['island','UV island'],['face','Face'],['loop','Loop']];
 /* welded vertices (same place; same place and UV) and which triangles meet at each edge, made once per model */
 function sel3Topo(m){if(m._topo)return m._topo;const n=m.pos.length/3,P=m.pos,U=m.uv,pid=new Uint32Array(n),uid=new Uint32Array(n),pm=new Map(),um=new Map(),q=v=>Math.round(v*1e5),qu=v=>Math.round(v*1e4);
@@ -195,14 +196,30 @@ function sel3Draw(m,tris,into){if(!P_SEL3)P_SEL3=prog3(VS_SEL3,`uniform float uV
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,eb);gl.drawElements(gl.TRIANGLES,tri.length,gl.UNSIGNED_INT,0);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,lb);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,ln,gl.STREAM_DRAW);gl.drawElements(gl.LINES,ln.length,gl.UNSIGNED_INT,0);}
   gl.bindVertexArray(vao);gl.deleteVertexArray(va);gl.deleteBuffer(eb);gl.deleteBuffer(lb);return t;}
+/* a triangle under the pointer, before growing it to its Object / Material / UV island / Face / Loop */
+function sel3HitSeed(hit,e){const p=v3PickAt(hit,e),m=v3.mesh;if(!p||!m)return null;const f=m.subF||1,O=m.src||m,R=ui.mode==='p3d'?p3Range():{start:0,count:m.idx.length/3},RO={start:Math.floor(R.start/f),count:Math.floor(R.count/f)},t=sel3Tri(O,p.eye,p.dir,RO);return t<0?null:{m,O,f,R:RO,t,pos:p.pos};}
+function sel3HitTriangles(hit,e){const s=sel3HitSeed(hit,e);if(!s)return null;const own=sel3Grow(s.O,s.t,sel3.mode,s.pos,s.R),tris=[];for(const x of own)for(let j=0;j<s.f;j++)tris.push(x*s.f+j);return {m:s.m,tris};}
+function sel3DragSeed(d,s){if(!s||s.m!==d.mesh||s.O!==d.O||d.seeds.has(s.t))return;d.seeds.set(s.t,s.pos);const base=s.t*d.f;if(d.tris.has(base))return;
+  for(const x of sel3Grow(d.O,s.t,sel3.mode,s.pos,d.R))for(let j=0;j<d.f;j++)d.tris.add(x*d.f+j);}
+function sel3DragDown(hit,e){if(!sel3.armed||!ui.viewMask||!doc.active?.mask)return false;const s=sel3HitSeed(hit,e);if(!s){toast('Nothing to select in this texture set.');return true;}
+  sel3Drag={id:e.pointerId,mesh:s.m,O:s.O,f:s.f,R:s.R,seeds:new Map(),tris:new Set(),x:e.clientX,y:e.clientY,hide:e.ctrlKey||e.metaKey,root:doc.root};sel3DragSeed(sel3Drag,s);sel3DragPreview();return true;}
+function sel3DragBusy(){return !!sel3Drag;}
+function sel3DragPreview(){if(!sel3Drag||!sel3Drag.tris.size)return;const H=sel3HoverState;H.mesh=sel3Drag.mesh;H.root=sel3Drag.root;H.tris=[...sel3Drag.tris];H.upload=true;v3.dirty=true;requestRender();}
+function sel3DragMove(hit,e){const d=sel3Drag;if(!d||e.pointerId!==d.id)return;if(!e.buttons){sel3DragUp(e,true);return;}
+  const dx=e.clientX-d.x,dy=e.clientY-d.y,dist=Math.hypot(dx,dy),steps=Math.min(64,Math.ceil(dist/12));let changed=false;
+  for(let i=1;i<=steps;i++){const s=sel3HitSeed(hit,{clientX:d.x+dx*i/steps,clientY:d.y+dy*i/steps});const n=d.seeds.size;sel3DragSeed(d,s);if(d.seeds.size!==n)changed=true;}
+  d.x=e.clientX;d.y=e.clientY;if(changed)sel3DragPreview();}
+function sel3DragUp(e,cancel,hit){const d=sel3Drag;if(!d||e&&e.pointerId!==undefined&&e.pointerId!==d.id)return;if(!cancel&&e&&hit&&Math.hypot(e.clientX-d.x,e.clientY-d.y)>.5)sel3DragMoveEnd(d,e,hit);
+  sel3Drag=null;sel3HoverClear();if(cancel||d.root!==doc.root||d.mesh!==v3.mesh||!d.tris.size)return;const et=editTarget();if(!et||!et.isMask||!ui.viewMask)return;const v=d.hide?0:1,tris=[...d.tris];
+  fullRecord(et.L,v?'Show part in mask':'Hide part in mask',()=>sel3Draw(d.mesh,tris,[et.target,v]));v3.dirty=true;requestRender(true);}
+function sel3DragMoveEnd(d,e,hit){const dx=e.clientX-d.x,dy=e.clientY-d.y,dist=Math.hypot(dx,dy),steps=Math.min(64,Math.ceil(dist/12));
+  for(let i=1;i<=steps;i++)sel3DragSeed(d,sel3HitSeed(hit,{clientX:d.x+dx*i/steps,clientY:d.y+dy*i/steps}));}
 /* double-click on the model (from the 3D view): true when it made a selection */
 function p3SelectAt(hit,e){if(sel3.mode==='off'||!v3.mesh||(ui.mode!=='p3d'&&ui.mode!=='paint')||selBusy())return false;const found=sel3HitTriangles(hit,e);if(!found){toast('Nothing to select in this texture set.');return true;}const {m,tris}=found;
   /* in mask view the part goes straight into the mask: white shows, Ctrl+double-click hides (black) */
   if(maskViewTex()){const et=editTarget();if(et&&et.isMask){const v=(e.ctrlKey||e.metaKey)?0:1;fullRecord(et.L,v?'Show part in mask':'Hide part in mask',()=>sel3Draw(m,tris,[et.target,v]));v3.dirty=true;requestRender(true);return true;}}
   const mode=e.shiftKey?'add':(e.ctrlKey||e.metaKey)?'sub':'new',img=sel3Draw(m,tris);
   applyShape(img,mode,fullRect(),'Select '+SEL3_KINDS.find(k=>k[0]===sel3.mode)[1].toLowerCase());release(img);v3.dirty=true;requestRender(true);return true;}
-function sel3HitTriangles(hit,e){const p=v3PickAt(hit,e),m=v3.mesh;if(!p||!m)return null;const f=m.subF||1,O=m.src||m,R=ui.mode==='p3d'?p3Range():{start:0,count:m.idx.length/3},RO={start:Math.floor(R.start/f),count:Math.floor(R.count/f)},t=sel3Tri(O,p.eye,p.dir,RO);if(t<0)return null;
- const own=sel3Grow(O,t,sel3.mode,p.pos,RO),tris=[];for(const x of own)for(let j=0;j<f;j++)tris.push(x*f+j);return {m,tris};}
 function sel3HoverClear(){const H=sel3HoverState;if(H.frame)cancelAnimationFrame(H.frame);H.frame=0;if(H.tris){H.tris=null;H.mesh=null;v3.dirty=true;requestRender();}}
 function sel3HoverMove(hit,e){if(!sel3.armed||sel3.mode==='off'||e.buttons||e.altKey||v3.drag||!modal.hidden){sel3HoverClear();return;}const H=sel3HoverState;H.point={clientX:e.clientX,clientY:e.clientY};if(H.frame)return;
  H.frame=requestAnimationFrame(()=>{H.frame=0;if(!sel3.armed||!hit.isConnected){sel3HoverClear();return;}const found=sel3HitTriangles(hit,H.point);if(!found){sel3HoverClear();return;}H.mesh=found.m;H.root=doc.root;H.tris=found.tris;H.upload=true;v3.dirty=true;requestRender();});}
@@ -210,11 +227,11 @@ function sel3HoverDraw(g,common,F){const H=sel3HoverState;if(!sel3.armed||H.mesh
  if(!H.program)H.program=prog3(VS_3D,'uniform vec4 uCol;void main(){o=uCol;}');gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);gl.disable(gl.SCISSOR_TEST);gl.disable(gl.CULL_FACE);gl.colorMask(true,true,true,true);if(!H.buffer)H.buffer=gl.createBuffer();gl.bindVertexArray(g.vao);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,H.buffer);if(H.upload){const ids=new Uint32Array(H.tris.length*3);H.tris.forEach((t,i)=>ids.set(v3.mesh.idx.subarray(t*3,t*3+3),i*3));gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,ids,gl.DYNAMIC_DRAW);H.upload=false;}
  gl.enable(gl.DEPTH_TEST);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(-1,-1);gl.enable(gl.BLEND);gl.blendEquation(gl.FUNC_ADD);gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);
  useProg(H.program,{...common,uMorph:0,uSnap:0,uCol:[.12,.65,1,.38]});gl.drawElements(gl.TRIANGLES,H.tris.length*3,gl.UNSIGNED_INT,0);gl.depthMask(true);gl.disable(gl.BLEND);gl.disable(gl.POLYGON_OFFSET_FILL);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,g.ib);}
-function sel3Arm(on){sel3HoverClear();sel3.armed=!!on&&sel3.mode!=='off';if(ui.mode==='p3d'){buildP3Panel();maskBarSync();}else build3dPane();}
-function sel3PickButton(id){return el('button',{class:'btn sm'+(sel3.armed?' on':''),id,text:sel3.armed?'Done selecting':'Select part',disabled:sel3.mode==='off','aria-pressed':String(sel3.armed),title:'Choose this tool, then click the model. Shift adds, Ctrl removes. Escape returns to painting.',onclick:()=>sel3Arm(!sel3.armed)});}
+function sel3Arm(on){if(!on)sel3Drag=null;sel3HoverClear();sel3.armed=!!on&&sel3.mode!=='off';if(ui.mode==='p3d'){buildP3Panel();maskBarSync();}else build3dPane();}
+function sel3PickButton(id){return el('button',{class:'btn sm'+(sel3.armed?' on':''),id,text:sel3.armed?'Done selecting':'Select part',disabled:sel3.mode==='off','aria-pressed':String(sel3.armed),title:'Click a part, or drag across the model to select several. Shift adds, Ctrl removes. Escape returns to painting.',onclick:()=>sel3Arm(!sel3.armed)});}
 function sel3Box(){const pick=el('select',{id:'sel3Kind','aria-label':'Part selection kind'},...SEL3_KINDS.map(([k,l])=>el('option',{value:k,text:l})));pick.value=sel3.mode;pick.onchange=()=>{sel3.mode=pick.value;sel3Arm(false);};
   return el('div',{class:'dlg-grid'},pick,sel3PickButton('sel3Pick'),
-  el('p',{class:'note',text:'Choose a kind, then Select part and click the model. Shift-click adds, Ctrl-click removes. Done selecting or Escape returns to painting. Double-click does not create a selection in 3D Paint.'}));}
+  el('p',{class:'note',text:'Choose a kind, then Select part. Click one part or drag across the model to select several. Shift-click adds, Ctrl-click removes. Done selecting or Escape returns to painting. Double-click does not create a selection in 3D Paint.'}));}
 
 /* ---- materials: ready-made fill layers (colour, roughness, metallic), added above the active layer ---- */
 const P3_MATERIALS=[
@@ -281,7 +298,7 @@ function maskBarSync(){let bar=document.getElementById('maskBar');
     el('button',{class:'btn sm',id:'maskWhite',text:'Fill white',title:'Show everything (or the selection)',onclick:()=>maskOp(0,1)}),
     el('button',{class:'btn sm',id:'maskBlack',text:'Fill black',title:'Hide everything (or the selection)',onclick:()=>maskOp(0,0)}),
     el('button',{class:'btn sm',id:'maskInv',text:'Invert',onclick:()=>maskOp(1)}),pick,sel3PickButton('maskSelPick'),
-    el('span',{class:'maskbar-n',text:typeof mk3Hint==='function'?mk3Hint():''}),
+    el('span',{class:'maskbar-n',text:sel3.armed?'Click a part or drag across the model to show several. Ctrl-click or Ctrl-drag hides.':typeof mk3Hint==='function'?mk3Hint():''}),
     el('button',{class:'btn sm primary',id:'maskDone',text:'Done',title:'Back to the material (Esc)',onclick:maskModeExit}));
   if(typeof mk3!=='undefined'&&mk3.tool==='id')bar.append(idSelRow());
   bar.hidden=false;}
