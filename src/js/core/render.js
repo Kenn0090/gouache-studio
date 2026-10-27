@@ -46,7 +46,7 @@ function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
     if(!n.visible)continue;if(clipped&&!clipped.visible)continue;
     const mt=maskTexOf(n);
     /* filter layer: changes what is below it (clipped ones are applied to their base layer instead) */
-    if(n.type==='layer'&&n.fx){if(clipped||n.fx.map!==k)continue;const r=fxApplyLayer(n,acc,k,mt);if(r!==acc){release(acc);acc=r;}continue;}
+    if(n.type==='layer'&&n.fx){if(clipped||(n.fx.map!==k&&n.fx.map!=='all'))continue;const r=fxApplyLayer(n,acc,k,mt);if(r!==acc){release(acc);acc=r;}continue;}
     if(n.type==='layer'){const lk=lookTouches(n,k),cf=clippedFx(list,i,k),cx=n.cfx&&cfxOn(n,k);let live=null,solid=mapSolid(n,k),T=edit?n.target:mapT(n,k,true);
       const direct=mapLive(n,k)&&fillLiveOpaque(n,k)&&mapOpacityOf(n,k)===1&&mapModeOf(n,k)===0&&!mt&&!clipped&&(!pxfIs3D(n.fill.proj)||n.fill.maps[k].src!=='image')&&!lk&&!cf.length&&!cx&&!(panState&&n.id===panState.id&&panState.maps.has(k))&&!(preview&&preview.L===n)&&!(stroke&&stroke.L===n);
       if(mapLive(n,k)&&!direct){live=acquireD(mapDepth(k));fillDrawMap(n,k,live);T=live;}
@@ -80,7 +80,7 @@ let maskViewT=null,maskViewLive=false;
 /* While painting a plain stroke only the part of the picture the new dabs touched is composited again (scissored),
    into the picture from the frame before. Layers whose look depends on their surroundings (filter layers, layer
    styles and arrays, content effects) need the whole picture, so then everything is composited as before. */
-function compNeedsAll(list,k){const c=strokeCacheFor(list,k),start=c&&c.t?c.i:0;for(let i=start;i<list.length;i++){const n=list[i];if(!n.visible)continue;if(n.type==='layer'){if(n.fx&&n.fx.map===k)return true;if(typeof lookTouches==='function'&&lookTouches(n,k))return true;if(n.cfx&&typeof cfxOn==='function'&&cfxOn(n,k))return true;}
+function compNeedsAll(list,k){const c=strokeCacheFor(list,k),start=c&&c.t?c.i:0;for(let i=start;i<list.length;i++){const n=list[i];if(!n.visible)continue;if(n.type==='layer'){if(n.fx&&(n.fx.map===k||n.fx.map==='all'))return true;if(typeof lookTouches==='function'&&lookTouches(n,k))return true;if(n.cfx&&typeof cfxOn==='function'&&cfxOn(n,k))return true;}
     else if(n.children&&compNeedsAll(n.children,k))return true;}return false;}
 let compPart=false,compPartPixels=0;const compStats={parts:0,full:0,cacheHits:0,skipped:0,layerPixels:0};
 /* (0.30) Painting on a mask can redo only the painted area when nothing above the painted row needs its neighbours

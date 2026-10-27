@@ -74,8 +74,8 @@ function renderLayers(){
     const meta=[];if(grp){meta.push(n.mode<0?'pass':MODES[n.mode]);const om=doc.maps.length>1&&ui.mode!=='anim'?onlyMapOf(n):null;if(om)meta.push(MAP_SHORT[om]);}else{const mm=mapModeOf(n,doc.map);if(mm!==(doc.map==='base'?0:MAP_DEFS[doc.map].blend))meta.push(MODES[mm].replace(' (Add)',''));}
     if(n.shared)meta.unshift('every frame');if(n.text)meta.unshift('text');if(n.grad)meta.unshift('gradient');if(n.shape)meta.unshift('shape');if(n.fill)meta.unshift('fill');if(n.array&&n.array.on!==false)meta.unshift('array');if(mapOpacityOf(n,doc.map)<1)meta.push(Math.round(mapOpacityOf(n,doc.map)*100)+'%');if(n.lockAll)meta.push('locked');else{if(n.lockPx)meta.push('pixels locked');if(n.lockPos)meta.push('position locked');if(n.lockAlpha)meta.push('lock alpha');}
     /* which maps this layer has something in (so a layer painted only in Height is easy to find) */
-    if(n.fx){meta.length=0;const mm=mapModeOf(n,n.fx.map);if(mm)meta.push(MODES[mm].replace(' (Add)',''));if(mapOpacityOf(n,doc.map)<1)meta.push(Math.round(mapOpacityOf(n,doc.map)*100)+'%');
-      meta.unshift(n.fx.stack.filter(it=>it.on!==false).map(fxItemTitle).join(', ')||'no filters');if(doc.maps.length>1)meta.push(MAP_SHORT[n.fx.map]);}
+    if(n.fx){meta.length=0;const mm=mapModeOf(n,n.fx.map==='all'?'base':n.fx.map);if(mm)meta.push(MODES[mm].replace(' (Add)',''));if(mapOpacityOf(n,doc.map)<1)meta.push(Math.round(mapOpacityOf(n,doc.map)*100)+'%');
+      meta.unshift(n.fx.stack.filter(it=>it.on!==false).map(fxItemTitle).join(', ')||'no filters');if(doc.maps.length>1)meta.push(n.fx.map==='all'?'All maps':MAP_SHORT[n.fx.map]);}
     else if(!grp&&doc.maps.length>1&&ui.mode!=='anim'){const ks=mapKeysOf(n).filter(k=>doc.maps.includes(k)&&!(k==='base'&&isBlankBase(n)));
       if(!ks.includes(doc.map))meta.push('empty in '+MAP_DEFS[doc.map].label.toLowerCase());if(ks.length)meta.push(ks.map(k=>MAP_SHORT[k]).join(' '));}
     const name=el('div',{class:'lname',text:(clipped?'↳ ':'')+n.name,title:'Double-click to rename'});
@@ -232,7 +232,7 @@ function cmdMergeDown(){const L=doc.active;if(!isLayer(L))return;const p=L.paren
   if(isFx(L)){/* bake the filters into the layer below */
     const M=mergedLayer(lower.name,[lower],{opacity:lower.opacity,mode:lower.mode,visible:lower.visible,clip:lower.clip,lockAlpha:lower.lockAlpha,mask:cloneMask(lower.mask)},k=>{
       if(!hasMap(lower,k))return null;const d=mapDepth(k),prev=pool;pool=auxFor(d).pool;const B=acquire();blit(mapT(lower,k),B,0,0,doc.w,doc.h,0,0);
-      const R=k===L.fx.map&&L.visible?fxApplyLayer(L,B,k,maskTexOf(L)):B;if(R!==B)release(B);pool=prev;return R;});
+      const R=(k===L.fx.map||L.fx.map==='all')&&L.visible?fxApplyLayer(L,B,k,maskTexOf(L)):B;if(R!==B)release(B);pool=prev;return R;});
     M.mapModes=Object.assign({},lower.mapModes);M.mapOpacities=Object.assign({},lower.mapOpacities);structOp('Merge filter down',()=>{const at=p.children.indexOf(lower);detachNode(L);detachNode(lower);insertNode(M,p,at);selectOnly(M);});return;}
   
   const M=mergedLayer(lower.name,[L,lower],{opacity:lower.opacity,mode:lower.mode,visible:lower.visible,clip:lower.clip,lockAlpha:lower.lockAlpha,mask:cloneMask(lower.mask)},k=>{
@@ -271,7 +271,7 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
   if(lay){items.push(sep(),flyItem('Layer style',()=>[...STYLE_ORDER.map(k=>it(STYLE_DEFS[k].label+(n.styles&&n.styles[k]&&n.styles[k].on?' ✓':''),()=>dlgLayerStyle(k,true))),sep(),it('All styles…',()=>dlgLayerStyle())]));
     items.push(sep(),it('Filter this layer ▸',()=>{selectOnly(n);n.editMask=false;renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);}),
       it('Filter its mask ▸',()=>{selectOnly(n);if(!n.mask)msAdd(n,'fill',{p:{v:1}});n.editMask=true;renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);}),
-      it('Filter layer above…',cmdNewFxLayer),it('Retro layer above (this layer only)…',()=>{selectOnly(n);cmdNewRetroLayer(true);}),it('Array…',()=>setTool('array')));
+      it('Filter layer above…',cmdNewFxLayer),it('Retro layer above (this layer only)…',()=>{selectOnly(n);cmdNewRetroLayer(true);}),it('Stylize layer (painted strokes), everything below…',()=>cmdNewStylizeLayer()),it('Array…',()=>setTool('array')));
     if(n.fill)items.splice(0,0,it('Fill settings…',()=>dlgFillLayer(n)),it('Mesh maps from this material…',()=>dlgMatConvert(n)),sep());
     if(typeof mcHasSource==='function'&&mcHasSource(n))items.push(flyItem('Convert to',()=>[it('Ambient occlusion (AO)…',()=>dlgMatConvert(n,['ao'])),it('Curvature…',()=>dlgMatConvert(n,['curv'])),it('Edges…',()=>dlgMatConvert(n,['curvEdge'])),it('Creases…',()=>dlgMatConvert(n,['curvCrease'])),sep(),it('All of them…',()=>dlgMatConvert(n))]));
     if(n.text||n.grad||n.shape||n.fill)items.push(it('Convert to pixels',()=>{if(n.fill)fillRasterize(n);else rasterizeText(n);changed(n);}));}

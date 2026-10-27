@@ -1,3 +1,9 @@
+## 0.77.0
+
+- **Stylize layer (painted strokes).** Layer menu > **Stylize layer (painted strokes, all maps)** adds one layer that repaints everything below it as brush strokes, in the colour, the roughness, the height and the normal map together. Strokes follow the shapes in the picture, so a face or a stone is painted around its form.
+- **Nine looks to start from:** Gouache, Oil, Thick paint, Soft wash, Watercolour, Comic, Pastel, Chalk and Charcoal. Sliders set stroke size, flow, sharpness, length, bristles, colour variation, raised relief, bend of the light and grain.
+- **Every channel agrees.** The strokes raise ridges in the height, bend the normal map along them (staying correct), and even out the roughness so a painted surface does not shimmer. Each can be turned off. Amount 0 leaves the picture as it was.
+
 ## 0.76.2
 
 - **What's taking space.** Help > **What's taking space in this project…** (also a button in the Graphics card report) lists the saved size of every picture in the project: each layer's maps, masks, mask rows, material pictures, baked maps and the 3D model, grouped by kind with the biggest first. It measures the same way a save does, without writing anything, and has a Copy button. It takes about as long as a save.

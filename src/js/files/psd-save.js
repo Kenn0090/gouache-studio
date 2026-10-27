@@ -18,7 +18,7 @@ async function encodePSD(){
   const fxPixels=(L,g,i)=>{const prev=pool;pool=auxFor(mapDepth('base')).pool;let base,out;
     const cb=clipBaseOf(g.children,i);
     if(cb){base=acquire();if(mapT(cb,'base'))blit(mapT(cb,'base'),base,0,0,W,H,0,0);else clearTarget(base);}else base=renderNodesMap(g.children.slice(0,i),'base');
-    out=L.fx.map==='base'?fxStackResult(L,base,'base'):base;if(out!==base)release(base);pool=prev;return out;};
+    out=(L.fx.map==='base'||L.fx.map==='all')?fxStackResult(L,base,'base'):base;if(out!==base)release(base);pool=prev;return out;};
   const encLayer=async(L,g,i)=>{let T=mapT(L,'base'),tmp=null;if(L.fx){tmp=fxPixels(L,g,i);T=tmp;}const st=toStraight(readPremult(T),bits),chans=[];if(tmp)release(tmp);
     for(const [id,ci] of [[-1,3],[0,0],[1,1],[2,2]]){
       if(b16){const pl=new Uint8Array(N*2);for(let i=0,j=ci;i<N;i++,j+=4){pl[i*2]=st[j]>>8;pl[i*2+1]=st[j]&255;}chans.push({id,comp:2,data:await zlib(pl)});}

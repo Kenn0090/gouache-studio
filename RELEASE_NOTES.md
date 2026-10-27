@@ -1,3 +1,7 @@
+# Gouache Studio 0.77.0
+
+- **New Stylize layer:** repaints everything below it as brush strokes, in colour, roughness, height and normal map together. Nine looks: Gouache, Oil, Thick paint, Soft wash, Watercolour, Comic, Pastel, Chalk, Charcoal. Layer menu > Stylize layer.
+
 # Gouache Studio 0.76.2
 
 - **Help › What's taking space in this project…** shows the saved size of each picture (layers, masks, baked maps, model), biggest first, so you can see why a project is large.

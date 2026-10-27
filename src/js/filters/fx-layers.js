@@ -18,7 +18,7 @@ function fxItem(id){return {id,v:fxDefaults(FX[id]),on:true};}
 function convItem(cid,v){const C=CONVERTERS[cid];const d={};for(const x of C.defs)d[x.key]=x.value;for(const c of C.checks||[])d[c[0]]=c[2];for(const s of C.segs||[])d[s[0]]=s[3];return {conv:cid,v:Object.assign(d,v||{}),on:true};}
 /* an empty layer object that carries filters */
 function newFxLayerObj(name,stack,map){const L=newLayerObj(name);for(const k in L.maps)disposeTarget(L.maps[k]);L.maps={};
-  L.target=emptyFor(mapDepth(map));L.fx={map,stack};L.mapModes={};if(map!=='base')L.mapModes[map]=0;return L;}
+  L.target=emptyFor(mapDepth(map==='all'?'base':map));L.fx={map,stack};L.mapModes={};if(map==='all')for(const k in MAP_DEFS)L.mapModes[k]=0;else if(map!=='base')L.mapModes[map]=0;return L;}
 const isFx=n=>!!(n&&n.fx);
 
 /* ---- compositing ---- */
@@ -36,7 +36,7 @@ function fxStackResult(n,base,k){let cur=base;
     if(fxItemGen(it)){const g=fxGenImage(it,cur,k);if(!g)continue;const o=acquire();
       run(P.comp,o,{uBase:cur.tex,uLayer:g.tex,uStrokeTex:strokeT.tex,uMask:dummy,uUseMask:false,uLMask:dummy,uUseLMask:false,uMode:{int:0},uOpacity:1,uStroke:{int:0},uStrokeColor:[0,0,0],uStrokeOpacity:0,uLockAlpha:false});
       release(g);if(cur!==base)release(cur);cur=o;}
-    else{const o=acquire();FX[it.id].render(cur,o,it.v,{});if(cur!==base)release(cur);cur=o;}}
+    else{const o=acquire();FX[it.id].render(cur,o,it.v,{k,layer:n});if(cur!==base)release(cur);cur=o;}}
   return cur;}
 /* the filter layer applied over base with its opacity, blend mode and mask */
 function fxApplyLayer(n,base,k,mt){const on=n.fx.stack.filter(it=>it.on!==false);if(!on.length)return base;
@@ -100,9 +100,10 @@ function fxEditor(L,opts){opts=opts||{};if(!isFx(L))return;if(stroke||preview||s
     for(const [g,ids] of FX_KINDS()){const og=el('optgroup',{label:g});for(const id of ids)og.append(el('option',{value:id,text:FX[id].title}));add.append(og);}
     const live=Object.keys(CONVERTERS).filter(c=>c!=='heightFromNormal'&&CONVERTERS[c].make&&(CONVERTERS[c].finalNormal?doc.maps.includes('normal')||doc.maps.includes('height'):doc.maps.includes(CONVERTERS[c].from))&&CONVERTERS[c].from!==L.fx.map);
     if(live.length){const og=el('optgroup',{label:'Live from another map'});for(const c of live)og.append(el('option',{value:'conv:'+c,text:CONVERTERS[c].title}));add.append(og);}
+    if(L.fx.map==='all')add.hidden=true;/* a Stylize layer holds only its own effect */
     add.onchange=()=>{const v=add.value;if(!v)return;S.push(v.startsWith('conv:')?convItem(v.slice(5)):fxItem(v));open=S.length-1;
       if(L.autoName!==false&&(L.name==='Filters'||S.length===1))L.name=fxDefaultName(S);draw();upd();renderLayers();};
-    body.append(el('div',{class:'frow'},add),el('p',{class:'note',text:'Editing “'+L.name+'” on the '+MAP_DEFS[L.fx.map].label.toLowerCase()+' map. Its opacity, blend mode and mask are in the Layers panel.'}));};
+    body.append(el('div',{class:'frow'},add),el('p',{class:'note',text:'Editing “'+L.name+'” on the '+(L.fx.map==='all'?'all maps':MAP_DEFS[L.fx.map].label.toLowerCase())+' map. Its opacity, blend mode and mask are in the Layers panel.'}));};
   draw();preview={off:true,fxEdit:true};
   const close=()=>{cancelAnimationFrame(pend);pend=0;preview=null;};
   openDialog({title:opts.isNew?'New filter layer':'Filter layer',body,float:true,okLabel:'Done',

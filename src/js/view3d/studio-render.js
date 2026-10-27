@@ -14,7 +14,7 @@ vec3 studioDirect(vec3 N,vec3 V,vec3 L,vec3 albedo,vec3 f0,float r,float metal){
  return ((1.0-f)*(1.0-metal)*albedo/3.14159265+D*vis*f)*nl;}`;
 const studioShadow={mesh:null,key:null,fbo:null,tex:null,size:0,VP:null,floorVAO:null,floorVB:null,prog:null,floorProg:null,bounds:new WeakMap(),builds:0,texSeq:0,updated:0};
 /* A colour stroke over a proven opaque fill cannot change the shadow silhouette. */
-function studioOpaqueBase(){const list=doc.root.children;if(allLayers().some(n=>n.visible&&n.fx&&n.fx.map==='base'))return false;const i=compVisibleStart(list,'base'),n=list[i];if(!n)return false;const c=mapSolid(n,'base'),t=mapT(n,'base',true);
+function studioOpaqueBase(){const list=doc.root.children;if(allLayers().some(n=>n.visible&&n.fx&&(n.fx.map==='base'||n.fx.map==='all')))return false;const i=compVisibleStart(list,'base'),n=list[i];if(!n)return false;const c=mapSolid(n,'base'),t=mapT(n,'base',true);
  return !!(n.type==='layer'&&n.visible&&(c?c[3]===1:n.fill&&(mapLive(n,'base')?fillLiveOpaque(n,'base'):t&&t.opaque))&&n.opacity===1&&mapModeOf(n,'base')===0&&!n.clip&&!maskTexOf(n)&&!lookTouches(n,'base')&&!(n.cfx&&cfxOn(n,'base'))&&!clippedFx(list,i,'base').length&&!(panState&&n.id===panState.id&&panState.maps.has('base'))&&!(preview&&preview.L===n)&&!(stroke&&stroke.L===n));}
 function studioTextureID(t){return t?(t._studioID||(t._studioID=++studioShadow.texSeq)):0;}
 function studioBounds(m){let b=studioShadow.bounds.get(m);if(b)return b;const lo=[Infinity,Infinity,Infinity],hi=[-Infinity,-Infinity,-Infinity];

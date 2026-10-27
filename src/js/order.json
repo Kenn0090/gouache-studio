@@ -74,6 +74,7 @@
     "filters/filters-vfx",
     "filters/embroidery",
     "filters/fx-layers",
+    "filters/stylize",
     "layers/adj-layer",
     "layers/look",
     "layers/array",

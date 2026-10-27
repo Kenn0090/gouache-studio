@@ -95,7 +95,7 @@ function renderAnimFx(){const A=A_();const box=tlParts.fxbox;if(!box||ui.mode!==
 /* (0.45, Kenn) the effect picker: a small window with the effects in sections (Blurs, Patterns, Artistic…) and a search box */
 const AFX_SECTIONS=()=>{const nm={'Blur and sharpen':'Blurs'};const out=[['Animated',AFX_IDS.slice(0,7)]];
   for(const [g,ids] of FX_KINDS())out.push([nm[g]||g,ids]);
-  const used=new Set(out.flatMap(x=>x[1]));const more=Object.keys(FX).filter(id=>!used.has(id));if(more.length)out.push(['More',more]);
+  const used=new Set(out.flatMap(x=>x[1]));const more=Object.keys(FX).filter(id=>!used.has(id)&&!FX[id].onlyLayer);if(more.length)out.push(['More',more]);
   return out.map(([n,ids])=>[n,ids.filter(id=>FX[id]&&FX[id].render)]).filter(x=>x[1].length);};
 function afxAddMenu(){const btn=el('button',{class:'tlchip afxaddbtn',type:'button','aria-label':'Add an effect','aria-haspopup':'dialog',title:'Add an effect you can animate',text:'+ Effect ▾'});
   let pop=null,off=null;
