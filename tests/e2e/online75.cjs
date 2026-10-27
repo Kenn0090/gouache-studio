@@ -81,8 +81,8 @@ const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* delete */
  await p.evaluate(()=>{const v=__gs.dlLib.list.find(r=>r.dl.aid==='Leather901');__gs.dlDelete(v);});await p.click('#dlgOk');
  ok(await p.evaluate(async()=>!__gs.dlLib.list.some(r=>r.dl.aid==='Leather901')&&!(await __gs.store.getRaw('d:Leather901','materials'))),'deleting removes it from the list and the store');
- /* Poly Haven */
- await p.evaluate(()=>{__gs.ol.sel.clear();});await p.locator('.olsrc .seg button',{hasText:'Poly Haven'}).click();await p.waitForFunction(()=>__gs.ol.src==='ph'&&!__gs.ol.loading&&__gs.ol.items.length===3);
+ /* Poly Haven (the delete dialog above replaced the window: open it again) */
+ await p.evaluate(()=>{__gs.ol.sel.clear();__gs.dlgOnlineLib();});await p.waitForSelector('.olsrc');await p.locator('.olsrc .seg button',{hasText:'Poly Haven'}).click();await p.waitForFunction(()=>__gs.ol.src==='ph'&&!__gs.ol.loading&&__gs.ol.items.length===3);
  ok(await p.locator('.oltile').count()===3,'switching the source lists the Poly Haven textures');
  ok(/Powered by Poly Haven/.test(await p.locator('#olCredit').textContent()),'a visible "Powered by Poly Haven" credit is shown');
  ok(await p.locator('[data-cat="grunge"]').count()===0,'the grunge chip is only for ambientCG');
