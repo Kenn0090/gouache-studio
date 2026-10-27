@@ -11,7 +11,8 @@
 let P_HP=null;
 function hpProgs(){if(P_HP)return P_HP;
   const light=GL_ST+MS_NOISE_GLSL+MS_SURF_GLSL+`
-uniform sampler2D uSrc; uniform sampler2D uBlur; uniform sampler2D uWN; uniform sampler2D uPM; uniform sampler2D uCurv; uniform sampler2D uAO; uniform sampler2D uThick;
+uniform sampler2D uSrc; uniform sampler2D uBlur; uniform sampler2D uTan; uniform sampler2D uTN; uniform sampler2D uDN2; uniform int uHasTan; uniform int uHasTN; uniform int uHasDN2; uniform float uNDet;
+uniform sampler2D uWN; uniform sampler2D uPM; uniform sampler2D uCurv; uniform sampler2D uAO; uniform sampler2D uThick;
 uniform int uHasWN; uniform int uHasPM; uniform int uHasCurv; uniform int uHasAO; uniform int uHasThick; uniform int uOwn; uniform int uFormMode; uniform int uSpCount; uniform int uShowN; uniform int uWrap;
 uniform vec3 uBase; uniform vec3 uL; uniform vec3 uShCol; uniform vec3 uLtCol; uniform vec3 uUlCol; uniform vec3 uGTop; uniform vec3 uGBot; uniform vec3 uAoCol; uniform vec3 uEdgeCol; uniform vec3 uCavCol; uniform vec3 uThCol; uniform vec3 uSpCol; uniform vec3 uVarCol;
 uniform float uShAmt; uniform float uShSpread; uniform float uLtAmt; uniform float uForm; uniform float uUlAmt; uniform float uGTopAmt; uniform float uGBotAmt; uniform float uGOff; uniform float uGSpread;
@@ -25,7 +26,13 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); vec2 uv=(vec2
   vec4 sc=texelFetch(uSrc,p,0); vec3 below=st(sc); vec3 c=uOwn==1?uBase:below; float a=uOwn==1?1.0:sc.a;
   /* which way it faces: the baked world-space normal, else the model, else the document's normal map, else flat */
   vec3 N=surfN(); bool model=uHasPos==1&&texelFetch(uPos,p,0).a>0.5;
-  if(uHasWN==1){ vec4 w=texelFetch(uWN,p,0); if(w.a>0.5){ N=normalize(w.rgb*2.0-1.0+1e-5); model=true; } }
+  bool wnOk=false; if(uHasWN==1){ vec4 w=texelFetch(uWN,p,0); if(w.a>0.5){ N=normalize(w.rgb*2.0-1.0+1e-5); model=true; wnOk=true; } }
+  /* fine detail from normal maps on top of the model's shape: the baked normal (when there is no baked world normal, which
+     already has it) and the normal painted in the layers below, turned onto the surface with the model's tangents */
+  if(model&&uHasTan==1&&uNDet>0.0){ vec4 tg=texelFetch(uTan,p,0); vec3 t=vec3(0.0,0.0,1.0);
+    if(uHasTN==1&&!wnOk){ vec4 q=texelFetch(uTN,p,0); if(q.a>0.01){ vec3 b=st(q)*2.0-1.0; t=normalize(vec3(t.xy+b.xy,t.z*b.z)); } }
+    if(uHasDN2==1){ vec4 q=texelFetch(uDN2,p,0); if(q.a>0.01){ vec3 b=st(q)*2.0-1.0; t=normalize(vec3(t.xy+b.xy,t.z*b.z)); } }
+    if(length(tg.xyz)>0.1){ vec3 T=normalize(tg.xyz-N*dot(N,tg.xyz)), B=cross(N,T)*(tg.w<0.0?-1.0:1.0); t.xy*=uNDet; N=normalize(T*t.x+B*t.y+N*max(t.z,0.05)); } }
   /* no model: the picture's own light and dark give it shape (bright = raised), as a painter reads a photo */
   float pb=bl(p,s);
   if(!model&&uPic>0.0){ float hx=bl(p+ivec2(2,0),s)-bl(p-ivec2(2,0),s), hy=bl(p+ivec2(0,2),s)-bl(p-ivec2(0,2),s); N=normalize(N+vec3(-hx,hy,0.0)*uPic*6.0); }
@@ -84,11 +91,18 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uA,0); vec4 c0=texelFe
     vec4 col=mix(vec4(st(k)*c0.a,c0.a),c0,uDetail); res=mix(res,col,clamp(ta*uOp,0.0,1.0)); }
   o=mix(c0,res,uAmt); }`;
   /* roughness / gloss / metallic from the colour (luma), or a plain value */
-  const chan=GL_ST+`uniform sampler2D uSrc; uniform sampler2D uC; uniform float uBaseV; uniform float uFrom; uniform int uInv; uniform float uCon; uniform int uOut; uniform int uOwn;
-void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 s=texelFetch(uSrc,p,0), c=texelFetch(uC,p,0); float l=dot(st(c),vec3(0.299,0.587,0.114)); if(uInv==1) l=1.0-l;
-  l=clamp((l-0.5)*uCon+0.5,0.0,1.0); float v=mix(uBaseV,l,uFrom); if(uOut==1) v=1.0-v;
-  if(uOwn==1){ o=vec4(vec3(v),1.0); return; }
-  float a=s.a; vec3 below=st(s); o=vec4(mix(below,vec3(v),c.a>0.0?1.0:0.0)*a,a); }`;
+  /* the other maps from the painted colour: roughness / gloss / metallic (a value, partly from the colour's luma), and for the
+     Spec/Gloss workflow the specular colour and the diffuse (metal parts have dark diffuse and coloured specular, as when converting) */
+  const chan=GL_ST+`uniform sampler2D uSrc; uniform sampler2D uC; uniform int uOut; uniform int uOwn; uniform int uMOn;
+uniform float uRB; uniform float uRF; uniform int uRI; uniform float uRC; uniform float uMB; uniform float uMF; uniform int uMI; uniform float uMC;
+vec3 toLin(vec3 c){ return pow(max(c,0.0),vec3(2.2)); } vec3 toSrgb(vec3 c){ return pow(max(c,0.0),vec3(1.0/2.2)); }
+float val(float l,float b,float f,int inv,float con){ if(inv==1) l=1.0-l; l=clamp((l-0.5)*con+0.5,0.0,1.0); return mix(b,l,f); }
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 s=texelFetch(uSrc,p,0), c=texelFetch(uC,p,0); vec3 C=st(c); float l=dot(C,vec3(0.299,0.587,0.114));
+  float m=uMOn==1?val(l,uMB,uMF,uMI,uMC):0.0;
+  if(uOut==4){ o=vec4(toSrgb(toLin(C)*(1.0-m))*c.a,c.a); return; }
+  vec3 v3; if(uOut==3) v3=toSrgb(mix(vec3(0.04),toLin(C),m)); else if(uOut==2) v3=vec3(m); else { float r=val(l,uRB,uRF,uRI,uRC); v3=vec3(uOut==1?1.0-r:r); }
+  if(uOwn==1){ o=vec4(v3,1.0); return; }
+  float a=s.a; o=vec4(mix(st(s),v3,c.a>0.0?1.0:0.0)*a,a); }`;
   P_HP={light:program(light),strokes:program(strokes),chan:program(chan)};P_HP.light.tiled=true;P_HP.strokes.tiled=true;return P_HP;}
 
 /* every setting, so a preset is just a set of values over these */
@@ -99,7 +113,7 @@ const HP_DEFAULTS={own:true,base:[.6,.6,.6],lEl:65,lTurn:25,
   thCol:[1,.45,.35],thAmt:0,spCount:3,spCol:[1,1,.95],spAmt:0,spExp:10,spH:45,spRot:0,
   varAmt:.25,varScale:6,varCol:[.9,.6,.5],pic:0,mul:0,over:.1,sat:1.05,
   tipKey:'b:bristle',sAmt:.6,sSize:40,sRand:.4,sDens:1.5,sRot:0,sRotRand:.25,sFollow:.8,sDetail:.25,sDrop:.15,sKeep:.6,sOp:.85,
-  rOn:true,rBase:.7,rFrom:.2,rInv:true,rCon:1,mOn:false,mBase:0,mFrom:0,mInv:false,mCon:1,showN:false,seed:1};
+  nDet:1,rOn:true,rBase:.7,rFrom:.2,rInv:true,rCon:1,mOn:false,mBase:0,mFrom:0,mInv:false,mCon:1,showN:false,seed:1};
 const HP_PRESETS={
   'Game materials':{
     'Old wood':{base:[.45,.3,.18],shCol:[.5,.35,.4],edgeCol:[.9,.7,.45],cavCol:[.35,.2,.15],varAmt:.35,varCol:[.65,.42,.2],rBase:.8},
@@ -132,10 +146,19 @@ function hpInputs(n){const M=doc.meshMaps||{},tmp=[],get=k=>{if(M[k])return M[k]
   const wn=M.wnormal||null,pm=M.position||null,ao=get('ao'),thick=M.thick||null;
   let curv=M.curv||null;if(!curv&&typeof msModelCurv==='function')curv=msModelCurv();if(!curv)curv=get('curv');
   /* no model normal: the document's normal map below this layer */
-  let dn=null;if(!wn&&!(typeof v3!=='undefined'&&v3.mesh&&(ui.mode==='p3d'||v3.on)))dn=get('normal');
+  const is3d=typeof v3!=='undefined'&&v3.mesh&&(ui.mode==='p3d'||v3.on),tri=is3d&&typeof fillPosMaps==='function'?fillPosMaps():null;
+  let dn=null,dn2=null;if(!wn&&!tri)dn=get('normal');else{dn2=hpBelow(n,'normal');if(dn2)tmp.push(dn2);}
+  const tn=M.normal||null;
   const surf=msSurf();Object.assign(surf,{uDocN:dn?dn.tex:dummy,uHasDocN:{int:dn?1:0},uSz:[doc.w,doc.h]});
   return {tmp,surf,u:{uWN:wn?wn.tex:dummy,uHasWN:{int:wn?1:0},uPM:pm?pm.tex:dummy,uHasPM:{int:pm?1:0},uCurv:curv?curv.tex:dummy,uHasCurv:{int:curv?1:0},
-    uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},uThick:thick?thick.tex:dummy,uHasThick:{int:thick?1:0}}};}
+    uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},uThick:thick?thick.tex:dummy,uHasThick:{int:thick?1:0},
+    uTan:tri?tri.tan.tex:dummy,uHasTan:{int:tri?1:0},uTN:tn?tn.tex:dummy,uHasTN:{int:tn?1:0},uDN2:dn2?dn2.tex:dummy,uHasDN2:{int:dn2?1:0}},
+    src:{normal:wn?'baked world normal':tri?'the model':dn?'the normal map below':'flat (no model)',detail:tri?(tn&&!wn?'baked normal map':'')+(dn2?(tn&&!wn?' + ':'')+'normals painted below':''):'',
+      position:pm?'baked position':tri?'the model':'top of the picture',ao:M.ao?'baked AO':ao?'AO map below':'the picture',
+      curv:M.curv?'baked curvature':curv?(tri?'the model':'curvature map below'):'the picture',thick:thick?'baked thickness':'none (bake Thickness)'}};}
+/* what the layer reads right now, in words (shown in its settings) */
+function hpSources(n){const I=hpInputs(n),S=I.src;for(const t of I.tmp)release(t);
+  return 'Reads: shape from '+S.normal+(S.detail?' (+ '+S.detail+')':'')+' · height from '+S.position+' · crevices from '+S.ao+' · edges from '+S.curv+' · thin parts from '+S.thick+'.';}
 const hpRad=d=>d*Math.PI/180,hpDir=(el,turn)=>[Math.cos(hpRad(el))*Math.sin(hpRad(turn)),Math.sin(hpRad(el)),Math.cos(hpRad(el))*Math.cos(hpRad(turn))];
 const hpScale=()=>Math.max(doc.w,doc.h)/1024;
 
@@ -154,7 +177,7 @@ function hpPaint(base,T,v,n){const PG=hpProgs(),I=hpInputs(n),S=hpScale(),bl=acq
     uBase:v.base,uL:hpDir(v.lEl,v.lTurn),uShCol:v.shCol,uLtCol:v.ltCol,uUlCol:v.ulCol,uGTop:v.gTop,uGBot:v.gBot,uAoCol:v.aoCol,uEdgeCol:v.edgeCol,uCavCol:v.cavCol,uThCol:v.thCol,uSpCol:v.spCol,uVarCol:v.varCol,
     uShAmt:v.shAmt,uShSpread:v.shSpread,uLtAmt:v.ltAmt,uForm:v.form,uUlAmt:v.ulAmt,uGTopAmt:v.gTopAmt,uGBotAmt:v.gBotAmt,uGOff:v.gOff,uGSpread:v.gSpread,uAoAmt:v.aoAmt,uAoSpread:v.aoSpread,
     uEdgeAmt:v.edgeAmt,uEdgeSpread:v.edgeSpread,uCavAmt:v.cavAmt,uCavSpread:v.cavSpread,uThAmt:v.thAmt,uSpAmt:v.spAmt,uSpExp:v.spExp,uSpH:hpRad(v.spH),uSpRot:hpRad(v.spRot),
-    uVarAmt:v.varAmt,uVarScale:v.varScale,uPic:v.pic,uMul:v.mul,uOver:v.over,uSat:v.sat}));
+    uVarAmt:v.varAmt,uVarScale:v.varScale,uPic:v.pic,uNDet:v.nDet??1,uMul:v.mul,uOver:v.over,uSat:v.sat}));
   if(a){const tip=typeof dualTip==='function'?dualTip({tipKey:v.tipKey}):null,tt=tip&&tip.alpha?tip:TIPS.bristle;
     run(PG.strokes,T,{uA:a.tex,uTip:tt.tex,uTipS:[tt.w,tt.h],uSize:v.sSize*S,uRand:v.sRand,uDens:v.sDens,uRot:hpRad(v.sRot),uRotRand:v.sRotRand,uFollow:v.sFollow,uDetail:v.sDetail,
       uDrop:v.sDrop,uKeep:v.sKeep,uOp:v.sOp,uAmt:v.showN?0:v.sAmt,uSeed:v.seed||1,uWrap:{int:doc.wrap?1:0}});release(a);}
@@ -164,12 +187,13 @@ fxDef('handPaint',{title:'Hand-painted',heavy:true,onlyLayer:true,wide:true,
   note:'Paints a hand-painted look from the shape of the model: shadow side, lit side, crevices, edges, top and bottom, thin parts. It reads the baked mesh maps (or the model, or the picture when there is none).',
   init:()=>Object.assign(JSON.parse(JSON.stringify(HP_DEFAULTS)),{preset:''}),
   controls:(v,upd)=>hpControls(v,upd),
-  render(src,dst,v,ctx){const k=ctx&&ctx.k||'base',n=ctx&&ctx.layer;v=Object.assign({},HP_DEFAULTS,v);
-    if(k==='base'){const T=hpColour(n,src,v);blit(T,dst,0,0,doc.w,doc.h,0,0);if(!n)disposeTarget(T);return;}
-    const R=(k==='rough'||k==='gloss')&&v.rOn,Me=k==='metal'&&v.mOn;
-    if(!R&&!Me||v.showN){blit(src,dst,0,0,doc.w,doc.h,0,0);return;}
-    const T=hpColour(n,null,v);
-    run(hpProgs().chan,dst,{uSrc:src.tex,uC:T.tex,uBaseV:R?v.rBase:v.mBase,uFrom:R?v.rFrom:v.mFrom,uInv:{int:(R?v.rInv:v.mInv)?1:0},uCon:R?v.rCon:v.mCon,uOut:{int:k==='gloss'?1:0},uOwn:{int:v.own?1:0}});
+  render(src,dst,v,ctx){const k=ctx&&ctx.k||'base',n=ctx&&ctx.layer;v=Object.assign({},HP_DEFAULTS,v);const sg=doc.workflow==='spec';
+    /* which output each map gets: 0 roughness, 1 gloss, 2 metallic, 3 specular colour, 4 diffuse (Spec/Gloss with metal) */
+    const out=v.showN?-1:k==='base'?(sg&&v.mOn?4:-2):k==='rough'&&v.rOn?0:k==='gloss'&&v.rOn?1:k==='metal'&&v.mOn?2:k==='spec'&&(v.mOn||v.own)?3:-1;
+    if(out===-1&&k!=='base'){blit(src,dst,0,0,doc.w,doc.h,0,0);return;}
+    const T=hpColour(n,k==='base'?src:null,v);
+    if(out<0)blit(T,dst,0,0,doc.w,doc.h,0,0);
+    else run(hpProgs().chan,dst,{uSrc:src.tex,uC:T.tex,uOut:{int:out},uOwn:{int:v.own?1:0},uMOn:{int:v.mOn?1:0},uRB:v.rBase,uRF:v.rFrom,uRI:{int:v.rInv?1:0},uRC:v.rCon,uMB:v.mBase,uMF:v.mFrom,uMI:{int:v.mInv?1:0},uMC:v.mCon});
     if(!n)disposeTarget(T);}});
 
 /* ---- the settings: folding groups, presets on top ---- */
@@ -202,8 +226,9 @@ function hpControls(v,upd){for(const k in HP_DEFAULTS)if(v[k]===undefined)v[k]=J
   renderTips();
   return [el('div',{class:'sub',text:'Presets'}),...presetRows,
     G('Colour',true,SEL('own','Colour comes from',[[true,'Its own colour'],[false,'The layers below (paint over them)']]),C('base','Base colour')),
+    el('p',{class:'note hpsrc',id:'hpSrc',text:(()=>{try{return hpSources(hpCurLayer());}catch(e){return '';}})()}),
     G('Light direction',true,dirChips,S('lEl','Height of the light',-90,90,1,x=>Math.round(x)+'°'),S('lTurn','Turn',-180,180,1,x=>Math.round(x)+'°'),
-      K('showN','Show the directions (normals in colour)'),el('p',{class:'note',text:'Top uses the green of the world-space normal, the usual trick for fake lighting.'})),
+      K('showN','Show the directions (normals in colour)'),S('nDet','Detail from normal maps',0,2,.01,pct),el('p',{class:'note',text:'Top uses the green of the world-space normal, the usual trick for fake lighting.'})),
     G('Shadow and light',true,C('shCol','Shadow colour'),S('shAmt','Shadow',0,1,.01,pct),S('shSpread','Shadow softness',0,1,.01,pct),C('ltCol','Light colour'),S('ltAmt','Light',0,1,.01,pct),
       S('form','Form light (normals over the colour)',0,1,.01,pct),SEL('formMode','Form light blend',[[0,'Overlay'],[1,'Linear add']])),
     G('Top and bottom',false,C('gTop','Top colour'),S('gTopAmt','Top',0,1,.01,pct),C('gBot','Bottom colour'),S('gBotAmt','Bottom',0,1,.01,pct),S('gOff','Middle',0,1,.01,pct),S('gSpread','Softness',0,1,.01,pct)),
@@ -215,8 +240,8 @@ function hpControls(v,upd){for(const k in HP_DEFAULTS)if(v[k]===undefined)v[k]=J
     G('Brush strokes',false,tipName,tipHost,importTip,S('sAmt','Strokes',0,1,.01,pct),S('sSize','Stroke size',4,200,1,px),S('sRand','Size variety',0,1,.01,pct),S('sDens','Density',.3,3,.05),
       S('sRot','Turn',-180,180,1,x=>Math.round(x)+'°'),S('sRotRand','Turn variety',0,1,.01,pct),S('sFollow','Follow the forms',0,1,.01,pct),S('sDetail','Keep detail',0,1,.01,pct),
       S('sDrop','Leave some out',0,.9,.01,pct),S('sKeep','Stay inside colour edges',0,1,.01,pct),S('sOp','Stroke opacity',0,1,.01,pct)),
-    G('Roughness',false,K('rOn','Make roughness'),S('rBase','Roughness',0,1,.01,pct),S('rFrom','From the colour',0,1,.01,pct),K('rInv','Darker is rougher'),S('rCon','Contrast',0,4,.05)),
-    G('Metallic',false,K('mOn','Make metallic'),S('mBase','Metallic',0,1,.01,pct),S('mFrom','From the colour',0,1,.01,pct),K('mInv','Darker is more metallic'),S('mCon','Contrast',0,4,.05)),
+    G(doc.workflow==='spec'?'Glossiness':'Roughness',false,K('rOn',doc.workflow==='spec'?'Make glossiness':'Make roughness'),S('rBase','Roughness',0,1,.01,pct),S('rFrom','From the colour',0,1,.01,pct),K('rInv','Darker is rougher'),S('rCon','Contrast',0,4,.05)),
+    G(doc.workflow==='spec'?'Metal (specular colour)':'Metallic',false,K('mOn',doc.workflow==='spec'?'Metal parts (coloured specular, dark diffuse)':'Make metallic'),S('mBase','Metallic',0,1,.01,pct),S('mFrom','From the colour',0,1,.01,pct),K('mInv','Darker is more metallic'),S('mCon','Contrast',0,4,.05)),
     G('Finish',false,S('mul','Multiply push',0,1,.01,pct),S('over','Overlay push',0,1,.01,pct),S('sat','Saturation',0,2,.01,pct),S('pic','Shape from the picture (no model)',0,1,.01,pct),S('seed','Random seed',1,99,1))];}
 
 /* a picture of one stroke becomes a brush tip in Custom tips (dark or opaque = paint) */
@@ -232,3 +257,9 @@ function cmdNewHandPaintLayer(preset){if(ui.mode==='anim'){toast('Hand-painted l
   const p=doc.root,i=p.children.length,L=newFxLayerObj('Hand-painted',[fxItem('handPaint')],'all'),pr=preset&&hpPreset(preset);
   if(pr)Object.assign(L.fx.stack[0].v,JSON.parse(JSON.stringify(pr)),{preset});
   insertNode(L,p,i);selectOnly(L);changedAll();fxEditor(L,{isNew:true,parent:p,index:i});}
+
+/* the Hand-painted layer whose settings are open (the editor works on the selected layer) */
+function hpCurLayer(){const L=doc.active;return L&&L.fx&&L.fx.stack.some(it=>it.id==='handPaint')?L:null;}
+/* the presets as smart materials (Materials › Smart materials): drag onto the layers, or click, like any material */
+function hpSmartList(){if(!FX.handPaint)return [];const out=[];for(const g in HP_PRESETS)for(const name in HP_PRESETS[g]){const v=Object.assign(fxDefaults(FX.handPaint),JSON.parse(JSON.stringify(HP_PRESETS[g][name])),{preset:name});
+  out.push(['Hand-painted '+name,[{t:'L',name:'Hand-painted '+name,mode:0,op:1,vis:true,fx:{map:'all',stack:[{id:'handPaint',on:true,v}]}}]]);}return out;}

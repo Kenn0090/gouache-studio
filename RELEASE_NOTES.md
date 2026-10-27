@@ -1,6 +1,8 @@
 # Gouache Studio 0.78.0
 
 - **New Hand-painted layer:** a stylized hand-painted look from the shape of the model (shadow and lit side, top and bottom, crevices, edges, thin parts, highlights, colour variation), with brush strokes stamped from your own brushes. Light from the top or any direction. 20 presets: game materials and skin. Layer > New > Hand-painted layer.
+- It reads the baked mesh maps (world normal, position, AO, curvature, thickness, normal detail). Stylize strokes can follow the model's shape. Both work in Spec/Gloss and can be saved as smart materials; the presets are in Materials › Smart materials.
+- Fixed black specks in the Stylize layer.
 
 # Gouache Studio 0.77.0
 

@@ -9,6 +9,7 @@ function smCap(t){if(!t||t.empty)return null;let s=t,tmp=null;if(t.depth!==8){tm
 const smClone=o=>JSON.parse(JSON.stringify(o,(k,x)=>k==='t'||k[0]==='_'?undefined:x));
 function smSer(n){const o={t:n.type==='group'?'G':'L',name:n.name,mode:n.mode,op:n.opacity,vis:n.visible!==false,clip:!!n.clip,mapModes:Object.assign({},n.mapModes||{})};
   if(n.type==='group'){o.open=n.open!==false;o.kids=n.children.map(smSer);}
+  else if(n.fx){/* (0.78) a Hand-painted or Stylize layer: its settings */o.fx={map:n.fx.map,stack:n.fx.stack.map(it=>Object.assign(smClone(Object.assign({},it,{v:undefined})),{v:fxClean(it.v||{})}))};if(n.cfx&&n.cfx.length)o.cfx=smClone(n.cfx);}
   else{if(n.fill){o.fill=fillClone(n.fill);o.fillImg={};for(const k in n._fillImg||{})o.fillImg[k]=smCap(n._fillImg[k]);}
     else{o.maps={};for(const k of mapKeysOf(n)){const c=smCap(mapT(n,k));if(c)o.maps[k]=c;}}
     if(n.styles)o.styles=smClone(n.styles);if(n.cfx&&n.cfx.length)o.cfx=smClone(n.cfx);}
@@ -25,6 +26,7 @@ function smBuildMask(o){const m=makeMask(o.rows?0:1);m.enabled=o.en!==false;
   return m;}
 function smBuild(o){let n;
   if(o.t==='G'){n=newGroupObj(o.name);n.open=o.open!==false;for(const k of o.kids||[]){const c=smBuild(k);insertNode(c,n);}}
+  else if(o.fx){n=newFxLayerObj(o.name,smClone(o.fx.stack),o.fx.map);doc.count--;}
   else{n=newLayerObj(o.name);doc.count--;
     if(o.fill){n.fill=Object.assign(fillDefaults(),fillClone(o.fill));const D=fillDefaults().maps;for(const k in D)n.fill.maps[k]=Object.assign({},D[k],o.fill.maps&&o.fill.maps[k]||{on:false});
       if(o._fillT||(o.fillImg&&Object.keys(o.fillImg).length)){n._fillImg={};for(const k in o._fillT||{})n._fillImg[k]=txCopy(o._fillT[k]);
@@ -41,7 +43,9 @@ function smMapsOf(o,out){out=out||new Set();if(o.fill)for(const k in o.fill.maps
 function smApplyNow(rec){if(ui.mode==='anim'){toast('Smart materials are for Paint and 3D Paint.');return;}if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
   const need=[...smMapsOf(rec.tree)].filter(k=>MAP_DEFS[k]&&!doc.maps.includes(k)&&!FILL_SKIP.includes(k)&&!WF_KEYS[doc.workflow==='spec'?'metal':'spec'].includes(k));
   if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the smart material');
-  const n=smBuild(rec.tree);smFitWorkflow(n);n.name=rec.name;if(!rec.builtin)n.smSrc=rec.id;const fromSel=sel.active&&!sel.quick&&!n.mask;
+  /* a single layer that acts on every map (Hand-painted, Stylize) goes in as itself, not in a folder, so it reaches the layers below */
+  const t=rec.tree,solo=t&&t.t==='G'&&(t.kids||[]).length===1&&t.kids[0].fx&&t.kids[0].fx.map==='all';
+  const n=smBuild(solo?t.kids[0]:t);smFitWorkflow(n);n.name=rec.name;if(!rec.builtin&&!solo)n.smSrc=rec.id;const fromSel=sel.active&&!sel.quick&&!n.mask;
   if(fromSel){n.mask=makeMask(0);run(P.loadsel,n.mask.target,{uSrc:sel.t.tex,uWhat:{int:1},uInv:false});}
   /* above the selected layer or folder (not inside a folder that happens to be selected) */
   const A=doc.active,P=insertAt?insertAt.parent:A&&A.parent?A.parent:doc.root,I=insertAt?insertAt.index:A&&A.parent?P.children.indexOf(A)+1:P.children.length;
@@ -195,7 +199,7 @@ async function smResolveNode(o){
         for(const k of ['rough','metal','spec','gloss'])if(!o.fill.maps[k]||!o.fill.maps[k].on)delete o.fillImg[k];}}}
   if(o.mask)await smResolveMask(o.mask);
   for(const c of o.kids||[])await smResolveNode(c);}
-function smBuiltins(){return SM_BUILTIN.concat(SM_LIB).map(([name,kids])=>({id:'sb:'+name,kind:'smart',builtin:true,name,tree:{t:'G',name,open:true,kids:kids.slice()}}));}
+function smBuiltins(){return SM_BUILTIN.concat(SM_LIB,typeof hpSmartList==='function'?hpSmartList():[]).map(([name,kids])=>({id:'sb:'+name,kind:'smart',builtin:true,name,tree:{t:'G',name,open:true,kids:kids.slice()}}));}
 const SMASK_BUILTIN=[['Worn edges',SM_M(SM_GEN('edge',.5,.5,.55),SM_NOISE('grunge',8,2,.1,'multiply',.7))],['Dirty cavities',SM_M(SM_GEN('dirt',.5,.55,.5),SM_NOISE('clouds',6,1.5,.1,'multiply',.7))],
   ['Dusty top',SM_M(SM_GEN('dust',.5,.5,.5),SM_NOISE('clouds',5,1.5,.1,'multiply',.7))],['Scratched',SM_M(SM_NOISE('scratches',3,2,0))],['Chipped paint',SM_M(SM_GEN('chips',.5,.5,.5))]];
 const SMASK_LIB=[
@@ -222,7 +226,8 @@ function smaskBuiltins(){return SMASK_BUILTIN.concat(SMASK_LIB).map(([name,mask]
    generators would put them (edges at the rim, cavities low, dust on top, patterns as noise) ---- */
 function smPreviewEl(rec,S){const S0=S||56;if(rec.thumb){const i=el('img',{class:'matprev',src:rec.thumb,width:S0,height:S0,alt:''});return i;}S=Math.min(1024,Math.max(256,S0*4));
   const kids=rec.tree?rec.tree.kids:[],base=kids.find(k=>k.fill&&k.fill.maps.base)||kids[0],cv2=el('canvas',{class:'matprev',width:S,height:S,style:'width:'+S0+'px;height:'+S0+'px','aria-hidden':'true'});
-  const bf=base&&base.fill?Object.assign({maps:{}},base.fill):{maps:{base:{on:true,c:[.6,.6,.6]}}},pv=matPreviewEl(()=>bf,()=>({}),S,1),x=cv2.getContext('2d');x.drawImage(pv.el,0,0,S,S);
+  const hp=base&&base.fx&&base.fx.stack&&base.fx.stack.find(it=>it.id==='handPaint'),hv=hp&&Object.assign({},typeof HP_DEFAULTS!=='undefined'?HP_DEFAULTS:{},hp.v);
+  const bf=hv?{maps:{base:{on:true,c:hv.base},rough:{on:true,v:hv.rOn?hv.rBase:.6},metal:{on:true,v:hv.mOn?hv.mBase:0}}}:base&&base.fill?Object.assign({maps:{}},base.fill):{maps:{base:{on:true,c:[.6,.6,.6]}}},pv=matPreviewEl(()=>bf,()=>({}),S,1),x=cv2.getContext('2d');x.drawImage(pv.el,0,0,S,S);
   const id=x.getImageData(0,0,S,S),D=id.data,h=(a,b)=>{const s=Math.sin(a*12.9898+b*78.233)*43758.5453;return s-Math.floor(s);},vn=(u,v)=>{const i=Math.floor(u),j=Math.floor(v),f=u-i,g=v-j;return (h(i,j)*(1-f)+h(i+1,j)*f)*(1-g)+(h(i,j+1)*(1-f)+h(i+1,j+1)*f)*g;};
   for(const k of kids){if(k===base||!k.fill||!k.fill.maps.base||!k.mask)continue;const c=k.fill.maps.base.c||[.5,.5,.5],row=(k.mask.rows||[]).find(r=>r.kind==='gen'||r.kind==='noise'),op=k.op==null?1:k.op;
     for(let y=0;y<S;y++)for(let x0=0;x0<S;x0++){const nx=(x0+.5)/S*2-1,ny=1-(y+.5)/S*2,rr=nx*nx+ny*ny;if(rr>1)continue;const nz=Math.sqrt(1-rr),n=vn(x0/S*S0/5,y/S*S0/5);let m=0;

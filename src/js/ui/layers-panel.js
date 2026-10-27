@@ -281,7 +281,7 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
   if(lay&&!anim&&(mm.length||hasId||ui.mode==='p3d')){items.push(sep(),flyItem('Mask from mesh map',()=>[...mm.map(k=>it(P3_MESHMAP_NAMES[k]||k,()=>maskFromMeshMap(n,k))),
     /* (0.28, Kenn) the baked ID colours as a mask: pick the colours on the model */
     it('ID colour (pick colours on the model)…',()=>idColourMask(n))]));}
-  if(!anim&&!n.fx&&ui.mode!=='paint'&&typeof smSave==='function'){/* (0.38, Kenn) no smart materials in the Paint tab */items.push(sep(),it('Save as smart material…',()=>smSave(n)));if(n.mask)items.push(it('Save mask as smart mask…',()=>smMaskSave(n)));
+  if(!anim&&(!n.fx||n.fx.map==='all')&&ui.mode!=='paint'&&typeof smSave==='function'){/* (0.38, Kenn) no smart materials in the Paint tab */items.push(sep(),it('Save as smart material…',()=>smSave(n)));if(n.mask)items.push(it('Save mask as smart mask…',()=>smMaskSave(n)));
     if(typeof smOrigin==='function'){const so=smOrigin(n,'smart');if(so)items.push(it('Update smart material “'+so.name+'” in Materials',()=>smUpdate(n)));const sm=n.mask&&smOrigin(n,'smask');if(sm)items.push(it('Update smart mask “'+sm.name+'” in Materials',()=>smMaskUpdate(n)));}}
   if(!anim&&ui.mode==='paint'&&!n.fx&&isLayer(n))items.push(sep(),it('Turn layer into a texture…',()=>dlgToTexture(n)));
   if(!anim&&ui.mode==='paint'&&typeof sendToP3==='function')items.push(sep(),it('Send layer to 3D Paint',()=>sendToP3(n)));

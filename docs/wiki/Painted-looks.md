@@ -10,6 +10,7 @@ Repaints everything below as brush strokes that follow the shapes in the picture
 - **Strokes:** size, flow, edge keeping, length.
 - **Paint:** bristles, colour variation, canvas grain.
 - **Relief:** paint relief (height) and normal bend.
+- **Strokes follow:** the model's shape (from the baked mesh maps, else the model), the colour below, or both.
 - **Amount** 0 leaves the picture as it was.
 
 ## Hand-painted layer
@@ -18,7 +19,7 @@ Paints a hand-painted look from the **shape of the model**, the way stylized gam
 
 What it reads, best first:
 
-1. The baked mesh maps of the texture set (World normal, Position, AO, Curvature, Thickness). Bake them in **Bake mesh maps**.
+1. The baked mesh maps of the texture set (World normal, Position, AO, Curvature, Thickness, Normal). Bake them in **Bake mesh maps**. The fine detail of the baked normal map and of normals painted below is added on top (**Detail from normal maps**). The line at the top of the settings says which maps it is reading.
 2. The model itself (3D Paint), when a map is not baked.
 3. In the Paint tab: the document's own maps below the layer (normal, AO, curvature), or the picture's light and dark (**Shape from the picture**).
 
@@ -41,3 +42,9 @@ Presets:
 - **Skin and character:** Fair skin, Warm skin, Dark skin, Orc skin, Painted skin, Cloth, Leather.
 
 **Painted skin** paints over the layers below. It is for a polypainted or baked face: a soft form light, low contrast, dry-brush strokes. Keep the lighting subtle: the real lights in the viewer or game still do the shading.
+
+## Spec/Gloss and saving
+
+Both layers work in Spec/Gloss projects. The Hand-painted layer then makes **glossiness**, and with **Metal parts** on, a coloured specular and a dark diffuse, the same way the app converts between workflows.
+
+To keep a look, right-click the layer › **Save as smart material…** (3D Paint). It is listed in Materials › Smart materials; adding it puts the same layer back on top of the stack, so it still works on everything below. The Hand-painted presets are listed there too.
