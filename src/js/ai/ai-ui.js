@@ -1,4 +1,4 @@
-/* ================= AI add-ons window (File › AI add-ons…) ================= */
+/* ================= Add-ons window (File › Add-ons…): the AI parts, and (0.75) the Library's 2K / 4K pictures ================= */
 let aiDlgBody=null;
 function aiUiSync(){if(aiDlgBody&&document.body.contains(aiDlgBody))aiBuildDlg();}
 function aiPartRow(id){const P=AI_PARTS[id],have=aiHas(id),st=AI.dl&&AI.dl[id];
@@ -20,9 +20,11 @@ async function aiBuildDlg(){if(!aiDlgBody)return;const dev=await aiGPU();aiDlgBo
   aiDlgBody.append(el('p',{class:'note',text:'The AI features run on this computer. Nothing is sent anywhere. Download only what you want; each part can be removed again.'}),
     el('p',{class:'note',text:'This computer: '+(dev.gpu?'WebGPU is available'+(dev.name?' ('+dev.name+')':'')+'.':'no WebGPU, so the processor is used (slower).')}),
     el('div',{class:'frow'},el('label',{for:'aiDevice',text:'Run on'}),sel),
+    el('div',{class:'sub',text:'AI features'}),
     ...AI_ORDER.map(id=>{const r=aiPartRow(id);r.dataset.part=id;return r;}),
-    el('div',{class:'frow'},el('button',{class:'btn primary',id:'aiAll',text:total?'Download everything ('+aiMB(total)+')':'Everything is installed',disabled:!total||!!(AI.dl&&Object.keys(AI.dl).length),onclick:()=>aiGet(AI_ORDER)})));}
-function dlgAddons(){aiDlgBody=el('div',{class:'dlg-grid aidlg'});openDialog({title:'AI add-ons',body:aiDlgBody,okLabel:'',cancelLabel:'Close',wide:true,onCancel(){aiDlgBody=null;}});aiRefresh().then(aiBuildDlg);}
+    el('div',{class:'frow'},el('button',{class:'btn primary',id:'aiAll',text:total?'Download everything ('+aiMB(total)+')':'Everything is installed',disabled:!total||!!(AI.dl&&Object.keys(AI.dl).length),onclick:()=>aiGet(AI_ORDER)})),
+    el('div',{class:'sub',text:'Library'}),typeof olUpSection==='function'?olUpSection(aiBuildDlg):null);}
+function dlgAddons(){aiDlgBody=el('div',{class:'dlg-grid aidlg'});openDialog({title:'Add-ons',body:aiDlgBody,okLabel:'',cancelLabel:'Close',wide:true,onCancel(){aiDlgBody=null;}});aiRefresh().then(aiBuildDlg);}
 /* "install it?" card, once, on the first start after updating (never in tests) */
 function aiOfferOnce(){if(prefs.aiOffered||navigator.webdriver||/[?&]debug\b/.test(location.search)||document.getElementById('welcome')||!modal.hidden)return;prefs.aiOffered=true;savePrefs();
   const b=el('div',{class:'dlg-grid'},el('p',{text:'Gouache Studio can now do some things with AI: pick out a subject or the sky with a click, take an object out of a photo, blur the background like a lens, add light to a photo, and make a height map from a photo.'}),

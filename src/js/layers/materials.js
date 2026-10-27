@@ -3,9 +3,14 @@
    is one. Materials you make in the material editor (Save to Materials) are kept on this computer (the browser's
    storage, like brushes) with their images, and can be exported and imported as .gmat files to share. */
 const matLib={list:[],loaded:false};
+/* (0.75) materials downloaded from ambientCG (online-lib.js): only their small description is kept here; the pictures stay in the store until a material is used */
+const dlLib={list:[]};
+const dlMeta=r=>({id:r.id,name:r.name,t:r.t,kind:'material',dl:r.dl,cat:r.cat||'Other',credit:r.credit,url:r.url,thumb:r.thumb,fill:r.fill});
+const dlView=r=>Object.assign(dlMeta(r),{builtin:true,lazy:true,wf:'',bundled:{file:'dl:'+r.dl.aid,dl:true}});
 /* the built-in ones, as material records */
 function matBuiltins(){return (typeof P3_MATERIALS!=='undefined'?P3_MATERIALS:[]).map(([name,m])=>({id:'b:'+name,name,builtin:true,fill:{maps:Object.fromEntries(Object.entries(JSON.parse(JSON.stringify(m))).map(([k,v])=>[k,Object.assign({on:true,src:'value'},v)])),proj:'uv',triSharp:4,hStr:1},imgs:{}}));}
-async function matLoad(){if(matLib.loaded)return;matLib.loaded=true;try{const all=await store.all('materials');matLib.list=(all||[]).sort((a,b)=>(a.t||0)-(b.t||0));}catch(e){matLib.list=[];}if(typeof p3ListsDone==='undefined'||p3ListsDone)renderMats();}
+async function matLoad(){if(matLib.loaded)return;matLib.loaded=true;try{const rows=await store.scanRaw('materials',r=>r.dl?dlView(r):r),mine=[];dlLib.list=[];
+    for(const r of rows||[]){if(r.dl){dlLib.list.push(r);continue;}try{mine.push(await pxDeep(r,false));}catch(e){console.warn('material',e);}}matLib.list=mine.sort((a,b)=>(a.t||0)-(b.t||0));}catch(e){matLib.list=[];}if(typeof p3ListsDone==='undefined'||p3ListsDone)renderMats();}
 /* a record's images as graphics-card textures (made when first needed) */
 function matRecTargets(rec){if(rec._t)return rec._t;const o={};for(const k in rec.imgs||{}){const im=rec.imgs[k],t=makeTarget(im.w,im.h,8,true);writeRegion(t,0,0,im.w,im.h,im.data);o[k]=t;}return rec._t=o;}
 function matApply(rec){const f=rec.fill;let maps={},imgs=null,temp=null,note='';
@@ -50,8 +55,12 @@ let gmCat=(()=>{try{return localStorage.getItem('gs.gmCat')||'Metal';}catch(e){r
 async function gmFetch(file){for(const u of (location.protocol==='file:'?[]:['materials/'+file]).concat([GM_RAW+file])){try{const r=await fetch(u);if(r.ok)return new Uint8Array(await r.arrayBuffer());}catch(e){}}
   throw new Error(platform.isDesktop?'the file is missing':'it could not be downloaded (the web version needs the internet for the library)');}
 async function gmLoad(rec){if(rec.fill&&rec.imgs)return rec;if(rec._loading)return rec._loading;
+  /* a downloaded material: its pictures come out of the store */
+  if(rec.dl)return rec._loading=(async()=>{try{const raw=await store.getRaw(rec.id,'materials');if(!raw)throw new Error('it is no longer saved on this computer');const full=await pxDeep(raw,false);rec.fill=full.fill;rec.imgs=full.imgs;return rec;}finally{rec._loading=null;}})();
   return rec._loading=(async()=>{try{const j=await gmatParse(await gmFetch(rec.bundled.file));rec.fill=j.fill;rec.imgs=await gmatImgs(j);return rec;}finally{rec._loading=null;}})();}
-async function gmApply(rec){if(!(rec.fill&&rec.imgs)){toast('Loading “'+rec.name+'”…');try{await gmLoad(rec);}catch(e){toast('Could not load “'+rec.name+'”: '+(e.message||e));return null;}}return matApply(rec);}
+/* (0.75) a downloaded material at 2K or 4K is large: once it is on a layer its pictures are let go (they come back from the store when needed) */
+function gmRelease(rec){if(!rec||!rec.dl||rec.dl.res==='1K')return;if(rec._t){for(const k in rec._t)disposeTarget(rec._t[k]);rec._t=null;}rec.imgs=null;}
+async function gmApply(rec){if(!(rec.fill&&rec.imgs)){toast('Loading “'+rec.name+'”…');try{await gmLoad(rec);}catch(e){toast('Could not load “'+rec.name+'”: '+(e.message||e));return null;}}const L=matApply(rec);gmRelease(rec);return L;}
 async function matImport(){const fs=await pickFiles('.gmat,application/json',true,'Gouache Studio materials',['gmat']);let n=0;
   for(const f of fs){try{const j=await gmatParse(f);
       if((j.kind==='smart'&&j.tree)||(j.kind==='smask'&&j.mask)){const body=await smImgsIn(j.kind==='smart'?{tree:j.tree}:{mask:j.mask});smPut(Object.assign({kind:j.kind,name:j.name||baseName(f.name)},body));n++;continue;}
@@ -83,7 +92,7 @@ async function matReplace(rec){const L=doc.active;
   const need=Object.keys(f.maps).filter(k=>f.maps[k].on!==false&&!doc.maps.includes(k)&&MAP_DEFS[k]&&!(doc.workflow==='spec'&&(k==='rough'||k==='metal')));
   if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the material');
   fillRender(L);L.lookVer=(L.lookVer||0)+1;matEdCommit();changed(L);renderLayers();renderMatEd(true);requestRender(true);
-  toast('Replaced the material with “'+rec.name+'”.');return true;}
+  gmRelease(rec);toast('Replaced the material with “'+rec.name+'”.');return true;}
 let matPopEl=null,matPopT=0;
 function matPopHide(){clearTimeout(matPopT);if(matPopEl){matPopEl.remove();matPopEl=null;}}
 function matPopShow(kind,rec,tile){matPopHide();matPopT=setTimeout(()=>{
@@ -108,6 +117,12 @@ let matQuery='';
 function matSearchFilter(box){const q=matQuery.trim().toLowerCase();box.querySelectorAll('.mattile').forEach(t=>{const w=t.closest('.matwrap')||t,nm=(t.textContent||t.title||'').toLowerCase();w.hidden=!!q&&!nm.includes(q);});}
 function matSearchBox(){const i=el('input',{type:'search',id:'matSearch',class:'matsearch',placeholder:'Search',value:matQuery,'aria-label':'Search materials'});
   i.addEventListener('input',()=>{matQuery=i.value;const b=document.getElementById('matBody');if(b)matSearchFilter(b);});return i;}
+/* (0.75) the Library as shown: the bundled materials (an upgraded one is shown in place of its 1K original) and the downloaded ones,
+   mixed into their category, or only under "Downloaded" when Preferences / the online window say so */
+function gmList(){const up=new Set(dlLib.list.filter(r=>r.dl.upg).map(r=>r.dl.aid));return gmRecs.filter(r=>{const id=typeof olIdOf==='function'?olIdOf(r.credit):null;return !(id&&up.has(id));}).concat(dlLib.list);}
+function gmIn(r,cat){const own=!!r.dl&&!r.dl.upg;if(cat==='dl')return own;if(own&&prefs.dlSeparate)return false;return cat==='all'||(cat==='sg'?r.wf==='spec':r.cat===cat);}
+function dlDelete(rec){confirmDlg('Delete downloaded material','Delete “'+rec.name+'” from this computer? Layers that use it keep it. You can download it again.','Delete',()=>{
+  const i=dlLib.list.indexOf(rec);if(i>=0)dlLib.list.splice(i,1);if(rec._t)for(const k in rec._t)disposeTarget(rec._t[k]);store.del(rec.id,'materials');renderMats();});}
 function renderMats(){const box=document.getElementById('matBody');if(!box)return;if(!matLib.loaded){matLoad();}matPopHide();const tw=matTw();box.style.setProperty('--tw',tw+'px');
   const mats=matLib.list.filter(r=>!r.kind||r.kind==='material'),smarts=matLib.list.filter(r=>r.kind==='smart'),smasks=matLib.list.filter(r=>r.kind==='smask');
   const mark=(b,kind,rec)=>{b._libDrag=[kind,rec];if(matSel.rec===rec)b.classList.add('sel');matHoverOn(b,kind,rec);return b;};
@@ -121,9 +136,10 @@ function renderMats(){const box=document.getElementById('matBody');if(!box)retur
   box.classList.toggle('one',matView!=='all');
   box.replaceChildren(el('div',{class:'chips'},el('button',{class:'btn sm',id:'matNew',text:'New material…',title:'A new material layer, with the material editor',onclick:()=>cmdNewFillLayer()}),el('button',{class:'btn sm',id:'matPaint',text:'Paint material',disabled:matSel.kind!=='mat',onclick:()=>materialBrushUse(matSel.rec)}),el('button',{class:'btn sm',text:'Import…',title:'A .gmat file saved from Gouache Studio',onclick:matImport}),el('button',{class:'btn sm',id:'matFromTex',text:'From textures…',title:'Make a material from downloaded textures (a folder, images or a .zip)',onclick:()=>dlgMatFromTextures()}),matSearchBox(),sizeSeg),segChips(MAT_VIEWS,()=>matView,v=>{matView=v;try{localStorage.setItem('gs.matView',v);}catch(e){}renderMats();}),
     ...(mats.length&&(matView==='all'||matView==='yours')?[el('div',{class:'sub',text:'Yours'}),el('div',{class:'matgrid',id:'matMine'},...mats.map(tile))]:[]),
-    ...(gmRecs.length&&(matView==='all'||matView==='library')?[el('div',{class:'sub',text:'Library ('+gmRecs.length+')'}),segChips([...(gmRecs.some(r=>r.wf==='spec')?[['sg','Spec/Gloss '+gmRecs.filter(r=>r.wf==='spec').length]]:[]),...GM_CATS.filter(c=>gmRecs.some(r=>r.cat===c)).map(c=>[c,c+' '+gmRecs.filter(r=>r.cat===c).length]),['all','All']],()=>gmCat,v=>{gmCat=v;try{localStorage.setItem('gs.gmCat',v);}catch(e){}renderMats();}),
-      el('div',{class:'matgrid',id:'matLib'},...gmRecs.filter(r=>gmCat==='all'||(gmCat==='sg'?r.wf==='spec':r.cat===gmCat)).map(rec=>{const b=mark(el('button',{class:'mattile',id:'gm_'+rec.bundled.file.replace(/\.gmat$/,''),title:rec.name+(rec.credit?' ('+rec.credit+')':'')+': click to highlight, then press the fill layer button, or drag it onto the layers. Double-click to swap it into the selected material layer',onclick:()=>matPick('mat',rec,b),ondblclick:()=>matReplace(rec)},
-      el('img',{src:rec.thumb,alt:'',width:tw,height:tw,class:'gmthumb',draggable:'false',loading:'lazy',decoding:'async'}),el('span',{text:rec.name}),...(rec.wf==='spec'?[el('span',{class:'sgbadge',text:'S/G',title:'A Spec/Gloss material (Diffuse, Specular, Glossiness)'})]:[])),'mat',rec);return b;}))]:[]),
+    ...(gmList().length&&(matView==='all'||matView==='library')?[el('div',{class:'sub',text:'Library ('+gmList().filter(r=>gmIn(r,'all')).length+')'}),el('div',{class:'chips'},el('button',{class:'btn sm',id:'matOnline',text:'Get more…',title:'Download more materials from ambientCG (free, CC0)',onclick:()=>dlgOnlineLib()})),segChips([...(gmRecs.some(r=>r.wf==='spec')?[['sg','Spec/Gloss '+gmRecs.filter(r=>r.wf==='spec').length]]:[]),...GM_CATS.filter(c=>gmList().some(r=>gmIn(r,c))).map(c=>[c,c+' '+gmList().filter(r=>gmIn(r,c)).length]),...(dlLib.list.some(r=>!r.dl.upg)?[['dl','Downloaded '+dlLib.list.filter(r=>!r.dl.upg).length]]:[]),['all','All']],()=>gmCat,v=>{gmCat=v;try{localStorage.setItem('gs.gmCat',v);}catch(e){}renderMats();}),
+      el('div',{class:'matgrid',id:'matLib'},...gmList().filter(r=>gmIn(r,gmCat)).map(rec=>{const b=mark(el('button',{class:'mattile',id:'gm_'+rec.bundled.file.replace(/\.gmat$/,''),title:rec.name+(rec.credit?' ('+rec.credit+')':'')+': click to highlight, then press the fill layer button, or drag it onto the layers. Double-click to swap it into the selected material layer',onclick:()=>matPick('mat',rec,b),ondblclick:()=>matReplace(rec)},
+      el('img',{src:rec.thumb,alt:'',width:tw,height:tw,class:'gmthumb',draggable:'false',loading:'lazy',decoding:'async'}),el('span',{text:rec.name}),...(rec.wf==='spec'?[el('span',{class:'sgbadge',text:'S/G',title:'A Spec/Gloss material (Diffuse, Specular, Glossiness)'})]:[]),...(rec.dl&&rec.dl.res!=='1K'?[el('span',{class:'sgbadge',text:rec.dl.res,title:'Picture size of this downloaded material'})]:[])),'mat',rec);
+        return rec.dl&&!rec.dl.upg?el('div',{class:'matwrap'},b,el('div',{class:'matacts'},el('button',{class:'btn sm',text:'×',title:'Delete this downloaded material','aria-label':'Delete '+rec.name,onclick:()=>dlDelete(rec)}))):b;}))]:[]),
     ...(matView==='all'||matView==='library'?[el('div',{class:'sub',text:'Built in'}),el('div',{class:'matgrid'},...matBuiltins().map(tile))]:[]),
     ...(matView==='all'||matView==='smart'?[el('div',{class:'sub',text:'Smart materials'}),el('div',{class:'matgrid',id:'smGrid'},...smarts.map(r=>stile(r,false)),...smBuiltins().map(r=>stile(r,false)))]:[]),
     ...(matView==='all'||matView==='smask'?[el('div',{class:'sub',text:'Smart masks'}),el('div',{class:'matgrid',id:'smMaskGrid'},...smasks.map(r=>stile(r,true)),...smaskBuiltins().map(r=>stile(r,true)))]:[]),

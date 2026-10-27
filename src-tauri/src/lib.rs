@@ -7,6 +7,7 @@
 mod altmenu;
 mod engine;
 mod files;
+mod net;
 mod single;
 mod undo_spill;
 mod updates;
@@ -104,6 +105,9 @@ pub fn run() {
             close_guard,
             quit_app,
             launch_file,
+            net::net_get_text,
+            net::net_download,
+            net::net_cancel,
             files::read_file,
             files::file_size,
             files::read_file_range,

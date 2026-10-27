@@ -1393,3 +1393,20 @@ body.photomode #docTabs{display:none!important}
 .msrow.drop-mask{outline:2px solid var(--accent);outline-offset:-2px}
 
 .slider-snap-status{position:fixed;z-index:100000;pointer-events:none;padding:4px 8px;border:1px solid var(--accent);border-radius:4px;background:var(--panel,#222);color:var(--text);font-size:12px;box-shadow:0 2px 8px #0005}
+/* (0.75) online library window and the Library upgrade */
+.olwin{display:flex;flex-direction:column;gap:8px;min-width:min(880px,86vw)}
+.olbar{display:flex;gap:8px;align-items:center}.olbar .matsearch{flex:1;min-width:0}
+.olchips{flex-wrap:wrap}.olres{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.olgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px;max-height:46vh;overflow:auto;padding:2px;min-height:120px}
+.olgrid.loading{opacity:.55}.olmsg{grid-column:1/-1;padding:18px;text-align:center}
+.oltile{position:relative;display:flex;flex-direction:column;gap:4px;padding:4px;border:1px solid var(--line-2);border-radius:var(--r,6px);background:var(--raise);color:inherit;cursor:pointer;text-align:left}
+.oltile img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;background:var(--bg)}
+.oltile.sel{outline:2px solid var(--accent);outline-offset:-1px}.oltile.own img{opacity:.7}
+.olname{font-size:11px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.olown{position:absolute;left:8px;top:8px;font-size:10px;padding:1px 5px;border-radius:9px;background:rgba(0,0,0,.65);color:#fff}
+.olcheck{position:absolute;right:8px;top:8px;min-width:16px;height:16px;border-radius:9px;text-align:center;font-size:11px;line-height:16px;background:var(--accent);color:var(--accent-ink,#000)}
+.olcheck:empty{display:none}
+.olfoot{display:flex;flex-direction:column;gap:8px}.olpage,.olact{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.olact .dim{flex:1;min-width:140px}
+.olrows{display:flex;flex-direction:column;gap:4px;max-height:130px;overflow:auto}.olrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;align-items:center;font-size:12px}
+.olrn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.olrow .bakebar{grid-column:1/-1}
+.olup .chips{flex-wrap:wrap}

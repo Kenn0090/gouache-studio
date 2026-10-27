@@ -1205,6 +1205,8 @@ dependencies = [
 name = "gouache-studio"
 version = "0.74.4"
 dependencies = [
+ "reqwest",
+ "rustls",
  "serde",
  "serde_json",
  "tauri",
