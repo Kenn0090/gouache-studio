@@ -1,4 +1,4 @@
-# Painted looks: Stylize and Hand-painted layers
+# Painted looks: Stylize, Stylize (Painter style) and Hand-painted layers
 
 Two layers that act on **every map at once** (colour, roughness, metallic, height, normal). Both are in **Layer › New** and in the right-click menu of the Layers panel. Each sits on top of the stack and changes everything below it. Its opacity, blend mode and mask work like any layer.
 
@@ -13,6 +13,21 @@ Repaints everything below as brush strokes that follow the shapes in the picture
 - **Strokes follow:** the model's shape (from the baked mesh maps, else the model), the colour below, or both.
 - **Mesh maps:** **Baked lighting** (from the world normal, with a light height and turn) and **Edges and cavities** (crevices from AO, edges from curvature) are painted into the colour before the strokes, so the strokes carry them.
 - **Amount** 0 leaves the picture as it was.
+
+## Stylize layer, Painter style
+
+Our own version of the stylization filter in Substance Painter. On top are master sliders: **Stylization** (how much of all of it), **Brush strokes**, **Smoothness**, **Colorize**, **Gradient**, **Baked lighting**, **Edges and cavities** and a **Random seed**. Each has a group below with its settings:
+
+- **Brush strokes:** the tip (any brush from the Brushes panel, or **Import a stroke picture…**), Strokes amount, Strokes scale, Scale random, Stroke length, Strokes follow surface, Strokes rotation, Rotation random, Projection hardness, **Normal threshold** (a stroke does not wrap around onto a side facing another way), Colour per stroke. The same strokes land in every map.
+- **Brush strokes effects:** height relief, normal relief, darker stroke edges, roughness variation.
+- **Smoothness:** a radius and an amount for each map.
+- **Colorize:** hue shift, saturation, brightness, contrast, flat tones.
+- **Gradient:** 1 or 2 colours, each with opacity and blend mode (Normal, Multiply, Screen, Overlay, Soft light, Add), horizontal and vertical rotation, invert, offset, contrast. It runs across the model (baked position, else the model, else the top of the picture).
+- **Baked lighting:** how much of it the strokes carry (**Brush strokes in lighting**), diffuse intensity, colour, radius and contrast, specular intensity, colour, radius and contrast, and the light's horizontal and vertical rotation. It uses the baked world normal.
+- **Edges and cavities:** edge colour, opacity and width, cavity colour, opacity and width, ambient occlusion, from the baked curvature and AO.
+- **Helpers:** show the strokes' relief, the normals the layer reads, or its AO / curvature / thin-parts map.
+
+Presets: Painterly, Smudges, Thick strokes, Soft paint, Sketchy, Comic. **Restore defaults** puts every setting back.
 
 ## Hand-painted layer
 

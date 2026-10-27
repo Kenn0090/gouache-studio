@@ -1,3 +1,14 @@
+## 0.79.0
+
+- **Stylize layer, Painter style.** Layer > New > **Stylize layer, Painter style** works like the stylization filter of Substance Painter, in our own version. Master sliders on top (Stylization, Brush strokes, Smoothness, Colorize, Gradient, Baked lighting, Edges and cavities, Random seed), each with its own folding group below, a **Helpers** view and **Restore defaults**. It repaints every map below at once.
+- **Brush strokes:** stamped with any brush from your Brushes panel (or an imported stroke picture), with Strokes amount, Strokes scale, Scale random, Stroke length, Strokes follow surface, Rotation, Rotation random, Projection hardness, **Normal threshold** (a stroke stays on the side of the model it started on) and colour per stroke. The same strokes land in every map, so colour, roughness, height and normal agree.
+- **Brush strokes effects:** relief in the height and the normal, darker stroke edges, roughness variation.
+- **Smoothness** per map (colour, height, normal, roughness or glossiness, metallic or specular).
+- **Colorize:** hue, saturation, brightness, contrast and flat tones.
+- **Gradient:** one or two colours, each with its own opacity and blend mode, horizontal and vertical rotation, invert, offset and contrast, across the model.
+- **Baked lighting** and **Edges and cavities** come from the mesh maps (world normal, position, AO, curvature), with diffuse and specular colour, radius and contrast, and how much of the lighting the strokes carry.
+- Presets: Painterly, Smudges, Thick strokes, Soft paint, Sketchy, Comic. Works in Spec/Gloss, and saves as a smart material like the other painted-look layers.
+
 ## 0.78.0
 
 - **Hand-painted layer.** Layer > New > **Hand-painted layer** paints a stylized, hand-painted look from the shape of the model, the way game artists fake lighting: a shadow side and a lit side, top and bottom colours, crevices, edges and cavities, glowing thin parts and a glow from below, painted highlights and colour variation. It reads the baked mesh maps (world normal, position, AO, curvature, thickness), else the model, else the picture, so it works in 3D Paint and in Paint. No real light is used, so it stays put when you turn the model.

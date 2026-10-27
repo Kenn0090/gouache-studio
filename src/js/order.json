@@ -103,6 +103,7 @@
     "view3d/proj-gizmo",
     "layers/mask-stack",
     "filters/handpaint",
+    "filters/stylize-painter",
     "ui/mask-rows",
     "layers/mat-convert",
     "layers/smart",

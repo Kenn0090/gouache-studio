@@ -46,6 +46,7 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); vec2 uv=(vec2
   c=mix(c,scr(c,uUlCol),smoothstep(0.0,1.0,-d)*uUlAmt);
   /* height on the model along the light: dark at the bottom, light at the top */
   vec3 P3=surfP(uv); if(uHasPM==1){ vec4 q=texelFetch(uPM,p,0); if(q.a>0.5) P3=q.rgb; }
+  if(uShowN==3){ o=vec4(P3,1.0); return; }
   float y=clamp(dot(P3-0.5,uL)+0.5,0.0,1.0), g=smoothstep(uGOff-uGSpread*0.5-0.001,uGOff+uGSpread*0.5+0.001,y);
   c=mix(c,c*uGBot,(1.0-g)*uGBotAmt); c=mix(c,ovl(c,uGTop),g*uGTopAmt);
   /* crevices: baked AO, else the document's AO map, else the picture (darker than around it) */
@@ -53,6 +54,8 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); vec2 uv=(vec2
   float occ=pow(clamp(1.0-ao,0.0,1.0),mix(3.0,0.35,uAoSpread)); c=mix(c,c*uAoCol,occ*uAoAmt);
   /* edges (convex) and cavities (concave): curvature, or the picture's own fine light and dark */
   float cv=0.0; if(uHasCurv==1){ vec4 q=texelFetch(uCurv,p,0); cv=q.a>0.01?(lum(st(q))-0.5)*2.0:0.0; } else cv=clamp((lum(below)-pb)*5.0,-1.0,1.0);
+  /* (0.79) the shape as data for other layers: AO, curvature (0.5 = flat) and thinness */
+  if(uShowN==2){ float th=0.0; if(uHasThick==1){ vec4 q=texelFetch(uThick,p,0); if(q.a>0.01) th=1.0-lum(st(q)); } o=vec4(ao,cv*0.5+0.5,th,1.0); return; }
   float e=smoothstep(mix(0.6,0.02,uEdgeSpread),mix(0.95,0.3,uEdgeSpread),cv), k=smoothstep(mix(0.6,0.02,uCavSpread),mix(0.95,0.3,uCavSpread),-cv);
   c=mix(c,scr(c,uEdgeCol),e*uEdgeAmt); c=mix(c,c*uCavCol,k*uCavAmt);
   /* thin parts glow (ears, fingers, crystal tips) */
@@ -173,14 +176,14 @@ function hpColour(n,src,v){const key=hpKey(n,v),f=n&&n._hpC;if(f&&((f.key===key&
 function hpPaint(base,T,v,n){const PG=hpProgs(),I=hpInputs(n),S=hpScale(),bl=acquireD(base.depth||doc.depth),bl2=acquireD(base.depth||doc.depth);
   blit(base,bl2,0,0,doc.w,doc.h,0,0);gaussian(bl2,bl,6*S);
   const a=v.sAmt>0?acquireD(base.depth||doc.depth):null;
-  run(PG.light,a||T,Object.assign({},I.surf,I.u,{uSrc:base.tex,uBlur:bl.tex,uOwn:{int:v.own?1:0},uFormMode:{int:v.formMode|0},uSpCount:{int:v.spCount|0},uShowN:{int:v.showN?1:0},uWrap:{int:doc.wrap?1:0},uSeed:v.seed||1,
+  run(PG.light,a||T,Object.assign({},I.surf,I.u,{uSrc:base.tex,uBlur:bl.tex,uOwn:{int:v.own?1:0},uFormMode:{int:v.formMode|0},uSpCount:{int:v.spCount|0},uShowN:{int:+v.showN||0},uWrap:{int:doc.wrap?1:0},uSeed:v.seed||1,
     uBase:v.base,uL:hpDir(v.lEl,v.lTurn),uShCol:v.shCol,uLtCol:v.ltCol,uUlCol:v.ulCol,uGTop:v.gTop,uGBot:v.gBot,uAoCol:v.aoCol,uEdgeCol:v.edgeCol,uCavCol:v.cavCol,uThCol:v.thCol,uSpCol:v.spCol,uVarCol:v.varCol,
     uShAmt:v.shAmt,uShSpread:v.shSpread,uLtAmt:v.ltAmt,uForm:v.form,uUlAmt:v.ulAmt,uGTopAmt:v.gTopAmt,uGBotAmt:v.gBotAmt,uGOff:v.gOff,uGSpread:v.gSpread,uAoAmt:v.aoAmt,uAoSpread:v.aoSpread,
     uEdgeAmt:v.edgeAmt,uEdgeSpread:v.edgeSpread,uCavAmt:v.cavAmt,uCavSpread:v.cavSpread,uThAmt:v.thAmt,uSpAmt:v.spAmt,uSpExp:v.spExp,uSpH:hpRad(v.spH),uSpRot:hpRad(v.spRot),
     uVarAmt:v.varAmt,uVarScale:v.varScale,uPic:v.pic,uNDet:v.nDet??1,uMul:v.mul,uOver:v.over,uSat:v.sat}));
   if(a){const tip=typeof dualTip==='function'?dualTip({tipKey:v.tipKey}):null,tt=tip&&tip.alpha?tip:TIPS.bristle;
     run(PG.strokes,T,{uA:a.tex,uTip:tt.tex,uTipS:[tt.w,tt.h],uSize:v.sSize*S,uRand:v.sRand,uDens:v.sDens,uRot:hpRad(v.sRot),uRotRand:v.sRotRand,uFollow:v.sFollow,uDetail:v.sDetail,
-      uDrop:v.sDrop,uKeep:v.sKeep,uOp:v.sOp,uAmt:v.showN?0:v.sAmt,uSeed:v.seed||1,uWrap:{int:doc.wrap?1:0}});release(a);}
+      uDrop:v.sDrop,uKeep:v.sKeep,uOp:v.sOp,uAmt:+v.showN?0:v.sAmt,uSeed:v.seed||1,uWrap:{int:doc.wrap?1:0}});release(a);}
   release(bl);release(bl2);for(const t of I.tmp)release(t);}
 
 fxDef('handPaint',{title:'Hand-painted',heavy:true,onlyLayer:true,wide:true,
@@ -197,33 +200,38 @@ fxDef('handPaint',{title:'Hand-painted',heavy:true,onlyLayer:true,wide:true,
     if(!n)disposeTarget(T);}});
 
 /* ---- the settings: folding groups, presets on top ---- */
-function hpControls(v,upd){for(const k in HP_DEFAULTS)if(v[k]===undefined)v[k]=JSON.parse(JSON.stringify(HP_DEFAULTS[k]));
-  const sl={},cl={},ck={},sel={},changed=()=>{v.preset='custom';refreshChips();upd();};
-  const S=(key,label,min,max,step,fmt)=>{const s=makeSlider({id:'hp_'+key,label,min,max,step,value:v[key],fmt,onInput:x=>{v[key]=x;changed();}});sl[key]=s;return s.el;};
-  const C=(key,label)=>{const b=colourBtn('hp_'+key,()=>v[key],c=>{v[key]=c.slice(0,3);changed();},label);cl[key]=b;return el('label',{class:'hpcol'},el('span',{text:label}),b);};
-  const K=(key,label)=>{const c=chk('hp_'+key,label,!!v[key],x=>{v[key]=x;changed();});ck[key]=c.querySelector('input');return c;};
-  const SEL=(key,label,opts)=>{const s=el('select',{id:'hp_'+key,'aria-label':label},...opts.map(([val,t])=>el('option',{value:String(val),text:t})));s.value=String(v[key]);
+/* the small kit both painted-look editors use: a slider, colour, tick or list that writes straight into v, folding groups,
+   and setAll() to show new values (after a preset). ids are prefix+key */
+function fxUiKit(prefix,v,changed){const sl={},cl={},ck={},sel={},after=[];
+  const S=(key,label,min,max,step,fmt)=>{const s=makeSlider({id:prefix+key,label,min,max,step,value:v[key],fmt,onInput:x=>{v[key]=x;changed();}});sl[key]=s;return s.el;};
+  const C=(key,label)=>{const b=colourBtn(prefix+key,()=>v[key],c=>{v[key]=c.slice(0,3);changed();},label);cl[key]=b;return el('label',{class:'hpcol'},el('span',{text:label}),b);};
+  const K=(key,label)=>{const c=chk(prefix+key,label,!!v[key],x=>{v[key]=x;changed();});ck[key]=c.querySelector('input');return c;};
+  const SEL=(key,label,opts)=>{const s=el('select',{id:prefix+key,'aria-label':label},...opts.map(([val,t])=>el('option',{value:String(val),text:t})));s.value=String(v[key]);
     s.onchange=()=>{const o=opts.find(([val])=>String(val)===s.value);v[key]=o?o[0]:s.value;changed();};sel[key]=s;return el('label',{class:'hpsel'},el('span',{text:label}),s);};
   const G=(title,open,...kids)=>el('details',{class:'hpgrp',open:open||null},el('summary',{text:title}),...kids);
-  const setAll=()=>{for(const k in sl)sl[k].set(v[k]);for(const k in cl)cl[k].value=toHex(v[k]);for(const k in ck)ck[k].checked=!!v[k];for(const k in sel)sel[k].value=String(v[k]);renderTips();};
+  const setAll=()=>{for(const k in sl)sl[k].set(v[k]);for(const k in cl)cl[k].value=toHex(v[k]);for(const k in ck)ck[k].checked=!!v[k];for(const k in sel)sel[k].value=String(v[k]);for(const f of after)f();};
+  return {S,C,K,SEL,G,setAll,sl,after};}
+/* the tip the strokes are stamped with: any brush from the Brushes panel, or a picture of your own (ids: hostId, hostId+'Name', hostId+'Import') */
+function fxTipPicker(hostId,v,changed){const tipHost=el('div',{class:'hptips',id:hostId}),tipName=el('span',{class:'note',id:hostId+'Name'});
+  const render=()=>{tipHost.replaceChildren();const builtIn=['bristle','sponge','leaf','grass','splatter','square','scratch','abstract'].filter(k=>TIPS[k]);
+    const tiles=el('div',{class:'tiles'});for(const k of builtIn){const key='b:'+k,t=TIPS[k];const b=el('button',{type:'button',title:t.name,class:v.tipKey===key?'on':null,onclick:()=>{v.tipKey=key;render();changed();}},t.canvas);tiles.append(b);}
+    tipHost.append(el('div',{class:'libset'},el('div',{class:'libset-h',text:'Tips'}),tiles));
+    for(const set of (typeof library!=='undefined'?library:[])){const tl=el('div',{class:'tiles'});set.presets.forEach((p,i)=>{if(!p.tip)return;const key=dualLibraryKey(set,p,i);
+      tl.append(el('button',{type:'button',title:p.name,class:v.tipKey===key?'on':null,onclick:()=>{v.tipKey=key;render();changed();}},tileCanvas(p)));});
+      if(tl.childNodes.length)tipHost.append(el('div',{class:'libset'},el('div',{class:'libset-h',text:set.name}),tl));}
+    const t=dualTip({tipKey:v.tipKey});tipName.textContent=t?'Stamping with “'+t.name+'”':'Tip not found: pick another';};
+  const importTip=el('button',{class:'btn sm',id:hostId+'Import',text:'Import a stroke picture…',title:'A picture of one brush stroke: dark (or opaque) is paint',onclick:()=>{
+    const f=el('input',{type:'file',accept:'image/*'});f.onchange=async()=>{const file=f.files&&f.files[0];if(!file)return;const p=await hpTipFromFile(file);if(!p)return;
+      const set=library.find(s=>s.id==='custom');v.tipKey=dualLibraryKey(set,p,set.presets.indexOf(p));render();changed();};f.click();}});
+  render();return {tipHost,tipName,importTip,render};}
+function hpControls(v,upd){for(const k in HP_DEFAULTS)if(v[k]===undefined)v[k]=JSON.parse(JSON.stringify(HP_DEFAULTS[k]));
+  const changed=()=>{v.preset='custom';refreshChips();upd();},U=fxUiKit('hp_',v,changed),{S,C,K,SEL,G,setAll,sl}=U;
   const chips=[];const refreshChips=()=>{for(const b of chips)b.classList.toggle('on',b.dataset.pre===v.preset);};
   const presetRows=Object.keys(HP_PRESETS).map(g=>el('div',{},el('div',{class:'sub',text:g}),el('div',{class:'chips'},...Object.keys(HP_PRESETS[g]).map(name=>{
     const b=el('button',{class:'chip'+(v.preset===name?' on':''),'data-pre':name,id:'hp_pre_'+name.replace(/\W+/g,''),text:name,onclick:()=>{const keep={tipKey:v.tipKey,seed:v.seed};
       Object.assign(v,JSON.parse(JSON.stringify(HP_DEFAULTS)),keep,JSON.parse(JSON.stringify(HP_PRESETS[g][name])),{preset:name});setAll();refreshChips();upd();}});chips.push(b);return b;}))));
   const dirChips=el('div',{class:'chips'},...Object.keys(HP_DIRS).map(d=>el('button',{class:'chip',id:'hp_dir_'+d,text:d,onclick:()=>{[v.lEl,v.lTurn]=HP_DIRS[d];sl.lEl.set(v.lEl);sl.lTurn.set(v.lTurn);changed();}})));
-  /* the tip the strokes are stamped with: any brush from the Brushes panel, or a picture of your own */
-  const tipHost=el('div',{class:'hptips',id:'hpTips'}),tipName=el('span',{class:'note',id:'hpTipName'});
-  const renderTips=()=>{tipHost.replaceChildren();const builtIn=['bristle','sponge','leaf','grass','splatter','square','scratch','abstract'].filter(k=>TIPS[k]);
-    const tiles=el('div',{class:'tiles'});for(const k of builtIn){const key='b:'+k,t=TIPS[k];const b=el('button',{type:'button',title:t.name,class:v.tipKey===key?'on':null,onclick:()=>{v.tipKey=key;renderTips();changed();}},t.canvas);tiles.append(b);}
-    tipHost.append(el('div',{class:'libset'},el('div',{class:'libset-h',text:'Tips'}),tiles));
-    for(const set of (typeof library!=='undefined'?library:[])){const tl=el('div',{class:'tiles'});set.presets.forEach((p,i)=>{if(!p.tip)return;const key=dualLibraryKey(set,p,i);
-      tl.append(el('button',{type:'button',title:p.name,class:v.tipKey===key?'on':null,onclick:()=>{v.tipKey=key;renderTips();changed();}},tileCanvas(p)));});
-      if(tl.childNodes.length)tipHost.append(el('div',{class:'libset'},el('div',{class:'libset-h',text:set.name}),tl));}
-    const t=dualTip({tipKey:v.tipKey});tipName.textContent=t?'Stamping with “'+t.name+'”':'Tip not found: pick another';};
-  const importTip=el('button',{class:'btn sm',id:'hpTipImport',text:'Import a stroke picture…',title:'A picture of one brush stroke: dark (or opaque) is paint',onclick:()=>{
-    const f=el('input',{type:'file',accept:'image/*'});f.onchange=async()=>{const file=f.files&&f.files[0];if(!file)return;const p=await hpTipFromFile(file);if(!p)return;
-      const set=library.find(s=>s.id==='custom');v.tipKey=dualLibraryKey(set,p,set.presets.indexOf(p));renderTips();changed();};f.click();}});
-  renderTips();
+  const {tipHost,tipName,importTip,render:renderTips}=fxTipPicker('hpTips',v,changed);U.after.push(renderTips);
   return [el('div',{class:'sub',text:'Presets'}),...presetRows,
     G('Colour',true,SEL('own','Colour comes from',[[true,'Its own colour'],[false,'The layers below (paint over them)']]),C('base','Base colour')),
     el('p',{class:'note hpsrc',id:'hpSrc',text:(()=>{try{return hpSources(hpCurLayer());}catch(e){return '';}})()}),

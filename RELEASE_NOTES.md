@@ -1,3 +1,7 @@
+# Gouache Studio 0.79.0
+
+- **New Stylize layer, Painter style:** master sliders for Stylization, Brush strokes, Smoothness, Colorize, Gradient, Baked lighting and Edges and cavities, each with its own settings. Strokes come from your brushes and land the same in every map; lighting, edges and gradient come from the mesh maps. Layer > New > Stylize layer, Painter style.
+
 # Gouache Studio 0.78.0
 
 - **New Hand-painted layer:** a stylized hand-painted look from the shape of the model (shadow and lit side, top and bottom, crevices, edges, thin parts, highlights, colour variation), with brush strokes stamped from your own brushes. Light from the top or any direction. 20 presets: game materials and skin. Layer > New > Hand-painted layer.
