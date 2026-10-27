@@ -1,3 +1,12 @@
+## 0.78.0
+
+- **Hand-painted layer.** Layer > New > **Hand-painted layer** paints a stylized, hand-painted look from the shape of the model, the way game artists fake lighting: a shadow side and a lit side, top and bottom colours, crevices, edges and cavities, glowing thin parts and a glow from below, painted highlights and colour variation. It reads the baked mesh maps (world normal, position, AO, curvature, thickness), else the model, else the picture, so it works in 3D Paint and in Paint. No real light is used, so it stays put when you turn the model.
+- **Pick the light direction:** Top (the green of the world-space normal), Front, Left, Right, Back, Bottom or any angle. **Show the directions** shows the normals in colour.
+- **Brush strokes from your Brushes panel.** The layer stamps strokes with any brush tip you pick, turned along the forms. **Import a stroke picture…** adds your own.
+- **Roughness and metallic** can be made from the colour.
+- **Presets:** game materials (Old wood, Steel, Gold, Bronze, Copper, Oxidized copper, Bone, Rock, Marble, Ice, Moss, Jade, Obsidian) and skin and character (Fair, Warm, Dark and Orc skin, Painted skin, Cloth, Leather). **Painted skin** paints softly over a polypaint below.
+- New guide page: Painted looks.
+
 ## 0.77.0
 
 - **Stylize layer (painted strokes).** Layer menu > **Stylize layer (painted strokes, all maps)** adds one layer that repaints everything below it as brush strokes, in the colour, the roughness, the height and the normal map together. Strokes follow the shapes in the picture, so a face or a stone is painted around its form.

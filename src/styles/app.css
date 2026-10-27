@@ -1411,3 +1411,13 @@ body.photomode #docTabs{display:none!important}
 .olrn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.olrow .bakebar{grid-column:1/-1}
 .olup .chips{flex-wrap:wrap}
 .olsrc{display:flex;gap:10px;align-items:center}
+/* Hand-painted layer editor (0.78): folding groups, colour rows, stroke tip tiles */
+.hpgrp{border-top:1px solid var(--line,#333);padding:4px 0}
+.hpgrp>summary{cursor:pointer;font-weight:600;padding:3px 0}
+.hpcol,.hpsel{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:3px 0}
+.hpcol input[type=color]{width:44px;height:22px;padding:0;border:none;background:none}
+.hptips{max-height:170px;overflow:auto;margin:4px 0}
+.hptips .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));gap:3px}
+.hptips .tiles button{padding:2px;height:40px;background:var(--bg2,#222);border:1px solid transparent}
+.hptips .tiles button.on{border-color:var(--accent,#5af)}
+.hptips .tiles canvas{max-width:100%;max-height:100%}

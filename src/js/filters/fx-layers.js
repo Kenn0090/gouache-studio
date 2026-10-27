@@ -103,7 +103,7 @@ function fxEditor(L,opts){opts=opts||{};if(!isFx(L))return;if(stroke||preview||s
     if(L.fx.map==='all')add.hidden=true;/* a Stylize layer holds only its own effect */
     add.onchange=()=>{const v=add.value;if(!v)return;S.push(v.startsWith('conv:')?convItem(v.slice(5)):fxItem(v));open=S.length-1;
       if(L.autoName!==false&&(L.name==='Filters'||S.length===1))L.name=fxDefaultName(S);draw();upd();renderLayers();};
-    body.append(el('div',{class:'frow'},add),el('p',{class:'note',text:'Editing “'+L.name+'” on the '+(L.fx.map==='all'?'all maps':MAP_DEFS[L.fx.map].label.toLowerCase())+' map. Its opacity, blend mode and mask are in the Layers panel.'}));};
+    body.append(el('div',{class:'frow'},add),el('p',{class:'note',text:'Editing “'+L.name+'” '+(L.fx.map==='all'?'on every map':'on the '+MAP_DEFS[L.fx.map].label.toLowerCase()+' map')+'. Its opacity, blend mode and mask are in the Layers panel.'}));};
   draw();preview={off:true,fxEdit:true};
   const close=()=>{cancelAnimationFrame(pend);pend=0;preview=null;};
   openDialog({title:opts.isNew?'New filter layer':'Filter layer',body,float:true,okLabel:'Done',

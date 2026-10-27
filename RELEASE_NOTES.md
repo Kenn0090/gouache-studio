@@ -1,3 +1,7 @@
+# Gouache Studio 0.78.0
+
+- **New Hand-painted layer:** a stylized hand-painted look from the shape of the model (shadow and lit side, top and bottom, crevices, edges, thin parts, highlights, colour variation), with brush strokes stamped from your own brushes. Light from the top or any direction. 20 presets: game materials and skin. Layer > New > Hand-painted layer.
+
 # Gouache Studio 0.77.0
 
 - **New Stylize layer:** repaints everything below it as brush strokes, in colour, roughness, height and normal map together. Nine looks: Gouache, Oil, Thick paint, Soft wash, Watercolour, Comic, Pastel, Chalk, Charcoal. Layer menu > Stylize layer.

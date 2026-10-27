@@ -33,6 +33,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 - [Textures, decals and the material library](Textures-and-decals.md): grunge maps and textures, decals on the model, ready-made materials (and who made them)
 - [Get more materials (online library)](Online-library.md): browse and download ambientCG materials inside the app, and upgrade the Library to 2K / 4K
 - [Filter layers](Filter-layers.md): filters you can change later, smart filters, live converters, pattern layers
+- [Painted looks](Painted-looks.md): the Stylize layer (painted strokes) and the Hand-painted layer (fake lighting from the model's shape), both on every map
 
 ## 3D
 - [3D Paint](3D-Paint.md): the 3D Paint tab. Paint on a model with texture sets, mirror and radial painting, stencils, selections on the model, materials, baking mesh maps and project files

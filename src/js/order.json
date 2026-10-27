@@ -102,6 +102,7 @@
     "view3d/proj-xf",
     "view3d/proj-gizmo",
     "layers/mask-stack",
+    "filters/handpaint",
     "ui/mask-rows",
     "layers/mat-convert",
     "layers/smart",
