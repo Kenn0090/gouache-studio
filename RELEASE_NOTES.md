@@ -1,3 +1,8 @@
+# Gouache Studio 0.76.2
+
+- **Help › What's taking space in this project…** shows the saved size of each picture (layers, masks, baked maps, model), biggest first, so you can see why a project is large.
+- The Graphics card report shows the model's triangle count and the page's memory use.
+
 # Gouache Studio 0.76.1
 
 - **Saving big projects no longer runs out of memory:** the file is written to disk in pieces. The file itself is unchanged.

@@ -1,3 +1,8 @@
+## 0.76.2
+
+- **What's taking space.** Help > **What's taking space in this project…** (also a button in the Graphics card report) lists the saved size of every picture in the project: each layer's maps, masks, mask rows, material pictures, baked maps and the 3D model, grouped by kind with the biggest first. It measures the same way a save does, without writing anything, and has a Copy button. It takes about as long as a save.
+- **The Graphics card report** now also says how many triangles the model has and how much memory the page is using at that moment.
+
 ## 0.76.1
 
 - **Big projects save without running out of memory.** A 3D Paint project (or a document) is now written to disk in 16 MB pieces, instead of being joined into one block of hundreds of MB first. The saved file is exactly the same. Autosave does the same.

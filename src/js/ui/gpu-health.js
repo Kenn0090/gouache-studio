@@ -54,6 +54,25 @@ function ghBrushTest(){const B=brush,out={},T=1024,wait=()=>{};let t=null;
     out.plainMs=plain/n;const dual=B.dual&&B.dual.on?pass(true,n):null;if(dual!==null)out.dualMs=dual/n;
   }catch(e){out.error=String(e.message||e);}finally{if(t)disposeTarget(t);}
   return out;}
+/* ---- "What's taking space": the size of every picture as it would be saved (the same packing as a save, nothing is written) ---- */
+async function ghSpaceScan(){const list=[];
+  if(ui.mode==='p3d'&&typeof p3!=='undefined'&&p3.started&&p3.sets&&p3.sets.length){const held=tabDocs.hold;tabDocs.hold=true;
+    try{for(let i=0;i<p3.sets.length;i++){const S=p3.sets[i],pre=(p3.sets.length>1?S.name+' › ':'');
+      if(i===p3.cur)await encodeGouacheNow({lean:true,space:list,prefix:pre});
+      else if(S.state){const mine=docState();setDocState(S.state);try{await encodeGouacheNow({lean:true,space:list,prefix:pre});}finally{S.state=docState();setDocState(mine);}}}}
+    finally{tabDocs.hold=held;}
+    if(typeof v3!=='undefined'&&v3.imported&&typeof meshPack==='function'){const c=await streamThrough(meshPack(v3.imported),'deflate-raw');list.push({label:'3D model',bytes:c.length});}}
+  else await encodeGouacheNow({space:list});
+  return list;}
+function ghSpaceKind(l){return /· mask rows$/.test(l)?'Mask rows':/· mask$/.test(l)?'Masks':/material picture/.test(l)?'Material pictures':/Baked map/.test(l)?'Baked maps':/3D model/.test(l)?'3D model':/Project shelf/.test(l)?'Project shelf':'Layer maps';}
+function ghSpaceText(list){const tot=list.reduce((a,x)=>a+x.bytes,0),by={};for(const x of list){const k=ghSpaceKind(x.label);by[k]=(by[k]||0)+x.bytes;}
+  const top=list.slice().sort((a,b)=>b.bytes-a.bytes).slice(0,30);
+  return ['Saved size of the pictures: '+fmtBytes(tot)+' in '+list.length+' pictures (the file is a little bigger)','',
+    'By kind:',...Object.entries(by).sort((a,b)=>b[1]-a[1]).map(([k,v])=>'  '+k+': '+fmtBytes(v)+' ('+Math.round(v/Math.max(1,tot)*100)+'%)'),'',
+    'Biggest pictures:',...top.map(x=>'  '+fmtBytes(x.bytes).padStart(8)+'  '+x.label)].join('\n');}
+function dlgSpace(){const pre=el('pre',{class:'note',style:'white-space:pre-wrap;user-select:text;max-height:380px;overflow:auto'});pre.textContent='Measuring… this takes about as long as a save. The window will not respond until it is done.';
+  let txt='';openDialog({title:'What’s taking space',okLabel:'Copy',cancelLabel:'Close',body:el('div',{class:'dlg-grid'},pre),onOk(){try{navigator.clipboard.writeText(txt);toast('Copied.');}catch(e){}return false;}});
+  setTimeout(async()=>{try{txt=ghSpaceText(await ghSpaceScan());}catch(e){txt='Could not measure: '+(e.message||e);}pre.textContent=txt;},60);}
 /* ---- speed test ---- */
 const GH_FS=`in vec2 vUV; uniform float uN; void main(){vec2 p=vUV*8.0;float a=0.0;for(int i=0;i<int(uN);i++){p=vec2(sin(p.y*1.3+a),cos(p.x*1.7-a))*1.1+p*0.3;a+=dot(p,p)*0.01;}o=vec4(fract(a),0.5,0.5,1.0);}`;
 let ghProg=null;
@@ -81,6 +100,8 @@ function ghReportText(r){const I=gpuInfo(),G=gpuMemory(),log=gpuLogRead().filter
     'Tracked graphics memory: '+fmtBytes(G.bytes)+' in '+G.targets+' pictures (budget '+fmtBytes(gpuBudget())+')',
     (()=>{const S=typeof gfSaveStats!=='undefined'&&gfSaveStats.last;return S&&S.images?'Last save: '+(S.total/1000).toFixed(1)+' s in all · GPU read '+(S.read/1000).toFixed(1)+' s · waiting for packing '+(S.pack/1000).toFixed(1)+' s · finding edges '+(S.bounds/1000).toFixed(1)+' s · '+S.images+' pictures, '+fmtBytes(S.bytes):'';})(),
     (()=>{const e=gpuLogRead().filter(x=>/^last session stopped/.test(x.kind)).pop();return e?'The app stopped while saving ('+new Date(e.t).toLocaleString()+'): '+e.kind.replace('last session stopped during: ',''):'';})(),
+    (()=>{const m=typeof v3!=='undefined'&&v3.mesh;return m?'Model: '+Math.round(m.idx.length/3).toLocaleString()+' triangles, '+Math.round(m.pos.length/3).toLocaleString()+' points'+(typeof p3!=='undefined'&&p3.sets&&p3.sets.length>1?' · '+p3.sets.length+' texture sets':''):'';})(),
+    (()=>{const m=performance.memory;return m?'Page memory now: '+Math.round(m.usedJSHeapSize/1048576)+' of '+Math.round(m.jsHeapSizeLimit/1048576)+' MB':'';})(),
     (()=>{const F=typeof v3!=='undefined'&&v3.fbo;return F?'3D view buffer: '+F.w+'×'+F.h+' with '+F.S+'× smoothing':'';})(),
     'Drawing back-end: '+gpuBackend.kind+' · WebGPU: '+(r&&r.webgpu||'checking…'),
     r&&r.brush?(r.brush.error?'Brush test failed: '+r.brush.error:'Current brush ('+r.brush.size+' px, '+r.brush.tip+', spacing '+r.brush.spacing+'%): '+(1000/r.brush.plainMs).toFixed(0)+' dabs a second'+(r.brush.dualMs?' · with dual brush '+(1000/r.brush.dualMs).toFixed(0)+' dabs a second':'')):'',
@@ -93,12 +114,13 @@ function dlgGpuReport(){const pre=el('pre',{class:'note',style:'white-space:pre-
   const note=el('p',{class:'note',text:''});let txt=text0;
   const vsel=el('select',{id:'ghVram',onchange:e=>{try{if(e.target.value==='0')localStorage.removeItem('gs.vramSet');else localStorage.setItem('gs.vramSet',e.target.value);}catch(x){}gpuHealth.warned=false;note.textContent='Saved. The memory warning now uses '+fmtBytes(gpuBudget())+'.';}},
     ...[['0','Not sure (assume 6 GB)'],['4','4 GB'],['6','6 GB'],['8','8 GB'],['10','10 GB'],['12','12 GB'],['16','16 GB'],['24','24 GB']].map(([v,t])=>{let cur='0';try{cur=localStorage.getItem('gs.vramSet')||'0';}catch(x){}return el('option',{value:v,text:t,selected:cur===v});}));
+  const space=el('button',{class:'btn sm',id:'ghSpace',text:'What’s taking space…',title:'The saved size of each picture of this project',onclick:()=>{closeDialog();dlgSpace();}});
   const rec=el('button',{class:'btn sm',text:'Record 10 seconds of painting…',title:'Closes this window, you paint for 10 seconds, then the report comes back with what the app was doing',onclick:()=>{closeDialog();ghRecord();}});
-  openDialog({title:'Graphics card report',okLabel:'Copy report',cancelLabel:'Close',body:el('div',{class:'dlg-grid'},pre,el('label',{text:'Which graphics card to ask for: '},sel),el('label',{text:'Your card’s memory (for the warning): '},vsel),rec,note),
+  openDialog({title:'Graphics card report',okLabel:'Copy report',cancelLabel:'Close',body:el('div',{class:'dlg-grid'},pre,el('label',{text:'Which graphics card to ask for: '},sel),el('label',{text:'Your card’s memory (for the warning): '},vsel),el('div',{class:'chips'},space,rec),note),
     onOk(){try{navigator.clipboard.writeText(txt);toast('Report copied.');}catch(e){}return false;}});
   setTimeout(async()=>{const r=await ghTest();txt=ghReportText(r);pre.textContent=txt;},50);}
 /* 10 seconds of the performance monitor while the person paints, kept for the report */
 function ghRecord(){const was=perf.on;perf.on=true;perf.frames=[];toast('Recording: paint now for 10 seconds…');requestRender(true);
   setTimeout(()=>{perfUpdate();gpuHealth.sample={at:new Date().toLocaleTimeString(),text:perfBox.textContent};perf.on=was;perfBox.hidden=!was;dlgGpuReport();},10000);}
-MENUS.Help.splice(MENUS.Help.length-1,0,['Graphics card report…','gpuReport']);
-Object.assign(actions,{gpuReport:dlgGpuReport});
+MENUS.Help.splice(MENUS.Help.length-1,0,['Graphics card report…','gpuReport'],['What’s taking space in this project…','spaceReport']);
+Object.assign(actions,{gpuReport:dlgGpuReport,spaceReport:dlgSpace});
