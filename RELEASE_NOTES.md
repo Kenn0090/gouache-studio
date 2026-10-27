@@ -1,3 +1,9 @@
+# Gouache Studio 0.75.0
+
+- **Get more materials:** Materials › Library › Get more… browses ambientCG inside the app. Tick several, choose 1K, 2K or 4K, and add them to your Library. Includes a Grunge maps category that sends grey maps to Textures.
+- **Upgrade the whole Library to 2K or 4K** in File › Add-ons… (it asks first, and can be stopped and continued).
+- Desktop app only.
+
 # Gouache Studio 0.74.4
 
 - **Lighter project saving:** big 3D Paint projects use less memory while saving. The file is unchanged.

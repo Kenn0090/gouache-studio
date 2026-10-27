@@ -1,3 +1,11 @@
+## 0.75.0
+
+- **Get more materials (online library).** Materials › Library › **Get more…** opens a window inside the app where you can browse ambientCG (free, CC0), search, pick a category, tick several materials, choose **1K, 2K or 4K**, and add them to your Library in one go. Each one is built into a normal material (colour, roughness, metallic, normal, height) and keeps its credit. Desktop app only; it needs the internet only while downloading.
+- **Grunge maps from ambientCG.** A **Grunge maps** category lists scratches, smears, surface imperfections, fingerprints, chips, rust and asphalt. **Add as grunge map** puts the grey map of any ticked material into Textures.
+- **Downloaded materials, mixed or separate.** They are mixed into the Library categories and also listed under a **Downloaded** chip. A tick box keeps them in their own group only. Hover a downloaded tile and click × to delete it.
+- **Upgrade the whole Library to 2K or 4K.** File › **Add-ons…** (formerly AI add-ons) has a new Library section. It shows the download and disk size, asks first, runs one material at a time, and can be stopped and continued. **Back to 1K** removes the upgrades. Upgraded materials replace their 1K originals in the Library.
+- Big downloaded pictures are loaded only when you use a material, and let go afterwards, so a large Library does not fill memory.
+
 ## 0.74.4
 
 - **Lighter project saving.** Saving a 3D Paint project no longer makes a second full copy of each texture set in memory. The saved file is exactly the same. This should help big 4096 px projects that spiked memory while saving.
