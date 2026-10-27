@@ -52,9 +52,9 @@ function sgHasShape(){const M=doc.meshMaps||{};return !!(M.wnormal||M.curv||M.ao
 function sgGuideOf(v){const g=v.guide||'both';return g!=='colour'&&!sgHasShape()?'colour':g;}
 let P_SGMIX=null;const sgMixProg=()=>P_SGMIX||(P_SGMIX=program(GL_ST+`uniform sampler2D uA; uniform sampler2D uB; void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 a=texelFetch(uA,p,0),b=texelFetch(uB,p,0); o=vec4(mix(st(a),st(b),0.6),1.0); }`));
 /* the stroke field of one layer: kept until the picture below, or a setting that shapes the strokes, changes */
-function sgDrop(n){const f=n&&n._sgF;if(f){disposeTarget(f.T);disposeTarget(f.S);n._sgF=null;}}
+function sgDrop(n){const f=n&&n._sgF;if(f){disposeTarget(f.T);disposeTarget(f.S);if(f.L)disposeTarget(f.L);if(f.E)disposeTarget(f.E);n._sgF=null;}}
 function sgField(n,src,v,k){
-  const guide=sgGuideOf(v),key=[typeof msDocVer==='number'?msDocVer:0,typeof msEpoch==='number'?msEpoch:0,n?n.lookVer||0:0,doc.w,doc.h,!!doc.wrap,v.flow,v.len,v.seed||1,guide].join('|');
+  const guide=sgGuideOf(v),key=[typeof msDocVer==='number'?msDocVer:0,typeof msEpoch==='number'?msEpoch:0,n?n.lookVer||0:0,doc.w,doc.h,!!doc.wrap,v.flow,v.len,v.seed||1,guide,v.mlEl??65,v.mlTurn??25].join('|');
   const f=n&&n._sgF;if(f&&(f.key===key||stroke))return f;
   if(n)sgDrop(n);
   /* the colour below this layer is what the strokes follow */
@@ -70,26 +70,36 @@ function sgField(n,src,v,k){
   const T=makeTarget(doc.w,doc.h,d16,false),S=makeTarget(doc.w,doc.h,d16,false);
   blit(t2,T,0,0,doc.w,doc.h,0,0);release(t1);release(t2);if(own)release(own);
   run(P.sg_streak,S,{uT:T.tex,uLen:Math.round(v.len||12),uSeed:v.seed||1,uWrap:!!doc.wrap});
-  const F={key,T,S,temp:!n};if(n)n._sgF=F;return F;}
+  /* (0.78) from the mesh maps: a grey light picture (which way it faces, light from the set direction) and a grey edges picture
+     (crevices dark from AO, edges light from curvature), painted into the colour before the strokes smear it */
+  let L=null,E=null;if(sgHasShape()&&typeof hpPaint==='function'){const dir={lEl:v.mlEl??65,lTurn:v.mlTurn??25};
+    L=makeTarget(doc.w,doc.h,doc.depth,false);hpPaint(base,L,Object.assign({},SG_SHAPE_V,dir,{aoAmt:0,edgeAmt:0,cavAmt:0}),n);
+    E=makeTarget(doc.w,doc.h,doc.depth,false);hpPaint(base,E,Object.assign({},SG_SHAPE_V,dir,{shAmt:0,ltAmt:0,aoAmt:.9,edgeAmt:.8,cavAmt:.7}),n);}
+  const F={key,T,S,L,E,temp:!n};if(n)n._sgF=F;return F;}
 
 fxDef('stylizeG',{title:'Stylize (Gouache)',heavy:true,onlyLayer:true,
   note:'Repaints everything below as brush strokes, in every channel at once: colour, roughness, metallic, height and normal share the same strokes, so the paint catches light.',
-  init:()=>Object.assign({seed:1,preset:'Gouache',amount:1,sMat:true,sHgt:true},SG_PRESETS['Gouache']),
+  init:()=>Object.assign({seed:1,preset:'Gouache',amount:1,sMat:true,sHgt:true,guide:'both',meshLight:.35,meshEdge:.35,mlEl:65,mlTurn:25},SG_PRESETS['Gouache']),
   checks:[['sMat','Even out roughness and metallic along the strokes',true],['sHgt','Smooth height and normal along the strokes',true]],
-  controls:(v,upd)=>{const sl={},refresh=()=>{for(const b of chipRow.querySelectorAll('[data-pre]'))b.classList.toggle('on',b.dataset.pre===v.preset);};
+  controls:(v,upd)=>{for(const [k,d] of [['meshLight',.35],['meshEdge',.35],['mlEl',65],['mlTurn',25]])if(v[k]===undefined)v[k]=d;const sl={},refresh=()=>{for(const b of chipRow.querySelectorAll('[data-pre]'))b.classList.toggle('on',b.dataset.pre===v.preset);};
     const mk=(key,label,min,max,step,fmt)=>{const s=makeSlider({id:'sg_'+key,label,min,max,step,value:v[key],fmt,onInput:x=>{v[key]=x;v.preset='custom';refresh();upd();}});sl[key]=s;return s.el;};
     const chipRow=el('div',{class:'chips'},...Object.keys(SG_PRESETS).map(name=>el('button',{class:'chip'+(v.preset===name?' on':''),'data-pre':name,id:'sg_pre_'+name.replace(/\W+/g,''),text:name,onclick:()=>{v.preset=name;Object.assign(v,SG_PRESETS[name]);for(const k in SG_PRESETS[name])if(sl[k])sl[k].set(SG_PRESETS[name][k]);refresh();upd();}})));
     return [el('div',{class:'sub',text:'Style'}),chipRow,
       el('div',{class:'sub',text:'Strokes'}),sgGuideSel(v,upd),mk('size','Stroke size',1,10,.5,px),mk('flow','Stroke flow',0,10,.5,px),mk('sharp','Edge keeping',2,16,1),mk('len','Stroke length',4,40,1,px),
       el('div',{class:'sub',text:'Paint'}),mk('bristle','Bristles',0,1,.01,pct),mk('cvar','Colour variation',0,1,.01,pct),mk('grain','Canvas grain',0,1,.01,pct),
       el('div',{class:'sub',text:'Relief (height and normal)'}),mk('relief','Paint relief',0,2,.01,pct),mk('bend','Normal bend',0,2,.01,pct),
+      el('div',{class:'sub',text:'Mesh maps (baked lighting, edges and cavities)'}),
+      el('p',{class:'note',text:sgHasShape()?'Painted in from the baked world normal, AO and curvature (else the model), before the strokes.':'No model or mesh maps here: bake mesh maps (or use 3D Paint) for these.'}),
+      mk('meshLight','Baked lighting',0,1,.01,pct),mk('meshEdge','Edges and cavities',0,1,.01,pct),mk('mlEl','Light height',-90,90,1,x=>Math.round(x)+'°'),mk('mlTurn','Light turn',-180,180,1,x=>Math.round(x)+'°'),
       el('div',{class:'sub',text:'Overall'}),makeSlider({id:'sg_amount',label:'Amount',min:0,max:1,step:.01,value:v.amount,fmt:pct,onInput:x=>{v.amount=x;upd();}}).el,
       makeSlider({id:'sg_seed',label:'Random seed',min:1,max:99,step:1,value:v.seed||1,onInput:x=>{v.seed=x;upd();}}).el];},
   render(src,dst,v,ctx){const k=ctx&&ctx.k||'base',n=ctx&&ctx.layer,F=sgField(n,src,v,k),kind=SG_KIND[k]??4,
       smooth=kind===0||((kind===2||kind===3)?v.sHgt:v.sMat);let sm=src,a=null;
-    if(smooth&&v.size>.5){a=acquire();run(P.f_akuwa,a,{uSrc:src.tex,uT:F.T.tex,uR:v.size,uQ:v.sharp,uWrap:!!doc.wrap});sm=a;}
+    /* baked lighting and edges from the mesh maps go in first, so the strokes paint them too */
+    let lit=null;if(kind===0&&F.L&&((v.meshLight??.35)>0||(v.meshEdge??.35)>0)){lit=acquire();run(sgLitProg(),lit,{uSrc:src.tex,uL:F.L.tex,uE:F.E.tex,uML:v.meshLight??.35,uME:v.meshEdge??.35});sm=lit;}
+    if(smooth&&v.size>.5){a=acquire();run(P.f_akuwa,a,{uSrc:sm.tex,uT:F.T.tex,uR:v.size,uQ:v.sharp,uWrap:!!doc.wrap});sm=a;}
     run(P.sg_post,dst,{uSrc:sm.tex,uOrig:src.tex,uS:F.S.tex,uKind:{int:kind},uBristle:v.bristle,uCVar:v.cvar,uRelief:v.relief,uBend:v.bend,uGrain:v.grain,uAmt:v.amount,uWrap:!!doc.wrap});
-    if(a)release(a);if(F.temp){disposeTarget(F.T);disposeTarget(F.S);}}});
+    if(a)release(a);if(lit)release(lit);if(F.temp){disposeTarget(F.T);disposeTarget(F.S);if(F.L)disposeTarget(F.L);if(F.E)disposeTarget(F.E);}}});
 
 /* Layer › New › Stylize layer: on top of the stack, so it changes everything below, in every map */
 function cmdNewStylizeLayer(preset){if(ui.mode==='anim'){toast('Stylize layers are for paint mode.');return;}if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
@@ -104,3 +114,7 @@ const SG_SHAPE_V={own:true,base:[.5,.5,.5],lEl:65,lTurn:25,shCol:[.2,.2,.2],shAm
 function sgGuideSel(v,upd){const s=el('select',{id:'sg_guide','aria-label':'Strokes follow'},el('option',{value:'both',text:'The model\'s shape and the colour'}),el('option',{value:'shape',text:'The model\'s shape (mesh maps)'}),el('option',{value:'colour',text:'The colour below'}));
   s.value=v.guide||'both';s.onchange=()=>{v.guide=s.value;upd();};
   return el('div',{},el('label',{class:'hpsel'},el('span',{text:'Strokes follow'}),s),el('p',{class:'note',text:sgHasShape()?'The model\'s shape comes from the baked mesh maps (world normal, AO, curvature), else from the model.':'No model or mesh maps here, so the strokes follow the colour.'}))}
+
+let P_SGLIT=null;const sgLitProg=()=>P_SGLIT||(P_SGLIT=program(GL_ST+`uniform sampler2D uSrc; uniform sampler2D uL; uniform sampler2D uE; uniform float uML; uniform float uME;
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 c=texelFetch(uSrc,p,0); float l=st(texelFetch(uL,p,0)).r, e=st(texelFetch(uE,p,0)).r;
+  vec3 col=st(c)*clamp(mix(1.0,l*2.0,uML),0.3,1.7)*clamp(mix(1.0,e*2.0,uME),0.3,1.7); o=vec4(clamp(col,0.0,1.0)*c.a,c.a); }`));

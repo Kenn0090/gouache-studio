@@ -11,6 +11,7 @@ Repaints everything below as brush strokes that follow the shapes in the picture
 - **Paint:** bristles, colour variation, canvas grain.
 - **Relief:** paint relief (height) and normal bend.
 - **Strokes follow:** the model's shape (from the baked mesh maps, else the model), the colour below, or both.
+- **Mesh maps:** **Baked lighting** (from the world normal, with a light height and turn) and **Edges and cavities** (crevices from AO, edges from curvature) are painted into the colour before the strokes, so the strokes carry them.
 - **Amount** 0 leaves the picture as it was.
 
 ## Hand-painted layer
