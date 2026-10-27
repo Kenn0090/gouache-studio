@@ -52,7 +52,7 @@ async function olMake(info,res,row){
   const ab=await olZipGet(info.url||olZip(info.id,res),row);if(row){row.state='building';olDraw(true);}
   const files=await miUnzip(ab),built=await miBuild(files,info.name,OL_RES[res]);
   const rec={id:'d:'+info.id,name:info.name,t:Date.now(),kind:'material',dl:{aid:info.id,res,upg:!!info.upg},cat:info.cat||'Other',credit:'ambientCG.com '+info.id+' (CC0)',url:'https://ambientcg.com/view?id='+info.id,
-    thumb:info.thumb!==undefined&&!info.thumbFrom?info.thumb:await olThumb(info,built),fill:built.fill,imgs:built.imgs};
+    thumb:/^data:/.test(info.thumb||'')?info.thumb:await olThumb(info,built),fill:built.fill,imgs:built.imgs};
   await store.put(rec,'materials');
   const view=dlView(rec),old=dlLib.list.findIndex(r=>r.id===rec.id);if(old>=0){const o=dlLib.list[old];if(o._t)for(const k in o._t)disposeTarget(o._t[k]);dlLib.list[old]=view;}else dlLib.list.push(view);
   return view;}
@@ -71,11 +71,11 @@ function olTile(it,owned){const own=owned.get(it.id),on=ol.sel.has(it.id);
     el('img',{src:it.thumb,alt:'',loading:'lazy',decoding:'async',draggable:'false'}),el('span',{class:'olname',text:it.name}),
     ...(own?[el('span',{class:'olown',text:own==='1K'?'In Library':'In Library · '+own})]:[]),el('span',{class:'olcheck',text:on?'✓':''}));return b;}
 function olDraw(light){const b=ol.body;if(!b||!document.contains(b))return;const owned=olOwned();
-  ol.chips.replaceChildren(...['all',...Object.keys(OL_GROUPS)].map(c=>el('button',{type:'button',class:'btn sm'+(ol.cat===c?' on':''),'data-cat':c,text:c==='all'?'All':c,onclick:()=>{if(ol.cat===c)return;ol.cat=c;ol.offset=0;olSearch();}})));
+  ol.chips.replaceChildren(...['all',...Object.keys(OL_GROUPS)].map(c=>el('button',{type:'button',class:'chip'+(ol.cat===c?' on':''),'data-cat':c,text:c==='all'?'All':c,disabled:!!ol.busy,onclick:()=>{if(ol.cat===c)return;ol.cat=c;ol.offset=0;olSearch();}})));
   if(!light||!ol.grid.childNodes.length){ol.grid.replaceChildren(...(ol.items.length?ol.items.map(it=>olTile(it,owned)):[el('p',{class:'note olmsg',text:ol.loading?'Loading…':(ol.err||'Nothing found. Try another word or category.')})]));ol.grid.classList.toggle('loading',ol.loading);}
   else ol.grid.querySelectorAll('.oltile').forEach(t=>{const id=t.dataset.id,on=ol.sel.has(id);t.classList.toggle('sel',on);t.setAttribute('aria-pressed',String(on));t.querySelector('.olcheck').textContent=on?'✓':'';});
   const n=olSelCount(),from=ol.total?ol.offset+1:0,to=Math.min(ol.total,ol.offset+ol.items.length);
-  const busy=ol.busy,rows=busy?busy.rows.map(r=>el('div',{class:'olrow','data-job':r.job||''},el('span',{class:'olrn',text:r.it.name}),el('span',{class:'olstat',text:({waiting:'Waiting',downloading:'Starting…',building:'Building the material…',done:'Added',failed:'Failed: '+(r.err||''),cancelled:'Cancelled',skipped:'Skipped'})[r.state]||r.state}),el('div',{class:'bakebar',hidden:r.state!=='downloading'},el('div',{style:'width:'+(r.job&&ol.prog[r.job]&&ol.prog[r.job].total?Math.round(ol.prog[r.job].got/ol.prog[r.job].total*100):0)+'%'})))):[];
+  const busy=ol.busy,shown=busy?busy.rows:(ol.last||[]),rows=shown.map(r=>el('div',{class:'olrow','data-job':r.job||''},el('span',{class:'olrn',text:r.it.name}),el('span',{class:'olstat',text:({waiting:'Waiting',downloading:'Starting…',building:'Building the material…',done:'Added',failed:'Failed: '+(r.err||''),cancelled:'Cancelled',skipped:'Skipped'})[r.state]||r.state}),el('div',{class:'bakebar',hidden:r.state!=='downloading'},el('div',{style:'width:'+(r.job&&ol.prog[r.job]&&ol.prog[r.job].total?Math.round(ol.prog[r.job].got/ol.prog[r.job].total*100):0)+'%'}))));
   ol.foot.replaceChildren(
     el('div',{class:'olpage'},el('button',{type:'button',class:'btn sm',id:'olPrev',text:'‹ Previous',disabled:ol.loading||ol.offset===0||!!busy,onclick:()=>{ol.offset=Math.max(0,ol.offset-OL_PAGE);olSearch();}}),
       el('span',{class:'dim',text:ol.total?from+'–'+to+' of '+ol.total:''}),el('button',{type:'button',class:'btn sm',id:'olNext',text:'Next ›',disabled:ol.loading||to>=ol.total||!!busy,onclick:()=>{ol.offset+=OL_PAGE;olSearch();}})),
@@ -86,13 +86,13 @@ function olDraw(light){const b=ol.body;if(!b||!document.contains(b))return;const
     ...(rows.length?[el('div',{class:'olrows'},...rows)]:[]));}
 function olCancel(){const b=ol.busy;if(!b)return;b.cancel=true;for(const r of b.rows)if(r.job)platform.invoke('net_cancel',{id:r.job}).catch(()=>{});}
 async function olRun(mode){if(ol.busy||!ol.sel.size)return;const list=[...ol.sel.values()],res=ol.res;
-  ol.busy={cancel:false,rows:list.map(it=>({it,state:'waiting',job:null,err:''}))};olDraw();let done=0,failed=0;
+  ol.last=null;ol.busy={cancel:false,rows:list.map(it=>({it,state:'waiting',job:null,err:''}))};olDraw();let done=0,failed=0;
   for(const row of ol.busy.rows){if(ol.busy.cancel){row.state='skipped';continue;}row.state='downloading';olDraw(true);
     try{if(mode==='grunge')await olGrunge(row.it,row);else{const d=row.it.dl[res]||row.it.dl['1K'];await olMake({id:row.it.id,name:row.it.name,cat:row.it.cat,thumb:row.it.thumb,url:d.url},res in row.it.dl?res:'1K',row);}
       row.state='done';done++;ol.sel.delete(row.it.id);if(mode!=='grunge')renderMats();}
     catch(e){const m=e&&e.message||String(e);if(m==='cancelled'||ol.busy.cancel){row.state='cancelled';}else{row.state='failed';row.err=m;failed++;console.warn(e);}}
     olDraw(true);}
-  const was=ol.busy;ol.busy=null;olDraw();
+  const was=ol.busy;ol.last=was.rows;ol.busy=null;olDraw();
   toast(done?('Added '+done+(mode==='grunge'?' grunge map':' material')+(done>1?'s':'')+(mode==='grunge'?' to Textures.':' to the Library.')):(was.cancel?'Cancelled.':'Nothing was added.')+(failed?' '+failed+' failed.':''));}
 function dlgOnlineLib(){
   if(!platform.isDesktop){openDialog({title:'Get more materials',body:el('div',{class:'dlg-grid'},el('p',{text:'Downloading materials needs the Gouache Studio desktop app. The web version cannot ask ambientCG directly.'}),el('p',{class:'note',text:'You can still download materials from ambientcg.com yourself and use Materials › From textures… to add them.'})),okLabel:null,cancelLabel:'Close'});return;}

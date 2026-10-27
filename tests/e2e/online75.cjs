@@ -22,7 +22,7 @@ const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
   const all=[mk('Metal901','Metal'),mk('Leather901','Leather'),mk('Broken901','Metal'),mk('Wood901','Wood Floor')];
   window.__api=url=>{window.__calls.push(url);const u=new URL(url),off=+u.searchParams.get('offset')||0;return JSON.stringify({numberOfResults:70,foundAssets:off?[mk('Page2_901','Tiles')]:all});};
   P.isDesktop=true;P.invoke=async(cmd,args)=>{if(cmd==='net_get_text')return window.__api(args.url);
-    if(cmd==='net_download'){window.__calls.push('dl '+args.url);if(window.__hold){await window.__hold(args.id);}const id=/file=([A-Za-z0-9_]+?)_\d+K/.exec(args.url)[1];const z=await window.__mkZip(id,!id.startsWith('Broken'));return z.buffer;}
+    if(cmd==='net_download'){window.__calls.push('dl '+args.url);if(window.__hold){await window.__hold(args.id);if(window.__cancelFlag){window.__cancelFlag=false;throw new Error('cancelled');}}const id=/file=([A-Za-z0-9_]+?)_\d+K/.exec(args.url)[1];const z=await window.__mkZip(id,!id.startsWith('Broken'));return z.buffer;}
     if(cmd==='net_cancel'){window.__calls.push('cancel '+args.id);if(window.__cancel)window.__cancel();return;}
     return null;};});
  /* open the window and search */
@@ -58,7 +58,7 @@ const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{__gs.closeDialog&&0;});
  /* cancel in the middle of a download */
  const can=await p.evaluate(async()=>{const G=__gs;G.ol.sel.clear();const it=G.ol.items.find(i=>i.id==='Wood901');G.ol.sel.set(it.id,it);
-  let release;window.__hold=()=>new Promise(r=>{release=r;window.__cancel=()=>r();});const run=G.olRun('material');await new Promise(r=>setTimeout(r,300));document.getElementById('olCancel').click();await run;window.__hold=null;
+  let release;window.__hold=()=>new Promise(r=>{release=r;window.__cancel=()=>{window.__cancelFlag=true;r();};});const run=G.olRun('material');await new Promise(r=>setTimeout(r,300));document.getElementById('olCancel').click();await run;window.__hold=null;
   return {added:G.dlLib.list.some(r=>r.dl.aid==='Wood901'),calls:window.__calls.filter(c=>/^cancel/.test(c)).length};});
  ok(!can.added&&can.calls===1,'Cancel stops the running download and adds nothing');
  /* grunge */
