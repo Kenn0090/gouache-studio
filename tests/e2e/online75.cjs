@@ -21,7 +21,17 @@ const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
   const mk=(id,dc,i)=>({assetId:id,displayName:'Test '+id,displayCategory:dc,previewImage:{'256-WEBP':'https://acg-media.example/'+id+'.webp'},downloadFolders:{default:{downloadFiletypeCategories:{zip:{downloads:['1K','2K','4K'].map(r=>({attribute:r+'-JPG',size:{'1K':7e6,'2K':21e6,'4K':73e6}[r],fullDownloadPath:'https://ambientcg.com/get?file='+id+'_'+r+'-JPG.zip'}))}}}}});
   const all=[mk('Metal901','Metal'),mk('Leather901','Leather'),mk('Broken901','Metal'),mk('Wood901','Wood Floor')];
   window.__api=url=>{window.__calls.push(url);const u=new URL(url),off=+u.searchParams.get('offset')||0;return JSON.stringify({numberOfResults:70,foundAssets:off?[mk('Page2_901','Tiles')]:all});};
+  const phList={brick_wall_01:{name:'Brick Wall 01',categories:['brick','wall','outdoor'],tags:['red','old'],category:'Bricks/Wall',max_resolution:[8192,8192],download_count:900,date_published:100,authors:{'Rob Tuytel':'All'},thumbnail_url:'https://cdn.polyhaven.com/asset_img/thumbs/brick_wall_01.png'},
+    oak_planks_02:{name:'Oak Planks 02',categories:['wood','raw wood','floor'],tags:['planks'],category:'Wood/Planks',max_resolution:[4096,4096],download_count:500,date_published:300,authors:{'Dimitrios Savva':'All','Rico Cilliers':'Textures'},thumbnail_url:'https://cdn.polyhaven.com/asset_img/thumbs/oak_planks_02.png'},
+    leather_red_03:{name:'Leather Red 03',categories:['leather'],tags:[],category:'Leather',max_resolution:[2048,2048],download_count:700,date_published:200,authors:{'Someone':'All'},thumbnail_url:''}};
+  const phFile=(id,k)=>{const o={};for(const r of ['1k','2k','4k'])o[r]={jpg:{size:1000,md5:'x',url:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/'+r+'/'+id+'/'+id+'_'+k+'_'+r+'.jpg'}};return o;};
+  window.__phFilesMap={Diffuse:'diff',nor_gl:'nor_gl',arm:'arm',Displacement:'disp',Rough:'rough',AO:'ao'};
+  window.__png=async(r,g,b2)=>{const c=document.createElement('canvas');c.width=c.height=32;const x=c.getContext('2d');x.fillStyle='rgb('+r+','+g+','+b2+')';x.fillRect(0,0,32,32);x.fillStyle='#fff';x.fillRect(4,4,10,10);const bl=await new Promise(res=>c.toBlob(res,'image/png'));return new Uint8Array(await bl.arrayBuffer());};
+  const oldApi=window.__api;window.__api=url=>{if(url.startsWith('https://api.polyhaven.com/assets'))return (window.__calls.push(url),JSON.stringify(phList));
+    const m=/^https:\/\/api\.polyhaven\.com\/files\/([a-z0-9_]+)$/.exec(url);if(m){window.__calls.push(url);const o={};for(const [k,v] of Object.entries(window.__phFilesMap))o[k]=phFile(m[1],v);return JSON.stringify(o);}return oldApi(url);};
+  const oldInv=null;
   P.isDesktop=true;P.invoke=async(cmd,args)=>{if(cmd==='net_get_text')return window.__api(args.url);
+    if(cmd==='net_download'&&/dl\.polyhaven\.org/.test(args.url)){window.__calls.push('dl '+args.url);const u=await window.__png(180,140,90);return u.buffer;}
     if(cmd==='net_download'){window.__calls.push('dl '+args.url);if(window.__hold){await window.__hold(args.id);if(window.__cancelFlag){window.__cancelFlag=false;throw new Error('cancelled');}}const id=/file=([A-Za-z0-9_]+?)_\d+K/.exec(args.url)[1];const z=await window.__mkZip(id,!id.startsWith('Broken'));return z.buffer;}
     if(cmd==='net_cancel'){window.__calls.push('cancel '+args.id);if(window.__cancel)window.__cancel();return;}
     return null;};});
@@ -71,6 +81,31 @@ const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* delete */
  await p.evaluate(()=>{const v=__gs.dlLib.list.find(r=>r.dl.aid==='Leather901');__gs.dlDelete(v);});await p.click('#dlgOk');
  ok(await p.evaluate(async()=>!__gs.dlLib.list.some(r=>r.dl.aid==='Leather901')&&!(await __gs.store.getRaw('d:Leather901','materials'))),'deleting removes it from the list and the store');
+ /* Poly Haven */
+ await p.evaluate(()=>{__gs.ol.sel.clear();});await p.locator('.olsrc .seg button',{hasText:'Poly Haven'}).click();await p.waitForFunction(()=>__gs.ol.src==='ph'&&!__gs.ol.loading&&__gs.ol.items.length===3);
+ ok(await p.locator('.oltile').count()===3,'switching the source lists the Poly Haven textures');
+ ok(/Powered by Poly Haven/.test(await p.locator('#olCredit').textContent()),'a visible "Powered by Poly Haven" credit is shown');
+ ok(await p.locator('[data-cat="grunge"]').count()===0,'the grunge chip is only for ambientCG');
+ ok(await p.evaluate(()=>__gs.ol.items[0].id==='brick_wall_01'),'Popular puts the most downloaded first');
+ await p.fill('#olSearch','plank');await p.click('#olGo');await p.waitForFunction(()=>__gs.ol.items.length===1&&__gs.ol.items[0].id==='oak_planks_02');ok(true,'searching filters the list (planks -> Oak Planks 02)');
+ await p.fill('#olSearch','');await p.click('#olGo');await p.waitForFunction(()=>__gs.ol.items.length===3);
+ await p.locator('[data-cat="Wood"]').click();await p.waitForFunction(()=>!__gs.ol.loading&&__gs.ol.items.length===1);ok(await p.evaluate(()=>__gs.ol.items[0].cat==='Wood'),'the Wood chip keeps only wood');
+ await p.locator('[data-cat="all"]').click();await p.waitForFunction(()=>!__gs.ol.loading&&__gs.ol.items.length===3);
+ await p.locator('.olbar .seg button',{hasText:'Newest'}).click();await p.waitForFunction(()=>__gs.ol.items[0]&&__gs.ol.items[0].id==='oak_planks_02');ok(true,'Newest puts the latest first');
+ await p.locator('[data-id="brick_wall_01"]').click();await p.locator('.olres .seg button',{hasText:'2K'}).click();
+ const before=await p.evaluate(()=>__calls.length);await p.click('#olAdd');await p.waitForFunction(()=>!__gs.ol.busy,null,{timeout:120000});
+ const ph=await p.evaluate(()=>{const r=__gs.dlLib.list.find(x=>x.dl.aid==='ph:brick_wall_01');return r?{res:r.dl.res,cat:r.cat,credit:r.credit,url:r.url,imgs:!!r.imgs,thumb:/^data:image/.test(r.thumb||''),id:r.id}:null;});
+ ok(ph&&ph.res==='2K'&&ph.cat==='Stone & tile','a Poly Haven material is added at the chosen size and category ('+JSON.stringify(ph&&{res:ph.res,cat:ph.cat})+')');
+ ok(ph&&/Poly Haven · Rob Tuytel \(CC0\)/.test(ph.credit)&&/polyhaven\.com\/a\/brick_wall_01/.test(ph.url),'its credit names Poly Haven and its creator');
+ ok(ph&&!ph.imgs&&ph.thumb,'only a small description and a thumbnail are kept in memory');
+ const dls=await p.evaluate(b=>__calls.slice(b).filter(c=>/^dl /.test(c)),before);
+ ok(dls.length===4&&dls.every(c=>/\/2k\//.test(c)),'four map files were fetched at 2k (colour, normal, height, packed roughness/AO/metal): '+dls.length);
+ const loaded=await p.evaluate(async()=>{const v=__gs.dlLib.list.find(x=>x.dl.aid==='ph:brick_wall_01');await __gs.gmLoad(v);return Object.keys(v.imgs).sort().join();});
+ ok(/base/.test(loaded)&&/normal/.test(loaded)&&/rough/.test(loaded)&&/metal/.test(loaded)&&/height/.test(loaded)&&/ao/.test(loaded),'its pictures come back from the store with every channel ('+loaded+')');
+ ok(await p.evaluate(()=>{const t=document.querySelector('[data-id="brick_wall_01"]');return !!t&&t.classList.contains('own');}),'it is now marked In Library');
+ const grPH=await p.evaluate(async()=>{const G=__gs;await G.txLoad();const n0=G.tx.mine.length;G.ol.sel.clear();const it=G.ol.items.find(i=>i.id==='oak_planks_02');G.ol.sel.set(it.id,it);await G.olRun('grunge');return {added:G.tx.mine.length-n0,name:G.tx.mine[G.tx.mine.length-1].name};});
+ ok(grPH.added===1&&/Poly Haven/.test(grPH.name),'Add as grunge map works for Poly Haven too ('+grPH.name+')');
+ await p.locator('.olsrc .seg button',{hasText:'ambientCG'}).click();await p.waitForFunction(()=>__gs.ol.src==='ac'&&!__gs.ol.loading&&__gs.ol.items.length>0);ok(await p.locator('[data-cat="grunge"]').count()===1,'switching back to ambientCG brings its Grunge chip back');
  /* the upgrade: stop after two */
  await p.evaluate(()=>{__gs.closeDialog&&0;});
  const up=await p.evaluate(async()=>{const G=__gs;const before=G.gmList().length,t=G.olUpTargets('2K').length;let stopped=false;await G.olUpgrade('2K',()=>{const st=G.olUp.busy;if(st&&st.done>=2&&!st.cancel){stopped=true;st.cancel=true;}});

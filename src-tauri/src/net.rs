@@ -22,7 +22,15 @@ fn allowed(url: &Url) -> bool {
         return false;
     }
     match url.host_str() {
-        Some(h) => h == "ambientcg.com" || h == "struffelproductions.com" || h.ends_with(".struffelproductions.com"),
+        Some(h) => {
+            h == "ambientcg.com"
+                || h == "struffelproductions.com"
+                || h.ends_with(".struffelproductions.com")
+                // Poly Haven: the search service, the files and their pictures
+                || h == "api.polyhaven.com"
+                || h == "dl.polyhaven.org"
+                || h == "cdn.polyhaven.com"
+        }
         None => false,
     }
 }
@@ -142,6 +150,10 @@ mod tests {
         assert!(ok("https://ambientcg.com/api/v2/full_json?type=Material"));
         assert!(ok("https://acg-download.struffelproductions.com/file/x.zip"));
         assert!(ok("https://struffelproductions.com/a"));
+        assert!(ok("https://api.polyhaven.com/assets?t=textures"));
+        assert!(ok("https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/x/x_diff_1k.jpg"));
+        assert!(!ok("https://polyhaven.org.evil.com/a"));
+        assert!(!ok("https://evil.polyhaven.org/a"));
         assert!(!ok("http://ambientcg.com/a")); // not https
         assert!(!ok("https://evil.com/ambientcg.com"));
         assert!(!ok("https://ambientcg.com.evil.com/a"));
@@ -164,6 +176,8 @@ mod tests {
             .unwrap();
             assert!(bytes.len() > 1_000_000 && &bytes[0..2] == b"PK");
             assert_eq!(seen.load(Ordering::SeqCst) as usize, bytes.len());
+            let ph = net_get_text("https://api.polyhaven.com/files/aerial_asphalt_01".into()).await.unwrap();
+            assert!(ph.contains("Diffuse"));
             assert!(net_get_text("https://example.com/".into()).await.is_err());
         });
     }
