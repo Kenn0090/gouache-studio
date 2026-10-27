@@ -1,3 +1,7 @@
+# Gouache Studio 0.75.1
+
+- **See-through materials:** materials with transparency get a tick, **Cut out by the material's transparency**. It adds a mask from the transparency, so the layers under show through in every map.
+
 # Gouache Studio 0.75.0
 
 - **Get more materials:** Materials › Library › Get more… browses ambientCG inside the app. Tick several, choose 1K, 2K or 4K, and add them to your Library. Includes a Grunge maps category that sends grey maps to Textures.

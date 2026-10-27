@@ -230,12 +230,29 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
           el('p',{class:'note',text:'Height makes bump detail: the normal follows it, on the model and in exported normal maps.'}));}
       if(inputTex)row.append(makeSlider({id:'fl_con_'+k,label:'Contrast',min:-1,max:1,step:.01,value:s.con||0,fmt:v=>Math.round(v*100)+'%',onInput:v=>edit(()=>{s.con=v;},k)}).el);}
     box.append(card);}
+  if(fillHasAlpha(L))box.append(chk('fl_alpha','Cut out by the material’s transparency',fillAlphaOn(L),v=>{matEdCommit();fillAlphaMask(L,v);renderMatEd(true);}),
+    el('p',{class:'note',text:'This material’s picture has see-through parts. Tick this to add a mask from its transparency, so the layers under show through in every map (colour, roughness, normal…).'}));
   box.append(chk('fl_cover','Hide the bumps below',W.coverH!==false,v=>edit(()=>{W.coverH=v;},null)),
     el('p',{class:'note',text:'On: this material covers the height and normal detail of the layers under it. Off: its bumps are added on top of theirs.'}));
   const miss=['rough','metal','height','normal','emis','opac'].filter(k=>!doc.maps.includes(k)&&!(doc.workflow==='spec'&&(k==='rough'||k==='metal')));
   if(miss.length)box.append(el('div',{class:'chips'},el('span',{class:'note',text:'Add a map:'}),...miss.map(k=>el('button',{class:'btn sm',text:MAP_DEFS[k].label,onclick:()=>{matEdCommit();setDocMaps([...doc.maps,k],'Add a map for the material');fillRender(L);renderMatEd(true);}}))));
   box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'fl_save',text:'Save to Materials',title:'Keep this material in the Materials tab for other layers and projects',onclick:()=>{matEdCommit();if(typeof matSaveFromFill==='function')matSaveFromFill(L,L.fill);}})),
     el('p',{class:'note',text:'Painting on a material layer paints its mask: black hides the material, white shows it.'}));}
+/* (0.75.1) materials with see-through parts: a tick adds / removes a mask row made from their transparency */
+function fillHasAlpha(L){const f=L&&L.fill;if(!f)return false;const o=f.maps.opac;if(o&&o.on)return true;if(f.decal)return true;
+  const t=L._fillImg&&L._fillImg.base;if(!f.maps.base||!f.maps.base.on||f.maps.base.src!=='image'||!t)return false;
+  if(L._alphaChk&&L._alphaChk.t===t)return L._alphaChk.has;const s=makeTarget(64,64,8,false);copyScaled(t,s);const d=captureRegionNow(s,0,0,64,64).data;disposeTarget(s);
+  let has=false;for(let i=3;i<d.length;i+=4)if(d[i]<250){has=true;break;}L._alphaChk={t,has};return has;}
+const fillAlphaOn=L=>!!(L&&L.mask&&L.mask.stack&&L.mask.stack.some(r=>r.kind==='alpha'));
+function fillAlphaMask(L,on){if(!isLayer(L)||!L.fill||fillAlphaOn(L)===!!on)return;
+  msRecord(L,on?'Cut out by transparency':'Remove the transparency cut-out',()=>{
+    if(on){if(!L.mask){L.mask=makeMask(1);L.mask._rows=new Set();L.mask._alphaMade=true;const f=msRow('fill');L.mask.stack=[f];L.mask._rows.add(f);}else msMakeStack(L);
+      const r=msRow('alpha',{mode:'multiply'});L.mask.stack.push(r);L.mask._rows.add(r);}
+    else{L.mask.stack=L.mask.stack.filter(r=>r.kind!=='alpha');
+      /* a mask made only for this, and not painted since, goes away again */
+      if(L.mask._alphaMade&&L.mask.stack.every(r=>r.kind==='fill')){L.mask=null;L.editMask=false;if(ui.viewMask)ui.viewMask=false;return;}}
+    L.mask._key=null;L.lookVer=(L.lookVer||0)+1;});
+  changed(L);renderLayers();requestRender(true);}
 /* the layer's material: brings the Material panel forward on it (double-click a material layer, Fill settings…) */
 function dlgFillLayer(L){L=L||doc.active;if(!isLayer(L)||!L.fill){toast('Select a fill layer.');return;}if(doc.active!==L){selectOnly(L);renderLayers();}
   showPanel('matEd');renderMatEd(true);}

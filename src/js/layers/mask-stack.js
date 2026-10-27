@@ -27,6 +27,8 @@ const MS_KINDS={
   /* anchor points (0.24): 'anchorpt' marks a layer's content (a blue row); 'anchor' reads it in a mask */
   anchorpt:{title:'Anchor point',p:()=>({name:''})},
   anchor:{title:'From anchor',p:()=>({name:'',ch:'height',inv:false})},
+  /* (0.75.1) a material's own transparency (its picture's alpha, and its Opacity map) as a mask: where it is see-through the layers below show, in every map */
+  alpha:{title:'Material transparency',p:()=>({inv:false})},
   filter:{title:'Filter'}};
 /* filters a mask row can use (the ones that make sense on a black and white picture), plus our own */
 const MS_FILTERS=['levels','curves','threshold','posterize','invert','blur','boxBlur','motionBlur','sharpen','highPass','edges'];
@@ -198,6 +200,10 @@ const MS_AXES={up:[0,1,0],down:[0,-1,0],x:[1,0,0],'-x':[-1,0,0],z:[0,0,1],'-z':[
 function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquireD(depth);
   if(r.kind==='paint'){const t=ov&&ov.row===r?ov.t:r.t;return t?{t,pooled:false}:null;}
   if(r.kind==='fill'){const o=out();clearTarget(o,[p.v,p.v,p.v,1]);return {t:o,pooled:true};}
+  if(r.kind==='alpha'){const T=L&&L.fill&&typeof mapT==='function'?mapT(L,'base'):null,O=L&&L.fill&&L.fill.maps.opac&&L.fill.maps.opac.on&&doc.maps.includes('opac')?mapT(L,'opac'):null;
+    if(!P_MSALPHA)P_MSALPHA=program(`in vec2 vUV; uniform sampler2D uT; uniform sampler2D uO; uniform int uHasT; uniform int uHasO; uniform int uNeg;
+      void main(){ float a=1.0; if(uHasT==1)a=texture(uT,vUV).a; if(uHasO==1)a*=dot(texture(uO,vUV).rgb,vec3(0.299,0.587,0.114)); o=vec4(vec3(uNeg==1?1.0-a:a),1.0); }`);
+    const o=out();run(P_MSALPHA,o,{uT:T&&!T.empty?T.tex:dummy,uHasT:{int:T&&!T.empty?1:0},uO:O&&!O.empty?O.tex:dummy,uHasO:{int:O&&!O.empty?1:0},uNeg:{int:p.inv?1:0}});return {t:o,pooled:true};}
   const lum=(tex,inv)=>{const o=out();run(P.src,o,Object.assign({uKind:{int:0},uT:tex,uNeg:{int:inv?1:0},uSeed:0},ctx.surf));return {t:o,pooled:true};};
   if(r.kind==='mesh'){const t=msMeshTex(p.k)||msDocMap(p.k,ctx);return t?lum(t.tex,p.inv):null;}
   if(r.kind==='ref'){const o=r._ref&&r._ref.mask&&inDoc(r._ref)?r._ref:(allNodes(doc.root).find(n=>n.name===p.name&&n.mask&&n!==L)||null);if(!o||o===L||(guard||[]).includes(o))return null;r._ref=o;
@@ -246,7 +252,7 @@ function msEval(L,ov,guard){const M=L.mask,S=M.stack,P=msProgs(),d=M.target.dept
 /* keep L.mask.target up to date: redone when the rows, the layer, the mesh maps or the model change */
 function msKey(L){const M=doc.meshMaps||{};return [L.lookVer||0,JSON.stringify(L.mask.stack,(k,x)=>k==='t'||k[0]==='_'?undefined:x),Object.keys(M).map(k=>k+(M[k].tex?1:0)).join(),doc.w,doc.h,
   v3.mesh&&(ui.mode==='p3d'||v3.on)?v3.mesh.name+v3.mesh.idx.length+(typeof p3Range==='function'&&ui.mode==='p3d'?p3Range().start:0):'',msEpoch,msUsesDoc(L)?msDocVer:'',L.mask.stack.some(r=>r.kind==='anchor'||(r.kind==='gen'&&r.p.anchor))?L.mask.stack.map(r=>{const A=msAnchor(r.kind==='anchor'?r.p.name:r.p.anchor);return A?A.lookVer||0:'';}).join(':'):'',(L.mask.stack.find(r=>r.kind==='ref')?allNodes(doc.root).map(n=>n.mask&&n.mask._key?n.lookVer:'').join(','):'')].join('|');}
-let msEpoch=0;
+let msEpoch=0;let P_MSALPHA=null;
 function msUpdate(L,guard){if(!msHas(L))return;const k=msKey(L);if(L.mask._key===k)return;L.mask._key=k;const r=msEval(L,null,guard);blit(r,L.mask.target,0,0,doc.w,doc.h,0,0);release(r);if(L.mask.thumb)thumbQ.add(L);}
 function msUpdateAll(){for(const n of allNodes(doc.root))if(msHas(n))msUpdate(n);}
 

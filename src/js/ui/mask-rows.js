@@ -115,6 +115,7 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
   if(r.kind==='image')box.append(el('div',{class:'row wrap'},el('span',{class:'note',text:p.name||'No picture'}),el('button',{class:'btn sm',text:'Choose picture…',onclick:()=>msPickImage(L,r)})),
     makeSlider({id:'ms_imgContrast',label:'Contrast',min:-1,max:4,step:.01,value:p.contrast??0,fmt:pct,onInput:v=>ed(x=>{x.p.contrast=v;})}).el,
     S('ms_tile','Tile','tile',.25,16,.25,v=>v+'×'),inv(),pxfBox(L,r,PXF_MODES));
+  if(r.kind==='alpha')box.append(inv(),el('p',{class:'note',text:'Uses the transparency of this material’s picture (and its Opacity map, if it has one). Where it is see-through, the layers under show in every map.'}));
   if(r.kind==='ref'){const os=allNodes(doc.root).filter(n=>n!==L&&n.mask);box.append(sel('ms_ref','Layer',os.map(o=>[o.name,o.name]),'name'),inv(),el('p',{class:'note',text:'Follows that layer’s mask, live.'}));}
   if(r.kind==='gen'){
     if(p.g==='builder'){for(const [k,v] of Object.entries(msGenDefaults('builder')))if(p[k]==null)p[k]=v;

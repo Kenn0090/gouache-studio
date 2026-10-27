@@ -1,3 +1,7 @@
+## 0.75.1
+
+- **See-through materials can show what is under them.** A material whose picture has see-through parts (or an Opacity map) now has **Cut out by the material's transparency** in the Material panel. Tick it and a mask made from that transparency is added, so the layers under show through in every map (colour, roughness, metallic, height, normal), not only the colour. Untick it to take it away again. It appears as a **Material transparency** row in the mask, which you can invert, and a mask made only for this goes away when you untick it.
+
 ## 0.75.0
 
 - **Get more materials (online library).** Materials › Library › **Get more…** opens a window inside the app where you can browse ambientCG (free, CC0), search, pick a category, tick several materials, choose **1K, 2K or 4K**, and add them to your Library in one go. Each one is built into a normal material (colour, roughness, metallic, normal, height) and keeps its credit. Desktop app only; it needs the internet only while downloading.
