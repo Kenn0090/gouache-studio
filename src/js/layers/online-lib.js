@@ -21,16 +21,16 @@ const OL_GROUPS={
 const OL_GRUNGE=['Scratches','Smear','Surface Imperfections','Fingerprints','Chip','Footsteps','Rust','Asphalt'];
 const OL_GRUNGE_OPACITY=['Scratches','Smear','Surface Imperfections','Fingerprints','Chip','Footsteps'];
 /* ---- Poly Haven (polyhaven.com, CC0): one list of ~870 textures, searched here; each map is its own file ---- */
-const PH_API='https://api.polyhaven.com';
-const PH_GROUPS={'Metal':['metal'],'Leather':['leather','suede'],'Fabric':['fabric','cotton','denim','wool','fleece','knitted','fur','hessian','crepe','jacquard','satin','carpet','corduroy','woven','velvet','stretchy'],
+const PV_API='https://api.polyhaven.com';
+const PV_GROUPS={'Metal':['metal'],'Leather':['leather','suede'],'Fabric':['fabric','cotton','denim','wool','fleece','knitted','fur','hessian','crepe','jacquard','satin','carpet','corduroy','woven','velvet','stretchy'],
   'Wood':['wood','raw wood','bark'],'Stone & tile':['rock','brick','concrete','cobblestone','tiles','roofing','road','asphalt','plaster-concrete'],'Ground & nature':['terrain','sand','snow','gravel','sandstone'],'Paint & ceramic':['plaster']};
 /* typical download sizes per picture size (their API gives each file's size only when the material is opened) */
-const PH_TYPICAL={'1K':1.5e6,'2K':5e6,'4K':18e6};
-function phGroupOf(cats){for(const g in PH_GROUPS)if(cats.some(c=>PH_GROUPS[g].includes(c)))return g;return 'Other';}
-function phItem(id,a){const cats=a.categories||[],mx=Math.max(...(a.max_resolution||[1024])),dl={};for(const r of ['1K','2K','4K'])if(mx>=OL_RES[r]||r==='1K')dl[r]={url:'',size:PH_TYPICAL[r],est:true};
-  return {id,src:'ph',name:a.name||id,dc:(a.category||'').split('/').pop()||'',cats,tags:a.tags||[],cat:phGroupOf(cats),thumb:a.thumbnail_url||'',dl,pop:a.download_count||0,date:a.date_published||0,authors:Object.keys(a.authors||{})};}
-async function phLoad(){if(ol.ph)return ol.ph;const j=JSON.parse(await platform.invoke('net_get_text',{url:PH_API+'/assets?t=textures'}));ol.ph=Object.entries(j).map(([id,a])=>phItem(id,a));return ol.ph;}
-const ol={src:'ac',ph:null,q:'',cat:'all',sort:'Popular',offset:0,total:0,items:[],sel:new Map(),res:'1K',loading:false,err:'',busy:null,prog:{},seq:0,job:0,listening:false,body:null,grid:null,foot:null,chips:null};
+const PV_TYPICAL={'1K':1.5e6,'2K':5e6,'4K':18e6};
+function pvGroupOf(cats){for(const g in PV_GROUPS)if(cats.some(c=>PV_GROUPS[g].includes(c)))return g;return 'Other';}
+function pvItem(id,a){const cats=a.categories||[],mx=Math.max(...(a.max_resolution||[1024])),dl={};for(const r of ['1K','2K','4K'])if(mx>=OL_RES[r]||r==='1K')dl[r]={url:'',size:PV_TYPICAL[r],est:true};
+  return {id,src:'ph',name:a.name||id,dc:(a.category||'').split('/').pop()||'',cats,tags:a.tags||[],cat:pvGroupOf(cats),thumb:a.thumbnail_url||'',dl,pop:a.download_count||0,date:a.date_published||0,authors:Object.keys(a.authors||{})};}
+async function pvLoad(){if(ol.pv)return ol.pv;const j=JSON.parse(await platform.invoke('net_get_text',{url:PV_API+'/assets?t=textures'}));ol.pv=Object.entries(j).map(([id,a])=>pvItem(id,a));return ol.pv;}
+const ol={src:'ac',pv:null,q:'',cat:'all',sort:'Popular',offset:0,total:0,items:[],sel:new Map(),res:'1K',loading:false,err:'',busy:null,prog:{},seq:0,job:0,listening:false,body:null,grid:null,foot:null,chips:null};
 function olGroupOf(dc){for(const g in OL_GROUPS)if(OL_GROUPS[g].includes(dc))return g;return 'Other';}
 /* "ambientCG.com Metal047B (CC0)" -> Metal047B */
 function olIdOf(credit){const m=/ambientCG\.com\s+([A-Za-z0-9_]+)/i.exec(credit||'');return m?m[1]:null;}
@@ -47,9 +47,9 @@ function olProgress(id){const b=ol.body;if(!b)return;const row=b.querySelector('
   const bar=row.querySelector('.bakebar div'),txt=row.querySelector('.olstat');if(bar)bar.style.width=(p.total?Math.round(p.got/p.total*100):30)+'%';if(txt)txt.textContent='Downloading '+olMB(p.got)+(p.total?' of '+olMB(p.total):'');}
 /* ---- asking ambientCG (through the desktop side) ---- */
 async function olSearch(){const my=++ol.seq;ol.loading=true;ol.err='';olDraw();
-  try{if(ol.src==='ph'){const all=await phLoad();if(my!==ol.seq)return;let L=all;const q=ol.q.trim().toLowerCase();
+  try{if(ol.src==='ph'){const all=await pvLoad();if(my!==ol.seq)return;let L=all;const q=ol.q.trim().toLowerCase();
       if(q)L=L.filter(it=>(it.name+' '+it.tags.join(' ')+' '+it.cats.join(' ')+' '+it.dc).toLowerCase().includes(q));
-      if(ol.cat!=='all'&&PH_GROUPS[ol.cat])L=L.filter(it=>it.cat===ol.cat);else if(ol.cat==='grunge')L=[];
+      if(ol.cat!=='all'&&PV_GROUPS[ol.cat])L=L.filter(it=>it.cat===ol.cat);else if(ol.cat==='grunge')L=[];
       L=L.slice().sort(ol.sort==='Latest'?(a,b)=>b.date-a.date:(a,b)=>b.pop-a.pop);ol.total=L.length;ol.items=L.slice(ol.offset,ol.offset+OL_PAGE);return;}
     const p=new URLSearchParams({type:'Material',limit:String(OL_PAGE),offset:String(ol.offset),sort:ol.sort,include:'downloadData,previewData'});
     if(ol.q.trim())p.set('q',ol.q.trim());if(ol.cat==='grunge')p.set('category',OL_GRUNGE.join(','));else if(ol.cat!=='all'&&OL_GROUPS[ol.cat])p.set('category',OL_GROUPS[ol.cat].join(','));
@@ -76,20 +76,20 @@ async function olStore(rec){await store.put(rec,'materials');
   const view=dlView(rec),old=dlLib.list.findIndex(r=>r.id===rec.id);if(old>=0){const o=dlLib.list[old];if(o._t)for(const k in o._t)disposeTarget(o._t[k]);dlLib.list[old]=view;}else dlLib.list.push(view);
   return view;}
 /* Poly Haven: the map files (colour, normal, packed roughness/AO/metal or the single maps, height) one by one, then built like any other */
-async function phFiles(it,res,row){const rk=res.toLowerCase(),files=JSON.parse(await platform.invoke('net_get_text',{url:PH_API+'/files/'+it.id}));
+async function pvFiles(it,res,row){const rk=res.toLowerCase(),files=JSON.parse(await platform.invoke('net_get_text',{url:PV_API+'/files/'+it.id}));
   const pick=k=>{const e=files[k]&&files[k][rk],f=e&&(e.jpg||e.png);return f?f.url:null;};
   const urls=[pick('Diffuse'),pick('nor_gl'),pick('Displacement')].filter(Boolean),arm=pick('arm');
   if(arm)urls.push(arm);else for(const k of ['Rough','AO','Metal']){const u=pick(k);if(u)urls.push(u);}
   if(!urls.length)throw new Error('that size is not available');
   const out=[];let n=0;for(const u of urls){if(row){row.state='downloading';row.sub=(++n)+' of '+urls.length;olDraw(true);}const ab=await olZipGet(u,row);out.push(new File([ab],u.split('/').pop().split('?')[0]));}
   return out;}
-async function olMakePH(it,res,row){if(!it.dl[res])res='1K';const files=await phFiles(it,res,row);if(row){row.state='building';row.sub='';olDraw(true);}
+async function olMakePV(it,res,row){if(!it.dl[res])res='1K';const files=await pvFiles(it,res,row);if(row){row.state='building';row.sub='';olDraw(true);}
   const built=await miBuild(files,it.name,OL_RES[res]);
   return olStore({id:'d:ph:'+it.id,name:it.name,t:Date.now(),kind:'material',dl:{aid:'ph:'+it.id,res,upg:false,src:'ph'},cat:it.cat,credit:'Poly Haven · '+(it.authors.join(', ')||'Poly Haven')+' (CC0)',url:'https://polyhaven.com/a/'+it.id,
     thumb:await olThumb(it,built),fill:built.fill,imgs:built.imgs});}
 
 /* grunge: ambientCG materials also carry grey maps; the height (else AO, else roughness) goes to Textures */
-async function olGrunge(it,row){let files;if(it.src==='ph'){const rk='1k',fl=JSON.parse(await platform.invoke('net_get_text',{url:PH_API+'/files/'+it.id})),u=['Displacement','Rough','AO'].map(k=>fl[k]&&fl[k][rk]&&(fl[k][rk].jpg||fl[k][rk].png)).filter(Boolean).map(f=>f.url)[0];
+async function olGrunge(it,row){let files;if(it.src==='ph'){const rk='1k',fl=JSON.parse(await platform.invoke('net_get_text',{url:PV_API+'/files/'+it.id})),u=['Displacement','Rough','AO'].map(k=>fl[k]&&fl[k][rk]&&(fl[k][rk].jpg||fl[k][rk].png)).filter(Boolean).map(f=>f.url)[0];
     if(!u)throw new Error('no grey map in that download');files=[new File([await olZipGet(u,row)],u.split('/').pop())];}
   else{const ab=await olZipGet(it.dl['1K']?it.dl['1K'].url:olZip(it.id,'1K'),row);files=await miUnzip(ab);}
   if(row){row.state='building';olDraw(true);}
@@ -124,7 +124,7 @@ function olCancel(){const b=ol.busy;if(!b)return;b.cancel=true;for(const r of b.
 async function olRun(mode){if(ol.busy||!ol.sel.size)return;const list=[...ol.sel.values()],res=ol.res;
   ol.last=null;ol.busy={cancel:false,rows:list.map(it=>({it,state:'waiting',job:null,err:''}))};olDraw();let done=0,failed=0;
   for(const row of ol.busy.rows){if(ol.busy.cancel){row.state='skipped';continue;}row.state='downloading';olDraw(true);
-    try{if(mode==='grunge')await olGrunge(row.it,row);else if(row.it.src==='ph')await olMakePH(row.it,res,row);else{const d=row.it.dl[res]||row.it.dl['1K'];await olMake({id:row.it.id,name:row.it.name,cat:row.it.cat,thumb:row.it.thumb,url:d.url},res in row.it.dl?res:'1K',row);}
+    try{if(mode==='grunge')await olGrunge(row.it,row);else if(row.it.src==='ph')await olMakePV(row.it,res,row);else{const d=row.it.dl[res]||row.it.dl['1K'];await olMake({id:row.it.id,name:row.it.name,cat:row.it.cat,thumb:row.it.thumb,url:d.url},res in row.it.dl?res:'1K',row);}
       row.state='done';done++;ol.sel.delete(row.it.id);if(mode!=='grunge')renderMats();}
     catch(e){const m=e&&e.message||String(e);if(m==='cancelled'||ol.busy.cancel){row.state='cancelled';}else{row.state='failed';row.err=m;failed++;console.warn(e);}}
     olDraw(true);}
