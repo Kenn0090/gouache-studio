@@ -31,6 +31,7 @@ const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok((await p.evaluate(()=>__calls[0])).includes('type=Material')&&(await p.evaluate(()=>__calls[0])).includes('limit=30')&&(await p.evaluate(()=>__calls[0])).includes('sort=Popular'),'the search asks ambientCG for materials, popular first');
  await p.fill('#olSearch','metal');await p.click('#olGo');await p.waitForFunction(()=>__calls.some(c=>/q=metal/.test(c)));ok(true,'typing a word and pressing Search sends it as q=');
  await p.locator('[data-cat="Wood"]').click();await p.waitForFunction(()=>__calls.some(c=>/category=Wood/.test(c)&&/Wood\+Floor|Wood%20Floor/.test(c)));ok(true,'a category chip asks for all of ambientCG\'s matching categories');
+ await p.locator('[data-cat="grunge"]').click();await p.waitForFunction(()=>__calls.some(c=>/category=Scratches/.test(c)&&/Surface\+Imperfections|Surface%20Imperfections/.test(c)));ok(true,'the Grunge maps chip asks for scratches, smears and similar sets');
  await p.locator('[data-cat="all"]').click();await p.waitForFunction(()=>!__gs.ol.loading);
  await p.click('#olNext');await p.waitForFunction(()=>__calls.some(c=>/offset=30/.test(c)));ok(true,'Next asks for the next 30');await p.waitForFunction(()=>!__gs.ol.loading);await p.click('#olPrev');await p.waitForFunction(()=>!__gs.ol.loading&&__gs.ol.items.length===4);
  /* choose two good ones and one broken, 2K */

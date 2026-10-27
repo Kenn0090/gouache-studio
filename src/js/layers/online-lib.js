@@ -17,6 +17,9 @@ const OL_GROUPS={
   'Ground & nature':['Ground','Gravel','Snow','Grass','Scattered Leaves','Moss','Lava','Ice','Clay','Leaf','Shells','Flower Set','Thatched Roof','Pathway'],
   'Stone & tile':['Tiles','Paving Stones','Bricks','Rock','Rocks','Concrete','Asphalt','Road','Roofing Tiles','Facade','Marble','Terrazzo','Onyx','Granite','Travertine','Tactile Paving','Plaster'],
   'Paint & ceramic':['Painted Plaster','Painted Bricks','Paint','Porcelain','Glazed Terracotta','Painting','Sign']};
+/* the sets that make good grunge maps (scratches, smears, dirt...): their opacity map, else roughness, is what the Textures panel wants */
+const OL_GRUNGE=['Scratches','Smear','Surface Imperfections','Fingerprints','Chip','Footsteps','Rust','Asphalt'];
+const OL_GRUNGE_OPACITY=['Scratches','Smear','Surface Imperfections','Fingerprints','Chip','Footsteps'];
 const ol={q:'',cat:'all',sort:'Popular',offset:0,total:0,items:[],sel:new Map(),res:'1K',loading:false,err:'',busy:null,prog:{},seq:0,job:0,listening:false,body:null,grid:null,foot:null,chips:null};
 function olGroupOf(dc){for(const g in OL_GROUPS)if(OL_GROUPS[g].includes(dc))return g;return 'Other';}
 /* "ambientCG.com Metal047B (CC0)" -> Metal047B */
@@ -35,7 +38,7 @@ function olProgress(id){const b=ol.body;if(!b)return;const row=b.querySelector('
 /* ---- asking ambientCG (through the desktop side) ---- */
 async function olSearch(){const my=++ol.seq;ol.loading=true;ol.err='';olDraw();
   try{const p=new URLSearchParams({type:'Material',limit:String(OL_PAGE),offset:String(ol.offset),sort:ol.sort,include:'downloadData,previewData'});
-    if(ol.q.trim())p.set('q',ol.q.trim());if(ol.cat!=='all'&&OL_GROUPS[ol.cat])p.set('category',OL_GROUPS[ol.cat].join(','));
+    if(ol.q.trim())p.set('q',ol.q.trim());if(ol.cat==='grunge')p.set('category',OL_GRUNGE.join(','));else if(ol.cat!=='all'&&OL_GROUPS[ol.cat])p.set('category',OL_GROUPS[ol.cat].join(','));
     const j=JSON.parse(await platform.invoke('net_get_text',{url:OL_API+'?'+p.toString()}));if(my!==ol.seq)return;
     ol.total=+j.numberOfResults||0;ol.items=(j.foundAssets||[]).map(olItem).filter(x=>Object.keys(x.dl).length);}
   catch(e){if(my===ol.seq){ol.items=[];ol.total=0;ol.err='Could not reach ambientCG: '+(e&&e.message||e)+'. Check your internet connection.';}}
@@ -58,7 +61,7 @@ async function olMake(info,res,row){
   return view;}
 /* grunge: ambientCG materials also carry grey maps; the height (else AO, else roughness) goes to Textures */
 async function olGrunge(it,row){const ab=await olZipGet(it.dl['1K']?it.dl['1K'].url:olZip(it.id,'1K'),row);if(row){row.state='building';olDraw(true);}
-  const files=await miUnzip(ab);let pick=null;for(const want of ['height','ao','rough']){for(const f of files){const c=miChannel(f.name);if(c&&c.k===want){pick=f;break;}}if(pick)break;}
+  const files=await miUnzip(ab);let pick=null;for(const want of (OL_GRUNGE_OPACITY.includes(it.dc)?['opac','rough','height','ao']:OL_GRUNGE.includes(it.dc)?['rough','height','ao']:['height','ao','rough'])){for(const f of files){const c=miChannel(f.name);if(c&&c.k===want){pick=f;break;}}if(pick)break;}
   if(!pick)throw new Error('no grey map in that download');
   const t=await fileTarget(pick),d=captureRegionNow(t,0,0,t.w,t.h).data;for(let i=0;i<d.length;i+=4){const g=Math.round(d[i]*.299+d[i+1]*.587+d[i+2]*.114);d[i]=d[i+1]=d[i+2]=g;d[i+3]=255;}
   writeRegion(t,0,0,t.w,t.h,d);await txAddTarget(t,it.name+' (ambientCG)');}
@@ -71,7 +74,7 @@ function olTile(it,owned){const own=owned.get(it.id),on=ol.sel.has(it.id);
     el('img',{src:it.thumb,alt:'',loading:'lazy',decoding:'async',draggable:'false'}),el('span',{class:'olname',text:it.name}),
     ...(own?[el('span',{class:'olown',text:own==='1K'?'In Library':'In Library · '+own})]:[]),el('span',{class:'olcheck',text:on?'✓':''}));return b;}
 function olDraw(light){const b=ol.body;if(!b||!document.contains(b))return;const owned=olOwned();
-  ol.chips.replaceChildren(...['all',...Object.keys(OL_GROUPS)].map(c=>el('button',{type:'button',class:'chip'+(ol.cat===c?' on':''),'data-cat':c,text:c==='all'?'All':c,disabled:!!ol.busy,onclick:()=>{if(ol.cat===c)return;ol.cat=c;ol.offset=0;olSearch();}})));
+  ol.chips.replaceChildren(...['all','grunge',...Object.keys(OL_GROUPS)].map(c=>el('button',{type:'button',class:'chip'+(ol.cat===c?' on':''),'data-cat':c,text:c==='all'?'All':c==='grunge'?'Grunge maps':c,title:c==='grunge'?'Scratches, smears, dirt and rust: grey maps for the Textures panel':null,disabled:!!ol.busy,onclick:()=>{if(ol.cat===c)return;ol.cat=c;ol.offset=0;olSearch();}})));
   if(!light||!ol.grid.childNodes.length){ol.grid.replaceChildren(...(ol.items.length?ol.items.map(it=>olTile(it,owned)):[el('p',{class:'note olmsg',text:ol.loading?'Loading…':(ol.err||'Nothing found. Try another word or category.')})]));ol.grid.classList.toggle('loading',ol.loading);}
   else ol.grid.querySelectorAll('.oltile').forEach(t=>{const id=t.dataset.id,on=ol.sel.has(id);t.classList.toggle('sel',on);t.setAttribute('aria-pressed',String(on));t.querySelector('.olcheck').textContent=on?'✓':'';});
   const n=olSelCount(),from=ol.total?ol.offset+1:0,to=Math.min(ol.total,ol.offset+ol.items.length);
@@ -80,8 +83,8 @@ function olDraw(light){const b=ol.body;if(!b||!document.contains(b))return;const
     el('div',{class:'olpage'},el('button',{type:'button',class:'btn sm',id:'olPrev',text:'‹ Previous',disabled:ol.loading||ol.offset===0||!!busy,onclick:()=>{ol.offset=Math.max(0,ol.offset-OL_PAGE);olSearch();}}),
       el('span',{class:'dim',text:ol.total?from+'–'+to+' of '+ol.total:''}),el('button',{type:'button',class:'btn sm',id:'olNext',text:'Next ›',disabled:ol.loading||to>=ol.total||!!busy,onclick:()=>{ol.offset+=OL_PAGE;olSearch();}})),
     el('div',{class:'olact'},el('span',{class:'dim',text:n?n+' selected · about '+olMB(olEstimate())+' to download':'Click materials to select them.'}),
-      el('button',{type:'button',class:'btn primary',id:'olAdd',text:n?'Add '+n+' to Library':'Add to Library',disabled:!n||!!busy,onclick:()=>olRun('material')}),
-      el('button',{type:'button',class:'btn',id:'olGrunge',text:'Add as grunge map'+(n>1?'s':''),title:'Take the grey height map of each selected material and add it to Textures',disabled:!n||!!busy,onclick:()=>olRun('grunge')}),
+      el('button',{type:'button',class:'btn'+(ol.cat==='grunge'?'':' primary'),id:'olAdd',text:n?'Add '+n+' to Library':'Add to Library',disabled:!n||!!busy,onclick:()=>olRun('material')}),
+      el('button',{type:'button',class:'btn'+(ol.cat==='grunge'?' primary':''),id:'olGrunge',text:'Add as grunge map'+(n>1?'s':''),title:'Take the grey height map of each selected material and add it to Textures',disabled:!n||!!busy,onclick:()=>olRun('grunge')}),
       ...(busy?[el('button',{type:'button',class:'btn',id:'olCancel',text:'Cancel',onclick:olCancel})]:[])),
     ...(rows.length?[el('div',{class:'olrows'},...rows)]:[]));}
 function olCancel(){const b=ol.busy;if(!b)return;b.cancel=true;for(const r of b.rows)if(r.job)platform.invoke('net_cancel',{id:r.job}).catch(()=>{});}
