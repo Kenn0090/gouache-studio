@@ -1,3 +1,7 @@
+# Gouache Studio 0.76.0
+
+- **Poly Haven** is now a second source in Materials › Library › Get more… (about 870 free CC0 textures), next to ambientCG.
+
 # Gouache Studio 0.75.1
 
 - **See-through materials:** materials with transparency get a tick, **Cut out by the material's transparency**. It adds a mask from the transparency, so the layers under show through in every map.

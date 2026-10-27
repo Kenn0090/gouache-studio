@@ -1,3 +1,7 @@
+## 0.76.0
+
+- **Poly Haven as a second source.** In **Get more…** a **Source** switch chooses between ambientCG and Poly Haven (about 870 CC0 textures: bricks, wood, rock, fabric, leather, metal and more). Search, category chips, Popular or Newest, 1K / 2K / 4K, ticking several, **Add as grunge map**, and the **In Library** marks all work the same. Each material keeps its creator's name and a link to its Poly Haven page. The window shows "Powered by Poly Haven" while it is selected. Desktop app only.
+
 ## 0.75.1
 
 - **See-through materials can show what is under them.** A material whose picture has see-through parts (or an Opacity map) now has **Cut out by the material's transparency** in the Material panel. Tick it and a mask made from that transparency is added, so the layers under show through in every map (colour, roughness, metallic, height, normal), not only the colour. Untick it to take it away again. It appears as a **Material transparency** row in the mask, which you can invert, and a mask made only for this goes away when you untick it.
