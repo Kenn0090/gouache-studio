@@ -27,7 +27,7 @@ let gfSaving=false;
 const gfSaveStats={last:null};
 /* Do not let a layer/tab change while its pixels and editable settings are being read. The UI thread
    remains free to paint the progress cursor; other-tab and 3D-set wrappers keep their own hold flag. */
-async function encodeGouacheNow(opts){if(gfSaving)throw new Error('A document is already being saved.');gfSaving=true;
+async function encodeGouacheNow(opts){if(gfSaving)throw new Error('A document is already being saved.');gfSaving=true;if(typeof sel3Free==='function')sel3Free();
   const keys=e=>{e.preventDefault();e.stopImmediatePropagation();},held=tabDocs.hold;
   const surfaces=[...new Set([window,work.ownerDocument.defaultView,...dk.pops.map(p=>p.win),...dtab.tabs.map(t=>t.win&&t.win.w),v3.pop&&v3.pop.win])].filter(w=>w&&!w.closed),covers=[];
   const stats={bounds:0,read:0,pack:0,images:0,bytes:0,total:0},t=performance.now();
@@ -39,7 +39,7 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
   await paReady();
   /* (0.57) saving is a pipeline: pictures are read back one at a time, and each goes to a packing worker straight away (a few run at once)
      while the next is being read. File positions are given out at the end, in the order the pictures were made. */
-  const later=[],flying=new Set(),cap=Math.max(2,(pxWorkerState.pool.length||1)+1);
+  const later=[],flying=new Set(),cap=Math.max(2,Math.min((pxWorkerState.pool.length||1)+1,doc.w*doc.h>=8e6?3:99));/* (0.76.1) at most 3 big pictures in flight on a 4096 px canvas */
   const defer=(pr,r)=>{const e=pr.then(c=>{r.n=c.bytes.length;if(c.f)r.f=c.f;return c.bytes;});later.push({e,r});const tr=e.then(()=>{},()=>{}).then(()=>flying.delete(tr));flying.add(tr);return r;};
   const throttle=async()=>{const t0=performance.now();while(flying.size>=cap)await Promise.race([...flying]);stats.pack+=performance.now()-t0;};
   const pack=async(t,x,y,w,h,lossy)=>{await throttle();ghCrumb('save: picture '+(stats.images+1)+' ('+w+'×'+h+', '+Math.round(stats.bytes/1048576)+' MB read so far)');const time=performance.now(),raw=await readRegionAsync(t,x,y,w,h);stats.read+=performance.now()-time;stats.bytes+=raw.byteLength;stats.images++;

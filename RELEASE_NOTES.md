@@ -1,3 +1,8 @@
+# Gouache Studio 0.76.1
+
+- **Saving big projects no longer runs out of memory:** the file is written to disk in pieces. The file itself is unchanged.
+- **Select part lets go of its memory** when you finish selecting and before a save.
+
 # Gouache Studio 0.76.0
 
 - **Poly Haven** is now a second source in Materials › Library › Get more… (about 870 free CC0 textures), next to ambientCG.

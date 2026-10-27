@@ -11,7 +11,12 @@ const platform={
     const ext=extOf(defaultName);
     const path=await this.invoke('plugin:dialog|save',{options:{defaultPath:defaultName,filters:[{name:filterName||ext.toUpperCase(),extensions:[ext]}]}});
     if(!path)return null;await this.writeFile(path,bytes);return path;},
-  writeFile(path,bytes){return this.invoke('write_file',bytes,{headers:{'x-path':encodeURIComponent(path)}});},
+  /* bytes, or a Blob: a Blob is sent in 16 MB pieces (write_chunk), so a project of hundreds of MB is never held in the page as one block */
+  writeFile(path,bytes){if(typeof Blob!=='undefined'&&bytes instanceof Blob)return this.writeBlob(path,bytes);return this.invoke('write_file',bytes,{headers:{'x-path':encodeURIComponent(path)}});},
+  async writeBlob(path,blob){const CH=16*1024*1024,n=blob.size,h=encodeURIComponent(path);
+    if(!n)return this.invoke('write_file',new Uint8Array(0),{headers:{'x-path':h}});
+    for(let o=0;o<n;o+=CH){const part=new Uint8Array(await blob.slice(o,Math.min(n,o+CH)).arrayBuffer());
+      await this.invoke('write_chunk',part,{headers:{'x-path':h,'x-offset':String(o),'x-last':o+CH>=n?'1':'0'}});}},
   /* big files are read in pieces so the loading bar can move */
   async readFile(path){let size=0;try{size=await this.invoke('file_size',{path});}catch(e){}
     if(!size||size<16*1024*1024)return new Uint8Array(await this.invoke('read_file',{path}));

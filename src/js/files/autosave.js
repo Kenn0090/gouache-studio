@@ -28,7 +28,7 @@ const asTabsWaiting=()=>typeof dtab==='undefined'?[]:dtab.tabs.filter(t=>t.state
 async function asWrite(kind,name,blob){const t=Date.now();
   if(platform.isDesktop){const dir=await asDir(),sep=dir.includes('\\')?'\\':'/',file=dir+sep+(kind==='p3d'?'3D Paint - ':'Paint - ')+asSlug(name)+(kind.startsWith('tab:')?' ['+kind.slice(4)+']':'')+(kind==='p3d'?'.gouache3d':'.gouache');
     if(as.t[kind]&&as.t[kind].path&&as.t[kind].path!==file)platform.invoke('autosave_delete',{path:as.t[kind].path}).catch(()=>{});
-    await platform.writeFile(file,new Uint8Array(await blob.arrayBuffer()));as.t[kind]={path:file,t};}
+    await platform.writeFile(file,blob);as.t[kind]={path:file,t};}
   else{await asDB.run('readwrite',st=>st.put({id:kind,name,t,blob}));as.t[kind]={t};}
   fileLocUpdate&&fileLocUpdate();}
 async function asClear(kind){const c=as.t[kind];delete as.t[kind];as.last[kind]=undefined;

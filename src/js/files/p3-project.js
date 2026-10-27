@@ -5,7 +5,7 @@
 const G3_MAGIC=[71,79,85,65,67,72,69,51],G3_VERSION=1;
 const isP3Proj=buf=>{const u=new Uint8Array(buf,0,Math.min(8,buf.byteLength));return u.length===8&&G3_MAGIC.every((v,i)=>u[i]===v);};
 /* every set as a .gouache blob (the others are stepped into for a moment; the screen holds still meanwhile) */
-async function encodeP3Project(){if(ui.mode!=='p3d')throw new Error('Open the 3D Paint tab first.');const blobs=[];let off=0;/* (0.74.4) a set stays a Blob (the browser keeps big ones outside the page's memory) instead of being copied into a second big array */
+async function encodeP3Project(){if(ui.mode!=='p3d')throw new Error('Open the 3D Paint tab first.');if(typeof sel3Free==='function')sel3Free();const blobs=[];let off=0;/* (0.74.4) a set stays a Blob (the browser keeps big ones outside the page's memory) instead of being copied into a second big array */
   const put=b=>{const n=b.size!==undefined?b.size:b.length;blobs.push(b);const r={o:off,n};off+=n;return r;};
   const sets=[];tabDocs.hold=true;ghProject=true;
   try{for(let i=0;i<p3.sets.length;i++){const S=p3.sets[i];let bytes;ghCrumb('save: texture set '+(i+1)+' of '+p3.sets.length,true);
@@ -19,9 +19,9 @@ async function encodeP3Project(){if(ui.mode!=='p3d')throw new Error('Open the 3D
   ghCrumb('save: encoded',true);
   return new Blob([pre,hj,...blobs],{type:'application/octet-stream'});}
 async function saveP3Project(forceAsk){if(stroke)return;toast('Saving the 3D Paint project…');
-  try{await tick();ghCrumb('save: project starting',true);const blob=await encodeP3Project();ghCrumb('save: joining the project ('+Math.round(blob.size/1048576)+' MB)',true);const bytes=new Uint8Array(await blob.arrayBuffer()),nm=slug(p3.name||'3D Paint')+'.gouache3d';
-    if(platform.isDesktop&&p3.path&&!forceAsk){ghCrumb('save: writing the file ('+Math.round(bytes.length/1048576)+' MB)',true);await platform.writeFile(p3.path,bytes);ghCrumb('save: finished',true);p3.savedAt=p3Sig();toast('Saved '+p3.path);return;}
-    if(platform.isDesktop){const path=await platform.saveAs(nm,bytes,'Gouache Studio 3D Paint project');if(!path){toast('Save cancelled.');return;}
+  try{await tick();ghCrumb('save: project starting',true);const blob=await encodeP3Project();ghCrumb('save: project built ('+Math.round(blob.size/1048576)+' MB)',true);const nm=slug(p3.name||'3D Paint')+'.gouache3d';
+    if(platform.isDesktop&&p3.path&&!forceAsk){ghCrumb('save: writing the file ('+Math.round(blob.size/1048576)+' MB)',true);await platform.writeFile(p3.path,blob);ghCrumb('save: finished',true);p3.savedAt=p3Sig();toast('Saved '+p3.path);return;}
+    if(platform.isDesktop){const path=await platform.saveAs(nm,blob,'Gouache Studio 3D Paint project');if(!path){toast('Save cancelled.');return;}
       p3.path=path;p3.name=baseName(fileNameOf(path));platform.recentAdd(path);if(typeof fileLocUpdate==='function')fileLocUpdate();p3.savedAt=p3Sig();toast('Saved '+path);return;}
     const r=await deliver(nm,blob);toast(deliveredText(r,'Project'));if(r.ok)p3.savedAt=p3Sig();}
   catch(e){console.error(e);ghCrumb('save: failed',true);toast('The project could not be saved: '+(e.message||e));}}

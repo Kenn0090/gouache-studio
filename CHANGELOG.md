@@ -1,3 +1,10 @@
+## 0.76.1
+
+- **Big projects save without running out of memory.** A 3D Paint project (or a document) is now written to disk in 16 MB pieces, instead of being joined into one block of hundreds of MB first. The saved file is exactly the same. Autosave does the same.
+- **Select part gives its memory back.** Picking model parts builds large edge maps of the model, hundreds of MB on a model with many triangles. They are now let go when you finish selecting (and before any save), and rebuilt only if you select again.
+- **Fewer big pictures read at once** while saving a 4096 px project.
+- The graphics card report's save trail now also says how many triangles the model had when the app stopped.
+
 ## 0.76.0
 
 - **Poly Haven as a second source.** In **Get more…** a **Source** switch chooses between ambientCG and Poly Haven (about 870 CC0 textures: bricks, wood, rock, fabric, leather, metal and more). Search, category chips, Popular or Newest, 1K / 2K / 4K, ticking several, **Add as grunge map**, and the **In Library** marks all work the same. Each material keeps its creator's name and a link to its Poly Haven page. The window shows "Powered by Poly Haven" while it is selected. Desktop app only.

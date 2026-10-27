@@ -10,8 +10,8 @@ let dlPromise=null;
 function downloadsCap(){if(!(window.claude&&typeof window.claude.use==='function'))return Promise.resolve(null);if(!dlPromise)dlPromise=window.claude.use('downloads').catch(()=>null);return dlPromise;}
 const VIEWER_OK=['png','jpg','jpeg','webp','gif','zip'];
 async function deliver(filename,blob){
-  if(platform.isDesktop){const bytes=new Uint8Array(await blob.arrayBuffer());
-    try{const path=await platform.saveAs(filename,bytes);if(!path)return {ok:false,msg:'Save cancelled.'};return {ok:true,name:fileNameOf(path),path,desktop:true};}
+  if(platform.isDesktop){
+    try{const path=await platform.saveAs(filename,blob);if(!path)return {ok:false,msg:'Save cancelled.'};return {ok:true,name:fileNameOf(path),path,desktop:true};}
     catch(e){return {ok:false,msg:'The file could not be saved: '+(e.message||e)}}}
   const dl=await downloadsCap();
   if(dl){let name=filename,data=blob,zipped=false;
@@ -32,9 +32,9 @@ async function savePSD(forceAsk){toast('Preparing PSD…');try{await tick();cons
   catch(e){console.error(e);toast('The PSD could not be saved: '+e.message);}}
 function savePSDAs(){if(doc.maps.length>1)toast('A PSD holds the base colour only. Save as .gouache to keep every map.');return savePSD(true);}
 /* Save (Ctrl+S): the document's own .gouache file; the first save (or Save As) asks where */
-async function saveDoc(forceAsk){if(stroke){return;}toast('Saving…');try{await tick();const blob=await encodeGouache(),bytes=new Uint8Array(await blob.arrayBuffer());
-    if(platform.isDesktop&&doc.filePath&&!forceAsk&&extOf(doc.filePath)==='gouache'){await platform.writeFile(doc.filePath,bytes);toast('Saved '+doc.filePath);markSaved();return;}
-    if(platform.isDesktop){const path=await platform.saveAs(slug(doc.name)+'.gouache',bytes,'Gouache Studio document');if(!path){toast('Save cancelled.');return;}
+async function saveDoc(forceAsk){if(stroke){return;}toast('Saving…');try{await tick();const blob=await encodeGouache();
+    if(platform.isDesktop&&doc.filePath&&!forceAsk&&extOf(doc.filePath)==='gouache'){await platform.writeFile(doc.filePath,blob);toast('Saved '+doc.filePath);markSaved();return;}
+    if(platform.isDesktop){const path=await platform.saveAs(slug(doc.name)+'.gouache',blob,'Gouache Studio document');if(!path){toast('Save cancelled.');return;}
       doc.filePath=path;doc.name=baseName(fileNameOf(path));platform.recentAdd(path);markSaved();updateStatus();toast('Saved '+path);return;}
     const r=await deliver(slug(doc.name)+'.gouache',blob);toast(deliveredText(r,'Document'));if(r.ok)markSaved();}
   catch(e){console.error(e);toast('The document could not be saved: '+(e.message||e));}}

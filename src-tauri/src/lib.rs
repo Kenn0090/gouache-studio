@@ -112,6 +112,7 @@ pub fn run() {
             files::file_size,
             files::read_file_range,
             files::write_file,
+            files::write_chunk,
             files::recent_list,
             files::recent_add,
             files::recent_details,

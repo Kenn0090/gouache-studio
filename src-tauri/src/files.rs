@@ -57,6 +57,91 @@ pub fn write_file(request: Request<'_>) -> Result<(), String> {
     })
 }
 
+/// The temporary file a big write goes into until its last piece has arrived.
+fn part_path(target: &PathBuf) -> PathBuf {
+    target.with_extension(format!(
+        "{}.part",
+        target.extension().and_then(|e| e.to_str()).unwrap_or("tmp")
+    ))
+}
+
+/// One piece of a big file. Pieces come in order (`offset` = the bytes already written); the first one starts the
+/// temporary file, the last one moves the finished file into place. The page never has to hold the whole file.
+pub fn write_piece(path: &str, offset: u64, last: bool, bytes: &[u8]) -> Result<(), String> {
+    use std::io::{Seek, SeekFrom, Write};
+    let target = PathBuf::from(path);
+    let tmp = part_path(&target);
+    let mut f = if offset == 0 {
+        fs::File::create(&tmp)
+    } else {
+        fs::OpenOptions::new().write(true).open(&tmp)
+    }
+    .map_err(|e| format!("{path}: {e}"))?;
+    if offset > 0 {
+        let len = f.metadata().map_err(|e| format!("{path}: {e}"))?.len();
+        if len != offset {
+            return Err(format!("{path}: pieces arrived out of order"));
+        }
+        f.seek(SeekFrom::Start(offset)).map_err(|e| format!("{path}: {e}"))?;
+    }
+    f.write_all(bytes).map_err(|e| format!("{path}: {e}"))?;
+    if last {
+        f.sync_all().map_err(|e| format!("{path}: {e}"))?;
+        drop(f);
+        fs::rename(&tmp, &target).map_err(|e| {
+            let _ = fs::remove_file(&tmp);
+            format!("{path}: {e}")
+        })?;
+    }
+    Ok(())
+}
+
+/// A piece of a big file sent as a raw request body (headers: `x-path`, `x-offset`, `x-last` = 1 on the last piece).
+#[tauri::command]
+pub fn write_chunk(request: Request<'_>) -> Result<(), String> {
+    let header = |name: &str| -> Result<String, String> {
+        Ok(request
+            .headers()
+            .get(name)
+            .ok_or(format!("missing {name} header"))?
+            .to_str()
+            .map_err(|e| e.to_string())?
+            .to_string())
+    };
+    let path = percent_decode(&header("x-path")?);
+    let offset: u64 = header("x-offset")?.parse().map_err(|_| "bad x-offset".to_string())?;
+    let last = header("x-last")? == "1";
+    let InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected raw bytes".into());
+    };
+    write_piece(&path, offset, last, bytes)
+}
+
+#[cfg(test)]
+mod write_tests {
+    use super::*;
+
+    #[test]
+    fn a_file_written_in_pieces_arrives_whole_and_only_at_the_end() {
+        let dir = std::env::temp_dir().join(format!("gs_piece_test_{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let target = dir.join("big.gouache3d");
+        let path = target.to_string_lossy().to_string();
+        fs::write(&target, b"old contents").unwrap();
+        write_piece(&path, 0, false, b"aaaa").unwrap();
+        assert_eq!(fs::read(&target).unwrap(), b"old contents"); // the old file stays until the last piece
+        write_piece(&path, 4, false, b"bbbb").unwrap();
+        assert!(write_piece(&path, 12, false, b"x").is_err()); // a gap is refused
+        write_piece(&path, 8, true, b"cc").unwrap();
+        assert_eq!(fs::read(&target).unwrap(), b"aaaabbbbcc");
+        assert!(!part_path(&target).exists());
+        // a new write starts again from nothing
+        write_piece(&path, 0, true, b"z").unwrap();
+        assert_eq!(fs::read(&target).unwrap(), b"z");
+        let _ = fs::remove_dir_all(&dir);
+    }
+}
+
 fn recent_file(app: &AppHandle) -> Option<PathBuf> {
     let dir = app.path().app_config_dir().ok()?;
     fs::create_dir_all(&dir).ok()?;
