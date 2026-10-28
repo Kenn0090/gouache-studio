@@ -7,6 +7,7 @@
 - **Colorize:** hue, saturation, brightness, contrast and flat tones.
 - **Gradient:** one or two colours, each with its own opacity and blend mode, horizontal and vertical rotation, invert, offset and contrast, across the model.
 - **Baked lighting** and **Edges and cavities** come from the mesh maps (world normal, position, AO, curvature), with diffuse and specular colour, radius and contrast, and how much of the lighting the strokes carry.
+- Fixed: real baked curvature maps are subtle (edges near 60% grey), so edges hardly showed in the Hand-painted and Stylize layers. Baked curvature is now boosted before use. Tested on the 3D Paint preview model with its real baked maps.
 - Presets: Painterly, Smudges, Thick strokes, Soft paint, Sketchy, Comic. Works in Spec/Gloss, and saves as a smart material like the other painted-look layers.
 
 ## 0.78.0

@@ -53,7 +53,7 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); vec2 uv=(vec2
   float ao=1.0; if(uHasAO==1){ vec4 q=texelFetch(uAO,p,0); ao=q.a>0.01?lum(st(q)):1.0; } else ao=1.0-clamp((pb-lum(below))*4.0,0.0,1.0);
   float occ=pow(clamp(1.0-ao,0.0,1.0),mix(3.0,0.35,uAoSpread)); c=mix(c,c*uAoCol,occ*uAoAmt);
   /* edges (convex) and cavities (concave): curvature, or the picture's own fine light and dark */
-  float cv=0.0; if(uHasCurv==1){ vec4 q=texelFetch(uCurv,p,0); cv=q.a>0.01?(lum(st(q))-0.5)*2.0:0.0; } else cv=clamp((lum(below)-pb)*5.0,-1.0,1.0);
+  float cv=0.0; if(uHasCurv==1){ vec4 q=texelFetch(uCurv,p,0); cv=q.a>0.01?clamp((lum(st(q))-0.5)*6.0,-1.0,1.0):0.0;/* baked curvature is subtle (edges near 60% grey), so it is boosted */ } else cv=clamp((lum(below)-pb)*5.0,-1.0,1.0);
   /* (0.79) the shape as data for other layers: AO, curvature (0.5 = flat) and thinness */
   if(uShowN==2){ float th=0.0; if(uHasThick==1){ vec4 q=texelFetch(uThick,p,0); if(q.a>0.01) th=1.0-lum(st(q)); } o=vec4(ao,cv*0.5+0.5,th,1.0); return; }
   float e=smoothstep(mix(0.6,0.02,uEdgeSpread),mix(0.95,0.3,uEdgeSpread),cv), k=smoothstep(mix(0.6,0.02,uCavSpread),mix(0.95,0.3,uCavSpread),-cv);
