@@ -7,6 +7,9 @@
 - **Both results:** in 3D Paint the bake is the texture set's **Lighting** mesh map *and* a **Baked lighting** Multiply layer you can paint on. Send to Paint and Export work too.
 - **The painted-look layers use it:** Hand-painted, Stylize and Stylize (Painter style) light the model with the baked Lighting map when there is one. **Light from** chooses between the map and the layer's own direction.
 - The 3D Paint **Bake mesh maps** window can bake Lighting with the same rig.
+- **Your lights in the 3D Paint view.** Lighting settings › **Light the view with my light rig**, and **Lights…** opens the rig in a window: up to four lights light the view live while you paint (without shadows there; bake Lighting for those). The lights can be dragged in the view there too.
+- **Exact numbers:** type a point light's or spot's position (X, Y, Z).
+- **Rig presets:** built-in Three-point, Soft studio, Top light, Dramatic rim and Sunset. **Save rig…** keeps yours, and **Export** and **Import** share it as a file. Rigs are kept relative to the model's size, so they fit any model.
 - Fixed: a new point light could start outside the view.
 
 ## 0.79.0

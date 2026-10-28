@@ -1,6 +1,7 @@
 # Gouache Studio 0.80.0
 
 - **New Lighting bake with a light rig (like Marmoset):** sun, point, spot and sky lights with soft shadows, an Auto rig (key, fill, rim, sky), a light list with eyes, and lights you drag in the 3D view. In 3D Paint it becomes a Lighting mesh map and a Baked lighting Multiply layer; the Hand-painted and Stylize layers light the model with it.
+- Your lights can also light the 3D Paint view live (Lights… in the lighting settings), positions can be typed, and rigs can be saved, shared and reused (built-in: Three-point, Soft studio, Top light, Dramatic rim, Sunset).
 
 # Gouache Studio 0.79.0
 

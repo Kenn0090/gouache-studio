@@ -212,3 +212,9 @@ Where it goes:
 - The **Hand-painted** layer and the **Stylize** layers light the model with the Lighting mesh map when there is one (their **Light from** setting: the baked Lighting map, or their own direction).
 - **Send to Paint** adds it as a Multiply layer; **Export** writes Lighting.png.
 - The 3D Paint **Bake mesh maps** window can bake Lighting too, with the same rig.
+
+### Rig presets, exact positions and lights in 3D Paint
+
+- **Rigs…** (top of the Lighting tab) loads a built-in rig (Three-point, Soft studio, Top light, Dramatic rim, Sunset) or one of yours. **Save rig…** keeps the current one; **Export** and **Import** share it as a file. Positions are stored relative to the model's size, so a rig fits any model.
+- A point light or spot has **Position X / Y / Z** fields to type exact values (the model's middle is shown next to them).
+- In **3D Paint**, the lighting settings (3D view Settings and the Shader panel) have **Light the view with my light rig** and **Lights…**, the same rig in a window. Up to four lights light the view live while you paint (no shadows in the view; the Lighting bake gives those).

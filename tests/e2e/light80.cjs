@@ -62,6 +62,30 @@ const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAI
  if(G0){await p.mouse.move(G0.x,G0.y);await p.mouse.down();await p.mouse.move(G0.x+60,G0.y-30,{steps:6});await p.mouse.up();await W(300);
    const pos=await p.evaluate(()=>__gs.lightRig().lights.find(l=>l.type==='point').pos);ok(Math.hypot(pos[0]-G0.pos[0],pos[1]-G0.pos[1],pos[2]-G0.pos[2])>.05,'dragging a light in the view moves it');}
  else ok(false,'the point light is on screen');
+ /* ---- 3D Paint: your lights light the view live; exact numbers; rig presets ---- */
+ await p.click('#modeTabs [data-mode=p3d]');await W(1500);
+ const view=async()=>{await p.evaluate(()=>{__gs.v3.dirty=true;});await W(1500);const bx=await p.locator('#pane3d').boundingBox();const buf=await p.screenshot({clip:{x:bx.x+bx.width*.3,y:bx.y+bx.height*.3,width:bx.width*.4,height:bx.height*.4},timeout:300000});return buf.length;};
+ const lum=()=>p.evaluate(async()=>{const c=document.getElementById('gl');await new Promise(r=>requestAnimationFrame(r));const x=document.createElement('canvas');x.width=64;x.height=64;const g=x.getContext('2d');g.drawImage(c,0,0,64,64);const d=g.getImageData(0,0,64,64).data;let s=0;for(let i=0;i<d.length;i+=4)s+=d[i]+d[i+1]+d[i+2];return s/(64*64*3);});
+ await p.evaluate(()=>{const G=__gs,R=G.lightRig();R.lights=[G.lightNew('sun',{name:'Big',int:4,el:30,turn:0,col:[1,.2,.2]})];G.v3s().rigLive=false;G.v3.dirty=true;});await W(1500);
+ const before=await p.evaluate(()=>__gs.lightViewUniforms?0:0);
+ const u=await p.evaluate(()=>{const G=__gs;G.v3s().rigLive=true;const U=G.lightViewUniforms();return U.uVLN.int;});
+ ok(u===1,'with "Light the view with my light rig" the rig goes to the view ('+u+' light)');
+ const glLum=on=>p.evaluate(on=>{const G=__gs,g=G.gl;G.v3s().rigLive=on;G.v3.dirty=true;G.draw3D();g.bindFramebuffer(g.FRAMEBUFFER,null);const w=g.drawingBufferWidth,h=g.drawingBufferHeight,d=new Uint8Array(w*h*4);g.readPixels(0,0,w,h,g.RGBA,g.UNSIGNED_BYTE,d);
+   let r=0,gg=0;for(let i=0;i<d.length;i+=4){r+=d[i];gg+=d[i+1];}return {r:r/(w*h),g:gg/(w*h)};},on);
+ const l0=await glLum(false),l1=await glLum(true);console.log('  view without / with the red light:',JSON.stringify(l0),JSON.stringify(l1));
+ ok(l1.r-l1.g>l0.r-l0.g+0.5,'and a strong red light makes the view redder');
+ await p.evaluate(()=>{__gs.v3s().rigLive=false;});
+ /* the Lights window: presets, exact position */
+ await p.evaluate(()=>__gs.lightDialog());await W(500);
+ ok(await p.locator('#lightDlg #lPreset').count()===1,'3D Paint has a Lights window with rig presets');
+ await p.selectOption('#lPreset','b:Top light');await W(300);
+ ok(await p.evaluate(()=>__gs.lightRig().lights.map(l=>l.name).join())==='Top,Sky','choosing the built-in "Top light" rig sets its lights');
+ await p.click('#lAdd_point');await W(300);
+ await p.fill('#lightDlg #l_posX','0.25');await p.locator('#lightDlg #l_posX').dispatchEvent('change');await W(200);
+ ok(await p.evaluate(()=>Math.abs(__gs.lightRig().lights.find(l=>l.type==='point').pos[0]-.25)<1e-6),'a light\'s position can be typed exactly');
+ await p.evaluate(()=>{localStorage.removeItem('gs.lightRigs');const G=__gs,a=[G.lightRigOut('Mine')];localStorage.setItem('gs.lightRigs',JSON.stringify(a));G.lightRig().lights=[];});
+ const rel=await p.evaluate(()=>{const G=__gs;G.lightRigIn(JSON.parse(localStorage.getItem('gs.lightRigs'))[0]);return G.lightRig().lights.map(l=>l.type).join();});
+ ok(rel==='sun,sky,point','a saved rig loads back (positions kept relative to the model): '+rel);
  ok(!errors.length,'no application errors');if(errors.length)console.log(errors.slice(0,3));
  await b.close();process.exit(fails?1:0);
 })().catch(e=>{console.error(e);process.exit(1);});

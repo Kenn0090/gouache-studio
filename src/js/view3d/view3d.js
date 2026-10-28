@@ -29,6 +29,7 @@ const FS_3D=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan;
 uniform int uUseUDIM; uniform vec2 uUDIMTile;
 uniform sampler2D uBase; uniform sampler2D uRough; uniform sampler2D uMetal; uniform sampler2D uNrm; uniform sampler2D uAO; uniform sampler2D uEmis; uniform sampler2D uOpac; uniform sampler2D uThick;
 uniform int uUseSafeMip;
+uniform vec4 uVLA[4]; uniform vec4 uVLB[4]; uniform vec4 uVLC[4]; uniform int uVLN;
 uniform int uFlipY; uniform int uHas; uniform vec2 uDef; uniform vec3 uCam; uniform vec3 uSun; uniform float uSunI; uniform float uSkyI; uniform float uExpo; uniform int uUnlit; uniform int uClip;
 /* the HDRI (0.26): 6 levels from sharp to fully rough, and the diffuse light */
 uniform int uEnvOn; uniform float uEnvRot; uniform float uEnvI; uniform sampler2D uEnv0; uniform sampler2D uEnv1; uniform sampler2D uEnv2; uniform sampler2D uEnv3; uniform sampler2D uEnv4; uniform sampler2D uEnv5; uniform sampler2D uIrr; uniform int uTone;
@@ -122,6 +123,10 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
   col*=uLightColor;
   vec3 fillL=normalize(vec3(-0.75,0.45,-0.25)),rimL=normalize(vec3(0.3,0.35,-0.9));
   col+=studioDirect(N,V,fillL,alb,F0,rough,metal)*uStudioFill*2.0+studioDirect(N,V,rimL,alb,F0,rough,metal)*uStudioRim*2.0;
+  /* (0.80) your own lights in the view (the light rig): A = type, position; B = direction, cos of the cone's outer edge; C = colour × strength, reach */
+  for(int li=0;li<4;li++){ if(li>=uVLN) break; vec4 A=uVLA[li],B=uVLB[li],C=uVLC[li]; int ty=int(A.x+0.5); vec3 Ld; vec3 rad=C.rgb;
+    if(ty==0) Ld=-normalize(B.xyz); else { vec3 v=A.yzw-vP; float dd2=max(length(v),1e-5); Ld=v/dd2; rad/=1.0+dd2*dd2/max(C.w*C.w,1e-8); if(ty==2) rad*=smoothstep(B.w,mix(B.w,1.0,0.35),dot(-Ld,normalize(B.xyz))); }
+    col+=studioDirect(N,V,Ld,alb,F0,rough,metal)*rad*3.0; }
   if(uSh==3){ /* velvet: a soft sheen at grazing angles */ float sr=max(uShP.y,0.05), sn=sqrt(max(1.0-NdH*NdH,0.0)), Dc=(2.0+1.0/sr)*pow(sn,1.0/sr)/(2.0*PI);
     col+=lin(uShC)*uShP.x*Dc*NdL*uSunI*3.0/max(4.0*(NdL+NdV-NdL*NdV),1e-3); }
   /* ---- light from the environment ---- */
@@ -324,7 +329,7 @@ function v3MeshU(C,common,it,flip,safeMip=null){const {s,bake,EU,eye,a,e}=C,sg=i
     if(!bake&&!it.thick&&!it.sh&&doc.meshMaps&&doc.meshMaps.thick)it.thick=doc.meshMaps.thick;
     const mOK=ok('metal')&&!(sg&&ok('spec')),hm=(ok('rough')?1:0)|(mOK?2:0)|(ok('nfinal')?4:0)|(ok('ao')?8:0)|(ok('emis')?16:0)|(ok('opac')?64:0)|(it.thick?128:0)|(ok('spec')&&!mOK?256:0);
     return Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uUseUDIM:!!it.udim,uUDIMTile:it.udim?[it.udim.u,it.udim.v]:[0,0],uUseSafeMip:useSafeMip,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:mOK?T.metal.tex:ok('spec')?T.spec.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,uThick:useSafeMip?safeMip.tex:it.thick?it.thick.tex:dummy,...EU,...shadeUniforms(bake?null:it.sh||v3ShadeOf(doc)),
-      uMorph:bake&&bk.fold>0?bk.fold:0,uMorphOff:[it.off||0,0,0],uStudioFill:s.studioFill||0,uStudioRim:s.studioRim||0,uLightColor:s.lightColor||[1,1,1],uShadow:dummy,uShadowVP:{m4:m4()},uShadowOn:0,uShadowSoft:1,...common,uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uMetalView:{int:s.metalView?1:0},uMetalRough:s.metalRough||.25,uBevelMaterial:{int:bevelPreviewOn()&&bvSettings().previewMaterial?1:0},uBevelMetal:bvSettings().previewMetal||0,uBevelRough:bvSettings().previewRough??.25,uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});}
+      uMorph:bake&&bk.fold>0?bk.fold:0,uMorphOff:[it.off||0,0,0],uStudioFill:s.studioFill||0,...lightViewUniforms(),uStudioRim:s.studioRim||0,uLightColor:s.lightColor||[1,1,1],uShadow:dummy,uShadowVP:{m4:m4()},uShadowOn:0,uShadowSoft:1,...common,uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uMetalView:{int:s.metalView?1:0},uMetalRough:s.metalRough||.25,uBevelMaterial:{int:bevelPreviewOn()&&bvSettings().previewMaterial?1:0},uBevelMetal:bvSettings().previewMetal||0,uBevelRough:bvSettings().previewRough??.25,uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});}
 function v3DrawWire(g,list,common){gl.bindVertexArray(g.evao);try{if(ui.mode!=='p3d'){useProg(P3.line,{...common,uCol:[.95,.7,.35,1]});gl.drawElements(gl.LINES,g.ecount,gl.UNSIGNED_INT,0);return;}
     for(const it of list){if(!it.count)continue;let r;if(it.start===0&&it.count*3===g.count)r={b:g.eb,count:g.ecount};else{const key=it.start+':'+it.count,cache=g.wireRanges||(g.wireRanges=new Map());r=cache.get(key);if(!r){const edges=meshEdges({idx:v3.mesh.idx.subarray(it.start*3,(it.start+it.count)*3)}),b=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,b);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,edges,gl.STATIC_DRAW);r={b,count:edges.length};cache.set(key,r);}}
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,r.b);useProg(P3.line,{...common,uCol:[.95,.7,.35,1]});gl.drawElements(gl.LINES,r.count,gl.UNSIGNED_INT,0);}}
