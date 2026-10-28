@@ -14,7 +14,7 @@ function writeRegion(t,x,y,w,h,bytes){t.opaque=false;gl.bindTexture(gl.TEXTURE_2
   else gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,w,h,t.mono?gl.RED:gl.RGBA,gl.UNSIGNED_BYTE,packedUpload(t,bytes));
   gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);t.mipDirty=true;t.opaque=x===0&&y===0&&w===t.w&&h===t.h&&imageOpaque(bytes,t.depth);}
 /* in the Bake or Convert tab, the painting is what gets saved */
-async function encodeGouache(){return tabDocs.paint?withPaintDocAsync(encodeGouacheNow):encodeGouacheNow();}
+async function encodeGouache(opts){return tabDocs.paint?withPaintDocAsync(()=>encodeGouacheNow(opts)):encodeGouacheNow(opts);}
 /* (0.59, Kenn) a saved document remembers the session around it: the panel layout, the zoom and place of the view, and the tool */
 function gfSession(){if(prefs.saveSession===false||!dk.L||ui.mode==='bake'||ui.mode==='convert'||ui.mode==='p3d')return undefined;
   try{return {mode:ui.mode,ws:dk.ws,layout:dkClone(dk.L),view:{zoom:view.zoom,x:view.x,y:view.y},tool:ui.tool};}catch(e){return undefined;}}
@@ -44,15 +44,21 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
   const later=[],flying=new Set(),cap=Math.max(2,Math.min((pxWorkerState.pool.length||1)+1,doc.w*doc.h>=8e6?3:99));/* (0.76.1) at most 3 big pictures in flight on a 4096 px canvas */
   const defer=(pr,r)=>{const e=pr.then(c=>{r.n=c.bytes.length;if(c.f)r.f=c.f;return c.bytes;});later.push({e,r,label:gfLabel});const tr=e.then(()=>{},()=>{}).then(()=>flying.delete(tr));flying.add(tr);return r;};
   const throttle=async()=>{const t0=performance.now();while(flying.size>=cap)await Promise.race([...flying]);stats.pack+=performance.now()-t0;};
-  const pack=async(t,x,y,w,h,lossy)=>{await throttle();ghCrumb('save: picture '+(stats.images+1)+' ('+w+'×'+h+', '+Math.round(stats.bytes/1048576)+' MB read so far)');const time=performance.now(),raw=await readRegionAsync(t,x,y,w,h);stats.read+=performance.now()-time;stats.bytes+=raw.byteLength;stats.images++;
-    return {pr:pxPack(raw,w,h,t.depth,lossy,true)};};
+  /* (0.80.3) S < 1: a smaller copy (every picture scaled down); pictures that are exactly the same are stored once (seen) */
+  const S=opts.scale>0&&opts.scale<1?opts.scale:1,seen=new Map(),sz=v=>Math.max(1,Math.round(v*S));
+  const pack=async(t,x,y,w,h,lossy)=>{await throttle();ghCrumb('save: picture '+(stats.images+1)+' ('+w+'×'+h+', '+Math.round(stats.bytes/1048576)+' MB read so far)');const time=performance.now();let raw=await readRegionAsync(t,x,y,w,h);stats.read+=performance.now()-time;stats.bytes+=raw.byteLength;stats.images++;
+    if(S<1){const d=gfDownscale(raw,w,h,S);raw=d.raw;w=d.w;h=d.h;}
+    const key=gfHash(raw)+':'+w+'x'+h+':'+t.depth+':'+(lossy?1:0);if(seen.has(key))return {pr:null,key,w,h};seen.set(key,null);
+    return {pr:pxPack(raw,w,h,t.depth,lossy,true),key,w,h};};
+  /* a picture already stored: this record points at the same bytes */
+  const deferK=(p,r)=>{if(p.pr){defer(p.pr,r);seen.set(p.key,r);return r;}later.push({dup:seen.get(p.key),r,label:gfLabel});return r;};
   /* pictures are packed (files/pixel-pack.js): lossless, or WebP for colour and grey maps with Smaller files on */
   const put=async(t,full,lossy)=>{if(!t||t.empty)return null;const start=performance.now(),b=full?[0,0,doc.w,doc.h]:await contentBoundsAsync(t);stats.bounds+=performance.now()-start;if(!b)return null;
-    const [x,y]=b,w=b[2]-b[0],h=b[3]-b[1],{pr}=await pack(t,x,y,w,h,lossy);return defer(pr,{r:[x,y,w,h],d:t.depth});};
+    const [x,y]=b,w=b[2]-b[0],h=b[3]-b[1],p=await pack(t,x,y,w,h,lossy);return deferK(p,{r:[Math.round(x*S),Math.round(y*S),p.w,p.h],d:t.depth});};
   /* Keep ordinary pixel blobs for older app versions, without allocating/readback of a full GPU image.
      The colour hint lets new versions reopen uniform maps without expanding their storage. */
-  const putSolid=async(k,color)=>{const d=mapDepth(k);stats.images++;stats.bytes+=doc.w*doc.h*(d===16?8:4);return defer(pxPackSolid(color,doc.w,doc.h,d),{r:[0,0,doc.w,doc.h],d,c:color});};
-  const putRaw=async t=>{const {pr}=await pack(t,0,0,t.w,t.h,false);return defer(pr,{w:t.w,h:t.h,d:t.depth});};
+  const putSolid=async(k,color)=>{const d=mapDepth(k);stats.images++;stats.bytes+=doc.w*doc.h*(d===16?8:4);return defer(pxPackSolid(color,sz(doc.w),sz(doc.h),d),{r:[0,0,sz(doc.w),sz(doc.h)],d,c:color});};
+  const putRaw=async(t,lossy)=>{const p=await pack(t,0,0,t.w,t.h,!!lossy);return deferK(p,{w:p.w,h:p.h,d:t.depth});};
   const mask=async n=>n.mask?(gfLabel=(n.name||'?')+' · mask',{en:n.mask.enabled,mono:n.mask.target.mono||undefined,lk:n.mask.link===false?0:undefined,img:await put(n.mask.target,true)}):null;
   const sharedSeen=new Map();
   const node=async n=>{if(n.shared&&n.type!=='group'){if(sharedSeen.has(n))return {t:'R',sid:sharedSeen.get(n),name:n.name};sharedSeen.set(n,sharedSeen.size+1);}/* (0.58) a layer shared by every frame is stored once */
@@ -63,10 +69,12 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
     if(n.type==='group'){const kids=[];for(const c of n.children)kids.push(await node(c));return Object.assign(base,{t:'G',open:n.open,kids,hold:n.frame?n.hold:undefined});}
     if(n.fx)return Object.assign(base,{t:'F',clip:n.clip,mapModes:n.mapModes||{},fx:{map:n.fx.map,stack:fxCleanStack(n.fx.stack)}});
     const maps={};for(const k of mapKeysOf(n)){let r;const color=mapSolid(n,k);gfLabel=(n.name||'?')+' · '+k;
-      if(mapLive(n,k)){const tmp=acquireD(mapDepth(k));try{fillDrawMap(n,k,tmp);r=await put(tmp,true,PX_LOSSY.has(k));r.live=1;}finally{release(tmp);}}
+      /* (0.80.3) a channel drawn live from the material's own picture is rebuilt from it on opening: only a marker is stored */
+      if(mapLive(n,k)&&n.fill&&n.fill.maps[k]&&n.fill.maps[k].src==='image'&&n._fillImg&&n._fillImg[k])r={live:1};
+      else if(mapLive(n,k)){const tmp=acquireD(mapDepth(k));try{fillDrawMap(n,k,tmp);r=await put(tmp,true,PX_LOSSY.has(k));r.live=1;}finally{release(tmp);}}
       else r=color?await putSolid(k,color):await put(mapT(n,k),false,PX_LOSSY.has(k));if(r)maps[k]=r;}
     /* a material layer's own images (so it stays editable after opening) */
-    let fillImg;if((n.fill||n.path)&&n._fillImg){fillImg={};for(const k in n._fillImg){gfLabel=(n.name||'?')+' · material picture '+k;const t=n._fillImg[k],{pr}=await pack(t,0,0,t.w,t.h,!mapLive(n,k)&&PX_LOSSY.has(k));fillImg[k]=defer(pr,{w:t.w,h:t.h});}}
+    let fillImg;if((n.fill||n.path)&&n._fillImg){fillImg={};for(const k in n._fillImg){gfLabel=(n.name||'?')+' · material picture '+k;const t=n._fillImg[k],p=await pack(t,0,0,t.w,t.h,!mapLive(n,k)&&PX_LOSSY.has(k));fillImg[k]=deferK(p,{w:p.w,h:p.h});}}
     return Object.assign(base,{t:'L',clip:n.clip,lock:n.lockAlpha,mapModes:n.mapModes||{},maps,text:n.text?cloneText(n.text):undefined,grad:n.grad||undefined,array:n.array||undefined,arrBox:n.array?n.arrBox:undefined,styles:n.styles||undefined,shape:n.shape||undefined,path:n.path||undefined,fill:n.fill||undefined,nrm:n.nrm||undefined,idSel:n.idSel||undefined,fillImg,hold:n.frame?n.hold:undefined});};
   const R=paintRoot(),kids=[];for(const c of R.children){kids.push(await node(c));await tick();}
   const all=allLayers(R),active=doc.active&&!doc.active.frame?allNodes(R).indexOf(doc.active):-1;
@@ -76,12 +84,12 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
   /* the 3D view's settings, and an imported model so it comes back with the document */
   let meshRec=null;if(!opts.lean&&typeof v3!=='undefined'&&v3.imported){gfLabel='3D model';const c=await streamThrough(meshPack(v3.imported),'deflate-raw');meshRec=defer(Promise.resolve({bytes:c}),{name:v3.imported.name});}
   const bakeMaps={};if(!opts.lean)for(const k of ['skew','offset'])if(bk.maps[k]){const r=await put(bk.maps[k],true);if(r)bakeMaps[k]=r;}
-  const meshMaps={};for(const k in doc.meshMaps||{}){const t=doc.meshMaps[k];if(!t||t.empty)continue;gfLabel='Baked map · '+k;const r=await putRaw(t);r.r=[0,0,t.w,t.h];meshMaps[k]=r;}
+  const meshMaps={};for(const k in doc.meshMaps||{}){const t=doc.meshMaps[k];if(!t||t.empty)continue;gfLabel='Baked map · '+k;const r=await putRaw(t,GF_MESH_LOSSY.has(k)||/^cv:(curv|ao|curvEdge|curvCrease|rough|metal)$/.test(k));r.r=[0,0,r.w,r.h];meshMaps[k]=r;}
   gfLabel='Project shelf (saved assets)';
   const projectAssets=paEncode(bytes=>defer(Promise.resolve({bytes}),{}));
   /* every picture is packed now: give each its place in the file, in the order it was made */
-  {const t0=performance.now();for(const d of later){const bytes=await d.e;if(opts.space){opts.space.push({label:(opts.prefix||'')+(d.label||'?'),bytes:bytes.length});continue;}d.r.o=off;off+=bytes.length;blobs.push(bytes);}stats.pack+=performance.now()-t0;}
-  const head={persp:doc.persp||undefined,session:opts.lean?undefined:gfSession(),p3:!!doc.p3,meshMaps,meshMapInfo:doc.meshMapInfo,projectAssets,bakeMaps,cage:cageClone(doc.cage),v3d:doc.v3d||null,v3shade:doc.v3shade||null,guides:doc.guides&&doc.guides.length?doc.guides:undefined,dpi:doc.dpi||undefined,mesh:meshRec,app:'Gouache Studio',v:GF_VERSION,w:doc.w,h:doc.h,depth:doc.depth,wrap:doc.wrap,name:doc.name,
+  {const t0=performance.now();for(const d of later){if(d.dup){Object.assign(d.r,{o:d.dup.o,n:d.dup.n});if(d.dup.f)d.r.f=d.dup.f;continue;}const bytes=await d.e;if(opts.space){opts.space.push({label:(opts.prefix||'')+(d.label||'?'),bytes:bytes.length});continue;}d.r.o=off;off+=bytes.length;blobs.push(bytes);}stats.pack+=performance.now()-t0;}
+  const head={persp:doc.persp||undefined,session:opts.lean?undefined:gfSession(),p3:!!doc.p3,meshMaps,meshMapInfo:doc.meshMapInfo,projectAssets,bakeMaps,cage:cageClone(doc.cage),v3d:doc.v3d||null,v3shade:doc.v3shade||null,guides:doc.guides&&doc.guides.length?doc.guides:undefined,dpi:doc.dpi||undefined,mesh:meshRec,app:'Gouache Studio',v:GF_VERSION,w:sz(doc.w),h:sz(doc.h),depth:doc.depth,wrap:doc.wrap,name:doc.name,
     maps:doc.maps,map:doc.map,view:doc.view,mapDef:doc.mapDef,workflow:doc.workflow,nrmStr:doc.nrmStr,light:doc.light,tex:texCfg,kids,active,anim,layers:all.length};
   const hj=new TextEncoder().encode(JSON.stringify(head)),pre=new Uint8Array(16);pre.set(GF_MAGIC,0);const dv=new DataView(pre.buffer);dv.setUint32(8,GF_VERSION,true);dv.setUint32(12,hj.length,true);
   return new Blob([pre,hj,...blobs],{type:'application/octet-stream'});}
@@ -114,8 +122,9 @@ async function openGouache(buf,name){const {head,data}=gfHead(buf);if(tabDocs.pa
 /* the maps, settings and layers of a document into the current (blank, right-sized) one; returns the image and layer readers */
 async function gfReadInto(buf,head,data){
   Object.assign(doc,{maps:head.maps||['base'],mapDef:head.mapDef||{},workflow:head.workflow==='spec'?'spec':'metal',nrmStr:head.nrmStr!=null?head.nrmStr:8,light:head.light||{az:135,el:40}});if(head.p3)doc.p3=true;
-  const img=async(r,t,L,k)=>{if(!r)return;const [x,y,w,h]=r.r;
+  const img=async(r,t,L,k)=>{if(!r||!r.r)return;const [x,y,w,h]=r.r;
     if(L&&x===0&&y===0&&w===doc.w&&h===doc.h&&Array.isArray(r.c)&&r.c.length===4&&r.c.every(Number.isFinite)){setMapSolid(L,k,fillSolidColor(k,r.c));return;}
+    if(r.o===undefined)return;/* only a marker (a live channel whose source was missing): leave it empty */
     const raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),w,h,r.d||8,r.f);
     /* Older documents also compact truly uniform fill images, checking every pixel, before GPU upload. */
     if(L&&x===0&&y===0&&w===doc.w&&h===doc.h){const a=new DataView(raw.buffer,raw.byteOffset,raw.byteLength),step=r.d===16?8:4,v=a.getUint32(0,true),v2=step===8?a.getUint32(4,true):0;let same=true;
@@ -151,3 +160,16 @@ async function gfReadInto(buf,head,data){
   syncTargets();
   const nodes=allNodes(doc.root);selectOnly(nodes[head.active]||allLayers().slice(-1)[0]);doc.count=allLayers().length;
   return {img,mk};}
+
+/* (0.80.3) baked maps that may be stored with a little loss when Smaller files is on (they can be baked again);
+   normals, world normals and positions stay exact */
+const GF_MESH_LOSSY=new Set(['ao','curv','thick','light','curvEdge','curvCrease']);
+/* a quick fingerprint of a picture's pixels (two 32-bit hashes over every word), to store exact duplicates once */
+function gfHash(raw){const b=raw.buffer,o=raw.byteOffset,n=raw.byteLength,w=new Uint32Array(b,o,n>>2);let h1=0x811c9dc5,h2=0x9747b28c;
+  for(let i=0;i<w.length;i++){const v=w[i];h1=Math.imul(h1^v,16777619);h2=Math.imul(h2^(v>>>16|v<<16),2246822507)^(h2>>>13);}
+  const u=new Uint8Array(b,o+(w.length<<2),n&3);for(const v of u){h1=Math.imul(h1^v,16777619);}return (h1>>>0).toString(36)+(h2>>>0).toString(36)+n;}
+/* a picture made smaller by S (1/2, 1/4…): each new pixel the average of the ones it covers (premultiplied, so edges stay clean) */
+function gfDownscale(raw,w,h,S){const nw=Math.max(1,Math.round(w*S)),nh=Math.max(1,Math.round(h*S)),C=raw.length/(w*h)|0,out=new raw.constructor(nw*nh*C),fx=w/nw,fy=h/nh;
+  for(let y=0;y<nh;y++){const y0=Math.floor(y*fy),y1=Math.max(y0+1,Math.floor((y+1)*fy));for(let x=0;x<nw;x++){const x0=Math.floor(x*fx),x1=Math.max(x0+1,Math.floor((x+1)*fx));
+    for(let c=0;c<C;c++){let s=0,k=0;for(let yy=y0;yy<y1&&yy<h;yy++)for(let xx=x0;xx<x1&&xx<w;xx++){s+=raw[(yy*w+xx)*C+c];k++;}out[(y*nw+x)*C+c]=raw instanceof Uint8Array?Math.round(s/k):s/k;}}}
+  return {raw:out,w:nw,h:nh};}

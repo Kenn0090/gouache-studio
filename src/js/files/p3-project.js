@@ -5,16 +5,16 @@
 const G3_MAGIC=[71,79,85,65,67,72,69,51],G3_VERSION=1;
 const isP3Proj=buf=>{const u=new Uint8Array(buf,0,Math.min(8,buf.byteLength));return u.length===8&&G3_MAGIC.every((v,i)=>u[i]===v);};
 /* every set as a .gouache blob (the others are stepped into for a moment; the screen holds still meanwhile) */
-async function encodeP3Project(){if(ui.mode!=='p3d')throw new Error('Open the 3D Paint tab first.');if(typeof sel3Free==='function')sel3Free();const blobs=[];let off=0;/* (0.74.4) a set stays a Blob (the browser keeps big ones outside the page's memory) instead of being copied into a second big array */
+async function encodeP3Project(opts){opts=opts||{};const SC=opts.scale>0&&opts.scale<1?opts.scale:1;if(ui.mode!=='p3d')throw new Error('Open the 3D Paint tab first.');if(typeof sel3Free==='function')sel3Free();const blobs=[];let off=0;/* (0.74.4) a set stays a Blob (the browser keeps big ones outside the page's memory) instead of being copied into a second big array */
   const put=b=>{const n=b.size!==undefined?b.size:b.length;blobs.push(b);const r={o:off,n};off+=n;return r;};
   const sets=[];tabDocs.hold=true;ghProject=true;
   try{for(let i=0;i<p3.sets.length;i++){const S=p3.sets[i];let bytes;ghCrumb('save: texture set '+(i+1)+' of '+p3.sets.length,true);
-      if(i===p3.cur)bytes=await encodeGouacheNow({lean:true});
-      else if(S.state){const mine=docState();setDocState(S.state);try{bytes=await encodeGouacheNow({lean:true});}finally{S.state=docState();setDocState(mine);}}
+      if(i===p3.cur)bytes=await encodeGouacheNow({lean:true,scale:SC});
+      else if(S.state){const mine=docState();setDocState(S.state);try{bytes=await encodeGouacheNow({lean:true,scale:SC});}finally{S.state=docState();setDocState(mine);}}
       sets.push(Object.assign({name:S.name,material:p3Binding(S),tile:S.tile||null,meshEditID:S.meshEditID,hid:!!S.hidden},bytes?put(bytes):{empty:true}));}}
   finally{tabDocs.hold=false;ghProject=false;requestRender(true);}
   let mesh=null;if(v3s().model==='imported'&&v3.imported){ghCrumb('save: packing the model ('+Math.round((v3.imported.idx?v3.imported.idx.length:0)/3)+' triangles)',true);const c=await streamThrough(meshPack(v3.imported),'deflate-raw');mesh=Object.assign({name:v3.imported.name},put(c));}
-  const head={app:'Gouache Studio',v:G3_VERSION,name:p3.name||'3D Paint',size:p3.size,cur:p3.cur,setup:p3.setup,workflow:p3.workflow,udim:!!p3.udim,deletedSets:p3.deletedSets||[],sets,mesh,v3d:doc.v3d,cam:Object.assign({},v3.cam),mir3:Object.assign({},mir3)};
+  const head={app:'Gouache Studio',v:G3_VERSION,name:p3.name||'3D Paint',size:SC<1?Math.max(64,Math.round(p3.size*SC)):p3.size,cur:p3.cur,setup:p3.setup,workflow:p3.workflow,udim:!!p3.udim,deletedSets:p3.deletedSets||[],sets,mesh,v3d:doc.v3d,cam:Object.assign({},v3.cam),mir3:Object.assign({},mir3)};
   const hj=new TextEncoder().encode(JSON.stringify(head)),pre=new Uint8Array(16);pre.set(G3_MAGIC,0);const dv=new DataView(pre.buffer);dv.setUint32(8,G3_VERSION,true);dv.setUint32(12,hj.length,true);
   ghCrumb('save: encoded',true);
   return new Blob([pre,hj,...blobs],{type:'application/octet-stream'});}
@@ -69,3 +69,16 @@ async function p3NewProject(size,options){options=options||{};size=Math.max(64,M
   p3.name=null;p3.path=null;p3.savedAt=p3Sig();p3SyncSets();
   v3.mapsDirty=true;v3.dirty=true;fit();changedAll();renderLayers();refreshMapsUI();buildBrushPanel();if(typeof renderMatEd==='function')renderMatEd(true);buildP3Panel();if(v3.on)build3dPane();requestRender(true);toast('New 3D Paint project: '+size+' × '+size+' textures.');return true;}
 
+
+/* (0.80.3, Kenn) File › Save a smaller copy…: the project (or document) at half or quarter size, as a separate file to send.
+   What is open is not changed. */
+function dlgSaveSmall(){if(stroke)return;let S=.5;const p3m=ui.mode==='p3d',w=p3m?p3.size:doc.w,h=p3m?p3.size:doc.h;
+  const g=seg([[.5,'Half ('+Math.round(w/2)+' px)'],[.25,'Quarter ('+Math.round(w/4)+' px)']],S,v=>{S=+v;},'Size');g.id='ssSize';
+  openDialog({title:'Save a smaller copy',body:el('div',{class:'dlg-grid'},el('p',{class:'note',text:'Saves a copy of this '+(p3m?'3D Paint project':'document')+' with every picture made smaller, to send to people or keep as a light backup. What you have open stays as it is.'}),g),
+    okLabel:'Save copy…',onOk(){setTimeout(()=>saveSmallCopy(S),0);}});}
+async function saveSmallCopy(S){toast('Saving a smaller copy…');await tick();
+  try{const p3m=ui.mode==='p3d',blob=p3m?await encodeP3Project({scale:S}):await encodeGouache({scale:S}),tag=S===.5?'half':'quarter',
+      nm=slug((p3m?p3.name:doc.name)||'Untitled').replace(/\.(gouache3d|gouache)$/i,'')+' ('+tag+')'+(p3m?'.gouache3d':'.gouache');
+    if(platform.isDesktop){const path=await platform.saveAs(nm,blob,p3m?'Gouache Studio 3D Paint project':'Gouache Studio document');if(!path){toast('Save cancelled.');return;}toast('Saved a smaller copy ('+Math.round(blob.size/1048576)+' MB): '+path);return;}
+    const r=await deliver(nm,blob);toast(deliveredText(r,'Smaller copy'));}
+  catch(e){console.error(e);toast('The smaller copy could not be saved: '+(e.message||e));}}
