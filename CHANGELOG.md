@@ -1,3 +1,8 @@
+## 0.80.2
+
+- **Padding on export.** Export textures has **Padding** (None, Dilation, Dilation + fill the rest, Dilation + transparent, Fill everything) and a **Dilation** width in pixels of the exported size. It grows each UV island's colours outward so mip-maps in an engine show no seams. It uses the model's UVs (3D Paint, or the 3D view with your model) and applies to every exported map, the mesh maps and the textures inside an exported model.
+- Fixed: the viewport's Lit, Unlit and Ray traced (and the C, B and M keys) did nothing while a layer's settings window was open.
+
 ## 0.80.1
 
 - **Undo while you edit.** A layer's settings (Hand-painted, Stylize, any filter layer) and the light rig (Lights window, Bake tab › Lighting) have **↶ Undo** and **↷ Redo**. Ctrl+Z and Ctrl+Shift+Z step through your changes one at a time while they are open. After Done, Edit › Undo still takes the whole edit back.

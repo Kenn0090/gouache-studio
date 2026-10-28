@@ -1,3 +1,8 @@
+# Gouache Studio 0.80.2
+
+- **Export padding:** choose Dilation (with a width in pixels), Dilation + fill the rest, Dilation + transparent or Fill everything, so textures have no seams in engines.
+- Lit / Unlit / Ray traced work again while a layer's settings window is open.
+
 # Gouache Studio 0.80.1
 
 - **Undo and Redo inside layer settings and the light rig** (buttons, Ctrl+Z, Ctrl+Shift+Z), one change at a time.

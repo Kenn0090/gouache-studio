@@ -60,6 +60,7 @@
     "files/psd-save",
     "files/save",
     "files/tex-export",
+    "files/tex-pad",
     "files/model-export",
     "files/model-fbx",
     "files/engine-send",
