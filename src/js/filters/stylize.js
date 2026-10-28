@@ -50,6 +50,8 @@ const SG_PRESETS={
   'Charcoal':  {size:3,flow:2,sharp:5,len:14,bristle:.8,cvar:0,relief:.25,bend:.3,grain:.7}};
 const SG_KIND={base:0,rough:1,gloss:1,height:2,normal:3};
 
+/* (0.79) stroke sizes are set for a 512 px texture and grow with it, so strokes keep their size on the model */
+const sgScale=()=>Math.max(1,Math.max(doc.w,doc.h)/512);
 /* what the strokes follow: the colour below, the model's shape (mesh maps), or both; shape only when there is a model or mesh maps */
 function sgHasShape(){const M=doc.meshMaps||{};return !!(M.wnormal||M.curv||M.ao||M.normal||(typeof v3!=='undefined'&&v3.mesh&&(ui.mode==='p3d'||v3.on)));}
 function sgGuideOf(v){const g=v.guide||'both';return g!=='colour'&&!sgHasShape()?'colour':g;}
@@ -69,11 +71,11 @@ function sgField(n,src,v,k){
   const guideT=mixT||shape||base;
   const d16=canFloat?16:doc.depth,t1=acquireD(d16),t2=acquireD(d16);
   run(P.f_tensor,t1,{uSrc:guideT.tex,uWrap:!!doc.wrap});if(shape)release(shape);if(mixT)release(mixT);
-  if(v.flow>.25)gaussian(t1,t2,v.flow);else blit(t1,t2,0,0,doc.w,doc.h,0,0);
+  const sc=sgScale();if(v.flow>.25)gaussian(t1,t2,v.flow*sc);else blit(t1,t2,0,0,doc.w,doc.h,0,0);
   const T=makeTarget(doc.w,doc.h,d16,false),S=makeTarget(doc.w,doc.h,d16,false);
   blit(t2,T,0,0,doc.w,doc.h,0,0);release(t1);release(t2);if(own)release(own);
   /* (0.79) bristles and grain are as wide as the strokes ask (they were one texel, a fine sandpaper on big textures) */
-  const sc=Math.max(1,Math.max(doc.w,doc.h)/1024);run(P.sg_streak,S,{uT:T.tex,uLen:Math.min(120,Math.round((v.len||12)*sc)),uSeed:v.seed||1,uWrap:!!doc.wrap,uCell:Math.max(1,(v.size||5)*.35*sc)});
+  run(P.sg_streak,S,{uT:T.tex,uLen:Math.min(120,Math.round((v.len||12)*sc)),uSeed:v.seed||1,uWrap:!!doc.wrap,uCell:Math.max(1,(v.size||5)*.35*sc)});
   /* (0.78) from the mesh maps: a grey light picture (which way it faces, light from the set direction) and a grey edges picture
      (crevices dark from AO, edges light from curvature), painted into the colour before the strokes smear it */
   let L=null,E=null;if(sgHasShape()&&typeof hpPaint==='function'){const dir={lEl:v.mlEl??65,lTurn:v.mlTurn??25};
@@ -101,8 +103,8 @@ fxDef('stylizeG',{title:'Stylize (Gouache)',heavy:true,onlyLayer:true,
       smooth=kind===0||((kind===2||kind===3)?v.sHgt:v.sMat);let sm=src,a=null;
     /* baked lighting and edges from the mesh maps go in first, so the strokes paint them too */
     let lit=null;if(kind===0&&F.L&&((v.meshLight??.35)>0||(v.meshEdge??.35)>0)){lit=acquire();run(sgLitProg(),lit,{uSrc:src.tex,uL:F.L.tex,uE:F.E.tex,uML:v.meshLight??.35,uME:v.meshEdge??.35});sm=lit;}
-    if(smooth&&v.size>.5){a=acquire();run(P.f_akuwa,a,{uSrc:sm.tex,uT:F.T.tex,uR:v.size,uQ:v.sharp,uWrap:!!doc.wrap});sm=a;}
-    run(P.sg_post,dst,{uStep:{int:Math.max(1,Math.round((v.size||5)*.2*Math.max(1,Math.max(doc.w,doc.h)/1024)))},uSrc:sm.tex,uOrig:src.tex,uS:F.S.tex,uKind:{int:kind},uBristle:v.bristle,uCVar:v.cvar,uRelief:v.relief,uBend:v.bend,uGrain:v.grain,uAmt:v.amount,uWrap:!!doc.wrap});
+    if(smooth&&v.size>.5){a=acquire();run(P.f_akuwa,a,{uSrc:sm.tex,uT:F.T.tex,uR:v.size*sgScale(),uQ:v.sharp,uWrap:!!doc.wrap});sm=a;}
+    run(P.sg_post,dst,{uStep:{int:Math.max(1,Math.round((v.size||5)*.2*sgScale()))},uSrc:sm.tex,uOrig:src.tex,uS:F.S.tex,uKind:{int:kind},uBristle:v.bristle,uCVar:v.cvar,uRelief:v.relief,uBend:v.bend,uGrain:v.grain,uAmt:v.amount,uWrap:!!doc.wrap});
     if(a)release(a);if(lit)release(lit);if(F.temp){disposeTarget(F.T);disposeTarget(F.S);if(F.L)disposeTarget(F.L);if(F.E)disposeTarget(F.E);}}});
 
 /* Layer › New › Stylize layer: on top of the stack, so it changes everything below, in every map */

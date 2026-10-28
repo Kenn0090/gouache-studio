@@ -127,9 +127,10 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); vec3 t=texelF
   float A=lam1+lam2>0.0?(lam1-lam2)/(lam1+lam2):0.0; float a=uR*clamp((1.0+A),0.5,2.0), b=uR*clamp(1.0/(1.0+A),0.5,2.0);
   float cp=cos(phi),sp=sin(phi); mat2 SR=mat2(0.5/a,0.0,0.0,0.5/b)*mat2(cp,-sp,sp,cp);
   vec4 m[8]; vec3 s2[8]; for(int k=0;k<8;k++){ m[k]=vec4(0); s2[k]=vec3(0); }
-  int R=int(ceil(max(a,b))); float wsum[8]; for(int k=0;k<8;k++) wsum[k]=0.0;
+  /* (0.79) big radii are sampled in steps, so they still fit in the 25 x 25 window */
+  float stp=max(1.0,ceil(max(a,b)/12.0)); int R=int(ceil(max(a,b)/stp)); float wsum[8]; for(int k=0;k<8;k++) wsum[k]=0.0;
   for(int j=-12;j<=12;j++){ if(abs(j)>R) continue; for(int i=-12;i<=12;i++){ if(abs(i)>R) continue;
-    vec2 d=vec2(i,j), q=SR*d; if(dot(q,q)>0.25) continue; vec4 c=texelFetch(uSrc,wrapP(p+ivec2(i,j),s,uWrap),0); vec3 cs=st(c);
+    vec2 d=vec2(i,j)*stp, q=SR*d; if(dot(q,q)>0.25) continue; vec4 c=texelFetch(uSrc,wrapP(p+ivec2(i,j)*int(stp),s,uWrap),0); vec3 cs=st(c);
     float ang=atan(q.y,q.x); float fk=(ang+3.14159265)/(2.0*3.14159265)*8.0; int k=int(floor(fk))%8; float w=1.0;
     m[k]+=c*w; s2[k]+=cs*cs*w; wsum[k]+=w; } }
   vec4 acc=vec4(0); float ws=0.0;
