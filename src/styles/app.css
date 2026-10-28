@@ -1421,3 +1421,7 @@ body.photomode #docTabs{display:none!important}
 .hptips .tiles button{padding:2px;height:40px;background:var(--bg2,#222);border:1px solid transparent}
 .hptips .tiles button.on{border-color:var(--accent,#5af)}
 .hptips .tiles canvas{max-width:100%;max-height:100%}
+/* (0.80.1) a slider's own back-to-default button */
+.srow.hasdef{grid-template-columns:78px minmax(0,1fr) 56px 14px}
+.sldef{border:none;background:none;color:var(--muted,#999);cursor:pointer;padding:0 2px;font-size:12px;line-height:1}
+.sldef:hover{color:var(--accent,#5af)}.sldef.at{visibility:hidden}

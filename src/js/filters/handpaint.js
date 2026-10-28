@@ -208,8 +208,8 @@ fxDef('handPaint',{title:'Hand-painted',heavy:true,onlyLayer:true,wide:true,
 /* ---- the settings: folding groups, presets on top ---- */
 /* the small kit both painted-look editors use: a slider, colour, tick or list that writes straight into v, folding groups,
    and setAll() to show new values (after a preset). ids are prefix+key */
-function fxUiKit(prefix,v,changed){const sl={},cl={},ck={},sel={},after=[];
-  const S=(key,label,min,max,step,fmt)=>{const s=makeSlider({id:prefix+key,label,min,max,step,value:v[key],fmt,onInput:x=>{v[key]=x;changed();}});sl[key]=s;return s.el;};
+function fxUiKit(prefix,v,changed,D){const sl={},cl={},ck={},sel={},after=[];
+  const S=(key,label,min,max,step,fmt)=>{const s=makeSlider({id:prefix+key,label,min,max,step,value:v[key],def:D&&typeof D[key]==='number'?D[key]:undefined,fmt,onInput:x=>{v[key]=x;changed();}});sl[key]=s;return s.el;};
   const C=(key,label)=>{const b=colourBtn(prefix+key,()=>v[key],c=>{v[key]=c.slice(0,3);changed();},label);cl[key]=b;return el('label',{class:'hpcol'},el('span',{text:label}),b);};
   const K=(key,label)=>{const c=chk(prefix+key,label,!!v[key],x=>{v[key]=x;changed();});ck[key]=c.querySelector('input');return c;};
   const SEL=(key,label,opts)=>{const s=el('select',{id:prefix+key,'aria-label':label},...opts.map(([val,t])=>el('option',{value:String(val),text:t})));s.value=String(v[key]);
@@ -231,7 +231,7 @@ function fxTipPicker(hostId,v,changed){const tipHost=el('div',{class:'hptips',id
       const set=library.find(s=>s.id==='custom');v.tipKey=dualLibraryKey(set,p,set.presets.indexOf(p));render();changed();};f.click();}});
   render();return {tipHost,tipName,importTip,render};}
 function hpControls(v,upd){for(const k in HP_DEFAULTS)if(v[k]===undefined)v[k]=JSON.parse(JSON.stringify(HP_DEFAULTS[k]));
-  const changed=()=>{v.preset='custom';refreshChips();upd();},U=fxUiKit('hp_',v,changed),{S,C,K,SEL,G,setAll,sl}=U;
+  const changed=()=>{v.preset='custom';refreshChips();upd();},U=fxUiKit('hp_',v,changed,HP_DEFAULTS),{S,C,K,SEL,G,setAll,sl}=U;
   const chips=[];const refreshChips=()=>{for(const b of chips)b.classList.toggle('on',b.dataset.pre===v.preset);};
   const presetRows=Object.keys(HP_PRESETS).map(g=>el('div',{},el('div',{class:'sub',text:g}),el('div',{class:'chips'},...Object.keys(HP_PRESETS[g]).map(name=>{
     const b=el('button',{class:'chip'+(v.preset===name?' on':''),'data-pre':name,id:'hp_pre_'+name.replace(/\W+/g,''),text:name,onclick:()=>{const keep={tipKey:v.tipKey,seed:v.seed};

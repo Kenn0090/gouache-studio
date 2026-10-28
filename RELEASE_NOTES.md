@@ -1,3 +1,9 @@
+# Gouache Studio 0.80.1
+
+- **Undo and Redo inside layer settings and the light rig** (buttons, Ctrl+Z, Ctrl+Shift+Z), one change at a time.
+- **A ↺ default button on each slider** puts just that slider back.
+- The Gouache-style Stylize layer has been removed; Stylize is now the strokes, lighting and edges one.
+
 # Gouache Studio 0.80.0
 
 - **New Lighting bake with a light rig (like Marmoset):** sun, point, spot and sky lights with soft shadows, an Auto rig (key, fill, rim, sky), a light list with eyes, and lights you drag in the 3D view. In 3D Paint it becomes a Lighting mesh map and a Baked lighting Multiply layer; the Hand-painted and Stylize layers light the model with it.

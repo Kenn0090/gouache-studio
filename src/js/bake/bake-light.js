@@ -42,15 +42,19 @@ const lightBakeOff=()=>({});
 
 /* ---- the Lighting tab of the Bake panel: the rig as a list (eye, name, type, colour, strength, softness, shadows…) ---- */
 function lightTabPage(on,note){const R=lightRig(),C=bakeCfg,pg=el('div',{});
-  const redraw=()=>{pg.replaceChildren(...lightTabBody().filter(Boolean));v3.dirty=true;requestRender&&requestRender();};
-  const lightTabBody=()=>{const rows=R.lights.map(L=>{const sel=R.sel===L.id,set=(k,v)=>{L[k]=v;v3.dirty=true;requestRender&&requestRender();};
+  if(!R.lights.length&&(C.kinds.light||!on))lightAutoRig();/* before the undo history starts */
+  const paint=()=>{pg.replaceChildren(...lightTabBody().filter(Boolean));v3.dirty=true;requestRender&&requestRender();};
+  /* (0.80.1) every change to the rig is an undo step (the buttons; Ctrl+Z too in the Lights window) */
+  const H=editHistory(()=>JSON.stringify({lights:R.lights,expo:R.expo??1}),t=>{const o=JSON.parse(t);R.lights=o.lights;R.expo=o.expo;if(R.sel&&!R.lights.some(L=>L.id===R.sel))R.sel=null;paint();});
+  lightHist=H;const redraw=()=>{H.note();paint();};
+  const lightTabBody=()=>{const rows=R.lights.map(L=>{const sel=R.sel===L.id,set=(k,v)=>{L[k]=v;H.note();v3.dirty=true;requestRender&&requestRender();};
       const eye=el('button',{class:'eye p3eye',type:'button','aria-label':(L.on===false?'Turn on ':'Turn off ')+L.name,'aria-pressed':String(L.on!==false),onclick:e=>{e.stopPropagation();L.on=L.on===false;redraw();}});eye.innerHTML=L.on===false?eyeOff:eyeOn;
-      const head=el('div',{class:'p3set lrow'+(sel?' on':'')+(L.on===false?' missing':''),id:'lrow_'+L.id,onclick:()=>{R.sel=sel?null:L.id;redraw();}},eye,el('span',{class:'p3sn',text:L.name}),el('span',{class:'note',text:LIGHT_TYPES.find(t=>t[0]===L.type)[1]}),
+      const head=el('div',{class:'p3set lrow'+(sel?' on':'')+(L.on===false?' missing':''),id:'lrow_'+L.id,onclick:()=>{R.sel=sel?null:L.id;paint();}},eye,el('span',{class:'p3sn',text:L.name}),el('span',{class:'note',text:LIGHT_TYPES.find(t=>t[0]===L.type)[1]}),
         el('button',{class:'btn sm',type:'button',text:'×',title:'Delete this light','aria-label':'Delete '+L.name,onclick:e=>{e.stopPropagation();R.lights=R.lights.filter(x=>x!==L);redraw();}}));
       if(!sel)return head;
-      const nm=el('input',{type:'text',value:L.name,'aria-label':'Name',id:'l_name'});nm.oninput=()=>{L.name=nm.value;};nm.onchange=redraw;
+      const nm=el('input',{type:'text',value:L.name,'aria-label':'Name',id:'l_name'});nm.oninput=()=>{L.name=nm.value;};nm.onchange=()=>{H.note();};
       const typ=el('select',{id:'l_type','aria-label':'Type'},...LIGHT_TYPES.map(([v,t])=>el('option',{value:v,text:t})));typ.value=L.type;typ.onchange=()=>{L.type=typ.value;redraw();};
-      const sl=(k,label,min,max,step,fmt)=>makeSlider({id:'l_'+k,label,min,max,step,value:L[k],fmt,onInput:v=>set(k,v)}).el;const b=lightBox();
+      const D0=lightNew(L.type),sl=(k,label,min,max,step,fmt)=>makeSlider({id:'l_'+k,label,min,max,step,value:L[k],def:typeof D0[k]==='number'?D0[k]:undefined,fmt,onInput:v=>set(k,v)}).el;const b=lightBox();
       const box=el('div',{class:'dlg-grid lset'},el('label',{class:'hpsel'},el('span',{text:'Name'}),nm),el('label',{class:'hpsel'},el('span',{text:'Type'}),typ),
         el('label',{class:'hpcol'},el('span',{text:'Colour'}),colourBtn('l_col',()=>L.col,c=>set('col',c.slice(0,3)),'Light colour')),sl('int','Strength',0,5,.01,v=>v.toFixed(2)),
         chk('l_shadow','Shadows',L.shadow!==false,v=>set('shadow',v)),sl('rays',L.type==='sky'?'Rays':'Shadow rays',1,64,1,String));
@@ -63,19 +67,18 @@ function lightTabPage(on,note){const R=lightRig(),C=bakeCfg,pg=el('div',{});
       if(L.type==='sun')box.append(el('p',{class:'note',text:'Drag the sun in the view to turn it around the model.'}));
       return el('div',{},head,box);});
     const add=t=>el('button',{class:'btn sm',type:'button',id:'lAdd_'+t,text:'+ '+LIGHT_TYPES.find(x=>x[0]===t)[1],onclick:()=>{const L=lightNew(t);if(t==='spot')L.name='Spot';R.lights.push(L);R.sel=L.id;redraw();}});
-    return [on,lightPresetRow(redraw),el('div',{class:'chips'},el('button',{class:'btn sm',type:'button',id:'lAuto',text:'Auto rig (key, fill, rim, sky)',title:'Three-point lighting around the model, like Marmoset',onclick:()=>{lightAutoRig();redraw();}}),add('sun'),add('point'),add('spot'),add('sky')),
+    return [on,H.buttons('l'),lightPresetRow(redraw),el('div',{class:'chips'},el('button',{class:'btn sm',type:'button',id:'lAuto',text:'Auto rig (key, fill, rim, sky)',title:'Three-point lighting around the model, like Marmoset',onclick:()=>{lightAutoRig();redraw();}}),add('sun'),add('point'),add('spot'),add('sky')),
       el('div',{class:'sub',text:'Lights'}),R.lights.length?el('div',{class:'p3sets lights',id:'lList'},...rows):el('p',{class:'note',text:'No lights yet. Press Auto rig, or add one.'}),
-      makeSlider({id:'l_expo',label:'Exposure',min:.1,max:4,step:.01,value:R.expo??1,fmt:v=>v.toFixed(2),onInput:v=>{R.expo=v;}}).el,
+      makeSlider({id:'l_expo',label:'Exposure',min:.1,max:4,step:.01,value:R.expo??1,def:1,fmt:v=>v.toFixed(2),onInput:v=>{R.expo=v;H.note();}}).el,
       chk('l_show','Show the lights in the view',R.show!==false,v=>{R.show=v;v3.dirty=true;requestRender&&requestRender();}),
       ui.mode==='bake'&&bkMats(bkLow())?bkMatEyes(C):null,
       on&&note('Bakes the light of this rig onto the model, with the shadows it casts on itself. It goes to 3D Paint as a mesh map (the Hand-painted and Stylize layers light the model with it) and as a Multiply layer you can paint on. Parts left out (eyes above) are not baked, but still cast shadows.')];};
-  if(!R.lights.length&&(C.kinds.light||!on))lightAutoRig();
-  lightPageRedraw=redraw;
+  lightPageRedraw=paint;
   pg.append(...lightTabBody().filter(Boolean));return pg;}
 
 /* ---- the lights in the 3D view of the Bake tab: drag a sun to turn it, a bulb or spot to move it ---- */
 const lgz={el:null,drag:null,raf:0};
-let lightPageRedraw=null;
+let lightPageRedraw=null,lightHist=null;
 const lightWin={open:false};
 function lgzActive(){const R=bakeCfg&&bakeCfg.rig;return (ui.mode==='bake'||ui.mode==='p3d'&&(v3s().rigLive||lightWin.open))&&v3.on&&R&&R.show!==false&&R.lights&&R.lights.some(L=>L.type!=='sky')?R:null;}
 function lgzGeom(hit){const R=lgzActive();if(!R||!hit)return null;const r=hit.getBoundingClientRect(),w=Math.max(1,r.width),h=Math.max(1,r.height);if(r.width<4)return null;
@@ -108,7 +111,7 @@ function lgzApply(){const D=lgz.drag;if(!D||!D.m)return;const {L,G}=D,dx=D.m[0]-
       px=G.pr(D.pos0.map((v,k)=>v+rt[k]))||p0,u=p0&&px?Math.max(1e-3,Math.hypot(px[0]-p0[0],px[1]-p0[1])):100;
     L.pos=D.shift?D.pos0.map((v,k)=>v-f[k]*dy/u):D.pos0.map((v,k)=>v+rt[k]*dx/u-up[k]*dy/u);}
   v3.dirty=true;requestRender&&requestRender();lightTabSync();}
-function lgzUp(){if(!lgz.drag)return;if(lgz.raf){cancelAnimationFrame(lgz.raf);lgz.raf=0;lgzApply();}lgz.drag=null;lgzDraw();}
+function lgzUp(){if(!lgz.drag)return;if(lgz.raf){cancelAnimationFrame(lgz.raf);lgz.raf=0;lgzApply();}lgz.drag=null;if(lightHist)lightHist.commit();lgzDraw();}
 /* the open Lighting tab follows a drag (its sliders) */
 function lightTabSync(){const L=(lightRig().lights||[]).find(x=>x.id===lightRig().sel);if(!L)return;for(const k of ['el','turn']){const i=document.getElementById('l_'+k);if(i){i.value=L[k];const o=i.parentNode&&i.parentNode.querySelector('output');if(o)o.textContent=Math.round(L[k])+'°';}}
   document.querySelectorAll('#lList .lrow').forEach(r=>r.classList.toggle('on',r.id==='lrow_'+L.id));}
@@ -153,5 +156,5 @@ function lightRigRow(){const s=v3s();return el('div',{class:'dlg-grid',id:'lRigR
   chk('l_live','Light the view with my light rig',!!s.rigLive,v=>{s.rigLive=v;if(v&&!lightRig().lights.length)lightAutoRig();v3.dirty=true;requestRender&&requestRender();}),
   el('button',{class:'btn sm',type:'button',id:'lOpen',text:'Lights…',title:'Add, move and set up your lights (the same rig the Lighting bake uses)',onclick:()=>lightDialog()}),
   el('p',{class:'note',text:'Up to four lights show in the view (no shadows there). The Lighting bake (Bake mesh maps) bakes them all, with shadows.'}));}
-function lightDialog(){lightWin.open=true;const s=v3s();if(!s.rigLive){s.rigLive=true;}const body=lightTabPage(null,t=>el('p',{class:'note',text:t}));v3.dirty=true;requestRender&&requestRender();
-  openDialog({title:'Lights',body:el('div',{class:'dlg-grid',id:'lightDlg'},body),float:true,okLabel:null,cancelLabel:'Close',onCancel(){lightWin.open=false;lightPageRedraw=null;v3.dirty=true;requestRender&&requestRender();}});}
+function lightDialog(){lightWin.open=true;const s=v3s();if(!s.rigLive){s.rigLive=true;}const body=lightTabPage(null,t=>el('p',{class:'note',text:t})),prevHist=edHist;edHist=lightHist;const unkey=lightHist?lightHist.bindKeys():()=>{};v3.dirty=true;requestRender&&requestRender();
+  openDialog({title:'Lights',body:el('div',{class:'dlg-grid',id:'lightDlg'},body),float:true,okLabel:null,cancelLabel:'Close',onCancel(){lightWin.open=false;lightPageRedraw=null;if(lightHist)lightHist.commit();edHist=prevHist;unkey();v3.dirty=true;requestRender&&requestRender();}});}

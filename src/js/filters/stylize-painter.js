@@ -161,7 +161,7 @@ fxDef('stylizeP',{title:'Stylize (Painter style)',heavy:true,onlyLayer:true,wide
 
 /* ---- settings: master sliders on top (like Painter), each group folds open below ---- */
 function paControls(v,upd){for(const k in PA_DEFAULTS)if(v[k]===undefined)v[k]=JSON.parse(JSON.stringify(PA_DEFAULTS[k]));
-  const changed=()=>{v.preset='custom';refreshChips();upd();},U=fxUiKit('pa_',v,changed),{S,C,K,SEL,G,setAll}=U;
+  const changed=()=>{v.preset='custom';refreshChips();upd();},U=fxUiKit('pa_',v,changed,PA_DEFAULTS),{S,C,K,SEL,G,setAll}=U;
   const chips=[];const refreshChips=()=>{for(const b of chips)b.classList.toggle('on',b.dataset.pre===v.preset);};
   const presetRow=el('div',{class:'chips'},...Object.keys(PA_PRESETS).map(name=>{const b=el('button',{class:'chip'+(v.preset===name?' on':''),'data-pre':name,id:'pa_pre_'+name.replace(/\W+/g,''),text:name,
     onclick:()=>{Object.assign(v,JSON.parse(JSON.stringify(PA_DEFAULTS)),{seed:v.seed},JSON.parse(JSON.stringify(PA_PRESETS[name])),{preset:name});setAll();refreshChips();upd();}});chips.push(b);return b;}));

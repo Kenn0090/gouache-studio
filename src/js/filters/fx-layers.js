@@ -78,17 +78,19 @@ function cmdNewRetroLayer(clip){if(ui.mode==='anim'){toast('Filter layers are fo
 /* ---- the editor: every filter in the stack, with its controls, live ---- */
 function fxEditor(L,opts){opts=opts||{};if(!isFx(L))return;if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
   const before=JSON.stringify(fxCleanStack(L.fx.stack));const body=el('div',{class:'dlg-grid fxed'});let open=L.fx.stack.length?L.fx.stack.length-1:-1;
-  let pend=0;const upd=()=>{if(pend)return;pend=requestAnimationFrame(()=>{pend=0;dropFxCache(L);requestRender(true);});};
+  let pend=0;const show=()=>{if(pend)return;pend=requestAnimationFrame(()=>{pend=0;dropFxCache(L);requestRender(true);});};
+  /* every change is an undo step while the editor is open (Ctrl+Z, or the buttons) */
+  const H=editHistory(()=>JSON.stringify(fxCleanStack(L.fx.stack)),t=>{L.fx.stack=JSON.parse(t);draw();show();renderLayers();});const upd=()=>{H.note();show();};
   const ctx={};
   const draw=()=>{body.replaceChildren();const S=L.fx.stack;
     if(!S.length)body.append(el('p',{class:'note',text:'Add a filter below. Filters apply from top to bottom, to everything under this layer'+(L.clip?' (only the layer it is clipped to)':'')+'.'}));
     S.forEach((it,i)=>{const isOpen=i===open,ttl=fxItemTitle(it);
       const eye=el('button',{class:'eye','aria-label':(it.on!==false?'Turn off ':'Turn on ')+ttl,title:it.on!==false?'Turn off':'Turn on'});eye.innerHTML=it.on!==false?eyeOn:eyeOff;
-      eye.onclick=e=>{e.stopPropagation();it.on=it.on===false;draw();upd();};
+      eye.onclick=e=>{e.stopPropagation();it.on=it.on===false;draw();upd();};/* upd notes the change */
       const btn=(t,lab,fn,dis)=>el('button',{class:'btn sm ghost',text:t,'aria-label':lab,title:lab,disabled:!!dis,onclick:e=>{e.stopPropagation();fn();draw();upd();}});
       const head=el('div',{class:'fxhead'+(isOpen?' open':''),role:'button',tabindex:'0'},eye,el('span',{class:'lname',text:ttl}),
         btn('↑','Move up',()=>{S.splice(i-1,0,S.splice(i,1)[0]);open=i-1;},i===0),btn('↓','Move down',()=>{S.splice(i+1,0,S.splice(i,1)[0]);open=i+1;},i===S.length-1),
-        btn('×','Remove',()=>{S.splice(i,1);open=Math.min(open,S.length-1);}));
+        btn('×','Remove',()=>{S.splice(i,1);open=Math.min(open,S.length-1);H.note();}));
       head.onclick=()=>{open=isOpen?-1:i;draw();};head.onkeydown=e=>{if(e.key==='Enter'){open=isOpen?-1:i;draw();}};
       const item=el('div',{class:'fxitem'},head);
       if(isOpen){const box=el('div',{class:'dlg-grid fxbody'});
@@ -103,9 +105,9 @@ function fxEditor(L,opts){opts=opts||{};if(!isFx(L))return;if(stroke||preview||s
     if(L.fx.map==='all')add.hidden=true;/* a Stylize layer holds only its own effect */
     add.onchange=()=>{const v=add.value;if(!v)return;S.push(v.startsWith('conv:')?convItem(v.slice(5)):fxItem(v));open=S.length-1;
       if(L.autoName!==false&&(L.name==='Filters'||S.length===1))L.name=fxDefaultName(S);draw();upd();renderLayers();};
-    body.append(el('div',{class:'frow'},add),el('p',{class:'note',text:'Editing “'+L.name+'” '+(L.fx.map==='all'?'on every map':'on the '+MAP_DEFS[L.fx.map].label.toLowerCase()+' map')+'. Its opacity, blend mode and mask are in the Layers panel.'}));};
-  draw();preview={off:true,fxEdit:true};
-  const close=()=>{cancelAnimationFrame(pend);pend=0;preview=null;};
+    body.append(el('div',{class:'frow'},add,H.buttons('fx')),el('p',{class:'note',text:'Editing “'+L.name+'” '+(L.fx.map==='all'?'on every map':'on the '+MAP_DEFS[L.fx.map].label.toLowerCase()+' map')+'. Its opacity, blend mode and mask are in the Layers panel.'}));};
+  draw();preview={off:true,fxEdit:true};const prevHist=edHist;edHist=H;const unkey=H.bindKeys();
+  const close=()=>{cancelAnimationFrame(pend);pend=0;preview=null;H.commit();edHist=prevHist;unkey();};
   openDialog({title:opts.isNew?'New filter layer':'Filter layer',body,float:true,okLabel:'Done',
     onOk(){close();const after=JSON.stringify(fxCleanStack(L.fx.stack));
       if(opts.isNew){if(!L.fx.stack.length){detachNode(L);disposeLayer(L);changedAll();return;}detachNode(L);structOp('New filter layer',()=>{insertNode(L,opts.parent,opts.index);selectOnly(L);});}
@@ -116,7 +118,7 @@ const fxCleanStack=S=>S.map(it=>Object.assign({},it,{v:fxClean(it.v)}));
 /* converter settings inside the filter layer editor */
 function convControls(C,v,upd){const out=[];if(C.note)out.push(el('p',{class:'note',text:C.note}));
   for(const [key,label,opts,cur] of C.segs||[])out.push(el('div',{class:'sub',text:label}),seg(opts,v[key],x=>{v[key]=x;upd();},label));
-  for(const d of C.defs)out.push(makeSlider(Object.assign({},d,{value:v[d.key],id:'cv_'+d.key,onInput:x=>{v[d.key]=x;upd();}})).el);
+  for(const d of C.defs)out.push(makeSlider(Object.assign({},d,{value:v[d.key],def:d.value,id:'cv_'+d.key,onInput:x=>{v[d.key]=x;upd();}})).el);
   for(const [key,label] of C.checks||[])out.push(chk('cv_'+key,label,!!v[key],x=>{v[key]=x;upd();}));
   out.push(el('p',{class:'note',text:'Updates by itself when the '+(C.finalNormal?'normal or height':MAP_DEFS[C.from].label.toLowerCase())+' map changes.'}));return out;}
 function editActiveFx(){const A=doc.active;if(isFx(A))fxEditor(A);else toast('Select a filter layer first.');}

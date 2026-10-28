@@ -1,3 +1,10 @@
+## 0.80.1
+
+- **Undo while you edit.** A layer's settings (Hand-painted, Stylize, any filter layer) and the light rig (Lights window, Bake tab › Lighting) have **↶ Undo** and **↷ Redo**. Ctrl+Z and Ctrl+Shift+Z step through your changes one at a time while they are open. After Done, Edit › Undo still takes the whole edit back.
+- **A default button on each slider.** A small **↺** next to a slider puts just that slider back to its default (filter settings, the painted-look layers, the lights).
+- **The Gouache-style Stylize layer is gone** from the menus. The Stylize layer is now the one with strokes, lighting and edges. Files that already use the old one still open.
+- Fixed: the Lights window could undo the Auto rig away.
+
 ## 0.80.0
 
 - **Lighting bake with a light rig, like Marmoset.** Bake tab > tick **Lighting** > the **Lighting** tab. Suns, point lights, spots and the sky (the 3D view's HDRI), each with colour, strength, soft shadows and its own number of rays. The model's own shadows come from the baker's ray tracing.

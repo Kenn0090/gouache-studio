@@ -1,20 +1,8 @@
-# Painted looks: Stylize, Stylize (Painter style) and Hand-painted layers
+# Painted looks: Stylize and Hand-painted layers
 
 Two layers that act on **every map at once** (colour, roughness, metallic, height, normal). Both are in **Layer › New** and in the right-click menu of the Layers panel. Each sits on top of the stack and changes everything below it. Its opacity, blend mode and mask work like any layer.
 
-## Stylize layer (painted strokes)
-
-Repaints everything below as brush strokes that follow the shapes in the picture. The colour, height and normal share the same strokes, so the paint catches light, and the roughness is evened out along them.
-
-- **Looks:** Gouache, Oil, Thick paint, Soft wash, Watercolour, Comic, Pastel, Chalk, Charcoal.
-- **Strokes:** size, flow, edge keeping, length.
-- **Paint:** bristles, colour variation, canvas grain.
-- **Relief:** paint relief (height) and normal bend.
-- **Strokes follow:** the model's shape (from the baked mesh maps, else the model), the colour below, or both.
-- **Mesh maps:** **Baked lighting** (from the world normal, with a light height and turn) and **Edges and cavities** (crevices from AO, edges from curvature) are painted into the colour before the strokes, so the strokes carry them.
-- **Amount** 0 leaves the picture as it was.
-
-## Stylize layer, Painter style
+## Stylize layer
 
 Our own version of the stylization filter in Substance Painter. On top are master sliders: **Stylization** (how much of all of it), **Brush strokes**, **Smoothness**, **Colorize**, **Gradient**, **Baked lighting**, **Edges and cavities** and a **Random seed**. Each has a group below with its settings:
 
@@ -64,3 +52,9 @@ Presets:
 Both layers work in Spec/Gloss projects. The Hand-painted layer then makes **glossiness**, and with **Metal parts** on, a coloured specular and a dark diffuse, the same way the app converts between workflows.
 
 To keep a look, right-click the layer › **Save as smart material…** (3D Paint). It is listed in Materials › Smart materials; adding it puts the same layer back on top of the stack, so it still works on everything below. The Hand-painted presets are listed there too.
+
+## Undo and defaults
+
+- While a layer's settings are open, **↶ Undo** and **↷ Redo** (or Ctrl+Z, Ctrl+Shift+Z) step through your changes one at a time. After **Done**, Edit › Undo takes the whole edit back in one step.
+- Every slider has a small **↺** button that puts just that slider back to its default. It hides while the slider is already at the default.
+- The Lights window and the Bake tab's Lighting page have Undo and Redo too.

@@ -216,7 +216,11 @@ function makeSlider(o){
   if(o.onChange)inp.addEventListener('change',()=>o.onChange(from(parseFloat(inp.value))));
   const percent=v=>String(fmt(v)).match(/([-+]?\d+(?:\.\d+)?)\s*%/),pc=percent(1),half=pc?null:percent(.5),gestureScale=o.numericScale||(fmt===pct?100:pc?Math.abs(+pc[1])||1:half?Math.abs(+half[1])*2||1:1);
   sliderGestures(inp,{to,from,scale:gestureScale,get:()=>value});
-  const control={el:el('div',{class:'srow'},el('label',{for:o.id,text:o.label}),inp,out),set(v){inp.value=to(v);show(v);}};inp._gsSlider=control;return control;
+  /* (0.80.1, Kenn) a slider can carry its own default: a small ↺ button puts just that slider back */
+  let rst=null;const atDef=v=>o.def!==undefined&&Math.abs(v-o.def)<1e-9;
+  if(o.def!==undefined){rst=el('button',{type:'button',class:'sldef',id:o.id+'_def',text:'↺',title:'Back to the default ('+fmt(o.def)+')','aria-label':o.label+': back to the default',onclick:()=>{inp.value=to(o.def);show(o.def);o.onInput(o.def);if(o.onChange)o.onChange(o.def);rst.classList.add('at');}});
+    rst.classList.toggle('at',atDef(value));inp.addEventListener('input',()=>rst.classList.toggle('at',atDef(value)));}
+  const control={el:el('div',{class:'srow'+(rst?' hasdef':'')},el('label',{for:o.id,text:o.label}),inp,out,...(rst?[rst]:[])),set(v){inp.value=to(v);show(v);if(rst)rst.classList.toggle('at',atDef(v));}};inp._gsSlider=control;return control;
 }
 function chk(id,label,checked,onChange){const i=el('input',{type:'checkbox',id});i.checked=checked;i.addEventListener('change',()=>onChange(i.checked));return el('label',{class:'chk',for:id},i,el('span',{text:label}));}
 const pct=v=>Number((v*100).toFixed(2))+'%';
