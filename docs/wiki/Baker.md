@@ -192,3 +192,23 @@ You can rotate the viewport while a bake runs. Bake pauses restore the shared re
 Use **Add…** beside High-poly to add another file. Each file keeps its original position in the model. Remove individual files with × in the list. **Load…** replaces the high-poly set; dropping another `_high` file adds it.
 
 Use **Material** in the viewport toolbar (or **Escape**) to turn off UV and bake-map inspection. Clicking an active UV inspection mode again also turns it off.
+
+## Lighting (light rig)
+
+The **Lighting** bake writes the light of a rig onto the model, with the soft shadows the model casts on itself, like a Marmoset light setup baked into a texture. Tick **Lighting** in the list of maps and open the **Lighting** settings tab.
+
+- **Auto rig (key, fill, rim, sky):** three-point lighting around the model (it faces the front, +Z): a warm key light from the front left above, a cool weaker fill from the right, a bright rim from behind, and a little sky.
+- **+ Sun, + Point, + Spot, + Sky** add a light. Sky uses the environment picture (HDRI) of the 3D view, turned as there; with none it is a plain white sky.
+- **The list:** every light with an eye to turn it on or off. Click a light to open its settings:
+  - name, type, colour, strength, shadows on/off, shadow rays (more is smoother, slower),
+  - Sun: shadow softness, height and turn,
+  - Point and Spot: shadow softness (light size) and reach; a Spot also has its cone and soft edge, and always points at the middle of the model.
+- **In the 3D view:** the lights are drawn on the view. Drag a sun to turn it around the model. Drag a point light or spot to move it across the screen; hold Shift to move it nearer or further.
+- **Exposure** brightens or darkens the whole bake. **Materials to bake** (eyes) leave parts out; left-out parts still cast shadows.
+
+Where it goes:
+
+- **Send to 3D Paint:** the bake becomes the texture set's **Lighting** mesh map, and also a **Baked lighting** layer in Multiply mode over the colour, which you can paint on.
+- The **Hand-painted** layer and the **Stylize** layers light the model with the Lighting mesh map when there is one (their **Light from** setting: the baked Lighting map, or their own direction).
+- **Send to Paint** adds it as a Multiply layer; **Export** writes Lighting.png.
+- The 3D Paint **Bake mesh maps** window can bake Lighting too, with the same rig.

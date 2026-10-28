@@ -1,3 +1,7 @@
+# Gouache Studio 0.80.0
+
+- **New Lighting bake with a light rig (like Marmoset):** sun, point, spot and sky lights with soft shadows, an Auto rig (key, fill, rim, sky), a light list with eyes, and lights you drag in the 3D view. In 3D Paint it becomes a Lighting mesh map and a Baked lighting Multiply layer; the Hand-painted and Stylize layers light the model with it.
+
 # Gouache Studio 0.79.0
 
 - **New Stylize layer, Painter style:** master sliders for Stylization, Brush strokes, Smoothness, Colorize, Gradient, Baked lighting and Edges and cavities, each with its own settings. Strokes come from your brushes and land the same in every map; lighting, edges and gradient come from the mesh maps. Layer > New > Stylize layer, Painter style.

@@ -1,3 +1,14 @@
+## 0.80.0
+
+- **Lighting bake with a light rig, like Marmoset.** Bake tab > tick **Lighting** > the **Lighting** tab. Suns, point lights, spots and the sky (the 3D view's HDRI), each with colour, strength, soft shadows and its own number of rays. The model's own shadows come from the baker's ray tracing.
+- **Auto rig:** key, fill, rim and sky placed around the model in one click (three-point lighting).
+- **Light list** with an eye per light, and **Materials to bake** eyes for the model's parts. Parts left out still cast shadows.
+- **Lights in the 3D view:** drag a sun to turn it around the model, drag a point light or spot to move it (Shift: nearer or further).
+- **Both results:** in 3D Paint the bake is the texture set's **Lighting** mesh map *and* a **Baked lighting** Multiply layer you can paint on. Send to Paint and Export work too.
+- **The painted-look layers use it:** Hand-painted, Stylize and Stylize (Painter style) light the model with the baked Lighting map when there is one. **Light from** chooses between the map and the layer's own direction.
+- The 3D Paint **Bake mesh maps** window can bake Lighting with the same rig.
+- Fixed: a new point light could start outside the view.
+
 ## 0.79.0
 
 - **Stylize layer, Painter style.** Layer > New > **Stylize layer, Painter style** works like the stylization filter of Substance Painter, in our own version. Master sliders on top (Stylization, Brush strokes, Smoothness, Colorize, Gradient, Baked lighting, Edges and cavities, Random seed), each with its own folding group below, a **Helpers** view and **Restore defaults**. It repaints every map below at once.

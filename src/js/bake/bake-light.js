@@ -11,7 +11,10 @@ function lightRig(){const C=bakeCfg;if(!C.rig)C.rig={lights:[],expo:1,show:true,
 function lightNew(type,o){const box=lightBox(),R=box.r;
   return Object.assign({id:'l'+Date.now().toString(36)+(++lightSeq),name:{sun:'Sun',point:'Point light',spot:'Spot',sky:'Sky'}[type],type,on:true,col:[1,1,1],int:type==='sky'?.3:1,
     soft:type==='sun'?2:R*.15,shadow:true,rays:type==='sky'?24:12,range:R*3,cone:35,edge:.4,
-    pos:[box.c[0]+R*.75,box.c[1]+R*.6,box.c[2]+R*.9],/* near the model, in view */el:45,turn:30},o||{});}
+    pos:lightStartPos(box),el:45,turn:30},o||{});}
+/* a new bulb or spot starts between the view and the model, a little up and to the side, so it is on screen */
+function lightStartPos(box){const R=box.r,c=box.c;let f=[.45,.35,.82];try{if(v3.cam){const e=v3Eye();f=lightNorm(e.map((v,k)=>v-c[k]));}}catch(_){}
+  const rt=lightNorm([f[2],0,-f[0]]);return c.map((v,k)=>v+f[k]*R*.6+rt[k]*R*.2+(k===1?R*.25:0));}
 /* the model's box: centre and radius (in the view's space) */
 function lightBox(){const m=typeof bkLow==='function'?bkLow():v3.mesh;const p=m&&m.pos;if(!p||!p.length)return {c:[0,0,0],r:1};
   if(m._lbox&&m._lbox.p===p)return m._lbox;const mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];for(let i=0;i<p.length;i+=3)for(let k=0;k<3;k++){mn[k]=Math.min(mn[k],p[i+k]);mx[k]=Math.max(mx[k],p[i+k]);}
