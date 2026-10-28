@@ -13,7 +13,7 @@ function hpProgs(){if(P_HP)return P_HP;
   const light=GL_ST+MS_NOISE_GLSL+MS_SURF_GLSL+`
 uniform sampler2D uSrc; uniform sampler2D uBlur; uniform sampler2D uTan; uniform sampler2D uTN; uniform sampler2D uDN2; uniform int uHasTan; uniform int uHasTN; uniform int uHasDN2; uniform float uNDet;
 uniform sampler2D uWN; uniform sampler2D uPM; uniform sampler2D uCurv; uniform sampler2D uAO; uniform sampler2D uThick;
-uniform int uHasWN; uniform int uHasPM; uniform int uHasCurv; uniform int uHasAO; uniform int uHasThick; uniform int uOwn; uniform int uFormMode; uniform int uSpCount; uniform int uShowN; uniform int uWrap;
+uniform int uCR; uniform int uHasWN; uniform int uHasPM; uniform int uHasCurv; uniform int uHasAO; uniform int uHasThick; uniform int uOwn; uniform int uFormMode; uniform int uSpCount; uniform int uShowN; uniform int uWrap;
 uniform vec3 uBase; uniform vec3 uL; uniform vec3 uShCol; uniform vec3 uLtCol; uniform vec3 uUlCol; uniform vec3 uGTop; uniform vec3 uGBot; uniform vec3 uAoCol; uniform vec3 uEdgeCol; uniform vec3 uCavCol; uniform vec3 uThCol; uniform vec3 uSpCol; uniform vec3 uVarCol;
 uniform float uShAmt; uniform float uShSpread; uniform float uLtAmt; uniform float uForm; uniform float uUlAmt; uniform float uGTopAmt; uniform float uGBotAmt; uniform float uGOff; uniform float uGSpread;
 uniform float uAoAmt; uniform float uAoSpread; uniform float uEdgeAmt; uniform float uEdgeSpread; uniform float uCavAmt; uniform float uCavSpread; uniform float uThAmt;
@@ -53,7 +53,10 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); vec2 uv=(vec2
   float ao=1.0; if(uHasAO==1){ vec4 q=texelFetch(uAO,p,0); ao=q.a>0.01?lum(st(q)):1.0; } else ao=1.0-clamp((pb-lum(below))*4.0,0.0,1.0);
   float occ=pow(clamp(1.0-ao,0.0,1.0),mix(3.0,0.35,uAoSpread)); c=mix(c,c*uAoCol,occ*uAoAmt);
   /* edges (convex) and cavities (concave): curvature, or the picture's own fine light and dark */
-  float cv=0.0; if(uHasCurv==1){ vec4 q=texelFetch(uCurv,p,0); cv=q.a>0.01?clamp((lum(st(q))-0.5)*6.0,-1.0,1.0):0.0;/* baked curvature is subtle (edges near 60% grey), so it is boosted */ } else cv=clamp((lum(below)-pb)*5.0,-1.0,1.0);
+  float cv=0.0; if(uHasCurv==1){ vec4 q=texelFetch(uCurv,p,0); if(q.a>0.01){ float c0=lum(st(q))-0.5,av=0.0,n=0.0;
+    /* read over a small area too, so edges become soft painted bands and not thin lines */
+    for(int j=-1;j<=1;j++)for(int i=-1;i<=1;i++){ vec4 r=texelFetch(uCurv,wrapP(p+ivec2(i,j)*uCR,s,uWrap),0); if(r.a>0.01){ av+=lum(st(r))-0.5; n+=1.0; } }
+    av/=max(n,1.0); cv=clamp(mix(c0,av*2.0,0.7)*6.0,-1.0,1.0);/* baked curvature is subtle (edges near 60% grey), so it is boosted */ } } else cv=clamp((lum(below)-pb)*5.0,-1.0,1.0);
   /* (0.79) the shape as data for other layers: AO, curvature (0.5 = flat) and thinness */
   if(uShowN==2){ float th=0.0; if(uHasThick==1){ vec4 q=texelFetch(uThick,p,0); if(q.a>0.01) th=1.0-lum(st(q)); } o=vec4(ao,cv*0.5+0.5,th,1.0); return; }
   float e=smoothstep(mix(0.6,0.02,uEdgeSpread),mix(0.95,0.3,uEdgeSpread),cv), k=smoothstep(mix(0.6,0.02,uCavSpread),mix(0.95,0.3,uCavSpread),-cv);
@@ -112,7 +115,7 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 s=texelFetch(uSrc,p,0), c=texe
 const HP_DEFAULTS={own:true,base:[.6,.6,.6],lEl:65,lTurn:25,
   shCol:[.45,.4,.58],shAmt:.6,shSpread:.6,ltCol:[1,.92,.8],ltAmt:.35,form:0,formMode:0,ulCol:[.35,.45,.7],ulAmt:0,
   gTop:[1,.95,.85],gTopAmt:.25,gBot:[.55,.5,.62],gBotAmt:.35,gOff:.5,gSpread:.6,
-  aoCol:[.35,.25,.3],aoAmt:.7,aoSpread:.5,edgeCol:[1,.95,.85],edgeAmt:.5,edgeSpread:.4,cavCol:[.3,.22,.25],cavAmt:.5,cavSpread:.4,
+  aoCol:[.35,.25,.3],aoAmt:.7,aoSpread:.5,edgeCol:[1,.93,.8],edgeAmt:.4,edgeSpread:.5,cavCol:[.3,.22,.25],cavAmt:.5,cavSpread:.4,
   thCol:[1,.45,.35],thAmt:0,spCount:3,spCol:[1,1,.95],spAmt:0,spExp:10,spH:45,spRot:0,
   varAmt:.25,varScale:6,varCol:[.9,.6,.5],pic:0,mul:0,over:.1,sat:1.05,
   tipKey:'b:bristle',sAmt:.6,sSize:40,sRand:.4,sDens:1.5,sRot:0,sRotRand:.25,sFollow:.8,sDetail:.25,sDrop:.15,sKeep:.6,sOp:.85,
@@ -180,7 +183,7 @@ function hpPaint(base,T,v,n){const PG=hpProgs(),I=hpInputs(n),S=hpScale(),bl=acq
     uBase:v.base,uL:hpDir(v.lEl,v.lTurn),uShCol:v.shCol,uLtCol:v.ltCol,uUlCol:v.ulCol,uGTop:v.gTop,uGBot:v.gBot,uAoCol:v.aoCol,uEdgeCol:v.edgeCol,uCavCol:v.cavCol,uThCol:v.thCol,uSpCol:v.spCol,uVarCol:v.varCol,
     uShAmt:v.shAmt,uShSpread:v.shSpread,uLtAmt:v.ltAmt,uForm:v.form,uUlAmt:v.ulAmt,uGTopAmt:v.gTopAmt,uGBotAmt:v.gBotAmt,uGOff:v.gOff,uGSpread:v.gSpread,uAoAmt:v.aoAmt,uAoSpread:v.aoSpread,
     uEdgeAmt:v.edgeAmt,uEdgeSpread:v.edgeSpread,uCavAmt:v.cavAmt,uCavSpread:v.cavSpread,uThAmt:v.thAmt,uSpAmt:v.spAmt,uSpExp:v.spExp,uSpH:hpRad(v.spH),uSpRot:hpRad(v.spRot),
-    uVarAmt:v.varAmt,uVarScale:v.varScale,uPic:v.pic,uNDet:v.nDet??1,uMul:v.mul,uOver:v.over,uSat:v.sat}));
+    uVarAmt:v.varAmt,uVarScale:v.varScale,uPic:v.pic,uNDet:v.nDet??1,uCR:{int:Math.max(1,Math.round(2*S))},uMul:v.mul,uOver:v.over,uSat:v.sat}));
   if(a){const tip=typeof dualTip==='function'?dualTip({tipKey:v.tipKey}):null,tt=tip&&tip.alpha?tip:TIPS.bristle;
     run(PG.strokes,T,{uA:a.tex,uTip:tt.tex,uTipS:[tt.w,tt.h],uSize:v.sSize*S,uRand:v.sRand,uDens:v.sDens,uRot:hpRad(v.sRot),uRotRand:v.sRotRand,uFollow:v.sFollow,uDetail:v.sDetail,
       uDrop:v.sDrop,uKeep:v.sKeep,uOp:v.sOp,uAmt:+v.showN?0:v.sAmt,uSeed:v.seed||1,uWrap:{int:doc.wrap?1:0}});release(a);}
@@ -213,7 +216,7 @@ function fxUiKit(prefix,v,changed){const sl={},cl={},ck={},sel={},after=[];
   return {S,C,K,SEL,G,setAll,sl,after};}
 /* the tip the strokes are stamped with: any brush from the Brushes panel, or a picture of your own (ids: hostId, hostId+'Name', hostId+'Import') */
 function fxTipPicker(hostId,v,changed){const tipHost=el('div',{class:'hptips',id:hostId}),tipName=el('span',{class:'note',id:hostId+'Name'});
-  const render=()=>{tipHost.replaceChildren();const builtIn=['bristle','sponge','leaf','grass','splatter','square','scratch','abstract'].filter(k=>TIPS[k]);
+  const render=()=>{tipHost.replaceChildren();const builtIn=['dab','bristle','sponge','leaf','grass','splatter','square','scratch','abstract'].filter(k=>TIPS[k]);
     const tiles=el('div',{class:'tiles'});for(const k of builtIn){const key='b:'+k,t=TIPS[k];const b=el('button',{type:'button',title:t.name,class:v.tipKey===key?'on':null,onclick:()=>{v.tipKey=key;render();changed();}},t.canvas);tiles.append(b);}
     tipHost.append(el('div',{class:'libset'},el('div',{class:'libset-h',text:'Tips'}),tiles));
     for(const set of (typeof library!=='undefined'?library:[])){const tl=el('div',{class:'tiles'});set.presets.forEach((p,i)=>{if(!p.tip)return;const key=dualLibraryKey(set,p,i);

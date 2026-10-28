@@ -90,18 +90,18 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); vec4 c=texelF
   P_PA={look:program(look),stamp:program(stamp),fx:program(fx),nrm:program(nrm)};P_PA.stamp.tiled=true;return P_PA;}
 
 const PA_DEFAULTS={stylization:1,strokes:1,smooth:1,colorize:0,gradient:0,lighting:.3,edges:.4,seed:1,
-  tipKey:'b:bristle',sDens:2.2,sSize:36,sRand:.45,sLen:1.6,sFollow:.85,sRot:0,sRotRand:.2,sHard:.5,sNThr:.6,sCVar:.4,
-  eH:.5,eN:.5,eE:.12,eR:.3,
-  smR:4,smC:.6,smH:.8,smN:.8,smRo:1,smM:1,
+  tipKey:'b:dab',sDens:2.2,sSize:48,sRand:.4,sLen:1.8,sFollow:.85,sRot:0,sRotRand:.2,sHard:.35,sNThr:.6,sCVar:.3,
+  eH:.5,eN:.5,eE:.08,eR:.3,
+  smR:3,smC:.25,smH:.8,smN:.8,smRo:1,smM:1,
   hue:0,sat:1.1,val:1,con:1.05,post:0,
   gMode:1,g1:[1,.92,.8],gO1:.6,gB1:3,g2:[.35,.3,.5],gO2:.5,gB2:1,gH:0,gV:90,gInv:false,gOff:.5,gCon:.2,
-  litPart:1,dI:.5,dC:[1,.95,.85],dR:.3,dCon:.3,sI:.25,sC:[1,1,1],sR:.25,sCon:.3,lH:25,lV:60,
+  litPart:1,dI:.4,dC:[1,.95,.85],dR:.3,dCon:.3,sI:.25,sC:[1,1,1],sR:.25,sCon:.3,lH:25,lV:60,
   eC:[1,.95,.85],eO:.6,eW:.4,cC:[.35,.28,.3],cO:.6,cW:.4,aoO:.5,show:'result'};
 const PA_PRESETS={
   'Painterly':{},
-  'Smudges':{tipKey:'b:sponge',sSize:28,sLen:1.2,sHard:.2,sCVar:.2,eE:.1,eH:.2,eN:.2,smC:.8},
+  'Smudges':{tipKey:'b:sponge',sSize:28,sLen:1.2,sHard:.2,sCVar:.2,eE:.06,eH:.2,eN:.2,smC:.6},
   'Thick strokes':{sSize:48,sLen:2.2,sHard:.8,eH:1,eN:1,eE:.25,sCVar:.5},
-  'Soft paint':{sSize:40,sLen:1.4,sHard:.1,eH:.2,eN:.2,eE:.05,smC:.9,lighting:.2,edges:.25},
+  'Soft paint':{sSize:56,sLen:1.4,sHard:.1,eH:.2,eN:.2,eE:.04,smC:.5,lighting:.2,edges:.25},
   'Sketchy':{tipKey:'b:scratch',sSize:22,sLen:2.5,sDens:2.6,sHard:.9,eE:.3,colorize:.5,sat:.8,post:6},
   'Comic':{strokes:.4,colorize:1,post:4,con:1.3,sat:1.2,edges:.8,eO:.9,cO:.9,lighting:.5,dCon:1}};
 
@@ -124,6 +124,10 @@ function paField(n,src,v,k){
 function paStampU(v){const S=Math.max(doc.w,doc.h)/1024,tip=typeof dualTip==='function'?dualTip({tipKey:v.tipKey}):null,tt=tip&&tip.alpha?tip:TIPS.bristle;
   return {uTip:tt.tex,uTipS:[tt.w,tt.h],uSize:v.sSize*S,uRand:v.sRand,uDens:v.sDens,uLen:v.sLen,uRot:v.sRot*Math.PI/180,uRotRand:v.sRotRand,uFollow:v.sFollow,uHard:v.sHard,uNThr:v.sNThr,
     uCVar:v.sCVar,uSeed:v.seed||1,uWrap:{int:doc.wrap?1:0}};}
+/* (0.79) a soft paint dab: an oval with a loaded edge and faint bristle marks along it, the default stroke tip */
+TIPS.dab=genTip('Paint dab',192,128,(x,w,h,R)=>{const g=x.createRadialGradient(w/2,h/2,0,w/2,h/2,w*.48);g.addColorStop(0,'rgba(255,255,255,.85)');g.addColorStop(.7,'rgba(255,255,255,.95)');g.addColorStop(1,'rgba(255,255,255,0)');
+  x.save();x.translate(w/2,h/2);x.scale(1,h/w*.95);x.translate(-w/2,-w/2);x.fillStyle=g;x.beginPath();x.arc(w/2,w/2,w*.48,0,7);x.fill();x.restore();
+  x.globalCompositeOperation='destination-out';for(let i=0;i<26;i++){const y=h*(.12+R()*.76);x.globalAlpha=.08+R()*.18;x.fillRect(w*(.05+R()*.2),y,w*(.5+R()*.4),1+R()*1.5);}});
 const PA_KIND={base:0,rough:1,gloss:1,height:2,normal:3};
 const paLookU=(v,F,part)=>({uN:F.N.tex,uM:F.M.tex,uP:F.P.tex,uPart:{int:part},uCol:v.colorize,uHue:v.hue,uSat:v.sat,uVal:v.val,uCon:v.con,uPost:v.post,
   uGrad:v.gradient,uGMode:{int:v.gMode|0},uG1:v.g1,uGO1:v.gO1,uGB1:{int:v.gB1|0},uG2:v.g2,uGO2:v.gO2,uGB2:{int:v.gB2|0},uGDir:hpDir(v.gV,v.gH),uGInv:{int:v.gInv?1:0},uGOff:v.gOff,uGCon:v.gCon,
