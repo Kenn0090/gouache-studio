@@ -1,3 +1,8 @@
+## 0.80.3
+
+- **Smaller 3D Paint projects.** A material's channels that the app redraws from its settings are no longer stored as pictures too, a picture used by several layers (the same material twice, for example) is stored once, and the baked grey mesh maps (AO, curvature, thickness, lighting) are compressed when Preferences › **Smaller files** is on. The baked normal map stays exact. A test project went from 27.8 MB to 12.1 MB.
+- **File › Save a smaller copy…** (3D Paint) saves the project at half or a quarter of its texture size, for sharing or backups. Your open project is not changed.
+
 ## 0.80.2
 
 - **Padding on export.** Export textures has **Padding** (None, Dilation, Dilation + fill the rest, Dilation + transparent, Fill everything) and a **Dilation** width in pixels of the exported size. It grows each UV island's colours outward so mip-maps in an engine show no seams. It uses the model's UVs (3D Paint, or the 3D view with your model) and applies to every exported map, the mesh maps and the textures inside an exported model.

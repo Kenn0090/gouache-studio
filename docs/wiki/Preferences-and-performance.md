@@ -81,7 +81,9 @@ Animated film grain reuses the finished scene, bloom and occlusion while the cam
 Preferences › **Engine quality**: Low, Medium, High (the normal setting) or Ultra. Lower settings help slower computers: the canvas and 3D view draw fewer pixels, the model's edges and textures are less smooth, Detail makes fewer triangles, the 3D view catches up less often while you paint, and the ray-traced view stops sooner. Ultra is for fast graphics cards and sharp screens.
 
 ## Smaller files
-Every picture in documents, 3D Paint projects, autosaves and materials is packed without losing anything, so files are much smaller than before. **Smaller files** (Preferences › Files, on by default) also keeps colour and grey maps as high-quality WebP when that is smaller; the difference is too small to see. Normal maps, Height, masks and baked maps always stay exact. Turn it off if you need every colour pixel exact.
+3D Paint projects also leave out what the app can redraw itself: a material's channels made from its settings are not stored as pictures, and a picture used by several layers is stored once. **File › Save a smaller copy…** (in 3D Paint) saves a copy at half or a quarter of the texture size for sharing or backups.
+
+Every picture in documents, 3D Paint projects, autosaves and materials is packed without losing anything, so files are much smaller than before. **Smaller files** (Preferences › Files, on by default) also keeps colour and grey maps as high-quality WebP when that is smaller; the difference is too small to see. Normal maps, Height and masks always stay exact; of the baked mesh maps only the grey ones (AO, curvature, thickness, lighting) are compressed, the baked normal stays exact. Turn it off if you need every colour pixel exact.
 
 ## Material stacks at high resolution
 

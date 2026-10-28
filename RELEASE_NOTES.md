@@ -1,3 +1,8 @@
+# Gouache Studio 0.80.3
+
+- **3D Paint projects are much smaller** (about half in a test): materials are not stored twice, shared pictures are stored once, and baked grey maps are compressed.
+- **File › Save a smaller copy…** saves the project at half or a quarter size.
+
 # Gouache Studio 0.80.2
 
 - **Export padding:** choose Dilation (with a width in pixels), Dilation + fill the rest, Dilation + transparent or Fill everything, so textures have no seams in engines.

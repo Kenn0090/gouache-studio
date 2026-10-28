@@ -30,14 +30,14 @@ const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAI
  ok(info.dup,'the same material picture used by two layers is stored once');
  ok(['ao','curv','thick'].some(k=>info.mm[k]==='w')&&info.mm.normal!=='w','baked grey maps are compressed (WebP), the baked normal stays exact: '+JSON.stringify(info.mm));
  /* reopen: it looks the same */
- await p.evaluate(async()=>{await __gs.openP3Project(window.__p3buf.slice(0),'x.gouache3d');});await W(2500);
+ await p.evaluate(async()=>{__gs.p3.savedAt=__gs.p3Sig();await __gs.openP3Project(window.__p3buf.slice(0),'x.gouache3d');});await W(2500);
  const after=await snap();
  let d=0,n=0;for(const k in before.out){const a=before.out[k],b2=after.out[k];if(!b2){d+=999;continue;}for(let i=0;i<a.length;i++){d+=Math.abs(a[i]-b2[i]);n++;}}
  ok(after.layers===before.layers,'the layers come back');ok(n>0&&d/n<1.5,'and look the same after reopening (average difference '+(d/Math.max(1,n)).toFixed(2)+' of 255)');
  /* a smaller copy */
  const small=await p.evaluate(async()=>{const G=__gs,blob=await G.encodeP3Project({scale:.5}),buf=await blob.arrayBuffer();window.__p3small=buf;return blob.size;});
  ok(small<info.size*.6,'a half-size copy is much smaller ('+(info.size/1048576).toFixed(2)+' MB → '+(small/1048576).toFixed(2)+' MB)');
- await p.evaluate(async()=>{await __gs.openP3Project(window.__p3small.slice(0),'small.gouache3d');});await W(2500);
+ await p.evaluate(async()=>{__gs.p3.savedAt=__gs.p3Sig();await __gs.openP3Project(window.__p3small.slice(0),'small.gouache3d');});await W(2500);
  const sm=await snap();ok(sm.w===128&&sm.layers===before.layers,'and opens at half size with every layer ('+sm.w+' px)');
  ok(await p.evaluate(()=>{__gs.dlgSaveSmall();return !!document.getElementById('ssSize');}),'File › Save a smaller copy… opens');
  ok(!errors.length,'no application errors');if(errors.length)console.log(errors.slice(0,3));
