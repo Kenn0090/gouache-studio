@@ -18,20 +18,21 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uT,0); vec2 c0=vec2(p)
     for(int i=0;i<=120;i++){ if(i>uLen) break; float w=1.0-float(i)/float(uLen+1);
       fine+=w*(uCell>1.01?vn2(pos/uCell+uSeed):h21(floor(pos)+uSeed)); coarse+=w*vn2(pos/(3.0*uCell)+uSeed*7.0+17.0); wsum+=w;
       vec2 d=dirAt(pos,s); if(dot(d,prev)<0.0) d=-d; pos+=d; prev=d; } }
-  fine/=wsum; coarse/=wsum; fine=clamp(0.5+(fine-0.5)*3.0,0.0,1.0); coarse=clamp(0.5+(coarse-0.5)*3.0,0.0,1.0);
+  fine/=wsum; coarse/=wsum; fine=clamp(0.5+(fine-0.5)*2.2,0.0,1.0); coarse=clamp(0.5+(coarse-0.5)*2.2,0.0,1.0);
   o=vec4(fine,coarse,uCell>1.01?vn2(vec2(p)/(uCell*0.6)+uSeed*3.1+91.0):h21(vec2(p)+uSeed*3.1+91.0),1.0); }`,
   /* the paint itself, per channel kind: 0 colour, 1 roughness/gloss, 2 height, 3 normal, 4 anything else (only smoothed) */
   post:GL_ST+`uniform sampler2D uSrc; uniform sampler2D uOrig; uniform sampler2D uS; uniform int uKind; uniform int uWrap;
-uniform float uBristle; uniform float uCVar; uniform float uRelief; uniform float uBend; uniform float uGrain; uniform float uAmt;
+uniform int uStep; uniform float uBristle; uniform float uCVar; uniform float uRelief; uniform float uBend; uniform float uGrain; uniform float uAmt;
 float Rf(ivec2 q,ivec2 s){ return texelFetch(uS,wrapP(q,s,uWrap),0).r; }
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); vec4 c=texelFetch(uSrc,p,0), c0=texelFetch(uOrig,p,0);
   vec3 S=texelFetch(uS,p,0).rgb; float r=S.r-0.5, r2=S.g-0.5, g=S.b-0.5;
-  float rx=Rf(p+ivec2(1,0),s)-Rf(p-ivec2(1,0),s), ry=Rf(p+ivec2(0,1),s)-Rf(p-ivec2(0,1),s);
+  /* slopes of the bristles measured across a bristle (one texel apart gave wormy patterns on big textures) */
+  float rx=Rf(p+ivec2(uStep,0),s)-Rf(p-ivec2(uStep,0),s), ry=Rf(p+ivec2(0,uStep),s)-Rf(p-ivec2(0,uStep),s);
   vec4 res=c;
-  if(uKind==0){ vec3 col=st(c); float shade=(rx*-0.6+ry*0.8)*uRelief*1.2+r*uBristle*0.7+g*uGrain*0.5; col=col*clamp(1.0+r2*uCVar*1.4+shade,0.55,1.5);/* (0.78) kept in range: a strong ridge used to turn pixels black */ res=vec4(clamp(col,0.0,1.0)*c.a,c.a); }
+  if(uKind==0){ vec3 col=st(c); float shade=(rx*-0.6+ry*0.8)*uRelief*0.6+r*uBristle*0.7+g*uGrain*0.5; col=col*clamp(1.0+r2*uCVar*1.4+shade,0.55,1.5);/* (0.78) kept in range: a strong ridge used to turn pixels black */ res=vec4(clamp(col,0.0,1.0)*c.a,c.a); }
   else if(uKind==1){ vec3 v=st(c)+vec3((r2*uCVar+g*uGrain*0.4)*0.25); res=vec4(clamp(v,0.0,1.0)*c.a,c.a); }
   else if(uKind==2){ vec3 v=st(c)+vec3((r*0.5+g*uGrain*0.5)*uRelief*0.08); res=vec4(v*c.a,c.a); }
-  else if(uKind==3){ vec3 n=st(c)*2.0-1.0; n=length(n)>1e-4?normalize(n):vec3(0.0,0.0,1.0); n.xy-=vec2(rx,ry)*uBend*3.0+vec2(g)*uGrain*0.05; n=normalize(n); res=vec4((n*0.5+0.5)*c.a,c.a); }
+  else if(uKind==3){ vec3 n=st(c)*2.0-1.0; n=length(n)>1e-4?normalize(n):vec3(0.0,0.0,1.0); n.xy-=vec2(rx,ry)*uBend*1.5+vec2(g)*uGrain*0.05; n=normalize(n); res=vec4((n*0.5+0.5)*c.a,c.a); }
   o=mix(c0,res,uAmt); }`};
 for(const k in SG_FS){P['sg_'+k]=program(SG_FS[k]);}
 P.sg_streak.tiled=true;/* drawn in tiles, like the other heavy filters */
@@ -101,7 +102,7 @@ fxDef('stylizeG',{title:'Stylize (Gouache)',heavy:true,onlyLayer:true,
     /* baked lighting and edges from the mesh maps go in first, so the strokes paint them too */
     let lit=null;if(kind===0&&F.L&&((v.meshLight??.35)>0||(v.meshEdge??.35)>0)){lit=acquire();run(sgLitProg(),lit,{uSrc:src.tex,uL:F.L.tex,uE:F.E.tex,uML:v.meshLight??.35,uME:v.meshEdge??.35});sm=lit;}
     if(smooth&&v.size>.5){a=acquire();run(P.f_akuwa,a,{uSrc:sm.tex,uT:F.T.tex,uR:v.size,uQ:v.sharp,uWrap:!!doc.wrap});sm=a;}
-    run(P.sg_post,dst,{uSrc:sm.tex,uOrig:src.tex,uS:F.S.tex,uKind:{int:kind},uBristle:v.bristle,uCVar:v.cvar,uRelief:v.relief,uBend:v.bend,uGrain:v.grain,uAmt:v.amount,uWrap:!!doc.wrap});
+    run(P.sg_post,dst,{uStep:{int:Math.max(1,Math.round((v.size||5)*.2*Math.max(1,Math.max(doc.w,doc.h)/1024)))},uSrc:sm.tex,uOrig:src.tex,uS:F.S.tex,uKind:{int:kind},uBristle:v.bristle,uCVar:v.cvar,uRelief:v.relief,uBend:v.bend,uGrain:v.grain,uAmt:v.amount,uWrap:!!doc.wrap});
     if(a)release(a);if(lit)release(lit);if(F.temp){disposeTarget(F.T);disposeTarget(F.S);if(F.L)disposeTarget(F.L);if(F.E)disposeTarget(F.E);}}});
 
 /* Layer › New › Stylize layer: on top of the stack, so it changes everything below, in every map */
