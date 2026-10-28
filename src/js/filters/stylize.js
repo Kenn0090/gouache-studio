@@ -9,15 +9,17 @@ const SG_FS={
   /* streaks: white noise smeared along the stroke direction. R = fine bristles, G = coarse blotches, B = grain */
   streak:GL_ST+`uniform sampler2D uT; uniform int uLen; uniform float uSeed; uniform int uWrap; uniform float uCell;
 float h21(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
+/* smooth value noise, so wide bristles blend instead of stepping */
+float vn2(vec2 x){ vec2 i=floor(x),f=fract(x); f=f*f*(3.0-2.0*f); return mix(mix(h21(i),h21(i+vec2(1.0,0.0)),f.x),mix(h21(i+vec2(0.0,1.0)),h21(i+vec2(1.0,1.0)),f.x),f.y); }
 vec2 dirAt(vec2 pos,ivec2 s){ vec3 t=texelFetch(uT,wrapP(ivec2(floor(pos)),s,uWrap),0).rgb;
   float lam1=0.5*(t.x+t.y+sqrt((t.x-t.y)*(t.x-t.y)+4.0*t.z*t.z)); vec2 d=vec2(lam1-t.x,t.z); return length(d)>1e-6?normalize(d):vec2(1.0,0.0); }
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uT,0); vec2 c0=vec2(p)+0.5; float fine=0.0,coarse=0.0,wsum=0.0;
   for(int sg=0;sg<2;sg++){ vec2 pos=c0, prev=dirAt(c0,s)*(sg==0?1.0:-1.0);
     for(int i=0;i<=120;i++){ if(i>uLen) break; float w=1.0-float(i)/float(uLen+1);
-      fine+=w*h21(floor(pos/uCell)+uSeed); coarse+=w*h21(floor(pos/(3.0*uCell))+uSeed*7.0+17.0); wsum+=w;
+      fine+=w*(uCell>1.01?vn2(pos/uCell+uSeed):h21(floor(pos)+uSeed)); coarse+=w*vn2(pos/(3.0*uCell)+uSeed*7.0+17.0); wsum+=w;
       vec2 d=dirAt(pos,s); if(dot(d,prev)<0.0) d=-d; pos+=d; prev=d; } }
   fine/=wsum; coarse/=wsum; fine=clamp(0.5+(fine-0.5)*3.0,0.0,1.0); coarse=clamp(0.5+(coarse-0.5)*3.0,0.0,1.0);
-  o=vec4(fine,coarse,h21(floor(vec2(p)/max(1.0,uCell*0.6))+uSeed*3.1+91.0),1.0); }`,
+  o=vec4(fine,coarse,uCell>1.01?vn2(vec2(p)/(uCell*0.6)+uSeed*3.1+91.0):h21(vec2(p)+uSeed*3.1+91.0),1.0); }`,
   /* the paint itself, per channel kind: 0 colour, 1 roughness/gloss, 2 height, 3 normal, 4 anything else (only smoothed) */
   post:GL_ST+`uniform sampler2D uSrc; uniform sampler2D uOrig; uniform sampler2D uS; uniform int uKind; uniform int uWrap;
 uniform float uBristle; uniform float uCVar; uniform float uRelief; uniform float uBend; uniform float uGrain; uniform float uAmt;
