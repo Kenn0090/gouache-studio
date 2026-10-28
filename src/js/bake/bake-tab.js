@@ -52,7 +52,7 @@ function bakePrep(L){const C=bakeCfg;const high=C.high?bakeAlign(C.high,L):null,
     const hn=(high.partNames||['default']).map(n=>ix.has(partBase(n))?ix.get(partBase(n)):9999);high.bakePart=new Float32Array((high.triPart||new Uint32Array(high.tris)).length);(high.triPart||[]).forEach((p,t)=>{high.bakePart[t]=hn[p];});}
   return {low,high,cage};}
 /* the high-poly's search tree, kept between bakes of the same models */
-async function bakeHG(L,high,low,step,needCol){const source=high||(bvWidth(bakeCfg.bevel)?low.whole||low:low),key=[bakeCfg.high,L.whole||L,!!(bakeCfg.match&&high),needCol?bakeCfg.idSrc||'auto':'',source.idx],same=k=>k&&k[0]===key[0]&&k[1]===key[1]&&k[2]===key[2]&&k[4]===key[4]&&(!needCol||k[3]===key[3]);
+async function bakeHG(L,high,low,step,needCol,whole){const source=high||(bvWidth(bakeCfg.bevel)||whole?low.whole||low:low),key=[bakeCfg.high,L.whole||L,!!(bakeCfg.match&&high),needCol?bakeCfg.idSrc||'auto':'',source.idx],same=k=>k&&k[0]===key[0]&&k[1]===key[1]&&k[2]===key[2]&&k[4]===key[4]&&(!needCol||k[3]===key[3]);
   if(bk.hgBuild){const b=bk.hgBuild;try{await b.p;}catch(e){}if(bk.hgBuild===b)bk.hgBuild=null;}
   if(bk.hg&&same(bk.hgKey)&&(!needCol||bk.hg.hasCol))return bk.hg;if(bk.hg){bkFreeHigh(bk.hg);bk.hg=null;bk.hgKey=null;}
   const b={p:bkHighGPU(source,step,needCol)};bk.hgBuild=b;try{bk.hg=await b.p;}finally{if(bk.hgBuild===b)bk.hgBuild=null;}bk.hgKey=key;return bk.hg;}
@@ -75,10 +75,10 @@ async function runBake(L,ks,opt){opt=opt||{};const C=bakeCfg;if(bk.busy)return;i
   /* start from a clean slate: the model fills in as tiles finish */
   for(const k in bk.res)disposeTarget(bk.res[k]);for(const k in bk.acc)disposeTarget(bk.acc[k]);bk.res={};bk.acc={};bk.stale.clear();bk.dirty=true;
   const o={bevel:C.bevel?Object.assign({},C.bevel):null,size:doc.w,sizeH:doc.h,ss:C.ss,front:C.front*.02,back:C.back*.02,average:C.average,cage,match:C.match&&!!high,kinds,
-    rays:C.rays,aoDist:C.aoDist*.02,thickDist:C.thickDist*.02,pad:C.pad,dx:false,seed:Math.random()*10,aoSpread:C.aoSpread,thickRays:C.thickRays,curvRadius:C.curvRadius,curvStr:C.curvStr};
+    rays:C.rays,light:kinds.includes('light')?JSON.parse(JSON.stringify(lightRig())):null,aoDist:C.aoDist*.02,thickDist:C.thickDist*.02,pad:C.pad,dx:false,seed:Math.random()*10,aoSpread:C.aoSpread,thickRays:C.thickRays,curvRadius:C.curvRadius,curvStr:C.curvStr};
   let res=null;
   try{prog.step('Baking '+ks.map(k=>BAKE_NAMES[k].toLowerCase()).join(', ')+'…');
-    const hg=await bakeHG(L,high,low,t=>prog.step(t),kinds.includes('id'));
+    const hg=await bakeHG(L,high,low,t=>prog.step(t),kinds.includes('id'),kinds.includes('light'));
     res=await bakeRun(low,high,Object.assign({},o,{hg,acc:bk.acc,skew:bk.maps.skew,offset:bk.maps.offset,onTile:(acc,kk)=>bakeShowPartial(acc,kk)}),prog);}
   catch(e){console.error(e);bk.busy=false;bk.prog=null;if(!inTab)closeDialog();bakeProgUI();toast('The bake failed: '+(e.message||e));return;}
   bk.busy=false;bk.prog=null;if(!inTab)closeDialog();
@@ -125,7 +125,7 @@ async function bakeRegion(rect){if(!bk.opts||!bk.src)return;const r=[Math.max(0,
 /* Send to the painting: the ticked maps, as plain layers (no folders), scaled to the painting's size when it differs.
    As layers (the default) every grey or colour result is also in the base colour, so bakes blend with each other there
    (curvature on Overlay over AO…), and AO, curvature and height are in their own maps too. Maps only: each in its own map. */
-const BK_SEND_ORDER=['normal','height','ao','curv','curvEdge','curvCrease','thick','wnormal','position','id'];
+const BK_SEND_ORDER=['normal','height','ao','curv','curvEdge','curvCrease','thick','wnormal','position','id','light'];
 /* ---- where the ID map's colours come from (Other tab): separate meshes (parts), materials, vertex colours,
    or ZBrush polypaint; Auto uses vertex colours, else material colours, else one colour per part ---- */
 const BK_ID_SRC=[['auto','Auto'],['part','Separate meshes'],['mat','Materials'],['uv','UV islands'],['vertex','Vertex colours'],['poly','Polypaint']];
@@ -183,7 +183,8 @@ function bakeSend(){const res=bk.res;if(!Object.keys(res).length){toast('Bake fi
     const mk=k=>{const name=k==='curvEdge'||k==='curvCrease'?BAKE_NAMES[k]:k==='thick'||k==='wnormal'||k==='position'||k==='id'?BAKE_NAMES[k]:'Baked '+(k==='ao'?'AO':BAKE_NAMES[k].toLowerCase());
       const L=newLayerObj(name),m=own[k]||'base';for(const x of Object.keys(L.maps))if(x!=='base'&&x!==m){disposeTarget(L.maps[x]);delete L.maps[x];}
       copyScaled(res[k],ensureMapTarget(L,m));if(m!=='base'){if(inBase(k)&&k!=='normal')copyScaled(res[k],ensureMapTarget(L,'base'));else L.blankBase=true;setMapModeOf(L,m,0);}
-      L.baked=true;if(hiddenK(k))L.visible=false;return L;};
+      if(k==='light'){L.mode=MODES.indexOf('Multiply');L.visible=true;}/* the baked light over the colour */
+      L.baked=true;if(hiddenK(k)&&k!=='light')L.visible=false;return L;};
     const old=bakeCfg.replace?bk.sentLayers.filter(x=>x.parent&&allNodes().includes(x)):[];replaced=old.length>0;
     structOp(old.length?'Replace baked layers':'Bake',()=>{for(const x of old)detachNode(x);const Ls=ks.map(mk);for(const L of Ls)insertNode(L,doc.root);bk.sentLayers=Ls;n=Ls.length;
       if(ui.mode!=='bake'){const vis=Ls.filter(L=>L.visible);const last=vis[vis.length-1]||Ls[Ls.length-1];if(last)selectOnly(last);}});
@@ -195,9 +196,9 @@ async function bakeExport(){const tick=bakeCfg.send||{},ks=bakeSendable().filter
   if(!ks.length){toast(Object.keys(bk.res).length?'Tick at least one map to export.':'Bake first.');return;}
   let dir=null;if(platform.isDesktop){dir=await platform.pickFolder();if(!dir)return;}
   const base=pascal(((bk.src&&bk.src.L&&bk.src.L.name)||'Bake').replace(/[_\-\s]*(low|lo|lp)(poly)?$/i,''))||'Bake',W=doc.w,H=doc.h;
-  const fileOf={normal:'Normal',height:'Height',ao:'AO',curv:'Curvature',curvEdge:'CurvatureEdges',curvCrease:'CurvatureCreases',thick:'Thickness',wnormal:'WorldNormal',position:'Position',id:'ID'};
+  const fileOf={normal:'Normal',height:'Height',ao:'AO',curv:'Curvature',curvEdge:'CurvatureEdges',curvCrease:'CurvatureCreases',thick:'Thickness',wnormal:'WorldNormal',position:'Position',id:'ID',light:'Lighting'};
   loadStart('Exporting baked maps');try{const files=[];let i=0;
-    for(const k of ks){loadSet(i++/ks.length,BAKE_NAMES[k]+'…');await loadPaint();const col=k==='normal'||k==='wnormal'||k==='position'||k==='id',C=col?3:1;let f=readMapF(bk.res[k],col?4:1);if(C===3)f=dropAlpha(f,W*H);
+    for(const k of ks){loadSet(i++/ks.length,BAKE_NAMES[k]+'…');await loadPaint();const col=k==='normal'||k==='wnormal'||k==='position'||k==='id'||k==='light',C=col?3:1;let f=readMapF(bk.res[k],col?4:1);if(C===3)f=dropAlpha(f,W*H);
       const blob=await encodeTex(W,H,f,C,'png',k==='height'&&canFloat?16:8);files.push({name:base+'_'+fileOf[k]+'.png',data:new Uint8Array(await blob.arrayBuffer())});}
     if(dir){const sep=dir.includes('\\')?'\\':'/';for(const f of files)await platform.writeFile(dir.replace(/[\\/]$/,'')+sep+f.name,f.data);toast('Saved '+files.length+' baked map'+(files.length>1?'s':'')+' to '+dir);}
     else{const r=await deliver(base+'_bake.zip',await makeZipMulti(files));toast(deliveredText(r,'Baked maps'));}}
@@ -363,7 +364,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
   const on=k=>chk('bk_'+k,'Bake '+BAKE_NAMES[k].toLowerCase(),!!C.kinds[k],v=>{C.kinds[k]=v;tabs.replaceWith(tabs=tabBar());const m=document.getElementById('bkm_'+k);if(m)m.checked=v;});
   const note=t=>el('p',{class:'note',text:t});
   /* one tab of settings per map, plus the ones they share */
-  const TABS=[['general','General'],['normal','Normal'],['ao','AO'],['curv','Curvature'],['height','Height'],['thick','Thickness'],['wnormal','World normal'],['position','Position'],['id','ID']];
+  const TABS=[['general','General'],['normal','Normal'],['ao','AO'],['curv','Curvature'],['height','Height'],['thick','Thickness'],['wnormal','World normal'],['position','Position'],['id','ID'],['light','Lighting']];
   if(!TABS.some(t=>t[0]===C.tab))C.tab=C.tab==='other'?'id':'general';
   const baking=t=>!!C.kinds[t];
   const tabBar=()=>{const g=seg(TABS.map(([v,t])=>[v,t+(v!=='general'&&baking(v)?' •':''),v==='general'?'Settings every map shares':baking(v)?t+': baked':t+': not baked']),C.tab,v=>{C.tab=v;page.replaceWith(page=tabPage());},'Map settings');g.classList.add('themeseg','bktabs');return g;};
@@ -391,10 +392,11 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
       pg.append(on('id'),el('div',{class:'sub',text:'ID colours from'}),(()=>{const g=seg(sources,C.idSrc||'auto',v=>{C.idSrc=v;},'ID colours from');g.classList.add('themeseg');g.id='bkIdSrc';return g;})(),
         note('The '+(C.high?'high-poly':'low-poly')+' has: '+(have.length?have.join(', '):'one mesh, no materials or colours')+'. Separate meshes: one unique colour per disconnected piece, including pieces joined into one imported object. Materials: one colour per material. UV islands: one colour per connected UV island. Vertex colours: the colours painted on its vertices. Polypaint: ZBrush polypaint (export the OBJ with Polypaint on). Auto: vertex colours, then materials, then separate meshes.'),
         note('In 3D Paint, masks can pick these colours: Alt+click a mask, then ID colour.'));}
+    if(T==='light')pg.append(lightTabPage(on('light'),note));
     return pg;};
   let tabs=tabBar(),page=tabPage();
   /* (0.28, Kenn) every map to bake in one list; Alt + click keeps only that one, again flips (ui/ticks.js) */
-  const BK_LIST=['normal','ao','curv','height','thick','wnormal','position','id'];
+  const BK_LIST=['normal','ao','curv','height','thick','wnormal','position','id','light'];
   const list=()=>el('div',{class:'chips bklist',id:'bkList',title:'Alt + click: only this one. Alt + click again: all the others.'},...BK_LIST.map(k=>chk('bkm_'+k,BAKE_NAMES[k],!!C.kinds[k],v=>{C.kinds[k]=v;tabs.replaceWith(tabs=tabBar());page.replaceWith(page=tabPage());})));
   const go=bakeGoButton();
   go.onclick=()=>{if(bk.busy){if(bk.prog)bk.prog.cancelled=true;return;}const L=bkLow();const ks=Object.keys(C.kinds).filter(k=>C.kinds[k]);if(!ks.length){toast('Pick at least one map.');return;}if(C.perMat!==false&&bkMats(L))runBakeSets(L,ks);else{bk.byMat=null;runBake(L,ks);}};

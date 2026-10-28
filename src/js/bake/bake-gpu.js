@@ -174,6 +174,7 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 P=texelFetch(uGP,p,0); if(P.w<
   vec3 hp=org+dir*th; oH=vec4(hp,1.0); oHN=vec4(bkNrm(t,bc),front-th); vec2 tp=bkTriPack(t); o=vec4(tp.x,bc,tp.y); }`;
 /* 3. what each map records (value in rgb, coverage in a) */
 const BK_FS_OUT=BK_TRACE+BEVEL_GLSL+`uniform sampler2D uGR; uniform sampler2D uGP; uniform sampler2D uGN; uniform sampler2D uGT; uniform sampler2D uHP; uniform sampler2D uHN; uniform sampler2D uHT;
+uniform vec4 uLA[8]; uniform vec4 uLB[8]; uniform vec4 uLC[8]; uniform vec4 uLD[8]; uniform int uLN; uniform sampler2D uEnvL; uniform int uHasEnv; uniform float uEnvRot; uniform float uExpo; uniform float uFar;
 uniform int uKind; uniform int uMatch; uniform int uFlipY; uniform float uRange; uniform vec3 uBMin; uniform vec3 uBSize; uniform int uRays; uniform float uDist; uniform uint uSeed; uniform int uSelf; uniform ivec2 uOrg; uniform int uSS; uniform float uSpread;
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 P=texelFetch(uGP,p,0); if(P.w<0.5){ o=vec4(0); return; }
   vec3 Nl=normalize(texelFetch(uGN,p,0).xyz); vec4 H=texelFetch(uHP,p,0),HN=texelFetch(uHN,p,0); bool hit=H.w>0.75; vec3 Nh=hit&&uSelf==0?normalize(HN.xyz):Nl; vec3 X=hit?H.xyz:P.xyz;
@@ -187,6 +188,39 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 P=texelFetch(uGP,p,0); if(P.w<
   if(uKind==9){ o=vec4(X,1.0); return; } /* for curvature from the shape: exact surface point and normal */
   if(uKind==10){ o=vec4(Nh,1.0); return; }
   if(uKind==4){ /* ID colours */ vec4 ti=texelFetch(uHT,p,0); o=vec4(hit&&ti.w>0.5?bkCol(bkTriUnpack(ti),ti.yz):vec3(0.0),1.0); return; }
+  /* (0.80) lighting (11): the light of the rig falling on each point, with soft shadows the model casts on itself.
+     Per light (packed in four vec4): A = type (0 sun, 1 point, 2 spot, 3 sky), position; B = direction it shines, softness
+     (sun: angle in radians; point/spot: radius); C = colour × intensity, range; D = cone (cos inner, cos outer), shadows, rays.
+     Shadow rays are shared out over the anti-aliasing samples like AO rays, and leave from the hit triangle's own face. */
+  if(uKind==11){ if(uMatch==1) bkPart=int(texelFetch(uGN,p,0).w+0.5);
+    vec3 n=Nh, ng=n; vec4 ti=texelFetch(uHT,p,0);
+    if(hit&&uSelf==0&&ti.w>0.5){ int tt=bkTriUnpack(ti); bkSkip=tt; vec3 v0=bkF(uTris,tt*3).xyz; vec3 g=cross(bkF(uTris,tt*3+1).xyz-v0,bkF(uTris,tt*3+2).xyz-v0);
+      if(dot(g,g)>1e-30){ g=normalize(g); ng=dot(g,n)<0.0?-g:g; } }
+    vec3 org=X+ng*max(uFar*0.0002,1e-5); vec3 E=vec3(0.0);
+    ivec2 fp=p+uOrg; ivec2 px=fp/uSS, sub=fp-px*uSS; uint j=uint(sub.y*uSS+sub.x), per=uint(uSS*uSS);
+    uint h=bkPcg(uint(px.x)*1973u+bkPcg(uint(px.y)*9277u+uSeed)); vec2 rot=vec2(bkRnd(h),bkRnd(h^0x9E3779B9u));
+    for(int li=0;li<8;li++){ if(li>=uLN) break; vec4 A=uLA[li],B=uLB[li],C=uLC[li],D=uLD[li]; int ty=int(A.x+0.5); int nr=max(1,int(D.w)); uint total=uint(nr)*per;
+      if(ty==3){ /* sky: the environment picture (or a plain colour) seen from here, blocked where the model is in the way */
+        vec3 sum=vec3(0.0); for(int i=0;i<64;i++){ if(i>=nr) break; uint gi=uint(i)*per+j; vec2 r=fract(vec2((float(gi)+0.5)/float(total),bkRadInv(gi))+rot);
+          vec3 d=bkHemi(n,r); float dg=dot(d,ng); if(dg<0.0) d=d-2.0*dg*ng; float th; vec2 bc;
+          if(D.z>0.5&&bkTrace(org,d,uFar,true,th,bc)>=0) continue;
+          vec3 L=uHasEnv==1?textureLod(uEnvL,vec2(atan(d.x,-d.z)/6.2831853+0.5+uEnvRot,acos(clamp(d.y,-1.0,1.0))/3.1415927),0.0).rgb:vec3(1.0); sum+=L; }
+        E+=sum/float(nr)*C.rgb; continue; }
+      vec3 Ld; vec3 rad=C.rgb;
+      if(ty==0) Ld=-normalize(B.xyz);
+      else { vec3 v=A.yzw-X; float dist=max(length(v),1e-6); Ld=v/dist; rad/=1.0+dist*dist/max(C.w*C.w,1e-8);
+        if(ty==2) rad*=smoothstep(D.y,D.x,dot(-Ld,normalize(B.xyz))); }
+      float ndl=dot(n,Ld); if(ndl<=0.0||max(rad.r,max(rad.g,rad.b))<1e-6) continue;
+      float vis=1.0;
+      if(D.z>0.5){ vec3 T=normalize(abs(Ld.y)<0.9?cross(Ld,vec3(0.0,1.0,0.0)):cross(Ld,vec3(1.0,0.0,0.0))), Bv=cross(Ld,T); float sum=0.0;
+        for(int i=0;i<64;i++){ if(i>=nr) break; uint gi=uint(i)*per+j; vec2 r=fract(vec2((float(gi)+0.5)/float(total),bkRadInv(gi))+rot);
+          vec2 dk=sqrt(r.x)*vec2(cos(6.2831853*r.y),sin(6.2831853*r.y)); vec3 d; float tmax;
+          if(ty==0){ d=normalize(Ld+(T*dk.x+Bv*dk.y)*tan(B.w)); tmax=uFar; }
+          else { vec3 tp=A.yzw+(T*dk.x+Bv*dk.y)*B.w, v2=tp-org; tmax=length(v2)*0.999; d=v2/max(length(v2),1e-6); }
+          if(dot(d,ng)<=0.0) continue; float th; vec2 bc; if(bkTrace(org,d,tmax,true,th,bc)<0) sum+=1.0; }
+        vis=sum/float(nr); }
+      E+=rad*ndl*vis; }
+    o=vec4(pow(clamp(E*uExpo,0.0,1.0),vec3(1.0/2.2)),1.0); return; }
   /* ambient occlusion (5) and thickness (6): rays over the hemisphere.
      The rays of one output pixel are shared out over its anti-aliasing samples, as one evenly spread
      (Hammersley) set turned by a per-pixel random angle: smooth results from few rays, no banding.
@@ -270,7 +304,7 @@ function bkRayDirs(L,average){if(!average)return L.nrm.slice();const n=L.pos.len
 
 /* AO and thickness rays per anti-aliasing sample: the pixel's rays shared out over its samples (at least 4 each) */
 const bkRaysPer=(rays,SS)=>Math.max(4,Math.ceil(rays/(SS*SS)));
-const BK_KINDS={normal:0,height:1,wnormal:2,position:3,id:4,ao:5,thick:6,mcurv:7,cpos:9,cnrm:10};
+const BK_KINDS={normal:0,height:1,wnormal:2,position:3,id:4,ao:5,thick:6,mcurv:7,cpos:9,cnrm:10,light:11};
 const nextTick=()=>new Promise(r=>setTimeout(r,0));
 /* The baker and interactive viewport share one context. No private clipping/depth/VAO
    state may cross an await, and a resumed bake must not inherit the viewer's state. */
@@ -281,8 +315,8 @@ async function bkYield(){bkIdleState();await nextTick();bkIdleState();}
 function bkSamples(ss,size){let n=Math.max(1,Math.min(4,ss|0||1));while(n>1&&size*n>16384)n--;return n;}
 async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.sizeH||o.size,SS=bkSamples(o.ss,Math.max(W,H)),FW=W*SS,FH=H*SS,TILE=Math.min(1024,Math.max(FW,FH));
   /* low-poly only: rays find the low-poly itself (a hair's breadth away), so AO, thickness, ID and the rest work the same */
-  const self=false,solo=!high;if(solo){o=Object.assign({},o,{front:.003,back:.003,cage:null,average:false,match:false});low.vertCurv=meshCurvature(low);}
-  const source=high||(bvWidth(o.bevel)?low.whole||low:low),hg=o.hg||await bkHighGPU(source,progress.step,o.kinds.includes('id'));if(progress.cancelled){if(!o.hg)bkFreeHigh(hg);return null;}
+  const self=false,solo=!high,whole=o.kinds.includes('light');if(solo){o=Object.assign({},o,{front:.003,back:.003,cage:null,average:false,match:false});low.vertCurv=meshCurvature(low);}
+  const source=high||(bvWidth(o.bevel)||whole?low.whole||low:low),hg=o.hg||await bkHighGPU(source,progress.step,o.kinds.includes('id'));if(progress.cancelled){if(!o.hg)bkFreeHigh(hg);return null;}
   try{await bvPrepareInfo(hg,o.bevel);}catch(e){if(!o.hg)bkFreeHigh(hg);throw e;}if(progress.cancelled){if(!o.hg)bkFreeHigh(hg);return null;}
   const bevelTex=bevelBakeTex(hg,o.bevel);bkIdleState();low.ray=o.cage?o.cage:bkRayDirs(low,o.average);const lg=bkLowGPU(low);
   const kinds=o.kinds.filter(k=>k!=='curv');const outDepth=canFloat?16:8;
@@ -293,7 +327,7 @@ async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.si
   let bmin=[1e9,1e9,1e9],bmax=[-1e9,-1e9,-1e9];const src=source;for(let i=0;i<src.pos.length;i+=3)for(let c=0;c<3;c++){bmin[c]=Math.min(bmin[c],src.pos[i+c]);bmax[c]=Math.max(bmax[c],src.pos[i+c]);}
   const bsize=bmin.map((v,c)=>Math.max(1e-6,bmax[c]-v));
   const tiles=[];for(let y=0;y<FH;y+=TILE)for(let x=0;x<FW;x+=TILE){const t=[x,y,Math.min(TILE,FW-x),Math.min(TILE,FH-y)];if(t[0]<RR[2]&&t[0]+t[2]>RR[0]&&t[1]<RR[3]&&t[1]+t[3]>RR[1])tiles.push(t);}
-  const heavy=kinds.filter(k=>k==='ao'||k==='thick').length,steps=tiles.length*(2+kinds.length+heavy*6);let done=0;const tick=async()=>{done++;progress.set(done/steps);await bkYield();};
+  const heavy=kinds.filter(k=>k==='ao'||k==='thick'||k==='light').length,steps=tiles.length*(2+kinds.length+heavy*6);let done=0;const tick=async()=>{done++;progress.set(done/steps);await bkYield();};
   const SUB=bkRaysPer(o.rays,SS)>64?128:256;
   try{
   for(const [tx,ty,tw,th] of tiles){if(progress.cancelled)break;
@@ -308,10 +342,10 @@ async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.si
     for(let sy=ly0;sy<ly1;sy+=256)for(let sx=lx0;sx<lx1;sx+=256){gl.bindFramebuffer(gl.FRAMEBUFFER,HB.fbo);gl.viewport(0,0,tw,th);gl.scissor(sx,sy,Math.min(256,lx1-sx),Math.min(256,ly1-sy));useProg(P.hit,hitU);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.flush();}
     gl.disable(gl.SCISSOR_TEST);await tick();
     /* 3: each map, then averaged into the final image */
-    for(const k of kinds){if(progress.cancelled)break;const kind=BK_KINDS[k],rayed=k==='ao'||k==='thick',rounded=!!bevelTex&&(kind===0||kind===2||kind===10),sub=rounded?64:rayed?SUB:Math.max(tw,th);
+    for(const k of kinds){if(progress.cancelled)break;const kind=BK_KINDS[k],rayed=k==='ao'||k==='thick'||k==='light',rounded=!!bevelTex&&(kind===0||kind===2||kind===10),sub=rounded?64:rayed?SUB:Math.max(tw,th);
       gl.bindFramebuffer(gl.FRAMEBUFFER,OUT.fbo);gl.viewport(0,0,tw,th);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.enable(gl.SCISSOR_TEST);
       const U={...bvUniforms(o.bevel,low.whole||low),uBVInfo:bevelTex||dummy,uNodes:hg.nodes,uTris:hg.tris,uTN:hg.nrm,uTC:hg.col,uGR:G.tex[3],uGP:G.tex[0],uGN:G.tex[1],uGT:G.tex[2],uHP:HB.tex[0],uHN:HB.tex[1],uHT:HB.tex[2],uKind:{int:kind},uMatch:!!o.match,uFlipY:o.dx,uRange:Math.max(o.front,o.back),
-        uBMin:bmin,uBSize:bsize,uRays:{int:bkRaysPer(k==='ao'?o.rays:o.thickRays||Math.max(8,o.rays>>1),SS)},uSpread:k==='ao'?(o.aoSpread||1):1,uDist:k==='ao'?o.aoDist:o.thickDist,uSeed:{uint:Math.floor((o.seed||1.3)*1e6)},uSelf:self,uOrg:{iv2:[tx,ty]},uSS:{int:SS}};
+        uBMin:bmin,uBSize:bsize,uRays:{int:bkRaysPer(k==='ao'?o.rays:o.thickRays||Math.max(8,o.rays>>1),SS)},uSpread:k==='ao'?(o.aoSpread||1):1,uDist:k==='ao'?o.aoDist:o.thickDist,uSeed:{uint:Math.floor((o.seed||1.3)*1e6)},uSelf:self,uOrg:{iv2:[tx,ty]},uSS:{int:SS},...(k==='light'?lightBakeUniforms(o.light,bmin,bsize,SS):lightBakeOff())};
       let n=0;for(let sy=ly0;sy<ly1;sy+=sub)for(let sx=lx0;sx<lx1;sx+=sub){gl.bindFramebuffer(gl.FRAMEBUFFER,OUT.fbo);gl.viewport(0,0,tw,th);gl.scissor(sx,sy,Math.min(sub,lx1-sx),Math.min(sub,ly1-sy));useProg(P.out,U);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.flush();
         if((rayed||rounded)&&++n%4===0){await bkYield();if(progress.cancelled)break;}gl.enable(gl.SCISSOR_TEST);}
       gl.disable(gl.SCISSOR_TEST);

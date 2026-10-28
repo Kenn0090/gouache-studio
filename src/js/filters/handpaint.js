@@ -13,7 +13,7 @@ function hpProgs(){if(P_HP)return P_HP;
   const light=GL_ST+MS_NOISE_GLSL+MS_SURF_GLSL+`
 uniform sampler2D uSrc; uniform sampler2D uBlur; uniform sampler2D uTan; uniform sampler2D uTN; uniform sampler2D uDN2; uniform int uHasTan; uniform int uHasTN; uniform int uHasDN2; uniform float uNDet;
 uniform sampler2D uWN; uniform sampler2D uPM; uniform sampler2D uCurv; uniform sampler2D uAO; uniform sampler2D uThick;
-uniform sampler2D uCurvB; uniform int uHasCurvB; uniform int uHasWN; uniform int uHasPM; uniform int uHasCurv; uniform int uHasAO; uniform int uHasThick; uniform int uOwn; uniform int uFormMode; uniform int uSpCount; uniform int uShowN; uniform int uWrap;
+uniform sampler2D uLM; uniform int uHasLM; uniform sampler2D uCurvB; uniform int uHasCurvB; uniform int uHasWN; uniform int uHasPM; uniform int uHasCurv; uniform int uHasAO; uniform int uHasThick; uniform int uOwn; uniform int uFormMode; uniform int uSpCount; uniform int uShowN; uniform int uWrap;
 uniform vec3 uBase; uniform vec3 uL; uniform vec3 uShCol; uniform vec3 uLtCol; uniform vec3 uUlCol; uniform vec3 uGTop; uniform vec3 uGBot; uniform vec3 uAoCol; uniform vec3 uEdgeCol; uniform vec3 uCavCol; uniform vec3 uThCol; uniform vec3 uSpCol; uniform vec3 uVarCol;
 uniform float uShAmt; uniform float uShSpread; uniform float uLtAmt; uniform float uForm; uniform float uUlAmt; uniform float uGTopAmt; uniform float uGBotAmt; uniform float uGOff; uniform float uGSpread;
 uniform float uAoAmt; uniform float uAoSpread; uniform float uEdgeAmt; uniform float uEdgeSpread; uniform float uCavAmt; uniform float uCavSpread; uniform float uThAmt;
@@ -38,6 +38,8 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); vec2 uv=(vec2
   if(!model&&uPic>0.0){ float hx=bl(p+ivec2(2,0),s)-bl(p-ivec2(2,0),s), hy=bl(p+ivec2(0,2),s)-bl(p-ivec2(0,2),s); N=normalize(N+vec3(-hx,hy,0.0)*uPic*6.0); }
   if(uShowN==1){ o=vec4(N*0.5+0.5,1.0); return; }
   float d=dot(N,uL), lam=d*0.5+0.5;
+  /* (0.80) a baked Lighting map (Bake tab rig, with shadows) decides the lit and shadow sides instead */
+  if(uHasLM==1){ vec4 q=texelFetch(uLM,p,0); if(q.a>0.01) lam=clamp(pow(lum(st(q)),2.2),0.0,1.0); }
   /* shadow side (multiplied) and lit side (overlaid), the main two tones of a painted form */
   float sh=1.0-smoothstep(0.5-uShSpread*0.5-0.002,0.5+uShSpread*0.5+0.002,lam); c=mix(c,c*uShCol,sh*uShAmt);
   c=mix(c,ovl(c,uLtCol),smoothstep(0.5,1.0,lam)*uLtAmt);
@@ -118,7 +120,7 @@ const HP_DEFAULTS={own:true,base:[.6,.6,.6],lEl:65,lTurn:25,
   thCol:[1,.45,.35],thAmt:0,spCount:3,spCol:[1,1,.95],spAmt:0,spExp:10,spH:45,spRot:0,
   varAmt:.25,varScale:6,varCol:[.9,.6,.5],pic:0,mul:0,over:.1,sat:1.05,
   tipKey:'b:bristle',sAmt:.6,sSize:40,sRand:.4,sDens:1.5,sRot:0,sRotRand:.25,sFollow:.8,sDetail:.25,sDrop:.15,sKeep:.6,sOp:.85,
-  nDet:1,rOn:true,rBase:.7,rFrom:.2,rInv:true,rCon:1,mOn:false,mBase:0,mFrom:0,mInv:false,mCon:1,showN:false,seed:1};
+  nDet:1,lightSrc:'auto',rOn:true,rBase:.7,rFrom:.2,rInv:true,rCon:1,mOn:false,mBase:0,mFrom:0,mInv:false,mCon:1,showN:false,seed:1};
 const HP_PRESETS={
   'Game materials':{
     'Old wood':{base:[.45,.3,.18],shCol:[.5,.35,.4],edgeCol:[.9,.7,.45],cavCol:[.35,.2,.15],varAmt:.35,varCol:[.65,.42,.2],rBase:.8},
@@ -160,10 +162,10 @@ function hpInputs(n){const M=doc.meshMaps||{},tmp=[],get=k=>{if(M[k])return M[k]
     uTan:tri?tri.tan.tex:dummy,uHasTan:{int:tri?1:0},uTN:tn?tn.tex:dummy,uHasTN:{int:tn?1:0},uDN2:dn2?dn2.tex:dummy,uHasDN2:{int:dn2?1:0}},
     src:{normal:wn?'baked world normal':tri?'the model':dn?'the normal map below':'flat (no model)',detail:tri?(tn&&!wn?'baked normal map':'')+(dn2?(tn&&!wn?' + ':'')+'normals painted below':''):'',
       position:pm?'baked position':tri?'the model':'top of the picture',ao:M.ao?'baked AO':ao?'AO map below':'the picture',
-      curv:M.curv?'baked curvature':curv?(tri?'the model':'curvature map below'):'the picture',thick:thick?'baked thickness':'none (bake Thickness)'}};}
+      light:M.light?'baked Lighting (Bake tab rig)':'',curv:M.curv?'baked curvature':curv?(tri?'the model':'curvature map below'):'the picture',thick:thick?'baked thickness':'none (bake Thickness)'}};}
 /* what the layer reads right now, in words (shown in its settings) */
 function hpSources(n){const I=hpInputs(n),S=I.src;for(const t of I.tmp)release(t);
-  return 'Reads: shape from '+S.normal+(S.detail?' (+ '+S.detail+')':'')+' · height from '+S.position+' · crevices from '+S.ao+' · edges from '+S.curv+' · thin parts from '+S.thick+'.';}
+  return 'Reads: '+(S.light?'light from '+S.light+' · ':'')+'shape from '+S.normal+(S.detail?' (+ '+S.detail+')':'')+' · height from '+S.position+' · crevices from '+S.ao+' · edges from '+S.curv+' · thin parts from '+S.thick+'.';}
 const hpRad=d=>d*Math.PI/180,hpDir=(el,turn)=>[Math.cos(hpRad(el))*Math.sin(hpRad(turn)),Math.sin(hpRad(el)),Math.cos(hpRad(el))*Math.cos(hpRad(turn))];
 const hpScale=()=>Math.max(doc.w,doc.h)/1024;
 
@@ -184,7 +186,7 @@ function hpPaint(base,T,v,n){const PG=hpProgs(),I=hpInputs(n),S=hpScale(),bl=acq
     uBase:v.base,uL:hpDir(v.lEl,v.lTurn),uShCol:v.shCol,uLtCol:v.ltCol,uUlCol:v.ulCol,uGTop:v.gTop,uGBot:v.gBot,uAoCol:v.aoCol,uEdgeCol:v.edgeCol,uCavCol:v.cavCol,uThCol:v.thCol,uSpCol:v.spCol,uVarCol:v.varCol,
     uShAmt:v.shAmt,uShSpread:v.shSpread,uLtAmt:v.ltAmt,uForm:v.form,uUlAmt:v.ulAmt,uGTopAmt:v.gTopAmt,uGBotAmt:v.gBotAmt,uGOff:v.gOff,uGSpread:v.gSpread,uAoAmt:v.aoAmt,uAoSpread:v.aoSpread,
     uEdgeAmt:v.edgeAmt,uEdgeSpread:v.edgeSpread,uCavAmt:v.cavAmt,uCavSpread:v.cavSpread,uThAmt:v.thAmt,uSpAmt:v.spAmt,uSpExp:v.spExp,uSpH:hpRad(v.spH),uSpRot:hpRad(v.spRot),
-    uCurvB:cvB?cvB.tex:dummy,uHasCurvB:{int:cvB?1:0},uVarAmt:v.varAmt,uVarScale:v.varScale,uPic:v.pic,uNDet:v.nDet??1,uMul:v.mul,uOver:v.over,uSat:v.sat}));
+    uLM:hpLightMap(v)?hpLightMap(v).tex:dummy,uHasLM:{int:hpLightMap(v)?1:0},uCurvB:cvB?cvB.tex:dummy,uHasCurvB:{int:cvB?1:0},uVarAmt:v.varAmt,uVarScale:v.varScale,uPic:v.pic,uNDet:v.nDet??1,uMul:v.mul,uOver:v.over,uSat:v.sat}));
   if(a){const tip=typeof dualTip==='function'?dualTip({tipKey:v.tipKey}):null,tt=tip&&tip.alpha?tip:TIPS.bristle;
     run(PG.strokes,T,{uA:a.tex,uTip:tt.tex,uTipS:[tt.w,tt.h],uSize:v.sSize*S,uRand:v.sRand,uDens:v.sDens,uRot:hpRad(v.sRot),uRotRand:v.sRotRand,uFollow:v.sFollow,uDetail:v.sDetail,
       uDrop:v.sDrop,uKeep:v.sKeep,uOp:v.sOp,uAmt:+v.showN?0:v.sAmt,uSeed:v.seed||1,uWrap:{int:doc.wrap?1:0}});release(a);}
@@ -240,7 +242,7 @@ function hpControls(v,upd){for(const k in HP_DEFAULTS)if(v[k]===undefined)v[k]=J
     G('Colour',true,SEL('own','Colour comes from',[[true,'Its own colour'],[false,'The layers below (paint over them)']]),C('base','Base colour')),
     el('p',{class:'note hpsrc',id:'hpSrc',text:(()=>{try{return hpSources(hpCurLayer());}catch(e){return '';}})()}),
     G('Light direction',true,dirChips,S('lEl','Height of the light',-90,90,1,x=>Math.round(x)+'°'),S('lTurn','Turn',-180,180,1,x=>Math.round(x)+'°'),
-      K('showN','Show the directions (normals in colour)'),S('nDet','Detail from normal maps',0,2,.01,pct),el('p',{class:'note',text:'Top uses the green of the world-space normal, the usual trick for fake lighting.'})),
+      SEL('lightSrc','Light from',[['auto','The baked Lighting map, when there is one'],['dir','This direction']]),K('showN','Show the directions (normals in colour)'),S('nDet','Detail from normal maps',0,2,.01,pct),el('p',{class:'note',text:'Top uses the green of the world-space normal, the usual trick for fake lighting.'})),
     G('Shadow and light',true,C('shCol','Shadow colour'),S('shAmt','Shadow',0,1,.01,pct),S('shSpread','Shadow softness',0,1,.01,pct),C('ltCol','Light colour'),S('ltAmt','Light',0,1,.01,pct),
       S('form','Form light (normals over the colour)',0,1,.01,pct),SEL('formMode','Form light blend',[[0,'Overlay'],[1,'Linear add']])),
     G('Top and bottom',false,C('gTop','Top colour'),S('gTopAmt','Top',0,1,.01,pct),C('gBot','Bottom colour'),S('gBotAmt','Bottom',0,1,.01,pct),S('gOff','Middle',0,1,.01,pct),S('gSpread','Softness',0,1,.01,pct)),
@@ -275,3 +277,6 @@ function hpCurLayer(){const L=doc.active;return L&&L.fx&&L.fx.stack.some(it=>it.
 /* the presets as smart materials (Materials › Smart materials): drag onto the layers, or click, like any material */
 function hpSmartList(){if(!FX.handPaint)return [];const out=[];for(const g in HP_PRESETS)for(const name in HP_PRESETS[g]){const v=Object.assign(fxDefaults(FX.handPaint),JSON.parse(JSON.stringify(HP_PRESETS[g][name])),{preset:name});
   out.push(['Hand-painted '+name,[{t:'L',name:'Hand-painted '+name,mode:0,op:1,vis:true,fx:{map:'all',stack:[{id:'handPaint',on:true,v}]}}]]);}return out;}
+
+/* (0.80) the baked Lighting map of this texture set (Bake tab › Lighting), unless the layer is set to its own direction */
+function hpLightMap(v){const M=doc.meshMaps||{};return v&&v.lightSrc==='dir'?null:M.light&&M.light.w===doc.w&&M.light.h===doc.h?M.light:null;}

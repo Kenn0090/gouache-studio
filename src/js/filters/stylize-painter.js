@@ -15,7 +15,7 @@ function paProgs(){if(P_PA)return P_PA;
   const look=GL_ST+`uniform sampler2D uSrc; uniform sampler2D uN; uniform sampler2D uM; uniform sampler2D uP; uniform int uPart;
 uniform float uCol; uniform float uHue; uniform float uSat; uniform float uVal; uniform float uCon; uniform float uPost;
 uniform float uGrad; uniform int uGMode; uniform vec3 uG1; uniform float uGO1; uniform int uGB1; uniform vec3 uG2; uniform float uGO2; uniform int uGB2; uniform vec3 uGDir; uniform int uGInv; uniform float uGOff; uniform float uGCon;
-uniform float uLit; uniform float uLitPart; uniform vec3 uL; uniform float uDI; uniform vec3 uDC; uniform float uDR; uniform float uDCon; uniform float uSI; uniform vec3 uSC; uniform float uSR; uniform float uSCon;
+uniform sampler2D uLM; uniform int uHasLM; uniform float uLit; uniform float uLitPart; uniform vec3 uL; uniform float uDI; uniform vec3 uDC; uniform float uDR; uniform float uDCon; uniform float uSI; uniform vec3 uSC; uniform float uSR; uniform float uSCon;
 uniform float uEdg; uniform vec3 uEC; uniform float uEO; uniform float uEW; uniform vec3 uCC; uniform float uCO; uniform float uCW; uniform float uAOO;
 float lum(vec3 c){ return dot(c,vec3(0.299,0.587,0.114)); }
 vec3 ovl(vec3 a,vec3 b){ return mix(2.0*a*b,1.0-2.0*(1.0-a)*(1.0-b),step(0.5,a)); }
@@ -24,13 +24,15 @@ vec3 blendM(int m,vec3 a,vec3 b){ if(m==1) return a*b; if(m==2) return 1.0-(1.0-
 vec3 rgb2hsv(vec3 c){ vec4 K=vec4(0.0,-1.0/3.0,2.0/3.0,-1.0); vec4 p=mix(vec4(c.bg,K.wz),vec4(c.gb,K.xy),step(c.b,c.g)); vec4 q=mix(vec4(p.xyw,c.r),vec4(c.r,p.yzx),step(p.x,c.r));
   float d=q.x-min(q.w,q.y); return vec3(abs(q.z+(q.w-q.y)/(6.0*d+1e-10)),d/(q.x+1e-10),q.x); }
 vec3 hsv2rgb(vec3 c){ vec3 p=abs(fract(c.xxx+vec3(1.0,2.0/3.0,1.0/3.0))*6.0-3.0); return c.z*mix(vec3(1.0),clamp(p-1.0,0.0,1.0),c.y); }
-vec3 light(vec3 c,vec3 N,float w){ if(w<=0.0) return c; float d=dot(N,uL);
+vec3 light(vec3 c,vec3 N,float w,float lm){ if(w<=0.0) return c; float d=lm>=0.0?lm*2.0-1.0:dot(N,uL);
   float t=clamp((d+uDR)/(1.0+uDR),0.0,1.0); t=clamp((t-0.5)*(1.0+uDCon*4.0)+0.5,0.0,1.0);
   vec3 r=c*mix(1.0-uDI*0.7,1.0+uDI*0.5,t); r=mix(r,ovl(r,uDC),t*uDI*0.6);
   float sp=pow(smoothstep(1.0-max(uSR,0.01)*0.6,1.0,d),1.0+uSCon*6.0); r+=uSC*sp*uSI;
   return mix(c,r,w); }
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 s=texelFetch(uSrc,p,0); if(s.a<0.002){ o=s; return; } vec3 c=st(s);
-  vec3 N=normalize(texelFetch(uN,p,0).rgb*2.0-1.0+1e-5); vec4 M=texelFetch(uM,p,0); vec3 P=texelFetch(uP,p,0).rgb;
+  vec3 N=normalize(texelFetch(uN,p,0).rgb*2.0-1.0+1e-5);
+  /* (0.80) the baked Lighting map, when there is one, decides how lit each point is */
+  float lm=-1.0; if(uHasLM==1){ vec4 q=texelFetch(uLM,p,0); if(q.a>0.01) lm=clamp(pow(dot(st(q),vec3(0.299,0.587,0.114)),2.2),0.0,1.0); } vec4 M=texelFetch(uM,p,0); vec3 P=texelFetch(uP,p,0).rgb;
   if(uPart==0){
     /* colorize: hue, saturation, brightness, contrast, and flat tones (fewer steps of value, as a painter would) */
     if(uCol>0.0){ vec3 h=rgb2hsv(clamp(c,0.0,1.0)); h.x=fract(h.x+uHue/360.0); h.y=clamp(h.y*uSat,0.0,1.0); h.z=clamp(h.z*uVal,0.0,1.0);
@@ -41,8 +43,8 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 s=texelFetch(uSrc,p,0); if(s.a
     /* edges and cavities: curvature (0.5 = flat) and AO */
     if(uEdg>0.0){ float cv=(M.g-0.5)*2.0; float e=smoothstep(mix(0.6,0.02,uEW),mix(0.95,0.3,uEW),cv), k=smoothstep(mix(0.6,0.02,uCW),mix(0.95,0.3,uCW),-cv);
       c=mix(c,blendM(2,c,uEC),e*uEO*uEdg); c=mix(c,c*uCC,k*uCO*uEdg); c=mix(c,c*M.r,(1.0-M.r)*uAOO*uEdg); }
-    c=light(c,N,uLit*uLitPart);
-  } else c=light(c,N,uLit*(1.0-uLitPart));
+    c=light(c,N,uLit*uLitPart,lm);
+  } else c=light(c,N,uLit*(1.0-uLitPart),lm);
   o=vec4(clamp(c,0.0,1.0)*s.a,s.a); }`;
   /* brush strokes: stamps of a brush tip on a jittered grid. Where they go and how they turn comes from the guide (the colour
      below), so every map gets the same stamps. Each stamp copies the map's value at its centre (a flat dab of paint).
@@ -96,7 +98,7 @@ const PA_DEFAULTS={stylization:1,strokes:1,smooth:1,colorize:0,gradient:0,lighti
   smR:3,smC:.25,smH:.8,smN:.8,smRo:1,smM:1,
   hue:0,sat:1.1,val:1,con:1.05,post:0,
   gMode:1,g1:[1,.92,.8],gO1:.6,gB1:3,g2:[.35,.3,.5],gO2:.5,gB2:1,gH:0,gV:90,gInv:false,gOff:.5,gCon:.2,
-  litPart:1,dI:.4,dC:[1,.95,.85],dR:.3,dCon:.3,sI:.25,sC:[1,1,1],sR:.25,sCon:.3,lH:25,lV:60,
+  lightSrc:'auto',litPart:1,dI:.4,dC:[1,.95,.85],dR:.3,dCon:.3,sI:.25,sC:[1,1,1],sR:.25,sCon:.3,lH:25,lV:60,
   eC:[1,.95,.85],eO:.6,eW:.4,cC:[.35,.28,.3],cO:.6,cW:.4,aoO:.5,show:'result'};
 const PA_PRESETS={
   'Painterly':{},
@@ -132,7 +134,7 @@ TIPS.dab=genTip('Paint dab',192,128,(x,w,h,R)=>{const g=x.createRadialGradient(w
 const PA_KIND={base:0,rough:1,gloss:1,height:2,normal:3};
 const paLookU=(v,F,part)=>({uN:F.N.tex,uM:F.M.tex,uP:F.P.tex,uPart:{int:part},uCol:v.colorize,uHue:v.hue,uSat:v.sat,uVal:v.val,uCon:v.con,uPost:v.post,
   uGrad:v.gradient,uGMode:{int:v.gMode|0},uG1:v.g1,uGO1:v.gO1,uGB1:{int:v.gB1|0},uG2:v.g2,uGO2:v.gO2,uGB2:{int:v.gB2|0},uGDir:hpDir(v.gV,v.gH),uGInv:{int:v.gInv?1:0},uGOff:v.gOff,uGCon:v.gCon,
-  uLit:v.lighting,uLitPart:v.litPart,uL:hpDir(v.lV,v.lH),uDI:v.dI,uDC:v.dC,uDR:v.dR,uDCon:v.dCon,uSI:v.sI,uSC:v.sC,uSR:v.sR,uSCon:v.sCon,
+  uLM:hpLightMap(v)?hpLightMap(v).tex:dummy,uHasLM:{int:hpLightMap(v)?1:0},uLit:v.lighting,uLitPart:v.litPart,uL:hpDir(v.lV,v.lH),uDI:v.dI,uDC:v.dC,uDR:v.dR,uDCon:v.dCon,uSI:v.sI,uSC:v.sC,uSR:v.sR,uSCon:v.sCon,
   uEdg:v.edges,uEC:v.eC,uEO:v.eO,uEW:v.eW,uCC:v.cC,uCO:v.cO,uCW:v.cW,uAOO:v.aoO});
 
 fxDef('stylizeP',{title:'Stylize (Painter style)',heavy:true,onlyLayer:true,wide:true,
@@ -180,7 +182,7 @@ function paControls(v,upd){for(const k in PA_DEFAULTS)if(v[k]===undefined)v[k]=J
     G('Gradient',false,SEL('gMode','Gradient mode',[[0,'1 colour'],[1,'2 colours']]),C('g1','Colour'),S('gO1','Colour opacity',0,1,.01,pct),SEL('gB1','Colour blending mode',blends),
       C('g2','Colour 2'),S('gO2','Colour 2 opacity',0,1,.01,pct),SEL('gB2','Colour 2 blending mode',blends),S('gH','Horizontal rotation',-180,180,1,deg),S('gV','Vertical rotation',-90,90,1,deg),
       K('gInv','Gradient invert'),S('gOff','Gradient offset',0,1,.01,pct),S('gCon','Gradient contrast',0,1,.01,pct)),
-    G('Baked lighting',false,S('litPart','Brush strokes in lighting',0,1,.01,pct),S('dI','Diffuse intensity',0,1,.01,pct),C('dC','Diffuse colour'),S('dR','Diffuse radius',0,1,.01,pct),S('dCon','Diffuse contrast',0,1,.01,pct),
+    G('Baked lighting',false,SEL('lightSrc','Light from',[['auto','The baked Lighting map, when there is one'],['dir','The rotation below']]),S('litPart','Brush strokes in lighting',0,1,.01,pct),S('dI','Diffuse intensity',0,1,.01,pct),C('dC','Diffuse colour'),S('dR','Diffuse radius',0,1,.01,pct),S('dCon','Diffuse contrast',0,1,.01,pct),
       S('sI','Specular intensity',0,1,.01,pct),C('sC','Specular colour'),S('sR','Specular radius',0,1,.01,pct),S('sCon','Specular contrast',0,1,.01,pct),
       S('lH','Horizontal rotation',-180,180,1,deg),S('lV','Vertical rotation',-90,90,1,deg)),
     G('Edges and cavities',false,C('eC','Edge colour'),S('eO','Edge opacity',0,1,.01,pct),S('eW','Edge width',0,1,.01,pct),C('cC','Cavity colour'),S('cO','Cavity opacity',0,1,.01,pct),S('cW','Cavity width',0,1,.01,pct),S('aoO','Ambient occlusion',0,1,.01,pct)),

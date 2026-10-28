@@ -5,7 +5,7 @@
    The bake runs with the Bake tab's machinery and stays there afterwards: open the Bake tab to fine-tune it
    (cage, skew and offset fixes, per-map settings), send it to 3D Paint again, or send it to the Paint canvas
    to clean up intersections by hand. */
-const P3BK_MAPS=['normal','ao','curv','height','thick','wnormal','position','id'];
+const P3BK_MAPS=['normal','ao','curv','height','thick','wnormal','position','id','light'];
 const p3bk={sets:null,useHigh:true,last:null};
 /* run fn on the Bake tab's own canvas, at w×h, without leaving 3D Paint (the screen holds still meanwhile) */
 async function p3WithBakeDoc(w,h,fn){const mine=docState(),v3d=doc.v3d,wf=doc.workflow;let s=tabDocs.own.bake;tabDocs.own.bake=null;

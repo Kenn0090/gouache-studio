@@ -3,10 +3,10 @@
    Results sent to the document arrive as new layers: normal into the Normal map, height into
    Height, AO into Ambient occlusion; curvature, thickness, world-space normal, position and ID
    go into a hidden "Baked maps" group in base colour, ready to use as masks. */
-const bakeCfg={low:null,high:null,cage:null,match:false,average:true,front:2.5,back:2.5,kinds:{normal:true,ao:true,curv:true,height:false,thick:false,wnormal:false,position:false,id:false},
+const bakeCfg={low:null,high:null,cage:null,match:false,average:true,front:2.5,back:2.5,kinds:{normal:true,ao:true,curv:true,height:false,thick:false,wnormal:false,position:false,id:false,light:false},
   rays:64,aoDist:25,thickDist:50,ss:4,pad:16,autoSend:false,replace:true,
   aoSpread:1,thickRays:32,curvSrc:'mesh',curvRadius:3,curvStr:1,curvEdges:1,curvCreases:1,curvFlip:false,curvParts:true,sendAs:'layers',tab:'general'};
-const BAKE_NAMES={normal:'Normal',ao:'Ambient occlusion',curv:'Curvature',curvEdge:'Curvature edges',curvCrease:'Curvature creases',height:'Height',thick:'Thickness',wnormal:'World-space normal',position:'Position',id:'ID colours'};
+const BAKE_NAMES={normal:'Normal',ao:'Ambient occlusion',curv:'Curvature',curvEdge:'Curvature edges',curvCrease:'Curvature creases',height:'Height',thick:'Thickness',wnormal:'World-space normal',position:'Position',id:'ID colours',light:'Lighting'};
 /* read a model file (OBJ, glTF, GLB, FBX) */
 const MODEL_EXTS=['obj','glb','gltf','fbx'];
 const isModelName=n=>MODEL_EXTS.includes(extOf(n));

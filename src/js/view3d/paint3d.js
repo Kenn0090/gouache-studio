@@ -343,7 +343,7 @@ function fitInto(src,dst){const k=Math.min(dst.w/src.w,dst.h/src.h),off=[(dst.w-
    They become the set's mesh maps (doc.meshMaps, like Substance Painter's: for masks and smart materials) and the
    baked normal becomes a layer in the Normal map so its detail shows; with "also as layers", AO and curvature
    arrive as blendable layers too. by: {material name: {map: target}} ('*' = the same for every set). */
-const P3_MESHMAP_NAMES={normal:'Normal',height:'Height',ao:'Ambient occlusion',curv:'Curvature',curvEdge:'Curvature edges',curvCrease:'Curvature creases',thick:'Thickness',wnormal:'World normal',position:'Position',id:'ID',rough:'Roughness',metal:'Metallic'};
+const P3_MESHMAP_NAMES={normal:'Normal',height:'Height',ao:'Ambient occlusion',curv:'Curvature',curvEdge:'Curvature edges',curvCrease:'Curvature creases',thick:'Thickness',wnormal:'World normal',position:'Position',id:'ID',light:'Lighting',rough:'Roughness',metal:'Metallic'};
 /* Channel inspection changes the viewport, not the channel the brush edits. */
 function p3ChannelKeys(){const K=doc.maps.map(k=>k==='normal'?'nfinal':k);if(doc.maps.includes('height')&&!K.includes('nfinal'))K.push('nfinal');return [...new Set(K)];}
 function p3ChannelView(){if(ui.mode!=='p3d')return null;const k=v3s().channelView;return p3ChannelKeys().includes(k)?k:null;}
@@ -383,7 +383,8 @@ function p3ApplyBake(res,ks,asLayers){const M=doc.meshMaps||(doc.meshMaps={});
   /* (0.27, Kenn: sent bakes shouldn't be added to the layer stack) they are the set's mesh maps; the baked normal
      shades the model from there (meshNormalBase). Layers only when asked for; an old "Mesh normal (baked)" layer goes. */
   const add=[];
-  if(asLayers)for(const k of ks)if(k!=='normal'&&M[k])add.push(p3MeshLayer(k));
+  /* (0.80) the baked lighting always also comes as a Multiply layer you can paint on (Kenn: both) */
+  for(const k of ks)if(k!=='normal'&&M[k]&&(asLayers||k==='light'))add.push(p3MeshLayer(k));
   const old=paintLayers().filter(L=>L.meshMap&&(add.some(a=>a.meshMap===L.meshMap)||(L.meshMap==='normal'&&ks.includes('normal'))));
   if(old.length||add.length)structOp('Bake from the Bake tab',()=>{for(const L of old)detachNode(L);for(const L of add)insertNode(L,doc.root,L.meshMap==='normal'?1:doc.root.children.length);});
   syncTargets();p3MeshMapsChanged();renderLayers();}
@@ -391,7 +392,7 @@ function p3ApplyBake(res,ks,asLayers){const M=doc.meshMaps||(doc.meshMaps={});
 function p3MeshLayer(k){const M=doc.meshMaps,L=newLayerObj(k==='normal'?'Mesh normal (baked)':'Baked '+(P3_MESHMAP_NAMES[k]||k).toLowerCase());doc.count--;
   const own=k==='normal'?'normal':'base';for(const x of Object.keys(L.maps))if(x!==own){disposeTarget(L.maps[x]);delete L.maps[x];}
   copyScaled(M[k],ensureMapTarget(L,own));if(own!=='base'){L.blankBase=true;setMapModeOf(L,own,0);}
-  if(k==='ao')L.mode=MODES.indexOf('Multiply');else if(/^curv/.test(k))L.mode=MODES.indexOf('Overlay');else if(k!=='normal')L.visible=false;
+  if(k==='ao'||k==='light')L.mode=MODES.indexOf('Multiply');else if(/^curv/.test(k))L.mode=MODES.indexOf('Overlay');else if(k!=='normal')L.visible=false;
   L.meshMap=k;L.baked=true;return L;}
 function p3MeshMapsBox(){const M=doc.meshMaps||{},ks=Object.keys(M);if(!ks.length)return el('p',{class:'note',text:'None yet. Press Bake mesh maps (or bake in the Bake tab and press Send to 3D Paint): the baked maps land here, per texture set.'});
   return el('div',{class:'p3mm'},...ks.map(k=>el('div',{class:'p3mmrow'},el('span',{text:msMeshName(k)}),
