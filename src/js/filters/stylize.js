@@ -7,17 +7,17 @@
    L.fx = {map:'all', stack:[{id:'stylizeG', v}]}: a filter layer that acts on every map (see compositeList). */
 const SG_FS={
   /* streaks: white noise smeared along the stroke direction. R = fine bristles, G = coarse blotches, B = grain */
-  streak:GL_ST+`uniform sampler2D uT; uniform int uLen; uniform float uSeed; uniform int uWrap;
+  streak:GL_ST+`uniform sampler2D uT; uniform int uLen; uniform float uSeed; uniform int uWrap; uniform float uCell;
 float h21(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
 vec2 dirAt(vec2 pos,ivec2 s){ vec3 t=texelFetch(uT,wrapP(ivec2(floor(pos)),s,uWrap),0).rgb;
   float lam1=0.5*(t.x+t.y+sqrt((t.x-t.y)*(t.x-t.y)+4.0*t.z*t.z)); vec2 d=vec2(lam1-t.x,t.z); return length(d)>1e-6?normalize(d):vec2(1.0,0.0); }
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uT,0); vec2 c0=vec2(p)+0.5; float fine=0.0,coarse=0.0,wsum=0.0;
   for(int sg=0;sg<2;sg++){ vec2 pos=c0, prev=dirAt(c0,s)*(sg==0?1.0:-1.0);
-    for(int i=0;i<=80;i++){ if(i>uLen) break; float w=1.0-float(i)/float(uLen+1);
-      fine+=w*h21(floor(pos)+uSeed); coarse+=w*h21(floor(pos/3.0)+uSeed*7.0+17.0); wsum+=w;
+    for(int i=0;i<=120;i++){ if(i>uLen) break; float w=1.0-float(i)/float(uLen+1);
+      fine+=w*h21(floor(pos/uCell)+uSeed); coarse+=w*h21(floor(pos/(3.0*uCell))+uSeed*7.0+17.0); wsum+=w;
       vec2 d=dirAt(pos,s); if(dot(d,prev)<0.0) d=-d; pos+=d; prev=d; } }
   fine/=wsum; coarse/=wsum; fine=clamp(0.5+(fine-0.5)*3.0,0.0,1.0); coarse=clamp(0.5+(coarse-0.5)*3.0,0.0,1.0);
-  o=vec4(fine,coarse,h21(vec2(p)+uSeed*3.1+91.0),1.0); }`,
+  o=vec4(fine,coarse,h21(floor(vec2(p)/max(1.0,uCell*0.6))+uSeed*3.1+91.0),1.0); }`,
   /* the paint itself, per channel kind: 0 colour, 1 roughness/gloss, 2 height, 3 normal, 4 anything else (only smoothed) */
   post:GL_ST+`uniform sampler2D uSrc; uniform sampler2D uOrig; uniform sampler2D uS; uniform int uKind; uniform int uWrap;
 uniform float uBristle; uniform float uCVar; uniform float uRelief; uniform float uBend; uniform float uGrain; uniform float uAmt;
@@ -54,7 +54,7 @@ let P_SGMIX=null;const sgMixProg=()=>P_SGMIX||(P_SGMIX=program(GL_ST+`uniform sa
 /* the stroke field of one layer: kept until the picture below, or a setting that shapes the strokes, changes */
 function sgDrop(n){const f=n&&n._sgF;if(f){disposeTarget(f.T);disposeTarget(f.S);if(f.L)disposeTarget(f.L);if(f.E)disposeTarget(f.E);n._sgF=null;}}
 function sgField(n,src,v,k){
-  const guide=sgGuideOf(v),key=[typeof msDocVer==='number'?msDocVer:0,typeof msEpoch==='number'?msEpoch:0,n?n.lookVer||0:0,doc.w,doc.h,!!doc.wrap,v.flow,v.len,v.seed||1,guide,v.mlEl??65,v.mlTurn??25].join('|');
+  const guide=sgGuideOf(v),key=[typeof msDocVer==='number'?msDocVer:0,typeof msEpoch==='number'?msEpoch:0,n?n.lookVer||0:0,doc.w,doc.h,!!doc.wrap,v.flow,v.len,v.size,v.seed||1,guide,v.mlEl??65,v.mlTurn??25].join('|');
   const f=n&&n._sgF;if(f&&(f.key===key||stroke))return f;
   if(n)sgDrop(n);
   /* the colour below this layer is what the strokes follow */
@@ -69,7 +69,8 @@ function sgField(n,src,v,k){
   if(v.flow>.25)gaussian(t1,t2,v.flow);else blit(t1,t2,0,0,doc.w,doc.h,0,0);
   const T=makeTarget(doc.w,doc.h,d16,false),S=makeTarget(doc.w,doc.h,d16,false);
   blit(t2,T,0,0,doc.w,doc.h,0,0);release(t1);release(t2);if(own)release(own);
-  run(P.sg_streak,S,{uT:T.tex,uLen:Math.round(v.len||12),uSeed:v.seed||1,uWrap:!!doc.wrap});
+  /* (0.79) bristles and grain are as wide as the strokes ask (they were one texel, a fine sandpaper on big textures) */
+  const sc=Math.max(1,Math.max(doc.w,doc.h)/1024);run(P.sg_streak,S,{uT:T.tex,uLen:Math.min(120,Math.round((v.len||12)*sc)),uSeed:v.seed||1,uWrap:!!doc.wrap,uCell:Math.max(1,(v.size||5)*.35*sc)});
   /* (0.78) from the mesh maps: a grey light picture (which way it faces, light from the set direction) and a grey edges picture
      (crevices dark from AO, edges light from curvature), painted into the colour before the strokes smear it */
   let L=null,E=null;if(sgHasShape()&&typeof hpPaint==='function'){const dir={lEl:v.mlEl??65,lTurn:v.mlTurn??25};

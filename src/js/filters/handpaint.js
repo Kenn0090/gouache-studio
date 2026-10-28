@@ -13,7 +13,7 @@ function hpProgs(){if(P_HP)return P_HP;
   const light=GL_ST+MS_NOISE_GLSL+MS_SURF_GLSL+`
 uniform sampler2D uSrc; uniform sampler2D uBlur; uniform sampler2D uTan; uniform sampler2D uTN; uniform sampler2D uDN2; uniform int uHasTan; uniform int uHasTN; uniform int uHasDN2; uniform float uNDet;
 uniform sampler2D uWN; uniform sampler2D uPM; uniform sampler2D uCurv; uniform sampler2D uAO; uniform sampler2D uThick;
-uniform int uCR; uniform int uHasWN; uniform int uHasPM; uniform int uHasCurv; uniform int uHasAO; uniform int uHasThick; uniform int uOwn; uniform int uFormMode; uniform int uSpCount; uniform int uShowN; uniform int uWrap;
+uniform sampler2D uCurvB; uniform int uHasCurvB; uniform int uHasWN; uniform int uHasPM; uniform int uHasCurv; uniform int uHasAO; uniform int uHasThick; uniform int uOwn; uniform int uFormMode; uniform int uSpCount; uniform int uShowN; uniform int uWrap;
 uniform vec3 uBase; uniform vec3 uL; uniform vec3 uShCol; uniform vec3 uLtCol; uniform vec3 uUlCol; uniform vec3 uGTop; uniform vec3 uGBot; uniform vec3 uAoCol; uniform vec3 uEdgeCol; uniform vec3 uCavCol; uniform vec3 uThCol; uniform vec3 uSpCol; uniform vec3 uVarCol;
 uniform float uShAmt; uniform float uShSpread; uniform float uLtAmt; uniform float uForm; uniform float uUlAmt; uniform float uGTopAmt; uniform float uGBotAmt; uniform float uGOff; uniform float uGSpread;
 uniform float uAoAmt; uniform float uAoSpread; uniform float uEdgeAmt; uniform float uEdgeSpread; uniform float uCavAmt; uniform float uCavSpread; uniform float uThAmt;
@@ -53,10 +53,9 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); vec2 uv=(vec2
   float ao=1.0; if(uHasAO==1){ vec4 q=texelFetch(uAO,p,0); ao=q.a>0.01?lum(st(q)):1.0; } else ao=1.0-clamp((pb-lum(below))*4.0,0.0,1.0);
   float occ=pow(clamp(1.0-ao,0.0,1.0),mix(3.0,0.35,uAoSpread)); c=mix(c,c*uAoCol,occ*uAoAmt);
   /* edges (convex) and cavities (concave): curvature, or the picture's own fine light and dark */
-  float cv=0.0; if(uHasCurv==1){ vec4 q=texelFetch(uCurv,p,0); if(q.a>0.01){ float c0=lum(st(q))-0.5,av=0.0,n=0.0;
-    /* read over a small area too, so edges become soft painted bands and not thin lines */
-    for(int j=-1;j<=1;j++)for(int i=-1;i<=1;i++){ vec4 r=texelFetch(uCurv,wrapP(p+ivec2(i,j)*uCR,s,uWrap),0); if(r.a>0.01){ av+=lum(st(r))-0.5; n+=1.0; } }
-    av/=max(n,1.0); cv=clamp(mix(c0,av*2.0,0.7)*6.0,-1.0,1.0);/* baked curvature is subtle (edges near 60% grey), so it is boosted */ } } else cv=clamp((lum(below)-pb)*5.0,-1.0,1.0);
+  float cv=0.0; if(uHasCurv==1){ vec4 q=texelFetch(uCurv,p,0); if(q.a>0.01){ float c0=lum(st(q))-0.5;
+    /* the blurred curvature makes edges soft painted bands, not thin lines; baked curvature is subtle (edges near 60% grey), so it is boosted */
+    vec4 qb=texelFetch(uCurvB,p,0); float cb=qb.a>0.01?lum(st(qb))-0.5:c0; cv=clamp(mix(c0,cb*3.0,uHasCurvB==1?0.8:0.0)*6.0,-1.0,1.0); } } else cv=clamp((lum(below)-pb)*5.0,-1.0,1.0);
   /* (0.79) the shape as data for other layers: AO, curvature (0.5 = flat) and thinness */
   if(uShowN==2){ float th=0.0; if(uHasThick==1){ vec4 q=texelFetch(uThick,p,0); if(q.a>0.01) th=1.0-lum(st(q)); } o=vec4(ao,cv*0.5+0.5,th,1.0); return; }
   float e=smoothstep(mix(0.6,0.02,uEdgeSpread),mix(0.95,0.3,uEdgeSpread),cv), k=smoothstep(mix(0.6,0.02,uCavSpread),mix(0.95,0.3,uCavSpread),-cv);
@@ -156,7 +155,7 @@ function hpInputs(n){const M=doc.meshMaps||{},tmp=[],get=k=>{if(M[k])return M[k]
   let dn=null,dn2=null;if(!wn&&!tri)dn=get('normal');else{dn2=hpBelow(n,'normal');if(dn2)tmp.push(dn2);}
   const tn=M.normal||null;
   const surf=msSurf();Object.assign(surf,{uDocN:dn?dn.tex:dummy,uHasDocN:{int:dn?1:0},uSz:[doc.w,doc.h]});
-  return {tmp,surf,u:{uWN:wn?wn.tex:dummy,uHasWN:{int:wn?1:0},uPM:pm?pm.tex:dummy,uHasPM:{int:pm?1:0},uCurv:curv?curv.tex:dummy,uHasCurv:{int:curv?1:0},
+  return {tmp,surf,curvT:curv,u:{uWN:wn?wn.tex:dummy,uHasWN:{int:wn?1:0},uPM:pm?pm.tex:dummy,uHasPM:{int:pm?1:0},uCurv:curv?curv.tex:dummy,uHasCurv:{int:curv?1:0},
     uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},uThick:thick?thick.tex:dummy,uHasThick:{int:thick?1:0},
     uTan:tri?tri.tan.tex:dummy,uHasTan:{int:tri?1:0},uTN:tn?tn.tex:dummy,uHasTN:{int:tn?1:0},uDN2:dn2?dn2.tex:dummy,uHasDN2:{int:dn2?1:0}},
     src:{normal:wn?'baked world normal':tri?'the model':dn?'the normal map below':'flat (no model)',detail:tri?(tn&&!wn?'baked normal map':'')+(dn2?(tn&&!wn?' + ':'')+'normals painted below':''):'',
@@ -178,16 +177,18 @@ function hpColour(n,src,v){const key=hpKey(n,v),f=n&&n._hpC;if(f&&((f.key===key&
   hpPaint(base,T,v,n);if(own)release(own);if(n)n._hpC={key,T};return T;}
 function hpPaint(base,T,v,n){const PG=hpProgs(),I=hpInputs(n),S=hpScale(),bl=acquireD(base.depth||doc.depth),bl2=acquireD(base.depth||doc.depth);
   blit(base,bl2,0,0,doc.w,doc.h,0,0);gaussian(bl2,bl,6*S);
+  /* a softened copy of the curvature (for wide edge bands) */
+  let cvB=null;const cvT=I.curvT;if(cvT&&cvT.w===doc.w&&cvT.h===doc.h){const c1=acquireD(cvT.depth||doc.depth);cvB=acquireD(cvT.depth||doc.depth);blit(cvT,c1,0,0,doc.w,doc.h,0,0);gaussian(c1,cvB,4*S);release(c1);}
   const a=v.sAmt>0?acquireD(base.depth||doc.depth):null;
   run(PG.light,a||T,Object.assign({},I.surf,I.u,{uSrc:base.tex,uBlur:bl.tex,uOwn:{int:v.own?1:0},uFormMode:{int:v.formMode|0},uSpCount:{int:v.spCount|0},uShowN:{int:+v.showN||0},uWrap:{int:doc.wrap?1:0},uSeed:v.seed||1,
     uBase:v.base,uL:hpDir(v.lEl,v.lTurn),uShCol:v.shCol,uLtCol:v.ltCol,uUlCol:v.ulCol,uGTop:v.gTop,uGBot:v.gBot,uAoCol:v.aoCol,uEdgeCol:v.edgeCol,uCavCol:v.cavCol,uThCol:v.thCol,uSpCol:v.spCol,uVarCol:v.varCol,
     uShAmt:v.shAmt,uShSpread:v.shSpread,uLtAmt:v.ltAmt,uForm:v.form,uUlAmt:v.ulAmt,uGTopAmt:v.gTopAmt,uGBotAmt:v.gBotAmt,uGOff:v.gOff,uGSpread:v.gSpread,uAoAmt:v.aoAmt,uAoSpread:v.aoSpread,
     uEdgeAmt:v.edgeAmt,uEdgeSpread:v.edgeSpread,uCavAmt:v.cavAmt,uCavSpread:v.cavSpread,uThAmt:v.thAmt,uSpAmt:v.spAmt,uSpExp:v.spExp,uSpH:hpRad(v.spH),uSpRot:hpRad(v.spRot),
-    uVarAmt:v.varAmt,uVarScale:v.varScale,uPic:v.pic,uNDet:v.nDet??1,uCR:{int:Math.max(1,Math.round(2*S))},uMul:v.mul,uOver:v.over,uSat:v.sat}));
+    uCurvB:cvB?cvB.tex:dummy,uHasCurvB:{int:cvB?1:0},uVarAmt:v.varAmt,uVarScale:v.varScale,uPic:v.pic,uNDet:v.nDet??1,uMul:v.mul,uOver:v.over,uSat:v.sat}));
   if(a){const tip=typeof dualTip==='function'?dualTip({tipKey:v.tipKey}):null,tt=tip&&tip.alpha?tip:TIPS.bristle;
     run(PG.strokes,T,{uA:a.tex,uTip:tt.tex,uTipS:[tt.w,tt.h],uSize:v.sSize*S,uRand:v.sRand,uDens:v.sDens,uRot:hpRad(v.sRot),uRotRand:v.sRotRand,uFollow:v.sFollow,uDetail:v.sDetail,
       uDrop:v.sDrop,uKeep:v.sKeep,uOp:v.sOp,uAmt:+v.showN?0:v.sAmt,uSeed:v.seed||1,uWrap:{int:doc.wrap?1:0}});release(a);}
-  release(bl);release(bl2);for(const t of I.tmp)release(t);}
+  release(bl);release(bl2);if(cvB)release(cvB);for(const t of I.tmp)release(t);}
 
 fxDef('handPaint',{title:'Hand-painted',heavy:true,onlyLayer:true,wide:true,
   note:'Paints a hand-painted look from the shape of the model: shadow side, lit side, crevices, edges, top and bottom, thin parts. It reads the baked mesh maps (or the model, or the picture when there is none).',

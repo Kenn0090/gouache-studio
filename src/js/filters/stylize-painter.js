@@ -49,7 +49,7 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 s=texelFetch(uSrc,p,0); if(s.a
      uMode 1: the relief of the stamps instead (for height, normal and stroke edges). */
   const stamp=GL_ST+`uniform sampler2D uA; uniform sampler2D uG; uniform sampler2D uN; uniform sampler2D uTip; uniform vec2 uTipS; uniform int uMode; uniform int uKind;
 uniform float uSize; uniform float uRand; uniform float uDens; uniform float uLen; uniform float uRot; uniform float uRotRand; uniform float uFollow; uniform float uHard; uniform float uNThr;
-uniform float uCVar; uniform float uSeed; uniform int uWrap;
+uniform float uCVar; uniform float uDetail; uniform float uSeed; uniform int uWrap;
 float h21(vec2 p){ p=fract(p*vec2(123.34,456.21)+uSeed*0.0137); p+=dot(p,p+45.32); return fract(p.x*p.y); }
 float lm(ivec2 q,ivec2 s){ vec4 c=texelFetch(uG,wrapP(q,s,uWrap),0); return dot(st(c),vec3(0.299,0.587,0.114)); }
 vec3 nAt(ivec2 q,ivec2 s){ return normalize(texelFetch(uN,wrapP(q,s,uWrap),0).rgb*2.0-1.0+1e-5); }
@@ -73,7 +73,8 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uG,0); vec4 c0=texelFe
     if(uMode==1){ rel=mix(rel,0.55+0.45*r7,ta); continue; }
     vec4 k=texelFetch(uA,cp,0); vec3 kc=st(k);
     if(uKind==0&&uCVar>0.0) kc=clamp(kc*(1.0+(r7-0.5)*uCVar*0.5)+(r5-0.5)*uCVar*0.08,0.0,1.0);
-    res=mix(res,vec4(kc*c0.a,c0.a),ta); }
+    /* a dab carries one colour, but keeps some of the detail under it (Keep detail) */
+    vec3 kd=mix(kc,kc+(st(c0)-st(k)),uDetail); res=mix(res,vec4(clamp(kd,0.0,1.0)*c0.a,c0.a),ta); }
   o=uMode==1?vec4(vec3(rel),1.0):res; }`;
   /* stroke effects from the relief: kinds 0 colour (darker stroke edges), 1 rough/gloss (variation), 2 height (raised), 3 normal (tilted) */
   const fx=GL_ST+`uniform sampler2D uSrc; uniform sampler2D uR; uniform int uKind; uniform int uWrap; uniform float uEH; uniform float uEN; uniform float uEE; uniform float uER; uniform int uGl;
@@ -90,7 +91,7 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); vec4 c=texelF
   P_PA={look:program(look),stamp:program(stamp),fx:program(fx),nrm:program(nrm)};P_PA.stamp.tiled=true;return P_PA;}
 
 const PA_DEFAULTS={stylization:1,strokes:1,smooth:1,colorize:0,gradient:0,lighting:.3,edges:.4,seed:1,
-  tipKey:'b:dab',sDens:2.2,sSize:48,sRand:.4,sLen:1.8,sFollow:.85,sRot:0,sRotRand:.2,sHard:.35,sNThr:.6,sCVar:.3,
+  tipKey:'b:dab',sDens:2.2,sSize:30,sRand:.4,sLen:2.4,sFollow:.85,sRot:0,sRotRand:.2,sHard:.15,sDetail:.35,sNThr:.6,sCVar:.3,
   eH:.5,eN:.5,eE:.08,eR:.3,
   smR:3,smC:.25,smH:.8,smN:.8,smRo:1,smM:1,
   hue:0,sat:1.1,val:1,con:1.05,post:0,
@@ -123,9 +124,9 @@ function paField(n,src,v,k){
   if(own)release(own);if(n)n._paF=F;return F;}
 function paStampU(v){const S=Math.max(doc.w,doc.h)/1024,tip=typeof dualTip==='function'?dualTip({tipKey:v.tipKey}):null,tt=tip&&tip.alpha?tip:TIPS.bristle;
   return {uTip:tt.tex,uTipS:[tt.w,tt.h],uSize:v.sSize*S,uRand:v.sRand,uDens:v.sDens,uLen:v.sLen,uRot:v.sRot*Math.PI/180,uRotRand:v.sRotRand,uFollow:v.sFollow,uHard:v.sHard,uNThr:v.sNThr,
-    uCVar:v.sCVar,uSeed:v.seed||1,uWrap:{int:doc.wrap?1:0}};}
+    uCVar:v.sCVar,uDetail:v.sDetail??.35,uSeed:v.seed||1,uWrap:{int:doc.wrap?1:0}};}
 /* (0.79) a soft paint dab: an oval with a loaded edge and faint bristle marks along it, the default stroke tip */
-TIPS.dab=genTip('Paint dab',192,128,(x,w,h,R)=>{const g=x.createRadialGradient(w/2,h/2,0,w/2,h/2,w*.48);g.addColorStop(0,'rgba(255,255,255,.85)');g.addColorStop(.7,'rgba(255,255,255,.95)');g.addColorStop(1,'rgba(255,255,255,0)');
+TIPS.dab=genTip('Paint dab',192,128,(x,w,h,R)=>{const g=x.createRadialGradient(w/2,h/2,0,w/2,h/2,w*.48);g.addColorStop(0,'rgba(255,255,255,.9)');g.addColorStop(.45,'rgba(255,255,255,.85)');g.addColorStop(1,'rgba(255,255,255,0)');
   x.save();x.translate(w/2,h/2);x.scale(1,h/w*.95);x.translate(-w/2,-w/2);x.fillStyle=g;x.beginPath();x.arc(w/2,w/2,w*.48,0,7);x.fill();x.restore();
   x.globalCompositeOperation='destination-out';for(let i=0;i<26;i++){const y=h*(.12+R()*.76);x.globalAlpha=.08+R()*.18;x.fillRect(w*(.05+R()*.2),y,w*(.5+R()*.4),1+R()*1.5);}});
 const PA_KIND={base:0,rough:1,gloss:1,height:2,normal:3};
@@ -171,7 +172,7 @@ function paControls(v,upd){for(const k in PA_DEFAULTS)if(v[k]===undefined)v[k]=J
     S('colorize','Colorize',0,1,.01,pct),S('gradient','Gradient',0,1,.01,pct),S('lighting','Baked lighting',0,1,.01,pct),S('edges','Edges and cavities',0,1,.01,pct),
     G('Brush strokes',false,tp.tipName,tp.tipHost,tp.importTip,S('sDens','Strokes amount',.3,3,.05),S('sSize','Strokes scale',4,200,1,px),S('sRand','Scale random',0,1,.01,pct),
       S('sLen','Stroke length (non-uniform size)',1,4,.05),S('sFollow','Strokes follow surface',0,1,.01,pct),S('sRot','Strokes rotation',-180,180,1,deg),S('sRotRand','Rotation random',0,1,.01,pct),
-      S('sHard','Projection hardness',0,1,.01,pct),S('sNThr','Normal threshold',0,1,.01,pct),S('sCVar','Colour per stroke',0,1,.01,pct)),
+      S('sHard','Projection hardness',0,1,.01,pct),S('sNThr','Normal threshold',0,1,.01,pct),S('sCVar','Colour per stroke',0,1,.01,pct),S('sDetail','Keep detail',0,1,.01,pct)),
     G('Brush strokes effects',false,S('eH','Height relief',0,2,.01,pct),S('eN','Normal relief',0,2,.01,pct),S('eE','Darker stroke edges',0,1,.01,pct),S('eR','Roughness variation',0,1,.01,pct)),
     G('Smoothness',false,S('smR','Radius',0,30,.5,px),S('smC','Colour',0,1,.01,pct),S('smH','Height',0,1,.01,pct),S('smN','Normal',0,1,.01,pct),
       S('smRo',doc.workflow==='spec'?'Glossiness':'Roughness',0,1,.01,pct),S('smM',doc.workflow==='spec'?'Specular':'Metallic',0,1,.01,pct)),
