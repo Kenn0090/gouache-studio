@@ -1425,3 +1425,16 @@ body.photomode #docTabs{display:none!important}
 .srow.hasdef{grid-template-columns:78px minmax(0,1fr) 56px 14px}
 .sldef{border:none;background:none;color:var(--muted,#999);cursor:pointer;padding:0 2px;font-size:12px;line-height:1}
 .sldef:hover{color:var(--accent,#5af)}.sldef.at{visibility:hidden}
+/* (0.80.2) painted-look settings: groups listed on the left, the chosen group's settings on the right, in a wider window */
+.dialog:has(.fxpaged){width:min(780px,96vw)}
+.fxpaged{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;min-height:380px}
+.fxnav{display:flex;flex-direction:column;gap:2px;border-right:1px solid var(--line-2);padding-right:8px;max-height:62vh;overflow:auto}
+.fxnavb{text-align:left;background:none;border:none;color:inherit;padding:6px 8px;border-radius:6px;cursor:pointer;font:inherit}
+.fxnavb:hover{background:var(--line-2)}
+.fxnavb.on{background:var(--line-2);color:var(--accent);font-weight:600}
+.fxpage{max-height:62vh;overflow:auto;padding-right:4px}
+.fxpage .fxsec{border-top:none;padding-top:0}
+.fxsech{margin-top:0}
+@media (max-width:600px){.fxpaged{grid-template-columns:1fr}.fxnav{flex-direction:row;flex-wrap:wrap;border-right:none;border-bottom:1px solid var(--line-2);padding:0 0 6px}}
+.fxpage .srow{grid-template-columns:170px minmax(0,1fr) 56px}.fxpage .srow.hasdef{grid-template-columns:170px minmax(0,1fr) 56px 14px}
+@media (max-width:600px){.fxpage .srow,.fxpage .srow.hasdef{grid-template-columns:110px minmax(0,1fr) 50px 14px}}

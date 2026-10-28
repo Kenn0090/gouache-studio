@@ -169,7 +169,7 @@ function paControls(v,upd){for(const k in PA_DEFAULTS)if(v[k]===undefined)v[k]=J
   const blends=[[0,'Normal'],[1,'Multiply'],[2,'Screen'],[3,'Overlay'],[4,'Soft light'],[5,'Add']],deg=x=>Math.round(x)+'°';
   const restore=el('button',{class:'btn sm',id:'pa_restore',text:'Restore defaults',onclick:()=>{Object.assign(v,JSON.parse(JSON.stringify(PA_DEFAULTS)),{preset:'Painterly'});setAll();refreshChips();upd();}});
   const src=(()=>{try{const L=doc.active;return L?hpSources(L):'';}catch(e){return '';}})();
-  return [el('div',{class:'sub',text:'Presets'}),presetRow,el('p',{class:'note hpsrc',id:'paSrc',text:src}),
+  return [fxPaged('pa',[el('div',{class:'sub',text:'Presets'}),presetRow,el('p',{class:'note hpsrc',id:'paSrc',text:src}),
     S('seed','Random seed',1,99,1),S('stylization','Stylization',0,1,.01,pct),S('strokes','Brush strokes',0,1,.01,pct),S('smooth','Smoothness',0,1,.01,pct),
     S('colorize','Colorize',0,1,.01,pct),S('gradient','Gradient',0,1,.01,pct),S('lighting','Baked lighting',0,1,.01,pct),S('edges','Edges and cavities',0,1,.01,pct),
     G('Brush strokes',false,tp.tipName,tp.tipHost,tp.importTip,S('sDens','Strokes amount',.3,3,.05),S('sSize','Strokes scale',4,200,1,px),S('sRand','Scale random',0,1,.01,pct),
@@ -187,7 +187,7 @@ function paControls(v,upd){for(const k in PA_DEFAULTS)if(v[k]===undefined)v[k]=J
       S('lH','Horizontal rotation',-180,180,1,deg),S('lV','Vertical rotation',-90,90,1,deg)),
     G('Edges and cavities',false,C('eC','Edge colour'),S('eO','Edge opacity',0,1,.01,pct),S('eW','Edge width',0,1,.01,pct),C('cC','Cavity colour'),S('cO','Cavity opacity',0,1,.01,pct),S('cW','Cavity width',0,1,.01,pct),S('aoO','Ambient occlusion',0,1,.01,pct)),
     G('Helpers',false,SEL('show','Show',[['result','The result'],['strokes','Strokes only (relief)'],['normal','Normals the layer reads'],['edges','AO, curvature and thin parts']])),
-    el('div',{class:'frow'},restore)];}
+    el('div',{class:'frow'},restore)])];}
 
 /* Layer › New › Stylize layer (Painter style): on top of the stack */
 function cmdNewStylizePLayer(preset){if(ui.mode==='anim'){toast('Stylize layers are for paint mode.');return;}if(stroke||preview||selLive){toast('Finish the current edit first.');return;}

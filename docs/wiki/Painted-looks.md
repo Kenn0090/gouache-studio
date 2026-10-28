@@ -53,6 +53,10 @@ Both layers work in Spec/Gloss projects. The Hand-painted layer then makes **glo
 
 To keep a look, right-click the layer › **Save as smart material…** (3D Paint). It is listed in Materials › Smart materials; adding it puts the same layer back on top of the stack, so it still works on everything below. The Hand-painted presets are listed there too.
 
+## The settings window
+
+The settings open in a wide window: the groups (Presets, Colour, Light direction, Shadow and light, … or Main, Brush strokes, Smoothness, … for Stylize) are listed down the left; click one to see its settings on the right. The window remembers the group you were on.
+
 ## Undo and defaults
 
 - While a layer's settings are open, **↶ Undo** and **↷ Redo** (or Ctrl+Z, Ctrl+Shift+Z) step through your changes one at a time. After **Done**, Edit › Undo takes the whole edit back in one step.

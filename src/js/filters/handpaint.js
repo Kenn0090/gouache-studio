@@ -217,6 +217,17 @@ function fxUiKit(prefix,v,changed,D){const sl={},cl={},ck={},sel={},after=[];
   const G=(title,open,...kids)=>el('details',{class:'hpgrp',open:open||null},el('summary',{text:title}),...kids);
   const setAll=()=>{for(const k in sl)sl[k].set(v[k]);for(const k in cl)cl[k].value=toHex(v[k]);for(const k in ck)ck[k].checked=!!v[k];for(const k in sel)sel[k].value=String(v[k]);for(const f of after)f();};
   return {S,C,K,SEL,G,setAll,sl,after};}
+/* (0.80.2, Kenn) the long list of groups as a side list and a page: the groups down the left, the chosen one's settings on the
+   right; loose items before the first group are the first page. The chosen page is remembered per kind of layer. */
+const fxPageSel={};
+function fxPaged(key,items){const pages=[],loose=[];
+  for(const it of items){if(!it)continue;if(it.tagName==='DETAILS'&&it.classList.contains('hpgrp'))pages.push({t:it.querySelector('summary').textContent,kids:[...it.childNodes].filter(n=>n.tagName!=='SUMMARY')});else loose.push(it);}
+  if(loose.length)pages.unshift({t:key==='pa'?'Main':'Presets',kids:loose});
+  const secs=pages.map((P,i)=>el('div',{class:'hpgrp fxsec',id:'fxsec_'+key+'_'+i,role:'tabpanel'},el('div',{class:'sub fxsech',text:P.t}),...P.kids));
+  const btns=pages.map((P,i)=>el('button',{type:'button',class:'fxnavb',role:'tab',id:'fxnav_'+key+'_'+P.t.replace(/\W+/g,''),text:P.t,onclick:()=>show(i)}));
+  const show=i=>{fxPageSel[key]=i;secs.forEach((e,j)=>{e.hidden=j!==i;});btns.forEach((b,j)=>{b.classList.toggle('on',j===i);b.setAttribute('aria-selected',String(j===i));});};
+  show(Math.min(fxPageSel[key]||0,pages.length-1));
+  return el('div',{class:'fxpaged'},el('div',{class:'fxnav',role:'tablist','aria-label':'Settings groups'},...btns),el('div',{class:'fxpage'},...secs));}
 /* the tip the strokes are stamped with: any brush from the Brushes panel, or a picture of your own (ids: hostId, hostId+'Name', hostId+'Import') */
 function fxTipPicker(hostId,v,changed){const tipHost=el('div',{class:'hptips',id:hostId}),tipName=el('span',{class:'note',id:hostId+'Name'});
   const render=()=>{tipHost.replaceChildren();const builtIn=['dab','bristle','sponge','leaf','grass','splatter','square','scratch','abstract'].filter(k=>TIPS[k]);
@@ -238,7 +249,7 @@ function hpControls(v,upd){for(const k in HP_DEFAULTS)if(v[k]===undefined)v[k]=J
       Object.assign(v,JSON.parse(JSON.stringify(HP_DEFAULTS)),keep,JSON.parse(JSON.stringify(HP_PRESETS[g][name])),{preset:name});setAll();refreshChips();upd();}});chips.push(b);return b;}))));
   const dirChips=el('div',{class:'chips'},...Object.keys(HP_DIRS).map(d=>el('button',{class:'chip',id:'hp_dir_'+d,text:d,onclick:()=>{[v.lEl,v.lTurn]=HP_DIRS[d];sl.lEl.set(v.lEl);sl.lTurn.set(v.lTurn);changed();}})));
   const {tipHost,tipName,importTip,render:renderTips}=fxTipPicker('hpTips',v,changed);U.after.push(renderTips);
-  return [el('div',{class:'sub',text:'Presets'}),...presetRows,
+  return [fxPaged('hp',[el('div',{class:'sub',text:'Presets'}),...presetRows,
     G('Colour',true,SEL('own','Colour comes from',[[true,'Its own colour'],[false,'The layers below (paint over them)']]),C('base','Base colour')),
     el('p',{class:'note hpsrc',id:'hpSrc',text:(()=>{try{return hpSources(hpCurLayer());}catch(e){return '';}})()}),
     G('Light direction',true,dirChips,S('lEl','Height of the light',-90,90,1,x=>Math.round(x)+'°'),S('lTurn','Turn',-180,180,1,x=>Math.round(x)+'°'),
@@ -256,7 +267,7 @@ function hpControls(v,upd){for(const k in HP_DEFAULTS)if(v[k]===undefined)v[k]=J
       S('sDrop','Leave some out',0,.9,.01,pct),S('sKeep','Stay inside colour edges',0,1,.01,pct),S('sOp','Stroke opacity',0,1,.01,pct)),
     G(doc.workflow==='spec'?'Glossiness':'Roughness',false,K('rOn',doc.workflow==='spec'?'Make glossiness':'Make roughness'),S('rBase','Roughness',0,1,.01,pct),S('rFrom','From the colour',0,1,.01,pct),K('rInv','Darker is rougher'),S('rCon','Contrast',0,4,.05)),
     G(doc.workflow==='spec'?'Metal (specular colour)':'Metallic',false,K('mOn',doc.workflow==='spec'?'Metal parts (coloured specular, dark diffuse)':'Make metallic'),S('mBase','Metallic',0,1,.01,pct),S('mFrom','From the colour',0,1,.01,pct),K('mInv','Darker is more metallic'),S('mCon','Contrast',0,4,.05)),
-    G('Finish',false,S('mul','Multiply push',0,1,.01,pct),S('over','Overlay push',0,1,.01,pct),S('sat','Saturation',0,2,.01,pct),S('pic','Shape from the picture (no model)',0,1,.01,pct),S('seed','Random seed',1,99,1))];}
+    G('Finish',false,S('mul','Multiply push',0,1,.01,pct),S('over','Overlay push',0,1,.01,pct),S('sat','Saturation',0,2,.01,pct),S('pic','Shape from the picture (no model)',0,1,.01,pct),S('seed','Random seed',1,99,1))])];}
 
 /* a picture of one stroke becomes a brush tip in Custom tips (dark or opaque = paint) */
 async function hpTipFromFile(file){try{const bmp=await createImageBitmap(file),sc=Math.min(1,1024/Math.max(bmp.width,bmp.height)),W=Math.max(1,Math.round(bmp.width*sc)),H=Math.max(1,Math.round(bmp.height*sc));
