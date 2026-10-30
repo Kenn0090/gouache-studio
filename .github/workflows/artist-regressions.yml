@@ -24,6 +24,8 @@ jobs:
           git diff --exit-code -- package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock
       - run: npm run build
       - run: npm ci --prefix tests/e2e
+      - run: node tests/e2e/tool-shortcuts.cjs
+      - run: node tests/e2e/tool-menus.cjs
       - run: node tests/e2e/p3-mask-sets-bevel.cjs
       - run: node tests/e2e/viewport-settings.cjs
       - run: node tests/e2e/stencil-colour.cjs
@@ -35,8 +37,6 @@ jobs:
       - run: node tests/e2e/material-rotation.cjs
       - run: node tests/e2e/mask-paint-tools.cjs
       - run: node tests/e2e/slider-gestures.cjs
-      - run: node tests/e2e/tool-shortcuts.cjs
-      - run: node tests/e2e/tool-menus.cjs
       - run: node tests/e2e/artist-fixes.cjs
       - run: node tests/e2e/symmetry.cjs
       - run: node tests/e2e/numeric-sliders.cjs
