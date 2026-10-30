@@ -306,7 +306,7 @@ function st3Box(){const box=el('div',{class:'dlg-grid',id:'st3Box'});
     makeSlider({id:'st3Scale',label:'Size',min:.05,max:4,numericMax:20,step:.01,value:st3.scale,fmt:pct,onInput:v=>{st3.scale=v;st3Overlay();}}).el,
     makeSlider({id:'st3Rot',label:'Angle',min:-180,max:180,step:1,value:st3.rot,fmt:v=>v+'°',onInput:v=>{st3.rot=v;st3Overlay();}}).el,
     el('div',{class:'chips'},chk('st3Inv','Invert (X)',st3.invert,v=>{st3.invert=v;st3Overlay();}),chk('st3Tile','Repeat',st3.tile,v=>{st3.tile=v;}),el('button',{class:'btn sm',text:'Centre',onclick:()=>{Object.assign(st3,{x:.5,y:.5,rot:0});st3Overlay();buildP3Panel();}}),el('button',{class:'btn sm',text:'Remove',onclick:st3Clear})),
-    el('p',{class:'note',text:'Hold S over the view: S+left-drag turns the stencil, S+right-drag scales it, S+middle-drag moves it.'}));}
+    el('p',{class:'note',text:'Hold Shift+S over the view: left-drag turns the stencil, right-drag scales it, middle-drag moves it. S selects Smudge.'}));}
   return box;}
 /* (0.37.1, Kenn) Stencils are a switch in the Brushes panel: tick it, then drop a picture on it (or load one) */
 function stBrushRender(){const b=document.getElementById('stBrush');if(!b)return;b.hidden=ui.mode!=='p3d';if(b.hidden)return;
@@ -319,8 +319,8 @@ function stBrushRender(){const b=document.getElementById('stBrush');if(!b)return
     drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
     drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');const f=[...(e.dataTransfer&&e.dataTransfer.files||[])].find(f=>/^image\//.test(f.type)||/\.(png|jpe?g|webp|tga|tiff?|bmp|psd|exr)$/i.test(f.name));if(f)st3Load(f);});
     b.append(drop,st3Box());}}
-/* S held over the 3D view moves the stencil instead of choosing the Smudge tool */
-window.addEventListener('keydown',e=>{if((e.key==='s'||e.key==='S')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&st3.img&&v3.on&&v3.hover&&!isTypingTarget(e.target)){e.preventDefault();e.stopImmediatePropagation();st3.sKey=true;}},true);
+/* Shift+S moves the stencil; S remains the Smudge tool shortcut. */
+window.addEventListener('keydown',e=>{if((e.key==='s'||e.key==='S')&&e.shiftKey&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&st3.img&&v3.on&&v3.hover&&!isTypingTarget(e.target)){e.preventDefault();e.stopImmediatePropagation();st3.sKey=true;}},true);
 window.addEventListener('keyup',e=>{if(e.key==='s'||e.key==='S')st3.sKey=false;},true);
 /* X over the 3D view with a stencil: swap black and white (elsewhere X still swaps the colours) */
 function st3Invert(){st3.invert=!st3.invert;st3Overlay();const c=document.getElementById('st3Inv');if(c)c.checked=st3.invert;toast(st3.invert?'Stencil inverted.':'Stencil back to normal.');}

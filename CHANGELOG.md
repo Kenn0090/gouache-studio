@@ -1,3 +1,10 @@
+## 0.80.3
+
+- **Tool shortcuts take priority.** Available tool shortcuts switch out of Zoom and canvas editing states immediately, including focused tool menus. Current strokes and transforms finish cleanly; leaving an untouched Zoom drag does not apply an extra zoom. Typing fields and modal dialogs keep their normal keyboard input.
+- **Temporary tools.** Tap a tool shortcut to select it permanently. Hold its key (about a quarter second, or use it while held) to use it temporarily, then release to return to the previous tool. Reassigned shortcuts, independent brush settings, nested holds, key repeat and out-of-order releases are supported. Clicking another tool takes over permanently; losing focus clears held keys.
+- **The same keys in every window.** Tool switching and temporary tools also work in popped-out panels, documents and 3D views, including releasing a held key after focusing a text field.
+- **3D Paint shortcut conflicts fixed.** M selects Marquee and S selects Smudge. Esc or the Lit button returns from channel inspection to the material; Shift+S moves a stencil. C still cycles viewport channels because Crop is a 2D tool.
+
 ## 0.80.2
 
 - **Padding on export.** Export textures has **Padding** (None, Dilation, Dilation + fill the rest, Dilation + transparent, Fill everything) and a **Dilation** width in pixels of the exported size. It grows each UV island's colours outward so mip-maps in an engine show no seams. It uses the model's UVs (3D Paint, or the 3D view with your model) and applies to every exported map, the mesh maps and the textures inside an exported model.

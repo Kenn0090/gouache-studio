@@ -58,3 +58,8 @@ if(window.__gs)Object.assign(window.__gs,{parseFBX,build3dPane,toggle3D,libTarge
 
 if(window.__gs)Object.assign(window.__gs,{pxfSyncFields});
 if(window.__gs)Object.assign(window.__gs,{dualTip,dualTexOf,dualCache,dualWork,renderDualPicker,dualLibraryKey,renderLibrary,makeTip,serializeSet,deserializeSet,addSet,removeSet,perfCadence,perfFrame,perfStatusRate});
+
+/* The early tool-key listeners become active after all canvas editors are initialized. */
+toolKeys.ready=true;
+
+if(window.__gs)Object.assign(window.__gs,{toolKeys,toolKeyBinding,toolKeyCancel,toolKeyFinish,dkPopOut});

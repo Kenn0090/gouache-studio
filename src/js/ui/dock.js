@@ -354,7 +354,7 @@ function dkPopOut(f,quiet){const W=Math.round(f.w||320),H=Math.round(f.h||440);
   const feat='width='+W+',height='+H+(f.sx!=null?',left='+Math.round(f.sx)+',top='+Math.round(f.sy):'');
   let w=null;try{w=window.open('about:blank','gspanel'+(++dk.popSeq),feat);}catch(e){}
   if(!w){if(!quiet)toast('The window could not be opened.');f.pop=false;dkRender();return false;}
-  const d=w.document;d.title='Gouache Studio — '+f.tabs.map(id=>PANELS[id].title).join(', ');
+  toolKeyWindow(w);const d=w.document;d.title='Gouache Studio — '+f.tabs.map(id=>PANELS[id].title).join(', ');
   for(const st of document.querySelectorAll('style,link[rel=stylesheet]'))d.head.append(d.importNode(st,true));
   d.body.style.cssText='margin:0;height:100vh;overflow:hidden;background:var(--panel);color:var(--text);font:12.5px/1.4 var(--ui)';
   const p={f,win:w};dk.pops.push(p);f.pop=true;delete f.wasPop;dkPopSync();

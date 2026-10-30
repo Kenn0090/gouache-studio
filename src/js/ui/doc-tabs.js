@@ -66,7 +66,7 @@ function dtPop(id,sx,sy){const t=dtTab(id);if(!t||t.win)return;if(ui.mode!=='pai
   const name=el('span',{class:'dwname'}),dock=el('button',{class:'btn sm',text:'⤓ Back to the main window',title:'Put this document back as a tab in the main window',onclick:()=>dtDock(id)});
   const holder=el('div',{class:'dwholder'}),shot=el('canvas',{class:'dwshot'});holder.append(shot);
   d.body.append(el('div',{class:'dwbar'},name,dock),holder);
-  t.win={w,holder,shot,name};
+  t.win={w,holder,shot,name};toolKeyWindow(w);
   for(const type of ['keydown','keyup'])w.addEventListener(type,e=>{const tg=e.target,tag=(tg.tagName||'').toLowerCase();if((tag==='input'&&!['range','checkbox','radio','button'].includes(tg.type))||tag==='textarea'||tag==='select')return;
     const ev=new KeyboardEvent(type,{key:e.key,code:e.code,ctrlKey:e.ctrlKey,shiftKey:e.shiftKey,altKey:e.altKey,metaKey:e.metaKey,repeat:e.repeat,bubbles:true,cancelable:true});window.dispatchEvent(ev);if(ev.defaultPrevented)e.preventDefault();});
   w.addEventListener('keyup',()=>{},true);

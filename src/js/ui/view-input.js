@@ -154,9 +154,9 @@ cv.addEventListener('dblclick',e=>{if(ui.tool==='crop'&&crop){const [sx,sy]=stag
 work.addEventListener('wheel',e=>{e.preventDefault();const r=stage.getBoundingClientRect();const dy=e.deltaY*(e.deltaMode===1?16:1);zoomAt(Math.exp(-dy*(e.ctrlKey?.01:.0015)),e.clientX-r.left,e.clientY-r.top);},{passive:false});
 
 window.addEventListener('keydown',e=>{
-  const t=e.target,tag=(t.tagName||'').toLowerCase();const typing=(tag==='input'&&!['range','checkbox','radio','button'].includes(t.type))||tag==='select'||tag==='textarea';
+  const t=e.target,tag=(t.tagName||'').toLowerCase();const typing=isTypingTarget(t)||e.isComposing;
   if(e.key==='Escape'){if(openName||!pop.hidden||!flyEl.hidden){closeMenu();return;}if(!modal.hidden){$('#dlgCancel').click();return;}}
-  if(!modal.hidden||typing)return;
+  if(!modal.hidden||typing||/^Numpad/.test(e.code||''))return;
   if(e.key==='Alt'){altPickDown=true;refreshCursor();return;}
   if(kbHandle(e))return;
   if(e.key==='F2'&&ui.mode!=='anim'&&(ui.mode!=='p3d'||t.closest&&t.closest('#layerList .lrow'))&&layerRenameStart(doc.active)){e.preventDefault();return;}

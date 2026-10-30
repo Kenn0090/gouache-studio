@@ -1,3 +1,10 @@
+## 0.80.3
+
+- **Tool shortcuts take priority.** Available tool shortcuts switch out of Zoom and canvas editing states immediately, including focused tool menus. Current strokes and transforms finish cleanly; leaving an untouched Zoom drag does not apply an extra zoom. Typing fields and modal dialogs keep their normal keyboard input.
+- **Temporary tools.** Tap a tool shortcut to select it permanently. Hold its key (about a quarter second, or use it while held) to use it temporarily, then release to return to the previous tool. Reassigned shortcuts, independent brush settings, nested holds, key repeat and out-of-order releases are supported. Clicking another tool takes over permanently; losing focus clears held keys.
+- **The same keys in every window.** Tool switching and temporary tools also work in popped-out panels, documents and 3D views, including releasing a held key after focusing a text field.
+- **3D Paint shortcut conflicts fixed.** M selects Marquee and S selects Smudge. Esc or the Lit button returns from channel inspection to the material; Shift+S moves a stencil. C still cycles viewport channels because Crop is a 2D tool.
+
 # Gouache Studio 0.80.2
 
 - **Export padding:** choose Dilation (with a width in pixels), Dilation + fill the rest, Dilation + transparent or Fill everything, so textures have no seams in engines.

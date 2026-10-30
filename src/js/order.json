@@ -1,6 +1,7 @@
 {
   "order": [
     "core/prelude",
+    "ui/tool-shortcuts",
     "core/platform",
     "gpu/shaders",
     "gpu/targets",
