@@ -352,8 +352,8 @@ function p3ChannelSync(){const k=p3ChannelView(),s=document.getElementById('p3Ch
   document.querySelectorAll('#v3Shade .segb').forEach((b,i)=>b.setAttribute('aria-pressed',String(!p3mm.k&&(k?i===1&&k==='base':i===(v3Unlit()?1:v3.rt?2:0)))));}
 function p3SetChannelView(k){if(ui.mode!=='p3d'||stroke||selLive)return;/* (0.80.2, Kenn) only the view: fine while a settings window is open */if(k&&!p3ChannelKeys().includes(k))return;
   ui.viewMask=false;libIdShow(false);p3mm.k=null;p3mmBadge();v3s().channelView=k||null;v3s().unlit=false;v3.rt=false;v3.mapsDirty=true;v3.dirty=true;p3ChannelSync();requestRender(true);}
-function p3CycleChannel(dir){const K=p3ChannelKeys(),i=K.indexOf(p3ChannelView());if(!K.length)return;p3SetChannelView(K[(i<0?(dir>0?0:K.length-1):(i+dir+K.length)%K.length)]);toast('Channel: '+p3ChannelLabel(p3ChannelView())+' · M for Lit');}
-function p3ChannelControl(){const s=el('select',{id:'p3ChannelView','aria-label':'Viewport channel',title:'C: next channel · Shift+C: previous · B: baked maps · M: Lit'},el('option',{value:'',text:'Lit'}),...p3ChannelKeys().map(k=>el('option',{value:k,text:p3ChannelLabel(k)})));s.value=p3ChannelView()||'';s.onchange=()=>{const k=s.value;s.blur();if(k)p3SetChannelView(k);else p3ShowLit();};return s;}
+function p3CycleChannel(dir){const K=p3ChannelKeys(),i=K.indexOf(p3ChannelView());if(!K.length)return;p3SetChannelView(K[(i<0?(dir>0?0:K.length-1):(i+dir+K.length)%K.length)]);toast('Channel: '+p3ChannelLabel(p3ChannelView())+' · Esc for Lit');}
+function p3ChannelControl(){const s=el('select',{id:'p3ChannelView','aria-label':'Viewport channel',title:'C: next channel · Shift+C: previous · B: baked maps · Esc: Lit'},el('option',{value:'',text:'Lit'}),...p3ChannelKeys().map(k=>el('option',{value:k,text:p3ChannelLabel(k)})));s.value=p3ChannelView()||'';s.onchange=()=>{const k=s.value;s.blur();if(k)p3SetChannelView(k);else p3ShowLit();};return s;}
 /* B / Shift+B: the set's baked mesh maps, unlit, like the Bake tab. */
 const p3mm={k:null};
 const p3mmKeys=()=>Object.keys(doc.meshMaps||{}).filter(k=>doc.meshMaps[k]&&!k.startsWith('cv:'));
@@ -368,8 +368,7 @@ function p3mmCycle(dir){const K=p3mmKeys();if(!K.length){toast('No baked maps ye
   toast('Showing: '+(k?P3_MESHMAP_NAMES[k]||k:'the material'));}
 function p3ShowLit(){if(stroke||selLive)return;closeMenu();ui.viewMask=false;libIdShow(false);v3s().channelView=null;p3mmSet(null);v3s().unlit=false;v3.rt=false;setView('material');build3dPane();v3.mapsDirty=true;v3.dirty=true;requestRender(true);}
 window.addEventListener('keydown',e=>{if(typeof pathKeys==='function'&&pathKeys(e))return;if(ui.mode!=='p3d'||!modal.hidden||isTypingTarget(e.target)||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('#menuPop.tool-menu:not([hidden])'))return;
-  if((e.key==='m'||e.key==='M')&&!e.shiftKey){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat)p3ShowLit();}
-  else if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat){closeMenu();cmdDelete();}}
+  if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat){closeMenu();cmdDelete();}}
   else if(e.key==='c'||e.key==='C'||e.key==='b'||e.key==='B'){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat&&!stroke&&!selLive){closeMenu();if(e.key.toLowerCase()==='c')p3CycleChannel(e.shiftKey?-1:1);else p3mmCycle(e.shiftKey?-1:1);}}
   else if(e.key==='Escape'&&(p3mm.k||p3ChannelView())&&!ui.viewMask){e.preventDefault();e.stopImmediatePropagation();p3ShowLit();}},true);
 function p3ReceiveBake(mesh,by,ks,asLayers){if(ui.mode!=='p3d'&&!setMode('p3d',true))return;

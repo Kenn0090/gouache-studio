@@ -12,6 +12,10 @@ All of these can be changed in **Edit › Keyboard shortcuts…**. The commands 
 *Edit › Keyboard shortcuts.*
 
 ## Tools
+
+**Tap a tool shortcut** to select it. **Hold its shortcut** (about a quarter second, or use the tool while its key is down) to use it temporarily; releasing the key returns to the previous tool. Another tapped tool or a toolbar choice takes over permanently. This also works with reassigned keys and popped-out windows. Switching tools finishes a current stroke or transform without losing its pixels. Text fields and modal dialogs retain their normal input.
+
+In 3D Paint, **M** selects Marquee and **S** selects Smudge. **Esc** returns from channel inspection to the lit material. Hold **Shift+S** to move a stencil. **C** still cycles viewport channels, since Crop is a 2D tool.
 | Key | Tool |
 |---|---|
 | Shift+B | Swap the last two brush presets, including their session sizes |

@@ -76,3 +76,5 @@ node baketab.cjs              # one test: prints PASS/FAIL lines, then ALL PASSE
 - `mask-paint-tools.cjs` checks native image and library pointer drops onto black masks and mask rows, multiple image layers, live contrast and exact undo, the default Paint shortcut, synchronized backface settings, smudge across distant mirrored UV islands, normal normalization and multi-map undo/redo.
 
 - `slider-gestures.cjs` checks real Ctrl snapping, temporary Ctrl-wheel snap increments during a held drag, Shift precision and modifier transitions, percentage and mapped units, preference validation/save/reset/cancel/reload, and material Rotation synchronization/Undo.
+
+- `tool-shortcuts.cjs` checks tap/hold switching from Zoom, nested and out-of-order releases, toolbar overrides, focus loss, actual held erasing and exact Undo, transforms, Crop, grouped variants, tool menus, rebound keys, typing/IME boundaries, 3D mask selection, stencils, numpad navigation and popped-out panels.

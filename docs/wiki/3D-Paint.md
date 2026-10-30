@@ -59,7 +59,7 @@ Double-click empty space to frame the model again. The same navigation works in 
 These follow Substance Painter's own shortcuts (Preferences › Painting › *Substance Painter style mouse controls on the model* turns the Ctrl drags off):
 - **Ctrl + right drag**: brush **size** (left/right) and **hardness** (up/down). A ring shows the result and a label gives the numbers.
 - **Ctrl + left drag**: brush **flow** (left/right) and **rotation** (up/down). The same Ctrl drags work on the flat texture.
-- **Stencil**: **S + left drag** turns it (**Shift** snaps to 90°), **S + middle drag** moves it, **S + right drag** scales it. Hold **N** to paint without the stencil.
+- **Stencil**: **Shift+S + left drag** turns it (**Shift** snaps to 90°), **Shift+S + middle drag** moves it, **Shift+S + right drag** scales it. Hold **N** to paint without the stencil.
 - **F1** 3D + 2D · **F2** 3D only · **F3** 2D only · **F4** swaps the two sides · **F5** perspective · **F6** orthographic. (In 3D Paint F1 is not the user guide; use **Help › User guide**.)
 - **[** and **]** change the size, **Shift + right drag** turns the sky, **F** frames the model.
 
@@ -112,10 +112,10 @@ In **Brushes**, turn on **Use a stencil**, then drop a picture on the box or cho
 
 Pick one of the built-in stencils (Grunge, Scratches, Dots, Stripes) or **Load image…**. **Show** sets how visible it is, **Repeat** tiles it.
 
-To place it, hold **S** over the view:
-- **S + left drag** turns it.
-- **S + right drag** scales it.
-- **S + middle drag** moves it.
+To place it, hold **Shift+S** over the view:
+- **Shift+S + left drag** turns it.
+- **Shift+S + right drag** scales it.
+- **Shift+S + middle drag** moves it.
 
 **Invert** (or **X** over the model) swaps black and white.
 

@@ -572,7 +572,7 @@ async function importModel(){const done=m=>{v3.imported=m;v3s().model='imported'
 /* ---- its own window (second screen): the GPU draws it here and the picture is copied into that window ---- */
 function pop3D(out,quiet){if(out){if(v3.pop)return;const w=window.open('about:blank','gouache3d','width=960,height=720');
     if(!w){toast('The window could not be opened.');return;}
-    const d=w.document;d.title='Gouache Studio — 3D view';for(const s of document.querySelectorAll('style,link[rel=stylesheet]'))d.head.append(d.importNode(s,true));
+    toolKeyWindow(w);const d=w.document;d.title='Gouache Studio — 3D view';for(const s of document.querySelectorAll('style,link[rel=stylesheet]'))d.head.append(d.importNode(s,true));
     d.body.style.cssText='margin:0;background:#16181c;overflow:hidden;height:100vh';
     const c=d.createElement('canvas');c.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block';const box=d.createElement('div');box.style.cssText='position:absolute;inset:0';
     d.body.append(c,box);v3.pop={win:w,cv:c,ctx:c.getContext('2d'),box,busy:false};
