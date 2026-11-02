@@ -1,3 +1,12 @@
+## 0.92.0
+
+- **Customise the top bar.** Click the ⚙ at the top right, or right-click either bar, to choose what shows: Tile mode, the panel layout list, the document name and every setting in the tool options row. Three presets: **Minimal** (size, opacity, flow), **Balanced** (what Photoshop, Procreate and Clip Studio Paint keep in reach) and **All**. Your choice is remembered.
+- **Timelapse recorder is off until you turn it on.** Switch it on in the same window and put it at the top of the window or at the bottom of the canvas.
+- **Canvas tab** next to Brushes and Textures: click a paper to put it on the canvas, open the paper settings, or start a new document from a size preset.
+- **Brush is B** in Paint (3D Paint keeps 1, because B steps through the mesh maps there).
+- **Paint bucket** is the default for the fill tool (G).
+- **Cut-off text:** a label that ends in "…" shows everything it says when you hover it.
+
 ## 0.91.0
 
 - **Sketch studio.** A new drawing kit of 47 brushes in seven groups, all made from scratch: **Sketch · Pencils** (HB, 2B, 4B, 6B soft, mechanical, carpenter, hatching, cross-hatch, soft coloured and charcoal pencils), **Sketch · Graphite shading** (soft, grainy and smooth shaders, scribble and hatch shading, a stipple shader, a stump blend and a kneaded eraser), **Sketch · Crayons** (wax, chunky, soft, rough paper, oil pastel, fill, hatch and dry crayons), **Sketch · Magic markers** (alcohol, chisel, brush, fine tip, highlighter, dry, fade streak and blender markers), **Sketch · Pens** (ballpoint, soft ballpoint, scribble, three fineliners and a hatching pen), **Sketch · Ink** (G-pen, dip pen, brush pen and textured ink) and **Sketch · Combo** (a clean inker and a pencil line). The markers are see-through: a stroke never darkens itself, but a second stroke over the first does, and the dry markers streak out as the ink runs out.

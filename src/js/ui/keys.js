@@ -23,7 +23,8 @@ function kbCommands(){if(kbCmds)return kbCmds;kbCmds=[];const seen=new Set();
   kbCmds.push(...KB_EXTRA);return kbCmds;}
 let kbUser=(()=>{try{return JSON.parse(localStorage.getItem('gs.keys')||'{}');}catch(e){return {};}})();
 function kbSave(){try{localStorage.setItem('gs.keys',JSON.stringify(kbUser));}catch(e){}if(typeof v3PickRelease==='function')v3PickRelease();refreshHints();if(ui.mode==='p3d'&&typeof buildP3Panel==='function')buildP3Panel();}
-const kbDefault=id=>{const c=kbCommands().find(c=>c[0]===id);return c?c[3]:'';};
+/* (0.92, Kenn) the brush is B in Paint; 3D Paint keeps 1 because B steps through the mesh maps there */
+const kbDefault=id=>{if(id==='tool:brush')return ui.mode==='p3d'?'1':'B';const c=kbCommands().find(c=>c[0]===id);return c?c[3]:'';};
 const kbKeyOf=id=>id in kbUser?kbUser[id]:kbDefault(id);
 /* "Ctrl+Shift+N" style name of a key press, or null for a lone modifier */
 function kbCombo(e){let k=e.key;if(['Control','Shift','Alt','Meta'].includes(k))return null;

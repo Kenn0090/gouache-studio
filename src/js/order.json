@@ -199,6 +199,8 @@
     "files/recent",
     "files/autosave",
     "files/timelapse",
+    "ui/canvas-tab",
+    "ui/bar-custom",
     "ui/safety",
     "layers/locks",
     "ui/key-helper",

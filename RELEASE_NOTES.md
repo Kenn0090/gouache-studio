@@ -1,3 +1,10 @@
+## 0.92.0
+
+- **Customise the top bar** (⚙ top right, or right-click it): choose what shows, or pick Minimal, Balanced or All.
+- **Timelapse recorder** starts switched off; turn it on there and place it at the top or the bottom of the canvas.
+- **Canvas tab** with the papers and new-document sizes, next to Brushes and Textures.
+- **B** selects the brush in Paint; the paint bucket is the default fill tool; text cut off by "…" shows in full on hover.
+
 ## 0.91.0
 
 - **Sketch studio:** 47 new brushes in seven groups (pencils, graphite shading, crayons, magic markers, pens, ink and a combo), made from scratch. The markers are see-through and run dry.
