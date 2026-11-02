@@ -1,3 +1,7 @@
+## 0.86.1
+
+- **Calmer papers.** The papers now read as neutral backgrounds: far less grain and gentler colour variation in every paper (the wood, kraft and parchment are much plainer). **Tooth strength** still goes up to 150% if you want the surface to show more. The Mixing brushes still feel the paper's tooth, which is set by the brush's Paper tooth slider.
+
 ## 0.86.0
 
 - **Paper.** New **Layer › New › Paper…** adds a paper to your document, as its own layer at the bottom, so you can hide it, change it later or delete it. Twelve papers: **Smooth white**, **Notebook** (lined with a red margin, grid, or dots), **Sketch paper**, **Watercolour cold-press** and **rough**, **Oak wood**, **Canvas**, **Kraft paper**, **Parchment** and **Newsprint**. Each is drawn from scratch with a lit surface, so you see the tooth. Choose **Texture size**, **Tooth strength** and whether to print the notebook lines. Painting goes on a new layer above the paper, and a plain Background layer above it is hidden so the paper shows. To change the paper, open Paper… again.

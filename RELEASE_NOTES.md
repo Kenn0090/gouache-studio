@@ -1,3 +1,7 @@
+## 0.86.1
+
+- **Calmer papers:** much less grain and gentler colours in every paper, so they work as neutral backgrounds. Tooth strength can still be raised.
+
 ## 0.86.0
 
 - **Paper:** Layer › New › Paper… adds a paper layer: Smooth white, Notebook (lined, grid, dots), Sketch, Watercolour cold-press and rough, Oak, Canvas, Kraft, Parchment, Newsprint. Choose texture size and tooth strength; change it any time.
