@@ -1,3 +1,8 @@
+## 0.93.0
+
+- **Texture studio.** 21 new brushes of our own. **Texture · Patterns** fills the stroke with a pattern that stays put on the canvas and starts sparse, getting denser along the stroke: sprinkles, tiny sprinkles, noise, static, wavy lines, zig zag lines, brush hatch, brush grid, sneaker crackle, swirly, and light and bold pointillism. **Texture · Salt and speckle** gives salt dust, fine and coarse salt, a snow flurry, speckle, a powder trail and splatters. They paint in your current colour.
+- **A second column in Paint.** Drag a tab (for example Brushes) to the right edge of the canvas and it gets a column of its own next to the dock; drop it anywhere else over the canvas to make it a floating panel.
+
 ## 0.92.0
 
 - **Customise the top bar.** Click the ⚙ at the top right, or right-click either bar, to choose what shows: Tile mode, the panel layout list, the document name and every setting in the tool options row. Three presets: **Minimal** (size, opacity, flow), **Balanced** (what Photoshop, Procreate and Clip Studio Paint keep in reach) and **All**. Your choice is remembered.
