@@ -14,11 +14,17 @@ vec3 papCol(vec2 p,float h){ vec3 c;
   else if(uT==8) c=vec3(.925,.90,.83);
   else if(uT==9) c=mix(vec3(.70,.56,.40),vec3(.77,.62,.45),h);
   else if(uT==10){ c=mix(vec3(.88,.77,.55),vec3(.93,.84,.64),h); vec2 e=p/uSize-0.5; c*=1.0-0.22*smoothstep(0.3,0.8,length(e)); c*=0.96+0.08*wf(p/(uSc*60.0)); }
-  else c=mix(vec3(.80,.78,.72),vec3(.85,.83,.77),h);
+  else if(uT==11) c=mix(vec3(.80,.78,.72),vec3(.85,.83,.77),h);
+  else if(uT==12){ vec2 b=vec2(64.0,28.0)*uSc; vec2 u=p/b; float row=floor(u.y); u.x+=mod(row,2.0)*0.5; vec2 id=floor(u);
+    float v=fract(sin(dot(id,vec2(12.9898,78.233)))*43758.5453); vec3 brick=mix(vec3(.55,.27,.20),vec3(.70,.36,.26),v)*(0.92+0.16*wn(p*0.3));
+    vec2 f=fract(u); float edge=min(min(f.x,1.0-f.x)*b.x,min(f.y,1.0-f.y)*b.y); c=mix(vec3(.66,.64,.60),brick,smoothstep(1.5,4.0,edge)); }
+  else if(uT==13) c=mix(vec3(.56,.56,.55),vec3(.68,.68,.66),clamp(h*1.2,0.0,1.0))*(0.94+0.1*wf(p/(uSc*80.0)));
+  else if(uT==14) c=mix(vec3(.80,.77,.72),vec3(.88,.85,.80),h);
+  else { c=mix(vec3(.50,.54,.57),vec3(.64,.67,.69),h); c*=0.9+0.2*wn(vec2(p.x*0.02,p.y*0.004)/uSc); }
   return c; }
 void main(){ vec2 p=gl_FragCoord.xy; float h=pap_h(p,uT,uSc);
   float gx=(pap_h(p+vec2(1.0,0.0),uT,uSc)-pap_h(p-vec2(1.0,0.0),uT,uSc))*0.5, gy=(pap_h(p+vec2(0.0,1.0),uT,uSc)-pap_h(p-vec2(0.0,1.0),uT,uSc))*0.5;
-  float rf=uT==0?0.08:uT<=3?0.12:uT==4?0.28:uT==5?0.36:uT==6?0.42:uT==7?0.3:uT==8?0.28:uT==9?0.3:uT==10?0.26:0.22; float rl=uRelief*rf;
+  float rf=uT==0?0.08:uT<=3?0.12:uT==4?0.28:uT==5?0.36:uT==6?0.42:uT==7?0.3:uT==8?0.28:uT==9?0.3:uT==10?0.26:uT==11?0.22:uT==12?0.5:uT==13?0.35:uT==14?0.4:0.55; float rl=uRelief*rf;
   vec3 c=papCol(p,h); c*=1.0-(gx*-0.6+gy*-0.8)*rl*3.2; c*=1.0+(h-0.5)*rl*0.25;
   if(uLines==1){ float pitch=(uT==1?30.0:26.0)*uSc;
     if(uT==1){ float ln=1.0-smoothstep(0.4,1.4,abs(mod(p.y-pitch*2.0,pitch))); c=mix(c,vec3(.45,.62,.86),ln*0.55*step(pitch*2.0,p.y));

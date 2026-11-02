@@ -1,3 +1,10 @@
+## 0.88.0
+
+- **Graffiti brushes.** A new **Graffiti** set of 16 brushes that behave like aerosol paint: a solid core that fades out through a fine stipple, with **flecks** thrown out around the stroke and pressure for fat and skinny lines. Spray caps: **Fat cap**, **Medium cap**, **Skinny cap**, **Outline cap**, **Calligraphy cap**, **Soft fade cap**, **Stipple blob**, **Spray dot (dab)**, **Dry streak spray**, **Spit cap** and **Clogged cap**. Markers: **Chisel paint marker**, **Paint marker** and **Drippy mop marker**. Plus **Splatter flick** (droplets of very different sizes) and **Stencil edge**. The paint lies on top and is opaque; it does not mix.
+- **Drips.** Paint runs down in thin, straight drips that end in a small bead. Hold the brush still with the button down and drips run from under it, and strokes also drip while you paint. When you let go, the drips still running finish most of their run. Settings **Drips when held still**, **Drips while painting** and **Drip width**.
+- **Spray settings** on any normal brush: **Spray dot size**, **Spray density**, **Overspray mist**, **Droplet variety** and **Flecks around the stroke** (set the dot size to 0 for a normal brush).
+- **Wall papers.** Four new surfaces in **Layer › New › Paper…**: **Brick wall**, **Concrete**, **Rough plaster** and **Corrugated metal**.
+
 ## 0.87.0
 
 - **Ctrl+click picks a layer.** Hold **Ctrl** and click the canvas to select the layer that owns that pixel (the top-most visible layer with paint there). The cursor changes to a move-cross while Ctrl is held. A guide under the pointer still gets dragged as before.

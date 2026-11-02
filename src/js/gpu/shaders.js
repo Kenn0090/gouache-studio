@@ -19,6 +19,20 @@ float vnoise(vec2 p, vec2 per){ vec2 i=floor(p); vec2 f=fract(p); f=f*f*(3.0-2.0
   float a=hash(i,per), b=hash(i+vec2(1.0,0.0),per), c=hash(i+vec2(0.0,1.0),per), d=hash(i+vec2(1.0,1.0),per);
   return mix(mix(a,b,f.x),mix(c,d,f.x),f.y); }
 uniform int uUseTip; uniform sampler2D uTip; uniform float uAngle; uniform float uRound; uniform vec2 uFlip; uniform float uTipAspect;
+/* spray paint: paint falls off smoothly from a solid core (a bell curve), and where it is thin it breaks into separate round droplets placed at random
+   (a different scatter on every dab). uSpray = (droplet size in pixels, density, random seed, mist); size 0 turns it off. uSprayVar spreads the droplet sizes. */
+uniform vec4 uSpray; uniform float uSprayVar; uniform float uSprayFleck;
+float sph(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
+float sprayMask(vec2 pix,float g){ float ds=max(uSpray.x,0.5); vec2 gp=pix/ds; vec2 c0=floor(gp); float sd=uSpray.z, cover=0.0;
+  for(int i=-1;i<=1;i++) for(int j=-1;j<=1;j++){ vec2 c=c0+vec2(float(i),float(j));
+    if(sph(c+sd)<g*uSpray.y){ vec2 dp=c+vec2(sph(c*1.7+sd+3.1),sph(c*2.3+sd+7.7)); float rv=sph(c+sd+11.0);
+      float rr=0.3+(0.5+1.6*uSprayVar)*pow(rv,1.0+2.0*uSprayVar); cover=max(cover,1.0-smoothstep(rr*0.55,rr,length(gp-dp))); } }
+  return max(cover,max(smoothstep(0.7,1.0,g*uSpray.y),uSpray.w*g*0.5)); }
+/* flecks: single droplets thrown out around the stroke (two sizes), thinning with distance from the centre (d is in brush radii) */
+float sprayFleckMask(vec2 pix,float d){ float f=0.0,sd=uSpray.z;
+  for(int k=0;k<2;k++){ float fs=max(uSpray.x*(k==0?4.0:14.0),2.0); vec2 gp=pix/fs, c=floor(gp); float pr=uSprayFleck*(k==0?0.011:0.0028)*exp(-0.9*d*d)*(1.0-smoothstep(2.2,2.8,d));
+    if(sph(c+sd+21.0+float(k))<pr){ vec2 dp=c+0.25+0.5*vec2(sph(c+sd+23.0),sph(c+sd+29.0)); float rr=(k==0?0.08:0.07)+(k==0?0.2:0.22)*pow(sph(c+sd+31.0),2.0); f=max(f,1.0-smoothstep(rr*0.6,rr,length(gp-dp))); } }
+  return f; }
 float brushMask(vec2 pix){
   float r=max(uRadius,0.01);
   vec2 dv=pix-uCenter; float ca=cos(uAngle), sa=sin(uAngle);
@@ -32,6 +46,7 @@ float brushMask(vec2 pix){
     float d=length(q)/r;
     float h=clamp(min(uHard,1.0-1.2/max(r,1.2)),0.0,0.995);
     m=1.0-smoothstep(h,1.0,d);
+    if(uSpray.x>0.0){ float core=exp(-mix(2.2,8.0,uHard)*d*d), tail=0.38*pow(max(1.0-d,0.0),2.2); m=sprayMask(pix,max(core,tail)*(1.0-smoothstep(0.9,1.0,d))); if(uSprayFleck>0.0) m=max(m,sprayFleckMask(pix,d)); }
   }
   if(m<=0.0) return 0.0; /* nothing to grain or knock out (most of a bristle tip's square is empty) */
   if(uGrain>0.0){ vec2 q=pix/uGrainScale; float n=vnoise(q,uPeriod)*0.6+vnoise(q*2.0,uPeriod*2.0)*0.4;

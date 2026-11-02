@@ -201,3 +201,11 @@ It works on a layer's colour in the Paint tab, with selections, symmetry, Lock a
 - The paper is a normal layer: hide it with its eye, delete it, or open **Paper…** again to change it. A plain **Background** layer above it is hidden so the paper shows.
 - Paint on a layer above the paper. The paper stays untouched.
 - The Mixing brushes feel the paper: with **Paper tooth** up, paint settles into the dips and skips the peaks. Watercolour brushes use it by default.
+
+## Graffiti brushes
+
+The **Graffiti** set has spray caps, markers, a splatter flick and a stencil edge. They behave like aerosol paint: the paint is solid in the middle and fades out through a fine stipple, with flecks thrown around the stroke. Pressing harder makes a fatter, denser line. The paint lies on top of what is there and does not mix.
+
+- **Drips:** thin drips with a bead at the end. Hold the brush still with the button down and they run from under it (**Drips when held still**), and strokes also drip while you paint (**Drips while painting**). **Drip width** makes them fatter. The drips that are still running finish most of their run when you let go.
+- **Spray settings** work on any normal brush: **Spray dot size** (0 turns spraying off), **Spray density** (above 100% the core is solid), **Overspray mist**, **Droplet variety** (for splatter) and **Flecks around the stroke**.
+- Try them on a **Brick wall**, **Concrete**, **Rough plaster** or **Corrugated metal** paper (Layer › New › Paper…).

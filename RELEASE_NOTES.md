@@ -1,3 +1,9 @@
+## 0.88.0
+
+- **Graffiti brushes:** a new set of 16 brushes that behave like aerosol paint (fat, medium, skinny, outline, calligraphy, soft fade, stipple blob, spray dot, dry streak, spit and clogged caps; three markers; splatter flick; stencil edge). Solid core, stipple fade, flecks, pressure for fat and skinny lines.
+- **Drips:** thin drips with beads run when you hold the brush still and while you paint. New spray and drip settings on any normal brush.
+- **Wall papers:** brick wall, concrete, rough plaster and corrugated metal.
+
 ## 0.87.0
 
 - **Ctrl+click** the canvas to select the layer under the pointer; **Ctrl+Alt+click** to duplicate it (only the selected part when there is a selection). The cursor shows what will happen.
