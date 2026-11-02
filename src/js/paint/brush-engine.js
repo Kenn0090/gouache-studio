@@ -1,5 +1,5 @@
 /* ================= Brush engine ================= */
-const BRUSH_DEFAULTS={size:24,opacity:1,flow:1,hardness:.85,spacing:.06,grain:0,smoothing:.25,pSize:true,pOpacity:false,minSize:.2,buildup:false,curve:0,strength:.6,charge:0,
+const BRUSH_DEFAULTS={size:24,opacity:1,flow:1,hardness:.85,spacing:.06,grain:0,smoothing:.25,pSize:true,pOpacity:false,minSize:.2,buildup:false,curve:0,strength:.6,charge:0,sampleAll:true,hueMix:0,
   tip:null,angle:0,roundness:1,flipX:false,flipY:false,randFlipX:false,randFlipY:false,sizeJitter:0,angleJitter:0,scatter:0,count:1,bothAxes:false,followDir:false,
   hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,pigment:1,wet:0,pickup:0,mixLab:false,paintMix:.7};
 /* lazy mouse: the brush follows the pointer on a string of R pixels, so it only moves once the string is pulled tight */
@@ -46,8 +46,9 @@ function beginStroke(L,x,y,p,o){
   /* o.space: the stroke is stamped somewhere else (a cage's flat space, the screen over the 3D model) and drawn into strokeT by space.sync() */
   const cg=o.space&&(o.tool!=='smudge'||o.space.mesh)?o.space:null;if(cg)clearTarget(cg.buf,tint?tc:undefined);
   const SW=cg?cg.w:W,SH=cg?cg.h:H;
+  const sampleT=o.tool==='smudge'&&o.sampleAll&&!o.space&&!L.maskOf&&!L.quick?compositeMap(doc.map):null;
   const gx=Math.max(1,Math.round(W/6)),gy=Math.max(1,Math.round(H/6));
-  stroke={lazy,fd:o.space?'all':null,L,o,x,y,p,lsx:x,lsy:y,dir:0,carry:0,bb:[W,H,0,0],clearBox,gScale:[W/gx,H/gy],gPeriod:[gx,gy],space:cg,rs:cg?(o.cageRs||1):1,SW,SH,sym:o.sym||null,tint,grey:doc.map!=='base'};
+  stroke={lazy,fd:o.space?'all':null,L,o,x,y,p,lsx:x,lsy:y,dir:0,carry:0,bb:[W,H,0,0],clearBox,gScale:[W/gx,H/gy],gPeriod:[gx,gy],space:cg,rs:cg?(o.cageRs||1):1,SW,SH,sym:o.sym||null,tint,grey:doc.map!=='base',sampleT,sampleAt:performance.now()};
   /* Resolve the library and repeating mask once, rather than per dab at low spacing. */
   stroke.dualU=typeof dualUniforms==='function'?dualUniforms(o.dual,false):null;
   if(tint&&o.jitterPerStroke)stroke.dabCol=jitterColor(o.color,o,stroke.grey);
@@ -88,7 +89,8 @@ function stamp(x,y,p){
   if(s.space&&!s.msm)s.spaceDirty=true;if(s.clone)s.cloneDirty=true;
 }
 /* continue a stroke from a new place without painting the gap between (a stroke that left the cage and came back) */
-function strokeJump(x,y,p){const s=stroke;if(!s)return;s.x=x;s.y=y;s.p=p;s.lsx=x;s.lsy=y;stamp(x,y,p);s.carry=spacingAt(p);requestRender(true);}
+function refreshStrokeSample(s){if(!s||!s.sampleT||!s.o.sampleAll)return false;const now=performance.now();if(now-s.sampleAt<16)return false;const prev=s.sampleT;s.sampleT=compositeMap(doc.map);if(s.samplePrevT)release(s.samplePrevT);s.samplePrevT=prev;s.sampleAt=now;return true;}
+function strokeJump(x,y,p){const s=stroke;if(!s)return;refreshStrokeSample(s);s.sampleBlend=1;s.x=x;s.y=y;s.p=p;s.lsx=x;s.lsy=y;stamp(x,y,p);if(s.samplePrevT){release(s.samplePrevT);s.samplePrevT=null;}s.carry=spacingAt(p);requestRender(true);}
 function stampOne(x,y,r,a,ang,fx,fy,dx,dy){
   const s=stroke,o=s.o,W=s.SW||doc.w,H=s.SH||doc.h,tip=o.tip&&o.tip.tex?o.tip:null,ext=r*(tip?1.4143:1)+2;const copies=[];
   if(doc.wrap&&!s.space){const cx0=mod(x,W),cy0=mod(y,H);for(const ox of [-W,0,W])for(const oy of [-H,0,H]){const cx=cx0+ox,cy=cy0+oy;if(cx+ext<0||cx-ext>W||cy+ext<0||cy-ext>H)continue;copies.push([cx,cy]);}}
@@ -103,7 +105,7 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy){
   } else if(o.tool==='smudge'){
     if(doc.wrap)blit(s.L.target,scratchT,0,0,W,H,0,0);
     else{const x0=clamp(Math.floor(Math.min(x,x-dx)-ext-4),0,W),y0=clamp(Math.floor(Math.min(y,y-dy)-ext-4),0,H),x1=clamp(Math.ceil(Math.max(x,x-dx)+ext+4),0,W),y1=clamp(Math.ceil(Math.max(y,y-dy)+ext+4),0,H);if(x1>x0&&y1>y0)blit(s.L.target,scratchT,x0,y0,x1-x0,y1-y0,x0,y0);}
-    for(const c of copies)run(P.smudge,s.L.target,Object.assign({},U,{uCenter:c,uSrc:scratchT.tex,uDelta:[dx,dy],uAlpha:a,uStrength:o.strength,uCharge:o.charge,uPaintMix:o.paintMix||0,uMixLab:o.mixLab?1:0,uNormalMap:{int:doc.map==='normal'?1:0},uColor:o.color,uLockAlpha:s.L.lockAlpha},chanU(o),selU(o)));
+    for(const c of copies)run(P.smudge,s.L.target,Object.assign({},U,{uCenter:c,uSrc:(s.sampleT||scratchT).tex,uSrcPrev:(s.samplePrevT||s.sampleT||scratchT).tex,uSampleBlend:s.samplePrevT?clamp(s.sampleBlend??1,0,1):1,uDst:scratchT.tex,uDelta:[dx,dy],uAlpha:a,uStrength:o.strength,uCharge:o.charge,uPaintMix:o.paintMix||0,uMixLab:o.mixLab?1:0,uHueMix:clamp(o.hueMix||0,0,1),uNormalMap:{int:doc.map==='normal'?1:0},uColor:o.color,uLockAlpha:s.L.lockAlpha},chanU(o),selU(o)));
   } else {
     const dst=s.space?s.space.buf:strokeT;
     if(dst===strokeT&&!doc.wrap)for(const c of copies)clearStrokeBufferRegion(s,[c[0]-ext,c[1]-ext,c[0]+ext,c[1]+ext]);
@@ -144,11 +146,11 @@ function addPoint(x,y,p){
   if(len<1e-4){s.p=p;return;}
   if(s.fdWait){if(len<2.5){s.p=p;return;}s.fdWait=false;}
   if(len>0.5)s.dir=Math.atan2(dy,dx);
-  let t=s.carry,guard=0;
+  const sampled=!!s.sampleT&&refreshStrokeSample(s);let t=s.carry,guard=0;
   if(typeof dualBatchStart==='function')dualBatchStart(s);
-  try{while(t<=len&&guard++<20000){const f=t/len,pp=s.p+(p-s.p)*f;stamp(s.x+dx*f,s.y+dy*f,pp);t+=spacingAt(pp);}}
+  try{while(t<=len&&guard++<20000){const f=t/len,pp=s.p+(p-s.p)*f;s.sampleBlend=sampled?f:1;stamp(s.x+dx*f,s.y+dy*f,pp);t+=spacingAt(pp);}}
   finally{if(s.dualBatch)dualBatchFlush(s);}
-  s.carry=t-len;s.x=x;s.y=y;s.p=p;requestRender(true);
+  s.sampleBlend=1;if(s.samplePrevT){release(s.samplePrevT);s.samplePrevT=null;}s.carry=t-len;s.x=x;s.y=y;s.p=p;requestRender(true);
 }
 function endStroke(record){
   const s=stroke;if(!s)return;if(s.fdWait){s.fdWait=false;stamp(s.x,s.y,s.p);}const L=s.L,W=doc.w,H=doc.h;
@@ -167,7 +169,7 @@ function endStroke(record){
     if(record&&bw>0&&bh>0)parts.push({k:e.key,before:captureRegion(old,x0,y0,bw,bh)});
     scissorDo(R,()=>run(strokeMergeProgram(s),T,Object.assign({uSrc:old.tex,uStrokeTex:strokeT.tex,uStroke:{int:e.mode},uStrokeColor:e.color,uStrokeOpacity:s.o.opacity,uLockAlpha:false},chanU(null),s.exU,strokeMaterialU(s,e.key))));release(old);
     if(parts.length&&parts[parts.length-1].k===e.key)parts[parts.length-1].after=captureRegion(T,x0,y0,bw,bh);}
-  if(s.lockT)release(s.lockT);dropStrokeCache(s);
+  if(s.lockT)release(s.lockT);if(s.sampleT)release(s.sampleT);if(s.samplePrevT)release(s.samplePrevT);dropStrokeCache(s);
   stroke=null;
   if(record){
     if(bw>0&&bh>0){const r=regionRecord(L,lazyBefore||captureRegion(beforeT,x0,y0,bw,bh),captureRegion(L.target,x0,y0,bw,bh),x0,y0,bw,bh,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?(s.o.mixer?'Brush stroke':'Blend'):s.o.tool==='dodge'?'Dodge':s.o.tool==='burn'?'Burn':healing?'Heal':cloning?'Clone':'Brush stroke');

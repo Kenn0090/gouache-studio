@@ -92,16 +92,19 @@ const FS_STAMP=CH_BRUSH+`uniform float uAlpha; uniform int uTint; uniform vec3 u
 /* colour-jitter strokes stamp each dab twice: uTint 2 first gives pixels nothing has touched yet the dab's colour
    (so soft edges keep it), then uTint 1 lays the dab over what is there */
 const FS_SMUDGE=CH_BRUSH+`
-uniform sampler2D uSrc; uniform vec2 uDelta; uniform float uAlpha; uniform float uStrength; uniform float uCharge; uniform vec3 uColor; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan; uniform float uPaintMix; uniform int uNormalMap;
+  uniform sampler2D uSrc; uniform sampler2D uSrcPrev; uniform sampler2D uDst; uniform vec2 uDelta; uniform float uSampleBlend; uniform float uAlpha; uniform float uStrength; uniform float uCharge; uniform vec3 uColor; uniform float uHueMix; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan; uniform float uPaintMix; uniform int uNormalMap;
 uniform sampler2D uSelTex; uniform int uUseSel;
 ${PIGMENT_MIX}
+  vec3 smHsv(vec3 c){vec4 K=vec4(0.0,-1.0/3.0,2.0/3.0,-1.0);vec4 p=mix(vec4(c.bg,K.wz),vec4(c.gb,K.xy),step(c.b,c.g));vec4 q=mix(vec4(p.xyw,c.r),vec4(c.r,p.yzx),step(p.x,c.r));float d=q.x-min(q.w,q.y);return vec3(abs(q.z+(q.w-q.y)/(6.0*d+1e-10)),d/(q.x+1e-10),q.x);}
+  vec3 smRgb(vec3 c){vec3 p=abs(fract(c.xxx+vec3(0.0,2.0/3.0,1.0/3.0))*6.0-3.0);return c.z*mix(vec3(1.0),clamp(p-1.0,0.0,1.0),c.y);}
+  vec3 hueMixRgb(vec3 a,vec3 b,float t){vec3 x=smHsv(a),y=smHsv(b);float d=mod(y.x-x.x+1.5,1.0)-0.5;return smRgb(vec3(fract(x.x+d*t+1.0),mix(x.y,y.y,t),mix(x.z,y.z,t)));}
 void main(){ vec2 size=vec2(textureSize(uSrc,0)); vec2 uv=gl_FragCoord.xy/size;
-  vec4 dst=texture(uSrc,uv); vec4 pulled=texture(uSrc,uv-uDelta/size);
+    vec4 dst=texture(uDst,uv); vec4 pulled=mix(texture(uSrcPrev,uv-uDelta/size),texture(uSrc,uv-uDelta/size),uSampleBlend);
   float m=brushMask(gl_FragCoord.xy)*uAlpha; if(uUseSel==1) m*=texelFetch(uSelTex,ivec2(gl_FragCoord.xy),0).r;
   vec4 paint=mix(pulled,vec4(uColor,1.0),uCharge);
   float tm=clamp(m*uStrength,0.0,1.0); vec4 r=mix(dst,paint,tm);
-  if(uPaintMix>0.0&&uNormalMap==0&&uChanMode!=1&&dst.a>1e-4&&paint.a>1e-4){ vec3 cd=dst.rgb/dst.a,cp=paint.rgb/paint.a; float wp=paint.a*tm,wd=dst.a*(1.0-tm); float k=wp/max(wp+wd,1e-5);
-    vec3 pm=pgMix(cd,cp,k); vec3 lc=r.rgb/max(r.a,1e-5); r=vec4(mix(lc,pm,uPaintMix*clamp(tm*8.0,0.0,1.0))*r.a,r.a); }
+    if((uPaintMix>0.0||uHueMix>0.0)&&uNormalMap==0&&uChanMode!=1&&dst.a>1e-4&&paint.a>1e-4){ vec3 cd=dst.rgb/dst.a,cp=paint.rgb/paint.a; float wp=paint.a*tm,wd=dst.a*(1.0-tm); float k=wp/max(wp+wd,1e-5);
+      vec3 pm=pgMix(cd,cp,k); pm=mix(pm,hueMixRgb(cd,cp,k),uHueMix); vec3 lc=r.rgb/max(r.a,1e-5); r=vec4(mix(lc,pm,max(uPaintMix,uHueMix)*clamp(tm*8.0,0.0,1.0))*r.a,r.a); }
   if(uNormalMap==1&&r.a>1e-6){ vec3 n=r.rgb/r.a*2.0-1.0; float l=length(n); n=l>1e-4?n/l:vec3(0.0,0.0,1.0); r=vec4((n*0.5+0.5)*r.a,r.a); } /* normals stay unit length */
   if(uChanMode==1){ vec3 oc=dst.a>1e-6?dst.rgb/dst.a:vec3(0.0),rc=r.a>1e-6?r.rgb/r.a:vec3(0.0); float na=mix(dst.a,r.a,uChan.a); r=vec4(mix(oc,rc,uChan.rgb)*na,na); }
   if(uLockAlpha==1){ vec3 c=r.a>1e-6?r.rgb/r.a:vec3(0.0); r=vec4(c*dst.a,dst.a); }
