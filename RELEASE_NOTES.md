@@ -1,3 +1,7 @@
+## 0.83.0
+
+- **Thick paint (impasto):** the Mixing brush can paint raised, lit paint: round bristle ridges and an edge lip, lit from the top left. New Paint thickness slider (0 is flat). On in the Oil, Gouache and Palette knife mixers.
+
 ## 0.82.0
 
 - **Bristle brush:** the Mixing brush paints with bristles that each carry their own paint, giving streaks along the stroke and broken edges as it runs dry. New Bristles and Dry brush settings.

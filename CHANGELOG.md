@@ -1,3 +1,7 @@
+## 0.83.0
+
+- **Thick paint (impasto).** The Mixing brush can now paint raised, lit paint. Each bristle makes a round ridge, and the edge of the stroke makes a lip; light from the top left shades them, so strokes look thick and catch the light, like in real oil paint. New slider **Paint thickness** (0 is flat paint, so you can switch it off). The Oil, Gouache and Palette knife mixers have it on. The shading is painted into the colour as you go, so it stays with the stroke.
+
 ## 0.82.0
 
 - **Bristle brush.** The Mixing brush now paints with bristles. Each bristle carries its own paint, so a stroke is made of streaks that follow the direction you move, with softly broken edges as the paint runs low. New settings **Bristles** (how many; 0 is the smooth brush) and **Dry brush** (how soon bristles run dry and leave gaps). The Oil, Gouache, Smear and Palette knife mixers use bristles.
