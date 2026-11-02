@@ -171,3 +171,33 @@ Click a slider value, type a number and press Enter or click away to apply it. E
 
 View › **Perspective guides…** opens a small window. Choose 1, 2 or 3 vanishing points. The points and a dashed horizon are drawn over the canvas with lines fanning out from each point. Drag a point to move it, or type its place; **Lines** changes how many are drawn. With **Strokes snap to the guide lines** on, a stroke that starts towards a vanishing point is held exactly on the line to it (hold Shift for straight horizontal and vertical lines instead). The guides belong to the document, are saved with it, and Undo covers them.
 
+
+
+## Mixing brush (real paint mixing)
+
+Turn on **Mixing brush** in the Brush panel (or pick a brush from **Mixing (real paint)**) and colours mix like wet paint.
+
+- The brush carries a **load** of paint. As you drag it picks up colour from the canvas, mixes it with what it carries, and lays it back down, so a stroke through another colour drags that colour along.
+- **Paint on the brush** is how much paint it starts with (0 is an empty brush that only smears). **Paint runs out** is how quickly the load is used up.
+- **Wetness added** is how wet the canvas becomes where you paint. Wet paint mixes and smears; dry paint is covered by new paint and is hardly picked up.
+- **Dry after** dries wet paint by itself after that many seconds. Set it to *by hand* to keep paint wet until you press **Dry paint now**.
+- **Bristles** sets how many bristles the brush has (0 is a smooth brush). Each bristle carries its own paint, so a stroke is made of streaks. **Dry brush** makes bristles run out of paint sooner and leave gaps.
+- **Paint thickness** makes the paint look raised: each bristle makes a ridge and the stroke gets a lip, lit from the top left. 0 is flat paint. The light is painted into the colour as you go, so it stays with the stroke.
+- **Watercolour edges, Edge pooling, Layered pools, Paper grain** make the paint look like wet watercolour: an uneven hard outline, pigment gathering along the rim, hard-edged pools in layers and grain from the paper. The shape comes from noise fixed to the canvas, so it never repeats like a stamp. Try the **Watercolour wash**, **Watercolour splatter** and **Watercolour wet-in-wet** brushes.
+- **Keep paint even at any spacing** keeps the amount of paint the same however far apart the dabs are, so wide **Spacing** doesn't make the stroke thin and see-through.
+- **Pick up from all visible layers** also picks up colour from the layers below.
+
+It works on a layer's colour in the Paint tab, with selections, symmetry, Lock alpha and undo. Masks, other maps and painting on the 3D model use the normal brushes.
+
+### Smooth strokes and big brushes
+
+- **Smooth curves (round off corners)** is in the Brush panel. With it on, the brush follows a smooth curve through your movement instead of straight lines between points, so corners round off and long strokes flow. It works for the Brush, Eraser and Blend tools. Use **Smoothing** and **Lazy mouse** with it for even steadier lines.
+- The **Mixing (real paint)** set has big brushes (**Big oil**, **Big gouache wash**, **Big smear**) for large, confident strokes.
+
+## Paper
+
+**Layer › New › Paper…** adds a paper to your document as its own layer at the bottom. Pick one of twelve: Smooth white, Notebook (lined, grid or dots), Sketch paper, Watercolour cold-press, Watercolour rough, Oak wood, Canvas, Kraft paper, Parchment or Newsprint. **Texture size** makes the grain bigger or smaller, **Tooth strength** how much it shows, and **Draw the printed lines** turns the notebook lines on or off.
+
+- The paper is a normal layer: hide it with its eye, delete it, or open **Paper…** again to change it. A plain **Background** layer above it is hidden so the paper shows.
+- Paint on a layer above the paper. The paper stays untouched.
+- The Mixing brushes feel the paper: with **Paper tooth** up, paint settles into the dips and skips the peaks. Watercolour brushes use it by default.

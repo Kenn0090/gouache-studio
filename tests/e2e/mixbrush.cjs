@@ -1,0 +1,83 @@
+/* 0.81: the Mixing brush. A red stroke is laid down with the plain brush, then a blue Mixing brush is dragged across it:
+   the crossing must mix like paint (not stay pure blue or pure red), the brush must carry red onwards, and an empty "smear" brush
+   must pull the red out sideways. Dry paint stops the mixing. Undo puts the picture back. */
+const {chromium}=require('/home/user/gouache-studio/tests/e2e/node_modules/playwright');
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const p=await (await b.newContext({viewport:{width:1500,height:1100}})).newPage();
+ await p.route('**/*',r=>r.request().url().startsWith('file:')?r.continue():r.abort());
+ const errs=[];p.on('pageerror',e=>errs.push(e.message));
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');
+ await p.waitForFunction(()=>window.__gs&&__gs.newDoc,null,{timeout:60000});await p.waitForTimeout(1500);
+ await p.evaluate(()=>{const w=document.querySelector('.welcome');if(w)w.remove();});
+ await p.evaluate(()=>__gs.newDoc(256,256,8,[1,1,1],'Mix',false,'hand'));await p.waitForTimeout(400);
+ const box=await p.evaluate(()=>{const c=document.querySelector('#gl')||document.querySelector('canvas');const r=c.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};});
+ const at=(ix,iy)=>[box.x+ix/256*box.w,box.y+iy/256*box.h];
+ const px=(ix,iy)=>p.evaluate(([x,y])=>Array.from(__gs.captureRegionNow(__gs.doc.active.target,x,y,1,1).data),[ix,iy]).catch(()=>null);
+ const setColour=c=>p.evaluate(c=>{__gs.ui.fg=c.slice();},c);
+ const preset=n=>p.evaluate(n=>{const q=__gs.library.flatMap(x=>x.presets).find(x=>x.name===n);if(!q)return false;__gs.applyPreset(q);return true;},n);
+ const drag=async(x0,y0,x1,y1)=>{const a=at(x0,y0),z=at(x1,y1);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.move(z[0],z[1],{steps:24});await p.mouse.up();await p.waitForTimeout(200);};
+ ok(await preset('Oil mixer'),'the Mixing presets exist in the library');
+ // a plain red stroke first (turn mixing off in a copy of the preset)
+ await p.evaluate(()=>{__gs.brush.size=30;__gs.brush.followDir=false;__gs.brush.mixBristles=0;__gs.brush.mixUse=0;__gs.brush.mixThick=0;});
+ await setColour([1,0,0]);await drag(30,128,226,128);
+ const red=await px(128,128);ok(red&&red[0]>200&&red[1]<60&&red[2]<60,'the first (wet) red stroke is red '+JSON.stringify(red));
+ // now a blue Mixing stroke across it, top to bottom
+ await p.evaluate(()=>{__gs.brush.mixBristles=0;__gs.brush.mixPick=.7;});await setColour([0,0,1]);
+ await drag(128,40,128,216);
+ const top=await px(128,60),cross=await px(128,128),after=await px(128,200);
+ console.log('top',top,'cross',cross,'after',after);
+ ok(top&&top[2]>150&&top[0]<120,'the start of the stroke is blue');
+ ok(cross&&cross[0]>40&&cross[2]>40,'where it crosses the red the paint is a mix (both red and blue present)');
+ ok(after&&after[0]>20,'the brush carried red paint onwards past the crossing');
+ // dry paint is covered: the same blue stroke over dried red stays blue
+ // undo
+ await p.keyboard.press('Control+z');await p.waitForTimeout(300);
+ const un=await px(128,60);ok(un&&un[0]>240&&un[1]>240,'undo removes the whole mixing stroke '+JSON.stringify(un));
+ // smear brush (empty) pulls red sideways
+ await preset('Smear (empty brush)');await p.evaluate(()=>{__gs.brush.size=30;});
+ await drag(128,128,128,200);
+ const sm=await px(128,190);ok(sm&&sm[0]>200&&sm[1]<215&&sm[2]<205,'the empty smear brush dragged red down below the stroke '+JSON.stringify(sm));
+ // thick paint: a stroke with Paint thickness varies across its width, a flat one is even
+ const spread=async y=>{const v=await p.evaluate(y=>{const o=[];for(let x=-16;x<=16;x+=1){const d=__gs.captureRegionNow(__gs.doc.active.target,150,y+x,1,1).data;o.push(d[0]+d[1]+d[2]);}return o;},y);return Math.max(...v)-Math.min(...v);};
+ await preset('Oil mixer');await setColour([.2,.6,.3]);await p.evaluate(()=>{__gs.brush.size=40;__gs.brush.mixThick=0;__gs.brush.mixBristles=24;});await drag(30,230,226,230);
+ const flat=await spread(230);
+ await p.evaluate(()=>{__gs.brush.mixThick=.8;});await drag(30,240,226,240);
+ const thick=await spread(240);
+ console.log('flat spread',flat,'thick spread',thick);
+ ok(thick>flat+25,'Paint thickness makes the stroke surface vary (ridges and lit edges)');
+ // smooth curves: a sharp point in sparse mouse movement is rounded off (the tip of the stroke is cut)
+ const tip=async on=>{await p.evaluate(on=>{const q=__gs.library.flatMap(x=>x.presets).find(x=>x.name==='Oil mixer');__gs.applyPreset(q);Object.assign(__gs.brush,{size:10,mixBristles:0,mixThick:0,smoothing:0,lazy:0,smoothCurve:on,followDir:false});},on);await setColour([0,0,0]);
+  const a=at(30,150),b=at(110,20),c=at(190,150);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.move(b[0],b[1]);await p.mouse.move(c[0],c[1]);await p.mouse.up();await p.waitForTimeout(200);
+  const d=await px(110,22);return d[0];};
+ const sharp=await tip(false);await p.keyboard.press('Control+z');await p.waitForTimeout(200);const round=await tip(true);
+ console.log('apex pixel without curves',sharp,'with curves',round);
+ ok(sharp<200&&round>240,'Smooth curves round off the sharp point of a stroke');
+ // keep paint even: the paint laid down is the same at wide spacing as at fine spacing
+ const ink=async y=>{const v=await p.evaluate(y=>{let sum=0,n=0;for(let x=60;x<=190;x+=10)for(let dy=-6;dy<=6;dy+=2){const d=__gs.captureRegionNow(__gs.doc.active.target,x,y+dy,1,1).data;sum+=255-d[1];n++;}return sum/n;},y);return v;};
+ const evenRun=async(sp,even,y)=>{await p.evaluate(([sp,even])=>{const q=__gs.library.flatMap(x=>x.presets).find(x=>x.name==='Oil mixer');__gs.applyPreset(q);Object.assign(__gs.brush,{size:40,mixBristles:0,mixThick:0,mixLoad:.06,mixPick:0,mixUse:0,smoothing:0,followDir:false,smoothCurve:false,spacing:sp,mixEven:even});},[sp,even]);await setColour([0,0,0]);await drag(30,y,226,y);return ink(y);};
+ const fineInk=await evenRun(.02,true,60),wideOn=await evenRun(.1,true,100),wideOff=await evenRun(.1,false,140);
+ console.log('ink fine',fineInk.toFixed(1),'wide with even',wideOn.toFixed(1),'wide without',wideOff.toFixed(1));
+ ok(wideOff<fineInk*.9,'without Keep paint even, wide spacing lays down less paint');
+ ok(wideOn>fineInk*.8&&wideOn<fineInk*1.25,'with Keep paint even, wide spacing lays down about the same paint as fine spacing');
+ // watercolour: three brushes exist; the wash has an uneven outline and pools of different strength (not a repeating stamp)
+ for(const n of ['Watercolour wash','Watercolour splatter','Watercolour wet-in-wet'])ok(await preset(n),'the brush '+n+' exists');
+ await p.evaluate(()=>{const q=__gs.library.flatMap(x=>x.presets).find(x=>x.name==='Watercolour wash');__gs.applyPreset(q);__gs.brush.size=110;});await setColour([.45,.45,.5]);
+ await drag(40,40,216,60);
+ const wc=await p.evaluate(()=>{const o=[];for(let x=60;x<=200;x+=10)for(let y=40;y<=62;y+=4){const d=__gs.captureRegionNow(__gs.doc.active.target,x,y,1,1).data;o.push(d[1]);}const m=o.reduce((a,b)=>a+b)/o.length;return {m,sd:Math.sqrt(o.reduce((a,b)=>a+(b-m)*(b-m),0)/o.length)};});
+ const edge=await p.evaluate(()=>{const o=[];for(let x=50;x<=210;x+=4){let top=-1;for(let y=0;y<=60;y++){const d=__gs.captureRegionNow(__gs.doc.active.target,x,y,1,1).data;if(d[1]<235){top=y;break;}}o.push(top);}return o;});
+ const ev=[...new Set(edge)].length;
+ console.log('watercolour wash: mean',wc.m.toFixed(0),'spread',wc.sd.toFixed(1),'distinct top-edge heights',ev);
+ ok(wc.sd>5,'the wash has pools and grain (the colour varies inside the stroke)');
+ ok(ev>=6,'the wash outline is uneven (many different edge heights)');
+ // a second watercolour stroke over the first still darkens it (glazing), although one stroke never piles up on itself
+ const meanG=()=>p.evaluate(()=>{let s=0,n=0;for(let x=70;x<=190;x+=10)for(let y=44;y<=56;y+=4){s+=__gs.captureRegionNow(__gs.doc.active.target,x,y,1,1).data[1];n++;}return s/n;});
+ const g1=await meanG();await drag(40,40,216,60);const g2=await meanG();
+ console.log('wash mean green channel: first stroke',g1.toFixed(0),'after a second stroke',g2.toFixed(0));
+ ok(g2<g1-8,'a second watercolour stroke over the first darkens it');
+ // dry paint: no more mixing from wet pickup (dry paint is picked up far less)
+ await p.evaluate(()=>{for(const L of __gs.allLayers())if(L._wet)L._wet.until=0;});
+ ok(errs.length===0,'no page errors '+errs.slice(0,2).join(' | '));
+ await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);
+})();

@@ -1,3 +1,44 @@
+## 0.86.1
+
+- **Calmer papers.** The papers now read as neutral backgrounds: far less grain and gentler colour variation in every paper (the wood, kraft and parchment are much plainer). **Tooth strength** still goes up to 150% if you want the surface to show more. The Mixing brushes still feel the paper's tooth, which is set by the brush's Paper tooth slider.
+
+## 0.86.0
+
+- **Paper.** New **Layer › New › Paper…** adds a paper to your document, as its own layer at the bottom, so you can hide it, change it later or delete it. Twelve papers: **Smooth white**, **Notebook** (lined with a red margin, grid, or dots), **Sketch paper**, **Watercolour cold-press** and **rough**, **Oak wood**, **Canvas**, **Kraft paper**, **Parchment** and **Newsprint**. Each is drawn from scratch with a lit surface, so you see the tooth. Choose **Texture size**, **Tooth strength** and whether to print the notebook lines. Painting goes on a new layer above the paper, and a plain Background layer above it is hidden so the paper shows. To change the paper, open Paper… again.
+- **Paper tooth.** The Mixing brushes feel the paper under them: paint settles into the dips and skips the peaks, most when the brush is dry. New slider **Paper tooth** (on in the watercolour brushes).
+- **Watercolour strokes** now glaze over each other like thin transparent paint: colours multiply (yellow over blue gives green), layers darken, and white paper shows the colour as it is. A single stroke covers each spot once, so blot edges no longer step.
+
+## 0.85.1
+
+- **No more stepping in watercolour edges.** The watercolour brushes now cover each spot once per stroke, with the strongest value any dab reached, instead of stacking dab on dab. That removes the contour-line steps along the edges of a blot. A stroke laid over an earlier one glazes it like thin transparent paint: colours multiply (yellow over blue gives green) and layers darken, while white paper shows the colour as it is. The pooled rim is also softer, and the wash and wet-in-wet brushes lay down a little more paint.
+
+## 0.85.0
+
+- **Watercolour set.** Three new watercolour brushes in the Mixing (real paint) set, made to look like wet watercolour: **Watercolour wash** (big wet blots with hard, uneven outlines, pigment pooled along the rim, layered see-through pools and paper grain), **Watercolour splatter** (drops of every size with dark rims; flick it near a blot) and **Watercolour wet-in-wet** (pulls colour into wet paint and bleeds). Their shape is not a repeating picture: it is made from noise that stays fixed to the canvas, so no stamp ever repeats and overlapping strokes build up naturally. New sliders for any Mixing brush: **Watercolour edges**, **Edge pooling**, **Layered pools** and **Paper grain**. These replace the old Watercolour mixer.
+
+## 0.84.1
+
+- **Keep paint even.** New Mixing brush option **Keep paint even at any spacing**: the paint laid down stays the same however far apart the dabs are, so wide spacing no longer makes strokes thin and see-through. On in all the Mixing brushes.
+
+## 0.84.0
+
+- **Smooth curves.** A new brush option, **Smooth curves (round off corners)**, makes the brush follow a smooth curve through your movement instead of straight lines between the points the mouse or pen reports. Corners round off and long strokes flow, like the smooth strokes in painting apps. It works for the Brush, Eraser and Blend tools, and is on in all the Mixing brushes.
+- **Big mixing brushes.** New **Big oil (350 px)**, **Big gouache wash (250 px)** and **Big smear (300 px)** brushes in the Mixing (real paint) set. The Mixing brushes also smooth your strokes more by default.
+
+## 0.83.0
+
+- **Thick paint (impasto).** The Mixing brush can now paint raised, lit paint. Each bristle makes a round ridge, and the edge of the stroke makes a lip; light from the top left shades them, so strokes look thick and catch the light, like in real oil paint. New slider **Paint thickness** (0 is flat paint, so you can switch it off). The Oil, Gouache and Palette knife mixers have it on. The shading is painted into the colour as you go, so it stays with the stroke.
+
+## 0.82.0
+
+- **Bristle brush.** The Mixing brush now paints with bristles. Each bristle carries its own paint, so a stroke is made of streaks that follow the direction you move, with softly broken edges as the paint runs low. New settings **Bristles** (how many; 0 is the smooth brush) and **Dry brush** (how soon bristles run dry and leave gaps). The Oil, Gouache, Smear and Palette knife mixers use bristles.
+- **Better colour mixing in the Mixing brush.** The brush now picks up paint from the canvas as it was when the stroke began, so a stroke drags colour from the paint ahead of it, not its own fresh paint. Dry paper is hardly picked up at all, so colours no longer fade to white. Picking up and running out now depend on how far you move, not on how many dabs the brush makes. Mixers use a finer dab spacing, so strokes are smooth.
+
+## 0.81.0
+
+- **Mixing brush (real paint mixing).** A new way to paint where colours really mix, like wet paint. Turn on **Mixing brush** in the Brush panel, or pick one from the new **Mixing (real paint)** brush set: Oil mixer, Gouache mixer, Watercolour mixer, Smear (empty brush) and Palette knife mixer. The brush carries paint on its bristles and picks up more from the canvas as it goes, so a blue stroke dragged through red takes red along with it and runs out of paint as you go. Each layer also remembers where the paint is **wet**: wet paint mixes and smears, dry paint is covered. Settings: **Paint on the brush**, **Pick up from canvas**, **Wetness added**, **Paint runs out**, **Dry after** (a few seconds, or by hand) and **Pick up from all visible layers**. **Dry paint now** dries everything at once. It works on a layer's colour in the Paint tab, with selections, symmetry, Lock alpha and undo; masks, other maps and 3D painting still use the normal brushes.
+- Fixed a stray word "null" next to the mask buttons in the Layers panel.
+
 ## 0.80.4
 
 - **Layer-aware Blend brush.** Sample visible layers while blending on a separate layer, with the picked-up colours refreshed as the stroke moves. Choose Pigment or Lab mixing and adjust Hue blending. Soft and textured tips keep their edge character while mixing.

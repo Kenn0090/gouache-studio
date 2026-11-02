@@ -1,7 +1,7 @@
 /* ================= Brush engine ================= */
 const BRUSH_DEFAULTS={size:24,opacity:1,flow:1,hardness:.85,spacing:.06,grain:0,smoothing:.25,pSize:true,pOpacity:false,minSize:.2,buildup:false,curve:0,strength:.6,charge:0,sampleAll:true,hueMix:0,
   tip:null,angle:0,roundness:1,flipX:false,flipY:false,randFlipX:false,randFlipY:false,sizeJitter:0,angleJitter:0,scatter:0,count:1,bothAxes:false,followDir:false,
-  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,pigment:1,wet:0,pickup:0,mixLab:false,paintMix:.7};
+  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,pigment:1,wet:0,pickup:0,mixLab:false,paintMix:.7,mix:false,mixLoad:.8,mixPick:.5,mixWet:.7,mixDry:0,mixUse:.2,mixBristles:0,mixDryB:0,mixThick:0,mixEven:false,mixWC:0,mixWCEdge:0,mixWCPools:0,mixWCGran:0,mixTooth:0,smoothCurve:false};
 /* lazy mouse: the brush follows the pointer on a string of R pixels, so it only moves once the string is pulled tight */
 function lazyStep(s,x,y,R){if(!(R>0))return [x,y];if(s.lx===undefined){s.lx=s.sx;s.ly=s.sy;}const dx=x-s.lx,dy=y-s.ly,d=Math.hypot(dx,dy);if(d<=R)return null;s.lx+=dx*(d-R)/d;s.ly+=dy*(d-R)/d;return [s.lx,s.ly];}
 /* Keep stabilization consistent across pointer sample rates. At 60 Hz this matches the
@@ -51,6 +51,8 @@ function beginStroke(L,x,y,p,o){
   stroke={lazy,fd:o.space?'all':null,L,o,x,y,p,lsx:x,lsy:y,dir:0,carry:0,bb:[W,H,0,0],clearBox,gScale:[W/gx,H/gy],gPeriod:[gx,gy],space:cg,rs:cg?(o.cageRs||1):1,SW,SH,sym:o.sym||null,tint,grey:doc.map!=='base',sampleT,sampleAt:performance.now()};
   /* Resolve the library and repeating mask once, rather than per dab at low spacing. */
   stroke.dualU=typeof dualUniforms==='function'?dualUniforms(o.dual,false):null;
+  if(o.mixBrush)mixBegin(stroke);
+  if(o.smoothCurve&&!o.space&&['brush','erase','smudge'].includes(o.tool))stroke.cv={px:x,py:y,pp:p,mx:x,my:y,mp:p};
   if(tint&&o.jitterPerStroke)stroke.dabCol=jitterColor(o.color,o,stroke.grey);
   /* other maps painted by the same stroke: make sure the layer has an image there; with Lock alpha they follow the base colour's shape */
   if(o.extras&&o.extras.length){for(const e of o.extras)ensureMapTarget(L,e.key);
@@ -89,7 +91,7 @@ function stamp(x,y,p){
   if(s.space&&!s.msm)s.spaceDirty=true;if(s.clone)s.cloneDirty=true;
 }
 /* continue a stroke from a new place without painting the gap between (a stroke that left the cage and came back) */
-function refreshStrokeSample(s){if(!s||!s.sampleT||!s.o.sampleAll)return false;const now=performance.now();if(now-s.sampleAt<16)return false;const prev=s.sampleT;s.sampleT=compositeMap(doc.map);if(s.samplePrevT)release(s.samplePrevT);s.samplePrevT=prev;s.sampleAt=now;return true;}
+function refreshStrokeSample(s){if(!s||!s.sampleT||!s.o.sampleAll||s.o.mixBrush)return false;const now=performance.now();if(now-s.sampleAt<16)return false;const prev=s.sampleT;s.sampleT=compositeMap(doc.map);if(s.samplePrevT)release(s.samplePrevT);s.samplePrevT=prev;s.sampleAt=now;return true;}
 function strokeJump(x,y,p){const s=stroke;if(!s)return;refreshStrokeSample(s);s.sampleBlend=1;s.x=x;s.y=y;s.p=p;s.lsx=x;s.lsy=y;stamp(x,y,p);if(s.samplePrevT){release(s.samplePrevT);s.samplePrevT=null;}s.carry=spacingAt(p);requestRender(true);}
 function stampOne(x,y,r,a,ang,fx,fy,dx,dy){
   const s=stroke,o=s.o,W=s.SW||doc.w,H=s.SH||doc.h,tip=o.tip&&o.tip.tex?o.tip:null,ext=r*(tip?1.4143:1)+2;const copies=[];
@@ -105,7 +107,7 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy){
   } else if(o.tool==='smudge'){
     if(doc.wrap)blit(s.L.target,scratchT,0,0,W,H,0,0);
     else{const x0=clamp(Math.floor(Math.min(x,x-dx)-ext-4),0,W),y0=clamp(Math.floor(Math.min(y,y-dy)-ext-4),0,H),x1=clamp(Math.ceil(Math.max(x,x-dx)+ext+4),0,W),y1=clamp(Math.ceil(Math.max(y,y-dy)+ext+4),0,H);if(x1>x0&&y1>y0)blit(s.L.target,scratchT,x0,y0,x1-x0,y1-y0,x0,y0);}
-    for(const c of copies)run(P.smudge,s.L.target,Object.assign({},U,{uCenter:c,uSrc:(s.sampleT||scratchT).tex,uSrcPrev:(s.samplePrevT||s.sampleT||scratchT).tex,uSampleBlend:s.samplePrevT?clamp(s.sampleBlend??1,0,1):1,uDst:scratchT.tex,uDelta:[dx,dy],uAlpha:a,uStrength:o.strength,uCharge:o.charge,uPaintMix:o.paintMix||0,uMixLab:o.mixLab?1:0,uHueMix:clamp(o.hueMix||0,0,1),uNormalMap:{int:doc.map==='normal'?1:0},uColor:o.color,uLockAlpha:s.L.lockAlpha},chanU(o),selU(o)));
+    if(s.mix){for(const c of copies)mixDab(s,c,U,a,ext,r,dx,dy);}else for(const c of copies)run(P.smudge,s.L.target,Object.assign({},U,{uCenter:c,uSrc:(s.sampleT||scratchT).tex,uSrcPrev:(s.samplePrevT||s.sampleT||scratchT).tex,uSampleBlend:s.samplePrevT?clamp(s.sampleBlend??1,0,1):1,uDst:scratchT.tex,uDelta:[dx,dy],uAlpha:a,uStrength:o.strength,uCharge:o.charge,uPaintMix:o.paintMix||0,uMixLab:o.mixLab?1:0,uHueMix:clamp(o.hueMix||0,0,1),uNormalMap:{int:doc.map==='normal'?1:0},uColor:o.color,uLockAlpha:s.L.lockAlpha},chanU(o),selU(o)));
   } else {
     const dst=s.space?s.space.buf:strokeT;
     if(dst===strokeT&&!doc.wrap)for(const c of copies)clearStrokeBufferRegion(s,[c[0]-ext,c[1]-ext,c[0]+ext,c[1]+ext]);
@@ -140,7 +142,7 @@ function clearStrokeBufferRegion(s,r){
 function fdAdd(s,r){const L=s.fd||(s.fd=[]),near=Math.max(64,(r[2]-r[0])*2);
   for(const f of L)if(r[0]<=f[2]+near&&r[2]>=f[0]-near&&r[1]<=f[3]+near&&r[3]>=f[1]-near){f[0]=Math.min(f[0],r[0]);f[1]=Math.min(f[1],r[1]);f[2]=Math.max(f[2],r[2]);f[3]=Math.max(f[3],r[3]);return;}
   L.push(r.slice());if(L.length>12){const u=L.reduce((a,f)=>[Math.min(a[0],f[0]),Math.min(a[1],f[1]),Math.max(a[2],f[2]),Math.max(a[3],f[3])]);s.fd=[u];}}
-function addPoint(x,y,p){
+function addPointLin(x,y,p){
   const s=stroke;if(!s)return;const dx=x-s.x,dy=y-s.y,len=Math.hypot(dx,dy);
   if(s.inkAnchor&&Math.hypot(x-s.inkAnchor[0],y-s.inkAnchor[1])>Math.max(.5,radiusAt(p)*.12)){s.inkAnchor=[x,y];s.inkSince=performance.now();s.inkCharge=0;}
   if(len<1e-4){s.p=p;return;}
@@ -152,8 +154,16 @@ function addPoint(x,y,p){
   finally{if(s.dualBatch)dualBatchFlush(s);}
   s.sampleBlend=1;if(s.samplePrevT){release(s.samplePrevT);s.samplePrevT=null;}s.carry=t-len;s.x=x;s.y=y;s.p=p;requestRender(true);
 }
+/* Smooth curves: instead of straight lines between the points the pointer reports, the stroke follows a curve that passes
+   through the middle of each segment, with the reported points as its control points. Corners round off and long strokes flow.
+   The stroke trails half a segment behind the pointer and catches up when it ends (endStroke). */
+function addPoint(x,y,p){const s=stroke;if(!s)return;const c=s.cv;if(!c)return addPointLin(x,y,p);
+  const mx=(c.px+x)/2,my=(c.py+y)/2,mp=(c.pp+p)/2;curveTo(s,c,c.px,c.py,c.pp,mx,my,mp);c.px=x;c.py=y;c.pp=p;c.mx=mx;c.my=my;c.mp=mp;}
+function curveTo(s,c,cx,cy,cp,ex,ey,ep){const sx=c.mx,sy=c.my,sp=c.mp,len=Math.hypot(cx-sx,cy-sy)+Math.hypot(ex-cx,ey-cy),n=clamp(Math.ceil(len/3),1,60);
+  for(let i=1;i<=n;i++){const t=i/n,u=1-t;addPointLin(u*u*sx+2*u*t*cx+t*t*ex,u*u*sy+2*u*t*cy+t*t*ey,sp+(ep-sp)*t);}}
+function curveFinish(s){const c=s.cv;if(!c)return;s.cv=null;curveTo(s,c,c.px,c.py,c.pp,c.px,c.py,c.pp);}
 function endStroke(record){
-  const s=stroke;if(!s)return;if(s.fdWait){s.fdWait=false;stamp(s.x,s.y,s.p);}const L=s.L,W=doc.w,H=doc.h;
+  const s=stroke;if(!s)return;curveFinish(s);if(s.fdWait){s.fdWait=false;stamp(s.x,s.y,s.p);}const L=s.L,W=doc.w,H=doc.h;
   if(s.inkFrame)cancelAnimationFrame(s.inkFrame);
   if(s.space){if(s.spaceDirty){s.spaceDirty=false;s.space.sync();}const b=s.space.bbox(s);s.bb=doc.wrap?[0,0,W,H]:[b[0]-2,b[1]-2,b[2]+2,b[3]+2];}
   const healing=s.o.tool==='heal',cloning=s.o.tool==='clone';
@@ -162,7 +172,7 @@ function endStroke(record){
   let lazySrc=null,lazyBefore=null;
   if(s.lazy&&bw>0&&bh>0){lazySrc=makeTarget(bw,bh,L.target.depth,false,packedHeight(L.target.depth));blit(L.target,lazySrc,x0,y0,bw,bh,0,0);if(record)lazyBefore=captureRegion(lazySrc,0,0,bw,bh);}
   if(s.o.tool!=='smudge'&&!healing&&!cloning&&bw>0&&bh>0){scissorDo(R,()=>run(strokeMergeProgram(s),L.target,{uSrc:s.lazy?lazySrc.tex:beforeT.tex,uSrcOrigin:{iv2:s.lazy?[x0,y0]:[0,0]},uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(s.o)},...tonalU(s.o),uStrokeColor:s.o.color,uStrokeTint:!!s.tint,uStrokeOpacity:s.o.opacity,uLockAlpha:L.lockAlpha,...chanU(s.o),...selU(s.o),...strokeMaterialU(s)}));if(lazySrc)disposeTarget(lazySrc);}
-  if(s.o.tool!=='smudge')strokeT.dirtyR=s.space?'all':R;
+  if(s.o.tool!=='smudge'||s.wcBuf)strokeT.dirtyR=s.space?'all':R;
   /* the heal brush heals every map of the layer where the stroke went */
   const parts=healing?healApply(s,x0,y0,bw,bh,record).parts:cloning&&s.clone?cloneEnd(s,x0,y0,bw,bh,record):s.msm?meshSmudgeEnd(s,x0,y0,bw,bh,record):[];
   for(const e of (healing||cloning||s.msm?[]:s.o.extras||[])){if(!(bw>0&&bh>0))break;const T=mapT(L,e.key),old=acquireD(T.depth);blit(T,old,x0,y0,bw,bh,x0,y0);
@@ -170,6 +180,7 @@ function endStroke(record){
     scissorDo(R,()=>run(strokeMergeProgram(s),T,Object.assign({uSrc:old.tex,uStrokeTex:strokeT.tex,uStroke:{int:e.mode},uStrokeColor:e.color,uStrokeOpacity:s.o.opacity,uLockAlpha:false},chanU(null),s.exU,strokeMaterialU(s,e.key))));release(old);
     if(parts.length&&parts[parts.length-1].k===e.key)parts[parts.length-1].after=captureRegion(T,x0,y0,bw,bh);}
   if(s.lockT)release(s.lockT);if(s.sampleT)release(s.sampleT);if(s.samplePrevT)release(s.samplePrevT);dropStrokeCache(s);
+  if(s.mix)mixEnd(s);
   stroke=null;
   if(record){
     if(bw>0&&bh>0){const r=regionRecord(L,lazyBefore||captureRegion(beforeT,x0,y0,bw,bh),captureRegion(L.target,x0,y0,bw,bh),x0,y0,bw,bh,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?(s.o.mixer?'Brush stroke':'Blend'):s.o.tool==='dodge'?'Dodge':s.o.tool==='burn'?'Burn':healing?'Heal':cloning?'Clone':'Brush stroke');

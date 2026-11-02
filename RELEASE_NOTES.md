@@ -1,3 +1,43 @@
+## 0.86.1
+
+- **Calmer papers:** much less grain and gentler colours in every paper, so they work as neutral backgrounds. Tooth strength can still be raised.
+
+## 0.86.0
+
+- **Paper:** Layer › New › Paper… adds a paper layer: Smooth white, Notebook (lined, grid, dots), Sketch, Watercolour cold-press and rough, Oak, Canvas, Kraft, Parchment, Newsprint. Choose texture size and tooth strength; change it any time.
+- **Paper tooth:** the Mixing brushes catch on the paper's grain. New Paper tooth slider.
+- **Watercolour:** strokes glaze over each other like transparent paint, and blot edges no longer step.
+
+## 0.85.1
+
+- **No more stepping in watercolour edges:** the watercolour brushes cover each spot once per stroke instead of stacking dabs, so edges are clean. Later strokes glaze earlier ones like thin transparent paint (colours multiply and layers darken). Softer rims and a little more paint in the wash and wet-in-wet brushes.
+
+## 0.85.0
+
+- **Watercolour set:** three new brushes, Watercolour wash, Watercolour splatter and Watercolour wet-in-wet, with uneven hard outlines, pooled rims, layered pools and paper grain that never repeat. New sliders: Watercolour edges, Edge pooling, Layered pools and Paper grain. Replaces the old Watercolour mixer.
+
+## 0.84.1
+
+- **Keep paint even:** a new Mixing brush option so wide spacing no longer makes strokes thin and see-through. On in all the Mixing brushes.
+
+## 0.84.0
+
+- **Smooth curves:** a new brush option that rounds off corners and makes long strokes flow. On in all the Mixing brushes; works for Brush, Eraser and Blend.
+- **Big mixing brushes:** Big oil (350 px), Big gouache wash (250 px) and Big smear (300 px), with more smoothing by default.
+
+## 0.83.0
+
+- **Thick paint (impasto):** the Mixing brush can paint raised, lit paint: round bristle ridges and an edge lip, lit from the top left. New Paint thickness slider (0 is flat). On in the Oil, Gouache and Palette knife mixers.
+
+## 0.82.0
+
+- **Bristle brush:** the Mixing brush paints with bristles that each carry their own paint, giving streaks along the stroke and broken edges as it runs dry. New Bristles and Dry brush settings.
+- **Better mixing:** the brush drags colour from the paint ahead of it, does not fade to white on dry paper, and picks up and runs out by distance moved.
+
+## 0.81.0
+
+- **Mixing brush:** paint where colours really mix. The brush carries paint and picks up more as it goes, and each layer remembers where it is wet. Turn on Mixing brush in the Brush panel or try the new Mixing (real paint) brushes. Includes Dry after and Dry paint now. Also fixed a stray "null" in the Layers panel.
+
 ## 0.80.4
 
 - **Blend across visible layers:** paint on a separate layer while the Blend brush picks up and mixes colours from the visible stack as you move. Choose Pigment or Lab mixing, adjust Hue blending, and use a soft or textured brush tip.

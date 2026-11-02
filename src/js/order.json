@@ -22,6 +22,8 @@
     "paint/brush-preview-pop",
     "paint/brush-pack",
     "paint/art-media",
+    "paint/mix-brush",
+    "layers/paper",
     "paint/tool-brushes",
     "paint/map-brush",
     "paint/normal-paint",
