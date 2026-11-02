@@ -1,6 +1,7 @@
 /* ================= Rendering ================= */
 let weldEndPreview=null;
-function requestRender(comp){if(comp){dirtyComp=true;weldEndPreview=null;}if(!raf)raf=requestAnimationFrame(frame);}
+let tlTouch=false;/* the canvas changed since the last timelapse picture */
+function requestRender(comp){if(comp){dirtyComp=true;weldEndPreview=null;tlTouch=true;}if(!raf)raf=requestAnimationFrame(frame);}
 const perf={on:false,frames:[],worst:null,last:0};
 /* (0.30) Painting speed: while a stroke is being drawn, the screen is refreshed at most this often (ms apart).
    The paint itself lands exactly the same; only how often the picture is redrawn changes. */

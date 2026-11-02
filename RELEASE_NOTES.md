@@ -1,3 +1,9 @@
+## 0.90.0
+
+- **Timelapse recorder** in the top row: Record (it becomes Pause while recording), Replay with a list, Stop and save, folder and settings. Takes a picture of the whole canvas when something changed, from 1 to 60 per second, minute or hour, with compression, size, video speed and format settings. The video is made with the app's own encoder and saved to a completed TL's folder on the desktop.
+- **Crash-safe:** unfinished recordings are kept, offered again and resume when a document is recovered.
+- **Preferences › Files › Largest timelapse folder:** the oldest pictures are replaced when it is full.
+
 ## 0.89.1
 
 - **Fixed ghost shapes showing while painting** after a watercolour stroke: leftovers of earlier strokes could appear as grey patches while you painted with other brushes, even after deleting layers.
