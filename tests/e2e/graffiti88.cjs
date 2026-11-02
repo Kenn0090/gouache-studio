@@ -15,7 +15,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const box=await p.evaluate(()=>{const r=document.querySelector('#stage').getBoundingClientRect();return {l:r.left,t:r.top,x:__gs.view.x,y:__gs.view.y,z:__gs.view.zoom};});
  const at=(x,y)=>[box.l+box.x+x*box.z,box.t+box.y+y*box.z];
  const names=await p.evaluate(()=>__gs.GRAFFITI.map(g=>g.name));
- ok(names.length===17&&await p.evaluate(()=>__gs.GRAFFITI.every(g=>__gs.library.flatMap(x=>x.presets).some(x=>x.name===g.name))),'all 17 graffiti brushes are in the library ('+names.length+')');
+ ok(names.length===21&&await p.evaluate(()=>__gs.GRAFFITI.every(g=>__gs.library.flatMap(x=>x.presets).some(x=>x.name===g.name))),'all 21 graffiti brushes are in the library ('+names.length+')');
  const use=(n,extra)=>p.evaluate(([n,e])=>{const q=__gs.library.flatMap(x=>x.presets).find(x=>x.name===n);__gs.applyPreset(q);Object.assign(__gs.brush,e||{});__gs.ui.fg=[.1,.4,.9];},[n,extra]);
  const alpha=(x,y)=>p.evaluate(([x,y])=>__gs.captureRegionNow(__gs.doc.active.target,x,y,1,1).data[3],[x,y]);
  const drag=async(x0,y0,x1,y1,hold)=>{const a=at(x0,y0),z=at(x1,y1);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.move(z[0],z[1],{steps:20});if(hold)await p.waitForTimeout(hold);await p.mouse.up();await p.waitForTimeout(200);};
@@ -45,6 +45,13 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{});await use('Fat cap',{size:50,drip:0,dripAuto:2,sprayFleck:0,pSize:false});await drag(60,200,340,200);
  const autoBelow=await p.evaluate(()=>{let n=0;for(let y=232;y<=330;y+=3)for(let x=50;x<=350;x+=2)if(__gs.captureRegionNow(__gs.doc.active.target,x,y,1,1).data[3]>150)n++;return n;});
  console.log('painted samples under a moving stroke with auto drips:',autoBelow);ok(autoBelow>=3,'drips come off the stroke while painting, without holding still');
+ // hollow cone: one dab with the ring on is denser at the ring than in the middle; the swirl makes it uneven around the ring
+ const dab=async(ring,swirl,x,y)=>{await use('Fat cap',{size:160,drip:0,dripAuto:0,sprayFleck:0,sprayRing:ring,spraySwirl:swirl,spray:.9,sprayDen:1.2,sprayMist:0,simP:'off',pSize:false});const a=at(x,y);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.up();await p.waitForTimeout(250);
+  return p.evaluate(([x,y])=>{const L=__gs.doc.active,A=(px,py)=>{let s=0;for(let i=-2;i<=2;i++)for(let j=-2;j<=2;j++)s+=__gs.captureRegionNow(L.target,Math.round(px+i),Math.round(py+j),1,1).data[3];return s/25;};const mid=A(x,y),bins=[];for(let k=0;k<12;k++){const a=k/12*Math.PI*2;bins.push(A(x+Math.cos(a)*40,y+Math.sin(a)*40));}const m=bins.reduce((a,b)=>a+b)/12,sd=Math.sqrt(bins.reduce((a,b)=>a+(b-m)*(b-m),0)/12);return {mid,ring:m,sd};},[x,y]);};
+ const plain=await dab(0,0,100,330),ringed=await dab(1,0,300,330),swirled=await dab(1,1,200,330);
+ console.log('dab centre / ring / unevenness: plain',JSON.stringify(plain),'ring',JSON.stringify(ringed),'swirl',JSON.stringify(swirled));
+ ok(plain.mid>plain.ring+20&&ringed.ring>ringed.mid+40,'with the hollow cone on, the ring is denser than the middle (a plain dab is densest in the middle)');
+ ok(swirled.sd>ringed.sd+8,'the swirl makes the ring uneven around its circle');
  // splatter: droplets of different sizes
  await p.evaluate(()=>__gs.newDoc(400,400,8,[1,1,1],'Splat',false,'hand'));await p.waitForTimeout(300);await p.evaluate(()=>document.querySelector('#lAdd')?.click());await p.waitForTimeout(150);
  const box2=await p.evaluate(()=>{const r=document.querySelector('#stage').getBoundingClientRect();return {l:r.left,t:r.top,x:__gs.view.x,y:__gs.view.y,z:__gs.view.zoom};});

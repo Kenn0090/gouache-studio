@@ -1,8 +1,14 @@
 /* ================= Graffiti brushes (0.88) =================
    Our own set (made from scratch): spray caps that throw fine dots with overspray mist, pressure for fat and skinny lines, drips that run
    when you hold the brush still, paint markers, a flick for splatter and a stencil edge. They lay paint on top like real paint (no mixing). */
+/* a flat chisel nib whose two ends are frayed into fine hairs: held at a fixed angle it makes wildstyle ribbons that swing from thick to thin, with a fringe of
+   fine streaks along the ragged edges */
+const WILD_TIP=genTip('Wildstyle nib',512,128,(x,w,h,R)=>{x.fillRect(w*.04,h*.34,w*.92,h*.32);
+  for(let i=0;i<190;i++){const px=w*.04+(i+R()*.9)/190*w*.92,tw=1+R()*2.4,up=h*.34*Math.pow(R(),1.7)*(R()<.8?1:.3),dn=h*.34*Math.pow(R(),1.7)*(R()<.8?1:.3);x.globalAlpha=.7+R()*.3;x.fillRect(px,h*.34-up,tw,up+2);x.fillRect(px,h*.66-2,tw,dn+2);}x.globalAlpha=1;});
 const GRAFFITI=[
- ['Hardcore fat cap',{size:280,hardness:.25,flow:.7,spacing:.03,spray:1.5,sprayDen:1.7,sprayMist:.12,sprayVar:.35,sprayFleck:.8,drip:.6,dripAuto:.7,dripWidth:1.4,pSize:true,minSize:.3,pFlow:true}],
+ ['Hardcore fat cap',{size:280,hardness:.25,flow:.7,spacing:.03,spray:1.5,sprayDen:1.7,sprayMist:.12,sprayVar:.35,sprayRing:.45,spraySwirl:.5,sprayFleck:.8,drip:.6,dripAuto:.7,dripWidth:1.4,pSize:true,minSize:.3,pFlow:true}],
+ ['Hollow cone cap',{size:130,hardness:.3,flow:.7,spacing:.03,spray:.8,sprayDen:2.4,sprayMist:.1,sprayRing:.85,spraySwirl:.25,sprayFleck:.5,drip:.4,dripAuto:.4,pSize:true,minSize:.4,pFlow:true}],
+ ['Spinning nozzle cap',{size:150,hardness:.3,flow:.7,spacing:.03,spray:.9,sprayDen:2.2,sprayMist:.1,sprayRing:.6,spraySwirl:1,sprayFleck:.5,drip:.4,dripAuto:.4,pSize:true,minSize:.4,pFlow:true}],
  ['Fat cap',{size:110,hardness:.3,flow:.7,spacing:.03,spray:.7,sprayDen:2.2,sprayMist:.08,sprayFleck:.45,drip:.5,dripAuto:.6,pSize:true,minSize:.45,pFlow:true}],
  ['Medium cap',{size:56,hardness:.4,flow:.75,spacing:.03,spray:.65,sprayDen:2.2,sprayMist:.06,sprayFleck:.4,drip:.35,dripAuto:.4,pSize:true,minSize:.4,pFlow:true}],
  ['Skinny cap',{size:20,hardness:.8,flow:.8,spacing:.04,spray:.6,sprayDen:2.6,sprayMist:.04,sprayFleck:.25,drip:.2,dripAuto:.15,pSize:true,minSize:.4,pFlow:true}],
@@ -18,6 +24,8 @@ const GRAFFITI=[
  ['Paint marker',{size:20,hardness:.95,flow:1,opacity:.95,spacing:.04,smoothing:.4,drip:.2,dripAuto:.2,pSize:false,buildup:false,spray:0}],
  ['Drippy mop marker',{size:70,hardness:.75,flow:1,opacity:.95,spacing:.04,smoothing:.4,drip:1.1,dripAuto:1.0,dripWidth:1.8,pSize:true,minSize:.6,buildup:false,spray:0}],
  ['Splatter flick',{size:150,hardness:.15,flow:1,spacing:.9,spray:5,sprayDen:.3,sprayVar:1,sprayMist:0,pSize:false,buildup:false,drip:0}],
+ ['Wildstyle chisel (fringed)',{tip:WILD_TIP,size:210,angle:38,hardness:1,flow:1,opacity:1,spacing:.012,smoothing:.5,pSize:false,buildup:false,spray:0,drip:0,simP:'off'}],
+ ['Wildstyle chisel (clean)',{size:120,angle:38,roundness:.14,hardness:1,flow:1,opacity:1,spacing:.012,smoothing:.5,pSize:false,buildup:false,spray:0,drip:0,simP:'off'}],
  ['Stencil edge',{size:44,hardness:1,flow:1,grain:.22,spacing:.04,smoothing:.1,pSize:false,buildup:false,spray:0,drip:0}]
 ].map(([name,s])=>Object.assign({name,tool:'brush',tip:null,buildup:true,smoothing:.35,smoothCurve:true,pOpacity:false,simP:s.spray>0?'taper':'off'},s));
 library.splice(4,0,{id:'graffiti',name:'Graffiti',builtin:true,presets:GRAFFITI,tips:[]});

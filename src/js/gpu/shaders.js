@@ -21,7 +21,7 @@ float vnoise(vec2 p, vec2 per){ vec2 i=floor(p); vec2 f=fract(p); f=f*f*(3.0-2.0
 uniform int uUseTip; uniform sampler2D uTip; uniform float uAngle; uniform float uRound; uniform vec2 uFlip; uniform float uTipAspect;
 /* spray paint: paint falls off smoothly from a solid core (a bell curve), and where it is thin it breaks into separate round droplets placed at random
    (a different scatter on every dab). uSpray = (droplet size in pixels, density, random seed, mist); size 0 turns it off. uSprayVar spreads the droplet sizes. */
-uniform vec4 uSpray; uniform float uSprayVar; uniform float uSprayFleck;
+uniform vec4 uSpray; uniform float uSprayVar; uniform float uSprayFleck; uniform vec3 uSprayRing;
 float sph(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
 float sprayMask(vec2 pix,float g){ float ds=max(uSpray.x,0.5); vec2 gp=pix/ds; vec2 c0=floor(gp); float sd=uSpray.z, cover=0.0;
   for(int i=-1;i<=1;i++) for(int j=-1;j<=1;j++){ vec2 c=c0+vec2(float(i),float(j));
@@ -46,7 +46,11 @@ float brushMask(vec2 pix){
     float d=length(q)/r;
     float h=clamp(min(uHard,1.0-1.2/max(r,1.2)),0.0,0.995);
     m=1.0-smoothstep(h,1.0,d);
-    if(uSpray.x>0.0){ float core=exp(-mix(2.2,8.0,uHard)*d*d), tail=0.38*pow(max(1.0-d,0.0),2.2); m=sprayMask(pix,max(core,tail)*(1.0-smoothstep(0.9,1.0,d))); if(uSprayFleck>0.0) m=max(m,sprayFleckMask(pix,d)); }
+    if(uSpray.x>0.0){ float core=exp(-mix(2.2,8.0,uHard)*d*d), tail=0.38*pow(max(1.0-d,0.0),2.2);
+      /* a real nozzle spins the paint into a hollow cone: a ring denser than the middle (uSprayRing.x), with swirling arms that turn on every dab (y, and z is the turn) */
+      if(uSprayRing.x>0.0){ float rg=exp(-pow((d-0.5)/0.26,2.0)); core=mix(core,rg,uSprayRing.x); }
+      if(uSprayRing.y>0.0){ float an=atan(q.y,q.x); core*=clamp(1.0+uSprayRing.y*0.9*sin(3.0*an+7.0*d+uSprayRing.z),0.0,2.0); tail*=1.0+uSprayRing.y*0.3*sin(3.0*an+7.0*d+uSprayRing.z); }
+ m=sprayMask(pix,max(core,tail)*(1.0-smoothstep(0.9,1.0,d))); if(uSprayFleck>0.0) m=max(m,sprayFleckMask(pix,d)); }
   }
   if(m<=0.0) return 0.0; /* nothing to grain or knock out (most of a bristle tip's square is empty) */
   if(uGrain>0.0){ vec2 q=pix/uGrainScale; float n=vnoise(q,uPeriod)*0.6+vnoise(q*2.0,uPeriod*2.0)*0.4;
