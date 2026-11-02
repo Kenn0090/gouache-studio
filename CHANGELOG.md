@@ -1,3 +1,7 @@
+## 0.94.0
+
+- **Delete a single brush.** Right-click any imported or saved brush in the Brushes panel and choose Delete. (A whole imported set can still be removed with the Remove button on its header.) Built-in brushes cannot be deleted.
+
 ## 0.93.0
 
 - **Texture studio.** 21 new brushes of our own. **Texture · Patterns** fills the stroke with a pattern that stays put on the canvas and starts sparse, getting denser along the stroke: sprinkles, tiny sprinkles, noise, static, wavy lines, zig zag lines, brush hatch, brush grid, sneaker crackle, swirly, and light and bold pointillism. **Texture · Salt and speckle** gives salt dust, fine and coarse salt, a snow flurry, speckle, a powder trail and splatters. They paint in your current colour.

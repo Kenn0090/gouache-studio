@@ -1,3 +1,7 @@
+## 0.94.0
+
+- **Delete a single brush:** right-click an imported or saved brush in the Brushes panel.
+
 ## 0.93.0
 
 - **Texture studio:** 21 new pattern, salt, speckle and splatter brushes, made from scratch.

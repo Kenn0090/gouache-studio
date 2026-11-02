@@ -184,7 +184,7 @@ function renderLibrary(){const box=$('#libBody');box.replaceChildren();
     el('button',{class:'btn sm',type:'button',text:'Unfold all',onclick:()=>{libFoldSave(new Set());renderLibrary();}}));
   box.append(bar);
   if(brushSession.recent.length)box.append(section('recent','Recent brushes',null,t=>t.append(...brushSession.recent.map(p=>brushLibraryTile(p,true)))));
-  for(const set of library)box.append(section(set.id,set.builtin?set.name:set.name+' · '+set.presets.length,set.builtin?null:el('button',{text:'Remove','aria-label':'Remove brush set '+set.name,onclick:e=>{e.stopPropagation();removeSet(set);}}),t=>{for(const p of set.presets)t.append(brushLibraryTile(p,false));}));
+  for(const set of library)box.append(section(set.id,set.builtin?set.name:set.name+' · '+set.presets.length,set.builtin?null:el('button',{text:'Remove','aria-label':'Remove brush set '+set.name,onclick:e=>{e.stopPropagation();removeSet(set);}}),t=>{for(const p of set.presets){const tile=brushLibraryTile(p,false);if(!set.builtin){tile.title+=' · right-click to delete';tile.addEventListener('contextmenu',e=>{e.preventDefault();confirmDlg('Delete brush','Delete “'+p.name+'” from '+set.name+'? This cannot be undone.','Delete',()=>removeBrush(set,p));});}t.append(tile);}}));
   if(typeof renderDualPicker==='function')queueMicrotask(renderDualPicker);}
 /* Shared range gestures use displayed units: five percentage points, degrees or pixels.
    Keep mapped sliders (brush size, tiling) in their value space when snapping. Ctrl-wheel adjusts the temporary snap increment. */
@@ -373,6 +373,11 @@ function addSet(set){library.push(set);renderLibrary();saveSet(set);}
 function removeSet(set){const i=library.indexOf(set);if(i<0)return;library.splice(i,1);
   if(set.presets.some(p=>p===activePreset||p===brushSession.source)||(brush.tip&&set.tips.includes(brush.tip)))applyPreset(PRESETS[0]);
   for(const t of set.tips)if(!library.some(s2=>s2.tips.includes(t)))disposeTip(t);store.del(set.id);renderLibrary();toast('Removed “'+set.name+'”.');}
+/* (0.94, Kenn) delete a single imported or saved brush: right-click it in the Brushes panel */
+function removeBrush(set,p){const i=set.presets.indexOf(p);if(i<0)return;if(set.presets.length===1){removeSet(set);return;}
+  set.presets.splice(i,1);if(p===activePreset||p===brushSession.source)applyPreset(PRESETS[0]);
+  if(p.tip&&!library.some(s2=>s2.presets.some(q=>q.tip===p.tip))){set.tips=set.tips.filter(t=>t!==p.tip);disposeTip(p.tip);}
+  brushSession.recent=brushSession.recent.filter(q=>q!==p);saveSet(set);renderLibrary();toast('Deleted “'+p.name+'”.');}
 /* save the current settings as a brush in "My brushes" (kept per browser / per computer) */
 function dlgSaveBrush(){const inp=el('input',{type:'text',id:'sbName',value:activePreset?activePreset.name+' 2':'My brush',maxlength:40});
   const anyMaps=mapBrushTargets().length>0;
