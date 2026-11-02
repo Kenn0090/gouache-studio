@@ -171,3 +171,16 @@ Click a slider value, type a number and press Enter or click away to apply it. E
 
 View › **Perspective guides…** opens a small window. Choose 1, 2 or 3 vanishing points. The points and a dashed horizon are drawn over the canvas with lines fanning out from each point. Drag a point to move it, or type its place; **Lines** changes how many are drawn. With **Strokes snap to the guide lines** on, a stroke that starts towards a vanishing point is held exactly on the line to it (hold Shift for straight horizontal and vertical lines instead). The guides belong to the document, are saved with it, and Undo covers them.
 
+
+
+## Mixing brush (real paint mixing)
+
+Turn on **Mixing brush** in the Brush panel (or pick a brush from **Mixing (real paint)**) and colours mix like wet paint.
+
+- The brush carries a **load** of paint. As you drag it picks up colour from the canvas, mixes it with what it carries, and lays it back down, so a stroke through another colour drags that colour along.
+- **Paint on the brush** is how much paint it starts with (0 is an empty brush that only smears). **Paint runs out** is how quickly the load is used up.
+- **Wetness added** is how wet the canvas becomes where you paint. Wet paint mixes and smears; dry paint is covered by new paint and is hardly picked up.
+- **Dry after** dries wet paint by itself after that many seconds. Set it to *by hand* to keep paint wet until you press **Dry paint now**.
+- **Pick up from all visible layers** also picks up colour from the layers below.
+
+It works on a layer's colour in the Paint tab, with selections, symmetry, Lock alpha and undo. Masks, other maps and painting on the 3D model use the normal brushes.

@@ -1,3 +1,7 @@
+## 0.81.0
+
+- **Mixing brush:** paint where colours really mix. The brush carries paint and picks up more as it goes, and each layer remembers where it is wet. Turn on Mixing brush in the Brush panel or try the new Mixing (real paint) brushes. Includes Dry after and Dry paint now. Also fixed a stray "null" in the Layers panel.
+
 ## 0.80.4
 
 - **Blend across visible layers:** paint on a separate layer while the Blend brush picks up and mixes colours from the visible stack as you move. Choose Pigment or Lab mixing, adjust Hue blending, and use a soft or textured brush tip.

@@ -1,3 +1,8 @@
+## 0.81.0
+
+- **Mixing brush (real paint mixing).** A new way to paint where colours really mix, like wet paint. Turn on **Mixing brush** in the Brush panel, or pick one from the new **Mixing (real paint)** brush set: Oil mixer, Gouache mixer, Watercolour mixer, Smear (empty brush) and Palette knife mixer. The brush carries paint on its bristles and picks up more from the canvas as it goes, so a blue stroke dragged through red takes red along with it and runs out of paint as you go. Each layer also remembers where the paint is **wet**: wet paint mixes and smears, dry paint is covered. Settings: **Paint on the brush**, **Pick up from canvas**, **Wetness added**, **Paint runs out**, **Dry after** (a few seconds, or by hand) and **Pick up from all visible layers**. **Dry paint now** dries everything at once. It works on a layer's colour in the Paint tab, with selections, symmetry, Lock alpha and undo; masks, other maps and 3D painting still use the normal brushes.
+- Fixed a stray word "null" next to the mask buttons in the Layers panel.
+
 ## 0.80.4
 
 - **Layer-aware Blend brush.** Sample visible layers while blending on a separate layer, with the picked-up colours refreshed as the stroke moves. Choose Pigment or Lab mixing and adjust Hue blending. Soft and textured tips keep their edge character while mixing.

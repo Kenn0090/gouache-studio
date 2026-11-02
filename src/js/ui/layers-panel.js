@@ -110,7 +110,7 @@ function renderLayers(){
   for(const [e,t] of keep)e.scrollTop=t;
 }
 function renderMaskRow(){const A=doc.active,row=$('#maskRow');row.replaceChildren();if(!A)return;
-  if(!A.mask){row.append(el('button',{class:'btn sm',text:'Add mask',title:'Add a white mask (reveals everything)',onclick:()=>cmdAddMask(1)}),el('button',{class:'btn sm',text:'Add hide-all mask',title:'Add a black mask (hides everything)',onclick:()=>cmdAddMask(0)}),maskClip?el('button',{class:'btn sm',text:'Paste mask',title:'Use the copied mask on this layer',onclick:()=>cmdPasteMask(A)}):null);return;}
+  if(!A.mask){row.append(el('button',{class:'btn sm',text:'Add mask',title:'Add a white mask (reveals everything)',onclick:()=>cmdAddMask(1)}),el('button',{class:'btn sm',text:'Add hide-all mask',title:'Add a black mask (hides everything)',onclick:()=>cmdAddMask(0)}),maskClip?el('button',{class:'btn sm',text:'Paste mask',title:'Use the copied mask on this layer',onclick:()=>cmdPasteMask(A)}):'');return;}
   row.append(...[el('div',{class:'sub',style:'width:100%',text:A.editMask?'Painting on the mask: black hides, white reveals.':'Mask attached. Click its thumbnail to paint on it.'}),
     chk('mEn','Mask on',A.mask.enabled,v=>{A.mask.enabled=v;renderLayers();requestRender(true);}),
     chk('mView','View mask',!!ui.viewMask,v=>{ui.viewMask=v;if(v)A.editMask=true;renderLayers();requestRender();}),
