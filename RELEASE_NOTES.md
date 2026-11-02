@@ -1,3 +1,9 @@
+## 0.89.0
+
+- **Watercolour studio:** 36 brushes in seven groups (inkers, colouring, ink washes, embellishments, stamps, blenders, erasers and lifters), made from scratch. Each group folds shut in the Brushes panel.
+- **Bloom (backrun)** setting, **Salt** and **Lift-off** brushes. Blooms and granulation work on any paper.
+- Two new palettes: **Watercolour pans** and **Ink set**.
+
 ## 0.88.2
 
 - **Fold brush sets** in the Brushes panel: an arrow on each set (click it or the title), plus Fold all and Unfold all. Your choice is remembered.

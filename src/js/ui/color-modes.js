@@ -59,6 +59,8 @@ function cmWheelPick(e,start){const c=cmW.c,r=c.getBoundingClientRect(),k=cmW.si
 /* ---- swatches ---- */
 const CM_SWATCH_DEFAULT=['#000000','#3a3a3a','#6e6e6e','#a0a0a0','#d2d2d2','#ffffff','#5c2e1f','#8b4a2b','#c47a44','#e8b27a','#f3dcb5','#7a1f1f','#c0392b','#e8664f','#f2a07b','#8a5a00','#d4a017','#f5d76e','#2f5d1e','#4f8a2b','#8cc152','#1e5a5a','#2e8b8b','#7fc4c4','#1f3a6e','#2e5fa8','#6b9bd8','#3e2a6e','#6a4aa8','#a98bd8','#6e1f4f','#a8327a','#e07ab4'];
 const CM_GAME_PALETTES={
+  'watercolour-pans':{name:'Watercolour pans',colors:['#f3e04a','#f2c12e','#e3a72f','#c98a3a','#b5651d','#8a4b24','#5b3a29','#3d2a22','#e0502f','#c63a2f','#b32942','#d1457d','#8e3a8d','#5b3a8f','#2f3d9c','#2f5fb5','#3f8fd0','#3fb1c9','#1f7a8c','#1f6f5c','#4f9a50','#7fa545','#5e6b3a','#45494f']},
+  'ink-set':{name:'Ink set',colors:['#0e0e10','#232326','#3a3a40','#5c5c66','#2b1d14','#4a3426','#17254a','#25397a','#4a1d3a','#70222f','#1d3f35','#35553c']},
   'sunset-harbor':{name:'Sunset Harbor',colors:['#211738','#45315f','#78508b','#b66b8b','#e58a76','#ffba83','#ffe0a3','#fff2cf','#29485b','#397c83','#5bb39a','#a9d987','#4b385f','#9a5875','#d17f79','#e6b767']},
   'mosslight':{name:'Mosslight',colors:['#172321','#283b32','#3d5a40','#62834d','#91a85c','#c5c875','#eee0a0','#f7f0d4','#30464a','#466a70','#6b9290','#a7b9a0','#513d49','#79505b','#ad6e67','#dba17a']},
   'candy-circuit':{name:'Candy Circuit',colors:['#201f45','#3d3474','#6651a0','#a45ca8','#e26a9a','#ff9e91','#ffd17f','#fff3b0','#174b64','#1f8190','#35b5a0','#8be0b2','#40395e','#6c5687','#b36e9c','#f0a9b6']},

@@ -53,7 +53,7 @@ void main(){
   o=vec4(col*amt,amt); }`;
 const FS_MIXDAB=CH_BRUSH+PIGMENT_MIX+PAPER_GLSL+`
 uniform sampler2D uDst; uniform sampler2D uLoad; uniform sampler2D uWet; uniform float uExt; uniform float uAlpha; uniform float uDeposit; uniform float uWetMix;
-uniform int uLockAlpha; uniform sampler2D uSelTex; uniform int uUseSel; uniform float uBristles; uniform float uDryB; uniform float uStepK; uniform float uThick; uniform float uEven; uniform float uWC; uniform float uWCEdge; uniform float uWCPools; uniform float uWCGran; uniform bool uWCOut; uniform int uPT; uniform float uPSc; uniform float uTooth;
+uniform int uLockAlpha; uniform sampler2D uSelTex; uniform int uUseSel; uniform float uBristles; uniform float uDryB; uniform float uStepK; uniform float uThick; uniform float uEven; uniform float uWC; uniform float uWCEdge; uniform float uWCPools; uniform float uWCGran; uniform float uWCBloom; uniform bool uWCOut; uniform int uPT; uniform float uPSc; uniform float uTooth;
 /* watercolour: the blot's shape comes from noise fixed to the canvas (not a picture), so it never repeats. The outline is uneven and hard,
    pigment pools along the rim, hard-edged pools lie in layers inside, and paper grain breaks up the colour */
 float wcMask(vec2 pix,float m0){
@@ -62,6 +62,8 @@ float wcMask(vec2 pix,float m0){
   float n2=wf(q*0.55+41.0+w); float lay=smoothstep(0.52,0.545,n2)*0.6+smoothstep(0.38,0.405,n2)*0.4;
   float gr=wn(pix*0.8)*0.6+wn(pix*2.3)*0.4;
   float dens=0.5+uWCEdge*0.8*pool+uWCPools*(lay-0.5)*0.9; dens*=1.0+uWCGran*(gr-0.5)*1.6;
+  if(uWCBloom>0.0){ /* a backrun: water pushed into drying paint leaves a lighter patch with a dark, lobed edge */
+    float nb=wf(q*0.55+77.0+w*1.2); float inside=smoothstep(0.50,0.515,nb), rimB=exp(-pow((nb-0.508)/0.012,2.0)); dens=dens*(1.0-0.6*uWCBloom*inside)+uWCBloom*0.8*rimB; }
   return cover*clamp(dens,0.0,1.5); }
 float bh(float i){ return fract(sin(i*127.1+311.7)*43758.5453); }
 /* how thick the paint is at a pixel (this dab only): the stroke's own shape times the bristles' round ridges */
@@ -98,7 +100,7 @@ const FS_MIXDRY=`uniform sampler2D uSrc; uniform float uStep;
 void main(){ o=vec4(max(texelFetch(uSrc,ivec2(gl_FragCoord.xy),0).r-uStep,0.0),0.0,0.0,0.0); }`;
 P.mixload=program(FS_MIXLOAD,VS_FULL);P.mixdab=program(FS_MIXDAB,VS_STAMP);P.mixwet=program(FS_MIXWET,VS_STAMP);P.mixdry=program(FS_MIXDRY);P.mixcomp=program(FS_MIXCOMP,VS_STAMP);
 {const D0=Object.assign({uUseTip:false,uTip:dummy,uAngle:0,uRound:1,uFlip:[1,1],uTipAspect:1,uGrain:0,uGrainScale:[1,1],uPeriod:[1,1],uHard:.8,uRadius:1,uCenter:[0,0],uSpray:[0,0,0,0],uSprayVar:0,uSprayFleck:0,uSprayRing:[0,0,0],uSpraySolid:1},DUAL_UNIFORM_DEFAULTS);
- P.mixload.defaults=Object.assign({uUseBase:false,uBase:dummy,uBristles:0},D0);P.mixdab.defaults=Object.assign({uLockAlpha:0,uWetMix:1,uBristles:0,uDryB:0,uStepK:1,uThick:0,uEven:1,uWC:0,uWCEdge:0,uWCPools:0,uWCGran:0,uWCOut:false,uPT:{int:-1},uPSc:1,uTooth:0},D0,SEL_DEF);P.mixwet.defaults=Object.assign({},D0);}
+ P.mixload.defaults=Object.assign({uUseBase:false,uBase:dummy,uBristles:0},D0);P.mixdab.defaults=Object.assign({uLockAlpha:0,uWetMix:1,uBristles:0,uDryB:0,uStepK:1,uThick:0,uEven:1,uWC:0,uWCEdge:0,uWCPools:0,uWCGran:0,uWCBloom:0,uWCOut:false,uPT:{int:-1},uPSc:1,uTooth:0},D0,SEL_DEF);P.mixwet.defaults=Object.assign({},D0);}
 /* the hidden wetness map of a layer (red channel: 0 dry … 1 soaking) */
 function mixWetFor(L){const w=Math.max(1,Math.ceil(doc.w/MIXQ)),h=Math.max(1,Math.ceil(doc.h/MIXQ));let m=L._wet;
   if(m&&(m.w!==w||m.h!==h)){disposeTarget(m.t);if(m.t2)disposeTarget(m.t2);m=L._wet=null;}
@@ -116,7 +118,7 @@ function mixDab(s,c,U,a,ext,r,dx,dy){const o=s.o,m=s.mix;if(!m)return;
   {const t=m.A;m.A=m.B;m.B=t;}
   const pi=(o.mixTooth>0)?paperInfo():null;
   const wcOut=o.mixWC>0&&!doc.wrap&&beforeT.w===doc.w&&strokeT.w===doc.w;
-  const dabU=Object.assign({},U,{uCenter:c,uDst:scratchT.tex,uLoad:m.A.tex,uWet:wet.t.tex,uExt:ext,uAlpha:a,uDeposit:o.opacity,uWetMix:1,uBristles:o.mixBristles||0,uDryB:o.mixDryB||0,uStepK:dist<1?.5:1-Math.pow(.3,clamp(dist/Math.max(2*r,2),0,1)),uThick:clamp(o.mixThick||0,0,1),uEven:o.mixEven&&!(o.mixWC>0)?clamp(o.spacing/.02,.25,40):1,uWC:clamp(o.mixWC||0,0,1),uWCEdge:o.mixWCEdge||0,uWCPools:o.mixWCPools||0,uWCGran:o.mixWCGran||0,uWCOut:wcOut,uPT:{int:pi?pi.t:-1},uPSc:pi?pi.sc:1,uTooth:o.mixTooth||0,uLockAlpha:s.L.lockAlpha?1:0},selU(o));
+  const dabU=Object.assign({},U,{uCenter:c,uDst:scratchT.tex,uLoad:m.A.tex,uWet:wet.t.tex,uExt:ext,uAlpha:a,uDeposit:o.opacity,uWetMix:1,uBristles:o.mixBristles||0,uDryB:o.mixDryB||0,uStepK:dist<1?.5:1-Math.pow(.3,clamp(dist/Math.max(2*r,2),0,1)),uThick:clamp(o.mixThick||0,0,1),uEven:o.mixEven&&!(o.mixWC>0)?clamp(o.spacing/.02,.25,40):1,uWC:clamp(o.mixWC||0,0,1),uWCEdge:o.mixWCEdge||0,uWCPools:o.mixWCPools||0,uWCGran:o.mixWCGran||0,uWCBloom:o.mixWCBloom||0,uWCOut:wcOut,uPT:{int:pi?pi.t:-1},uPSc:pi?pi.sc:1,uTooth:o.mixTooth||0,uLockAlpha:s.L.lockAlpha?1:0},selU(o));
   if(wcOut){/* watercolour: this stroke's density goes into the stroke buffer (the strongest dab wins, so dab edges never stack into steps); the layer shows it laid over what was there before the stroke */
     s.wcBuf=true;clearStrokeBufferRegion(s,[c[0]-ext-1,c[1]-ext-1,c[0]+ext+1,c[1]+ext+1]);
     run(P.mixdab,strokeT,dabU,{blend:'max'});

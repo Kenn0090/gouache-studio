@@ -1,3 +1,9 @@
+## 0.89.0
+
+- **Watercolour studio.** A new toolkit of 36 brushes in seven groups (each folds shut in the Brushes panel), all made from scratch: **Aqua · Inkers** (Fine ink pen, Dip pen, Brush pen, Technical pen, Wobbly liner, Dry ink brush), **Aqua · Colouring** (Round brush, Flat brush, Dry brush, Watercolour pencil, Wax crayon, Sponge), **Aqua · Ink washes** (Flat wash, Graded wash, Dark-edge wash, Bloom (backrun), Granulating wash, Ink glaze), **Aqua · Embellishments** (Fine splatter, Coarse splatter, Salt, Droplets, Pooling edge line, Watery drip), **Aqua · Stamps** (six irregular blobs, splashes, a bloom, a leaf, a petal and a ragged wash, each with pigment pooled along its edge), **Aqua · Blenders** (Water brush, Soft blender, Smudger) and **Aqua · Erasers and lifters** (Lift-off (damp brush), Wet eraser, Hard eraser). The set's brushes pick their own tool, so choosing one switches between pen, wash and eraser for you. The inkers use speed for pressure when you use a mouse.
+- **Bloom (backrun).** A new **Bloom (backrun)** setting on the watercolour brushes: a lighter patch with a dark, lobed edge, like water pushed into drying paint. **Salt** (an eraser with salt crystals) leaves light starbursts in a wet wash, and the **Lift-off** eraser picks paint up like a damp brush. Blooms and granulation work on any paper.
+- **Colour palettes.** **Watercolour pans** (24 colours) and **Ink set** (12) in the Swatches palette list.
+
 ## 0.88.2
 
 - **Fold brush sets.** In the Brushes panel every brush set now has a fold arrow on its header (click the arrow or the title to fold it shut or open it), and **Fold all** and **Unfold all** buttons at the top. What you fold is remembered. Before, sets could only be folded in the right-click brush picker on the canvas.

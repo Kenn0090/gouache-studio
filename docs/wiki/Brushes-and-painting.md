@@ -228,3 +228,17 @@ The brushes will look close to the originals, not identical, because each progra
 ## Folding brush sets
 
 In the Brushes panel, click the arrow (or the title) on a brush set's header to fold it shut or open it. **Fold all** and **Unfold all** at the top do every set at once. What you fold is remembered. The right-click brush picker on the canvas folds sets too.
+
+## Watercolour studio
+
+Seven brush groups, all starting with **Aqua**, make a complete watercolour and ink kit:
+
+- **Inkers**: pens and brush pens that respond to pressure (with a mouse, to speed).
+- **Colouring**: round and flat watercolour brushes, dry brush, pencil, wax crayon and sponge.
+- **Ink washes**: flat, graded and dark-edge washes, a **Bloom (backrun)**, a granulating wash and a glaze.
+- **Embellishments**: splatters, **Salt**, droplets, a pooling edge line and a watery drip.
+- **Stamps**: irregular blobs, a splash, a bloom, a leaf, a petal and a ragged wash, each with pigment pooled at the edge. Click to stamp; they turn at random.
+- **Blenders**: a water brush that thins and moves wet paint, a soft blender and a smudger.
+- **Erasers and lifters**: a damp-brush **Lift-off**, a wet eraser and a hard eraser.
+
+The watercolour brushes have **Bloom (backrun)**, **Paper grain** and **Paper tooth** sliders. The **Watercolour pans** and **Ink set** palettes are in the Swatches list of the Colour panel.
