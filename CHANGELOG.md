@@ -1,6 +1,7 @@
 ## 0.93.3
 
 - **Straight line like Substance Painter.** Hold **Shift** with any painting tool and a dotted line shows from where your last stroke ended to the pointer; click to draw it. Hold **Shift+Ctrl** to snap the line to 5 degree steps. Works on the canvas and on the 3D model.
+- **Paths work like Substance Painter's.** One path layer now holds several paths. Clicking empty surface after Enter starts a new path in the same layer, and the new **Paths** panel lists them: click to select, the eye to hide, double-click to rename, plus Duplicate, Copy, Paste (Ctrl+C / Ctrl+V) and Delete (also the Delete key). Click another path's line to select it. Saved projects keep all their paths; older ones open as one path.
 - **P is the Path tool in 3D Paint**, as in Painter. The Pen moves to **Shift+P** there. In Paint, P is still the Pen.
 
 ## 0.93.2

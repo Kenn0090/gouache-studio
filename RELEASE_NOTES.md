@@ -1,6 +1,7 @@
 ## 0.93.3
 
 - **Straight line like Substance Painter:** hold Shift for a dotted preview and click to draw; Shift+Ctrl snaps to 5 degree steps.
+- **Several paths in one layer** with a Paths panel (select, hide, rename, duplicate, copy, paste, delete), like Substance Painter.
 - **P is the Path tool in 3D Paint** (Pen is Shift+P there).
 
 ## 0.93.2
