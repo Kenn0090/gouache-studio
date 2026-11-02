@@ -20,7 +20,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const drag=async(x0,y0,x1,y1)=>{const a=at(x0,y0),z=at(x1,y1);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.move(z[0],z[1],{steps:24});await p.mouse.up();await p.waitForTimeout(200);};
  ok(await preset('Oil mixer'),'the Mixing presets exist in the library');
  // a plain red stroke first (turn mixing off in a copy of the preset)
- await p.evaluate(()=>{__gs.brush.size=30;__gs.brush.followDir=false;__gs.brush.mixBristles=0;__gs.brush.mixUse=0;});
+ await p.evaluate(()=>{__gs.brush.size=30;__gs.brush.followDir=false;__gs.brush.mixBristles=0;__gs.brush.mixUse=0;__gs.brush.mixThick=0;});
  await setColour([1,0,0]);await drag(30,128,226,128);
  const red=await px(128,128);ok(red&&red[0]>200&&red[1]<60&&red[2]<60,'the first (wet) red stroke is red '+JSON.stringify(red));
  // now a blue Mixing stroke across it, top to bottom
@@ -39,6 +39,14 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await preset('Smear (empty brush)');await p.evaluate(()=>{__gs.brush.size=30;});
  await drag(128,128,128,200);
  const sm=await px(128,190);ok(sm&&sm[0]>200&&sm[1]<215&&sm[2]<205,'the empty smear brush dragged red down below the stroke '+JSON.stringify(sm));
+ // thick paint: a stroke with Paint thickness varies across its width, a flat one is even
+ const spread=async y=>{const v=await p.evaluate(y=>{const o=[];for(let x=-16;x<=16;x+=1){const d=__gs.captureRegionNow(__gs.doc.active.target,150,y+x,1,1).data;o.push(d[0]+d[1]+d[2]);}return o;},y);return Math.max(...v)-Math.min(...v);};
+ await preset('Oil mixer');await setColour([.2,.6,.3]);await p.evaluate(()=>{__gs.brush.size=40;__gs.brush.mixThick=0;__gs.brush.mixBristles=24;});await drag(30,230,226,230);
+ const flat=await spread(230);
+ await p.evaluate(()=>{__gs.brush.mixThick=.8;});await drag(30,240,226,240);
+ const thick=await spread(240);
+ console.log('flat spread',flat,'thick spread',thick);
+ ok(thick>flat+25,'Paint thickness makes the stroke surface vary (ridges and lit edges)');
  // dry paint: no more mixing from wet pickup (dry paint is picked up far less)
  await p.evaluate(()=>{for(const L of __gs.allLayers())if(L._wet)L._wet.until=0;});
  ok(errs.length===0,'no page errors '+errs.slice(0,2).join(' | '));
