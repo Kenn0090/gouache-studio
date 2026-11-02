@@ -263,7 +263,7 @@ function buildBrushPanel(){
   const bar3=ui.mode==='p3d'&&!sm&&!tonal;sizeSlider=null;
   if(!bar3){sizeSlider=S('bSize','Size','size',0,1000,1,v=>v+'px',sizeMap);box.append(sizeSlider.el);}
   box.append(brushDefaultSizeButton('bDefaultSize'));
-  if(sm)box.append(S('bStr','Strength','strength',0,1,.01,pct).el,S('bCharge','Paint load','charge',0,1,.01,pct).el,S('bPaintMix','Paint mixing','paintMix',0,1,.01,pct).el,el('div',{class:'frow'},el('label',{text:'Mix colours like'}),seg([['p','Pigment'],['l','Lab']],brush.mixLab?'l':'p',v=>{brush.mixLab=v==='l';brushEdited();},'Mixing method')));
+  if(sm)box.append(S('bStr','Strength','strength',0,1,.01,pct).el,S('bCharge','Paint load','charge',0,1,.01,pct).el,S('bPaintMix','Paint mixing','paintMix',0,1,.01,pct).el,S('bHueMix','Hue blending','hueMix',0,1,.01,pct).el,el('div',{class:'chips'},C('bSampleAll','Sample visible layers','sampleAll')) ,el('div',{class:'frow'},el('label',{text:'Mix colours like'}),seg([['p','Pigment'],['l','Lab']],brush.mixLab?'l':'p',v=>{brush.mixLab=v==='l';brushEdited();},'Mixing method')));
   else if(!tonal&&!bar3)box.append(S('bOp','Opacity','opacity',0,1,.01,pct).el);
   if(!bar3)box.append(S('bFlow','Flow','flow',.01,1,.01,pct).el);
   if(!brush.tip&&!bar3)box.append(S('bHard','Hardness','hardness',0,1,.01,pct).el);
@@ -316,7 +316,7 @@ function drawPreviewOn(cv,note){
     if(tool==='brush')clearTarget(T.t);
     else if(tool==='erase')clearTarget(T.t,[ui.fg[0],ui.fg[1],ui.fg[2],1]);
     else{bindTarget(T.t);gl.enable(gl.SCISSOR_TEST);const n=6;for(let i=0;i<n;i++){const c=i%2?ui.bg:ui.fg,x0=Math.round(i*W/n),x1=Math.round((i+1)*W/n);gl.scissor(x0,0,x1-x0,H);gl.clearColor(c[0],c[1],c[2],1);gl.clear(gl.COLOR_BUFFER_BIT);}gl.disable(gl.SCISSOR_TEST);}
-    const o=Object.assign({},brush,{tool,color:ui.fg.slice(),size:Math.max(1,brush.size*scale),smoothing:0});
+    const o=Object.assign({},brush,{tool,color:ui.fg.slice(),size:Math.max(1,brush.size*scale),smoothing:0,sampleAll:false});
     const L={target:T.t,lockAlpha:false},pad=Math.min(W*.12,o.size*.7+6),N=90;
     const pt=i=>{const t=i/N;return [pad+(W-2*pad)*t,H/2+Math.sin(t*Math.PI*2)*H*.2,Math.max(.04,Math.pow(Math.sin(t*Math.PI),.8))];};
     const p0=pt(0);beginStroke(L,p0[0],p0[1],p0[2],o);for(let i=1;i<=N;i++){const q=pt(i);addPoint(q[0],q[1],q[2]);}endStroke(false);
