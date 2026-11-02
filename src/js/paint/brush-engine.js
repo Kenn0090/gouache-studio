@@ -1,5 +1,5 @@
 /* ================= Brush engine ================= */
-const BRUSH_DEFAULTS={size:24,opacity:1,flow:1,hardness:.85,spacing:.06,grain:0,pattern:0,patSize:10,patDen:1,patRamp:0,smoothing:.25,pSize:true,pOpacity:false,minSize:.2,buildup:false,curve:0,strength:.6,charge:0,sampleAll:true,hueMix:0,
+const BRUSH_DEFAULTS={size:24,opacity:1,flow:1,hardness:.85,spacing:.06,grain:0,pattern:0,patSize:10,patDen:1,patRamp:0,texKey:'',texScale:128,texDepth:0,texInvert:false,taperStart:0,taperEnd:0,smoothing:.25,pSize:true,pOpacity:false,minSize:.2,buildup:false,curve:0,strength:.6,charge:0,sampleAll:true,hueMix:0,
   tip:null,angle:0,roundness:1,flipX:false,flipY:false,randFlipX:false,randFlipY:false,sizeJitter:0,angleJitter:0,scatter:0,count:1,bothAxes:false,followDir:false,
   hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,pigment:1,wet:0,pickup:0,mixLab:false,paintMix:.7,mix:false,mixLoad:.8,mixPick:.5,mixWet:.7,mixDry:0,mixUse:.2,mixBristles:0,mixDryB:0,mixThick:0,mixEven:false,mixWC:0,mixWCEdge:0,mixWCPools:0,mixWCGran:0,mixWCBloom:0,mixTooth:0,spray:0,sprayDen:.8,sprayMist:0,sprayVar:0,sprayFleck:0,sprayRing:0,spraySwirl:0,sprayPress:0,spraySolid:1,tooth:0,simP:'off',simLevel:.7,drip:0,dripAuto:0,dripWidth:1,smoothCurve:false};
 /* lazy mouse: the brush follows the pointer on a string of R pixels, so it only moves once the string is pulled tight */
@@ -88,7 +88,7 @@ function simPress(P,ix,iy,time,p0){const o=brush;if(!P||!P.sim||P.sim.pen||!o.si
   if(o.simP==='fixed')return clamp(o.simLevel||.7,.05,1);
   if(o.simP==='speed'){S.spd=S.spd*.8+(dist/dt)*.2;return clamp(1.05-S.spd/Math.max(.6,o.size*.02),.1,1);}
   return clamp(.08+.92*S.travel/Math.max(30,o.size*1.1),.08,1);}
-function taperTail(s){if(!s.simOn)return;const len=Math.max(30,s.o.size*2.2),n=20,p0=s.p;for(let i=1;i<=n;i++)addPointLin(s.x+Math.cos(s.dir)*len/n,s.y+Math.sin(s.dir)*len/n,Math.max(.05,p0*Math.pow(1-i/n,1.3)));}
+function taperTail(s){if(!s.simOn&&!(s.o.taperEnd>0))return;const len=s.o.taperEnd>0?s.o.taperEnd:Math.max(30,s.o.size*2.2),n=20,p0=s.p;for(let i=1;i<=n;i++)addPointLin(s.x+Math.cos(s.dir)*len/n,s.y+Math.sin(s.dir)*len/n,Math.max(.05,p0*Math.pow(1-i/n,1.3)));}
 function dripSpawn(s,x,y,k){const o=s.o,r=radiusAt(s.p);if(s.drips.length>=60)return;
   s.drips.push({x,y,w:Math.max(1.8,o.size*.042*(o.dripWidth||1))*(.7+Math.random()*.7),len:0,max:r*(1.5+Math.random()*4)*(.6+k),sp:45+Math.random()*110,ph:Math.random()*6,done:false});}
 /* when the button is released the drips still running finish most of their run at once, so a stroke keeps its drips */
@@ -131,7 +131,7 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy){
   else if(!(x+ext<0||x-ext>W||y+ext<0||y-ext>H))copies.push([x,y]);
   if(!copies.length)return;
   const U={uRadius:r,uExtent:ext,uSize:[W,H],uHard:s.solid?.9:o.hardness,uGrain:s.solid?0:o.grain,uGrainScale:s.gScale,uPeriod:s.gPeriod,
-    uUseTip:!!tip,uTip:tip?tip.tex:dummy,uAngle:ang,uRound:o.roundness||1,uFlip:[fx,fy],uTipAspect:tip?tip.w/tip.h:1,uSpray:o.spray>0&&!tip&&!s.solid?[o.spray,o.sprayDen*(1-(o.sprayPress||0)*(1-pcurve(s.p,o))),Math.random()*997,o.sprayMist]:[0,0,0,0],uSprayVar:o.sprayVar||0,uSprayFleck:o.spray>0&&!tip&&!s.solid?(o.sprayFleck||0)*((o.pSize||o.pFlow||o.pOpacity||o.simP!=='off')?.3+.7*pcurve(s.p,o):1):0,uSprayRing:o.spray>0&&!tip&&!s.solid?[o.sprayRing||0,o.spraySwirl||0,(s.ph=(s.ph||0)+.9+Math.random()*.5)]:[0,0,0],uSpraySolid:o.spraySolid==null?1:o.spraySolid,uPat:o.pattern>0?[o.pattern,o.patSize||10,(o.patDen==null?1:o.patDen)*(.4+.6*pcurve(s.p,o))*(o.patRamp>0?.22+.78*Math.min(1,(s.trav||0)/o.patRamp):1),s.patSeed==null?(s.patSeed=Math.random()*400):s.patSeed]:[0,10,1,0],uPaper:o.tooth>0?(()=>{const pi=s.pap||(s.pap=(typeof paperInfo==='function'&&paperInfo())||{t:4,sc:1});return [pi.t,pi.sc,o.tooth];})():[0,1,0]};
+    uUseTip:!!tip,uTip:tip?tip.tex:dummy,uAngle:ang,uRound:o.roundness||1,uFlip:[fx,fy],uTipAspect:tip?tip.w/tip.h:1,uSpray:o.spray>0&&!tip&&!s.solid?[o.spray,o.sprayDen*(1-(o.sprayPress||0)*(1-pcurve(s.p,o))),Math.random()*997,o.sprayMist]:[0,0,0,0],uSprayVar:o.sprayVar||0,uSprayFleck:o.spray>0&&!tip&&!s.solid?(o.sprayFleck||0)*((o.pSize||o.pFlow||o.pOpacity||o.simP!=='off')?.3+.7*pcurve(s.p,o):1):0,uSprayRing:o.spray>0&&!tip&&!s.solid?[o.sprayRing||0,o.spraySwirl||0,(s.ph=(s.ph||0)+.9+Math.random()*.5)]:[0,0,0],uSpraySolid:o.spraySolid==null?1:o.spraySolid,uTexImg:(s.texT===undefined&&(s.texT=o.texDepth>0&&o.texKey&&typeof dualTip==='function'?dualTip({tipKey:o.texKey}):null),s.texT)?s.texT.tex:dummy,uTexSet:[o.texScale||128,s.texT?o.texDepth:0,o.texInvert?1:0,1.5],uPat:o.pattern>0?[o.pattern,o.patSize||10,(o.patDen==null?1:o.patDen)*(.4+.6*pcurve(s.p,o))*(o.patRamp>0?.22+.78*Math.min(1,(s.trav||0)/o.patRamp):1),s.patSeed==null?(s.patSeed=Math.random()*400):s.patSeed]:[0,10,1,0],uPaper:o.tooth>0?(()=>{const pi=s.pap||(s.pap=(typeof paperInfo==='function'&&paperInfo())||{t:4,sc:1});return [pi.t,pi.sc,o.tooth];})():[0,1,0]};
   if(s.dualU){if(o.dual.random)s.dualU.uDualOff=[Math.random()*s.dualU.uDualSize[0],Math.random()*s.dualU.uDualSize[1]];Object.assign(U,s.dualU);}
   if(o.tool==='smudge'&&s.space){/* on the 3D model: the dab goes into the screen buffer, then pulls paint through the model's UVs (mesh-pull.js) */
     clearTarget(s.space.buf);for(const c of copies)run(P.stamp,s.space.buf,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:0},uDabCol:[0,0,0]}),{blend:'max'});
@@ -182,7 +182,7 @@ function addPointLin(x,y,p){
   if(len>0.5)s.dir=Math.atan2(dy,dx);
   const sampled=!!s.sampleT&&refreshStrokeSample(s);let t=s.carry,guard=0;
   if(typeof dualBatchStart==='function')dualBatchStart(s);
-  try{while(t<=len&&guard++<20000){const f=t/len,pp=s.p+(p-s.p)*f;s.sampleBlend=sampled?f:1;stamp(s.x+dx*f,s.y+dy*f,pp);t+=spacingAt(pp);}}
+  try{while(t<=len&&guard++<20000){const f=t/len;let pp=s.p+(p-s.p)*f;if(s.o.taperStart>0)pp*=Math.max(.06,Math.min(1,((s.trav||0)-len+t)/s.o.taperStart));s.sampleBlend=sampled?f:1;stamp(s.x+dx*f,s.y+dy*f,pp);t+=spacingAt(pp);}}
   finally{if(s.dualBatch)dualBatchFlush(s);}
   if(s.drips&&s.o.dripAuto>0){const r=radiusAt(p),n=s.o.dripAuto*len/Math.max(8,r*3);if(Math.random()<n){const g=(Math.random()+Math.random()+Math.random()-1.5)*.7;dripSpawn(s,x+g*r,y+r*(.35+.35*Math.random()),Math.random()*.4);}}
   s.sampleBlend=1;if(s.samplePrevT){release(s.samplePrevT);s.samplePrevT=null;}s.carry=t-len;s.x=x;s.y=y;s.p=p;requestRender(true);

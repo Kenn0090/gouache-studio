@@ -184,7 +184,7 @@ function renderLibrary(){const box=$('#libBody');box.replaceChildren();
     el('button',{class:'btn sm',type:'button',text:'Unfold all',onclick:()=>{libFoldSave(new Set());renderLibrary();}}));
   box.append(bar);
   if(brushSession.recent.length)box.append(section('recent','Recent brushes',null,t=>t.append(...brushSession.recent.map(p=>brushLibraryTile(p,true)))));
-  for(const set of library)box.append(section(set.id,set.builtin?set.name:set.name+' · '+set.presets.length,set.builtin?null:el('button',{text:'Remove','aria-label':'Remove brush set '+set.name,onclick:e=>{e.stopPropagation();removeSet(set);}}),t=>{for(const p of set.presets)t.append(brushLibraryTile(p,false));}));
+  for(const set of library)box.append(section(set.id,set.builtin?set.name:set.name+' · '+set.presets.length,set.builtin?null:el('button',{text:'Remove','aria-label':'Remove brush set '+set.name,onclick:e=>{e.stopPropagation();removeSet(set);}}),t=>{for(const p of set.presets){const tile=brushLibraryTile(p,false);if(!set.builtin){tile.title+=' · right-click to delete';tile.addEventListener('contextmenu',e=>{e.preventDefault();confirmDlg('Delete brush','Delete “'+p.name+'” from '+set.name+'? This cannot be undone.','Delete',()=>removeBrush(set,p));});}t.append(tile);}}));
   if(typeof renderDualPicker==='function')queueMicrotask(renderDualPicker);}
 /* Shared range gestures use displayed units: five percentage points, degrees or pixels.
    Keep mapped sliders (brush size, tiling) in their value space when snapping. Ctrl-wheel adjusts the temporary snap increment. */
@@ -283,6 +283,7 @@ function buildBrushPanel(){
   if(!bar3)box.append(S('bFlow','Flow','flow',.01,1,.01,pct).el);
   if(!brush.tip&&!bar3)box.append(S('bHard','Hardness','hardness',0,1,.01,pct).el);
   box.append(S('bTooth','Paper tooth','tooth',0,1,.01,v=>v?Math.round(v*100)+'%':'off').el);
+  if(brush.texKey)box.append(S('bTexD','Texture depth','texDepth',0,1,.01,pct).el,S('bTexS','Texture size','texScale',16,1024,1,v=>Math.round(v)+' px').el);
   box.append(S('bSpace','Spacing','spacing',.01,1.5,.01,pct).el,S('bGrain','Grain','grain',0,1,.01,pct).el,S('bSmooth','Smoothing','smoothing',0,1,.01,pct).el,S('bLazy','Lazy mouse','lazy',0,200,1,v=>v?v+' px':'off').el,el('div',{class:'chips'},C('bSmCurve','Smooth curves (round off corners)','smoothCurve')));
   if(ui.tool==='brush'){box.append(el('div',{class:'sub',text:'Spray paint'}),S('bSpDot','Spray dot size','spray',0,12,.1,v=>v?v.toFixed(1)+' px':'off').el);
     if(brush.spray>0)box.append(S('bSpDen','Spray density','sprayDen',.05,2,.01,pct).el,S('bSpMist','Overspray mist','sprayMist',0,1,.01,pct).el);
@@ -365,6 +366,8 @@ const store={db:null,
 function serializeSet(set){const tips=[],idx=new Map();
   const presets=set.presets.map(p=>{const o={name:p.name,tool:p.tool,maps:p.maps};for(const k of SETTING_KEYS)if(k!=='tip')o[k]=p[k];
     if(p.tip){if(!idx.has(p.tip)){idx.set(p.tip,tips.length);tips.push({name:p.tip.name,w:p.tip.w,h:p.tip.h,alpha:p.tip.alpha});}o.tipIndex=idx.get(p.tip);}return o;});
+  /* a dual brush points at its second tip by name: keep that tip with the set so it survives a restart */
+  for(const p of set.presets)for(const key of [p.dual&&p.dual.tipKey,p.texKey]){const k=typeof key==='string'&&key.startsWith('u:')?key.slice(2):'';if(!k)continue;const t=set.tips.find(x=>x.name===k);if(t&&!idx.has(t)){idx.set(t,tips.length);tips.push({name:t.name,w:t.w,h:t.h,alpha:t.alpha});}}
   return {id:set.id,name:set.name,presets,tips};}
 function deserializeSet(d){const tips=d.tips.map(t=>makeTip(t.name,t.w,t.h,t.alpha));
   return {id:d.id,name:d.name,tips,presets:d.presets.map(o=>{const p=Object.assign({},o);p.tip=o.tipIndex!=null?tips[o.tipIndex]:null;delete p.tipIndex;return p;})};}
@@ -373,6 +376,11 @@ function addSet(set){library.push(set);renderLibrary();saveSet(set);}
 function removeSet(set){const i=library.indexOf(set);if(i<0)return;library.splice(i,1);
   if(set.presets.some(p=>p===activePreset||p===brushSession.source)||(brush.tip&&set.tips.includes(brush.tip)))applyPreset(PRESETS[0]);
   for(const t of set.tips)if(!library.some(s2=>s2.tips.includes(t)))disposeTip(t);store.del(set.id);renderLibrary();toast('Removed “'+set.name+'”.');}
+/* (0.93.1, Kenn) delete a single imported or saved brush: right-click it in the Brushes panel */
+function removeBrush(set,p){const i=set.presets.indexOf(p);if(i<0)return;if(set.presets.length===1){removeSet(set);return;}
+  set.presets.splice(i,1);if(p===activePreset||p===brushSession.source)applyPreset(PRESETS[0]);
+  if(p.tip&&!library.some(s2=>s2.presets.some(q=>q.tip===p.tip))){set.tips=set.tips.filter(t=>t!==p.tip);disposeTip(p.tip);}
+  brushSession.recent=brushSession.recent.filter(q=>q!==p);saveSet(set);renderLibrary();toast('Deleted “'+p.name+'”.');}
 /* save the current settings as a brush in "My brushes" (kept per browser / per computer) */
 function dlgSaveBrush(){const inp=el('input',{type:'text',id:'sbName',value:activePreset?activePreset.name+' 2':'My brush',maxlength:40});
   const anyMaps=mapBrushTargets().length>0;

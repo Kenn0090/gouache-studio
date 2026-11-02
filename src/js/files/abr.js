@@ -10,7 +10,7 @@ function readAbrLegacy(buf){const dv=new DataView(buf),src=new Uint8Array(buf),v
         const a=new Uint8Array(w*h);for(let k=0;k<w*h;k++)a[k]=raw[k*bpc];out.push({name,spacing:spacing/100,tip:{w,h,alpha:a}});}}
     o=st+size;}
   return out;}
-function presetFromAbr(b,samples,notes){const sh=b.shape||{};
+function presetFromAbr(b,samples,notes,extraTips,pats,patTips){const sh=b.shape||{};
   const p=Object.assign({},BRUSH_DEFAULTS,{name:b.name||'Brush',tool:'brush',size:clamp(Math.round(sh.size||30),1,5000),spacing:sh.spacingOn===false?.05:clamp(sh.spacing||.25,.01,1.5),
     angle:sh.angle||0,roundness:clamp(sh.roundness==null?1:sh.roundness,.05,1),flipX:!!sh.flipX,flipY:!!sh.flipY,pSize:false,pOpacity:false,minSize:0,smoothing:.2});
   if(sh.type==='sampled'){const t=samples.get(sh.sampledData);if(t)p.tip=t;else notes.add('Some brushes referenced tip images missing from the file; they use a round tip.');}
@@ -21,7 +21,23 @@ function presetFromAbr(b,samples,notes){const sh=b.shape||{};
     p.sizeJitter=sz.jitter||0;if(an.control==='direction'||an.control==='initial direction')p.followDir=true;p.angleJitter=an.jitter||0;p.randFlipX=!!sd.flipX;p.randFlipY=!!sd.flipY;}
   const sc=b.scatter;if(sc){p.scatter=clamp((sc.scatterDynamics&&sc.scatterDynamics.jitter)||0,0,4);p.bothAxes=!!sc.bothAxes;p.count=clamp(Math.round(sc.count||1),1,8);}
   const tr=b.transfer;if(tr){if((tr.opacityDynamics&&tr.opacityDynamics.control==='pen pressure')||(tr.flowDynamics&&tr.flowDynamics.control==='pen pressure'))p.pOpacity=true;}
-  if(b.texture)notes.add('Texture (pattern) settings are not applied.');if(b.dualBrush)notes.add('Dual brush settings are not applied.');if(b.colorDynamics)notes.add('Color dynamics are not applied.');
+  /* (0.93.2, Kenn) the settings the first importer left out: Color dynamics, Dual brush and Texture */
+  const frac=v=>{v=+v||0;return clamp(v>1?v/100:v,0,1);};
+  const cd=b.colorDynamics;if(cd){p.hueJitter=frac(cd.hue);p.satJitter=frac(cd.saturation);p.valJitter=frac(cd.brightness);p.jitterPerStroke=cd.perTip===false;
+    if(cd.foregroundBackground&&cd.foregroundBackground.control&&cd.foregroundBackground.control!=='off'||cd.foregroundBackground&&cd.foregroundBackground.jitter>0)notes.add('Foreground/background colour jitter and purity were ignored; hue, saturation and brightness jitter were applied.');
+    else notes.add('Color dynamics (hue, saturation and brightness jitter) were applied; purity was ignored.');}
+  const db=b.dualBrush;if(db){const sh=db.shape||{};let t=null;
+    if(sh.type==='sampled')t=samples.get(sh.sampledData)||null;
+    if(!t&&extraTips){const hard=sh.type==='computed'&&sh.hardness!=null?clamp(sh.hardness,0,1):.8,c=tileCanvas({hardness:hard,roundness:1,grain:0,tool:'brush'}),d=c.getContext('2d').getImageData(0,0,64,64).data,A=new Uint8Array(4096);for(let i=0;i<4096;i++)A[i]=d[i*4+3];
+      t=makeTip('Dual tip '+(extraTips.length+1)+' · '+(p.name||'Brush'),64,64,A);extraTips.push(t);}
+    if(t){p._dualTip=t;const bm=String(db.blendMode||'multiply').toLowerCase();
+      p.dual=Object.assign({},DUAL_DEFAULTS,{tipKey:'',size:clamp(Math.round(sh.size||40),2,2000),spacing:clamp(Math.round((db.spacing||sh.spacing||.25)*100),1,1000),scatter:clamp(Math.round(((db.useScatter===false?0:(db.scatterDynamics&&db.scatterDynamics.jitter))||0)*100),0,400),count:clamp(Math.round(db.count||1),1,8),mode:/subtract|knock|height/.test(bm)?1:0,amount:100});
+      notes.add('Dual brush settings were converted to this app’s Dual brush.');}
+    else notes.add('Some dual brushes had a tip that could not be read and were left out.');}
+  const tx=b.texture;if(tx){const dep=frac(tx.depth),pat=pats&&pats.get(tx.id);
+    if(pat&&pat.data&&pat.bounds&&pat.bounds.w>0&&pat.bounds.h>0&&extraTips){let t=patTips.get(tx.id);if(!t){t=bzTexTipFromRGBA('Texture · '+(pat.name||'pattern')+' '+(patTips.size+1),pat.data,pat.bounds.w,pat.bounds.h);patTips.set(tx.id,t);extraTips.push(t);}
+      p.texKey='u:'+t.name;p.texDepth=clamp(dep,0,1);p.texScale=clamp(Math.round(pat.bounds.w*(tx.scale>10?tx.scale/100:(tx.scale||1))),16,1024);p.texInvert=!!tx.invert;notes.add('Texture (pattern) pictures were applied as the brush texture.');}
+    else{p.grain=clamp(dep*.9,0,1);notes.add('Texture (pattern) was approximated with Grain because its picture was not in the file.');}}
   return p;}
 async function importABR(file){
   const buf=await file.arrayBuffer(),dv=new DataView(buf),ver=dv.getInt16(0),setName=baseName(file.name),notes=new Set(),presets=[],tips=[];
@@ -30,7 +46,9 @@ async function importABR(file){
       else presets.push(Object.assign({},BRUSH_DEFAULTS,{name:r.name,tool:'brush',size:clamp(r.size||20,1,5000),hardness:clamp(r.hardness,0,1),roundness:clamp(r.roundness||1,.05,1),angle:r.angle||0,spacing:clamp(r.spacing||.25,.01,1.5),pSize:false}));}}
   else{needLib('agPsd','Brush import');let abr;try{abr=agPsd.readAbr(new Uint8Array(buf));}catch(e){throw new Error('This brush file could not be read: '+e.message);}
     const samples=new Map();for(const s of abr.samples){if(s.bounds.w>0&&s.bounds.h>0){const t=makeTip('Tip '+(samples.size+1),s.bounds.w,s.bounds.h,s.alpha);samples.set(s.id,t);tips.push(t);}}
-    for(const b of abr.brushes){const p=presetFromAbr(b,samples,notes);if(p.tip&&p.tip.name.startsWith('Tip '))p.tip.name=p.name;presets.push(p);}
+    const pats=new Map((abr.patterns||[]).map(q=>[q.id,q])),patTips=new Map();
+    for(const b of abr.brushes){const p=presetFromAbr(b,samples,notes,tips,pats,patTips);if(p.tip&&p.tip.name.startsWith('Tip '))p.tip.name=p.name;presets.push(p);}
+    for(const p of presets)if(p._dualTip){p.dual.tipKey='u:'+p._dualTip.name;delete p._dualTip;}
     const used=new Set(presets.map(p=>p.tip));for(const t of samples.values())if(!used.has(t))presets.push(Object.assign({},BRUSH_DEFAULTS,{name:t.name,tool:'brush',tip:t,size:clamp(Math.max(t.w,t.h),1,5000),spacing:.25,pSize:false}));}
   if(!presets.length)throw new Error('No brushes were found in “'+file.name+'”.');
   const set={id:'abr-'+Date.now(),name:setName,presets,tips};addSet(set);applyPreset(presets[0]);
