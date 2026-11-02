@@ -1,3 +1,7 @@
+## 0.93.2
+
+- **Procreate wet brushes** (watercolour, washes, blenders) now import as the app's mixing brushes: pick-up, paint load, wetness and watercolour edges (an approximation).
+
 ## 0.93.1
 
 - **Imported brushes keep their texture pictures, tapering and pressure curves** (new Texture depth and Texture size in the Brush panel).

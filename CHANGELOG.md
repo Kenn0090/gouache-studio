@@ -1,3 +1,7 @@
+## 0.93.2
+
+- **Procreate wet brushes come in as mixing brushes.** Wet mix (mixing, load, wetness) and wet edges are mapped onto the app's mixing brush (pick-up from the canvas, paint load, wetness and watercolour edges), so imported watercolour, wash and blender brushes behave like wet paint. It is an approximation: the paint maths differs between apps.
+
 ## 0.93.1
 
 - **Imported brushes keep their texture pictures, tapering and pressure curves.** A brush can now carry a texture picture that tiles over the canvas (Brush panel: **Texture depth** and **Texture size**). Photoshop patterns, Clip Studio paper textures and Procreate grain pictures come across as that texture (Procreate's own built-in grains are not in the file, so those still use the Grain setting). Procreate pressure curves become the Curve setting, and tapering (Procreate, Clip Studio) becomes a start and end taper length. Still not applied: Procreate wet mix, wet edges and sub-brushes, and Clip Studio's ink and water colour mixing.
