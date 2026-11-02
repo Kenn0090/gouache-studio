@@ -1,3 +1,8 @@
+## 0.87.0
+
+- **Ctrl+click** the canvas to select the layer under the pointer; **Ctrl+Alt+click** to duplicate it (only the selected part when there is a selection). The cursor shows what will happen.
+- **Stamp visible, Ctrl+Alt+Shift+E:** merges everything visible into a new layer on top and keeps the layers below.
+
 ## 0.86.1
 
 - **Calmer papers:** much less grain and gentler colours in every paper, so they work as neutral backgrounds. Tooth strength can still be raised.

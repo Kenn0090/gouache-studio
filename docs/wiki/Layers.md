@@ -103,3 +103,10 @@ Shape layers, live arrays (copies in a line, grid or circle) and layer styles (s
 Document and panel tabs use **right-click › Close** instead of a close button beside the tab name. Closing an unsaved document still asks whether to save; **Ctrl+W** also closes the active document. Closed panels can be reopened from the Window menu.
 
 The material’s **Rotation** slider turns all its channels together. UV projection has one angle; Triplanar, Planar and Spherical projections have separate X, Y and Z sliders. You can also type an exact angle. Sliders follow viewport-handle changes, Reset and Undo.
+
+
+## Layer shortcuts on the canvas
+
+- **Ctrl+click** the canvas selects the layer that owns the clicked pixel. The cursor shows a move-cross while Ctrl is held.
+- **Ctrl+Alt+click** duplicates the top-most layer under the pointer. With a selection, only the selected part is copied.
+- **Ctrl+Alt+Shift+E** (Layer › Merge › Stamp visible) makes a new layer on top with everything visible merged into it, and keeps the layers below.

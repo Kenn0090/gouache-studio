@@ -1,3 +1,9 @@
+## 0.87.0
+
+- **Ctrl+click picks a layer.** Hold **Ctrl** and click the canvas to select the layer that owns that pixel (the top-most visible layer with paint there). The cursor changes to a move-cross while Ctrl is held. A guide under the pointer still gets dragged as before.
+- **Ctrl+Alt+click duplicates a layer.** Hold **Ctrl+Alt** and click to copy the top-most layer under the pointer. With a selection, only the selected part is copied, into a layer named "(selection)". The cursor shows two crosses.
+- **Stamp visible (Ctrl+Alt+Shift+E).** Makes a new layer on top with everything visible merged into it and keeps all the layers below, like Photoshop. Also in the Layer menu as **Stamp visible (new layer)**. (Merge visible, which combines the layers into one, is still there.)
+
 ## 0.86.1
 
 - **Calmer papers.** The papers now read as neutral backgrounds: far less grain and gentler colour variation in every paper (the wood, kraft and parchment are much plainer). **Tooth strength** still goes up to 150% if you want the surface to show more. The Mixing brushes still feel the paper's tooth, which is set by the brush's Paper tooth slider.
