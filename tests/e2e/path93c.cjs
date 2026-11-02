@@ -24,6 +24,16 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(c2<=c0&&c3>=c0,'Projection depth changes how far from the surface the paint reaches ('+c2+' ≤ '+c0+' ≤ '+c3+')');
  // follow path off with an up axis renders without GL errors
  const err=await set(()=>{const L=__gs.allLayers().find(L=>L.path?.kind==='3d');L.path.depthK=1;L.path.follow=false;L.path.up='z';__gs.pathRender(L);return __gs.gl.getError();});ok(err===0,'Follow path off with an up axis renders cleanly');
+ // Filled path: a closed path fills its inside on the surface
+ await set(()=>{const L=__gs.allLayers().find(L=>L.path?.kind==='3d');L.path.follow=true;L.path.sym=null;__gs.pathRender(L);});
+ const hit2=p.locator('#v3Hit'),h2=await hit2.boundingBox();await p.locator('#pathAdd').click().catch(()=>{});
+ for(const [x,y] of [[.40,.42],[.60,.42],[.60,.58],[.40,.58]])await p.mouse.click(h2.x+h2.width*x,h2.y+h2.height*y);
+ await p.mouse.click(h2.x+h2.width*.40,h2.y+h2.height*.42);await p.waitForTimeout(300);
+ const closed=await set(()=>{const L=__gs.allLayers().find(L=>L.path?.kind==='3d');return {paths:L.paths.length,closed:L.path.closed,pts:L.path.points.length};});
+ ok(closed.closed&&closed.pts>=3,'clicking the first point closes a surface path ('+JSON.stringify(closed)+')');
+ const stroke=await set(()=>{const L=__gs.allLayers().find(L=>L.path?.kind==='3d');L.paths.forEach((P,i)=>{if(i!==L.pathCur)P.hidden=true;});L.path.width/=40;L.path.mode='stroke';__gs.pathRender(L);return 0;});const cs=await cnt();
+ const filled=await set(()=>{const L=__gs.allLayers().find(L=>L.path?.kind==='3d');L.path.mode='fill';__gs.pathRender(L);return __gs.gl.getError();});const cf=await cnt();
+ ok(filled===0&&cf>cs*2&&cf>100,'Filled path fills the inside of the outline ('+cs+' → '+cf+' pixels)');
  // the panel shows the controls
  await p.evaluate(()=>__gs.buildBrushPanel&&__gs.buildBrushPanel());await p.waitForTimeout(200);
  const ui=await p.evaluate(()=>({depth:!!document.getElementById('pathDepth'),follow:!!document.getElementById('pathFollow'),sym:!!document.getElementById('pathSymx'),reverse:!!document.getElementById('pathReverse'),disp:!!document.querySelector('.pathdisp')}));

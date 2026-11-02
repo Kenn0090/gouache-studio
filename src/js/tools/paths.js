@@ -74,12 +74,33 @@ function pathSurfaceMask(L,samples,coverage,stamps){if(!P_SURFACEPATH)P_SURFACEP
       gl.bindVertexArray(V);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,E);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint32Array(tris),gl.STREAM_DRAW);bindTarget(T);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.enable(gl.SCISSOR_TEST);gl.scissor(Math.max(0,Math.floor(bb[0]-1)),Math.max(0,Math.floor(bb[1]-1)),Math.ceil(bb[2]-bb[0]+2),Math.ceil(bb[3]-bb[1]+2));gl.enable(gl.BLEND);gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);
       useProg(P_SURFACEPATH,{uUVs:1,uShift:[0,0],uH:dummy,uDisp:0,uUseH:false,uA:a.p,uB:b.p,uNA:a.n,uNB:b.n,uRadius:[r*(P.pressure?a.pressure:1),r*(P.pressure?b.pressure:1)],uDepth:r*1.2*(P.depthK||1),uFollow:P.follow===false?0:1,uUp:PATH_UP[P.up||'y']||[0,1,0],uHard:P.hardness,uTip:tip?.tex||dummy,uUseTip:!!tip,uAspect:tip?tip.w/tip.h:1});gl.drawElements(gl.TRIANGLES,tris.length,gl.UNSIGNED_INT,0);}}
   finally{gl.disable(gl.SCISSOR_TEST);gl.disable(gl.BLEND);gl.blendEquation(gl.FUNC_ADD);gl.bindVertexArray(vao);gl.deleteVertexArray(V);gl.deleteBuffer(E);}}
+/* Filled path (3D): everything on the surface that lies inside the closed path as seen along the path's average direction. The shape is the path's outline
+   flattened onto a plane facing that direction; a surface point is filled when it is inside that outline, facing roughly the same way and not too far in front or behind. */
+const FS_SURFACEFILL=`in vec3 vP; in vec3 vN; uniform vec3 uC; uniform vec3 uAx; uniform vec3 uU; uniform vec3 uV; uniform float uDepth; uniform float uCos; uniform int uCount; uniform vec4 uPoly[48];
+void main(){vec3 q=vP-uC;float z=dot(q,uAx);if(abs(z)>uDepth||dot(normalize(vN),uAx)<uCos){o=vec4(0.0);return;}
+  vec2 p=vec2(dot(q,uU),dot(q,uV));bool inside=false;
+  for(int i=0;i<96;i++){if(i>=uCount)break;int j=(i+uCount-1)%uCount;vec4 A=uPoly[i/2],B=uPoly[j/2];vec2 a=(i%2==0)?A.xy:A.zw,b=(j%2==0)?B.xy:B.zw;
+    if((a.y>p.y)!=(b.y>p.y)&&p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y)+a.x)inside=!inside;}
+  float v=inside?1.0:0.0;o=vec4(v,v,v,v);}`;
+let P_SURFACEFILL=null;
+function pathSurfaceFill(L,samples,T){if(samples.length<3)return;if(!P_SURFACEFILL)P_SURFACEFILL=prog3(VS_3DPROJ,FS_SURFACEFILL);const m=v3.mesh,g=v3.gpu,C=pathMeshIndex(m),R=p3Range(),P=L.path;
+  let step=Math.ceil(samples.length/96);const pts=samples.filter((q,i)=>i%step===0).slice(0,96);if(pts.length<3)return;
+  const c=[0,0,0],ax=[0,0,0];for(const q of pts){for(let k=0;k<3;k++){c[k]+=q.p[k]/pts.length;ax[k]+=q.n[k];}}const A=norm3(ax),ref=Math.abs(A[1])<.9?[0,1,0]:[1,0,0],U=norm3(cross3(ref,A)),V=cross3(A,U);
+  const poly=pts.map(q=>{const d=sub3(q.p,c);return [dot3(d,U),dot3(d,V)];});let ext=0;for(const q of pts){const d=sub3(q.p,c);ext=Math.max(ext,Math.hypot(...d));}
+  const depth=Math.max(ext*.9,P.width)*(P.depthK||1),pad=depth+ext*.2,lo=c.map(v=>v-ext-pad),hi=c.map(v=>v+ext+pad),flat=new Float32Array(96*2+0);poly.forEach((q,i)=>{flat[i*2]=q[0];flat[i*2+1]=q[1];});const packed=new Float32Array(48*4);packed.set(flat.subarray(0,Math.min(flat.length,192)));
+  const V0=gl.createVertexArray(),E=gl.createBuffer(),tris=[],bb=[Infinity,Infinity,-Infinity,-Infinity];
+  const overlaps=(l,h)=>l.every((v,k)=>v<=hi[k]&&h[k]>=lo[k]);const visit=N=>{if(!overlaps(N.lo,N.hi))return;if(N.l){visit(N.l);visit(N.r);}else for(let j=N.a;j<N.b;j++){const t=C.ids[j],q=t*6;if(t<R.start||t>=R.start+R.count||!overlaps(C.bounds.subarray(q,q+3),C.bounds.subarray(q+3,q+6)))continue;for(let k=0;k<3;k++){const v=m.idx[t*3+k];tris.push(v);bb[0]=Math.min(bb[0],m.uv[v*2]*doc.w);bb[1]=Math.min(bb[1],m.uv[v*2+1]*doc.h);bb[2]=Math.max(bb[2],m.uv[v*2]*doc.w);bb[3]=Math.max(bb[3],m.uv[v*2+1]*doc.h);}}};visit(C.tree);
+  if(!tris.length){gl.deleteVertexArray(V0);gl.deleteBuffer(E);return;}
+  try{gl.bindVertexArray(V0);gl.bindBuffer(gl.ARRAY_BUFFER,g.vb);for(const [a,n,o] of [[0,3,0],[1,3,12],[2,2,24],[4,3,48]]){gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,n,gl.FLOAT,false,60,o);}gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,E);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint32Array(tris),gl.STREAM_DRAW);
+    bindTarget(T);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.enable(gl.SCISSOR_TEST);gl.scissor(Math.max(0,Math.floor(bb[0]-1)),Math.max(0,Math.floor(bb[1]-1)),Math.ceil(bb[2]-bb[0]+2),Math.ceil(bb[3]-bb[1]+2));gl.enable(gl.BLEND);gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);
+    useProg(P_SURFACEFILL,{uUVs:1,uShift:[0,0],uH:dummy,uDisp:0,uUseH:false,uC:c,uAx:A,uU:U,uV:V,uDepth:depth,uCos:.15,uCount:{int:pts.length},uPoly:{v4a:packed}});gl.drawElements(gl.TRIANGLES,tris.length,gl.UNSIGNED_INT,0);}
+  finally{gl.disable(gl.SCISSOR_TEST);gl.disable(gl.BLEND);gl.blendEquation(gl.FUNC_ADD);gl.bindVertexArray(vao);gl.deleteVertexArray(V0);gl.deleteBuffer(E);}}
 let P_PATHMERGE=null;
 function pathRender(L){if(L.path?.weld){weldPathRender(L);return;}if(!L.path||!L.mask||!pathValid(L))return;pathEnsure(L);const T=L.mask.target,cur=L.path;clearTarget(T,[0,0,0,1]);
   /* (0.93.3) every path has its own opacity: it is drawn into a spare picture and mixed into the layer's coverage at that opacity, the stronger of two paths winning where they cross.
      A layer saved before this kept its path's opacity as the layer's opacity; that moves into the path coverage the first time it is drawn. */
   let tmp=null;try{for(const P of L.paths){if(P.hidden||P.points.length<2||P.mode==='none')continue;L.path=P;if(!tmp)tmp=acquireD(T.depth);clearTarget(tmp,[0,0,0,1]);
-    const s=P.kind==='3d'?(P===cur&&L._pathSamples?L._pathSamples:pathSamples(P,true)):pathSamples(P,false);if(P.kind==='3d'){for(const set of pathMirrorSets(P,s))pathSurfaceMask(L,set,tmp);}
+    const s=P.kind==='3d'?(P===cur&&L._pathSamples?L._pathSamples:pathSamples(P,true)):pathSamples(P,false);if(P.kind==='3d'){if(P.mode==='fill'){if(!P.closed)continue;for(const set of pathMirrorSets(P,s))pathSurfaceFill(L,set,tmp);}else for(const set of pathMirrorSets(P,s))pathSurfaceMask(L,set,tmp);}
     else if(P.mode==='fill'){if(!P.closed)continue;rasterPoly(s.flatMap(a=>a.p),tmp,true);}
     else{useAux(tmp.depth);const o=Object.assign({},BRUSH_DEFAULTS,{tool:'brush',size:P.width,hardness:P.hardness,opacity:1,flow:1,spacing:P.spacing,pSize:P.pressure,minSize:.05,color:[1,1,1],noTint:true,angle:P.angle,roundness:P.roundness,tip:L._fillImg?.pathTip||null});
       beginStroke({target:tmp,maskOf:L,lockAlpha:false},s[0].p[0],s[0].p[1],s[0].pressure,o);for(let k=1;k<s.length;k++)addPoint(s[k].p[0],s[k].p[1],s[k].pressure);endStroke(false);}
@@ -202,7 +223,7 @@ function pathPanel(box){const L=pathActive(),P=L?.path;pathPanelFor=doc.active;$
   if(!P){box.append(el('p',{class:'note',text:'Start a path on the '+(ui.tool==='path'?'model.':'canvas.')}));return;}
   pathsPanel(box,L);
   const name=el('input',{id:'pathName',value:L.name,'aria-label':'Layer name',title:'Layer name'});name.onchange=()=>{const b=L.name,a=name.value.trim()||b;L.name=a;pushUndo({label:'Rename layer',refs:[L],undo(){L.name=b;},redo(){L.name=a;}});changed(L);};box.append(name,
-    seg((P.kind==='3d'?[['stroke','Paint along path']]:[['none','Path only'],['stroke','Brush stroke'],['fill','Fill']]),P.mode,v=>pathChange(p=>{p.mode=v;if(v==='fill'&&p.points.length>=3)p.closed=true;},'Path painting mode'),'Path painting mode'),
+    seg((P.kind==='3d'?[['stroke','Paint along path'],['fill','Filled path']]:[['none','Path only'],['stroke','Brush stroke'],['fill','Fill']]),P.mode,v=>pathChange(p=>{p.mode=v;if(v==='fill'&&p.points.length>=3)p.closed=true;},'Path painting mode'),'Path painting mode'),
     el('div',{class:'chips'},chk('pathClosed','Closed path',P.closed,v=>pathChange(p=>p.closed=v,'Close/open path')),chk('pathPressure','Point pressure',P.pressure,v=>pathChange(p=>p.pressure=v,'Path pressure'))));
   const sl=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:P[key],fmt,onInput:v=>{if(lockStop({node:L}))return;const b=pathSnap(L);L.path[key]=v;pathRender(L);clearTimeout(L._pathTimer);if(!L._pathBefore)L._pathBefore=b;L._pathTimer=setTimeout(()=>{const old=L._pathBefore;L._pathBefore=null;pathRecord(L,old,'Path '+label.toLowerCase());},400);}}).el;
   box.append(sl('pathWidth','Width','width',P.kind==='3d'?.001:1,P.kind==='3d'?2:1000,P.kind==='3d'?.001:1,v=>P.kind==='3d'?v.toFixed(3)+' units':Math.round(v)+' px'),sl('pathHard','Hardness','hardness',0,1,.01,pct),sl('pathOpacity','Opacity','opacity',0,1,.01,pct));

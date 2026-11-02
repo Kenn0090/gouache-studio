@@ -4,6 +4,7 @@
 - **Several paths in one layer** with a Paths panel (select, hide, rename, duplicate, copy, paste, delete), like Substance Painter.
 - **Path editing like Substance Painter:** click the line to add a point, double-click for smooth/corner, rectangle-select points, Delete, Reverse direction, and a separate opacity for each path.
 - **Surface path settings:** Projection depth, Follow path / Up axis, Symmetry, and Display options (handle size, colours, normals, tangents, direction).
+- **Filled path (3D):** a closed surface path can fill its inside on the model.
 - **P is the Path tool in 3D Paint** (Pen is Shift+P there).
 
 ## 0.93.2
