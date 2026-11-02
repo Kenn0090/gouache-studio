@@ -181,6 +181,7 @@ Turn on **Mixing brush** in the Brush panel (or pick a brush from **Mixing (real
 - **Paint on the brush** is how much paint it starts with (0 is an empty brush that only smears). **Paint runs out** is how quickly the load is used up.
 - **Wetness added** is how wet the canvas becomes where you paint. Wet paint mixes and smears; dry paint is covered by new paint and is hardly picked up.
 - **Dry after** dries wet paint by itself after that many seconds. Set it to *by hand* to keep paint wet until you press **Dry paint now**.
+- **Bristles** sets how many bristles the brush has (0 is a smooth brush). Each bristle carries its own paint, so a stroke is made of streaks. **Dry brush** makes bristles run out of paint sooner and leave gaps.
 - **Pick up from all visible layers** also picks up colour from the layers below.
 
 It works on a layer's colour in the Paint tab, with selections, symmetry, Lock alpha and undo. Masks, other maps and painting on the 3D model use the normal brushes.

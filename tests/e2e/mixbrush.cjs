@@ -20,24 +20,25 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const drag=async(x0,y0,x1,y1)=>{const a=at(x0,y0),z=at(x1,y1);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.move(z[0],z[1],{steps:24});await p.mouse.up();await p.waitForTimeout(200);};
  ok(await preset('Oil mixer'),'the Mixing presets exist in the library');
  // a plain red stroke first (turn mixing off in a copy of the preset)
- await p.evaluate(()=>{__gs.brush.mix=false;__gs.brush.size=30;__gs.brush.hardness=.9;});
+ await p.evaluate(()=>{__gs.brush.size=30;__gs.brush.followDir=false;__gs.brush.mixBristles=0;__gs.brush.mixUse=0;});
  await setColour([1,0,0]);await drag(30,128,226,128);
- const red=await px(128,128);ok(red&&red[0]>200&&red[1]<60&&red[2]<60,'plain red stroke is red '+JSON.stringify(red));
+ const red=await px(128,128);ok(red&&red[0]>200&&red[1]<60&&red[2]<60,'the first (wet) red stroke is red '+JSON.stringify(red));
  // now a blue Mixing stroke across it, top to bottom
- await preset('Oil mixer');await p.evaluate(()=>{__gs.brush.size=30;__gs.brush.followDir=false;});await setColour([0,0,1]);
+ await p.evaluate(()=>{__gs.brush.mixBristles=0;__gs.brush.mixPick=.7;});await setColour([0,0,1]);
  await drag(128,40,128,216);
  const top=await px(128,60),cross=await px(128,128),after=await px(128,200);
  console.log('top',top,'cross',cross,'after',after);
  ok(top&&top[2]>150&&top[0]<120,'the start of the stroke is blue');
  ok(cross&&cross[0]>40&&cross[2]>40,'where it crosses the red the paint is a mix (both red and blue present)');
  ok(after&&after[0]>20,'the brush carried red paint onwards past the crossing');
+ // dry paint is covered: the same blue stroke over dried red stays blue
  // undo
  await p.keyboard.press('Control+z');await p.waitForTimeout(300);
  const un=await px(128,60);ok(un&&un[0]>240&&un[1]>240,'undo removes the whole mixing stroke '+JSON.stringify(un));
  // smear brush (empty) pulls red sideways
  await preset('Smear (empty brush)');await p.evaluate(()=>{__gs.brush.size=30;});
  await drag(128,128,128,200);
- const sm=await px(128,190);ok(sm&&sm[0]>240&&sm[1]<225&&sm[2]<225,'the empty smear brush dragged red down below the stroke '+JSON.stringify(sm));
+ const sm=await px(128,190);ok(sm&&sm[0]>200&&sm[1]<215&&sm[2]<150,'the empty smear brush dragged red down below the stroke '+JSON.stringify(sm));
  // dry paint: no more mixing from wet pickup (dry paint is picked up far less)
  await p.evaluate(()=>{for(const L of __gs.allLayers())if(L._wet)L._wet.until=0;});
  ok(errs.length===0,'no page errors '+errs.slice(0,2).join(' | '));

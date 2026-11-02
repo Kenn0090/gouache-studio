@@ -1,3 +1,8 @@
+## 0.82.0
+
+- **Bristle brush:** the Mixing brush paints with bristles that each carry their own paint, giving streaks along the stroke and broken edges as it runs dry. New Bristles and Dry brush settings.
+- **Better mixing:** the brush drags colour from the paint ahead of it, does not fade to white on dry paper, and picks up and runs out by distance moved.
+
 ## 0.81.0
 
 - **Mixing brush:** paint where colours really mix. The brush carries paint and picks up more as it goes, and each layer remembers where it is wet. Turn on Mixing brush in the Brush panel or try the new Mixing (real paint) brushes. Includes Dry after and Dry paint now. Also fixed a stray "null" in the Layers panel.
