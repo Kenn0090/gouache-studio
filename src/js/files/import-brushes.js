@@ -64,7 +64,7 @@ function bzProcreateSettings(a,notes){const n=k=>{const v=bpFind(a,k);return typ
   const ps=n('dynamicsPressureSize'),po=n('dynamicsPressureOpacity');if(ps!=null)x.pSize=ps>0.02;if(po!=null)x.pOpacity=po>0.02;
   const jit=n('plotJitter');if(jit>0)x.scatter=Math.max(x.scatter||0,clamp(jit,0,2));
   const az=n('shapeAzimuth');if(az>0.5)x.followDir=true;
-  notes.add('Procreate settings such as grain texture, dynamics curves, wet mix and blend modes are not applied.');return x;}
+  notes.add('Procreate settings such as dynamics curves, wet mix and blend modes are not applied.');return x;}
 async function importProcreate(file){const entries=await bzUnzip(await file.arrayBuffer()),notes=new Set(),groups=new Map();
   for(const e of entries){const i=e.name.lastIndexOf('/'),dir=i<0?'':e.name.slice(0,i),leaf=e.name.slice(i+1);if(!groups.has(dir))groups.set(dir,{});groups.get(dir)[leaf]=e.data;}
   const presets=[],tips=[];let k=0;
@@ -73,6 +73,8 @@ async function importProcreate(file){const entries=await bzUnzip(await file.arra
     if(!shapeKey){notes.add('A brush had no tip picture and was skipped.');continue;}
     const tip=bzTipAlpha(await bzBitmap(g[shapeKey]));if(!tip){notes.add('A tip picture was in colour and was skipped.');continue;}
     k++;const nm=name||(dir&&!/^[0-9A-F-]{16,}$/i.test(dir.split('/').pop())?dir.split('/').pop():baseName(file.name)+(groups.size>1?' '+k:''));
+    /* (0.93.2) a brush with a grain picture: the paper-like grain is approximated with the Grain setting */
+    if(Object.keys(g).some(x=>/^grain/i.test(x))){extra=Object.assign({grain:.45},extra);notes.add('Grain textures were approximated with the Grain setting; the grain picture itself is not used.');}
     const r=bzPresetFromTip(nm,tip,extra);tips.push(r.tipObj);presets.push(r.preset);}
   return {presets,tips,notes};}
 async function importCsp(file){const u8=new Uint8Array(await file.arrayBuffer()),notes=new Set(),presets=[],tips=[],sig=[137,80,78,71,13,10,26,10];

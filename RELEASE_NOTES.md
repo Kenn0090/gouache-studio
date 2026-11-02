@@ -1,5 +1,6 @@
 ## 0.93.1
 
+- **Imported Photoshop brushes keep more settings:** color dynamics, dual brush and texture (approximated with Grain). Procreate grain brushes get the Grain setting.
 - **Delete a single brush:** right-click an imported or saved brush in the Brushes panel.
 
 ## 0.93.0
