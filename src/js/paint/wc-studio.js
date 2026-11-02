@@ -20,17 +20,17 @@ const WCS_GROUPS=[
  ['Aqua · Inkers',[
   ['Fine ink pen',Object.assign({},WCS_INK,{size:5,minSize:.25})],
   ['Dip pen',Object.assign({},WCS_INK,{size:10,minSize:.06,curve:.35})],
-  ['Brush pen',Object.assign({},WCS_INK,{size:22,minSize:.05,hardness:.85})],
+  ['Aqua brush pen',Object.assign({},WCS_INK,{size:22,minSize:.05,hardness:.85})],
   ['Technical pen',Object.assign({},WCS_INK,{size:4,pSize:false,simP:'off'})],
   ['Wobbly liner',Object.assign({},WCS_INK,{size:4,pSize:true,minSize:.5,smoothing:.08,smoothCurve:false,sizeJitter:.18,scatter:.1,bothAxes:true,simP:'off'})],
-  ['Dry ink brush',Object.assign({},WCS_INK,{size:28,minSize:.1,grain:.7,hardness:.8,tip:'bristleDry',followDir:true,flow:.9,buildup:true})]]],
+  ['Aqua dry ink brush',Object.assign({},WCS_INK,{size:28,minSize:.1,grain:.7,hardness:.8,tip:'bristleDry',followDir:true,flow:.9,buildup:true})]]],
  ['Aqua · Colouring',[
   ['Round brush',Object.assign({},WCS_MIX,{size:40,mixLoad:.85,flow:.75,mixWC:.35,mixWCEdge:.5,mixWCPools:.3,mixWCGran:.3})],
   ['Flat brush',Object.assign({},WCS_MIX,{size:60,roundness:.3,angle:20,mixLoad:.85,flow:.75,mixWC:.3,mixWCEdge:.55,mixWCPools:.25,mixWCGran:.3})],
-  ['Dry brush',{size:60,hardness:.7,tip:'bristleDry',grain:.7,followDir:true,flow:.5,opacity:.9,buildup:true,pSize:true,minSize:.4,spacing:.04,smoothing:.3,edgeSat:.3,simP:'off'}],
+  ['Aqua dry brush',{size:60,hardness:.7,tip:'bristleDry',grain:.7,followDir:true,flow:.5,opacity:.9,buildup:true,pSize:true,minSize:.4,spacing:.04,smoothing:.3,edgeSat:.3,simP:'off'}],
   ['Watercolour pencil',{size:7,hardness:.9,tip:'graphite',grain:.45,flow:1,pOpacity:true,pSize:false,spacing:.06,smoothing:.3,simP:'off'}],
-  ['Wax crayon',{size:24,hardness:.9,tip:'pastel',grain:.4,flow:1,pSize:false,spacing:.06,smoothing:.2,simP:'off'}],
-  ['Sponge',{size:80,hardness:1,tip:'sponge',scatter:.3,count:2,bothAxes:true,sizeJitter:.2,angleJitter:1,flow:.6,buildup:true,spacing:.6,pSize:false,simP:'off'}]]],
+  ['Wax resist crayon',{size:24,hardness:.9,tip:'pastel',grain:.4,flow:1,pSize:false,spacing:.06,smoothing:.2,simP:'off'}],
+  ['Wash sponge',{size:80,hardness:1,tip:'sponge',scatter:.3,count:2,bothAxes:true,sizeJitter:.2,angleJitter:1,flow:.6,buildup:true,spacing:.6,pSize:false,simP:'off'}]]],
  ['Aqua · Ink washes',[
   ['Flat wash',Object.assign({},WCS_MIX,{size:160,mixLoad:.8,flow:.7,mixWC:.55,mixWCEdge:.35,mixWCPools:.25,mixWCGran:.2})],
   ['Graded wash',Object.assign({},WCS_MIX,{size:150,mixLoad:.95,flow:.75,mixWC:.4,mixWCEdge:.3,mixWCPools:.2,mixWCGran:.2,pOpacity:true,simP:'taper'})],

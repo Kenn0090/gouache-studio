@@ -11,7 +11,34 @@ const FS_HEAD=`#version 300 es
 precision highp float; precision highp int; precision highp sampler2D;
 out vec4 o;
 `;
-const CH_BRUSH=`
+/* shared by the watercolour brushes and the paper layer: value noise, and the height of each paper type (0..1) */
+const MIX_NOISE=`
+float wh(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+float wn(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f); return mix(mix(wh(i),wh(i+vec2(1.0,0.0)),f.x),mix(wh(i+vec2(0.0,1.0)),wh(i+vec2(1.0,1.0)),f.x),f.y); }
+float wf(vec2 p){ float s=0.0,a=0.5; for(int i=0;i<4;i++){ s+=a*wn(p); p=p*2.03+17.0; a*=0.5; } return s/0.9375; }
+`;
+const PAPER_GLSL=MIX_NOISE+`
+float pap_h(vec2 p,int t,float sc){ vec2 q=p/sc; float h=0.5;
+  if(t<=0) h=0.5+(wn(q*2.0)-0.5)*0.06;
+  else if(t<=3) h=wn(q*1.4)*0.45+wn(q*3.3)*0.35+wn(q*8.0)*0.2;
+  else if(t==4) h=wf(q*0.8)*0.5+wn(q*2.2)*0.3+wn(q*vec2(6.0,1.0)+3.0)*0.1+wn(q*vec2(1.0,6.0)+9.0)*0.1;
+  else if(t==5){ float c=wf(q*0.22); h=pow(clamp(c*1.25,0.0,1.0),1.5)*0.7+wn(q*0.9)*0.2+wn(q*3.0)*0.1; }
+  else if(t==6){ float c=wf(q*0.12); h=pow(clamp(c*1.35,0.0,1.0),1.8)*0.75+wn(q*0.5)*0.15+wn(q*2.0)*0.1; }
+  else if(t==7){ float w=wf(vec2(q.x*0.006,q.y*0.05))*5.0; float ring=abs(fract(q.y*0.045+w)-0.5)*2.0; float pores=step(0.82,wn(vec2(q.x*0.5,q.y*3.0)));
+    h=ring*0.55+wn(vec2(q.x*0.04,q.y*0.8))*0.3+pores*0.15+0.05; }
+  else if(t==8){ vec2 u=q/5.0; vec2 f=fract(u),i=floor(u); float over=mod(i.x+i.y,2.0); float th=over<1.0?0.5+0.5*cos((f.x-0.5)*3.14159):0.5+0.5*cos((f.y-0.5)*3.14159);
+    h=th*0.7+wn(q*1.1)*0.2+wn(q*0.2)*0.1; }
+  else if(t==9) h=wn(q*vec2(0.12,1.0))*0.4+wn(q*vec2(1.0,0.12)+5.0)*0.3+wn(q*3.0)*0.3;
+  else if(t==10) h=wf(q*0.05)*0.5+wn(q*1.2)*0.3+wn(q*4.0)*0.2;
+  else if(t==11) h=wn(q*vec2(0.3,2.0))*0.35+wn(q*vec2(2.0,0.3)+7.0)*0.35+step(0.93,wn(q*2.5))*0.3;
+  else if(t==12){ vec2 b=vec2(64.0,28.0); vec2 u=q/b; float row=floor(u.y); u.x+=mod(row,2.0)*0.5; vec2 f=fract(u); float edge=min(min(f.x,1.0-f.x)*b.x,min(f.y,1.0-f.y)*b.y);
+    float brick=smoothstep(1.5,4.5,edge); h=mix(0.12,0.62+0.25*wn(q*0.6),brick)+wn(q*2.4)*0.08; }
+  else if(t==13) h=wf(q*0.05)*0.45+wn(q*0.7)*0.3+wn(q*2.6)*0.15+step(0.965,wn(q*1.7))*-0.25+0.25;
+  else if(t==14) h=wf(q*0.1)*0.55+wn(q*0.8)*0.25+wn(q*3.2)*0.2;
+  else h=0.5+0.5*sin(q.x*0.5236)+wn(q*vec2(0.2,0.02))*0.08;
+  return h; }
+`;
+const CH_BRUSH=PAPER_GLSL+`
 uniform vec2 uCenter; uniform float uRadius; uniform float uHard; uniform float uGrain; uniform vec2 uGrainScale; uniform vec2 uPeriod;
 uniform int uUseDual; uniform sampler2D uDual; uniform vec2 uDualSize; uniform vec2 uDualOff; uniform int uDualMode; uniform float uDualAmt;
 float hash(vec2 p, vec2 per){ p=mod(p,per); return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
@@ -21,6 +48,7 @@ float vnoise(vec2 p, vec2 per){ vec2 i=floor(p); vec2 f=fract(p); f=f*f*(3.0-2.0
 uniform int uUseTip; uniform sampler2D uTip; uniform float uAngle; uniform float uRound; uniform vec2 uFlip; uniform float uTipAspect;
 /* spray paint: paint falls off smoothly from a solid core (a bell curve), and where it is thin it breaks into separate round droplets placed at random
    (a different scatter on every dab). uSpray = (droplet size in pixels, density, random seed, mist); size 0 turns it off. uSprayVar spreads the droplet sizes. */
+uniform vec3 uPaper; /* paper tooth: (paper type, texture size, strength); strength 0 is off */
 uniform vec4 uSpray; uniform float uSprayVar; uniform float uSprayFleck; uniform vec3 uSprayRing; uniform float uSpraySolid;
 float sph(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
 float sprayN(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f); return mix(mix(sph(i),sph(i+vec2(1.0,0.0)),f.x),mix(sph(i+vec2(0.0,1.0)),sph(i+vec2(1.0,1.0)),f.x),f.y); }
@@ -59,6 +87,7 @@ float brushMask(vec2 pix){
  m=sprayMask(pix,max(core,tail)*(1.0-smoothstep(mix(0.9,0.97,uSprayRing.x),1.0,d))); if(uSprayFleck>0.0) m=max(m,sprayFleckMask(pix,d)); }
   }
   if(m<=0.0) return 0.0; /* nothing to grain or knock out (most of a bristle tip's square is empty) */
+  if(uPaper.z>0.0){ float ph=pap_h(pix,int(uPaper.x+0.5),max(uPaper.y,0.2)); m*=clamp(1.0-uPaper.z*(1.0-smoothstep(0.40,0.60,ph)),0.0,1.0); } /* the paint only catches on the peaks of the paper */
   if(uGrain>0.0){ vec2 q=pix/uGrainScale; float n=vnoise(q,uPeriod)*0.6+vnoise(q*2.0,uPeriod*2.0)*0.4;
     m*=clamp(mix(1.0,n*2.3-0.5,uGrain),0.0,1.0); }
   if(uUseDual==1){ float dl=texture(uDual,(pix+uDualOff)/uDualSize).r; if(uDualMode==1) dl=1.0-dl; m*=mix(1.0,dl,uDualAmt); }

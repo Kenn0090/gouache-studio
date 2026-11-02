@@ -7,34 +7,7 @@
    It works on the layer's base colour only (not masks, 3D or other maps). It reuses the Blend brush's stroke path, so selections,
    symmetry, lock alpha and undo all behave like the other brushes. */
 const MIXQ=4;/* the wetness map is this many times smaller than the canvas */
-/* shared by the watercolour brushes and the paper layer: value noise, and the height of each paper type (0..1) */
-const MIX_NOISE=`
-float wh(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
-float wn(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f); return mix(mix(wh(i),wh(i+vec2(1.0,0.0)),f.x),mix(wh(i+vec2(0.0,1.0)),wh(i+vec2(1.0,1.0)),f.x),f.y); }
-float wf(vec2 p){ float s=0.0,a=0.5; for(int i=0;i<4;i++){ s+=a*wn(p); p=p*2.03+17.0; a*=0.5; } return s/0.9375; }
-`;
 const PAPER_NAMES=['Smooth white','Notebook, lined','Notebook, grid','Notebook, dots','Sketch paper','Watercolour, cold-press','Watercolour, rough','Oak wood','Canvas','Kraft paper','Parchment','Newsprint','Brick wall','Concrete','Rough plaster','Corrugated metal'];
-const PAPER_GLSL=MIX_NOISE+`
-float pap_h(vec2 p,int t,float sc){ vec2 q=p/sc; float h=0.5;
-  if(t<=0) h=0.5+(wn(q*2.0)-0.5)*0.06;
-  else if(t<=3) h=wn(q*1.4)*0.45+wn(q*3.3)*0.35+wn(q*8.0)*0.2;
-  else if(t==4) h=wf(q*0.8)*0.5+wn(q*2.2)*0.3+wn(q*vec2(6.0,1.0)+3.0)*0.1+wn(q*vec2(1.0,6.0)+9.0)*0.1;
-  else if(t==5){ float c=wf(q*0.22); h=pow(clamp(c*1.25,0.0,1.0),1.5)*0.7+wn(q*0.9)*0.2+wn(q*3.0)*0.1; }
-  else if(t==6){ float c=wf(q*0.12); h=pow(clamp(c*1.35,0.0,1.0),1.8)*0.75+wn(q*0.5)*0.15+wn(q*2.0)*0.1; }
-  else if(t==7){ float w=wf(vec2(q.x*0.006,q.y*0.05))*5.0; float ring=abs(fract(q.y*0.045+w)-0.5)*2.0; float pores=step(0.82,wn(vec2(q.x*0.5,q.y*3.0)));
-    h=ring*0.55+wn(vec2(q.x*0.04,q.y*0.8))*0.3+pores*0.15+0.05; }
-  else if(t==8){ vec2 u=q/5.0; vec2 f=fract(u),i=floor(u); float over=mod(i.x+i.y,2.0); float th=over<1.0?0.5+0.5*cos((f.x-0.5)*3.14159):0.5+0.5*cos((f.y-0.5)*3.14159);
-    h=th*0.7+wn(q*1.1)*0.2+wn(q*0.2)*0.1; }
-  else if(t==9) h=wn(q*vec2(0.12,1.0))*0.4+wn(q*vec2(1.0,0.12)+5.0)*0.3+wn(q*3.0)*0.3;
-  else if(t==10) h=wf(q*0.05)*0.5+wn(q*1.2)*0.3+wn(q*4.0)*0.2;
-  else if(t==11) h=wn(q*vec2(0.3,2.0))*0.35+wn(q*vec2(2.0,0.3)+7.0)*0.35+step(0.93,wn(q*2.5))*0.3;
-  else if(t==12){ vec2 b=vec2(64.0,28.0); vec2 u=q/b; float row=floor(u.y); u.x+=mod(row,2.0)*0.5; vec2 f=fract(u); float edge=min(min(f.x,1.0-f.x)*b.x,min(f.y,1.0-f.y)*b.y);
-    float brick=smoothstep(1.5,4.5,edge); h=mix(0.12,0.62+0.25*wn(q*0.6),brick)+wn(q*2.4)*0.08; }
-  else if(t==13) h=wf(q*0.05)*0.45+wn(q*0.7)*0.3+wn(q*2.6)*0.15+step(0.965,wn(q*1.7))*-0.25+0.25;
-  else if(t==14) h=wf(q*0.1)*0.55+wn(q*0.8)*0.25+wn(q*3.2)*0.2;
-  else h=0.5+0.5*sin(q.x*0.5236)+wn(q*vec2(0.2,0.02))*0.08;
-  return h; }
-`;
 const FS_MIXLOAD=CH_BRUSH+PIGMENT_MIX+`
 uniform sampler2D uLoad; uniform sampler2D uSrc; uniform sampler2D uBase; uniform bool uUseBase; uniform sampler2D uWet;
 uniform vec2 uDocSize; uniform float uD; uniform float uExt; uniform float uPick; uniform float uDeplete; uniform float uDry; uniform float uBristles;
@@ -51,7 +24,7 @@ void main(){
   float kk=wc/max(wl+wc,1e-5); vec3 col=wc>1e-5?pgMix(lc,ccol,kk):lc;
   float amt=clamp(wl+wc*1.4,0.0,1.0)*(1.0-uDeplete*m);
   o=vec4(col*amt,amt); }`;
-const FS_MIXDAB=CH_BRUSH+PIGMENT_MIX+PAPER_GLSL+`
+const FS_MIXDAB=CH_BRUSH+PIGMENT_MIX+`
 uniform sampler2D uDst; uniform sampler2D uLoad; uniform sampler2D uWet; uniform float uExt; uniform float uAlpha; uniform float uDeposit; uniform float uWetMix;
 uniform int uLockAlpha; uniform sampler2D uSelTex; uniform int uUseSel; uniform float uBristles; uniform float uDryB; uniform float uStepK; uniform float uThick; uniform float uEven; uniform float uWC; uniform float uWCEdge; uniform float uWCPools; uniform float uWCGran; uniform float uWCBloom; uniform bool uWCOut; uniform int uPT; uniform float uPSc; uniform float uTooth;
 /* watercolour: the blot's shape comes from noise fixed to the canvas (not a picture), so it never repeats. The outline is uneven and hard,
@@ -99,7 +72,7 @@ void main(){ o=vec4(clamp(brushMask(gl_FragCoord.xy)*uAlpha*uWetSet,0.0,1.0),0.0
 const FS_MIXDRY=`uniform sampler2D uSrc; uniform float uStep;
 void main(){ o=vec4(max(texelFetch(uSrc,ivec2(gl_FragCoord.xy),0).r-uStep,0.0),0.0,0.0,0.0); }`;
 P.mixload=program(FS_MIXLOAD,VS_FULL);P.mixdab=program(FS_MIXDAB,VS_STAMP);P.mixwet=program(FS_MIXWET,VS_STAMP);P.mixdry=program(FS_MIXDRY);P.mixcomp=program(FS_MIXCOMP,VS_STAMP);
-{const D0=Object.assign({uUseTip:false,uTip:dummy,uAngle:0,uRound:1,uFlip:[1,1],uTipAspect:1,uGrain:0,uGrainScale:[1,1],uPeriod:[1,1],uHard:.8,uRadius:1,uCenter:[0,0],uSpray:[0,0,0,0],uSprayVar:0,uSprayFleck:0,uSprayRing:[0,0,0],uSpraySolid:1},DUAL_UNIFORM_DEFAULTS);
+{const D0=Object.assign({uUseTip:false,uTip:dummy,uAngle:0,uRound:1,uFlip:[1,1],uTipAspect:1,uGrain:0,uGrainScale:[1,1],uPeriod:[1,1],uHard:.8,uRadius:1,uCenter:[0,0],uSpray:[0,0,0,0],uSprayVar:0,uSprayFleck:0,uSprayRing:[0,0,0],uSpraySolid:1,uPaper:[0,1,0]},DUAL_UNIFORM_DEFAULTS);
  P.mixload.defaults=Object.assign({uUseBase:false,uBase:dummy,uBristles:0},D0);P.mixdab.defaults=Object.assign({uLockAlpha:0,uWetMix:1,uBristles:0,uDryB:0,uStepK:1,uThick:0,uEven:1,uWC:0,uWCEdge:0,uWCPools:0,uWCGran:0,uWCBloom:0,uWCOut:false,uPT:{int:-1},uPSc:1,uTooth:0},D0,SEL_DEF);P.mixwet.defaults=Object.assign({},D0);}
 /* the hidden wetness map of a layer (red channel: 0 dry … 1 soaking) */
 function mixWetFor(L){const w=Math.max(1,Math.ceil(doc.w/MIXQ)),h=Math.max(1,Math.ceil(doc.h/MIXQ));let m=L._wet;
