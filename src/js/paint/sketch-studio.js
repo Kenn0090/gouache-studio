@@ -41,5 +41,4 @@ const SK_GROUPS=[
   ['Combo · Clean inker',{size:8,hardness:1,flow:1,tooth:0,pOpacity:false,buildup:false,minSize:.06,smoothing:.6,simP:'taper'}],['Combo · Pencil line',{size:4,hardness:.9,flow:.55,tooth:.8,minSize:.5}]]]
 ];
 (function(){const tipOf=k=>k==='crayon'?CRAYON_TIP:ART_TIPS[k]||null;
-  const SK_KEEP=['HB pencil','6B soft pencil','Charcoal pencil','Soft shader','Stump blend','Wax crayon','Alcohol marker','Magic chisel marker','Marker fade streak','Fineliner 0.5','Ballpoint pen','G-pen ink','Brush pen ink'];
-  [['Sketch',SK_GROUPS.flatMap(g=>g[1]).filter(b=>SK_KEEP.includes(b[0]))]].forEach(([name,list],gi)=>library.splice(13+gi,0,{id:'sketch'+gi,name,builtin:true,tips:[],presets:list.map(([n,s])=>{const base=s.mix?{tool:'brush'}:Object.assign({},SK_PEN);const p=Object.assign({name:n,ownTool:true},base,s);if(typeof s.tip==='string')p.tip=tipOf(s.tip);return p;})}));})();
+  SK_GROUPS.forEach(([name,list],gi)=>library.splice(13+gi,0,{id:'sketch'+gi,name,builtin:true,tips:[],presets:list.map(([n,s])=>{const base=s.mix?{tool:'brush'}:Object.assign({},SK_PEN);const p=Object.assign({name:n,ownTool:true},base,s);if(typeof s.tip==='string')p.tip=tipOf(s.tip);return p;})}));})();

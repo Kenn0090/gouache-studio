@@ -1,6 +1,6 @@
 ## 0.91.0
 
-- **Sketch studio:** 13 new brushes in one Sketch group (pencils, charcoal, shader, stump, crayon, markers, pens, ink), made from scratch. The markers are see-through and run dry.
+- **Sketch studio:** 47 new brushes in seven groups (pencils, graphite shading, crayons, magic markers, pens, ink and a combo), made from scratch. The markers are see-through and run dry.
 - **Paper tooth** on the normal brushes: paint catches on the peaks of the paper, so pencils and crayons are grainy. Uses your paper layer, or sketch paper.
 - Some Watercolour studio brushes were renamed so every brush name is unique.
 

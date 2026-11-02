@@ -245,6 +245,14 @@ The watercolour brushes have **Bloom (backrun)**, **Paper grain** and **Paper to
 
 ## Sketch studio
 
-One group called **Sketch** holds 13 brushes for drawing: HB and 6B soft pencils, a charcoal pencil, a soft shader, a **Stump blend**, a wax crayon, three markers (alcohol, chisel and fade streak), a 0.5 fineliner, a ballpoint pen (pressure makes it thicker and darker), a G-pen and a brush pen. The pencils are grainy because of **Paper tooth**. The markers are see-through: a stroke never darkens itself, but a second stroke over the first does, and the fade streak marker runs out of ink.
+Seven groups, all starting with **Sketch**, make a drawing kit:
+
+- **Pencils**: HB to 6B, mechanical, carpenter, hatching, cross-hatch, soft coloured and charcoal pencils. They are grainy because of **Paper tooth**.
+- **Graphite shading**: soft, grainy and smooth shaders, scribble and hatch shading, a stipple shader, a **Stump blend** and a **Kneaded eraser**.
+- **Crayons**: wax, chunky, soft, rough paper, oil pastel, fill, hatch and dry crayons.
+- **Magic markers**: alcohol, chisel, brush, fine tip, highlighter, dry, fade streak and blender markers. They are see-through: a stroke never darkens itself, but a second stroke over the first does. The dry markers run out of ink and streak.
+- **Pens**: ballpoint (pressure makes it thicker and darker), soft ballpoint, scribble, three fineliners and a hatching pen.
+- **Ink**: G-pen, dip pen, brush pen and textured ink, thin at the ends.
+- **Combo**: a clean inker and a pencil line.
 
 **Paper tooth** (in the Brush panel) makes any normal brush catch only on the peaks of the paper. It uses your paper layer's grain, or sketch paper when you have none.
