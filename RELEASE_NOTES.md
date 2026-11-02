@@ -1,4 +1,4 @@
-## 0.94.0
+## 0.93.1
 
 - **Delete a single brush:** right-click an imported or saved brush in the Brushes panel.
 

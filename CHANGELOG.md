@@ -1,4 +1,4 @@
-## 0.94.0
+## 0.93.1
 
 - **Delete a single brush.** Right-click any imported or saved brush in the Brushes panel and choose Delete. (A whole imported set can still be removed with the Remove button on its header.) Built-in brushes cannot be deleted.
 

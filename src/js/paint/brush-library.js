@@ -373,7 +373,7 @@ function addSet(set){library.push(set);renderLibrary();saveSet(set);}
 function removeSet(set){const i=library.indexOf(set);if(i<0)return;library.splice(i,1);
   if(set.presets.some(p=>p===activePreset||p===brushSession.source)||(brush.tip&&set.tips.includes(brush.tip)))applyPreset(PRESETS[0]);
   for(const t of set.tips)if(!library.some(s2=>s2.tips.includes(t)))disposeTip(t);store.del(set.id);renderLibrary();toast('Removed “'+set.name+'”.');}
-/* (0.94, Kenn) delete a single imported or saved brush: right-click it in the Brushes panel */
+/* (0.93.1, Kenn) delete a single imported or saved brush: right-click it in the Brushes panel */
 function removeBrush(set,p){const i=set.presets.indexOf(p);if(i<0)return;if(set.presets.length===1){removeSet(set);return;}
   set.presets.splice(i,1);if(p===activePreset||p===brushSession.source)applyPreset(PRESETS[0]);
   if(p.tip&&!library.some(s2=>s2.presets.some(q=>q.tip===p.tip))){set.tips=set.tips.filter(t=>t!==p.tip);disposeTip(p.tip);}
