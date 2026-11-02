@@ -1,3 +1,7 @@
+## 0.84.1
+
+- **Keep paint even.** New Mixing brush option **Keep paint even at any spacing**: the paint laid down stays the same however far apart the dabs are, so wide spacing no longer makes strokes thin and see-through. On in all the Mixing brushes.
+
 ## 0.84.0
 
 - **Smooth curves.** A new brush option, **Smooth curves (round off corners)**, makes the brush follow a smooth curve through your movement instead of straight lines between the points the mouse or pen reports. Corners round off and long strokes flow, like the smooth strokes in painting apps. It works for the Brush, Eraser and Blend tools, and is on in all the Mixing brushes.

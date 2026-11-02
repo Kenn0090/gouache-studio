@@ -54,6 +54,13 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const sharp=await tip(false);await p.keyboard.press('Control+z');await p.waitForTimeout(200);const round=await tip(true);
  console.log('apex pixel without curves',sharp,'with curves',round);
  ok(sharp<200&&round>240,'Smooth curves round off the sharp point of a stroke');
+ // keep paint even: the paint laid down is the same at wide spacing as at fine spacing
+ const ink=async y=>{const v=await p.evaluate(y=>{let sum=0,n=0;for(let x=60;x<=190;x+=10)for(let dy=-6;dy<=6;dy+=2){const d=__gs.captureRegionNow(__gs.doc.active.target,x,y+dy,1,1).data;sum+=255-d[1];n++;}return sum/n;},y);return v;};
+ const evenRun=async(sp,even,y)=>{await p.evaluate(([sp,even])=>{const q=__gs.library.flatMap(x=>x.presets).find(x=>x.name==='Oil mixer');__gs.applyPreset(q);Object.assign(__gs.brush,{size:40,mixBristles:0,mixThick:0,mixLoad:.06,mixPick:0,mixUse:0,smoothing:0,followDir:false,smoothCurve:false,spacing:sp,mixEven:even});},[sp,even]);await setColour([0,0,0]);await drag(30,y,226,y);return ink(y);};
+ const fineInk=await evenRun(.02,true,60),wideOn=await evenRun(.1,true,100),wideOff=await evenRun(.1,false,140);
+ console.log('ink fine',fineInk.toFixed(1),'wide with even',wideOn.toFixed(1),'wide without',wideOff.toFixed(1));
+ ok(wideOff<fineInk*.9,'without Keep paint even, wide spacing lays down less paint');
+ ok(wideOn>fineInk*.8&&wideOn<fineInk*1.25,'with Keep paint even, wide spacing lays down about the same paint as fine spacing');
  // dry paint: no more mixing from wet pickup (dry paint is picked up far less)
  await p.evaluate(()=>{for(const L of __gs.allLayers())if(L._wet)L._wet.until=0;});
  ok(errs.length===0,'no page errors '+errs.slice(0,2).join(' | '));

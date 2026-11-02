@@ -1,3 +1,7 @@
+## 0.84.1
+
+- **Keep paint even:** a new Mixing brush option so wide spacing no longer makes strokes thin and see-through. On in all the Mixing brushes.
+
 ## 0.84.0
 
 - **Smooth curves:** a new brush option that rounds off corners and makes long strokes flow. On in all the Mixing brushes; works for Brush, Eraser and Blend.
