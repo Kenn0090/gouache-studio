@@ -183,6 +183,7 @@ Turn on **Mixing brush** in the Brush panel (or pick a brush from **Mixing (real
 - **Dry after** dries wet paint by itself after that many seconds. Set it to *by hand* to keep paint wet until you press **Dry paint now**.
 - **Bristles** sets how many bristles the brush has (0 is a smooth brush). Each bristle carries its own paint, so a stroke is made of streaks. **Dry brush** makes bristles run out of paint sooner and leave gaps.
 - **Paint thickness** makes the paint look raised: each bristle makes a ridge and the stroke gets a lip, lit from the top left. 0 is flat paint. The light is painted into the colour as you go, so it stays with the stroke.
+- **Watercolour edges, Edge pooling, Layered pools, Paper grain** make the paint look like wet watercolour: an uneven hard outline, pigment gathering along the rim, hard-edged pools in layers and grain from the paper. The shape comes from noise fixed to the canvas, so it never repeats like a stamp. Try the **Watercolour wash**, **Watercolour splatter** and **Watercolour wet-in-wet** brushes.
 - **Keep paint even at any spacing** keeps the amount of paint the same however far apart the dabs are, so wide **Spacing** doesn't make the stroke thin and see-through.
 - **Pick up from all visible layers** also picks up colour from the layers below.
 

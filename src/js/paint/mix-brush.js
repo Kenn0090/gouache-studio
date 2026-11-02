@@ -25,7 +25,19 @@ void main(){
   o=vec4(col*amt,amt); }`;
 const FS_MIXDAB=CH_BRUSH+PIGMENT_MIX+`
 uniform sampler2D uDst; uniform sampler2D uLoad; uniform sampler2D uWet; uniform float uExt; uniform float uAlpha; uniform float uDeposit; uniform float uWetMix;
-uniform int uLockAlpha; uniform sampler2D uSelTex; uniform int uUseSel; uniform float uBristles; uniform float uDryB; uniform float uStepK; uniform float uThick; uniform float uEven;
+uniform int uLockAlpha; uniform sampler2D uSelTex; uniform int uUseSel; uniform float uBristles; uniform float uDryB; uniform float uStepK; uniform float uThick; uniform float uEven; uniform float uWC; uniform float uWCEdge; uniform float uWCPools; uniform float uWCGran;
+/* watercolour: the blot's shape comes from noise fixed to the canvas (not a picture), so it never repeats. The outline is uneven and hard,
+   pigment pools along the rim, hard-edged pools lie in layers inside, and paper grain breaks up the colour */
+float wh(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+float wn(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f); return mix(mix(wh(i),wh(i+vec2(1.0,0.0)),f.x),mix(wh(i+vec2(0.0,1.0)),wh(i+vec2(1.0,1.0)),f.x),f.y); }
+float wf(vec2 p){ float s=0.0,a=0.5; for(int i=0;i<4;i++){ s+=a*wn(p); p=p*2.03+17.0; a*=0.5; } return s/0.9375; }
+float wcMask(vec2 pix,float m0){
+  float sc=max(uRadius*0.32,5.0); vec2 q=pix/sc; vec2 w=vec2(wf(q*0.7+3.1),wf(q*0.7+9.7))-0.5; float n=wf(q+w*1.6);
+  float f=m0+(n-0.5)*uWC*1.15; float cover=smoothstep(0.46,0.5,f); float pool=(1.0-smoothstep(0.0,0.2,f-0.5))*cover;
+  float n2=wf(q*0.55+41.0+w); float lay=smoothstep(0.52,0.545,n2)*0.6+smoothstep(0.38,0.405,n2)*0.4;
+  float gr=wn(pix*0.8)*0.6+wn(pix*2.3)*0.4;
+  float dens=0.5+uWCEdge*0.8*pool+uWCPools*(lay-0.5)*0.9; dens*=1.0+uWCGran*(gr-0.5)*1.6;
+  return cover*clamp(dens,0.0,1.5); }
 float bh(float i){ return fract(sin(i*127.1+311.7)*43758.5453); }
 /* how thick the paint is at a pixel (this dab only): the stroke's own shape times the bristles' round ridges */
 float hAt(vec2 pix){ float m=brushMask(pix)*uAlpha; float ca=cos(uAngle),sa=sin(uAngle); vec2 dv=pix-uCenter; vec2 q=vec2(ca*dv.x+sa*dv.y,-sa*dv.x+ca*dv.y)/(2.0*uExt)+0.5;
@@ -34,7 +46,7 @@ float hAt(vec2 pix){ float m=brushMask(pix)*uAlpha; float ca=cos(uAngle),sa=sin(
   return m*a*ridge; }
 float hEnv(vec2 pix){ float ca=cos(uAngle),sa=sin(uAngle); vec2 dv=pix-uCenter; vec2 q=vec2(ca*dv.x+sa*dv.y,-sa*dv.x+ca*dv.y)/(2.0*uExt)+0.5; return brushMask(pix)*uAlpha*texture(uLoad,q).a; }
 void main(){ vec2 size=vec2(textureSize(uDst,0)); vec2 uv=gl_FragCoord.xy/size; vec4 dst=texture(uDst,uv);
-  float m=brushMask(gl_FragCoord.xy)*uAlpha; if(uUseSel==1) m*=texelFetch(uSelTex,ivec2(gl_FragCoord.xy),0).r;
+  float m0=brushMask(gl_FragCoord.xy); float m=(uWC>0.0?wcMask(gl_FragCoord.xy,m0):m0)*uAlpha; if(uUseSel==1) m*=texelFetch(uSelTex,ivec2(gl_FragCoord.xy),0).r;
   vec2 dv=gl_FragCoord.xy-uCenter; float ca=cos(uAngle),sa=sin(uAngle); vec2 q=vec2(ca*dv.x+sa*dv.y,-sa*dv.x+ca*dv.y)/(2.0*uExt)+0.5;
   vec4 ld=texture(uLoad,q);
   float bf=1.0; if(uBristles>0.5){ float bi=floor(q.y*uBristles); bf=0.5+0.5*bh(bi); float thr=bh(bi+17.0)*uDryB; bf*=clamp((ld.a-thr)/0.25,0.0,1.0); }
@@ -56,7 +68,7 @@ const FS_MIXDRY=`uniform sampler2D uSrc; uniform float uStep;
 void main(){ o=vec4(max(texelFetch(uSrc,ivec2(gl_FragCoord.xy),0).r-uStep,0.0),0.0,0.0,0.0); }`;
 P.mixload=program(FS_MIXLOAD,VS_FULL);P.mixdab=program(FS_MIXDAB,VS_STAMP);P.mixwet=program(FS_MIXWET,VS_STAMP);P.mixdry=program(FS_MIXDRY);
 {const D0=Object.assign({uUseTip:false,uTip:dummy,uAngle:0,uRound:1,uFlip:[1,1],uTipAspect:1,uGrain:0,uGrainScale:[1,1],uPeriod:[1,1],uHard:.8,uRadius:1,uCenter:[0,0]},DUAL_UNIFORM_DEFAULTS);
- P.mixload.defaults=Object.assign({uUseBase:false,uBase:dummy,uBristles:0},D0);P.mixdab.defaults=Object.assign({uLockAlpha:0,uWetMix:1,uBristles:0,uDryB:0,uStepK:1,uThick:0,uEven:1},D0,SEL_DEF);P.mixwet.defaults=Object.assign({},D0);}
+ P.mixload.defaults=Object.assign({uUseBase:false,uBase:dummy,uBristles:0},D0);P.mixdab.defaults=Object.assign({uLockAlpha:0,uWetMix:1,uBristles:0,uDryB:0,uStepK:1,uThick:0,uEven:1,uWC:0,uWCEdge:0,uWCPools:0,uWCGran:0},D0,SEL_DEF);P.mixwet.defaults=Object.assign({},D0);}
 /* the hidden wetness map of a layer (red channel: 0 dry … 1 soaking) */
 function mixWetFor(L){const w=Math.max(1,Math.ceil(doc.w/MIXQ)),h=Math.max(1,Math.ceil(doc.h/MIXQ));let m=L._wet;
   if(m&&(m.w!==w||m.h!==h)){disposeTarget(m.t);if(m.t2)disposeTarget(m.t2);m=L._wet=null;}
@@ -72,7 +84,7 @@ function mixDab(s,c,U,a,ext,r,dx,dy){const o=s.o,m=s.mix;if(!m)return;
   const dist=Math.hypot(dx,dy),deplete=clamp((o.mixUse||0)*dist/Math.max(2*r,2),0,.6),wet=m.wet;
   run(P.mixload,m.B,Object.assign({},U,{uCenter:c,uLoad:m.A.tex,uSrc:(beforeT.w===doc.w?beforeT:scratchT).tex,uBase:(s.sampleT||dummy)?.tex||dummy,uUseBase:!!s.sampleT,uWet:m.w0.tex,uDocSize:[doc.w,doc.h],uD:m.D,uExt:ext,uPick:1-Math.pow(1-clamp(o.mixPick,0,.98),clamp(dist/Math.max(2*r,2),0,1)),uDeplete:deplete,uDry:.03,uMixLab:.5,uBristles:o.mixBristles||0}));
   {const t=m.A;m.A=m.B;m.B=t;}
-  run(P.mixdab,s.L.target,Object.assign({},U,{uCenter:c,uDst:scratchT.tex,uLoad:m.A.tex,uWet:wet.t.tex,uExt:ext,uAlpha:a,uDeposit:o.opacity,uWetMix:1,uBristles:o.mixBristles||0,uDryB:o.mixDryB||0,uThick:clamp(o.mixThick||0,0,1),uEven:o.mixEven?clamp(o.spacing/.02,.25,40):1,uStepK:dist<1?.5:1-Math.pow(.3,clamp(dist/Math.max(2*r,2),0,1)),uLockAlpha:s.L.lockAlpha?1:0},selU(o)));
+  run(P.mixdab,s.L.target,Object.assign({},U,{uCenter:c,uDst:scratchT.tex,uLoad:m.A.tex,uWet:wet.t.tex,uExt:ext,uAlpha:a,uDeposit:o.opacity,uWetMix:1,uBristles:o.mixBristles||0,uDryB:o.mixDryB||0,uThick:clamp(o.mixThick||0,0,1),uEven:o.mixEven?clamp(o.spacing/.02,.25,40):1,uWC:clamp(o.mixWC||0,0,1),uWCEdge:o.mixWCEdge||0,uWCPools:o.mixWCPools||0,uWCGran:o.mixWCGran||0,uStepK:dist<1?.5:1-Math.pow(.3,clamp(dist/Math.max(2*r,2),0,1)),uLockAlpha:s.L.lockAlpha?1:0},selU(o)));
   const q=MIXQ;run(P.mixwet,wet.t,Object.assign({},U,{uCenter:[c[0]/q,c[1]/q],uRadius:r/q,uExtent:ext/q,uSize:[wet.w,wet.h],uUseTip:false,uTip:dummy,uGrain:0,uUseDual:false,uAlpha:a,uWetSet:clamp(o.mixWet,0,1)}),{blend:'max'});}
 /* drying: wetness fades over "Dry after" seconds; Dry paint clears it at once */
 let mixDryTimer=0,mixDryLast=0;
@@ -87,7 +99,9 @@ function mixDryAll(){let n=0;for(const L of allLayers())if(L._wet){clearTarget(L
 const MIX_PRESETS=[
  ['Oil mixer','bristle',{size:56,hardness:.6,mix:true,mixLoad:.85,mixPick:.55,mixWet:.9,mixDry:0,mixUse:.18,mixBristles:30,mixDryB:.35,mixThick:.7,followDir:true,pSize:true,minSize:.5,spacing:.02}],
  ['Gouache mixer','bristle',{size:48,hardness:.7,mix:true,mixLoad:.9,mixPick:.35,mixWet:.6,mixDry:25,mixUse:.25,mixBristles:26,mixDryB:.3,mixThick:.6,followDir:true,pSize:true,minSize:.5,spacing:.02}],
- ['Watercolour mixer','wash',{size:90,hardness:.4,mix:true,mixLoad:.4,mixPick:.7,mixWet:1,mixDry:40,mixUse:.35,flow:.5,pSize:true,spacing:.02}],
+ ['Watercolour wash',null,{size:170,hardness:.3,flow:.6,mix:true,mixLoad:.5,mixPick:.3,mixWet:1,mixDry:40,mixUse:.08,mixBristles:0,mixThick:0,mixWC:.8,mixWCEdge:.8,mixWCPools:.7,mixWCGran:.5,followDir:false,pSize:true,minSize:.6,spacing:.04,smoothing:.55}],
+ ['Watercolour splatter',null,{size:44,hardness:.55,flow:1,mix:true,mixLoad:.8,mixPick:0,mixWet:.4,mixDry:20,mixUse:0,mixBristles:0,mixThick:0,mixWC:.95,mixWCEdge:1,mixWCPools:.3,mixWCGran:.5,mixEven:false,count:9,scatter:4.5,bothAxes:true,sizeJitter:.96,followDir:false,pSize:false,spacing:1.1,smoothing:.2}],
+ ['Watercolour wet-in-wet',null,{size:130,hardness:.2,flow:.55,mix:true,mixLoad:.5,mixPick:.85,mixWet:1,mixDry:60,mixUse:.05,mixBristles:0,mixThick:0,mixWC:.7,mixWCEdge:.7,mixWCPools:.6,mixWCGran:.55,followDir:false,pSize:true,minSize:.6,spacing:.04,smoothing:.55}],
  ['Smear (empty brush)',null,{followDir:true,mixBristles:22,size:60,hardness:.5,mix:true,mixLoad:0,mixPick:.9,mixWet:.9,mixDry:0,mixUse:0,pSize:true,spacing:.02}],
  ['Big oil (350 px)','bristle',{size:350,hardness:.6,mix:true,mixLoad:.9,mixPick:.5,mixWet:.9,mixDry:0,mixUse:.08,mixBristles:34,mixDryB:.3,mixThick:.7,followDir:true,pSize:true,minSize:.6,spacing:.02,smoothing:.6}],
  ['Big gouache wash (250 px)','bristle',{size:250,hardness:.7,mix:true,mixLoad:.9,mixPick:.35,mixWet:.6,mixDry:25,mixUse:.12,mixBristles:28,mixDryB:.25,mixThick:.5,followDir:true,pSize:true,minSize:.6,spacing:.02,smoothing:.6}],

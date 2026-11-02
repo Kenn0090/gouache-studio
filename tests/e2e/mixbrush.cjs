@@ -61,6 +61,16 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  console.log('ink fine',fineInk.toFixed(1),'wide with even',wideOn.toFixed(1),'wide without',wideOff.toFixed(1));
  ok(wideOff<fineInk*.9,'without Keep paint even, wide spacing lays down less paint');
  ok(wideOn>fineInk*.8&&wideOn<fineInk*1.25,'with Keep paint even, wide spacing lays down about the same paint as fine spacing');
+ // watercolour: three brushes exist; the wash has an uneven outline and pools of different strength (not a repeating stamp)
+ for(const n of ['Watercolour wash','Watercolour splatter','Watercolour wet-in-wet'])ok(await preset(n),'the brush '+n+' exists');
+ await p.evaluate(()=>{const q=__gs.library.flatMap(x=>x.presets).find(x=>x.name==='Watercolour wash');__gs.applyPreset(q);__gs.brush.size=110;});await setColour([.45,.45,.5]);
+ await drag(40,40,216,60);
+ const wc=await p.evaluate(()=>{const o=[];for(let x=60;x<=200;x+=10)for(let y=40;y<=62;y+=4){const d=__gs.captureRegionNow(__gs.doc.active.target,x,y,1,1).data;o.push(d[1]);}const m=o.reduce((a,b)=>a+b)/o.length;return {m,sd:Math.sqrt(o.reduce((a,b)=>a+(b-m)*(b-m),0)/o.length)};});
+ const edge=await p.evaluate(()=>{const o=[];for(let x=50;x<=210;x+=4){let top=-1;for(let y=0;y<=60;y++){const d=__gs.captureRegionNow(__gs.doc.active.target,x,y,1,1).data;if(d[1]<235){top=y;break;}}o.push(top);}return o;});
+ const ev=[...new Set(edge)].length;
+ console.log('watercolour wash: mean',wc.m.toFixed(0),'spread',wc.sd.toFixed(1),'distinct top-edge heights',ev);
+ ok(wc.sd>5,'the wash has pools and grain (the colour varies inside the stroke)');
+ ok(ev>=6,'the wash outline is uneven (many different edge heights)');
  // dry paint: no more mixing from wet pickup (dry paint is picked up far less)
  await p.evaluate(()=>{for(const L of __gs.allLayers())if(L._wet)L._wet.until=0;});
  ok(errs.length===0,'no page errors '+errs.slice(0,2).join(' | '));

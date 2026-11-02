@@ -1,3 +1,7 @@
+## 0.85.0
+
+- **Watercolour set.** Three new watercolour brushes in the Mixing (real paint) set, made to look like wet watercolour: **Watercolour wash** (big wet blots with hard, uneven outlines, pigment pooled along the rim, layered see-through pools and paper grain), **Watercolour splatter** (drops of every size with dark rims; flick it near a blot) and **Watercolour wet-in-wet** (pulls colour into wet paint and bleeds). Their shape is not a repeating picture: it is made from noise that stays fixed to the canvas, so no stamp ever repeats and overlapping strokes build up naturally. New sliders for any Mixing brush: **Watercolour edges**, **Edge pooling**, **Layered pools** and **Paper grain**. These replace the old Watercolour mixer.
+
 ## 0.84.1
 
 - **Keep paint even.** New Mixing brush option **Keep paint even at any spacing**: the paint laid down stays the same however far apart the dabs are, so wide spacing no longer makes strokes thin and see-through. On in all the Mixing brushes.

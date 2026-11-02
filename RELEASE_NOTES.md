@@ -1,3 +1,7 @@
+## 0.85.0
+
+- **Watercolour set:** three new brushes, Watercolour wash, Watercolour splatter and Watercolour wet-in-wet, with uneven hard outlines, pooled rims, layered pools and paper grain that never repeat. New sliders: Watercolour edges, Edge pooling, Layered pools and Paper grain. Replaces the old Watercolour mixer.
+
 ## 0.84.1
 
 - **Keep paint even:** a new Mixing brush option so wide spacing no longer makes strokes thin and see-through. On in all the Mixing brushes.
