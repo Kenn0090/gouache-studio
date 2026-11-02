@@ -18,6 +18,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const drag=async(x0,y0,x1,y1)=>{const a=at(x0,y0),z=at(x1,y1);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.move(z[0],z[1],{steps:10});await p.mouse.up();await p.waitForTimeout(120);};
  const stroke=async i=>{await p.evaluate(()=>{__gs.setTool('brush');__gs.brush.size=40;__gs.ui.fg=[.2,.4,.8];});await drag(80,80+i*70,500,100+i*70);};
  const st=()=>p.evaluate(()=>({on:__gs.tlr.on,paused:__gs.tlr.paused,count:__gs.tlr.count,first:__gs.tlr.first,sid:__gs.tlr.sid}));
+ await p.evaluate(()=>{__gs.barPreset('all');});
  // the bar
  const bar=await p.evaluate(()=>({has:!!document.querySelector('#tlBar'),rec:!!document.querySelector('#tlBar .tlrec'),play:!!document.querySelector('#tlBar .tlplay'),sel:!!document.querySelector('#tlBar .tlsel'),stop:!!document.querySelector('#tlBar .tlstop'),folder:!!document.querySelector('#tlBar .tlfolder'),gear:!!document.querySelector('#tlBar .tlgear')}));
  ok(Object.values(bar).every(Boolean),'the recorder bar has record, replay, a list, stop, folder and settings buttons '+JSON.stringify(bar));

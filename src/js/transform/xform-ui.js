@@ -139,7 +139,7 @@ function xfKeys(e,m,k){if(!xf||xf.move)return false;
   return false;}
 
 /* tool buttons that hold two tools (gradient/bucket, dodge/burn) show the current one */
-ui.fillKind='gradient';ui.tonal='dodge';ui.tonalRange=1;ui.tonalExposure=.5;ui.tonalProtect=true;
+ui.fillKind='bucket';ui.tonal='dodge';ui.tonalRange=1;ui.tonalExposure=.5;ui.tonalProtect=true;
 function updateGroupButtons(t){const G=window.__groupIcons;if(!G)return;
   for(const [pair,cur] of [[['gradient','bucket','gbucket'],ui.fillKind],[['dodge','burn'],ui.tonal]]){const b=document.querySelector('.tool[data-group="'+pair[0]+'"]');if(!b)continue;
     b.dataset.tool=cur;b.querySelector('svg').innerHTML=G[cur];b.setAttribute('aria-pressed',String(pair.includes(t)));if(b.classList.contains('has-tool-menu'))toolMenuDecorate(b);}}

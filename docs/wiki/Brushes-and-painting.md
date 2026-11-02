@@ -256,3 +256,9 @@ Seven groups, all starting with **Sketch**, make a drawing kit:
 - **Combo**: a clean inker and a pencil line.
 
 **Paper tooth** (in the Brush panel) makes any normal brush catch only on the peaks of the paper. It uses your paper layer's grain, or sketch paper when you have none.
+
+## Customise the top bar
+
+Click the **⚙** at the top right (or right-click the top bar or the tool options row) to choose what shows. **Minimal** keeps just the brush name, size, opacity and flow. **Balanced** keeps what Photoshop, Procreate and Clip Studio Paint keep in reach (size, opacity, flow, smoothing, symmetry, pen pressure). **All** shows everything. Tick or untick any single item to make your own set. The **Timelapse recorder** is off until you switch it on here; it can sit at the top of the window or at the bottom of the canvas.
+
+The **Canvas** tab (next to Brushes and Textures) lists the papers: click one to put it on the canvas, or start a new document from a size preset. **B** selects the brush in Paint.
