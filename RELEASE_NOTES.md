@@ -1,3 +1,9 @@
+## 0.91.0
+
+- **Sketch studio:** 47 new brushes in seven groups (pencils, graphite shading, crayons, magic markers, pens, ink and a combo), made from scratch. The markers are see-through and run dry.
+- **Paper tooth** on the normal brushes: paint catches on the peaks of the paper, so pencils and crayons are grainy. Uses your paper layer, or sketch paper.
+- Some Watercolour studio brushes were renamed so every brush name is unique.
+
 ## 0.90.0
 
 - **Timelapse recorder** in the top row: Record (it becomes Pause while recording), Replay with a list, Stop and save, folder and settings. Takes a picture of the whole canvas when something changed, from 1 to 60 per second, minute or hour, with compression, size, video speed and format settings. The video is made with the app's own encoder and saved to a completed TL's folder on the desktop.

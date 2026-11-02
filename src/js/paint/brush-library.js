@@ -282,6 +282,7 @@ function buildBrushPanel(){
   else if(!tonal&&!bar3)box.append(S('bOp','Opacity','opacity',0,1,.01,pct).el);
   if(!bar3)box.append(S('bFlow','Flow','flow',.01,1,.01,pct).el);
   if(!brush.tip&&!bar3)box.append(S('bHard','Hardness','hardness',0,1,.01,pct).el);
+  box.append(S('bTooth','Paper tooth','tooth',0,1,.01,v=>v?Math.round(v*100)+'%':'off').el);
   box.append(S('bSpace','Spacing','spacing',.01,1.5,.01,pct).el,S('bGrain','Grain','grain',0,1,.01,pct).el,S('bSmooth','Smoothing','smoothing',0,1,.01,pct).el,S('bLazy','Lazy mouse','lazy',0,200,1,v=>v?v+' px':'off').el,el('div',{class:'chips'},C('bSmCurve','Smooth curves (round off corners)','smoothCurve')));
   if(ui.tool==='brush'){box.append(el('div',{class:'sub',text:'Spray paint'}),S('bSpDot','Spray dot size','spray',0,12,.1,v=>v?v.toFixed(1)+' px':'off').el);
     if(brush.spray>0)box.append(S('bSpDen','Spray density','sprayDen',.05,2,.01,pct).el,S('bSpMist','Overspray mist','sprayMist',0,1,.01,pct).el);
