@@ -1,7 +1,7 @@
 /* ================= Brush engine ================= */
 const BRUSH_DEFAULTS={size:24,opacity:1,flow:1,hardness:.85,spacing:.06,grain:0,smoothing:.25,pSize:true,pOpacity:false,minSize:.2,buildup:false,curve:0,strength:.6,charge:0,sampleAll:true,hueMix:0,
   tip:null,angle:0,roundness:1,flipX:false,flipY:false,randFlipX:false,randFlipY:false,sizeJitter:0,angleJitter:0,scatter:0,count:1,bothAxes:false,followDir:false,
-  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,pigment:1,wet:0,pickup:0,mixLab:false,paintMix:.7,mix:false,mixLoad:.8,mixPick:.5,mixWet:.7,mixDry:0,mixUse:.2,mixBristles:0,mixDryB:0,mixThick:0};
+  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,pigment:1,wet:0,pickup:0,mixLab:false,paintMix:.7,mix:false,mixLoad:.8,mixPick:.5,mixWet:.7,mixDry:0,mixUse:.2,mixBristles:0,mixDryB:0,mixThick:0,smoothCurve:false};
 /* lazy mouse: the brush follows the pointer on a string of R pixels, so it only moves once the string is pulled tight */
 function lazyStep(s,x,y,R){if(!(R>0))return [x,y];if(s.lx===undefined){s.lx=s.sx;s.ly=s.sy;}const dx=x-s.lx,dy=y-s.ly,d=Math.hypot(dx,dy);if(d<=R)return null;s.lx+=dx*(d-R)/d;s.ly+=dy*(d-R)/d;return [s.lx,s.ly];}
 /* Keep stabilization consistent across pointer sample rates. At 60 Hz this matches the
@@ -52,6 +52,7 @@ function beginStroke(L,x,y,p,o){
   /* Resolve the library and repeating mask once, rather than per dab at low spacing. */
   stroke.dualU=typeof dualUniforms==='function'?dualUniforms(o.dual,false):null;
   if(o.mixBrush)mixBegin(stroke);
+  if(o.smoothCurve&&!o.space&&['brush','erase','smudge'].includes(o.tool))stroke.cv={px:x,py:y,pp:p,mx:x,my:y,mp:p};
   if(tint&&o.jitterPerStroke)stroke.dabCol=jitterColor(o.color,o,stroke.grey);
   /* other maps painted by the same stroke: make sure the layer has an image there; with Lock alpha they follow the base colour's shape */
   if(o.extras&&o.extras.length){for(const e of o.extras)ensureMapTarget(L,e.key);
@@ -141,7 +142,7 @@ function clearStrokeBufferRegion(s,r){
 function fdAdd(s,r){const L=s.fd||(s.fd=[]),near=Math.max(64,(r[2]-r[0])*2);
   for(const f of L)if(r[0]<=f[2]+near&&r[2]>=f[0]-near&&r[1]<=f[3]+near&&r[3]>=f[1]-near){f[0]=Math.min(f[0],r[0]);f[1]=Math.min(f[1],r[1]);f[2]=Math.max(f[2],r[2]);f[3]=Math.max(f[3],r[3]);return;}
   L.push(r.slice());if(L.length>12){const u=L.reduce((a,f)=>[Math.min(a[0],f[0]),Math.min(a[1],f[1]),Math.max(a[2],f[2]),Math.max(a[3],f[3])]);s.fd=[u];}}
-function addPoint(x,y,p){
+function addPointLin(x,y,p){
   const s=stroke;if(!s)return;const dx=x-s.x,dy=y-s.y,len=Math.hypot(dx,dy);
   if(s.inkAnchor&&Math.hypot(x-s.inkAnchor[0],y-s.inkAnchor[1])>Math.max(.5,radiusAt(p)*.12)){s.inkAnchor=[x,y];s.inkSince=performance.now();s.inkCharge=0;}
   if(len<1e-4){s.p=p;return;}
@@ -153,8 +154,16 @@ function addPoint(x,y,p){
   finally{if(s.dualBatch)dualBatchFlush(s);}
   s.sampleBlend=1;if(s.samplePrevT){release(s.samplePrevT);s.samplePrevT=null;}s.carry=t-len;s.x=x;s.y=y;s.p=p;requestRender(true);
 }
+/* Smooth curves: instead of straight lines between the points the pointer reports, the stroke follows a curve that passes
+   through the middle of each segment, with the reported points as its control points. Corners round off and long strokes flow.
+   The stroke trails half a segment behind the pointer and catches up when it ends (endStroke). */
+function addPoint(x,y,p){const s=stroke;if(!s)return;const c=s.cv;if(!c)return addPointLin(x,y,p);
+  const mx=(c.px+x)/2,my=(c.py+y)/2,mp=(c.pp+p)/2;curveTo(s,c,c.px,c.py,c.pp,mx,my,mp);c.px=x;c.py=y;c.pp=p;c.mx=mx;c.my=my;c.mp=mp;}
+function curveTo(s,c,cx,cy,cp,ex,ey,ep){const sx=c.mx,sy=c.my,sp=c.mp,len=Math.hypot(cx-sx,cy-sy)+Math.hypot(ex-cx,ey-cy),n=clamp(Math.ceil(len/3),1,60);
+  for(let i=1;i<=n;i++){const t=i/n,u=1-t;addPointLin(u*u*sx+2*u*t*cx+t*t*ex,u*u*sy+2*u*t*cy+t*t*ey,sp+(ep-sp)*t);}}
+function curveFinish(s){const c=s.cv;if(!c)return;s.cv=null;curveTo(s,c,c.px,c.py,c.pp,c.px,c.py,c.pp);}
 function endStroke(record){
-  const s=stroke;if(!s)return;if(s.fdWait){s.fdWait=false;stamp(s.x,s.y,s.p);}const L=s.L,W=doc.w,H=doc.h;
+  const s=stroke;if(!s)return;curveFinish(s);if(s.fdWait){s.fdWait=false;stamp(s.x,s.y,s.p);}const L=s.L,W=doc.w,H=doc.h;
   if(s.inkFrame)cancelAnimationFrame(s.inkFrame);
   if(s.space){if(s.spaceDirty){s.spaceDirty=false;s.space.sync();}const b=s.space.bbox(s);s.bb=doc.wrap?[0,0,W,H]:[b[0]-2,b[1]-2,b[2]+2,b[3]+2];}
   const healing=s.o.tool==='heal',cloning=s.o.tool==='clone';

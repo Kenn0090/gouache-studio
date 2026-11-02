@@ -1,3 +1,8 @@
+## 0.84.0
+
+- **Smooth curves:** a new brush option that rounds off corners and makes long strokes flow. On in all the Mixing brushes; works for Brush, Eraser and Blend.
+- **Big mixing brushes:** Big oil (350 px), Big gouache wash (250 px) and Big smear (300 px), with more smoothing by default.
+
 ## 0.83.0
 
 - **Thick paint (impasto):** the Mixing brush can paint raised, lit paint: round bristle ridges and an edge lip, lit from the top left. New Paint thickness slider (0 is flat). On in the Oil, Gouache and Palette knife mixers.

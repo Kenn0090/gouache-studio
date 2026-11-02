@@ -47,6 +47,13 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const thick=await spread(240);
  console.log('flat spread',flat,'thick spread',thick);
  ok(thick>flat+25,'Paint thickness makes the stroke surface vary (ridges and lit edges)');
+ // smooth curves: a sharp point in sparse mouse movement is rounded off (the tip of the stroke is cut)
+ const tip=async on=>{await p.evaluate(on=>{const q=__gs.library.flatMap(x=>x.presets).find(x=>x.name==='Oil mixer');__gs.applyPreset(q);Object.assign(__gs.brush,{size:10,mixBristles:0,mixThick:0,smoothing:0,lazy:0,smoothCurve:on,followDir:false});},on);await setColour([0,0,0]);
+  const a=at(30,150),b=at(110,20),c=at(190,150);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.move(b[0],b[1]);await p.mouse.move(c[0],c[1]);await p.mouse.up();await p.waitForTimeout(200);
+  const d=await px(110,22);return d[0];};
+ const sharp=await tip(false);await p.keyboard.press('Control+z');await p.waitForTimeout(200);const round=await tip(true);
+ console.log('apex pixel without curves',sharp,'with curves',round);
+ ok(sharp<200&&round>240,'Smooth curves round off the sharp point of a stroke');
  // dry paint: no more mixing from wet pickup (dry paint is picked up far less)
  await p.evaluate(()=>{for(const L of __gs.allLayers())if(L._wet)L._wet.until=0;});
  ok(errs.length===0,'no page errors '+errs.slice(0,2).join(' | '));

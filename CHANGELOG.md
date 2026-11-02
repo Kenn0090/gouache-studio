@@ -1,3 +1,8 @@
+## 0.84.0
+
+- **Smooth curves.** A new brush option, **Smooth curves (round off corners)**, makes the brush follow a smooth curve through your movement instead of straight lines between the points the mouse or pen reports. Corners round off and long strokes flow, like the smooth strokes in painting apps. It works for the Brush, Eraser and Blend tools, and is on in all the Mixing brushes.
+- **Big mixing brushes.** New **Big oil (350 px)**, **Big gouache wash (250 px)** and **Big smear (300 px)** brushes in the Mixing (real paint) set. The Mixing brushes also smooth your strokes more by default.
+
 ## 0.83.0
 
 - **Thick paint (impasto).** The Mixing brush can now paint raised, lit paint. Each bristle makes a round ridge, and the edge of the stroke makes a lip; light from the top left shades them, so strokes look thick and catch the light, like in real oil paint. New slider **Paint thickness** (0 is flat paint, so you can switch it off). The Oil, Gouache and Palette knife mixers have it on. The shading is painted into the colour as you go, so it stays with the stroke.

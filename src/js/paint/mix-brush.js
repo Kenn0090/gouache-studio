@@ -88,6 +88,9 @@ const MIX_PRESETS=[
  ['Gouache mixer','bristle',{size:48,hardness:.7,mix:true,mixLoad:.9,mixPick:.35,mixWet:.6,mixDry:25,mixUse:.25,mixBristles:26,mixDryB:.3,mixThick:.6,followDir:true,pSize:true,minSize:.5,spacing:.02}],
  ['Watercolour mixer','wash',{size:90,hardness:.4,mix:true,mixLoad:.4,mixPick:.7,mixWet:1,mixDry:40,mixUse:.35,flow:.5,pSize:true,spacing:.02}],
  ['Smear (empty brush)',null,{followDir:true,mixBristles:22,size:60,hardness:.5,mix:true,mixLoad:0,mixPick:.9,mixWet:.9,mixDry:0,mixUse:0,pSize:true,spacing:.02}],
+ ['Big oil (350 px)','bristle',{size:350,hardness:.6,mix:true,mixLoad:.9,mixPick:.5,mixWet:.9,mixDry:0,mixUse:.08,mixBristles:34,mixDryB:.3,mixThick:.7,followDir:true,pSize:true,minSize:.6,spacing:.02,smoothing:.6}],
+ ['Big gouache wash (250 px)','bristle',{size:250,hardness:.7,mix:true,mixLoad:.9,mixPick:.35,mixWet:.6,mixDry:25,mixUse:.12,mixBristles:28,mixDryB:.25,mixThick:.5,followDir:true,pSize:true,minSize:.6,spacing:.02,smoothing:.6}],
+ ['Big smear (300 px)',null,{size:300,hardness:.5,mix:true,mixLoad:0,mixPick:.9,mixWet:.9,mixDry:0,mixUse:0,mixBristles:30,mixThick:.4,followDir:true,pSize:true,minSize:.6,spacing:.02,smoothing:.6}],
  ['Palette knife mixer','knife',{size:70,hardness:.8,mix:true,mixLoad:.5,mixPick:.8,mixWet:.8,mixDry:0,mixUse:.1,mixBristles:12,mixDryB:.1,mixThick:.5,followDir:true,pSize:true,minSize:.65,spacing:.02}]
-].map(([name,tip,settings])=>Object.assign({name,tool:'brush',tip:tip?ART_TIPS[tip]:null,smoothing:.2,pOpacity:false},settings));
+].map(([name,tip,settings])=>Object.assign({name,tool:'brush',tip:tip?ART_TIPS[tip]:null,smoothing:.45,smoothCurve:true,pOpacity:false},settings));
 library.splice(3,0,{id:'mixing',name:'Mixing (real paint)',builtin:true,presets:MIX_PRESETS,tips:[]});

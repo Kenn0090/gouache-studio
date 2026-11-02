@@ -186,3 +186,8 @@ Turn on **Mixing brush** in the Brush panel (or pick a brush from **Mixing (real
 - **Pick up from all visible layers** also picks up colour from the layers below.
 
 It works on a layer's colour in the Paint tab, with selections, symmetry, Lock alpha and undo. Masks, other maps and painting on the 3D model use the normal brushes.
+
+### Smooth strokes and big brushes
+
+- **Smooth curves (round off corners)** is in the Brush panel. With it on, the brush follows a smooth curve through your movement instead of straight lines between points, so corners round off and long strokes flow. It works for the Brush, Eraser and Blend tools. Use **Smoothing** and **Lazy mouse** with it for even steadier lines.
+- The **Mixing (real paint)** set has big brushes (**Big oil**, **Big gouache wash**, **Big smear**) for large, confident strokes.
