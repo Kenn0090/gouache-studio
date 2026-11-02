@@ -1,3 +1,9 @@
+## 0.90.0
+
+- **Timelapse recorder.** A recorder bar in the top row, next to the menus: **Record** (turns into a **Pause** button while recording, and a red dot blinks), **Replay** with a list of your finished timelapses, **Stop and save**, **folder** and **settings (⚙)**. While it records, a picture of the **whole canvas** is taken every so often, but only when something has changed, so waiting around doesn't fill the recording with the same picture. In the settings you choose how many pictures per **second, minute or hour** (1 to 60), the **compression**, the picture size, the video speed and the video format (MP4 H.264 or H.265, WebM VP9 or AV1). **Stop and save** makes the video with the app's own encoder (no extra download is needed) and offers it to be saved; on the desktop it is also put in a **completed TL's** folder, and the folder button opens it. **Replay** plays the selected timelapse on top of the canvas.
+- **Nothing is lost in a crash.** The pictures are kept as you work. If the app closes or crashes, the unfinished recording is offered again (in the ⚙ window), and it **resumes by itself** when the document is recovered. A recording only ends when you press Stop and save.
+- **Folder size limit.** **Preferences › Files › Largest timelapse folder** (2000 MB to start with): when a recording reaches it, the oldest pictures are replaced, so a recording never fills the disk.
+
 ## 0.89.1
 
 - **Fixed: ghost shapes showing while painting.** After using a watercolour brush (wash, splatter, wet-in-wet or any brush with Watercolour edges), the leftover of an earlier stroke could show up as grey patches over the layer you were painting on while you drew with any other brush, and it did not go away when layers were deleted. The watercolour brushes now clear the shared stroke buffer first, like every other brush.

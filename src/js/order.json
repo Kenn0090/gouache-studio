@@ -197,6 +197,7 @@
     "ui/updater",
     "files/recent",
     "files/autosave",
+    "files/timelapse",
     "ui/safety",
     "layers/locks",
     "ui/key-helper",

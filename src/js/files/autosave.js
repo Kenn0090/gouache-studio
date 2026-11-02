@@ -80,7 +80,7 @@ async function asRecoveries(){try{if(platform.isDesktop){const l=await platform.
 async function asRecover(r){try{let buf;if(r.path){const u=await platform.readFile(r.path);buf=u.buffer.slice(u.byteOffset,u.byteOffset+u.byteLength);}else buf=await r.blob.arrayBuffer();
     if(r.kind==='p3d'){if(ui.mode!=='p3d'&&!setMode('p3d',true))return;await openP3Project(buf,r.name,null);}
     else{if(tabDocs.paint&&!setMode('paint',true))return;if(!(await askReplace()))return;await openGouache(buf,r.name);}
-    toast('Recovered “'+r.name+'”. Save it to keep it.');}
+    toast('Recovered “'+r.name+'”. Save it to keep it.');if(typeof tlAfterRecover==='function')tlAfterRecover();}
   catch(e){toast('Could not recover it: '+(e.message||e));}}
 async function asDiscard(r){try{if(r.path)await platform.invoke('autosave_delete',{path:r.path});else await asDB.run('readwrite',st=>st.delete(r.kind));}catch(e){}}
 /* backups: the previous version kept beside the file when saving over it */
