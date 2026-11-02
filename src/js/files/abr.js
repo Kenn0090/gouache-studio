@@ -10,7 +10,7 @@ function readAbrLegacy(buf){const dv=new DataView(buf),src=new Uint8Array(buf),v
         const a=new Uint8Array(w*h);for(let k=0;k<w*h;k++)a[k]=raw[k*bpc];out.push({name,spacing:spacing/100,tip:{w,h,alpha:a}});}}
     o=st+size;}
   return out;}
-function presetFromAbr(b,samples,notes,extraTips){const sh=b.shape||{};
+function presetFromAbr(b,samples,notes,extraTips,pats,patTips){const sh=b.shape||{};
   const p=Object.assign({},BRUSH_DEFAULTS,{name:b.name||'Brush',tool:'brush',size:clamp(Math.round(sh.size||30),1,5000),spacing:sh.spacingOn===false?.05:clamp(sh.spacing||.25,.01,1.5),
     angle:sh.angle||0,roundness:clamp(sh.roundness==null?1:sh.roundness,.05,1),flipX:!!sh.flipX,flipY:!!sh.flipY,pSize:false,pOpacity:false,minSize:0,smoothing:.2});
   if(sh.type==='sampled'){const t=samples.get(sh.sampledData);if(t)p.tip=t;else notes.add('Some brushes referenced tip images missing from the file; they use a round tip.');}
@@ -34,7 +34,10 @@ function presetFromAbr(b,samples,notes,extraTips){const sh=b.shape||{};
       p.dual=Object.assign({},DUAL_DEFAULTS,{tipKey:'',size:clamp(Math.round(sh.size||40),2,2000),spacing:clamp(Math.round((db.spacing||sh.spacing||.25)*100),1,1000),scatter:clamp(Math.round(((db.useScatter===false?0:(db.scatterDynamics&&db.scatterDynamics.jitter))||0)*100),0,400),count:clamp(Math.round(db.count||1),1,8),mode:/subtract|knock|height/.test(bm)?1:0,amount:100});
       notes.add('Dual brush settings were converted to this app’s Dual brush.');}
     else notes.add('Some dual brushes had a tip that could not be read and were left out.');}
-  const tx=b.texture;if(tx){const dep=frac(tx.depth);p.grain=clamp(dep*.9,0,1);notes.add('Texture (pattern) was approximated with Grain: the strength follows the texture depth, but the pattern picture itself is not used.');}
+  const tx=b.texture;if(tx){const dep=frac(tx.depth),pat=pats&&pats.get(tx.id);
+    if(pat&&pat.data&&pat.bounds&&pat.bounds.w>0&&pat.bounds.h>0&&extraTips){let t=patTips.get(tx.id);if(!t){t=bzTexTipFromRGBA('Texture · '+(pat.name||'pattern')+' '+(patTips.size+1),pat.data,pat.bounds.w,pat.bounds.h);patTips.set(tx.id,t);extraTips.push(t);}
+      p.texKey='u:'+t.name;p.texDepth=clamp(dep,0,1);p.texScale=clamp(Math.round(pat.bounds.w*(tx.scale>10?tx.scale/100:(tx.scale||1))),16,1024);p.texInvert=!!tx.invert;notes.add('Texture (pattern) pictures were applied as the brush texture.');}
+    else{p.grain=clamp(dep*.9,0,1);notes.add('Texture (pattern) was approximated with Grain because its picture was not in the file.');}}
   return p;}
 async function importABR(file){
   const buf=await file.arrayBuffer(),dv=new DataView(buf),ver=dv.getInt16(0),setName=baseName(file.name),notes=new Set(),presets=[],tips=[];
@@ -43,7 +46,8 @@ async function importABR(file){
       else presets.push(Object.assign({},BRUSH_DEFAULTS,{name:r.name,tool:'brush',size:clamp(r.size||20,1,5000),hardness:clamp(r.hardness,0,1),roundness:clamp(r.roundness||1,.05,1),angle:r.angle||0,spacing:clamp(r.spacing||.25,.01,1.5),pSize:false}));}}
   else{needLib('agPsd','Brush import');let abr;try{abr=agPsd.readAbr(new Uint8Array(buf));}catch(e){throw new Error('This brush file could not be read: '+e.message);}
     const samples=new Map();for(const s of abr.samples){if(s.bounds.w>0&&s.bounds.h>0){const t=makeTip('Tip '+(samples.size+1),s.bounds.w,s.bounds.h,s.alpha);samples.set(s.id,t);tips.push(t);}}
-    for(const b of abr.brushes){const p=presetFromAbr(b,samples,notes,tips);if(p.tip&&p.tip.name.startsWith('Tip '))p.tip.name=p.name;presets.push(p);}
+    const pats=new Map((abr.patterns||[]).map(q=>[q.id,q])),patTips=new Map();
+    for(const b of abr.brushes){const p=presetFromAbr(b,samples,notes,tips,pats,patTips);if(p.tip&&p.tip.name.startsWith('Tip '))p.tip.name=p.name;presets.push(p);}
     for(const p of presets)if(p._dualTip){p.dual.tipKey='u:'+p._dualTip.name;delete p._dualTip;}
     const used=new Set(presets.map(p=>p.tip));for(const t of samples.values())if(!used.has(t))presets.push(Object.assign({},BRUSH_DEFAULTS,{name:t.name,tool:'brush',tip:t,size:clamp(Math.max(t.w,t.h),1,5000),spacing:.25,pSize:false}));}
   if(!presets.length)throw new Error('No brushes were found in “'+file.name+'”.');

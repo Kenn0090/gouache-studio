@@ -55,6 +55,8 @@ function bzTipAlpha(im){const {data,width:w,height:h}=im,n=w*h;let trans=0,col=0
   if(col>n*.2)return null;
   const mean=sum/n,invert=mean>140;for(let i=0;i<n;i++){const l=data[i*4]*.299+data[i*4+1]*.587+data[i*4+2]*.114;a[i]=Math.round(clamp(invert?255-l:l,0,255));}
   return {w,h,a};}
+/* a texture picture (paper, canvas, grain) becomes a light-is-paint picture the brush tiles over the canvas: Brush texture depth, size and invert */
+function bzTexTipFromRGBA(name,data,w,h){const a=new Uint8Array(w*h);for(let i=0;i<w*h;i++){const j=i*4,l=data[j]*.299+data[j+1]*.587+data[j+2]*.114,al=data[j+3]/255;a[i]=Math.round(l*al+255*(1-al));}return makeTip(name,w,h,a);}
 function bzPresetFromTip(name,tip,extra){const t=makeTip(name,tip.w,tip.h,tip.a);return {tipObj:t,preset:Object.assign({},BRUSH_DEFAULTS,{name,tool:'brush',tip:t,size:clamp(Math.max(24,Math.min(tip.w,tip.h)/4),8,400),spacing:.15,pSize:true,minSize:.3,smoothing:.25},extra||{})};}
 /* the settings we have an equivalent for (Procreate's names for them) */
 function bzProcreateSettings(a,notes){const n=k=>{const v=bpFind(a,k);return typeof v==='number'?v:undefined;},b=k=>bpFind(a,k)===true,x={},sp=n('plotSpacing');
@@ -71,10 +73,15 @@ function bzProcreateSettings(a,notes){const n=k=>{const v=bpFind(a,k);return typ
   const hj=Math.max(n('dynamicsJitterHue')||0,n('dynamicsJitterStrokeHue')||0),sj2=Math.max(n('dynamicsJitterSaturation')||0,n('dynamicsJitterStrokeSaturation')||0),vj=Math.max(n('dynamicsJitterLightness')||0,n('dynamicsJitterDarkness')||0,n('dynamicsJitterStrokeLightness')||0,n('dynamicsJitterStrokeDarkness')||0);
   if(hj>0||sj2>0||vj>0){x.hueJitter=clamp(hj,0,1);x.satJitter=clamp(sj2,0,1);x.valJitter=clamp(vj,0,1);x.jitterPerStroke=!((n('dynamicsJitterHue')||0)+(n('dynamicsJitterSaturation')||0)+(n('dynamicsJitterLightness')||0)+(n('dynamicsJitterDarkness')||0)>0);}
   const sm=n('plotSmoothing');if(sm>0)x.smoothing=clamp(sm,0,1);
+  const pcv=(a.dynamicsPressureOverall&&a.dynamicsPressureOverall.points)||(a.dynamicsPressureSizeCurve&&a.dynamicsPressureSizeCurve.points);
+  if(Array.isArray(pcv)&&(x.pSize||x.pOpacity)){for(const q of pcv){const m=/\{\s*([-\d.e]+)\s*,\s*([-\d.e]+)\s*\}/.exec(String(q));if(!m)continue;const px=+m[1],py=+m[2];if(px>.05&&px<.95&&py>.03&&py<.97){x.curve=clamp(Math.round(-Math.log2(Math.log(py)/Math.log(px))/1.6*100)/100,-1,1);notes.add('Pressure curves were approximated with the Curve setting (one bend through the middle point).');break;}}}
+  const tse=Math.max(n('pencilTaperStartLength')||0,n('taperStartLength')||0),tee=Math.max(n('pencilTaperEndLength')||0,n('taperEndLength')||0);
+  if(tse>.01||tee>.01){x.taperStart=Math.round(tse*500);x.taperEnd=Math.round(tee*500);if(!x.pSize&&!x.pOpacity)x.pSize=true;notes.add('Tapering was approximated with the start and end taper lengths.');}
   const ps2=n('paintSize');if(ps2>0)x.size=clamp(Math.round(ps2*800),4,400);
+  const tp=n('textureScale'),gd=n('grainDepth');x.texScale=clamp(Math.round(256*(tp>0?tp:1)),16,1024);x.texDepth=clamp(gd==null?1:gd,0,1);x.texInvert=b('textureInverted');
   const gp=bpFind(a,'bundledGrainPath');if(typeof gp==='string'&&!/blank/i.test(gp)){x.grain=clamp(.45*(n('grainDepth')==null?1:n('grainDepth')),.1,.9);notes.add('Grain textures were approximated with the Grain setting; the grain picture itself is not used.');}
   const bm=n('blendMode');if(bm>0)notes.add('Brush blend modes were not applied.');
-  notes.add('Procreate settings such as pressure curves, tapering, wet mix and wet edges are not applied.');return x;}
+  notes.add('Procreate wet mix, wet edges and sub-brushes are not applied.');return x;}
 async function importProcreate(file){const entries=await bzUnzip(await file.arrayBuffer()),notes=new Set(),groups=new Map();
   for(const e of entries){const i=e.name.lastIndexOf('/'),dir=i<0?'':e.name.slice(0,i),leaf=e.name.slice(i+1);if(!groups.has(dir))groups.set(dir,{});groups.get(dir)[leaf]=e.data;}
   const presets=[],tips=[];let k=0;
@@ -84,7 +91,7 @@ async function importProcreate(file){const entries=await bzUnzip(await file.arra
     const tip=shapeKey?bzTipAlpha(await bzBitmap(g[shapeKey])):null;if(shapeKey&&!tip){notes.add('A tip picture was in colour and was skipped.');continue;}
     k++;const nm=name||(dir&&!/^[0-9A-F-]{16,}$/i.test(dir.split('/').pop())?dir.split('/').pop():baseName(file.name)+(groups.size>1?' '+k:''));
     /* (0.93.2) a brush with a grain picture: the paper-like grain is approximated with the Grain setting */
-    if(Object.keys(g).some(x=>/^grain/i.test(x))){extra=Object.assign({grain:.45},extra);notes.add('Grain textures were approximated with the Grain setting; the grain picture itself is not used.');}
+    {const gk=Object.keys(g).find(x=>/^grain.*\.(png|jpe?g)$/i.test(x));if(gk){try{const im=await bzBitmap(g[gk]),t=bzTexTipFromRGBA('Grain · '+(name||'brush')+' '+(tips.length+1),im.data,im.width,im.height);tips.push(t);extra=Object.assign({texKey:'u:'+t.name,grain:0},extra);delete extra.grain;extra.texKey='u:'+t.name;}catch(e){extra=Object.assign({grain:.45},extra);}}}
     if(!tip){/* uses one of Procreate's own built-in shapes, which are not stored in the file: a round tip stands in so the settings still come across */
       builtin++;presets.push(Object.assign({},BRUSH_DEFAULTS,{name:nm,tool:'brush',tip:null,size:50,hardness:.7,spacing:.15,pSize:true,minSize:.3,smoothing:.25},extra));continue;}
     const r=bzPresetFromTip(nm,tip,extra);tips.push(r.tipObj);presets.push(r.preset);}

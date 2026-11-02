@@ -283,6 +283,7 @@ function buildBrushPanel(){
   if(!bar3)box.append(S('bFlow','Flow','flow',.01,1,.01,pct).el);
   if(!brush.tip&&!bar3)box.append(S('bHard','Hardness','hardness',0,1,.01,pct).el);
   box.append(S('bTooth','Paper tooth','tooth',0,1,.01,v=>v?Math.round(v*100)+'%':'off').el);
+  if(brush.texKey)box.append(S('bTexD','Texture depth','texDepth',0,1,.01,pct).el,S('bTexS','Texture size','texScale',16,1024,1,v=>Math.round(v)+' px').el);
   box.append(S('bSpace','Spacing','spacing',.01,1.5,.01,pct).el,S('bGrain','Grain','grain',0,1,.01,pct).el,S('bSmooth','Smoothing','smoothing',0,1,.01,pct).el,S('bLazy','Lazy mouse','lazy',0,200,1,v=>v?v+' px':'off').el,el('div',{class:'chips'},C('bSmCurve','Smooth curves (round off corners)','smoothCurve')));
   if(ui.tool==='brush'){box.append(el('div',{class:'sub',text:'Spray paint'}),S('bSpDot','Spray dot size','spray',0,12,.1,v=>v?v.toFixed(1)+' px':'off').el);
     if(brush.spray>0)box.append(S('bSpDen','Spray density','sprayDen',.05,2,.01,pct).el,S('bSpMist','Overspray mist','sprayMist',0,1,.01,pct).el);
@@ -366,7 +367,7 @@ function serializeSet(set){const tips=[],idx=new Map();
   const presets=set.presets.map(p=>{const o={name:p.name,tool:p.tool,maps:p.maps};for(const k of SETTING_KEYS)if(k!=='tip')o[k]=p[k];
     if(p.tip){if(!idx.has(p.tip)){idx.set(p.tip,tips.length);tips.push({name:p.tip.name,w:p.tip.w,h:p.tip.h,alpha:p.tip.alpha});}o.tipIndex=idx.get(p.tip);}return o;});
   /* a dual brush points at its second tip by name: keep that tip with the set so it survives a restart */
-  for(const p of set.presets){const k=p.dual&&typeof p.dual.tipKey==='string'&&p.dual.tipKey.startsWith('u:')?p.dual.tipKey.slice(2):'';if(!k)continue;const t=set.tips.find(x=>x.name===k);if(t&&!idx.has(t)){idx.set(t,tips.length);tips.push({name:t.name,w:t.w,h:t.h,alpha:t.alpha});}}
+  for(const p of set.presets)for(const key of [p.dual&&p.dual.tipKey,p.texKey]){const k=typeof key==='string'&&key.startsWith('u:')?key.slice(2):'';if(!k)continue;const t=set.tips.find(x=>x.name===k);if(t&&!idx.has(t)){idx.set(t,tips.length);tips.push({name:t.name,w:t.w,h:t.h,alpha:t.alpha});}}
   return {id:set.id,name:set.name,presets,tips};}
 function deserializeSet(d){const tips=d.tips.map(t=>makeTip(t.name,t.w,t.h,t.alpha));
   return {id:d.id,name:d.name,tips,presets:d.presets.map(o=>{const p=Object.assign({},o);p.tip=o.tipIndex!=null?tips[o.tipIndex]:null;delete p.tipIndex;return p;})};}

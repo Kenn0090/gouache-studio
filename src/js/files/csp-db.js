@@ -44,12 +44,16 @@ async function cspFromDb(u8,fileName,notes){const T=sqliteTables(u8,['Node','Var
       spacing:clamp((v.BrushInterval||1)/100,.01,1.5),roundness:clamp((v.BrushThickness==null?100:v.BrushThickness)/100,.05,1),angle:v.BrushRotation||0,angleJitter:clamp((v.BrushRotationRandomScale||0)/100,0,1),
       pSize:cspPress(v.BrushSizeEffector),pOpacity:cspPress(v.BrushOpacityEffector),pFlow:cspPress(v.BrushFlowEffector),minSize:.3,smoothing:.25};
     if(v.BrushUseSpray){const sp=mm?v.BrushSpraySize*350/25.4:v.BrushSpraySize;x.scatter=clamp(sp/Math.max(1,size),0,2);x.bothAxes=true;x.count=clamp(Math.round(v.BrushSprayDensity||1),1,8);}
-    if(v.TextureImage&&cspBlobPath(v.TextureImage)){x.grain=clamp(.35*(v.TextureDensity==null?100:v.TextureDensity)/100,.1,.9);}
+    if(v.TextureImage&&cspBlobPath(v.TextureImage)){const tm=mats.get(cspBlobPath(v.TextureImage)),tpng=tm&&cspMaterialPng(tm.FileData);let tt=null;
+      if(tpng){try{const im=await bzBitmap(tpng);tt=bzTexTipFromRGBA('Texture · '+nd.NodeName.trim()+' '+(tips.length+1),im.data,im.width,im.height);tips.push(tt);x.texKey='u:'+tt.name;x.texDepth=clamp((v.TextureDensity==null?100:v.TextureDensity)/100,0,1);x.texScale=clamp(Math.round(im.width*(v.TextureScale2||100)/100),16,1024);}catch(e){tt=null;}}
+      if(!tt)x.grain=clamp(.35*(v.TextureDensity==null?100:v.TextureDensity)/100,.1,.9);}
+    if(v.BrushUseIn&&v.BrushInLength>0){x.taperStart=Math.round(clamp(v.BrushInLengthUnit===2?v.BrushInLength*350/25.4:v.BrushInLength,0,400));x.pSize=true;}
+    if(v.BrushUseOut&&v.BrushOutLength>0){x.taperEnd=Math.round(clamp(v.BrushOutLengthUnit===2?v.BrushOutLength*350/25.4:v.BrushOutLength,0,400));x.pSize=true;}
     let tip=null;if(v.BrushUsePatternImage){const m=mats.get(cspBlobPath(v.BrushPatternImageArray)),png=m&&cspMaterialPng(m.FileData);
       if(png){try{tip=bzTipAlpha(await bzBitmap(png));}catch(e){}}}
     k++;const nm=nd.NodeName.trim()||baseName(fileName)+' '+k;
     if(tip){const r=bzPresetFromTip(nm,tip,x);tips.push(r.tipObj);presets.push(r.preset);}
     else presets.push(Object.assign({},BRUSH_DEFAULTS,{name:nm,tool:'brush',tip:null},x));}
-  if(presets.length){notes.add('Clip Studio settings read: size, hardness, opacity, flow, spacing, roundness, rotation, spray, pen pressure on or off, and texture (approximated with Grain).');
-    notes.add('Not applied: start and end tapering, pressure curves, ink and water colour mixing.');}
+  if(presets.length){notes.add('Clip Studio settings read: size, hardness, opacity, flow, spacing, roundness, rotation, spray, pen pressure on or off, and the texture picture, and start and end tapering (approximated).');
+    notes.add('Not applied: pressure curves, ink and water colour mixing.');}
   return {presets,tips,notes};}
