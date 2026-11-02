@@ -224,3 +224,7 @@ A mouse has no pressure, so the Brush panel has **Pressure without a pen**: **Sp
 - Clip Studio Paint **.sut**: the tip pictures only.
 
 The brushes will look close to the originals, not identical, because each program has its own brush engine. Grain textures, dynamics curves and similar settings are not applied. A message after importing lists what was left out. Photoshop **.abr** brushes work as before.
+
+## Folding brush sets
+
+In the Brushes panel, click the arrow (or the title) on a brush set's header to fold it shut or open it. **Fold all** and **Unfold all** at the top do every set at once. What you fold is remembered. The right-click brush picker on the canvas folds sets too.

@@ -1,3 +1,7 @@
+## 0.88.2
+
+- **Fold brush sets** in the Brushes panel: an arrow on each set (click it or the title), plus Fold all and Unfold all. Your choice is remembered.
+
 ## 0.88.1
 
 - **Pressure without a pen:** Speed, Taper or Fixed pressure for the mouse. The spray caps taper by default. A real pen is not changed.

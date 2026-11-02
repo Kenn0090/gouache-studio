@@ -164,13 +164,28 @@ function tileCanvas(p){const c=el('canvas',{width:64,height:64});const x=c.getCo
     x.fillStyle=g;x.save();x.translate(32,32);x.scale(1,clamp(p.roundness==null?1:p.roundness,.05,1));x.beginPath();x.arc(0,0,26,0,7);x.restore();x.fill();
     if(p.grain){x.globalCompositeOperation='destination-out';const R=rng(3);for(let i=0;i<260;i++){x.globalAlpha=R()*.8;x.fillRect(R()*64,R()*64,2,2);}}}
   x.globalCompositeOperation='source-in';x.globalAlpha=1;const cs=getComputedStyle(document.documentElement);x.fillStyle=(cs.getPropertyValue(p.tool==='smudge'?'--accent':'--text').trim())||(p.tool==='smudge'?'#e2a453':'#e1e3e7');x.fillRect(0,0,64,64);return c;}
+/* Brush sets can be folded shut (the arrow on each header, or Fold all / Unfold all); what is folded is remembered */
+const LIBFOLD_KEY='gs.libFold';
+function libFolded(){try{return new Set(JSON.parse(localStorage.getItem(LIBFOLD_KEY)||'[]'));}catch(e){return new Set();}}
+function libFoldSave(set){try{localStorage.setItem(LIBFOLD_KEY,JSON.stringify([...set]));}catch(e){}}
 function renderLibrary(){const box=$('#libBody');box.replaceChildren();
   brushSession.recent=brushSession.recent.filter(p=>library.some(s=>s.presets.includes(p)));
-  if(brushSession.recent.length)box.append(el('div',{class:'libset',id:'recentBrushes'},el('div',{class:'libset-h'},el('span',{text:'Recent brushes'})),el('div',{class:'tiles'},...brushSession.recent.map(p=>brushLibraryTile(p,true)))));
-  for(const set of library){const head=el('div',{class:'libset-h'},el('span',{text:set.builtin?set.name:set.name+' · '+set.presets.length}),set.builtin?null:el('button',{text:'Remove','aria-label':'Remove brush set '+set.name,onclick:()=>removeSet(set)}));
-    const tiles=el('div',{class:'tiles'});
-    for(const p of set.presets)tiles.append(brushLibraryTile(p,false));
-    box.append(el('div',{class:'libset'},head,tiles));}if(typeof renderDualPicker==='function')queueMicrotask(renderDualPicker);}
+  const folded=libFolded();
+  /* one folding section: arrow + title (+ extra header buttons); the tiles are made the first time it is open */
+  const section=(id,title,extra,fill,cls)=>{const wrap=el('div',{class:'libset'+(cls?' '+cls:''),id:id==='recent'?'recentBrushes':undefined}),tiles=el('div',{class:'tiles'}),
+      arrow=el('button',{class:'libfold',type:'button','aria-label':'Fold or unfold '+title,title:'Fold or unfold this set'}),
+      head=el('div',{class:'libset-h',style:'cursor:pointer'},arrow,el('span',{text:title,style:'flex:1'}),extra||null);
+    const apply=()=>{const f=folded.has(id);wrap.classList.toggle('folded',f);arrow.textContent=f?'▸':'▾';arrow.setAttribute('aria-expanded',String(!f));if(!f&&!tiles.childElementCount)fill(tiles);};
+    const toggle=()=>{if(folded.has(id))folded.delete(id);else folded.add(id);libFoldSave(folded);apply();};
+    head.addEventListener('click',e=>{if(e.target.closest('button')&&e.target!==arrow)return;toggle();});
+    wrap.append(head,tiles);apply();return wrap;};
+  const bar=el('div',{class:'libfoldbar',style:'display:flex;gap:6px;margin:2px 0 6px'},
+    el('button',{class:'btn sm',type:'button',text:'Fold all',onclick:()=>{libFoldSave(new Set([...library.map(x=>x.id),'recent']));renderLibrary();}}),
+    el('button',{class:'btn sm',type:'button',text:'Unfold all',onclick:()=>{libFoldSave(new Set());renderLibrary();}}));
+  box.append(bar);
+  if(brushSession.recent.length)box.append(section('recent','Recent brushes',null,t=>t.append(...brushSession.recent.map(p=>brushLibraryTile(p,true)))));
+  for(const set of library)box.append(section(set.id,set.builtin?set.name:set.name+' · '+set.presets.length,set.builtin?null:el('button',{text:'Remove','aria-label':'Remove brush set '+set.name,onclick:e=>{e.stopPropagation();removeSet(set);}}),t=>{for(const p of set.presets)t.append(brushLibraryTile(p,false));}));
+  if(typeof renderDualPicker==='function')queueMicrotask(renderDualPicker);}
 /* Shared range gestures use displayed units: five percentage points, degrees or pixels.
    Keep mapped sliders (brush size, tiling) in their value space when snapping. Ctrl-wheel adjusts the temporary snap increment. */
 const sliderSnap={step:0,badge:null};

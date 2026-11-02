@@ -1,3 +1,7 @@
+## 0.88.2
+
+- **Fold brush sets.** In the Brushes panel every brush set now has a fold arrow on its header (click the arrow or the title to fold it shut or open it), and **Fold all** and **Unfold all** buttons at the top. What you fold is remembered. Before, sets could only be folded in the right-click brush picker on the canvas.
+
 ## 0.88.1
 
 - **Pressure without a pen.** The mouse has no pressure, so the Brush panel now has **Pressure without a pen**: **Speed** (moving fast gives a light thin line, slow gives a heavy one, like a real can), **Taper** (the stroke eases in from thin and fades out when you let go) and **Fixed** (one pressure you choose). A real pen is never changed. The spray caps use Taper by default.
