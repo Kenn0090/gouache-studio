@@ -97,7 +97,7 @@ void main(){ o=vec4(clamp(brushMask(gl_FragCoord.xy)*uAlpha*uWetSet,0.0,1.0),0.0
 const FS_MIXDRY=`uniform sampler2D uSrc; uniform float uStep;
 void main(){ o=vec4(max(texelFetch(uSrc,ivec2(gl_FragCoord.xy),0).r-uStep,0.0),0.0,0.0,0.0); }`;
 P.mixload=program(FS_MIXLOAD,VS_FULL);P.mixdab=program(FS_MIXDAB,VS_STAMP);P.mixwet=program(FS_MIXWET,VS_STAMP);P.mixdry=program(FS_MIXDRY);P.mixcomp=program(FS_MIXCOMP,VS_STAMP);
-{const D0=Object.assign({uUseTip:false,uTip:dummy,uAngle:0,uRound:1,uFlip:[1,1],uTipAspect:1,uGrain:0,uGrainScale:[1,1],uPeriod:[1,1],uHard:.8,uRadius:1,uCenter:[0,0],uSpray:[0,0,0,0],uSprayVar:0,uSprayFleck:0,uSprayRing:[0,0,0]},DUAL_UNIFORM_DEFAULTS);
+{const D0=Object.assign({uUseTip:false,uTip:dummy,uAngle:0,uRound:1,uFlip:[1,1],uTipAspect:1,uGrain:0,uGrainScale:[1,1],uPeriod:[1,1],uHard:.8,uRadius:1,uCenter:[0,0],uSpray:[0,0,0,0],uSprayVar:0,uSprayFleck:0,uSprayRing:[0,0,0],uSpraySolid:1},DUAL_UNIFORM_DEFAULTS);
  P.mixload.defaults=Object.assign({uUseBase:false,uBase:dummy,uBristles:0},D0);P.mixdab.defaults=Object.assign({uLockAlpha:0,uWetMix:1,uBristles:0,uDryB:0,uStepK:1,uThick:0,uEven:1,uWC:0,uWCEdge:0,uWCPools:0,uWCGran:0,uWCOut:false,uPT:{int:-1},uPSc:1,uTooth:0},D0,SEL_DEF);P.mixwet.defaults=Object.assign({},D0);}
 /* the hidden wetness map of a layer (red channel: 0 dry … 1 soaking) */
 function mixWetFor(L){const w=Math.max(1,Math.ceil(doc.w/MIXQ)),h=Math.max(1,Math.ceil(doc.h/MIXQ));let m=L._wet;

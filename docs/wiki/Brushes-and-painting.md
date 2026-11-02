@@ -208,6 +208,7 @@ The **Graffiti** set has spray caps, markers, a splatter flick and a stencil edg
 
 - **Drips:** thin drips with a bead at the end. Hold the brush still with the button down and they run from under it (**Drips when held still**), and strokes also drip while you paint (**Drips while painting**). **Drip width** makes them fatter. The drips that are still running finish most of their run when you let go.
 - **Spray settings** work on any normal brush: **Spray dot size** (0 turns spraying off), **Spray density** (above 100% the core is solid), **Overspray mist**, **Droplet variety** (for splatter), **Flecks around the stroke**, **Hollow cone (ring)** (denser in a ring than in the middle, like a real nozzle) and **Swirl (spinning nozzle)** (arms that turn on every dab).
+- **Spray cap levels** is a set of six brushes, from **Cap level 1 · Skinny cream** to **Cap level 6 · Hardcore fat**, that spray like real aerosol caps: a grainy, see-through stipple that builds up slowly, bigger and denser the harder you press, ending in a hairline of fine mist. **Solid core** (0 for these) and **Density follows pressure** control the grain.
 - **Wildstyle chisel (fringed)** is a broad flat nib held at a fixed angle: strokes swing from thick to thin, and the fringe along the edges leaves fine streaks. **Wildstyle chisel (clean)** has crisp edges.
 - Try them on a **Brick wall**, **Concrete**, **Rough plaster** or **Corrugated metal** paper (Layer › New › Paper…).
 

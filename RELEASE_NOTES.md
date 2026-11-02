@@ -2,6 +2,7 @@
 
 - **Pressure without a pen:** Speed, Taper or Fixed pressure for the mouse. The spray caps taper by default. A real pen is not changed.
 - **Flecks follow the pressure** around spray strokes. New Hardcore fat cap brush.
+- **Spray cap levels:** six new brushes, from a skinny cream cap to a hardcore fat cap, that spray a grainy see-through stipple, bigger and denser the harder you press, ending in a fine mist. New Solid core and Density follows pressure settings.
 - **Hollow cone and swirl:** the spray can be denser in a ring with arms that spin on every dab (new settings and two new brushes), plus **Wildstyle chisel** brushes: a flat nib with a fringed edge for thick-to-thin calligraphy tags.
 - **Import Procreate (.brush, .brushset) and Clip Studio (.sut) brushes** with Import brushes or drag and drop. Tips and the main settings come across; a message lists what is approximated.
 

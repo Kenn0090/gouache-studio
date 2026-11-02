@@ -47,11 +47,19 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  console.log('painted samples under a moving stroke with auto drips:',autoBelow);ok(autoBelow>=3,'drips come off the stroke while painting, without holding still');
  // hollow cone: one dab with the ring on is denser at the ring than in the middle; the swirl makes it uneven around the ring
  const dab=async(ring,swirl,x,y)=>{await use('Fat cap',{size:160,drip:0,dripAuto:0,sprayFleck:0,sprayRing:ring,spraySwirl:swirl,spray:.9,sprayDen:1.2,sprayMist:0,simP:'off',pSize:false});const a=at(x,y);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.up();await p.waitForTimeout(250);
-  return p.evaluate(([x,y])=>{const L=__gs.doc.active,A=(px,py)=>{let s=0;for(let i=-2;i<=2;i++)for(let j=-2;j<=2;j++)s+=__gs.captureRegionNow(L.target,Math.round(px+i),Math.round(py+j),1,1).data[3];return s/25;};const mid=A(x,y),bins=[];for(let k=0;k<12;k++){const a=k/12*Math.PI*2;bins.push(A(x+Math.cos(a)*40,y+Math.sin(a)*40));}const m=bins.reduce((a,b)=>a+b)/12,sd=Math.sqrt(bins.reduce((a,b)=>a+(b-m)*(b-m),0)/12);return {mid,ring:m,sd};},[x,y]);};
+  return p.evaluate(([x,y])=>{const L=__gs.doc.active,A=(px,py)=>{let s=0;for(let i=-2;i<=2;i++)for(let j=-2;j<=2;j++)s+=__gs.captureRegionNow(L.target,Math.round(px+i),Math.round(py+j),1,1).data[3];return s/25;};const mid=A(x,y),bins=[];for(let k=0;k<12;k++){const a=k/12*Math.PI*2;bins.push(A(x+Math.cos(a)*66,y+Math.sin(a)*66));}const m=bins.reduce((a,b)=>a+b)/12,sd=Math.sqrt(bins.reduce((a,b)=>a+(b-m)*(b-m),0)/12);return {mid,ring:m,sd};},[x,y]);};
  const plain=await dab(0,0,100,330),ringed=await dab(1,0,300,330),swirled=await dab(1,1,200,330);
  console.log('dab centre / ring / unevenness: plain',JSON.stringify(plain),'ring',JSON.stringify(ringed),'swirl',JSON.stringify(swirled));
- ok(plain.mid>plain.ring+20&&ringed.ring>ringed.mid+40,'with the hollow cone on, the ring is denser than the middle (a plain dab is densest in the middle)');
+ ok(plain.mid>plain.ring+20&&ringed.ring>ringed.mid+40,'with the hollow cone on, the rim ring is denser than the middle (a plain dab is densest in the middle)');
  ok(swirled.sd>ringed.sd+8,'the swirl makes the ring uneven around its circle');
+ // spray cap levels: a grainy see-through stipple, not a solid black line, that gets bigger from level 1 to 6
+ await p.evaluate(()=>document.querySelector('#lAdd')?.click());await p.waitForTimeout(150);
+ const widthOf=async(lv,y)=>{await use(lv,{drip:0,dripAuto:0,simP:'fixed',simLevel:.45,sprayFleck:0,pSize:false});await drag(40,y,360,y);return p.evaluate(y=>{let w=0;const L=__gs.doc.active;for(let dy=-190;dy<=190;dy++){if(y+dy<0||y+dy>=400)continue;if(__gs.captureRegionNow(L.target,200,y+dy,1,1).data[3]>60)w++;}return w;},y);};
+ const w1=await widthOf('Cap level 1 · Skinny cream',60),w4=await widthOf('Cap level 4 · Fat cream',200);
+ const grain=await p.evaluate(()=>{const L=__gs.doc.active,v=[];for(let dx=-20;dx<=20;dx++)for(let dy=-8;dy<=8;dy++)v.push(__gs.captureRegionNow(L.target,200+dx,200+dy,1,1).data[3]);return {mid:v.filter(a=>a>40&&a<225).length/v.length,solid:v.filter(a=>a>=240).length/v.length};});
+ console.log('cap level widths',w1,w4,'grain',JSON.stringify(grain));
+ ok(w4>w1*2.5,'a higher cap level makes a much wider spray ('+w1+' to '+w4+' px)');
+ ok(grain.mid>.4&&grain.solid<.4,'the spray is a grainy see-through stipple, not solid ('+Math.round(grain.mid*100)+'% in between, '+Math.round(grain.solid*100)+'% solid)');
  // splatter: droplets of different sizes
  await p.evaluate(()=>__gs.newDoc(400,400,8,[1,1,1],'Splat',false,'hand'));await p.waitForTimeout(300);await p.evaluate(()=>document.querySelector('#lAdd')?.click());await p.waitForTimeout(150);
  const box2=await p.evaluate(()=>{const r=document.querySelector('#stage').getBoundingClientRect();return {l:r.left,t:r.top,x:__gs.view.x,y:__gs.view.y,z:__gs.view.zoom};});
