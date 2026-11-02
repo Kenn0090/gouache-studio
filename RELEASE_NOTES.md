@@ -1,3 +1,9 @@
+## 0.86.0
+
+- **Paper:** Layer › New › Paper… adds a paper layer: Smooth white, Notebook (lined, grid, dots), Sketch, Watercolour cold-press and rough, Oak, Canvas, Kraft, Parchment, Newsprint. Choose texture size and tooth strength; change it any time.
+- **Paper tooth:** the Mixing brushes catch on the paper's grain. New Paper tooth slider.
+- **Watercolour:** strokes glaze over each other like transparent paint, and blot edges no longer step.
+
 ## 0.85.1
 
 - **No more stepping in watercolour edges:** the watercolour brushes cover each spot once per stroke instead of stacking dabs, so edges are clean. Later strokes glaze earlier ones like thin transparent paint (colours multiply and layers darken). Softer rims and a little more paint in the wash and wet-in-wet brushes.

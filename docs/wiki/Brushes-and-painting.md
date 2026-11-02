@@ -193,3 +193,11 @@ It works on a layer's colour in the Paint tab, with selections, symmetry, Lock a
 
 - **Smooth curves (round off corners)** is in the Brush panel. With it on, the brush follows a smooth curve through your movement instead of straight lines between points, so corners round off and long strokes flow. It works for the Brush, Eraser and Blend tools. Use **Smoothing** and **Lazy mouse** with it for even steadier lines.
 - The **Mixing (real paint)** set has big brushes (**Big oil**, **Big gouache wash**, **Big smear**) for large, confident strokes.
+
+## Paper
+
+**Layer › New › Paper…** adds a paper to your document as its own layer at the bottom. Pick one of twelve: Smooth white, Notebook (lined, grid or dots), Sketch paper, Watercolour cold-press, Watercolour rough, Oak wood, Canvas, Kraft paper, Parchment or Newsprint. **Texture size** makes the grain bigger or smaller, **Tooth strength** how much it shows, and **Draw the printed lines** turns the notebook lines on or off.
+
+- The paper is a normal layer: hide it with its eye, delete it, or open **Paper…** again to change it. A plain **Background** layer above it is hidden so the paper shows.
+- Paint on a layer above the paper. The paper stays untouched.
+- The Mixing brushes feel the paper: with **Paper tooth** up, paint settles into the dips and skips the peaks. Watercolour brushes use it by default.

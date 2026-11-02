@@ -1,3 +1,9 @@
+## 0.86.0
+
+- **Paper.** New **Layer › New › Paper…** adds a paper to your document, as its own layer at the bottom, so you can hide it, change it later or delete it. Twelve papers: **Smooth white**, **Notebook** (lined with a red margin, grid, or dots), **Sketch paper**, **Watercolour cold-press** and **rough**, **Oak wood**, **Canvas**, **Kraft paper**, **Parchment** and **Newsprint**. Each is drawn from scratch with a lit surface, so you see the tooth. Choose **Texture size**, **Tooth strength** and whether to print the notebook lines. Painting goes on a new layer above the paper, and a plain Background layer above it is hidden so the paper shows. To change the paper, open Paper… again.
+- **Paper tooth.** The Mixing brushes feel the paper under them: paint settles into the dips and skips the peaks, most when the brush is dry. New slider **Paper tooth** (on in the watercolour brushes).
+- **Watercolour strokes** now glaze over each other like thin transparent paint: colours multiply (yellow over blue gives green), layers darken, and white paper shows the colour as it is. A single stroke covers each spot once, so blot edges no longer step.
+
 ## 0.85.1
 
 - **No more stepping in watercolour edges.** The watercolour brushes now cover each spot once per stroke, with the strongest value any dab reached, instead of stacking dab on dab. That removes the contour-line steps along the edges of a blot. A stroke laid over an earlier one glazes it like thin transparent paint: colours multiply (yellow over blue gives green) and layers darken, while white paper shows the colour as it is. The pooled rim is also softer, and the wash and wet-in-wet brushes lay down a little more paint.
