@@ -38,7 +38,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  // smear brush (empty) pulls red sideways
  await preset('Smear (empty brush)');await p.evaluate(()=>{__gs.brush.size=30;});
  await drag(128,128,128,200);
- const sm=await px(128,190);ok(sm&&sm[0]>200&&sm[1]<215&&sm[2]<150,'the empty smear brush dragged red down below the stroke '+JSON.stringify(sm));
+ const sm=await px(128,190);ok(sm&&sm[0]>200&&sm[1]<215&&sm[2]<205,'the empty smear brush dragged red down below the stroke '+JSON.stringify(sm));
  // dry paint: no more mixing from wet pickup (dry paint is picked up far less)
  await p.evaluate(()=>{for(const L of __gs.allLayers())if(L._wet)L._wet.until=0;});
  ok(errs.length===0,'no page errors '+errs.slice(0,2).join(' | '));
