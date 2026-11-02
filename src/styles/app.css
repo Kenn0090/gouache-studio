@@ -215,6 +215,7 @@ body.ldragging,body.ldragging *{cursor:grabbing!important}
 .libset-h span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .libset-h button{background:none;border:0;color:var(--faint);padding:0 3px;font-size:11px}
 .libset-h button:hover{color:var(--danger)}
+.libset-h .libfold:hover{color:var(--text,inherit)}
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:4px}
 .tiles button{aspect-ratio:1;border:1px solid var(--line);background:var(--ground);border-radius:6px;padding:3px;display:block;min-width:0}
 .tiles button:hover{border-color:var(--muted)}
@@ -1438,3 +1439,8 @@ body.photomode #docTabs{display:none!important}
 @media (max-width:600px){.fxpaged{grid-template-columns:1fr}.fxnav{flex-direction:row;flex-wrap:wrap;border-right:none;border-bottom:1px solid var(--line-2);padding:0 0 6px}}
 .fxpage .srow{grid-template-columns:170px minmax(0,1fr) 56px}.fxpage .srow.hasdef{grid-template-columns:170px minmax(0,1fr) 56px 14px}
 @media (max-width:600px){.fxpage .srow,.fxpage .srow.hasdef{grid-template-columns:110px minmax(0,1fr) 50px 14px}}
+
+/* brush sets that fold shut */
+.libset .libfold{background:none;border:0;color:inherit;cursor:pointer;padding:0 6px 0 0;font-size:12px;line-height:1}
+.libset.folded .tiles{display:none}
+.libset-h{display:flex;align-items:center}

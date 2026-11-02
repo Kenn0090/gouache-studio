@@ -201,3 +201,44 @@ It works on a layer's colour in the Paint tab, with selections, symmetry, Lock a
 - The paper is a normal layer: hide it with its eye, delete it, or open **Paper…** again to change it. A plain **Background** layer above it is hidden so the paper shows.
 - Paint on a layer above the paper. The paper stays untouched.
 - The Mixing brushes feel the paper: with **Paper tooth** up, paint settles into the dips and skips the peaks. Watercolour brushes use it by default.
+
+## Graffiti brushes
+
+The **Graffiti** set has spray caps, markers, a splatter flick and a stencil edge. They behave like aerosol paint: the paint is solid in the middle and fades out through a fine stipple, with flecks thrown around the stroke. Pressing harder makes a fatter, denser line. The paint lies on top of what is there and does not mix.
+
+- **Drips:** thin drips with a bead at the end. Hold the brush still with the button down and they run from under it (**Drips when held still**), and strokes also drip while you paint (**Drips while painting**). **Drip width** makes them fatter. The drips that are still running finish most of their run when you let go.
+- **Spray settings** work on any normal brush: **Spray dot size** (0 turns spraying off), **Spray density** (above 100% the core is solid), **Overspray mist**, **Droplet variety** (for splatter), **Flecks around the stroke**, **Hollow cone (ring)** (denser in a ring than in the middle, like a real nozzle) and **Swirl (spinning nozzle)** (arms that turn on every dab).
+- **Spray cap levels** is a set of six brushes, from **Cap level 1 · Skinny cream** to **Cap level 6 · Hardcore fat**, that spray like real aerosol caps: a grainy, see-through stipple that builds up slowly, bigger and denser the harder you press, ending in a hairline of fine mist. **Solid core** (0 for these) and **Density follows pressure** control the grain.
+- **Wildstyle chisel (fringed)** is a broad flat nib held at a fixed angle: strokes swing from thick to thin, and the fringe along the edges leaves fine streaks. **Wildstyle chisel (clean)** has crisp edges.
+- Try them on a **Brick wall**, **Concrete**, **Rough plaster** or **Corrugated metal** paper (Layer › New › Paper…).
+
+### Pressure without a pen
+
+A mouse has no pressure, so the Brush panel has **Pressure without a pen**: **Speed** (fast movement is light and thin, slow is heavy, like a real can), **Taper** (the stroke eases in from thin and fades out when you let go) and **Fixed** (one pressure you choose). A real pen is never changed. For the pressure to show, the brush needs Pressure: Size or Flow turned on, which the spray caps have. The flecks around a spray stroke follow the pressure too.
+
+### Importing Procreate and Clip Studio brushes
+
+**Import brushes** in the Brush panel (or drag the file onto the window) opens:
+
+- Procreate **.brush** and **.brushset**: each brush's tip picture and its main settings (spacing, roundness, angle, count, scatter, opacity and the pressure settings).
+- Clip Studio Paint **.sut**: the tip pictures only.
+
+The brushes will look close to the originals, not identical, because each program has its own brush engine. Grain textures, dynamics curves and similar settings are not applied. A message after importing lists what was left out. Photoshop **.abr** brushes work as before.
+
+## Folding brush sets
+
+In the Brushes panel, click the arrow (or the title) on a brush set's header to fold it shut or open it. **Fold all** and **Unfold all** at the top do every set at once. What you fold is remembered. The right-click brush picker on the canvas folds sets too.
+
+## Watercolour studio
+
+Seven brush groups, all starting with **Aqua**, make a complete watercolour and ink kit:
+
+- **Inkers**: pens and brush pens that respond to pressure (with a mouse, to speed).
+- **Colouring**: round and flat watercolour brushes, dry brush, pencil, wax crayon and sponge.
+- **Ink washes**: flat, graded and dark-edge washes, a **Bloom (backrun)**, a granulating wash and a glaze.
+- **Embellishments**: splatters, **Salt**, droplets, a pooling edge line and a watery drip.
+- **Stamps**: irregular blobs, a splash, a bloom, a leaf, a petal and a ragged wash, each with pigment pooled at the edge. Click to stamp; they turn at random.
+- **Blenders**: a water brush that thins and moves wet paint, a soft blender and a smudger.
+- **Erasers and lifters**: a damp-brush **Lift-off**, a wet eraser and a hard eraser.
+
+The watercolour brushes have **Bloom (backrun)**, **Paper grain** and **Paper tooth** sliders. The **Watercolour pans** and **Ink set** palettes are in the Swatches list of the Colour panel.

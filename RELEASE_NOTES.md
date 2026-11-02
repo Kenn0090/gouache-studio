@@ -1,3 +1,36 @@
+## 0.89.1
+
+- **Fixed ghost shapes showing while painting** after a watercolour stroke: leftovers of earlier strokes could appear as grey patches while you painted with other brushes, even after deleting layers.
+
+## 0.89.0
+
+- **Watercolour studio:** 36 brushes in seven groups (inkers, colouring, ink washes, embellishments, stamps, blenders, erasers and lifters), made from scratch. Each group folds shut in the Brushes panel.
+- **Bloom (backrun)** setting, **Salt** and **Lift-off** brushes. Blooms and granulation work on any paper.
+- Two new palettes: **Watercolour pans** and **Ink set**.
+
+## 0.88.2
+
+- **Fold brush sets** in the Brushes panel: an arrow on each set (click it or the title), plus Fold all and Unfold all. Your choice is remembered.
+
+## 0.88.1
+
+- **Pressure without a pen:** Speed, Taper or Fixed pressure for the mouse. The spray caps taper by default. A real pen is not changed.
+- **Flecks follow the pressure** around spray strokes. New Hardcore fat cap brush.
+- **Spray cap levels:** six new brushes, from a skinny cream cap to a hardcore fat cap, that spray a grainy see-through stipple, bigger and denser the harder you press, ending in a fine mist. New Solid core and Density follows pressure settings.
+- **Hollow cone and swirl:** the spray can be denser in a ring with arms that spin on every dab (new settings and two new brushes), plus **Wildstyle chisel** brushes: a flat nib with a fringed edge for thick-to-thin calligraphy tags.
+- **Import Procreate (.brush, .brushset) and Clip Studio (.sut) brushes** with Import brushes or drag and drop. Tips and the main settings come across; a message lists what is approximated.
+
+## 0.88.0
+
+- **Graffiti brushes:** a new set of 17 brushes that behave like aerosol paint (fat, medium, skinny, outline, calligraphy, soft fade, stipple blob, spray dot, dry streak, spit and clogged caps; three markers; splatter flick; stencil edge). Solid core, stipple fade, flecks, pressure for fat and skinny lines.
+- **Drips:** thin drips with beads run when you hold the brush still and while you paint. New spray and drip settings on any normal brush.
+- **Wall papers:** brick wall, concrete, rough plaster and corrugated metal.
+
+## 0.87.0
+
+- **Ctrl+click** the canvas to select the layer under the pointer; **Ctrl+Alt+click** to duplicate it (only the selected part when there is a selection). The cursor shows what will happen.
+- **Stamp visible, Ctrl+Alt+Shift+E:** merges everything visible into a new layer on top and keeps the layers below.
+
 ## 0.86.1
 
 - **Calmer papers:** much less grain and gentler colours in every paper, so they work as neutral backgrounds. Tooth strength can still be raised.

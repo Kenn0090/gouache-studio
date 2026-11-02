@@ -1,6 +1,6 @@
 {
   "name": "gouache-studio",
-  "version": "0.86.1",
+  "version": "0.89.1",
   "private": true,
   "description": "GPU-accelerated hand-painting and texture editor",
   "type": "module",

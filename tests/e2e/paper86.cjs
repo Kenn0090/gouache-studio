@@ -13,9 +13,9 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.newDoc(320,320,8,[1,1,1],'Paper',false,'hand'));await p.waitForTimeout(400);
  const stat=()=>p.evaluate(()=>{const L=__gs.paperLayer();const d=__gs.captureRegionNow(L.target,0,0,320,320).data;let s=0,s2=0,n=0,blue=0;for(let i=0;i<d.length;i+=4){const g=d[i+1];s+=g;s2+=g*g;n++;if(d[i+2]>d[i]+14)blue++;}const m=s/n;return {m,sd:Math.sqrt(s2/n-m*m),blue:blue/n};});
  const res=[];
- for(let t=0;t<12;t++){await p.evaluate(t=>__gs.paperApply({t,sc:1,relief:.8,lines:true}),t);res.push(await stat());}
+ for(let t=0;t<16;t++){await p.evaluate(t=>__gs.paperApply({t,sc:1,relief:.8,lines:true}),t);res.push(await stat());}
  console.log(res.map((r,i)=>i+': mean '+r.m.toFixed(0)+' sd '+r.sd.toFixed(1)+' blue '+(r.blue*100).toFixed(1)+'%').join('\n'));
- ok(res.every(r=>r.sd>0.3&&r.m>60),'all 12 papers draw a surface');
+ ok(res.every(r=>r.sd>0.3&&r.m>60),'all 16 papers draw a surface');
  ok(res[7].m<res[0].m-40,'oak is darker than smooth white paper');
  ok(res[1].blue>.01&&res[2].blue>.01,'lined and grid notebooks have blue printed lines');
  ok(res[0].blue<.002,'smooth white has no lines');
@@ -24,8 +24,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(/^Paper/.test(kids[0]),'the paper is the bottom layer');
  ok(await p.evaluate(()=>!__gs.doc.active.paper),'painting goes on a layer above the paper, not on the paper');
  // undo goes back to the previous paper
- const before=await stat();await p.evaluate(()=>__gs.paperApply({t:7,sc:1,relief:.8}));const oak=await stat();await p.evaluate(()=>__gs.undo());await p.waitForTimeout(200);const back=await stat();
- ok(Math.abs(oak.m-before.m)>20&&Math.abs(back.m-before.m)<2,'undo brings the previous paper back');
+ const before=await stat();await p.evaluate(()=>__gs.paperApply({t:0,sc:1,relief:.8}));const oak=await stat();await p.evaluate(()=>__gs.undo());await p.waitForTimeout(200);const back=await stat();
+ console.log('undo check',before.m,oak.m,back.m);ok(Math.abs(oak.m-before.m)>20&&Math.abs(back.m-before.m)<2,'undo brings the previous paper back');
  // tooth: a watercolour wash on rough paper has pools and gaps that follow the paper; with tooth 0 it is smoother
  await p.evaluate(()=>{__gs.paperApply({t:6,sc:1,relief:.8});const k=__gs.doc.root.children;__gs.doc.active=k[k.length-1];});
  const box=await p.evaluate(()=>{const r=document.querySelector('#stage').getBoundingClientRect();return {l:r.left,t:r.top,x:__gs.view.x,y:__gs.view.y,z:__gs.view.zoom};});

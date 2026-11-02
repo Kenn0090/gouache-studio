@@ -1,3 +1,39 @@
+## 0.89.1
+
+- **Fixed: ghost shapes showing while painting.** After using a watercolour brush (wash, splatter, wet-in-wet or any brush with Watercolour edges), the leftover of an earlier stroke could show up as grey patches over the layer you were painting on while you drew with any other brush, and it did not go away when layers were deleted. The watercolour brushes now clear the shared stroke buffer first, like every other brush.
+
+## 0.89.0
+
+- **Watercolour studio.** A new toolkit of 36 brushes in seven groups (each folds shut in the Brushes panel), all made from scratch: **Aqua · Inkers** (Fine ink pen, Dip pen, Brush pen, Technical pen, Wobbly liner, Dry ink brush), **Aqua · Colouring** (Round brush, Flat brush, Dry brush, Watercolour pencil, Wax crayon, Sponge), **Aqua · Ink washes** (Flat wash, Graded wash, Dark-edge wash, Bloom (backrun), Granulating wash, Ink glaze), **Aqua · Embellishments** (Fine splatter, Coarse splatter, Salt, Droplets, Pooling edge line, Watery drip), **Aqua · Stamps** (six irregular blobs, splashes, a bloom, a leaf, a petal and a ragged wash, each with pigment pooled along its edge), **Aqua · Blenders** (Water brush, Soft blender, Smudger) and **Aqua · Erasers and lifters** (Lift-off (damp brush), Wet eraser, Hard eraser). The set's brushes pick their own tool, so choosing one switches between pen, wash and eraser for you. The inkers use speed for pressure when you use a mouse.
+- **Bloom (backrun).** A new **Bloom (backrun)** setting on the watercolour brushes: a lighter patch with a dark, lobed edge, like water pushed into drying paint. **Salt** (an eraser with salt crystals) leaves light starbursts in a wet wash, and the **Lift-off** eraser picks paint up like a damp brush. Blooms and granulation work on any paper.
+- **Colour palettes.** **Watercolour pans** (24 colours) and **Ink set** (12) in the Swatches palette list.
+
+## 0.88.2
+
+- **Fold brush sets.** In the Brushes panel every brush set now has a fold arrow on its header (click the arrow or the title to fold it shut or open it), and **Fold all** and **Unfold all** buttons at the top. What you fold is remembered. Before, sets could only be folded in the right-click brush picker on the canvas.
+
+## 0.88.1
+
+- **Pressure without a pen.** The mouse has no pressure, so the Brush panel now has **Pressure without a pen**: **Speed** (moving fast gives a light thin line, slow gives a heavy one, like a real can), **Taper** (the stroke eases in from thin and fades out when you let go) and **Fixed** (one pressure you choose). A real pen is never changed. The spray caps use Taper by default.
+- **Flecks follow the pressure.** The outer splatter around a spray stroke grows and thins with the pressure, so a heavy line throws a big cloud of flecks and a light one almost none. New **Hardcore fat cap** brush.
+- **Spray cap levels.** A new set of six brushes that spray like real aerosol caps, **Cap level 1 · Skinny cream** up to **Cap level 6 · Hardcore fat**. One pass makes a grainy, see-through stipple that builds up slowly (there is no solid core), and a pen pressing harder gives a bigger, denser cloud while easing off leaves a fine mist, so a stroke ends in a long hairline tail. The fatter caps have a hollow cone: each dab is a bright, uneven ring at the rim with a dim, blotchy middle, faint ripples and a wobbly outline, different on every dab, so strokes come out with darker edges and a lighter middle. New settings **Solid core** and **Density follows pressure**. The Graffiti spray caps now also go down to a hairline with light pressure.
+- **Hollow cone and spinning nozzle.** A real can spins the paint into a hollow cone, so the spray is denser in a ring than in the middle, with swirling arms that turn on every dab. New settings **Hollow cone (ring)** and **Swirl (spinning nozzle)**, and new brushes **Hollow cone cap** and **Spinning nozzle cap**; the Hardcore fat cap uses both.
+- **Wildstyle chisel brushes.** **Wildstyle chisel (fringed)** is a broad flat nib held at a fixed angle, so strokes swing from thick to thin like a calligraphy tag, with a comb-like fringe of fine streaks along the ragged edges and ends. **Wildstyle chisel (clean)** is the same with crisp edges.
+- **Import Procreate and Clip Studio brushes.** **Import brushes** (Brush panel) and drag and drop now open Procreate **.brush** and **.brushset** files (the tip picture and the main settings: spacing, roundness, angle, count, scatter, opacity and the pressure settings) and Clip Studio Paint **.sut** files (the tip pictures only). The brushes look close to the originals, not identical, because each program's brush engine is different; grain textures, dynamics curves and other settings are not applied, and a message lists what was left out.
+
+## 0.88.0
+
+- **Graffiti brushes.** A new **Graffiti** set of 17 brushes that behave like aerosol paint: a solid core that fades out through a fine stipple, with **flecks** thrown out around the stroke and pressure for fat and skinny lines. Spray caps: **Fat cap**, **Medium cap**, **Skinny cap**, **Outline cap**, **Calligraphy cap**, **Soft fade cap**, **Stipple blob**, **Spray dot (dab)**, **Dry streak spray**, **Spit cap** and **Clogged cap**. Markers: **Chisel paint marker**, **Paint marker** and **Drippy mop marker**. Plus **Splatter flick** (droplets of very different sizes) and **Stencil edge**. The paint lies on top and is opaque; it does not mix.
+- **Drips.** Paint runs down in thin, straight drips that end in a small bead. Hold the brush still with the button down and drips run from under it, and strokes also drip while you paint. When you let go, the drips still running finish most of their run. Settings **Drips when held still**, **Drips while painting** and **Drip width**.
+- **Spray settings** on any normal brush: **Spray dot size**, **Spray density**, **Overspray mist**, **Droplet variety** and **Flecks around the stroke** (set the dot size to 0 for a normal brush).
+- **Wall papers.** Four new surfaces in **Layer › New › Paper…**: **Brick wall**, **Concrete**, **Rough plaster** and **Corrugated metal**.
+
+## 0.87.0
+
+- **Ctrl+click picks a layer.** Hold **Ctrl** and click the canvas to select the layer that owns that pixel (the top-most visible layer with paint there). The cursor changes to a move-cross while Ctrl is held. A guide under the pointer still gets dragged as before.
+- **Ctrl+Alt+click duplicates a layer.** Hold **Ctrl+Alt** and click to copy the top-most layer under the pointer. With a selection, only the selected part is copied, into a layer named "(selection)". The cursor shows two crosses.
+- **Stamp visible (Ctrl+Alt+Shift+E).** Makes a new layer on top with everything visible merged into it and keeps all the layers below, like Photoshop. Also in the Layer menu as **Stamp visible (new layer)**. (Merge visible, which combines the layers into one, is still there.)
+
 ## 0.86.1
 
 - **Calmer papers.** The papers now read as neutral backgrounds: far less grain and gentler colour variation in every paper (the wood, kraft and parchment are much plainer). **Tooth strength** still goes up to 150% if you want the surface to show more. The Mixing brushes still feel the paper's tooth, which is set by the brush's Paper tooth slider.

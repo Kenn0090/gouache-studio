@@ -1,7 +1,7 @@
 /* ================= Brush engine ================= */
 const BRUSH_DEFAULTS={size:24,opacity:1,flow:1,hardness:.85,spacing:.06,grain:0,smoothing:.25,pSize:true,pOpacity:false,minSize:.2,buildup:false,curve:0,strength:.6,charge:0,sampleAll:true,hueMix:0,
   tip:null,angle:0,roundness:1,flipX:false,flipY:false,randFlipX:false,randFlipY:false,sizeJitter:0,angleJitter:0,scatter:0,count:1,bothAxes:false,followDir:false,
-  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,pigment:1,wet:0,pickup:0,mixLab:false,paintMix:.7,mix:false,mixLoad:.8,mixPick:.5,mixWet:.7,mixDry:0,mixUse:.2,mixBristles:0,mixDryB:0,mixThick:0,mixEven:false,mixWC:0,mixWCEdge:0,mixWCPools:0,mixWCGran:0,mixTooth:0,smoothCurve:false};
+  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,pigment:1,wet:0,pickup:0,mixLab:false,paintMix:.7,mix:false,mixLoad:.8,mixPick:.5,mixWet:.7,mixDry:0,mixUse:.2,mixBristles:0,mixDryB:0,mixThick:0,mixEven:false,mixWC:0,mixWCEdge:0,mixWCPools:0,mixWCGran:0,mixWCBloom:0,mixTooth:0,spray:0,sprayDen:.8,sprayMist:0,sprayVar:0,sprayFleck:0,sprayRing:0,spraySwirl:0,sprayPress:0,spraySolid:1,simP:'off',simLevel:.7,drip:0,dripAuto:0,dripWidth:1,smoothCurve:false};
 /* lazy mouse: the brush follows the pointer on a string of R pixels, so it only moves once the string is pulled tight */
 function lazyStep(s,x,y,R){if(!(R>0))return [x,y];if(s.lx===undefined){s.lx=s.sx;s.ly=s.sy;}const dx=x-s.lx,dy=y-s.ly,d=Math.hypot(dx,dy);if(d<=R)return null;s.lx+=dx*(d-R)/d;s.ly+=dy*(d-R)/d;return [s.lx,s.ly];}
 /* Keep stabilization consistent across pointer sample rates. At 60 Hz this matches the
@@ -37,7 +37,8 @@ function beginStroke(L,x,y,p,o){
   else if(!lazy&&(beforeT.w!==W||beforeT.h!==H))useAux(L.target.depth,false);
   if(!lazy)blit(L.target,beforeT,0,0,W,H,0,0);
   const tint=strokeTints(o),tc=[0,0,0,0];let clearBox=null;
-  if(o.tool!=='smudge'){
+  /* a watercolour mixing stroke draws into the stroke buffer like a normal brush, so it clears what the last stroke left there first (otherwise that leftover is forgotten and shows through later strokes) */
+  if(o.tool!=='smudge'||(o.mixBrush&&o.mixWC>0)){
     const d=strokeT.dirtyR;
     if(d&&d!=='all'){if(d[2]>0&&d[3]>0){scissorDo(d,()=>clearTarget(strokeT,tint?tc:undefined));clearBox=[d[0],d[1],d[0]+d[2],d[1]+d[3]];}}
     else if(d==='all'||doc.wrap){clearTarget(strokeT,tint?tc:undefined);clearBox=[0,0,W,H];}
@@ -52,6 +53,7 @@ function beginStroke(L,x,y,p,o){
   /* Resolve the library and repeating mask once, rather than per dab at low spacing. */
   stroke.dualU=typeof dualUniforms==='function'?dualUniforms(o.dual,false):null;
   if(o.mixBrush)mixBegin(stroke);
+  if((o.drip>0||o.dripAuto>0)&&o.tool==='brush'&&!o.space){stroke.drips=[];stroke.dAx=x;stroke.dAy=y;stroke.dwell=0;stroke.dripT=performance.now();stroke.dripFrame=requestAnimationFrame(brushDripLoop);}
   if(o.smoothCurve&&!o.space&&['brush','erase','smudge'].includes(o.tool))stroke.cv={px:x,py:y,pp:p,mx:x,my:y,mp:p};
   if(tint&&o.jitterPerStroke)stroke.dabCol=jitterColor(o.color,o,stroke.grey);
   /* other maps painted by the same stroke: make sure the layer has an image there; with Lock alpha they follow the base colour's shape */
@@ -75,6 +77,36 @@ function brushInkLoop(now){const s=stroke;if(!s||!s.inkAnchor)return;
       if(s.space)s.spaceDirty=true;requestRender(true);}}
   s.inkFrame=requestAnimationFrame(brushInkLoop);
 }
+/* Drips: hold the brush still with the button down and paint runs down from under it. Each drip grows downward, slowing and thinning, and ends in a small bead.
+   The drips only run while the button is held; releasing keeps what has run so far. */
+/* a drip is solid paint: drawn with a hard round dab, not with the spray shape */
+function dripDab(s,x,y,r,a){s.solid=true;try{stampOne(x,y,r,a,0,1,1,0,0);}finally{s.solid=false;}}
+/* Pressure without a pen: the mouse has no pressure, so it can be made up. Speed: moving fast gives a light thin line, slow a heavy one (like a real can).
+   Taper: the stroke eases in from thin, and fades out when you let go. Fixed: one pressure you choose. A real pen is never changed. */
+function simPressStart(p0,e){const o=brush;if(e.pointerType==='pen'||!o.simP||o.simP==='off')return p0;return o.simP==='fixed'?clamp(o.simLevel||.7,.05,1):o.simP==='taper'?.15:.8;}
+function simPress(P,ix,iy,time,p0){const o=brush;if(!P||!P.sim||P.sim.pen||!o.simP||o.simP==='off')return p0;const S=P.sim,dist=Math.hypot(ix-S.x,iy-S.y),dt=Math.max(1,time-S.t);S.x=ix;S.y=iy;S.t=time;S.travel+=dist;
+  if(o.simP==='fixed')return clamp(o.simLevel||.7,.05,1);
+  if(o.simP==='speed'){S.spd=S.spd*.8+(dist/dt)*.2;return clamp(1.05-S.spd/Math.max(.6,o.size*.02),.1,1);}
+  return clamp(.08+.92*S.travel/Math.max(30,o.size*1.1),.08,1);}
+function taperTail(s){if(!s.simOn)return;const len=Math.max(30,s.o.size*2.2),n=20,p0=s.p;for(let i=1;i<=n;i++)addPointLin(s.x+Math.cos(s.dir)*len/n,s.y+Math.sin(s.dir)*len/n,Math.max(.05,p0*Math.pow(1-i/n,1.3)));}
+function dripSpawn(s,x,y,k){const o=s.o,r=radiusAt(s.p);if(s.drips.length>=60)return;
+  s.drips.push({x,y,w:Math.max(1.8,o.size*.042*(o.dripWidth||1))*(.7+Math.random()*.7),len:0,max:r*(1.5+Math.random()*4)*(.6+k),sp:45+Math.random()*110,ph:Math.random()*6,done:false});}
+/* when the button is released the drips still running finish most of their run at once, so a stroke keeps its drips */
+function dripFinish(s){if(!s.drips)return;const a=Math.min(1,alphaAt(s.p)+.5);
+  for(const d of s.drips){if(d.done)continue;const target=d.max*(.55+.45*Math.random()),adv=Math.max(0,target-d.len),y0=d.y+d.len,steps=Math.max(1,Math.ceil(adv/Math.max(1,d.w*.35)));
+    for(let i=1;i<=steps;i++){const yy=y0+adv*i/steps;dripDab(s,d.x+Math.sin(d.ph+yy*.03)*.6,yy,d.w*(1-.25*(d.len+adv*i/steps)/d.max)/2,a);}
+    d.done=true;dripDab(s,d.x,d.y+d.len+adv,d.w*.62,a);}}
+function brushDripLoop(now){const s=stroke;if(!s||!s.drips)return;
+  const dt=Math.min(.25,Math.max(0,(now-(s.dripT||now))/1000));s.dripT=now;const o=s.o,r=radiusAt(s.p);
+  if(Math.hypot(s.x-s.dAx,s.y-s.dAy)>Math.max(2,r*.12)){s.dAx=s.x;s.dAy=s.y;s.dwell=0;s.held=0;}else s.dwell+=dt;
+  if(o.drip>0&&s.dwell>.3&&(s.held||0)<4&&s.drips.length<60){const k=Math.min(1.6,s.dwell-.3);if(Math.random()<o.drip*(.8+k)*1.2*dt){s.held=(s.held||0)+1;
+    dripSpawn(s,s.x+(Math.random()-.5)*r*.9,s.y+r*.05*Math.random(),k);}}
+  const a=Math.min(1,alphaAt(s.p)+.5);
+  for(const d of s.drips){if(d.done)continue;const adv=d.sp*dt*(1-.7*d.len/d.max),y0=d.y+d.len;d.len+=adv;
+    const steps=Math.max(1,Math.ceil(adv/Math.max(1,d.w*.35)));
+    for(let i=1;i<=steps;i++){const yy=y0+adv*i/steps;dripDab(s,d.x+Math.sin(d.ph+yy*.03)*.6,yy,d.w*(1-.25*d.len/d.max)/2,a);}
+    if(d.len>=d.max){d.done=true;dripDab(s,d.x,d.y+d.len,d.w*.62,a);}}/* the bead at the end */
+  requestRender(true);s.dripFrame=requestAnimationFrame(brushDripLoop);}
 function stamp(x,y,p){
   const s=stroke,o=s.o,r0=radiusAt(p),a=alphaAt(p);
   let dx=0,dy=0;if(o.tool==='smudge'){dx=x-s.lsx;dy=y-s.lsy;s.lsx=x;s.lsy=y;}
@@ -94,12 +126,12 @@ function stamp(x,y,p){
 function refreshStrokeSample(s){if(!s||!s.sampleT||!s.o.sampleAll||s.o.mixBrush)return false;const now=performance.now();if(now-s.sampleAt<16)return false;const prev=s.sampleT;s.sampleT=compositeMap(doc.map);if(s.samplePrevT)release(s.samplePrevT);s.samplePrevT=prev;s.sampleAt=now;return true;}
 function strokeJump(x,y,p){const s=stroke;if(!s)return;refreshStrokeSample(s);s.sampleBlend=1;s.x=x;s.y=y;s.p=p;s.lsx=x;s.lsy=y;stamp(x,y,p);if(s.samplePrevT){release(s.samplePrevT);s.samplePrevT=null;}s.carry=spacingAt(p);requestRender(true);}
 function stampOne(x,y,r,a,ang,fx,fy,dx,dy){
-  const s=stroke,o=s.o,W=s.SW||doc.w,H=s.SH||doc.h,tip=o.tip&&o.tip.tex?o.tip:null,ext=r*(tip?1.4143:1)+2;const copies=[];
+  const s=stroke,o=s.o,W=s.SW||doc.w,H=s.SH||doc.h,tip=o.tip&&o.tip.tex?o.tip:null,ext=r*(tip?1.4143:o.spray>0&&o.sprayFleck>0?2.8:1)+2;const copies=[];
   if(doc.wrap&&!s.space){const cx0=mod(x,W),cy0=mod(y,H);for(const ox of [-W,0,W])for(const oy of [-H,0,H]){const cx=cx0+ox,cy=cy0+oy;if(cx+ext<0||cx-ext>W||cy+ext<0||cy-ext>H)continue;copies.push([cx,cy]);}}
   else if(!(x+ext<0||x-ext>W||y+ext<0||y-ext>H))copies.push([x,y]);
   if(!copies.length)return;
-  const U={uRadius:r,uExtent:ext,uSize:[W,H],uHard:o.hardness,uGrain:o.grain,uGrainScale:s.gScale,uPeriod:s.gPeriod,
-    uUseTip:!!tip,uTip:tip?tip.tex:dummy,uAngle:ang,uRound:o.roundness||1,uFlip:[fx,fy],uTipAspect:tip?tip.w/tip.h:1};
+  const U={uRadius:r,uExtent:ext,uSize:[W,H],uHard:s.solid?.9:o.hardness,uGrain:s.solid?0:o.grain,uGrainScale:s.gScale,uPeriod:s.gPeriod,
+    uUseTip:!!tip,uTip:tip?tip.tex:dummy,uAngle:ang,uRound:o.roundness||1,uFlip:[fx,fy],uTipAspect:tip?tip.w/tip.h:1,uSpray:o.spray>0&&!tip&&!s.solid?[o.spray,o.sprayDen*(1-(o.sprayPress||0)*(1-pcurve(s.p,o))),Math.random()*997,o.sprayMist]:[0,0,0,0],uSprayVar:o.sprayVar||0,uSprayFleck:o.spray>0&&!tip&&!s.solid?(o.sprayFleck||0)*((o.pSize||o.pFlow||o.pOpacity||o.simP!=='off')?.3+.7*pcurve(s.p,o):1):0,uSprayRing:o.spray>0&&!tip&&!s.solid?[o.sprayRing||0,o.spraySwirl||0,(s.ph=(s.ph||0)+.9+Math.random()*.5)]:[0,0,0],uSpraySolid:o.spraySolid==null?1:o.spraySolid};
   if(s.dualU){if(o.dual.random)s.dualU.uDualOff=[Math.random()*s.dualU.uDualSize[0],Math.random()*s.dualU.uDualSize[1]];Object.assign(U,s.dualU);}
   if(o.tool==='smudge'&&s.space){/* on the 3D model: the dab goes into the screen buffer, then pulls paint through the model's UVs (mesh-pull.js) */
     clearTarget(s.space.buf);for(const c of copies)run(P.stamp,s.space.buf,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:0},uDabCol:[0,0,0]}),{blend:'max'});
@@ -152,6 +184,7 @@ function addPointLin(x,y,p){
   if(typeof dualBatchStart==='function')dualBatchStart(s);
   try{while(t<=len&&guard++<20000){const f=t/len,pp=s.p+(p-s.p)*f;s.sampleBlend=sampled?f:1;stamp(s.x+dx*f,s.y+dy*f,pp);t+=spacingAt(pp);}}
   finally{if(s.dualBatch)dualBatchFlush(s);}
+  if(s.drips&&s.o.dripAuto>0){const r=radiusAt(p),n=s.o.dripAuto*len/Math.max(8,r*3);if(Math.random()<n){const g=(Math.random()+Math.random()+Math.random()-1.5)*.7;dripSpawn(s,x+g*r,y+r*(.35+.35*Math.random()),Math.random()*.4);}}
   s.sampleBlend=1;if(s.samplePrevT){release(s.samplePrevT);s.samplePrevT=null;}s.carry=t-len;s.x=x;s.y=y;s.p=p;requestRender(true);
 }
 /* Smooth curves: instead of straight lines between the points the pointer reports, the stroke follows a curve that passes
@@ -163,8 +196,8 @@ function curveTo(s,c,cx,cy,cp,ex,ey,ep){const sx=c.mx,sy=c.my,sp=c.mp,len=Math.h
   for(let i=1;i<=n;i++){const t=i/n,u=1-t;addPointLin(u*u*sx+2*u*t*cx+t*t*ex,u*u*sy+2*u*t*cy+t*t*ey,sp+(ep-sp)*t);}}
 function curveFinish(s){const c=s.cv;if(!c)return;s.cv=null;curveTo(s,c,c.px,c.py,c.pp,c.px,c.py,c.pp);}
 function endStroke(record){
-  const s=stroke;if(!s)return;curveFinish(s);if(s.fdWait){s.fdWait=false;stamp(s.x,s.y,s.p);}const L=s.L,W=doc.w,H=doc.h;
-  if(s.inkFrame)cancelAnimationFrame(s.inkFrame);
+  const s=stroke;if(!s)return;curveFinish(s);taperTail(s);if(s.drips)dripFinish(s);if(s.fdWait){s.fdWait=false;stamp(s.x,s.y,s.p);}const L=s.L,W=doc.w,H=doc.h;
+  if(s.inkFrame)cancelAnimationFrame(s.inkFrame);if(s.dripFrame)cancelAnimationFrame(s.dripFrame);
   if(s.space){if(s.spaceDirty){s.spaceDirty=false;s.space.sync();}const b=s.space.bbox(s);s.bb=doc.wrap?[0,0,W,H]:[b[0]-2,b[1]-2,b[2]+2,b[3]+2];}
   const healing=s.o.tool==='heal',cloning=s.o.tool==='clone';
   const x0=clamp(Math.floor(s.bb[0]),0,W),y0=clamp(Math.floor(s.bb[1]),0,H),x1=clamp(Math.ceil(s.bb[2]),0,W),y1=clamp(Math.ceil(s.bb[3]),0,H),bw=x1-x0,bh=y1-y0,R=[x0,y0,bw,bh];
