@@ -204,6 +204,7 @@
     "ui/canvas-tab",
     "ui/bar-custom",
     "ui/straight-preview",
+    "view3d/text3d",
     "ui/safety",
     "layers/locks",
     "ui/key-helper",

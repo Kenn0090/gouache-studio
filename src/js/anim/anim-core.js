@@ -41,7 +41,7 @@ function setMode(m,quiet){if(m===ui.mode)return true;if(typeof toolKeys!=='undef
   else ui.mode=m;
   document.body.classList.toggle('animmode',ui.mode==='anim');document.body.classList.toggle('bakemode',ui.mode==='bake');document.body.classList.toggle('convmode',ui.mode==='convert');document.body.classList.toggle('photomode',ui.mode==='photo');document.body.classList.toggle('brushmode',ui.mode==='brush');document.body.classList.toggle('p3dmode',ui.mode==='p3d');syncModeTabs();
   if(ui.mode==='p3d')p3dEnter();if(ui.mode==='bake')bakeEnter();if(ui.mode==='convert')convertEnter();if(ui.mode==='photo')photoEnter();if(ui.mode==='brush')brushTabEnter();
-  if(ui.tool==='text'&&ui.mode!=='paint'&&ui.mode!=='anim')setTool('brush');
+  if(ui.tool==='text'&&ui.mode!=='paint'&&ui.mode!=='anim'&&ui.mode!=='p3d')setTool('brush');
   if(typeof tipBanner==='function')tipBanner();if(typeof dkModeChanged==='function')dkModeChanged();
   renderLayers();refreshChanUI();refreshMapsUI();renderTimeline();renderAnimPanel();buildBrushPanel();changedAll();resizeGL();requestRender(true);
   if(!quiet)toast(ui.mode==='anim'?'Animation mode: paint each frame. , and . step through frames, Enter plays.':ui.mode==='bake'?'Bake: bake maps from a high-poly model, see them on the model, and paint fixes.':ui.mode==='convert'?'Convert: make normal, height, AO and more from a photo or another map.':ui.mode==='photo'?'Photo: open photos and edit them like Lightroom. Your photo files are never changed.':ui.mode==='brush'?'Brush: draw a brush tip in black. Your painting is kept in Paint.':ui.mode==='p3d'?'3D Paint: paint on the model. Its textures are separate from Paint.':'Paint mode.');return true;}

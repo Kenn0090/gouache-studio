@@ -91,6 +91,7 @@ cv.addEventListener('pointerdown',e=>{
   if(ui.tool==='gbucket'){gbucketDown(e,ix,iy);return;}
   if(typeof maskToolsOn==='function'&&(maskToolsOn()||liveOn())&&mk3.tool==='id'){idSelPickAt(ix,iy);return;}
   if(isSelTool(ui.tool)){selPointerDown(e,ix,iy);return;}
+  if(ui.tool==='text'&&ui.mode==='p3d')return;/* 3D Paint's text is placed on the model (view3d/text3d.js) */
   if(ui.tool==='text'){
     if(tedit){const b=tedit.L.text.bbox;if(b&&ix>=b.bx&&ix<=b.bx+b.bw&&iy>=b.by&&iy<=b.by+b.bh){ted.focus();return;}closeTextEditor();return;}
     const hit=hitText(ix,iy);if(hit){selectOnly(hit);renderLayers();ptr={mode:'tmove',id:e.pointerId,L:hit,sx:ix,sy:iy,ox:hit.text.x,oy:hit.text.y,moved:false};return;}

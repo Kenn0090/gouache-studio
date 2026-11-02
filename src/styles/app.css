@@ -929,7 +929,7 @@ body.dcdragging,body.dcdragging *{cursor:grabbing!important;user-select:none}
 #work.p3left .stage{--x:0}
 #work.v3full.p3left .stage{left:0}
 #work.p3left .hint{display:none}
-body.m-p3d .tool[data-tool=cage],body.m-p3d .tool[data-tool=crop],body.m-p3d .tool[data-tool=array],body.m-p3d .tool[data-tool=shape],body.m-p3d .tool[data-tool=text]{display:none}
+body.m-p3d .tool[data-tool=cage],body.m-p3d .tool[data-tool=crop],body.m-p3d .tool[data-tool=array],body.m-p3d .tool[data-tool=shape]{display:none}
 .v3bar .seg button{white-space:nowrap}
 /* 0.37.1: messages sit under the 3D bar, not on top of it */
 body.m-p3d #toast{top:54px;z-index:40}
