@@ -1,3 +1,7 @@
+## 0.85.1
+
+- **No more stepping in watercolour edges:** the watercolour brushes cover each spot once per stroke instead of stacking dabs, so edges are clean. Later strokes glaze earlier ones like thin transparent paint (colours multiply and layers darken). Softer rims and a little more paint in the wash and wet-in-wet brushes.
+
 ## 0.85.0
 
 - **Watercolour set:** three new brushes, Watercolour wash, Watercolour splatter and Watercolour wet-in-wet, with uneven hard outlines, pooled rims, layered pools and paper grain that never repeat. New sliders: Watercolour edges, Edge pooling, Layered pools and Paper grain. Replaces the old Watercolour mixer.

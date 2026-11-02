@@ -71,6 +71,11 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  console.log('watercolour wash: mean',wc.m.toFixed(0),'spread',wc.sd.toFixed(1),'distinct top-edge heights',ev);
  ok(wc.sd>5,'the wash has pools and grain (the colour varies inside the stroke)');
  ok(ev>=6,'the wash outline is uneven (many different edge heights)');
+ // a second watercolour stroke over the first still darkens it (glazing), although one stroke never piles up on itself
+ const meanG=()=>p.evaluate(()=>{let s=0,n=0;for(let x=70;x<=190;x+=10)for(let y=44;y<=56;y+=4){s+=__gs.captureRegionNow(__gs.doc.active.target,x,y,1,1).data[1];n++;}return s/n;});
+ const g1=await meanG();await drag(40,40,216,60);const g2=await meanG();
+ console.log('wash mean green channel: first stroke',g1.toFixed(0),'after a second stroke',g2.toFixed(0));
+ ok(g2<g1-8,'a second watercolour stroke over the first darkens it');
  // dry paint: no more mixing from wet pickup (dry paint is picked up far less)
  await p.evaluate(()=>{for(const L of __gs.allLayers())if(L._wet)L._wet.until=0;});
  ok(errs.length===0,'no page errors '+errs.slice(0,2).join(' | '));

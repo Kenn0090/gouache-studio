@@ -1,3 +1,7 @@
+## 0.85.1
+
+- **No more stepping in watercolour edges.** The watercolour brushes now cover each spot once per stroke, with the strongest value any dab reached, instead of stacking dab on dab. That removes the contour-line steps along the edges of a blot. A stroke laid over an earlier one glazes it like thin transparent paint: colours multiply (yellow over blue gives green) and layers darken, while white paper shows the colour as it is. The pooled rim is also softer, and the wash and wet-in-wet brushes lay down a little more paint.
+
 ## 0.85.0
 
 - **Watercolour set.** Three new watercolour brushes in the Mixing (real paint) set, made to look like wet watercolour: **Watercolour wash** (big wet blots with hard, uneven outlines, pigment pooled along the rim, layered see-through pools and paper grain), **Watercolour splatter** (drops of every size with dark rims; flick it near a blot) and **Watercolour wet-in-wet** (pulls colour into wet paint and bleeds). Their shape is not a repeating picture: it is made from noise that stays fixed to the canvas, so no stamp ever repeats and overlapping strokes build up naturally. New sliders for any Mixing brush: **Watercolour edges**, **Edge pooling**, **Layered pools** and **Paper grain**. These replace the old Watercolour mixer.
