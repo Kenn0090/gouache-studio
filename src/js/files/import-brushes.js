@@ -80,8 +80,13 @@ function bzProcreateSettings(a,notes){const n=k=>{const v=bpFind(a,k);return typ
   const ps2=n('paintSize');if(ps2>0)x.size=clamp(Math.round(ps2*800),4,400);
   const tp=n('textureScale'),gd=n('grainDepth');x.texScale=clamp(Math.round(256*(tp>0?tp:1)),16,1024);x.texDepth=clamp(gd==null?1:gd,0,1);x.texInvert=b('textureInverted');
   const gp=bpFind(a,'bundledGrainPath');if(typeof gp==='string'&&!/blank/i.test(gp)){x.grain=clamp(.45*(n('grainDepth')==null?1:n('grainDepth')),.1,.9);notes.add('Grain textures were approximated with the Grain setting; the grain picture itself is not used.');}
+  /* (0.93.2) wet mix and wet edges become the app's mixing brush: pick-up from the canvas, paint load, wetness and watercolour edges */
+  const mxA=n('dynamicsMix')||0,ld=n('dynamicsLoad')||0,wa=n('dynamicsWetAccumulation')||0,we=n('wetEdgesAmount')||0,be=n('burntEdgesAmount')||0;
+  if(typeof WCS_MIX!=='undefined'&&(mxA>.05||we>.3)){Object.assign(x,{mix:true,mixEven:true,mixPick:clamp(mxA,0,1),mixLoad:clamp(.2+.8*ld,.15,1),mixWet:clamp(.3+.7*wa,0,1),mixDry:WCS_MIX.mixDry,mixUse:WCS_MIX.mixUse,mixTooth:WCS_MIX.mixTooth,
+      mixWC:clamp(.15+.6*we,.1,.8),mixWCEdge:clamp(we*.7+be*.5,0,1),mixWCPools:clamp(.2*we,0,.4),mixWCGran:.2,smoothCurve:true,spacing:Math.max(x.spacing||0,.03)});
+    if(x.hardness==null)x.hardness=.5;notes.add('Wet mix and wet edges were approximated with the mixing brush (pick-up, paint load, wetness and watercolour edges).');}
   const bm=n('blendMode');if(bm>0)notes.add('Brush blend modes were not applied.');
-  notes.add('Procreate wet mix, wet edges and sub-brushes are not applied.');return x;}
+  notes.add('Procreate sub-brushes are not applied.');return x;}
 async function importProcreate(file){const entries=await bzUnzip(await file.arrayBuffer()),notes=new Set(),groups=new Map();
   for(const e of entries){const i=e.name.lastIndexOf('/'),dir=i<0?'':e.name.slice(0,i),leaf=e.name.slice(i+1);if(!groups.has(dir))groups.set(dir,{});groups.get(dir)[leaf]=e.data;}
   const presets=[],tips=[];let k=0;
