@@ -1,3 +1,7 @@
+## 0.80.4
+
+- **Blend across visible layers:** paint on a separate layer while the Blend brush picks up and mixes colours from the visible stack as you move. Choose Pigment or Lab mixing, adjust Hue blending, and use a soft or textured brush tip.
+
 ## 0.80.3
 
 - **Tool shortcuts take priority.** Available tool shortcuts switch out of Zoom and canvas editing states immediately, including focused tool menus. Current strokes and transforms finish cleanly; leaving an untouched Zoom drag does not apply an extra zoom. Typing fields and modal dialogs keep their normal keyboard input.

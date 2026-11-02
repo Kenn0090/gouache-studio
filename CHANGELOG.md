@@ -1,3 +1,7 @@
+## 0.80.4
+
+- **Layer-aware Blend brush.** Sample visible layers while blending on a separate layer, with the picked-up colours refreshed as the stroke moves. Choose Pigment or Lab mixing and adjust Hue blending. Soft and textured tips keep their edge character while mixing.
+
 ## 0.80.3
 
 - **Tool shortcuts take priority.** Available tool shortcuts switch out of Zoom and canvas editing states immediately, including focused tool menus. Current strokes and transforms finish cleanly; leaving an untouched Zoom drag does not apply an extra zoom. Typing fields and modal dialogs keep their normal keyboard input.
