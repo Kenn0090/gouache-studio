@@ -9,11 +9,11 @@ const t3Layer=()=>{const L=doc.active;return L&&L.text3d&&ui.mode==='p3d'?L:null
 const t3Row=L=>L&&L.mask&&L.mask.stack?L.mask.stack.find(r=>r.p&&r.p.t3)||null:null;
 const t3Name=s=>'Text · '+(String(s.content).split('\n')[0].slice(0,24)||'(empty)');
 /* the words drawn white on see-through: that picture is the layer's shape */
-async function t3Bitmap(spec){const t={content:String(spec.content||''),font:spec.font,size:spec.size,bold:spec.bold,italic:spec.italic,align:'left',lineHeight:spec.lineHeight,tracking:spec.tracking,outline:spec.outline,outlineColor:[1,1,1],color:[1,1,1],x:0,y:0};
+async function t3Bitmap(spec,mirror=true){const t={content:String(spec.content||''),font:spec.font,size:spec.size,bold:spec.bold,italic:spec.italic,align:'left',lineHeight:spec.lineHeight,tracking:spec.tracking,outline:spec.outline,outlineColor:[1,1,1],color:[1,1,1],x:0,y:0};
   try{await ensureFont(t);}catch(e){}
   if(!t.content.trim()){const T=makeTarget(8,8,8,true);clearTarget(T);return {T,bw:8,bh:8};}
   const lay=layoutText(t),bw=Math.max(8,Math.min(lay.bw,4096)),bh=Math.max(8,Math.min(lay.bh,4096)),c=document.createElement('canvas');c.width=bw;c.height=bh;const x=c.getContext('2d');
-  x.translate(bw,0);x.scale(-1,1);/* the planar projection reads the picture mirrored when seen from outside, so draw it mirrored */
+  if(mirror){x.translate(bw,0);x.scale(-1,1);}/* the planar projection reads the picture mirrored when seen from outside, so draw it mirrored */
   x.font=textFont(t);try{x.letterSpacing=(t.tracking||0)+'px';}catch(e){}x.textBaseline='alphabetic';x.lineJoin='round';x.miterLimit=2;
   const at=(i)=>{const w=lay.widths[i];return [lay.pad+lay.fx+(spec.align==='left'?0:spec.align==='center'?(lay.W-w)/2:lay.W-w),lay.pad+lay.asc+i*lay.lh];};
   if(t.outline>0){x.lineWidth=t.outline*2;x.strokeStyle='#fff';lay.lines.forEach((ln,i)=>{const [ox,oy]=at(i);x.strokeText(ln,ox,oy);});}
@@ -49,6 +49,13 @@ function t3Panel(box){const L=t3Layer(),spec=L?L.text3d.spec:t3.style;$('#brushT
     segChips([['left','Left'],['center','Center'],['right','Right']],()=>(t3Layer()?t3Layer().text3d.spec:t3.style).align,v=>t3Prop('align',v)),
     S('t3Lh','Line height','lineHeight',.7,3,.05,v=>v.toFixed(2)),S('t3Tr','Letter spacing','tracking',-20,100,1,v=>v+'px'),S('t3Out','Outline','outline',0,40,1,v=>v+'px'),
     el('div',{class:'chips'},el('button',{class:'btn sm',id:'t3New',text:'New text',title:'The next click on the model adds another text',onclick:()=>{t3.fresh=true;selectOnly(null);buildBrushPanel();toast('Click the model to add new text.');}}),
-      el('button',{class:'btn sm',id:'t3Path',text:'Put on a path',disabled:true,title:'Coming with the Ribbon path'})));}
+      el('button',{class:'btn sm',id:'t3Path',text:'Put on a path',title:'Bend these words along a surface path (a Ribbon path)',onclick:t3PutOnPath})));}
 document.addEventListener('pointerdown',async e=>{if(ui.mode!=='p3d'||ui.tool!=='text'||e.button!==0||e.altKey||!e.target||e.target.id!=='v3Hit')return;
   const p=v3PickAt(e.target,e);if(!p)return;e.preventDefault();e.stopImmediatePropagation();t3Commit();const L=t3Layer();if(L&&t3Row(L)&&!e.shiftKey&&!t3.fresh)t3Move(L,p);else await t3Create(p);},true);
+
+/* "Put on a path": the words become the picture of a Ribbon path, so they bend along its curve (a path layer is selected, or the newest one is used) */
+async function t3PutOnPath(){const spec=Object.assign({},t3Layer()?t3Layer().text3d.spec:t3.style,{align:'left'});
+  const cur=doc.active,L=cur&&cur.path&&cur.path.kind==='3d'?cur:allLayers().filter(n=>n.path&&n.path.kind==='3d'&&!n.path.weld).pop();
+  if(!L){toast('Draw a path first (Path tool, P), then put the text on it.');return;}
+  selectOnly(L);pathEnsure(L);const P=L.path;pathChange(q=>{q.mode='ribbon';q.ribbon=Object.assign({},RB_DEFAULT,q.ribbon);},'Put text on a path',P);
+  await rbUseText(L,P,spec);setTool('path');buildBrushPanel();toast('The text is on the path. Change how it stretches and tiles in the Path panel.');}

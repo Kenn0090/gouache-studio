@@ -193,6 +193,7 @@
     "ui/history",
     "ui/layer-undo",
     "tools/paths",
+    "tools/ribbon",
     "ui/view-input",
     "ui/layer-pick",
     "ui/optbar",

@@ -165,7 +165,7 @@ async function txExportPack(){if(!tx.mine.length){toast('Import some textures fi
 function txDelete(rec){confirmDlg('Delete texture','Delete “'+rec.name+'” from Textures? Layers that use it keep it.','Delete',()=>{const i=tx.mine.indexOf(rec);if(i>=0)tx.mine.splice(i,1);
   txCacheDrop('mine:'+rec.id);tx.thumbs.delete('mine:'+rec.id);store.del(rec.id,'textures');renderTextures();});}
 /* ---- the uses ---- */
-function txClick(it){if(ui.mode==='paint'&&doc.active?.editMask)return txToMask(it);if(ui.mode==='paint'){tx.selected=it.kind+':'+it.id;renderTextures();toast('Selected “'+it.name+'”. Drag it onto the canvas or a layer to add it.');return;}return doc.active?.editMask?txToMask(it):txToLayer(it);}
+function txClick(it){if(typeof rbPick!=='undefined'&&rbPick){rbUseTexture(it);return;}if(ui.mode==='paint'&&doc.active?.editMask)return txToMask(it);if(ui.mode==='paint'){tx.selected=it.kind+':'+it.id;renderTextures();toast('Selected “'+it.name+'”. Drag it onto the canvas or a layer to add it.');return;}return doc.active?.editMask?txToMask(it):txToLayer(it);}
 async function txToMask(it,target=doc.active){const L=target;if(!isLayer(L)&&!(L&&L.type==='group')){toast('Select a layer first: the texture goes into its mask.');return;}
   const root=doc.root,mask=L.mask,t=txCopy(await txTarget(it));if(doc.root!==root||!inDoc(L)||L.mask!==mask){disposeTarget(t);toast('The mask changed while the texture was loading. Drop it again.');return;}
   if(msAddImageTarget(L,t,it.name))toast('Added “'+it.name+'” as a mask layer. Adjust its contrast and projection in the Material editor.');}

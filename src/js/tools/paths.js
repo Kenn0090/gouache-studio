@@ -9,7 +9,8 @@ const pathCss=c=>'rgb('+c.map(v=>Math.round(v*255)).join(',')+')';
 const pathMeshCaches=new WeakMap();
 function pathCopy(p){return JSON.parse(JSON.stringify(p));}
 /* (0.93.3, Kenn: like Substance Painter) a path layer holds several paths: L.paths, with L.path the one being edited (L.paths[L.pathCur]) */
-function pathEnsure(L){if(!L||!L.path)return;if(!Array.isArray(L.paths)||!L.paths.length)L.paths=[L.path];let i=L.paths.indexOf(L.path);if(i<0){i=clamp(L.pathCur|0,0,L.paths.length-1);L.path=L.paths[i];}L.pathCur=i;L.paths.forEach((P,k)=>{if(!P.name)P.name='Path '+(k+1);});}
+let pathSeq=0;
+function pathEnsure(L){if(!L||!L.path)return;if(!Array.isArray(L.paths)||!L.paths.length)L.paths=[L.path];let i=L.paths.indexOf(L.path);if(i<0){i=clamp(L.pathCur|0,0,L.paths.length-1);L.path=L.paths[i];}L.pathCur=i;L.paths.forEach((P,k)=>{if(!P.name)P.name='Path '+(k+1);if(!P.id)P.id=Date.now().toString(36)+(++pathSeq);});}
 function pathSetCur(L,i){pathEnsure(L);L.pathCur=clamp(i,0,L.paths.length-1);L.path=L.paths[L.pathCur];delete L._pathPreview;L._pathSamples=null;}
 function pathSnap(L){pathEnsure(L);return {paths:pathCopy(L.paths),cur:L.pathCur};}
 function pathRestore(L,sn){L.paths=pathCopy(sn.paths);L.pathCur=clamp(sn.cur|0,0,L.paths.length-1);L.path=L.paths[L.pathCur];}
@@ -100,7 +101,7 @@ function pathRender(L){if(L.path?.weld){weldPathRender(L);return;}if(!L.path||!L
   /* (0.93.3) every path has its own opacity: it is drawn into a spare picture and mixed into the layer's coverage at that opacity, the stronger of two paths winning where they cross.
      A layer saved before this kept its path's opacity as the layer's opacity; that moves into the path coverage the first time it is drawn. */
   let tmp=null;try{for(const P of L.paths){if(P.hidden||P.points.length<2||P.mode==='none')continue;L.path=P;if(!tmp)tmp=acquireD(T.depth);clearTarget(tmp,[0,0,0,1]);
-    const s=P.kind==='3d'?(P===cur&&L._pathSamples?L._pathSamples:pathSamples(P,true)):pathSamples(P,false);if(P.kind==='3d'){if(P.mode==='fill'){if(!P.closed)continue;for(const set of pathMirrorSets(P,s))pathSurfaceFill(L,set,tmp);}else for(const set of pathMirrorSets(P,s))pathSurfaceMask(L,set,tmp);}
+    const s=P.kind==='3d'?(P===cur&&L._pathSamples?L._pathSamples:pathSamples(P,true)):pathSamples(P,false);if(P.kind==='3d'){if(P.mode==='ribbon'){for(const set of pathMirrorSets(P,s))pathSurfaceRibbon(L,P,set,tmp);}else if(P.mode==='fill'){if(!P.closed)continue;for(const set of pathMirrorSets(P,s))pathSurfaceFill(L,set,tmp);}else for(const set of pathMirrorSets(P,s))pathSurfaceMask(L,set,tmp);}
     else if(P.mode==='fill'){if(!P.closed)continue;rasterPoly(s.flatMap(a=>a.p),tmp,true);}
     else{useAux(tmp.depth);const o=Object.assign({},BRUSH_DEFAULTS,{tool:'brush',size:P.width,hardness:P.hardness,opacity:1,flow:1,spacing:P.spacing,pSize:P.pressure,minSize:.05,color:[1,1,1],noTint:true,angle:P.angle,roundness:P.roundness,tip:L._fillImg?.pathTip||null});
       beginStroke({target:tmp,maskOf:L,lockAlpha:false},s[0].p[0],s[0].p[1],s[0].pressure,o);for(let k=1;k<s.length;k++)addPoint(s[k].p[0],s[k].p[1],s[k].pressure);endStroke(false);}
@@ -223,9 +224,10 @@ function pathPanel(box){const L=pathActive(),P=L?.path;pathPanelFor=doc.active;$
   if(!P){box.append(el('p',{class:'note',text:'Start a path on the '+(ui.tool==='path'?'model.':'canvas.')}));return;}
   pathsPanel(box,L);
   const name=el('input',{id:'pathName',value:L.name,'aria-label':'Layer name',title:'Layer name'});name.onchange=()=>{const b=L.name,a=name.value.trim()||b;L.name=a;pushUndo({label:'Rename layer',refs:[L],undo(){L.name=b;},redo(){L.name=a;}});changed(L);};box.append(name,
-    seg((P.kind==='3d'?[['stroke','Paint along path'],['fill','Filled path']]:[['none','Path only'],['stroke','Brush stroke'],['fill','Fill']]),P.mode,v=>pathChange(p=>{p.mode=v;if(v==='fill'&&p.points.length>=3)p.closed=true;},'Path painting mode'),'Path painting mode'),
+    seg((P.kind==='3d'?[['stroke','Paint along path'],['ribbon','Ribbon path'],['fill','Filled path']]:[['none','Path only'],['stroke','Brush stroke'],['fill','Fill']]),P.mode,v=>{pathChange(p=>{p.mode=v;if(v==='fill'&&p.points.length>=3)p.closed=true;},'Path painting mode');if(v==='ribbon'&&typeof rbUseText==='function'&&!rbImage(L,L.path))rbUseText(L,L.path,Object.assign({},t3.style,{content:'Ribbon text',align:'left'}));},'Path painting mode'),
     el('div',{class:'chips'},chk('pathClosed','Closed path',P.closed,v=>pathChange(p=>p.closed=v,'Close/open path')),chk('pathPressure','Point pressure',P.pressure,v=>pathChange(p=>p.pressure=v,'Path pressure'))));
   const sl=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:P[key],fmt,onInput:v=>{if(lockStop({node:L}))return;const b=pathSnap(L);L.path[key]=v;pathRender(L);clearTimeout(L._pathTimer);if(!L._pathBefore)L._pathBefore=b;L._pathTimer=setTimeout(()=>{const old=L._pathBefore;L._pathBefore=null;pathRecord(L,old,'Path '+label.toLowerCase());},400);}}).el;
+  if(P.kind==='3d'&&P.mode==='ribbon'&&typeof ribbonPanel==='function')ribbonPanel(box,L,P);
   box.append(sl('pathWidth','Width','width',P.kind==='3d'?.001:1,P.kind==='3d'?2:1000,P.kind==='3d'?.001:1,v=>P.kind==='3d'?v.toFixed(3)+' units':Math.round(v)+' px'),sl('pathHard','Hardness','hardness',0,1,.01,pct),sl('pathOpacity','Opacity','opacity',0,1,.01,pct));
   if(P.kind==='3d'){
     box.append(makeSlider({id:'pathDepth',label:'Projection depth',min:.1,max:6,step:.05,value:P.depthK||1,fmt:v=>v.toFixed(2)+'×',onInput:v=>{if(lockStop({node:L}))return;const b=pathSnap(L);L.path.depthK=v;pathRender(L);clearTimeout(L._pathTimer);if(!L._pathBefore)L._pathBefore=b;L._pathTimer=setTimeout(()=>{const old=L._pathBefore;L._pathBefore=null;pathRecord(L,old,'Path projection depth');},400);}}).el,
