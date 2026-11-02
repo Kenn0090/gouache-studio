@@ -37,7 +37,8 @@ function beginStroke(L,x,y,p,o){
   else if(!lazy&&(beforeT.w!==W||beforeT.h!==H))useAux(L.target.depth,false);
   if(!lazy)blit(L.target,beforeT,0,0,W,H,0,0);
   const tint=strokeTints(o),tc=[0,0,0,0];let clearBox=null;
-  if(o.tool!=='smudge'){
+  /* a watercolour mixing stroke draws into the stroke buffer like a normal brush, so it clears what the last stroke left there first (otherwise that leftover is forgotten and shows through later strokes) */
+  if(o.tool!=='smudge'||(o.mixBrush&&o.mixWC>0)){
     const d=strokeT.dirtyR;
     if(d&&d!=='all'){if(d[2]>0&&d[3]>0){scissorDo(d,()=>clearTarget(strokeT,tint?tc:undefined));clearBox=[d[0],d[1],d[0]+d[2],d[1]+d[3]];}}
     else if(d==='all'||doc.wrap){clearTarget(strokeT,tint?tc:undefined);clearBox=[0,0,W,H];}

@@ -1,3 +1,7 @@
+## 0.89.1
+
+- **Fixed: ghost shapes showing while painting.** After using a watercolour brush (wash, splatter, wet-in-wet or any brush with Watercolour edges), the leftover of an earlier stroke could show up as grey patches over the layer you were painting on while you drew with any other brush, and it did not go away when layers were deleted. The watercolour brushes now clear the shared stroke buffer first, like every other brush.
+
 ## 0.89.0
 
 - **Watercolour studio.** A new toolkit of 36 brushes in seven groups (each folds shut in the Brushes panel), all made from scratch: **Aqua · Inkers** (Fine ink pen, Dip pen, Brush pen, Technical pen, Wobbly liner, Dry ink brush), **Aqua · Colouring** (Round brush, Flat brush, Dry brush, Watercolour pencil, Wax crayon, Sponge), **Aqua · Ink washes** (Flat wash, Graded wash, Dark-edge wash, Bloom (backrun), Granulating wash, Ink glaze), **Aqua · Embellishments** (Fine splatter, Coarse splatter, Salt, Droplets, Pooling edge line, Watery drip), **Aqua · Stamps** (six irregular blobs, splashes, a bloom, a leaf, a petal and a ragged wash, each with pigment pooled along its edge), **Aqua · Blenders** (Water brush, Soft blender, Smudger) and **Aqua · Erasers and lifters** (Lift-off (damp brush), Wet eraser, Hard eraser). The set's brushes pick their own tool, so choosing one switches between pen, wash and eraser for you. The inkers use speed for pressure when you use a mouse.

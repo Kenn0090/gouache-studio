@@ -1,3 +1,7 @@
+## 0.89.1
+
+- **Fixed ghost shapes showing while painting** after a watercolour stroke: leftovers of earlier strokes could appear as grey patches while you painted with other brushes, even after deleting layers.
+
 ## 0.89.0
 
 - **Watercolour studio:** 36 brushes in seven groups (inkers, colouring, ink washes, embellishments, stamps, blenders, erasers and lifters), made from scratch. Each group folds shut in the Brushes panel.
