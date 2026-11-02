@@ -57,25 +57,38 @@ function bzTipAlpha(im){const {data,width:w,height:h}=im,n=w*h;let trans=0,col=0
   return {w,h,a};}
 function bzPresetFromTip(name,tip,extra){const t=makeTip(name,tip.w,tip.h,tip.a);return {tipObj:t,preset:Object.assign({},BRUSH_DEFAULTS,{name,tool:'brush',tip:t,size:clamp(Math.max(24,Math.min(tip.w,tip.h)/4),8,400),spacing:.15,pSize:true,minSize:.3,smoothing:.25},extra||{})};}
 /* the settings we have an equivalent for (Procreate's names for them) */
-function bzProcreateSettings(a,notes){const n=k=>{const v=bpFind(a,k);return typeof v==='number'?v:undefined;},x={},sp=n('plotSpacing');
+function bzProcreateSettings(a,notes){const n=k=>{const v=bpFind(a,k);return typeof v==='number'?v:undefined;},b=k=>bpFind(a,k)===true,x={},sp=n('plotSpacing');
+  /* key names checked against a real .brushset (0.93.2): shapeRotation is not an angle (1.0 there), shapeCount is a fraction of 16, sizes are fractions of the biggest brush */
   if(sp!=null)x.spacing=clamp(sp,.01,1.5);const rd=n('shapeRoundness');if(rd!=null&&rd>0)x.roundness=clamp(rd,.05,1);
-  const rot=n('shapeRotation');if(rot!=null)x.angle=rot>6.3?rot:rot*180/Math.PI;const cnt=n('shapeCount');if(cnt>1)x.count=clamp(Math.round(cnt),1,8);
+  const ang=n('shapeAngle');if(ang)x.angle=Math.abs(ang)<=6.3?ang*180/Math.PI:ang;
+  const cnt=n('shapeCount');if(cnt>0)x.count=clamp(Math.round(cnt<=1?cnt*16:cnt),1,8);
   const scat=n('shapeScatter');if(scat>0){x.scatter=clamp(scat,0,4);x.bothAxes=true;}const mo=n('maxOpacity');if(mo>0&&mo<=1)x.opacity=mo;
   const ps=n('dynamicsPressureSize'),po=n('dynamicsPressureOpacity');if(ps!=null)x.pSize=ps>0.02;if(po!=null)x.pOpacity=po>0.02;
+  const mn=n('minSize');if(x.pSize&&mn>0)x.minSize=clamp(mn,0,1);
   const jit=n('plotJitter');if(jit>0)x.scatter=Math.max(x.scatter||0,clamp(jit,0,2));
-  const az=n('shapeAzimuth');if(az>0.5)x.followDir=true;
-  notes.add('Procreate settings such as dynamics curves, wet mix and blend modes are not applied.');return x;}
+  if(b('shapeAzimuth'))x.followDir=true;if(b('shapeRandomise'))x.angleJitter=1;
+  const sj=n('dynamicsJitterSize');if(sj>0)x.sizeJitter=clamp(sj,0,1);
+  const hj=Math.max(n('dynamicsJitterHue')||0,n('dynamicsJitterStrokeHue')||0),sj2=Math.max(n('dynamicsJitterSaturation')||0,n('dynamicsJitterStrokeSaturation')||0),vj=Math.max(n('dynamicsJitterLightness')||0,n('dynamicsJitterDarkness')||0,n('dynamicsJitterStrokeLightness')||0,n('dynamicsJitterStrokeDarkness')||0);
+  if(hj>0||sj2>0||vj>0){x.hueJitter=clamp(hj,0,1);x.satJitter=clamp(sj2,0,1);x.valJitter=clamp(vj,0,1);x.jitterPerStroke=!((n('dynamicsJitterHue')||0)+(n('dynamicsJitterSaturation')||0)+(n('dynamicsJitterLightness')||0)+(n('dynamicsJitterDarkness')||0)>0);}
+  const sm=n('plotSmoothing');if(sm>0)x.smoothing=clamp(sm,0,1);
+  const ps2=n('paintSize');if(ps2>0)x.size=clamp(Math.round(ps2*800),4,400);
+  const gp=bpFind(a,'bundledGrainPath');if(typeof gp==='string'&&!/blank/i.test(gp)){x.grain=clamp(.45*(n('grainDepth')==null?1:n('grainDepth')),.1,.9);notes.add('Grain textures were approximated with the Grain setting; the grain picture itself is not used.');}
+  const bm=n('blendMode');if(bm>0)notes.add('Brush blend modes were not applied.');
+  notes.add('Procreate settings such as pressure curves, tapering, wet mix and wet edges are not applied.');return x;}
 async function importProcreate(file){const entries=await bzUnzip(await file.arrayBuffer()),notes=new Set(),groups=new Map();
   for(const e of entries){const i=e.name.lastIndexOf('/'),dir=i<0?'':e.name.slice(0,i),leaf=e.name.slice(i+1);if(!groups.has(dir))groups.set(dir,{});groups.get(dir)[leaf]=e.data;}
   const presets=[],tips=[];let k=0;
-  for(const [dir,g] of groups){const shapeKey=Object.keys(g).find(x=>/^shape(\.png)?$/i.test(x)||/^shape.*\.png$/i.test(x)),archKey=Object.keys(g).find(x=>/\.archive$/i.test(x));if(!shapeKey&&!archKey)continue;
+  let builtin=0;
+  for(const [dir,g] of groups){const leafDir=dir.split('/').pop();if(/^reset$/i.test(leafDir))continue;if(/^sub\d+$/i.test(leafDir)){notes.add('Procreate’s second (sub) brushes were not imported.');continue;}const shapeKey=Object.keys(g).find(x=>/^shape(\.png)?$/i.test(x)||/^shape.*\.png$/i.test(x)),archKey=Object.keys(g).find(x=>/\.archive$/i.test(x));if(!shapeKey&&!archKey)continue;
     let name=null,extra={};if(archKey){try{const arch=bpUnarchive(bpParse(g[archKey])),nm=bpFind(arch,'name');if(typeof nm==='string'&&nm)name=nm;extra=bzProcreateSettings(arch,notes);}catch(e){notes.add('One brush’s settings could not be read; it uses default settings.');}}
-    if(!shapeKey){notes.add('A brush had no tip picture and was skipped.');continue;}
-    const tip=bzTipAlpha(await bzBitmap(g[shapeKey]));if(!tip){notes.add('A tip picture was in colour and was skipped.');continue;}
+    const tip=shapeKey?bzTipAlpha(await bzBitmap(g[shapeKey])):null;if(shapeKey&&!tip){notes.add('A tip picture was in colour and was skipped.');continue;}
     k++;const nm=name||(dir&&!/^[0-9A-F-]{16,}$/i.test(dir.split('/').pop())?dir.split('/').pop():baseName(file.name)+(groups.size>1?' '+k:''));
     /* (0.93.2) a brush with a grain picture: the paper-like grain is approximated with the Grain setting */
     if(Object.keys(g).some(x=>/^grain/i.test(x))){extra=Object.assign({grain:.45},extra);notes.add('Grain textures were approximated with the Grain setting; the grain picture itself is not used.');}
+    if(!tip){/* uses one of Procreate's own built-in shapes, which are not stored in the file: a round tip stands in so the settings still come across */
+      builtin++;presets.push(Object.assign({},BRUSH_DEFAULTS,{name:nm,tool:'brush',tip:null,size:50,hardness:.7,spacing:.15,pSize:true,minSize:.3,smoothing:.25},extra));continue;}
     const r=bzPresetFromTip(nm,tip,extra);tips.push(r.tipObj);presets.push(r.preset);}
+  if(builtin)notes.add(builtin+' brush'+(builtin===1?' uses':'es use')+' Procreate’s own built-in shapes, which are not stored in the file; a round tip stands in for '+(builtin===1?'it':'them')+'.');
   return {presets,tips,notes};}
 async function importCsp(file){const u8=new Uint8Array(await file.arrayBuffer()),notes=new Set(),presets=[],tips=[],sig=[137,80,78,71,13,10,26,10];
   const at=i=>{for(let k=0;k<8;k++)if(u8[i+k]!==sig[k])return false;return true;};let k=0;

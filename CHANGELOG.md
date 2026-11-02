@@ -1,6 +1,6 @@
 ## 0.93.1
 
-- **Imported Photoshop brushes keep more of their settings.** Color dynamics (hue, saturation and brightness jitter), Dual brush (second tip with its size, spacing, scatter, count and blend) and Texture (approximated with Grain) now come across; the import message says what was applied. Procreate brushes with a grain picture get the Grain setting.
+- **Imported Photoshop brushes keep more of their settings.** Color dynamics (hue, saturation and brightness jitter), Dual brush (second tip with its size, spacing, scatter, count and blend) and Texture (approximated with Grain) now come across; the import message says what was applied. Procreate brushes now read their real settings (spacing, count, scatter, size jitter, hue/saturation/brightness jitter, smoothing, size and grain), brushes that use Procreate's built-in shapes import with a round tip instead of being skipped, and Procreate's hidden Reset and sub-brush folders no longer cause errors.
 - **Delete a single brush.** Right-click any imported or saved brush in the Brushes panel and choose Delete. (A whole imported set can still be removed with the Remove button on its header.) Built-in brushes cannot be deleted.
 
 ## 0.93.0
