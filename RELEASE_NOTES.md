@@ -1,5 +1,6 @@
 ## 0.93.1
 
+- **Clip Studio brushes (.sut, .sutg)** now import their real tip pictures and settings (size, hardness, spacing, roundness, rotation, spray, pen pressure, texture as Grain).
 - **Imported Photoshop brushes keep more settings:** color dynamics, dual brush and texture (approximated with Grain). Procreate brushes read their real settings; brushes with built-in shapes import with a round tip.
 - **Delete a single brush:** right-click an imported or saved brush in the Brushes panel.
 

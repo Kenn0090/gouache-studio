@@ -1,5 +1,6 @@
 ## 0.93.1
 
+- **Clip Studio brushes (.sut and .sutg) now come in properly.** They are read as the databases they are: the real tip pictures are found (before, only some could be), and the settings come across: size, hardness, opacity, flow, spacing, roundness, rotation and random rotation, spray, pen pressure on or off, and texture (approximated with Grain). Brush groups (.sutg) can be opened too. Not applied: start and end tapering, pressure curves, and ink and water colour mixing.
 - **Imported Photoshop brushes keep more of their settings.** Color dynamics (hue, saturation and brightness jitter), Dual brush (second tip with its size, spacing, scatter, count and blend) and Texture (approximated with Grain) now come across; the import message says what was applied. Procreate brushes now read their real settings (spacing, count, scatter, size jitter, hue/saturation/brightness jitter, smoothing, size and grain), brushes that use Procreate's built-in shapes import with a round tip instead of being skipped, and Procreate's hidden Reset and sub-brush folders no longer cause errors.
 - **Delete a single brush.** Right-click any imported or saved brush in the Brushes panel and choose Delete. (A whole imported set can still be removed with the Remove button on its header.) Built-in brushes cannot be deleted.
 

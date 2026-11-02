@@ -34,7 +34,7 @@ async function decodeFile(file){const ext=extOf(file.name);
 function askReplace(){if(paDocSaved(hist.undo,doc))return Promise.resolve(true);return new Promise(res=>{openDialog({title:'Replace the current painting?',
   body:el('p',{class:'note',text:'Opening a file replaces what is on the canvas. Use File › Save first if you want to keep it.'}),okLabel:'Open anyway',onOk(){res(true);},onCancel(){res(false);}});});}
 async function handleFile(file,mode,path){const ext=extOf(file.name);loadStart(file.name);
-  try{if(!['abr','brush','brushset','sut','sutb','ttf','otf','woff','woff2'].includes(ext)){loadBusy(mode==='open'?'Opening…':'Placing…');await loadPaint();}if(ext==='abr'){await importABR(file);return;}if(['brush','brushset','sut','sutb'].includes(ext)){await importBrushFile(file);return;}
+  try{if(!['abr','brush','brushset','sut','sutb','sutg','ttf','otf','woff','woff2'].includes(ext)){loadBusy(mode==='open'?'Opening…':'Placing…');await loadPaint();}if(ext==='abr'){await importABR(file);return;}if(['brush','brushset','sut','sutb','sutg'].includes(ext)){await importBrushFile(file);return;}
     if(['ttf','otf','woff','woff2'].includes(ext)){await addFontFile(file);return;}
     if(mode!=='open'&&tabDocs.paint){toast('Switch to Paint to place images.');return;}
     if(mode==='open'&&(ext==='gouache3d'||isP3Proj(await file.slice(0,8).arrayBuffer()))){await openP3Project(await file.arrayBuffer(),baseName(file.name),path);if(path)platform.recentAdd(path);return;}
@@ -44,14 +44,14 @@ async function handleFile(file,mode,path){const ext=extOf(file.name);loadStart(f
   catch(e){console.error(e);toast(e.message||String(e));}finally{loadEnd();}}
 let fileMode='open';
 const OPEN_FILTERS={open:[{name:'Images and documents',extensions:['gouache','gouache3d','psd','png','jpg','jpeg','webp','gif','bmp','tga','dds','tif','tiff']},{name:'Brushes and fonts',extensions:['abr','ttf','otf','woff','woff2']}],
-  place:[{name:'Images',extensions:['psd','png','jpg','jpeg','webp','gif','bmp','tga','dds','tif','tiff']}],abr:[{name:'Brushes (Photoshop, Procreate, Clip Studio)',extensions:['abr','brush','brushset','sut','sutb']}],font:[{name:'Fonts',extensions:['ttf','otf','woff','woff2']}]};
+  place:[{name:'Images',extensions:['psd','png','jpg','jpeg','webp','gif','bmp','tga','dds','tif','tiff']}],abr:[{name:'Brushes (Photoshop, Procreate, Clip Studio)',extensions:['abr','brush','brushset','sut','sutb','sutg']}],font:[{name:'Fonts',extensions:['ttf','otf','woff','woff2']}]};
 const MIME={png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',gif:'image/gif',bmp:'image/bmp'};
 /* desktop: open a file from disk by path (native dialog, recent files) */
 async function openPath(path,mode){try{loadStart(fileNameOf(path));let bytes;try{bytes=await platform.readFile(path);}finally{loadEnd();}const name=fileNameOf(path);
     await handleFile(new File([bytes],name,{type:MIME[extOf(name)]||''}),mode,path);}catch(e){console.error(e);toast('Could not open “'+fileNameOf(path)+'”: '+(e.message||e));}}
 async function pickFile(m){if(platform.isDesktop){try{const p=await platform.openDialog(OPEN_FILTERS[m]||OPEN_FILTERS.open);if(p)await openPath(p,m==='abr'||m==='font'?'open':m);}catch(e){toast('The file dialog failed: '+(e.message||e));}return;}
   pickFileWeb(m);}
-function pickFileWeb(m){fileMode=m;const f=$('#fileIn');f.accept=m==='font'?'.ttf,.otf,.woff,.woff2':m==='abr'?'.abr,.brush,.brushset,.sut,.sutb':(m==='open'?'.gouache,.gouache3d,':'')+'.psd,.png,.jpg,.jpeg,.webp,.gif,.bmp,.tga,.dds,.tif,.tiff,.abr,image/*';f.value='';f.click();}
+function pickFileWeb(m){fileMode=m;const f=$('#fileIn');f.accept=m==='font'?'.ttf,.otf,.woff,.woff2':m==='abr'?'.abr,.brush,.brushset,.sut,.sutb,.sutg':(m==='open'?'.gouache,.gouache3d,':'')+'.psd,.png,.jpg,.jpeg,.webp,.gif,.bmp,.tga,.dds,.tif,.tiff,.abr,image/*';f.value='';f.click();}
 $('#fileIn').addEventListener('change',e=>{const f=e.target.files[0];if(f)handleFile(f,fileMode==='abr'||fileMode==='font'?'open':fileMode);});
 $('#work').addEventListener('dragover',e=>{if([...e.dataTransfer.types].includes('Files')){e.preventDefault();$('#dropHint').hidden=false;}});
 $('#work').addEventListener('dragleave',e=>{if(e.target===$('#work')||!$('#work').contains(e.relatedTarget))$('#dropHint').hidden=true;});

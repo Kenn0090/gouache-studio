@@ -91,13 +91,14 @@ async function importProcreate(file){const entries=await bzUnzip(await file.arra
   if(builtin)notes.add(builtin+' brush'+(builtin===1?' uses':'es use')+' Procreate’s own built-in shapes, which are not stored in the file; a round tip stands in for '+(builtin===1?'it':'them')+'.');
   return {presets,tips,notes};}
 async function importCsp(file){const u8=new Uint8Array(await file.arrayBuffer()),notes=new Set(),presets=[],tips=[],sig=[137,80,78,71,13,10,26,10];
+  if(String.fromCharCode(...u8.subarray(0,15))==='SQLite format 3'){try{const r=await cspFromDb(u8,file.name,notes);if(r.presets.length)return r;}catch(e){console.warn('Clip Studio database',e);}}
   const at=i=>{for(let k=0;k<8;k++)if(u8[i+k]!==sig[k])return false;return true;};let k=0;
   for(let i=0;i<u8.length-16&&presets.length<60;i++){if(u8[i]!==137||!at(i))continue;
     let j=i+8,ok=false;while(j+12<=u8.length){const len=(u8[j]<<24|u8[j+1]<<16|u8[j+2]<<8|u8[j+3])>>>0,type=String.fromCharCode(u8[j+4],u8[j+5],u8[j+6],u8[j+7]);j+=12+len;if(type==='IEND'){ok=true;break;}if(len>u8.length)break;}
     if(!ok)continue;try{const im=await bzBitmap(u8.slice(i,j)),tip=im.width>=8&&im.height>=8?bzTipAlpha(im):null;if(tip){k++;const r=bzPresetFromTip(baseName(file.name)+(k>1?' '+k:''),tip);tips.push(r.tipObj);presets.push(r.preset);}}catch(e){}i=j-1;}
   notes.add('Clip Studio brushes are read for their tip pictures only. Their settings (spacing, dynamics, texture) are not read, so adjust the brush after importing.');return {presets,tips,notes};}
 async function importBrushFile(file){const ext=extOf(file.name);let r;
-  try{r=ext==='sut'||ext==='sutb'?await importCsp(file):await importProcreate(file);}catch(e){throw new Error('This brush file could not be read: '+e.message);}
+  try{r=ext==='sut'||ext==='sutb'||ext==='sutg'?await importCsp(file):await importProcreate(file);}catch(e){throw new Error('This brush file could not be read: '+e.message);}
   if(!r.presets.length)throw new Error('No brush tips were found in “'+file.name+'”.');
   const set={id:'imp-'+Date.now(),name:baseName(file.name),presets:r.presets,tips:r.tips};addSet(set);applyPreset(r.presets[0]);
   const msg='Imported '+r.presets.length+' brush'+(r.presets.length===1?'':'es')+' from “'+set.name+'”.';
