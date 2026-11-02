@@ -15,7 +15,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const box=await p.evaluate(()=>{const r=document.querySelector('#stage').getBoundingClientRect();return {l:r.left,t:r.top,x:__gs.view.x,y:__gs.view.y,z:__gs.view.zoom};});
  const at=(x,y)=>[box.l+box.x+x*box.z,box.t+box.y+y*box.z];
  const names=await p.evaluate(()=>__gs.GRAFFITI.map(g=>g.name));
- ok(names.length===16&&await p.evaluate(()=>__gs.GRAFFITI.every(g=>__gs.library.flatMap(x=>x.presets).some(x=>x.name===g.name))),'all 16 graffiti brushes are in the library ('+names.length+')');
+ ok(names.length===17&&await p.evaluate(()=>__gs.GRAFFITI.every(g=>__gs.library.flatMap(x=>x.presets).some(x=>x.name===g.name))),'all 17 graffiti brushes are in the library ('+names.length+')');
  const use=(n,extra)=>p.evaluate(([n,e])=>{const q=__gs.library.flatMap(x=>x.presets).find(x=>x.name===n);__gs.applyPreset(q);Object.assign(__gs.brush,e||{});__gs.ui.fg=[.1,.4,.9];},[n,extra]);
  const alpha=(x,y)=>p.evaluate(([x,y])=>__gs.captureRegionNow(__gs.doc.active.target,x,y,1,1).data[3],[x,y]);
  const drag=async(x0,y0,x1,y1,hold)=>{const a=at(x0,y0),z=at(x1,y1);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.move(z[0],z[1],{steps:20});if(hold)await p.waitForTimeout(hold);await p.mouse.up();await p.waitForTimeout(200);};

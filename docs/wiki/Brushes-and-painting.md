@@ -209,3 +209,16 @@ The **Graffiti** set has spray caps, markers, a splatter flick and a stencil edg
 - **Drips:** thin drips with a bead at the end. Hold the brush still with the button down and they run from under it (**Drips when held still**), and strokes also drip while you paint (**Drips while painting**). **Drip width** makes them fatter. The drips that are still running finish most of their run when you let go.
 - **Spray settings** work on any normal brush: **Spray dot size** (0 turns spraying off), **Spray density** (above 100% the core is solid), **Overspray mist**, **Droplet variety** (for splatter) and **Flecks around the stroke**.
 - Try them on a **Brick wall**, **Concrete**, **Rough plaster** or **Corrugated metal** paper (Layer › New › Paper…).
+
+### Pressure without a pen
+
+A mouse has no pressure, so the Brush panel has **Pressure without a pen**: **Speed** (fast movement is light and thin, slow is heavy, like a real can), **Taper** (the stroke eases in from thin and fades out when you let go) and **Fixed** (one pressure you choose). A real pen is never changed. For the pressure to show, the brush needs Pressure: Size or Flow turned on, which the spray caps have. The flecks around a spray stroke follow the pressure too.
+
+### Importing Procreate and Clip Studio brushes
+
+**Import brushes** in the Brush panel (or drag the file onto the window) opens:
+
+- Procreate **.brush** and **.brushset**: each brush's tip picture and its main settings (spacing, roundness, angle, count, scatter, opacity and the pressure settings).
+- Clip Studio Paint **.sut**: the tip pictures only.
+
+The brushes will look close to the originals, not identical, because each program has its own brush engine. Grain textures, dynamics curves and similar settings are not applied. A message after importing lists what was left out. Photoshop **.abr** brushes work as before.

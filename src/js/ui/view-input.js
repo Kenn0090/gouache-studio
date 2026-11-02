@@ -100,10 +100,10 @@ cv.addEventListener('pointerdown',e=>{
   if(ui.tool==='picker'||(e.altKey&&prefs.altPick!==false)){ptr={mode:'pick',id:e.pointerId};const q=ui.cageFlat?cageFwd(ix,iy):[ix,iy];pickAt(q[0],q[1]);return;}
   if(typeof maskPaintLocked==='function'&&maskPaintLocked()){toast('Press Paint in the mask bar to paint the mask.');return;}
   if(ui.tool==='material')materialBrushTarget();if(fillNoMask())return;
-  if(typeof npSync==='function')npSync();const et=ui.mode==='bake'?bakeEditTarget():editTarget();if(ui.mode!=='bake'&&typeof lockStop==='function'&&lockStop(et))return;const o=paintOpts(et);if(!o)return;const L=et.L,p=pressureOf(e);
+  if(typeof npSync==='function')npSync();const et=ui.mode==='bake'?bakeEditTarget():editTarget();if(ui.mode!=='bake'&&typeof lockStop==='function'&&lockStop(et))return;const o=paintOpts(et);if(!o)return;const L=et.L,p=simPressStart(pressureOf(e),e);
   if((o.tool==='heal'||o.tool==='clone')&&!healBegin(ix,iy,o.tool))return;const cz=cageStrokeStart(o,ix,iy);if(cz===false)return;const sx=cz?cz.x:ix,sy=cz?cz.y:iy;o.sym=symFor(o);
   const line=cz?null:brushLineStart(et,sx,sy,p,e,'canvas');
-  ptr={mode:'paint',id:e.pointerId,sx,sy,sp:p,rx:sx,ry:sy,smoothAt:e.timeStamp,cage:cz?cz.kind:null,ox:sx,oy:sy,lock:null,line};beginStroke(L,line?line.x:sx,line?line.y:sy,line?line.p:p,o);if(line?.joined)addPoint(sx,sy,p);
+  ptr={mode:'paint',id:e.pointerId,sim:{x:sx,y:sy,t:e.timeStamp,spd:0,travel:0,pen:e.pointerType==='pen'},sx,sy,sp:p,rx:sx,ry:sy,smoothAt:e.timeStamp,cage:cz?cz.kind:null,ox:sx,oy:sy,lock:null,line};beginStroke(L,line?line.x:sx,line?line.y:sy,line?line.p:p,o);if(stroke)stroke.simOn=!ptr.sim.pen&&brush.simP==='taper';if(line?.joined)addPoint(sx,sy,p);
 });
 cv.addEventListener('pointermove',e=>{
   const r=stage.getBoundingClientRect();lastPos=[e.clientX-r.left,e.clientY-r.top];refreshCursor();showPressure(e);
@@ -133,7 +133,7 @@ cv.addEventListener('pointermove',e=>{
     if(!ptr.moved){ptr.moved=true;textBegin(ptr.L);}ptr.L.text.x=Math.round(ptr.ox+dx);ptr.L.text.y=Math.round(ptr.oy+dy);renderText(ptr.L);return;}
   const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];const list=evs.length?evs:[e];
   if(ptr.mode==='pick'){const l=list[list.length-1];let q=toImage(l.clientX,l.clientY);if(ui.cageFlat)q=cageFwd(q[0],q[1]);pickAt(q[0],q[1]);return;}
-  for(const ev of list){let [ix,iy]=toImage(ev.clientX,ev.clientY);const p=pressureOf(ev,e);
+  for(const ev of list){let [ix,iy]=toImage(ev.clientX,ev.clientY);const p=simPress(ptr,ix,iy,ev.timeStamp,pressureOf(ev,e));
     if(ptr.cage==='bend'&&stroke&&stroke.space){const m=cageInv(stroke.space.C,ix,iy);if(!m){ptr.gap=true;continue;}ix=m.x;iy=m.y;stroke.rs=1/Math.max(m.s,1e-3);
       if(ptr.gap){ptr.gap=false;ptr.sx=ptr.rx=ix;ptr.sy=ptr.ry=iy;ptr.sp=p;strokeJump(ix,iy,p);continue;}}
     /* Shift inside a cage: follow the cage's grid lines (straight in flat space, so the stroke curves with the cage) */

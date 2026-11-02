@@ -2,6 +2,7 @@
    Our own set (made from scratch): spray caps that throw fine dots with overspray mist, pressure for fat and skinny lines, drips that run
    when you hold the brush still, paint markers, a flick for splatter and a stencil edge. They lay paint on top like real paint (no mixing). */
 const GRAFFITI=[
+ ['Hardcore fat cap',{size:280,hardness:.25,flow:.7,spacing:.03,spray:1.5,sprayDen:1.7,sprayMist:.12,sprayVar:.35,sprayFleck:.8,drip:.6,dripAuto:.7,dripWidth:1.4,pSize:true,minSize:.3,pFlow:true}],
  ['Fat cap',{size:110,hardness:.3,flow:.7,spacing:.03,spray:.7,sprayDen:2.2,sprayMist:.08,sprayFleck:.45,drip:.5,dripAuto:.6,pSize:true,minSize:.45,pFlow:true}],
  ['Medium cap',{size:56,hardness:.4,flow:.75,spacing:.03,spray:.65,sprayDen:2.2,sprayMist:.06,sprayFleck:.4,drip:.35,dripAuto:.4,pSize:true,minSize:.4,pFlow:true}],
  ['Skinny cap',{size:20,hardness:.8,flow:.8,spacing:.04,spray:.6,sprayDen:2.6,sprayMist:.04,sprayFleck:.25,drip:.2,dripAuto:.15,pSize:true,minSize:.4,pFlow:true}],
@@ -18,5 +19,5 @@ const GRAFFITI=[
  ['Drippy mop marker',{size:70,hardness:.75,flow:1,opacity:.95,spacing:.04,smoothing:.4,drip:1.1,dripAuto:1.0,dripWidth:1.8,pSize:true,minSize:.6,buildup:false,spray:0}],
  ['Splatter flick',{size:150,hardness:.15,flow:1,spacing:.9,spray:5,sprayDen:.3,sprayVar:1,sprayMist:0,pSize:false,buildup:false,drip:0}],
  ['Stencil edge',{size:44,hardness:1,flow:1,grain:.22,spacing:.04,smoothing:.1,pSize:false,buildup:false,spray:0,drip:0}]
-].map(([name,s])=>Object.assign({name,tool:'brush',tip:null,buildup:true,smoothing:.35,smoothCurve:true,pOpacity:false},s));
+].map(([name,s])=>Object.assign({name,tool:'brush',tip:null,buildup:true,smoothing:.35,smoothCurve:true,pOpacity:false,simP:s.spray>0?'taper':'off'},s));
 library.splice(4,0,{id:'graffiti',name:'Graffiti',builtin:true,presets:GRAFFITI,tips:[]});

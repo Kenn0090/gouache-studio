@@ -161,6 +161,7 @@
     "photo/photo-view",
     "files/to-texture",
     "files/abr",
+    "files/import-brushes",
     "paint/brush-tab",
     "ui/prefs",
     "ui/memory",

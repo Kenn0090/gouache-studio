@@ -1,6 +1,12 @@
+## 0.88.1
+
+- **Pressure without a pen:** Speed, Taper or Fixed pressure for the mouse. The spray caps taper by default. A real pen is not changed.
+- **Flecks follow the pressure** around spray strokes. New Hardcore fat cap brush.
+- **Import Procreate (.brush, .brushset) and Clip Studio (.sut) brushes** with Import brushes or drag and drop. Tips and the main settings come across; a message lists what is approximated.
+
 ## 0.88.0
 
-- **Graffiti brushes:** a new set of 16 brushes that behave like aerosol paint (fat, medium, skinny, outline, calligraphy, soft fade, stipple blob, spray dot, dry streak, spit and clogged caps; three markers; splatter flick; stencil edge). Solid core, stipple fade, flecks, pressure for fat and skinny lines.
+- **Graffiti brushes:** a new set of 17 brushes that behave like aerosol paint (fat, medium, skinny, outline, calligraphy, soft fade, stipple blob, spray dot, dry streak, spit and clogged caps; three markers; splatter flick; stencil edge). Solid core, stipple fade, flecks, pressure for fat and skinny lines.
 - **Drips:** thin drips with beads run when you hold the brush still and while you paint. New spray and drip settings on any normal brush.
 - **Wall papers:** brick wall, concrete, rough plaster and corrugated metal.
 
