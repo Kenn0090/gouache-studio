@@ -23,6 +23,7 @@ function lpDuplicate(L){const c=cloneNode(L);
   if(selOn(null)&&sel.t){const W=doc.w,H=doc.h;for(const k of mapKeysOf(c)){const T=mapT(c,k),tmp=acquireD(T.depth);run(P.applymask,tmp,{uSrc:T.tex,uM:sel.t.tex});blit(tmp,T,0,0,W,H,0,0);release(tmp);}c.name=L.name+' (selection)';}
   structOp('Duplicate layer under the cursor',()=>{insertNode(c,L.parent,L.parent.children.indexOf(L)+1);selectOnly(c);});return c;}
 window.addEventListener('pointerdown',e=>{if(e.button!==0||e.target!==cv||!(e.ctrlKey||e.metaKey)||!lpActive())return;
+  if(e.shiftKey&&!e.altKey&&brushLineAnchor)return;/* Shift+Ctrl after a stroke is the straight line's angle snap, not a layer pick */
   const r=stage.getBoundingClientRect();if(typeof gdAt==='function'&&rl.show&&!rl.lock&&gdAt(e.clientX-r.left,e.clientY-r.top))return;/* a guide under the pointer: Ctrl drags the guide */
   const [ix,iy]=toImage(e.clientX,e.clientY),L=lpLayerAt(ix,iy);e.preventDefault();e.stopPropagation();
   if(!L){toast('There is no painted layer under the pointer.');return;}

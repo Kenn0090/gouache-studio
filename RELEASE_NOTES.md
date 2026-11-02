@@ -1,3 +1,8 @@
+## 0.93.3
+
+- **Straight line like Substance Painter:** hold Shift for a dotted preview and click to draw; Shift+Ctrl snaps to 5 degree steps.
+- **P is the Path tool in 3D Paint** (Pen is Shift+P there).
+
 ## 0.93.2
 
 - **Procreate wet brushes** (watercolour, washes, blenders) now import as the app's mixing brushes: pick-up, paint load, wetness and watercolour edges (an approximation).

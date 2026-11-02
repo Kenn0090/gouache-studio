@@ -1,3 +1,8 @@
+## 0.93.3
+
+- **Straight line like Substance Painter.** Hold **Shift** with any painting tool and a dotted line shows from where your last stroke ended to the pointer; click to draw it. Hold **Shift+Ctrl** to snap the line to 5 degree steps. Works on the canvas and on the 3D model.
+- **P is the Path tool in 3D Paint**, as in Painter. The Pen moves to **Shift+P** there. In Paint, P is still the Pen.
+
 ## 0.93.2
 
 - **Procreate wet brushes come in as mixing brushes.** Wet mix (mixing, load, wetness) and wet edges are mapped onto the app's mixing brush (pick-up from the canvas, paint load, wetness and watercolour edges), so imported watercolour, wash and blender brushes behave like wet paint. It is an approximation: the paint maths differs between apps.

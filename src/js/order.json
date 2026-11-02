@@ -203,6 +203,7 @@
     "files/timelapse",
     "ui/canvas-tab",
     "ui/bar-custom",
+    "ui/straight-preview",
     "ui/safety",
     "layers/locks",
     "ui/key-helper",

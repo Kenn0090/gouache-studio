@@ -103,7 +103,7 @@ cv.addEventListener('pointerdown',e=>{
   if(typeof npSync==='function')npSync();const et=ui.mode==='bake'?bakeEditTarget():editTarget();if(ui.mode!=='bake'&&typeof lockStop==='function'&&lockStop(et))return;const o=paintOpts(et);if(!o)return;const L=et.L,p=simPressStart(pressureOf(e),e);
   if((o.tool==='heal'||o.tool==='clone')&&!healBegin(ix,iy,o.tool))return;const cz=cageStrokeStart(o,ix,iy);if(cz===false)return;const sx=cz?cz.x:ix,sy=cz?cz.y:iy;o.sym=symFor(o);
   const line=cz?null:brushLineStart(et,sx,sy,p,e,'canvas');
-  ptr={mode:'paint',id:e.pointerId,sim:{x:sx,y:sy,t:e.timeStamp,spd:0,travel:0,pen:e.pointerType==='pen'},sx,sy,sp:p,rx:sx,ry:sy,smoothAt:e.timeStamp,cage:cz?cz.kind:null,ox:sx,oy:sy,lock:null,line};beginStroke(L,line?line.x:sx,line?line.y:sy,line?line.p:p,o);if(stroke)stroke.simOn=!ptr.sim.pen&&brush.simP==='taper';if(line?.joined)addPoint(sx,sy,p);
+  ptr={mode:'paint',id:e.pointerId,sim:{x:sx,y:sy,t:e.timeStamp,spd:0,travel:0,pen:e.pointerType==='pen'},sx,sy,sp:p,rx:sx,ry:sy,smoothAt:e.timeStamp,cage:cz?cz.kind:null,ox:sx,oy:sy,lock:null,line};beginStroke(L,line?line.x:sx,line?line.y:sy,line?line.p:p,o);if(stroke)stroke.simOn=!ptr.sim.pen&&brush.simP==='taper';if(line?.joined){let qx=sx,qy=sy;if(e.shiftKey&&e.ctrlKey)[qx,qy]=brushLineAngle(line,sx,sy);addPoint(qx,qy,p);ptr.rx=qx;ptr.ry=qy;}
 });
 cv.addEventListener('pointermove',e=>{
   const r=stage.getBoundingClientRect();lastPos=[e.clientX-r.left,e.clientY-r.top];refreshCursor();showPressure(e);
@@ -138,7 +138,7 @@ cv.addEventListener('pointermove',e=>{
       if(ptr.gap){ptr.gap=false;ptr.sx=ptr.rx=ix;ptr.sy=ptr.ry=iy;ptr.sp=p;strokeJump(ix,iy,p);continue;}}
     /* Shift inside a cage: follow the cage's grid lines (straight in flat space, so the stroke curves with the cage) */
     if(ptr.cage&&ev.shiftKey){if(!ptr.lock){const dx=ix-ptr.ox,dy=iy-ptr.oy;if(Math.hypot(dx,dy)>4)ptr.lock=Math.abs(dx)>=Math.abs(dy)?'u':'v';}if(ptr.lock==='u')iy=ptr.oy;else if(ptr.lock==='v')ix=ptr.ox;else continue;}
-    if(ptr.line)[ix,iy]=brushLineSnap(ptr.line,ix,iy,ev.shiftKey);
+    if(ptr.line)[ix,iy]=brushLineSnap(ptr.line,ix,iy,ev.shiftKey,ev.ctrlKey);
     ptr.rx=ix;ptr.ry=iy;
     if(brush.lazy>0&&stroke&&!ev.shiftKey){const q=lazyStep(ptr,ix,iy,brush.lazy/view.zoom);if(!q)continue;ix=q[0];iy=q[1];}
     strokeSmooth(ptr,ix,iy,p,brush.smoothing,ev.timeStamp,ev.shiftKey);addPoint(ptr.sx,ptr.sy,ptr.sp);}
@@ -186,7 +186,7 @@ window.addEventListener('keydown',e=>{
   if(e.altKey&&/^Digit[2-6]$/.test(e.code)){e.preventDefault();selectChannel(+e.code.slice(5)-3,false);return;}
   if(!m&&!e.altKey&&!e.shiftKey&&k==='r'&&!['p3d','bake','convert'].includes(ui.mode)){e.preventDefault();rotHold=true;stage.classList.add('grab');refreshCursor();return;}
   if(e.code==='Space'){e.preventDefault();if(!spaceDown){spaceDown=true;stage.classList.add('grab');refreshCursor();}return;}
-  const tools={[ui.mode==='p3d'?'1':'b']:'brush',e:'erase',s:'smudge',i:'picker',h:'hand',u:'shape',j:'heal',y:'clone',p:'pen',z:'zoom'};
+  const tools={[ui.mode==='p3d'?'1':'b']:'brush',e:'erase',s:'smudge',i:'picker',h:'hand',u:'shape',j:'heal',y:'clone',p:ui.mode==='p3d'?'path':'pen',z:'zoom'};
   if(tools[k]){setTool(tools[k]);return;}
   if(k==='['||k===']'){e.preventDefault();kbBrushSize(k===']'?1:-1);return;}
   if(k==='x'){swapColors();return;}if(k==='d'){ui.bg=[1,1,1];setFG([0,0,0]);return;}if(k==='t'){if(e.shiftKey)toggleTile();else setTool('text');return;}
