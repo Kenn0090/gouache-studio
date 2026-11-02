@@ -23,7 +23,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const sample=(x0,x1,y0,y1,st=2)=>p.evaluate(([x0,x1,y0,y1,st])=>{const L=__gs.doc.active,o=[];for(let x=x0;x<=x1;x+=st)for(let y=y0;y<=y1;y+=st)o.push(__gs.captureRegionNow(L.target,x,y,1,1).data[3]);const m=o.reduce((a,b)=>a+b)/o.length;return {m,sd:Math.sqrt(o.reduce((a,b)=>a+(b-m)*(b-m),0)/o.length),mid:o.filter(a=>a>20&&a<235).length/o.length};},[x0,x1,y0,y1,st]);
  // counts
  const cnt=await p.evaluate(()=>{const s=__gs.library.filter(x=>/^sketch/.test(x.id));return {sets:s.length,n:s.reduce((a,x)=>a+x.presets.length,0)};});
- ok(cnt.sets===7&&cnt.n===47,'the Sketch studio has 7 groups and 47 brushes ('+cnt.sets+', '+cnt.n+')');
+ ok(cnt.sets===1&&cnt.n===13,'the Sketch studio has 1 group and 13 brushes ('+cnt.sets+', '+cnt.n+')');
  // every brush does something
  const all=await p.evaluate(()=>__gs.library.filter(x=>/^sketch/.test(x.id)).flatMap(x=>x.presets.map(q=>({n:q.name,tool:q.tool}))));
  const failed=[];
@@ -31,7 +31,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
    if(q.tool==='erase'||q.tool==='smudge'){await use('Paint marker',{size:60,drip:0,dripAuto:0});await drag([[60,200],[340,200]]);}
    await use(q.n,{drip:0,dripAuto:0});const before=await sample(40,360,120,280,4);await drag([[60,190],[340,215]]);await drag([[60,215],[340,190]]);const after=await sample(40,360,120,280,4);
    const changed=q.tool==='erase'?after.m<before.m-.5:q.tool==='smudge'?(Math.abs(after.m-before.m)>.01||Math.abs(after.sd-before.sd)>.01):after.m>before.m+.5;if(!changed)failed.push(q.n+' ('+before.m.toFixed(1)+'→'+after.m.toFixed(1)+')');}
- console.log('brushes that did nothing:',failed.join(', ')||'none');ok(failed.length===0,'every one of the 47 brushes changes the picture ('+failed.length+' did not)');
+ console.log('brushes that did nothing:',failed.join(', ')||'none');ok(failed.length===0,'every one of the 13 brushes changes the picture ('+failed.length+' did not)');
  // paper tooth: a pencil with tooth is grainy (many in-between values), without it the line is smooth and solid
  box=await fresh();await use('HB pencil',{size:14,flow:1,tooth:.95,simP:'off',pOpacity:false});await drag([[40,100],[360,100]]);const g1=await sample(60,340,94,106);
  await use('HB pencil',{size:14,flow:1,tooth:0,simP:'off',pOpacity:false});await drag([[40,250],[360,250]]);const g2=await sample(60,340,244,256);
