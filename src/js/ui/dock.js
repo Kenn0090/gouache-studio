@@ -51,7 +51,7 @@ WS_PRESETS.brush={name:'Panels: Brush',tb:{side:'left',cols:1},opt:true,w:420,gr
 WS_PRESETS.photo={name:'Panels: Photo',tb:{side:'left',cols:1},opt:false,w:380,groups:[{tabs:[...MODE_GROUP,'phhist'],active:'photo',f:1}],shelf:{tabs:['phlib','phpre'],h:170,f:1},icons:[],floats:[]};
 const WS_MODE_DEF={paint:'painting',p3d:'texturing',anim:'animation',bake:'bake',convert:'convert',brush:'brush',photo:'photo'};
 const dk={ws:'painting',L:null,custom:{},saved:{},lock:false,flyout:null,drag:null,modeWs:{},modeLayouts:{},layoutMode:null};
-(()=>{try{const s=JSON.parse(localStorage.getItem('gs.dock')||'{}');if(s.ws)dk.ws=s.ws;if(s.modeWs)dk.modeWs=s.modeWs;if(s.col2&&s.col2.groups)dk.col2=s.col2;dk.modeLayouts=s.modeLayouts||{};dk.saved=s.saved||{};dk.custom=s.custom||{};dk.lock=!!s.lock;
+(()=>{try{const s=JSON.parse(localStorage.getItem('gs.dock')||'{}');if(s.ws)dk.ws=s.ws;if(s.modeWs)dk.modeWs=s.modeWs;if(s.col2&&s.col2.groups)dk.col2=s.col2;if(s.col2P&&s.col2P.groups)dk.col2P=s.col2P;dk.modeLayouts=s.modeLayouts||{};dk.saved=s.saved||{};dk.custom=s.custom||{};dk.lock=!!s.lock;
   /* Upgrade the old copied Paint layout once; retain custom arrangements. */
   if(!localStorage.getItem('gs.brushLayout464')){const L=dk.saved.brush;if(L&&L.groups&&L.groups.length===5&&L.groups[0].tabs.includes('brushtab')&&L.groups[1].tabs.includes('color')&&L.groups[2].tabs.includes('brushes'))delete dk.saved.brush;localStorage.setItem('gs.brushLayout464','1');}
   if(!localStorage.getItem('gs.brushLayout466')){const L=dk.saved.brush;if(L&&L.groups&&L.groups.length===2&&L.groups[0].tabs.includes('brushtab')&&L.groups[1].tabs.length===1&&L.groups[1].tabs[0]==='color')delete dk.saved.brush;localStorage.setItem('gs.brushLayout466','1');}
@@ -73,7 +73,7 @@ function dkDirOf(k){return k==='right'?dk.L.dir:dk.L.edges[k].dir;}
 function dkSetDir(k,dir){if(k==='right')dk.L.dir=dir;else dk.L.edges[k].dir=dir;dkRender();dkSave();}
 function dkPreset(ws){return dkClone(WS_PRESETS[ws]||dk.custom[ws]||WS_PRESETS.painting);}
 function dkLayoutFor(m,ws){const own=dk.modeLayouts[m]?.[ws];return own?dkClone(own):dk.saved[ws]?dkClone(dk.saved[ws]):dkPreset(ws);}
-function dkSave(){if(dk.L){const m=dk.layoutMode||ui.mode;(dk.modeLayouts[m]||(dk.modeLayouts[m]={}))[dk.ws]=dkClone(dk.L);}try{localStorage.setItem('gs.dock',JSON.stringify({ws:dk.ws,modeWs:dk.modeWs,modeLayouts:dk.modeLayouts,saved:dk.saved,custom:dk.custom,lock:dk.lock,col2:dk.col2}));}catch(e){}}
+function dkSave(){if(dk.L){const m=dk.layoutMode||ui.mode;(dk.modeLayouts[m]||(dk.modeLayouts[m]={}))[dk.ws]=dkClone(dk.L);}try{localStorage.setItem('gs.dock',JSON.stringify({ws:dk.ws,modeWs:dk.modeWs,modeLayouts:dk.modeLayouts,saved:dk.saved,custom:dk.custom,lock:dk.lock,col2:dk.col2s?dk.col2s.p3d:dk.col2,col2P:dk.col2s?dk.col2s.paint:dk.col2P}));}catch(e){}}
 /* every panel is in exactly one place: a group, a float, the icons, or hidden */
 function dkFix(L){const seen=new Set();const keep=a=>a.filter(id=>PANELS[id]&&!seen.has(id)&&seen.add(id));
   if(!L.shelf)L.shelf={tabs:[],f:1,h:170};if(!L.fold)L.fold={};
@@ -116,7 +116,7 @@ function dkInit(){
   window.addEventListener('pointermove',dkDragMove);window.addEventListener('pointerup',dkDragEnd);
   new ResizeObserver(()=>{for(const f of dk.L.floats)dkKeepOnScreen(f);}).observe(document.body);}
 /* ---- applying a layout ---- */
-function dkApply(L,first){dk.L=dkFix(L);dkRender();if(!first)dkWorkspaceExtras();dkSave();}
+function dkApply(L,first){dkC2Pick();dk.L=dkFix(L);dkRender();if(!first)dkWorkspaceExtras();dkSave();}
 function dkToolbar(o){Object.assign(dk.L.tb,o);dkRender();dkSave();resizeGL();fit();}
 function dkGrid(){const L=dk.L,app=$('#app'),F=L.fold||{},shOn=!!(L.shelf&&dkAvail(L.shelf).length),hasDock=L.groups.some(g=>dkAvail(g).length)&&L.w>0,ic=L.icons.length?'38px':'0px',noTools=ui.mode==='bake'||ui.mode==='convert'||ui.mode==='photo',tw=noTools?'0px':F.tools?'26px':L.tb.cols===2?'82px':'46px';
   document.body.classList.toggle('tb2',L.tb.cols===2);document.body.classList.toggle('notools',noTools);document.body.classList.toggle('noopt',!L.opt);
@@ -153,14 +153,16 @@ function dkShelfRender(){const L=dk.L,S=L.shelf;if(!dk.shelf){dk.shelf=el('aside
 /* in 3D Paint, Colour, Material, Brushes, Materials and Tool settings sit in a column of their own beside the
    viewport (dock2). Its tabs drag like any other: out of it, or other tabs into it (remembered in gs.dock col2). */
 const DK_COL2=['color','matEd','shading','brushes','stencils','mats','textures','decals','envs','tool'];
-const dkCol2On=()=>ui.mode==='p3d';
+/* (0.93, Kenn) Paint can have a column of its own too: drag a tab to the right edge of the canvas. It exists only while it holds a tab. */
+const dkCol2On=()=>ui.mode==='p3d'||(ui.mode==='paint'&&dk.col2.groups.some(g=>g.tabs.length));
 const dkC2Has=id=>dk.col2.groups.some(g=>g.tabs.includes(id));
 const dkIn=id=>PANELS[id].avail(ui.mode)&&!(dkCol2On()&&dkC2Has(id));
 const dkAvail=g=>(g._c2?g.tabs.filter(id=>PANELS[id].avail(ui.mode)):g.tabs.filter(id=>dkIn(id))).filter(id=>!(typeof isBeginner==='function'&&isBeginner()&&BEGINNER_HIDE_PANELS.includes(id)));
 if(!dk.col2)dk.col2={w:320,groups:[{tabs:['matEd','tool','color'],f:1,_c2:true}]};
 /* older saved columns: the Material tab joins Colour */
 if(!dkC2Has('matEd')){const g=dk.col2.groups.find(g=>g.tabs.includes('color'))||dk.col2.groups[0];if(g)g.tabs.push('matEd');}
-for(const g of dk.col2.groups)g._c2=true;
+dk.col2s={p3d:dk.col2,paint:dk.col2P||{w:320,groups:[]},x:{w:320,groups:[]}};for(const k in dk.col2s)for(const g of dk.col2s[k].groups)g._c2=true;
+const dkC2Pick=()=>{dk.col2=dk.col2s[ui.mode==='p3d'?'p3d':ui.mode==='paint'?'paint':'x'];};
 /* (0.33, Kenn) a panel keeps its scroll place when the dock is rebuilt (clicking a mask row brings Properties forward) */
 function dkSecKey(v){if(!v)return '';if(v.id)return v.id;const d=v.querySelector('[id]');return d?d.id:'';}
 function dkScrollSave(){const m={};for(const b of document.querySelectorAll('.dkbody')){const v=[...b.children].find(c=>!c.classList.contains('dk-off'));const k=dkSecKey(v);if(k&&b.scrollTop)m[k]=b.scrollTop;}return m;}
@@ -318,6 +320,7 @@ function dkDragMove(e){const d=dk.drag;if(!d)return;if(!d.on){if(Math.hypot(e.cl
       if(k==='bottom'){to={group:dk.L.shelf};box={left:r.left,top:r.bottom-8,width:r.width,height:10};}
       else if(k==='left'){to={edge:'left'};box={left:r.left,top:r.top,width:w,height:r.height};}
       else if(k==='top'){to={edge:'top'};box={left:r.left,top:r.top,width:r.width,height:h};}
+      else if(ui.mode==='paint'){to={newGroup2:dk.col2.groups.length};box={left:r.right-w,top:r.top,width:w,height:r.height};}
       else{to={newGroup:dk.L.groups.length};box={left:r.right-w,top:r.top,width:w,height:r.height};}}
     else to={float:{x:e.clientX-40,y:e.clientY-12}};}
   else if(t&&t.closest('.dkfloat:not(.flyout)')){/* onto another floating panel: join it */const fe=t.closest('.dkfloat');const f=dk.L.floats[[...document.querySelectorAll('.dkfloat:not(.flyout)')].indexOf(fe)];if(f){to={floatJoin:f};box=fe.getBoundingClientRect();}}

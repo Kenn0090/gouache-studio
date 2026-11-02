@@ -1,3 +1,8 @@
+## 0.93.0
+
+- **Texture studio:** 21 new pattern, salt, speckle and splatter brushes, made from scratch.
+- **A second column in Paint:** drag a tab to the right edge of the canvas; drop it elsewhere over the canvas for a floating panel.
+
 ## 0.92.0
 
 - **Customise the top bar** (⚙ top right, or right-click it): choose what shows, or pick Minimal, Balanced or All.

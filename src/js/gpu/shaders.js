@@ -62,6 +62,44 @@ float sprayFleckMask(vec2 pix,float d){ float f=0.0,sd=uSpray.z;
   for(int k=0;k<2;k++){ float fs=max(uSpray.x*(k==0?4.0:14.0),2.0); vec2 gp=pix/fs, c=floor(gp); float pr=uSprayFleck*(k==0?0.011:0.0028)*exp(-0.9*d*d)*(1.0-smoothstep(2.2,2.8,d));
     if(sph(c+sd+21.0+float(k))<pr){ vec2 dp=c+0.25+0.5*vec2(sph(c+sd+23.0),sph(c+sd+29.0)); float rr=(k==0?0.08:0.07)+(k==0?0.2:0.22)*pow(sph(c+sd+31.0),2.0); f=max(f,1.0-smoothstep(rr*0.6,rr,length(gp-dp))); } }
   return f; }
+
+/* pattern brushes (0.93): the stroke's body is filled with a pattern that stays put on the canvas. uPat = (pattern, feature size in pixels, strength, seed).
+   Each pattern gives a distance-like field f (0 on a mark, 1 far from it); a mark shows where f is below the brush's strength there, so marks
+   grow fatter toward the middle of the stroke and thin out to scattered pieces at its edges and tail. */
+uniform vec4 uPat;
+float pt_h(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+vec2 pt_h2(vec2 p){ return vec2(pt_h(p),pt_h(p+vec2(17.3,91.7))); }
+float pt_n(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f); return mix(mix(pt_h(i),pt_h(i+vec2(1.0,0.0)),f.x),mix(pt_h(i+vec2(0.0,1.0)),pt_h(i+vec2(1.0,1.0)),f.x),f.y); }
+float pt_fbm(vec2 p){ return pt_n(p)*0.55+pt_n(p*2.1+7.3)*0.3+pt_n(p*4.3+3.1)*0.15; }
+float pt_seg(vec2 p, vec2 a, vec2 b){ vec2 pa=p-a, ba=b-a; float h=clamp(dot(pa,ba)/dot(ba,ba),0.0,1.0); return length(pa-ba*h); }
+/* short strokes at random angles, one per cell (len = half length, wid = width at full strength) */
+float pt_dash(vec2 p, float seed, float len, float wid, float spread){ vec2 g=floor(p), f=fract(p); float best=1.0;
+  for(int j=-1;j<=1;j++) for(int i=-1;i<=1;i++){ vec2 c=g+vec2(float(i),float(j)); vec2 r=pt_h2(c+seed); vec2 ctr=vec2(float(i),float(j))+0.5+(r-0.5)*spread;
+    float a=6.2832*pt_h(c*1.7+seed); vec2 d=vec2(cos(a),sin(a))*len*(0.6+0.8*pt_h(c+3.1)); float dd=pt_seg(f,ctr-d,ctr+d);
+    best=min(best,dd/wid+0.75*pt_h(c+9.0)); }
+  return best; }
+/* round specks of very different sizes (salt, speckles, splatters) */
+float pt_specks(vec2 p, float seed, float rmax, float skew){ vec2 g=floor(p), f=fract(p); float best=1.0;
+  for(int j=-1;j<=1;j++) for(int i=-1;i<=1;i++){ vec2 c=g+vec2(float(i),float(j)); vec2 r=pt_h2(c+seed); float h=pt_h(c*2.3+seed); float rad=rmax*(0.12+0.88*pow(h,skew));
+    vec2 ctr=vec2(float(i),float(j))+0.15+0.7*r; vec2 q=(f-ctr); q.x*=1.0+0.8*(pt_h(c+5.0)-0.5); best=min(best,length(q)/rad+0.4*pt_h(c+11.0)); }
+  return best; }
+float pt_field(vec2 pix, int id, float S, float seed){ vec2 p=pix/S;
+  if(id==1) return pt_dash(p,seed,0.30,0.16,0.7);            /* sprinkles */
+  if(id==2) return pt_dash(p*1.6,seed,0.26,0.17,0.8);        /* tiny sprinkles */
+  if(id==3) return pt_fbm(p*0.9+seed)*1.15;                   /* noise */
+  if(id==4) return mix(pt_h(floor(pix/max(S*0.5,1.0))+seed),pt_fbm(p*0.7+seed),0.45)*1.1; /* static */
+  if(id==5){ float y=p.y+0.33*sin(p.x*2.4+seed)+0.1*sin(p.x*5.1); return abs(fract(y)-0.5)*2.0+0.35*pt_n(vec2(p.x*0.8,floor(y)+seed)); } /* wavy lines */
+  if(id==6){ float tr=abs(fract(p.x*0.5)-0.5)*2.0; float y=p.y+(tr-0.5)*0.9; return abs(fract(y)-0.5)*2.0+0.3*pt_n(vec2(p.x*0.6,floor(y)+seed)); } /* zig zag */
+  if(id==7) return pt_dash(p,seed,0.62,0.07,0.9);             /* brush hatch */
+  if(id==8){ float gx=p.x+0.35*(pt_n(vec2(p.y*0.6,seed))-0.5), gy=p.y+0.35*(pt_n(vec2(p.x*0.6,seed+5.0))-0.5);
+    float f=min(abs(fract(gx)-0.5)*2.0,abs(fract(gy)-0.5)*2.0); return f+0.5*pt_n(p*1.3+seed); } /* grid */
+  if(id==9){ vec2 g=floor(p), f=fract(p); float d1=9.0, d2=9.0; for(int j=-1;j<=1;j++) for(int i=-1;i<=1;i++){ vec2 c=g+vec2(float(i),float(j)); vec2 o=vec2(float(i),float(j))+pt_h2(c+seed); float d=length(f-o); if(d<d1){d2=d1;d1=d;}else if(d<d2)d2=d; }
+    return clamp((d2-d1)*2.2,0.0,1.0)+0.25*pt_n(p*2.0+seed); } /* crackle */
+  if(id==10){ vec2 w=vec2(pt_fbm(p*0.5+seed),pt_fbm(p*0.5+seed+9.7)); float n=pt_fbm(p*0.45+w*2.0+seed); return abs(fract(n*6.0)-0.5)*2.0+0.2*pt_n(p*1.7); } /* swirly */
+  if(id==11||id==14){ vec2 q=p; q.x+=0.5*mod(floor(q.y),2.0); vec2 g=floor(q), f=fract(q)-0.5; vec2 j=(pt_h2(g+seed)-0.5)*0.22; return length(f-j)*2.0*(id==14?0.9:1.0)+0.3*pt_h(g+7.0); } /* pointillism */
+  if(id==12) return min(pt_specks(p*1.5,seed,0.42,2.2),pt_specks(p*2.9+3.7,seed+4.0,0.4,1.8)+0.15);               /* salt and speckles */
+  if(id==13) return pt_specks(p,seed,0.46,3.4);               /* splatter */
+  return 1.0; }
 float brushMask(vec2 pix){
   float r=max(uRadius,0.01);
   vec2 dv=pix-uCenter; float ca=cos(uAngle), sa=sin(uAngle);
@@ -88,6 +126,7 @@ float brushMask(vec2 pix){
   }
   if(m<=0.0) return 0.0; /* nothing to grain or knock out (most of a bristle tip's square is empty) */
   if(uPaper.z>0.0){ float ph=pap_h(pix,int(uPaper.x+0.5),max(uPaper.y,0.2)); m*=clamp(1.0-uPaper.z*(1.0-smoothstep(0.40,0.60,ph)),0.0,1.0); } /* the paint only catches on the peaks of the paper */
+  if(uPat.x>0.5){ float cc=clamp(m*uPat.z*(0.8+0.4*pt_n(pix/(uPat.y*5.0)+uPat.w)),0.0,1.0); float f=pt_field(pix,int(uPat.x+0.5),max(uPat.y,1.0),uPat.w); m=1.0-smoothstep(cc-0.06,cc+0.06,f); if(cc<=0.0) m=0.0; }
   if(uGrain>0.0){ vec2 q=pix/uGrainScale; float n=vnoise(q,uPeriod)*0.6+vnoise(q*2.0,uPeriod*2.0)*0.4;
     m*=clamp(mix(1.0,n*2.3-0.5,uGrain),0.0,1.0); }
   if(uUseDual==1){ float dl=texture(uDual,(pix+uDualOff)/uDualSize).r; if(uDualMode==1) dl=1.0-dl; m*=mix(1.0,dl,uDualAmt); }
