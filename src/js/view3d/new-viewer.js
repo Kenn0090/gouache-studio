@@ -70,7 +70,8 @@ function nvPixelRay(ev){const t=Math.tan(ev.fov*Math.PI/360),e=ev.eye,g=ev.tgt;
   const fw=norm3(sub3(g,e)),r=norm3(cross3(fw,[0,1,0])),u=cross3(r,fw),x=(2*ev.x/ev.w-1)*t*ev.w/ev.h,y=(2*ev.y/ev.h-1)*t;
   const d=norm3([fw[0]+r[0]*x-u[0]*y,fw[1]+r[1]*x-u[1]*y,fw[2]+r[2]*x-u[2]*y]),L=Math.hypot(g[0]-e[0],g[1]-e[1],g[2]-e[2]);
   return [e[0]+d[0]*L,e[1]+d[1]*L,e[2]+d[2]*L];}
-function nvHandle(ev){if(ev&&ev.t==='closed'){nv.isOpen=false;nv.paint=false;nvStopWatch();nvBtnSync();toast('The new viewer window was closed.');return;}
+function nvHandle(ev){if(ev&&ev.t==='closed'){/* where the window was, for next time */try{if(ev.win&&ev.win[2]>=300)localStorage.setItem('gs.nvWin',JSON.stringify(ev.win));}catch(e){}
+    const was=nv.isOpen;nv.isOpen=false;nv.paint=false;nvStopWatch();nvBtnSync();if(was)toast('The new viewer window was closed.');return;}
   if(!nvPaintOn()||!ev||!ev.t)return;if(ev.t==='cam'){nvCamFrom(ev);return;}
   const st=nv.st||(nv.st={ev:0,run:0,ms:0,live:0,liveMs:0,max:0});
   if(ev.t==='move'){st.ev++;nv.pendingMove=ev;if(!nv.moveRaf)nv.moveRaf=requestAnimationFrame(nvFlushMove);return;}/* one move per frame, like a normal mouse */
@@ -140,7 +141,8 @@ function nvUnlisten(){if(nv.listen){nv.listen();nv.listen=null;}}
 /* what goes to the Rust side: a length, the JSON, then the numbers and pictures it describes */
 function nvBody(sc){const m=sc.m,n=m.pos.length/3,f32=a=>new Float32Array(a);
   const pos=f32(m.pos),nrm=m.nrm&&m.nrm.length===m.pos.length?f32(m.nrm):f32(0),uv=m.uv&&m.uv.length===n*2?f32(m.uv):f32(0);
-  const parts=[pos,nrm,uv],meta={pos:pos.length,nrm:nrm.length,uv:uv.length,groups:[],env:null,settings:sc.settings};
+  let win=null;try{win=JSON.parse(localStorage.getItem('gs.nvWin')||'null');}catch(e){}
+  const parts=[pos,nrm,uv],meta={pos:pos.length,nrm:nrm.length,uv:uv.length,groups:[],env:null,settings:sc.settings,win:Array.isArray(win)&&win.length===4?win:undefined};
   for(const g of sc.groups){const T=sc.texBy[g.name]||{},len=k=>T[k]?T[k].length:0;
     meta.groups.push({name:g.name,idx:g.idx.length,rough:.6,metal:0,sh:sc.shBy[g.name]||undefined,tex:{base:len('BaseColor'),orm:len('ORM'),normal:len('Normal'),emissive:len('Emissive')}});
     parts.push(g.idx);for(const k of ['BaseColor','ORM','Normal','Emissive'])if(T[k])parts.push(T[k]);}

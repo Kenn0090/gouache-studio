@@ -122,6 +122,8 @@ struct Meta {
     groups: Vec<GroupMeta>,
     env: Option<EnvMeta>,
     settings: SettingsMeta,
+    #[serde(default)]
+    win: Option<[i32; 4]>,
 }
 
 fn floats(b: &[u8]) -> Vec<f32> {
@@ -216,7 +218,7 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         rt_samples: s.rt_samples,
         cam: s.cam,
     };
-    Ok((Scene { mesh: MeshData { positions, normals, uvs }, groups, env, settings }, meta.env_mode.clone()))
+    Ok((Scene { mesh: MeshData { positions, normals, uvs }, groups, env, settings, window: meta.win }, meta.env_mode.clone()))
 }
 
 

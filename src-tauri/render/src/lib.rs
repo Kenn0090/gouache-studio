@@ -125,6 +125,8 @@ pub struct Scene {
     pub groups: Vec<Group>,
     pub env: Option<EnvData>,
     pub settings: Settings,
+    /// where the window was last time: x, y, width, height (None = let the system place it)
+    pub window: Option<[i32; 4]>,
 }
 
 /// Reads a PNG (8 or 16 bits; grey, grey + alpha, RGB or RGBA) into RGBA8.
@@ -620,16 +622,17 @@ fn build_spec(device: &wgpu::Device, queue: &wgpu::Queue, pipeline: &wgpu::Rende
 }
 
 impl Gpu {
-    fn new(event_loop: &ActiveEventLoop) -> Result<(Gpu, AdapterReport), String> {
-        let window = Arc::new(
-            event_loop
-                .create_window(
-                    Window::default_attributes()
-                        .with_title("Gouache Studio · new viewer (test)")
-                        .with_inner_size(PhysicalSize::new(1100u32, 760u32)),
-                )
-                .map_err(|e| format!("could not open the window: {e}"))?,
-        );
+    fn new(event_loop: &ActiveEventLoop, hint: Option<[i32; 4]>) -> Result<(Gpu, AdapterReport), String> {
+        let mut attrs = Window::default_attributes().with_title("Gouache Studio · new viewer (test)").with_inner_size(PhysicalSize::new(1100u32, 760u32));
+        if let Some([x, y, w, h]) = hint {
+            if w >= 300 && h >= 200 && w <= 16000 && h <= 16000 {
+                attrs = attrs.with_inner_size(PhysicalSize::new(w as u32, h as u32));
+                if x > -16000 && y > -16000 && x < 32000 && y < 32000 {
+                    attrs = attrs.with_position(winit::dpi::PhysicalPosition::new(x, y));
+                }
+            }
+        }
+        let window = Arc::new(event_loop.create_window(attrs).map_err(|e| format!("could not open the window: {e}"))?);
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
         let surface = instance.create_surface(window.clone()).map_err(|e| format!("no drawing surface: {e}"))?;
         // a real graphics card first; if none works, the software adapter (so it still opens)
@@ -1284,9 +1287,10 @@ impl App {
         let c = &self.cam;
         let eye = c.target + Vec3::new(c.yaw.cos() * c.pitch.cos(), c.pitch.sin(), c.yaw.sin() * c.pitch.cos()) * c.dist;
         let (w, h) = (g.config.width, g.config.height);
+        let (pos, sz) = (g.window.outer_position().map(|p| (p.x, p.y)).unwrap_or((0, 0)), g.window.inner_size());
         sink(format!(
-            "{{\"t\":\"{}\",\"x\":{:.1},\"y\":{:.1},\"w\":{},\"h\":{},\"eye\":[{},{},{}],\"tgt\":[{},{},{}],\"fov\":{},\"shift\":{},\"ctrl\":{},\"alt\":{}}}",
-            kind, self.last.0, self.last.1, w, h, eye.x, eye.y, eye.z, c.target.x, c.target.y, c.target.z, g.settings.fov, self.shift, self.ctrl, self.alt
+            "{{\"win\":[{},{},{},{}],\"t\":\"{}\",\"x\":{:.1},\"y\":{:.1},\"w\":{},\"h\":{},\"eye\":[{},{},{}],\"tgt\":[{},{},{}],\"fov\":{},\"shift\":{},\"ctrl\":{},\"alt\":{}}}",
+            pos.0, pos.1, sz.width, sz.height, kind, self.last.0, self.last.1, w, h, eye.x, eye.y, eye.z, c.target.x, c.target.y, c.target.z, g.settings.fov, self.shift, self.ctrl, self.alt
         ));
     }
 }
@@ -1296,7 +1300,8 @@ impl ApplicationHandler<Cmd> for App {
         if self.gpu.is_some() {
             return;
         }
-        match Gpu::new(el) {
+        let hint = self.pending.as_ref().and_then(|s| s.window);
+        match Gpu::new(el, hint) {
             Ok((mut gpu, report)) => {
                 if let Some(s) = self.pending.take() {
                     let (c, r) = gpu.set_scene(&s);
@@ -1327,7 +1332,10 @@ impl ApplicationHandler<Cmd> for App {
 
     fn user_event(&mut self, el: &ActiveEventLoop, cmd: Cmd) {
         match cmd {
-            Cmd::Close => el.exit(),
+            Cmd::Close => {
+                self.emit("closed");
+                el.exit();
+            }
             Cmd::Capture(w, h, o, tx) => {
                 let r = match self.gpu.as_mut() {
                     Some(g) => g.capture(&self.cam, w, h, &o),
