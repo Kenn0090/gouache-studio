@@ -22,7 +22,7 @@ const TILT=process.env.TILT?process.env.TILT.split(',').map(Number):null,MODEL=p
  await p.click('#modeTabs [data-mode=p3d]');await Wt(1500);
  await p.evaluate(()=>__gs.showPanel('mats'));await Wt(400);
  await p.locator('#matBody .chip',{hasText:/^All$/}).last().click();await Wt(500);
- for(const [gid,name,file] of [['gm_brown-leather','Brown leather','leather'],['gm_brass','Brass','brass']]){
+ for(const [gid,name,file] of [['gm_brown-leather','Brown leather','leather'],['gm_brass','Brass','brass']].filter(x=>!process.env.SHADER||x[2]==='leather')){
   await p.click('#'+gid);await p.click('#lFill');for(let i=0;i<60;i++){if(await p.evaluate(n=>__gs.doc.active&&__gs.doc.active.name===n,name))break;await Wt(250);}
   if(FLAT){await p.evaluate(()=>{const L=__gs.doc.active;if(L&&L.fill&&L.fill.maps.normal){L.fill.maps.normal.on=false;if(L.fill.maps.height)L.fill.maps.height.on=false;__gs.fillRender(L);__gs.changedAll();}});await Wt(1200);}
   await Wt(1500);
@@ -32,15 +32,16 @@ const TILT=process.env.TILT?process.env.TILT.split(',').map(Number):null,MODEL=p
   if(process.env.ORTHO==='1'){await p.evaluate(()=>{__gs.v3s().ortho=true;__gs.changedAll();});await Wt(800);}
   if(process.env.SUN0==='1'){await p.evaluate(()=>{const s=__gs.v3s();s.sunI=0;s.studioFill=0;s.studioRim=0;__gs.changedAll();});await Wt(800);}
   if(process.env.NOENV==='1'){await p.evaluate(()=>{const s=__gs.v3s();s.sunI=1.5;s.studioFill=0;s.studioRim=0;s.skyI=0;s.envI=0;__gs.changedAll();});await Wt(800);}
+  if(process.env.SHADER){await p.evaluate(k=>{__gs.doc.v3shade={kind:k,p:{}};__gs.changedAll();},process.env.SHADER);await Wt(800);}
   if(MODEL){await p.evaluate(m=>__gs.useModel(__gs.primMeshX(m)),MODEL);await Wt(1500);}
   console.log('disp',await p.evaluate(()=>[__gs.v3s().disp,__gs.v3s().dispAmt,__gs.v3s().depth,__gs.v3s().sub]));
   if(process.env.NODISP==='1')await p.evaluate(()=>{__gs.v3s().disp=false;});
   await p.evaluate(()=>{const c=__gs.v3.cam;c.yaw=0.7;c.pitch=0.35;});await Wt(500);
   const old=await p.evaluate(async([w,h])=>{const d=__gs.v3Offscreen(w,h,{});const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d'),im=x.createImageData(w,h);
     for(let j=0;j<h;j++){const a=(h-1-j)*w*4,b=j*w*4;for(let i=0;i<w*4;i+=4){im.data[b+i]=d[a+i];im.data[b+i+1]=d[a+i+1];im.data[b+i+2]=d[a+i+2];im.data[b+i+3]=255;}}x.putImageData(im,0,0);return c.toDataURL('image/png');},[W,H]);
-  fs.writeFileSync(OUT+file+(FLAT?'F':'')+(process.env.SUN0==='1'?'_S0':'')+(process.env.NOENV==='1'?'_NE':'')+(process.env.LIGHT==='1'?'_L':'')+(process.env.ORTHO==='1'?'_O':'')+(TILT?'_t'+TILT.join('_'):'')+(MODEL?'_'+MODEL:'')+'_old.png',Buffer.from(old.split(',')[1],'base64'));
+  fs.writeFileSync(OUT+file+(FLAT?'F':'')+(process.env.SHADER?'_'+process.env.SHADER:'')+(process.env.SUN0==='1'?'_S0':'')+(process.env.NOENV==='1'?'_NE':'')+(process.env.LIGHT==='1'?'_L':'')+(process.env.ORTHO==='1'?'_O':'')+(TILT?'_t'+TILT.join('_'):'')+(MODEL?'_'+MODEL:'')+'_old.png',Buffer.from(old.split(',')[1],'base64'));
   const body=await p.evaluate(async()=>{const sc=await __gs.nvScene();const e=__gs.v3Eye(),c=__gs.v3.cam;sc.settings=Object.assign({},__gs.nvSettings(),{cam:[e[0],e[1],e[2],c.tx,c.ty,c.tz]});const bytes=__gs.nvBody(sc);let s='';for(let i=0;i<bytes.length;i+=32768)s+=String.fromCharCode.apply(null,bytes.subarray(i,i+32768));return btoa(s);});
-  fs.writeFileSync(OUT+file+(FLAT?'F':'')+(process.env.SUN0==='1'?'_S0':'')+(process.env.NOENV==='1'?'_NE':'')+(process.env.LIGHT==='1'?'_L':'')+(process.env.ORTHO==='1'?'_O':'')+(TILT?'_t'+TILT.join('_'):'')+(MODEL?'_'+MODEL:'')+'.bin',Buffer.from(body,'base64'));
+  fs.writeFileSync(OUT+file+(FLAT?'F':'')+(process.env.SHADER?'_'+process.env.SHADER:'')+(process.env.SUN0==='1'?'_S0':'')+(process.env.NOENV==='1'?'_NE':'')+(process.env.LIGHT==='1'?'_L':'')+(process.env.ORTHO==='1'?'_O':'')+(TILT?'_t'+TILT.join('_'):'')+(MODEL?'_'+MODEL:'')+'.bin',Buffer.from(body,'base64'));
   console.log(file,'old',old.length,'body',body.length);
  }
  await b.close();})();
