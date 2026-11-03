@@ -8,7 +8,7 @@
    - Offset: grey keeps Front and Back; lighter reaches further, darker less far.
    After each stroke the quick maps (normal, height, position…) are re-baked where you painted. */
 const bk={res:{},acc:{},opts:null,kinds:[],src:null,hg:null,hgKey:null,show:'material',paint:null,maps:{skew:null,offset:null},L:{},busy:false,prog:null,
-  stale:new Set(),showCage:true,cageGPU:null,cageKey:null,region:null,regionBusy:false,prev3d:null,view2d:null,tint:null,grey:null,dirty:true,sentLayers:[],docBase:false};
+  stale:new Set(),showCage:false,cageFade:0,cageGPU:null,cageKey:null,region:null,regionBusy:false,prev3d:null,view2d:null,tint:null,grey:null,dirty:true,sentLayers:[],docBase:false};
 const BK_PAINT={skew:{name:'Skew',fill:[1,1,1,1],erase:[1,1,1]},offset:{name:'Offset',fill:[.5,.5,.5,1],erase:[.5,.5,.5]}};
 const BK_EMPTY={normal:[.5,.5,1,1],height:[.5,.5,.5,1],ao:[1,1,1,1],thick:[1,1,1,1]};
 const bkLow=()=>bakeCfg.low||bakeViewModel();
@@ -110,14 +110,26 @@ function bakeShowPartial(acc,kinds){const P=bkPrograms();bk.tiles=(bk.tiles||0)+
     if(!t){t=bk.res[kk]=makeTarget(doc.w,doc.h,16,false);}run(P.fin,t,{uSrc:acc[k].tex,uEmpty:BK_EMPTY[k]||[0,0,0,1]});}
   bk.dirty=true;v3.dirty=true;requestRender();}
 /* after a fix is painted: re-bake the quick maps where it changed */
+/* (0.93.4) second pass: a moment after the last stroke, AO and thickness are re-baked in the painted patch too */
+function bakePass2Queue(rect){const q=bk.p2;bk.p2=q?[Math.min(q[0],rect[0]),Math.min(q[1],rect[1]),Math.max(q[0]+q[2],rect[0]+rect[2])-Math.min(q[0],rect[0]),Math.max(q[1]+q[3],rect[1]+rect[3])-Math.min(q[1],rect[1])]:rect.slice();
+  clearTimeout(bk.p2t);bk.p2t=setTimeout(bakePass2,1200);}
+async function bakePass2(){if(!bk.opts||!bk.src||!bk.p2)return;if(bk.busy||bk.regionBusy||bk.painting){bk.p2t=setTimeout(bakePass2,600);return;}
+  const rect=bk.p2,slow=bk.opts.kinds.filter(k=>k==='ao'||k==='thick');if(!slow.length){bk.p2=null;return;}bk.p2=null;
+  const r=[Math.max(0,rect[0]-2),Math.max(0,rect[1]-2),Math.min(doc.w,rect[0]+rect[2]+2),Math.min(doc.h,rect[1]+rect[3]+2)];
+  bk.regionBusy=true;bakeProgUI();const S=bk.src,prog={cancelled:false,set(){},step(){}};
+  try{const hg=await bakeHG(S.L,S.high,S.low,()=>{},false);
+    const res=await bakeRun(S.low,S.high,Object.assign({},bk.opts,{kinds:slow,hg,acc:bk.acc,rect:r,into:bk.res,skew:bk.maps.skew,offset:bk.maps.offset}),prog);
+    if(res){for(const k in res){if(bk.res[k]&&bk.res[k]!==res[k])disposeTarget(bk.res[k]);bk.res[k]=res[k];bk.stale.delete(k);}}}
+  catch(e){console.error(e);}
+  bk.regionBusy=false;bakeRefresh();if(bk.region){const q=bk.region;bk.region=null;bakeRegion(q);}}
 async function bakeRegion(rect){if(!bk.opts||!bk.src)return;const r=[Math.max(0,rect[0]-2),Math.max(0,rect[1]-2),Math.min(doc.w,rect[0]+rect[2]+2),Math.min(doc.h,rect[1]+rect[3]+2)];
   if(bk.busy||bk.regionBusy){bk.region=bk.region?[Math.min(bk.region[0],rect[0]),Math.min(bk.region[1],rect[1]),Math.max(bk.region[0]+bk.region[2],rect[0]+rect[2])-Math.min(bk.region[0],rect[0]),Math.max(bk.region[1]+bk.region[3],rect[1]+rect[3])-Math.min(bk.region[1],rect[1])]:rect.slice();return;}
-  const quick=bk.opts.kinds.filter(k=>k!=='ao'&&k!=='thick');for(const k of bk.opts.kinds)if(k==='ao'||k==='thick')bk.stale.add(k);
+  const quick=bk.opts.kinds.filter(k=>k!=='ao'&&k!=='thick');for(const k of bk.opts.kinds)if(k==='ao'||k==='thick')bk.stale.add(k);if(bk.opts.kinds.some(k=>k==='ao'||k==='thick'))bakePass2Queue(rect);
   if(!quick.length){buildBakePanel();return;}
   bk.regionBusy=true;bakeProgUI();const S=bk.src,prog={cancelled:false,set(){},step(){}};
   try{const hg=await bakeHG(S.L,S.high,S.low,()=>{},quick.includes('id'));
-    const res=await bakeRun(S.low,S.high,Object.assign({},bk.opts,{kinds:quick,hg,acc:bk.acc,rect:r,skew:bk.maps.skew,offset:bk.maps.offset}),prog);
-    if(res){for(const k in res){if(bk.res[k])disposeTarget(bk.res[k]);bk.res[k]=res[k];}if(bk.kinds.includes('curv')&&(res.gcurv||res.normal))bakeDerive();}}
+    const res=await bakeRun(S.low,S.high,Object.assign({},bk.opts,{kinds:quick,hg,acc:bk.acc,rect:r,into:bk.res,skew:bk.maps.skew,offset:bk.maps.offset}),prog);
+    if(res){for(const k in res){if(bk.res[k]&&bk.res[k]!==res[k])disposeTarget(bk.res[k]);bk.res[k]=res[k];}if(bk.kinds.includes('curv')&&(res.gcurv||res.normal))bakeDerive();}}
   catch(e){console.error(e);}
   bk.regionBusy=false;bakeRefresh();
   if(bk.region){const q=bk.region;bk.region=null;bakeRegion(q);}}
@@ -256,7 +268,7 @@ function bakeRefresh(){bk.dirty=true;v3.dirty=true;requestRender(true);if(ui.mod
 /* ---------- loading models: button, menu or drag and drop ---------- */
 function bakeSetModel(key,m){if(bk.busy){toast("Wait for the bake to finish.");return;}const C=bakeCfg;C[key]=m;if(key==='high'){C.highMeshes=[m];bk.hgKey=null;bkHighViewFree();}
   toast('Loaded “'+m.name+'” as the '+(key==='high'?'high-poly':key==='low'?'low-poly':'cage')+': '+m.tris.toLocaleString()+' triangles.'+(key==='low'&&m.noUV?' It has no UVs, so nothing can be baked onto it.':'')+(key==='high'&&m.tris>6e6?' That is very large; baking will be slow.':''));
-  if(key==='low')bakeSyncMesh();bakeCageDirty();if(ui.mode==='bake')buildBakePanel();}
+  if(key==='low')bakeSyncMesh();bk.cageKey=null;v3.dirty=true;requestRender();if(ui.mode==='bake')buildBakePanel();}
 /* which slot a file belongs in, from its name (crate_low, crate_high, crate_cage) */
 function bakeGuessSlot(name){const n=baseName(name).toLowerCase();if(/cage/.test(n))return 'cage';if(/(^|[_\-\s.])(high|hi|hp)(poly)?($|[_\-\s.\d])|highpoly/.test(n))return 'high';if(/(^|[_\-\s.])(low|lo|lp)(poly)?($|[_\-\s.\d])|lowpoly/.test(n))return 'low';return null;}
 async function bakeDropFiles(files,key){files=[...files];const models=files.filter(f=>isModelName(f.name));if(!models.length){toast('Drop an OBJ, glTF, GLB or FBX model.');return;}
@@ -267,7 +279,7 @@ function bakeDropZone(node,key){node.addEventListener('dragover',e=>{if([...e.da
   node.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();node.classList.remove('dropon');bakeDropFiles(e.dataTransfer.files,key);});}
 
 /* ---------- the cage, drawn over the model: where the rays start ---------- */
-function bakeCageDirty(){bk.cageKey=null;v3.dirty=true;requestRender();}
+function bakeCageDirty(){bk.cageKey=null;bakeCageFlash();}
 function bakeCageGPU(){const C=bakeCfg,L=v3.mesh;if(!L||!L.pos||!L.idx)return null;const key=[L,C.cage,C.front,C.average,bk.maps.offset?bk.offVer||0:-1].join('|');
   if(bk.cageGPU&&bk.cageKey===key)return bk.cageGPU;
   if(bk.cageGPU){const g=bk.cageGPU;gl.deleteVertexArray(g.vao);gl.deleteVertexArray(g.evao);gl.deleteBuffer(g.vb);gl.deleteBuffer(g.ib);gl.deleteBuffer(g.eb);bk.cageGPU=null;}
@@ -285,10 +297,14 @@ function bakeCageGPU(){const C=bakeCfg,L=v3.mesh;if(!L||!L.pos||!L.idx)return nu
   const eb=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,eb);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,edges,gl.STATIC_DRAW);gl.bindVertexArray(vao);
   bk.cageKey=key;return bk.cageGPU={vao:vaoC,evao,vb,ib,eb,count:L.idx.length,ecount:edges.length};}
 /* see-through blue shell with its edges, drawn after the model */
-function bakeDrawCage(common){if(!bk.showCage||ui.mode!=='bake')return;const g=bakeCageGPU();if(!g)return;
+/* (0.93.4) the cage fades in when the Front/Back/Cage sliders move, stays a moment, then fades out */
+function bakeCageFlash(){bk.cageT=performance.now();bk.cageHold=1;if(!bk.cageRaf)bk.cageRaf=requestAnimationFrame(bakeCageTick);v3.dirty=true;requestRender();}
+function bakeCageAlpha(){if(bk.showCage)return 1;if(!bk.cageT)return 0;const t=(performance.now()-bk.cageT)/1000;return t<1?1:Math.max(0,1-(t-1)/.5);}
+function bakeCageTick(){bk.cageRaf=0;const a=bakeCageAlpha();v3.dirty=true;requestRender();if(a>0&&!bk.showCage)bk.cageRaf=requestAnimationFrame(bakeCageTick);else bk.cageT=0;}
+function bakeDrawCage(common){const fa=bakeCageAlpha();if(!fa||ui.mode!=='bake')return;const g=bakeCageGPU();if(!g)return;
   gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);
-  useProg(P3.line,Object.assign({},common,{uUseH:false,uCol:[.35,.72,1,.14]}));gl.bindVertexArray(g.vao);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);
-  useProg(P3.line,Object.assign({},common,{uUseH:false,uCol:[.45,.8,1,.55]}));gl.bindVertexArray(g.evao);gl.drawElements(gl.LINES,g.ecount,gl.UNSIGNED_INT,0);
+  useProg(P3.line,Object.assign({},common,{uUseH:false,uCol:[.35,.72,1,.14*fa]}));gl.bindVertexArray(g.vao);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);
+  useProg(P3.line,Object.assign({},common,{uUseH:false,uCol:[.45,.8,1,.55*fa]}));gl.bindVertexArray(g.evao);gl.drawElements(gl.LINES,g.ecount,gl.UNSIGNED_INT,0);
   gl.bindVertexArray(vao);gl.depthMask(true);gl.disable(gl.BLEND);}
 
 /* ---------- panel ---------- */
@@ -370,7 +386,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
   const tabBar=()=>{const g=seg(TABS.map(([v,t])=>[v,t+(v!=='general'&&baking(v)?' •':''),v==='general'?'Settings every map shares':baking(v)?t+': baked':t+': not baked']),C.tab,v=>{C.tab=v;page.replaceWith(page=tabPage());},'Map settings');g.classList.add('themeseg','bktabs');return g;};
   const tabPage=()=>{const T=C.tab,pg=el('div',{class:'dlg-grid bktab',id:'bkTab_'+T});
     if(T==='general')pg.append(el('div',{class:'sub',text:'Size'}),bakeSizeSeg(),
-      makeSlider({id:'bkFront',label:'Front',min:0,max:20,step:.1,value:C.front,fmt:v=>v.toFixed(1)+'%',onInput:v=>{C.front=v;bakeCageDirty();}}).el,S('bkBack','Back','back',0,20,.1,v=>v.toFixed(1)+'%'),
+      makeSlider({id:'bkFront',label:'Front',min:0,max:20,step:.1,value:C.front,fmt:v=>v.toFixed(1)+'%',onInput:v=>{C.front=v;bakeCageDirty();}}).el,makeSlider({id:'bkBack',label:'Back',min:0,max:20,step:.1,value:C.back,fmt:v=>v.toFixed(1)+'%',onInput:v=>{C.back=v;bakeCageFlash();}}).el,
       chk('bkAvg','Average ray directions',C.average,v=>{C.average=v;bakeCageDirty();}),
       el('div',{class:'sub',text:'Anti-aliasing'}),seg([[1,'1×'],[2,'4×'],[4,'16×']],C.ss,v=>{C.ss=v;},'Anti-aliasing'),S('bkPad','Padding','pad',0,64,1,v=>v+'px'),
       el('div',{class:'sub',text:'Send to the document as',title:'Layers: each bake is also a layer in the base colour, so you can blend them (curvature on Overlay over AO). AO, curvature and height go into their own maps too.'}),seg([['layers','Layers'],['maps','Maps only']],C.sendAs==='maps'?'maps':'layers',v=>{C.sendAs=v;},'Send as'),

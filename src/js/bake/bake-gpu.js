@@ -361,6 +361,13 @@ async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.si
   if(acc.cpos&&acc.cnrm&&kinds.includes('cpos')){if(!acc.gcurv||acc.gcurv.w!==W||acc.gcurv.h!==H){if(acc.gcurv)disposeTarget(acc.gcurv);acc.gcurv=makeTarget(W,H,16,false);}
     run(P.gcurv,acc.gcurv,{uP:acc.cpos.tex,uN:acc.cnrm.tex,uRad:Math.max(1,o.curvRadius||3),uStr:o.curvStr||1});outKinds.push('gcurv');}
   progress.step('Padding the edges…');
+  /* (0.93.4) a re-bake of a painted patch only pads and finishes that patch (plus the padding reach), into the maps already there */
+  const patch=o.rect&&o.acc&&o.into?(()=>{const q=(o.pad||0)+3,x0=Math.max(0,Math.floor(o.rect[0])-q),y0=Math.max(0,Math.floor(o.rect[1])-q),x1=Math.min(W,Math.ceil(o.rect[2])+q),y1=Math.min(H,Math.ceil(o.rect[3])+q);return [x0,y0,x1-x0,y1-y0];})():null;
+  if(patch){for(const k of outKinds){const dst=o.into[k];if(!dst||dst.w!==W||dst.h!==H)continue;let a=acc[k],b=makeTarget(W,H,16,false);
+      scissorDo(patch,()=>{for(let i=0;i<Math.max(1,o.pad||0);i++){run(P.dil,b,{uSrc:a.tex});const t=a;a=b;b=t;}
+        const empty=k==='normal'?[.5,.5,1,1]:k==='height'||k==='gcurv'?[.5,.5,.5,1]:k==='ao'||k==='thick'?[1,1,1,1]:[0,0,0,1];run(P.fin,dst,{uSrc:a.tex,uEmpty:empty,uNorm:{int:k==='normal'?1:0}});});
+      if(a!==acc[k])disposeTarget(a);if(b!==acc[k])disposeTarget(b);results[k]=dst;}
+    outKinds=outKinds.filter(k=>!results[k]);}
   for(const k of outKinds){let a=acc[k],b=makeTarget(W,H,16,false);const keep=!!o.acc;if(keep&&o.pad>0){run(P.dil,b,{uSrc:a.tex});a=b;b=makeTarget(W,H,16,false);}
     for(let i=keep&&o.pad>0?1:0;i<o.pad;i++){run(P.dil,b,{uSrc:a.tex});const t=a;a=b;b=t;if(i%16===15)await bkYield();}
     const fin=makeTarget(W,H,k==='height'||k==='position'?16:outDepth,false);
