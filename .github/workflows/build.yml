@@ -85,10 +85,50 @@ jobs:
           }
           Write-Host "Verified Windows installer downloads and matching updater signatures for $releaseVersion."
 
+      - name: Keep the full installer
+        shell: bash
+        run: |
+          mkdir -p out/full out/lite
+          cp src-tauri/target/release/bundle/nsis/*.exe out/full/
+          cp src-tauri/target/release/bundle/msi/*.msi out/full/ || true
+
+      # The smaller installer: the same app without the Library files, skies and grunge maps inside (it fetches and keeps them
+      # when used, and File > Content downloads them all for offline work). A problem here never stops the release above.
+      - name: Build the smaller installer
+        id: lite
+        continue-on-error: true
+        shell: bash
+        env:
+          GOUACHE_LITE: '1'
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
+        run: |
+          rm -rf src-tauri/target/release/bundle/nsis
+          npx tauri build --bundles nsis
+          for f in src-tauri/target/release/bundle/nsis/*-setup.exe; do
+            b=$(basename "$f" -setup.exe)
+            cp "$f" "out/lite/${b}-lite-setup.exe"
+          done
+          ls -la out/lite
+
+      - name: Put the smaller installer on the release
+        if: steps.ver.outputs.release == 'true' && steps.lite.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "v${{ steps.ver.outputs.version }}" out/lite/*.exe --clobber
+
       - uses: actions/upload-artifact@v4
         with:
           name: gouache-studio-windows
           path: |
-            src-tauri/target/release/bundle/nsis/*.exe
-            src-tauri/target/release/bundle/msi/*.msi
+            out/full/*
           if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: steps.lite.outcome == 'success'
+        with:
+          name: gouache-studio-windows-lite
+          path: out/lite/*.exe
+          if-no-files-found: warn

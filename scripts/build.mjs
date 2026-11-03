@@ -43,7 +43,8 @@ if (fs.existsSync(r('assets/grunge/previews.json'))) {
     if (fs.existsSync(file) && crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex') === p.sha256) TX_PREVIEW_DATA[slug] = p.image;
   }
 }
-const js = `const APP_VERSION='${APP_VERSION}';\nconst TX_PREVIEWS=${JSON.stringify(TX_PREVIEW_DATA)};\nconst GM_BUNDLED=${JSON.stringify(GMATS).replace(/<\//g, '<\\/')};\nconst UNREAL_SETUP=${JSON.stringify(UNREAL_SETUP).replace(/<\//g, '<\\/')};\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\nconst CHANGELOG_MD=${JSON.stringify(CHANGELOG).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
+const LITE = process.env.GOUACHE_LITE === '1'; /* the smaller installer: no Library files, skies or grunge inside; they are fetched when used (File > Content keeps copies for offline) */
+const js = `const APP_VERSION='${APP_VERSION}';\nconst GM_LITE=${LITE};\nconst TX_PREVIEWS=${JSON.stringify(TX_PREVIEW_DATA)};\nconst GM_BUNDLED=${JSON.stringify(GMATS).replace(/<\//g, '<\\/')};\nconst UNREAL_SETUP=${JSON.stringify(UNREAL_SETUP).replace(/<\//g, '<\\/')};\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\nconst CHANGELOG_MD=${JSON.stringify(CHANGELOG).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
 const studioFonts=JSON.parse(read('assets/fonts/manifest.json'));
 const studioFontCss=studioFonts.map(f=>`@font-face{font-family:"${f.family}";font-style:normal;font-weight:${f.weight};font-display:swap;src:url(${f.file}) format("truetype")}`).join('\n');
 const css = read('src/styles/app.css');
@@ -94,10 +95,10 @@ function buildDesktop() {
   copy('node_modules/pako/dist/pako.min.js', `${out}/vendor/pako.min.js`);
   copy('node_modules/utif/UTIF.js', `${out}/vendor/UTIF.js`);
   copy('node_modules/ag-psd/dist/bundle.js', `${out}/vendor/ag-psd.js`);
-  for (const f of HDRIS) copy('assets/hdri/' + f, `${out}/hdri/${f}`);
-  for (const g of GMATS) copy('assets/materials/' + g.file, `${out}/materials/${g.file}`);
+  if (!LITE) for (const f of HDRIS) copy('assets/hdri/' + f, `${out}/hdri/${f}`);
+  if (!LITE) for (const g of GMATS) copy('assets/materials/' + g.file, `${out}/materials/${g.file}`);
   for (const g of GMATS) if(g.preview) copy('assets/material-previews/' + g.preview, `${out}/material-previews/${g.preview}`);
-  for (const f of GRUNGE) copy('assets/grunge/' + f, `${out}/grunge/${f}`);
+  if (!LITE) for (const f of GRUNGE) copy('assets/grunge/' + f, `${out}/grunge/${f}`);
   for (const f of RAWFILES) copy('assets/raw/' + f, `${out}/raw/${f}`);
   for(const f of STUDIO) copy('assets/studio/'+f,`${out}/studio/${f}`);
   for(const f of studioFonts){copy('assets/fonts/'+f.file,`${out}/fonts/${f.file}`);copy('assets/fonts/'+f.license,`${out}/fonts/${f.license}`);}

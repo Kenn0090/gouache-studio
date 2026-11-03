@@ -93,7 +93,7 @@ function txGenTarget(k,S,phase){const i=TX_GEN.findIndex(g=>g[0]===k),t=makeTarg
   else{if(!P_TXGEN)P_TXGEN=program(FS_TXGEN);run(P_TXGEN,t,{uKind:{int:i},uSeed:1,uOut:[S,S],uPhase:phase||[0,0]});}setWrap(t,true);return t;}
 /* the shipped photo grunge: files next to the desktop app, or inside the page for the web version */
 async function txPhotoBytes(slug){const tag=document.getElementById('gr_'+slug);if(tag){const b=atob(tag.textContent.trim()),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;}
-  const r=await fetch('grunge/'+slug+'.webp');if(!r.ok)throw new Error('missing');return new Uint8Array(await r.arrayBuffer());}
+  return await bcGet('grunge',slug+'.webp','grunge/'+slug+'.webp');}
 async function bitmapTarget(bm){const c=document.createElement('canvas');c.width=bm.width;c.height=bm.height;c.getContext('2d').drawImage(bm,0,0);
   const tex=uploadStraight({el:c,w:c.width,h:c.height}),t=makeTarget(c.width,c.height,8,true);premultInto(t,tex,[0,0],null);gl.deleteTexture(tex);setWrap(t,true);return t;}
 /* The shelf owns borrowed originals. Layers/masks/stencils copy them. Live picture guides

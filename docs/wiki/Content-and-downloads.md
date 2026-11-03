@@ -10,6 +10,10 @@ What comes with the app is the **1K Material Library**, the **1K skies** (lighti
 
 The web version cannot ask those sites directly, so the Content window only explains that it needs the desktop app.
 
+## The smaller installer
+
+Each release has two Windows installers: the normal one (about 180 MB of content inside, so everything works offline right away) and a **smaller one** (named `…-lite-setup.exe`) with the core app only. The smaller one fetches the Library files, skies and grunge maps from the internet the first time you use each, and keeps a copy. The Content window then has a **Starter content for offline work** row that downloads all of them at once (it is ticked by default there). Updates install the normal version of the app, so after an update the content is inside again.
+
 ## Where things are kept
 
 Downloaded pictures and skies are kept inside the app's own storage on your computer. Nothing is written into your project folders.

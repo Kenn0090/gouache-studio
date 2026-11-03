@@ -79,7 +79,7 @@ function envBuild(img,key,name){envFree();let {w,h,rgb}=img;
 /* the bundled ones: inside the page (web version) or beside it (desktop) */
 async function envBundled(file){try{if(typeof aiDB!=='undefined'){const v=await aiDB.get('hdri/'+file+'_2k.hdr');if(v&&v.buf)return new Uint8Array(v.buf);}}catch(e){}/* a 2K sky downloaded in File › Content */
   const tag=document.getElementById('hdri_'+file);if(tag){const b=atob(tag.textContent.trim()),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;}
-  const r=await fetch('hdri/'+file+'_1k.hdr');if(!r.ok)throw new Error('missing');return new Uint8Array(await r.arrayBuffer());}
+  return await bcGet('hdri',file+'_1k.hdr','hdri/'+file+'_1k.hdr');}
 /* make sure the chosen environment is ready (called when drawing; loads in the background) */
 function envEnsure(){const s=v3s(),k=envOf(s);if(k==='none'){return null;}if(env.key===k)return env;if(env.loading===k)return null;
   if(k==='custom'){if(env.custom){env.loading=k;try{envBuild(env.custom.img,'custom',env.custom.name);}finally{env.loading=null;}return env;}s.env='studio';return null;}
