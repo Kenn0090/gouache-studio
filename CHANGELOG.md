@@ -1,8 +1,9 @@
 ## 0.94.1
 
+- **New viewer: post processing.** The Shader panel's post effects (bloom, depth of field, sharpen, colour grade, vignette, chromatic aberration, film grain and filter looks) now work in the new viewer window, and in its screenshots, renders and turntables. The "Cut out transparent areas" switch is respected too.
 - **New viewer: height depth.** The height depth (displacement) setting of the 3D view now moves the surface in the new viewer window too. It uses the same detail (subdivision) as the 3D view, and the surface keeps its shading from the normal map.
 - **New viewer: stencil.** The stencil you set up for projection painting shows over the model in the new viewer window, in the same place, size and turn.
-- **New viewer: see-through parts.** Parts of a material with less than half opacity are cut out in the new viewer window, like in the normal 3D view.
+- **New viewer: cut-out parts.** Parts of a material with less than half opacity are cut out in the new viewer window, like in the normal 3D view.
 - **New viewer: mirror guides.** The mirror planes and radial rays (when Show guides is on) are drawn in the new viewer window too.
 - **New viewer: selection tint.** A selection made in 3D Paint shows orange on the model in the new viewer window.
 - **New viewer: wireframe.** Wireframe and Wireframe overlay (and your wire colour) now show in the new viewer window.

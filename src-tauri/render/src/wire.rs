@@ -103,6 +103,10 @@ struct SettingsMeta {
     wire: u8,
     #[serde(default)]
     disp: f32,
+    #[serde(default = "yes")]
+    clip: bool,
+    #[serde(default)]
+    post: Option<[[f32; 4]; 7]>,
     #[serde(default)]
     mir: Option<[Option<f32>; 3]>,
     #[serde(default)]
@@ -156,6 +160,9 @@ fn fov_default() -> f32 {
     45.0
 }
 
+fn yes() -> bool {
+    true
+}
 fn blur_default() -> f32 {
     0.35
 }
@@ -274,6 +281,9 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         studio_rim: s.studio_rim,
         wire: s.wire,
         disp: s.disp,
+        clip: s.clip,
+        post_on: s.post.is_some(),
+        post: s.post.unwrap_or([[0.0; 4]; 7]),
         mir: { let m = s.mir.unwrap_or([None; 3]); [m[0].unwrap_or(f32::NAN), m[1].unwrap_or(f32::NAN), m[2].unwrap_or(f32::NAN)] },
         mir_radial: s.mir_radial.unwrap_or([0.0, 0.0]),
         mir_off: s.mir_off.unwrap_or([0.0; 3]),

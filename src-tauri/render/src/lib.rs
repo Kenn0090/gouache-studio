@@ -130,6 +130,11 @@ pub struct Settings {
     pub mir_r: f32,
     /// height depth (displacement), in model units for a full-white height (0 = off)
     pub disp: f32,
+    /// cut out parts with less than half opacity (the 3D view's "Cut out transparent areas")
+    pub clip: bool,
+    /// post processing on the finished picture: on, and seven groups of four numbers (see post.wgsl)
+    pub post_on: bool,
+    pub post: [[f32; 4]; 7],
     /// the stencil laid over the view: shown, [centre x, centre y, half width, half height (in pixels of the page's 3D view), turn (radians), show, flags (1 invert, 2 tile), 0], that view's size
     pub st_on: bool,
     pub st: [f32; 8],
@@ -146,7 +151,7 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, mir: [f32::NAN; 3], mir_radial: [0.0, 0.0], mir_off: [0.0; 3], mir_r: 0.0, disp: 0.0, st_on: false, st: [0.0; 8], st_view: [1.0, 1.0], wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
+        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, mir: [f32::NAN; 3], mir_radial: [0.0, 0.0], mir_off: [0.0; 3], mir_r: 0.0, disp: 0.0, clip: true, post_on: false, post: [[0.0; 4]; 7], st_on: false, st: [0.0; 8], st_view: [1.0, 1.0], wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
     }
 }
 
@@ -322,6 +327,15 @@ struct MatUniform {
     skin: [f32; 4],
 }
 
+/// The pictures the post processing works in (made again when the size changes).
+struct PostGpu {
+    w: u32,
+    h: u32,
+    src: wgpu::TextureView,
+    a: wgpu::TextureView,
+    b: wgpu::TextureView,
+}
+
 struct GpuGroup {
     name: String,
     ib: wgpu::Buffer,
@@ -349,6 +363,13 @@ struct Gpu {
     wire_pipeline: wgpu::RenderPipeline,
     guide_pipeline: wgpu::RenderPipeline,
     st_pipeline: wgpu::RenderPipeline,
+    post_layout: wgpu::BindGroupLayout,
+    post_bright: wgpu::RenderPipeline,
+    post_blur: wgpu::RenderPipeline,
+    post_final: wgpu::RenderPipeline,
+    post_bufs: [wgpu::Buffer; 3],
+    post_smp: wgpu::Sampler,
+    post: Option<PostGpu>,
     st_layout: wgpu::BindGroupLayout,
     st_smp: wgpu::Sampler,
     st_bind: Option<wgpu::BindGroup>,
@@ -404,6 +425,24 @@ struct App {
 }
 
 const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+
+fn make_post(device: &wgpu::Device, w: u32, h: u32, format: wgpu::TextureFormat) -> PostGpu {
+    let mk = |w: u32, h: u32, f: wgpu::TextureFormat| {
+        device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some("post picture"),
+                size: wgpu::Extent3d { width: w.max(1), height: h.max(1), depth_or_array_layers: 1 },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: f,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            })
+            .create_view(&wgpu::TextureViewDescriptor::default())
+    };
+    PostGpu { w, h, src: mk(w, h, format), a: mk(w / 2, h / 2, wgpu::TextureFormat::Rgba8Unorm), b: mk(w / 2, h / 2, wgpu::TextureFormat::Rgba8Unorm) }
+}
 
 fn make_depth(device: &wgpu::Device, w: u32, h: u32) -> wgpu::TextureView {
     device
@@ -879,6 +918,37 @@ impl Gpu {
             multiview: None,
             cache: None,
         });
+        let post_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor { label: Some("post"), source: wgpu::ShaderSource::Wgsl(include_str!("post.wgsl").into()) });
+        let post_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("post layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry { binding: 0, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Buffer { ty: wgpu::BufferBindingType::Uniform, has_dynamic_offset: false, min_binding_size: None }, count: None },
+                wgpu::BindGroupLayoutEntry { binding: 1, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: true }, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false }, count: None },
+                wgpu::BindGroupLayoutEntry { binding: 2, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: true }, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false }, count: None },
+                wgpu::BindGroupLayoutEntry { binding: 3, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Depth, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false }, count: None },
+                wgpu::BindGroupLayoutEntry { binding: 4, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering), count: None },
+            ],
+        });
+        let post_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor { label: Some("post pipeline layout"), bind_group_layouts: &[&post_layout], push_constant_ranges: &[] });
+        let post_pipe = |entry: &str, fmt: wgpu::TextureFormat| {
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("post pipeline"),
+                layout: Some(&post_pl),
+                vertex: wgpu::VertexState { module: &post_shader, entry_point: Some("vs"), compilation_options: Default::default(), buffers: &[] },
+                fragment: Some(wgpu::FragmentState { module: &post_shader, entry_point: Some(entry), compilation_options: Default::default(), targets: &[Some(wgpu::ColorTargetState { format: fmt, blend: None, write_mask: wgpu::ColorWrites::ALL })] }),
+                primitive: wgpu::PrimitiveState::default(),
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState::default(),
+                multiview: None,
+                cache: None,
+            })
+        };
+        let post_bright = post_pipe("fs_bright", wgpu::TextureFormat::Rgba8Unorm);
+        let post_blur = post_pipe("fs_blur", wgpu::TextureFormat::Rgba8Unorm);
+        let post_final = post_pipe("fs_post", format);
+        let post_buf = || device.create_buffer(&wgpu::BufferDescriptor { label: Some("post uniform"), size: 144, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
+        let post_bufs = [post_buf(), post_buf(), post_buf()];
+        let post_smp = device.create_sampler(&wgpu::SamplerDescriptor { address_mode_u: wgpu::AddressMode::ClampToEdge, address_mode_v: wgpu::AddressMode::ClampToEdge, mag_filter: wgpu::FilterMode::Linear, min_filter: wgpu::FilterMode::Linear, ..Default::default() });
         let out_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("outline pipeline"),
             layout: Some(&layout),
@@ -1018,6 +1088,13 @@ impl Gpu {
             wire_pipeline,
             guide_pipeline,
             st_pipeline,
+            post_layout,
+            post_bright,
+            post_blur,
+            post_final,
+            post_bufs,
+            post_smp,
+            post: None,
             st_layout,
             st_smp,
             st_bind: None,
@@ -1291,7 +1368,7 @@ impl Gpu {
             light_a: st.light_a,
             light_b: st.light_b,
             light_c: st.light_c,
-            light_n: [st.light_n as f32, st.studio_fill, st.studio_rim, 0.0],
+            light_n: [st.light_n as f32, st.studio_fill, st.studio_rim, if st.clip { 1.0 } else { 0.0 }],
             cam_dir: [dir.x, dir.y, dir.z, if st.ortho { 1.0 } else { 0.0 }],
             wire: [st.wire_col[0], st.wire_col[1], st.wire_col[2], st.wire as f32],
             st_a: [st.st[0], st.st[1], st.st[2], st.st[3]],
@@ -1397,10 +1474,18 @@ impl Gpu {
             let sd = [sun.x, sun.y, sun.z];
             self.rt.trace(&self.device, &self.queue, &mut enc, &self.depth, &self.scene_normal, &self.scene_mat, vp.inverse().to_cols_array_2d(), [eye.x, eye.y, eye.z], sd, st.rt_soft.clamp(0.0, 0.2), st.rt_samples.clamp(8, 1024), self.rt_amb(), [3.0 * st.sun_intensity, 2.9 * st.sun_intensity, 2.7 * st.sun_intensity], self.config.width, self.config.height);
         }
+        let post_on = st.post_on;
+        if post_on && self.post.as_ref().map(|p| (p.w, p.h)) != Some((self.config.width, self.config.height)) {
+            self.post = Some(make_post(&self.device, self.config.width, self.config.height, self.config.format));
+        }
         {
+            let first = match (&self.post, post_on) {
+                (Some(p), true) => &p.src,
+                _ => &view,
+            };
             let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("on screen"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment { view: &view, depth_slice: None, resolve_target: None, ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::BLACK), store: wgpu::StoreOp::Store } })],
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment { view: first, depth_slice: None, resolve_target: None, ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::BLACK), store: wgpu::StoreOp::Store } })],
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
@@ -1412,10 +1497,82 @@ impl Gpu {
                 pass.set_bind_group(1, sb, &[]);
                 pass.draw(0..3, 0..1);
             }
-            if u.cursor[3] > 0.5 {
+            if u.cursor[3] > 0.5 && !post_on {
                 pass.set_pipeline(&self.ring_pipeline);
                 pass.set_bind_group(0, &self.frame_bg, &[]);
                 pass.draw(0..3, 0..1);
+            }
+        }
+        if let (true, Some(pg)) = (post_on, &self.post) {
+            let (w, h) = (self.config.width as f32, self.config.height as f32);
+            let pst = st.post;
+            let (near, far) = ((cam.dist * 0.01).max(1e-4), cam.dist * 20.0 + cam.radius * 4.0);
+            let seed = if pst[5][1] < 0.0 { 7.13 + (self.started.elapsed().as_secs_f32() * -pst[5][1]).floor() * 3.17 } else { pst[5][1] };
+            let step = 1.0 + pst[0][1] * 5.0;
+            let mk = |dir: [f32; 2]| -> [[f32; 4]; 9] {
+                [
+                    [pst[0][0], pst[0][1], near, far],
+                    [pst[1][0], pst[1][1], cam.dist * (1.0 + pst[1][2]), if st.ortho { 1.0 } else { 0.0 }],
+                    pst[2],
+                    pst[3],
+                    pst[4],
+                    [pst[5][0], seed, pst[5][2], pst[5][3] * (h / 1080.0).max(1.0)],
+                    pst[6],
+                    [1.0 / w, 1.0 / h, w / h, 0.0],
+                    [dir[0], dir[1], 0.0, 0.0],
+                ]
+            };
+            self.queue.write_buffer(&self.post_bufs[0], 0, bytemuck::cast_slice(&mk([0.0, 0.0])));
+            self.queue.write_buffer(&self.post_bufs[1], 0, bytemuck::cast_slice(&mk([step / (w / 2.0).max(1.0), 0.0])));
+            self.queue.write_buffer(&self.post_bufs[2], 0, bytemuck::cast_slice(&mk([0.0, step / (h / 2.0).max(1.0)])));
+            let bg = |buf: usize, bloom: &wgpu::TextureView| {
+                self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("post group"),
+                    layout: &self.post_layout,
+                    entries: &[
+                        wgpu::BindGroupEntry { binding: 0, resource: self.post_bufs[buf].as_entire_binding() },
+                        wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::TextureView(&pg.src) },
+                        wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::TextureView(bloom) },
+                        wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(&self.depth) },
+                        wgpu::BindGroupEntry { binding: 4, resource: wgpu::BindingResource::Sampler(&self.post_smp) },
+                    ],
+                })
+            };
+            let run = |enc: &mut wgpu::CommandEncoder, pipe: &wgpu::RenderPipeline, group: &wgpu::BindGroup, target: &wgpu::TextureView, load: wgpu::LoadOp<wgpu::Color>| {
+                let mut p = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("post"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment { view: target, depth_slice: None, resolve_target: None, ops: wgpu::Operations { load, store: wgpu::StoreOp::Store } })],
+                    depth_stencil_attachment: None,
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                });
+                p.set_pipeline(pipe);
+                p.set_bind_group(0, group, &[]);
+                p.draw(0..3, 0..1);
+            };
+            if pst[2][0] > 0.5 {
+                let g0 = bg(0, &pg.b);
+                run(&mut enc, &self.post_bright, &g0, &pg.a, wgpu::LoadOp::Clear(wgpu::Color::BLACK));
+                for _ in 0..2 {
+                    let gh = bg(1, &pg.a);
+                    run(&mut enc, &self.post_blur, &gh, &pg.b, wgpu::LoadOp::Clear(wgpu::Color::BLACK));
+                    let gv = bg(2, &pg.b);
+                    run(&mut enc, &self.post_blur, &gv, &pg.a, wgpu::LoadOp::Clear(wgpu::Color::BLACK));
+                }
+            }
+            let gf = bg(0, &pg.a);
+            run(&mut enc, &self.post_final, &gf, &view, wgpu::LoadOp::Clear(wgpu::Color::BLACK));
+            if u.cursor[3] > 0.5 {
+                let mut p = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("ring"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment { view: &view, depth_slice: None, resolve_target: None, ops: wgpu::Operations { load: wgpu::LoadOp::Load, store: wgpu::StoreOp::Store } })],
+                    depth_stencil_attachment: None,
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                });
+                p.set_pipeline(&self.ring_pipeline);
+                p.set_bind_group(0, &self.frame_bg, &[]);
+                p.draw(0..3, 0..1);
             }
         }
         self.queue.submit(Some(enc.finish()));
@@ -1584,7 +1741,7 @@ impl ApplicationHandler<Cmd> for App {
 
     fn about_to_wait(&mut self, _el: &ActiveEventLoop) {
         if let Some(g) = self.gpu.as_ref() {
-            if g.animated || (g.settings.rt && g.rt.busy()) {
+            if g.animated || (g.settings.post_on && g.settings.post[5][1] < 0.0) || (g.settings.rt && g.rt.busy()) {
                 g.window.request_redraw();
             }
         }
