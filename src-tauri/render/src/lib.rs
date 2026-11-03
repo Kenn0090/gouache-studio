@@ -1110,6 +1110,9 @@ impl ApplicationHandler<Cmd> for App {
                     _ => {}
                 }
                 if self.drag.is_some() {
+                    if self.paint_on() && self.last_sent.elapsed() >= Duration::from_millis(30) {
+                        self.emit("cam"); // the page follows the camera
+                    }
                     if let Some(g) = self.gpu.as_ref() {
                         g.window.request_redraw();
                     }
@@ -1121,6 +1124,9 @@ impl ApplicationHandler<Cmd> for App {
                     MouseScrollDelta::PixelDelta(p) => p.y as f32 / 40.0,
                 };
                 self.cam.dist = (self.cam.dist * (1.0 - s * 0.1)).max(self.cam.radius * 0.05);
+                if self.paint_on() {
+                    self.emit("cam");
+                }
                 if let Some(g) = self.gpu.as_ref() {
                     g.window.request_redraw();
                 }

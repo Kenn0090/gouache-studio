@@ -62,7 +62,7 @@ function nvPixelRay(ev){const t=Math.tan(ev.fov*Math.PI/360),e=ev.eye,g=ev.tgt;
   const fw=norm3(sub3(g,e)),r=norm3(cross3(fw,[0,1,0])),u=cross3(r,fw),x=(2*ev.x/ev.w-1)*t*ev.w/ev.h,y=(2*ev.y/ev.h-1)*t;
   const d=norm3([fw[0]+r[0]*x-u[0]*y,fw[1]+r[1]*x-u[1]*y,fw[2]+r[2]*x-u[2]*y]),L=Math.hypot(g[0]-e[0],g[1]-e[1],g[2]-e[2]);
   return [e[0]+d[0]*L,e[1]+d[1]*L,e[2]+d[2]*L];}
-function nvHandle(ev){if(!nvPaintOn()||!ev||!ev.t)return;const hit=document.getElementById('v3Hit');if(!hit)return;
+function nvHandle(ev){if(!nvPaintOn()||!ev||!ev.t)return;if(ev.t==='cam'){nvCamFrom(ev);return;}const hit=document.getElementById('v3Hit');if(!hit)return;
   nvCamFrom(ev);const p=pathProject(nvPixelRay(ev),'3d',hit);if(!p)return;const r=hit.getBoundingClientRect(),cx=r.left+p[0],cy=r.top+p[1];
   const mk=(type,buttons)=>new PointerEvent(type,{pointerId:991,pointerType:'mouse',isPrimary:true,bubbles:true,cancelable:true,clientX:cx,clientY:cy,button:0,buttons,shiftKey:!!ev.shift,ctrlKey:!!ev.ctrl,altKey:!!ev.alt,pressure:ev.t==='up'?0:.5});
   if(ev.t==='down'){clearTimeout(nv.sync);hit.dispatchEvent(mk('pointerdown',1));nv.liveAt=performance.now();}
