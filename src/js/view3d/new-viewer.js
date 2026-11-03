@@ -86,23 +86,35 @@ function nvStatsText(){const s=nv.st;if(!s||!s.ev)return 'No stroke yet in the n
 function nvLiveTick(){const now=performance.now(),st=nv.st,avg=st&&st.live?st.liveMs/st.live:0,gap=Math.min(800,Math.max(NV_LIVE_MS,avg*3));if(nv.texBusy||now-(nv.liveAt||0)<gap)return;nv.liveAt=now;nvSyncLive().then(()=>{nv.liveAt=performance.now();});}
 /* after a stroke: rebuild the active set's maps and send them */
 function nvSyncSoon(){clearTimeout(nv.sync);nv.sync=setTimeout(nvSyncTextures,350);}
-/* while dragging: only the base colour, as plain pixels (no PNG), small; the other maps stay as they were */
-function nvLiveBase(){const W=doc.w,H=doc.h,sc=Math.min(1,NV_TEX_LIVE/Math.max(W,H)),w=Math.max(2,Math.round(W*sc)),h=Math.max(2,Math.round(H*sc));
+/* while dragging: only the base colour, as plain pixels (no PNG), small; the other maps stay as they were.
+   The pixels are read back without making the page wait for the card (a fence is checked on later frames). */
+function nvLiveStart(){const W=doc.w,H=doc.h,sc=Math.min(1,NV_TEX_LIVE/Math.max(W,H)),w=Math.max(2,Math.round(W*sc)),h=Math.max(2,Math.round(H*sc));
   const full=compositeMap('base');let small=null;
   try{small=makeTarget(w,h,8,false);const sci=gl.isEnabled(gl.SCISSOR_TEST);if(sci)gl.disable(gl.SCISSOR_TEST);
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER,full.fbo);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,small.fbo);
-    gl.blitFramebuffer(0,0,W,H,0,0,w,h,gl.COLOR_BUFFER_BIT,full.depth===32?gl.NEAREST:gl.LINEAR);gl.bindFramebuffer(gl.FRAMEBUFFER,null);if(sci)gl.enable(gl.SCISSOR_TEST);
-    const d=captureRegionNow(small,0,0,w,h).data,out=new Uint8Array(w*h*4);
-    for(let j=0;j<h;j++){let a=(h-1-j)*w*4,b=j*w*4;for(let i=0;i<w;i++,a+=4,b+=4){const al=255-d[a+3];out[b]=Math.min(255,d[a]+al);out[b+1]=Math.min(255,d[a+1]+al);out[b+2]=Math.min(255,d[a+2]+al);out[b+3]=255;}}
-    return {w,h,px:out};}
+    gl.blitFramebuffer(0,0,W,H,0,0,w,h,gl.COLOR_BUFFER_BIT,full.depth===32?gl.NEAREST:gl.LINEAR);
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER,small.fbo);
+    const buf=gl.createBuffer();gl.bindBuffer(gl.PIXEL_PACK_BUFFER,buf);gl.bufferData(gl.PIXEL_PACK_BUFFER,w*h*4,gl.STREAM_READ);gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,0);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER,null);if(sci)gl.enable(gl.SCISSOR_TEST);
+    const fence=gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE,0);gl.flush();return {buf,fence,w,h,t0:performance.now(),sc:nvSetName()};}
   finally{release(full);if(small)disposeTarget(small);}}
-async function nvSyncLive(){if(!nvPaintOn()||nv.texBusy)return;nv.texBusy=true;
-  try{const S=p3.sets[p3.cur];if(!S)return;const t0=performance.now(),b=nvLiveBase();
-    const meta={pos:0,nrm:0,uv:0,groups:[{name:S.name,idx:0,rough:.6,metal:0,sh:nvShader(),tex:{base:b.px.length,orm:0,normal:0,emissive:0},raw:[b.w,b.h],partial:true}],env:null,settings:nvSettings()};
-    const json=new TextEncoder().encode(JSON.stringify(meta)),out=new Uint8Array(4+json.length+b.px.length);new DataView(out.buffer).setUint32(0,json.length,true);out.set(json,4);out.set(b.px,4+json.length);
-    if(window.__nvHook)window.__nvHook('live',meta);nv.liveMs=performance.now()-t0;if(nv.st){nv.st.live++;nv.st.liveMs+=nv.liveMs;}
-    const alive=await platform.invoke('viewer_textures',out);if(!alive)nvStopWatch();}
-  catch(e){console.warn(e);}finally{nv.texBusy=false;}}
+function nvSetName(){const S=p3.sets[p3.cur];return S?S.name:'';}
+/* the pixels when the card has finished (null while it has not) */
+function nvLiveTake(job){const r=gl.clientWaitSync(job.fence,0,0);if(r===gl.TIMEOUT_EXPIRED)return null;
+  const d=new Uint8Array(job.w*job.h*4);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,job.buf);gl.getBufferSubData(gl.PIXEL_PACK_BUFFER,0,d);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);gl.deleteBuffer(job.buf);gl.deleteSync(job.fence);
+  const w=job.w,h=job.h,out=new Uint8Array(w*h*4);
+  for(let j=0;j<h;j++){let a=(h-1-j)*w*4,b=j*w*4;for(let i=0;i<w;i++,a+=4,b+=4){const al=255-d[a+3];out[b]=Math.min(255,d[a]+al);out[b+1]=Math.min(255,d[a+1]+al);out[b+2]=Math.min(255,d[a+2]+al);out[b+3]=255;}}
+  return {w,h,px:out};}
+async function nvSendLive(job,b){const meta={pos:0,nrm:0,uv:0,groups:[{name:job.sc,idx:0,rough:.6,metal:0,sh:nvShader(),tex:{base:b.px.length,orm:0,normal:0,emissive:0},raw:[b.w,b.h],partial:true}],env:null,settings:nvSettings()};
+  const json=new TextEncoder().encode(JSON.stringify(meta)),out=new Uint8Array(4+json.length+b.px.length);new DataView(out.buffer).setUint32(0,json.length,true);out.set(json,4);out.set(b.px,4+json.length);
+  if(window.__nvHook)window.__nvHook('live',meta);nv.liveMs=performance.now()-job.t0;if(nv.st){nv.st.live++;nv.st.liveMs+=nv.liveMs;}
+  const alive=await platform.invoke('viewer_textures',out);if(!alive)nvStopWatch();}
+/* one live picture at a time: start it, then check each frame until the card is done, then send it */
+function nvSyncLive(){return new Promise(done=>{if(!nvPaintOn()||nv.texBusy){done();return;}nv.texBusy=true;
+  let job=null;try{job=nvLiveStart();}catch(e){console.warn(e);nv.texBusy=false;done();return;}
+  const poll=async()=>{try{if(!nvPaintOn()){gl.deleteBuffer(job.buf);gl.deleteSync(job.fence);nv.texBusy=false;done();return;}
+    const b=nvLiveTake(job);if(!b){requestAnimationFrame(poll);return;}await nvSendLive(job,b);}catch(e){console.warn(e);}nv.texBusy=false;done();};
+  requestAnimationFrame(poll);});}
 async function nvSyncTextures(live){if(!nvPaintOn()||nv.texBusy){if(nv.texBusy&&!live)nvSyncSoon();return;}nv.texBusy=true;
   const saved={size:texCfg.size,pad:texCfg.pad,meshMaps:texCfg.meshMaps,h16:texCfg.h16};
   try{texCfg.size=live?NV_TEX_LIVE:NV_TEX_MAX;texCfg.pad='none';texCfg.meshMaps=false;
