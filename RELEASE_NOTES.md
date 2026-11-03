@@ -8,6 +8,7 @@
 - **Live text on the model (3D Paint):** the Text tool (T) puts editable text on the surface like a decal, with materials, a gizmo, and click-again to move.
 - **Ribbon path (3D):** bend text or a picture along a surface path, with Painter's stretch, tiling and alignment options; the Text tool's **Put on a path** uses it.
 - **Text effects:** Disorder (with Shuffle), Wave, Slant, Stretch and Case for 3D text and Ribbon text.
+- **Cylindrical projection** with Angle, Backface culling and hardness, UV wrap, Project cropped to shape and Mirror (the wrap, crop and mirror options work on every 3D projection).
 - **P is the Path tool in 3D Paint** (Pen is Shift+P there).
 
 ## 0.93.2
