@@ -100,6 +100,14 @@ struct SettingsMeta {
     #[serde(default)]
     wire: u8,
     #[serde(default)]
+    mir: Option<[Option<f32>; 3]>,
+    #[serde(default)]
+    mir_radial: Option<[f32; 2]>,
+    #[serde(default)]
+    mir_off: Option<[f32; 3]>,
+    #[serde(default)]
+    mir_r: f32,
+    #[serde(default)]
     wire_col: Option<[f32; 3]>,
     #[serde(default)]
     unlit: bool,
@@ -254,6 +262,10 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         studio_fill: s.studio_fill,
         studio_rim: s.studio_rim,
         wire: s.wire,
+        mir: { let m = s.mir.unwrap_or([None; 3]); [m[0].unwrap_or(f32::NAN), m[1].unwrap_or(f32::NAN), m[2].unwrap_or(f32::NAN)] },
+        mir_radial: s.mir_radial.unwrap_or([0.0, 0.0]),
+        mir_off: s.mir_off.unwrap_or([0.0; 3]),
+        mir_r: s.mir_r,
         wire_col: s.wire_col.unwrap_or([0.95, 0.7, 0.35]),
         unlit: s.unlit,
         metal_view: s.metal_view,

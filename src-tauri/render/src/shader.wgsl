@@ -428,6 +428,26 @@ fn fs_wire(i: OutOut) -> FOut {
     return o;
 }
 
+// mirror guides
+@vertex
+fn vs_guide(@location(0) pos: vec3<f32>) -> OutOut {
+    var o: OutOut;
+    var c = frame.view_proj * vec4<f32>(pos, 1.0);
+    c.z = c.z - 0.0004 * c.w;
+    o.clip = c;
+    o.wpos = pos;
+    o.nrm = vec3<f32>(0.0, 1.0, 0.0);
+    return o;
+}
+@fragment
+fn fs_guide(i: OutOut) -> FOut {
+    var o: FOut;
+    o.c = vec4<f32>(lin3(vec3<f32>(0.35, 0.8, 1.0)) * 0.9, 1.0);
+    o.n = vec4<f32>(0.0);
+    o.m = vec4<f32>(0.0);
+    return o;
+}
+
 // the environment behind the model
 struct BgOut {
     @builtin(position) clip: vec4<f32>,

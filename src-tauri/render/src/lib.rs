@@ -121,6 +121,11 @@ pub struct Settings {
     pub studio_fill: f32,
     pub studio_rim: f32,
     pub wire: u8,
+    /// mirror guides: planes (x, y, z: NaN = off, else the offset), radial (count, axis 0..2), centre of the radial axis, guide size
+    pub mir: [f32; 3],
+    pub mir_radial: [f32; 2],
+    pub mir_off: [f32; 3],
+    pub mir_r: f32,
     pub wire_col: [f32; 3],
     pub unlit: bool,
     pub metal_view: f32,
@@ -133,7 +138,7 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
+        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, mir: [f32::NAN; 3], mir_radial: [0.0, 0.0], mir_off: [0.0; 3], mir_r: 0.0, wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
     }
 }
 
@@ -330,6 +335,9 @@ struct Gpu {
     cursor: Option<(f32, f32)>,
     out_pipeline: wgpu::RenderPipeline,
     wire_pipeline: wgpu::RenderPipeline,
+    guide_pipeline: wgpu::RenderPipeline,
+    guide_buf: Option<(wgpu::Buffer, u32)>,
+    guide_key: Vec<u32>,
     pre_pipeline: wgpu::RenderPipeline,
     pre_layout: wgpu::BindGroupLayout,
     started: std::time::Instant,
@@ -847,6 +855,22 @@ impl Gpu {
             multiview: None,
             cache: None,
         });
+        let guide_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("guide pipeline"),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("vs_guide"),
+                compilation_options: Default::default(),
+                buffers: &[wgpu::VertexBufferLayout { array_stride: 12, step_mode: wgpu::VertexStepMode::Vertex, attributes: &wgpu::vertex_attr_array![0 => Float32x3] }],
+            },
+            fragment: Some(wgpu::FragmentState { module: &shader, entry_point: Some("fs_guide"), compilation_options: Default::default(), targets: &target }),
+            primitive: wgpu::PrimitiveState { topology: wgpu::PrimitiveTopology::LineList, cull_mode: None, ..Default::default() },
+            depth_stencil: Some(wgpu::DepthStencilState { format: DEPTH_FORMAT, depth_write_enabled: false, depth_compare: wgpu::CompareFunction::LessEqual, stencil: Default::default(), bias: Default::default() }),
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
         let pre_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("blur layout"),
             entries: &[
@@ -928,6 +952,9 @@ impl Gpu {
             cursor: std::env::var_os("GOUACHE_RING_TEST").map(|_| (300.0, 250.0)), // debug: shows the outline without a mouse
             out_pipeline,
             wire_pipeline,
+            guide_pipeline,
+            guide_buf: None,
+            guide_key: Vec::new(),
             pre_pipeline,
             pre_layout,
             started: std::time::Instant::now(),
@@ -1180,6 +1207,14 @@ impl Gpu {
                 g.wire = Some((buf, flat.len() as u32));
             }
         }
+        {
+            let key: Vec<u32> = [st.mir[0], st.mir[1], st.mir[2], st.mir_radial[0], st.mir_radial[1], st.mir_off[0], st.mir_off[1], st.mir_off[2], st.mir_r].iter().map(|v| v.to_bits()).collect();
+            if key != self.guide_key {
+                self.guide_key = key;
+                let pts = mirror_guide(&st);
+                self.guide_buf = if pts.is_empty() { None } else { Some((self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("guides"), contents: bytemuck::cast_slice(&pts), usage: wgpu::BufferUsages::VERTEX }), (pts.len() / 3) as u32)) };
+            }
+        }
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("frame") });
         {
             let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -1235,6 +1270,13 @@ impl Gpu {
                             pass.draw_indexed(0..*n, 0, 0..1);
                         }
                     }
+                }
+                if let (Some((gb, n)), Some(g0)) = (&self.guide_buf, self.groups.first()) {
+                    pass.set_pipeline(&self.guide_pipeline);
+                    pass.set_bind_group(0, &self.frame_bg, &[]);
+                    pass.set_bind_group(1, &g0.bind, &[]);
+                    pass.set_vertex_buffer(0, gb.slice(..));
+                    pass.draw(0..*n, 0..1);
                 }
                 pass.set_pipeline(&self.out_pipeline);
                 for g in self.groups.iter().filter(|g| g.outline && st.wire != 2) {
@@ -1666,4 +1708,61 @@ pub fn open(scene: Scene, sink: Option<EventSink>) -> Result<Viewer, String> {
     let proxy = proxy_rx.recv_timeout(Duration::from_secs(5)).map_err(|_| "the viewer did not start".to_string())?;
     let report = init_rx.recv_timeout(Duration::from_secs(15)).map_err(|_| "the viewer took too long to start".to_string())??;
     Ok(Viewer { proxy, report })
+}
+
+/// The mirror planes and radial rays of the 3D view, as line segments (pairs of points).
+fn mirror_guide(st: &Settings) -> Vec<f32> {
+    let r = st.mir_r;
+    let o = st.mir_off;
+    let mut pts: Vec<f32> = Vec::new();
+    if r <= 0.0 {
+        return pts;
+    }
+    for i in 0..3usize {
+        if st.mir[i].is_nan() {
+            continue;
+        }
+        let (u, v) = ((i + 1) % 3, (i + 2) % 3);
+        let c = [[-r, -r], [r, -r], [r, r], [-r, r]];
+        let mut add = |a: [f32; 2]| {
+            let mut p = [0.0f32; 3];
+            p[i] = o[i];
+            p[u] = a[0];
+            p[v] = a[1];
+            pts.extend_from_slice(&p);
+        };
+        for k in 0..4 {
+            add(c[k]);
+            add(c[(k + 1) % 4]);
+        }
+        for a in [[0.0, -r], [0.0, r], [-r, 0.0], [r, 0.0]] {
+            add(a);
+        }
+    }
+    let n = st.mir_radial[0] as usize;
+    if n > 1 {
+        let ax = st.mir_radial[1] as usize % 3;
+        let (u, v) = ((ax + 1) % 3, (ax + 2) % 3);
+        let point = |a: f32| {
+            let mut p = o;
+            p[u] += a.cos() * r;
+            p[v] += a.sin() * r;
+            p
+        };
+        let mut lo = o;
+        let mut hi = o;
+        lo[ax] -= r;
+        hi[ax] += r;
+        pts.extend_from_slice(&lo);
+        pts.extend_from_slice(&hi);
+        for k in 0..n {
+            pts.extend_from_slice(&o);
+            pts.extend_from_slice(&point(k as f32 * std::f32::consts::TAU / n as f32));
+        }
+        for k in 0..64 {
+            pts.extend_from_slice(&point(k as f32 * std::f32::consts::TAU / 64.0));
+            pts.extend_from_slice(&point((k + 1) as f32 * std::f32::consts::TAU / 64.0));
+        }
+    }
+    pts
 }

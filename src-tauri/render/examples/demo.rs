@@ -51,7 +51,7 @@ fn main() {
         if dx * dx + dy * dy < 40.0 { c = [40.0, 36.0, 30.0]; }
         rgb.extend(c);
     } }
-    let scene = Scene { mesh: MeshData { positions: p, normals: n, uvs: uv }, groups, env: Some(EnvData { width: w, height: h, rgb }), settings: Settings { paint: std::env::var_os("GOUACHE_RING_TEST").is_some(), brush: 0.2, rt: std::env::var_os("GOUACHE_RT_TEST").is_some(), wire: std::env::var("GOUACHE_WIRE").ok().and_then(|v| v.parse().ok()).unwrap_or(0), ..Settings::default() }, window: None };
+    let scene = Scene { mesh: MeshData { positions: p, normals: n, uvs: uv }, groups, env: Some(EnvData { width: w, height: h, rgb }), settings: Settings { paint: std::env::var_os("GOUACHE_RING_TEST").is_some(), brush: 0.2, rt: std::env::var_os("GOUACHE_RT_TEST").is_some(), mir: if std::env::var_os("GOUACHE_MIR").is_some() { [0.0, f32::NAN, f32::NAN] } else { [f32::NAN; 3] }, mir_radial: if std::env::var_os("GOUACHE_MIR").is_some() { [6.0, 1.0] } else { [0.0, 0.0] }, mir_r: if std::env::var_os("GOUACHE_MIR").is_some() { 2.0 } else { 0.0 }, wire: std::env::var("GOUACHE_WIRE").ok().and_then(|v| v.parse().ok()).unwrap_or(0), ..Settings::default() }, window: None };
     match open(scene, None) {
         Ok(v) => { println!("OPEN {:?}", v.report);
             if let Some(path) = std::env::var_os("GOUACHE_CAPTURE") {
