@@ -141,6 +141,7 @@ pub fn run() {
             viewer::viewer_open,
             viewer::viewer_close,
             viewer::viewer_update,
+            viewer::viewer_scene,
             viewer::viewer_textures,
             viewer::viewer_capture,
             viewer::viewer_capture_raw,

@@ -75,6 +75,25 @@ pub fn viewer_update(request: Request<'_>) -> Result<bool, String> {
     Ok(alive)
 }
 
+/// Replaces the model, materials and settings of the open window (the model was changed in the page) without closing it.
+/// Returns false when there is no viewer any more.
+#[tauri::command]
+pub fn viewer_scene(request: Request<'_>) -> Result<bool, String> {
+    let InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected a raw body".into());
+    };
+    let scene = scene_from_bytes(bytes)?;
+    let mut g = VIEWER.lock().map_err(|e| e.to_string())?;
+    let alive = match g.as_ref() {
+        Some(v) => v.set_scene(scene),
+        None => false,
+    };
+    if !alive {
+        *g = None;
+    }
+    Ok(alive)
+}
+
 /// Gives one material of the open viewer new pictures (after painting). Returns false when the viewer is gone.
 #[tauri::command]
 pub fn viewer_textures(request: Request<'_>) -> Result<bool, String> {

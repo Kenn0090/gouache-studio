@@ -124,8 +124,22 @@ async function nvPush(){if(nv.busy)return;nv.busy=true;
     const alive=await platform.invoke('viewer_update',nvUpdateBody(nvSettings(),mode,envd));
     nv.envKey=key;if(!alive){nvStopWatch();nv.isOpen=false;nvBtnSync();}}
   catch(e){console.warn(e);}finally{nv.busy=false;}}
+/* keeping the window up to date while it is open: a new model / sets / detail send the whole scene again (the window stays where it is);
+   any change to the maps (a filter, a layer's colour, a material swap...) and a changed shader send the active set's pictures */
+{for(const k of ['mapsDirty','editDirty']){let v=!!v3[k];try{Object.defineProperty(v3,k,{configurable:true,get(){return v;},set(x){if(x)nv.mapsVer=(nv.mapsVer||0)+1;v=x;}});}catch(e){}}}
+function nvModelKey(){try{const m=mxModel();if(!m||!m.pos)return '';const id=m._nvid||(m._nvid=Math.random().toString(36).slice(2));
+  const sets=ui.mode==='p3d'?p3.sets.map(S=>[S.name,!!S.hidden,!!S.missing]):[];return JSON.stringify([id,m.pos.length,m.idx.length,sets,v3s().detail,v3s().model,ui.mode==='bake'?1:0]);}catch(e){return '';}}
+async function nvRescene(){if(!nv.isOpen||nv.sceneBusy)return;nv.sceneBusy=true;
+  try{const key=nvModelKey(),sc=await nvScene(),e=v3Eye(),c=v3.cam;sc.settings.cam=[e[0],e[1],e[2],c.tx,c.ty,c.tz].map(v=>Math.round(v*1e3)/1e3);
+    const alive=await platform.invoke('viewer_scene',nvBody(sc));nv.modelKey=key;
+    nv.stImg=null;nv.hvKey=null;nv.hlSig='';nv.bevKey='';nv.indOn=false;nv.viewKey='';
+    if(!alive){nvStopWatch();nv.isOpen=false;nvBtnSync();}}
+  catch(err){console.warn(err);}finally{nv.sceneBusy=false;nv.seenMaps=nv.mapsVer||0;}}
 function nvWatch(){nvStopWatch();nv.envKey=nvEnvKey();nv.sig=JSON.stringify(nvSettings())+nv.envKey;
-  nv.viewKey=nvViewKey();nv.stImg=null;nvStencilSend();nv.timer=setInterval(()=>{if(!platform.isDesktop)return;nvStencilSend();nvHighSend();nvBevelTick();if(nv.hlSig)nvHlSend();{const vk=(ui.mode==='p3d'||ui.mode==='paint'||nvBakeMode())?nvViewKey():'';if(vk!==nv.viewKey){nv.viewKey=vk;nv.viewForce=true;nvSyncSoon();}}const sig=JSON.stringify(nvSettings())+nvEnvKey();if(sig!==nv.sig){nv.sig=sig;nvPush();}},400);}
+  nv.viewKey=nvViewKey();nv.modelKey=nvModelKey();nv.shKey=JSON.stringify(nvShader());nv.seenMaps=nv.mapsVer||0;nv.stImg=null;nvStencilSend();nv.timer=setInterval(()=>{if(!platform.isDesktop)return;
+    {const mk=nvModelKey();if(mk&&mk!==nv.modelKey&&!stroke){clearTimeout(nv.sceneT);nv.sceneT=setTimeout(nvRescene,400);}}
+    {const sk=JSON.stringify(nvShader()),mv=nv.mapsVer||0;if((sk!==nv.shKey||mv!==nv.seenMaps)&&!stroke&&!(v3.mstroke)&&!nv.texBusy){nv.shKey=sk;nv.seenMaps=mv;nv.viewForce=true;nvSyncSoon();}}
+    nvStencilSend();nvHighSend();nvBevelTick();if(nv.hlSig)nvHlSend();{const vk=(ui.mode==='p3d'||ui.mode==='paint'||nvBakeMode())?nvViewKey():'';if(vk!==nv.viewKey){nv.viewKey=vk;nv.viewForce=true;nvSyncSoon();}}const sig=JSON.stringify(nvSettings())+nvEnvKey();if(sig!==nv.sig){nv.sig=sig;nvPush();}},400);}
 /* a finished picture from the window, at any size (PNG bytes) */
 async function nvCapture(w,h){const r=await platform.invoke('viewer_capture',{width:Math.round(w),height:Math.round(h)});return r instanceof Uint8Array?r:new Uint8Array(r);}
 /* one turntable frame from the window: raw RGBA, top row first */
@@ -268,7 +282,7 @@ async function nvSyncTextures(live){if(!(nvPaintOn()||nv.viewForce)||nv.texBusy)
     nv.lastTex={name:S.name,bytes:out.length};
     if(window.__nvHook)window.__nvHook('textures',meta);
     const alive=await platform.invoke('viewer_textures',out);if(!alive)nvStopWatch();}
-  catch(e){console.warn(e);}finally{Object.assign(texCfg,saved);nv.texBusy=false;}}
+  catch(e){console.warn(e);}finally{Object.assign(texCfg,saved);nv.texBusy=false;nv.seenMaps=nv.mapsVer||0;}}
 async function nvListen(){if(nv.listen||typeof TAURI==='undefined'||!TAURI||!TAURI.event)return;
   nv.listen=await TAURI.event.listen('viewer-event',e=>{try{nvHandle(JSON.parse(e.payload));}catch(er){console.warn(er);}});}
 function nvUnlisten(){if(nv.listen){nv.listen();nv.listen=null;}}

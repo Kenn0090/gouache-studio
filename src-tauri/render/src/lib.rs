@@ -255,8 +255,8 @@ pub struct Viewer {
 
 impl Viewer {
     /// Replaces everything on show (model, materials, environment, settings).
-    pub fn set_scene(&self, s: Scene) {
-        let _ = self.proxy.send_event(Cmd::Scene(Box::new(s)));
+    pub fn set_scene(&self, s: Scene) -> bool {
+        self.proxy.send_event(Cmd::Scene(Box::new(s))).is_ok()
     }
     /// Changes the lighting settings (and the environment picture if asked) without sending the model again.
     pub fn update(&self, settings: Settings, env: EnvChange) -> bool {

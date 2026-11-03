@@ -16,7 +16,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const W=ms=>p.waitForTimeout(ms||200);
  await p.click('#modeTabs [data-mode=p3d]');await W(2500);
  await p.evaluate(()=>{const P=__gs.platform;P.isDesktop=true;window.__tex=[];window.__ups=[];
-   P.invoke=async(cmd,body)=>{if(cmd==='viewer_open')return {name:'Test card',backend:'Vulkan',kind:'DiscreteGpu',software:false};
+   P.invoke=async(cmd,body)=>{if(cmd==='viewer_scene'){window.__scenes=(window.__scenes||0)+1;return true;}if(cmd==='viewer_open')return {name:'Test card',backend:'Vulkan',kind:'DiscreteGpu',software:false};
      if(cmd==='viewer_textures'){const dv=new DataView(body.buffer,body.byteOffset,body.byteLength),jl=dv.getUint32(0,true);window.__tex.push(JSON.parse(new TextDecoder().decode(body.slice(4,4+jl))).groups[0]);return true;}
      if(cmd==='viewer_update'){const dv=new DataView(body.buffer,body.byteOffset,body.byteLength),jl=dv.getUint32(0,true);window.__ups.push(JSON.parse(new TextDecoder().decode(body.slice(4,4+jl))));return true;}return true;};});
  await p.evaluate(()=>__gs.nvOpen());await W(3500);
@@ -39,6 +39,16 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const bg=await p.evaluate(()=>window.__tex.find(x=>x.name==='__bev'));
  ok(bg&&bg.raw&&bg.raw[0]===(32+256*160*4)/4,'the rounded normals go to the window as a picture of its size ('+(bg&&bg.raw&&bg.raw[0])+')');
  ok(await p.evaluate(()=>window.__ups.length>=0)&&(await p.evaluate(()=>window.__gs.nvSettings().track))===true,'the window is asked to report its camera');
+ /* the window follows changes made while it is open */
+ await p.evaluate(()=>{window.__tex.length=0;window.__gs.nv.mapsVer=(window.__gs.nv.mapsVer||0)+1;});
+ for(let i=0;i<20&&!(await p.evaluate(()=>window.__tex.some(x=>x.tex&&x.tex.base>0)));i++)await W(500);
+ ok(await p.evaluate(()=>window.__tex.some(x=>x.tex&&x.tex.base>0)),'a change to the maps sends the new pictures to the window');
+ await p.evaluate(()=>{window.__tex.length=0;window.__gs.doc.v3shade={kind:'toon',p:{}};});
+ for(let i=0;i<20&&!(await p.evaluate(()=>window.__tex.some(x=>x.sh&&x.sh.k===4)));i++)await W(500);
+ ok(await p.evaluate(()=>window.__tex.some(x=>x.sh&&x.sh.k===4)),'a changed shader reaches the window');
+ await p.evaluate(()=>{window.__scenes=0;window.__gs.v3s().detail=((window.__gs.v3s().detail)||0)+1;});
+ for(let i=0;i<20&&!(await p.evaluate(()=>window.__scenes>0));i++)await W(500);
+ ok(await p.evaluate(()=>window.__scenes>0),'a changed model sends the whole scene again');
  ok(errs.length===0,'no page errors '+errs.join('|'));
  await b.close();process.exit(fails?1:0);
 })();
