@@ -19,8 +19,9 @@ struct Node { mn: vec3<f32>, a: u32, mx: vec3<f32>, count: u32 };
 @group(0) @binding(7) var mat_tex: texture_2d<f32>;
 @group(0) @binding(8) var prev2_tex: texture_2d<f32>;
 @group(0) @binding(9) var out2_tex: texture_storage_2d<rgba16float, write>;
-@group(0) @binding(10) var<storage, read> tri_group: array<u32>;
-@group(0) @binding(11) var<storage, read> group_col: array<vec4<f32>>;
+@group(0) @binding(10) var<storage, read> tri_uv: array<vec4<f32>>;
+@group(0) @binding(13) var base_arr: texture_2d_array<f32>;
+@group(0) @binding(14) var base_samp: sampler;
 
 fn pcg(v: u32) -> u32 {
     let s = v * 747796405u + 2891336453u;
@@ -76,14 +77,16 @@ fn occluded(o: vec3<f32>, d: vec3<f32>, tmax: f32) -> bool {
     return false;
 }
 
-// the nearest triangle along the ray: x distance (-1 when none), y triangle number
-fn closest(o: vec3<f32>, d: vec3<f32>, tmax: f32) -> vec2<f32> {
+// the nearest triangle along the ray: x distance (-1 when none), y triangle number, z w the barycentric weights of corners 1 and 2
+fn closest(o: vec3<f32>, d: vec3<f32>, tmax: f32) -> vec4<f32> {
     let inv = 1.0 / d;
     var stack: array<u32, 40>;
     var sp = 1;
     stack[0] = 0u;
     var best = tmax;
     var hit = -1.0;
+    var bu = 0.0;
+    var bw = 0.0;
     loop {
         if (sp == 0) { break; }
         sp = sp - 1;
@@ -115,12 +118,12 @@ fn closest(o: vec3<f32>, d: vec3<f32>, tmax: f32) -> vec2<f32> {
                 let w = dot(d, q) * id;
                 if (w < 0.0 || u + w > 1.0) { continue; }
                 let tt = dot(e2, q) * id;
-                if (tt > 1e-6 && tt < best) { best = tt; hit = f32(t); }
+                if (tt > 1e-6 && tt < best) { best = tt; hit = f32(t); bu = u; bw = w; }
             }
         }
     }
-    if (hit < 0.0) { return vec2<f32>(-1.0, 0.0); }
-    return vec2<f32>(best, hit);
+    if (hit < 0.0) { return vec4<f32>(-1.0, 0.0, 0.0, 0.0); }
+    return vec4<f32>(best, hit, bu, bw);
 }
 
 fn basis(n: vec3<f32>) -> mat3x3<f32> {
@@ -184,7 +187,11 @@ fn cs(@builtin(global_invocation_id) g: vec3<u32>) {
             let v0 = tris[ti * 3u].xyz;
             var hn = normalize(cross(tris[ti * 3u + 1u].xyz - v0, tris[ti * 3u + 2u].xyz - v0));
             if (dot(hn, fd) > 0.0) { hn = -hn; }
-            let alb = group_col[tri_group[ti]].rgb;
+            let uv0 = tri_uv[ti * 2u];
+            let uv1 = tri_uv[ti * 2u + 1u];
+            let g = u32(uv1.z + 0.5);
+            let huv = uv0.xy * (1.0 - ch.z - ch.w) + uv0.zw * ch.z + uv1.xy * ch.w;
+            let alb = textureSampleLevel(base_arr, base_samp, huv, i32(g), 0.0).rgb;
             let hp = o + fd * ch.x + hn * rt.p.z;
             var lit = rt.amb.rgb * (0.6 + 0.4 * hn.y) * 0.5;
             let sl = max(dot(hn, sd), 0.0);

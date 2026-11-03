@@ -388,6 +388,34 @@ fn average_colour(t: Option<&Tex8>) -> [f32; 4] {
     [(s[0] / cnt) as f32, (s[1] / cnt) as f32, (s[2] / cnt) as f32, 1.0]
 }
 
+/// A group's base picture shrunk to the small square the reflections look up (white when it has none).
+fn shrink_layer(t: Option<&Tex8>) -> Vec<u8> {
+    let n = rt::LAYER as usize;
+    let Some(t) = t.filter(|t| t.width > 0 && t.height > 0 && t.rgba.len() >= (t.width * t.height * 4) as usize) else { return vec![255u8; n * n * 4] };
+    let (w, h) = (t.width as usize, t.height as usize);
+    let mut out = vec![0u8; n * n * 4];
+    for y in 0..n {
+        let (y0, y1) = (y * h / n, ((y + 1) * h / n).max(y * h / n + 1).min(h));
+        for x in 0..n {
+            let (x0, x1) = (x * w / n, ((x + 1) * w / n).max(x * w / n + 1).min(w));
+            let mut s = [0u32; 4];
+            let mut c = 0u32;
+            for yy in y0..y1 {
+                for xx in x0..x1 {
+                    for k in 0..4 {
+                        s[k] += t.rgba[(yy * w + xx) * 4 + k] as u32;
+                    }
+                    c += 1;
+                }
+            }
+            for k in 0..4 {
+                out[(y * n + x) * 4 + k] = (s[k] / c.max(1)) as u8;
+            }
+        }
+    }
+    out
+}
+
 fn box_down(src: &[u8], w: u32, h: u32) -> (Vec<u8>, u32, u32) {
     let (nw, nh) = ((w / 2).max(1), (h / 2).max(1));
     let mut out = vec![0u8; (nw * nh * 4) as usize];
@@ -925,7 +953,8 @@ impl Gpu {
             tri_group.extend(std::iter::repeat(gi as u32).take(g.indices.len() / 3));
             cols.push(average_colour(g.material.base.as_ref()));
         }
-        self.rt.new_model(s.mesh.positions.clone(), all, (tri_group, cols), radius);
+        let layers: Vec<Vec<u8>> = s.groups.iter().map(|g| shrink_layer(g.material.base.as_ref())).collect();
+        self.rt.new_model(s.mesh.positions.clone(), all, (tri_group, cols), s.mesh.uvs.clone(), layers, radius);
         (c, radius)
     }
 
