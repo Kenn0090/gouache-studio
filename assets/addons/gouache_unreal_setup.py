@@ -17,7 +17,7 @@ DATA = json.load(open(os.path.join(HERE, "gouache_unreal.json")))
 ROOT = "/Game/Gouache"
 DEST = ROOT + "/" + DATA["name"]
 MASTERS = ROOT + "/_Masters"
-TOOLS = unreal.AssetToolsHelper.get_asset_tools()
+TOOLS = (getattr(unreal, "AssetToolsHelpers", None) or getattr(unreal, "AssetToolsHelper")).get_asset_tools()
 MEL = unreal.MaterialEditingLibrary
 EAL = unreal.EditorAssetLibrary
 
@@ -28,7 +28,10 @@ def import_file(path, dest, options=None):
     task.set_editor_property("destination_path", dest)
     task.set_editor_property("automated", True)
     task.set_editor_property("replace_existing", True)
-    task.set_editor_property("replace_existing_settings", True)
+    try:
+        task.set_editor_property("replace_existing_settings", True)
+    except Exception:
+        pass
     task.set_editor_property("save", False)
     if options is not None:
         task.set_editor_property("options", options)
