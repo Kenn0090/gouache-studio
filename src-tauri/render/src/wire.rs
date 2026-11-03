@@ -4,7 +4,7 @@
 
 use serde::Deserialize;
 
-use crate::{decode_png, EnvData, Group, Material, MeshData, Scene, Settings, Tex8};
+use crate::{decode_png, EnvData, Group, Material, MeshData, Scene, Settings, ShaderParams, Tex8};
 
 #[derive(Deserialize)]
 struct MapLens {
@@ -14,8 +14,26 @@ struct MapLens {
     emissive: usize,
 }
 
+#[derive(Deserialize, Default)]
+struct ShaderMeta {
+    #[serde(default)]
+    k: i32,
+    #[serde(default)]
+    p: [f32; 4],
+    #[serde(default)]
+    q: [f32; 4],
+    #[serde(default)]
+    c: [f32; 3],
+    #[serde(default)]
+    d: [f32; 3],
+    #[serde(default)]
+    skin: [f32; 4],
+}
+
 #[derive(Deserialize)]
 struct GroupMeta {
+    #[serde(default)]
+    sh: ShaderMeta,
     name: String,
     idx: usize,
     rough: f32,
@@ -82,7 +100,8 @@ pub fn scene_from_bytes(bytes: &[u8]) -> Result<Scene, String> {
         let orm = map(&mut rd, g.tex.orm)?;
         let normal = map(&mut rd, g.tex.normal)?;
         let emissive = map(&mut rd, g.tex.emissive)?;
-        let material = Material { base, orm, normal, emissive, rough: g.rough, metal: g.metal };
+        let shader = ShaderParams { kind: g.sh.k, p: g.sh.p, q: g.sh.q, c: g.sh.c, d: g.sh.d, skin: g.sh.skin };
+        let material = Material { shader, base, orm, normal, emissive, rough: g.rough, metal: g.metal };
         groups.push(Group { name: g.name.clone(), indices, material });
     }
     let env = match &meta.env {

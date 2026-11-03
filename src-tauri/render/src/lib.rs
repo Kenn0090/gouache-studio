@@ -38,9 +38,22 @@ pub struct Tex8 {
     pub rgba: Vec<u8>,
 }
 
+/// The 3D view's shader of a texture set and its settings, as the 3D view keeps them (kind: 0 standard, 1 skin,
+/// 2 brushed metal, 3 velvet, 4 toon, 5 cel, 6 spec/gloss, 7 panner, 8 retro).
+#[derive(Clone, Copy, Default)]
+pub struct ShaderParams {
+    pub kind: i32,
+    pub p: [f32; 4],
+    pub q: [f32; 4],
+    pub c: [f32; 3],
+    pub d: [f32; 3],
+    pub skin: [f32; 4],
+}
+
 /// One material (a texture set): the maps it has, and what to use where it has none.
 #[derive(Clone, Default)]
 pub struct Material {
+    pub shader: ShaderParams,
     pub base: Option<Tex8>,
     pub orm: Option<Tex8>,
     pub normal: Option<Tex8>,
@@ -174,6 +187,7 @@ struct FrameUniform {
     params: [f32; 4],
     info: [f32; 4],
     sh: [[f32; 4]; 9],
+    extra: [f32; 4],
 }
 
 #[repr(C)]
@@ -181,12 +195,20 @@ struct FrameUniform {
 struct MatUniform {
     flags: [f32; 4],
     tint: [f32; 4],
+    shk: [f32; 4],
+    shp: [f32; 4],
+    shq: [f32; 4],
+    shc: [f32; 4],
+    shd: [f32; 4],
+    skin: [f32; 4],
 }
 
 struct GpuGroup {
     ib: wgpu::Buffer,
     count: u32,
     bind: wgpu::BindGroup,
+    kind: i32,
+    outline: bool,
 }
 
 struct Gpu {
@@ -197,6 +219,8 @@ struct Gpu {
     config: wgpu::SurfaceConfiguration,
     pipeline: wgpu::RenderPipeline,
     bg_pipeline: wgpu::RenderPipeline,
+    out_pipeline: wgpu::RenderPipeline,
+    started: std::time::Instant,
     frame_buf: wgpu::Buffer,
     frame_layout: wgpu::BindGroupLayout,
     frame_bg: wgpu::BindGroup,
@@ -207,6 +231,7 @@ struct Gpu {
     vb: Option<wgpu::Buffer>,
     groups: Vec<GpuGroup>,
     settings: Settings,
+    animated: bool,
     env_mips: f32,
     has_env: bool,
     sh: [[f32; 4]; 9],
@@ -483,7 +508,7 @@ impl Gpu {
                 wgpu::BindGroupLayoutEntry { binding: 4, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering), count: None },
                 wgpu::BindGroupLayoutEntry {
                     binding: 5,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                     ty: wgpu::BindingType::Buffer { ty: wgpu::BufferBindingType::Uniform, has_dynamic_offset: false, min_binding_size: None },
                     count: None,
                 },
@@ -531,6 +556,26 @@ impl Gpu {
             multiview: None,
             cache: None,
         });
+        let out_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("outline pipeline"),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("vs_out"),
+                compilation_options: Default::default(),
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: std::mem::size_of::<Vertex>() as u64,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2],
+                }],
+            },
+            fragment: Some(wgpu::FragmentState { module: &shader, entry_point: Some("fs_out"), compilation_options: Default::default(), targets: &target }),
+            primitive: wgpu::PrimitiveState { cull_mode: None, ..Default::default() },
+            depth_stencil: Some(wgpu::DepthStencilState { format: DEPTH_FORMAT, depth_write_enabled: true, depth_compare: wgpu::CompareFunction::Less, stencil: Default::default(), bias: Default::default() }),
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
         let frame_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("frame"),
             size: std::mem::size_of::<FrameUniform>() as u64,
@@ -574,6 +619,8 @@ impl Gpu {
             config,
             pipeline,
             bg_pipeline,
+            out_pipeline,
+            started: std::time::Instant::now(),
             frame_buf,
             frame_bg,
             frame_layout,
@@ -584,6 +631,7 @@ impl Gpu {
             vb: None,
             groups: Vec::new(),
             settings: Settings::default(),
+            animated: false,
             env_mips,
             has_env: false,
             sh: env_sh,
@@ -635,6 +683,7 @@ impl Gpu {
         }
         self.vb = Some(self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("vertices"), contents: bytemuck::cast_slice(&verts), usage: wgpu::BufferUsages::VERTEX }));
         self.groups.clear();
+        self.animated = s.groups.iter().any(|g| g.material.shader.kind == 7);
         for g in &s.groups {
             if g.indices.is_empty() {
                 continue;
@@ -645,7 +694,17 @@ impl Gpu {
             let orm = view(mat.orm.as_ref(), [255, 255, 255, 255], wgpu::TextureFormat::Rgba8Unorm);
             let nrm = view(mat.normal.as_ref(), [128, 128, 255, 255], wgpu::TextureFormat::Rgba8Unorm);
             let emi = view(mat.emissive.as_ref(), [0, 0, 0, 255], wgpu::TextureFormat::Rgba8UnormSrgb);
-            let mu = MatUniform { flags: [if mat.orm.is_some() { 1.0 } else { 0.0 }, if mat.rough > 0.0 { mat.rough } else { 0.6 }, mat.metal, 0.0], tint: [1.0, 1.0, 1.0, 1.0] };
+            let sp = mat.shader;
+            let mu = MatUniform {
+                flags: [if mat.orm.is_some() { 1.0 } else { 0.0 }, if mat.rough > 0.0 { mat.rough } else { 0.6 }, mat.metal, 0.0],
+                tint: [1.0, 1.0, 1.0, 1.0],
+                shk: [sp.kind as f32, 0.0, 0.0, 0.0],
+                shp: sp.p,
+                shq: sp.q,
+                shc: [sp.c[0], sp.c[1], sp.c[2], 0.0],
+                shd: [sp.d[0], sp.d[1], sp.d[2], 0.0],
+                skin: sp.skin,
+            };
             let mb = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("material"), contents: bytemuck::bytes_of(&mu), usage: wgpu::BufferUsages::UNIFORM });
             let bind = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("material group"),
@@ -660,7 +719,7 @@ impl Gpu {
                 ],
             });
             let ib = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("indices"), contents: bytemuck::cast_slice(&g.indices), usage: wgpu::BufferUsages::INDEX });
-            self.groups.push(GpuGroup { ib, count: g.indices.len() as u32, bind });
+            self.groups.push(GpuGroup { ib, count: g.indices.len() as u32, bind, kind: sp.kind, outline: (sp.kind == 4 || sp.kind == 5) && sp.q[0] > 0.0 });
         }
         let c = (mn + mx) * 0.5;
         (c, ((mx - mn).length() * 0.5).max(1e-4))
@@ -702,6 +761,7 @@ impl Gpu {
             params: [st.exposure, st.env_turn, st.env_strength, st.tone as f32],
             info: [self.env_mips, if self.has_env { 1.0 } else { 0.0 }, if st.show_background { 1.0 } else { 0.0 }, 0.0],
             sh: self.sh,
+            extra: [self.started.elapsed().as_secs_f32(), 2.0 * cam.dist * (45f32.to_radians() * 0.5).tan() / self.config.height as f32, 0.0, 0.0],
         };
         self.queue.write_buffer(&self.frame_buf, 0, bytemuck::bytes_of(&u));
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("frame") });
@@ -730,6 +790,12 @@ impl Gpu {
                 pass.set_bind_group(0, &self.frame_bg, &[]);
                 pass.set_vertex_buffer(0, vb.slice(..));
                 for g in &self.groups {
+                    pass.set_bind_group(1, &g.bind, &[]);
+                    pass.set_index_buffer(g.ib.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..g.count, 0, 0..1);
+                }
+                pass.set_pipeline(&self.out_pipeline);
+                for g in self.groups.iter().filter(|g| g.outline) {
                     pass.set_bind_group(1, &g.bind, &[]);
                     pass.set_index_buffer(g.ib.slice(..), wgpu::IndexFormat::Uint32);
                     pass.draw_indexed(0..g.count, 0, 0..1);
@@ -772,6 +838,14 @@ impl ApplicationHandler<Cmd> for App {
                     let _ = tx.send(Err(e));
                 }
                 el.exit();
+            }
+        }
+    }
+
+    fn about_to_wait(&mut self, _el: &ActiveEventLoop) {
+        if let Some(g) = self.gpu.as_ref() {
+            if g.animated {
+                g.window.request_redraw();
             }
         }
     }

@@ -12,21 +12,36 @@ fn sphere(n: u32) -> (Vec<f32>, Vec<f32>, Vec<f32>, Vec<u32>) {
     (p, nr, uv, idx)
 }
 fn main() {
-    let (p, n, uv, idx) = sphere(48);
-    let cnt = p.len() as u32 / 3;
-    // a floor under it
-    let mut p2 = p.clone(); let mut n2 = n.clone(); let mut uv2 = uv.clone();
-    p2.extend([-3., -1., -3., 3., -1., -3., 3., -1., 3., -3., -1., 3.]);
-    n2.extend([0., 1., 0., 0., 1., 0., 0., 1., 0., 0., 1., 0.]);
-    uv2.extend([0., 0., 4., 0., 4., 4., 0., 4.]);
-    let floor_idx = vec![cnt, cnt + 2, cnt + 1, cnt, cnt + 3, cnt + 2];
-    // base colour: checker; orm: shiny metal stripes; normal: bumps
-    let mk = |f: &dyn Fn(u32, u32) -> [u8; 4]| { let mut v = vec![]; for y in 0..128 { for x in 0..128 { v.extend(f(x, y)); } } Tex8 { width: 128, height: 128, rgba: v } };
-    let base = mk(&|x, y| if (x / 16 + y / 16) % 2 == 0 { [230, 200, 90, 255] } else { [160, 40, 40, 255] });
-    let orm = mk(&|x, _| [255, if (x / 8) % 2 == 0 { 40 } else { 200 }, if (x / 8) % 2 == 0 { 255 } else { 0 }, 255]);
-    let nrm = mk(&|x, y| { let a = ((x % 16) as f32 - 8.0) / 8.0; let b = ((y % 16) as f32 - 8.0) / 8.0; [(128.0 + a * 60.0) as u8, (128.0 + b * 60.0) as u8, 220, 255] });
-    let floor = mk(&|x, y| if (x / 32 + y / 32) % 2 == 0 { [120, 120, 130, 255] } else { [60, 60, 70, 255] });
-    // a sky: blue above, warm ground, a bright sun
+    // a row of balls, each with another shader of the 3D view, on a floor, under a made-up sky
+    let kinds: [(&str, i32, [f32; 4], [f32; 4], [f32; 3], [f32; 3], [f32; 4]); 8] = [
+        ("Standard", 0, [0.; 4], [0.; 4], [1.; 3], [0.; 3], [0.45, 1., 0.5, 0.]),
+        ("Skin", 1, [0.5, 0.6, 0.5, 0.5], [0., 0., 0.3, 0.], [0.85, 0.25, 0.18], [0.; 3], [0.45, 1., 0.5, 0.]),
+        ("Brushed", 2, [0.7, 0.1, 0., 0.5], [0.; 4], [1.; 3], [0.; 3], [0.45, 1., 0.5, 0.]),
+        ("Velvet", 3, [0.8, 0.5, 1., 0.5], [0.; 4], [1., 0.6, 0.7], [0.; 3], [0.45, 1., 0.5, 0.]),
+        ("Toon", 4, [3., 0., 0.3, 0.2], [2., 0., 0., 0.], [0.45, 0.4, 0.55], [0.; 3], [0.45, 1., 0.5, 0.]),
+        ("Cel", 5, [0.5, 0.06, 0.3, 0.15], [2., 0., 0., 0.], [0.45, 0.42, 0.55], [0.; 3], [0.45, 1., 0.5, 0.]),
+        ("SpecGloss", 6, [0.; 4], [0.; 4], [1.; 3], [0.; 3], [0.45, 1., 0.5, 0.]),
+        ("Retro", 8, [32., 1., 0.6, 0.], [0., 0., 0.35, 1.], [31., 31., 31.], [0.5, 0.55, 0.65], [0.45, 1., 0.5, 0.]),
+    ];
+    let (sp, sn, suv, sidx) = sphere(40);
+    let cnt = sp.len() as u32 / 3;
+    let (mut p, mut n, mut uv) = (vec![], vec![], vec![]);
+    let mut groups = vec![];
+    let mk = |f: &dyn Fn(u32, u32) -> [u8; 4]| { let mut v = vec![]; for y in 0..64 { for x in 0..64 { v.extend(f(x, y)); } } Tex8 { width: 64, height: 64, rgba: v } };
+    for (k, (name, kind, pp, q, c, d, skin)) in kinds.iter().enumerate() {
+        let off = (k as f32 - 3.5) * 2.3;
+        for i in 0..cnt as usize { p.extend([sp[i * 3] + off, sp[i * 3 + 1], sp[i * 3 + 2]]); n.extend([sn[i * 3], sn[i * 3 + 1], sn[i * 3 + 2]]); uv.extend([suv[i * 2], suv[i * 2 + 1]]); }
+        let idx: Vec<u32> = sidx.iter().map(|i| i + cnt * k as u32).collect();
+        let base = mk(&|x, y| if (x / 8 + y / 8) % 2 == 0 { [225, 190, 150, 255] } else { [150, 100, 80, 255] });
+        let shader = ShaderParams { kind: *kind, p: *pp, q: *q, c: *c, d: *d, skin: *skin };
+        groups.push(Group { name: name.to_string(), indices: idx, material: Material { shader, base: Some(base), orm: None, normal: None, emissive: None, rough: 0.45, metal: if *kind == 2 { 1.0 } else { 0.0 } } });
+    }
+    let fb = cnt * kinds.len() as u32;
+    p.extend([-12., -1., -4., 12., -1., -4., 12., -1., 4., -12., -1., 4.]);
+    n.extend([0., 1., 0., 0., 1., 0., 0., 1., 0., 0., 1., 0.]);
+    uv.extend([0., 0., 8., 0., 8., 2., 0., 2.]);
+    let floor = mk(&|x, y| if (x / 16 + y / 16) % 2 == 0 { [120, 120, 130, 255] } else { [60, 60, 70, 255] });
+    groups.push(Group { name: "Floor".into(), indices: vec![fb, fb + 2, fb + 1, fb, fb + 3, fb + 2], material: Material { shader: ShaderParams::default(), base: Some(floor), orm: None, normal: None, emissive: None, rough: 0.8, metal: 0.0 } });
     let (w, h) = (256u32, 128u32);
     let mut rgb = vec![];
     for y in 0..h { for x in 0..w {
@@ -36,17 +51,9 @@ fn main() {
         if dx * dx + dy * dy < 40.0 { c = [40.0, 36.0, 30.0]; }
         rgb.extend(c);
     } }
-    let scene = Scene {
-        mesh: MeshData { positions: p2, normals: n2, uvs: uv2 },
-        groups: vec![
-            Group { name: "Ball".into(), indices: idx, material: Material { base: Some(base), orm: Some(orm), normal: Some(nrm), emissive: None, rough: 0.5, metal: 0.0 } },
-            Group { name: "Floor".into(), indices: floor_idx, material: Material { base: Some(floor), orm: None, normal: None, emissive: None, rough: 0.8, metal: 0.0 } },
-        ],
-        env: Some(EnvData { width: w, height: h, rgb }),
-        settings: Settings::default(),
-    };
+    let scene = Scene { mesh: MeshData { positions: p, normals: n, uvs: uv }, groups, env: Some(EnvData { width: w, height: h, rgb }), settings: Settings::default() };
     match open(scene) {
-        Ok(v) => { println!("OPEN {:?}", v.report); std::thread::sleep(std::time::Duration::from_secs(12)); v.close(); std::thread::sleep(std::time::Duration::from_millis(500)); println!("CLOSED"); }
+        Ok(v) => { println!("OPEN {:?}", v.report); std::thread::sleep(std::time::Duration::from_secs(14)); v.close(); std::thread::sleep(std::time::Duration::from_millis(500)); println!("CLOSED"); }
         Err(e) => println!("ERROR {e}"),
     }
 }
