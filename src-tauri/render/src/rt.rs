@@ -21,6 +21,8 @@ struct RtUniform {
     sun_dir: [f32; 4],
     p: [f32; 4],
     res: [f32; 4],
+    amb: [f32; 4],
+    sun_col: [f32; 4],
 }
 
 pub struct Rt {
@@ -32,6 +34,8 @@ pub struct Rt {
     comp_uniform: wgpu::Buffer,
     nodes: wgpu::Buffer,
     tris: wgpu::Buffer,
+    tri_group: wgpu::Buffer,
+    group_col: wgpu::Buffer,
     has_tree: bool,
     tex: Vec<(wgpu::Texture, wgpu::TextureView)>,
     size: (u32, u32),
@@ -41,6 +45,8 @@ pub struct Rt {
     key: Vec<f32>,
     /// the model, kept until the tree is built
     pub src: Option<(Vec<f32>, Vec<u32>)>,
+    /// for each triangle (in the order given), which material group it is in, and each group's average colour
+    pub groups: (Vec<u32>, Vec<[f32; 4]>),
     pub radius: f32,
 }
 
@@ -76,6 +82,10 @@ impl Rt {
                 storage_entry(4),
                 tex_entry(5, c, false),
                 tex_entry(7, c, false),
+                tex_entry(8, c, false),
+                wgpu::BindGroupLayoutEntry { binding: 9, visibility: c, ty: wgpu::BindingType::StorageTexture { access: wgpu::StorageTextureAccess::WriteOnly, format: RT_FORMAT, view_dimension: wgpu::TextureViewDimension::D2 }, count: None },
+                storage_entry(10),
+                storage_entry(11),
                 wgpu::BindGroupLayoutEntry { binding: 6, visibility: c, ty: wgpu::BindingType::StorageTexture { access: wgpu::StorageTextureAccess::WriteOnly, format: RT_FORMAT, view_dimension: wgpu::TextureViewDimension::D2 }, count: None },
             ],
         });
@@ -91,7 +101,7 @@ impl Rt {
         let f = wgpu::ShaderStages::FRAGMENT;
         let comp_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("composite layout"),
-            entries: &[uniform_entry(0, f), tex_entry(1, f, false), tex_entry(2, f, false), tex_entry(3, f, false), tex_entry(4, f, false)],
+            entries: &[uniform_entry(0, f), tex_entry(1, f, false), tex_entry(2, f, false), tex_entry(3, f, false), tex_entry(4, f, false), tex_entry(5, f, false)],
         });
         let cmod = device.create_shader_module(wgpu::ShaderModuleDescriptor { label: Some("composite"), source: wgpu::ShaderSource::Wgsl(include_str!("comp.wgsl").into()) });
         let comp = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -106,9 +116,9 @@ impl Rt {
             cache: None,
         });
         let uniform = device.create_buffer(&wgpu::BufferDescriptor { label: Some("rt uniform"), size: std::mem::size_of::<RtUniform>() as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
-        let comp_uniform = device.create_buffer(&wgpu::BufferDescriptor { label: Some("composite uniform"), size: 16, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
+        let comp_uniform = device.create_buffer(&wgpu::BufferDescriptor { label: Some("composite uniform"), size: 32, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
         let one = |label| device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(label), contents: &[0u8; 64], usage: wgpu::BufferUsages::STORAGE });
-        Rt { cs, cs_layout, comp, comp_layout, uniform, comp_uniform, nodes: one("no nodes"), tris: one("no triangles"), has_tree: false, tex: Vec::new(), size: (0, 0), cur: 0, samples: 0, key: Vec::new(), src: None, radius: 1.0 }
+        Rt { cs, cs_layout, comp, comp_layout, uniform, comp_uniform, nodes: one("no nodes"), tris: one("no triangles"), tri_group: one("no groups"), group_col: one("no colours"), has_tree: false, tex: Vec::new(), size: (0, 0), cur: 0, samples: 0, key: Vec::new(), src: None, groups: (Vec::new(), Vec::new()), radius: 1.0 }
     }
 
     /// Builds the tree from the model kept in `src` (once).
@@ -123,12 +133,21 @@ impl Rt {
         let tree = bvh::build(&pos, &idx);
         self.nodes = device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("tree nodes"), contents: bytemuck::cast_slice(&tree.nodes), usage: wgpu::BufferUsages::STORAGE });
         self.tris = device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("tree triangles"), contents: bytemuck::cast_slice(&tree.tris), usage: wgpu::BufferUsages::STORAGE });
+        // each triangle in tree order: its material group; and the group colours
+        let by_leaf: Vec<u32> = tree.order.iter().map(|&o| self.groups.0.get(o as usize).copied().unwrap_or(0)).collect();
+        self.tri_group = device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("tree groups"), contents: bytemuck::cast_slice(&by_leaf), usage: wgpu::BufferUsages::STORAGE });
+        let mut cols = self.groups.1.clone();
+        if cols.is_empty() {
+            cols.push([0.5, 0.5, 0.5, 1.0]);
+        }
+        self.group_col = device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("group colours"), contents: bytemuck::cast_slice(&cols), usage: wgpu::BufferUsages::STORAGE });
         self.has_tree = true;
         self.samples = 0;
     }
 
     /// A new model: the old tree is gone.
-    pub fn new_model(&mut self, pos: Vec<f32>, idx: Vec<u32>, radius: f32) {
+    pub fn new_model(&mut self, pos: Vec<f32>, idx: Vec<u32>, groups: (Vec<u32>, Vec<[f32; 4]>), radius: f32) {
+        self.groups = groups;
         self.has_tree = false;
         self.src = Some((pos, idx));
         self.radius = radius;
@@ -140,7 +159,7 @@ impl Rt {
             return;
         }
         self.tex.clear();
-        for _ in 0..2 {
+        for _ in 0..4 {
             let t = device.create_texture(&wgpu::TextureDescriptor {
                 label: Some("rt accumulation"),
                 size: wgpu::Extent3d { width: w.max(1), height: h.max(1), depth_or_array_layers: 1 },
@@ -160,7 +179,7 @@ impl Rt {
 
     /// Adds one more round of rays (starting over when the view, the sun or the size changed).
     #[allow(clippy::too_many_arguments)]
-    pub fn trace(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, enc: &mut wgpu::CommandEncoder, depth: &wgpu::TextureView, normal: &wgpu::TextureView, mat: &wgpu::TextureView, inv_vp: [[f32; 4]; 4], eye: [f32; 3], sun: [f32; 3], sun_soft: f32, w: u32, h: u32) {
+    pub fn trace(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, enc: &mut wgpu::CommandEncoder, depth: &wgpu::TextureView, normal: &wgpu::TextureView, mat: &wgpu::TextureView, inv_vp: [[f32; 4]; 4], eye: [f32; 3], sun: [f32; 3], sun_soft: f32, amb: [f32; 3], sun_col: [f32; 3], w: u32, h: u32) {
         self.ensure_tree(device);
         self.ensure_textures(device, w, h);
         let mut key: Vec<f32> = inv_vp.iter().flatten().copied().collect();
@@ -178,20 +197,25 @@ impl Rt {
             sun_dir: [sun[0], sun[1], sun[2], sun_soft],
             p: [self.samples as f32, self.radius * 0.25, self.radius * 0.002, if self.has_tree { 1.0 } else { 0.0 }],
             res: [w as f32, h as f32, 0.0, 0.0],
+            amb: [amb[0], amb[1], amb[2], 0.0],
+            sun_col: [sun_col[0], sun_col[1], sun_col[2], 0.0],
         };
         queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&u));
         // the first round starts from nothing: read from the other picture, which holds a count of zero
         if self.samples == 0 {
             let zeros = vec![0u8; (w as usize) * (h as usize) * 8];
-            queue.write_texture(
-                wgpu::TexelCopyTextureInfo { texture: &self.tex[1 - self.cur].0, mip_level: 0, origin: wgpu::Origin3d::ZERO, aspect: wgpu::TextureAspect::All },
-                &zeros,
-                wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(w * 8), rows_per_image: Some(h) },
-                wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
-            );
+            for k in [1 - self.cur, 3 - self.cur] {
+                queue.write_texture(
+                    wgpu::TexelCopyTextureInfo { texture: &self.tex[k].0, mip_level: 0, origin: wgpu::Origin3d::ZERO, aspect: wgpu::TextureAspect::All },
+                    &zeros,
+                    wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(w * 8), rows_per_image: Some(h) },
+                    wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+                );
+            }
             self.cur = 1 - self.cur;
         }
         let (prev, out) = (&self.tex[self.cur].1, &self.tex[1 - self.cur].1);
+        let (prev2, out2) = (&self.tex[2 + self.cur].1, &self.tex[3 - self.cur].1);
         let bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("rt group"),
             layout: &self.cs_layout,
@@ -204,6 +228,10 @@ impl Rt {
                 wgpu::BindGroupEntry { binding: 5, resource: wgpu::BindingResource::TextureView(prev) },
                 wgpu::BindGroupEntry { binding: 6, resource: wgpu::BindingResource::TextureView(out) },
                 wgpu::BindGroupEntry { binding: 7, resource: wgpu::BindingResource::TextureView(mat) },
+                wgpu::BindGroupEntry { binding: 8, resource: wgpu::BindingResource::TextureView(prev2) },
+                wgpu::BindGroupEntry { binding: 9, resource: wgpu::BindingResource::TextureView(out2) },
+                wgpu::BindGroupEntry { binding: 10, resource: self.tri_group.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 11, resource: self.group_col.as_entire_binding() },
             ],
         });
         {
@@ -222,10 +250,11 @@ impl Rt {
     }
 
     /// Draws the finished picture: the scene, darkened by what the rays found (when `on`).
-    pub fn composite<'a>(&'a self, device: &wgpu::Device, queue: &wgpu::Queue, pass: &mut wgpu::RenderPass<'a>, scene: &wgpu::TextureView, normal: &wgpu::TextureView, mat: &wgpu::TextureView, on: bool) {
+    pub fn composite<'a>(&'a self, device: &wgpu::Device, queue: &wgpu::Queue, pass: &mut wgpu::RenderPass<'a>, scene: &wgpu::TextureView, normal: &wgpu::TextureView, mat: &wgpu::TextureView, on: bool, tone: i32, exposure: f32) {
         let use_rt = on && self.has_tree && !self.tex.is_empty();
-        queue.write_buffer(&self.comp_uniform, 0, bytemuck::cast_slice(&[if use_rt { 1.0f32 } else { 0.0 }, 0.9, 0.85, 0.7]));
+        queue.write_buffer(&self.comp_uniform, 0, bytemuck::cast_slice(&[if use_rt { 1.0f32 } else { 0.0 }, 0.9, 0.85, 0.7, tone as f32, exposure, 0.0, 0.0]));
         let rt_view = if self.tex.is_empty() { scene } else { &self.tex[self.cur].1 };
+        let rf_view = if self.tex.is_empty() { scene } else { &self.tex[2 + self.cur].1 };
         let bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("composite group"),
             layout: &self.comp_layout,
@@ -235,6 +264,7 @@ impl Rt {
                 wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::TextureView(normal) },
                 wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(rt_view) },
                 wgpu::BindGroupEntry { binding: 4, resource: wgpu::BindingResource::TextureView(mat) },
+                wgpu::BindGroupEntry { binding: 5, resource: wgpu::BindingResource::TextureView(rf_view) },
             ],
         });
         pass.set_pipeline(&self.comp);

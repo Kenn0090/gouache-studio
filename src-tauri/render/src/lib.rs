@@ -341,6 +341,23 @@ fn make_scene(device: &wgpu::Device, w: u32, h: u32, format: wgpu::TextureFormat
     (mk("scene colour", format), mk("scene normals", rt::NORMAL_FORMAT), mk("scene material", rt::NORMAL_FORMAT))
 }
 
+/// The average colour of a material's base picture, in linear light (grey when it has none).
+fn average_colour(t: Option<&Tex8>) -> [f32; 4] {
+    let Some(t) = t.filter(|t| t.width > 0 && t.height > 0 && t.rgba.len() >= (t.width * t.height * 4) as usize) else { return [0.5, 0.5, 0.5, 1.0] };
+    let n = (t.width * t.height) as usize;
+    let step = (n / 4096).max(1);
+    let (mut s, mut cnt) = ([0f64; 3], 0f64);
+    let mut i = 0;
+    while i < n {
+        for c in 0..3 {
+            s[c] += (t.rgba[i * 4 + c] as f64 / 255.0).powf(2.2);
+        }
+        cnt += 1.0;
+        i += step;
+    }
+    [(s[0] / cnt) as f32, (s[1] / cnt) as f32, (s[2] / cnt) as f32, 1.0]
+}
+
 fn box_down(src: &[u8], w: u32, h: u32) -> (Vec<u8>, u32, u32) {
     let (nw, nh) = ((w / 2).max(1), (h / 2).max(1));
     let mut out = vec![0u8; (nw * nh * 4) as usize];
@@ -872,7 +889,13 @@ impl Gpu {
         let c = (mn + mx) * 0.5;
         let radius = ((mx - mn).length() * 0.5).max(1e-4);
         let all: Vec<u32> = s.groups.iter().flat_map(|g| g.indices.iter().copied()).collect();
-        self.rt.new_model(s.mesh.positions.clone(), all, radius);
+        let mut tri_group = Vec::new();
+        let mut cols = Vec::new();
+        for (gi, g) in s.groups.iter().enumerate() {
+            tri_group.extend(std::iter::repeat(gi as u32).take(g.indices.len() / 3));
+            cols.push(average_colour(g.material.base.as_ref()));
+        }
+        self.rt.new_model(s.mesh.positions.clone(), all, (tri_group, cols), radius);
         (c, radius)
     }
 
@@ -919,6 +942,16 @@ impl Gpu {
             g.mat_buf = mat_buf;
             g.mu = mu;
             g.outline = outline;
+        }
+    }
+
+    /// Light from the sky on a surface (an average), for colouring what reflections see.
+    fn rt_amb(&self) -> [f32; 3] {
+        if self.has_env {
+            let k = self.settings.env_strength;
+            [(self.sh[0][0] * 0.9 + 0.05) * k, (self.sh[0][1] * 0.9 + 0.05) * k, (self.sh[0][2] * 0.9 + 0.05) * k]
+        } else {
+            [0.45, 0.5, 0.6]
         }
     }
 
@@ -1024,7 +1057,7 @@ impl Gpu {
         }
         if st.rt {
             let sd = [sun.x, sun.y, sun.z];
-            self.rt.trace(&self.device, &self.queue, &mut enc, &self.depth, &self.scene_normal, &self.scene_mat, vp.inverse().to_cols_array_2d(), [eye.x, eye.y, eye.z], sd, 0.02, self.config.width, self.config.height);
+            self.rt.trace(&self.device, &self.queue, &mut enc, &self.depth, &self.scene_normal, &self.scene_mat, vp.inverse().to_cols_array_2d(), [eye.x, eye.y, eye.z], sd, 0.02, self.rt_amb(), [3.0 * st.sun_intensity, 2.9 * st.sun_intensity, 2.7 * st.sun_intensity], self.config.width, self.config.height);
         }
         {
             let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -1034,7 +1067,7 @@ impl Gpu {
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
-            self.rt.composite(&self.device, &self.queue, &mut pass, &self.scene_color, &self.scene_normal, &self.scene_mat, st.rt);
+            self.rt.composite(&self.device, &self.queue, &mut pass, &self.scene_color, &self.scene_normal, &self.scene_mat, st.rt, st.tone, st.exposure);
             if u.cursor[3] > 0.5 {
                 pass.set_pipeline(&self.ring_pipeline);
                 pass.set_bind_group(0, &self.frame_bg, &[]);
