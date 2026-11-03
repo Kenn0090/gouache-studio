@@ -49,5 +49,11 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(un.some(x=>/Assets\/Gouache\/GouacheShaded\.shader$/.test(x)),'Unity export writes the shared shader above the export folder '+JSON.stringify(un.map(x=>x.slice(-50))).slice(0,300));
  ok(un.some(x=>x.endsWith('.mat'))&&un.some(x=>x.endsWith('.png.meta')),'…and the material and texture settings');
  const nm=Object.entries(w).find(([k])=>/Normal\.png\.meta$/.test(k));ok(nm&&/textureType: 1/.test(nm[1]),'…the normal map is set as a Normal map');
+ /* Unity Built-in pipeline */
+ await p.evaluate(()=>{__gs.texCfg.unityRP='builtin';window.__written={};});
+ await p.evaluate(()=>__gs.exportTextures());await W(6000);
+ w=await p.evaluate(()=>window.__written);const bn=Object.keys(w);
+ ok(bn.some(x=>/Assets\/Gouache\/GouacheShadedBuiltin\.shader$/.test(x))&&!bn.some(x=>/GouacheShaded\.shader$/.test(x)),'Unity Built-in: its own shader is written');
+ const mat=Object.entries(w).find(([k])=>k.endsWith('.mat'));ok(mat&&/5b1d8c3a7e0f4a29b6d4c8e1f2a30b17/.test(mat[1]),'…and the material points at it');
  ok(!errs.length,'no page errors '+errs.join(' | ').slice(0,200));
  await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();

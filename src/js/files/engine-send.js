@@ -29,8 +29,9 @@ function esRow(redraw){if(!platform.isDesktop)return [el('p',{class:'note',text:
     out.push(el('div',{class:'chips'},el('span',{class:'note',text:d?label+' project: '+d:'Choose your '+label+' project’s folder.'}),
       el('button',{class:'btn sm',id:'esProject',text:d?'Change…':'Choose project…',onclick:async()=>{const p=await platform.pickFolder();if(!p)return;
         if(!(await esCheckProject(es.to,p))){toast('That folder doesn’t look like a '+label+' project ('+(es.to==='godot'?'no project.godot':'no .uproject file')+').');return;}es.dirs[es.to]=p;esSave();redraw();}})),
+      es.to==='unity'?el('div',{class:'frow'},el('label',{text:'Unity render pipeline'}),seg([['urp','URP'],['builtin','Built-in']],texCfg.unityRP||'urp',v=>{texCfg.unityRP=v;},'Unity render pipeline')):null,
       (es.to==='unity'||es.to==='godot')?chk('esShaders','Bring the Gouache shader over (a material per texture set)',texCfg.engShader!==false,v=>{texCfg.engShader=v;}):null,
-      el('p',{class:'note',text:es.to==='unity'?'Files go to Assets/Gouache/<name>. Unity imports them when you switch to it. The shader is for URP (Universal Render Pipeline); put each .mat on your model. The .glb needs the glTFast package (Package Manager).':
+      el('p',{class:'note',text:es.to==='unity'?'Files go to Assets/Gouache/<name>. Unity imports them when you switch to it. Choose URP or the Built-in pipeline above (HDRP isn’t covered); put each .mat on your model. Built-in has no see-through materials. The .glb needs the glTFast package (Package Manager).':
         es.to==='godot'?'Files go to res://gouache/<name>. Godot imports them when you switch to it. Each texture set gets a .tres material with its shader: assign it to the model’s surfaces.':
         'Files go to Content/Gouache/<name>. Turn on Auto Import (Editor Preferences › Loading & Saving), or drag the .glb into the Content Browser; Unreal 5 builds the materials from it.'}));}
   return out;}

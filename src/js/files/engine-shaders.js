@@ -269,8 +269,152 @@ Shader "Gouache/Shaded"
     FallBack "Universal Render Pipeline/Lit"
 }
 `;
+
+/* the same looks for Unity's Built-in Render Pipeline (a surface shader; opaque only) */
+const ESH_BUILTIN_GUID='5b1d8c3a7e0f4a29b6d4c8e1f2a30b17';
+const ESH_BUILTIN_SHADER=`// Gouache Studio — one shader for every look of the 3D view (Built-in Render Pipeline).
+// _Kind: 0 Standard, 1 Skin, 2 Brushed metal (Standard here), 3 Velvet, 4 Toon, 5 Cel, 6 Spec/Gloss, 7 Panner, 8 Retro.
+// A close match to the viewer: Unity lights it its own way, so it will not be identical. Opaque only.
+Shader "Gouache/Shaded (Built-in)"
+{
+    Properties
+    {
+        [MainTexture] _BaseMap("Base colour", 2D) = "white" {}
+        _OrmMap("ORM (R = AO, G = roughness, B = metallic)", 2D) = "white" {}
+        [Normal] _BumpMap("Normal", 2D) = "bump" {}
+        _EmissionMap("Emission", 2D) = "black" {}
+        _BaseColor("Base colour tint", Color) = (1,1,1,1)
+        _HasOrm("Has ORM", Float) = 1
+        _HasNormal("Has normal", Float) = 1
+        _HasEmis("Has emission", Float) = 0
+        _Roughness("Roughness (no ORM)", Range(0,1)) = 0.6
+        _Metallic("Metallic (no ORM)", Range(0,1)) = 0
+        _Kind("Kind", Float) = 0
+        _ShP("Shader P", Vector) = (0,0,0,0.5)
+        _ShQ("Shader Q", Vector) = (0,0,0,0)
+        _ShC("Shader colour", Color) = (1,1,1,1)
+        _ShD("Outline / fog colour", Color) = (0,0,0,1)
+        _Skin("Skin", Vector) = (0.45,1,0.5,0)
+        _Pan("Panner speed", Vector) = (0,0,0,0)
+        _OutW("Outline width", Float) = 0
+        _Cutoff("Alpha cutoff", Range(0,1)) = 0.5
+        [HideInInspector] _SrcBlend("Src", Float) = 1
+        [HideInInspector] _DstBlend("Dst", Float) = 0
+        [HideInInspector] _ZWrite("ZWrite", Float) = 1
+        [HideInInspector] _UseAlpha("Alpha", Float) = 0
+    }
+    SubShader
+    {
+        Tags { "RenderType"="Opaque" }
+        // the outline of Toon and Cel: the back faces, pushed out along the normals
+        Pass
+        {
+            Name "OUTLINE"
+            Cull Front
+            CGPROGRAM
+            #pragma vertex overt
+            #pragma fragment ofrag
+            #include "UnityCG.cginc"
+            float _Kind, _OutW; fixed4 _ShD;
+            struct oa { float4 v : POSITION; float3 n : NORMAL; };
+            struct ov { float4 p : SV_POSITION; };
+            ov overt(oa i)
+            {
+                ov o;
+                bool on = (_Kind > 3.5 && _Kind < 5.5) && _OutW > 0;
+                o.p = on ? UnityObjectToClipPos(float4(i.v.xyz + i.n * _OutW, 1)) : float4(0, 0, 0, 0);
+                return o;
+            }
+            fixed4 ofrag(ov i) : SV_Target { return fixed4(_ShD.rgb, 1); }
+            ENDCG
+        }
+
+        CGPROGRAM
+        #pragma surface surf Gouache fullforwardshadows finalcolor:fin exclude_path:deferred exclude_path:prepass
+        #pragma target 3.0
+        #include "UnityPBSLighting.cginc"
+
+        sampler2D _BaseMap, _OrmMap, _BumpMap, _EmissionMap;
+        float4 _BaseColor;
+        float _HasOrm, _HasNormal, _HasEmis, _Roughness, _Metallic, _Kind;
+        float4 _ShP, _ShQ, _ShC, _ShD, _Skin, _Pan;
+
+        struct Input { float2 uv_BaseMap; float3 viewDir; float3 worldPos; float4 screenPos; };
+
+        float Bayer4(float2 p) { int x = (int)p.x & 3, y = (int)p.y & 3; return (x * 4 + y) / 16.0; }
+
+        void surf(Input IN, inout SurfaceOutputStandard o)
+        {
+            float2 uv = IN.uv_BaseMap;
+            bool retro = _Kind > 7.5;
+            if (_Kind > 6.5 && _Kind < 7.5) uv += _Time.y * _Pan.xy;
+            if (retro) { float R = max(_ShP.x, 1.0); uv = (floor(uv * R) + 0.5) / R; }
+            fixed4 b = tex2D(_BaseMap, uv);
+            o.Albedo = b.rgb * _BaseColor.rgb;
+            o.Alpha = 1;
+            float rough = _Roughness, metal = _Metallic, ao = 1;
+            if (_HasOrm > 0.5) { fixed3 orm = tex2D(_OrmMap, uv).rgb; ao = orm.r; rough = orm.g; metal = orm.b; }
+            if (_Kind > 0.5 && _Kind < 1.5) rough = lerp(rough, _Skin.x, 0.75);
+            o.Metallic = metal; o.Smoothness = 1.0 - rough; o.Occlusion = ao;
+            o.Normal = _HasNormal > 0.5 ? UnpackNormal(tex2D(_BumpMap, uv)) : float3(0, 0, 1);
+            float3 em = _HasEmis > 0.5 ? tex2D(_EmissionMap, uv).rgb : 0;
+            float NdV = saturate(dot(normalize(IN.viewDir), o.Normal));
+            if (_Kind > 2.5 && _Kind < 3.5) em += _ShC.rgb * _ShP.x * pow(1.0 - NdV, max(_ShP.z, 0.5) * 3.0 + 1.0) * 0.4;
+            o.Emission = em;
+            if (retro) { o.Metallic = 0; o.Smoothness = 0; }
+        }
+
+        half4 LightingGouache(SurfaceOutputStandard s, half3 viewDir, UnityGI gi)
+        {
+            float3 N = s.Normal; float3 Ld = gi.light.dir;
+            if (_Kind > 3.5 && _Kind < 5.5)   // Toon and Cel
+            {
+                float l = dot(N, Ld) * 0.5 + 0.5, band;
+                if (_Kind < 4.5) { float st = max(_ShP.x, 1.0); band = floor(l * st + 0.5 * _ShQ.y) / st; }
+                else band = smoothstep(_ShP.x - _ShP.y * 0.5, _ShP.x + _ShP.y * 0.5 + 1e-4, l);
+                half3 baseC = lerp(s.Albedo * _ShC.rgb, s.Albedo, saturate(band));
+                float3 H = normalize(Ld + viewDir);
+                float sp = step(1.0 - _ShP.z * 0.05, saturate(dot(N, H))) * (0.5 + s.Smoothness * 0.5) * step(0.01, _ShP.z);
+                float rim = smoothstep(1.0 - _ShP.w, 1.0, 1.0 - saturate(dot(N, viewDir))) * _ShP.w;
+                return half4(baseC * gi.light.color + baseC * gi.indirect.diffuse * 0.35 * s.Occlusion + sp * gi.light.color + s.Albedo * rim, 1);
+            }
+            if (_Kind > 7.5)                  // Retro
+            {
+                float l = saturate(dot(N, Ld));
+                if (_ShQ.x > 0.5) l = floor(l * _ShQ.x + 0.5) / _ShQ.x;
+                float amb = _ShQ.z;
+                return half4(s.Albedo * (amb + (1.0 - amb) * l) * _ShQ.w * gi.light.color, 1);
+            }
+            half4 c = LightingStandard(s, viewDir, gi);
+            if (_Kind > 0.5 && _Kind < 1.5)   // Skin: light wraps round, and shines through thin parts
+            {
+                float nl = dot(N, Ld), wrap = _ShP.x * 0.6;
+                c.rgb += s.Albedo * gi.light.color * (max((nl + wrap) / (1.0 + wrap), 0.0) - max(nl, 0.0)) * 0.6;
+                c.rgb += s.Albedo * _ShC.rgb * max(dot(-N, Ld), 0.0) * _Skin.z * _ShP.y * gi.light.color * 0.5;
+            }
+            return c;
+        }
+        void LightingGouache_GI(SurfaceOutputStandard s, UnityGIInput data, inout UnityGI gi) { LightingStandard_GI(s, data, gi); }
+
+        void fin(Input IN, SurfaceOutputStandard o, inout fixed4 color)
+        {
+            if (_Kind > 7.5)   // Retro: fog, few colours, dither
+            {
+                float fg = 1.0 - exp(-length(_WorldSpaceCameraPos - IN.worldPos) * _ShQ.y * 0.35);
+                float3 c = lerp(color.rgb, _ShD.rgb, saturate(fg));
+                c = pow(saturate(c), 1.0 / 2.2);
+                float2 sp = IN.screenPos.xy / IN.screenPos.w * _ScreenParams.xy;
+                c = floor(c * _ShC.rgb + 0.5 + (Bayer4(sp) - 0.5) * _ShP.z) / _ShC.rgb;
+                color.rgb = pow(saturate(c), 2.2);
+            }
+        }
+        ENDCG
+    }
+    FallBack "Standard"
+}
+`;
 const eshYV=a=>'{r: '+eshF(a[0])+', g: '+eshF(a[1])+', b: '+eshF(a[2])+', a: '+eshF(a[3]==null?1:a[3])+'}';
-function eshUnityMaterial(name,sh,texGuids,flags,width){const u=shadeUniforms(sh),k=sh.kind,P=shParams(sh),kind=Math.max(0,SHADERS.findIndex(x=>x[0]===k)),
+function eshUnityMaterial(name,sh,texGuids,flags,width,shaderGuid){const u=shadeUniforms(sh),k=sh.kind,P=shParams(sh),kind=Math.max(0,SHADERS.findIndex(x=>x[0]===k)),
     kk=kind===6?0:kind;/* Spec/Gloss: the textures are already metal/rough */
   const tex=[['_BaseMap',texGuids.base],['_OrmMap',texGuids.orm],['_BumpMap',texGuids.normal],['_EmissionMap',texGuids.emis]].filter(x=>x[1]);
   const te=tex.map(([n,g])=>'    - '+n+':\n        m_Texture: {fileID: 2800000, guid: '+g+', type: 3}\n        m_Scale: {x: 1, y: 1}\n        m_Offset: {x: 0, y: 0}').join('\n');
@@ -278,7 +422,7 @@ function eshUnityMaterial(name,sh,texGuids,flags,width){const u=shadeUniforms(sh
   const floats=[['_Kind',kk],['_HasOrm',texGuids.orm?1:0],['_HasNormal',texGuids.normal?1:0],['_HasEmis',texGuids.emis?1:0],['_OutW',width||0],['_UseAlpha',flags.alpha?1:0],['_SrcBlend',flags.alpha?5:1],['_DstBlend',flags.alpha?10:0],['_ZWrite',flags.alpha?0:1],['_Cutoff',.5],['_Roughness',.6],['_Metallic',0]];
   const colors=[['_BaseColor',[1,1,1,1]],['_ShP',shp],['_ShQ',shq],['_ShC',[...(u.uShC||[1,1,1]),1]],['_ShD',[...(u.uShD||[0,0,0]),1]],['_Skin',skin],['_Pan',k==='panner'?[P.sx,P.sy,0,0]:[0,0,0,0]]];
   return ['%YAML 1.1','%TAG !u! tag:unity3d.com,2011:','--- !u!21 &2100000','Material:','  serializedVersion: 8','  m_ObjectHideFlags: 0','  m_CorrespondingSourceObject: {fileID: 0}','  m_PrefabInstance: {fileID: 0}','  m_PrefabAsset: {fileID: 0}',
-    '  m_Name: '+name,'  m_Shader: {fileID: 4800000, guid: '+ESH_SHADER_GUID+', type: 3}','  m_ValidKeywords: []','  m_InvalidKeywords: []','  m_LightmapFlags: 4','  m_EnableInstancingVariants: 0','  m_DoubleSidedGI: 0','  m_CustomRenderQueue: '+(flags.alpha?3000:-1),'  stringTagMap: {}','  disabledShaderPasses: []',
+    '  m_Name: '+name,'  m_Shader: {fileID: 4800000, guid: '+(shaderGuid||ESH_SHADER_GUID)+', type: 3}','  m_ValidKeywords: []','  m_InvalidKeywords: []','  m_LightmapFlags: 4','  m_EnableInstancingVariants: 0','  m_DoubleSidedGI: 0','  m_CustomRenderQueue: '+(flags.alpha?3000:-1),'  stringTagMap: {}','  disabledShaderPasses: []',
     '  m_LockedProperties: ','  m_SavedProperties:','    serializedVersion: 3','    m_TexEnvs:',te||'    []','    m_Ints: []','    m_Floats:',floats.map(([n,v])=>'    - '+n+': '+eshF(v)).join('\n'),'    m_Colors:',colors.map(([n,v])=>'    - '+n+': '+eshYV(v)).join('\n'),'  m_BuildTextureStacks: []',''].join('\n');}
 function eshUnityMeta(kind,guid,extra){const head='fileFormatVersion: 2\nguid: '+guid+'\n';
   if(kind==='shader')return head+'ShaderImporter:\n  externalObjects: {}\n  defaultTextures: []\n  nonModifiableTextures: []\n  preprocessorOverride: 0\n  userData: \n  assetBundleName: \n  assetBundleVariant: \n';
@@ -301,13 +445,13 @@ function eshFiles(to,name,info,size){const out=[],pn=pascal(name),sets=Object.ke
         out.push({name:sn+'_outline.tres',data:new TextEncoder().encode(eshGodotMaterial(null,base+sn+'_outline.gdshader',[]))});}
       out.push({name:sn+'.tres',data:new TextEncoder().encode(eshGodotMaterial(null,base+sn+'.gdshader',texs,outline?{nextPass:base+sn+'_outline.tres'}:null))});}
     return out;}
-  if(to==='unity'){const shaderPath='../GouacheShaded.shader';
+  if(to==='unity'){const bi=texCfg.unityRP==='builtin',shaderPath=bi?'../GouacheShadedBuiltin.shader':'../GouacheShaded.shader',sguid=bi?ESH_BUILTIN_GUID:ESH_SHADER_GUID;
     for(const s of sets){const I=info[s],T=I.tex||{},sh=I.sh||{kind:'std',p:{}},sn=eshSafe(s),g={};
       const reg=(key,f,kind)=>{if(!f)return;g[key]=eshGuid(pn+'/'+f.name);out.push({name:f.name+'.meta',data:new TextEncoder().encode(eshUnityMeta('tex',g[key],kind))});};
       reg('base',T.BaseColor,'color');reg('orm',T.ORM,'data');reg('normal',T.Normal,'normal');reg('emis',T.Emissive,'color');
       const P=shParams(sh),width=(sh.kind==='toon'||sh.kind==='cel')?(P.outline||0)*size*0.0014:0;
-      out.push({name:sn+'.mat',data:new TextEncoder().encode(eshUnityMaterial(sn,sh,g,{alpha:I.alpha},width))},{name:sn+'.mat.meta',data:new TextEncoder().encode(eshUnityMeta('mat',eshGuid(pn+'/'+sn+'.mat')))});}
-    out.push({name:shaderPath,data:new TextEncoder().encode(ESH_UNITY_SHADER),shared:true},{name:shaderPath+'.meta',data:new TextEncoder().encode(eshUnityMeta('shader',ESH_SHADER_GUID)),shared:true});
+      out.push({name:sn+'.mat',data:new TextEncoder().encode(eshUnityMaterial(sn,sh,g,{alpha:I.alpha&&!bi},width,sguid))},{name:sn+'.mat.meta',data:new TextEncoder().encode(eshUnityMeta('mat',eshGuid(pn+'/'+sn+'.mat')))});}
+    out.push({name:shaderPath,data:new TextEncoder().encode(bi?ESH_BUILTIN_SHADER:ESH_UNITY_SHADER),shared:true},{name:shaderPath+'.meta',data:new TextEncoder().encode(eshUnityMeta('shader',sguid)),shared:true});
     return out;}
   return out;}
 
