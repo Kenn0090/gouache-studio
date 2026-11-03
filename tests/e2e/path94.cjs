@@ -24,8 +24,24 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  s=await pts();ok(s.pts.length===6,'a click carries on from the first point too');
  await p.keyboard.press('Enter');await p.waitForTimeout(200);
  s=await pts();ok(s.pts.length===6&&s.pts[0][0]===30&&s.pts[1][0]===60&&s.pts[5][0]===270,'finished, the new point is first and the direction is as drawn '+JSON.stringify(s.pts.map(q=>q[0])));
+ /* Alt+click adds a point at the nearer end of an open, finished path */
+ const before=(await pts()).pts.length;
+ await p.keyboard.down('Alt');await p.mouse.click(...await at(290,200));await p.keyboard.up('Alt');await p.waitForTimeout(200);
+ s=await pts();ok(s.pts.length===before+1&&s.pts[s.pts.length-1][0]===290,'Alt+click adds a point at the end nearer the click ('+JSON.stringify(s.pts.map(q=>q[0]))+')');
+ await p.keyboard.down('Alt');await p.mouse.click(...await at(10,100));await p.keyboard.up('Alt');await p.waitForTimeout(200);
+ s=await pts();ok(s.pts[0][0]===10&&s.pts.length===before+2,'and at the first end when that is nearer');
+ /* hovering over a segment lights it up */
+ const mid=await p.evaluate(()=>{const L=__gs.allLayers().find(L=>L.path),a=L.path.points[2].p,b=L.path.points[3].p;return [(a[0]+b[0])/2,(a[1]+b[1])/2];});
+ await p.mouse.move(...await at(mid[0],mid[1]));await p.mouse.move(...await at(mid[0]+1,mid[1]));await p.waitForTimeout(200);
+ ok(await p.evaluate(()=>!!(__gs.pathEdit.hov&&__gs.pathEdit.hov.seg>=0)),'hovering over a segment marks it in focus');
+ await p.mouse.move(...await at(150,280));await p.waitForTimeout(150);
+ ok(await p.evaluate(()=>!__gs.pathEdit.hov),'and it clears when the pointer leaves');
+ /* colours in Preferences */
+ await p.evaluate(()=>__gs.dlgPrefs('look'));await p.waitForTimeout(300);
+ ok(await p.locator('#pWireCol').count()>0&&await p.locator('#pPathCol').count()>0,'Preferences has the wireframe and path colours');
+ await p.evaluate(()=>{document.querySelector('#dlgCancel')?.click();});await p.waitForTimeout(200);
  /* with no end selected, a click still starts a new path */
- await p.keyboard.press('Escape');await click(120,250);await p.keyboard.press('Enter');await p.waitForTimeout(200);
+ await p.keyboard.press('Escape');await click(120,260);await p.keyboard.press('Enter');await p.waitForTimeout(200);
  s=await pts();ok(s.n===2,'with nothing selected a click on empty canvas starts a new path');
  /* undo takes the continuation back */
  ok(!errs.length,'no page errors '+errs.join(' | ').slice(0,200));

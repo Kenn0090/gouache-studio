@@ -1,5 +1,8 @@
 ## 0.94.0
 
+- **Alt+click adds a point to an open path.** With a finished, open path, Alt+click on the surface adds a point at the end nearer the click (a click, not a drag: Alt+drag still turns the model in 3D).
+- **Paths light up under the pointer.** Hovering over a path's segment highlights it, so you can see where a click will add a point; points and other paths light up too.
+- **Colours in Preferences.** Preferences › Look has **Colours in the views**: the wireframe colour and the selected and unselected path colours.
 - **Carry on from an open end of a path.** Finish a path with Enter (it is left open), click its first or last point to select it, then click where the path should go: it carries on from there, and more clicks add more points. Press Esc first (nothing selected) to start a new path instead. Continuing from the first point works too, and the path keeps its direction.
 
 ## 0.93.4

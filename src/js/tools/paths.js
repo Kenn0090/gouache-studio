@@ -116,6 +116,9 @@ function pathOverlay(kind){const hit=kind==='3d'?document.getElementById('v3Hit'
   const D=pathDisp,onCol=pathCss(D.col),offCol=pathCss(D.colOff),hs=Math.max(2,D.handle);
   for(const L0 of allLayers())for(const P of (L0.path?(pathEnsure(L0),L0.paths):[])){const L=L0;if(!P||P.kind!==kind||!L.visible||!pathValid(L)||P.hidden)continue;const active=L===doc.active&&P===L.path,pts=P.points;x.strokeStyle=active?onCol:(L===doc.active?onCol:offCol);x.globalAlpha=active||L!==doc.active?1:.6;x.lineWidth=active?D.width+.5:D.width;
     const samples=kind==='3d'?(active?(L._pathPreview||L._pathSamples||(L._pathSamples=pathSamples(P,true))):pathSampleLine(L,P,kind)):pathSamples(P,false);x.beginPath();let start=true;for(const a of samples){const q=pathProject(a.p,kind,hit);if(!q){start=true;continue;}if(start)x.moveTo(...q);else x.lineTo(...q);start=false;}x.stroke();x.globalAlpha=1;
+    /* the segment, point or path under the pointer is lit up */
+    {const H=pathEdit.hov&&pathEdit.hov.P===P?pathEdit.hov:null;if(H&&(H.seg>=0||H.line)){x.save();x.strokeStyle='#ffffff';x.globalAlpha=.95;x.lineWidth=D.width+3;x.lineCap='round';x.lineJoin='round';x.beginPath();let s2=true;
+      for(const a of samples){if(H.seg>=0&&a.segment!==H.seg){s2=true;continue;}const q=pathProject(a.p,kind,hit);if(!q){s2=true;continue;}if(s2)x.moveTo(...q);else x.lineTo(...q);s2=false;}x.stroke();x.restore();}}
     /* mirrored copies from symmetry, drawn faint */
     if(kind==='3d'&&P.sym&&active){x.save();x.globalAlpha=.4;x.setLineDash([4,4]);for(const set of pathMirrorSets(P,samples).slice(1)){x.beginPath();start=true;for(const a of set){const q=pathProject(a.p,kind,hit);if(!q){start=true;continue;}if(start)x.moveTo(...q);else x.lineTo(...q);start=false;}x.stroke();}x.restore();}
     /* the direction the path paints in: an arrow at its end */
@@ -123,7 +126,8 @@ function pathOverlay(kind){const hit=kind==='3d'?document.getElementById('v3Hit'
     pts.forEach((p,i)=>{const q=pathProject(p.p,kind,hit);if(!q)return;
       if(D.normals&&active&&kind==='3d'&&p.n){const rad=(v3.mesh?.radius||1)*.08,v=pathProject(p.p.map((a,j)=>a+p.n[j]*rad),kind,hit);if(v){x.save();x.strokeStyle='#7ee08a';x.beginPath();x.moveTo(...q);x.lineTo(...v);x.stroke();x.restore();}}
       if(active&&D.tangents)for(const k of ['in','out']){if(!p[k]||Math.hypot(...p[k])<1e-6)continue;const v=pathProject(p.p.map((a,j)=>a+p[k][j]),kind,hit);if(!v)continue;x.beginPath();x.moveTo(...q);x.lineTo(...v);x.stroke();x.fillStyle='#202429';x.beginPath();x.arc(...v,Math.max(2,hs*.75),0,Math.PI*2);x.fill();x.stroke();}
-      x.fillStyle=active&&(pathSelection(L).includes(i))?onCol:'#202429';x.fillRect(q[0]-hs,q[1]-hs,hs*2,hs*2);x.strokeRect(q[0]-hs,q[1]-hs,hs*2,hs*2);});}}
+      x.fillStyle=active&&(pathSelection(L).includes(i))?onCol:'#202429';x.fillRect(q[0]-hs,q[1]-hs,hs*2,hs*2);x.strokeRect(q[0]-hs,q[1]-hs,hs*2,hs*2);
+      {const H=pathEdit.hov;if(H&&H.P===P&&H.pt===i&&H.k==='anchor'){x.save();x.strokeStyle='#ffffff';x.lineWidth=2;x.strokeRect(q[0]-hs-3,q[1]-hs-3,hs*2+6,hs*2+6);x.restore();}}});}}
 function pathSampleLine(L,P,kind){if(kind==='3d'){const key=JSON.stringify(P.points);if(P._smpKey!==key){P._smp=pathSamples(P,true);P._smpKey=key;}return P._smp;}return pathSamples(P,false);}
 function pathHit(hit,e,kind){const r=hit.getBoundingClientRect(),p=[e.clientX-r.left,e.clientY-r.top],layers=allLayers().filter(L=>L.path?.kind===kind&&L.visible&&pathValid(L)).reverse();
   for(const L of layers){pathEnsure(L);L.paths.forEach((P,pi)=>{});
@@ -153,7 +157,16 @@ function pathDuplicate(L,i){pathEnsure(L);const before=pathSnap(L),P=pathCopy(L.
 function pathCopyClip(L){if(!L?.path)return;pathClip=pathCopy(L.path);toast('Copied “'+(L.path.name||'path')+'”.');if(pathToolOn())buildBrushPanel();}
 function pathPaste(L){if(!pathClip||!L?.path||pathClip.kind!==L.path.kind){toast(pathClip?'That path is a different kind.':'Copy a path first.');return;}pathEnsure(L);const before=pathSnap(L),P=pathCopy(pathClip);P.name=(P.name||'Path')+' copy';L.paths.push(P);pathSetCur(L,L.paths.length-1);pathRender(L);pathRecord(L,before,'Paste path');buildBrushPanel();requestRender();}
 function pathEventPoint(hit,e,kind){if(kind==='2d')return {p:toImage(e.clientX,e.clientY)};const pk=v3PickAt(hit,e);if(!pk||pk.set!==p3.cur)return null;return pathNearest(v3.mesh,pk.pos);}
-function pathDown(hit,e,kind){if(!pathToolOn()||(kind==='2d'&&ui.tool!=='pen')||(kind==='3d'&&ui.tool!=='path')||e.button!==0||spaceDown||e.altKey&&!pathHit(hit,e,kind))return false;
+/* (0.94) Alt+click on an open, finished path adds a point at the end nearer the click (a click, not a drag: Alt+drag still turns the model) */
+function pathAltAdd(hit,e,kind,L){if(!L||!L.path||L.path.closed||L.path.weld||L.path.kind!==kind||lockStop({node:L})||lockedPos(L))return false;const q=pathEventPoint(hit,e,kind);if(!q)return false;
+  const P=L.path,n=P.points.length,r=hit.getBoundingClientRect(),m=[e.clientX-r.left,e.clientY-r.top],dist=i=>{const v=pathProject(P.points[i].p,kind,hit);return v?Math.hypot(v[0]-m[0],v[1]-m[1]):1e9;};
+  const first=n>1&&dist(0)<dist(n-1),before=pathSnap(L),pt={p:q.p,n:q.n,pressure:pressureOf(e),in:q.p.map(()=>0),out:q.p.map(()=>0)};
+  if(first)P.points.unshift(pt);else P.points.push(pt);pathEdit.L=L;pathSelect(L,[first?0:P.points.length-1]);pathRender(L);pathRecord(L,before,'Add path point');buildBrushPanel();requestRender();return true;}
+function pathAltStart(hit,e,kind){if(!e.altKey||e.button!==0||!pathToolOn()||!((kind==='2d'&&ui.tool==='pen')||(kind==='3d'&&ui.tool==='path'))||pathHit(hit,e,kind))return false;
+  const L=pathActive();if(!L||!L.path||L.path.kind!==kind||!pathValid(L)||L.path.closed||L.path.weld||!L.path.points.length||pathEdit.drawing)return false;
+  if(kind==='2d')return pathAltAdd(hit,e,kind,L);
+  pathEdit.altClick={id:e.pointerId,start:[e.clientX,e.clientY],hit,kind,moved:false};return false;}
+function pathDown(hit,e,kind){if(pathAltStart(hit,e,kind))return true;if(!pathToolOn()||(kind==='2d'&&ui.tool!=='pen')||(kind==='3d'&&ui.tool!=='path')||e.button!==0||spaceDown||e.altKey&&!pathHit(hit,e,kind))return false;
   if(stroke||preview||xf||selLive||tabDocs.hold||gfSaving||bk.busy)return true;if(kind==='3d'&&(!v3.mesh||v3.mesh.noUV))return true;
   pathFlush();const found=pathHit(hit,e,kind),q=pathEventPoint(hit,e,kind);if(!q&&!found)return true;let L=found?.L||pathActive();
   if(found&&found.k==='select'){selectOnly(found.L);pathSetCur(found.L,found.pi);pathEdit.L=found.L;pathEdit.point=-1;pathEdit.drawing=false;renderLayers();buildBrushPanel();requestRender();return true;}
@@ -175,13 +188,22 @@ function pathDown(hit,e,kind){if(!pathToolOn()||(kind==='2d'&&ui.tool!=='pen')||
   if(found&&index===0&&pathEdit.drawing&&L.path.points.length>=3&&!e.ctrlKey&&!e.altKey){L.path.closed=true;pathEdit.drawing=false;pathRender(L);pathRecord(L,before,'Close path');buildBrushPanel();return true;}
   if(!found){index=L.path.points.length;L.path.points.push({p:q.p,n:q.n,pressure:pressureOf(e),in:q.p.map(()=>0),out:q.p.map(()=>0)});}
   pathEdit.L=L;pathEdit.point=index;pathEdit.sel=[];pathEdit.drag={id:e.pointerId,L,index,k,before,origin:pathCopy(L.path.points[index]),start:[e.clientX,e.clientY],hit,kind,moved:false};try{hit.setPointerCapture(e.pointerId);}catch(er){}renderLayers();buildBrushPanel();requestRender();return true;}
-function pathMove(e){const PD=pathEdit.pend;if(PD&&PD.id===e.pointerId){if(!PD.moved&&Math.hypot(e.clientX-PD.start[0],e.clientY-PD.start[1])>5)PD.moved=true;
+/* what the pointer is over, so it can be lit up: a segment you could add a point to, a point, or another path */
+function pathHoverUpdate(e){let h=null;const kind=ui.tool==='pen'?'2d':ui.tool==='path'?'3d':null;
+  if(kind&&pathToolOn()&&!e.buttons&&!pathEdit.drag&&!pathEdit.pend){const hit=kind==='3d'?document.getElementById('v3Hit'):stage;
+    if(hit&&e.target&&(e.target===hit||(hit.contains&&hit.contains(e.target))||(kind==='2d'&&e.target===cv))){const found=pathHit(hit,e,kind);
+      if(found)h=found.k==='select'?{L:found.L,P:found.P,line:true}:{L:found.L,P:found.P,pt:found.i,k:found.k};
+      else{const L=pathActive();if(L&&L.path&&L.path.kind===kind&&pathValid(L)&&!pathEdit.drawing&&L.path.points.length>=2&&!L.path.weld){const near=pathNearLine(hit,e,kind,L.path);if(near)h={L,P:L.path,seg:near.i,t:near.t};}}}}
+  const key=h?[h.L.paths?h.L.paths.indexOf(h.P):0,h.line?'l':'',h.seg,h.pt,h.k].join():'';if(key!==pathEdit.hovKey){pathEdit.hovKey=key;pathEdit.hov=h;requestRender();}}
+function pathMove(e){pathHoverUpdate(e);{const AC=pathEdit.altClick;if(AC&&AC.id===e.pointerId&&Math.hypot(e.clientX-AC.start[0],e.clientY-AC.start[1])>4)AC.moved=true;}
+  const PD=pathEdit.pend;if(PD&&PD.id===e.pointerId){if(!PD.moved&&Math.hypot(e.clientX-PD.start[0],e.clientY-PD.start[1])>5)PD.moved=true;
     if(PD.moved){const r=PD.hit.getBoundingClientRect();pathEdit.rect=[PD.start[0]-r.left,PD.start[1]-r.top,e.clientX-r.left,e.clientY-r.top];requestRender();}return true;}
   const D=pathEdit.drag;if(!D||D.id!==e.pointerId)return false;const q=pathEventPoint(D.hit,e,D.kind);if(!q)return true;D.moved=D.moved||Math.hypot(e.clientX-D.start[0],e.clientY-D.start[1])>2;const p=D.L.path.points[D.index];
   if(D.k==='anchor'){p.p=q.p;p.n=q.n;}else if(D.moved){const delta=sub3d(q.p,D.origin.p),key=D.k==='new'?'out':D.k,other=key==='in'?'out':'in';
     if(e.ctrlKey&&D.k!=='new'&&D.origin[key]&&Math.hypot(...D.origin[key])>1e-6){/* Ctrl: both handles of the point grow or shrink together */const f=Math.hypot(...sub3d(q.p,D.origin.p).map((v,j)=>v+D.origin[key][j]))/Math.hypot(...D.origin[key]);if(Number.isFinite(f)){p[key]=D.origin[key].map(v=>v*f);if(D.origin[other])p[other]=D.origin[other].map(v=>v*f);}}
     else{p[key]=delta;if(!e.altKey)p[other]=delta.map(v=>-v);}}if(D.kind==='3d')D.L._pathPreview=pathSamples(D.L.path,true);requestRender();return true;}
-function pathUp(e,cancel){const PD=pathEdit.pend;if(PD&&PD.id===e.pointerId){pathEdit.pend=null;pathEdit.rect=null;try{PD.hit.releasePointerCapture(e.pointerId);}catch(er){}if(cancel){requestRender();return true;}
+function pathUp(e,cancel){{const AC=pathEdit.altClick;if(AC&&AC.id===e.pointerId){pathEdit.altClick=null;if(!AC.moved&&!cancel){const L=pathActive();if(L)pathAltAdd(AC.hit,e,AC.kind,L);}return false;}}
+  const PD=pathEdit.pend;if(PD&&PD.id===e.pointerId){pathEdit.pend=null;pathEdit.rect=null;try{PD.hit.releasePointerCapture(e.pointerId);}catch(er){}if(cancel){requestRender();return true;}
     const L=pathActive();if(!L){return true;}
     if(PD.moved){const r=PD.hit.getBoundingClientRect(),x0=Math.min(PD.start[0],e.clientX)-r.left,x1=Math.max(PD.start[0],e.clientX)-r.left,y0=Math.min(PD.start[1],e.clientY)-r.top,y1=Math.max(PD.start[1],e.clientY)-r.top,inside=[];
       L.path.points.forEach((a,i)=>{const q=pathProject(a.p,PD.kind,PD.hit);if(q&&q[0]>=x0&&q[0]<=x1&&q[1]>=y0&&q[1]<=y1)inside.push(i);});pathSelect(L,PD.shift?[...new Set([...pathSelection(L),...inside])]:inside);buildBrushPanel();requestRender();return true;}
