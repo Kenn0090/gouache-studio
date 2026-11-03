@@ -14,6 +14,8 @@ struct MapLens {
     emissive: usize,
     #[serde(default)]
     height: usize,
+    #[serde(default)]
+    thick: usize,
 }
 
 #[derive(Deserialize, Default)]
@@ -249,8 +251,9 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         let normal = map(&mut rd, g.tex.normal)?;
         let emissive = map(&mut rd, g.tex.emissive)?;
         let height = map(&mut rd, g.tex.height)?;
+        let thick = map(&mut rd, g.tex.thick)?;
         let shader = ShaderParams { kind: g.sh.k, p: g.sh.p, q: g.sh.q, c: g.sh.c, d: g.sh.d, skin: g.sh.skin };
-        let material = Material { shader, base, orm, normal, emissive, height, rough: g.rough, metal: g.metal, partial: g.partial };
+        let material = Material { shader, base, orm, normal, emissive, height, thick, rough: g.rough, metal: g.metal, partial: g.partial };
         groups.push(Group { name: g.name.clone(), indices, material });
     }
     let env = match &meta.env {

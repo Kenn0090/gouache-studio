@@ -26,7 +26,7 @@ struct Frame {
 
 // from a point on the model toward the viewer (the same direction everywhere when the view is orthographic)
 fn view_dir(p: vec3<f32>) -> vec3<f32> {
-    if (frame.cam_dir.w > 0.5) { return normalize(frame.cam_dir.xyz); }
+    // the 3D view lights an orthographic picture with the direction to the eye position too, so this does the same
     return normalize(frame.cam_pos.xyz - p);
 }
 @group(0) @binding(0) var<uniform> frame: Frame;
@@ -335,6 +335,7 @@ fn fs_shade(i: VOut) -> vec4<f32> {
     col += studio_direct(nn, v, normalize(vec3<f32>(-0.75, 0.45, -0.25)), albedo, f0, rough, metal) * frame.light_n.y * 2.0;
     col += studio_direct(nn, v, normalize(vec3<f32>(0.3, 0.35, -0.9)), albedo, f0, rough, metal) * frame.light_n.z * 2.0;
     var thick = mat.shp.w;
+    if (mat.skin.w > 0.5) { thick = textureSample(emi_tex, tex_smp, uv).a; }
     if (kind == 1) {
         let ns = normalize(mix(nn, n, mat.shp.z));
         let sss = clamp(mat.shc.rgb, vec3<f32>(0.02), vec3<f32>(1.0));
@@ -345,9 +346,8 @@ fn fs_shade(i: VOut) -> vec4<f32> {
         let back = max(dot(-ns, l), 0.0);
         let transmitted = attenuation * sss * back * mat.skin.z * mat.shp.y;
         let sr = clamp(mix(rough, mat.skin.x, 0.75), 0.08, 1.0);
-        let ar = sr * sr;
-        let dd = nh * nh * (ar * ar - 1.0) + 1.0;
-        let surface = vec3<f32>(0.028) * (ar * ar / (PI * dd * dd)) * 0.25 * nl;
+        // two surface lobes, as in the 3D view
+        let surface = studio_direct(nn, v, l, vec3<f32>(0.0), vec3<f32>(0.028), sr, 0.0) + studio_direct(nn, v, l, vec3<f32>(0.0), vec3<f32>(0.04), max(sr * 0.38, 0.08), 0.0) * mat.shq.z * 0.35;
         col = ((vec3<f32>(1.0) - f) * (1.0 - metal) * albedo / PI * dl + surface) * sun + transmitted * albedo * sun * 0.5;
     }
     if (kind == 3) {
@@ -379,7 +379,7 @@ fn fs_shade(i: VOut) -> vec4<f32> {
             env_d = diff_col * sh_diffuse(ns) + sh_diffuse(-ns) * attenuation * sss * albedo * mat.shp.y * mat.skin.z * 0.25;
             let sr = clamp(mix(rough, mat.skin.x, 0.75), 0.08, 1.0);
             let sab = env_brdf(sr, nv);
-            env_s = env_spec(reflect(-v, nn), sr) * (vec3<f32>(0.028) * sab.x + sab.y);
+            env_s = env_spec(reflect(-v, nn), sr) * (vec3<f32>(0.028) * sab.x + sab.y) + env_spec(reflect(-v, nn), max(sr * 0.38, 0.08)) * (vec3<f32>(0.04) * sab.x + sab.y) * mat.shq.z * 0.35;
         }
         if (kind == 3) { env_s += lin3(mat.shc.rgb) * mat.shp.x * sh_diffuse(nn) * pow(1.0 - nv, max(mat.shp.z, 0.5) * 3.0 + 1.0); }
     } else {

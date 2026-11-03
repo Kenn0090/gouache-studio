@@ -63,6 +63,8 @@ pub struct Material {
     pub emissive: Option<Tex8>,
     /// a height map (its red channel); it travels in the alpha of the normal map so the vertex shader can read it
     pub height: Option<Tex8>,
+    /// a thickness map (skin): it travels in the alpha of the emissive map
+    pub thick: Option<Tex8>,
     pub rough: f32,
     pub metal: f32,
     /// when new pictures arrive for an existing material: maps left out (None) keep what they had
@@ -332,6 +334,20 @@ struct MatUniform {
 }
 
 /// The pictures the post processing works in (made again when the size changes).
+/// What the ray tracing needs to be built again (when the height depth changes).
+struct RtKeep {
+    pos0: Vec<f32>,
+    all: Vec<u32>,
+    tri_group: Vec<u32>,
+    cols: Vec<[f32; 4]>,
+    uvs: Vec<f32>,
+    layers: Vec<Vec<u8>>,
+    radius: f32,
+    dn: Vec<[f32; 3]>,
+    vgroup: Vec<i32>,
+    heights: Vec<Option<Tex8>>,
+}
+
 struct PostGpu {
     w: u32,
     h: u32,
@@ -377,6 +393,7 @@ struct Gpu {
     post_bufs: [wgpu::Buffer; 3],
     post_smp: wgpu::Sampler,
     post: Option<PostGpu>,
+    rt_keep: Option<RtKeep>,
     st_layout: wgpu::BindGroupLayout,
     st_smp: wgpu::Sampler,
     st_bind: Option<wgpu::BindGroup>,
@@ -547,7 +564,7 @@ fn box_down(src: &[u8], w: u32, h: u32) -> (Vec<u8>, u32, u32) {
 
 /// A texture with all its smaller levels, from a picture (or a single colour when there is none).
 /// The normal map with the height map's red channel written into its alpha (a flat normal where there is no normal map).
-fn merge_height(n: Option<&Tex8>, h: &Tex8) -> Tex8 {
+fn merge_height(n: Option<&Tex8>, h: &Tex8, fallback: [u8; 3]) -> Tex8 {
     let ok = |t: &Tex8| t.width > 0 && t.height > 0 && t.rgba.len() >= (t.width * t.height * 4) as usize;
     let n = n.filter(|t| ok(t));
     let (w, hh) = match n {
@@ -560,7 +577,7 @@ fn merge_height(n: Option<&Tex8>, h: &Tex8) -> Tex8 {
             let o = ((y * w + x) * 4) as usize;
             match n {
                 Some(t) => out[o..o + 3].copy_from_slice(&t.rgba[o..o + 3]),
-                None => out[o..o + 3].copy_from_slice(&[128, 128, 255]),
+                None => out[o..o + 3].copy_from_slice(&fallback),
             }
             out[o + 3] = if ok(h) {
                 let hx = (x as u64 * h.width as u64 / w as u64).min(h.width as u64 - 1) as u32;
@@ -1141,6 +1158,7 @@ impl Gpu {
             post_bufs,
             post_smp,
             post: None,
+            rt_keep: None,
             st_layout,
             st_smp,
             st_bind: None,
@@ -1256,8 +1274,55 @@ impl Gpu {
             cols.push(average_colour(g.material.base.as_ref()));
         }
         let layers: Vec<Vec<u8>> = s.groups.iter().map(|g| shrink_layer(g.material.base.as_ref())).collect();
-        self.rt.new_model(s.mesh.positions.clone(), all, (tri_group, cols), s.mesh.uvs.clone(), layers, radius);
+        let mut vgroup = vec![-1i32; n];
+        for (gi, g) in s.groups.iter().enumerate() {
+            for &i in &g.indices {
+                if let Some(v) = vgroup.get_mut(i as usize) {
+                    if *v < 0 {
+                        *v = gi as i32;
+                    }
+                }
+            }
+        }
+        self.rt_keep = Some(RtKeep {
+            pos0: s.mesh.positions.clone(),
+            all,
+            tri_group,
+            cols,
+            uvs: s.mesh.uvs.clone(),
+            layers,
+            radius,
+            dn: verts.iter().map(|v| v.dn).collect(),
+            vgroup,
+            heights: s.groups.iter().map(|g| g.material.height.clone()).collect(),
+        });
+        self.apply_rt_model();
         (c, radius)
+    }
+
+    /// Gives the ray tracing the model as it is drawn, moved by the height map when there is height depth.
+    fn apply_rt_model(&mut self) {
+        let Some(k) = &self.rt_keep else { return };
+        let disp = self.settings.disp;
+        let mut pos = k.pos0.clone();
+        if disp != 0.0 {
+            for i in 0..k.vgroup.len() {
+                let Some(Some(h)) = (if k.vgroup[i] >= 0 { k.heights.get(k.vgroup[i] as usize) } else { None }) else { continue };
+                if h.width == 0 || h.height == 0 || k.uvs.len() < (i + 1) * 2 || h.rgba.len() < (h.width * h.height * 4) as usize {
+                    continue;
+                }
+                // the same lookup the vertex shader does (repeat, the picture's first row is the top)
+                let (u, v) = (k.uvs[i * 2], 1.0 - k.uvs[i * 2 + 1]);
+                let (fu, fv) = (u - u.floor(), v - v.floor());
+                let (x, y) = (((fu * h.width as f32) as u32).min(h.width - 1), ((fv * h.height as f32) as u32).min(h.height - 1));
+                let hv = h.rgba[((y * h.width + x) * 4) as usize] as f32 / 255.0 - 0.5;
+                for a in 0..3 {
+                    pos[i * 3 + a] += k.dn[i][a] * hv * disp;
+                }
+            }
+        }
+        let (all, tg, cols, uvs, layers, radius) = (k.all.clone(), k.tri_group.clone(), k.cols.clone(), k.uvs.clone(), k.layers.clone(), k.radius);
+        self.rt.new_model(pos, all, (tg, cols), uvs, layers, radius);
     }
 
     /// Makes the bind group (pictures + settings) of one material.
@@ -1268,9 +1333,10 @@ impl Gpu {
         };
         let base = view(mat.base.as_ref(), [255, 255, 255, 255], wgpu::TextureFormat::Rgba8UnormSrgb, 0);
         let orm = view(mat.orm.as_ref(), [255, 255, 255, 255], wgpu::TextureFormat::Rgba8Unorm, 1);
-        let merged = mat.height.as_ref().map(|h| merge_height(mat.normal.as_ref(), h));
+        let merged = mat.height.as_ref().map(|h| merge_height(mat.normal.as_ref(), h, [128, 128, 255]));
+        let merged_e = mat.thick.as_ref().map(|h| merge_height(mat.emissive.as_ref(), h, [0, 0, 0]));
         let nrm = view(if merged.is_some() { merged.as_ref() } else { mat.normal.as_ref() }, [128, 128, 255, 255], wgpu::TextureFormat::Rgba8Unorm, 2);
-        let emi = view(mat.emissive.as_ref(), [0, 0, 0, 255], wgpu::TextureFormat::Rgba8UnormSrgb, 3);
+        let emi = view(if merged_e.is_some() { merged_e.as_ref() } else { mat.emissive.as_ref() }, [0, 0, 0, 255], wgpu::TextureFormat::Rgba8UnormSrgb, 3);
         let sp = mat.shader;
         let mut mu = MatUniform {
             flags: [if mat.orm.is_some() { 1.0 } else { 0.0 }, if mat.rough > 0.0 { mat.rough } else { 0.6 }, mat.metal, if mat.height.is_some() { 1.0 } else { 0.0 }],
@@ -1280,10 +1346,11 @@ impl Gpu {
             shq: sp.q,
             shc: [sp.c[0], sp.c[1], sp.c[2], 0.0],
             shd: [sp.d[0], sp.d[1], sp.d[2], 0.0],
-            skin: sp.skin,
+            skin: [sp.skin[0], sp.skin[1], sp.skin[2], if mat.thick.is_some() { 1.0 } else { 0.0 }],
         };
         if let Some((_, old)) = keep {
             mu.flags = old.flags; // a kept map keeps its flag too
+            mu.skin[3] = old.skin[3];
         }
         let mb = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("material"), contents: bytemuck::bytes_of(&mu), usage: wgpu::BufferUsages::UNIFORM });
         let bind = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -1842,7 +1909,11 @@ impl ApplicationHandler<Cmd> for App {
                     self.set_cam(c);
                 }
                 if let Some(g) = self.gpu.as_mut() {
+                    let disp_changed = (g.settings.disp - settings.disp).abs() > 1e-6;
                     g.settings = settings;
+                    if disp_changed {
+                        g.apply_rt_model();
+                    }
                     match env {
                         EnvChange::Keep => {}
                         EnvChange::Clear => g.set_env(None),

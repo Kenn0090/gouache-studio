@@ -34,12 +34,15 @@ async function nvViewPNG(){const t=nvViewTarget();if(!t)return null;
   const b=await new Promise(r=>cv1.toBlob(r,'image/png'));return b?new Uint8Array(await b.arrayBuffer()):null;}
 /* height depth: the height map goes along as a grey picture; the window moves the surface by it */
 function nvDispOn(){try{const s=v3s();return ui.mode!=='bake'&&ui.mode!=='convert'&&!!s.disp&&doc.maps.includes('height')&&!!v3.tex.height;}catch(e){return false;}}
-async function nvHeightApply(T){if(!nvDispOn()||nvViewTarget())return;const t=v3.tex.height,c=captureRegionNow(t,0,0,t.w,t.h),n=t.w*t.h,cv=document.createElement('canvas');cv.width=t.w;cv.height=t.h;
+async function nvGreyPNG(t){const c=captureRegionNow(t,0,0,t.w,t.h),n=t.w*t.h,cv=document.createElement('canvas');cv.width=t.w;cv.height=t.h;
   const x=cv.getContext('2d'),im=x.createImageData(t.w,t.h);for(let i=0;i<n;i++){const v=c.depth===16?Math.max(0,Math.min(255,Math.round(h2f(c.data[i*4])*255))):c.data[i*4];im.data[i*4]=im.data[i*4+1]=im.data[i*4+2]=v;im.data[i*4+3]=255;}
   x.putImageData(im,0,0);const sc=Math.min(1,1024/Math.max(t.w,t.h));let cv2=cv;if(sc<1){cv2=document.createElement('canvas');cv2.width=Math.max(2,Math.round(t.w*sc));cv2.height=Math.max(2,Math.round(t.h*sc));cv2.getContext('2d').drawImage(cv,0,0,cv2.width,cv2.height);}
   /* rows: the target's first row is the bottom of the picture, a PNG starts at the top */
   const out=document.createElement('canvas');out.width=cv2.width;out.height=cv2.height;const o=out.getContext('2d');o.translate(0,out.height);o.scale(1,-1);o.drawImage(cv2,0,0);
-  const b=await new Promise(r=>out.toBlob(r,'image/png'));if(b)T.Height=new Uint8Array(await b.arrayBuffer());}
+  const b=await new Promise(r=>out.toBlob(r,'image/png'));return b?new Uint8Array(await b.arrayBuffer()):null;}
+async function nvHeightApply(T){if(nvViewTarget())return;if(nvDispOn()){const g=await nvGreyPNG(v3.tex.height);if(g)T.Height=g;}
+  /* skin: the baked thickness map (doc.meshMaps.thick) */
+  try{if(ui.mode==='p3d'&&nvShader().k===1&&doc.meshMaps&&doc.meshMaps.thick){const g=await nvGreyPNG(doc.meshMaps.thick);if(g)T.Thick=g;}}catch(e){}}
 /* the selection (orange tint on the model): painted into the picture the window shows, like the 3D view does on top */
 let nvSelVer=0;
 {const a=applyShape;applyShape=function(...r){nvSelVer++;return a.apply(this,r);};}
@@ -50,7 +53,7 @@ async function nvSelApply(T){if(!nvSelOn()||!T.BaseColor)return;
   for(let y=0;y<h;y++){const sy=Math.min(sel.t.h-1,Math.floor((h-1-y)*sel.t.h/h));for(let xx=0;xx<w;xx++){const sx=Math.min(sel.t.w-1,Math.floor(xx*sel.t.w/w)),mv=m.depth===16?h2f(m.data[(sy*sel.t.w+sx)*4]):m.data[(sy*sel.t.w+sx)*4]/255;
     if(mv<.02)continue;const k=.32*mv,i=(y*w+xx)*4;d[i]+=(255-d[i])*k;d[i+1]+=(158-d[i+1])*k;d[i+2]+=(56-d[i+2])*k;}}
   x.putImageData(im,0,0);const b=await new Promise(r=>cv.toBlob(r,'image/png'));if(b)T.BaseColor=new Uint8Array(await b.arrayBuffer());}
-async function nvViewApply(T){const v=await nvViewPNG();if(v){T.BaseColor=v;delete T.ORM;delete T.Normal;delete T.Emissive;delete T.Height;}else{await nvSelApply(T);await nvHeightApply(T);}}
+async function nvViewApply(T){const v=await nvViewPNG();if(v){T.BaseColor=v;delete T.ORM;delete T.Normal;delete T.Emissive;delete T.Height;delete T.Thick;}else{await nvSelApply(T);await nvHeightApply(T);}}
 /* the Bake and Convert tabs keep what the model shows in v3.btex (base, normal, AO, roughness, metal): these go to the window as the model's maps */
 const nvBakeMode=()=>(ui.mode==='bake'||ui.mode==='convert')&&!!v3.btex;
 function nvRead(t,w,h){const c=captureRegionNow(t,0,0,t.w,t.h),o=new Uint8ClampedArray(w*h*4);
@@ -215,8 +218,8 @@ async function nvSyncTextures(live){if(!(nvPaintOn()||nv.viewForce)||nv.texBusy)
   try{texCfg.size=live?NV_TEX_LIVE:NV_TEX_MAX;texCfg.pad='none';texCfg.meshMaps=false;
     const bm=nvBakeMode(),S=bm?{name:doc.name||'Model'}:p3.sets[p3.cur];if(!S)return;let T={};if(bm)T=await nvBakeTextures();else{const g=await buildTextures(GLTF_TEX,'preview');for(const f of g)T[f.suffix]=f.data;await nvViewApply(T);}
     const len=k=>T[k]?T[k].length:0,parts=[];
-    const meta={pos:0,nrm:0,uv:0,groups:[{name:S.name,idx:0,rough:.6,metal:0,sh:nvShader(),tex:{base:len('BaseColor'),orm:len('ORM'),normal:len('Normal'),emissive:len('Emissive'),height:len('Height')}}],env:null,settings:nvSettings()};
-    for(const k of ['BaseColor','ORM','Normal','Emissive','Height'])if(T[k])parts.push(T[k]);
+    const meta={pos:0,nrm:0,uv:0,groups:[{name:S.name,idx:0,rough:.6,metal:0,sh:nvShader(),tex:{base:len('BaseColor'),orm:len('ORM'),normal:len('Normal'),emissive:len('Emissive'),height:len('Height'),thick:len('Thick')}}],env:null,settings:nvSettings()};
+    for(const k of ['BaseColor','ORM','Normal','Emissive','Height','Thick'])if(T[k])parts.push(T[k]);
     const json=new TextEncoder().encode(JSON.stringify(meta));let total=4+json.length;for(const p of parts)total+=p.byteLength;
     const out=new Uint8Array(total),dv=new DataView(out.buffer);dv.setUint32(0,json.length,true);out.set(json,4);let o=4+json.length;for(const p of parts){out.set(new Uint8Array(p.buffer,p.byteOffset,p.byteLength),o);o+=p.byteLength;}
     nv.lastTex={name:S.name,bytes:out.length};
@@ -232,8 +235,8 @@ function nvBody(sc){const m=sc.m,n=m.pos.length/3,f32=a=>new Float32Array(a);
   let win=null;try{win=JSON.parse(localStorage.getItem('gs.nvWin')||'null');}catch(e){}
   const parts=[pos,nrm,uv],meta={pos:pos.length,nrm:nrm.length,uv:uv.length,groups:[],env:null,settings:sc.settings,win:Array.isArray(win)&&win.length===4?win:undefined};
   for(const g of sc.groups){const T=sc.texBy[g.name]||{},len=k=>T[k]?T[k].length:0;
-    meta.groups.push({name:g.name,idx:g.idx.length,rough:.6,metal:0,sh:sc.shBy[g.name]||undefined,tex:{base:len('BaseColor'),orm:len('ORM'),normal:len('Normal'),emissive:len('Emissive'),height:len('Height')}});
-    parts.push(g.idx);for(const k of ['BaseColor','ORM','Normal','Emissive','Height'])if(T[k])parts.push(T[k]);}
+    meta.groups.push({name:g.name,idx:g.idx.length,rough:.6,metal:0,sh:sc.shBy[g.name]||undefined,tex:{base:len('BaseColor'),orm:len('ORM'),normal:len('Normal'),emissive:len('Emissive'),height:len('Height'),thick:len('Thick')}});
+    parts.push(g.idx);for(const k of ['BaseColor','ORM','Normal','Emissive','Height','Thick'])if(T[k])parts.push(T[k]);}
   if(sc.envd){meta.env={w:sc.envd.w,h:sc.envd.h};parts.push(sc.envd.rgb);}
   const json=new TextEncoder().encode(JSON.stringify(meta)),bytes=a=>new Uint8Array(a.buffer,a.byteOffset,a.byteLength);
   let total=4+json.length;for(const p of parts)total+=p.byteLength;const out=new Uint8Array(total),dv=new DataView(out.buffer);dv.setUint32(0,json.length,true);out.set(json,4);let o=4+json.length;
