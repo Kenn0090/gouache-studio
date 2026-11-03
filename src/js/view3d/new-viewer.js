@@ -53,6 +53,7 @@ function nvStopWatch(){if(nv.timer){clearInterval(nv.timer);nv.timer=null;}}
 /* ---- painting through the window ----
    The window reports the pointer (position, camera, keys). The page turns that into pointer events on the 3D view, so the
    normal brush paints; afterwards the changed material is sent back as new pictures. */
+const NV_TEX_LIVE=512,NV_LIVE_MS=120;
 function nvPaintOn(){return platform.isDesktop&&ui.mode==='p3d';}
 function nvCamFrom(ev){const c=v3.cam,d=[ev.eye[0]-ev.tgt[0],ev.eye[1]-ev.tgt[1],ev.eye[2]-ev.tgt[2]],L=Math.hypot(d[0],d[1],d[2])||1;
   c.tx=ev.tgt[0];c.ty=ev.tgt[1];c.tz=ev.tgt[2];c.dist=L;c.pitch=Math.asin(Math.max(-1,Math.min(1,d[1]/L)));c.yaw=Math.atan2(d[0],d[2]);}
@@ -64,14 +65,16 @@ function nvPixelRay(ev){const t=Math.tan(ev.fov*Math.PI/360),e=ev.eye,g=ev.tgt;
 function nvHandle(ev){if(!nvPaintOn()||!ev||!ev.t)return;const hit=document.getElementById('v3Hit');if(!hit)return;
   nvCamFrom(ev);const p=pathProject(nvPixelRay(ev),'3d',hit);if(!p)return;const r=hit.getBoundingClientRect(),cx=r.left+p[0],cy=r.top+p[1];
   const mk=(type,buttons)=>new PointerEvent(type,{pointerId:991,pointerType:'mouse',isPrimary:true,bubbles:true,cancelable:true,clientX:cx,clientY:cy,button:0,buttons,shiftKey:!!ev.shift,ctrlKey:!!ev.ctrl,altKey:!!ev.alt,pressure:ev.t==='up'?0:.5});
-  if(ev.t==='down'){hit.dispatchEvent(mk('pointerdown',1));}
-  else if(ev.t==='move'){hit.dispatchEvent(mk('pointermove',1));}
+  if(ev.t==='down'){clearTimeout(nv.sync);hit.dispatchEvent(mk('pointerdown',1));nv.liveAt=performance.now();}
+  else if(ev.t==='move'){hit.dispatchEvent(mk('pointermove',1));nvLiveTick();}
   else if(ev.t==='up'){hit.dispatchEvent(mk('pointerup',0));nvSyncSoon();}}
+/* while dragging: a small copy of the maps every so often (the full one follows after the stroke) */
+function nvLiveTick(){const now=performance.now();if(nv.texBusy||now-(nv.liveAt||0)<NV_LIVE_MS)return;nv.liveAt=now;nvSyncTextures(true).then(()=>{nv.liveAt=performance.now();});}
 /* after a stroke: rebuild the active set's maps and send them */
 function nvSyncSoon(){clearTimeout(nv.sync);nv.sync=setTimeout(nvSyncTextures,350);}
-async function nvSyncTextures(){if(!nvPaintOn()||nv.texBusy){if(nv.texBusy)nvSyncSoon();return;}nv.texBusy=true;
+async function nvSyncTextures(live){if(!nvPaintOn()||nv.texBusy){if(nv.texBusy&&!live)nvSyncSoon();return;}nv.texBusy=true;
   const saved={size:texCfg.size,pad:texCfg.pad,meshMaps:texCfg.meshMaps,h16:texCfg.h16};
-  try{texCfg.size=NV_TEX_MAX;texCfg.pad='none';texCfg.meshMaps=false;
+  try{texCfg.size=live?NV_TEX_LIVE:NV_TEX_MAX;texCfg.pad='none';texCfg.meshMaps=false;
     const S=p3.sets[p3.cur];if(!S)return;const g=await buildTextures(GLTF_TEX,'preview'),T={};for(const f of g)T[f.suffix]=f.data;
     const len=k=>T[k]?T[k].length:0,parts=[];
     const meta={pos:0,nrm:0,uv:0,groups:[{name:S.name,idx:0,rough:.6,metal:0,sh:nvShader(),tex:{base:len('BaseColor'),orm:len('ORM'),normal:len('Normal'),emissive:len('Emissive')}}],env:null,settings:nvSettings()};

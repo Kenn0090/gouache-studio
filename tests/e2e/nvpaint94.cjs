@@ -25,9 +25,15 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const before=await p.evaluate(async()=>{const S=__gs.p3.sets[__gs.p3.cur];return (await __gs.buildTextures(__gs.GLTF_TEX,'preview')).find(f=>f.suffix==='BaseColor').data.length;});
  const cam=await p.evaluate(()=>{const e=__gs.v3Eye(),c=__gs.v3.cam;return {eye:e,tgt:[c.tx,c.ty,c.tz],fov:__gs.v3s().fov||45};});
  const ev=(t,x,y)=>Object.assign({t,x,y,w:r.w,h:r.h,shift:false,ctrl:false,alt:false},cam);
- await p.evaluate(([a,b2,c])=>{__gs.nvHandle(a);__gs.nvHandle(b2);__gs.nvHandle(c);},[ev('down',r.w/2,r.h/2),ev('move',r.w/2+30,r.h/2+5),ev('up',r.w/2+30,r.h/2+5)]);
+ await p.evaluate(a=>__gs.nvHandle(a),ev('down',r.w/2,r.h/2));
+ await p.evaluate(a=>__gs.nvHandle(a),ev('move',r.w/2+20,r.h/2+3));await W(300);
+ for(let i=0;i<8&&!(await p.evaluate(()=>window.__tex.length));i++){await p.evaluate(a=>__gs.nvHandle(a),ev('move',r.w/2+22+i*3,r.h/2+4));await W(500);}
+ ok(await p.evaluate(()=>window.__tex.length>=1),'pictures reach the window while the brush is still down ('+await p.evaluate(()=>window.__tex.join(','))+')');
+ const mid=await p.evaluate(()=>window.__tex.length);
+ await p.evaluate(a=>__gs.nvHandle(a),ev('up',r.w/2+45,r.h/2+5));
  await p.waitForFunction(()=>window.__tex.length>0,null,{timeout:20000}).catch(()=>{});
- ok(await p.evaluate(()=>window.__tex.length>=1),'after the stroke the changed pictures go back to the window ('+await p.evaluate(()=>window.__tex.join(','))+' bytes)');
+ await p.waitForFunction(m=>window.__tex.length>m,mid,{timeout:25000}).catch(()=>{});
+ ok(await p.evaluate(m=>window.__tex.length>m,mid),'after the stroke the changed pictures go back to the window ('+await p.evaluate(()=>window.__tex.join(','))+' bytes)');
  const after=await p.evaluate(async()=>(await __gs.buildTextures(__gs.GLTF_TEX,'preview')).find(f=>f.suffix==='BaseColor').data.length);
  ok(after!==before,'the stroke changed the base colour map ('+before+' -> '+after+' bytes)');
  ok(errs.length===0,'no page errors '+errs.join('|'));
