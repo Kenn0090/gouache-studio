@@ -1,5 +1,6 @@
 ## 0.94.1
 
+- **New viewer: Bevel preview.** The rounded-edge preview of the Bevel shader (3D Paint and Bake) shows in the window. The app makes the rounded normals for the window's own view once the view has been still a moment; while you turn the model the window shows the normal map, then the rounded edges return.
 - **New viewer: high-poly in the Bake tab, and painting in the Bake and Paint tabs.** Show high-poly (See-through / Only) works in the window, and when a tab's paint-on-model switch is on you can paint in the window there too (skew and offset fixes in Bake, normal painting in Paint). The New viewer button is in every tab's 3D bar.
 - **New viewer: decal landing ring.** The glowing ring and grid that show where a decal will land (when you arm a decal or drag one over the model) are drawn in the new viewer window too, lying on the surface.
 - **New viewer: mirror copy cursors.** With Show copy cursors on, the brush ring's mirrored copies are drawn on the surface in the new viewer window, hidden where the copy lands out of sight.

@@ -30,6 +30,15 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{const s=__gs.v3s();s.floor=true;s.shadows=true;});
  const f=await p.evaluate(()=>__gs.nvSettings());
  ok(f.floor&&f.floor[3]===1&&f.rt===true,'the floor is in the settings and switches ray tracing on ('+JSON.stringify(f.floor)+')');
+ /* the Bevel preview: rounded normals made for the window's own view */
+ await p.evaluate(()=>{const o=window.__gs.bvSettings();o.on=true;o.preview=true;window.__gs.nv.winSize=[256,160];window.__gs.nv.isOpen=true;window.__tex.length=0;});
+ const kk=await p.evaluate(()=>window.__gs.nvBevelKey());
+ ok(kk&&kk.length>10,'the Bevel preview has a view key when it is on');
+ await p.evaluate(()=>window.__gs.nvBevelRun());await W(500);
+ for(let i=0;i<40&&!(await p.evaluate(()=>window.__tex.some(x=>x.name==='__bev')));i++)await W(500);
+ const bg=await p.evaluate(()=>window.__tex.find(x=>x.name==='__bev'));
+ ok(bg&&bg.raw&&bg.raw[0]===(32+256*160*4)/4,'the rounded normals go to the window as a picture of its size ('+(bg&&bg.raw&&bg.raw[0])+')');
+ ok(await p.evaluate(()=>window.__ups.length>=0)&&(await p.evaluate(()=>window.__gs.nvSettings().track))===true,'the window is asked to report its camera');
  ok(errs.length===0,'no page errors '+errs.join('|'));
  await b.close();process.exit(fails?1:0);
 })();

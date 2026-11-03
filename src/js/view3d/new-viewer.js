@@ -110,7 +110,7 @@ async function nvStencilSend(){if(!nv.isOpen||!nvPaintMode()||typeof st3==='unde
     new DataView(out.buffer).setUint32(0,json.length,true);out.set(json,4);out.set(png,4+json.length);
     await platform.invoke('viewer_textures',out);nv.stImg=t;}catch(e){console.warn(e);}finally{nv.stBusy=false;}}
 /* the 3D view's lighting settings, as the new viewer takes them */
-function nvSettings(){const s=v3s();return {tone:toneInt(s),expo:s.expo==null?1:s.expo,env_turn:(s.envRot||0)/360,env_strength:s.envI==null?1:s.envI,show_bg:!!s.envBg,env_blur:s.envBlur==null?.35:s.envBlur,sun_az:s.sunAz==null?40:s.sunAz,sun_el:s.sunEl==null?45:s.sunEl,sun_i:envOf(s)!=='none'?(s.envSun||0):(s.sunI==null?1:s.sunI),fov:s.fov||45,bg:(typeof BG3!=='undefined'&&(BG3[s.bg]||BG3.dark))||[.09,.1,.115],lights:nvLights(),ortho:!!s.ortho,studio_fill:s.studioFill==null?.12:s.studioFill,studio_rim:s.studioRim==null?.08:s.studioRim,unlit:!!(typeof v3Unlit==='function'&&v3Unlit())||!!nvViewTarget()||(nvBakeMode()&&!!v3.bunlit),metal_view:s.metalView?(s.metalRough==null?.2:s.metalRough):0,rt_shadow:s.nvShadow==null?.9:s.nvShadow,rt_ao:s.nvAO==null?.85:s.nvAO,rt_refl:s.nvRefl==null?.7:s.nvRefl,rt_soft:s.nvSoft==null?.02:s.nvSoft,rt_samples:Math.round(s.nvSamples||96),cam:nvCamOut(),paint:!!nv.isOpen&&nvPaintOn(),brush:nv.isOpen&&nvPaintOn()?nvBrushFrac():0,rt:(!!s.nvRt||nvFloorOn())&&!s.wire,disp:nvDispOn()?Math.round((s.disp||0)*.3*1e4)/1e4:0,wire:s.wire?(s.wireOnly?2:1):0,wire_col:(typeof prefs!=='undefined'&&prefs.wireCol)||[.95,.7,.35],hv:nvHighMode(),...nvMirror(),...nvMirc(),...nvStencil(),...nvPost(),...nvFloor(),clip:v3s().clip!==false};}
+function nvSettings(){const s=v3s();return {tone:toneInt(s),expo:s.expo==null?1:s.expo,env_turn:(s.envRot||0)/360,env_strength:s.envI==null?1:s.envI,show_bg:!!s.envBg,env_blur:s.envBlur==null?.35:s.envBlur,sun_az:s.sunAz==null?40:s.sunAz,sun_el:s.sunEl==null?45:s.sunEl,sun_i:envOf(s)!=='none'?(s.envSun||0):(s.sunI==null?1:s.sunI),fov:s.fov||45,bg:(typeof BG3!=='undefined'&&(BG3[s.bg]||BG3.dark))||[.09,.1,.115],lights:nvLights(),ortho:!!s.ortho,studio_fill:s.studioFill==null?.12:s.studioFill,studio_rim:s.studioRim==null?.08:s.studioRim,unlit:!!(typeof v3Unlit==='function'&&v3Unlit())||!!nvViewTarget()||(nvBakeMode()&&!!v3.bunlit),metal_view:s.metalView?(s.metalRough==null?.2:s.metalRough):0,rt_shadow:s.nvShadow==null?.9:s.nvShadow,rt_ao:s.nvAO==null?.85:s.nvAO,rt_refl:s.nvRefl==null?.7:s.nvRefl,rt_soft:s.nvSoft==null?.02:s.nvSoft,rt_samples:Math.round(s.nvSamples||96),cam:nvCamOut(),paint:!!nv.isOpen&&nvPaintOn(),brush:nv.isOpen&&nvPaintOn()?nvBrushFrac():0,rt:(!!s.nvRt||nvFloorOn())&&!s.wire,disp:nvDispOn()?Math.round((s.disp||0)*.3*1e4)/1e4:0,wire:s.wire?(s.wireOnly?2:1):0,wire_col:(typeof prefs!=='undefined'&&prefs.wireCol)||[.95,.7,.35],hv:nvHighMode(),track:!!(typeof bevelPreviewOn==='function'&&bevelPreviewOn()),...nvMirror(),...nvMirc(),...nvStencil(),...nvPost(),...nvFloor(),clip:v3s().clip!==false};}
 const nvEnvKey=()=>{const s=v3s(),k=envOf(s);return k+(k==='custom'&&env.custom?':'+env.custom.name:'');};
 /* a lighting update: the same body as a scene, with no model; the environment picture only when it changed */
 function nvUpdateBody(settings,mode,envd){const meta={pos:0,nrm:0,uv:0,groups:[],env_mode:mode,env:mode==='set'&&envd?{w:envd.w,h:envd.h}:null,settings};
@@ -125,7 +125,7 @@ async function nvPush(){if(nv.busy)return;nv.busy=true;
     nv.envKey=key;if(!alive){nvStopWatch();nv.isOpen=false;nvBtnSync();}}
   catch(e){console.warn(e);}finally{nv.busy=false;}}
 function nvWatch(){nvStopWatch();nv.envKey=nvEnvKey();nv.sig=JSON.stringify(nvSettings())+nv.envKey;
-  nv.viewKey=nvViewKey();nv.stImg=null;nvStencilSend();nv.timer=setInterval(()=>{if(!platform.isDesktop)return;nvStencilSend();nvHighSend();if(nv.hlSig)nvHlSend();{const vk=(ui.mode==='p3d'||ui.mode==='paint'||nvBakeMode())?nvViewKey():'';if(vk!==nv.viewKey){nv.viewKey=vk;nv.viewForce=true;nvSyncSoon();}}const sig=JSON.stringify(nvSettings())+nvEnvKey();if(sig!==nv.sig){nv.sig=sig;nvPush();}},400);}
+  nv.viewKey=nvViewKey();nv.stImg=null;nvStencilSend();nv.timer=setInterval(()=>{if(!platform.isDesktop)return;nvStencilSend();nvHighSend();nvBevelTick();if(nv.hlSig)nvHlSend();{const vk=(ui.mode==='p3d'||ui.mode==='paint'||nvBakeMode())?nvViewKey():'';if(vk!==nv.viewKey){nv.viewKey=vk;nv.viewForce=true;nvSyncSoon();}}const sig=JSON.stringify(nvSettings())+nvEnvKey();if(sig!==nv.sig){nv.sig=sig;nvPush();}},400);}
 /* a finished picture from the window, at any size (PNG bytes) */
 async function nvCapture(w,h){const r=await platform.invoke('viewer_capture',{width:Math.round(w),height:Math.round(h)});return r instanceof Uint8Array?r:new Uint8Array(r);}
 /* one turntable frame from the window: raw RGBA, top row first */
@@ -145,7 +145,7 @@ const NV_TEX_LIVE=512,NV_LIVE_MS=100;
 /* painting in the window: 3D Paint, and the 3D views of the Paint and Bake tabs while their paint-on-model switch is on */
 const nvPaintMode=()=>ui.mode==='p3d'||((ui.mode==='paint'||ui.mode==='bake')&&!!v3.paintOn);
 function nvPaintOn(){return platform.isDesktop&&nvPaintMode()&&v3s().nvPaint!==false;}
-function nvCamFrom(ev){nv.winCamAt=performance.now();const c=v3.cam,d=[ev.eye[0]-ev.tgt[0],ev.eye[1]-ev.tgt[1],ev.eye[2]-ev.tgt[2]],L=Math.hypot(d[0],d[1],d[2])||1;
+function nvCamFrom(ev){nv.winCamAt=performance.now();if(ev.w>16&&ev.h>16){const sz=ev.win&&ev.win[2]>16?[ev.win[2],ev.win[3]]:[ev.w,ev.h];nv.winSize=[Math.round(sz[0]),Math.round(sz[1])];}const c=v3.cam,d=[ev.eye[0]-ev.tgt[0],ev.eye[1]-ev.tgt[1],ev.eye[2]-ev.tgt[2]],L=Math.hypot(d[0],d[1],d[2])||1;
   c.tx=ev.tgt[0];c.ty=ev.tgt[1];c.tz=ev.tgt[2];c.dist=L;c.pitch=Math.asin(Math.max(-1,Math.min(1,d[1]/L)));c.yaw=Math.atan2(d[0],d[2]);}
 /* a world point on the ray through the window pixel; the main view then sees the same surface there */
 function nvPixelRay(ev){const t=Math.tan(ev.fov*Math.PI/360),e=ev.eye,g=ev.tgt;
@@ -174,6 +174,23 @@ async function nvHighSend(){if(!nv.isOpen||nv.hvBusy)return;const mode=nvHighMod
     const meta={pos:0,nrm:0,uv:0,groups:[{name:'__hv',idx:0,rough:.6,metal:0,tex:{base:px.length,orm:0,normal:0,emissive:0},raw:[px.length/4,1]}],env:null,settings:nvSettings()},json=new TextEncoder().encode(JSON.stringify(meta)),out=new Uint8Array(4+json.length+px.length);
     new DataView(out.buffer).setUint32(0,json.length,true);out.set(json,4);out.set(px,4+json.length);await platform.invoke('viewer_textures',out);nv.hvKey=key;}
   catch(e){console.warn(e);}finally{nv.hvBusy=false;}}
+/* the Bevel preview (rounded edges, 3D Paint and Bake): the page makes the rounded normals for the window's own view, once the view has been still a moment,
+   and the window lights with them while its camera is still the same (it falls back to the normal map as soon as the view moves) */
+const nvWinSize=()=>nv.winSize||(()=>{try{const w=JSON.parse(localStorage.getItem('gs.nvWin')||'null');return w&&w[2]>16?[w[2],w[3]]:null;}catch(e){return null;}})();
+function nvBevelKey(){try{const ws=nvWinSize();if(!nv.isOpen||typeof bevelPreviewOn!=='function'||!bevelPreviewOn()||!v3.mesh||!ws)return '';const e=v3Eye(),c=v3.cam,r=v=>Math.round(v*1e4)/1e4;
+  return JSON.stringify([ws,[e[0],e[1],e[2]].map(r),[c.tx,c.ty,c.tz].map(r),bvSettings(),v3s().fov,v3s().ortho,nvViewKey()]);}catch(e){return '';}}
+async function nvBevelRun(){if(nv.bevBusy||!nv.isOpen)return;const key=nvBevelKey();if(!key||key===nv.bevKey)return;nv.bevBusy=true;
+  try{const [w,h]=nvWinSize(),eye=v3Eye(),c=v3.cam,tgt=[c.tx,c.ty,c.tz];let s=null;
+    for(let i=0;i<80;i++){v3Offscreen(w,h);s=bvGPU.low;if(s&&s.out&&!s.error){const o=bvSettings(),block=o.samples>32?64:128,total=Math.ceil(s.out.w/block)*Math.ceil(s.out.h/block);s.perCall=16;if(s.tile>=total&&s.out.w===w&&s.out.h===h)break;}else if(s&&s.error)break;
+      if(nvBevelKey()!==key)return;await new Promise(r=>setTimeout(r,30));}
+    if(!s||!s.out||s.out.w!==w||s.out.h!==h||nvBevelKey()!==key)return;s.perCall=0;
+    const cap=captureRegionNow(s.out,0,0,w,h),n=w*h,buf=new ArrayBuffer(32+n*4),dv=new DataView(buf);dv.setUint32(0,w,true);dv.setUint32(4,h,true);[eye[0],eye[1],eye[2],tgt[0],tgt[1],tgt[2]].forEach((v,k)=>dv.setFloat32(8+k*4,v,true));
+    const px=new Uint8Array(buf,32);for(let y=0;y<h;y++){const sy=h-1-y;for(let x=0;x<w;x++){const i=(sy*w+x)*4,o=(y*w+x)*4,q=k=>cap.depth===16?h2f(cap.data[i+k]):cap.data[i+k]/255;
+      px[o]=Math.max(0,Math.min(255,Math.round((q(0)*.5+.5)*255)));px[o+1]=Math.max(0,Math.min(255,Math.round((q(1)*.5+.5)*255)));px[o+2]=Math.max(0,Math.min(255,Math.round((q(2)*.5+.5)*255)));px[o+3]=q(3)>.5?255:0;}}
+    const bytes=new Uint8Array(buf),meta={pos:0,nrm:0,uv:0,groups:[{name:'__bev',idx:0,rough:.6,metal:0,tex:{base:bytes.length,orm:0,normal:0,emissive:0},raw:[bytes.length/4,1]}],env:null,settings:nvSettings()},json=new TextEncoder().encode(JSON.stringify(meta)),out=new Uint8Array(4+json.length+bytes.length);
+    new DataView(out.buffer).setUint32(0,json.length,true);out.set(json,4);out.set(bytes,4+json.length);await platform.invoke('viewer_textures',out);nv.bevKey=key;}
+  catch(e){console.warn(e);}finally{nv.bevBusy=false;if(bvGPU.low)bvGPU.low.perCall=0;}}
+function nvBevelTick(){const k=nvBevelKey();if(!k){if(nv.bevKey){nv.bevKey='';}return;}if(k===nv.bevKey)return;clearTimeout(nv.bevT);nv.bevT=setTimeout(nvBevelRun,350);}
 /* the part under the pointer while a selection tool is armed (the window reports the pointer even with no button down) */
 function nvHover(ev){try{const dcOn=typeof dc!=='undefined'&&dc.armed;if(!nvPaintOn()||!((typeof sel3!=='undefined'&&sel3.armed&&sel3.mode!=='off')||dcOn))return;const hit=document.getElementById('v3Hit');if(!hit)return;
   nvCamFrom(ev);const p=pathProject(nvPixelRay(ev),'3d',hit);if(!p)return;const r=hit.getBoundingClientRect();
@@ -188,7 +205,8 @@ async function nvHlSend(){if(!nv.isOpen||nv.hlBusy)return;const H=typeof sel3Hov
 function nvHandle(ev){if(ev&&(ev.t==='key-p'||ev.t==='key-r')){if(ev.t==='key-p'){if(typeof v3Screenshot==='function')v3Screenshot('view',false);}else{const s=v3s();s.nvRt=!s.nvRt;toast('Ray tracing '+(s.nvRt?'on':'off')+' in the new viewer.');}return;}
   if(ev&&ev.t==='closed'){/* where the window was, for next time */try{if(ev.win&&ev.win[2]>=300)localStorage.setItem('gs.nvWin',JSON.stringify(ev.win));}catch(e){}
     const was=nv.isOpen;nv.isOpen=false;nv.paint=false;nvStopWatch();nvBtnSync();if(was)toast('The new viewer window was closed.');return;}
-  if(!nvPaintOn()||!ev||!ev.t)return;if(ev.t==='cam'){nvCamFrom(ev);return;}if(ev.t==='hover'){nvHover(ev);return;}
+  if(ev&&ev.t==='cam'&&platform.isDesktop){nvCamFrom(ev);return;}
+  if(!nvPaintOn()||!ev||!ev.t)return;if(ev.t==='hover'){nvHover(ev);return;}
   const st=nv.st||(nv.st={ev:0,run:0,ms:0,live:0,liveMs:0,max:0});
   if(ev.t==='move'){st.ev++;nv.pendingMove=ev;if(!nv.moveRaf)nv.moveRaf=requestAnimationFrame(nvFlushMove);return;}/* one move per frame, like a normal mouse */
   if(ev.t==='down'){nv.st={ev:1,run:0,ms:0,live:0,liveMs:0,max:0};}

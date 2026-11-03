@@ -132,6 +132,8 @@ pub struct Settings {
     pub mir_r: f32,
     /// height depth (displacement), in model units for a full-white height (0 = off)
     pub disp: f32,
+    /// the page wants to know where the camera is (the Bevel preview is made for the window's own view)
+    pub track: bool,
     /// the high-poly of the Bake tab: 0 off, 1 see-through over the model, 2 on its own (the model hidden)
     pub hv: u8,
     /// the mirror copies of the brush ring: how many (1 = none) and their matrices (column-major, the first is the identity)
@@ -161,7 +163,7 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, mir: [f32::NAN; 3], mir_radial: [0.0, 0.0], mir_off: [0.0; 3], mir_r: 0.0, disp: 0.0, hv: 0, mirc_n: 0, mirc: [[0.0; 16]; 32], floor: [0.0, 0.0, 1.0, 0.5], floor_col: [0.0; 3], clip: true, post_on: false, post: [[0.0; 4]; 7], st_on: false, st: [0.0; 8], st_view: [1.0, 1.0], wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
+        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, mir: [f32::NAN; 3], mir_radial: [0.0, 0.0], mir_off: [0.0; 3], mir_r: 0.0, disp: 0.0, track: false, hv: 0, mirc_n: 0, mirc: [[0.0; 16]; 32], floor: [0.0, 0.0, 1.0, 0.5], floor_col: [0.0; 3], clip: true, post_on: false, post: [[0.0; 4]; 7], st_on: false, st: [0.0; 8], st_view: [1.0, 1.0], wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
     }
 }
 
@@ -323,6 +325,7 @@ struct FrameUniform {
     st_b: [f32; 4],
     st_c: [f32; 4],
     fl_a: [f32; 4], // floor: height, half size, opacity, on
+    bv: [f32; 4],   // rounded normals: on, width, height
 }
 
 #[repr(C)]
@@ -417,6 +420,10 @@ struct Gpu {
     frame_buf: wgpu::Buffer,
     frame_layout: wgpu::BindGroupLayout,
     frame_bg: wgpu::BindGroup,
+    env_v: wgpu::TextureView,
+    spec_v: wgpu::TextureView,
+    bev: wgpu::TextureView,
+    bev_info: Option<(u32, u32, [f32; 3], [f32; 3])>,
     mat_layout: wgpu::BindGroupLayout,
     tex_sampler: wgpu::Sampler,
     env_sampler: wgpu::Sampler,
@@ -862,6 +869,7 @@ impl Gpu {
                     ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: true }, view_dimension: wgpu::TextureViewDimension::D2Array, multisampled: false },
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry { binding: 4, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: false }, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false }, count: None },
             ],
         });
         let mat_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -1177,6 +1185,7 @@ impl Gpu {
         let black = EnvData { width: 2, height: 1, rgb: vec![0.0; 6] };
         let (env_view, env_mips, env_sh) = build_env(&device, &queue, &black);
         let spec_view = build_spec(&device, &queue, &pre_pipeline, &pre_layout, &env_sampler, &env_view, 2.0, (16, 8));
+        let bev0 = make_tex8(&device, &queue, None, [0, 0, 0, 0], wgpu::TextureFormat::Rgba8Unorm);
         let frame_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("frame group"),
             layout: &frame_layout,
@@ -1185,8 +1194,10 @@ impl Gpu {
                 wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::TextureView(&env_view) },
                 wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::Sampler(&env_sampler) },
                 wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(&spec_view) },
+                wgpu::BindGroupEntry { binding: 4, resource: wgpu::BindingResource::TextureView(&bev0) },
             ],
         });
+        let (env_v, spec_v, bev) = (env_view.clone(), spec_view.clone(), bev0);
         let gpu = Gpu {
             window,
             surface,
@@ -1229,6 +1240,10 @@ impl Gpu {
             started: std::time::Instant::now(),
             frame_buf,
             frame_bg,
+            env_v,
+            spec_v,
+            bev,
+            bev_info: None,
             frame_layout,
             mat_layout,
             tex_sampler,
@@ -1265,14 +1280,21 @@ impl Gpu {
         self.env_mips = mips;
         self.sh = sh;
         self.has_env = has;
+        self.env_v = view;
+        self.spec_v = spec_view;
+        self.rebuild_frame_bg();
+    }
+
+    fn rebuild_frame_bg(&mut self) {
         self.frame_bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("frame group"),
             layout: &self.frame_layout,
             entries: &[
                 wgpu::BindGroupEntry { binding: 0, resource: self.frame_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::TextureView(&view) },
+                wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::TextureView(&self.env_v) },
                 wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::Sampler(&self.env_sampler) },
-                wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(&spec_view) },
+                wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(&self.spec_v) },
+                wgpu::BindGroupEntry { binding: 4, resource: wgpu::BindingResource::TextureView(&self.bev) },
             ],
         });
     }
@@ -1430,6 +1452,29 @@ impl Gpu {
 
     /// Swaps the pictures of the material of one group (the triangles stay).
     fn set_textures(&mut self, name: &str, mat: &Material) {
+        if name == "__bev" {
+            // rounded normals for the current view (the 3D view's Bevel preview): [width, height] and the eye and target they were made for, then the pixels (top row first)
+            if let Some(t) = &mat.base {
+                if t.rgba.len() >= 32 {
+                    let u = |i: usize| u32::from_le_bytes([t.rgba[i], t.rgba[i + 1], t.rgba[i + 2], t.rgba[i + 3]]);
+                    let f = |i: usize| f32::from_le_bytes([t.rgba[i], t.rgba[i + 1], t.rgba[i + 2], t.rgba[i + 3]]);
+                    let (w, h) = (u(0), u(4));
+                    if w > 0 && h > 0 && t.rgba.len() >= 32 + (w * h * 4) as usize {
+                        let px = Tex8 { width: w, height: h, rgba: t.rgba[32..32 + (w * h * 4) as usize].to_vec() };
+                        self.bev = make_tex8(&self.device, &self.queue, Some(&px), [0, 0, 0, 0], wgpu::TextureFormat::Rgba8Unorm);
+                        self.bev_info = Some((w, h, [f(8), f(12), f(16)], [f(20), f(24), f(28)]));
+                    } else {
+                        self.bev_info = None;
+                    }
+                } else {
+                    self.bev_info = None;
+                }
+            } else {
+                self.bev_info = None;
+            }
+            self.rebuild_frame_bg();
+            return;
+        }
         if name == "__hv" {
             // the high-poly: [vertex count, index count] then x y z nx ny nz per vertex, then the indices (all 4-byte numbers)
             self.hv = match &mat.base {
@@ -1591,6 +1636,14 @@ impl Gpu {
             st_b: [st.st[4], st.st[5], st.st[6], 0.0],
             st_c: [st.st_view[0], st.st_view[1], st.mirc_n as f32, st.hv as f32],
             fl_a: st.floor,
+            bv: match self.bev_info {
+                Some((w, h, e, t)) if w == self.config.width && h == self.config.height => {
+                    let tol = cam.dist * 2e-3;
+                    let (de, dt) = ((Vec3::from(e) - eye).length(), (Vec3::from(t) - cam.target).length());
+                    [if (de < tol && dt < tol) || e[0].is_nan() { 1.0 } else { 0.0 }, w as f32, h as f32, 0.0] // (a NaN eye is how the demo forces it on)
+                }
+                _ => [0.0; 4],
+            },
         };
         self.queue.write_buffer(&self.frame_buf, 0, bytemuck::bytes_of(&u));
         if st.wire > 0 {
@@ -1958,7 +2011,7 @@ impl App {
 
 impl App {
     fn paint_on(&self) -> bool {
-        self.gpu.as_ref().map_or(false, |g| g.settings.paint)
+        self.gpu.as_ref().map_or(false, |g| g.settings.paint || g.settings.track)
     }
 
     /// Tells the page what the pointer did (position in pixels, the camera, the modifier keys).
@@ -2079,6 +2132,9 @@ impl ApplicationHandler<Cmd> for App {
                     g.resize(s.width, s.height);
                     g.window.request_redraw();
                 }
+                if self.paint_on() {
+                    self.emit("cam");
+                }
             }
             WindowEvent::RedrawRequested => {
                 if let Some(g) = self.gpu.as_mut() {
@@ -2091,7 +2147,7 @@ impl ApplicationHandler<Cmd> for App {
                 self.alt = m.state().alt_key();
             }
             WindowEvent::MouseInput { state, button, .. } => {
-                let paints = button == MouseButton::Left && self.paint_on() && !self.alt;
+                let paints = button == MouseButton::Left && self.gpu.as_ref().map_or(false, |g| g.settings.paint) && !self.alt;
                 if paints {
                     self.emit(if state == ElementState::Pressed { "down" } else { "up" });
                     self.painting = state == ElementState::Pressed;

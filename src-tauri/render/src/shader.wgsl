@@ -22,6 +22,7 @@ struct Frame {
     st_b: vec4<f32>,         // turn, show, flags
     st_c: vec4<f32>,         // that view's size
     fl_a: vec4<f32>,         // shadow floor: height, half size, opacity, on
+    bv: vec4<f32>,           // rounded normals: on, width, height
 };
 
 // from a point on the model toward the viewer (the same direction everywhere when the view is orthographic)
@@ -30,6 +31,7 @@ fn view_dir(p: vec3<f32>) -> vec3<f32> {
     return normalize(frame.cam_pos.xyz - p);
 }
 @group(0) @binding(0) var<uniform> frame: Frame;
+@group(0) @binding(4) var bev_tex: texture_2d<f32>;
 @group(0) @binding(1) var env_tex: texture_2d<f32>;
 @group(0) @binding(2) var env_smp: sampler;
 @group(0) @binding(3) var spec_tex: texture_2d_array<f32>;   // the environment blurred for roughness 0, 0.2, 0.4, 0.6, 0.8, 1
@@ -229,6 +231,11 @@ fn fs_shade(i: VOut) -> vec4<f32> {
     if (kind != 8) {
         let tn = textureSample(nrm_tex, tex_smp, guv).xyz * 2.0 - 1.0;
         nn = normalize(mat3x3<f32>(tt, bb, n) * tn);
+    }
+    if (frame.bv.x > 0.5) {
+        // the 3D view's Bevel preview: rounded normals made for this very view (the picture's first row is the top)
+        let r = textureLoad(bev_tex, vec2<i32>(i32(i.clip.x), i32(frame.bv.z) - 1 - i32(i.clip.y)), 0);
+        if (r.a > 0.5) { nn = normalize(r.xyz * 2.0 - vec3<f32>(1.0)); }
     }
     var rough = mat.flags.y;
     var metal = mat.flags.z;

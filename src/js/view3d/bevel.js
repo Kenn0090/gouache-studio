@@ -148,7 +148,7 @@ function bevelScreen(s,g,common,U,F,high=false){if(!s?.hg||s.error)return null;c
     gl.disable(gl.DEPTH_TEST);run(P_BVCOPY,s.out,{uSrc:s.G.tex[2]});s.screenKey=key;s.inputNormal=U.uNrm;s.inputBase=U.uBase;s.tile=0;
   }
   gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);gl.enable(gl.SCISSOR_TEST);bindTarget(fresh?s.out:s.hq);/* the full-quality result is drawn off-screen and swapped in when complete, so no patches show */
-  const block=o.samples>32?64:128,nx=Math.ceil(F.w/block),ny=Math.ceil(F.h/block),limit=fresh?0:Math.min(nx*ny,s.tile+2);
+  const block=o.samples>32?64:128,nx=Math.ceil(F.w/block),ny=Math.ceil(F.h/block),limit=fresh?0:Math.min(nx*ny,s.tile+(s.perCall||2));
   useProg(P_BVRAY,{...bvUniforms(o,bvMesh()),uNodes:s.hg.nodes,uTris:s.hg.tris,uTN:s.hg.nrm,uTC:s.hg.col,uBVInfo:info,uBVPosition:s.G.tex[0],uBVGeometric:s.G.tex[1],uBVInput:s.G.tex[2]});gl.bindVertexArray(vao);
   if(fresh){/* (0.70) moving the view: every pixel rounded straight away with a few rays, so the bevel never pops in patch by patch; the full quality follows tile by tile once the view is still */
     gl.disable(gl.SCISSOR_TEST);useProg(P_BVRAY,{...bvUniforms(o,bvMesh()),uBevelSamples:{int:Math.min(8,Math.max(3,o.samples|0))},uNodes:s.hg.nodes,uTris:s.hg.tris,uTN:s.hg.nrm,uTC:s.hg.col,uBVInfo:info,uBVPosition:s.G.tex[0],uBVGeometric:s.G.tex[1],uBVInput:s.G.tex[2]});gl.bindVertexArray(vao);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.enable(gl.SCISSOR_TEST);
