@@ -1,6 +1,6 @@
 # Gouache Studio - sets up Unreal from a Gouache export.
 # In Unreal: turn on the "Python Editor Script Plugin" (Edit > Plugins), restart,
-# then Tools > Execute Python Script... and pick this file (it sits beside gouache_unreal.json).
+# then Tools > Execute Python Script... and pick this file (it sits beside gouache_unreal.gdata).
 #
 # What it makes, under /Game/Gouache:
 #   _Masters/M_Gouache_<Look>   one master material per look (Standard, Toon, ...), made once and shared
@@ -13,7 +13,10 @@ import os
 import unreal
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DATA = json.load(open(os.path.join(HERE, "gouache_unreal.json")))
+_DATA_FILE = os.path.join(HERE, "gouache_unreal.gdata")
+if not os.path.exists(_DATA_FILE):
+    _DATA_FILE = os.path.join(HERE, "gouache_unreal.json")  # older exports
+DATA = json.load(open(_DATA_FILE))
 ROOT = "/Game/Gouache"
 DEST = ROOT + "/" + DATA["name"]
 MASTERS = ROOT + "/_Masters"

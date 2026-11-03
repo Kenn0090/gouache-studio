@@ -26,10 +26,14 @@ function esRow(redraw){if(!platform.isDesktop)return [el('p',{class:'note',text:
         el('button',{class:'btn sm',id:'esBlender',text:es.blender?'Blender: '+fileNameOf(es.blender):'Choose the Blender program…',title:es.blender||'',onclick:async()=>{const p=await platform.openDialog([{name:'Blender',extensions:['exe','app','']}]).catch(()=>null);if(p){es.blender=p;esSave();redraw();}}})),
       el('div',{class:'chips'},el('span',{class:'note',text:'Files go to: '+(es.dirs.blender||'a folder you choose')}),el('button',{class:'btn sm',text:es.dirs.blender?'Change…':'Choose…',onclick:async()=>{const d=await platform.pickFolder();if(d){es.dirs.blender=d;esSave();redraw();}}})));}
   else if(es.to!=='none'){const d=es.dirs[es.to],label=ES_TARGETS.find(x=>x[0]===es.to)[1];
+    /* a Content folder saved earlier as the Unreal project: use the project folder above it */
+    if(es.to==='unreal'&&d&&/[\\/]Content[\\/]*$/i.test(d)&&!es.fixedContent){es.fixedContent=true;(async()=>{const up=d.replace(/[\\/]+$/,'').replace(/[\\/][^\\/]*$/,'');if(up&&await esCheckProject('unreal',up)){es.dirs.unreal=up;es.warn='The Content folder was saved as your project, so the project folder above it is used.';esSave();redraw();}})();}
     out.push(el('div',{class:'chips'},el('span',{class:'note',text:d?label+' project: '+d:'Choose your '+label+' project’s folder.'}),
-      el('button',{class:'btn sm',id:'esProject',text:d?'Change…':'Choose project…',onclick:async()=>{const p=await platform.pickFolder();if(!p)return;
+      el('button',{class:'btn sm',id:'esProject',text:d?'Change…':'Choose project…',onclick:async()=>{let p=await platform.pickFolder();if(!p)return;
+        /* Unreal: the Content folder was picked, but the project is the folder above it (the project record must stay out of Content, or Unreal offers to import it) */
+        let moved=false;if(es.to==='unreal'&&/[\\/]Content[\\/]*$/i.test(p)&&!(await esCheckProject('unreal',p))){const up=p.replace(/[\\/]+$/,'').replace(/[\\/][^\\/]*$/,'');if(up&&await esCheckProject('unreal',up)){p=up;moved=true;}}
         /* a folder without the project file is still taken (the warning stays in the window, not in a pop-up that is easy to miss) */
-        es.warn=(await esCheckProject(es.to,p))?'':'No '+(es.to==='godot'?'project.godot':'.uproject file')+' in that folder. Is it the top folder of your '+label+' project? Sending will still use it.';es.dirs[es.to]=p;esSave();redraw();}})),
+        es.warn=moved?'You picked the Content folder, so the project folder above it is used.':(await esCheckProject(es.to,p))?'':'No '+(es.to==='godot'?'project.godot':'.uproject file')+' in that folder. Is it the top folder of your '+label+' project? Sending will still use it.';es.dirs[es.to]=p;esSave();redraw();}})),
       es.warn?el('p',{class:'note',id:'esWarn',text:es.warn}):null,
       es.to==='unity'?el('div',{class:'frow'},el('label',{text:'Unity render pipeline'}),seg([['urp','URP'],['builtin','Built-in']],texCfg.unityRP||'urp',v=>{texCfg.unityRP=v;},'Unity render pipeline')):null,
       (es.to==='unity'||es.to==='godot'||es.to==='unreal')?chk('esShaders','Bring the Gouache shader over (a material per texture set)',texCfg.engShader!==false,v=>{texCfg.engShader=v;}):null,

@@ -6,7 +6,7 @@
      outline material chained on (next pass).
    - Unity (URP): one shader, GouacheShaded.shader, plus <Set>.mat for each set and .meta files, so the textures are
      found (normal maps get the Normal map type). Built-in and HDRP projects: the shader is URP only.
-   - Unreal: gouache_unreal.json + gouache_unreal_setup.py. Run the script in the editor (Tools > Execute Python Script):
+   - Unreal: gouache_unreal.gdata (JSON inside; not .json, because Unreal offers to import .json files as data tables) + gouache_unreal_setup.py. Run the script in the editor (Tools > Execute Python Script):
      it imports the textures and builds one material per set (Lit; Cloth for Velvet, Subsurface for Skin, Unlit with
      the banding worked out in a Custom node for Toon, Cel and Retro; Toon and Cel also draw their outline in the same
      material and follow the Directional Light through a parameter collection).
@@ -513,7 +513,7 @@ function eshFiles(to,name,info,size,modelFile,opt){const out=[],pn=pascal(name),
     return out;}
   if(to==='unreal'){const list=sets.map(s=>{const I=info[s],T=I.tex||{},sh=I.sh||{kind:'std',p:{}},tex={};for(const k of ['BaseColor','ORM','Normal','Emissive'])if(T[k])tex[k]=T[k].name;
       const pr=eshUnrealParams(sh,size,!!T.ORM);return {name:s,safe:eshSafe(s),kind:sh.kind,look:eshLook(sh.kind),tex,alpha:!!I.alpha,scalars:pr.scalars,vectors:pr.vectors,lookKeys:pr.lookKeys,variant:I.variant||null};});
-    out.push({name:'gouache_unreal.json',data:new TextEncoder().encode(JSON.stringify({name:pn,model:modelFile||null,masterVersion:ESH_MASTER_VER,updateMasters:!!(opt&&opt.updateMasters),updates:(opt&&opt.updates)||[],sets:list},null,1))},{name:'gouache_unreal_setup.py',data:new TextEncoder().encode(UNREAL_SETUP||'')});
+    out.push({name:'gouache_unreal.gdata',data:new TextEncoder().encode(JSON.stringify({name:pn,model:modelFile||null,masterVersion:ESH_MASTER_VER,updateMasters:!!(opt&&opt.updateMasters),updates:(opt&&opt.updates)||[],sets:list},null,1))},{name:'gouache_unreal_setup.py',data:new TextEncoder().encode(UNREAL_SETUP||'')});
     return out;}
   return out;}
 

@@ -22,13 +22,17 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('#dlgCancel');await W(200);
  /* pretend to be the desktop app */
  await p.evaluate(()=>{const P=__gs.platform;window.__calls=[];window.__written=[];P.isDesktop=true;
-   P.invoke=async(cmd,a)=>{window.__calls.push([cmd,a]);if(cmd==='dir_files')return a.dir.includes('godotproj')?[[a.dir+'/project.godot',0,0]]:[[a.dir+'/readme.txt',0,0]];if(cmd==='blender_send')return window.__blenderUp;return null;};
+   P.invoke=async(cmd,a)=>{window.__calls.push([cmd,a]);if(cmd==='dir_files')return a.dir==='C:/Games/Unreal'?[[a.dir+'/My.uproject',0,0]]:a.dir.includes('godotproj')?[[a.dir+'/project.godot',0,0]]:[[a.dir+'/readme.txt',0,0]];if(cmd==='blender_send')return window.__blenderUp;return null;};
    P.writeFile=async(path,bytes)=>{window.__written.push(path);};P.pickFolder=async()=>window.__pick;P.openDialog=async()=>'C:/Program Files/Blender/blender.exe';});
  /* Unity: files go into the project's Assets/Gouache/<name> */
  await p.evaluate(()=>{const g=__gs;g.es.to='unity';g.es.dirs.unity='C:/Games/MyUnity';g.texCfg.name='Rock';g.texCfg.preset='urp';g.texCfg.model='glb';g.texCfg.size=128;});
  await p.evaluate(()=>__gs.dlgExportTextures());await W(300);
  ok(await p.locator('#txSend').inputValue()==='unity'&&await p.locator('#dlgOk').textContent()==='Export and send','the export window has Send to (Unity chosen)');
  for(const e of ['unreal','godot']){await p.selectOption('#txSend',e);await W(300);ok(!(await p.evaluate(()=>/null/i.test(document.querySelector('#dlgBody').textContent))),e+': the export window shows no stray "null"');}
+ /* Unreal: picking the Content folder uses the project folder above it */
+ await p.evaluate(()=>{__gs.es.dirs.unreal='';window.__pick='C:/Games/Unreal/Content';});await p.selectOption('#txSend','unreal');await W(300);
+ await p.click('#esProject');await W(600);
+ ok(await p.evaluate(()=>__gs.es.dirs.unreal==='C:/Games/Unreal'),'Unreal: the Content folder picked means the project folder above it');
  /* choosing a project folder without the project file: taken, with a warning in the window */
  await p.evaluate(()=>{__gs.es.dirs.unreal='';window.__pick='C:/Games/NoProject';});await p.selectOption('#txSend','unreal');await W(300);
  await p.click('#esProject');await W(600);
