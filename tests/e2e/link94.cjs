@@ -32,9 +32,16 @@ const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAI
  w=await p.evaluate(()=>window.__w);
  ok(/register_slate_post_tick_callback/.test(w['C:/R/Content/Python/gouache_link.py']||'')&&w['C:/R/Content/Python/init_unreal.py']==='import gouache_link\n','Unreal: gouache_link.py and init_unreal.py are added');
  await p.evaluate(()=>{window.__w={};__gs.es.dirs.unreal='C:/R';});
+ await p.evaluate(()=>{__gs.platform.readFile=async()=>new TextEncoder().encode('print("mine")\n');});
  await p.evaluate(()=>__gs.elInstall('unreal'));
  w=await p.evaluate(()=>window.__w);
  ok(!w['C:/R/Content/Python/init_unreal.py']&&w['C:/R/Content/Python/gouache_link.py'],'Unreal: an existing init_unreal.py is not overwritten');
+ /* …and with the user's yes, the one line is added at the end (and nothing else changes) */
+ await p.waitForTimeout(300);
+ ok(await p.locator('#dlgOk').count()>0&&/Add the line/.test(await p.locator('#dlgOk').textContent()),'Unreal: it asks before touching the existing init_unreal.py');
+ await p.click('#dlgOk');await p.waitForTimeout(400);
+ w=await p.evaluate(()=>window.__w);
+ ok(w['C:/R/Content/Python/init_unreal.py']==='print("mine")\nimport gouache_link\n','Unreal: after yes, only the one line is added at the end');
  /* telling the engine */
  await p.evaluate(()=>{window.__up=true;window.__calls=[];});
  const sent=await p.evaluate(async()=>{const ok=await __gs.elPing('unity','C:/U/Assets/Gouache/Rock',[{name:'Rock.fbx'},{name:'Body.mat'}],'rock');return {ok,c:window.__calls.filter(c=>c[0]==='blender_send').map(c=>c[1])};});
