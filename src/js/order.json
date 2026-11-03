@@ -109,6 +109,7 @@
     "view3d/mask-tools",
     "view3d/proj-xf",
     "view3d/proj-gizmo",
+    "view3d/warp",
     "layers/mask-stack",
     "filters/handpaint",
     "filters/stylize-painter",

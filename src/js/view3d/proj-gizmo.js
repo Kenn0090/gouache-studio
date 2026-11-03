@@ -5,7 +5,7 @@
    X/Y/Z. Drawn on a plain canvas over the view; each drag is one undo step. */
 const pgz={el:null,hover:null,drag:null,raf:0,on:true};
 const PGZ_COL=['#e5533d','#5fbf45','#4d8fe8'],PGZ_HI='#ffd24a';
-function pgzActive(){if(!pgz.on||!v3.on&&ui.mode!=='p3d'||!v3.mesh||v3.mesh.noUV)return null;const T=typeof pxfTarget==='function'?pxfTarget():null;return T&&pxfIs3D(T.mode)?T:null;}
+function pgzActive(){if(!pgz.on||!v3.on&&ui.mode!=='p3d'||!v3.mesh||v3.mesh.noUV)return null;if(typeof wpjUI!=='undefined'&&wpjUI.edit&&typeof wpjTarget==='function'&&wpjTarget())return null;const T=typeof pxfTarget==='function'?pxfTarget():null;return T&&pxfIs3D(T.mode)?T:null;}
 /* where everything is on screen (pixels from the view's top left) */
 function pgzGeom(hit){const T=pgzActive();if(!T||!hit)return null;const r=hit.getBoundingClientRect(),w=Math.max(1,r.width),h=Math.max(1,r.height);if(r.width<4)return null;
   const X=pxfNorm(T.xf),c=pxfCenter(X),R=pxfRot(X.r),ax=[0,1,2].map(a=>[R[0][a],R[1][a],R[2][a]]),{VP,eye}=v3ViewProj(w,h),len=Math.hypot(eye[0]-c[0],eye[1]-c[1],eye[2]-c[2])*.16;

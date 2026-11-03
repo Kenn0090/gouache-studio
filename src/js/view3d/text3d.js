@@ -63,6 +63,7 @@ function t3Panel(box){const L=t3Layer(),spec=L?L.text3d.spec:t3.style;$('#brushT
     el('div',{class:'chips'},el('button',{class:'btn sm',id:'t3New',text:'New text',title:'The next click on the model adds another text',onclick:()=>{t3.fresh=true;selectOnly(null);buildBrushPanel();toast('Click the model to add new text.');}}),
       el('button',{class:'btn sm',id:'t3Path',text:'Put on a path',title:'Bend these words along a surface path (a Ribbon path)',onclick:t3PutOnPath})));}
 document.addEventListener('pointerdown',async e=>{if(ui.mode!=='p3d'||ui.tool!=='text'||e.button!==0||e.altKey||!e.target||e.target.id!=='v3Hit')return;
+  if(typeof wpjUI!=='undefined'&&wpjUI.edit)return;/* editing Warp points owns the viewport */
   const p=v3PickAt(e.target,e);if(!p)return;e.preventDefault();e.stopImmediatePropagation();t3Commit();const L=t3Layer();if(L&&t3Row(L)&&!e.shiftKey&&!t3.fresh)t3Move(L,p);else await t3Create(p);},true);
 
 /* "Put on a path": the words become the picture of a Ribbon path, so they bend along its curve (a path layer is selected, or the newest one is used) */

@@ -257,7 +257,7 @@ function msUpdate(L,guard){if(!msHas(L))return;const k=msKey(L);if(L.mask._key==
 function msUpdateAll(){for(const n of allNodes(doc.root))if(msHas(n))msUpdate(n);}
 
 /* ---- turning a plain mask into a stack, adding and removing rows (each one undo step) ---- */
-function msSnap(L){const M=L.mask;return {mask:M,target:M?M.target:null,stack:M&&M.stack?M.stack.map(r=>({r,d:JSON.stringify(r,(k,x)=>k==='t'||k[0]==='_'?undefined:x)})):null,cfx:(L.cfx||[]).map(r=>({r,d:JSON.stringify(r,(k,x)=>k[0]==='_'?undefined:x)}))};}
+function msSnap(L){const M=L.mask;return {mask:M,target:M?M.target:null,stack:M&&M.stack?M.stack.map(r=>({r,d:JSON.stringify(r,function(k,x){return (this===r&&k==='t')||k[0]==='_'?undefined:x;})})):null,cfx:(L.cfx||[]).map(r=>({r,d:JSON.stringify(r,(k,x)=>k[0]==='_'?undefined:x)}))};}
 function msRestore(L,s){if(L.live&&!lm.on)return;L.mask=s.mask;if(s.mask){s.mask.target=s.target;s.mask.stack=s.stack?s.stack.map(x=>Object.assign(x.r,JSON.parse(x.d),{t:x.r.t})):null;s.mask._key=null;}
   L.cfx=s.cfx.map(x=>Object.assign(x.r,JSON.parse(x.d)));L.lookVer=(L.lookVer||0)+1;if(L.live&&typeof liveMaskSync==='function')liveMaskSync();}
 function msRecord(L,label,fn){const b=msSnap(L);if(fn()===false)return false;const a=msSnap(L);

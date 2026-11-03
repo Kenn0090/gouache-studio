@@ -4,9 +4,9 @@
    around from a centre). Each has a transform, xf = {t:[x,y,z], r:[x,y,z] degrees, s:[x,y,z]}: offset, rotation and
    scale. For UV only t[0..1], r[2] and s[0..1] are used (in texture units). The 3D ones get a gizmo in the viewport
    (proj-gizmo.js); UV gets handles on the flat canvas. Noise and generator patterns use UV or World (3D). */
-const PXF_MODES=[['uv','UV'],['tri','Triplanar'],['planar','Planar'],['sphere','Spherical'],['cyl','Cylindrical']];
-const PXF_IX={uv:0,tri:1,planar:2,sphere:3,cyl:4,world:1};
-const pxfIs3D=m=>m==='tri'||m==='planar'||m==='sphere'||m==='cyl'||m==='world';
+const PXF_MODES=[['uv','UV'],['tri','Triplanar'],['planar','Planar'],['sphere','Spherical'],['cyl','Cylindrical'],['warp','Warp']];
+const PXF_IX={uv:0,tri:1,planar:2,sphere:3,cyl:4,warp:5,world:1};
+const pxfIs3D=m=>m==='tri'||m==='planar'||m==='sphere'||m==='cyl'||m==='warp'||m==='world';
 const pxfDef=()=>({t:[0,0,0],r:[0,0,0],s:[1,1,1]});
 function pxfOf(o){if(!o.xf)o.xf=pxfDef();return o.xf;}
 const pxfIsId=x=>!x||(x.t.every(v=>!v)&&x.r.every(v=>!v)&&x.s.every(v=>v===1));
@@ -30,7 +30,7 @@ const PXF_WRAP=[['repeat','Repeat'],['none','None'],['h','Repeat horizontally'],
 /* where the projection sits in the world (for the gizmo) */
 function pxfCenter(xf){const {c}=pxfModel();return [c[0]+xf.t[0],c[1]+xf.t[1],c[2]+xf.t[2]];}
 /* uniforms for the shaders: uInv maps world to projection space; uNrmInv applies its inverse-transpose to normals. */
-const pxfNorm=x=>{const d=pxfDef();if(!x)return Object.assign(d,{ang:360,hard:.5,cull:true,wrap:'repeat',crop:false});return {ang:x.ang>0?Math.min(360,+x.ang):360,hard:x.hard==null?.5:Math.max(0,Math.min(1,+x.hard)),cull:x.cull!==false,wrap:x.wrap||'repeat',crop:!!x.crop,t:[0,1,2].map(i=>+((x.t||[])[i]||0)),r:[0,1,2].map(i=>+((x.r||[])[i]||0)),s:[0,1,2].map(i=>{const v=+((x.s||[])[i]);return isFinite(v)&&v?v:1;})};};
+const pxfNorm=x=>{const d=pxfDef();if(!x)return Object.assign(d,{ang:360,hard:.5,cull:true,wrap:'repeat',crop:false});return {ang:x.ang>0?Math.min(360,+x.ang):360,hard:x.hard==null?.5:Math.max(0,Math.min(1,+x.hard)),cull:x.cull!==false,wrap:x.wrap||'repeat',crop:!!x.crop,depth:x.depth>0?+x.depth:1,dh:x.dh==null?.5:+x.dh,...(x.warp?{warp:x.warp}:{}),t:[0,1,2].map(i=>+((x.t||[])[i]||0)),r:[0,1,2].map(i=>+((x.r||[])[i]||0)),s:[0,1,2].map(i=>{const v=+((x.s||[])[i]);return isFinite(v)&&v?v:1;})};};
 function pxfUniforms(mode,xf){const X=pxfNorm(xf),{c,S}=pxfModel(),k=pxfUnit(mode,S),R=pxfRot(X.r);
   const o=[c[0]+X.t[0],c[1]+X.t[1],c[2]+X.t[2]],d=[0,1,2].map(i=>(X.s[i]||1)*k),inv=new Float32Array(16),nrmInv=new Float32Array(9);
   for(let i=0;i<3;i++){let tr=0;for(let j=0;j<3;j++){const v=R[j][i]/d[i];inv[j*4+i]=v;nrmInv[j*3+i]=R[j][i]*d[i];tr-=v*o[j];}inv[12+i]=tr;}inv[15]=1;
@@ -38,7 +38,7 @@ function pxfUniforms(mode,xf){const X=pxfNorm(xf),{c,S}=pxfModel(),k=pxfUnit(mod
   const a=(X.r[2]||0)*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a),su=X.s[0]||1,sv=X.s[1]||1,A=[[ca/su,sa/su],[-sa/sv,ca/sv]];
   const cx=.5+X.t[0],cy=.5+X.t[1],b=[.5-(A[0][0]*cx+A[0][1]*cy),.5-(A[1][0]*cx+A[1][1]*cy)];
   const uvm=new Float32Array([A[0][0],A[1][0],0,A[0][1],A[1][1],0,b[0],b[1],1]);
-  return {uProj:{int:PXF_IX[mode]||0},uInv:{m4:inv},uNrmInv:{m3:nrmInv},uUvM:{m3:uvm},uUvRot:(X.r[2]||0)*Math.PI/180,uCyl:[X.ang,X.hard,X.cull?1:0,Math.max(0,PXF_WRAP.findIndex(w=>w[0]===X.wrap))],uCrop:X.crop?1:0};}
+  return {uProj:{int:PXF_IX[mode]||0},uInv:{m4:inv},uNrmInv:{m3:nrmInv},uUvM:{m3:uvm},uUvRot:(X.r[2]||0)*Math.PI/180,uCyl:[X.ang,X.hard,X.cull?1:0,Math.max(0,PXF_WRAP.findIndex(w=>w[0]===X.wrap))],uCrop:X.crop?1:0,...(typeof wpjUniforms==='function'?wpjUniforms(mode,xf,X):{})};}
 /* the four corners of the UV frame, in texture units (0..1), for the 2D handles */
 function pxfUvCorners(xf){const X=pxfNorm(xf),a=(X.r[2]||0)*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a),su=X.s[0]||1,sv=X.s[1]||1;
   return [[-.5,-.5],[.5,-.5],[.5,.5],[-.5,.5]].map(([x,y])=>{const px=x*su,py=y*sv;return [.5+X.t[0]+ca*px-sa*py,.5+X.t[1]+sa*px+ca*py];});}
@@ -90,6 +90,7 @@ function pxfFields(get,edit,mode,onReset,size){const til=!size,X=get(),is3=pxfIs
     [...box.querySelectorAll('.pxfrow')].pop()?.after(el('div',{class:'pxfrow tsl'},sl));}
   pxfRotationSliderSync(box,X);for(const i of box.querySelectorAll('input[id^=pxf_s]'))i.dataset.til=til?'1':'0';
   if(!is3&&ui.mode==='p3d')box.append(el('div',{class:'chips'},chk('pxf2Show','Show the frame on the flat texture',pxf2.show,v=>{pxf2.show=v;if(typeof drawXfOverlay==='function')drawXfOverlay();requestRender(true);})));
+  if(mode==='warp'&&typeof wpjPanel==='function')wpjPanel(box,get,edit);
   if(is3){/* (0.93.3, Kenn: like Substance Painter) what the projection does outside its frame, the cylinder's angle and backface culling, and mirrors */
     const wr=el('select',{id:'pxf_wrap','aria-label':'UV wrap',title:'UV wrap: how the picture repeats'},...PXF_WRAP.map(([v,t])=>el('option',{value:v,text:'UV wrap: '+t})));wr.value=X.wrap||'repeat';wr.onchange=()=>edit(x=>{x.wrap=wr.value;});
     box.append(wr,el('div',{class:'chips'},chk('pxf_crop','Project cropped to shape',!!X.crop,v=>edit(x=>{x.crop=v;}))));

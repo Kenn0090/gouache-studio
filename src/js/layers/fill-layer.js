@@ -9,7 +9,7 @@
 /* projections (0.23.1): 0 UV (uUvM: offset/turn/scale), 1 triplanar, 2 planar, 3 spherical; uInv takes a world position
    into the projection's own space (its offset, rotation and scale) */
 const FS_FILLIMG=`uniform sampler2D uSrc; uniform float uTile; uniform float uRot; uniform float uUvRot; uniform float uContrast; uniform int uGrey; uniform int uProj; uniform sampler2D uPos; uniform sampler2D uNrm; uniform sampler2D uTan;
-uniform float uSharp; uniform float uHStr; uniform int uHeight; uniform int uNormal; uniform mat4 uInv; uniform mat3 uNrmInv; uniform mat3 uUvM; uniform int uRep; uniform int uFront; uniform int uKeepA; uniform vec4 uCyl; uniform float uCrop; in vec2 vUV;
+uniform float uSharp; uniform float uHStr; uniform int uHeight; uniform int uNormal; uniform mat4 uInv; uniform mat3 uNrmInv; uniform mat3 uUvM; uniform int uRep; uniform int uFront; uniform int uKeepA; uniform vec4 uCyl; uniform float uCrop; uniform sampler2D uWarp; uniform vec4 uWarpD; in vec2 vUV;
 bool wrapOut(vec2 t){ if(uCyl.w<0.5) return false; if(uCyl.w<1.5) return t.x<0.0||t.x>1.0||t.y<0.0||t.y>1.0; if(uCyl.w<2.5) return t.y<0.0||t.y>1.0; return t.x<0.0||t.x>1.0; }
 vec4 samp(vec2 t){ float c=cos(uRot),s=sin(uRot); t=mat2(c,s,-s,c)*(t-0.5)+0.5; return texture(uSrc,t); }
 vec4 sampL(vec2 t){ float c=cos(uRot),s=sin(uRot); t=mat2(c,s,-s,c)*(t-0.5)+0.5; return textureLod(uSrc,t,0.0); }
@@ -32,6 +32,14 @@ void main(){ vec4 s;
       } else s=samp(p.zy)*w.x+samp(p.xz)*w.y+samp(p.xy)*w.z; }
     else if(uProj==2){ vec2 t=vec2(L.x*0.5+0.5,0.5-L.y*0.5); if(uKeepA==1&&abs(L.z)>1.0){ o=vec4(0.0); return; }
       if(uFront==1){ vec3 Nl=normalize(mat3(uInv)*texelFetch(uNrm,q,0).xyz+1e-5); if(uKeepA==1?abs(Nl.z)<0.5:Nl.z<0.15){ o=vec4(0.0); return; } }/* decals: the model's stored normals may point either way, the thin slab above keeps a sticker to the surface under it */ if(uRep==0&&(t.x<0.0||t.y<0.0||t.x>1.0||t.y>1.0)){ o=vec4(0.0); return; } if(wrapOut(t*uTile)||(uCrop>0.5&&(abs(L.x)>1.0||abs(L.y)>1.0))){ o=vec4(0.0); return; } s=samp(t*uTile); }
+    else if(uProj==5){ if(abs(L.z)>uWarpD.x){ o=vec4(0.0); return; }
+      if(uFront==1){ vec3 Nl=normalize(mat3(uInv)*texelFetch(uNrm,q,0).xyz+1e-5); if(uKeepA==1?abs(Nl.z)<0.5:Nl.z<0.15){ o=vec4(0.0); return; } }
+      vec2 uv=vec2(L.x*0.5+0.5,0.5-L.y*0.5); bool ok=true;
+      if(uWarpD.w>0.5){ vec2 g=(L.xy+uWarpD.z)/(2.0*uWarpD.z)*uWarpD.w-0.5; ivec2 i0=ivec2(floor(g)); vec2 f=fract(g); vec2 acc=vec2(0.0); float ws=0.0; int n=int(uWarpD.w);
+        for(int j=0;j<2;j++) for(int i=0;i<2;i++){ ivec2 c=i0+ivec2(i,j); if(c.x<0||c.y<0||c.x>=n||c.y>=n) continue; vec4 t4=texelFetch(uWarp,c,0); if(t4.z<0.5) continue; float wgt=(i==0?1.0-f.x:f.x)*(j==0?1.0-f.y:f.y); acc+=t4.xy*wgt; ws+=wgt; }
+        if(ws>0.001) uv=acc/ws; else ok=false; }
+      if(!ok&&uCrop>0.5){ o=vec4(0.0); return; }
+      vec2 t=uv*uTile; if(wrapOut(t)){ o=vec4(0.0); return; } float k=1.0-smoothstep(min(uWarpD.y,0.999),1.0,abs(L.z)/uWarpD.x); s=samp(t)*k; }
     else if(uProj==4){ float ang=atan(L.x,L.z),span=radians(max(uCyl.x,1.0)); if(abs(ang)>span*0.5||(uCrop>0.5&&abs(L.y)>1.0)){ o=vec4(0.0); return; }
       vec2 t=vec2(ang/span+0.5,0.5-L.y*0.5)*uTile; if(wrapOut(t)){ o=vec4(0.0); return; } float k=1.0;
       if(uCyl.z>0.5){ vec3 rad=normalize(vec3(L.x,0.0,L.z)+1e-6); k=smoothstep(0.0,max(0.02,1.0-uCyl.y),dot(N,rad)); } s=samp(t)*k; }

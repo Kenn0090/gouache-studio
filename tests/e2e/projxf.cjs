@@ -25,7 +25,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
    const L=__gs.cmdNewFillLayer({name:'Checker',maps:{base:{src:'image',tile:1,rot:0,name:'checker'},rough:{v:.5}},imgs:{base:t}});__gs.showPanel('matEd');});await W(500);
  const baseSig=()=>p.evaluate(()=>{const d=__gs.readRGBA8(__gs.mapT(__gs.doc.active,'base'));let r=0,b=0,h=0;for(let i=0;i<d.length;i+=4){if(d[i]>150&&d[i+2]<90)r++;else if(d[i+2]>150&&d[i]<90)b++;h=(h*31+d[i]+d[i+2])>>>0;}return {r,b,h};});
  const seg=async(t)=>{await p.click('#fl_proj .segb:text-is("'+t+'")');await W(900);};
- ok(await p.evaluate(()=>[...document.querySelectorAll('#fl_proj .segb')].map(b=>b.textContent).join()==='UV,Triplanar,Planar,Spherical'),'four projections in Properties');
+ ok(await p.evaluate(()=>[...document.querySelectorAll('#fl_proj .segb')].map(b=>b.textContent).join()==='UV,Triplanar,Planar,Spherical,Cylindrical,Warp'),'six projections in Properties');
  await seg('Planar');let s1=await baseSig();ok(s1.r>1000&&s1.b>1000,'planar projects the picture '+JSON.stringify(s1));
  ok(await p.evaluate(()=>{const c=document.querySelector('.v3gz');return !!c&&!c.hidden&&!!__gs.pgzGeom(document.getElementById('v3Hit'));}),'the gizmo shows on the model');
  const hb=await p.locator('#v3Hit').boundingBox();
