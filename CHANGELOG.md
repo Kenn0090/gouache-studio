@@ -1,5 +1,7 @@
 ## 0.94.1
 
+- **New viewer: decal landing ring.** The glowing ring and grid that show where a decal will land (when you arm a decal or drag one over the model) are drawn in the new viewer window too, lying on the surface.
+- **New viewer: mirror copy cursors.** With Show copy cursors on, the brush ring's mirrored copies are drawn on the surface in the new viewer window, hidden where the copy lands out of sight.
 - **New viewer: closer to the 3D view.** The Skin shader has its second surface highlight and takes the baked thickness map; orthographic views are lit from the eye like the 3D view; the ray tracing (shadows, reflections) follows the displaced surface when Height depth is on. The stencil in the window is exact (the wiki no longer calls it slightly stretched).
 - **New viewer: Bake and Convert tabs.** The 3D bar of the Bake and Convert tabs has a New viewer button now. The window shows the model with the baked or converted maps (colour, normal, AO, roughness, metal, and the single-map views) and follows when they change. (Viewing only: painting in the window stays in 3D Paint.)
 - **New viewer: selection hover.** With a selection tool armed (object, material, UV island, face, loop), the part under the pointer lights up in the new viewer window, as it does in the 3D view.

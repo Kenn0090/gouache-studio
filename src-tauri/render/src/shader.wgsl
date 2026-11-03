@@ -494,6 +494,53 @@ fn fs_hl(i: OutOut) -> FOut {
     return o;
 }
 
+// the brush ring as it falls on the surface for each mirror copy (the copies' matrices come in a list)
+struct Mirc { m: array<mat4x4<f32>, 32> };
+@group(1) @binding(0) var<uniform> mirc: Mirc;
+@group(1) @binding(1) var mc_depth: texture_depth_2d;
+@group(1) @binding(2) var mc_nrm: texture_2d<f32>;
+fn world_at(px: vec2<f32>, d: f32) -> vec3<f32> {
+    let ndc = vec2<f32>(px.x / frame.res.x * 2.0 - 1.0, 1.0 - px.y / frame.res.y * 2.0);
+    let w = frame.inv_view_proj * vec4<f32>(ndc, d, 1.0);
+    return w.xyz / w.w;
+}
+@fragment
+fn fs_mirc(@builtin(position) p: vec4<f32>) -> @location(0) vec4<f32> {
+    let px = vec2<i32>(p.xy);
+    let d0 = textureLoad(mc_depth, px, 0);
+    if (d0 >= 0.99999) { discard; }
+    let n = textureLoad(mc_nrm, px, 0);
+    if (n.w <= 0.0) { discard; }
+    let P = world_at(p.xy, d0);
+    let N = n.xyz * 2.0 - vec3<f32>(1.0);
+    let cnt = i32(frame.st_c.z);
+    let radius = frame.cursor.z;
+    let edge = max(frame.res.y / 1080.0, 0.75);
+    let sz = vec2<f32>(textureDimensions(mc_depth));
+    var a = 0.0;
+    for (var i = 1; i < 32; i = i + 1) {
+        if (i >= cnt) { break; }
+        let q = (mirc.m[i] * vec4<f32>(P, 1.0)).xyz;
+        let c = frame.view_proj * vec4<f32>(q, 1.0);
+        if (c.w <= 1e-6) { continue; }
+        let s = c.xy / c.w;
+        if (abs(s.x) > 1.0 || abs(s.y) > 1.0) { continue; }
+        let spx = vec2<f32>((s.x * 0.5 + 0.5) * frame.res.x, (0.5 - s.y * 0.5) * frame.res.y);
+        let d = abs(length(spx - frame.cursor.xy) - radius);
+        if (d > edge * 1.65) { continue; }
+        // the copy only counts where the point it lands on is in view
+        let z = textureLoad(mc_depth, vec2<i32>(clamp(spx, vec2<f32>(0.0), sz - vec2<f32>(1.0))), 0);
+        if (z >= 0.99999) { continue; }
+        let seen = length(world_at(spx, z) - frame.cam_pos.xyz);
+        if (length(q - frame.cam_pos.xyz) > seen * 1.006 + 0.004) { continue; }
+        let nq = (mirc.m[i] * vec4<f32>(N, 0.0)).xyz;
+        let facing = abs(dot(normalize(nq), normalize(frame.cam_pos.xyz - q)));
+        a = max(a, (1.0 - smoothstep(edge * 0.65, edge * 1.65, d)) * smoothstep(0.04, 0.22, facing));
+    }
+    if (a < 0.01) { discard; }
+    return vec4<f32>(lin3(vec3<f32>(0.35, 0.8, 1.0)), a * 0.95);
+}
+
 // mirror guides
 @vertex
 fn vs_guide(@location(0) pos: vec3<f32>) -> OutOut {

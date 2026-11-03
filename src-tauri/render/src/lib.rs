@@ -132,6 +132,9 @@ pub struct Settings {
     pub mir_r: f32,
     /// height depth (displacement), in model units for a full-white height (0 = off)
     pub disp: f32,
+    /// the mirror copies of the brush ring: how many (1 = none) and their matrices (column-major, the first is the identity)
+    pub mirc_n: u32,
+    pub mirc: [[f32; 16]; 32],
     /// the shadow floor: on, height (world Y), half size, opacity, colour
     pub floor: [f32; 4],
     pub floor_col: [f32; 3],
@@ -156,7 +159,7 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, mir: [f32::NAN; 3], mir_radial: [0.0, 0.0], mir_off: [0.0; 3], mir_r: 0.0, disp: 0.0, floor: [0.0, 0.0, 1.0, 0.5], floor_col: [0.0; 3], clip: true, post_on: false, post: [[0.0; 4]; 7], st_on: false, st: [0.0; 8], st_view: [1.0, 1.0], wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
+        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, mir: [f32::NAN; 3], mir_radial: [0.0, 0.0], mir_off: [0.0; 3], mir_r: 0.0, disp: 0.0, mirc_n: 0, mirc: [[0.0; 16]; 32], floor: [0.0, 0.0, 1.0, 0.5], floor_col: [0.0; 3], clip: true, post_on: false, post: [[0.0; 4]; 7], st_on: false, st: [0.0; 8], st_view: [1.0, 1.0], wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
     }
 }
 
@@ -384,7 +387,11 @@ struct Gpu {
     guide_pipeline: wgpu::RenderPipeline,
     floor_pipeline: wgpu::RenderPipeline,
     hl_pipeline: wgpu::RenderPipeline,
+    mc_pipeline: wgpu::RenderPipeline,
+    mc_layout: wgpu::BindGroupLayout,
+    mc_buf: wgpu::Buffer,
     hl: Option<(wgpu::Buffer, u32)>,
+    ind: Option<(wgpu::Buffer, u32)>,
     st_pipeline: wgpu::RenderPipeline,
     post_layout: wgpu::BindGroupLayout,
     post_bright: wgpu::RenderPipeline,
@@ -1009,6 +1016,27 @@ impl Gpu {
             multiview: None,
             cache: None,
         });
+        let mc_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("mirror cursor layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry { binding: 0, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Buffer { ty: wgpu::BufferBindingType::Uniform, has_dynamic_offset: false, min_binding_size: None }, count: None },
+                wgpu::BindGroupLayoutEntry { binding: 1, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Depth, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false }, count: None },
+                wgpu::BindGroupLayoutEntry { binding: 2, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: false }, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false }, count: None },
+            ],
+        });
+        let mc_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor { label: Some("mirror cursor pipeline layout"), bind_group_layouts: &[&frame_layout, &mc_layout], push_constant_ranges: &[] });
+        let mc_buf = device.create_buffer(&wgpu::BufferDescriptor { label: Some("mirror cursor"), size: 32 * 64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
+        let mc_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("mirror cursor pipeline"),
+            layout: Some(&mc_pl),
+            vertex: wgpu::VertexState { module: &shader, entry_point: Some("vs_bg"), compilation_options: Default::default(), buffers: &[] },
+            fragment: Some(wgpu::FragmentState { module: &shader, entry_point: Some("fs_mirc"), compilation_options: Default::default(), targets: &ring_target }),
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
         let out_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("outline pipeline"),
             layout: Some(&layout),
@@ -1143,13 +1171,17 @@ impl Gpu {
             pipeline,
             bg_pipeline,
             ring_pipeline,
-            cursor: std::env::var_os("GOUACHE_RING_TEST").map(|_| (300.0, 250.0)), // debug: shows the outline without a mouse
+            cursor: std::env::var_os("GOUACHE_RING_TEST").map(|_| std::env::var("GOUACHE_RING_AT").ok().and_then(|v| { let mut it = v.split(',').filter_map(|x| x.parse::<f32>().ok()); Some((it.next()?, it.next()?)) }).unwrap_or((300.0, 250.0))), // debug: shows the outline without a mouse (GOUACHE_RING_AT=x,y moves it)
             out_pipeline,
             wire_pipeline,
             guide_pipeline,
             floor_pipeline,
             hl_pipeline,
+            mc_pipeline,
+            mc_layout,
+            mc_buf,
             hl: None,
+            ind: None,
             st_pipeline,
             post_layout,
             post_bright,
@@ -1370,6 +1402,18 @@ impl Gpu {
 
     /// Swaps the pictures of the material of one group (the triangles stay).
     fn set_textures(&mut self, name: &str, mat: &Material) {
+        if name == "__ind" {
+            // line segments in the model's space (x y z per point, two points per segment): where a decal will land
+            self.ind = match &mat.base {
+                Some(t) if t.rgba.len() >= 24 => {
+                    let f: Vec<f32> = t.rgba.chunks_exact(4).map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]])).collect();
+                    let n = (f.len() / 6 * 6) as u32;
+                    Some((self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("indicator"), contents: bytemuck::cast_slice(&f[..n as usize]), usage: wgpu::BufferUsages::VERTEX }), n / 3))
+                }
+                _ => None,
+            };
+            return;
+        }
         if name == "__hl" {
             // triangles to light up (corner indices of the page's model), sent as the bytes of a raw picture
             self.hl = match &mat.base {
@@ -1498,7 +1542,7 @@ impl Gpu {
             wire: [st.wire_col[0], st.wire_col[1], st.wire_col[2], st.wire as f32],
             st_a: [st.st[0], st.st[1], st.st[2], st.st[3]],
             st_b: [st.st[4], st.st[5], st.st[6], 0.0],
-            st_c: [st.st_view[0], st.st_view[1], 0.0, 0.0],
+            st_c: [st.st_view[0], st.st_view[1], st.mirc_n as f32, 0.0],
             fl_a: st.floor,
         };
         self.queue.write_buffer(&self.frame_buf, 0, bytemuck::bytes_of(&u));
@@ -1593,6 +1637,13 @@ impl Gpu {
                         }
                     }
                 }
+                if let (Some((ib, n)), Some(g0)) = (&self.ind, self.groups.first()) {
+                    pass.set_pipeline(&self.guide_pipeline);
+                    pass.set_bind_group(0, &self.frame_bg, &[]);
+                    pass.set_bind_group(1, &g0.bind, &[]);
+                    pass.set_vertex_buffer(0, ib.slice(..));
+                    pass.draw(0..*n, 0..1);
+                }
                 if let (Some((gb, n)), Some(g0)) = (&self.guide_buf, self.groups.first()) {
                     pass.set_pipeline(&self.guide_pipeline);
                     pass.set_bind_group(0, &self.frame_bg, &[]);
@@ -1607,6 +1658,30 @@ impl Gpu {
                     pass.draw_indexed(0..g.count, 0, 0..1);
                 }
             }
+        }
+        if st.mirc_n > 1 && st.paint && st.brush > 0.0 && u.cursor[3] > 0.5 {
+            let n = (st.mirc_n as usize).min(32);
+            self.queue.write_buffer(&self.mc_buf, 0, bytemuck::cast_slice(&st.mirc[..n]));
+            let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("mirror cursor group"),
+                layout: &self.mc_layout,
+                entries: &[
+                    wgpu::BindGroupEntry { binding: 0, resource: self.mc_buf.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::TextureView(&self.depth) },
+                    wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::TextureView(&self.scene_normal) },
+                ],
+            });
+            let mut p = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("mirror cursors"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment { view: &self.scene_color, depth_slice: None, resolve_target: None, ops: wgpu::Operations { load: wgpu::LoadOp::Load, store: wgpu::StoreOp::Store } })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+            p.set_pipeline(&self.mc_pipeline);
+            p.set_bind_group(0, &self.frame_bg, &[]);
+            p.set_bind_group(1, &bg, &[]);
+            p.draw(0..3, 0..1);
         }
         if st.rt {
             let sd = [sun.x, sun.y, sun.z];
