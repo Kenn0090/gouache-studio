@@ -130,6 +130,9 @@ pub struct Settings {
     pub mir_r: f32,
     /// height depth (displacement), in model units for a full-white height (0 = off)
     pub disp: f32,
+    /// the shadow floor: on, height (world Y), half size, opacity, colour
+    pub floor: [f32; 4],
+    pub floor_col: [f32; 3],
     /// cut out parts with less than half opacity (the 3D view's "Cut out transparent areas")
     pub clip: bool,
     /// post processing on the finished picture: on, and seven groups of four numbers (see post.wgsl)
@@ -151,7 +154,7 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, mir: [f32::NAN; 3], mir_radial: [0.0, 0.0], mir_off: [0.0; 3], mir_r: 0.0, disp: 0.0, clip: true, post_on: false, post: [[0.0; 4]; 7], st_on: false, st: [0.0; 8], st_view: [1.0, 1.0], wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
+        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, mir: [f32::NAN; 3], mir_radial: [0.0, 0.0], mir_off: [0.0; 3], mir_r: 0.0, disp: 0.0, floor: [0.0, 0.0, 1.0, 0.5], floor_col: [0.0; 3], clip: true, post_on: false, post: [[0.0; 4]; 7], st_on: false, st: [0.0; 8], st_view: [1.0, 1.0], wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
     }
 }
 
@@ -312,6 +315,7 @@ struct FrameUniform {
     st_a: [f32; 4],
     st_b: [f32; 4],
     st_c: [f32; 4],
+    fl_a: [f32; 4], // floor: height, half size, opacity, on
 }
 
 #[repr(C)]
@@ -362,6 +366,7 @@ struct Gpu {
     out_pipeline: wgpu::RenderPipeline,
     wire_pipeline: wgpu::RenderPipeline,
     guide_pipeline: wgpu::RenderPipeline,
+    floor_pipeline: wgpu::RenderPipeline,
     st_pipeline: wgpu::RenderPipeline,
     post_layout: wgpu::BindGroupLayout,
     post_bright: wgpu::RenderPipeline,
@@ -949,6 +954,17 @@ impl Gpu {
         let post_buf = || device.create_buffer(&wgpu::BufferDescriptor { label: Some("post uniform"), size: 144, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
         let post_bufs = [post_buf(), post_buf(), post_buf()];
         let post_smp = device.create_sampler(&wgpu::SamplerDescriptor { address_mode_u: wgpu::AddressMode::ClampToEdge, address_mode_v: wgpu::AddressMode::ClampToEdge, mag_filter: wgpu::FilterMode::Linear, min_filter: wgpu::FilterMode::Linear, ..Default::default() });
+        let floor_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("floor pipeline"),
+            layout: Some(&bg_layout),
+            vertex: wgpu::VertexState { module: &shader, entry_point: Some("vs_floor"), compilation_options: Default::default(), buffers: &[] },
+            fragment: Some(wgpu::FragmentState { module: &shader, entry_point: Some("fs_floor"), compilation_options: Default::default(), targets: &target }),
+            primitive: wgpu::PrimitiveState { cull_mode: None, ..Default::default() },
+            depth_stencil: Some(wgpu::DepthStencilState { format: DEPTH_FORMAT, depth_write_enabled: true, depth_compare: wgpu::CompareFunction::Less, stencil: Default::default(), bias: Default::default() }),
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
         let out_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("outline pipeline"),
             layout: Some(&layout),
@@ -1087,6 +1103,7 @@ impl Gpu {
             out_pipeline,
             wire_pipeline,
             guide_pipeline,
+            floor_pipeline,
             st_pipeline,
             post_layout,
             post_bright,
@@ -1374,6 +1391,7 @@ impl Gpu {
             st_a: [st.st[0], st.st[1], st.st[2], st.st[3]],
             st_b: [st.st[4], st.st[5], st.st[6], 0.0],
             st_c: [st.st_view[0], st.st_view[1], 0.0, 0.0],
+            fl_a: st.floor,
         };
         self.queue.write_buffer(&self.frame_buf, 0, bytemuck::bytes_of(&u));
         if st.wire > 0 {
@@ -1443,6 +1461,11 @@ impl Gpu {
                     pass.set_index_buffer(g.ib.slice(..), wgpu::IndexFormat::Uint32);
                     pass.draw_indexed(0..g.count, 0, 0..1);
                 }
+                if st.floor[3] > 0.5 && st.wire != 2 {
+                    pass.set_pipeline(&self.floor_pipeline);
+                    pass.set_bind_group(0, &self.frame_bg, &[]);
+                    pass.draw(0..6, 0..1);
+                }
                 if st.wire > 0 {
                     pass.set_pipeline(&self.wire_pipeline);
                     pass.set_bind_group(0, &self.frame_bg, &[]);
@@ -1490,7 +1513,7 @@ impl Gpu {
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
-            self.rt.composite(&self.device, &self.queue, &mut pass, &self.scene_color, &self.scene_normal, &self.scene_mat, st.rt, st.tone, st.exposure, [st.rt_shadow, st.rt_ao, st.rt_refl], st.smooth);
+            self.rt.composite(&self.device, &self.queue, &mut pass, &self.scene_color, &self.scene_normal, &self.scene_mat, st.rt, st.tone, st.exposure, [st.rt_shadow, st.rt_ao, st.rt_refl], st.smooth, st.floor_col);
             if let (true, Some(sb)) = (st.st_on, &self.st_bind) {
                 pass.set_pipeline(&self.st_pipeline);
                 pass.set_bind_group(0, &self.frame_bg, &[]);

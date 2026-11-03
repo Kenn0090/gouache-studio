@@ -21,6 +21,7 @@ struct Frame {
     st_a: vec4<f32>,         // stencil: centre, half size (pixels of the page's 3D view)
     st_b: vec4<f32>,         // turn, show, flags
     st_c: vec4<f32>,         // that view's size
+    fl_a: vec4<f32>,         // shadow floor: height, half size, opacity, on
 };
 
 // from a point on the model toward the viewer (the same direction everywhere when the view is orthographic)
@@ -506,24 +507,51 @@ fn vs_bg(@builtin(vertex_index) vi: u32) -> BgOut {
     o.ndc = p[vi];
     return o;
 }
-@fragment
-fn fs_bg(i: BgOut) -> FOut {
-    var o: FOut;
-    o.n = vec4<f32>(0.0);
-    o.m = vec4<f32>(0.0);
-    let far = frame.inv_view_proj * vec4<f32>(i.ndc, 1.0, 1.0);
-    let near = frame.inv_view_proj * vec4<f32>(i.ndc, 0.0, 1.0);
+fn bg_color(ndc: vec2<f32>) -> vec3<f32> {
+    let far = frame.inv_view_proj * vec4<f32>(ndc, 1.0, 1.0);
+    let near = frame.inv_view_proj * vec4<f32>(ndc, 0.0, 1.0);
     let d = normalize(far.xyz / far.w - near.xyz / near.w);
     if (frame.info.y < 0.5 || frame.info.z < 0.5) {
-        o.c = vec4<f32>(select(pow((frame.bgc.rgb + vec3<f32>(0.055)) / 1.055, vec3<f32>(2.4)), frame.bgc.rgb / 12.92, frame.bgc.rgb <= vec3<f32>(0.04045)), 1.0);
-        return o;
+        return select(pow((frame.bgc.rgb + vec3<f32>(0.055)) / 1.055, vec3<f32>(2.4)), frame.bgc.rgb / 12.92, frame.bgc.rgb <= vec3<f32>(0.04045));
     }
     // the picture behind the model, blurred as much as the 3D view's Background blur asks
     let t = frame.extra.z * 3.0;
     var c = env_sample(d, 0.0);
     if (t >= 1.0) { c = env_spec(d, clamp(t - 1.0, 0.0, 2.0) * 0.2); }
     else if (t > 0.0) { c = mix(c, env_spec(d, 0.0), t); }
-    o.c = vec4<f32>(tone(c), 1.0);
+    return tone(c);
+}
+@fragment
+fn fs_bg(i: BgOut) -> FOut {
+    var o: FOut;
+    o.n = vec4<f32>(0.0);
+    o.m = vec4<f32>(0.0);
+    o.c = vec4<f32>(bg_color(i.ndc), 1.0);
+    return o;
+}
+
+// the shadow floor: it shows the background as it is; the ray tracing then darkens it where the model shadows it
+struct FloorOut {
+    @builtin(position) clip: vec4<f32>,
+    @location(0) xz: vec2<f32>,
+};
+@vertex
+fn vs_floor(@builtin(vertex_index) vi: u32) -> FloorOut {
+    var q = array<vec2<f32>, 6>(vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0));
+    var o: FloorOut;
+    let w = vec3<f32>(q[vi].x * frame.fl_a.y, frame.fl_a.x, q[vi].y * frame.fl_a.y);
+    o.clip = frame.view_proj * vec4<f32>(w, 1.0);
+    o.xz = q[vi];
+    return o;
+}
+@fragment
+fn fs_floor(i: FloorOut) -> FOut {
+    var o: FOut;
+    let ndc = vec2<f32>(i.clip.x / frame.res.x * 2.0 - 1.0, 1.0 - i.clip.y / frame.res.y * 2.0);
+    o.c = vec4<f32>(bg_color(ndc), 1.0);
+    let edge = 1.0 - smoothstep(0.75, 1.0, max(abs(i.xz.x), abs(i.xz.y)));
+    o.n = vec4<f32>(0.5, 1.0, 0.5, 1.0);
+    o.m = vec4<f32>(0.0, 0.0, frame.fl_a.z * edge, 0.5);
     return o;
 }
 

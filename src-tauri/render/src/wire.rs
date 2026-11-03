@@ -103,6 +103,10 @@ struct SettingsMeta {
     wire: u8,
     #[serde(default)]
     disp: f32,
+    #[serde(default)]
+    floor: Option<[f32; 4]>,
+    #[serde(default)]
+    floor_col: Option<[f32; 3]>,
     #[serde(default = "yes")]
     clip: bool,
     #[serde(default)]
@@ -281,6 +285,8 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         studio_rim: s.studio_rim,
         wire: s.wire,
         disp: s.disp,
+        floor: s.floor.unwrap_or([0.0, 0.0, 1.0, 0.5]),
+        floor_col: s.floor_col.unwrap_or([0.0; 3]),
         clip: s.clip,
         post_on: s.post.is_some(),
         post: s.post.unwrap_or([[0.0; 4]; 7]),

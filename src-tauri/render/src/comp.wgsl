@@ -1,5 +1,5 @@
 // ---- putting it on the picture ----
-struct Comp { p: vec4<f32>, q: vec4<f32> }; // p: x 1 when on, y sun shadow strength, z ambient strength, w reflection strength; q: x tone mode, y exposure
+struct Comp { p: vec4<f32>, q: vec4<f32>, f: vec4<f32> }; // f: shadow floor colour (linear) // p: x 1 when on, y sun shadow strength, z ambient strength, w reflection strength; q: x tone mode, y exposure
 @group(0) @binding(0) var<uniform> comp: Comp;
 @group(0) @binding(1) var scene_tex: texture_2d<f32>;
 @group(0) @binding(2) var cnrm_tex: texture_2d<f32>;
@@ -103,7 +103,13 @@ fn fs_comp(@builtin(position) p: vec4<f32>) -> @location(0) vec4<f32> {
     let sf = clamp((n.w - 0.25) / 0.75, 0.0, 1.0);
     let sun = mix(1.0, r.x, comp.p.y);
     let amb = mix(1.0, r.y, comp.p.z);
-    let sp = textureLoad(cmat_tex, px, 0).y;
+    let mt = textureLoad(cmat_tex, px, 0);
+    if (mt.w > 0.25 && mt.w < 0.75) {
+        // the shadow floor: only its shadow shows, in the floor's colour
+        let lit = mix(1.0, r.x, mt.z);
+        return vec4<f32>(mix(comp.f.rgb, c.rgb, lit), c.a);
+    }
+    let sp = mt.y;
     // where the mirror ray met the model, its colour replaces the sky in the reflection
     let hitc = tone_c(rf.rgb / max(rf.w, 1e-3));
     let rw = sp * rf.w * comp.p.w;

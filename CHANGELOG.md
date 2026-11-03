@@ -1,5 +1,6 @@
 ## 0.94.1
 
+- **New viewer: shadow floor.** The 3D view's transparent shadow floor (Studio lighting › Shadow floor) now shows in the new viewer window: the model's ray-traced shadow lands on it, with the floor's height, colour and opacity. Ray tracing is switched on in the window while the floor is on.
 - **New viewer: post processing.** The Shader panel's post effects (bloom, depth of field, sharpen, colour grade, vignette, chromatic aberration, film grain and filter looks) now work in the new viewer window, and in its screenshots, renders and turntables. The "Cut out transparent areas" switch is respected too.
 - **New viewer: height depth.** The height depth (displacement) setting of the 3D view now moves the surface in the new viewer window too. It uses the same detail (subdivision) as the 3D view, and the surface keeps its shading from the normal map.
 - **New viewer: stencil.** The stencil you set up for projection painting shows over the model in the new viewer window, in the same place, size and turn.
