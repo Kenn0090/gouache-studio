@@ -23,7 +23,7 @@ function nvShader(){const sh=v3ShadeOf(doc),u=shadeUniforms(sh),P=shParams(sh),a
 /* the mask view / channel view / baked-map view of the 3D view (C and B keys, Alt+click a mask): a picture shown unlit */
 function nvViewTarget(){if(ui.mode==='bake'||ui.mode==='convert')return null;try{let t=typeof maskViewTex==='function'?((typeof idViewTex==='function'&&idViewTex())||maskViewTex()||(typeof p3MeshShowTex==='function'?p3MeshShowTex():null)):null;
   if(!t&&typeof p3ChannelView==='function'){const c=p3ChannelView();if(c)t=v3.tex[c]||null;}return t||null;}catch(e){return null;}}
-function nvViewKey(){const t=nvViewTarget();return t?(t.id||t.tex&&t.tex._nvid||(t.tex?(t.tex._nvid=Math.random().toString(36).slice(2)):'v')):'';}
+function nvViewKey(){const t=nvViewTarget();if(!t&&nvSelOn())return 'sel'+nvSelVer+':'+JSON.stringify(sel.bb);return t?(t.id||t.tex&&t.tex._nvid||(t.tex?(t.tex._nvid=Math.random().toString(36).slice(2)):'v')):'';}
 async function nvViewPNG(){const t=nvViewTarget();if(!t)return null;
   const c=captureRegionNow(t,0,0,t.w,t.h),n=t.w*t.h,rgba=new Uint8ClampedArray(n*4);
   if(c.depth===16){for(let i=0;i<n*4;i++)rgba[i]=Math.max(0,Math.min(255,Math.round(h2f(c.data[i])*255)));}else rgba.set(c.data);
@@ -32,7 +32,17 @@ async function nvViewPNG(){const t=nvViewTarget();if(!t)return null;
   for(let y=0;y<t.h;y++)im.data.set(rgba.subarray((t.h-1-y)*t.w*4,(t.h-y)*t.w*4),y*t.w*4);x0.putImageData(im,0,0);
   const sc=Math.min(1,NV_TEX_MAX/Math.max(t.w,t.h)),cv1=document.createElement('canvas');cv1.width=Math.max(2,Math.round(t.w*sc));cv1.height=Math.max(2,Math.round(t.h*sc));cv1.getContext('2d').drawImage(cv0,0,0,cv1.width,cv1.height);
   const b=await new Promise(r=>cv1.toBlob(r,'image/png'));return b?new Uint8Array(await b.arrayBuffer()):null;}
-async function nvViewApply(T){const v=await nvViewPNG();if(v){T.BaseColor=v;delete T.ORM;delete T.Normal;delete T.Emissive;}}
+/* the selection (orange tint on the model): painted into the picture the window shows, like the 3D view does on top */
+let nvSelVer=0;
+{const a=applyShape;applyShape=function(...r){nvSelVer++;return a.apply(this,r);};}
+const nvSelOn=()=>ui.mode==='p3d'&&sel.active&&!sel.quick&&!!sel.t;
+async function nvSelApply(T){if(!nvSelOn()||!T.BaseColor)return;
+  const bmp=await createImageBitmap(new Blob([T.BaseColor],{type:'image/png'})),w=bmp.width,h=bmp.height,cv=document.createElement('canvas');cv.width=w;cv.height=h;const x=cv.getContext('2d');x.drawImage(bmp,0,0);
+  const m=captureRegionNow(sel.t,0,0,sel.t.w,sel.t.h),im=x.getImageData(0,0,w,h),d=im.data;
+  for(let y=0;y<h;y++){const sy=Math.min(sel.t.h-1,Math.floor((h-1-y)*sel.t.h/h));for(let xx=0;xx<w;xx++){const sx=Math.min(sel.t.w-1,Math.floor(xx*sel.t.w/w)),mv=m.depth===16?h2f(m.data[(sy*sel.t.w+sx)*4]):m.data[(sy*sel.t.w+sx)*4]/255;
+    if(mv<.02)continue;const k=.32*mv,i=(y*w+xx)*4;d[i]+=(255-d[i])*k;d[i+1]+=(158-d[i+1])*k;d[i+2]+=(56-d[i+2])*k;}}
+  x.putImageData(im,0,0);const b=await new Promise(r=>cv.toBlob(r,'image/png'));if(b)T.BaseColor=new Uint8Array(await b.arrayBuffer());}
+async function nvViewApply(T){const v=await nvViewPNG();if(v){T.BaseColor=v;delete T.ORM;delete T.Normal;delete T.Emissive;}else await nvSelApply(T);}
 async function nvScene(){const m=mxModel();if(!m||!m.pos||!m.idx)throw new Error('Open a model in the 3D view first.');
   const saved={size:texCfg.size,pad:texCfg.pad,meshMaps:texCfg.meshMaps,h16:texCfg.h16},texBy={},shBy={};
   try{texCfg.size=NV_TEX_MAX;texCfg.pad='none';texCfg.meshMaps=false;

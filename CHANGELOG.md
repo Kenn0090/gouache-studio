@@ -1,5 +1,6 @@
 ## 0.94.1
 
+- **New viewer: selection tint.** A selection made in 3D Paint shows orange on the model in the new viewer window.
 - **New viewer: wireframe.** Wireframe and Wireframe overlay (and your wire colour) now show in the new viewer window.
 - **New viewer: map views.** The C key (channels), the B key (baked maps) and the mask view now show in the new viewer window too, as a flat picture without lighting.
 
