@@ -12,6 +12,12 @@ In 3D Paint, press **New viewer** in the bar above the 3D view. The button light
 - Your environment, sun and tone settings from the 3D view. Change them in the app and the window follows.
 - Each texture set's shader: Standard, Skin, Brushed metal, Velvet, Toon, Cel, Spec/Gloss, Panner and Retro, with their outlines.
 
+## How close it is to the 3D view
+
+I compared the two on the same model, material, camera and lighting. Colours and brightness agree within a few percent, normal maps light the same way, and these carry over: the environment, your light rig, the studio fill and rim lights, the Unlit and Metal views, orthographic view, hidden texture sets and the background colour. Edges against the background are smoothed.
+
+Not in the new viewer yet: wireframe and the UV overlay, selection tint, stencil and mirror guides, the mask and mesh map views (C key), height depth (displacement) and see-through materials, and post effects such as glow. The sun is only on when the environment is off (or its sun slider is up), as in the 3D view, so ray-traced sun shadows need that too.
+
 ## Moving around
 
 - **Alt + drag** turns the model (plain drag turns it when painting is off). Mouse wheel zooms.

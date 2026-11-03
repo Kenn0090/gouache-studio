@@ -115,6 +115,13 @@ pub struct Settings {
     pub bg: [f32; 3],
     /// smooth the jagged edges (the window is not drawn with multisampling)
     pub smooth: bool,
+    /// no depth shrinking (the 3D view's Orthographic)
+    pub ortho: bool,
+    /// the 3D view's studio fill and rim lights (strength, 0 = off), the albedo-only view, and the polished-metal view (its roughness, 0 = off)
+    pub studio_fill: f32,
+    pub studio_rim: f32,
+    pub unlit: bool,
+    pub metal_view: f32,
     /// your own lights from the light rig (up to 4): each is type (0 sun, 1 point, 2 spot) + position, direction + cone, colour × strength + reach
     pub light_n: u32,
     pub light_a: [[f32; 4]; 4],
@@ -124,7 +131,7 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
+        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
     }
 }
 
@@ -279,6 +286,7 @@ struct FrameUniform {
     light_b: [[f32; 4]; 4],
     light_c: [[f32; 4]; 4],
     light_n: [f32; 4],
+    cam_dir: [f32; 4],
 }
 
 #[repr(C)]
@@ -1095,7 +1103,13 @@ impl Gpu {
         let aspect = self.config.width as f32 / self.config.height as f32;
         let dir = Vec3::new(cam.yaw.cos() * cam.pitch.cos(), cam.pitch.sin(), cam.yaw.sin() * cam.pitch.cos());
         let eye = cam.target + dir * cam.dist;
-        let proj = Mat4::perspective_rh(self.settings.fov.to_radians(), aspect, (cam.dist * 0.01).max(1e-4), cam.dist * 20.0 + cam.radius * 4.0);
+        let (near, far) = ((cam.dist * 0.01).max(1e-4), cam.dist * 20.0 + cam.radius * 4.0);
+        let proj = if self.settings.ortho {
+            let hh = cam.dist * (self.settings.fov.to_radians() * 0.5).tan();
+            Mat4::orthographic_rh(-hh * aspect, hh * aspect, -hh, hh, near, far)
+        } else {
+            Mat4::perspective_rh(self.settings.fov.to_radians(), aspect, near, far)
+        };
         let vp = proj * Mat4::look_at_rh(eye, cam.target, Vec3::Y);
         let st = self.settings;
         let (az, el) = (st.sun_azimuth.to_radians(), st.sun_elevation.to_radians());
@@ -1107,7 +1121,7 @@ impl Gpu {
             sun_dir: [sun.x, sun.y, sun.z, 0.0],
             sun_col: [3.0 * st.sun_intensity, 2.9 * st.sun_intensity, 2.7 * st.sun_intensity, 0.0],
             params: [st.exposure, st.env_turn, st.env_strength, st.tone as f32],
-            info: [self.env_mips, if self.has_env { 1.0 } else { 0.0 }, if st.show_background { 1.0 } else { 0.0 }, 0.0],
+            info: [self.env_mips, if self.has_env { 1.0 } else { 0.0 }, if st.show_background { 1.0 } else { 0.0 }, if st.unlit { 1.0 } else { 0.0 }],
             sh: self.sh,
             extra: [self.started.elapsed().as_secs_f32(), 2.0 * cam.dist * (self.settings.fov.to_radians() * 0.5).tan() / self.config.height as f32, st.env_blur, 0.0],
             cursor: match self.cursor {
@@ -1115,11 +1129,12 @@ impl Gpu {
                 _ => [0.0; 4],
             },
             res: [self.config.width as f32, self.config.height as f32, 0.0, 0.0],
-            bgc: [st.bg[0], st.bg[1], st.bg[2], 0.0],
+            bgc: [st.bg[0], st.bg[1], st.bg[2], st.metal_view],
             light_a: st.light_a,
             light_b: st.light_b,
             light_c: st.light_c,
-            light_n: [st.light_n as f32, 0.0, 0.0, 0.0],
+            light_n: [st.light_n as f32, st.studio_fill, st.studio_rim, 0.0],
+            cam_dir: [dir.x, dir.y, dir.z, if st.ortho { 1.0 } else { 0.0 }],
         };
         self.queue.write_buffer(&self.frame_buf, 0, bytemuck::bytes_of(&u));
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("frame") });

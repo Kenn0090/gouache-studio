@@ -16,7 +16,14 @@ struct Frame {
     light_b: array<vec4<f32>, 4>, // direction + cone
     light_c: array<vec4<f32>, 4>, // colour x strength + reach
     light_n: vec4<f32>,
+    cam_dir: vec4<f32>,      // toward the camera (used when the view is orthographic: w = 1)
 };
+
+// from a point on the model toward the viewer (the same direction everywhere when the view is orthographic)
+fn view_dir(p: vec3<f32>) -> vec3<f32> {
+    if (frame.cam_dir.w > 0.5) { return normalize(frame.cam_dir.xyz); }
+    return normalize(frame.cam_pos.xyz - p);
+}
 @group(0) @binding(0) var<uniform> frame: Frame;
 @group(0) @binding(1) var env_tex: texture_2d<f32>;
 @group(0) @binding(2) var env_smp: sampler;
@@ -158,7 +165,7 @@ fn fs(i: VOut) -> FOut {
     o.c = fs_shade(i);
     o.m = vec4<f32>(g_rough, g_sp, 0.0, 1.0);
     var nw = normalize(i.nrm);
-    if (dot(nw, normalize(frame.cam_pos.xyz - i.wpos)) < 0.0) { nw = -nw; }
+    if (dot(nw, view_dir(i.wpos)) < 0.0) { nw = -nw; }
     o.n = vec4<f32>(nw * 0.5 + 0.5, 0.25 + 0.75 * g_sf);
     return o;
 }
@@ -168,7 +175,7 @@ fn fs_shade(i: VOut) -> vec4<f32> {
     var uv = i.uv;
     if (kind == 7) { uv = uv + frame.extra.x * mat.shd.xy; }   // panner: the maps slide
     var n = normalize(i.nrm);
-    let v = normalize(frame.cam_pos.xyz - i.wpos);
+    let v = view_dir(i.wpos);
     if (dot(n, v) < 0.0) { n = -n; }
 
     // retro: the maps are read as a small grid of texels
@@ -196,7 +203,8 @@ fn fs_shade(i: VOut) -> vec4<f32> {
     let bb = -b0 * invmax;
     var albedo4 = textureSampleGrad(base_tex, tex_smp, guv, duv1, duv2);
     if (kind == 8) { albedo4 = textureSampleLevel(base_tex, tex_smp, guv, lodbias); }
-    let albedo = albedo4.rgb * mat.tint.rgb;
+    var albedo = albedo4.rgb * mat.tint.rgb;
+    if (frame.info.w > 0.5) { return vec4<f32>(albedo, 1.0); }
     var nn = n;
     if (kind != 8) {
         let tn = textureSample(nrm_tex, tex_smp, guv).xyz * 2.0 - 1.0;
@@ -211,6 +219,7 @@ fn fs_shade(i: VOut) -> vec4<f32> {
         rough = orm.g;
         metal = orm.b;
     }
+    if (frame.bgc.w > 0.0) { albedo = vec3<f32>(0.78, 0.8, 0.84); metal = 1.0; rough = frame.bgc.w; ao = 1.0; }
     rough = clamp(rough, 0.04, 1.0);
     let emis = textureSample(emi_tex, tex_smp, guv).rgb;
 
@@ -303,6 +312,8 @@ fn fs_shade(i: VOut) -> vec4<f32> {
         }
         col += studio_direct(nn, v, ld, albedo, f0, rough, metal) * rad * 3.0;
     }
+    col += studio_direct(nn, v, normalize(vec3<f32>(-0.75, 0.45, -0.25)), albedo, f0, rough, metal) * frame.light_n.y * 2.0;
+    col += studio_direct(nn, v, normalize(vec3<f32>(0.3, 0.35, -0.9)), albedo, f0, rough, metal) * frame.light_n.z * 2.0;
     var thick = mat.shp.w;
     if (kind == 1) {
         let ns = normalize(mix(nn, n, mat.shp.z));
@@ -387,7 +398,7 @@ fn vs_out(i: VIn) -> OutOut {
 }
 @fragment
 fn fs_out(i: OutOut) -> FOut {
-    if (dot(normalize(i.nrm), normalize(frame.cam_pos.xyz - i.wpos)) > 0.0) { discard; }
+    if (dot(normalize(i.nrm), view_dir(i.wpos)) > 0.0) { discard; }
     var o: FOut;
     o.c = vec4<f32>(lin3(mat.shd.rgb), 1.0);
     o.n = vec4<f32>(0.0);

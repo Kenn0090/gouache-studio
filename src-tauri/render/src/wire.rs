@@ -91,6 +91,23 @@ struct SettingsMeta {
     smooth: bool,
     #[serde(default)]
     lights: Vec<[f32; 12]>,
+    #[serde(default)]
+    ortho: bool,
+    #[serde(default = "d012")]
+    studio_fill: f32,
+    #[serde(default = "d008")]
+    studio_rim: f32,
+    #[serde(default)]
+    unlit: bool,
+    #[serde(default)]
+    metal_view: f32,
+}
+
+fn d012() -> f32 {
+    0.12
+}
+fn d008() -> f32 {
+    0.08
 }
 
 fn dtrue() -> bool {
@@ -229,6 +246,11 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         cam: s.cam,
         bg: s.bg.unwrap_or([0.09, 0.1, 0.115]),
         smooth: s.smooth,
+        ortho: s.ortho,
+        studio_fill: s.studio_fill,
+        studio_rim: s.studio_rim,
+        unlit: s.unlit,
+        metal_view: s.metal_view,
         light_n: s.lights.len().min(4) as u32,
         light_a: {
             let mut a = [[0.0f32; 4]; 4];
