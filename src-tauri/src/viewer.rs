@@ -3,9 +3,12 @@
 
 use std::sync::Mutex;
 
-use gouache_render::{scene_from_bytes, update_from_bytes, Viewer};
+use std::sync::Arc;
+
+use gouache_render::{scene_from_bytes, textures_from_bytes, update_from_bytes, Viewer};
 use serde::Serialize;
 use tauri::ipc::{InvokeBody, Request};
+use tauri::{AppHandle, Emitter};
 
 static VIEWER: Mutex<Option<Viewer>> = Mutex::new(None);
 
@@ -27,7 +30,7 @@ fn close_current() {
 
 /// Opens (or replaces) the viewer window. Runs off the main thread: starting the graphics can take a moment.
 #[tauri::command]
-pub async fn viewer_open(request: Request<'_>) -> Result<ViewerInfo, String> {
+pub async fn viewer_open(app: AppHandle, request: Request<'_>) -> Result<ViewerInfo, String> {
     let InvokeBody::Raw(bytes) = request.body() else {
         return Err("expected a raw body".into());
     };
@@ -35,7 +38,11 @@ pub async fn viewer_open(request: Request<'_>) -> Result<ViewerInfo, String> {
     drop(request); // nothing borrowed from the request may live across the await below
     let out = tauri::async_runtime::spawn_blocking(move || {
         close_current();
-        gouache_render::open(scene)
+        // what the pointer does in the window (while painting) goes to the page as 'viewer-event'
+        let sink: gouache_render::EventSink = Arc::new(move |json: String| {
+            let _ = app.emit("viewer-event", json);
+        });
+        gouache_render::open(scene, Some(sink))
     })
     .await
     .map_err(|e| e.to_string())??;
@@ -60,6 +67,24 @@ pub fn viewer_update(request: Request<'_>) -> Result<bool, String> {
     let mut g = VIEWER.lock().map_err(|e| e.to_string())?;
     let alive = match g.as_ref() {
         Some(v) => v.update(settings, env),
+        None => false,
+    };
+    if !alive {
+        *g = None;
+    }
+    Ok(alive)
+}
+
+/// Gives one material of the open viewer new pictures (after painting). Returns false when the viewer is gone.
+#[tauri::command]
+pub fn viewer_textures(request: Request<'_>) -> Result<bool, String> {
+    let InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected a raw body".into());
+    };
+    let (name, material) = textures_from_bytes(bytes)?;
+    let mut g = VIEWER.lock().map_err(|e| e.to_string())?;
+    let alive = match g.as_ref() {
+        Some(v) => v.set_textures(name, material),
         None => false,
     };
     if !alive {

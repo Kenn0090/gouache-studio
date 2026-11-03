@@ -59,6 +59,14 @@ struct SettingsMeta {
     sun_az: f32,
     sun_el: f32,
     sun_i: f32,
+    #[serde(default = "fov_default")]
+    fov: f32,
+    #[serde(default)]
+    paint: bool,
+}
+
+fn fov_default() -> f32 {
+    45.0
 }
 
 fn blur_default() -> f32 {
@@ -92,6 +100,13 @@ pub fn update_from_bytes(bytes: &[u8]) -> Result<(Settings, EnvChange), String> 
         _ => EnvChange::Clear,
     };
     Ok((scene.settings, change))
+}
+
+/// New pictures for one material: the same body as a scene with one group and no triangles. Returns the group's name and its material.
+pub fn textures_from_bytes(bytes: &[u8]) -> Result<(String, Material), String> {
+    let (mut scene, _) = parse(bytes)?;
+    let g = scene.groups.pop().ok_or_else(|| "no material in the data".to_string())?;
+    Ok((g.name, g.material))
 }
 
 pub fn scene_from_bytes(bytes: &[u8]) -> Result<Scene, String> {
@@ -143,6 +158,8 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         sun_azimuth: s.sun_az,
         sun_elevation: s.sun_el,
         sun_intensity: s.sun_i,
+        fov: s.fov,
+        paint: s.paint,
     };
     Ok((Scene { mesh: MeshData { positions, normals, uvs }, groups, env, settings }, meta.env_mode.clone()))
 }

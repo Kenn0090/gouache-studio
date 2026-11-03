@@ -8,7 +8,7 @@
 
 use std::sync::mpsc;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use glam::{Mat4, Vec3};
 use wgpu::util::DeviceExt;
@@ -19,7 +19,7 @@ use winit::event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy};
 use winit::window::{Window, WindowId};
 
 mod wire;
-pub use wire::{scene_from_bytes, update_from_bytes};
+pub use wire::{scene_from_bytes, textures_from_bytes, update_from_bytes};
 
 use half::f16;
 
@@ -90,11 +90,15 @@ pub struct Settings {
     pub sun_azimuth: f32,
     pub sun_elevation: f32,
     pub sun_intensity: f32,
+    /// vertical field of view in degrees (the 3D view's)
+    pub fov: f32,
+    /// painting is on: a plain left-drag paints (events go to the page), Alt + drag moves the camera
+    pub paint: bool,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0 }
+        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false }
     }
 }
 
@@ -147,7 +151,11 @@ pub enum EnvChange {
     Set(EnvData),
 }
 
+/// Where the viewer reports what the pointer does while painting (JSON text), so the page can paint with its own brush.
+pub type EventSink = Arc<dyn Fn(String) + Send + Sync>;
+
 enum Cmd {
+    Textures(String, Box<Material>),
     Scene(Box<Scene>),
     Update(Settings, EnvChange),
     Close,
@@ -176,6 +184,10 @@ impl Viewer {
     /// Changes the lighting settings (and the environment picture if asked) without sending the model again.
     pub fn update(&self, settings: Settings, env: EnvChange) -> bool {
         self.proxy.send_event(Cmd::Update(settings, env)).is_ok()
+    }
+    /// Gives one material (by the name of its group) new pictures, for example after painting.
+    pub fn set_textures(&self, group: String, material: Material) -> bool {
+        self.proxy.send_event(Cmd::Textures(group, Box::new(material))).is_ok()
     }
     pub fn close(&self) {
         let _ = self.proxy.send_event(Cmd::Close);
@@ -218,9 +230,12 @@ struct MatUniform {
 }
 
 struct GpuGroup {
+    name: String,
     ib: wgpu::Buffer,
     count: u32,
     bind: wgpu::BindGroup,
+    mat_buf: wgpu::Buffer,
+    mu: MatUniform,
     outline: bool,
 }
 
@@ -265,6 +280,12 @@ struct App {
     cam: Camera,
     drag: Option<MouseButton>,
     shift: bool,
+    ctrl: bool,
+    alt: bool,
+    /// a stroke is going on (the left button was pressed to paint)
+    painting: bool,
+    last_sent: Instant,
+    sink: Option<EventSink>,
     last: (f64, f64),
     init: Option<mpsc::Sender<Result<AdapterReport, String>>>,
     pending: Option<Scene>,
@@ -790,40 +811,59 @@ impl Gpu {
                 continue;
             }
             let mat = &g.material;
-            let view = |t: Option<&Tex8>, fb: [u8; 4], f: wgpu::TextureFormat| make_tex8(&self.device, &self.queue, t, fb, f);
-            let base = view(mat.base.as_ref(), [255, 255, 255, 255], wgpu::TextureFormat::Rgba8UnormSrgb);
-            let orm = view(mat.orm.as_ref(), [255, 255, 255, 255], wgpu::TextureFormat::Rgba8Unorm);
-            let nrm = view(mat.normal.as_ref(), [128, 128, 255, 255], wgpu::TextureFormat::Rgba8Unorm);
-            let emi = view(mat.emissive.as_ref(), [0, 0, 0, 255], wgpu::TextureFormat::Rgba8UnormSrgb);
+            let (bind, mat_buf, mu) = self.material_bind(mat);
             let sp = mat.shader;
-            let mu = MatUniform {
-                flags: [if mat.orm.is_some() { 1.0 } else { 0.0 }, if mat.rough > 0.0 { mat.rough } else { 0.6 }, mat.metal, 0.0],
-                tint: [1.0, 1.0, 1.0, 1.0],
-                shk: [sp.kind as f32, 0.0, 0.0, 0.0],
-                shp: sp.p,
-                shq: sp.q,
-                shc: [sp.c[0], sp.c[1], sp.c[2], 0.0],
-                shd: [sp.d[0], sp.d[1], sp.d[2], 0.0],
-                skin: sp.skin,
-            };
-            let mb = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("material"), contents: bytemuck::bytes_of(&mu), usage: wgpu::BufferUsages::UNIFORM });
-            let bind = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("material group"),
-                layout: &self.mat_layout,
-                entries: &[
-                    wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::TextureView(&base) },
-                    wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::TextureView(&orm) },
-                    wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::TextureView(&nrm) },
-                    wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(&emi) },
-                    wgpu::BindGroupEntry { binding: 4, resource: wgpu::BindingResource::Sampler(&self.tex_sampler) },
-                    wgpu::BindGroupEntry { binding: 5, resource: mb.as_entire_binding() },
-                ],
-            });
             let ib = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("indices"), contents: bytemuck::cast_slice(&g.indices), usage: wgpu::BufferUsages::INDEX });
-            self.groups.push(GpuGroup { ib, count: g.indices.len() as u32, bind, outline: (sp.kind == 4 || sp.kind == 5) && sp.q[0] > 0.0 });
+            self.groups.push(GpuGroup { name: g.name.clone(), ib, mat_buf, mu, count: g.indices.len() as u32, bind, outline: (sp.kind == 4 || sp.kind == 5) && sp.q[0] > 0.0 });
         }
         let c = (mn + mx) * 0.5;
         (c, ((mx - mn).length() * 0.5).max(1e-4))
+    }
+
+    /// Makes the bind group (pictures + settings) of one material.
+    fn material_bind(&self, mat: &Material) -> (wgpu::BindGroup, wgpu::Buffer, MatUniform) {
+        let view = |t: Option<&Tex8>, fb: [u8; 4], f: wgpu::TextureFormat| make_tex8(&self.device, &self.queue, t, fb, f);
+        let base = view(mat.base.as_ref(), [255, 255, 255, 255], wgpu::TextureFormat::Rgba8UnormSrgb);
+        let orm = view(mat.orm.as_ref(), [255, 255, 255, 255], wgpu::TextureFormat::Rgba8Unorm);
+        let nrm = view(mat.normal.as_ref(), [128, 128, 255, 255], wgpu::TextureFormat::Rgba8Unorm);
+        let emi = view(mat.emissive.as_ref(), [0, 0, 0, 255], wgpu::TextureFormat::Rgba8UnormSrgb);
+        let sp = mat.shader;
+        let mu = MatUniform {
+            flags: [if mat.orm.is_some() { 1.0 } else { 0.0 }, if mat.rough > 0.0 { mat.rough } else { 0.6 }, mat.metal, 0.0],
+            tint: [1.0, 1.0, 1.0, 1.0],
+            shk: [sp.kind as f32, 0.0, 0.0, 0.0],
+            shp: sp.p,
+            shq: sp.q,
+            shc: [sp.c[0], sp.c[1], sp.c[2], 0.0],
+            shd: [sp.d[0], sp.d[1], sp.d[2], 0.0],
+            skin: sp.skin,
+        };
+        let mb = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("material"), contents: bytemuck::bytes_of(&mu), usage: wgpu::BufferUsages::UNIFORM });
+        let bind = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("material group"),
+            layout: &self.mat_layout,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::TextureView(&base) },
+                wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::TextureView(&orm) },
+                wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::TextureView(&nrm) },
+                wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(&emi) },
+                wgpu::BindGroupEntry { binding: 4, resource: wgpu::BindingResource::Sampler(&self.tex_sampler) },
+                wgpu::BindGroupEntry { binding: 5, resource: mb.as_entire_binding() },
+            ],
+        });
+        (bind, mb, mu)
+    }
+
+    /// Swaps the pictures of the material of one group (the triangles stay).
+    fn set_textures(&mut self, name: &str, mat: &Material) {
+        let (bind, mat_buf, mu) = self.material_bind(mat);
+        let outline = (mat.shader.kind == 4 || mat.shader.kind == 5) && mat.shader.q[0] > 0.0;
+        if let Some(g) = self.groups.iter_mut().find(|g| g.name == name) {
+            g.bind = bind;
+            g.mat_buf = mat_buf;
+            g.mu = mu;
+            g.outline = outline;
+        }
     }
 
     fn resize(&mut self, w: u32, h: u32) {
@@ -848,7 +888,7 @@ impl Gpu {
         let aspect = self.config.width as f32 / self.config.height as f32;
         let dir = Vec3::new(cam.yaw.cos() * cam.pitch.cos(), cam.pitch.sin(), cam.yaw.sin() * cam.pitch.cos());
         let eye = cam.target + dir * cam.dist;
-        let proj = Mat4::perspective_rh(45f32.to_radians(), aspect, (cam.dist * 0.01).max(1e-4), cam.dist * 20.0 + cam.radius * 4.0);
+        let proj = Mat4::perspective_rh(self.settings.fov.to_radians(), aspect, (cam.dist * 0.01).max(1e-4), cam.dist * 20.0 + cam.radius * 4.0);
         let vp = proj * Mat4::look_at_rh(eye, cam.target, Vec3::Y);
         let st = self.settings;
         let (az, el) = (st.sun_azimuth.to_radians(), st.sun_elevation.to_radians());
@@ -862,7 +902,7 @@ impl Gpu {
             params: [st.exposure, st.env_turn, st.env_strength, st.tone as f32],
             info: [self.env_mips, if self.has_env { 1.0 } else { 0.0 }, if st.show_background { 1.0 } else { 0.0 }, 0.0],
             sh: self.sh,
-            extra: [self.started.elapsed().as_secs_f32(), 2.0 * cam.dist * (45f32.to_radians() * 0.5).tan() / self.config.height as f32, st.env_blur, 0.0],
+            extra: [self.started.elapsed().as_secs_f32(), 2.0 * cam.dist * (self.settings.fov.to_radians() * 0.5).tan() / self.config.height as f32, st.env_blur, 0.0],
         };
         self.queue.write_buffer(&self.frame_buf, 0, bytemuck::bytes_of(&u));
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("frame") });
@@ -917,6 +957,25 @@ impl App {
     }
 }
 
+impl App {
+    fn paint_on(&self) -> bool {
+        self.gpu.as_ref().map_or(false, |g| g.settings.paint)
+    }
+
+    /// Tells the page what the pointer did (position in pixels, the camera, the modifier keys).
+    fn emit(&mut self, kind: &str) {
+        let (Some(sink), Some(g)) = (self.sink.as_ref(), self.gpu.as_ref()) else { return };
+        self.last_sent = Instant::now();
+        let c = &self.cam;
+        let eye = c.target + Vec3::new(c.yaw.cos() * c.pitch.cos(), c.pitch.sin(), c.yaw.sin() * c.pitch.cos()) * c.dist;
+        let (w, h) = (g.config.width, g.config.height);
+        sink(format!(
+            "{{\"t\":\"{}\",\"x\":{:.1},\"y\":{:.1},\"w\":{},\"h\":{},\"eye\":[{},{},{}],\"tgt\":[{},{},{}],\"fov\":{},\"shift\":{},\"ctrl\":{},\"alt\":{}}}",
+            kind, self.last.0, self.last.1, w, h, eye.x, eye.y, eye.z, c.target.x, c.target.y, c.target.z, g.settings.fov, self.shift, self.ctrl, self.alt
+        ));
+    }
+}
+
 impl ApplicationHandler<Cmd> for App {
     fn resumed(&mut self, el: &ActiveEventLoop) {
         if self.gpu.is_some() {
@@ -954,6 +1013,12 @@ impl ApplicationHandler<Cmd> for App {
     fn user_event(&mut self, el: &ActiveEventLoop, cmd: Cmd) {
         match cmd {
             Cmd::Close => el.exit(),
+            Cmd::Textures(name, m) => {
+                if let Some(g) = self.gpu.as_mut() {
+                    g.set_textures(&name, &m);
+                    g.window.request_redraw();
+                }
+            }
             Cmd::Update(settings, env) => {
                 if let Some(g) = self.gpu.as_mut() {
                     g.settings = settings;
@@ -995,13 +1060,28 @@ impl ApplicationHandler<Cmd> for App {
             }
             WindowEvent::ModifiersChanged(m) => {
                 self.shift = m.state().shift_key();
+                self.ctrl = m.state().control_key();
+                self.alt = m.state().alt_key();
             }
             WindowEvent::MouseInput { state, button, .. } => {
-                self.drag = if state == ElementState::Pressed { Some(button) } else { None };
+                let paints = button == MouseButton::Left && self.paint_on() && !self.alt;
+                if paints {
+                    self.emit(if state == ElementState::Pressed { "down" } else { "up" });
+                    self.painting = state == ElementState::Pressed;
+                    self.drag = None;
+                } else {
+                    self.drag = if state == ElementState::Pressed { Some(button) } else { None };
+                }
             }
             WindowEvent::CursorMoved { position, .. } => {
                 let (dx, dy) = ((position.x - self.last.0) as f32, (position.y - self.last.1) as f32);
                 self.last = (position.x, position.y);
+                if self.painting {
+                    if self.last_sent.elapsed() >= Duration::from_millis(8) {
+                        self.emit("move");
+                    }
+                    return;
+                }
                 match self.drag {
                     Some(MouseButton::Left) => {
                         self.cam.yaw -= dx * 0.008;
@@ -1052,7 +1132,7 @@ impl ApplicationHandler<Cmd> for App {
 
 /// Opens the viewer window on its own thread and waits (up to 15 seconds) for it to say what it is
 /// running on. Errors come back as plain sentences.
-pub fn open(scene: Scene) -> Result<Viewer, String> {
+pub fn open(scene: Scene, sink: Option<EventSink>) -> Result<Viewer, String> {
     let (proxy_tx, proxy_rx) = mpsc::channel::<EventLoopProxy<Cmd>>();
     let (init_tx, init_rx) = mpsc::channel::<Result<AdapterReport, String>>();
     std::thread::Builder::new()
@@ -1082,6 +1162,11 @@ pub fn open(scene: Scene) -> Result<Viewer, String> {
                 cam: Camera { yaw: 0.9, pitch: 0.35, dist: 3.0, target: Vec3::ZERO, radius: 1.0 },
                 drag: None,
                 shift: false,
+                ctrl: false,
+                alt: false,
+                painting: false,
+                last_sent: Instant::now(),
+                sink,
                 last: (0.0, 0.0),
                 init: Some(init_tx),
                 pending: Some(scene),

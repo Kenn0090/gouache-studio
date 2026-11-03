@@ -32,14 +32,14 @@ async function nvScene(){const m=mxModel();if(!m||!m.pos||!m.idx)throw new Error
   const envd=await nvEnv();
   return {m,groups,texBy,shBy,envd,settings:nvSettings()};}
 /* the 3D view's lighting settings, as the new viewer takes them */
-function nvSettings(){const s=v3s();return {tone:toneInt(s),expo:s.expo==null?1:s.expo,env_turn:(s.envRot||0)/360,env_strength:s.envI==null?1:s.envI,show_bg:!!s.envBg,env_blur:s.envBlur==null?.35:s.envBlur,sun_az:s.sunAz==null?40:s.sunAz,sun_el:s.sunEl==null?45:s.sunEl,sun_i:s.sunI==null?1:s.sunI};}
+function nvSettings(){const s=v3s();return {tone:toneInt(s),expo:s.expo==null?1:s.expo,env_turn:(s.envRot||0)/360,env_strength:s.envI==null?1:s.envI,show_bg:!!s.envBg,env_blur:s.envBlur==null?.35:s.envBlur,sun_az:s.sunAz==null?40:s.sunAz,sun_el:s.sunEl==null?45:s.sunEl,sun_i:s.sunI==null?1:s.sunI,fov:s.fov||45,paint:!!nv.paint};}
 const nvEnvKey=()=>{const s=v3s(),k=envOf(s);return k+(k==='custom'&&env.custom?':'+env.custom.name:'');};
 /* a lighting update: the same body as a scene, with no model; the environment picture only when it changed */
 function nvUpdateBody(settings,mode,envd){const meta={pos:0,nrm:0,uv:0,groups:[],env_mode:mode,env:mode==='set'&&envd?{w:envd.w,h:envd.h}:null,settings};
   const json=new TextEncoder().encode(JSON.stringify(meta)),extra=mode==='set'&&envd?new Uint8Array(envd.rgb.buffer,envd.rgb.byteOffset,envd.rgb.byteLength):new Uint8Array(0),out=new Uint8Array(4+json.length+extra.length),dv=new DataView(out.buffer);
   dv.setUint32(0,json.length,true);out.set(json,4);out.set(extra,4+json.length);return out;}
 /* while the window is open, changes to the lighting in the 3D view (environment, strength, turn, blur, tone, exposure, sun) follow into it */
-const nv={timer:null,sig:'',envKey:'',busy:false};
+const nv={timer:null,sig:'',envKey:'',busy:false,paint:false,listen:null,tex:null,sync:0};
 async function nvPush(){if(nv.busy)return;nv.busy=true;
   try{const key=nvEnvKey(),changed=key!==nv.envKey;let mode='keep',envd=null;
     if(changed){envd=await nvEnv();mode=envd?'set':'clear';}
@@ -49,6 +49,42 @@ async function nvPush(){if(nv.busy)return;nv.busy=true;
 function nvWatch(){nvStopWatch();nv.envKey=nvEnvKey();nv.sig=JSON.stringify(nvSettings())+nv.envKey;
   nv.timer=setInterval(()=>{if(!platform.isDesktop)return;const sig=JSON.stringify(nvSettings())+nvEnvKey();if(sig!==nv.sig){nv.sig=sig;nvPush();}},400);}
 function nvStopWatch(){if(nv.timer){clearInterval(nv.timer);nv.timer=null;}}
+
+/* ---- painting through the window ----
+   The window reports the pointer (position, camera, keys). The page turns that into pointer events on the 3D view, so the
+   normal brush paints; afterwards the changed material is sent back as new pictures. */
+function nvPaintOn(){return platform.isDesktop&&ui.mode==='p3d';}
+function nvCamFrom(ev){const c=v3.cam,d=[ev.eye[0]-ev.tgt[0],ev.eye[1]-ev.tgt[1],ev.eye[2]-ev.tgt[2]],L=Math.hypot(d[0],d[1],d[2])||1;
+  c.tx=ev.tgt[0];c.ty=ev.tgt[1];c.tz=ev.tgt[2];c.dist=L;c.pitch=Math.asin(Math.max(-1,Math.min(1,d[1]/L)));c.yaw=Math.atan2(d[0],d[2]);}
+/* a world point on the ray through the window pixel; the main view then sees the same surface there */
+function nvPixelRay(ev){const t=Math.tan(ev.fov*Math.PI/360),e=ev.eye,g=ev.tgt;
+  const fw=norm3(sub3(g,e)),r=norm3(cross3(fw,[0,1,0])),u=cross3(r,fw),x=(2*ev.x/ev.w-1)*t*ev.w/ev.h,y=(2*ev.y/ev.h-1)*t;
+  const d=norm3([fw[0]+r[0]*x-u[0]*y,fw[1]+r[1]*x-u[1]*y,fw[2]+r[2]*x-u[2]*y]),L=Math.hypot(g[0]-e[0],g[1]-e[1],g[2]-e[2]);
+  return [e[0]+d[0]*L,e[1]+d[1]*L,e[2]+d[2]*L];}
+function nvHandle(ev){if(!nvPaintOn()||!ev||!ev.t)return;const hit=document.getElementById('v3Hit');if(!hit)return;
+  nvCamFrom(ev);const p=pathProject(nvPixelRay(ev),'3d',hit);if(!p)return;const r=hit.getBoundingClientRect(),cx=r.left+p[0],cy=r.top+p[1];
+  const mk=(type,buttons)=>new PointerEvent(type,{pointerId:991,pointerType:'mouse',isPrimary:true,bubbles:true,cancelable:true,clientX:cx,clientY:cy,button:0,buttons,shiftKey:!!ev.shift,ctrlKey:!!ev.ctrl,altKey:!!ev.alt,pressure:ev.t==='up'?0:.5});
+  if(ev.t==='down'){hit.dispatchEvent(mk('pointerdown',1));}
+  else if(ev.t==='move'){hit.dispatchEvent(mk('pointermove',1));}
+  else if(ev.t==='up'){hit.dispatchEvent(mk('pointerup',0));nvSyncSoon();}}
+/* after a stroke: rebuild the active set's maps and send them */
+function nvSyncSoon(){clearTimeout(nv.sync);nv.sync=setTimeout(nvSyncTextures,350);}
+async function nvSyncTextures(){if(!nvPaintOn()||nv.texBusy){if(nv.texBusy)nvSyncSoon();return;}nv.texBusy=true;
+  const saved={size:texCfg.size,pad:texCfg.pad,meshMaps:texCfg.meshMaps,h16:texCfg.h16};
+  try{texCfg.size=NV_TEX_MAX;texCfg.pad='none';texCfg.meshMaps=false;
+    const S=p3.sets[p3.cur];if(!S)return;const g=await buildTextures(GLTF_TEX,'preview'),T={};for(const f of g)T[f.suffix]=f.data;
+    const len=k=>T[k]?T[k].length:0,parts=[];
+    const meta={pos:0,nrm:0,uv:0,groups:[{name:S.name,idx:0,rough:.6,metal:0,sh:nvShader(),tex:{base:len('BaseColor'),orm:len('ORM'),normal:len('Normal'),emissive:len('Emissive')}}],env:null,settings:nvSettings()};
+    for(const k of ['BaseColor','ORM','Normal','Emissive'])if(T[k])parts.push(T[k]);
+    const json=new TextEncoder().encode(JSON.stringify(meta));let total=4+json.length;for(const p of parts)total+=p.byteLength;
+    const out=new Uint8Array(total),dv=new DataView(out.buffer);dv.setUint32(0,json.length,true);out.set(json,4);let o=4+json.length;for(const p of parts){out.set(new Uint8Array(p.buffer,p.byteOffset,p.byteLength),o);o+=p.byteLength;}
+    nv.lastTex={name:S.name,bytes:out.length};
+    if(window.__nvHook)window.__nvHook('textures',meta);
+    const alive=await platform.invoke('viewer_textures',out);if(!alive)nvStopWatch();}
+  catch(e){console.warn(e);}finally{Object.assign(texCfg,saved);nv.texBusy=false;}}
+async function nvListen(){if(nv.listen||typeof TAURI==='undefined'||!TAURI||!TAURI.event)return;
+  nv.listen=await TAURI.event.listen('viewer-event',e=>{try{nvHandle(JSON.parse(e.payload));}catch(er){console.warn(er);}});}
+function nvUnlisten(){if(nv.listen){nv.listen();nv.listen=null;}}
 /* what goes to the Rust side: a length, the JSON, then the numbers and pictures it describes */
 function nvBody(sc){const m=sc.m,n=m.pos.length/3,f32=a=>new Float32Array(a);
   const pos=f32(m.pos),nrm=m.nrm&&m.nrm.length===m.pos.length?f32(m.nrm):f32(0),uv=m.uv&&m.uv.length===n*2?f32(m.uv):f32(0);
@@ -64,6 +100,6 @@ async function nvOpen(){
   if(!platform.isDesktop){toast('The new viewer is in the desktop app.');return null;}
   try{toast('Opening the new viewer…');const sc=await nvScene(),body=nvBody(sc);
     const info=await platform.invoke('viewer_open',body);
-    toast('New viewer open on '+info.name+' ('+info.backend+(info.software?', software':'')+').');nvWatch();return info;}
+    toast('New viewer open on '+info.name+' ('+info.backend+(info.software?', software':'')+').'+(nvPaintOn()?' Paint in it; hold Alt to turn the view.':''));nv.paint=nvPaintOn();nvListen();nvWatch();if(nv.paint)nvPush();return info;}
   catch(e){console.warn(e);toast('The new viewer could not start: '+(e&&e.message||e)+'. The normal viewer is unchanged.');return null;}}
-function nvClose(){nvStopWatch();if(platform.isDesktop)platform.invoke('viewer_close').catch(()=>{});}
+function nvClose(){nvStopWatch();nvUnlisten();nv.paint=false;if(platform.isDesktop)platform.invoke('viewer_close').catch(()=>{});}
