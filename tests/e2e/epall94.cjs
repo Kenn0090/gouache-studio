@@ -1,0 +1,30 @@
+/* 0.94: Update all assets (engine project): opens each saved asset in turn and sends it again */
+const {chromium}=require('playwright');
+const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const p=await (await b.newContext({viewport:{width:1440,height:900}})).newPage();
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
+  if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ const errs=[];p.on('pageerror',e=>errs.push(e.message));
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ const W=ms=>p.waitForTimeout(ms||200);
+ const rec={gouache:1,engine:'unity',name:'Game',settings:{size:64,fmt:'png'},masters:{unity:1},assets:{Rock:{looks:['Toon'],source:'C:/work/rock.gouache3d'},Crate:{looks:['Standard'],source:'C:/work/crate.gouache'},Loose:{looks:['Standard'],source:null},Gone:{looks:['Cel'],source:'C:/work/gone.gouache3d'}}};
+ await p.evaluate(rec=>{const P=__gs.platform;P.isDesktop=true;window.__fs={'C:/Game/gouache_project.json':JSON.stringify(rec),'C:/work/rock.gouache3d':'x','C:/work/crate.gouache':'x'};window.__calls=[];
+   P.invoke=async(cmd,a)=>{if(cmd==='file_mtime')return window.__fs[a.path]!=null?1:0;if(cmd==='file_size')return window.__fs[a.path]?window.__fs[a.path].length:0;if(cmd==='read_file')return Array.from(new TextEncoder().encode(window.__fs[a.path]||''));return null;};
+   window.__epHook={openPath:async(path,mode)=>{window.__calls.push('open '+path);},exportTextures:async()=>{window.__calls.push('export '+__gs.texCfg.name+' size '+__gs.texCfg.size);return [{name:'a'}];}};
+   __gs.es.to='unity';__gs.es.dirs.unity='C:/Game';},rec);
+ await p.evaluate(()=>__gs.epUpdateAll('unity'));await W(500);
+ ok(await p.evaluate(()=>['Rock','Crate','Loose','Gone'].every(n=>!!document.querySelector('#epUp_'+n))),'every asset of the project is listed');
+ const txt=await p.evaluate(()=>['Rock','Crate','Loose','Gone'].map(n=>document.querySelector('#epUp_'+n).textContent));
+ ok(/waiting/.test(txt[0])&&/waiting/.test(txt[1])&&/no saved file/.test(txt[2])&&/not found/.test(txt[3]),'assets without a saved file are marked and skipped '+JSON.stringify(txt));
+ await p.click('#dlgOk');await W(3500);
+ const calls=await p.evaluate(()=>window.__calls);
+ ok(calls.join('|')==='open C:/work/rock.gouache3d|export Rock size 64|open C:/work/crate.gouache|export Crate size 64','each saved file is opened and sent with the project\u2019s settings, in turn '+JSON.stringify(calls));
+ const done=await p.evaluate(()=>['Rock','Crate'].map(n=>document.querySelector('#epUp_'+n).textContent));
+ ok(done.every(t=>/sent/.test(t)),'the list shows them as sent');
+ ok(!errs.length,'no page errors '+errs.join(' | ').slice(0,200));
+ await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();

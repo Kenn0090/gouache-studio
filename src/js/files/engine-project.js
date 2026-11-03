@@ -39,7 +39,8 @@ function epRow(redraw){const to=es.to;if(!EL_PORT[to]||!platform.isDesktop||!es.
       ...(known?[use]:[]));
     /* the project's settings go into the window once per project, so every asset is exported the same way */
     if(known&&es.useProject!==false&&epRow.applied!==to+'|'+es.dirs[to]){epRow.applied=to+'|'+es.dirs[to];Object.assign(texCfg,rec.settings);redraw();}
-    if(n)box.append(el('div',{class:'frow'},el('span',{class:'note',text:Object.entries(rec.assets).map(([a,v])=>a+(v.looks&&v.looks.length?' ('+v.looks.join(', ')+')':'')).join(' · ')})));});
+    if(n)box.append(el('div',{class:'frow'},el('span',{class:'note',text:Object.entries(rec.assets).map(([a,v])=>a+(v.looks&&v.looks.length?' ('+v.looks.join(', ')+')':'')).join(' · ')})));
+    if(n)box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'epUpdateAll',text:'Update all assets…',title:'Send every asset of this project again from its saved file',onclick:()=>{closeDialog();epUpdateAll(to);}})));});
   return [box];}
 
 /* ================= Variants: the same shader, a different look =================
@@ -91,3 +92,28 @@ async function epRegen(to,rec,regen){if(!regen||!regen.size||to==='unreal')retur
     for(const f of eshFiles(to,a,info,v.size||1,v.model)){if(f.shared||/\.(png|tga)(\.meta)?$/i.test(f.name)||/\.(glb|fbx|obj)$/i.test(f.name))continue;
       const fp=eshPath(dir,f.name);await platform.invoke('make_dir',{path:fp.replace(/[\\/][^\\/]*$/,'')});await platform.writeFile(fp,f.data);n++;}}
   return n;}
+
+/* ================= Update all assets =================
+   Kenn: a button that re-sends every asset of an engine project, one after another, with a progress list. Each asset's
+   saved Gouache file is opened in turn and exported again with the project's settings (same names, so the files and
+   materials in the engine are updated in place). Your current work must be saved first; it is opened again at the end. */
+const EP_STATE_TEXT={wait:'waiting',working:'sending…',ok:'sent',fail:'could not be sent',nosrc:'no saved file (send it once from its own project)',missing:'saved file not found'};
+async function epUpdateAll(to){if(!platform.isDesktop||!es.dirs[to])return;const rec=await epLoad(to),names=Object.keys(rec.assets);
+  if(!names.length){toast('Nothing has been sent to this project yet.');return;}
+  if(typeof unsavedWork==='function'&&unsavedWork()){toast('Save your current work first: Update all opens each asset in turn.');return;}
+  const rows=[];for(const n of names){const src=rec.assets[n].source||null;rows.push({n,src,state:!src?'nosrc':(await elExists(src))?'wait':'missing',el:null,txt:null});}
+  const orig=typeof curFilePath==='function'?curFilePath():null;let stop=false,running=false,finished=false;
+  const list=el('div',{class:'dlg-grid',id:'epUpList'});
+  const paint=()=>{for(const r of rows)if(r.txt)r.txt.textContent=EP_STATE_TEXT[r.state];};
+  for(const r of rows){r.txt=el('span',{class:'dim'});list.append(el('div',{class:'frow',id:'epUp_'+r.n},el('span',{text:r.n+(rec.assets[r.n].looks&&rec.assets[r.n].looks.length?' ('+rec.assets[r.n].looks.join(', ')+')':'')}),r.txt));}paint();
+  const todo=rows.filter(r=>r.state==='wait').length;
+  const body=el('div',{class:'dlg-grid'},el('p',{class:'note',text:todo?'Each asset’s saved file is opened in turn and sent again with this project’s settings. Your current work is opened again at the end.':'None of these assets has a saved file to send again.'}),list);
+  const run=async()=>{if(running||finished)return;running=true;const ok=$('#dlgOk');if(ok){ok.disabled=true;ok.textContent='Working…';}
+    for(const r of rows){if(stop)break;if(r.state!=='wait')continue;r.state='working';paint();
+      try{await (window.__epHook&&window.__epHook.openPath||openPath)(r.src,'open');for(let i=0;i<100&&typeof loadDepth!=='undefined'&&loadDepth>0;i++)await new Promise(q=>setTimeout(q,100));await new Promise(q=>setTimeout(q,300));
+        Object.assign(texCfg,rec.settings||{});texCfg.name=r.n;es.to=to;const files=await (window.__epHook&&window.__epHook.exportTextures||exportTextures)();r.state=files&&files.length?'ok':'fail';}
+      catch(e){console.warn(e);r.state='fail';}paint();}
+    if(orig){try{await (window.__epHook&&window.__epHook.openPath||openPath)(orig,'open');}catch(e){console.warn(e);}}
+    running=false;finished=true;if(ok){ok.disabled=false;ok.textContent='Close';}
+    const n=rows.filter(r=>r.state==='ok').length;toast('Updated '+n+' of '+rows.length+' asset'+(rows.length===1?'':'s')+'.');};
+  openDialog({title:'Update all assets',body,okLabel:todo?'Start':'Close',onOk(){if(finished||!todo)return;run();return false;},onCancel(){stop=true;}});}
