@@ -41,6 +41,10 @@ function bakeMapL(k){const T=bakeMapT(k,true);let L=bk.L[k];if(!L||L.target!==T)
 function bakePaintColor(){const val=bk.val||(bk.val={skew:0,offset:.85}),v=val[bk.paint]==null?0:val[bk.paint];return [v,v,v];}
 function bakeEditTarget(){if(!bk.paint){toast('Pick Skew or Offset under “Fix the bake” to paint fixes.');return false;}if(bk.busy){toast('Wait for the bake to finish.');return false;}
   const L=bakeMapL(bk.paint);useAux(8);return {node:null,target:L.target,isMask:true,erase:BK_PAINT[bk.paint].erase,L};}
+/* (0.93.4) skew and offset fixes are softened a little when the baker reads them, so the edge of a stroke never makes a hard jump */
+function bakeSoftMap(k){const T=bk.maps[k];if(!T)return T;const r=bk.soft==null?3:bk.soft;if(r<=0.2)return T;
+  const key=r+'|'+(bk.offVer||0)+'|'+k;bk.softC=bk.softC||{};const c=bk.softC[k];if(c&&c.key===key&&c.t.w===T.w&&c.t.h===T.h)return c.t;
+  if(c)disposeTarget(c.t);const t=makeTarget(T.w,T.h,T.depth,false);gaussian(T,t,r);bk.softC[k]={key,t};return t;}
 function bakeMapEdited(rect){bk.dirty=true;bk.offVer=(bk.offVer||0)+1;bk.cageKey=null;v3.dirty=true;requestRender();bakeRegion(rect);}
 function bakeClearMap(k){const T=bakeMapT(k);if(!T)return;const before=captureRegionNow(T,0,0,doc.w,doc.h);clearTarget(T,BK_PAINT[k].fill);const after=captureRegionNow(T,0,0,doc.w,doc.h);
   const L=bakeMapL(k),r=regionRecord(L,before,after,0,0,doc.w,doc.h,'Clear '+BK_PAINT[k].name.toLowerCase());L.onRecord(r,[0,0,doc.w,doc.h]);pushUndo(r);toast(BK_PAINT[k].name+' map cleared.');}
@@ -79,7 +83,7 @@ async function runBake(L,ks,opt){opt=opt||{};const C=bakeCfg;if(bk.busy)return;i
   let res=null;
   try{prog.step('Baking '+ks.map(k=>BAKE_NAMES[k].toLowerCase()).join(', ')+'…');
     const hg=await bakeHG(L,high,low,t=>prog.step(t),kinds.includes('id'),kinds.includes('light'));
-    res=await bakeRun(low,high,Object.assign({},o,{hg,acc:bk.acc,skew:bk.maps.skew,offset:bk.maps.offset,onTile:(acc,kk)=>bakeShowPartial(acc,kk)}),prog);}
+    res=await bakeRun(low,high,Object.assign({},o,{hg,acc:bk.acc,skew:bakeSoftMap('skew'),offset:bakeSoftMap('offset'),onTile:(acc,kk)=>bakeShowPartial(acc,kk)}),prog);}
   catch(e){console.error(e);bk.busy=false;bk.prog=null;if(!inTab)closeDialog();bakeProgUI();toast('The bake failed: '+(e.message||e));return;}
   bk.busy=false;bk.prog=null;if(!inTab)closeDialog();
   if(!res){for(const k in bk.acc)disposeTarget(bk.acc[k]);bk.acc={};for(const k in bk.res)disposeTarget(bk.res[k]);bk.res={};bk.opts=null;bakeProgUI();bakeRefresh();toast('Bake cancelled.');return 'cancelled';}
@@ -114,21 +118,21 @@ function bakeShowPartial(acc,kinds){const P=bkPrograms();bk.tiles=(bk.tiles||0)+
 function bakePass2Queue(rect){const q=bk.p2;bk.p2=q?[Math.min(q[0],rect[0]),Math.min(q[1],rect[1]),Math.max(q[0]+q[2],rect[0]+rect[2])-Math.min(q[0],rect[0]),Math.max(q[1]+q[3],rect[1]+rect[3])-Math.min(q[1],rect[1])]:rect.slice();
   clearTimeout(bk.p2t);bk.p2t=setTimeout(bakePass2,1200);}
 async function bakePass2(){if(!bk.opts||!bk.src||!bk.p2)return;if(bk.busy||bk.regionBusy||bk.painting){bk.p2t=setTimeout(bakePass2,600);return;}
-  const rect=bk.p2,slow=bk.opts.kinds.filter(k=>k==='ao'||k==='thick');if(!slow.length){bk.p2=null;return;}bk.p2=null;
-  const r=[Math.max(0,rect[0]-2),Math.max(0,rect[1]-2),Math.min(doc.w,rect[0]+rect[2]+2),Math.min(doc.h,rect[1]+rect[3]+2)];
+  const rect=bk.p2,slow=bk.opts.kinds.slice();bk.p2=null;
+  const g=2+Math.ceil((bk.soft==null?3:bk.soft)*1.5),r=[Math.max(0,rect[0]-g),Math.max(0,rect[1]-g),Math.min(doc.w,rect[0]+rect[2]+g),Math.min(doc.h,rect[1]+rect[3]+g)];
   bk.regionBusy=true;bakeProgUI();const S=bk.src,prog={cancelled:false,set(){},step(){}};
   try{const hg=await bakeHG(S.L,S.high,S.low,()=>{},false);
-    const res=await bakeRun(S.low,S.high,Object.assign({},bk.opts,{kinds:slow,hg,acc:bk.acc,rect:r,into:bk.res,skew:bk.maps.skew,offset:bk.maps.offset}),prog);
-    if(res){for(const k in res){if(bk.res[k]&&bk.res[k]!==res[k])disposeTarget(bk.res[k]);bk.res[k]=res[k];bk.stale.delete(k);}}}
+    const res=await bakeRun(S.low,S.high,Object.assign({},bk.opts,{kinds:slow,hg,acc:bk.acc,rect:r,into:bk.res,skew:bakeSoftMap('skew'),offset:bakeSoftMap('offset')}),prog);
+    if(res){for(const k in res){if(bk.res[k]&&bk.res[k]!==res[k])disposeTarget(bk.res[k]);bk.res[k]=res[k];bk.stale.delete(k);}if(bk.kinds.includes('curv')&&(res.gcurv||res.normal))bakeDerive();}}
   catch(e){console.error(e);}
   bk.regionBusy=false;bakeRefresh();if(bk.region){const q=bk.region;bk.region=null;bakeRegion(q);}}
-async function bakeRegion(rect){if(!bk.opts||!bk.src)return;const r=[Math.max(0,rect[0]-2),Math.max(0,rect[1]-2),Math.min(doc.w,rect[0]+rect[2]+2),Math.min(doc.h,rect[1]+rect[3]+2)];
+async function bakeRegion(rect){if(!bk.opts||!bk.src)return;const g=2+Math.ceil((bk.soft==null?3:bk.soft)*1.5),r=[Math.max(0,rect[0]-g),Math.max(0,rect[1]-g),Math.min(doc.w,rect[0]+rect[2]+g),Math.min(doc.h,rect[1]+rect[3]+g)];
   if(bk.busy||bk.regionBusy){bk.region=bk.region?[Math.min(bk.region[0],rect[0]),Math.min(bk.region[1],rect[1]),Math.max(bk.region[0]+bk.region[2],rect[0]+rect[2])-Math.min(bk.region[0],rect[0]),Math.max(bk.region[1]+bk.region[3],rect[1]+rect[3])-Math.min(bk.region[1],rect[1])]:rect.slice();return;}
-  const quick=bk.opts.kinds.filter(k=>k!=='ao'&&k!=='thick');for(const k of bk.opts.kinds)if(k==='ao'||k==='thick')bk.stale.add(k);if(bk.opts.kinds.some(k=>k==='ao'||k==='thick'))bakePass2Queue(rect);
+  const quick=bk.opts.kinds.filter(k=>k!=='ao'&&k!=='thick');for(const k of bk.opts.kinds)if(k==='ao'||k==='thick')bk.stale.add(k);bakePass2Queue(rect);
   if(!quick.length){buildBakePanel();return;}
   bk.regionBusy=true;bakeProgUI();const S=bk.src,prog={cancelled:false,set(){},step(){}};
   try{const hg=await bakeHG(S.L,S.high,S.low,()=>{},quick.includes('id'));
-    const res=await bakeRun(S.low,S.high,Object.assign({},bk.opts,{kinds:quick,hg,acc:bk.acc,rect:r,into:bk.res,skew:bk.maps.skew,offset:bk.maps.offset}),prog);
+    const res=await bakeRun(S.low,S.high,Object.assign({},bk.opts,{kinds:quick,ss:1,hg,acc:bk.acc,rect:r,into:bk.res,skew:bakeSoftMap('skew'),offset:bakeSoftMap('offset')}),prog);
     if(res){for(const k in res){if(bk.res[k]&&bk.res[k]!==res[k])disposeTarget(bk.res[k]);bk.res[k]=res[k];}if(bk.kinds.includes('curv')&&(res.gcurv||res.normal))bakeDerive();}}
   catch(e){console.error(e);}
   bk.regionBusy=false;bakeRefresh();
@@ -445,6 +449,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
   if(bk.paint==='skew')colB.append(el('p',{class:'note',text:'Paint black over details that come out smeared or leaning (screws, bolts, panel lines): the rays there shoot straight out of the surface. White keeps the averaged direction, which avoids gaps at hard edges. The Eraser paints white.'}));
   if(bk.paint==='offset')colB.append(el('p',{class:'note',text:'Grey keeps Front and Back. Lighter reaches further (for parts of the high-poly that were missed); darker reaches less far (for detail leaking in from nearby parts). The Eraser paints grey.'}));
   if(bk.paint){const vk=bk.paint,val=bk.val||(bk.val={skew:0,offset:.85});colB.append(makeSlider({id:'bkPaintVal',label:'Paint',min:0,max:1,step:.01,value:val[vk],fmt:v=>v<.02?'black':v>.98?'white':Math.round(v*100)+'%',onInput:v=>{val[vk]=v;}}).el);}
+  if(bk.paint)colB.append(makeSlider({id:'bkSoft',label:'Edge softness',min:0,max:12,step:.5,value:bk.soft==null?3:bk.soft,fmt:v=>v<.2?'hard':v.toFixed(1)+' px',onInput:v=>{bk.soft=v;bk.offVer=(bk.offVer||0)+1;}}).el);
   if(bk.paint)colB.append(el('p',{class:'note',text:'Paint on the model in the 3D view (Alt+drag turns it) or on the map on the left. After each stroke the bake updates where you painted.'}));
   const bt=(t,f,dis)=>{const b=el('button',{class:'btn sm',text:t});b.disabled=!!dis;b.onclick=f;return b;};
   colB.append(el('div',{class:'row wrap'},bt('Estimate offset',bakeEstimateOffset,!C.high||bk.busy),bt('Clear skew',()=>bakeClearMap('skew'),!bk.maps.skew),bt('Clear offset',()=>bakeClearMap('offset'),!bk.maps.offset)));

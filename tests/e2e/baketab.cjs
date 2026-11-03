@@ -14,7 +14,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
  const W=ms=>p.waitForTimeout(ms||200);
  const box=await p.locator('#gl').boundingBox();
- const scr=async(x,y)=>{const v=await p.evaluate(()=>({x:__gs.view.x,y:__gs.view.y,z:__gs.view.zoom}));return [box.x+v.x+x*v.z,box.y+v.y+y*v.z];};
+ const scr=async(x,y)=>{const box=await p.locator('#gl').boundingBox();const v=await p.evaluate(()=>({x:__gs.view.x,y:__gs.view.y,z:__gs.view.zoom}));return [box.x+v.x+x*v.z,box.y+v.y+y*v.z];};
  const drag=async(x0,y0,x1,y1,opts={})=>{const a=await scr(x0,y0),c=await scr(x1,y1);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.move(c[0],c[1],{steps:opts.steps||10});await p.mouse.up();await W(150);};
  const setFG=async hx=>{await p.fill('#hex',hx);await p.press('#hex','Enter');};
  const waitIdle=async()=>{for(let i=0;i<600;i++){if(await p.evaluate(()=>!__gs.bk.busy&&!__gs.bk.regionBusy))return;await W(100);}};
