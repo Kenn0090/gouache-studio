@@ -132,6 +132,8 @@ pub struct Settings {
     pub mir_r: f32,
     /// height depth (displacement), in model units for a full-white height (0 = off)
     pub disp: f32,
+    /// the high-poly of the Bake tab: 0 off, 1 see-through over the model, 2 on its own (the model hidden)
+    pub hv: u8,
     /// the mirror copies of the brush ring: how many (1 = none) and their matrices (column-major, the first is the identity)
     pub mirc_n: u32,
     pub mirc: [[f32; 16]; 32],
@@ -159,7 +161,7 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, mir: [f32::NAN; 3], mir_radial: [0.0, 0.0], mir_off: [0.0; 3], mir_r: 0.0, disp: 0.0, mirc_n: 0, mirc: [[0.0; 16]; 32], floor: [0.0, 0.0, 1.0, 0.5], floor_col: [0.0; 3], clip: true, post_on: false, post: [[0.0; 4]; 7], st_on: false, st: [0.0; 8], st_view: [1.0, 1.0], wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
+        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, mir: [f32::NAN; 3], mir_radial: [0.0, 0.0], mir_off: [0.0; 3], mir_r: 0.0, disp: 0.0, hv: 0, mirc_n: 0, mirc: [[0.0; 16]; 32], floor: [0.0, 0.0, 1.0, 0.5], floor_col: [0.0; 3], clip: true, post_on: false, post: [[0.0; 4]; 7], st_on: false, st: [0.0; 8], st_view: [1.0, 1.0], wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
     }
 }
 
@@ -392,6 +394,9 @@ struct Gpu {
     mc_buf: wgpu::Buffer,
     hl: Option<(wgpu::Buffer, u32)>,
     ind: Option<(wgpu::Buffer, u32)>,
+    hv: Option<(wgpu::Buffer, wgpu::Buffer, u32)>,
+    hv_see: wgpu::RenderPipeline,
+    hv_only: wgpu::RenderPipeline,
     st_pipeline: wgpu::RenderPipeline,
     post_layout: wgpu::BindGroupLayout,
     post_bright: wgpu::RenderPipeline,
@@ -1037,6 +1042,26 @@ impl Gpu {
             multiview: None,
             cache: None,
         });
+        let hv_pipe = |see: bool| {
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("high-poly pipeline"),
+                layout: Some(&bg_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: Some("vs_hv"),
+                    compilation_options: Default::default(),
+                    buffers: &[wgpu::VertexBufferLayout { array_stride: 24, step_mode: wgpu::VertexStepMode::Vertex, attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3] }],
+                },
+                fragment: Some(wgpu::FragmentState { module: &shader, entry_point: Some("fs_hv"), compilation_options: Default::default(), targets: if see { &hl_target } else { &target } }),
+                primitive: wgpu::PrimitiveState { cull_mode: None, ..Default::default() },
+                depth_stencil: Some(wgpu::DepthStencilState { format: DEPTH_FORMAT, depth_write_enabled: !see, depth_compare: if see { wgpu::CompareFunction::LessEqual } else { wgpu::CompareFunction::Less }, stencil: Default::default(), bias: Default::default() }),
+                multisample: wgpu::MultisampleState::default(),
+                multiview: None,
+                cache: None,
+            })
+        };
+        let hv_see = hv_pipe(true);
+        let hv_only = hv_pipe(false);
         let out_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("outline pipeline"),
             layout: Some(&layout),
@@ -1182,6 +1207,9 @@ impl Gpu {
             mc_buf,
             hl: None,
             ind: None,
+            hv: None,
+            hv_see,
+            hv_only,
             st_pipeline,
             post_layout,
             post_bright,
@@ -1402,6 +1430,25 @@ impl Gpu {
 
     /// Swaps the pictures of the material of one group (the triangles stay).
     fn set_textures(&mut self, name: &str, mat: &Material) {
+        if name == "__hv" {
+            // the high-poly: [vertex count, index count] then x y z nx ny nz per vertex, then the indices (all 4-byte numbers)
+            self.hv = match &mat.base {
+                Some(t) if t.rgba.len() >= 8 => {
+                    let w: Vec<u32> = t.rgba.chunks_exact(4).map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]])).take(2).collect();
+                    let (vn, inn) = (w[0] as usize, w[1] as usize);
+                    let (vs, ve) = (8usize, 8 + vn * 24);
+                    if vn > 0 && inn >= 3 && t.rgba.len() >= ve + inn * 4 {
+                        let vb = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("high vertices"), contents: &t.rgba[vs..ve], usage: wgpu::BufferUsages::VERTEX });
+                        let ib = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("high indices"), contents: &t.rgba[ve..ve + inn * 4], usage: wgpu::BufferUsages::INDEX });
+                        Some((vb, ib, (inn / 3 * 3) as u32))
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            };
+            return;
+        }
         if name == "__ind" {
             // line segments in the model's space (x y z per point, two points per segment): where a decal will land
             self.ind = match &mat.base {
@@ -1542,7 +1589,7 @@ impl Gpu {
             wire: [st.wire_col[0], st.wire_col[1], st.wire_col[2], st.wire as f32],
             st_a: [st.st[0], st.st[1], st.st[2], st.st[3]],
             st_b: [st.st[4], st.st[5], st.st[6], 0.0],
-            st_c: [st.st_view[0], st.st_view[1], st.mirc_n as f32, 0.0],
+            st_c: [st.st_view[0], st.st_view[1], st.mirc_n as f32, st.hv as f32],
             fl_a: st.floor,
         };
         self.queue.write_buffer(&self.frame_buf, 0, bytemuck::bytes_of(&u));
@@ -1608,10 +1655,17 @@ impl Gpu {
                 pass.set_pipeline(&self.pipeline);
                 pass.set_bind_group(0, &self.frame_bg, &[]);
                 pass.set_vertex_buffer(0, vb.slice(..));
-                for g in &self.groups {
+                for g in self.groups.iter().filter(|_| st.hv != 2) {
                     pass.set_bind_group(1, &g.bind, &[]);
                     pass.set_index_buffer(g.ib.slice(..), wgpu::IndexFormat::Uint32);
                     pass.draw_indexed(0..g.count, 0, 0..1);
+                }
+                if let (true, Some((hvb, hib, hn))) = (st.hv > 0, &self.hv) {
+                    pass.set_pipeline(if st.hv == 1 { &self.hv_see } else { &self.hv_only });
+                    pass.set_bind_group(0, &self.frame_bg, &[]);
+                    pass.set_vertex_buffer(0, hvb.slice(..));
+                    pass.set_index_buffer(hib.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..*hn, 0, 0..1);
                 }
                 if let Some((hb, n)) = &self.hl {
                     pass.set_pipeline(&self.hl_pipeline);

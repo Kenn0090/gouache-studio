@@ -541,6 +541,35 @@ fn fs_mirc(@builtin(position) p: vec4<f32>) -> @location(0) vec4<f32> {
     return vec4<f32>(lin3(vec3<f32>(0.35, 0.8, 1.0)), a * 0.95);
 }
 
+// the high-poly of the Bake tab: plain clay, see-through over the model or on its own
+struct HvOut {
+    @builtin(position) clip: vec4<f32>,
+    @location(0) wpos: vec3<f32>,
+    @location(1) nrm: vec3<f32>,
+};
+@vertex
+fn vs_hv(@location(0) pos: vec3<f32>, @location(1) nrm: vec3<f32>) -> HvOut {
+    var o: HvOut;
+    o.clip = frame.view_proj * vec4<f32>(pos, 1.0);
+    o.wpos = pos;
+    o.nrm = nrm;
+    return o;
+}
+@fragment
+fn fs_hv(i: HvOut) -> FOut {
+    var o: FOut;
+    var n = normalize(i.nrm);
+    let v = normalize(frame.cam_pos.xyz - i.wpos);
+    if (dot(n, v) < 0.0) { n = -n; }
+    let l = 0.25 + 0.6 * max(dot(n, normalize(vec3<f32>(0.4, 0.8, 0.5))), 0.0) + 0.15 * max(dot(n, v), 0.0);
+    let see = frame.st_c.w < 1.5;
+    let tint = select(vec3<f32>(0.82, 0.8, 0.78), vec3<f32>(1.0, 0.72, 0.45), see);
+    o.c = vec4<f32>(lin3(tint * l), select(1.0, 0.45, see));
+    o.n = vec4<f32>(0.5, 0.5, 1.0, select(0.4, 0.0, see));
+    o.m = vec4<f32>(0.0, 0.0, 0.0, select(1.0, 0.0, see));
+    return o;
+}
+
 // mirror guides
 @vertex
 fn vs_guide(@location(0) pos: vec3<f32>) -> OutOut {

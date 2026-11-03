@@ -106,6 +106,8 @@ struct SettingsMeta {
     #[serde(default)]
     disp: f32,
     #[serde(default)]
+    hv: u8,
+    #[serde(default)]
     mirc: Vec<[f32; 16]>,
     #[serde(default)]
     floor: Option<[f32; 4]>,
@@ -290,6 +292,7 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         studio_rim: s.studio_rim,
         wire: s.wire,
         disp: s.disp,
+        hv: s.hv,
         mirc_n: s.mirc.len().min(32) as u32,
         mirc: { let mut a = [[0.0f32; 16]; 32]; for (i, m) in s.mirc.iter().take(32).enumerate() { a[i] = *m; } a },
         floor: s.floor.unwrap_or([0.0, 0.0, 1.0, 0.5]),
