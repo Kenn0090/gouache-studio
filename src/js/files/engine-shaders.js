@@ -6,7 +6,10 @@
      outline material chained on (next pass).
    - Unity (URP): one shader, GouacheShaded.shader, plus <Set>.mat for each set and .meta files, so the textures are
      found (normal maps get the Normal map type). Built-in and HDRP projects: the shader is URP only.
-   The look is a close match, not identical: each engine lights differently. Unreal comes later (its own plug-in). */
+   - Unreal: gouache_unreal.json + gouache_unreal_setup.py. Run the script in the editor (Tools > Execute Python Script):
+     it imports the textures and builds one material per set (Lit; Cloth for Velvet, Subsurface for Skin, Unlit with
+     the banding worked out in a Custom node for Toon, Cel and Retro).
+   The look is a close match, not identical: each engine lights differently. */
 const ESH_KIND_NAMES=['Standard','Skin','Brushed metal','Velvet','Toon','Cel','Spec/Gloss','Panner','Retro'];
 const ESH_SHADER_GUID='47a0c5e1b2d34f6a8c91e0f3d5b7a901';
 function eshGuid(s){let a=0x811c9dc5,b=0x1b873593,c=0x9e3779b1,d=0x85ebca6b;for(let i=0;i<s.length;i++){const k=s.charCodeAt(i);a=Math.imul(a^k,16777619);b=Math.imul(b^k,2246822519);c=Math.imul(c^(k<<1),3266489917);d=Math.imul(d^(k+i),668265263);}
@@ -453,9 +456,13 @@ function eshFiles(to,name,info,size){const out=[],pn=pascal(name),sets=Object.ke
       out.push({name:sn+'.mat',data:new TextEncoder().encode(eshUnityMaterial(sn,sh,g,{alpha:I.alpha&&!bi},width,sguid))},{name:sn+'.mat.meta',data:new TextEncoder().encode(eshUnityMeta('mat',eshGuid(pn+'/'+sn+'.mat')))});}
     out.push({name:shaderPath,data:new TextEncoder().encode(bi?ESH_BUILTIN_SHADER:ESH_UNITY_SHADER),shared:true},{name:shaderPath+'.meta',data:new TextEncoder().encode(eshUnityMeta('shader',sguid)),shared:true});
     return out;}
+  if(to==='unreal'){const list=sets.map(s=>{const I=info[s],T=I.tex||{},sh=I.sh||{kind:'std',p:{}},tex={};for(const k of ['BaseColor','ORM','Normal','Emissive'])if(T[k])tex[k]=T[k].name;
+      return {name:s,safe:eshSafe(s),kind:sh.kind,p:shParams(sh),tex,alpha:!!I.alpha};});
+    out.push({name:'gouache_unreal.json',data:new TextEncoder().encode(JSON.stringify({name:pn,sets:list},null,1))},{name:'gouache_unreal_setup.py',data:new TextEncoder().encode(UNREAL_SETUP||'')});
+    return out;}
   return out;}
 
 /* is the engine's Gouache shader going out with this export? */
-const eshWanted=()=>platform.isDesktop&&(es.to==='unity'||es.to==='godot')&&texCfg.engShader!==false;
+const eshWanted=()=>platform.isDesktop&&(es.to==='unity'||es.to==='godot'||es.to==='unreal')&&texCfg.engShader!==false;
 /* a file's place in the export folder; '../x' is the folder above (the shared Unity shader) */
 function eshPath(dir,name){const sep=dir.includes('\\')?'\\':'/';let d=dir.replace(/[\\/]+$/,'');while(name.startsWith('../')){name=name.slice(3);d=d.replace(/[\\/][^\\/]*$/,'');}return d+sep+name;}

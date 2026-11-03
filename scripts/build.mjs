@@ -21,6 +21,7 @@ const order = JSON.parse(read('src/js/order.json')).order;
  if (dup.length) { console.error('Duplicate top-level names:\n  ' + dup.join('\n  ')); process.exit(1); }}
 const APP_VERSION = JSON.parse(read('package.json')).version;
 /* the Blender add-on (assets/addons), carried inside the app so it can be saved from the Export window */
+const UNREAL_SETUP = fs.existsSync(r('assets/addons/gouache_unreal_setup.py')) ? read('assets/addons/gouache_unreal_setup.py') : '';
 const BLENDER_ADDON = fs.existsSync(r('assets/addons/gouache_link.py')) ? read('assets/addons/gouache_link.py') : '';
 /* the change log for Help › What's new */
 const CHANGELOG = fs.existsSync(r('CHANGELOG.md')) ? read('CHANGELOG.md') : '';
@@ -42,7 +43,7 @@ if (fs.existsSync(r('assets/grunge/previews.json'))) {
     if (fs.existsSync(file) && crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex') === p.sha256) TX_PREVIEW_DATA[slug] = p.image;
   }
 }
-const js = `const APP_VERSION='${APP_VERSION}';\nconst TX_PREVIEWS=${JSON.stringify(TX_PREVIEW_DATA)};\nconst GM_BUNDLED=${JSON.stringify(GMATS).replace(/<\//g, '<\\/')};\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\nconst CHANGELOG_MD=${JSON.stringify(CHANGELOG).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
+const js = `const APP_VERSION='${APP_VERSION}';\nconst TX_PREVIEWS=${JSON.stringify(TX_PREVIEW_DATA)};\nconst GM_BUNDLED=${JSON.stringify(GMATS).replace(/<\//g, '<\\/')};\nconst UNREAL_SETUP=${JSON.stringify(UNREAL_SETUP).replace(/<\//g, '<\\/')};\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\nconst CHANGELOG_MD=${JSON.stringify(CHANGELOG).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
 const studioFonts=JSON.parse(read('assets/fonts/manifest.json'));
 const studioFontCss=studioFonts.map(f=>`@font-face{font-family:"${f.family}";font-style:normal;font-weight:${f.weight};font-display:swap;src:url(${f.file}) format("truetype")}`).join('\n');
 const css = read('src/styles/app.css');

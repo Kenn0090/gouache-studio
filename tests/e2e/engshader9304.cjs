@@ -23,7 +23,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('#modeTabs [data-mode=p3d]');await W(2500);
  await p.evaluate(()=>{const P=__gs.platform;window.__written={};P.isDesktop=true;
    P.invoke=async(cmd,a)=>{if(cmd==='dir_files')return [[a.dir+'/project.godot',0,0]];return null;};
-   P.writeFile=async(path,bytes)=>{window.__written[path]=bytes.length<60000&&/\.(gdshader|tres|shader|mat|meta)$/.test(path)?new TextDecoder().decode(bytes):'(binary '+bytes.length+')';};P.pickFolder=async()=>'C:/proj';});
+   P.writeFile=async(path,bytes)=>{window.__written[path]=bytes.length<60000&&/\.(gdshader|tres|shader|mat|meta|json|py)$/.test(path)?new TextDecoder().decode(bytes):'(binary '+bytes.length+')';};P.pickFolder=async()=>'C:/proj';});
  /* every shader kind makes a Godot shader and a Unity material */
  const kinds=['std','skin','aniso','velvet','toon','cel','specgloss','panner','retro'];
  const res=await p.evaluate(kinds=>kinds.map(k=>{const sh={kind:k,p:{}},have={base:true,orm:true,normal:true,emis:true};
@@ -55,5 +55,13 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  w=await p.evaluate(()=>window.__written);const bn=Object.keys(w);
  ok(bn.some(x=>/Assets\/Gouache\/GouacheShadedBuiltin\.shader$/.test(x))&&!bn.some(x=>/GouacheShaded\.shader$/.test(x)),'Unity Built-in: its own shader is written');
  const mat=Object.entries(w).find(([k])=>k.endsWith('.mat'));ok(mat&&/5b1d8c3a7e0f4a29b6d4c8e1f2a30b17/.test(mat[1]),'…and the material points at it');
+ /* Unreal */
+ await p.evaluate(()=>{const g=__gs;g.es.to='unreal';g.es.dirs.unreal='C:/proj';window.__written={};});
+ await p.evaluate(()=>__gs.exportTextures());await W(6000);
+ w=await p.evaluate(()=>window.__written);const un2=Object.keys(w);
+ const js=Object.entries(w).find(([k])=>k.endsWith('gouache_unreal.json')),py=Object.entries(w).find(([k])=>k.endsWith('gouache_unreal_setup.py'));
+ ok(js&&py&&/Content\/Gouache\/Rock\//.test(js[0]),'Unreal export writes the setup script and its list '+JSON.stringify(un2.map(x=>x.slice(-30))).slice(0,200));
+ ok(js&&JSON.parse(js[1]).sets.length>=1&&JSON.parse(js[1]).sets[0].tex.BaseColor,'…the list names the sets and their textures');
+ ok(py&&/unreal\.MaterialEditingLibrary/.test(py[1].length>100?py[1]:'(binary)'),'…the script is the real one');
  ok(!errs.length,'no page errors '+errs.join(' | ').slice(0,200));
  await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();
