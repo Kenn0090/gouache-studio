@@ -25,8 +25,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.nvOpen());await W(200);
  ok(await p.evaluate(()=>/desktop app/.test(document.body.textContent)),'the browser says the new viewer is in the desktop app');
  /* pretend to be the desktop app and catch what would go to the viewer */
- await p.evaluate(()=>{const P=__gs.platform;P.isDesktop=true;window.__calls=[];
-   P.invoke=async(cmd,body)=>{if(cmd==='viewer_open'){const dv=new DataView(body.buffer,body.byteOffset,body.byteLength),jl=dv.getUint32(0,true),meta=JSON.parse(new TextDecoder().decode(body.slice(4,4+jl)));
+ await p.evaluate(()=>{const P=__gs.platform;P.isDesktop=true;window.__calls=[];window.__ups=[];
+   P.invoke=async(cmd,body)=>{if(cmd==='viewer_update'){const dv=new DataView(body.buffer,body.byteOffset,body.byteLength),jl=dv.getUint32(0,true),meta=JSON.parse(new TextDecoder().decode(body.slice(4,4+jl)));window.__ups.push({meta,len:body.length,jl});return true;}if(cmd==='viewer_open'){const dv=new DataView(body.buffer,body.byteOffset,body.byteLength),jl=dv.getUint32(0,true),meta=JSON.parse(new TextDecoder().decode(body.slice(4,4+jl)));
        let need=4+jl+(meta.pos+meta.nrm+meta.uv)*4;for(const g of meta.groups)need+=g.idx*4+g.tex.base+g.tex.orm+g.tex.normal+g.tex.emissive;if(meta.env)need+=meta.env.w*meta.env.h*12;
        const g0=meta.groups[0],o=4+jl+(meta.pos+meta.nrm+meta.uv)*4+g0.idx*4,png=g0.tex.base?Array.from(body.slice(o,o+4)):null;
        window.__calls.push({cmd,len:body.length,need,meta,png});return {name:'Test card',backend:'Vulkan',kind:'DiscreteGpu',software:false};}return null;};});
@@ -45,4 +45,15 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(c2&&c2.meta.groups[0].sh.k===4&&c2.meta.groups[0].sh.p[0]===4&&c2.meta.groups[0].sh.q[0]===3,'a Toon set goes with its bands and outline width '+JSON.stringify(c2&&c2.meta.groups[0].sh).slice(0,140));
  ok(m&&(m.env===null||(m.env.w>0&&m.env.h>0)),'and the environment picture ('+JSON.stringify(m&&m.env)+')');
  ok(await p.evaluate(()=>/New viewer open on Test card/.test(document.body.textContent)),'it tells you what it runs on');
+ /* the window follows the 3D view's lighting */
+ await p.evaluate(()=>{window.__ups=[];__gs.v3s().envI=1.7;__gs.v3s().envBlur=.8;});await W(1200);
+ let up=await p.evaluate(()=>window.__ups.slice());
+ ok(up.length>=1&&up[up.length-1].meta.env_mode==='keep'&&up[up.length-1].meta.settings.env_strength===1.7&&up[up.length-1].meta.settings.env_blur===.8,'a change of strength and blur follows into the window without sending the picture again '+JSON.stringify(up.map(u=>[u.meta.env_mode,u.len])));
+ await p.evaluate(()=>{window.__ups=[];__gs.v3s().env='photo';});await W(2500);
+ up=await p.evaluate(()=>window.__ups.slice());
+ ok(up.some(u=>u.meta.env_mode==='set'&&u.meta.env&&u.meta.env.w>0&&u.len>u.jl+1000000),'a different environment sends its picture ('+JSON.stringify(up.map(u=>[u.meta.env_mode,u.len]))+')');
+ await p.evaluate(()=>{window.__ups=[];__gs.v3s().env='none';});await W(1500);
+ up=await p.evaluate(()=>window.__ups.slice());
+ ok(up.some(u=>u.meta.env_mode==='clear'),'turning the environment off clears it');
+ await p.evaluate(()=>__gs.nvClose?.());
  await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();

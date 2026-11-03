@@ -3,7 +3,7 @@
 
 use std::sync::Mutex;
 
-use gouache_render::{scene_from_bytes, Viewer};
+use gouache_render::{scene_from_bytes, update_from_bytes, Viewer};
 use serde::Serialize;
 use tauri::ipc::{InvokeBody, Request};
 
@@ -47,4 +47,23 @@ pub async fn viewer_open(request: Request<'_>) -> Result<ViewerInfo, String> {
 #[tauri::command]
 pub fn viewer_close() {
     close_current();
+}
+
+/// Changes the lighting of the open viewer (and its environment picture when asked) without sending the model again.
+/// Returns false when there is no viewer any more (the window was closed).
+#[tauri::command]
+pub fn viewer_update(request: Request<'_>) -> Result<bool, String> {
+    let InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected a raw body".into());
+    };
+    let (settings, env) = update_from_bytes(bytes)?;
+    let mut g = VIEWER.lock().map_err(|e| e.to_string())?;
+    let alive = match g.as_ref() {
+        Some(v) => v.update(settings, env),
+        None => false,
+    };
+    if !alive {
+        *g = None;
+    }
+    Ok(alive)
 }

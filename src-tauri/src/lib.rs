@@ -140,6 +140,7 @@ pub fn run() {
             engine::engine_info,
             viewer::viewer_open,
             viewer::viewer_close,
+            viewer::viewer_update,
             updates::update_check,
             updates::update_install,
         ])

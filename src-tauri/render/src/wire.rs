@@ -4,7 +4,7 @@
 
 use serde::Deserialize;
 
-use crate::{decode_png, EnvData, Group, Material, MeshData, Scene, Settings, ShaderParams, Tex8};
+use crate::{decode_png, EnvChange, EnvData, Group, Material, MeshData, Scene, Settings, ShaderParams, Tex8};
 
 #[derive(Deserialize)]
 struct MapLens {
@@ -54,13 +54,22 @@ struct SettingsMeta {
     env_turn: f32,
     env_strength: f32,
     show_bg: bool,
+    #[serde(default = "blur_default")]
+    env_blur: f32,
     sun_az: f32,
     sun_el: f32,
     sun_i: f32,
 }
 
+fn blur_default() -> f32 {
+    0.35
+}
+
 #[derive(Deserialize)]
 struct Meta {
+    /// for a lighting update: "keep" the environment picture on show, "clear" it, or "set" the one that follows
+    #[serde(default)]
+    env_mode: Option<String>,
     pos: usize,
     nrm: usize,
     uv: usize,
@@ -74,7 +83,22 @@ fn floats(b: &[u8]) -> Vec<f32> {
 }
 
 /// Reads the body into a scene. Every size is checked, so a wrong body is an error, never a crash.
+/// A lighting update: the same body as a scene, with no model. Returns the settings and what to do with the environment.
+pub fn update_from_bytes(bytes: &[u8]) -> Result<(Settings, EnvChange), String> {
+    let (scene, mode) = parse(bytes)?;
+    let change = match (mode.as_deref(), scene.env) {
+        (Some("keep"), _) => EnvChange::Keep,
+        (_, Some(e)) if e.width > 0 => EnvChange::Set(e),
+        _ => EnvChange::Clear,
+    };
+    Ok((scene.settings, change))
+}
+
 pub fn scene_from_bytes(bytes: &[u8]) -> Result<Scene, String> {
+    parse(bytes).map(|(s, _)| s)
+}
+
+fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
     if bytes.len() < 4 {
         return Err("the model data is empty".into());
     }
@@ -115,11 +139,12 @@ pub fn scene_from_bytes(bytes: &[u8]) -> Result<Scene, String> {
         env_turn: s.env_turn,
         env_strength: s.env_strength,
         show_background: s.show_bg,
+        env_blur: s.env_blur,
         sun_azimuth: s.sun_az,
         sun_elevation: s.sun_el,
         sun_intensity: s.sun_i,
     };
-    Ok(Scene { mesh: MeshData { positions, normals, uvs }, groups, env, settings })
+    Ok((Scene { mesh: MeshData { positions, normals, uvs }, groups, env, settings }, meta.env_mode.clone()))
 }
 
 

@@ -341,7 +341,12 @@ fn fs_bg(i: BgOut) -> @location(0) vec4<f32> {
     if (frame.info.y < 0.5 || frame.info.z < 0.5) {
         return vec4<f32>(tone(vec3<f32>(0.035, 0.04, 0.05) / frame.params.x), 1.0);
     }
-    return vec4<f32>(tone(env_sample(d, 1.0)), 1.0);
+    // the picture behind the model, blurred as much as the 3D view's Background blur asks
+    let t = frame.extra.z * 3.0;
+    var c = env_sample(d, 0.0);
+    if (t >= 1.0) { c = env_spec(d, clamp(t - 1.0, 0.0, 2.0) * 0.2); }
+    else if (t > 0.0) { c = mix(c, env_spec(d, 0.0), t); }
+    return vec4<f32>(tone(c), 1.0);
 }
 
 // ---- blurring the environment for each roughness (run once when an environment is set) ----

@@ -19,7 +19,7 @@ use winit::event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy};
 use winit::window::{Window, WindowId};
 
 mod wire;
-pub use wire::scene_from_bytes;
+pub use wire::{scene_from_bytes, update_from_bytes};
 
 use half::f16;
 
@@ -85,6 +85,8 @@ pub struct Settings {
     pub env_turn: f32,
     pub env_strength: f32,
     pub show_background: bool,
+    /// how blurred the environment is behind the model (0 sharp to 1 very soft), as the 3D view's Background blur
+    pub env_blur: f32,
     pub sun_azimuth: f32,
     pub sun_elevation: f32,
     pub sun_intensity: f32,
@@ -92,7 +94,7 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0 }
+        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0 }
     }
 }
 
@@ -138,8 +140,16 @@ pub fn decode_png(bytes: &[u8]) -> Result<Tex8, String> {
     Ok(Tex8 { width: w, height: h, rgba })
 }
 
+/// What to do with the environment picture when settings change.
+pub enum EnvChange {
+    Keep,
+    Clear,
+    Set(EnvData),
+}
+
 enum Cmd {
     Scene(Box<Scene>),
+    Update(Settings, EnvChange),
     Close,
 }
 
@@ -162,6 +172,10 @@ impl Viewer {
     /// Replaces everything on show (model, materials, environment, settings).
     pub fn set_scene(&self, s: Scene) {
         let _ = self.proxy.send_event(Cmd::Scene(Box::new(s)));
+    }
+    /// Changes the lighting settings (and the environment picture if asked) without sending the model again.
+    pub fn update(&self, settings: Settings, env: EnvChange) -> bool {
+        self.proxy.send_event(Cmd::Update(settings, env)).is_ok()
     }
     pub fn close(&self) {
         let _ = self.proxy.send_event(Cmd::Close);
@@ -250,6 +264,7 @@ struct App {
     gpu: Option<Gpu>,
     cam: Camera,
     drag: Option<MouseButton>,
+    shift: bool,
     last: (f64, f64),
     init: Option<mpsc::Sender<Result<AdapterReport, String>>>,
     pending: Option<Scene>,
@@ -847,7 +862,7 @@ impl Gpu {
             params: [st.exposure, st.env_turn, st.env_strength, st.tone as f32],
             info: [self.env_mips, if self.has_env { 1.0 } else { 0.0 }, if st.show_background { 1.0 } else { 0.0 }, 0.0],
             sh: self.sh,
-            extra: [self.started.elapsed().as_secs_f32(), 2.0 * cam.dist * (45f32.to_radians() * 0.5).tan() / self.config.height as f32, 0.0, 0.0],
+            extra: [self.started.elapsed().as_secs_f32(), 2.0 * cam.dist * (45f32.to_radians() * 0.5).tan() / self.config.height as f32, st.env_blur, 0.0],
         };
         self.queue.write_buffer(&self.frame_buf, 0, bytemuck::bytes_of(&u));
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("frame") });
@@ -939,6 +954,17 @@ impl ApplicationHandler<Cmd> for App {
     fn user_event(&mut self, el: &ActiveEventLoop, cmd: Cmd) {
         match cmd {
             Cmd::Close => el.exit(),
+            Cmd::Update(settings, env) => {
+                if let Some(g) = self.gpu.as_mut() {
+                    g.settings = settings;
+                    match env {
+                        EnvChange::Keep => {}
+                        EnvChange::Clear => g.set_env(None),
+                        EnvChange::Set(e) => g.set_env(Some(&e)),
+                    }
+                    g.window.request_redraw();
+                }
+            }
             Cmd::Scene(s) => {
                 if let Some(g) = self.gpu.as_mut() {
                     let (c, r) = g.set_scene(&s);
@@ -967,6 +993,9 @@ impl ApplicationHandler<Cmd> for App {
                     g.draw(&self.cam);
                 }
             }
+            WindowEvent::ModifiersChanged(m) => {
+                self.shift = m.state().shift_key();
+            }
             WindowEvent::MouseInput { state, button, .. } => {
                 self.drag = if state == ElementState::Pressed { Some(button) } else { None };
             }
@@ -977,6 +1006,16 @@ impl ApplicationHandler<Cmd> for App {
                     Some(MouseButton::Left) => {
                         self.cam.yaw -= dx * 0.008;
                         self.cam.pitch = (self.cam.pitch + dy * 0.008).clamp(-1.5, 1.5);
+                    }
+                    Some(MouseButton::Right) if self.shift => {
+                        // Shift + right-drag turns the sky (the light when there is no environment), as in the 3D view
+                        if let Some(g) = self.gpu.as_mut() {
+                            if g.has_env {
+                                g.settings.env_turn = (g.settings.env_turn + dx * 0.5 / 360.0).rem_euclid(1.0);
+                            } else {
+                                g.settings.sun_azimuth = (g.settings.sun_azimuth + dx * 0.5).rem_euclid(360.0);
+                            }
+                        }
                     }
                     Some(MouseButton::Right) => {
                         self.cam.dist = (self.cam.dist * (1.0 + dy * 0.01)).max(self.cam.radius * 0.05);
@@ -1042,6 +1081,7 @@ pub fn open(scene: Scene) -> Result<Viewer, String> {
                 gpu: None,
                 cam: Camera { yaw: 0.9, pitch: 0.35, dist: 3.0, target: Vec3::ZERO, radius: 1.0 },
                 drag: None,
+                shift: false,
                 last: (0.0, 0.0),
                 init: Some(init_tx),
                 pending: Some(scene),

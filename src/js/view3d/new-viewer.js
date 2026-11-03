@@ -5,12 +5,12 @@
    camera (left drag turns, right drag zooms, middle drag moves, wheel zooms).
    It never takes over the normal viewer. On a computer without a usable graphics card it can run on the software
    adapter; if it cannot start at all it says so and the normal viewer carries on as it always has. */
-const NV_TEX_MAX=1024;
-/* the environment picture the 3D view is using, as linear floats no wider than 1024 */
+const NV_TEX_MAX=1024,NV_ENV_MAX=2048;
+/* the environment picture the 3D view is using, as linear floats no wider than NV_ENV_MAX */
 async function nvEnv(){const s=v3s(),k=envOf(s);if(k==='none')return null;let img=null;
   if(k==='custom'&&env.custom)img=env.custom.img;else{const it=ENV_LIST.find(e=>e[0]===k)||ENV_LIST[0];img=parseHDR(await envBundled(it[2]));}
   if(!img||!img.rgb)return null;let {w,h,rgb}=img;
-  if(w>1024){const f=Math.ceil(w/1024),W=Math.floor(w/f),H=Math.max(1,Math.floor(h/f)),o=new Float32Array(W*H*3);
+  if(w>NV_ENV_MAX){const f=Math.ceil(w/NV_ENV_MAX),W=Math.floor(w/f),H=Math.max(1,Math.floor(h/f)),o=new Float32Array(W*H*3);
     for(let y=0;y<H;y++)for(let x=0;x<W;x++){let r=0,g=0,b=0;for(let j=0;j<f;j++)for(let i=0;i<f;i++){const q=((y*f+j)*w+x*f+i)*3;r+=rgb[q];g+=rgb[q+1];b+=rgb[q+2];}const q=(y*W+x)*3,n=f*f;o[q]=r/n;o[q+1]=g/n;o[q+2]=b/n;}
     w=W;h=H;rgb=o;}
   return {w,h,rgb:rgb instanceof Float32Array?rgb:new Float32Array(rgb)};}
@@ -29,8 +29,26 @@ async function nvScene(){const m=mxModel();if(!m||!m.pos||!m.idx)throw new Error
     else{const S=ui.mode==='p3d'&&p3.sets[p3.cur];await one(S?S.name:(doc.name||'Model'));}}
   finally{Object.assign(texCfg,saved);}
   const groups=mxGroups(m,Object.keys(texBy)).filter(g=>g.idx.length);
-  const s=v3s(),envd=await nvEnv();
-  return {m,groups,texBy,shBy,envd,settings:{tone:toneInt(s),expo:s.expo==null?1:s.expo,env_turn:(s.envRot||0)/360,env_strength:s.envI==null?1:s.envI,show_bg:!!s.envBg,sun_az:s.sunAz==null?40:s.sunAz,sun_el:s.sunEl==null?45:s.sunEl,sun_i:s.sunI==null?1:s.sunI}};}
+  const envd=await nvEnv();
+  return {m,groups,texBy,shBy,envd,settings:nvSettings()};}
+/* the 3D view's lighting settings, as the new viewer takes them */
+function nvSettings(){const s=v3s();return {tone:toneInt(s),expo:s.expo==null?1:s.expo,env_turn:(s.envRot||0)/360,env_strength:s.envI==null?1:s.envI,show_bg:!!s.envBg,env_blur:s.envBlur==null?.35:s.envBlur,sun_az:s.sunAz==null?40:s.sunAz,sun_el:s.sunEl==null?45:s.sunEl,sun_i:s.sunI==null?1:s.sunI};}
+const nvEnvKey=()=>{const s=v3s(),k=envOf(s);return k+(k==='custom'&&env.custom?':'+env.custom.name:'');};
+/* a lighting update: the same body as a scene, with no model; the environment picture only when it changed */
+function nvUpdateBody(settings,mode,envd){const meta={pos:0,nrm:0,uv:0,groups:[],env_mode:mode,env:mode==='set'&&envd?{w:envd.w,h:envd.h}:null,settings};
+  const json=new TextEncoder().encode(JSON.stringify(meta)),extra=mode==='set'&&envd?new Uint8Array(envd.rgb.buffer,envd.rgb.byteOffset,envd.rgb.byteLength):new Uint8Array(0),out=new Uint8Array(4+json.length+extra.length),dv=new DataView(out.buffer);
+  dv.setUint32(0,json.length,true);out.set(json,4);out.set(extra,4+json.length);return out;}
+/* while the window is open, changes to the lighting in the 3D view (environment, strength, turn, blur, tone, exposure, sun) follow into it */
+const nv={timer:null,sig:'',envKey:'',busy:false};
+async function nvPush(){if(nv.busy)return;nv.busy=true;
+  try{const key=nvEnvKey(),changed=key!==nv.envKey;let mode='keep',envd=null;
+    if(changed){envd=await nvEnv();mode=envd?'set':'clear';}
+    const alive=await platform.invoke('viewer_update',nvUpdateBody(nvSettings(),mode,envd));
+    nv.envKey=key;if(!alive)nvStopWatch();}
+  catch(e){console.warn(e);}finally{nv.busy=false;}}
+function nvWatch(){nvStopWatch();nv.envKey=nvEnvKey();nv.sig=JSON.stringify(nvSettings())+nv.envKey;
+  nv.timer=setInterval(()=>{if(!platform.isDesktop)return;const sig=JSON.stringify(nvSettings())+nvEnvKey();if(sig!==nv.sig){nv.sig=sig;nvPush();}},400);}
+function nvStopWatch(){if(nv.timer){clearInterval(nv.timer);nv.timer=null;}}
 /* what goes to the Rust side: a length, the JSON, then the numbers and pictures it describes */
 function nvBody(sc){const m=sc.m,n=m.pos.length/3,f32=a=>new Float32Array(a);
   const pos=f32(m.pos),nrm=m.nrm&&m.nrm.length===m.pos.length?f32(m.nrm):f32(0),uv=m.uv&&m.uv.length===n*2?f32(m.uv):f32(0);
@@ -46,6 +64,6 @@ async function nvOpen(){
   if(!platform.isDesktop){toast('The new viewer is in the desktop app.');return null;}
   try{toast('Opening the new viewer…');const sc=await nvScene(),body=nvBody(sc);
     const info=await platform.invoke('viewer_open',body);
-    toast('New viewer open on '+info.name+' ('+info.backend+(info.software?', software':'')+').');return info;}
+    toast('New viewer open on '+info.name+' ('+info.backend+(info.software?', software':'')+').');nvWatch();return info;}
   catch(e){console.warn(e);toast('The new viewer could not start: '+(e&&e.message||e)+'. The normal viewer is unchanged.');return null;}}
-function nvClose(){if(platform.isDesktop)platform.invoke('viewer_close').catch(()=>{});}
+function nvClose(){nvStopWatch();if(platform.isDesktop)platform.invoke('viewer_close').catch(()=>{});}
