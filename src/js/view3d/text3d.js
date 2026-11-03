@@ -3,7 +3,7 @@
    (so colour, roughness, metal, height, normal and library materials all work on the letters) whose mask is one Picture row: the text drawn as a
    picture and projected flat onto the model, with the usual move / turn / scale gizmo. Edit the words, font, spacing and outline any time in the Text panel.
    Click the model again to move the selected text; Shift+click or "New text" starts another. The text is fixed to the surface where you put it. */
-const t3={style:Object.assign({content:'Text',font:'Sans',size:96,bold:true,italic:false,align:'center',lineHeight:1.15,tracking:0,outline:0,disorder:0,seed:1,wave:0,slant:0,stretch:100,caseMode:'none'},(()=>{try{return JSON.parse(localStorage.getItem('gs.t3')||'{}');}catch(e){return {};}})()),fresh:false,sess:null,timer:0};
+const t3={style:Object.assign({content:'Text',font:'Sans',size:96,bold:true,italic:false,align:'center',lineHeight:1.15,tracking:0,outline:0,disorder:0,seed:1,wave:0,slant:0,stretch:100,turn:0,turnPct:1,caseMode:'none'},(()=>{try{return JSON.parse(localStorage.getItem('gs.t3')||'{}');}catch(e){return {};}})()),fresh:false,sess:null,timer:0};
 const t3Save=()=>{try{localStorage.setItem('gs.t3',JSON.stringify(t3.style));}catch(e){}};
 const t3Layer=()=>{const L=doc.active;return L&&L.text3d&&ui.mode==='p3d'?L:null;};
 const t3Row=L=>L&&L.mask&&L.mask.stack?L.mask.stack.find(r=>r.p&&r.p.t3)||null:null;
@@ -11,13 +11,13 @@ const t3Name=s=>'Text · '+(String(s.content).split('\n')[0].slice(0,24)||'(empt
 /* the words drawn white on see-through: that picture is the layer's shape */
 /* the words as a picture. Beyond Painter's plain text it can break the letters up: Disorder shakes each letter (position, turn, size; Shuffle picks a new roll),
    Wave runs the baseline up and down, Slant leans the letters, Stretch makes them wider or narrower, and Case forces upper or lower case. */
-const T3_FX=s=>(s.disorder||0)>0||(s.wave||0)>0||(s.slant||0)!==0||(s.stretch||100)!==100;
+const T3_FX=s=>(s.disorder||0)>0||(s.wave||0)>0||(s.slant||0)!==0||(s.stretch||100)!==100||((s.turn||0)!==0&&(s.turnPct==null?1:s.turnPct)>0);
 async function t3Bitmap(spec,mirror=true){let content=String(spec.content||'');if(spec.caseMode==='upper')content=content.toUpperCase();else if(spec.caseMode==='lower')content=content.toLowerCase();
   const t={content,font:spec.font,size:spec.size,bold:spec.bold,italic:spec.italic,align:'left',lineHeight:spec.lineHeight,tracking:spec.tracking,outline:spec.outline,outlineColor:[1,1,1],color:[1,1,1],x:0,y:0};
   try{await ensureFont(t);}catch(e){}
   if(!t.content.trim()){const T=makeTarget(8,8,8,true);clearTarget(T);return {T,bw:8,bh:8};}
   const lay=layoutText(t),fx=T3_FX(spec),st=Math.max(.2,(spec.stretch||100)/100),slant=Math.tan((spec.slant||0)*Math.PI/180),dis=Math.max(0,Math.min(1,spec.disorder||0)),wave=Math.max(0,Math.min(1,spec.wave||0));
-  const extra=fx?Math.ceil(spec.size*(.55*dis+.5*wave)+spec.size*Math.abs(slant)*.9):0,W=lay.W*st,bw=Math.max(8,Math.min(Math.ceil(W)+(lay.pad+extra)*2+2,4096)),bh=Math.max(8,Math.min(lay.H+(lay.pad+extra)*2,4096)),c=document.createElement('canvas');c.width=bw;c.height=bh;const x=c.getContext('2d');
+  const turnA=(spec.turn||0)*Math.PI/180,turnShare=Math.max(0,Math.min(1,spec.turnPct==null?1:spec.turnPct)),extra=fx?Math.ceil(spec.size*(.55*dis+.5*wave)+spec.size*Math.abs(slant)*.9+(turnShare>0?spec.size*.55*Math.abs(Math.sin(turnA)):0)):0,W=lay.W*st,bw=Math.max(8,Math.min(Math.ceil(W)+(lay.pad+extra)*2+2,4096)),bh=Math.max(8,Math.min(lay.H+(lay.pad+extra)*2,4096)),c=document.createElement('canvas');c.width=bw;c.height=bh;const x=c.getContext('2d');
   if(mirror){x.translate(bw,0);x.scale(-1,1);}/* the planar projection reads the picture mirrored when seen from outside, so draw it mirrored */
   x.font=textFont(t);try{x.letterSpacing=(t.tracking||0)+'px';}catch(e){}x.textBaseline='alphabetic';x.lineJoin='round';x.miterLimit=2;
   const at=i=>{const w=lay.widths[i]*st;return [lay.pad+extra+(spec.align==='left'?0:spec.align==='center'?(W-w)/2:W-w),lay.pad+extra+lay.asc+i*lay.lh];};
@@ -25,9 +25,10 @@ async function t3Bitmap(spec,mirror=true){let content=String(spec.content||'');i
   const draw=(stroke)=>lay.lines.forEach((ln,i)=>{const [ox,oy]=at(i);
     if(!fx){stroke?x.strokeText(ln,ox,oy):x.fillText(ln,ox,oy);return;}
     const chars=Array.from(ln);let k=0;for(let ci=0;ci<chars.length;ci++){const ch=chars[ci];if(ch===' '){k++;continue;}
-      const pre=x.measureText(chars.slice(0,ci).join('')).width*st,key=i+':'+ci;let r=rolls[key];if(!r)r=rolls[key]=[R()*2-1,R()*2-1,R()*2-1,R()*2-1];
+      const pre=x.measureText(chars.slice(0,ci).join('')).width*st,key=i+':'+ci;let r=rolls[key];if(!r)r=rolls[key]=[R()*2-1,R()*2-1,R()*2-1,R()*2-1,R()];
       const jx=r[0]*dis*spec.size*.22,jy=r[1]*dis*spec.size*.28,rot=r[2]*dis*.45,sc=1+r[3]*dis*.35,wy=Math.sin(ci/Math.max(1,(spec.waveLen||7))*Math.PI*2)*wave*spec.size*.35;
-      x.save();x.translate(ox+pre+jx,oy+jy+wy);x.rotate(rot);x.transform(1,0,-slant,1,0,0);x.scale(st*sc,sc);stroke?x.strokeText(ch,0,0):x.fillText(ch,0,0);x.restore();k++;}});
+      const cw=x.measureText(ch).width,turned=r[4]<turnShare;/* Letter turn: the chosen share of the letters (Letters affected) each turn by the same angle round their own middle */
+      x.save();x.translate(ox+pre+jx,oy+jy+wy);x.rotate(rot);if(turned&&turnA){const mx=cw*.5,my=-spec.size*.3;x.translate(mx,my);x.rotate(turnA);x.translate(-mx,-my);}x.transform(1,0,-slant,1,0,0);x.scale(st*sc,sc);stroke?x.strokeText(ch,0,0):x.fillText(ch,0,0);x.restore();k++;}});
   if(t.outline>0){x.lineWidth=t.outline*2;x.strokeStyle='#fff';draw(true);}
   x.fillStyle='#fff';draw(false);
   const d=x.getImageData(0,0,bw,bh),tex=uploadStraight({w:bw,h:bh,data:d.data,bits:8}),T=makeTarget(bw,bh,8,true);premultInto(T,tex,[0,0],null);gl.deleteTexture(tex);return {T,bw,bh};}
@@ -74,7 +75,7 @@ async function t3PutOnPath(){const spec=Object.assign({},t3Layer()?t3Layer().tex
   await rbUseText(L,P,spec);setTool('path');buildBrushPanel();toast('The text is on the path. Change how it stretches and tiles in the Path panel.');}
 
 /* the effects that make letters behave differently, shared by the Text tool and the Ribbon text */
-function t3Extras(spec,set,id){const S=(key,label,min,max,step,fmt)=>makeSlider({id:id+'_'+key,label,min,max,step,value:spec[key]==null?(key==='stretch'?100:0):spec[key],fmt,onInput:v=>set(key,v)}).el;
+function t3Extras(spec,set,id){const S=(key,label,min,max,step,fmt)=>makeSlider({id:id+'_'+key,label,min,max,step,value:spec[key]==null?(key==='stretch'?100:key==='turnPct'?1:0):spec[key],fmt,onInput:v=>set(key,v)}).el;
   const cs=el('select',{id:id+'_case','aria-label':'Letter case',title:'Letter case'},...[['none','Case: as typed'],['upper','Case: UPPERCASE'],['lower','Case: lowercase']].map(([v,t])=>el('option',{value:v,text:t})));cs.value=spec.caseMode||'none';cs.onchange=()=>set('caseMode',cs.value);
   return [el('div',{class:'sub',text:'Letter behaviour'}),S('disorder','Disorder',0,1,.01,pct),el('div',{class:'chips'},el('button',{class:'btn sm',id:id+'_shuffle',text:'Shuffle',title:'Roll the disorder again',onclick:()=>set('seed',Math.floor(Math.random()*99999)+1)})),
-    S('wave','Wave',0,1,.01,pct),S('slant','Slant',-45,45,1,v=>v+'°'),S('stretch','Stretch',50,200,1,v=>v+'%'),cs];}
+    S('wave','Wave',0,1,.01,pct),S('slant','Slant',-45,45,1,v=>v+'°'),S('turn','Letter turn',-180,180,1,v=>v+'°'),S('turnPct','Letters turned',0,1,.01,pct),S('stretch','Stretch',50,200,1,v=>v+'%'),cs];}
