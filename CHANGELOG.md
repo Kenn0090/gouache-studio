@@ -1,3 +1,12 @@
+## 0.94.1
+
+- **New viewer, built up:** a **New viewer** button in the 3D Paint bar opens or closes the window. **F** in the window brings the whole model back into view, turning the 3D view in the app turns the window too (and the other way round), and the app notices when you close the window.
+- **Painting in the new viewer is lighter:** only the base colour travels while you drag, the picture is read back without making the app wait for the graphics card, mouse moves are applied once per screen refresh, and Preferences › Speed shows what your last stroke cost. **Paint inside the new viewer window** can be turned off (the window then only shows the model while you paint in the normal 3D view), and a message tells you once if painting through the window is slow.
+- **Ray tracing:** reflections now show the textures of what they hit, the picture is smoothed while it settles, big models are prepared in the background, and Preferences › Speed has sliders for sun shadows, darker corners, reflections, shadow softness and quality.
+- **Pictures from the new viewer:** screenshots, turntables and the Render window (**Render in the new viewer**) use it while its window is open.
+- **Timelapse in 3D Paint** records the 3D view, camera turns included.
+- **Unreal:** the project record and setup data use the ending `.gdata`, so Unreal no longer offers to import them as data tables. Choosing the Content folder uses the project folder above it, a folder without a `.uproject` file is taken with a warning in the window, and Gouache can add the single `import gouache_link` line to an existing `init_unreal.py`. The export window no longer shows a stray "null".
+
 ## 0.94.0
 
 - **Engine projects, variants and Update all assets.** Sending to Unity, Godot or Unreal now keeps a small `gouache_project.json` in the game's folder: the engine, your export settings, every asset sent, the shader looks and how old each master shader is. Assets using the same look share one master shader and only add their own textures and settings; sending again updates files in place. If an asset uses a look with different settings, Gouache asks: **only this asset**, **save as a variant** (a named look other assets can share) or **change the look for everyone**. Master shaders are only updated after asking. **Update all assets…** sends every asset again from its saved file, with a progress list.

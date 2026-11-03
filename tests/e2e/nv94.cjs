@@ -55,5 +55,15 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{window.__ups=[];__gs.v3s().env='none';});await W(1500);
  up=await p.evaluate(()=>window.__ups.slice());
  ok(up.some(u=>u.meta.env_mode==='clear'),'turning the environment off clears it');
+ /* the window follows the page's own camera */
+ await p.evaluate(()=>{window.__ups=[];__gs.v3.cam.yaw+=0.7;});await W(1300);
+ up=await p.evaluate(()=>window.__ups.slice());
+ ok(up.some(u=>Array.isArray(u.meta.settings.cam)&&u.meta.settings.cam.length===6),'turning the 3D view in the app sends its camera to the window '+JSON.stringify(up.map(u=>u.meta.settings.cam&&u.meta.settings.cam.slice(0,3))));
+ /* the ray tracing settings are in Preferences and go with the lighting */
+ await p.evaluate(()=>{window.__ups=[];__gs.v3s().nvShadow=.3;__gs.v3s().nvSamples=200;});await W(1200);
+ up=await p.evaluate(()=>window.__ups.slice());
+ ok(up.some(u=>u.meta.settings.rt_shadow===.3&&u.meta.settings.rt_samples===200),'the ray tracing strength and quality settings follow into the window');
+ await p.evaluate(()=>__gs.dlgPrefs());await W(500);await p.click('#pTab_speed');await W(400);
+ ok(await p.locator('#pNvSh').count()===1&&await p.locator('#pNvQ').count()===1,'Preferences has the ray tracing sliders');
  await p.evaluate(()=>__gs.nvClose?.());
  await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();

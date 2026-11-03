@@ -73,6 +73,34 @@ struct SettingsMeta {
     brush: f32,
     #[serde(default)]
     rt: bool,
+    #[serde(default = "d09")]
+    rt_shadow: f32,
+    #[serde(default = "d085")]
+    rt_ao: f32,
+    #[serde(default = "d07")]
+    rt_refl: f32,
+    #[serde(default = "d002")]
+    rt_soft: f32,
+    #[serde(default = "d96")]
+    rt_samples: u32,
+    #[serde(default)]
+    cam: Option<[f32; 6]>,
+}
+
+fn d09() -> f32 {
+    0.9
+}
+fn d085() -> f32 {
+    0.85
+}
+fn d07() -> f32 {
+    0.7
+}
+fn d002() -> f32 {
+    0.02
+}
+fn d96() -> u32 {
+    96
 }
 
 fn fov_default() -> f32 {
@@ -181,6 +209,12 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         paint: s.paint,
         brush: s.brush,
         rt: s.rt,
+        rt_shadow: s.rt_shadow,
+        rt_ao: s.rt_ao,
+        rt_refl: s.rt_refl,
+        rt_soft: s.rt_soft,
+        rt_samples: s.rt_samples,
+        cam: s.cam,
     };
     Ok((Scene { mesh: MeshData { positions, normals, uvs }, groups, env, settings }, meta.env_mode.clone()))
 }

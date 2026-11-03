@@ -46,6 +46,8 @@ pub struct Rt {
     /// which of the two accumulation pictures holds the latest result
     cur: usize,
     pub samples: u32,
+    /// rounds of rays to add before it stops
+    pub max: u32,
     key: Vec<f32>,
     /// the model, kept until the tree is built
     pub src: Option<(Vec<f32>, Vec<u32>)>,
@@ -126,7 +128,7 @@ impl Rt {
         let uniform = device.create_buffer(&wgpu::BufferDescriptor { label: Some("rt uniform"), size: std::mem::size_of::<RtUniform>() as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
         let comp_uniform = device.create_buffer(&wgpu::BufferDescriptor { label: Some("composite uniform"), size: 32, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
         let one = |label| device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(label), contents: &[0u8; 64], usage: wgpu::BufferUsages::STORAGE });
-        Rt { cs, cs_layout, comp, comp_layout, uniform, comp_uniform, nodes: one("no nodes"), tris: one("no triangles"), tri_uv: one("no uvs"), base_arr: Self::array_view(device, None, &[]), base_sampler: device.create_sampler(&wgpu::SamplerDescriptor { address_mode_u: wgpu::AddressMode::Repeat, address_mode_v: wgpu::AddressMode::Repeat, mag_filter: wgpu::FilterMode::Linear, min_filter: wgpu::FilterMode::Linear, ..Default::default() }), has_tree: false, job: None, tex: Vec::new(), size: (0, 0), cur: 0, samples: 0, key: Vec::new(), src: None, groups: (Vec::new(), Vec::new()), uvs: Vec::new(), layers: Vec::new(), radius: 1.0 }
+        Rt { cs, cs_layout, comp, comp_layout, uniform, comp_uniform, nodes: one("no nodes"), tris: one("no triangles"), tri_uv: one("no uvs"), base_arr: Self::array_view(device, None, &[]), base_sampler: device.create_sampler(&wgpu::SamplerDescriptor { address_mode_u: wgpu::AddressMode::Repeat, address_mode_v: wgpu::AddressMode::Repeat, mag_filter: wgpu::FilterMode::Linear, min_filter: wgpu::FilterMode::Linear, ..Default::default() }), has_tree: false, job: None, tex: Vec::new(), size: (0, 0), cur: 0, samples: 0, max: RT_SAMPLES, key: Vec::new(), src: None, groups: (Vec::new(), Vec::new()), uvs: Vec::new(), layers: Vec::new(), radius: 1.0 }
     }
 
     /// An array of small base pictures (a white one when there are none), filled from `layers`.
@@ -237,7 +239,7 @@ impl Rt {
 
     /// Adds one more round of rays (starting over when the view, the sun or the size changed).
     #[allow(clippy::too_many_arguments)]
-    pub fn trace(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, enc: &mut wgpu::CommandEncoder, depth: &wgpu::TextureView, normal: &wgpu::TextureView, mat: &wgpu::TextureView, inv_vp: [[f32; 4]; 4], eye: [f32; 3], sun: [f32; 3], sun_soft: f32, amb: [f32; 3], sun_col: [f32; 3], w: u32, h: u32) {
+    pub fn trace(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, enc: &mut wgpu::CommandEncoder, depth: &wgpu::TextureView, normal: &wgpu::TextureView, mat: &wgpu::TextureView, inv_vp: [[f32; 4]; 4], eye: [f32; 3], sun: [f32; 3], sun_soft: f32, max_samples: u32, amb: [f32; 3], sun_col: [f32; 3], w: u32, h: u32) {
         self.ensure_tree(device, queue);
         self.ensure_textures(device, w, h);
         let mut key: Vec<f32> = inv_vp.iter().flatten().copied().collect();
@@ -246,7 +248,8 @@ impl Rt {
             self.key = key;
             self.samples = 0;
         }
-        if self.samples >= RT_SAMPLES {
+        self.max = max_samples;
+        if self.samples >= max_samples {
             return;
         }
         let u = RtUniform {
@@ -322,13 +325,13 @@ impl Rt {
 
     /// True while more rounds of rays are still to come.
     pub fn busy(&self) -> bool {
-        self.samples < RT_SAMPLES || self.job.is_some()
+        self.samples < self.max || self.job.is_some()
     }
 
     /// Draws the finished picture: the scene, darkened by what the rays found (when `on`).
-    pub fn composite<'a>(&'a self, device: &wgpu::Device, queue: &wgpu::Queue, pass: &mut wgpu::RenderPass<'a>, scene: &wgpu::TextureView, normal: &wgpu::TextureView, mat: &wgpu::TextureView, on: bool, tone: i32, exposure: f32) {
+    pub fn composite<'a>(&'a self, device: &wgpu::Device, queue: &wgpu::Queue, pass: &mut wgpu::RenderPass<'a>, scene: &wgpu::TextureView, normal: &wgpu::TextureView, mat: &wgpu::TextureView, on: bool, tone: i32, exposure: f32, strengths: [f32; 3]) {
         let use_rt = on && self.has_tree && !self.tex.is_empty();
-        queue.write_buffer(&self.comp_uniform, 0, bytemuck::cast_slice(&[if use_rt { 1.0f32 } else { 0.0 }, 0.9, 0.85, 0.7, tone as f32, exposure, self.samples as f32, 0.0]));
+        queue.write_buffer(&self.comp_uniform, 0, bytemuck::cast_slice(&[if use_rt { 1.0f32 } else { 0.0 }, strengths[0], strengths[1], strengths[2], tone as f32, exposure, self.samples as f32, 0.0]));
         let rt_view = if self.tex.is_empty() { scene } else { &self.tex[self.cur].1 };
         let rf_view = if self.tex.is_empty() { scene } else { &self.tex[2 + self.cur].1 };
         let bg = device.create_bind_group(&wgpu::BindGroupDescriptor {

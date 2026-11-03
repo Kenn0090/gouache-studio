@@ -15,6 +15,7 @@ use wgpu::util::DeviceExt;
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
+use winit::keyboard::{Key, NamedKey};
 use winit::event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy};
 use winit::window::{Window, WindowId};
 
@@ -102,11 +103,19 @@ pub struct Settings {
     pub brush: f32,
     /// ray-traced shadows and ambient occlusion
     pub rt: bool,
+    /// how strong the ray-traced shadows, corner darkening and reflections show (0 to 1), how soft the sun's shadows are, and how many rounds of rays are added
+    pub rt_shadow: f32,
+    pub rt_ao: f32,
+    pub rt_refl: f32,
+    pub rt_soft: f32,
+    pub rt_samples: u32,
+    /// when the page moves its own camera: eye and target, to follow it (applied once, not kept)
+    pub cam: Option<[f32; 6]>,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false }
+        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None }
     }
 }
 
@@ -331,6 +340,8 @@ struct App {
     alt: bool,
     /// a stroke is going on (the left button was pressed to paint)
     painting: bool,
+    /// the model's centre and size, for the F key
+    home: (Vec3, f32),
     last_sent: Instant,
     sink: Option<EventSink>,
     last: (f64, f64),
@@ -1143,7 +1154,7 @@ impl Gpu {
         }
         if st.rt {
             let sd = [sun.x, sun.y, sun.z];
-            self.rt.trace(&self.device, &self.queue, &mut enc, &self.depth, &self.scene_normal, &self.scene_mat, vp.inverse().to_cols_array_2d(), [eye.x, eye.y, eye.z], sd, 0.02, self.rt_amb(), [3.0 * st.sun_intensity, 2.9 * st.sun_intensity, 2.7 * st.sun_intensity], self.config.width, self.config.height);
+            self.rt.trace(&self.device, &self.queue, &mut enc, &self.depth, &self.scene_normal, &self.scene_mat, vp.inverse().to_cols_array_2d(), [eye.x, eye.y, eye.z], sd, st.rt_soft.clamp(0.0, 0.2), st.rt_samples.clamp(8, 1024), self.rt_amb(), [3.0 * st.sun_intensity, 2.9 * st.sun_intensity, 2.7 * st.sun_intensity], self.config.width, self.config.height);
         }
         {
             let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -1153,7 +1164,7 @@ impl Gpu {
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
-            self.rt.composite(&self.device, &self.queue, &mut pass, &self.scene_color, &self.scene_normal, &self.scene_mat, st.rt, st.tone, st.exposure);
+            self.rt.composite(&self.device, &self.queue, &mut pass, &self.scene_color, &self.scene_normal, &self.scene_mat, st.rt, st.tone, st.exposure, [st.rt_shadow, st.rt_ao, st.rt_refl]);
             if u.cursor[3] > 0.5 {
                 pass.set_pipeline(&self.ring_pipeline);
                 pass.set_bind_group(0, &self.frame_bg, &[]);
@@ -1201,7 +1212,7 @@ impl Gpu {
         if self.settings.rt {
             self.rt.wait_tree(&self.device, &self.queue);
         }
-        let rounds = if !self.settings.rt { 1 } else if o.rounds > 0 { o.rounds } else { rt::RT_SAMPLES + 2 };
+        let rounds = if !self.settings.rt { 1 } else if o.rounds > 0 { o.rounds } else { self.settings.rt_samples.clamp(8, 1024) + 2 };
         for _ in 0..rounds {
             self.draw_to(cam, Some(&view));
             // keep the queue from running far ahead of the card
@@ -1254,6 +1265,7 @@ impl Gpu {
 
 impl App {
     fn frame_model(&mut self, c: Vec3, r: f32) {
+        self.home = (c, r);
         self.cam.target = c;
         self.cam.radius = r;
         self.cam.dist = r * 2.6;
@@ -1329,7 +1341,18 @@ impl ApplicationHandler<Cmd> for App {
                     g.window.request_redraw();
                 }
             }
-            Cmd::Update(settings, env) => {
+            Cmd::Update(mut settings, env) => {
+                if let Some(c) = settings.cam.take() {
+                    let (eye, tgt) = (Vec3::new(c[0], c[1], c[2]), Vec3::new(c[3], c[4], c[5]));
+                    let d = eye - tgt;
+                    let dist = d.length();
+                    if dist > 1e-6 {
+                        self.cam.target = tgt;
+                        self.cam.dist = dist;
+                        self.cam.pitch = (d.y / dist).clamp(-1.0, 1.0).asin();
+                        self.cam.yaw = d.z.atan2(d.x);
+                    }
+                }
                 if let Some(g) = self.gpu.as_mut() {
                     g.settings = settings;
                     match env {
@@ -1446,6 +1469,25 @@ impl ApplicationHandler<Cmd> for App {
                     g.window.request_redraw();
                 }
             }
+            WindowEvent::KeyboardInput { event, .. } => {
+                // F: bring the whole model back into view
+                if event.state == ElementState::Pressed && !event.repeat {
+                    if let Key::Character(c) = &event.logical_key {
+                        if c.eq_ignore_ascii_case("f") {
+                            let (c0, r0) = self.home;
+                            self.frame_model(c0, r0);
+                            if self.paint_on() {
+                                self.emit("cam");
+                            }
+                            if let Some(g) = self.gpu.as_ref() {
+                                g.window.request_redraw();
+                            }
+                        }
+                    } else if matches!(event.logical_key, Key::Named(NamedKey::Escape)) {
+                        self.drag = None;
+                    }
+                }
+            }
             WindowEvent::MouseWheel { delta, .. } => {
                 let s = match delta {
                     MouseScrollDelta::LineDelta(_, y) => y,
@@ -1499,6 +1541,7 @@ pub fn open(scene: Scene, sink: Option<EventSink>) -> Result<Viewer, String> {
                 ctrl: false,
                 alt: false,
                 painting: false,
+                home: (Vec3::ZERO, 1.0),
                 last_sent: Instant::now(),
                 sink,
                 last: (0.0, 0.0),

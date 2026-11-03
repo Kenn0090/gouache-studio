@@ -49,6 +49,7 @@ function dlgPrefs(startTab){
       el('div',{class:'chips'},el('button',{class:'btn sm',id:'pNewViewer',text:'Open the new viewer',disabled:!platform.isDesktop,onclick:()=>{nvOpen();}}),el('button',{class:'btn sm',id:'pNewViewerClose',text:'Close it',disabled:!platform.isDesktop,onclick:nvClose})),
       el('p',{class:'note',id:'pNvStats',text:typeof nvStatsText==='function'?nvStatsText():''}),
       chk('pNvPaint','Paint inside the new viewer window',v3s().nvPaint!==false,v=>{v3s().nvPaint=v;}),
+      ...[['nvShadow','Sun shadows',.9,0,1,.01,'pNvSh'],['nvAO','Darker corners',.85,0,1,.01,'pNvAO'],['nvRefl','Reflections of the model',.7,0,1,.01,'pNvRf'],['nvSoft','Shadow softness',.02,0,.2,.005,'pNvSoft'],['nvSamples','Quality (rounds of rays)',96,16,512,8,'pNvQ']].map(([k,l,d,mn,mx,st,id])=>makeSlider({id,label:l,min:mn,max:mx,step:st,value:v3s()[k]==null?d:v3s()[k],def:d,fmt:v=>k==='nvSamples'?String(Math.round(v)):v.toFixed(2),onInput:v=>{v3s()[k]=v;}}).el),
       chk('pNvRt','Ray-traced shadows and ambient occlusion in the new viewer',!!v3s().nvRt,v=>{v3s().nvRt=v;}),
       el('p',{class:'note',text:'Soft shadows from the sun and darker corners, worked out with rays on any graphics card. The picture settles over a second or two each time you stop moving.'}),
       el('div',{class:'sub',text:'Memory and disk'}),ms.el],
