@@ -160,8 +160,17 @@ pub enum EnvChange {
 /// Where the viewer reports what the pointer does while painting (JSON text), so the page can paint with its own brush.
 pub type EventSink = Arc<dyn Fn(String) + Send + Sync>;
 
+/// How a picture is taken: turned a little from the window's view, with the sky or sun turned, and how many rounds of rays to add (0 = until settled).
+#[derive(Clone, Copy, Default)]
+pub struct CaptureOpts {
+    pub yaw_add: f32,
+    pub env_turn: Option<f32>,
+    pub sun_az: Option<f32>,
+    pub rounds: u32,
+}
+
 enum Cmd {
-    Capture(u32, u32, mpsc::Sender<Result<Vec<u8>, String>>),
+    Capture(u32, u32, CaptureOpts, mpsc::Sender<Result<Vec<u8>, String>>),
     Textures(String, Box<Material>),
     Scene(Box<Scene>),
     Update(Settings, EnvChange),
@@ -197,10 +206,24 @@ impl Viewer {
         self.proxy.send_event(Cmd::Textures(group, Box::new(material))).is_ok()
     }
     /// A PNG picture of what the viewer shows, at the size asked for (waits for the ray tracing to settle). Takes a while at large sizes.
-    pub fn capture(&self, w: u32, h: u32) -> Result<Vec<u8>, String> {
+    pub fn capture_rgba(&self, w: u32, h: u32, o: CaptureOpts) -> Result<Vec<u8>, String> {
         let (tx, rx) = mpsc::channel();
-        self.proxy.send_event(Cmd::Capture(w, h, tx)).map_err(|_| "the viewer window is closed".to_string())?;
+        self.proxy.send_event(Cmd::Capture(w, h, o, tx)).map_err(|_| "the viewer window is closed".to_string())?;
         rx.recv_timeout(Duration::from_secs(300)).map_err(|_| "the picture took too long".to_string())?
+    }
+    /// The same as a PNG file.
+    pub fn capture(&self, w: u32, h: u32) -> Result<Vec<u8>, String> {
+        let (w2, h2) = (w.clamp(16, 8192), h.clamp(16, 8192));
+        let rgba = self.capture_rgba(w, h, CaptureOpts::default())?;
+        let mut out = Vec::new();
+        {
+            let mut enc = png::Encoder::new(&mut out, w2, h2);
+            enc.set_color(png::ColorType::Rgba);
+            enc.set_depth(png::BitDepth::Eight);
+            let mut wr = enc.write_header().map_err(|e| e.to_string())?;
+            wr.write_image_data(&rgba).map_err(|e| e.to_string())?;
+        }
+        Ok(out)
     }
     pub fn close(&self) {
         let _ = self.proxy.send_event(Cmd::Close);
@@ -1102,8 +1125,16 @@ impl Gpu {
     }
 
     /// A finished picture at any size (waiting for the ray tracing to settle first), as PNG bytes.
-    fn capture(&mut self, cam: &Camera, w: u32, h: u32) -> Result<Vec<u8>, String> {
+    fn capture(&mut self, cam: &Camera, w: u32, h: u32, o: &CaptureOpts) -> Result<Vec<u8>, String> {
         let (w, h) = (w.clamp(16, 8192), h.clamp(16, 8192));
+        let cam = &Camera { yaw: cam.yaw + o.yaw_add, pitch: cam.pitch, dist: cam.dist, target: cam.target, radius: cam.radius };
+        let saved = self.settings;
+        if let Some(t) = o.env_turn {
+            self.settings.env_turn = t;
+        }
+        if let Some(a) = o.sun_az {
+            self.settings.sun_azimuth = a;
+        }
         let old = (self.config.width, self.config.height);
         self.config.width = w;
         self.config.height = h;
@@ -1124,7 +1155,7 @@ impl Gpu {
             view_formats: &[],
         });
         let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
-        let rounds = if self.settings.rt { rt::RT_SAMPLES + 2 } else { 1 };
+        let rounds = if !self.settings.rt { 1 } else if o.rounds > 0 { o.rounds } else { rt::RT_SAMPLES + 2 };
         for _ in 0..rounds {
             self.draw_to(cam, Some(&view));
             // keep the queue from running far ahead of the card
@@ -1168,17 +1199,10 @@ impl Gpu {
         self.scene_color = c;
         self.scene_normal = n;
         self.scene_mat = m;
+        self.settings = saved;
         self.window.request_redraw();
         ok?;
-        let mut out = Vec::new();
-        {
-            let mut enc = png::Encoder::new(&mut out, w, h);
-            enc.set_color(png::ColorType::Rgba);
-            enc.set_depth(png::BitDepth::Eight);
-            let mut wr = enc.write_header().map_err(|e| e.to_string())?;
-            wr.write_image_data(&rgba).map_err(|e| e.to_string())?;
-        }
-        Ok(out)
+        Ok(rgba)
     }
 }
 
@@ -1246,9 +1270,9 @@ impl ApplicationHandler<Cmd> for App {
     fn user_event(&mut self, el: &ActiveEventLoop, cmd: Cmd) {
         match cmd {
             Cmd::Close => el.exit(),
-            Cmd::Capture(w, h, tx) => {
+            Cmd::Capture(w, h, o, tx) => {
                 let r = match self.gpu.as_mut() {
-                    Some(g) => g.capture(&self.cam, w, h),
+                    Some(g) => g.capture(&self.cam, w, h, &o),
                     None => Err("the viewer is not ready".into()),
                 };
                 let _ = tx.send(r);

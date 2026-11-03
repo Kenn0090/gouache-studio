@@ -76,18 +76,21 @@ async function ttRecord(o){const s=v3s(),n=Math.max(2,Math.round(o.spins*o.secs*
   if(o.fmt!=='png'){w&=~1;h&=~1;}const cam0=Object.assign({},v3.cam),rot0=s.envRot||0,az0=s.sunAz,tr=o.fmt==='png'&&o.tr;
   const frame=i=>{v3.postSeed=7.13+i*3.17;const a=2*Math.PI*o.spins*i/n;v3.cam.yaw=cam0.yaw+a;/* light fixed to the viewer unless it turns with the model */if(!o.lightTurns){s.envRot=(rot0+a*180/Math.PI)%360;s.sunAz=(az0+a*180/Math.PI)%360;}
     const d=v3Offscreen(w,h,{transparent:tr});const top=new Uint8Array(w*h*4);for(let y=0;y<h;y++)top.set(d.subarray((h-1-y)*w*4,(h-y)*w*4),y*w*4);return top;};
+  /* with the new viewer open (and no see-through background) the frames come from it, ray traced; the light stays fixed to the viewer unless it turns with the model */
+  const viaNv=!tr&&typeof nv!=='undefined'&&nv.isOpen&&platform.isDesktop;
+  const getFrame=async i=>{if(!viaNv)return frame(i);const a=2*Math.PI*o.spins*i/n,deg=a*180/Math.PI;return nvFrame(w,h,-a,o.lightTurns?undefined:((rot0+deg)%360)/360,o.lightTurns?undefined:((az0==null?40:az0)+deg)%360,24);};
   const restore=()=>{Object.assign(v3.cam,cam0);s.envRot=rot0;s.sunAz=az0;v3.postSeed=0;v3.dirty=true;requestRender();};
   loadStart('Turntable');let cancelled=false;
   try{if(o.fmt==='webm'||o.fmt==='mp4'){const c=el('canvas',{width:w,height:h}),x=c.getContext('2d'),st=c.captureStream(0),track=st.getVideoTracks()[0];
       const mime=o.fmt==='mp4'?'video/mp4':['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'video/webm',rec=new MediaRecorder(st,{mimeType:mime,videoBitsPerSecond:Math.min(40e6,w*h*o.fps*.12)}),chunks=[];
       rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};const done=new Promise(r=>{rec.onstop=r;});rec.start();const dt=1000/o.fps;let t0=performance.now();
-      for(let i=0;i<n;i++){const im=new ImageData(new Uint8ClampedArray(frame(i).buffer),w,h);x.putImageData(im,0,0);track.requestFrame&&track.requestFrame();loadSet(i/n,'Recording frame '+(i+1)+' of '+n+'…');
+      for(let i=0;i<n;i++){const im=new ImageData(new Uint8ClampedArray((await getFrame(i)).buffer),w,h);x.putImageData(im,0,0);track.requestFrame&&track.requestFrame();loadSet(i/n,'Recording frame '+(i+1)+' of '+n+'…');
         const wait=t0+dt*(i+1)-performance.now();await new Promise(r=>setTimeout(r,Math.max(0,wait)));}
       rec.stop();await done;restore();const r=await deliver(v3FileBase()+'_turntable.'+(o.fmt==='mp4'?'mp4':'webm'),new Blob(chunks,{type:mime.split(';')[0]}));toast(deliveredText(r,'Turntable'));}
-    else if(o.fmt==='gif'){const frames=[];for(let i=0;i<n;i++){frames.push(frame(i));loadSet(i/n*.7,'Frame '+(i+1)+' of '+n+'…');if(i%4===0)await loadPaint();}
+    else if(o.fmt==='gif'){const frames=[];for(let i=0;i<n;i++){frames.push(await getFrame(i));loadSet(i/n*.7,'Frame '+(i+1)+' of '+n+'…');if(i%4===0)await loadPaint();}
       restore();loadSet(.75,'Making the GIF…');await loadPaint();const r=await deliver(v3FileBase()+'_turntable.gif',new Blob([gifEncode(w,h,frames,Math.round(100/o.fps))],{type:'image/gif'}));toast(deliveredText(r,'Turntable'));}
     else{let dir=null;if(platform.isDesktop){dir=await platform.pickFolder();if(!dir){restore();cancelled=true;return;}}const files=[],base=v3FileBase();
-      for(let i=0;i<n;i++){const d=frame(i),flip=new Uint8Array(w*h*4);for(let y=0;y<h;y++)flip.set(d.subarray((h-1-y)*w*4,(h-y)*w*4),y*w*4);
+      for(let i=0;i<n;i++){const d=await getFrame(i),flip=new Uint8Array(w*h*4);for(let y=0;y<h;y++)flip.set(d.subarray((h-1-y)*w*4,(h-y)*w*4),y*w*4);
         const png=new Uint8Array(await (await pixelsToPNG(w,h,flip,tr)).arrayBuffer()),name=base+'_'+String(i).padStart(4,'0')+'.png';loadSet(i/n,'Frame '+(i+1)+' of '+n+'…');
         if(dir){const sep=dir.includes('\\')?'\\':'/';await platform.writeFile(dir.replace(/[\\/]$/,'')+sep+name,png);}else files.push({name,data:png});}
       restore();if(dir)toast('Saved '+n+' frames to '+dir);else{const r=await deliver(base+'_turntable.zip',await makeZipMulti(files));toast(deliveredText(r,'Turntable frames'));}}}

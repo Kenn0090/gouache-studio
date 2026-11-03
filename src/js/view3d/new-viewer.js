@@ -50,6 +50,8 @@ function nvWatch(){nvStopWatch();nv.envKey=nvEnvKey();nv.sig=JSON.stringify(nvSe
   nv.timer=setInterval(()=>{if(!platform.isDesktop)return;const sig=JSON.stringify(nvSettings())+nvEnvKey();if(sig!==nv.sig){nv.sig=sig;nvPush();}},400);}
 /* a finished picture from the window, at any size (PNG bytes) */
 async function nvCapture(w,h){const r=await platform.invoke('viewer_capture',{width:Math.round(w),height:Math.round(h)});return r instanceof Uint8Array?r:new Uint8Array(r);}
+/* one turntable frame from the window: raw RGBA, top row first */
+async function nvFrame(w,h,yawAdd,envTurn,sunAz,rounds){const r=await platform.invoke('viewer_capture_raw',{width:Math.round(w),height:Math.round(h),yawAdd,envTurn,sunAz,rounds});const u=r instanceof Uint8Array?r:new Uint8Array(r);return u;}
 function nvStopWatch(){if(nv.timer){clearInterval(nv.timer);nv.timer=null;}}
 
 /* ---- painting through the window ----

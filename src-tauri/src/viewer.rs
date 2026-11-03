@@ -5,7 +5,7 @@ use std::sync::Mutex;
 
 use std::sync::Arc;
 
-use gouache_render::{scene_from_bytes, textures_from_bytes, update_from_bytes, Viewer};
+use gouache_render::{CaptureOpts, scene_from_bytes, textures_from_bytes, update_from_bytes, Viewer};
 use serde::Serialize;
 use tauri::ipc::{InvokeBody, Request};
 use tauri::{AppHandle, Emitter};
@@ -106,4 +106,19 @@ pub async fn viewer_capture(width: u32, height: u32) -> Result<tauri::ipc::Respo
     .await
     .map_err(|e| e.to_string())??;
     Ok(tauri::ipc::Response::new(png))
+}
+
+/// One picture as raw RGBA bytes (top row first), turned a little from the window's view; for turntables.
+#[tauri::command]
+pub async fn viewer_capture_raw(width: u32, height: u32, yaw_add: f32, env_turn: Option<f32>, sun_az: Option<f32>, rounds: u32) -> Result<tauri::ipc::Response, String> {
+    let rgba = tauri::async_runtime::spawn_blocking(move || {
+        let g = VIEWER.lock().map_err(|e| e.to_string())?;
+        match g.as_ref() {
+            Some(v) => v.capture_rgba(width, height, CaptureOpts { yaw_add, env_turn, sun_az, rounds }),
+            None => Err("the new viewer is not open".to_string()),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    Ok(tauri::ipc::Response::new(rgba))
 }
