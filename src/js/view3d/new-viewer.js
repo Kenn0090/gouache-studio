@@ -44,7 +44,7 @@ async function nvPush(){if(nv.busy)return;nv.busy=true;
   try{const key=nvEnvKey(),changed=key!==nv.envKey;let mode='keep',envd=null;
     if(changed){envd=await nvEnv();mode=envd?'set':'clear';}
     const alive=await platform.invoke('viewer_update',nvUpdateBody(nvSettings(),mode,envd));
-    nv.envKey=key;if(!alive){nvStopWatch();nv.isOpen=false;}}
+    nv.envKey=key;if(!alive){nvStopWatch();nv.isOpen=false;nvBtnSync();}}
   catch(e){console.warn(e);}finally{nv.busy=false;}}
 function nvWatch(){nvStopWatch();nv.envKey=nvEnvKey();nv.sig=JSON.stringify(nvSettings())+nv.envKey;
   nv.timer=setInterval(()=>{if(!platform.isDesktop)return;const sig=JSON.stringify(nvSettings())+nvEnvKey();if(sig!==nv.sig){nv.sig=sig;nvPush();}},400);}
@@ -68,7 +68,8 @@ function nvPixelRay(ev){const t=Math.tan(ev.fov*Math.PI/360),e=ev.eye,g=ev.tgt;
   const fw=norm3(sub3(g,e)),r=norm3(cross3(fw,[0,1,0])),u=cross3(r,fw),x=(2*ev.x/ev.w-1)*t*ev.w/ev.h,y=(2*ev.y/ev.h-1)*t;
   const d=norm3([fw[0]+r[0]*x-u[0]*y,fw[1]+r[1]*x-u[1]*y,fw[2]+r[2]*x-u[2]*y]),L=Math.hypot(g[0]-e[0],g[1]-e[1],g[2]-e[2]);
   return [e[0]+d[0]*L,e[1]+d[1]*L,e[2]+d[2]*L];}
-function nvHandle(ev){if(!nvPaintOn()||!ev||!ev.t)return;if(ev.t==='cam'){nvCamFrom(ev);return;}
+function nvHandle(ev){if(ev&&ev.t==='closed'){nv.isOpen=false;nv.paint=false;nvStopWatch();nvBtnSync();toast('The new viewer window was closed.');return;}
+  if(!nvPaintOn()||!ev||!ev.t)return;if(ev.t==='cam'){nvCamFrom(ev);return;}
   const st=nv.st||(nv.st={ev:0,run:0,ms:0,live:0,liveMs:0,max:0});
   if(ev.t==='move'){st.ev++;nv.pendingMove=ev;if(!nv.moveRaf)nv.moveRaf=requestAnimationFrame(nvFlushMove);return;}/* one move per frame, like a normal mouse */
   if(ev.t==='down'){nv.st={ev:1,run:0,ms:0,live:0,liveMs:0,max:0};}
@@ -146,6 +147,7 @@ async function nvOpen(){
   if(!platform.isDesktop){toast('The new viewer is in the desktop app.');return null;}
   try{toast('Opening the new viewer…');const sc=await nvScene(),body=nvBody(sc);
     const info=await platform.invoke('viewer_open',body);
-    toast('New viewer open on '+info.name+' ('+info.backend+(info.software?', software':'')+').'+(nvPaintOn()?' Paint in it; hold Alt to turn the view.':''));nv.isOpen=true;nv.paint=nvPaintOn();nvListen();nvWatch();if(nv.paint)nvPush();return info;}
+    toast('New viewer open on '+info.name+' ('+info.backend+(info.software?', software':'')+').'+(nvPaintOn()?' Paint in it; hold Alt to turn the view.':''));nv.isOpen=true;nvBtnSync();nv.paint=nvPaintOn();nvListen();nvWatch();if(nv.paint)nvPush();return info;}
   catch(e){console.warn(e);toast('The new viewer could not start: '+(e&&e.message||e)+'. The normal viewer is unchanged.');return null;}}
-function nvClose(){nv.isOpen=false;nvStopWatch();nvUnlisten();nv.paint=false;if(platform.isDesktop)platform.invoke('viewer_close').catch(()=>{});}
+function nvBtnSync(){const b=document.getElementById('v3Nv');if(b){b.hidden=!platform.isDesktop;b.classList.toggle('on',!!nv.isOpen);}}
+function nvClose(){nv.isOpen=false;nvBtnSync();nvStopWatch();nvUnlisten();nv.paint=false;if(platform.isDesktop)platform.invoke('viewer_close').catch(()=>{});}

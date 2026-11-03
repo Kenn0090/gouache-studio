@@ -1356,7 +1356,10 @@ impl ApplicationHandler<Cmd> for App {
 
     fn window_event(&mut self, el: &ActiveEventLoop, _id: WindowId, ev: WindowEvent) {
         match ev {
-            WindowEvent::CloseRequested => el.exit(),
+            WindowEvent::CloseRequested => {
+                self.emit("closed"); // so the page knows the window is gone
+                el.exit();
+            }
             WindowEvent::Resized(s) => {
                 if let Some(g) = self.gpu.as_mut() {
                     g.resize(s.width, s.height);

@@ -37,5 +37,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const after=await p.evaluate(async()=>(await __gs.buildTextures(__gs.GLTF_TEX,'preview')).find(f=>f.suffix==='BaseColor').data.length);
  ok(after!==before,'the stroke changed the base colour map ('+before+' -> '+after+' bytes)');
  ok(errs.length===0,'no page errors '+errs.join('|'));
+ ok(await p.locator('#v3Nv').count()===1&&await p.evaluate(()=>document.getElementById('v3Nv').classList.contains('on')),'the 3D bar has a New viewer button, lit while the window is open');
+ await p.evaluate(()=>__gs.nvHandle({t:'closed'}));
+ ok(await p.evaluate(()=>!document.getElementById('v3Nv').classList.contains('on')&&!__gs.nv.isOpen),'closing the window turns the button off');
  await p.evaluate(()=>__gs.nvClose());
  await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();
