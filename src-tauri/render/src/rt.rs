@@ -252,7 +252,7 @@ impl Rt {
     /// Draws the finished picture: the scene, darkened by what the rays found (when `on`).
     pub fn composite<'a>(&'a self, device: &wgpu::Device, queue: &wgpu::Queue, pass: &mut wgpu::RenderPass<'a>, scene: &wgpu::TextureView, normal: &wgpu::TextureView, mat: &wgpu::TextureView, on: bool, tone: i32, exposure: f32) {
         let use_rt = on && self.has_tree && !self.tex.is_empty();
-        queue.write_buffer(&self.comp_uniform, 0, bytemuck::cast_slice(&[if use_rt { 1.0f32 } else { 0.0 }, 0.9, 0.85, 0.7, tone as f32, exposure, 0.0, 0.0]));
+        queue.write_buffer(&self.comp_uniform, 0, bytemuck::cast_slice(&[if use_rt { 1.0f32 } else { 0.0 }, 0.9, 0.85, 0.7, tone as f32, exposure, self.samples as f32, 0.0]));
         let rt_view = if self.tex.is_empty() { scene } else { &self.tex[self.cur].1 };
         let rf_view = if self.tex.is_empty() { scene } else { &self.tex[2 + self.cur].1 };
         let bg = device.create_bind_group(&wgpu::BindGroupDescriptor {

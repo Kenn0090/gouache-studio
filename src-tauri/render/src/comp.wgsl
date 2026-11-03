@@ -27,12 +27,36 @@ fn fs_comp(@builtin(position) p: vec4<f32>) -> @location(0) vec4<f32> {
     if (comp.p.x < 0.5) { return c; }
     let n = textureLoad(cnrm_tex, px, 0);
     if (n.w <= 0.0) { return c; }
-    let r = textureLoad(crt_tex, px, 0);
+    var r = textureLoad(crt_tex, px, 0);
+    var rf = textureLoad(crf_tex, px, 0);
+    // while few rays have been added the answer is grainy: average with neighbours that face the same way
+    let soft = clamp(1.0 - comp.q.z / 40.0, 0.0, 1.0);
+    if (soft > 0.02) {
+        var sr = r;
+        var sf2 = rf;
+        var wsum = 1.0;
+        let rad = i32(1.0 + soft * 3.0);
+        for (var dy = -rad; dy <= rad; dy = dy + 1) {
+            for (var dx = -rad; dx <= rad; dx = dx + 1) {
+                if (dx == 0 && dy == 0) { continue; }
+                let q = px + vec2<i32>(dx, dy);
+                let nn = textureLoad(cnrm_tex, q, 0);
+                if (nn.w <= 0.0) { continue; }
+                let wn = pow(max(dot(nn.xyz * 2.0 - 1.0, n.xyz * 2.0 - 1.0), 0.0), 24.0);
+                if (wn < 0.05) { continue; }
+                let wt = wn * soft;
+                sr += textureLoad(crt_tex, q, 0) * wt;
+                sf2 += textureLoad(crf_tex, q, 0) * wt;
+                wsum += wt;
+            }
+        }
+        r = sr / wsum;
+        rf = sf2 / wsum;
+    }
     let sf = clamp((n.w - 0.25) / 0.75, 0.0, 1.0);
     let sun = mix(1.0, r.x, comp.p.y);
     let amb = mix(1.0, r.y, comp.p.z);
     let sp = textureLoad(cmat_tex, px, 0).y;
-    let rf = textureLoad(crf_tex, px, 0);
     // where the mirror ray met the model, its colour replaces the sky in the reflection
     let hitc = tone_c(rf.rgb / max(rf.w, 1e-3));
     let rw = sp * rf.w * comp.p.w;
