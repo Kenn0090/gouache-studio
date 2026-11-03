@@ -1481,6 +1481,10 @@ impl ApplicationHandler<Cmd> for App {
                 // F: bring the whole model back into view
                 if event.state == ElementState::Pressed && !event.repeat {
                     if let Key::Character(c) = &event.logical_key {
+                        if c.eq_ignore_ascii_case("p") || c.eq_ignore_ascii_case("r") {
+                            // P: take a picture, R: ray tracing on or off (the page does both)
+                            self.emit(if c.eq_ignore_ascii_case("p") { "key-p" } else { "key-r" });
+                        }
                         if c.eq_ignore_ascii_case("f") {
                             let (c0, r0) = self.home;
                             self.frame_model(c0, r0);

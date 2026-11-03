@@ -70,7 +70,8 @@ function nvPixelRay(ev){const t=Math.tan(ev.fov*Math.PI/360),e=ev.eye,g=ev.tgt;
   const fw=norm3(sub3(g,e)),r=norm3(cross3(fw,[0,1,0])),u=cross3(r,fw),x=(2*ev.x/ev.w-1)*t*ev.w/ev.h,y=(2*ev.y/ev.h-1)*t;
   const d=norm3([fw[0]+r[0]*x-u[0]*y,fw[1]+r[1]*x-u[1]*y,fw[2]+r[2]*x-u[2]*y]),L=Math.hypot(g[0]-e[0],g[1]-e[1],g[2]-e[2]);
   return [e[0]+d[0]*L,e[1]+d[1]*L,e[2]+d[2]*L];}
-function nvHandle(ev){if(ev&&ev.t==='closed'){/* where the window was, for next time */try{if(ev.win&&ev.win[2]>=300)localStorage.setItem('gs.nvWin',JSON.stringify(ev.win));}catch(e){}
+function nvHandle(ev){if(ev&&(ev.t==='key-p'||ev.t==='key-r')){if(ev.t==='key-p'){if(typeof v3Screenshot==='function')v3Screenshot('view',false);}else{const s=v3s();s.nvRt=!s.nvRt;toast('Ray tracing '+(s.nvRt?'on':'off')+' in the new viewer.');}return;}
+  if(ev&&ev.t==='closed'){/* where the window was, for next time */try{if(ev.win&&ev.win[2]>=300)localStorage.setItem('gs.nvWin',JSON.stringify(ev.win));}catch(e){}
     const was=nv.isOpen;nv.isOpen=false;nv.paint=false;nvStopWatch();nvBtnSync();if(was)toast('The new viewer window was closed.');return;}
   if(!nvPaintOn()||!ev||!ev.t)return;if(ev.t==='cam'){nvCamFrom(ev);return;}
   const st=nv.st||(nv.st={ev:0,run:0,ms:0,live:0,liveMs:0,max:0});
