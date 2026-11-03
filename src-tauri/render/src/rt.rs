@@ -40,6 +40,7 @@ pub struct Rt {
     base_arr: wgpu::TextureView,
     base_sampler: wgpu::Sampler,
     has_tree: bool,
+    job: Option<std::sync::mpsc::Receiver<(Vec<bvh::Node>, Vec<[f32; 4]>, Vec<[f32; 4]>)>>,
     tex: Vec<(wgpu::Texture, wgpu::TextureView)>,
     size: (u32, u32),
     /// which of the two accumulation pictures holds the latest result
@@ -125,7 +126,7 @@ impl Rt {
         let uniform = device.create_buffer(&wgpu::BufferDescriptor { label: Some("rt uniform"), size: std::mem::size_of::<RtUniform>() as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
         let comp_uniform = device.create_buffer(&wgpu::BufferDescriptor { label: Some("composite uniform"), size: 32, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
         let one = |label| device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(label), contents: &[0u8; 64], usage: wgpu::BufferUsages::STORAGE });
-        Rt { cs, cs_layout, comp, comp_layout, uniform, comp_uniform, nodes: one("no nodes"), tris: one("no triangles"), tri_uv: one("no uvs"), base_arr: Self::array_view(device, None, &[]), base_sampler: device.create_sampler(&wgpu::SamplerDescriptor { address_mode_u: wgpu::AddressMode::Repeat, address_mode_v: wgpu::AddressMode::Repeat, mag_filter: wgpu::FilterMode::Linear, min_filter: wgpu::FilterMode::Linear, ..Default::default() }), has_tree: false, tex: Vec::new(), size: (0, 0), cur: 0, samples: 0, key: Vec::new(), src: None, groups: (Vec::new(), Vec::new()), uvs: Vec::new(), layers: Vec::new(), radius: 1.0 }
+        Rt { cs, cs_layout, comp, comp_layout, uniform, comp_uniform, nodes: one("no nodes"), tris: one("no triangles"), tri_uv: one("no uvs"), base_arr: Self::array_view(device, None, &[]), base_sampler: device.create_sampler(&wgpu::SamplerDescriptor { address_mode_u: wgpu::AddressMode::Repeat, address_mode_v: wgpu::AddressMode::Repeat, mag_filter: wgpu::FilterMode::Linear, min_filter: wgpu::FilterMode::Linear, ..Default::default() }), has_tree: false, job: None, tex: Vec::new(), size: (0, 0), cur: 0, samples: 0, key: Vec::new(), src: None, groups: (Vec::new(), Vec::new()), uvs: Vec::new(), layers: Vec::new(), radius: 1.0 }
     }
 
     /// An array of small base pictures (a white one when there are none), filled from `layers`.
@@ -161,22 +162,39 @@ impl Rt {
         if self.has_tree {
             return;
         }
-        let Some((pos, idx)) = self.src.take() else { return };
-        if idx.len() < 3 {
-            return;
+        // the tree is built on another thread, so the window keeps answering while a big model is processed
+        if self.job.is_none() {
+            let Some((pos, idx)) = self.src.take() else { return };
+            if idx.len() < 3 {
+                return;
+            }
+            let (uvs, groups) = (self.uvs.clone(), self.groups.0.clone());
+            let (tx, rx) = std::sync::mpsc::channel();
+            std::thread::spawn(move || {
+                let tree = bvh::build(&pos, &idx);
+                let uv = |i: u32| -> [f32; 2] { if uvs.len() >= (i as usize + 1) * 2 { [uvs[i as usize * 2], uvs[i as usize * 2 + 1]] } else { [0.0, 0.0] } };
+                let mut tuv: Vec<[f32; 4]> = Vec::with_capacity(tree.order.len() * 2);
+                for &o in &tree.order {
+                    let (a, b, c) = (uv(idx[o as usize * 3]), uv(idx[o as usize * 3 + 1]), uv(idx[o as usize * 3 + 2]));
+                    tuv.push([a[0], a[1], b[0], b[1]]);
+                    tuv.push([c[0], c[1], groups.get(o as usize).copied().unwrap_or(0) as f32, 0.0]);
+                }
+                let _ = tx.send((tree.nodes, tree.tris, tuv));
+            });
+            self.job = Some(rx);
         }
-        let tree = bvh::build(&pos, &idx);
-        self.nodes = device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("tree nodes"), contents: bytemuck::cast_slice(&tree.nodes), usage: wgpu::BufferUsages::STORAGE });
-        self.tris = device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("tree triangles"), contents: bytemuck::cast_slice(&tree.tris), usage: wgpu::BufferUsages::STORAGE });
-        // texture coordinates of each triangle in tree order (u0 v0 u1 v1 | u2 v2 0 0), and the pictures
-        let uv = |i: u32| -> [f32; 2] { if self.uvs.len() >= (i as usize + 1) * 2 { [self.uvs[i as usize * 2], self.uvs[i as usize * 2 + 1]] } else { [0.0, 0.0] } };
-        let mut tuv: Vec<[f32; 4]> = Vec::with_capacity(tree.order.len() * 2);
-        for &o in &tree.order {
-            let (a, b, c) = (uv(idx[o as usize * 3]), uv(idx[o as usize * 3 + 1]), uv(idx[o as usize * 3 + 2]));
-            tuv.push([a[0], a[1], b[0], b[1]]);
-            tuv.push([c[0], c[1], self.groups.0.get(o as usize).copied().unwrap_or(0) as f32, 0.0]);
-        }
-        self.tri_uv = device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("tree uvs"), contents: bytemuck::cast_slice(&tuv), usage: wgpu::BufferUsages::STORAGE });
+        let done = match self.job.as_ref().map(|j| j.try_recv()) {
+            Some(Ok(d)) => d,
+            Some(Err(std::sync::mpsc::TryRecvError::Disconnected)) => {
+                self.job = None;
+                return;
+            }
+            _ => return, // not finished yet
+        };
+        self.job = None;
+        self.nodes = device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("tree nodes"), contents: bytemuck::cast_slice(&done.0), usage: wgpu::BufferUsages::STORAGE });
+        self.tris = device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("tree triangles"), contents: bytemuck::cast_slice(&done.1), usage: wgpu::BufferUsages::STORAGE });
+        self.tri_uv = device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("tree uvs"), contents: bytemuck::cast_slice(&done.2), usage: wgpu::BufferUsages::STORAGE });
         self.base_arr = Self::array_view(device, Some(queue), &self.layers);
         self.has_tree = true;
         self.samples = 0;
@@ -188,6 +206,7 @@ impl Rt {
         self.uvs = uvs;
         self.layers = layers;
         self.has_tree = false;
+        self.job = None;
         self.src = Some((pos, idx));
         self.radius = radius;
         self.samples = 0;
@@ -284,9 +303,26 @@ impl Rt {
         self.samples += 1;
     }
 
+    /// True while the tree for the current model is still being made.
+    pub fn pending(&self) -> bool {
+        !self.has_tree && (self.job.is_some() || self.src.is_some())
+    }
+
+    /// Waits until the tree is made (used when a picture is taken).
+    pub fn wait_tree(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        let mut guard = 0;
+        while self.pending() && guard < 6000 {
+            self.ensure_tree(device, queue);
+            if self.pending() {
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            guard += 1;
+        }
+    }
+
     /// True while more rounds of rays are still to come.
     pub fn busy(&self) -> bool {
-        self.samples < RT_SAMPLES
+        self.samples < RT_SAMPLES || self.job.is_some()
     }
 
     /// Draws the finished picture: the scene, darkened by what the rays found (when `on`).

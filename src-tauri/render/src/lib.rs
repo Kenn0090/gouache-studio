@@ -1184,6 +1184,9 @@ impl Gpu {
             view_formats: &[],
         });
         let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+        if self.settings.rt {
+            self.rt.wait_tree(&self.device, &self.queue);
+        }
         let rounds = if !self.settings.rt { 1 } else if o.rounds > 0 { o.rounds } else { rt::RT_SAMPLES + 2 };
         for _ in 0..rounds {
             self.draw_to(cam, Some(&view));
