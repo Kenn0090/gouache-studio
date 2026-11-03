@@ -120,6 +120,8 @@ pub struct Settings {
     /// the 3D view's studio fill and rim lights (strength, 0 = off), the albedo-only view, and the polished-metal view (its roughness, 0 = off)
     pub studio_fill: f32,
     pub studio_rim: f32,
+    pub wire: u8,
+    pub wire_col: [f32; 3],
     pub unlit: bool,
     pub metal_view: f32,
     /// your own lights from the light rig (up to 4): each is type (0 sun, 1 point, 2 spot) + position, direction + cone, colour × strength + reach
@@ -131,7 +133,7 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
+        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
     }
 }
 
@@ -287,6 +289,7 @@ struct FrameUniform {
     light_c: [[f32; 4]; 4],
     light_n: [f32; 4],
     cam_dir: [f32; 4],
+    wire: [f32; 4], // colour, w = 1 overlay / 2 only
 }
 
 #[repr(C)]
@@ -311,6 +314,8 @@ struct GpuGroup {
     mu: MatUniform,
     views: [wgpu::TextureView; 4],
     outline: bool,
+    tris: Vec<u32>,
+    wire: Option<(wgpu::Buffer, u32)>,
 }
 
 struct Gpu {
@@ -324,6 +329,7 @@ struct Gpu {
     ring_pipeline: wgpu::RenderPipeline,
     cursor: Option<(f32, f32)>,
     out_pipeline: wgpu::RenderPipeline,
+    wire_pipeline: wgpu::RenderPipeline,
     pre_pipeline: wgpu::RenderPipeline,
     pre_layout: wgpu::BindGroupLayout,
     started: std::time::Instant,
@@ -821,6 +827,26 @@ impl Gpu {
             multiview: None,
             cache: None,
         });
+        let wire_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("wire pipeline"),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("vs_wire"),
+                compilation_options: Default::default(),
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: std::mem::size_of::<Vertex>() as u64,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2],
+                }],
+            },
+            fragment: Some(wgpu::FragmentState { module: &shader, entry_point: Some("fs_wire"), compilation_options: Default::default(), targets: &target }),
+            primitive: wgpu::PrimitiveState { topology: wgpu::PrimitiveTopology::LineList, cull_mode: None, ..Default::default() },
+            depth_stencil: Some(wgpu::DepthStencilState { format: DEPTH_FORMAT, depth_write_enabled: false, depth_compare: wgpu::CompareFunction::LessEqual, stencil: Default::default(), bias: Default::default() }),
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
         let pre_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("blur layout"),
             entries: &[
@@ -901,6 +927,7 @@ impl Gpu {
             ring_pipeline,
             cursor: std::env::var_os("GOUACHE_RING_TEST").map(|_| (300.0, 250.0)), // debug: shows the outline without a mouse
             out_pipeline,
+            wire_pipeline,
             pre_pipeline,
             pre_layout,
             started: std::time::Instant::now(),
@@ -981,7 +1008,7 @@ impl Gpu {
             let (bind, mat_buf, mu, views) = self.material_bind(mat, None);
             let sp = mat.shader;
             let ib = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("indices"), contents: bytemuck::cast_slice(&g.indices), usage: wgpu::BufferUsages::INDEX });
-            self.groups.push(GpuGroup { name: g.name.clone(), ib, mat_buf, mu, views, count: g.indices.len() as u32, bind, outline: (sp.kind == 4 || sp.kind == 5) && sp.q[0] > 0.0 });
+            self.groups.push(GpuGroup { name: g.name.clone(), ib, mat_buf, mu, views, count: g.indices.len() as u32, bind, outline: (sp.kind == 4 || sp.kind == 5) && sp.q[0] > 0.0, tris: g.indices.clone(), wire: None });
         }
         let c = (mn + mx) * 0.5;
         let radius = ((mx - mn).length() * 0.5).max(1e-4);
@@ -1135,8 +1162,24 @@ impl Gpu {
             light_c: st.light_c,
             light_n: [st.light_n as f32, st.studio_fill, st.studio_rim, 0.0],
             cam_dir: [dir.x, dir.y, dir.z, if st.ortho { 1.0 } else { 0.0 }],
+            wire: [st.wire_col[0], st.wire_col[1], st.wire_col[2], st.wire as f32],
         };
         self.queue.write_buffer(&self.frame_buf, 0, bytemuck::bytes_of(&u));
+        if st.wire > 0 {
+            for g in self.groups.iter_mut().filter(|g| g.wire.is_none()) {
+                let mut e: Vec<u64> = Vec::with_capacity(g.tris.len());
+                for t in g.tris.chunks_exact(3) {
+                    for (a, b) in [(t[0], t[1]), (t[1], t[2]), (t[2], t[0])] {
+                        e.push(((a.min(b) as u64) << 32) | a.max(b) as u64);
+                    }
+                }
+                e.sort_unstable();
+                e.dedup();
+                let flat: Vec<u32> = e.iter().flat_map(|k| [(k >> 32) as u32, (k & 0xffff_ffff) as u32]).collect();
+                let buf = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("edges"), contents: bytemuck::cast_slice(&flat), usage: wgpu::BufferUsages::INDEX });
+                g.wire = Some((buf, flat.len() as u32));
+            }
+        }
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("frame") });
         {
             let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -1181,8 +1224,20 @@ impl Gpu {
                     pass.set_index_buffer(g.ib.slice(..), wgpu::IndexFormat::Uint32);
                     pass.draw_indexed(0..g.count, 0, 0..1);
                 }
+                if st.wire > 0 {
+                    pass.set_pipeline(&self.wire_pipeline);
+                    pass.set_bind_group(0, &self.frame_bg, &[]);
+                    pass.set_vertex_buffer(0, vb.slice(..));
+                    for g in &self.groups {
+                        if let Some((eb, n)) = &g.wire {
+                            pass.set_bind_group(1, &g.bind, &[]);
+                            pass.set_index_buffer(eb.slice(..), wgpu::IndexFormat::Uint32);
+                            pass.draw_indexed(0..*n, 0, 0..1);
+                        }
+                    }
+                }
                 pass.set_pipeline(&self.out_pipeline);
-                for g in self.groups.iter().filter(|g| g.outline) {
+                for g in self.groups.iter().filter(|g| g.outline && st.wire != 2) {
                     pass.set_bind_group(1, &g.bind, &[]);
                     pass.set_index_buffer(g.ib.slice(..), wgpu::IndexFormat::Uint32);
                     pass.draw_indexed(0..g.count, 0, 0..1);

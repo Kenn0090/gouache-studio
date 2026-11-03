@@ -17,6 +17,7 @@ struct Frame {
     light_c: array<vec4<f32>, 4>, // colour x strength + reach
     light_n: vec4<f32>,
     cam_dir: vec4<f32>,      // toward the camera (used when the view is orthographic: w = 1)
+    wire: vec4<f32>,         // wireframe colour, w = 1 overlay / 2 wire only
 };
 
 // from a point on the model toward the viewer (the same direction everywhere when the view is orthographic)
@@ -163,6 +164,7 @@ fn fs(i: VOut) -> FOut {
     g_sf = 0.0;
     g_sp = 0.0;
     o.c = fs_shade(i);
+    if (frame.wire.w > 1.5) { o.c = vec4<f32>(select(pow((frame.bgc.rgb + vec3<f32>(0.055)) / 1.055, vec3<f32>(2.4)), frame.bgc.rgb / 12.92, frame.bgc.rgb <= vec3<f32>(0.04045)), 1.0); }
     o.m = vec4<f32>(g_rough, g_sp, 0.0, 1.0);
     var nw = normalize(i.nrm);
     if (dot(nw, view_dir(i.wpos)) < 0.0) { nw = -nw; }
@@ -401,6 +403,26 @@ fn fs_out(i: OutOut) -> FOut {
     if (dot(normalize(i.nrm), view_dir(i.wpos)) > 0.0) { discard; }
     var o: FOut;
     o.c = vec4<f32>(lin3(mat.shd.rgb), 1.0);
+    o.n = vec4<f32>(0.0);
+    o.m = vec4<f32>(0.0);
+    return o;
+}
+
+// wireframe lines (pulled toward the camera a little so they sit on the surface)
+@vertex
+fn vs_wire(i: VIn) -> OutOut {
+    var o: OutOut;
+    var c = frame.view_proj * vec4<f32>(i.pos, 1.0);
+    c.z = c.z - 0.0004 * c.w;
+    o.clip = c;
+    o.wpos = i.pos;
+    o.nrm = i.nrm;
+    return o;
+}
+@fragment
+fn fs_wire(i: OutOut) -> FOut {
+    var o: FOut;
+    o.c = vec4<f32>(lin3(frame.wire.rgb), 1.0);
     o.n = vec4<f32>(0.0);
     o.m = vec4<f32>(0.0);
     return o;

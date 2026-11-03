@@ -98,6 +98,10 @@ struct SettingsMeta {
     #[serde(default = "d008")]
     studio_rim: f32,
     #[serde(default)]
+    wire: u8,
+    #[serde(default)]
+    wire_col: Option<[f32; 3]>,
+    #[serde(default)]
     unlit: bool,
     #[serde(default)]
     metal_view: f32,
@@ -249,6 +253,8 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         ortho: s.ortho,
         studio_fill: s.studio_fill,
         studio_rim: s.studio_rim,
+        wire: s.wire,
+        wire_col: s.wire_col.unwrap_or([0.95, 0.7, 0.35]),
         unlit: s.unlit,
         metal_view: s.metal_view,
         light_n: s.lights.len().min(4) as u32,

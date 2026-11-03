@@ -1,5 +1,6 @@
 ## 0.94.1
 
+- **New viewer: wireframe.** Wireframe and Wireframe overlay (and your wire colour) now show in the new viewer window.
 - **New viewer: map views.** The C key (channels), the B key (baked maps) and the mask view now show in the new viewer window too, as a flat picture without lighting.
 
 - **New viewer, built up:** a **New viewer** button in the 3D Paint bar opens or closes the window. **F** in the window brings the whole model back into view, **R** turns ray tracing on or off and **P** takes a picture, turning the 3D view in the app turns the window too (and the other way round), the app notices when you close the window, and the window opens where you left it.
