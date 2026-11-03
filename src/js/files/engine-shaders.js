@@ -466,6 +466,7 @@ function eshUnityMaterial(name,sh,texGuids,flags,width,shaderGuid){const u=shade
 function eshUnityMeta(kind,guid,extra){const head='fileFormatVersion: 2\nguid: '+guid+'\n';
   if(kind==='shader')return head+'ShaderImporter:\n  externalObjects: {}\n  defaultTextures: []\n  nonModifiableTextures: []\n  preprocessorOverride: 0\n  userData: \n  assetBundleName: \n  assetBundleVariant: \n';
   if(kind==='mat')return head+'NativeFormatImporter:\n  externalObjects: {}\n  mainObjectFileID: 2100000\n  userData: \n  assetBundleName: \n  assetBundleVariant: \n';
+  if(kind==='mono')return head+'MonoImporter:\n  externalObjects: {}\n  serializedVersion: 2\n  defaultReferences: []\n  executionOrder: 0\n  icon: {instanceID: 0}\n  userData: \n  assetBundleName: \n  assetBundleVariant: \n';
   /* a texture: colour maps are sRGB; normal maps get the Normal map type; ORM and other data maps are linear */
   const normal=extra==='normal',linear=extra!=='color';
   return head+'TextureImporter:\n  internalIDToNameTable: []\n  externalObjects: {}\n  serializedVersion: 12\n  mipmaps:\n    mipMapMode: 0\n    enableMipMap: 1\n    sRGBTexture: '+(linear?0:1)+'\n    linearTexture: 0\n    fadeOut: 0\n    borderMipMap: 0\n    mipMapsPreserveCoverage: 0\n    alphaTestReferenceValue: 0.5\n    mipMapFadeDistanceStart: 1\n    mipMapFadeDistanceEnd: 3\n'+

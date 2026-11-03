@@ -72,6 +72,7 @@
     "files/model-fbx",
     "files/engine-send",
     "files/engine-shaders",
+    "files/engine-link",
     "files/pixel-pack",
     "files/gouache-file",
     "filters/filter-shaders",
