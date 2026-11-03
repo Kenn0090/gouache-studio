@@ -13,6 +13,7 @@ struct Frame {
 @group(0) @binding(0) var<uniform> frame: Frame;
 @group(0) @binding(1) var env_tex: texture_2d<f32>;
 @group(0) @binding(2) var env_smp: sampler;
+@group(0) @binding(3) var spec_tex: texture_2d_array<f32>;   // the environment blurred for roughness 0, 0.2, 0.4, 0.6, 0.8, 1
 
 struct Mat {
     flags: vec4<f32>,        // x has orm, y rough fallback, z metal fallback, w unused
@@ -45,6 +46,16 @@ fn env_uv(d: vec3<f32>) -> vec2<f32> {
 }
 fn env_sample(d: vec3<f32>, lod: f32) -> vec3<f32> {
     return textureSampleLevel(env_tex, env_smp, env_uv(env_turn(d)), lod).rgb * frame.params.z;
+}
+// reflections: the environment already blurred the way a surface of this roughness blurs it
+fn env_spec(d: vec3<f32>, rough: f32) -> vec3<f32> {
+    let uv = env_uv(env_turn(d));
+    let f = clamp(rough, 0.0, 1.0) * 5.0;
+    let i0 = i32(floor(f));
+    let i1 = min(i0 + 1, 5);
+    let a = textureSampleLevel(spec_tex, env_smp, uv, i0, 0.0).rgb;
+    let b = textureSampleLevel(spec_tex, env_smp, uv, i1, 0.0).rgb;
+    return mix(a, b, f - f32(i0)) * frame.params.z;
 }
 fn sh_diffuse(n0: vec3<f32>) -> vec3<f32> {
     let n = env_turn(n0);
@@ -259,10 +270,9 @@ fn fs(i: VOut) -> @location(0) vec4<f32> {
     var env_s = vec3<f32>(0.0);
     if (frame.info.y > 0.5) {
         let r = reflect(-v, nr);
-        let lod = rough * (frame.info.x - 1.0);
         let ab = env_brdf(rough, nv);
         env_d = diff_col * sh_diffuse(nn);
-        env_s = env_sample(r, lod) * (f0 * ab.x + vec3<f32>(ab.y));
+        env_s = env_spec(r, rough) * (f0 * ab.x + vec3<f32>(ab.y));
         if (kind == 1) {
             let ns = normalize(mix(nn, n, mat.shp.z));
             let sss = clamp(mat.shc.rgb, vec3<f32>(0.02), vec3<f32>(1.0));
@@ -270,7 +280,7 @@ fn fs(i: VOut) -> @location(0) vec4<f32> {
             env_d = diff_col * sh_diffuse(ns) + sh_diffuse(-ns) * attenuation * sss * albedo * mat.shp.y * mat.skin.z * 0.25;
             let sr = clamp(mix(rough, mat.skin.x, 0.75), 0.08, 1.0);
             let sab = env_brdf(sr, nv);
-            env_s = env_sample(reflect(-v, nn), sr * (frame.info.x - 1.0)) * (vec3<f32>(0.028) * sab.x + sab.y);
+            env_s = env_spec(reflect(-v, nn), sr) * (vec3<f32>(0.028) * sab.x + sab.y);
         }
         if (kind == 3) { env_s += lin3(mat.shc.rgb) * mat.shp.x * sh_diffuse(nn) * pow(1.0 - nv, max(mat.shp.z, 0.5) * 3.0 + 1.0); }
     } else {
@@ -332,4 +342,62 @@ fn fs_bg(i: BgOut) -> @location(0) vec4<f32> {
         return vec4<f32>(tone(vec3<f32>(0.035, 0.04, 0.05) / frame.params.x), 1.0);
     }
     return vec4<f32>(tone(env_sample(d, 1.0)), 1.0);
+}
+
+// ---- blurring the environment for each roughness (run once when an environment is set) ----
+struct Pre {
+    a: vec4<f32>,   // x roughness, y samples, z width of the picture, w unused
+    b: vec4<f32>,   // x, y size of what is drawn
+};
+@group(0) @binding(0) var pre_src: texture_2d<f32>;
+@group(0) @binding(1) var pre_smp: sampler;
+@group(0) @binding(2) var<uniform> pre: Pre;
+
+fn hamm(i: u32, n: u32) -> vec2<f32> {
+    return vec2<f32>(f32(i) / f32(n), f32(reverseBits(i)) * 2.3283064365386963e-10);
+}
+fn uv_dir(uv: vec2<f32>) -> vec3<f32> {
+    let ph = (uv.x - 0.5) * 2.0 * PI;
+    let th = uv.y * PI;
+    return vec3<f32>(sin(th) * sin(ph), cos(th), -sin(th) * cos(ph));
+}
+@vertex
+fn vs_pre(@builtin(vertex_index) vi: u32) -> @builtin(position) vec4<f32> {
+    var p = array<vec2<f32>, 3>(vec2<f32>(-1.0, -1.0), vec2<f32>(3.0, -1.0), vec2<f32>(-1.0, 3.0));
+    return vec4<f32>(p[vi], 0.0, 1.0);
+}
+@fragment
+fn fs_pre(@builtin(position) frag: vec4<f32>) -> @location(0) vec4<f32> {
+    let uv = frag.xy / pre.b.xy;
+    let n = uv_dir(uv);
+    let up = select(vec3<f32>(1.0, 0.0, 0.0), vec3<f32>(0.0, 1.0, 0.0), abs(n.y) < 0.999);
+    let t = normalize(cross(up, n));
+    let b = cross(n, t);
+    let r = pre.a.x;
+    let a = r * r;
+    let count = u32(pre.a.y);
+    var acc = vec3<f32>(0.0);
+    var wsum = 0.0;
+    for (var i = 0u; i < count; i = i + 1u) {
+        let xi = hamm(i, count);
+        let ph = 2.0 * PI * xi.x;
+        let ct = sqrt((1.0 - xi.y) / (1.0 + (a * a - 1.0) * xi.y));
+        let st = sqrt(1.0 - ct * ct);
+        let h = normalize(t * (st * cos(ph)) + b * (st * sin(ph)) + n * ct);
+        let l = 2.0 * dot(n, h) * h - n;
+        let ndl = dot(n, l);
+        if (ndl <= 0.0) { continue; }
+        let ndh = max(dot(n, h), 0.0);
+        let d = ndh * ndh * (a * a - 1.0) + 1.0;
+        let dd = a * a / (PI * d * d);
+        let pdf = dd / 4.0 + 1e-4;
+        let sa = 1.0 / (f32(count) * pdf);
+        let sp = 4.0 * PI / (pre.a.z * pre.a.z * 0.5);
+        var lod = 0.0;
+        if (r >= 0.01) { lod = max(0.5 * log2(sa / sp) + 1.0, 0.0); }
+        let luv = vec2<f32>(atan2(l.x, -l.z) / (2.0 * PI) + 0.5, acos(clamp(l.y, -1.0, 1.0)) / PI);
+        acc += textureSampleLevel(pre_src, pre_smp, luv, lod).rgb * ndl;
+        wsum += ndl;
+    }
+    return vec4<f32>(acc / max(wsum, 1e-4), 1.0);
 }

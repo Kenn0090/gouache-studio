@@ -207,7 +207,6 @@ struct GpuGroup {
     ib: wgpu::Buffer,
     count: u32,
     bind: wgpu::BindGroup,
-    kind: i32,
     outline: bool,
 }
 
@@ -220,6 +219,8 @@ struct Gpu {
     pipeline: wgpu::RenderPipeline,
     bg_pipeline: wgpu::RenderPipeline,
     out_pipeline: wgpu::RenderPipeline,
+    pre_pipeline: wgpu::RenderPipeline,
+    pre_layout: wgpu::BindGroupLayout,
     started: std::time::Instant,
     frame_buf: wgpu::Buffer,
     frame_layout: wgpu::BindGroupLayout,
@@ -417,6 +418,49 @@ fn compute_sh(rgb: &[f32], w: u32, h: u32) -> [[f32; 4]; 9] {
     out
 }
 
+/// The environment blurred for six roughnesses (0, 0.2 ... 1): each is the picture as a surface of that roughness
+/// reflects it (GGX importance sampling), drawn once into a layer of a texture array.
+fn build_spec(device: &wgpu::Device, queue: &wgpu::Queue, pipeline: &wgpu::RenderPipeline, layout: &wgpu::BindGroupLayout, sampler: &wgpu::Sampler, env: &wgpu::TextureView, src_w: f32, size: (u32, u32)) -> wgpu::TextureView {
+    let tex = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("blurred environment"),
+        size: wgpu::Extent3d { width: size.0, height: size.1, depth_or_array_layers: 6 },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba16Float,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+    });
+    let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("blur") });
+    for i in 0..6u32 {
+        let samples = if i == 0 { 1.0 } else if i < 2 { 64.0 } else { 128.0 };
+        let u: [f32; 8] = [i as f32 / 5.0, samples, src_w, 0.0, size.0 as f32, size.1 as f32, 0.0, 0.0];
+        let ub = device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("blur settings"), contents: bytemuck::cast_slice(&u), usage: wgpu::BufferUsages::UNIFORM });
+        let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("blur group"),
+            layout,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::TextureView(env) },
+                wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::Sampler(sampler) },
+                wgpu::BindGroupEntry { binding: 2, resource: ub.as_entire_binding() },
+            ],
+        });
+        let target = tex.create_view(&wgpu::TextureViewDescriptor { dimension: Some(wgpu::TextureViewDimension::D2), base_array_layer: i, array_layer_count: Some(1), ..Default::default() });
+        let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("blur pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment { view: &target, depth_slice: None, resolve_target: None, ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::BLACK), store: wgpu::StoreOp::Store } })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
+        pass.set_pipeline(pipeline);
+        pass.set_bind_group(0, &bind, &[]);
+        pass.draw(0..3, 0..1);
+    }
+    queue.submit(Some(enc.finish()));
+    tex.create_view(&wgpu::TextureViewDescriptor { dimension: Some(wgpu::TextureViewDimension::D2Array), ..Default::default() })
+}
+
 impl Gpu {
     fn new(event_loop: &ActiveEventLoop) -> Result<(Gpu, AdapterReport), String> {
         let window = Arc::new(
@@ -496,6 +540,12 @@ impl Gpu {
                 },
                 tex_entry(1),
                 wgpu::BindGroupLayoutEntry { binding: 2, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering), count: None },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: true }, view_dimension: wgpu::TextureViewDimension::D2Array, multisampled: false },
+                    count: None,
+                },
             ],
         });
         let mat_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -576,6 +626,36 @@ impl Gpu {
             multiview: None,
             cache: None,
         });
+        let pre_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("blur layout"),
+            entries: &[
+                tex_entry(0),
+                wgpu::BindGroupLayoutEntry { binding: 1, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering), count: None },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer { ty: wgpu::BufferBindingType::Uniform, has_dynamic_offset: false, min_binding_size: None },
+                    count: None,
+                },
+            ],
+        });
+        let pre_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor { label: Some("blur pipeline layout"), bind_group_layouts: &[&pre_layout], push_constant_ranges: &[] });
+        let pre_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("blur pipeline"),
+            layout: Some(&pre_pl),
+            vertex: wgpu::VertexState { module: &shader, entry_point: Some("vs_pre"), compilation_options: Default::default(), buffers: &[] },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: Some("fs_pre"),
+                compilation_options: Default::default(),
+                targets: &[Some(wgpu::ColorTargetState { format: wgpu::TextureFormat::Rgba16Float, blend: None, write_mask: wgpu::ColorWrites::ALL })],
+            }),
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
         let frame_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("frame"),
             size: std::mem::size_of::<FrameUniform>() as u64,
@@ -602,6 +682,7 @@ impl Gpu {
         let depth = make_depth(&device, config.width, config.height);
         let black = EnvData { width: 2, height: 1, rgb: vec![0.0; 6] };
         let (env_view, env_mips, env_sh) = build_env(&device, &queue, &black);
+        let spec_view = build_spec(&device, &queue, &pre_pipeline, &pre_layout, &env_sampler, &env_view, 2.0, (16, 8));
         let frame_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("frame group"),
             layout: &frame_layout,
@@ -609,6 +690,7 @@ impl Gpu {
                 wgpu::BindGroupEntry { binding: 0, resource: frame_buf.as_entire_binding() },
                 wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::TextureView(&env_view) },
                 wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::Sampler(&env_sampler) },
+                wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(&spec_view) },
             ],
         });
         let gpu = Gpu {
@@ -620,6 +702,8 @@ impl Gpu {
             pipeline,
             bg_pipeline,
             out_pipeline,
+            pre_pipeline,
+            pre_layout,
             started: std::time::Instant::now(),
             frame_buf,
             frame_bg,
@@ -640,17 +724,18 @@ impl Gpu {
     }
 
     fn set_env(&mut self, env: Option<&EnvData>) {
-        let (view, mips, sh, has) = match env {
+        let (view, mips, sh, has, src_w, size) = match env {
             Some(e) => {
                 let (v, m, s) = build_env(&self.device, &self.queue, e);
-                (v, m, s, true)
+                (v, m, s, true, e.width as f32, (512u32, 256u32))
             }
             None => {
                 let black = EnvData { width: 2, height: 1, rgb: vec![0.0; 6] };
                 let (v, m, s) = build_env(&self.device, &self.queue, &black);
-                (v, m, s, false)
+                (v, m, s, false, 2.0, (16u32, 8u32))
             }
         };
+        let spec_view = build_spec(&self.device, &self.queue, &self.pre_pipeline, &self.pre_layout, &self.env_sampler, &view, src_w, size);
         self.env_mips = mips;
         self.sh = sh;
         self.has_env = has;
@@ -661,6 +746,7 @@ impl Gpu {
                 wgpu::BindGroupEntry { binding: 0, resource: self.frame_buf.as_entire_binding() },
                 wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::TextureView(&view) },
                 wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::Sampler(&self.env_sampler) },
+                wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(&spec_view) },
             ],
         });
     }
@@ -719,7 +805,7 @@ impl Gpu {
                 ],
             });
             let ib = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("indices"), contents: bytemuck::cast_slice(&g.indices), usage: wgpu::BufferUsages::INDEX });
-            self.groups.push(GpuGroup { ib, count: g.indices.len() as u32, bind, kind: sp.kind, outline: (sp.kind == 4 || sp.kind == 5) && sp.q[0] > 0.0 });
+            self.groups.push(GpuGroup { ib, count: g.indices.len() as u32, bind, outline: (sp.kind == 4 || sp.kind == 5) && sp.q[0] > 0.0 });
         }
         let c = (mn + mx) * 0.5;
         (c, ((mx - mn).length() * 0.5).max(1e-4))

@@ -90,7 +90,7 @@ pub fn scene_from_bytes(bytes: &[u8]) -> Result<Scene, String> {
     let mut groups = Vec::new();
     for g in &meta.groups {
         let indices: Vec<u32> = rd.take(g.idx * 4)?.chunks_exact(4).map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect();
-        let mut map = |rd: &mut Reader, n: usize| -> Result<Option<Tex8>, String> {
+        let map = |rd: &mut Reader, n: usize| -> Result<Option<Tex8>, String> {
             if n == 0 {
                 return Ok(None);
             }
