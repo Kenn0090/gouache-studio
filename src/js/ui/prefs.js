@@ -40,6 +40,8 @@ function dlgPrefs(startTab){
       el('p',{class:'note',text:'Lower settings help slower computers: fewer pixels, fewer triangles, and less frequent catching up while you paint. High is the normal setting; Ultra is for fast graphics cards.'}),
       chk('pLive','Show changes live while adjusting',S.live,v=>{S.live=v;}),
       el('p',{class:'note',text:'Filters, adjustments and hover previews show on the canvas as you adjust them. Turn this off for very large documents.'}),
+      el('div',{class:'sub',text:'New viewer (test)'}),el('p',{class:'note',text:platform.isDesktop?'Opens the model you are looking at in a new window, drawn straight on the graphics card. It is the first step of the new viewer; the normal viewer is not changed.':'The new viewer is in the desktop app.'}),
+      el('div',{class:'chips'},el('button',{class:'btn sm',id:'pNewViewer',text:'Open the new viewer',disabled:!platform.isDesktop,onclick:()=>{nvOpen();}}),el('button',{class:'btn sm',id:'pNewViewerClose',text:'Close it',disabled:!platform.isDesktop,onclick:nvClose})),
       el('div',{class:'sub',text:'Memory and disk'}),ms.el],
     files:()=>[chk('prSmall','Smaller files (on by default)',S.small,v=>{S.small=v;}),
       el('p',{class:'note',text:'Pictures are packed without losing anything. With Smaller files on, colour and grey maps are also kept as high-quality WebP when that is smaller. Normal maps, Height, masks and baked maps always stay exact.'}),

@@ -142,6 +142,7 @@
     "files/model-watch",
     "view3d/raytrace",
     "view3d/capture",
+    "view3d/new-viewer",
     "convert/convert-tab",
     "ai/ai-core",
     "ai/ai-sam",

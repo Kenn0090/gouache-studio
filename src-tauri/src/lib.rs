@@ -6,6 +6,7 @@
 
 mod altmenu;
 mod engine;
+mod viewer;
 mod files;
 mod net;
 mod single;
@@ -137,6 +138,8 @@ pub fn run() {
             undo_spill::cache_info,
             undo_spill::cache_set_dir,
             engine::engine_info,
+            viewer::viewer_open,
+            viewer::viewer_close,
             updates::update_check,
             updates::update_install,
         ])
