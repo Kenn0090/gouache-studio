@@ -32,7 +32,7 @@ async function nvScene(){const m=mxModel();if(!m||!m.pos||!m.idx)throw new Error
   const envd=await nvEnv();
   return {m,groups,texBy,shBy,envd,settings:nvSettings()};}
 /* the 3D view's lighting settings, as the new viewer takes them */
-function nvSettings(){const s=v3s();return {tone:toneInt(s),expo:s.expo==null?1:s.expo,env_turn:(s.envRot||0)/360,env_strength:s.envI==null?1:s.envI,show_bg:!!s.envBg,env_blur:s.envBlur==null?.35:s.envBlur,sun_az:s.sunAz==null?40:s.sunAz,sun_el:s.sunEl==null?45:s.sunEl,sun_i:s.sunI==null?1:s.sunI,fov:s.fov||45,paint:!!nv.paint};}
+function nvSettings(){const s=v3s();return {tone:toneInt(s),expo:s.expo==null?1:s.expo,env_turn:(s.envRot||0)/360,env_strength:s.envI==null?1:s.envI,show_bg:!!s.envBg,env_blur:s.envBlur==null?.35:s.envBlur,sun_az:s.sunAz==null?40:s.sunAz,sun_el:s.sunEl==null?45:s.sunEl,sun_i:s.sunI==null?1:s.sunI,fov:s.fov||45,paint:!!nv.paint,brush:nv.paint?nvBrushFrac():0};}
 const nvEnvKey=()=>{const s=v3s(),k=envOf(s);return k+(k==='custom'&&env.custom?':'+env.custom.name:'');};
 /* a lighting update: the same body as a scene, with no model; the environment picture only when it changed */
 function nvUpdateBody(settings,mode,envd){const meta={pos:0,nrm:0,uv:0,groups:[],env_mode:mode,env:mode==='set'&&envd?{w:envd.w,h:envd.h}:null,settings};
@@ -53,6 +53,8 @@ function nvStopWatch(){if(nv.timer){clearInterval(nv.timer);nv.timer=null;}}
 /* ---- painting through the window ----
    The window reports the pointer (position, camera, keys). The page turns that into pointer events on the 3D view, so the
    normal brush paints; afterwards the changed material is sent back as new pictures. */
+/* the brush's diameter as a part of the view's height (the same on the window) */
+function nvBrushFrac(){const hit=document.getElementById('v3Hit');if(!hit||!v3.paintOn||typeof MESH_TOOLS==='undefined'||!MESH_TOOLS.includes(ui.tool))return 0;const h=hit.getBoundingClientRect().height;return h>0?Math.round(brush.size*meshBrushScale(h)/h*1000)/1000:0;}
 const NV_TEX_LIVE=512,NV_LIVE_MS=120;
 function nvPaintOn(){return platform.isDesktop&&ui.mode==='p3d';}
 function nvCamFrom(ev){const c=v3.cam,d=[ev.eye[0]-ev.tgt[0],ev.eye[1]-ev.tgt[1],ev.eye[2]-ev.tgt[2]],L=Math.hypot(d[0],d[1],d[2])||1;

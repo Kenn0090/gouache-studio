@@ -9,6 +9,8 @@ struct Frame {
     info: vec4<f32>,         // x mip levels, y 1 when there is an environment, z show background
     sh: array<vec4<f32>, 9>, // diffuse lighting of the environment (already divided by pi)
     extra: vec4<f32>,        // x seconds, y size of a screen pixel at the model's distance
+    cursor: vec4<f32>,       // brush outline: x, y, radius (pixels), 1 when shown
+    res: vec4<f32>,          // width, height
 };
 @group(0) @binding(0) var<uniform> frame: Frame;
 @group(0) @binding(1) var env_tex: texture_2d<f32>;
@@ -405,4 +407,15 @@ fn fs_pre(@builtin(position) frag: vec4<f32>) -> @location(0) vec4<f32> {
         wsum += ndl;
     }
     return vec4<f32>(acc / max(wsum, 1e-4), 1.0);
+}
+
+// The brush outline: a thin light ring with a dark one just outside, so it shows on any colour.
+@fragment
+fn fs_ring(@builtin(position) p: vec4<f32>) -> @location(0) vec4<f32> {
+    let d = abs(length(p.xy - frame.cursor.xy) - frame.cursor.z);
+    let light = 1.0 - smoothstep(0.6, 1.4, d);
+    let dark = (1.0 - smoothstep(1.4, 2.4, abs(d - 1.2))) * 0.55;
+    let a = max(light, dark);
+    if (a < 0.01) { discard; }
+    return vec4<f32>(vec3<f32>(light), a);
 }

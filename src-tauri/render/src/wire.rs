@@ -63,6 +63,8 @@ struct SettingsMeta {
     fov: f32,
     #[serde(default)]
     paint: bool,
+    #[serde(default)]
+    brush: f32,
 }
 
 fn fov_default() -> f32 {
@@ -160,6 +162,7 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         sun_intensity: s.sun_i,
         fov: s.fov,
         paint: s.paint,
+        brush: s.brush,
     };
     Ok((Scene { mesh: MeshData { positions, normals, uvs }, groups, env, settings }, meta.env_mode.clone()))
 }

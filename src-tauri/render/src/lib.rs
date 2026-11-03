@@ -94,11 +94,13 @@ pub struct Settings {
     pub fov: f32,
     /// painting is on: a plain left-drag paints (events go to the page), Alt + drag moves the camera
     pub paint: bool,
+    /// brush size as a fraction of the view's height (0 hides the outline)
+    pub brush: f32,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false }
+        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0 }
     }
 }
 
@@ -214,6 +216,8 @@ struct FrameUniform {
     info: [f32; 4],
     sh: [[f32; 4]; 9],
     extra: [f32; 4],
+    cursor: [f32; 4], // x, y (pixels), radius (pixels), 1 when shown
+    res: [f32; 4],    // width, height
 }
 
 #[repr(C)]
@@ -247,6 +251,8 @@ struct Gpu {
     config: wgpu::SurfaceConfiguration,
     pipeline: wgpu::RenderPipeline,
     bg_pipeline: wgpu::RenderPipeline,
+    ring_pipeline: wgpu::RenderPipeline,
+    cursor: Option<(f32, f32)>,
     out_pipeline: wgpu::RenderPipeline,
     pre_pipeline: wgpu::RenderPipeline,
     pre_layout: wgpu::BindGroupLayout,
@@ -642,6 +648,18 @@ impl Gpu {
             multiview: None,
             cache: None,
         });
+        let ring_target = [Some(wgpu::ColorTargetState { format, blend: Some(wgpu::BlendState::ALPHA_BLENDING), write_mask: wgpu::ColorWrites::ALL })];
+        let ring_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("brush outline pipeline"),
+            layout: Some(&bg_layout),
+            vertex: wgpu::VertexState { module: &shader, entry_point: Some("vs_bg"), compilation_options: Default::default(), buffers: &[] },
+            fragment: Some(wgpu::FragmentState { module: &shader, entry_point: Some("fs_ring"), compilation_options: Default::default(), targets: &ring_target }),
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: Some(wgpu::DepthStencilState { format: DEPTH_FORMAT, depth_write_enabled: false, depth_compare: wgpu::CompareFunction::Always, stencil: Default::default(), bias: Default::default() }),
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
         let out_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("outline pipeline"),
             layout: Some(&layout),
@@ -737,6 +755,8 @@ impl Gpu {
             config,
             pipeline,
             bg_pipeline,
+            ring_pipeline,
+            cursor: std::env::var_os("GOUACHE_RING_TEST").map(|_| (300.0, 250.0)), // debug: shows the outline without a mouse
             out_pipeline,
             pre_pipeline,
             pre_layout,
@@ -903,6 +923,11 @@ impl Gpu {
             info: [self.env_mips, if self.has_env { 1.0 } else { 0.0 }, if st.show_background { 1.0 } else { 0.0 }, 0.0],
             sh: self.sh,
             extra: [self.started.elapsed().as_secs_f32(), 2.0 * cam.dist * (self.settings.fov.to_radians() * 0.5).tan() / self.config.height as f32, st.env_blur, 0.0],
+            cursor: match self.cursor {
+                Some((x, y)) if st.paint && st.brush > 0.0 => [x, y, (st.brush * self.config.height as f32 * 0.5).max(2.0), 1.0],
+                _ => [0.0; 4],
+            },
+            res: [self.config.width as f32, self.config.height as f32, 0.0, 0.0],
         };
         self.queue.write_buffer(&self.frame_buf, 0, bytemuck::bytes_of(&u));
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("frame") });
@@ -941,6 +966,11 @@ impl Gpu {
                     pass.set_index_buffer(g.ib.slice(..), wgpu::IndexFormat::Uint32);
                     pass.draw_indexed(0..g.count, 0, 0..1);
                 }
+            }
+            if u.cursor[3] > 0.5 {
+                pass.set_pipeline(&self.ring_pipeline);
+                pass.set_bind_group(0, &self.frame_bg, &[]);
+                pass.draw(0..3, 0..1);
             }
         }
         self.queue.submit(Some(enc.finish()));
@@ -1076,6 +1106,12 @@ impl ApplicationHandler<Cmd> for App {
             WindowEvent::CursorMoved { position, .. } => {
                 let (dx, dy) = ((position.x - self.last.0) as f32, (position.y - self.last.1) as f32);
                 self.last = (position.x, position.y);
+                if let Some(g) = self.gpu.as_mut() {
+                    g.cursor = Some((position.x as f32, position.y as f32));
+                    if g.settings.paint && g.settings.brush > 0.0 && self.drag.is_none() {
+                        g.window.request_redraw();
+                    }
+                }
                 if self.painting {
                     if self.last_sent.elapsed() >= Duration::from_millis(8) {
                         self.emit("move");
@@ -1116,6 +1152,12 @@ impl ApplicationHandler<Cmd> for App {
                     if let Some(g) = self.gpu.as_ref() {
                         g.window.request_redraw();
                     }
+                }
+            }
+            WindowEvent::CursorLeft { .. } => {
+                if let Some(g) = self.gpu.as_mut() {
+                    g.cursor = None;
+                    g.window.request_redraw();
                 }
             }
             WindowEvent::MouseWheel { delta, .. } => {
