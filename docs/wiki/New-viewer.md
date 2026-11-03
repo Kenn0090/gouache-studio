@@ -18,6 +18,8 @@ I compared the two on the same model, material, camera and lighting. Colours and
 
 Wireframe, selection tint, mirror guides, the mask and mesh map views (C and B keys) and cut-out see-through materials (parts with less than half opacity disappear) work in the new viewer. The stencil you use for projection painting shows over the model too. The shadow floor (Studio lighting) shows, with the model's ray-traced shadow on it (ray tracing switches on in the window while the floor is on, and the floor's colour is blended where the shadow falls). With a selection tool armed, the part under the pointer lights up. Height depth (displacement) moves the surface in the window too (turn the 3D view's Detail up for smoother results). The Shader panel's post processing works in the window too (bloom, depth of field, sharpen, colour grade, vignette, chromatic aberration, film grain and the filter looks). Ambient occlusion is left out because the ray tracing already does it. The 3D view's "Cut out transparent areas" switch decides whether parts under half opacity disappear. Like the normal 3D view, there is no blended see-through. The sun is only on when the environment is off (or its sun slider is up), as in the 3D view, so ray-traced sun shadows need that too.
 
+The Bake and Convert tabs can use the new viewer too: their 3D bar has a **New viewer** button, and the window shows the model with the baked or converted maps. It is viewing only there (painting in the window stays in 3D Paint), and the high-poly see-through of the Bake tab is not shown in it.
+
 ## Moving around
 
 - **Alt + drag** turns the model (plain drag turns it when painting is off). Mouse wheel zooms.
