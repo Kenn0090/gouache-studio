@@ -103,7 +103,7 @@ async function nvPush(){if(nv.busy)return;nv.busy=true;
     nv.envKey=key;if(!alive){nvStopWatch();nv.isOpen=false;nvBtnSync();}}
   catch(e){console.warn(e);}finally{nv.busy=false;}}
 function nvWatch(){nvStopWatch();nv.envKey=nvEnvKey();nv.sig=JSON.stringify(nvSettings())+nv.envKey;
-  nv.viewKey=nvViewKey();nv.stImg=null;nvStencilSend();nv.timer=setInterval(()=>{if(!platform.isDesktop)return;nvStencilSend();{const vk=ui.mode==='p3d'?nvViewKey():'';if(vk!==nv.viewKey){nv.viewKey=vk;nv.viewForce=true;nvSyncSoon();}}const sig=JSON.stringify(nvSettings())+nvEnvKey();if(sig!==nv.sig){nv.sig=sig;nvPush();}},400);}
+  nv.viewKey=nvViewKey();nv.stImg=null;nvStencilSend();nv.timer=setInterval(()=>{if(!platform.isDesktop)return;nvStencilSend();if(nv.hlSig)nvHlSend();{const vk=ui.mode==='p3d'?nvViewKey():'';if(vk!==nv.viewKey){nv.viewKey=vk;nv.viewForce=true;nvSyncSoon();}}const sig=JSON.stringify(nvSettings())+nvEnvKey();if(sig!==nv.sig){nv.sig=sig;nvPush();}},400);}
 /* a finished picture from the window, at any size (PNG bytes) */
 async function nvCapture(w,h){const r=await platform.invoke('viewer_capture',{width:Math.round(w),height:Math.round(h)});return r instanceof Uint8Array?r:new Uint8Array(r);}
 /* one turntable frame from the window: raw RGBA, top row first */
@@ -130,10 +130,21 @@ function nvPixelRay(ev){const t=Math.tan(ev.fov*Math.PI/360),e=ev.eye,g=ev.tgt;
   if(v3s().ortho){/* no depth shrinking: the ray runs straight ahead from a point on the picture plane */return [e[0]+r[0]*x*L-u[0]*y*L+fw[0]*L,e[1]+r[1]*x*L-u[1]*y*L+fw[1]*L,e[2]+r[2]*x*L-u[2]*y*L+fw[2]*L];}
   const d=norm3([fw[0]+r[0]*x-u[0]*y,fw[1]+r[1]*x-u[1]*y,fw[2]+r[2]*x-u[2]*y]);
   return [e[0]+d[0]*L,e[1]+d[1]*L,e[2]+d[2]*L];}
+/* the part under the pointer while a selection tool is armed (the window reports the pointer even with no button down) */
+function nvHover(ev){try{if(typeof sel3==='undefined'||!sel3.armed||sel3.mode==='off'||!nvPaintOn())return;const hit=document.getElementById('v3Hit');if(!hit)return;
+  nvCamFrom(ev);const p=pathProject(nvPixelRay(ev),'3d',hit);if(!p)return;const r=hit.getBoundingClientRect();
+  hit.dispatchEvent(new PointerEvent('pointermove',{pointerId:991,pointerType:'mouse',isPrimary:true,bubbles:true,cancelable:true,clientX:r.left+p[0],clientY:r.top+p[1],button:0,buttons:0,shiftKey:!!ev.shift,ctrlKey:!!ev.ctrl,altKey:!!ev.alt}));
+  clearTimeout(nv.hlT);nv.hlT=setTimeout(nvHlSend,45);}catch(e){}}
+async function nvHlSend(){if(!nv.isOpen||nv.hlBusy)return;const H=typeof sel3HoverState!=='undefined'?sel3HoverState:null,ok=H&&typeof sel3!=='undefined'&&sel3.armed&&H.mesh===v3.mesh&&H.tris&&H.tris.length,tris=ok?H.tris:[];
+  const sig=tris.length?tris.length+':'+tris[0]+':'+tris[tris.length-1]:'';if(sig===nv.hlSig)return;nv.hlBusy=true;
+  try{let ids;if(tris.length){ids=new Uint32Array(Math.min(tris.length,200000)*3);for(let i=0;i<ids.length/3;i++)ids.set(v3.mesh.idx.subarray(tris[i]*3,tris[i]*3+3),i*3);}else ids=new Uint32Array(1);
+    const px=new Uint8Array(ids.buffer,ids.byteOffset,ids.byteLength),meta={pos:0,nrm:0,uv:0,groups:[{name:'__hl',idx:0,rough:.6,metal:0,tex:{base:px.length,orm:0,normal:0,emissive:0},raw:[ids.length,1]}],env:null,settings:nvSettings()},json=new TextEncoder().encode(JSON.stringify(meta)),out=new Uint8Array(4+json.length+px.length);
+    new DataView(out.buffer).setUint32(0,json.length,true);out.set(json,4);out.set(px,4+json.length);await platform.invoke('viewer_textures',out);nv.hlSig=sig;}
+  catch(e){console.warn(e);}finally{nv.hlBusy=false;}}
 function nvHandle(ev){if(ev&&(ev.t==='key-p'||ev.t==='key-r')){if(ev.t==='key-p'){if(typeof v3Screenshot==='function')v3Screenshot('view',false);}else{const s=v3s();s.nvRt=!s.nvRt;toast('Ray tracing '+(s.nvRt?'on':'off')+' in the new viewer.');}return;}
   if(ev&&ev.t==='closed'){/* where the window was, for next time */try{if(ev.win&&ev.win[2]>=300)localStorage.setItem('gs.nvWin',JSON.stringify(ev.win));}catch(e){}
     const was=nv.isOpen;nv.isOpen=false;nv.paint=false;nvStopWatch();nvBtnSync();if(was)toast('The new viewer window was closed.');return;}
-  if(!nvPaintOn()||!ev||!ev.t)return;if(ev.t==='cam'){nvCamFrom(ev);return;}
+  if(!nvPaintOn()||!ev||!ev.t)return;if(ev.t==='cam'){nvCamFrom(ev);return;}if(ev.t==='hover'){nvHover(ev);return;}
   const st=nv.st||(nv.st={ev:0,run:0,ms:0,live:0,liveMs:0,max:0});
   if(ev.t==='move'){st.ev++;nv.pendingMove=ev;if(!nv.moveRaf)nv.moveRaf=requestAnimationFrame(nvFlushMove);return;}/* one move per frame, like a normal mouse */
   if(ev.t==='down'){nv.st={ev:1,run:0,ms:0,live:0,liveMs:0,max:0};}

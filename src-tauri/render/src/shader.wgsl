@@ -474,6 +474,26 @@ fn fs_stencil(@builtin(position) p: vec4<f32>) -> @location(0) vec4<f32> {
     return vec4<f32>(lin3(rgb), a);
 }
 
+// the part under the pointer while a selection tool is armed
+@vertex
+fn vs_hl(i: VIn) -> OutOut {
+    var o: OutOut;
+    var c = frame.view_proj * vec4<f32>(i.pos, 1.0);
+    c.z = c.z - 0.0006 * c.w;
+    o.clip = c;
+    o.wpos = i.pos;
+    o.nrm = i.nrm;
+    return o;
+}
+@fragment
+fn fs_hl(i: OutOut) -> FOut {
+    var o: FOut;
+    o.c = vec4<f32>(lin3(vec3<f32>(0.12, 0.65, 1.0)), 0.38);
+    o.n = vec4<f32>(0.0);
+    o.m = vec4<f32>(0.0);
+    return o;
+}
+
 // mirror guides
 @vertex
 fn vs_guide(@location(0) pos: vec3<f32>) -> OutOut {

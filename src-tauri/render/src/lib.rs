@@ -367,6 +367,8 @@ struct Gpu {
     wire_pipeline: wgpu::RenderPipeline,
     guide_pipeline: wgpu::RenderPipeline,
     floor_pipeline: wgpu::RenderPipeline,
+    hl_pipeline: wgpu::RenderPipeline,
+    hl: Option<(wgpu::Buffer, u32)>,
     st_pipeline: wgpu::RenderPipeline,
     post_layout: wgpu::BindGroupLayout,
     post_bright: wgpu::RenderPipeline,
@@ -965,6 +967,31 @@ impl Gpu {
             multiview: None,
             cache: None,
         });
+        let hl_target = [
+            Some(wgpu::ColorTargetState { format, blend: Some(wgpu::BlendState::ALPHA_BLENDING), write_mask: wgpu::ColorWrites::ALL }),
+            Some(wgpu::ColorTargetState { format: rt::NORMAL_FORMAT, blend: None, write_mask: wgpu::ColorWrites::empty() }),
+            Some(wgpu::ColorTargetState { format: rt::NORMAL_FORMAT, blend: None, write_mask: wgpu::ColorWrites::empty() }),
+        ];
+        let hl_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("highlight pipeline"),
+            layout: Some(&bg_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("vs_hl"),
+                compilation_options: Default::default(),
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: std::mem::size_of::<Vertex>() as u64,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x3],
+                }],
+            },
+            fragment: Some(wgpu::FragmentState { module: &shader, entry_point: Some("fs_hl"), compilation_options: Default::default(), targets: &hl_target }),
+            primitive: wgpu::PrimitiveState { cull_mode: None, ..Default::default() },
+            depth_stencil: Some(wgpu::DepthStencilState { format: DEPTH_FORMAT, depth_write_enabled: false, depth_compare: wgpu::CompareFunction::LessEqual, stencil: Default::default(), bias: Default::default() }),
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
         let out_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("outline pipeline"),
             layout: Some(&layout),
@@ -1104,6 +1131,8 @@ impl Gpu {
             wire_pipeline,
             guide_pipeline,
             floor_pipeline,
+            hl_pipeline,
+            hl: None,
             st_pipeline,
             post_layout,
             post_bright,
@@ -1274,6 +1303,18 @@ impl Gpu {
 
     /// Swaps the pictures of the material of one group (the triangles stay).
     fn set_textures(&mut self, name: &str, mat: &Material) {
+        if name == "__hl" {
+            // triangles to light up (corner indices of the page's model), sent as the bytes of a raw picture
+            self.hl = match &mat.base {
+                Some(t) if t.rgba.len() >= 12 => {
+                    let ids: Vec<u32> = t.rgba.chunks_exact(4).map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]])).collect();
+                    let n = (ids.len() / 3 * 3) as u32;
+                    Some((self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("highlight"), contents: bytemuck::cast_slice(&ids[..n as usize]), usage: wgpu::BufferUsages::INDEX }), n))
+                }
+                _ => None,
+            };
+            return;
+        }
         if name == "__stencil" {
             if let Some(t) = &mat.base {
                 let tex = self.device.create_texture_with_data(
@@ -1460,6 +1501,13 @@ impl Gpu {
                     pass.set_bind_group(1, &g.bind, &[]);
                     pass.set_index_buffer(g.ib.slice(..), wgpu::IndexFormat::Uint32);
                     pass.draw_indexed(0..g.count, 0, 0..1);
+                }
+                if let Some((hb, n)) = &self.hl {
+                    pass.set_pipeline(&self.hl_pipeline);
+                    pass.set_bind_group(0, &self.frame_bg, &[]);
+                    pass.set_vertex_buffer(0, vb.slice(..));
+                    pass.set_index_buffer(hb.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..*n, 0, 0..1);
                 }
                 if st.floor[3] > 0.5 && st.wire != 2 {
                     pass.set_pipeline(&self.floor_pipeline);
@@ -1869,6 +1917,9 @@ impl ApplicationHandler<Cmd> for App {
                         g.window.request_redraw(); // the brush outline follows the pointer
                     }
                     return;
+                }
+                if self.drag.is_none() && self.gpu.as_ref().map(|g| g.settings.paint).unwrap_or(false) && self.last_sent.elapsed() >= Duration::from_millis(40) {
+                    self.emit("hover");
                 }
                 match self.drag {
                     Some(MouseButton::Left) => {
