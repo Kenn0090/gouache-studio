@@ -8,7 +8,8 @@
      found (normal maps get the Normal map type). Built-in and HDRP projects: the shader is URP only.
    - Unreal: gouache_unreal.json + gouache_unreal_setup.py. Run the script in the editor (Tools > Execute Python Script):
      it imports the textures and builds one material per set (Lit; Cloth for Velvet, Subsurface for Skin, Unlit with
-     the banding worked out in a Custom node for Toon, Cel and Retro).
+     the banding worked out in a Custom node for Toon, Cel and Retro; Toon and Cel also draw their outline in the same
+     material and follow the Directional Light through a parameter collection).
    The look is a close match, not identical: each engine lights differently. */
 const ESH_KIND_NAMES=['Standard','Skin','Brushed metal','Velvet','Toon','Cel','Spec/Gloss','Panner','Retro'];
 const ESH_SHADER_GUID='47a0c5e1b2d34f6a8c91e0f3d5b7a901';
@@ -457,7 +458,7 @@ function eshFiles(to,name,info,size){const out=[],pn=pascal(name),sets=Object.ke
     out.push({name:shaderPath,data:new TextEncoder().encode(bi?ESH_BUILTIN_SHADER:ESH_UNITY_SHADER),shared:true},{name:shaderPath+'.meta',data:new TextEncoder().encode(eshUnityMeta('shader',sguid)),shared:true});
     return out;}
   if(to==='unreal'){const list=sets.map(s=>{const I=info[s],T=I.tex||{},sh=I.sh||{kind:'std',p:{}},tex={};for(const k of ['BaseColor','ORM','Normal','Emissive'])if(T[k])tex[k]=T[k].name;
-      return {name:s,safe:eshSafe(s),kind:sh.kind,p:shParams(sh),tex,alpha:!!I.alpha};});
+      const P=shParams(sh);return {name:s,safe:eshSafe(s),kind:sh.kind,p:P,tex,alpha:!!I.alpha,outlineW:(sh.kind==='toon'||sh.kind==='cel')?+((P.outline||0)*size*0.0014).toFixed(5):0};});
     out.push({name:'gouache_unreal.json',data:new TextEncoder().encode(JSON.stringify({name:pn,sets:list},null,1))},{name:'gouache_unreal_setup.py',data:new TextEncoder().encode(UNREAL_SETUP||'')});
     return out;}
   return out;}

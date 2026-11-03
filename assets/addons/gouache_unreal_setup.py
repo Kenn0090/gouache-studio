@@ -2,6 +2,8 @@
 # In Unreal: turn on the "Python Editor Script Plugin" (Edit > Plugins), restart,
 # then Tools > Execute Python Script... and pick this file. It imports the textures
 # and makes one material per texture set (M_<Set>) in /Game/Gouache/<name>.
+# Toon and Cel read the light direction from MPC_Gouache (set from your level's Directional Light)
+# and draw their outline in the same material (back faces pushed out along the normals).
 import json
 import os
 import unreal
@@ -83,6 +85,27 @@ class Graph:
         return c
 
 
+def make_light_collection():
+    """MPC_Gouache.LightDirection: the direction toward the light that Toon / Cel use.
+    It is set from the first Directional Light in the open level (change it in the asset any time)."""
+    mpc = TOOLS.create_asset("MPC_Gouache", DEST, unreal.MaterialParameterCollection, unreal.MaterialParameterCollectionFactoryNew())
+    vec = [0.4, 0.6, 0.7]
+    try:
+        for a in unreal.EditorLevelLibrary.get_all_level_actors():
+            if isinstance(a, unreal.DirectionalLight):
+                f = a.get_actor_forward_vector()
+                vec = [-f.x, -f.y, -f.z]
+                break
+    except Exception as e:
+        unreal.log_warning("Gouache: no Directional Light found, using a default (" + str(e) + ")")
+    prm = unreal.CollectionVectorParameter()
+    prm.set_editor_property("parameter_name", "LightDirection")
+    prm.set_editor_property("default_value", unreal.LinearColor(vec[0], vec[1], vec[2], 0.0))
+    mpc.set_editor_property("vector_parameters", [prm])
+    unreal.EditorAssetLibrary.save_loaded_asset(mpc)
+    return mpc
+
+
 def lin(c):
     return [max(0.0, v) ** 2.2 for v in c]
 
@@ -133,7 +156,9 @@ def build_material(S):
     if custom_light:
         mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
         # a fixed light direction, like the viewer's sun (change the numbers to match your scene)
-        L = g.const3([0.4, 0.6, 0.7], -500, 700)
+        L = g.node(unreal.MaterialExpressionCollectionParameter, -500, 700)
+        L.set_editor_property("collection", LIGHTS)
+        L.set_editor_property("parameter_name", "LightDirection")
         N = g.node(unreal.MaterialExpressionPixelNormalWS, -500, 840)
         V = g.node(unreal.MaterialExpressionCameraVectorWS, -500, 960)
         bc = base if base is not None else g.const3([0.8, 0.8, 0.8], X, g.y)
@@ -174,7 +199,31 @@ def build_material(S):
         MEL.connect_material_expressions(L, "", c, "L")
         if kind != "retro":
             MEL.connect_material_expressions(V, "", c, "V")
-        MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+        ow = float(S.get("outlineW", 0))
+        if kind in ("toon", "cel") and ow > 0:
+            # one material does both: the front faces are shaded, the back faces are pushed out along
+            # the normals and drawn in the outline colour (the classic inverted hull outline)
+            mat.set_editor_property("two_sided", True)
+            mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
+            oc = g.const3(lin(p.get("ocol", [0, 0, 0])), -200, 760)
+            sw = g.node(unreal.MaterialExpressionTwoSidedSwitch, 100, 650)
+            MEL.connect_material_expressions(c, "", sw, "Front")
+            MEL.connect_material_expressions(oc, "", sw, "Back")
+            MEL.connect_material_property(sw, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+            vn = g.node(unreal.MaterialExpressionVertexNormalWS, -200, 900)
+            wd = g.const(ow, -200, 1000)
+            mul = g.node(unreal.MaterialExpressionMultiply, 0, 950)
+            MEL.connect_material_expressions(vn, "", mul, "A")
+            MEL.connect_material_expressions(wd, "", mul, "B")
+            zero = g.const3([0, 0, 0], 0, 1050)
+            sw2 = g.node(unreal.MaterialExpressionTwoSidedSwitch, 250, 1000)
+            MEL.connect_material_expressions(zero, "", sw2, "Front")
+            MEL.connect_material_expressions(mul, "", sw2, "Back")
+            MEL.connect_material_property(sw2, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
+            one = g.const(1.0, 250, 1150)
+            MEL.connect_material_property(one, "", unreal.MaterialProperty.MP_OPACITY_MASK)
+        else:
+            MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
         MEL.recompile_material(mat)
         unreal.EditorAssetLibrary.save_loaded_asset(mat)
         return name
@@ -217,6 +266,10 @@ def build_material(S):
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
     return name
 
+
+LIGHTS = None
+if any(S["kind"] in ("toon", "cel", "retro") for S in DATA["sets"]):
+    LIGHTS = make_light_collection()
 
 made = []
 for S in DATA["sets"]:
