@@ -40,7 +40,7 @@ function dlgRender(){if(!v3.on||!v3.mesh){toast('Open the 3D view first.');retur
     el('div',{class:'sub',text:'Quality'}),seg([[64,'Draft (64)'],[256,'Good (256)'],[1024,'Best (1024)']],o.spp,v=>{o.spp=+v;},'Samples'),
     makeSlider({id:'rtBounces',label:'Light bounces',min:1,max:8,step:1,value:o.bounces,fmt:v=>String(v),onInput:v=>{o.bounces=v;}}).el,
     el('div',{class:'sub',text:'Background'}),seg([['hdri','HDRI'],['colour','Colour'],['clear','Transparent']],o.bg,v=>{o.bg=v;},'Background'),
-    prev,bar,msg,el('div',{class:'chips'},go,save),
+    prev,bar,msg,el('div',{class:'chips'},go,(typeof nv!=='undefined'&&nv.isOpen&&platform.isDesktop)?el('button',{class:'btn',id:'rtNv',text:'Render in the new viewer',title:'Uses the new viewer window: its shaders, shadows and reflections',onclick:()=>rtNvRender(prev,msg)}):null,save),
     el('p',{class:'note',text:'Lit by the HDRI (and the extra sun) from the 3D view’s Settings, with real shadows and bounced light. It gets cleaner the longer it runs; the camera is the 3D view’s when you press Render.'}));
   openDialog({title:'Render (ray traced)',body,okLabel:null,cancelLabel:'Close',wide:true,onCancel(){rtWinStop();}});}
 async function rtWinStart(prev,bar,msg,go){rtWinStop();const o=rtWin.o,[w,h]=v3SizeOf(o.size);msg.textContent='Preparing…';const g=await rtScene();if(!g){msg.textContent='Ray tracing could not start.';return;}
@@ -58,7 +58,12 @@ function rtStepCam(S,g,o){const keep=Object.assign({},v3.cam);Object.assign(v3.c
 function rtWinPreview(c){const S=rtWin.S;if(!S||!S.n)return;const d=rtPixels(S,rtWin.o.bg!=='clear'),x=c.getContext('2d'),im=x.createImageData(S.w,S.h);
   for(let y=0;y<S.h;y++)im.data.set(d.subarray((S.h-1-y)*S.w*4,(S.h-y)*S.w*4),y*S.w*4);x.putImageData(im,0,0);}
 function rtWinStop(){rtWin.run=false;cancelAnimationFrame(rtWin.raf);}
-async function rtWinSave(){const S=rtWin.S;if(!S||!S.n){toast('Render first.');return;}const tr=rtWin.o.bg==='clear',d=rtPixels(S,!tr);const r=await deliver(v3FileBase()+'_render.png',await pixelsToPNG(S.w,S.h,d,tr));toast(deliveredText(r,'Render'));}
+/* a render made by the new viewer window (its look, its ray tracing) */
+async function rtNvRender(prev,msg){rtWinStop();const o=rtWin.o,[w,h]=v3SizeOf(o.size);msg.textContent='Rendering in the new viewer… this can take a while at large sizes.';
+  try{const u=await nvFrame(w,h,0,undefined,undefined,Math.max(8,Math.min(1024,o.spp)));rtWin.nvImg={w,h,rgba:u};prev.width=w;prev.height=h;prev.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(u.buffer,u.byteOffset,w*h*4),w,h),0,0);msg.textContent='Done · '+w+' × '+h+' (new viewer)';}
+  catch(e){console.warn(e);msg.textContent='The new viewer could not render it: '+(e&&e.message||e);}}
+async function rtWinSave(){if(rtWin.nvImg&&!(rtWin.S&&rtWin.S.n)){const I=rtWin.nvImg,flip=new Uint8Array(I.w*I.h*4);for(let y=0;y<I.h;y++)flip.set(I.rgba.subarray(y*I.w*4,(y+1)*I.w*4),(I.h-1-y)*I.w*4);const r=await deliver(v3FileBase()+'_render.png',await pixelsToPNG(I.w,I.h,flip,false));toast(deliveredText(r,'Render'));return;}
+  const S=rtWin.S;if(!S||!S.n){toast('Render first.');return;}const tr=rtWin.o.bg==='clear',d=rtPixels(S,!tr);const r=await deliver(v3FileBase()+'_render.png',await pixelsToPNG(S.w,S.h,d,tr));toast(deliveredText(r,'Render'));}
 /* ---- turntable ---- */
 const TT_FORMATS=()=>[['webm','WebM video'],...(typeof MediaRecorder!=='undefined'&&MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported('video/mp4')?[['mp4','MP4 video']]:[]),['gif','GIF'],['png','PNG sequence']];
 function dlgTurntable(){if(!v3.on||!v3.mesh){toast('Open the 3D view first.');return;}
