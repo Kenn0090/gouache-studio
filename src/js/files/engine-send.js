@@ -18,7 +18,7 @@ async function esCheckProject(to,dir){try{const fs=(await platform.invoke('dir_f
 /* the controls in the Export textures window */
 function esRow(redraw){if(!platform.isDesktop)return [el('p',{class:'note',text:'Sending straight into Blender, Unity, Godot or Unreal works in the desktop app.'})];
   const sel=el('select',{id:'txSend','aria-label':'Send to'},...ES_TARGETS.map(([v,l])=>el('option',{value:v,text:l})));sel.value=es.to||'none';
-  sel.onchange=()=>{es.to=sel.value;esSave();if(esActive()&&mxHasModel()&&texCfg.model==='none')texCfg.model='glb';redraw();};
+  sel.onchange=()=>{es.to=sel.value;es.warn='';esSave();if(esActive()&&mxHasModel()&&texCfg.model==='none')texCfg.model='glb';redraw();};
   const out=[el('div',{class:'frow'},el('label',{for:'txSend',text:'Send to'}),sel)];
   if(es.to==='blender'){
     out.push(el('p',{class:'note',text:'A running Blender with the Gouache Studio add-on gets the model at once (each send replaces the last one). Otherwise Blender is started with it'+(es.blender?'.':' once you choose the Blender program.')}),
@@ -28,7 +28,9 @@ function esRow(redraw){if(!platform.isDesktop)return [el('p',{class:'note',text:
   else if(es.to!=='none'){const d=es.dirs[es.to],label=ES_TARGETS.find(x=>x[0]===es.to)[1];
     out.push(el('div',{class:'chips'},el('span',{class:'note',text:d?label+' project: '+d:'Choose your '+label+' project’s folder.'}),
       el('button',{class:'btn sm',id:'esProject',text:d?'Change…':'Choose project…',onclick:async()=>{const p=await platform.pickFolder();if(!p)return;
-        if(!(await esCheckProject(es.to,p))){toast('That folder doesn’t look like a '+label+' project ('+(es.to==='godot'?'no project.godot':'no .uproject file')+').');return;}es.dirs[es.to]=p;esSave();redraw();}})),
+        /* a folder without the project file is still taken (the warning stays in the window, not in a pop-up that is easy to miss) */
+        es.warn=(await esCheckProject(es.to,p))?'':'No '+(es.to==='godot'?'project.godot':'.uproject file')+' in that folder. Is it the top folder of your '+label+' project? Sending will still use it.';es.dirs[es.to]=p;esSave();redraw();}})),
+      es.warn?el('p',{class:'note',id:'esWarn',text:es.warn}):null,
       es.to==='unity'?el('div',{class:'frow'},el('label',{text:'Unity render pipeline'}),seg([['urp','URP'],['builtin','Built-in']],texCfg.unityRP||'urp',v=>{texCfg.unityRP=v;},'Unity render pipeline')):null,
       (es.to==='unity'||es.to==='godot'||es.to==='unreal')?chk('esShaders','Bring the Gouache shader over (a material per texture set)',texCfg.engShader!==false,v=>{texCfg.engShader=v;}):null,
       el('p',{class:'note',text:es.to==='unity'?'Files go to Assets/Gouache/<name>. Unity imports them when you switch to it. Choose URP or the Built-in pipeline above (HDRP isn’t covered); put each .mat on your model. Built-in has no see-through materials. The .glb needs the glTFast package (Package Manager).':
