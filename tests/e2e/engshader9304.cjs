@@ -63,7 +63,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  w=await p.evaluate(()=>window.__written);const un2=Object.keys(w);
  const js=Object.entries(w).find(([k])=>k.endsWith('gouache_unreal.json')),py=Object.entries(w).find(([k])=>k.endsWith('gouache_unreal_setup.py'));
  ok(js&&py&&/Content\/Gouache\/Rock\//.test(js[0]),'Unreal export writes the setup script and its list '+JSON.stringify(un2.map(x=>x.slice(-30))).slice(0,200));
- ok(js&&JSON.parse(js[1]).sets.length>=1&&JSON.parse(js[1]).sets[0].tex.BaseColor,'…the list names the sets and their textures');
+ ok(js&&JSON.parse(js[1]).sets.length>=1&&JSON.parse(js[1]).sets[0].tex.BaseColor&&JSON.parse(js[1]).sets[0].look&&JSON.parse(js[1]).sets[0].scalars.HasORM!==undefined,'…the list names the sets, their textures and settings');
  ok(py&&/unreal\.MaterialEditingLibrary/.test(py[1].length>100?py[1]:'(binary)'),'…the script is the real one');
  ok(!errs.length,'no page errors '+errs.join(' | ').slice(0,200));
  await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();

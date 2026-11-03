@@ -471,10 +471,21 @@ function eshUnityMeta(kind,guid,extra){const head='fileFormatVersion: 2\nguid: '
   return head+'TextureImporter:\n  internalIDToNameTable: []\n  externalObjects: {}\n  serializedVersion: 12\n  mipmaps:\n    mipMapMode: 0\n    enableMipMap: 1\n    sRGBTexture: '+(linear?0:1)+'\n    linearTexture: 0\n    fadeOut: 0\n    borderMipMap: 0\n    mipMapsPreserveCoverage: 0\n    alphaTestReferenceValue: 0.5\n    mipMapFadeDistanceStart: 1\n    mipMapFadeDistanceEnd: 3\n'+
     '  bumpmap:\n    convertToNormalMap: 0\n    externalNormalMap: 0\n    heightScale: 0.25\n    normalMapFilter: 0\n  isReadable: 0\n  streamingMipmaps: 0\n  streamingMipmapsPriority: 0\n  grayScaleToAlpha: 0\n  generateCubemap: 6\n  cubemapConvolution: 0\n  seamlessCubemap: 0\n  textureFormat: 1\n  maxTextureSize: 8192\n  textureSettings:\n    serializedVersion: 2\n    filterMode: 1\n    aniso: 4\n    mipBias: 0\n    wrapU: 0\n    wrapV: 0\n    wrapW: 0\n  nPOTScale: 1\n  lightmap: 0\n  compressionQuality: 50\n  spriteMode: 0\n  alphaUsage: 1\n  alphaIsTransparency: 0\n  spriteTessellationDetail: -1\n  textureType: '+(normal?1:0)+'\n  textureShape: 1\n  singleChannelComponent: 0\n  maxTextureSizeSet: 0\n  compressionQualitySet: 0\n  textureFormatSet: 0\n  applyGammaDecoding: 0\n  platformSettings:\n  - serializedVersion: 3\n    buildTarget: DefaultTexturePlatform\n    maxTextureSize: 8192\n    resizeAlgorithm: 0\n    textureFormat: -1\n    textureCompression: 1\n    compressionQuality: 50\n    crunchedCompression: 0\n    allowsAlphaSplitting: 0\n    overridden: 0\n    ignorePlatformSupport: 0\n    androidETC2FallbackOverride: 0\n    forceMaximumCompressionQuality_BC6H_BC7: 0\n  userData: \n  assetBundleName: \n  assetBundleVariant: \n';}
 
+/* Unreal: the settings of one asset's Material Instance (names match the parameters of the master material) */
+function eshUnrealParams(sh,size,hasOrm){const k=sh.kind,P=shParams(sh),lin=c=>(c||[1,1,1]).map(v=>Math.pow(Math.max(0,v),2.2)),rgba=c=>[...lin(c),1];
+  const sc={HasORM:hasOrm?1:0,RoughnessValue:.6,MetallicValue:0,RoughScale:1,MetalScale:1,NormalStrength:1},vc={Tint:[1,1,1,1],UVScale:[1,1,0,1],UVOffset:[0,0,0,1]};
+  if(k==='panner')vc.PanSpeed=[P.sx,P.sy,0,1];
+  if(k==='retro'){sc.Texels=P.res;sc.DitherAmount=P.dither;sc.LightBands=P.steps||0;sc.Ambient=P.amb==null?.35:P.amb;sc.Brightness=P.bright==null?1:P.bright;vc.ColourLevels=[(1<<P.br)-1,(1<<P.bg)-1,(1<<P.bb)-1,1];}
+  if(k==='aniso'){sc.Stretch=Math.min(1,Math.abs(P.amount));sc.DirectionTurns=P.dir;}
+  if(k==='velvet'){vc.SheenColour=rgba(P.col);sc.Sheen=Math.min(1,P.sheen*.6);}
+  if(k==='skin'){vc.BloodColour=rgba(P.col);sc.ScatterStrength=Math.min(1,P.scatter*P.strength+.2);}
+  if(k==='toon'||k==='cel'){vc.ShadowColour=rgba(P.col);sc.Highlight=P.spec;sc.RimLight=P.rim;sc.OutlineWidth=(P.outline||0)*size*0.0014;vc.OutlineColour=rgba(P.ocol||[0,0,0]);
+    if(k==='toon'){sc.Bands=P.steps;sc.BandShift=P.offset;}else{sc.ShadowLine=P.thresh;sc.EdgeSoftness=P.soft;}}
+  return {scalars:sc,vectors:vc};}
 /* ---------------- both: build the extra files for one export ----------------
    info[setName] = { sh (the set's shader), tex {BaseColor, ORM, Normal, Emissive: {name,data}}, alpha }
    Returns the files to add beside the textures (names are relative to the export folder). */
-function eshFiles(to,name,info,size){const out=[],pn=pascal(name),sets=Object.keys(info);
+function eshFiles(to,name,info,size,modelFile){const out=[],pn=pascal(name),sets=Object.keys(info);
   if(to==='godot'){const base='res://gouache/'+pn+'/',sh0='res://gouache/_shaders/',made=new Set();
     for(const s of sets){const I=info[s],T=I.tex||{},sh=I.sh||{kind:'std',p:{}},sn=eshSafe(s),look=eshLook(sh.kind),alpha=!!I.alpha,file=look+(alpha?'_alpha':'')+'.gdshader';
       if(!made.has(file)){made.add(file);out.push({name:'../_shaders/'+file,data:new TextEncoder().encode(eshGodotShader(sh.kind==='specgloss'?'std':sh.kind,alpha)),shared:true});}
@@ -495,8 +506,8 @@ function eshFiles(to,name,info,size){const out=[],pn=pascal(name),sets=Object.ke
     out.push({name:shaderPath,data:new TextEncoder().encode(bi?ESH_BUILTIN_SHADER:ESH_UNITY_SHADER),shared:true},{name:shaderPath+'.meta',data:new TextEncoder().encode(eshUnityMeta('shader',sguid)),shared:true});
     return out;}
   if(to==='unreal'){const list=sets.map(s=>{const I=info[s],T=I.tex||{},sh=I.sh||{kind:'std',p:{}},tex={};for(const k of ['BaseColor','ORM','Normal','Emissive'])if(T[k])tex[k]=T[k].name;
-      const P=shParams(sh);return {name:s,safe:eshSafe(s),kind:sh.kind,p:P,tex,alpha:!!I.alpha,outlineW:(sh.kind==='toon'||sh.kind==='cel')?+((P.outline||0)*size*0.0014).toFixed(5):0};});
-    out.push({name:'gouache_unreal.json',data:new TextEncoder().encode(JSON.stringify({name:pn,sets:list},null,1))},{name:'gouache_unreal_setup.py',data:new TextEncoder().encode(UNREAL_SETUP||'')});
+      const pr=eshUnrealParams(sh,size,!!T.ORM);return {name:s,safe:eshSafe(s),kind:sh.kind,look:eshLook(sh.kind),tex,alpha:!!I.alpha,scalars:pr.scalars,vectors:pr.vectors};});
+    out.push({name:'gouache_unreal.json',data:new TextEncoder().encode(JSON.stringify({name:pn,model:modelFile||null,sets:list},null,1))},{name:'gouache_unreal_setup.py',data:new TextEncoder().encode(UNREAL_SETUP||'')});
     return out;}
   return out;}
 
