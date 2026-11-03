@@ -142,6 +142,7 @@ pub fn run() {
             viewer::viewer_close,
             viewer::viewer_update,
             viewer::viewer_textures,
+            viewer::viewer_capture,
             updates::update_check,
             updates::update_install,
         ])

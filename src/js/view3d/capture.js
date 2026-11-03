@@ -26,6 +26,7 @@ function dlgScreenshot(){if(!v3.on||!v3.mesh){toast('Open the 3D view first.');r
     chk('shotTr','Transparent background',tr,v=>{tr=v;}),el('p',{class:'note',text:v3.rt?'Ray traced mode: the ray-traced picture is saved as it is now, at the view’s size.':'Saved as PNG.'}));
   openDialog({title:'Screenshot',body,okLabel:'Save',onOk(){setTimeout(()=>v3Screenshot(size,tr),0);}});}
 async function v3Screenshot(size,tr){let w,h,d,premul=!!tr;
+  if(!tr&&typeof nv!=='undefined'&&nv.isOpen&&platform.isDesktop){try{[w,h]=v3SizeOf(size||'view');toast('Taking the picture in the new viewer…');const png=await nvCapture(w,h),r=await deliver(v3FileBase()+'_3d.png',new Blob([png],{type:'image/png'}));toast(deliveredText(r,'Screenshot'));return {w,h};}catch(e){console.warn(e);toast('The new viewer could not take it, so the normal viewer did.');}}
   if(v3.rt&&rt.view&&rt.view.n){const S=rt.view;w=S.w;h=S.h;d=rtPixels(S,!tr);}
   else{[w,h]=v3SizeOf(size||'view');d=v3Offscreen(w,h,{transparent:tr});}
   const blob=await pixelsToPNG(w,h,d,premul),r=await deliver(v3FileBase()+'_3d.png',blob);toast(deliveredText(r,'Screenshot'));return {w,h};}

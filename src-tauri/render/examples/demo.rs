@@ -53,7 +53,11 @@ fn main() {
     } }
     let scene = Scene { mesh: MeshData { positions: p, normals: n, uvs: uv }, groups, env: Some(EnvData { width: w, height: h, rgb }), settings: Settings { paint: std::env::var_os("GOUACHE_RING_TEST").is_some(), brush: 0.2, rt: std::env::var_os("GOUACHE_RT_TEST").is_some(), ..Settings::default() } };
     match open(scene, None) {
-        Ok(v) => { println!("OPEN {:?}", v.report); std::thread::sleep(std::time::Duration::from_secs(14)); v.close(); std::thread::sleep(std::time::Duration::from_millis(500)); println!("CLOSED"); }
+        Ok(v) => { println!("OPEN {:?}", v.report);
+            if let Some(path) = std::env::var_os("GOUACHE_CAPTURE") {
+                std::thread::sleep(std::time::Duration::from_secs(2));
+                match v.capture(1600, 900) { Ok(png) => { std::fs::write(path, png).unwrap(); println!("CAPTURED"); } Err(e) => println!("CAPTURE ERROR {e}") }
+            } std::thread::sleep(std::time::Duration::from_secs(14)); v.close(); std::thread::sleep(std::time::Duration::from_millis(500)); println!("CLOSED"); }
         Err(e) => println!("ERROR {e}"),
     }
 }

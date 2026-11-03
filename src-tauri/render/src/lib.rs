@@ -161,6 +161,7 @@ pub enum EnvChange {
 pub type EventSink = Arc<dyn Fn(String) + Send + Sync>;
 
 enum Cmd {
+    Capture(u32, u32, mpsc::Sender<Result<Vec<u8>, String>>),
     Textures(String, Box<Material>),
     Scene(Box<Scene>),
     Update(Settings, EnvChange),
@@ -194,6 +195,12 @@ impl Viewer {
     /// Gives one material (by the name of its group) new pictures, for example after painting.
     pub fn set_textures(&self, group: String, material: Material) -> bool {
         self.proxy.send_event(Cmd::Textures(group, Box::new(material))).is_ok()
+    }
+    /// A PNG picture of what the viewer shows, at the size asked for (waits for the ray tracing to settle). Takes a while at large sizes.
+    pub fn capture(&self, w: u32, h: u32) -> Result<Vec<u8>, String> {
+        let (tx, rx) = mpsc::channel();
+        self.proxy.send_event(Cmd::Capture(w, h, tx)).map_err(|_| "the viewer window is closed".to_string())?;
+        rx.recv_timeout(Duration::from_secs(300)).map_err(|_| "the picture took too long".to_string())?
     }
     pub fn close(&self) {
         let _ = self.proxy.send_event(Cmd::Close);
@@ -970,14 +977,27 @@ impl Gpu {
     }
 
     fn draw(&mut self, cam: &Camera) {
-        let frame = match self.surface.get_current_texture() {
-            Ok(f) => f,
-            Err(_) => {
-                self.surface.configure(&self.device, &self.config);
-                return;
+        self.draw_to(cam, None);
+    }
+
+    /// Draws one frame, on the window or (when `target` is given) into a picture of the same format.
+    fn draw_to(&mut self, cam: &Camera, target: Option<&wgpu::TextureView>) {
+        let mut frame = None;
+        let view = match target {
+            Some(t) => t.clone(),
+            None => {
+                let f = match self.surface.get_current_texture() {
+                    Ok(f) => f,
+                    Err(_) => {
+                        self.surface.configure(&self.device, &self.config);
+                        return;
+                    }
+                };
+                let v = f.texture.create_view(&wgpu::TextureViewDescriptor::default());
+                frame = Some(f);
+                v
             }
         };
-        let view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
         let aspect = self.config.width as f32 / self.config.height as f32;
         let dir = Vec3::new(cam.yaw.cos() * cam.pitch.cos(), cam.pitch.sin(), cam.yaw.sin() * cam.pitch.cos());
         let eye = cam.target + dir * cam.dist;
@@ -1075,8 +1095,90 @@ impl Gpu {
             }
         }
         self.queue.submit(Some(enc.finish()));
-        self.window.pre_present_notify();
-        frame.present();
+        if let Some(f) = frame {
+            self.window.pre_present_notify();
+            f.present();
+        }
+    }
+
+    /// A finished picture at any size (waiting for the ray tracing to settle first), as PNG bytes.
+    fn capture(&mut self, cam: &Camera, w: u32, h: u32) -> Result<Vec<u8>, String> {
+        let (w, h) = (w.clamp(16, 8192), h.clamp(16, 8192));
+        let old = (self.config.width, self.config.height);
+        self.config.width = w;
+        self.config.height = h;
+        self.depth = make_depth(&self.device, w, h);
+        let (c, n, m) = make_scene(&self.device, w, h, self.config.format);
+        self.scene_color = c;
+        self.scene_normal = n;
+        self.scene_mat = m;
+        let format = self.config.format;
+        let tex = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("capture"),
+            size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        });
+        let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+        let rounds = if self.settings.rt { rt::RT_SAMPLES + 2 } else { 1 };
+        for _ in 0..rounds {
+            self.draw_to(cam, Some(&view));
+            // keep the queue from running far ahead of the card
+            let _ = self.device.poll(wgpu::PollType::Wait);
+        }
+        let row = (w * 4).div_ceil(256) * 256;
+        let buf = self.device.create_buffer(&wgpu::BufferDescriptor { label: Some("capture read"), size: (row * h) as u64, usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ, mapped_at_creation: false });
+        let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("capture copy") });
+        enc.copy_texture_to_buffer(
+            wgpu::TexelCopyTextureInfo { texture: &tex, mip_level: 0, origin: wgpu::Origin3d::ZERO, aspect: wgpu::TextureAspect::All },
+            wgpu::TexelCopyBufferInfo { buffer: &buf, layout: wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(row), rows_per_image: Some(h) } },
+            wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+        );
+        self.queue.submit(Some(enc.finish()));
+        let (tx, rx) = mpsc::channel();
+        buf.slice(..).map_async(wgpu::MapMode::Read, move |r| {
+            let _ = tx.send(r);
+        });
+        let _ = self.device.poll(wgpu::PollType::Wait);
+        let ok = rx.recv().map_err(|e| e.to_string())?.map_err(|e| e.to_string());
+        let mut rgba = vec![0u8; (w * h * 4) as usize];
+        if ok.is_ok() {
+            let data = buf.slice(..).get_mapped_range();
+            let bgr = matches!(format, wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Bgra8UnormSrgb);
+            for y in 0..h as usize {
+                for x in 0..w as usize {
+                    let s = y * row as usize + x * 4;
+                    let d = (y * w as usize + x) * 4;
+                    let p = [data[s], data[s + 1], data[s + 2], 255];
+                    rgba[d..d + 4].copy_from_slice(&if bgr { [p[2], p[1], p[0], 255] } else { p });
+                }
+            }
+            drop(data);
+            buf.unmap();
+        }
+        // back to the window's size
+        self.config.width = old.0;
+        self.config.height = old.1;
+        self.depth = make_depth(&self.device, old.0, old.1);
+        let (c, n, m) = make_scene(&self.device, old.0, old.1, format);
+        self.scene_color = c;
+        self.scene_normal = n;
+        self.scene_mat = m;
+        self.window.request_redraw();
+        ok?;
+        let mut out = Vec::new();
+        {
+            let mut enc = png::Encoder::new(&mut out, w, h);
+            enc.set_color(png::ColorType::Rgba);
+            enc.set_depth(png::BitDepth::Eight);
+            let mut wr = enc.write_header().map_err(|e| e.to_string())?;
+            wr.write_image_data(&rgba).map_err(|e| e.to_string())?;
+        }
+        Ok(out)
     }
 }
 
@@ -1144,6 +1246,13 @@ impl ApplicationHandler<Cmd> for App {
     fn user_event(&mut self, el: &ActiveEventLoop, cmd: Cmd) {
         match cmd {
             Cmd::Close => el.exit(),
+            Cmd::Capture(w, h, tx) => {
+                let r = match self.gpu.as_mut() {
+                    Some(g) => g.capture(&self.cam, w, h),
+                    None => Err("the viewer is not ready".into()),
+                };
+                let _ = tx.send(r);
+            }
             Cmd::Textures(name, m) => {
                 if let Some(g) = self.gpu.as_mut() {
                     g.set_textures(&name, &m);

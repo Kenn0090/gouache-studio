@@ -92,3 +92,18 @@ pub fn viewer_textures(request: Request<'_>) -> Result<bool, String> {
     }
     Ok(alive)
 }
+
+/// A PNG picture of what the open viewer shows, at the size asked for (the ray tracing settles first, so large pictures take a while).
+#[tauri::command]
+pub async fn viewer_capture(width: u32, height: u32) -> Result<tauri::ipc::Response, String> {
+    let png = tauri::async_runtime::spawn_blocking(move || {
+        let g = VIEWER.lock().map_err(|e| e.to_string())?;
+        match g.as_ref() {
+            Some(v) => v.capture(width, height),
+            None => Err("the new viewer is not open".to_string()),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    Ok(tauri::ipc::Response::new(png))
+}

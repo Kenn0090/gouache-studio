@@ -39,15 +39,17 @@ function nvUpdateBody(settings,mode,envd){const meta={pos:0,nrm:0,uv:0,groups:[]
   const json=new TextEncoder().encode(JSON.stringify(meta)),extra=mode==='set'&&envd?new Uint8Array(envd.rgb.buffer,envd.rgb.byteOffset,envd.rgb.byteLength):new Uint8Array(0),out=new Uint8Array(4+json.length+extra.length),dv=new DataView(out.buffer);
   dv.setUint32(0,json.length,true);out.set(json,4);out.set(extra,4+json.length);return out;}
 /* while the window is open, changes to the lighting in the 3D view (environment, strength, turn, blur, tone, exposure, sun) follow into it */
-const nv={timer:null,sig:'',envKey:'',busy:false,paint:false,listen:null,tex:null,sync:0};
+const nv={isOpen:false,timer:null,sig:'',envKey:'',busy:false,paint:false,listen:null,tex:null,sync:0};
 async function nvPush(){if(nv.busy)return;nv.busy=true;
   try{const key=nvEnvKey(),changed=key!==nv.envKey;let mode='keep',envd=null;
     if(changed){envd=await nvEnv();mode=envd?'set':'clear';}
     const alive=await platform.invoke('viewer_update',nvUpdateBody(nvSettings(),mode,envd));
-    nv.envKey=key;if(!alive)nvStopWatch();}
+    nv.envKey=key;if(!alive){nvStopWatch();nv.isOpen=false;}}
   catch(e){console.warn(e);}finally{nv.busy=false;}}
 function nvWatch(){nvStopWatch();nv.envKey=nvEnvKey();nv.sig=JSON.stringify(nvSettings())+nv.envKey;
   nv.timer=setInterval(()=>{if(!platform.isDesktop)return;const sig=JSON.stringify(nvSettings())+nvEnvKey();if(sig!==nv.sig){nv.sig=sig;nvPush();}},400);}
+/* a finished picture from the window, at any size (PNG bytes) */
+async function nvCapture(w,h){const r=await platform.invoke('viewer_capture',{width:Math.round(w),height:Math.round(h)});return r instanceof Uint8Array?r:new Uint8Array(r);}
 function nvStopWatch(){if(nv.timer){clearInterval(nv.timer);nv.timer=null;}}
 
 /* ---- painting through the window ----
@@ -105,6 +107,6 @@ async function nvOpen(){
   if(!platform.isDesktop){toast('The new viewer is in the desktop app.');return null;}
   try{toast('Opening the new viewer…');const sc=await nvScene(),body=nvBody(sc);
     const info=await platform.invoke('viewer_open',body);
-    toast('New viewer open on '+info.name+' ('+info.backend+(info.software?', software':'')+').'+(nvPaintOn()?' Paint in it; hold Alt to turn the view.':''));nv.paint=nvPaintOn();nvListen();nvWatch();if(nv.paint)nvPush();return info;}
+    toast('New viewer open on '+info.name+' ('+info.backend+(info.software?', software':'')+').'+(nvPaintOn()?' Paint in it; hold Alt to turn the view.':''));nv.isOpen=true;nv.paint=nvPaintOn();nvListen();nvWatch();if(nv.paint)nvPush();return info;}
   catch(e){console.warn(e);toast('The new viewer could not start: '+(e&&e.message||e)+'. The normal viewer is unchanged.');return null;}}
-function nvClose(){nvStopWatch();nvUnlisten();nv.paint=false;if(platform.isDesktop)platform.invoke('viewer_close').catch(()=>{});}
+function nvClose(){nv.isOpen=false;nvStopWatch();nvUnlisten();nv.paint=false;if(platform.isDesktop)platform.invoke('viewer_close').catch(()=>{});}
