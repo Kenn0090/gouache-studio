@@ -929,7 +929,7 @@ body.dcdragging,body.dcdragging *{cursor:grabbing!important;user-select:none}
 #work.p3left .stage{--x:0}
 #work.v3full.p3left .stage{left:0}
 #work.p3left .hint{display:none}
-body.m-p3d .tool[data-tool=cage],body.m-p3d .tool[data-tool=crop],body.m-p3d .tool[data-tool=array],body.m-p3d .tool[data-tool=shape],body.m-p3d .tool[data-tool=text]{display:none}
+body.m-p3d .tool[data-tool=cage],body.m-p3d .tool[data-tool=crop],body.m-p3d .tool[data-tool=array],body.m-p3d .tool[data-tool=shape]{display:none}
 .v3bar .seg button{white-space:nowrap}
 /* 0.37.1: messages sit under the 3D bar, not on top of it */
 body.m-p3d #toast{top:54px;z-index:40}
@@ -1472,3 +1472,11 @@ body.photomode #docTabs{display:none!important}
 .barpop .barh{font-weight:600;margin-bottom:6px}.barpop .barsub{font-weight:600;opacity:.7;margin:10px 0 4px}
 .barpop .barpre{display:flex;gap:6px;margin-bottom:4px}.barpop .barpre .on{outline:2px solid var(--accent,#e0655a)}
 .barpop .barrow{display:flex;gap:8px;align-items:center;padding:2px 0;cursor:pointer}.barpop select{width:100%;margin-top:4px}
+/* Paths panel (0.93.3) */
+.pathlist{display:flex;flex-direction:column;gap:2px;margin:4px 0 6px;max-height:180px;overflow:auto}
+.pathrow{display:flex;align-items:center;gap:6px;padding:3px 6px;border-radius:5px;cursor:pointer;border:1px solid transparent}
+.pathrow.on{background:var(--accent-soft,#3a3326);border-color:var(--accent,#e0a24a)}
+.pathrow.off .pathname{opacity:.5;text-decoration:line-through}
+.pathrow .patheye{min-width:22px;padding:0 4px}
+.pathrow .pathname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pathrow .pathrename{flex:1;min-width:0}

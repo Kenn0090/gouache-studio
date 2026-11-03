@@ -248,7 +248,7 @@ function brushEdited(key){if(typeof optSync==='function')optSync();brushRemember
 function buildBrushPanel(){
   const box=$('#brushBody');box.replaceChildren();const sm=ui.tool==='smudge',isText=ui.tool==='text',isSel=isSelTool(ui.tool),isXf=!!(xf&&!xf.move),isOther=['crop','move','gradient','bucket','gbucket','cage','array','shape'].includes(ui.tool),noBrush=isText||isSel||isXf||isOther;
   $('#libBody').hidden=noBrush;$('.prevwrap').hidden=noBrush;$('#abrBtn').hidden=noBrush;$('#saveBrushBtn').hidden=noBrush||ui.tool==='dodge'||ui.tool==='burn';$('#tipBtn').hidden=noBrush;
-  if(isText){$('#brushTitle').textContent='Text';buildTextPanel(box);return;}
+  if(isText){$('#brushTitle').textContent='Text';if(ui.mode==='p3d'&&typeof t3Panel==='function')t3Panel(box);else buildTextPanel(box);return;}
   if(ui.tool==='material')buildMaterialBrushPanel(box);
   if(ui.tool==='pen'||ui.tool==='path'){$('#libBody').hidden=false;$('.prevwrap').hidden=false;$('#saveBrushBtn').hidden=true;$('#abrBtn').hidden=false;$('#tipBtn').hidden=false;pathPanel(box);return;}
   if(isXf){buildXfPanel(box);return;}

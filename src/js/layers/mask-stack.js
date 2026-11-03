@@ -209,7 +209,7 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
   if(r.kind==='ref'){const o=r._ref&&r._ref.mask&&inDoc(r._ref)?r._ref:(allNodes(doc.root).find(n=>n.name===p.name&&n.mask&&n!==L)||null);if(!o||o===L||(guard||[]).includes(o))return null;r._ref=o;
     if(msHas(o))msUpdate(o,[...(guard||[]),L]);return lum(o.mask.target.tex,p.inv);}
   if(r.kind==='image'){if(!r.t)return null;if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);const pm=pxfRowMode(r),tri=pxfIs3D(pm)&&typeof fillPosMaps==='function'?fillPosMaps():null,o=out();
-    run(P_FILLIMG,o,Object.assign({uSrc:r.t.tex,uTile:Math.max(.05,p.tile||1),uRot:(p.rot||0)*Math.PI/180,uContrast:p.contrast??0,uKeepA:{int:0},uGrey:{int:1},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uSharp:4,uHStr:1,uHeight:{int:0},uNormal:{int:0},uRep:{int:p.rep===false?0:1},uFront:{int:p.front?1:0}},
+    run(P_FILLIMG,o,Object.assign({uSrc:r.t.tex,uTile:Math.max(.05,p.tile||1),uRot:(p.rot||0)*Math.PI/180,uContrast:p.contrast??0,uKeepA:{int:p.decal?1:0},uGrey:{int:1},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uSharp:4,uHStr:1,uHeight:{int:0},uNormal:{int:0},uRep:{int:p.rep===false?0:1},uFront:{int:p.front?1:0}},
       tri?pxfUniforms(pm,p.xf):pxfUniforms('uv',pxfIs3D(pm)?null:p.xf)));
     if(p.inv){const o2=out();run(P.src,o2,Object.assign({uKind:{int:0},uT:o.tex,uNeg:{int:1},uSeed:0},ctx.surf));release(o);return {t:o2,pooled:true};}return {t:o,pooled:true};}
   if(r.kind==='id'){const M=doc.meshMaps&&doc.meshMaps.id;if(!M||!p.cols.length)return null;if(!P_IDSEL)P_IDSEL=program(FS_IDSEL);const o=out(),cols=new Float32Array(24);p.cols.slice(0,8).forEach((c,i)=>cols.set(c,i*3));
@@ -257,7 +257,7 @@ function msUpdate(L,guard){if(!msHas(L))return;const k=msKey(L);if(L.mask._key==
 function msUpdateAll(){for(const n of allNodes(doc.root))if(msHas(n))msUpdate(n);}
 
 /* ---- turning a plain mask into a stack, adding and removing rows (each one undo step) ---- */
-function msSnap(L){const M=L.mask;return {mask:M,target:M?M.target:null,stack:M&&M.stack?M.stack.map(r=>({r,d:JSON.stringify(r,(k,x)=>k==='t'||k[0]==='_'?undefined:x)})):null,cfx:(L.cfx||[]).map(r=>({r,d:JSON.stringify(r,(k,x)=>k[0]==='_'?undefined:x)}))};}
+function msSnap(L){const M=L.mask;return {mask:M,target:M?M.target:null,stack:M&&M.stack?M.stack.map(r=>({r,d:JSON.stringify(r,function(k,x){return (this===r&&k==='t')||k[0]==='_'?undefined:x;})})):null,cfx:(L.cfx||[]).map(r=>({r,d:JSON.stringify(r,(k,x)=>k[0]==='_'?undefined:x)}))};}
 function msRestore(L,s){if(L.live&&!lm.on)return;L.mask=s.mask;if(s.mask){s.mask.target=s.target;s.mask.stack=s.stack?s.stack.map(x=>Object.assign(x.r,JSON.parse(x.d),{t:x.r.t})):null;s.mask._key=null;}
   L.cfx=s.cfx.map(x=>Object.assign(x.r,JSON.parse(x.d)));L.lookVer=(L.lookVer||0)+1;if(L.live&&typeof liveMaskSync==='function')liveMaskSync();}
 function msRecord(L,label,fn){const b=msSnap(L);if(fn()===false)return false;const a=msSnap(L);
@@ -312,7 +312,7 @@ function cfxApply(n,src,k,mode){const key=mode==='off'?null:cfxKey(n,k,src),c=n.
   return cur;}
 
 /* ---- files: rows as settings, Paint rows and pictures as images ---- */
-async function msEncode(L,put,putRaw){const out={};if(msHas(L)){out.stack=[];for(const r of L.mask.stack){const d=JSON.parse(JSON.stringify(r,(k,x)=>k==='t'||k[0]==='_'?undefined:x));
+async function msEncode(L,put,putRaw){const out={};if(msHas(L)){out.stack=[];for(const r of L.mask.stack){const d=JSON.parse(JSON.stringify(r,function(k,x){return (this===r&&k==='t')||k[0]==='_'?undefined:x;}));/* only the row's own picture (t) is left out: a projection's translation is also called t */
     if(r.t){if(r.kind==='image')d.pic=await putRaw(r.t);else d.img=await put(r.t,true);}out.stack.push(d);}}
   if(L.cfx&&L.cfx.length)out.cfx=L.cfx.map(r=>JSON.parse(JSON.stringify(r,(k,x)=>k[0]==='_'?undefined:x)));return out;}
 async function msDecode(n,o,img,getRaw){if(o.cfx)n.cfx=o.cfx.map(r=>Object.assign(msRow('filter'),r,{id:'r'+(++msSeq)}));

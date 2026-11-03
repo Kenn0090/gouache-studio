@@ -1,3 +1,17 @@
+## 0.93.3
+
+- **Straight line like Substance Painter:** hold Shift for a dotted preview and click to draw; Shift+Ctrl snaps to 5 degree steps.
+- **Several paths in one layer** with a Paths panel (select, hide, rename, duplicate, copy, paste, delete), like Substance Painter.
+- **Path editing like Substance Painter:** click the line to add a point, double-click for smooth/corner, rectangle-select points, Delete, Reverse direction, and a separate opacity for each path.
+- **Surface path settings:** Projection depth, Follow path / Up axis, Symmetry, and Display options (handle size, colours, normals, tangents, direction).
+- **Filled path (3D):** a closed surface path can fill its inside on the model.
+- **Live text on the model (3D Paint):** the Text tool (T) puts editable text on the surface like a decal, with materials, a gizmo, and click-again to move.
+- **Ribbon path (3D):** bend text or a picture along a surface path, with Painter's stretch, tiling and alignment options; the Text tool's **Put on a path** uses it.
+- **Text effects:** Disorder (with Shuffle), Wave, Slant, Stretch, Letter turn (with the share of letters turned) and Case for 3D text and Ribbon text.
+- **Cylindrical projection** with Angle, Backface culling and hardness, UV wrap, Project cropped to shape and Mirror (the wrap, crop and mirror options work on every 3D projection).
+- **Warp projection:** bend a projected picture or text with a grid of points you drag over the model (Edit vertices, rows and columns, split tools, depth and culling).
+- **P is the Path tool in 3D Paint** (Pen is Shift+P there).
+
 ## 0.93.2
 
 - **Procreate wet brushes** (watercolour, washes, blenders) now import as the app's mixing brushes: pick-up, paint load, wetness and watercolour edges (an approximation).
