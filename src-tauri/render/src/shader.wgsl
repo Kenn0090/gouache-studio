@@ -163,6 +163,8 @@ fn fs(i: VOut) -> FOut {
     var o: FOut;
     g_sf = 0.0;
     g_sp = 0.0;
+    // see-through parts (opacity lives in the base colour's alpha): cut out below one half, like the 3D view
+    if (frame.wire.w < 1.5 && textureSampleLevel(base_tex, tex_smp, i.uv, 0.0).a < 0.5) { discard; }
     o.c = fs_shade(i);
     if (frame.wire.w > 1.5) { o.c = vec4<f32>(select(pow((frame.bgc.rgb + vec3<f32>(0.055)) / 1.055, vec3<f32>(2.4)), frame.bgc.rgb / 12.92, frame.bgc.rgb <= vec3<f32>(0.04045)), 1.0); }
     o.m = vec4<f32>(g_rough, g_sp, 0.0, 1.0);

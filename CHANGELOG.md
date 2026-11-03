@@ -1,5 +1,6 @@
 ## 0.94.1
 
+- **New viewer: see-through parts.** Parts of a material with less than half opacity are cut out in the new viewer window, like in the normal 3D view.
 - **New viewer: mirror guides.** The mirror planes and radial rays (when Show guides is on) are drawn in the new viewer window too.
 - **New viewer: selection tint.** A selection made in 3D Paint shows orange on the model in the new viewer window.
 - **New viewer: wireframe.** Wireframe and Wireframe overlay (and your wire colour) now show in the new viewer window.
