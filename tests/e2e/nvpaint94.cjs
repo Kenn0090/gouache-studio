@@ -1,0 +1,41 @@
+/* 0.94: painting through the new viewer window: its pointer events paint with the normal brush, the changed maps go back */
+const {chromium}=require('playwright');
+const OLD=__dirname+'/';
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();
+ await p.addInitScript(()=>{try{localStorage.setItem("gs.p3d",JSON.stringify({size:128,layout:"3d"}));}catch(e){}});
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
+  if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.message));p.on('console',m=>{if(m.type()==='warning'||m.type()==='error')console.log('CON',m.text());});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ const W=ms=>p.waitForTimeout(ms||200);
+ await p.click('#modeTabs [data-mode=p3d]');await W(2500);
+ await p.evaluate(()=>{const P=__gs.platform;P.isDesktop=true;window.__tex=[];window.__ups=[];
+   P.invoke=async(cmd,body)=>{if(cmd==='viewer_open')return {name:'Test card',backend:'Vulkan',kind:'DiscreteGpu',software:false};
+     if(cmd==='viewer_textures'){window.__tex.push(body.length);return true;}if(cmd==='viewer_update'){const dv=new DataView(body.buffer,body.byteOffset,body.byteLength),jl=dv.getUint32(0,true);window.__ups.push(JSON.parse(new TextDecoder().decode(body.slice(4,4+jl))));return true;}return null;};});
+ await p.evaluate(()=>__gs.nvOpen());await W(3500);
+ ok(await p.evaluate(()=>window.__ups.some(u=>u.settings.paint===true&&u.settings.fov>0)),'painting is switched on in the window with the view\'s field of view');
+ /* brush, red, and a pretend stroke from the window */
+ const r=await p.evaluate(()=>{__gs.setTool('brush');__gs.setFG([1,0,0]);const h=document.getElementById('v3Hit').getBoundingClientRect();return {w:h.width,h:h.height};});
+ const before=await p.evaluate(async()=>{const S=__gs.p3.sets[__gs.p3.cur];return (await __gs.buildTextures(__gs.GLTF_TEX,'preview')).find(f=>f.suffix==='BaseColor').data.length;});
+ const cam=await p.evaluate(()=>{const e=__gs.v3Eye(),c=__gs.v3.cam;return {eye:e,tgt:[c.tx,c.ty,c.tz],fov:__gs.v3s().fov||45};});
+ const ev=(t,x,y)=>Object.assign({t,x,y,w:r.w,h:r.h,shift:false,ctrl:false,alt:false},cam);
+ await p.evaluate(a=>__gs.nvHandle(a),ev('down',r.w/2,r.h/2));
+ await p.evaluate(a=>__gs.nvHandle(a),ev('move',r.w/2+20,r.h/2+3));await W(300);
+ for(let i=0;i<8&&!(await p.evaluate(()=>window.__tex.length));i++){await p.evaluate(a=>__gs.nvHandle(a),ev('move',r.w/2+22+i*3,r.h/2+4));await W(500);}
+ ok(await p.evaluate(()=>window.__tex.length>=1),'pictures reach the window while the brush is still down ('+await p.evaluate(()=>window.__tex.join(','))+')');
+ const mid=await p.evaluate(()=>window.__tex.length);
+ await p.evaluate(a=>__gs.nvHandle(a),ev('up',r.w/2+45,r.h/2+5));
+ await p.waitForFunction(()=>window.__tex.length>0,null,{timeout:20000}).catch(()=>{});
+ await p.waitForFunction(m=>window.__tex.length>m,mid,{timeout:25000}).catch(()=>{});
+ ok(await p.evaluate(m=>window.__tex.length>m,mid),'after the stroke the changed pictures go back to the window ('+await p.evaluate(()=>window.__tex.join(','))+' bytes)');
+ const after=await p.evaluate(async()=>(await __gs.buildTextures(__gs.GLTF_TEX,'preview')).find(f=>f.suffix==='BaseColor').data.length);
+ ok(after!==before,'the stroke changed the base colour map ('+before+' -> '+after+' bytes)');
+ ok(errs.length===0,'no page errors '+errs.join('|'));
+ await p.evaluate(()=>__gs.nvClose());
+ await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();

@@ -34,6 +34,7 @@ function esRow(redraw){if(!platform.isDesktop)return [el('p',{class:'note',text:
       el('p',{class:'note',text:es.to==='unity'?'Files go to Assets/Gouache/<name>. Unity imports them when you switch to it. Choose URP or the Built-in pipeline above (HDRP isn’t covered); put each .mat on your model. Built-in has no see-through materials. The .glb needs the glTFast package (Package Manager).':
         es.to==='godot'?'Files go to res://gouache/<name>. Godot imports them when you switch to it. Each texture set gets a .tres material with its shader: assign it to the model’s surfaces.':
         'Files go to Content/Gouache/<name>. With the Gouache shader ticked, run gouache_unreal_setup.py in Unreal (turn on the Python Editor Script Plugin, then Tools › Execute Python Script): it imports the textures and builds a material per texture set. Otherwise drag the .glb into the Content Browser.'}));}
+  out.push(...elRow(redraw));
   return out;}
 /* where the export goes: the engine project's folder, Blender's folder, or a folder you pick */
 async function esTargetDir(name){if(!esActive())return await platform.pickFolder();
@@ -42,7 +43,7 @@ async function esTargetDir(name){if(!esActive())return await platform.pickFolder
   const dir=[base.replace(/[\\/]+$/,''),...esSub(es.to,pascal(name))].join(esSep(base));await platform.invoke('make_dir',{path:dir});return dir;}
 /* after the files are written */
 async function esAfter(dir,files,name){if(!esActive())return;const label=ES_TARGETS.find(x=>x[0]===es.to)[1],sep=esSep(dir);
-  if(es.to!=='blender'){toast('Sent '+files.length+' files to '+label+': '+dir);return;}
+  if(es.to!=='blender'){toast('Sent '+files.length+' files to '+label+': '+dir);await elPing(es.to,dir,files,name);return;}
   const m=files.find(f=>/\.(glb|obj)$/i.test(f.name));if(!m){toast('Saved to '+dir+'. Tick a model (.glb) to send it to Blender.');return;}
   const path=dir.replace(/[\\/]+$/,'')+sep+m.name;
   if(await platform.invoke('blender_send',{path,port:ES_PORT}).catch(()=>false)){toast('Sent “'+m.name+'” to Blender.');return;}
