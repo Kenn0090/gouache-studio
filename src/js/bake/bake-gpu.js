@@ -277,8 +277,12 @@ function bkMRT(w,h,n){const fbo=gl.createFramebuffer(),tex=[];gl.bindFramebuffer
 function bkFreeMRT(m){if(!m)return;gl.deleteFramebuffer(m.fbo);m.tex.forEach(t=>gl.deleteTexture(t));}
 function bkClear(m){gl.bindFramebuffer(gl.FRAMEBUFFER,m.fbo);gl.viewport(0,0,m.w,m.h);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);}
 /* the low-poly on the GPU (with the ray direction as an extra attribute) */
-function bkLowGPU(L){const n=L.pos.length/3,d=new Float32Array(n*17);
-  for(let i=0;i<n;i++){d.set(L.pos.subarray(i*3,i*3+3),i*17);d.set(L.nrm.subarray(i*3,i*3+3),i*17+3);d.set(L.uv.subarray(i*2,i*2+2),i*17+6);d.set(L.tan.subarray(i*4,i*4+4),i*17+8);d.set(L.ray.subarray(i*3,i*3+3),i*17+12);d[i*17+15]=L.vertPart?L.vertPart[i]:0;d[i*17+16]=L.vertCurv?L.vertCurv[i]:0;}
+/* (0.93.4) Soften normals (like Marmoset): the low-poly's normals are blended toward the normals averaged over every corner at the same place,
+   so a hard edge bakes as a smooth shading gradient. Use the same smoothing in the engine. */
+function bkSoftNormals(L,k){if(!(k>0))return L.nrm;const a=bkRayDirs(L,true),n=L.pos.length/3,out=new Float32Array(n*3);
+  for(let i=0;i<n;i++){let x=L.nrm[i*3]+(a[i*3]-L.nrm[i*3])*k,y=L.nrm[i*3+1]+(a[i*3+1]-L.nrm[i*3+1])*k,z=L.nrm[i*3+2]+(a[i*3+2]-L.nrm[i*3+2])*k;const l=Math.hypot(x,y,z)||1;out[i*3]=x/l;out[i*3+1]=y/l;out[i*3+2]=z/l;}return out;}
+function bkLowGPU(L){const n=L.pos.length/3,d=new Float32Array(n*17),SN=bkSoftNormals(L,L.soften);
+  for(let i=0;i<n;i++){d.set(L.pos.subarray(i*3,i*3+3),i*17);d.set(SN.subarray(i*3,i*3+3),i*17+3);d.set(L.uv.subarray(i*2,i*2+2),i*17+6);d.set(L.tan.subarray(i*4,i*4+4),i*17+8);d.set(L.ray.subarray(i*3,i*3+3),i*17+12);d[i*17+15]=L.vertPart?L.vertPart[i]:0;d[i*17+16]=L.vertCurv?L.vertCurv[i]:0;}
   const vaoL=gl.createVertexArray();gl.bindVertexArray(vaoL);const vb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vb);gl.bufferData(gl.ARRAY_BUFFER,d,gl.STATIC_DRAW);
   const at=(i,sz,o)=>{gl.enableVertexAttribArray(i);gl.vertexAttribPointer(i,sz,gl.FLOAT,false,68,o*4);};at(0,3,0);at(1,3,3);at(2,2,6);at(3,4,8);at(4,3,12);at(5,1,15);at(6,1,16);
   const ib=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,L.idx,gl.STATIC_DRAW);gl.bindVertexArray(vao);
@@ -318,7 +322,7 @@ async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.si
   const self=false,solo=!high,whole=o.kinds.includes('light');if(solo){o=Object.assign({},o,{front:.003,back:.003,cage:null,average:false,match:false});low.vertCurv=meshCurvature(low);}
   const source=high||(bvWidth(o.bevel)||whole?low.whole||low:low),hg=o.hg||await bkHighGPU(source,progress.step,o.kinds.includes('id'));if(progress.cancelled){if(!o.hg)bkFreeHigh(hg);return null;}
   try{await bvPrepareInfo(hg,o.bevel);}catch(e){if(!o.hg)bkFreeHigh(hg);throw e;}if(progress.cancelled){if(!o.hg)bkFreeHigh(hg);return null;}
-  const bevelTex=bevelBakeTex(hg,o.bevel);bkIdleState();low.ray=o.cage?o.cage:bkRayDirs(low,o.average);const lg=bkLowGPU(low);
+  const bevelTex=bevelBakeTex(hg,o.bevel);bkIdleState();low.soften=o.soften||0;low.ray=o.cage?o.cage:bkRayDirs(low,o.average);const lg=bkLowGPU(low);
   const kinds=o.kinds.filter(k=>k!=='curv');const outDepth=canFloat?16:8;
   /* o.acc: running sums kept from an earlier bake (re-bake part of it); o.rect: only this part (output pixels) */
   const results={},acc=o.acc||{};for(const k of kinds)if(!acc[k]||acc[k].w!==W||acc[k].h!==H){if(acc[k])disposeTarget(acc[k]);acc[k]=makeTarget(W,H,k==='cpos'||k==='cnrm'?32:16,false);if(acc[k].depth===32){/* 32-bit float cannot be filtered on every card */gl.bindTexture(gl.TEXTURE_2D,acc[k].tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);}}

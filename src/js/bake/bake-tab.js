@@ -78,7 +78,7 @@ async function runBake(L,ks,opt){opt=opt||{};const C=bakeCfg;if(bk.busy)return;i
   bk.busy=true;bk.prog=prog;bk.tiles=0;bakeProgUI();bakeSyncMesh();const t0=performance.now();await tick();
   /* start from a clean slate: the model fills in as tiles finish */
   for(const k in bk.res)disposeTarget(bk.res[k]);for(const k in bk.acc)disposeTarget(bk.acc[k]);bk.res={};bk.acc={};bk.stale.clear();bk.dirty=true;
-  const o={bevel:C.bevel?Object.assign({},C.bevel):null,size:doc.w,sizeH:doc.h,ss:C.ss,front:C.front*.02,back:C.back*.02,average:C.average,cage,match:C.match&&!!high,kinds,
+  const o={bevel:C.bevel?Object.assign({},C.bevel):null,size:doc.w,sizeH:doc.h,ss:C.ss,front:C.front*.02,back:C.back*.02,average:C.average,soften:C.soften||0,cage,match:C.match&&!!high,kinds,
     rays:C.rays,light:kinds.includes('light')?JSON.parse(JSON.stringify(lightRig())):null,aoDist:C.aoDist*.02,thickDist:C.thickDist*.02,pad:C.pad,dx:false,seed:Math.random()*10,aoSpread:C.aoSpread,thickRays:C.thickRays,curvRadius:C.curvRadius,curvStr:C.curvStr};
   let res=null;
   try{prog.step('Baking '+ks.map(k=>BAKE_NAMES[k].toLowerCase()).join(', ')+'…');
@@ -395,7 +395,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
       el('div',{class:'sub',text:'Anti-aliasing'}),seg([[1,'1×'],[2,'4×'],[4,'16×']],C.ss,v=>{C.ss=v;},'Anti-aliasing'),S('bkPad','Padding','pad',0,64,1,v=>v+'px'),
       el('div',{class:'sub',text:'Send to the document as',title:'Layers: each bake is also a layer in the base colour, so you can blend them (curvature on Overlay over AO). AO, curvature and height go into their own maps too.'}),seg([['layers','Layers'],['maps','Maps only']],C.sendAs==='maps'?'maps':'layers',v=>{C.sendAs=v;},'Send as'),
       el('div',{class:'chips'},chk('bkAuto','Send results automatically',C.autoSend,v=>{C.autoSend=v;}),chk('bkRepl','Replace the last baked layers',C.replace,v=>{C.replace=v;})));
-    if(T==='normal')pg.append(on('normal'),bevelBakeControls(),note('Tangent-space normal, OpenGL style (green up). For engines that want DirectX, flip green when exporting (File › Export textures).'));
+    if(T==='normal')pg.append(on('normal'),makeSlider({id:'bkSoften',label:'Soften normals',min:0,max:1,step:.05,value:C.soften||0,fmt:v=>v<.02?'off':Math.round(v*100)+'%',onInput:v=>{C.soften=v;}}).el,note('Smooths the low-poly’s hard edges while baking (like Marmoset’s Soften normals): the edge bakes as a soft gradient. Smooth the model the same way in your engine.'),bevelBakeControls(),note('Tangent-space normal, OpenGL style (green up). For engines that want DirectX, flip green when exporting (File › Export textures).'));
     if(T==='ao')pg.append(on('ao'),S('bkRays','Rays','rays',8,256,8,v=>String(v)),S('bkAoD','Reach','aoDist',1,100,1,v=>v+'%'),S('bkAoS','Spread','aoSpread',.1,1,.05,pct),
       note('Rays: how many each pixel sends (more is smoother, slower). Reach: how far they look. Spread: narrower keeps the shading to deep cavities.'));
     if(T==='curv'){const flip=chk('bkCurvFlip','Flip green',!!C.curvFlip,v=>{C.curvFlip=v;});flip.hidden=C.curvSrc==='mesh';
