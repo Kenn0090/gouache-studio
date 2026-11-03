@@ -270,6 +270,7 @@ struct Gpu {
     depth: wgpu::TextureView,
     scene_color: wgpu::TextureView,
     scene_normal: wgpu::TextureView,
+    scene_mat: wgpu::TextureView,
     rt: rt::Rt,
     vb: Option<wgpu::Buffer>,
     groups: Vec<GpuGroup>,
@@ -322,7 +323,7 @@ fn make_depth(device: &wgpu::Device, w: u32, h: u32) -> wgpu::TextureView {
 }
 
 /// The picture the model is drawn into first (colour, and each pixel's surface direction), before the ray results are put on it.
-fn make_scene(device: &wgpu::Device, w: u32, h: u32, format: wgpu::TextureFormat) -> (wgpu::TextureView, wgpu::TextureView) {
+fn make_scene(device: &wgpu::Device, w: u32, h: u32, format: wgpu::TextureFormat) -> (wgpu::TextureView, wgpu::TextureView, wgpu::TextureView) {
     let mk = |label: &str, f: wgpu::TextureFormat| {
         device
             .create_texture(&wgpu::TextureDescriptor {
@@ -337,7 +338,7 @@ fn make_scene(device: &wgpu::Device, w: u32, h: u32, format: wgpu::TextureFormat
             })
             .create_view(&wgpu::TextureViewDescriptor::default())
     };
-    (mk("scene colour", format), mk("scene normals", rt::NORMAL_FORMAT))
+    (mk("scene colour", format), mk("scene normals", rt::NORMAL_FORMAT), mk("scene material", rt::NORMAL_FORMAT))
 }
 
 fn box_down(src: &[u8], w: u32, h: u32) -> (Vec<u8>, u32, u32) {
@@ -642,7 +643,7 @@ impl Gpu {
             bind_group_layouts: &[&frame_layout],
             push_constant_ranges: &[],
         });
-        let target = [Some(wgpu::ColorTargetState { format, blend: None, write_mask: wgpu::ColorWrites::ALL }), Some(wgpu::ColorTargetState { format: rt::NORMAL_FORMAT, blend: None, write_mask: wgpu::ColorWrites::ALL })];
+        let target = [Some(wgpu::ColorTargetState { format, blend: None, write_mask: wgpu::ColorWrites::ALL }), Some(wgpu::ColorTargetState { format: rt::NORMAL_FORMAT, blend: None, write_mask: wgpu::ColorWrites::ALL }), Some(wgpu::ColorTargetState { format: rt::NORMAL_FORMAT, blend: None, write_mask: wgpu::ColorWrites::ALL })];
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("viewer pipeline"),
             layout: Some(&layout),
@@ -760,7 +761,7 @@ impl Gpu {
             ..Default::default()
         });
         let depth = make_depth(&device, config.width, config.height);
-        let (scene_color, scene_normal) = make_scene(&device, config.width, config.height, format);
+        let (scene_color, scene_normal, scene_mat) = make_scene(&device, config.width, config.height, format);
         let rt = rt::Rt::new(&device, format);
         let black = EnvData { width: 2, height: 1, rgb: vec![0.0; 6] };
         let (env_view, env_mips, env_sh) = build_env(&device, &queue, &black);
@@ -798,6 +799,7 @@ impl Gpu {
             depth,
             scene_color,
             scene_normal,
+            scene_mat,
             rt,
             vb: None,
             groups: Vec::new(),
@@ -928,9 +930,10 @@ impl Gpu {
         self.config.height = h;
         self.surface.configure(&self.device, &self.config);
         self.depth = make_depth(&self.device, w, h);
-        let (c, n) = make_scene(&self.device, w, h, self.config.format);
+        let (c, n, m) = make_scene(&self.device, w, h, self.config.format);
         self.scene_color = c;
         self.scene_normal = n;
+        self.scene_mat = m;
     }
 
     fn draw(&mut self, cam: &Camera) {
@@ -984,6 +987,12 @@ impl Gpu {
                         resolve_target: None,
                         ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT), store: wgpu::StoreOp::Store },
                     }),
+                    Some(wgpu::RenderPassColorAttachment {
+                        view: &self.scene_mat,
+                        depth_slice: None,
+                        resolve_target: None,
+                        ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT), store: wgpu::StoreOp::Store },
+                    }),
                 ],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &self.depth,
@@ -1015,7 +1024,7 @@ impl Gpu {
         }
         if st.rt {
             let sd = [sun.x, sun.y, sun.z];
-            self.rt.trace(&self.device, &self.queue, &mut enc, &self.depth, &self.scene_normal, vp.inverse().to_cols_array_2d(), [eye.x, eye.y, eye.z], sd, 0.02, self.config.width, self.config.height);
+            self.rt.trace(&self.device, &self.queue, &mut enc, &self.depth, &self.scene_normal, &self.scene_mat, vp.inverse().to_cols_array_2d(), [eye.x, eye.y, eye.z], sd, 0.02, self.config.width, self.config.height);
         }
         {
             let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -1025,7 +1034,7 @@ impl Gpu {
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
-            self.rt.composite(&self.device, &self.queue, &mut pass, &self.scene_color, &self.scene_normal, st.rt);
+            self.rt.composite(&self.device, &self.queue, &mut pass, &self.scene_color, &self.scene_normal, &self.scene_mat, st.rt);
             if u.cursor[3] > 0.5 {
                 pass.set_pipeline(&self.ring_pipeline);
                 pass.set_bind_group(0, &self.frame_bg, &[]);

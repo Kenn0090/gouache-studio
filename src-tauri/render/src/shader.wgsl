@@ -119,10 +119,13 @@ fn bayer(p: vec2<f32>) -> f32 {
 }
 
 var<private> g_sf: f32 = 0.0;
+var<private> g_sp: f32 = 0.0;
+var<private> g_rough: f32 = 0.5;
 fn lum(c: vec3<f32>) -> f32 { return dot(c, vec3<f32>(0.2126, 0.7152, 0.0722)); }
 
 struct FOut {
     @location(0) c: vec4<f32>,
+    @location(2) m: vec4<f32>,   // roughness, the share of the light that is reflection
     @location(1) n: vec4<f32>,   // world normal (0..1) and the share of the light that comes from the sun; w = 0 where there is no surface
 };
 
@@ -130,7 +133,9 @@ struct FOut {
 fn fs(i: VOut) -> FOut {
     var o: FOut;
     g_sf = 0.0;
+    g_sp = 0.0;
     o.c = fs_shade(i);
+    o.m = vec4<f32>(g_rough, g_sp, 0.0, 1.0);
     var nw = normalize(i.nrm);
     if (dot(nw, normalize(frame.cam_pos.xyz - i.wpos)) < 0.0) { nw = -nw; }
     o.n = vec4<f32>(nw * 0.5 + 0.5, 0.25 + 0.75 * g_sf);
@@ -318,6 +323,8 @@ fn fs_shade(i: VOut) -> vec4<f32> {
     col += (env_d * ao + env_s * ao) * skyi;
     col += emis * 2.0;
     g_sf = lum(sun_part) / max(lum(col), 1e-4);
+    g_sp = clamp(lum(env_s * ao * skyi) / max(lum(col), 1e-4), 0.0, 1.0);
+    g_rough = rough;
     return vec4<f32>(tone(col), 1.0);
 }
 
@@ -342,6 +349,7 @@ fn fs_out(i: OutOut) -> FOut {
     var o: FOut;
     o.c = vec4<f32>(lin3(mat.shd.rgb), 1.0);
     o.n = vec4<f32>(0.0);
+    o.m = vec4<f32>(0.0);
     return o;
 }
 
@@ -362,6 +370,7 @@ fn vs_bg(@builtin(vertex_index) vi: u32) -> BgOut {
 fn fs_bg(i: BgOut) -> FOut {
     var o: FOut;
     o.n = vec4<f32>(0.0);
+    o.m = vec4<f32>(0.0);
     let far = frame.inv_view_proj * vec4<f32>(i.ndc, 1.0, 1.0);
     let near = frame.inv_view_proj * vec4<f32>(i.ndc, 0.0, 1.0);
     let d = normalize(far.xyz / far.w - near.xyz / near.w);

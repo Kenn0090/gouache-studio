@@ -14,6 +14,7 @@ struct Node { mn: vec3<f32>, a: u32, mx: vec3<f32>, count: u32 };
 @group(0) @binding(4) var<storage, read> tris: array<vec4<f32>>;
 @group(0) @binding(5) var prev_tex: texture_2d<f32>;
 @group(0) @binding(6) var out_tex: texture_storage_2d<rgba16float, write>;
+@group(0) @binding(7) var mat_tex: texture_2d<f32>;
 
 fn pcg(v: u32) -> u32 {
     let s = v * 747796405u + 2891336453u;
@@ -89,6 +90,7 @@ fn cs(@builtin(global_invocation_id) g: vec3<u32>) {
     let nrm = textureLoad(nrm_tex, px, 0);
     var sun_vis = 1.0;
     var ao = 1.0;
+    var refl = 1.0;
     if (nrm.w > 0.0 && rt.p.w > 0.5) {
         let d = textureLoad(depth_tex, px, 0);
         let ndc = vec4<f32>((f32(g.x) + 0.5) / rt.res.x * 2.0 - 1.0, 1.0 - (f32(g.y) + 0.5) / rt.res.y * 2.0, d, 1.0);
@@ -113,10 +115,20 @@ fn cs(@builtin(global_invocation_id) g: vec3<u32>) {
         let ph = 6.2831853 * u2;
         let hd = nb * vec3<f32>(rr * cos(ph), rr * sin(ph), sqrt(max(1.0 - u1, 0.0)));
         if (occluded(o, hd, rt.p.y)) { ao = 0.0; }
+        // reflection: a mirror ray, spread by the roughness; blocked means the reflection shows the model itself, not the sky
+        let rough = textureLoad(mat_tex, px, 0).x;
+        let rd = reflect(normalize(pos - rt.cam_pos.xyz), n);
+        let jb = basis(rd);
+        let ju = rnd(&h1);
+        let jv = rnd(&h1);
+        let jr = sqrt(ju) * rough * rough * 1.6;
+        var fd = normalize(rd + jb[0] * (jr * cos(6.2831853 * jv)) + jb[1] * (jr * sin(6.2831853 * jv)));
+        if (dot(fd, n) <= 0.0) { fd = rd; }
+        if (occluded(o, fd, rt.p.y * 4.0)) { refl = 0.0; }
     }
     let cnt = prev.z;
     let k = 1.0 / (cnt + 1.0);
     let res = vec3<f32>(mix(prev.x, sun_vis, k), mix(prev.y, ao, k), min(cnt + 1.0, 1024.0));
-    textureStore(out_tex, px, vec4<f32>(res, 1.0));
+    textureStore(out_tex, px, vec4<f32>(res, mix(prev.w, refl, k)));
 }
 

@@ -4,6 +4,7 @@ struct Comp { p: vec4<f32> }; // x 1 when on, y sun shadow strength, z ambient s
 @group(0) @binding(1) var scene_tex: texture_2d<f32>;
 @group(0) @binding(2) var cnrm_tex: texture_2d<f32>;
 @group(0) @binding(3) var crt_tex: texture_2d<f32>;
+@group(0) @binding(4) var cmat_tex: texture_2d<f32>;
 
 @vertex
 fn vs_comp(@builtin(vertex_index) vi: u32) -> @builtin(position) vec4<f32> {
@@ -21,5 +22,7 @@ fn fs_comp(@builtin(position) p: vec4<f32>) -> @location(0) vec4<f32> {
     let sf = clamp((n.w - 0.25) / 0.75, 0.0, 1.0);
     let sun = mix(1.0, r.x, comp.p.y);
     let amb = mix(1.0, r.y, comp.p.z);
-    return vec4<f32>(c.rgb * (sf * sun + (1.0 - sf) * amb), c.a);
+    let sp = textureLoad(cmat_tex, px, 0).y;
+    let reflect_dim = 1.0 - sp * (1.0 - r.w) * comp.p.w;
+    return vec4<f32>(c.rgb * (sf * sun + (1.0 - sf) * amb) * reflect_dim, c.a);
 }

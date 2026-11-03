@@ -75,6 +75,7 @@ impl Rt {
                 storage_entry(3),
                 storage_entry(4),
                 tex_entry(5, c, false),
+                tex_entry(7, c, false),
                 wgpu::BindGroupLayoutEntry { binding: 6, visibility: c, ty: wgpu::BindingType::StorageTexture { access: wgpu::StorageTextureAccess::WriteOnly, format: RT_FORMAT, view_dimension: wgpu::TextureViewDimension::D2 }, count: None },
             ],
         });
@@ -90,7 +91,7 @@ impl Rt {
         let f = wgpu::ShaderStages::FRAGMENT;
         let comp_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("composite layout"),
-            entries: &[uniform_entry(0, f), tex_entry(1, f, false), tex_entry(2, f, false), tex_entry(3, f, false)],
+            entries: &[uniform_entry(0, f), tex_entry(1, f, false), tex_entry(2, f, false), tex_entry(3, f, false), tex_entry(4, f, false)],
         });
         let cmod = device.create_shader_module(wgpu::ShaderModuleDescriptor { label: Some("composite"), source: wgpu::ShaderSource::Wgsl(include_str!("comp.wgsl").into()) });
         let comp = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -159,7 +160,7 @@ impl Rt {
 
     /// Adds one more round of rays (starting over when the view, the sun or the size changed).
     #[allow(clippy::too_many_arguments)]
-    pub fn trace(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, enc: &mut wgpu::CommandEncoder, depth: &wgpu::TextureView, normal: &wgpu::TextureView, inv_vp: [[f32; 4]; 4], eye: [f32; 3], sun: [f32; 3], sun_soft: f32, w: u32, h: u32) {
+    pub fn trace(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, enc: &mut wgpu::CommandEncoder, depth: &wgpu::TextureView, normal: &wgpu::TextureView, mat: &wgpu::TextureView, inv_vp: [[f32; 4]; 4], eye: [f32; 3], sun: [f32; 3], sun_soft: f32, w: u32, h: u32) {
         self.ensure_tree(device);
         self.ensure_textures(device, w, h);
         let mut key: Vec<f32> = inv_vp.iter().flatten().copied().collect();
@@ -202,6 +203,7 @@ impl Rt {
                 wgpu::BindGroupEntry { binding: 4, resource: self.tris.as_entire_binding() },
                 wgpu::BindGroupEntry { binding: 5, resource: wgpu::BindingResource::TextureView(prev) },
                 wgpu::BindGroupEntry { binding: 6, resource: wgpu::BindingResource::TextureView(out) },
+                wgpu::BindGroupEntry { binding: 7, resource: wgpu::BindingResource::TextureView(mat) },
             ],
         });
         {
@@ -220,9 +222,9 @@ impl Rt {
     }
 
     /// Draws the finished picture: the scene, darkened by what the rays found (when `on`).
-    pub fn composite<'a>(&'a self, device: &wgpu::Device, queue: &wgpu::Queue, pass: &mut wgpu::RenderPass<'a>, scene: &wgpu::TextureView, normal: &wgpu::TextureView, on: bool) {
+    pub fn composite<'a>(&'a self, device: &wgpu::Device, queue: &wgpu::Queue, pass: &mut wgpu::RenderPass<'a>, scene: &wgpu::TextureView, normal: &wgpu::TextureView, mat: &wgpu::TextureView, on: bool) {
         let use_rt = on && self.has_tree && !self.tex.is_empty();
-        queue.write_buffer(&self.comp_uniform, 0, bytemuck::cast_slice(&[if use_rt { 1.0f32 } else { 0.0 }, 0.9, 0.85, 0.0]));
+        queue.write_buffer(&self.comp_uniform, 0, bytemuck::cast_slice(&[if use_rt { 1.0f32 } else { 0.0 }, 0.9, 0.85, 0.7]));
         let rt_view = if self.tex.is_empty() { scene } else { &self.tex[self.cur].1 };
         let bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("composite group"),
@@ -232,6 +234,7 @@ impl Rt {
                 wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::TextureView(scene) },
                 wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::TextureView(normal) },
                 wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(rt_view) },
+                wgpu::BindGroupEntry { binding: 4, resource: wgpu::BindingResource::TextureView(mat) },
             ],
         });
         pass.set_pipeline(&self.comp);
