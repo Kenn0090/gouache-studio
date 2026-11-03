@@ -1,5 +1,7 @@
 ## 0.94.1
 
+- **New viewer: map views.** The C key (channels), the B key (baked maps) and the mask view now show in the new viewer window too, as a flat picture without lighting.
+
 - **New viewer, built up:** a **New viewer** button in the 3D Paint bar opens or closes the window. **F** in the window brings the whole model back into view, **R** turns ray tracing on or off and **P** takes a picture, turning the 3D view in the app turns the window too (and the other way round), the app notices when you close the window, and the window opens where you left it.
 - **Painting in the new viewer is lighter:** only the base colour travels while you drag, the picture is read back without making the app wait for the graphics card, mouse moves are applied once per screen refresh, and Preferences › Speed shows what your last stroke cost. **Paint inside the new viewer window** can be turned off (the window then only shows the model while you paint in the normal 3D view), and a message tells you once if painting through the window is slow.
 - **New viewer matches the 3D view more closely:** normal maps now light the way the 3D view lights them (bumps were lit from the wrong side), the background colour, your light rig lights, the studio fill and rim lights, the Unlit and Metal views, orthographic view, and hidden texture sets all carry over; edges against the background are smoothed. Compared on the same model, material and camera, the picture matches the 3D view's within about 2 to 5 percent in brightness.
