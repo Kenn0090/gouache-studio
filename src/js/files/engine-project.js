@@ -26,7 +26,8 @@ async function epRecord(to,rec,name,files,shInfo,modelFile,updated){if(!rec||!es
   if(rec.masters[to]==null||updated)rec.masters[to]=ESH_MASTER_VER;
   rec.settings=epSettingsFrom();
   const sets=Object.keys(shInfo||{});
-  rec.assets[pascal(name)]={sets,looks:[...new Set(sets.map(s=>eshLook((shInfo[s].sh||{}).kind)))],model:modelFile||null,source:(typeof curFilePath==='function'?curFilePath():null)||null,sent:new Date().toISOString()};
+  const infos={};for(const st of sets){const I=shInfo[st],tex={};for(const [k,f] of Object.entries(I.tex||{}))if(f&&f.name)tex[k]=f.name;infos[st]={sh:JSON.parse(JSON.stringify(I.sh||{kind:'std',p:{}})),tex,alpha:!!I.alpha,variant:I.variant||null};}
+  rec.assets[pascal(name)]={sets,looks:[...new Set(sets.map(s=>eshLook((shInfo[s].sh||{}).kind)))],model:modelFile||null,size:eshModelSize(mxHasModel()?mxModel():null),infos,source:(typeof curFilePath==='function'?curFilePath():null)||null,sent:new Date().toISOString()};
   try{await epSaveRec(to,rec);}catch(e){console.warn(e);}}
 /* the export window: the project's name, its settings, and what it holds */
 function epRow(redraw){const to=es.to;if(!EL_PORT[to]||!platform.isDesktop||!es.dirs[to])return [];
@@ -40,3 +41,53 @@ function epRow(redraw){const to=es.to;if(!EL_PORT[to]||!platform.isDesktop||!es.
     if(known&&es.useProject!==false&&epRow.applied!==to+'|'+es.dirs[to]){epRow.applied=to+'|'+es.dirs[to];Object.assign(texCfg,rec.settings);redraw();}
     if(n)box.append(el('div',{class:'frow'},el('span',{class:'note',text:Object.entries(rec.assets).map(([a,v])=>a+(v.looks&&v.looks.length?' ('+v.looks.join(', ')+')':'')).join(' · ')})));});
   return [box];}
+
+/* ================= Variants: the same shader, a different look =================
+   Kenn: when an asset uses the shader of a look but with tweaks, choose what to do with the difference:
+   only this asset, save it as a named variant other assets can share, or change the look for everyone.
+   Each look's usual settings (the project's base) are the first ones sent. A variant keeps its settings under a name:
+   in Unreal it is a parent Material Instance (assets add only their textures); in Unity and Godot, where materials have
+   no parent, the variant is kept in the project record and every asset using it gets the same values. */
+const epRound=v=>typeof v==='number'?+v.toFixed(4):Array.isArray(v)?v.map(epRound):v;
+function epP(sh){const P=shParams(sh),o={};for(const k of Object.keys(SH_DEF[sh.kind]||{}))o[k]=epRound(P[k]);return o;}
+const epSame=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+function epAskVariant(look,asset,set,names){return new Promise(res=>{let mode='variant',name=names[0]||'';
+  const nm=el('input',{type:'text',id:'epVarName',value:name,placeholder:'Variant name (for example Night)'});nm.addEventListener('input',()=>{name=nm.value;});
+  const choices=[['asset','Only this asset'],['variant','Save as a variant'],['all','Change the look for everyone']];
+  const note=el('p',{class:'note',id:'epVarNote'}),sync=()=>{note.textContent=mode==='asset'?'Only “'+asset+'” gets these settings. The shared shader and the other assets stay as they are.':mode==='variant'?'The settings are kept under the name below. Other assets can use the same variant, and changing it later updates all of them.':'The look’s usual settings become these, and every asset that follows the usual look is updated to match.';nm.style.display=mode==='variant'?'':'none';};
+  const sg=seg(choices,mode,v=>{mode=v;sync();},'What to do with the difference');
+  const body=el('div',{class:'dlg-grid'},el('p',{class:'note',text:'“'+asset+'” ('+set+') uses the '+look+' look with different settings from the rest of this project. What should Gouache do with the difference?'}),sg,note,nm);sync();
+  let done=false;const fin=v=>{if(!done){done=true;res(v);}};
+  openDialog({title:look+': same shader, different look',body,okLabel:'Continue',onOk(){if(mode==='variant'&&!name.trim()){toast('Give the variant a name.');return false;}fin({mode,name:name.trim()});},onCancel(){fin({mode:'asset',name:''});}});});}
+/* decides, for every set about to be sent, whether it follows the project's look, is its own, or is a variant;
+   returns what has to change for assets already in the project */
+async function epResolve(to,rec,name,shInfo){const out={regen:new Set(),updates:[]};if(!rec)return out;rec.bases=rec.bases||{};rec.variants=rec.variants||{};
+  const pn=pascal(name),prev=(rec.assets[pn]||{}).infos||{};
+  for(const set of Object.keys(shInfo)){const I=shInfo[set],sh=I.sh||{kind:'std',p:{}},look=eshLook(sh.kind),P=epP(sh),base=rec.bases[look];
+    if(!base){rec.bases[look]=P;continue;}
+    const was=prev[set]&&prev[set].variant;
+    if(was&&rec.variants[look]&&rec.variants[look][was]&&epSame(rec.variants[look][was],P)){I.variant=was;continue;}
+    if(epSame(base,P)&&!was)continue;
+    if(epSame(base,P)&&was){continue;}   // went back to the usual look
+    const match=Object.entries(rec.variants[look]||{}).find(([k,v])=>epSame(v,P));
+    if(match){I.variant=match[0];continue;}   // the settings of a variant already in the project
+    const c=await epAskVariant(look,pn,set,Object.keys(rec.variants[look]||{}));
+    if(c.mode==='asset')continue;
+    if(c.mode==='variant'){(rec.variants[look]=rec.variants[look]||{});const changed=rec.variants[look][c.name]&&!epSame(rec.variants[look][c.name],P);rec.variants[look][c.name]=P;I.variant=c.name;
+      if(changed)for(const [a,v] of Object.entries(rec.assets))for(const [s2,inf] of Object.entries(v.infos||{}))if(inf.variant===c.name&&!(a===pn&&s2===set)){inf.sh=JSON.parse(JSON.stringify(sh));out.regen.add(a);}
+      if(changed)out.updates.push({kind:'variant',look,variant:c.name,...epVariantParams(sh)});
+      continue;}
+    /* change the look for everyone: the assets that follow the usual look take the new settings */
+    const old=base;rec.bases[look]=P;
+    for(const [a,v] of Object.entries(rec.assets))for(const [s2,inf] of Object.entries(v.infos||{}))if(!inf.variant&&eshLook((inf.sh||{}).kind)===look&&epSame(epP(inf.sh),old)&&!(a===pn&&s2===set)){inf.sh=JSON.parse(JSON.stringify(sh));out.regen.add(a);
+      const pr=eshUnrealParams(inf.sh,v.size||1,!!(inf.tex&&inf.tex.ORM));out.updates.push({kind:'asset',asset:a,safe:eshSafe(s2),scalars:pr.scalars,vectors:pr.vectors});}}
+  return out;}
+function epVariantParams(sh){const pr=eshUnrealParams(sh,1,false),keys=new Set(pr.lookKeys),sc={},vc={};for(const [k,v] of Object.entries(pr.scalars))if(keys.has(k))sc[k]=v;for(const [k,v] of Object.entries(pr.vectors))if(keys.has(k))vc[k]=v;return {scalars:sc,vectors:vc};}
+/* Unity and Godot: rewrite the material files of assets whose look changed (no textures are sent again) */
+async function epRegen(to,rec,regen){if(!regen||!regen.size||to==='unreal')return 0;let n=0;
+  for(const a of regen){const v=rec.assets[a];if(!v||!v.infos)continue;const info={};
+    for(const [s,inf] of Object.entries(v.infos)){const tex={};for(const [k,f] of Object.entries(inf.tex||{}))tex[k]={name:f};info[s]={sh:inf.sh,tex,alpha:!!inf.alpha,variant:inf.variant||null};}
+    const dir=elJoin(es.dirs[to],...esSub(to,a));
+    for(const f of eshFiles(to,a,info,v.size||1,v.model)){if(f.shared||/\.(png|tga)(\.meta)?$/i.test(f.name)||/\.(glb|fbx|obj)$/i.test(f.name))continue;
+      const fp=eshPath(dir,f.name);await platform.invoke('make_dir',{path:fp.replace(/[\\/][^\\/]*$/,'')});await platform.writeFile(fp,f.data);n++;}}
+  return n;}

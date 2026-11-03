@@ -17,6 +17,7 @@ DATA = json.load(open(os.path.join(HERE, "gouache_unreal.json")))
 ROOT = "/Game/Gouache"
 DEST = ROOT + "/" + DATA["name"]
 MASTERS = ROOT + "/_Masters"
+VARIANTS = ROOT + "/_Variants"
 TOOLS = (getattr(unreal, "AssetToolsHelpers", None) or getattr(unreal, "AssetToolsHelper")).get_asset_tools()
 MEL = unreal.MaterialEditingLibrary
 EAL = unreal.EditorAssetLibrary
@@ -378,6 +379,31 @@ def master_for(S):
 
 
 # ---------------------------------------------------------------- one asset's instance
+def set_params(mi, scalars, vectors, skip=()):
+    for n, v in scalars.items():
+        if n not in skip:
+            MEL.set_material_instance_scalar_parameter_value(mi, n, float(v))
+    for n, v in vectors.items():
+        if n not in skip:
+            MEL.set_material_instance_vector_parameter_value(mi, n, unreal.LinearColor(v[0], v[1], v[2], v[3] if len(v) > 3 else 1.0))
+
+
+def variant_parent(S, master):
+    """A variant is a parent Material Instance holding one look's settings; assets that use it only add their textures."""
+    name = "MI_Variant_" + S["look"] + "_" + S["variant"].replace(" ", "_")
+    path = VARIANTS + "/" + name
+    if EAL.does_asset_exist(path):
+        vi = EAL.load_asset(path)
+    else:
+        vi = TOOLS.create_asset(name, VARIANTS, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+    MEL.set_material_instance_parent(vi, master)
+    keys = set(S.get("lookKeys", []))
+    set_params(vi, {k: v for k, v in S["scalars"].items() if k in keys}, {k: v for k, v in S["vectors"].items() if k in keys})
+    MEL.update_material_instance(vi)
+    EAL.save_loaded_asset(vi)
+    return vi
+
+
 def make_instance(S, master):
     name = "MI_" + S["safe"]
     path = DEST + "/" + name
@@ -385,7 +411,8 @@ def make_instance(S, master):
         mi = EAL.load_asset(path)
     else:
         mi = TOOLS.create_asset(name, DEST, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
-    MEL.set_material_instance_parent(mi, master)
+    parent = variant_parent(S, master) if S.get("variant") else master
+    MEL.set_material_instance_parent(mi, parent)
     for key, fname, kind in (("BaseColor", None, "color"), ("ORM", None, "data"), ("Normal", None, "normal"), ("Emissive", None, "color")):
         f = S["tex"].get(key)
         if not f:
@@ -394,10 +421,8 @@ def make_instance(S, master):
         if tex is not None:
             pname = {"BaseColor": "BaseColorTex", "ORM": "ORMTex", "Normal": "NormalTex", "Emissive": "EmissiveTex"}[key]
             MEL.set_material_instance_texture_parameter_value(mi, pname, tex)
-    for n, v in S["scalars"].items():
-        MEL.set_material_instance_scalar_parameter_value(mi, n, float(v))
-    for n, v in S["vectors"].items():
-        MEL.set_material_instance_vector_parameter_value(mi, n, unreal.LinearColor(v[0], v[1], v[2], v[3] if len(v) > 3 else 1.0))
+    # a variant's look settings come from its parent; the asset only sets the rest
+    set_params(mi, S["scalars"], S["vectors"], skip=set(S.get("lookKeys", [])) if S.get("variant") else ())
     MEL.update_material_instance(mi)
     EAL.save_loaded_asset(mi)
     return mi
@@ -446,6 +471,21 @@ for S in DATA["sets"]:
         made.append("MI_" + S["safe"])
     except Exception as e:
         unreal.log_error("Gouache: " + S["name"] + " failed: " + str(e))
+for U in DATA.get("updates", []):
+    # a look changed for assets already in the game: only parameters are updated, nothing is imported again
+    try:
+        if U.get("kind") == "variant":
+            path = VARIANTS + "/MI_Variant_" + U["look"] + "_" + U["variant"].replace(" ", "_")
+        else:
+            path = ROOT + "/" + U["asset"] + "/MI_" + U["safe"]
+        if EAL.does_asset_exist(path):
+            ui = EAL.load_asset(path)
+            set_params(ui, U["scalars"], U["vectors"])
+            MEL.update_material_instance(ui)
+            EAL.save_loaded_asset(ui)
+            unreal.log("Gouache: updated " + path)
+    except Exception as e:
+        unreal.log_error("Gouache: could not update " + str(U.get("asset") or U.get("variant")) + ": " + str(e))
 try:
     assign_to_model(inst)
 except Exception as e:
