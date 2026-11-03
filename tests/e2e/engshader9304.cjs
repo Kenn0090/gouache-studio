@@ -27,27 +27,29 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* every shader kind makes a Godot shader and a Unity material */
  const kinds=['std','skin','aniso','velvet','toon','cel','specgloss','panner','retro'];
  const res=await p.evaluate(kinds=>kinds.map(k=>{const sh={kind:k,p:{}},have={base:true,orm:true,normal:true,emis:true};
-   const g=__gs.eshGodotShader(sh,have,false);const f=__gs.eshFiles('unity','Rock',{Body:{sh,tex:{BaseColor:{name:'R_Body_BaseColor.png'},ORM:{name:'R_Body_ORM.png'},Normal:{name:'R_Body_Normal.png'}},alpha:false}},1);
+   const g=__gs.eshGodotShader(k==='specgloss'?'std':k,false);const f=__gs.eshFiles('unity','Rock',{Body:{sh,tex:{BaseColor:{name:'R_Body_BaseColor.png'},ORM:{name:'R_Body_ORM.png'},Normal:{name:'R_Body_Normal.png'}},alpha:false}},1);
    const gf=__gs.eshFiles('godot','Rock',{Body:{sh,tex:{BaseColor:{name:'R_Body_BaseColor.png'},ORM:{name:'R_Body_ORM.png'},Normal:{name:'R_Body_Normal.png'}},alpha:false}},1);
    return {k,g:g.slice(0,400),hasFrag:/void fragment/.test(g),unity:f.map(x=>x.name),godot:gf.map(x=>x.name),mat:new TextDecoder().decode(f.find(x=>x.name==='Body.mat').data)};}),kinds);
  for(const r of res){ok(r.hasFrag&&/shader_type spatial/.test(r.g),r.k+': a Godot shader is written');
   ok(r.unity.includes('Body.mat')&&r.unity.includes('../GouacheShaded.shader')&&r.godot.includes('Body.tres'),r.k+': Unity and Godot files listed');
   ok(new RegExp('_Kind: '+(r.k==='specgloss'?0:kinds.indexOf(r.k))+'\\b').test(r.mat),r.k+': the Unity material picks its look');}
  const toon=await p.evaluate(()=>{const f=__gs.eshFiles('godot','Rock',{Body:{sh:{kind:'toon',p:{}},tex:{},alpha:false}},2);return f.map(x=>x.name);});
- ok(toon.includes('Body_outline.tres')&&toon.includes('Body.gdshader'),'Toon in Godot also gets an outline material '+JSON.stringify(toon));
+ ok(toon.includes('Body_outline.tres')&&toon.includes('../_shaders/Toon.gdshader')&&toon.includes('../_shaders/Outline.gdshader'),'Toon in Godot also gets an outline material '+JSON.stringify(toon));
  /* the whole export: Godot */
  await p.evaluate(()=>{const g=__gs;g.es.to='godot';g.es.dirs.godot='C:/proj';g.texCfg.name='Rock';g.texCfg.preset='urp';g.texCfg.model='none';g.texCfg.size=64;g.texCfg.engShader=true;});
  await p.evaluate(()=>__gs.exportTextures());await W(6000);
  let w=await p.evaluate(()=>window.__written);const names=Object.keys(w).map(x=>x.split('/').slice(-2).join('/'));
- ok(names.some(x=>/Rock\/.*\.gdshader$/.test(x))&&names.some(x=>/Rock\/.*\.tres$/.test(x)),'Godot export writes .gdshader and .tres '+JSON.stringify(names).slice(0,300));
+ ok(names.some(x=>/_shaders\/.*\.gdshader$/.test(x))&&names.some(x=>/Rock\/.*\.tres$/.test(x)),'Godot export writes a shared .gdshader and a .tres '+JSON.stringify(names).slice(0,300));
  const tres=Object.entries(w).find(([k])=>k.endsWith('.tres')&&!k.includes('outline'));
- ok(tres&&/gd_resource type="ShaderMaterial"/.test(tres[1])&&/res:\/\/gouache\/Rock\//.test(tres[1])&&/albedo_tex/.test(tres[1]),'…the material points at the textures');
+ ok(tres&&/gd_resource type="ShaderMaterial"/.test(tres[1])&&/res:\/\/gouache\/Rock\//.test(tres[1])&&/albedo_tex/.test(tres[1])&&/res:\/\/gouache\/_shaders\//.test(tres[1]),'…the material points at the shared shader and the textures');
  /* Unity */
  await p.evaluate(()=>{const g=__gs;g.es.to='unity';g.es.dirs.unity='C:/proj';window.__written={};});
  await p.evaluate(()=>__gs.exportTextures());await W(6000);
  w=await p.evaluate(()=>window.__written);const un=Object.keys(w);
  ok(un.some(x=>/Assets\/Gouache\/GouacheShaded\.shader$/.test(x)),'Unity export writes the shared shader above the export folder '+JSON.stringify(un.map(x=>x.slice(-50))).slice(0,300));
  ok(un.some(x=>x.endsWith('.mat'))&&un.some(x=>x.endsWith('.png.meta')),'…and the material and texture settings');
+ ok(un.some(x=>/Assets\/Gouache\/GouacheAssign\.cs$/.test(x)),'…and the script that gives the model its materials');
+ {const mt=Object.entries(w).find(([k])=>k.endsWith('.mat'));ok(mt&&/_NormalScale: 1/.test(mt[1])&&/_RoughScale: 1/.test(mt[1]),'…the material has strength sliders');}
  const nm=Object.entries(w).find(([k])=>/Normal\.png\.meta$/.test(k));ok(nm&&/textureType: 1/.test(nm[1]),'…the normal map is set as a Normal map');
  /* Unity Built-in pipeline */
  await p.evaluate(()=>{__gs.texCfg.unityRP='builtin';window.__written={};});
