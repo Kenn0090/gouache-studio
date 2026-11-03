@@ -164,9 +164,10 @@ function dlgExportTextures(){if(stroke||preview||selLive){toast('Finish the curr
 async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.name||'Texture',wantModel=mxHasModel()&&texCfg.model&&texCfg.model!=='none';
   let dir=null;if(platform.isDesktop){dir=await esTargetDir(name);if(!dir)return;}
   toast('Exporting textures…');await tick();
-  try{let files=[];const bySet={},glTex={};
+  try{let files=[];const bySet={},glTex={},shInfo={};
     /* each texture set (3D Paint), or the document; the model needs glTF-shaped textures too */
-    const one=async(setName,fileName)=>{const fs=await buildTextures(pr,fileName);bySet[setName]=fs;files.push(...fs);if(texCfg.meshMaps)files.push(...await buildMeshMapTextures(pr,fileName));
+    const one=async(setName,fileName)=>{const fs=await buildTextures(pr,fileName);bySet[setName]=fs;files.push(...fs);
+      if(eshWanted()){const g=await buildTextures(GLTF_TEX,pascal(fileName)),T={};for(const f of g)T[f.suffix]=f;shInfo[setName]={sh:JSON.parse(JSON.stringify(v3ShadeOf(doc))),tex:T,alpha:doc.maps.includes('opac')};for(const f of g)if(!files.some(x=>x.name===f.name))files.push(f);}if(texCfg.meshMaps)files.push(...await buildMeshMapTextures(pr,fileName));
       if(wantModel&&texCfg.model==='glb'){const g=await buildTextures(GLTF_TEX,pascal(fileName)),T={};for(const f of g)T[f.suffix]=f;T.alpha=doc.maps.includes('opac');glTex[setName]=T;}};
     const sets=ui.mode==='p3d'?p3.sets.filter(S=>!S.missing):[];
     if(ui.mode==='p3d'&&(texCfg.allSets||wantModel)&&sets.length>1){const back=p3.cur;
@@ -176,8 +177,9 @@ async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.
       if(texCfg.model==='glb')files=files.concat([{name:mn+'.glb',data:mxGLB(m,groups,glTex,mn)}]);
       else if(texCfg.model==='fbx')files.push({name:mn+'.fbx',data:mxFBX(m,groups,bySet,mn,pr)});
       else{const o=mxOBJ(m,groups,bySet,mn,pr);files.push({name:mn+'.obj',data:o.obj},{name:mn+'.mtl',data:o.mtl});}}
+    if(eshWanted()&&Object.keys(shInfo).length)files.push(...eshFiles(es.to,name,shInfo,eshModelSize(mxHasModel()?mxModel():null)));
     if(!files.length){toast('Nothing to export.');return;}
-    if(dir){const sep=dir.includes('\\')?'\\':'/';for(const f of files)await platform.writeFile(dir.replace(/[\\/]$/,'')+sep+f.name,f.data);toast('Saved '+files.length+' files to '+dir);await esAfter(dir,files,name);}
+    if(dir){const sep=dir.includes('\\')?'\\':'/';for(const f of files)await platform.writeFile(eshPath(dir,f.name),f.data);toast('Saved '+files.length+' files to '+dir);await esAfter(dir,files,name);}
     else{const r=await deliver(pascal(name)+'_'+(pr.user?'custom':texCfg.preset)+'.zip',await makeZipMulti(files));toast(deliveredText(r,'Textures'));}
     return files;}
   catch(e){console.error(e);toast('Export failed: '+(e.message||e));}}
