@@ -32,7 +32,7 @@ async function nvScene(){const m=mxModel();if(!m||!m.pos||!m.idx)throw new Error
   const envd=await nvEnv();
   return {m,groups,texBy,shBy,envd,settings:nvSettings()};}
 /* the 3D view's lighting settings, as the new viewer takes them */
-function nvSettings(){const s=v3s();return {tone:toneInt(s),expo:s.expo==null?1:s.expo,env_turn:(s.envRot||0)/360,env_strength:s.envI==null?1:s.envI,show_bg:!!s.envBg,env_blur:s.envBlur==null?.35:s.envBlur,sun_az:s.sunAz==null?40:s.sunAz,sun_el:s.sunEl==null?45:s.sunEl,sun_i:s.sunI==null?1:s.sunI,fov:s.fov||45,rt_shadow:s.nvShadow==null?.9:s.nvShadow,rt_ao:s.nvAO==null?.85:s.nvAO,rt_refl:s.nvRefl==null?.7:s.nvRefl,rt_soft:s.nvSoft==null?.02:s.nvSoft,rt_samples:Math.round(s.nvSamples||96),cam:nvCamOut(),paint:!!nv.isOpen&&nvPaintOn(),brush:nv.isOpen&&nvPaintOn()?nvBrushFrac():0,rt:!!s.nvRt};}
+function nvSettings(){const s=v3s();return {tone:toneInt(s),expo:s.expo==null?1:s.expo,env_turn:(s.envRot||0)/360,env_strength:s.envI==null?1:s.envI,show_bg:!!s.envBg,env_blur:s.envBlur==null?.35:s.envBlur,sun_az:s.sunAz==null?40:s.sunAz,sun_el:s.sunEl==null?45:s.sunEl,sun_i:s.sunI==null?1:s.sunI,fov:s.fov||45,bg:(typeof BG3!=='undefined'&&(BG3[s.bg]||BG3.dark))||[.09,.1,.115],lights:nvLights(),rt_shadow:s.nvShadow==null?.9:s.nvShadow,rt_ao:s.nvAO==null?.85:s.nvAO,rt_refl:s.nvRefl==null?.7:s.nvRefl,rt_soft:s.nvSoft==null?.02:s.nvSoft,rt_samples:Math.round(s.nvSamples||96),cam:nvCamOut(),paint:!!nv.isOpen&&nvPaintOn(),brush:nv.isOpen&&nvPaintOn()?nvBrushFrac():0,rt:!!s.nvRt};}
 const nvEnvKey=()=>{const s=v3s(),k=envOf(s);return k+(k==='custom'&&env.custom?':'+env.custom.name:'');};
 /* a lighting update: the same body as a scene, with no model; the environment picture only when it changed */
 function nvUpdateBody(settings,mode,envd){const meta={pos:0,nrm:0,uv:0,groups:[],env_mode:mode,env:mode==='set'&&envd?{w:envd.w,h:envd.h}:null,settings};
@@ -59,6 +59,8 @@ function nvStopWatch(){if(nv.timer){clearInterval(nv.timer);nv.timer=null;}}
    normal brush paints; afterwards the changed material is sent back as new pictures. */
 /* the brush's diameter as a part of the view's height (the same on the window) */
 function nvBrushFrac(){const hit=document.getElementById('v3Hit');if(!hit||!v3.paintOn||typeof MESH_TOOLS==='undefined'||!MESH_TOOLS.includes(ui.tool))return 0;const h=hit.getBoundingClientRect().height;return h>0?Math.round(brush.size*meshBrushScale(h)/h*1000)/1000:0;}
+/* your lights from the light rig (when they are switched on in the 3D view): up to 4, 12 numbers each */
+function nvLights(){try{if(typeof lightViewUniforms!=='function')return [];const U=lightViewUniforms(),n=U.uVLN&&U.uVLN.int||0,out=[];for(let i=0;i<Math.min(4,n);i++){const a=U.uVLA.v4a,b=U.uVLB.v4a,c=U.uVLC.v4a,r=v=>Math.round(v*1e4)/1e4;out.push([0,1,2,3].map(k=>r(a[i*4+k])).concat([0,1,2,3].map(k=>r(b[i*4+k])),[0,1,2,3].map(k=>r(c[i*4+k]))));}return out;}catch(e){return [];}}
 /* where the page's own camera is (eye and target), to make the window follow it; nothing while the window has just moved it itself */
 function nvCamOut(){if(!nv.isOpen||performance.now()-(nv.winCamAt||0)<700||!v3.cam)return null;const e=v3Eye(),c=v3.cam,r=a=>Math.round(a*1000)/1000;return [r(e[0]),r(e[1]),r(e[2]),r(c.tx),r(c.ty),r(c.tz)];}
 const NV_TEX_LIVE=512,NV_LIVE_MS=100;

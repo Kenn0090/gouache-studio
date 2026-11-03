@@ -37,6 +37,7 @@ pub struct Rt {
     nodes: wgpu::Buffer,
     tris: wgpu::Buffer,
     tri_uv: wgpu::Buffer,
+    fx_sampler: wgpu::Sampler,
     base_arr: wgpu::TextureView,
     base_sampler: wgpu::Sampler,
     has_tree: bool,
@@ -111,7 +112,15 @@ impl Rt {
         let f = wgpu::ShaderStages::FRAGMENT;
         let comp_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("composite layout"),
-            entries: &[uniform_entry(0, f), tex_entry(1, f, false), tex_entry(2, f, false), tex_entry(3, f, false), tex_entry(4, f, false), tex_entry(5, f, false)],
+            entries: &[
+                uniform_entry(0, f),
+                wgpu::BindGroupLayoutEntry { binding: 1, visibility: f, ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: true }, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false }, count: None },
+                tex_entry(2, f, false),
+                tex_entry(3, f, false),
+                tex_entry(4, f, false),
+                tex_entry(5, f, false),
+                wgpu::BindGroupLayoutEntry { binding: 6, visibility: f, ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering), count: None },
+            ],
         });
         let cmod = device.create_shader_module(wgpu::ShaderModuleDescriptor { label: Some("composite"), source: wgpu::ShaderSource::Wgsl(include_str!("comp.wgsl").into()) });
         let comp = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -128,7 +137,7 @@ impl Rt {
         let uniform = device.create_buffer(&wgpu::BufferDescriptor { label: Some("rt uniform"), size: std::mem::size_of::<RtUniform>() as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
         let comp_uniform = device.create_buffer(&wgpu::BufferDescriptor { label: Some("composite uniform"), size: 32, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
         let one = |label| device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(label), contents: &[0u8; 64], usage: wgpu::BufferUsages::STORAGE });
-        Rt { cs, cs_layout, comp, comp_layout, uniform, comp_uniform, nodes: one("no nodes"), tris: one("no triangles"), tri_uv: one("no uvs"), base_arr: Self::array_view(device, None, &[]), base_sampler: device.create_sampler(&wgpu::SamplerDescriptor { address_mode_u: wgpu::AddressMode::Repeat, address_mode_v: wgpu::AddressMode::Repeat, mag_filter: wgpu::FilterMode::Linear, min_filter: wgpu::FilterMode::Linear, ..Default::default() }), has_tree: false, job: None, tex: Vec::new(), size: (0, 0), cur: 0, samples: 0, max: RT_SAMPLES, key: Vec::new(), src: None, groups: (Vec::new(), Vec::new()), uvs: Vec::new(), layers: Vec::new(), radius: 1.0 }
+        Rt { cs, cs_layout, comp, comp_layout, uniform, comp_uniform, nodes: one("no nodes"), tris: one("no triangles"), tri_uv: one("no uvs"), fx_sampler: device.create_sampler(&wgpu::SamplerDescriptor { mag_filter: wgpu::FilterMode::Linear, min_filter: wgpu::FilterMode::Linear, ..Default::default() }), base_arr: Self::array_view(device, None, &[]), base_sampler: device.create_sampler(&wgpu::SamplerDescriptor { address_mode_u: wgpu::AddressMode::Repeat, address_mode_v: wgpu::AddressMode::Repeat, mag_filter: wgpu::FilterMode::Linear, min_filter: wgpu::FilterMode::Linear, ..Default::default() }), has_tree: false, job: None, tex: Vec::new(), size: (0, 0), cur: 0, samples: 0, max: RT_SAMPLES, key: Vec::new(), src: None, groups: (Vec::new(), Vec::new()), uvs: Vec::new(), layers: Vec::new(), radius: 1.0 }
     }
 
     /// An array of small base pictures (a white one when there are none), filled from `layers`.
@@ -329,9 +338,9 @@ impl Rt {
     }
 
     /// Draws the finished picture: the scene, darkened by what the rays found (when `on`).
-    pub fn composite<'a>(&'a self, device: &wgpu::Device, queue: &wgpu::Queue, pass: &mut wgpu::RenderPass<'a>, scene: &wgpu::TextureView, normal: &wgpu::TextureView, mat: &wgpu::TextureView, on: bool, tone: i32, exposure: f32, strengths: [f32; 3]) {
+    pub fn composite<'a>(&'a self, device: &wgpu::Device, queue: &wgpu::Queue, pass: &mut wgpu::RenderPass<'a>, scene: &wgpu::TextureView, normal: &wgpu::TextureView, mat: &wgpu::TextureView, on: bool, tone: i32, exposure: f32, strengths: [f32; 3], smooth: bool) {
         let use_rt = on && self.has_tree && !self.tex.is_empty();
-        queue.write_buffer(&self.comp_uniform, 0, bytemuck::cast_slice(&[if use_rt { 1.0f32 } else { 0.0 }, strengths[0], strengths[1], strengths[2], tone as f32, exposure, self.samples as f32, 0.0]));
+        queue.write_buffer(&self.comp_uniform, 0, bytemuck::cast_slice(&[if use_rt { 1.0f32 } else { 0.0 }, strengths[0], strengths[1], strengths[2], tone as f32, exposure, self.samples as f32, if smooth { 1.0 } else { 0.0 }]));
         let rt_view = if self.tex.is_empty() { scene } else { &self.tex[self.cur].1 };
         let rf_view = if self.tex.is_empty() { scene } else { &self.tex[2 + self.cur].1 };
         let bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -344,6 +353,7 @@ impl Rt {
                 wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(rt_view) },
                 wgpu::BindGroupEntry { binding: 4, resource: wgpu::BindingResource::TextureView(mat) },
                 wgpu::BindGroupEntry { binding: 5, resource: wgpu::BindingResource::TextureView(rf_view) },
+                wgpu::BindGroupEntry { binding: 6, resource: wgpu::BindingResource::Sampler(&self.fx_sampler) },
             ],
         });
         pass.set_pipeline(&self.comp);

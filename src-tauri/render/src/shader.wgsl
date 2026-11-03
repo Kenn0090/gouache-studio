@@ -11,6 +11,11 @@ struct Frame {
     extra: vec4<f32>,        // x seconds, y size of a screen pixel at the model's distance
     cursor: vec4<f32>,       // brush outline: x, y, radius (pixels), 1 when shown
     res: vec4<f32>,          // width, height
+    bgc: vec4<f32>,          // background colour (as shown on screen)
+    light_a: array<vec4<f32>, 4>, // your lights: type + position
+    light_b: array<vec4<f32>, 4>, // direction + cone
+    light_c: array<vec4<f32>, 4>, // colour x strength + reach
+    light_n: vec4<f32>,
 };
 @group(0) @binding(0) var<uniform> frame: Frame;
 @group(0) @binding(1) var env_tex: texture_2d<f32>;
@@ -129,6 +134,22 @@ struct FOut {
     @location(1) n: vec4<f32>,   // world normal (0..1) and the share of the light that comes from the sun; w = 0 where there is no surface
 };
 
+// one light with the same GGX surface as the sun
+fn studio_direct(n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, albedo: vec3<f32>, f0: vec3<f32>, rough: f32, metal: f32) -> vec3<f32> {
+    let h = normalize(l + v);
+    let nl = max(dot(n, l), 0.0);
+    let nv = max(dot(n, v), 1e-3);
+    let nh = max(dot(n, h), 0.0);
+    let vh = max(dot(v, h), 0.0);
+    let a = rough * rough;
+    let a2 = a * a;
+    let d = a2 / (PI * pow(nh * nh * (a2 - 1.0) + 1.0, 2.0));
+    let vis = 0.5 / max(nl * sqrt(nv * nv * (1.0 - a2) + a2) + nv * sqrt(nl * nl * (1.0 - a2) + a2), 0.0001);
+    let f = f0 + (vec3<f32>(1.0) - f0) * pow(1.0 - vh, 5.0);
+    let dif = (vec3<f32>(1.0) - f) * (1.0 - metal) * albedo / PI;
+    return (dif + d * vis * f) * nl;
+}
+
 @fragment
 fn fs(i: VOut) -> FOut {
     var o: FOut;
@@ -170,8 +191,9 @@ fn fs_shade(i: VOut) -> vec4<f32> {
     let t0 = dp2perp * duv1.x + dp1perp * duv2.x;
     let b0 = dp2perp * duv1.y + dp1perp * duv2.y;
     let invmax = inverseSqrt(max(max(dot(t0, t0), dot(b0, b0)), 1e-20));
-    let tt = t0 * invmax;
-    let bb = b0 * invmax;
+    // (screen derivatives run downwards here, upwards in GLSL, so the frame built from them is turned round: T and B negated)
+    let tt = -t0 * invmax;
+    let bb = -b0 * invmax;
     var albedo4 = textureSampleGrad(base_tex, tex_smp, guv, duv1, duv2);
     if (kind == 8) { albedo4 = textureSampleLevel(base_tex, tex_smp, guv, lodbias); }
     let albedo = albedo4.rgb * mat.tint.rgb;
@@ -261,6 +283,26 @@ fn fs_shade(i: VOut) -> vec4<f32> {
     let spec = d * vis * f;
     let dif = (vec3<f32>(1.0) - f) * (1.0 - metal) * albedo / PI;
     var col = (dif + spec) * nl * sun;
+    // your own lights (the light rig): the plain GGX light, like the 3D view's
+    for (var li = 0; li < 4; li = li + 1) {
+        if (f32(li) >= frame.light_n.x) { break; }
+        let la = frame.light_a[li];
+        let lb = frame.light_b[li];
+        let lc = frame.light_c[li];
+        let ty = i32(la.x + 0.5);
+        var ld: vec3<f32>;
+        var rad = lc.rgb;
+        if (ty == 0) {
+            ld = -normalize(lb.xyz);
+        } else {
+            let dv = la.yzw - i.wpos;
+            let dd = max(length(dv), 1e-5);
+            ld = dv / dd;
+            rad = rad / (1.0 + dd * dd / max(lc.w * lc.w, 1e-8));
+            if (ty == 2) { rad = rad * smoothstep(lb.w, mix(lb.w, 1.0, 0.35), dot(-ld, normalize(lb.xyz))); }
+        }
+        col += studio_direct(nn, v, ld, albedo, f0, rough, metal) * rad * 3.0;
+    }
     var thick = mat.shp.w;
     if (kind == 1) {
         let ns = normalize(mix(nn, n, mat.shp.z));
@@ -375,7 +417,7 @@ fn fs_bg(i: BgOut) -> FOut {
     let near = frame.inv_view_proj * vec4<f32>(i.ndc, 0.0, 1.0);
     let d = normalize(far.xyz / far.w - near.xyz / near.w);
     if (frame.info.y < 0.5 || frame.info.z < 0.5) {
-        o.c = vec4<f32>(tone(vec3<f32>(0.035, 0.04, 0.05) / frame.params.x), 1.0);
+        o.c = vec4<f32>(select(pow((frame.bgc.rgb + vec3<f32>(0.055)) / 1.055, vec3<f32>(2.4)), frame.bgc.rgb / 12.92, frame.bgc.rgb <= vec3<f32>(0.04045)), 1.0);
         return o;
     }
     // the picture behind the model, blurred as much as the 3D view's Background blur asks

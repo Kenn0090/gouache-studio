@@ -111,11 +111,20 @@ pub struct Settings {
     pub rt_samples: u32,
     /// when the page moves its own camera: eye and target, to follow it (applied once, not kept)
     pub cam: Option<[f32; 6]>,
+    /// the colour behind the model when the environment is not shown (as it should look on screen, like the 3D view's background)
+    pub bg: [f32; 3],
+    /// smooth the jagged edges (the window is not drawn with multisampling)
+    pub smooth: bool,
+    /// your own lights from the light rig (up to 4): each is type (0 sun, 1 point, 2 spot) + position, direction + cone, colour × strength + reach
+    pub light_n: u32,
+    pub light_a: [[f32; 4]; 4],
+    pub light_b: [[f32; 4]; 4],
+    pub light_c: [[f32; 4]; 4],
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None }
+        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
     }
 }
 
@@ -265,6 +274,11 @@ struct FrameUniform {
     extra: [f32; 4],
     cursor: [f32; 4], // x, y (pixels), radius (pixels), 1 when shown
     res: [f32; 4],    // width, height
+    bgc: [f32; 4],    // background colour
+    light_a: [[f32; 4]; 4],
+    light_b: [[f32; 4]; 4],
+    light_c: [[f32; 4]; 4],
+    light_n: [f32; 4],
 }
 
 #[repr(C)]
@@ -1101,6 +1115,11 @@ impl Gpu {
                 _ => [0.0; 4],
             },
             res: [self.config.width as f32, self.config.height as f32, 0.0, 0.0],
+            bgc: [st.bg[0], st.bg[1], st.bg[2], 0.0],
+            light_a: st.light_a,
+            light_b: st.light_b,
+            light_c: st.light_c,
+            light_n: [st.light_n as f32, 0.0, 0.0, 0.0],
         };
         self.queue.write_buffer(&self.frame_buf, 0, bytemuck::bytes_of(&u));
         let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("frame") });
@@ -1167,7 +1186,7 @@ impl Gpu {
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
-            self.rt.composite(&self.device, &self.queue, &mut pass, &self.scene_color, &self.scene_normal, &self.scene_mat, st.rt, st.tone, st.exposure, [st.rt_shadow, st.rt_ao, st.rt_refl]);
+            self.rt.composite(&self.device, &self.queue, &mut pass, &self.scene_color, &self.scene_normal, &self.scene_mat, st.rt, st.tone, st.exposure, [st.rt_shadow, st.rt_ao, st.rt_refl], st.smooth);
             if u.cursor[3] > 0.5 {
                 pass.set_pipeline(&self.ring_pipeline);
                 pass.set_bind_group(0, &self.frame_bg, &[]);
@@ -1267,6 +1286,19 @@ impl Gpu {
 }
 
 impl App {
+    /// Puts the camera where the page's camera is (eye and target).
+    fn set_cam(&mut self, c: [f32; 6]) {
+        let (eye, tgt) = (Vec3::new(c[0], c[1], c[2]), Vec3::new(c[3], c[4], c[5]));
+        let d = eye - tgt;
+        let dist = d.length();
+        if dist > 1e-6 {
+            self.cam.target = tgt;
+            self.cam.dist = dist;
+            self.cam.pitch = (d.y / dist).clamp(-1.0, 1.0).asin();
+            self.cam.yaw = d.z.atan2(d.x);
+        }
+    }
+
     fn frame_model(&mut self, c: Vec3, r: f32) {
         self.home = (c, r);
         self.cam.target = c;
@@ -1306,6 +1338,9 @@ impl ApplicationHandler<Cmd> for App {
                 if let Some(s) = self.pending.take() {
                     let (c, r) = gpu.set_scene(&s);
                     self.frame_model(c, r);
+                    if let Some(c) = s.settings.cam {
+                        self.set_cam(c);
+                    }
                 }
                 gpu.window.request_redraw();
                 self.gpu = Some(gpu);
@@ -1351,15 +1386,7 @@ impl ApplicationHandler<Cmd> for App {
             }
             Cmd::Update(mut settings, env) => {
                 if let Some(c) = settings.cam.take() {
-                    let (eye, tgt) = (Vec3::new(c[0], c[1], c[2]), Vec3::new(c[3], c[4], c[5]));
-                    let d = eye - tgt;
-                    let dist = d.length();
-                    if dist > 1e-6 {
-                        self.cam.target = tgt;
-                        self.cam.dist = dist;
-                        self.cam.pitch = (d.y / dist).clamp(-1.0, 1.0).asin();
-                        self.cam.yaw = d.z.atan2(d.x);
-                    }
+                    self.set_cam(c);
                 }
                 if let Some(g) = self.gpu.as_mut() {
                     g.settings = settings;
@@ -1375,6 +1402,9 @@ impl ApplicationHandler<Cmd> for App {
                 if let Some(g) = self.gpu.as_mut() {
                     let (c, r) = g.set_scene(&s);
                     self.frame_model(c, r);
+                    if let Some(c) = s.settings.cam {
+                        self.set_cam(c);
+                    }
                     if let Some(g) = self.gpu.as_ref() {
                         g.window.request_redraw();
                     }

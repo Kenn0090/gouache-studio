@@ -6,6 +6,43 @@ struct Comp { p: vec4<f32>, q: vec4<f32> }; // p: x 1 when on, y sun shadow stre
 @group(0) @binding(3) var crt_tex: texture_2d<f32>;
 @group(0) @binding(4) var cmat_tex: texture_2d<f32>;
 @group(0) @binding(5) var crf_tex: texture_2d<f32>;
+@group(0) @binding(6) var fx_samp: sampler;
+
+fn lm(c: vec3<f32>) -> f32 { return sqrt(max(dot(c, vec3<f32>(0.299, 0.587, 0.114)), 0.0)); }
+
+// Smooths jagged edges: where the picture's brightness jumps, the pixel is read from half a pixel across the edge (a light version of FXAA)
+fn smooth_edges(px: vec2<i32>) -> vec4<f32> {
+    let dims = vec2<f32>(textureDimensions(scene_tex));
+    let c = textureLoad(scene_tex, px, 0);
+    let lc = lm(c.rgb);
+    let ln = lm(textureLoad(scene_tex, px + vec2<i32>(0, -1), 0).rgb);
+    let ls = lm(textureLoad(scene_tex, px + vec2<i32>(0, 1), 0).rgb);
+    let le = lm(textureLoad(scene_tex, px + vec2<i32>(1, 0), 0).rgb);
+    let lw = lm(textureLoad(scene_tex, px + vec2<i32>(-1, 0), 0).rgb);
+    let lmax = max(lc, max(max(ln, ls), max(le, lw)));
+    let lmin = min(lc, min(min(ln, ls), min(le, lw)));
+    let range = lmax - lmin;
+    if (range < max(0.0625, lmax * 0.125)) { return c; }
+    let lnw = lm(textureLoad(scene_tex, px + vec2<i32>(-1, -1), 0).rgb);
+    let lne = lm(textureLoad(scene_tex, px + vec2<i32>(1, -1), 0).rgb);
+    let lsw = lm(textureLoad(scene_tex, px + vec2<i32>(-1, 1), 0).rgb);
+    let lse = lm(textureLoad(scene_tex, px + vec2<i32>(1, 1), 0).rgb);
+    let edge_h = abs(lnw + lsw - 2.0 * lw) + 2.0 * abs(ln + ls - 2.0 * lc) + abs(lne + lse - 2.0 * le);
+    let edge_v = abs(lnw + lne - 2.0 * ln) + 2.0 * abs(lw + le - 2.0 * lc) + abs(lsw + lse - 2.0 * ls);
+    let horiz = edge_h >= edge_v;
+    // across the edge: toward the neighbour that differs most from this pixel
+    let l1 = select(lw, ln, horiz);
+    let l2 = select(le, ls, horiz);
+    let toward_second = abs(l2 - lc) >= abs(l1 - lc);
+    let sgn = select(-1.0, 1.0, toward_second);
+    let off = select(vec2<f32>(sgn * 0.5, 0.0), vec2<f32>(0.0, sgn * 0.5), horiz);
+    let edged = textureSampleLevel(scene_tex, fx_samp, (vec2<f32>(px) + vec2<f32>(0.5) + off) / dims, 0.0);
+    // lone bright or dark pixels: also mix with the average of the neighbours
+    let avg = (ln + ls + le + lw + lnw + lne + lsw + lse + lc) / 9.0;
+    let sub = clamp(abs(avg - lc) / max(range, 1e-4), 0.0, 1.0);
+    let blur = (textureLoad(scene_tex, px + vec2<i32>(0, -1), 0) + textureLoad(scene_tex, px + vec2<i32>(0, 1), 0) + textureLoad(scene_tex, px + vec2<i32>(1, 0), 0) + textureLoad(scene_tex, px + vec2<i32>(-1, 0), 0) + c) / 5.0;
+    return mix(mix(c, edged, 0.8), blur, sub * sub * 0.5);
+}
 
 fn tone_c(c0: vec3<f32>) -> vec3<f32> {
     let c = c0 * comp.q.y;
@@ -23,7 +60,17 @@ fn vs_comp(@builtin(vertex_index) vi: u32) -> @builtin(position) vec4<f32> {
 @fragment
 fn fs_comp(@builtin(position) p: vec4<f32>) -> @location(0) vec4<f32> {
     let px = vec2<i32>(p.xy);
-    let c = textureLoad(scene_tex, px, 0);
+    var c = textureLoad(scene_tex, px, 0);
+    if (comp.q.w > 0.5) {
+        // only where the model meets the background or another surface is cut off sharply (textures keep their crispness)
+        let s0 = textureLoad(cnrm_tex, px, 0).w > 0.0;
+        var edge = false;
+        for (var k = 0; k < 4; k = k + 1) {
+            let o = select(select(vec2<i32>(0, 1), vec2<i32>(-1, 0), k == 2), select(vec2<i32>(0, -1), vec2<i32>(1, 0), k == 1), k < 2);
+            if ((textureLoad(cnrm_tex, px + o, 0).w > 0.0) != s0) { edge = true; }
+        }
+        if (edge) { c = smooth_edges(px); }
+    }
     if (comp.p.x < 0.5) { return c; }
     let n = textureLoad(cnrm_tex, px, 0);
     if (n.w <= 0.0) { return c; }

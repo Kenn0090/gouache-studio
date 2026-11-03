@@ -85,6 +85,16 @@ struct SettingsMeta {
     rt_samples: u32,
     #[serde(default)]
     cam: Option<[f32; 6]>,
+    #[serde(default)]
+    bg: Option<[f32; 3]>,
+    #[serde(default = "dtrue")]
+    smooth: bool,
+    #[serde(default)]
+    lights: Vec<[f32; 12]>,
+}
+
+fn dtrue() -> bool {
+    true
 }
 
 fn d09() -> f32 {
@@ -217,6 +227,30 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         rt_soft: s.rt_soft,
         rt_samples: s.rt_samples,
         cam: s.cam,
+        bg: s.bg.unwrap_or([0.09, 0.1, 0.115]),
+        smooth: s.smooth,
+        light_n: s.lights.len().min(4) as u32,
+        light_a: {
+            let mut a = [[0.0f32; 4]; 4];
+            for (i, l) in s.lights.iter().take(4).enumerate() {
+                a[i] = [l[0], l[1], l[2], l[3]];
+            }
+            a
+        },
+        light_b: {
+            let mut a = [[0.0f32; 4]; 4];
+            for (i, l) in s.lights.iter().take(4).enumerate() {
+                a[i] = [l[4], l[5], l[6], l[7]];
+            }
+            a
+        },
+        light_c: {
+            let mut a = [[0.0f32; 4]; 4];
+            for (i, l) in s.lights.iter().take(4).enumerate() {
+                a[i] = [l[8], l[9], l[10], l[11]];
+            }
+            a
+        },
     };
     Ok((Scene { mesh: MeshData { positions, normals, uvs }, groups, env, settings, window: meta.win }, meta.env_mode.clone()))
 }
