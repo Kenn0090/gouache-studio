@@ -28,6 +28,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{const g=__gs;g.es.to='unity';g.es.dirs.unity='C:/Games/MyUnity';g.texCfg.name='Rock';g.texCfg.preset='urp';g.texCfg.model='glb';g.texCfg.size=128;});
  await p.evaluate(()=>__gs.dlgExportTextures());await W(300);
  ok(await p.locator('#txSend').inputValue()==='unity'&&await p.locator('#dlgOk').textContent()==='Export and send','the export window has Send to (Unity chosen)');
+ for(const e of ['unreal','godot']){await p.selectOption('#txSend',e);await W(300);ok(!(await p.evaluate(()=>/null/i.test(document.querySelector('#dlgBody').textContent))),e+': the export window shows no stray "null"');}
+ await p.selectOption('#txSend','unity');await W(300);
  await p.click('#dlgOk');await W(4000);
  let r=await p.evaluate(()=>({mk:window.__calls.filter(c=>c[0]==='make_dir').map(c=>c[1].path),w:window.__written.map(x=>x.split('/').slice(-2).join('/'))}));
  ok(r.mk.includes('C:/Games/MyUnity/Assets/Gouache/Rock'),'Unity: the folder Assets/Gouache/Rock is made '+JSON.stringify(r.mk));

@@ -35,7 +35,7 @@ function esRow(redraw){if(!platform.isDesktop)return [el('p',{class:'note',text:
         es.to==='godot'?'Files go to res://gouache/<name>. Godot imports them when you switch to it. Each texture set gets a .tres material with its shader: assign it to the model’s surfaces.':
         'Files go to Content/Gouache/<name>. With the Gouache shader ticked, run gouache_unreal_setup.py in Unreal (turn on the Python Editor Script Plugin, then Tools › Execute Python Script): it imports the textures and builds a material per texture set. Otherwise drag the .glb into the Content Browser.'}));}
   out.push(...elRow(redraw));
-  return out;}
+  return out.filter(Boolean);}
 /* where the export goes: the engine project's folder, Blender's folder, or a folder you pick */
 async function esTargetDir(name){if(!esActive())return await platform.pickFolder();
   if(es.to==='blender'){if(!es.dirs.blender){const d=await platform.pickFolder();if(!d)return null;es.dirs.blender=d;esSave();}return es.dirs.blender;}
