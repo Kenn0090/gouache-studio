@@ -1,3 +1,7 @@
+## 0.94.0
+
+- **Carry on from an open end of a path.** Finish a path with Enter (it is left open), click its first or last point to select it, then click where the path should go: it carries on from there, and more clicks add more points. Press Esc first (nothing selected) to start a new path instead. Continuing from the first point works too, and the path keeps its direction.
+
 ## 0.93.4
 
 - **Skew painting is faster and smoother (Bake tab).** After a skew or offset stroke only the painted patch is padded and finished, so the fix shows up much sooner. It first appears quickly at lower quality, then about a second after your last stroke every map (AO and thickness included) is re-baked there at full quality. New **Edge softness** slider under Fix the bake blends the edge of your paint so it never makes a hard jump.

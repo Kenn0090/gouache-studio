@@ -185,9 +185,20 @@ function pathUp(e,cancel){const PD=pathEdit.pend;if(PD&&PD.id===e.pointerId){pat
     const L=pathActive();if(!L){return true;}
     if(PD.moved){const r=PD.hit.getBoundingClientRect(),x0=Math.min(PD.start[0],e.clientX)-r.left,x1=Math.max(PD.start[0],e.clientX)-r.left,y0=Math.min(PD.start[1],e.clientY)-r.top,y1=Math.max(PD.start[1],e.clientY)-r.top,inside=[];
       L.path.points.forEach((a,i)=>{const q=pathProject(a.p,PD.kind,PD.hit);if(q&&q[0]>=x0&&q[0]<=x1&&q[1]>=y0&&q[1]<=y1)inside.push(i);});pathSelect(L,PD.shift?[...new Set([...pathSelection(L),...inside])]:inside);buildBrushPanel();requestRender();return true;}
-    const q=pathEventPoint(PD.hit,e,PD.kind);if(!q||lockStop({node:L})||lockedPos(L))return true;pathAddTo(L);const before=pathSnap(L);L.path.points.push({p:q.p,n:q.n,pressure:pressureOf(e),in:q.p.map(()=>0),out:q.p.map(()=>0)});pathSelect(L,[0]);pathRender(L);pathRecord(L,before,'Add path point');buildBrushPanel();requestRender();return true;}
+    const q=pathEventPoint(PD.hit,e,PD.kind);if(!q||lockStop({node:L})||lockedPos(L))return true;
+    /* (0.94) an end point of an open path is selected: carry on from it instead of starting a new path. From the first point the path is turned round while you draw and turned back when you finish. */
+    {const P0=L.path,n=P0.points.length,sel=pathSelection(L);
+      if(!P0.closed&&n>=1&&!P0.weld&&sel.length===1&&(sel[0]===n-1||sel[0]===0)){const before=pathSnap(L);
+        if(sel[0]===0&&n>1){P0.points.reverse();for(const a of P0.points){const t=a.in;a.in=a.out;a.out=t;}pathEdit.rev=P0;}
+        P0.points.push({p:q.p,n:q.n,pressure:pressureOf(e),in:q.p.map(()=>0),out:q.p.map(()=>0)});pathEdit.L=L;pathEdit.drawing=true;pathSelect(L,[P0.points.length-1]);
+        pathRender(L);pathRecord(L,before,'Continue path');buildBrushPanel();requestRender();return true;}}
+    pathAddTo(L);const before=pathSnap(L);L.path.points.push({p:q.p,n:q.n,pressure:pressureOf(e),in:q.p.map(()=>0),out:q.p.map(()=>0)});pathSelect(L,[0]);pathRender(L);pathRecord(L,before,'Add path point');buildBrushPanel();requestRender();return true;}
   const D=pathEdit.drag;if(!D||D.id!==e.pointerId)return false;pathEdit.drag=null;delete D.L._pathPreview;if(cancel)pathRestore(D.L,pathSnapOf(D.before));pathRender(D.L);if(!cancel)pathRecord(D.L,D.before,D.added||D.k==='new'?'Add path point':'Move path point');buildBrushPanel();return true;}
-function pathFinish(){pathFlush();pathEdit.drawing=false;pathEdit.drag=null;buildBrushPanel();requestRender();}
+function pathFinish(){pathFlush();
+  /* a path continued from its first point was turned round while drawing: put it back the way it ran */
+  if(pathEdit.rev&&pathEdit.L&&pathEdit.L.path===pathEdit.rev&&pathEdit.drawing){const P=pathEdit.rev;P.points.reverse();for(const a of P.points){const t=a.in;a.in=a.out;a.out=t;}pathRender(pathEdit.L);}
+  if(pathEdit.drawing&&pathEdit.L&&pathEdit.L.path)pathSelect(pathEdit.L,[]);   // finished: nothing selected, so the next click on empty surface starts a new path
+  pathEdit.rev=null;pathEdit.drawing=false;pathEdit.drag=null;buildBrushPanel();requestRender();}
 function pathResize(fx,fy,ox,oy){for(const L of everyLayer())if(L.path?.kind==='2d'){for(const p of L.path.points){p.p=[p.p[0]*fx+ox,p.p[1]*fy+oy];for(const k of ['in','out'])if(p[k])p[k]=[p[k][0]*fx,p[k][1]*fy];}L.path.width*=(fx+fy)/2;pathRender(L);}if(pathToolOn())buildBrushPanel();}
 function pathKeys(e){const typing=!modal.hidden||openName||!pop.hidden||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)||e.target.isContentEditable;
   if(pathToolOn()&&!typing&&!e.defaultPrevented&&(e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&/^[cv]$/i.test(e.key)&&pathActive()){e.key.toLowerCase()==='c'?pathCopyClip(pathActive()):pathPaste(pathActive());e.preventDefault();e.stopImmediatePropagation();return true;}
@@ -219,7 +230,7 @@ function pathDisplayBox(){const d=el('details',{class:'pathdisp'},el('summary',{
     colourBtn('pdCol',()=>pathDisp.col,c=>{pathDisp.col=c;f();},'Path colour'),colourBtn('pdColOff',()=>pathDisp.colOff,c=>{pathDisp.colOff=c;f();},'Unselected path colour'),
     el('div',{class:'chips'},chk('pdNormals','Normals',pathDisp.normals,v=>{pathDisp.normals=v;f();}),chk('pdTangents','Tangents',pathDisp.tangents,v=>{pathDisp.tangents=v;f();}),chk('pdDir','Path direction',pathDisp.direction,v=>{pathDisp.direction=v;f();})));return d;}
 function pathPanel(box){const L=pathActive(),P=L?.path;pathPanelFor=doc.active;$('#brushTitle').textContent=ui.tool==='path'?'Surface Path':'Pen';
-  box.append(el('p',{class:'note',text:ui.tool==='path'?'Click on the model to add points. Drag a new point for a curve. Alt+drag rotates the model. Enter finishes; click a point to edit it.':'Click for corners; click and drag for Bézier handles. Drag points or handles to edit. Alt+drag a handle breaks its pair. Click the first point to close. Enter finishes.'}),
+  box.append(el('p',{class:'note',text:ui.tool==='path'?'Click on the model to add points. Drag a new point for a curve. Alt+drag rotates the model. Enter finishes; click a point to edit it.':'Click for corners; click and drag for Bézier handles. Drag points or handles to edit. Alt+drag a handle breaks its pair. Click the first point to close. Enter finishes. To carry on from an open end, click that end point, then click where the path should go (Esc first to start a new path instead).'}),
     el('div',{class:'chips'},el('button',{class:'btn sm',id:'pathNew',text:'New path',onclick:pathNewButton}),el('button',{class:'btn sm',id:'pathFinish',text:'Finish',disabled:!P,onclick:pathFinish})));
   if(!P){box.append(el('p',{class:'note',text:'Start a path on the '+(ui.tool==='path'?'model.':'canvas.')}));return;}
   pathsPanel(box,L);
