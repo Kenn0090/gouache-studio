@@ -61,6 +61,8 @@ pub struct Material {
     pub orm: Option<Tex8>,
     pub normal: Option<Tex8>,
     pub emissive: Option<Tex8>,
+    /// a height map (its red channel); it travels in the alpha of the normal map so the vertex shader can read it
+    pub height: Option<Tex8>,
     pub rough: f32,
     pub metal: f32,
     /// when new pictures arrive for an existing material: maps left out (None) keep what they had
@@ -126,6 +128,8 @@ pub struct Settings {
     pub mir_radial: [f32; 2],
     pub mir_off: [f32; 3],
     pub mir_r: f32,
+    /// height depth (displacement), in model units for a full-white height (0 = off)
+    pub disp: f32,
     /// the stencil laid over the view: shown, [centre x, centre y, half width, half height (in pixels of the page's 3D view), turn (radians), show, flags (1 invert, 2 tile), 0], that view's size
     pub st_on: bool,
     pub st: [f32; 8],
@@ -142,7 +146,7 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, mir: [f32::NAN; 3], mir_radial: [0.0, 0.0], mir_off: [0.0; 3], mir_r: 0.0, st_on: false, st: [0.0; 8], st_view: [1.0, 1.0], wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
+        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, mir: [f32::NAN; 3], mir_radial: [0.0, 0.0], mir_off: [0.0; 3], mir_r: 0.0, disp: 0.0, st_on: false, st: [0.0; 8], st_view: [1.0, 1.0], wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
     }
 }
 
@@ -276,6 +280,7 @@ struct Vertex {
     pos: [f32; 3],
     nrm: [f32; 3],
     uv: [f32; 2],
+    dn: [f32; 3], // the normal averaged over vertices at the same place (so a displaced surface does not tear at seams)
 }
 
 #[repr(C)]
@@ -495,6 +500,34 @@ fn box_down(src: &[u8], w: u32, h: u32) -> (Vec<u8>, u32, u32) {
 }
 
 /// A texture with all its smaller levels, from a picture (or a single colour when there is none).
+/// The normal map with the height map's red channel written into its alpha (a flat normal where there is no normal map).
+fn merge_height(n: Option<&Tex8>, h: &Tex8) -> Tex8 {
+    let ok = |t: &Tex8| t.width > 0 && t.height > 0 && t.rgba.len() >= (t.width * t.height * 4) as usize;
+    let n = n.filter(|t| ok(t));
+    let (w, hh) = match n {
+        Some(t) => (t.width, t.height),
+        None => (h.width.max(1), h.height.max(1)),
+    };
+    let mut out = vec![0u8; (w * hh * 4) as usize];
+    for y in 0..hh {
+        for x in 0..w {
+            let o = ((y * w + x) * 4) as usize;
+            match n {
+                Some(t) => out[o..o + 3].copy_from_slice(&t.rgba[o..o + 3]),
+                None => out[o..o + 3].copy_from_slice(&[128, 128, 255]),
+            }
+            out[o + 3] = if ok(h) {
+                let hx = (x as u64 * h.width as u64 / w as u64).min(h.width as u64 - 1) as u32;
+                let hy = (y as u64 * h.height as u64 / hh as u64).min(h.height as u64 - 1) as u32;
+                h.rgba[((hy * h.width + hx) * 4) as usize]
+            } else {
+                128
+            };
+        }
+    }
+    Tex8 { width: w, height: hh, rgba: out }
+}
+
 fn make_tex8(device: &wgpu::Device, queue: &wgpu::Queue, t: Option<&Tex8>, fallback: [u8; 4], format: wgpu::TextureFormat) -> wgpu::TextureView {
     let one = Tex8 { width: 1, height: 1, rgba: fallback.to_vec() };
     let t = t.filter(|t| t.width > 0 && t.height > 0 && t.rgba.len() >= (t.width * t.height * 4) as usize).unwrap_or(&one);
@@ -761,9 +794,9 @@ impl Gpu {
             entries: &[
                 tex_entry(0),
                 tex_entry(1),
-                tex_entry(2),
+                wgpu::BindGroupLayoutEntry { binding: 2, visibility: wgpu::ShaderStages::VERTEX_FRAGMENT, ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: true }, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false }, count: None },
                 tex_entry(3),
-                wgpu::BindGroupLayoutEntry { binding: 4, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering), count: None },
+                wgpu::BindGroupLayoutEntry { binding: 4, visibility: wgpu::ShaderStages::VERTEX_FRAGMENT, ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering), count: None },
                 wgpu::BindGroupLayoutEntry {
                     binding: 5,
                     visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
@@ -793,7 +826,7 @@ impl Gpu {
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: std::mem::size_of::<Vertex>() as u64,
                     step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2],
+                    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x3],
                 }],
             },
             fragment: Some(wgpu::FragmentState { module: &shader, entry_point: Some("fs"), compilation_options: Default::default(), targets: &target }),
@@ -856,7 +889,7 @@ impl Gpu {
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: std::mem::size_of::<Vertex>() as u64,
                     step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2],
+                    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x3],
                 }],
             },
             fragment: Some(wgpu::FragmentState { module: &shader, entry_point: Some("fs_out"), compilation_options: Default::default(), targets: &target }),
@@ -876,7 +909,7 @@ impl Gpu {
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: std::mem::size_of::<Vertex>() as u64,
                     step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2],
+                    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x3],
                 }],
             },
             fragment: Some(wgpu::FragmentState { module: &shader, entry_point: Some("fs_wire"), compilation_options: Default::default(), targets: &target }),
@@ -1057,7 +1090,25 @@ impl Gpu {
             mx = mx.max(p);
             let nr = if m.normals.len() >= (i + 1) * 3 { [m.normals[i * 3], m.normals[i * 3 + 1], m.normals[i * 3 + 2]] } else { [0.0, 1.0, 0.0] };
             let uv = if m.uvs.len() >= (i + 1) * 2 { [m.uvs[i * 2], 1.0 - m.uvs[i * 2 + 1]] } else { [0.0, 0.0] };
-            verts.push(Vertex { pos: [p.x, p.y, p.z], nrm: nr, uv });
+            verts.push(Vertex { pos: [p.x, p.y, p.z], nrm: nr, uv, dn: nr });
+        }
+        {
+            let size = (mx - mn).max_element().max(1e-6);
+            let q = 1.0 / (size * 1e-5);
+            let mut sums: std::collections::HashMap<[i64; 3], Vec3> = std::collections::HashMap::new();
+            for v in &verts {
+                let key = [(v.pos[0] * q).round() as i64, (v.pos[1] * q).round() as i64, (v.pos[2] * q).round() as i64];
+                *sums.entry(key).or_insert(Vec3::ZERO) += Vec3::from(v.nrm);
+            }
+            for v in verts.iter_mut() {
+                let key = [(v.pos[0] * q).round() as i64, (v.pos[1] * q).round() as i64, (v.pos[2] * q).round() as i64];
+                if let Some(s) = sums.get(&key) {
+                    let n = s.normalize_or_zero();
+                    if n != Vec3::ZERO {
+                        v.dn = n.to_array();
+                    }
+                }
+            }
         }
         self.vb = Some(self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("vertices"), contents: bytemuck::cast_slice(&verts), usage: wgpu::BufferUsages::VERTEX }));
         self.groups.clear();
@@ -1094,11 +1145,12 @@ impl Gpu {
         };
         let base = view(mat.base.as_ref(), [255, 255, 255, 255], wgpu::TextureFormat::Rgba8UnormSrgb, 0);
         let orm = view(mat.orm.as_ref(), [255, 255, 255, 255], wgpu::TextureFormat::Rgba8Unorm, 1);
-        let nrm = view(mat.normal.as_ref(), [128, 128, 255, 255], wgpu::TextureFormat::Rgba8Unorm, 2);
+        let merged = mat.height.as_ref().map(|h| merge_height(mat.normal.as_ref(), h));
+        let nrm = view(if merged.is_some() { merged.as_ref() } else { mat.normal.as_ref() }, [128, 128, 255, 255], wgpu::TextureFormat::Rgba8Unorm, 2);
         let emi = view(mat.emissive.as_ref(), [0, 0, 0, 255], wgpu::TextureFormat::Rgba8UnormSrgb, 3);
         let sp = mat.shader;
         let mut mu = MatUniform {
-            flags: [if mat.orm.is_some() { 1.0 } else { 0.0 }, if mat.rough > 0.0 { mat.rough } else { 0.6 }, mat.metal, 0.0],
+            flags: [if mat.orm.is_some() { 1.0 } else { 0.0 }, if mat.rough > 0.0 { mat.rough } else { 0.6 }, mat.metal, if mat.height.is_some() { 1.0 } else { 0.0 }],
             tint: [1.0, 1.0, 1.0, 1.0],
             shk: [sp.kind as f32, 0.0, 0.0, 0.0],
             shp: sp.p,
@@ -1229,7 +1281,7 @@ impl Gpu {
             params: [st.exposure, st.env_turn, st.env_strength, st.tone as f32],
             info: [self.env_mips, if self.has_env { 1.0 } else { 0.0 }, if st.show_background { 1.0 } else { 0.0 }, if st.unlit { 1.0 } else { 0.0 }],
             sh: self.sh,
-            extra: [self.started.elapsed().as_secs_f32(), 2.0 * cam.dist * (self.settings.fov.to_radians() * 0.5).tan() / self.config.height as f32, st.env_blur, 0.0],
+            extra: [self.started.elapsed().as_secs_f32(), 2.0 * cam.dist * (self.settings.fov.to_radians() * 0.5).tan() / self.config.height as f32, st.env_blur, st.disp],
             cursor: match self.cursor {
                 Some((x, y)) if st.paint && st.brush > 0.0 => [x, y, (st.brush * self.config.height as f32 * 0.5).max(2.0), 1.0],
                 _ => [0.0; 4],

@@ -34,14 +34,14 @@ fn main() {
         let idx: Vec<u32> = sidx.iter().map(|i| i + cnt * k as u32).collect();
         let base = mk(&|x, y| if (x / 8 + y / 8) % 2 == 0 { [225, 190, 150, 255] } else { [150, 100, 80, 255] });
         let shader = ShaderParams { kind: *kind, p: *pp, q: *q, c: *c, d: *d, skin: *skin };
-        groups.push(Group { name: name.to_string(), indices: idx, material: Material { shader, base: Some(base), orm: None, normal: None, emissive: None, rough: 0.45, metal: if *kind == 2 { 1.0 } else { 0.0 }, partial: false } });
+        groups.push(Group { name: name.to_string(), indices: idx, material: Material { shader, base: Some(base), orm: None, normal: None, emissive: None, height: if std::env::var_os("GOUACHE_DISP").is_some() { let mut px = Vec::new(); for y in 0..64u32 { for x in 0..64u32 { let v = if ((x / 8) + (y / 8)) % 2 == 0 { 255u8 } else { 0 }; px.extend_from_slice(&[v, v, v, 255]); } } Some(Tex8 { width: 64, height: 64, rgba: px }) } else { None }, rough: 0.45, metal: if *kind == 2 { 1.0 } else { 0.0 }, partial: false } });
     }
     let fb = cnt * kinds.len() as u32;
     p.extend([-12., -1., -4., 12., -1., -4., 12., -1., 4., -12., -1., 4.]);
     n.extend([0., 1., 0., 0., 1., 0., 0., 1., 0., 0., 1., 0.]);
     uv.extend([0., 0., 8., 0., 8., 2., 0., 2.]);
     let floor = mk(&|x, y| if (x / 16 + y / 16) % 2 == 0 { [120, 120, 130, 255] } else { [60, 60, 70, 255] });
-    groups.push(Group { name: "Floor".into(), indices: vec![fb, fb + 2, fb + 1, fb, fb + 3, fb + 2], material: Material { shader: ShaderParams::default(), base: Some(floor), orm: None, normal: None, emissive: None, rough: 0.8, metal: 0.0, partial: false } });
+    groups.push(Group { name: "Floor".into(), indices: vec![fb, fb + 2, fb + 1, fb, fb + 3, fb + 2], material: Material { shader: ShaderParams::default(), base: Some(floor), orm: None, normal: None, emissive: None, height: None, rough: 0.8, metal: 0.0, partial: false } });
     let (w, h) = (256u32, 128u32);
     let mut rgb = vec![];
     for y in 0..h { for x in 0..w {
@@ -51,7 +51,7 @@ fn main() {
         if dx * dx + dy * dy < 40.0 { c = [40.0, 36.0, 30.0]; }
         rgb.extend(c);
     } }
-    let scene = Scene { mesh: MeshData { positions: p, normals: n, uvs: uv }, groups, env: Some(EnvData { width: w, height: h, rgb }), settings: Settings { paint: std::env::var_os("GOUACHE_RING_TEST").is_some(), brush: 0.2, rt: std::env::var_os("GOUACHE_RT_TEST").is_some(), mir: if std::env::var_os("GOUACHE_MIR").is_some() { [0.0, f32::NAN, f32::NAN] } else { [f32::NAN; 3] }, mir_radial: if std::env::var_os("GOUACHE_MIR").is_some() { [6.0, 1.0] } else { [0.0, 0.0] }, mir_r: if std::env::var_os("GOUACHE_MIR").is_some() { 2.0 } else { 0.0 }, wire: std::env::var("GOUACHE_WIRE").ok().and_then(|v| v.parse().ok()).unwrap_or(0), st_on: std::env::var_os("GOUACHE_ST").is_some(), st: [800.0, 450.0, 200.0, 200.0, 0.3, 0.6, 0.0, 0.0], st_view: [1600.0, 900.0], ..Settings::default() }, window: None };
+    let scene = Scene { mesh: MeshData { positions: p, normals: n, uvs: uv }, groups, env: Some(EnvData { width: w, height: h, rgb }), settings: Settings { paint: std::env::var_os("GOUACHE_RING_TEST").is_some(), brush: 0.2, rt: std::env::var_os("GOUACHE_RT_TEST").is_some(), mir: if std::env::var_os("GOUACHE_MIR").is_some() { [0.0, f32::NAN, f32::NAN] } else { [f32::NAN; 3] }, mir_radial: if std::env::var_os("GOUACHE_MIR").is_some() { [6.0, 1.0] } else { [0.0, 0.0] }, mir_r: if std::env::var_os("GOUACHE_MIR").is_some() { 2.0 } else { 0.0 }, wire: std::env::var("GOUACHE_WIRE").ok().and_then(|v| v.parse().ok()).unwrap_or(0), disp: if std::env::var_os("GOUACHE_DISP").is_some() { 0.12 } else { 0.0 }, st_on: std::env::var_os("GOUACHE_ST").is_some(), st: [800.0, 450.0, 200.0, 200.0, 0.3, 0.6, 0.0, 0.0], st_view: [1600.0, 900.0], ..Settings::default() }, window: None };
     match open(scene, None) {
         Ok(v) => { println!("OPEN {:?}", v.report);
             if std::env::var_os("GOUACHE_ST").is_some() { let mut px = Vec::new(); for y in 0..64u32 { for x in 0..64u32 { let on = ((x / 8) + (y / 8)) % 2 == 0; px.extend_from_slice(&[if on { 255 } else { 20 }, if y < 32 { 255 } else { 60 }, 40, 255]); } } v.set_textures("__stencil".to_string(), Material { base: Some(Tex8 { width: 64, height: 64, rgba: px }), ..Default::default() }); }

@@ -103,7 +103,18 @@ struct VIn {
     @location(0) pos: vec3<f32>,
     @location(1) nrm: vec3<f32>,
     @location(2) uv: vec2<f32>,
+    @location(3) dn: vec3<f32>,
 };
+
+// height depth: the height map rides in the normal map's alpha; the surface moves along the averaged normal
+fn dpos(i: VIn) -> vec3<f32> {
+    var p = i.pos;
+    if (mat.flags.w > 0.5 && frame.extra.w != 0.0) {
+        let h = textureSampleLevel(nrm_tex, tex_smp, i.uv, 0.0).a - 0.5;
+        p = p + normalize(i.dn) * (h * frame.extra.w);
+    }
+    return p;
+}
 struct VOut {
     @builtin(position) clip: vec4<f32>,
     @location(0) wpos: vec3<f32>,
@@ -114,8 +125,9 @@ struct VOut {
 @vertex
 fn vs(i: VIn) -> VOut {
     var o: VOut;
-    o.clip = frame.view_proj * vec4<f32>(i.pos, 1.0);
-    o.wpos = i.pos;
+    let dp = dpos(i);
+    o.clip = frame.view_proj * vec4<f32>(dp, 1.0);
+    o.wpos = dp;
     o.nrm = i.nrm;
     o.uv = i.uv;
     return o;
@@ -398,8 +410,9 @@ struct OutOut {
 fn vs_out(i: VIn) -> OutOut {
     var o: OutOut;
     let w = mat.shq.x * frame.extra.y;
-    o.clip = frame.view_proj * vec4<f32>(i.pos + normalize(i.nrm) * w, 1.0);
-    o.wpos = i.pos;
+    let dp = dpos(i);
+    o.clip = frame.view_proj * vec4<f32>(dp + normalize(i.nrm) * w, 1.0);
+    o.wpos = dp;
     o.nrm = i.nrm;
     return o;
 }
@@ -417,10 +430,11 @@ fn fs_out(i: OutOut) -> FOut {
 @vertex
 fn vs_wire(i: VIn) -> OutOut {
     var o: OutOut;
-    var c = frame.view_proj * vec4<f32>(i.pos, 1.0);
+    let dp = dpos(i);
+    var c = frame.view_proj * vec4<f32>(dp, 1.0);
     c.z = c.z - 0.0004 * c.w;
     o.clip = c;
-    o.wpos = i.pos;
+    o.wpos = dp;
     o.nrm = i.nrm;
     return o;
 }

@@ -12,6 +12,8 @@ struct MapLens {
     orm: usize,
     normal: usize,
     emissive: usize,
+    #[serde(default)]
+    height: usize,
 }
 
 #[derive(Deserialize, Default)]
@@ -99,6 +101,8 @@ struct SettingsMeta {
     studio_rim: f32,
     #[serde(default)]
     wire: u8,
+    #[serde(default)]
+    disp: f32,
     #[serde(default)]
     mir: Option<[Option<f32>; 3]>,
     #[serde(default)]
@@ -233,8 +237,9 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         let orm = map(&mut rd, g.tex.orm)?;
         let normal = map(&mut rd, g.tex.normal)?;
         let emissive = map(&mut rd, g.tex.emissive)?;
+        let height = map(&mut rd, g.tex.height)?;
         let shader = ShaderParams { kind: g.sh.k, p: g.sh.p, q: g.sh.q, c: g.sh.c, d: g.sh.d, skin: g.sh.skin };
-        let material = Material { shader, base, orm, normal, emissive, rough: g.rough, metal: g.metal, partial: g.partial };
+        let material = Material { shader, base, orm, normal, emissive, height, rough: g.rough, metal: g.metal, partial: g.partial };
         groups.push(Group { name: g.name.clone(), indices, material });
     }
     let env = match &meta.env {
@@ -268,6 +273,7 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         studio_fill: s.studio_fill,
         studio_rim: s.studio_rim,
         wire: s.wire,
+        disp: s.disp,
         mir: { let m = s.mir.unwrap_or([None; 3]); [m[0].unwrap_or(f32::NAN), m[1].unwrap_or(f32::NAN), m[2].unwrap_or(f32::NAN)] },
         mir_radial: s.mir_radial.unwrap_or([0.0, 0.0]),
         mir_off: s.mir_off.unwrap_or([0.0; 3]),
