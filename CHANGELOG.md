@@ -1,5 +1,6 @@
 ## 0.94.1
 
+- **New viewer: stencil.** The stencil you set up for projection painting shows over the model in the new viewer window, in the same place, size and turn.
 - **New viewer: see-through parts.** Parts of a material with less than half opacity are cut out in the new viewer window, like in the normal 3D view.
 - **New viewer: mirror guides.** The mirror planes and radial rays (when Show guides is on) are drawn in the new viewer window too.
 - **New viewer: selection tint.** A selection made in 3D Paint shows orange on the model in the new viewer window.

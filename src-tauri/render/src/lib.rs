@@ -126,6 +126,10 @@ pub struct Settings {
     pub mir_radial: [f32; 2],
     pub mir_off: [f32; 3],
     pub mir_r: f32,
+    /// the stencil laid over the view: shown, [centre x, centre y, half width, half height (in pixels of the page's 3D view), turn (radians), show, flags (1 invert, 2 tile), 0], that view's size
+    pub st_on: bool,
+    pub st: [f32; 8],
+    pub st_view: [f32; 2],
     pub wire_col: [f32; 3],
     pub unlit: bool,
     pub metal_view: f32,
@@ -138,7 +142,7 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, mir: [f32::NAN; 3], mir_radial: [0.0, 0.0], mir_off: [0.0; 3], mir_r: 0.0, wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
+        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, mir: [f32::NAN; 3], mir_radial: [0.0, 0.0], mir_off: [0.0; 3], mir_r: 0.0, st_on: false, st: [0.0; 8], st_view: [1.0, 1.0], wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
     }
 }
 
@@ -295,6 +299,9 @@ struct FrameUniform {
     light_n: [f32; 4],
     cam_dir: [f32; 4],
     wire: [f32; 4], // colour, w = 1 overlay / 2 only
+    st_a: [f32; 4],
+    st_b: [f32; 4],
+    st_c: [f32; 4],
 }
 
 #[repr(C)]
@@ -336,6 +343,10 @@ struct Gpu {
     out_pipeline: wgpu::RenderPipeline,
     wire_pipeline: wgpu::RenderPipeline,
     guide_pipeline: wgpu::RenderPipeline,
+    st_pipeline: wgpu::RenderPipeline,
+    st_layout: wgpu::BindGroupLayout,
+    st_smp: wgpu::Sampler,
+    st_bind: Option<wgpu::BindGroup>,
     guide_buf: Option<(wgpu::Buffer, u32)>,
     guide_key: Vec<u32>,
     pre_pipeline: wgpu::RenderPipeline,
@@ -815,6 +826,26 @@ impl Gpu {
             multiview: None,
             cache: None,
         });
+        let st_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("stencil layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry { binding: 8, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: true }, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false }, count: None },
+                wgpu::BindGroupLayoutEntry { binding: 9, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering), count: None },
+            ],
+        });
+        let st_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor { label: Some("stencil pipeline layout"), bind_group_layouts: &[&frame_layout, &st_layout], push_constant_ranges: &[] });
+        let st_smp = device.create_sampler(&wgpu::SamplerDescriptor { address_mode_u: wgpu::AddressMode::Repeat, address_mode_v: wgpu::AddressMode::Repeat, mag_filter: wgpu::FilterMode::Linear, min_filter: wgpu::FilterMode::Linear, ..Default::default() });
+        let st_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("stencil pipeline"),
+            layout: Some(&st_pl),
+            vertex: wgpu::VertexState { module: &shader, entry_point: Some("vs_bg"), compilation_options: Default::default(), buffers: &[] },
+            fragment: Some(wgpu::FragmentState { module: &shader, entry_point: Some("fs_stencil"), compilation_options: Default::default(), targets: &ring_target }),
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
         let out_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("outline pipeline"),
             layout: Some(&layout),
@@ -953,6 +984,10 @@ impl Gpu {
             out_pipeline,
             wire_pipeline,
             guide_pipeline,
+            st_pipeline,
+            st_layout,
+            st_smp,
+            st_bind: None,
             guide_buf: None,
             guide_key: Vec::new(),
             pre_pipeline,
@@ -1093,6 +1128,23 @@ impl Gpu {
 
     /// Swaps the pictures of the material of one group (the triangles stay).
     fn set_textures(&mut self, name: &str, mat: &Material) {
+        if name == "__stencil" {
+            if let Some(t) = &mat.base {
+                let tex = self.device.create_texture_with_data(
+                    &self.queue,
+                    &wgpu::TextureDescriptor { label: Some("stencil"), size: wgpu::Extent3d { width: t.width, height: t.height, depth_or_array_layers: 1 }, mip_level_count: 1, sample_count: 1, dimension: wgpu::TextureDimension::D2, format: wgpu::TextureFormat::Rgba8Unorm, usage: wgpu::TextureUsages::TEXTURE_BINDING, view_formats: &[] },
+                    wgpu::util::TextureDataOrder::LayerMajor,
+                    &t.rgba,
+                );
+                let view = tex.create_view(&Default::default());
+                self.st_bind = Some(self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("stencil bind"),
+                    layout: &self.st_layout,
+                    entries: &[wgpu::BindGroupEntry { binding: 8, resource: wgpu::BindingResource::TextureView(&view) }, wgpu::BindGroupEntry { binding: 9, resource: wgpu::BindingResource::Sampler(&self.st_smp) }],
+                }));
+            }
+            return;
+        }
         let outline = (mat.shader.kind == 4 || mat.shader.kind == 5) && mat.shader.q[0] > 0.0;
         let Some(i) = self.groups.iter().position(|g| g.name == name) else { return };
         let (bind, mat_buf, mu, views) = {
@@ -1190,6 +1242,9 @@ impl Gpu {
             light_n: [st.light_n as f32, st.studio_fill, st.studio_rim, 0.0],
             cam_dir: [dir.x, dir.y, dir.z, if st.ortho { 1.0 } else { 0.0 }],
             wire: [st.wire_col[0], st.wire_col[1], st.wire_col[2], st.wire as f32],
+            st_a: [st.st[0], st.st[1], st.st[2], st.st[3]],
+            st_b: [st.st[4], st.st[5], st.st[6], 0.0],
+            st_c: [st.st_view[0], st.st_view[1], 0.0, 0.0],
         };
         self.queue.write_buffer(&self.frame_buf, 0, bytemuck::bytes_of(&u));
         if st.wire > 0 {
@@ -1299,6 +1354,12 @@ impl Gpu {
                 occlusion_query_set: None,
             });
             self.rt.composite(&self.device, &self.queue, &mut pass, &self.scene_color, &self.scene_normal, &self.scene_mat, st.rt, st.tone, st.exposure, [st.rt_shadow, st.rt_ao, st.rt_refl], st.smooth);
+            if let (true, Some(sb)) = (st.st_on, &self.st_bind) {
+                pass.set_pipeline(&self.st_pipeline);
+                pass.set_bind_group(0, &self.frame_bg, &[]);
+                pass.set_bind_group(1, sb, &[]);
+                pass.draw(0..3, 0..1);
+            }
             if u.cursor[3] > 0.5 {
                 pass.set_pipeline(&self.ring_pipeline);
                 pass.set_bind_group(0, &self.frame_bg, &[]);

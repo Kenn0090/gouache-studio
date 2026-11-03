@@ -18,6 +18,9 @@ struct Frame {
     light_n: vec4<f32>,
     cam_dir: vec4<f32>,      // toward the camera (used when the view is orthographic: w = 1)
     wire: vec4<f32>,         // wireframe colour, w = 1 overlay / 2 wire only
+    st_a: vec4<f32>,         // stencil: centre, half size (pixels of the page's 3D view)
+    st_b: vec4<f32>,         // turn, show, flags
+    st_c: vec4<f32>,         // that view's size
 };
 
 // from a point on the model toward the viewer (the same direction everywhere when the view is orthographic)
@@ -428,6 +431,32 @@ fn fs_wire(i: OutOut) -> FOut {
     o.n = vec4<f32>(0.0);
     o.m = vec4<f32>(0.0);
     return o;
+}
+
+// the stencil over the view: the page keeps it in the pixels of its own 3D view, so the window turns its pixels into that view's first
+@group(1) @binding(8) var st_tex: texture_2d<f32>;
+@group(1) @binding(9) var st_smp: sampler;
+@fragment
+fn fs_stencil(@builtin(position) p: vec4<f32>) -> @location(0) vec4<f32> {
+    let nw = vec2<f32>(p.x / frame.res.x * 2.0 - 1.0, 1.0 - p.y / frame.res.y * 2.0);
+    let aw = frame.res.x / frame.res.y;
+    let am = frame.st_c.x / frame.st_c.y;
+    let nm = vec2<f32>(nw.x * aw / am, nw.y);
+    let mp = vec2<f32>((nm.x * 0.5 + 0.5) * frame.st_c.x, (0.5 - nm.y * 0.5) * frame.st_c.y);
+    let d = mp - frame.st_a.xy;
+    let c = cos(frame.st_b.x);
+    let s = sin(frame.st_b.x);
+    let local = vec2<f32>(c * d.x + s * d.y, -s * d.x + c * d.y);
+    var uv = local / frame.st_a.zw * 0.5 + vec2<f32>(0.5);
+    let flags = i32(frame.st_b.z + 0.5);
+    if ((flags & 2) != 0) { uv = fract(uv); }
+    else if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) { discard; }
+    var col = textureSampleLevel(st_tex, st_smp, uv, 0.0);
+    var rgb = col.rgb;
+    if ((flags & 1) != 0) { rgb = vec3<f32>(1.0) - rgb; }
+    let a = col.a * frame.st_b.y;
+    if (a < 0.003) { discard; }
+    return vec4<f32>(lin3(rgb), a);
 }
 
 // mirror guides

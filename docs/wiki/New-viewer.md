@@ -16,7 +16,7 @@ In 3D Paint, press **New viewer** in the bar above the 3D view. The button light
 
 I compared the two on the same model, material, camera and lighting. Colours and brightness agree within a few percent, normal maps light the same way, and these carry over: the environment, your light rig, the studio fill and rim lights, the Unlit and Metal views, orthographic view, hidden texture sets and the background colour. Edges against the background are smoothed.
 
-Wireframe, selection tint, mirror guides, the mask and mesh map views (C and B keys) and cut-out see-through materials (parts with less than half opacity disappear) work in the new viewer. Not there yet: the stencil guide (use the normal 3D view for stencil painting), height depth (displacement), soft see-through (blended opacity), and post effects such as glow. The sun is only on when the environment is off (or its sun slider is up), as in the 3D view, so ray-traced sun shadows need that too.
+Wireframe, selection tint, mirror guides, the mask and mesh map views (C and B keys) and cut-out see-through materials (parts with less than half opacity disappear) work in the new viewer. The stencil you use for projection painting shows over the model too. Not there yet: height depth (displacement), soft see-through (blended opacity), and post effects such as glow. The sun is only on when the environment is off (or its sun slider is up), as in the 3D view, so ray-traced sun shadows need that too.
 
 ## Moving around
 

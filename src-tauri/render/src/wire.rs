@@ -108,6 +108,12 @@ struct SettingsMeta {
     #[serde(default)]
     mir_r: f32,
     #[serde(default)]
+    st_on: bool,
+    #[serde(default)]
+    st: Option<[f32; 8]>,
+    #[serde(default)]
+    st_view: Option<[f32; 2]>,
+    #[serde(default)]
     wire_col: Option<[f32; 3]>,
     #[serde(default)]
     unlit: bool,
@@ -266,6 +272,9 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         mir_radial: s.mir_radial.unwrap_or([0.0, 0.0]),
         mir_off: s.mir_off.unwrap_or([0.0; 3]),
         mir_r: s.mir_r,
+        st_on: s.st_on,
+        st: s.st.unwrap_or([0.0; 8]),
+        st_view: s.st_view.unwrap_or([1.0, 1.0]),
         wire_col: s.wire_col.unwrap_or([0.95, 0.7, 0.35]),
         unlit: s.unlit,
         metal_view: s.metal_view,
