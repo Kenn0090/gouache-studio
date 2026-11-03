@@ -47,6 +47,7 @@ function dlgPrefs(startTab){
       el('p',{class:'note',text:'Filters, adjustments and hover previews show on the canvas as you adjust them. Turn this off for very large documents.'}),
       el('div',{class:'sub',text:'New viewer (test)'}),el('p',{class:'note',text:platform.isDesktop?'Opens the model you are looking at in a new window, drawn straight on the graphics card. It is the first step of the new viewer; the normal viewer is not changed.':'The new viewer is in the desktop app.'}),
       el('div',{class:'chips'},el('button',{class:'btn sm',id:'pNewViewer',text:'Open the new viewer',disabled:!platform.isDesktop,onclick:()=>{nvOpen();}}),el('button',{class:'btn sm',id:'pNewViewerClose',text:'Close it',disabled:!platform.isDesktop,onclick:nvClose})),
+      el('p',{class:'note',id:'pNvStats',text:typeof nvStatsText==='function'?nvStatsText():''}),
       chk('pNvRt','Ray-traced shadows and ambient occlusion in the new viewer',!!v3s().nvRt,v=>{v3s().nvRt=v;}),
       el('p',{class:'note',text:'Soft shadows from the sun and darker corners, worked out with rays on any graphics card. The picture settles over a second or two each time you stop moving.'}),
       el('div',{class:'sub',text:'Memory and disk'}),ms.el],

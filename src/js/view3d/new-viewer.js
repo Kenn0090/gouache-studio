@@ -68,14 +68,22 @@ function nvPixelRay(ev){const t=Math.tan(ev.fov*Math.PI/360),e=ev.eye,g=ev.tgt;
   const fw=norm3(sub3(g,e)),r=norm3(cross3(fw,[0,1,0])),u=cross3(r,fw),x=(2*ev.x/ev.w-1)*t*ev.w/ev.h,y=(2*ev.y/ev.h-1)*t;
   const d=norm3([fw[0]+r[0]*x-u[0]*y,fw[1]+r[1]*x-u[1]*y,fw[2]+r[2]*x-u[2]*y]),L=Math.hypot(g[0]-e[0],g[1]-e[1],g[2]-e[2]);
   return [e[0]+d[0]*L,e[1]+d[1]*L,e[2]+d[2]*L];}
-function nvHandle(ev){if(!nvPaintOn()||!ev||!ev.t)return;if(ev.t==='cam'){nvCamFrom(ev);return;}const hit=document.getElementById('v3Hit');if(!hit)return;
+function nvHandle(ev){if(!nvPaintOn()||!ev||!ev.t)return;if(ev.t==='cam'){nvCamFrom(ev);return;}
+  const st=nv.st||(nv.st={ev:0,run:0,ms:0,live:0,liveMs:0,max:0});
+  if(ev.t==='move'){st.ev++;nv.pendingMove=ev;if(!nv.moveRaf)nv.moveRaf=requestAnimationFrame(nvFlushMove);return;}/* one move per frame, like a normal mouse */
+  if(ev.t==='down'){nv.st={ev:1,run:0,ms:0,live:0,liveMs:0,max:0};}
+  nvFlushMove();nvDispatch(ev);}
+function nvFlushMove(){nv.moveRaf=0;const ev=nv.pendingMove;nv.pendingMove=null;if(!ev)return;const t0=performance.now();nvDispatch(ev);const dt=performance.now()-t0,st=nv.st;if(st){st.run++;st.ms+=dt;st.max=Math.max(st.max,dt);}}
+function nvDispatch(ev){if(!nvPaintOn())return;const hit=document.getElementById('v3Hit');if(!hit)return;
   nvCamFrom(ev);const p=pathProject(nvPixelRay(ev),'3d',hit);if(!p)return;const r=hit.getBoundingClientRect(),cx=r.left+p[0],cy=r.top+p[1];
   const mk=(type,buttons)=>new PointerEvent(type,{pointerId:991,pointerType:'mouse',isPrimary:true,bubbles:true,cancelable:true,clientX:cx,clientY:cy,button:0,buttons,shiftKey:!!ev.shift,ctrlKey:!!ev.ctrl,altKey:!!ev.alt,pressure:ev.t==='up'?0:.5});
   if(ev.t==='down'){clearTimeout(nv.sync);hit.dispatchEvent(mk('pointerdown',1));nv.liveAt=performance.now();}
   else if(ev.t==='move'){hit.dispatchEvent(mk('pointermove',1));nvLiveTick();}
   else if(ev.t==='up'){hit.dispatchEvent(mk('pointerup',0));nvSyncSoon();}}
+/* what the last stroke cost, for Preferences */
+function nvStatsText(){const s=nv.st;if(!s||!s.ev)return 'No stroke yet in the new viewer.';return 'Last stroke: '+s.ev+' mouse moves from the window, '+s.run+' painted (average '+(s.run?(s.ms/s.run).toFixed(1):'0')+' ms, slowest '+s.max.toFixed(0)+' ms); '+s.live+' live pictures'+(s.live?' (average '+(s.liveMs/s.live).toFixed(0)+' ms each)':'')+'.';}
 /* while dragging: a small copy of the maps every so often (the full one follows after the stroke) */
-function nvLiveTick(){const now=performance.now();if(nv.texBusy||now-(nv.liveAt||0)<NV_LIVE_MS)return;nv.liveAt=now;nvSyncLive().then(()=>{nv.liveAt=performance.now();});}
+function nvLiveTick(){const now=performance.now(),st=nv.st,avg=st&&st.live?st.liveMs/st.live:0,gap=Math.min(800,Math.max(NV_LIVE_MS,avg*3));if(nv.texBusy||now-(nv.liveAt||0)<gap)return;nv.liveAt=now;nvSyncLive().then(()=>{nv.liveAt=performance.now();});}
 /* after a stroke: rebuild the active set's maps and send them */
 function nvSyncSoon(){clearTimeout(nv.sync);nv.sync=setTimeout(nvSyncTextures,350);}
 /* while dragging: only the base colour, as plain pixels (no PNG), small; the other maps stay as they were */
@@ -92,7 +100,7 @@ async function nvSyncLive(){if(!nvPaintOn()||nv.texBusy)return;nv.texBusy=true;
   try{const S=p3.sets[p3.cur];if(!S)return;const t0=performance.now(),b=nvLiveBase();
     const meta={pos:0,nrm:0,uv:0,groups:[{name:S.name,idx:0,rough:.6,metal:0,sh:nvShader(),tex:{base:b.px.length,orm:0,normal:0,emissive:0},raw:[b.w,b.h],partial:true}],env:null,settings:nvSettings()};
     const json=new TextEncoder().encode(JSON.stringify(meta)),out=new Uint8Array(4+json.length+b.px.length);new DataView(out.buffer).setUint32(0,json.length,true);out.set(json,4);out.set(b.px,4+json.length);
-    if(window.__nvHook)window.__nvHook('live',meta);nv.liveMs=performance.now()-t0;
+    if(window.__nvHook)window.__nvHook('live',meta);nv.liveMs=performance.now()-t0;if(nv.st){nv.st.live++;nv.st.liveMs+=nv.liveMs;}
     const alive=await platform.invoke('viewer_textures',out);if(!alive)nvStopWatch();}
   catch(e){console.warn(e);}finally{nv.texBusy=false;}}
 async function nvSyncTextures(live){if(!nvPaintOn()||nv.texBusy){if(nv.texBusy&&!live)nvSyncSoon();return;}nv.texBusy=true;

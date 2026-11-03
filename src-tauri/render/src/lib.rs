@@ -1393,8 +1393,11 @@ impl ApplicationHandler<Cmd> for App {
                     }
                 }
                 if self.painting {
-                    if self.last_sent.elapsed() >= Duration::from_millis(8) {
+                    if self.last_sent.elapsed() >= Duration::from_millis(16) {
                         self.emit("move");
+                    }
+                    if let Some(g) = self.gpu.as_ref() {
+                        g.window.request_redraw(); // the brush outline follows the pointer
                     }
                     return;
                 }
