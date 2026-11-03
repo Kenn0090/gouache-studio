@@ -295,3 +295,7 @@ Artist style unwrap, `bake/uv-artist.js` (loaded before uv-unwrap.js because `UW
 2. **Export to the selected game engine**, with **material setup**, and bring the **Gouache viewer shader** over (Retro, Toon, Cel, Velvet, Skin, Brushed metal, Spec/Gloss…) so Unreal/Unity/Godot get a similar shader, not only textures.
 3. **The new renderer engine** goes in **last**, to finish the round (Kenn to say exactly what it is).
 4. Still open from 0.93.3: ribbon corner joins/end smoothing, warp tangent handles and box-select, UV filtering, Physical Size, Custom tangents; brush import leftovers (Procreate sub-brushes, CSP ink/water, PS bristles); salt/pattern brush tuning; black-screen report; the UV tab, add-on system, UV island cage, code signing.
+
+## Queue update (Kenn, 0.93.4 round)
+- Done on branch: cage off by default + fade (bakeCageFlash), patch-only padding in re-bake (`o.into`, `o.rect`), AO/thickness second pass (`bakePass2`). Next: softer skew edges, brush preview on the model, instant preview fix then full-quality fix. `baketab.cjs` skew checks fail on main (test's mouse mapping is off), fix the test.
+- Renderer (LAST): native renderer inside the desktop app (not WebView2), switchable in Preferences, old viewer stays as fallback and for the browser. Goal: better looks (ray-traced shadows/reflections); DLSS plug-in later (NVIDIA SDK is Kenn's step). Possibly a faster baker on RTX hardware afterwards. Cannot be tested in the cloud; ship in small steps for Kenn to check on the RTX 4080. Order: skew -> Unity/Godot export -> Unreal -> renderer.
