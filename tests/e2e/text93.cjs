@@ -27,11 +27,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  // a material on the letters
  const mat=await p.evaluate(()=>{const L=__gs.t3Layer();return {fill:!!L.fill,base:L.fill.maps.base.on};});ok(mat.fill&&mat.base,'the text layer is a material layer (colour, roughness, metal… all editable)');
  // undo one edit
- await p.evaluate(()=>__gs.t3Prop('content','ONE'));await p.waitForTimeout(1200);await p.evaluate(()=>__gs.t3Prop('content','TWO'));await p.waitForTimeout(1200);
- await p.evaluate(()=>__gs.undo());await p.waitForTimeout(900);s=await info();ok(s.content==='ONE','undo takes an edit of the words back ('+s.content+')');
+ await p.evaluate(()=>__gs.t3Prop('content','ONE'));await p.waitForTimeout(1200);await p.evaluate(()=>__gs.t3Commit());await p.evaluate(()=>__gs.t3Prop('content','TWO'));await p.waitForTimeout(1200);await p.evaluate(()=>__gs.t3Commit());
+await p.evaluate(()=>__gs.undo());await p.waitForTimeout(900);s=await info();ok(s.content==='ONE','undo takes an edit of the words back ('+s.content+')');
  // save and reopen the project: the text is still live
- console.log('before save',await p.evaluate(()=>JSON.stringify(__gs.t3Row(__gs.t3Layer()).p.xf)));
- const re=await p.evaluate(async()=>{const g=__gs,blob=await g.encodeP3Project();g.p3.savedAt=g.p3Sig();await g.openP3Project(await blob.arrayBuffer(),'Text reopen',null);const L=g.allLayers().find(L=>L.text3d);if(!L)return null;g.selectOnly(L);const r=g.t3Row(L);return {content:L.text3d.spec.content,row:!!(r&&r.t),proj:r&&r.p.proj,xf:JSON.stringify(r&&r.p.xf),keys:r&&Object.keys(r.p)};});
+  const re=await p.evaluate(async()=>{const g=__gs,blob=await g.encodeP3Project();g.p3.savedAt=g.p3Sig();await g.openP3Project(await blob.arrayBuffer(),'Text reopen',null);const L=g.allLayers().find(L=>L.text3d);if(!L)return null;g.selectOnly(L);const r=g.t3Row(L);return {content:L.text3d.spec.content,row:!!(r&&r.t),proj:r&&r.p.proj,xf:JSON.stringify(r&&r.p.xf),keys:r&&Object.keys(r.p)};});
  ok(re&&re.content==='ONE'&&re.row&&re.proj==='planar','a saved project reopens with live text ('+JSON.stringify(re)+')');
  await p.evaluate(()=>__gs.t3Prop('content','AGAIN'));await p.waitForTimeout(800);s=await info();ok(s&&s.content==='AGAIN','and the reopened text can be edited again');
  // undo the edit

@@ -36,7 +36,7 @@ function t3Commit(){const s=t3.sess;if(!s)return;t3.sess=null;clearTimeout(t3.ti
   pushUndo({label:'Edit text',refs:[L],undo(){t3Rebuild(L,before.spec,before.xf);},redo(){t3Rebuild(L,after.spec,after.xf);}});}
 function t3Prop(k,v){const val=Array.isArray(v)?v.slice():v;t3.style[k]=val;t3Save();const L=t3Layer();if(!L||!t3Row(L))return;
   if(!t3.sess||t3.sess.L!==L)t3.sess={L,before:t3Snap(L)};clearTimeout(t3.timer);t3.timer=setTimeout(t3Commit,700);
-  const spec=Object.assign({},L.text3d.spec,{[k]:val});t3Rebuild(L,spec,null);}
+  const spec=Object.assign({},L.text3d.spec,{[k]:val});L.text3d.spec=spec;/* now, so an edit is recorded even if drawing the new picture takes a moment */t3Rebuild(L,spec,null);}
 /* the Text panel */
 function t3Panel(box){const L=t3Layer(),spec=L?L.text3d.spec:t3.style;$('#brushTitle').textContent='Text';
   box.append(el('div',{class:'sub',text:L?'Editing “'+L.name+'”':'Click the model to put text on it'}),
