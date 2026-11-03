@@ -11,6 +11,8 @@
      the banding worked out in a Custom node for Toon, Cel and Retro; Toon and Cel also draw their outline in the same
      material and follow the Directional Light through a parameter collection).
    The look is a close match, not identical: each engine lights differently. */
+/* bump this when a look's shader changes in a way that matters: Gouache then offers to update the master shaders already in a game */
+const ESH_MASTER_VER=1;
 const ESH_KIND_NAMES=['Standard','Skin','Brushed metal','Velvet','Toon','Cel','Spec/Gloss','Panner','Retro'];
 const ESH_SHADER_GUID='47a0c5e1b2d34f6a8c91e0f3d5b7a901';
 function eshGuid(s){let a=0x811c9dc5,b=0x1b873593,c=0x9e3779b1,d=0x85ebca6b;for(let i=0;i<s.length;i++){const k=s.charCodeAt(i);a=Math.imul(a^k,16777619);b=Math.imul(b^k,2246822519);c=Math.imul(c^(k<<1),3266489917);d=Math.imul(d^(k+i),668265263);}
@@ -61,7 +63,7 @@ function eshGodotShader(kind,alpha){const L=eshGodotParams({kind,p:{}}),k=kind,d
     Lt.push('\tvec3 lit = mix(shadow_colour, vec3(1.0), clamp(band, 0.0, 1.0));','\tDIFFUSE_LIGHT += lit * LIGHT_COLOR * ATTENUATION;','\tvec3 h = normalize(LIGHT + VIEW);','\tfloat sp = step(1.0 - highlight * 0.05, dot(NORMAL, h)) * (1.0 - ROUGHNESS * 0.5) * step(0.01, highlight);','\tSPECULAR_LIGHT += sp * LIGHT_COLOR * ATTENUATION;','}');}
   if(k==='retro')F.push('\tfloat bx = float((int(FRAGCOORD.x) & 3) * 4 + (int(FRAGCOORD.y) & 3)) / 16.0;','\tvec3 c = pow(clamp(ALBEDO, 0.0, 1.0), vec3(1.0 / 2.2));','\tc = floor(c * colour_levels + 0.5 + (bx - 0.5) * dither_amount) / colour_levels;','\tALBEDO = pow(clamp(c, 0.0, 1.0), vec3(2.2)) * brightness;','\tROUGHNESS = 1.0;','\tMETALLIC = 0.0;','\tFOG = vec4(fog_colour, clamp(1.0 - exp(-length(VERTEX) * fog_amount * 0.35), 0.0, 1.0));');
   F.push('}');
-  const head=['// Gouache Studio · '+eshLook(k)+' look for Godot 4 (shared: every material of this look uses this one file)','// A close match to the 3D view’s shader: Godot lights it its own way, so it will not be identical.','shader_type spatial;'];
+  const head=['// gouache-master '+ESH_MASTER_VER,'// Gouache Studio · '+eshLook(k)+' look for Godot 4 (shared: every material of this look uses this one file)','// A close match to the 3D view’s shader: Godot lights it its own way, so it will not be identical.','shader_type spatial;'];
   if(RM.length)head.push('render_mode '+RM.join(', ')+';');
   return [...head,'',...U,'',...V,...(V.length?['']:[]),...F,...(Lt.length?['']:[]),...Lt,''].join('\n');}
 /* the shared outline shader (the back faces pushed out); each material that has an outline sets its colour and width */
@@ -74,7 +76,8 @@ function eshGodotMaterial(shaderPath,texs,params,nextPass){const ext=[],set=[];l
   return ['[gd_resource type="ShaderMaterial" load_steps='+(ext.length+1)+' format=3]','',...ext,'','[resource]','shader = ExtResource("'+s+'")',...set,...(np?['next_pass = ExtResource("'+np+'")']:[]),''].join('\n');}
 
 /* ---------------- Unity (URP) ---------------- */
-const ESH_UNITY_SHADER=`// Gouache Studio — one shader for every look of the 3D view (Universal Render Pipeline).
+const ESH_UNITY_SHADER=`// gouache-master ${ESH_MASTER_VER}
+// Gouache Studio — one shader for every look of the 3D view (Universal Render Pipeline).
 // _Kind: 0 Standard, 1 Skin, 2 Brushed metal, 3 Velvet, 4 Toon, 5 Cel, 6 Spec/Gloss, 7 Panner, 8 Retro.
 // A close match to the viewer: Unity lights it its own way, so it will not be identical.
 Shader "Gouache/Shaded"
@@ -280,7 +283,8 @@ Shader "Gouache/Shaded"
 
 /* the same looks for Unity's Built-in Render Pipeline (a surface shader; opaque only) */
 const ESH_BUILTIN_GUID='5b1d8c3a7e0f4a29b6d4c8e1f2a30b17';
-const ESH_BUILTIN_SHADER=`// Gouache Studio — one shader for every look of the 3D view (Built-in Render Pipeline).
+const ESH_BUILTIN_SHADER=`// gouache-master ${ESH_MASTER_VER}
+// Gouache Studio — one shader for every look of the 3D view (Built-in Render Pipeline).
 // _Kind: 0 Standard, 1 Skin, 2 Brushed metal (Standard here), 3 Velvet, 4 Toon, 5 Cel, 6 Spec/Gloss, 7 Panner, 8 Retro.
 // A close match to the viewer: Unity lights it its own way, so it will not be identical. Opaque only.
 Shader "Gouache/Shaded (Built-in)"
@@ -486,7 +490,7 @@ function eshUnrealParams(sh,size,hasOrm){const k=sh.kind,P=shParams(sh),lin=c=>(
 /* ---------------- both: build the extra files for one export ----------------
    info[setName] = { sh (the set's shader), tex {BaseColor, ORM, Normal, Emissive: {name,data}}, alpha }
    Returns the files to add beside the textures (names are relative to the export folder). */
-function eshFiles(to,name,info,size,modelFile){const out=[],pn=pascal(name),sets=Object.keys(info);
+function eshFiles(to,name,info,size,modelFile,opt){const out=[],pn=pascal(name),sets=Object.keys(info);
   if(to==='godot'){const base='res://gouache/'+pn+'/',sh0='res://gouache/_shaders/',made=new Set();
     for(const s of sets){const I=info[s],T=I.tex||{},sh=I.sh||{kind:'std',p:{}},sn=eshSafe(s),look=eshLook(sh.kind),alpha=!!I.alpha,file=look+(alpha?'_alpha':'')+'.gdshader';
       if(!made.has(file)){made.add(file);out.push({name:'../_shaders/'+file,data:new TextEncoder().encode(eshGodotShader(sh.kind==='specgloss'?'std':sh.kind,alpha)),shared:true});}
@@ -508,7 +512,7 @@ function eshFiles(to,name,info,size,modelFile){const out=[],pn=pascal(name),sets
     return out;}
   if(to==='unreal'){const list=sets.map(s=>{const I=info[s],T=I.tex||{},sh=I.sh||{kind:'std',p:{}},tex={};for(const k of ['BaseColor','ORM','Normal','Emissive'])if(T[k])tex[k]=T[k].name;
       const pr=eshUnrealParams(sh,size,!!T.ORM);return {name:s,safe:eshSafe(s),kind:sh.kind,look:eshLook(sh.kind),tex,alpha:!!I.alpha,scalars:pr.scalars,vectors:pr.vectors};});
-    out.push({name:'gouache_unreal.json',data:new TextEncoder().encode(JSON.stringify({name:pn,model:modelFile||null,sets:list},null,1))},{name:'gouache_unreal_setup.py',data:new TextEncoder().encode(UNREAL_SETUP||'')});
+    out.push({name:'gouache_unreal.json',data:new TextEncoder().encode(JSON.stringify({name:pn,model:modelFile||null,masterVersion:ESH_MASTER_VER,updateMasters:!!(opt&&opt.updateMasters),sets:list},null,1))},{name:'gouache_unreal_setup.py',data:new TextEncoder().encode(UNREAL_SETUP||'')});
     return out;}
   return out;}
 

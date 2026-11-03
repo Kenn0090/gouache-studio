@@ -294,4 +294,4 @@ async function elPing(to,dir,files,name){if(!EL_PORT[to]||es.live===false||!(awa
 function elRow(redraw){const to=es.to;if(!EL_PORT[to]||!platform.isDesktop||!es.dirs[to])return [];
   const row=el('div',{class:'chips'});const st=el('span',{class:'note',id:'elStatus',text:'Checking the link…'});
   elInstalled(to).then(has=>{st.textContent=has?EL_NAME[to]+' link: installed in the project.':EL_NAME[to]+' link: not in the project yet.';row.append(el('button',{class:'btn sm',id:'elInstall',text:has?'Update the link':'Add the link to the project',onclick:async()=>{if(await elInstall(to))redraw();}}));});
-  return [el('div',{class:'sub',text:'Live link'}),chk('elLive','Set it up in '+EL_NAME[to]+' straight away (needs the link)',es.live!==false,v=>{es.live=v;esSave();}),st,row];}
+  return [...epRow(redraw),el('div',{class:'sub',text:'Live link'}),chk('elLive','Set it up in '+EL_NAME[to]+' straight away (needs the link)',es.live!==false,v=>{es.live=v;esSave();}),st,row];}

@@ -73,6 +73,7 @@
     "files/engine-send",
     "files/engine-shaders",
     "files/engine-link",
+    "files/engine-project",
     "files/pixel-pack",
     "files/gouache-file",
     "filters/filter-shaders",

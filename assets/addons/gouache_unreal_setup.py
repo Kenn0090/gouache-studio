@@ -150,10 +150,19 @@ def master_path(look, alpha):
     return MASTERS + "/M_Gouache_" + look + ("_Alpha" if alpha else "")
 
 
-def build_master(look, kind, alpha, S):
-    """S: the first set that uses this look (its settings become the master's defaults)."""
+def build_master(look, kind, alpha, S, existing=None):
+    """S: the first set that uses this look (its settings become the master's defaults).
+    existing: a master to rebuild in place (its instances keep working)."""
     name = "M_Gouache_" + look + ("_Alpha" if alpha else "")
-    mat = TOOLS.create_asset(name, MASTERS, unreal.Material, unreal.MaterialFactoryNew())
+    if existing is not None:
+        mat = existing
+        MEL.delete_all_material_expressions(mat)
+    else:
+        mat = TOOLS.create_asset(name, MASTERS, unreal.Material, unreal.MaterialFactoryNew())
+    try:
+        mat.set_editor_property("desc", "gouache-master " + str(DATA.get("masterVersion", 1)))
+    except Exception:
+        pass
     g = Graph(mat)
     sc = S["scalars"]
     vc = S["vectors"]
@@ -360,7 +369,11 @@ def master_for(S):
     alpha = bool(S.get("alpha")) and look not in ("Toon", "Cel", "Retro")
     path = master_path(look, alpha)
     if EAL.does_asset_exist(path):
-        return EAL.load_asset(path)
+        mat = EAL.load_asset(path)
+        if DATA.get("updateMasters"):
+            unreal.log("Gouache: updating the master material " + path)
+            return build_master(look, S["kind"], alpha, S, mat)
+        return mat
     return build_master(look, S["kind"], alpha, S)
 
 
