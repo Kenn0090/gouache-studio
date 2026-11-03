@@ -39,6 +39,12 @@ struct GroupMeta {
     rough: f32,
     metal: f32,
     tex: MapLens,
+    /// the base map is plain RGBA bytes of this size, not a PNG
+    #[serde(default)]
+    raw: Option<[u32; 2]>,
+    /// a texture update that only brings some maps
+    #[serde(default)]
+    partial: bool,
 }
 
 #[derive(Deserialize)]
@@ -139,12 +145,21 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
             }
             Ok(Some(decode_png(rd.take(n)?)?))
         };
-        let base = map(&mut rd, g.tex.base)?;
+        let base = match g.raw {
+            Some([rw, rh]) if g.tex.base > 0 => {
+                let bytes = rd.take(g.tex.base)?;
+                if bytes.len() != (rw as usize) * (rh as usize) * 4 {
+                    return Err("a raw picture has the wrong size".into());
+                }
+                Some(Tex8 { width: rw, height: rh, rgba: bytes.to_vec() })
+            }
+            _ => map(&mut rd, g.tex.base)?,
+        };
         let orm = map(&mut rd, g.tex.orm)?;
         let normal = map(&mut rd, g.tex.normal)?;
         let emissive = map(&mut rd, g.tex.emissive)?;
         let shader = ShaderParams { kind: g.sh.k, p: g.sh.p, q: g.sh.q, c: g.sh.c, d: g.sh.d, skin: g.sh.skin };
-        let material = Material { shader, base, orm, normal, emissive, rough: g.rough, metal: g.metal };
+        let material = Material { shader, base, orm, normal, emissive, rough: g.rough, metal: g.metal, partial: g.partial };
         groups.push(Group { name: g.name.clone(), indices, material });
     }
     let env = match &meta.env {

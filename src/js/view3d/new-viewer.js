@@ -59,7 +59,7 @@ function nvStopWatch(){if(nv.timer){clearInterval(nv.timer);nv.timer=null;}}
    normal brush paints; afterwards the changed material is sent back as new pictures. */
 /* the brush's diameter as a part of the view's height (the same on the window) */
 function nvBrushFrac(){const hit=document.getElementById('v3Hit');if(!hit||!v3.paintOn||typeof MESH_TOOLS==='undefined'||!MESH_TOOLS.includes(ui.tool))return 0;const h=hit.getBoundingClientRect().height;return h>0?Math.round(brush.size*meshBrushScale(h)/h*1000)/1000:0;}
-const NV_TEX_LIVE=512,NV_LIVE_MS=120;
+const NV_TEX_LIVE=512,NV_LIVE_MS=100;
 function nvPaintOn(){return platform.isDesktop&&ui.mode==='p3d';}
 function nvCamFrom(ev){const c=v3.cam,d=[ev.eye[0]-ev.tgt[0],ev.eye[1]-ev.tgt[1],ev.eye[2]-ev.tgt[2]],L=Math.hypot(d[0],d[1],d[2])||1;
   c.tx=ev.tgt[0];c.ty=ev.tgt[1];c.tz=ev.tgt[2];c.dist=L;c.pitch=Math.asin(Math.max(-1,Math.min(1,d[1]/L)));c.yaw=Math.atan2(d[0],d[2]);}
@@ -75,9 +75,26 @@ function nvHandle(ev){if(!nvPaintOn()||!ev||!ev.t)return;if(ev.t==='cam'){nvCamF
   else if(ev.t==='move'){hit.dispatchEvent(mk('pointermove',1));nvLiveTick();}
   else if(ev.t==='up'){hit.dispatchEvent(mk('pointerup',0));nvSyncSoon();}}
 /* while dragging: a small copy of the maps every so often (the full one follows after the stroke) */
-function nvLiveTick(){const now=performance.now();if(nv.texBusy||now-(nv.liveAt||0)<NV_LIVE_MS)return;nv.liveAt=now;nvSyncTextures(true).then(()=>{nv.liveAt=performance.now();});}
+function nvLiveTick(){const now=performance.now();if(nv.texBusy||now-(nv.liveAt||0)<NV_LIVE_MS)return;nv.liveAt=now;nvSyncLive().then(()=>{nv.liveAt=performance.now();});}
 /* after a stroke: rebuild the active set's maps and send them */
 function nvSyncSoon(){clearTimeout(nv.sync);nv.sync=setTimeout(nvSyncTextures,350);}
+/* while dragging: only the base colour, as plain pixels (no PNG), small; the other maps stay as they were */
+function nvLiveBase(){const W=doc.w,H=doc.h,sc=Math.min(1,NV_TEX_LIVE/Math.max(W,H)),w=Math.max(2,Math.round(W*sc)),h=Math.max(2,Math.round(H*sc));
+  const full=compositeMap('base');let small=null;
+  try{small=makeTarget(w,h,8,false);const sci=gl.isEnabled(gl.SCISSOR_TEST);if(sci)gl.disable(gl.SCISSOR_TEST);
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER,full.fbo);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,small.fbo);
+    gl.blitFramebuffer(0,0,W,H,0,0,w,h,gl.COLOR_BUFFER_BIT,full.depth===32?gl.NEAREST:gl.LINEAR);gl.bindFramebuffer(gl.FRAMEBUFFER,null);if(sci)gl.enable(gl.SCISSOR_TEST);
+    const d=captureRegionNow(small,0,0,w,h).data,out=new Uint8Array(w*h*4);
+    for(let j=0;j<h;j++){let a=(h-1-j)*w*4,b=j*w*4;for(let i=0;i<w;i++,a+=4,b+=4){const al=255-d[a+3];out[b]=Math.min(255,d[a]+al);out[b+1]=Math.min(255,d[a+1]+al);out[b+2]=Math.min(255,d[a+2]+al);out[b+3]=255;}}
+    return {w,h,px:out};}
+  finally{release(full);if(small)disposeTarget(small);}}
+async function nvSyncLive(){if(!nvPaintOn()||nv.texBusy)return;nv.texBusy=true;
+  try{const S=p3.sets[p3.cur];if(!S)return;const t0=performance.now(),b=nvLiveBase();
+    const meta={pos:0,nrm:0,uv:0,groups:[{name:S.name,idx:0,rough:.6,metal:0,sh:nvShader(),tex:{base:b.px.length,orm:0,normal:0,emissive:0},raw:[b.w,b.h],partial:true}],env:null,settings:nvSettings()};
+    const json=new TextEncoder().encode(JSON.stringify(meta)),out=new Uint8Array(4+json.length+b.px.length);new DataView(out.buffer).setUint32(0,json.length,true);out.set(json,4);out.set(b.px,4+json.length);
+    if(window.__nvHook)window.__nvHook('live',meta);nv.liveMs=performance.now()-t0;
+    const alive=await platform.invoke('viewer_textures',out);if(!alive)nvStopWatch();}
+  catch(e){console.warn(e);}finally{nv.texBusy=false;}}
 async function nvSyncTextures(live){if(!nvPaintOn()||nv.texBusy){if(nv.texBusy&&!live)nvSyncSoon();return;}nv.texBusy=true;
   const saved={size:texCfg.size,pad:texCfg.pad,meshMaps:texCfg.meshMaps,h16:texCfg.h16};
   try{texCfg.size=live?NV_TEX_LIVE:NV_TEX_MAX;texCfg.pad='none';texCfg.meshMaps=false;

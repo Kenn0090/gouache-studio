@@ -62,6 +62,8 @@ pub struct Material {
     pub emissive: Option<Tex8>,
     pub rough: f32,
     pub metal: f32,
+    /// when new pictures arrive for an existing material: maps left out (None) keep what they had
+    pub partial: bool,
 }
 
 /// The triangles that use one material.
@@ -274,6 +276,7 @@ struct GpuGroup {
     bind: wgpu::BindGroup,
     mat_buf: wgpu::Buffer,
     mu: MatUniform,
+    views: [wgpu::TextureView; 4],
     outline: bool,
 }
 
@@ -939,10 +942,10 @@ impl Gpu {
                 continue;
             }
             let mat = &g.material;
-            let (bind, mat_buf, mu) = self.material_bind(mat);
+            let (bind, mat_buf, mu, views) = self.material_bind(mat, None);
             let sp = mat.shader;
             let ib = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("indices"), contents: bytemuck::cast_slice(&g.indices), usage: wgpu::BufferUsages::INDEX });
-            self.groups.push(GpuGroup { name: g.name.clone(), ib, mat_buf, mu, count: g.indices.len() as u32, bind, outline: (sp.kind == 4 || sp.kind == 5) && sp.q[0] > 0.0 });
+            self.groups.push(GpuGroup { name: g.name.clone(), ib, mat_buf, mu, views, count: g.indices.len() as u32, bind, outline: (sp.kind == 4 || sp.kind == 5) && sp.q[0] > 0.0 });
         }
         let c = (mn + mx) * 0.5;
         let radius = ((mx - mn).length() * 0.5).max(1e-4);
@@ -959,14 +962,17 @@ impl Gpu {
     }
 
     /// Makes the bind group (pictures + settings) of one material.
-    fn material_bind(&self, mat: &Material) -> (wgpu::BindGroup, wgpu::Buffer, MatUniform) {
-        let view = |t: Option<&Tex8>, fb: [u8; 4], f: wgpu::TextureFormat| make_tex8(&self.device, &self.queue, t, fb, f);
-        let base = view(mat.base.as_ref(), [255, 255, 255, 255], wgpu::TextureFormat::Rgba8UnormSrgb);
-        let orm = view(mat.orm.as_ref(), [255, 255, 255, 255], wgpu::TextureFormat::Rgba8Unorm);
-        let nrm = view(mat.normal.as_ref(), [128, 128, 255, 255], wgpu::TextureFormat::Rgba8Unorm);
-        let emi = view(mat.emissive.as_ref(), [0, 0, 0, 255], wgpu::TextureFormat::Rgba8UnormSrgb);
+    fn material_bind(&self, mat: &Material, keep: Option<(&[wgpu::TextureView; 4], MatUniform)>) -> (wgpu::BindGroup, wgpu::Buffer, MatUniform, [wgpu::TextureView; 4]) {
+        let view = |t: Option<&Tex8>, fb: [u8; 4], f: wgpu::TextureFormat, i: usize| match (t, keep) {
+            (None, Some((old, _))) => old[i].clone(),
+            _ => make_tex8(&self.device, &self.queue, t, fb, f),
+        };
+        let base = view(mat.base.as_ref(), [255, 255, 255, 255], wgpu::TextureFormat::Rgba8UnormSrgb, 0);
+        let orm = view(mat.orm.as_ref(), [255, 255, 255, 255], wgpu::TextureFormat::Rgba8Unorm, 1);
+        let nrm = view(mat.normal.as_ref(), [128, 128, 255, 255], wgpu::TextureFormat::Rgba8Unorm, 2);
+        let emi = view(mat.emissive.as_ref(), [0, 0, 0, 255], wgpu::TextureFormat::Rgba8UnormSrgb, 3);
         let sp = mat.shader;
-        let mu = MatUniform {
+        let mut mu = MatUniform {
             flags: [if mat.orm.is_some() { 1.0 } else { 0.0 }, if mat.rough > 0.0 { mat.rough } else { 0.6 }, mat.metal, 0.0],
             tint: [1.0, 1.0, 1.0, 1.0],
             shk: [sp.kind as f32, 0.0, 0.0, 0.0],
@@ -976,6 +982,9 @@ impl Gpu {
             shd: [sp.d[0], sp.d[1], sp.d[2], 0.0],
             skin: sp.skin,
         };
+        if let Some((_, old)) = keep {
+            mu.flags = old.flags; // a kept map keeps its flag too
+        }
         let mb = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("material"), contents: bytemuck::bytes_of(&mu), usage: wgpu::BufferUsages::UNIFORM });
         let bind = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("material group"),
@@ -989,19 +998,24 @@ impl Gpu {
                 wgpu::BindGroupEntry { binding: 5, resource: mb.as_entire_binding() },
             ],
         });
-        (bind, mb, mu)
+        (bind, mb, mu, [base, orm, nrm, emi])
     }
 
     /// Swaps the pictures of the material of one group (the triangles stay).
     fn set_textures(&mut self, name: &str, mat: &Material) {
-        let (bind, mat_buf, mu) = self.material_bind(mat);
         let outline = (mat.shader.kind == 4 || mat.shader.kind == 5) && mat.shader.q[0] > 0.0;
-        if let Some(g) = self.groups.iter_mut().find(|g| g.name == name) {
-            g.bind = bind;
-            g.mat_buf = mat_buf;
-            g.mu = mu;
-            g.outline = outline;
-        }
+        let Some(i) = self.groups.iter().position(|g| g.name == name) else { return };
+        let (bind, mat_buf, mu, views) = {
+            let g = &self.groups[i];
+            let keep = if mat.partial { Some((&g.views, g.mu)) } else { None };
+            self.material_bind(mat, keep)
+        };
+        let g = &mut self.groups[i];
+        g.bind = bind;
+        g.mat_buf = mat_buf;
+        g.mu = mu;
+        g.views = views;
+        g.outline = outline;
     }
 
     /// Light from the sky on a surface (an average), for colouring what reflections see.
