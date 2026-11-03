@@ -137,7 +137,7 @@ async function nvRescene(){if(!nv.isOpen||nv.sceneBusy)return;nv.sceneBusy=true;
   catch(err){console.warn(err);}finally{nv.sceneBusy=false;nv.seenMaps=nv.mapsVer||0;}}
 function nvWatch(){nvStopWatch();nv.envKey=nvEnvKey();nv.sig=JSON.stringify(nvSettings())+nv.envKey;
   nv.viewKey=nvViewKey();nv.modelKey=nvModelKey();nv.shKey=JSON.stringify(nvShader());nv.seenMaps=nv.mapsVer||0;nv.stImg=null;nvStencilSend();nv.timer=setInterval(()=>{if(!platform.isDesktop)return;
-    {const mk=nvModelKey();if(mk&&mk!==nv.modelKey&&!stroke){clearTimeout(nv.sceneT);nv.sceneT=setTimeout(nvRescene,400);}}
+    {const mk=nvModelKey();if(mk&&mk!==nv.modelKey&&!stroke&&!nv.sceneT){nv.sceneT=setTimeout(()=>{nv.sceneT=0;nvRescene();},300);}}
     {const sk=JSON.stringify(nvShader()),mv=nv.mapsVer||0;if((sk!==nv.shKey||mv!==nv.seenMaps)&&!stroke&&!(v3.mstroke)&&!nv.texBusy){nv.shKey=sk;nv.seenMaps=mv;nv.viewForce=true;nvSyncSoon();}}
     nvStencilSend();nvHighSend();nvBevelTick();if(nv.hlSig)nvHlSend();{const vk=(ui.mode==='p3d'||ui.mode==='paint'||nvBakeMode())?nvViewKey():'';if(vk!==nv.viewKey){nv.viewKey=vk;nv.viewForce=true;nvSyncSoon();}}const sig=JSON.stringify(nvSettings())+nvEnvKey();if(sig!==nv.sig){nv.sig=sig;nvPush();}},400);}
 /* a finished picture from the window, at any size (PNG bytes) */
