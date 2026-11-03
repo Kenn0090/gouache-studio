@@ -1,5 +1,6 @@
 ## 0.94.1
 
+- **New viewer: Bake and Convert tabs.** The 3D bar of the Bake and Convert tabs has a New viewer button now. The window shows the model with the baked or converted maps (colour, normal, AO, roughness, metal, and the single-map views) and follows when they change. (Viewing only: painting in the window stays in 3D Paint.)
 - **New viewer: selection hover.** With a selection tool armed (object, material, UV island, face, loop), the part under the pointer lights up in the new viewer window, as it does in the 3D view.
 - **New viewer: shadow floor.** The 3D view's transparent shadow floor (Studio lighting › Shadow floor) now shows in the new viewer window: the model's ray-traced shadow lands on it, with the floor's height, colour and opacity. Ray tracing is switched on in the window while the floor is on.
 - **New viewer: post processing.** The Shader panel's post effects (bloom, depth of field, sharpen, colour grade, vignette, chromatic aberration, film grain and filter looks) now work in the new viewer window, and in its screenshots, renders and turntables. The "Cut out transparent areas" switch is respected too.

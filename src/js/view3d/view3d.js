@@ -431,14 +431,14 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   const metalB=tog('v3Metal','Metal','metalView','See the model as polished metal, whatever its material: the shape and the bevel show clearly');
   wireB.onclick=()=>v3SetWireMode(s.wire?'shaded':'overlay');
   const capB=ui.mode==='bake'||ui.mode==='convert'?[]:[el('button',{class:'btn sm',id:'v3Shot',text:'📷',title:'Screenshot of the 3D view','aria-label':'Screenshot',onclick:()=>dlgScreenshot()}),el('button',{class:'btn sm',id:'v3RenderBtn',text:'Render…',title:'A ray-traced picture, in a window of its own',onclick:()=>dlgRender()}),el('button',{class:'btn sm',id:'v3TT',text:'Turntable…',title:'Record the model turning (video, GIF or PNG frames)',onclick:()=>dlgTurntable()})];
+const nvB=el('button',{hidden:!platform.isDesktop,class:'btn sm'+(typeof nv!=='undefined'&&nv.isOpen?' on':''),id:'v3Nv',text:'New viewer',title:'Open the model in the new viewer window (paint in it, ray-traced shadows and reflections). Press again to close it.',onclick:()=>{if(nv.isOpen)nvClose();else nvOpen();}});
   let bar;
   if(ui.mode==='p3d'){/* 3D Paint (0.37): a slim bar, the rest behind ⋯ */
     const xt=el('div',{class:'v3xtra',id:'v3Xtra',hidden:true},modelControl,detSel,wireB,uvB,spinB,...capB,dock,close),more=el('button',{class:'btn sm',id:'v3More',text:'⋯',title:'More: model, detail, wireframe, spin, screenshot, render, turntable','aria-expanded':'false','aria-label':'More 3D view options'});
     more.onclick=()=>{xt.hidden=!xt.hidden;more.setAttribute('aria-expanded',String(!xt.hidden));more.classList.toggle('on',!xt.hidden);};
     xt.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});
-    const nvB=el('button',{hidden:!platform.isDesktop,class:'btn sm'+(typeof nv!=='undefined'&&nv.isOpen?' on':''),id:'v3Nv',text:'New viewer',title:'Open the model in the new viewer window (paint in it, ray-traced shadows and reflections). Press again to close it.',onclick:()=>{if(nv.isOpen)nvClose();else nvOpen();}});
     bar=el('div',{class:'v3bar slim'},shade,metalB,p3ChannelControl(),...(mb?[mb.wrap]:[]),viewSel,projBtn,nvB,gear,more,xt);}
-  else bar=el('div',{class:'v3bar'},...(inBake?[lowLab]:ui.mode==='convert'?[modelControl,detSel]:[modelControl,detSel,shade]),...(mb?[mb.wrap]:[]),...(ui.mode==='convert'||ui.mode==='p3d'?[]:[pbtn]),viewSel,projBtn,materialB,metalB,wireB,uvB,spinB,...capB,gear,dock,close);
+  else bar=el('div',{class:'v3bar'},...(inBake?[lowLab]:ui.mode==='convert'?[modelControl,detSel]:[modelControl,detSel,shade]),...(mb?[mb.wrap]:[]),...(ui.mode==='convert'||ui.mode==='p3d'?[]:[pbtn]),viewSel,projBtn,...(ui.mode==='bake'||ui.mode==='convert'?[nvB]:[]),materialB,metalB,wireB,uvB,spinB,...capB,gear,dock,close);
   const box=el('div',{class:'v3set',id:'v3Settings',hidden:true,'aria-label':'3D viewport settings'});gear.setAttribute('aria-controls','v3Settings');
   box.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});
   if(ui.mode==='p3d'){const display=el('div',{class:'v3display',role:'group','aria-label':'Viewport display'});
