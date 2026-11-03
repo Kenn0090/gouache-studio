@@ -18,6 +18,8 @@ use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy};
 use winit::window::{Window, WindowId};
 
+mod bvh;
+mod rt;
 mod wire;
 pub use wire::{scene_from_bytes, textures_from_bytes, update_from_bytes};
 
@@ -96,11 +98,13 @@ pub struct Settings {
     pub paint: bool,
     /// brush size as a fraction of the view's height (0 hides the outline)
     pub brush: f32,
+    /// ray-traced shadows and ambient occlusion
+    pub rt: bool,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0 }
+        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false }
     }
 }
 
@@ -264,6 +268,9 @@ struct Gpu {
     tex_sampler: wgpu::Sampler,
     env_sampler: wgpu::Sampler,
     depth: wgpu::TextureView,
+    scene_color: wgpu::TextureView,
+    scene_normal: wgpu::TextureView,
+    rt: rt::Rt,
     vb: Option<wgpu::Buffer>,
     groups: Vec<GpuGroup>,
     settings: Settings,
@@ -308,10 +315,29 @@ fn make_depth(device: &wgpu::Device, w: u32, h: u32) -> wgpu::TextureView {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: DEPTH_FORMAT,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
         })
         .create_view(&wgpu::TextureViewDescriptor::default())
+}
+
+/// The picture the model is drawn into first (colour, and each pixel's surface direction), before the ray results are put on it.
+fn make_scene(device: &wgpu::Device, w: u32, h: u32, format: wgpu::TextureFormat) -> (wgpu::TextureView, wgpu::TextureView) {
+    let mk = |label: &str, f: wgpu::TextureFormat| {
+        device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some(label),
+                size: wgpu::Extent3d { width: w.max(1), height: h.max(1), depth_or_array_layers: 1 },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: f,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            })
+            .create_view(&wgpu::TextureViewDescriptor::default())
+    };
+    (mk("scene colour", format), mk("scene normals", rt::NORMAL_FORMAT))
 }
 
 fn box_down(src: &[u8], w: u32, h: u32) -> (Vec<u8>, u32, u32) {
@@ -616,7 +642,7 @@ impl Gpu {
             bind_group_layouts: &[&frame_layout],
             push_constant_ranges: &[],
         });
-        let target = [Some(wgpu::ColorTargetState { format, blend: None, write_mask: wgpu::ColorWrites::ALL })];
+        let target = [Some(wgpu::ColorTargetState { format, blend: None, write_mask: wgpu::ColorWrites::ALL }), Some(wgpu::ColorTargetState { format: rt::NORMAL_FORMAT, blend: None, write_mask: wgpu::ColorWrites::ALL })];
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("viewer pipeline"),
             layout: Some(&layout),
@@ -655,7 +681,7 @@ impl Gpu {
             vertex: wgpu::VertexState { module: &shader, entry_point: Some("vs_bg"), compilation_options: Default::default(), buffers: &[] },
             fragment: Some(wgpu::FragmentState { module: &shader, entry_point: Some("fs_ring"), compilation_options: Default::default(), targets: &ring_target }),
             primitive: wgpu::PrimitiveState::default(),
-            depth_stencil: Some(wgpu::DepthStencilState { format: DEPTH_FORMAT, depth_write_enabled: false, depth_compare: wgpu::CompareFunction::Always, stencil: Default::default(), bias: Default::default() }),
+            depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),
             multiview: None,
             cache: None,
@@ -734,6 +760,8 @@ impl Gpu {
             ..Default::default()
         });
         let depth = make_depth(&device, config.width, config.height);
+        let (scene_color, scene_normal) = make_scene(&device, config.width, config.height, format);
+        let rt = rt::Rt::new(&device, format);
         let black = EnvData { width: 2, height: 1, rgb: vec![0.0; 6] };
         let (env_view, env_mips, env_sh) = build_env(&device, &queue, &black);
         let spec_view = build_spec(&device, &queue, &pre_pipeline, &pre_layout, &env_sampler, &env_view, 2.0, (16, 8));
@@ -768,6 +796,9 @@ impl Gpu {
             tex_sampler,
             env_sampler,
             depth,
+            scene_color,
+            scene_normal,
+            rt,
             vb: None,
             groups: Vec::new(),
             settings: Settings::default(),
@@ -837,7 +868,10 @@ impl Gpu {
             self.groups.push(GpuGroup { name: g.name.clone(), ib, mat_buf, mu, count: g.indices.len() as u32, bind, outline: (sp.kind == 4 || sp.kind == 5) && sp.q[0] > 0.0 });
         }
         let c = (mn + mx) * 0.5;
-        (c, ((mx - mn).length() * 0.5).max(1e-4))
+        let radius = ((mx - mn).length() * 0.5).max(1e-4);
+        let all: Vec<u32> = s.groups.iter().flat_map(|g| g.indices.iter().copied()).collect();
+        self.rt.new_model(s.mesh.positions.clone(), all, radius);
+        (c, radius)
     }
 
     /// Makes the bind group (pictures + settings) of one material.
@@ -894,6 +928,9 @@ impl Gpu {
         self.config.height = h;
         self.surface.configure(&self.device, &self.config);
         self.depth = make_depth(&self.device, w, h);
+        let (c, n) = make_scene(&self.device, w, h, self.config.format);
+        self.scene_color = c;
+        self.scene_normal = n;
     }
 
     fn draw(&mut self, cam: &Camera) {
@@ -934,12 +971,20 @@ impl Gpu {
         {
             let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("viewer"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color { r: 0.035, g: 0.04, b: 0.05, a: 1.0 }), store: wgpu::StoreOp::Store },
-                })],
+                color_attachments: &[
+                    Some(wgpu::RenderPassColorAttachment {
+                        view: &self.scene_color,
+                        depth_slice: None,
+                        resolve_target: None,
+                        ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color { r: 0.035, g: 0.04, b: 0.05, a: 1.0 }), store: wgpu::StoreOp::Store },
+                    }),
+                    Some(wgpu::RenderPassColorAttachment {
+                        view: &self.scene_normal,
+                        depth_slice: None,
+                        resolve_target: None,
+                        ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT), store: wgpu::StoreOp::Store },
+                    }),
+                ],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &self.depth,
                     depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Clear(1.0), store: wgpu::StoreOp::Store }),
@@ -967,6 +1012,20 @@ impl Gpu {
                     pass.draw_indexed(0..g.count, 0, 0..1);
                 }
             }
+        }
+        if st.rt {
+            let sd = [sun.x, sun.y, sun.z];
+            self.rt.trace(&self.device, &self.queue, &mut enc, &self.depth, &self.scene_normal, vp.inverse().to_cols_array_2d(), [eye.x, eye.y, eye.z], sd, 0.02, self.config.width, self.config.height);
+        }
+        {
+            let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("on screen"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment { view: &view, depth_slice: None, resolve_target: None, ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::BLACK), store: wgpu::StoreOp::Store } })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+            self.rt.composite(&self.device, &self.queue, &mut pass, &self.scene_color, &self.scene_normal, st.rt);
             if u.cursor[3] > 0.5 {
                 pass.set_pipeline(&self.ring_pipeline);
                 pass.set_bind_group(0, &self.frame_bg, &[]);
@@ -1034,7 +1093,7 @@ impl ApplicationHandler<Cmd> for App {
 
     fn about_to_wait(&mut self, _el: &ActiveEventLoop) {
         if let Some(g) = self.gpu.as_ref() {
-            if g.animated {
+            if g.animated || (g.settings.rt && g.rt.busy()) {
                 g.window.request_redraw();
             }
         }

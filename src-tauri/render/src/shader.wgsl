@@ -118,8 +118,26 @@ fn bayer(p: vec2<f32>) -> f32 {
     return (f32(v) + 0.5) / 16.0;
 }
 
+var<private> g_sf: f32 = 0.0;
+fn lum(c: vec3<f32>) -> f32 { return dot(c, vec3<f32>(0.2126, 0.7152, 0.0722)); }
+
+struct FOut {
+    @location(0) c: vec4<f32>,
+    @location(1) n: vec4<f32>,   // world normal (0..1) and the share of the light that comes from the sun; w = 0 where there is no surface
+};
+
 @fragment
-fn fs(i: VOut) -> @location(0) vec4<f32> {
+fn fs(i: VOut) -> FOut {
+    var o: FOut;
+    g_sf = 0.0;
+    o.c = fs_shade(i);
+    var nw = normalize(i.nrm);
+    if (dot(nw, normalize(frame.cam_pos.xyz - i.wpos)) < 0.0) { nw = -nw; }
+    o.n = vec4<f32>(nw * 0.5 + 0.5, 0.25 + 0.75 * g_sf);
+    return o;
+}
+
+fn fs_shade(i: VOut) -> vec4<f32> {
     let kind = i32(mat.shk.x + 0.5);
     var uv = i.uv;
     if (kind == 7) { uv = uv + frame.extra.x * mat.shd.xy; }   // panner: the maps slide
@@ -261,6 +279,7 @@ fn fs(i: VOut) -> @location(0) vec4<f32> {
         col += lin3(mat.shc.rgb) * mat.shp.x * dc * nl * sun / max(4.0 * (nl + nv - nl * nv), 1e-3);
     }
 
+    let sun_part = col;
     // ---- light from the environment ----
     var nr = nn;
     if (kind == 2) {
@@ -298,6 +317,7 @@ fn fs(i: VOut) -> @location(0) vec4<f32> {
     }
     col += (env_d * ao + env_s * ao) * skyi;
     col += emis * 2.0;
+    g_sf = lum(sun_part) / max(lum(col), 1e-4);
     return vec4<f32>(tone(col), 1.0);
 }
 
@@ -317,9 +337,12 @@ fn vs_out(i: VIn) -> OutOut {
     return o;
 }
 @fragment
-fn fs_out(i: OutOut) -> @location(0) vec4<f32> {
+fn fs_out(i: OutOut) -> FOut {
     if (dot(normalize(i.nrm), normalize(frame.cam_pos.xyz - i.wpos)) > 0.0) { discard; }
-    return vec4<f32>(lin3(mat.shd.rgb), 1.0);
+    var o: FOut;
+    o.c = vec4<f32>(lin3(mat.shd.rgb), 1.0);
+    o.n = vec4<f32>(0.0);
+    return o;
 }
 
 // the environment behind the model
@@ -336,19 +359,23 @@ fn vs_bg(@builtin(vertex_index) vi: u32) -> BgOut {
     return o;
 }
 @fragment
-fn fs_bg(i: BgOut) -> @location(0) vec4<f32> {
+fn fs_bg(i: BgOut) -> FOut {
+    var o: FOut;
+    o.n = vec4<f32>(0.0);
     let far = frame.inv_view_proj * vec4<f32>(i.ndc, 1.0, 1.0);
     let near = frame.inv_view_proj * vec4<f32>(i.ndc, 0.0, 1.0);
     let d = normalize(far.xyz / far.w - near.xyz / near.w);
     if (frame.info.y < 0.5 || frame.info.z < 0.5) {
-        return vec4<f32>(tone(vec3<f32>(0.035, 0.04, 0.05) / frame.params.x), 1.0);
+        o.c = vec4<f32>(tone(vec3<f32>(0.035, 0.04, 0.05) / frame.params.x), 1.0);
+        return o;
     }
     // the picture behind the model, blurred as much as the 3D view's Background blur asks
     let t = frame.extra.z * 3.0;
     var c = env_sample(d, 0.0);
     if (t >= 1.0) { c = env_spec(d, clamp(t - 1.0, 0.0, 2.0) * 0.2); }
     else if (t > 0.0) { c = mix(c, env_spec(d, 0.0), t); }
-    return vec4<f32>(tone(c), 1.0);
+    o.c = vec4<f32>(tone(c), 1.0);
+    return o;
 }
 
 // ---- blurring the environment for each roughness (run once when an environment is set) ----

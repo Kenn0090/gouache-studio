@@ -32,7 +32,7 @@ async function nvScene(){const m=mxModel();if(!m||!m.pos||!m.idx)throw new Error
   const envd=await nvEnv();
   return {m,groups,texBy,shBy,envd,settings:nvSettings()};}
 /* the 3D view's lighting settings, as the new viewer takes them */
-function nvSettings(){const s=v3s();return {tone:toneInt(s),expo:s.expo==null?1:s.expo,env_turn:(s.envRot||0)/360,env_strength:s.envI==null?1:s.envI,show_bg:!!s.envBg,env_blur:s.envBlur==null?.35:s.envBlur,sun_az:s.sunAz==null?40:s.sunAz,sun_el:s.sunEl==null?45:s.sunEl,sun_i:s.sunI==null?1:s.sunI,fov:s.fov||45,paint:!!nv.paint,brush:nv.paint?nvBrushFrac():0};}
+function nvSettings(){const s=v3s();return {tone:toneInt(s),expo:s.expo==null?1:s.expo,env_turn:(s.envRot||0)/360,env_strength:s.envI==null?1:s.envI,show_bg:!!s.envBg,env_blur:s.envBlur==null?.35:s.envBlur,sun_az:s.sunAz==null?40:s.sunAz,sun_el:s.sunEl==null?45:s.sunEl,sun_i:s.sunI==null?1:s.sunI,fov:s.fov||45,paint:!!nv.paint,brush:nv.paint?nvBrushFrac():0,rt:!!s.nvRt};}
 const nvEnvKey=()=>{const s=v3s(),k=envOf(s);return k+(k==='custom'&&env.custom?':'+env.custom.name:'');};
 /* a lighting update: the same body as a scene, with no model; the environment picture only when it changed */
 function nvUpdateBody(settings,mode,envd){const meta={pos:0,nrm:0,uv:0,groups:[],env_mode:mode,env:mode==='set'&&envd?{w:envd.w,h:envd.h}:null,settings};

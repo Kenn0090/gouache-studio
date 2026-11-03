@@ -51,7 +51,7 @@ fn main() {
         if dx * dx + dy * dy < 40.0 { c = [40.0, 36.0, 30.0]; }
         rgb.extend(c);
     } }
-    let scene = Scene { mesh: MeshData { positions: p, normals: n, uvs: uv }, groups, env: Some(EnvData { width: w, height: h, rgb }), settings: Settings { paint: std::env::var_os("GOUACHE_RING_TEST").is_some(), brush: 0.2, ..Settings::default() } };
+    let scene = Scene { mesh: MeshData { positions: p, normals: n, uvs: uv }, groups, env: Some(EnvData { width: w, height: h, rgb }), settings: Settings { paint: std::env::var_os("GOUACHE_RING_TEST").is_some(), brush: 0.2, rt: std::env::var_os("GOUACHE_RT_TEST").is_some(), ..Settings::default() } };
     match open(scene, None) {
         Ok(v) => { println!("OPEN {:?}", v.report); std::thread::sleep(std::time::Duration::from_secs(14)); v.close(); std::thread::sleep(std::time::Duration::from_millis(500)); println!("CLOSED"); }
         Err(e) => println!("ERROR {e}"),
