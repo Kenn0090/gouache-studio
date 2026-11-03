@@ -94,3 +94,4 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 The first time you start Gouache Studio a launch screen asks for your **Look** (Classic or Modern), your **Level** (Beginner or Full) and where to **Start in**. Change them later in Preferences › Look, or open File › **Launch screen…**. Beginner shows the main tools only and a Getting started card; Full shows everything.
 
 - [Timelapse recorder](Timelapse)
+- [Content and downloads](Content-and-downloads) — bigger Library pictures, 2K skies and the AI add-ons

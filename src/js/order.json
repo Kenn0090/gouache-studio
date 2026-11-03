@@ -221,6 +221,7 @@
     "ui/view-flip",
     "ui/welcome",
     "ui/setup",
+    "ui/content-step",
     "ui/tool-menus",
     "core/boot"
   ]

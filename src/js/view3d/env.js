@@ -77,7 +77,8 @@ function envBuild(img,key,name){envFree();let {w,h,rgb}=img;
   for(let i=0;i<ENV_LEVELS;i++){const W=Math.max(16,lw>>i),H=Math.max(8,W>>1),t=envTarget(W,H);run(PR.pre,t,{uSrc:src,uR:i/(ENV_LEVELS-1),uN:{int:i===0?1:i<2?64:128},uSrcW:w,uOutW:{int:W},uOutH:{int:H}});env.lv.push(t);}
   const irr=envTarget(64,32);run(PR.irr,irr,{uSrc:src,uOutW:{int:64},uOutH:{int:32}});env.irr=irr;env.key=key;env.name=name;v3.dirty=true;requestRender();}
 /* the bundled ones: inside the page (web version) or beside it (desktop) */
-async function envBundled(file){const tag=document.getElementById('hdri_'+file);if(tag){const b=atob(tag.textContent.trim()),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;}
+async function envBundled(file){try{if(typeof aiDB!=='undefined'){const v=await aiDB.get('hdri/'+file+'_2k.hdr');if(v&&v.buf)return new Uint8Array(v.buf);}}catch(e){}/* a 2K sky downloaded in File › Content */
+  const tag=document.getElementById('hdri_'+file);if(tag){const b=atob(tag.textContent.trim()),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;}
   const r=await fetch('hdri/'+file+'_1k.hdr');if(!r.ok)throw new Error('missing');return new Uint8Array(await r.arrayBuffer());}
 /* make sure the chosen environment is ready (called when drawing; loads in the background) */
 function envEnsure(){const s=v3s(),k=envOf(s);if(k==='none'){return null;}if(env.key===k)return env;if(env.loading===k)return null;
