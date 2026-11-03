@@ -1,3 +1,15 @@
+## 0.93.4
+
+- **Skew painting is faster and smoother (Bake tab).** After a skew or offset stroke only the painted patch is padded and finished, so the fix shows up much sooner. It first appears quickly at lower quality, then about a second after your last stroke every map (AO and thickness included) is re-baked there at full quality. New **Edge softness** slider under Fix the bake blends the edge of your paint so it never makes a hard jump.
+- **The cage is off by default.** Moving the **Front** or **Back** slider fades the cage in to show its scale, holds it a moment, then fades it out. The "Show the cage" tick still keeps it on.
+- **Soften normals (Bake tab, Normal map).** A slider that smooths the low-poly's hard edges while baking, like Marmoset's, so a hard edge bakes as a soft gradient. Smooth the model the same way in your engine.
+- **Gouache shaders in Unity, Godot and Unreal.** When you send an export into an engine, a new tick **Bring the Gouache shader over** adds a material per texture set with its textures hooked up, using the set's shader (Standard, Skin, Brushed metal, Velvet, Toon, Cel, Spec/Gloss, Panner, Retro).
+  - **Godot 4:** a `.gdshader` and a `.tres` material per set; Toon and Cel get an outline material.
+  - **Unity:** choose **URP** or **Built-in**; one shared shader plus a `.mat` per set (and texture settings, with normal maps set up).
+  - **Unreal:** run `gouache_unreal_setup.py` (Tools › Execute Python Script, with the Python Editor Script Plugin on) to import the textures and build a material per set. Toon and Cel follow your level's Directional Light and draw their outline inside the same material.
+  - The look is close, not identical: each engine lights differently. I could not run these engines here, so tell me about any errors.
+- Fixed: the Bake tab test for skew painting used the wrong mouse positions.
+
 ## 0.93.3
 
 - **Straight line like Substance Painter.** Hold **Shift** with any painting tool and a dotted line shows from where your last stroke ended to the pointer; click to draw it. Hold **Shift+Ctrl** to snap the line to 5 degree steps. Works on the canvas and on the 3D model.
