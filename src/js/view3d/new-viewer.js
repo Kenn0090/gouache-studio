@@ -32,7 +32,7 @@ async function nvScene(){const m=mxModel();if(!m||!m.pos||!m.idx)throw new Error
   const envd=await nvEnv();
   return {m,groups,texBy,shBy,envd,settings:nvSettings()};}
 /* the 3D view's lighting settings, as the new viewer takes them */
-function nvSettings(){const s=v3s();return {tone:toneInt(s),expo:s.expo==null?1:s.expo,env_turn:(s.envRot||0)/360,env_strength:s.envI==null?1:s.envI,show_bg:!!s.envBg,env_blur:s.envBlur==null?.35:s.envBlur,sun_az:s.sunAz==null?40:s.sunAz,sun_el:s.sunEl==null?45:s.sunEl,sun_i:s.sunI==null?1:s.sunI,fov:s.fov||45,paint:!!nv.paint,brush:nv.paint?nvBrushFrac():0,rt:!!s.nvRt};}
+function nvSettings(){const s=v3s();return {tone:toneInt(s),expo:s.expo==null?1:s.expo,env_turn:(s.envRot||0)/360,env_strength:s.envI==null?1:s.envI,show_bg:!!s.envBg,env_blur:s.envBlur==null?.35:s.envBlur,sun_az:s.sunAz==null?40:s.sunAz,sun_el:s.sunEl==null?45:s.sunEl,sun_i:s.sunI==null?1:s.sunI,fov:s.fov||45,paint:!!nv.isOpen&&nvPaintOn(),brush:nv.isOpen&&nvPaintOn()?nvBrushFrac():0,rt:!!s.nvRt};}
 const nvEnvKey=()=>{const s=v3s(),k=envOf(s);return k+(k==='custom'&&env.custom?':'+env.custom.name:'');};
 /* a lighting update: the same body as a scene, with no model; the environment picture only when it changed */
 function nvUpdateBody(settings,mode,envd){const meta={pos:0,nrm:0,uv:0,groups:[],env_mode:mode,env:mode==='set'&&envd?{w:envd.w,h:envd.h}:null,settings};
@@ -60,7 +60,7 @@ function nvStopWatch(){if(nv.timer){clearInterval(nv.timer);nv.timer=null;}}
 /* the brush's diameter as a part of the view's height (the same on the window) */
 function nvBrushFrac(){const hit=document.getElementById('v3Hit');if(!hit||!v3.paintOn||typeof MESH_TOOLS==='undefined'||!MESH_TOOLS.includes(ui.tool))return 0;const h=hit.getBoundingClientRect().height;return h>0?Math.round(brush.size*meshBrushScale(h)/h*1000)/1000:0;}
 const NV_TEX_LIVE=512,NV_LIVE_MS=100;
-function nvPaintOn(){return platform.isDesktop&&ui.mode==='p3d';}
+function nvPaintOn(){return platform.isDesktop&&ui.mode==='p3d'&&v3s().nvPaint!==false;}
 function nvCamFrom(ev){const c=v3.cam,d=[ev.eye[0]-ev.tgt[0],ev.eye[1]-ev.tgt[1],ev.eye[2]-ev.tgt[2]],L=Math.hypot(d[0],d[1],d[2])||1;
   c.tx=ev.tgt[0];c.ty=ev.tgt[1];c.tz=ev.tgt[2];c.dist=L;c.pitch=Math.asin(Math.max(-1,Math.min(1,d[1]/L)));c.yaw=Math.atan2(d[0],d[2]);}
 /* a world point on the ray through the window pixel; the main view then sees the same surface there */
@@ -80,7 +80,10 @@ function nvDispatch(ev){if(!nvPaintOn())return;const hit=document.getElementById
   const mk=(type,buttons)=>new PointerEvent(type,{pointerId:991,pointerType:'mouse',isPrimary:true,bubbles:true,cancelable:true,clientX:cx,clientY:cy,button:0,buttons,shiftKey:!!ev.shift,ctrlKey:!!ev.ctrl,altKey:!!ev.alt,pressure:ev.t==='up'?0:.5});
   if(ev.t==='down'){clearTimeout(nv.sync);hit.dispatchEvent(mk('pointerdown',1));nv.liveAt=performance.now();}
   else if(ev.t==='move'){hit.dispatchEvent(mk('pointermove',1));nvLiveTick();}
-  else if(ev.t==='up'){hit.dispatchEvent(mk('pointerup',0));nvSyncSoon();}}
+  else if(ev.t==='up'){hit.dispatchEvent(mk('pointerup',0));nvSyncSoon();nvSlowCheck();}}
+/* once per session: if painting through the window is slow here, say so and offer the way back */
+function nvSlowCheck(){const s=nv.st;if(nv.slowTold||!s||s.run<20)return;const avg=s.ms/s.run,live=s.live?s.liveMs/s.live:0;
+  if(avg>45||live>500){nv.slowTold=true;toast('Painting in the new viewer is slow on this computer ('+avg.toFixed(0)+' ms a move). Painting in the normal 3D view is smoother: turn off Preferences › Speed › Paint inside the new viewer window.');}}
 /* what the last stroke cost, for Preferences */
 function nvStatsText(){const s=nv.st;if(!s||!s.ev)return 'No stroke yet in the new viewer.';return 'Last stroke: '+s.ev+' mouse moves from the window, '+s.run+' painted (average '+(s.run?(s.ms/s.run).toFixed(1):'0')+' ms, slowest '+s.max.toFixed(0)+' ms); '+s.live+' live pictures'+(s.live?' (average '+(s.liveMs/s.live).toFixed(0)+' ms each)':'')+'.';}
 /* while dragging: a small copy of the maps every so often (the full one follows after the stroke) */
