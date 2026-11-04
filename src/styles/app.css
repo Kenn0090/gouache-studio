@@ -209,7 +209,11 @@ body.ldragging,body.ldragging *{cursor:grabbing!important}
 .anchor button.on{background:var(--accent);border-color:var(--accent)}
 .note{margin:0;color:var(--muted);font-size:11.5px;max-width:52ch}
 .export-out{display:grid;gap:10px}
-.lib{max-height:210px;overflow-y:auto;display:grid;gap:8px;padding-right:2px}
+.lib{height:var(--libH,210px);min-height:90px;max-height:none;overflow-y:auto;display:grid;gap:8px;padding-right:2px;align-content:start}
+.libgrip{height:10px;margin:2px 0 4px;cursor:ns-resize;position:relative;touch-action:none}
+.libgrip::after{content:'';position:absolute;left:35%;right:35%;top:4px;height:3px;border-radius:2px;background:var(--line,#555);opacity:.7}
+.libgrip:hover::after{opacity:1;background:var(--accent,#7aa7ff)}
+.lib[hidden]+.libgrip,.dkshelf .libgrip,body.brushmode .libgrip{display:none}
 .libset{display:grid;gap:5px}
 .libset-h{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;color:var(--faint);gap:6px}
 .libset-h span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -537,8 +541,8 @@ body.dkresizing{cursor:col-resize;user-select:none}body.dklock .dkwidth{cursor:d
 .dkbody>.sec>.sec-h>span:first-child:not(#brushTitle){display:none}
 #toolSec>.sec-h{display:none}
 .dk-off{display:none!important}
-.dksplit{flex:none;height:6px;background:color-mix(in srgb,var(--ground) 45%,var(--panel));border-block:1px solid var(--line);cursor:row-resize;position:relative}
-.dksplit::after{content:'';position:absolute;left:50%;top:1px;width:26px;height:2px;margin-left:-13px;border-radius:1px;background:var(--faint)}
+.dksplit{flex:none;height:9px;background:color-mix(in srgb,var(--ground) 45%,var(--panel));border-block:1px solid var(--line);cursor:row-resize;position:relative}
+.dksplit::after{content:"";position:absolute;left:50%;top:3px;width:34px;height:3px;margin-left:-17px;border-radius:2px;background:var(--faint)}
 .dksplit:hover{background:var(--accent-soft)}
 .dkfloat{position:fixed;z-index:30;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line-2);border-radius:9px;box-shadow:0 18px 50px rgba(0,0,0,.5);overflow:hidden}
 .dkfloat .dktabs{cursor:move;border-radius:9px 9px 0 0}
