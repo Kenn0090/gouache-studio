@@ -12,6 +12,10 @@ struct MapLens {
     orm: usize,
     normal: usize,
     emissive: usize,
+    #[serde(default)]
+    height: usize,
+    #[serde(default)]
+    thick: usize,
 }
 
 #[derive(Deserialize, Default)]
@@ -28,6 +32,8 @@ struct ShaderMeta {
     d: [f32; 3],
     #[serde(default)]
     skin: [f32; 4],
+    #[serde(default)]
+    e: [f32; 4],
 }
 
 #[derive(Deserialize)]
@@ -39,6 +45,17 @@ struct GroupMeta {
     rough: f32,
     metal: f32,
     tex: MapLens,
+    /// the base map is plain RGBA bytes of this size, not a PNG
+    #[serde(default)]
+    raw: Option<[u32; 2]>,
+    /// a texture update that only brings some maps
+    #[serde(default)]
+    partial: bool,
+    /// this material is one UDIM tile's set: [u, v] of the tile
+    #[serde(default)]
+    udim: Option<[u32; 2]>,
+    #[serde(default)]
+    foff: f32,
 }
 
 #[derive(Deserialize)]
@@ -67,12 +84,106 @@ struct SettingsMeta {
     brush: f32,
     #[serde(default)]
     rt: bool,
+    #[serde(default = "d09")]
+    rt_shadow: f32,
+    #[serde(default = "d085")]
+    rt_ao: f32,
+    #[serde(default = "d07")]
+    rt_refl: f32,
+    #[serde(default = "d002")]
+    rt_soft: f32,
+    #[serde(default = "d96")]
+    rt_samples: u32,
+    #[serde(default)]
+    cam: Option<[f32; 6]>,
+    #[serde(default)]
+    bg: Option<[f32; 3]>,
+    #[serde(default = "dtrue")]
+    smooth: bool,
+    #[serde(default)]
+    lights: Vec<[f32; 12]>,
+    #[serde(default)]
+    ortho: bool,
+    #[serde(default = "d012")]
+    studio_fill: f32,
+    #[serde(default = "d008")]
+    studio_rim: f32,
+    #[serde(default)]
+    wire: u8,
+    #[serde(default)]
+    disp: f32,
+    #[serde(default)]
+    fold: f32,
+    #[serde(default)]
+    track: bool,
+    #[serde(default)]
+    hv: u8,
+    #[serde(default)]
+    mirc: Vec<[f32; 16]>,
+    #[serde(default)]
+    floor: Option<[f32; 4]>,
+    #[serde(default)]
+    floor_col: Option<[f32; 3]>,
+    #[serde(default = "yes")]
+    clip: bool,
+    #[serde(default)]
+    post: Option<[[f32; 4]; 7]>,
+    #[serde(default)]
+    mir: Option<[Option<f32>; 3]>,
+    #[serde(default)]
+    mir_radial: Option<[f32; 2]>,
+    #[serde(default)]
+    mir_off: Option<[f32; 3]>,
+    #[serde(default)]
+    mir_r: f32,
+    #[serde(default)]
+    st_on: bool,
+    #[serde(default)]
+    st: Option<[f32; 8]>,
+    #[serde(default)]
+    st_view: Option<[f32; 2]>,
+    #[serde(default)]
+    wire_col: Option<[f32; 3]>,
+    #[serde(default)]
+    unlit: bool,
+    #[serde(default)]
+    metal_view: f32,
+}
+
+fn d012() -> f32 {
+    0.12
+}
+fn d008() -> f32 {
+    0.08
+}
+
+fn dtrue() -> bool {
+    true
+}
+
+fn d09() -> f32 {
+    0.9
+}
+fn d085() -> f32 {
+    0.85
+}
+fn d07() -> f32 {
+    0.7
+}
+fn d002() -> f32 {
+    0.02
+}
+fn d96() -> u32 {
+    96
 }
 
 fn fov_default() -> f32 {
     45.0
 }
 
+fn yes() -> bool {
+    true
+}
 fn blur_default() -> f32 {
     0.35
 }
@@ -88,6 +199,8 @@ struct Meta {
     groups: Vec<GroupMeta>,
     env: Option<EnvMeta>,
     settings: SettingsMeta,
+    #[serde(default)]
+    win: Option<[i32; 4]>,
 }
 
 fn floats(b: &[u8]) -> Vec<f32> {
@@ -139,12 +252,23 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
             }
             Ok(Some(decode_png(rd.take(n)?)?))
         };
-        let base = map(&mut rd, g.tex.base)?;
+        let base = match g.raw {
+            Some([rw, rh]) if g.tex.base > 0 => {
+                let bytes = rd.take(g.tex.base)?;
+                if bytes.len() != (rw as usize) * (rh as usize) * 4 {
+                    return Err("a raw picture has the wrong size".into());
+                }
+                Some(Tex8 { width: rw, height: rh, rgba: bytes.to_vec() })
+            }
+            _ => map(&mut rd, g.tex.base)?,
+        };
         let orm = map(&mut rd, g.tex.orm)?;
         let normal = map(&mut rd, g.tex.normal)?;
         let emissive = map(&mut rd, g.tex.emissive)?;
-        let shader = ShaderParams { kind: g.sh.k, p: g.sh.p, q: g.sh.q, c: g.sh.c, d: g.sh.d, skin: g.sh.skin };
-        let material = Material { shader, base, orm, normal, emissive, rough: g.rough, metal: g.metal };
+        let height = map(&mut rd, g.tex.height)?;
+        let thick = map(&mut rd, g.tex.thick)?;
+        let shader = ShaderParams { kind: g.sh.k, p: g.sh.p, q: g.sh.q, c: g.sh.c, d: g.sh.d, skin: g.sh.skin, e: g.sh.e };
+        let material = Material { shader, base, orm, normal, emissive, height, thick, udim: g.udim, fold_off: g.foff, rough: g.rough, metal: g.metal, partial: g.partial };
         groups.push(Group { name: g.name.clone(), indices, material });
     }
     let env = match &meta.env {
@@ -166,8 +290,63 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         paint: s.paint,
         brush: s.brush,
         rt: s.rt,
+        rt_shadow: s.rt_shadow,
+        rt_ao: s.rt_ao,
+        rt_refl: s.rt_refl,
+        rt_soft: s.rt_soft,
+        rt_samples: s.rt_samples,
+        cam: s.cam,
+        bg: s.bg.unwrap_or([0.09, 0.1, 0.115]),
+        smooth: s.smooth,
+        ortho: s.ortho,
+        studio_fill: s.studio_fill,
+        studio_rim: s.studio_rim,
+        wire: s.wire,
+        disp: s.disp,
+        fold: s.fold,
+        track: s.track,
+        hv: s.hv,
+        mirc_n: s.mirc.len().min(32) as u32,
+        mirc: { let mut a = [[0.0f32; 16]; 32]; for (i, m) in s.mirc.iter().take(32).enumerate() { a[i] = *m; } a },
+        floor: s.floor.unwrap_or([0.0, 0.0, 1.0, 0.5]),
+        floor_col: s.floor_col.unwrap_or([0.0; 3]),
+        clip: s.clip,
+        post_on: s.post.is_some(),
+        post: s.post.unwrap_or([[0.0; 4]; 7]),
+        mir: { let m = s.mir.unwrap_or([None; 3]); [m[0].unwrap_or(f32::NAN), m[1].unwrap_or(f32::NAN), m[2].unwrap_or(f32::NAN)] },
+        mir_radial: s.mir_radial.unwrap_or([0.0, 0.0]),
+        mir_off: s.mir_off.unwrap_or([0.0; 3]),
+        mir_r: s.mir_r,
+        st_on: s.st_on,
+        st: s.st.unwrap_or([0.0; 8]),
+        st_view: s.st_view.unwrap_or([1.0, 1.0]),
+        wire_col: s.wire_col.unwrap_or([0.95, 0.7, 0.35]),
+        unlit: s.unlit,
+        metal_view: s.metal_view,
+        light_n: s.lights.len().min(4) as u32,
+        light_a: {
+            let mut a = [[0.0f32; 4]; 4];
+            for (i, l) in s.lights.iter().take(4).enumerate() {
+                a[i] = [l[0], l[1], l[2], l[3]];
+            }
+            a
+        },
+        light_b: {
+            let mut a = [[0.0f32; 4]; 4];
+            for (i, l) in s.lights.iter().take(4).enumerate() {
+                a[i] = [l[4], l[5], l[6], l[7]];
+            }
+            a
+        },
+        light_c: {
+            let mut a = [[0.0f32; 4]; 4];
+            for (i, l) in s.lights.iter().take(4).enumerate() {
+                a[i] = [l[8], l[9], l[10], l[11]];
+            }
+            a
+        },
     };
-    Ok((Scene { mesh: MeshData { positions, normals, uvs }, groups, env, settings }, meta.env_mode.clone()))
+    Ok((Scene { mesh: MeshData { positions, normals, uvs }, groups, env, settings, window: meta.win }, meta.env_mode.clone()))
 }
 
 

@@ -22,20 +22,30 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('#dlgCancel');await W(200);
  /* pretend to be the desktop app */
  await p.evaluate(()=>{const P=__gs.platform;window.__calls=[];window.__written=[];P.isDesktop=true;
-   P.invoke=async(cmd,a)=>{window.__calls.push([cmd,a]);if(cmd==='dir_files')return a.dir.includes('godotproj')?[[a.dir+'/project.godot',0,0]]:[[a.dir+'/readme.txt',0,0]];if(cmd==='blender_send')return window.__blenderUp;return null;};
+   P.invoke=async(cmd,a)=>{window.__calls.push([cmd,a]);if(cmd==='dir_files')return a.dir==='C:/Games/Unreal'?[[a.dir+'/My.uproject',0,0]]:a.dir.includes('godotproj')?[[a.dir+'/project.godot',0,0]]:[[a.dir+'/readme.txt',0,0]];if(cmd==='blender_send')return window.__blenderUp;return null;};
    P.writeFile=async(path,bytes)=>{window.__written.push(path);};P.pickFolder=async()=>window.__pick;P.openDialog=async()=>'C:/Program Files/Blender/blender.exe';});
  /* Unity: files go into the project's Assets/Gouache/<name> */
  await p.evaluate(()=>{const g=__gs;g.es.to='unity';g.es.dirs.unity='C:/Games/MyUnity';g.texCfg.name='Rock';g.texCfg.preset='urp';g.texCfg.model='glb';g.texCfg.size=128;});
  await p.evaluate(()=>__gs.dlgExportTextures());await W(300);
  ok(await p.locator('#txSend').inputValue()==='unity'&&await p.locator('#dlgOk').textContent()==='Export and send','the export window has Send to (Unity chosen)');
+ for(const e of ['unreal','godot']){await p.selectOption('#txSend',e);await W(300);ok(!(await p.evaluate(()=>/null/i.test(document.querySelector('#dlgBody').textContent))),e+': the export window shows no stray "null"');}
+ /* Unreal: picking the Content folder uses the project folder above it */
+ await p.evaluate(()=>{__gs.es.dirs.unreal='';window.__pick='C:/Games/Unreal/Content';});await p.selectOption('#txSend','unreal');await W(300);
+ await p.click('#esProject');await W(600);
+ ok(await p.evaluate(()=>__gs.es.dirs.unreal==='C:/Games/Unreal'),'Unreal: the Content folder picked means the project folder above it');
+ /* choosing a project folder without the project file: taken, with a warning in the window */
+ await p.evaluate(()=>{__gs.es.dirs.unreal='';window.__pick='C:/Games/NoProject';});await p.selectOption('#txSend','unreal');await W(300);
+ await p.click('#esProject');await W(600);
+ ok(await p.evaluate(()=>__gs.es.dirs.unreal==='C:/Games/NoProject')&&await p.locator('#esWarn').count()===1,'a folder without .uproject is still taken, and the window says so');
+ await p.selectOption('#txSend','unity');await W(300);
  await p.click('#dlgOk');await W(4000);
  let r=await p.evaluate(()=>({mk:window.__calls.filter(c=>c[0]==='make_dir').map(c=>c[1].path),w:window.__written.map(x=>x.split('/').slice(-2).join('/'))}));
  ok(r.mk.includes('C:/Games/MyUnity/Assets/Gouache/Rock'),'Unity: the folder Assets/Gouache/Rock is made '+JSON.stringify(r.mk));
  ok(r.w.some(x=>x==='Rock/Rock.glb')&&r.w.some(x=>/Rock\/Rock_Albedo\.png/.test(x)),'…and the model and textures are written there '+JSON.stringify(r.w));
- /* Godot: a folder that isn't a Godot project is refused */
+ /* Godot: a folder that isn't a Godot project is taken with a warning */
  await p.evaluate(()=>{__gs.es.to='godot';__gs.es.dirs.godot='';window.__pick='C:/stuff/notaproject';});
  await p.evaluate(()=>__gs.dlgExportTextures());await W(300);await p.click('#esProject');await W(300);
- ok(await p.evaluate(()=>!__gs.es.dirs.godot),'Godot: a folder without project.godot is refused');
+ ok(await p.evaluate(()=>__gs.es.dirs.godot==='C:/Games/NotGodot'||!!__gs.es.dirs.godot)&&await p.locator('#esWarn').count()===1,'Godot: a folder without project.godot is taken, with a warning in the window');
  await p.evaluate(()=>{window.__pick='C:/games/godotproj';});await p.click('#esProject');await W(500);
  ok(await p.evaluate(()=>__gs.es.dirs.godot==='C:/games/godotproj'),'…a Godot project folder is kept');
  ok(await p.evaluate(()=>__gs.esSub('godot','Rock').join('/')==='gouache/Rock'&&__gs.esSub('unreal','Rock').join('/')==='Content/Gouache/Rock'),'Godot and Unreal get their own folders');

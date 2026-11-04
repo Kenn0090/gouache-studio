@@ -23,7 +23,18 @@ const tlDelFrames=async(sid,a,b)=>tlRq((await tlStore('frames','readwrite')).del
 async function tlSessions(){try{return (await tlAll('sessions')).sort((a,b)=>b.created-a.created);}catch(e){return [];}}
 async function tlVideos(){try{return (await tlAll('videos')).sort((a,b)=>b.created-a.created);}catch(e){return [];}}
 /* ---- taking a picture of the whole canvas ---- */
-async function tlSnapshot(){const W=doc.w,H=doc.h,sc=Math.min(1,tlr.cfg.size/Math.max(W,H)),w=Math.max(2,Math.round(W*sc)&~1),h=Math.max(2,Math.round(H*sc)&~1);
+/* in 3D Paint the picture is the 3D view, so camera turns are in it too */
+function tl3On(){return ui.mode==='p3d'&&typeof v3!=='undefined'&&v3.on&&!!v3.mesh;}
+let tlCamSig='';
+function tlCamChanged(){const c=v3.cam,sig=[c.yaw,c.pitch,c.dist,c.tx,c.ty,c.tz].map(v=>(+v).toFixed(3)).join(',');if(sig===tlCamSig)return false;tlCamSig=sig;return true;}
+async function tlSnapshot3(){const [vw,vh]=v3ViewSize();if(!tlr.sz3||tlr.sz3.sid!==tlr.sid){const sc=Math.min(1,tlr.cfg.size/Math.max(vw,vh));tlr.sz3={sid:tlr.sid,w:Math.max(2,Math.round(vw*sc)&~1),h:Math.max(2,Math.round(vh*sc)&~1)};}
+  const {w,h}=tlr.sz3,c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d'),im=x.createImageData(w,h);
+  /* the new viewer window is open: take the picture from it (its shaders, shadows and reflections); rows come top first */
+  let d=null,flip=true;if(typeof nv!=='undefined'&&nv.isOpen&&platform.isDesktop){try{d=await nvFrame(w,h,0,undefined,undefined,2);flip=false;}catch(e){d=null;flip=true;}}
+  if(!d)d=v3Offscreen(w,h,{});
+  for(let j=0;j<h;j++){const a=(flip?h-1-j:j)*w*4,b=j*w*4;for(let i=0;i<w*4;i+=4){im.data[b+i]=d[a+i];im.data[b+i+1]=d[a+i+1];im.data[b+i+2]=d[a+i+2];im.data[b+i+3]=255;}}
+  x.putImageData(im,0,0);const q=clamp(1-tlr.cfg.comp/100,.05,1);let blob=await new Promise(r=>c.toBlob(r,'image/webp',q));if(!blob||blob.type!=='image/webp')blob=await new Promise(r=>c.toBlob(r,'image/jpeg',q));return {blob,w,h};}
+async function tlSnapshot(){if(tl3On())return tlSnapshot3();const W=doc.w,H=doc.h,sc=Math.min(1,tlr.cfg.size/Math.max(W,H)),w=Math.max(2,Math.round(W*sc)&~1),h=Math.max(2,Math.round(H*sc)&~1);
   const full=compositeMap('base');let small=null;
   try{small=makeTarget(w,h,8,false);const sci=gl.isEnabled(gl.SCISSOR_TEST);if(sci)gl.disable(gl.SCISSOR_TEST);
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER,full.fbo);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,small.fbo);
@@ -41,9 +52,10 @@ async function tlCapture(){if(tlr.busy||!tlr.on||tlr.paused)return;tlr.busy=true
     const lim=tlLimitBytes();let guard=0;while(tlr.bytes>lim&&tlr.first<tlr.count-2&&guard++<50){const f=await tlGet('frames',[tlr.sid,tlr.first]);if(f){tlr.bytes-=f.blob.size;}await tlDelFrames(tlr.sid,tlr.first,tlr.first);tlr.first++;if(!tlr.full){tlr.full=true;toast('The timelapse folder is full ('+Math.round(lim/1048576)+' MB), so the oldest pictures are being replaced. You can raise the limit in Preferences › Files.');}}
     if(tlr.count%8===1)await tlSaveSess();tlUI();}
   catch(e){console.error('timelapse',e);}finally{tlr.busy=false;}}
-function tlLoop(){clearTimeout(tlr.timer);if(!tlr.on)return;tlr.timer=setTimeout(async()=>{if(tlr.on&&!tlr.paused&&tlTouch&&ui.mode==='paint')await tlCapture();tlLoop();},tlInterval());}
+function tlLoop(){clearTimeout(tlr.timer);if(!tlr.on)return;tlr.timer=setTimeout(async()=>{if(tlr.on&&!tlr.paused&&(ui.mode==='paint'||ui.mode==='p3d')){const cam=tl3On()&&tlCamChanged();if(tlTouch||cam)await tlCapture();}tlLoop();},tlInterval());}
 /* ---- record / pause / stop ---- */
-async function tlStart(resume){if(tlr.on)return;if(ui.mode!=='paint'){toast('The timelapse records the Paint canvas. Switch to Paint first.');return;}
+async function tlStart(resume){if(tlr.on)return;if(ui.mode!=='paint'&&ui.mode!=='p3d'){toast('The timelapse records the Paint canvas or the 3D Paint view. Switch to one of them first.');return;}
+  tlr.sz3=null;tlCamSig='';
   if(resume){tlr.sess=resume;tlr.sid=resume.id;tlr.name=resume.name;tlr.count=resume.count||0;tlr.first=resume.first||0;tlr.bytes=resume.bytes||0;tlr.docName=doc.name||resume.docName||'';Object.assign(tlr.cfg,resume.cfg||{});}
   else{const n=(await tlSessions()).length+(await tlVideos()).length+1;tlr.sid='tlr'+Date.now();tlr.name='Timelapse '+n+' · '+(doc.name||'Untitled');tlr.docName=doc.name||'';tlr.count=0;tlr.first=0;tlr.bytes=0;tlr.sess={id:tlr.sid,name:tlr.name,docName:tlr.docName,created:Date.now(),state:'progress',count:0,first:0,bytes:0};}
   tlr.full=false;tlr.on=true;tlr.paused=false;await tlSaveSess();tlTouch=true;await tlCapture();tlLoop();tlUI();toast(resume?'Timelapse resumed.':'Recording the timelapse.');}

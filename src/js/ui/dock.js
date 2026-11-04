@@ -37,7 +37,7 @@ const PANEL_IDS=Object.keys(PANELS);
 const MODE_GROUP=['p3d','brushtab','conv','bake','anim','photo'],MODE_HID=[...MODE_GROUP,'phhist','phlib','phpre'];
 /* the built-in workspaces: extra = 3D view on and how wide, painting on the model */
 const WS_PRESETS={
-  painting:{name:'Panels: Paint',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_HID.slice(),f:1.4},{tabs:['color','matEd','shading'],f:1.05},{tabs:['brushes','stencils','mats','textures','canvas','decals','envs','tool'],f:1.25},{tabs:['maps','p3bake'],f:.45},{tabs:['layers','chan','hist'],f:1.6}],icons:[],floats:[]},
+  painting:{name:'Panels: Paint',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_HID.slice(),f:1.4},{tabs:['color','matEd','shading'],f:1.05},{tabs:['brushes','stencils','mats','textures','canvas','decals','envs','tool'],f:2.4},{tabs:['maps','p3bake'],f:.45},{tabs:['layers','chan','hist'],f:1.6}],icons:[],floats:[]},
   texturing:{name:'Panels: 3D Paint',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:[...MODE_HID,'p3bake','shading'],f:1.2},{tabs:['layers','maps','chan','hist'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','projects','meshmaps','weldtools'],f:1,h:260},icons:[],floats:[]},
   paint3d:{name:'Panels: Large 3D',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:[...MODE_HID,'p3bake','shading'],f:1.2},{tabs:['layers','maps','chan','hist'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','projects','meshmaps','brushes','weldtools'],f:1,h:260},icons:[],floats:[]},
   minimal:{name:'Panels: Minimal',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_HID.slice(),f:1}],icons:['color','matEd','shading','brushes','stencils','mats','textures','decals','envs','tool','maps','layers','chan','hist'],floats:[]}};
@@ -60,6 +60,8 @@ const dk={ws:'painting',L:null,custom:{},saved:{},lock:false,flyout:null,drag:nu
     /* 0.37.1: Bake Maps and Shader join the texture sets tab; Stencils became a switch in Brushes */
     for(const n of ['texturing','paint3d']){const L=dk.saved[n];if(!L)continue;const all=[...(L.groups||[]),L.shelf].filter(Boolean);for(const g of all)g.tabs=(g.tabs||[]).filter(t=>!['p3bake','shading','stencils'].includes(t));const g0=(L.groups||[]).find(g=>g.tabs.includes('p3d'))||(L.groups||[])[0];if(g0)g0.tabs.push('p3bake','shading');if(L.shelf&&L.shelf.h<240)L.shelf.h=260;}
     if(dk.col2)for(const g of dk.col2.groups)g.tabs=g.tabs.filter(t=>!['shading','stencils'].includes(t));}
+  /* (0.95) the Brushes group in the Paint layout was short: a saved layout gets more room once */
+  if(!localStorage.getItem('gs.brushH95')){localStorage.setItem('gs.brushH95','1');for(const n of ['painting']){const L=dk.saved[n];if(!L||!L.groups)continue;const g=L.groups.find(x=>(x.tabs||[]).includes('brushes'));if(g&&g.f<2.4)g.f=2.4;}}
   if(!localStorage.getItem('gs.layout520')){localStorage.setItem('gs.layout520','1');delete dk.saved.bake;if(dk.modeLayouts&&dk.modeLayouts.bake)delete dk.modeLayouts.bake;}
   if(!localStorage.getItem('gs.layout37')){localStorage.setItem('gs.layout37','1');delete dk.saved.texturing;delete dk.saved.paint3d;if(dk.col2)delete dk.col2;}}catch(e){}})();
 const dkClone=o=>JSON.parse(JSON.stringify(o));
@@ -255,6 +257,9 @@ function dkFlyoutEl(id){const b=[...dk.icons.children].find(x=>x.title===PANELS[
 document.addEventListener('pointerdown',e=>{if(dk.flyout&&!e.target.closest('.flyout,#dkIcons,#modal,.fontpop,#menuPop'))dkFlyout(null);},true);
 /* ---- the ⋯ menu of a group ---- */
 function dkMenu(e,id,where){const inShelf=dk.L.shelf.tabs.includes(id),items=[inShelf?['Back into the dock',()=>dkMove(id,{newGroup:dk.L.groups.length})]:['Move to the bottom shelf',()=>dkMove(id,{group:dk.L.shelf})],['Dock to the left',()=>dkMove(id,{edge:'left'})],['Dock to the top',()=>dkMove(id,{edge:'top'})],['Dock to the right',()=>dkMove(id,{newGroup:dk.L.groups.length})],['Float “'+PANELS[id].title+'”',()=>dkMove(id,{float:{x:e.clientX-320,y:e.clientY+10}})],['Keep as an icon',()=>dkMove(id,{icons:true})],['Close',()=>dkMove(id,{hidden:true})]];
+  /* (0.95, Kenn: the brush list was stuck in a small box) give a panel more room, or share the height out evenly again */
+  if(where.group){const arr=dk.L.groups.includes(where.group)?dk.L.groups:(dk.col2&&dk.col2.groups.includes(where.group)?dk.col2.groups:null);
+    if(arr&&arr.length>1){items.push(['Make this panel taller',()=>{const others=arr.filter(x=>x!==where.group&&!x.min).reduce((a,x)=>a+x.f,0);where.group.f=Math.max(where.group.f,others*2.5);where.group.min=false;dkRender();dkSave();}],['Share the height evenly',()=>{for(const x of arr)x.f=1;dkRender();dkSave();}]);}}
   if(where.group)items.push([where.group.min?'Unfold group':'Fold group',()=>{where.group.min=!where.group.min;dkRender();dkSave();}]);
   /* (0.53) groups of a dock side by side or stacked */
   if(where.group){const k=dkAreaOf(where.group);if(k==='right'||k==='left'||k==='top'){const row=dkDirOf(k)==='row';items.push([row?'Stack the panel groups vertically':'Put the panel groups side by side',()=>dkSetDir(k,row?'col':'row')]);}}

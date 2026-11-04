@@ -22,7 +22,8 @@ const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAI
  await p.evaluate(()=>__gs.exportTextures());await W(6000);
  let fs=await p.evaluate(()=>window.__fs);
  const rec=JSON.parse(fs['C:/Game/gouache_project.json']||'null');
- ok(rec&&rec.engine==='unity'&&rec.assets.Rock&&rec.masters.unity===1&&rec.settings&&rec.settings.size===64,'the project record is written inside the game folder '+JSON.stringify(rec).slice(0,160));
+ const MV=await p.evaluate(()=>__gs.ESH_MASTER_VER);
+ ok(rec&&rec.engine==='unity'&&rec.assets.Rock&&rec.masters.unity===MV&&rec.settings&&rec.settings.size===64,'the project record is written inside the game folder '+JSON.stringify(rec).slice(0,160));
  ok(!!fs['C:/Game/Assets/Gouache/GouacheShaded.shader'],'the shared shader is written the first time');
  /* the second asset: the shared shader is left alone */
  await p.evaluate(()=>{window.__fs['C:/Game/Assets/Gouache/GouacheShaded.shader']='// edited by me';__gs.texCfg.name='Crate';window.__log=[];});
@@ -38,6 +39,6 @@ const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAI
  await p.click('#dlgOk');await W(6000);
  fs=await p.evaluate(()=>window.__fs);
  ok(/gouache-master/.test(fs['C:/Game/Assets/Gouache/GouacheShaded.shader']||''),'after saying yes the shared shader is rewritten');
- ok(JSON.parse(fs['C:/Game/gouache_project.json']).masters.unity===1,'and the project record shows the new version');
+ ok(JSON.parse(fs['C:/Game/gouache_project.json']).masters.unity===MV,'and the project record shows the new version');
  ok(!errs.length,'no page errors '+errs.join(' | ').slice(0,200));
  await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();

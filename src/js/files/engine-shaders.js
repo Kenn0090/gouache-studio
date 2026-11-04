@@ -6,14 +6,14 @@
      outline material chained on (next pass).
    - Unity (URP): one shader, GouacheShaded.shader, plus <Set>.mat for each set and .meta files, so the textures are
      found (normal maps get the Normal map type). Built-in and HDRP projects: the shader is URP only.
-   - Unreal: gouache_unreal.json + gouache_unreal_setup.py. Run the script in the editor (Tools > Execute Python Script):
+   - Unreal: gouache_unreal.gdata (JSON inside; not .json, because Unreal offers to import .json files as data tables) + gouache_unreal_setup.py. Run the script in the editor (Tools > Execute Python Script):
      it imports the textures and builds one material per set (Lit; Cloth for Velvet, Subsurface for Skin, Unlit with
      the banding worked out in a Custom node for Toon, Cel and Retro; Toon and Cel also draw their outline in the same
      material and follow the Directional Light through a parameter collection).
    The look is a close match, not identical: each engine lights differently. */
 /* bump this when a look's shader changes in a way that matters: Gouache then offers to update the master shaders already in a game */
-const ESH_MASTER_VER=1;
-const ESH_KIND_NAMES=['Standard','Skin','Brushed metal','Velvet','Toon','Cel','Spec/Gloss','Panner','Retro'];
+const ESH_MASTER_VER=2;
+const ESH_KIND_NAMES=['Standard','Skin','Brushed metal','Velvet','Toon','Cel','Spec/Gloss','Panner','Retro','Hologram','Glass','Fur','Iridescent','Car paint','Cloth sheen','Wax / marble glow','Halftone cel','Ink toon'];
 const ESH_SHADER_GUID='47a0c5e1b2d34f6a8c91e0f3d5b7a901';
 function eshGuid(s){let a=0x811c9dc5,b=0x1b873593,c=0x9e3779b1,d=0x85ebca6b;for(let i=0;i<s.length;i++){const k=s.charCodeAt(i);a=Math.imul(a^k,16777619);b=Math.imul(b^k,2246822519);c=Math.imul(c^(k<<1),3266489917);d=Math.imul(d^(k+i),668265263);}
   return [a,b,c,d].map(v=>(v>>>0).toString(16).padStart(8,'0')).join('');}
@@ -26,8 +26,12 @@ function eshModelSize(m){if(!m||!m.pos)return 1;const mn=[1e30,1e30,1e30],mx=[-1
 /* ---------------- Godot 4 ----------------
    One shared shader per look (res://gouache/_shaders/<Look>.gdshader, and <Look>_alpha for see-through materials), made once.
    Each texture set is a small ShaderMaterial (.tres) that only holds that set's textures and settings. */
-const ESH_LOOKS={std:'Standard',skin:'Skin',aniso:'BrushedMetal',velvet:'Velvet',toon:'Toon',cel:'Cel',specgloss:'Standard',panner:'Panner',retro:'Retro'};
+const ESH_LOOKS={std:'Standard',skin:'Skin',aniso:'BrushedMetal',velvet:'Velvet',toon:'Toon',cel:'Cel',specgloss:'Standard',panner:'Panner',retro:'Retro',halfcel:'HalftoneCel',ink:'InkToon',hologram:'Hologram',glass:'Glass',fur:'Fur',iridescent:'Iridescent',car:'CarPaint',cloth:'ClothSheen',wax:'Wax'};
 const eshLook=k=>ESH_LOOKS[k]||'Standard';
+/* the looks added in 0.94.1: Godot, Unity (URP) and Unreal have them; Unity Built-in sends them as Standard */
+const ESH_NEW=['hologram','glass','fur','iridescent','car','cloth','wax','halfcel','ink'];
+const ESH_FUR_SHELLS=10;
+const eshSafeShade=sh=>{if(!sh||!sh.kind)return sh;if(!ESH_LOOKS[sh.kind])return {kind:'std',p:{}};if(ESH_NEW.includes(sh.kind)&&es.to==='unity'&&texCfg.unityRP==='builtin')return {kind:'std',p:{}};return sh;};
 const eshV3=a=>'vec3('+(a||[1,1,1]).map(eshF).join(', ')+')';
 /* a look's own settings: [uniform name, GLSL type, value text] taken from a shader's parameters */
 function eshGodotParams(sh){const k=sh.kind,P=shParams(sh),L=[];
@@ -38,6 +42,15 @@ function eshGodotParams(sh){const k=sh.kind,P=shParams(sh),L=[];
   if(k==='skin')L.push(['blood_colour','vec3',eshV3(P.col)],['scatter_strength','float',eshF(P.scatter*P.strength)],['scatter_depth','float',eshF(P.depth*.1)],['transmission','float',eshF(P.transmission)],['oiliness','float',eshF(P.oil)]);
   if(k==='toon'||k==='cel'){L.push(['shadow_colour','vec3',eshV3(P.col)],['highlight','float',eshF(P.spec)],['rim_light','float',eshF(P.rim)]);
     if(k==='toon')L.push(['bands','float',eshF(P.steps)],['band_shift','float',eshF(P.offset)]);else L.push(['shadow_line','float',eshF(P.thresh)],['edge_softness','float',eshF(P.soft)]);}
+  if(k==='hologram')L.push(['holo_colour','vec3',eshV3(P.col)],['see_through','float',eshF(P.opacity)],['edge_glow','float',eshF(P.glow)],['scan_lines','float',eshF(P.lines)],['scan_speed','float',eshF(P.speed)],['flicker','float',eshF(P.flicker)],['glitch','float',eshF(P.glitch)],['edge_pulse','float',eshF(P.pulse)],['sweep','float',eshF(P.sweep)],['body_glow','float',eshF(P.fill)]);
+  if(k==='glass')L.push(['glass_colour','vec3',eshV3(P.col)],['bending','float',eshF(P.refr)],['frost','float',eshF(P.frost)],['thickness','float',eshF(P.thick)],['edge_reflect','float',eshF(P.edge)],['cloudiness','float',eshF(P.cloud)],['split_amount','float',eshF(P.disp)]);
+  if(k==='fur')L.push(['tip_colour','vec3',eshV3(P.col)],['fur_length','float',eshF(P.length)],['strands','float',eshF(P.density)],['strand_width','float',eshF(P.width)],['clumping','float',eshF(P.clump)],['dark_roots','float',eshF(P.root)],['tip_amount','float',eshF(P.tipMix)],['wind','float',eshF(P.wind)],['wind_speed','float',eshF(P.windSpeed)],['droop','float',eshF(P.gravity)]);
+  if(k==='iridescent')L.push(['iri_strength','float',eshF(P.strength)],['iri_range','float',eshF(P.range)],['iri_shift','float',eshF(P.shift)],['iri_angle','float',eshF(P.angle)]);
+  if(k==='car')L.push(['coat','float',eshF(P.coat)],['coat_roughness','float',eshF(P.coatRough)],['orange_peel','float',eshF(P.peel)],['flake_amount','float',eshF(P.flakes)],['flake_size','float',eshF(P.size)],['flake_sparkle','float',eshF(P.sparkle)],['flake_colour','vec3',eshV3(P.col)]);
+  if(k==='cloth')L.push(['cloth_colour','vec3',eshV3(P.col)],['cloth_sheen','float',eshF(P.sheen)],['softness','float',eshF(P.soft)],['satin_streak','float',eshF(P.aniso)],['fibre_turns','float',eshF(P.fibre)],['weave','float',eshF(P.weave)]);
+  if(k==='wax')L.push(['glow_colour','vec3',eshV3(P.col)],['glow','float',eshF(P.glow)],['travel','float',eshF(P.depth)],['wax_softness','float',eshF(P.soft)],['wax_thickness','float',eshF(P.thick)]);
+  if(k==='halfcel')L.push(['bands','float',eshF(P.bands)],['step_softness','float',eshF(P.soft)],['dotted_fade','float',eshF(P.dots)],['dot_cells','float',eshF(900/Math.max(P.dotSize,1))],['dots_follow','float',eshF(P.follow||0)],['shadow_depth','float',eshF(P.depth)],['shadow_boost','float',eshF(P.sat)],['shadow_colour','vec3',eshV3(P.col)],['tint_amount','float',eshF(P.tintAmt)],['highlight','float',eshF(P.spec)],['rim_light','float',eshF(P.rim)],['rim_width','float',eshF(P.rimW)],['rim_colour','vec3',eshV3(P.rimCol)]);
+  if(k==='ink')L.push(['shadow_shapes','float',eshF(P.steps)],['edge_softness','float',eshF(P.soft)],['shadow_strength','float',eshF(P.shadow)],['shadow_colour','vec3',eshV3(P.col)],['rim_light','float',eshF(P.rim)],['rim_width','float',eshF(P.rimW)],['rim_follows','float',eshF(P.rimBias)],['rim_colour','vec3',eshV3(P.rimCol)]);
   return L;}
 /* the shared shader of one look; its settings start at the look's usual values */
 function eshGodotShader(kind,alpha){const L=eshGodotParams({kind,p:{}}),k=kind,defP=shParams({kind:k,p:{}}),
@@ -61,13 +74,62 @@ function eshGodotShader(kind,alpha){const L=eshGodotParams({kind,p:{}}),k=kind,d
     Lt.push('void light() {','\tfloat l = dot(NORMAL, LIGHT) * 0.5 + 0.5;');
     if(k==='toon')Lt.push('\tfloat st = max(bands, 1.0);','\tfloat band = floor(l * st + 0.5 * band_shift) / st;');else Lt.push('\tfloat band = smoothstep(shadow_line - edge_softness * 0.5, shadow_line + edge_softness * 0.5 + 0.0001, l);');
     Lt.push('\tvec3 lit = mix(shadow_colour, vec3(1.0), clamp(band, 0.0, 1.0));','\tDIFFUSE_LIGHT += lit * LIGHT_COLOR * ATTENUATION;','\tvec3 h = normalize(LIGHT + VIEW);','\tfloat sp = step(1.0 - highlight * 0.05, dot(NORMAL, h)) * (1.0 - ROUGHNESS * 0.5) * step(0.01, highlight);','\tSPECULAR_LIGHT += sp * LIGHT_COLOR * ATTENUATION;','}');}
+  if(k==='halfcel'){Lt.push('void light() {','\tfloat l = dot(NORMAL, LIGHT) * 0.5 + 0.5;','\tfloat st = max(bands, 1.0);','\tfloat x = l * st;','\tfloat i0 = floor(x);','\tfloat f = x - i0;','\tfloat lvl = i0;',
+      '\tif (dotted_fade > 0.01) {','\t\tfloat w = dotted_fade * 0.5;','\t\tfloat t = clamp((f - 0.5) / (w * 2.0 + 0.001) + 0.5, 0.0, 1.0);','\t\tvec2 c2 = vec2(UV.x + UV.y, UV.x - UV.y) * dot_cells;','\t\tvec2 cc = fract(c2) - 0.5;','\t\tfloat pp = length(cc) * 1.4142;','\t\tfloat aa = fwidth(pp) + 0.001;',
+      '\t\tfloat lu = pow(dot(ALBEDO, vec3(0.2126, 0.7152, 0.0722)), 1.0 / 2.2);','\t\tfloat tt = t * 1.15 + dots_follow * (0.5 - lu) * 1.2 * 4.0 * t * (1.0 - t);','\t\tlvl = i0 + (1.0 - smoothstep(tt - aa, tt + aa, pp)) * step(0.001, t);','\t} else {','\t\tlvl = i0 + smoothstep(0.5 - step_softness, 0.5 + step_softness + 0.0001, f);','\t}',
+      '\tfloat ramp = clamp(lvl / st, 0.0, 1.0);','\tvec3 sc = ALBEDO * (1.0 - shadow_depth);','\tfloat sl = dot(sc, vec3(0.2126, 0.7152, 0.0722));','\tsc = mix(vec3(sl), sc, 1.0 + shadow_boost * 1.5);','\tsc *= mix(vec3(1.0), shadow_colour * 2.0, tint_amount);',
+      '\tvec3 factor = mix(sc / max(ALBEDO, vec3(0.001)), vec3(1.0), ramp);','\tDIFFUSE_LIGHT += factor * LIGHT_COLOR * ATTENUATION;','\tvec3 h = normalize(LIGHT + VIEW);','\tfloat sp = step(1.0 - highlight * 0.02, dot(NORMAL, h)) * (1.0 - ROUGHNESS * 0.5) * step(0.01, highlight);','\tSPECULAR_LIGHT += sp * 0.8 * LIGHT_COLOR * ATTENUATION;',
+      '\tfloat rim = smoothstep(1.0 - rim_width, 1.0, 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0)) * rim_light * smoothstep(-0.1, 0.5, dot(NORMAL, LIGHT));','\tSPECULAR_LIGHT += rim_colour * rim * LIGHT_COLOR * ATTENUATION;','}');}
+  if(k==='ink'){Lt.push('void light() {','\tfloat l = dot(NORMAL, LIGHT) * 0.5 + 0.5;','\tfloat st = max(shadow_shapes, 1.0);','\tfloat lv = 0.0;','\tfor (int i = 1; i <= 3; i++) {','\t\tif (float(i) > st) break;','\t\tfloat th = float(i) / (st + 1.0) * 1.1;','\t\tlv += smoothstep(th - edge_softness, th + edge_softness + 0.0001, l);','\t}',
+      '\tfloat ramp = lv / st;','\tvec3 dark = mix(vec3(1.0), shadow_colour * 2.0, shadow_strength) * mix(1.0, 0.55, shadow_strength);','\tDIFFUSE_LIGHT += mix(dark, vec3(1.0), ramp) * LIGHT_COLOR * ATTENUATION;',
+      '\tfloat rim = smoothstep(1.0 - rim_width, 1.0, 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0)) * rim_light * mix(1.0, smoothstep(-0.3, 0.3, dot(NORMAL, LIGHT)), rim_follows);','\tSPECULAR_LIGHT += rim_colour * rim * LIGHT_COLOR * ATTENUATION;','}');}
   if(k==='retro')F.push('\tfloat bx = float((int(FRAGCOORD.x) & 3) * 4 + (int(FRAGCOORD.y) & 3)) / 16.0;','\tvec3 c = pow(clamp(ALBEDO, 0.0, 1.0), vec3(1.0 / 2.2));','\tc = floor(c * colour_levels + 0.5 + (bx - 0.5) * dither_amount) / colour_levels;','\tALBEDO = pow(clamp(c, 0.0, 1.0), vec3(2.2)) * brightness;','\tROUGHNESS = 1.0;','\tMETALLIC = 0.0;','\tFOG = vec4(fog_colour, clamp(1.0 - exp(-length(VERTEX) * fog_amount * 0.35), 0.0, 1.0));');
+  /* ---- (0.94.1) hologram, glass, fur, iridescent, car paint, cloth, wax ---- */
+  if(k==='hologram'){RM.push('unshaded','cull_disabled','depth_draw_never');U.push('varying vec3 wpos;');V.push('void vertex() {','\twpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;','}');
+    F.length=0;F.push('void fragment() {','\tvec2 uv = UV * uv_scale + uv_offset;','\tvec3 alb = texture(albedo_tex, uv).rgb * tint;','\tfloat t = TIME;','\tfloat nv = clamp(abs(dot(NORMAL, VIEW)), 0.0, 1.0);',
+      '\tfloat ln = smoothstep(0.35, 0.65, sin((wpos.y * scan_lines - t * scan_speed * 3.0) * 1.5708) * 0.5 + 0.5);',
+      '\tfloat fl = max(1.0 - flicker * (0.35 * fract(sin(floor(t * 24.0) * 127.1 + 311.7) * 43758.5453) + 0.15 * sin(t * 60.0)), 0.0);',
+      '\tfloat edge = pow(1.0 - nv, 2.5) * edge_glow * (1.0 + edge_pulse * 0.6 * sin(t * 3.0));','\tfloat body = body_glow * (0.35 + 0.65 * dot(alb, vec3(0.3333)));',
+      '\tfloat sw = exp(-pow((fract(wpos.y * 0.35 - t * 0.25) - 0.5) * 7.0, 2.0)) * sweep;',
+      '\tfloat gl = step(0.965 - glitch * 0.06, fract(sin(floor(wpos.y * 18.0) * 127.1 + floor(t * 7.0) * 311.7) * 43758.5453)) * glitch;','\tln = clamp(ln + gl * 0.8, 0.0, 1.0);',
+      '\tvec3 c = holo_colour * (edge + ln * 0.55 + body * (0.4 + 0.6 * ln) + sw * 0.9 + gl * 1.2) * fl * 2.0 + texture(emission_tex, uv).rgb * 2.0;',
+      '\tALBEDO = c;','\tALPHA = clamp(see_through * (0.15 + 0.5 * ln + 0.9 * edge + body * 0.6 + sw * 0.5 + gl * 0.6), 0.0, 1.0) * fl;');}
+  if(k==='glass'){RM.push('cull_disabled');U.push('uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;');
+    F.length=0;F.push('void fragment() {','\tvec2 uv = UV * uv_scale + uv_offset;','\tvec3 alb = texture(albedo_tex, uv).rgb * tint;','\tfloat nv = max(dot(NORMAL, VIEW), 0.001);',
+      '\tvec3 tn = texture(normal_tex, uv).rgb * 2.0 - 1.0;','\tvec3 nm = normalize(NORMAL + vec3(tn.xy, 0.0) * normal_strength);',
+      '\tvec2 off = nm.xy * bending * 0.08 * (1.0 + thickness * 0.3);','\tfloat lod = frost * 5.0;',
+      '\tvec3 refr = vec3(textureLod(screen_tex, SCREEN_UV + off * (1.0 + split_amount * 0.25), lod).r, textureLod(screen_tex, SCREEN_UV + off, lod).g, textureLod(screen_tex, SCREEN_UV + off * (1.0 - split_amount * 0.25), lod).b);',
+      '\tvec3 ab = exp(-(vec3(1.0) - glass_colour) * thickness * 1.6 / nv) * mix(vec3(1.0), alb, 0.85);',
+      '\tALBEDO = vec3(0.0);','\tEMISSION = refr * ab * (1.0 - cloudiness) + glass_colour * cloudiness * 0.6 + texture(emission_tex, uv).rgb * 2.0;',
+      '\tROUGHNESS = clamp(frost * 0.6 + 0.02, 0.0, 1.0);','\tMETALLIC = 0.0;','\tSPECULAR = clamp(0.5 * edge_reflect, 0.0, 1.0);','\tNORMAL_MAP = texture(normal_tex, uv).rgb;','\tNORMAL_MAP_DEPTH = normal_strength;','\tALPHA = 1.0;');}
+  if(k==='fur'){RM.push('cull_disabled');U.push('uniform float shell_k = 0.0;');
+    V.push('void vertex() {','\tfloat k = shell_k;','\tvec3 wd = vec3(wind * 0.054 * k * k, -droop * 0.09 * k * k, wind * 0.0225 * k * k);','\tVERTEX += NORMAL * fur_length * 0.09 * k + wd * (0.45 + 0.55 * sin(dot(VERTEX, vec3(3.1, 1.7, 2.3)) + TIME * wind_speed * 2.0));','}');
+    F.length=0;F.push('void fragment() {','\tvec2 uv = UV * uv_scale + uv_offset;','\tvec3 alb = texture(albedo_tex, uv).rgb * tint;','\tfloat k = shell_k;','\tvec2 gp = uv * strands;','\tvec2 cell = floor(gp);','\tvec2 fq = fract(gp) - 0.5;',
+      '\tvec2 cc = floor(gp / (1.0 + clumping * 3.0));','\tfq += (vec2(fract(sin(dot(cc, vec2(127.1, 311.7))) * 43758.5453), fract(sin(dot(cc + 7.3, vec2(127.1, 311.7))) * 43758.5453)) - 0.5) * clumping * k * 0.9;',
+      '\tfloat len = 0.6 + 0.4 * fract(sin(dot(cell + 3.1, vec2(127.1, 311.7))) * 43758.5453);','\tfloat keep = 1.0;','\tif (k > 0.0 && (k > len || length(fq) * 2.0 > strand_width * (1.0 - k * 0.85))) keep = 0.0;',
+      '\tvec3 root = alb * (1.0 - dark_roots * 0.85);','\tvec3 tip = mix(alb, tip_colour, tip_amount);','\tALBEDO = mix(root, tip, k) * mix(1.0 - dark_roots * 0.6, 1.0, k);','\tROUGHNESS = 0.85;','\tMETALLIC = 0.0;','\tSPECULAR = 0.25;','\tRIM = 0.2 * k;','\tRIM_TINT = 0.5;',
+      '\tALPHA = keep;','\tALPHA_SCISSOR_THRESHOLD = 0.5;');}
+  if(k==='iridescent')F.push('\tfloat nvi = clamp(dot(NORMAL, VIEW), 0.0, 1.0);','\tfloat ti = iri_shift + iri_range * (0.3 + iri_angle * (1.0 - nvi));','\tvec3 film = 0.5 + 0.5 * cos(6.2832 * (vec3(ti) + vec3(0.0, 0.33, 0.67)));','\tALBEDO = mix(ALBEDO, mix(film, vec3(1.0), 0.15), iri_strength * 0.85);','\tMETALLIC = mix(METALLIC, 1.0, 0.6 * iri_strength);');
+  if(k==='car')F.push('\tCLEARCOAT = coat;','\tCLEARCOAT_ROUGHNESS = max(coat_roughness, 0.02);',
+      '\t// flakes: tiny mirrors at their own angles, in cells of the model; they glint when the light and your eye line up',
+      '\tvec3 q = mat3(vec3(0.36, 0.48, -0.8), vec3(-0.8, 0.6, 0.0), vec3(0.48, 0.64, 0.6)) * lpos * flake_size * 0.85;','\tvec3 ci = floor(q);','\tvec3 fr = fract(q) - 0.5;','\tfloat fw = length(fwidth(q));',
+      '\tfloat h1 = fract(sin(dot(ci, vec3(127.1, 311.7, 74.7))) * 43758.5453);','\tfloat h2 = fract(sin(dot(ci + 17.1, vec3(127.1, 311.7, 74.7))) * 43758.5453);','\tfloat h3 = fract(sin(dot(ci + 43.7, vec3(127.1, 311.7, 74.7))) * 43758.5453);','\tfloat h4 = fract(sin(dot(ci + 91.3, vec3(127.1, 311.7, 74.7))) * 43758.5453);',
+      '\tfloat rad = 0.22 + 0.28 * h4;','\tfloat fm = step(h1, flake_amount * 0.8) * smoothstep(rad, rad * 0.55, length(fr)) * (1.0 - smoothstep(0.5, 1.0, fw));',
+      '\tvec3 np = normalize(vec3((h2 - 0.5) * 1.6, (h3 - 0.5) * 1.6, 1.0));','\tvec3 nt = texture(normal_tex, uv).rgb * 2.0 - 1.0;','\tNORMAL_MAP = normalize(mix(nt, normalize(nt + vec3(np.xy, 0.0) * 1.5), fm * flake_sparkle)) * 0.5 + 0.5;',
+      '\tROUGHNESS = mix(ROUGHNESS, 0.12, fm);','\tMETALLIC = mix(METALLIC, 1.0, fm);','\tALBEDO = mix(ALBEDO, mix(flake_colour, ALBEDO, 0.2) * (0.6 + 0.8 * h4), fm * 0.7);');
+  if(k==='cloth')F.push('\tfloat wv = mix(1.0, 0.55 + 0.45 * sin(uv.x * 200.0) * sin(uv.y * 200.0), weave);','\tALBEDO *= wv;','\tfloat frc = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.5);','\tEMISSION += cloth_colour * cloth_sheen * frc * mix(1.0, 0.5, softness) * 0.5;','\tROUGHNESS = max(ROUGHNESS, mix(0.3, 0.7, softness));','\tANISOTROPY = satin_streak;','\tANISOTROPY_FLOW = vec2(cos(fibre_turns * TAU), sin(fibre_turns * TAU));','\tRIM = cloth_sheen * 0.3;','\tRIM_TINT = 0.6;');
+  if(k==='wax')F.push('\tROUGHNESS = mix(ROUGHNESS, max(ROUGHNESS, 0.5), wax_softness);','\tBACKLIGHT = glow_colour * glow * 0.6;','\tSSS_STRENGTH = clamp(glow * 0.4, 0.0, 1.0);','\tSSS_TRANSMITTANCE_COLOR = vec4(glow_colour, 1.0);','\tSSS_TRANSMITTANCE_DEPTH = travel * 0.2 + wax_thickness * 0.05;');
+  if(k==='car'){U.push('varying vec3 lpos;');V.push('void vertex() {','\tlpos = VERTEX;','}');}
   F.push('}');
   const head=['// gouache-master '+ESH_MASTER_VER,'// Gouache Studio · '+eshLook(k)+' look for Godot 4 (shared: every material of this look uses this one file)','// A close match to the 3D view’s shader: Godot lights it its own way, so it will not be identical.','shader_type spatial;'];
   if(RM.length)head.push('render_mode '+RM.join(', ')+';');
   return [...head,'',...U,'',...V,...(V.length?['']:[]),...F,...(Lt.length?['']:[]),...Lt,''].join('\n');}
 /* the shared outline shader (the back faces pushed out); each material that has an outline sets its colour and width */
 function eshGodotOutline(){return ['// Gouache Studio · outline for Toon and Cel (inverted hull), shared','shader_type spatial;','render_mode cull_front, unshaded;','uniform vec3 outline_colour : source_color = vec3(0.0);','uniform float outline_width = 0.01;','void vertex() {','\tVERTEX += NORMAL * outline_width;','}','void fragment() {','\tALBEDO = outline_colour;','}',''].join('\n');}
+/* the outline of Halftone cel and Ink toon: the width wobbles like a pen line, and the colour is a darker version of the surface colour (or one colour) */
+function eshGodotOutlineInk(){return ['// Gouache Studio · inked outline for Halftone cel and Ink toon (inverted hull), shared','shader_type spatial;','render_mode cull_front, unshaded;','uniform sampler2D albedo_tex : source_color, filter_linear_mipmap, repeat_enable, hint_default_white;','uniform vec3 outline_colour : source_color = vec3(0.0);','uniform float outline_width = 0.01;','uniform float outline_one_colour = 0.0;','uniform float outline_dark = 0.3;','uniform float wobble = 0.0;',
+  'void vertex() {','\tfloat w = outline_width * (1.0 + wobble * 0.7 * (sin(dot(VERTEX, vec3(37.0, 23.0, 29.0))) * 0.5 + sin(dot(VERTEX, vec3(17.0, 41.0, 31.0))) * 0.5));','\tVERTEX += NORMAL * w;','}',
+  'void fragment() {','\tvec3 c = texture(albedo_tex, UV).rgb * pow(outline_dark, 2.2);','\tc = mix(vec3(dot(c, vec3(0.3333))), c, 1.25);','\tALBEDO = mix(c, outline_colour, outline_one_colour);','}',''].join('\n');}
 /* the .tres of a ShaderMaterial: its shared shader, this set's textures and settings */
 function eshGodotMaterial(shaderPath,texs,params,nextPass){const ext=[],set=[];let id=1;const add=(type,path)=>{ext.push('[ext_resource type="'+type+'" path="'+path+'" id="'+id+'"]');return id++;};
   const s=add('Shader',shaderPath);for(const [param,path] of texs){const t=add('Texture2D',path);set.push('shader_parameter/'+param+' = ExtResource("'+t+'")');}
@@ -76,9 +138,68 @@ function eshGodotMaterial(shaderPath,texs,params,nextPass){const ext=[],set=[];l
   return ['[gd_resource type="ShaderMaterial" load_steps='+(ext.length+1)+' format=3]','',...ext,'','[resource]','shader = ExtResource("'+s+'")',...set,...(np?['next_pass = ExtResource("'+np+'")']:[]),''].join('\n');}
 
 /* ---------------- Unity (URP) ---------------- */
+const ESH_FUR_HLSL=`
+            half4 FurShade(float3 posWS, float3 nWS, float2 uv, float k)
+            {
+                float dens = _ShP.y;
+                float2 gp = uv * dens, cell = floor(gp), fq = frac(gp) - 0.5;
+                float2 cc = floor(gp / (1.0 + _ShP.z * 3.0));
+                fq += (float2(Hash21(cc), Hash21(cc + 7.3)) - 0.5) * _ShP.z * k * 0.9;
+                float len = 0.6 + 0.4 * Hash21(cell + 3.1);
+                if (k > 0.0 && (k > len || length(fq) * 2.0 > _ShQ.z * (1.0 - k * 0.85))) return half4(0, 0, 0, -1);
+                half3 alb = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, uv).rgb * _BaseColor.rgb;
+                half3 root = alb * (1.0 - _ShQ.y * 0.85), tip = lerp(alb, _ShC.rgb, _ShQ.w), c0 = lerp(root, tip, k);
+                float occ = lerp(1.0 - _ShQ.y * 0.6, 1.0, k);
+                float3 nf = normalize(nWS);
+                Light ml = GetMainLight();
+                float wl = max((dot(nf, ml.direction) + 0.5) / 1.5, 0.0);
+                half3 col = c0 * ml.color * wl + c0 * SampleSH(nf) * occ;
+                float3 vf = GetWorldSpaceNormalizeViewDir(posWS);
+                col += _ShC.rgb * 0.12 * pow(1.0 - saturate(dot(nf, vf)), 3.0) * k;
+                return half4(col, 1);
+            }
+`;
+/* the fur shells: the same pass again and again, each a little further out (a pass can't loop, and only draws when the material's look is Fur) */
+function eshFurPasses(n){let t='';for(let i=1;i<=n;i++){const k=eshF(i/n);t+=`
+        Pass
+        {
+            Name "Fur${i}"
+            Tags { "LightMode"="SRPDefaultUnlit" }
+            Cull Off
+            HLSLPROGRAM
+            #pragma vertex FVert
+            #pragma fragment FFrag
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #define FUR_K ${k}
+            struct FAttr { float4 pos : POSITION; float3 nrm : NORMAL; float2 uv : TEXCOORD0; };
+            struct FVary { float4 posCS : SV_POSITION; float2 uv : TEXCOORD0; float3 posWS : TEXCOORD1; float3 nWS : TEXCOORD2; };
+${ESH_FUR_HLSL}
+            FVary FVert(FAttr i)
+            {
+                FVary o;
+                bool on = _Kind > 10.5 && _Kind < 11.5;
+                float k = FUR_K;
+                float3 wd = float3(_ShP.w * 0.054 * k * k, -_Skin.x * 0.09 * k * k, _ShP.w * 0.0225 * k * k);
+                float3 p = i.pos.xyz + i.nrm * _ShP.x * 0.09 * k + wd * (0.45 + 0.55 * sin(dot(i.pos.xyz, float3(3.1, 1.7, 2.3)) + _Time.y * _ShQ.x * 2.0));
+                VertexPositionInputs vp = GetVertexPositionInputs(p);
+                o.posCS = on ? vp.positionCS : float4(0, 0, 0, 0);
+                o.posWS = vp.positionWS;
+                o.nWS = TransformObjectToWorldNormal(i.nrm);
+                o.uv = TRANSFORM_TEX(i.uv, _BaseMap);
+                return o;
+            }
+            half4 FFrag(FVary i) : SV_Target
+            {
+                half4 c = FurShade(i.posWS, i.nWS, i.uv, FUR_K);
+                if (c.a < 0) discard;
+                return c;
+            }
+            ENDHLSL
+        }
+`;}return t;}
 const ESH_UNITY_SHADER=`// gouache-master ${ESH_MASTER_VER}
 // Gouache Studio — one shader for every look of the 3D view (Universal Render Pipeline).
-// _Kind: 0 Standard, 1 Skin, 2 Brushed metal, 3 Velvet, 4 Toon, 5 Cel, 6 Spec/Gloss, 7 Panner, 8 Retro.
+// _Kind: 0 Standard, 1 Skin, 2 Brushed metal, 3 Velvet, 4 Toon, 5 Cel, 6 Spec/Gloss, 7 Panner, 8 Retro, 9 Hologram, 10 Glass, 11 Fur, 12 Iridescent, 13 Car paint, 14 Cloth sheen, 15 Wax, 16 Halftone cel, 17 Ink toon.
 // A close match to the viewer: Unity lights it its own way, so it will not be identical.
 Shader "Gouache/Shaded"
 {
@@ -125,6 +246,8 @@ Shader "Gouache/Shaded"
             float _HasOrm, _HasNormal, _HasEmis, _Roughness, _Metallic, _Kind, _OutW, _Cutoff, _UseAlpha, _RoughScale, _MetalScale, _NormalScale;
             float4 _ShP, _ShQ, _ShC, _ShD, _Skin, _Pan;
         CBUFFER_END
+        float Hash21(float2 p) { return frac(sin(dot(p, float2(127.1, 311.7))) * 43758.5453); }
+        float Hash31(float3 p) { return frac(sin(dot(p, float3(127.1, 311.7, 74.7))) * 43758.5453); }
         ENDHLSL
 
         Pass
@@ -151,7 +274,7 @@ Shader "Gouache/Shaded"
                 VertexPositionInputs vp = GetVertexPositionInputs(i.pos.xyz);
                 VertexNormalInputs vn = GetVertexNormalInputs(i.nrm, i.tan);
                 o.posCS = vp.positionCS;
-                if (_Kind > 7.5 && _ShP.w > 0.5) { o.posCS.xy = floor(o.posCS.xy / o.posCS.w * _ShP.w + 0.5) / _ShP.w * o.posCS.w; }
+                if (_Kind > 7.5 && _Kind < 8.5 && _ShP.w > 0.5) { o.posCS.xy = floor(o.posCS.xy / o.posCS.w * _ShP.w + 0.5) / _ShP.w * o.posCS.w; }
                 o.posWS = vp.positionWS;
                 o.nWS = vn.normalWS;
                 o.tWS = float4(vn.tangentWS, i.tan.w * GetOddNegativeScale());
@@ -161,10 +284,11 @@ Shader "Gouache/Shaded"
 
             float Bayer4(float2 p) { int x = (int)p.x & 3, y = (int)p.y & 3; return (x * 4 + y) / 16.0; }
 
+${ESH_FUR_HLSL}
             half4 Frag(Vary i) : SV_Target
             {
                 float2 uv = i.uv;
-                bool retro = _Kind > 7.5;
+                bool retro = _Kind > 7.5 && _Kind < 8.5;
                 if (_Kind > 6.5 && _Kind < 7.5) uv += _Time.y * _Pan.xy;
                 if (retro) { float R = max(_ShP.x, 1.0); uv = (floor(uv * R) + 0.5) / R; }
 
@@ -185,7 +309,89 @@ Shader "Gouache/Shaded"
                 half3 bakedGI = SampleSH(N);
                 half alpha = _UseAlpha > 0.5 ? b.a * _BaseColor.a : 1;
 
+                float tm = _Time.y;
+                // ---- Hologram ----
+                if (_Kind > 8.5 && _Kind < 9.5)
+                {
+                    float nvh = saturate(abs(dot(N, V)));
+                    float ln = smoothstep(0.35, 0.65, sin((i.posWS.y * _ShP.x - tm * _ShQ.x * 3.0) * 1.5708) * 0.5 + 0.5);
+                    float fl = max(1.0 - _ShP.y * (0.35 * Hash21(float2(floor(tm * 24.0), 1.0)) + 0.15 * sin(tm * 60.0)), 0.0);
+                    float edge = pow(1.0 - nvh, 2.5) * _ShP.z * (1.0 + _ShQ.w * 0.6 * sin(tm * 3.0));
+                    float body = _ShQ.y * (0.35 + 0.65 * dot(alb, 0.3333));
+                    float sw = exp(-pow((frac(i.posWS.y * 0.35 - tm * 0.25) - 0.5) * 7.0, 2.0)) * _Pan.x;
+                    float gl = step(0.965 - _ShQ.z * 0.06, Hash21(float2(floor(i.posWS.y * 18.0), floor(tm * 7.0)))) * _ShQ.z;
+                    ln = saturate(ln + gl * 0.8);
+                    half3 hc = _ShC.rgb * (edge + ln * 0.55 + body * (0.4 + 0.6 * ln) + sw * 0.9 + gl * 1.2) * fl * 2.0 + emis * 2.0;
+                    float hal = saturate(_ShP.w * (0.15 + 0.5 * ln + 0.9 * edge + body * 0.6 + sw * 0.5 + gl * 0.6)) * fl;
+                    return half4(hc, hal);
+                }
+                // ---- Glass: bends the reflection probe, tint, frost ----
+                if (_Kind > 9.5 && _Kind < 10.5)
+                {
+                    float rf = saturate(_ShP.y);
+                    float fr = saturate((0.04 + 0.96 * pow(1.0 - NdV, 5.0)) * _ShP.w);
+                    float eta = 1.0 / (1.0 + 0.6 * _ShP.x), d2 = _ShQ.y * 0.05;
+                    float3 rr = reflect(-V, N);
+                    float3 dr = refract(-V, N, eta + d2), dg = refract(-V, N, eta), db = refract(-V, N, eta - d2);
+                    if (dot(dr, dr) < 0.5) dr = rr;
+                    if (dot(dg, dg) < 0.5) dg = rr;
+                    if (dot(db, db) < 0.5) db = rr;
+                    half3 te = half3(GlossyEnvironmentReflection(dr, rf, 1.0).r, GlossyEnvironmentReflection(dg, rf, 1.0).g, GlossyEnvironmentReflection(db, rf, 1.0).b);
+                    half3 re = GlossyEnvironmentReflection(rr, rf * 0.6, 1.0) * fr;
+                    half3 ab = exp(-(1.0 - _ShC.rgb) * _ShP.z * 1.6 / max(NdV, 0.001)) * lerp(1.0, alb, 0.85);
+                    float3 Hg = normalize(ml.direction + V);
+                    float spg = pow(saturate(dot(N, Hg)), lerp(500.0, 40.0, rf)) * (1.0 - rf * 0.7) * (2.0 / 3.0);
+                    half3 gc = te * ab * (1.0 - fr) + re + ml.color * spg + emis * 2.0;
+                    return half4(gc, saturate(_ShQ.x + fr + spg + rf * 0.5));
+                }
+                // ---- Fur: the skin under the strands (the shells are further passes) ----
+                if (_Kind > 10.5 && _Kind < 11.5) return FurShade(i.posWS, i.nWS, uv, 0.0);
+
+                // ---- Halftone cel: flat steps, comic dots where light fades, warm shadows, rim ----
+                if (_Kind > 15.5 && _Kind < 16.5)
+                {
+                    float l = dot(N, ml.direction) * 0.5 + 0.5;
+                    float st = max(_ShP.x, 1.0), x = l * st, i0 = floor(x), f = x - i0, lvl;
+                    if (_ShP.z > 0.01)
+                    {
+                        float w = _ShP.z * 0.5, t = saturate((f - 0.5) / (w * 2.0 + 1e-3) + 0.5);
+                        float2 c2 = float2(uv.x + uv.y, uv.x - uv.y) * _ShP.w;
+                        float pp = length(frac(c2) - 0.5) * 1.4142, aa = fwidth(pp) + 1e-3;
+                        float lu = pow(dot(alb, float3(0.2126, 0.7152, 0.0722)), 1.0 / 2.2);
+                        float tt = t * 1.15 + _Pan.y * (0.5 - lu) * 1.2 * 4.0 * t * (1.0 - t);
+                        lvl = i0 + (1.0 - smoothstep(tt - aa, tt + aa, pp)) * step(0.001, t);
+                    }
+                    else lvl = i0 + smoothstep(0.5 - _ShP.y, 0.5 + _ShP.y + 1e-4, f);
+                    float ramp = saturate(lvl / st);
+                    float3 sh = alb * (1.0 - _ShQ.y);
+                    sh = lerp(dot(sh, float3(0.2126, 0.7152, 0.0722)).xxx, sh, 1.0 + _ShQ.z * 1.5);
+                    sh *= lerp(1.0, _ShC.rgb * 2.0, _ShQ.w);
+                    float3 hc = lerp(sh, alb, ramp);
+                    float3 H = normalize(ml.direction + V);
+                    float sp = step(1.0 - _Skin.z * 0.02, saturate(dot(N, H))) * (1.0 - rough * 0.5) * step(0.01, _Skin.z);
+                    hc = lerp(hc, 1.0, sp * 0.8);
+                    float rim = smoothstep(1.0 - _Skin.y, 1.0, 1.0 - NdV) * _Skin.x * smoothstep(-0.1, 0.5, dot(N, ml.direction));
+                    hc += _ShD.rgb * rim;
+                    half3 col = hc * ml.color * ml.shadowAttenuation * 0.75 + hc * bakedGI * 0.35 * ao + emis * 2.0;
+                    return half4(col, alpha);
+                }
+                // ---- Ink toon: hard shadow shapes in a cool colour, a coloured rim ----
+                if (_Kind > 16.5 && _Kind < 17.5)
+                {
+                    float l = dot(N, ml.direction) * 0.5 + 0.5;
+                    float st = max(_ShP.x, 1.0), lv = 0.0;
+                    for (int k = 1; k <= 3; k++) { if ((float)k > st) break; float th = (float)k / (st + 1.0) * 1.1; lv += smoothstep(th - _ShP.y, th + _ShP.y + 1e-4, l); }
+                    float ramp = lv / st;
+                    float3 dark = alb * lerp(1.0, _ShC.rgb * 2.0, _Pan.z) * lerp(1.0, 0.55, _Pan.z);
+                    float3 ic = lerp(dark, alb, ramp);
+                    float rim = smoothstep(1.0 - _ShP.z, 1.0, 1.0 - NdV) * _Pan.w * lerp(1.0, smoothstep(-0.3, 0.3, dot(N, ml.direction)), _ShP.w);
+                    ic += _ShD.rgb * rim;
+                    half3 col = ic * ml.color * ml.shadowAttenuation * 0.75 + ic * bakedGI * 0.35 * ao + emis * 2.0;
+                    return half4(col, alpha);
+                }
+
                 // ---- Toon and Cel: flat bands, highlight, rim ----
+
                 if (_Kind > 3.5 && _Kind < 5.5)
                 {
                     float l = dot(N, ml.direction) * 0.5 + 0.5, band;
@@ -224,7 +430,17 @@ Shader "Gouache/Shaded"
                 }
                 if (_Kind > 0.5 && _Kind < 1.5) rough = lerp(rough, _Skin.x, 0.75);   // skin: softer surface
 
+                if (_Kind > 14.5 && _Kind < 15.5) rough = lerp(rough, max(rough, 0.5), _ShP.z);   // wax: softer surface
+                if (_Kind > 11.5 && _Kind < 12.5)
+                {
+                    // iridescent: a film whose colour follows the viewing angle
+                    float tt = _ShP.y + _ShP.z * (0.3 + _ShP.w * (1.0 - NdV));
+                    float3 film = 0.5 + 0.5 * cos(6.2832 * (tt + float3(0.0, 0.33, 0.67)));
+                    alb = lerp(alb, lerp(film, 1.0, 0.15), _ShP.x * 0.85);
+                    metal = lerp(metal, 1.0, 0.6 * _ShP.x);
+                }
                 InputData inp = (InputData)0;
+
                 inp.positionWS = i.posWS; inp.normalWS = N; inp.viewDirectionWS = V;
                 inp.shadowCoord = sc; inp.bakedGI = bakedGI;
                 inp.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(i.posCS);
@@ -246,12 +462,61 @@ Shader "Gouache/Shaded"
                     float back = max(dot(-N, ml.direction), 0.0);
                     c.rgb += alb * _ShC.rgb * back * _Skin.z * _ShP.y * ml.color * ml.shadowAttenuation * 0.5;
                 }
+                // ---- Car paint: a clear coat over the paint, and flakes ----
+                if (_Kind > 12.5 && _Kind < 13.5)
+                {
+                    float cr = max(_ShQ.x, 0.02);
+                    float3 Nc = normalize(i.nWS + _ShQ.y * 0.04 * float3(sin(i.posWS.x * 90 + i.posWS.y * 37), sin(i.posWS.y * 83 + i.posWS.z * 51), sin(i.posWS.z * 77 + i.posWS.x * 29)));
+                    float3 Hc = normalize(ml.direction + V);
+                    float ne = clamp(2.0 / (cr * cr + 1e-4) - 2.0, 4.0, 5000.0);
+                    float spc = pow(saturate(dot(Nc, Hc)), ne) * (ne + 2.0) * 0.04 * saturate(dot(Nc, ml.direction));
+                    c.rgb += ml.color * ml.shadowAttenuation * spc * _ShP.z;
+                    c.rgb += GlossyEnvironmentReflection(reflect(-V, Nc), cr, 1.0) * (0.04 + 0.96 * pow(1.0 - NdV, 5.0)) * _ShP.z;
+                    float3 po = mul(GetWorldToObjectMatrix(), float4(i.posWS, 1)).xyz;
+                    float3x3 R = float3x3(0.36, -0.8, 0.48, 0.48, 0.6, 0.64, -0.8, 0.0, 0.6);
+                    float3 q = mul(R, po) * _ShP.y * 0.85, ci = floor(q), fr = frac(q) - 0.5;
+                    float fw = length(fwidth(q));
+                    float h1 = Hash31(ci), h2 = Hash31(ci + 17.1), h3 = Hash31(ci + 43.7), h4 = Hash31(ci + 91.3);
+                    float rad = 0.22 + 0.28 * h4, fm = step(h1, _ShP.x * 0.8) * smoothstep(rad, rad * 0.55, length(fr));
+                    float3 nf = normalize(N + (float3(h2, h3, Hash31(ci + 5.5)) - 0.5) * 1.6);
+                    float3 fcol = lerp(_ShC.rgb, alb, 0.2) * (0.6 + 0.8 * h4);
+                    float nh = saturate(dot(nf, Hc));
+                    float3 fsp = fcol * ((pow(nh, 70.0) * 12.0 + pow(nh, 10.0) * 1.4) * ml.color * ml.shadowAttenuation + GlossyEnvironmentReflection(reflect(-V, nf), 0.15, 1.0) * 0.5);
+                    float fade = smoothstep(0.5, 1.0, fw);
+                    c.rgb += _ShP.w * lerp(fm * fsp, fcol * _ShP.x * 0.1, fade);
+                    c.rgb *= 1.0 + fm * (h3 - 0.5) * 0.15 * (1.0 - fade);
+                }
+                // ---- Cloth sheen: a soft sheen, or fibres that streak it ----
+                if (_Kind > 13.5 && _Kind < 14.5)
+                {
+                    float3 Hh = normalize(ml.direction + V);
+                    float nh = saturate(dot(N, Hh)), nl = saturate(dot(N, ml.direction));
+                    float sr = max(_ShP.y, 0.05), sn = sqrt(max(1.0 - nh * nh, 0.0));
+                    float Dc = (2.0 + 1.0 / sr) * pow(sn, 1.0 / sr) / 6.2832;
+                    float an = _ShP.z * 6.2831853;
+                    float3 Tf = normalize(T * cos(an) + B * sin(an)); Tf = normalize(Tf - N * dot(N, Tf));
+                    float th = dot(Tf, Hh);
+                    float Da = pow(sqrt(max(1.0 - th * th, 0.0)), lerp(10.0, 160.0, 1.0 - _ShP.y)) * 0.6;
+                    float wv = lerp(1.0, 0.55 + 0.45 * sin(uv.x * 200.0) * sin(uv.y * 200.0), _ShQ.x);
+                    c.rgb += _ShC.rgb * _ShP.x * lerp(Dc, Da, _ShP.w) * wv * nl * ml.color * ml.shadowAttenuation / max(4.0 * (nl + NdV - nl * NdV), 1e-3);
+                    c.rgb += _ShC.rgb * _ShP.x * bakedGI * pow(1.0 - NdV, 2.5) * 0.8;
+                }
+                // ---- Wax / marble: light wrapping round and shining through ----
+                if (_Kind > 14.5 && _Kind < 15.5)
+                {
+                    float w = 0.3 + 0.7 * _ShP.y;
+                    float wr = max((dot(i.nWS, ml.direction) + w) / (1.0 + w), 0.0);
+                    float bk = max(dot(-i.nWS, ml.direction), 0.0) * exp(-_ShP.w * (3.0 - 2.0 * _ShP.y));
+                    c.rgb += _ShC.rgb * alb * _ShP.x * (wr * 0.5 + bk) * ml.color * ml.shadowAttenuation;
+                    c.rgb += (SampleSH(-i.nWS) * exp(-_ShP.w * (3.0 - 2.0 * _ShP.y)) * 0.25 + bakedGI * 0.1) * _ShC.rgb * alb * _ShP.x;
+                }
                 return c;
             }
             ENDHLSL
         }
 
-        // the outline of Toon and Cel: the back faces, pushed out along the normals
+        // the outline of Toon, Cel, Halftone cel and Ink toon
+: the back faces, pushed out along the normals
         Pass
         {
             Name "Outline"
@@ -260,20 +525,33 @@ Shader "Gouache/Shaded"
             HLSLPROGRAM
             #pragma vertex OVert
             #pragma fragment OFrag
-            struct OAttr { float4 pos : POSITION; float3 nrm : NORMAL; };
-            struct OVary { float4 posCS : SV_POSITION; };
+            struct OAttr { float4 pos : POSITION; float3 nrm : NORMAL; float2 uv : TEXCOORD0; };
+            struct OVary { float4 posCS : SV_POSITION; float2 uv : TEXCOORD0; };
             OVary OVert(OAttr i)
             {
                 OVary o;
-                bool on = (_Kind > 3.5 && _Kind < 5.5) && _OutW > 0;
-                float3 p = i.pos.xyz + i.nrm * (on ? _OutW : 0);
+                bool on = ((_Kind > 3.5 && _Kind < 5.5) || _Kind > 15.5) && _OutW > 0;
+                float wob = (_Kind > 16.5) ? 1.0 + _ShQ.y * 0.7 * (sin(dot(i.pos.xyz, float3(37, 23, 29))) * 0.5 + sin(dot(i.pos.xyz, float3(17, 41, 31))) * 0.5) : 1.0;
+                float3 p = i.pos.xyz + i.nrm * (on ? _OutW * wob : 0);
                 o.posCS = on ? TransformObjectToHClip(p) : float4(0, 0, 0, 0);
+                o.uv = TRANSFORM_TEX(i.uv, _BaseMap);
                 return o;
             }
-            half4 OFrag(OVary i) : SV_Target { return half4(_ShD.rgb, 1); }
+            half4 OFrag(OVary i) : SV_Target
+            {
+                if (_Kind < 15.5) return half4(_ShD.rgb, 1);
+                // Halftone cel and Ink toon: a darker version of the surface colour, or one picked colour
+                half3 b = SAMPLE_TEXTURE2D_LOD(_BaseMap, sampler_BaseMap, i.uv, 0).rgb * _BaseColor.rgb;
+                float dk = _Kind > 16.5 ? _ShQ.w : 0.3;
+                half3 c = b * pow(dk, 2.2);
+                c = lerp(dot(c, 0.3333).xxx, c, 1.25);
+                if (_Kind > 16.5 && _ShQ.z > 0.5) c = pow(max(_Skin.rgb, 0), 2.2);
+                return half4(c, 1);
+            }
             ENDHLSL
         }
 
+${eshFurPasses(ESH_FUR_SHELLS)}
         UsePass "Universal Render Pipeline/Lit/ShadowCaster"
         UsePass "Universal Render Pipeline/Lit/DepthOnly"
     }
@@ -463,7 +741,7 @@ function eshUnityMaterial(name,sh,texGuids,flags,width,shaderGuid){const u=shade
   const te=tex.map(([n,g])=>'    - '+n+':\n        m_Texture: {fileID: 2800000, guid: '+g+', type: 3}\n        m_Scale: {x: 1, y: 1}\n        m_Offset: {x: 0, y: 0}').join('\n');
   const shp=u.uShP.slice(),shq=u.uShQ.slice(),skin=u.uSkin.slice();if(k==='retro')shp[3]=u.uSnap||0;
   const floats=[['_Kind',kk],['_HasOrm',texGuids.orm?1:0],['_HasNormal',texGuids.normal?1:0],['_HasEmis',texGuids.emis?1:0],['_OutW',width||0],['_UseAlpha',flags.alpha?1:0],['_SrcBlend',flags.alpha?5:1],['_DstBlend',flags.alpha?10:0],['_ZWrite',flags.alpha?0:1],['_Cutoff',.5],['_Roughness',.6],['_Metallic',0],['_RoughScale',1],['_MetalScale',1],['_NormalScale',1]];
-  const colors=[['_BaseColor',[1,1,1,1]],['_ShP',shp],['_ShQ',shq],['_ShC',[...(u.uShC||[1,1,1]),1]],['_ShD',[...(u.uShD||[0,0,0]),1]],['_Skin',skin],['_Pan',k==='panner'?[P.sx,P.sy,0,0]:[0,0,0,0]]];
+  const colors=[['_BaseColor',[1,1,1,1]],['_ShP',shp],['_ShQ',shq],['_ShC',[...(u.uShC||[1,1,1]),1]],['_ShD',[...(u.uShD||[0,0,0]),1]],['_Skin',skin],['_Pan',k==='panner'?[P.sx,P.sy,0,0]:k==='hologram'?[P.sweep,0,0,0]:k==='halfcel'?[0,P.follow||0,0,0]:k==='ink'?[0,0,P.shadow,P.rim]:[0,0,0,0]]];
   return ['%YAML 1.1','%TAG !u! tag:unity3d.com,2011:','--- !u!21 &2100000','Material:','  serializedVersion: 8','  m_ObjectHideFlags: 0','  m_CorrespondingSourceObject: {fileID: 0}','  m_PrefabInstance: {fileID: 0}','  m_PrefabAsset: {fileID: 0}',
     '  m_Name: '+name,'  m_Shader: {fileID: 4800000, guid: '+(shaderGuid||ESH_SHADER_GUID)+', type: 3}','  m_ValidKeywords: []','  m_InvalidKeywords: []','  m_LightmapFlags: 4','  m_EnableInstancingVariants: 0','  m_DoubleSidedGI: 0','  m_CustomRenderQueue: '+(flags.alpha?3000:-1),'  stringTagMap: {}','  disabledShaderPasses: []',
     '  m_LockedProperties: ','  m_SavedProperties:','    serializedVersion: 3','    m_TexEnvs:',te||'    []','    m_Ints: []','    m_Floats:',floats.map(([n,v])=>'    - '+n+': '+eshF(v)).join('\n'),'    m_Colors:',colors.map(([n,v])=>'    - '+n+': '+eshYV(v)).join('\n'),'  m_BuildTextureStacks: []',''].join('\n');}
@@ -486,6 +764,16 @@ function eshUnrealParams(sh,size,hasOrm){const k=sh.kind,P=shParams(sh),lin=c=>(
   if(k==='skin'){vc.BloodColour=rgba(P.col);sc.ScatterStrength=Math.min(1,P.scatter*P.strength+.2);}
   if(k==='toon'||k==='cel'){vc.ShadowColour=rgba(P.col);sc.Highlight=P.spec;sc.RimLight=P.rim;sc.OutlineWidth=(P.outline||0)*size*0.0014;vc.OutlineColour=rgba(P.ocol||[0,0,0]);
     if(k==='toon'){sc.Bands=P.steps;sc.BandShift=P.offset;}else{sc.ShadowLine=P.thresh;sc.EdgeSoftness=P.soft;}}
+  const ow=(P.outline||0)*size*0.0014;
+  if(k==='hologram'){vc.HoloColour=rgba(P.col);Object.assign(sc,{SeeThrough:P.opacity,EdgeGlow:P.glow,ScanLines:P.lines,ScanSpeed:P.speed,Flicker:P.flicker,Glitch:P.glitch,EdgePulse:P.pulse,Sweep:P.sweep,BodyGlow:P.fill});}
+  if(k==='glass'){vc.GlassColour=rgba(P.col);Object.assign(sc,{Bending:P.refr,Frost:P.frost,Thickness:P.thick,EdgeReflect:P.edge,Cloudiness:P.cloud});}
+  if(k==='fur'){vc.TipColour=rgba(P.col);Object.assign(sc,{TipAmount:P.tipMix,DarkRoots:P.root});}
+  if(k==='iridescent')Object.assign(sc,{IriStrength:P.strength,IriRange:P.range,IriShift:P.shift,IriAngle:P.angle});
+  if(k==='car'){vc.FlakeColour=rgba(P.col);Object.assign(sc,{Coat:P.coat,CoatRoughness:P.coatRough,FlakeSize:P.size,FlakeAmount:P.flakes,FlakeSparkle:P.sparkle});}
+  if(k==='cloth'){vc.ClothColour=rgba(P.col);Object.assign(sc,{ClothSheen:P.sheen,Softness:P.soft,Weave:P.weave});}
+  if(k==='wax'){vc.GlowColour=rgba(P.col);Object.assign(sc,{Glow:P.glow,WaxSoftness:P.soft});}
+  if(k==='halfcel'){vc.ShadowTint=rgba(P.col);vc.RimColour=rgba(P.rimCol);vc.OutlineColour=[0,0,0,1];Object.assign(sc,{Bands:P.bands,StepSoftness:P.soft,DottedFade:P.dots,DotCells:900/Math.max(P.dotSize,1),DotsFollow:P.follow||0,ShadowDepth:P.depth,ShadowBoost:P.sat,TintAmount:P.tintAmt,Highlight:P.spec,RimLight:P.rim,RimWidth:P.rimW,OutlineWidth:ow,OutlineDark:.3,OutlineMode:0});}
+  if(k==='ink'){vc.ShadowColour=rgba(P.col);vc.RimColour=rgba(P.rimCol);vc.OutlineColour=rgba(P.ocol||[0,0,0]);Object.assign(sc,{ShadowShapes:P.steps,EdgeSoftness:P.soft,ShadowStrength:P.shadow,RimLight:P.rim,RimWidth:P.rimW,RimFollows:P.rimBias,OutlineWidth:ow,OutlineMode:P.omode?1:0,OutlineDark:P.odark,Wobble:P.wobble});}
   const common=new Set(['HasORM','RoughnessValue','MetallicValue','RoughScale','MetalScale','NormalStrength','Tint','UVScale','UVOffset']);
   return {scalars:sc,vectors:vc,lookKeys:[...Object.keys(sc),...Object.keys(vc)].filter(n=>!common.has(n))};}
 /* ---------------- both: build the extra files for one export ----------------
@@ -497,23 +785,31 @@ function eshFiles(to,name,info,size,modelFile,opt){const out=[],pn=pascal(name),
       if(!made.has(file)){made.add(file);out.push({name:'../_shaders/'+file,data:new TextEncoder().encode(eshGodotShader(sh.kind==='specgloss'?'std':sh.kind,alpha)),shared:true});}
       const texs=[];if(T.BaseColor)texs.push(['albedo_tex',base+T.BaseColor.name]);if(T.ORM)texs.push(['orm_tex',base+T.ORM.name]);if(T.Normal)texs.push(['normal_tex',base+T.Normal.name]);if(T.Emissive)texs.push(['emission_tex',base+T.Emissive.name]);
       const params=[['has_orm','bool',T.ORM?'true':'false'],...eshGodotParams(sh)];
+      if(sh.kind==='halfcel'||sh.kind==='ink'){const O=shOutline(sh);
+        if(O&&O.w>0){if(!made.has('_outlineink')){made.add('_outlineink');out.push({name:'../_shaders/OutlineInk.gdshader',data:new TextEncoder().encode(eshGodotOutlineInk()),shared:true});}
+          const tex=T.BaseColor?[['albedo_tex',base+T.BaseColor.name]]:[];
+          out.push({name:sn+'_outline.tres',data:new TextEncoder().encode(eshGodotMaterial(sh0+'OutlineInk.gdshader',tex,[['outline_colour','vec3',eshV3(O.col)],['outline_width','float',eshF(O.w*size*0.0014)],['outline_one_colour','float',eshF(O.mode)],['outline_dark','float',eshF(O.dark)],['wobble','float',eshF(O.wobble)]]))});
+          out.push({name:sn+'.tres',data:new TextEncoder().encode(eshGodotMaterial(sh0+file,texs,params,base+sn+'_outline.tres'))});continue;}}
       const outline=(sh.kind==='toon'||sh.kind==='cel')&&shParams(sh).outline>0;
       if(outline){if(!made.has('_outline')){made.add('_outline');out.push({name:'../_shaders/Outline.gdshader',data:new TextEncoder().encode(eshGodotOutline()),shared:true});}
         out.push({name:sn+'_outline.tres',data:new TextEncoder().encode(eshGodotMaterial(sh0+'Outline.gdshader',[],[['outline_colour','vec3',eshV3(shParams(sh).ocol||[0,0,0])],['outline_width','float',eshF(shParams(sh).outline*size*0.0014)]]))});}
+      if(sh.kind==='fur'){/* fur: the shell materials are chained with next_pass, the outermost first made */
+        for(let n=ESH_FUR_SHELLS;n>=1;n--)out.push({name:sn+'_fur'+n+'.tres',data:new TextEncoder().encode(eshGodotMaterial(sh0+file,texs,[...params,['shell_k','float',eshF(n/ESH_FUR_SHELLS)]],n<ESH_FUR_SHELLS?base+sn+'_fur'+(n+1)+'.tres':null))});
+        out.push({name:sn+'.tres',data:new TextEncoder().encode(eshGodotMaterial(sh0+file,texs,params,base+sn+'_fur1.tres'))});continue;}
       out.push({name:sn+'.tres',data:new TextEncoder().encode(eshGodotMaterial(sh0+file,texs,params,outline?base+sn+'_outline.tres':null))});}
     return out;}
   if(to==='unity'){const bi=texCfg.unityRP==='builtin',shaderPath=bi?'../GouacheShadedBuiltin.shader':'../GouacheShaded.shader',sguid=bi?ESH_BUILTIN_GUID:ESH_SHADER_GUID;
     for(const s of sets){const I=info[s],T=I.tex||{},sh=I.sh||{kind:'std',p:{}},sn=eshSafe(s),g={};
       const reg=(key,f,kind)=>{if(!f)return;g[key]=eshGuid(pn+'/'+f.name);out.push({name:f.name+'.meta',data:new TextEncoder().encode(eshUnityMeta('tex',g[key],kind))});};
       reg('base',T.BaseColor,'color');reg('orm',T.ORM,'data');reg('normal',T.Normal,'normal');reg('emis',T.Emissive,'color');
-      const P=shParams(sh),width=(sh.kind==='toon'||sh.kind==='cel')?(P.outline||0)*size*0.0014:0;
-      out.push({name:sn+'.mat',data:new TextEncoder().encode(eshUnityMaterial(sn,sh,g,{alpha:I.alpha&&!bi},width,sguid))},{name:sn+'.mat.meta',data:new TextEncoder().encode(eshUnityMeta('mat',eshGuid(pn+'/'+sn+'.mat')))});}
+      const P=shParams(sh),O=shOutline(sh),width=O?(O.w||0)*size*0.0014:0;
+      out.push({name:sn+'.mat',data:new TextEncoder().encode(eshUnityMaterial(sn,sh,g,{alpha:(I.alpha&&!bi)||sh.kind==='hologram'||sh.kind==='glass'},width,sguid))},{name:sn+'.mat.meta',data:new TextEncoder().encode(eshUnityMeta('mat',eshGuid(pn+'/'+sn+'.mat')))});}
     out.push({name:'../GouacheAssign.cs',data:new TextEncoder().encode(ESH_UNITY_ASSIGN),shared:true},{name:'../GouacheAssign.cs.meta',data:new TextEncoder().encode('fileFormatVersion: 2\nguid: '+ESH_ASSIGN_GUID+'\nMonoImporter:\n  externalObjects: {}\n  serializedVersion: 2\n  defaultReferences: []\n  executionOrder: 0\n  icon: {instanceID: 0}\n  userData: \n  assetBundleName: \n  assetBundleVariant: \n'),shared:true});
     out.push({name:shaderPath,data:new TextEncoder().encode(bi?ESH_BUILTIN_SHADER:ESH_UNITY_SHADER),shared:true},{name:shaderPath+'.meta',data:new TextEncoder().encode(eshUnityMeta('shader',sguid)),shared:true});
     return out;}
   if(to==='unreal'){const list=sets.map(s=>{const I=info[s],T=I.tex||{},sh=I.sh||{kind:'std',p:{}},tex={};for(const k of ['BaseColor','ORM','Normal','Emissive'])if(T[k])tex[k]=T[k].name;
       const pr=eshUnrealParams(sh,size,!!T.ORM);return {name:s,safe:eshSafe(s),kind:sh.kind,look:eshLook(sh.kind),tex,alpha:!!I.alpha,scalars:pr.scalars,vectors:pr.vectors,lookKeys:pr.lookKeys,variant:I.variant||null};});
-    out.push({name:'gouache_unreal.json',data:new TextEncoder().encode(JSON.stringify({name:pn,model:modelFile||null,masterVersion:ESH_MASTER_VER,updateMasters:!!(opt&&opt.updateMasters),updates:(opt&&opt.updates)||[],sets:list},null,1))},{name:'gouache_unreal_setup.py',data:new TextEncoder().encode(UNREAL_SETUP||'')});
+    out.push({name:'gouache_unreal.gdata',data:new TextEncoder().encode(JSON.stringify({name:pn,model:modelFile||null,masterVersion:ESH_MASTER_VER,updateMasters:!!(opt&&opt.updateMasters),updates:(opt&&opt.updates)||[],sets:list},null,1))},{name:'gouache_unreal_setup.py',data:new TextEncoder().encode(UNREAL_SETUP||'')});
     return out;}
   return out;}
 

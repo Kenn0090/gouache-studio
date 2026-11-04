@@ -52,8 +52,15 @@ const GM_CATS=['Metal','Leather','Fabric','Plastic & rubber','Wood','Ground & na
 const MAT_VIEWS=[['all','All'],['yours','Yours'],['library','Library'],['smart','Smart materials'],['smask','Smart masks']];
 let matView=(()=>{try{const v=localStorage.getItem('gs.matView')||'all';return MAT_VIEWS.some(([k])=>k===v)?v:'all';}catch(e){return 'all';}})();
 let gmCat=(()=>{try{return localStorage.getItem('gs.gmCat')||'Metal';}catch(e){return 'Metal';}})();
-async function gmFetch(file){for(const u of (location.protocol==='file:'?[]:['materials/'+file]).concat([GM_RAW+file])){try{const r=await fetch(u);if(r.ok)return new Uint8Array(await r.arrayBuffer());}catch(e){}}
-  throw new Error(platform.isDesktop?'the file is missing':'it could not be downloaded (the web version needs the internet for the library)');}
+/* bundled files: beside the app first, then the copy kept in File > Content (offline), then GitHub (and a copy is kept) */
+const GM_ASSETS=GM_RAW.replace(/materials\/$/,'');
+async function bcCached(kind,file){try{if(typeof aiDB==='undefined')return null;const v=await aiDB.get('b/'+kind+'/'+file);return v&&v.buf?new Uint8Array(v.buf):null;}catch(e){return null;}}
+function bcStore(kind,file,u){try{if(typeof aiDB!=='undefined')aiDB.put('b/'+kind+'/'+file,{buf:u.buffer.slice(u.byteOffset,u.byteOffset+u.byteLength),size:u.byteLength,v:1}).catch(()=>{});}catch(e){}}
+async function bcGet(kind,file,local){if(local)try{const r=await fetch(local);if(r.ok)return new Uint8Array(await r.arrayBuffer());}catch(e){}
+  const c=await bcCached(kind,file);if(c)return c;
+  const r=await fetch(GM_ASSETS+kind+'/'+file);if(!r.ok)throw new Error('it could not be downloaded');const u=new Uint8Array(await r.arrayBuffer());bcStore(kind,file,u);return u;}
+async function gmFetch(file){try{return await bcGet('materials',file,location.protocol==='file:'?null:'materials/'+file);}catch(e){}
+  throw new Error(platform.isDesktop?'the file is missing and could not be downloaded (check your internet connection)':'it could not be downloaded (the web version needs the internet for the library)');}
 async function gmLoad(rec){if(rec.fill&&rec.imgs)return rec;if(rec._loading)return rec._loading;
   /* a downloaded material: its pictures come out of the store */
   if(rec.dl)return rec._loading=(async()=>{try{const raw=await store.getRaw(rec.id,'materials');if(!raw)throw new Error('it is no longer saved on this computer');const full=await pxDeep(raw,false);rec.fill=full.fill;rec.imgs=full.imgs;return rec;}finally{rec._loading=null;}})();

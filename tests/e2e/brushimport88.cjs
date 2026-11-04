@@ -42,6 +42,11 @@ function zip(files){const parts=[],cd=[];let off=0;for(const [name,data] of file
  const sut=Buffer.concat([Buffer.from('SQLite format 3\0'),noise,png(40,40,(x,y)=>[Math.hypot(x-19.5,y-19.5)<15?0:255]),noise,png(32,32,(x,y)=>[(x*8)%256,(y*8)%256,128],false),noise]);
  const n3=await p.evaluate(async b64=>{const u8=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));return await __gs.importBrushFile(new File([u8],'Pencil.sut'));},sut.toString('base64'));
  ok(n3===1,'a .sut file gives its greyscale tip and skips the colour thumbnail ('+n3+')');
+ // 0.95: a Procreate brush with a second (sub) brush gets the Dual brush
+ const dualSet=zip([['DDDD/Shape.png',tip],['DDDD/Brush.archive',Buffer.from(ARCH_B64,'base64')],['DDDD/sub1/Shape.png',png(48,48,(x,y)=>[Math.hypot(x-23.5,y-23.5)<18?0:255])],['DDDD/sub1/Brush.archive',Buffer.from(ARCH_B64,'base64')]]);
+ const n4=await p.evaluate(async b64=>{const u8=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));return await __gs.importBrushFile(new File([u8],'Dual.brushset'));},dualSet.toString('base64'));
+ const dual=await p.evaluate(()=>{const s=__gs.library[__gs.library.length-1],q=s.presets[0];return q.dual?{on:q.dual.on,key:q.dual.tipKey,count:q.dual.count,size:q.dual.size}:null;});
+ ok(n4===1&&dual&&dual.on&&/^u:/.test(dual.key),'a Procreate sub brush becomes the Dual brush ('+JSON.stringify(dual)+')');
  // an empty zip gives a clear error
  const err=await p.evaluate(async b64=>{try{const u8=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));await __gs.importBrushFile(new File([u8],'Empty.brush'));return '';}catch(e){return e.message;}},zip([['readme.txt',Buffer.from('hi')]]).toString('base64'));
  ok(/No brush tips/.test(err),'a file with no brushes gives a clear message ('+err+')');

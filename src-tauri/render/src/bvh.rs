@@ -274,3 +274,31 @@ mod tests {
         assert!(hits > 5, "the test rays should hit something ({hits})");
     }
 }
+
+#[cfg(test)]
+mod speed {
+    use super::*;
+    /// Not a check, a measurement: how long a million triangles take (run with --release -- --ignored --nocapture).
+    #[test]
+    #[ignore]
+    fn million_triangles() {
+        let n = 1_000_000usize;
+        let mut s = 7u32;
+        let mut r = || {
+            s = s.wrapping_mul(1664525).wrapping_add(1013904223);
+            (s >> 8) as f32 / 16777216.0
+        };
+        let mut pos = Vec::with_capacity(n * 9);
+        let mut idx = Vec::with_capacity(n * 3);
+        for t in 0..n {
+            let (x, y, z) = (r() * 100.0, r() * 100.0, r() * 100.0);
+            for _ in 0..3 {
+                pos.extend_from_slice(&[x + r() * 0.2, y + r() * 0.2, z + r() * 0.2]);
+            }
+            idx.extend_from_slice(&[t as u32 * 3, t as u32 * 3 + 1, t as u32 * 3 + 2]);
+        }
+        let t0 = std::time::Instant::now();
+        let b = build(&pos, &idx);
+        println!("{} triangles: {} nodes in {:?}", n, b.nodes.len(), t0.elapsed());
+    }
+}

@@ -19,8 +19,11 @@ struct Node { mn: vec3<f32>, a: u32, mx: vec3<f32>, count: u32 };
 @group(0) @binding(7) var mat_tex: texture_2d<f32>;
 @group(0) @binding(8) var prev2_tex: texture_2d<f32>;
 @group(0) @binding(9) var out2_tex: texture_storage_2d<rgba16float, write>;
-@group(0) @binding(10) var<storage, read> tri_group: array<u32>;
-@group(0) @binding(11) var<storage, read> group_col: array<vec4<f32>>;
+@group(0) @binding(10) var<storage, read> tri_uv: array<vec4<f32>>;
+// per material group, 3 vec4: [average colour, look kind] [roughness, metal, glow, look setting 1] [tint colour, look setting 2]
+@group(0) @binding(11) var<uniform> ginfo: array<vec4<f32>, 384>;
+@group(0) @binding(13) var base_arr: texture_2d_array<f32>;
+@group(0) @binding(14) var base_samp: sampler;
 
 fn pcg(v: u32) -> u32 {
     let s = v * 747796405u + 2891336453u;
@@ -76,14 +79,16 @@ fn occluded(o: vec3<f32>, d: vec3<f32>, tmax: f32) -> bool {
     return false;
 }
 
-// the nearest triangle along the ray: x distance (-1 when none), y triangle number
-fn closest(o: vec3<f32>, d: vec3<f32>, tmax: f32) -> vec2<f32> {
+// the nearest triangle along the ray: x distance (-1 when none), y triangle number, z w the barycentric weights of corners 1 and 2
+fn closest(o: vec3<f32>, d: vec3<f32>, tmax: f32) -> vec4<f32> {
     let inv = 1.0 / d;
     var stack: array<u32, 40>;
     var sp = 1;
     stack[0] = 0u;
     var best = tmax;
     var hit = -1.0;
+    var bu = 0.0;
+    var bw = 0.0;
     loop {
         if (sp == 0) { break; }
         sp = sp - 1;
@@ -115,12 +120,66 @@ fn closest(o: vec3<f32>, d: vec3<f32>, tmax: f32) -> vec2<f32> {
                 let w = dot(d, q) * id;
                 if (w < 0.0 || u + w > 1.0) { continue; }
                 let tt = dot(e2, q) * id;
-                if (tt > 1e-6 && tt < best) { best = tt; hit = f32(t); }
+                if (tt > 1e-6 && tt < best) { best = tt; hit = f32(t); bu = u; bw = w; }
             }
         }
     }
-    if (hit < 0.0) { return vec2<f32>(-1.0, 0.0); }
-    return vec2<f32>(best, hit);
+    if (hit < 0.0) { return vec4<f32>(-1.0, 0.0, 0.0, 0.0); }
+    return vec4<f32>(best, hit, bu, bw);
+}
+
+
+// how a surface looks where a reflection ray lands: an approximation of each look (the full shader does not run inside rays)
+fn shade_hit(gi: u32, alb: vec3<f32>, hn: vec3<f32>, fd: vec3<f32>, sd: vec3<f32>, sunvis: f32) -> vec3<f32> {
+    let g = min(gi, 127u);
+    let a = ginfo[g * 3u];
+    let b = ginfo[g * 3u + 1u];
+    let c = ginfo[g * 3u + 2u];
+    let kind = i32(a.w + 0.5);
+    let rough = clamp(b.x, 0.04, 1.0);
+    let metal = clamp(b.y, 0.0, 1.0);
+    let glow = b.z;
+    let tint = c.xyz;
+    let sky = rt.amb.rgb;
+    let nv = max(dot(hn, -fd), 0.0);
+    let fres = pow(1.0 - nv, 3.0);
+    let amb_here = sky * (0.6 + 0.4 * hn.y) * 0.5;
+    let sl = max(dot(hn, sd), 0.0);
+    let diffuse = alb * (amb_here + rt.sun_col.rgb * sl * sunvis / 3.14159265);
+    let spec_col = mix(vec3<f32>(0.04), alb, metal);
+    let hv = normalize(sd - fd);
+    let shin = mix(200.0, 8.0, rough);
+    let spec_sun = rt.sun_col.rgb * pow(max(dot(hn, hv), 0.0), shin) * sunvis * (shin + 8.0) / 25.0;
+    let env_spec = amb_here * (1.0 - rough * 0.5) * (fres * 0.8 + 0.2);
+    var col = diffuse * (1.0 - metal) + spec_col * (spec_sun + env_spec * 2.0);
+    if (kind == 4 || kind == 5 || kind == 16 || kind == 17) {
+        // toon and cel: flat steps of light
+        let band = floor(clamp(sl * sunvis, 0.0, 0.999) * 3.0) / 3.0;
+        col = alb * (amb_here * 1.4 + rt.sun_col.rgb * (0.25 + 0.75 * band) * 0.3);
+    } else if (kind == 1 || kind == 15) {
+        // skin and wax: light wraps round the edge
+        col = alb * (amb_here + rt.sun_col.rgb * sunvis * max((dot(hn, sd) + 0.5) / 1.5, 0.0) / 3.14159265) + tint * fres * 0.05;
+    } else if (kind == 3 || kind == 14) {
+        // velvet and cloth: a soft sheen at grazing angles
+        col = diffuse + sky * mix(vec3<f32>(1.0), tint, 0.6) * fres * 0.5;
+    } else if (kind == 9) {
+        // hologram: it glows in its own colour
+        col = tint * (0.5 + fres * 1.2) + alb * 0.1;
+    } else if (kind == 10) {
+        // glass: mostly a mirror
+        col = tint * 0.12 + env_spec * 0.8 + spec_sun;
+    } else if (kind == 11) {
+        col = diffuse * 0.9 + sky * fres * 0.15;
+    } else if (kind == 12) {
+        // iridescent: a rainbow that shifts with the angle
+        let rb = 0.5 + 0.5 * cos(6.2831853 * (nv * 1.5 + vec3<f32>(0.0, 0.33, 0.67)));
+        col = col * 0.6 + rb * (0.2 + fres) * (sky * 1.5 + rt.sun_col.rgb * sunvis * 0.1);
+    } else if (kind == 13) {
+        // car paint: a clear coat over the colour
+        col = col + vec3<f32>(1.0) * (fres * 0.5 + 0.04) * sky * 2.0 + spec_sun * 2.0;
+    }
+    col = col + alb * glow * 2.0;
+    return max(col, vec3<f32>(0.0));
 }
 
 fn basis(n: vec3<f32>) -> mat3x3<f32> {
@@ -184,12 +243,15 @@ fn cs(@builtin(global_invocation_id) g: vec3<u32>) {
             let v0 = tris[ti * 3u].xyz;
             var hn = normalize(cross(tris[ti * 3u + 1u].xyz - v0, tris[ti * 3u + 2u].xyz - v0));
             if (dot(hn, fd) > 0.0) { hn = -hn; }
-            let alb = group_col[tri_group[ti]].rgb;
+            let uv0 = tri_uv[ti * 2u];
+            let uv1 = tri_uv[ti * 2u + 1u];
+            let g = u32(uv1.z + 0.5);
+            let huv = uv0.xy * (1.0 - ch.z - ch.w) + uv0.zw * ch.z + uv1.xy * ch.w;
+            let alb = textureSampleLevel(base_arr, base_samp, huv, i32(g), 0.0).rgb;
             let hp = o + fd * ch.x + hn * rt.p.z;
-            var lit = rt.amb.rgb * (0.6 + 0.4 * hn.y) * 0.5;
-            let sl = max(dot(hn, sd), 0.0);
-            if (sl > 0.0 && !occluded(hp, sd, 1e30)) { lit += rt.sun_col.rgb * sl / 3.14159265; }
-            refl_rgb = alb * lit;
+            var sunvis = 0.0;
+            if (dot(hn, sd) > 0.0 && !occluded(hp, sd, 1e30)) { sunvis = 1.0; }
+            refl_rgb = shade_hit(g, alb, hn, fd, sd, sunvis);
             refl_hit = 1.0;
         }
     }

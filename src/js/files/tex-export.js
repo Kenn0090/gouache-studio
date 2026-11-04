@@ -158,7 +158,7 @@ function dlgExportTextures(){if(stroke||preview||selLive){toast('Finish the curr
     makeSlider({id:'txPadPx',label:'Dilation',min:0,max:128,step:1,value:texCfg.padPx??16,def:16,fmt:v=>Math.round(v)+' px',onInput:v=>{texCfg.padPx=Math.round(v);}}).el,
     el('p',{class:'note',id:'txPadNote',text:texPadAvail()?'Grows each UV island’s colours outward past its edges (in pixels of the exported size), so mip-maps in the engine show no seams. Fill the rest: the space between islands takes the nearest island’s colours. Transparent: it stays see-through (PNG/TGA with alpha).':'Padding needs the model’s UVs: export from 3D Paint, or open the 3D view with your model. Without them the maps are saved as painted.'}),
     chk('txH16','Height at 16 bits (PNG)',texCfg.h16,v=>{texCfg.h16=v;}),chk('txMeshMaps','Include assigned mesh maps',texCfg.meshMaps,v=>{texCfg.meshMaps=v;draw();}),el('p',{class:'note',text:'Mesh maps export at their original size unless you choose an export size. They have a Mesh_ prefix and belong to their texture set.'}),
-    ui.mode==='p3d'&&p3.sets.filter(S=>!S.missing).length>1?chk('txAll','Every texture set (files named after each set)',texCfg.allSets,v=>{texCfg.allSets=v;draw();}):null,
+    ui.mode==='p3d'&&p3.sets.filter(S=>!S.missing).length>1?chk('txAll','Every texture set (files named after each set)',texCfg.allSets,v=>{texCfg.allSets=v;draw();}):'',
     ...modelRow,...esRow(()=>{closeDialog();dlgExportTextures();}),el('div',{class:'sub',text:'Files'}),list);draw();
   openDialog({title:'Export textures',body,okLabel:platform.isDesktop?(esActive()?'Export and send':'Choose folder…'):'Export',onOk(){exportTextures();}});}
 async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.name||'Texture',wantModel=mxHasModel()&&texCfg.model&&texCfg.model!=='none';
@@ -168,7 +168,7 @@ async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.
   try{let files=[];const bySet={},glTex={},shInfo={};
     /* each texture set (3D Paint), or the document; the model needs glTF-shaped textures too */
     const one=async(setName,fileName)=>{const fs=await buildTextures(pr,fileName);bySet[setName]=fs;files.push(...fs);
-      if(eshWanted()){const g=await buildTextures(GLTF_TEX,pascal(fileName)),T={};for(const f of g)T[f.suffix]=f;shInfo[setName]={sh:JSON.parse(JSON.stringify(v3ShadeOf(doc))),tex:T,alpha:doc.maps.includes('opac')};for(const f of g)if(!files.some(x=>x.name===f.name))files.push(f);}if(texCfg.meshMaps)files.push(...await buildMeshMapTextures(pr,fileName));
+      if(eshWanted()){const g=await buildTextures(GLTF_TEX,pascal(fileName)),T={};for(const f of g)T[f.suffix]=f;shInfo[setName]={sh:JSON.parse(JSON.stringify(eshSafeShade(v3ShadeOf(doc)))),tex:T,alpha:doc.maps.includes('opac')};for(const f of g)if(!files.some(x=>x.name===f.name))files.push(f);}if(texCfg.meshMaps)files.push(...await buildMeshMapTextures(pr,fileName));
       if(wantModel&&texCfg.model==='glb'){const g=await buildTextures(GLTF_TEX,pascal(fileName)),T={};for(const f of g)T[f.suffix]=f;T.alpha=doc.maps.includes('opac');glTex[setName]=T;}};
     const sets=ui.mode==='p3d'?p3.sets.filter(S=>!S.missing):[];
     if(ui.mode==='p3d'&&(texCfg.allSets||wantModel)&&sets.length>1){const back=p3.cur;

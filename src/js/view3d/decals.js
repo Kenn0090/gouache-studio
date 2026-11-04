@@ -108,7 +108,7 @@ window.addEventListener('keydown',e=>{if(e.key==='Escape'&&dcDrag&&dcDrag.starte
 
 /* (0.32.1) where it will land: a glowing ring with a grid on the surface under the cursor, tilted with the surface */
 const dcInd={el:null};
-function dcIndicator(hit,pos,n){let c=dcInd.el;if(!pos){if(c)c.hidden=true;return;}
+function dcIndicator(hit,pos,n){let c=dcInd.el;if(typeof nvInd==='function')nvInd(pos?{pos,n,R:dc.size*pxfModel().S*.5*1.15}:null);if(!pos){if(c)c.hidden=true;return;}
   const r=hit.getBoundingClientRect(),w=Math.max(1,r.width),h=Math.max(1,r.height);if(r.width<4)return;
   if(!c||!c.isConnected){c=dcInd.el=el('canvas',{class:'v3gz dcind','aria-hidden':'true'});hit.parentNode.insertBefore(c,hit.nextSibling);}
   const pr=hit.parentNode.getBoundingClientRect(),dpr=window.devicePixelRatio||1,W=Math.round(w*dpr),H=Math.round(h*dpr);

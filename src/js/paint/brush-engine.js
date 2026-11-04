@@ -1,7 +1,7 @@
 /* ================= Brush engine ================= */
 const BRUSH_DEFAULTS={size:24,opacity:1,flow:1,hardness:.85,spacing:.06,grain:0,pattern:0,patSize:10,patDen:1,patRamp:0,texKey:'',texScale:128,texDepth:0,texInvert:false,taperStart:0,taperEnd:0,smoothing:.25,pSize:true,pOpacity:false,minSize:.2,buildup:false,curve:0,strength:.6,charge:0,sampleAll:true,hueMix:0,
   tip:null,angle:0,roundness:1,flipX:false,flipY:false,randFlipX:false,randFlipY:false,sizeJitter:0,angleJitter:0,scatter:0,count:1,bothAxes:false,followDir:false,
-  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,pigment:1,wet:0,pickup:0,mixLab:false,paintMix:.7,mix:false,mixLoad:.8,mixPick:.5,mixWet:.7,mixDry:0,mixUse:.2,mixBristles:0,mixDryB:0,mixThick:0,mixEven:false,mixWC:0,mixWCEdge:0,mixWCPools:0,mixWCGran:0,mixWCBloom:0,mixTooth:0,spray:0,sprayDen:.8,sprayMist:0,sprayVar:0,sprayFleck:0,sprayRing:0,spraySwirl:0,sprayPress:0,spraySolid:1,tooth:0,simP:'off',simLevel:.7,drip:0,dripAuto:0,dripWidth:1,smoothCurve:false};
+  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,correction:0,lineBlend:false,lineSolid:false,pull:1,grainSize:6,fanFill:0,softEnd:0,blendMode:'smear',streak:0,mixKeep:false,laneN:0,laneHue:0,laneVal:0,laneMode:0,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,pigment:1,wet:0,pickup:0,mixLab:false,paintMix:.7,mix:false,mixLoad:.8,mixPick:.5,mixWet:.7,mixDry:0,mixUse:.2,mixBristles:0,mixDryB:0,mixThick:0,mixEven:false,mixWC:0,mixWCEdge:0,mixWCPools:0,mixWCGran:0,mixWCBloom:0,mixTooth:0,spray:0,sprayDen:.8,sprayMist:0,sprayVar:0,sprayFleck:0,sprayRing:0,spraySwirl:0,sprayPress:0,spraySolid:1,tooth:0,simP:'off',simLevel:.7,drip:0,dripAuto:0,dripWidth:1,smoothCurve:false};
 /* lazy mouse: the brush follows the pointer on a string of R pixels, so it only moves once the string is pulled tight */
 function lazyStep(s,x,y,R){if(!(R>0))return [x,y];if(s.lx===undefined){s.lx=s.sx;s.ly=s.sy;}const dx=x-s.lx,dy=y-s.ly,d=Math.hypot(dx,dy);if(d<=R)return null;s.lx+=dx*(d-R)/d;s.ly+=dy*(d-R)/d;return [s.lx,s.ly];}
 /* Keep stabilization consistent across pointer sample rates. At 60 Hz this matches the
@@ -11,6 +11,20 @@ function strokeSmooth(s,x,y,p,amount,time,bypass){
   const dt=s.smoothAt==null?1000/60:clamp(now-s.smoothAt,1,100),scale=dt/(1000/60),k=1-Math.pow(response,scale);
   const pressureK=1-Math.pow(Math.min(response,.6),scale);
   s.smoothAt=now;const pos=bypass?1:k;s.sx+=(x-s.sx)*pos;s.sy+=(y-s.sy)*pos;s.sp+=(p-s.sp)*pressureK;return [s.sx,s.sy,s.sp];}
+/* Line correction (0.95, Kenn): the line is drawn a little behind the pen, from the average of the points around it (both the ones behind and the ones just ahead),
+   so wobble is ironed out without the usual stabiliser lag or rounding off corners; when the pen lifts, the rest is flushed so the line ends where the pen did.
+   W = how far (in image pixels, along the path) the averaging reaches. */
+function corrFeed(s,x,y,p,W,flush,endX,endY){const Q=s.cq||(s.cq={x:[],y:[],p:[],l:[],i:0,j:0});
+  const push=(a,b,c)=>{const n=Q.x.length,l=n?Q.l[n-1]+Math.hypot(a-Q.x[n-1],b-Q.y[n-1]):0;Q.x.push(a);Q.y.push(b);Q.p.push(c);Q.l.push(l);};
+  if(!flush)push(x,y,p);else if(endX!==undefined&&Q.x.length)push(endX,endY,p);
+  const out=[],n=Q.x.length;
+  while(Q.i<n){const i=Q.i,li=Q.l[i];if(!flush&&Q.l[n-1]-li<W)break;
+    if(flush&&i===n-1){out.push([Q.x[i],Q.y[i],Q.p[i]]);Q.i++;continue;}
+    while(Q.j<i&&li-Q.l[Q.j]>W)Q.j++;
+    let sx=0,sy=0,sp=0,sw=0;
+    for(let j=Q.j;j<n;j++){const d=Math.abs(Q.l[j]-li);if(d>W){if(Q.l[j]>li)break;continue;}const w=1-d/(W+1e-6);sx+=Q.x[j]*w;sy+=Q.y[j]*w;sp+=Q.p[j]*w;sw+=w;}
+    out.push(sw>0?[sx/sw,sy/sw,sp/sw]:[Q.x[i],Q.y[i],Q.p[i]]);Q.i++;}
+  return out;}
 const brush=Object.assign({},BRUSH_DEFAULTS);
 function pcurve(p,o){return Math.pow(clamp(p,0,1),Math.pow(2,-o.curve*1.6));}
 function radiusAt(p){const o=stroke.o;let r=o.size/2*(stroke.rs||1);if(o.pSize)r*=o.minSize+(1-o.minSize)*pcurve(p,o);return Math.max(.5,r);}
@@ -22,6 +36,8 @@ function jitterColor(c,o,grey){const R=()=>Math.random()*2-1;
   let [h,s,v]=rgb2hsv(c[0],c[1],c[2]);h=((h+R()*(o.hueJitter||0)*180)%360+360)%360;s=clamp(s*(1+R()*(o.satJitter||0)),0,1);v=clamp(v*(1+R()*(o.valJitter||0)),0,1);return hsv2rgb(h,s,v);}
 /* strokes with colour jitter keep each dab's colour in strokeT's RGB (straight colour, starting from the brush colour) */
 function strokeTints(o){if(o.tool!=='brush'||o.noTint||!o.color)return false;const grey=doc.map!=='base';if(doc.map==='normal')return false;
+  if((o.lineBlend||o.fanFill)&&!grey&&!o.space)return true;/* Line blend (0.95): the strip carries its own colours */
+  if(o.laneN>0&&!grey&&!o.space)return true;/* lanes of colour across the brush */
   /* A colour stencil supplies RGB in the projection, even with all colour jitter off.
      Keep the brush RGB in the screen buffer too, so holding N can bypass it mid-stroke. */
   if(!grey&&o.space&&o.space.colourStencil)return true;
@@ -48,7 +64,7 @@ function beginStroke(L,x,y,p,o){
   const cg=o.space&&(o.tool!=='smudge'||o.space.mesh)?o.space:null;if(cg)clearTarget(cg.buf,tint?tc:undefined);
   const SW=cg?cg.w:W,SH=cg?cg.h:H;
   const sampleT=o.tool==='smudge'&&o.sampleAll&&!o.space&&!L.maskOf&&!L.quick?compositeMap(doc.map):null;
-  const gx=Math.max(1,Math.round(W/6)),gy=Math.max(1,Math.round(H/6));
+  const gcell=clamp(o.grainSize||6,1,40),gx=Math.max(1,Math.round(W/gcell)),gy=Math.max(1,Math.round(H/gcell));
   stroke={lazy,fd:o.space?'all':null,L,o,x,y,p,lsx:x,lsy:y,dir:0,carry:0,bb:[W,H,0,0],clearBox,gScale:[W/gx,H/gy],gPeriod:[gx,gy],space:cg,rs:cg?(o.cageRs||1):1,SW,SH,sym:o.sym||null,tint,grey:doc.map!=='base',sampleT,sampleAt:performance.now()};
   /* Resolve the library and repeating mask once, rather than per dab at low spacing. */
   stroke.dualU=typeof dualUniforms==='function'?dualUniforms(o.dual,false):null;
@@ -62,6 +78,7 @@ function beginStroke(L,x,y,p,o){
     else stroke.exU=selU(o);}
   if(o.tool==='clone')cloneBegin(stroke);
   if(o.tool==='smudge'&&stroke.space)meshSmudgeBegin(stroke);/* on the 3D model (mesh-pull.js) */
+  if((o.lineBlend||o.fanFill)&&tint&&typeof lbBegin==='function'){stroke.cv=null;lbBegin(stroke);requestRender(true);return;}
   /* a brush that turns with the stroke waits for the first couple of pixels, so its first dab already points the way you are going */
   if(o.followDir&&(o.tool==='brush'||o.tool==='erase'||o.mixer)&&!o.space){stroke.fdWait=true;stroke.carry=0;}else{stamp(x,y,p);stroke.carry=spacingAt(p);}if(o.tool==='brush'&&o.endInk>0){stroke.inkAnchor=[x,y];stroke.inkSince=performance.now();stroke.inkFrame=requestAnimationFrame(brushInkLoop);}requestRender(true);
 }
@@ -109,7 +126,7 @@ function brushDripLoop(now){const s=stroke;if(!s||!s.drips)return;
   requestRender(true);s.dripFrame=requestAnimationFrame(brushDripLoop);}
 function stamp(x,y,p){
   const s=stroke,o=s.o,r0=radiusAt(p),a=alphaAt(p);
-  let dx=0,dy=0;if(o.tool==='smudge'){dx=x-s.lsx;dy=y-s.lsy;s.lsx=x;s.lsy=y;}
+  let dx=0,dy=0;if(o.tool==='smudge'){dx=x-s.lsx;dy=y-s.lsy;if(s.segX!==undefined){const ex=x-s.segX,ey=y-s.segY;if(ex*ex+ey*ey>dx*dx+dy*dy){dx=ex;dy=ey;}}s.lsx=x;s.lsy=y;}/* tiny spacing: pull by the whole move since the sample was taken, not by one dab step */
   const n=Math.max(1,Math.round(o.count||1)),dir=s.dir,PI=Math.PI;
   for(let k=0;k<n;k++){
     const r=Math.max(.5,r0*(1-(o.sizeJitter||0)*Math.random()));
@@ -130,7 +147,7 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy){
   if(doc.wrap&&!s.space){const cx0=mod(x,W),cy0=mod(y,H);for(const ox of [-W,0,W])for(const oy of [-H,0,H]){const cx=cx0+ox,cy=cy0+oy;if(cx+ext<0||cx-ext>W||cy+ext<0||cy-ext>H)continue;copies.push([cx,cy]);}}
   else if(!(x+ext<0||x-ext>W||y+ext<0||y-ext>H))copies.push([x,y]);
   if(!copies.length)return;
-  const U={uRadius:r,uExtent:ext,uSize:[W,H],uHard:s.solid?.9:o.hardness,uGrain:s.solid?0:o.grain,uGrainScale:s.gScale,uPeriod:s.gPeriod,
+  const U={uRadius:r,uExtent:ext,uLane:[o.laneN||0,o.laneHue||0,o.laneVal||0,o.laneMode||0],uSize:[W,H],uHard:s.solid?.9:o.hardness,uGrain:s.solid?0:o.grain,uGrainScale:s.gScale,uPeriod:s.gPeriod,
     uUseTip:!!tip,uTip:tip?tip.tex:dummy,uAngle:ang,uRound:o.roundness||1,uFlip:[fx,fy],uTipAspect:tip?tip.w/tip.h:1,uSpray:o.spray>0&&!tip&&!s.solid?[o.spray,o.sprayDen*(1-(o.sprayPress||0)*(1-pcurve(s.p,o))),Math.random()*997,o.sprayMist]:[0,0,0,0],uSprayVar:o.sprayVar||0,uSprayFleck:o.spray>0&&!tip&&!s.solid?(o.sprayFleck||0)*((o.pSize||o.pFlow||o.pOpacity||o.simP!=='off')?.3+.7*pcurve(s.p,o):1):0,uSprayRing:o.spray>0&&!tip&&!s.solid?[o.sprayRing||0,o.spraySwirl||0,(s.ph=(s.ph||0)+.9+Math.random()*.5)]:[0,0,0],uSpraySolid:o.spraySolid==null?1:o.spraySolid,uTexImg:(s.texT===undefined&&(s.texT=o.texDepth>0&&o.texKey&&typeof dualTip==='function'?dualTip({tipKey:o.texKey}):null),s.texT)?s.texT.tex:dummy,uTexSet:[o.texScale||128,s.texT?o.texDepth:0,o.texInvert?1:0,1.5],uPat:o.pattern>0?[o.pattern,o.patSize||10,(o.patDen==null?1:o.patDen)*(.4+.6*pcurve(s.p,o))*(o.patRamp>0?.22+.78*Math.min(1,(s.trav||0)/o.patRamp):1),s.patSeed==null?(s.patSeed=Math.random()*400):s.patSeed]:[0,10,1,0],uPaper:o.tooth>0?(()=>{const pi=s.pap||(s.pap=(typeof paperInfo==='function'&&paperInfo())||{t:4,sc:1});return [pi.t,pi.sc,o.tooth];})():[0,1,0]};
   if(s.dualU){if(o.dual.random)s.dualU.uDualOff=[Math.random()*s.dualU.uDualSize[0],Math.random()*s.dualU.uDualSize[1]];Object.assign(U,s.dualU);}
   if(o.tool==='smudge'&&s.space){/* on the 3D model: the dab goes into the screen buffer, then pulls paint through the model's UVs (mesh-pull.js) */
@@ -139,7 +156,7 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy){
   } else if(o.tool==='smudge'){
     if(doc.wrap)blit(s.L.target,scratchT,0,0,W,H,0,0);
     else{const x0=clamp(Math.floor(Math.min(x,x-dx)-ext-4),0,W),y0=clamp(Math.floor(Math.min(y,y-dy)-ext-4),0,H),x1=clamp(Math.ceil(Math.max(x,x-dx)+ext+4),0,W),y1=clamp(Math.ceil(Math.max(y,y-dy)+ext+4),0,H);if(x1>x0&&y1>y0)blit(s.L.target,scratchT,x0,y0,x1-x0,y1-y0,x0,y0);}
-    if(s.mix){for(const c of copies)mixDab(s,c,U,a,ext,r,dx,dy);}else for(const c of copies)run(P.smudge,s.L.target,Object.assign({},U,{uCenter:c,uSrc:(s.sampleT||scratchT).tex,uSrcPrev:(s.samplePrevT||s.sampleT||scratchT).tex,uSampleBlend:s.samplePrevT?clamp(s.sampleBlend??1,0,1):1,uDst:scratchT.tex,uDelta:[dx,dy],uAlpha:a,uStrength:o.strength,uCharge:o.charge,uPaintMix:o.paintMix||0,uMixLab:o.mixLab?1:0,uHueMix:clamp(o.hueMix||0,0,1),uNormalMap:{int:doc.map==='normal'?1:0},uColor:o.color,uLockAlpha:s.L.lockAlpha},chanU(o),selU(o)));
+    if(s.mix){for(const c of copies)mixDab(s,c,U,a,ext,r,dx,dy);}else for(const c of copies)run(P.smudge,s.L.target,Object.assign({},U,{uCenter:c,uSrc:(s.sampleT||scratchT).tex,uSrcPrev:(s.samplePrevT||s.sampleT||scratchT).tex,uSampleBlend:s.samplePrevT?clamp(s.sampleBlend??1,0,1):1,uDst:scratchT.tex,uDelta:[dx,dy],uSoft:o.blendMode==='soft'?1:0,uStreak:o.streak||0,uPull:o.pull||1,uAlpha:a,uStrength:o.strength,uCharge:o.charge,uPaintMix:o.paintMix||0,uMixLab:o.mixLab?1:0,uHueMix:clamp(o.hueMix||0,0,1),uNormalMap:{int:doc.map==='normal'?1:0},uColor:o.color,uLockAlpha:s.L.lockAlpha},chanU(o),selU(o)));
   } else {
     const dst=s.space?s.space.buf:strokeT;
     if(dst===strokeT&&!doc.wrap)for(const c of copies)clearStrokeBufferRegion(s,[c[0]-ext,c[1]-ext,c[0]+ext,c[1]+ext]);
@@ -175,15 +192,15 @@ function fdAdd(s,r){const L=s.fd||(s.fd=[]),near=Math.max(64,(r[2]-r[0])*2);
   for(const f of L)if(r[0]<=f[2]+near&&r[2]>=f[0]-near&&r[1]<=f[3]+near&&r[3]>=f[1]-near){f[0]=Math.min(f[0],r[0]);f[1]=Math.min(f[1],r[1]);f[2]=Math.max(f[2],r[2]);f[3]=Math.max(f[3],r[3]);return;}
   L.push(r.slice());if(L.length>12){const u=L.reduce((a,f)=>[Math.min(a[0],f[0]),Math.min(a[1],f[1]),Math.max(a[2],f[2]),Math.max(a[3],f[3])]);s.fd=[u];}}
 function addPointLin(x,y,p){
-  const s=stroke;if(!s)return;const dx=x-s.x,dy=y-s.y,len=Math.hypot(dx,dy);
+  const s=stroke;if(!s)return;if(s.lb)return lbMove(s,x,y,p);const dx=x-s.x,dy=y-s.y,len=Math.hypot(dx,dy);
   if(s.inkAnchor&&Math.hypot(x-s.inkAnchor[0],y-s.inkAnchor[1])>Math.max(.5,radiusAt(p)*.12)){s.inkAnchor=[x,y];s.inkSince=performance.now();s.inkCharge=0;}
   if(len<1e-4){s.p=p;return;}s.trav=(s.trav||0)+len;
   if(s.fdWait){if(len<2.5){s.p=p;return;}s.fdWait=false;}
   if(len>0.5)s.dir=Math.atan2(dy,dx);
   const sampled=!!s.sampleT&&refreshStrokeSample(s);let t=s.carry,guard=0;
   if(typeof dualBatchStart==='function')dualBatchStart(s);
-  try{while(t<=len&&guard++<20000){const f=t/len;let pp=s.p+(p-s.p)*f;if(s.o.taperStart>0)pp*=Math.max(.06,Math.min(1,((s.trav||0)-len+t)/s.o.taperStart));s.sampleBlend=sampled?f:1;stamp(s.x+dx*f,s.y+dy*f,pp);t+=spacingAt(pp);}}
-  finally{if(s.dualBatch)dualBatchFlush(s);}
+  s.segX=s.x;s.segY=s.y;try{while(t<=len&&guard++<20000){const f=t/len;let pp=s.p+(p-s.p)*f;if(s.o.taperStart>0)pp*=Math.max(.06,Math.min(1,((s.trav||0)-len+t)/s.o.taperStart));s.sampleBlend=sampled?f:1;stamp(s.x+dx*f,s.y+dy*f,pp);t+=spacingAt(pp);}}
+  finally{s.segX=undefined;if(s.dualBatch)dualBatchFlush(s);}
   if(s.drips&&s.o.dripAuto>0){const r=radiusAt(p),n=s.o.dripAuto*len/Math.max(8,r*3);if(Math.random()<n){const g=(Math.random()+Math.random()+Math.random()-1.5)*.7;dripSpawn(s,x+g*r,y+r*(.35+.35*Math.random()),Math.random()*.4);}}
   s.sampleBlend=1;if(s.samplePrevT){release(s.samplePrevT);s.samplePrevT=null;}s.carry=t-len;s.x=x;s.y=y;s.p=p;requestRender(true);
 }
@@ -196,7 +213,7 @@ function curveTo(s,c,cx,cy,cp,ex,ey,ep){const sx=c.mx,sy=c.my,sp=c.mp,len=Math.h
   for(let i=1;i<=n;i++){const t=i/n,u=1-t;addPointLin(u*u*sx+2*u*t*cx+t*t*ex,u*u*sy+2*u*t*cy+t*t*ey,sp+(ep-sp)*t);}}
 function curveFinish(s){const c=s.cv;if(!c)return;s.cv=null;curveTo(s,c,c.px,c.py,c.pp,c.px,c.py,c.pp);}
 function endStroke(record){
-  const s=stroke;if(!s)return;curveFinish(s);taperTail(s);if(s.drips)dripFinish(s);if(s.fdWait){s.fdWait=false;stamp(s.x,s.y,s.p);}const L=s.L,W=doc.w,H=doc.h;
+  const s=stroke;if(!s)return;curveFinish(s);taperTail(s);if(s.o.softEnd>0&&!s.lb&&s.bb&&typeof softenStroke==='function')softenStroke(s);if(s.drips)dripFinish(s);if(s.fdWait){s.fdWait=false;stamp(s.x,s.y,s.p);}const L=s.L,W=doc.w,H=doc.h;
   if(s.inkFrame)cancelAnimationFrame(s.inkFrame);if(s.dripFrame)cancelAnimationFrame(s.dripFrame);
   if(s.space){if(s.spaceDirty){s.spaceDirty=false;s.space.sync();}const b=s.space.bbox(s);s.bb=doc.wrap?[0,0,W,H]:[b[0]-2,b[1]-2,b[2]+2,b[3]+2];}
   const healing=s.o.tool==='heal',cloning=s.o.tool==='clone';
@@ -214,6 +231,7 @@ function endStroke(record){
     if(parts.length&&parts[parts.length-1].k===e.key)parts[parts.length-1].after=captureRegion(T,x0,y0,bw,bh);}
   if(s.lockT)release(s.lockT);if(s.sampleT)release(s.sampleT);if(s.samplePrevT)release(s.samplePrevT);dropStrokeCache(s);
   if(s.mix)mixEnd(s);
+  if(s.lb)lbEnd(s);
   stroke=null;
   if(record){
     if(bw>0&&bh>0){const r=regionRecord(L,lazyBefore||captureRegion(beforeT,x0,y0,bw,bh),captureRegion(L.target,x0,y0,bw,bh),x0,y0,bw,bh,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?(s.o.mixer?'Brush stroke':'Blend'):s.o.tool==='dodge'?'Dodge':s.o.tool==='burn'?'Burn':healing?'Heal':cloning?'Clone':'Brush stroke');

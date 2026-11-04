@@ -1,0 +1,36 @@
+/* 0.94: painting through the new viewer window: its pointer events paint with the normal brush, the changed maps go back */
+const {chromium}=require('playwright');
+const OLD=__dirname+'/';
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();
+ await p.addInitScript(()=>{try{localStorage.setItem("gs.p3d",JSON.stringify({size:128,layout:"3d"}));}catch(e){}});
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
+  if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.message));p.on('console',m=>{if(m.type()==='warning'||m.type()==='error')console.log('CON',m.text());});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ const W=ms=>p.waitForTimeout(ms||200);
+ await p.click('#modeTabs [data-mode=p3d]');await W(2500);
+ await p.evaluate(()=>{const P=__gs.platform;P.isDesktop=true;window.__tex=[];window.__cap=[];window.__raw=[];window.__ups=[];
+   P.invoke=async(cmd,body)=>{if(cmd==='viewer_open')return {name:'Test card',backend:'Vulkan',kind:'DiscreteGpu',software:false};
+     if(cmd==='viewer_capture_raw'){window.__raw.push(body);return new Uint8Array(body.width*body.height*4);}if(cmd==='viewer_capture'){window.__cap.push(body);return new Uint8Array([137,80,78,71,13,10,26,10]);}if(cmd==='viewer_textures'){window.__tex.push(body.length);return true;}if(cmd==='viewer_update'){const dv=new DataView(body.buffer,body.byteOffset,body.byteLength),jl=dv.getUint32(0,true);window.__ups.push(JSON.parse(new TextDecoder().decode(body.slice(4,4+jl))));return true;}return null;};});
+ await p.evaluate(()=>__gs.nvOpen());await W(3500);
+ ok(await p.evaluate(()=>window.__ups.some(u=>u.settings.paint===true&&u.settings.fov>0)),'painting is switched on in the window with the view\'s field of view');
+ await p.evaluate(()=>__gs.v3Screenshot('view',false));await W(800);
+ const cap=await p.evaluate(()=>window.__cap.slice());
+ ok(cap.length===1&&cap[0].width>100&&cap[0].height>50,'a screenshot is taken by the new viewer at the view size '+JSON.stringify(cap));
+ await p.evaluate(()=>{window.__cap=[];return __gs.v3Screenshot('view',true);});await W(800);
+ ok(await p.evaluate(()=>window.__cap.length===0),'a transparent one still uses the normal viewer');
+ await p.evaluate(()=>{window.__raw=[];return __gs.ttRecord({spins:1,secs:1,fps:3,size:'view',fmt:'gif',lightTurns:false});});await W(1500);
+ const raw=await p.evaluate(()=>window.__raw.slice());
+ ok(raw.length===3&&raw[1].yawAdd<0&&Math.abs(raw[1].yawAdd+2*Math.PI/3)<1e-3&&raw[1].envTurn>0,'a turntable asks the new viewer for each frame, turned a little more each time '+JSON.stringify(raw.map(r=>[+r.yawAdd.toFixed(2),r.envTurn&&+r.envTurn.toFixed(2)])));
+ await p.evaluate(()=>__gs.dlgRender());await W(300);
+ ok(await p.locator('#rtNv').count()===1,'the Render window offers the new viewer');
+ await p.evaluate(()=>{window.__raw=[];});await p.click('#rtNv');await W(1500);
+ ok(await p.evaluate(()=>window.__raw.length===1&&window.__raw[0].rounds>=8&&!!__gs.rtWin.nvImg),'pressing it renders in the new viewer with the chosen quality '+JSON.stringify(await p.evaluate(()=>window.__raw[0]||null)));
+ ok(errs.length===0,'no page errors '+errs.join('|'));
+ await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();

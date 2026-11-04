@@ -26,7 +26,7 @@ async function aiBuildDlg(){if(!aiDlgBody)return;const dev=await aiGPU();aiDlgBo
     el('div',{class:'sub',text:'Library'}),typeof olUpSection==='function'?olUpSection(aiBuildDlg):null);}
 function dlgAddons(){aiDlgBody=el('div',{class:'dlg-grid aidlg'});openDialog({title:'Add-ons',body:aiDlgBody,okLabel:'',cancelLabel:'Close',wide:true,onCancel(){aiDlgBody=null;}});aiRefresh().then(aiBuildDlg);}
 /* "install it?" card, once, on the first start after updating (never in tests) */
-function aiOfferOnce(){if(prefs.aiOffered||navigator.webdriver||/[?&]debug\b/.test(location.search)||document.getElementById('welcome')||!modal.hidden)return;prefs.aiOffered=true;savePrefs();
+function aiOfferOnce(){if(typeof contentOfferOnce==='function'){prefs.aiOffered=true;contentOfferOnce();return;}if(prefs.aiOffered||navigator.webdriver||/[?&]debug\b/.test(location.search)||document.getElementById('welcome')||!modal.hidden)return;prefs.aiOffered=true;savePrefs();
   const b=el('div',{class:'dlg-grid'},el('p',{text:'Gouache Studio can now do some things with AI: pick out a subject or the sky with a click, take an object out of a photo, blur the background like a lens, add light to a photo, and make a height map from a photo.'}),
     el('p',{class:'note',text:'It all runs on this computer, nothing is sent anywhere. It needs a download of about '+aiMB(AI_ORDER.reduce((a,i)=>a+aiSize(i),0))+', and you can choose which parts. You can also do this later in File › AI add-ons.'}));
   openDialog({title:'AI add-ons',body:b,okLabel:'Choose…',cancelLabel:'Not now',onOk(){setTimeout(dlgAddons,50);}});}

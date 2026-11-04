@@ -1,0 +1,27 @@
+/* 0.95: the brush list can be made taller and shorter by dragging the bar under it (and remembers the size). */
+const {chromium}=require('playwright');
+const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});
+ const p=await (await b.newContext({viewport:{width:1500,height:1000}})).newPage();const errs=[];p.on('pageerror',e=>errs.push(e.stack));
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
+  if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ await p.evaluate(()=>{__gs.closeWelcome();__gs.showPanel('brushes');});await p.waitForTimeout(500);
+ const h0=await p.evaluate(()=>document.getElementById('libBody').getBoundingClientRect().height);
+ ok(h0>150&&h0<260,'the list starts at the old size '+h0);
+ await p.evaluate(()=>document.getElementById('libGrip').scrollIntoView({block:'center'}));await p.waitForTimeout(150);const g=await p.locator('#libGrip').boundingBox();ok(!!g&&g.width>10,'there is a drag bar under the list');
+ await p.mouse.move(g.x+g.width/2,g.y+5);await p.mouse.down();await p.mouse.move(g.x+g.width/2,g.y+205,{steps:5});await p.mouse.up();await p.waitForTimeout(200);
+ const h1=await p.evaluate(()=>document.getElementById('libBody').getBoundingClientRect().height);
+ ok(h1>h0+120,'dragging down makes the list taller '+h0+' → '+h1);
+ await p.evaluate(()=>document.getElementById('libGrip').scrollIntoView({block:'center'}));await p.waitForTimeout(150);const g2=await p.locator('#libGrip').boundingBox();
+ await p.mouse.move(g2.x+g2.width/2,g2.y+5);await p.mouse.down();await p.mouse.move(g2.x+g2.width/2,g2.y-95,{steps:5});await p.mouse.up();await p.waitForTimeout(200);
+ const h2=await p.evaluate(()=>document.getElementById('libBody').getBoundingClientRect().height);
+ ok(h2<h1-60,'dragging up makes it shorter '+h1+' → '+h2);
+ ok(await p.evaluate(()=>+localStorage.getItem('gs.libH')>0),'the size is remembered');
+ await p.locator('#libGrip').dblclick();await p.waitForTimeout(200);
+ ok(Math.abs(await p.evaluate(()=>document.getElementById('libBody').getBoundingClientRect().height)-210)<6,'double-click puts it back');
+ ok(errs.length===0,'no errors '+errs.slice(0,2).join('|'));
+ await b.close();process.exit(fails?1:0);})().catch(e=>{console.error(e);process.exit(1);});

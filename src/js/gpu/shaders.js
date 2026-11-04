@@ -129,6 +129,7 @@ float brushMask(vec2 pix){
   if(uPaper.z>0.0){ float ph=pap_h(pix,int(uPaper.x+0.5),max(uPaper.y,0.2)); m*=clamp(1.0-uPaper.z*(1.0-smoothstep(0.40,0.60,ph)),0.0,1.0); } /* the paint only catches on the peaks of the paper */
   if(uTexSet.y>0.0){ float tv=texture(uTexImg,fract(pix/max(uTexSet.x,4.0))).r; if(uTexSet.z>0.5) tv=1.0-tv; tv=clamp((tv-0.5)*uTexSet.w+0.5,0.0,1.0); m*=mix(1.0,tv,uTexSet.y); } /* the paint only shows where the picture is light */
   if(uPat.x>0.5){ float cc=clamp(m*uPat.z*(0.8+0.4*pt_n(pix/(uPat.y*5.0)+uPat.w)),0.0,1.0); float f=pt_field(pix,int(uPat.x+0.5),max(uPat.y,1.0),uPat.w); m=1.0-smoothstep(cc-0.06,cc+0.06,f); if(cc<=0.0) m=0.0; }
+  if(uGrain>0.0&&uGrainScale.x<1.01){ float hh=fract(sin(dot(floor(pix),vec2(12.9898,78.233)))*43758.5453); m=(m*uGrain>hh)?1.0:0.0; } else
   if(uGrain>0.0){ vec2 q=pix/uGrainScale; float n=vnoise(q,uPeriod)*0.6+vnoise(q*2.0,uPeriod*2.0)*0.4;
     m*=clamp(mix(1.0,n*2.3-0.5,uGrain),0.0,1.0); }
   if(uUseDual==1){ float dl=texture(uDual,(pix+uDualOff)/uDualSize).r; if(uDualMode==1) dl=1.0-dl; m*=mix(1.0,dl,uDualAmt); }
@@ -183,20 +184,38 @@ vec4 applyStroke(vec4 L, float cov){
   if(uStroke==2){ if(uLockAlpha==1) return L; return L*(1.0-a); }
   return L; }
 `;
-const FS_STAMP=CH_BRUSH+`uniform float uAlpha; uniform int uTint; uniform vec3 uDabCol; void main(){ float m=brushMask(gl_FragCoord.xy)*uAlpha; if(uTint==2){ if(m<=0.0) discard; o=vec4(uDabCol,0.0); return; } o=uTint==1?vec4(uDabCol*m,m):vec4(m); }`;
+const FS_STAMP=CH_BRUSH+`uniform float uAlpha; uniform int uTint; uniform vec3 uDabCol; uniform vec4 uLane;
+/* colour that changes across the brush (0.95): uLane = (number of lanes, hue turn, brightness, mode). Mode 0: hard stripes across the brush, 2: hard stripes along it, 1: a round tube (hue and light change from the middle to the edges), 3: soft wavy bands. The lanes stay with the brush as it turns, so they run along the stroke. */
+float lnH(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+float lnN(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f); return mix(mix(lnH(i),lnH(i+vec2(1,0)),f.x),mix(lnH(i+vec2(0,1)),lnH(i+vec2(1,1)),f.x),f.y); }
+float lnF(vec2 p){ return lnN(p)*0.55+lnN(p*2.03+7.1)*0.3+lnN(p*4.1+3.3)*0.15; }
+vec3 laneCol(vec3 c){ if(uLane.x<0.5) return c; vec2 dv=gl_FragCoord.xy-uCenter; float ca=cos(uAngle),sa=sin(uAngle); vec2 q=vec2(ca*dv.x+sa*dv.y,-sa*dv.x+ca*dv.y)*uFlip; float r=max(uRadius,0.01); float md=uLane.w;
+  float t=clamp((md>1.5&&md<2.5)?q.x/r:q.y/r,-1.0,1.0); float h=0.0,v=0.0;
+  if(md<0.5||(md>1.5&&md<2.5)){ float id=floor((t*0.5+0.5)*uLane.x); float a=fract(sin(id*91.7+3.1)*43758.5453), b=fract(sin(id*57.3+8.7)*43758.5453); h=(a-0.5)*2.0*uLane.y; v=(b-0.5)*2.0*uLane.z; }
+  else if(md<1.5){ h=uLane.y*(1.0-2.0*t*t); v=uLane.z*(sqrt(max(1.0-t*t,0.0))-0.7); }
+  else if(md>4.5){ vec2 w=q/r*uLane.x*0.6; float wn=lnF(w+lnF(w*1.7+4.0)*2.2); float ln=abs(sin(wn*18.0)); h=-uLane.y*(0.5+0.5*sin(wn*7.0+1.0)); v=uLane.z*(0.6*sin(wn*5.0)-1.4*(1.0-smoothstep(0.0,0.16,ln))); }
+  else if(md>3.5){ float u=t*0.5+0.5; float ph=fract(sin(floor(uLane.x)*1.7)*43758.5453)*6.28; float n1=sin(u*uLane.x*2.1+ph)+0.8*sin(u*uLane.x*3.7+ph*1.7)+0.6*sin(u*uLane.x*6.3+ph*0.4); float n2=sin(u*uLane.x*1.7+ph*2.3)+0.7*sin(u*uLane.x*4.9+ph*0.9); h=-uLane.y*(0.5+0.5*clamp(n1/2.4,-1.0,1.0)); v=uLane.z*clamp(n2/1.7,-1.0,1.0); }
+  else { float ph=fract(sin(floor(uLane.x)*1.7)*43758.5453)*6.28; h=uLane.y*sin(t*uLane.x*1.5708+ph)*(0.6+0.4*sin(t*uLane.x*0.7)); v=uLane.z*sin(t*uLane.x*1.2+ph*0.5); }
+  vec3 k=vec3(0.57735); c=c*cos(h)+cross(k,c)*sin(h)+k*dot(k,c)*(1.0-cos(h)); return clamp(c*(1.0+v),0.0,1.0); }
+void main(){ float m=brushMask(gl_FragCoord.xy)*uAlpha; if(uTint==2){ if(m<=0.0) discard; o=vec4(laneCol(uDabCol),0.0); return; } o=uTint==1?vec4(laneCol(uDabCol)*m,m):vec4(m); }`;
 /* colour-jitter strokes stamp each dab twice: uTint 2 first gives pixels nothing has touched yet the dab's colour
    (so soft edges keep it), then uTint 1 lays the dab over what is there */
 const FS_SMUDGE=CH_BRUSH+`
-  uniform sampler2D uSrc; uniform sampler2D uSrcPrev; uniform sampler2D uDst; uniform vec2 uDelta; uniform float uSampleBlend; uniform float uAlpha; uniform float uStrength; uniform float uCharge; uniform vec3 uColor; uniform float uHueMix; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan; uniform float uPaintMix; uniform int uNormalMap;
+  uniform sampler2D uSrc; uniform sampler2D uSrcPrev; uniform sampler2D uDst; uniform vec2 uDelta; uniform float uSampleBlend; uniform float uAlpha; uniform float uStrength; uniform float uCharge; uniform vec3 uColor; uniform float uHueMix; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan; uniform float uPaintMix; uniform int uNormalMap; uniform float uSoft; uniform float uStreak; uniform float uPull;
 uniform sampler2D uSelTex; uniform int uUseSel;
 ${PIGMENT_MIX}
   vec3 smHsv(vec3 c){vec4 K=vec4(0.0,-1.0/3.0,2.0/3.0,-1.0);vec4 p=mix(vec4(c.bg,K.wz),vec4(c.gb,K.xy),step(c.b,c.g));vec4 q=mix(vec4(p.xyw,c.r),vec4(c.r,p.yzx),step(p.x,c.r));float d=q.x-min(q.w,q.y);return vec3(abs(q.z+(q.w-q.y)/(6.0*d+1e-10)),d/(q.x+1e-10),q.x);}
   vec3 smRgb(vec3 c){vec3 p=abs(fract(c.xxx+vec3(0.0,2.0/3.0,1.0/3.0))*6.0-3.0);return c.z*mix(vec3(1.0),clamp(p-1.0,0.0,1.0),c.y);}
   vec3 hueMixRgb(vec3 a,vec3 b,float t){vec3 x=smHsv(a),y=smHsv(b);float d=mod(y.x-x.x+1.5,1.0)-0.5;return smRgb(vec3(fract(x.x+d*t+1.0),mix(x.y,y.y,t),mix(x.z,y.z,t)));}
 void main(){ vec2 size=vec2(textureSize(uSrc,0)); vec2 uv=gl_FragCoord.xy/size;
-    vec4 dst=texture(uDst,uv); vec4 pulled=mix(texture(uSrcPrev,uv-uDelta/size),texture(uSrc,uv-uDelta/size),uSampleBlend);
+    vec4 dst=texture(uDst,uv); vec2 dl=uDelta*(uPull>0.0?uPull:1.0);
+    /* Wet smear: bristle streaks, every lane across the stroke pulls the paint a different distance */
+    if(uStreak>0.0&&uSoft<0.5){ vec2 dn=normalize(uDelta+vec2(1e-5)); vec2 perp=vec2(-dn.y,dn.x); float lane=floor(dot(gl_FragCoord.xy-uCenter,perp)/max(uRadius,1.0)*9.0); float h=fract(sin(lane*91.7+13.3)*43758.5453); dl*=1.0-uStreak*h; }
+    vec4 pulled=mix(texture(uSrcPrev,uv-dl/size),texture(uSrc,uv-dl/size),uSampleBlend);
+    /* Soft blend: the colours under the brush are averaged into each other, nothing is dragged along */
+    if(uSoft>0.5){ float R=uRadius*0.95+1.0; vec4 acc=vec4(0.0); float ws=0.0; for(int i=0;i<20;i++){ float fi=float(i); float ang=fi*2.39996; float rr=sqrt((fi+0.5)/20.0)*R; float w=1.0-0.6*(rr/R)*(rr/R); acc+=texture(uSrc,uv+vec2(cos(ang),sin(ang))*rr/size)*w; ws+=w; } pulled=acc/ws; }
   float m=brushMask(gl_FragCoord.xy)*uAlpha; if(uUseSel==1) m*=texelFetch(uSelTex,ivec2(gl_FragCoord.xy),0).r;
-  vec4 paint=mix(pulled,vec4(uColor,1.0),uCharge);
+  vec4 paint=mix(pulled,vec4(uColor,1.0),uSoft>0.5?0.0:uCharge);
   float tm=clamp(m*uStrength,0.0,1.0); vec4 r=mix(dst,paint,tm);
     if((uPaintMix>0.0||uHueMix>0.0)&&uNormalMap==0&&uChanMode!=1&&dst.a>1e-4&&paint.a>1e-4){ vec3 cd=dst.rgb/dst.a,cp=paint.rgb/paint.a; float wp=paint.a*tm,wd=dst.a*(1.0-tm); float k=wp/max(wp+wd,1e-5);
       vec3 pm=pgMix(cd,cp,k); pm=mix(pm,hueMixRgb(cd,cp,k),uHueMix); vec3 lc=r.rgb/max(r.a,1e-5); r=vec4(mix(lc,pm,max(uPaintMix,uHueMix)*clamp(tm*8.0,0.0,1.0))*r.a,r.a); }
@@ -496,3 +515,9 @@ const P={
 const vao=gl.createVertexArray();gl.bindVertexArray(vao);
 const vbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vbo);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([0,0,1,0,0,1,1,1]),gl.STATIC_DRAW);
 gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+
+const FS_SOFTCOL=`uniform sampler2D uSrc; uniform float uRad; uniform vec2 uSize;
+void main(){ vec2 uv=gl_FragCoord.xy/uSize; vec4 c0=texture(uSrc,uv); vec3 acc=vec3(0.0); float wsum=0.0;
+  for(int i=0;i<32;i++){ float a=float(i)*2.39996; float rr=sqrt((float(i)+0.5)/32.0)*uRad; vec4 t=texture(uSrc,uv+vec2(cos(a),sin(a))*rr/uSize); acc+=t.rgb*t.a; wsum+=t.a; }
+  vec3 col=wsum>1e-4?acc/wsum:c0.rgb; o=vec4(c0.a>0.0?col:c0.rgb,c0.a); }`;
+let P_SOFTCOL=null;

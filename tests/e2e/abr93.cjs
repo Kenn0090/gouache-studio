@@ -28,5 +28,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(Math.abs(r.grain-.54)<.01,'texture depth becomes grain');
  ok(r.notes.length===3&&!r.notes.some(n=>/not applied/.test(n)),'the message says what was applied');
  ok(errs.length===0,'no page errors '+errs.slice(0,2).join(' | '));
+ // 0.95: a bristle (dynamic) tip becomes the Mixing brush with bristles
+ {const r=await p.evaluate(()=>{const notes=new Set(),q=__gs.presetFromAbr({name:'Bristle',shape:{type:'dynamic',size:40,angle:0,shape:'flat blunt',density:.5,length:1,clumping:0,thickness:.5,stiffness:.5,physics:false,spacing:.1,spacingOn:true,flipX:false,flipY:false}},new Map(),notes,[],[],[]);return {mix:q.mix,b:q.mixBristles,round:q.roundness,notes:[...notes]};});
+  ok(r.mix===true&&r.b>=6&&r.b<=40&&r.round<=.4,'a Photoshop bristle tip becomes the Mixing brush with bristles ('+JSON.stringify(r)+')');}
  await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);
 })();

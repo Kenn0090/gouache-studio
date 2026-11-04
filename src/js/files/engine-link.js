@@ -283,7 +283,11 @@ async function elInstall(to){const b=es.dirs[to];if(!b){toast('Choose the '+EL_N
     else if(to==='godot'){const d=elJoin(b,'addons','gouache_link');await put(elJoin(d,'plugin.cfg'),EL_GODOT_CFG);await put(elJoin(d,'plugin.gd'),EL_GODOT);toast('Godot link added. In Godot: Project › Project Settings › Plugins, tick “Gouache Studio link”.');}
     else{const d=elJoin(b,'Content','Python'),init=elJoin(d,'init_unreal.py');await put(elJoin(d,'gouache_link.py'),EL_UNREAL);
       if(!(await elExists(init))){await put(init,'import gouache_link\n');toast('Unreal link added. Turn on the Python Editor Script Plugin (Edit › Plugins) and restart Unreal.');}
-      else toast('Unreal link added as gouache_link.py. Your project already has an init_unreal.py: add the line “import gouache_link” to it, and turn on the Python Editor Script Plugin.');}
+      else{const cur=new TextDecoder().decode(await platform.readFile(init));
+        if(/^\s*import\s+gouache_link\b/m.test(cur))toast('Unreal link updated. Make sure the Python Editor Script Plugin is on (Edit › Plugins).');
+        else{toast('Unreal link added as gouache_link.py. Your project already has an init_unreal.py.');
+          /* one extra line at the end of the project's own file, only when you say yes */
+          confirmDlg('Add the link to your init_unreal.py?','Your project already has an init_unreal.py. Gouache can add the single line “import gouache_link” at the end of it so Unreal starts the link. Nothing else in the file is changed. You also need the Python Editor Script Plugin on (Edit › Plugins).','Add the line',async()=>{try{await platform.writeFile(init,new TextEncoder().encode(cur.replace(/\s*$/,'')+'\nimport gouache_link\n'));toast('Line added to init_unreal.py. Turn on the Python Editor Script Plugin and restart Unreal.');}catch(e){toast('Could not change init_unreal.py: '+(e.message||e));}});}}}
     return true;}catch(e){console.warn(e);toast('The link could not be added: '+(e.message||e));return false;}}
 /* after an export: tell the engine what was sent */
 async function elPing(to,dir,files,name){if(!EL_PORT[to]||es.live===false||!(await elInstalled(to)))return false;

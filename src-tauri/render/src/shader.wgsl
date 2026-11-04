@@ -11,8 +11,27 @@ struct Frame {
     extra: vec4<f32>,        // x seconds, y size of a screen pixel at the model's distance
     cursor: vec4<f32>,       // brush outline: x, y, radius (pixels), 1 when shown
     res: vec4<f32>,          // width, height
+    bgc: vec4<f32>,          // background colour (as shown on screen)
+    light_a: array<vec4<f32>, 4>, // your lights: type + position
+    light_b: array<vec4<f32>, 4>, // direction + cone
+    light_c: array<vec4<f32>, 4>, // colour x strength + reach
+    light_n: vec4<f32>,
+    cam_dir: vec4<f32>,      // toward the camera (used when the view is orthographic: w = 1)
+    wire: vec4<f32>,         // wireframe colour, w = 1 overlay / 2 wire only
+    st_a: vec4<f32>,         // stencil: centre, half size (pixels of the page's 3D view)
+    st_b: vec4<f32>,         // turn, show, flags
+    st_c: vec4<f32>,         // that view's size
+    fl_a: vec4<f32>,         // shadow floor: height, half size, opacity, on
+    bv: vec4<f32>,           // rounded normals: on, width, height
 };
+
+// from a point on the model toward the viewer (the same direction everywhere when the view is orthographic)
+fn view_dir(p: vec3<f32>) -> vec3<f32> {
+    // the 3D view lights an orthographic picture with the direction to the eye position too, so this does the same
+    return normalize(frame.cam_pos.xyz - p);
+}
 @group(0) @binding(0) var<uniform> frame: Frame;
+@group(0) @binding(4) var bev_tex: texture_2d<f32>;
 @group(0) @binding(1) var env_tex: texture_2d<f32>;
 @group(0) @binding(2) var env_smp: sampler;
 @group(0) @binding(3) var spec_tex: texture_2d_array<f32>;   // the environment blurred for roughness 0, 0.2, 0.4, 0.6, 0.8, 1
@@ -20,12 +39,13 @@ struct Frame {
 struct Mat {
     flags: vec4<f32>,        // x has orm, y rough fallback, z metal fallback, w unused
     tint: vec4<f32>,
-    shk: vec4<f32>,          // x the shader (0 standard, 1 skin, 2 brushed metal, 3 velvet, 4 toon, 5 cel, 6 spec/gloss, 7 panner, 8 retro)
+    shk: vec4<f32>,          // x the shader (0 standard, 1 skin, 2 brushed metal, 3 velvet, 4 toon, 5 cel, 6 spec/gloss, 7 panner, 8 retro, 9 hologram, 10 glass, 11 fur, 12 iridescent, 13 car paint, 14 cloth sheen, 15 wax, 16 halftone cel, 17 ink toon)
     shp: vec4<f32>,          // the shader's settings, as the 3D view keeps them
     shq: vec4<f32>,
     shc: vec4<f32>,
     shd: vec4<f32>,
     skin: vec4<f32>,
+    she: vec4<f32>,
 };
 @group(1) @binding(0) var base_tex: texture_2d<f32>;
 @group(1) @binding(1) var orm_tex: texture_2d<f32>;
@@ -87,7 +107,24 @@ struct VIn {
     @location(0) pos: vec3<f32>,
     @location(1) nrm: vec3<f32>,
     @location(2) uv: vec2<f32>,
+    @location(3) dn: vec3<f32>,
 };
+
+// height depth: the height map rides in the normal map's alpha; the surface moves along the averaged normal
+fn dpos(i: VIn) -> vec3<f32> {
+    var p = i.pos;
+    if (mat.flags.w > 0.5 && frame.extra.w != 0.0) {
+        let h = textureSampleLevel(nrm_tex, tex_smp, i.uv, 0.0).a - 0.5;
+        p = p + normalize(i.dn) * (h * frame.extra.w);
+    }
+    let fk = frame.bv.w;
+    if (fk > 0.0) {
+        // the Bake tab's Unfold: the model slides onto its UV layout (the window's v runs the other way)
+        let k = fk * fk * (3.0 - 2.0 * fk);
+        p = mix(p, vec3<f32>((i.uv.x - 0.5) * 2.2, (i.uv.y - 0.5) * 2.2, 0.0) + vec3<f32>(mat.shd.w, 0.0, 0.0), k);
+    }
+    return p;
+}
 struct VOut {
     @builtin(position) clip: vec4<f32>,
     @location(0) wpos: vec3<f32>,
@@ -98,9 +135,10 @@ struct VOut {
 @vertex
 fn vs(i: VIn) -> VOut {
     var o: VOut;
-    o.clip = frame.view_proj * vec4<f32>(i.pos, 1.0);
-    o.wpos = i.pos;
-    o.nrm = i.nrm;
+    let dp = dpos(i);
+    o.clip = frame.view_proj * vec4<f32>(dp, 1.0);
+    o.wpos = dp;
+    o.nrm = select(i.nrm, normalize(mix(i.nrm, vec3<f32>(0.0, 0.0, 1.0), frame.bv.w * frame.bv.w * (3.0 - 2.0 * frame.bv.w))), frame.bv.w > 0.0);
     o.uv = i.uv;
     return o;
 }
@@ -121,6 +159,8 @@ fn bayer(p: vec2<f32>) -> f32 {
 var<private> g_sf: f32 = 0.0;
 var<private> g_sp: f32 = 0.0;
 var<private> g_rough: f32 = 0.5;
+fn hsh(p: vec2<f32>) -> f32 { return fract(sin(dot(p, vec2<f32>(127.1, 311.7))) * 43758.5453); }
+fn hsh3(p: vec3<f32>) -> f32 { return fract(sin(dot(p, vec3<f32>(127.1, 311.7, 74.7))) * 43758.5453); }
 fn lum(c: vec3<f32>) -> f32 { return dot(c, vec3<f32>(0.2126, 0.7152, 0.0722)); }
 
 struct FOut {
@@ -129,16 +169,106 @@ struct FOut {
     @location(1) n: vec4<f32>,   // world normal (0..1) and the share of the light that comes from the sun; w = 0 where there is no surface
 };
 
+// one light with the same GGX surface as the sun
+fn studio_direct(n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, albedo: vec3<f32>, f0: vec3<f32>, rough: f32, metal: f32) -> vec3<f32> {
+    let h = normalize(l + v);
+    let nl = max(dot(n, l), 0.0);
+    let nv = max(dot(n, v), 1e-3);
+    let nh = max(dot(n, h), 0.0);
+    let vh = max(dot(v, h), 0.0);
+    let a = rough * rough;
+    let a2 = a * a;
+    let d = a2 / (PI * pow(nh * nh * (a2 - 1.0) + 1.0, 2.0));
+    let vis = 0.5 / max(nl * sqrt(nv * nv * (1.0 - a2) + a2) + nv * sqrt(nl * nl * (1.0 - a2) + a2), 0.0001);
+    let f = f0 + (vec3<f32>(1.0) - f0) * pow(1.0 - vh, 5.0);
+    let dif = (vec3<f32>(1.0) - f) * (1.0 - metal) * albedo / PI;
+    return (dif + d * vis * f) * nl;
+}
+
 @fragment
 fn fs(i: VOut) -> FOut {
     var o: FOut;
     g_sf = 0.0;
     g_sp = 0.0;
+    // a UDIM tile's set draws only the part of the model whose UVs fall in that tile (the window's v runs the other way: 1 - v)
+    if (mat.tint.w > 1.5) {
+        let code = i32(mat.tint.w + 0.5) - 2;
+        let f = floor(i.uv);
+        if (i32(f.x) != code % 10 || i32(f.y) != -(code / 10) - 1) { discard; }
+    }
+    // see-through parts (opacity lives in the base colour's alpha): cut out below one half, like the 3D view
+    if (frame.wire.w < 1.5 && frame.light_n.w > 0.5 && textureSampleLevel(base_tex, tex_smp, i.uv, 0.0).a < 0.5) { discard; }
     o.c = fs_shade(i);
+    if (frame.wire.w > 1.5) { o.c = vec4<f32>(select(pow((frame.bgc.rgb + vec3<f32>(0.055)) / 1.055, vec3<f32>(2.4)), frame.bgc.rgb / 12.92, frame.bgc.rgb <= vec3<f32>(0.04045)), 1.0); }
     o.m = vec4<f32>(g_rough, g_sp, 0.0, 1.0);
     var nw = normalize(i.nrm);
-    if (dot(nw, normalize(frame.cam_pos.xyz - i.wpos)) < 0.0) { nw = -nw; }
+    if (dot(nw, view_dir(i.wpos)) < 0.0) { nw = -nw; }
     o.n = vec4<f32>(nw * 0.5 + 0.5, 0.25 + 0.75 * g_sf);
+    return o;
+}
+
+// ---- fur: grown in shells; alpha < 0 means "not a strand here" ----
+const FUR_SHELLS: f32 = 24.0;
+const FUR_LEN: f32 = 0.09;
+fn fur_shade(wpos: vec3<f32>, nrm: vec3<f32>, uv: vec2<f32>, k: f32, albedo: vec3<f32>) -> vec4<f32> {
+    let dens = mat.shp.y;
+    let gp = uv * dens;
+    let cell = floor(gp);
+    var fq = fract(gp) - vec2<f32>(0.5);
+    let cc = floor(gp / (1.0 + mat.shp.z * 3.0));
+    fq = fq + (vec2<f32>(hsh(cc), hsh(cc + vec2<f32>(7.3))) - vec2<f32>(0.5)) * mat.shp.z * k * 0.9;
+    let len = 0.6 + 0.4 * hsh(cell + vec2<f32>(3.1));
+    if (k > 0.0) {
+        if (k > len || length(fq) * 2.0 > mat.shq.z * (1.0 - k * 0.85)) { return vec4<f32>(0.0, 0.0, 0.0, -1.0); }
+    }
+    let root = albedo * (1.0 - mat.shq.y * 0.85);
+    let tip = mix(albedo, lin3(mat.shc.rgb), mat.shq.w);
+    let c0 = mix(root, tip, k);
+    let occ = mix(1.0 - mat.shq.y * 0.6, 1.0, k);
+    let nf = normalize(nrm);
+    let l = normalize(frame.sun_dir.xyz);
+    let wl = max((dot(nf, l) + 0.5) / 1.5, 0.0);
+    var col = c0 / PI * wl * frame.sun_col.rgb;
+    if (frame.info.y > 0.5) { col = col + c0 * sh_diffuse(nf) * occ; } else { col = col + c0 * mix(vec3<f32>(0.25), vec3<f32>(0.6, 0.7, 0.85), nf.y * 0.5 + 0.5) * occ; }
+    let vf = view_dir(wpos);
+    col = col + lin3(mat.shc.rgb) * 0.12 * pow(1.0 - max(dot(nf, vf), 0.0), 3.0) * k;
+    return vec4<f32>(tone(col), 1.0);
+}
+struct FurOut {
+    @builtin(position) clip: vec4<f32>,
+    @location(0) wpos: vec3<f32>,
+    @location(1) nrm: vec3<f32>,
+    @location(2) uv: vec2<f32>,
+    @location(3) k: f32,
+};
+@vertex
+fn vs_fur(i: VIn, @builtin(instance_index) ii: u32) -> FurOut {
+    var o: FurOut;
+    let k = (f32(ii) + 1.0) / FUR_SHELLS;
+    let nm = normalize(i.nrm);
+    let pr = dpos(i);
+    let t = frame.extra.x;
+    let wl = mat.shp.x * FUR_LEN * k;
+    let wd = vec3<f32>(mat.shp.w * FUR_LEN * 0.6 * k * k, -mat.skin.x * FUR_LEN * k * k, mat.shp.w * FUR_LEN * 0.25 * k * k);
+    let dp = pr + nm * wl + wd * (0.45 + 0.55 * sin(dot(i.pos, vec3<f32>(3.1, 1.7, 2.3)) + t * mat.shq.x * 2.0));
+    o.clip = frame.view_proj * vec4<f32>(dp, 1.0);
+    o.wpos = dp;
+    o.nrm = i.nrm;
+    o.uv = i.uv;
+    o.k = k;
+    return o;
+}
+@fragment
+fn fs_fur(i: FurOut) -> FOut {
+    var o: FOut;
+    var n = normalize(i.nrm);
+    if (dot(n, view_dir(i.wpos)) < 0.0) { n = -n; }
+    let al = textureSampleLevel(base_tex, tex_smp, i.uv, 0.0);
+    let r = fur_shade(i.wpos, n, i.uv, i.k, al.rgb * mat.tint.rgb);
+    if (r.a < 0.0) { discard; }
+    o.c = r;
+    o.n = vec4<f32>(n * 0.5 + 0.5, 0.25);
+    o.m = vec4<f32>(0.8, 0.0, 0.0, 1.0);
     return o;
 }
 
@@ -147,7 +277,7 @@ fn fs_shade(i: VOut) -> vec4<f32> {
     var uv = i.uv;
     if (kind == 7) { uv = uv + frame.extra.x * mat.shd.xy; }   // panner: the maps slide
     var n = normalize(i.nrm);
-    let v = normalize(frame.cam_pos.xyz - i.wpos);
+    let v = view_dir(i.wpos);
     if (dot(n, v) < 0.0) { n = -n; }
 
     // retro: the maps are read as a small grid of texels
@@ -170,15 +300,22 @@ fn fs_shade(i: VOut) -> vec4<f32> {
     let t0 = dp2perp * duv1.x + dp1perp * duv2.x;
     let b0 = dp2perp * duv1.y + dp1perp * duv2.y;
     let invmax = inverseSqrt(max(max(dot(t0, t0), dot(b0, b0)), 1e-20));
-    let tt = t0 * invmax;
-    let bb = b0 * invmax;
+    // (screen derivatives run downwards here, upwards in GLSL, so the frame built from them is turned round: T and B negated)
+    let tt = -t0 * invmax;
+    let bb = -b0 * invmax;
     var albedo4 = textureSampleGrad(base_tex, tex_smp, guv, duv1, duv2);
     if (kind == 8) { albedo4 = textureSampleLevel(base_tex, tex_smp, guv, lodbias); }
-    let albedo = albedo4.rgb * mat.tint.rgb;
+    var albedo = albedo4.rgb * mat.tint.rgb;
+    if (frame.info.w > 0.5) { return vec4<f32>(albedo, 1.0); }
     var nn = n;
     if (kind != 8) {
         let tn = textureSample(nrm_tex, tex_smp, guv).xyz * 2.0 - 1.0;
         nn = normalize(mat3x3<f32>(tt, bb, n) * tn);
+    }
+    if (frame.bv.x > 0.5) {
+        // the 3D view's Bevel preview: rounded normals made for this very view (the picture's first row is the top)
+        let r = textureLoad(bev_tex, vec2<i32>(i32(i.clip.x), i32(frame.bv.z) - 1 - i32(i.clip.y)), 0);
+        if (r.a > 0.5) { nn = normalize(r.xyz * 2.0 - vec3<f32>(1.0)); }
     }
     var rough = mat.flags.y;
     var metal = mat.flags.z;
@@ -189,7 +326,9 @@ fn fs_shade(i: VOut) -> vec4<f32> {
         rough = orm.g;
         metal = orm.b;
     }
+    if (frame.bgc.w > 0.0) { albedo = vec3<f32>(0.78, 0.8, 0.84); metal = 1.0; rough = frame.bgc.w; ao = 1.0; }
     rough = clamp(rough, 0.04, 1.0);
+    if (kind == 15) { rough = mix(rough, max(rough, 0.5), mat.shp.z); }
     let emis = textureSample(emi_tex, tex_smp, guv).rgb;
 
     let nv = max(dot(nn, v), 1e-3);
@@ -198,7 +337,14 @@ fn fs_shade(i: VOut) -> vec4<f32> {
     let nl = max(dot(nn, l), 0.0);
     let nh = max(dot(nn, h), 0.0);
     let vh = max(dot(v, h), 0.0);
-    let f0 = mix(vec3<f32>(0.04), albedo, metal);
+    var f0 = mix(vec3<f32>(0.04), albedo, metal);
+    if (kind == 12) {
+        // iridescent: a film whose colour follows the viewing angle
+        let tt2 = mat.shp.y + mat.shp.z * (0.3 + mat.shp.w * (1.0 - nv));
+        let film = vec3<f32>(0.5) + vec3<f32>(0.5) * cos(6.2832 * (vec3<f32>(tt2) + vec3<f32>(0.0, 0.33, 0.67)));
+        f0 = mix(f0, mix(film, vec3<f32>(1.0), 0.15), mat.shp.x);
+        metal = mix(metal, 1.0, 0.6 * mat.shp.x);
+    }
     let sun = frame.sun_col.rgb;
     let skyi = 1.0;
 
@@ -215,6 +361,50 @@ fn fs_shade(i: VOut) -> vec4<f32> {
         c = floor(c * mat.shc.rgb + 0.5 + (bayer(i.clip.xy) - 0.5) * mat.shp.z) / mat.shc.rgb;
         return vec4<f32>(lin3(clamp(c, vec3<f32>(0.0), vec3<f32>(1.0))), 1.0);
     }
+
+    // ---- hologram, glass and fur ----
+    if (kind == 9) {
+        let t = frame.extra.x;
+        let nvh = clamp(abs(dot(nn, v)), 0.0, 1.0);
+        let ln = smoothstep(0.35, 0.65, sin((i.wpos.y * mat.shp.x - t * mat.shq.x * 3.0) * 1.5708) * 0.5 + 0.5);
+        let fl = max(1.0 - mat.shp.y * (0.35 * hsh(vec2<f32>(floor(t * 24.0), 1.0)) + 0.15 * sin(t * 60.0)), 0.0);
+        let edge = pow(1.0 - nvh, 2.5) * mat.shp.z * (1.0 + mat.shq.w * 0.6 * sin(t * 3.0));
+        let body = mat.shq.y * (0.35 + 0.65 * dot(albedo, vec3<f32>(0.3333)));
+        let sw = exp(-pow((fract(i.wpos.y * 0.35 - t * 0.25) - 0.5) * 7.0, 2.0)) * mat.shd.x;
+        let gl = step(0.965 - mat.shq.z * 0.06, hsh(vec2<f32>(floor(i.wpos.y * 18.0), floor(t * 7.0)))) * mat.shq.z;
+        let ln2 = clamp(ln + gl * 0.8, 0.0, 1.0);
+        let c = lin3(mat.shc.rgb) * (edge + ln2 * 0.55 + body * (0.4 + 0.6 * ln2) + sw * 0.9 + gl * 1.2) * fl * 2.0 + emis * 2.0;
+        let al = clamp(mat.shp.w * (0.15 + 0.5 * ln2 + 0.9 * edge + body * 0.6 + sw * 0.5 + gl * 0.6), 0.0, 1.0) * fl;
+        return vec4<f32>(tone(c), al);
+    }
+    if (kind == 10) {
+        let rf = clamp(mat.shp.y, 0.0, 1.0);
+        let fr = clamp((0.04 + 0.96 * pow(1.0 - nv, 5.0)) * mat.shp.w, 0.0, 1.0);
+        let eta = 1.0 / (1.0 + 0.6 * mat.shp.x);
+        let d2 = mat.shq.y * 0.05;
+        var dr = refract(-v, nn, eta + d2);
+        var dg = refract(-v, nn, eta);
+        var db = refract(-v, nn, eta - d2);
+        let rr = reflect(-v, nn);
+        if (dot(dr, dr) < 0.5) { dr = rr; }
+        if (dot(dg, dg) < 0.5) { dg = rr; }
+        if (dot(db, db) < 0.5) { db = rr; }
+        var te = vec3<f32>(0.0);
+        var re = vec3<f32>(0.0);
+        if (frame.info.y > 0.5) {
+            te = vec3<f32>(env_spec(dr, rf).r, env_spec(dg, rf).g, env_spec(db, rf).b);
+            re = env_spec(rr, rf * 0.6) * fr;
+        } else {
+            te = mix(vec3<f32>(0.25), vec3<f32>(0.6, 0.7, 0.85), dg.y * 0.5 + 0.5);
+            re = mix(vec3<f32>(0.25), vec3<f32>(0.6, 0.7, 0.85), rr.y * 0.5 + 0.5) * fr;
+        }
+        let ab = exp(-(vec3<f32>(1.0) - lin3(mat.shc.rgb)) * mat.shp.z * 1.6 / nv) * mix(vec3<f32>(1.0), albedo, 0.85);
+        let spg = pow(max(dot(nn, h), 0.0), mix(500.0, 40.0, rf)) * (1.0 - rf * 0.7) * (2.0 / 3.0);
+        let c = te * ab * (1.0 - fr) + re + sun * spg + emis * 2.0;
+        let al = clamp(mat.shq.x + fr + spg + rf * 0.5, 0.0, 1.0);
+        return vec4<f32>(tone(c), al);
+    }
+    if (kind == 11) { return fur_shade(i.wpos, n, uv, 0.0, albedo); }
 
     // ---- toon and cel: flat bands of light from the sun ----
     if (kind == 4 || kind == 5) {
@@ -233,6 +423,62 @@ fn fs_shade(i: VOut) -> vec4<f32> {
         if (frame.info.y > 0.5) { amb = sh_diffuse(nn) * 0.25; }
         var col = bs * (0.75 + 0.25 * frame.params.z) + bs * amb * ao + vec3<f32>(sp) + albedo * rim;
         col = col + emis * 2.0;
+        return vec4<f32>(clamp(col * frame.params.x, vec3<f32>(0.0), vec3<f32>(1.0)), 1.0);
+    }
+
+    // ---- halftone cel and ink toon ----
+    if (kind == 16) {
+        let lt = dot(nn, l) * 0.5 + 0.5;
+        let st = max(mat.shp.x, 1.0);
+        let x = lt * st;
+        let i0 = floor(x);
+        let f = x - i0;
+        var lvl = 0.0;
+        if (mat.shp.z > 0.01) {
+            let w = mat.shp.z * 0.5;
+            let t = clamp((f - 0.5) / (w * 2.0 + 1e-3) + 0.5, 0.0, 1.0);
+            let c2 = vec2<f32>(uv.x + uv.y, uv.x - uv.y) * mat.shp.w;
+            let cc = fract(c2) - vec2<f32>(0.5);
+            let pp = length(cc) * 1.4142;
+            let aa = fwidth(pp) + 1e-3;
+            let lu = pow(dot(albedo, vec3<f32>(0.2126, 0.7152, 0.0722)), 1.0 / 2.2);
+            let tt = t * 1.15 + mat.she.x * (0.5 - lu) * 1.2 * 4.0 * t * (1.0 - t);
+            lvl = i0 + (1.0 - smoothstep(tt - aa, tt + aa, pp)) * step(0.001, t);
+        } else {
+            lvl = i0 + smoothstep(0.5 - mat.shp.y, 0.5 + mat.shp.y + 1e-4, f);
+        }
+        let ramp = clamp(lvl / st, 0.0, 1.0);
+        var shc0 = albedo * (1.0 - mat.shq.y);
+        shc0 = mix(vec3<f32>(dot(shc0, vec3<f32>(0.2126, 0.7152, 0.0722))), shc0, 1.0 + mat.shq.z * 1.5);
+        shc0 = shc0 * mix(vec3<f32>(1.0), lin3(mat.shc.rgb) * 2.0, mat.shq.w);
+        var c = mix(shc0, albedo, ramp);
+        let spc = step(1.0 - mat.skin.z * 0.02, nh) * (1.0 - rough * 0.5) * step(0.01, mat.skin.z);
+        c = mix(c, vec3<f32>(1.0), spc * 0.8);
+        let rim = smoothstep(1.0 - mat.skin.y, 1.0, 1.0 - nv) * mat.skin.x * smoothstep(-0.1, 0.5, dot(nn, l));
+        c = c + lin3(mat.shd.rgb) * rim;
+        var amb = vec3<f32>(0.2);
+        if (frame.info.y > 0.5) { amb = sh_diffuse(nn) * 0.25; }
+        var col = c * (0.75 + 0.25 * frame.params.z) + c * amb * ao + emis * 2.0;
+        return vec4<f32>(clamp(col * frame.params.x, vec3<f32>(0.0), vec3<f32>(1.0)), 1.0);
+    }
+    if (kind == 17) {
+        let lt = dot(nn, l) * 0.5 + 0.5;
+        let st = max(mat.shp.x, 1.0);
+        var lv = 0.0;
+        for (var k = 1; k <= 3; k = k + 1) {
+            if (f32(k) > st) { break; }
+            let th = f32(k) / (st + 1.0) * 1.1;
+            lv = lv + smoothstep(th - mat.shp.y, th + mat.shp.y + 1e-4, lt);
+        }
+        let ramp = lv / st;
+        let sc = lin3(mat.shc.rgb) * 2.0;
+        let dark = albedo * mix(vec3<f32>(1.0), sc, mat.she.x) * mix(1.0, 0.55, mat.she.x);
+        var c = mix(dark, albedo, ramp);
+        let rim = smoothstep(1.0 - mat.shp.z, 1.0, 1.0 - nv) * mat.she.y * mix(1.0, smoothstep(-0.3, 0.3, dot(nn, l)), mat.shp.w);
+        c = c + lin3(mat.shd.rgb) * rim;
+        var amb = vec3<f32>(0.2);
+        if (frame.info.y > 0.5) { amb = sh_diffuse(nn) * 0.25; }
+        var col = c * (0.75 + 0.25 * frame.params.z) + c * amb * ao + emis * 2.0;
         return vec4<f32>(clamp(col * frame.params.x, vec3<f32>(0.0), vec3<f32>(1.0)), 1.0);
     }
 
@@ -261,7 +507,30 @@ fn fs_shade(i: VOut) -> vec4<f32> {
     let spec = d * vis * f;
     let dif = (vec3<f32>(1.0) - f) * (1.0 - metal) * albedo / PI;
     var col = (dif + spec) * nl * sun;
+    // your own lights (the light rig): the plain GGX light, like the 3D view's
+    for (var li = 0; li < 4; li = li + 1) {
+        if (f32(li) >= frame.light_n.x) { break; }
+        let la = frame.light_a[li];
+        let lb = frame.light_b[li];
+        let lc = frame.light_c[li];
+        let ty = i32(la.x + 0.5);
+        var ld: vec3<f32>;
+        var rad = lc.rgb;
+        if (ty == 0) {
+            ld = -normalize(lb.xyz);
+        } else {
+            let dv = la.yzw - i.wpos;
+            let dd = max(length(dv), 1e-5);
+            ld = dv / dd;
+            rad = rad / (1.0 + dd * dd / max(lc.w * lc.w, 1e-8));
+            if (ty == 2) { rad = rad * smoothstep(lb.w, mix(lb.w, 1.0, 0.35), dot(-ld, normalize(lb.xyz))); }
+        }
+        col += studio_direct(nn, v, ld, albedo, f0, rough, metal) * rad * 3.0;
+    }
+    col += studio_direct(nn, v, normalize(vec3<f32>(-0.75, 0.45, -0.25)), albedo, f0, rough, metal) * frame.light_n.y * 2.0;
+    col += studio_direct(nn, v, normalize(vec3<f32>(0.3, 0.35, -0.9)), albedo, f0, rough, metal) * frame.light_n.z * 2.0;
     var thick = mat.shp.w;
+    if (mat.skin.w > 0.5) { thick = textureSample(emi_tex, tex_smp, uv).a; }
     if (kind == 1) {
         let ns = normalize(mix(nn, n, mat.shp.z));
         let sss = clamp(mat.shc.rgb, vec3<f32>(0.02), vec3<f32>(1.0));
@@ -272,9 +541,8 @@ fn fs_shade(i: VOut) -> vec4<f32> {
         let back = max(dot(-ns, l), 0.0);
         let transmitted = attenuation * sss * back * mat.skin.z * mat.shp.y;
         let sr = clamp(mix(rough, mat.skin.x, 0.75), 0.08, 1.0);
-        let ar = sr * sr;
-        let dd = nh * nh * (ar * ar - 1.0) + 1.0;
-        let surface = vec3<f32>(0.028) * (ar * ar / (PI * dd * dd)) * 0.25 * nl;
+        // two surface lobes, as in the 3D view
+        let surface = studio_direct(nn, v, l, vec3<f32>(0.0), vec3<f32>(0.028), sr, 0.0) + studio_direct(nn, v, l, vec3<f32>(0.0), vec3<f32>(0.04), max(sr * 0.38, 0.08), 0.0) * mat.shq.z * 0.35;
         col = ((vec3<f32>(1.0) - f) * (1.0 - metal) * albedo / PI * dl + surface) * sun + transmitted * albedo * sun * 0.5;
     }
     if (kind == 3) {
@@ -282,6 +550,51 @@ fn fs_shade(i: VOut) -> vec4<f32> {
         let sn = sqrt(max(1.0 - nh * nh, 0.0));
         let dc = (2.0 + 1.0 / sr) * pow(sn, 1.0 / sr) / (2.0 * PI);
         col += lin3(mat.shc.rgb) * mat.shp.x * dc * nl * sun / max(4.0 * (nl + nv - nl * nv), 1e-3);
+    }
+
+    if (kind == 13) {
+        // car paint: a clear coat over the paint, and flakes
+        let cr = max(mat.shq.x, 0.02);
+        let nc = normalize(n + mat.shq.y * 0.04 * vec3<f32>(sin(i.wpos.x * 90.0 + i.wpos.y * 37.0), sin(i.wpos.y * 83.0 + i.wpos.z * 51.0), sin(i.wpos.z * 77.0 + i.wpos.x * 29.0)));
+        col += studio_direct(nc, v, l, vec3<f32>(0.0), vec3<f32>(0.04), cr, 0.0) * sun * mat.shp.z;
+        // flakes: tiny mirrors in the paint, each at its own angle, in 3D cells of the model; they flash when light and eye line up
+        let fq3 = mat3x3<f32>(vec3<f32>(0.36, 0.48, -0.8), vec3<f32>(-0.8, 0.6, 0.0), vec3<f32>(0.48, 0.64, 0.6)) * i.wpos * mat.shp.y * 0.85;
+        let ci = floor(fq3);
+        let fr = fract(fq3) - vec3<f32>(0.5);
+        let fw = length(fwidth(fq3));
+        let h1 = hsh3(ci);
+        let h2 = hsh3(ci + vec3<f32>(17.1));
+        let h3 = hsh3(ci + vec3<f32>(43.7));
+        let h4 = hsh3(ci + vec3<f32>(91.3));
+        let rad = 0.22 + 0.28 * h4;
+        let fm = step(h1, mat.shp.x * 0.8) * smoothstep(rad, rad * 0.55, length(fr));
+        let nf = normalize(nn + (vec3<f32>(h2, h3, hsh3(ci + vec3<f32>(5.5))) - vec3<f32>(0.5)) * 1.6);
+        let fcol = mix(lin3(mat.shc.rgb), albedo, 0.2) * (0.6 + 0.8 * h4);
+        var fsp = (pow(max(dot(nf, h), 0.0), 70.0) * 4.0 + pow(max(dot(nf, h), 0.0), 10.0) * 0.47) * sun;
+        if (frame.info.y > 0.5) { fsp = fsp + env_spec(reflect(-v, nf), 0.15) * 0.5; }
+        let fade = smoothstep(0.5, 1.0, fw);
+        col += mat.shp.w * mix(fm * fcol * fsp, fcol * mat.shp.x * 0.1, fade);
+        col = col * (1.0 + fm * (h3 - 0.5) * 0.15 * (1.0 - fade));
+    }
+    if (kind == 14) {
+        // cloth: a soft sheen, or fibres that streak it (satin, silk)
+        let sr = max(mat.shp.y, 0.05);
+        let sn = sqrt(max(1.0 - nh * nh, 0.0));
+        let dc = (2.0 + 1.0 / sr) * pow(sn, 1.0 / sr) / (2.0 * PI);
+        let an = mat.shp.z * 2.0 * PI;
+        var tf = normalize(tt * cos(an) + bb * sin(an));
+        tf = normalize(tf - nn * dot(nn, tf));
+        let th = dot(tf, h);
+        let da = pow(sqrt(max(1.0 - th * th, 0.0)), mix(10.0, 160.0, 1.0 - mat.shp.y)) * 0.6;
+        let wv = mix(1.0, 0.55 + 0.45 * sin(uv.x * 200.0) * sin(uv.y * 200.0), mat.shq.x);
+        col += lin3(mat.shc.rgb) * mat.shp.x * mix(dc, da, mat.shp.w) * wv * nl * sun / max(4.0 * (nl + nv - nl * nv), 1e-3);
+    }
+    if (kind == 15) {
+        // wax / marble: light wrapping round and shining through
+        let w = 0.3 + 0.7 * mat.shp.y;
+        let wr = max((dot(n, l) + w) / (1.0 + w), 0.0);
+        let bk = max(dot(-n, l), 0.0) * exp(-thick * (3.0 - 2.0 * mat.shp.y));
+        col += lin3(mat.shc.rgb) * albedo * mat.shp.x * (wr * 0.5 + bk) * sun;
     }
 
     let sun_part = col;
@@ -306,9 +619,12 @@ fn fs_shade(i: VOut) -> vec4<f32> {
             env_d = diff_col * sh_diffuse(ns) + sh_diffuse(-ns) * attenuation * sss * albedo * mat.shp.y * mat.skin.z * 0.25;
             let sr = clamp(mix(rough, mat.skin.x, 0.75), 0.08, 1.0);
             let sab = env_brdf(sr, nv);
-            env_s = env_spec(reflect(-v, nn), sr) * (vec3<f32>(0.028) * sab.x + sab.y);
+            env_s = env_spec(reflect(-v, nn), sr) * (vec3<f32>(0.028) * sab.x + sab.y) + env_spec(reflect(-v, nn), max(sr * 0.38, 0.08)) * (vec3<f32>(0.04) * sab.x + sab.y) * mat.shq.z * 0.35;
         }
         if (kind == 3) { env_s += lin3(mat.shc.rgb) * mat.shp.x * sh_diffuse(nn) * pow(1.0 - nv, max(mat.shp.z, 0.5) * 3.0 + 1.0); }
+        if (kind == 14) { env_s += lin3(mat.shc.rgb) * mat.shp.x * sh_diffuse(nn) * pow(1.0 - nv, 2.5) * 0.8; }
+        if (kind == 13) { let abc = env_brdf(max(mat.shq.x, 0.02), nv); env_s += env_spec(reflect(-v, n), max(mat.shq.x, 0.02)) * (vec3<f32>(0.04) * abc.x + vec3<f32>(abc.y)) * mat.shp.z; }
+        if (kind == 15) { env_d += (sh_diffuse(-n) * exp(-thick * (3.0 - 2.0 * mat.shp.y)) * 0.25 + sh_diffuse(n) * 0.1) * lin3(mat.shc.rgb) * albedo * mat.shp.x; }
     } else {
         let hemi = mix(vec3<f32>(0.25), vec3<f32>(0.6, 0.7, 0.85), nn.y * 0.5 + 0.5);
         env_d = diff_col * hemi;
@@ -328,26 +644,213 @@ fn fs_shade(i: VOut) -> vec4<f32> {
     return vec4<f32>(tone(col), 1.0);
 }
 
-// the outline of toon and cel: the faces turned away from the camera, pushed out along their normals
+// the outline of toon, cel, halftone cel and ink toon: the faces turned away from the camera, pushed out along their normals
 struct OutOut {
     @builtin(position) clip: vec4<f32>,
     @location(0) wpos: vec3<f32>,
     @location(1) nrm: vec3<f32>,
+    @location(2) uv: vec2<f32>,
 };
 @vertex
 fn vs_out(i: VIn) -> OutOut {
     var o: OutOut;
-    let w = mat.shq.x * frame.extra.y;
-    o.clip = frame.view_proj * vec4<f32>(i.pos + normalize(i.nrm) * w, 1.0);
+    var w = mat.shq.x * frame.extra.y;
+    let kd = i32(mat.shk.x + 0.5);
+    if (kd == 17) {
+        // hand-drawn wobble
+        w = w * (1.0 + mat.shq.y * 0.7 * (sin(dot(i.pos, vec3<f32>(37.0, 23.0, 29.0))) * 0.5 + sin(dot(i.pos, vec3<f32>(17.0, 41.0, 31.0))) * 0.5));
+    }
+    let dp = dpos(i);
+    o.clip = frame.view_proj * vec4<f32>(dp + normalize(i.nrm) * w, 1.0);
+    o.wpos = dp;
+    o.nrm = i.nrm;
+    o.uv = i.uv;
+    return o;
+}
+@fragment
+fn fs_out(i: OutOut) -> FOut {
+    if (dot(normalize(i.nrm), view_dir(i.wpos)) > 0.0) { discard; }
+    var o: FOut;
+    let kd = i32(mat.shk.x + 0.5);
+    var c = lin3(mat.shd.rgb);
+    if (kd == 16 || kd == 17) {
+        let b = textureSampleLevel(base_tex, tex_smp, i.uv, 0.0).rgb * mat.tint.rgb;
+        let dk = select(0.3, mat.shq.w, kd == 17);
+        var dc = b * pow(dk, 2.2);
+        dc = mix(vec3<f32>(dot(dc, vec3<f32>(0.3333))), dc, 1.25);
+        c = dc;
+        if (kd == 17 && mat.shq.z > 0.5) { c = lin3(mat.skin.rgb); }
+    }
+    o.c = vec4<f32>(c, 1.0);
+    o.n = vec4<f32>(0.0);
+    o.m = vec4<f32>(0.0);
+    return o;
+}
+
+// wireframe lines (pulled toward the camera a little so they sit on the surface)
+@vertex
+fn vs_wire(i: VIn) -> OutOut {
+    var o: OutOut;
+    let dp = dpos(i);
+    var c = frame.view_proj * vec4<f32>(dp, 1.0);
+    c.z = c.z - 0.0004 * c.w;
+    o.clip = c;
+    o.wpos = dp;
+    o.nrm = i.nrm;
+    o.uv = i.uv;
+    return o;
+}
+@fragment
+fn fs_wire(i: OutOut) -> FOut {
+    var o: FOut;
+    o.c = vec4<f32>(lin3(frame.wire.rgb), 1.0);
+    o.n = vec4<f32>(0.0);
+    o.m = vec4<f32>(0.0);
+    return o;
+}
+
+// the stencil over the view: the page keeps it in the pixels of its own 3D view, so the window turns its pixels into that view's first
+@group(1) @binding(8) var st_tex: texture_2d<f32>;
+@group(1) @binding(9) var st_smp: sampler;
+@fragment
+fn fs_stencil(@builtin(position) p: vec4<f32>) -> @location(0) vec4<f32> {
+    let nw = vec2<f32>(p.x / frame.res.x * 2.0 - 1.0, 1.0 - p.y / frame.res.y * 2.0);
+    let aw = frame.res.x / frame.res.y;
+    let am = frame.st_c.x / frame.st_c.y;
+    let nm = vec2<f32>(nw.x * aw / am, nw.y);
+    let mp = vec2<f32>((nm.x * 0.5 + 0.5) * frame.st_c.x, (0.5 - nm.y * 0.5) * frame.st_c.y);
+    let d = mp - frame.st_a.xy;
+    let c = cos(frame.st_b.x);
+    let s = sin(frame.st_b.x);
+    let local = vec2<f32>(c * d.x + s * d.y, -s * d.x + c * d.y);
+    var uv = local / frame.st_a.zw * 0.5 + vec2<f32>(0.5);
+    let flags = i32(frame.st_b.z + 0.5);
+    if ((flags & 2) != 0) { uv = fract(uv); }
+    else if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) { discard; }
+    var col = textureSampleLevel(st_tex, st_smp, uv, 0.0);
+    var rgb = col.rgb;
+    if ((flags & 1) != 0) { rgb = vec3<f32>(1.0) - rgb; }
+    let a = col.a * frame.st_b.y;
+    if (a < 0.003) { discard; }
+    return vec4<f32>(lin3(rgb), a);
+}
+
+// the part under the pointer while a selection tool is armed
+@vertex
+fn vs_hl(i: VIn) -> OutOut {
+    var o: OutOut;
+    var c = frame.view_proj * vec4<f32>(i.pos, 1.0);
+    c.z = c.z - 0.0006 * c.w;
+    o.clip = c;
     o.wpos = i.pos;
     o.nrm = i.nrm;
     return o;
 }
 @fragment
-fn fs_out(i: OutOut) -> FOut {
-    if (dot(normalize(i.nrm), normalize(frame.cam_pos.xyz - i.wpos)) > 0.0) { discard; }
+fn fs_hl(i: OutOut) -> FOut {
     var o: FOut;
-    o.c = vec4<f32>(lin3(mat.shd.rgb), 1.0);
+    o.c = vec4<f32>(lin3(vec3<f32>(0.12, 0.65, 1.0)), 0.38);
+    o.n = vec4<f32>(0.0);
+    o.m = vec4<f32>(0.0);
+    return o;
+}
+
+// the brush ring as it falls on the surface for each mirror copy (the copies' matrices come in a list)
+struct Mirc { m: array<mat4x4<f32>, 32> };
+@group(1) @binding(0) var<uniform> mirc: Mirc;
+@group(1) @binding(1) var mc_depth: texture_depth_2d;
+@group(1) @binding(2) var mc_nrm: texture_2d<f32>;
+fn world_at(px: vec2<f32>, d: f32) -> vec3<f32> {
+    let ndc = vec2<f32>(px.x / frame.res.x * 2.0 - 1.0, 1.0 - px.y / frame.res.y * 2.0);
+    let w = frame.inv_view_proj * vec4<f32>(ndc, d, 1.0);
+    return w.xyz / w.w;
+}
+@fragment
+fn fs_mirc(@builtin(position) p: vec4<f32>) -> @location(0) vec4<f32> {
+    let px = vec2<i32>(p.xy);
+    let d0 = textureLoad(mc_depth, px, 0);
+    if (d0 >= 0.99999) { discard; }
+    let n = textureLoad(mc_nrm, px, 0);
+    if (n.w <= 0.0) { discard; }
+    let P = world_at(p.xy, d0);
+    let N = n.xyz * 2.0 - vec3<f32>(1.0);
+    let cnt = i32(frame.st_c.z);
+    let radius = frame.cursor.z;
+    let edge = max(frame.res.y / 1080.0, 0.75);
+    let sz = vec2<f32>(textureDimensions(mc_depth));
+    var a = 0.0;
+    for (var i = 1; i < 32; i = i + 1) {
+        if (i >= cnt) { break; }
+        let q = (mirc.m[i] * vec4<f32>(P, 1.0)).xyz;
+        let c = frame.view_proj * vec4<f32>(q, 1.0);
+        if (c.w <= 1e-6) { continue; }
+        let s = c.xy / c.w;
+        if (abs(s.x) > 1.0 || abs(s.y) > 1.0) { continue; }
+        let spx = vec2<f32>((s.x * 0.5 + 0.5) * frame.res.x, (0.5 - s.y * 0.5) * frame.res.y);
+        let d = abs(length(spx - frame.cursor.xy) - radius);
+        if (d > edge * 1.65) { continue; }
+        // the copy only counts where the point it lands on is in view
+        let z = textureLoad(mc_depth, vec2<i32>(clamp(spx, vec2<f32>(0.0), sz - vec2<f32>(1.0))), 0);
+        if (z >= 0.99999) { continue; }
+        let seen = length(world_at(spx, z) - frame.cam_pos.xyz);
+        if (length(q - frame.cam_pos.xyz) > seen * 1.006 + 0.004) { continue; }
+        let nq = (mirc.m[i] * vec4<f32>(N, 0.0)).xyz;
+        let facing = abs(dot(normalize(nq), normalize(frame.cam_pos.xyz - q)));
+        a = max(a, (1.0 - smoothstep(edge * 0.65, edge * 1.65, d)) * smoothstep(0.04, 0.22, facing));
+    }
+    if (a < 0.01) { discard; }
+    return vec4<f32>(lin3(vec3<f32>(0.35, 0.8, 1.0)), a * 0.95);
+}
+
+// the high-poly of the Bake tab: plain clay, see-through over the model or on its own
+struct HvOut {
+    @builtin(position) clip: vec4<f32>,
+    @location(0) wpos: vec3<f32>,
+    @location(1) nrm: vec3<f32>,
+};
+@vertex
+fn vs_hv(@location(0) pos: vec3<f32>, @location(1) nrm: vec3<f32>) -> HvOut {
+    var o: HvOut;
+    o.clip = frame.view_proj * vec4<f32>(pos, 1.0);
+    o.wpos = pos;
+    o.nrm = nrm;
+    return o;
+}
+@fragment
+fn fs_hv(i: HvOut) -> FOut {
+    var o: FOut;
+    var n = normalize(i.nrm);
+    if (frame.bv.x > 0.5 && frame.st_c.w > 1.5) {
+        // the Bevel preview on the high-poly shown on its own: rounded normals made for this view
+        let r = textureLoad(bev_tex, vec2<i32>(i32(i.clip.x), i32(frame.bv.z) - 1 - i32(i.clip.y)), 0);
+        if (r.a > 0.5) { n = normalize(r.xyz * 2.0 - vec3<f32>(1.0)); }
+    }
+    let v = normalize(frame.cam_pos.xyz - i.wpos);
+    if (dot(n, v) < 0.0) { n = -n; }
+    let l = 0.25 + 0.6 * max(dot(n, normalize(vec3<f32>(0.4, 0.8, 0.5))), 0.0) + 0.15 * max(dot(n, v), 0.0);
+    let see = frame.st_c.w < 1.5;
+    let tint = select(vec3<f32>(0.82, 0.8, 0.78), vec3<f32>(1.0, 0.72, 0.45), see);
+    o.c = vec4<f32>(lin3(tint * l), select(1.0, 0.45, see));
+    o.n = vec4<f32>(0.5, 0.5, 1.0, select(0.4, 0.0, see));
+    o.m = vec4<f32>(0.0, 0.0, 0.0, select(1.0, 0.0, see));
+    return o;
+}
+
+// mirror guides
+@vertex
+fn vs_guide(@location(0) pos: vec3<f32>) -> OutOut {
+    var o: OutOut;
+    var c = frame.view_proj * vec4<f32>(pos, 1.0);
+    c.z = c.z - 0.0004 * c.w;
+    o.clip = c;
+    o.wpos = pos;
+    o.nrm = vec3<f32>(0.0, 1.0, 0.0);
+    return o;
+}
+@fragment
+fn fs_guide(i: OutOut) -> FOut {
+    var o: FOut;
+    o.c = vec4<f32>(lin3(vec3<f32>(0.35, 0.8, 1.0)) * 0.9, 1.0);
     o.n = vec4<f32>(0.0);
     o.m = vec4<f32>(0.0);
     return o;
@@ -366,24 +869,51 @@ fn vs_bg(@builtin(vertex_index) vi: u32) -> BgOut {
     o.ndc = p[vi];
     return o;
 }
-@fragment
-fn fs_bg(i: BgOut) -> FOut {
-    var o: FOut;
-    o.n = vec4<f32>(0.0);
-    o.m = vec4<f32>(0.0);
-    let far = frame.inv_view_proj * vec4<f32>(i.ndc, 1.0, 1.0);
-    let near = frame.inv_view_proj * vec4<f32>(i.ndc, 0.0, 1.0);
+fn bg_color(ndc: vec2<f32>) -> vec3<f32> {
+    let far = frame.inv_view_proj * vec4<f32>(ndc, 1.0, 1.0);
+    let near = frame.inv_view_proj * vec4<f32>(ndc, 0.0, 1.0);
     let d = normalize(far.xyz / far.w - near.xyz / near.w);
     if (frame.info.y < 0.5 || frame.info.z < 0.5) {
-        o.c = vec4<f32>(tone(vec3<f32>(0.035, 0.04, 0.05) / frame.params.x), 1.0);
-        return o;
+        return select(pow((frame.bgc.rgb + vec3<f32>(0.055)) / 1.055, vec3<f32>(2.4)), frame.bgc.rgb / 12.92, frame.bgc.rgb <= vec3<f32>(0.04045));
     }
     // the picture behind the model, blurred as much as the 3D view's Background blur asks
     let t = frame.extra.z * 3.0;
     var c = env_sample(d, 0.0);
     if (t >= 1.0) { c = env_spec(d, clamp(t - 1.0, 0.0, 2.0) * 0.2); }
     else if (t > 0.0) { c = mix(c, env_spec(d, 0.0), t); }
-    o.c = vec4<f32>(tone(c), 1.0);
+    return tone(c);
+}
+@fragment
+fn fs_bg(i: BgOut) -> FOut {
+    var o: FOut;
+    o.n = vec4<f32>(0.0);
+    o.m = vec4<f32>(0.0);
+    o.c = vec4<f32>(bg_color(i.ndc), 1.0);
+    return o;
+}
+
+// the shadow floor: it shows the background as it is; the ray tracing then darkens it where the model shadows it
+struct FloorOut {
+    @builtin(position) clip: vec4<f32>,
+    @location(0) xz: vec2<f32>,
+};
+@vertex
+fn vs_floor(@builtin(vertex_index) vi: u32) -> FloorOut {
+    var q = array<vec2<f32>, 6>(vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0));
+    var o: FloorOut;
+    let w = vec3<f32>(q[vi].x * frame.fl_a.y, frame.fl_a.x, q[vi].y * frame.fl_a.y);
+    o.clip = frame.view_proj * vec4<f32>(w, 1.0);
+    o.xz = q[vi];
+    return o;
+}
+@fragment
+fn fs_floor(i: FloorOut) -> FOut {
+    var o: FOut;
+    let ndc = vec2<f32>(i.clip.x / frame.res.x * 2.0 - 1.0, 1.0 - i.clip.y / frame.res.y * 2.0);
+    o.c = vec4<f32>(bg_color(ndc), 1.0);
+    let edge = 1.0 - smoothstep(0.75, 1.0, max(abs(i.xz.x), abs(i.xz.y)));
+    o.n = vec4<f32>(0.5, 1.0, 0.5, 1.0);
+    o.m = vec4<f32>(0.0, 0.0, frame.fl_a.z * edge, 0.5);
     return o;
 }
 

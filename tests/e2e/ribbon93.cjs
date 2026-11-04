@@ -26,6 +26,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{const L=__gs.allLayers().find(L=>L.path?.kind==='3d');L.path.ribbon=Object.assign({},L.path.ribbon,{fit:'aspect',tiling:'auto',remove:true,align:'center'});__gs.pathRender(L);});const ka=await cnt();ok(ka>0,'Keep aspect ratio paints too ('+ka+')');
  // blend add is stronger or equal than max
  await p.evaluate(()=>{const L=__gs.allLayers().find(L=>L.path?.kind==='3d');L.path.ribbon=Object.assign({},L.path.ribbon,{fit:'stretch',tiling:'auto',remove:false,blend:'add'});__gs.pathRender(L);});const ad=await cnt();ok(ad>=rib*.8,'Alpha blending options render ('+ad+')');
+ // 0.95: round corners fill the outer side of a bend; bevel leaves it cut
+ await p.evaluate(()=>{const L=__gs.allLayers().find(L=>L.path?.kind==='3d');L.path.ribbon=Object.assign({},L.path.ribbon,{corner:'bevel',fit:'stretch',tiling:'none',blend:'max'});__gs.pathRender(L);});const cb=await cnt();
+ await p.evaluate(()=>{const L=__gs.allLayers().find(L=>L.path?.kind==='3d');L.path.ribbon=Object.assign({},L.path.ribbon,{corner:'round'});__gs.pathRender(L);});const cr=await cnt();
+ ok(cr>=cb,'round corners never paint less than bevel corners ('+cb+' -> '+cr+')');
  // text tool: Put on a path
  await p.evaluate(()=>{const L=__gs.allLayers().find(L=>L.path?.kind==='3d');L.path.mode='stroke';__gs.pathRender(L);});
  await p.evaluate(async()=>{__gs.t3.style.content='ON A PATH';__gs.setTool('text');await __gs.t3PutOnPath();});await p.waitForTimeout(600);

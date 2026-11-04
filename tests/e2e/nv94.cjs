@@ -3,7 +3,7 @@ const {chromium}=require('playwright');
 const OLD=__dirname+'/';
 let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
 (async()=>{
- const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();
  await p.addInitScript(()=>{try{localStorage.setItem("gs.p3d",JSON.stringify({size:128,layout:"3d"}));}catch(e){}});
  await p.route('**/*',r=>{const u=r.request().url();
@@ -26,7 +26,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>/desktop app/.test(document.body.textContent)),'the browser says the new viewer is in the desktop app');
  /* pretend to be the desktop app and catch what would go to the viewer */
  await p.evaluate(()=>{const P=__gs.platform;P.isDesktop=true;window.__calls=[];window.__ups=[];
-   P.invoke=async(cmd,body)=>{if(cmd==='viewer_update'){const dv=new DataView(body.buffer,body.byteOffset,body.byteLength),jl=dv.getUint32(0,true),meta=JSON.parse(new TextDecoder().decode(body.slice(4,4+jl)));window.__ups.push({meta,len:body.length,jl});return true;}if(cmd==='viewer_open'){const dv=new DataView(body.buffer,body.byteOffset,body.byteLength),jl=dv.getUint32(0,true),meta=JSON.parse(new TextDecoder().decode(body.slice(4,4+jl)));
+   P.invoke=async(cmd,body)=>{if(cmd==='viewer_textures')return true;if(cmd==='viewer_scene'){window.__scenes=(window.__scenes||0)+1;return true;}if(cmd==='viewer_update'){const dv=new DataView(body.buffer,body.byteOffset,body.byteLength),jl=dv.getUint32(0,true),meta=JSON.parse(new TextDecoder().decode(body.slice(4,4+jl)));window.__ups.push({meta,len:body.length,jl});return true;}if(cmd==='viewer_open'){const dv=new DataView(body.buffer,body.byteOffset,body.byteLength),jl=dv.getUint32(0,true),meta=JSON.parse(new TextDecoder().decode(body.slice(4,4+jl)));
        let need=4+jl+(meta.pos+meta.nrm+meta.uv)*4;for(const g of meta.groups)need+=g.idx*4+g.tex.base+g.tex.orm+g.tex.normal+g.tex.emissive;if(meta.env)need+=meta.env.w*meta.env.h*12;
        const g0=meta.groups[0],o=4+jl+(meta.pos+meta.nrm+meta.uv)*4+g0.idx*4,png=g0.tex.base?Array.from(body.slice(o,o+4)):null;
        window.__calls.push({cmd,len:body.length,need,meta,png});return {name:'Test card',backend:'Vulkan',kind:'DiscreteGpu',software:false};}return null;};});
@@ -55,5 +55,15 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{window.__ups=[];__gs.v3s().env='none';});await W(1500);
  up=await p.evaluate(()=>window.__ups.slice());
  ok(up.some(u=>u.meta.env_mode==='clear'),'turning the environment off clears it');
+ /* the window follows the page's own camera */
+ await p.evaluate(()=>{window.__ups=[];__gs.v3.cam.yaw+=0.7;});await W(1300);
+ up=await p.evaluate(()=>window.__ups.slice());
+ ok(up.some(u=>Array.isArray(u.meta.settings.cam)&&u.meta.settings.cam.length===6),'turning the 3D view in the app sends its camera to the window '+JSON.stringify(up.map(u=>u.meta.settings.cam&&u.meta.settings.cam.slice(0,3))));
+ /* the ray tracing settings are in Preferences and go with the lighting */
+ await p.evaluate(()=>{window.__ups=[];__gs.v3s().nvShadow=.3;__gs.v3s().nvSamples=200;});await W(1200);
+ up=await p.evaluate(()=>window.__ups.slice());
+ ok(up.some(u=>u.meta.settings.rt_shadow===.3&&u.meta.settings.rt_samples===200),'the ray tracing strength and quality settings follow into the window');
+ await p.evaluate(()=>__gs.dlgPrefs());await W(500);await p.click('#pTab_speed');await W(400);
+ ok(await p.locator('#pNvSh').count()===1&&await p.locator('#pNvQ').count()===1,'Preferences has the ray tracing sliders');
  await p.evaluate(()=>__gs.nvClose?.());
  await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();

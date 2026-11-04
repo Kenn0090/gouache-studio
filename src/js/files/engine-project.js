@@ -6,7 +6,8 @@
    The record is a small file inside the engine project: <project>/gouache_project.json, shared with teammates. */
 const EP_FILE='gouache_project.json';
 const EP_KEYS=['preset','size','fmt','normal','pad','padPx','h16','meshMaps','model'];
-const epPath=to=>es.dirs[to]?elJoin(es.dirs[to],EP_FILE):null;
+/* Unreal imports new .json files it finds in the project as data tables, so its record and setup data use another ending */
+const epPath=to=>es.dirs[to]?elJoin(es.dirs[to],to==='unreal'?'gouache_project.gdata':EP_FILE):null;
 const epBlank=(to,base)=>({gouache:1,engine:to,name:(base||'').split(/[\\/]/).filter(Boolean).pop()||'Game',settings:null,assets:{},masters:{}});
 async function epLoad(to){const f=epPath(to);if(!f)return null;
   try{if(!(await elExists(f)))return epBlank(to,es.dirs[to]);const t=new TextDecoder().decode(await platform.readFile(f)),r=JSON.parse(t);

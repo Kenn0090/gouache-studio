@@ -34,3 +34,13 @@ function stSetTl(v){stTl.v=Math.round(clamp(v,48,240));document.documentElement.
     const mv=ev=>{stSetTl(v0-(ev.clientY-y0));if(typeof resizeGL==='function')resizeGL();};const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);document.body.classList.remove('stvresize');if(typeof fit==='function')fit();};
     window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);});
   if(tl){tl.style.position='relative';tl.prepend(bar);}stSetTl(stTl.v);}
+
+/* ---- the brush list (0.95): drag the bar under it to make it taller or shorter (it was stuck at one small size) ---- */
+{const lb=$('#libBody');if(lb){const grip=el('div',{class:'libgrip',id:'libGrip',role:'separator','aria-orientation':'horizontal','aria-label':'Brush list height',title:'Drag to make the brush list taller or shorter (double-click to reset)'});lb.after(grip);
+  let h=210;try{h=+localStorage.getItem('gs.libH')||210;}catch(e){}
+  const set=v=>{h=Math.round(clamp(v,90,1400));document.documentElement.style.setProperty('--libH',h+'px');try{localStorage.setItem('gs.libH',String(h));}catch(e){}};
+  set(h);
+  grip.addEventListener('dblclick',()=>set(210));
+  grip.addEventListener('pointerdown',e=>{if(e.button!==0)return;e.preventDefault();const h0=lb.getBoundingClientRect().height,y0=e.clientY;document.body.classList.add('stvresize');
+    const mv=ev=>set(h0+(ev.clientY-y0));const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);document.body.classList.remove('stvresize');};
+    window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);});}}

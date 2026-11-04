@@ -5,7 +5,7 @@ use std::sync::Mutex;
 
 use std::sync::Arc;
 
-use gouache_render::{scene_from_bytes, textures_from_bytes, update_from_bytes, Viewer};
+use gouache_render::{CaptureOpts, scene_from_bytes, textures_from_bytes, update_from_bytes, Viewer};
 use serde::Serialize;
 use tauri::ipc::{InvokeBody, Request};
 use tauri::{AppHandle, Emitter};
@@ -75,6 +75,25 @@ pub fn viewer_update(request: Request<'_>) -> Result<bool, String> {
     Ok(alive)
 }
 
+/// Replaces the model, materials and settings of the open window (the model was changed in the page) without closing it.
+/// Returns false when there is no viewer any more.
+#[tauri::command]
+pub fn viewer_scene(request: Request<'_>) -> Result<bool, String> {
+    let InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected a raw body".into());
+    };
+    let scene = scene_from_bytes(bytes)?;
+    let mut g = VIEWER.lock().map_err(|e| e.to_string())?;
+    let alive = match g.as_ref() {
+        Some(v) => v.set_scene(scene),
+        None => false,
+    };
+    if !alive {
+        *g = None;
+    }
+    Ok(alive)
+}
+
 /// Gives one material of the open viewer new pictures (after painting). Returns false when the viewer is gone.
 #[tauri::command]
 pub fn viewer_textures(request: Request<'_>) -> Result<bool, String> {
@@ -91,4 +110,34 @@ pub fn viewer_textures(request: Request<'_>) -> Result<bool, String> {
         *g = None;
     }
     Ok(alive)
+}
+
+/// A PNG picture of what the open viewer shows, at the size asked for (the ray tracing settles first, so large pictures take a while).
+#[tauri::command]
+pub async fn viewer_capture(width: u32, height: u32, transparent: Option<bool>) -> Result<tauri::ipc::Response, String> {
+    let png = tauri::async_runtime::spawn_blocking(move || {
+        let g = VIEWER.lock().map_err(|e| e.to_string())?;
+        match g.as_ref() {
+            Some(v) => v.capture(width, height, transparent.unwrap_or(false)),
+            None => Err("the new viewer is not open".to_string()),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    Ok(tauri::ipc::Response::new(png))
+}
+
+/// One picture as raw RGBA bytes (top row first), turned a little from the window's view; for turntables.
+#[tauri::command]
+pub async fn viewer_capture_raw(width: u32, height: u32, yaw_add: f32, env_turn: Option<f32>, sun_az: Option<f32>, rounds: u32, transparent: Option<bool>) -> Result<tauri::ipc::Response, String> {
+    let rgba = tauri::async_runtime::spawn_blocking(move || {
+        let g = VIEWER.lock().map_err(|e| e.to_string())?;
+        match g.as_ref() {
+            Some(v) => v.capture_rgba(width, height, CaptureOpts { yaw_add, env_turn, sun_az, rounds, transparent: transparent.unwrap_or(false) }),
+            None => Err("the new viewer is not open".to_string()),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    Ok(tauri::ipc::Response::new(rgba))
 }
