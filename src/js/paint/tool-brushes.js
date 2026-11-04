@@ -31,6 +31,7 @@ function tbApply(S){const keep={};if(toolBrush.share)for(const k of TB_TIP)keep[
   if(!S||!('tip' in S)||S.tip===undefined)brush.tip=S&&S.tipName?tbFindTip(S.tipName):null;
   activePreset=S?(S.preset!==undefined?S.preset:tbFindPreset(S.presetName)):null;
   brushSession.source=S?(S.source!==undefined?S.source:tbFindPreset(S.sourceName||S.presetName)):null;
+  if(!S&&toolBrush.cur==='smudge')brush.blendMode='soft';/* (0.95) the Blend tool starts as a soft blend, not a smear */
   if(toolBrush.share)Object.assign(brush,keep);}
 function tbDocGet(){tbSaveCur();return {cur:toolBrush.cur,slots:Object.assign({},toolBrush.slots)};}
 function tbDocRefresh(){if(typeof renderLibrary==='function')renderLibrary();if(typeof buildBrushPanel==='function')buildBrushPanel();if(typeof buildOptBar==='function')buildOptBar();if(typeof refreshCursor==='function')refreshCursor();}

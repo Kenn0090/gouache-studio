@@ -269,3 +269,4 @@ The **Canvas** tab (next to Brushes and Textures) lists the papers: click one to
 - **Smoothing and Correction** are on the options bar for the brush and eraser. *Smoothing* makes the brush follow the pen a little behind it. *Correction* irons wobble out of the line from the points around each spot; the line trails the pen a little and still ends where you lift.
 - **Tip…** (options bar) or *Change tip…* (Brush panel) opens a picker of every tip: pick one and only the tip changes. *Round (no tip)* and *Original tip* put it back.
 - **Brush list height:** drag the bar under the brush list, or use a panel's ⋯ menu › *Make this panel taller*.
+- **Blend modes:** the Blend tool (S) has *Soft blend* (colours melt together in place, nothing is dragged) and *Wet smear* (paint is pulled along, with *Bristle streaks*). Choose in the Blend panel.
