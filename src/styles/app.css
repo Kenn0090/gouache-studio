@@ -1495,3 +1495,14 @@ body.photomode #docTabs{display:none!important}
 .tipcell .tipround{background:radial-gradient(circle,#fff 0 32%,#222 34%)}
 .tipcell span:last-child{font-size:10px;line-height:1.1;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tipcell:hover{border-color:var(--accent)}.tipcell.on{border-color:var(--accent);background:var(--accent-soft)}
+
+/* mixing brush upgrades (0.95) */
+.mixplus{display:grid;gap:6px;margin:4px 0}
+.mixrow{align-items:center;gap:6px}
+.mixprev{width:44px;height:44px;border-radius:6px;border:1px solid var(--line)}
+.mixpal{position:fixed;z-index:60;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.45);padding:0 0 8px}
+.mixpal[hidden]{display:none}
+.palhead{padding:6px 10px;cursor:move;font-weight:600;border-bottom:1px solid var(--line);user-select:none}
+.palbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 8px}
+.palbar .palmode.on{background:var(--accent-soft);border-color:var(--accent)}
+.palcv{display:block;margin:0 8px;max-width:calc(100vw - 40px);border-radius:4px;cursor:crosshair;touch-action:none}

@@ -81,8 +81,9 @@ function mixWetFor(L){const w=Math.max(1,Math.ceil(doc.w/MIXQ)),h=Math.max(1,Mat
 function mixBegin(s){const o=s.o;if(o.space||s.L.maskOf)return;
   const D=clamp(Math.ceil((o.size/2*(s.rs||1)*1.5+2)*2),16,512),A=makeTarget(D,D,16,false),B=makeTarget(D,D,16,false),a=clamp(o.mixLoad,0,1),c=o.color;
   clearTarget(A,[c[0]*a,c[1]*a,c[2]*a,a]);clearTarget(B);
+  if(o.mixKeep&&typeof mixCarryInto==='function')mixCarryInto(A,D);/* (0.95) the brush stays loaded between strokes */
   const wet=mixWetFor(s.L);wet.dry=o.mixDry||0;wet.until=Infinity;const w0=makeTarget(wet.w,wet.h,8,false);blit(wet.t,w0,0,0,wet.w,wet.h,0,0);s.mix={A,B,D,wet,w0,dist:0};}
-function mixEnd(s){const m=s.mix;if(!m)return;disposeTarget(m.A);disposeTarget(m.B);disposeTarget(m.w0);
+function mixEnd(s){const m=s.mix;if(!m)return;if(s.o.mixKeep&&typeof mixCarryStore==='function')mixCarryStore(m.A,m.D);else disposeTarget(m.A);disposeTarget(m.B);disposeTarget(m.w0);
   m.wet.until=m.wet.dry>0?performance.now()+m.wet.dry*1000+400:Infinity;s.mix=null;if(m.wet.dry>0)mixDryStart();}
 /* one dab: pick up into the load, lay the load down, make the canvas wet */
 function mixDab(s,c,U,a,ext,r,dx,dy){const o=s.o,m=s.mix;if(!m)return;

@@ -1,0 +1,42 @@
+/* 0.95: mixer upgrades: presets, mix ratio, keep paint between strokes with Clean/Reload, the mixing palette. */
+const {chromium}=require('playwright');
+const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});
+ const p=await (await b.newContext({viewport:{width:1500,height:1000}})).newPage();const errs=[];p.on('pageerror',e=>errs.push(e.stack));
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
+  if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ await p.evaluate(()=>{__gs.closeWelcome();__gs.brush.mix=true;__gs.setTool('brush');__gs.showPanel('brushes');__gs.buildBrushPanel();});await p.waitForTimeout(400);
+ ok(await p.locator('#mixFeel_Wet').count()===1&&await p.locator('#bMxRatio').count()===1&&await p.locator('#mixClean').count()===1&&await p.locator('#mixPalBtn').count()===1,'the panel shows presets, mix ratio, Clean/Reload and the palette button');
+ await p.evaluate(()=>document.getElementById('mixFeel_Wet').click());
+ ok(await p.evaluate(()=>__gs.brush.mixWet===.8&&__gs.brush.mixUse===.12),'Wet sets how wet and thirsty the brush is');
+ await p.evaluate(()=>document.getElementById('mixFeel_Dry').click());ok(await p.evaluate(()=>__gs.brush.mixWet<.2),'Dry makes it dry');
+ /* paint with keep */
+ const box=await p.locator('#gl').boundingBox();
+ const stroke=async(y)=>{await p.mouse.move(box.x+150,box.y+y);await p.mouse.down();await p.mouse.move(box.x+500,box.y+y,{steps:14});await p.mouse.up();await p.waitForTimeout(350);};
+ const hue=async(y)=>p.evaluate(sy=>{const L=__gs.doc.active,d=__gs.readRGBA8(__gs.mapT(L,'base')),W=__gs.doc.w,v=__gs.view,iy=Math.round(sy/v.zoom-v.y/v.zoom),ix=Math.round(((__gs.view.x||0)*0+190)/v.zoom);let r=0,g=0,bl=0,n=0;for(let x=Math.round((150-v.x)/v.zoom);x<Math.round((500-v.x)/v.zoom);x+=4){for(let yy=iy-3;yy<=iy+3;yy++){const k=(yy*W+x)*4;r+=d[k];g+=d[k+1];bl+=d[k+2];n++;}}return [r/n,g/n,bl/n];},y);
+ await p.evaluate(()=>{const G=__gs;G.brush.tip=null;G.brush.size=40;G.brush.hardness=.8;G.brush.smoothing=0;G.brush.correction=0;G.brush.lazy=0;G.brush.pSize=false;G.brush.mixLoad=1;G.brush.mixPick=.3;G.brush.mixUse=.02;G.brush.mixWet=.5;G.brush.mixBristles=0;G.brush.mixThick=0;G.brush.followDir=false;G.brush.mixKeep=true;G.setFG([1,0,0]);});
+ await stroke(200);const s1=await hue(200);console.log('red stroke',JSON.stringify(s1.map(Math.round)));
+ await p.evaluate(()=>__gs.setFG([0,0,1]));await stroke(300);const s2=await hue(300);console.log('2nd (kept red load, blue panel)',JSON.stringify(s2.map(Math.round)));
+ ok(s1[0]>s1[2]+30,'the first stroke is red');
+ ok(s2[0]>s2[2]+15,'with Keep paint the next stroke still carries the red load even though the panel is blue');
+ await p.evaluate(()=>__gs.mixClean());await stroke(400);const s3=await hue(400);console.log('after clean',JSON.stringify(s3.map(Math.round)));
+ ok(Math.abs(s3[0]-s3[2])<40||(s3[0]>230&&s3[2]>230),'after Clean the brush lays down no red or blue '+JSON.stringify(s3.map(Math.round)));
+ await p.evaluate(()=>__gs.mixReload());await stroke(500);const s4=await hue(500);console.log('after reload',JSON.stringify(s4.map(Math.round)));
+ ok(s4[2]>s4[0]+30,'after Reload it paints the colour panel colour (blue) '+JSON.stringify(s4.map(Math.round)));
+ /* the palette */
+ await p.evaluate(()=>{__gs.setFG([1,0,0]);__gs.mixPaletteOpen();});await p.waitForTimeout(300);
+ const pc=await p.locator('#palCanvas').boundingBox();ok(!!pc&&pc.width>300,'the mixing palette opens');
+ const palPx=(fx,fy)=>p.evaluate(([fx,fy])=>{const c=document.getElementById('palCanvas'),d=c.getContext('2d').getImageData(Math.round(fx*c.width),Math.round(fy*c.height),1,1).data;return [d[0],d[1],d[2]];},[fx,fy]);
+ await p.mouse.move(pc.x+120,pc.y+100);await p.mouse.down();await p.mouse.move(pc.x+160,pc.y+100,{steps:6});await p.mouse.up();
+ let red=await palPx(130/pc.width,100/pc.height);ok(red[0]>180&&red[1]<120,'Add paint lays the panel colour down '+JSON.stringify(red));
+ await p.evaluate(()=>__gs.setFG([0,0,1]));await p.mouse.move(pc.x+200,pc.y+100);await p.mouse.down();await p.mouse.move(pc.x+240,pc.y+100,{steps:6});await p.mouse.up();
+ await p.click('#pal_mix');await p.mouse.move(pc.x+120,pc.y+100);await p.mouse.down();await p.mouse.move(pc.x+250,pc.y+100,{steps:20});await p.mouse.move(pc.x+120,pc.y+100,{steps:20});await p.mouse.up();
+ const mixc=await palPx(180/pc.width,100/pc.height);ok(mixc[0]>40&&mixc[2]>40&&mixc[0]<235,'Mix stirs the red and blue together '+JSON.stringify(mixc));
+ await p.click('#pal_pick');await p.mouse.click(pc.x+180,pc.y+100);await p.waitForTimeout(200);
+ const fg=await p.evaluate(()=>__gs.ui.fg.slice(0,3).map(v=>Math.round(v*255)));ok(Math.abs(fg[0]-mixc[0])<12&&Math.abs(fg[2]-mixc[2])<12,'Pick takes that colour into the colour panel '+JSON.stringify(fg));
+ ok(errs.length===0,'no errors '+errs.slice(0,2).join('|'));
+ await b.close();process.exit(fails?1:0);})().catch(e=>{console.error(e);process.exit(1);});
