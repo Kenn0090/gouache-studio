@@ -192,7 +192,8 @@ float lnF(vec2 p){ return lnN(p)*0.55+lnN(p*2.03+7.1)*0.3+lnN(p*4.1+3.3)*0.15; }
 vec3 laneCol(vec3 c){ if(uLane.x<0.5) return c; vec2 dv=gl_FragCoord.xy-uCenter; float ca=cos(uAngle),sa=sin(uAngle); vec2 q=vec2(ca*dv.x+sa*dv.y,-sa*dv.x+ca*dv.y)*uFlip; float r=max(uRadius,0.01); float md=uLane.w;
   float t=clamp(((md>1.5&&md<2.5)||(md>5.5&&md<6.5))?q.x/r:q.y/r,-1.0,1.0); /* modes 2 and 6 run along the brush's x, 7 across it (streaks along the stroke when the brush turns with it) */ float h=0.0,v=0.0;
   if(md>6.5){ /* smooth pastel streaks: soft uneven noise across the brush, mostly near the colour itself with gentle pink, mint and cream drifting through (uLane.x = how many streaks, y = strength, z = brightness spread) */
-    float u=t*0.5+0.5; float n1=lnF(vec2(u*uLane.x*0.5,3.7)), n2=lnF(vec2(u*uLane.x,9.1)), n3=lnF(vec2(u*uLane.x*2.0,5.5));
+    float u=t*0.5+0.5; float dr=(uCenter.x*0.7+uCenter.y*0.55)*0.0045; /* dr: where along the stroke this dab is, so the streaks change as you drag */
+    float n1=lnF(vec2(u*uLane.x*0.5+lnN(vec2(dr*0.6,u*3.0))*2.0,3.7+dr*0.8)), n2=lnF(vec2(u*uLane.x+lnN(vec2(dr,u*5.0))*3.0,9.1+dr)), n3=lnF(vec2(u*uLane.x*2.0,5.5+dr*1.5));
     vec3 pk=clamp(abs(fract(vec3(n1*2.2)+vec3(1.0,0.6667,0.3333))*6.0-3.0)-1.0,0.0,1.0); vec3 pastel=mix(vec3(1.0),pk,0.38)*(0.93+0.07*n3);
     vec3 o2=mix(c,pastel*max(max(c.r,c.g),max(c.b,0.88)),clamp(uLane.y*smoothstep(0.3,0.7,n2),0.0,1.0)); return clamp(o2*(1.0+uLane.z*(n3-0.5)*2.0),0.0,1.0); }
   if(md>5.5){ /* pastel tint: every lane across the brush blends toward its own random pastel colour (uLane.y = how strongly, uLane.z = brightness spread) */
