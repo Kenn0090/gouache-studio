@@ -201,14 +201,14 @@ void main(){ float m=brushMask(gl_FragCoord.xy)*uAlpha; if(uTint==2){ if(m<=0.0)
 /* colour-jitter strokes stamp each dab twice: uTint 2 first gives pixels nothing has touched yet the dab's colour
    (so soft edges keep it), then uTint 1 lays the dab over what is there */
 const FS_SMUDGE=CH_BRUSH+`
-  uniform sampler2D uSrc; uniform sampler2D uSrcPrev; uniform sampler2D uDst; uniform vec2 uDelta; uniform float uSampleBlend; uniform float uAlpha; uniform float uStrength; uniform float uCharge; uniform vec3 uColor; uniform float uHueMix; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan; uniform float uPaintMix; uniform int uNormalMap; uniform float uSoft; uniform float uStreak;
+  uniform sampler2D uSrc; uniform sampler2D uSrcPrev; uniform sampler2D uDst; uniform vec2 uDelta; uniform float uSampleBlend; uniform float uAlpha; uniform float uStrength; uniform float uCharge; uniform vec3 uColor; uniform float uHueMix; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan; uniform float uPaintMix; uniform int uNormalMap; uniform float uSoft; uniform float uStreak; uniform float uPull;
 uniform sampler2D uSelTex; uniform int uUseSel;
 ${PIGMENT_MIX}
   vec3 smHsv(vec3 c){vec4 K=vec4(0.0,-1.0/3.0,2.0/3.0,-1.0);vec4 p=mix(vec4(c.bg,K.wz),vec4(c.gb,K.xy),step(c.b,c.g));vec4 q=mix(vec4(p.xyw,c.r),vec4(c.r,p.yzx),step(p.x,c.r));float d=q.x-min(q.w,q.y);return vec3(abs(q.z+(q.w-q.y)/(6.0*d+1e-10)),d/(q.x+1e-10),q.x);}
   vec3 smRgb(vec3 c){vec3 p=abs(fract(c.xxx+vec3(0.0,2.0/3.0,1.0/3.0))*6.0-3.0);return c.z*mix(vec3(1.0),clamp(p-1.0,0.0,1.0),c.y);}
   vec3 hueMixRgb(vec3 a,vec3 b,float t){vec3 x=smHsv(a),y=smHsv(b);float d=mod(y.x-x.x+1.5,1.0)-0.5;return smRgb(vec3(fract(x.x+d*t+1.0),mix(x.y,y.y,t),mix(x.z,y.z,t)));}
 void main(){ vec2 size=vec2(textureSize(uSrc,0)); vec2 uv=gl_FragCoord.xy/size;
-    vec4 dst=texture(uDst,uv); vec2 dl=uDelta;
+    vec4 dst=texture(uDst,uv); vec2 dl=uDelta*(uPull>0.0?uPull:1.0);
     /* Wet smear: bristle streaks, every lane across the stroke pulls the paint a different distance */
     if(uStreak>0.0&&uSoft<0.5){ vec2 dn=normalize(uDelta+vec2(1e-5)); vec2 perp=vec2(-dn.y,dn.x); float lane=floor(dot(gl_FragCoord.xy-uCenter,perp)/max(uRadius,1.0)*9.0); float h=fract(sin(lane*91.7+13.3)*43758.5453); dl*=1.0-uStreak*h; }
     vec4 pulled=mix(texture(uSrcPrev,uv-dl/size),texture(uSrc,uv-dl/size),uSampleBlend);

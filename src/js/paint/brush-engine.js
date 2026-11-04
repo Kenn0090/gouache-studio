@@ -1,7 +1,7 @@
 /* ================= Brush engine ================= */
 const BRUSH_DEFAULTS={size:24,opacity:1,flow:1,hardness:.85,spacing:.06,grain:0,pattern:0,patSize:10,patDen:1,patRamp:0,texKey:'',texScale:128,texDepth:0,texInvert:false,taperStart:0,taperEnd:0,smoothing:.25,pSize:true,pOpacity:false,minSize:.2,buildup:false,curve:0,strength:.6,charge:0,sampleAll:true,hueMix:0,
   tip:null,angle:0,roundness:1,flipX:false,flipY:false,randFlipX:false,randFlipY:false,sizeJitter:0,angleJitter:0,scatter:0,count:1,bothAxes:false,followDir:false,
-  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,correction:0,lineBlend:false,grainSize:6,fanFill:0,softEnd:0,blendMode:'smear',streak:0,mixKeep:false,laneN:0,laneHue:0,laneVal:0,laneMode:0,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,pigment:1,wet:0,pickup:0,mixLab:false,paintMix:.7,mix:false,mixLoad:.8,mixPick:.5,mixWet:.7,mixDry:0,mixUse:.2,mixBristles:0,mixDryB:0,mixThick:0,mixEven:false,mixWC:0,mixWCEdge:0,mixWCPools:0,mixWCGran:0,mixWCBloom:0,mixTooth:0,spray:0,sprayDen:.8,sprayMist:0,sprayVar:0,sprayFleck:0,sprayRing:0,spraySwirl:0,sprayPress:0,spraySolid:1,tooth:0,simP:'off',simLevel:.7,drip:0,dripAuto:0,dripWidth:1,smoothCurve:false};
+  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,correction:0,lineBlend:false,pull:1,grainSize:6,fanFill:0,softEnd:0,blendMode:'smear',streak:0,mixKeep:false,laneN:0,laneHue:0,laneVal:0,laneMode:0,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,pigment:1,wet:0,pickup:0,mixLab:false,paintMix:.7,mix:false,mixLoad:.8,mixPick:.5,mixWet:.7,mixDry:0,mixUse:.2,mixBristles:0,mixDryB:0,mixThick:0,mixEven:false,mixWC:0,mixWCEdge:0,mixWCPools:0,mixWCGran:0,mixWCBloom:0,mixTooth:0,spray:0,sprayDen:.8,sprayMist:0,sprayVar:0,sprayFleck:0,sprayRing:0,spraySwirl:0,sprayPress:0,spraySolid:1,tooth:0,simP:'off',simLevel:.7,drip:0,dripAuto:0,dripWidth:1,smoothCurve:false};
 /* lazy mouse: the brush follows the pointer on a string of R pixels, so it only moves once the string is pulled tight */
 function lazyStep(s,x,y,R){if(!(R>0))return [x,y];if(s.lx===undefined){s.lx=s.sx;s.ly=s.sy;}const dx=x-s.lx,dy=y-s.ly,d=Math.hypot(dx,dy);if(d<=R)return null;s.lx+=dx*(d-R)/d;s.ly+=dy*(d-R)/d;return [s.lx,s.ly];}
 /* Keep stabilization consistent across pointer sample rates. At 60 Hz this matches the
@@ -126,7 +126,7 @@ function brushDripLoop(now){const s=stroke;if(!s||!s.drips)return;
   requestRender(true);s.dripFrame=requestAnimationFrame(brushDripLoop);}
 function stamp(x,y,p){
   const s=stroke,o=s.o,r0=radiusAt(p),a=alphaAt(p);
-  let dx=0,dy=0;if(o.tool==='smudge'){dx=x-s.lsx;dy=y-s.lsy;s.lsx=x;s.lsy=y;}
+  let dx=0,dy=0;if(o.tool==='smudge'){dx=x-s.lsx;dy=y-s.lsy;if(s.segX!==undefined){const ex=x-s.segX,ey=y-s.segY;if(ex*ex+ey*ey>dx*dx+dy*dy){dx=ex;dy=ey;}}s.lsx=x;s.lsy=y;}/* tiny spacing: pull by the whole move since the sample was taken, not by one dab step */
   const n=Math.max(1,Math.round(o.count||1)),dir=s.dir,PI=Math.PI;
   for(let k=0;k<n;k++){
     const r=Math.max(.5,r0*(1-(o.sizeJitter||0)*Math.random()));
@@ -156,7 +156,7 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy){
   } else if(o.tool==='smudge'){
     if(doc.wrap)blit(s.L.target,scratchT,0,0,W,H,0,0);
     else{const x0=clamp(Math.floor(Math.min(x,x-dx)-ext-4),0,W),y0=clamp(Math.floor(Math.min(y,y-dy)-ext-4),0,H),x1=clamp(Math.ceil(Math.max(x,x-dx)+ext+4),0,W),y1=clamp(Math.ceil(Math.max(y,y-dy)+ext+4),0,H);if(x1>x0&&y1>y0)blit(s.L.target,scratchT,x0,y0,x1-x0,y1-y0,x0,y0);}
-    if(s.mix){for(const c of copies)mixDab(s,c,U,a,ext,r,dx,dy);}else for(const c of copies)run(P.smudge,s.L.target,Object.assign({},U,{uCenter:c,uSrc:(s.sampleT||scratchT).tex,uSrcPrev:(s.samplePrevT||s.sampleT||scratchT).tex,uSampleBlend:s.samplePrevT?clamp(s.sampleBlend??1,0,1):1,uDst:scratchT.tex,uDelta:[dx,dy],uSoft:o.blendMode==='soft'?1:0,uStreak:o.streak||0,uAlpha:a,uStrength:o.strength,uCharge:o.charge,uPaintMix:o.paintMix||0,uMixLab:o.mixLab?1:0,uHueMix:clamp(o.hueMix||0,0,1),uNormalMap:{int:doc.map==='normal'?1:0},uColor:o.color,uLockAlpha:s.L.lockAlpha},chanU(o),selU(o)));
+    if(s.mix){for(const c of copies)mixDab(s,c,U,a,ext,r,dx,dy);}else for(const c of copies)run(P.smudge,s.L.target,Object.assign({},U,{uCenter:c,uSrc:(s.sampleT||scratchT).tex,uSrcPrev:(s.samplePrevT||s.sampleT||scratchT).tex,uSampleBlend:s.samplePrevT?clamp(s.sampleBlend??1,0,1):1,uDst:scratchT.tex,uDelta:[dx,dy],uSoft:o.blendMode==='soft'?1:0,uStreak:o.streak||0,uPull:o.pull||1,uAlpha:a,uStrength:o.strength,uCharge:o.charge,uPaintMix:o.paintMix||0,uMixLab:o.mixLab?1:0,uHueMix:clamp(o.hueMix||0,0,1),uNormalMap:{int:doc.map==='normal'?1:0},uColor:o.color,uLockAlpha:s.L.lockAlpha},chanU(o),selU(o)));
   } else {
     const dst=s.space?s.space.buf:strokeT;
     if(dst===strokeT&&!doc.wrap)for(const c of copies)clearStrokeBufferRegion(s,[c[0]-ext,c[1]-ext,c[0]+ext,c[1]+ext]);
@@ -199,8 +199,8 @@ function addPointLin(x,y,p){
   if(len>0.5)s.dir=Math.atan2(dy,dx);
   const sampled=!!s.sampleT&&refreshStrokeSample(s);let t=s.carry,guard=0;
   if(typeof dualBatchStart==='function')dualBatchStart(s);
-  try{while(t<=len&&guard++<20000){const f=t/len;let pp=s.p+(p-s.p)*f;if(s.o.taperStart>0)pp*=Math.max(.06,Math.min(1,((s.trav||0)-len+t)/s.o.taperStart));s.sampleBlend=sampled?f:1;stamp(s.x+dx*f,s.y+dy*f,pp);t+=spacingAt(pp);}}
-  finally{if(s.dualBatch)dualBatchFlush(s);}
+  s.segX=s.x;s.segY=s.y;try{while(t<=len&&guard++<20000){const f=t/len;let pp=s.p+(p-s.p)*f;if(s.o.taperStart>0)pp*=Math.max(.06,Math.min(1,((s.trav||0)-len+t)/s.o.taperStart));s.sampleBlend=sampled?f:1;stamp(s.x+dx*f,s.y+dy*f,pp);t+=spacingAt(pp);}}
+  finally{s.segX=undefined;if(s.dualBatch)dualBatchFlush(s);}
   if(s.drips&&s.o.dripAuto>0){const r=radiusAt(p),n=s.o.dripAuto*len/Math.max(8,r*3);if(Math.random()<n){const g=(Math.random()+Math.random()+Math.random()-1.5)*.7;dripSpawn(s,x+g*r,y+r*(.35+.35*Math.random()),Math.random()*.4);}}
   s.sampleBlend=1;if(s.samplePrevT){release(s.samplePrevT);s.samplePrevT=null;}s.carry=t-len;s.x=x;s.y=y;s.p=p;requestRender(true);
 }
