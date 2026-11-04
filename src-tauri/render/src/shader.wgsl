@@ -578,6 +578,11 @@ fn vs_hv(@location(0) pos: vec3<f32>, @location(1) nrm: vec3<f32>) -> HvOut {
 fn fs_hv(i: HvOut) -> FOut {
     var o: FOut;
     var n = normalize(i.nrm);
+    if (frame.bv.x > 0.5 && frame.st_c.w > 1.5) {
+        // the Bevel preview on the high-poly shown on its own: rounded normals made for this view
+        let r = textureLoad(bev_tex, vec2<i32>(i32(i.clip.x), i32(frame.bv.z) - 1 - i32(i.clip.y)), 0);
+        if (r.a > 0.5) { n = normalize(r.xyz * 2.0 - vec3<f32>(1.0)); }
+    }
     let v = normalize(frame.cam_pos.xyz - i.wpos);
     if (dot(n, v) < 0.0) { n = -n; }
     let l = 0.25 + 0.6 * max(dot(n, normalize(vec3<f32>(0.4, 0.8, 0.5))), 0.0) + 0.15 * max(dot(n, v), 0.0);

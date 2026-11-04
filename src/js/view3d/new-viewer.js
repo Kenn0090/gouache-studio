@@ -197,10 +197,10 @@ async function nvHighSend(){if(!nv.isOpen||nv.hvBusy)return;const mode=nvHighMod
    and the window lights with them while its camera is still the same (it falls back to the normal map as soon as the view moves) */
 const nvWinSize=()=>nv.winSize||(()=>{try{const w=JSON.parse(localStorage.getItem('gs.nvWin')||'null');return w&&w[2]>16?[w[2],w[3]]:null;}catch(e){return null;}})();
 function nvBevelKey(){try{const ws=nvWinSize();if(!nv.isOpen||typeof bevelPreviewOn!=='function'||!bevelPreviewOn()||!v3.mesh||!ws)return '';const e=v3Eye(),c=v3.cam,r=v=>Math.round(v*1e4)/1e4;
-  return JSON.stringify([ws,[e[0],e[1],e[2]].map(r),[c.tx,c.ty,c.tz].map(r),bvSettings(),v3s().fov,v3s().ortho,nvViewKey()]);}catch(e){return '';}}
+  return JSON.stringify([ws,[e[0],e[1],e[2]].map(r),[c.tx,c.ty,c.tz].map(r),bvSettings(),v3s().fov,v3s().ortho,nvViewKey(),nvHighMode()]);}catch(e){return '';}}
 async function nvBevelRun(){if(nv.bevBusy||!nv.isOpen)return;const key=nvBevelKey();if(!key||key===nv.bevKey)return;nv.bevBusy=true;
   try{const [w,h]=nvWinSize(),eye=v3Eye(),c=v3.cam,tgt=[c.tx,c.ty,c.tz];let s=null;
-    for(let i=0;i<80;i++){v3Offscreen(w,h);s=bvGPU.low;if(s&&s.out&&!s.error){const o=bvSettings(),block=o.samples>32?64:128,total=Math.ceil(s.out.w/block)*Math.ceil(s.out.h/block);s.perCall=16;if(s.tile>=total&&s.out.w===w&&s.out.h===h)break;}else if(s&&s.error)break;
+    for(let i=0;i<80;i++){v3Offscreen(w,h);s=bvGPU[nvHighMode()===2?'high':'low'];if(s&&s.out&&!s.error){const o=bvSettings(),block=o.samples>32?64:128,total=Math.ceil(s.out.w/block)*Math.ceil(s.out.h/block);s.perCall=16;if(s.tile>=total&&s.out.w===w&&s.out.h===h)break;}else if(s&&s.error)break;
       if(nvBevelKey()!==key)return;await new Promise(r=>setTimeout(r,30));}
     if(!s||!s.out||s.out.w!==w||s.out.h!==h||nvBevelKey()!==key)return;s.perCall=0;
     const cap=captureRegionNow(s.out,0,0,w,h),n=w*h,buf=new ArrayBuffer(32+n*4),dv=new DataView(buf);dv.setUint32(0,w,true);dv.setUint32(4,h,true);[eye[0],eye[1],eye[2],tgt[0],tgt[1],tgt[2]].forEach((v,k)=>dv.setFloat32(8+k*4,v,true));
@@ -208,7 +208,7 @@ async function nvBevelRun(){if(nv.bevBusy||!nv.isOpen)return;const key=nvBevelKe
       px[o]=Math.max(0,Math.min(255,Math.round((q(0)*.5+.5)*255)));px[o+1]=Math.max(0,Math.min(255,Math.round((q(1)*.5+.5)*255)));px[o+2]=Math.max(0,Math.min(255,Math.round((q(2)*.5+.5)*255)));px[o+3]=q(3)>.5?255:0;}}
     const bytes=new Uint8Array(buf),meta={pos:0,nrm:0,uv:0,groups:[{name:'__bev',idx:0,rough:.6,metal:0,tex:{base:bytes.length,orm:0,normal:0,emissive:0},raw:[bytes.length/4,1]}],env:null,settings:nvSettings()},json=new TextEncoder().encode(JSON.stringify(meta)),out=new Uint8Array(4+json.length+bytes.length);
     new DataView(out.buffer).setUint32(0,json.length,true);out.set(json,4);out.set(bytes,4+json.length);await platform.invoke('viewer_textures',out);nv.bevKey=key;}
-  catch(e){console.warn(e);}finally{nv.bevBusy=false;if(bvGPU.low)bvGPU.low.perCall=0;}}
+  catch(e){console.warn(e);}finally{nv.bevBusy=false;for(const k of ['low','high'])if(bvGPU[k])bvGPU[k].perCall=0;}}
 function nvBevelTick(){const k=nvBevelKey();if(!k){if(nv.bevKey){nv.bevKey='';}return;}if(k===nv.bevKey)return;clearTimeout(nv.bevT);nv.bevT=setTimeout(nvBevelRun,350);}
 /* the part under the pointer while a selection tool is armed (the window reports the pointer even with no button down) */
 function nvHover(ev){try{const dcOn=typeof dc!=='undefined'&&dc.armed;if(!nvPaintOn()||!((typeof sel3!=='undefined'&&sel3.armed&&sel3.mode!=='off')||dcOn))return;const hit=document.getElementById('v3Hit');if(!hit)return;
