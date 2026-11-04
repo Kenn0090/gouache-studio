@@ -273,7 +273,8 @@ function buildBrushPanel(){
   const S=(id,label,key,min,max,step,fmt,map)=>makeSlider({id,label,min,max,step,value:brush[key],fmt,map,...brushNumericRange(key),onInput:v=>{brush[key]=v;brushEdited(key);if(key==='size')refreshCursor();}});
   const C=(id,label,key,rebuild)=>chk(id,label,!!brush[key],v=>{brush[key]=v;brushEdited();if(rebuild)buildBrushPanel();});
   box.append(el('div',{class:'chips'},chk('bShareTip','All tools share the brush tip',toolBrush.share,v=>tbSetShare(v))));
-  box.append(el('div',{class:'sub',text:'Tip: '+(brush.tip?brush.tip.name+' ('+brush.tip.w+'×'+brush.tip.h+')':'round')+(activePreset?' · preset “'+activePreset.name+'”':'')}));
+  box.append(el('div',{class:'sub',text:'Tip: '+(brush.tip?brush.tip.name+' ('+brush.tip.w+'×'+brush.tip.h+')':'round')+(activePreset?' · preset “'+activePreset.name+'”':'')}),
+    el('div',{class:'chips'},el('button',{class:'btn sm',id:'tipChange',text:'Change tip…',title:'Use another tip for this brush; its other settings stay',onclick:()=>dlgTipPicker()}),(brush._tipOrig&&brush.tip!==brush._tipOrig)?el('button',{class:'btn sm',id:'tipOrig',text:'Original tip',title:'Put back the tip this brush came with',onclick:()=>tipSet(brush._tipOrig)}):null));
   /* (0.37.1) in 3D Paint the top bar already has size, opacity, flow and hardness: the panel keeps the rest */
   const bar3=ui.mode==='p3d'&&!sm&&!tonal;sizeSlider=null;
   if(!bar3){sizeSlider=S('bSize','Size','size',0,1000,1,v=>v+'px',sizeMap);box.append(sizeSlider.el);}

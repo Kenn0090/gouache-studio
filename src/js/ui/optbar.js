@@ -18,6 +18,7 @@ function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren
     (()=>{const t=brush.tip;if(t&&t.canvas){/* the brush's own tip shape (0.26.1), not a plain dot */if(!t._url)try{t._url=t.canvas.toDataURL();}catch(e){t._url='';}
       if(t._url){const s=el('span',{class:'optdot tipimg'});s.style.webkitMaskImage=s.style.maskImage='url('+t._url+')';return s;}}
       return el('span',{class:'optdot'+(brush.tip?' tip':''),style:brush.hardness<.5&&!brush.tip?'opacity:.7;filter:blur(1px)':''});})(),el('span',{text:activePreset?activePreset.name:(brush.tip?brush.tip.name:'Custom')})));
+  if(typeof dlgTipPicker==='function'&&(t==='brush'||t==='erase'||sm))bar.append(el('button',{class:'optchip',id:'obTip',text:'Tip…',title:'Change this brush’s tip (other settings stay)',onclick:()=>dlgTipPicker()}));
   bar.append(el('span',{class:'optsep'}));
   const S=(key,label,min,max,step,fmt,map,get,set)=>{const sl=makeSlider({id:'ob_'+key,label,min,max,step,value:get?get():brush[key],fmt,map,...brushNumericRange(key),onInput:v=>{if(set)set(v);else brush[key]=v;
       if(key==='size'){if(sizeSlider)sizeSlider.set(v);refreshCursor();}else{const s=document.getElementById({opacity:'bOp',flow:'bFlow',hardness:'bHard',strength:'bStr',spacing:'bSpace',smoothing:'bSmooth',lazy:'bLazy',grain:'bGrain',sizeJitter:'bSJ',angleJitter:'bAJ'}[key]);if(s)s._gsSlider?.set(v);}
