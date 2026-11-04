@@ -47,7 +47,7 @@ const FRIEND_PRESETS=[
   {name:'Fan',tool:'brush',fanFill:1,size:60,hardness:1,flow:1,spacing:.05,pSize:false,pOpacity:false,smoothing:.3,laneN:40,laneHue:.12,laneVal:.12},
   {name:'Fan fade',tool:'brush',fanFill:2,size:60,hardness:1,flow:1,spacing:.05,pSize:false,pOpacity:false,smoothing:.3,laneN:40,laneHue:.12,laneVal:.12},
   {name:'Fried fluff',tool:'brush',tip:FR_TIPS.raggedSq,size:260,hardness:1,spacing:.002,followDir:true,laneN:6,laneMode:5,laneHue:.8,laneVal:.3,softEnd:.025,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
-  {name:'Line',tool:'brush',tip:null,size:100,hardness:1,spacing:.002,pSize:false,pOpacity:false,jitterPerStroke:true,hueJitter:.02,valJitter:.08,smoothing:.6,smoothCurve:true,correction:.35},
+  {name:'Line',tool:'brush',tip:null,lineBlend:true,lineSolid:true,sampleAll:false,size:100,hardness:1,flow:1,opacity:1,spacing:.05,pSize:false,pOpacity:false,jitterPerStroke:true,hueJitter:.02,valJitter:.08,smoothing:0,correction:0},
   {name:'Oil',tool:'brush',tip:FR_TIPS.oilline,size:350,hardness:1,spacing:.002,followDir:false,laneN:40,laneMode:2,laneHue:.3,laneVal:.35,grain:1,grainSize:1,flow:1,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Oil bristle',tool:'brush',tip:FR_TIPS.flakes,size:220,hardness:1,flow:1,spacing:.002,followDir:false,laneN:20,laneMode:0,laneHue:.06,laneVal:.3,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Oil bristle 3D',tool:'brush',tip:null,size:200,hardness:.9,spacing:.02,followDir:true,pSize:false,smoothing:.35,mix:true,mixLoad:1,mixPick:.15,mixWet:.8,mixDry:0,mixUse:.12,mixBristles:50,mixDryB:.2,mixThick:.9},
