@@ -1,3 +1,8 @@
+## 0.94.2
+
+- **New viewer fixes:** the window can be closed and opened again (before, it only opened once), painting in it is lighter (the main 3D view no longer redraws on every pen move), and reflections use each material's normal map and roughness and metal pictures.
+- **Faster start:** the app no longer loads every installed AI model and sky file into memory at start just to check they are there.
+- **Brow** is rebuilt from your videos: a wide loaf of fine vertical fibres, each with its own soft pastel tint.
 ## 0.94.1
 
 - **Heavy Paint style brushes, rebuilt from your recordings:** Oil bristle, Oil, Fried fluff, Charcoal, Brow, Boxes, Blur ice, Fan, Fan fade and Line now behave like the originals (flake-cloud and fibre tips, damascus marble that softens when you lift, a lasso-style fan fill, a smear with Pull, and a Line that works like MS Paint's line tool). New brush settings: Grain size, Soften at end and Pull. The shaded Oil bristle stays as Oil bristle 3D.

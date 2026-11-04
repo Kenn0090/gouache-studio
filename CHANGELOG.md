@@ -1,5 +1,6 @@
 ## 0.94.2
 
+- **Brow** is rebuilt from your videos: a wide loaf-shaped brush (flat back, curved ragged front) of fine vertical fibres that stays in one position, each fibre with its own soft pastel tint (pink, mint, cream) that drifts as you drag. Drag down for a sheet of fibres, sideways for wavy streaks. Two new colour lane modes (Pastel tint and Smooth pastel) make the tints, whatever your colour is.
 - **New viewer reflections:** what a reflection lands on now uses the material's normal map (its bumps) and its roughness and metal pictures, not one average for the whole material.
 - **New viewer reopens:** closing the window and opening it again works now (the window library only allows one window system per run of the app, so the first one is kept and reused).
 - **Painting in the new viewer is lighter:** the page's own 3D view no longer redraws on every move of the pen (the camera sync added in 0.94.1 caused that), and it waits until the stroke ends.
