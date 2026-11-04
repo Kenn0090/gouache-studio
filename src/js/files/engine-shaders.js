@@ -12,7 +12,13 @@
      material and follow the Directional Light through a parameter collection).
    The look is a close match, not identical: each engine lights differently. */
 /* bump this when a look's shader changes in a way that matters: Gouache then offers to update the master shaders already in a game */
-const ESH_MASTER_VER=2;
+const ESH_MASTER_VER=3;
+/* shared files written before version 3 had errors (Unity: a broken comment in the shader and a lost backslash in GouacheAssign.cs,
+   which stopped every script in the project, the live link too): they are replaced without asking */
+const ESH_MASTER_FIX=3;
+async function eshStale(path){if(!/\.(shader|cs|gdshader)$/i.test(path))return false;
+  try{const t=new TextDecoder().decode(await platform.readFile(path));const m=/gouache-master (\d+)/.exec(t);
+    if(m)return +m[1]<ESH_MASTER_FIX;return /Replace\('\\', '\/'\)/.test(t);}catch(e){return false;}}
 const ESH_KIND_NAMES=['Standard','Skin','Brushed metal','Velvet','Toon','Cel','Spec/Gloss','Panner','Retro','Hologram','Glass','Fur','Iridescent','Car paint','Cloth sheen','Wax / marble glow','Halftone cel','Ink toon'];
 const ESH_SHADER_GUID='47a0c5e1b2d34f6a8c91e0f3d5b7a901';
 function eshGuid(s){let a=0x811c9dc5,b=0x1b873593,c=0x9e3779b1,d=0x85ebca6b;for(let i=0;i<s.length;i++){const k=s.charCodeAt(i);a=Math.imul(a^k,16777619);b=Math.imul(b^k,2246822519);c=Math.imul(c^(k<<1),3266489917);d=Math.imul(d^(k+i),668265263);}
@@ -133,7 +139,9 @@ function eshGodotOutlineInk(){return ['// Gouache Studio · inked outline for Ha
 /* the .tres of a ShaderMaterial: its shared shader, this set's textures and settings */
 function eshGodotMaterial(shaderPath,texs,params,nextPass){const ext=[],set=[];let id=1;const add=(type,path)=>{ext.push('[ext_resource type="'+type+'" path="'+path+'" id="'+id+'"]');return id++;};
   const s=add('Shader',shaderPath);for(const [param,path] of texs){const t=add('Texture2D',path);set.push('shader_parameter/'+param+' = ExtResource("'+t+'")');}
-  for(const [n,t,v] of params)set.push('shader_parameter/'+n+' = '+(t==='vec3'&&/colour|blood|sheen_colour|shadow/.test(n)&&n!=='colour_levels'?'Color('+v.slice(5,-1)+', 1)':v));
+  /* .tres files use Godot's own value names (Color, Vector2, Vector3), not the shader's vec2/vec3: a vec3 in a .tres does not load */
+  const gv=(n,t,v)=>{const m=/^vec([234])\((.*)\)$/.exec(v);if(!m)return v;if(t==='vec3'&&/colour|tint/.test(n)&&n!=='colour_levels')return 'Color('+m[2]+', 1)';return 'Vector'+m[1]+'('+m[2]+')';};
+  for(const [n,t,v] of params)set.push('shader_parameter/'+n+' = '+gv(n,t,v));
   let np=null;if(nextPass)np=add('Material',nextPass);
   return ['[gd_resource type="ShaderMaterial" load_steps='+(ext.length+1)+' format=3]','',...ext,'','[resource]','shader = ExtResource("'+s+'")',...set,...(np?['next_pass = ExtResource("'+np+'")']:[]),''].join('\n');}
 
@@ -515,8 +523,7 @@ ${ESH_FUR_HLSL}
             ENDHLSL
         }
 
-        // the outline of Toon, Cel, Halftone cel and Ink toon
-: the back faces, pushed out along the normals
+        // the outline of Toon, Cel, Halftone cel and Ink toon: the back faces, pushed out along the normals
         Pass
         {
             Name "Outline"
@@ -721,7 +728,7 @@ public class GouacheAssign : AssetPostprocessor
     Material OnAssignMaterialModel(Material previous, Renderer renderer)
     {
         if (!assetPath.Contains("/Gouache/")) return null;
-        string dir = Path.GetDirectoryName(assetPath).Replace('\\', '/');
+        string dir = Path.GetDirectoryName(assetPath).Replace('\\\\', '/');
         string[] names = { previous.name, previous.name.Replace(' ', '_') };
         foreach (string n in names)
         {

@@ -1,3 +1,6 @@
+## 0.94.3
+
+- **Unity, Godot and Unreal exports fixed:** the Unity shader and its material script had errors (which also stopped the live link), two Godot material files would not load and the Godot live link did not start, and the Unreal setup script left wires unconnected. Send again and the broken files from before are replaced.
 ## 0.94.2
 
 - **New viewer fixes:** the window can be closed and opened again (before, it only opened once), painting in it is lighter (the main 3D view no longer redraws on every pen move), and reflections use each material's normal map and roughness and metal pictures.
