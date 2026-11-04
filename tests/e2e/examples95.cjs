@@ -27,10 +27,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* 3D examples */
  for(const id of ['p3rust','p3stone','p3bronze']){
    await stat(()=>{__gs.setMode('p3d',true);});await p.waitForTimeout(1500);
-   const before=await stat(()=>__gs.allLayers().length);
+   const before=await stat(()=>__gs.doc.root.children.length);
    await stat(i=>__gs.EXAMPLES.find(e=>e.id===i).run(),id).catch(()=>{});
-   for(let k=0;k<30&&(await stat(()=>__gs.allLayers().length))<=before;k++)await p.waitForTimeout(500);
-   const after=await stat(()=>__gs.allLayers().length);ok(after>before,id+' adds its smart materials ('+before+' -> '+after+' layers)');}
+   for(let k=0;k<30&&(await stat(()=>__gs.doc.root.children.length))<=before;k++)await p.waitForTimeout(500);
+   const after=await stat(()=>__gs.doc.root.children.length);ok(after>before,id+' adds its smart materials ('+before+' -> '+after+' layers)');}
  ok(errs.length===0,'no page errors '+errs.join('|'));
  await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);
 })();
