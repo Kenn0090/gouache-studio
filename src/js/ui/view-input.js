@@ -142,6 +142,7 @@ cv.addEventListener('pointermove',e=>{
     if(ptr.line)[ix,iy]=brushLineSnap(ptr.line,ix,iy,ev.shiftKey,ev.ctrlKey);
     ptr.rx=ix;ptr.ry=iy;
     if(brush.lazy>0&&stroke&&!ev.shiftKey){const q=lazyStep(ptr,ix,iy,brush.lazy/view.zoom);if(!q)continue;ix=q[0];iy=q[1];}
+    if(stroke&&stroke.lb){addPoint(ix,iy,p);ptr.sx=ix;ptr.sy=iy;ptr.sp=p;continue;}
     strokeSmooth(ptr,ix,iy,p,brush.smoothing,ev.timeStamp,ev.shiftKey);
     if(brush.correction>0&&stroke&&!ev.shiftKey){for(const q of corrFeed(ptr,ptr.sx,ptr.sy,ptr.sp,brush.correction*40/view.zoom,false))addPoint(q[0],q[1],q[2]);}else addPoint(ptr.sx,ptr.sy,ptr.sp);}
 });

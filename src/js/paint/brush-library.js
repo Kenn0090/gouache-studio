@@ -286,6 +286,7 @@ function buildBrushPanel(){
   box.append(S('bTooth','Paper tooth','tooth',0,1,.01,v=>v?Math.round(v*100)+'%':'off').el);
   if(brush.texKey)box.append(S('bTexD','Texture depth','texDepth',0,1,.01,pct).el,S('bTexS','Texture size','texScale',16,1024,1,v=>Math.round(v)+' px').el);
   box.append(S('bSpace','Spacing','spacing',.01,1.5,.01,pct).el,S('bGrain','Grain','grain',0,1,.01,pct).el,S('bSmooth','Smoothing','smoothing',0,1,.01,pct).el,S('bLazy','Lazy mouse','lazy',0,200,1,v=>v?v+' px':'off').el,el('div',{class:'chips'},C('bSmCurve','Smooth curves (round off corners)','smoothCurve')));
+  if(brush.lineBlend&&ui.tool==='brush')box.append(el('div',{class:'sub',text:'Line blend'}),el('p',{class:'note',text:'Press where the first colour is, drag to where the second is: a strip fills in between, as wide as the brush.'}),el('div',{class:'chips'},C('bLBAll','Sample all visible layers','sampleAll')));
   if(ui.tool==='brush'){box.append(el('div',{class:'sub',text:'Spray paint'}),S('bSpDot','Spray dot size','spray',0,12,.1,v=>v?v.toFixed(1)+' px':'off').el);
     if(brush.spray>0)box.append(S('bSpDen','Spray density','sprayDen',.05,2,.01,pct).el,S('bSpMist','Overspray mist','sprayMist',0,1,.01,pct).el);
     box.append(S('bDrip','Drips when held still','drip',0,1.5,.01,v=>v?Math.round(v*100)+'%':'off').el,S('bDripA','Drips while painting','dripAuto',0,2,.01,v=>v?Math.round(v*100)+'%':'off').el,S('bDripW','Drip width','dripWidth',.4,5,.05,v=>Math.round(v*100)+'%').el);}

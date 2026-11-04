@@ -262,3 +262,10 @@ Seven groups, all starting with **Sketch**, make a drawing kit:
 Click the **⚙** at the top right (or right-click the top bar or the tool options row) to choose what shows. **Minimal** keeps just the brush name, size, opacity and flow. **Balanced** keeps what Photoshop, Procreate and Clip Studio Paint keep in reach (size, opacity, flow, smoothing, symmetry, pen pressure). **All** shows everything. Tick or untick any single item to make your own set. The **Timelapse recorder** is off until you switch it on here; it can sit at the top of the window or at the bottom of the canvas.
 
 The **Canvas** tab (next to Brushes and Textures) lists the papers: click one to put it on the canvas, or start a new document from a size preset. **B** selects the brush in Paint.
+
+## Line blend, smoothing and tips (0.94.1)
+
+- **Line blend:** pick the *Line blend* brush. Press where the first colour is, drag to where the second colour is: a strip fills in between as a gradient of the two colours, as wide as the brush. It samples the layer you paint on, or every visible layer if you tick *Sample all visible layers*.
+- **Smoothing and Correction** are on the options bar for the brush and eraser. *Smoothing* makes the brush follow the pen a little behind it. *Correction* irons wobble out of the line from the points around each spot; the line trails the pen a little and still ends where you lift.
+- **Tip…** (options bar) or *Change tip…* (Brush panel) opens a picker of every tip: pick one and only the tip changes. *Round (no tip)* and *Original tip* put it back.
+- **Brush list height:** drag the bar under the brush list, or use a panel's ⋯ menu › *Make this panel taller*.

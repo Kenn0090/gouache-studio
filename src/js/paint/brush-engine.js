@@ -1,7 +1,7 @@
 /* ================= Brush engine ================= */
 const BRUSH_DEFAULTS={size:24,opacity:1,flow:1,hardness:.85,spacing:.06,grain:0,pattern:0,patSize:10,patDen:1,patRamp:0,texKey:'',texScale:128,texDepth:0,texInvert:false,taperStart:0,taperEnd:0,smoothing:.25,pSize:true,pOpacity:false,minSize:.2,buildup:false,curve:0,strength:.6,charge:0,sampleAll:true,hueMix:0,
   tip:null,angle:0,roundness:1,flipX:false,flipY:false,randFlipX:false,randFlipY:false,sizeJitter:0,angleJitter:0,scatter:0,count:1,bothAxes:false,followDir:false,
-  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,correction:0,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,pigment:1,wet:0,pickup:0,mixLab:false,paintMix:.7,mix:false,mixLoad:.8,mixPick:.5,mixWet:.7,mixDry:0,mixUse:.2,mixBristles:0,mixDryB:0,mixThick:0,mixEven:false,mixWC:0,mixWCEdge:0,mixWCPools:0,mixWCGran:0,mixWCBloom:0,mixTooth:0,spray:0,sprayDen:.8,sprayMist:0,sprayVar:0,sprayFleck:0,sprayRing:0,spraySwirl:0,sprayPress:0,spraySolid:1,tooth:0,simP:'off',simLevel:.7,drip:0,dripAuto:0,dripWidth:1,smoothCurve:false};
+  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,correction:0,lineBlend:false,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,pigment:1,wet:0,pickup:0,mixLab:false,paintMix:.7,mix:false,mixLoad:.8,mixPick:.5,mixWet:.7,mixDry:0,mixUse:.2,mixBristles:0,mixDryB:0,mixThick:0,mixEven:false,mixWC:0,mixWCEdge:0,mixWCPools:0,mixWCGran:0,mixWCBloom:0,mixTooth:0,spray:0,sprayDen:.8,sprayMist:0,sprayVar:0,sprayFleck:0,sprayRing:0,spraySwirl:0,sprayPress:0,spraySolid:1,tooth:0,simP:'off',simLevel:.7,drip:0,dripAuto:0,dripWidth:1,smoothCurve:false};
 /* lazy mouse: the brush follows the pointer on a string of R pixels, so it only moves once the string is pulled tight */
 function lazyStep(s,x,y,R){if(!(R>0))return [x,y];if(s.lx===undefined){s.lx=s.sx;s.ly=s.sy;}const dx=x-s.lx,dy=y-s.ly,d=Math.hypot(dx,dy);if(d<=R)return null;s.lx+=dx*(d-R)/d;s.ly+=dy*(d-R)/d;return [s.lx,s.ly];}
 /* Keep stabilization consistent across pointer sample rates. At 60 Hz this matches the
@@ -36,6 +36,7 @@ function jitterColor(c,o,grey){const R=()=>Math.random()*2-1;
   let [h,s,v]=rgb2hsv(c[0],c[1],c[2]);h=((h+R()*(o.hueJitter||0)*180)%360+360)%360;s=clamp(s*(1+R()*(o.satJitter||0)),0,1);v=clamp(v*(1+R()*(o.valJitter||0)),0,1);return hsv2rgb(h,s,v);}
 /* strokes with colour jitter keep each dab's colour in strokeT's RGB (straight colour, starting from the brush colour) */
 function strokeTints(o){if(o.tool!=='brush'||o.noTint||!o.color)return false;const grey=doc.map!=='base';if(doc.map==='normal')return false;
+  if(o.lineBlend&&!grey&&!o.space)return true;/* Line blend (0.95): the strip carries its own colours */
   /* A colour stencil supplies RGB in the projection, even with all colour jitter off.
      Keep the brush RGB in the screen buffer too, so holding N can bypass it mid-stroke. */
   if(!grey&&o.space&&o.space.colourStencil)return true;
@@ -76,6 +77,7 @@ function beginStroke(L,x,y,p,o){
     else stroke.exU=selU(o);}
   if(o.tool==='clone')cloneBegin(stroke);
   if(o.tool==='smudge'&&stroke.space)meshSmudgeBegin(stroke);/* on the 3D model (mesh-pull.js) */
+  if(o.lineBlend&&tint&&typeof lbBegin==='function'){stroke.cv=null;lbBegin(stroke);requestRender(true);return;}
   /* a brush that turns with the stroke waits for the first couple of pixels, so its first dab already points the way you are going */
   if(o.followDir&&(o.tool==='brush'||o.tool==='erase'||o.mixer)&&!o.space){stroke.fdWait=true;stroke.carry=0;}else{stamp(x,y,p);stroke.carry=spacingAt(p);}if(o.tool==='brush'&&o.endInk>0){stroke.inkAnchor=[x,y];stroke.inkSince=performance.now();stroke.inkFrame=requestAnimationFrame(brushInkLoop);}requestRender(true);
 }
@@ -189,7 +191,7 @@ function fdAdd(s,r){const L=s.fd||(s.fd=[]),near=Math.max(64,(r[2]-r[0])*2);
   for(const f of L)if(r[0]<=f[2]+near&&r[2]>=f[0]-near&&r[1]<=f[3]+near&&r[3]>=f[1]-near){f[0]=Math.min(f[0],r[0]);f[1]=Math.min(f[1],r[1]);f[2]=Math.max(f[2],r[2]);f[3]=Math.max(f[3],r[3]);return;}
   L.push(r.slice());if(L.length>12){const u=L.reduce((a,f)=>[Math.min(a[0],f[0]),Math.min(a[1],f[1]),Math.max(a[2],f[2]),Math.max(a[3],f[3])]);s.fd=[u];}}
 function addPointLin(x,y,p){
-  const s=stroke;if(!s)return;const dx=x-s.x,dy=y-s.y,len=Math.hypot(dx,dy);
+  const s=stroke;if(!s)return;if(s.lb)return lbMove(s,x,y,p);const dx=x-s.x,dy=y-s.y,len=Math.hypot(dx,dy);
   if(s.inkAnchor&&Math.hypot(x-s.inkAnchor[0],y-s.inkAnchor[1])>Math.max(.5,radiusAt(p)*.12)){s.inkAnchor=[x,y];s.inkSince=performance.now();s.inkCharge=0;}
   if(len<1e-4){s.p=p;return;}s.trav=(s.trav||0)+len;
   if(s.fdWait){if(len<2.5){s.p=p;return;}s.fdWait=false;}
@@ -228,6 +230,7 @@ function endStroke(record){
     if(parts.length&&parts[parts.length-1].k===e.key)parts[parts.length-1].after=captureRegion(T,x0,y0,bw,bh);}
   if(s.lockT)release(s.lockT);if(s.sampleT)release(s.sampleT);if(s.samplePrevT)release(s.samplePrevT);dropStrokeCache(s);
   if(s.mix)mixEnd(s);
+  if(s.lb)lbEnd(s);
   stroke=null;
   if(record){
     if(bw>0&&bh>0){const r=regionRecord(L,lazyBefore||captureRegion(beforeT,x0,y0,bw,bh),captureRegion(L.target,x0,y0,bw,bh),x0,y0,bw,bh,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?(s.o.mixer?'Brush stroke':'Blend'):s.o.tool==='dodge'?'Dodge':s.o.tool==='burn'?'Burn':healing?'Heal':cloning?'Clone':'Brush stroke');
