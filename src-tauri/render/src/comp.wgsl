@@ -75,13 +75,19 @@ fn comp_core(p: vec4<f32>) -> vec4<f32> {
     if (n.w <= 0.0) { return c; }
     var r = textureLoad(crt_tex, px, 0);
     var rf = textureLoad(crf_tex, px, 0);
-    // while few rays have been added the answer is grainy: average with neighbours that face the same way
-    let soft = clamp(1.0 - comp.q.z / 40.0, 0.0, 1.0);
-    if (soft > 0.02) {
+    // a denoiser: how grainy a pixel still is follows from how undecided its ray answers are (a share m seen n times has variance m(1-m)/n),
+    // so uncertain pixels (shadow edges, rough reflections) are averaged with neighbours that face the same way and look alike, and settled ones are left alone
+    let cnt = comp.q.z + 1.0;
+    let var_r = max(r.x * (1.0 - r.x), r.y * (1.0 - r.y)) / cnt;
+    let var_f = (rf.w * (1.0 - rf.w)) / cnt;
+    let grain = clamp(sqrt(max(var_r, var_f)) * 5.0, 0.0, 1.0);
+    let soft = max(grain, clamp(1.0 - comp.q.z / 60.0, 0.0, 1.0) * 0.6);
+    if (soft > 0.03) {
         var sr = r;
         var sf2 = rf;
         var wsum = 1.0;
-        let rad = i32(1.0 + soft * 3.0);
+        let rad = i32(1.0 + soft * 4.0);
+        let lc = lm(c.rgb);
         for (var dy = -rad; dy <= rad; dy = dy + 1) {
             for (var dx = -rad; dx <= rad; dx = dx + 1) {
                 if (dx == 0 && dy == 0) { continue; }
@@ -90,7 +96,9 @@ fn comp_core(p: vec4<f32>) -> vec4<f32> {
                 if (nn.w <= 0.0) { continue; }
                 let wn = pow(max(dot(nn.xyz * 2.0 - 1.0, n.xyz * 2.0 - 1.0), 0.0), 24.0);
                 if (wn < 0.05) { continue; }
-                let wt = wn * soft;
+                // neighbours with a different picture colour (texture edges) count less
+                let wl = exp(-abs(lm(textureLoad(scene_tex, q, 0).rgb) - lc) * 10.0);
+                let wt = wn * wl * soft;
                 sr += textureLoad(crt_tex, q, 0) * wt;
                 sf2 += textureLoad(crf_tex, q, 0) * wt;
                 wsum += wt;

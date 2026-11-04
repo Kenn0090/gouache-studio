@@ -12,6 +12,8 @@ use crate::bvh;
 pub const RT_SAMPLES: u32 = 96;
 /// Size of the small base-colour pictures reflections look up.
 pub const LAYER: u32 = 256;
+/// how many material groups the reflection pass knows about
+pub const GINFO_MAX: usize = 128;
 pub const NORMAL_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 const RT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
@@ -34,6 +36,8 @@ pub struct Rt {
     comp_layout: wgpu::BindGroupLayout,
     uniform: wgpu::Buffer,
     comp_uniform: wgpu::Buffer,
+    /// per material group: average colour and the look's kind, roughness and metal, tint (3 vec4 each), looked up where a reflection ray lands
+    ginfo: wgpu::Buffer,
     /// 1 when a capture wants the background transparent (surface pixels opaque, the rest see-through)
     pub alpha_out: bool,
     nodes: wgpu::Buffer,
@@ -97,6 +101,7 @@ impl Rt {
                 tex_entry(8, c, false),
                 wgpu::BindGroupLayoutEntry { binding: 9, visibility: c, ty: wgpu::BindingType::StorageTexture { access: wgpu::StorageTextureAccess::WriteOnly, format: RT_FORMAT, view_dimension: wgpu::TextureViewDimension::D2 }, count: None },
                 storage_entry(10),
+                uniform_entry(11, c),
                 wgpu::BindGroupLayoutEntry { binding: 13, visibility: c, ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: true }, view_dimension: wgpu::TextureViewDimension::D2Array, multisampled: false }, count: None },
                 wgpu::BindGroupLayoutEntry { binding: 14, visibility: c, ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering), count: None },
                 wgpu::BindGroupLayoutEntry { binding: 6, visibility: c, ty: wgpu::BindingType::StorageTexture { access: wgpu::StorageTextureAccess::WriteOnly, format: RT_FORMAT, view_dimension: wgpu::TextureViewDimension::D2 }, count: None },
@@ -138,8 +143,9 @@ impl Rt {
         });
         let uniform = device.create_buffer(&wgpu::BufferDescriptor { label: Some("rt uniform"), size: std::mem::size_of::<RtUniform>() as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
         let comp_uniform = device.create_buffer(&wgpu::BufferDescriptor { label: Some("composite uniform"), size: 48, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
+        let ginfo = device.create_buffer(&wgpu::BufferDescriptor { label: Some("group info"), size: (GINFO_MAX * 48) as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
         let one = |label| device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(label), contents: &[0u8; 64], usage: wgpu::BufferUsages::STORAGE });
-        Rt { cs, cs_layout, comp, comp_layout, uniform, comp_uniform, alpha_out: false, nodes: one("no nodes"), tris: one("no triangles"), tri_uv: one("no uvs"), fx_sampler: device.create_sampler(&wgpu::SamplerDescriptor { mag_filter: wgpu::FilterMode::Linear, min_filter: wgpu::FilterMode::Linear, ..Default::default() }), base_arr: Self::array_view(device, None, &[]), base_sampler: device.create_sampler(&wgpu::SamplerDescriptor { address_mode_u: wgpu::AddressMode::Repeat, address_mode_v: wgpu::AddressMode::Repeat, mag_filter: wgpu::FilterMode::Linear, min_filter: wgpu::FilterMode::Linear, ..Default::default() }), has_tree: false, job: None, tex: Vec::new(), size: (0, 0), cur: 0, samples: 0, max: RT_SAMPLES, key: Vec::new(), src: None, groups: (Vec::new(), Vec::new()), uvs: Vec::new(), layers: Vec::new(), radius: 1.0 }
+        Rt { cs, cs_layout, comp, comp_layout, uniform, comp_uniform, ginfo, alpha_out: false, nodes: one("no nodes"), tris: one("no triangles"), tri_uv: one("no uvs"), fx_sampler: device.create_sampler(&wgpu::SamplerDescriptor { mag_filter: wgpu::FilterMode::Linear, min_filter: wgpu::FilterMode::Linear, ..Default::default() }), base_arr: Self::array_view(device, None, &[]), base_sampler: device.create_sampler(&wgpu::SamplerDescriptor { address_mode_u: wgpu::AddressMode::Repeat, address_mode_v: wgpu::AddressMode::Repeat, mag_filter: wgpu::FilterMode::Linear, min_filter: wgpu::FilterMode::Linear, ..Default::default() }), has_tree: false, job: None, tex: Vec::new(), size: (0, 0), cur: 0, samples: 0, max: RT_SAMPLES, key: Vec::new(), src: None, groups: (Vec::new(), Vec::new()), uvs: Vec::new(), layers: Vec::new(), radius: 1.0 }
     }
 
     /// An array of small base pictures (a white one when there are none), filled from `layers`.
@@ -209,6 +215,11 @@ impl Rt {
         self.tris = device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("tree triangles"), contents: bytemuck::cast_slice(&done.1), usage: wgpu::BufferUsages::STORAGE });
         self.tri_uv = device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("tree uvs"), contents: bytemuck::cast_slice(&done.2), usage: wgpu::BufferUsages::STORAGE });
         self.base_arr = Self::array_view(device, Some(queue), &self.layers);
+        let mut gi = vec![[0.0f32; 4]; GINFO_MAX * 3];
+        for (i, v) in self.groups.1.iter().enumerate().take(GINFO_MAX * 3) {
+            gi[i] = *v;
+        }
+        queue.write_buffer(&self.ginfo, 0, bytemuck::cast_slice(&gi));
         self.has_tree = true;
         self.samples = 0;
     }
@@ -303,6 +314,7 @@ impl Rt {
                 wgpu::BindGroupEntry { binding: 8, resource: wgpu::BindingResource::TextureView(prev2) },
                 wgpu::BindGroupEntry { binding: 9, resource: wgpu::BindingResource::TextureView(out2) },
                 wgpu::BindGroupEntry { binding: 10, resource: self.tri_uv.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 11, resource: self.ginfo.as_entire_binding() },
                 wgpu::BindGroupEntry { binding: 13, resource: wgpu::BindingResource::TextureView(&self.base_arr) },
                 wgpu::BindGroupEntry { binding: 14, resource: wgpu::BindingResource::Sampler(&self.base_sampler) },
             ],

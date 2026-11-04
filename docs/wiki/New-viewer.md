@@ -41,7 +41,7 @@ A plain left-drag paints with your current brush. A ring shows the brush size. T
 
 ## Ray tracing
 
-Turn it on in Preferences › Speed. It adds soft sun shadows, darker corners where surfaces meet, and reflections that show the rest of the model (its colours and textures). It works on any graphics card. The picture is a little grainy for a moment and then settles when you stop moving.
+Turn it on in Preferences › Speed. It adds soft sun shadows, darker corners where surfaces meet, and reflections that show the rest of the model (its colours and textures). It works on any graphics card. The picture is a little grainy for a moment and then settles when you stop moving. A denoiser smooths only the pixels that are still uncertain (shadow edges, rough reflections) and keeps texture edges sharp, so it clears faster than before.
 
 Sliders in Preferences › Speed set how strong the shadows, darker corners and reflections are, how soft the sun's shadows are, and the quality (how many rounds of rays are added). A higher quality takes longer to settle.
 
@@ -67,7 +67,7 @@ These seven looks are in the **Shader** list (per texture set) and show the same
 - **Cloth sheen** is a soft sheen for fabric; raise Satin streak for satin or silk.
 - **Wax / marble glow** lets light travel through the surface. A baked Thickness map makes thin parts glow more.
 
-Not yet: ray-traced reflections don't see these looks. The engine exports do have them: see Files and export.
+Ray-traced reflections now show these looks too, as an approximation: where a reflection lands on a Hologram it glows, on Glass it mirrors, on Iridescent it shows the shifting rainbow, on Car paint a clear coat, on Cloth sheen and Velvet a soft sheen, on Toon and Cel flat steps of light, on metal the metal's roughness. They don't run the full shader inside the rays, and the bumps of a normal map don't show in what is reflected. The engine exports do have the real looks: see Files and export.
 
 ## Halftone cel and Ink toon
 

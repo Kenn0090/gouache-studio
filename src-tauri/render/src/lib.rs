@@ -558,6 +558,22 @@ fn average_colour(t: Option<&Tex8>) -> [f32; 4] {
     [(s[0] / cnt) as f32, (s[1] / cnt) as f32, (s[2] / cnt) as f32, 1.0]
 }
 
+/// Average roughness and metalness of a material (the green and blue of its ORM map, or the single numbers when it has none).
+fn average_orm(t: Option<&Tex8>, rough: f32, metal: f32) -> (f32, f32) {
+    let Some(t) = t.filter(|t| t.width > 0 && t.height > 0 && t.rgba.len() >= (t.width * t.height * 4) as usize) else { return (rough, metal) };
+    let n = (t.width * t.height) as usize;
+    let step = (n / 4096).max(1);
+    let (mut r, mut m, mut cnt) = (0f64, 0f64, 0f64);
+    let mut i = 0;
+    while i < n {
+        r += t.rgba[i * 4 + 1] as f64 / 255.0;
+        m += t.rgba[i * 4 + 2] as f64 / 255.0;
+        cnt += 1.0;
+        i += step;
+    }
+    ((r / cnt) as f32, (m / cnt) as f32)
+}
+
 /// A group's base picture shrunk to the small square the reflections look up (white when it has none).
 fn shrink_layer(t: Option<&Tex8>) -> Vec<u8> {
     let n = rt::LAYER as usize;
@@ -1414,7 +1430,13 @@ impl Gpu {
         let mut cols = Vec::new();
         for (gi, g) in s.groups.iter().enumerate() {
             tri_group.extend(std::iter::repeat(gi as u32).take(g.indices.len() / 3));
-            cols.push(average_colour(g.material.base.as_ref()));
+            let ac = average_colour(g.material.base.as_ref());
+            let (orm_r, orm_m) = average_orm(g.material.orm.as_ref(), g.material.rough, g.material.metal);
+            let glow = average_colour(g.material.emissive.as_ref());
+            let sp = g.material.shader;
+            cols.push([ac[0], ac[1], ac[2], sp.kind as f32]);
+            cols.push([orm_r, orm_m, if g.material.emissive.is_some() { (glow[0] + glow[1] + glow[2]) / 3.0 } else { 0.0 }, sp.p[0]]);
+            cols.push([sp.c[0], sp.c[1], sp.c[2], sp.p[1]]);
         }
         let layers: Vec<Vec<u8>> = s.groups.iter().map(|g| shrink_layer(g.material.base.as_ref())).collect();
         let mut vgroup = vec![-1i32; n];
