@@ -52,3 +52,17 @@ While the window is open, **Screenshot**, **Turntable** and the **Render** windo
 ## If something is wrong
 
 If the window cannot start, a message says why and the normal viewer is unchanged. If painting through the window is slow, a message tells you once and points at the switch above.
+
+## Hologram, Glass, Fur, Iridescent, Car paint, Cloth sheen and Wax
+
+These seven looks are in the **Shader** list (per texture set) and show the same in the 3D view and in the new viewer window. Their settings are in the Shader panel, each with its own set.
+
+- **Hologram** is see-through: edge glow, scan lines that move, a flicker and a soft body glow. It is blended over what is behind it.
+- **Glass** bends the sky and shows the model's own back parts through it. Use the normal map for ripples. It doesn't bend other objects behind it.
+- **Fur** grows strands in layers out of the surface. The base colour map colours it; the tip colour fades in at the ends. Wind moves it.
+- **Iridescent** shifts colour with the angle you look from: soap bubble, beetle shell, oil slick.
+- **Car paint** is a base colour under a clear coat, with metallic flakes that sparkle as you move.
+- **Cloth sheen** is a soft sheen for fabric; raise Satin streak for satin or silk.
+- **Wax / marble glow** lets light travel through the surface. A baked Thickness map makes thin parts glow more.
+
+Not yet: ray-traced reflections don't see these looks, and the engine exports (Unity, Godot, Unreal) use the older looks only.

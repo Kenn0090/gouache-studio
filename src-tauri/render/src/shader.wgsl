@@ -39,7 +39,7 @@ fn view_dir(p: vec3<f32>) -> vec3<f32> {
 struct Mat {
     flags: vec4<f32>,        // x has orm, y rough fallback, z metal fallback, w unused
     tint: vec4<f32>,
-    shk: vec4<f32>,          // x the shader (0 standard, 1 skin, 2 brushed metal, 3 velvet, 4 toon, 5 cel, 6 spec/gloss, 7 panner, 8 retro)
+    shk: vec4<f32>,          // x the shader (0 standard, 1 skin, 2 brushed metal, 3 velvet, 4 toon, 5 cel, 6 spec/gloss, 7 panner, 8 retro, 9 hologram, 10 glass, 11 fur, 12 iridescent, 13 car paint, 14 cloth sheen, 15 wax)
     shp: vec4<f32>,          // the shader's settings, as the 3D view keeps them
     shq: vec4<f32>,
     shc: vec4<f32>,
@@ -158,6 +158,7 @@ fn bayer(p: vec2<f32>) -> f32 {
 var<private> g_sf: f32 = 0.0;
 var<private> g_sp: f32 = 0.0;
 var<private> g_rough: f32 = 0.5;
+fn hsh(p: vec2<f32>) -> f32 { return fract(sin(dot(p, vec2<f32>(127.1, 311.7))) * 43758.5453); }
 fn lum(c: vec3<f32>) -> f32 { return dot(c, vec3<f32>(0.2126, 0.7152, 0.0722)); }
 
 struct FOut {
@@ -201,6 +202,71 @@ fn fs(i: VOut) -> FOut {
     var nw = normalize(i.nrm);
     if (dot(nw, view_dir(i.wpos)) < 0.0) { nw = -nw; }
     o.n = vec4<f32>(nw * 0.5 + 0.5, 0.25 + 0.75 * g_sf);
+    return o;
+}
+
+// ---- fur: grown in shells; alpha < 0 means "not a strand here" ----
+const FUR_SHELLS: f32 = 24.0;
+const FUR_LEN: f32 = 0.09;
+fn fur_shade(wpos: vec3<f32>, nrm: vec3<f32>, uv: vec2<f32>, k: f32, albedo: vec3<f32>) -> vec4<f32> {
+    let dens = mat.shp.y;
+    let gp = uv * dens;
+    let cell = floor(gp);
+    var fq = fract(gp) - vec2<f32>(0.5);
+    let cc = floor(gp / (1.0 + mat.shp.z * 3.0));
+    fq = fq + (vec2<f32>(hsh(cc), hsh(cc + vec2<f32>(7.3))) - vec2<f32>(0.5)) * mat.shp.z * k * 0.9;
+    let len = 0.6 + 0.4 * hsh(cell + vec2<f32>(3.1));
+    if (k > 0.0) {
+        if (k > len || length(fq) * 2.0 > mat.shq.z * (1.0 - k * 0.85)) { return vec4<f32>(0.0, 0.0, 0.0, -1.0); }
+    }
+    let root = albedo * (1.0 - mat.shq.y * 0.85);
+    let tip = mix(albedo, lin3(mat.shc.rgb), mat.shq.w);
+    let c0 = mix(root, tip, k);
+    let occ = mix(1.0 - mat.shq.y * 0.6, 1.0, k);
+    let nf = normalize(nrm);
+    let l = normalize(frame.sun_dir.xyz);
+    let wl = max((dot(nf, l) + 0.5) / 1.5, 0.0);
+    var col = c0 / PI * wl * frame.sun_col.rgb;
+    if (frame.info.y > 0.5) { col = col + c0 * sh_diffuse(nf) * occ; } else { col = col + c0 * mix(vec3<f32>(0.25), vec3<f32>(0.6, 0.7, 0.85), nf.y * 0.5 + 0.5) * occ; }
+    let vf = view_dir(wpos);
+    col = col + lin3(mat.shc.rgb) * 0.12 * pow(1.0 - max(dot(nf, vf), 0.0), 3.0) * k;
+    return vec4<f32>(tone(col), 1.0);
+}
+struct FurOut {
+    @builtin(position) clip: vec4<f32>,
+    @location(0) wpos: vec3<f32>,
+    @location(1) nrm: vec3<f32>,
+    @location(2) uv: vec2<f32>,
+    @location(3) k: f32,
+};
+@vertex
+fn vs_fur(i: VIn, @builtin(instance_index) ii: u32) -> FurOut {
+    var o: FurOut;
+    let k = (f32(ii) + 1.0) / FUR_SHELLS;
+    let nm = normalize(i.nrm);
+    let pr = dpos(i);
+    let t = frame.extra.x;
+    let wl = mat.shp.x * FUR_LEN * k;
+    let wd = vec3<f32>(mat.shp.w * FUR_LEN * 0.6 * k * k, -mat.skin.x * FUR_LEN * k * k, mat.shp.w * FUR_LEN * 0.25 * k * k);
+    let dp = pr + nm * wl + wd * (0.45 + 0.55 * sin(dot(i.pos, vec3<f32>(3.1, 1.7, 2.3)) + t * mat.shq.x * 2.0));
+    o.clip = frame.view_proj * vec4<f32>(dp, 1.0);
+    o.wpos = dp;
+    o.nrm = i.nrm;
+    o.uv = i.uv;
+    o.k = k;
+    return o;
+}
+@fragment
+fn fs_fur(i: FurOut) -> FOut {
+    var o: FOut;
+    var n = normalize(i.nrm);
+    if (dot(n, view_dir(i.wpos)) < 0.0) { n = -n; }
+    let al = textureSampleLevel(base_tex, tex_smp, i.uv, 0.0);
+    let r = fur_shade(i.wpos, n, i.uv, i.k, al.rgb * mat.tint.rgb);
+    if (r.a < 0.0) { discard; }
+    o.c = r;
+    o.n = vec4<f32>(n * 0.5 + 0.5, 0.25);
+    o.m = vec4<f32>(0.8, 0.0, 0.0, 1.0);
     return o;
 }
 
@@ -260,6 +326,7 @@ fn fs_shade(i: VOut) -> vec4<f32> {
     }
     if (frame.bgc.w > 0.0) { albedo = vec3<f32>(0.78, 0.8, 0.84); metal = 1.0; rough = frame.bgc.w; ao = 1.0; }
     rough = clamp(rough, 0.04, 1.0);
+    if (kind == 15) { rough = mix(rough, max(rough, 0.5), mat.shp.z); }
     let emis = textureSample(emi_tex, tex_smp, guv).rgb;
 
     let nv = max(dot(nn, v), 1e-3);
@@ -268,7 +335,14 @@ fn fs_shade(i: VOut) -> vec4<f32> {
     let nl = max(dot(nn, l), 0.0);
     let nh = max(dot(nn, h), 0.0);
     let vh = max(dot(v, h), 0.0);
-    let f0 = mix(vec3<f32>(0.04), albedo, metal);
+    var f0 = mix(vec3<f32>(0.04), albedo, metal);
+    if (kind == 12) {
+        // iridescent: a film whose colour follows the viewing angle
+        let tt2 = mat.shp.y + mat.shp.z * (0.3 + mat.shp.w * (1.0 - nv));
+        let film = vec3<f32>(0.5) + vec3<f32>(0.5) * cos(6.2832 * (vec3<f32>(tt2) + vec3<f32>(0.0, 0.33, 0.67)));
+        f0 = mix(f0, mix(film, vec3<f32>(1.0), 0.15), mat.shp.x);
+        metal = mix(metal, 1.0, 0.6 * mat.shp.x);
+    }
     let sun = frame.sun_col.rgb;
     let skyi = 1.0;
 
@@ -285,6 +359,47 @@ fn fs_shade(i: VOut) -> vec4<f32> {
         c = floor(c * mat.shc.rgb + 0.5 + (bayer(i.clip.xy) - 0.5) * mat.shp.z) / mat.shc.rgb;
         return vec4<f32>(lin3(clamp(c, vec3<f32>(0.0), vec3<f32>(1.0))), 1.0);
     }
+
+    // ---- hologram, glass and fur ----
+    if (kind == 9) {
+        let t = frame.extra.x;
+        let nvh = clamp(abs(dot(nn, v)), 0.0, 1.0);
+        let ln = smoothstep(0.35, 0.65, sin((i.wpos.y * mat.shp.x - t * mat.shq.x * 3.0) * 1.5708) * 0.5 + 0.5);
+        let fl = max(1.0 - mat.shp.y * (0.35 * hsh(vec2<f32>(floor(t * 24.0), 1.0)) + 0.15 * sin(t * 60.0)), 0.0);
+        let edge = pow(1.0 - nvh, 2.5) * mat.shp.z;
+        let body = mat.shq.y * (0.35 + 0.65 * dot(albedo, vec3<f32>(0.3333)));
+        let c = lin3(mat.shc.rgb) * (edge + ln * 0.55 + body * (0.4 + 0.6 * ln)) * fl * 2.0 + emis * 2.0;
+        let al = clamp(mat.shp.w * (0.15 + 0.5 * ln + 0.9 * edge + body * 0.6), 0.0, 1.0) * fl;
+        return vec4<f32>(tone(c), al);
+    }
+    if (kind == 10) {
+        let rf = clamp(mat.shp.y, 0.0, 1.0);
+        let fr = clamp((0.04 + 0.96 * pow(1.0 - nv, 5.0)) * mat.shp.w, 0.0, 1.0);
+        let eta = 1.0 / (1.0 + 0.6 * mat.shp.x);
+        let d2 = mat.shq.y * 0.05;
+        var dr = refract(-v, nn, eta + d2);
+        var dg = refract(-v, nn, eta);
+        var db = refract(-v, nn, eta - d2);
+        let rr = reflect(-v, nn);
+        if (dot(dr, dr) < 0.5) { dr = rr; }
+        if (dot(dg, dg) < 0.5) { dg = rr; }
+        if (dot(db, db) < 0.5) { db = rr; }
+        var te = vec3<f32>(0.0);
+        var re = vec3<f32>(0.0);
+        if (frame.info.y > 0.5) {
+            te = vec3<f32>(env_spec(dr, rf).r, env_spec(dg, rf).g, env_spec(db, rf).b);
+            re = env_spec(rr, rf * 0.6) * fr;
+        } else {
+            te = mix(vec3<f32>(0.25), vec3<f32>(0.6, 0.7, 0.85), dg.y * 0.5 + 0.5);
+            re = mix(vec3<f32>(0.25), vec3<f32>(0.6, 0.7, 0.85), rr.y * 0.5 + 0.5) * fr;
+        }
+        let ab = exp(-(vec3<f32>(1.0) - lin3(mat.shc.rgb)) * mat.shp.z * 1.6 / nv) * mix(vec3<f32>(1.0), albedo, 0.85);
+        let spg = pow(max(dot(nn, h), 0.0), mix(500.0, 40.0, rf)) * (1.0 - rf * 0.7) * (2.0 / 3.0);
+        let c = te * ab * (1.0 - fr) + re + sun * spg + emis * 2.0;
+        let al = clamp(mat.shq.x + fr + spg + rf * 0.5, 0.0, 1.0);
+        return vec4<f32>(tone(c), al);
+    }
+    if (kind == 11) { return fur_shade(i.wpos, n, uv, 0.0, albedo); }
 
     // ---- toon and cel: flat bands of light from the sun ----
     if (kind == 4 || kind == 5) {
@@ -376,6 +491,42 @@ fn fs_shade(i: VOut) -> vec4<f32> {
         col += lin3(mat.shc.rgb) * mat.shp.x * dc * nl * sun / max(4.0 * (nl + nv - nl * nv), 1e-3);
     }
 
+    if (kind == 13) {
+        // car paint: a clear coat over the paint, and flakes
+        let cr = max(mat.shq.x, 0.02);
+        let nc = normalize(n + mat.shq.y * 0.04 * vec3<f32>(sin(i.wpos.x * 90.0 + i.wpos.y * 37.0), sin(i.wpos.y * 83.0 + i.wpos.z * 51.0), sin(i.wpos.z * 77.0 + i.wpos.x * 29.0)));
+        col += studio_direct(nc, v, l, vec3<f32>(0.0), vec3<f32>(0.04), cr, 0.0) * sun * mat.shp.z;
+        let fc = uv * mat.shp.y;
+        let ci = floor(fc);
+        let fq = fract(fc) - vec2<f32>(0.5);
+        let fm = step(hsh(ci), mat.shp.x * 0.6) * smoothstep(0.5, 0.3, length(fq));
+        let nf = normalize(nn + (vec3<f32>(hsh(ci + vec2<f32>(1.7)), hsh(ci + vec2<f32>(4.1)), hsh(ci + vec2<f32>(9.3))) - vec3<f32>(0.5)) * 1.4);
+        let fcol = mix(lin3(mat.shc.rgb), albedo, 0.25);
+        var fl = pow(max(dot(nf, h), 0.0), 60.0) * sun;
+        if (frame.info.y > 0.5) { fl = fl + env_spec(reflect(-v, nf), 0.25) * 0.5 * 0.35; }
+        col += fm * mat.shp.w * fcol * fl;
+    }
+    if (kind == 14) {
+        // cloth: a soft sheen, or fibres that streak it (satin, silk)
+        let sr = max(mat.shp.y, 0.05);
+        let sn = sqrt(max(1.0 - nh * nh, 0.0));
+        let dc = (2.0 + 1.0 / sr) * pow(sn, 1.0 / sr) / (2.0 * PI);
+        let an = mat.shp.z * 2.0 * PI;
+        var tf = normalize(tt * cos(an) + bb * sin(an));
+        tf = normalize(tf - nn * dot(nn, tf));
+        let th = dot(tf, h);
+        let da = pow(sqrt(max(1.0 - th * th, 0.0)), mix(10.0, 160.0, 1.0 - mat.shp.y)) * 0.6;
+        let wv = mix(1.0, 0.55 + 0.45 * sin(uv.x * 200.0) * sin(uv.y * 200.0), mat.shq.x);
+        col += lin3(mat.shc.rgb) * mat.shp.x * mix(dc, da, mat.shp.w) * wv * nl * sun / max(4.0 * (nl + nv - nl * nv), 1e-3);
+    }
+    if (kind == 15) {
+        // wax / marble: light wrapping round and shining through
+        let w = 0.3 + 0.7 * mat.shp.y;
+        let wr = max((dot(n, l) + w) / (1.0 + w), 0.0);
+        let bk = max(dot(-n, l), 0.0) * exp(-thick * (3.0 - 2.0 * mat.shp.y));
+        col += lin3(mat.shc.rgb) * albedo * mat.shp.x * (wr * 0.5 + bk) * sun;
+    }
+
     let sun_part = col;
     // ---- light from the environment ----
     var nr = nn;
@@ -401,6 +552,9 @@ fn fs_shade(i: VOut) -> vec4<f32> {
             env_s = env_spec(reflect(-v, nn), sr) * (vec3<f32>(0.028) * sab.x + sab.y) + env_spec(reflect(-v, nn), max(sr * 0.38, 0.08)) * (vec3<f32>(0.04) * sab.x + sab.y) * mat.shq.z * 0.35;
         }
         if (kind == 3) { env_s += lin3(mat.shc.rgb) * mat.shp.x * sh_diffuse(nn) * pow(1.0 - nv, max(mat.shp.z, 0.5) * 3.0 + 1.0); }
+        if (kind == 14) { env_s += lin3(mat.shc.rgb) * mat.shp.x * sh_diffuse(nn) * pow(1.0 - nv, 2.5) * 0.8; }
+        if (kind == 13) { let abc = env_brdf(max(mat.shq.x, 0.02), nv); env_s += env_spec(reflect(-v, n), max(mat.shq.x, 0.02)) * (vec3<f32>(0.04) * abc.x + vec3<f32>(abc.y)) * mat.shp.z; }
+        if (kind == 15) { env_d += (sh_diffuse(-n) * exp(-thick * (3.0 - 2.0 * mat.shp.y)) * 0.25 + sh_diffuse(n) * 0.1) * lin3(mat.shc.rgb) * albedo * mat.shp.x; }
     } else {
         let hemi = mix(vec3<f32>(0.25), vec3<f32>(0.6, 0.7, 0.85), nn.y * 0.5 + 0.5);
         env_d = diff_col * hemi;

@@ -1,5 +1,7 @@
 ## 0.94.1
 
+- **Seven new looks for the model.** The Shader drop-down (3D view and the new viewer) now has **Hologram** (see-through glow, moving scan lines, flicker), **Glass** (bends the sky, shows the model's own back parts, tint, frost, colour split), **Fur** (grown in layers, with strands, clumping, wind and droop), **Iridescent** (colour that shifts with the viewing angle), **Car paint** (clear coat, orange peel and sparkling flakes), **Cloth sheen** (soft or satin-streaked sheen with a weave pattern) and **Wax / marble glow** (light travelling through the surface). Each has its own settings and keeps them per texture set. The engine exports (Unity, Godot, Unreal) don't know these looks yet.
+
 - **More examples on the welcome screen.** A seamless wood-plank tile and a brush sampler (ten brush looks on their own layers) in Paint, and three 3D Paint models dressed with smart materials: rusty painted metal, mossy stone and weathered bronze.
 
 - **Physical size.** For a picture, text or decal projected on the model, a new **Real size** choice (off, millimetres, centimetres, metres, inches) shows and sets its size in real units, worked out from the model's file units (the **Model file units** setting in the Bevel settings; centimetres if you have not changed it).

@@ -42,7 +42,7 @@ async function nvGreyPNG(t){const c=captureRegionNow(t,0,0,t.w,t.h),n=t.w*t.h,cv
   const b=await new Promise(r=>out.toBlob(r,'image/png'));return b?new Uint8Array(await b.arrayBuffer()):null;}
 async function nvHeightApply(T){if(nvViewTarget())return;if(nvDispOn()){const g=await nvGreyPNG(v3.tex.height);if(g)T.Height=g;}
   /* skin: the baked thickness map (doc.meshMaps.thick) */
-  try{if(ui.mode==='p3d'&&nvShader().k===1&&doc.meshMaps&&doc.meshMaps.thick){const g=await nvGreyPNG(doc.meshMaps.thick);if(g)T.Thick=g;}}catch(e){}}
+  try{if(ui.mode==='p3d'&&(nvShader().k===1||nvShader().k===15)&&doc.meshMaps&&doc.meshMaps.thick){const g=await nvGreyPNG(doc.meshMaps.thick);if(g)T.Thick=g;}}catch(e){}}
 /* the selection (orange tint on the model): painted into the picture the window shows, like the 3D view does on top */
 let nvSelVer=0;
 {const a=applyShape;applyShape=function(...r){nvSelVer++;return a.apply(this,r);};}

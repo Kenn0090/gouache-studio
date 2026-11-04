@@ -15,8 +15,9 @@ function pnUniforms(P){const u={};for(const k in PN_UNI)u[PN_UNI[k]]=[0,0];
 function pnActive(){const sh=v3ShadeOf(doc);return sh&&sh.kind==='panner'?shParams(sh):null;}
 /* does any texture set slide? (3D Paint keeps a shader per set) */
 function pnPlaying(){if(!v3.on||stroke||ui.mode==='bake'||ui.mode==='convert')return false;
+  if(shMoves(v3ShadeOf(doc)))return true;
   const a=pnActive();if(a&&a.play&&(a.sx||a.sy))return true;
-  if(ui.mode==='p3d'&&typeof p3!=='undefined'&&p3.sets)for(const S of p3.sets){const sh=S.state&&S.state.v3shade;if(sh&&sh.kind==='panner'){const P=shParams(sh);if(P.play&&(P.sx||P.sy))return true;}}
+  if(ui.mode==='p3d'&&typeof p3!=='undefined'&&p3.sets)for(const S of p3.sets){const sh=S.state&&S.state.v3shade;if(sh&&sh.kind==='panner'){const P=shParams(sh);if(P.play&&(P.sx||P.sy))return true;}if(shMoves(sh))return true;}
   return false;}
 function pnLayerNode(P){if(!P||!P.layer)return null;let f=null;const walk=g=>{for(const n of g.children){if(n.id===P.layer)f=n;if(n.children)walk(n);}};walk(doc.root);return f;}
 /* which of the viewer's maps are composited with the layer sliding */

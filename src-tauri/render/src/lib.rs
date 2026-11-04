@@ -334,6 +334,11 @@ struct FrameUniform {
     bv: [f32; 4],   // rounded normals: on, width, height
 }
 
+/// does this shader move by itself (so the window keeps drawing)?
+fn shader_moves(kind: i32, mu: &MatUniform) -> bool {
+    kind == 7 || (kind == 9 && (mu.shq[0] > 0.0 || mu.shp[1] > 0.0)) || (kind == 11 && mu.shp[3] > 0.0 && mu.shq[0] > 0.0)
+}
+
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct MatUniform {
@@ -379,6 +384,8 @@ struct GpuGroup {
     mu: MatUniform,
     views: [wgpu::TextureView; 4],
     outline: bool,
+    /// the shader's number (9 hologram and 10 glass are blended over the solid parts, 11 fur is grown in shells)
+    kind: i32,
     tris: Vec<u32>,
     wire: Option<(wgpu::Buffer, u32)>,
 }
@@ -390,6 +397,8 @@ struct Gpu {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     pipeline: wgpu::RenderPipeline,
+    alpha_pipeline: wgpu::RenderPipeline,
+    fur_pipeline: wgpu::RenderPipeline,
     bg_pipeline: wgpu::RenderPipeline,
     ring_pipeline: wgpu::RenderPipeline,
     cursor: Option<(f32, f32)>,
@@ -925,6 +934,45 @@ impl Gpu {
             multiview: None,
             cache: None,
         });
+        // hologram and glass: blended over what is already drawn (the normal and material pictures are left alone)
+        let alpha_target = [
+            Some(wgpu::ColorTargetState { format, blend: Some(wgpu::BlendState::ALPHA_BLENDING), write_mask: wgpu::ColorWrites::ALL }),
+            Some(wgpu::ColorTargetState { format: rt::NORMAL_FORMAT, blend: None, write_mask: wgpu::ColorWrites::empty() }),
+            Some(wgpu::ColorTargetState { format: rt::NORMAL_FORMAT, blend: None, write_mask: wgpu::ColorWrites::empty() }),
+        ];
+        let alpha_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("blended pipeline"),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("vs"),
+                compilation_options: Default::default(),
+                buffers: &[wgpu::VertexBufferLayout { array_stride: std::mem::size_of::<Vertex>() as u64, step_mode: wgpu::VertexStepMode::Vertex, attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x3] }],
+            },
+            fragment: Some(wgpu::FragmentState { module: &shader, entry_point: Some("fs"), compilation_options: Default::default(), targets: &alpha_target }),
+            primitive: wgpu::PrimitiveState { cull_mode: None, ..Default::default() },
+            depth_stencil: Some(wgpu::DepthStencilState { format: DEPTH_FORMAT, depth_write_enabled: false, depth_compare: wgpu::CompareFunction::Less, stencil: Default::default(), bias: Default::default() }),
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
+        // fur: the surface drawn again and again, a little further out each time
+        let fur_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("fur pipeline"),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("vs_fur"),
+                compilation_options: Default::default(),
+                buffers: &[wgpu::VertexBufferLayout { array_stride: std::mem::size_of::<Vertex>() as u64, step_mode: wgpu::VertexStepMode::Vertex, attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x3] }],
+            },
+            fragment: Some(wgpu::FragmentState { module: &shader, entry_point: Some("fs_fur"), compilation_options: Default::default(), targets: &target }),
+            primitive: wgpu::PrimitiveState { cull_mode: None, ..Default::default() },
+            depth_stencil: Some(wgpu::DepthStencilState { format: DEPTH_FORMAT, depth_write_enabled: true, depth_compare: wgpu::CompareFunction::Less, stencil: Default::default(), bias: Default::default() }),
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
         let bg_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("background pipeline"),
             layout: Some(&bg_layout),
@@ -1211,6 +1259,8 @@ impl Gpu {
             queue,
             config,
             pipeline,
+            alpha_pipeline,
+            fur_pipeline,
             bg_pipeline,
             ring_pipeline,
             cursor: std::env::var_os("GOUACHE_RING_TEST").map(|_| std::env::var("GOUACHE_RING_AT").ok().and_then(|v| { let mut it = v.split(',').filter_map(|x| x.parse::<f32>().ok()); Some((it.next()?, it.next()?)) }).unwrap_or((300.0, 250.0))), // debug: shows the outline without a mouse (GOUACHE_RING_AT=x,y moves it)
@@ -1341,7 +1391,7 @@ impl Gpu {
         }
         self.vb = Some(self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("vertices"), contents: bytemuck::cast_slice(&verts), usage: wgpu::BufferUsages::VERTEX }));
         self.groups.clear();
-        self.animated = s.groups.iter().any(|g| g.material.shader.kind == 7);
+        self.animated = s.groups.iter().any(|g| g.material.shader.kind == 7 || (g.material.shader.kind == 9 && (g.material.shader.q[0] > 0.0 || g.material.shader.p[1] > 0.0)) || (g.material.shader.kind == 11 && g.material.shader.p[3] > 0.0 && g.material.shader.q[0] > 0.0));
         for g in &s.groups {
             if g.indices.is_empty() {
                 continue;
@@ -1350,7 +1400,7 @@ impl Gpu {
             let (bind, mat_buf, mu, views) = self.material_bind(mat, None);
             let sp = mat.shader;
             let ib = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("indices"), contents: bytemuck::cast_slice(&g.indices), usage: wgpu::BufferUsages::INDEX });
-            self.groups.push(GpuGroup { name: g.name.clone(), ib, mat_buf, mu, views, count: g.indices.len() as u32, bind, outline: (sp.kind == 4 || sp.kind == 5) && sp.q[0] > 0.0, tris: g.indices.clone(), wire: None });
+            self.groups.push(GpuGroup { name: g.name.clone(), ib, mat_buf, mu, views, count: g.indices.len() as u32, bind, outline: (sp.kind == 4 || sp.kind == 5) && sp.q[0] > 0.0, kind: sp.kind as i32, tris: g.indices.clone(), wire: None });
         }
         let c = (mn + mx) * 0.5;
         let radius = ((mx - mn).length() * 0.5).max(1e-4);
@@ -1556,6 +1606,8 @@ impl Gpu {
         g.mu = mu;
         g.views = views;
         g.outline = outline;
+        g.kind = mat.shader.kind as i32;
+        self.animated = self.groups.iter().any(|g| shader_moves(g.kind, &g.mu));
     }
 
     /// Light from the sky on a surface (an average), for colouring what reflections see.
@@ -1716,10 +1768,28 @@ impl Gpu {
                 pass.set_pipeline(&self.pipeline);
                 pass.set_bind_group(0, &self.frame_bg, &[]);
                 pass.set_vertex_buffer(0, vb.slice(..));
-                for g in self.groups.iter().filter(|_| st.hv != 2) {
+                for g in self.groups.iter().filter(|g| st.hv != 2 && g.kind != 9 && g.kind != 10) {
                     pass.set_bind_group(1, &g.bind, &[]);
                     pass.set_index_buffer(g.ib.slice(..), wgpu::IndexFormat::Uint32);
                     pass.draw_indexed(0..g.count, 0, 0..1);
+                }
+                if st.hv != 2 && st.wire != 2 {
+                    if self.groups.iter().any(|g| g.kind == 11) {
+                        pass.set_pipeline(&self.fur_pipeline);
+                        for g in self.groups.iter().filter(|g| g.kind == 11) {
+                            pass.set_bind_group(1, &g.bind, &[]);
+                            pass.set_index_buffer(g.ib.slice(..), wgpu::IndexFormat::Uint32);
+                            pass.draw_indexed(0..g.count, 0, 0..24);
+                        }
+                    }
+                    if self.groups.iter().any(|g| g.kind == 9 || g.kind == 10) {
+                        pass.set_pipeline(&self.alpha_pipeline);
+                        for g in self.groups.iter().filter(|g| g.kind == 9 || g.kind == 10) {
+                            pass.set_bind_group(1, &g.bind, &[]);
+                            pass.set_index_buffer(g.ib.slice(..), wgpu::IndexFormat::Uint32);
+                            pass.draw_indexed(0..g.count, 0, 0..1);
+                        }
+                    }
                 }
                 if let (true, Some((hvb, hib, hn))) = (st.hv > 0, &self.hv) {
                     pass.set_pipeline(if st.hv == 1 { &self.hv_see } else { &self.hv_only });

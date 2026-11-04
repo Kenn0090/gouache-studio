@@ -28,6 +28,8 @@ function eshModelSize(m){if(!m||!m.pos)return 1;const mn=[1e30,1e30,1e30],mx=[-1
    Each texture set is a small ShaderMaterial (.tres) that only holds that set's textures and settings. */
 const ESH_LOOKS={std:'Standard',skin:'Skin',aniso:'BrushedMetal',velvet:'Velvet',toon:'Toon',cel:'Cel',specgloss:'Standard',panner:'Panner',retro:'Retro'};
 const eshLook=k=>ESH_LOOKS[k]||'Standard';
+/* the engine shaders only know the looks above: the newer ones (hologram, glass, fur, iridescent, car paint, cloth, wax) go out as Standard for now */
+const eshSafeShade=sh=>sh&&sh.kind&&!ESH_LOOKS[sh.kind]?{kind:'std',p:{}}:sh;
 const eshV3=a=>'vec3('+(a||[1,1,1]).map(eshF).join(', ')+')';
 /* a look's own settings: [uniform name, GLSL type, value text] taken from a shader's parameters */
 function eshGodotParams(sh){const k=sh.kind,P=shParams(sh),L=[];
