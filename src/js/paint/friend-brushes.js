@@ -27,6 +27,7 @@ const FR_TIPS={
   raggedSq:genTip('Ragged square',128,128,(x,w,h,R)=>{x.fillRect(10,4,w-20,h-8);for(let y=4;y<h-4;y+=2){const l=R()<.35?R()*9:0,r=R()<.35?R()*9:0;x.clearRect(10,y,l,2);x.clearRect(w-10-r,y,r,2);}}),
   fbar:genTip('Feathered bar',320,26,(x,w,h)=>{let g=x.createLinearGradient(0,0,0,h);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(.25,'rgba(0,0,0,.45)');g.addColorStop(.5,'rgba(0,0,0,1)');g.addColorStop(.75,'rgba(0,0,0,.45)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,w,h);
     x.globalCompositeOperation='destination-in';g=x.createLinearGradient(0,0,w,0);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(.12,'rgba(0,0,0,.5)');g.addColorStop(.3,'rgba(0,0,0,1)');g.addColorStop(.7,'rgba(0,0,0,1)');g.addColorStop(.88,'rgba(0,0,0,.5)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,w,h);x.globalCompositeOperation='source-over';}),
+  browbar:genTip('Brow bar',60,360,(x,w,h,R)=>{let p=.5;for(let j=0;j<h;j++){p=p*.6+R()*.4;const edge=Math.min(j,h-1-j)/(h*.04),a=Math.min(1,edge)*(.82+.18*Math.min(1,p*1.6)),len=w*(.86+.14*R()),x0=(w-len)/2;x.globalAlpha=a;x.fillRect(x0,j,len,1);}x.globalAlpha=1;}),
   browfib:genTip('Brow bristles',360,64,(x,w,h,R)=>{let i=0;while(i<w){const bw=Math.round(16+R()*16),gap=Math.round(R()<.2?3+R()*6:R()*2),len=h*(.45+.55*R()),y0=(h-len)/2+(R()-.5)*h*.2;x.globalAlpha=.55+.45*R();x.fillRect(i,y0,bw,len);i+=bw+gap;}
     /* the texture inside each bristle: fine hairlines of uneven strength along it, and uneven ends */
     x.globalCompositeOperation='destination-out';let q=.5;for(let c=0;c<w;c++){q=q*.45+R()*.55;x.globalAlpha=Math.min(.85,Math.pow(q,1.6)*1.1);x.fillRect(c,0,1,h);const cut=h*.3*R()*R();x.globalAlpha=1;x.fillRect(c,0,1,cut);x.fillRect(c,h-cut*.8,1,cut);}
@@ -45,7 +46,7 @@ const FR_TIPS={
 const FRIEND_PRESETS=[
   {name:'Blur ice',tool:'smudge',blendMode:'smear',streak:0,pull:2.2,tip:FR_TIPS.sharpBox,size:270,hardness:1,spacing:.004,strength:1,charge:0,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Boxes',tool:'brush',tip:FR_TIPS.sharpBox,size:200,hardness:1,spacing:.002,followDir:false,hueJitter:.03,valJitter:.14,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
-  {name:'Brow',tool:'brush',tip:FR_TIPS.browfib,size:240,hardness:1,spacing:.002,followDir:false,laneN:14,laneMode:6,laneHue:.65,laneVal:.1,grain:.9,grainSize:1,flow:1,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
+  {name:'Brow',tool:'brush',tip:FR_TIPS.browbar,size:240,hardness:1,spacing:.003,followDir:true,laneN:70,laneMode:7,laneHue:.9,laneVal:.06,grain:0,flow:1,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Charcoal',tool:'brush',tip:FR_TIPS.fbar,size:120,hardness:1,grain:.8,grainSize:1,spacing:.002,followDir:false,flow:1,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Dither',tool:'brush',tip:null,roundness:.03,angle:0,spray:1.7,sprayDen:4,sprayMist:.2,size:200,hardness:1,spacing:.002,laneN:40,laneMode:2,laneHue:.06,laneVal:.1,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Fan',tool:'brush',fanFill:1,size:60,hardness:1,flow:1,spacing:.05,pSize:false,pOpacity:false,smoothing:.3,laneN:40,laneHue:.12,laneVal:.12},
