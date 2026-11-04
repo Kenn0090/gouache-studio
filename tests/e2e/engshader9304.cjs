@@ -25,7 +25,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
    P.invoke=async(cmd,a)=>{if(cmd==='dir_files')return [[a.dir+'/project.godot',0,0]];return null;};
    P.writeFile=async(path,bytes)=>{window.__written[path]=bytes.length<60000&&/\.(gdshader|tres|shader|mat|meta|json|gdata|py)$/.test(path)?new TextDecoder().decode(bytes):'(binary '+bytes.length+')';};P.pickFolder=async()=>'C:/proj';});
  /* every shader kind makes a Godot shader and a Unity material */
- const kinds=['std','skin','aniso','velvet','toon','cel','specgloss','panner','retro'];
+ const kinds=['std','skin','aniso','velvet','toon','cel','specgloss','panner','retro','hologram','glass','fur','iridescent','car','cloth','wax','halfcel','ink'];
  const res=await p.evaluate(kinds=>kinds.map(k=>{const sh={kind:k,p:{}},have={base:true,orm:true,normal:true,emis:true};
    const g=__gs.eshGodotShader(k==='specgloss'?'std':k,false);const f=__gs.eshFiles('unity','Rock',{Body:{sh,tex:{BaseColor:{name:'R_Body_BaseColor.png'},ORM:{name:'R_Body_ORM.png'},Normal:{name:'R_Body_Normal.png'}},alpha:false}},1);
    const gf=__gs.eshFiles('godot','Rock',{Body:{sh,tex:{BaseColor:{name:'R_Body_BaseColor.png'},ORM:{name:'R_Body_ORM.png'},Normal:{name:'R_Body_Normal.png'}},alpha:false}},1);
