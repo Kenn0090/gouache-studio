@@ -11,7 +11,7 @@ const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAI
  await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
  await p.evaluate(()=>{__gs.closeWelcome();});await p.waitForTimeout(300);
  const names=await p.evaluate(()=>{const s=__gs.library.find(x=>x.id==='friend_picks');return s?s.presets.map(x=>x.name):null;});
- const want=['Blur ice','Boxes','Brow','Charcoal chunk','Dither','Fan','Fan fade','Friend fluff','Line','Line blend','Oil','Oil bristle brush','Worm'];
+ const want=['Blur ice','Boxes','Brow','Charcoal','Dither','Fan','Fan fade','Fried fluff','Line','Line blend','Oil','Oil bristle','Worm'];
  ok(names&&want.every(n=>names.includes(n)),'the set has all 13 brushes '+JSON.stringify(names));
  const box=await p.locator('#gl').boundingBox();
  await p.evaluate(()=>{__gs.setFG([1,1,1]);__gs.brush.lineBlend=false;__gs.brush.tip=null;__gs.brush.size=3000;__gs.brush.hardness=1;__gs.brush.smoothing=0;__gs.brush.correction=0;__gs.setTool('brush');});
