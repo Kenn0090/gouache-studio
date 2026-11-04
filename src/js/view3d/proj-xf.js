@@ -30,7 +30,7 @@ const PXF_WRAP=[['repeat','Repeat'],['none','None'],['h','Repeat horizontally'],
 /* where the projection sits in the world (for the gizmo) */
 function pxfCenter(xf){const {c}=pxfModel();return [c[0]+xf.t[0],c[1]+xf.t[1],c[2]+xf.t[2]];}
 /* uniforms for the shaders: uInv maps world to projection space; uNrmInv applies its inverse-transpose to normals. */
-const pxfNorm=x=>{const d=pxfDef();if(!x)return Object.assign(d,{ang:360,hard:.5,cull:true,wrap:'repeat',crop:false});return {ang:x.ang>0?Math.min(360,+x.ang):360,hard:x.hard==null?.5:Math.max(0,Math.min(1,+x.hard)),cull:x.cull!==false,wrap:x.wrap||'repeat',crop:!!x.crop,depth:x.depth>0?+x.depth:1,dh:x.dh==null?.5:+x.dh,...(x.warp?{warp:x.warp}:{}),t:[0,1,2].map(i=>+((x.t||[])[i]||0)),r:[0,1,2].map(i=>+((x.r||[])[i]||0)),s:[0,1,2].map(i=>{const v=+((x.s||[])[i]);return isFinite(v)&&v?v:1;})};};
+const pxfNorm=x=>{const d=pxfDef();if(!x)return Object.assign(d,{ang:360,hard:.5,cull:true,wrap:'repeat',crop:false});return {ang:x.ang>0?Math.min(360,+x.ang):360,hard:x.hard==null?.5:Math.max(0,Math.min(1,+x.hard)),cull:x.cull!==false,wrap:x.wrap||'repeat',filter:x.filter==='nearest'?'nearest':'smooth',crop:!!x.crop,depth:x.depth>0?+x.depth:1,dh:x.dh==null?.5:+x.dh,...(x.warp?{warp:x.warp}:{}),t:[0,1,2].map(i=>+((x.t||[])[i]||0)),r:[0,1,2].map(i=>+((x.r||[])[i]||0)),s:[0,1,2].map(i=>{const v=+((x.s||[])[i]);return isFinite(v)&&v?v:1;})};};
 function pxfUniforms(mode,xf){const X=pxfNorm(xf),{c,S}=pxfModel(),k=pxfUnit(mode,S),R=pxfRot(X.r);
   const o=[c[0]+X.t[0],c[1]+X.t[1],c[2]+X.t[2]],d=[0,1,2].map(i=>(X.s[i]||1)*k),inv=new Float32Array(16),nrmInv=new Float32Array(9);
   for(let i=0;i<3;i++){let tr=0;for(let j=0;j<3;j++){const v=R[j][i]/d[i];inv[j*4+i]=v;nrmInv[j*3+i]=R[j][i]*d[i];tr-=v*o[j];}inv[12+i]=tr;}inv[15]=1;
@@ -38,7 +38,7 @@ function pxfUniforms(mode,xf){const X=pxfNorm(xf),{c,S}=pxfModel(),k=pxfUnit(mod
   const a=(X.r[2]||0)*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a),su=X.s[0]||1,sv=X.s[1]||1,A=[[ca/su,sa/su],[-sa/sv,ca/sv]];
   const cx=.5+X.t[0],cy=.5+X.t[1],b=[.5-(A[0][0]*cx+A[0][1]*cy),.5-(A[1][0]*cx+A[1][1]*cy)];
   const uvm=new Float32Array([A[0][0],A[1][0],0,A[0][1],A[1][1],0,b[0],b[1],1]);
-  return {uProj:{int:PXF_IX[mode]||0},uInv:{m4:inv},uNrmInv:{m3:nrmInv},uUvM:{m3:uvm},uUvRot:(X.r[2]||0)*Math.PI/180,uCyl:[X.ang,X.hard,X.cull?1:0,Math.max(0,PXF_WRAP.findIndex(w=>w[0]===X.wrap))],uCrop:X.crop?1:0,...(typeof wpjUniforms==='function'?wpjUniforms(mode,xf,X):{})};}
+  return {uProj:{int:PXF_IX[mode]||0},uInv:{m4:inv},uNrmInv:{m3:nrmInv},uUvM:{m3:uvm},uUvRot:(X.r[2]||0)*Math.PI/180,uCyl:[X.ang,X.hard,X.cull?1:0,Math.max(0,PXF_WRAP.findIndex(w=>w[0]===X.wrap))],uCrop:X.crop?1:0,uNearest:{int:X.filter==='nearest'?1:0},...(typeof wpjUniforms==='function'?wpjUniforms(mode,xf,X):{})};}
 /* the four corners of the UV frame, in texture units (0..1), for the 2D handles */
 function pxfUvCorners(xf){const X=pxfNorm(xf),a=(X.r[2]||0)*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a),su=X.s[0]||1,sv=X.s[1]||1;
   return [[-.5,-.5],[.5,-.5],[.5,.5],[-.5,.5]].map(([x,y])=>{const px=x*su,py=y*sv;return [.5+X.t[0]+ca*px-sa*py,.5+X.t[1]+sa*px+ca*py];});}
@@ -97,7 +97,8 @@ function pxfFields(get,edit,mode,onReset,size){const til=!size,X=get(),is3=pxfIs
     if(mode==='cyl')box.append(makeSlider({id:'pxf_ang',label:'Angle',min:10,max:360,step:1,value:X.ang>0?X.ang:360,fmt:v=>Math.round(v)+'°',onInput:v=>edit(x=>{x.ang=v;})}).el,
       el('div',{class:'chips'},chk('pxf_cull','Backface culling',X.cull!==false,v=>edit(x=>{x.cull=v;}))),makeSlider({id:'pxf_hard',label:'Culling hardness',min:0,max:1,step:.01,value:X.hard==null?.5:X.hard,fmt:pct,onInput:v=>edit(x=>{x.hard=v;})}).el);
     box.append(el('div',{class:'chips'},el('span',{class:'note',text:'Mirror'}),...[0,1,2].map(i=>el('button',{class:'btn sm',id:'pxf_mir'+'xyz'[i],text:'XYZ'[i],title:'Flip the projection on '+'XYZ'[i],onclick:()=>edit(x=>{x.s[i]=-(x.s[i]||1);})}))));}
-  box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'pxfReset',text:'Reset',onclick:()=>{edit(x=>Object.assign(x,pxfDef(),{ang:360,hard:.5,cull:true,wrap:'repeat',crop:false}));if(onReset)onReset();}}),
+  {/* (0.95, Kenn) how the picture is sampled: smooth (blended) or nearest (crisp pixels) */const fl=el('select',{id:'pxf_filter','aria-label':'UV filtering',title:'UV filtering: smooth blends between the picture\'s pixels; nearest keeps them crisp'},el('option',{value:'smooth',text:'UV filtering: Smooth'}),el('option',{value:'nearest',text:'UV filtering: Nearest (crisp pixels)'}));fl.value=X.filter==='nearest'?'nearest':'smooth';fl.onchange=()=>edit(x=>{x.filter=fl.value;});box.append(fl);}
+  box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'pxfReset',text:'Reset',onclick:()=>{edit(x=>Object.assign(x,pxfDef(),{ang:360,hard:.5,cull:true,wrap:'repeat',filter:'smooth',crop:false}));if(onReset)onReset();}}),
     el('span',{class:'note',text:is3?'Drag the gizmo on the model: arrows move, rings turn, boxes scale.':'On the flat canvas: drag a corner to scale (Shift keeps proportions), the round handle to turn, and inside with the Move tool (or Ctrl) to move.'})));
   return box;}
 /* after a drag, the fields show the new numbers */

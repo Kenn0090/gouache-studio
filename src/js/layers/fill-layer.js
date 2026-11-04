@@ -9,10 +9,11 @@
 /* projections (0.23.1): 0 UV (uUvM: offset/turn/scale), 1 triplanar, 2 planar, 3 spherical; uInv takes a world position
    into the projection's own space (its offset, rotation and scale) */
 const FS_FILLIMG=`uniform sampler2D uSrc; uniform float uTile; uniform float uRot; uniform float uUvRot; uniform float uContrast; uniform int uGrey; uniform int uProj; uniform sampler2D uPos; uniform sampler2D uNrm; uniform sampler2D uTan;
-uniform float uSharp; uniform float uHStr; uniform int uHeight; uniform int uNormal; uniform mat4 uInv; uniform mat3 uNrmInv; uniform mat3 uUvM; uniform int uRep; uniform int uFront; uniform int uKeepA; uniform vec4 uCyl; uniform float uCrop; uniform sampler2D uWarp; uniform vec4 uWarpD; in vec2 vUV;
+uniform float uSharp; uniform float uHStr; uniform int uHeight; uniform int uNormal; uniform mat4 uInv; uniform mat3 uNrmInv; uniform mat3 uUvM; uniform int uRep; uniform int uFront; uniform int uKeepA; uniform vec4 uCyl; uniform float uCrop; uniform sampler2D uWarp; uniform vec4 uWarpD; uniform int uNearest; in vec2 vUV;
 bool wrapOut(vec2 t){ if(uCyl.w<0.5) return false; if(uCyl.w<1.5) return t.x<0.0||t.x>1.0||t.y<0.0||t.y>1.0; if(uCyl.w<2.5) return t.y<0.0||t.y>1.0; return t.x<0.0||t.x>1.0; }
-vec4 samp(vec2 t){ float c=cos(uRot),s=sin(uRot); t=mat2(c,s,-s,c)*(t-0.5)+0.5; return texture(uSrc,t); }
-vec4 sampL(vec2 t){ float c=cos(uRot),s=sin(uRot); t=mat2(c,s,-s,c)*(t-0.5)+0.5; return textureLod(uSrc,t,0.0); }
+vec2 nearestUV(vec2 t){ vec2 sz=vec2(textureSize(uSrc,0)); return (floor(t*sz)+0.5)/sz; }
+vec4 samp(vec2 t){ float c=cos(uRot),s=sin(uRot); t=mat2(c,s,-s,c)*(t-0.5)+0.5; if(uNearest==1) return textureLod(uSrc,nearestUV(t),0.0); return texture(uSrc,t); }
+vec4 sampL(vec2 t){ float c=cos(uRot),s=sin(uRot); t=mat2(c,s,-s,c)*(t-0.5)+0.5; if(uNearest==1) t=nearestUV(t); return textureLod(uSrc,t,0.0); }
 void main(){ vec4 s;
   if(uProj>=1){ ivec2 q=ivec2(gl_FragCoord.xy); vec4 P=texelFetch(uPos,q,0); if(P.a<0.5){ o=vec4(0.0); return; }
     vec3 L=(uInv*vec4(P.xyz,1.0)).xyz;
