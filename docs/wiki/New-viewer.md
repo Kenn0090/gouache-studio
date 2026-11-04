@@ -20,6 +20,10 @@ Wireframe, selection tint, mirror guides, the mask and mesh map views (C and B k
 
 The Bake and Convert tabs can use the new viewer too: their 3D bar has a **New viewer** button, and the window shows the model with the baked or converted maps. The Bake tab's high-poly (See-through / Only) shows in it, and so does the Bevel preview (rounded edges: it is made for the window's view once the view stands still for a moment, so it returns a moment after you stop turning). With a tab's paint-on-model switch on you can paint in the window in the Paint and Bake tabs too.
 
+More that carries over: UDIM tiles (each tile's texture set on its own part of the model), the mirror copies of the brush ring, the decal landing ring, and the Bake tab's Unfold slider. The window also follows what you change while it is open: edits to the maps (filters, layer colours, material swaps), a changed shader, and a new model, texture sets or Detail.
+
+**Known differences from the normal 3D view.** The Skin shader is a few percent darker. The ray tracing shows reflections with the picture of what they hit but without its normal map, and only one bounce. Displaced surfaces keep their original shading. The Bevel preview covers the low-poly, not the high-poly clay view. Big textures go to the window as a full set after each stroke.
+
 ## Moving around
 
 - **Alt + drag** turns the model (plain drag turns it when painting is off). Mouse wheel zooms.
