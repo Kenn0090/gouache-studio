@@ -1,5 +1,7 @@
 ## 0.94.1
 
+- **More of imported brushes comes across.** A Procreate brush's second (sub) brush becomes the app's **Dual brush** (its tip, size, spacing, scatter and count), and a Photoshop **bristle tip** becomes the **Mixing brush with bristles** (its density sets how many bristles; flat shapes give a flatter tip). The import message says what was converted.
+
 - **Smaller installer.** Each release now also offers a smaller Windows installer (about 180 MB lighter). It fetches the Library files, skies and grunge maps when first used and keeps a copy; File › Content… can download them all for offline work.
 - **Content window (File › Content…).** One place to choose the bigger Library pictures (2K or 4K), 2K skies and the AI add-ons, with the real download sizes. It opens by itself once after the update (the first start of the desktop app), and again only when new downloads are added. "Not now" is fine: nothing is downloaded until you press Download.
 - **New viewer: Bevel preview on the high-poly.** With Show high-poly set to Only, the rounded-edge preview shows on the high-poly in the window too.

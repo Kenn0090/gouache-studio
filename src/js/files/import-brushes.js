@@ -86,20 +86,30 @@ function bzProcreateSettings(a,notes){const n=k=>{const v=bpFind(a,k);return typ
       mixWC:clamp(.15+.6*we,.1,.8),mixWCEdge:clamp(we*.7+be*.5,0,1),mixWCPools:clamp(.2*we,0,.4),mixWCGran:.2,smoothCurve:true,spacing:Math.max(x.spacing||0,.03)});
     if(x.hardness==null)x.hardness=.5;notes.add('Wet mix and wet edges were approximated with the mixing brush (pick-up, paint load, wetness and watercolour edges).');}
   const bm=n('blendMode');if(bm>0)notes.add('Brush blend modes were not applied.');
-  notes.add('Procreate sub-brushes are not applied.');return x;}
+  return x;}
 async function importProcreate(file){const entries=await bzUnzip(await file.arrayBuffer()),notes=new Set(),groups=new Map();
   for(const e of entries){const i=e.name.lastIndexOf('/'),dir=i<0?'':e.name.slice(0,i),leaf=e.name.slice(i+1);if(!groups.has(dir))groups.set(dir,{});groups.get(dir)[leaf]=e.data;}
-  const presets=[],tips=[];let k=0;
+  const presets=[],tips=[],subs=new Map(),dirOf=new Map();let k=0;
   let builtin=0;
-  for(const [dir,g] of groups){const leafDir=dir.split('/').pop();if(/^reset$/i.test(leafDir))continue;if(/^sub\d+$/i.test(leafDir)){notes.add('Procreate’s second (sub) brushes were not imported.');continue;}const shapeKey=Object.keys(g).find(x=>/^shape(\.png)?$/i.test(x)||/^shape.*\.png$/i.test(x)),archKey=Object.keys(g).find(x=>/\.archive$/i.test(x));if(!shapeKey&&!archKey)continue;
+  for(const [dir,g] of groups){const leafDir=dir.split('/').pop();if(/^reset$/i.test(leafDir))continue;if(/^sub\d+$/i.test(leafDir)){const parent=dir.slice(0,Math.max(0,dir.length-leafDir.length-1));if(!subs.has(parent))subs.set(parent,{g});continue;}/* (0.95) Procreate's second brush becomes the Dual brush, below */const shapeKey=Object.keys(g).find(x=>/^shape(\.png)?$/i.test(x)||/^shape.*\.png$/i.test(x)),archKey=Object.keys(g).find(x=>/\.archive$/i.test(x));if(!shapeKey&&!archKey)continue;
     let name=null,extra={};if(archKey){try{const arch=bpUnarchive(bpParse(g[archKey])),nm=bpFind(arch,'name');if(typeof nm==='string'&&nm)name=nm;extra=bzProcreateSettings(arch,notes);}catch(e){notes.add('One brush’s settings could not be read; it uses default settings.');}}
     const tip=shapeKey?bzTipAlpha(await bzBitmap(g[shapeKey])):null;if(shapeKey&&!tip){notes.add('A tip picture was in colour and was skipped.');continue;}
     k++;const nm=name||(dir&&!/^[0-9A-F-]{16,}$/i.test(dir.split('/').pop())?dir.split('/').pop():baseName(file.name)+(groups.size>1?' '+k:''));
     /* (0.93.2) a brush with a grain picture: the paper-like grain is approximated with the Grain setting */
     {const gk=Object.keys(g).find(x=>/^grain.*\.(png|jpe?g)$/i.test(x));if(gk){try{const im=await bzBitmap(g[gk]),t=bzTexTipFromRGBA('Grain · '+(name||'brush')+' '+(tips.length+1),im.data,im.width,im.height);tips.push(t);extra=Object.assign({texKey:'u:'+t.name,grain:0},extra);delete extra.grain;extra.texKey='u:'+t.name;}catch(e){extra=Object.assign({grain:.45},extra);}}}
     if(!tip){/* uses one of Procreate's own built-in shapes, which are not stored in the file: a round tip stands in so the settings still come across */
-      builtin++;presets.push(Object.assign({},BRUSH_DEFAULTS,{name:nm,tool:'brush',tip:null,size:50,hardness:.7,spacing:.15,pSize:true,minSize:.3,smoothing:.25},extra));continue;}
-    const r=bzPresetFromTip(nm,tip,extra);tips.push(r.tipObj);presets.push(r.preset);}
+      builtin++;{const pr=Object.assign({},BRUSH_DEFAULTS,{name:nm,tool:'brush',tip:null,size:50,hardness:.7,spacing:.15,pSize:true,minSize:.3,smoothing:.25},extra);presets.push(pr);dirOf.set(dir,pr);}continue;}
+    const r=bzPresetFromTip(nm,tip,extra);tips.push(r.tipObj);presets.push(r.preset);dirOf.set(dir,r.preset);}
+  /* a Procreate brush's second (sub) brush shapes the first, like Photoshop's Dual brush: its tip, size, spacing, scatter and count */
+  for(const [parent,S] of subs){const pr=dirOf.get(parent);if(!pr){notes.add('A second (sub) brush had no main brush to go with and was left out.');continue;}
+    try{const g=S.g,shapeKey=Object.keys(g).find(x=>/^shape(\.png)?$/i.test(x)||/^shape.*\.png$/i.test(x)),archKey=Object.keys(g).find(x=>/\.archive$/i.test(x));let ex={};
+      if(archKey){try{ex=bzProcreateSettings(bpUnarchive(bpParse(g[archKey])),new Set())||{};}catch(e){}}
+      let tipA=shapeKey?bzTipAlpha(await bzBitmap(g[shapeKey])):null,tipObj;
+      if(tipA){tipObj=bzPresetFromTip('Dual tip · '+pr.name,tipA,ex).tipObj;}
+      else{const c=tileCanvas({hardness:.8,roundness:1,grain:0,tool:'brush'}),d=c.getContext('2d').getImageData(0,0,64,64).data,A=new Uint8Array(4096);for(let i=0;i<4096;i++)A[i]=d[i*4+3];tipObj=makeTip('Dual tip · '+pr.name,64,64,A);}
+      tips.push(tipObj);pr.dual=Object.assign({},DUAL_DEFAULTS,{tipKey:'u:'+tipObj.name,size:clamp(Math.round(ex.size||(pr.size||50)*.6),2,2000),spacing:clamp(Math.round((ex.spacing||.25)*100),1,1000),scatter:clamp(Math.round((ex.scatter||0)*100),0,400),count:clamp(Math.round(ex.count||1),1,8),mode:0,amount:100});
+      notes.add('Procreate’s second (sub) brushes were converted to this app’s Dual brush.');}
+    catch(e){notes.add('A second (sub) brush could not be read and was left out.');}}
   if(builtin)notes.add(builtin+' brush'+(builtin===1?' uses':'es use')+' Procreate’s own built-in shapes, which are not stored in the file; a round tip stands in for '+(builtin===1?'it':'them')+'.');
   return {presets,tips,notes};}
 async function importCsp(file){const u8=new Uint8Array(await file.arrayBuffer()),notes=new Set(),presets=[],tips=[],sig=[137,80,78,71,13,10,26,10];

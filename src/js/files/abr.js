@@ -15,7 +15,11 @@ function presetFromAbr(b,samples,notes,extraTips,pats,patTips){const sh=b.shape|
     angle:sh.angle||0,roundness:clamp(sh.roundness==null?1:sh.roundness,.05,1),flipX:!!sh.flipX,flipY:!!sh.flipY,pSize:false,pOpacity:false,minSize:0,smoothing:.2});
   if(sh.type==='sampled'){const t=samples.get(sh.sampledData);if(t)p.tip=t;else notes.add('Some brushes referenced tip images missing from the file; they use a round tip.');}
   else if(sh.type==='computed')p.hardness=sh.hardness==null?1:sh.hardness;
-  else{p.tip=TIPS.bristle;p.followDir=true;notes.add('Bristle and erodible tips are approximated with a flat bristle tip.');}
+  else if(sh.type==='dynamic'&&typeof WCS_MIX!=='undefined'){/* (0.95) a Photoshop bristle tip becomes the Mixing brush with bristles: streaks that follow the stroke; its density sets how many bristles, flat shapes make a flatter tip */
+    const dn=+sh.density||0,bristles=clamp(Math.round(6+30*(dn>1?dn/100:dn)),6,40);if(/flat/.test(String(sh.shape)))p.roundness=Math.min(p.roundness,.4);
+    Object.assign(p,{mix:true,mixEven:true,mixPick:.3,mixLoad:.85,mixWet:.5,mixDry:WCS_MIX.mixDry,mixUse:WCS_MIX.mixUse,mixTooth:WCS_MIX.mixTooth,mixBristles:bristles,smoothCurve:true,followDir:true,spacing:Math.max(p.spacing,.03)});
+    if(p.hardness==null)p.hardness=.6;notes.add('Bristle tips were converted to the Mixing brush with bristles.');}
+  else{p.tip=TIPS.bristle;p.followDir=true;notes.add('Erodible tips are approximated with a flat bristle tip.');}
   const sd=b.shapeDynamics;if(sd){const sz=sd.sizeDynamics||{},an=sd.angleDynamics||{};
     if(sz.control==='pen pressure'){p.pSize=true;p.minSize=sd.minimumDiameter||0;}else if(sz.control&&sz.control!=='off')notes.add('Size controls other than pen pressure (tilt, fade, wheel) were ignored.');
     p.sizeJitter=sz.jitter||0;if(an.control==='direction'||an.control==='initial direction')p.followDir=true;p.angleJitter=an.jitter||0;p.randFlipX=!!sd.flipX;p.randFlipY=!!sd.flipY;}
