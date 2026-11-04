@@ -1,7 +1,7 @@
 /* ================= Ribbon path (0.93.3, Kenn: like Substance Painter) =================
    A surface path in Ribbon mode repeats or stretches a picture along its curve, following the curve's bends. The picture can be text (so words bend
    along the path) or any picture; its alpha (or brightness, for pictures without alpha) is the shape, and the layer's material fills it.
-   Settings follow Painter's: stroke width and opacity, image orientation, flip, corner (round or bevel here), stretch along path or keep aspect ratio,
+   Settings follow Painter's: stroke width and opacity, image orientation, flip, corner (round fills the outer side of a bend with a disc; bevel leaves it cut), stretch along path or keep aspect ratio,
    tiling (none, auto, custom), mirror every 2nd tile, start and end offsets, ratio, alignment, aspect ratio factor, and how overlapping parts blend. */
 const RB_DEFAULT={img:null,orient:0,flip:false,corner:'round',omit:false,fit:'stretch',between:false,startOff:.1,endOff:.1,tiling:'auto',tiles:4,mirror:false,aspectK:1,ratio:'width',remove:false,align:'start',blend:'max'};
 const FS_SURFACERIBBON=`in vec3 vP; in vec3 vN; uniform vec3 uA; uniform vec3 uB; uniform vec3 uNA; uniform vec3 uNB; uniform vec2 uW; uniform vec2 uS; uniform float uDepth;
@@ -12,7 +12,7 @@ void main(){vec3 ab=uB-uA;float l2=max(dot(ab,ab),1e-10);float t0=dot(vP-uA,ab)/
   vec3 tangent=ab-n*dot(ab,n);tangent=normalize(length(tangent)>1e-6?tangent:cross(n,abs(n.y)<0.9?vec3(0,1,0):vec3(1,0,0)));vec3 side=normalize(cross(n,tangent));
   float lat=dot(q,side),along=dot(q,tangent);if(abs(lat)>0.5*w){o=vec4(0.0);return;}
   if(t0<0.0||t0>1.0){if(uRound==0||(t0<0.0?uCap.x:uCap.y)<0.5||length(vec2(along,lat))>0.5*w){o=vec4(0.0);return;}}
-  float s=mix(uS.x,uS.y,t);float f,k=0.0;
+  float s=mix(uS.x,uS.y,t);if(t0<0.0||t0>1.0)s+=along;float f,k=0.0;
   if(uFit==0){float L=uTotal;
     if(uStartOff+uEndOff>0.0){if(s<uStartOff)f=s/max(uStartOff,1e-6)*uIStart;else if(s>L-uEndOff)f=1.0-uIEnd+(s-(L-uEndOff))/max(uEndOff,1e-6)*uIEnd;else f=uIStart+(s-uStartOff)/max(L-uStartOff-uEndOff,1e-6)*(1.0-uIStart-uIEnd);}
     else{float xi=s/L*uTiles;if(uTiles<=1.0){f=clamp(xi,0.0,1.0);}else{k=floor(xi);f=fract(xi);}}}
@@ -40,7 +40,7 @@ function pathSurfaceRibbon(L,P,samples,T){const R=P.ribbon||RB_DEFAULT,img=rbIma
       gl.bindVertexArray(V);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,E);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint32Array(tris),gl.STREAM_DRAW);bindTarget(T);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.enable(gl.SCISSOR_TEST);gl.scissor(Math.max(0,Math.floor(bb[0]-1)),Math.max(0,Math.floor(bb[1]-1)),Math.ceil(bb[2]-bb[0]+2),Math.ceil(bb[3]-bb[1]+2));gl.enable(gl.BLEND);
       if(R.blend==='add'){gl.blendEquation(gl.FUNC_ADD);gl.blendFunc(gl.ONE,gl.ONE);}else if(R.blend==='normal'){gl.blendEquation(gl.FUNC_ADD);gl.blendFunc(gl.ONE,gl.ZERO);}else{gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);}
       const dirOf=(u,v)=>{const d=sub3d(v.p,u.p),l=Math.hypot(...d)||1;return d.map(x=>x/l);},bend=(u,v,w2)=>{const d1=dirOf(u,v),d2=dirOf(v,w2);return Math.acos(Math.max(-1,Math.min(1,d1[0]*d2[0]+d1[1]*d2[1]+d1[2]*d2[2])));},
-        capA=0,capB=0;/* corners are bevel joins for now: a round cap would have to bend the picture round the corner, and sampling it straight smears */
+        thr=.07,n=samples.length,capA=i>1&&bend(samples[i-2],a,b)>thr?1:0,capB=i<n-1&&bend(a,b,samples[i+1])>thr?1:0;/* Round corners: at a bend the outer side is filled with a disc round the joint, the picture carrying straight on past the end of the segment */
       useProg(P_SURFACERIBBON,{uCap:[capA,capB],uUVs:1,uShift:[0,0],uH:dummy,uDisp:0,uUseH:false,uA:a.p,uB:b.p,uNA:a.n,uNB:b.n,uW:[W*(P.pressure?a.pressure:1),W*(P.pressure?b.pressure:1)],uS:[S[i-1],S[i]],uDepth:W*.6*(P.depthK||1),uRibImg:img.tex,uChan:{int:img.mono?2:(R.luma?1:0)},
         uTotal:total,uTileLen:tileLen,uTiles:tiles,uNTiles:ntiles,uFit:{int:R.fit==='stretch'?0:1},uOffS:shift,uMirror:{int:R.mirror?1:0},uFlip:{int:R.flip?1:0},uRot:{int:Math.round(R.orient/90)%4},uStartOff:so,uEndOff:eo,uIStart:.15,uIEnd:.15,uRemove:{int:R.remove&&R.ratio!=='length'?1:0},uRound:{int:R.corner==='round'?1:0}});
       gl.drawElements(gl.TRIANGLES,tris.length,gl.UNSIGNED_INT,0);}}
