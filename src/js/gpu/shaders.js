@@ -183,7 +183,15 @@ vec4 applyStroke(vec4 L, float cov){
   if(uStroke==2){ if(uLockAlpha==1) return L; return L*(1.0-a); }
   return L; }
 `;
-const FS_STAMP=CH_BRUSH+`uniform float uAlpha; uniform int uTint; uniform vec3 uDabCol; void main(){ float m=brushMask(gl_FragCoord.xy)*uAlpha; if(uTint==2){ if(m<=0.0) discard; o=vec4(uDabCol,0.0); return; } o=uTint==1?vec4(uDabCol*m,m):vec4(m); }`;
+const FS_STAMP=CH_BRUSH+`uniform float uAlpha; uniform int uTint; uniform vec3 uDabCol; uniform vec4 uLane;
+/* colour that changes across the brush (0.95): uLane = (number of lanes, hue turn, brightness, mode). Mode 0: hard stripes across the brush, 2: hard stripes along it, 1: a round tube (hue and light change from the middle to the edges), 3: soft wavy bands. The lanes stay with the brush as it turns, so they run along the stroke. */
+vec3 laneCol(vec3 c){ if(uLane.x<0.5) return c; vec2 dv=gl_FragCoord.xy-uCenter; float ca=cos(uAngle),sa=sin(uAngle); vec2 q=vec2(ca*dv.x+sa*dv.y,-sa*dv.x+ca*dv.y)*uFlip; float r=max(uRadius,0.01); float md=uLane.w;
+  float t=clamp((md>1.5&&md<2.5)?q.x/r:q.y/r,-1.0,1.0); float h=0.0,v=0.0;
+  if(md<0.5||(md>1.5&&md<2.5)){ float id=floor((t*0.5+0.5)*uLane.x); float a=fract(sin(id*91.7+3.1)*43758.5453), b=fract(sin(id*57.3+8.7)*43758.5453); h=(a-0.5)*2.0*uLane.y; v=(b-0.5)*2.0*uLane.z; }
+  else if(md<1.5){ h=uLane.y*(1.0-2.0*t*t); v=uLane.z*(sqrt(max(1.0-t*t,0.0))-0.7); }
+  else { float ph=fract(sin(floor(uLane.x)*1.7)*43758.5453)*6.28; h=uLane.y*sin(t*uLane.x*1.5708+ph)*(0.6+0.4*sin(t*uLane.x*0.7)); v=uLane.z*sin(t*uLane.x*1.2+ph*0.5); }
+  vec3 k=vec3(0.57735); c=c*cos(h)+cross(k,c)*sin(h)+k*dot(k,c)*(1.0-cos(h)); return clamp(c*(1.0+v),0.0,1.0); }
+void main(){ float m=brushMask(gl_FragCoord.xy)*uAlpha; if(uTint==2){ if(m<=0.0) discard; o=vec4(laneCol(uDabCol),0.0); return; } o=uTint==1?vec4(laneCol(uDabCol)*m,m):vec4(m); }`;
 /* colour-jitter strokes stamp each dab twice: uTint 2 first gives pixels nothing has touched yet the dab's colour
    (so soft edges keep it), then uTint 1 lays the dab over what is there */
 const FS_SMUDGE=CH_BRUSH+`

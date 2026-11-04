@@ -15,10 +15,10 @@ function lbColour(t,x,y){if(!t)return null;const R=3,x0=clamp(Math.round(x)-1,0,
   if(t.depth===16){const f=new Float32Array(n*4);gl.readPixels(x0,y0,R,R,gl.RGBA,gl.FLOAT,f);for(let i=0;i<n;i++){r+=f[i*4];g+=f[i*4+1];b+=f[i*4+2];a+=f[i*4+3];}}
   else{const u=new Uint8Array(n*4);gl.readPixels(x0,y0,R,R,gl.RGBA,gl.UNSIGNED_BYTE,u);for(let i=0;i<n;i++){r+=u[i*4]/255;g+=u[i*4+1]/255;b+=u[i*4+2]/255;a+=u[i*4+3]/255;}}
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);if(a<.02*n)return null;return [clamp(r/a,0,1),clamp(g/a,0,1),clamp(b/a,0,1)];}
-function lbBegin(s){const o=s.o,all=!!o.sampleAll&&!s.L.maskOf&&!s.L.quick,src=all?compositeMap('base'):s.L.target;
+function lbBegin(s){if(s.o.fanFill)return fanBegin(s);const o=s.o,all=!!o.sampleAll&&!s.L.maskOf&&!s.L.quick,src=all?compositeMap('base'):s.L.target;
   s.lb={ax:s.x,ay:s.y,p0:s.p,src,own:all,ca:null,cb:null,at:0,sx:-1e9,sy:-1e9,box:null,fg:(o.color||[0,0,0]).slice(0,3)};
   s.lb.ca=lbColour(src,s.x,s.y)||s.lb.fg;}
-function lbMove(s,x,y,p){const lb=s.lb;if(!lb||Math.hypot(x-lb.ax,y-lb.ay)<1)return;
+function lbMove(s,x,y,p){const lb=s.lb;if(lb&&lb.fan)return fanMove(s,x,y,p);if(!lb||Math.hypot(x-lb.ax,y-lb.ay)<1)return;
   const now=performance.now();if(!lb.cb||(now-lb.at>40&&Math.hypot(x-lb.sx,y-lb.sy)>1.5)){lb.cb=lbColour(lb.src,x,y)||lb.fg;lb.at=now;lb.sx=x;lb.sy=y;}
   const W=doc.w,H=doc.h,half=radiusAt(lb.p0),pad=half+3,
     nb=[Math.floor(Math.min(lb.ax,x)-pad),Math.floor(Math.min(lb.ay,y)-pad),Math.ceil(Math.max(lb.ax,x)+pad),Math.ceil(Math.max(lb.ay,y)+pad)].map((v,i)=>clamp(v,0,i%2?H:W)),

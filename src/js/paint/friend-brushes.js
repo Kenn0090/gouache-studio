@@ -1,40 +1,49 @@
 /* ================= A friend's picks (0.95) =================
    A friend likes these brushes from Heavy Paint: Blur Ice, Boxes, Brow, Charcoal, Dither, Fan, Fan Fade, Fried Fluff, Line, Line Blend, Oil, Oil Bristle, Worm.
-   Our own versions, rebuilt after looking at Heavy Paint's brush previews (each brush's stroke shape), not copies of anyone's files. Some may still differ: tell us which. */
+   Our own versions, rebuilt after watching a screen recording of each one being used (its footprint, how it moves with the stroke, its colour), not copies of anyone's files.
+   What each does (seen in the recording): Blur Ice smears like a marbled squeegee with a square footprint; Boxes sweeps a square filled with thin vertical stripes of slightly different colour;
+   Brow is a ribbon of fine hair-thin strands in shades of the colour; Charcoal is a big soft grainy cloud; Dither is a flat bar (like a chisel nib held level) that breaks into dots;
+   Fan stamps a fan-shaped wedge of radial stripes that turns with the stroke; Fan Fade is the same wedge dissolving into dots; Fried Fluff is a wide ribbon of wavy bands of changing hue;
+   Line is a thick even line with round ends and a slightly different colour each stroke; Oil is long dry bristle fibres; Oil Bristle is thick impasto that mixes colours; Worm is a round tube shaded like a 3D worm, hue changing from its middle to its edges. */
+/* a brush tip made from one of the real CC0 photo textures we ship (assets/grunge): it shows as a plain tip until the picture has loaded, then swaps itself.
+   fn(l, x, y, R) gets the picture's brightness (0..1) at each pixel and where it is in the tip (0..1, 0..1) and returns the alpha (0..1). */
+function frTexTip(name,w,h,slug,crop,fn){const t=makeTip(name,w,h,(()=>{const a=new Uint8Array(w*h);for(let i=0;i<a.length;i++)a[i]=200;return a;})(),false);
+  (async()=>{try{const u=await txPhotoBytes(slug);const bm=await createImageBitmap(new Blob([u],{type:'image/webp'}));const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});
+    x.drawImage(bm,crop[0]*bm.width,crop[1]*bm.height,crop[2]*bm.width,crop[3]*bm.height,0,0,w,h);const d=x.getImageData(0,0,w,h).data,A=new Uint8Array(w*h);
+    for(let j=0;j<h;j++)for(let i=0;i<w;i++){const k=j*w+i,l=(d[k*4]*.3+d[k*4+1]*.59+d[k*4+2]*.11)/255;A[k]=Math.round(255*Math.max(0,Math.min(1,fn(l,i/w,j/h))));}
+    t.alpha=A;t._tex=undefined;t._cv=null;}catch(e){}})();return t;}
 const FR_TIPS={
-  /* a rectangle for Boxes: wider than tall, so a stroke of them makes an angular band */
-  box:genTip('Box',128,64,(x,w,h)=>{x.fillRect(4,4,w-8,h-8);}),
-  /* a solid fan wedge, apex at the bottom, with faint radial stripes */
-  fan:genTip('Fan wedge',256,144,(x,w,h)=>{const n=12,a0=-1.35,a1=1.35;for(let i=0;i<n;i++){const s=a0+(a1-a0)*i/n,e=a0+(a1-a0)*(i+1)/n;x.globalAlpha=i%2?.9:1;x.beginPath();x.moveTo(w/2,h-2);x.arc(w/2,h-2,h-4,-Math.PI/2+s,-Math.PI/2+e);x.closePath();x.fill();}}),
-  /* a fan made of dots that thin out towards the rim */
-  fanFade:genTip('Fan stipple',256,144,(x,w,h,R)=>{x.globalAlpha=1;for(let i=0;i<5200;i++){const a=-1.35+2.7*R(),rr=Math.pow(R(),.6)*(h-6),d=1-rr/(h-6);if(R()>d*d*1.1+.04)continue;x.fillRect(w/2+Math.sin(a)*rr,h-2-Math.cos(a)*rr,1.6,1.6);}}),
-  /* a fan of concentric arcs (Fan Oil) is not asked for; the tips above are what the list names */
+  /* Brow: a dense ribbon of fine hair-thin strands, from the real fine-brushed-lines texture, with ragged ends */
+  hair:frTexTip('Fine hair',256,96,'fine-brushed-lines',[.1,.2,.5,.19],(l,x,y)=>{const e=Math.min(x,1-x),rag=Math.sin(y*97.3)*.5+.5;return(.5+.5*Math.max(0,Math.min(1,(l-.05)*6)))*Math.min(1,Math.max(0,(e-.02-rag*.05)*18));}),
+  /* Oil: long dry fibres with gaps, from the brushed-scratches texture */
+  dry:frTexTip('Dry fibres',256,96,'brushed-scratches',[.2,.3,.5,.19],(l,x,y)=>{const e=Math.min(x,1-x);return Math.max(0,Math.min(1,(l-.08)*6))*Math.min(1,Math.max(0,(e-.02)*14));}),
+  /* Charcoal: a soft round of real grit (the dust texture), thinning to the edge */
+  grit:frTexTip('Charcoal grit',256,256,'dust',[.1,.1,.5,.5],(l,x,y)=>{const r=Math.hypot(x-.5,y-.5)*2,f=1-Math.min(1,Math.max(0,(r-.2)/.8));return Math.max(0,Math.min(1,(l*1.35+f*1.15-.95)*3.2))*(r<1?1:0);}),
+  /* Fried fluff: a bar whose edges and ends are torn like real paint smears (the ink-smears texture) */
+  smearBar:frTexTip('Paint smear bar',128,64,'ink-smears',[.15,.2,.4,.2],(l,x,y)=>{const e=Math.min(x,1-x,y*1.2,(1-y)*1.2);return Math.max(0,Math.min(1,(l*1.5-.25)*1.4+.1))*Math.min(1,Math.max(0,(e-.03)*12));}),
+  /* a square with softly rounded corners (Boxes, Blur Ice) */
+  box:genTip('Rounded box',128,128,(x,w,h)=>{const r=14;x.beginPath();x.moveTo(r,2);x.arcTo(w-2,2,w-2,h-2,r);x.arcTo(w-2,h-2,2,h-2,r);x.arcTo(2,h-2,2,2,r);x.arcTo(2,2,w-2,2,r);x.closePath();x.fill();}),
+  hair:genTip('Fine hair',256,96,(x,w,h,R)=>{for(let i=0;i<64;i++){const y=(i+.5)/64*h,len=w*(.78+R()*.22),x0=(w-len)/2+(R()-.5)*w*.04;x.globalAlpha=.7+R()*.3;x.fillRect(x0,y-.7,len,1.5);}}),
+  dry:genTip('Dry fibres',256,96,(x,w,h,R)=>{for(let i=0;i<40;i++){const y=(i+.5)/40*h,len=w*(.6+R()*.4),x0=(w-len)/2;let px=x0;while(px<x0+len){const seg=10+R()*60;x.globalAlpha=.6+R()*.4;if(R()>.2)x.fillRect(px,y-.6,Math.min(seg,x0+len-px),1.2);px+=seg+R()*14;}}}),
+  fan:genTip('Fan wedge',256,144,(x,w,h,R)=>{const n=140,a0=-1.25,a1=1.25;for(let i=0;i<n;i++){const s=a0+(a1-a0)*i/n,e=a0+(a1-a0)*(i+1)/n+.006;x.globalAlpha=.6+R()*.4;x.beginPath();x.moveTo(w/2,h-2);x.arc(w/2,h-2,h-4,-Math.PI/2+s,-Math.PI/2+e);x.closePath();x.fill();}}),
+  fanFade:genTip('Fan dissolve',256,144,(x,w,h,R)=>{x.globalAlpha=.95;x.beginPath();x.moveTo(w/2,h-2);x.arc(w/2,h-2,(h-4)*.3,-Math.PI/2-1.25,-Math.PI/2+1.25);x.closePath();x.fill();x.globalAlpha=1;
+    for(let i=0;i<9000;i++){const a=-1.25+2.5*R(),rr=Math.sqrt(R())*(h-4),f=rr/(h-4),p=f<.3?1:Math.pow(1-(f-.3)/.7,1.6);if(R()>p)continue;x.fillRect(w/2+Math.sin(a)*rr,h-2-Math.cos(a)*rr,1.7,1.7);}}),
+  /* a wide bar with ragged ends, for the wavy bands of Fried Fluff */
+  fluff:genTip('Ragged bar',128,64,(x,w,h,R)=>{x.fillRect(6,4,w-12,h-8);x.globalCompositeOperation='destination-out';for(let y=0;y<h;y++){const a=R()*9,b=R()*9;x.fillRect(0,y,6+a,1);x.fillRect(w-6-b,y,6+b,1);}})
 };
 const FRIEND_PRESETS=[
-  /* Blur ice: a soft, streaky ribbon that blends what is under it, thinning to a point at the end */
-  {name:'Blur ice',tool:'smudge',blendMode:'smear',streak:.55,tip:null,size:120,hardness:.3,spacing:.05,strength:.7,charge:0,pSize:true,minSize:.04,pOpacity:false,taperStart:90,taperEnd:160,smoothing:.4},
-  /* Boxes: flat rectangles turning with the stroke, so it makes an angular band of facets */
-  {name:'Boxes',tool:'brush',tip:FR_TIPS.box,size:90,hardness:1,spacing:.22,followDir:true,angleJitter:.22,sizeJitter:.15,valJitter:.1,pSize:false,pOpacity:false,smoothing:.2},
-  /* Brow: fine dots in a lens shape, like an eyebrow */
-  {name:'Brow',tool:'brush',tip:null,spray:1.5,sprayDen:.9,sprayMist:.1,size:70,hardness:1,spacing:.06,pSize:true,minSize:.03,pOpacity:false,taperStart:110,taperEnd:150,smoothing:.45},
-  /* Charcoal: a faint, thin trail of grit */
-  {name:'Charcoal',tool:'brush',tip:null,spray:1.3,sprayDen:.4,sprayMist:.05,size:26,hardness:1,spacing:.07,grain:.5,pSize:true,minSize:.3,pOpacity:true,flow:.7,smoothing:.25},
-  /* Dither: solid at first, breaking up into dots as the stroke goes on */
-  {name:'Dither',tool:'brush',tip:null,spray:1.8,sprayDen:2,sprayMist:0,sprayPress:1,size:80,hardness:1,spacing:.05,pSize:false,pOpacity:false,taperEnd:260,smoothing:.3},
-  /* Fan: a solid fan-shaped stamp */
-  {name:'Fan',tool:'brush',tip:FR_TIPS.fan,size:150,hardness:1,spacing:.12,followDir:false,angleJitter:0,pSize:false,pOpacity:false,smoothing:.3},
-  /* Fan fade: the fan made of dots that thin out towards its rim */
-  {name:'Fan fade',tool:'brush',tip:FR_TIPS.fanFade,size:160,hardness:1,spacing:.1,followDir:false,pSize:false,pOpacity:true,flow:.9,smoothing:.3},
-  /* Fried fluff: a soft ribbon with a grainy, fluffy edge */
-  {name:'Fried fluff',tool:'brush',tip:null,spray:3.5,sprayDen:1.2,sprayMist:.6,size:130,hardness:.4,spacing:.05,grain:.45,pSize:true,minSize:.1,pOpacity:false,flow:.85,taperStart:80,taperEnd:140,smoothing:.4},
-  /* Line: a clean, even line with round ends */
-  {name:'Line',tool:'brush',tip:null,size:24,hardness:1,spacing:.02,pSize:false,pOpacity:false,smoothing:.5,correction:.35,flow:1},
-  /* Oil: dry, sparse flecks of paint */
-  {name:'Oil',tool:'brush',tip:null,spray:1.4,sprayDen:.16,sprayMist:0,size:50,hardness:1,spacing:.06,pSize:false,pOpacity:false,smoothing:.3},
-  /* Oil bristle: a wide ribbon of long bristle streaks with a ragged end */
-  {name:'Oil bristle',tool:'brush',tip:TIPS.bristle,size:170,hardness:.8,spacing:.02,followDir:true,pSize:false,smoothing:.3,mix:true,mixLoad:.9,mixPick:.35,mixWet:.7,mixDry:0,mixUse:.2,mixBristles:46,mixDryB:.45,mixThick:.85},
-  /* Worm: a smooth ribbon, fat in the middle and pointed at both ends */
-  {name:'Worm',tool:'brush',tip:null,size:90,hardness:.95,spacing:.02,pSize:true,minSize:.02,pOpacity:false,taperStart:200,taperEnd:240,smoothing:.55}];
+  {name:'Blur ice',tool:'smudge',blendMode:'smear',streak:.7,tip:FR_TIPS.box,size:270,hardness:1,spacing:.05,strength:.85,charge:0,pSize:false,pOpacity:false,smoothing:.3},
+  {name:'Boxes',tool:'brush',tip:FR_TIPS.box,size:200,hardness:1,spacing:.1,followDir:false,laneN:70,laneMode:2,laneHue:.1,laneVal:.1,pSize:false,pOpacity:false,smoothing:.2},
+  {name:'Brow',tool:'brush',tip:FR_TIPS.hair,size:240,hardness:1,spacing:.03,followDir:true,laneN:60,laneMode:0,laneHue:.14,laneVal:.12,pSize:false,pOpacity:false,smoothing:.35},
+  {name:'Charcoal',tool:'brush',tip:FR_TIPS.grit,size:300,hardness:1,spacing:.05,flow:.9,pSize:false,pOpacity:false,smoothing:.3},
+  {name:'Dither',tool:'brush',tip:null,roundness:.03,angle:0,spray:1.7,sprayDen:4,sprayMist:.2,size:200,hardness:1,spacing:.03,laneN:40,laneMode:2,laneHue:.06,laneVal:.1,pSize:false,pOpacity:false,smoothing:.3},
+  {name:'Fan',tool:'brush',fanFill:1,size:60,hardness:1,flow:1,spacing:.05,pSize:false,pOpacity:false,smoothing:.3,laneN:40,laneHue:.12,laneVal:.12},
+  {name:'Fan fade',tool:'brush',fanFill:2,size:60,hardness:1,flow:1,spacing:.05,pSize:false,pOpacity:false,smoothing:.3,laneN:40,laneHue:.12,laneVal:.12},
+  {name:'Fried fluff',tool:'brush',tip:FR_TIPS.smearBar,size:200,hardness:1,spacing:.03,followDir:true,laneN:9,laneMode:3,laneHue:.3,laneVal:.12,pSize:false,pOpacity:false,smoothing:.4},
+  {name:'Line',tool:'brush',tip:null,size:100,hardness:1,spacing:.02,pSize:false,pOpacity:false,jitterPerStroke:true,hueJitter:.02,valJitter:.08,smoothing:.5,correction:.35},
+  {name:'Oil',tool:'brush',tip:FR_TIPS.dry,size:200,hardness:1,spacing:.025,followDir:true,laneN:36,laneMode:0,laneHue:.04,laneVal:.08,flow:1,pSize:false,pOpacity:false,smoothing:.35},
+  {name:'Oil bristle',tool:'brush',tip:null,size:200,hardness:.9,spacing:.02,followDir:true,pSize:false,smoothing:.35,mix:true,mixLoad:1,mixPick:.15,mixWet:.8,mixDry:0,mixUse:.12,mixBristles:50,mixDryB:.2,mixThick:.9},
+  {name:'Worm',tool:'brush',tip:null,size:200,hardness:1,spacing:.015,laneN:1,laneMode:1,laneHue:.8,laneVal:.4,pSize:false,pOpacity:false,smoothing:.55}];
 /* “Line blend” is the Line blend brush made earlier (line-blend.js): it sits in this set too */
 {const lb=PRESETS.find(p=>p.name==='Line blend');if(lb)FRIEND_PRESETS.splice(9,0,lb);}
 library.splice(Math.min(library.length,3),0,{id:'friend_picks',name:'A friend’s picks (Heavy Paint style)',builtin:true,presets:FRIEND_PRESETS,tips:[]});
