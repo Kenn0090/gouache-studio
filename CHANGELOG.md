@@ -1,5 +1,6 @@
 ## 0.94.2
 
+- **New viewer reflections:** what a reflection lands on now uses the material's normal map (its bumps) and its roughness and metal pictures, not one average for the whole material.
 - **New viewer reopens:** closing the window and opening it again works now (the window library only allows one window system per run of the app, so the first one is kept and reused).
 - **Painting in the new viewer is lighter:** the page's own 3D view no longer redraws on every move of the pen (the camera sync added in 0.94.1 caused that), and it waits until the stroke ends.
 - **Faster start:** the app no longer reads every installed AI model and sky file into memory at start just to check they are there (a tiny marker is kept beside each file).

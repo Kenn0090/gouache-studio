@@ -373,6 +373,7 @@ struct RtKeep {
     cols: Vec<[f32; 4]>,
     uvs: Vec<f32>,
     layers: Vec<Vec<u8>>,
+    layers2: Vec<Vec<u8>>,
     radius: f32,
     dn: Vec<[f32; 3]>,
     vgroup: Vec<i32>,
@@ -583,8 +584,13 @@ fn average_orm(t: Option<&Tex8>, rough: f32, metal: f32) -> (f32, f32) {
 
 /// A group's base picture shrunk to the small square the reflections look up (white when it has none).
 fn shrink_layer(t: Option<&Tex8>) -> Vec<u8> {
+    shrink_layer_or(t, [255, 255, 255, 255])
+}
+
+/// The same, with the colour to fill the square with when the material has no such picture.
+fn shrink_layer_or(t: Option<&Tex8>, fallback: [u8; 4]) -> Vec<u8> {
     let n = rt::LAYER as usize;
-    let Some(t) = t.filter(|t| t.width > 0 && t.height > 0 && t.rgba.len() >= (t.width * t.height * 4) as usize) else { return vec![255u8; n * n * 4] };
+    let Some(t) = t.filter(|t| t.width > 0 && t.height > 0 && t.rgba.len() >= (t.width * t.height * 4) as usize) else { return fallback.iter().copied().cycle().take(n * n * 4).collect() };
     let (w, h) = (t.width as usize, t.height as usize);
     let mut out = vec![0u8; n * n * 4];
     for y in 0..n {
@@ -1446,6 +1452,13 @@ impl Gpu {
             cols.push([sp.c[0], sp.c[1], sp.c[2], sp.p[1]]);
         }
         let layers: Vec<Vec<u8>> = s.groups.iter().map(|g| shrink_layer(g.material.base.as_ref())).collect();
+        // two linear layers per group for the reflections: its normal map, then its roughness and metal (the single numbers when it has no map)
+        let mut layers2: Vec<Vec<u8>> = Vec::new();
+        for g in &s.groups {
+            layers2.push(shrink_layer_or(g.material.normal.as_ref(), [128, 128, 255, 255]));
+            let (r, m) = (if g.material.rough > 0.0 { g.material.rough } else { 0.6 }, g.material.metal);
+            layers2.push(shrink_layer_or(g.material.orm.as_ref(), [255, (r.clamp(0.0, 1.0) * 255.0) as u8, (m.clamp(0.0, 1.0) * 255.0) as u8, 255]));
+        }
         let mut vgroup = vec![-1i32; n];
         for (gi, g) in s.groups.iter().enumerate() {
             for &i in &g.indices {
@@ -1463,6 +1476,7 @@ impl Gpu {
             cols,
             uvs: s.mesh.uvs.clone(),
             layers,
+            layers2,
             radius,
             dn: verts.iter().map(|v| v.dn).collect(),
             vgroup,
@@ -1493,8 +1507,8 @@ impl Gpu {
                 }
             }
         }
-        let (all, tg, cols, uvs, layers, radius) = (k.all.clone(), k.tri_group.clone(), k.cols.clone(), k.uvs.clone(), k.layers.clone(), k.radius);
-        self.rt.new_model(pos, all, (tg, cols), uvs, layers, radius);
+        let (all, tg, cols, uvs, layers, layers2, radius) = (k.all.clone(), k.tri_group.clone(), k.cols.clone(), k.uvs.clone(), k.layers.clone(), k.layers2.clone(), k.radius);
+        self.rt.new_model(pos, all, (tg, cols), uvs, layers, layers2, radius);
     }
 
     /// Makes the bind group (pictures + settings) of one material.
