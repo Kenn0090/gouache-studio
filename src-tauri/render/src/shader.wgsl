@@ -712,6 +712,17 @@ fn fs_wire(i: OutOut) -> FOut {
 // the stencil over the view: the page keeps it in the pixels of its own 3D view, so the window turns its pixels into that view's first
 @group(1) @binding(8) var st_tex: texture_2d<f32>;
 @group(1) @binding(9) var st_smp: sampler;
+// the brush mark the window draws itself while painting (window pixels, colour as on screen)
+@fragment
+@group(1) @binding(10) var ink_surface: texture_2d<f32>;
+@fragment
+fn fs_ink(@builtin(position) p: vec4<f32>) -> @location(0) vec4<f32> {
+    // only on the model (the scene's normal picture has w = 0 where there is no surface): paint never lands on the background
+    if (textureLoad(ink_surface, vec2<i32>(p.xy), 0).w <= 0.0) { discard; }
+    let c = textureSampleLevel(st_tex, st_smp, p.xy / frame.res.xy, 0.0);
+    if (c.a < 0.004) { discard; }
+    return c;
+}
 @fragment
 fn fs_stencil(@builtin(position) p: vec4<f32>) -> @location(0) vec4<f32> {
     let nw = vec2<f32>(p.x / frame.res.x * 2.0 - 1.0, 1.0 - p.y / frame.res.y * 2.0);

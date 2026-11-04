@@ -167,11 +167,15 @@ pub struct Settings {
     pub light_a: [[f32; 4]; 4],
     pub light_b: [[f32; 4]; 4],
     pub light_c: [[f32; 4]; 4],
+    /// the brush mark the window draws itself while painting, before the page's real paint comes back:
+    /// colour (as on screen, 0..1) and opacity (0 = no mark: the tool does not paint colour), and the brush hardness
+    pub ink: [f32; 4],
+    pub ink_hard: f32,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, mir: [f32::NAN; 3], mir_radial: [0.0, 0.0], mir_off: [0.0; 3], mir_r: 0.0, disp: 0.0, fold: 0.0, track: false, hv: 0, mirc_n: 0, mirc: [[0.0; 16]; 32], floor: [0.0, 0.0, 1.0, 0.5], floor_col: [0.0; 3], clip: true, post_on: false, post: [[0.0; 4]; 7], st_on: false, st: [0.0; 8], st_view: [1.0, 1.0], wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
+        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, mir: [f32::NAN; 3], mir_radial: [0.0, 0.0], mir_off: [0.0; 3], mir_r: 0.0, disp: 0.0, fold: 0.0, track: false, hv: 0, mirc_n: 0, mirc: [[0.0; 16]; 32], floor: [0.0, 0.0, 1.0, 0.5], floor_col: [0.0; 3], clip: true, post_on: false, post: [[0.0; 4]; 7], st_on: false, st: [0.0; 8], st_view: [1.0, 1.0], wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4], ink: [0.0; 4], ink_hard: 0.85 }
     }
 }
 
@@ -440,6 +444,9 @@ struct Gpu {
     st_layout: wgpu::BindGroupLayout,
     st_smp: wgpu::Sampler,
     st_bind: Option<wgpu::BindGroup>,
+    ink: Ink,
+    ink_pipeline: wgpu::RenderPipeline,
+    ink_layout: wgpu::BindGroupLayout,
     guide_buf: Option<(wgpu::Buffer, u32)>,
     guide_key: Vec<u32>,
     pre_pipeline: wgpu::RenderPipeline,
@@ -513,6 +520,123 @@ fn make_post(device: &wgpu::Device, w: u32, h: u32, format: wgpu::TextureFormat)
             .create_view(&wgpu::TextureViewDescriptor::default())
     };
     PostGpu { w, h, src: mk(w, h, format), a: mk(w / 2, h / 2, wgpu::TextureFormat::Rgba8Unorm), b: mk(w / 2, h / 2, wgpu::TextureFormat::Rgba8Unorm) }
+}
+
+/// The brush mark the window draws by itself while painting (in window pixels), so a stroke shows at once;
+/// the page's real paint replaces it when its pictures arrive. Cleared when the camera moves.
+struct Ink {
+    w: u32,
+    h: u32,
+    px: Vec<u8>,
+    tex: wgpu::Texture,
+    bind: wgpu::BindGroup,
+    dirty: Option<(u32, u32, u32, u32)>,
+    any: bool,
+    last: Option<(f32, f32)>,
+    cam: Option<[f32; 6]>,
+}
+
+impl Ink {
+    fn new(device: &wgpu::Device, layout: &wgpu::BindGroupLayout, smp: &wgpu::Sampler, surface: &wgpu::TextureView, w: u32, h: u32) -> Ink {
+        let (w, h) = (w.max(1), h.max(1));
+        let tex = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("brush mark"),
+            size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb, // colours as on screen; read back as light values for the sRGB window
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        let view = tex.create_view(&Default::default());
+        let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("brush mark bind"),
+            layout,
+            entries: &[wgpu::BindGroupEntry { binding: 8, resource: wgpu::BindingResource::TextureView(&view) }, wgpu::BindGroupEntry { binding: 9, resource: wgpu::BindingResource::Sampler(smp) }, wgpu::BindGroupEntry { binding: 10, resource: wgpu::BindingResource::TextureView(surface) }],
+        });
+        // a new texture starts as zeros, so nothing needs sending until something is drawn
+        Ink { w, h, px: vec![0; (w * h * 4) as usize], tex, bind, dirty: None, any: false, last: None, cam: None }
+    }
+
+    fn mark(&mut self, x0: u32, y0: u32, x1: u32, y1: u32) {
+        self.dirty = Some(match self.dirty {
+            Some((a, b, c, d)) => (a.min(x0), b.min(y0), c.max(x1), d.max(y1)),
+            None => (x0, y0, x1, y1),
+        });
+    }
+
+    /// one round dab: colour (0..1, as on screen), opacity, radius in pixels, hardness (0 soft .. 1 hard)
+    fn dab(&mut self, x: f32, y: f32, r: f32, col: [f32; 4], hard: f32) {
+        let r = r.max(0.75);
+        let (x0, y0) = ((x - r - 1.0).floor().max(0.0) as i64, (y - r - 1.0).floor().max(0.0) as i64);
+        let (x1, y1) = (((x + r + 1.0).ceil() as i64).min(self.w as i64 - 1), ((y + r + 1.0).ceil() as i64).min(self.h as i64 - 1));
+        if x1 < x0 || y1 < y0 {
+            return;
+        }
+        let inner = (r * hard.clamp(0.0, 0.98)).min(r - 0.75).max(0.0);
+        let c = [(col[0] * 255.0) as u8, (col[1] * 255.0) as u8, (col[2] * 255.0) as u8];
+        for py in y0..=y1 {
+            for px in x0..=x1 {
+                let d = ((px as f32 + 0.5 - x).powi(2) + (py as f32 + 0.5 - y).powi(2)).sqrt();
+                if d >= r {
+                    continue;
+                }
+                let t = if d <= inner { 1.0 } else { 1.0 - (d - inner) / (r - inner) };
+                let a = (t * t * (3.0 - 2.0 * t) * col[3] * 255.0) as u8;
+                let o = ((py as u32 * self.w + px as u32) * 4) as usize;
+                if a > self.px[o + 3] {
+                    self.px[o] = c[0];
+                    self.px[o + 1] = c[1];
+                    self.px[o + 2] = c[2];
+                    self.px[o + 3] = a;
+                }
+            }
+        }
+        self.any = true;
+        self.mark(x0 as u32, y0 as u32, x1 as u32 + 1, y1 as u32 + 1);
+    }
+
+    /// the stroke from the last point to this one, dabs a quarter of the radius apart
+    fn line_to(&mut self, x: f32, y: f32, r: f32, col: [f32; 4], hard: f32) {
+        let step = (r * 0.25).max(0.75);
+        match self.last {
+            Some((lx, ly)) => {
+                let d = ((x - lx).powi(2) + (y - ly).powi(2)).sqrt();
+                let n = (d / step).ceil().clamp(1.0, 4000.0) as i32;
+                for i in 1..=n {
+                    let t = i as f32 / n as f32;
+                    self.dab(lx + (x - lx) * t, ly + (y - ly) * t, r, col, hard);
+                }
+            }
+            None => self.dab(x, y, r, col, hard),
+        }
+        self.last = Some((x, y));
+    }
+
+    fn clear(&mut self) {
+        if self.any {
+            self.px.iter_mut().for_each(|v| *v = 0);
+            self.mark(0, 0, self.w, self.h);
+        }
+        self.any = false;
+        self.last = None;
+    }
+
+    /// sends the changed rows to the card
+    fn flush(&mut self, queue: &wgpu::Queue) {
+        let Some((x0, y0, x1, y1)) = self.dirty.take() else { return };
+        let (x1, y1) = (x1.min(self.w), y1.min(self.h));
+        if x1 <= x0 || y1 <= y0 {
+            return;
+        }
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo { texture: &self.tex, mip_level: 0, origin: wgpu::Origin3d { x: x0, y: y0, z: 0 }, aspect: wgpu::TextureAspect::All },
+            &self.px[((y0 * self.w + x0) * 4) as usize..],
+            wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(self.w * 4), rows_per_image: Some(y1 - y0) },
+            wgpu::Extent3d { width: x1 - x0, height: y1 - y0, depth_or_array_layers: 1 },
+        );
+    }
 }
 
 fn make_depth(device: &wgpu::Device, w: u32, h: u32) -> wgpu::TextureView {
@@ -1050,6 +1174,26 @@ impl Gpu {
             multiview: None,
             cache: None,
         });
+        let ink_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("brush mark layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry { binding: 8, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: true }, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false }, count: None },
+                wgpu::BindGroupLayoutEntry { binding: 9, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering), count: None },
+                wgpu::BindGroupLayoutEntry { binding: 10, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: false }, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false }, count: None },
+            ],
+        });
+        let ink_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor { label: Some("brush mark pipeline layout"), bind_group_layouts: &[&frame_layout, &ink_layout], push_constant_ranges: &[] });
+        let ink_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("brush mark pipeline"),
+            layout: Some(&ink_pl),
+            vertex: wgpu::VertexState { module: &shader, entry_point: Some("vs_bg"), compilation_options: Default::default(), buffers: &[] },
+            fragment: Some(wgpu::FragmentState { module: &shader, entry_point: Some("fs_ink"), compilation_options: Default::default(), targets: &ring_target }),
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
         let post_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor { label: Some("post"), source: wgpu::ShaderSource::Wgsl(include_str!("post.wgsl").into()) });
         let post_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("post layout"),
@@ -1269,6 +1413,7 @@ impl Gpu {
         });
         let depth = make_depth(&device, config.width, config.height);
         let (scene_color, scene_normal, scene_mat) = make_scene(&device, config.width, config.height, format);
+        let ink = Ink::new(&device, &ink_layout, &st_smp, &scene_normal, config.width, config.height);
         let rt = rt::Rt::new(&device, format);
         let black = EnvData { width: 2, height: 1, rgb: vec![0.0; 6] };
         let (env_view, env_mips, env_sh) = build_env(&device, &queue, &black);
@@ -1323,6 +1468,9 @@ impl Gpu {
             st_layout,
             st_smp,
             st_bind: None,
+            ink,
+            ink_pipeline,
+            ink_layout,
             guide_buf: None,
             guide_key: Vec::new(),
             pre_pipeline,
@@ -1681,14 +1829,34 @@ impl Gpu {
         self.scene_color = c;
         self.scene_normal = n;
         self.scene_mat = m;
+        self.ink = Ink::new(&self.device, &self.ink_layout, &self.st_smp, &self.scene_normal, w, h);
     }
 
     fn draw(&mut self, cam: &Camera) {
+        // the brush mark sits on window pixels: once the view turns, moves or zooms it no longer matches the model
+        let k = [cam.yaw, cam.pitch, cam.dist, cam.target.x, cam.target.y, cam.target.z];
+        if self.ink.any && self.ink.cam.map_or(false, |c| c.iter().zip(k.iter()).any(|(a, b)| (a - b).abs() > 1e-3 * (1.0 + b.abs()))) {
+            self.ink.clear();
+        }
+        self.ink.cam = Some(k);
         self.draw_to(cam, None);
+    }
+
+    /// the brush mark at this window pixel (from the last one while dragging), when the tool paints a colour
+    fn ink_to(&mut self, x: f32, y: f32) {
+        let st = &self.settings;
+        if !st.paint || st.ink[3] <= 0.0 || st.brush <= 0.0 {
+            return;
+        }
+        let (col, hard, r) = (st.ink, st.ink_hard, (st.brush * self.config.height as f32 * 0.5).max(1.0));
+        self.ink.line_to(x, y, r, col, hard);
     }
 
     /// Draws one frame, on the window or (when `target` is given) into a picture of the same format.
     fn draw_to(&mut self, cam: &Camera, target: Option<&wgpu::TextureView>) {
+        if target.is_none() {
+            self.ink.flush(&self.queue);
+        }
         let mut frame = None;
         let view = match target {
             Some(t) => t.clone(),
@@ -1944,6 +2112,12 @@ impl Gpu {
                 pass.set_bind_group(1, sb, &[]);
                 pass.draw(0..3, 0..1);
             }
+            if self.ink.any && !post_on && target.is_none() {
+                pass.set_pipeline(&self.ink_pipeline);
+                pass.set_bind_group(0, &self.frame_bg, &[]);
+                pass.set_bind_group(1, &self.ink.bind, &[]);
+                pass.draw(0..3, 0..1);
+            }
             if u.cursor[3] > 0.5 && !post_on {
                 pass.set_pipeline(&self.ring_pipeline);
                 pass.set_bind_group(0, &self.frame_bg, &[]);
@@ -2009,7 +2183,7 @@ impl Gpu {
             }
             let gf = bg(0, &pg.a);
             run(&mut enc, &self.post_final, &gf, &view, wgpu::LoadOp::Clear(wgpu::Color::BLACK));
-            if u.cursor[3] > 0.5 {
+            if u.cursor[3] > 0.5 || (self.ink.any && target.is_none()) {
                 let mut p = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("ring"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment { view: &view, depth_slice: None, resolve_target: None, ops: wgpu::Operations { load: wgpu::LoadOp::Load, store: wgpu::StoreOp::Store } })],
@@ -2017,9 +2191,17 @@ impl Gpu {
                     timestamp_writes: None,
                     occlusion_query_set: None,
                 });
-                p.set_pipeline(&self.ring_pipeline);
-                p.set_bind_group(0, &self.frame_bg, &[]);
-                p.draw(0..3, 0..1);
+                if self.ink.any && target.is_none() {
+                    p.set_pipeline(&self.ink_pipeline);
+                    p.set_bind_group(0, &self.frame_bg, &[]);
+                    p.set_bind_group(1, &self.ink.bind, &[]);
+                    p.draw(0..3, 0..1);
+                }
+                if u.cursor[3] > 0.5 {
+                    p.set_pipeline(&self.ring_pipeline);
+                    p.set_bind_group(0, &self.frame_bg, &[]);
+                    p.draw(0..3, 0..1);
+                }
             }
         }
         self.queue.submit(Some(enc.finish()));
@@ -2188,6 +2370,12 @@ impl ApplicationHandler<Cmd> for App {
                         self.set_cam(c);
                     }
                 }
+                if std::env::var_os("GOUACHE_INK_TEST").is_some() {
+                    // debug: a brush mark without a mouse
+                    gpu.ink.line_to(250.0, 300.0, 18.0, [0.9, 0.1, 0.1, 1.0], 0.85);
+                    gpu.ink.line_to(600.0, 380.0, 18.0, [0.9, 0.1, 0.1, 1.0], 0.85);
+                    gpu.ink.line_to(700.0, 250.0, 18.0, [0.9, 0.1, 0.1, 1.0], 0.85);
+                }
                 gpu.window.request_redraw();
                 self.gpu = Some(gpu);
                 WIN_OPEN.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -2237,6 +2425,9 @@ impl ApplicationHandler<Cmd> for App {
             Cmd::Textures(name, m) => {
                 if let Some(g) = self.gpu.as_mut() {
                     g.set_textures(&name, &m);
+                    if !m.partial && !self.painting && !name.starts_with("__") {
+                        g.ink.clear(); // the page's finished paint is in: the window's own brush mark is no longer needed
+                    }
                     g.window.request_redraw();
                 }
             }
@@ -2305,6 +2496,13 @@ impl ApplicationHandler<Cmd> for App {
                     self.emit(if state == ElementState::Pressed { "down" } else { "up" });
                     self.painting = state == ElementState::Pressed;
                     self.drag = None;
+                    if let Some(g) = self.gpu.as_mut() {
+                        g.ink.last = None;
+                        if self.painting {
+                            g.ink_to(self.last.0 as f32, self.last.1 as f32);
+                            g.window.request_redraw();
+                        }
+                    }
                 } else {
                     self.drag = if state == ElementState::Pressed { Some(button) } else { None };
                     if state != ElementState::Pressed {
@@ -2324,6 +2522,9 @@ impl ApplicationHandler<Cmd> for App {
                 if self.painting {
                     if self.last_sent.elapsed() >= Duration::from_millis(16) {
                         self.emit("move");
+                    }
+                    if let Some(g) = self.gpu.as_mut() {
+                        g.ink_to(position.x as f32, position.y as f32);
                     }
                     if let Some(g) = self.gpu.as_ref() {
                         g.window.request_redraw(); // the brush outline follows the pointer

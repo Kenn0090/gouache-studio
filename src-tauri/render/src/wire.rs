@@ -148,6 +148,10 @@ struct SettingsMeta {
     unlit: bool,
     #[serde(default)]
     metal_view: f32,
+    #[serde(default)]
+    ink: Option<[f32; 4]>,
+    #[serde(default)]
+    ink_hard: Option<f32>,
 }
 
 fn d012() -> f32 {
@@ -323,6 +327,8 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         wire_col: s.wire_col.unwrap_or([0.95, 0.7, 0.35]),
         unlit: s.unlit,
         metal_view: s.metal_view,
+        ink: s.ink.unwrap_or([0.0; 4]),
+        ink_hard: s.ink_hard.unwrap_or(0.85),
         light_n: s.lights.len().min(4) as u32,
         light_a: {
             let mut a = [[0.0f32; 4]; 4];

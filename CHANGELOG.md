@@ -1,3 +1,8 @@
+## 0.94.4
+
+- **Painting in the new viewer shows the stroke at once.** Before, each bit of a stroke was painted in the main app, read back and sent to the window, so lines showed up late and in jumps (Kenn's video). Now the window draws the brush mark itself the moment you move, only on the model, in your brush colour, opacity and softness. When the stroke is finished the real paint from the main app replaces it (so special brush tips, mirror copies and lighting come in then). Turning the view clears the mark. Switch: Preferences › Speed › Show the brush mark at once in the new viewer.
+- **Turning the model in the new viewer is lighter:** the main 3D view behind it no longer redraws on every move while you turn the window; it catches up a moment after you stop (and every 0.3 s during a long turn).
+
 ## 0.94.3
 
 - **Unity, Godot and Unreal: the exported shaders now work.** Kenn tried all three and each had errors. Fixed: in **Unity** a comment in the shader file was split over two lines (Unity read half of it as code and refused the whole shader) and the script that gives the model its materials had lost a backslash, a C# error that stops every script in the project, the live link too. In **Godot** the Panner and Retro material files wrote their settings in shader spelling (vec2/vec3) and would not load, and the live link plug-in did not start (one of its function names clashed with Godot's own). In **Unreal** the setup script left wires unconnected (the colour of a Vector Parameter and the texture coordinates never connected, so the Custom nodes showed ERROR) and the ORM texture node started with a colour texture where Unreal wants a mask texture; Velvet, Fur and Cloth sheen now feed their sheen into Unreal's Cloth input.
