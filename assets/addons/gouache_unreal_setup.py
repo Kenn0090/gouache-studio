@@ -66,6 +66,39 @@ def lin(c):
     return [max(0.0, v) ** 2.2 for v in c]
 
 
+def _png(path, rgb):
+    import struct
+    import zlib
+    raw = b"".join(b"\0" + bytes(rgb) * 4 for _ in range(4))
+    chunk = lambda t, d: struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
+    with open(path, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 4, 4, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+
+
+def default_texture(name, rgb, kind):
+    """A tiny texture the master material starts with. Its settings must match the texture node's sampler type
+    (colour, masks, normal), or Unreal marks the node as an error, so Gouache makes its own instead of using engine ones."""
+    path = MASTERS + "/T_Gouache_" + name
+    if EAL.does_asset_exist(path):
+        return EAL.load_asset(path)
+    import tempfile
+    tmp = os.path.join(tempfile.gettempdir(), "T_Gouache_" + name + ".png")
+    _png(tmp, rgb)
+    tex = import_file(tmp, MASTERS)
+    if tex is None:
+        return None
+    if kind == "color":
+        tex.set_editor_property("srgb", True)
+    elif kind == "data":
+        tex.set_editor_property("srgb", False)
+        tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_MASKS)
+    else:
+        tex.set_editor_property("srgb", False)
+        tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_NORMALMAP)
+    EAL.save_loaded_asset(tex)
+    return tex
+
+
 def engine_texture(*paths):
     for p in paths:
         try:
@@ -81,8 +114,16 @@ def engine_texture(*paths):
 def light_collection():
     path = ROOT + "/MPC_Gouache"
     if EAL.does_asset_exist(path):
-        return EAL.load_asset(path)
-    mpc = TOOLS.create_asset("MPC_Gouache", ROOT, unreal.MaterialParameterCollection, unreal.MaterialParameterCollectionFactoryNew())
+        mpc = EAL.load_asset(path)
+        try:
+            # made by an older script without an id: rebuilt below
+            prs = mpc.get_editor_property("vector_parameters")
+            if prs and unreal.GuidLibrary.is_valid(prs[0].get_editor_property("id")):
+                return mpc
+        except Exception:
+            return mpc
+    else:
+        mpc = TOOLS.create_asset("MPC_Gouache", ROOT, unreal.MaterialParameterCollection, unreal.MaterialParameterCollectionFactoryNew())
     vec = [0.4, 0.6, 0.7]
     try:
         for a in unreal.EditorLevelLibrary.get_all_level_actors():
@@ -94,6 +135,10 @@ def light_collection():
         unreal.log_warning("Gouache: no Directional Light found, using a default (" + str(e) + ")")
     prm = unreal.CollectionVectorParameter()
     prm.set_editor_property("parameter_name", "LightDirection")
+    try:
+        prm.set_editor_property("id", unreal.GuidLibrary.new_guid())
+    except Exception:
+        pass
     prm.set_editor_property("default_value", unreal.LinearColor(vec[0], vec[1], vec[2], 0.0))
     mpc.set_editor_property("vector_parameters", [prm])
     EAL.save_loaded_asset(mpc)
@@ -142,7 +187,53 @@ class Graph:
         return c
 
     def link(self, a, ao, b, bi):
-        MEL.connect_material_expressions(a, ao, b, bi)
+        """Connects an output of a to an input of b. Unreal names some pins differently from what they show
+        (a Vector Parameter's colour output has no name; a texture's UV input is "UVs" or "Coordinates"),
+        so the other names are tried too, and a wire that still does not connect is reported."""
+        outs = [out_pin(a, ao)]
+        ins = [bi] + PIN_ALIASES.get(bi, [])
+        for o in outs:
+            for i in ins:
+                try:
+                    if MEL.connect_material_expressions(a, o, b, i):
+                        return True
+                except Exception:
+                    pass
+        FAILED.append("%s.%s -> %s.%s" % (a.get_class().get_name(), ao, b.get_class().get_name(), bi))
+        return False
+
+
+FAILED = []
+PIN_ALIASES = {"UVs": ["Coordinates", "UV"], "Coordinates": ["UVs"]}
+COLOUR_NODES = tuple(c for c in (getattr(unreal, "MaterialExpressionVectorParameter", None), getattr(unreal, "MaterialExpressionConstant3Vector", None), getattr(unreal, "MaterialExpressionConstant4Vector", None)) if c)
+
+
+def out_pin(node, name):
+    """A Vector Parameter's first output (the colour, RGB) has no name in Unreal: "RGB" would not connect."""
+    if name == "RGB" and isinstance(node, COLOUR_NODES):
+        return ""
+    return name
+
+
+def prop(node, pin, mp):
+    """Connects a node to an input of the material (Base Color, Roughness, ...); a failure is reported."""
+    try:
+        if MEL.connect_material_property(node, out_pin(node, pin), mp):
+            return True
+    except Exception:
+        pass
+    FAILED.append("%s -> %s" % (node.get_class().get_name(), str(mp)))
+    return False
+
+
+def no_lwc(g, node, x, y):
+    """World Position is a large-world (double) value in Unreal 5: Custom nodes want a plain float3."""
+    cls = getattr(unreal, "MaterialExpressionTruncateLWC", None)
+    if cls is None:
+        return node
+    t = g.node(cls, x, y)
+    g.link(node, "", t, "")
+    return t
 
 
 F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
@@ -165,7 +256,7 @@ def build_master(look, kind, alpha, S, existing=None):
     else:
         mat = TOOLS.create_asset(name, MASTERS, unreal.Material, unreal.MaterialFactoryNew())
     try:
-        mat.set_editor_property("desc", "gouache-master " + str(DATA.get("masterVersion", 1)))
+        EAL.set_metadata_tag(mat, "gouache_master", str(max(MASTER_FIXED, int(DATA.get("masterVersion", 1)))))
     except Exception:
         pass
     g = Graph(mat)
@@ -183,9 +274,10 @@ def build_master(look, kind, alpha, S, existing=None):
         y[0] += 90
         return g.vector(n, vc.get(n, d), -1400, y[0] + 600)
 
-    white = engine_texture("/Engine/EngineResources/WhiteSquareTexture", "/Engine/EngineMaterials/BaseGrid")
-    black = engine_texture("/Engine/EngineResources/Black", "/Engine/EngineResources/WhiteSquareTexture")
-    flat = engine_texture("/Engine/EngineMaterials/DefaultNormal", "/Engine/EngineMaterials/FlatNormal")
+    white = default_texture("White", (255, 255, 255), "color")
+    white_lin = default_texture("WhiteLinear", (255, 255, 255), "data")
+    black = default_texture("Black", (0, 0, 0), "color")
+    flat = default_texture("FlatNormal", (128, 128, 255), "normal")
     SAMP = unreal.MaterialSamplerType
 
     # texture coordinates: scaled and moved, scrolled for Panner, snapped for Retro
@@ -214,11 +306,11 @@ def build_master(look, kind, alpha, S, existing=None):
         g.link(tx, "", uvn, "K")
 
     base = g.texture("BaseColorTex", white, SAMP.SAMPLERTYPE_COLOR, -900, -300)
-    orm = g.texture("ORMTex", white, SAMP.SAMPLERTYPE_MASKS, -900, 0)
+    orm = g.texture("ORMTex", white_lin, SAMP.SAMPLERTYPE_MASKS, -900, 0)
     nrm = g.texture("NormalTex", flat, SAMP.SAMPLERTYPE_NORMAL, -900, 300)
     emi = g.texture("EmissiveTex", black, SAMP.SAMPLERTYPE_COLOR, -900, 600)
     for t in (base, orm, nrm, emi):
-        g.link(uvn, "", t, "Coordinates")
+        g.link(uvn, "", t, "UVs")
 
     tint = vector("Tint", [1, 1, 1, 1])
     albedo = g.custom("return B.rgb * T;", ["B", "T"], F3, -600, -300)
@@ -232,8 +324,11 @@ def build_master(look, kind, alpha, S, existing=None):
     ms = scalar("MetalScale", 1)
     ns = scalar("NormalStrength", 1)
 
+    py = [-120]
+
     def orm_pick(code, extra):
-        c = g.custom(code, ["ORM", "Has"] + [e[0] for e in extra], F1, -500, 0)
+        py[0] += 120
+        c = g.custom(code, ["ORM", "Has"] + [e[0] for e in extra], F1, -500, py[0])
         g.link(orm, "RGB", c, "ORM")
         g.link(has, "", c, "Has")
         for e in extra:
@@ -243,7 +338,7 @@ def build_master(look, kind, alpha, S, existing=None):
     rough = orm_pick("return saturate(lerp(V, ORM.g * K, Has));", [("V", rv), ("K", rs)])
     metal = orm_pick("return saturate(lerp(V, ORM.b * K, Has));", [("V", mv), ("K", ms)])
     occl = orm_pick("return lerp(1.0, ORM.r, Has);", [])
-    nrmc = g.custom("float3 n = N; n.xy *= K; return normalize(n);", ["N", "K"], F3, -500, 300)
+    nrmc = g.custom("float3 n = N; n.xy *= K; return normalize(n);", ["N", "K"], F3, -500, 420)
     g.link(nrm, "RGB", nrmc, "N")
     g.link(ns, "", nrmc, "K")
 
@@ -253,7 +348,7 @@ def build_master(look, kind, alpha, S, existing=None):
         mat.set_editor_property("two_sided", True)
         N = g.node(unreal.MaterialExpressionPixelNormalWS, -500, 920)
         V = g.node(unreal.MaterialExpressionCameraVectorWS, -500, 1040)
-        P = g.node(unreal.MaterialExpressionWorldPosition, -500, 1160)
+        P = no_lwc(g, g.node(unreal.MaterialExpressionWorldPosition, -650, 1160), -500, 1160)
         T = g.node(unreal.MaterialExpressionTime, -500, 1280)
         col = vector("HoloColour", [0.2, 0.85, 1, 1])
         ps = [scalar("SeeThrough", 0.8), scalar("EdgeGlow", 1.4), scalar("ScanLines", 40), scalar("ScanSpeed", 0.6), scalar("Flicker", 0.35), scalar("Glitch", 0.5), scalar("EdgePulse", 0.5), scalar("Sweep", 0.6), scalar("BodyGlow", 0.5)]
@@ -287,8 +382,8 @@ def build_master(look, kind, alpha, S, existing=None):
         am = g.node(unreal.MaterialExpressionComponentMask, 100, 800)
         am.set_editor_property("r", False); am.set_editor_property("g", False); am.set_editor_property("b", False); am.set_editor_property("a", True)
         g.link(c, "", am, "")
-        MEL.connect_material_property(rgb, "", MP.MP_EMISSIVE_COLOR)
-        MEL.connect_material_property(am, "", MP.MP_OPACITY)
+        prop(rgb, "", MP.MP_EMISSIVE_COLOR)
+        prop(am, "", MP.MP_OPACITY)
         MEL.recompile_material(mat)
         EAL.save_loaded_asset(mat)
         return mat
@@ -314,7 +409,7 @@ def build_master(look, kind, alpha, S, existing=None):
                 a2 = scalar("EdgeSoftness", 0.06)
                 band = "float band = smoothstep(A1 - A2 * 0.5, A1 + A2 * 0.5 + 0.0001, l);"
             code = (
-                "float3 n = normalize(N); float3 lv = normalize(L); float3 vv = normalize(V); float l = dot(n, lv) * 0.5 + 0.5; " + band +
+                "float3 n = normalize(N); float3 lv = normalize(L.xyz); float3 vv = normalize(V); float l = dot(n, lv) * 0.5 + 0.5; " + band +
                 " float3 c = lerp(Base * Sh, Base, saturate(band));"
                 " float3 h = normalize(lv + vv); float sp = step(1.0 - Hl * 0.05, saturate(dot(n, h))) * step(0.01, Hl);"
                 " float rim = smoothstep(1.0 - Rl, 1.0, 1.0 - saturate(dot(n, vv))) * Rl;"
@@ -337,7 +432,7 @@ def build_master(look, kind, alpha, S, existing=None):
                 pl = [scalar("Bands", 3), scalar("StepSoftness", 0.1), scalar("DottedFade", 0.5), scalar("DotCells", 90), scalar("DotsFollow", 0), scalar("ShadowDepth", 0.55), scalar("ShadowBoost", 0.5), scalar("TintAmount", 0.55), scalar("Highlight", 0.3), scalar("RimLight", 0.5), scalar("RimWidth", 0.35)]
                 pn = ["Bands", "Soft", "Dots", "Cells", "Follow", "Depth", "Boost", "TintAmt", "Hl", "Rim", "RimW"]
                 code = (
-                    "float3 n = normalize(N); float3 lv = normalize(L); float3 vv = normalize(V); float l = dot(n, lv) * 0.5 + 0.5; float st = max(Bands, 1.0); float x = l * st; float i0 = floor(x); float f = x - i0; float lvl = i0;"
+                    "float3 n = normalize(N); float3 lv = normalize(L.xyz); float3 vv = normalize(V); float l = dot(n, lv) * 0.5 + 0.5; float st = max(Bands, 1.0); float x = l * st; float i0 = floor(x); float f = x - i0; float lvl = i0;"
                     " if (Dots > 0.01) { float w = Dots * 0.5; float t = saturate((f - 0.5) / (w * 2.0 + 0.001) + 0.5);"
                     " float2 c2 = float2(UV.x + UV.y, UV.x - UV.y) * Cells; float2 cc = frac(c2) - 0.5; float pp = length(cc) * 1.4142; float aa = fwidth(pp) + 0.001;"
                     " float lu = pow(dot(Base, float3(0.2126, 0.7152, 0.0722)), 1.0 / 2.2); float tt = t * 1.15 + Follow * (0.5 - lu) * 1.2 * 4.0 * t * (1.0 - t);"
@@ -358,7 +453,7 @@ def build_master(look, kind, alpha, S, existing=None):
                 pl = [scalar("ShadowShapes", 2), scalar("EdgeSoftness", 0.03), scalar("ShadowStrength", 0.6), scalar("RimLight", 0.8), scalar("RimWidth", 0.3), scalar("RimFollows", 0.6)]
                 pn = ["Steps", "Soft", "Shade", "Rim", "RimW", "Follows"]
                 code = (
-                    "float3 n = normalize(N); float3 lv = normalize(L); float3 vv = normalize(V); float l = dot(n, lv) * 0.5 + 0.5; float st = max(Steps, 1.0); float lvv = 0.0;"
+                    "float3 n = normalize(N); float3 lv = normalize(L.xyz); float3 vv = normalize(V); float l = dot(n, lv) * 0.5 + 0.5; float st = max(Steps, 1.0); float lvv = 0.0;"
                     " for (int k = 1; k <= 3; k++) { if ((float)k > st) break; float th = (float)k / (st + 1.0) * 1.1; lvv += smoothstep(th - Soft, th + Soft + 0.0001, l); }"
                     " float ramp = lvv / st;"
                     " float3 dark = Base * lerp(float3(1, 1, 1), ShC * 2.0, Shade) * lerp(1.0, 0.55, Shade);"
@@ -384,7 +479,7 @@ def build_master(look, kind, alpha, S, existing=None):
             stp = scalar("LightBands", 0)
             dth = scalar("DitherAmount", 0.6)
             code = (
-                "float3 n = normalize(N); float l = saturate(dot(n, normalize(L)));"
+                "float3 n = normalize(N); float l = saturate(dot(n, normalize(L.xyz)));"
                 " if (Bd > 0.5) l = floor(l * Bd + 0.5) / Bd;"
                 " float3 c = Base * (Am + (1.0 - Am) * l) * Br;"
                 " c = pow(saturate(c), 1.0 / 2.2);"
@@ -423,7 +518,7 @@ def build_master(look, kind, alpha, S, existing=None):
             sw = g.node(unreal.MaterialExpressionTwoSidedSwitch, 100, 650)
             g.link(c, "", sw, "Front")
             g.link(back, backpin, sw, "Back")
-            MEL.connect_material_property(sw, "", MP.MP_EMISSIVE_COLOR)
+            prop(sw, "", MP.MP_EMISSIVE_COLOR)
             vn = g.node(unreal.MaterialExpressionVertexNormalWS, -200, 1200)
             mul = g.node(unreal.MaterialExpressionMultiply, 0, 1150)
             g.link(vn, "", mul, "A")
@@ -431,7 +526,7 @@ def build_master(look, kind, alpha, S, existing=None):
             if look == "InkToon":
                 # a hand-drawn wobble in the line width
                 wob = scalar("Wobble", 0.4)
-                wp = g.node(unreal.MaterialExpressionWorldPosition, -200, 1300)
+                wp = no_lwc(g, g.node(unreal.MaterialExpressionWorldPosition, -350, 1300), -250, 1300)
                 wc = g.custom("float n = sin(dot(P, float3(37, 23, 29)) * 0.01) * 0.5 + sin(dot(P, float3(17, 41, 31)) * 0.01) * 0.5; return 1.0 + W * 0.7 * n;", ["P", "W"], F1, -100, 1300)
                 g.link(wp, "", wc, "P")
                 g.link(wob, "", wc, "W")
@@ -443,38 +538,38 @@ def build_master(look, kind, alpha, S, existing=None):
             sw2 = g.node(unreal.MaterialExpressionTwoSidedSwitch, 250, 1200)
             g.link(zero, "", sw2, "Front")
             g.link(mul, "", sw2, "Back")
-            MEL.connect_material_property(sw2, "", MP.MP_WORLD_POSITION_OFFSET)
+            prop(sw2, "", MP.MP_WORLD_POSITION_OFFSET)
             one = g.node(unreal.MaterialExpressionConstant, 250, 1350)
             one.set_editor_property("r", 1.0)
-            MEL.connect_material_property(one, "", MP.MP_OPACITY_MASK)
+            prop(one, "", MP.MP_OPACITY_MASK)
         else:
-            MEL.connect_material_property(c, "", MP.MP_EMISSIVE_COLOR)
+            prop(c, "", MP.MP_EMISSIVE_COLOR)
         MEL.recompile_material(mat)
         EAL.save_loaded_asset(mat)
         return mat
 
     # lit looks
-    MEL.connect_material_property(albedo, "", MP.MP_BASE_COLOR)
-    MEL.connect_material_property(rough, "", MP.MP_ROUGHNESS)
-    MEL.connect_material_property(metal, "", MP.MP_METALLIC)
-    MEL.connect_material_property(occl, "", MP.MP_AMBIENT_OCCLUSION)
-    MEL.connect_material_property(nrmc, "", MP.MP_NORMAL)
-    MEL.connect_material_property(emi, "RGB", MP.MP_EMISSIVE_COLOR)
+    prop(albedo, "", MP.MP_BASE_COLOR)
+    prop(rough, "", MP.MP_ROUGHNESS)
+    prop(metal, "", MP.MP_METALLIC)
+    prop(occl, "", MP.MP_AMBIENT_OCCLUSION)
+    prop(nrmc, "", MP.MP_NORMAL)
+    prop(emi, "RGB", MP.MP_EMISSIVE_COLOR)
     if alpha:
         mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
-        MEL.connect_material_property(base, "A", MP.MP_OPACITY)
+        prop(base, "A", MP.MP_OPACITY)
     if look == "BrushedMetal":
         try:
             a = scalar("Stretch", 0.7)
-            MEL.connect_material_property(a, "", MP.MP_ANISOTROPY)
+            prop(a, "", MP.MP_ANISOTROPY)
         except Exception as e:
             unreal.log_warning("Gouache: anisotropy needs Unreal 5.1 or newer (" + str(e) + ")")
     elif look == "Velvet":
         mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_CLOTH)
         col = vector("SheenColour", [1, 1, 1, 1])
-        MEL.connect_material_property(col, "RGB", MP.MP_SUBSURFACE_COLOR)
+        prop(col, "RGB", MP.MP_SUBSURFACE_COLOR)
         amt = scalar("Sheen", 0.5)
-        MEL.connect_material_property(amt, "", MP.MP_OPACITY)
+        prop(amt, "", MP.MP_CUSTOM_DATA_0)
     elif look == "Glass":
         # lit, see-through, bending what is behind it (the refraction input), tinted, frosted
         mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
@@ -493,38 +588,38 @@ def build_master(look, kind, alpha, S, existing=None):
         thick = scalar("Thickness", 0.5)
         ior = g.custom("return 1.0 + 0.5 * B;", ["B"], F1, -200, 900)
         g.link(bend, "", ior, "B")
-        MEL.connect_material_property(ior, "", MP.MP_REFRACTION)
+        prop(ior, "", MP.MP_REFRACTION)
         tintc = g.custom("float3 gc = max(G, float3(0.02, 0.02, 0.02)); return Base * lerp(float3(1, 1, 1), gc, saturate(Th * 0.8));", ["Base", "G", "Th"], F3, -200, 1000)
         g.link(albedo, "", tintc, "Base")
         g.link(gcol, "RGB", tintc, "G")
         g.link(thick, "", tintc, "Th")
-        MEL.connect_material_property(tintc, "", MP.MP_BASE_COLOR)
+        prop(tintc, "", MP.MP_BASE_COLOR)
         fr = g.custom("float f = (0.04 + 0.96 * pow(1.0 - saturate(dot(normalize(N), normalize(V))), 5.0)) * E; return saturate(Cl + f + F * 0.5);", ["N", "V", "E", "Cl", "F"], F1, -200, 1100)
         g.link(N, "", fr, "N")
         g.link(V, "", fr, "V")
         g.link(edge, "", fr, "E")
         g.link(cloud, "", fr, "Cl")
         g.link(frost, "", fr, "F")
-        MEL.connect_material_property(fr, "", MP.MP_OPACITY)
+        prop(fr, "", MP.MP_OPACITY)
         rg = g.custom("return saturate(F * 0.6 + 0.02);", ["F"], F1, -200, 1200)
         g.link(frost, "", rg, "F")
-        MEL.connect_material_property(rg, "", MP.MP_ROUGHNESS)
-        MEL.connect_material_property(g.node(unreal.MaterialExpressionConstant, -200, 1300), "", MP.MP_METALLIC)
+        prop(rg, "", MP.MP_ROUGHNESS)
+        prop(g.node(unreal.MaterialExpressionConstant, -200, 1300), "", MP.MP_METALLIC)
     elif look == "Fur":
         # Unreal has no strand shells in a material: a fuzzy cloth look with dark roots and a tip colour
         mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_CLOTH)
         tipc = vector("TipColour", [0.95, 0.85, 0.7, 1])
-        MEL.connect_material_property(tipc, "RGB", MP.MP_SUBSURFACE_COLOR)
+        prop(tipc, "RGB", MP.MP_SUBSURFACE_COLOR)
         tipa = scalar("TipAmount", 0.5)
         dr = scalar("DarkRoots", 0.5)
-        MEL.connect_material_property(tipa, "", MP.MP_OPACITY)
+        prop(tipa, "", MP.MP_CUSTOM_DATA_0)
         bc = g.custom("return Base * (1.0 - D * 0.4);", ["Base", "D"], F3, -200, 1000)
         g.link(albedo, "", bc, "Base")
         g.link(dr, "", bc, "D")
-        MEL.connect_material_property(bc, "", MP.MP_BASE_COLOR)
+        prop(bc, "", MP.MP_BASE_COLOR)
         rg = g.custom("return max(R, 0.85);", ["R"], F1, -200, 1100)
         g.link(rough, "", rg, "R")
-        MEL.connect_material_property(rg, "", MP.MP_ROUGHNESS)
+        prop(rg, "", MP.MP_ROUGHNESS)
     elif look == "Iridescent":
         N = g.node(unreal.MaterialExpressionPixelNormalWS, -500, 920)
         V = g.node(unreal.MaterialExpressionCameraVectorWS, -500, 1040)
@@ -535,21 +630,21 @@ def build_master(look, kind, alpha, S, existing=None):
         bc = g.custom("float nv = saturate(dot(normalize(N), normalize(V))); float t = Sh + Rg * (0.3 + An * (1.0 - nv)); float3 film = 0.5 + 0.5 * cos(6.2832 * (t + float3(0.0, 0.33, 0.67))); return lerp(Base, lerp(film, float3(1, 1, 1), 0.15), S * 0.85);", ["Base", "N", "V", "S", "Rg", "Sh", "An"], F3, -200, 1000)
         for nm, src, pin in (("Base", albedo, ""), ("N", N, ""), ("V", V, ""), ("S", st, ""), ("Rg", rg_, ""), ("Sh", sh_, ""), ("An", an, "")):
             g.link(src, pin, bc, nm)
-        MEL.connect_material_property(bc, "", MP.MP_BASE_COLOR)
+        prop(bc, "", MP.MP_BASE_COLOR)
         mc = g.custom("return lerp(M, 1.0, 0.6 * S);", ["M", "S"], F1, -200, 1100)
         g.link(metal, "", mc, "M")
         g.link(st, "", mc, "S")
-        MEL.connect_material_property(mc, "", MP.MP_METALLIC)
+        prop(mc, "", MP.MP_METALLIC)
     elif look == "CarPaint":
         mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_CLEAR_COAT)
         coat = scalar("Coat", 1)
         crough = scalar("CoatRoughness", 0.04)
         try:
-            MEL.connect_material_property(coat, "", MP.MP_CUSTOM_DATA_0)
-            MEL.connect_material_property(crough, "", MP.MP_CUSTOM_DATA_1)
+            prop(coat, "", MP.MP_CUSTOM_DATA_0)
+            prop(crough, "", MP.MP_CUSTOM_DATA_1)
         except Exception as e:
             unreal.log_warning("Gouache: clear coat inputs could not be connected (" + str(e) + ")")
-        P = g.node(unreal.MaterialExpressionWorldPosition, -500, 1160)
+        P = no_lwc(g, g.node(unreal.MaterialExpressionWorldPosition, -650, 1160), -500, 1160)
         fsz = scalar("FlakeSize", 170)
         fam = scalar("FlakeAmount", 0.5)
         fsp = scalar("FlakeSparkle", 1)
@@ -567,61 +662,71 @@ def build_master(look, kind, alpha, S, existing=None):
         g.link(albedo, "", bc, "Base")
         g.link(fk, "", bc, "FK")
         g.link(fcol, "RGB", bc, "Fc")
-        MEL.connect_material_property(bc, "", MP.MP_BASE_COLOR)
+        prop(bc, "", MP.MP_BASE_COLOR)
         rg = g.custom("return lerp(R, 0.12, FK.x);", ["R", "FK"], F1, -200, 1200)
         g.link(rough, "", rg, "R")
         g.link(fk, "", rg, "FK")
-        MEL.connect_material_property(rg, "", MP.MP_ROUGHNESS)
+        prop(rg, "", MP.MP_ROUGHNESS)
         mc = g.custom("return lerp(M, 1.0, FK.x);", ["M", "FK"], F1, -200, 1300)
         g.link(metal, "", mc, "M")
         g.link(fk, "", mc, "FK")
-        MEL.connect_material_property(mc, "", MP.MP_METALLIC)
+        prop(mc, "", MP.MP_METALLIC)
         nc = g.custom("float2 np = (float2(FK.y, FK.z) - 0.5) * 1.6; return normalize(N + float3(np * 1.5 * FK.x * Sp, 0));", ["N", "FK", "Sp"], F3, -200, 1400)
         g.link(nrmc, "", nc, "N")
         g.link(fk, "", nc, "FK")
         g.link(fsp, "", nc, "Sp")
-        MEL.connect_material_property(nc, "", MP.MP_NORMAL)
+        prop(nc, "", MP.MP_NORMAL)
     elif look == "ClothSheen":
         mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_CLOTH)
         col = vector("ClothColour", [1, 0.9, 0.85, 1])
-        MEL.connect_material_property(col, "RGB", MP.MP_SUBSURFACE_COLOR)
+        prop(col, "RGB", MP.MP_SUBSURFACE_COLOR)
         amt = scalar("ClothSheen", 1)
         soft = scalar("Softness", 0.5)
         weave = scalar("Weave", 0.4)
         cl = g.custom("return saturate(S * 0.6);", ["S"], F1, -200, 900)
         g.link(amt, "", cl, "S")
-        MEL.connect_material_property(cl, "", MP.MP_OPACITY)
+        prop(cl, "", MP.MP_CUSTOM_DATA_0)
         bc = g.custom("return B * lerp(1.0, 0.55 + 0.45 * sin(UV.x * 200.0) * sin(UV.y * 200.0), W);", ["B", "UV", "W"], F3, -200, 1000)
         g.link(albedo, "", bc, "B")
         g.link(uvn, "", bc, "UV")
         g.link(weave, "", bc, "W")
-        MEL.connect_material_property(bc, "", MP.MP_BASE_COLOR)
+        prop(bc, "", MP.MP_BASE_COLOR)
         rg = g.custom("return max(R, lerp(0.3, 0.7, So));", ["R", "So"], F1, -200, 1100)
         g.link(rough, "", rg, "R")
         g.link(soft, "", rg, "So")
-        MEL.connect_material_property(rg, "", MP.MP_ROUGHNESS)
+        prop(rg, "", MP.MP_ROUGHNESS)
     elif look == "Wax":
         mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_SUBSURFACE)
         col = vector("GlowColour", [1, 0.62, 0.3, 1])
-        MEL.connect_material_property(col, "RGB", MP.MP_SUBSURFACE_COLOR)
+        prop(col, "RGB", MP.MP_SUBSURFACE_COLOR)
         glow = scalar("Glow", 1.5)
         soft = scalar("WaxSoftness", 0.6)
         cl = g.custom("return saturate(G * 0.5);", ["G"], F1, -200, 900)
         g.link(glow, "", cl, "G")
-        MEL.connect_material_property(cl, "", MP.MP_OPACITY)
+        prop(cl, "", MP.MP_OPACITY)
         rg = g.custom("return lerp(R, max(R, 0.5), So);", ["R", "So"], F1, -200, 1100)
         g.link(rough, "", rg, "R")
         g.link(soft, "", rg, "So")
-        MEL.connect_material_property(rg, "", MP.MP_ROUGHNESS)
+        prop(rg, "", MP.MP_ROUGHNESS)
     elif look == "Skin":
         mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_SUBSURFACE)
         col = vector("BloodColour", [0.85, 0.25, 0.18, 1])
-        MEL.connect_material_property(col, "RGB", MP.MP_SUBSURFACE_COLOR)
+        prop(col, "RGB", MP.MP_SUBSURFACE_COLOR)
         amt = scalar("ScatterStrength", 0.5)
-        MEL.connect_material_property(amt, "", MP.MP_OPACITY)
+        prop(amt, "", MP.MP_OPACITY)
     MEL.recompile_material(mat)
     EAL.save_loaded_asset(mat)
     return mat
+
+
+MASTER_FIXED = 3
+
+
+def master_version(mat):
+    try:
+        return int(EAL.get_metadata_tag(mat, "gouache_master") or 0)
+    except Exception:
+        return 0
 
 
 def master_for(S):
@@ -630,6 +735,9 @@ def master_for(S):
     path = master_path(look, alpha)
     if EAL.does_asset_exist(path):
         mat = EAL.load_asset(path)
+        if master_version(mat) < MASTER_FIXED:
+            unreal.log("Gouache: rebuilding " + path + " (made by an older Gouache that left wires unconnected)")
+            return build_master(look, S["kind"], alpha, S, mat)
         if DATA.get("updateMasters"):
             unreal.log("Gouache: updating the master material " + path)
             return build_master(look, S["kind"], alpha, S, mat)
@@ -749,4 +857,6 @@ try:
     assign_to_model(inst)
 except Exception as e:
     unreal.log_error("Gouache: the model could not be set up: " + str(e))
+if FAILED:
+    unreal.log_error("Gouache: %d wires could not be connected (please send this to the Gouache author): %s" % (len(FAILED), "; ".join(FAILED[:40])))
 unreal.log("Gouache: made " + ", ".join(made) + " in " + DEST)

@@ -104,8 +104,9 @@ A .gouache file also keeps your panel layout, the zoom and place of the view and
 
 The nine looks added in 0.94.1 (Hologram, Glass, Fur, Iridescent, Car paint, Cloth sheen, Wax / marble glow, Halftone cel and Ink toon) go to the engines with the Gouache shader, like the older looks. Each engine lights its own way, so it is a close match, not identical.
 
-- **Unity (URP):** all nine, in the one `GouacheShaded` shader. Fur is drawn as ten layers (passes); Hologram and Glass are see-through materials. The Built-in pipeline gets Standard for these looks.
+- **Unity (URP):** all nine, in the one `GouacheShaded` shader. Hologram and Glass are see-through materials. **Fur shows without its strand layers in Unity for now**: Unity's URP draws only one extra layer per material, so the ten fur layers in the shader are skipped. The Built-in pipeline gets Standard for these looks.
 - **Godot 4:** all nine. Glass bends what is behind it (it reads the screen). Fur is a chain of ten materials (`<Set>_fur1`…`_fur10`). Halftone cel and Ink toon get an inked outline material.
 - **Unreal:** all nine as master materials. Car paint uses Unreal's Clear Coat, Cloth sheen and Fur use Cloth shading, Wax uses Subsurface. **Fur is a fuzzy cloth look without strands** (a material can't grow strands in Unreal). Hologram and Glass are translucent.
+- **If something goes wrong in Unreal:** the setup script writes to the Output Log (Window › Output Log, filter *Gouache*). A line saying some wires could not be connected lists them: please send it.
 
 All of this was written without being able to run the real engines: please check it in yours and tell me what looks off.

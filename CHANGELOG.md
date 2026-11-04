@@ -1,3 +1,10 @@
+## 0.94.3
+
+- **Unity, Godot and Unreal: the exported shaders now work.** Kenn tried all three and each had errors. Fixed: in **Unity** a comment in the shader file was split over two lines (Unity read half of it as code and refused the whole shader) and the script that gives the model its materials had lost a backslash, a C# error that stops every script in the project, the live link too. In **Godot** the Panner and Retro material files wrote their settings in shader spelling (vec2/vec3) and would not load, and the live link plug-in did not start (one of its function names clashed with Godot's own). In **Unreal** the setup script left wires unconnected (the colour of a Vector Parameter and the texture coordinates never connected, so the Custom nodes showed ERROR) and the ORM texture node started with a colour texture where Unreal wants a mask texture; Velvet, Fur and Cloth sheen now feed their sheen into Unreal's Cloth input.
+- **Old broken files are replaced:** the next send replaces the shared Unity shader and script written by 0.94.2 or older, and the Unreal script rebuilds the master materials it made before. Each asset keeps its own textures and settings.
+- **Checked for real this time:** the Godot files were run in Godot 4.3 and 4.5 (both renderers), the Unity shaders were compiled with Unity's own shader library, and the Unreal script was run against a strict stand-in that checks every wire. Unity and Unreal themselves still need a try on your computer.
+- Unity shows Fur without its strand layers for now (URP draws only one extra layer per material).
+
 ## 0.94.2
 
 - **Brow** is rebuilt from your videos: a wide loaf-shaped brush (flat back, curved ragged front) of fine vertical fibres that stays in one position, each fibre with its own soft pastel tint (pink, mint, cream) that drifts as you drag. Drag down for a sheet of fibres, sideways for wavy streaks. Two new colour lane modes (Pastel tint and Smooth pastel) make the tints, whatever your colour is.

@@ -133,7 +133,7 @@ func _process(_delta: float) -> void:
 	if jobs.size() > 0:
 		tries += 1
 		if tries % 40 == 0:
-			_build(jobs[0])
+			_build_ready(jobs[0])
 
 func _content_length(head: String) -> int:
 	for line in head.split("\\r\\n"):
@@ -146,7 +146,7 @@ func _safe(s: String) -> String:
 	r.compile("[^A-Za-z0-9_\\\\-]+")
 	return r.sub(s, "_", true)
 
-func _build(job: Dictionary) -> void:
+func _build_ready(job: Dictionary) -> void:
 	var dir := "res://gouache/%s/" % job.get("name", "")
 	var model: String = job.get("model", "")
 	if model == "":
