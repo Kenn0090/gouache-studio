@@ -67,6 +67,7 @@ vec4 retroSample(sampler2D tex,vec2 uv,vec2 dx,vec2 dy){ vec2 sz=vec2(textureSiz
   return (f.x+f.y<1.0)?a+(b-a)*f.x+(c-a)*f.y:d+(c-d)*(1.0-f.x)+(b-d)*(1.0-f.y); }
 float retroBayer(vec2 p){ ivec2 i=ivec2(mod(p,4.0)); int v=0; for(int k=0;k<2;k++){ int x=(i.x>>k)&1,y=(i.y>>k)&1; v|=(((x^y)<<1)|y)<<(2*(1-k)); } return (float(v)+0.5)/16.0; }
 float hsh(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+float hsh3(vec3 p){ return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453); }
 vec4 mapSample(sampler2D tex,vec2 uv){vec2 dx,dy;mapGrad(uv,dx,dy);if(uSh==8)return retroSample(tex,uv,dx,dy);return textureGrad(tex,uv,dx,dy);}
 void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv=uUseUDIM==1?fract(vT):vT; vec4 b=mapSample(uBase,uv+uPB); float a=b.a; if((uHas&64)!=0) a*=mapSample(uOpac,uv+uPO).r;
   if(uClip==1&&a<0.5) discard; vec3 alb=b.a>1e-5?b.rgb/b.a:vec3(0.0);
@@ -166,10 +167,15 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
   if(uSh==13){ /* car paint: a clear coat over the paint, and flakes */
     float cr=max(uShQ.x,0.02); vec3 Nc=normalize(Ng+uShQ.y*0.04*vec3(sin(vP.x*90.0+vP.y*37.0),sin(vP.y*83.0+vP.z*51.0),sin(vP.z*77.0+vP.x*29.0)));
     col+=studioDirect(Nc,V,L,vec3(0.0),vec3(0.04),cr,0.0)*uSunI*3.0*uShP.z*visibility;
-    vec2 fc=uv*uShP.y, ci=floor(fc), fq=fract(fc)-0.5; float h1=hsh(ci);
-    float fm=step(h1,uShP.x*0.6)*smoothstep(0.5,0.3,length(fq));
-    vec3 nf=normalize(N+(vec3(hsh(ci+1.7),hsh(ci+4.1),hsh(ci+9.3))-0.5)*1.4); vec3 fcol=mix(lin(uShC),alb,0.25);
-    col+=fm*uShP.w*fcol*(pow(max(dot(nf,H),0.0),60.0)*uSunI*3.0*visibility+envSpec(reflect(-V,nf),0.25)*0.5*uSkyI*0.35); }
+    /* flakes: tiny mirrors in the paint, each at its own angle, in 3D cells of the model (so they don't stretch with the UVs). They only flash when the light and your eye line up with one; far away they melt into a glitter. */
+    vec3 fq3=mat3(0.36,0.48,-0.8,-0.8,0.6,0.0,0.48,0.64,0.6)*vP*uShP.y*0.85, ci=floor(fq3), fr=fract(fq3)-0.5; float fw=length(fwidth(fq3));
+    float h1=hsh3(ci), h2=hsh3(ci+17.1), h3=hsh3(ci+43.7), h4=hsh3(ci+91.3);
+    float rad=0.22+0.28*h4, fm=step(h1,uShP.x*0.8)*smoothstep(rad,rad*0.55,length(fr));
+    vec3 nf=normalize(N+(vec3(h2,h3,hsh3(ci+5.5))-0.5)*1.6); vec3 fcol=mix(lin(uShC),alb,0.2)*(0.6+0.8*h4);
+    vec3 fsp=fcol*((pow(max(dot(nf,H),0.0),70.0)*12.0+pow(max(dot(nf,H),0.0),10.0)*1.4)*uSunI*visibility+envSpec(reflect(-V,nf),0.15)*0.5*uSkyI);
+    float fade=smoothstep(0.5,1.0,fw);
+    col+=uShP.w*mix(fm*fsp,fcol*uShP.x*0.1,fade);
+    col*=1.0+fm*(h3-0.5)*0.15*(1.0-fade); }
   if(uSh==14){ /* cloth: a soft sheen, or fibres that streak it (satin, silk) */
     float sr=max(uShP.y,0.05), sn=sqrt(max(1.0-NdH*NdH,0.0)), Dc=(2.0+1.0/sr)*pow(sn,1.0/sr)/(2.0*PI);
     float an=uShP.z*2.0*PI; vec3 Tf=normalize(T*cos(an)+B*sin(an)); Tf=normalize(Tf-N*dot(N,Tf)); float th=dot(Tf,H);

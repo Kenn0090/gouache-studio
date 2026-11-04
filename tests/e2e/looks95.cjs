@@ -14,7 +14,7 @@ const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAI
  const W=ms=>p.waitForTimeout(ms||300);
  await p.evaluate(()=>{const G=__gs;G.closeWelcome();G.setMode('p3d',true);G.useModel(G.primMesh('sphere',1));G.cmdNewFillLayer({name:'Red',maps:{base:{c:[.8,.25,.2]}}});});await W(1500);
  const box=await p.locator('#gl').boundingBox(),hash=async()=>crypto.createHash('md5').update(await p.screenshot({clip:box,timeout:120000})).digest('hex');
- const kinds=['std','hologram','glass','fur','iridescent','car','cloth','wax'],seen={};
+ const kinds=(process.env.KINDS||'std,hologram,glass,fur,iridescent,car,cloth,wax').split(','),seen={};
  for(const k of kinds){await p.evaluate(k=>{__gs.doc.v3shade={kind:k,p:k==='fur'?{fur:{wind:0}}:k==='hologram'?{hologram:{speed:0,flicker:0}}:{}};__gs.v3.dirty=true;__gs.requestRender(true);},k);await W(900);
   console.log('shot',k);const h=await hash();seen[k]=h;if(process.env.OUT)fs.writeFileSync(process.env.OUT+'/'+k+'.png',await p.screenshot({clip:box}));}
  for(const k of kinds.slice(1))ok(seen[k]!==seen.std,k+' looks different from Standard');

@@ -159,6 +159,7 @@ var<private> g_sf: f32 = 0.0;
 var<private> g_sp: f32 = 0.0;
 var<private> g_rough: f32 = 0.5;
 fn hsh(p: vec2<f32>) -> f32 { return fract(sin(dot(p, vec2<f32>(127.1, 311.7))) * 43758.5453); }
+fn hsh3(p: vec3<f32>) -> f32 { return fract(sin(dot(p, vec3<f32>(127.1, 311.7, 74.7))) * 43758.5453); }
 fn lum(c: vec3<f32>) -> f32 { return dot(c, vec3<f32>(0.2126, 0.7152, 0.0722)); }
 
 struct FOut {
@@ -499,15 +500,24 @@ fn fs_shade(i: VOut) -> vec4<f32> {
         let cr = max(mat.shq.x, 0.02);
         let nc = normalize(n + mat.shq.y * 0.04 * vec3<f32>(sin(i.wpos.x * 90.0 + i.wpos.y * 37.0), sin(i.wpos.y * 83.0 + i.wpos.z * 51.0), sin(i.wpos.z * 77.0 + i.wpos.x * 29.0)));
         col += studio_direct(nc, v, l, vec3<f32>(0.0), vec3<f32>(0.04), cr, 0.0) * sun * mat.shp.z;
-        let fc = uv * mat.shp.y;
-        let ci = floor(fc);
-        let fq = fract(fc) - vec2<f32>(0.5);
-        let fm = step(hsh(ci), mat.shp.x * 0.6) * smoothstep(0.5, 0.3, length(fq));
-        let nf = normalize(nn + (vec3<f32>(hsh(ci + vec2<f32>(1.7)), hsh(ci + vec2<f32>(4.1)), hsh(ci + vec2<f32>(9.3))) - vec3<f32>(0.5)) * 1.4);
-        let fcol = mix(lin3(mat.shc.rgb), albedo, 0.25);
-        var fl = pow(max(dot(nf, h), 0.0), 60.0) * sun;
-        if (frame.info.y > 0.5) { fl = fl + env_spec(reflect(-v, nf), 0.25) * 0.5 * 0.35; }
-        col += fm * mat.shp.w * fcol * fl;
+        // flakes: tiny mirrors in the paint, each at its own angle, in 3D cells of the model; they flash when light and eye line up
+        let fq3 = mat3x3<f32>(vec3<f32>(0.36, 0.48, -0.8), vec3<f32>(-0.8, 0.6, 0.0), vec3<f32>(0.48, 0.64, 0.6)) * i.wpos * mat.shp.y * 0.85;
+        let ci = floor(fq3);
+        let fr = fract(fq3) - vec3<f32>(0.5);
+        let fw = length(fwidth(fq3));
+        let h1 = hsh3(ci);
+        let h2 = hsh3(ci + vec3<f32>(17.1));
+        let h3 = hsh3(ci + vec3<f32>(43.7));
+        let h4 = hsh3(ci + vec3<f32>(91.3));
+        let rad = 0.22 + 0.28 * h4;
+        let fm = step(h1, mat.shp.x * 0.8) * smoothstep(rad, rad * 0.55, length(fr));
+        let nf = normalize(nn + (vec3<f32>(h2, h3, hsh3(ci + vec3<f32>(5.5))) - vec3<f32>(0.5)) * 1.6);
+        let fcol = mix(lin3(mat.shc.rgb), albedo, 0.2) * (0.6 + 0.8 * h4);
+        var fsp = (pow(max(dot(nf, h), 0.0), 70.0) * 4.0 + pow(max(dot(nf, h), 0.0), 10.0) * 0.47) * sun;
+        if (frame.info.y > 0.5) { fsp = fsp + env_spec(reflect(-v, nf), 0.15) * 0.5; }
+        let fade = smoothstep(0.5, 1.0, fw);
+        col += mat.shp.w * mix(fm * fcol * fsp, fcol * mat.shp.x * 0.1, fade);
+        col = col * (1.0 + fm * (h3 - 0.5) * 0.15 * (1.0 - fade));
     }
     if (kind == 14) {
         // cloth: a soft sheen, or fibres that streak it (satin, silk)
