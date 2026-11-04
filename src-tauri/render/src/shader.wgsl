@@ -366,10 +366,13 @@ fn fs_shade(i: VOut) -> vec4<f32> {
         let nvh = clamp(abs(dot(nn, v)), 0.0, 1.0);
         let ln = smoothstep(0.35, 0.65, sin((i.wpos.y * mat.shp.x - t * mat.shq.x * 3.0) * 1.5708) * 0.5 + 0.5);
         let fl = max(1.0 - mat.shp.y * (0.35 * hsh(vec2<f32>(floor(t * 24.0), 1.0)) + 0.15 * sin(t * 60.0)), 0.0);
-        let edge = pow(1.0 - nvh, 2.5) * mat.shp.z;
+        let edge = pow(1.0 - nvh, 2.5) * mat.shp.z * (1.0 + mat.shq.w * 0.6 * sin(t * 3.0));
         let body = mat.shq.y * (0.35 + 0.65 * dot(albedo, vec3<f32>(0.3333)));
-        let c = lin3(mat.shc.rgb) * (edge + ln * 0.55 + body * (0.4 + 0.6 * ln)) * fl * 2.0 + emis * 2.0;
-        let al = clamp(mat.shp.w * (0.15 + 0.5 * ln + 0.9 * edge + body * 0.6), 0.0, 1.0) * fl;
+        let sw = exp(-pow((fract(i.wpos.y * 0.35 - t * 0.25) - 0.5) * 7.0, 2.0)) * mat.shd.x;
+        let gl = step(0.965 - mat.shq.z * 0.06, hsh(vec2<f32>(floor(i.wpos.y * 18.0), floor(t * 7.0)))) * mat.shq.z;
+        let ln2 = clamp(ln + gl * 0.8, 0.0, 1.0);
+        let c = lin3(mat.shc.rgb) * (edge + ln2 * 0.55 + body * (0.4 + 0.6 * ln2) + sw * 0.9 + gl * 1.2) * fl * 2.0 + emis * 2.0;
+        let al = clamp(mat.shp.w * (0.15 + 0.5 * ln2 + 0.9 * edge + body * 0.6 + sw * 0.5 + gl * 0.6), 0.0, 1.0) * fl;
         return vec4<f32>(tone(c), al);
     }
     if (kind == 10) {

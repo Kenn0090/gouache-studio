@@ -86,9 +86,10 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
   if(uSh==9){ vec3 Vh=normalize(uCam-vP); float nv=clamp(abs(dot(N,Vh)),0.0,1.0); float t=uTime;
     float ln=smoothstep(0.35,0.65,sin((vP.y*uShP.x-t*uShQ.x*3.0)*1.5708)*0.5+0.5);
     float fl=max(1.0-uShP.y*(0.35*hsh(vec2(floor(t*24.0),1.0))+0.15*sin(t*60.0)),0.0);
-    float edge=pow(1.0-nv,2.5)*uShP.z, body=uShQ.y*(0.35+0.65*dot(alb,vec3(0.3333)));
-    vec3 c=lin(uShC)*(edge+ln*0.55+body*(0.4+0.6*ln))*fl*2.0; if((uHas&16)!=0) c+=lin(mapSample(uEmis,uv+uPE).rgb)*2.0;
-    float al=clamp(uShP.w*(0.15+0.5*ln+0.9*edge+body*0.6),0.0,1.0)*fl;
+    float edge=pow(1.0-nv,2.5)*uShP.z*(1.0+uShQ.w*0.6*sin(t*3.0)), body=uShQ.y*(0.35+0.65*dot(alb,vec3(0.3333)));
+    float sw=exp(-pow((fract(vP.y*0.35-t*0.25)-0.5)*7.0,2.0))*uShD.x, gl=step(0.965-uShQ.z*0.06,hsh(vec2(floor(vP.y*18.0),floor(t*7.0))))*uShQ.z; ln=clamp(ln+gl*0.8,0.0,1.0);
+    vec3 c=lin(uShC)*(edge+ln*0.55+body*(0.4+0.6*ln)+sw*0.9+gl*1.2)*fl*2.0; if((uHas&16)!=0) c+=lin(mapSample(uEmis,uv+uPE).rgb)*2.0;
+    float al=clamp(uShP.w*(0.15+0.5*ln+0.9*edge+body*0.6+sw*0.5+gl*0.6),0.0,1.0)*fl;
     c*=uExpo; c=tone(c); o=vec4(pow(clamp(c,0.0,1.0),vec3(1.0/2.2)),al); return; }
   if(uSh==10){ vec3 Vg=normalize(uCam-vP); float nv=max(dot(N,Vg),1e-3); float rf=clamp(uShP.y,0.0,1.0);
     float F=clamp((0.04+0.96*pow(1.0-nv,5.0))*uShP.w,0.0,1.0); float eta=1.0/(1.0+0.6*uShP.x), d2=uShQ.y*0.05;

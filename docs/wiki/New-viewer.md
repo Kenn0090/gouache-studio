@@ -57,7 +57,7 @@ If the window cannot start, a message says why and the normal viewer is unchange
 
 These seven looks are in the **Shader** list (per texture set) and show the same in the 3D view and in the new viewer window. Their settings are in the Shader panel, each with its own set.
 
-- **Hologram** is see-through: edge glow, scan lines that move, a flicker and a soft body glow. It is blended over what is behind it.
+- **Hologram** is see-through: edge glow, scan lines that move, a bright band sweeping up, glitch slices, a pulsing edge, a flicker and a soft body glow. It is blended over what is behind it.
 - **Glass** bends the sky and shows the model's own back parts through it. Use the normal map for ripples. It doesn't bend other objects behind it.
 - **Fur** grows strands in layers out of the surface. The base colour map colours it; the tip colour fades in at the ends. Wind moves it.
 - **Iridescent** shifts colour with the angle you look from: soap bubble, beetle shell, oil slick.

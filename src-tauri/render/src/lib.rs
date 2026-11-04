@@ -336,7 +336,7 @@ struct FrameUniform {
 
 /// does this shader move by itself (so the window keeps drawing)?
 fn shader_moves(kind: i32, mu: &MatUniform) -> bool {
-    kind == 7 || (kind == 9 && (mu.shq[0] > 0.0 || mu.shp[1] > 0.0)) || (kind == 11 && mu.shp[3] > 0.0 && mu.shq[0] > 0.0)
+    kind == 7 || (kind == 9 && (mu.shq[0] > 0.0 || mu.shp[1] > 0.0 || mu.shq[2] > 0.0 || mu.shq[3] > 0.0 || mu.shd[0] > 0.0)) || (kind == 11 && mu.shp[3] > 0.0 && mu.shq[0] > 0.0)
 }
 
 #[repr(C)]
@@ -1391,7 +1391,7 @@ impl Gpu {
         }
         self.vb = Some(self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("vertices"), contents: bytemuck::cast_slice(&verts), usage: wgpu::BufferUsages::VERTEX }));
         self.groups.clear();
-        self.animated = s.groups.iter().any(|g| g.material.shader.kind == 7 || (g.material.shader.kind == 9 && (g.material.shader.q[0] > 0.0 || g.material.shader.p[1] > 0.0)) || (g.material.shader.kind == 11 && g.material.shader.p[3] > 0.0 && g.material.shader.q[0] > 0.0));
+        self.animated = s.groups.iter().any(|g| g.material.shader.kind == 7 || (g.material.shader.kind == 9 && (g.material.shader.q[0] > 0.0 || g.material.shader.p[1] > 0.0 || g.material.shader.q[2] > 0.0 || g.material.shader.q[3] > 0.0 || g.material.shader.d[0] > 0.0)) || (g.material.shader.kind == 11 && g.material.shader.p[3] > 0.0 && g.material.shader.q[0] > 0.0));
         for g in &s.groups {
             if g.indices.is_empty() {
                 continue;
