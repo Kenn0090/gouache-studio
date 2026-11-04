@@ -1,5 +1,6 @@
 ## 0.94.1
 
+- **Brow** is rebuilt as a wide bar of fine vertical fibres with ragged top and bottom edges, tinted lanes and pixel-fine speckle. **Boxes** have sharp corners and one flat colour per box. The Heavy Paint style brushes now paint at near-zero spacing, so the dabs overlap themselves and give the stacked, 3D-looking stripes, and their paths are smoothed so strokes come out continuous.
 - **Oil bristle** is rebuilt like Heavy Paint: the tip is a round cloud of small angular flakes, each leaving its own streak of a slightly different shade along the stroke, flat colour with ragged edges. The shaded version stays as **Oil bristle 3D**.
 - **Fried fluff** is rebuilt from Heavy Paint: a ragged-sided square painted with a damascus (contour-map) marble of reds and purples that smears along the stroke and softens when you lift the pen (new brush setting "Soften at end"). **Boxes** have sharp corners and a flat colour per box. The Heavy Paint style brushes now paint at near-zero spacing so the dabs overlap themselves, which gives the stacked 3D look.
 - **Charcoal** is now a long, thin, horizontal bar that sweeps a band of pixel-fine speckle, fading out at the edges by thinning the dots. Brushes have a new Grain size setting; size 1 gives single-pixel noise.
