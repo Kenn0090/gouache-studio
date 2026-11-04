@@ -441,7 +441,9 @@ fn fs_shade(i: VOut) -> vec4<f32> {
             let cc = fract(c2) - vec2<f32>(0.5);
             let pp = length(cc) * 1.4142;
             let aa = fwidth(pp) + 1e-3;
-            lvl = i0 + (1.0 - smoothstep(t * 1.15 - aa, t * 1.15 + aa, pp)) * step(0.001, t);
+            let lu = pow(dot(albedo, vec3<f32>(0.2126, 0.7152, 0.0722)), 1.0 / 2.2);
+            let tt = t * 1.15 + mat.she.x * (0.5 - lu) * 1.2 * 4.0 * t * (1.0 - t);
+            lvl = i0 + (1.0 - smoothstep(tt - aa, tt + aa, pp)) * step(0.001, t);
         } else {
             lvl = i0 + smoothstep(0.5 - mat.shp.y, 0.5 + mat.shp.y + 1e-4, f);
         }

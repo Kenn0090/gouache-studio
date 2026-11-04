@@ -137,7 +137,8 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
   if(uSh==16){ float l=dot(N,L)*0.5+0.5; float st=max(uShP.x,1.0), x=l*st, i0=floor(x), f=x-i0, lvl;
     if(uShP.z>0.01){ float w=uShP.z*0.5, t=clamp((f-0.5)/(w*2.0+1e-3)+0.5,0.0,1.0);
       vec2 c2=vec2(uv.x+uv.y,uv.x-uv.y)*uShP.w; vec2 cc=fract(c2)-0.5; float pp=length(cc)*1.4142, aa=fwidth(pp)+1e-3;
-      lvl=i0+(1.0-smoothstep(t*1.15-aa,t*1.15+aa,pp))*step(0.001,t); }
+      float lu=pow(dot(alb,vec3(0.2126,0.7152,0.0722)),1.0/2.2), tt=t*1.15+uShE.x*(0.5-lu)*1.2*4.0*t*(1.0-t);
+      lvl=i0+(1.0-smoothstep(tt-aa,tt+aa,pp))*step(0.001,t); }
     else lvl=i0+smoothstep(0.5-uShP.y,0.5+uShP.y+1e-4,f);
     float ramp=clamp(lvl/st,0.0,1.0);
     vec3 sh=alb*(1.0-uShQ.y); sh=mix(vec3(dot(sh,vec3(0.2126,0.7152,0.0722))),sh,1.0+uShQ.z*1.5); sh*=mix(vec3(1.0),lin(uShC)*2.0,uShQ.w);

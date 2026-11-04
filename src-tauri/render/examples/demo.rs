@@ -53,7 +53,7 @@ fn main() {
         for i in 0..cnt as usize { p.extend([sp[i * 3] + off, sp[i * 3 + 1], sp[i * 3 + 2]]); n.extend([sn[i * 3], sn[i * 3 + 1], sn[i * 3 + 2]]); uv.extend([suv[i * 2], suv[i * 2 + 1]]); }
         let idx: Vec<u32> = sidx.iter().map(|i| i + cnt * k as u32).collect();
         let base = mk(&|x, y| if (x / 8 + y / 8) % 2 == 0 { [225, 190, 150, 255] } else { [150, 100, 80, 255] });
-        let shader = ShaderParams { kind: *kind, p: *pp, q: *q, c: *c, d: *d, skin: *skin, e: if *kind == 17 { [0.6, 0.8, 0., 0.] } else { [0.; 4] } };
+        let shader = ShaderParams { kind: *kind, p: *pp, q: *q, c: *c, d: *d, skin: *skin, e: if *kind == 17 { [0.6, 0.8, 0., 0.] } else if *kind == 16 { [std::env::var("GOUACHE_FOLLOW").ok().and_then(|v| v.parse().ok()).unwrap_or(0.0), 0., 0., 0.] } else { [0.; 4] } };
         groups.push(Group { name: name.to_string(), indices: idx, material: Material { shader, base: Some(base), orm: None, normal: None, emissive: None, height: if std::env::var_os("GOUACHE_DISP").is_some() { let mut px = Vec::new(); for y in 0..64u32 { for x in 0..64u32 { let v = if ((x / 8) + (y / 8)) % 2 == 0 { 255u8 } else { 0 }; px.extend_from_slice(&[v, v, v, 255]); } } Some(Tex8 { width: 64, height: 64, rgba: px }) } else { None }, thick: None, udim: None, fold_off: 0.0, rough: 0.45, metal: if *kind == 2 { 1.0 } else { 0.0 }, partial: false } });
     }
     let fb = cnt * kinds.len() as u32;
