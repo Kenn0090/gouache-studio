@@ -28,6 +28,8 @@ function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren
   if(tonal)S('exposure','Exposure',.01,1,.01,pct,null,()=>ui.tonalExposure,v=>{ui.tonalExposure=v;});
   else if(sm)S('strength','Strength',0,1,.01,pct);else S('opacity','Opacity',0,1,.01,pct);
   S('flow','Flow',.01,1,.01,pct);if(!brush.tip)S('hardness','Hardness',0,1,.01,pct);
+  /* (0.95, Kenn) line smoothness where you can see it: Smoothing (the pen follows on a string of paint) and Correction (the line is ironed out from the points around it) */
+  if(!tonal&&(t==='brush'||t==='erase')&&ui.mode!=='p3d'){S('smoothing','Smoothing',0,1,.01,pct,null,null,null,'Smooths the line while you draw (the brush follows the pen a little behind)');S('correction','Correction',0,1,.01,pct,null,null,null,'Irons out wobble in the line. Higher = straighter, smoother lines; the line trails the pen a little');}
   bar.append(el('span',{class:'optsep'}));
   const tg=(label,on,fn,title)=>el('button',{class:'optchip'+(on?' on':''),'aria-pressed':String(!!on),title:title||'',text:label,onclick:fn});
   if(t==='heal'){bar.append(tg('Spot',heal.mode==='spot',()=>{heal.mode='spot';healSave();buildBrushPanel();buildOptBar();healMarker();},'Paint over a flaw: clean texture from nearby'),
@@ -50,7 +52,7 @@ function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren
   if(!more)return;
   bar.append(el('span',{class:'optbreak'}));
   const X=(key,label,min,max,step,fmt,id)=>S(key,label,min,max,step,fmt);
-  X('spacing','Spacing',.01,1.5,.01,pct,'bSpace');X('smoothing','Smoothing',0,1,.01,pct,'bSmooth');X('lazy','Lazy mouse',0,200,1,v=>v?v+' px':'off','bLazy');X('grain','Grain',0,1,.01,pct,'bGrain');
+  X('spacing','Spacing',.01,1.5,.01,pct,'bSpace');X('lazy','Lazy mouse',0,200,1,v=>v?v+' px':'off','bLazy');X('grain','Grain',0,1,.01,pct,'bGrain');
   X('sizeJitter','Size jitter',0,1,.01,pct,'bSJ');X('angleJitter','Angle jitter',0,1,.01,pct,'bAJ');
   bar.append(el('span',{class:'optsep'}));
   bar.append(tg('Pressure: opacity',brush.pOpacity,()=>{brush.pOpacity=!brush.pOpacity;brushEdited();buildBrushPanel();},'Pen pressure changes the opacity'));

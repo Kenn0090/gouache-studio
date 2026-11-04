@@ -1,7 +1,7 @@
 /* ================= Brush engine ================= */
 const BRUSH_DEFAULTS={size:24,opacity:1,flow:1,hardness:.85,spacing:.06,grain:0,pattern:0,patSize:10,patDen:1,patRamp:0,texKey:'',texScale:128,texDepth:0,texInvert:false,taperStart:0,taperEnd:0,smoothing:.25,pSize:true,pOpacity:false,minSize:.2,buildup:false,curve:0,strength:.6,charge:0,sampleAll:true,hueMix:0,
   tip:null,angle:0,roundness:1,flipX:false,flipY:false,randFlipX:false,randFlipY:false,sizeJitter:0,angleJitter:0,scatter:0,count:1,bothAxes:false,followDir:false,
-  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,pigment:1,wet:0,pickup:0,mixLab:false,paintMix:.7,mix:false,mixLoad:.8,mixPick:.5,mixWet:.7,mixDry:0,mixUse:.2,mixBristles:0,mixDryB:0,mixThick:0,mixEven:false,mixWC:0,mixWCEdge:0,mixWCPools:0,mixWCGran:0,mixWCBloom:0,mixTooth:0,spray:0,sprayDen:.8,sprayMist:0,sprayVar:0,sprayFleck:0,sprayRing:0,spraySwirl:0,sprayPress:0,spraySolid:1,tooth:0,simP:'off',simLevel:.7,drip:0,dripAuto:0,dripWidth:1,smoothCurve:false};
+  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,correction:0,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,pigment:1,wet:0,pickup:0,mixLab:false,paintMix:.7,mix:false,mixLoad:.8,mixPick:.5,mixWet:.7,mixDry:0,mixUse:.2,mixBristles:0,mixDryB:0,mixThick:0,mixEven:false,mixWC:0,mixWCEdge:0,mixWCPools:0,mixWCGran:0,mixWCBloom:0,mixTooth:0,spray:0,sprayDen:.8,sprayMist:0,sprayVar:0,sprayFleck:0,sprayRing:0,spraySwirl:0,sprayPress:0,spraySolid:1,tooth:0,simP:'off',simLevel:.7,drip:0,dripAuto:0,dripWidth:1,smoothCurve:false};
 /* lazy mouse: the brush follows the pointer on a string of R pixels, so it only moves once the string is pulled tight */
 function lazyStep(s,x,y,R){if(!(R>0))return [x,y];if(s.lx===undefined){s.lx=s.sx;s.ly=s.sy;}const dx=x-s.lx,dy=y-s.ly,d=Math.hypot(dx,dy);if(d<=R)return null;s.lx+=dx*(d-R)/d;s.ly+=dy*(d-R)/d;return [s.lx,s.ly];}
 /* Keep stabilization consistent across pointer sample rates. At 60 Hz this matches the
@@ -11,6 +11,20 @@ function strokeSmooth(s,x,y,p,amount,time,bypass){
   const dt=s.smoothAt==null?1000/60:clamp(now-s.smoothAt,1,100),scale=dt/(1000/60),k=1-Math.pow(response,scale);
   const pressureK=1-Math.pow(Math.min(response,.6),scale);
   s.smoothAt=now;const pos=bypass?1:k;s.sx+=(x-s.sx)*pos;s.sy+=(y-s.sy)*pos;s.sp+=(p-s.sp)*pressureK;return [s.sx,s.sy,s.sp];}
+/* Line correction (0.95, Kenn): the line is drawn a little behind the pen, from the average of the points around it (both the ones behind and the ones just ahead),
+   so wobble is ironed out without the usual stabiliser lag or rounding off corners; when the pen lifts, the rest is flushed so the line ends where the pen did.
+   W = how far (in image pixels, along the path) the averaging reaches. */
+function corrFeed(s,x,y,p,W,flush,endX,endY){const Q=s.cq||(s.cq={x:[],y:[],p:[],l:[],i:0,j:0});
+  const push=(a,b,c)=>{const n=Q.x.length,l=n?Q.l[n-1]+Math.hypot(a-Q.x[n-1],b-Q.y[n-1]):0;Q.x.push(a);Q.y.push(b);Q.p.push(c);Q.l.push(l);};
+  if(!flush)push(x,y,p);else if(endX!==undefined&&Q.x.length)push(endX,endY,p);
+  const out=[],n=Q.x.length;
+  while(Q.i<n){const i=Q.i,li=Q.l[i];if(!flush&&Q.l[n-1]-li<W)break;
+    if(flush&&i===n-1){out.push([Q.x[i],Q.y[i],Q.p[i]]);Q.i++;continue;}
+    while(Q.j<i&&li-Q.l[Q.j]>W)Q.j++;
+    let sx=0,sy=0,sp=0,sw=0;
+    for(let j=Q.j;j<n;j++){const d=Math.abs(Q.l[j]-li);if(d>W){if(Q.l[j]>li)break;continue;}const w=1-d/(W+1e-6);sx+=Q.x[j]*w;sy+=Q.y[j]*w;sp+=Q.p[j]*w;sw+=w;}
+    out.push(sw>0?[sx/sw,sy/sw,sp/sw]:[Q.x[i],Q.y[i],Q.p[i]]);Q.i++;}
+  return out;}
 const brush=Object.assign({},BRUSH_DEFAULTS);
 function pcurve(p,o){return Math.pow(clamp(p,0,1),Math.pow(2,-o.curve*1.6));}
 function radiusAt(p){const o=stroke.o;let r=o.size/2*(stroke.rs||1);if(o.pSize)r*=o.minSize+(1-o.minSize)*pcurve(p,o);return Math.max(.5,r);}
