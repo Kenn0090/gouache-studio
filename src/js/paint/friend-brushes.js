@@ -40,7 +40,7 @@ const FRIEND_PRESETS=[
   {name:'Blur ice',tool:'smudge',blendMode:'smear',streak:.7,tip:FR_TIPS.box,size:270,hardness:1,spacing:.05,strength:.85,charge:0,pSize:false,pOpacity:false,smoothing:.3},
   {name:'Boxes',tool:'brush',tip:FR_TIPS.sharpBox,size:200,hardness:1,spacing:.002,followDir:false,hueJitter:.03,valJitter:.14,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Brow',tool:'brush',tip:FR_TIPS.hair,size:240,hardness:1,spacing:.002,followDir:true,laneN:60,laneMode:0,laneHue:.14,laneVal:.12,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
-  {name:'Charcoal',tool:'brush',tip:FR_TIPS.fbar,size:220,hardness:1,grain:1,grainSize:2,spacing:.002,followDir:false,flow:.8,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
+  {name:'Charcoal',tool:'brush',tip:FR_TIPS.fbar,size:120,hardness:1,grain:.8,grainSize:1,spacing:.002,followDir:false,flow:1,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Dither',tool:'brush',tip:null,roundness:.03,angle:0,spray:1.7,sprayDen:4,sprayMist:.2,size:200,hardness:1,spacing:.002,laneN:40,laneMode:2,laneHue:.06,laneVal:.1,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Fan',tool:'brush',fanFill:1,size:60,hardness:1,flow:1,spacing:.05,pSize:false,pOpacity:false,smoothing:.3,laneN:40,laneHue:.12,laneVal:.12},
   {name:'Fan fade',tool:'brush',fanFill:2,size:60,hardness:1,flow:1,spacing:.05,pSize:false,pOpacity:false,smoothing:.3,laneN:40,laneHue:.12,laneVal:.12},

@@ -129,6 +129,7 @@ float brushMask(vec2 pix){
   if(uPaper.z>0.0){ float ph=pap_h(pix,int(uPaper.x+0.5),max(uPaper.y,0.2)); m*=clamp(1.0-uPaper.z*(1.0-smoothstep(0.40,0.60,ph)),0.0,1.0); } /* the paint only catches on the peaks of the paper */
   if(uTexSet.y>0.0){ float tv=texture(uTexImg,fract(pix/max(uTexSet.x,4.0))).r; if(uTexSet.z>0.5) tv=1.0-tv; tv=clamp((tv-0.5)*uTexSet.w+0.5,0.0,1.0); m*=mix(1.0,tv,uTexSet.y); } /* the paint only shows where the picture is light */
   if(uPat.x>0.5){ float cc=clamp(m*uPat.z*(0.8+0.4*pt_n(pix/(uPat.y*5.0)+uPat.w)),0.0,1.0); float f=pt_field(pix,int(uPat.x+0.5),max(uPat.y,1.0),uPat.w); m=1.0-smoothstep(cc-0.06,cc+0.06,f); if(cc<=0.0) m=0.0; }
+  if(uGrain>0.0&&uGrainScale.x<1.01){ float hh=fract(sin(dot(floor(pix),vec2(12.9898,78.233)))*43758.5453); m=(m*uGrain>hh)?1.0:0.0; } else
   if(uGrain>0.0){ vec2 q=pix/uGrainScale; float n=vnoise(q,uPeriod)*0.6+vnoise(q*2.0,uPeriod*2.0)*0.4;
     m*=clamp(mix(1.0,n*2.3-0.5,uGrain),0.0,1.0); }
   if(uUseDual==1){ float dl=texture(uDual,(pix+uDualOff)/uDualSize).r; if(uDualMode==1) dl=1.0-dl; m*=mix(1.0,dl,uDualAmt); }
