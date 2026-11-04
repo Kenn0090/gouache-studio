@@ -9,7 +9,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
   buf+='vn 0 1 0\n';for(let j=0;j<M;j++)for(let i=0;i<N;i++){const a=j*(N+1)+i+1,b=a+1,c=a+N+1,d=c+1;buf+='f '+a+'/'+a+'/1 '+c+'/'+c+'/1 '+d+'/'+d+'/1 '+b+'/'+b+'/1\n';if(buf.length>1e6)flush();}
   flush();out.end();require('child_process').execSync('sleep 2');}}
 (async()=>{
- const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const ctx=await b.newContext({viewport:{width:1440,height:1000}});const p=await ctx.newPage();
  await p.route('**/*',r=>{const u=r.request().url();
   if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});

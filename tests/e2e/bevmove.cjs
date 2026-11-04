@@ -1,7 +1,7 @@
 /* Renders a steel cube and two intersecting boxes with the Bevel shader off and on, into out/bevel-sheet-*.png */
 const {chromium}=require('playwright');const OLD=__dirname+'/';
 const only='cross';
-(async()=>{const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+(async()=>{const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const p=await (await b.newContext({viewport:{width:1100,height:760}})).newPage();
  await p.addInitScript(()=>{localStorage.setItem('gs.p3d',JSON.stringify({size:128,layout:'3d'}));});
  await p.route('**/*',r=>{const u=r.request().url();

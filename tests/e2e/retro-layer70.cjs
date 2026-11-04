@@ -1,7 +1,7 @@
 /* 0.70: the Retro (N64 / PSX) layer effect: on top of the stack for everything below, or clipped to one layer; also in 3D Paint. */
 const {chromium}=require('playwright'),crypto=require('crypto');
 const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
-(async()=>{const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+(async()=>{const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const p=await (await b.newContext({viewport:{width:1440,height:900}})).newPage();const errs=[];
  p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));
  await p.addInitScript(()=>{try{localStorage.setItem('gs.p3d',JSON.stringify({size:128,layout:'3d'}));}catch(e){}});

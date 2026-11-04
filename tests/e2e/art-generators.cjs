@@ -1,6 +1,6 @@
 const {chromium}=require('playwright'),path=require('path');
 let failures=0;const ok=(v,s)=>{console.log((v?'PASS ':'FAIL ')+s);if(!v)failures++;};
-(async()=>{const b=await chromium.launch({channel:'msedge',headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});const p=await b.newPage({viewport:{width:1440,height:1000}}),errors=[];
+(async()=>{const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',channel:'msedge',headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});const p=await b.newPage({viewport:{width:1440,height:1000}}),errors=[];
  await p.addInitScript(()=>localStorage.setItem('gs.p3d',JSON.stringify({size:128,layout:'3d'})));p.on('pageerror',e=>errors.push(e.message));p.on('console',m=>{if(m.type()==='error'&&/shader|compile|link/i.test(m.text()))errors.push(m.text());});
  await p.route('**/*',r=>r.request().url().startsWith('file:')?r.continue():r.fulfill({body:'',contentType:'text/javascript'}));await p.goto('file://'+path.resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForFunction(()=>window.__gs);
  await p.evaluate(()=>{const G=__gs;G.closeWelcome();G.newDoc(128,128,8,[1,1,1],'Generators',false);window.testFill=G.cmdNewFillLayer();window.testRow=G.msAdd(testFill,'gen',{p:G.msGenDefaults('linear')});});

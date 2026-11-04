@@ -3,7 +3,7 @@ const OLD=__dirname+'/';
 const OUT=__dirname+'/out/';require('fs').mkdirSync(OUT,{recursive:true});
 let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
 (async()=>{
- const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const ctx=await b.newContext({viewport:{width:1440,height:1000}});
  await ctx.grantPermissions(['clipboard-read','clipboard-write'],{origin:'file://'}).catch(()=>{});
  const p=await ctx.newPage();

@@ -1,7 +1,7 @@
 /* 0.71: material inputs, mesh-ID bakes, masks, layer keys and private suggestion handling. */
 const {chromium}=require('playwright');const path=require('path');const {pathToFileURL}=require('url');let fails=0;
 const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
-(async()=>{const b=await chromium.launch({channel:'msedge',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+(async()=>{const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',channel:'msedge',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const p=await(await b.newContext({viewport:{width:1280,height:820}})).newPage(),errs=[];p.on('pageerror',e=>errs.push(e.stack));
  await p.addInitScript(()=>{localStorage.setItem('gs.welcome','no');});
  await p.route('**/*',r=>{const u=r.request().url();if(u.includes('pako'))return r.fulfill({path:path.resolve(__dirname,'node_modules/pako/dist/pako.min.js'),contentType:'text/javascript'});

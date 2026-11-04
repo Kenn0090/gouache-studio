@@ -2,7 +2,7 @@
 const {chromium}=require('playwright');
 let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
 (async()=>{
- const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const p=await (await b.newContext({viewport:{width:1500,height:950}})).newPage();
  const errs=[];p.on('pageerror',e=>errs.push(e.message));
  await p.addInitScript(()=>{const C={tp:0,tex:0,fbo:0};window.__gl=C;const G=WebGL2RenderingContext.prototype;for(const [n,k] of [['getTexParameter','tp'],['texImage2D','tex'],['createFramebuffer','fbo']]){const o=G[n];G[n]=function(){C[k]++;return o.apply(this,arguments);};}});

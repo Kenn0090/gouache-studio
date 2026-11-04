@@ -3,7 +3,7 @@ const {chromium}=require('playwright');
 const OLD=__dirname+'/',fs=require('fs');
 const OUT=require("path").resolve(__dirname,"../../docs/wiki/images")+"/";
 (async()=>{
- const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const ctx=await b.newContext({viewport:{width:1600,height:950}});const p=await ctx.newPage();
  await p.addInitScript(()=>{try{localStorage.setItem('gs.p3d',JSON.stringify({size:512,layout:'3d'}));}catch(e){}});
  await p.route('**/*',r=>{const u=r.request().url();

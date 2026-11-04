@@ -4,7 +4,7 @@ const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAI
 const FILE=process.env.PSD||'/mnt/project-files/Sketches.psd';if(!fs.existsSync(FILE)){console.log('SKIP no PSD');process.exit(0);}
 const srv=require('http').createServer((q,res)=>{res.writeHead(200,{'Access-Control-Allow-Origin':'*','Content-Length':fs.statSync(FILE).size});fs.createReadStream(FILE).pipe(res);}).listen(47811);
 (async()=>{
- const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();
  await p.route('**/*',r=>{const u=r.request().url();
   if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});

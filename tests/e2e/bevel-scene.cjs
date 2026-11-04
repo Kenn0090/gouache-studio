@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,'../../dist');let fails=0;const ok=(v,m)=>{con
 (async()=>{const server=http.createServer((req,res)=>{const f=path.resolve(root,'.'+decodeURIComponent(new URL(req.url,'http://localhost').pathname));if(!f.startsWith(root+path.sep)||!fs.existsSync(f)){res.writeHead(404);return res.end();}res.setHeader('Content-Type',f.endsWith('.html')?'text/html':'application/octet-stream');fs.createReadStream(f).pipe(res);});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const url='http://127.0.0.1:'+server.address().port;
 const args=process.env.GS_BEVEL_GPU?[]:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'];
-const b=await chromium.launch({channel:'msedge',headless:true,args}),p=await b.newPage({viewport:{width:1400,height:950}}),errors=[];p.setDefaultTimeout(60000);
+const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',channel:'msedge',headless:true,args}),p=await b.newPage({viewport:{width:1400,height:950}}),errors=[];p.setDefaultTimeout(60000);
 p.on('pageerror',e=>errors.push(e.stack));p.on('console',m=>{if(m.type()==='warning'||m.type()==='error')console.log('Browser',m.text());});
 await p.addInitScript(()=>{localStorage.setItem('gs.welcome','no');});await p.route('**/*',r=>r.request().url().startsWith(url)?r.continue():r.abort());await p.goto(url+'/index.html?debug');await p.waitForFunction(()=>window.__gs);
 const probes=await p.evaluate(async()=>{const g=__gs,gl=g.gl;g.closeWelcome();g.newDoc(64,64);g.setMode('bake');g.bvSettings().on=false;g.bvSettings().preview=false;
