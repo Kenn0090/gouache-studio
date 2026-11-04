@@ -1,5 +1,8 @@
 ## 0.94.1
 
+- **UV filtering.** Pictures projected on the model (material pictures and mask pictures, in every projection) have a new **UV filtering** choice: **Smooth** blends between the picture's pixels, **Nearest** keeps them crisp, for pixel-art looks.
+- **Custom tangents on paths.** With path points selected, **Handle length** sets how long their handles are compared with the automatic smooth ones, and **Break handles** lets each handle of a point move on its own (**Join handles** puts them back as a pair).
+
 - **More of imported brushes comes across.** A Procreate brush's second (sub) brush becomes the app's **Dual brush** (its tip, size, spacing, scatter and count), and a Photoshop **bristle tip** becomes the **Mixing brush with bristles** (its density sets how many bristles; flat shapes give a flatter tip). The import message says what was converted.
 
 - **Smaller installer.** Each release now also offers a smaller Windows installer (about 180 MB lighter). It fetches the Library files, skies and grunge maps when first used and keeps a copy; File › Content… can download them all for offline work.
