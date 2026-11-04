@@ -12,13 +12,14 @@
      material and follow the Directional Light through a parameter collection).
    The look is a close match, not identical: each engine lights differently. */
 /* bump this when a look's shader changes in a way that matters: Gouache then offers to update the master shaders already in a game */
-const ESH_MASTER_VER=3;
-/* shared files written before version 3 had errors (Unity: a broken comment in the shader and a lost backslash in GouacheAssign.cs,
-   which stopped every script in the project, the live link too): they are replaced without asking */
-const ESH_MASTER_FIX=3;
+const ESH_MASTER_VER=4;
+/* shared files from before are replaced without asking: before version 3 they had errors (Unity: a broken comment in the shader and a lost
+   backslash in GouacheAssign.cs, which stopped every script in the project, the live link too); version 4 (0.94.4) fixed giving the model
+   its materials in Unity's newer material import mode */
+const ESH_MASTER_FIX=4;
 async function eshStale(path){if(!/\.(shader|cs|gdshader)$/i.test(path))return false;
   try{const t=new TextDecoder().decode(await platform.readFile(path));const m=/gouache-master (\d+)/.exec(t);
-    if(m)return +m[1]<ESH_MASTER_FIX;return /Replace\('\\', '\/'\)/.test(t);}catch(e){return false;}}
+    if(m)return +m[1]<ESH_MASTER_FIX;return /\.cs$/i.test(path);/* our scripts before 0.94.4 had no version line */}catch(e){return false;}}
 const ESH_KIND_NAMES=['Standard','Skin','Brushed metal','Velvet','Toon','Cel','Spec/Gloss','Panner','Retro','Hologram','Glass','Fur','Iridescent','Car paint','Cloth sheen','Wax / marble glow','Halftone cel','Ink toon'];
 const ESH_SHADER_GUID='47a0c5e1b2d34f6a8c91e0f3d5b7a901';
 function eshGuid(s){let a=0x811c9dc5,b=0x1b873593,c=0x9e3779b1,d=0x85ebca6b;for(let i=0;i<s.length;i++){const k=s.charCodeAt(i);a=Math.imul(a^k,16777619);b=Math.imul(b^k,2246822519);c=Math.imul(c^(k<<1),3266489917);d=Math.imul(d^(k+i),668265263);}
@@ -716,26 +717,81 @@ Shader "Gouache/Shaded (Built-in)"
 `;
 
 /* Unity: models under Assets/Gouache get the materials Gouache exported for them, by name */
-const ESH_UNITY_ASSIGN=`// Gouache Studio: gives a model imported under Assets/Gouache the materials Gouache exported next to it.
+const ESH_UNITY_ASSIGN=`// gouache-master ${ESH_MASTER_VER}
+// Gouache Studio: gives a model imported under Assets/Gouache the materials Gouache exported next to it.
 // A material on the model is matched by name to a .mat file in the model's folder (spaces become underscores).
+// Works with both of Unity's material import modes; if the .mat files arrive after the model, the model is imported again.
 #if UNITY_EDITOR
+using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
 
 public class GouacheAssign : AssetPostprocessor
 {
-    Material OnAssignMaterialModel(Material previous, Renderer renderer)
+    static string Dir(string path) { return Path.GetDirectoryName(path).Replace('\\\\', '/'); }
+
+    static Material Find(string dir, string name)
     {
-        if (!assetPath.Contains("/Gouache/")) return null;
-        string dir = Path.GetDirectoryName(assetPath).Replace('\\\\', '/');
-        string[] names = { previous.name, previous.name.Replace(' ', '_') };
+        if (string.IsNullOrEmpty(name)) return null;
+        name = name.Replace(" (Instance)", "");
+        string[] names = { name, name.Replace(' ', '_') };
         foreach (string n in names)
         {
             Material m = AssetDatabase.LoadAssetAtPath<Material>(dir + "/" + n + ".mat");
             if (m != null) return m;
         }
         return null;
+    }
+
+    // the older material import mode asks for each material
+    Material OnAssignMaterialModel(Material previous, Renderer renderer)
+    {
+        if (!assetPath.Contains("/Gouache/") || previous == null) return null;
+        return Find(Dir(assetPath), previous.name);
+    }
+
+    // the newer mode (Import via Material Description): swap them on the finished model
+    void OnPostprocessModel(GameObject root)
+    {
+        if (!assetPath.Contains("/Gouache/")) return;
+        string dir = Dir(assetPath);
+        foreach (Renderer r in root.GetComponentsInChildren<Renderer>(true))
+        {
+            Material[] mats = r.sharedMaterials;
+            bool changed = false;
+            for (int i = 0; i < mats.Length; i++)
+            {
+                if (mats[i] == null) continue;
+                Material m = Find(dir, mats[i].name);
+                if (m != null && m != mats[i]) { mats[i] = m; changed = true; }
+            }
+            if (changed) r.sharedMaterials = mats;
+        }
+    }
+
+    // .mat files that came in after the model: import the model again so it picks them up
+    static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)
+    {
+        HashSet<string> dirs = new HashSet<string>();
+        HashSet<string> models = new HashSet<string>();
+        foreach (string p in imported)
+        {
+            if (!p.Contains("/Gouache/")) continue;
+            string e = Path.GetExtension(p).ToLowerInvariant();
+            if (e == ".mat") dirs.Add(Dir(p));
+            else if (e == ".fbx" || e == ".obj" || e == ".glb" || e == ".gltf") models.Add(p);
+        }
+        foreach (string d in dirs)
+        {
+            if (!Directory.Exists(d)) continue;
+            foreach (string f in Directory.GetFiles(d))
+            {
+                string e = Path.GetExtension(f).ToLowerInvariant();
+                string p = f.Replace('\\\\', '/');
+                if ((e == ".fbx" || e == ".obj" || e == ".glb" || e == ".gltf") && !models.Contains(p)) AssetDatabase.ImportAsset(p, ImportAssetOptions.ForceUpdate);
+            }
+        }
     }
 }
 #endif

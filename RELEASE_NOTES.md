@@ -1,5 +1,6 @@
 ## 0.94.4
 
+- **Game engines:** models sent as FBX now open in Unreal and Unity, the live link is added by itself on the first send (Unreal: restart once), and the model gets its materials in Unreal and Unity.
 - **New viewer: strokes show at once.** The window draws your brush mark itself as you paint, then the finished paint replaces it. Turning the model in the window is also lighter.
 ## 0.94.3
 
