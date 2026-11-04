@@ -1,7 +1,7 @@
 /* ================= Brush engine ================= */
 const BRUSH_DEFAULTS={size:24,opacity:1,flow:1,hardness:.85,spacing:.06,grain:0,pattern:0,patSize:10,patDen:1,patRamp:0,texKey:'',texScale:128,texDepth:0,texInvert:false,taperStart:0,taperEnd:0,smoothing:.25,pSize:true,pOpacity:false,minSize:.2,buildup:false,curve:0,strength:.6,charge:0,sampleAll:true,hueMix:0,
   tip:null,angle:0,roundness:1,flipX:false,flipY:false,randFlipX:false,randFlipY:false,sizeJitter:0,angleJitter:0,scatter:0,count:1,bothAxes:false,followDir:false,
-  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,correction:0,lineBlend:false,fanFill:0,softEnd:0,blendMode:'smear',streak:0,mixKeep:false,laneN:0,laneHue:0,laneVal:0,laneMode:0,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,pigment:1,wet:0,pickup:0,mixLab:false,paintMix:.7,mix:false,mixLoad:.8,mixPick:.5,mixWet:.7,mixDry:0,mixUse:.2,mixBristles:0,mixDryB:0,mixThick:0,mixEven:false,mixWC:0,mixWCEdge:0,mixWCPools:0,mixWCGran:0,mixWCBloom:0,mixTooth:0,spray:0,sprayDen:.8,sprayMist:0,sprayVar:0,sprayFleck:0,sprayRing:0,spraySwirl:0,sprayPress:0,spraySolid:1,tooth:0,simP:'off',simLevel:.7,drip:0,dripAuto:0,dripWidth:1,smoothCurve:false};
+  hueJitter:0,satJitter:0,valJitter:0,jitterPerStroke:false,lazy:0,correction:0,lineBlend:false,grainSize:6,fanFill:0,softEnd:0,blendMode:'smear',streak:0,mixKeep:false,laneN:0,laneHue:0,laneVal:0,laneMode:0,endInk:0,dual:null,pFlow:false,edgeSat:0,glaze:0,pigment:1,wet:0,pickup:0,mixLab:false,paintMix:.7,mix:false,mixLoad:.8,mixPick:.5,mixWet:.7,mixDry:0,mixUse:.2,mixBristles:0,mixDryB:0,mixThick:0,mixEven:false,mixWC:0,mixWCEdge:0,mixWCPools:0,mixWCGran:0,mixWCBloom:0,mixTooth:0,spray:0,sprayDen:.8,sprayMist:0,sprayVar:0,sprayFleck:0,sprayRing:0,spraySwirl:0,sprayPress:0,spraySolid:1,tooth:0,simP:'off',simLevel:.7,drip:0,dripAuto:0,dripWidth:1,smoothCurve:false};
 /* lazy mouse: the brush follows the pointer on a string of R pixels, so it only moves once the string is pulled tight */
 function lazyStep(s,x,y,R){if(!(R>0))return [x,y];if(s.lx===undefined){s.lx=s.sx;s.ly=s.sy;}const dx=x-s.lx,dy=y-s.ly,d=Math.hypot(dx,dy);if(d<=R)return null;s.lx+=dx*(d-R)/d;s.ly+=dy*(d-R)/d;return [s.lx,s.ly];}
 /* Keep stabilization consistent across pointer sample rates. At 60 Hz this matches the
@@ -64,7 +64,7 @@ function beginStroke(L,x,y,p,o){
   const cg=o.space&&(o.tool!=='smudge'||o.space.mesh)?o.space:null;if(cg)clearTarget(cg.buf,tint?tc:undefined);
   const SW=cg?cg.w:W,SH=cg?cg.h:H;
   const sampleT=o.tool==='smudge'&&o.sampleAll&&!o.space&&!L.maskOf&&!L.quick?compositeMap(doc.map):null;
-  const gx=Math.max(1,Math.round(W/6)),gy=Math.max(1,Math.round(H/6));
+  const gcell=clamp(o.grainSize||6,1,40),gx=Math.max(1,Math.round(W/gcell)),gy=Math.max(1,Math.round(H/gcell));
   stroke={lazy,fd:o.space?'all':null,L,o,x,y,p,lsx:x,lsy:y,dir:0,carry:0,bb:[W,H,0,0],clearBox,gScale:[W/gx,H/gy],gPeriod:[gx,gy],space:cg,rs:cg?(o.cageRs||1):1,SW,SH,sym:o.sym||null,tint,grey:doc.map!=='base',sampleT,sampleAt:performance.now()};
   /* Resolve the library and repeating mask once, rather than per dab at low spacing. */
   stroke.dualU=typeof dualUniforms==='function'?dualUniforms(o.dual,false):null;
