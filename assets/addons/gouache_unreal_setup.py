@@ -148,6 +148,7 @@ class Graph:
 F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
 F2 = unreal.CustomMaterialOutputType.CMOT_FLOAT2
 F3 = unreal.CustomMaterialOutputType.CMOT_FLOAT3
+F4 = unreal.CustomMaterialOutputType.CMOT_FLOAT4
 
 
 def master_path(look, alpha):
@@ -246,7 +247,53 @@ def build_master(look, kind, alpha, S, existing=None):
     g.link(nrm, "RGB", nrmc, "N")
     g.link(ns, "", nrmc, "K")
 
-    custom_light = look in ("Toon", "Cel", "Retro")
+    if look == "Hologram":
+        mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+        mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+        mat.set_editor_property("two_sided", True)
+        N = g.node(unreal.MaterialExpressionPixelNormalWS, -500, 920)
+        V = g.node(unreal.MaterialExpressionCameraVectorWS, -500, 1040)
+        P = g.node(unreal.MaterialExpressionWorldPosition, -500, 1160)
+        T = g.node(unreal.MaterialExpressionTime, -500, 1280)
+        col = vector("HoloColour", [0.2, 0.85, 1, 1])
+        ps = [scalar("SeeThrough", 0.8), scalar("EdgeGlow", 1.4), scalar("ScanLines", 40), scalar("ScanSpeed", 0.6), scalar("Flicker", 0.35), scalar("Glitch", 0.5), scalar("EdgePulse", 0.5), scalar("Sweep", 0.6), scalar("BodyGlow", 0.5)]
+        names = ["See", "Glow", "Lines", "Speed", "Flick", "Glitch", "Pulse", "Sweep", "Body"]
+        code = (
+            "float3 n = normalize(N); float3 vv = normalize(V); float nvh = saturate(abs(dot(n, vv))); float t = T; float h = P.z * 0.01;"
+            " float ln = smoothstep(0.35, 0.65, sin((h * Lines - t * Speed * 3.0) * 1.5708) * 0.5 + 0.5);"
+            " float fl = max(1.0 - Flick * (0.35 * frac(sin(floor(t * 24.0) * 127.1 + 311.7) * 43758.5453) + 0.15 * sin(t * 60.0)), 0.0);"
+            " float edge = pow(1.0 - nvh, 2.5) * Glow * (1.0 + Pulse * 0.6 * sin(t * 3.0));"
+            " float body = Body * (0.35 + 0.65 * dot(Base, float3(0.3333, 0.3333, 0.3333)));"
+            " float sw = exp(-pow((frac(h * 0.35 - t * 0.25) - 0.5) * 7.0, 2.0)) * Sweep;"
+            " float gl = step(0.965 - Glitch * 0.06, frac(sin(floor(h * 18.0) * 127.1 + floor(t * 7.0) * 311.7) * 43758.5453)) * Glitch;"
+            " ln = saturate(ln + gl * 0.8);"
+            " float3 c = Col * (edge + ln * 0.55 + body * (0.4 + 0.6 * ln) + sw * 0.9 + gl * 1.2) * fl * 2.0 + Em * 2.0;"
+            " float a = saturate(See * (0.15 + 0.5 * ln + 0.9 * edge + body * 0.6 + sw * 0.5 + gl * 0.6)) * fl;"
+            " return float4(c, a);"
+        )
+        c = g.custom(code, ["Base", "N", "V", "P", "T", "Col", "Em"] + names, F4, -200, 700)
+        g.link(albedo, "", c, "Base")
+        g.link(N, "", c, "N")
+        g.link(V, "", c, "V")
+        g.link(P, "", c, "P")
+        g.link(T, "", c, "T")
+        g.link(col, "RGB", c, "Col")
+        g.link(emi, "RGB", c, "Em")
+        for nm, p in zip(names, ps):
+            g.link(p, "", c, nm)
+        rgb = g.node(unreal.MaterialExpressionComponentMask, 100, 700)
+        rgb.set_editor_property("r", True); rgb.set_editor_property("g", True); rgb.set_editor_property("b", True); rgb.set_editor_property("a", False)
+        g.link(c, "", rgb, "")
+        am = g.node(unreal.MaterialExpressionComponentMask, 100, 800)
+        am.set_editor_property("r", False); am.set_editor_property("g", False); am.set_editor_property("b", False); am.set_editor_property("a", True)
+        g.link(c, "", am, "")
+        MEL.connect_material_property(rgb, "", MP.MP_EMISSIVE_COLOR)
+        MEL.connect_material_property(am, "", MP.MP_OPACITY)
+        MEL.recompile_material(mat)
+        EAL.save_loaded_asset(mat)
+        return mat
+
+    custom_light = look in ("Toon", "Cel", "Retro", "HalftoneCel", "InkToon")
     if custom_light:
         mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
         Lp = g.node(unreal.MaterialExpressionCollectionParameter, -500, 800)
@@ -283,6 +330,53 @@ def build_master(look, kind, alpha, S, existing=None):
             g.link(rl, "", c, "Rl")
             g.link(a1, "", c, "A1")
             g.link(a2, "", c, "A2")
+        elif look in ("HalftoneCel", "InkToon"):
+            if look == "HalftoneCel":
+                tint3 = vector("ShadowTint", [0.7, 0.25, 0.6, 1])
+                rimc = vector("RimColour", [1, 0.65, 0.55, 1])
+                pl = [scalar("Bands", 3), scalar("StepSoftness", 0.1), scalar("DottedFade", 0.5), scalar("DotCells", 90), scalar("DotsFollow", 0), scalar("ShadowDepth", 0.55), scalar("ShadowBoost", 0.5), scalar("TintAmount", 0.55), scalar("Highlight", 0.3), scalar("RimLight", 0.5), scalar("RimWidth", 0.35)]
+                pn = ["Bands", "Soft", "Dots", "Cells", "Follow", "Depth", "Boost", "TintAmt", "Hl", "Rim", "RimW"]
+                code = (
+                    "float3 n = normalize(N); float3 lv = normalize(L); float3 vv = normalize(V); float l = dot(n, lv) * 0.5 + 0.5; float st = max(Bands, 1.0); float x = l * st; float i0 = floor(x); float f = x - i0; float lvl = i0;"
+                    " if (Dots > 0.01) { float w = Dots * 0.5; float t = saturate((f - 0.5) / (w * 2.0 + 0.001) + 0.5);"
+                    " float2 c2 = float2(UV.x + UV.y, UV.x - UV.y) * Cells; float2 cc = frac(c2) - 0.5; float pp = length(cc) * 1.4142; float aa = fwidth(pp) + 0.001;"
+                    " float lu = pow(dot(Base, float3(0.2126, 0.7152, 0.0722)), 1.0 / 2.2); float tt = t * 1.15 + Follow * (0.5 - lu) * 1.2 * 4.0 * t * (1.0 - t);"
+                    " lvl = i0 + (1.0 - smoothstep(tt - aa, tt + aa, pp)) * step(0.001, t); }"
+                    " else lvl = i0 + smoothstep(0.5 - Soft, 0.5 + Soft + 0.0001, f);"
+                    " float ramp = saturate(lvl / st);"
+                    " float3 sh = Base * (1.0 - Depth); float sl = dot(sh, float3(0.2126, 0.7152, 0.0722)); sh = lerp(float3(sl, sl, sl), sh, 1.0 + Boost * 1.5); sh *= lerp(float3(1, 1, 1), Tint * 2.0, TintAmt);"
+                    " float3 c = lerp(sh, Base, ramp);"
+                    " float3 h = normalize(lv + vv); float sp = step(1.0 - Hl * 0.02, saturate(dot(n, h))) * step(0.01, Hl); c = lerp(c, float3(1, 1, 1), sp * 0.8);"
+                    " float rim = smoothstep(1.0 - RimW, 1.0, 1.0 - saturate(dot(n, vv))) * Rim * smoothstep(-0.1, 0.5, dot(n, lv));"
+                    " return c + RimC * rim;"
+                )
+                c = g.custom(code, ["Base", "N", "L", "V", "UV", "Tint", "RimC"] + pn, F3, -200, 700)
+                g.link(tint3, "RGB", c, "Tint")
+            else:
+                shc = vector("ShadowColour", [0.45, 0.45, 0.75, 1])
+                rimc = vector("RimColour", [1, 0.4, 0.35, 1])
+                pl = [scalar("ShadowShapes", 2), scalar("EdgeSoftness", 0.03), scalar("ShadowStrength", 0.6), scalar("RimLight", 0.8), scalar("RimWidth", 0.3), scalar("RimFollows", 0.6)]
+                pn = ["Steps", "Soft", "Shade", "Rim", "RimW", "Follows"]
+                code = (
+                    "float3 n = normalize(N); float3 lv = normalize(L); float3 vv = normalize(V); float l = dot(n, lv) * 0.5 + 0.5; float st = max(Steps, 1.0); float lvv = 0.0;"
+                    " for (int k = 1; k <= 3; k++) { if ((float)k > st) break; float th = (float)k / (st + 1.0) * 1.1; lvv += smoothstep(th - Soft, th + Soft + 0.0001, l); }"
+                    " float ramp = lvv / st;"
+                    " float3 dark = Base * lerp(float3(1, 1, 1), ShC * 2.0, Shade) * lerp(1.0, 0.55, Shade);"
+                    " float3 c = lerp(dark, Base, ramp);"
+                    " float rim = smoothstep(1.0 - RimW, 1.0, 1.0 - saturate(dot(n, vv))) * Rim * lerp(1.0, smoothstep(-0.3, 0.3, dot(n, lv)), Follows);"
+                    " return c + RimC * rim;"
+                )
+                c = g.custom(code, ["Base", "N", "L", "V", "ShC", "RimC"] + pn, F3, -200, 700)
+                g.link(shc, "RGB", c, "ShC")
+            g.link(albedo, "", c, "Base")
+            g.link(N, "", c, "N")
+            g.link(Lp, "", c, "L")
+            g.link(V, "", c, "V")
+            g.link(rimc, "RGB", c, "RimC")
+            if look == "HalftoneCel":
+                g.link(uvn, "", c, "UV")
+            for nm, p in zip(pn, pl):
+                g.link(p, "", c, nm)
         else:
             lv = vector("ColourLevels", [31, 31, 31, 1])
             amb = scalar("Ambient", 0.35)
@@ -307,20 +401,44 @@ def build_master(look, kind, alpha, S, existing=None):
             g.link(bri, "", c, "Br")
             g.link(stp, "", c, "Bd")
             g.link(dth, "", c, "Dt")
-        if look in ("Toon", "Cel"):
+        if look in ("Toon", "Cel", "HalftoneCel", "InkToon"):
             # one material does both: front faces shaded, back faces pushed out along the normals in the outline colour
             mat.set_editor_property("two_sided", True)
             mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
             oc = vector("OutlineColour", [0, 0, 0, 1])
             ow = scalar("OutlineWidth", 0.0)
+            back = oc
+            backpin = "RGB"
+            if look in ("HalftoneCel", "InkToon"):
+                # a darker version of the surface colour, or one picked colour (Ink toon)
+                od = scalar("OutlineDark", 0.3 if look == "HalftoneCel" else 0.35)
+                om = scalar("OutlineMode", 0)
+                bc = g.custom("float3 c = Base * pow(Dk, 2.2); float lu = dot(c, float3(0.3333, 0.3333, 0.3333)); c = lerp(float3(lu, lu, lu), c, 1.25); return lerp(c, Pick, Mode);", ["Base", "Dk", "Mode", "Pick"], F3, -200, 1500)
+                g.link(albedo, "", bc, "Base")
+                g.link(od, "", bc, "Dk")
+                g.link(om, "", bc, "Mode")
+                g.link(oc, "RGB", bc, "Pick")
+                back = bc
+                backpin = ""
             sw = g.node(unreal.MaterialExpressionTwoSidedSwitch, 100, 650)
             g.link(c, "", sw, "Front")
-            g.link(oc, "RGB", sw, "Back")
+            g.link(back, backpin, sw, "Back")
             MEL.connect_material_property(sw, "", MP.MP_EMISSIVE_COLOR)
             vn = g.node(unreal.MaterialExpressionVertexNormalWS, -200, 1200)
             mul = g.node(unreal.MaterialExpressionMultiply, 0, 1150)
             g.link(vn, "", mul, "A")
             g.link(ow, "", mul, "B")
+            if look == "InkToon":
+                # a hand-drawn wobble in the line width
+                wob = scalar("Wobble", 0.4)
+                wp = g.node(unreal.MaterialExpressionWorldPosition, -200, 1300)
+                wc = g.custom("float n = sin(dot(P, float3(37, 23, 29)) * 0.01) * 0.5 + sin(dot(P, float3(17, 41, 31)) * 0.01) * 0.5; return 1.0 + W * 0.7 * n;", ["P", "W"], F1, -100, 1300)
+                g.link(wp, "", wc, "P")
+                g.link(wob, "", wc, "W")
+                mul2 = g.node(unreal.MaterialExpressionMultiply, 100, 1180)
+                g.link(mul, "", mul2, "A")
+                g.link(wc, "", mul2, "B")
+                mul = mul2
             zero = g.node(unreal.MaterialExpressionConstant3Vector, 0, 1250)
             sw2 = g.node(unreal.MaterialExpressionTwoSidedSwitch, 250, 1200)
             g.link(zero, "", sw2, "Front")
@@ -357,6 +475,144 @@ def build_master(look, kind, alpha, S, existing=None):
         MEL.connect_material_property(col, "RGB", MP.MP_SUBSURFACE_COLOR)
         amt = scalar("Sheen", 0.5)
         MEL.connect_material_property(amt, "", MP.MP_OPACITY)
+    elif look == "Glass":
+        # lit, see-through, bending what is behind it (the refraction input), tinted, frosted
+        mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+        mat.set_editor_property("two_sided", True)
+        try:
+            mat.set_editor_property("refraction_mode", unreal.RefractionMode.RM_INDEX_OF_REFRACTION)
+        except Exception:
+            pass
+        N = g.node(unreal.MaterialExpressionPixelNormalWS, -500, 920)
+        V = g.node(unreal.MaterialExpressionCameraVectorWS, -500, 1040)
+        gcol = vector("GlassColour", [0.9, 0.97, 1, 1])
+        bend = scalar("Bending", 0.5)
+        frost = scalar("Frost", 0)
+        edge = scalar("EdgeReflect", 1)
+        cloud = scalar("Cloudiness", 0.08)
+        thick = scalar("Thickness", 0.5)
+        ior = g.custom("return 1.0 + 0.5 * B;", ["B"], F1, -200, 900)
+        g.link(bend, "", ior, "B")
+        MEL.connect_material_property(ior, "", MP.MP_REFRACTION)
+        tintc = g.custom("float3 gc = max(G, float3(0.02, 0.02, 0.02)); return Base * lerp(float3(1, 1, 1), gc, saturate(Th * 0.8));", ["Base", "G", "Th"], F3, -200, 1000)
+        g.link(albedo, "", tintc, "Base")
+        g.link(gcol, "RGB", tintc, "G")
+        g.link(thick, "", tintc, "Th")
+        MEL.connect_material_property(tintc, "", MP.MP_BASE_COLOR)
+        fr = g.custom("float f = (0.04 + 0.96 * pow(1.0 - saturate(dot(normalize(N), normalize(V))), 5.0)) * E; return saturate(Cl + f + F * 0.5);", ["N", "V", "E", "Cl", "F"], F1, -200, 1100)
+        g.link(N, "", fr, "N")
+        g.link(V, "", fr, "V")
+        g.link(edge, "", fr, "E")
+        g.link(cloud, "", fr, "Cl")
+        g.link(frost, "", fr, "F")
+        MEL.connect_material_property(fr, "", MP.MP_OPACITY)
+        rg = g.custom("return saturate(F * 0.6 + 0.02);", ["F"], F1, -200, 1200)
+        g.link(frost, "", rg, "F")
+        MEL.connect_material_property(rg, "", MP.MP_ROUGHNESS)
+        MEL.connect_material_property(g.node(unreal.MaterialExpressionConstant, -200, 1300), "", MP.MP_METALLIC)
+    elif look == "Fur":
+        # Unreal has no strand shells in a material: a fuzzy cloth look with dark roots and a tip colour
+        mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_CLOTH)
+        tipc = vector("TipColour", [0.95, 0.85, 0.7, 1])
+        MEL.connect_material_property(tipc, "RGB", MP.MP_SUBSURFACE_COLOR)
+        tipa = scalar("TipAmount", 0.5)
+        dr = scalar("DarkRoots", 0.5)
+        MEL.connect_material_property(tipa, "", MP.MP_OPACITY)
+        bc = g.custom("return Base * (1.0 - D * 0.4);", ["Base", "D"], F3, -200, 1000)
+        g.link(albedo, "", bc, "Base")
+        g.link(dr, "", bc, "D")
+        MEL.connect_material_property(bc, "", MP.MP_BASE_COLOR)
+        rg = g.custom("return max(R, 0.85);", ["R"], F1, -200, 1100)
+        g.link(rough, "", rg, "R")
+        MEL.connect_material_property(rg, "", MP.MP_ROUGHNESS)
+    elif look == "Iridescent":
+        N = g.node(unreal.MaterialExpressionPixelNormalWS, -500, 920)
+        V = g.node(unreal.MaterialExpressionCameraVectorWS, -500, 1040)
+        st = scalar("IriStrength", 0.8)
+        rg_ = scalar("IriRange", 1.5)
+        sh_ = scalar("IriShift", 0)
+        an = scalar("IriAngle", 0.8)
+        bc = g.custom("float nv = saturate(dot(normalize(N), normalize(V))); float t = Sh + Rg * (0.3 + An * (1.0 - nv)); float3 film = 0.5 + 0.5 * cos(6.2832 * (t + float3(0.0, 0.33, 0.67))); return lerp(Base, lerp(film, float3(1, 1, 1), 0.15), S * 0.85);", ["Base", "N", "V", "S", "Rg", "Sh", "An"], F3, -200, 1000)
+        for nm, src, pin in (("Base", albedo, ""), ("N", N, ""), ("V", V, ""), ("S", st, ""), ("Rg", rg_, ""), ("Sh", sh_, ""), ("An", an, "")):
+            g.link(src, pin, bc, nm)
+        MEL.connect_material_property(bc, "", MP.MP_BASE_COLOR)
+        mc = g.custom("return lerp(M, 1.0, 0.6 * S);", ["M", "S"], F1, -200, 1100)
+        g.link(metal, "", mc, "M")
+        g.link(st, "", mc, "S")
+        MEL.connect_material_property(mc, "", MP.MP_METALLIC)
+    elif look == "CarPaint":
+        mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_CLEAR_COAT)
+        coat = scalar("Coat", 1)
+        crough = scalar("CoatRoughness", 0.04)
+        try:
+            MEL.connect_material_property(coat, "", MP.MP_CUSTOM_DATA_0)
+            MEL.connect_material_property(crough, "", MP.MP_CUSTOM_DATA_1)
+        except Exception as e:
+            unreal.log_warning("Gouache: clear coat inputs could not be connected (" + str(e) + ")")
+        P = g.node(unreal.MaterialExpressionWorldPosition, -500, 1160)
+        fsz = scalar("FlakeSize", 170)
+        fam = scalar("FlakeAmount", 0.5)
+        fsp = scalar("FlakeSparkle", 1)
+        fcol = vector("FlakeColour", [1, 0.85, 0.5, 1])
+        fk = g.custom(
+            "float3 q = mul(float3x3(0.36, -0.8, 0.48, 0.48, 0.6, 0.64, -0.8, 0.0, 0.6), P * 0.01) * Sz * 0.85; float3 ci = floor(q); float3 fr = frac(q) - 0.5; float fw = length(fwidth(q));"
+            " float h1 = frac(sin(dot(ci, float3(127.1, 311.7, 74.7))) * 43758.5453); float h2 = frac(sin(dot(ci + 17.1, float3(127.1, 311.7, 74.7))) * 43758.5453);"
+            " float h3 = frac(sin(dot(ci + 43.7, float3(127.1, 311.7, 74.7))) * 43758.5453); float h4 = frac(sin(dot(ci + 91.3, float3(127.1, 311.7, 74.7))) * 43758.5453);"
+            " float rad = 0.22 + 0.28 * h4; float fm = step(h1, Am * 0.8) * smoothstep(rad, rad * 0.55, length(fr)) * (1.0 - smoothstep(0.5, 1.0, fw)); return float4(fm, h2, h3, h4);",
+            ["P", "Sz", "Am"], F4, -200, 1000)
+        g.link(P, "", fk, "P")
+        g.link(fsz, "", fk, "Sz")
+        g.link(fam, "", fk, "Am")
+        bc = g.custom("return lerp(Base, lerp(Fc, Base, 0.2) * (0.6 + 0.8 * FK.w), FK.x * 0.7);", ["Base", "FK", "Fc"], F3, -200, 1100)
+        g.link(albedo, "", bc, "Base")
+        g.link(fk, "", bc, "FK")
+        g.link(fcol, "RGB", bc, "Fc")
+        MEL.connect_material_property(bc, "", MP.MP_BASE_COLOR)
+        rg = g.custom("return lerp(R, 0.12, FK.x);", ["R", "FK"], F1, -200, 1200)
+        g.link(rough, "", rg, "R")
+        g.link(fk, "", rg, "FK")
+        MEL.connect_material_property(rg, "", MP.MP_ROUGHNESS)
+        mc = g.custom("return lerp(M, 1.0, FK.x);", ["M", "FK"], F1, -200, 1300)
+        g.link(metal, "", mc, "M")
+        g.link(fk, "", mc, "FK")
+        MEL.connect_material_property(mc, "", MP.MP_METALLIC)
+        nc = g.custom("float2 np = (float2(FK.y, FK.z) - 0.5) * 1.6; return normalize(N + float3(np * 1.5 * FK.x * Sp, 0));", ["N", "FK", "Sp"], F3, -200, 1400)
+        g.link(nrmc, "", nc, "N")
+        g.link(fk, "", nc, "FK")
+        g.link(fsp, "", nc, "Sp")
+        MEL.connect_material_property(nc, "", MP.MP_NORMAL)
+    elif look == "ClothSheen":
+        mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_CLOTH)
+        col = vector("ClothColour", [1, 0.9, 0.85, 1])
+        MEL.connect_material_property(col, "RGB", MP.MP_SUBSURFACE_COLOR)
+        amt = scalar("ClothSheen", 1)
+        soft = scalar("Softness", 0.5)
+        weave = scalar("Weave", 0.4)
+        cl = g.custom("return saturate(S * 0.6);", ["S"], F1, -200, 900)
+        g.link(amt, "", cl, "S")
+        MEL.connect_material_property(cl, "", MP.MP_OPACITY)
+        bc = g.custom("return B * lerp(1.0, 0.55 + 0.45 * sin(UV.x * 200.0) * sin(UV.y * 200.0), W);", ["B", "UV", "W"], F3, -200, 1000)
+        g.link(albedo, "", bc, "B")
+        g.link(uvn, "", bc, "UV")
+        g.link(weave, "", bc, "W")
+        MEL.connect_material_property(bc, "", MP.MP_BASE_COLOR)
+        rg = g.custom("return max(R, lerp(0.3, 0.7, So));", ["R", "So"], F1, -200, 1100)
+        g.link(rough, "", rg, "R")
+        g.link(soft, "", rg, "So")
+        MEL.connect_material_property(rg, "", MP.MP_ROUGHNESS)
+    elif look == "Wax":
+        mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_SUBSURFACE)
+        col = vector("GlowColour", [1, 0.62, 0.3, 1])
+        MEL.connect_material_property(col, "RGB", MP.MP_SUBSURFACE_COLOR)
+        glow = scalar("Glow", 1.5)
+        soft = scalar("WaxSoftness", 0.6)
+        cl = g.custom("return saturate(G * 0.5);", ["G"], F1, -200, 900)
+        g.link(glow, "", cl, "G")
+        MEL.connect_material_property(cl, "", MP.MP_OPACITY)
+        rg = g.custom("return lerp(R, max(R, 0.5), So);", ["R", "So"], F1, -200, 1100)
+        g.link(rough, "", rg, "R")
+        g.link(soft, "", rg, "So")
+        MEL.connect_material_property(rg, "", MP.MP_ROUGHNESS)
     elif look == "Skin":
         mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_SUBSURFACE)
         col = vector("BloodColour", [0.85, 0.25, 0.18, 1])
@@ -370,7 +626,7 @@ def build_master(look, kind, alpha, S, existing=None):
 
 def master_for(S):
     look = S["look"]
-    alpha = bool(S.get("alpha")) and look not in ("Toon", "Cel", "Retro")
+    alpha = bool(S.get("alpha")) and look not in ("Toon", "Cel", "Retro", "HalftoneCel", "InkToon", "Hologram", "Glass")
     path = master_path(look, alpha)
     if EAL.does_asset_exist(path):
         mat = EAL.load_asset(path)
@@ -460,7 +716,7 @@ def assign_to_model(instances):
 
 
 LIGHTS = None
-if any(S["look"] in ("Toon", "Cel", "Retro") for S in DATA["sets"]):
+if any(S["look"] in ("Toon", "Cel", "Retro", "HalftoneCel", "InkToon") for S in DATA["sets"]):
     LIGHTS = light_collection()
 
 made = []

@@ -28,10 +28,10 @@ function eshModelSize(m){if(!m||!m.pos)return 1;const mn=[1e30,1e30,1e30],mx=[-1
    Each texture set is a small ShaderMaterial (.tres) that only holds that set's textures and settings. */
 const ESH_LOOKS={std:'Standard',skin:'Skin',aniso:'BrushedMetal',velvet:'Velvet',toon:'Toon',cel:'Cel',specgloss:'Standard',panner:'Panner',retro:'Retro',halfcel:'HalftoneCel',ink:'InkToon',hologram:'Hologram',glass:'Glass',fur:'Fur',iridescent:'Iridescent',car:'CarPaint',cloth:'ClothSheen',wax:'Wax'};
 const eshLook=k=>ESH_LOOKS[k]||'Standard';
-/* the looks added in 0.94.1: Godot and Unity (URP) have them; Unity Built-in and Unreal send them as Standard */
+/* the looks added in 0.94.1: Godot, Unity (URP) and Unreal have them; Unity Built-in sends them as Standard */
 const ESH_NEW=['hologram','glass','fur','iridescent','car','cloth','wax','halfcel','ink'];
 const ESH_FUR_SHELLS=10;
-const eshSafeShade=sh=>{if(!sh||!sh.kind)return sh;if(!ESH_LOOKS[sh.kind])return {kind:'std',p:{}};if(ESH_NEW.includes(sh.kind)&&(es.to==='unreal'||(es.to==='unity'&&texCfg.unityRP==='builtin')))return {kind:'std',p:{}};return sh;};
+const eshSafeShade=sh=>{if(!sh||!sh.kind)return sh;if(!ESH_LOOKS[sh.kind])return {kind:'std',p:{}};if(ESH_NEW.includes(sh.kind)&&es.to==='unity'&&texCfg.unityRP==='builtin')return {kind:'std',p:{}};return sh;};
 const eshV3=a=>'vec3('+(a||[1,1,1]).map(eshF).join(', ')+')';
 /* a look's own settings: [uniform name, GLSL type, value text] taken from a shader's parameters */
 function eshGodotParams(sh){const k=sh.kind,P=shParams(sh),L=[];
@@ -764,6 +764,16 @@ function eshUnrealParams(sh,size,hasOrm){const k=sh.kind,P=shParams(sh),lin=c=>(
   if(k==='skin'){vc.BloodColour=rgba(P.col);sc.ScatterStrength=Math.min(1,P.scatter*P.strength+.2);}
   if(k==='toon'||k==='cel'){vc.ShadowColour=rgba(P.col);sc.Highlight=P.spec;sc.RimLight=P.rim;sc.OutlineWidth=(P.outline||0)*size*0.0014;vc.OutlineColour=rgba(P.ocol||[0,0,0]);
     if(k==='toon'){sc.Bands=P.steps;sc.BandShift=P.offset;}else{sc.ShadowLine=P.thresh;sc.EdgeSoftness=P.soft;}}
+  const ow=(P.outline||0)*size*0.0014;
+  if(k==='hologram'){vc.HoloColour=rgba(P.col);Object.assign(sc,{SeeThrough:P.opacity,EdgeGlow:P.glow,ScanLines:P.lines,ScanSpeed:P.speed,Flicker:P.flicker,Glitch:P.glitch,EdgePulse:P.pulse,Sweep:P.sweep,BodyGlow:P.fill});}
+  if(k==='glass'){vc.GlassColour=rgba(P.col);Object.assign(sc,{Bending:P.refr,Frost:P.frost,Thickness:P.thick,EdgeReflect:P.edge,Cloudiness:P.cloud});}
+  if(k==='fur'){vc.TipColour=rgba(P.col);Object.assign(sc,{TipAmount:P.tipMix,DarkRoots:P.root});}
+  if(k==='iridescent')Object.assign(sc,{IriStrength:P.strength,IriRange:P.range,IriShift:P.shift,IriAngle:P.angle});
+  if(k==='car'){vc.FlakeColour=rgba(P.col);Object.assign(sc,{Coat:P.coat,CoatRoughness:P.coatRough,FlakeSize:P.size,FlakeAmount:P.flakes,FlakeSparkle:P.sparkle});}
+  if(k==='cloth'){vc.ClothColour=rgba(P.col);Object.assign(sc,{ClothSheen:P.sheen,Softness:P.soft,Weave:P.weave});}
+  if(k==='wax'){vc.GlowColour=rgba(P.col);Object.assign(sc,{Glow:P.glow,WaxSoftness:P.soft});}
+  if(k==='halfcel'){vc.ShadowTint=rgba(P.col);vc.RimColour=rgba(P.rimCol);vc.OutlineColour=[0,0,0,1];Object.assign(sc,{Bands:P.bands,StepSoftness:P.soft,DottedFade:P.dots,DotCells:900/Math.max(P.dotSize,1),DotsFollow:P.follow||0,ShadowDepth:P.depth,ShadowBoost:P.sat,TintAmount:P.tintAmt,Highlight:P.spec,RimLight:P.rim,RimWidth:P.rimW,OutlineWidth:ow,OutlineDark:.3,OutlineMode:0});}
+  if(k==='ink'){vc.ShadowColour=rgba(P.col);vc.RimColour=rgba(P.rimCol);vc.OutlineColour=rgba(P.ocol||[0,0,0]);Object.assign(sc,{ShadowShapes:P.steps,EdgeSoftness:P.soft,ShadowStrength:P.shadow,RimLight:P.rim,RimWidth:P.rimW,RimFollows:P.rimBias,OutlineWidth:ow,OutlineMode:P.omode?1:0,OutlineDark:P.odark,Wobble:P.wobble});}
   const common=new Set(['HasORM','RoughnessValue','MetallicValue','RoughScale','MetalScale','NormalStrength','Tint','UVScale','UVOffset']);
   return {scalars:sc,vectors:vc,lookKeys:[...Object.keys(sc),...Object.keys(vc)].filter(n=>!common.has(n))};}
 /* ---------------- both: build the extra files for one export ----------------

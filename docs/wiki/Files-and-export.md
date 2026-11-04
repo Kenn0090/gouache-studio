@@ -99,3 +99,13 @@ The Text tool now includes Anton, Bebas Neue, Patrick Hand, Kalam, Libre Baskerv
 
 A .gouache file also keeps your panel layout, the zoom and place of the view and the current tool, and brings them back when you open it. Preferences › Files has two switches: **Keep my panel layout, zoom and tool in the file when I save** and **Bring that layout back when I open a file that has one**.
 
+
+## The new looks in Unity, Godot and Unreal
+
+The nine looks added in 0.94.1 (Hologram, Glass, Fur, Iridescent, Car paint, Cloth sheen, Wax / marble glow, Halftone cel and Ink toon) go to the engines with the Gouache shader, like the older looks. Each engine lights its own way, so it is a close match, not identical.
+
+- **Unity (URP):** all nine, in the one `GouacheShaded` shader. Fur is drawn as ten layers (passes); Hologram and Glass are see-through materials. The Built-in pipeline gets Standard for these looks.
+- **Godot 4:** all nine. Glass bends what is behind it (it reads the screen). Fur is a chain of ten materials (`<Set>_fur1`…`_fur10`). Halftone cel and Ink toon get an inked outline material.
+- **Unreal:** all nine as master materials. Car paint uses Unreal's Clear Coat, Cloth sheen and Fur use Cloth shading, Wax uses Subsurface. **Fur is a fuzzy cloth look without strands** (a material can't grow strands in Unreal). Hologram and Glass are translucent.
+
+All of this was written without being able to run the real engines: please check it in yours and tell me what looks off.
