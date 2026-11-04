@@ -19,5 +19,12 @@ const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAI
   console.log('shot',k);const h=await hash();seen[k]=h;if(process.env.OUT)fs.writeFileSync(process.env.OUT+'/'+k+'.png',await p.screenshot({clip:box}));}
  for(const k of kinds.slice(1))ok(seen[k]!==seen.std,k+' looks different from Standard');
  ok(new Set(Object.values(seen)).size===kinds.length,'all eight pictures differ');
+ /* presets */
+ await p.evaluate(()=>{__gs.doc.v3shade={kind:'iridescent',p:{}};__gs.renderShading();});await W(300);
+ ok(await p.locator('#shPre_beetle').count()===1,'Iridescent shows its preset buttons');
+ await p.evaluate(()=>document.getElementById('shPre_beetle').click());await W(300);
+ const pv=await p.evaluate(()=>__gs.doc.v3shade.p.iridescent);
+ ok(pv&&pv.shift===.55&&pv.preset==='beetle','clicking Beetle shell sets its settings '+JSON.stringify(pv));
+ for(const [k,id] of [['hologram','green'],['glass','frosted'],['fur','peach'],['car','candy'],['cloth','satin'],['wax','jade']]){await p.evaluate(k=>{__gs.doc.v3shade={kind:k,p:{}};__gs.renderShading();},k);await W(150);ok(await p.locator('#shPre_'+id).count()===1,k+' has its presets');}
  ok(errs.length===0,'no errors '+errs.slice(0,3).join(' | '));
  await b.close();process.exit(fails?1:0);})().catch(e=>{console.error(e);process.exit(1);});
