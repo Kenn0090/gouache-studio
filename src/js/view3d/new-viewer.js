@@ -165,7 +165,9 @@ const NV_TEX_LIVE=512,NV_LIVE_MS=100;
 const nvPaintMode=()=>ui.mode==='p3d'||((ui.mode==='paint'||ui.mode==='bake')&&!!v3.paintOn);
 function nvPaintOn(){return platform.isDesktop&&nvPaintMode()&&v3s().nvPaint!==false;}
 function nvCamFrom(ev){nv.winCamAt=performance.now();if(ev.w>16&&ev.h>16){const sz=ev.win&&ev.win[2]>16?[ev.win[2],ev.win[3]]:[ev.w,ev.h];nv.winSize=[Math.round(sz[0]),Math.round(sz[1])];}const c=v3.cam,d=[ev.eye[0]-ev.tgt[0],ev.eye[1]-ev.tgt[1],ev.eye[2]-ev.tgt[2]],L=Math.hypot(d[0],d[1],d[2])||1;
-  c.tx=ev.tgt[0];c.ty=ev.tgt[1];c.tz=ev.tgt[2];c.dist=L;c.pitch=Math.asin(Math.max(-1,Math.min(1,d[1]/L)));c.yaw=Math.atan2(d[0],d[2]);if(typeof v3Refresh==='function')v3Refresh();}
+  c.tx=ev.tgt[0];c.ty=ev.tgt[1];c.tz=ev.tgt[2];c.dist=L;c.pitch=Math.asin(Math.max(-1,Math.min(1,d[1]/L)));c.yaw=Math.atan2(d[0],d[2]);}
+/* the window moved the camera: the main view follows, redrawn at most once per screen refresh and never in the middle of a stroke (painting moves the camera values too, and a redraw per move was slow) */
+function nvCamRedraw(){if(nv.camRaf||stroke)return;nv.camRaf=requestAnimationFrame(()=>{nv.camRaf=0;if(!stroke&&typeof v3Refresh==='function')v3Refresh();});}
 /* a world point on the ray through the window pixel; the main view then sees the same surface there */
 function nvPixelRay(ev){const t=Math.tan(ev.fov*Math.PI/360),e=ev.eye,g=ev.tgt;
   const fw=norm3(sub3(g,e)),r=norm3(cross3(fw,[0,1,0])),u=cross3(r,fw),x=(2*ev.x/ev.w-1)*t*ev.w/ev.h,y=(2*ev.y/ev.h-1)*t;
@@ -224,7 +226,7 @@ async function nvHlSend(){if(!nv.isOpen||nv.hlBusy)return;const H=typeof sel3Hov
 function nvHandle(ev){if(ev&&(ev.t==='key-p'||ev.t==='key-r')){if(ev.t==='key-p'){if(typeof v3Screenshot==='function')v3Screenshot('view',false);}else{const s=v3s();s.nvRt=!s.nvRt;toast('Ray tracing '+(s.nvRt?'on':'off')+' in the new viewer.');}return;}
   if(ev&&ev.t==='closed'){/* where the window was, for next time */try{if(ev.win&&ev.win[2]>=300)localStorage.setItem('gs.nvWin',JSON.stringify(ev.win));}catch(e){}
     const was=nv.isOpen;nv.isOpen=false;nv.paint=false;nvStopWatch();nvBtnSync();if(was)toast('The new viewer window was closed.');return;}
-  if(ev&&ev.t==='cam'&&platform.isDesktop){nvCamFrom(ev);return;}
+  if(ev&&ev.t==='cam'&&platform.isDesktop){nvCamFrom(ev);nvCamRedraw();return;}
   if(!nvPaintOn()||!ev||!ev.t)return;if(ev.t==='hover'){nvHover(ev);return;}
   const st=nv.st||(nv.st={ev:0,run:0,ms:0,live:0,liveMs:0,max:0});
   if(ev.t==='move'){st.ev++;nv.pendingMove=ev;if(!nv.moveRaf)nv.moveRaf=requestAnimationFrame(nvFlushMove);return;}/* one move per frame, like a normal mouse */

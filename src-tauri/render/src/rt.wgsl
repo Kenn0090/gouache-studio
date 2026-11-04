@@ -24,6 +24,8 @@ struct Node { mn: vec3<f32>, a: u32, mx: vec3<f32>, count: u32 };
 @group(0) @binding(11) var<uniform> ginfo: array<vec4<f32>, 384>;
 @group(0) @binding(13) var base_arr: texture_2d_array<f32>;
 @group(0) @binding(14) var base_samp: sampler;
+// linear pictures, two per material group: [2g] its normal map, [2g+1] roughness (green) and metal (blue)
+@group(0) @binding(15) var lin_arr: texture_2d_array<f32>;
 
 fn pcg(v: u32) -> u32 {
     let s = v * 747796405u + 2891336453u;
@@ -130,14 +132,14 @@ fn closest(o: vec3<f32>, d: vec3<f32>, tmax: f32) -> vec4<f32> {
 
 
 // how a surface looks where a reflection ray lands: an approximation of each look (the full shader does not run inside rays)
-fn shade_hit(gi: u32, alb: vec3<f32>, hn: vec3<f32>, fd: vec3<f32>, sd: vec3<f32>, sunvis: f32) -> vec3<f32> {
+fn shade_hit(gi: u32, alb: vec3<f32>, hn: vec3<f32>, fd: vec3<f32>, sd: vec3<f32>, sunvis: f32, rough_in: f32, metal_in: f32) -> vec3<f32> {
     let g = min(gi, 127u);
     let a = ginfo[g * 3u];
     let b = ginfo[g * 3u + 1u];
     let c = ginfo[g * 3u + 2u];
     let kind = i32(a.w + 0.5);
-    let rough = clamp(b.x, 0.04, 1.0);
-    let metal = clamp(b.y, 0.0, 1.0);
+    let rough = clamp(rough_in, 0.04, 1.0);
+    let metal = clamp(metal_in, 0.0, 1.0);
     let glow = b.z;
     let tint = c.xyz;
     let sky = rt.amb.rgb;
@@ -249,9 +251,26 @@ fn cs(@builtin(global_invocation_id) g: vec3<u32>) {
             let huv = uv0.xy * (1.0 - ch.z - ch.w) + uv0.zw * ch.z + uv1.xy * ch.w;
             let alb = textureSampleLevel(base_arr, base_samp, huv, i32(g), 0.0).rgb;
             let hp = o + fd * ch.x + hn * rt.p.z;
+            // the bumps of the material's normal map: a tangent from how the picture's coordinates run over this triangle
+            let du1 = uv0.zw - uv0.xy;
+            let du2 = uv1.xy - uv0.xy;
+            let dd = du1.x * du2.y - du1.y * du2.x;
+            var bump = hn;
+            if (abs(dd) > 1e-12) {
+                let e1 = tris[ti * 3u + 1u].xyz - v0;
+                let e2 = tris[ti * 3u + 2u].xyz - v0;
+                let rr = 1.0 / dd;
+                let tg0 = (e1 * du2.y - e2 * du1.y) * rr;
+                let bt0 = -(e2 * du1.x - e1 * du2.x) * rr;
+                let tg = normalize(tg0 - hn * dot(hn, tg0));
+                let bg = normalize(bt0 - hn * dot(hn, bt0));
+                let nm = textureSampleLevel(lin_arr, base_samp, huv, i32(g * 2u), 0.0).xyz * 2.0 - 1.0;
+                bump = normalize(tg * nm.x + bg * nm.y + hn * max(nm.z, 0.05));
+            }
+            let orm_h = textureSampleLevel(lin_arr, base_samp, huv, i32(g * 2u + 1u), 0.0).xyz;
             var sunvis = 0.0;
-            if (dot(hn, sd) > 0.0 && !occluded(hp, sd, 1e30)) { sunvis = 1.0; }
-            refl_rgb = shade_hit(g, alb, hn, fd, sd, sunvis);
+            if (dot(bump, sd) > 0.0 && dot(hn, sd) > 0.0 && !occluded(hp, sd, 1e30)) { sunvis = 1.0; }
+            refl_rgb = shade_hit(g, alb, bump, fd, sd, sunvis, orm_h.y, orm_h.z);
             refl_hit = 1.0;
         }
     }

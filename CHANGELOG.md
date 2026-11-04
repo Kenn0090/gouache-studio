@@ -1,6 +1,14 @@
+## 0.94.2
+
+- **Brow** is rebuilt from your videos: a wide loaf-shaped brush (flat back, curved ragged front) of fine vertical fibres that stays in one position, each fibre with its own soft pastel tint (pink, mint, cream) that drifts as you drag. Drag down for a sheet of fibres, sideways for wavy streaks. Two new colour lane modes (Pastel tint and Smooth pastel) make the tints, whatever your colour is.
+- **New viewer reflections:** what a reflection lands on now uses the material's normal map (its bumps) and its roughness and metal pictures, not one average for the whole material.
+- **New viewer reopens:** closing the window and opening it again works now (the window library only allows one window system per run of the app, so the first one is kept and reused).
+- **Painting in the new viewer is lighter:** the page's own 3D view no longer redraws on every move of the pen (the camera sync added in 0.94.1 caused that), and it waits until the stroke ends.
+- **Faster start:** the app no longer reads every installed AI model and sky file into memory at start just to check they are there (a tiny marker is kept beside each file).
+
 ## 0.94.1
 
-- **Brow** is rebuilt as a wide bar of fine vertical fibres with ragged top and bottom edges, tinted lanes and pixel-fine speckle. **Boxes** have sharp corners and one flat colour per box. The Heavy Paint style brushes now paint at near-zero spacing, so the dabs overlap themselves and give the stacked, 3D-looking stripes, and their paths are smoothed so strokes come out continuous.
+- **Brow** is rebuilt like Heavy Paint: a wide loaf-shaped brush (flat back, curved ragged front) made of fine vertical fibres that stays in one position, each fibre with its own soft pastel tint (pink, mint, cream) that drifts as you drag. Drag down for a sheet of fibres, sideways for wavy streaks.
 - **Oil bristle** is rebuilt like Heavy Paint: the tip is a round cloud of small angular flakes, each leaving its own streak of a slightly different shade along the stroke, flat colour with ragged edges. The shaded version stays as **Oil bristle 3D**.
 - **Fried fluff** is rebuilt from Heavy Paint: a ragged-sided square painted with a damascus (contour-map) marble of reds and purples that smears along the stroke and softens when you lift the pen (new brush setting "Soften at end"). **Boxes** have sharp corners and a flat colour per box. The Heavy Paint style brushes now paint at near-zero spacing so the dabs overlap themselves, which gives the stacked 3D look.
 - **Charcoal** is now a long, thin, horizontal bar that sweeps a band of pixel-fine speckle, fading out at the edges by thinning the dots. Brushes have a new Grain size setting; size 1 gives single-pixel noise.
