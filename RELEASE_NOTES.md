@@ -1,3 +1,7 @@
+## 0.94.4
+
+- **Game engines:** models sent as FBX now open in Unreal and Unity, the live link is added by itself on the first send (Unreal: restart once), and the model gets its materials in Unreal and Unity.
+- **New viewer: strokes show at once.** The window draws your brush mark itself as you paint, then the finished paint replaces it. Turning the model in the window is also lighter.
 ## 0.94.3
 
 - **Unity, Godot and Unreal exports fixed:** the Unity shader and its material script had errors (which also stopped the live link), two Godot material files would not load and the Godot live link did not start, and the Unreal setup script left wires unconnected. Send again and the broken files from before are replaced.

@@ -236,7 +236,7 @@ function uvFBX(m,name,orig){const P=uvPositions(m,orig),n=P.length/3,T=m.idx.len
     else if(t==='S'||t==='R'){const b=typeof v==='string'?te.encode(v):v;u32(b.length);bytes(b);}
     else{const w=t==='d'?8:4;u32(v.length);u32(0);u32(v.length*w);need(v.length*w);const dv=dvOf();for(let i=0;i<v.length;i++){if(t==='d')dv.setFloat64(len+i*8,v[i],true);else dv.setInt32(len+i*4,v[i],true);}len+=v.length*w;}};
   const node=(nm,props,kids)=>{const start=len;u32(0);u32(props.length);const lenPos=len;u32(0);const nb=te.encode(nm);u8(nb.length);bytes(nb);const ps=len;for(const p of props)prop(p);dvOf().setUint32(lenPos,len-ps,true);
-    if(kids&&kids.length){for(const k of kids)k();for(let i=0;i<13;i++)u8(0);}dvOf().setUint32(start,len,true);};
+    if(kids&&kids.length)for(const k of kids)k();if((kids&&kids.length)||!props.length)for(let i=0;i<13;i++)u8(0);dvOf().setUint32(start,len,true);};/* end marker also after a node with no properties (Autodesk's reader expects it) */
   const N=(nm,props,kids)=>()=>node(nm,props||[],kids),S=v=>['S',v],I=v=>['I',v],L=v=>['L',v],D=v=>['D',v];
   const idGeo=100001,idModel=100002,mats=groups.map((g,i)=>200001+i);
   /* geometry: one polygon list, the last index of each triangle written as -(i+1) */
@@ -251,16 +251,18 @@ function uvFBX(m,name,orig){const P=uvPositions(m,orig),n=P.length/3,T=m.idx.len
   const P70=(props)=>N('Properties70',[],props.map(p=>N('P',p)));
   /* header */
   bytes(te.encode('Kaydara FBX Binary  '));u8(0);u8(0x1a);u8(0);u32(7400);
-  node('FBXHeaderExtension',[],[N('FBXHeaderVersion',[I(1003)]),N('FBXVersion',[I(7400)]),N('Creator',[S('Gouache Studio')])].map(f=>f));
+  {const now=new Date(),ts=[['Version',1000],['Year',now.getFullYear()],['Month',now.getMonth()+1],['Day',now.getDate()],['Hour',now.getHours()],['Minute',now.getMinutes()],['Second',now.getSeconds()],['Millisecond',0]];
+    node('FBXHeaderExtension',[],[N('FBXHeaderVersion',[I(1003)]),N('FBXVersion',[I(7400)]),N('EncryptionType',[I(0)]),N('CreationTimeStamp',[],ts.map(([k,v])=>N(k,[I(v)]))),N('Creator',[S('Gouache Studio')])]);}
+  node('FileId',[['R',FBX_FILEID]]);node('CreationTime',[S(FBX_CTIME)]);node('Creator',[S('Gouache Studio')]);
   node('GlobalSettings',[],[N('Version',[I(1000)]),P70([[S('UpAxis'),S('int'),S('Integer'),S(''),I(1)],[S('UpAxisSign'),S('int'),S('Integer'),S(''),I(1)],[S('FrontAxis'),S('int'),S('Integer'),S(''),I(2)],[S('FrontAxisSign'),S('int'),S('Integer'),S(''),I(1)],[S('CoordAxis'),S('int'),S('Integer'),S(''),I(0)],[S('CoordAxisSign'),S('int'),S('Integer'),S(''),I(1)],[S('UnitScaleFactor'),S('double'),S('Number'),S(''),D(1)]])]);
   node('Definitions',[],[N('Version',[I(100)]),N('Count',[I(2+mats.length)]),N('ObjectType',[S('Geometry')],[N('Count',[I(1)])]),N('ObjectType',[S('Model')],[N('Count',[I(1)])]),N('ObjectType',[S('Material')],[N('Count',[I(mats.length)])])]);
-  node('Objects',[],[N('Geometry',[L(idGeo),S('Geometry::'+name),S('Mesh')],kids),
-    N('Model',[L(idModel),S('Model::'+name),S('Mesh')],[N('Version',[I(232)]),P70([[S('Lcl Translation'),S('Lcl Translation'),S(''),S('A'),D(0),D(0),D(0)]]),N('Shading',[['C',1]]),N('Culling',[S('CullingOff')])]),
-    ...groups.map((g,i)=>N('Material',[L(mats[i]),S('Material::'+g.name),S('')],[N('Version',[I(102)]),N('ShadingModel',[S('lambert')]),N('MultiLayer',[I(0)]),P70([[S('DiffuseColor'),S('Color'),S(''),S('A'),D(.8),D(.8),D(.8)]])]))]);
+  node('Objects',[],[N('Geometry',[L(idGeo),S(name+'\x00\x01Geometry'),S('Mesh')],kids),
+    N('Model',[L(idModel),S(name+'\x00\x01Model'),S('Mesh')],[N('Version',[I(232)]),P70([[S('Lcl Translation'),S('Lcl Translation'),S(''),S('A'),D(0),D(0),D(0)]]),N('Shading',[['C',1]]),N('Culling',[S('CullingOff')])]),
+    ...groups.map((g,i)=>N('Material',[L(mats[i]),S(g.name+'\x00\x01Material'),S('')],[N('Version',[I(102)]),N('ShadingModel',[S('lambert')]),N('MultiLayer',[I(0)]),P70([[S('DiffuseColor'),S('Color'),S(''),S('A'),D(.8),D(.8),D(.8)]])]))]);
   node('Connections',[],[N('C',[S('OO'),L(idModel),L(0)]),N('C',[S('OO'),L(idGeo),L(idModel)]),...mats.map(id=>N('C',[S('OO'),L(id),L(idModel)]))]);
   for(let i=0;i<13;i++)u8(0);
   /* the footer older readers look for */
-  bytes(Uint8Array.from([0xfa,0xbc,0xab,0x09,0xd0,0xc8,0xd4,0x66,0xb1,0x76,0xfb,0x83,0x1c,0xf7,0x26,0x7e]));const pad=(16-len%16)%16||16;for(let i=0;i<pad;i++)u8(0);u32(0);u32(7400);for(let i=0;i<120;i++)u8(0);
+  bytes(Uint8Array.from([0xfa,0xbc,0xab,0x09,0xd0,0xc8,0xd4,0x66,0xb1,0x76,0xfb,0x83,0x1c,0xf7,0x26,0x7e]));u32(0);const pad=(16-len%16)%16||16;for(let i=0;i<pad;i++)u8(0);u32(7400);for(let i=0;i<120;i++)u8(0);
   bytes(Uint8Array.from([0xf8,0x5a,0x8c,0x6a,0xde,0xf5,0xd9,0x7e,0xec,0xe9,0x0c,0xe3,0x75,0x8f,0x29,0x0b]));
   return buf.slice(0,len);}
 /* the File menu entry (3D Paint and Bake) */

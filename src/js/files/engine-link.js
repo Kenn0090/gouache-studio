@@ -255,7 +255,21 @@ def _tick(delta):
             unreal.log_error("Gouache link: setup failed: " + str(e))
 
 
+def _pending():
+    """setups sent while Unreal was closed: a gouache_unreal.gdata newer than its .gouache_done"""
+    try:
+        root = os.path.join(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_content_dir()), "Gouache")
+        for name in sorted(os.listdir(root)) if os.path.isdir(root) else []:
+            d = os.path.join(root, name)
+            data, done = os.path.join(d, "gouache_unreal.gdata"), os.path.join(d, ".gouache_done")
+            if os.path.exists(data) and (not os.path.exists(done) or os.path.getmtime(done) < os.path.getmtime(data)):
+                _jobs.put({"name": name, "dir": d})
+    except Exception as e:
+        unreal.log_warning("Gouache link: could not look for waiting setups (" + str(e) + ")")
+
+
 if not _state["started"]:
+    _pending()
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -289,8 +303,23 @@ async function elInstall(to){const b=es.dirs[to];if(!b){toast('Choose the '+EL_N
           /* one extra line at the end of the project's own file, only when you say yes */
           confirmDlg('Add the link to your init_unreal.py?','Your project already has an init_unreal.py. Gouache can add the single line “import gouache_link” at the end of it so Unreal starts the link. Nothing else in the file is changed. You also need the Python Editor Script Plugin on (Edit › Plugins).','Add the line',async()=>{try{await platform.writeFile(init,new TextEncoder().encode(cur.replace(/\s*$/,'')+'\nimport gouache_link\n'));toast('Line added to init_unreal.py. Turn on the Python Editor Script Plugin and restart Unreal.');}catch(e){toast('Could not change init_unreal.py: '+(e.message||e));}});}}}
     return true;}catch(e){console.warn(e);toast('The link could not be added: '+(e.message||e));return false;}}
-/* after an export: tell the engine what was sent */
-async function elPing(to,dir,files,name){if(!EL_PORT[to]||es.live===false||!(await elInstalled(to)))return false;
+/* (0.94.4) fewer steps: switch on what the link needs in the project's own settings.
+   Unreal: the Python Editor Script Plugin and Editor Scripting Utilities in the .uproject; Godot: the link plug-in in project.godot.
+   Returns true when something was changed (the editor then needs a restart once). */
+async function elEnable(to){const b=es.dirs[to];if(!b||to==='unity')return false;
+  try{const fs=(await platform.invoke('dir_files',{dir:b}))||[],dec=x=>new TextDecoder().decode(x),enc=x=>new TextEncoder().encode(x);
+    if(to==='unreal'){const f=fs.map(([p])=>p).find(p=>/\.uproject$/i.test(p));if(!f)return false;const j=JSON.parse(dec(await platform.readFile(f)));j.Plugins=j.Plugins||[];let changed=false;
+      for(const n of ['PythonScriptPlugin','EditorScriptingUtilities']){const e=j.Plugins.find(x=>x&&x.Name===n);if(!e){j.Plugins.push({Name:n,Enabled:true});changed=true;}else if(!e.Enabled){e.Enabled=true;changed=true;}}
+      if(changed)await platform.writeFile(f,enc(JSON.stringify(j,null,'\t')));return changed;}
+    const f=fs.map(([p])=>p).find(p=>/(^|[\\/])project\.godot$/i.test(p));if(!f)return false;let t=dec(await platform.readFile(f));const want='res://addons/gouache_link/plugin.cfg';if(t.includes(want))return false;
+    if(/^\[editor_plugins\]/m.test(t)){if(/^enabled=PackedStringArray\((.*)\)\s*$/m.test(t))t=t.replace(/^enabled=PackedStringArray\((.*)\)\s*$/m,(m,a)=>'enabled=PackedStringArray('+(a.trim()?a.trim()+', ':'')+'"'+want+'")');else t=t.replace(/^\[editor_plugins\]\s*$/m,'[editor_plugins]\n\nenabled=PackedStringArray("'+want+'")');}
+    else t=t.replace(/\s*$/,'')+'\n\n[editor_plugins]\n\nenabled=PackedStringArray("'+want+'")\n';
+    await platform.writeFile(f,enc(t));return true;}catch(e){console.warn(e);return false;}}
+/* after an export: tell the engine what was sent (adding the link first if the project does not have it yet) */
+async function elPing(to,dir,files,name){if(!EL_PORT[to]||es.live===false)return false;
+  if(!(await elInstalled(to))){if(!(await elInstall(to)))return false;const ch=await elEnable(to);
+    toast(to==='unity'?'Unity link added: switch to Unity and it sets everything up.':to==='godot'?'Godot link added'+(ch?' and switched on':'')+'. Reopen the project in Godot once; after that, sends set themselves up.':'Unreal link added'+(ch?' and the Python plug-ins switched on':'')+'. Restart Unreal once: it then sets up this send and every later one by itself.');return false;}
+  else await elEnable(to);
   const m=files.find(f=>/\.(glb|fbx|obj)$/i.test(f.name)),payload={name:pascal(name),dir,model:m?m.name:null};
   let ok=false;try{ok=await platform.invoke('blender_send',{path:JSON.stringify(payload),port:EL_PORT[to]});}catch(e){}
   toast(ok?'Told '+EL_NAME[to]+' to set it up.':EL_NAME[to]+' isn’t listening: open the project in the editor (with the link on) and send again. The files are saved.');return ok;}

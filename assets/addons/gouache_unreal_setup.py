@@ -10,6 +10,7 @@
 # If the export has a model (.fbx), it is imported too and its material slots are filled in by name.
 import json
 import os
+import traceback
 import unreal
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -26,7 +27,7 @@ MEL = unreal.MaterialEditingLibrary
 EAL = unreal.EditorAssetLibrary
 
 
-def import_file(path, dest, options=None):
+def import_file(path, dest, options=None, want=None):
     task = unreal.AssetImportTask()
     task.set_editor_property("filename", path)
     task.set_editor_property("destination_path", dest)
@@ -40,8 +41,15 @@ def import_file(path, dest, options=None):
     if options is not None:
         task.set_editor_property("options", options)
     TOOLS.import_asset_tasks([task])
-    paths = task.get_editor_property("imported_object_paths")
-    return EAL.load_asset(paths[0]) if paths else None
+    paths = task.get_editor_property("imported_object_paths") or []
+    if want is None:
+        return EAL.load_asset(paths[0]) if paths else None
+    # a model import also brings materials and textures: pick the mesh out of everything that came in
+    for p in paths:
+        a = EAL.load_asset(p)
+        if a is not None and isinstance(a, want):
+            return a
+    return None
 
 
 def import_texture(fname, kind):
@@ -810,17 +818,36 @@ def assign_to_model(instances):
         opts.set_editor_property("import_materials", False)
         opts.set_editor_property("import_textures", False)
         opts.set_editor_property("import_as_skeletal", False)
-    mesh = import_file(path, DEST, opts)
-    if mesh is None or not isinstance(mesh, unreal.StaticMesh):
+    kinds = tuple(c for c in (getattr(unreal, "StaticMesh", None), getattr(unreal, "SkeletalMesh", None)) if c)
+    mesh = import_file(path, DEST, opts, kinds)
+    if mesh is None:
+        unreal.log_error("Gouache: " + mfile + " did not import as a mesh (see the lines above for Unreal's reason)")
         return
-    slots = mesh.get_editor_property("static_materials")
-    for i, slot in enumerate(slots):
-        sname = str(slot.get_editor_property("material_slot_name"))
-        mi = instances.get(sname) or instances.get(sname.replace(" ", "_"))
-        if mi is not None:
-            mesh.set_material(i, mi)
+    done, missing = 0, []
+    if isinstance(mesh, unreal.StaticMesh):
+        slots = mesh.get_editor_property("static_materials")
+        for i, slot in enumerate(slots):
+            sname = str(slot.get_editor_property("material_slot_name"))
+            mi = instances.get(sname) or instances.get(sname.replace(" ", "_"))
+            if mi is not None:
+                mesh.set_material(i, mi)
+                done += 1
+            else:
+                missing.append(sname)
+    else:
+        mats = list(mesh.get_editor_property("materials"))
+        for i, sm in enumerate(mats):
+            sname = str(sm.get_editor_property("material_slot_name"))
+            mi = instances.get(sname) or instances.get(sname.replace(" ", "_"))
+            if mi is not None:
+                sm.set_editor_property("material_interface", mi)
+                mats[i] = sm
+                done += 1
+            else:
+                missing.append(sname)
+        mesh.set_editor_property("materials", mats)
     EAL.save_loaded_asset(mesh)
-    unreal.log("Gouache: " + mfile + " imported with its materials set")
+    unreal.log("Gouache: " + mfile + " imported, %d material slot(s) set" % done + ((", no material for: " + ", ".join(missing)) if missing else ""))
 
 
 LIGHTS = None
@@ -837,7 +864,7 @@ for S in DATA["sets"]:
         inst[S["name"]] = mi
         made.append("MI_" + S["safe"])
     except Exception as e:
-        unreal.log_error("Gouache: " + S["name"] + " failed: " + str(e))
+        unreal.log_error("Gouache: " + S["name"] + " (" + S["look"] + ") failed: " + str(e) + "\n" + traceback.format_exc())
 for U in DATA.get("updates", []):
     # a look changed for assets already in the game: only parameters are updated, nothing is imported again
     try:
@@ -853,10 +880,17 @@ for U in DATA.get("updates", []):
             unreal.log("Gouache: updated " + path)
     except Exception as e:
         unreal.log_error("Gouache: could not update " + str(U.get("asset") or U.get("variant")) + ": " + str(e))
+if not DATA["sets"]:
+    unreal.log_warning("Gouache: this export had no texture sets to set up (was the Gouache shader tick off?)")
 try:
     assign_to_model(inst)
 except Exception as e:
-    unreal.log_error("Gouache: the model could not be set up: " + str(e))
+    unreal.log_error("Gouache: the model could not be set up: " + str(e) + "\n" + traceback.format_exc())
 if FAILED:
     unreal.log_error("Gouache: %d wires could not be connected (please send this to the Gouache author): %s" % (len(FAILED), "; ".join(FAILED[:40])))
-unreal.log("Gouache: made " + ", ".join(made) + " in " + DEST)
+unreal.log("Gouache: made %d of %d material(s) in %s: %s" % (len(made), len(DATA["sets"]), DEST, ", ".join(made)))
+try:
+    # the link starts any setup that came in while Unreal was closed; this marks this one as done
+    open(os.path.join(HERE, ".gouache_done"), "w").write("done")
+except Exception:
+    pass

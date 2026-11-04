@@ -28,7 +28,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(cs.includes("Replace('\\\\', '/')"),'GouacheAssign.cs: the backslash survives (a C# error there stops every script in the project)');
  const link=await p.evaluate(()=>__gs.EL_GODOT).catch(()=>null);
  if(link!==null)ok(!/func _build\(/.test(link)&&/func _build_ready\(/.test(link),'Godot link: no _build() clash with EditorPlugin');
- const stale=await p.evaluate(async()=>{const P=__gs.platform,keep=P.readFile;const T={'a.shader':'// gouache-master 2\nShader','b.shader':'// gouache-master 3\nShader','c.cs':"x.Replace('\\', '/')",'d.cs':"x.Replace('\\\\', '/')"};
+ const stale=await p.evaluate(async()=>{const P=__gs.platform,keep=P.readFile;const T={'a.shader':'// gouache-master 2\nShader','b.shader':'// gouache-master '+__gs.ESH_MASTER_VER+'\nShader','c.cs':"x.Replace('\\', '/')",'d.cs':'// gouache-master '+__gs.ESH_MASTER_VER+"\nx.Replace('\\\\', '/')"};
    P.readFile=async f=>new TextEncoder().encode(T[f]);const o={};for(const f in T)o[f]=await __gs.eshStale(f);P.readFile=keep;return o;}).catch(e=>String(e));
  ok(stale&&stale['a.shader']&&!stale['b.shader']&&stale['c.cs']&&!stale['d.cs'],'broken shared files from before are replaced without asking '+JSON.stringify(stale));
  const fs=require('fs'),py=fs.readFileSync(__dirname+'/../../assets/addons/gouache_unreal_setup.py','utf8');

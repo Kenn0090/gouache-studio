@@ -24,7 +24,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const cap=await p.evaluate(()=>window.__cap.slice());
  ok(cap.length===1&&cap[0].width>100&&cap[0].height>50,'a screenshot is taken by the new viewer at the view size '+JSON.stringify(cap));
  await p.evaluate(()=>{window.__cap=[];return __gs.v3Screenshot('view',true);});await W(800);
- ok(await p.evaluate(()=>window.__cap.length===0),'a transparent one still uses the normal viewer');
+ ok(await p.evaluate(()=>window.__cap.length===1),'a see-through one uses the window too (since 0.94.1)');
  await p.evaluate(()=>{window.__raw=[];return __gs.ttRecord({spins:1,secs:1,fps:3,size:'view',fmt:'gif',lightTurns:false});});await W(1500);
  const raw=await p.evaluate(()=>window.__raw.slice());
  ok(raw.length===3&&raw[1].yawAdd<0&&Math.abs(raw[1].yawAdd+2*Math.PI/3)<1e-3&&raw[1].envTurn>0,'a turntable asks the new viewer for each frame, turned a little more each time '+JSON.stringify(raw.map(r=>[+r.yawAdd.toFixed(2),r.envTurn&&+r.envTurn.toFixed(2)])));

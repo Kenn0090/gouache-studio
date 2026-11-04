@@ -108,5 +108,6 @@ The nine looks added in 0.94.1 (Hologram, Glass, Fur, Iridescent, Car paint, Clo
 - **Godot 4:** all nine. Glass bends what is behind it (it reads the screen). Fur is a chain of ten materials (`<Set>_fur1`…`_fur10`). Halftone cel and Ink toon get an inked outline material.
 - **Unreal:** all nine as master materials. Car paint uses Unreal's Clear Coat, Cloth sheen and Fur use Cloth shading, Wax uses Subsurface. **Fur is a fuzzy cloth look without strands** (a material can't grow strands in Unreal). Hologram and Glass are translucent.
 - **If something goes wrong in Unreal:** the setup script writes to the Output Log (Window › Output Log, filter *Gouache*). A line saying some wires could not be connected lists them: please send it.
+- **The live link sets itself up:** the first send to a project adds the link. Unreal: Gouache also switches on the Python Editor Script Plugin and Editor Scripting Utilities; restart Unreal once. Godot: the link plug-in is switched on; reopen the project once. Unity: nothing to do. After that each send makes the materials and puts them on the model.
 
 All of this was written without being able to run the real engines: please check it in yours and tell me what looks off.
