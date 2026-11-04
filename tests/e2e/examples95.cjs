@@ -17,7 +17,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const ids=await p.evaluate(()=>__gs.EXAMPLES.map(e=>e.id));
  ok(['cobble','p3metal','planks','brushes','p3rust','p3stone','p3bronze'].every(i=>ids.includes(i)),'the welcome screen lists the new examples ('+ids.join(', ')+')');
  /* painted examples: layers and some paint */
- const stat=fn=>p.evaluate(fn);
+ const stat=(fn,a)=>p.evaluate(fn,a);
  await stat(()=>__gs.exWoodPlanks());
  const w=await stat(()=>{const t=__gs.compositeMap('base'),d=__gs.captureRegionNow(t,0,0,t.w,t.h).data;__gs.release(t);let dark=0,warm=0;for(let i=0;i<d.length;i+=4){if(d[i]<90)dark++;if(d[i]>120&&d[i+2]<110)warm++;}return {name:__gs.doc.name,layers:__gs.allLayers().length,dark,warm,n:d.length/4};});
  ok(w.name==='Wood planks'&&w.layers>=6&&w.warm>w.n*.4,'the wood planks example has its layers and is mostly warm wood ('+JSON.stringify(w)+')');
