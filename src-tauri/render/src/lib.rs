@@ -65,6 +65,8 @@ pub struct Material {
     pub height: Option<Tex8>,
     /// a thickness map (skin): it travels in the alpha of the emissive map
     pub thick: Option<Tex8>,
+    /// a UDIM tile (u, v): only the part of the model whose UVs fall in that tile shows this material
+    pub udim: Option<[u32; 2]>,
     pub rough: f32,
     pub metal: f32,
     /// when new pictures arrive for an existing material: maps left out (None) keep what they had
@@ -1422,7 +1424,7 @@ impl Gpu {
         let sp = mat.shader;
         let mut mu = MatUniform {
             flags: [if mat.orm.is_some() { 1.0 } else { 0.0 }, if mat.rough > 0.0 { mat.rough } else { 0.6 }, mat.metal, if mat.height.is_some() { 1.0 } else { 0.0 }],
-            tint: [1.0, 1.0, 1.0, 1.0],
+            tint: [1.0, 1.0, 1.0, match mat.udim { Some(t) => 2.0 + t[0] as f32 + 10.0 * t[1] as f32, None => 1.0 }],
             shk: [sp.kind as f32, 0.0, 0.0, 0.0],
             shp: sp.p,
             shq: sp.q,
@@ -1433,6 +1435,7 @@ impl Gpu {
         if let Some((_, old)) = keep {
             mu.flags = old.flags; // a kept map keeps its flag too
             mu.skin[3] = old.skin[3];
+            mu.tint = old.tint;
         }
         let mb = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("material"), contents: bytemuck::bytes_of(&mu), usage: wgpu::BufferUsages::UNIFORM });
         let bind = self.device.create_bind_group(&wgpu::BindGroupDescriptor {

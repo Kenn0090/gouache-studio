@@ -78,7 +78,10 @@ async function nvScene(){const m=mxModel();if(!m||!m.pos||!m.idx)throw new Error
     if(ui.mode==='p3d'&&sets.length>1){const back=p3.cur;try{for(let i=0;i<p3.sets.length;i++){if(p3.sets[i].missing||p3.sets[i].hidden)continue;p3SwitchSet(i,true);await one(p3.sets[i].name);}}finally{p3SwitchSet(back,true);}}
     else{const S=ui.mode==='p3d'&&p3.sets[p3.cur];await one(S?S.name:(doc.name||'Model'));}}}
   finally{Object.assign(texCfg,saved);}
-  const groups=mxGroups(m,Object.keys(texBy)).filter(g=>g.idx.length);
+  let groups=mxGroups(m,Object.keys(texBy)).filter(g=>g.idx.length);
+  /* UDIM: each tile of a material is its own set; they all use the material's triangles and each shows only its own tile */
+  if(ui.mode==='p3d'&&p3.udim){const out=[];for(const g of groups){const S0=p3.sets.find(S=>S.name===g.name),b=S0&&p3Binding(S0),all=b?p3.sets.filter(S=>p3Binding(S)===b&&!S.hidden&&!S.missing&&texBy[S.name]):[];
+      if(all.length>1||(all.length===1&&all[0].tile))for(const S of all)out.push({name:S.name,idx:g.idx,udim:S.tile?[S.tile.u,S.tile.v]:null});else out.push(g);}groups=out;}
   const envd=await nvEnv();
   return {m,groups,texBy,shBy,envd,settings:nvSettings()};}
 /* post processing (Shader panel): the same effects, worked on the window's picture. Ambient occlusion is left to the ray tracing. */
@@ -275,7 +278,7 @@ async function nvSyncTextures(live){if(!(nvPaintOn()||nv.viewForce)||nv.texBusy)
   try{texCfg.size=live?NV_TEX_LIVE:NV_TEX_MAX;texCfg.pad='none';texCfg.meshMaps=false;
     const bm=nvBakeMode(),S=bm||ui.mode!=='p3d'?{name:doc.name||'Model'}:p3.sets[p3.cur];if(!S)return;let T={};if(bm)T=await nvBakeTextures();else{const g=await buildTextures(GLTF_TEX,'preview');for(const f of g)T[f.suffix]=f.data;await nvViewApply(T);}
     const len=k=>T[k]?T[k].length:0,parts=[];
-    const meta={pos:0,nrm:0,uv:0,groups:[{name:S.name,idx:0,rough:.6,metal:0,sh:nvShader(),tex:{base:len('BaseColor'),orm:len('ORM'),normal:len('Normal'),emissive:len('Emissive'),height:len('Height'),thick:len('Thick')}}],env:null,settings:nvSettings()};
+    const meta={pos:0,nrm:0,uv:0,groups:[{name:S.name,idx:0,udim:ui.mode==='p3d'&&p3.udim&&S.tile?[S.tile.u,S.tile.v]:undefined,rough:.6,metal:0,sh:nvShader(),tex:{base:len('BaseColor'),orm:len('ORM'),normal:len('Normal'),emissive:len('Emissive'),height:len('Height'),thick:len('Thick')}}],env:null,settings:nvSettings()};
     for(const k of ['BaseColor','ORM','Normal','Emissive','Height','Thick'])if(T[k])parts.push(T[k]);
     const json=new TextEncoder().encode(JSON.stringify(meta));let total=4+json.length;for(const p of parts)total+=p.byteLength;
     const out=new Uint8Array(total),dv=new DataView(out.buffer);dv.setUint32(0,json.length,true);out.set(json,4);let o=4+json.length;for(const p of parts){out.set(new Uint8Array(p.buffer,p.byteOffset,p.byteLength),o);o+=p.byteLength;}
@@ -292,7 +295,7 @@ function nvBody(sc){const m=sc.m,n=m.pos.length/3,f32=a=>new Float32Array(a);
   let win=null;try{win=JSON.parse(localStorage.getItem('gs.nvWin')||'null');}catch(e){}
   const parts=[pos,nrm,uv],meta={pos:pos.length,nrm:nrm.length,uv:uv.length,groups:[],env:null,settings:sc.settings,win:Array.isArray(win)&&win.length===4?win:undefined};
   for(const g of sc.groups){const T=sc.texBy[g.name]||{},len=k=>T[k]?T[k].length:0;
-    meta.groups.push({name:g.name,idx:g.idx.length,rough:.6,metal:0,sh:sc.shBy[g.name]||undefined,tex:{base:len('BaseColor'),orm:len('ORM'),normal:len('Normal'),emissive:len('Emissive'),height:len('Height'),thick:len('Thick')}});
+    meta.groups.push({name:g.name,idx:g.idx.length,udim:g.udim||undefined,rough:.6,metal:0,sh:sc.shBy[g.name]||undefined,tex:{base:len('BaseColor'),orm:len('ORM'),normal:len('Normal'),emissive:len('Emissive'),height:len('Height'),thick:len('Thick')}});
     parts.push(g.idx);for(const k of ['BaseColor','ORM','Normal','Emissive','Height','Thick'])if(T[k])parts.push(T[k]);}
   if(sc.envd){meta.env={w:sc.envd.w,h:sc.envd.h};parts.push(sc.envd.rgb);}
   const json=new TextEncoder().encode(JSON.stringify(meta)),bytes=a=>new Uint8Array(a.buffer,a.byteOffset,a.byteLength);

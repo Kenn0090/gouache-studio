@@ -181,6 +181,12 @@ fn fs(i: VOut) -> FOut {
     var o: FOut;
     g_sf = 0.0;
     g_sp = 0.0;
+    // a UDIM tile's set draws only the part of the model whose UVs fall in that tile (the window's v runs the other way: 1 - v)
+    if (mat.tint.w > 1.5) {
+        let code = i32(mat.tint.w + 0.5) - 2;
+        let f = floor(i.uv);
+        if (i32(f.x) != code % 10 || i32(f.y) != -(code / 10) - 1) { discard; }
+    }
     // see-through parts (opacity lives in the base colour's alpha): cut out below one half, like the 3D view
     if (frame.wire.w < 1.5 && frame.light_n.w > 0.5 && textureSampleLevel(base_tex, tex_smp, i.uv, 0.0).a < 0.5) { discard; }
     o.c = fs_shade(i);
