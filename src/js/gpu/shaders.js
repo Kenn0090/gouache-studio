@@ -185,10 +185,15 @@ vec4 applyStroke(vec4 L, float cov){
 `;
 const FS_STAMP=CH_BRUSH+`uniform float uAlpha; uniform int uTint; uniform vec3 uDabCol; uniform vec4 uLane;
 /* colour that changes across the brush (0.95): uLane = (number of lanes, hue turn, brightness, mode). Mode 0: hard stripes across the brush, 2: hard stripes along it, 1: a round tube (hue and light change from the middle to the edges), 3: soft wavy bands. The lanes stay with the brush as it turns, so they run along the stroke. */
+float lnH(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+float lnN(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f); return mix(mix(lnH(i),lnH(i+vec2(1,0)),f.x),mix(lnH(i+vec2(0,1)),lnH(i+vec2(1,1)),f.x),f.y); }
+float lnF(vec2 p){ return lnN(p)*0.55+lnN(p*2.03+7.1)*0.3+lnN(p*4.1+3.3)*0.15; }
 vec3 laneCol(vec3 c){ if(uLane.x<0.5) return c; vec2 dv=gl_FragCoord.xy-uCenter; float ca=cos(uAngle),sa=sin(uAngle); vec2 q=vec2(ca*dv.x+sa*dv.y,-sa*dv.x+ca*dv.y)*uFlip; float r=max(uRadius,0.01); float md=uLane.w;
   float t=clamp((md>1.5&&md<2.5)?q.x/r:q.y/r,-1.0,1.0); float h=0.0,v=0.0;
   if(md<0.5||(md>1.5&&md<2.5)){ float id=floor((t*0.5+0.5)*uLane.x); float a=fract(sin(id*91.7+3.1)*43758.5453), b=fract(sin(id*57.3+8.7)*43758.5453); h=(a-0.5)*2.0*uLane.y; v=(b-0.5)*2.0*uLane.z; }
   else if(md<1.5){ h=uLane.y*(1.0-2.0*t*t); v=uLane.z*(sqrt(max(1.0-t*t,0.0))-0.7); }
+  else if(md>4.5){ vec2 w=q/r*uLane.x*0.6; float wn=lnF(w+lnF(w*1.7+4.0)*2.2); float ln=abs(sin(wn*18.0)); h=-uLane.y*(0.5+0.5*sin(wn*7.0+1.0)); v=uLane.z*(0.6*sin(wn*5.0)-1.4*(1.0-smoothstep(0.0,0.16,ln))); }
+  else if(md>3.5){ float u=t*0.5+0.5; float ph=fract(sin(floor(uLane.x)*1.7)*43758.5453)*6.28; float n1=sin(u*uLane.x*2.1+ph)+0.8*sin(u*uLane.x*3.7+ph*1.7)+0.6*sin(u*uLane.x*6.3+ph*0.4); float n2=sin(u*uLane.x*1.7+ph*2.3)+0.7*sin(u*uLane.x*4.9+ph*0.9); h=-uLane.y*(0.5+0.5*clamp(n1/2.4,-1.0,1.0)); v=uLane.z*clamp(n2/1.7,-1.0,1.0); }
   else { float ph=fract(sin(floor(uLane.x)*1.7)*43758.5453)*6.28; h=uLane.y*sin(t*uLane.x*1.5708+ph)*(0.6+0.4*sin(t*uLane.x*0.7)); v=uLane.z*sin(t*uLane.x*1.2+ph*0.5); }
   vec3 k=vec3(0.57735); c=c*cos(h)+cross(k,c)*sin(h)+k*dot(k,c)*(1.0-cos(h)); return clamp(c*(1.0+v),0.0,1.0); }
 void main(){ float m=brushMask(gl_FragCoord.xy)*uAlpha; if(uTint==2){ if(m<=0.0) discard; o=vec4(laneCol(uDabCol),0.0); return; } o=uTint==1?vec4(laneCol(uDabCol)*m,m):vec4(m); }`;
@@ -509,3 +514,9 @@ const P={
 const vao=gl.createVertexArray();gl.bindVertexArray(vao);
 const vbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vbo);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([0,0,1,0,0,1,1,1]),gl.STATIC_DRAW);
 gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+
+const FS_SOFTCOL=`uniform sampler2D uSrc; uniform float uRad; uniform vec2 uSize;
+void main(){ vec2 uv=gl_FragCoord.xy/uSize; vec4 c0=texture(uSrc,uv); vec3 acc=vec3(0.0); float wsum=0.0;
+  for(int i=0;i<32;i++){ float a=float(i)*2.39996; float rr=sqrt((float(i)+0.5)/32.0)*uRad; vec4 t=texture(uSrc,uv+vec2(cos(a),sin(a))*rr/uSize); acc+=t.rgb*t.a; wsum+=t.a; }
+  vec3 col=wsum>1e-4?acc/wsum:c0.rgb; o=vec4(c0.a>0.0?col:c0.rgb,c0.a); }`;
+let P_SOFTCOL=null;

@@ -22,6 +22,7 @@ const FR_TIPS={
   /* Fried fluff: a bar whose edges and ends are torn like real paint smears (the ink-smears texture) */
   smearBar:frTexTip('Paint smear bar',128,64,'ink-smears',[.15,.2,.4,.2],(l,x,y)=>{const e=Math.min(x,1-x,y*1.2,(1-y)*1.2);return Math.max(0,Math.min(1,(l*1.5-.25)*1.4+.1))*Math.min(1,Math.max(0,(e-.03)*12));}),
   /* a square with softly rounded corners (Boxes, Blur Ice) */
+  sharpBox:genTip('Sharp box',128,128,(x,w,h)=>{x.fillRect(2,2,w-4,h-4);}),
   box:genTip('Rounded box',128,128,(x,w,h)=>{const r=14;x.beginPath();x.moveTo(r,2);x.arcTo(w-2,2,w-2,h-2,r);x.arcTo(w-2,h-2,2,h-2,r);x.arcTo(2,h-2,2,2,r);x.arcTo(2,2,w-2,2,r);x.closePath();x.fill();}),
   raggedSq:genTip('Ragged square',128,128,(x,w,h,R)=>{x.fillRect(10,4,w-20,h-8);for(let y=4;y<h-4;y+=2){const l=R()<.35?R()*9:0,r=R()<.35?R()*9:0;x.clearRect(10,y,l,2);x.clearRect(w-10-r,y,r,2);}}),
   flakes:genTip('Bristle flakes',256,256,(x,w,h,R)=>{for(let i=0;i<260;i++){const a=R()*6.2832,r=Math.sqrt(R())*w*.46,cx=w/2+Math.cos(a)*r,cy=h/2+Math.sin(a)*r,fw=3+R()*6,fh=8+R()*20;x.save();x.translate(cx,cy);x.rotate((R()-.5)*1.6+(R()<.25?1.57:0));x.beginPath();x.moveTo(-fw/2,-fh/2);x.lineTo(fw/2+R()*3,-fh/2+R()*4);x.lineTo(fw/2,fh/2);x.lineTo(-fw/2-R()*3,fh/2-R()*4);x.closePath();x.fill();x.restore();}}),
@@ -35,18 +36,18 @@ const FR_TIPS={
 };
 const FRIEND_PRESETS=[
   {name:'Blur ice',tool:'smudge',blendMode:'smear',streak:.7,tip:FR_TIPS.box,size:270,hardness:1,spacing:.05,strength:.85,charge:0,pSize:false,pOpacity:false,smoothing:.3},
-  {name:'Boxes',tool:'brush',tip:FR_TIPS.box,size:200,hardness:1,spacing:.1,followDir:false,laneN:70,laneMode:2,laneHue:.1,laneVal:.1,pSize:false,pOpacity:false,smoothing:.2},
-  {name:'Brow',tool:'brush',tip:FR_TIPS.hair,size:240,hardness:1,spacing:.03,followDir:true,laneN:60,laneMode:0,laneHue:.14,laneVal:.12,pSize:false,pOpacity:false,smoothing:.35},
-  {name:'Charcoal',tool:'brush',tip:FR_TIPS.grit,size:300,hardness:1,spacing:.05,flow:.9,pSize:false,pOpacity:false,smoothing:.3},
-  {name:'Dither',tool:'brush',tip:null,roundness:.03,angle:0,spray:1.7,sprayDen:4,sprayMist:.2,size:200,hardness:1,spacing:.03,laneN:40,laneMode:2,laneHue:.06,laneVal:.1,pSize:false,pOpacity:false,smoothing:.3},
+  {name:'Boxes',tool:'brush',tip:FR_TIPS.sharpBox,size:200,hardness:1,spacing:.002,followDir:false,hueJitter:.03,valJitter:.14,pSize:false,pOpacity:false,smoothing:.2},
+  {name:'Brow',tool:'brush',tip:FR_TIPS.hair,size:240,hardness:1,spacing:.002,followDir:true,laneN:60,laneMode:0,laneHue:.14,laneVal:.12,pSize:false,pOpacity:false,smoothing:.35},
+  {name:'Charcoal',tool:'brush',tip:FR_TIPS.grit,size:300,hardness:1,spacing:.002,flow:.9,pSize:false,pOpacity:false,smoothing:.3},
+  {name:'Dither',tool:'brush',tip:null,roundness:.03,angle:0,spray:1.7,sprayDen:4,sprayMist:.2,size:200,hardness:1,spacing:.002,laneN:40,laneMode:2,laneHue:.06,laneVal:.1,pSize:false,pOpacity:false,smoothing:.3},
   {name:'Fan',tool:'brush',fanFill:1,size:60,hardness:1,flow:1,spacing:.05,pSize:false,pOpacity:false,smoothing:.3,laneN:40,laneHue:.12,laneVal:.12},
   {name:'Fan fade',tool:'brush',fanFill:2,size:60,hardness:1,flow:1,spacing:.05,pSize:false,pOpacity:false,smoothing:.3,laneN:40,laneHue:.12,laneVal:.12},
-  {name:'Fried fluff',tool:'brush',tip:FR_TIPS.raggedSq,size:260,hardness:1,spacing:.012,followDir:true,laneN:8,laneMode:3,laneHue:.2,laneVal:.18,pSize:false,pOpacity:false,smoothing:.55,smoothCurve:true},
-  {name:'Line',tool:'brush',tip:null,size:100,hardness:1,spacing:.02,pSize:false,pOpacity:false,jitterPerStroke:true,hueJitter:.02,valJitter:.08,smoothing:.5,correction:.35},
-  {name:'Oil',tool:'brush',tip:FR_TIPS.dry,size:200,hardness:1,spacing:.025,followDir:true,laneN:36,laneMode:0,laneHue:.04,laneVal:.08,flow:1,pSize:false,pOpacity:false,smoothing:.35},
-  {name:'Oil bristle',tool:'brush',tip:FR_TIPS.flakes,size:220,hardness:1,flow:1,spacing:.012,followDir:false,laneN:20,laneMode:0,laneHue:.06,laneVal:.3,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
+  {name:'Fried fluff',tool:'brush',tip:FR_TIPS.raggedSq,size:260,hardness:1,spacing:.002,followDir:true,laneN:6,laneMode:5,laneHue:.8,laneVal:.3,softEnd:.025,pSize:false,pOpacity:false,smoothing:.55,smoothCurve:true},
+  {name:'Line',tool:'brush',tip:null,size:100,hardness:1,spacing:.002,pSize:false,pOpacity:false,jitterPerStroke:true,hueJitter:.02,valJitter:.08,smoothing:.5,correction:.35},
+  {name:'Oil',tool:'brush',tip:FR_TIPS.dry,size:200,hardness:1,spacing:.002,followDir:true,laneN:36,laneMode:0,laneHue:.04,laneVal:.08,flow:1,pSize:false,pOpacity:false,smoothing:.35},
+  {name:'Oil bristle',tool:'brush',tip:FR_TIPS.flakes,size:220,hardness:1,flow:1,spacing:.002,followDir:false,laneN:20,laneMode:0,laneHue:.06,laneVal:.3,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Oil bristle 3D',tool:'brush',tip:null,size:200,hardness:.9,spacing:.02,followDir:true,pSize:false,smoothing:.35,mix:true,mixLoad:1,mixPick:.15,mixWet:.8,mixDry:0,mixUse:.12,mixBristles:50,mixDryB:.2,mixThick:.9},
-  {name:'Worm',tool:'brush',tip:null,size:200,hardness:1,spacing:.015,laneN:1,laneMode:1,laneHue:.8,laneVal:.4,pSize:false,pOpacity:false,smoothing:.55}];
+  {name:'Worm',tool:'brush',tip:null,size:200,hardness:1,spacing:.002,laneN:1,laneMode:1,laneHue:.8,laneVal:.4,pSize:false,pOpacity:false,smoothing:.55}];
 /* “Line blend” is the Line blend brush made earlier (line-blend.js): it sits in this set too */
 {const lb=PRESETS.find(p=>p.name==='Line blend');if(lb)FRIEND_PRESETS.splice(9,0,lb);}
 library.splice(Math.min(library.length,3),0,{id:'friend_picks',name:'A friend’s picks (Heavy Paint style)',builtin:true,presets:FRIEND_PRESETS,tips:[]});

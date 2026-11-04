@@ -23,3 +23,13 @@ function fanMove(s,x,y,p){const f=s.lb;if(Math.hypot(x-f.px,y-f.py)<1.5)return;
       const b=s.bb;b[0]=Math.min(b[0],u[0]);b[1]=Math.min(b[1],u[1]);b[2]=Math.max(b[2],u[2]);b[3]=Math.max(b[3],u[3]);fdAdd(s,u);requestRender(true);}
     f.n++;}
   f.px=x;f.py=y;s.x=x;s.y=y;s.p=p;}
+
+/* Soften at the end of the stroke (0.95, Fried fluff): when the pen lifts, the colours inside the stroke blur together while the outline stays sharp
+   (colour is averaged with the neighbours' coverage as weight, the coverage itself is kept). */
+function softenStroke(s){const o=s.o,W=doc.w,H=doc.h,rad=Math.max(1,o.softEnd*Math.max(2,o.size)*.5),pad=Math.ceil(rad)+2,
+  x0=clamp(Math.floor(s.bb[0])-pad,0,W),y0=clamp(Math.floor(s.bb[1])-pad,0,H),x1=clamp(Math.ceil(s.bb[2])+pad,0,W),y1=clamp(Math.ceil(s.bb[3])+pad,0,H);
+  if(x1<=x0||y1<=y0||!strokeT||strokeT.w!==scratchT.w||strokeT.h!==scratchT.h)return;
+  if(!P_SOFTCOL)P_SOFTCOL=program(FS_SOFTCOL);
+  scissorDo([x0,y0,x1-x0,y1-y0],()=>run(P_SOFTCOL,scratchT,{uSrc:strokeT.tex,uRad:rad,uSize:[strokeT.w,strokeT.h]}));
+  blit(scratchT,strokeT,x0,y0,x1-x0,y1-y0,x0,y0);
+  s.bb=[Math.min(s.bb[0],x0),Math.min(s.bb[1],y0),Math.max(s.bb[2],x1),Math.max(s.bb[3],y1)];}
