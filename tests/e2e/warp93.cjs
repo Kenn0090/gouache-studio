@@ -32,6 +32,21 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  console.log('after drag',await mod(()=>{const r=__gs.t3Row(__gs.t3Layer());return JSON.stringify({keys:Object.keys(r.p.xf),warp:!!r.p.xf.warp});}));
  const moved=await mod(()=>{const L=__gs.t3Layer(),r=__gs.t3Row(L),w=r.p.xf.warp;return {moved:!!w.moved,p:w.pts[4].map(v=>+v.toFixed(2))};});
  ok(pos&&moved.moved,'dragging a point moves it over the model ('+JSON.stringify(moved)+')');
+
+ // 0.95: drag a box round points to select them, and bend the surface with a point's tangent handles
+ await mod(()=>{const L=__gs.t3Layer(),r=__gs.t3Row(L);r.p.xf.warp=__gs.wpjDefault(3,3);r.p.xf.s=[1,.6,1];__gs.wpjUI.sel=[];__gs.wpjDraw&&__gs.wpjDraw();});
+ const scr=await mod(()=>{const r=__gs.t3Row(__gs.t3Layer()),w=r.p.xf.warp,hit=document.getElementById('v3Hit'),b=hit.getBoundingClientRect();return w.pts.map(q=>{const s=__gs.pathProject(__gs.wpjToWorld(r.p.xf,q),'3d',hit);return s?{x:b.left+s[0],y:b.top+s[1]}:null;});});
+ if(scr[0]&&scr[8]){const x0=Math.min(scr[0].x,scr[8].x)-30,y0=Math.min(scr[0].y,scr[8].y)-30,x1=Math.max(scr[0].x,scr[8].x)+30,y1=Math.max(scr[0].y,scr[8].y)+30;
+   await p.mouse.move(x0,y0);await p.mouse.down();await p.mouse.move((x0+x1)/2,(y0+y1)/2,{steps:4});await p.mouse.move(x1,y1,{steps:4});await p.mouse.up();await p.waitForTimeout(300);}
+ const sel=await mod(()=>__gs.wpjUI.sel.length);ok(sel>=5,'a box round the grid selects its points ('+sel+')');
+ await mod(()=>{__gs.wpjUI.sel=[4];__gs.wpjDraw&&__gs.wpjDraw();});
+ const hs=await mod(()=>{const hit=document.getElementById('v3Hit'),b=hit.getBoundingClientRect(),T=__gs.wpjActive();return __gs.wpjHandles(T,hit).map(h=>({k:h.k,sg:h.sg,x:b.left+h.at[0],y:b.top+h.at[1]}));});
+ ok(hs.length===4,'one selected point shows four tangent handles ('+hs.length+')');
+ const before=await mod(()=>JSON.stringify(__gs.wpjTan(__gs.t3Row(__gs.t3Layer()).p.xf.warp,1,1,'u')));
+ const hu=hs.find(h=>h.k==='u'&&h.sg===1);
+ if(hu){await p.mouse.move(hu.x,hu.y);await p.mouse.down();await p.mouse.move(hu.x+30,hu.y-25,{steps:6});await p.mouse.up();await p.waitForTimeout(400);}
+ const after=await mod(()=>{const w=__gs.t3Row(__gs.t3Layer()).p.xf.warp;return {t:JSON.stringify(__gs.wpjTan(w,1,1,'u')),custom:!!(w.tu&&w.tu[4])};});
+ ok(after.custom&&after.t!==before,'dragging a handle changes that point\'s tangent ('+before+' → '+after.t+')');
  const err=await mod(()=>__gs.gl.getError());ok(err===0,'no graphics errors');
  ok(errs.length===0,'no page errors '+errs.slice(0,2).join(' | '));
  await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);
