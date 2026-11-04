@@ -27,9 +27,12 @@ const aiSize=id=>AI_PARTS[id].files.reduce((a,f)=>a+f.size,0);
 /* ---- storage ---- */
 const aiDB={open(){if(this.db)return Promise.resolve(this.db);return new Promise((res,rej)=>{try{const r=indexedDB.open('gouache-ai',1);r.onupgradeneeded=()=>{r.result.createObjectStore('files');};r.onsuccess=()=>{this.db=r.result;res(r.result);};r.onerror=()=>rej(r.error);}catch(e){rej(e);}});},
   async get(k){const db=await this.open();return new Promise((res,rej)=>{const q=db.transaction('files').objectStore('files').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error);});},
-  async put(k,v){const db=await this.open();return new Promise((res,rej)=>{const t=db.transaction('files','readwrite');t.objectStore('files').put(v,k);t.oncomplete=()=>res();t.onerror=()=>rej(t.error);});},
-  async del(k){const db=await this.open();return new Promise((res,rej)=>{const t=db.transaction('files','readwrite');t.objectStore('files').delete(k);t.oncomplete=()=>res();t.onerror=()=>rej(t.error);});}};
-async function aiRefresh(){for(const id of AI_ORDER){let ok=true;for(const f of AI_PARTS[id].files){let v=null;try{v=await aiDB.get(id+'/'+f.n);}catch(e){}if(!v||v.sha!==f.sha){ok=false;break;}}AI.have[id]=ok;}
+  /* a small marker is kept beside every stored file, so "is it there, and which one" never has to load a model or a sky (100 MB or more) into memory */
+  async put(k,v){const db=await this.open();return new Promise((res,rej)=>{const t=db.transaction('files','readwrite');t.objectStore('files').put(v,k);if(v&&v.buf)t.objectStore('files').put({sha:v.sha,size:v.size,v:1},'m/'+k);t.oncomplete=()=>res();t.onerror=()=>rej(t.error);});},
+  async del(k){const db=await this.open();return new Promise((res,rej)=>{const t=db.transaction('files','readwrite');t.objectStore('files').delete(k);t.objectStore('files').delete('m/'+k);t.oncomplete=()=>res();t.onerror=()=>rej(t.error);});},
+  /* the marker: {sha,size} or null. Files stored before markers existed are read once, and get one. */
+  async info(k){const m=await this.get('m/'+k);if(m)return m;const v=await this.get(k);if(!v||!v.buf)return null;const mm={sha:v.sha,size:v.size,v:1};try{const db=await this.open();db.transaction('files','readwrite').objectStore('files').put(mm,'m/'+k);}catch(e){}return mm;}};
+async function aiRefresh(){for(const id of AI_ORDER){let ok=true;for(const f of AI_PARTS[id].files){let v=null;try{v=await aiDB.info(id+'/'+f.n);}catch(e){}if(!v||v.sha!==f.sha){ok=false;break;}}AI.have[id]=ok;}
   if(typeof aiUiSync==='function')aiUiSync();return AI.have;}
 const aiHas=id=>!!AI.have[id];
 /* ---- downloading ---- */

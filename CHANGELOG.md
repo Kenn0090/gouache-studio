@@ -1,3 +1,9 @@
+## 0.94.2
+
+- **New viewer reopens:** closing the window and opening it again works now (the window library only allows one window system per run of the app, so the first one is kept and reused).
+- **Painting in the new viewer is lighter:** the page's own 3D view no longer redraws on every move of the pen (the camera sync added in 0.94.1 caused that), and it waits until the stroke ends.
+- **Faster start:** the app no longer reads every installed AI model and sky file into memory at start just to check they are there (a tiny marker is kept beside each file).
+
 ## 0.94.1
 
 - **Brow** is rebuilt as a wide bar of fine vertical fibres with ragged top and bottom edges, tinted lanes and pixel-fine speckle. **Boxes** have sharp corners and one flat colour per box. The Heavy Paint style brushes now paint at near-zero spacing, so the dabs overlap themselves and give the stacked, 3D-looking stripes, and their paths are smoothed so strokes come out continuous.

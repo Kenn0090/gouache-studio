@@ -240,7 +240,14 @@ pub struct CaptureOpts {
     pub transparent: bool,
 }
 
+/// One event loop is all the window library allows per run of the program, so the viewer's thread keeps it for good:
+/// closing the window only drops the window, and the next open reuses the loop.
+static LOOP: std::sync::Mutex<Option<EventLoopProxy<Cmd>>> = std::sync::Mutex::new(None);
+/// True while the viewer's window exists.
+static WIN_OPEN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 enum Cmd {
+    Open(Box<Scene>, Option<EventSink>, mpsc::Sender<Result<AdapterReport, String>>),
     Capture(u32, u32, CaptureOpts, mpsc::Sender<Result<Vec<u8>, String>>),
     Textures(String, Box<Material>),
     Scene(Box<Scene>),
@@ -266,15 +273,15 @@ pub struct Viewer {
 impl Viewer {
     /// Replaces everything on show (model, materials, environment, settings).
     pub fn set_scene(&self, s: Scene) -> bool {
-        self.proxy.send_event(Cmd::Scene(Box::new(s))).is_ok()
+        self.proxy.send_event(Cmd::Scene(Box::new(s))).is_ok() && WIN_OPEN.load(std::sync::atomic::Ordering::Relaxed)
     }
     /// Changes the lighting settings (and the environment picture if asked) without sending the model again.
     pub fn update(&self, settings: Settings, env: EnvChange) -> bool {
-        self.proxy.send_event(Cmd::Update(settings, env)).is_ok()
+        self.proxy.send_event(Cmd::Update(settings, env)).is_ok() && WIN_OPEN.load(std::sync::atomic::Ordering::Relaxed)
     }
     /// Gives one material (by the name of its group) new pictures, for example after painting.
     pub fn set_textures(&self, group: String, material: Material) -> bool {
-        self.proxy.send_event(Cmd::Textures(group, Box::new(material))).is_ok()
+        self.proxy.send_event(Cmd::Textures(group, Box::new(material))).is_ok() && WIN_OPEN.load(std::sync::atomic::Ordering::Relaxed)
     }
     /// A PNG picture of what the viewer shows, at the size asked for (waits for the ray tracing to settle). Takes a while at large sizes.
     pub fn capture_rgba(&self, w: u32, h: u32, o: CaptureOpts) -> Result<Vec<u8>, String> {
@@ -2138,9 +2145,23 @@ impl App {
     }
 }
 
+impl App {
+    /// The window goes away; the event loop stays for the next open.
+    fn close_window(&mut self) {
+        self.emit("closed"); // so the page knows the window is gone
+        self.gpu = None;
+        self.drag = None;
+        self.painting = false;
+        self.shift = false;
+        self.ctrl = false;
+        self.alt = false;
+        WIN_OPEN.store(false, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
 impl ApplicationHandler<Cmd> for App {
     fn resumed(&mut self, el: &ActiveEventLoop) {
-        if self.gpu.is_some() {
+        if self.gpu.is_some() || self.pending.is_none() {
             return;
         }
         let hint = self.pending.as_ref().and_then(|s| s.window);
@@ -2155,15 +2176,16 @@ impl ApplicationHandler<Cmd> for App {
                 }
                 gpu.window.request_redraw();
                 self.gpu = Some(gpu);
+                WIN_OPEN.store(true, std::sync::atomic::Ordering::Relaxed);
                 if let Some(tx) = self.init.take() {
                     let _ = tx.send(Ok(report));
                 }
             }
             Err(e) => {
+                self.pending = None;
                 if let Some(tx) = self.init.take() {
                     let _ = tx.send(Err(e));
                 }
-                el.exit();
             }
         }
     }
@@ -2178,9 +2200,18 @@ impl ApplicationHandler<Cmd> for App {
 
     fn user_event(&mut self, el: &ActiveEventLoop, cmd: Cmd) {
         match cmd {
+            Cmd::Open(scene, sink, tx) => {
+                if self.gpu.is_some() {
+                    self.close_window();
+                }
+                self.sink = sink;
+                self.init = Some(tx);
+                self.pending = Some(*scene);
+                self.cam = Camera { yaw: 0.9, pitch: 0.35, dist: 3.0, target: Vec3::ZERO, radius: 1.0 };
+                self.resumed(el);
+            }
             Cmd::Close => {
-                self.emit("closed");
-                el.exit();
+                self.close_window();
             }
             Cmd::Capture(w, h, o, tx) => {
                 let r = match self.gpu.as_mut() {
@@ -2230,11 +2261,10 @@ impl ApplicationHandler<Cmd> for App {
         }
     }
 
-    fn window_event(&mut self, el: &ActiveEventLoop, _id: WindowId, ev: WindowEvent) {
+    fn window_event(&mut self, _el: &ActiveEventLoop, _id: WindowId, ev: WindowEvent) {
         match ev {
             WindowEvent::CloseRequested => {
-                self.emit("closed"); // so the page knows the window is gone
-                el.exit();
+                self.close_window(); // tells the page and drops the window; the loop keeps running
             }
             WindowEvent::Resized(s) => {
                 if let Some(g) = self.gpu.as_mut() {
@@ -2371,6 +2401,16 @@ impl ApplicationHandler<Cmd> for App {
 /// Opens the viewer window on its own thread and waits (up to 15 seconds) for it to say what it is
 /// running on. Errors come back as plain sentences.
 pub fn open(scene: Scene, sink: Option<EventSink>) -> Result<Viewer, String> {
+    // an earlier open left its event loop running (the window library allows only one per run), so the next window is made there
+    let running = LOOP.lock().ok().and_then(|g| g.clone());
+    if let Some(proxy) = running {
+        let (init_tx, init_rx) = mpsc::channel::<Result<AdapterReport, String>>();
+        if proxy.send_event(Cmd::Open(Box::new(scene), sink, init_tx)).is_err() {
+            return Err("the viewer's window system has stopped; restart Gouache Studio to open the new viewer again".to_string());
+        }
+        let report = init_rx.recv_timeout(Duration::from_secs(15)).map_err(|_| "the viewer took too long to start".to_string())??;
+        return Ok(Viewer { proxy, report });
+    }
     let (proxy_tx, proxy_rx) = mpsc::channel::<EventLoopProxy<Cmd>>();
     let (init_tx, init_rx) = mpsc::channel::<Result<AdapterReport, String>>();
     std::thread::Builder::new()
@@ -2394,7 +2434,11 @@ pub fn open(scene: Scene, sink: Option<EventSink>) -> Result<Viewer, String> {
                     return;
                 }
             };
-            let _ = proxy_tx.send(event_loop.create_proxy());
+            let proxy = event_loop.create_proxy();
+            if let Ok(mut g) = LOOP.lock() {
+                *g = Some(proxy.clone());
+            }
+            let _ = proxy_tx.send(proxy);
             let mut app = App {
                 gpu: None,
                 cam: Camera { yaw: 0.9, pitch: 0.35, dist: 3.0, target: Vec3::ZERO, radius: 1.0 },
@@ -2411,6 +2455,9 @@ pub fn open(scene: Scene, sink: Option<EventSink>) -> Result<Viewer, String> {
                 pending: Some(scene),
             };
             let _ = event_loop.run_app(&mut app);
+            if let Ok(mut g) = LOOP.lock() {
+                *g = None;
+            }
         })
         .map_err(|e| format!("could not start the viewer thread: {e}"))?;
     let proxy = proxy_rx.recv_timeout(Duration::from_secs(5)).map_err(|_| "the viewer did not start".to_string())?;

@@ -14,10 +14,10 @@ const CT_ENV_MB=7e6;/* a 2K .hdr from Poly Haven is about 6 to 9 MB */
 const ctLite=()=>(typeof GM_LITE!=='undefined'&&GM_LITE)||/[?&]lite\b/.test(location.search);
 const CT_OFF_MB={materials:5e5,hdri:1.4e6,grunge:3.5e5};
 function ctOffList(){const L=[];for(const g of GM_BUNDLED)L.push(['materials',g.file]);for(const e of ENV_LIST)L.push(['hdri',e[2]+'_1k.hdr']);for(const t of TX_PHOTO)L.push(['grunge',t[0]+'.webp']);return L;}
-async function ctOffRefresh(){const have=new Set();for(const [k,f] of ctOffList()){if(await bcCached(k,f))have.add(k+'/'+f);}ct.offHave=have;}
+async function ctOffRefresh(){const have=new Set();for(const [k,f] of ctOffList()){if(await aiDB.info('b/'+k+'/'+f).catch(()=>null))have.add(k+'/'+f);}ct.offHave=have;}
 const ctOffMissing=()=>ctOffList().filter(([k,f])=>!(ct.offHave&&ct.offHave.has(k+'/'+f)));
 function ctPick(){if(!ct.pick)ct.pick={lib:prefs.ctLib||'2K',env:prefs.ctEnv||'2K',ai:new Set(),off:ctLite()};return ct.pick;}
-async function ctEnvRefresh(){const have={};for(const e of ENV_LIST){try{const v=await aiDB.get('hdri/'+e[2]+'_2k.hdr');have[e[2]]=!!(v&&v.buf);}catch(err){have[e[2]]=false;}}ct.envHave=have;}
+async function ctEnvRefresh(){const have={};for(const e of ENV_LIST){try{have[e[2]]=!!(await aiDB.info('hdri/'+e[2]+'_2k.hdr'));}catch(err){have[e[2]]=false;}}ct.envHave=have;}
 const ctEnvMissing=()=>ENV_LIST.filter(e=>!(ct.envHave&&ct.envHave[e[2]]));
 /* one sky at 2K from Poly Haven, kept in the add-ons store (envBundled looks there first) */
 async function ctEnvGet(e){const fl=JSON.parse(await platform.invoke('net_get_text',{url:'https://api.polyhaven.com/files/'+e[2]})),u=fl&&fl.hdri&&fl.hdri['2k']&&fl.hdri['2k'].hdr&&fl.hdri['2k'].hdr.url;
