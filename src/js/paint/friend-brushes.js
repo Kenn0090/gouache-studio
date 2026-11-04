@@ -36,18 +36,18 @@ const FR_TIPS={
 };
 const FRIEND_PRESETS=[
   {name:'Blur ice',tool:'smudge',blendMode:'smear',streak:.7,tip:FR_TIPS.box,size:270,hardness:1,spacing:.05,strength:.85,charge:0,pSize:false,pOpacity:false,smoothing:.3},
-  {name:'Boxes',tool:'brush',tip:FR_TIPS.sharpBox,size:200,hardness:1,spacing:.002,followDir:false,hueJitter:.03,valJitter:.14,pSize:false,pOpacity:false,smoothing:.2},
-  {name:'Brow',tool:'brush',tip:FR_TIPS.hair,size:240,hardness:1,spacing:.002,followDir:true,laneN:60,laneMode:0,laneHue:.14,laneVal:.12,pSize:false,pOpacity:false,smoothing:.35},
-  {name:'Charcoal',tool:'brush',tip:FR_TIPS.grit,size:300,hardness:1,spacing:.002,flow:.9,pSize:false,pOpacity:false,smoothing:.3},
-  {name:'Dither',tool:'brush',tip:null,roundness:.03,angle:0,spray:1.7,sprayDen:4,sprayMist:.2,size:200,hardness:1,spacing:.002,laneN:40,laneMode:2,laneHue:.06,laneVal:.1,pSize:false,pOpacity:false,smoothing:.3},
+  {name:'Boxes',tool:'brush',tip:FR_TIPS.sharpBox,size:200,hardness:1,spacing:.002,followDir:false,hueJitter:.03,valJitter:.14,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
+  {name:'Brow',tool:'brush',tip:FR_TIPS.hair,size:240,hardness:1,spacing:.002,followDir:true,laneN:60,laneMode:0,laneHue:.14,laneVal:.12,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
+  {name:'Charcoal',tool:'brush',tip:FR_TIPS.grit,size:300,hardness:1,spacing:.002,flow:.9,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
+  {name:'Dither',tool:'brush',tip:null,roundness:.03,angle:0,spray:1.7,sprayDen:4,sprayMist:.2,size:200,hardness:1,spacing:.002,laneN:40,laneMode:2,laneHue:.06,laneVal:.1,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Fan',tool:'brush',fanFill:1,size:60,hardness:1,flow:1,spacing:.05,pSize:false,pOpacity:false,smoothing:.3,laneN:40,laneHue:.12,laneVal:.12},
   {name:'Fan fade',tool:'brush',fanFill:2,size:60,hardness:1,flow:1,spacing:.05,pSize:false,pOpacity:false,smoothing:.3,laneN:40,laneHue:.12,laneVal:.12},
-  {name:'Fried fluff',tool:'brush',tip:FR_TIPS.raggedSq,size:260,hardness:1,spacing:.002,followDir:true,laneN:6,laneMode:5,laneHue:.8,laneVal:.3,softEnd:.025,pSize:false,pOpacity:false,smoothing:.55,smoothCurve:true},
-  {name:'Line',tool:'brush',tip:null,size:100,hardness:1,spacing:.002,pSize:false,pOpacity:false,jitterPerStroke:true,hueJitter:.02,valJitter:.08,smoothing:.5,correction:.35},
-  {name:'Oil',tool:'brush',tip:FR_TIPS.dry,size:200,hardness:1,spacing:.002,followDir:true,laneN:36,laneMode:0,laneHue:.04,laneVal:.08,flow:1,pSize:false,pOpacity:false,smoothing:.35},
+  {name:'Fried fluff',tool:'brush',tip:FR_TIPS.raggedSq,size:260,hardness:1,spacing:.002,followDir:true,laneN:6,laneMode:5,laneHue:.8,laneVal:.3,softEnd:.025,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
+  {name:'Line',tool:'brush',tip:null,size:100,hardness:1,spacing:.002,pSize:false,pOpacity:false,jitterPerStroke:true,hueJitter:.02,valJitter:.08,smoothing:.6,smoothCurve:true,correction:.35},
+  {name:'Oil',tool:'brush',tip:FR_TIPS.dry,size:200,hardness:1,spacing:.002,followDir:true,laneN:36,laneMode:0,laneHue:.04,laneVal:.08,flow:1,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Oil bristle',tool:'brush',tip:FR_TIPS.flakes,size:220,hardness:1,flow:1,spacing:.002,followDir:false,laneN:20,laneMode:0,laneHue:.06,laneVal:.3,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Oil bristle 3D',tool:'brush',tip:null,size:200,hardness:.9,spacing:.02,followDir:true,pSize:false,smoothing:.35,mix:true,mixLoad:1,mixPick:.15,mixWet:.8,mixDry:0,mixUse:.12,mixBristles:50,mixDryB:.2,mixThick:.9},
-  {name:'Worm',tool:'brush',tip:null,size:200,hardness:1,spacing:.002,laneN:1,laneMode:1,laneHue:.8,laneVal:.4,pSize:false,pOpacity:false,smoothing:.55}];
+  {name:'Worm',tool:'brush',tip:null,size:200,hardness:1,spacing:.002,laneN:1,laneMode:1,laneHue:.8,laneVal:.4,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true}];
 /* “Line blend” is the Line blend brush made earlier (line-blend.js): it sits in this set too */
 {const lb=PRESETS.find(p=>p.name==='Line blend');if(lb)FRIEND_PRESETS.splice(9,0,lb);}
 library.splice(Math.min(library.length,3),0,{id:'friend_picks',name:'A friend’s picks (Heavy Paint style)',builtin:true,presets:FRIEND_PRESETS,tips:[]});
