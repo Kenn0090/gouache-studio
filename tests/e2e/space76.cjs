@@ -5,7 +5,7 @@ const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
 (async()=>{
  const server=http.createServer((req,res)=>{const f=path.resolve(root,'.'+decodeURIComponent(new URL(req.url,'http://localhost').pathname));if(!f.startsWith(root+path.sep)||!fs.existsSync(f)){res.writeHead(404);return res.end();}fs.createReadStream(f).pipe(res);});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const url='http://127.0.0.1:'+server.address().port;
- const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',channel:'msedge',headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-precise-memory-info']}),p=await b.newPage({viewport:{width:1300,height:900}}),errors=[];
+ const b=await chromium.launch({channel:'msedge',headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-precise-memory-info']}),p=await b.newPage({viewport:{width:1300,height:900}}),errors=[];
  p.on('pageerror',e=>errors.push(e.stack));await p.addInitScript(()=>{localStorage.setItem('gs.welcome','no');});await p.route('**/*',r=>r.request().url().startsWith(url)?r.continue():r.abort());
  await p.goto(url+'/index.html?debug');await p.waitForFunction(()=>window.__gs);await p.evaluate(()=>__gs.closeWelcome());
  const r=await p.evaluate(async()=>{const G=__gs;G.newDoc(96,96);G.cmdAddLayer();const A=G.doc.active;A.name='Noisy layer';const t=G.mapT(A,'base'),d=new Uint8Array(96*96*4);let s=7;for(let i=0;i<d.length;i+=4){s=(Math.imul(s,1664525)+1013904223)|0;d[i]=(s>>>24)&255;d[i+1]=(s>>>16)&255;d[i+2]=(s>>>8)&255;d[i+3]=255;}G.writeRegion(t,0,0,96,96,d);

@@ -4,7 +4,7 @@
 const {chromium}=require('playwright');
 const SIZE=+process.env.SIZE||2048,LAYERS=+process.env.LAYERS||6,WHICH=process.argv[2]||'all';
 (async()=>{
- const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const p=await (await b.newContext({viewport:{width:1500,height:950}})).newPage();
  await p.route('**/*',r=>r.request().url().startsWith('file:')?r.continue():r.abort());
  await p.addInitScript(()=>{const C={rp:0,rpMs:0,tex:0,texMs:0,fbo:0,sub:0,subMs:0,flush:0};window.__gl=C;const G=WebGL2RenderingContext.prototype;

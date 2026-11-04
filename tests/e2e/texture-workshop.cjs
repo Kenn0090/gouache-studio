@@ -1,7 +1,7 @@
 const {chromium}=require('playwright'),path=require('path');
 let failures=0;const ok=(v,s)=>{console.log((v?'PASS ':'FAIL ')+s);if(!v)failures++;};
 (async()=>{
- const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',channel:'msedge',headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const b=await chromium.launch({channel:'msedge',headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const p=await b.newPage({viewport:{width:1440,height:1000}}),errors=[];
  await p.addInitScript(()=>localStorage.setItem('gs.p3d',JSON.stringify({size:64,layout:'3d'})));
  p.on('pageerror',e=>errors.push(e.message));p.on('console',m=>{if(m.type()==='error'&&/shader|compile|link/i.test(m.text()))errors.push(m.text());});

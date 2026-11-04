@@ -2,7 +2,7 @@
 const {chromium}=require('playwright');const fs=require('fs'),path=require('path');
 const raw=process.env.RAW_FILE||'/tmp/rawsamples/eosm.cr2',out=path.resolve(__dirname,'../../docs/wiki/images');
 (async()=>{
- const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const p=await (await b.newContext({viewport:{width:1500,height:950}})).newPage();
  await p.route('**/*',r=>r.request().url().startsWith('file:')||r.request().url().startsWith('blob:')||r.request().url().startsWith('data:')?r.continue():r.abort());
  await p.goto('file://'+path.resolve(__dirname,'../../dist-web/index.html')+'?debug');

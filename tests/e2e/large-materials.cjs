@@ -7,7 +7,7 @@ let failures=0;const ok=(v,m)=>{console.log((v?'PASS ':'FAIL ')+m);if(!v)failure
  const serve=(u,res)=>{const file=path.resolve(root,'.'+decodeURIComponent(new URL(u,'http://local').pathname));if(!file.startsWith(root+path.sep)||!fs.existsSync(file))return false;res(file);return true;};
  const server=http.createServer((req,res)=>{if(!serve(req.url,f=>{res.setHeader('Content-Type',f.endsWith('.js')?'text/javascript':f.endsWith('.html')?'text/html':f.endsWith('.css')?'text/css':'application/octet-stream');res.end(fs.readFileSync(f));})){res.writeHead(404);res.end();}});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
- const b=native?await chromium.connectOverCDP(native):await chromium.launch({executablePath:'/opt/pw-browsers/chromium',channel:'msedge',headless:true,args:process.env.GS_LARGE?['--use-angle=d3d11']:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const b=native?await chromium.connectOverCDP(native):await chromium.launch({channel:'msedge',headless:true,args:process.env.GS_LARGE?['--use-angle=d3d11']:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const p=native?b.contexts()[0].pages()[0]:await b.newPage({viewport:{width:1280,height:900}}),errors=[];
  p.setDefaultTimeout(120000);p.on('pageerror',e=>errors.push(e.stack));
  await p.addInitScript(()=>{localStorage.setItem('gs.p3d',JSON.stringify({size:128,layout:'3d'}));localStorage.setItem('gs.matOpen','all');});

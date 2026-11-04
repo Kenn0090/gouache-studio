@@ -1,7 +1,7 @@
 /* loads an FBX into 3D Paint and tries the Bevel and Retro shaders: node pistol.cjs model.fbx */
 const {chromium}=require('playwright'),fs=require('fs');const OLD=__dirname+'/';
 (async()=>{const file=process.argv[2],buf=fs.readFileSync(file).toString('base64');
- const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const p=await (await b.newContext({viewport:{width:1100,height:760}})).newPage();const errs=[];
  p.on('pageerror',e=>errs.push('PAGEERR '+e.message));p.on('console',m=>{if(m.type()==='error'||m.type()==='warning')errs.push(m.type()+' '+m.text().slice(0,300));});
  await p.addInitScript(()=>{localStorage.setItem('gs.p3d',JSON.stringify({size:256,layout:'3d'}));});

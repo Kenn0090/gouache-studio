@@ -5,7 +5,7 @@ const dir=process.env.RAW_DIR||'/tmp/rawsamples',files=['eosm.cr2','gm1.rw2'].fi
 let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
 (async()=>{
  if(!files.length){console.log('SKIP no sample RAW files in '+dir);return;}
- const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const p=await (await b.newContext({viewport:{width:1500,height:950}})).newPage();
  await p.route('**/*',r=>r.request().url().startsWith('file:')||r.request().url().startsWith('blob:')?r.continue():r.abort());
  const errs=[];p.on('pageerror',e=>errs.push(e.message));if(process.env.DBG)p.on('console',m=>console.log('C',m.text().slice(0,300)));

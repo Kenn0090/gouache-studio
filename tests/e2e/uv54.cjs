@@ -4,7 +4,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
 const sphereObj=(withUV)=>{const L=['o ball'],nu=24,nv=14,v=[],t=[],f=[];for(let j=0;j<=nv;j++)for(let i=0;i<=nu;i++){const a=i/nu*Math.PI*2,b=j/nv*Math.PI;L.push('v '+(Math.sin(b)*Math.cos(a)).toFixed(5)+' '+Math.cos(b).toFixed(5)+' '+(Math.sin(b)*Math.sin(a)).toFixed(5));if(withUV)t.push('vt '+(i/nu).toFixed(5)+' '+(1-j/nv).toFixed(5));}
   L.push(...t);const W=nu+1;for(let j=0;j<nv;j++)for(let i=0;i<nu;i++){const a=j*W+i+1,b=a+1,c=a+W,d=c+1;if(j>0)f.push(withUV?`f ${a}/${a} ${c}/${c} ${b}/${b}`:`f ${a} ${c} ${b}`);if(j<nv-1)f.push(withUV?`f ${b}/${b} ${c}/${c} ${d}/${d}`:`f ${b} ${c} ${d}`);}return L.concat(f).join('\n')+'\n';};
 (async()=>{
- const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const p=await (await b.newContext({viewport:{width:1600,height:950}})).newPage();
  await p.route('**/*',r=>r.request().url().startsWith('file:')?r.continue():r.abort());
  const errs=[];p.on('pageerror',e=>errs.push(e.message));

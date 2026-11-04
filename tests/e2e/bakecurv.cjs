@@ -7,7 +7,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
 function mesa(N){const v=[],f=[];for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){const x=i/N*2-1,y=1-j/N*2,m=Math.max(Math.abs(x),Math.abs(y)),t=Math.min(1,Math.max(0,(.55-m)/.15));v.push('v '+x+' '+y+' '+(.12*t));}
  for(let j=0;j<N;j++)for(let i=0;i<N;i++){const a=j*(N+1)+i+1,b=a+1,c=a+N+1,d=c+1;f.push('f '+a+' '+c+' '+b,'f '+b+' '+c+' '+d);}return v.join('\n')+'\n'+f.join('\n');}
 (async()=>{
- const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const ctx=await b.newContext({viewport:{width:1440,height:1000}});const p=await ctx.newPage();
  await p.route('**/*',r=>{const u=r.request().url();
   if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});

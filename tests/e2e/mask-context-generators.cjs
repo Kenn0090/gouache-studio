@@ -1,6 +1,6 @@
 const {chromium}=require('playwright'),path=require('path');
 let fails=0;const ok=(v,s)=>{console.log((v?'PASS ':'FAIL ')+s);if(!v)fails++;};
-(async()=>{const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',channel:'msedge',headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});const p=await b.newPage({viewport:{width:1440,height:1000}}),errors=[];
+(async()=>{const b=await chromium.launch({channel:'msedge',headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});const p=await b.newPage({viewport:{width:1440,height:1000}}),errors=[];
  await p.addInitScript(()=>localStorage.setItem('gs.p3d',JSON.stringify({size:128,layout:'3d'})));p.on('pageerror',e=>errors.push(e.message));await p.route('**/*',r=>r.request().url().startsWith('file:')?r.continue():r.fulfill({body:''}));await p.goto('file://'+path.resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForFunction(()=>window.__gs);
  await p.evaluate(()=>{const G=__gs;G.closeWelcome();G.setMode('p3d');window.targetLayer=G.cmdNewFillLayer({name:'Target layer'});G.cmdAddMask(0);window.otherLayer=G.cmdNewFillLayer({name:'Other layer'});G.showPanel('layers');});
  ok(await p.evaluate(()=>{const b=__gs.allLayers().find(l=>l.name==='Base material');return b.fill.maps.base.c.every(v=>v===.82)&&b.fill.maps.rough.v===.6&&b.fill.maps.metal.v===0;}),'new texture set has a greyish-white non-metal base material');
