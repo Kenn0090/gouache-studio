@@ -67,6 +67,8 @@ pub struct Material {
     pub thick: Option<Tex8>,
     /// a UDIM tile (u, v): only the part of the model whose UVs fall in that tile shows this material
     pub udim: Option<[u32; 2]>,
+    /// the Bake tab's Unfold: where this material's piece sits along x when the model is laid flat
+    pub fold_off: f32,
     pub rough: f32,
     pub metal: f32,
     /// when new pictures arrive for an existing material: maps left out (None) keep what they had
@@ -134,6 +136,8 @@ pub struct Settings {
     pub mir_r: f32,
     /// height depth (displacement), in model units for a full-white height (0 = off)
     pub disp: f32,
+    /// the Bake tab's Unfold slider (0 = the model, 1 = laid flat on its UV layout)
+    pub fold: f32,
     /// the page wants to know where the camera is (the Bevel preview is made for the window's own view)
     pub track: bool,
     /// the high-poly of the Bake tab: 0 off, 1 see-through over the model, 2 on its own (the model hidden)
@@ -165,7 +169,7 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, mir: [f32::NAN; 3], mir_radial: [0.0, 0.0], mir_off: [0.0; 3], mir_r: 0.0, disp: 0.0, track: false, hv: 0, mirc_n: 0, mirc: [[0.0; 16]; 32], floor: [0.0, 0.0, 1.0, 0.5], floor_col: [0.0; 3], clip: true, post_on: false, post: [[0.0; 4]; 7], st_on: false, st: [0.0; 8], st_view: [1.0, 1.0], wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
+        Settings { tone: 1, exposure: 1.0, env_turn: 0.0, env_strength: 1.0, show_background: true, env_blur: 0.35, sun_azimuth: 40.0, sun_elevation: 45.0, sun_intensity: 1.0, fov: 45.0, paint: false, brush: 0.0, rt: false, rt_shadow: 0.9, rt_ao: 0.85, rt_refl: 0.7, rt_soft: 0.02, rt_samples: 96, cam: None, bg: [0.09, 0.1, 0.115], smooth: true, ortho: false, studio_fill: 0.12, studio_rim: 0.08, wire: 0, mir: [f32::NAN; 3], mir_radial: [0.0, 0.0], mir_off: [0.0; 3], mir_r: 0.0, disp: 0.0, fold: 0.0, track: false, hv: 0, mirc_n: 0, mirc: [[0.0; 16]; 32], floor: [0.0, 0.0, 1.0, 0.5], floor_col: [0.0; 3], clip: true, post_on: false, post: [[0.0; 4]; 7], st_on: false, st: [0.0; 8], st_view: [1.0, 1.0], wire_col: [0.95, 0.7, 0.35], unlit: false, metal_view: 0.0, light_n: 0, light_a: [[0.0; 4]; 4], light_b: [[0.0; 4]; 4], light_c: [[0.0; 4]; 4] }
     }
 }
 
@@ -1429,13 +1433,14 @@ impl Gpu {
             shp: sp.p,
             shq: sp.q,
             shc: [sp.c[0], sp.c[1], sp.c[2], 0.0],
-            shd: [sp.d[0], sp.d[1], sp.d[2], 0.0],
+            shd: [sp.d[0], sp.d[1], sp.d[2], mat.fold_off],
             skin: [sp.skin[0], sp.skin[1], sp.skin[2], if mat.thick.is_some() { 1.0 } else { 0.0 }],
         };
         if let Some((_, old)) = keep {
             mu.flags = old.flags; // a kept map keeps its flag too
             mu.skin[3] = old.skin[3];
             mu.tint = old.tint;
+            mu.shd[3] = old.shd[3];
         }
         let mb = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("material"), contents: bytemuck::bytes_of(&mu), usage: wgpu::BufferUsages::UNIFORM });
         let bind = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -1643,9 +1648,9 @@ impl Gpu {
                 Some((w, h, e, t)) if w == self.config.width && h == self.config.height => {
                     let tol = cam.dist * 2e-3;
                     let (de, dt) = ((Vec3::from(e) - eye).length(), (Vec3::from(t) - cam.target).length());
-                    [if (de < tol && dt < tol) || e[0].is_nan() { 1.0 } else { 0.0 }, w as f32, h as f32, 0.0] // (a NaN eye is how the demo forces it on)
+                    [if (de < tol && dt < tol) || e[0].is_nan() { 1.0 } else { 0.0 }, w as f32, h as f32, st.fold] // (a NaN eye is how the demo forces it on)
                 }
-                _ => [0.0; 4],
+                _ => [0.0, 0.0, 0.0, st.fold],
             },
         };
         self.queue.write_buffer(&self.frame_buf, 0, bytemuck::bytes_of(&u));

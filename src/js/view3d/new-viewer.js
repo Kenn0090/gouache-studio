@@ -79,6 +79,8 @@ async function nvScene(){const m=mxModel();if(!m||!m.pos||!m.idx)throw new Error
     else{const S=ui.mode==='p3d'&&p3.sets[p3.cur];await one(S?S.name:(doc.name||'Model'));}}}
   finally{Object.assign(texCfg,saved);}
   let groups=mxGroups(m,Object.keys(texBy)).filter(g=>g.idx.length);
+  /* the Bake tab's Unfold: each material range is its own piece, laid side by side */
+  if(nvBakeMode()&&m.setRanges&&m.setRanges.length>1&&groups.length===1){const nm=groups[0].name,n=m.setRanges.length,T=texBy[nm];groups=m.setRanges.map((r,k)=>{const name=k?nm+'#'+(k+1):nm;if(k)texBy[name]=T;if(!shBy[name])shBy[name]=shBy[nm];return {name,idx:m.idx.slice(r.start*3,(r.start+r.count)*3),foff:(k-(n-1)/2)*2.6};});}
   /* UDIM: each tile of a material is its own set; they all use the material's triangles and each shows only its own tile */
   if(ui.mode==='p3d'&&p3.udim){const out=[];for(const g of groups){const S0=p3.sets.find(S=>S.name===g.name),b=S0&&p3Binding(S0),all=b?p3.sets.filter(S=>p3Binding(S)===b&&!S.hidden&&!S.missing&&texBy[S.name]):[];
       if(all.length>1||(all.length===1&&all[0].tile))for(const S of all)out.push({name:S.name,idx:g.idx,udim:S.tile?[S.tile.u,S.tile.v]:null});else out.push(g);}groups=out;}
@@ -113,7 +115,7 @@ async function nvStencilSend(){if(!nv.isOpen||!nvPaintMode()||typeof st3==='unde
     new DataView(out.buffer).setUint32(0,json.length,true);out.set(json,4);out.set(png,4+json.length);
     await platform.invoke('viewer_textures',out);nv.stImg=t;}catch(e){console.warn(e);}finally{nv.stBusy=false;}}
 /* the 3D view's lighting settings, as the new viewer takes them */
-function nvSettings(){const s=v3s();return {tone:toneInt(s),expo:s.expo==null?1:s.expo,env_turn:(s.envRot||0)/360,env_strength:s.envI==null?1:s.envI,show_bg:!!s.envBg,env_blur:s.envBlur==null?.35:s.envBlur,sun_az:s.sunAz==null?40:s.sunAz,sun_el:s.sunEl==null?45:s.sunEl,sun_i:envOf(s)!=='none'?(s.envSun||0):(s.sunI==null?1:s.sunI),fov:s.fov||45,bg:(typeof BG3!=='undefined'&&(BG3[s.bg]||BG3.dark))||[.09,.1,.115],lights:nvLights(),ortho:!!s.ortho,studio_fill:s.studioFill==null?.12:s.studioFill,studio_rim:s.studioRim==null?.08:s.studioRim,unlit:!!(typeof v3Unlit==='function'&&v3Unlit())||!!nvViewTarget()||(nvBakeMode()&&!!v3.bunlit),metal_view:s.metalView?(s.metalRough==null?.2:s.metalRough):0,rt_shadow:s.nvShadow==null?.9:s.nvShadow,rt_ao:s.nvAO==null?.85:s.nvAO,rt_refl:s.nvRefl==null?.7:s.nvRefl,rt_soft:s.nvSoft==null?.02:s.nvSoft,rt_samples:Math.round(s.nvSamples||96),cam:nvCamOut(),paint:!!nv.isOpen&&nvPaintOn(),brush:nv.isOpen&&nvPaintOn()?nvBrushFrac():0,rt:(!!s.nvRt||nvFloorOn())&&!s.wire,disp:nvDispOn()?Math.round((s.disp||0)*.3*1e4)/1e4:0,wire:s.wire?(s.wireOnly?2:1):0,wire_col:(typeof prefs!=='undefined'&&prefs.wireCol)||[.95,.7,.35],hv:nvHighMode(),track:!!(typeof bevelPreviewOn==='function'&&bevelPreviewOn()),...nvMirror(),...nvMirc(),...nvStencil(),...nvPost(),...nvFloor(),clip:v3s().clip!==false};}
+function nvSettings(){const s=v3s();return {tone:toneInt(s),expo:s.expo==null?1:s.expo,env_turn:(s.envRot||0)/360,env_strength:s.envI==null?1:s.envI,show_bg:!!s.envBg,env_blur:s.envBlur==null?.35:s.envBlur,sun_az:s.sunAz==null?40:s.sunAz,sun_el:s.sunEl==null?45:s.sunEl,sun_i:envOf(s)!=='none'?(s.envSun||0):(s.sunI==null?1:s.sunI),fov:s.fov||45,bg:(typeof BG3!=='undefined'&&(BG3[s.bg]||BG3.dark))||[.09,.1,.115],lights:nvLights(),ortho:!!s.ortho,studio_fill:s.studioFill==null?.12:s.studioFill,studio_rim:s.studioRim==null?.08:s.studioRim,unlit:!!(typeof v3Unlit==='function'&&v3Unlit())||!!nvViewTarget()||(nvBakeMode()&&!!v3.bunlit),metal_view:s.metalView?(s.metalRough==null?.2:s.metalRough):0,rt_shadow:s.nvShadow==null?.9:s.nvShadow,rt_ao:s.nvAO==null?.85:s.nvAO,rt_refl:s.nvRefl==null?.7:s.nvRefl,rt_soft:s.nvSoft==null?.02:s.nvSoft,rt_samples:Math.round(s.nvSamples||96),cam:nvCamOut(),paint:!!nv.isOpen&&nvPaintOn(),brush:nv.isOpen&&nvPaintOn()?nvBrushFrac():0,rt:(!!s.nvRt||nvFloorOn())&&!s.wire,disp:nvDispOn()?Math.round((s.disp||0)*.3*1e4)/1e4:0,wire:s.wire?(s.wireOnly?2:1):0,wire_col:(typeof prefs!=='undefined'&&prefs.wireCol)||[.95,.7,.35],hv:nvHighMode(),fold:(ui.mode==='bake'&&bk.fold>0)?Math.round(bk.fold*1e4)/1e4:0,track:!!(typeof bevelPreviewOn==='function'&&bevelPreviewOn()),...nvMirror(),...nvMirc(),...nvStencil(),...nvPost(),...nvFloor(),clip:v3s().clip!==false};}
 const nvEnvKey=()=>{const s=v3s(),k=envOf(s);return k+(k==='custom'&&env.custom?':'+env.custom.name:'');};
 /* a lighting update: the same body as a scene, with no model; the environment picture only when it changed */
 function nvUpdateBody(settings,mode,envd){const meta={pos:0,nrm:0,uv:0,groups:[],env_mode:mode,env:mode==='set'&&envd?{w:envd.w,h:envd.h}:null,settings};
@@ -284,7 +286,11 @@ async function nvSyncTextures(live){if(!(nvPaintOn()||nv.viewForce)||nv.texBusy)
     const out=new Uint8Array(total),dv=new DataView(out.buffer);dv.setUint32(0,json.length,true);out.set(json,4);let o=4+json.length;for(const p of parts){out.set(new Uint8Array(p.buffer,p.byteOffset,p.byteLength),o);o+=p.byteLength;}
     nv.lastTex={name:S.name,bytes:out.length};
     if(window.__nvHook)window.__nvHook('textures',meta);
-    const alive=await platform.invoke('viewer_textures',out);if(!alive)nvStopWatch();}
+    let alive=await platform.invoke('viewer_textures',out);
+    /* the Bake tab's Unfold pieces share the same pictures: send them under each piece's name too */
+    if(alive&&bm&&nv.bakeFoff){for(const nm of Object.keys(nv.bakeFoff)){const g=meta.groups[0],m2={...meta,groups:[{...g,name:nm,foff:nv.bakeFoff[nm]||undefined}]},j2=new TextEncoder().encode(JSON.stringify(m2)),o2=new Uint8Array(4+j2.length+(total-4-json.length));
+        new DataView(o2.buffer).setUint32(0,j2.length,true);o2.set(j2,4);o2.set(out.subarray(4+json.length),4+j2.length);alive=await platform.invoke('viewer_textures',o2);if(!alive)break;}}
+    if(!alive)nvStopWatch();}
   catch(e){console.warn(e);}finally{Object.assign(texCfg,saved);nv.texBusy=false;nv.seenMaps=nv.mapsVer||0;}}
 async function nvListen(){if(nv.listen||typeof TAURI==='undefined'||!TAURI||!TAURI.event)return;
   nv.listen=await TAURI.event.listen('viewer-event',e=>{try{nvHandle(JSON.parse(e.payload));}catch(er){console.warn(er);}});}
@@ -295,7 +301,7 @@ function nvBody(sc){const m=sc.m,n=m.pos.length/3,f32=a=>new Float32Array(a);
   let win=null;try{win=JSON.parse(localStorage.getItem('gs.nvWin')||'null');}catch(e){}
   const parts=[pos,nrm,uv],meta={pos:pos.length,nrm:nrm.length,uv:uv.length,groups:[],env:null,settings:sc.settings,win:Array.isArray(win)&&win.length===4?win:undefined};
   for(const g of sc.groups){const T=sc.texBy[g.name]||{},len=k=>T[k]?T[k].length:0;
-    meta.groups.push({name:g.name,idx:g.idx.length,udim:g.udim||undefined,rough:.6,metal:0,sh:sc.shBy[g.name]||undefined,tex:{base:len('BaseColor'),orm:len('ORM'),normal:len('Normal'),emissive:len('Emissive'),height:len('Height'),thick:len('Thick')}});
+    meta.groups.push({name:g.name,idx:g.idx.length,udim:g.udim||undefined,foff:g.foff||undefined,rough:.6,metal:0,sh:sc.shBy[g.name]||undefined,tex:{base:len('BaseColor'),orm:len('ORM'),normal:len('Normal'),emissive:len('Emissive'),height:len('Height'),thick:len('Thick')}});
     parts.push(g.idx);for(const k of ['BaseColor','ORM','Normal','Emissive','Height','Thick'])if(T[k])parts.push(T[k]);}
   if(sc.envd){meta.env={w:sc.envd.w,h:sc.envd.h};parts.push(sc.envd.rgb);}
   const json=new TextEncoder().encode(JSON.stringify(meta)),bytes=a=>new Uint8Array(a.buffer,a.byteOffset,a.byteLength);

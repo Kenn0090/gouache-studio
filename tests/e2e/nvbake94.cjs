@@ -24,6 +24,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const g=await p.evaluate(()=>window.__open&&window.__open.groups);
  ok(g&&g.length>=1&&g[0].idx>0,'the Bake tab\'s model goes to the window ('+JSON.stringify(g&&g.map(x=>[x.name,x.idx,x.tex&&x.tex.base]))+')');
  ok(g&&g[0].tex.base>0,'its colour picture goes along');
+ /* the Unfold slider */
+ await p.evaluate(()=>{window.__gs.bk.fold=.5;});
+ ok(await p.evaluate(()=>window.__gs.nvSettings().fold)===.5,'the Unfold slider goes to the window');
+ await p.evaluate(()=>{window.__gs.bk.fold=0;});
  ok(errs.length===0,'no page errors '+errs.join('|'));
  await b.close();process.exit(fails?1:0);
 })();

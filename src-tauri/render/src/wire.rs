@@ -52,6 +52,8 @@ struct GroupMeta {
     /// this material is one UDIM tile's set: [u, v] of the tile
     #[serde(default)]
     udim: Option<[u32; 2]>,
+    #[serde(default)]
+    foff: f32,
 }
 
 #[derive(Deserialize)]
@@ -108,6 +110,8 @@ struct SettingsMeta {
     wire: u8,
     #[serde(default)]
     disp: f32,
+    #[serde(default)]
+    fold: f32,
     #[serde(default)]
     track: bool,
     #[serde(default)]
@@ -262,7 +266,7 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         let height = map(&mut rd, g.tex.height)?;
         let thick = map(&mut rd, g.tex.thick)?;
         let shader = ShaderParams { kind: g.sh.k, p: g.sh.p, q: g.sh.q, c: g.sh.c, d: g.sh.d, skin: g.sh.skin };
-        let material = Material { shader, base, orm, normal, emissive, height, thick, udim: g.udim, rough: g.rough, metal: g.metal, partial: g.partial };
+        let material = Material { shader, base, orm, normal, emissive, height, thick, udim: g.udim, fold_off: g.foff, rough: g.rough, metal: g.metal, partial: g.partial };
         groups.push(Group { name: g.name.clone(), indices, material });
     }
     let env = match &meta.env {
@@ -297,6 +301,7 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         studio_rim: s.studio_rim,
         wire: s.wire,
         disp: s.disp,
+        fold: s.fold,
         track: s.track,
         hv: s.hv,
         mirc_n: s.mirc.len().min(32) as u32,

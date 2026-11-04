@@ -116,6 +116,12 @@ fn dpos(i: VIn) -> vec3<f32> {
         let h = textureSampleLevel(nrm_tex, tex_smp, i.uv, 0.0).a - 0.5;
         p = p + normalize(i.dn) * (h * frame.extra.w);
     }
+    let fk = frame.bv.w;
+    if (fk > 0.0) {
+        // the Bake tab's Unfold: the model slides onto its UV layout (the window's v runs the other way)
+        let k = fk * fk * (3.0 - 2.0 * fk);
+        p = mix(p, vec3<f32>((i.uv.x - 0.5) * 2.2, (i.uv.y - 0.5) * 2.2, 0.0) + vec3<f32>(mat.shd.w, 0.0, 0.0), k);
+    }
     return p;
 }
 struct VOut {
@@ -131,7 +137,7 @@ fn vs(i: VIn) -> VOut {
     let dp = dpos(i);
     o.clip = frame.view_proj * vec4<f32>(dp, 1.0);
     o.wpos = dp;
-    o.nrm = i.nrm;
+    o.nrm = select(i.nrm, normalize(mix(i.nrm, vec3<f32>(0.0, 0.0, 1.0), frame.bv.w * frame.bv.w * (3.0 - 2.0 * frame.bv.w))), frame.bv.w > 0.0);
     o.uv = i.uv;
     return o;
 }

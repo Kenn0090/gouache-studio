@@ -2,6 +2,7 @@
 
 - **Smaller installer.** Each release now also offers a smaller Windows installer (about 180 MB lighter). It fetches the Library files, skies and grunge maps when first used and keeps a copy; File › Content… can download them all for offline work.
 - **Content window (File › Content…).** One place to choose the bigger Library pictures (2K or 4K), 2K skies and the AI add-ons, with the real download sizes. It opens by itself once after the update (the first start of the desktop app), and again only when new downloads are added. "Not now" is fine: nothing is downloaded until you press Download.
+- **New viewer: Unfold slider.** The Bake tab's Unfold (the model sliding flat onto its UV layout) shows in the window, with each material's piece laid side by side.
 - **New viewer: UDIM tiles.** A material with several UDIM tiles shows each tile's own texture set in the window, on the part of the model whose UVs fall in that tile.
 - **New viewer: stays up to date.** The window follows edits made while it is open: changes to the maps (filters, layer colours, material swaps), a changed shader, and a new model, texture sets or Detail.
 - **New viewer: Bevel preview.** The rounded-edge preview of the Bevel shader (3D Paint and Bake) shows in the window. The app makes the rounded normals for the window's own view once the view has been still a moment; while you turn the model the window shows the normal map, then the rounded edges return.
