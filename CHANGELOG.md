@@ -6,7 +6,7 @@
 
 ## 0.94.1
 
-- **Brow** is rebuilt like Heavy Paint: solid, smooth paint from a wide bar that turns with your stroke, with soft uneven pastel streaks (pink, mint, cream) running along the path. A new Smooth pastel lane mode makes the streaks, whatever your colour is.
+- **Brow** is rebuilt like Heavy Paint: a wide loaf-shaped brush (flat back, curved ragged front) made of fine vertical fibres that stays in one position, each fibre with its own soft pastel tint (pink, mint, cream) that drifts as you drag. Drag down for a sheet of fibres, sideways for wavy streaks.
 - **Oil bristle** is rebuilt like Heavy Paint: the tip is a round cloud of small angular flakes, each leaving its own streak of a slightly different shade along the stroke, flat colour with ragged edges. The shaded version stays as **Oil bristle 3D**.
 - **Fried fluff** is rebuilt from Heavy Paint: a ragged-sided square painted with a damascus (contour-map) marble of reds and purples that smears along the stroke and softens when you lift the pen (new brush setting "Soften at end"). **Boxes** have sharp corners and a flat colour per box. The Heavy Paint style brushes now paint at near-zero spacing so the dabs overlap themselves, which gives the stacked 3D look.
 - **Charcoal** is now a long, thin, horizontal bar that sweeps a band of pixel-fine speckle, fading out at the edges by thinning the dots. Brushes have a new Grain size setting; size 1 gives single-pixel noise.
