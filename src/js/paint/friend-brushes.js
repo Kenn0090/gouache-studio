@@ -42,7 +42,8 @@ const FRIEND_PRESETS=[
   {name:'Fried fluff',tool:'brush',tip:FR_TIPS.smearBar,size:200,hardness:1,spacing:.03,followDir:true,laneN:9,laneMode:3,laneHue:.3,laneVal:.12,pSize:false,pOpacity:false,smoothing:.4},
   {name:'Line',tool:'brush',tip:null,size:100,hardness:1,spacing:.02,pSize:false,pOpacity:false,jitterPerStroke:true,hueJitter:.02,valJitter:.08,smoothing:.5,correction:.35},
   {name:'Oil',tool:'brush',tip:FR_TIPS.dry,size:200,hardness:1,spacing:.025,followDir:true,laneN:36,laneMode:0,laneHue:.04,laneVal:.08,flow:1,pSize:false,pOpacity:false,smoothing:.35},
-  {name:'Oil bristle',tool:'brush',tip:null,size:200,hardness:.9,spacing:.02,followDir:true,pSize:false,smoothing:.35,mix:true,mixLoad:1,mixPick:.15,mixWet:.8,mixDry:0,mixUse:.12,mixBristles:50,mixDryB:.2,mixThick:.9},
+  {name:'Oil bristle',tool:'brush',tip:FR_TIPS.grit,size:220,hardness:1,roundness:1,spacing:.008,followDir:true,pSize:false,smoothing:.6,smoothCurve:true,mix:true,mixLoad:1,mixPick:.15,mixWet:.8,mixDry:0,mixUse:.12,mixBristles:24,mixDryB:.1,mixThick:0},
+  {name:'Oil bristle 3D',tool:'brush',tip:null,size:200,hardness:.9,spacing:.02,followDir:true,pSize:false,smoothing:.35,mix:true,mixLoad:1,mixPick:.15,mixWet:.8,mixDry:0,mixUse:.12,mixBristles:50,mixDryB:.2,mixThick:.9},
   {name:'Worm',tool:'brush',tip:null,size:200,hardness:1,spacing:.015,laneN:1,laneMode:1,laneHue:.8,laneVal:.4,pSize:false,pOpacity:false,smoothing:.55}];
 /* “Line blend” is the Line blend brush made earlier (line-blend.js): it sits in this set too */
 {const lb=PRESETS.find(p=>p.name==='Line blend');if(lb)FRIEND_PRESETS.splice(9,0,lb);}
