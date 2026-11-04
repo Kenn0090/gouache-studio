@@ -7,7 +7,7 @@ fn main() {
         Ok(v) => { println!("OPEN {:?}", v.report); std::thread::sleep(std::time::Duration::from_secs(3));
             if let Some(out) = std::env::var_os("GOUACHE_CAPTURE") {
                 let (w, h) = (std::env::var("CAP_W").ok().and_then(|v| v.parse().ok()).unwrap_or(1100u32), std::env::var("CAP_H").ok().and_then(|v| v.parse().ok()).unwrap_or(760u32));
-                match v.capture(w, h) { Ok(png) => { std::fs::write(out, png).unwrap(); println!("CAPTURED"); } Err(e) => println!("CAPTURE ERROR {e}") }
+                match v.capture(w, h, std::env::var("GOUACHE_TRANSPARENT").is_ok()) { Ok(png) => { std::fs::write(out, png).unwrap(); println!("CAPTURED"); } Err(e) => println!("CAPTURE ERROR {e}") }
             } v.close(); std::thread::sleep(std::time::Duration::from_millis(500)); println!("CLOSED"); }
         Err(e) => println!("ERROR {e}"),
     }

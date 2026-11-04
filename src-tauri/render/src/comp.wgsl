@@ -57,8 +57,7 @@ fn vs_comp(@builtin(vertex_index) vi: u32) -> @builtin(position) vec4<f32> {
     var p = array<vec2<f32>, 3>(vec2<f32>(-1.0, -1.0), vec2<f32>(3.0, -1.0), vec2<f32>(-1.0, 3.0));
     return vec4<f32>(p[vi], 0.0, 1.0);
 }
-@fragment
-fn fs_comp(@builtin(position) p: vec4<f32>) -> @location(0) vec4<f32> {
+fn comp_core(p: vec4<f32>) -> vec4<f32> {
     let px = vec2<i32>(p.xy);
     var c = textureLoad(scene_tex, px, 0);
     if (comp.q.w > 0.5) {
@@ -116,4 +115,15 @@ fn fs_comp(@builtin(position) p: vec4<f32>) -> @location(0) vec4<f32> {
     var col = c.rgb * (sf * sun + (1.0 - sf) * amb);
     col = col * (1.0 - rw) + hitc * rw;
     return vec4<f32>(col, c.a);
+}
+
+// a see-through background: pixels where the main pass drew a surface keep the picture, the rest become transparent
+@fragment
+fn fs_comp(@builtin(position) p: vec4<f32>) -> @location(0) vec4<f32> {
+    var c = comp_core(p);
+    if (comp.f.w > 0.5) {
+        let covered = textureLoad(cnrm_tex, vec2<i32>(p.xy), 0).w > 0.0;
+        c = vec4<f32>(c.rgb, select(0.0, 1.0, covered));
+    }
+    return c;
 }

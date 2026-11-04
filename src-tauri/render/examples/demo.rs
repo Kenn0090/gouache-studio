@@ -80,7 +80,7 @@ fn main() {
             if std::env::var_os("GOUACHE_ST").is_some() { let mut px = Vec::new(); for y in 0..64u32 { for x in 0..64u32 { let on = ((x / 8) + (y / 8)) % 2 == 0; px.extend_from_slice(&[if on { 255 } else { 20 }, if y < 32 { 255 } else { 60 }, 40, 255]); } } v.set_textures("__stencil".to_string(), Material { base: Some(Tex8 { width: 64, height: 64, rgba: px }), ..Default::default() }); }
             if let Some(path) = std::env::var_os("GOUACHE_CAPTURE") {
                 std::thread::sleep(std::time::Duration::from_secs(2));
-                match v.capture(1600, 900) { Ok(png) => { std::fs::write(path, png).unwrap(); println!("CAPTURED"); } Err(e) => println!("CAPTURE ERROR {e}") }
+                match v.capture(1600, 900, std::env::var("GOUACHE_TRANSPARENT").is_ok()) { Ok(png) => { std::fs::write(path, png).unwrap(); println!("CAPTURED"); } Err(e) => println!("CAPTURE ERROR {e}") }
             } std::thread::sleep(std::time::Duration::from_secs(14)); v.close(); std::thread::sleep(std::time::Duration::from_millis(500)); println!("CLOSED"); }
         Err(e) => println!("ERROR {e}"),
     }

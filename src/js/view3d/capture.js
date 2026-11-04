@@ -26,7 +26,7 @@ function dlgScreenshot(){if(!v3.on||!v3.mesh){toast('Open the 3D view first.');r
     chk('shotTr','Transparent background',tr,v=>{tr=v;}),el('p',{class:'note',text:v3.rt?'Ray traced mode: the ray-traced picture is saved as it is now, at the view’s size.':'Saved as PNG.'}));
   openDialog({title:'Screenshot',body,okLabel:'Save',onOk(){setTimeout(()=>v3Screenshot(size,tr),0);}});}
 async function v3Screenshot(size,tr){let w,h,d,premul=!!tr;
-  if(!tr&&typeof nv!=='undefined'&&nv.isOpen&&platform.isDesktop){try{[w,h]=v3SizeOf(size||'view');toast('Taking the picture in the new viewer…');const png=await nvCapture(w,h),r=await deliver(v3FileBase()+'_3d.png',new Blob([png],{type:'image/png'}));toast(deliveredText(r,'Screenshot'));return {w,h};}catch(e){console.warn(e);toast('The new viewer could not take it, so the normal viewer did.');}}
+  if(typeof nv!=='undefined'&&nv.isOpen&&platform.isDesktop){try{[w,h]=v3SizeOf(size||'view');toast('Taking the picture in the new viewer…');const png=await nvCapture(w,h,tr),r=await deliver(v3FileBase()+'_3d.png',new Blob([png],{type:'image/png'}));toast(deliveredText(r,'Screenshot'));return {w,h};}catch(e){console.warn(e);toast('The new viewer could not take it, so the normal viewer did.');}}
   if(v3.rt&&rt.view&&rt.view.n){const S=rt.view;w=S.w;h=S.h;d=rtPixels(S,!tr);}
   else{[w,h]=v3SizeOf(size||'view');d=v3Offscreen(w,h,{transparent:tr});}
   const blob=await pixelsToPNG(w,h,d,premul),r=await deliver(v3FileBase()+'_3d.png',blob);toast(deliveredText(r,'Screenshot'));return {w,h};}
@@ -82,8 +82,8 @@ async function ttRecord(o){const s=v3s(),n=Math.max(2,Math.round(o.spins*o.secs*
   const frame=i=>{v3.postSeed=7.13+i*3.17;const a=2*Math.PI*o.spins*i/n;v3.cam.yaw=cam0.yaw+a;/* light fixed to the viewer unless it turns with the model */if(!o.lightTurns){s.envRot=(rot0+a*180/Math.PI)%360;s.sunAz=(az0+a*180/Math.PI)%360;}
     const d=v3Offscreen(w,h,{transparent:tr});const top=new Uint8Array(w*h*4);for(let y=0;y<h;y++)top.set(d.subarray((h-1-y)*w*4,(h-y)*w*4),y*w*4);return top;};
   /* with the new viewer open (and no see-through background) the frames come from it, ray traced; the light stays fixed to the viewer unless it turns with the model */
-  const viaNv=!tr&&typeof nv!=='undefined'&&nv.isOpen&&platform.isDesktop;
-  const getFrame=async i=>{if(!viaNv)return frame(i);const a=2*Math.PI*o.spins*i/n,deg=a*180/Math.PI;return nvFrame(w,h,-a,o.lightTurns?undefined:((rot0+deg)%360)/360,o.lightTurns?undefined:((az0==null?40:az0)+deg)%360,24);};
+  const viaNv=typeof nv!=='undefined'&&nv.isOpen&&platform.isDesktop;
+  const getFrame=async i=>{if(!viaNv)return frame(i);const a=2*Math.PI*o.spins*i/n,deg=a*180/Math.PI;return nvFrame(w,h,-a,o.lightTurns?undefined:((rot0+deg)%360)/360,o.lightTurns?undefined:((az0==null?40:az0)+deg)%360,24,tr);};
   const restore=()=>{Object.assign(v3.cam,cam0);s.envRot=rot0;s.sunAz=az0;v3.postSeed=0;v3.dirty=true;requestRender();};
   loadStart('Turntable');let cancelled=false;
   try{if(o.fmt==='webm'||o.fmt==='mp4'){const c=el('canvas',{width:w,height:h}),x=c.getContext('2d'),st=c.captureStream(0),track=st.getVideoTracks()[0];

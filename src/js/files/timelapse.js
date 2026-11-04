@@ -28,8 +28,11 @@ function tl3On(){return ui.mode==='p3d'&&typeof v3!=='undefined'&&v3.on&&!!v3.me
 let tlCamSig='';
 function tlCamChanged(){const c=v3.cam,sig=[c.yaw,c.pitch,c.dist,c.tx,c.ty,c.tz].map(v=>(+v).toFixed(3)).join(',');if(sig===tlCamSig)return false;tlCamSig=sig;return true;}
 async function tlSnapshot3(){const [vw,vh]=v3ViewSize();if(!tlr.sz3||tlr.sz3.sid!==tlr.sid){const sc=Math.min(1,tlr.cfg.size/Math.max(vw,vh));tlr.sz3={sid:tlr.sid,w:Math.max(2,Math.round(vw*sc)&~1),h:Math.max(2,Math.round(vh*sc)&~1)};}
-  const {w,h}=tlr.sz3,d=v3Offscreen(w,h,{}),c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d'),im=x.createImageData(w,h);
-  for(let j=0;j<h;j++){const a=(h-1-j)*w*4,b=j*w*4;for(let i=0;i<w*4;i+=4){im.data[b+i]=d[a+i];im.data[b+i+1]=d[a+i+1];im.data[b+i+2]=d[a+i+2];im.data[b+i+3]=255;}}
+  const {w,h}=tlr.sz3,c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d'),im=x.createImageData(w,h);
+  /* the new viewer window is open: take the picture from it (its shaders, shadows and reflections); rows come top first */
+  let d=null,flip=true;if(typeof nv!=='undefined'&&nv.isOpen&&platform.isDesktop){try{d=await nvFrame(w,h,0,undefined,undefined,2);flip=false;}catch(e){d=null;flip=true;}}
+  if(!d)d=v3Offscreen(w,h,{});
+  for(let j=0;j<h;j++){const a=(flip?h-1-j:j)*w*4,b=j*w*4;for(let i=0;i<w*4;i+=4){im.data[b+i]=d[a+i];im.data[b+i+1]=d[a+i+1];im.data[b+i+2]=d[a+i+2];im.data[b+i+3]=255;}}
   x.putImageData(im,0,0);const q=clamp(1-tlr.cfg.comp/100,.05,1);let blob=await new Promise(r=>c.toBlob(r,'image/webp',q));if(!blob||blob.type!=='image/webp')blob=await new Promise(r=>c.toBlob(r,'image/jpeg',q));return {blob,w,h};}
 async function tlSnapshot(){if(tl3On())return tlSnapshot3();const W=doc.w,H=doc.h,sc=Math.min(1,tlr.cfg.size/Math.max(W,H)),w=Math.max(2,Math.round(W*sc)&~1),h=Math.max(2,Math.round(H*sc)&~1);
   const full=compositeMap('base');let small=null;

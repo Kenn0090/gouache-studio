@@ -26,6 +26,8 @@ More that carries over: UDIM tiles (each tile's texture set on its own part of t
 
 ## Moving around
 
+When you turn, zoom or move in the window, the main 3D view follows, so both always show the same view. The Timelapse in 3D Paint also takes its pictures from the window while it is open.
+
 - **Alt + drag** turns the model (plain drag turns it when painting is off). Mouse wheel zooms.
 - **Shift + right-drag** turns the sky.
 - **F** brings the whole model back into view.
@@ -47,7 +49,7 @@ Big models are prepared in the background the first time: the window keeps answe
 
 ## Pictures
 
-While the window is open, **Screenshot**, **Turntable** and the **Render** window can use it (the Render window has **Render in the new viewer**). A see-through background still uses the normal viewer.
+While the window is open, **Screenshot**, **Turntable** and the **Render** window can use it (the Render window has **Render in the new viewer**). A see-through background works too: the model and its floor stay solid and the rest is transparent.
 
 ## If something is wrong
 

@@ -114,11 +114,11 @@ pub fn viewer_textures(request: Request<'_>) -> Result<bool, String> {
 
 /// A PNG picture of what the open viewer shows, at the size asked for (the ray tracing settles first, so large pictures take a while).
 #[tauri::command]
-pub async fn viewer_capture(width: u32, height: u32) -> Result<tauri::ipc::Response, String> {
+pub async fn viewer_capture(width: u32, height: u32, transparent: Option<bool>) -> Result<tauri::ipc::Response, String> {
     let png = tauri::async_runtime::spawn_blocking(move || {
         let g = VIEWER.lock().map_err(|e| e.to_string())?;
         match g.as_ref() {
-            Some(v) => v.capture(width, height),
+            Some(v) => v.capture(width, height, transparent.unwrap_or(false)),
             None => Err("the new viewer is not open".to_string()),
         }
     })
@@ -129,11 +129,11 @@ pub async fn viewer_capture(width: u32, height: u32) -> Result<tauri::ipc::Respo
 
 /// One picture as raw RGBA bytes (top row first), turned a little from the window's view; for turntables.
 #[tauri::command]
-pub async fn viewer_capture_raw(width: u32, height: u32, yaw_add: f32, env_turn: Option<f32>, sun_az: Option<f32>, rounds: u32) -> Result<tauri::ipc::Response, String> {
+pub async fn viewer_capture_raw(width: u32, height: u32, yaw_add: f32, env_turn: Option<f32>, sun_az: Option<f32>, rounds: u32, transparent: Option<bool>) -> Result<tauri::ipc::Response, String> {
     let rgba = tauri::async_runtime::spawn_blocking(move || {
         let g = VIEWER.lock().map_err(|e| e.to_string())?;
         match g.as_ref() {
-            Some(v) => v.capture_rgba(width, height, CaptureOpts { yaw_add, env_turn, sun_az, rounds }),
+            Some(v) => v.capture_rgba(width, height, CaptureOpts { yaw_add, env_turn, sun_az, rounds, transparent: transparent.unwrap_or(false) }),
             None => Err("the new viewer is not open".to_string()),
         }
     })

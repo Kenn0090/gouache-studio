@@ -236,6 +236,8 @@ pub struct CaptureOpts {
     pub env_turn: Option<f32>,
     pub sun_az: Option<f32>,
     pub rounds: u32,
+    /// background see-through (RGBA with a real alpha)
+    pub transparent: bool,
 }
 
 enum Cmd {
@@ -281,9 +283,9 @@ impl Viewer {
         rx.recv_timeout(Duration::from_secs(300)).map_err(|_| "the picture took too long".to_string())?
     }
     /// The same as a PNG file.
-    pub fn capture(&self, w: u32, h: u32) -> Result<Vec<u8>, String> {
+    pub fn capture(&self, w: u32, h: u32, transparent: bool) -> Result<Vec<u8>, String> {
         let (w2, h2) = (w.clamp(16, 8192), h.clamp(16, 8192));
-        let rgba = self.capture_rgba(w, h, CaptureOpts::default())?;
+        let rgba = self.capture_rgba(w, h, CaptureOpts { transparent, ..CaptureOpts::default() })?;
         let mut out = Vec::new();
         {
             let mut enc = png::Encoder::new(&mut out, w2, h2);
@@ -940,7 +942,7 @@ impl Gpu {
         // hologram and glass: blended over what is already drawn (the normal and material pictures are left alone)
         let alpha_target = [
             Some(wgpu::ColorTargetState { format, blend: Some(wgpu::BlendState::ALPHA_BLENDING), write_mask: wgpu::ColorWrites::ALL }),
-            Some(wgpu::ColorTargetState { format: rt::NORMAL_FORMAT, blend: None, write_mask: wgpu::ColorWrites::empty() }),
+            Some(wgpu::ColorTargetState { format: rt::NORMAL_FORMAT, blend: None, write_mask: wgpu::ColorWrites::ALPHA }), // marks glass and hologram as covered for see-through captures
             Some(wgpu::ColorTargetState { format: rt::NORMAL_FORMAT, blend: None, write_mask: wgpu::ColorWrites::empty() }),
         ];
         let alpha_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -2018,6 +2020,7 @@ impl Gpu {
         if self.settings.rt {
             self.rt.wait_tree(&self.device, &self.queue);
         }
+        self.rt.alpha_out = o.transparent;
         let rounds = if !self.settings.rt { 1 } else if o.rounds > 0 { o.rounds } else { self.settings.rt_samples.clamp(8, 1024) + 2 };
         for _ in 0..rounds {
             self.draw_to(cam, Some(&view));
@@ -2047,13 +2050,15 @@ impl Gpu {
                 for x in 0..w as usize {
                     let s = y * row as usize + x * 4;
                     let d = (y * w as usize + x) * 4;
-                    let p = [data[s], data[s + 1], data[s + 2], 255];
-                    rgba[d..d + 4].copy_from_slice(&if bgr { [p[2], p[1], p[0], 255] } else { p });
+                    let a = if o.transparent { data[s + 3] } else { 255 };
+                    let p = [data[s], data[s + 1], data[s + 2], a];
+                    rgba[d..d + 4].copy_from_slice(&if bgr { [p[2], p[1], p[0], a] } else { p });
                 }
             }
             drop(data);
             buf.unmap();
         }
+        self.rt.alpha_out = false;
         // back to the window's size
         self.config.width = old.0;
         self.config.height = old.1;
@@ -2236,6 +2241,9 @@ impl ApplicationHandler<Cmd> for App {
                     self.drag = None;
                 } else {
                     self.drag = if state == ElementState::Pressed { Some(button) } else { None };
+                    if state != ElementState::Pressed {
+                        self.emit("cam"); // the last camera, so the page ends up exactly where the window is
+                    }
                 }
             }
             WindowEvent::CursorMoved { position, .. } => {
@@ -2287,8 +2295,8 @@ impl ApplicationHandler<Cmd> for App {
                     _ => {}
                 }
                 if self.drag.is_some() {
-                    if self.paint_on() && self.last_sent.elapsed() >= Duration::from_millis(30) {
-                        self.emit("cam"); // the page follows the camera
+                    if self.last_sent.elapsed() >= Duration::from_millis(30) {
+                        self.emit("cam"); // the page follows the camera, painting or not
                     }
                     if let Some(g) = self.gpu.as_ref() {
                         g.window.request_redraw();
@@ -2312,9 +2320,7 @@ impl ApplicationHandler<Cmd> for App {
                         if c.eq_ignore_ascii_case("f") {
                             let (c0, r0) = self.home;
                             self.frame_model(c0, r0);
-                            if self.paint_on() {
-                                self.emit("cam");
-                            }
+                            self.emit("cam");
                             if let Some(g) = self.gpu.as_ref() {
                                 g.window.request_redraw();
                             }
@@ -2330,9 +2336,7 @@ impl ApplicationHandler<Cmd> for App {
                     MouseScrollDelta::PixelDelta(p) => p.y as f32 / 40.0,
                 };
                 self.cam.dist = (self.cam.dist * (1.0 - s * 0.1)).max(self.cam.radius * 0.05);
-                if self.paint_on() {
-                    self.emit("cam");
-                }
+                self.emit("cam");
                 if let Some(g) = self.gpu.as_ref() {
                     g.window.request_redraw();
                 }

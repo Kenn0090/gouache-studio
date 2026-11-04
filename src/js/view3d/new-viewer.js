@@ -146,9 +146,9 @@ function nvWatch(){nvStopWatch();nv.envKey=nvEnvKey();nv.sig=JSON.stringify(nvSe
     try{const sk=JSON.stringify(nvShader()),mv=nv.mapsVer||0;if((sk!==nv.shKey||mv!==nv.seenMaps)&&!stroke&&!(v3.mstroke)&&!nv.texBusy){nv.shKey=sk;nv.seenMaps=mv;nv.viewForce=true;nvSyncSoon();}}catch(e){}
     nvStencilSend();nvHighSend();nvBevelTick();if(nv.hlSig)nvHlSend();{const vk=(ui.mode==='p3d'||ui.mode==='paint'||nvBakeMode())?nvViewKey():'';if(vk!==nv.viewKey){nv.viewKey=vk;nv.viewForce=true;nvSyncSoon();}}const sig=JSON.stringify(nvSettings())+nvEnvKey();if(sig!==nv.sig){nv.sig=sig;nvPush();}},400);}
 /* a finished picture from the window, at any size (PNG bytes) */
-async function nvCapture(w,h){const r=await platform.invoke('viewer_capture',{width:Math.round(w),height:Math.round(h)});return r instanceof Uint8Array?r:new Uint8Array(r);}
+async function nvCapture(w,h,transparent){const r=await platform.invoke('viewer_capture',{width:Math.round(w),height:Math.round(h),transparent:!!transparent});return r instanceof Uint8Array?r:new Uint8Array(r);}
 /* one turntable frame from the window: raw RGBA, top row first */
-async function nvFrame(w,h,yawAdd,envTurn,sunAz,rounds){const r=await platform.invoke('viewer_capture_raw',{width:Math.round(w),height:Math.round(h),yawAdd,envTurn,sunAz,rounds});const u=r instanceof Uint8Array?r:new Uint8Array(r);return u;}
+async function nvFrame(w,h,yawAdd,envTurn,sunAz,rounds,transparent){const r=await platform.invoke('viewer_capture_raw',{width:Math.round(w),height:Math.round(h),yawAdd,envTurn,sunAz,rounds,transparent:!!transparent});const u=r instanceof Uint8Array?r:new Uint8Array(r);return u;}
 function nvStopWatch(){if(nv.timer){clearInterval(nv.timer);nv.timer=null;}}
 
 /* ---- painting through the window ----
@@ -165,7 +165,7 @@ const NV_TEX_LIVE=512,NV_LIVE_MS=100;
 const nvPaintMode=()=>ui.mode==='p3d'||((ui.mode==='paint'||ui.mode==='bake')&&!!v3.paintOn);
 function nvPaintOn(){return platform.isDesktop&&nvPaintMode()&&v3s().nvPaint!==false;}
 function nvCamFrom(ev){nv.winCamAt=performance.now();if(ev.w>16&&ev.h>16){const sz=ev.win&&ev.win[2]>16?[ev.win[2],ev.win[3]]:[ev.w,ev.h];nv.winSize=[Math.round(sz[0]),Math.round(sz[1])];}const c=v3.cam,d=[ev.eye[0]-ev.tgt[0],ev.eye[1]-ev.tgt[1],ev.eye[2]-ev.tgt[2]],L=Math.hypot(d[0],d[1],d[2])||1;
-  c.tx=ev.tgt[0];c.ty=ev.tgt[1];c.tz=ev.tgt[2];c.dist=L;c.pitch=Math.asin(Math.max(-1,Math.min(1,d[1]/L)));c.yaw=Math.atan2(d[0],d[2]);}
+  c.tx=ev.tgt[0];c.ty=ev.tgt[1];c.tz=ev.tgt[2];c.dist=L;c.pitch=Math.asin(Math.max(-1,Math.min(1,d[1]/L)));c.yaw=Math.atan2(d[0],d[2]);if(typeof v3Refresh==='function')v3Refresh();}
 /* a world point on the ray through the window pixel; the main view then sees the same surface there */
 function nvPixelRay(ev){const t=Math.tan(ev.fov*Math.PI/360),e=ev.eye,g=ev.tgt;
   const fw=norm3(sub3(g,e)),r=norm3(cross3(fw,[0,1,0])),u=cross3(r,fw),x=(2*ev.x/ev.w-1)*t*ev.w/ev.h,y=(2*ev.y/ev.h-1)*t;
