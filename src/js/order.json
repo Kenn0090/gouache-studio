@@ -220,6 +220,7 @@
     "ui/rulers",
     "ui/view-flip",
     "ui/welcome",
+    "ui/examples",
     "ui/setup",
     "ui/content-step",
     "ui/tool-menus",

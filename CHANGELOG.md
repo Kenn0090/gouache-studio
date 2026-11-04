@@ -1,5 +1,7 @@
 ## 0.94.1
 
+- **More examples on the welcome screen.** A seamless wood-plank tile and a brush sampler (ten brush looks on their own layers) in Paint, and three 3D Paint models dressed with smart materials: rusty painted metal, mossy stone and weathered bronze.
+
 - **Physical size.** For a picture, text or decal projected on the model, a new **Real size** choice (off, millimetres, centimetres, metres, inches) shows and sets its size in real units, worked out from the model's file units (the **Model file units** setting in the Bevel settings; centimetres if you have not changed it).
 
 - **UV filtering.** Pictures projected on the model (material pictures and mask pictures, in every projection) have a new **UV filtering** choice: **Smooth** blends between the picture's pixels, **Nearest** keeps them crisp, for pixel-art looks.
