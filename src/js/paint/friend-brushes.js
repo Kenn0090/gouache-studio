@@ -39,7 +39,7 @@ const FR_TIPS={
   fluff:genTip('Ragged bar',128,64,(x,w,h,R)=>{x.fillRect(6,4,w-12,h-8);x.globalCompositeOperation='destination-out';for(let y=0;y<h;y++){const a=R()*9,b=R()*9;x.fillRect(0,y,6+a,1);x.fillRect(w-6-b,y,6+b,1);}})
 };
 const FRIEND_PRESETS=[
-  {name:'Blur ice',tool:'smudge',blendMode:'smear',streak:.5,pull:4,tip:FR_TIPS.sharpBox,size:270,hardness:1,spacing:.004,strength:1,charge:0,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
+  {name:'Blur ice',tool:'smudge',blendMode:'smear',streak:0,pull:2.2,tip:FR_TIPS.sharpBox,size:270,hardness:1,spacing:.004,strength:1,charge:0,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Boxes',tool:'brush',tip:FR_TIPS.sharpBox,size:200,hardness:1,spacing:.002,followDir:false,hueJitter:.03,valJitter:.14,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Brow',tool:'brush',tip:FR_TIPS.hair,size:240,hardness:1,spacing:.002,followDir:true,laneN:60,laneMode:0,laneHue:.14,laneVal:.12,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Charcoal',tool:'brush',tip:FR_TIPS.fbar,size:120,hardness:1,grain:.8,grainSize:1,spacing:.002,followDir:false,flow:1,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
