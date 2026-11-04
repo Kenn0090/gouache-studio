@@ -66,3 +66,10 @@ These seven looks are in the **Shader** list (per texture set) and show the same
 - **Wax / marble glow** lets light travel through the surface. A baked Thickness map makes thin parts glow more.
 
 Not yet: ray-traced reflections don't see these looks, and the engine exports (Unity, Godot, Unreal) use the older looks only.
+
+## Halftone cel and Ink toon
+
+- **Halftone cel** turns the light into a few flat colour steps and makes the edge between steps out of comic-print dots. Shadows get warmer and more saturated (set the tint and how much it counts), the top step can have a white highlight, and a rim light catches the edges. The dots are on the model's surface, so they follow its texture layout. An outline is optional.
+- **Ink toon** has hard-edged shadow shapes in a cool colour, a coloured rim light (Fresnel) and an inked outline. The outline is either a darker version of each surface colour or one colour you pick, and **Hand-drawn wobble** makes its width vary like a pen line.
+
+Like the other new looks, these go to the engines as Standard for now.

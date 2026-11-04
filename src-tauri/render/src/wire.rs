@@ -32,6 +32,8 @@ struct ShaderMeta {
     d: [f32; 3],
     #[serde(default)]
     skin: [f32; 4],
+    #[serde(default)]
+    e: [f32; 4],
 }
 
 #[derive(Deserialize)]
@@ -265,7 +267,7 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         let emissive = map(&mut rd, g.tex.emissive)?;
         let height = map(&mut rd, g.tex.height)?;
         let thick = map(&mut rd, g.tex.thick)?;
-        let shader = ShaderParams { kind: g.sh.k, p: g.sh.p, q: g.sh.q, c: g.sh.c, d: g.sh.d, skin: g.sh.skin };
+        let shader = ShaderParams { kind: g.sh.k, p: g.sh.p, q: g.sh.q, c: g.sh.c, d: g.sh.d, skin: g.sh.skin, e: g.sh.e };
         let material = Material { shader, base, orm, normal, emissive, height, thick, udim: g.udim, fold_off: g.foff, rough: g.rough, metal: g.metal, partial: g.partial };
         groups.push(Group { name: g.name.clone(), indices, material });
     }

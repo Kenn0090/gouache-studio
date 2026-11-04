@@ -36,7 +36,7 @@ uniform int uEnvOn; uniform float uEnvRot; uniform float uEnvI; uniform sampler2
 /* the texture set's shader: 0 standard, 1 skin, 2 anisotropic metal, 3 velvet, 4 toon, 5 cel, 6 spec/gloss view, 7 panner, 8 retro (N64 / PSX); its settings */
 uniform int uMetalView; uniform float uMetalRough;
 uniform int uBevelMaterial; uniform float uBevelMetal; uniform float uBevelRough;
-uniform float uTime; uniform float uFurK; uniform vec4 uSkin; uniform int uSh; uniform vec4 uShP; uniform vec4 uShQ; uniform vec3 uShC; uniform vec3 uShD;
+uniform float uTime; uniform float uFurK; uniform vec4 uSkin; uniform vec4 uShE; uniform int uSh; uniform vec4 uShP; uniform vec4 uShQ; uniform vec3 uShC; uniform vec3 uShD;
 /* the Panner shader (0.40): each map slid by its own offset */
 uniform vec2 uPB; uniform vec2 uPR; uniform vec2 uPM; uniform vec2 uPN; uniform vec2 uPA; uniform vec2 uPE; uniform vec2 uPO;
 const float PI=3.14159265;
@@ -133,6 +133,26 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
     float sp=step(1.0-uShP.z*0.05,NdH)*(1.0-rough*0.5)*step(0.01,uShP.z); float rim=smoothstep(1.0-uShP.w,1.0,1.0-NdV)*uShP.w;
     vec3 amb=envDif(N)*0.25; col=base*(0.75+0.25*uEnvI)+base*amb*ao+vec3(sp)+alb*rim;
     if((uHas&16)!=0) col+=lin(mapSample(uEmis,uv+uPE).rgb)*2.0; o=vec4(pow(clamp(col*uExpo,0.0,1.0),vec3(1.0/2.2)),1.0); return; }
+  /* ---- (0.95) Halftone cel and Ink toon ---- */
+  if(uSh==16){ float l=dot(N,L)*0.5+0.5; float st=max(uShP.x,1.0), x=l*st, i0=floor(x), f=x-i0, lvl;
+    if(uShP.z>0.01){ float w=uShP.z*0.5, t=clamp((f-0.5)/(w*2.0+1e-3)+0.5,0.0,1.0);
+      vec2 c2=vec2(uv.x+uv.y,uv.x-uv.y)*uShP.w; vec2 cc=fract(c2)-0.5; float pp=length(cc)*1.4142, aa=fwidth(pp)+1e-3;
+      lvl=i0+(1.0-smoothstep(t*1.15-aa,t*1.15+aa,pp))*step(0.001,t); }
+    else lvl=i0+smoothstep(0.5-uShP.y,0.5+uShP.y+1e-4,f);
+    float ramp=clamp(lvl/st,0.0,1.0);
+    vec3 sh=alb*(1.0-uShQ.y); sh=mix(vec3(dot(sh,vec3(0.2126,0.7152,0.0722))),sh,1.0+uShQ.z*1.5); sh*=mix(vec3(1.0),lin(uShC)*2.0,uShQ.w);
+    vec3 c=mix(sh,alb,ramp);
+    float sp=step(1.0-uSkin.z*0.02,NdH)*(1.0-rough*0.5)*step(0.01,uSkin.z); c=mix(c,vec3(1.0),sp*0.8);
+    float rim=smoothstep(1.0-uSkin.y,1.0,1.0-NdV)*uSkin.x*smoothstep(-0.1,0.5,dot(N,L)); c+=lin(uShD)*rim;
+    vec3 col=c*(0.75+0.25*uEnvI)+c*envDif(N)*0.25*ao; if((uHas&16)!=0) col+=lin(mapSample(uEmis,uv+uPE).rgb)*2.0;
+    o=vec4(pow(clamp(col*uExpo,0.0,1.0),vec3(1.0/2.2)),1.0); return; }
+  if(uSh==17){ float l=dot(N,L)*0.5+0.5; float st=max(uShP.x,1.0), lv=0.0;
+    for(int k=1;k<=3;k++){ if(float(k)>st) break; float th=float(k)/(st+1.0)*1.1; lv+=smoothstep(th-uShP.y,th+uShP.y+1e-4,l); }
+    float ramp=lv/st; vec3 sc=lin(uShC)*2.0; vec3 dark=alb*mix(vec3(1.0),sc,uShE.x)*mix(1.0,0.55,uShE.x);
+    vec3 c=mix(dark,alb,ramp);
+    float rim=smoothstep(1.0-uShP.z,1.0,1.0-NdV)*uShE.y*mix(1.0,smoothstep(-0.3,0.3,dot(N,L)),uShP.w); c+=lin(uShD)*rim;
+    vec3 col=c*(0.75+0.25*uEnvI)+c*envDif(N)*0.25*ao; if((uHas&16)!=0) col+=lin(mapSample(uEmis,uv+uPE).rgb)*2.0;
+    o=vec4(pow(clamp(col*uExpo,0.0,1.0),vec3(1.0/2.2)),1.0); return; }
   /* ---- the lit shaders ---- */
   float a2=pow(rough,4.0), dd=NdH*NdH*(a2-1.0)+1.0, D=a2/(PI*dd*dd);
   vec3 Ts=T,Bs=B;

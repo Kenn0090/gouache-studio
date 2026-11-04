@@ -16,8 +16,8 @@ async function nvEnv(){const s=v3s(),k=envOf(s);if(k==='none')return null;let im
   return {w,h,rgb:rgb instanceof Float32Array?rgb:new Float32Array(rgb)};}
 /* the shader of the set on show (Standard, Skin, Toon...) with its settings, as the 3D view keeps them */
 function nvShader(){const sh=v3ShadeOf(doc),u=shadeUniforms(sh),P=shParams(sh),a=v=>Array.from(v||[0,0,0,0]);
-  const o={k:u.uSh&&u.uSh.int!=null?u.uSh.int:0,p:a(u.uShP).slice(0,4),q:a(u.uShQ).slice(0,4),c:a(u.uShC).slice(0,3),d:a(u.uShD).slice(0,3),skin:a(u.uSkin).slice(0,4)};
-  while(o.p.length<4)o.p.push(0);while(o.q.length<4)o.q.push(0);while(o.c.length<3)o.c.push(0);while(o.d.length<3)o.d.push(0);while(o.skin.length<4)o.skin.push(0);
+  const o={k:u.uSh&&u.uSh.int!=null?u.uSh.int:0,p:a(u.uShP).slice(0,4),q:a(u.uShQ).slice(0,4),c:a(u.uShC).slice(0,3),d:a(u.uShD).slice(0,3),skin:a(u.uSkin).slice(0,4),e:a(u.uShE).slice(0,4)};
+  while(o.p.length<4)o.p.push(0);while(o.q.length<4)o.q.push(0);while(o.c.length<3)o.c.push(0);while(o.d.length<3)o.d.push(0);while(o.skin.length<4)o.skin.push(0);while(o.e.length<4)o.e.push(0);
   if(sh.kind==='panner')o.d=[P.sx||0,P.sy||0,0];return o;}
 /* the model and each texture set's maps (the same maps the export makes, at preview size) */
 /* the mask view / channel view / baked-map view of the 3D view (C and B keys, Alt+click a mask): a picture shown unlit */

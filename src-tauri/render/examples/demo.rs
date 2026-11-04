@@ -23,7 +23,17 @@ fn main() {
         ("Cloth", 14, [1., 0.5, 0., 0.5], [0.4, 0., 0., 0.], [1., 0.9, 0.85], [0.; 3], [0.45, 1., 0.5, 0.]),
         ("Wax", 15, [1.5, 0.7, 0.6, 0.5], [0.; 4], [1., 0.62, 0.3], [0.; 3], [0.45, 1., 0.5, 0.]),
     ];
-    let kinds: [(&str, i32, [f32; 4], [f32; 4], [f32; 3], [f32; 3], [f32; 4]); 8] = if std::env::var_os("GOUACHE_LOOKS").is_some() { looks } else { [
+    let toons: [(&str, i32, [f32; 4], [f32; 4], [f32; 3], [f32; 3], [f32; 4]); 8] = [
+        ("Standard", 0, [0.; 4], [0.; 4], [1.; 3], [0.; 3], [0.45, 1., 0.5, 0.]),
+        ("Halftone", 16, [3., 0.1, 0.5, 90.], [0., 0.55, 0.5, 0.55], [0.7, 0.25, 0.6], [1., 0.65, 0.55], [0.5, 0.35, 0.3, 0.]),
+        ("Halftone hard", 16, [3., 0.02, 0., 90.], [2., 0.6, 0.8, 0.5], [0.6, 0.2, 0.5], [1., 0.8, 0.5], [0.6, 0.3, 0.5, 0.]),
+        ("Halftone coarse", 16, [2., 0.1, 0.9, 40.], [0., 0.5, 0.4, 0.5], [0.75, 0.3, 0.55], [1., 0.7, 0.6], [0.4, 0.35, 0.2, 0.]),
+        ("Ink", 17, [2., 0.03, 0.3, 0.6], [2.5, 0.4, 0., 0.35], [0.45, 0.45, 0.75], [1., 0.4, 0.35], [0.08, 0.04, 0.05, 0.]),
+        ("Ink clean", 17, [1., 0.01, 0.25, 0.5], [2., 0., 1., 0.35], [0.5, 0.5, 0.8], [1., 0.75, 0.6], [0.05, 0.05, 0.08, 0.]),
+        ("Ink night", 17, [2., 0.03, 0.35, 0.8], [2., 0.3, 0., 0.3], [0.25, 0.3, 0.6], [0.4, 0.7, 1.], [0.08, 0.04, 0.05, 0.]),
+        ("Toon", 4, [3., 0., 0.3, 0.2], [2., 0., 0., 0.], [0.45, 0.4, 0.55], [0.; 3], [0.45, 1., 0.5, 0.]),
+    ];
+    let kinds: [(&str, i32, [f32; 4], [f32; 4], [f32; 3], [f32; 3], [f32; 4]); 8] = if std::env::var("GOUACHE_LOOKS").map(|v| v == "2").unwrap_or(false) { toons } else if std::env::var_os("GOUACHE_LOOKS").is_some() { looks } else { [
         ("Standard", 0, [0.; 4], [0.; 4], [1.; 3], [0.; 3], [0.45, 1., 0.5, 0.]),
         ("Skin", 1, [0.5, 0.6, 0.5, 0.5], [0., 0., 0.3, 0.], [0.85, 0.25, 0.18], [0.; 3], [0.45, 1., 0.5, 0.]),
         ("Brushed", 2, [0.7, 0.1, 0., 0.5], [0.; 4], [1.; 3], [0.; 3], [0.45, 1., 0.5, 0.]),
@@ -43,7 +53,7 @@ fn main() {
         for i in 0..cnt as usize { p.extend([sp[i * 3] + off, sp[i * 3 + 1], sp[i * 3 + 2]]); n.extend([sn[i * 3], sn[i * 3 + 1], sn[i * 3 + 2]]); uv.extend([suv[i * 2], suv[i * 2 + 1]]); }
         let idx: Vec<u32> = sidx.iter().map(|i| i + cnt * k as u32).collect();
         let base = mk(&|x, y| if (x / 8 + y / 8) % 2 == 0 { [225, 190, 150, 255] } else { [150, 100, 80, 255] });
-        let shader = ShaderParams { kind: *kind, p: *pp, q: *q, c: *c, d: *d, skin: *skin };
+        let shader = ShaderParams { kind: *kind, p: *pp, q: *q, c: *c, d: *d, skin: *skin, e: if *kind == 17 { [0.6, 0.8, 0., 0.] } else { [0.; 4] } };
         groups.push(Group { name: name.to_string(), indices: idx, material: Material { shader, base: Some(base), orm: None, normal: None, emissive: None, height: if std::env::var_os("GOUACHE_DISP").is_some() { let mut px = Vec::new(); for y in 0..64u32 { for x in 0..64u32 { let v = if ((x / 8) + (y / 8)) % 2 == 0 { 255u8 } else { 0 }; px.extend_from_slice(&[v, v, v, 255]); } } Some(Tex8 { width: 64, height: 64, rgba: px }) } else { None }, thick: None, udim: None, fold_off: 0.0, rough: 0.45, metal: if *kind == 2 { 1.0 } else { 0.0 }, partial: false } });
     }
     let fb = cnt * kinds.len() as u32;

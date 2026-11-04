@@ -12,8 +12,8 @@
      material and follow the Directional Light through a parameter collection).
    The look is a close match, not identical: each engine lights differently. */
 /* bump this when a look's shader changes in a way that matters: Gouache then offers to update the master shaders already in a game */
-const ESH_MASTER_VER=1;
-const ESH_KIND_NAMES=['Standard','Skin','Brushed metal','Velvet','Toon','Cel','Spec/Gloss','Panner','Retro'];
+const ESH_MASTER_VER=2;
+const ESH_KIND_NAMES=['Standard','Skin','Brushed metal','Velvet','Toon','Cel','Spec/Gloss','Panner','Retro','Hologram','Glass','Fur','Iridescent','Car paint','Cloth sheen','Wax / marble glow'];
 const ESH_SHADER_GUID='47a0c5e1b2d34f6a8c91e0f3d5b7a901';
 function eshGuid(s){let a=0x811c9dc5,b=0x1b873593,c=0x9e3779b1,d=0x85ebca6b;for(let i=0;i<s.length;i++){const k=s.charCodeAt(i);a=Math.imul(a^k,16777619);b=Math.imul(b^k,2246822519);c=Math.imul(c^(k<<1),3266489917);d=Math.imul(d^(k+i),668265263);}
   return [a,b,c,d].map(v=>(v>>>0).toString(16).padStart(8,'0')).join('');}
@@ -26,10 +26,12 @@ function eshModelSize(m){if(!m||!m.pos)return 1;const mn=[1e30,1e30,1e30],mx=[-1
 /* ---------------- Godot 4 ----------------
    One shared shader per look (res://gouache/_shaders/<Look>.gdshader, and <Look>_alpha for see-through materials), made once.
    Each texture set is a small ShaderMaterial (.tres) that only holds that set's textures and settings. */
-const ESH_LOOKS={std:'Standard',skin:'Skin',aniso:'BrushedMetal',velvet:'Velvet',toon:'Toon',cel:'Cel',specgloss:'Standard',panner:'Panner',retro:'Retro'};
+const ESH_LOOKS={std:'Standard',skin:'Skin',aniso:'BrushedMetal',velvet:'Velvet',toon:'Toon',cel:'Cel',specgloss:'Standard',panner:'Panner',retro:'Retro',hologram:'Hologram',glass:'Glass',fur:'Fur',iridescent:'Iridescent',car:'CarPaint',cloth:'ClothSheen',wax:'Wax'};
 const eshLook=k=>ESH_LOOKS[k]||'Standard';
-/* the engine shaders only know the looks above: the newer ones (hologram, glass, fur, iridescent, car paint, cloth, wax) go out as Standard for now */
-const eshSafeShade=sh=>sh&&sh.kind&&!ESH_LOOKS[sh.kind]?{kind:'std',p:{}}:sh;
+/* the looks added in 0.94.1: Godot and Unity (URP) have them; Unity Built-in and Unreal send them as Standard */
+const ESH_NEW=['hologram','glass','fur','iridescent','car','cloth','wax'];
+const ESH_FUR_SHELLS=10;
+const eshSafeShade=sh=>{if(!sh||!sh.kind)return sh;if(!ESH_LOOKS[sh.kind])return {kind:'std',p:{}};if(ESH_NEW.includes(sh.kind)&&(es.to==='unreal'||(es.to==='unity'&&texCfg.unityRP==='builtin')))return {kind:'std',p:{}};return sh;};
 const eshV3=a=>'vec3('+(a||[1,1,1]).map(eshF).join(', ')+')';
 /* a look's own settings: [uniform name, GLSL type, value text] taken from a shader's parameters */
 function eshGodotParams(sh){const k=sh.kind,P=shParams(sh),L=[];
@@ -40,6 +42,13 @@ function eshGodotParams(sh){const k=sh.kind,P=shParams(sh),L=[];
   if(k==='skin')L.push(['blood_colour','vec3',eshV3(P.col)],['scatter_strength','float',eshF(P.scatter*P.strength)],['scatter_depth','float',eshF(P.depth*.1)],['transmission','float',eshF(P.transmission)],['oiliness','float',eshF(P.oil)]);
   if(k==='toon'||k==='cel'){L.push(['shadow_colour','vec3',eshV3(P.col)],['highlight','float',eshF(P.spec)],['rim_light','float',eshF(P.rim)]);
     if(k==='toon')L.push(['bands','float',eshF(P.steps)],['band_shift','float',eshF(P.offset)]);else L.push(['shadow_line','float',eshF(P.thresh)],['edge_softness','float',eshF(P.soft)]);}
+  if(k==='hologram')L.push(['holo_colour','vec3',eshV3(P.col)],['see_through','float',eshF(P.opacity)],['edge_glow','float',eshF(P.glow)],['scan_lines','float',eshF(P.lines)],['scan_speed','float',eshF(P.speed)],['flicker','float',eshF(P.flicker)],['glitch','float',eshF(P.glitch)],['edge_pulse','float',eshF(P.pulse)],['sweep','float',eshF(P.sweep)],['body_glow','float',eshF(P.fill)]);
+  if(k==='glass')L.push(['glass_colour','vec3',eshV3(P.col)],['bending','float',eshF(P.refr)],['frost','float',eshF(P.frost)],['thickness','float',eshF(P.thick)],['edge_reflect','float',eshF(P.edge)],['cloudiness','float',eshF(P.cloud)],['split_amount','float',eshF(P.disp)]);
+  if(k==='fur')L.push(['tip_colour','vec3',eshV3(P.col)],['fur_length','float',eshF(P.length)],['strands','float',eshF(P.density)],['strand_width','float',eshF(P.width)],['clumping','float',eshF(P.clump)],['dark_roots','float',eshF(P.root)],['tip_amount','float',eshF(P.tipMix)],['wind','float',eshF(P.wind)],['wind_speed','float',eshF(P.windSpeed)],['droop','float',eshF(P.gravity)]);
+  if(k==='iridescent')L.push(['iri_strength','float',eshF(P.strength)],['iri_range','float',eshF(P.range)],['iri_shift','float',eshF(P.shift)],['iri_angle','float',eshF(P.angle)]);
+  if(k==='car')L.push(['coat','float',eshF(P.coat)],['coat_roughness','float',eshF(P.coatRough)],['orange_peel','float',eshF(P.peel)],['flake_amount','float',eshF(P.flakes)],['flake_size','float',eshF(P.size)],['flake_sparkle','float',eshF(P.sparkle)],['flake_colour','vec3',eshV3(P.col)]);
+  if(k==='cloth')L.push(['cloth_colour','vec3',eshV3(P.col)],['cloth_sheen','float',eshF(P.sheen)],['softness','float',eshF(P.soft)],['satin_streak','float',eshF(P.aniso)],['fibre_turns','float',eshF(P.fibre)],['weave','float',eshF(P.weave)]);
+  if(k==='wax')L.push(['glow_colour','vec3',eshV3(P.col)],['glow','float',eshF(P.glow)],['travel','float',eshF(P.depth)],['wax_softness','float',eshF(P.soft)],['wax_thickness','float',eshF(P.thick)]);
   return L;}
 /* the shared shader of one look; its settings start at the look's usual values */
 function eshGodotShader(kind,alpha){const L=eshGodotParams({kind,p:{}}),k=kind,defP=shParams({kind:k,p:{}}),
@@ -64,6 +73,42 @@ function eshGodotShader(kind,alpha){const L=eshGodotParams({kind,p:{}}),k=kind,d
     if(k==='toon')Lt.push('\tfloat st = max(bands, 1.0);','\tfloat band = floor(l * st + 0.5 * band_shift) / st;');else Lt.push('\tfloat band = smoothstep(shadow_line - edge_softness * 0.5, shadow_line + edge_softness * 0.5 + 0.0001, l);');
     Lt.push('\tvec3 lit = mix(shadow_colour, vec3(1.0), clamp(band, 0.0, 1.0));','\tDIFFUSE_LIGHT += lit * LIGHT_COLOR * ATTENUATION;','\tvec3 h = normalize(LIGHT + VIEW);','\tfloat sp = step(1.0 - highlight * 0.05, dot(NORMAL, h)) * (1.0 - ROUGHNESS * 0.5) * step(0.01, highlight);','\tSPECULAR_LIGHT += sp * LIGHT_COLOR * ATTENUATION;','}');}
   if(k==='retro')F.push('\tfloat bx = float((int(FRAGCOORD.x) & 3) * 4 + (int(FRAGCOORD.y) & 3)) / 16.0;','\tvec3 c = pow(clamp(ALBEDO, 0.0, 1.0), vec3(1.0 / 2.2));','\tc = floor(c * colour_levels + 0.5 + (bx - 0.5) * dither_amount) / colour_levels;','\tALBEDO = pow(clamp(c, 0.0, 1.0), vec3(2.2)) * brightness;','\tROUGHNESS = 1.0;','\tMETALLIC = 0.0;','\tFOG = vec4(fog_colour, clamp(1.0 - exp(-length(VERTEX) * fog_amount * 0.35), 0.0, 1.0));');
+  /* ---- (0.94.1) hologram, glass, fur, iridescent, car paint, cloth, wax ---- */
+  if(k==='hologram'){RM.push('unshaded','cull_disabled','depth_draw_never');U.push('varying vec3 wpos;');V.push('void vertex() {','\twpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;','}');
+    F.length=0;F.push('void fragment() {','\tvec2 uv = UV * uv_scale + uv_offset;','\tvec3 alb = texture(albedo_tex, uv).rgb * tint;','\tfloat t = TIME;','\tfloat nv = clamp(abs(dot(NORMAL, VIEW)), 0.0, 1.0);',
+      '\tfloat ln = smoothstep(0.35, 0.65, sin((wpos.y * scan_lines - t * scan_speed * 3.0) * 1.5708) * 0.5 + 0.5);',
+      '\tfloat fl = max(1.0 - flicker * (0.35 * fract(sin(floor(t * 24.0) * 127.1 + 311.7) * 43758.5453) + 0.15 * sin(t * 60.0)), 0.0);',
+      '\tfloat edge = pow(1.0 - nv, 2.5) * edge_glow * (1.0 + edge_pulse * 0.6 * sin(t * 3.0));','\tfloat body = body_glow * (0.35 + 0.65 * dot(alb, vec3(0.3333)));',
+      '\tfloat sw = exp(-pow((fract(wpos.y * 0.35 - t * 0.25) - 0.5) * 7.0, 2.0)) * sweep;',
+      '\tfloat gl = step(0.965 - glitch * 0.06, fract(sin(floor(wpos.y * 18.0) * 127.1 + floor(t * 7.0) * 311.7) * 43758.5453)) * glitch;','\tln = clamp(ln + gl * 0.8, 0.0, 1.0);',
+      '\tvec3 c = holo_colour * (edge + ln * 0.55 + body * (0.4 + 0.6 * ln) + sw * 0.9 + gl * 1.2) * fl * 2.0 + texture(emission_tex, uv).rgb * 2.0;',
+      '\tALBEDO = c;','\tALPHA = clamp(see_through * (0.15 + 0.5 * ln + 0.9 * edge + body * 0.6 + sw * 0.5 + gl * 0.6), 0.0, 1.0) * fl;');}
+  if(k==='glass'){RM.push('cull_disabled');U.push('uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;');
+    F.length=0;F.push('void fragment() {','\tvec2 uv = UV * uv_scale + uv_offset;','\tvec3 alb = texture(albedo_tex, uv).rgb * tint;','\tfloat nv = max(dot(NORMAL, VIEW), 0.001);',
+      '\tvec3 tn = texture(normal_tex, uv).rgb * 2.0 - 1.0;','\tvec3 nm = normalize(NORMAL + vec3(tn.xy, 0.0) * normal_strength);',
+      '\tvec2 off = nm.xy * bending * 0.08 * (1.0 + thickness * 0.3);','\tfloat lod = frost * 5.0;',
+      '\tvec3 refr = vec3(textureLod(screen_tex, SCREEN_UV + off * (1.0 + split_amount * 0.25), lod).r, textureLod(screen_tex, SCREEN_UV + off, lod).g, textureLod(screen_tex, SCREEN_UV + off * (1.0 - split_amount * 0.25), lod).b);',
+      '\tvec3 ab = exp(-(vec3(1.0) - glass_colour) * thickness * 1.6 / nv) * mix(vec3(1.0), alb, 0.85);',
+      '\tALBEDO = vec3(0.0);','\tEMISSION = refr * ab * (1.0 - cloudiness) + glass_colour * cloudiness * 0.6 + texture(emission_tex, uv).rgb * 2.0;',
+      '\tROUGHNESS = clamp(frost * 0.6 + 0.02, 0.0, 1.0);','\tMETALLIC = 0.0;','\tSPECULAR = clamp(0.5 * edge_reflect, 0.0, 1.0);','\tNORMAL_MAP = texture(normal_tex, uv).rgb;','\tNORMAL_MAP_DEPTH = normal_strength;','\tALPHA = 1.0;');}
+  if(k==='fur'){RM.push('cull_disabled');U.push('uniform float shell_k = 0.0;');
+    V.push('void vertex() {','\tfloat k = shell_k;','\tvec3 wd = vec3(wind * 0.054 * k * k, -droop * 0.09 * k * k, wind * 0.0225 * k * k);','\tVERTEX += NORMAL * fur_length * 0.09 * k + wd * (0.45 + 0.55 * sin(dot(VERTEX, vec3(3.1, 1.7, 2.3)) + TIME * wind_speed * 2.0));','}');
+    F.length=0;F.push('void fragment() {','\tvec2 uv = UV * uv_scale + uv_offset;','\tvec3 alb = texture(albedo_tex, uv).rgb * tint;','\tfloat k = shell_k;','\tvec2 gp = uv * strands;','\tvec2 cell = floor(gp);','\tvec2 fq = fract(gp) - 0.5;',
+      '\tvec2 cc = floor(gp / (1.0 + clumping * 3.0));','\tfq += (vec2(fract(sin(dot(cc, vec2(127.1, 311.7))) * 43758.5453), fract(sin(dot(cc + 7.3, vec2(127.1, 311.7))) * 43758.5453)) - 0.5) * clumping * k * 0.9;',
+      '\tfloat len = 0.6 + 0.4 * fract(sin(dot(cell + 3.1, vec2(127.1, 311.7))) * 43758.5453);','\tfloat keep = 1.0;','\tif (k > 0.0 && (k > len || length(fq) * 2.0 > strand_width * (1.0 - k * 0.85))) keep = 0.0;',
+      '\tvec3 root = alb * (1.0 - dark_roots * 0.85);','\tvec3 tip = mix(alb, tip_colour, tip_amount);','\tALBEDO = mix(root, tip, k) * mix(1.0 - dark_roots * 0.6, 1.0, k);','\tROUGHNESS = 0.85;','\tMETALLIC = 0.0;','\tSPECULAR = 0.25;','\tRIM = 0.2 * k;','\tRIM_TINT = 0.5;',
+      '\tALPHA = keep;','\tALPHA_SCISSOR_THRESHOLD = 0.5;');}
+  if(k==='iridescent')F.push('\tfloat nvi = clamp(dot(NORMAL, VIEW), 0.0, 1.0);','\tfloat ti = iri_shift + iri_range * (0.3 + iri_angle * (1.0 - nvi));','\tvec3 film = 0.5 + 0.5 * cos(6.2832 * (vec3(ti) + vec3(0.0, 0.33, 0.67)));','\tALBEDO = mix(ALBEDO, mix(film, vec3(1.0), 0.15), iri_strength * 0.85);','\tMETALLIC = mix(METALLIC, 1.0, 0.6 * iri_strength);');
+  if(k==='car')F.push('\tCLEARCOAT = coat;','\tCLEARCOAT_ROUGHNESS = max(coat_roughness, 0.02);',
+      '\t// flakes: tiny mirrors at their own angles, in cells of the model; they glint when the light and your eye line up',
+      '\tvec3 q = mat3(vec3(0.36, 0.48, -0.8), vec3(-0.8, 0.6, 0.0), vec3(0.48, 0.64, 0.6)) * lpos * flake_size * 0.85;','\tvec3 ci = floor(q);','\tvec3 fr = fract(q) - 0.5;','\tfloat fw = length(fwidth(q));',
+      '\tfloat h1 = fract(sin(dot(ci, vec3(127.1, 311.7, 74.7))) * 43758.5453);','\tfloat h2 = fract(sin(dot(ci + 17.1, vec3(127.1, 311.7, 74.7))) * 43758.5453);','\tfloat h3 = fract(sin(dot(ci + 43.7, vec3(127.1, 311.7, 74.7))) * 43758.5453);','\tfloat h4 = fract(sin(dot(ci + 91.3, vec3(127.1, 311.7, 74.7))) * 43758.5453);',
+      '\tfloat rad = 0.22 + 0.28 * h4;','\tfloat fm = step(h1, flake_amount * 0.8) * smoothstep(rad, rad * 0.55, length(fr)) * (1.0 - smoothstep(0.5, 1.0, fw));',
+      '\tvec3 np = normalize(vec3((h2 - 0.5) * 1.6, (h3 - 0.5) * 1.6, 1.0));','\tvec3 nt = texture(normal_tex, uv).rgb * 2.0 - 1.0;','\tNORMAL_MAP = normalize(mix(nt, normalize(nt + vec3(np.xy, 0.0) * 1.5), fm * flake_sparkle)) * 0.5 + 0.5;',
+      '\tROUGHNESS = mix(ROUGHNESS, 0.12, fm);','\tMETALLIC = mix(METALLIC, 1.0, fm);','\tALBEDO = mix(ALBEDO, mix(flake_colour, ALBEDO, 0.2) * (0.6 + 0.8 * h4), fm * 0.7);');
+  if(k==='cloth')F.push('\tfloat wv = mix(1.0, 0.55 + 0.45 * sin(uv.x * 200.0) * sin(uv.y * 200.0), weave);','\tALBEDO *= wv;','\tfloat frc = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.5);','\tEMISSION += cloth_colour * cloth_sheen * frc * mix(1.0, 0.5, softness) * 0.5;','\tROUGHNESS = max(ROUGHNESS, mix(0.3, 0.7, softness));','\tANISOTROPY = satin_streak;','\tANISOTROPY_FLOW = vec2(cos(fibre_turns * TAU), sin(fibre_turns * TAU));','\tRIM = cloth_sheen * 0.3;','\tRIM_TINT = 0.6;');
+  if(k==='wax')F.push('\tROUGHNESS = mix(ROUGHNESS, max(ROUGHNESS, 0.5), wax_softness);','\tBACKLIGHT = glow_colour * glow * 0.6;','\tSSS_STRENGTH = clamp(glow * 0.4, 0.0, 1.0);','\tSSS_TRANSMITTANCE_COLOR = vec4(glow_colour, 1.0);','\tSSS_TRANSMITTANCE_DEPTH = travel * 0.2 + wax_thickness * 0.05;');
+  if(k==='car'){U.push('varying vec3 lpos;');V.push('void vertex() {','\tlpos = VERTEX;','}');}
   F.push('}');
   const head=['// gouache-master '+ESH_MASTER_VER,'// Gouache Studio · '+eshLook(k)+' look for Godot 4 (shared: every material of this look uses this one file)','// A close match to the 3D view’s shader: Godot lights it its own way, so it will not be identical.','shader_type spatial;'];
   if(RM.length)head.push('render_mode '+RM.join(', ')+';');
@@ -502,6 +547,9 @@ function eshFiles(to,name,info,size,modelFile,opt){const out=[],pn=pascal(name),
       const outline=(sh.kind==='toon'||sh.kind==='cel')&&shParams(sh).outline>0;
       if(outline){if(!made.has('_outline')){made.add('_outline');out.push({name:'../_shaders/Outline.gdshader',data:new TextEncoder().encode(eshGodotOutline()),shared:true});}
         out.push({name:sn+'_outline.tres',data:new TextEncoder().encode(eshGodotMaterial(sh0+'Outline.gdshader',[],[['outline_colour','vec3',eshV3(shParams(sh).ocol||[0,0,0])],['outline_width','float',eshF(shParams(sh).outline*size*0.0014)]]))});}
+      if(sh.kind==='fur'){/* fur: the shell materials are chained with next_pass, the outermost first made */
+        for(let n=ESH_FUR_SHELLS;n>=1;n--)out.push({name:sn+'_fur'+n+'.tres',data:new TextEncoder().encode(eshGodotMaterial(sh0+file,texs,[...params,['shell_k','float',eshF(n/ESH_FUR_SHELLS)]],n<ESH_FUR_SHELLS?base+sn+'_fur'+(n+1)+'.tres':null))});
+        out.push({name:sn+'.tres',data:new TextEncoder().encode(eshGodotMaterial(sh0+file,texs,params,base+sn+'_fur1.tres'))});continue;}
       out.push({name:sn+'.tres',data:new TextEncoder().encode(eshGodotMaterial(sh0+file,texs,params,outline?base+sn+'_outline.tres':null))});}
     return out;}
   if(to==='unity'){const bi=texCfg.unityRP==='builtin',shaderPath=bi?'../GouacheShadedBuiltin.shader':'../GouacheShaded.shader',sguid=bi?ESH_BUILTIN_GUID:ESH_SHADER_GUID;

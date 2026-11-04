@@ -51,6 +51,8 @@ pub struct ShaderParams {
     pub c: [f32; 3],
     pub d: [f32; 3],
     pub skin: [f32; 4],
+    /// four more settings (Ink toon)
+    pub e: [f32; 4],
 }
 
 /// One material (a texture set): the maps it has, and what to use where it has none.
@@ -350,6 +352,7 @@ struct MatUniform {
     shc: [f32; 4],
     shd: [f32; 4],
     skin: [f32; 4],
+    she: [f32; 4],
 }
 
 /// The pictures the post processing works in (made again when the size changes).
@@ -1400,7 +1403,7 @@ impl Gpu {
             let (bind, mat_buf, mu, views) = self.material_bind(mat, None);
             let sp = mat.shader;
             let ib = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("indices"), contents: bytemuck::cast_slice(&g.indices), usage: wgpu::BufferUsages::INDEX });
-            self.groups.push(GpuGroup { name: g.name.clone(), ib, mat_buf, mu, views, count: g.indices.len() as u32, bind, outline: (sp.kind == 4 || sp.kind == 5) && sp.q[0] > 0.0, kind: sp.kind as i32, tris: g.indices.clone(), wire: None });
+            self.groups.push(GpuGroup { name: g.name.clone(), ib, mat_buf, mu, views, count: g.indices.len() as u32, bind, outline: (sp.kind == 4 || sp.kind == 5 || sp.kind == 16 || sp.kind == 17) && sp.q[0] > 0.0, kind: sp.kind as i32, tris: g.indices.clone(), wire: None });
         }
         let c = (mn + mx) * 0.5;
         let radius = ((mx - mn).length() * 0.5).max(1e-4);
@@ -1485,6 +1488,7 @@ impl Gpu {
             shc: [sp.c[0], sp.c[1], sp.c[2], 0.0],
             shd: [sp.d[0], sp.d[1], sp.d[2], mat.fold_off],
             skin: [sp.skin[0], sp.skin[1], sp.skin[2], if mat.thick.is_some() { 1.0 } else { 0.0 }],
+            she: sp.e,
         };
         if let Some((_, old)) = keep {
             mu.flags = old.flags; // a kept map keeps its flag too
@@ -1593,7 +1597,7 @@ impl Gpu {
             }
             return;
         }
-        let outline = (mat.shader.kind == 4 || mat.shader.kind == 5) && mat.shader.q[0] > 0.0;
+        let outline = (mat.shader.kind == 4 || mat.shader.kind == 5 || mat.shader.kind == 16 || mat.shader.kind == 17) && mat.shader.q[0] > 0.0;
         let Some(i) = self.groups.iter().position(|g| g.name == name) else { return };
         let (bind, mat_buf, mu, views) = {
             let g = &self.groups[i];

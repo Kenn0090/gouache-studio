@@ -39,12 +39,13 @@ fn view_dir(p: vec3<f32>) -> vec3<f32> {
 struct Mat {
     flags: vec4<f32>,        // x has orm, y rough fallback, z metal fallback, w unused
     tint: vec4<f32>,
-    shk: vec4<f32>,          // x the shader (0 standard, 1 skin, 2 brushed metal, 3 velvet, 4 toon, 5 cel, 6 spec/gloss, 7 panner, 8 retro, 9 hologram, 10 glass, 11 fur, 12 iridescent, 13 car paint, 14 cloth sheen, 15 wax)
+    shk: vec4<f32>,          // x the shader (0 standard, 1 skin, 2 brushed metal, 3 velvet, 4 toon, 5 cel, 6 spec/gloss, 7 panner, 8 retro, 9 hologram, 10 glass, 11 fur, 12 iridescent, 13 car paint, 14 cloth sheen, 15 wax, 16 halftone cel, 17 ink toon)
     shp: vec4<f32>,          // the shader's settings, as the 3D view keeps them
     shq: vec4<f32>,
     shc: vec4<f32>,
     shd: vec4<f32>,
     skin: vec4<f32>,
+    she: vec4<f32>,
 };
 @group(1) @binding(0) var base_tex: texture_2d<f32>;
 @group(1) @binding(1) var orm_tex: texture_2d<f32>;
@@ -425,6 +426,60 @@ fn fs_shade(i: VOut) -> vec4<f32> {
         return vec4<f32>(clamp(col * frame.params.x, vec3<f32>(0.0), vec3<f32>(1.0)), 1.0);
     }
 
+    // ---- halftone cel and ink toon ----
+    if (kind == 16) {
+        let lt = dot(nn, l) * 0.5 + 0.5;
+        let st = max(mat.shp.x, 1.0);
+        let x = lt * st;
+        let i0 = floor(x);
+        let f = x - i0;
+        var lvl = 0.0;
+        if (mat.shp.z > 0.01) {
+            let w = mat.shp.z * 0.5;
+            let t = clamp((f - 0.5) / (w * 2.0 + 1e-3) + 0.5, 0.0, 1.0);
+            let c2 = vec2<f32>(uv.x + uv.y, uv.x - uv.y) * mat.shp.w;
+            let cc = fract(c2) - vec2<f32>(0.5);
+            let pp = length(cc) * 1.4142;
+            let aa = fwidth(pp) + 1e-3;
+            lvl = i0 + (1.0 - smoothstep(t * 1.15 - aa, t * 1.15 + aa, pp)) * step(0.001, t);
+        } else {
+            lvl = i0 + smoothstep(0.5 - mat.shp.y, 0.5 + mat.shp.y + 1e-4, f);
+        }
+        let ramp = clamp(lvl / st, 0.0, 1.0);
+        var shc0 = albedo * (1.0 - mat.shq.y);
+        shc0 = mix(vec3<f32>(dot(shc0, vec3<f32>(0.2126, 0.7152, 0.0722))), shc0, 1.0 + mat.shq.z * 1.5);
+        shc0 = shc0 * mix(vec3<f32>(1.0), lin3(mat.shc.rgb) * 2.0, mat.shq.w);
+        var c = mix(shc0, albedo, ramp);
+        let spc = step(1.0 - mat.skin.z * 0.02, nh) * (1.0 - rough * 0.5) * step(0.01, mat.skin.z);
+        c = mix(c, vec3<f32>(1.0), spc * 0.8);
+        let rim = smoothstep(1.0 - mat.skin.y, 1.0, 1.0 - nv) * mat.skin.x * smoothstep(-0.1, 0.5, dot(nn, l));
+        c = c + lin3(mat.shd.rgb) * rim;
+        var amb = vec3<f32>(0.2);
+        if (frame.info.y > 0.5) { amb = sh_diffuse(nn) * 0.25; }
+        var col = c * (0.75 + 0.25 * frame.params.z) + c * amb * ao + emis * 2.0;
+        return vec4<f32>(clamp(col * frame.params.x, vec3<f32>(0.0), vec3<f32>(1.0)), 1.0);
+    }
+    if (kind == 17) {
+        let lt = dot(nn, l) * 0.5 + 0.5;
+        let st = max(mat.shp.x, 1.0);
+        var lv = 0.0;
+        for (var k = 1; k <= 3; k = k + 1) {
+            if (f32(k) > st) { break; }
+            let th = f32(k) / (st + 1.0) * 1.1;
+            lv = lv + smoothstep(th - mat.shp.y, th + mat.shp.y + 1e-4, lt);
+        }
+        let ramp = lv / st;
+        let sc = lin3(mat.shc.rgb) * 2.0;
+        let dark = albedo * mix(vec3<f32>(1.0), sc, mat.she.x) * mix(1.0, 0.55, mat.she.x);
+        var c = mix(dark, albedo, ramp);
+        let rim = smoothstep(1.0 - mat.shp.z, 1.0, 1.0 - nv) * mat.she.y * mix(1.0, smoothstep(-0.3, 0.3, dot(nn, l)), mat.shp.w);
+        c = c + lin3(mat.shd.rgb) * rim;
+        var amb = vec3<f32>(0.2);
+        if (frame.info.y > 0.5) { amb = sh_diffuse(nn) * 0.25; }
+        var col = c * (0.75 + 0.25 * frame.params.z) + c * amb * ao + emis * 2.0;
+        return vec4<f32>(clamp(col * frame.params.x, vec3<f32>(0.0), vec3<f32>(1.0)), 1.0);
+    }
+
     // ---- the lit shaders ----
     let diff_col = albedo * (1.0 - metal);
     let a = rough * rough;
@@ -587,27 +642,44 @@ fn fs_shade(i: VOut) -> vec4<f32> {
     return vec4<f32>(tone(col), 1.0);
 }
 
-// the outline of toon and cel: the faces turned away from the camera, pushed out along their normals
+// the outline of toon, cel, halftone cel and ink toon: the faces turned away from the camera, pushed out along their normals
 struct OutOut {
     @builtin(position) clip: vec4<f32>,
     @location(0) wpos: vec3<f32>,
     @location(1) nrm: vec3<f32>,
+    @location(2) uv: vec2<f32>,
 };
 @vertex
 fn vs_out(i: VIn) -> OutOut {
     var o: OutOut;
-    let w = mat.shq.x * frame.extra.y;
+    var w = mat.shq.x * frame.extra.y;
+    let kd = i32(mat.shk.x + 0.5);
+    if (kd == 17) {
+        // hand-drawn wobble
+        w = w * (1.0 + mat.shq.y * 0.7 * (sin(dot(i.pos, vec3<f32>(37.0, 23.0, 29.0))) * 0.5 + sin(dot(i.pos, vec3<f32>(17.0, 41.0, 31.0))) * 0.5));
+    }
     let dp = dpos(i);
     o.clip = frame.view_proj * vec4<f32>(dp + normalize(i.nrm) * w, 1.0);
     o.wpos = dp;
     o.nrm = i.nrm;
+    o.uv = i.uv;
     return o;
 }
 @fragment
 fn fs_out(i: OutOut) -> FOut {
     if (dot(normalize(i.nrm), view_dir(i.wpos)) > 0.0) { discard; }
     var o: FOut;
-    o.c = vec4<f32>(lin3(mat.shd.rgb), 1.0);
+    let kd = i32(mat.shk.x + 0.5);
+    var c = lin3(mat.shd.rgb);
+    if (kd == 16 || kd == 17) {
+        let b = textureSampleLevel(base_tex, tex_smp, i.uv, 0.0).rgb * mat.tint.rgb;
+        let dk = select(0.3, mat.shq.w, kd == 17);
+        var dc = b * pow(dk, 2.2);
+        dc = mix(vec3<f32>(dot(dc, vec3<f32>(0.3333))), dc, 1.25);
+        c = dc;
+        if (kd == 17 && mat.shq.z > 0.5) { c = lin3(mat.skin.rgb); }
+    }
+    o.c = vec4<f32>(c, 1.0);
     o.n = vec4<f32>(0.0);
     o.m = vec4<f32>(0.0);
     return o;
@@ -623,6 +695,7 @@ fn vs_wire(i: VIn) -> OutOut {
     o.clip = c;
     o.wpos = dp;
     o.nrm = i.nrm;
+    o.uv = i.uv;
     return o;
 }
 @fragment

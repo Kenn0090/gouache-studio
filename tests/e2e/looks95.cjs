@@ -14,7 +14,7 @@ const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAI
  const W=ms=>p.waitForTimeout(ms||300);
  await p.evaluate(()=>{const G=__gs;G.closeWelcome();G.setMode('p3d',true);G.useModel(G.primMesh('sphere',1));G.cmdNewFillLayer({name:'Red',maps:{base:{c:[.8,.25,.2]}}});});await W(1500);
  const box=await p.locator('#gl').boundingBox(),hash=async()=>crypto.createHash('md5').update(await p.screenshot({clip:box,timeout:120000})).digest('hex');
- const kinds=(process.env.KINDS||'std,hologram,glass,fur,iridescent,car,cloth,wax').split(','),seen={};
+ const kinds=(process.env.KINDS||'std,hologram,glass,fur,iridescent,car,cloth,wax,halfcel,ink').split(','),seen={};
  for(const k of kinds){await p.evaluate(k=>{__gs.doc.v3shade={kind:k,p:k==='fur'?{fur:{wind:0}}:k==='hologram'?{hologram:{speed:0,flicker:0}}:{}};__gs.v3.dirty=true;__gs.requestRender(true);},k);await W(900);
   console.log('shot',k);const h=await hash();seen[k]=h;if(process.env.OUT)fs.writeFileSync(process.env.OUT+'/'+k+'.png',await p.screenshot({clip:box}));}
  for(const k of kinds.slice(1))ok(seen[k]!==seen.std,k+' looks different from Standard');
@@ -25,6 +25,6 @@ const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAI
  await p.evaluate(()=>document.getElementById('shPre_beetle').click());await W(300);
  const pv=await p.evaluate(()=>__gs.doc.v3shade.p.iridescent);
  ok(pv&&pv.shift===.55&&pv.preset==='beetle','clicking Beetle shell sets its settings '+JSON.stringify(pv));
- for(const [k,id] of [['hologram','green'],['glass','frosted'],['fur','peach'],['car','candy'],['cloth','satin'],['wax','jade']]){await p.evaluate(k=>{__gs.doc.v3shade={kind:k,p:{}};__gs.renderShading();},k);await W(150);ok(await p.locator('#shPre_'+id).count()===1,k+' has its presets');}
+ for(const [k,id] of [['hologram','green'],['glass','frosted'],['fur','peach'],['car','candy'],['cloth','satin'],['wax','jade'],['halfcel','comic'],['ink','bull']]){await p.evaluate(k=>{__gs.doc.v3shade={kind:k,p:{}};__gs.renderShading();},k);await W(150);ok(await p.locator('#shPre_'+id).count()===1,k+' has its presets');}
  ok(errs.length===0,'no errors '+errs.slice(0,3).join(' | '));
  await b.close();process.exit(fails?1:0);})().catch(e=>{console.error(e);process.exit(1);});
