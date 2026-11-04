@@ -1,5 +1,7 @@
 ## 0.94.1
 
+- **Physical size.** For a picture, text or decal projected on the model, a new **Real size** choice (off, millimetres, centimetres, metres, inches) shows and sets its size in real units, worked out from the model's file units (the **Model file units** setting in the Bevel settings; centimetres if you have not changed it).
+
 - **UV filtering.** Pictures projected on the model (material pictures and mask pictures, in every projection) have a new **UV filtering** choice: **Smooth** blends between the picture's pixels, **Nearest** keeps them crisp, for pixel-art looks.
 - **Custom tangents on paths.** With path points selected, **Handle length** sets how long their handles are compared with the automatic smooth ones, and **Break handles** lets each handle of a point move on its own (**Join handles** puts them back as a pair).
 

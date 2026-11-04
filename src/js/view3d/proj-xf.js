@@ -88,6 +88,13 @@ function pxfFields(get,edit,mode,onReset,size){const til=!size,X=get(),is3=pxfIs
     sl.addEventListener('input',()=>{const v=Math.pow(10,parseFloat(sl.value));edit(x=>pxfSetScale(x,0,v,cnt,true));const Y=get();for(let i=0;i<cnt;i++){const e=document.getElementById('pxf_s'+i);if(e)e.value=String(Math.round(1000/(Y.s[i]||1))/1000);}});
     sliderGestures(sl,{to:Math.log10,from:v=>Math.pow(10,v),get:()=>pxfShow(get().s[0],true)});
     [...box.querySelectorAll('.pxfrow')].pop()?.after(el('div',{class:'pxfrow tsl'},sl));}
+  /* (0.95, Kenn) Physical size: the picture's size in real units (mm, cm, m, inches), worked out from the model's file units (the Bevel settings' "Model file units") */
+  if(!til&&is3&&mode!=='tri'&&typeof bvSettings==='function'){const unitMM={mm:1,cm:10,m:1000,in:25.4};let u='off';try{u=localStorage.getItem('gs.pxfUnit')||'off';}catch(e){}if(!unitMM[u])u='off';
+    const m=v3.mesh,k=pxfUnit(mode,pxfModel().S),mmPer=(unitMM[bvSettings().modelUnit]||10)/((m&&m.xf&&m.xf.s)||1),sel=el('select',{id:'pxf_unit','aria-label':'Real size units',title:'Show and set the size in real units, using the model file units from the Bevel settings'},...[['off','Real size: off'],['mm','Real size: millimetres'],['cm','Real size: centimetres'],['m','Real size: metres'],['in','Real size: inches']].map(([v,t])=>el('option',{value:v,text:t})));sel.value=u;
+    sel.onchange=()=>{try{localStorage.setItem('gs.pxfUnit',sel.value);}catch(e){}if(typeof renderMatEd==='function')renderMatEd(true);if(typeof buildBrushPanel==='function')buildBrushPanel();};box.append(sel);
+    if(u!=='off'){const f=unitMM[u],axes=mode==='sphere'?[0,1,2]:[0,1];
+      box.append(el('div',{class:'pxfrow'},el('span',{class:'pxfl',text:'Real size ('+u+')'},...[]),...axes.map(i=>{const val=2*Math.abs(X.s[i]||1)*k*mmPer/f,inp=el('input',{type:'number',id:'pxf_p'+i,step:'any',value:String(Math.round(val*100)/100),'aria-label':'Size '+'XYZ'[i]+' in '+u,title:'Size along '+'XYZ'[i]+' in '+u});
+        inp.addEventListener('change',()=>{const v=parseFloat(inp.value);if(!(v>0))return;const sc=v*f/(2*k*mmPer);edit(x=>{x.s[i]=(x.s[i]<0?-1:1)*sc;});if(typeof renderMatEd==='function')renderMatEd(true);if(typeof buildBrushPanel==='function')buildBrushPanel();});return inp;})));}}
   pxfRotationSliderSync(box,X);for(const i of box.querySelectorAll('input[id^=pxf_s]'))i.dataset.til=til?'1':'0';
   if(!is3&&ui.mode==='p3d')box.append(el('div',{class:'chips'},chk('pxf2Show','Show the frame on the flat texture',pxf2.show,v=>{pxf2.show=v;if(typeof drawXfOverlay==='function')drawXfOverlay();requestRender(true);})));
   if(mode==='warp'&&typeof wpjPanel==='function')wpjPanel(box,get,edit);
