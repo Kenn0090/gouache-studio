@@ -27,6 +27,7 @@ const FR_TIPS={
   raggedSq:genTip('Ragged square',128,128,(x,w,h,R)=>{x.fillRect(10,4,w-20,h-8);for(let y=4;y<h-4;y+=2){const l=R()<.35?R()*9:0,r=R()<.35?R()*9:0;x.clearRect(10,y,l,2);x.clearRect(w-10-r,y,r,2);}}),
   fbar:genTip('Feathered bar',320,26,(x,w,h)=>{let g=x.createLinearGradient(0,0,0,h);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(.25,'rgba(0,0,0,.45)');g.addColorStop(.5,'rgba(0,0,0,1)');g.addColorStop(.75,'rgba(0,0,0,.45)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,w,h);
     x.globalCompositeOperation='destination-in';g=x.createLinearGradient(0,0,w,0);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(.12,'rgba(0,0,0,.5)');g.addColorStop(.3,'rgba(0,0,0,1)');g.addColorStop(.7,'rgba(0,0,0,1)');g.addColorStop(.88,'rgba(0,0,0,.5)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,w,h);x.globalCompositeOperation='source-over';}),
+  oilline:genTip('Oil fibres line',400,4,(x,w,h,R)=>{let p=.5;for(let i=0;i<w;i++){p=p*.55+R()*.45;const a=Math.max(0,Math.min(1,(p-.2)*2.2));x.globalAlpha=Math.pow(a,1.4);x.fillRect(i,0,1,h);}x.globalAlpha=1;}),
   oilbar:genTip('Oil fibres',256,96,(x,w,h,R)=>{for(let i=0;i<96;i++){const len=w*(.9+R()*.1),x0=(w-len)/2;x.globalAlpha=.55+R()*.45;x.fillRect(x0,i,len,1);}x.globalAlpha=1;}),
   flakes:genTip('Bristle flakes',256,256,(x,w,h,R)=>{for(let i=0;i<260;i++){const a=R()*6.2832,r=Math.sqrt(R())*w*.46,cx=w/2+Math.cos(a)*r,cy=h/2+Math.sin(a)*r,fw=3+R()*6,fh=8+R()*20;x.save();x.translate(cx,cy);x.rotate((R()-.5)*1.6+(R()<.25?1.57:0));x.beginPath();x.moveTo(-fw/2,-fh/2);x.lineTo(fw/2+R()*3,-fh/2+R()*4);x.lineTo(fw/2,fh/2);x.lineTo(-fw/2-R()*3,fh/2-R()*4);x.closePath();x.fill();x.restore();}}),
   hair:genTip('Fine hair',256,96,(x,w,h,R)=>{for(let i=0;i<64;i++){const y=(i+.5)/64*h,len=w*(.78+R()*.22),x0=(w-len)/2+(R()-.5)*w*.04;x.globalAlpha=.7+R()*.3;x.fillRect(x0,y-.7,len,1.5);}}),
@@ -38,7 +39,7 @@ const FR_TIPS={
   fluff:genTip('Ragged bar',128,64,(x,w,h,R)=>{x.fillRect(6,4,w-12,h-8);x.globalCompositeOperation='destination-out';for(let y=0;y<h;y++){const a=R()*9,b=R()*9;x.fillRect(0,y,6+a,1);x.fillRect(w-6-b,y,6+b,1);}})
 };
 const FRIEND_PRESETS=[
-  {name:'Blur ice',tool:'smudge',blendMode:'smear',streak:.7,tip:FR_TIPS.box,size:270,hardness:1,spacing:.05,strength:.85,charge:0,pSize:false,pOpacity:false,smoothing:.3},
+  {name:'Blur ice',tool:'smudge',blendMode:'smear',streak:1,tip:FR_TIPS.sharpBox,size:270,hardness:1,spacing:.004,strength:1,charge:0,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Boxes',tool:'brush',tip:FR_TIPS.sharpBox,size:200,hardness:1,spacing:.002,followDir:false,hueJitter:.03,valJitter:.14,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Brow',tool:'brush',tip:FR_TIPS.hair,size:240,hardness:1,spacing:.002,followDir:true,laneN:60,laneMode:0,laneHue:.14,laneVal:.12,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Charcoal',tool:'brush',tip:FR_TIPS.fbar,size:120,hardness:1,grain:.8,grainSize:1,spacing:.002,followDir:false,flow:1,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
@@ -47,7 +48,7 @@ const FRIEND_PRESETS=[
   {name:'Fan fade',tool:'brush',fanFill:2,size:60,hardness:1,flow:1,spacing:.05,pSize:false,pOpacity:false,smoothing:.3,laneN:40,laneHue:.12,laneVal:.12},
   {name:'Fried fluff',tool:'brush',tip:FR_TIPS.raggedSq,size:260,hardness:1,spacing:.002,followDir:true,laneN:6,laneMode:5,laneHue:.8,laneVal:.3,softEnd:.025,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Line',tool:'brush',tip:null,size:100,hardness:1,spacing:.002,pSize:false,pOpacity:false,jitterPerStroke:true,hueJitter:.02,valJitter:.08,smoothing:.6,smoothCurve:true,correction:.35},
-  {name:'Oil',tool:'brush',tip:FR_TIPS.oilbar,size:190,hardness:1,spacing:.002,followDir:true,laneN:90,laneMode:0,laneHue:.3,laneVal:.22,grain:1,grainSize:1,flow:1,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
+  {name:'Oil',tool:'brush',tip:FR_TIPS.oilline,size:350,hardness:1,spacing:.002,followDir:false,laneN:40,laneMode:2,laneHue:.3,laneVal:.35,grain:1,grainSize:1,flow:1,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Oil bristle',tool:'brush',tip:FR_TIPS.flakes,size:220,hardness:1,flow:1,spacing:.002,followDir:false,laneN:20,laneMode:0,laneHue:.06,laneVal:.3,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true},
   {name:'Oil bristle 3D',tool:'brush',tip:null,size:200,hardness:.9,spacing:.02,followDir:true,pSize:false,smoothing:.35,mix:true,mixLoad:1,mixPick:.15,mixWet:.8,mixDry:0,mixUse:.12,mixBristles:50,mixDryB:.2,mixThick:.9},
   {name:'Worm',tool:'brush',tip:null,size:200,hardness:1,spacing:.002,laneN:1,laneMode:1,laneHue:.8,laneVal:.4,pSize:false,pOpacity:false,smoothing:.6,smoothCurve:true}];
