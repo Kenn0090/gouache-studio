@@ -291,3 +291,42 @@ function hpSmartList(){if(!FX.handPaint)return [];const out=[];for(const g in HP
 
 /* (0.80) the baked Lighting map of this texture set (Bake tab › Lighting), unless the layer is set to its own direction */
 function hpLightMap(v){const M=doc.meshMaps||{};return v&&v.lightSrc==='dir'?null:M.light&&M.light.w===doc.w&&M.light.h===doc.h?M.light:null;}
+
+/* ---- (0.94.6, Kenn) Hand-painted as a full material ----
+   An ordinary material layer (fill layer: base colour, roughness, metallic, height… as usual) with the hand-painted look as an effect
+   on its own maps (a content effect row, L.cfx), so masks, smart materials, dragging and exporting work as for any material.
+   The look gives the colour; the material's Roughness and Metallic channels take the preset's values.
+   "Paint over the layers below" turns it into the classic Hand-painted layer (which lights what is under it), and back. */
+const hpMatRow=L=>L&&L.fill&&L.cfx?L.cfx.find(r=>r.kind==='filter'&&r.fx==='handPaint'):null;
+function cmdNewHandPaintMaterial(preset,at){if(ui.mode!=='paint'&&ui.mode!=='p3d'){toast('Hand-painted materials are for Paint and 3D Paint.');return null;}if(stroke||preview||selLive){toast('Finish the current edit first.');return null;}
+  const from=hist.undo.length,pr=preset?hpPreset(preset):null;
+  cmdNewFillLayer();const L=doc.active;if(!L||!L.fill){undoMerge(from,'Hand-painted material');return null;}
+  if(at&&at.parent)structOp('Hand-painted material',()=>{detachNode(L);insertNode(L,at.parent,Math.min(at.index,at.parent.children.length));selectOnly(L);});/* dropped at a place in the stack */
+  L.name='Hand-painted'+(preset?' '+preset:'');L.fill.name=L.name;
+  const v=Object.assign(fxDefaults(FX.handPaint),pr?JSON.parse(JSON.stringify(pr)):{},{own:true,preset:preset||''});
+  const m=L.fill.maps,sg=doc.workflow==='spec';
+  if(m.rough&&!sg)Object.assign(m.rough,{on:true,src:'value',v:v.rBase==null?.7:v.rBase});if(m.gloss&&sg)Object.assign(m.gloss,{on:true,src:'value',v:1-(v.rBase==null?.7:v.rBase)});
+  if(m.metal&&!sg)Object.assign(m.metal,{on:true,src:'value',v:v.mOn?(v.mBase||0):0});
+  if(m.base)Object.assign(m.base,{on:true,src:'value',c:(v.base||[.6,.6,.6]).slice()});
+  v.rOn=false;v.mOn=false;fillRender(L);
+  const row=msRow('filter',{fx:'handPaint',v,maps:'all'});row.name='Hand-painted look';L.cfx=(L.cfx||[]).concat([row]);L.editMask=false;
+  undoMerge(from,'Hand-painted material');changedAll();renderLayers();msSelect(L,'c',row.id);return L;}
+/* the material → the classic Hand-painted layer that paints over the layers below (keeping the mask, the place and the settings) */
+function hpMatToOverlay(L){const r=hpMatRow(L);if(!r)return;const p=L.parent,i=p.children.indexOf(L),N=newFxLayerObj(L.name,[fxItem('handPaint')],'all');
+  Object.assign(N.fx.stack[0].v,JSON.parse(JSON.stringify(r.v)),{own:false});
+  structOp('Paint over the layers below',()=>{detachNode(L);if(L.mask)N.mask=L.mask;insertNode(N,p,i);selectOnly(N);});
+  ui.msSel=null;changedAll();renderLayers();if(typeof renderMatEd==='function')renderMatEd(true);toast('“'+N.name+'” now paints light and shade over the layers below it.');}
+/* the classic layer → a material (its own colour) */
+function hpOverlayToMat(N){const it=N&&N.fx&&N.fx.stack.find(x=>x.id==='handPaint');if(!it)return;const p=N.parent;
+  const from=hist.undo.length;const L=cmdNewHandPaintMaterial(it.v.preset||'');if(!L)return;
+  const r=hpMatRow(L);Object.assign(r.v,JSON.parse(JSON.stringify(it.v)),{own:true,rOn:false,mOn:false});L.name=N.name;
+  structOp('Hand-painted material',()=>{detachNode(L);insertNode(L,p,p.children.indexOf(N)+1);detachNode(N);if(N.mask&&!L.mask)L.mask=N.mask;selectOnly(L);});
+  undoMerge(from,'Hand-painted material');changedAll();renderLayers();msSelect(L,'c',r.id);}
+/* the Hand-painted materials for the Materials panel: one tile per preset, plus a plain one */
+function hpMatList(){const out=[{name:'Hand-painted',preset:''}];for(const g in HP_PRESETS)for(const name in HP_PRESETS[g])out.push({name,preset:name,group:g});return out;}
+/* a small painted ball as the tile picture: lit side, shadow colour and edge colour of the preset */
+function hpSwatch(rec,tw){const v=Object.assign({},HP_DEFAULTS,rec.preset?hpPreset(rec.preset):{}),S=Math.max(32,Math.round(tw||64)),c=document.createElement('canvas');c.width=c.height=S;const x=c.getContext('2d');
+  const hx=a=>'rgb('+a.map(t=>Math.round(Math.max(0,Math.min(1,t))*255)).join(',')+')',base=v.base||[.6,.6,.6],sh=(v.shCol||[.4,.35,.5]).map((t,i)=>t*base[i]*1.1),lt=base.map(t=>Math.min(1,t*1.25+.06));
+  const g=x.createRadialGradient(S*.38,S*.34,S*.04,S*.5,S*.5,S*.48);g.addColorStop(0,hx(lt));g.addColorStop(.55,hx(base));g.addColorStop(1,hx(sh));x.fillStyle=g;x.beginPath();x.arc(S/2,S/2,S*.44,0,Math.PI*2);x.fill();
+  x.strokeStyle=hx(v.edgeCol||[1,.95,.8]);x.globalAlpha=.55;x.lineWidth=Math.max(1,S*.04);x.beginPath();x.arc(S/2,S/2,S*.42,Math.PI*1.05,Math.PI*1.6);x.stroke();
+  c.className='matprev';c.setAttribute('aria-hidden','true');c.style.width=c.style.height=(tw||64)+'px';return c;}

@@ -1,3 +1,8 @@
+## 0.94.6
+
+- **Hand-painted is now a full material.** Materials has a **Hand-painted** section with every preset (Old wood, Steel, Gold, skin and more). Click one, or drag it onto the layers or the model, and you get an ordinary material layer: the hand-painted look gives its colour, and its Roughness, Metallic and Height channels are there as usual, filled in from the preset. Masks, smart materials and exporting work like any material. Its settings are in Properties. **Paint over the layers below** turns it into the classic Hand-painted layer that lights what is underneath, and the right-click menu turns that back into a material.
+- **New layers in 3D Paint are plain grey.** The Add layer button makes a 50% grey material with a white mask (paint black to hide it); the Material button makes the same grey with nothing else switched on. An empty paint layer is in the right-click menu.
+
 ## 0.94.5
 
 - **Fur you can control.** The Fur look has new settings. **Uneven fur:** random placement, random length, random direction, and patches of thick and thin fur (with a patch size), so it no longer looks like an even grid. **Fur mask:** paint where fur grows (white) and where it doesn't (black), or use a black-and-white picture; it is a map of its own (Fur mask) that you can paint like any other, and a material can set it too. **Fur pattern:** pick or drop a picture that gives the fur its general look (light grows long and thick, dark short and sparse), with sliders to make it stronger and to repeat it. Works in the 3D view and in the new viewer; the game engines get it next.

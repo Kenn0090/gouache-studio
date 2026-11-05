@@ -49,7 +49,7 @@ const gmRecs=(typeof GM_BUNDLED!=='undefined'?GM_BUNDLED:[]).filter(g=>g.kind===
 /* the Library's categories (Kenn: "almost triple the amount", so it is split up) */
 const GM_CATS=['Metal','Leather','Fabric','Plastic & rubber','Wood','Ground & nature','Stone & tile','Paint & ceramic','Other'];
 /* (0.36, Kenn) which kind of material to show: all, yours, the Library, smart materials or smart masks (the shelf's category list) */
-const MAT_VIEWS=[['all','All'],['yours','Yours'],['library','Library'],['smart','Smart materials'],['smask','Smart masks']];
+const MAT_VIEWS=[['all','All'],['yours','Yours'],['library','Library'],['hand','Hand-painted'],['smart','Smart materials'],['smask','Smart masks']];
 let matView=(()=>{try{const v=localStorage.getItem('gs.matView')||'all';return MAT_VIEWS.some(([k])=>k===v)?v:'all';}catch(e){return 'all';}})();
 let gmCat=(()=>{try{return localStorage.getItem('gs.gmCat')||'Metal';}catch(e){return 'Metal';}})();
 /* bundled files: beside the app first, then the copy kept in File > Content (offline), then GitHub (and a copy is kept) */
@@ -84,7 +84,7 @@ const matTw=()=>MT_SIZES[matSize]||64;
 function matPick(kind,rec,tile){matSel.kind=kind;matSel.rec=rec;document.querySelectorAll('#matBody .mattile.sel').forEach(t=>t.classList.remove('sel'));if(tile)tile.classList.add('sel');const b=document.getElementById('matPaint');if(b)b.disabled=kind!=='mat';}
 /* the fill layer button adds the highlighted material; false when nothing is highlighted */
 function matAddSelected(){const r=matSel.rec;if(!r||matSel.kind==='smask')return false;
-  if(matSel.kind==='smart')smApply(r);else if(r.bundled&&!r.fill)gmApply(r);else if(r.bundled)gmApply(r);else matApply(r);return true;}
+  if(matSel.kind==='hp'){cmdNewHandPaintMaterial(r.preset);return true;}if(matSel.kind==='smart')smApply(r);else if(r.bundled&&!r.fill)gmApply(r);else if(r.bundled)gmApply(r);else matApply(r);return true;}
 function matMaskSelected(){const r=matSel.rec;if(!r||matSel.kind!=='smask')return false;smMaskApply(r);return true;}
 /* (0.34, Kenn) double-click a material while a material layer is selected: it replaces that layer's material (mask, blend and place in the stack stay); one undo step */
 async function matReplace(rec){const L=doc.active;
@@ -148,6 +148,8 @@ function renderMats(){const box=document.getElementById('matBody');if(!box)retur
       el('img',{src:rec.thumb,alt:'',width:tw,height:tw,class:'gmthumb',draggable:'false',loading:'lazy',decoding:'async'}),el('span',{text:rec.name}),...(rec.wf==='spec'?[el('span',{class:'sgbadge',text:'S/G',title:'A Spec/Gloss material (Diffuse, Specular, Glossiness)'})]:[]),...(rec.dl&&rec.dl.res!=='1K'?[el('span',{class:'sgbadge',text:rec.dl.res,title:'Picture size of this downloaded material'})]:[])),'mat',rec);
         return rec.dl&&!rec.dl.upg?el('div',{class:'matwrap'},b,el('div',{class:'matacts'},el('button',{class:'btn sm',text:'×',title:'Delete this downloaded material','aria-label':'Delete '+rec.name,onclick:()=>dlDelete(rec)}))):b;}))]:[]),
     ...(matView==='all'||matView==='library'?[el('div',{class:'sub',text:'Built in'}),el('div',{class:'matgrid'},...matBuiltins().map(tile))]:[]),
+    /* (0.94.6, Kenn) Hand-painted materials: click, or drag onto the layers or the model, like any material */
+    ...(typeof HP_PRESETS!=='undefined'&&(matView==='all'||matView==='hand')?[el('div',{class:'sub',text:'Hand-painted'}),el('div',{class:'matgrid',id:'hpGrid'},...hpMatList().map(rec=>{const b=mark(el('button',{class:'mattile hp',title:rec.name+': click to highlight, then press the fill layer button, or drag it onto the layers or the model',onclick:()=>matPick('hp',rec,b),ondblclick:()=>cmdNewHandPaintMaterial(rec.preset)},hpSwatch(rec,tw),el('span',{text:rec.name})),'hp',rec);return b;}))]:[]),
     ...(matView==='all'||matView==='smart'?[el('div',{class:'sub',text:'Smart materials'}),el('div',{class:'matgrid',id:'smGrid'},...smarts.map(r=>stile(r,false)),...smBuiltins().map(r=>stile(r,false)))]:[]),
     ...(matView==='all'||matView==='smask'?[el('div',{class:'sub',text:'Smart masks'}),el('div',{class:'matgrid',id:'smMaskGrid'},...smasks.map(r=>stile(r,true)),...smaskBuiltins().map(r=>stile(r,true)))]:[]),
     el('p',{class:'note',text:'Right-click a folder or layer › Save as smart material, or a mask › Save as smart mask, to keep yours here.'}));if(matQuery)matSearchFilter(box);}

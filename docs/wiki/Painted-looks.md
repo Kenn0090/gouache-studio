@@ -17,6 +17,13 @@ Our own version of the stylization filter in Substance Painter. On top are maste
 
 Presets: Painterly, Smudges, Thick strokes, Soft paint, Sketchy, Comic. **Restore defaults** puts every setting back.
 
+## Hand-painted material
+
+In **Materials › Hand-painted** each preset (Old wood, Steel, Gold, Fair skin…) is a material: click it, drag it onto the layers or onto the model, like any material. It makes a normal material layer: the hand-painted look gives the colour, and the material's own **Roughness**, **Metallic** and **Height** channels sit beside it (the preset fills in roughness and metal). Masks, smart materials and exporting work as for any material.
+
+- **Properties** shows the look's settings; **Material channels** goes back to the material's channels, and **Hand-painted look settings…** comes back.
+- **Paint over the layers below** turns it into the Hand-painted layer described next, which lights and shades what is under it. Right-click that layer › **Make it a hand-painted material** turns it back.
+
 ## Hand-painted layer
 
 Paints a hand-painted look from the **shape of the model**, the way stylized game textures fake their lighting. No real light is used, so it stays put when you turn the model or change the lighting in the viewer.

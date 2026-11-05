@@ -199,7 +199,7 @@ async function smResolveNode(o){
         for(const k of ['rough','metal','spec','gloss'])if(!o.fill.maps[k]||!o.fill.maps[k].on)delete o.fillImg[k];}}}
   if(o.mask)await smResolveMask(o.mask);
   for(const c of o.kids||[])await smResolveNode(c);}
-function smBuiltins(){return SM_BUILTIN.concat(SM_LIB,typeof hpSmartList==='function'?hpSmartList():[]).map(([name,kids])=>({id:'sb:'+name,kind:'smart',builtin:true,name,tree:{t:'G',name,open:true,kids:kids.slice()}}));}
+function smBuiltins(){return SM_BUILTIN.concat(SM_LIB).map(([name,kids])=>({id:'sb:'+name,kind:'smart',builtin:true,name,tree:{t:'G',name,open:true,kids:kids.slice()}}));}
 const SMASK_BUILTIN=[['Worn edges',SM_M(SM_GEN('edge',.5,.5,.55),SM_NOISE('grunge',8,2,.1,'multiply',.7))],['Dirty cavities',SM_M(SM_GEN('dirt',.5,.55,.5),SM_NOISE('clouds',6,1.5,.1,'multiply',.7))],
   ['Dusty top',SM_M(SM_GEN('dust',.5,.5,.5),SM_NOISE('clouds',5,1.5,.1,'multiply',.7))],['Scratched',SM_M(SM_NOISE('scratches',3,2,0))],['Chipped paint',SM_M(SM_GEN('chips',.5,.5,.5))]];
 const SMASK_LIB=[
