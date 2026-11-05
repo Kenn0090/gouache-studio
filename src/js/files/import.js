@@ -59,7 +59,8 @@ $('#work').addEventListener('drop',e=>{e.preventDefault();$('#dropHint').hidden=
   /* 3D models: into the baker in the Bake tab, into the 3D view otherwise */
   if(fs.some(x=>isModelName(x.name))){if(ui.mode==='bake')bakeDropFiles(fs,null);else v3DropModel(fs);return;}
   if(ui.mode==='convert'){cvSourceFromFile(f);return;}
-  handleFile(f,'place');});
+  /* (0.94.7, Kenn) several pictures at once: each becomes its own layer, one after the other */
+  (async()=>{for(const x of fs)await handleFile(x,'place');})();});
 /* model files dropped on the Bake panel */
 bakeDropZone($('#bakeSec'),null);
 /* images dropped on the Convert panel become the source */

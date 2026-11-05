@@ -1,5 +1,7 @@
 # The new viewer
 
+> **Set aside (0.94.7):** the new viewer is banked for a future update. Its button and settings are hidden; everything below describes how it worked and will come back with it.
+
 The new viewer is a second window that draws your model straight on your graphics card. It is a test: the normal 3D view stays as it is, and you can switch the new one off at any time. It is in the desktop app only.
 
 ## Opening it

@@ -13,6 +13,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
   if(u.startsWith('file:'))return r.continue();return r.abort();});
  const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.message));p.on('console',m=>{if(m.type()==='warning'||m.type()==='error')console.log('CON',m.text());});
  await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ if(await p.evaluate(()=>!!(window.__gs&&__gs.NV_BANKED))){console.log('SKIPPED: the new viewer is banked for a future update (NV_BANKED)');await b.close();process.exit(0);}
  const W=ms=>p.waitForTimeout(ms||200);
  await p.click('#modeTabs [data-mode=p3d]');await W(2500);
  await p.evaluate(()=>{const P=__gs.platform;P.isDesktop=true;window.__tex=[];window.__cap=[];window.__raw=[];window.__ups=[];

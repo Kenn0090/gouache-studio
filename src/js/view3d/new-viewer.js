@@ -319,7 +319,11 @@ function nvBody(sc){const m=sc.m,n=m.pos.length/3,f32=a=>new Float32Array(a);
   const json=new TextEncoder().encode(JSON.stringify(meta)),bytes=a=>new Uint8Array(a.buffer,a.byteOffset,a.byteLength);
   let total=4+json.length;for(const p of parts)total+=p.byteLength;const out=new Uint8Array(total),dv=new DataView(out.buffer);dv.setUint32(0,json.length,true);out.set(json,4);let o=4+json.length;
   for(const p of parts){out.set(bytes(p),o);o+=p.byteLength;}return out;}
+/* (0.94.7, Kenn) the new viewer is banked for a future update: no button, no settings, and it does not open. All its code (here and the
+   Rust crate src-tauri/render) stays, so turning this off brings it back. */
+const NV_BANKED=true;
 async function nvOpen(){
+  if(NV_BANKED){toast('The new viewer is set aside for a future update.');return null;}
   if(!platform.isDesktop){toast('The new viewer is in the desktop app.');return null;}
   try{toast('Opening the new viewer…');const sc=await nvScene(),body=nvBody(sc);
     const info=await platform.invoke('viewer_open',body);
