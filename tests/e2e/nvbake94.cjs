@@ -12,6 +12,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
   if(u.startsWith('file:'))return r.continue();return r.abort();});
  const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.message));
  await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ if(await p.evaluate(()=>!!(window.__gs&&__gs.NV_BANKED))){console.log('SKIPPED: the new viewer is banked for a future update (NV_BANKED)');await b.close();process.exit(0);}
  const W=ms=>p.waitForTimeout(ms||200);
  await p.addScriptTag({path:__dirname+'/fixtures/bumpy.js'});await p.evaluate(()=>{__gs.newDoc(256,256,8,[.5,.5,.5],'NvBake',false);});await W(300);
  await p.click('#modeTabs [data-mode=bake]');await W(800);

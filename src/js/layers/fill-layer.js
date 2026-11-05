@@ -172,7 +172,9 @@ function matEdCommit(){clearTimeout(matEd.timer);matEd.timer=0;const L=matEd.L,B
 function fillImgsOf(L){const o=Object.assign({},L._fillImg||{}),M=doc.meshMaps||{},f=L.fill;if(f)for(const k in f.maps){const s=f.maps[k];if(s&&(s.src==='baked'||s.src==='conv')&&M[s.mm])o[k]=M[s.mm];}return o;}
 function renderMatEd(force){const box=document.getElementById('matEdBody');if(!box)return;const L=doc.active;
   /* a mask or effect row selected in the Layers panel: its settings */
-  const row=typeof msRowOf==='function'&&ui.msSel&&(ui.msSel.L===L||ui.msSel.L.live)?msRowOf(ui.msSel):null;
+  let row=typeof msRowOf==='function'&&ui.msSel&&(ui.msSel.L===L||ui.msSel.L.live)?msRowOf(ui.msSel):null;
+  /* (0.94.7, Kenn) a Hand-painted material shows its look's settings straight away (Material channels switches to the usual channels) */
+  if(!row&&L&&typeof hpMatRow==='function'&&matEd.hpChan!==L){const hr=hpMatRow(L);if(hr){row=hr;ui.msSel={L,where:'c',id:hr.id};}}
   /* (0.27) only rebuild when a different row is picked: rebuilding while a slider is dragged took the slider away from the mouse */
   if(row){if(!force&&matEd.shownRow===row&&matEd.shown===null&&box.childElementCount)return;if(matEd.L&&matEd.L!==L)matEdCommit();matEd.shown=null;matEd.shownRow=row;box.replaceChildren();msRowEditor(box,ui.msSel.L,ui.msSel.where,row);return;}
   matEd.shownRow=null;
@@ -187,7 +189,7 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
   const edit=(fn,k,redraw)=>{matEdBegin(L);fn();if(k!==false){fillRender(L,k||undefined);prev.redraw();}clearTimeout(matEd.timer);matEd.timer=setTimeout(matEdCommit,700);if(redraw)renderMatEd(true);};
   box.replaceChildren();
   const nm=el('input',{type:'text',id:'fl_name',value:L.name,'aria-label':'Material name'});nm.addEventListener('input',()=>edit(()=>{L.name=nm.value||L.name;W.name=L.name;renderLayers();},false));
-  {const hr=typeof hpMatRow==='function'?hpMatRow(L):null;if(hr)box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'hpMatLook',text:'Hand-painted look settings…',onclick:()=>msSelect(L,'c',hr.id)})));}
+  {const hr=typeof hpMatRow==='function'?hpMatRow(L):null;if(hr)box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'hpMatLook',text:'Hand-painted look settings…',onclick:()=>{matEd.hpChan=null;msSelect(L,'c',hr.id);}})));}
   box.append(el('div',{class:'matHead'},prev.el,el('div',{class:'dlg-grid'},nm,
     el('div',{class:'sub',text:'Projection'}),(()=>{const g=seg(PXF_MODES,W.proj||'uv',v=>edit(()=>{W.proj=v;if(pxfIs3D(v)&&!fillPosMaps())toast('This projection needs a model: open the 3D view or 3D Paint. Until then images follow the UVs.');},null,true),'Projection');g.classList.add('tight');g.id='fl_proj';return g;})(),
     W.proj==='tri'?makeSlider({id:'fl_sharp',label:'Blend',min:1,max:16,step:.5,value:W.triSharp||4,fmt:v=>v<3?'soft':v>9?'sharp':'medium',onInput:v=>edit(()=>{W.triSharp=v;})}).el:null,
@@ -216,7 +218,12 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
     card.dataset.materialChannel=k;card.title='Drop an image here for '+MAP_DEFS[k].label;
     card.addEventListener('dragover',e=>{if(![...e.dataTransfer.types].includes('Files'))return;e.preventDefault();e.stopPropagation();e.dataTransfer.dropEffect='copy';card.classList.add('material-drop');});
     card.addEventListener('dragleave',e=>{if(!card.contains(e.relatedTarget))card.classList.remove('material-drop');});
-    card.addEventListener('drop',async e=>{e.preventDefault();e.stopPropagation();card.classList.remove('material-drop');const f=[...e.dataTransfer.files].find(fillImageFile);if(!f){toast('Drop an image onto a material channel.');return;}await fillUseImage(L,k,s,f,()=>{edit(()=>{s.on=true;matEd.open[k]=true;},k,true);matEdCommit();});});
+    card.addEventListener('drop',async e=>{e.preventDefault();e.stopPropagation();card.classList.remove('material-drop');const fs=[...e.dataTransfer.files].filter(fillImageFile);if(!fs.length){toast('Drop an image onto a material channel.');return;}
+      /* (0.94.7, Kenn) several pictures at once: each goes to the channel its name says (BaseColor, Roughness, Normal…); the rest to this channel */
+      const plan=[];let left=null;for(const f of fs){const c=typeof miChannel==='function'&&fs.length>1?miChannel(f.name):null;if(c&&L.fill.maps[c.k]&&!plan.some(x=>x[0]===c.k))plan.push([c.k,f]);else if(!left)left=f;}
+      if(left&&!plan.some(x=>x[0]===k))plan.push([k,left]);
+      for(const [ck,f] of plan){const cs=L.fill.maps[ck];await fillUseImage(L,ck,cs,f,()=>{edit(()=>{cs.on=true;matEd.open[ck]=true;},ck,true);matEdCommit();});}
+      if(plan.length>1)toast('Put '+plan.length+' pictures into '+plan.map(([ck])=>MAP_DEFS[ck].label).join(', ')+'.');});
     const sumTxt=!s.on?'Off':s.src==='value'?(grey?Math.round(s.v*100)/100:'Colour'):s.src==='baked'?'Mesh map':s.src==='conv'?'Converted':(s.name?'Image':'No image'),sw=s.on&&s.src==='value'?(grey?[s.v,s.v,s.v]:(s.c||[.5,.5,.5])):[.5,.5,.5];
     card.append(el('div',{class:'fillhead',onclick:e=>{if(e.target.closest('.chk'))return;matEd.open[k]=!card.classList.contains('open');card.classList.toggle('open',matEd.open[k]);}},
       el('span',{class:'chev',text:'▸'}),el('span',{class:'sw',style:'background:rgb('+sw.map(x=>Math.round(clamp(x,0,1)*255)).join(',')+')'}),el('span',{class:'nm',text:MAP_DEFS[k].label}),el('span',{class:'v',text:String(sumTxt)}),

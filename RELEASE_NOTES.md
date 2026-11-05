@@ -1,3 +1,8 @@
+## 0.94.7
+
+- **The new viewer is set aside** for a future update (its button and settings are hidden).
+- **Drop several pictures at once** on the canvas (one layer each) or on a material (each to the channel its name says).
+- **Hand-painted materials** show their settings as soon as you add or select them.
 ## 0.94.6
 
 - **Hand-painted materials:** the Hand-painted presets are now materials in the Materials panel: click or drag them on, and they work like any material (with roughness, metal and height), or switch them to paint over the layers below.
