@@ -54,14 +54,14 @@ fn main() {
         let idx: Vec<u32> = sidx.iter().map(|i| i + cnt * k as u32).collect();
         let base = mk(&|x, y| if (x / 8 + y / 8) % 2 == 0 { [225, 190, 150, 255] } else { [150, 100, 80, 255] });
         let shader = ShaderParams { kind: *kind, p: *pp, q: *q, c: *c, d: *d, skin: *skin, e: if *kind == 17 { [0.6, 0.8, 0., 0.] } else if *kind == 16 { [std::env::var("GOUACHE_FOLLOW").ok().and_then(|v| v.parse().ok()).unwrap_or(0.0), 0., 0., 0.] } else { [0.; 4] } };
-        groups.push(Group { name: name.to_string(), indices: idx, material: Material { shader, base: Some(base), orm: None, normal: None, emissive: None, height: if std::env::var_os("GOUACHE_DISP").is_some() { let mut px = Vec::new(); for y in 0..64u32 { for x in 0..64u32 { let v = if ((x / 8) + (y / 8)) % 2 == 0 { 255u8 } else { 0 }; px.extend_from_slice(&[v, v, v, 255]); } } Some(Tex8 { width: 64, height: 64, rgba: px }) } else { None }, thick: None, udim: None, fold_off: 0.0, rough: 0.45, metal: if *kind == 2 { 1.0 } else { 0.0 }, partial: false } });
+        groups.push(Group { name: name.to_string(), indices: idx, material: Material { shader, base: Some(base), orm: None, normal: None, emissive: None, height: if std::env::var_os("GOUACHE_DISP").is_some() { let mut px = Vec::new(); for y in 0..64u32 { for x in 0..64u32 { let v = if ((x / 8) + (y / 8)) % 2 == 0 { 255u8 } else { 0 }; px.extend_from_slice(&[v, v, v, 255]); } } Some(Tex8 { width: 64, height: 64, rgba: px }) } else { None }, thick: None, pat: None, udim: None, fold_off: 0.0, rough: 0.45, metal: if *kind == 2 { 1.0 } else { 0.0 }, partial: false } });
     }
     let fb = cnt * kinds.len() as u32;
     p.extend([-12., -1., -4., 12., -1., -4., 12., -1., 4., -12., -1., 4.]);
     n.extend([0., 1., 0., 0., 1., 0., 0., 1., 0., 0., 1., 0.]);
     uv.extend([0., 0., 8., 0., 8., 2., 0., 2.]);
     let floor = mk(&|x, y| if (x / 16 + y / 16) % 2 == 0 { [120, 120, 130, 255] } else { [60, 60, 70, 255] });
-    groups.push(Group { name: "Floor".into(), indices: vec![fb, fb + 2, fb + 1, fb, fb + 3, fb + 2], material: Material { shader: ShaderParams::default(), base: Some(floor), orm: None, normal: None, emissive: None, height: None, thick: None, fold_off: 0.0, udim: if std::env::var_os("GOUACHE_UDIM").is_some() { Some([0, 0]) } else { None }, rough: 0.8, metal: 0.0, partial: false } });
+    groups.push(Group { name: "Floor".into(), indices: vec![fb, fb + 2, fb + 1, fb, fb + 3, fb + 2], material: Material { shader: ShaderParams::default(), base: Some(floor), orm: None, normal: None, emissive: None, height: None, thick: None, pat: None, fold_off: 0.0, udim: if std::env::var_os("GOUACHE_UDIM").is_some() { Some([0, 0]) } else { None }, rough: 0.8, metal: 0.0, partial: false } });
     let (w, h) = (256u32, 128u32);
     let mut rgb = vec![];
     for y in 0..h { for x in 0..w {

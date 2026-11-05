@@ -67,6 +67,8 @@ pub struct Material {
     pub height: Option<Tex8>,
     /// a thickness map (skin): it travels in the alpha of the emissive map
     pub thick: Option<Tex8>,
+    /// the Fur look's pattern picture: it travels in the alpha of the ORM map (the fur mask goes where the thickness map does)
+    pub pat: Option<Tex8>,
     /// a UDIM tile (u, v): only the part of the model whose UVs fall in that tile shows this material
     pub udim: Option<[u32; 2]>,
     /// the Bake tab's Unfold: where this material's piece sits along x when the model is laid flat
@@ -1666,7 +1668,8 @@ impl Gpu {
             _ => make_tex8(&self.device, &self.queue, t, fb, f),
         };
         let base = view(mat.base.as_ref(), [255, 255, 255, 255], wgpu::TextureFormat::Rgba8UnormSrgb, 0);
-        let orm = view(mat.orm.as_ref(), [255, 255, 255, 255], wgpu::TextureFormat::Rgba8Unorm, 1);
+        let merged_o = mat.pat.as_ref().map(|p| merge_height(mat.orm.as_ref(), p, [255, 255, 255]));
+        let orm = view(if merged_o.is_some() { merged_o.as_ref() } else { mat.orm.as_ref() }, [255, 255, 255, 255], wgpu::TextureFormat::Rgba8Unorm, 1);
         let merged = mat.height.as_ref().map(|h| merge_height(mat.normal.as_ref(), h, [128, 128, 255]));
         let merged_e = mat.thick.as_ref().map(|h| merge_height(mat.emissive.as_ref(), h, [0, 0, 0]));
         let nrm = view(if merged.is_some() { merged.as_ref() } else { mat.normal.as_ref() }, [128, 128, 255, 255], wgpu::TextureFormat::Rgba8Unorm, 2);
@@ -1680,12 +1683,18 @@ impl Gpu {
             shq: sp.q,
             shc: [sp.c[0], sp.c[1], sp.c[2], 0.0],
             shd: [sp.d[0], sp.d[1], sp.d[2], mat.fold_off],
-            skin: [sp.skin[0], sp.skin[1], sp.skin[2], if mat.thick.is_some() { 1.0 } else { 0.0 }],
-            she: sp.e,
+            // Fur keeps all four of its own numbers here (gravity and the three randomness settings); its mask and pattern flags go in she.x / she.y
+            skin: [sp.skin[0], sp.skin[1], sp.skin[2], if sp.kind == 11 { sp.skin[3] } else if mat.thick.is_some() { 1.0 } else { 0.0 }],
+            she: if sp.kind == 11 { [if mat.thick.is_some() { 1.0 } else { 0.0 }, if mat.pat.is_some() { 1.0 } else { 0.0 }, sp.e[2], sp.e[3]] } else { sp.e },
         };
         if let Some((_, old)) = keep {
             mu.flags = old.flags; // a kept map keeps its flag too
-            mu.skin[3] = old.skin[3];
+            if sp.kind == 11 {
+                mu.she[0] = old.she[0];
+                mu.she[1] = old.she[1];
+            } else {
+                mu.skin[3] = old.skin[3];
+            }
             mu.tint = old.tint;
             mu.shd[3] = old.shd[3];
         }

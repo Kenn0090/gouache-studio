@@ -215,9 +215,32 @@ fn fur_shade(wpos: vec3<f32>, nrm: vec3<f32>, uv: vec2<f32>, k: f32, albedo: vec
     let gp = uv * dens;
     let cell = floor(gp);
     var fq = fract(gp) - vec2<f32>(0.5);
+    // (0.94.5) uneven fur, as the 3D view: placement (skin.y), length (skin.z), direction (skin.w), patches (shd.x amount, shd.y size),
+    // the Fur mask (alpha of the emissive picture, she.x) and the pattern picture (alpha of the ORM picture, she.y, tiling she.z, strength she.w)
+    fq = fq - (vec2<f32>(hsh(cell + vec2<f32>(1.7)), hsh(cell + vec2<f32>(5.3))) - vec2<f32>(0.5)) * mat.skin.y * 0.8;
     let cc = floor(gp / (1.0 + mat.shp.z * 3.0));
     fq = fq + (vec2<f32>(hsh(cc), hsh(cc + vec2<f32>(7.3))) - vec2<f32>(0.5)) * mat.shp.z * k * 0.9;
-    let len = 0.6 + 0.4 * hsh(cell + vec2<f32>(3.1));
+    fq = fq + (vec2<f32>(hsh(cell + vec2<f32>(11.1)), hsh(cell + vec2<f32>(13.7))) - vec2<f32>(0.5)) * mat.skin.w * k * 1.2;
+    let r0 = hsh(cell + vec2<f32>(3.1));
+    var len = mix(0.8 + 0.2 * r0, 0.2 + 0.8 * r0, mat.skin.z);
+    if (mat.shd.x > 0.0) {
+        let np = uv * mix(28.0, 3.0, mat.shd.y);
+        let ni = floor(np);
+        var nf = fract(np);
+        nf = nf * nf * (vec2<f32>(3.0) - 2.0 * nf);
+        let pn = mix(mix(hsh(ni), hsh(ni + vec2<f32>(1.0, 0.0)), nf.x), mix(hsh(ni + vec2<f32>(0.0, 1.0)), hsh(ni + vec2<f32>(1.0, 1.0)), nf.x), nf.y);
+        let pm = smoothstep(0.25, 0.75, pn);
+        len = len * mix(1.0, 0.25 + pm * 1.05, mat.shd.x);
+        if (hsh(cell + vec2<f32>(9.9)) > mix(1.0, pm + 0.2, mat.shd.x)) { len = 0.0; }
+    }
+    if (mat.she.y > 0.5) {
+        let d = textureSampleLevel(orm_tex, tex_smp, uv * mat.she.z, 0.0).a;
+        let ps = clamp(mat.she.w, 0.0, 2.0);
+        len = len * mix(1.0, d * 1.7, min(ps, 1.0));
+        len = mix(len, len * d * d * 2.0, max(ps - 1.0, 0.0));
+        if (hsh(cell + vec2<f32>(21.3)) > mix(1.0, d * 1.4, min(ps, 1.0))) { len = 0.0; }
+    }
+    if (mat.she.x > 0.5) { len = len * textureSampleLevel(emi_tex, tex_smp, uv, 0.0).a; }
     if (k > 0.0) {
         if (k > len || length(fq) * 2.0 > mat.shq.z * (1.0 - k * 0.85)) { return vec4<f32>(0.0, 0.0, 0.0, -1.0); }
     }

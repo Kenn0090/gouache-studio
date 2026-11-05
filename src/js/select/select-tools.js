@@ -113,6 +113,8 @@ function updateSelIcons(){const m=document.querySelector('.tool[data-tool="marqu
 function selKeys(e,m,k){
   if(polyKey(e))return true;
   if(m){if(k==='a'){e.preventDefault();selectAll();return true;}
+    /* (0.94.5, Kenn) in 3D Paint Ctrl+D duplicates the layer, like Substance Painter (Ctrl+Shift+D still brings the selection back) */
+    if(k==='d'&&!e.shiftKey&&!e.altKey&&ui.mode==='p3d'){e.preventDefault();if(!e.repeat)cmdDuplicate();return true;}
     if(k==='d'){e.preventDefault();e.shiftKey?reselect():deselect();return true;}
     if(k==='i'&&e.shiftKey){e.preventDefault();invertSel();return true;}
     if(k==='j'&&sel.active&&!sel.quick){e.preventDefault();layerViaSel(e.shiftKey);return true;}
