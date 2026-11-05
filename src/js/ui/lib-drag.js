@@ -19,7 +19,7 @@ function libTarget(x,y,D){D=D||libDrag.d;
   if(ui.mode==='paint'&&D.kind==='tex'&&(document.elementFromPoint(x,y)===cv||document.elementFromPoint(x,y)?.closest('#stage')))return {canvas:true};
   if(D.kind==='meshmap'){const row=document.elementFromPoint(x,y)?.closest('[data-mesh-slot]');return row?{meshSlot:row.dataset.meshSlot,row}:null;}
   /* (0.37.1, Kenn) dropped on the model: a new layer with the material; with Ctrl, only where the ID colour under the pointer is */
-  if(ui.mode==='p3d'&&(D.kind==='mat'||D.kind==='smart')){const u=document.elementFromPoint(x,y);if(u&&u.id==='v3Hit')return {mesh:true,x,y,ctrl:!!D.ctrl};}
+  if(ui.mode==='p3d'&&(D.kind==='mat'||D.kind==='smart'||D.kind==='hp')){const u=document.elementFromPoint(x,y);if(u&&u.id==='v3Hit')return {mesh:true,x,y,ctrl:!!D.ctrl};}
   const maskRow=document.elementFromPoint(x,y)?.closest('.msrow.m');if((D.kind==='tex'||D.kind==='project'&&D.rec.kind==='tex')&&maskRow?._ms)return {mask:maskRow._ms.L,row:maskRow};
   const list=$('#layerList'),lb=list&&list.getBoundingClientRect();if(!lb||x<lb.left||x>lb.right||y<lb.top-8||y>lb.bottom+8)return null;
   if(D.kind==='smask'||D.kind==='tex'||D.kind==='project'&&D.rec.kind==='tex'){const under=document.elementFromPoint(x,y),row=under&&under.closest('.lrow');const n=row&&row._node;
@@ -54,10 +54,11 @@ window.addEventListener('pointerup',libDrop,true);window.addEventListener('point
 function libApply(kind,rec,T){if(T.materialChannel&&kind==='tex')return txToChannel(rec,T.materialChannel);if(T.favorite)return favoritesAdd(kind,rec);if(kind==='meshmap')return p3MapLibraryDrop(rec,T.meshSlot);if(kind==='project')return paUse(rec,T);if(rec&&rec.bundled&&!(rec.fill&&rec.imgs)){gmLoad(rec).then(()=>libApply(kind,rec,T)).catch(e=>toast('Could not load “'+rec.name+'”: '+(e.message||e)));return;}if(T.mesh)return libMeshDrop(kind,rec,T);
   if(kind==='smask'){const n=T.mask;if(!n)return;selectOnly(n);renderLayers();smMaskApply(rec);return;}
   if(kind==='tex'){if(T.mask)return txToMask(rec,T.mask);return txToLayer(rec,T.at);}
-  insertAt=T.at;try{return kind==='smart'?smApply(rec):matApply(rec);}finally{insertAt=null;}}
+  insertAt=T.at;try{return kind==='hp'?cmdNewHandPaintMaterial(rec.preset):kind==='smart'?smApply(rec):matApply(rec);}finally{insertAt=null;}}
 
 /* a material dropped on the model. Ctrl: the layer gets an ID-colour mask holding only the colour that was under the pointer */
 async function libMeshDrop(kind,rec,T){
+  if(kind==='hp'){insertAt=null;return cmdNewHandPaintMaterial(rec.preset);}
   if(!T.ctrl){insertAt=null;return kind==='smart'?smApply(rec):matApply(rec);}
   const M=typeof idSelMap==='function'?idSelMap():null;if(!M){toast('Ctrl + drop needs an ID map: bake ID colours and send them to 3D Paint first.');return;}
   const hit=document.getElementById('v3Hit'),p=hit&&v3PickAt(hit,{clientX:T.x,clientY:T.y});if(!p||!p.uv){toast('Drop the material on the model.');return;}

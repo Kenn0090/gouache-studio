@@ -1,3 +1,7 @@
+## 0.94.6
+
+- **Hand-painted materials:** the Hand-painted presets are now materials in the Materials panel: click or drag them on, and they work like any material (with roughness, metal and height), or switch them to paint over the layers below.
+- **New layers in 3D Paint** are a plain 50% grey material.
 ## 0.94.5
 
 - **Fur:** random placement, length and direction, patches, a Fur mask you can paint or take from a picture, and a pattern picture that shapes the fur.

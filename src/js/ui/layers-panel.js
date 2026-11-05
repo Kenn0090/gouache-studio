@@ -203,6 +203,8 @@ function moveNodes(nodes,d){if(!nodes.length||!dropAllowed(nodes,d))return;
 /* (0.27) a drop from the Materials tab says exactly where the new layer goes */
 let insertAt=null;
 function insertPoint(){if(insertAt)return [insertAt.parent,insertAt.index];const a=doc.active;if(!a)return [doc.root,doc.root.children.length];if(a.type==='group'&&a.open)return [a,a.children.length];return [a.parent,a.parent.children.indexOf(a)+1];}
+/* (0.94.6, Kenn) 3D Paint's Add layer: a plain grey material with a white mask, so painting black hides it and white brings it back (an empty paint layer is in the right-click menu) */
+function cmdNewGreyMaterial(){const from=hist.undo.length;cmdNewFillLayer();const L=doc.active;if(L&&L.fill&&!L.mask){cmdAddMask(1);L.editMask=true;renderLayers();}undoMerge(from,'New layer');}
 function cmdAddLayer(name){const L=newLayerObj(name);structOp('New layer',()=>{const [p,i]=insertPoint();insertNode(L,p,i);selectOnly(L);});return L;}
 function cmdNewGroup(){const G=newGroupObj();structOp('New group',()=>{const [p,i]=insertPoint();insertNode(G,p,i);selectOnly(G);});}
 function cmdGroup(){const tops=topSelected();if(!tops.length)return;
@@ -255,7 +257,7 @@ function cmdFlatten(){const hid=hiddenNodes(doc.root,[]),count=hid.reduce((s,n)=
   const go=()=>{const M=mergedLayer('Background',doc.root.children);structOp('Flatten image',()=>{doc.root.children=[];insertNode(M,doc.root);selectOnly(M);});toast('Flattened to one layer. Undo brings the layers back.');};
   if(!count){go();return;}
   openDialog({title:'Flatten image?',body:el('p',{class:'note',text:'Flattening combines everything visible into one layer and discards '+count+' hidden layer'+(count===1?'':'s')+'. You can undo this.'}),okLabel:'Flatten',onOk:go});}
-$('#lAdd').addEventListener('click',()=>cmdAddLayer());$('#lGroup').addEventListener('click',()=>{if(doc.sel.size>1||(doc.active&&topSelected().length))cmdGroup();else cmdNewGroup();});
+$('#lAdd').addEventListener('click',()=>{if(ui.mode==='p3d')cmdNewGreyMaterial();else cmdAddLayer();});$('#lGroup').addEventListener('click',()=>{if(doc.sel.size>1||(doc.active&&topSelected().length))cmdGroup();else cmdNewGroup();});
 $('#lUngroup').addEventListener('click',cmdUngroup);$('#lDup').addEventListener('click',cmdDuplicate);$('#lDel').addEventListener('click',cmdDelete);
 $('#lClear').addEventListener('click',cmdClearLayer);
 $('#lMerge').addEventListener('click',cmdMerge);$('#lUp').addEventListener('click',()=>cmdMove(1));$('#lDown').addEventListener('click',()=>cmdMove(-1));
@@ -264,6 +266,7 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
   const it=(t,f,key,dis)=>{const b=el('button',{class:'mi',role:'menuitem',disabled:!!dis,onclick:()=>{pop.hidden=true;flyHide();f();}},el('span'),el('span',{text:t}),el('span',{text:key||''}));return b;};
   const head=t=>el('div',{class:'mh',text:t});const sep=()=>el('div',{class:'msep'});
   const items=[];
+  if(n.fx&&n.fx.stack&&n.fx.stack.some(x=>x.id==='handPaint'))items.push(it('Make it a hand-painted material',()=>hpOverlayToMat(n)),sep());
   if(ui.mode==='p3d'&&n.mask&&!n.fx&&e.target&&e.target.closest('.mthumb')){
     const generators=flyItem('Generators',()=>MS_GENS.map(([k,title])=>it(title,()=>{selectOnly(n);msAdd(n,'gen',{p:msGenDefaults(k)});})));generators.setAttribute('aria-label','Generators');
     const anchors=flyItem('Anchor points',()=>{const names=msAnchorNames();return [it('Add anchor point to this layer',()=>{selectOnly(n);cfxAddAnchor(n);},null,!lay),sep(),head('Use an anchor in this mask'),...(names.length?names.map(name=>it('From “'+name+'”',()=>{selectOnly(n);msAdd(n,'anchor',{p:{name,ch:'height',inv:false}});})): [it('No anchor points yet',()=>{},null,true)])];});anchors.setAttribute('aria-label','Anchor points');items.push(generators,anchors,it('Levels',()=>{selectOnly(n);msAdd(n,'filter',{fx:'levels'});}),it('Invert',()=>{selectOnly(n);msAdd(n,'filter',{fx:'invert'});}),sep());}
@@ -272,6 +275,7 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
     items.push(sep(),it('Filter this layer ▸',()=>{selectOnly(n);n.editMask=false;renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);}),
       it('Filter its mask ▸',()=>{selectOnly(n);if(!n.mask)msAdd(n,'fill',{p:{v:1}});n.editMask=true;renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);}),
       it('Filter layer above…',cmdNewFxLayer),it('Retro layer above (this layer only)…',()=>{selectOnly(n);cmdNewRetroLayer(true);}),it('Stylize layer (strokes, lighting, edges)…',()=>cmdNewStylizePLayer()),it('Hand-painted layer (lights the model in paint)…',()=>cmdNewHandPaintLayer()),it('Array…',()=>setTool('array')));
+    if(ui.mode==='p3d')items.unshift(it('New paint layer',()=>cmdAddLayer()),sep());
     if(n.fill)items.splice(0,0,it('Fill settings…',()=>dlgFillLayer(n)),it('Mesh maps from this material…',()=>dlgMatConvert(n)),sep());
     if(typeof mcHasSource==='function'&&mcHasSource(n))items.push(flyItem('Convert to',()=>[it('Ambient occlusion (AO)…',()=>dlgMatConvert(n,['ao'])),it('Curvature…',()=>dlgMatConvert(n,['curv'])),it('Edges…',()=>dlgMatConvert(n,['curvEdge'])),it('Creases…',()=>dlgMatConvert(n,['curvCrease'])),sep(),it('All of them…',()=>dlgMatConvert(n))]));
     if(n.text||n.grad||n.shape||n.fill)items.push(it('Convert to pixels',()=>{if(n.fill)fillRasterize(n);else rasterizeText(n);changed(n);}));}

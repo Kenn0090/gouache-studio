@@ -83,7 +83,10 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
   if(r.kind==='filter'&&!r.own){const F=FX[r.fx];if(!F){box.append(el('p',{class:'note',text:'This filter is not available.'}));return;}
     r.v=r.v||fxDefaults(F);const draft=fxClean(r.v),ctx={};
     if(where==='m'&&(r.fx==='levels'||r.fx==='curves')){const t=msEval(L,{upTo:L.mask.stack.indexOf(r)});try{ctx._h=histogramOf(t);}finally{release(t);}}
-    const c=fxControls(F,draft,()=>ed(x=>{x.v=fxClean(draft);}),ctx);box.append(...c.body);if(c.reset)box.append(el('div',{class:'frow'},c.reset));
+    const c=fxControls(F,draft,()=>ed(x=>{x.v=fxClean(draft);}),ctx);
+    /* (0.94.6) a Hand-painted material: its look's settings, with the way back to the material's channels and the switch to painting over the layers below */
+    if(r.fx==='handPaint'&&where==='c'&&L.fill)box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'hpMatChannels',text:'Material channels',title:'Roughness, metallic, height and the other channels of this material',onclick:()=>{ui.msSel=null;renderLayers();renderMatEd(true);}}),el('button',{class:'btn sm',id:'hpOverBelow',text:'Paint over the layers below',title:'Turn it into a Hand-painted layer that lights and shades what is under it',onclick:()=>hpMatToOverlay(L)})));
+    box.append(...c.body);if(c.reset)box.append(el('div',{class:'frow'},c.reset));
     if(where==='c'){const ms=el('select',{id:'ms_maps','aria-label':'Maps it changes'},el('option',{value:'all',text:'Every map but the normal'}),el('option',{value:'base',text:'Base colour only'}),...doc.maps.filter(k=>k!=='base').map(k=>el('option',{value:'only:'+k,text:MAP_DEFS[k].label+' only'})));
       ms.value=Array.isArray(r.maps)?'only:'+r.maps[0]:r.maps==='all'?'all':'base';ms.onchange=()=>ed(x=>{x.maps=ms.value==='all'?'all':ms.value==='base'?'base':[ms.value.slice(5)];});
       box.append(el('div',{class:'frow'},el('label',{text:'Changes'}),ms));}

@@ -298,3 +298,7 @@ When **Select part** is active, hovering highlights the faces that the chosen Ob
 Drop an image file or a texture-library tile onto a channel in **Material editor** to assign that image; an inactive channel turns on automatically. Undo restores the previous input.
 
 Drag image files or library textures onto a mask thumbnail or one of its mask rows to add separate picture layers. Existing mask contents stay below them. Select a picture row to adjust **Contrast**, tiling, rotation, projection, blend mode and opacity in the Material editor. Each drop is undoable; multiple image files create one row each. Press **1** to return to the Paint brush. Custom shortcuts are preserved.
+
+## New layers (0.94.6)
+
+The **Add layer** button in 3D Paint makes a plain **50% grey material** with a white mask: paint black on the mask to hide it, white to bring it back. The **Material** button makes the same grey material without a mask. An empty paint layer is in the right-click menu (**New paint layer**). **Ctrl+D** duplicates the selected layer.
