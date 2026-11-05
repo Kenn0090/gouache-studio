@@ -1,3 +1,8 @@
+## 0.94.5
+
+- **Fur you can control.** The Fur look has new settings. **Uneven fur:** random placement, random length, random direction, and patches of thick and thin fur (with a patch size), so it no longer looks like an even grid. **Fur mask:** paint where fur grows (white) and where it doesn't (black), or use a black-and-white picture; it is a map of its own (Fur mask) that you can paint like any other, and a material can set it too. **Fur pattern:** pick or drop a picture that gives the fur its general look (light grows long and thick, dark short and sparse), with sliders to make it stronger and to repeat it. Works in the 3D view and in the new viewer; the game engines get it next.
+- **Ctrl+D duplicates the layer in 3D Paint** (in Paint it still clears the selection).
+
 ## 0.94.4
 
 - **Models sent as FBX now open in Unreal and Unity.** Our FBX files left out a few records that Autodesk's FBX reader (used by Unreal and Unity) insists on: the file's ID and creation time at the top, which the code at the end of the file is checked against, and an end marker after empty sections. Both FBX writers (Export textures with a model, and Export model with UVs) now write them. Checked with three other FBX readers, including Godot's; Unreal and Unity themselves still need a try.

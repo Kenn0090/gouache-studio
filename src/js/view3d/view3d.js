@@ -104,8 +104,17 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
     float al=clamp(uShQ.x+F+sp+rf*0.5,0.0,1.0);
     c*=uExpo; c=tone(c); o=vec4(pow(clamp(c,0.0,1.0),vec3(1.0/2.2)),al); return; }
   if(uSh==11){ float k=uFurK; float dens=uShP.y; vec2 gp=uv*dens; vec2 cell=floor(gp); vec2 fq=fract(gp)-0.5;
+    /* (0.94.5) uneven fur: each strand sits anywhere in its cell (uSkin.y), has its own length (uSkin.z) and leans its own way (uSkin.w);
+       patches (uShD.x amount, uShD.y size) thin it out and shorten it in places; the Fur mask (uThick, uShE.x) and the fur pattern picture (uOpac, uShE.y, tiling uShE.z, strength uShE.w) shape it */
+    fq-=(vec2(hsh(cell+1.7),hsh(cell+5.3))-0.5)*uSkin.y*0.8;
     vec2 cc=floor(gp/(1.0+uShP.z*3.0)); fq+=(vec2(hsh(cc),hsh(cc+7.3))-0.5)*uShP.z*k*0.9;
-    float len=0.6+0.4*hsh(cell+3.1);
+    fq+=(vec2(hsh(cell+11.1),hsh(cell+13.7))-0.5)*uSkin.w*k*1.2;
+    float len=mix(0.8+0.2*hsh(cell+3.1),0.2+0.8*hsh(cell+3.1),uSkin.z);
+    if(uShD.x>0.0){ vec2 np=uv*mix(28.0,3.0,uShD.y); vec2 ni=floor(np),nf=fract(np); nf=nf*nf*(3.0-2.0*nf);
+      float pn=mix(mix(hsh(ni),hsh(ni+vec2(1.0,0.0)),nf.x),mix(hsh(ni+vec2(0.0,1.0)),hsh(ni+vec2(1.0,1.0)),nf.x),nf.y);
+      float pm=smoothstep(0.25,0.75,pn); len*=mix(1.0,0.25+pm*1.05,uShD.x); if(hsh(cell+9.9)>mix(1.0,pm+0.2,uShD.x)) len=0.0; }
+    if(uShE.y>0.5){ float d=texture(uOpac,uv*uShE.z).r; float ps=clamp(uShE.w,0.0,2.0); len*=mix(1.0,d*1.7,min(ps,1.0)); len=mix(len,len*d*d*2.0,max(ps-1.0,0.0)); if(hsh(cell+21.3)>mix(1.0,d*1.4,min(uShE.w,1.0))) len=0.0; }
+    if(uShE.x>0.5){ len*=texture(uThick,uv).r; }
     if(k>0.0){ if(k>len) discard; if(length(fq)*2.0>uShQ.z*(1.0-k*0.85)) discard; }
     vec3 root=alb*(1.0-uShQ.y*0.85), tip=mix(alb,lin(uShC),uShQ.w), c0=mix(root,tip,k);
     float occ=mix(1.0-uShQ.y*0.6,1.0,k); vec3 Nf=normalize(Ng); vec3 Lf=normalize(uSun); float wl=max((dot(Nf,Lf)+0.5)/1.5,0.0);
@@ -404,12 +413,13 @@ function v3List(C){const {g,pre,mv,bake,T0}=C;
   if(bake&&bk.fold>0&&list.length===1&&v3.mesh&&v3.mesh.setRanges&&v3.mesh.setRanges.length>1){const it=list[0],n=v3.mesh.setRanges.length;list=v3.mesh.setRanges.map((r,k)=>Object.assign({},it,{start:r.start,count:r.count,off:(k-(n-1)/2)*2.6}));}
   return list;}
 /* the uniforms for one texture set's draw */
-function v3MeshU(C,common,it,flip,safeMip=null){const {s,bake,EU,eye,a,e}=C,sg=it.sg!==undefined?it.sg:C.sg,T=it.T||{},base=T.base,useSafeMip=!!(safeMip&&!it.thick);
+function v3MeshU(C,common,it,flip,safeMip=null){const {s,bake,EU,eye,a,e}=C,sg=it.sg!==undefined?it.sg:C.sg,T=it.T||{},base=T.base,shk=bake?null:(it.sh||v3ShadeOf(doc)),isFur=!!shk&&shk.kind==='fur',useSafeMip=!!(safeMip&&!it.thick)&&!isFur;
     const ok=k=>T[k]&&(bake||(sg&&(k==='rough'||k==='metal'))||(k==='nfinal'?doc.maps.includes('height')||doc.maps.includes('normal')||!!meshNormalBase():doc.maps.includes(k)));
     if(!bake&&!it.thick&&!it.sh&&doc.meshMaps&&doc.meshMaps.thick)it.thick=doc.meshMaps.thick;
     const mOK=ok('metal')&&!(sg&&ok('spec')),hm=(ok('rough')?1:0)|(mOK?2:0)|(ok('nfinal')?4:0)|(ok('ao')?8:0)|(ok('emis')?16:0)|(ok('opac')?64:0)|(it.thick?128:0)|(ok('spec')&&!mOK?256:0);
-    return Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uUseUDIM:!!it.udim,uUDIMTile:it.udim?[it.udim.u,it.udim.v]:[0,0],uUseSafeMip:useSafeMip,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:mOK?T.metal.tex:ok('spec')?T.spec.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,uThick:useSafeMip?safeMip.tex:it.thick?it.thick.tex:dummy,...EU,...shadeUniforms(bake?null:it.sh||v3ShadeOf(doc)),
-      uMorph:bake&&bk.fold>0?bk.fold:0,uMorphOff:[it.off||0,0,0],uStudioFill:s.studioFill||0,...lightViewUniforms(),uStudioRim:s.studioRim||0,uLightColor:s.lightColor||[1,1,1],uShadow:dummy,uShadowVP:{m4:m4()},uShadowOn:0,uShadowSoft:1,...common,uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uMetalView:{int:s.metalView?1:0},uMetalRough:s.metalRough||.25,uBevelMaterial:{int:bevelPreviewOn()&&bvSettings().previewMaterial?1:0},uBevelMetal:bvSettings().previewMetal||0,uBevelRough:bvSettings().previewRough??.25,uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});}
+    const U=Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uUseUDIM:!!it.udim,uUDIMTile:it.udim?[it.udim.u,it.udim.v]:[0,0],uUseSafeMip:useSafeMip,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:mOK?T.metal.tex:ok('spec')?T.spec.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,uThick:useSafeMip?safeMip.tex:it.thick?it.thick.tex:dummy,...EU,...shadeUniforms(bake?null:it.sh||v3ShadeOf(doc)),
+      uMorph:bake&&bk.fold>0?bk.fold:0,uMorphOff:[it.off||0,0,0],uStudioFill:s.studioFill||0,...lightViewUniforms(),uStudioRim:s.studioRim||0,uLightColor:s.lightColor||[1,1,1],uShadow:dummy,uShadowVP:{m4:m4()},uShadowOn:0,uShadowSoft:1,...common,uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uMetalView:{int:s.metalView?1:0},uMetalRough:s.metalRough||.25,uBevelMaterial:{int:bevelPreviewOn()&&bvSettings().previewMaterial?1:0},uBevelMetal:bvSettings().previewMetal||0,uBevelRough:bvSettings().previewRough??.25,uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});
+    if(isFur)furUniforms(U,T,shk);return U;}
 function v3DrawWire(g,list,common){gl.bindVertexArray(g.evao);try{if(ui.mode!=='p3d'){useProg(P3.line,{...common,uCol:[...(prefs.wireCol||[.95,.7,.35]),1]});gl.drawElements(gl.LINES,g.ecount,gl.UNSIGNED_INT,0);return;}
     for(const it of list){if(!it.count)continue;let r;if(it.start===0&&it.count*3===g.count)r={b:g.eb,count:g.ecount};else{const key=it.start+':'+it.count,cache=g.wireRanges||(g.wireRanges=new Map());r=cache.get(key);if(!r){const edges=meshEdges({idx:v3.mesh.idx.subarray(it.start*3,(it.start+it.count)*3)}),b=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,b);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,edges,gl.STATIC_DRAW);r={b,count:edges.length};cache.set(key,r);}}
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,r.b);useProg(P3.line,{...common,uCol:[...(prefs.wireCol||[.95,.7,.35]),1]});gl.drawElements(gl.LINES,r.count,gl.UNSIGNED_INT,0);}}

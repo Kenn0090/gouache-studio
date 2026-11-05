@@ -1,3 +1,7 @@
+## 0.94.5
+
+- **Fur:** random placement, length and direction, patches, a Fur mask you can paint or take from a picture, and a pattern picture that shapes the fur.
+- **Ctrl+D** duplicates the layer in 3D Paint.
 ## 0.94.4
 
 - **Game engines:** models sent as FBX now open in Unreal and Unity, the live link is added by itself on the first send (Unreal: restart once), and the model gets its materials in Unreal and Unity.

@@ -62,6 +62,10 @@ These seven looks are in the **Shader** list (per texture set) and show the same
 - **Hologram** is see-through: edge glow, scan lines that move, a bright band sweeping up, glitch slices, a pulsing edge, a flicker and a soft body glow. It is blended over what is behind it.
 - **Glass** bends the sky and shows the model's own back parts through it. Use the normal map for ripples. It doesn't bend other objects behind it.
 - **Fur** grows strands in layers out of the surface. The base colour map colours it; the tip colour fades in at the ends. Wind moves it.
+  - **Uneven fur:** *Random placement*, *Random length*, *Random direction*, *Patches* (thick and thin areas) and *Patch size* stop it looking like a regular grid.
+  - **Fur mask:** *Paint the fur mask* adds a Fur mask map and picks it for painting: white grows fur, black stays bare. *Mask from a picture…* puts a black-and-white picture in it (on a new layer you can paint over). A material can also set it (its Fur mask channel).
+  - **Fur pattern:** a picture (drop one, or choose from Textures) that gives the fur its general look: light parts grow long, thick fur, dark parts short and sparse. *Pattern strength* amplifies it, *Pattern tiling* repeats it.
+  - With Fur on, the set's Opacity map is not used.
 - **Iridescent** shifts colour with the angle you look from: soap bubble, beetle shell, oil slick.
 - **Car paint** is a base colour under a clear coat, with metallic flakes that sparkle as you move.
 - **Cloth sheen** is a soft sheen for fabric; raise Satin streak for satin or silk.

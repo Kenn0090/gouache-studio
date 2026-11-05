@@ -16,6 +16,9 @@ struct MapLens {
     height: usize,
     #[serde(default)]
     thick: usize,
+    /// the Fur look's pattern picture (its red channel); it travels in the alpha of the ORM map
+    #[serde(default)]
+    pat: usize,
 }
 
 #[derive(Deserialize, Default)]
@@ -271,8 +274,9 @@ fn parse(bytes: &[u8]) -> Result<(Scene, Option<String>), String> {
         let emissive = map(&mut rd, g.tex.emissive)?;
         let height = map(&mut rd, g.tex.height)?;
         let thick = map(&mut rd, g.tex.thick)?;
+        let pat = map(&mut rd, g.tex.pat)?;
         let shader = ShaderParams { kind: g.sh.k, p: g.sh.p, q: g.sh.q, c: g.sh.c, d: g.sh.d, skin: g.sh.skin, e: g.sh.e };
-        let material = Material { shader, base, orm, normal, emissive, height, thick, udim: g.udim, fold_off: g.foff, rough: g.rough, metal: g.metal, partial: g.partial };
+        let material = Material { shader, base, orm, normal, emissive, height, thick, pat, udim: g.udim, fold_off: g.foff, rough: g.rough, metal: g.metal, partial: g.partial };
         groups.push(Group { name: g.name.clone(), indices, material });
     }
     let env = match &meta.env {
