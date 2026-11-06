@@ -283,3 +283,9 @@ function meshIdParts(m){const authored=m.triIdPart||m.triPart,c=m._idShells;if(c
 /* Part names can repeat, so keep the match-by-name parts and unique mesh IDs separately. */
 function partsInfo(r,parts){const names=[],idNames=[],idKeys=new Map();let T=0;for(const p of parts)T+=p.idx.length/3;const tp=new Uint32Array(T),ti=new Uint32Array(T);let o=0;for(const p of parts){let k=names.indexOf(p.pname);if(k<0){k=names.length;names.push(p.pname);}const key=p.meshKey||'name:'+p.pname;let id=idKeys.get(key);if(id===undefined){id=idNames.length;idKeys.set(key,id);idNames.push(p.pname||('Mesh '+(id+1)));}const n=p.idx.length/3;tp.fill(k,o,o+n);ti.fill(id,o,o+n);o+=n;}r.partNames=names;r.triPart=tp;r.idPartNames=idNames;r.triIdPart=ti;}
 
+
+/* (0.94.9) the whole model as one texture set: ZBrush polygroups (exported as groups or materials) are ignored */
+function meshOneSet(m){const T=m.idx.length/3,nm=(m.name||'Model').replace(/\.[a-z0-9]+$/i,'');
+  const r=Object.assign({},m,{triMat:new Uint32Array(T),matNames:[nm],triPart:new Uint32Array(T),partNames:[nm],triIdPart:new Uint32Array(T),idPartNames:[nm],setRanges:undefined,_idShells:undefined,zbMerged:true});
+  if(m.triCol){const c=idColor(nm),tc=new Float32Array(T*3);for(let t=0;t<T;t++)tc.set(c,t*3);r.triCol=tc;}return r;}
+const meshHasGroups=m=>!!m&&((m.matNames&&m.matNames.length>1)||(m.partNames&&m.partNames.length>1));

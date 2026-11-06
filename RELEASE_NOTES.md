@@ -1,3 +1,9 @@
+## 0.94.9
+
+- **Add layer** in 3D Paint makes a regular paint layer again.
+- **Ignore polygroups from ZBrush** tick in the New 3D Paint project window (on by default).
+- **Don't save** moved to the bottom row of the save question.
+- **Ray traced view** no longer crashes big views on fast cards; the 3D view may run smoother on some cards.
 ## 0.94.8
 
 - **Stumpy G:** a gentler stump blend that blurs smoothly, without steps. Any soft blend can switch on **Smoother blur** in the Blend panel.

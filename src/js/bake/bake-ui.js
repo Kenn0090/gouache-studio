@@ -10,7 +10,10 @@ const BAKE_NAMES={normal:'Normal',ao:'Ambient occlusion',curv:'Curvature',curvEd
 /* read a model file (OBJ, glTF, GLB, FBX) */
 const MODEL_EXTS=['obj','glb','gltf','fbx'];
 const isModelName=n=>MODEL_EXTS.includes(extOf(n));
-async function parseModelBytes(name,bytes,sib,options={}){const mb=(bytes.byteLength/1048576).toFixed(1),ext=extOf(name);
+/* (0.94.9, Kenn) a model saved by ZBrush: its polygroups arrive as groups/materials, so 3D Paint offers to ignore them */
+function zbTag(m,bytes){try{const n=Math.min(bytes.length,65536);m.fromZBrush=/zbrush/i.test(new TextDecoder('latin1').decode(bytes.subarray(0,n)))||/zbrush/i.test(new TextDecoder('latin1').decode(bytes.subarray(Math.max(0,bytes.length-65536))));}catch(e){}return m;}
+async function parseModelBytes(name,bytes,sib,options={}){return zbTag(await parseModelBytes0(name,bytes,sib,options),bytes);}
+async function parseModelBytes0(name,bytes,sib,options={}){const mb=(bytes.byteLength/1048576).toFixed(1),ext=extOf(name);
   const prog=(f,phase)=>{if(phase==='finish')loadBusy('Preparing the model (normals and tangents)…');else loadSet(f,'Building the model from '+name+' · '+Math.round(f*100)+'%');};
   if(ext==='obj'){loadSet(0,'Building the model from '+name+' ('+mb+' MB)…');await loadPaint();return parseOBJAsync(bytes,baseName(name),prog);}
   loadBusy('Building the model from '+name+' ('+mb+' MB)…');await loadPaint();const buf=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength);if(ext==='glb'||ext==='gltf')return parseGLTF(buf,baseName(name),sib);

@@ -1506,3 +1506,6 @@ body.photomode #docTabs{display:none!important}
 .palbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 8px}
 .palbar .palmode.on{background:var(--accent-soft);border-color:var(--accent)}
 .palcv{display:block;margin:0 8px;max-width:calc(100vw - 40px);border-radius:4px;cursor:crosshair;touch-action:none}
+
+/* (0.94.9) extra dialog buttons on the left of the bottom row */
+.dlg-actions .dlg-extra:first-child{margin-right:auto}
