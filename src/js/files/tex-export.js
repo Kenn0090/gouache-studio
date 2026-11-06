@@ -108,9 +108,13 @@ async function encodeTex(W,H,f,C,fmt,bits){
     return encodeTGA(W,H,st,true,C===4);}
   return encodePNGx(W,H,quant(f,bits),C,bits);}
 /* build every file of a preset: [{name,data}] */
-async function buildTextures(pr,name){const W=doc.w,H=doc.h,S=texCfg.size||0,nw=S||W,nh=S?Math.max(1,Math.round(S*H/W)):H;
-  const pad=texPadBegin(nw);try{return await buildTexturesIn(pr,name,W,H,nw,nh,pad);}finally{texPadEnd(pad);}}
-async function buildTexturesIn(pr,name,W,H,nw,nh,pad){
+async function buildTextures(pr,name,opt){const W=doc.w,H=doc.h,S=texCfg.size||0,U=opt&&opt.udim?texUdim():null;
+  /* (0.95) a UDIM set: the size is per tile, and each tile is its own file (Name_BaseColor.1001.png …) */
+  const tw=U?W/U.B.nx:W,th=U?H/U.B.ny:H,nw=U?(S||Math.round(tw)):(S||W),nh=U?(S?Math.max(1,Math.round(S*th/tw)):Math.round(th)):(S?Math.max(1,Math.round(S*H/W)):H);
+  const pad=texPadBegin(U?Math.round(nw*U.B.nx):nw);try{return await buildTexturesIn(pr,name,W,H,nw,nh,pad,U);}finally{texPadEnd(pad);}}
+function texUdim(){if(ui.mode!=='p3d'||!p3.ua)return null;const S=p3.sets[p3.cur],m=S&&p3Binding(S),B=m&&udimBox(m);return B?{m,B}:null;}
+function texCrop(f,W,H,C,r){const [x,y,w,h]=r,o=new Float32Array(w*h*C);for(let j=0;j<h;j++){const yy=Math.min(H-1,y+j);o.set(f.subarray((yy*W+x)*C,(yy*W+x+w)*C),j*w*C);}return o;}
+async function buildTexturesIn(pr,name,W,H,nw,nh,pad,U){
   const cache={},has=k=>doc.maps.includes(k);
   const grey=k=>{if(k==='one')return null;const kk=k==='smooth'?'rough':k;const mm=texMesh(kk);if(!has(kk)&&!mm)return null;if(!cache[kk]){if(mm){const pt=texPadT(pad,mm,true);cache[kk]=resampleF(readMapF(pt,1),pt.w,pt.h,1,W,H,false);if(pt!==mm)release(pt);}else{const t=texPadT(pad,compositeMap(kk));cache[kk]=readMapF(t,1);release(t);}}return cache[kk];};
   const def=k=>k==='zero'?0:k==='one'?1:k==='smooth'?1-mapDefault('rough')[0]:has(k)?mapDefault(k)[0]:(MAP_DEFS[k].def!=null?MAP_DEFS[k].def:0);
@@ -125,7 +129,10 @@ async function buildTexturesIn(pr,name,W,H,nw,nh,pad){
       if(!has(rk)){const c=mapDefault(rk);for(let i=0;i<n;i++){rgba[i*4]=c[0];rgba[i*4+1]=c[1];rgba[i*4+2]=c[2];}}}
     else if(o.grey){const g=grey(o.grey);if(!g)continue;f=g.slice();C=1;}
     else{C=o.ch.length;f=new Float32Array(n*C);o.ch.forEach((k,c)=>{const g=grey(k),inv=k==='smooth',d=def(k);for(let i=0;i<n;i++){const v=g?g[i]:d;f[i*C+c]=inv&&g?1-v:v;}});}
-    const r=resampleF(f,W,H,C,nw,nh,C===4);const bits=o.grey==='height'&&texCfg.h16&&ext==='png'?16:8;
+    const bits=o.grey==='height'&&texCfg.h16&&ext==='png'?16:8;
+    if(U){for(const T of U.B.tiles){const R=udimTileRect(U.m,T,W,H),r=resampleF(texCrop(f,W,H,C,R),R[2],R[3],C,nw,nh,C===4);
+      const blob=await encodeTex(nw,nh,r,C,ext,bits);files.push({suffix:o.s,tile:T.id,name:pr.name(name).replace('{s}',o.s)+'.'+T.id+'.'+ext,data:new Uint8Array(await blob.arrayBuffer())});await tick();}continue;}
+    const r=resampleF(f,W,H,C,nw,nh,C===4);
     const blob=await encodeTex(nw,nh,r,C,ext,bits);files.push({suffix:o.s,name:pr.name(name).replace('{s}',o.s)+'.'+ext,data:new Uint8Array(await blob.arrayBuffer())});await tick();}
   return files;}
 function dropAlpha(f,n){const o=new Float32Array(n*3);for(let i=0;i<n;i++){o[i*3]=f[i*4];o[i*3+1]=f[i*4+1];o[i*3+2]=f[i*4+2];}return o;}
@@ -167,14 +174,14 @@ async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.
   toast('Exporting textures…');await tick();
   try{let files=[];const bySet={},glTex={},shInfo={};
     /* each texture set (3D Paint), or the document; the model needs glTF-shaped textures too */
-    const one=async(setName,fileName)=>{const fs=await buildTextures(pr,fileName);bySet[setName]=fs;files.push(...fs);
+    const one=async(setName,fileName)=>{const fs=await buildTextures(pr,fileName,{udim:true});bySet[setName]=fs;files.push(...fs);
       if(eshWanted()){const g=await buildTextures(GLTF_TEX,pascal(fileName)),T={};for(const f of g)T[f.suffix]=f;shInfo[setName]={sh:JSON.parse(JSON.stringify(eshSafeShade(v3ShadeOf(doc)))),tex:T,alpha:doc.maps.includes('opac')};for(const f of g)if(!files.some(x=>x.name===f.name))files.push(f);}if(texCfg.meshMaps)files.push(...await buildMeshMapTextures(pr,fileName));
       if(wantModel&&texCfg.model==='glb'){const g=await buildTextures(GLTF_TEX,pascal(fileName)),T={};for(const f of g)T[f.suffix]=f;T.alpha=doc.maps.includes('opac');glTex[setName]=T;}};
     const sets=ui.mode==='p3d'?p3.sets.filter(S=>!S.missing):[];
     if(ui.mode==='p3d'&&(texCfg.allSets||wantModel)&&sets.length>1){const back=p3.cur;
       try{for(let i=0;i<p3.sets.length;i++){if(p3.sets[i].missing)continue;p3SwitchSet(i,true);const S=p3.sets[i];await one(S.name,S.tile?name+'_'+S.tile.id:name+'_'+S.name);}}finally{p3SwitchSet(back,true);}}
     else{const S=ui.mode==='p3d'&&p3.sets[p3.cur];await one(S?S.name:(doc.name||name),S&&S.tile?name+'_'+S.tile.id:name);}
-    if(wantModel){const m=mxModel(),setNames=Object.keys(bySet),groups=mxGroups(m,setNames),mn=pascal(name);
+    if(wantModel){const m=p3.ua&&ui.mode==='p3d'&&texCfg.model==='glb'&&v3.imported?udimAtlasMesh(v3.imported):mxModel()/* (0.95) glTF has no UDIM tiles: the .glb carries the tiles' canvas UVs and whole-canvas textures; OBJ/FBX keep the file's UDIM UVs with one picture per tile */,setNames=Object.keys(bySet),groups=mxGroups(m,setNames),mn=pascal(name);
       if(texCfg.model==='glb')files=files.concat([{name:mn+'.glb',data:mxGLB(m,groups,glTex,mn)}]);
       else if(texCfg.model==='fbx')files.push({name:mn+'.fbx',data:mxFBX(m,groups,bySet,mn,pr)});
       else{const o=mxOBJ(m,groups,bySet,mn,pr);files.push({name:mn+'.obj',data:o.obj},{name:mn+'.mtl',data:o.mtl});}}
