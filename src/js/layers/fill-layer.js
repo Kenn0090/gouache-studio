@@ -12,8 +12,9 @@ const FS_FILLIMG=`uniform sampler2D uSrc; uniform float uTile; uniform float uRo
 uniform float uSharp; uniform float uHStr; uniform int uHeight; uniform int uNormal; uniform mat4 uInv; uniform mat3 uNrmInv; uniform mat3 uUvM; uniform int uRep; uniform int uFront; uniform int uKeepA; uniform vec4 uCyl; uniform float uCrop; uniform sampler2D uWarp; uniform vec4 uWarpD; uniform int uNearest; in vec2 vUV;
 bool wrapOut(vec2 t){ if(uCyl.w<0.5) return false; if(uCyl.w<1.5) return t.x<0.0||t.x>1.0||t.y<0.0||t.y>1.0; if(uCyl.w<2.5) return t.y<0.0||t.y>1.0; return t.x<0.0||t.x>1.0; }
 vec2 nearestUV(vec2 t){ vec2 sz=vec2(textureSize(uSrc,0)); return (floor(t*sz)+0.5)/sz; }
-vec4 samp(vec2 t){ float c=cos(uRot),s=sin(uRot); t=mat2(c,s,-s,c)*(t-0.5)+0.5; if(uNearest==1) return textureLod(uSrc,nearestUV(t),0.0); return texture(uSrc,t); }
-vec4 sampL(vec2 t){ float c=cos(uRot),s=sin(uRot); t=mat2(c,s,-s,c)*(t-0.5)+0.5; if(uNearest==1) t=nearestUV(t); return textureLod(uSrc,t,0.0); }
+uniform int uOneCh; vec4 monoX(vec4 v){ return uOneCh==1?vec4(v.rrr,1.0):v; }/* (0.95.2) a one-channel grey picture */
+vec4 samp(vec2 t){ float c=cos(uRot),s=sin(uRot); t=mat2(c,s,-s,c)*(t-0.5)+0.5; if(uNearest==1) return monoX(textureLod(uSrc,nearestUV(t),0.0)); return monoX(texture(uSrc,t)); }
+vec4 sampL(vec2 t){ float c=cos(uRot),s=sin(uRot); t=mat2(c,s,-s,c)*(t-0.5)+0.5; if(uNearest==1) t=nearestUV(t); return monoX(textureLod(uSrc,t,0.0)); }
 void main(){ vec4 s;
   if(uProj>=1){ ivec2 q=ivec2(gl_FragCoord.xy); vec4 P=texelFetch(uPos,q,0); if(P.a<0.5){ o=vec4(0.0); return; }
     vec3 L=(uInv*vec4(P.xyz,1.0)).xyz;
@@ -102,7 +103,7 @@ function fillPosMaps(){const m=v3.mesh,g=v3.gpu;if(!m||!g||m.noUV)return null;co
   disposeTarget(tmp);fillPosC={key,m,pos,nrm,tan};return fillPosC;}
 /* A live image channel is rendered into a borrowed output, never into every material layer. */
 function fillLiveSource(L,k){const f=L.fill,s=f&&f.maps[k];if(!s||!s.on||!['image','baked','conv'].includes(s.src)||k==='base'&&fillTintOn(f))return null;
-  const t=s.src==='image'?L._fillImg&&L._fillImg[k]:doc.meshMaps&&doc.meshMaps[s.mm];return t&&t.tex?t:null;}
+  const t=s.src==='image'?fillMonoize(L,k):doc.meshMaps&&doc.meshMaps[s.mm];return t&&t.tex?t:null;}
 function fillLiveOpaque(L,k){const f=L.fill,s=f&&f.maps[k],img=fillLiveSource(L,k);return !!img&&!f.decal&&(!pxfIs3D(f.proj)||s.src!=='image')&&(MAP_DEFS[k].grey||k==='normal'||!!img.opaque);}
 let P_FILLCOMP=null;
 /* UV sampling can feed the composite directly. Quantize as the former intermediate texture did. */
@@ -110,13 +111,18 @@ function fillCompProgram(){if(!P_FILLCOMP){const sample=FS_FILLIMG.replace('void
     P_FILLCOMP=program(sample+`uniform int uFillDepth;
 vec4 fillQuant(vec4 c){ if(uFillDepth==16) return vec4(unpackHalf2x16(packHalf2x16(c.rg)),unpackHalf2x16(packHalf2x16(c.ba))); return roundEven(clamp(c,0.0,1.0)*255.0)/255.0; }
 `+FS_COMP.replace('texelFetch(uLayer,p,0)','fillQuant(fillSample())'));P_FILLCOMP.defaults=P.comp.defaults;}return P_FILLCOMP;}
-function fillCompUniforms(L,k){const f=L.fill,s=f.maps[k],bk=s.src==='baked'||s.src==='conv';return Object.assign({uSrc:fillLiveSource(L,k).tex,uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:MAP_DEFS[k].grey?1:0},uPos:dummy,uNrm:dummy,uTan:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0},uFillDepth:{int:mapDepth(k)}},pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf));}
+function fillCompUniforms(L,k){const f=L.fill,s=f.maps[k],bk=s.src==='baked'||s.src==='conv';return Object.assign({uSrc:fillLiveSource(L,k).tex,uOneCh:{int:fillLiveSource(L,k).mono?1:0},uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:MAP_DEFS[k].grey?1:0},uPos:dummy,uNrm:dummy,uTan:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0},uFillDepth:{int:mapDepth(k)}},pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf));}
 function fillDrawMap(L,k,T){const f=L.fill,s=f.maps[k],grey=MAP_DEFS[k].grey,bk=s.src==='baked'||s.src==='conv',img=fillLiveSource(L,k),tri=pxfIs3D(f.proj)&&!bk?fillPosMaps():null;
   if(!img){clearTarget(T);return;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
-  run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uTan:tri?tri.tan.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
+  run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uOneCh:{int:img.mono?1:0},uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uTan:tri?tri.tan.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
     uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}},(tri&&!bk?pxfUniforms(f.proj,f.xf):pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf))));T.opaque=(!tri||bk)&&!f.decal&&(grey||k==='normal'||!!img.opaque);
 }
 /* redraw a fill layer's maps from its settings (image maps need their picture in memory) */
+/* (0.95.2, Kenn: smaller 4K textures) a grey channel's picture (roughness, metal, AO, height…) is kept in ONE channel on the graphics card:
+   a quarter of the memory, no loss (Preferences › Memory and disk). Done the first time it is drawn; copies keep the one channel. */
+function fillMonoize(L,k){const img=L._fillImg&&L._fillImg[k];if(!img||img.mono||img.packed||img.depth===16||prefs.monoGrey===false||!MAP_DEFS[k]||!MAP_DEFS[k].grey||img.w*img.h<65536)return img;
+  const m=makeTarget(img.w,img.h,8,true,false,true);blit(img,m,0,0,img.w,img.h,0,0);m.opaque=true;if(img._instSrc)m._instSrc=img._instSrc;disposeTarget(img);L._fillImg[k]=m;return m;}
+function fillImgCopy(s){const t=makeTarget(s.w,s.h,8,true,false,!!s.mono);blit(s,t,0,0,s.w,s.h,0,0);return t;}
 function fillRender(L,only){const f=L.fill;if(!f)return;
   for(const k of fillMapsOf()){if(only&&k!==only)continue;const s=f.maps[k]||(f.maps[k]=fillDefaults().maps[k]);
     /* Hide the bumps below: a flat height and normal even where the material has none of its own (decals only cover their outline) */
@@ -126,8 +132,8 @@ function fillRender(L,only){const f=L.fill;if(!f)return;
     if(k==='normal'&&!(s.src==='baked'||s.src==='conv'?doc.meshMaps&&doc.meshMaps[s.mm]:L._fillImg&&L._fillImg[k])){setMapSolid(L,k,fillSolidColor(k,[.5,.5,1,1]));continue;}
     if(fillLiveSource(L,k)){setMapLive(L,k);continue;}
     if(L._fillLive)delete L._fillLive[k];const tri=pxfIs3D(f.proj)?fillPosMaps():null,T=ensureMapTarget(L,k),grey=MAP_DEFS[k].grey;
-    if(s.src==='image'||s.src==='baked'||s.src==='conv'){const bk=s.src==='baked'||s.src==='conv',img=bk?doc.meshMaps&&doc.meshMaps[s.mm]:L._fillImg&&L._fillImg[k];if(!img){if(k==='normal')clearTarget(T,[.5,.5,1,1]);continue;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
-      run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uTan:tri?tri.tan.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
+    if(s.src==='image'||s.src==='baked'||s.src==='conv'){const bk=s.src==='baked'||s.src==='conv',img=bk?doc.meshMaps&&doc.meshMaps[s.mm]:fillMonoize(L,k);if(!img){if(k==='normal')clearTarget(T,[.5,.5,1,1]);continue;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
+      run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uOneCh:{int:img.mono?1:0},uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uTan:tri?tri.tan.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
         uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}},(tri&&!bk?pxfUniforms(f.proj,f.xf):pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf))));T.opaque=(!tri||bk)&&!f.decal&&(grey||k==='normal'||!!img.opaque);continue;}
     if(k==='normal'){clearTarget(T,[.5,.5,1,1]);continue;}
     const c=grey?[s.v,s.v,s.v]:(s.c||[s.v,s.v,s.v]);clearTarget(T,[c[0],c[1],c[2],1]);}
@@ -142,7 +148,7 @@ function cmdNewFillLayer(preset){if(ui.mode==='anim'){toast('Fill layers are ava
   if(!preset&&ui.mode==='p3d'){const m=L.fill.maps;for(const k in m)m[k].on=false;if(m.base)Object.assign(m.base,{on:true,src:'value',c:[.5,.5,.5]});}
   if(preset&&preset.maps){for(const k in L.fill.maps)L.fill.maps[k].on=false;for(const k in preset.maps)if(L.fill.maps[k])Object.assign(L.fill.maps[k],{on:true,src:'value'},preset.maps[k]);
     for(const k of ['proj','triSharp','hStr','xf','rep','front','decal'])if(preset[k]!=null)L.fill[k]=JSON.parse(JSON.stringify(preset[k]));L.fill.name=preset.name;
-    if(preset.imgs){L._fillImg={};for(const k in preset.imgs){const s=preset.imgs[k],t=makeTarget(s.w,s.h,8,true);blit(s,t,0,0,s.w,s.h,0,0);L._fillImg[k]=t;}}
+    if(preset.imgs){L._fillImg={};for(const k in preset.imgs)L._fillImg[k]=fillImgCopy(preset.imgs[k]);}
     wfFillFit(L);
     const need=Object.keys(L.fill.maps).filter(k=>L.fill.maps[k].on&&!doc.maps.includes(k)&&MAP_DEFS[k]&&!(WF_KEYS[doc.workflow==='spec'?'metal':'spec'].includes(k)));
     if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the material');}

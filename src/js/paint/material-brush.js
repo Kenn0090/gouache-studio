@@ -11,7 +11,7 @@ if(comp&&P_MATERIALCOMP)return P_MATERIALCOMP;if(!comp&&P_MATERIALMERGE)return P
   const p=program(sample+'\nuniform int uMatImage; uniform vec4 uMatColor;\n'+body);p.defaults=Object.assign({},comp?P.comp.defaults:P.merge.defaults);
   if(comp)P_MATERIALCOMP=p;else P_MATERIALMERGE=p;return p;}
 function materialStrokeU(s,k){const m=s.o.material,f=m.fill,c=f.maps[k],img=c?.on&&m.imgs[k],image=!!(img&&c.src==='image');
-  return Object.assign({uMatImage:{int:image?1:0},uMatColor:c?.on?[...(c.c||[c.v??.5,c.v??.5,c.v??.5]),1]:[0,0,0,0],uMatSrc:image?img.tex:dummy,
+  return Object.assign({uMatImage:{int:image?1:0},uMatColor:c?.on?[...(c.c||[c.v??.5,c.v??.5,c.v??.5]),1]:[0,0,0,0],uMatSrc:image?img.tex:dummy,uOneCh:{int:image&&img.mono?1:0},
     uTile:Math.max(.05,(c?.tile||1)*m.tile),uRot:(c?.rot||0)*Math.PI/180,uGrey:{int:MAP_DEFS[k].grey?1:0},uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0},uHStr:f.hStr??1,
     uProj:{int:0},uPos:dummy,uNrm:dummy,uRep:{int:1},uFront:{int:0},uKeepA:{int:1},uSharp:4,uInv:{m4:[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]},uUvM:{m3:[1,0,0,0,1,0,0,0,1]}});}
 function strokeMergeProgram(s){return s?.o.material?materialStrokeProgram(false,!!s.o.material.weldPaint):P.merge;}

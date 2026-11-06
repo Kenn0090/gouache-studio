@@ -54,14 +54,17 @@ async function miPick(how){
   for(const f of fs){if(extOf(f.name)==='zip'){files.push(...await miUnzip(await f.arrayBuffer()));folder=folder||baseName(f.name).replace(/[_-]?(\d+k)?[_-]?(png|jpg|exr)?$/i,'').replace(/[_-]+/g,' ');}else files.push(f);}
   return {files,folder};}
 /* the images → a library record (pictures at most `max` pixels across) */
+const MI_COLOUR_CH=['base','normal','emis','spec','sheen'];
 async function miBuild(files,folder,max){const found={},names=[];
   for(const f of files){const c=miChannel(f.name);if(!c)continue;
     /* two candidates for one channel: prefer an OpenGL normal, then the larger file */
     const cur=found[c.k];if(cur&&!(c.k==='normal'&&cur.dx&&!c.dx)&&!(cur.f.size<f.size&&!(c.k==='normal'&&!cur.dx&&c.dx)))continue;found[c.k]={f,dx:c.dx};}
   if(!Object.keys(found).length)throw new Error('No texture names were recognised (Color, Roughness, Normal, Displacement…).');
   const pix={};
+  /* (0.95.2, Kenn) grey maps (roughness, AO, metal, height…) at most 2K inside a bigger material: a quarter of the memory and disk, barely visible (Preferences › Memory and disk) */
+  const capOf=k=>MI_COLOUR_CH.includes(k)||prefs.grey2k===false||!(max>2048)?max:2048;
   for(const k in found){const {f,dx}=found[k];names.push(f.name);let t;try{t=await fileTarget(f);}catch(e){toast('Skipped '+f.name+': '+(e.message||e));continue;}
-    const s=Math.min(1,(max||1e9)/Math.max(t.w,t.h)),w=Math.max(1,Math.round(t.w*s)),h=Math.max(1,Math.round(t.h*s));
+    const s=Math.min(1,(capOf(k)||1e9)/Math.max(t.w,t.h)),w=Math.max(1,Math.round(t.w*s)),h=Math.max(1,Math.round(t.h*s));
     let src=t;if(s<1){src=makeTarget(w,h,8,false);copyScaled(t,src);disposeTarget(t);}
     const d=captureRegionNow(src,0,0,w,h).data;disposeTarget(src);
     /* the pictures come premultiplied; texture channels are opaque, so this only matters for colour with alpha */

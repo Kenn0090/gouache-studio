@@ -28,6 +28,7 @@ function setWrap(t,rep){gl.bindTexture(gl.TEXTURE_2D,t.tex);const wm=rep?gl.REPE
 function bindTarget(t){if(t)t.opaque=false;gl.bindFramebuffer(gl.FRAMEBUFFER,t?t.fbo:null);gl.viewport(0,0,t?t.w:cv.width,t?t.h:cv.height);}
 function clearTarget(t,c){bindTarget(t);c=c||[0,0,0,0];gl.clearColor(c[0],t&&t.packed?c[3]:c[1],c[2],c[3]);gl.clear(gl.COLOR_BUFFER_BIT);if(t)t.opaque=c[3]===1&&!gl.isEnabled(gl.SCISSOR_TEST);}
 function blit(src,dst,sx,sy,w,h,dx,dy){const opaque=!!src.opaque,proof=opaque&&sx>=0&&sy>=0&&sx+w<=src.w&&sy+h<=src.h&&dx===0&&dy===0&&w===dst.w&&h===dst.h&&!gl.isEnabled(gl.SCISSOR_TEST);
+  if(src.mono&&!dst.mono&&!dst.packed){const copy=()=>run(P.maskplace,dst,{uMask:src.tex,uRect:[dx,dy,w,h],uSourceOffset:[sx,sy],uDef:0});if(scissorNow)copy();else scissorDo([dx,dy,w,h],copy);dst.opaque=proof;return;}/* (0.95.2) one channel → grey RGBA */
   if(!!src.packed!==!!dst.packed||!!src.mono!==!!dst.mono){const copy=()=>run(P.resample,dst,{uSrc:src.tex,uOffset:[dx-sx,dy-sy],uScale:[1,1],uTaps:{int:1}});if(scissorNow)copy();else scissorDo([dx,dy,w,h],copy);dst.opaque=proof;return;}
   dst.opaque=proof;gl.bindFramebuffer(gl.READ_FRAMEBUFFER,src.fbo);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,dst.fbo);gl.blitFramebuffer(sx,sy,sx+w,sy+h,dx,dy,dx+w,dy+h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
 function packedRead(t,u){if(t.packed||t.mono)for(let i=0;i<u.length;i+=4){const a=t.mono?(u instanceof Uint16Array?0x3c00:t.depth===8?255:1):u[i+1];u[i+1]=u[i+2]=u[i];u[i+3]=a;}return u;}

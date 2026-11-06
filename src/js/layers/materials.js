@@ -95,7 +95,7 @@ async function matReplace(rec){const L=doc.active;
   const nf=fillDefaults();for(const k in nf.maps)nf.maps[k].on=false;for(const k in f.maps)if(nf.maps[k])Object.assign(nf.maps[k],{on:true,src:'value'},JSON.parse(JSON.stringify(f.maps[k])));
   for(const k of ['proj','triSharp','hStr','xf','rep','front','decal'])if(f[k]!=null)nf[k]=JSON.parse(JSON.stringify(f[k]));nf.name=rec.name;
   L.fill=nf;L.name=rec.name;L._fillImg={};
-  for(const k in imgs){const t=imgs[k],c=makeTarget(t.w,t.h,8,true);blit(t,c,0,0,t.w,t.h,0,0);L._fillImg[k]=c;}
+  for(const k in imgs)L._fillImg[k]=fillImgCopy(imgs[k]);
   const need=Object.keys(f.maps).filter(k=>f.maps[k].on!==false&&!doc.maps.includes(k)&&MAP_DEFS[k]&&!(doc.workflow==='spec'&&(k==='rough'||k==='metal')));
   if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the material');
   fillRender(L);L.lookVer=(L.lookVer||0)+1;matEdCommit();changed(L);renderLayers();renderMatEd(true);requestRender(true);
