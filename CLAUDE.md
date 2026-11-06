@@ -409,3 +409,4 @@ Artist style unwrap, `bake/uv-artist.js` (loaded before uv-unwrap.js because `UW
 - Friend's ghost reflections: Kenn's project bodygouche.gouache3d (MetaHuman, 126k tris, 10 sets, Z-up, body + face sets only painted, no mesh maps) renders clean in SwiftShader from every angle/light/shadow size; no body/face overlap. Not reproduced: likely D3D-specific; ask for a fresh screenshot with Preferences › Speed info, or check shadows off.
 - Test fix9410.
 - p3d2 fails on main too (deleting the active set: Left part does not start a new set) - not looked into.
+- Kenn (after 0.94.10, released): ghost reflections = give the friend settings to try; NEXT = UDIMs (paint/fill/blur across tiles, seamless, shared triplanar 'instances').
