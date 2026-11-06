@@ -1,3 +1,9 @@
+## 0.95.1
+
+- **Which way is up.** The New 3D Paint Project window and the Bake tab have an **Up axis** choice: **Auto** reads it from the file (FBX and glTF say which way is up; OBJ counts as Y up), or pick **Y up** / **Z up**. It is remembered, and changing it after picking a model turns that model straight away. A Z-up model, such as one from Unreal, no longer comes in lying on its back.
+- **Turn 90° buttons** (X, Y, Z; Shift turns the other way) under the Model list and in the 3D view's ⋯ menu. Painted textures stay on the model; in the Bake tab both models turn together.
+- **Export up axis.** OBJ and FBX models follow the engine: Z up for Unreal and Blender, Y up for Unity and Godot. You can change it in the export window. A .glb is always Y up.
+
 ## 0.95.0
 
 - **UV tiles (UDIMs), the Substance way.** A UDIM project now has **one texture set per material**, with its tiles listed under it. The tiles share one canvas and one layer stack, so a brush stroke, a fill or a blur carries straight across a tile border with no seam. Click a tile in the list to see it on the flat canvas. Texture size is per tile. Exporting writes one picture per tile (`Name_BaseColor.1001.png`, `.1002`…) and the model keeps its UDIM UVs; a .glb gets the tiles as one picture with matching UVs. Bake mesh maps bakes into the tiles too. Older projects with one set per tile still open as before.

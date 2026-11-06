@@ -155,7 +155,8 @@ function dlgExportTextures(){if(stroke||preview||selLive){toast('Finish the curr
     TEX_PRESETS[texCfg.preset].user?el('button',{class:'btn sm',id:'txEditPreset',text:'Edit preset…',onclick:()=>{closeDialog();dlgTexPreset(texCfg.preset);}}):null);
   /* (0.27) the model too, with its textures connected */
   const modelRow=mxHasModel()?[sel('txModel','Model',[['none','No model'],['glb','.glb (textures inside)'],['obj','.obj + .mtl'],['fbx','.fbx (mesh + texture links)']],texCfg.model||'none',v=>{texCfg.model=v;}),
-    el('p',{class:'note',text:'The model goes with the textures. GLB embeds them; OBJ and FBX link to the exported files. FBX exports the static mesh, UVs, normals and material slots.'})]:[];
+    el('p',{class:'note',text:'The model goes with the textures. GLB embeds them; OBJ and FBX link to the exported files. FBX exports the static mesh, UVs, normals and material slots.'}),
+    ...(texCfg.model==='obj'||texCfg.model==='fbx'?[sel('txUp','Up axis',[['engine','Follow the engine (now '+(upEngine()==='z'?'Z':'Y')+' up)'],['y','Y up'],['z','Z up']],texCfg.up||'engine',v=>{texCfg.up=v;})]:texCfg.model==='glb'?[el('p',{class:'note',text:'A .glb is always Y up (the glTF rule); Unreal and Blender turn it on import.'})]:[])]:[];
   body.append(sel('txPreset','Engine',texPresetsFor().map(([k,p])=>[k,p.label]),texCfg.preset,v=>{texCfg.preset=v;closeDialog();dlgExportTextures();}),own,
     el('div',{class:'frow'},el('label',{for:'txName',text:'Name'}),nameIn),
     sel('txNrm','Normal map',[['preset','Engine default'],['gl','OpenGL (green up)'],['dx','DirectX (green down)']],texCfg.normal,v=>{texCfg.normal=v;}),
@@ -183,8 +184,9 @@ async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.
     else{const S=ui.mode==='p3d'&&p3.sets[p3.cur];await one(S?S.name:(doc.name||name),S&&S.tile?name+'_'+S.tile.id:name);}
     if(wantModel){const m=p3.ua&&ui.mode==='p3d'&&texCfg.model==='glb'&&v3.imported?udimAtlasMesh(v3.imported):mxModel()/* (0.95) glTF has no UDIM tiles: the .glb carries the tiles' canvas UVs and whole-canvas textures; OBJ/FBX keep the file's UDIM UVs with one picture per tile */,setNames=Object.keys(bySet),groups=mxGroups(m,setNames),mn=pascal(name);
       if(texCfg.model==='glb')files=files.concat([{name:mn+'.glb',data:mxGLB(m,groups,glTex,mn)}]);
-      else if(texCfg.model==='fbx')files.push({name:mn+'.fbx',data:mxFBX(m,groups,bySet,mn,pr)});
-      else{const o=mxOBJ(m,groups,bySet,mn,pr);files.push({name:mn+'.obj',data:o.obj},{name:mn+'.mtl',data:o.mtl});}}
+      /* (0.95.1) OBJ and FBX follow the chosen up axis (Unreal/Blender Z up); glTF is always Y up */
+      else if(texCfg.model==='fbx'){const z=upExportAxis()==='z';files.push({name:mn+'.fbx',data:mxFBX(z?upYtoZ(m):m,groups,bySet,mn,pr,{zUp:z})});}
+      else{const o=mxOBJ(upExportAxis()==='z'?upYtoZ(m):m,groups,bySet,mn,pr);files.push({name:mn+'.obj',data:o.obj},{name:mn+'.mtl',data:o.mtl});}}
     const epv=eshWanted()?await epResolve(es.to,epm.rec,name,shInfo):{regen:new Set(),updates:[]};
     if(eshWanted()&&Object.keys(shInfo).length)files.push(...eshFiles(es.to,name,shInfo,eshModelSize(mxHasModel()?mxModel():null),wantModel&&['glb','obj','fbx'].includes(texCfg.model)?pascal(name)+'.'+texCfg.model:null,{updateMasters:epm.update,updates:epv.updates}));
     if(!files.length){toast('Nothing to export.');return;}

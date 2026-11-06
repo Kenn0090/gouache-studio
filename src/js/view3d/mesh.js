@@ -249,7 +249,9 @@ async function parseFBX(buf,name,onProgress,options={}){const u8=new Uint8Array(
       if((i&1048575)===1048575){if(onProgress)onProgress(i/cnt);await new Promise(r=>setTimeout(r,0));}}
     const pname=models[geoOf[id]]?models[geoOf[id]].name:('mesh'+id);parts.push({pos,nrm,uv,idx:idx.out(),hasN:!!N,pname,meshKey:'geometry:'+id,tmat,vc:vcol,cnt,uvSetName:U&&U.name});}
   if(!parts.length)throw new Error('No meshes were found in this FBX file.');
-  const m=mergeParts(parts);if(parts.some(p=>!p.hasN))m.nrm=null;const r=meshFinish(m,name);r.noUV=noUV;r.uvSetName=parts.find(p=>p.uvSetName)?.uvSetName||'';partsInfo(r,parts);matsInfo(r,parts);
+  const m=mergeParts(parts);if(parts.some(p=>!p.hasN))m.nrm=null;const r=meshFinish(m,name);r.noUV=noUV;
+  /* (0.95.1) the file's own up axis (GlobalSettings › UpAxis: 1 = Y, 2 = Z) */
+  {const gs=kid({kids:top},'GlobalSettings'),P70=gs&&kid(gs,'Properties70');let ax=null,sg=1;for(const p of (P70&&P70.kids)||[]){if(p.props[0]==='UpAxis')ax=p.props[4];else if(p.props[0]==='UpAxisSign')sg=p.props[4];}r.fileUp=ax===2?(sg<0?'-z':'z'):ax===1?(sg<0?'-y':'y'):ax===0?'x':null;}r.uvSetName=parts.find(p=>p.uvSetName)?.uvSetName||'';partsInfo(r,parts);matsInfo(r,parts);
   if(parts.some(p=>p.vc)){const o=new Float32Array(r.pos.length/3*4).fill(1);let q=0;for(const p of parts){if(p.vc)o.set(p.vc,q*4);q+=p.cnt;}r.vcol=o;}
   r.triCol=new Float32Array(r.triPart.length*3);r.triPart.forEach((p,i)=>r.triCol.set(idColor(r.partNames[p]),i*3));return r;}
 /* which material each triangle uses (texture sets in 3D Paint): per part one name (mname) or one per triangle (tmat) */

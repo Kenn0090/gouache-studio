@@ -67,6 +67,12 @@ These follow Substance Painter's own shortcuts (Preferences › Painting › *Su
 - **Hold Alt over the model** (without clicking) to pick its colour there. Change **3D Paint: pick colour (hold)** in **Edit › Keyboard shortcuts › Brush and colour** to use another key. Release it to return to painting. Alt + drag still turns the model.
 - **Left / Right arrow keys** step through the shade strip in the Color panel while you paint. Clicking a shade still works, and the strip stays put while you step.
 
+## Which way is up
+
+- **Up axis** in the New 3D Paint Project window (and in the Bake tab's Models list): **Auto** reads it from the file (FBX and glTF say which way is up) and treats OBJ files as Y up; **Y up** or **Z up** set it yourself. The choice is remembered for the next import, and changing it after picking a model turns that model straight away.
+- **Turn 90°** buttons (**X**, **Y**, **Z**; Shift turns the other way) sit under the Model list and in the 3D view's **⋯** menu. Painted textures stay on the model. In the Bake tab they turn the low- and high-poly together.
+- **Exporting** an OBJ or FBX model: **Up axis** in the export window. *Follow the engine* writes Z up for Unreal and Blender, Y up for Unity, Godot or no engine. A .glb is always Y up (glTF's rule).
+
 ## UV tiles (UDIMs)
 
 Tick **Use UV tile workflow** in the New 3D Paint Project window for a model whose UVs spread over several tiles (1001, 1002, 1011…).

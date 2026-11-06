@@ -10,7 +10,7 @@ const fbxSentinel=n=>n.kids.length>0||n.props.length===0;
 function fbxHead(node,int,str){const now=new Date(),ts=[['Version',1000],['Year',now.getFullYear()],['Month',now.getMonth()+1],['Day',now.getDate()],['Hour',now.getHours()],['Minute',now.getMinutes()],['Second',now.getSeconds()],['Millisecond',0]];
   return [node('FBXHeaderExtension',[],[node('FBXHeaderVersion',[int(1003)]),node('FBXVersion',[int(7400)]),node('EncryptionType',[int(0)]),node('CreationTimeStamp',[],ts.map(([k,v])=>node(k,[int(v)]))),node('Creator',[str('Gouache Studio')])]),
     node('FileId',[{type:'R',v:FBX_FILEID}]),node('CreationTime',[str(FBX_CTIME)]),node('Creator',[str('Gouache Studio')])];}
-function mxFBX(m,groups,filesBySet,name,pr){const E=new TextEncoder(),node=(name,props=[],kids=[])=>({name,props,kids});
+function mxFBX(m,groups,filesBySet,name,pr,opt){const zUp=!!(opt&&opt.zUp);/* (0.95.1) zUp: the positions are already turned to Z up; the header says so */const E=new TextEncoder(),node=(name,props=[],kids=[])=>({name,props,kids});
   const str=v=>({type:'S',v:String(v)}),int=v=>({type:'I',v}),long=v=>({type:'L',v}),real=v=>({type:'D',v}),arr=(type,v)=>({type,v});
   const prop=p=>{if(typeof p==='string')p=str(p);if(typeof p==='number')p=int(p);let b,head;
     if(p.type==='R'){b=p.v;head=new Uint8Array(5);head[0]=82;new DataView(head.buffer).setUint32(1,b.length,true);return [head,b];}
@@ -37,7 +37,7 @@ function mxFBX(m,groups,filesBySet,name,pr){const E=new TextEncoder(),node=(name
       links.push(node('C',['OO',long(vd),long(tx)]),node('C',['OP',long(tx),long(mat),channel]));}}
   const counts={};for(const o of objects)counts[o.name]=(counts[o.name]||0)+1;
   const top=[...fbxHead(node,int,str,arr),
-    node('GlobalSettings',[],[node('Version',[1000]),node('Properties70',[],[P('UpAxis','int',1),P('UpAxisSign','int',1),P('FrontAxis','int',2),P('FrontAxisSign','int',-1),P('CoordAxis','int',0),P('CoordAxisSign','int',1),P('UnitScaleFactor','double',100)])]),
+    node('GlobalSettings',[],[node('Version',[1000]),node('Properties70',[],[P('UpAxis','int',zUp?2:1),P('UpAxisSign','int',1),P('FrontAxis','int',zUp?1:2),P('FrontAxisSign','int',zUp?1:-1),P('CoordAxis','int',0),P('CoordAxisSign','int',1),P('UnitScaleFactor','double',100)])]),
     node('Documents',[],[node('Count',[1]),node('Document',[long(1),name,'Scene'],[node('Properties70',[],[node('P',['SourceObject','object','',''])]),node('RootNode',[long(0)])])]),node('References'),
     node('Definitions',[],[node('Version',[100]),node('Count',[objects.length]),...Object.entries(counts).map(([k,v])=>node('ObjectType',[k],[node('Count',[v])]))]),node('Objects',[],objects),node('Connections',[],links),node('Takes',[],[node('Current',[''])])];
   const size=n=>{n.bytes=n.props.flatMap(prop);n.nlen=E.encode(n.name);n.plen=n.bytes.reduce((a,b)=>a+b.length,0);n.length=13+n.nlen.length+n.plen+n.kids.reduce((a,k)=>a+size(k),0)+(fbxSentinel(n)?13:0);return n.length;};
