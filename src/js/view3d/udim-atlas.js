@@ -35,3 +35,6 @@ function udimAtlasMesh(m){if(!p3.ua||!m||!m.uv)return m;const rs=meshGroupByMat(
 function udimTileAt(name,u,v){const B=udimBox(name);if(!B)return null;const x=B.x0+Math.floor(u*B.nx),y=B.y0+Math.floor((1-v)*B.ny);return B.tiles.find(t=>t.u===x&&t.v===y)||null;}
 /* one tile's pixel box in the material's canvas: rows are counted like the model's V (canvas row 0 = model v 0 = the top of the file's highest tile row) */
 function udimTileRect(name,tile,w,h){const B=udimBox(name);if(!B)return [0,0,w,h];const tw=w/B.nx,th=h/B.ny;return [Math.round((tile.u-B.x0)*tw),Math.round((B.ny-1-(tile.v-B.y0))*th),Math.round(tw),Math.round(th)];}
+/* frame one tile on the flat canvas (the 2D part of the 3D Paint view) */
+function udimFrameTile(name,T){const B=udimBox(name);if(!B)return;fit();const R=udimTileRect(name,T,doc.w,doc.h),z=view.zoom,f=Math.min(B.nx,B.ny)>1||Math.max(B.nx,B.ny)>1?Math.max(1,Math.min(doc.w/R[2],doc.h/R[3])):1;
+  const cx=view.x+doc.w/2*z,cy=view.y+doc.h/2*z,tx=view.x+(R[0]+R[2]/2)*z,ty=view.y+(R[1]+R[3]/2)*z;zoomAt(f*.95,tx,ty);view.x+=cx-tx;view.y+=cy-ty;requestRender();toast('UV tile '+T.id+'.');}

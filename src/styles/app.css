@@ -1509,3 +1509,6 @@ body.photomode #docTabs{display:none!important}
 
 /* (0.94.9) extra dialog buttons on the left of the bottom row */
 .dlg-actions .dlg-extra:first-child{margin-right:auto}
+
+/* (0.95) UDIM tiles under a texture set */
+.p3tiles{display:flex;flex-wrap:wrap;gap:4px;margin:-2px 0 6px 34px}.p3tiles .p3tile{padding:1px 7px;font-size:11px;min-height:0}

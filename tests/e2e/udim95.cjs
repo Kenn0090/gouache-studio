@@ -18,6 +18,8 @@ const OBJ=['v -1 -1 0','v 0 -1 0','v 0 1 0','v -1 1 0','v 1 -1 0','v 1 1 0','v -
  ok(r.sets.length===2&&r.sets[0].tiles.join()==='1001,1002,1011'&&r.sets[1].tiles.join()==='1011','one texture set per material, with its tiles inside '+JSON.stringify(r.sets));
  ok(r.w===256&&r.h===256,'the Body set is one canvas holding its tiles in their grid places ('+r.w+'×'+r.h+')');
  ok(r.lo>=-1e-6&&r.hi<=1+1e-6&&r.impUV>1.5,'the drawn model uses canvas UVs; the model file keeps its own ('+r.lo.toFixed(2)+'..'+r.hi.toFixed(2)+', file up to '+r.impUV+')');
+ const chips=await p.evaluate(()=>{__gs.buildP3Panel&&__gs.buildP3Panel();const b=[...document.querySelectorAll('.p3tile')].map(x=>x.textContent);const c=document.querySelector('.p3tile[data-tile="1002"]');if(c)c.click();return b;});
+ ok(chips.includes('1001')&&chips.includes('1002')&&chips.includes('1011'),'the set list shows each set\'s tiles '+JSON.stringify(chips));
  /* paint a stroke across the tile border on the model */
  await p.evaluate(()=>{const g=__gs;g.v3s().model='imported';g.setP3Layout&&0;g.v3.paintOn=true;Object.assign(g.v3.cam,{yaw:0,pitch:0,dist:4,tx:0,ty:0,tz:0});Object.assign(g.v3s(),{disp:0,showUV:false,paintAlign:'camera'});g.v3.dirty=true;g.requestRender(true);g.setTool('brush');g.brush.size=30;g.brush.opacity=1;g.brush.flow=1;g.ui.fg=[1,0,0];});
  await W(1500);
@@ -32,6 +34,12 @@ const OBJ=['v -1 -1 0','v 0 -1 0','v 0 1 0','v -1 1 0','v 1 -1 0','v 1 1 0','v -
  ok(ek.length===3&&tn(1001)&&tn(1002)&&tn(1011)&&tn(1001).w===128,'export writes one base colour picture per tile, 128 px each');
  ok(tn(1001).n>200&&tn(1002).n>200&&tn(1011).n===0,'the paint lands in the right tile files (1001 '+tn(1001).n+', 1002 '+tn(1002).n+', 1011 '+tn(1011).n+')');
  ok(red.L>200&&red.R>200,'one stroke across the tile border paints both tiles '+JSON.stringify(red));
+ /* baking inside 3D Paint bakes into the tiles' canvas */
+ const bk=await p.evaluate(async()=>{const g=__gs;await g.p3Bake(['position'],64,['Body']);await new Promise(r=>setTimeout(r,500));const S=g.p3.sets[g.p3.cur],t=g.doc.meshMaps&&g.doc.meshMaps.position;if(!t)return {none:true,set:S.name};
+  const d=g.captureRegionNow(t,0,0,t.w,t.h).data,R=(x,y)=>{const i=(Math.round(y)*t.w+Math.round(x))*4;return [d[i],d[i+1],d[i+2],d[i+3]];};
+  const r1=g.udimTileRect('Body',{u:0,v:0},t.w,t.h),r2=g.udimTileRect('Body',{u:1,v:0},t.w,t.h);return {set:S.name,w:t.w,h:t.h,a:R(r1[0]+r1[2]/2,r1[1]+r1[3]/2),b:R(r2[0]+r2[2]/2,r2[1]+r2[3]/2)};});
+ console.log(JSON.stringify(bk));
+ ok(bk.set==='Body'&&bk.w===256&&bk.h===256&&bk.a&&bk.b&&Math.abs(bk.a[0]-bk.b[0])>30,'a bake lands on the tiles\' canvas: the left and right tiles get their own positions');
  /* save and reopen keeps the layout */
  const rt=await p.evaluate(async()=>{const g=__gs,blob=await g.encodeP3Project(),buf=await blob.arrayBuffer();g.p3.savedAt=g.p3Sig();await g.openP3Project(buf,'udim.gouache3d');return {ua:!!g.p3.ua,w:g.doc.w,h:g.doc.h,sets:g.p3.sets.length};});
  ok(rt.ua&&rt.w===256&&rt.h===256&&rt.sets===2,'saving and opening keeps the tiles '+JSON.stringify(rt));

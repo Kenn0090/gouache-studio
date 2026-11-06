@@ -36,7 +36,10 @@ function dlgP3Bake(){if(ui.mode!=='p3d')return;if(bk.busy){toast('Wait for the b
     const which=sets.length>1?sets.filter(n=>p3bk.sets[n]!==false):sets;if(!which.length){toast('Tick at least one texture set.');return false;}
     Object.assign(C.kinds,kinds);setTimeout(()=>p3Bake(ks,pick,which),0);}});}
 /* bake the ticked maps for the ticked sets and hand them to the sets */
-async function p3Bake(ks,size,which){p3bk.lastArgs={ks:ks.slice(),size,which:which&&which.slice()};const C=bakeCfg,model=bakeViewModel(),names=bkMats(model);
+async function p3Bake(ks,size,which){p3bk.lastArgs={ks:ks.slice(),size,which:which&&which.slice()};const C=bakeCfg,model0=bakeViewModel(),
+    /* (0.95) UDIM: bake the model with its tiles' canvas UVs, at a size that keeps each tile's pixels */
+    ua=!!(p3.ua&&model0&&!model0.udimAtlas&&model0===v3.imported),model=ua?udimAtlasMesh(model0):model0,names=bkMats(model);
+  if(ua){let n=1;for(const w of which||[]){const S=p3.sets.find(S=>S.name===w),B=S&&udimBox(p3Binding(S));if(B)n=Math.max(n,B.nx,B.ny);}size=Math.min(8192,size*n);}
   const keep={high:C.high,cage:C.cage,size:C.size};if(!p3bk.useHigh)C.high=null;if(C.cage&&C.low!==model)C.cage=null;
   /* the Bake tab's fixes are painted for its own model and size */
   if(C.low!==model||(C.size||0)!==size){for(const k of ['skew','offset'])if(bk.maps[k]){disposeTarget(bk.maps[k]);bk.maps[k]=null;}}
@@ -52,7 +55,7 @@ async function p3Bake(ks,size,which){p3bk.lastArgs={ks:ks.slice(),size,which:whi
   C.low=model;if(names||p3.udim){bk.byMat=by;bk.matShow=null;bakeShowMat(Object.keys(by)[0]);}else{bk.byMat=null;const E=by['*'];if(E){bk.res=E.res;bk.kinds=E.kinds;bk.opts=E.opts;bk.src=E.src;}}
   const res={};for(const n in by)res[n]=by[n].res;
   const send=BK_SEND_ORDER.filter(k=>ks.includes(k)||((k==='curvEdge'||k==='curvCrease')&&ks.includes('curv')&&C.curvParts!==false));
-  p3ReceiveBake(v3.imported&&model===v3.imported?model:null,res,send,!!C.p3Layers);
+  p3ReceiveBake(v3.imported&&model0===v3.imported?model0:null,res,send,!!C.p3Layers);
   p3bk.last={t:Date.now(),sets:done};
   toast('Baked '+ks.length+' map'+(ks.length>1?'s':'')+' for '+done+' texture set'+(done>1?'s':'')+' in '+((performance.now()-t0)/1000).toFixed(1)+' s. The mesh maps are updated.');}
 /* after a bake: everything that reads the mesh maps is worked out again */

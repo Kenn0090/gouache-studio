@@ -123,7 +123,9 @@ function p3EyeBtn(S){const b=el('button',{class:'eye p3eye',title:S.hidden?'Show
 function p3SetsBox(){const box=el('div',{class:'p3sets',role:'listbox','aria-label':'Texture sets'});
   p3.sets.forEach((S,i)=>{const on=i===p3.cur,tiles=(S.udimTiles||[]).map(t=>t.id);const row=el('div',{class:'p3set'+(on?' on':'')+(S.missing?' missing':''),role:'option','aria-selected':String(on),tabindex:'0',title:S.missing?'This material is not on the current model':'Paint on '+S.name+(tiles.length?' · UV tiles '+tiles.join(', '):'')},
       p3EyeBtn(S),el('span',{class:'p3sn',text:S.name,ondblclick:ev=>{ev.stopPropagation();p3RenameDialog(i);}}),S.tile?el('span',{class:'p3udims',text:String(S.tile.id),'aria-label':'UDIM '+S.tile.id,title:'UDIM tile '+S.tile.id}):tiles.length?el('span',{class:'p3udims',text:tiles.join(' · '),'aria-label':'UV tiles '+tiles.join(', '),title:'UDIM tiles detected: '+tiles.join(', ')}):null,el('button',{class:'btn sm p3rename',text:'Rename',title:'Name this texture set',onclick:ev=>{ev.stopPropagation();p3RenameDialog(i);}}),el('button',{class:'btn sm p3del',text:'×','aria-label':'Delete '+S.name,title:'Delete this texture set',onclick:ev=>{ev.stopPropagation();p3DeleteSet(i);}}));
-    row.addEventListener('click',()=>{if(!S.missing)p3SwitchSet(i);});row.addEventListener('keydown',ev=>{if((ev.key==='Enter'||ev.key===' ')&&!S.missing){ev.preventDefault();p3SwitchSet(i);}});box.append(row);});
+    row.addEventListener('click',()=>{if(!S.missing)p3SwitchSet(i);});row.addEventListener('keydown',ev=>{if((ev.key==='Enter'||ev.key===' ')&&!S.missing){ev.preventDefault();p3SwitchSet(i);}});box.append(row);
+    /* (0.95) UDIM: the set's tiles as small rows under it; click one to see that tile on the flat canvas */
+    if(p3.ua&&!S.tile&&tiles.length>0&&!S.missing)box.append(el('div',{class:'p3tiles','aria-label':'UV tiles of '+S.name},...(S.udimTiles||[]).map(T=>el('button',{class:'btn sm p3tile',text:String(T.id),title:'Show tile '+T.id+' on the flat canvas','data-tile':String(T.id),onclick:ev=>{ev.stopPropagation();if(p3.cur!==i)p3SwitchSet(i,true);udimFrameTile(p3Binding(S),T);}}))));});
   if((p3.deletedSets||[]).length)box.append(el('button',{class:'btn sm',id:'p3RestoreSets',text:'Restore deleted sets',title:'Recreate deleted texture sets with empty layers',onclick:p3RestoreSets}));
   return box;}
 
@@ -372,7 +374,7 @@ window.addEventListener('keydown',e=>{if(typeof pathKeys==='function'&&pathKeys(
   if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat){closeMenu();cmdDelete();}}
   else if(e.key==='c'||e.key==='C'||e.key==='b'||e.key==='B'){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat&&!stroke&&!selLive){closeMenu();if(e.key.toLowerCase()==='c')p3CycleChannel(e.shiftKey?-1:1);else p3mmCycle(e.shiftKey?-1:1);}}
   else if(e.key==='Escape'&&(p3mm.k||p3ChannelView())&&!ui.viewMask){e.preventDefault();e.stopImmediatePropagation();p3ShowLit();}},true);
-function p3ReceiveBake(mesh,by,ks,asLayers){if(ui.mode!=='p3d'&&!setMode('p3d',true))return;
+function p3ReceiveBake(mesh,by,ks,asLayers){if(ui.mode!=='p3d'&&!setMode('p3d',true))return;if(mesh&&mesh.udimAtlas)mesh=mesh.udimOf;
   if(mesh&&mesh!==v3.imported){v3.imported=p3.imported=mesh;v3s().model='imported';v3.mesh=null;v3LoadModel();}
   const back=p3.sets[p3.cur]&&p3.sets[p3.cur].name;let n=0;
   for(let i=0;i<p3.sets.length;i++){const S=p3.sets[i],binding=p3Binding(S),res=(S.tile&&by[binding+'@'+S.tile.id])||by[binding]||by['*'];if(!res||S.missing)continue;p3SwitchSet(i,true);p3ApplyBake(res,ks,asLayers);n++;}
