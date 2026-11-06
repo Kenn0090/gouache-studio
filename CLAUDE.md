@@ -410,3 +410,4 @@ Artist style unwrap, `bake/uv-artist.js` (loaded before uv-unwrap.js because `UW
 - Test fix9410.
 - p3d2 fails on main too (deleting the active set: Left part does not start a new set) - not looked into.
 - Kenn (after 0.94.10, released): ghost reflections = give the friend settings to try; NEXT = UDIMs (paint/fill/blur across tiles, seamless, shared triplanar 'instances').
+- UDIM answers: ONE texture set per material with tiles inside (one layer stack painted across all tiles, tiles as sub-rows); instances via right-click > Instance to sets (pick sets; Unlink); shared triplanar placed on the WHOLE model so it continues across sets/tiles.
