@@ -111,6 +111,8 @@
     "view3d/mesh-paint",
     "view3d/mesh-pull",
     "view3d/paint3d",
+    "view3d/udim-atlas",
+    "view3d/p3-instance",
     "view3d/mesh-seams",
     "view3d/mesh-map-edit",
     "view3d/vp-strip",

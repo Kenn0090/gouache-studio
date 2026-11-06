@@ -166,8 +166,8 @@ function matEdCommit(){clearTimeout(matEd.timer);matEd.timer=0;const L=matEd.L,B
   const A=matEdSnap(L),keys=[...new Set([...B.keys,...A.keys])];
   const put=X=>{L.fill=fillClone(X.f);L._fillImg=Object.assign({},X.I);L.name=X.n;
     for(const k of keys){const s=X.S[k];if(X.V[k])setMapLive(L,k);else if(X.C[k])setMapSolid(L,k,X.C[k]);else if(s)restoreRegion(s,ensureMapTarget(L,k),0,0);else{const t=mapT(L,k,true);if(t&&!t.empty)disposeTarget(t);delete L.maps[k];if(L._fillSolid)delete L._fillSolid[k];if(L._fillLive)delete L._fillLive[k];if(k===doc.map)L.target=emptyFor(mapDepth(k));}}
-    L.lookVer=(L.lookVer||0)+1;changed(L);renderLayers();if(matEd.shown===L)renderMatEd(true);};
-  pushUndo({label:'Material',refs:[L],snaps:[...Object.values(B.S),...Object.values(A.S)].filter(Boolean),undo(){put(B);},redo(){put(A);}});}
+    L.lookVer=(L.lookVer||0)+1;changed(L);renderLayers();if(matEd.shown===L)renderMatEd(true);if(typeof instSync==='function')instSync(L);};
+  pushUndo({label:'Material',refs:[L],snaps:[...Object.values(B.S),...Object.values(A.S)].filter(Boolean),undo(){put(B);},redo(){put(A);}});if(typeof instSync==='function')instSync(L);/* (0.95) linked copies in other texture sets follow */}
 /* images a channel shows: its own picture, or the baked mesh map it uses */
 function fillImgsOf(L){const o=Object.assign({},L._fillImg||{}),M=doc.meshMaps||{},f=L.fill;if(f)for(const k in f.maps){const s=f.maps[k];if(s&&(s.src==='baked'||s.src==='conv')&&M[s.mm])o[k]=M[s.mm];}return o;}
 function renderMatEd(force){const box=document.getElementById('matEdBody');if(!box)return;const L=doc.active;

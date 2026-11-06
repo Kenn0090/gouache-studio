@@ -267,6 +267,7 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
   const head=t=>el('div',{class:'mh',text:t});const sep=()=>el('div',{class:'msep'});
   const items=[];
   if(n.fx&&n.fx.stack&&n.fx.stack.some(x=>x.id==='handPaint'))items.push(it('Make it a hand-painted material',()=>hpOverlayToMat(n)),sep());
+  if(ui.mode==='p3d'&&n.fill&&!n.fx&&p3.sets.filter(S=>!S.missing).length>1)items.push(it('Instance to sets…',()=>dlgInstance(n)),...(n.inst?[it('Unlink instance',()=>instUnlink(n))]:[]),sep());
   if(ui.mode==='p3d'&&n.mask&&!n.fx&&e.target&&e.target.closest('.mthumb')){
     const generators=flyItem('Generators',()=>MS_GENS.map(([k,title])=>it(title,()=>{selectOnly(n);msAdd(n,'gen',{p:msGenDefaults(k)});})));generators.setAttribute('aria-label','Generators');
     const anchors=flyItem('Anchor points',()=>{const names=msAnchorNames();return [it('Add anchor point to this layer',()=>{selectOnly(n);cfxAddAnchor(n);},null,!lay),sep(),head('Use an anchor in this mask'),...(names.length?names.map(name=>it('From “'+name+'”',()=>{selectOnly(n);msAdd(n,'anchor',{p:{name,ch:'height',inv:false}});})): [it('No anchor points yet',()=>{},null,true)])];});anchors.setAttribute('aria-label','Anchor points');items.push(generators,anchors,it('Levels',()=>{selectOnly(n);msAdd(n,'filter',{fx:'levels'});}),it('Invert',()=>{selectOnly(n);msAdd(n,'filter',{fx:'invert'});}),sep());}

@@ -7,7 +7,7 @@
 const uvw={open:false,view:'off',showOverlap:true,busy:false,gal:[],anim:false,rollNote:''};
 const uvSizeNow=()=>{try{return bakeCfg&&bakeCfg.size||2048;}catch(e){return 2048;}};
 /* the analysis is cached on the mesh (it is the same until the UVs change) */
-function uvAn(m){if(!m)return null;if(!m._uvAn)m._uvAn=uwAnalyze(m,{udim:typeof p3!=='undefined'&&ui.mode==='p3d'&&!!p3.udim,mask:true});return m._uvAn;}
+function uvAn(m){if(!m)return null;if(!m._uvAn)m._uvAn=uwAnalyze(m,{udim:typeof p3!=='undefined'&&ui.mode==='p3d'&&!!(p3.udim||p3.ua),mask:true});return m._uvAn;}
 const uvWorst=an=>an&&an.issues.find(i=>i.kind!=='none')||null;
 /* a dialog that gives back what was pressed: 'ok', 'cancel' or the name of a button inside it */
 function uvDialog(title,body,okLabel,cancelLabel){return new Promise(res=>{let done=false;const fin=v=>{if(!done){done=true;res(v);}};
