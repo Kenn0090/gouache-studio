@@ -659,16 +659,16 @@ for(const t of ['keydown','keyup'])window.addEventListener(t,e=>{if(e.key==='Alt
   sp.addEventListener('pointerup',()=>{if(!d)return;d=null;try{localStorage.setItem(ui.mode==='p3d'?'gs.pane3dp':'gs.pane3d',String($('#pane3d').clientWidth));}catch(e){}});})();
 
 /* ---- importing a model ---- */
-async function v3DropModel(files){const f=files.find(x=>isModelName(x.name));if(!f)return;loadStart(f.name);
+async function v3DropModel(files){const f=files.find(x=>isModelName(x.name));if(!f)return;loadModelStart(f.name);
   try{let m=await parseModelFile(f,files,{udim:ui.mode==='p3d'&&(p3.udim||!!p3.ua)});if(typeof uvImportCheck==='function'&&ui.mode!=='bake'){loadEnd();try{m=await uvImportCheck(m);}finally{loadStart(f.name);}}v3.imported=m;v3s().model='imported';if(!v3.on)toggle3D(true);v3SetMesh(m);build3dPane();toast('Loaded “'+m.name+'”: '+m.tris.toLocaleString()+' triangles.'+(m.uvSetName?' · UV '+m.uvSetName:'')+(m.noUV?' It has no UVs, so the textures cannot map onto it.':''));}
-  catch(e){console.warn(e);toast('This model could not be loaded: '+(e.message||e));}finally{loadEnd();}}
+  catch(e){if(e.message==='Import cancelled.')toast('Import cancelled.');else{console.warn(e);toast('This model could not be loaded: '+(e.message||e));}}finally{loadEnd();}}
 async function importModel(){const done=m=>{if(ui.mode==='p3d'&&m.fromZBrush&&meshHasGroups(m)&&prefs.zbIgnore!==false){m=meshOneSet(m);toast('ZBrush polygroups ignored: the model is one texture set (Preferences or the New project window can change this).');}v3.imported=m;v3s().model='imported';v3SetMesh(m);build3dPane();toast('Loaded “'+m.name+'”: '+m.tris.toLocaleString()+' triangles.'+(m.noUV?' It has no UVs, so the textures cannot map onto it.':''));};
-  if(platform.isDesktop){try{const p=await platform.openDialog([{name:'3D models',extensions:['obj','glb','gltf','fbx','OBJ','GLB','GLTF','FBX']}]);if(!p)return;loadStart(fileNameOf(p));
+  if(platform.isDesktop){try{const p=await platform.openDialog([{name:'3D models',extensions:['obj','glb','gltf','fbx','OBJ','GLB','GLTF','FBX']}]);if(!p)return;loadModelStart(fileNameOf(p));
       try{const bytes=await platform.readFile(p);const dir=p.replace(/[\\/][^\\/]*$/,''),sep=p.includes('\\')?'\\':'/';
         done(await uvImportCheck(await mwTag(await parseModelBytes(fileNameOf(p),bytes,async u=>{const b=await platform.readFile(dir+sep+u);return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);},{udim:ui.mode==='p3d'&&(p3.udim||!!p3.ua)}),p)));}finally{loadEnd();}}
-    catch(e){console.warn(e);toast('This model could not be loaded: '+(e.message||e));}return;}
-  const f=el('input',{type:'file',accept:'.obj,.glb,.gltf,.fbx',multiple:true});f.onchange=async()=>{const fs=[...f.files],file=fs.find(x=>isModelName(x.name));if(!file)return;loadStart(file.name);
-    try{done(await uvImportCheck(await parseModelFile(file,fs,{udim:ui.mode==='p3d'&&(p3.udim||!!p3.ua)})));}catch(e){console.warn(e);toast('This model could not be loaded: '+(e.message||e));}finally{loadEnd();}};f.click();}
+    catch(e){if(e.message==='Import cancelled.')toast('Import cancelled.');else{console.warn(e);toast('This model could not be loaded: '+(e.message||e));}}return;}
+  const f=el('input',{type:'file',accept:'.obj,.glb,.gltf,.fbx',multiple:true});f.onchange=async()=>{const fs=[...f.files],file=fs.find(x=>isModelName(x.name));if(!file)return;loadModelStart(file.name);
+    try{done(await uvImportCheck(await parseModelFile(file,fs,{udim:ui.mode==='p3d'&&(p3.udim||!!p3.ua)})));}catch(e){if(e.message==='Import cancelled.')toast('Import cancelled.');else{console.warn(e);toast('This model could not be loaded: '+(e.message||e));}}finally{loadEnd();}};f.click();}
 /* ---- its own window (second screen): the GPU draws it here and the picture is copied into that window ---- */
 function pop3D(out,quiet){if(out){if(v3.pop)return;const w=window.open('about:blank','gouache3d','width=960,height=720');
     if(!w){toast('The window could not be opened.');return;}

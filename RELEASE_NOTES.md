@@ -1,3 +1,8 @@
+## 0.95.3
+
+- **FBX import:** text (ASCII) FBX meshes can now be imported, including the Dragon model.
+- **Cancel mesh imports:** use Stop on the loading bar to cancel a large model import.
+
 ## 0.95.2
 
 - **Smaller 4K materials:** grey maps kept at 2K inside 4K materials (a switch, on by default), and grey material pictures use a quarter of the graphics memory.

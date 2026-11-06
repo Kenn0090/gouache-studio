@@ -1,3 +1,8 @@
+## 0.95.3
+
+- **FBX import:** text (ASCII) FBX meshes can now be imported, including the Dragon model.
+- **Cancel mesh imports:** use Stop on the loading bar to cancel a large model import.
+
 ## 0.95.2
 
 - **Smaller 4K materials.** New switch (on by default, in Preferences › Memory and disk and File › Content…): in 4K materials, roughness, AO, metal and height are kept at 2K while colour and normal stay 4K. Those maps take a quarter of the memory and disk and look almost the same.

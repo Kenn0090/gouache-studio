@@ -277,7 +277,7 @@ function bakeSetModel(key,m){if(bk.busy){toast("Wait for the bake to finish.");r
 function bakeGuessSlot(name){const n=baseName(name).toLowerCase();if(/cage/.test(n))return 'cage';if(/(^|[_\-\s.])(high|hi|hp)(poly)?($|[_\-\s.\d])|highpoly/.test(n))return 'high';if(/(^|[_\-\s.])(low|lo|lp)(poly)?($|[_\-\s.\d])|lowpoly/.test(n))return 'low';return null;}
 async function bakeDropFiles(files,key){files=[...files];const models=files.filter(f=>isModelName(f.name));if(!models.length){toast('Drop an OBJ, glTF, GLB or FBX model.');return;}
   for(const f of models){let k=key||bakeGuessSlot(f.name);if(!k){if(models.length>1){toast('Name the files “…_low” and “…_high”, or drop each one on its row.');continue;}k=bakeCfg.high?'low':'high';}
-    loadStart(f.name);try{let m=await parseModelFile(f,files);if(k==='low')m=await uvImportCheck(m);if(k==='high'&&bakeCfg.high)bakeAddHigh(m);else bakeSetModel(k,m);}catch(e){console.warn(e);toast('“'+f.name+'” could not be loaded: '+(e.message||e));}finally{loadEnd();}}}
+    loadModelStart(f.name);try{let m=await parseModelFile(f,files);if(k==='low')m=await uvImportCheck(m);if(k==='high'&&bakeCfg.high)bakeAddHigh(m);else bakeSetModel(k,m);}catch(e){if(e.message==='Import cancelled.')toast('Import cancelled.');else{console.warn(e);toast('“'+f.name+'” could not be loaded: '+(e.message||e));}}finally{loadEnd();}}}
 function bakeDropZone(node,key){node.addEventListener('dragover',e=>{if([...e.dataTransfer.types].includes('Files')){e.preventDefault();e.stopPropagation();node.classList.add('dropon');}});
   node.addEventListener('dragleave',()=>node.classList.remove('dropon'));
   node.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();node.classList.remove('dropon');bakeDropFiles(e.dataTransfer.files,key);});}
@@ -367,7 +367,7 @@ function bakeProgUI(){const box=$('#bkProg');if(!box)return;const p=bk.prog;
 function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChildren();const C=bakeCfg;
   const row=(label,ctrl)=>el('div',{class:'frow'},el('label',{text:label}),ctrl);
   const modelSel=(key,opts)=>{const s=el('select',{'aria-label':key,id:'bk_'+key});const draw=()=>{s.replaceChildren(...opts().map(([v,t])=>el('option',{value:v,text:t})));s.value=C[key]&&C[key].name?'file':opts()[0][0];};
-    const load=async()=>{try{const m=await bakePickModel(key==='low'?{uv:true}:{});if(m)bakeSetModel(key,m);}catch(e){console.warn(e);toast('This model could not be loaded: '+(e.message||e));}draw();info();};
+    const load=async()=>{try{const m=await bakePickModel(key==='low'?{uv:true}:{});if(m)bakeSetModel(key,m);}catch(e){if(e.message==='Import cancelled.')toast('Import cancelled.');else{console.warn(e);toast('This model could not be loaded: '+(e.message||e));}}draw();info();};
     s.onchange=async()=>{if(s.value==='load'){await load();return;}if(s.value!=='file'){C[key]=null;if(key==='high')C.highMeshes=[];}info();if(key==='low')bakeSyncMesh();};draw();
     const btn=el('button',{class:'btn sm',text:'Load…',id:'bk_'+key+'Load',title:'Load a model file (OBJ, glTF, GLB, FBX), or drop one here'});btn.onclick=load;
     const wrap=el('div',{class:'bkmodel'},s,btn);if(key==='high')wrap.append(el('button',{class:'btn sm',id:'bk_highAdd',text:'Add…',title:'Add another high-poly mesh to bake together',disabled:bk.busy,onclick:async()=>{try{const m=await bakePickModel();if(m)bakeAddHigh(m);}catch(e){toast('Could not add this mesh: '+(e.message||e));}}}));bakeDropZone(wrap,key);return wrap;};

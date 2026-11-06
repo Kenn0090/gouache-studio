@@ -21,7 +21,7 @@ const platform={
   async readFile(path){let size=0;try{size=await this.invoke('file_size',{path});}catch(e){}
     if(!size||size<16*1024*1024)return new Uint8Array(await this.invoke('read_file',{path}));
     const out=new Uint8Array(size),CH=16*1024*1024;const name=path.split(/[\\/]/).pop(),show=typeof loadDepth!=='undefined'&&loadDepth>0;
-    for(let o=0;o<size;o+=CH){const part=new Uint8Array(await this.invoke('read_file_range',{path,offset:o,len:Math.min(CH,size-o)}));out.set(part,o);if(show)loadSet((o+part.length)/size,'Reading '+name+' · '+Math.round((o+part.length)/1048576)+' of '+Math.round(size/1048576)+' MB');}
+    for(let o=0;o<size;o+=CH){if(typeof modelCancelCheck==='function')modelCancelCheck();const part=new Uint8Array(await this.invoke('read_file_range',{path,offset:o,len:Math.min(CH,size-o)}));if(typeof modelCancelCheck==='function')modelCancelCheck();out.set(part,o);if(show)loadSet((o+part.length)/size,'Reading '+name+' · '+Math.round((o+part.length)/1048576)+' of '+Math.round(size/1048576)+' MB');}
     return out;},
   async openDialog(filters){const p=await this.invoke('plugin:dialog|open',{options:{multiple:false,directory:false,filters}});return Array.isArray(p)?p[0]:p;},
   async openFiles(filters,multiple){const p=await this.invoke('plugin:dialog|open',{options:{multiple:!!multiple,directory:false,filters}});return p?(Array.isArray(p)?p:[p]):[];},

@@ -194,11 +194,26 @@ function meshUnpack(bytes,name){const b=bytes.buffer.slice(bytes.byteOffset,byte
   if(!r.triIdPart)r.triIdPart=r.triPart?new Uint32Array(r.triPart):new Uint32Array(T);if(!r.idPartNames)r.idPartNames=(r.partNames||[]).slice();
   return r;}
 
+/* Read text FBX into the same node structure as binary FBX. Large numeric arrays
+   are read in one pass; object IDs stay strings so 64-bit IDs do not lose precision. */
+function fbxTextNodes(bytes){const text=new TextDecoder().decode(bytes),lines=text.split(/\r?\n/),root={kids:[]},stack=[root];let array=null;
+  const props=s=>{const out=[],re=/"([^"\r\n]*)"|([^,\s]+)/g;let m;while((m=re.exec(s))){const v=m[1]!==undefined?m[1]:m[2];out.push(m[1]!==undefined?v:(/^[-+]?\d+(?:\.\d*)?(?:[eE][-+]?\d+)?$/.test(v)?Number(v):v));}return out;};
+  for(let line of lines){line=line.trim();if(!line||line[0]===';')continue;
+    if(array){if(line[0]==='}'){const nums=array.chunks.join('').split(',').filter(x=>x.trim()!=='').map(Number);array.node.props=[{v:nums}];array=null;stack.pop();}else array.chunks.push(line.startsWith('a:')?line.slice(2):line);continue;}
+    if(line[0]==='}'){if(stack.length>1)stack.pop();continue;}
+    const m=/^([^:]+):\s*(.*)$/.exec(line);if(!m)continue;const key=m[1].trim(),body=m[2],open=/\{\s*$/.test(body),raw=open?body.replace(/\{\s*$/,'').trim():body;
+    const n={name:key,props:props(raw),kids:[]};if(['Geometry','Model','Material'].includes(key)&&n.props.length)n.props[0]=(raw.match(/^\s*([-+]?\d+)/)||[])[1]||String(n.props[0]);
+    if(key==='C'&&n.props.length>=3){const ids=raw.match(/^\s*"[^"]*"\s*,\s*([-+]?\d+)\s*,\s*([-+]?\d+)/);if(ids){n.props[1]=ids[1];n.props[2]=ids[2];}}
+    if(['Geometry','Model','Material'].includes(key)&&typeof n.props[1]==='string')n.props[1]=n.props[1].replace(/^[^:]+::/,'');
+    stack[stack.length-1].kids.push(n);if(open){stack.push(n);if(/^\*\d+$/.test(raw))array={node:n,chunks:[]};}
+  }
+  if(array||stack.length!==1)throw new Error('This text FBX is incomplete or malformed.');return root.kids;}
+
 /* ---- FBX (binary, as written by Blender, Maya, 3ds Max, Unity and Unreal) ---- */
 async function parseFBX(buf,name,onProgress,options={}){const u8=new Uint8Array(buf),dv=new DataView(buf);
-  const sig='Kaydara FBX Binary';if(new TextDecoder().decode(u8.subarray(0,18))!==sig){
-    if(/FBXHeaderExtension|; FBX/.test(new TextDecoder().decode(u8.subarray(0,400))))throw new Error('This is a text (ASCII) FBX. Export it as binary FBX, glTF or OBJ.');throw new Error('This does not look like an FBX file.');}
-  const ver=dv.getUint32(23,true),big=ver>=7500,pending=[];
+  const sig='Kaydara FBX Binary',binary=new TextDecoder().decode(u8.subarray(0,18))===sig;
+  if(!binary&&!/FBXHeaderExtension|; FBX/.test(new TextDecoder().decode(u8.subarray(0,400))))throw new Error('This does not look like an FBX file.');
+  const ver=binary?dv.getUint32(23,true):0,big=ver>=7500,pending=[];
   const rd=o=>big?Number(dv.getBigUint64(o,true)):dv.getUint32(o,true);
   const arr=(o,C,sz)=>{const len=dv.getUint32(o,true),enc=dv.getUint32(o+4,true),clen=dv.getUint32(o+8,true),start=o+12;const box={v:null};
     if(enc===1)pending.push(streamThrough(u8.subarray(start,start+clen),'deflate',true).then(r=>{box.v=new C(r.buffer.slice(r.byteOffset,r.byteOffset+len*sz));}));
@@ -213,8 +228,7 @@ async function parseFBX(buf,name,onProgress,options={}){const u8=new Uint8Array(
     const n={name:new TextDecoder().decode(u8.subarray(o+hl,o+hl+nl)),props:[],kids:[]};let p=o+hl+nl;
     for(let i=0;i<np;i++){const [v,q]=prop(p);n.props.push(v);p=q;}
     while(p<end){const [c,q]=node(p);p=q;if(!c)break;n.kids.push(c);}return [n,end];};
-  const top=[];let o=27;while(o<u8.length-160){const [n,q]=node(o);if(!n)break;top.push(n);o=q;}
-  await Promise.all(pending);
+  let top;if(binary){top=[];let o=27;while(o<u8.length-160){const [n,q]=node(o);if(!n)break;top.push(n);o=q;}await Promise.all(pending);}else top=fbxTextNodes(u8);
   const val=x=>x&&x.v!==undefined?x.v:x,kid=(n,k)=>n&&n.kids.find(c=>c.name===k),objs=kid({kids:top},'Objects');if(!objs)throw new Error('No objects in this FBX file.');
   const models={},geoms={},parent={},geoOf={};
   const matN={};for(const n of objs.kids)if(n.name==='Material')matN[n.props[0]]=String(n.props[1]||'').split('\u0000')[0]||('Material '+n.props[0]);
