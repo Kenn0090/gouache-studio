@@ -30,6 +30,11 @@ Like Photoshop's memory and scratch disk settings.
 
 Everything takes effect when you press **Save**. The performance monitor's last line shows the memory in use.
 
+### Material pictures (0.95.2)
+
+- **Keep roughness, AO, metal and height at 2K in 4K materials** (on by default): Library downloads at 4K and **Materials › From textures** keep those grey maps at 2048 pixels; colour and normal stay full size. Those maps then take a quarter of the memory and disk and look almost the same. The same switch is in **File › Content…**.
+- **Keep grey material pictures in one channel on the graphics card** (on by default): a roughness, metal, AO or height picture uses one channel instead of four, so a quarter of the graphics memory, with no loss.
+
 ## Tile mode (Shift+T)
 
 On large canvases, brush strokes now keep the same mip filtering as the idle view. Updating just the affected mip regions prevents the temporary blur and quality snap while painting at 8K.

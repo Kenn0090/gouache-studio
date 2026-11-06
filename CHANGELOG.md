@@ -1,3 +1,8 @@
+## 0.95.2
+
+- **Smaller 4K materials.** New switch (on by default, in Preferences › Memory and disk and File › Content…): in 4K materials, roughness, AO, metal and height are kept at 2K while colour and normal stay 4K. Those maps take a quarter of the memory and disk and look almost the same.
+- **Less graphics memory for materials.** Grey material pictures (roughness, metal, AO, height) are now kept in one channel on the graphics card instead of four: a quarter of the memory, with no loss. Together with the 2K switch, a 4K material's pictures use well under half the graphics memory they did.
+
 ## 0.95.1
 
 - **Which way is up.** The New 3D Paint Project window and the Bake tab have an **Up axis** choice: **Auto** reads it from the file (FBX and glTF say which way is up; OBJ counts as Y up), or pick **Y up** / **Z up**. It is remembered, and changing it after picking a model turns that model straight away. A Z-up model, such as one from Unreal, no longer comes in lying on its back.

@@ -427,3 +427,8 @@ Artist style unwrap, `bake/uv-artist.js` (loaded before uv-unwrap.js because `UW
 - parseFBX sets `r.fileUp` from GlobalSettings UpAxis/UpAxisSign; glb/gltf get fileUp 'y'; `parseModelBytes` runs `upApply` (options.noUp skips, options.up overrides).
 - Export: OBJ/FBX turned with upYtoZ when Z; `mxFBX(...,{zUp})` writes UpAxis 2, FrontAxis 1 sign +1 (the rotated Y-up axes; ufbx reads right +X, up +Z, front +Y, same handedness as our Y-up files: right +X, up +Y, front -Z). GLB stays Y up.
 - Test up951 (python ufbx check, skipped if missing).
+
+## 0.95.2 smaller 4K (Kenn: both disk and GPU memory; grey-at-2K as a setting; GPU compression this round)
+- `miBuild` caps grey channels at 2048 when max > 2048 (`MI_COLOUR_CH` = base/normal/emis/spec/sheen stay full) unless prefs.grey2k===false (Preferences › Memory and disk `pGrey2k`, File › Content… `ctGrey2k`). Applies to Library downloads (olMake/olMakePV) and From textures.
+- One-channel grey pictures: `fillMonoize(L,k)` (fill-layer.js; called from fillRender's image path and fillLiveSource) turns a grey channel's `_fillImg` (≥256² px, 8-bit) into a `mono` R8 target (prefs.monoGrey===false turns it off, `pMonoGrey`). FS_FILLIMG `uOneCh` + `monoX()` expands .r (the fillCompProgram / material-brush regex rewrite `o=…;`→`return …;` broke a name containing "o=" — keep "o=" out of FS_FILLIMG helper code). Copies via `fillImgCopy(s)` (keeps mono); `blit` mono→RGBA uses P.maskplace (grey), `copyScaled` mono→RGBA expands first; captureRegionNow/readRegionAsync already expand mono. Test tex952.
+- Not done: true block compression (BC7/BC5) for colour and normal pictures: compressed textures cannot be render targets or read back, so every copy/read/save path would need a decoded copy; asked Kenn.

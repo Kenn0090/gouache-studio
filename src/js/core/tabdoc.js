@@ -37,5 +37,5 @@ const paintDocSize=()=>tabDocs.paint?[tabDocs.paint.doc.w,tabDocs.paint.doc.h]:[
 /* (3D Paint exports and changes its own texture set) */
 for(const k of ['export','expTex','imageSize','canvasSize','place','depth8','depth16','maps','flatten','mergeVisible'])if(actions[k]){const f=actions[k];actions[k]=(...a)=>{if(tabDocs.paint&&!(ui.mode==='p3d'&&['export','expTex','maps','depth8','depth16','flatten','mergeVisible'].includes(k))&&!setMode('paint',true))return;return f(...a);};}
 /* a copy of src into dst at dst's size (smoothly scaled when the sizes differ) */
-function copyScaled(src,dst){if(src.w===dst.w&&src.h===dst.h){run(P.shift,dst,{uSrc:src.tex,uOff:[0,0],uWrap:false,uOutside:[0,0,0,0]});return;}
+function copyScaled(src,dst){if(src.mono&&!dst.mono&&!dst.packed){const t=makeTarget(src.w,src.h,8,false);blit(src,t,0,0,src.w,src.h,0,0);copyScaled(t,dst);disposeTarget(t);return;}/* (0.95.2) one channel → grey */if(src.w===dst.w&&src.h===dst.h){run(P.shift,dst,{uSrc:src.tex,uOff:[0,0],uWrap:false,uOutside:[0,0,0,0]});return;}
   run(P.resample,dst,{uSrc:src.tex,uOffset:[0,0],uScale:[src.w/dst.w,src.h/dst.h],uTaps:{int:Math.min(8,Math.max(1,Math.ceil(src.w/dst.w)))}});}

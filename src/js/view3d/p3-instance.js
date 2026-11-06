@@ -16,7 +16,7 @@ const instNew=()=>'i'+Date.now().toString(36)+Math.random().toString(36).slice(2
 /* copy material L (in the live set) into the live document of another set: settings, pictures and content effects */
 function instCopyInto(src,imgs){const L=newLayerObj(src.name,true);L.fill=fillClone(src.fill);L.inst=src.inst;L.opacity=src.opacity;L.mode=src.mode;
   L.mapModes=Object.assign({},src.mapModes);L.mapOpacities=Object.assign({},src.mapOpacities);
-  if(imgs){L._fillImg={};for(const k in imgs){const s=imgs[k],t=makeTarget(s.w,s.h,8,true);blit(s,t,0,0,s.w,s.h,0,0);L._fillImg[k]=t;}}
+  if(imgs){L._fillImg={};for(const k in imgs)L._fillImg[k]=fillImgCopy(imgs[k]);}
   if(src.cfx)L.cfx=JSON.parse(JSON.stringify(src.cfx));fillRender(L);return L;}
 function instTargets(L){const out=[];p3.sets.forEach((S,i)=>{if(i===p3.cur||S.missing)return;const D=S.state&&S.state.doc;if(!D)return;const has=(function find(n){if(n.inst===L.inst&&n!==L&&n.fill)return true;return (n.children||[]).some(find);})(D.root);if(has)out.push(i);});return out;}
 function instLayersIn(id){return paintLayers().filter(n=>n.inst===id&&n.fill);}
@@ -34,7 +34,7 @@ function instSync(L){if(instBusy||!L||!L.inst||!L.fill||ui.mode!=='p3d')return 0
   try{const imgs=L._fillImg||{},f=L.fill;
     for(const i of instTargets(L))p3InSet(i,()=>{for(const C of instLayersIn(L.inst)){C.fill=fillClone(f);C.name=L.name;
       const keep=C._fillImg||{};for(const k of new Set([...Object.keys(keep),...Object.keys(imgs)])){if(keep[k]&&keep[k]._instSrc===imgs[k])continue;if(keep[k])disposeTarget(keep[k]);delete keep[k];
-        const s=imgs[k];if(s){const t=makeTarget(s.w,s.h,8,true);blit(s,t,0,0,s.w,s.h,0,0);t._instSrc=s;keep[k]=t;}}C._fillImg=keep;
+        const s=imgs[k];if(s){const t=fillImgCopy(s);t._instSrc=s;keep[k]=t;}}C._fillImg=keep;
       C.cfx=L.cfx?JSON.parse(JSON.stringify(L.cfx)):C.cfx;fillRender(C);C.lookVer=(C.lookVer||0)+1;n++;}});}
   finally{instBusy=false;}if(n){v3.dirty=true;requestRender(true);}return n;}
 function instUnlink(L){if(!L||!L.inst)return;delete L.inst;renderLayers();toast('“'+L.name+'” is no longer linked; the other copies stay.');}

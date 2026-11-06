@@ -1,3 +1,6 @@
+## 0.95.2
+
+- **Smaller 4K materials:** grey maps kept at 2K inside 4K materials (a switch, on by default), and grey material pictures use a quarter of the graphics memory.
 ## 0.95.1
 
 - **Up axis:** choose Auto / Y up / Z up when importing (Auto reads the file), 90° turn buttons, and exported OBJ/FBX follow the engine (Z up for Unreal and Blender).
