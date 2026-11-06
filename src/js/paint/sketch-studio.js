@@ -19,6 +19,8 @@ const SK_GROUPS=[
   ['Scribble shading',{tip:'graphite',size:50,angleJitter:1,flow:.6,tooth:.8,spacing:.5,pSize:false}],['Hatch shader',{tip:'graphite',size:60,angle:35,flow:.55,tooth:.8,spacing:.12,pSize:false}],
   ['Stipple shader',{size:60,hardness:.3,flow:.9,tooth:0,spray:1.2,sprayDen:.45,pSize:false,pOpacity:false}],
   ['Stump blend',{tool:'smudge',size:50,hardness:.15,strength:.55,sampleAll:true,paintMix:0,spacing:.05,smoothing:.4,pSize:true,minSize:.5,pOpacity:false,buildup:false,tooth:0,simP:'off'}],
+  /* (0.94.8, Kenn) a gentler Stump blend with a smoother blur */
+  ['Stumpy G',{tool:'smudge',blendMode:'soft',softSmooth:true,size:60,hardness:.08,strength:.3,sampleAll:true,paintMix:0,spacing:.04,smoothing:.45,pSize:true,minSize:.5,pOpacity:true,buildup:false,tooth:0,simP:'off'}],
   ['Kneaded eraser',{tool:'erase',size:40,hardness:.2,flow:.25,tooth:.5,buildup:true,pOpacity:false,simP:'off'}]]],
  ['Sketch · Crayons',[
   ['Wax crayon',{tip:'crayon',size:24,angle:20,flow:.9,tooth:.8,pSize:false}],['Chunky crayon',{tip:'crayon',size:50,angle:15,flow:.9,tooth:.9,pSize:false}],['Soft crayon',{tip:'crayon',size:36,angle:20,flow:.6,tooth:.6,pSize:false}],

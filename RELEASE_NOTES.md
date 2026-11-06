@@ -1,3 +1,6 @@
+## 0.94.8
+
+- **Stumpy G:** a gentler stump blend that blurs smoothly, without steps. Any soft blend can switch on **Smoother blur** in the Blend panel.
 ## 0.94.7
 
 - **The new viewer is set aside** for a future update (its button and settings are hidden).
