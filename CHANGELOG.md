@@ -1,3 +1,8 @@
+## 0.95.4
+
+- **Paint stays where you paint on the model.** With the brush set to Surface wrap (the default), a stroke could also land on a part of the model hidden behind the one you were painting, for example on the neck under the chin while painting the corner of the mouth. Hidden parts no longer take paint; paint still reaches just behind a raised edge such as a lip.
+- **L turns left–right symmetry on and off.** In 3D Paint it switches Mirror X. Shift+X still works too. The Lasso no longer has a key of its own (Shift+L still switches freehand / polygon while it is chosen); give it one in Edit › Keyboard shortcuts if you like.
+
 ## 0.95.3
 
 - **FBX import:** text (ASCII) FBX meshes can now be imported, including the Dragon model.

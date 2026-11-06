@@ -15,7 +15,7 @@ out vec3 vP; out vec3 vN; out vec2 vT;
 void main(){ vec2 t=aT*uUVs; vec3 p=aP; if(uUseH==1&&uDisp!=0.0){ float h=textureLod(uH,uUseUDIM==1?fract(t):t,0.0).r-0.5; p+=aD*h*uDisp; }
   vP=p; vN=aN; vT=t; vec2 q=(uUseUDIM==1?fract(t):t)-uShift; gl_Position=vec4(q*2.0-1.0,0.0,1.0); }`;
 /* uMir: for mirror and radial painting, the texel looks up the brush where its mirror image is (identity otherwise) */
-const FS_3DPROJ=`in vec3 vP; in vec3 vN; in vec2 vT; uniform mat4 uVPm; uniform sampler2D uStroke; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform mat4 uMir; uniform int uAlign; uniform int uNoBack; uniform int uUseUDIM; uniform vec2 uUDIMTile;
+const FS_3DPROJ=`in vec3 vP; in vec3 vN; in vec2 vT; uniform mat4 uVPm; uniform sampler2D uStroke; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform mat4 uMir; uniform int uAlign; uniform float uWrapTol; uniform int uNoBack; uniform int uUseUDIM; uniform vec2 uUDIMTile;
 uniform int uSt; uniform sampler2D uStT; uniform vec2 uStC; uniform vec2 uStHalf; uniform float uStRot; uniform vec2 uScr; uniform int uStTile; uniform int uStInv;
 void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec3 q=(uMir*vec4(vP,1.0)).xyz; vec4 c=uVPm*vec4(q,1.0); if(c.w<=1e-6){ o=vec4(0); return; } vec2 s=c.xy/c.w*0.5+0.5;
   if(s.x<0.0||s.y<0.0||s.x>1.0||s.y>1.0){ o=vec4(0); return; }
@@ -27,7 +27,10 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec3 q=
   /* Skip back faces: the real face (from how the position changes across the pixels, turned to the side the vertex normals point to)
      must look at the camera. Paint then never goes through a thin part to the far side, and never lands on a face seen from behind. */
   if(uNoBack==1){ vec3 gn=cross(dFdx(vP),dFdy(vP)); if(dot(gn,gn)>1e-24){ gn=normalize(gn); if(dot(gn,vN)<0.0) gn=-gn; if(dot(normalize(mat3(uMir)*gn),viewDir)<=0.0){ o=vec4(0); return; } } }
-  if(uAlign==1){if(dot(n,viewDir)<-0.035){o=vec4(0);return;}}
+  /* (0.95.4, Kenn: paint at the lip corner landed on the neck) Surface wrap still needs SOME depth check: a surface facing
+     the camera but hidden far behind another part (the neck under the chin) must not take paint. uWrapTol (world units,
+     from the brush size) lets paint reach just behind a raised edge, nothing further. */
+  if(uAlign==1){if(dot(n,viewDir)<-0.035){o=vec4(0);return;} if(z>0.0&&d>z*1.006+uWrapTol){o=vec4(0);return;}}
   else if(z<=0.0||d>z*1.006+0.004){o=vec4(0);return;}
   vec4 t=texture(uStroke,s);
   /* stencil: 1 = mask (light parts let paint through), 2 = colour (paints the picture itself) */
@@ -38,6 +41,8 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec3 q=
   o=t; }`;
 const VS_3DD=VS_3D.replace('out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;','out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;');
 let P3P=null;
+/* how far behind the visible surface Surface wrap may still paint: half the brush on the model, kept between 0.4% and 4% of the model's size */
+function meshWrapTol(){const R=v3.mesh?.radius||1,bw=(brush.size||20)*R/512;return Math.min(R*.04,Math.max(R*.004,bw*.5));}
 /* p3Bounds.off: tests turn the stroke-box shortcuts off to compare against the full texture update */
 const p3Bounds={off:false};
 function p3p(){if(!P3P)P3P={depth:prog3(VS_3DD,FS_3DDEPTH.replace('void main','in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan;\nvoid main')),proj:prog3(VS_3DPROJ,FS_3DPROJ)};return P3P;}
@@ -81,7 +86,7 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
     pull(prog,target,extra){useProg(prog,Object.assign({uVPm:{m4:VP},uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v]},extra));
       bindTarget(target);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);
       const loc=gl.getUniformLocation(prog.p,'uShift'),alignLoc=gl.getUniformLocation(prog.p,'uAlign'),backLoc=gl.getUniformLocation(prog.p,'uNoBack');gl.bindVertexArray(g.vao);
-      gl.uniform1i(alignLoc,s.paintAlign==='camera'?0:1);gl.uniform1i(backLoc,s.noBack===false?0:1);
+      gl.uniform1i(alignLoc,s.paintAlign==='camera'?0:1);gl.uniform1i(backLoc,s.noBack===false?0:1);gl.uniform1f(gl.getUniformLocation(prog.p,'uWrapTol'),meshWrapTol());
       for(let j=0;j<uvs;j++)for(let i=0;i<uvs;i++){gl.uniform2f(loc,i,j);gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);}
       gl.bindVertexArray(vao);},
     /* The projection covers the whole texture, which at 4096 px is tens of millions of heavy fragments per frame (times each
@@ -96,7 +101,7 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
       const stU=st3Uniforms(w,h);for(const Mi of mirs){useProg(P.proj,Object.assign({uVPm:{m4:VP},uStroke:M.buf.tex,uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v],uMir:{m4:Mi}},stU));
       bindTarget(strokeT);gl.enable(gl.BLEND);gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);gl.disable(gl.CULL_FACE);
       const loc=gl.getUniformLocation(P.proj.p,'uShift'),alignLoc=gl.getUniformLocation(P.proj.p,'uAlign'),backLoc=gl.getUniformLocation(P.proj.p,'uNoBack');gl.bindVertexArray(g.vao);
-      const align=v3s().paintAlign==='camera'?0:1;gl.uniform1i(alignLoc,align);gl.uniform1i(backLoc,v3s().noBack===false?0:1);
+      const align=v3s().paintAlign==='camera'?0:1;gl.uniform1i(alignLoc,align);gl.uniform1f(gl.getUniformLocation(P.proj.p,'uWrapTol'),meshWrapTol());gl.uniform1i(backLoc,v3s().noBack===false?0:1);
       for(let j=0;j<uvs;j++)for(let i=0;i<uvs;i++){gl.uniform2f(loc,i,j);gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);}}
       gl.bindVertexArray(vao);gl.blendEquation(gl.FUNC_ADD);gl.disable(gl.BLEND);},
     /* the part of the texture this stroke can have touched: triangles whose screen position meets the stroke */

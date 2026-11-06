@@ -9,7 +9,7 @@
 const smudge3d=(()=>{const d={mode:'smudge'};try{Object.assign(d,JSON.parse(localStorage.getItem('gs.smudge3d')||'{}'));}catch(e){}return d;})();
 const smudge3dSave=()=>{try{localStorage.setItem('gs.smudge3d',JSON.stringify({mode:smudge3d.mode}));}catch(e){}};
 /* uMode 0: Smudge (under the dab, pull from the pixel uDelta behind it); 1: Liquify (pull through the movement map uDisp2) */
-const FS_3DPULL=`in vec3 vP; in vec3 vN; in vec2 vT; uniform mat4 uVPm; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform int uAlign; uniform int uNoBack; uniform int uUseUDIM; uniform vec2 uUDIMTile;
+const FS_3DPULL=`in vec3 vP; in vec3 vN; in vec2 vT; uniform mat4 uVPm; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform int uAlign; uniform float uWrapTol; uniform int uNoBack; uniform int uUseUDIM; uniform vec2 uUDIMTile;
 uniform int uMode; uniform sampler2D uCopy; uniform sampler2D uStroke; uniform vec2 uDelta; uniform float uK; uniform float uCharge; uniform vec3 uColor; uniform int uLockAlpha; uniform float uTol; uniform int uNormalMap;
 uniform sampler2D uDisp2; uniform sampler2D uSelTex; uniform int uUseSel;
 void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard;
@@ -17,7 +17,7 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard;
   ivec2 ds=textureSize(uDepth,0); ivec2 ip=clamp(ivec2(s*vec2(ds)),ivec2(0),ds-ivec2(1)); float z=texelFetch(uDepth,ip,0).r; float d=length(vP-uCamP);
   vec3 n=normalize(vN),viewDir=normalize(uCamP-vP);
   if(uNoBack==1){ vec3 gn=cross(dFdx(vP),dFdy(vP)); if(dot(gn,gn)>1e-24){ gn=normalize(gn); if(dot(gn,vN)<0.0) gn=-gn; if(dot(gn,viewDir)<=0.0) discard; } }
-  if(uAlign==1){ if(dot(n,viewDir)<-0.035) discard; } else if(z<=0.0||d>z*1.006+0.004) discard;
+  if(uAlign==1){ if(dot(n,viewDir)<-0.035) discard; if(z>0.0&&d>z*1.006+uWrapTol) discard; } else if(z<=0.0||d>z*1.006+0.004) discard;
   ivec2 fp=ivec2(gl_FragCoord.xy); vec4 dst=texelFetch(uCopy,fp,0);
   float m=1.0; if(uUseSel==1) m=texelFetch(uSelTex,fp,0).r; if(m<=0.0) discard;
   vec2 shift; float k;

@@ -122,7 +122,8 @@ function selKeys(e,m,k){
     return false;}
   if(e.altKey)return false;
   if(k==='m'){if(e.shiftKey&&ui.tool==='marquee'){ui.marquee=ui.marquee==='rect'?'ellipse':'rect';updateSelIcons();buildBrushPanel();}else setTool('marquee');return true;}
-  if(k==='l'){if(e.shiftKey&&ui.tool==='lasso'){ui.lasso=ui.lasso==='free'?'poly':'free';polyLasso=null;updateSelIcons();buildBrushPanel();drawSelOverlay();}else setTool('lasso');return true;}
+  /* (0.95.4, Kenn) L = left–right symmetry; Shift+L still switches free/polygon while the Lasso is the tool */
+  if(k==='l'){if(e.shiftKey&&ui.tool==='lasso'){ui.lasso=ui.lasso==='free'?'poly':'free';polyLasso=null;updateSelIcons();buildBrushPanel();drawSelOverlay();}else if(!e.shiftKey&&ui.mode!=='bake')symToggleX();else return false;return true;}
   if(k==='w'){setTool('wand');return true;}
   if(k==='q'){toggleQuickMask();return true;}
   if(isSelTool(ui.tool)&&sel.active&&e.key.startsWith('Arrow')){e.preventDefault();const s=e.shiftKey?10:1,d={ArrowLeft:[-s,0],ArrowRight:[s,0],ArrowUp:[0,-s],ArrowDown:[0,s]}[e.key];nudgeSel(d[0],d[1]);return true;}
