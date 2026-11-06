@@ -19,9 +19,17 @@ function refreshCursor(){if(typeof lpCursor==='function'&&lpCursor())return;if(t
   if(!paint){bc.hidden=true;if(cv.style.cursor==='none')cv.style.cursor='';return;}cv.style.cursor='none';const lq=ui.tool==='liquify',d=Math.max(3,(lq?liq.size:brush.size)*view.zoom);bc.hidden=false;bc.style.width=d+'px';bc.style.height=d+'px';if(lq){bc.classList.remove('tipcur');if(bc.firstChild)bc.replaceChildren();}else tipCursor(bc,d);bc.style.transform='translate('+(lastPos[0]-d/2)+'px,'+(lastPos[1]-d/2)+'px)';}
 /* Preferences › Show the brush tip's shape as the cursor: the tip's outline, at the brush size, turned and squashed like the dabs */
 const tipOutlineCache=new Map();
-function tipOutline(tip,d){const n=clamp(Math.round(d/4)*4,8,512),key=tip.id+':'+n;let c=tipOutlineCache.get(key);if(c)return c;
-  const a=tip.w/tip.h,W=a>=1?n:Math.max(2,Math.round(n*a)),H=a>=1?Math.max(2,Math.round(n/a)):n;
-  c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');x.drawImage(tip.canvas,0,0,W,H);const A=x.getImageData(0,0,W,H).data,out=x.createImageData(W,H),O=out.data;
+/* (0.94.10) the tip's alpha is read back ONCE per tip (a read from an accelerated canvas stalls the graphics card); sizes are made from it in plain memory.
+   Before, hovering a curved model changed the cursor size on nearly every move and each new size read the canvas again (~0.2 s a move in tests). */
+const tipAlphaCache=new Map();
+function tipOutAlpha(tip){let r=tipAlphaCache.get(tip.id);if(r&&r.tw===tip.w&&r.th===tip.h)return r;const a=tip.w/tip.h,M=512,W=a>=1?M:Math.max(2,Math.round(M*a)),H=a>=1?Math.max(2,Math.round(M/a)):M;
+  const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(tip.canvas,0,0,W,H);const d=x.getImageData(0,0,W,H).data,A=new Uint8Array(W*H);for(let i=0;i<A.length;i++)A[i]=d[i*4+3];
+  r={tw:tip.w,th:tip.h,W,H,A};if(tipAlphaCache.size>16)tipAlphaCache.clear();tipAlphaCache.set(tip.id,r);return r;}
+function tipOutline(tip,d){d=clamp(d,8,512);const step=Math.max(4,Math.round(d*.06/4)*4),n=clamp(Math.round(d/step)*step,8,512),key=tip.id+':'+n;let c=tipOutlineCache.get(key);if(c)return c;
+  const a=tip.w/tip.h,W=a>=1?n:Math.max(2,Math.round(n*a)),H=a>=1?Math.max(2,Math.round(n/a)):n,S=tipOutAlpha(tip);
+  c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d'),out=x.createImageData(W,H),O=out.data,A=new Uint8Array(W*H*4);
+  /* box-average the 512 px alpha down to this size (like drawImage did), into the alpha slot the code below reads */
+  for(let j=0;j<H;j++){const y0=Math.floor(j*S.H/H),y1=Math.max(y0+1,Math.floor((j+1)*S.H/H));for(let i=0;i<W;i++){const x0=Math.floor(i*S.W/W),x1=Math.max(x0+1,Math.floor((i+1)*S.W/W));let sum=0;for(let yy=y0;yy<y1;yy++){const row=yy*S.W;for(let xx=x0;xx<x1;xx++)sum+=S.A[row+xx];}A[(j*W+i)*4+3]=sum/((y1-y0)*(x1-x0));}}
   /* (0.65.1) a soft or faint tip (the watercolour pool) never reaches half strength: draw its outline where it is half as strong as it gets */
   let mx=0;for(let i=3;i<A.length;i+=4)if(A[i]>mx)mx=A[i];const thr=Math.max(6,Math.min(110,mx*.5));
   const on=(i,j)=>i>=0&&j>=0&&i<W&&j<H&&A[(j*W+i)*4+3]>=thr;let any=false;

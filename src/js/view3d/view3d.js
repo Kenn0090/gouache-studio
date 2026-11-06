@@ -464,7 +464,11 @@ function paintScale(){return prefs.paintScale||(prefs.paintHalf?.5:1);}
 function draw3D(){if(!v3.on)return;if(v3.pop){drawPop();return;}const pane=$('#pane3d'),d=dprNow(),w=Math.max(1,Math.round(pane.clientWidth*d)),h=cv.height,x0=$('#work').classList.contains('p3left')?0:cv.width-w;
   if(!v3.mesh)v3LoadModel();v3Refresh();
   /* (0.30.2) Low power painting: while a stroke is going the model is drawn at half size without smoothing, then stretched */
-  const ps=paintScale(),lite=!!(stroke&&ps<1&&!v3.rt),W=lite?Math.max(1,Math.round(w*ps)):w,H=lite?Math.max(1,Math.round(h*ps)):h,F=v3Targets(W,H,lite);
+  /* (0.94.10) turning a big model: drawn at 60% without smoothing while the camera moves, then sharp ~0.2 s after it stops (Preferences › Speed) */
+  const camSig=JSON.stringify(v3.cam)+'|'+v3s().fov+'|'+w+'x'+h,now=performance.now();if(camSig!==v3.camSig){if(v3.camSig)v3.navT=now;v3.camSig=camSig;}
+  const nav=!stroke&&!v3.rt&&prefs.navLite!==false&&v3.mesh&&v3.mesh.idx.length/3>=3e5&&now-(v3.navT||-1e9)<180;
+  if(nav){clearTimeout(v3.navTimer);v3.navTimer=setTimeout(()=>{v3.dirty=true;requestRender();},220);}
+  const ps=nav?.6:paintScale(),lite=!!((stroke||nav)&&ps<1&&!v3.rt),W=lite?Math.max(1,Math.round(w*ps)):w,H=lite?Math.max(1,Math.round(h*ps)):h,F=v3Targets(W,H,lite);
   /* Ray traced mode: a sample more each frame until it is clean (the normal view meanwhile while it prepares) */
   const rtr=v3.rt&&!v3s().wire&&!v3Unlit()&&ui.mode!=='bake'&&ui.mode!=='convert'&&typeof rtViewDraw==='function'?rtViewDraw(F):null;
   if(rtr===true)requestRender();else if(rtr===null){if(v3.dirty){v3Render(F);v3.dirty=false;}else if(v3.postDirty){if(!v3Post(F,true))v3Render(F);v3.postDirty=false;}}

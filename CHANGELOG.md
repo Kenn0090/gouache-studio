@@ -1,3 +1,10 @@
+## 0.94.10
+
+- **Dense models feel much lighter.** The brush outline under the mouse was rebuilt on almost every move over a curved model, and each rebuild made the graphics card wait. It is now made once per brush, so hovering and painting no longer stall (about 7 seconds saved over 40 mouse moves in our tests).
+- **Big models turn smoothly.** Models of 300,000 triangles or more are drawn a little lighter while you turn, move or zoom them, and sharp again the moment you stop (Preferences › Speed to switch it off).
+- **Less work during a stroke:** the shadow is redrawn when you lift the brush instead of several times a second while painting, and the mirror cursor no longer redraws the whole model for every dab.
+- Fixed a stray word "null" under the Model list in 3D Paint.
+
 ## 0.94.9
 
 - **Add layer makes a regular paint layer again** in 3D Paint (no grey fill with a white mask). The Material button still makes a plain grey material.

@@ -228,7 +228,7 @@ function drawMir3Cursors(F,common){const hover=mir3CursorHover,g=v3.gpu;
     gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,D.tex,0);
     gl.bindRenderbuffer(gl.RENDERBUFFER,D.rb);gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT24,D.w,D.h);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,D.rb);}
   const {VP,eye}=v3ViewProj(F.w,F.h),depthU={...common,uVP:{m4:VP},uCamP:eye};
-  const key=[g,...VP,common.uUVs,common.uH,common.uDisp,common.uUseH,v3Work.copies,v3Work.partialCopies];
+  const key=[g,...VP,common.uUVs,common.uH,common.uDisp,common.uUseH,...(common.uUseH&&common.uDisp?[v3Work.copies,v3Work.partialCopies]:[])];/* (0.94.10) painted colour cannot move the surface: redo the depth only when displacement is on */
   if(!D.key||key.some((x,i)=>x!==D.key[i])){D.key=key;
   gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.viewport(0,0,D.w,D.h);gl.clearColor(0,0,0,0);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.depthMask(true);gl.disable(gl.BLEND);gl.bindVertexArray(g.vao);
