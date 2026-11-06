@@ -1,3 +1,7 @@
+## 0.95.0
+
+- **UDIMs:** one texture set per material with its tiles inside; strokes, fills and blurs carry across tiles with no seams; export writes one picture per tile.
+- **Instance to sets:** right-click a material to link copies of it into other texture sets; change one and the others follow.
 ## 0.94.10
 
 - **Dense models:** hovering, painting and turning big models is much lighter (brush outline made once, big models drawn lighter while turning, shadow redrawn after the stroke).

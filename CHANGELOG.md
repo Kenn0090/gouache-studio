@@ -1,3 +1,9 @@
+## 0.95.0
+
+- **UV tiles (UDIMs), the Substance way.** A UDIM project now has **one texture set per material**, with its tiles listed under it. The tiles share one canvas and one layer stack, so a brush stroke, a fill or a blur carries straight across a tile border with no seam. Click a tile in the list to see it on the flat canvas. Texture size is per tile. Exporting writes one picture per tile (`Name_BaseColor.1001.png`, `.1002`…) and the model keeps its UDIM UVs; a .glb gets the tiles as one picture with matching UVs. Bake mesh maps bakes into the tiles too. Older projects with one set per tile still open as before.
+- Tile rows above the first (1011 and up) are now found in the right place (the old tile code read them upside down).
+- **Instance to sets.** Right-click a material › **Instance to sets…** to put linked copies in other texture sets: change it in one and the others follow. **Unlink instance** makes a copy its own again. Triplanar and planar projections are placed on the whole model, so patterns line up across sets and tiles.
+
 ## 0.94.10
 
 - **Dense models feel much lighter.** The brush outline under the mouse was rebuilt on almost every move over a curved model, and each rebuild made the graphics card wait. It is now made once per brush, so hovering and painting no longer stall (about 7 seconds saved over 40 mouse moves in our tests).

@@ -67,6 +67,21 @@ These follow Substance Painter's own shortcuts (Preferences › Painting › *Su
 - **Hold Alt over the model** (without clicking) to pick its colour there. Change **3D Paint: pick colour (hold)** in **Edit › Keyboard shortcuts › Brush and colour** to use another key. Release it to return to painting. Alt + drag still turns the model.
 - **Left / Right arrow keys** step through the shade strip in the Color panel while you paint. Clicking a shade still works, and the strip stays put while you step.
 
+## UV tiles (UDIMs)
+
+Tick **Use UV tile workflow** in the New 3D Paint Project window for a model whose UVs spread over several tiles (1001, 1002, 1011…).
+
+- **One texture set per material, its tiles inside.** The texture set list shows each set's tiles under its name; click a tile to see it on the flat canvas.
+- The tiles of a material sit side by side on **one canvas** in their grid places, so **one layer stack** covers them all: a brush stroke, a fill or a blur carries across a tile border with no seam.
+- **Texture size** is per tile: a material on two tiles across at 2048 gets a 4096 × 2048 canvas (kept under what the graphics card can hold).
+- **Exporting** writes one picture per tile, named the usual way (`Name_BaseColor.1001.png`, `.1002`…), and an OBJ/FBX model keeps the file's UDIM UVs. A **.glb** model has no tiles, so it gets the tiles' canvas as one picture per map, with matching UVs.
+- **Bake mesh maps** bakes into the tiles' canvas too.
+- Projects made with an older version, with one texture set per tile, still open and work as before.
+
+## Instances (linked materials across sets)
+
+Right-click a material layer › **Instance to sets…** and tick the other texture sets. Each gets a linked copy: change the material in any set (colour, sliders, pictures, projection, look) and the copies follow after a moment. **Unlink instance** makes a copy its own again. A **triplanar** or **planar** projection is placed on the whole model, so the pattern continues across sets and tiles without breaks.
+
 ## Layouts
 **3D** shows only the model, **3D + 2D** shows the flat texture beside it, and **2D** shows only the flat texture. You can paint in all of them.
 

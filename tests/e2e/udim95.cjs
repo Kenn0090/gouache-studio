@@ -40,6 +40,19 @@ const OBJ=['v -1 -1 0','v 0 -1 0','v 0 1 0','v -1 1 0','v 1 -1 0','v 1 1 0','v -
   const r1=g.udimTileRect('Body',{u:0,v:0},t.w,t.h),r2=g.udimTileRect('Body',{u:1,v:0},t.w,t.h);return {set:S.name,w:t.w,h:t.h,a:R(r1[0]+r1[2]/2,r1[1]+r1[3]/2),b:R(r2[0]+r2[2]/2,r2[1]+r2[3]/2)};});
  console.log(JSON.stringify(bk));
  ok(bk.set==='Body'&&bk.w===256&&bk.h===256&&bk.a&&bk.b&&Math.abs(bk.a[0]-bk.b[0])>30,'a bake lands on the tiles\' canvas: the left and right tiles get their own positions');
+ /* Instance to sets: a material linked into the Head set follows changes made in the Body set */
+ const ins=await p.evaluate(async()=>{const g=__gs;const L=g.cmdNewFillLayer();L.fill.maps.base.c=[1,0,0];g.fillRender(L);const n=g.instAdd(L,[1]);
+  const mid=()=>{const t=g.compositeMap('base'),d=g.captureRegionNow(t,0,0,t.w,t.h).data,i=((t.h>>1)*t.w+(t.w>>1))*4,o=[d[i],d[i+1],d[i+2]];g.release(t);return o;};
+  const before=g.p3InSet(1,()=>({has:g.paintLayers().some(x=>x.inst===L.inst&&x.fill),c:mid()}));
+  g.matEdBegin(L);L.fill.maps.base.c=[0,0,1];g.fillRender(L);g.matEdCommit();
+  const after=g.p3InSet(1,()=>({c:mid(),fill:g.paintLayers().find(x=>x.inst===L.inst).fill.maps.base.c}));
+  const menu=(()=>{return typeof g.dlgInstance==='function';})();
+  g.instUnlink(L);g.matEdBegin(L);L.fill.maps.base.c=[0,1,0];g.fillRender(L);g.matEdCommit();const unl=g.p3InSet(1,()=>mid());
+  return {n,before,after,unl};});
+ console.log(JSON.stringify(ins));
+ ok(ins.n===1&&ins.before.has&&ins.before.c[0]>200,'Instance to sets puts a linked copy in the other set');
+ ok(ins.after.c[2]>200&&ins.after.c[0]<60,'changing the material in one set changes the linked copy too');
+ ok(ins.unl[2]>200&&ins.unl[1]<60,'after Unlink the copy keeps its own settings');
  /* save and reopen keeps the layout */
  const rt=await p.evaluate(async()=>{const g=__gs,blob=await g.encodeP3Project(),buf=await blob.arrayBuffer();g.p3.savedAt=g.p3Sig();await g.openP3Project(buf,'udim.gouache3d');return {ua:!!g.p3.ua,w:g.doc.w,h:g.doc.h,sets:g.p3.sets.length};});
  ok(rt.ua&&rt.w===256&&rt.h===256&&rt.sets===2,'saving and opening keeps the tiles '+JSON.stringify(rt));
