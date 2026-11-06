@@ -11,8 +11,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* Add layer: a grey material with a white mask, one undo step */
  const n0=await p.evaluate(()=>__gs.allLayers().length),u0=await p.evaluate(()=>__gs.hist.undo.length);
  await p.evaluate(()=>document.getElementById('lAdd').click());await W(500);
- const a=await p.evaluate(()=>{const L=__gs.doc.active,m=L.fill&&L.fill.maps;return {fill:!!L.fill,mask:!!L.mask,on:m?Object.keys(m).filter(k=>m[k].on):[],c:m&&m.base.c};});
- ok(a.fill&&a.mask&&a.on.join()==='base'&&a.c.every(x=>Math.abs(x-.5)<1e-6),'Add layer in 3D Paint makes a plain 50% grey material with a mask '+JSON.stringify(a));
+ const a=await p.evaluate(()=>{const L=__gs.doc.active;return {fill:!!L.fill,mask:!!L.mask};});
+ ok(!a.fill&&!a.mask,'(0.94.9) Add layer in 3D Paint makes a regular paint layer '+JSON.stringify(a));
  ok(await p.evaluate(u=>__gs.hist.undo.length===u+1,u0),'…as one undo step');
  await p.evaluate(()=>__gs.undo());await W(300);ok(await p.evaluate(n=>__gs.allLayers().length===n,n0),'…and undo takes it away');
  /* the Material button: grey only */

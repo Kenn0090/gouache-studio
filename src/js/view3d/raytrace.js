@@ -73,7 +73,8 @@ ${TONE_GLSL}
 void main(){ vec4 c=texelFetch(uAcc,ivec2(gl_FragCoord.xy-uOff),0)/max(uN,1.0); vec3 col=pow(clamp(tone(c.rgb*uExpo),0.0,1.0),vec3(1.0/2.2));
   if(uOpaque==1){ o=vec4(mix(uBg,col,clamp(c.a,0.0,1.0)),1.0); return; } o=vec4(col*c.a,c.a); }`;
 let P_RT=null;
-function rtProgs(){if(!P_RT)P_RT={trace:program(FS_RT),show:program(FS_RTSHOW)};return P_RT;}
+/* (0.94.9) the trace is drawn in 512-pixel tiles with a flush after each: one long draw over a big view made Windows reset the graphics card (a friend's RTX 3090 lost the picture and the app stopped) */
+function rtProgs(){if(!P_RT){P_RT={trace:program(FS_RT),show:program(FS_RTSHOW)};P_RT.trace.tiled=true;}return P_RT;}
 /* a render in progress: two accumulation targets (ping-pong) at the render's size */
 /* 32-bit float textures can't be filtered on every card: NEAREST keeps them readable */
 function rtAccT(w,h){const t=makeTarget(w,h,32,false);gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);return t;}
@@ -94,7 +95,7 @@ function rtViewDraw(F){const g=rt.mesh===v3.mesh?rt.g:null;if(!g){if(v3.infoEl)v
   const E=envUniforms();if(envOf(v3s())!=='none'&&!E.uEnvOn){setTimeout(()=>{v3.dirty=true;requestRender();},100);return null;}
   rtMaterials(g);let S=rt.view;const key=rtViewKey(F);if(!S||S.w!==F.w||S.h!==F.h){rtFree(S);S=rt.view=rtSession(F.w,F.h);}
   if(S.key!==key){S.key=key;S.n=0;clearTarget(S.a);clearTarget(S.b);}
-  const s=v3s(),max=s.rtSamples||qual('rt');if(S.n<max){const per=S.n<4?1:2;for(let i=0;i<per&&S.n<max;i++)rtStep(S,g,{bg:s.envBg?0:1,bgCol:(BG3[s.bg]||BG3.dark).map(v=>Math.pow(v,2.2))});}
+  const s=v3s(),max=s.rtSamples||qual('rt');if(S.n<max){const per=1;for(let i=0;i<per&&S.n<max;i++)rtStep(S,g,{bg:s.envBg?0:1,bgCol:(BG3[s.bg]||BG3.dark).map(v=>Math.pow(v,2.2))});}
   gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);useProg(rtProgs().show,{uAcc:S.a.tex,uN:S.n,uExpo:s.expo,uTone:{int:toneInt(s)},uOff:[0,0],uBg:BG3[s.bg]||BG3.dark,uOpaque:true});gl.bindVertexArray(vao);gl.disable(gl.DEPTH_TEST);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,F.rf);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
   if(v3.infoEl)v3.infoEl.textContent='Ray traced · '+S.n+' / '+max+' samples'+(S.n<max?' (cleaning up…)':'');

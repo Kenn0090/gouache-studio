@@ -48,7 +48,7 @@ function dtUntitled(){const names=new Set(dtab.tabs.filter(t=>t.id!==dtab.live).
 /* ---- closing ---- */
 function dtAskSave(t){return new Promise(res=>{let done=false;const fin=v=>{if(done)return;done=true;res(v);};
   const dont=el('button',{class:'btn',text:'Don’t save',onclick:()=>{fin('discard');closeDialog();}});
-  openDialog({title:'Save “'+dtName(t)+'”?',body:el('div',{class:'dlg-grid'},el('p',{class:'note',text:'It has changes that are not saved. They are lost if you close it without saving.'}),dont),okLabel:'Save',onOk(){fin('save');},onCancel(){fin('cancel');}});});}
+  openDialog({title:'Save “'+dtName(t)+'”?',body:el('div',{class:'dlg-grid'},el('p',{class:'note',text:'It has changes that are not saved. They are lost if you close it without saving.'})),extra:[dont],okLabel:'Save',onOk(){fin('save');},onCancel(){fin('cancel');}});});}
 async function dtClose(id){const t=dtTab(id);if(!t)return;
   if(dtUnsaved(t)){const r=await dtAskSave(t);if(r==='cancel')return;if(r==='save'){if(!dtActivate(id))return;await new Promise(r=>setTimeout(r,0));try{await saveDoc(false);}catch(e){return;}if(dtUnsaved(t))return;}}
   if(dtab.tabs.length===1){if(ui.mode!=='paint'&&!setMode('paint',true))return;if(t.win)dtDock(id);newDoc(1024,1024,8,[1,1,1],'Untitled',false);dtRender();if(typeof showWelcome==='function')showWelcome();return;}

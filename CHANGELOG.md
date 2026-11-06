@@ -1,3 +1,11 @@
+## 0.94.9
+
+- **Add layer makes a regular paint layer again** in 3D Paint (no grey fill with a white mask). The Material button still makes a plain grey material.
+- **Ignore polygroups from ZBrush.** The New 3D Paint project window has a tick, on by default: a model saved by ZBrush becomes one texture set instead of one set per polygroup. Models from other apps keep their materials.
+- **The save question is tidier.** When closing a document with changes, **Don't save** sits in the bottom row on the left, with **Cancel** and **Save** on the right, instead of in the middle of the window.
+- **Ray traced view is gentler on the graphics card.** It draws in tiles, one sample at a time, so a big 3D view on a fast card no longer gets the app shut down by Windows (a friend's RTX 3090 crashed when switching it on).
+- **Smoother 3D view on some cards.** The Fur look's texture reads were rewritten so Windows' graphics layer doesn't run them for every look, which could slow the whole 3D view down.
+
 ## 0.94.8
 
 - **Stumpy G**, a new blending stump next to Stump blend: gentler, and it blurs smoothly. The soft blend used to average only a few points across the brush, so a big blend brush left ghost circles and steps; Stumpy G uses many more points, weighted so the far ones count less, and a hair of grain so slow blends don't settle into bands. The same **Smoother blur** switch is in the Blend panel for any soft blend.

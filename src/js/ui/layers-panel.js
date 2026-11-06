@@ -257,7 +257,7 @@ function cmdFlatten(){const hid=hiddenNodes(doc.root,[]),count=hid.reduce((s,n)=
   const go=()=>{const M=mergedLayer('Background',doc.root.children);structOp('Flatten image',()=>{doc.root.children=[];insertNode(M,doc.root);selectOnly(M);});toast('Flattened to one layer. Undo brings the layers back.');};
   if(!count){go();return;}
   openDialog({title:'Flatten image?',body:el('p',{class:'note',text:'Flattening combines everything visible into one layer and discards '+count+' hidden layer'+(count===1?'':'s')+'. You can undo this.'}),okLabel:'Flatten',onOk:go});}
-$('#lAdd').addEventListener('click',()=>{if(ui.mode==='p3d')cmdNewGreyMaterial();else cmdAddLayer();});$('#lGroup').addEventListener('click',()=>{if(doc.sel.size>1||(doc.active&&topSelected().length))cmdGroup();else cmdNewGroup();});
+$('#lAdd').addEventListener('click',()=>cmdAddLayer());/* (0.94.9, Kenn) a regular layer again; the Material button makes the grey material */$('#lGroup').addEventListener('click',()=>{if(doc.sel.size>1||(doc.active&&topSelected().length))cmdGroup();else cmdNewGroup();});
 $('#lUngroup').addEventListener('click',cmdUngroup);$('#lDup').addEventListener('click',cmdDuplicate);$('#lDel').addEventListener('click',cmdDelete);
 $('#lClear').addEventListener('click',cmdClearLayer);
 $('#lMerge').addEventListener('click',cmdMerge);$('#lUp').addEventListener('click',()=>cmdMove(1));$('#lDown').addEventListener('click',()=>cmdMove(-1));
@@ -275,7 +275,6 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
     items.push(sep(),it('Filter this layer ▸',()=>{selectOnly(n);n.editMask=false;renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);}),
       it('Filter its mask ▸',()=>{selectOnly(n);if(!n.mask)msAdd(n,'fill',{p:{v:1}});n.editMask=true;renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);}),
       it('Filter layer above…',cmdNewFxLayer),it('Retro layer above (this layer only)…',()=>{selectOnly(n);cmdNewRetroLayer(true);}),it('Stylize layer (strokes, lighting, edges)…',()=>cmdNewStylizePLayer()),it('Hand-painted layer (lights the model in paint)…',()=>cmdNewHandPaintLayer()),it('Array…',()=>setTool('array')));
-    if(ui.mode==='p3d')items.unshift(it('New paint layer',()=>cmdAddLayer()),sep());
     if(n.fill)items.splice(0,0,it('Fill settings…',()=>dlgFillLayer(n)),it('Mesh maps from this material…',()=>dlgMatConvert(n)),sep());
     if(typeof mcHasSource==='function'&&mcHasSource(n))items.push(flyItem('Convert to',()=>[it('Ambient occlusion (AO)…',()=>dlgMatConvert(n,['ao'])),it('Curvature…',()=>dlgMatConvert(n,['curv'])),it('Edges…',()=>dlgMatConvert(n,['curvEdge'])),it('Creases…',()=>dlgMatConvert(n,['curvCrease'])),sep(),it('All of them…',()=>dlgMatConvert(n))]));
     if(n.text||n.grad||n.shape||n.fill)items.push(it('Convert to pixels',()=>{if(n.fill)fillRasterize(n);else rasterizeText(n);changed(n);}));}

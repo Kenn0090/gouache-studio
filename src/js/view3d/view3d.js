@@ -69,7 +69,7 @@ float retroBayer(vec2 p){ ivec2 i=ivec2(mod(p,4.0)); int v=0; for(int k=0;k<2;k+
 float hsh(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
 float hsh3(vec3 p){ return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453); }
 vec4 mapSample(sampler2D tex,vec2 uv){vec2 dx,dy;mapGrad(uv,dx,dy);if(uSh==8)return retroSample(tex,uv,dx,dy);return textureGrad(tex,uv,dx,dy);}
-void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv=uUseUDIM==1?fract(vT):vT; vec4 b=mapSample(uBase,uv+uPB); float a=b.a; if((uHas&64)!=0) a*=mapSample(uOpac,uv+uPO).r;
+void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv=uUseUDIM==1?fract(vT):vT; vec2 dUx=dFdx(uv),dUy=dFdy(uv); vec4 b=mapSample(uBase,uv+uPB); float a=b.a; if((uHas&64)!=0) a*=mapSample(uOpac,uv+uPO).r;
   if(uClip==1&&a<0.5) discard; vec3 alb=b.a>1e-5?b.rgb/b.a:vec3(0.0);
   if(uUnlit==1){ vec3 c=alb; if((uHas&8)!=0) c*=mapSample(uAO,uv+uPA).r; o=vec4(c,1.0); return; }
   alb=lin(alb);
@@ -113,8 +113,8 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
     if(uShD.x>0.0){ vec2 np=uv*mix(28.0,3.0,uShD.y); vec2 ni=floor(np),nf=fract(np); nf=nf*nf*(3.0-2.0*nf);
       float pn=mix(mix(hsh(ni),hsh(ni+vec2(1.0,0.0)),nf.x),mix(hsh(ni+vec2(0.0,1.0)),hsh(ni+vec2(1.0,1.0)),nf.x),nf.y);
       float pm=smoothstep(0.25,0.75,pn); len*=mix(1.0,0.25+pm*1.05,uShD.x); if(hsh(cell+9.9)>mix(1.0,pm+0.2,uShD.x)) len=0.0; }
-    if(uShE.y>0.5){ float d=texture(uOpac,uv*uShE.z).r; float ps=clamp(uShE.w,0.0,2.0); len*=mix(1.0,d*1.7,min(ps,1.0)); len=mix(len,len*d*d*2.0,max(ps-1.0,0.0)); if(hsh(cell+21.3)>mix(1.0,d*1.4,min(uShE.w,1.0))) len=0.0; }
-    if(uShE.x>0.5){ len*=texture(uThick,uv).r; }
+    if(uShE.y>0.5){ float d=textureGrad(uOpac,uv*uShE.z,dUx*uShE.z,dUy*uShE.z).r; float ps=clamp(uShE.w,0.0,2.0); len*=mix(1.0,d*1.7,min(ps,1.0)); len=mix(len,len*d*d*2.0,max(ps-1.0,0.0)); if(hsh(cell+21.3)>mix(1.0,d*1.4,min(uShE.w,1.0))) len=0.0; }
+    if(uShE.x>0.5){ len*=textureGrad(uThick,uv,dUx,dUy).r; }
     if(k>0.0){ if(k>len) discard; if(length(fq)*2.0>uShQ.z*(1.0-k*0.85)) discard; }
     vec3 root=alb*(1.0-uShQ.y*0.85), tip=mix(alb,lin(uShC),uShQ.w), c0=mix(root,tip,k);
     float occ=mix(1.0-uShQ.y*0.6,1.0,k); vec3 Nf=normalize(Ng); vec3 Lf=normalize(uSun); float wl=max((dot(Nf,Lf)+0.5)/1.5,0.0);
@@ -658,7 +658,7 @@ for(const t of ['keydown','keyup'])window.addEventListener(t,e=>{if(e.key==='Alt
 async function v3DropModel(files){const f=files.find(x=>isModelName(x.name));if(!f)return;loadStart(f.name);
   try{let m=await parseModelFile(f,files,{udim:ui.mode==='p3d'&&p3.udim});if(typeof uvImportCheck==='function'&&ui.mode!=='bake'){loadEnd();try{m=await uvImportCheck(m);}finally{loadStart(f.name);}}v3.imported=m;v3s().model='imported';if(!v3.on)toggle3D(true);v3SetMesh(m);build3dPane();toast('Loaded “'+m.name+'”: '+m.tris.toLocaleString()+' triangles.'+(m.uvSetName?' · UV '+m.uvSetName:'')+(m.noUV?' It has no UVs, so the textures cannot map onto it.':''));}
   catch(e){console.warn(e);toast('This model could not be loaded: '+(e.message||e));}finally{loadEnd();}}
-async function importModel(){const done=m=>{v3.imported=m;v3s().model='imported';v3SetMesh(m);build3dPane();toast('Loaded “'+m.name+'”: '+m.tris.toLocaleString()+' triangles.'+(m.noUV?' It has no UVs, so the textures cannot map onto it.':''));};
+async function importModel(){const done=m=>{if(ui.mode==='p3d'&&m.fromZBrush&&meshHasGroups(m)&&prefs.zbIgnore!==false){m=meshOneSet(m);toast('ZBrush polygroups ignored: the model is one texture set (Preferences or the New project window can change this).');}v3.imported=m;v3s().model='imported';v3SetMesh(m);build3dPane();toast('Loaded “'+m.name+'”: '+m.tris.toLocaleString()+' triangles.'+(m.noUV?' It has no UVs, so the textures cannot map onto it.':''));};
   if(platform.isDesktop){try{const p=await platform.openDialog([{name:'3D models',extensions:['obj','glb','gltf','fbx','OBJ','GLB','GLTF','FBX']}]);if(!p)return;loadStart(fileNameOf(p));
       try{const bytes=await platform.readFile(p);const dir=p.replace(/[\\/][^\\/]*$/,''),sep=p.includes('\\')?'\\':'/';
         done(await uvImportCheck(await mwTag(await parseModelBytes(fileNameOf(p),bytes,async u=>{const b=await platform.readFile(dir+sep+u);return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);},{udim:ui.mode==='p3d'&&p3.udim}),p)));}finally{loadEnd();}}

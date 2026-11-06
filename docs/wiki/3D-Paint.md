@@ -10,7 +10,7 @@ The column beside the view works like the rest of the dock: drag its tabs out (t
 ## Getting started
 **File › New** can start a new 3D Paint project straight away: choose **Start in: 3D Paint** at the top of the New document window. The width you type is the texture size, and the model you have loaded stays.
 
-The New project window also lets you pick the **Project setup** (Hand-painted, PBR or Specular / Glossiness); a Spec/Gloss project lists Specular and Glossiness instead of Metallic and Roughness everywhere (Maps list, Also paint, the channel drop-down). Once you have chosen your own low-poly mesh, the built-in shape drop-down is disabled. **Add a high-poly** there to have the Bake tab ready with both models, in case you have no maps to import.
+The New project window also lets you pick the **Project setup** (Hand-painted, PBR or Specular / Glossiness); a Spec/Gloss project lists Specular and Glossiness instead of Metallic and Roughness everywhere (Maps list, Also paint, the channel drop-down). Once you have chosen your own low-poly mesh, the built-in shape drop-down is disabled. **Ignore polygroups from ZBrush** (on by default) makes a model saved by ZBrush one texture set: ZBrush writes each polygroup as its own group or material, which would otherwise give a texture set per polygroup. It only applies to models saved by ZBrush; models from other apps keep their materials. **Add a high-poly** there to have the Bake tab ready with both models, in case you have no maps to import.
 
 After creating it, **Set up 3D Paint project** lets you import a model, select a texture set and drop mesh-map files onto their channels. Press **Done** to continue; maps can also be assigned later in **Maps**. The viewport badge and texture-size heading show the active set's actual width and height, with 8K and 16K clearly labeled.
 
@@ -301,4 +301,4 @@ Drag image files or library textures onto a mask thumbnail or one of its mask ro
 
 ## New layers (0.94.6)
 
-The **Add layer** button in 3D Paint makes a plain **50% grey material** with a white mask: paint black on the mask to hide it, white to bring it back. The **Material** button makes the same grey material without a mask. An empty paint layer is in the right-click menu (**New paint layer**). **Ctrl+D** duplicates the selected layer.
+The **Add layer** button in 3D Paint makes an ordinary empty paint layer. The **Material** button makes a plain **50% grey material** (no mask: add one to hide parts of it). **Ctrl+D** duplicates the selected layer.
