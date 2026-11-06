@@ -274,7 +274,7 @@ function v3Upload(m){const g=v3.gpu;if(g){if(g.wireRanges)for(const r of g.wireR
 function v3SetMesh(m,keepCam){v3.mesh=m;meshGroupByMat(m);v3Upload(m);gl.bindVertexArray(vao);if(!keepCam)v3Frame();v3.dirty=true;requestRender();refresh3dUI();if(ui.mode==='p3d'&&typeof p3SyncSets==='function'){p3SyncSets();buildP3Panel();}if(v3s().showUV)requestRender();}
 function v3LoadModel(keepCam){const s=v3s();if(s.model==='dplane'){s.model='plane';s.detail=Math.max(s.detail||0,5);}
   if(s.model==='imported'&&v3.imported)meshGroupByMat(v3.imported);/* grouped before subdividing, so triangles keep their order */
-  const m=s.model==='imported'&&v3.imported?subdivideMesh(v3.imported,s.detail||0):primMesh(PRIMS[s.model]?s.model:'plane',s.detail||0);v3SetMesh(m,keepCam);}
+  let m=s.model==='imported'&&v3.imported?subdivideMesh(v3.imported,s.detail||0):primMesh(PRIMS[s.model]?s.model:'plane',s.detail||0);if(s.model==='imported'&&typeof udimOn==='function'&&udimOn())m=udimAtlasMesh(m);v3SetMesh(m,keepCam);}
 
 /* ---- maps as textures for the model: the map being painted updates every frame, the rest a few times a second ---- */
 const v3Work={copies:0,partialCopies:0,copyPixels:0,mipPixels:0,scenes:0,postPasses:0,postReuses:0};
@@ -430,7 +430,7 @@ function v3Render(F,flip){const g=v3.gpu;if(!g)return;gl.blendEquation(gl.FUNC_A
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
   const {mv,T0,eye}=C,V=m4look(eye,[v3.cam.tx,v3.cam.ty,v3.cam.tz],[0,1,0]),Pm=v3Proj(F.w/F.h,.02,100);if(flip)Pm[5]=-Pm[5];const VP=m4mul(Pm,V);
   if(!tr&&!v3.bunlitBg&&typeof envDrawBg==='function')envDrawBg(F,VP,flip);
-  const common={...SU,uVP:{m4:VP},uUVs:bake?1:(p3.udim?1:s.uvs),uUseUDIM:false,uUDIMTile:[0,0],uH:T0.height&&s.disp?T0.height.tex:dummy,uDisp:s.disp*.3,uUseH:!!(!bake&&T0.height&&s.disp&&doc.maps.includes('height'))};
+  const common={...SU,uVP:{m4:VP},uUVs:bake?1:(p3.udim||p3.ua?1:s.uvs),uUseUDIM:false,uUDIMTile:[0,0],uH:T0.height&&s.disp?T0.height.tex:dummy,uDisp:s.disp*.3,uUseH:!!(!bake&&T0.height&&s.disp&&doc.maps.includes('height'))};
   if(s.wire){gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);}gl.bindVertexArray(g.vao);
   const alphaItems=[],furItems=[];
   for(const it of list){const T=it.T||{},base=T.base||null;if(!base||!it.count)continue;
@@ -660,15 +660,15 @@ for(const t of ['keydown','keyup'])window.addEventListener(t,e=>{if(e.key==='Alt
 
 /* ---- importing a model ---- */
 async function v3DropModel(files){const f=files.find(x=>isModelName(x.name));if(!f)return;loadStart(f.name);
-  try{let m=await parseModelFile(f,files,{udim:ui.mode==='p3d'&&p3.udim});if(typeof uvImportCheck==='function'&&ui.mode!=='bake'){loadEnd();try{m=await uvImportCheck(m);}finally{loadStart(f.name);}}v3.imported=m;v3s().model='imported';if(!v3.on)toggle3D(true);v3SetMesh(m);build3dPane();toast('Loaded “'+m.name+'”: '+m.tris.toLocaleString()+' triangles.'+(m.uvSetName?' · UV '+m.uvSetName:'')+(m.noUV?' It has no UVs, so the textures cannot map onto it.':''));}
+  try{let m=await parseModelFile(f,files,{udim:ui.mode==='p3d'&&(p3.udim||!!p3.ua)});if(typeof uvImportCheck==='function'&&ui.mode!=='bake'){loadEnd();try{m=await uvImportCheck(m);}finally{loadStart(f.name);}}v3.imported=m;v3s().model='imported';if(!v3.on)toggle3D(true);v3SetMesh(m);build3dPane();toast('Loaded “'+m.name+'”: '+m.tris.toLocaleString()+' triangles.'+(m.uvSetName?' · UV '+m.uvSetName:'')+(m.noUV?' It has no UVs, so the textures cannot map onto it.':''));}
   catch(e){console.warn(e);toast('This model could not be loaded: '+(e.message||e));}finally{loadEnd();}}
 async function importModel(){const done=m=>{if(ui.mode==='p3d'&&m.fromZBrush&&meshHasGroups(m)&&prefs.zbIgnore!==false){m=meshOneSet(m);toast('ZBrush polygroups ignored: the model is one texture set (Preferences or the New project window can change this).');}v3.imported=m;v3s().model='imported';v3SetMesh(m);build3dPane();toast('Loaded “'+m.name+'”: '+m.tris.toLocaleString()+' triangles.'+(m.noUV?' It has no UVs, so the textures cannot map onto it.':''));};
   if(platform.isDesktop){try{const p=await platform.openDialog([{name:'3D models',extensions:['obj','glb','gltf','fbx','OBJ','GLB','GLTF','FBX']}]);if(!p)return;loadStart(fileNameOf(p));
       try{const bytes=await platform.readFile(p);const dir=p.replace(/[\\/][^\\/]*$/,''),sep=p.includes('\\')?'\\':'/';
-        done(await uvImportCheck(await mwTag(await parseModelBytes(fileNameOf(p),bytes,async u=>{const b=await platform.readFile(dir+sep+u);return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);},{udim:ui.mode==='p3d'&&p3.udim}),p)));}finally{loadEnd();}}
+        done(await uvImportCheck(await mwTag(await parseModelBytes(fileNameOf(p),bytes,async u=>{const b=await platform.readFile(dir+sep+u);return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);},{udim:ui.mode==='p3d'&&(p3.udim||!!p3.ua)}),p)));}finally{loadEnd();}}
     catch(e){console.warn(e);toast('This model could not be loaded: '+(e.message||e));}return;}
   const f=el('input',{type:'file',accept:'.obj,.glb,.gltf,.fbx',multiple:true});f.onchange=async()=>{const fs=[...f.files],file=fs.find(x=>isModelName(x.name));if(!file)return;loadStart(file.name);
-    try{done(await uvImportCheck(await parseModelFile(file,fs,{udim:ui.mode==='p3d'&&p3.udim})));}catch(e){console.warn(e);toast('This model could not be loaded: '+(e.message||e));}finally{loadEnd();}};f.click();}
+    try{done(await uvImportCheck(await parseModelFile(file,fs,{udim:ui.mode==='p3d'&&(p3.udim||!!p3.ua)})));}catch(e){console.warn(e);toast('This model could not be loaded: '+(e.message||e));}finally{loadEnd();}};f.click();}
 /* ---- its own window (second screen): the GPU draws it here and the picture is copied into that window ---- */
 function pop3D(out,quiet){if(out){if(v3.pop)return;const w=window.open('about:blank','gouache3d','width=960,height=720');
     if(!w){toast('The window could not be opened.');return;}

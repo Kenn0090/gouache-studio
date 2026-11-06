@@ -5,7 +5,7 @@
    zoom); Alt over the model picks its colour. Layouts: 3D only, 3D beside the flat texture, or the flat
    texture only. Colour and Brushes sit in their own column beside the viewport (dock.js, dock2). */
 const P3_PREFS=(()=>{try{return JSON.parse(localStorage.getItem('gs.p3d')||'{}');}catch(e){return {};}})();
-const p3={size:P3_PREFS.size||2048,layout:P3_PREFS.layout||'split',was:null,v3d:null,imported:null,cam:null,started:false,deletedSets:[],sets:[],cur:0,blank:null,setup:'pbr',workflow:'metal',udim:false};
+const p3={size:P3_PREFS.size||2048,layout:P3_PREFS.layout||'split',was:null,v3d:null,imported:null,cam:null,started:false,deletedSets:[],sets:[],cur:0,blank:null,setup:'pbr',workflow:'metal',udim:false,ua:null};
 function p3Save(){try{localStorage.setItem('gs.p3d',JSON.stringify({size:p3.size,layout:p3.layout}));}catch(e){}}
 const P3_MAPS=['base','rough','metal','height','normal'],P3_MAPS_SPEC=['base','spec','gloss','height','normal'];
 /* a new texture set: the PBR maps, a base material (a fill layer) and an empty layer to paint on */
@@ -21,7 +21,7 @@ function p3Setup(name,startMaterial,workflow){workflow=workflow||p3.workflow||'m
 function p3dEnter(){const firstStart=!p3.started;p3.was={on:v3.on,paintOn:v3.paintOn,imported:v3.imported,cam:Object.assign({},v3.cam),tex:v3.tex,ws:dk.ws};if(v3.pop)pop3D(false,true);
   /* its workspace comes with the tab (dkModeWs in dock.js) */
   const S=p3.sets[p3.cur];v3.tex=(S&&S.tex)||{};if(S)S.tex=null;v3.mapsDirty=true;
-  tabDocEnter('p3d',p3.size,p3.size,S?S.name:'3D Paint');if(!doc.p3)p3Setup(S?S.name:null,p3.startMaterial);
+  {const D=p3SetDims(S);tabDocEnter('p3d',D[0],D[1],S?S.name:'3D Paint');}if(!doc.p3)p3Setup(S?S.name:null,p3.startMaterial);
   doc.v3d=p3.v3d||(p3.v3d=Object.assign({},V3D_DEFAULTS,{model:'matpreview',detail:0,unlit:false,showUV:true,litUV:true,envSun:.55,studioFill:.22,studioRim:.2}));
   v3.imported=p3.imported;if(firstStart&&p3.v3d.model==='imported'&&v3.imported)doc.v3d.model='imported';v3.mesh=null;if(p3.cam)Object.assign(v3.cam,p3.cam);
   v3.paintOn=true;if(!MESH_TOOLS.includes(ui.tool))setTool('brush');
@@ -50,7 +50,7 @@ function buildP3Panel(){p3BakePanel();if(typeof stBrushRender==='function')stBru
     el('div',{class:'sub',text:'Project'}),el('div',{class:'chips'},el('button',{class:'btn sm',text:'Save project',title:'Save the model and all texture sets as a .gouache3d project (Ctrl+S here)',onclick:()=>saveP3Project(false)}),el('button',{class:'btn sm',text:'Open project…',onclick:()=>pickFile('open')})),
     el('div',{class:'sub',text:'Select on the model'}),sel3Box(),
     el('div',{class:'sub',text:'Texture size · '+p3Resolution()}),seg([[1024,'1K'],[2048,'2K'],[4096,'4K'],...(MAX_DIM>=8192?[[8192,'8K']]:[]),...(doc.w>4096&&doc.w!==8192?[[doc.w,Math.round(doc.w/1024)+'K']]:[])],doc.w,v=>p3Resize(+v),'Texture size'));p3ResolutionSync();}
-function p3Resize(n){if(n===doc.w&&n===doc.h)return;if(n>MAX_DIM){toast('This computer cannot edit textures that large.');return;}resizeImageDoc(n,n);if(doc.w!==n||doc.h!==n)return;p3.size=n;p3Save();for(const L of paintLayers())if(L.fill)fillRender(L);buildP3Panel();}
+function p3Resize(n){const S0=p3.sets[p3.cur],D=p3.ua&&S0?udimDims(p3Binding(S0),n):[n,n];if(D[0]===doc.w&&D[1]===doc.h)return;if(Math.max(D[0],D[1])>MAX_DIM){toast('This computer cannot edit textures that large.');return;}resizeImageDoc(D[0],D[1]);if(doc.w!==D[0]||doc.h!==D[1])return;p3.size=n;p3Save();for(const L of paintLayers())if(L.fill)fillRender(L);buildP3Panel();}
 
 /* ---- texture sets: one per material of the model, each its own canvas of maps (like Substance Painter) ----
    The active set's canvas is the live document; the others are set aside (docState) with the textures they
@@ -89,15 +89,16 @@ function p3SyncSets(){const rs=v3.mesh?meshGroupByMat(v3.mesh):[{name:'default',
   for(const n of names){const tiles=p3.udim?(tilesByName.get(n)||[]):[],wanted=tiles.length?tiles:[null];for(const tile of wanted){
     if(deleted.has(p3SetKey(n,tile)))continue;
     if(!p3.sets.some(S=>p3Binding(S)===n&&((S.tile&&tile&&S.tile.id===tile.id)||(!S.tile&&!tile))))p3.sets.push({name:tile?n+' · '+tile.id:n,material:n,tile,state:null,tex:null,missing:false});}}
-  for(const S of p3.sets){S.missing=!names.includes(p3Binding(S));S.udimTiles=tilesByName.get(p3Binding(S))||[];}
+  for(const S of p3.sets){S.missing=!names.includes(p3Binding(S));S.udimTiles=p3.ua?(udimBox(p3Binding(S))?.tiles||[]):tilesByName.get(p3Binding(S))||[];}
   if(p3.cur<0&&p3.sets.length)p3SwitchSet(0,true);
   else if(p3.sets[p3.cur]?.missing){const i=p3.sets.findIndex(S=>!S.missing);if(i>=0)p3SwitchSet(i,true);}
   if(p3.sets[p3.cur])doc.name=p3.sets[p3.cur].name;
+  if(p3.ua&&p3.sets[p3.cur]&&!hist.undo.length){const D=p3SetDims(p3.sets[p3.cur]);if(D[0]!==doc.w||D[1]!==doc.h){resizeImageDoc(D[0],D[1]);for(const L of paintLayers())if(L.fill)fillRender(L);}}/* (0.95) a fresh set takes its tiles' canvas size */
   $('#docName').textContent=doc.name;}
 function p3SwitchSet(i,quiet){if(i===p3.cur||!p3.sets[i])return;if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
   if(typeof xf!=='undefined'&&xf)xfCommit();if(typeof gsess!=='undefined'&&gsess)gradCommit();
   const A=p3.sets[p3.cur],B=p3.sets[i];let orphan=null;if(A){A.state=docState();A.tex=v3.tex;A.channelCache=null;}else{orphan=docState();for(const k in v3.tex)disposeTarget(v3.tex[k]);}
-  if(B.state){setDocState(B.state);B.state=null;}else{blankTabDoc(p3.size,p3.size,B.name);p3Setup(B.name);}
+  if(B.state){setDocState(B.state);B.state=null;}else{const D=p3SetDims(B);blankTabDoc(D[0],D[1],B.name);p3Setup(B.name);}
   if(orphan)disposeDocState(orphan);doc.v3d=p3.v3d;v3.tex=B.tex||{};B.tex=null;p3.cur=i;v3.mapsDirty=true;v3.editDirty=true;v3.dirty=true;
   $('#docName').textContent=doc.name;if(typeof selChanged==='function')selChanged();
   renderLayers();refreshChanUI();refreshMapsUI();buildBrushPanel();if(typeof renderMatEd==='function')renderMatEd(true);if(typeof renderShading==='function')renderShading();changedAll();fit();updateStatus();buildP3Panel();requestRender(true);if(!quiet)toast('Texture set “'+B.name+'”.');}
