@@ -1,3 +1,7 @@
+## 0.94.8
+
+- **Stumpy G**, a new blending stump next to Stump blend: gentler, and it blurs smoothly. The soft blend used to average only a few points across the brush, so a big blend brush left ghost circles and steps; Stumpy G uses many more points, weighted so the far ones count less, and a hair of grain so slow blends don't settle into bands. The same **Smoother blur** switch is in the Blend panel for any soft blend.
+
 ## 0.94.7
 
 - **The new viewer is set aside for a future update.** Its button and its settings are gone for now; the normal 3D view does everything as before. Its work is kept, so it can come back later.

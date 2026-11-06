@@ -210,7 +210,7 @@ void main(){ float m=brushMask(gl_FragCoord.xy)*uAlpha; if(uTint==2){ if(m<=0.0)
 /* colour-jitter strokes stamp each dab twice: uTint 2 first gives pixels nothing has touched yet the dab's colour
    (so soft edges keep it), then uTint 1 lays the dab over what is there */
 const FS_SMUDGE=CH_BRUSH+`
-  uniform sampler2D uSrc; uniform sampler2D uSrcPrev; uniform sampler2D uDst; uniform vec2 uDelta; uniform float uSampleBlend; uniform float uAlpha; uniform float uStrength; uniform float uCharge; uniform vec3 uColor; uniform float uHueMix; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan; uniform float uPaintMix; uniform int uNormalMap; uniform float uSoft; uniform float uStreak; uniform float uPull;
+  uniform sampler2D uSrc; uniform sampler2D uSrcPrev; uniform sampler2D uDst; uniform vec2 uDelta; uniform float uSampleBlend; uniform float uAlpha; uniform float uStrength; uniform float uCharge; uniform vec3 uColor; uniform float uHueMix; uniform int uLockAlpha; uniform int uChanMode; uniform vec4 uChan; uniform float uPaintMix; uniform int uNormalMap; uniform float uSoft; uniform float uSoftQ; uniform float uStreak; uniform float uPull;
 uniform sampler2D uSelTex; uniform int uUseSel;
 ${PIGMENT_MIX}
   vec3 smHsv(vec3 c){vec4 K=vec4(0.0,-1.0/3.0,2.0/3.0,-1.0);vec4 p=mix(vec4(c.bg,K.wz),vec4(c.gb,K.xy),step(c.b,c.g));vec4 q=mix(vec4(p.xyw,c.r),vec4(c.r,p.yzx),step(p.x,c.r));float d=q.x-min(q.w,q.y);return vec3(abs(q.z+(q.w-q.y)/(6.0*d+1e-10)),d/(q.x+1e-10),q.x);}
@@ -222,12 +222,17 @@ void main(){ vec2 size=vec2(textureSize(uSrc,0)); vec2 uv=gl_FragCoord.xy/size;
     if(uStreak>0.0&&uSoft<0.5){ vec2 dn=normalize(uDelta+vec2(1e-5)); vec2 perp=vec2(-dn.y,dn.x); float lane=floor(dot(gl_FragCoord.xy-uCenter,perp)/max(uRadius,1.0)*9.0); float h=fract(sin(lane*91.7+13.3)*43758.5453); dl*=1.0-uStreak*h; }
     vec4 pulled=mix(texture(uSrcPrev,uv-dl/size),texture(uSrc,uv-dl/size),uSampleBlend);
     /* Soft blend: the colours under the brush are averaged into each other, nothing is dragged along */
-    if(uSoft>0.5){ float R=uRadius*0.95+1.0; vec4 acc=vec4(0.0); float ws=0.0; for(int i=0;i<20;i++){ float fi=float(i); float ang=fi*2.39996; float rr=sqrt((fi+0.5)/20.0)*R; float w=1.0-0.6*(rr/R)*(rr/R); acc+=texture(uSrc,uv+vec2(cos(ang),sin(ang))*rr/size)*w; ws+=w; } pulled=acc/ws; }
+    /* (0.94.8, Kenn: "too steppy") Smoother blur: 96 samples in a spiral, weighted like a Gaussian (the far ones count little), so a big brush does not leave ripples */
+    if(uSoft>0.5&&uSoftQ>0.5){ float R=uRadius*0.95+1.0; vec4 acc=vec4(0.0); float ws=0.0;
+      for(int i=0;i<96;i++){ float fi=float(i); float ang=fi*2.39996; float rr=sqrt((fi+0.5)/96.0)*R; float w=exp(-3.0*(rr/R)*(rr/R)); acc+=texture(uSrc,uv+vec2(cos(ang),sin(ang))*rr/size)*w; ws+=w; } pulled=acc/ws; }
+    else if(uSoft>0.5){ float R=uRadius*0.95+1.0; vec4 acc=vec4(0.0); float ws=0.0; for(int i=0;i<20;i++){ float fi=float(i); float ang=fi*2.39996; float rr=sqrt((fi+0.5)/20.0)*R; float w=1.0-0.6*(rr/R)*(rr/R); acc+=texture(uSrc,uv+vec2(cos(ang),sin(ang))*rr/size)*w; ws+=w; } pulled=acc/ws; }
   float m=brushMask(gl_FragCoord.xy)*uAlpha; if(uUseSel==1) m*=texelFetch(uSelTex,ivec2(gl_FragCoord.xy),0).r;
   vec4 paint=mix(pulled,vec4(uColor,1.0),uSoft>0.5?0.0:uCharge);
   float tm=clamp(m*uStrength,0.0,1.0); vec4 r=mix(dst,paint,tm);
     if((uPaintMix>0.0||uHueMix>0.0)&&uNormalMap==0&&uChanMode!=1&&dst.a>1e-4&&paint.a>1e-4){ vec3 cd=dst.rgb/dst.a,cp=paint.rgb/paint.a; float wp=paint.a*tm,wd=dst.a*(1.0-tm); float k=wp/max(wp+wd,1e-5);
       vec3 pm=pgMix(cd,cp,k); pm=mix(pm,hueMixRgb(cd,cp,k),uHueMix); vec3 lc=r.rgb/max(r.a,1e-5); r=vec4(mix(lc,pm,max(uPaintMix,uHueMix)*clamp(tm*8.0,0.0,1.0))*r.a,r.a); }
+  /* a hair of grain (under one step of an 8-bit picture) so slow blends do not settle into bands */
+  if(uSoft>0.5&&uSoftQ>0.5&&tm>0.0){ float g=(fract(sin(dot(gl_FragCoord.xy+uCenter,vec2(39.346,11.135)))*43758.5453)-0.5)/255.0; r.rgb=max(r.rgb+g*r.a,vec3(0.0)); }
   if(uNormalMap==1&&r.a>1e-6){ vec3 n=r.rgb/r.a*2.0-1.0; float l=length(n); n=l>1e-4?n/l:vec3(0.0,0.0,1.0); r=vec4((n*0.5+0.5)*r.a,r.a); } /* normals stay unit length */
   if(uChanMode==1){ vec3 oc=dst.a>1e-6?dst.rgb/dst.a:vec3(0.0),rc=r.a>1e-6?r.rgb/r.a:vec3(0.0); float na=mix(dst.a,r.a,uChan.a); r=vec4(mix(oc,rc,uChan.rgb)*na,na); }
   if(uLockAlpha==1){ vec3 c=r.a>1e-6?r.rgb/r.a:vec3(0.0); r=vec4(c*dst.a,dst.a); }
