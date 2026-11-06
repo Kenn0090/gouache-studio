@@ -1,3 +1,7 @@
+## 0.94.10
+
+- **Dense models:** hovering, painting and turning big models is much lighter (brush outline made once, big models drawn lighter while turning, shadow redrawn after the stroke).
+- Fixed a stray "null" under the Model list in 3D Paint.
 ## 0.94.9
 
 - **Add layer** in 3D Paint makes a regular paint layer again.

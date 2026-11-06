@@ -93,6 +93,8 @@ Press **Paint** in the 3D view's toolbar, then paint on the model with the Brush
 *Painting straight onto the model. The stroke lands in the layer on the canvas too.*
 
 ## Camera
+
+**Big models turn smoothly:** a model of 300,000 triangles or more is drawn a little lighter (at a lower resolution) while you turn, move or zoom it, and sharp again as soon as you stop. Switch it off in **Preferences › Speed** (*Draw big models lighter while turning them*).
 - **Drag:** orbit.
 - **Right-drag**, middle-drag or **Shift+drag:** pan.
 - **Wheel:** zoom.
