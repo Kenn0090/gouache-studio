@@ -1,3 +1,6 @@
+## 0.95.1
+
+- **Up axis:** choose Auto / Y up / Z up when importing (Auto reads the file), 90° turn buttons, and exported OBJ/FBX follow the engine (Z up for Unreal and Blender).
 ## 0.95.0
 
 - **UDIMs:** one texture set per material with its tiles inside; strokes, fills and blurs carry across tiles with no seams; export writes one picture per tile.

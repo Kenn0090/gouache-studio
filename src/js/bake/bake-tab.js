@@ -423,7 +423,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
   const prog=el('div',{id:'bkProg',hidden:true},el('p',{class:'note'}),el('div',{class:'bakebar'},el('div')));
   /* (0.52, Kenn) two columns so it all fits without scrolling: models, maps and sending on the left, the settings of each map on the right */
   const colA=el('div',{class:'bkcol',id:'bkColA'}),colB=el('div',{class:'bkcol',id:'bkColB'});const uvc=uvCard(bkLow());if(uvc)box.append(uvc);box.append(el('div',{class:'bkcols'},colA,colB));
-  colA.append(el('div',{class:'sub',text:'Models',title:'Drop model files on the panel: names ending in _low, _high and _cage go to the right place.'}),row('Low-poly',modelSel('low',lowOpts)),row('High-poly',modelSel('high',highOpts)),bakeHighList(),row('Cage',modelSel('cage',cageOpts)),
+  colA.append(el('div',{class:'sub',text:'Models',title:'Drop model files on the panel: names ending in _low, _high and _cage go to the right place.'}),row('Low-poly',modelSel('low',lowOpts)),row('High-poly',modelSel('high',highOpts)),bakeHighList(),row('Cage',modelSel('cage',cageOpts)),upSelect('bkUp',v=>{for(const k of ['low','high','cage'])if(C[k]&&C[k].upTurns!==undefined)bakeSetModel(k,upApply(C[k],v));}),upTurnRow(),
     el('div',{class:'chips'},chk('bkMatch','Match parts by name',C.match,v=>{C.match=v;info();}),chk('bkShowCage','Show the cage',bk.showCage,v=>{bk.showCage=v;v3.dirty=true;requestRender();})),
     ...(C.high?[row('High-poly view',(()=>{const g=seg([['off','Off'],['over','See-through'],['only','Only']],bk.showHigh||'off',v=>{bk.showHigh=v;v3.dirty=true;requestRender();},'Show the high-poly');g.id='bkShowHigh';return g;})())]:[]),
     inf,

@@ -420,3 +420,10 @@ Artist style unwrap, `bake/uv-artist.js` (loaded before uv-unwrap.js because `UW
 - `view3d/p3-instance.js`: `L.inst` id (saved in .gouache node `inst`); `dlgInstance` (right-click › Instance to sets…), `instAdd`, `instSync` (called at the end of `matEdCommit` and in its undo/redo `put`), `instUnlink`; `p3InSet(i,fn)` runs fn with another set as the live doc (docState swap, no panel rebuild) then `p3RefreshTex` rebuilds that set's model textures. Triplanar/planar already use the whole model box (`pxfModel`).
 - Test udim95 (two materials, tiles 1001/1002/1011, stroke across the border, export per tile, bake position, instance, save/open).
 - p3bake fails on main too (click on the Right texture set row times out, element not visible) - not looked into.
+- Up axis answers (after 0.95.0, released): choice in the New 3D Paint Project window + Bake model loading (Auto / Y up / Z up), remembered; Auto = file's own up axis, else Y up; 90° turn buttons in BOTH the 3D view's ⋯ menu and under the Model drop-down; export default follows the engine (Unreal/Blender Z up, Unity/Godot Y up), changeable in the export window.
+
+## 0.95.1 up axis
+- `view3d/up-axis.js`: `meshTurn(m,axis,deg)` (pos/nrm/tan, drops `_` caches), `upZtoY`/`upYtoZ` (-90°/+90° about X), `upApply(m,choice)` with `m.upTurns` so a staged model can be turned back, prefs.upAxis ('auto' default = undefined), `upSelect(id,onChange)`, `upTurnModel` (p3d: v3.imported/p3.imported; Bake: low+high together via bakeSetModel), `upTurnRow(prefix)` (ids upTurn_x… under the 3D Paint Model list, v3Turn_x… in #v3Xtra), `upEngine`/`upExportAxis` (texCfg.up 'engine'|'y'|'z'; engine = es.to unreal/blender → z).
+- parseFBX sets `r.fileUp` from GlobalSettings UpAxis/UpAxisSign; glb/gltf get fileUp 'y'; `parseModelBytes` runs `upApply` (options.noUp skips, options.up overrides).
+- Export: OBJ/FBX turned with upYtoZ when Z; `mxFBX(...,{zUp})` writes UpAxis 2, FrontAxis 1 sign +1 (the rotated Y-up axes; ufbx reads right +X, up +Z, front +Y, same handedness as our Y-up files: right +X, up +Y, front -Z). GLB stays Y up.
+- Test up951 (python ufbx check, skipped if missing).

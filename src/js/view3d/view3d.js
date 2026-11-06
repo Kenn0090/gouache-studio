@@ -533,7 +533,7 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
 const nvB=el('button',{hidden:!platform.isDesktop||NV_BANKED,class:'btn sm'+(typeof nv!=='undefined'&&nv.isOpen?' on':''),id:'v3Nv',text:'New viewer',title:'Open the model in the new viewer window (paint in it, ray-traced shadows and reflections). Press again to close it.',onclick:()=>{if(nv.isOpen)nvClose();else nvOpen();}});
   let bar;
   if(ui.mode==='p3d'){/* 3D Paint (0.37): a slim bar, the rest behind ⋯ */
-    const xt=el('div',{class:'v3xtra',id:'v3Xtra',hidden:true},modelControl,detSel,wireB,uvB,spinB,...capB,dock,close),more=el('button',{class:'btn sm',id:'v3More',text:'⋯',title:'More: model, detail, wireframe, spin, screenshot, render, turntable','aria-expanded':'false','aria-label':'More 3D view options'});
+    const xt=el('div',{class:'v3xtra',id:'v3Xtra',hidden:true},modelControl,upTurnRow('v3Turn_'),detSel,wireB,uvB,spinB,...capB,dock,close),more=el('button',{class:'btn sm',id:'v3More',text:'⋯',title:'More: model, detail, wireframe, spin, screenshot, render, turntable','aria-expanded':'false','aria-label':'More 3D view options'});
     more.onclick=()=>{xt.hidden=!xt.hidden;more.setAttribute('aria-expanded',String(!xt.hidden));more.classList.toggle('on',!xt.hidden);};
     xt.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});
     bar=el('div',{class:'v3bar slim'},shade,metalB,p3ChannelControl(),...(mb?[mb.wrap]:[]),viewSel,projBtn,nvB,gear,more,xt);}
