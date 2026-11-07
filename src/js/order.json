@@ -239,6 +239,8 @@
     "ui/grunge-4k",
     "ui/tool-menus",
     "ui/tool-keys",
+    "api/gs-api",
+    "ui/scripts",
     "core/boot"
   ]
 }

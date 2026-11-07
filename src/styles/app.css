@@ -1517,3 +1517,18 @@ body.photomode #docTabs{display:none!important}
 .projbox .projcull{display:grid;grid-template-columns:auto auto 1fr;gap:8px;align-items:center}
 .projbox .projcull .dim{opacity:.45}
 body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
+
+/* Scripts window (0.96) */
+.scrdlg{display:grid;grid-template-columns:200px minmax(0,1fr);gap:12px;min-width:min(860px,90vw)}
+.scrside{display:flex;flex-direction:column;gap:8px}
+.scrlist{width:100%;min-height:220px;background:var(--bg2,#1d1d21);color:inherit;border:1px solid var(--line,#333);border-radius:6px}
+.scrmain{display:flex;flex-direction:column;gap:8px;min-width:0}
+.scrmain .frow input{flex:1}
+.scrcode{width:100%;min-height:260px;resize:vertical;font:12.5px/1.45 ui-monospace,Consolas,monospace;tab-size:2;background:var(--bg2,#1d1d21);color:inherit;border:1px solid var(--line,#333);border-radius:6px;padding:8px;white-space:pre;box-sizing:border-box}
+.scrlog{height:130px;overflow:auto;font:12px/1.4 ui-monospace,Consolas,monospace;background:var(--bg2,#1d1d21);border:1px solid var(--line,#333);border-radius:6px;padding:6px 8px}
+.scrline.err{color:#ff8a7a}.scrline.info{opacity:.7}
+.scrcmds summary{cursor:pointer;opacity:.85}
+.scrcmdlist{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0;max-height:140px;overflow:auto}
+.btn.mono{font-family:ui-monospace,Consolas,monospace;font-size:11px}
+#scrRec.on{color:#ff6b5b}
+@media (max-width:700px){.scrdlg{grid-template-columns:1fr}}

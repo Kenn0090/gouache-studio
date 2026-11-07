@@ -28,11 +28,11 @@ function fxDialog(o){if(typeof o==='string')o=FX[o];const et=needTarget();if(!et
   body.append(previewChk('fxPrev',prefs.livePreview,x=>{if(!preview)return;preview.off=!x;if(x)draw();requestRender(true);}));
   preview={L:et.node,isMask:et.isMask,et,off:!prefs.livePreview};upd();
   openDialog({title:o.title,body,float:true,wide:!!o.wide,okLabel:'Apply',onOk(){cancelAnimationFrame(pend);pend=0;
-      if(keep){preview=null;addFxLayer(o.id,fxClean(v),et.node,true);return;}
-      if(preview.off||pend)draw();else draw();applyPreview(o.label||o.title);},
+      if(keep){preview=null;addFxLayer(o.id,fxClean(v),et.node,true);if(typeof apiRecFx==='function')apiRecFx(o.id,fxClean(v),true);return;}
+      if(preview.off||pend)draw();else draw();applyPreview(o.label||o.title);if(typeof apiRecFx==='function')apiRecFx(o.id,fxClean(v));},
     onCancel(){cancelAnimationFrame(pend);pend=0;preview=null;requestRender(true);}});}
 /* one-step filters without settings */
-function fxNow(id){const o=FX[id],et=needTarget();if(!et)return;preview={L:et.node,isMask:et.isMask,et};o.render(et.L.target,previewT,fxDefaults(o),{});chanLimit(et);selLimit(et);applyPreview(o.title);}
+function fxNow(id){const o=FX[id],et=needTarget();if(!et)return;preview={L:et.node,isMask:et.isMask,et};o.render(et.L.target,previewT,fxDefaults(o),{});chanLimit(et);selLimit(et);applyPreview(o.title);if(typeof apiRecFx==='function')apiRecFx(id,{});}
 const px=v=>v+'px',deg=v=>Math.round(v)+'°',sgnF=v=>(v>0?'+':'')+v;
 
 /* ---- lookup tables (Levels, Curves) ---- */

@@ -1,3 +1,8 @@
+## 0.96.0
+
+- **Scripting:** Window › Scripts… lets you write, run, save and share scripts that drive the app (layers, materials, masks, filters, brushes and strokes, selections, 3D Paint texture sets, any menu command). A whole run is one undo step, Stop stops it, mistakes are explained in plain words, and examples are included.
+- **Record:** press Record, use the app, and what you did becomes a script you can run again.
+
 ## 0.95.9
 
 - **3D gradient points on the flat canvas:** each point shows on the texture where the model's surface is nearest to it; drag it to slide it over the surface, and Add point works with a click on the canvas too. Delete removes the selected point there as well.
