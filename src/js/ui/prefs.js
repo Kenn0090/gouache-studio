@@ -28,7 +28,7 @@ function dlgPrefs(startTab){
       el('p',{class:'note',text:'These change at once. The path colours are also in the path tool’s Display section.'})],
     paint:()=>[chk('pHints','Show shortcut hints on the canvas',S.hints,v=>{S.hints=v;}),
       chk('pAltPick','Temporary colour picking (Alt+click in 2D; 3D hold key in Keyboard shortcuts)',S.altPk,v=>{S.altPk=v;}),
-      chk('pPainterCtl','3D Paint: Substance Painter mouse controls on the model (Ctrl + right-drag: size and hardness; Ctrl + left-drag: flow and rotation)',S.pCtl,v=>{S.pCtl=v;}),
+      chk('pPainterCtl','3D Paint: Substance Painter mouse controls on the model (Ctrl + right-drag: size and hardness; Ctrl + middle-drag: flow and rotation)',S.pCtl,v=>{S.pCtl=v;}),
       chk('pPenPan','Pen and tablet: the pen’s side button moves the view (like the middle mouse button)',S.penPan,v=>{S.penPan=v;}),
       el('button',{class:'btn sm',id:'pPenTest',text:'Pen and tablet test…',onclick:()=>{th.cancel();closeDialog&&closeDialog();setTimeout(dlgPenTest,50);}}),
       chk('pRcBrush','Right-click on the canvas or model opens the brush picker (a click, not a drag)',S.rcBrush,v=>{S.rcBrush=v;}),

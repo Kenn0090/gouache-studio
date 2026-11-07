@@ -20,6 +20,25 @@ A **smart mask** is just a mask stack, saved: the rows of a layer's mask. Click 
 
 Both kinds show **⤓** (export as a **.gmat** file to share) and **×** (delete) on your own tiles; **Import…** in the Materials tab brings them in.
 
+## Built-in sets (0.95.6)
+
+**Smart materials** added in 0.95.6:
+- **Weapons and armour:** Handled Gunmetal (bright worn edges, polished grip, grime), Blued Steel (bare-steel edges, oily prints, fine rust), Battle-Worn Plate (gashes, dents and nicks, soot, rust).
+- **Sci-fi:** Sci-fi Hull Paint (chipped to metal, panel grime, leaks), Anodised Aluminium (bright scratched edges, fingerprints), Glowing Trim (glow in the grooves).
+- **Fantasy and characters:** Ornate Gold (tarnish in the recesses, polished highlights), Enchanted Iron (arcane glow, silvered edges), Weathered Skin (pores, sun damage, redness, grime).
+- **Stylised:** Stylised Wood, Stone, Steel, Gold and Leather, using the Hand-painted look.
+- **Staples:** Painted Steel Worn, Smudged Chrome, Dusty Rubber, Matte Plastic, Forged Iron, Tarnished Silver, Stained Aluminium.
+
+**Smart masks** added in 0.95.6:
+- **Wear and damage:** Battle damage, Blade scratches, Bullet nicks, Grip wear, Scorch marks, Torn coating, Gashed paint.
+- **Weather and nature:** Moss in cavities, Water streaks, Sun-bleached top, Snow on top, Sand in crevices, Mud splash low, Ground dirt, Surface leaks, Dust in occlusion.
+- **Stylised:** Painterly edge highlight, Top light, Hand-painted cavity shade, Colour variation patches.
+- **Technical:** Height bottom to top, Ambient occlusion only, Curvature edges only, Thin parts (thickness). These read the baked mesh maps, so bake them first.
+
+The older built-ins were updated too: their wear, dirt and dust masks now break up unevenly (Distort plus a Warp row), and their plain wear and dirt layers have a little height, so chips sit lower and grime sits higher and both catch the light.
+
+**Mixed grunges:** the Textures panel has a **Mixed** category with 12 grunges blended from the photo grunges with the Grunge Mixer's own blend modes: Battle damage, Blade scratches, Handled wear, Bullet nicks, Panel grime, Sandblasted, Ornate tarnish, Scorch marks, Painterly breakup, Mud splash, Lichen patches and Sun bleach. Use them anywhere a grunge goes, or as a starting point in the Grunge Mixer.
+
 ## Anchor points
 An **anchor point** lets masks higher up follow what you painted lower down, like Substance Painter's anchors. Paint some raised rivets or panel lines into a layer's height, and the rust, dirt or edge wear above them follows those details, even though they are not in the baked mesh maps.
 

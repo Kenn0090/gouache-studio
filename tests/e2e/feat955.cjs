@@ -73,8 +73,13 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.mouse.move(cx-60,cy);await p.mouse.down();await p.mouse.move(cx+60,cy,{steps:8});await p.mouse.up();await W(500);
  const soft=()=>p.evaluate(()=>{const L=__gs.layerByName('Paint'),T=__gs.mapT(L,'base'),d=__gs.captureRegionNow(T,0,0,T.w,T.h).data;let n=0;for(let i=0;i<d.length;i+=4){const a=d[i+3];if(a>20&&a<235)n++;}return n;});
  const s0=await soft();
- await p.keyboard.down('Shift');await p.mouse.move(cx-50,cy-12);await p.mouse.down();await p.mouse.move(cx+50,cy+12,{steps:12});await p.mouse.up();await p.keyboard.up('Shift');await W(600);
- const s1=await soft();ok(s1>s0+30,'Shift + drag smooths the paint (soft edge pixels '+s0+' → '+s1+')');
+ /* (0.95.6) Shift + click is only a straight line: it adds paint and does not smooth */
+ const lab=()=>p.evaluate(()=>{const u=__gs.hist&&__gs.hist.undo;return u&&u.length?u[u.length-1].label:'';});
+ await p.keyboard.down('Shift');await p.mouse.move(cx+40,cy+30);await p.mouse.down();await p.mouse.move(cx+42,cy+31);await p.mouse.up();await p.keyboard.up('Shift');await W(600);
+ const l1=await lab();ok(!/Blend|Smooth/.test(l1),'Shift + click (even with a small slip) draws a straight line, not a smooth ('+l1+')');
+ await p.evaluate(()=>__gs.undo());await W(400);const s0b=await soft();
+ await p.keyboard.down('Control');await p.mouse.move(cx-50,cy-12);await p.mouse.down();await p.mouse.move(cx+50,cy+12,{steps:12});await p.mouse.up();await p.keyboard.up('Control');await W(600);
+ const s1=await soft();ok(s1>s0b+30,'Ctrl + drag smooths the paint (soft edge pixels '+s0b+' → '+s1+')');
  /* ---- Polygon fill ---- */
  ok(await p.evaluate(()=>!!document.querySelector('#tools .tool[data-tool="pfill"]')&&getComputedStyle(document.querySelector('#tools .tool[data-tool="pfill"]')).display!=='none'),'3D Paint has a Polygon fill tool button');
  await p.evaluate(()=>{const G=__gs;G.undo();G.undo();G.selectOnly(G.layerByName('Paint'));G.setFG([.1,.2,.9]);G.setTool('pfill');G.pf.kind='island';});await W(300);

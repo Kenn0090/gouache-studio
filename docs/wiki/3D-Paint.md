@@ -58,7 +58,7 @@ Double-click empty space to frame the model again. The same navigation works in 
 ### Painter-style brush and view controls
 These follow Substance Painter's own shortcuts (Preferences › Painting › *Substance Painter style mouse controls on the model* turns the Ctrl drags off):
 - **Ctrl + right drag**: brush **size** (left/right) and **hardness** (up/down). A ring shows the result and a label gives the numbers.
-- **Ctrl + left drag**: brush **flow** (left/right) and **rotation** (up/down). The same Ctrl drags work on the flat texture.
+- **Ctrl + middle drag**: brush **flow** (left/right) and **rotation** (up/down). The same Ctrl drags work on the flat texture. (**Ctrl + left drag** smooths the paint, see below.)
 - **Stencil**: **Shift+S + left drag** turns it (**Shift** snaps to 90°), **Shift+S + middle drag** moves it, **Shift+S + right drag** scales it. Hold **N** to paint without the stencil.
 - **F1** 3D + 2D · **F2** 3D only · **F3** 2D only · **F4** swaps the two sides · **F5** perspective · **F6** orthographic. (In 3D Paint F1 is not the user guide; use **Help › User guide**.)
 - **[** and **]** change the size, **Shift + right drag** turns the sky, **F** frames the model.
@@ -119,8 +119,11 @@ The **Projection** section of the 3D Paint panel works like Substance Painter's 
 - **Backface culling** (On/Off) with an **Angle**: surfaces turned away from you by more than the angle take no paint. 90° only stops faces that point away; a smaller angle also keeps paint off surfaces seen at a slant, so it does not smear round edges. Off paints faces seen from behind (models whose faces point the wrong way, or the inside of a part).
 - **Size Space:** *Object* keeps the brush the same size on the model as you zoom; *Viewport* measures it in screen pixels; *Texture* measures it in texture pixels.
 
-## Smooth with Shift (like 3D-Coat)
-Hold **Shift and drag** over painted areas to smooth and blend the paint under the brush (it works across UV seams and on every map of the layer). A **Shift + click** without dragging still draws a straight line from the last point.
+## Smooth with Ctrl
+Hold **Ctrl and drag** over painted areas to smooth and blend the paint under the brush (like 3D-Coat's smoothing; it works across UV seams and on every map of the layer). **Shift + click** is only for straight lines from the last point, so the two never get in each other's way.
+
+## Deleting every layer
+You can delete all the layers of a texture set. A plain grey **Base material** is left in their place, so the model is never bare (Undo brings the deleted layers back). In the Paint tab the same leaves the plain canvas.
 
 ## Polygon fill
 The **Polygon fill** tool (3D Paint only, under Blend in the toolbar) fills whole parts of the model at once. Choose **Face**, **Triangle**, **Loop** or **UV island** in its options, then click the model (or drag over it to fill several). The part under the pointer lights up before you click. It fills the selected layer with the brush colour; on a mask it fills white, and **Alt + click** fills black. Each click or drag is one undo step.

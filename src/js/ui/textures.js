@@ -18,6 +18,10 @@ const TX_PHOTO=[['streaks','Streaks'],['rings','Water rings'],['specks','Specks'
   ['rust-pits-1','Rust pits 1'],['rust-pits-2','Rust pits 2'],['rust-pits-3','Rust pits 3'],['rust-pits-4','Rust pits 4'],['rust-pits-5','Rust pits 5'],['rust-pits-6','Rust pits 6'],['rust-pits-7','Rust pits 7'],
   ['worn-paint-1','Worn paint 1'],['worn-paint-2','Worn paint 2'],['worn-paint-3','Worn paint 3'],['frost-veins','Frost veins']];
 TX_PHOTO.push(...TX_WORKSHOP.map(r=>[r.slug,r.name,r.category]));
+/* (0.95.6, Kenn: "put the grunges to use, with the Grunge Mixer") built-in mixes of the photo grunges, made with the Grunge Mixer's own blend maths (scripts/grunge-mixes.py) */
+const TX_MIXED=[['mix-battle-damage','Battle damage'],['mix-blade-scratches','Blade scratches'],['mix-handled-wear','Handled wear'],['mix-bullet-nicks','Bullet nicks'],['mix-panel-grime','Panel grime'],['mix-sandblasted','Sandblasted'],
+  ['mix-ornate-tarnish','Ornate tarnish'],['mix-scorch','Scorch marks'],['mix-painterly','Painterly breakup'],['mix-mud-splash','Mud splash'],['mix-lichen','Lichen patches'],['mix-sun-bleach','Sun bleach']];
+TX_PHOTO.push(...TX_MIXED.map(([s,n])=>[s,n,'Mixed']));
 const tx={category:(()=>{try{return localStorage.getItem('gs.txCategory')||'all';}catch(e){return 'all';}})(),query:'',show:(()=>{try{return localStorage.getItem('gs.txShow')||'all';}catch(e){return 'all';}})(),size:(()=>{try{return localStorage.getItem('gs.txSize')||'m';}catch(e){return 'm';}})(),selected:'',mine:[],loaded:false,loading:null,cache:new Map(),used:new Map(),pending:new Map(),pins:new Map(),owners:new WeakMap(),thumbs:new Map(),thumbPending:new Map(),thumbQueue:[],thumbJobs:0,cacheTimer:0,cacheLimit:128*1024*1024,cacheCount:16,stats:{loads:0,unpacks:0,previews:0,coalesced:0}};
 /* seamless grey patterns: periodic noise so every one tiles */
 const FS_TXGEN=`uniform int uKind; uniform float uSeed; uniform vec2 uOut; uniform vec2 uPhase;

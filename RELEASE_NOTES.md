@@ -1,3 +1,10 @@
+## 0.95.6
+
+- **21 new smart materials and 24 new smart masks** (weapons, sci-fi, fantasy, stylised, staples; wear, weather, stylised, technical); the older ones break up unevenly and catch the light.
+- **12 mixed grunges** in Textures › Mixed.
+- **Delete every layer:** a default grey material (3D Paint) or plain canvas (Paint) is left in their place.
+- **3D Paint:** Ctrl + drag smooths the paint (Shift + click is only for straight lines again); flow and rotation moved to Ctrl + middle-drag.
+
 ## 0.95.5
 
 - **3D Paint:** Projection section (alignment incl. UV, backface culling angle, size space), Polygon fill tool (face, triangle, loop, UV island), Shift + drag smooths like 3D-Coat, instant colour picking.

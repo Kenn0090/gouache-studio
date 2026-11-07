@@ -1,3 +1,12 @@
+## 0.95.6
+
+- **21 new smart materials:** weapons and armour (Handled Gunmetal, Blued Steel, Battle-Worn Plate), sci-fi (Sci-fi Hull Paint, Anodised Aluminium, Glowing Trim), fantasy and characters (Ornate Gold, Enchanted Iron, Weathered Skin), stylised hand-painted (Wood, Stone, Steel, Gold, Leather) and the everyday staples (Painted Steel Worn, Smudged Chrome, Dusty Rubber, Matte Plastic, Forged Iron, Tarnished Silver, Stained Aluminium).
+- **24 new smart masks:** battle damage, blade scratches, bullet nicks, grip wear, scorch marks, torn coating, gashed paint, moss in cavities, water streaks, sun-bleached top, snow on top, sand in crevices, mud splash, ground dirt, surface leaks, dust in occlusion, painterly edge highlight, top light, hand-painted cavity shade, colour variation, and technical ones (height, ambient occlusion, curvature edges, thin parts).
+- **The older smart materials and masks are updated:** wear, dirt and dust break up unevenly now (no more even bands), and wear and dirt layers have a little height so they catch the light.
+- **12 mixed grunges** (Textures › Mixed), blended from the photo grunges with the Grunge Mixer's own blend modes, and used across the new smart materials and masks.
+- **Delete every layer:** you can now delete all the layers. A fresh default takes their place in the same undo step: a plain grey **Base material** in 3D Paint, the plain **canvas** (in the document's background colour) in Paint.
+- **Smoothing moved to Ctrl + drag** in 3D Paint, so it never gets in the way of straight lines: **Shift + click** only draws straight lines again. The Painter-style flow and rotation drag moved from Ctrl + left-drag to **Ctrl + middle-drag** (Ctrl + right-drag still sets size and hardness).
+
 ## 0.95.5
 
 - **Projection section in 3D Paint** (like Substance Painter): Alignment (Tangent | Wrap, Camera, UV), Backface culling with an angle, and Size Space (Object, Viewport, Texture).

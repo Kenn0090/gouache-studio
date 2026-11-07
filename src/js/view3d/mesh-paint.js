@@ -135,7 +135,8 @@ function meshPt(hit,e){const r=hit.getBoundingClientRect();return [e.clientX-r.l
 const SHIFT_SMOOTH_TOOLS=['brush','erase','dodge','burn','material'];
 const evCopy=e=>({clientX:e.clientX,clientY:e.clientY,pointerId:e.pointerId,pressure:e.pressure,pointerType:e.pointerType,tiltX:e.tiltX,tiltY:e.tiltY,twist:e.twist,timeStamp:e.timeStamp,button:0,buttons:1,shiftKey:e.shiftKey,ctrlKey:e.ctrlKey,altKey:e.altKey,metaKey:e.metaKey});
 function meshDown(hit,e){if(stroke||preview||selLive||v3.shiftPend)return false;const s=v3s();
-  if(ui.mode==='p3d'&&e.shiftKey&&!e.ctrlKey&&!e.altKey&&!e.metaKey&&s.shiftSmooth!==false&&SHIFT_SMOOTH_TOOLS.includes(ui.tool)&&s.paintAlign!=='uv'){v3.shiftPend={id:e.pointerId,hit,ev:evCopy(e)};return true;}
+  /* (0.95.6, Kenn: "no overlap between the blur and the straight line") Ctrl + drag smooths; Shift + click stays the straight line only */
+  if(ui.mode==='p3d'&&(e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&s.shiftSmooth!==false&&SHIFT_SMOOTH_TOOLS.includes(ui.tool)&&s.paintAlign!=='uv')return meshDown0(hit,Object.assign(evCopy(e),{ctrlKey:false,metaKey:false}),{smooth:true});
   if(ui.mode==='p3d'&&s.paintAlign==='uv')return meshDownUV(hit,e);
   return meshDown0(hit,e);}
 /* the pending Shift press: moved far enough = a Smooth stroke; let go = the straight line */

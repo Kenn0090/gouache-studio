@@ -46,7 +46,7 @@ In 3D Paint, **M** selects Marquee and **S** selects Smudge. **Esc** returns fro
 | D | Default colours (black and white) |
 | L (or Shift+X) | Left–right symmetry on / off (in 3D Paint: Mirror X) |
 | [ / ] (hold) | Brush smaller / bigger; holding resizes faster and faster |
-| Shift + drag (3D Paint) | Smooth and blend the paint under the brush |
+| Ctrl + drag (3D Paint) | Smooth and blend the paint under the brush |
 | Shift (while painting inside a cage) | Follow the cage's lines |
 | Alt+Backspace (Alt+Del) | Fill with foreground colour (on the active layer or inside the selection) |
 | Backspace / Del | Delete the selected layers; with a selection active, clear the selection's contents. In Animation and the Brush tab it clears the frame or sketch |
@@ -134,7 +134,7 @@ In 3D Paint, **M** selects Marquee and **S** selects Smudge. **Esc** returns fro
 - **[ / ]:** shrink/grow the active brush, including Liquify.
 
 ## Added in 0.53 (3D Paint, like Substance Painter)
-- **Ctrl + right drag** on the model: brush size and hardness. **Ctrl + left drag**: flow and rotation.
+- **Ctrl + right drag** on the model: brush size and hardness. **Ctrl + middle drag**: flow and rotation. **Ctrl + left drag**: smooth the paint.
 - **S + drag** (left turns, middle moves, right scales) the stencil; **Shift+S** snaps the turn; **N** (held) ignores the stencil.
 - **F1** 3D + 2D, **F2** 3D only, **F3** 2D only, **F4** swap sides, **F5** perspective, **F6** orthographic (in 3D Paint; the user guide stays in the Help menu there).
 - **Shift+W** toggles wireframe overlay in the 3D view. **F2** renames the selected layer; in 3D Paint, focus its row in Layers first so F2 keeps its 3D-only layout shortcut elsewhere.
