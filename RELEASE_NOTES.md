@@ -1,3 +1,7 @@
+## 0.96.0
+
+- **Scripting** (Window › Scripts…): automate the app with scripts, with examples, one-step undo and a **Record** button that turns what you do into a script.
+
 ## 0.95.9
 
 - **3D gradient points can be moved on the flat canvas** too.

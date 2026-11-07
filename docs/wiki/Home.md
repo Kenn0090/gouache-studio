@@ -50,6 +50,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 
 ## Settings and help
 - [Preferences and performance](Preferences-and-performance.md): engine quality, smaller files, themes (rounded or sharp), shortcut hints and the shortcut helper, autosave countdown, previews, memory
+- [Scripting (automate the app)](Scripting.md)
 - [Troubleshooting and FAQ](Troubleshooting.md)
 
 ## Roadmap
