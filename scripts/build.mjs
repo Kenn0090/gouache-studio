@@ -49,8 +49,13 @@ if (fs.existsSync(r('assets/grunge/previews.json'))) {
     if (fs.existsSync(file) && crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex') === p.sha256) TX_PREVIEW_DATA[slug] = p.image;
   }
 }
+/* (0.95.7) where each photo grunge came from on ambientCG and how it was made, so File > Content can fetch the 4K originals */
+const GR_SRC = {};
+{ const ll = JSON.parse(read('scripts/lib-list.json')), sl = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  for (const e of ll.grunge || []) GR_SRC[sl(e.name)] = { id: e.id, ch: e.ch || 'Opacity', inv: !!e.invert, lo: e.lo, hi: e.hi, g: e.gamma };
+  for (const e of ll.grungeOld || []) GR_SRC[e.slug] = { id: e.id, ch: e.ch || 'Opacity', inv: !!e.invert, lo: e.lo, hi: e.hi, g: e.gamma }; }
 const LITE = process.env.GOUACHE_LITE === '1'; /* the smaller installer: no Library files, skies or grunge inside; they are fetched when used (File > Content keeps copies for offline) */
-const js = `const APP_VERSION='${APP_VERSION}';\nconst SM_THUMBS=${JSON.stringify(SM_THUMBS)};\nconst GM_LITE=${LITE};\nconst TX_PREVIEWS=${JSON.stringify(TX_PREVIEW_DATA)};\nconst GM_BUNDLED=${JSON.stringify(GMATS).replace(/<\//g, '<\\/')};\nconst UNREAL_SETUP=${JSON.stringify(UNREAL_SETUP).replace(/<\//g, '<\\/')};\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\nconst CHANGELOG_MD=${JSON.stringify(CHANGELOG).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
+const js = `const APP_VERSION='${APP_VERSION}';\nconst GR_SRC=${JSON.stringify(GR_SRC)};\nconst SM_THUMBS=${JSON.stringify(SM_THUMBS)};\nconst GM_LITE=${LITE};\nconst TX_PREVIEWS=${JSON.stringify(TX_PREVIEW_DATA)};\nconst GM_BUNDLED=${JSON.stringify(GMATS).replace(/<\//g, '<\\/')};\nconst UNREAL_SETUP=${JSON.stringify(UNREAL_SETUP).replace(/<\//g, '<\\/')};\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\nconst CHANGELOG_MD=${JSON.stringify(CHANGELOG).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
 const studioFonts=JSON.parse(read('assets/fonts/manifest.json'));
 const studioFontCss=studioFonts.map(f=>`@font-face{font-family:"${f.family}";font-style:normal;font-weight:${f.weight};font-display:swap;src:url(${f.file}) format("truetype")}`).join('\n');
 const css = read('src/styles/app.css');

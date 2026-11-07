@@ -1,6 +1,7 @@
 ## 0.95.7
 
 - **Mask generators take your own grunge** (any Textures item or a dropped picture), with tiling, rotation and invert.
+- **Grunge maps at 4K** (free, from ambientCG) in File › Content…, plus a new Swirled smears grunge.
 - **Polygon fill follows mirror and radial symmetry.**
 
 ## 0.95.6

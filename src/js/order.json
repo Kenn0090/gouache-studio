@@ -234,6 +234,7 @@
     "ui/examples",
     "ui/setup",
     "ui/content-step",
+    "ui/grunge-4k",
     "ui/tool-menus",
     "ui/tool-keys",
     "core/boot"

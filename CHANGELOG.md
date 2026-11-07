@@ -1,6 +1,8 @@
 ## 0.95.7
 
 - **Generators take your own grunge:** every mask generator (Edge wear, Dirt in cavities, the Mask builder and the rest) has a **Grunge** input in Properties. Pick any texture from the Textures panel (photo grunges, mixed, generated or your own) or drop a picture on it, and it breaks up the mask instead of the built-in noise. Grunge tiling, rotation and Invert are there too; Breakup sets how strongly it eats in. With the World projection it is laid over the model from three sides, so there are no seams.
+- **Grunge maps at 4K:** File › Content… can now fetch the 4K originals of the 76 photo grunges (scratches, fingerprints, smears, stains, dust, leaks, cracks, rust…). They are free (CC0, from ambientCG) and are used in place of the 1K ones from then on. **Back to 1K grunge** removes them.
+- **New photo grunge:** Swirled smears.
 - **Polygon fill follows symmetry:** with mirror X/Y/Z or radial symmetry on, the matching polygons on the other sides fill in the same click.
 
 ## 0.95.6

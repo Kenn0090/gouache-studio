@@ -16,7 +16,7 @@ const CT_OFF_MB={materials:5e5,hdri:1.4e6,grunge:3.5e5};
 function ctOffList(){const L=[];for(const g of GM_BUNDLED)L.push(['materials',g.file]);for(const e of ENV_LIST)L.push(['hdri',e[2]+'_1k.hdr']);for(const t of TX_PHOTO)L.push(['grunge',t[0]+'.webp']);return L;}
 async function ctOffRefresh(){const have=new Set();for(const [k,f] of ctOffList()){if(await aiDB.info('b/'+k+'/'+f).catch(()=>null))have.add(k+'/'+f);}ct.offHave=have;}
 const ctOffMissing=()=>ctOffList().filter(([k,f])=>!(ct.offHave&&ct.offHave.has(k+'/'+f)));
-function ctPick(){if(!ct.pick)ct.pick={lib:prefs.ctLib||'2K',env:prefs.ctEnv||'2K',ai:new Set(),off:ctLite()};return ct.pick;}
+function ctPick(){if(!ct.pick)ct.pick={lib:prefs.ctLib||'2K',env:prefs.ctEnv||'2K',ai:new Set(),off:ctLite(),g4:false};return ct.pick;}
 async function ctEnvRefresh(){const have={};for(const e of ENV_LIST){try{have[e[2]]=!!(await aiDB.info('hdri/'+e[2]+'_2k.hdr'));}catch(err){have[e[2]]=false;}}ct.envHave=have;}
 const ctEnvMissing=()=>ENV_LIST.filter(e=>!(ct.envHave&&ct.envHave[e[2]]));
 /* one sky at 2K from Poly Haven, kept in the add-ons store (envBundled looks there first) */
@@ -28,7 +28,8 @@ async function ctEnvBack(){for(const e of ENV_LIST){try{await aiDB.del('hdri/'+e
 function ctEstimates(){const P=ctPick(),parts=[...P.ai];if(parts.length&&!aiHas('engine')&&!parts.includes('engine'))parts.push('engine');
   const lib=P.lib==='1K'?0:olUpTargets(P.lib).length*olUp.sizes[P.lib].dl,envN=P.env==='2K'?ctEnvMissing().length:0,ai=parts.reduce((a,i)=>a+aiSize(i),0);
   const offM=ctLite()&&P.off?ctOffMissing():[],off=offM.reduce((a,[k])=>a+CT_OFF_MB[k],0);
-  return {lib,env:envN*CT_ENV_MB,envN,ai,parts,off,offN:offM.length,total:lib+envN*CT_ENV_MB+ai+off};}
+  const g4N=P.g4?g4Missing().length:0,g4b=g4N*G4_MB;
+  return {lib,env:envN*CT_ENV_MB,envN,ai,parts,off,offN:offM.length,g4N,g4:g4b,total:lib+envN*CT_ENV_MB+ai+off+g4b};}
 function ctDraw(light){const b=ct.body;if(!b||!document.contains(b))return;const P=ctPick(),E=ctEstimates(),busy=!!ct.busy;
   const choice=(id,items,get,set)=>seg(items,get(),v=>{if(busy)return;set(v);ctDraw();},id);
   const libTargets=n=>olUpTargets(n).length;
@@ -42,6 +43,10 @@ function ctDraw(light){const b=ct.body;if(!b||!document.contains(b))return;const
     choice('Sky size',[['1K','Keep 1K'],['2K','2K']],()=>P.env,v=>{P.env=v;prefs.ctEnv=v;savePrefs();}),
     el('p',{class:'note',id:'ctEnvNote',text:P.env==='1K'?'Nothing to download.':E.envN?'About '+olMB(E.env)+' to download ('+E.envN+' of '+ENV_LIST.length+' skies).':'All the skies are already 2K.'}),
     ...(ct.envHave&&ENV_LIST.some(e=>ct.envHave[e[2]])&&!busy?[el('div',{class:'chips'},el('button',{type:'button',class:'btn sm',id:'ctEnvBack',text:'Back to 1K skies',onclick:ctEnvBack}))]:[]));
+  const g4All=g4List().length,g4Have=g4.have?g4.have.size:0,g4Row=el('div',{class:'airow',id:'ctG4'},el('div',{class:'aihead'},el('b',{text:'Grunge maps at 4K'}),el('span',{class:'dim',text:'ambientCG · CC0'}),el('span',{class:'aistat',text:g4Have?g4Have+' of '+g4All+' at 4K':'1K (comes with the app)'})),
+    el('p',{class:'note',text:'The '+g4All+' photo grunges scanned by ambientCG (scratches, fingerprints, smears, stains, dust, leaks, cracks, rust and more) come with the app at 1K. This fetches the 4K originals for close-ups and big textures. Each one is downloaded as a whole material (10 to 80 MB) and only its grunge is kept (about 3 MB each). Pictures already open stay 1K until the next start.'}),
+    el('label',{class:'chk'},el('input',{type:'checkbox',id:'ctG4On',checked:P.g4,disabled:busy||!g4Missing().length,onchange:ev=>{P.g4=ev.target.checked;ctDraw();}}),el('span',{text:g4Missing().length?'Download the 4K grunge maps ('+g4Missing().length+', about '+olMB(g4Missing().length*G4_MB)+' to download)':'All the grunge maps are already 4K'})),
+    ...(g4Have&&!busy?[el('div',{class:'chips'},el('button',{type:'button',class:'btn sm',id:'ctG4Back',text:'Back to 1K grunge',onclick:async()=>{await g4Back();ctDraw();}}))]:[]));
   const aiIds=AI_ORDER.filter(i=>i!=='engine'),aiRow=el('div',{class:'airow'},el('div',{class:'aihead'},el('b',{text:'AI add-ons'}),el('span',{class:'dim',text:'runs on this computer'})),
     el('p',{class:'note',text:'Pick out a subject or the sky with a click, take an object out of a photo, lens blur, relight, upscale and height maps from photos. Nothing is sent anywhere. Tick the parts you want; the AI engine comes with them.'}),
     ...aiIds.map(i=>{const have=aiHas(i);return el('label',{class:'chk ctai'},el('input',{type:'checkbox','data-ai':i,checked:have||P.ai.has(i),disabled:have||busy,onchange:ev=>{if(ev.target.checked)P.ai.add(i);else P.ai.delete(i);ctDraw();}}),el('span',{text:AI_PARTS[i].title+' · '+aiMB(aiSize(i))+(have?' (installed)':'')}));}));
@@ -51,7 +56,7 @@ function ctDraw(light){const b=ct.body;if(!b||!document.contains(b))return;const
   const run=el('div',{class:'olact'},el('span',{class:'dim',id:'ctTotal',text:busy?(ct.status||'Working…'):E.total?'In all about '+olMB(E.total)+' to download.':'Nothing selected to download.'}),
     ...(busy?[el('button',{type:'button',class:'btn',id:'ctStop',text:'Stop',onclick:ctStop})]:[el('button',{type:'button',class:'btn primary',id:'ctGo',text:'Download selected',disabled:!E.total,onclick:ctRun})]));
   const log=ct.log.length?[el('div',{class:'olrows'},...ct.log.map(t=>el('div',{class:'olrow'},el('span',{class:'olrn',text:t}))))]:[];
-  b.replaceChildren(...(offRow?[offRow]:[]),libRow,envRow,aiRow,run,...log,el('p',{class:'note',text:'File › Content… opens this again any time. Skies and AI parts can also be removed there and in File › Add-ons.'}));}
+  b.replaceChildren(...(offRow?[offRow]:[]),libRow,envRow,g4Row,aiRow,run,...log,el('p',{class:'note',text:'File › Content… opens this again any time. Skies and AI parts can also be removed there and in File › Add-ons.'}));}
 function ctStop(){ct.stop=true;if(ct.job)platform.invoke('net_cancel',{id:ct.job}).catch(()=>{});if(typeof olUpCancel==='function')olUpCancel();}
 async function ctRun(){if(ct.busy)return;const E=ctEstimates(),P=ctPick();ct.busy=true;ct.stop=false;ct.log=[];ct.status='Starting…';ctDraw();
   const say=t=>{ct.status=t;ctDraw(true);};
@@ -61,13 +66,16 @@ async function ctRun(){if(ct.busy)return;const E=ctEstimates(),P=ctPick();ct.bus
     for(const id of E.parts){if(ct.stop)break;if(aiHas(id))continue;try{await aiInstall(id,(f,txt)=>say((txt||id)+' · '+Math.round(f*100)+'%'));ct.log.push(AI_PARTS[id].title+': done');}catch(e){ct.log.push(AI_PARTS[id].title+': failed ('+(e&&e.message||e)+')');}}
     if(P.env==='2K'&&!ct.stop){const todo=ctEnvMissing();let n=0;for(const e of todo){if(ct.stop)break;say('Sky '+(n+1)+' of '+todo.length+': '+e[1]);try{await ctEnvGet(e);n++;}catch(err){if(ct.stop)break;ct.log.push('Sky '+e[1]+': failed ('+(err&&err.message||err)+')');}}
       env.key=null;await ctEnvRefresh();if(n)ct.log.push(n+' sky'+(n>1?'s':'')+' at 2K: done');}
+    if(P.g4&&!ct.stop){const todo=g4Missing();let n=0,bad=0;for(const s of todo){if(ct.stop)break;const nm=(TX_PHOTO.find(t=>t[0]===s)||[s,s])[1];say('Grunge '+(n+bad+1)+' of '+todo.length+' at 4K: '+nm);
+        try{await g4Get(s,j=>{ct.job=j;});n++;}catch(e){if(ct.stop)break;bad++;ct.log.push('Grunge '+nm+': failed ('+(e&&e.message||e)+')');if(bad>=5&&bad>n+4){ct.log.push('Grunge: stopped, too many failed (check your internet connection)');break;}}}
+      ct.log.push(n+' grunge map'+(n===1?'':'s')+' at 4K'+(ct.stop?' (stopped; what is done is kept)':': done'));P.g4=false;}
     if(P.lib!=='1K'&&!ct.stop){say('Library to '+P.lib+'…');await olUpgrade(P.lib,()=>{const s=olUp.busy;if(s)say('Library '+s.done+' of '+s.total+' to '+s.res+(s.cur?' · '+s.cur:''));});ct.log.push('Library pictures: '+(ct.stop?'stopped (what is done is kept)':'done'));}
   }catch(e){console.warn(e);ct.log.push('Stopped: '+(e&&e.message||e));}
   ct.busy=null;ct.status='';prefs.contentVer=CONTENT_VER;savePrefs();ctDraw();toast(ct.stop?'Stopped. What was downloaded is kept; File › Content… carries on.':'Downloads finished.');}
 function dlgContent(first){if(!platform.isDesktop){openDialog({title:'Content',body:el('div',{class:'dlg-grid'},el('p',{text:'Downloading bigger pictures, skies and the AI add-ons needs the Gouache Studio desktop app. The web version cannot ask those sites directly.'})),okLabel:'',cancelLabel:'Close'});return;}
   ct.first=!!first;ct.body=el('div',{class:'dlg-grid ctdlg',id:'ctBody'});
   openDialog({title:first?'Choose what to download':'Content',body:ct.body,okLabel:'',cancelLabel:first?'Not now':'Close',wide:true,onCancel(){if(ct.busy)ctStop();if(first&&!ct.busy){prefs.contentVer=CONTENT_VER;savePrefs();}ct.body=null;}});
-  ctDraw();Promise.all([ctEnvRefresh(),ctLite()?ctOffRefresh():null,typeof aiRefresh==='function'?aiRefresh():null]).then(()=>ctDraw()).catch(()=>{});}
+  ctDraw();Promise.all([ctEnvRefresh(),g4Refresh(),ctLite()?ctOffRefresh():null,typeof aiRefresh==='function'?aiRefresh():null]).then(()=>ctDraw()).catch(()=>{});}
 /* once per CONTENT_VER, after the launch and welcome screens (never in tests, never on the web) */
 function contentOfferOnce(){if(!platform.isDesktop||(prefs.contentVer||0)>=CONTENT_VER||navigator.webdriver||/[?&]debug\b/.test(location.search)||document.getElementById('welcome')||document.getElementById('setup')||!modal.hidden)return;dlgContent(true);}
 Object.assign(actions,{content:()=>dlgContent(false)});
