@@ -15,7 +15,7 @@ out vec3 vP; out vec3 vN; out vec2 vT;
 void main(){ vec2 t=aT*uUVs; vec3 p=aP; if(uUseH==1&&uDisp!=0.0){ float h=textureLod(uH,uUseUDIM==1?fract(t):t,0.0).r-0.5; p+=aD*h*uDisp; }
   vP=p; vN=aN; vT=t; vec2 q=(uUseUDIM==1?fract(t):t)-uShift; gl_Position=vec4(q*2.0-1.0,0.0,1.0); }`;
 /* uMir: for mirror and radial painting, the texel looks up the brush where its mirror image is (identity otherwise) */
-const FS_3DPROJ=`in vec3 vP; in vec3 vN; in vec2 vT; uniform mat4 uVPm; uniform sampler2D uStroke; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform mat4 uMir; uniform int uAlign; uniform float uWrapTol; uniform int uNoBack; uniform int uUseUDIM; uniform vec2 uUDIMTile;
+const FS_3DPROJ=`in vec3 vP; in vec3 vN; in vec2 vT; uniform mat4 uVPm; uniform sampler2D uStroke; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform mat4 uMir; uniform int uAlign; uniform float uWrapTol; uniform int uNoBack; uniform float uCullCos; uniform int uUseUDIM; uniform vec2 uUDIMTile;
 uniform int uSt; uniform sampler2D uStT; uniform vec2 uStC; uniform vec2 uStHalf; uniform float uStRot; uniform vec2 uScr; uniform int uStTile; uniform int uStInv;
 void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec3 q=(uMir*vec4(vP,1.0)).xyz; vec4 c=uVPm*vec4(q,1.0); if(c.w<=1e-6){ o=vec4(0); return; } vec2 s=c.xy/c.w*0.5+0.5;
   if(s.x<0.0||s.y<0.0||s.x>1.0||s.y>1.0){ o=vec4(0); return; }
@@ -26,7 +26,7 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec3 q=
   /* Keep the wrap active at grazing angles; only reject surfaces clearly facing away. */
   /* Skip back faces: the real face (from how the position changes across the pixels, turned to the side the vertex normals point to)
      must look at the camera. Paint then never goes through a thin part to the far side, and never lands on a face seen from behind. */
-  if(uNoBack==1){ vec3 gn=cross(dFdx(vP),dFdy(vP)); if(dot(gn,gn)>1e-24){ gn=normalize(gn); if(dot(gn,vN)<0.0) gn=-gn; if(dot(normalize(mat3(uMir)*gn),viewDir)<=0.0){ o=vec4(0); return; } } }
+  if(uNoBack==1){ vec3 gn=cross(dFdx(vP),dFdy(vP)); if(dot(gn,gn)>1e-24){ gn=normalize(gn); if(dot(gn,vN)<0.0) gn=-gn; if(dot(normalize(mat3(uMir)*gn),viewDir)<=uCullCos){ o=vec4(0); return; } } }
   /* (0.95.4, Kenn: paint at the lip corner landed on the neck) Surface wrap still needs SOME depth check: a surface facing
      the camera but hidden far behind another part (the neck under the chin) must not take paint. uWrapTol (world units,
      from the brush size) lets paint reach just behind a raised edge, nothing further. */
@@ -86,7 +86,7 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
     pull(prog,target,extra){useProg(prog,Object.assign({uVPm:{m4:VP},uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v]},extra));
       bindTarget(target);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);
       const loc=gl.getUniformLocation(prog.p,'uShift'),alignLoc=gl.getUniformLocation(prog.p,'uAlign'),backLoc=gl.getUniformLocation(prog.p,'uNoBack');gl.bindVertexArray(g.vao);
-      gl.uniform1i(alignLoc,s.paintAlign==='camera'?0:1);gl.uniform1i(backLoc,s.noBack===false?0:1);gl.uniform1f(gl.getUniformLocation(prog.p,'uWrapTol'),meshWrapTol());
+      gl.uniform1i(alignLoc,s.paintAlign==='camera'?0:1);gl.uniform1i(backLoc,s.noBack===false?0:1);gl.uniform1f(gl.getUniformLocation(prog.p,'uCullCos'),meshCullCos());gl.uniform1f(gl.getUniformLocation(prog.p,'uWrapTol'),meshWrapTol());
       for(let j=0;j<uvs;j++)for(let i=0;i<uvs;i++){gl.uniform2f(loc,i,j);gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);}
       gl.bindVertexArray(vao);},
     /* The projection covers the whole texture, which at 4096 px is tens of millions of heavy fragments per frame (times each
@@ -101,7 +101,7 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
       const stU=st3Uniforms(w,h);for(const Mi of mirs){useProg(P.proj,Object.assign({uVPm:{m4:VP},uStroke:M.buf.tex,uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v],uMir:{m4:Mi}},stU));
       bindTarget(strokeT);gl.enable(gl.BLEND);gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);gl.disable(gl.CULL_FACE);
       const loc=gl.getUniformLocation(P.proj.p,'uShift'),alignLoc=gl.getUniformLocation(P.proj.p,'uAlign'),backLoc=gl.getUniformLocation(P.proj.p,'uNoBack');gl.bindVertexArray(g.vao);
-      const align=v3s().paintAlign==='camera'?0:1;gl.uniform1i(alignLoc,align);gl.uniform1f(gl.getUniformLocation(P.proj.p,'uWrapTol'),meshWrapTol());gl.uniform1i(backLoc,v3s().noBack===false?0:1);
+      const align=v3s().paintAlign==='camera'?0:1;gl.uniform1i(alignLoc,align);gl.uniform1f(gl.getUniformLocation(P.proj.p,'uCullCos'),meshCullCos());gl.uniform1f(gl.getUniformLocation(P.proj.p,'uWrapTol'),meshWrapTol());gl.uniform1i(backLoc,v3s().noBack===false?0:1);
       for(let j=0;j<uvs;j++)for(let i=0;i<uvs;i++){gl.uniform2f(loc,i,j);gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);}}
       gl.bindVertexArray(vao);gl.blendEquation(gl.FUNC_ADD);gl.disable(gl.BLEND);},
     /* the part of the texture this stroke can have touched: triangles whose screen position meets the stroke */
@@ -118,21 +118,58 @@ const MESH_TOOLS=['brush','erase','dodge','burn','smudge','liquify','heal','clon
 function meshPaintReady(e){return v3.paintOn&&MESH_TOOLS.includes(ui.tool)&&!sel3.armed&&!e.altKey&&!v3PickHeld(e)&&e.button===0&&v3.gpu&&v3.mesh&&!v3.mesh.noUV;}
 /* Brush size is measured against a fixed 512-pixel model diameter, not the zoomed viewport.
    Perspective and orthographic cameras share the same scale at their target plane. */
-function meshBrushScale(h){const radius=v3.mesh?.radius||1,depth=Math.max(.001,v3.cam.dist),half=Math.tan(v3s().fov*Math.PI/360);return h*radius/(512*depth*Math.max(.001,half));}
+function meshBrushScaleObj(h){const radius=v3.mesh?.radius||1,depth=Math.max(.001,v3.cam.dist),half=Math.tan(v3s().fov*Math.PI/360);return h*radius/(512*depth*Math.max(.001,half));}
+/* (0.95.5, Kenn: Painter's Projection › Size Space) Object: the brush keeps its size on the model as you zoom (the old way);
+   Viewport: the size is in screen pixels; Texture: the size is in texture pixels (worked out under the pointer) */
+function meshBrushScale(h){const sp=v3s().sizeSpace||'object';if(sp==='viewport')return 1;
+  if(sp==='texture'){const hit=v3PickHold.hit,pt=v3PickHold.point;const k=hit&&pt?v3TexelPx(hit,pt):null;if(k)return k;}
+  return meshBrushScaleObj(h);}
+/* screen pixels per texture pixel at a point of the view (from the pick picture), or null off the model */
+function v3TexelPx(hit,pt){const d=6,a=v3PickFast(hit,{clientX:pt.clientX-d,clientY:pt.clientY}),b=v3PickFast(hit,{clientX:pt.clientX+d,clientY:pt.clientY}),c=v3PickFast(hit,{clientX:pt.clientX,clientY:pt.clientY-d}),e=v3PickFast(hit,{clientX:pt.clientX,clientY:pt.clientY+d});
+  const len=(p,q)=>p&&q&&p.set===q.set?Math.hypot((p.uv[0]-q.uv[0])*doc.w,(p.uv[1]-q.uv[1])*doc.h):null,l1=len(a,b),l2=len(c,e),ls=[l1,l2].filter(v=>v&&v<doc.w*.25);
+  if(!ls.length)return null;const t=ls.reduce((x,y)=>x+y,0)/ls.length;return t>1e-6?2*d/t:null;}
+const meshCullCos=()=>{const a=v3s().cullAngle;return Math.cos(clamp(a==null?90:+a,1,90)*Math.PI/180);};
 function meshPt(hit,e){const r=hit.getBoundingClientRect();return [e.clientX-r.left,r.height-(e.clientY-r.top)];}
-function meshDown(hit,e){if(stroke||preview||selLive)return false;if(typeof bk!=='undefined'&&bk.busy&&ui.mode==='bake'){toast('Wait for the bake to finish.');return true;}
+/* (0.95.5, Kenn: 3D-Coat's Shift smooths) Shift + drag smooths and blends the paint under the brush; Shift + click without a
+   drag still draws a straight line from the last point. The press waits until the pointer moves (or is let go) to know which. */
+const SHIFT_SMOOTH_TOOLS=['brush','erase','dodge','burn','material'];
+const evCopy=e=>({clientX:e.clientX,clientY:e.clientY,pointerId:e.pointerId,pressure:e.pressure,pointerType:e.pointerType,tiltX:e.tiltX,tiltY:e.tiltY,twist:e.twist,timeStamp:e.timeStamp,button:0,buttons:1,shiftKey:e.shiftKey,ctrlKey:e.ctrlKey,altKey:e.altKey,metaKey:e.metaKey});
+function meshDown(hit,e){if(stroke||preview||selLive||v3.shiftPend)return false;const s=v3s();
+  if(ui.mode==='p3d'&&e.shiftKey&&!e.ctrlKey&&!e.altKey&&!e.metaKey&&s.shiftSmooth!==false&&SHIFT_SMOOTH_TOOLS.includes(ui.tool)&&s.paintAlign!=='uv'){v3.shiftPend={id:e.pointerId,hit,ev:evCopy(e)};return true;}
+  if(ui.mode==='p3d'&&s.paintAlign==='uv')return meshDownUV(hit,e);
+  return meshDown0(hit,e);}
+/* the pending Shift press: moved far enough = a Smooth stroke; let go = the straight line */
+function meshShiftMove(hit,e){const P=v3.shiftPend;if(!P||e.pointerId!==P.id)return false;if(Math.hypot(e.clientX-P.ev.clientX,e.clientY-P.ev.clientY)<4)return true;
+  v3.shiftPend=null;const ev=Object.assign({},P.ev,{shiftKey:false});if(meshDown0(P.hit,ev,{smooth:true})&&v3.mstroke)meshMove(hit,e);return true;}
+function meshShiftUp(e){const P=v3.shiftPend;if(!P||(e&&e.pointerId!==P.id))return false;v3.shiftPend=null;meshDown0(P.hit,P.ev);if(v3.mstroke)meshUp(Object.assign({},P.ev,{pointerId:P.id}));return true;}
+/* (0.95.5) Projection › Alignment › UV: the brush stamps straight onto the texture (the flat canvas), placed where the pointer
+   is on the model; seams cut the stroke, like Painter's UV alignment */
+function meshDownUV(hit,e){if(typeof bk!=='undefined'&&bk.busy)return true;if(ui.tool==='material')materialBrushTarget();if(fillNoMask())return true;
+  if(['smudge','liquify','heal','clone'].includes(ui.tool)){toast('UV alignment paints with the brush, eraser and dodge/burn. Use Tangent | Wrap for this tool.');return true;}
+  if(typeof npSync==='function')npSync();const et=editTarget();if(lockStop(et))return true;const o=paintOpts(et);if(!o)return true;
+  const q=meshUVAt(hit,e);if(!q)return false;const r=hit.getBoundingClientRect(),k=v3TexelPx(hit,e);
+  o.uvRs=true;o.cageRs=k?meshBrushScale(r.height)/k:1;o.sym=null;o.extras=[];const p=pressureOf(e);
+  v3.mstroke={id:e.pointerId,uv:true,hit,last:q};beginStroke(et.L,q[0],q[1],p,o);return true;}
+/* the texture pixel under a point of the view, on the active texture set only */
+function meshUVAt(hit,e){const q=v3PickFast(hit,e);if(!q)return null;if(ui.mode==='p3d'&&v3.mesh?.setRanges&&typeof p3Range==='function'){const R=v3.mesh.setRanges[q.set],A=p3Range();if(R&&A&&R.start!==A.start)return null;}return [q.uv[0]*doc.w,q.uv[1]*doc.h];}
+function meshMoveUV(hit,e){const m=v3.mstroke;if(!m||!stroke)return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];
+  for(const ev of (evs.length?evs:[e])){const q=meshUVAt(hit,ev);if(!q)continue;const jump=Math.hypot(q[0]-m.last[0],q[1]-m.last[1]),reach=Math.max(8,(stroke.o.size||brush.size)*(stroke.rs||1)*3);
+    if(jump>reach){/* crossed a seam: lift and start again on the other island */const o=stroke.o,L=stroke.L;endStroke(true);beginStroke(L,q[0],q[1],pressureOf(ev,e),o);m.last=q;continue;}
+    addPoint(q[0],q[1],pressureOf(ev,e));m.last=q;}}
+function meshDown0(hit,e,opt){if(typeof bk!=='undefined'&&bk.busy&&ui.mode==='bake'){toast('Wait for the bake to finish.');return true;}
   if(ui.mode==='p3d'&&p3.udim){const pk=v3PickAt(hit,e),R=pk&&v3.mesh?.setRanges?.[pk.set],i=pk&&pk.tile&&p3.sets.findIndex(S=>p3Binding(S)===(R&&R.name)&&S.tile&&S.tile.id===pk.tile.id);if(i>=0&&i!==p3.cur)p3SwitchSet(i,true);}
   if(ui.mode==='bake'&&(ui.tool==='smudge'||ui.tool==='liquify')){toast('Smudge and Liquify work in 3D Paint, on the model’s texture set.');return true;}
   if(ui.tool==='material')materialBrushTarget();if(fillNoMask())return true;
   if(typeof npSync==='function')npSync();const et=ui.mode==='bake'?bakeEditTarget():editTarget();if(ui.mode!=='bake'&&lockStop(et))return true;const o=paintOpts(et);if(!o)return true;
+  if(opt&&opt.smooth){Object.assign(o,{tool:'smudge',smooth3d:true,smoothK:clamp(.35+(o.opacity??1)*.45,.2,.85),charge:0,mix:false,paintMix:0,streak:0});}
   const r=hit.getBoundingClientRect(),w=Math.max(1,Math.round(r.width)),h=Math.max(1,Math.round(r.height)),sp=meshSpace(w,h);if(!sp)return true;
   if(o.tool==='liquify')return meshLiqDown(hit,e,et,o,sp);
   if(o.tool==='smudge'){o.extras=[];o.sym=null;if(!sp.mesh||(typeof p3!=='undefined'&&p3.udim)){toast('Smudge on the model needs a plain texture set (no UDIM tiles).');return true;}}
   if(o.tool==='heal'||o.tool==='clone'){const pk=v3PickAt(hit,e);if(!pk)return true;if(!healBegin(pk.uv[0]*doc.w,pk.uv[1]*doc.h,o.tool))return true;}
   o.space=sp;o.cageRs=meshBrushScale(h);o.sym=null;const [x,y]=meshPt(hit,e),p=pressureOf(e),line=brushLineStart(et,x,y,p,e,'mesh');v3.mstroke={id:e.pointerId,sx:x,sy:y,sp:p,rx:x,ry:y,smoothAt:e.timeStamp,line};beginStroke(et.L,line.x,line.y,line.p,o);if(line.joined){let qx=x,qy=y;if(e.shiftKey&&e.ctrlKey)[qx,qy]=brushLineAngle(line,x,y);addPoint(qx,qy,p);v3.mstroke.rx=qx;v3.mstroke.ry=qy;}return true;}
-function meshMove(hit,e){const m=v3.mstroke;if(m&&m.liq&&e.pointerId===m.id){meshLiqMove(hit,e);return;}if(!m||e.pointerId!==m.id||!stroke)return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];
+function meshMove(hit,e){if(v3.shiftPend&&meshShiftMove(hit,e))return;const m=v3.mstroke;if(m&&m.uv&&e.pointerId===m.id){meshMoveUV(hit,e);return;}if(m&&m.liq&&e.pointerId===m.id){meshLiqMove(hit,e);return;}if(!m||e.pointerId!==m.id||!stroke)return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];
   for(const ev of (evs.length?evs:[e])){let [x,y]=meshPt(hit,ev);const p=pressureOf(ev,e);if(m.line)[x,y]=brushLineSnap(m.line,x,y,ev.shiftKey,ev.ctrlKey);m.rx=x;m.ry=y;if(brush.lazy>0&&!ev.shiftKey){const q=lazyStep(m,x,y,brush.lazy);if(!q)continue;x=q[0];y=q[1];}strokeSmooth(m,x,y,p,brush.smoothing,ev.timeStamp,ev.shiftKey);addPoint(m.sx,m.sy,m.sp);}}
-function meshUp(e){const m=v3.mstroke;if(!m||(e&&e.pointerId!==m.id))return;if(m.liq){meshLiqUp();return;}v3.mstroke=null;if(stroke){if(brush.smoothing>0)addPoint(brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);brushLineRemember(m.line,brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);endStroke(true);}}
+function meshUp(e){if(v3.shiftPend&&meshShiftUp(e))return;const m=v3.mstroke;if(!m||(e&&e.pointerId!==m.id))return;if(m.uv){v3.mstroke=null;if(stroke)endStroke(true);return;}if(m.liq){meshLiqUp();return;}v3.mstroke=null;if(stroke){if(brush.smoothing>0)addPoint(brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);brushLineRemember(m.line,brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);endStroke(true);}}
 /* round cursor showing the brush size over the model */
 function meshCursor(hit,e){mir3CursorMove(hit,e);let c=v3.curEl;if(!c||!c.isConnected){c=v3.curEl=el('div',{class:'v3cur'});hit.parentNode.append(c);}
   if(e&&sel3.armed&&!e.altKey){c.hidden=true;hit.style.cursor='crosshair';return;}
@@ -165,11 +202,34 @@ function v3Ray(w,h,px,py){const s=v3s(),eye=v3Eye(),c=v3.cam,f=norm3(sub3([c.tx,
 /* hold Alt over the model: its base colour there becomes the foreground colour (Alt+drag still turns) */
 /* it picks when the pointer rests for a moment, not on every movement (each pick waits for the graphics card) */
 let v3PickQ=null;
-function v3HoverPick(hit,e){if(!v3PickHeld(e)||stroke)return;const q={clientX:e.clientX,clientY:e.clientY};clearTimeout(v3PickQ);
-  v3PickQ=setTimeout(()=>{const ev=q;v3PickQ=null;if(!v3PickHeld()||!modal.hidden||v3.drag||v3.mstroke||!v3.on||!v3.hover)return;const p=v3PickAt(hit,ev);const t=p&&ui.mode==='p3d'&&typeof p3SetTex==='function'?p3SetTex(p.set,'base'):v3.tex.base;if(!p||!t)return;
+/* (0.95.5, Kenn: colour picking should be instant) what lies under every pixel of the view (UV, distance, set) is drawn ONCE into
+   a half-size picture and read into memory; while the camera and model stay put every pick is a lookup there, with no wait
+   for the graphics card. The pick runs at once on the key press and then at most once a frame (no more 60 ms pause). */
+const v3PB={key:'',w:0,h:0,sc:2,data:null,fb:null,t:null,rb:null};
+function v3PickBufKey(hit){const r=hit.getBoundingClientRect(),s=v3s(),c=v3.cam;return [Math.round(r.width),Math.round(r.height),c.tx,c.ty,c.tz,c.yaw,c.pitch,c.dist,c.roll||0,s.fov,s.ortho?1:0,s.disp,s.uvs,v3.gpu&&v3.gpu.count,v3.mesh&&v3.mesh.verts,ui.mode,p3.udim?1:0,p3.ua?1:0].join(',');}
+function v3PickBuild(hit){const g=v3.gpu;if(!g||!v3.mesh)return false;if(!P3PICK)P3PICK=prog3(VS_3DD,FS_3DPICK);
+  const r=hit.getBoundingClientRect(),W=Math.max(1,r.width),H=Math.max(1,r.height),bw=Math.max(1,Math.ceil(W/v3PB.sc)),bh=Math.max(1,Math.ceil(H/v3PB.sc));
+  if(!v3PB.fb||v3PB.w!==bw||v3PB.h!==bh){if(v3PB.fb){gl.deleteFramebuffer(v3PB.fb);gl.deleteTexture(v3PB.t);gl.deleteRenderbuffer(v3PB.rb);}
+    v3PB.t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,v3PB.t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,bw,bh,0,gl.RGBA,gl.FLOAT,null);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+    v3PB.fb=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,v3PB.fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,v3PB.t,0);
+    v3PB.rb=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,v3PB.rb);gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT24,bw,bh);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,v3PB.rb);v3PB.w=bw;v3PB.h=bh;v3PB.data=new Float32Array(bw*bh*4);}
+  const s=v3s(),T=v3.tex,{VP,eye}=v3ViewProj(W,H),useH=!!(T.height&&s.disp&&doc.maps.includes('height')),uvs=ui.mode==='p3d'&&(p3.udim||p3.ua)?1:s.uvs;
+  gl.bindFramebuffer(gl.FRAMEBUFFER,v3PB.fb);gl.viewport(0,0,bw,bh);gl.clearColor(0,0,0,0);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.BLEND);
+  const rs=ui.mode==='p3d'&&v3.mesh.setRanges?v3.mesh.setRanges:[{start:0,count:g.count/3}];gl.bindVertexArray(g.vao);
+  rs.forEach((R,k)=>{useProg(P3PICK,{uVP:{m4:VP},uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:ui.mode==='p3d'&&p3.udim,uCamP:eye,uSet:k,uOrtho:{int:s.ortho?1:0},uFwd:norm3(sub3([v3.cam.tx,v3.cam.ty,v3.cam.tz],eye))});gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);});gl.bindVertexArray(vao);
+  gl.disable(gl.DEPTH_TEST);gl.readPixels(0,0,bw,bh,gl.RGBA,gl.FLOAT,v3PB.data);gl.bindFramebuffer(gl.FRAMEBUFFER,null);v3PB.key=v3PickBufKey(hit);v3PB.mesh=v3.mesh;v3PickStats.builds++;return true;}
+const v3PickStats={builds:0,looks:0};
+/* the colour-pick lookup: UV and texture set under the pointer, from the picture above (built again only when the view changed) */
+function v3PickFast(hit,e){if((v3PB.key!==v3PickBufKey(hit)||v3PB.mesh!==v3.mesh)&&!v3PickBuild(hit))return null;const r=hit.getBoundingClientRect(),px=e.clientX-r.left,py=r.height-(e.clientY-r.top);if(px<0||py<0||px>r.width||py>r.height)return null;
+  const x=clamp(Math.floor(px/v3PB.sc),0,v3PB.w-1),y=clamp(Math.floor(py/v3PB.sc),0,v3PB.h-1),i=(y*v3PB.w+x)*4,d=v3PB.data;v3PickStats.looks++;
+  if(d[i+3]<.5)return null;const tile=p3UdimAddress(d[i],d[i+1]),uv=p3.udim&&tile?tile.uv:[d[i]-Math.floor(d[i]),d[i+1]-Math.floor(d[i+1])];return {uv,tile,set:Math.round(d[i+3]-1),dist:d[i+2]};}
+const v3HP={busy:false};
+function v3HoverPick(hit,e){if(!(e.again?v3PickHeld():v3PickHeld(e))||stroke)return;v3PickQ={clientX:e.clientX,clientY:e.clientY,hit};if(v3HP.busy)return;v3HP.busy=true;
+  try{v3HoverPickRun();}finally{requestAnimationFrame(()=>{v3HP.busy=false;const q=v3PickQ;if(q)v3HoverPick(q.hit,{clientX:q.clientX,clientY:q.clientY,again:true});});}}
+function v3HoverPickRun(){{const ev=v3PickQ;if(!ev)return;const hit=ev.hit;v3PickQ=null;if(!v3PickHeld()||!modal.hidden||v3.drag||v3.mstroke||!v3.on||!v3.hover)return;const p=v3PickFast(hit,ev);const t=p&&ui.mode==='p3d'&&typeof p3SetTex==='function'?p3SetTex(p.set,'base'):v3.tex.base;if(!p||!t)return;
     const x=clamp(Math.floor(p.uv[0]*t.w),0,t.w-1),y=clamp(Math.floor(p.uv[1]*t.h),0,t.h-1),d=captureRegionNow(t,x,y,1,1).data;
     let c=t.depth===16?(()=>{const L=h2fLut();return [L[d[0]],L[d[1]],L[d[2]],L[d[3]]];})():[d[0]/255,d[1]/255,d[2]/255,d[3]/255];
-    if(c[3]<.02)return;c=[c[0]/c[3],c[1]/c[3],c[2]/c[3]].map(v=>clamp(v,0,1));if(toHex(c)!==toHex(ui.fg))setFG(c);},60);}
+    if(c[3]<.02)return;c=[c[0]/c[3],c[1]/c[3],c[2]/c[3]].map(v=>clamp(v,0,1));if(toHex(c)!==toHex(ui.fg))setFG(c);}}
 
 /* ---- mirror and radial painting on the model ----
    Mirrors across X, Y and/or Z planes (each can be moved off centre, snapping to the centre and to steps), and
@@ -341,3 +401,20 @@ function meshBackfaceControl(id){const control=chk(id,'Paint back faces',v3s().n
   v3s().noBack=!on;for(const root of [document,...(v3.pop?[v3.pop.win.document]:[])])for(const input of root.querySelectorAll('[data-backface-paint]'))input.checked=on;
   v3.dirty=true;requestRender(true);
 });control.querySelector('input').setAttribute('data-backface-paint','');return control;}
+/* ---- (0.95.5, Kenn: Painter's Projection section) how the 3D brush lands on the model ----
+   Alignment: Tangent | Wrap (follows the surface, reaches just behind raised edges), Camera (flat from the view, only what is seen),
+   UV (stamps straight onto the texture). Backface culling: surfaces turned away from you by more than the angle take no paint.
+   Size Space: Object (the brush keeps its size on the model as you zoom), Viewport (screen pixels), Texture (texture pixels). */
+const PROJ_DEF={paintAlign:'wrap',noBack:true,cullAngle:90,sizeSpace:'object'};
+function projectionBox(){const s=v3s(),box=el('div',{class:'dlg-grid projbox',id:'p3Proj'});
+  const redo=()=>{const n=projectionBox();box.replaceWith(n);for(const root of [document,...(v3.pop?[v3.pop.win.document]:[])])for(const input of root.querySelectorAll('[data-backface-paint]'))input.checked=s.noBack===false;v3.dirty=true;requestRender(true);refreshCursor();};
+  const sel=(id,label,opts,val,on,title)=>{const x=el('select',{id,'aria-label':label,title:title||''},...opts.map(([v,t])=>el('option',{value:v,text:t})));x.value=val;x.onchange=()=>on(x.value);return el('label',{class:'hpsel'},el('span',{text:label}),x);};
+  const head=el('div',{class:'sub projhead'},el('span',{text:'Projection'}),el('button',{class:'btn sm',type:'button',id:'projReset',title:'Back to the defaults','aria-label':'Reset projection',text:'↺',onclick:()=>{Object.assign(s,PROJ_DEF);redo();}}));
+  const align=sel('projAlign','Alignment',[['wrap','Tangent | Wrap'],['camera','Camera'],['uv','UV']],s.paintAlign||'wrap',v=>{s.paintAlign=v;redo();},'How the brush lands on the model');
+  const on=s.noBack!==false,cull=el('button',{class:'btn sm'+(on?' on':''),type:'button',id:'projCull','aria-pressed':String(on),text:on?'On':'Off',title:'Backface culling: no paint on surfaces turned away from you',onclick:()=>{s.noBack=!on;redo();}});
+  const ang=makeSlider({id:'projCullAng',label:'Angle',min:1,max:90,step:1,value:s.cullAngle??90,def:90,fmt:v=>Math.round(v)+'°',onInput:v=>{s.cullAngle=v;v3.dirty=true;}}).el;if(!on)ang.classList.add('dim');
+  const size=sel('projSize','Size Space',[['object','Object'],['viewport','Viewport'],['texture','Texture']],s.sizeSpace||'object',v=>{s.sizeSpace=v;redo();},'What the brush size is measured in');
+  const a=s.paintAlign||'wrap',sz=s.sizeSpace||'object';
+  const note=el('p',{class:'note',text:(a==='wrap'?'Tangent | Wrap follows the surface, even just behind a raised edge.':a==='camera'?'Camera projects the stroke flat from the view and only paints what you can see.':'UV stamps the brush straight onto the texture where you point; a seam starts a new stroke.')+
+    ' Culling: surfaces turned away by more than the angle take no paint (90° = only those facing away). '+(sz==='object'?'Object: the brush keeps its size on the model as you zoom.':sz==='viewport'?'Viewport: the size is in screen pixels.':'Texture: the size is in texture pixels.')});
+  box.append(head,align,el('div',{class:'frow projcull'},el('span',{text:'Backface culling'}),cull,ang),size,note);return box;}

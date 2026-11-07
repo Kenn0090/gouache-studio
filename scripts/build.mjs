@@ -22,6 +22,12 @@ const order = JSON.parse(read('src/js/order.json')).order;
 const APP_VERSION = JSON.parse(read('package.json')).version;
 /* the Blender add-on (assets/addons), carried inside the app so it can be saved from the Export window */
 const UNREAL_SETUP = fs.existsSync(r('assets/addons/gouache_unreal_setup.py')) ? read('assets/addons/gouache_unreal_setup.py') : '';
+/* (0.95.5) built-in smart material / smart mask thumbnails rendered on the Material preview model (scripts/smart-thumbs.cjs) */
+const SM_THUMBS = {};
+if (fs.existsSync(r('assets/smart-thumbs/previews.json'))) {
+  const items = JSON.parse(read('assets/smart-thumbs/previews.json')).items || {};
+  for (const [k, f] of Object.entries(items)) if (f === path.basename(f) && fs.existsSync(r('assets/smart-thumbs/' + f))) SM_THUMBS[k] = 'data:image/webp;base64,' + fs.readFileSync(r('assets/smart-thumbs/' + f)).toString('base64');
+}
 const BLENDER_ADDON = fs.existsSync(r('assets/addons/gouache_link.py')) ? read('assets/addons/gouache_link.py') : '';
 /* the change log for Help › What's new */
 const CHANGELOG = fs.existsSync(r('CHANGELOG.md')) ? read('CHANGELOG.md') : '';
@@ -44,7 +50,7 @@ if (fs.existsSync(r('assets/grunge/previews.json'))) {
   }
 }
 const LITE = process.env.GOUACHE_LITE === '1'; /* the smaller installer: no Library files, skies or grunge inside; they are fetched when used (File > Content keeps copies for offline) */
-const js = `const APP_VERSION='${APP_VERSION}';\nconst GM_LITE=${LITE};\nconst TX_PREVIEWS=${JSON.stringify(TX_PREVIEW_DATA)};\nconst GM_BUNDLED=${JSON.stringify(GMATS).replace(/<\//g, '<\\/')};\nconst UNREAL_SETUP=${JSON.stringify(UNREAL_SETUP).replace(/<\//g, '<\\/')};\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\nconst CHANGELOG_MD=${JSON.stringify(CHANGELOG).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
+const js = `const APP_VERSION='${APP_VERSION}';\nconst SM_THUMBS=${JSON.stringify(SM_THUMBS)};\nconst GM_LITE=${LITE};\nconst TX_PREVIEWS=${JSON.stringify(TX_PREVIEW_DATA)};\nconst GM_BUNDLED=${JSON.stringify(GMATS).replace(/<\//g, '<\\/')};\nconst UNREAL_SETUP=${JSON.stringify(UNREAL_SETUP).replace(/<\//g, '<\\/')};\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\nconst CHANGELOG_MD=${JSON.stringify(CHANGELOG).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
 const studioFonts=JSON.parse(read('assets/fonts/manifest.json'));
 const studioFontCss=studioFonts.map(f=>`@font-face{font-family:"${f.family}";font-style:normal;font-weight:${f.weight};font-display:swap;src:url(${f.file}) format("truetype")}`).join('\n');
 const css = read('src/styles/app.css');

@@ -1512,3 +1512,8 @@ body.photomode #docTabs{display:none!important}
 
 /* (0.95) UDIM tiles under a texture set */
 .p3tiles{display:flex;flex-wrap:wrap;gap:4px;margin:-2px 0 6px 34px}.p3tiles .p3tile{padding:1px 7px;font-size:11px;min-height:0}
+/* (0.95.5) 3D Paint › Projection */
+.projbox .projhead{display:flex;align-items:center;justify-content:space-between}
+.projbox .projcull{display:grid;grid-template-columns:auto auto 1fr;gap:8px;align-items:center}
+.projbox .projcull .dim{opacity:.45}
+body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}

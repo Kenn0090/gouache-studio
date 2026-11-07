@@ -111,6 +111,7 @@
     "view3d/mesh-paint",
     "view3d/mesh-pull",
     "view3d/paint3d",
+    "view3d/poly-fill",
     "view3d/udim-atlas",
     "view3d/p3-instance",
     "view3d/up-axis",
@@ -233,6 +234,7 @@
     "ui/setup",
     "ui/content-step",
     "ui/tool-menus",
+    "ui/tool-keys",
     "core/boot"
   ]
 }
