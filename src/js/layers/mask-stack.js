@@ -96,13 +96,22 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; float m=0.0,cov=1.0;
 const FS_MSGEN=MS_NOISE_GLSL+MS_SURF_GLSL+`
 uniform sampler2D uCurv; uniform int uHasCurv; uniform sampler2D uAO; uniform int uHasAO; uniform int uG; uniform float uAmt; uniform float uWidth; uniform float uBreak; uniform float uCon; uniform float uScale; uniform int uNeg; uniform float uDist;
 uniform sampler2D uCurv2; uniform int uHasCurv2; uniform vec4 uLight; uniform vec4 uGrad; uniform vec3 uAxis; uniform vec3 uCenter; uniform vec4 uComic; uniform int uComicMode;
+uniform sampler2D uGTex; uniform int uHasG; uniform float uGTile; uniform int uGInv; uniform float uGRot;
 uniform vec4 uBuilder; uniform vec3 uBuilderExtra; uniform vec4 uBuilderRange; uniform sampler2D uHeight; uniform sampler2D uThick; uniform sampler2D uWorldN; uniform sampler2D uPosition; uniform int uHasHeight; uniform int uHasThick; uniform int uHasWorldN; uniform int uHasPosition;
 float curvOf(vec2 uv){ float c=uHasCurv==1?texture(uCurv,uv).r:0.5; if(uHasCurv2==1) c=clamp(c+(texture(uCurv2,uv).r-0.5)*1.5,0.0,1.0); return c; }
 float aoOf(vec2 uv){ return uHasAO==1?texture(uAO,uv).r:1.0; }
+/* (0.95.7, Kenn) your own grunge as the generator's breakup: a picture from Textures, tiled; on the model (World) it is laid
+   over the surface from three sides so it has no seams, on UVs it follows the texture */
+float grungeOf(vec2 uv){ vec3 q=surfQ(uv)*uGTile; float c=cos(uGRot),s=sin(uGRot); float g;
+  if(uWorld==1&&uHasPos==1){ vec3 w=abs(surfN()); w=pow(w,vec3(4.0)); w/=max(w.x+w.y+w.z,1e-4);
+    vec2 a=q.zy,b=q.xz,d=q.xy; a=vec2(c*a.x-s*a.y,s*a.x+c*a.y); b=vec2(c*b.x-s*b.y,s*b.x+c*b.y); d=vec2(c*d.x-s*d.y,s*d.x+c*d.y);
+    g=texture(uGTex,fract(a)).r*w.x+texture(uGTex,fract(b)).r*w.y+texture(uGTex,fract(d)).r*w.z; }
+  else { vec2 d=q.xy; d=vec2(c*d.x-s*d.y,s*d.x+c*d.y); g=texture(uGTex,fract(d)).r; }
+  return uGInv==1?1.0-g:g; }
 void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(); vec3 q=surfQ(uv)*uScale;
   /* (0.27) Distort: the edges and cavities read a little off to the side, following a noise, so they break up irregularly */
   if(uDist>0.0){ vec2 dd=vec2(fbm(q*0.45+vec3(3.1,0.0,1.7)),fbm(q*0.45+vec3(0.0,7.7,4.2)))-0.5; uv+=dd*uDist*0.05; }
-  float c=curvOf(uv),edge=clamp((c-0.5)*2.0,0.0,1.0),cav=clamp((0.5-c)*2.0,0.0,1.0),ao=aoOf(uv),occ=1.0-ao,up=dot(N,vec3(0.0,1.0,0.0)),n=fbm(q),w=uWidth;
+  float c=curvOf(uv),edge=clamp((c-0.5)*2.0,0.0,1.0),cav=clamp((0.5-c)*2.0,0.0,1.0),ao=aoOf(uv),occ=1.0-ao,up=dot(N,vec3(0.0,1.0,0.0)),n=uHasG==1?grungeOf(uv):fbm(q),w=uWidth;
   float b=0.0;
   if(uG==18){vec3 bn=uHasWorldN==1?normalize(texture(uWorldN,uv).rgb*2.0-1.0+1e-5):N;
     vec3 bp=uHasPosition==1?texture(uPosition,uv).rgb:P;float pos=dot(bp,abs(uAxis));if(uAxis.x+uAxis.y+uAxis.z<0.0)pos=1.0-pos;
@@ -249,8 +258,15 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
       uLight:[Math.sin((p.lightAz??-35)*Math.PI/180)*Math.cos((p.lightEl??45)*Math.PI/180),Math.sin((p.lightEl??45)*Math.PI/180),Math.cos((p.lightAz??-35)*Math.PI/180)*Math.cos((p.lightEl??45)*Math.PI/180),p.occlude??.25],
       uGrad:[p.gradFrom??0,p.gradTo??1,['linear','smooth','bands'].indexOf(p.gradStyle||'smooth'),p.bands??3],uAxis:MS_AXES[p.gradAxis||'up']||[0,1,0],uCenter:[p.centerX??.5,p.centerY??.5,p.centerZ??.5],
       uComic:[p.bands??3,p.dots??28,p.dotSize??.45,p.dotAngle??45],uComicMode:{int:['shade','shadow','dots'].indexOf(p.comicStyle||'shade')},
-      uAmt:p.amount,uWidth:p.width,uBreak:p.breakup,uCon:p.contrast,uDist:p.distort||0,uScale:p.scale||6,uSeed:p.seed||1,uNeg:{int:p.inv?1:0}},msPx(r,ctx))));return {t:o,pooled:true};}
+      uAmt:p.amount,uWidth:p.width,uBreak:p.breakup,uCon:p.contrast,uDist:p.distort||0,uScale:p.scale||6,uSeed:p.seed||1,uNeg:{int:p.inv?1:0},...msGrungeU(p)},msPx(r,ctx))));return {t:o,pooled:true};}
   return null;}
+/* (0.95.7) the generator's own grunge picture: loaded from Textures (cached on the graphics card); the mask is worked out
+   again once it has arrived */
+function msGrungeTex(p){const g=p&&p.gimg;if(!g||typeof txCacheGet!=='function')return null;txCachePin(g);const t=txCacheGet(g.kind+':'+g.id);if(t)return t;
+  if(!g._busy){Object.defineProperty(g,'_busy',{value:true,writable:true,enumerable:false,configurable:true});
+    txLoad().then(()=>{const it=fxdAllTex().find(x=>x.kind===g.kind&&x.id===g.id);return it&&txTarget(it);}).then(r=>{g._busy=false;if(r){msEpoch++;changedAll();}}).catch(()=>{g._busy=false;});}
+  return null;}
+function msGrungeU(p){const t=msGrungeTex(p);return {uGTex:t?t.tex:dummy,uHasG:{int:t?1:0},uGTile:p.gtile||1,uGInv:{int:p.ginv?1:0},uGRot:(p.grot||0)*Math.PI/180};}
 /* a filter row on the picture so far */
 function msFilter(r,acc){const o=acquireD(acc.depth);
   if(r.own){const P=msProgs(),p=r.p||{};withUVWrap(p.uvWrap!==false,[acc],()=>run(P.own,o,{uSrc:acc.tex,uOwn:{int:['grow','warp','slope'].indexOf(r.own)},uR:p.r==null?3:p.r,uScale:p.scale||6,uSz:[doc.w,doc.h],uSeed:p.seed||1}));return o;}

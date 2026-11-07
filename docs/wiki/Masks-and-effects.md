@@ -12,6 +12,8 @@ Select the layer, click its **mask thumbnail**, then press **✦** (the effects 
 
 **Generators** have a **Distort** setting: the edges and cavities they find are read a little to the side, following a noise, so wear and dirt break up irregularly instead of following every edge exactly.
 
+**Your own grunge in a generator:** select a generator row and, in Properties under **Grunge**, click **Choose from Textures…** (photo grunges, mixed, generated or your own) or drop a picture onto the box. The picture then breaks up the mask instead of the built-in noise; **Breakup** sets how strongly. **Grunge tiling**, **Grunge rotation** and **Invert grunge** adjust it, and **Use built-in noise** goes back. With the World projection the picture is laid over the model from three sides, so it has no seams.
+
 Click the layer's own thumbnail instead, and ✦ adds **effects to the layer's content** (blue **fx** rows): filters such as Blur, Levels or Hue/Saturation that change the layer's own maps before it is blended.
 
 ## The rows
