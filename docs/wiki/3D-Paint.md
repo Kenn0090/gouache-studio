@@ -64,7 +64,7 @@ These follow Substance Painter's own shortcuts (Preferences › Painting › *Su
 - **[** and **]** change the size, **Shift + right drag** turns the sky, **F** frames the model.
 
 ## Picking colours and shades
-- **Hold Alt over the model** (without clicking) to pick its colour there. Change **3D Paint: pick colour (hold)** in **Edit › Keyboard shortcuts › Brush and colour** to use another key. Release it to return to painting. Alt + drag still turns the model.
+- **Hold Alt over the model** (without clicking) to pick its colour there. The colour changes the moment you press the key and follows the pointer with no delay. Change **3D Paint: pick colour (hold)** in **Edit › Keyboard shortcuts › Brush and colour** to use another key. Release it to return to painting. Alt + drag still turns the model.
 - **Left / Right arrow keys** step through the shade strip in the Color panel while you paint. Clicking a shade still works, and the strip stays put while you step.
 
 ## Which way is up
@@ -113,8 +113,17 @@ The **Blend (smudge)** tool (S) and **Liquify** (Ctrl+Shift+X) work on the model
 ## Hue / Saturation layer
 The layer button with the little dial (or **Layer › New › Hue / Saturation layer**) adds an **empty layer** that changes the colour of everything under it. Its **Hue, Saturation and Lightness** sliders (and **Colorize**) are in the **Properties** panel and change the model live; it takes a mask, opacity and blend mode like any layer, and undo covers it. A **Pass through** folder lets it reach the layers below the folder; a Normal folder keeps the effect inside. It is a filter layer with one Hue / Saturation filter, so any such layer gets these sliders. On a grey surface, Hue and Saturation change nothing (there is no colour to change): use Colorize.
 
-## Brush alignment and back faces
-In the 3D Paint panel, **Brush alignment** chooses *Surface wrap* (the stroke follows the surface, including parts behind a raised edge) or *Camera* (only what the camera sees). **Paint back faces** is available in viewport **Settings**, **Tool settings** for the brush, and the 3D Paint panel. It is off by default to protect faces seen from behind. Turn it on for a model whose faces point the wrong way, or when you want to paint the inside of a part. The choice is saved with the project.
+## Projection (how the brush lands on the model)
+The **Projection** section of the 3D Paint panel works like Substance Painter's (↺ puts it back to the defaults):
+- **Alignment:** *Tangent | Wrap* follows the surface, reaching just behind a raised edge (but never onto a part hidden further behind, such as the neck under the chin). *Camera* projects the stroke flat from the view and only paints what you can see. *UV* stamps the brush straight onto the texture where you point; crossing a UV seam starts a new stroke.
+- **Backface culling** (On/Off) with an **Angle**: surfaces turned away from you by more than the angle take no paint. 90° only stops faces that point away; a smaller angle also keeps paint off surfaces seen at a slant, so it does not smear round edges. Off paints faces seen from behind (models whose faces point the wrong way, or the inside of a part).
+- **Size Space:** *Object* keeps the brush the same size on the model as you zoom; *Viewport* measures it in screen pixels; *Texture* measures it in texture pixels.
+
+## Smooth with Shift (like 3D-Coat)
+Hold **Shift and drag** over painted areas to smooth and blend the paint under the brush (it works across UV seams and on every map of the layer). A **Shift + click** without dragging still draws a straight line from the last point.
+
+## Polygon fill
+The **Polygon fill** tool (3D Paint only, under Blend in the toolbar) fills whole parts of the model at once. Choose **Face**, **Triangle**, **Loop** or **UV island** in its options, then click the model (or drag over it to fill several). The part under the pointer lights up before you click. It fills the selected layer with the brush colour; on a mask it fills white, and **Alt + click** fills black. Each click or drag is one undo step.
 
 ## Mirror and radial painting
 The mirror sits in the **3D view's top bar**: **X**, **Y** and **Z** turn the mirror planes on, the menu next to them sets **radial** copies, and **▾** opens the plane positions, the radial axis, snapping and showing the planes.

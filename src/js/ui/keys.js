@@ -10,9 +10,14 @@ const KB_EXTRA=[
   ['tool:text','Text','Tools','T',()=>setTool('text')],['tool:shape','Shape','Tools','U',()=>setTool('shape')],['tool:array','Array','Tools','',()=>setTool('array')],['tool:marquee','Marquee','Tools','M',()=>setTool('marquee')],['tool:lasso','Lasso','Tools','',()=>setTool('lasso')],['tool:wand','Magic wand','Tools','W',()=>setTool('wand')],
   ['paint:lastBrush','Swap last two brushes','Painting','Shift+B',brushSwapLast],
   ['p3:pick','3D Paint: pick colour (hold)','Painting','Alt',()=>{}],
-  ['paint:smaller','Brush smaller','Painting','[',()=>kbBrushSize(-1)],['paint:bigger','Brush bigger','Painting',']',()=>kbBrushSize(1)],
+  ['paint:smaller','Brush smaller','Painting','[',e=>kbBrushSize(-1,e&&e.repeat)],['paint:bigger','Brush bigger','Painting',']',e=>kbBrushSize(1,e&&e.repeat)],
   ['paint:swap','Swap colours','Painting','X',()=>swapColors()],['paint:reset','Black and white colours','Painting','D',()=>{ui.bg=[1,1,1];setFG([0,0,0]);}]];
-function kbBrushSize(d){if(ui.tool==='liquify'){liqSetSetting('size',clamp(Math.round(liq.size*(d>0?1.15:1/1.15)+d),10,1500));return;}brush.size=clamp(Math.round(brush.size*(d>0?1.15:1/1.15)+d),1,brushMax());brushRememberSize();if(sizeSlider)sizeSlider.set(brush.size);refreshCursor();schedulePreview();}
+/* (0.95.5, Kenn) holding [ or ] keeps resizing and speeds up the longer it is held; the brush outline shows at the new size
+   at once, on the canvas and on the model, even when the mouse does not move */
+const kbSz={n:0,t:0};
+function kbBrushSize(d,rep){const now=performance.now();kbSz.n=rep&&now-kbSz.t<400?kbSz.n+1:0;kbSz.t=now;const f=1.15+Math.min(.25,kbSz.n*.012);
+  if(ui.tool==='liquify'){liqSetSetting('size',clamp(Math.round(liq.size*(d>0?f:1/f)+d),10,1500));kbSizeShow();return;}brush.size=clamp(Math.round(brush.size*(d>0?f:1/f)+d),1,brushMax());brushRememberSize();if(sizeSlider)sizeSlider.set(brush.size);refreshCursor();kbSizeShow();schedulePreview();}
+function kbSizeShow(){try{if(typeof v3PickHold!=='undefined'&&v3PickHold.hit?.isConnected&&v3PickHold.point&&typeof meshCursor==='function'&&(v3.on||ui.mode==='p3d')){const c=v3.curEl;meshCursor(v3PickHold.hit,{...v3PickHold.point,altKey:false,ctrlKey:false,metaKey:false,shiftKey:false});if(c&&!c.isConnected)return;}}catch(e){}}
 /* Photoshop's keys where they differ from this app's (the rest already match) */
 const KB_PHOTOSHOP={'tool:brush':'B',hueSat:'Ctrl+U',adjust:'',mergeVisible:'Ctrl+Shift+E',export:'Ctrl+Alt+Shift+W',imageSize:'Ctrl+Alt+I',canvasSize:'Ctrl+Alt+C',selFeather:'Shift+F6',new:'Ctrl+N','tool:smudge':''};
 let kbCmds=null;
@@ -37,7 +42,7 @@ function kbHandle(e){const combo=kbCombo(e);if(!combo)return false;
   let mine=Object.keys(kbUser).find(id=>kbUser[id]===combo);if(!mine&&typeof KB_AUTO!=='undefined')mine=KB_AUTO.find(id=>!(id in kbUser)&&kbDefault(id)===combo);
   if(!mine&&!Object.keys(kbUser).length)return false;
   if(mine==='p3:pick')return false;/* temporary viewport action, handled on key down/up */
-  if(mine){const c=kbCommands().find(c=>c[0]===mine);if(c){e.preventDefault();c[4]();return true;}}
+  if(mine){const c=kbCommands().find(c=>c[0]===mine);if(c){e.preventDefault();c[4](e);return true;}}
   /* the built-in key of a command that was moved (or cleared) does nothing now */
   const moved=kbCommands().find(c=>c[3]===combo&&c[0] in kbUser&&kbUser[c[0]]!==combo);
   if(moved){e.preventDefault();return true;}

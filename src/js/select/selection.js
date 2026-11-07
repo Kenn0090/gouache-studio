@@ -177,8 +177,18 @@ function toggleQuickMask(){if(preview){toast('Apply or cancel the open filter fi
   if(!sel.quick){const had=sel.active;
     selRecord('Quick mask',had?null:fullRect(),()=>{if(!had)clearTarget(sel.t,[1,1,1,1]);sel.quick=true;sel.active=false;});
     toast('Quick mask: paint black to hide, white to select. Press Q to turn it into a selection.');}
-  else{selRecord('Exit quick mask',null,()=>{sel.quick=false;sel.active=true;sel.bb=fullRect();});}
+  /* (0.95.5, Kenn: "the orange stays on the mesh") a quick mask left all white selects everything, which the 3D view tints orange
+     over the whole model; leaving it untouched now leaves no selection, like starting with none */
+  else{const all=selAllWhite();selRecord('Exit quick mask',null,()=>{sel.quick=false;sel.active=!all;sel.bb=fullRect();});if(typeof v3!=='undefined'){v3.dirty=true;}requestRender&&requestRender();}
   refreshQuickUI();}
+/* is the selection picture white everywhere? halves it with a 2×2 minimum until one pixel is left (exact, no big read-back) */
+const FS_SELMIN=`uniform sampler2D uSrc; void main(){ ivec2 p=ivec2(gl_FragCoord.xy)*2,sz=textureSize(uSrc,0)-1;
+  float a=texelFetch(uSrc,min(p,sz),0).r,b=texelFetch(uSrc,min(p+ivec2(1,0),sz),0).r,c=texelFetch(uSrc,min(p+ivec2(0,1),sz),0).r,d=texelFetch(uSrc,min(p+ivec2(1,1),sz),0).r;
+  float m=min(min(a,b),min(c,d)); o=vec4(m,m,m,1.0); }`;
+let selMinP=null;
+function selAllWhite(){if(!sel.t)return false;if(!selMinP)selMinP=program(FS_SELMIN);let src=sel.t,w=sel.t.w,h=sel.t.h;const tmp=[];
+  while(w>1||h>1){w=Math.max(1,Math.ceil(w/2));h=Math.max(1,Math.ceil(h/2));const t=makeTarget(w,h,8,false);run(selMinP,t,{uSrc:src.tex});tmp.push(t);src=t;}
+  const v=captureRegionNow(src,0,0,1,1).data[0];for(const t of tmp)disposeTarget(t);return v>=254;}
 function refreshQuickUI(){stage.classList.toggle('quick',sel.quick);updateSelStatus();if(typeof renderMaskRow==='function')renderMaskRow();}
 
 /* ---- copy / cut / paste ---- */

@@ -224,7 +224,7 @@ function smaskBuiltins(){return SMASK_BUILTIN.concat(SMASK_LIB).map(([name,mask]
 
 /* ---- a small picture for the tiles: the bottom material as a ball, the layers above painted on where their
    generators would put them (edges at the rim, cavities low, dust on top, patterns as noise) ---- */
-function smPreviewEl(rec,S){const S0=S||56;if(rec.thumb){const i=el('img',{class:'matprev',src:rec.thumb,width:S0,height:S0,alt:''});return i;}S=Math.min(1024,Math.max(256,S0*4));
+function smPreviewEl(rec,S){const S0=S||56;{const u=rec.builtin&&typeof SM_THUMBS!=='undefined'&&SM_THUMBS['smart:'+rec.name];if(u)return el('img',{class:'matprev',src:u,width:S0,height:S0,alt:''});}if(rec.thumb){const i=el('img',{class:'matprev',src:rec.thumb,width:S0,height:S0,alt:''});return i;}S=Math.min(1024,Math.max(256,S0*4));
   const kids=rec.tree?rec.tree.kids:[],base=kids.find(k=>k.fill&&k.fill.maps.base)||kids[0],cv2=el('canvas',{class:'matprev',width:S,height:S,style:'width:'+S0+'px;height:'+S0+'px','aria-hidden':'true'});
   const hp=base&&base.fx&&base.fx.stack&&base.fx.stack.find(it=>it.id==='handPaint'),hv=hp&&Object.assign({},typeof HP_DEFAULTS!=='undefined'?HP_DEFAULTS:{},hp.v);
   const bf=hv?{maps:{base:{on:true,c:hv.base},rough:{on:true,v:hv.rOn?hv.rBase:.6},metal:{on:true,v:hv.mOn?hv.mBase:0}}}:base&&base.fill?Object.assign({maps:{}},base.fill):{maps:{base:{on:true,c:[.6,.6,.6]}}},pv=matPreviewEl(()=>bf,()=>({}),S,1),x=cv2.getContext('2d');x.drawImage(pv.el,0,0,S,S);
@@ -234,7 +234,7 @@ function smPreviewEl(rec,S){const S0=S||56;if(rec.thumb){const i=el('img',{class
       if(row&&row.kind==='gen'){const g=row.p.g;m=g==='edge'||g==='chips'?(1-nz)*1.6+(n-.5):g==='dust'||g==='snow'||g==='moss'?ny*1.4+(n-.5)*.8:(nz*.6+ny*-.6)+(n-.5)}else m=n*1.3-.2;
       m=clamp((m-.5)*3+.5,0,1)*op;const p=(y*S+x0)*4;for(let j=0;j<3;j++)D[p+j]=D[p+j]*(1-m)+Math.pow(c[j],1/2.2)*255*m;}}
   x.putImageData(id,0,0);return cv2;}
-function smaskPreviewEl(rec,S){const S0=S||56;S=Math.min(1024,Math.max(256,S0*4));const cv2=el('canvas',{class:'matprev',width:S,height:S,style:'width:'+S0+'px;height:'+S0+'px','aria-hidden':'true'}),x=cv2.getContext('2d'),id=x.createImageData(S,S),D=id.data;
+function smaskPreviewEl(rec,S){const S0=S||56;{const u=(rec.builtin||rec.thumb)&&(rec.thumb||typeof SM_THUMBS!=='undefined'&&SM_THUMBS['smask:'+rec.name]);if(u)return el('img',{class:'matprev',src:u,width:S0,height:S0,alt:''});}S=Math.min(1024,Math.max(256,S0*4));const cv2=el('canvas',{class:'matprev',width:S,height:S,style:'width:'+S0+'px;height:'+S0+'px','aria-hidden':'true'}),x=cv2.getContext('2d'),id=x.createImageData(S,S),D=id.data;
   const rows=rec.mask.rows||[],g=(rows.find(r=>r.kind==='gen')||{p:{}}).p.g;
   for(let y=0;y<S;y++)for(let x0=0;x0<S;x0++){const nx=(x0+.5)/S*2-1,ny=1-(y+.5)/S*2,rr=nx*nx+ny*ny,p=(y*S+x0)*4;if(rr>1){D[p+3]=0;continue;}const nz=Math.sqrt(1-rr),n=Math.abs(Math.sin((x0*1.7+y*.9)*S0/S)*Math.cos((y*1.3-x0*.4)*S0/S));
     let m=g==='edge'||g==='chips'?(1-nz)*1.7+(n-.5)*.6:g==='dust'?ny*1.4+(n-.5)*.5:g==='dirt'?(-ny*.5+.5)*.9+(n-.5)*.6:n;m=clamp((m-.5)*3+.5,0,1);D[p]=D[p+1]=D[p+2]=40+m*200;D[p+3]=255;}

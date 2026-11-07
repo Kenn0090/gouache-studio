@@ -45,6 +45,8 @@ In 3D Paint, **M** selects Marquee and **S** selects Smudge. **Esc** returns fro
 | X | Swap foreground and background colours |
 | D | Default colours (black and white) |
 | L (or Shift+X) | Left–right symmetry on / off (in 3D Paint: Mirror X) |
+| [ / ] (hold) | Brush smaller / bigger; holding resizes faster and faster |
+| Shift + drag (3D Paint) | Smooth and blend the paint under the brush |
 | Shift (while painting inside a cage) | Follow the cage's lines |
 | Alt+Backspace (Alt+Del) | Fill with foreground colour (on the active layer or inside the selection) |
 | Backspace / Del | Delete the selected layers; with a selection active, clear the selection's contents. In Animation and the Brush tab it clears the frame or sketch |

@@ -1,3 +1,16 @@
+## 0.95.5
+
+- **Projection section in 3D Paint** (like Substance Painter): Alignment (Tangent | Wrap, Camera, UV), Backface culling with an angle, and Size Space (Object, Viewport, Texture).
+- **Polygon fill tool** in 3D Paint: click or drag over the model to fill a whole Face, Triangle, Loop or UV island with the brush colour (white on a mask, Alt+click black).
+- **Shift + drag smooths** the paint in 3D Paint, like 3D-Coat. Shift + click still draws a straight line.
+- **Instant colour picking** on the model: the colour changes as soon as you press the pick key and follows the pointer without a pause.
+- **[ and ] resize the brush** with the outline showing at the new size straight away, even without moving the mouse; holding the key resizes faster and faster.
+- **Tool tooltips show the right key** for the tab you are in (Brush is B in Paint and 1 in 3D Paint), including keys you changed.
+- **Wireframe opacity** slider (3D view settings and Preferences › Look).
+- **Edge and cavity masks reach further, like Painter's:** generators such as Worn edges, Dirt in cavities and Chipped paint now spread away from edges and grooves (more with Width), and faint curvature maps are read more strongly, so wear shows on models whose curvature bake is subtle.
+- **Smart material and smart mask thumbnails** now show them on the Material preview model, from an angle; smart masks in black and white, like Painter.
+- **Fixed:** turning Quick mask on and off left an orange tint over the whole model.
+
 ## 0.95.4
 
 - **See your lights before you bake.** On the Bake tab's **Lighting** page the model now shows a quick bake of your light rig by itself, with its shadows. Add a light, drag it, change its colour or strength and the model updates within a moment (a rough preview first, then a sharper one). Press **Bake** for the full-quality result. The switch **Live preview on the model** turns it off.

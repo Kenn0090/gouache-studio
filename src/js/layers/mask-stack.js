@@ -191,6 +191,28 @@ function msSurf(){const tri=typeof fillPosMaps==='function'&&v3.mesh&&(ui.mode==
   return {uPos:tri.pos.tex,uNrm:tri.nrm.tex,uHasPos:{int:1},uBmin:m._bb.mn,uBsize:m._bb.sz};}
 function msCtx(){const ctx={tmp:[],doc:{},surf:msSurf()};const dn=msDocMap('normal',ctx);
   Object.assign(ctx.surf,{uDocN:dn?dn.tex:dummy,uHasDocN:{int:dn?1:0},uSz:[doc.w,doc.h],uWorld:{int:0}},pxfUniforms('uv',null));return ctx;}
+/* (0.95.5, Kenn: "make them wider like Painter") edges and cavities reach further than the sharp line the curvature map marks:
+   the edge and cavity parts are blurred (wider with the row's Width) and laid over the sharp ones, so wear and dirt spread
+   away from an edge the way Painter's generators do, while the edge itself stays the strongest. */
+/* uBoost: faint curvature maps (most baked ones barely leave mid grey) are made more sensitive, the way Painter reads them */
+const FS_MSWIDE1=`uniform sampler2D uC; uniform vec2 uSz; uniform float uBoost; void main(){ float c=texture(uC,gl_FragCoord.xy/uSz).r; o=vec4(clamp((c-0.5)*2.0*uBoost,0.0,1.0),clamp((0.5-c)*2.0*uBoost,0.0,1.0),0.0,1.0); }`;
+const FS_MSWIDE2=`uniform sampler2D uS; uniform sampler2D uB; uniform float uGain; void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec2 s=texelFetch(uS,p,0).rg,b=texelFetch(uB,p,0).rg;
+  vec2 w=max(s,clamp(b*uGain,0.0,1.0)); o=vec4(vec3(0.5+0.5*(w.x-w.y)),1.0); }`;
+let P_MSWIDE=null;
+function msWideCurv(curv,p,ctx){if(!curv||p.wide===false)return curv;const w=p.width==null?.5:p.width,key=(curv.tex&&curv)?'wide:'+w:'';ctx.wide=ctx.wide||new Map();
+  if(ctx.wide.has(curv)&&ctx.wide.get(curv).has(key))return ctx.wide.get(curv).get(key);
+  if(!P_MSWIDE)P_MSWIDE={a:program(FS_MSWIDE1),b:program(FS_MSWIDE2)};
+  const sharp=acquireD(16),blur=acquireD(16),out=acquireD(16),r=Math.max(1.5,(.01+w*.05)*Math.max(doc.w,doc.h));
+  run(P_MSWIDE.a,sharp,{uC:curv.tex,uSz:[doc.w,doc.h],uBoost:1});gaussian(sharp,blur,r);
+  /* how strong this model's edges are: the 98th percentile of the spread-out edge and cavity amounts, so faint maps are brought up to the same range as strong ones */
+  const gain=msWideGain(curv,blur);run(P_MSWIDE.b,out,{uS:sharp.tex,uB:blur.tex,uGain:gain});
+  release(sharp);release(blur);ctx.tmp.push(out);if(!ctx.wide.has(curv))ctx.wide.set(curv,new Map());ctx.wide.get(curv).set(key,out);return out;}
+const msWideGains=new WeakMap();
+function msWideGain(curv,blur){const k=msWideGains.get(curv);if(k&&k.v===(curv.ver||0)&&k.w===blur.w)return k.g;
+  const N=96,t=makeTarget(N,N,8,false);copyScaled(blur,t);const d=captureRegionNow(t,0,0,N,N).data;disposeTarget(t);
+  /* among the texels that have any edge (or cavity) at all, the 80th percentile is brought to full strength */
+  const pick=c=>{const a=[];for(let i=0;i<d.length;i+=4)if(d[i+c]>1)a.push(d[i+c]);if(a.length<8)return 0;a.sort((x,y)=>x-y);return a[Math.floor(a.length*.8)]/255;};
+  const p=Math.max(pick(0),pick(1)),g=p>0?clamp(.9/p,1.5,40):3;msWideGains.set(curv,{v:curv.ver||0,w:blur.w,g});return g;}
 function msCtxFree(ctx){for(const t of ctx.tmp)if(t)release(t);}
 /* a row's projection uniforms: its mode and transform */
 const msPx=(r,ctx)=>{const m=pxfRowMode(r);return Object.assign({},ctx.surf,pxfUniforms(m,r.p.xf),{uWorld:{int:m==='world'?1:0}});};
@@ -219,7 +241,7 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
   if(r.kind==='noise'){const o=out();run(P.src,o,Object.assign(msPx(r,ctx),{uKind:{int:4},uType:{int:Math.max(0,MS_NOISES.findIndex(n=>n[0]===p.type))},uScale:p.scale||6,uC:p.contrast||1,uV:p.level||0,uNeg:{int:p.inv?1:0},uSeed:p.seed||1}));return {t:o,pooled:true};}
   if(r.kind==='anchor'){const A=msAnchor(p.name);if(!A)return null;const o=out(),ch=p.ch||'height',T=ch==='height'?mapT(A,'height'):mapT(A,'base');if(!T||T.empty)return null;
     run(msProgs().anc,o,{uT:T.tex,uM:A.mask&&A.mask.enabled!==false?A.mask.target.tex:dummy,uUseM:{int:A.mask&&A.mask.enabled!==false&&ch==='shape'?1:0},uCh:{int:ch==='shape'?1:0},uNeg:{int:p.inv?1:0}});return {t:o,pooled:true};}
-  if(r.kind==='gen'){const o=out(),curv=msMeshTex('curv')||msMeshTex('cv:curv')||msDocMap('curv',ctx)||msModelCurv(),ao=msMeshTex('ao')||msMeshTex('cv:ao')||msDocMap('ao',ctx);
+  if(r.kind==='gen'){const o=out(),curv0=msMeshTex('curv')||msMeshTex('cv:curv')||msDocMap('curv',ctx)||msModelCurv(),curv=p.g==='builder'?curv0:msWideCurv(curv0,p,ctx),ao=msMeshTex('ao')||msMeshTex('cv:ao')||msDocMap('ao',ctx);
     const ac=p.anchor?msAnchorCurv(p.anchor,ctx,p.uvWrap!==false):null;
     const height=p.g==='builder'&&(msMeshTex('height')||msDocMap('height',ctx)),thick=p.g==='builder'&&msMeshTex('thick'),wn=p.g==='builder'&&msMeshTex('wnormal'),pos=p.g==='builder'&&msMeshTex('position');
     withUVWrap(p.uvWrap!==false,[curv,ac,ao,height,thick,wn,pos],()=>run(P.gen,o,Object.assign({uG:{int:Math.max(0,MS_GENS.findIndex(g=>g[0]===p.g))},uCurv:curv?curv.tex:dummy,uHasCurv:{int:curv?1:0},uCurv2:ac?ac.tex:dummy,uHasCurv2:{int:ac?1:0},uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},

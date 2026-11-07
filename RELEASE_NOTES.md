@@ -1,3 +1,11 @@
+## 0.95.5
+
+- **3D Paint:** Projection section (alignment incl. UV, backface culling angle, size space), Polygon fill tool (face, triangle, loop, UV island), Shift + drag smooths like 3D-Coat, instant colour picking.
+- **Brush:** [ and ] show the outline at once and speed up when held; tool tooltips show the key for the current tab.
+- **Wider edge and cavity masks** like Painter's (wear and dirt spread from edges and grooves; faint curvature maps work).
+- **Wireframe opacity**, smart material/mask thumbnails on the Material preview model (masks in black and white).
+- **Fixed:** Quick mask on and off left the model tinted orange.
+
 ## 0.95.4
 
 - **Lighting bake preview:** on the Bake tab's Lighting page the model shows your lights and their shadows live, before you bake.

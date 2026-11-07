@@ -420,10 +420,13 @@ function v3MeshU(C,common,it,flip,safeMip=null){const {s,bake,EU,eye,a,e}=C,sg=i
     const U=Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uUseUDIM:!!it.udim,uUDIMTile:it.udim?[it.udim.u,it.udim.v]:[0,0],uUseSafeMip:useSafeMip,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:mOK?T.metal.tex:ok('spec')?T.spec.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,uThick:useSafeMip?safeMip.tex:it.thick?it.thick.tex:dummy,...EU,...shadeUniforms(bake?null:it.sh||v3ShadeOf(doc)),
       uMorph:bake&&bk.fold>0?bk.fold:0,uMorphOff:[it.off||0,0,0],uStudioFill:s.studioFill||0,...lightViewUniforms(),uStudioRim:s.studioRim||0,uLightColor:s.lightColor||[1,1,1],uShadow:dummy,uShadowVP:{m4:m4()},uShadowOn:0,uShadowSoft:1,...common,uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uMetalView:{int:s.metalView?1:0},uMetalRough:s.metalRough||.25,uBevelMaterial:{int:bevelPreviewOn()&&bvSettings().previewMaterial?1:0},uBevelMetal:bvSettings().previewMetal||0,uBevelRough:bvSettings().previewRough??.25,uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});
     if(isFur)furUniforms(U,T,shk);return U;}
-function v3DrawWire(g,list,common){gl.bindVertexArray(g.evao);try{if(ui.mode!=='p3d'){useProg(P3.line,{...common,uCol:[...(prefs.wireCol||[.95,.7,.35]),1]});gl.drawElements(gl.LINES,g.ecount,gl.UNSIGNED_INT,0);return;}
+/* (0.95.5, Kenn) wireframe colour with its own opacity (Preferences › Look and the viewport display settings) */
+const wireOpacity=()=>{const o=prefs.wireOp;return o==null?1:Math.max(0,Math.min(1,+o));};
+const wireColA=()=>[...(prefs.wireCol||[.95,.7,.35]),wireOpacity()];
+function v3DrawWire(g,list,common){gl.bindVertexArray(g.evao);const op=wireOpacity()<1;if(op){gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);}try{if(ui.mode!=='p3d'){useProg(P3.line,{...common,uCol:wireColA()});gl.drawElements(gl.LINES,g.ecount,gl.UNSIGNED_INT,0);return;}
     for(const it of list){if(!it.count)continue;let r;if(it.start===0&&it.count*3===g.count)r={b:g.eb,count:g.ecount};else{const key=it.start+':'+it.count,cache=g.wireRanges||(g.wireRanges=new Map());r=cache.get(key);if(!r){const edges=meshEdges({idx:v3.mesh.idx.subarray(it.start*3,(it.start+it.count)*3)}),b=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,b);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,edges,gl.STATIC_DRAW);r={b,count:edges.length};cache.set(key,r);}}
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,r.b);useProg(P3.line,{...common,uCol:[...(prefs.wireCol||[.95,.7,.35]),1]});gl.drawElements(gl.LINES,r.count,gl.UNSIGNED_INT,0);}}
-  finally{gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,g.eb);}}
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,r.b);useProg(P3.line,{...common,uCol:wireColA()});gl.drawElements(gl.LINES,r.count,gl.UNSIGNED_INT,0);}}
+  finally{gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,g.eb);if(op){gl.disable(gl.BLEND);gl.depthMask(true);}}}
 function v3Render(F,flip){const g=v3.gpu;if(!g)return;gl.blendEquation(gl.FUNC_ADD);v3Work.scenes++;F.sceneFlip=!!flip;const C=v3Ctx(),{s,bake}=C,list=v3List(C),wireOnly=ui.mode==='p3d'&&s.wire&&s.wireOnly,SU=wireOnly?{}:studioShadowPrepare(C,list),BV=!wireOnly&&typeof bevelPreviewOn==='function'&&bevelPreviewOn()&&!(bk.fold>0)?bevelPreviewGPU(v3.mesh):null;
   const activeRange=!bake&&ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():null,safeMip=activeRange&&typeof seamMipLimit==='function'?seamMipLimit(activeRange):null;
   gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);const bg=BG3[s.bg]||BG3.dark,tr=!!(v3.transparent);gl.clearColor(bg[0],bg[1],bg[2],tr?0:1);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
@@ -542,7 +545,7 @@ const nvB=el('button',{hidden:!platform.isDesktop||NV_BANKED,class:'btn sm'+(typ
   box.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});
   if(ui.mode==='p3d'){const display=el('div',{class:'v3display',role:'group','aria-label':'Viewport display'});
     for(const [mode,label] of [['shaded','Shaded'],['wire','Wireframe'],['overlay','Wireframe overlay']])display.append(el('button',{class:'btn sm'+(v3WireMode()===mode?' on':''),'data-wire-mode':mode,'aria-pressed':String(v3WireMode()===mode),text:label,onclick:()=>v3SetWireMode(v3WireMode()===mode&&mode!=='shaded'?'shaded':mode)}));/* (0.70) click the active one again to turn it off */
-    box.append(el('div',{class:'sub',text:'Viewport display'}),display);}
+    box.append(el('div',{class:'sub',text:'Viewport display'}),display,makeSlider({id:'v3WireOp',label:'Wireframe opacity',min:0,max:1,step:.01,value:wireOpacity(),def:1,fmt:pct,onInput:v=>{prefs.wireOp=v;savePrefs();v3.dirty=true;requestRender();}}).el);}
   box.append(el('div',{class:'sub',text:'Painting'}),meshBackfaceControl('v3BackfacePaint'),el('p',{class:'note',text:'Allow painting on faces seen from behind. Camera alignment still protects surfaces hidden behind other parts.'}));
   const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:s[key],fmt,...(['disp','sunI','skyI','envIntensity','studioFill','studioRim'].includes(key)?{numericMax:Math.max(max,1)*4}:{}),onInput:v=>{s[key]=v;if(key==='disp'){v3.mapsDirty=true;if(v>0&&(s.detail||0)<4&&!v3.detAuto){v3.detAuto=true;s.detail=4;if(v3.detSel)v3.detSel.value='4';v3LoadModel(true);toast('Mesh detail raised to ×16 so the height can show. Change it with the Detail menu at the top of the 3D view.');}}v3.dirty=true;requestRender(key==='disp');}}).el;
   box.append(el('div',{class:'sub',text:'Lighting'}),envSettingsBox(S),studioSettingsBox(S),el('div',{class:'sub',text:'Model and camera'}),S('v3Uvs','Tile repeat','uvs',1,8,1,v=>v+'×'),S('v3Disp','Height depth','disp',0,1,.01,pct),S('v3Fov','Lens','fov',15,90,1,v=>v+'°'),S('v3MetalRough','Metal view roughness','metalRough',.05,1,.01,pct),
@@ -615,15 +618,16 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     if(e.button===0&&!e.altKey&&!st3.sKey&&pgzDown(hit,e))return;
     if(e.button===0&&!e.altKey&&lgzDown(hit,e))return;/* a light of the bake rig */
     if(e.button===0&&!e.altKey&&!st3.sKey&&(maskToolsOn()||liveOn())&&mk3Down(hit,e))return;
+    if(e.button===0&&typeof pfDown==='function'&&pfDown(hit,e))return;
     let how=v3NavOf(hit,e);
-    if(how==='paint'){if(e.button===0&&meshDown(hit,e)&&v3.mstroke)return;how='turn';if(stroke)return;}
+    if(how==='paint'){if(e.button===0&&meshDown(hit,e)&&(v3.mstroke||v3.shiftPend))return;how='turn';if(stroke)return;}
     v3.drag={x:e.clientX,y:e.clientY,how,id:e.pointerId,x0:e.clientX,y0:e.clientY,alt:e.altKey&&e.button===0,penAlt:how==='pan'&&e.altKey&&typeof penPanBtn==='function'&&penPanBtn(e)};});
-  hit.addEventListener('pointermove',e=>{v3PickHold.hit=hit;v3PickHold.point={clientX:e.clientX,clientY:e.clientY};if(sel3DragBusy()){sel3DragMove(hit,e);return;}sel3HoverMove(hit,e);if(pgz.drag){if(!e.buttons){pgzUp();return;}pgzMove(hit,e);return;}if(lgz.drag){if(!e.buttons){lgzUp();return;}lgzMove(hit,e);return;}if(!e.buttons&&!v3PickHeld(e)&&pgzHover(hit,e)){meshCursor(hit,null);return;}if(mk3Busy()){mk3Move(hit,e);return;}meshCursor(hit,e);
+  hit.addEventListener('pointermove',e=>{v3PickHold.hit=hit;v3PickHold.point={clientX:e.clientX,clientY:e.clientY};if(sel3DragBusy()){sel3DragMove(hit,e);return;}if(typeof pfBusy==='function'&&pfBusy()){pfMove(hit,e);return;}if(typeof pfHover==='function'&&!e.buttons&&!v3PickHeld(e)&&pfHover(hit,e)){meshCursor(hit,null);return;}sel3HoverMove(hit,e);if(pgz.drag){if(!e.buttons){pgzUp();return;}pgzMove(hit,e);return;}if(lgz.drag){if(!e.buttons){lgzUp();return;}lgzMove(hit,e);return;}if(!e.buttons&&!v3PickHeld(e)&&pgzHover(hit,e)){meshCursor(hit,null);return;}if(mk3Busy()){mk3Move(hit,e);return;}meshCursor(hit,e);
     /* no button held any more: the release went missing (another window, a pen gesture, Alt menu mode); finish instead of sticking */
-    if(!e.buttons){if(v3.mstroke)meshUp();if(v3.drag)v3.drag=null;}
+    if(!e.buttons){if(v3.mstroke||v3.shiftPend)meshUp();if(v3.drag)v3.drag=null;}
     /* a pen hovering with its side button held moves the view (no tip contact, so no pointerdown arrives) */
     if(e.pointerType==='pen'&&prefs.penPan!==false&&(e.buttons&6)&&!(e.buttons&1)&&!v3.drag&&!v3.mstroke)v3.drag={x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,how:'pan',id:e.pointerId,alt:false};
-    if(v3.mstroke){meshMove(hit,e);return;}const d=v3.drag;
+    if(v3.mstroke||v3.shiftPend){meshMove(hit,e);return;}const d=v3.drag;
     /* (0.68.3) Alt + the pen's button pans; let go of Alt with the button still down and the same drag zooms (press Alt again to pan), like Painter */
     if(d&&d.penAlt&&(d.how==='pan'||d.how==='zoom'))d.how=e.altKey?'pan':'zoom';
     if(!d){if(v3PickHeld(e)&&!e.buttons)v3HoverPick(hit,e);return;}
@@ -637,7 +641,7 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
       if(d.fy==null){d.fy=c.yaw;d.fp=c.pitch;}d.fy-=dx*.008;d.fp=clamp(d.fp+dy*.008,-1.55,1.55);
       if(e.shiftKey){const Q=Math.PI/2;if(Math.abs(d.fp)>Math.PI/4){c.pitch=d.fp>0?1.5699:-1.5699;c.yaw=Math.round(d.fy/Q)*Q;}else{c.pitch=0;c.yaw=Math.round(d.fy/Q)*Q;}}
       else{c.yaw=d.fy;c.pitch=d.fp;}}v3.dirty=true;requestRender();});
-  const up=e=>{if(pgz.drag){pgzUp();return;}if(lgz.drag){lgzUp();return;}if(sel3DragBusy()){sel3DragUp(e,e.type!=='pointerup',hit);return;}if(mk3Busy()&&e.type!=='lostpointercapture'){mk3Up(e);return;}if(v3.drag&&e.pointerId!==undefined&&v3.drag.id!==e.pointerId)return;v3.drag=null;meshUp(e);};
+  const up=e=>{if(typeof pfBusy==='function'&&pfBusy()){pfUp(e);return;}if(pgz.drag){pgzUp();return;}if(lgz.drag){lgzUp();return;}if(sel3DragBusy()){sel3DragUp(e,e.type!=='pointerup',hit);return;}if(mk3Busy()&&e.type!=='lostpointercapture'){mk3Up(e);return;}if(v3.drag&&e.pointerId!==undefined&&v3.drag.id!==e.pointerId)return;v3.drag=null;meshUp(e);};
   hit.addEventListener('pointerup',up);hit.addEventListener('pointercancel',up);hit.addEventListener('lostpointercapture',up);hit.addEventListener('pointerleave',()=>{sel3HoverClear();v3.hover=false;v3PickRelease();v3PickHold.hit=null;v3PickHold.point=null;meshCursor(hit,null);});hit.addEventListener('pointerenter',()=>{v3.hover=true;});
   hit.addEventListener('wheel',e=>{e.preventDefault();e.stopPropagation();v3.cam.dist=clamp(v3.cam.dist*Math.exp(e.deltaY*.0012),.2,50);v3.dirty=true;requestRender();},{passive:false});
   for(const t of ['selectstart','dragstart'])hit.parentNode.addEventListener(t,e=>e.preventDefault());
