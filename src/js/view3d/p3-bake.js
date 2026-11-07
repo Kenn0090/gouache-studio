@@ -27,6 +27,7 @@ function dlgP3Bake(){if(ui.mode!=='p3d')return;if(bk.busy){toast('Wait for the b
     el('div',{class:'chips'},el('button',{class:'btn sm',id:'p3bkLoadHigh',text:hi?'Load another…':'Load a high-poly…',onclick:async()=>{try{const m=await bakePickModel();if(m){bakeSetModel('high',m);p3bk.useHigh=true;draw();}}catch(e){toast('Could not load the model: '+(e.message||e));}}})),
     el('div',{class:'sub',text:'Texture sets'}),
     sets.length>1?el('div',{class:'chips'},...sets.map((n,i)=>chk('p3bkSet'+i,n,p3bk.sets[n]!==false,v=>{p3bk.sets[n]=v;}))):el('p',{class:'note',text:'The model has one texture set.'}),
+    ...p3FromNBox(),
     bevelSection(draw,'p3bk'),
     el('div',{class:'sub',text:'Quality'}),seg([[32,'Draft'],[64,'Normal'],[128,'High']],C.rays>=128?128:C.rays<=32?32:64,v=>{C.rays=+v;},'Ray count'),
     chk('p3bkLayers','Also add them as layers (they always become the set’s mesh maps)',!!C.p3Layers,v=>{C.p3Layers=v;}),
@@ -34,7 +35,34 @@ function dlgP3Bake(){if(ui.mode!=='p3d')return;if(bk.busy){toast('Wait for the b
   draw();
   openDialog({title:'Bake mesh maps',body,okLabel:'Bake',onOk(){const ks=P3BK_MAPS.filter(k=>kinds[k]);if(!ks.length){toast('Tick at least one map.');return false;}
     const which=sets.length>1?sets.filter(n=>p3bk.sets[n]!==false):sets;if(!which.length){toast('Tick at least one texture set.');return false;}
-    Object.assign(C.kinds,kinds);setTimeout(()=>p3Bake(ks,pick,which),0);}});}
+    Object.assign(C.kinds,kinds);const fromN=ks.filter(k=>p3FromNOn(k)),bake=ks.filter(k=>!fromN.includes(k));
+    setTimeout(async()=>{if(fromN.length)await p3DeriveSets(fromN,which);if(bake.length)p3Bake(bake,pick,which);},0);}});}
+/* ---- (0.95.8, Kenn) mesh maps made from the set's own normal map (imported or baked): curvature (with edges and creases),
+   AO and height, picked as the source in this window. The result is a regular mesh map: generators, smart masks and
+   materials use it like a baked one. ---- */
+const P3_FROM_N=['curv','ao','height'];
+const p3FromNOn=k=>P3_FROM_N.includes(k)&&p3bk.fromN&&p3bk.fromN[k]==='normal';
+const p3HasNormalMap=()=>!!(doc.meshMaps&&doc.meshMaps.normal);
+function p3FromNBox(){if(!p3HasNormalMap())return [];if(!p3bk.fromN)p3bk.fromN={};const F=p3bk.fromN,info=doc.meshMapInfo&&doc.meshMapInfo.normal;
+  return [el('div',{class:'sub',text:'Source'}),el('p',{class:'note',text:'This set has a normal map'+(info&&info.name?' (“'+info.name+'”)':'')+'. Curvature, AO and Height can be made from it instead of baked from the model.'}),
+    ...P3_FROM_N.map(k=>el('div',{class:'frow'},el('span',{text:BAKE_NAMES[k]}),seg([['bake','Bake from the model'],['normal','From the normal map']],F[k]||'bake',v=>{F[k]=v;},BAKE_NAMES[k]+' source'))),
+    chk('p3bkNdx','The normal map is DirectX (green down)',!!F.dx,v=>{F.dx=v;})];}
+/* make the maps from the live set's normal map */
+function p3DeriveFromNormal(ks){const n0=doc.meshMaps&&doc.meshMaps.normal;if(!n0)return 0;const dx=!!(p3bk.fromN&&p3bk.fromN.dx),W=doc.w,H=doc.h,C=bakeCfg;
+  const src=makeTarget(W,H,8,false);copyScaled(n0,src);let made=0;
+  try{if(ks.includes('curv')){const raw=makeTarget(W,H,16,false),b=acquireD(src.depth),rad=Math.max(1,C.curvRadius||3);gaussian(src,b,Math.max(.8,rad*.35));
+      run(P.f_ncurv,raw,{uN:b.tex,uWrap:!!doc.wrap,uStr:1.2*(C.curvStr||1),uMode:{int:0},uStep:rad,uFlipG:dx});release(b);
+      if(!bkCurvP)bkCurvP=program(FS_BKCURV);const out=m=>{const t=makeTarget(W,H,8,false);run(bkCurvP,t,{uSrc:raw.tex,uEdges:C.curvEdges==null?1:C.curvEdges,uCreases:C.curvCreases==null?1:C.curvCreases,uMode:{int:m},uStr:1});setWrap(t,true);return t;};
+      p3MapSet('curv',out(0),'Curvature from the normal map');p3MapSet('curvEdge',out(1),'Edges from the normal map');p3MapSet('curvCrease',out(2),'Creases from the normal map');disposeTarget(raw);made++;}
+    if(ks.includes('ao')){const v={r:16,str:1,dx},t=makeTarget(W,H,8,false);CONVERTERS.aoFromNormal.make(src,t,v);CONVERTERS.aoFromNormal.cleanup(v);setWrap(t,true);p3MapSet('ao',t,'AO from the normal map');made++;}
+    if(ks.includes('height')){const t=makeTarget(W,H,canFloat?16:8,false);heightFromNormal(src,t,{str:.6,iter:60,dx});setWrap(t,true);p3MapSet('height',t,'Height from the normal map');made++;}}
+  finally{disposeTarget(src);}return made;}
+async function p3DeriveSets(ks,which){loadStart('Mesh maps from the normal map');let n=0,miss=[];
+  try{for(const name of which){const i=p3.sets.findIndex(S=>S.name===name);if(i<0)continue;loadBusy('From the normal map: '+name);await new Promise(r=>setTimeout(r,0));
+      const job=()=>{if(!p3HasNormalMap()){miss.push(name);return;}n+=p3DeriveFromNormal(ks);};
+      p3InSet(i,job);}}
+  finally{loadEnd();}
+  if(miss.length)toast('No normal map in '+miss.join(', ')+': nothing made there.');else if(n)toast('Made '+ks.map(k=>BAKE_NAMES[k]).join(', ')+' from the normal map.');}
 /* bake the ticked maps for the ticked sets and hand them to the sets */
 async function p3Bake(ks,size,which){p3bk.lastArgs={ks:ks.slice(),size,which:which&&which.slice()};const C=bakeCfg,model0=bakeViewModel(),
     /* (0.95) UDIM: bake the model with its tiles' canvas UVs, at a size that keeps each tile's pixels */

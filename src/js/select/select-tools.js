@@ -121,6 +121,7 @@ function selKeys(e,m,k){
     if(k==='c'&&e.shiftKey){e.preventDefault();if(copySel(true))writeClipMarker();return true;}
     return false;}
   if(e.altKey)return false;
+  if(k==='m'&&!e.shiftKey&&(ui.mode==='p3d'||ui.mode==='bake'))return false;/* (0.95.8) M = the lit material there, like Painter */
   if(k==='m'){if(e.shiftKey&&ui.tool==='marquee'){ui.marquee=ui.marquee==='rect'?'ellipse':'rect';updateSelIcons();buildBrushPanel();}else setTool('marquee');return true;}
   /* (0.95.4, Kenn) L = left–right symmetry; Shift+L still switches free/polygon while the Lasso is the tool */
   if(k==='l'){if(e.shiftKey&&ui.tool==='lasso'){ui.lasso=ui.lasso==='free'?'poly':'free';polyLasso=null;updateSelIcons();buildBrushPanel();drawSelOverlay();}else if(!e.shiftKey&&ui.mode!=='bake')symToggleX();else return false;return true;}

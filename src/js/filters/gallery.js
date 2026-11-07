@@ -9,7 +9,7 @@ const GALLERY_FOLDERS=()=>[
   ['Distort',['warp','slopeBlur','distort']],
   ['Blur',['blur','boxBlur','radialBlur','lensBlur','surfBlur','motionBlur','driftBlur']],
   ['Sharpen',['sharpen','highPass']],
-  ['Stylize',['glass','emboss','edges','edgeWear']],
+  ['Stylize',['glass','emboss','edges','convolve','edgeWear']],
   ['Render',['clouds','cells','noise']],
   ['Tiling',['offset','tile','seamless']],
   ['Adjust',['levels','curves','hueSat','gradMap','threshold','posterize','quantize','desat','invert']]].map(([n,ids])=>[n,ids.filter(id=>FX[id])]).filter(f=>f[1].length);

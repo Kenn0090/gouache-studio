@@ -51,7 +51,7 @@ function fxAddMenu(e,start){const L=doc.active;if(!L||!(isLayer(L)||L.type==='gr
       it('Paint',add('paint')),it('Fill white',add('fill',{p:{v:1}})),it('Fill black',add('fill',{p:{v:0}})),
       it('Mesh map',sub('Mesh map',mks.length?mks.map(k=>it(msMeshName(k),add('mesh',{p:{k,inv:false}}))):[el('p',{class:'note',style:'padding:6px 10px;max-width:240px',text:'No baked maps yet. Bake in the Bake tab and press Send to 3D Paint.'})]),true),
       it('ID colour',()=>{const r=msAdd(L,'id');if(r){ui.viewMask=true;maskTool('id');}}),
-      it('Direction (facing up…)',add('dir')),it('Gradient',add('grad')),
+      it('Direction (facing up…)',add('dir')),it('Gradient',add('grad')),it('3D gradient (points around the model)',add('g3d')),
       it('Noise',sub('Noise',MS_NOISES.map(([k,t])=>it(t,add('noise',{p:Object.assign(MS_KINDS.noise.p(),{type:k})})))),true),
       it('Picture…',add('image')),
       it('From anchor',sub('From anchor',msAnchorNames().length?msAnchorNames().map(nm=>it(nm,add('anchor',{p:{name:nm,ch:'height',inv:false}}))):[el('p',{class:'note',style:'padding:6px 10px;max-width:240px',text:'No anchor points yet. Select a layer’s own thumbnail, press ✦ and choose Anchor point.'})]),true),
@@ -112,6 +112,7 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
       el('p',{class:'note',text:doc.meshMaps&&doc.meshMaps.id?'Pick colours on the model: where the ID map has them, the mask is white.':'This texture set has no baked ID map yet.'}));}
   if(r.kind==='dir')box.append(sel('ms_axis','Facing',[['up','Up'],['down','Down'],['x','Right (+X)'],['-x','Left (−X)'],['z','Front (+Z)'],['-z','Back (−Z)']],'axis'),S('ms_ang','Angle','angle',1,90,1,v=>v+'°'),S('ms_soft','Softness','soft',1,60,1,v=>v+'°'),inv(),
     el('p',{class:'note',text:v3.mesh?'Uses the model: world directions.':'On the flat texture it uses the normal map (up = the top of the texture).'}));
+  if(r.kind==='g3d')box.append(g3Box({L,g:p,row:r},true),inv());
   if(r.kind==='grad')box.append(sel('ms_axis','Towards',[['up','Top'],['down','Bottom'],['x','Right'],['-x','Left'],['z','Front'],['-z','Back']],'axis'),S('ms_from','From','from',0,1,.01,pct),S('ms_to','To','to',0,1,.01,pct),inv());
   if(r.kind==='noise')box.append(sel('ms_type','Pattern',MS_NOISES,'type'),S('ms_scale','Size','scale',.5,40,.5),S('ms_con','Contrast','contrast',.2,8,.05),S('ms_lvl','Level','level',-1,1,.01),S('ms_seed','Seed','seed',1,99,1,v=>String(v)),
     inv(),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]));

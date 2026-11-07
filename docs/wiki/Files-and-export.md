@@ -111,3 +111,6 @@ The nine looks added in 0.94.1 (Hologram, Glass, Fur, Iridescent, Car paint, Clo
 - **The live link sets itself up:** the first send to a project adds the link. Unreal: Gouache also switches on the Python Editor Script Plugin and Editor Scripting Utilities; restart Unreal once. Godot: the link plug-in is switched on; reopen the project once. Unity: nothing to do. After that each send makes the materials and puts them on the model.
 
 All of this was written without being able to run the real engines: please check it in yours and tell me what looks off.
+
+## The File menu
+The File menu keeps New, Close, Open, **Open recent ▸** (the last five Paint documents and 3D Paint projects, and All recent files…), Save and Save as on top, and groups the rest: **Import ▸** (models, images as layers, brushes, frames), **Export ▸** (images, PSD, textures for a game engine, the model with its UVs, sprite sheets, video, Turn canvas into a texture, Send to 3D Paint) and **Content and add-ons ▸**. The Welcome and Launch screens are in the **Help** menu.

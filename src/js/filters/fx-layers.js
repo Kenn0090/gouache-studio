@@ -5,7 +5,7 @@
    L.fx = {map, stack:[{id|conv, v, on}]}. The layer has no pixels of its own. */
 const FX_KINDS=()=>[
   ['Adjust',['colorAdj','levels','curves','hueSat','gradMap','desat','invert','threshold','posterize','quantize']],
-  ['Blur and sharpen',['blur','boxBlur','radialBlur','lensBlur','surfBlur','motionBlur','driftBlur','sharpen','highPass']],
+  ['Blur and sharpen',['blur','boxBlur','radialBlur','lensBlur','surfBlur','motionBlur','driftBlur','sharpen','highPass','convolve']],
   ['Distort',['warp','slopeBlur','distort']],
   ['Artistic',['filmGrain','dissolve','vfxGlow','oilPaint','painterly','kuwahara','watercolour','charcoal','cutout','mosaic','acid','glass','emboss','edges','noise']],
   ['Photo and print',['softFocus','cineMono','anaglyph','halftone','engraving','riso','bwPrint','pixelBitmap','retroPixel']],

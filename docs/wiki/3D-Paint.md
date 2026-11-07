@@ -206,6 +206,7 @@ The layer stays live: every change shows straight away on the model, and becomes
 - **High-poly:** optional. Load one to bake its detail into the normal and height; without one, the maps come from the model itself (normal and height are skipped).
 - **Texture sets:** each is baked on its own part of the model; untick the ones to leave alone.
 - **Quality** (the number of rays) and *also add them as layers*.
+- **Source** (when the set has a normal map, imported or baked): Curvature, AO and Height can each be **From the normal map** instead of baked from the model. Tick *The normal map is DirectX* for green-down normals. The results are regular mesh maps (Curvature also gives Edges and Creases).
 
 ![The Bake mesh maps window.](images/p3-bake.png)
 

@@ -1,3 +1,14 @@
+## 0.95.8
+
+- **Tidier menus:** the File menu keeps New, Close, Open, **Open recent ▸**, Save and Save as on top, with **Import ▸**, **Export ▸** and **Content and add-ons ▸** for the rest (the Welcome and Launch screens moved to Help). The layer right-click menu keeps Add mask, New fill layer, Group, Duplicate, Clear, Merge down and Delete on top, with **Mask ▸**, **Layer style ▸**, **Filters and effects ▸**, **Convert ▸**, **Smart material ▸** and **Send to ▸**.
+- **3D gradient:** coloured points placed around the model, blended by distance, as a **mask generator** (✦ › 3D gradient) and a **layer** (Layer › New › 3D gradient layer; any material channel can use it). Drag the dots and their X/Y/Z arrows in the 3D view, Add point then click the model, Delete removes a point; each point has a colour and reach, and Softness sets how smoothly they blend.
+- **Lights:** the lighting preview is instant: while you change lights the model is lit live, and the shadowed bake follows after a short pause (it no longer restarts all the time). Lights glow in the view and stay at its edge when they are off-screen; the selected light has move arrows and a turn ring (spots can now point anywhere, **Aim at the model** resets them), and **Delete** removes it.
+- **M** goes back to the lit material view in 3D Paint and the Bake tab, like Painter.
+- **Convolution kernel** filter (3 × 3 or 5 × 5 grid with presets: sharpen, edges, emboss, outline, blur…), as a filter, filter layer, layer effect and mask filter.
+- **Mesh maps from your normal map:** in Bake mesh maps, Curvature (with edges and creases), AO and Height can come from the set's normal map (imported or baked) instead of being baked from the model.
+- **Transform on a material** moves what was painted (its mask), keeping the rest hidden; with a lasso or polygon selection only the painted part inside it moves.
+- **Wireframe colour** in the 3D settings (Viewport display); the UV lines use it too.
+
 ## 0.95.7
 
 - **Generators take your own grunge:** every mask generator (Edge wear, Dirt in cavities, the Mask builder and the rest) has a **Grunge** input in Properties. Pick any texture from the Textures panel (photo grunges, mixed, generated or your own) or drop a picture on it, and it breaks up the mask instead of the built-in noise. Grunge tiling, rotation and Invert are there too; Breakup sets how strongly it eats in. With the World projection it is laid over the model from three sides, so there are no seams.
