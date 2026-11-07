@@ -20,7 +20,7 @@ Modes are **new, add, subtract and intersect**. Use the buttons in the panel, or
 - **Feather, Expand, Contract, Smooth:** these preview live while you adjust them.
 - **Select layer pixels** (or Ctrl+click a layer thumbnail).
 - **Load selection…:** from a layer's transparency, a mask, a colour channel or brightness.
-- **Quick mask (Q):** paint the selection with brushes, then press Q again.
+- **Quick mask** is switched off for now.
 
 Painting, fills, filters and adjustments all stay inside the selection.
 

@@ -470,3 +470,7 @@ Artist style unwrap, `bake/uv-artist.js` (loaded before uv-unwrap.js because `UW
 - Transform (xform-core.js): `xfFillPaint(L)` makes Free transform on a fill layer with a mask move the mask (outside black) or the Paint row (msPaintRow, outside clear); selections cut src/base with P.selmix; `xfLumBounds`. Row items set mask._key=null live and in undo/redo.
 - Wireframe colour: #v3WireCol in the 3D settings; drawUVOverlay uses wireColA.
 - Test round958. livemask ID-colour checks and ui25 "a key already in use" fail on main too.
+
+## 0.95.9 (branch)
+- Quick mask off: `QM_OFF=true` (selection.js) makes `toggleQuickMask` only leave an active one; Q (select-tools.js), the Select menu item, the selection-panel button and the key hint are gone. Kenn: "remove it for now" (the orange tint kept coming back).
+- 3D gradient on the flat canvas (grad3d.js end): `g3UVOf` (nearest triangle by pfTriDist2 → barycentric → UV), `g3AtUV` (UV → triangle by barycentric test → position lifted 4% of the box along the interpolated normal), `g3Spots` cache, `g3Overlay2D` (in drawXfOverlay's chain), `g3Down2D` (view-input pointerdown before pxf2Down; drag/Add point; window listeners; g3Up makes the undo step), Delete over the canvas via `g3.over2d`. Brute force over the set's triangles. Test g3flat959.

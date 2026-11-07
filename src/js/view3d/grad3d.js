@@ -27,7 +27,7 @@ MS_KINDS.g3d={title:'3D gradient',p:()=>Object.assign(g3Default(),{pts:[{p:[.5,.
 /* ---- the layer type: a material whose channels can read the gradient (src 'g3d') ---- */
 function cmdNewG3dLayer(){if(ui.mode!=='paint'&&ui.mode!=='p3d'){toast('3D gradient layers are for Paint and 3D Paint.');return;}
   cmdNewFillLayer({name:'3D gradient',maps:{base:{src:'g3d',c:[1,1,1]}}});const L=doc.active;if(!L||!L.fill)return;L.fill.g3=g3Default();L.fill.coverH=false;fillRender(L);
-  g3.sel=0;if(typeof showPanel==='function')showPanel('matEd');if(typeof renderMatEd==='function')renderMatEd(true);toast('3D gradient: drag the dots in the 3D view, or press Add point and click the model.');}
+  g3.sel=0;if(typeof showPanel==='function')showPanel('matEd');if(typeof renderMatEd==='function')renderMatEd(true);toast('3D gradient: drag the dots in the 3D view or on the flat canvas, or press Add point and click the model.');}
 function g3FillRun(L,k,T){const f=L.fill;if(!f.g3)f.g3=g3Default();g3Run(T,f.g3,MAP_DEFS[k].grey?1:0,msSurf(),false);}
 
 /* ---- which 3D gradient is being edited: the selected mask row, else the active layer's ---- */
@@ -38,7 +38,7 @@ function g3Target(){const L=doc.active;if(!L||!isLayer(L))return null;
 /* change it as one undo step (a whole drag too); live: redraw while dragging without a step */
 function g3Edit(T,fn,live){if(T.row){if(live){fn(T.g);if(T.L.mask)T.L.mask._key=null;T.L.lookVer=(T.L.lookVer||0)+1;}else msEdit(T.L,T.row,()=>fn(T.g));}
   else{if(!live)matEdBegin(T.L);fn(T.g);fillRender(T.L);if(!live){clearTimeout(matEd.timer);matEd.timer=setTimeout(matEdCommit,700);}}
-  v3.dirty=true;requestRender(true);}
+  v3.dirty=true;requestRender(true);if(typeof drawXfOverlay==='function')drawXfOverlay();}
 function g3Box3(){const m=v3.mesh;if(!m||!m.pos)return {mn:[0,0,0],sz:[1,1,1]};if(!m._bb)msSurf();return m._bb||{mn:[0,0,0],sz:[1,1,1]};}
 const g3World=(B,p)=>p.map((v,k)=>B.mn[k]+v*B.sz[k]),g3Local=(B,w)=>w.map((v,k)=>(v-B.mn[k])/Math.max(1e-6,B.sz[k]));
 
@@ -80,12 +80,12 @@ function g3Apply(){const D=g3.drag;if(!D||!D.m)return;const {G}=D,dx=D.m[0]-D.m0
   else{/* across the screen, at the point's depth */const w0=g3World(B,D.p0),p0=G.pr(w0),eye=v3Eye(),f=lightNorm(w0.map((v,k)=>v-eye[k])),rt=lightNorm([-f[2],0,f[0]]),up=[f[1]*rt[2]-f[2]*rt[1],f[2]*rt[0]-f[0]*rt[2],f[0]*rt[1]-f[1]*rt[0]].map(v=>-v),
     px=G.pr(w0.map((v,k)=>v+rt[k]))||p0,u=p0&&px?Math.max(1e-3,Math.hypot(px[0]-p0[0],px[1]-p0[1])):100;q.p=g3Local(B,w0.map((v,k)=>v+rt[k]*dx/u-up[k]*dy/u));}
   g3Edit(D.T,()=>{},true);g3Draw();}
-function g3Up(){const D=g3.drag;if(!D)return;if(g3.raf){cancelAnimationFrame(g3.raf);g3.raf=0;g3Apply();}g3.drag=null;const fin=JSON.parse(JSON.stringify(D.T.g.pts));
+function g3Up(){const D=g3.drag;if(!D)return;if(g3.raf){cancelAnimationFrame(g3.raf);g3.raf=0;if(D.G)g3Apply();}g3.drag=null;const fin=JSON.parse(JSON.stringify(D.T.g.pts));
   /* one undo step for the whole drag: put the start back, then make the change through the editor */
   D.T.g.pts=D.all0;g3Edit(D.T,g=>{g.pts=fin;});if(typeof renderMatEd==='function')renderMatEd(true);g3Draw();}
 /* Delete removes the selected point (while the 3D view is under the pointer and no light is selected) */
 window.addEventListener('keydown',e=>{if((e.key!=='Delete'&&e.key!=='Backspace')||isTypingTarget(e.target)||e.ctrlKey||e.metaKey||e.altKey||!modal.hidden)return;
-  const T=g3Target();if(!T||g3.sel<0||!T.g.pts[g3.sel]||!v3.on||!v3.hover)return;if(T.g.pts.length<=1){toast('A 3D gradient needs at least one point.');e.preventDefault();e.stopImmediatePropagation();return;}
+  const T=g3Target();if(!T||g3.sel<0||!T.g.pts[g3.sel]||!(v3.on&&v3.hover||g3.over2d))return;if(T.g.pts.length<=1){toast('A 3D gradient needs at least one point.');e.preventDefault();e.stopImmediatePropagation();return;}
   e.preventDefault();e.stopImmediatePropagation();if(e.repeat)return;const i=g3.sel;g3Edit(T,g=>{g.pts.splice(i,1);});g3.sel=-1;if(typeof renderMatEd==='function')renderMatEd(true);g3Draw();},true);
 window.addEventListener('keydown',e=>{if(e.key==='Escape'&&g3.arm){g3.arm=false;g3Draw();}},true);
 
@@ -97,7 +97,45 @@ function g3Box(T,grey){const g=T.g,box=el('div',{class:'dlg-grid g3box',id:'g3Bo
     makeSlider({id:'g3r_'+i,label:'Reach',min:.05,max:2,step:.01,value:q.r||.6,def:.6,fmt:v=>Math.round(v*100)+'%',onInput:v=>g3Edit(T,()=>{q.r=v;})}).el,
     el('button',{class:'btn sm',type:'button',text:'×',title:'Remove point '+(i+1),'aria-label':'Remove point '+(i+1),disabled:g.pts.length<=1,onclick:()=>{g3Edit(T,x=>{x.pts.splice(i,1);});if(g3.sel>=i)g3.sel--;renderMatEd(true);g3Draw();}})));
   box.append(el('div',{class:'sub',text:'3D gradient points'}),...rows,
-    el('div',{class:'chips'},el('button',{class:'btn sm'+(g3.arm?' on':''),type:'button',id:'g3Add',text:g3.arm?'Click the model…':'+ Add point',disabled:g.pts.length>=G3_MAX,title:'Then click the model where the point goes',onclick:()=>{g3.arm=!g3.arm;if(g3.arm&&!v3.on&&typeof toggle3D==='function')toggle3D(true);renderMatEd(true);g3Draw();}})),
+    el('div',{class:'chips'},el('button',{class:'btn sm'+(g3.arm?' on':''),type:'button',id:'g3Add',text:g3.arm?'Click the model…':'+ Add point',disabled:g.pts.length>=G3_MAX,title:'Then click the model where the point goes',onclick:()=>{g3.arm=!g3.arm;renderMatEd(true);g3Draw();drawXfOverlay();}})),
     makeSlider({id:'g3soft',label:'Softness',min:.5,max:8,step:.1,value:g.soft||2,def:2,fmt:v=>v.toFixed(1),onInput:v=>g3Edit(T,()=>{g.soft=v;})}).el,
-    el('p',{class:'note',text:'Each spot of the model blends the points’ '+(grey?'values':'colours')+' by how near it is to each. In the 3D view: drag a dot to move it, drag its arrows to move it along X, Y or Z, Delete removes the selected point. Low softness gives sharp regions, high softness smooth blends.'}));
+    el('p',{class:'note',text:'Each spot of the model blends the points’ '+(grey?'values':'colours')+' by how near it is to each. In the 3D view or on the flat canvas: drag a dot to move it, drag its arrows to move it along X, Y or Z, Delete removes the selected point. Low softness gives sharp regions, high softness smooth blends.'}));
   return box;}
+
+/* ---- (0.95.9, Kenn) the points on the flat canvas: each shows at its spot on the texture (where the model's surface is
+   nearest to it); dragging it moves it over the surface (just above it), and Add point then a click on the canvas adds one there.
+   Without a model the texture is the box: x right, y up. ---- */
+function g3Mesh(){const m=v3.mesh;if(!m||!m.uv||!m.pos||m.noUV||!v3.on&&ui.mode!=='p3d')return null;const R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:m.idx.length/3};return {m,R};}
+/* the texture spot (0..1, y down) of a point */
+function g3UVOf(q){const M=g3Mesh();if(!M)return [q.p[0],1-q.p[1]];const {m,R}=M,P=m.pos,I=m.idx,U=m.uv,w=g3World(g3Box3(),q.p);let best=-1,bd=1e30;
+  for(let t=R.start;t<R.start+R.count;t++){const d=pfTriDist2(P,I,t,w);if(d<bd){bd=d;best=t;}}if(best<0)return null;
+  const a=I[best*3],b=I[best*3+1],c=I[best*3+2],A=[P[a*3],P[a*3+1],P[a*3+2]],e1=[P[b*3]-A[0],P[b*3+1]-A[1],P[b*3+2]-A[2]],e2=[P[c*3]-A[0],P[c*3+1]-A[1],P[c*3+2]-A[2]],d0=[w[0]-A[0],w[1]-A[1],w[2]-A[2]];
+  const dt=(x,y)=>x[0]*y[0]+x[1]*y[1]+x[2]*y[2],d00=dt(e1,e1),d01=dt(e1,e2),d11=dt(e2,e2),d20=dt(d0,e1),d21=dt(d0,e2),den=d00*d11-d01*d01||1e-12;
+  let v=(d11*d20-d01*d21)/den,ww=(d00*d21-d01*d20)/den;v=Math.max(0,v);ww=Math.max(0,ww);if(v+ww>1){const s=v+ww;v/=s;ww/=s;}const u=1-v-ww;
+  return [U[a*2]*u+U[b*2]*v+U[c*2]*ww,U[a*2+1]*u+U[b*2+1]*v+U[c*2+1]*ww];}
+/* the point (in the box) just above the surface at a texture spot, or null where the texture is empty */
+function g3AtUV(x,y){const M=g3Mesh();if(!M)return [x,1-y,.5];const {m,R}=M,P=m.pos,I=m.idx,U=m.uv,N=m.nrm,B=g3Box3();
+  for(let t=R.start;t<R.start+R.count;t++){const a=I[t*3],b=I[t*3+1],c=I[t*3+2],ax=U[a*2],ay=U[a*2+1],bx=U[b*2]-ax,by=U[b*2+1]-ay,cx=U[c*2]-ax,cy=U[c*2+1]-ay,px=x-ax,py=y-ay,den=bx*cy-by*cx;
+    if(Math.abs(den)<1e-14)continue;const v=(px*cy-py*cx)/den,w=(bx*py-by*px)/den;if(v<-1e-6||w<-1e-6||v+w>1+1e-6)continue;const u=1-v-w;
+    const pos=[0,1,2].map(k=>P[a*3+k]*u+P[b*3+k]*v+P[c*3+k]*w),n=lightNorm(N?[0,1,2].map(k=>N[a*3+k]*u+N[b*3+k]*v+N[c*3+k]*w):[0,1,0]),lift=Math.max(...B.sz)*.04;
+    return g3Local(B,pos.map((p,k)=>p+n[k]*lift));}
+  return null;}
+const g3c2={key:'',uv:[]};
+function g3Spots(T){const M=g3Mesh(),key=JSON.stringify(T.g.pts.map(q=>q.p))+(M?M.m.pos.length+':'+M.R.start+':'+M.R.count:'flat');if(g3c2.key!==key){g3c2.key=key;g3c2.uv=T.g.pts.map(g3UVOf);}return g3c2.uv;}
+function g3Overlay2D(){const T=g3Target();if(!T||ui.mode==='bake'||ui.mode==='convert')return '';let s='';
+  g3Spots(T).forEach((uv,i)=>{if(!uv)return;const q=T.g.pts[i],p=toScreen(uv[0]*doc.w,uv[1]*doc.h),col='rgb('+q.c.map(v=>Math.round(Math.min(1,Math.max(0,v))*255)).join(',')+')',sel=i===g3.sel;
+    s+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="'+(sel?9:7)+'" style="fill:'+col+';stroke:'+(sel?'#ffd24a':'#fff')+';stroke-width:'+(sel?3:2)+'"/>';});
+  if(g3.arm)s+='<text x="12" y="24" style="fill:#ffd24a;font:12px sans-serif">Click the canvas to add a 3D gradient point</text>';return s;}
+function g3Down2D(e){const T=g3Target();if(!T||e.button!==0||e.altKey||ui.mode==='bake'||ui.mode==='convert')return false;const [ix,iy]=toImage(e.clientX,e.clientY),u=ix/doc.w,v=iy/doc.h;
+  if(g3.arm){const at=g3AtUV(u,v);if(!at){toast('That spot of the texture is not on the model. Click on the model’s shape.');return true;}g3.arm=false;
+    if(T.g.pts.length>=G3_MAX){toast('A 3D gradient holds up to '+G3_MAX+' points.');return true;}
+    g3Edit(T,g=>{g.pts.push({p:at,c:(ui.fg||[1,1,1]).slice(0,3),r:.5});});g3.sel=T.g.pts.length-1;if(typeof renderMatEd==='function')renderMatEd(true);drawXfOverlay();e.preventDefault();return true;}
+  const r=stage.getBoundingClientRect(),m=[e.clientX-r.left,e.clientY-r.top];let hit=-1,bd=12;
+  g3Spots(T).forEach((uv,i)=>{if(!uv)return;const p=toScreen(uv[0]*doc.w,uv[1]*doc.h),d=Math.hypot(m[0]-p[0],m[1]-p[1]);if(d<bd){bd=d;hit=i;}});if(hit<0)return false;
+  e.preventDefault();g3.sel=hit;if(typeof renderMatEd==='function')renderMatEd(true);g3.drag={T,i:hit,all0:JSON.parse(JSON.stringify(T.g.pts)),part:'2d'};
+  const mv=ev=>{const D=g3.drag;if(!D)return;const [x,y]=toImage(ev.clientX,ev.clientY),at=g3AtUV(x/doc.w,y/doc.h);if(!at)return;D.T.g.pts[D.i].p=at;g3Edit(D.T,()=>{},true);drawXfOverlay();g3Draw();};
+  const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);g3Up();drawXfOverlay();};
+  window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);drawXfOverlay();return true;}
+
+/* the pointer over the flat canvas (so Delete removes the selected point there too) */
+{const st=document.getElementById('stage');if(st){st.addEventListener('pointerenter',()=>{g3.over2d=true;});st.addEventListener('pointerleave',()=>{g3.over2d=false;});}}

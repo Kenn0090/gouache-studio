@@ -1,3 +1,8 @@
+## 0.95.9
+
+- **3D gradient points can be moved on the flat canvas** too.
+- **Quick mask is switched off for now.**
+
 ## 0.95.8
 
 - **Tidier File and layer menus** (grouped fly-outs; Welcome and Launch screens in Help).

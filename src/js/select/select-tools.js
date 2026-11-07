@@ -91,7 +91,7 @@ function buildSelectPanel(box){const t=ui.tool;$('#brushTitle').textContent=SEL_
   if(chips.childNodes.length)box.append(chips);
   box.append(el('div',{class:'frow'},
     el('button',{class:'btn sm',text:'Select all',title:'Ctrl+A',onclick:selectAll}),el('button',{class:'btn sm',text:'Deselect',title:'Ctrl+D',onclick:deselect}),
-    el('button',{class:'btn sm',text:'Invert',title:'Ctrl+Shift+I',onclick:invertSel}),el('button',{class:'btn sm',text:'Quick mask',title:'Q',onclick:toggleQuickMask})));
+    el('button',{class:'btn sm',text:'Invert',title:'Ctrl+Shift+I',onclick:invertSel}),...(QM_OFF?[]:[el('button',{class:'btn sm',text:'Quick mask',title:'Q',onclick:toggleQuickMask})])));
   const tips={marquee:'Drag to select. Shift after starting makes a square or circle, Alt draws from the centre. Drag inside a selection to move it; arrow keys nudge it.',
     lasso:ui.lasso==='poly'?'Click to place points. Click the first point, double-click or press Enter to close. Backspace removes the last point, Esc cancels. Shift keeps lines at 45°.':'Drag around an area. Hold Alt while dragging for straight lines. Drag inside a selection to move it.',
     wand:'Click a colour to select it. Tolerance sets how similar colours must be. Contiguous picks only touching pixels.'};
@@ -126,7 +126,7 @@ function selKeys(e,m,k){
   /* (0.95.4, Kenn) L = left–right symmetry; Shift+L still switches free/polygon while the Lasso is the tool */
   if(k==='l'){if(e.shiftKey&&ui.tool==='lasso'){ui.lasso=ui.lasso==='free'?'poly':'free';polyLasso=null;updateSelIcons();buildBrushPanel();drawSelOverlay();}else if(!e.shiftKey&&ui.mode!=='bake')symToggleX();else return false;return true;}
   if(k==='w'){setTool('wand');return true;}
-  if(k==='q'){toggleQuickMask();return true;}
+  if(k==='q'&&!(QM_OFF&&!sel.quick)){toggleQuickMask();return true;}
   if(isSelTool(ui.tool)&&sel.active&&e.key.startsWith('Arrow')){e.preventDefault();const s=e.shiftKey?10:1,d={ArrowLeft:[-s,0],ArrowRight:[s,0],ArrowUp:[0,-s],ArrowDown:[0,s]}[e.key];nudgeSel(d[0],d[1]);return true;}
   return false;}
 

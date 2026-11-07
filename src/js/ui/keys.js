@@ -97,7 +97,7 @@ function dlgKeys(){const list=el('div',{class:'kblist'}),search=el('input',{type
 function refreshHints(){const h=$('#hint');if(!h)return;document.body.classList.toggle('nohints',!!prefs.hideHints);
   const K=id=>kbKeyOf(id),items=[[K('tool:brush'),'brush'],[K('tool:erase'),'eraser'],[K('tool:smudge'),'blend'],['Alt','pick color'],['Space','pan'],['','wheel zoom'],
     [[K('paint:smaller'),K('paint:bigger')].filter(Boolean).join(' '),'size'],[K('tool:move'),'move'],[K('tool:gradient'),'gradient'],[K('tool:dodge'),'dodge'],[K('freeTransform'),'transform'],[K('tool:crop'),'crop'],
-    [[K('tool:marquee'),K('tool:lasso'),K('tool:wand')].filter(Boolean).join(' '),'select'],[K('quickMask'),'quick mask'],[K('tool:text'),'text'],[K('tile'),'tile'],[K('save'),'save']];
+    [[K('tool:marquee'),K('tool:lasso'),K('tool:wand')].filter(Boolean).join(' '),'select'],[K('tool:text'),'text'],[K('tile'),'tile'],[K('save'),'save']];
   h.replaceChildren();let first=true;for(const [k,t] of items){if(k===''&&t!=='wheel zoom')continue;if(!first)h.append(' · ');first=false;if(k)h.append(el('b',{text:k}),' ');h.append(t);}}
 function toggleHints(){prefs.hideHints=!prefs.hideHints;savePrefs();refreshHints();toast(prefs.hideHints?'Shortcut hints hidden (View › Shortcut hints brings them back).':'Shortcut hints shown.');}
 refreshHints();

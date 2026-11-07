@@ -83,7 +83,7 @@ In 3D Paint, **M** selects Marquee and **S** selects Smudge. **Esc** returns fro
 | Ctrl+A | Select all |
 | Ctrl+D / Ctrl+Shift+D | Deselect / reselect |
 | Ctrl+Shift+I | Invert the selection |
-| Q | Quick mask |
+| Q | (Quick mask is switched off for now) |
 | Shift / Alt / Shift+Alt as you start selecting | Add / subtract / intersect |
 | Arrow keys (selection tools) | Nudge the selection 1 px (Shift: 10 px) |
 
