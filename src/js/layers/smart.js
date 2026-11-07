@@ -92,7 +92,9 @@ function smPut(o){const old=matLib.list.find(r=>r.kind===o.kind&&r.name===o.name
 
 /* ---- the built-ins: materials and generators only ---- */
 const SM_F=(name,maps,o)=>Object.assign({t:'L',name,fill:{maps:Object.fromEntries(Object.entries(maps).map(([k,v])=>[k,Object.assign({on:true,src:'value'},v)])),proj:'uv',triSharp:4,hStr:1}},o||{});
-const SM_M=(...rows)=>({en:true,rows:rows.map(([kind,p,mode,op])=>({kind,on:true,mode:mode||'normal',op:op==null?1:op,p:Object.assign(MS_KINDS[kind].p?MS_KINDS[kind].p():{},p||{})}))});
+/* a row is [kind,p,mode,op], or {row:{…}} for a ready row (filter rows: Warp, Slope blur, Grow) */
+const SM_M=(...rows)=>({en:true,rows:rows.map(x=>x&&x.row?JSON.parse(JSON.stringify(x.row)):(([kind,p,mode,op])=>({kind,on:true,mode:mode||'normal',op:op==null?1:op,p:Object.assign(MS_KINDS[kind].p?MS_KINDS[kind].p():{},p||{})}))(x))});
+const SM_OWN=(own,r,extra)=>({row:{kind:'filter',on:true,mode:'normal',op:1,own,p:Object.assign({r,scale:6,seed:7,uvWrap:true},extra||{})}});
 const SM_GEN=(g,amount,width,breakup,extra)=>['gen',Object.assign({g,amount,width,breakup,contrast:1.5,scale:6,seed:3,inv:false},extra||{})];
 const SM_NOISE=(type,scale,contrast,level,mode,op,extra)=>['noise',Object.assign({type,scale,contrast,level,seed:5,inv:false},extra||{}),mode,op];
 const SM_FILL=v=>['fill',{v}];
@@ -199,7 +201,7 @@ async function smResolveNode(o){
         for(const k of ['rough','metal','spec','gloss'])if(!o.fill.maps[k]||!o.fill.maps[k].on)delete o.fillImg[k];}}}
   if(o.mask)await smResolveMask(o.mask);
   for(const c of o.kids||[])await smResolveNode(c);}
-function smBuiltins(){return SM_BUILTIN.concat(SM_LIB).map(([name,kids])=>({id:'sb:'+name,kind:'smart',builtin:true,name,tree:{t:'G',name,open:true,kids:kids.slice()}}));}
+function smBuiltins(){return SM_BUILTIN.concat(SM_LIB).map(([name,kids])=>({id:'sb:'+name,kind:'smart',builtin:true,name,tree:{t:'G',name,open:true,kids:kids.map(smUpgrade)}}));}
 const SMASK_BUILTIN=[['Worn edges',SM_M(SM_GEN('edge',.5,.5,.55),SM_NOISE('grunge',8,2,.1,'multiply',.7))],['Dirty cavities',SM_M(SM_GEN('dirt',.5,.55,.5),SM_NOISE('clouds',6,1.5,.1,'multiply',.7))],
   ['Dusty top',SM_M(SM_GEN('dust',.5,.5,.5),SM_NOISE('clouds',5,1.5,.1,'multiply',.7))],['Scratched',SM_M(SM_NOISE('scratches',3,2,0))],['Chipped paint',SM_M(SM_GEN('chips',.5,.5,.5))]];
 const SMASK_LIB=[
@@ -220,7 +222,7 @@ const SMASK_LIB=[
   ['Frost',SM_M(SM_GEN('dust',.5,.5,.5),SM_IMG('frost-veins',1,false,'multiply',1))],
   ['Fingerprints',SM_M(SM_IMG('fingerprints',1,false,'normal',1))],
   ['Dripping grime',SM_M(SM_IMG('runs-2',1,false,'normal',1),SM_GEN('dirt',.5,.5,.5))]];
-function smaskBuiltins(){return SMASK_BUILTIN.concat(SMASK_LIB).map(([name,mask])=>({id:'mb:'+name,kind:'smask',builtin:true,name,mask}));}
+function smaskBuiltins(){return SMASK_BUILTIN.concat(SMASK_LIB).map(([name,mask])=>({id:'mb:'+name,kind:'smask',builtin:true,name,mask:smMaskUpgrade(mask)}));}
 
 /* ---- a small picture for the tiles: the bottom material as a ball, the layers above painted on where their
    generators would put them (edges at the rim, cavities low, dust on top, patterns as noise) ---- */
