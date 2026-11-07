@@ -1,3 +1,9 @@
+## 0.95.4
+
+- **See your lights before you bake.** On the Bake tab's **Lighting** page the model now shows a quick bake of your light rig by itself, with its shadows. Add a light, drag it, change its colour or strength and the model updates within a moment (a rough preview first, then a sharper one). Press **Bake** for the full-quality result. The switch **Live preview on the model** turns it off.
+- **Paint stays where you paint on the model.** With the brush set to Surface wrap (the default), a stroke could also land on a part of the model hidden behind the one you were painting, for example on the neck under the chin while painting the corner of the mouth. Hidden parts no longer take paint; paint still reaches just behind a raised edge such as a lip.
+- **L turns left–right symmetry on and off.** In 3D Paint it switches Mirror X. Shift+X still works too. The Lasso no longer has a key of its own (Shift+L still switches freehand / polygon while it is chosen); give it one in Edit › Keyboard shortcuts if you like.
+
 ## 0.95.3
 
 - **FBX import:** text (ASCII) FBX meshes can now be imported, including the Dragon model.

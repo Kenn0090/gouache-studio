@@ -50,7 +50,7 @@ The **Symmetry** buttons are in the brush panel for the Brush, Eraser, Blend, Do
 - **Radial** repeats the dab around the centre. The **Rays** slider goes from 2 to 24; type any number from 2 to 128 in the box under it.
 - **Centre ↔ / ↕** moves the mirror lines. You can also drag the blue centre circle on the canvas; **Reset centre** puts it back in the middle.
 - **Canvas** turns mirror axes with canvas rotation. **Screen** keeps them upright when you turn or flip the canvas. Bent cages keep their own local axes.
-- **Shift+X** turns left–right symmetry on and off.
+- **L** (or **Shift+X**) turns left–right symmetry on and off. In 3D Paint it turns Mirror X on and off.
 - **Liquify** follows the same symmetry settings.
 - Symmetry belongs to the document: a new or opened document starts with it off, and each tab keeps its own mode, centre and rays. **Preferences › Painting › Undo also covers settings** makes changing them an undo step (off by default); it also covers brush settings and colours. Each document also keeps its own brushes.
 

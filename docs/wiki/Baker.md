@@ -205,6 +205,7 @@ The **Lighting** bake writes the light of a rig onto the model, with the soft sh
   - Point and Spot: shadow softness (light size) and reach; a Spot also has its cone and soft edge, and always points at the middle of the model.
 - **In the 3D view:** the lights are drawn on the view. Drag a sun to turn it around the model. Drag a point light or spot to move it across the screen; hold Shift to move it nearer or further.
 - **Exposure** brightens or darkens the whole bake. **Materials to bake** (eyes) leave parts out; left-out parts still cast shadows.
+- **Live preview on the model** (on by default): while the Lighting page is open, the model shows a quick bake of your lights, with their shadows, without pressing Bake. Add, move, recolour or switch off a light and the preview follows within a moment: a rough one first, then a sharper one. It is only a preview; press **Bake** for the full-quality Lighting map. Leave the Lighting page (or untick the switch) to see the model as before.
 
 Where it goes:
 

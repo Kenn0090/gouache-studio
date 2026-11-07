@@ -71,6 +71,8 @@ function lightTabPage(on,note){const R=lightRig(),C=bakeCfg,pg=el('div',{});
       el('div',{class:'sub',text:'Lights'}),R.lights.length?el('div',{class:'p3sets lights',id:'lList'},...rows):el('p',{class:'note',text:'No lights yet. Press Auto rig, or add one.'}),
       makeSlider({id:'l_expo',label:'Exposure',min:.1,max:4,step:.01,value:R.expo??1,def:1,fmt:v=>v.toFixed(2),onInput:v=>{R.expo=v;H.note();}}).el,
       chk('l_show','Show the lights in the view',R.show!==false,v=>{R.show=v;v3.dirty=true;requestRender&&requestRender();}),
+      ui.mode==='bake'?chk('l_prev','Live preview on the model',R.live!==false,v=>{R.live=v;if(!v)lightPreviewFree();bk.dirty=true;v3.dirty=true;requestRender&&requestRender(true);lightPreviewNote();}):null,
+      ui.mode==='bake'?el('p',{class:'note',id:'lPrevNote',text:lpNoteText()}):null,
       ui.mode==='bake'&&bkMats(bkLow())?bkMatEyes(C):null,
       on&&note('Bakes the light of this rig onto the model, with the shadows it casts on itself. It goes to 3D Paint as a mesh map (the Hand-painted and Stylize layers light the model with it) and as a Multiply layer you can paint on. Parts left out (eyes above) are not baked, but still cast shadows.')];};
   lightPageRedraw=paint;
@@ -158,3 +160,40 @@ function lightRigRow(){const s=v3s();return el('div',{class:'dlg-grid',id:'lRigR
   el('p',{class:'note',text:'Up to four lights show in the view (no shadows there). The Lighting bake (Bake mesh maps) bakes them all, with shadows.'}));}
 function lightDialog(){lightWin.open=true;const s=v3s();if(!s.rigLive){s.rigLive=true;}const body=lightTabPage(null,t=>el('p',{class:'note',text:t})),prevHist=edHist;edHist=lightHist;const unkey=lightHist?lightHist.bindKeys():()=>{};v3.dirty=true;requestRender&&requestRender();
   openDialog({title:'Lights',body:el('div',{class:'dlg-grid',id:'lightDlg'},body),float:true,okLabel:null,cancelLabel:'Close',onCancel(){lightWin.open=false;lightPageRedraw=null;if(lightHist)lightHist.commit();edHist=prevHist;unkey();v3.dirty=true;requestRender&&requestRender();}});}
+
+/* ---- (0.95.4, Kenn: "when you add lights you can't even see them affecting anything") live preview of the Lighting bake ----
+   While the Bake tab's Lighting page is open, any change to the rig (a light added, moved, recoloured, the exposure, the sky)
+   starts a quick Lighting bake by itself: first a small rough one (few rays), then a sharper one, each thrown away when the rig
+   changes again. The result is shown on the model (with its shadows) until the page is left. It never touches the real bakes. */
+const LP_SIZES=[[256,4],[1024,0]];/* [picture size, ray cap (0 = the rig's own rays)] */
+const lp={sig:'',t:0,prog:null,run:null,raw:null,view:null,pass:-1,ids:new WeakMap(),seq:0};
+const lpOn=()=>!!(bakeCfg&&lightRig().live!==false);
+function lpvActive(){if(ui.mode!=='bake'||!v3.on||bakeCfg.tab!=='light'||!lpOn()||bk.uvCheck)return false;if(bk.show!=='material'&&bk.show!=='light')return false;
+  const L=bkLow();return !!(L&&!L.noUV&&canFloat&&(lightRig().lights||[]).some(x=>x.on!==false));}
+const lpId=o=>{if(!o)return 0;let i=lp.ids.get(o);if(!i){i=++lp.seq;lp.ids.set(o,i);}return i;};
+function lpSig(){const R=lightRig(),s=v3s();return JSON.stringify([R.lights,R.expo,s.env,s.envRot,lpId(bkLow()),lpId(bakeCfg.high),lpId(bakeCfg.cage),bakeCfg.front,bakeCfg.back,bakeCfg.skip]);}
+/* called every time the Bake tab's model is refreshed: start a preview when the rig changed */
+function lightPreviewTick(){if(!lpvActive()){if(lp.prog)lp.prog.cancelled=true;return false;}
+  const s=lpSig();if(s!==lp.sig){lp.sig=s;lp.pass=-1;if(lp.prog)lp.prog.cancelled=true;clearTimeout(lp.t);lp.t=setTimeout(()=>lightPreviewRun(0),lp.raw?120:30);lightPreviewNote();}
+  return !!lp.view;}
+async function lightPreviewRun(pass){if(!lpvActive())return;if(bk.busy||bk.regionBusy||lp.run){clearTimeout(lp.t);lp.t=setTimeout(()=>lightPreviewRun(pass),250);return;}
+  const sig=lp.sig,[sz,cap]=LP_SIZES[pass],size=Math.min(sz,Math.max(64,doc.w)),prog={cancelled:false,set(){},step(){}},L=bkLow();lp.prog=prog;
+  const rig=JSON.parse(JSON.stringify(lightRig()));if(cap)for(const x of rig.lights)x.rays=Math.min(x.rays||12,x.type==='sky'?cap*2:cap);
+  const job=(async()=>{const {low,high,cage}=bakePrep(L),C=bakeCfg;
+    const hg=await bakeHG(L,high,low,()=>{},false,true);if(prog.cancelled)return null;
+    const o={bevel:null,size,sizeH:size,ss:1,front:C.front*.02,back:C.back*.02,average:C.average,soften:C.soften||0,cage,match:C.match&&!!high,kinds:['light'],rays:C.rays,light:rig,
+      aoDist:C.aoDist*.02,thickDist:C.thickDist*.02,pad:Math.max(2,Math.round((C.pad||8)*size/Math.max(1,doc.w))),dx:false,seed:1.7,hg,acc:{}};
+    const res=await bakeRun(low,high,o,prog);for(const k in o.acc)if(!res||res[k]!==o.acc[k])disposeTarget(o.acc[k]);return res;})();
+  lp.run=job;let res=null;try{res=await job;}catch(e){console.warn('Lighting preview:',e);}lp.run=null;if(lp.prog===prog)lp.prog=null;
+  if(!res||!res.light){if(res)for(const k in res)disposeTarget(res[k]);return;}
+  if(prog.cancelled||sig!==lp.sig){disposeTarget(res.light);return;}
+  if(lp.raw)disposeTarget(lp.raw);lp.raw=res.light;lp.pass=pass;
+  if(!lp.view||lp.view.w!==doc.w||lp.view.h!==doc.h){if(lp.view)disposeTarget(lp.view);lp.view=makeTarget(doc.w,doc.h,8,false);}
+  copyScaled(lp.raw,lp.view);bk.dirty=true;v3.dirty=true;requestRender();lightPreviewNote();
+  if(pass+1<LP_SIZES.length&&lpvActive()){clearTimeout(lp.t);lp.t=setTimeout(()=>{if(sig===lp.sig)lightPreviewRun(pass+1);},350);}}
+/* the line under the switch: what the model shows right now */
+function lightPreviewNote(){const n=document.getElementById('lPrevNote');if(n)n.textContent=lpNoteText();}
+function lpNoteText(){return !lpOn()?'Off: bake Lighting to see the lights on the model.':lp.run||lp.t&&lp.pass<0?'Updating the preview…':lp.pass>=0&&lp.pass<LP_SIZES.length-1?'Quick preview shown; a sharper one is on its way…':lp.view?'The model shows a quick bake of these lights, with shadows. Bake for the full-quality result.':'The model shows a quick bake of these lights while this page is open.';}
+function lightPreviewFree(){if(lp.prog)lp.prog.cancelled=true;clearTimeout(lp.t);lp.sig='';lp.pass=-1;if(lp.raw){disposeTarget(lp.raw);lp.raw=null;}if(lp.view){disposeTarget(lp.view);lp.view=null;}}
+/* a real bake waits for a preview that is running, and stops it */
+async function lightPreviewStop(){if(lp.prog)lp.prog.cancelled=true;clearTimeout(lp.t);if(lp.run){try{await lp.run;}catch(e){}}lp.sig='';}

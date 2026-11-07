@@ -130,7 +130,8 @@ function symResetAll(){symChange('Reset symmetry',()=>{Object.assign(ui.sym,{n:6
 function symResetCentre(){symChange('Reset symmetry centre',()=>{ui.sym.cx=ui.sym.cy=.5;});buildBrushPanel();drawXfOverlay();symPopSync();}
 function symSetRays(v){symChange('Symmetry rays',()=>{ui.sym.n=clamp(Math.round(+v)||2,2,128);});if(typeof buildOptBar==='function')buildOptBar();buildBrushPanel();drawXfOverlay();symPopSync();}
 function setSym(mode){symChange('Symmetry',()=>{ui.sym.mode=mode;});buildBrushPanel();drawXfOverlay();requestRender();}
-function symToggleX(){setSym(ui.sym.mode==='x'?'off':'x');toast(ui.sym.mode==='x'?'Symmetry: left–right':'Symmetry off');}
+/* in 3D Paint the model's X mirror (the 3D bar's X button), elsewhere the canvas symmetry */
+function symToggleX(){if(ui.mode==='p3d'&&typeof mir3!=='undefined'){mir3.x=!mir3.x;mir3Save();mir3BarSync();toast(mir3.x?'Mirror X on':'Mirror X off');return;}setSym(ui.sym.mode==='x'?'off':'x');toast(ui.sym.mode==='x'?'Symmetry: left–right':'Symmetry off');}
 function buildSymSection(box){const S=ui.sym;
   box.append(el('div',{class:'sub',text:'Symmetry'}),seg(SYM_MODES.map(m=>[m[0],m[1]]),S.mode,v=>setSym(v),'Symmetry'));
   if(S.mode==='off')return;
