@@ -28,7 +28,7 @@ function bakeExit(){tabDocExit('bake');const p=bk.prev3d;bk.prev3d=null;v3.btex=
   if(v3.on||v3.mesh===bakeCfg.low)v3LoadModel(true);if(v3.on)build3dPane();v3.mapsDirty=true;v3.dirty=true;resizeGL();fit();requestRender(true);}
 /* the 3D view shows the model being baked onto */
 function bakeSyncMesh(){if(ui.mode!=='bake'||!v3.on)return;const C=bakeCfg,was=v3.mesh;if(C.low){if(v3.mesh!==C.low)v3SetMesh(C.low);}else v3LoadModel(true);if(v3.mesh!==was&&v3.on)build3dPane();v3.dirty=true;}
-function bakeReset(){for(const k in bk.res)disposeTarget(bk.res[k]);for(const k in bk.acc)disposeTarget(bk.acc[k]);bk.res={};bk.acc={};bk.opts=null;bk.src=null;bk.kinds=[];
+function bakeReset(){if(typeof lightPreviewFree==='function')lightPreviewFree();for(const k in bk.res)disposeTarget(bk.res[k]);for(const k in bk.acc)disposeTarget(bk.acc[k]);bk.res={};bk.acc={};bk.opts=null;bk.src=null;bk.kinds=[];
   if(bk.hg){bkFreeHigh(bk.hg);bk.hg=null;bk.hgKey=null;}for(const k in bk.maps)if(bk.maps[k]){disposeTarget(bk.maps[k]);bk.maps[k]=null;}bk.L={};bk.stale.clear();bk.sentLayers=[];bk.dirty=true;}
 
 /* ---------- the maps you paint to fix the bake ---------- */
@@ -64,7 +64,7 @@ async function bakeHG(L,high,low,step,needCol,whole){const source=high||(bvWidth
 function bakeCurvSrc(high){const v=bakeCfg.curvSrc||'mesh';if(v==='normal'&&!high)return 'mesh';if(v==='doc'&&!doc.maps.includes('normal'))return 'mesh';return v;}
 function bakeKinds(ks,high){const kinds=ks.filter(k=>k!=='curv');if(ks.includes('curv')){const src=bakeCurvSrc(high);if(src==='mesh')kinds.push(...(high?['cpos','cnrm']:['mcurv']));else if(src==='normal'&&!kinds.includes('normal'))kinds.push('normal');}return kinds;}
 /* full bake of maps ks from low-poly L */
-async function runBake(L,ks,opt){opt=opt||{};const C=bakeCfg;if(bk.busy)return;if(!canFloat){toast('Baking needs 16-bit float support, which this graphics card lacks.');return;}
+async function runBake(L,ks,opt){opt=opt||{};const C=bakeCfg;if(bk.busy)return;if(typeof lightPreviewStop==='function')await lightPreviewStop();if(bk.busy)return;if(!canFloat){toast('Baking needs 16-bit float support, which this graphics card lacks.');return;}
   if(L.noUV){toast('The low-poly has no UVs: nothing can be baked onto it.');return;}
   if(C.cage&&(C.cage.verts!==L.verts||C.cage.tris!==(L.whole||L).tris)){toast('The cage does not match the low-poly.');return;}
   const {low,high,cage}=bakePrep(L);
@@ -259,10 +259,12 @@ function bakeViewTex(){const t=bkEnsure('view2d',8),live=stroke&&stroke.L&&strok
   return t;}
 /* model: lit clay with the baked normal and AO, or one map on its own */
 function bakeV3Refresh(){if(bk.docBase&&v3.mapsDirty){const t=compositeMap('base');v3MapTex('base',t);release(t);v3.mapsDirty=false;bk.dirty=true;}
-  const live=stroke&&stroke.L&&stroke.L.bakeMap;if(!bk.dirty&&!live&&!bk.busy&&v3.btex)return;
+  const lpv=typeof lightPreviewTick==='function'&&lightPreviewTick(),lpWas=bk.lpShown;bk.lpShown=lpv;
+  const live=stroke&&stroke.L&&stroke.L.bakeMap;if(!bk.dirty&&!live&&!bk.busy&&v3.btex&&lpv===lpWas)return;
   const tint=bkEnsure('tint',8),r=bk.res,T={};let unlit=false;
   if(bk.uvCheck&&typeof uvViewTarget==='function'){const vt=uvViewTarget();if(vt){T.base=vt.t;unlit=vt.unlit;}}
   if(T.base);
+  else if(lpv){bakeTint(tint,lp.view,bk.paint,bk.paint==='skew'?1:2);T.base=tint;unlit=true;/* (0.95.5) live Lighting preview */}
   else if(bk.show==='material'){bakeTint(tint,bk.docBase?(v3.tex.base||null):null,bk.paint,bk.paint==='skew'?1:2);T.base=tint;if(r.normal)T.nfinal=r.normal;if(r.ao)T.ao=r.ao;}
   else if(BK_PAINT[bk.show]){bakeTint(tint,null,bk.show,3);T.base=tint;unlit=true;}
   else{bakeTint(tint,r[bk.show]||null,bk.paint,bk.paint==='skew'?1:2);T.base=tint;unlit=true;}

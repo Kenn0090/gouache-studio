@@ -1,5 +1,6 @@
 ## 0.95.4
 
+- **Lighting bake preview:** on the Bake tab's Lighting page the model shows your lights and their shadows live, before you bake.
 - **Painting on the model:** strokes no longer land on hidden parts behind the one you paint (such as the neck under the chin).
 - **L** turns left–right symmetry on and off (Mirror X in 3D Paint).
 
