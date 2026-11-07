@@ -1,7 +1,7 @@
 /* ================= Substance Painter style controls on the 3D view (0.53) =================
    Kenn: "I want all of the controls to be like Painter." These follow Painter's own shortcut list (Settings › Shortcuts):
    - Ctrl + right-drag: brush size (left–right) and hardness (up–down); a ring shows the result and a label gives the numbers
-   - Ctrl + left-drag: flow (left–right) and brush rotation (up–down)
+   - Ctrl + middle-drag: flow (left–right) and brush rotation (up–down) (0.95.6: Ctrl + left-drag smooths the paint)
    - stencil: S + left-drag rotates (Shift snaps to 90°), S + middle-drag moves, S + right-drag scales; hold N to ignore the stencil
    - F1 3D + 2D · F2 3D only · F3 2D only · F4 swap the two sides · F5 perspective · F6 orthographic
    (Alt navigation, Shift + right-drag for the sky, [ ] for the size, F to frame, Shift-click lines and Alt colour picking were already like Painter.)
@@ -10,7 +10,8 @@ const pc={el:null};
 const pcOn=()=>prefs.painterControls!==false&&ui.mode==='p3d'&&typeof v3nav!=='undefined'&&v3nav.mode!=='coat';
 /* which adjusting drag a press starts (null: none) */
 function pcNavOf(e,paint){if(!paint||!pcOn()||!MESH_TOOLS.includes(ui.tool))return null;
-  if(!(e.ctrlKey||e.metaKey)||e.altKey||e.shiftKey)return null;return e.button===2?'bsize':e.button===0?'bflow':null;}
+  /* (0.95.6) Ctrl + left-drag smooths the paint now, so flow and rotation moved to Ctrl + middle-drag */
+  if(!(e.ctrlKey||e.metaKey)||e.altKey||e.shiftKey)return null;return e.button===2?'bsize':e.button===1?'bflow':null;}
 function pcAdjust(d,e,hit,flat){const B=d.b0||(d.b0={size:brush.size,hardness:brush.hardness,flow:brush.flow,angle:brush.angle||0}),dx=e.clientX-d.x0,dy=e.clientY-d.y0;
   if(d.how==='bsize'){brush.size=clamp(Math.round(B.size*Math.exp(dx/160)),1,brushMax());brush.hardness=clamp(+(B.hardness-dy/220).toFixed(3),0,1);brushRememberSize();}
   else{brush.flow=clamp(+(B.flow+dx/280).toFixed(3),.01,1);brush.angle=Math.round(((B.angle-dy*.8+540)%360+360)%360-180);}
@@ -37,7 +38,7 @@ window.addEventListener('keydown',e=>{if(!pcOn()||isTypingTarget(e.target)||e.ct
 
 /* the same two drags on the flat texture of 3D Paint (the canvas side of Split), as in Painter's 2D view */
 (()=>{const cvEl=document.getElementById('gl');if(!cvEl)return;let d2=null;
-  const flatOk=e=>pcOn()&&['brush','erase','dodge','burn','smudge'].includes(ui.tool)&&(e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&(e.button===0||e.button===2)&&!document.getElementById('modal')?.offsetParent;
+  const flatOk=e=>pcOn()&&['brush','erase','dodge','burn','smudge'].includes(ui.tool)&&(e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&(e.button===1||e.button===2)&&!document.getElementById('modal')?.offsetParent;
   cvEl.addEventListener('pointerdown',e=>{if(!flatOk(e))return;e.preventDefault();e.stopImmediatePropagation();try{cvEl.setPointerCapture(e.pointerId);}catch(er){}
     d2={how:e.button===2?'bsize':'bflow',id:e.pointerId,x0:e.clientX,y0:e.clientY};},true);
   window.addEventListener('pointermove',e=>{if(!d2||e.pointerId!==d2.id)return;if(!e.buttons){d2=null;pcEnd();return;}e.stopImmediatePropagation();pcAdjust(d2,e,cvEl,true);},true);

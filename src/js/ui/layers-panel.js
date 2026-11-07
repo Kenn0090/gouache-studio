@@ -218,9 +218,21 @@ function cloneNode(n){if(n.type==='layer'&&n.fx){const L=newFxLayerObj(n.name+' 
 function cmdDuplicate(){const tops=topSelected();if(!tops.length)return;
   structOp('Duplicate',()=>{const clones=[];for(const n of tops){const c=cloneNode(n);if(n.text3d)c.text3d=JSON.parse(JSON.stringify(n.text3d));if(n.path){pathEnsure(n);c.paths=pathCopy(n.paths);c.pathCur=n.pathCur;c.path=c.paths[c.pathCur];c._pathSamples=n._pathSamples;}insertNode(c,n.parent,n.parent.children.indexOf(n)+1);clones.push(c);}doc.sel=new Set(clones);doc.active=clones[clones.length-1];});if(doc.active?.path)buildBrushPanel();}
 function cmdDelete(){const tops=topSelected();if(!tops.length)return;
-  const remaining=allLayers().filter(L=>!tops.some(t=>t===L||isAncestor(t,L)));if(!remaining.length){toast('Keep at least one layer in the document.');return;}
+  const remaining=allLayers().filter(L=>!tops.some(t=>t===L||isAncestor(t,L)));
+  /* (0.95.6, Kenn: "I should be able to delete all layers and there should always be a default material or canvas") deleting the
+     last layers leaves a fresh default in their place, in the same undo step: a grey Base material in 3D Paint, a plain canvas in Paint */
+  if(!remaining.length){const D=ui.mode==='p3d'||ui.mode==='paint'?defaultLayerObj():null;if(!D){toast('Keep at least one layer in the document.');return;}
+    structOp(tops.length>1?'Delete layers':'Delete',()=>{for(const n of tops)detachNode(n);insertNode(D,doc.root,0);selectOnly(D);});
+    toast(ui.mode==='p3d'?'All layers deleted: the set has a plain grey Base material again.':'All layers deleted: a plain canvas is left.');return;}
   structOp(tops.length>1?'Delete layers':'Delete',()=>{const ref=tops[0],p=ref.parent,i=p.children.indexOf(ref);for(const n of tops)detachNode(n);
     const next=p.children[Math.max(0,i-1)]||(p!==doc.root?p:null)||remaining[remaining.length-1];selectOnly(next);});}
+/* the layer that stands in when everything is deleted */
+function defaultLayerObj(){
+  if(ui.mode==='p3d'){const B=newLayerObj('Base material',true);doc.count--;B.fill=fillDefaults();const spec=doc.workflow==='spec';Object.assign(B.fill.maps.base,{on:true,src:'value',c:[.82,.82,.82]});
+    if(spec){if(B.fill.maps.spec)Object.assign(B.fill.maps.spec,{on:true,src:'value',c:[.22,.22,.22]});if(B.fill.maps.gloss)Object.assign(B.fill.maps.gloss,{on:true,v:.4});if(B.fill.maps.rough)B.fill.maps.rough.on=false;if(B.fill.maps.metal)B.fill.maps.metal.on=false;}
+    else{Object.assign(B.fill.maps.rough,{on:true,v:.6});Object.assign(B.fill.maps.metal,{on:true,v:0});if(B.fill.maps.spec)B.fill.maps.spec.on=false;if(B.fill.maps.gloss)B.fill.maps.gloss.on=false;}
+    if(B.fill.maps.height)B.fill.maps.height.on=false;fillRender(B);return B;}
+  const L=newLayerObj('Background');doc.count--;const c=doc.bgCol===undefined?[1,1,1]:doc.bgCol;if(c)clearTarget(L.target,[c[0],c[1],c[2],1]);return L;}
 function cmdMove(d){const A=doc.active;if(!A)return;const p=A.parent,i=p.children.indexOf(A),j=i+d;if(j<0||j>=p.children.length)return;
   structOp('Move layer',()=>{p.children.splice(i,1);p.children.splice(j,0,A);});}
 /* a new layer holding, for every map some of the given layers use, render(k) */

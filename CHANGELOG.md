@@ -1,3 +1,8 @@
+## 0.95.6
+
+- **Delete every layer:** you can now delete all the layers. A fresh default takes their place in the same undo step: a plain grey **Base material** in 3D Paint, the plain **canvas** (in the document's background colour) in Paint.
+- **Smoothing moved to Ctrl + drag** in 3D Paint, so it never gets in the way of straight lines: **Shift + click** only draws straight lines again. The Painter-style flow and rotation drag moved from Ctrl + left-drag to **Ctrl + middle-drag** (Ctrl + right-drag still sets size and hardness).
+
 ## 0.95.5
 
 - **Projection section in 3D Paint** (like Substance Painter): Alignment (Tangent | Wrap, Camera, UV), Backface culling with an angle, and Size Space (Object, Viewport, Texture).
