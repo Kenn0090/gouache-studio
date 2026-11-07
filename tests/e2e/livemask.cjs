@@ -27,7 +27,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const paintHalves=()=>p.evaluate(()=>{const L=__gs.allLayers().find(l=>l.name==='Paint'),d=__gs.readRGBA8(__gs.mapT(L,'base')),W=__gs.doc.w;let l=0,r=0;for(let i=0;i<d.length;i+=4)if(d[i+1]>150&&d[i]<90&&d[i+3]>200){if((i/4)%W<W/2)l++;else r++;}return {l,r};});
  /* right-click the Paint layer (no mask) › Live mask… */
  await p.evaluate(()=>{const L=__gs.allLayers().find(l=>l.name==='Paint');__gs.doc.active=L;__gs.doc.sel=new Set([L]);__gs.showPanel('layers');});await W(200);
- await p.click('#layerList .lrow:has(.lname:text-is("Paint"))',{button:'right'});await W(150);await p.click('#menuPop .mi:has-text("Live mask")');await W(300);
+ await p.click('#layerList .lrow:has(.lname:text-is("Paint"))',{button:'right'});await W(150);await p.hover('#menuPop .hassub:has-text("Mask")');await W(100);await p.click('#menuSub .mi:has-text("Live mask")');await W(300);
  ok(await p.evaluate(()=>__gs.lm.on&&!!document.querySelector('#maskBar.live')&&!!document.querySelector('#lmKeep')),'right-click › Live mask… opens the live mask bar');
  await p.click('#mk_id');await W(150);await p.mouse.click(cx-hb.width*.2,cy);await W(500);
  let sh=await selHalves();ok(sh.on&&sh.l>1000&&sh.r===0,'picking an ID colour makes a live selection of that colour '+JSON.stringify(sh));

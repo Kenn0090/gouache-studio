@@ -144,3 +144,6 @@ In 3D Paint, **M** selects Marquee and **S** selects Smudge. **Esc** returns fro
 ## Slider controls
 
 Hold **Ctrl** while dragging a slider to snap to increments of **5**. Keep Ctrl held and use the **mouse wheel** to change the snapping increment by 5 (**5 → 10 → 15**), including while you are still dragging. An indicator shows the active increment. The slider value stays in place until you move it; releasing Ctrl restores your saved starting increment. Hold **Shift** while dragging for one-tenth speed and finer adjustments. You can change modifiers during a drag. Set the Ctrl increment in **Edit > Preferences > Painting > Slider controls**. Increments use displayed units: five percentage points, five degrees or five pixels.
+
+- **M** (3D Paint and Bake tab): back to the lit material view (out of channel, mesh-map and mask views), like Substance Painter.
+- **Delete** (3D view): removes the selected light of the light rig, or the selected point of a 3D gradient.

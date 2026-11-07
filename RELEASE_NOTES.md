@@ -1,3 +1,10 @@
+## 0.95.8
+
+- **Tidier File and layer menus** (grouped fly-outs; Welcome and Launch screens in Help).
+- **3D gradient** as a mask generator and a layer: coloured points around the model, dragged in the 3D view.
+- **Lights:** instant live preview (shadowed bake after a pause), visible lights with move arrows and a turn ring, Delete removes a light.
+- **M** = lit material view in 3D Paint and Bake; **Convolution kernel** filter; mesh maps from your normal map; Transform on a material moves what was painted; wireframe colour.
+
 ## 0.95.7
 
 - **Mask generators take your own grunge** (any Textures item or a dropped picture), with tiling, rotation and invert.

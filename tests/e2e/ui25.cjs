@@ -49,7 +49,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  let rt=await p.evaluate(()=>({mode:__gs.mode,has:__gs.allLayers().some(l=>l.name==='Paint (from 3D Paint)')}));ok(rt.mode==='paint'&&rt.has,'Edit in the Paint canvas opens the layer in Paint '+JSON.stringify(rt));
  let c=await baseAt('Paint (from 3D Paint)');ok(c[0]>200&&c[1]<60,'…with its content '+c);
  await fillBase('Paint (from 3D Paint)',[30,40,220,255]);await W(200);
- await p.click('#layerList .lrow:has(.lname:text-is("Paint (from 3D Paint)"))',{button:'right'});await W(150);await p.click('#menuPop .mi:has-text("Send back to 3D Paint")');await W(1500);
+ await p.click('#layerList .lrow:has(.lname:text-is("Paint (from 3D Paint)"))',{button:'right'});await W(150);await p.hover('#menuPop .hassub:has-text("Send to 3D Paint")');await W(100);await p.click('#menuSub .mi:has-text("Send back to 3D Paint")');await W(1500);
  rt=await p.evaluate(()=>{const L=__gs.allLayers().find(l=>l.name==='Paint');return {mode:__gs.mode,op:L&&L.opacity,mask:!!(L&&L.mask)};});ok(rt.mode==='p3d'&&rt.op===.7&&rt.mask,'Send back returns to 3D Paint, keeping the layer’s opacity and mask '+JSON.stringify(rt));
  c=await baseAt('Paint');ok(c[2]>200&&c[0]<60,'…with the edits from Paint '+c);
  await p.keyboard.press('Control+z');await W(500);c=await baseAt('Paint');ok(c[0]>200,'one undo brings the original back '+c);

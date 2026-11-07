@@ -16,18 +16,20 @@ function curFilePath(){if(ui.mode==='p3d'&&typeof p3!=='undefined')return p3.pat
 function recentItem(r,onPick){return el('button',{class:'mi mrecent',role:'menuitem',title:r.path,onclick:onPick},el('span',{class:'mricon',text:recentKind(r.path)==='3d'?'◈':'▦'}),
   el('span',{class:'mrtext'},el('b',{text:fileNameOf(r.path)}),el('small',{text:folderOf(r.path)})),el('span',{class:'mk',text:agoText(r.t)}));}
 /* added to the File menu when it opens */
-async function fileMenuExtras(pop){const anchor=pop.querySelector('.mi[data-act="recent"]');
+async function fileMenuExtras(pop){
   const cur=curFilePath(),head=el('div',{class:'mfile'});
   if(!platform.isDesktop)head.append(el('span',{class:'dim',text:'In the browser, saved files go to your Downloads folder.'}));
   else if(cur)head.append(el('span',{class:'dim',text:'Saved in '}),el('button',{class:'mlink',id:'fmReveal',title:'Show it in Explorer',text:folderOf(cur),onclick:()=>{closeMenu();platform.reveal(cur);}}));
   else head.append(el('span',{class:'dim',text:'This file is not saved yet.'}));
   pop.prepend(head,el('div',{class:'msep'}));
-  if(!platform.isDesktop||!anchor)return;
-  const list=await platform.recentDetails();if(!pop.isConnected||pop.hidden)return;
-  const box=el('div',{class:'mrecents',id:'fmRecents'});
+  if(!platform.isDesktop)return;
+  rcCache.list=await platform.recentDetails();}
+/* (0.95.8) File › Open recent ▸: the last five of each kind, and the full list */
+const rcCache={list:null};
+function recentFly(){const list=rcCache.list||[],box=el('div',{class:'mrecents',id:'fmRecents'});
   const sec=(kind,label)=>{const rs=list.filter(r=>recentKind(r.path)===kind).slice(0,5);if(!rs.length)return;box.append(el('div',{class:'mhead',text:label}),...rs.map(r=>recentItem(r,()=>{closeMenu();openRecent(r.path);})));};
-  sec('paint','Recent Paint documents');sec('3d','Recent 3D Paint projects');
-  if(box.children.length)anchor.after(box);}
+  sec('paint','Paint documents');sec('3d','3D Paint projects');if(!box.children.length)box.append(el('div',{class:'mhead',text:rcCache.list?'No recent files yet':'Loading…'}));
+  return [box,el('div',{class:'msep'}),el('button',{class:'mi',role:'menuitem','data-act':'recent',onclick:()=>{closeMenu();actions.recent();}},el('span'),el('span',{text:'All recent files…'}),el('span'))];}
 function openRecent(path){if(recentKind(path)==='3d'){if(ui.mode!=='p3d'&&!setMode('p3d',true))return;}openPath(path,'open');}
 /* File › All recent files… */
 async function dlgRecent(){const list=await platform.recentDetails(),body=el('div',{class:'dlg-grid',id:'recentDlg'});

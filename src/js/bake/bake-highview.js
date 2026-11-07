@@ -29,4 +29,5 @@ function bakeCycleShow(dir){uvw.view='off';bk.uvCheck=false;const L=bakeShowList
   if(typeof buildBakePanel==='function')buildBakePanel();toast('Showing: '+(bk.show==='material'?'the material (lit)':bk.show==='curv'?'Curvature':BAKE_NAMES[bk.show]||(BK_PAINT[bk.show]?BK_PAINT[bk.show].name+' map':bk.show)));}
 window.addEventListener('keydown',e=>{if(ui.mode!=='bake'||(e.key!=='c'&&e.key!=='C')||e.ctrlKey||e.metaKey||e.altKey||isTypingTarget(e.target))return;e.preventDefault();e.stopImmediatePropagation();bakeCycleShow(e.shiftKey?-1:1);},true);
 
-window.addEventListener('keydown',e=>{if(ui.mode==='bake'&&e.key==='Escape'&&!isTypingTarget(e.target)&&modal.hidden&&(bk.uvCheck||bk.show!=='material')){e.preventDefault();e.stopImmediatePropagation();v3ShowMaterial();}},true);
+window.addEventListener('keydown',e=>{if(ui.mode==='bake'&&(e.key==='m'||e.key==='M')&&!e.shiftKey&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!isTypingTarget(e.target)&&modal.hidden){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat){v3ShowMaterial();toast('Material (lit)');}return;}
+  if(ui.mode==='bake'&&e.key==='Escape'&&!isTypingTarget(e.target)&&modal.hidden&&(bk.uvCheck||bk.show!=='material')){e.preventDefault();e.stopImmediatePropagation();v3ShowMaterial();}},true);

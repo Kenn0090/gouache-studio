@@ -70,6 +70,10 @@ A fill layer is like one in Substance Painter: a material that fills each map wi
 - The settings are in the **Properties** panel, a tab beside Colour. It shows the selected fill layer and changes it live; each change becomes one undo step once you pause. **Double-click its thumbnail** (or right-click › Fill settings…) brings the panel forward. **Convert to pixels** makes it a normal layer.
 - Fill layers are kept in .gouache files with their images, so they stay editable.
 
+**3D gradient layer** (**Layer › New › 3D gradient layer**): a material whose colour comes from coloured points placed around the model, blended by distance. Drag the dots and their arrows in the 3D view, **+ Add point** then click the model to add one, **Delete** removes the selected point; each point has a colour and a reach, and **Softness** sets how smoothly they blend. Any material channel can use **3D gradient** as its source (grey channels use the colours' brightness). The same points also work as a mask generator (see Masks and effects).
+
+**The right-click menu** keeps the everyday commands on top (Add mask, New fill layer, Group, Duplicate, Clear, Merge down, Delete) and puts the rest in a few fly-outs: **Mask**, **Layer style**, **Filters and effects**, **Convert**, **Smart material** and **Send to**.
+
 ## History
 The **History** tab (beside Layers) lists every step you can undo, oldest first. Click a step to go back to it; the greyed steps after it are what Redo brings back.
 

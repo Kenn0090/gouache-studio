@@ -489,7 +489,7 @@ function v3DrawLitUV(){const C=v3Ctx();if(C.bake||!v3.gpu)return;const list=v3Li
   gl.bindVertexArray(vao);gl.disable(gl.BLEND);}
 function drawUVOverlay(){if(!v3.on||!v3.gpu)return;if(v3s().litUV&&ui.mode!=='bake'&&ui.mode!=='convert')v3DrawLitUV();if(!v3s().showUV)return;const d=dprNow(),z=view.zoom;
   bindTarget(null);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.bindVertexArray(v3.gpu.evao);
-  const reps=doc.wrap?[-1,0,1]:[0];for(const sx of reps)for(const sy of reps){useProg(P3.uv,{uOrigin:[view.x*d+stageOx(d),view.y*d],uExtent:[doc.w*z*d,doc.h*z*d],uViewport:[cv.width,cv.height],uShift:[sx,sy],uCol:sx||sy?[1,.75,.35,.25]:[1,.75,.35,.8]});
+  const reps=doc.wrap?[-1,0,1]:[0];for(const sx of reps)for(const sy of reps){useProg(P3.uv,{uOrigin:[view.x*d+stageOx(d),view.y*d],uExtent:[doc.w*z*d,doc.h*z*d],uViewport:[cv.width,cv.height],uShift:[sx,sy],uCol:(()=>{const c=wireColA();return [c[0],c[1],c[2],(sx||sy?.3:1)*Math.max(.15,c[3])*.85];})()});
     gl.drawElements(gl.LINES,v3.gpu.ecount,gl.UNSIGNED_INT,0);}
   gl.bindVertexArray(vao);gl.disable(gl.BLEND);}
 
@@ -545,7 +545,7 @@ const nvB=el('button',{hidden:!platform.isDesktop||NV_BANKED,class:'btn sm'+(typ
   box.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});
   if(ui.mode==='p3d'){const display=el('div',{class:'v3display',role:'group','aria-label':'Viewport display'});
     for(const [mode,label] of [['shaded','Shaded'],['wire','Wireframe'],['overlay','Wireframe overlay']])display.append(el('button',{class:'btn sm'+(v3WireMode()===mode?' on':''),'data-wire-mode':mode,'aria-pressed':String(v3WireMode()===mode),text:label,onclick:()=>v3SetWireMode(v3WireMode()===mode&&mode!=='shaded'?'shaded':mode)}));/* (0.70) click the active one again to turn it off */
-    box.append(el('div',{class:'sub',text:'Viewport display'}),display,makeSlider({id:'v3WireOp',label:'Wireframe opacity',min:0,max:1,step:.01,value:wireOpacity(),def:1,fmt:pct,onInput:v=>{prefs.wireOp=v;savePrefs();v3.dirty=true;requestRender();}}).el);}
+    box.append(el('div',{class:'sub',text:'Viewport display'}),display,el('div',{class:'frow'},el('span',{text:'Wireframe colour'}),colourBtn('v3WireCol',()=>prefs.wireCol||[.95,.7,.35],c=>{prefs.wireCol=c.slice(0,3);savePrefs();v3.dirty=true;requestRender(true);},'Wireframe colour')),makeSlider({id:'v3WireOp',label:'Wireframe opacity',min:0,max:1,step:.01,value:wireOpacity(),def:1,fmt:pct,onInput:v=>{prefs.wireOp=v;savePrefs();v3.dirty=true;requestRender();}}).el);}
   box.append(el('div',{class:'sub',text:'Painting'}),meshBackfaceControl('v3BackfacePaint'),el('p',{class:'note',text:'Allow painting on faces seen from behind. Camera alignment still protects surfaces hidden behind other parts.'}));
   const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:s[key],fmt,...(['disp','sunI','skyI','envIntensity','studioFill','studioRim'].includes(key)?{numericMax:Math.max(max,1)*4}:{}),onInput:v=>{s[key]=v;if(key==='disp'){v3.mapsDirty=true;if(v>0&&(s.detail||0)<4&&!v3.detAuto){v3.detAuto=true;s.detail=4;if(v3.detSel)v3.detSel.value='4';v3LoadModel(true);toast('Mesh detail raised to ×16 so the height can show. Change it with the Detail menu at the top of the 3D view.');}}v3.dirty=true;requestRender(key==='disp');}}).el;
   box.append(el('div',{class:'sub',text:'Lighting'}),envSettingsBox(S),studioSettingsBox(S),el('div',{class:'sub',text:'Model and camera'}),S('v3Uvs','Tile repeat','uvs',1,8,1,v=>v+'×'),S('v3Disp','Height depth','disp',0,1,.01,pct),S('v3Fov','Lens','fov',15,90,1,v=>v+'°'),S('v3MetalRough','Metal view roughness','metalRough',.05,1,.01,pct),
@@ -616,13 +616,13 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     /* mask mode: Paint must be on to paint; Box, Lasso and Polygon draw shapes */
     /* the projection gizmo (a material or mask row projected from 3D) */
     if(e.button===0&&!e.altKey&&!st3.sKey&&pgzDown(hit,e))return;
-    if(e.button===0&&!e.altKey&&lgzDown(hit,e))return;/* a light of the bake rig */
+    if(e.button===0&&!e.altKey&&(lgzDown(hit,e)||(typeof g3Down==='function'&&g3Down(hit,e))))return;/* a light of the bake rig */
     if(e.button===0&&!e.altKey&&!st3.sKey&&(maskToolsOn()||liveOn())&&mk3Down(hit,e))return;
     if(e.button===0&&typeof pfDown==='function'&&pfDown(hit,e))return;
     let how=v3NavOf(hit,e);
     if(how==='paint'){if(e.button===0&&meshDown(hit,e)&&(v3.mstroke||v3.shiftPend))return;how='turn';if(stroke)return;}
     v3.drag={x:e.clientX,y:e.clientY,how,id:e.pointerId,x0:e.clientX,y0:e.clientY,alt:e.altKey&&e.button===0,penAlt:how==='pan'&&e.altKey&&typeof penPanBtn==='function'&&penPanBtn(e)};});
-  hit.addEventListener('pointermove',e=>{v3PickHold.hit=hit;v3PickHold.point={clientX:e.clientX,clientY:e.clientY};if(sel3DragBusy()){sel3DragMove(hit,e);return;}if(typeof pfBusy==='function'&&pfBusy()){pfMove(hit,e);return;}if(typeof pfHover==='function'&&!e.buttons&&!v3PickHeld(e)&&pfHover(hit,e)){meshCursor(hit,null);return;}sel3HoverMove(hit,e);if(pgz.drag){if(!e.buttons){pgzUp();return;}pgzMove(hit,e);return;}if(lgz.drag){if(!e.buttons){lgzUp();return;}lgzMove(hit,e);return;}if(!e.buttons&&!v3PickHeld(e)&&pgzHover(hit,e)){meshCursor(hit,null);return;}if(mk3Busy()){mk3Move(hit,e);return;}meshCursor(hit,e);
+  hit.addEventListener('pointermove',e=>{v3PickHold.hit=hit;v3PickHold.point={clientX:e.clientX,clientY:e.clientY};if(typeof g3Move==='function'&&g3.drag){g3Move(hit,e);return;}if(!e.buttons&&typeof lgzHover==='function'&&!lgz.drag&&(lgzHover(hit,e)||(typeof g3Hover==='function'&&g3Hover(hit,e))))return;if(sel3DragBusy()){sel3DragMove(hit,e);return;}if(typeof pfBusy==='function'&&pfBusy()){pfMove(hit,e);return;}if(typeof pfHover==='function'&&!e.buttons&&!v3PickHeld(e)&&pfHover(hit,e)){meshCursor(hit,null);return;}sel3HoverMove(hit,e);if(pgz.drag){if(!e.buttons){pgzUp();return;}pgzMove(hit,e);return;}if(lgz.drag){if(!e.buttons){lgzUp();return;}lgzMove(hit,e);return;}if(!e.buttons&&!v3PickHeld(e)&&pgzHover(hit,e)){meshCursor(hit,null);return;}if(mk3Busy()){mk3Move(hit,e);return;}meshCursor(hit,e);
     /* no button held any more: the release went missing (another window, a pen gesture, Alt menu mode); finish instead of sticking */
     if(!e.buttons){if(v3.mstroke||v3.shiftPend)meshUp();if(v3.drag)v3.drag=null;}
     /* a pen hovering with its side button held moves the view (no tip contact, so no pointerdown arrives) */
@@ -641,7 +641,7 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
       if(d.fy==null){d.fy=c.yaw;d.fp=c.pitch;}d.fy-=dx*.008;d.fp=clamp(d.fp+dy*.008,-1.55,1.55);
       if(e.shiftKey){const Q=Math.PI/2;if(Math.abs(d.fp)>Math.PI/4){c.pitch=d.fp>0?1.5699:-1.5699;c.yaw=Math.round(d.fy/Q)*Q;}else{c.pitch=0;c.yaw=Math.round(d.fy/Q)*Q;}}
       else{c.yaw=d.fy;c.pitch=d.fp;}}v3.dirty=true;requestRender();});
-  const up=e=>{if(typeof pfBusy==='function'&&pfBusy()){pfUp(e);return;}if(pgz.drag){pgzUp();return;}if(lgz.drag){lgzUp();return;}if(sel3DragBusy()){sel3DragUp(e,e.type!=='pointerup',hit);return;}if(mk3Busy()&&e.type!=='lostpointercapture'){mk3Up(e);return;}if(v3.drag&&e.pointerId!==undefined&&v3.drag.id!==e.pointerId)return;v3.drag=null;meshUp(e);};
+  const up=e=>{if(typeof pfBusy==='function'&&pfBusy()){pfUp(e);return;}if(pgz.drag){pgzUp();return;}if(typeof g3Up==='function'&&g3.drag){g3Up();return;}if(lgz.drag){lgzUp();return;}if(sel3DragBusy()){sel3DragUp(e,e.type!=='pointerup',hit);return;}if(mk3Busy()&&e.type!=='lostpointercapture'){mk3Up(e);return;}if(v3.drag&&e.pointerId!==undefined&&v3.drag.id!==e.pointerId)return;v3.drag=null;meshUp(e);};
   hit.addEventListener('pointerup',up);hit.addEventListener('pointercancel',up);hit.addEventListener('lostpointercapture',up);hit.addEventListener('pointerleave',()=>{sel3HoverClear();v3.hover=false;v3PickRelease();v3PickHold.hit=null;v3PickHold.point=null;meshCursor(hit,null);});hit.addEventListener('pointerenter',()=>{v3.hover=true;});
   hit.addEventListener('wheel',e=>{e.preventDefault();e.stopPropagation();v3.cam.dist=clamp(v3.cam.dist*Math.exp(e.deltaY*.0012),.2,50);v3.dirty=true;requestRender();},{passive:false});
   for(const t of ['selectstart','dragstart'])hit.parentNode.addEventListener(t,e=>e.preventDefault());

@@ -43,6 +43,8 @@ Drag to move the layer, or the selected part of it. Arrow keys nudge it. All map
 - **Finishing:** **Enter** applies and **Esc** cancels.
 - Every map of the layer, and its mask, transform together.
 
+**On a material (fill) layer** the transform moves **what was painted**: the material's mask (or, when the mask has rows, its Paint row), not the material itself, and the rest stays hidden. Make a selection first (Lasso, Polygon lasso, Marquee…) to move only the painted part inside it.
+
 ## Crop (C)
 Drag the box or type a size, rotate it if needed, then press **Enter**. **Image › Crop to selection** crops to the selection. Crop affects every layer, map, mask and animation frame, and it can be undone.
 

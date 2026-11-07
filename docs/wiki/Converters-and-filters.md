@@ -109,3 +109,6 @@ Filter › **Embroidery patch…** turns a picture (the selected layer, or the w
 It writes colour and Height (so the normal shows the threads), and Roughness if the document has it.
 
 ![An embroidered patch](images/embroidery-patch.png)
+
+## Convolution kernel
+**Filter › Edges and relief › Convolution kernel…** (also a filter layer, a layer effect and a mask filter): every pixel becomes the weighted sum of its neighbours in a 3 × 3 or 5 × 5 grid of numbers. **Presets** fill the grid (Sharpen, Sharpen more, Edges, Outline, Sobel edges, Emboss, Ridges, Box and Gaussian blur, Motion blur), and every cell can be typed. **Divide by the sum** keeps the brightness (turn it off to divide by your own number), **Offset** adds to the result, **Absolute value** suits edge kernels, **Work on** Brightness keeps the colours (or Colour runs each channel), **Spread** samples further apart, and **Strength** mixes the result with the picture. **Curves** is also available as a live effect: ✦ on a layer or its mask.

@@ -202,10 +202,10 @@ The **Lighting** bake writes the light of a rig onto the model, with the soft sh
 - **The list:** every light with an eye to turn it on or off. Click a light to open its settings:
   - name, type, colour, strength, shadows on/off, shadow rays (more is smoother, slower),
   - Sun: shadow softness, height and turn,
-  - Point and Spot: shadow softness (light size) and reach; a Spot also has its cone and soft edge, and always points at the middle of the model.
-- **In the 3D view:** the lights are drawn on the view. Drag a sun to turn it around the model. Drag a point light or spot to move it across the screen; hold Shift to move it nearer or further.
+  - Point and Spot: shadow softness (light size) and reach; a Spot also has its cone and soft edge. A spot points where you turn it (**Aim at the model** points it at the middle again).
+- **In the 3D view:** the lights are drawn on the view with a soft glow; a light outside the view sits at its edge with an arrow pointing to it. Drag a sun to turn it around the model. Drag a point light or spot to move it across the screen (hold Shift to move it nearer or further). The selected light has a **gizmo**: red, green and blue arrows move it along X, Y and Z, and the yellow ring turns a spot (or a sun). **Delete** removes the selected light.
 - **Exposure** brightens or darkens the whole bake. **Materials to bake** (eyes) leave parts out; left-out parts still cast shadows.
-- **Live preview on the model** (on by default): while the Lighting page is open, the model shows a quick bake of your lights, with their shadows, without pressing Bake. Add, move, recolour or switch off a light and the preview follows within a moment: a rough one first, then a sharper one. It is only a preview; press **Bake** for the full-quality Lighting map. Leave the Lighting page (or untick the switch) to see the model as before.
+- **Live preview on the model** (on by default): while the Lighting page is open, the model shows your lights straight away. While you add, move or recolour lights the model is lit live (instant, no shadows yet); once nothing has changed for half a second a quick bake with shadows takes over: a rough one first, then a sharper one. It is only a preview; press **Bake** for the full-quality Lighting map. Leave the Lighting page (or untick the switch) to see the model as before.
 
 Where it goes:
 

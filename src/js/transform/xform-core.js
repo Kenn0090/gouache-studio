@@ -40,6 +40,14 @@ async function contentBoundsAsync(t,alphaOnly){const W=doc.w,H=doc.h,n=Math.max(
   return cx&&cy?[cx[0],cy[0],cx[1],cy[1]]:null;}
 
 /* ---- starting a session ---- */
+function xfFillPaint(L){const m=L.mask;if(!m||!m.target)return null;
+  if(typeof msHas==='function'&&msHas(L)){const r=msPaintRow(L);return r&&r.t?{t:()=>r.t,outside:[0,0,0,0],row:r}:null;}
+  return {t:()=>m.target,outside:[0,0,0,1]};}
+/* the box around the white part of a black and white mask */
+function xfLumBounds(t){const W=doc.w,H=doc.h,s=Math.max(1,Math.ceil(Math.max(W,H)/256));
+  const d=captureRegionNow(t,0,0,W,H).data;let x0=W,y0=H,x1=-1,y1=-1;
+  for(let y=0;y<H;y+=s)for(let x=0;x<W;x+=s){if(d[(y*W+x)*4]>8){if(x<x0)x0=x;if(y<y0)y0=y;if(x>x1)x1=x;if(y>y1)y1=y;}}
+  return x1<0?null:[Math.max(0,x0-s),Math.max(0,y0-s),Math.min(W,x1+s+1),Math.min(H,y1+s+1)];}
 function xfLayers(){if(doc.active&&doc.active.editMask&&doc.active.mask)return {maskOnly:doc.active};
   const out=[];for(const n of topSelected()){if(n.type==='group')out.push(...allLayers(n));else out.push(n);}return {layers:[...new Set(out)]};}
 /* opts.move: started by the Move tool (translation only, applied on release) */
@@ -52,7 +60,16 @@ function xfStart(opts){opts=opts||{};if(xf)return true;
   else{let layers=pick.layers;if(!layers.length){toast('Select a layer to transform.');return false;}
     for(const L of layers)if(L.text||L.grad||L.shape){rasterizeText(L);toast('Converted to pixels for the transform. Undo brings the editable layer back.');}
     /* every map of every layer moves together */
-    for(const L of layers){for(const k of mapKeysOf(L)){const T0=mapT(L,k),d=T0.depth,orig=acquireD(d);blit(T0,orig,0,0,doc.w,doc.h,0,0);let src=orig,base=null;
+    for(const L of layers){
+      /* (0.95.8, Kenn) a material moves what was painted: its mask (or the Paint row of a mask with rows), not the material,
+         and the rest stays hidden; a selection (lasso, polygon…) moves only the painted part inside it */
+      const fp=L.fill&&L.mask&&!L.fx?xfFillPaint(L):null;
+      if(fp){const T0=fp.t(),d=T0.depth,orig=acquireD(d);blit(T0,orig,0,0,doc.w,doc.h,0,0);let src=orig,base=null;
+        if(useSel){src=acquireD(d);const off=acquireD(d);clearTarget(off,fp.outside);run(P.selmix,src,{uOld:off.tex,uNew:orig.tex,uSel:sel.t.tex});
+          base=acquireD(d);if(opts.copy)blit(orig,base,0,0,doc.w,doc.h,0,0);else run(P.selmix,base,{uOld:orig.tex,uNew:off.tex,uSel:sel.t.tex});release(off);}
+        const b=useSel?sel.bb.slice():fp.row?contentBounds(src):xfLumBounds(src);if(b)rect=rUnion(rect,b);
+        items.push({node:L,t:fp.t,orig,src,base,outside:fp.outside,row:fp.row,mask:fp.row?null:L.mask});continue;}
+      for(const k of mapKeysOf(L)){const T0=mapT(L,k),d=T0.depth,orig=acquireD(d);blit(T0,orig,0,0,doc.w,doc.h,0,0);let src=orig,base=null;
       if(useSel){src=acquireD(d);run(P.cropsel,src,{uSrc:orig.tex,uSel:sel.t.tex,uOff:[0,0],uUseSel:true});
         base=acquireD(d);if(opts.copy)blit(orig,base,0,0,doc.w,doc.h,0,0);else{const clearT=acquireD(d);clearTarget(clearT);run(P.selmix,base,{uOld:orig.tex,uNew:clearT.tex,uSel:sel.t.tex});release(clearT);}}
       const b=contentBounds(src);if(b)rect=rUnion(rect,b);
@@ -84,7 +101,7 @@ function xfRender(fast){if(!xf)return;const bb=xfOutBB(),prev=xf.dirty;xf.dirty=
     if(xf.warp)warpDraw(it,dst,interp);
     else run(P.xform,dst,{uSrc:it.src.tex,uH0:H.slice(0,3),uH1:H.slice(3,6),uH2:H.slice(6,9),uInterp:{int:interp},uSS:{int:ss},uWrap:doc.wrap,
       uRect:it.full?[0,0,doc.w,doc.h]:xf.rect,uDoc:[doc.w,doc.h],uOutside:it.outside,uBase:it.base?it.base.tex:dummy,uUseBase:!!it.base});
-    gl.disable(gl.SCISSOR_TEST);}
+    gl.disable(gl.SCISSOR_TEST);if(it.row&&it.node.mask)it.node.mask._key=null;}
   if(xf.selItem){const si=xf.selItem;
     if(xf.warp)warpDraw({src:si.orig,outside:[0,0,0,1],base:null},sel.t,1);
     else run(P.xform,sel.t,{uSrc:si.orig.tex,uH0:H.slice(0,3),uH1:H.slice(3,6),uH2:H.slice(6,9),uInterp:{int:1},uSS:{int:1},uWrap:doc.wrap,uRect:xf.rect,uDoc:[doc.w,doc.h],uOutside:[0,0,0,1]});
@@ -100,8 +117,8 @@ function xfCommit(){if(!xf)return;const s=xf;xfRender(false);xf=null;
   const refs=[...new Set(s.items.map(it=>it.node))],masks=s.items.filter(it=>it.mask).map(it=>it.mask);
   const label=s.copy?'Duplicate selected pixels':s.move?'Move':s.warp?'Warp':'Transform';
   pushUndo({label,refs,masks,snaps,
-    undo(){for(const st of steps)restoreRegion(st.b,st.it.t(),st.r[0],st.r[1]);if(selStep){restoreSel(selStep.b,selStep.r[0],selStep.r[1]);sel.bb=selStep.bbB;sel.active=true;selChanged();}},
-    redo(){for(const st of steps)restoreRegion(st.a,st.it.t(),st.r[0],st.r[1]);if(selStep){restoreSel(selStep.a,selStep.r[0],selStep.r[1]);sel.bb=selStep.bbA;sel.active=true;selChanged();}}});
+    undo(){for(const st of steps){restoreRegion(st.b,st.it.t(),st.r[0],st.r[1]);if(st.it.row&&st.it.node.mask)st.it.node.mask._key=null;}if(selStep){restoreSel(selStep.b,selStep.r[0],selStep.r[1]);sel.bb=selStep.bbB;sel.active=true;selChanged();}},
+    redo(){for(const st of steps){restoreRegion(st.a,st.it.t(),st.r[0],st.r[1]);if(st.it.row&&st.it.node.mask)st.it.node.mask._key=null;}if(selStep){restoreSel(selStep.a,selStep.r[0],selStep.r[1]);sel.bb=selStep.bbA;sel.active=true;selChanged();}}});
   for(const it of s.items)freeItem(it);if(s.selItem)release(s.selItem.orig);
   xfEnd(refs);if(s.contentSel&&sel.active)setTool('move');}
 function xfCancel(){if(!xf)return;const s=xf;xf=null;

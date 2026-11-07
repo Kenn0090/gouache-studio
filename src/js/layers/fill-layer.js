@@ -132,6 +132,7 @@ function fillRender(L,only){const f=L.fill;if(!f)return;
     if(k==='normal'&&!(s.src==='baked'||s.src==='conv'?doc.meshMaps&&doc.meshMaps[s.mm]:L._fillImg&&L._fillImg[k])){setMapSolid(L,k,fillSolidColor(k,[.5,.5,1,1]));continue;}
     if(fillLiveSource(L,k)){setMapLive(L,k);continue;}
     if(L._fillLive)delete L._fillLive[k];const tri=pxfIs3D(f.proj)?fillPosMaps():null,T=ensureMapTarget(L,k),grey=MAP_DEFS[k].grey;
+    if(s.src==='g3d'){g3FillRun(L,k,T);T.opaque=true;continue;}
     if(s.src==='image'||s.src==='baked'||s.src==='conv'){const bk=s.src==='baked'||s.src==='conv',img=bk?doc.meshMaps&&doc.meshMaps[s.mm]:fillMonoize(L,k);if(!img){if(k==='normal')clearTarget(T,[.5,.5,1,1]);continue;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
       run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uOneCh:{int:img.mono?1:0},uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uTan:tri?tri.tan.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
         uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}},(tri&&!bk?pxfUniforms(f.proj,f.xf):pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf))));T.opaque=(!tri||bk)&&!f.decal&&(grey||k==='normal'||!!img.opaque);continue;}
@@ -230,15 +231,16 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
       if(left&&!plan.some(x=>x[0]===k))plan.push([k,left]);
       for(const [ck,f] of plan){const cs=L.fill.maps[ck];await fillUseImage(L,ck,cs,f,()=>{edit(()=>{cs.on=true;matEd.open[ck]=true;},ck,true);matEdCommit();});}
       if(plan.length>1)toast('Put '+plan.length+' pictures into '+plan.map(([ck])=>MAP_DEFS[ck].label).join(', ')+'.');});
-    const sumTxt=!s.on?'Off':s.src==='value'?(grey?Math.round(s.v*100)/100:'Colour'):s.src==='baked'?'Mesh map':s.src==='conv'?'Converted':(s.name?'Image':'No image'),sw=s.on&&s.src==='value'?(grey?[s.v,s.v,s.v]:(s.c||[.5,.5,.5])):[.5,.5,.5];
+    const sumTxt=!s.on?'Off':s.src==='value'?(grey?Math.round(s.v*100)/100:'Colour'):s.src==='baked'?'Mesh map':s.src==='conv'?'Converted':s.src==='g3d'?'3D gradient':(s.name?'Image':'No image'),sw=s.on&&s.src==='value'?(grey?[s.v,s.v,s.v]:(s.c||[.5,.5,.5])):[.5,.5,.5];
     card.append(el('div',{class:'fillhead',onclick:e=>{if(e.target.closest('.chk'))return;matEd.open[k]=!card.classList.contains('open');card.classList.toggle('open',matEd.open[k]);}},
       el('span',{class:'chev',text:'▸'}),el('span',{class:'sw',style:'background:rgb('+sw.map(x=>Math.round(clamp(x,0,1)*255)).join(',')+')'}),el('span',{class:'nm',text:MAP_DEFS[k].label}),el('span',{class:'v',text:String(sumTxt)}),
       chk('fl_on_'+k,'',!!s.on,v=>edit(()=>{s.on=v;matEd.open[k]=v;if(v&&isN&&s.src==='value')s.src='image';},k,true))),row);
-    if(s.on){const srcs=[...(isN?[]:[['value',grey?'Value':'Colour']]),['image','Image'],['baked','Mesh map'],['conv','Converted']];
+    if(s.on){const srcs=[...(isN?[]:[['value',grey?'Value':'Colour']]),['image','Image'],['baked','Mesh map'],['conv','Converted'],...(isN?[]:[['g3d','3D gradient']])];
       row.append(seg(srcs,s.src,v=>{
         edit(()=>{s.src=v;if(v==='baked'&&!(M[s.mm]&&!s.mm.startsWith('cv:')))s.mm=mks.find(x=>x===k)||(isN?'normal':mks.find(x=>x!=='normal'))||mks[0];if(v==='conv'&&!(M[s.mm]&&s.mm.startsWith('cv:')))s.mm=cks.find(x=>x==='cv:'+k)||cks[0];},k,true);},'Fill '+MAP_DEFS[k].label+' with'));
       if(s.src==='value'&&!isN){if(grey)row.append(makeSlider({id:'fl_v_'+k,label:k==='metal'?'Metallic':k==='rough'?'Roughness':k==='height'?'Height':k==='gloss'?'Glossiness':'Level',min:0,max:1,step:.01,value:s.v,fmt:pct,onInput:v=>edit(()=>{s.v=v;},k)}).el);
         else row.append(el('div',{class:'frow'},el('label',{text:'Colour'}),colourBtn('fl_c_'+k,()=>s.c||[.5,.5,.5],c=>edit(()=>{s.c=c;},k),MAP_DEFS[k].label+' colour')));}
+      else if(s.src==='g3d'){if(!W.g3)W.g3=g3Default();row.append(g3Box({L,g:W.g3,row:null},grey));}
       else if(s.src==='conv'){
         /* the maps made by Filter › Mesh maps from material, as tiles */
         if(!cks.length)row.append(el('p',{class:'note',text:'No converted maps yet. Right-click a material layer › Mesh maps from this material.'}),el('button',{class:'btn sm',text:'Make them…',onclick:()=>dlgMatConvert(L)}));

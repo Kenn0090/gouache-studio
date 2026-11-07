@@ -31,7 +31,7 @@ const MS_KINDS={
   alpha:{title:'Material transparency',p:()=>({inv:false})},
   filter:{title:'Filter'}};
 /* filters a mask row can use (the ones that make sense on a black and white picture), plus our own */
-const MS_FILTERS=['levels','curves','threshold','posterize','invert','blur','boxBlur','motionBlur','sharpen','highPass','edges'];
+const MS_FILTERS=['levels','curves','threshold','posterize','invert','blur','boxBlur','motionBlur','sharpen','highPass','edges','convolve'];
 const MS_OWN_FILTERS={grow:'Grow / shrink',warp:'Warp',slope:'Slope blur'};
 let msSeq=0;
 function msRow(kind,o){const r=Object.assign({id:'r'+(++msSeq),kind,on:true,mode:'normal',op:1,p:MS_KINDS[kind]&&MS_KINDS[kind].p?MS_KINDS[kind].p():{}},o||{});return r;}
@@ -246,6 +246,7 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
   if(r.kind==='id'){const M=doc.meshMaps&&doc.meshMaps.id;if(!M||!p.cols.length)return null;if(!P_IDSEL)P_IDSEL=program(FS_IDSEL);const o=out(),cols=new Float32Array(24);p.cols.slice(0,8).forEach((c,i)=>cols.set(c,i*3));
     run(P_IDSEL,o,{uId:M.tex,uSz:[o.w,o.h],uCols:{v3:cols},uN:{int:Math.min(8,p.cols.length)},uTol:p.tol,uSoft:p.soft,uInv:{int:p.inv?1:0}});return {t:o,pooled:true};}
   if(r.kind==='dir'){const o=out(),a=(p.angle||50)*Math.PI/180;run(P.src,o,Object.assign({uKind:{int:2},uDir:MS_AXES[p.axis]||[0,1,0],uA:Math.cos(a),uB:Math.max(.01,(p.soft||15)/90),uNeg:{int:p.inv?1:0},uSeed:0},ctx.surf));return {t:o,pooled:true};}
+  if(r.kind==='g3d'){const o=out();g3Run(o,p,1,ctx.surf,p.inv);return {t:o,pooled:true};}
   if(r.kind==='grad'){const o=out();run(P.src,o,Object.assign({uKind:{int:3},uDir:MS_AXES[p.axis]||[0,1,0],uA:p.from||0,uB:p.to==null?1:p.to,uNeg:{int:p.inv?1:0},uSeed:0},ctx.surf));return {t:o,pooled:true};}
   if(r.kind==='noise'){const o=out();run(P.src,o,Object.assign(msPx(r,ctx),{uKind:{int:4},uType:{int:Math.max(0,MS_NOISES.findIndex(n=>n[0]===p.type))},uScale:p.scale||6,uC:p.contrast||1,uV:p.level||0,uNeg:{int:p.inv?1:0},uSeed:p.seed||1}));return {t:o,pooled:true};}
   if(r.kind==='anchor'){const A=msAnchor(p.name);if(!A)return null;const o=out(),ch=p.ch||'height',T=ch==='height'?mapT(A,'height'):mapT(A,'base');if(!T||T.empty)return null;

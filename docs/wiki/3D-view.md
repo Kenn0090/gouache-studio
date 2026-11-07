@@ -70,7 +70,7 @@ The **Shader** panel (beside Colour and Properties) picks how the model is shade
 *The UV overlay on the canvas while the 3D view shows a sphere.*
 
 - **Model** and **Detail** menus, **Lit / Unlit / Ray traced**.
-- **Wireframe:** shows the mesh edges.
+- **Wireframe:** shows the mesh edges. Its **colour** and **opacity** are set in the 3D settings (Viewport display) or Preferences › Look; the UV lines on the flat view use the same colour.
 - **UVs:** draws the model's UV layout **over your 2D canvas**, so you can see where to paint.
 - **Spin:** a slow spin. **📷**, **Render…** and **Turntable…**: see above.
 - **Settings:**

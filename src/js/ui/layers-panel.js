@@ -281,32 +281,39 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
   if(n.fx&&n.fx.stack&&n.fx.stack.some(x=>x.id==='handPaint'))items.push(it('Make it a hand-painted material',()=>hpOverlayToMat(n)),sep());
   if(ui.mode==='p3d'&&n.fill&&!n.fx&&p3.sets.filter(S=>!S.missing).length>1)items.push(it('Instance to sets…',()=>dlgInstance(n)),...(n.inst?[it('Unlink instance',()=>instUnlink(n))]:[]),sep());
   if(ui.mode==='p3d'&&n.mask&&!n.fx&&e.target&&e.target.closest('.mthumb')){
-    const generators=flyItem('Generators',()=>MS_GENS.map(([k,title])=>it(title,()=>{selectOnly(n);msAdd(n,'gen',{p:msGenDefaults(k)});})));generators.setAttribute('aria-label','Generators');
+    const generators=flyItem('Generators',()=>[...MS_GENS.map(([k,title])=>it(title,()=>{selectOnly(n);msAdd(n,'gen',{p:msGenDefaults(k)});})),sep(),it('3D gradient',()=>{selectOnly(n);msAdd(n,'g3d');})]);generators.setAttribute('aria-label','Generators');
     const anchors=flyItem('Anchor points',()=>{const names=msAnchorNames();return [it('Add anchor point to this layer',()=>{selectOnly(n);cfxAddAnchor(n);},null,!lay),sep(),head('Use an anchor in this mask'),...(names.length?names.map(name=>it('From “'+name+'”',()=>{selectOnly(n);msAdd(n,'anchor',{p:{name,ch:'height',inv:false}});})): [it('No anchor points yet',()=>{},null,true)])];});anchors.setAttribute('aria-label','Anchor points');items.push(generators,anchors,it('Levels',()=>{selectOnly(n);msAdd(n,'filter',{fx:'levels'});}),it('Invert',()=>{selectOnly(n);msAdd(n,'filter',{fx:'invert'});}),sep());}
-  {if(maskClip)items.push(it('Paste mask',()=>cmdPasteMask(n)));if(n.mask)items.push(it('Copy mask',()=>cmdCopyMask(n)),it('Clear mask (hide all)',()=>cmdClearMask(n)),it('Delete mask',()=>{if(doc.active===n)cmdDeleteMask();else{selectOnly(n);cmdDeleteMask();}}),...(typeof msHas==='function'&&msHas(n)?[it('Flatten mask (keep the result, drop its rows)',()=>msFlatten(n))]:[]));else items.push(it('Add mask',()=>cmdAddMask(1)),it('Add black mask (hide all)',()=>cmdAddMask(0)),...(lay&&typeof liveMaskStart==='function'?[it('Live mask…',()=>liveMaskStart(n))]:[]));}
-  if(lay){items.push(sep(),flyItem('Layer style',()=>[...STYLE_ORDER.map(k=>it(STYLE_DEFS[k].label+(n.styles&&n.styles[k]&&n.styles[k].on?' ✓':''),()=>dlgLayerStyle(k,true))),sep(),it('All styles…',()=>dlgLayerStyle())]));
-    items.push(sep(),it('Filter this layer ▸',()=>{selectOnly(n);n.editMask=false;renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);}),
-      it('Filter its mask ▸',()=>{selectOnly(n);if(!n.mask)msAdd(n,'fill',{p:{v:1}});n.editMask=true;renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);}),
-      it('Filter layer above…',cmdNewFxLayer),it('Retro layer above (this layer only)…',()=>{selectOnly(n);cmdNewRetroLayer(true);}),it('Stylize layer (strokes, lighting, edges)…',()=>cmdNewStylizePLayer()),it('Hand-painted layer (lights the model in paint)…',()=>cmdNewHandPaintLayer()),it('Array…',()=>setTool('array')));
-    if(n.fill)items.splice(0,0,it('Fill settings…',()=>dlgFillLayer(n)),it('Mesh maps from this material…',()=>dlgMatConvert(n)),sep());
-    if(typeof mcHasSource==='function'&&mcHasSource(n))items.push(flyItem('Convert to',()=>[it('Ambient occlusion (AO)…',()=>dlgMatConvert(n,['ao'])),it('Curvature…',()=>dlgMatConvert(n,['curv'])),it('Edges…',()=>dlgMatConvert(n,['curvEdge'])),it('Creases…',()=>dlgMatConvert(n,['curvCrease'])),sep(),it('All of them…',()=>dlgMatConvert(n))]));
-    if(n.text||n.grad||n.shape||n.fill)items.push(it('Convert to pixels',()=>{if(n.fill)fillRasterize(n);else rasterizeText(n);changed(n);}));}
+  /* (0.95.8, Kenn: "too much to look at") everyday commands on top, the rest in a few fly-outs */
+  const G={mask:[],fx:[],conv:[],smart:[],send:[]};
+  {if(maskClip)G.mask.push(it('Paste mask',()=>cmdPasteMask(n)));if(n.mask)G.mask.push(it('Copy mask',()=>cmdCopyMask(n)),it('Clear mask (hide all)',()=>cmdClearMask(n)),it('Delete mask',()=>{if(doc.active===n)cmdDeleteMask();else{selectOnly(n);cmdDeleteMask();}}),...(typeof msHas==='function'&&msHas(n)?[it('Flatten mask (keep the result, drop its rows)',()=>msFlatten(n))]:[]));else{G.addMask=it('Add mask',()=>cmdAddMask(1));G.mask.push(it('Add black mask (hide all)',()=>cmdAddMask(0)),...(lay&&typeof liveMaskStart==='function'?[it('Live mask…',()=>liveMaskStart(n))]:[]));}}
+  let styleItem=null;
+  if(lay){styleItem=flyItem('Layer style',()=>[...STYLE_ORDER.map(k=>it(STYLE_DEFS[k].label+(n.styles&&n.styles[k]&&n.styles[k].on?' ✓':''),()=>dlgLayerStyle(k,true))),sep(),it('All styles…',()=>dlgLayerStyle())]);
+    G.fx.push(it('Filter this layer…',()=>{selectOnly(n);n.editMask=false;renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);}),
+      it('Filter its mask…',()=>{selectOnly(n);if(!n.mask)msAdd(n,'fill',{p:{v:1}});n.editMask=true;renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);}),sep(),
+      it('Filter layer above…',cmdNewFxLayer),it('Retro layer above (this layer only)…',()=>{selectOnly(n);cmdNewRetroLayer(true);}),it('Stylize layer (strokes, lighting, edges)…',()=>cmdNewStylizePLayer()),it('Hand-painted layer (lights the model in paint)…',()=>cmdNewHandPaintLayer()),sep(),it('Array…',()=>setTool('array')));
+    if(n.fill)G.conv.push(it('Mesh maps from this material…',()=>dlgMatConvert(n)));
+    if(typeof mcHasSource==='function'&&mcHasSource(n))G.conv.push(head('Make a map from it'),it('Ambient occlusion (AO)…',()=>dlgMatConvert(n,['ao'])),it('Curvature…',()=>dlgMatConvert(n,['curv'])),it('Edges…',()=>dlgMatConvert(n,['curvEdge'])),it('Creases…',()=>dlgMatConvert(n,['curvCrease'])),sep());
+    if(n.text||n.grad||n.shape||n.fill)G.conv.push(it('Convert to pixels',()=>{if(n.fill)fillRasterize(n);else rasterizeText(n);changed(n);}));}
   const mm=typeof maskMeshKeys==='function'?maskMeshKeys():[];
-  if(!anim&&ui.mode==='paint')items.push(sep(),it('Flatten image',cmdFlatten));
+  if(!anim&&ui.mode==='paint')G.conv.push(it('Flatten image',cmdFlatten));
   const hasId=!!(doc.meshMaps&&doc.meshMaps.id);
-  if(lay&&!anim&&(mm.length||hasId||ui.mode==='p3d')){items.push(sep(),flyItem('Mask from mesh map',()=>[...mm.map(k=>it(P3_MESHMAP_NAMES[k]||k,()=>maskFromMeshMap(n,k))),
+  if(lay&&!anim&&(mm.length||hasId||ui.mode==='p3d')){G.mask.push(sep(),head('Mask from mesh map'),...mm.map(k=>it(P3_MESHMAP_NAMES[k]||k,()=>maskFromMeshMap(n,k))),
     /* (0.28, Kenn) the baked ID colours as a mask: pick the colours on the model */
-    it('ID colour (pick colours on the model)…',()=>idColourMask(n))]));}
-  if(!anim&&(!n.fx||n.fx.map==='all')&&ui.mode!=='paint'&&typeof smSave==='function'){/* (0.38, Kenn) no smart materials in the Paint tab */items.push(sep(),it('Save as smart material…',()=>smSave(n)));if(n.mask)items.push(it('Save mask as smart mask…',()=>smMaskSave(n)));
-    if(typeof smOrigin==='function'){const so=smOrigin(n,'smart');if(so)items.push(it('Update smart material “'+so.name+'” in Materials',()=>smUpdate(n)));const sm=n.mask&&smOrigin(n,'smask');if(sm)items.push(it('Update smart mask “'+sm.name+'” in Materials',()=>smMaskUpdate(n)));}}
-  if(!anim&&ui.mode==='paint'&&!n.fx&&isLayer(n))items.push(sep(),it('Turn layer into a texture…',()=>dlgToTexture(n)));
-  if(!anim&&ui.mode==='paint'&&typeof sendToP3==='function')items.push(sep(),it('Send layer to 3D Paint',()=>sendToP3(n)));
-  if(!anim&&ui.mode==='paint'&&n.p3link)items.push(it('Send back to 3D Paint (replaces “'+n.p3link.name+'”)',()=>paintLayerBackToP3(n)));
-  if(!anim&&ui.mode==='paint'&&n.meshEdit)items.push(it('Send to 3D Paint as mesh map · '+(P3_MESHMAP_NAMES[n.meshEdit.key]||n.meshEdit.key),()=>paintMeshMapBack(n)));
-  if(ui.mode==='p3d'&&typeof p3LayerToPaint==='function')items.push(sep(),it('Edit in the Paint canvas',()=>p3LayerToPaint(n)));
-  if(!anim)items.push(it('New fill layer',cmdNewFillLayer));
+    it('ID colour (pick colours on the model)…',()=>idColourMask(n)));}
+  if(!anim&&(!n.fx||n.fx.map==='all')&&ui.mode!=='paint'&&typeof smSave==='function'){/* (0.38, Kenn) no smart materials in the Paint tab */G.smart.push(it('Save as smart material…',()=>smSave(n)));if(n.mask)G.smart.push(it('Save mask as smart mask…',()=>smMaskSave(n)));
+    if(typeof smOrigin==='function'){const so=smOrigin(n,'smart');if(so)G.smart.push(it('Update smart material “'+so.name+'” in Materials',()=>smUpdate(n)));const sm=n.mask&&smOrigin(n,'smask');if(sm)G.smart.push(it('Update smart mask “'+sm.name+'” in Materials',()=>smMaskUpdate(n)));}}
+  if(!anim&&ui.mode==='paint'&&!n.fx&&isLayer(n))G.conv.push(it('Turn layer into a texture…',()=>dlgToTexture(n)));
+  if(!anim&&ui.mode==='paint'&&typeof sendToP3==='function')G.send.push(it('Send layer to 3D Paint',()=>sendToP3(n)));
+  if(!anim&&ui.mode==='paint'&&n.p3link)G.send.push(it('Send back to 3D Paint (replaces “'+n.p3link.name+'”)',()=>paintLayerBackToP3(n)));
+  if(!anim&&ui.mode==='paint'&&n.meshEdit)G.send.push(it('Send to 3D Paint as mesh map · '+(P3_MESHMAP_NAMES[n.meshEdit.key]||n.meshEdit.key),()=>paintMeshMapBack(n)));
+  if(ui.mode==='p3d'&&typeof p3LayerToPaint==='function')G.send.push(it('Edit in the Paint canvas',()=>p3LayerToPaint(n)));
+  const fly=(name,list)=>{const l=list.filter((x,i)=>!(x.classList&&x.classList.contains('msep')&&(i===0||i===list.length-1)));if(!l.length)return [];if(l.length===1&&!l[0].classList.contains('mh'))return [l[0]];const f=flyItem(name,()=>l);f.setAttribute('aria-label',name);return [f];};
+  if(lay&&n.fill)items.unshift(it('Material settings…',()=>dlgFillLayer(n)),sep());
+  items.push(...(G.addMask?[G.addMask]:[]),...fly('Mask',G.mask),...(styleItem?[styleItem]:[]),...fly('Filters and effects',G.fx),...fly('Convert',G.conv),...fly('Smart material',G.smart),...fly(ui.mode==='paint'?'Send to 3D Paint':'Send to',G.send));
+  if(!anim)items.push(sep(),it('New fill layer',cmdNewFillLayer));
   if(anim&&isLayer(n)&&n.parent&&n.parent.frame)items.push(sep(),it(n.shared?'Shown in every frame ✓ (make separate)':'Show in every frame',()=>animShareLayer(n,!n.shared)),...(n.shared?[it('Delete from every frame',()=>animDeleteShared(n))]:[]));
   items.push(sep(),it(grp?'Ungroup':'Group into folder',grp?cmdUngroup:cmdGroup,grp?'Ctrl+Shift+G':'Ctrl+G'),it('Duplicate',cmdDuplicate,'Ctrl+J'),it('Clear layer contents',cmdClearLayer,kbKeyOf('clearContents'),!lay||lockedPx(n)),it(grp?'Merge group':'Merge down',cmdMerge,'Ctrl+E'),it('Delete',cmdDelete,'Del'));
+  {const o=[];for(const x of items){const s=x.classList&&x.classList.contains('msep');if(s&&(!o.length||o[o.length-1].classList.contains('msep')))continue;o.push(x);}items.length=0;items.push(...o);}
   flyHide();pop.replaceChildren(...items);pop.hidden=false;
   pop.style.left=Math.max(4,Math.min(e.clientX,window.innerWidth-pop.offsetWidth-8))+'px';pop.style.top=Math.max(4,Math.min(e.clientY+4,window.innerHeight-pop.offsetHeight-8))+'px';
   const off=ev=>{if(!pop.contains(ev.target)&&!flyEl.contains(ev.target)){pop.hidden=true;flyHide();document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}
