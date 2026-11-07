@@ -173,7 +173,9 @@ function magicWand(ix,iy,mode){if(selBusy())return;const W=doc.w,H=doc.h;let x=M
   bb=featherInto(t,bb,ui.selFeather);applyShape(t,mode,bb,'Magic wand');release(t);}
 
 /* ---- quick mask ---- */
-function toggleQuickMask(){if(preview){toast('Apply or cancel the open filter first.');return;}if(stroke)return;cancelSelTool();
+/* (0.95.9, Kenn: "let's remove it for now") Quick mask is switched off: it can only be left (an old one still on), not entered */
+const QM_OFF=true;
+function toggleQuickMask(){if(QM_OFF&&!sel.quick)return;if(preview){toast('Apply or cancel the open filter first.');return;}if(stroke)return;cancelSelTool();
   if(!sel.quick){const had=sel.active;
     selRecord('Quick mask',had?null:fullRect(),()=>{if(!had)clearTarget(sel.t,[1,1,1,1]);sel.quick=true;sel.active=false;});
     toast('Quick mask: paint black to hide, white to select. Press Q to turn it into a selection.');}

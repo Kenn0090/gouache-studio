@@ -12,7 +12,7 @@ const MENUS={
     ['Rasterize text, shape or fill','rasterize'],['Make brush tip from layer','tipFromLayer'],'-',
     ['Merge down / selected','merge','Ctrl+E'],['Merge group','mergeGroup'],['Merge visible','mergeVisible'],['Stamp visible (new layer)','stampVisible','Ctrl+Alt+Shift+E'],['Flatten image','flatten']],
   Select:[['All','selAll','Ctrl+A'],['Deselect','deselect','Ctrl+D'],['Reselect','reselect','Ctrl+Shift+D'],['Invert','selInvert','Ctrl+Shift+I'],'-',['Color Range…','selColorRange'],['Select subject (AI)…','aiSubject'],['Select sky (AI)','aiSky'],'-',
-    ['Feather…','selFeather'],['Expand…','selExpand'],['Contract…','selContract'],['Smooth…','selSmooth'],'-',['Select layer pixels','selLayer','Ctrl+click thumbnail'],['Load selection…','selLoad'],'-',['Quick mask','quickMask','Q']],
+    ['Feather…','selFeather'],['Expand…','selExpand'],['Contract…','selContract'],['Smooth…','selSmooth'],'-',['Select layer pixels','selLayer','Ctrl+click thumbnail'],['Load selection…','selLoad']],
   Adjust:[['Color adjustments…','adjust','Ctrl+U'],['Levels…','levels','Ctrl+L'],['Curves…','curves','Ctrl+M'],['Hue / Saturation…','hueSat'],['Gradient map…','gradMap'],'-',
     ['Invert','invert','Ctrl+I'],['Desaturate','desat','Ctrl+Shift+U'],['Threshold…','threshold'],['Posterize…','posterize'],['Quantize…','quantize']],
   Filter:[['Filter Gallery…','gallery','Ctrl+Shift+F'],['Embroidery patch…','embroidery'],['Mesh maps from material…','matConvert'],'-',

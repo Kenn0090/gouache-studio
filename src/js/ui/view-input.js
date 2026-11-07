@@ -83,6 +83,7 @@ cv.addEventListener('pointerdown',e=>{
   if(ui.mode==='convert'){cvPointerDown(e,ix,iy);return;}
   if(ui.mode==='photo'){phPointerDown(e,ix,iy);return;}
   /* a UV projection's frame (selected material or mask row with a picture or pattern) */
+  if(typeof g3Down2D==='function'&&g3Down2D(e))return;/* a 3D gradient's point */
   if(typeof pxf2Down==='function'&&pxf2Down(e))return;
   if(ui.mode==='bake'&&!['brush','erase','picker','hand'].includes(ui.tool)&&!e.altKey){toast('In the Bake tab you can paint fixes with the Brush and Eraser. Switch to Paint for the other tools.');return;}
   if(ui.tool==='cage'){cagePointerDown(e,ix,iy);return;}

@@ -1,3 +1,8 @@
+## 0.95.9
+
+- **3D gradient points on the flat canvas:** each point shows on the texture where the model's surface is nearest to it; drag it to slide it over the surface, and Add point works with a click on the canvas too. Delete removes the selected point there as well.
+- **Quick mask is switched off for now** (Q, the Select menu item and the button are gone); an old one that is still on can be left as before.
+
 ## 0.95.8
 
 - **Tidier menus:** the File menu keeps New, Close, Open, **Open recent ▸**, Save and Save as on top, with **Import ▸**, **Export ▸** and **Content and add-ons ▸** for the rest (the Welcome and Launch screens moved to Help). The layer right-click menu keeps Add mask, New fill layer, Group, Duplicate, Clear, Merge down and Delete on top, with **Mask ▸**, **Layer style ▸**, **Filters and effects ▸**, **Convert ▸**, **Smart material ▸** and **Send to ▸**.
