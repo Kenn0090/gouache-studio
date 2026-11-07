@@ -7,6 +7,7 @@
 - **[ and ] resize the brush** with the outline showing at the new size straight away, even without moving the mouse; holding the key resizes faster and faster.
 - **Tool tooltips show the right key** for the tab you are in (Brush is B in Paint and 1 in 3D Paint), including keys you changed.
 - **Wireframe opacity** slider (3D view settings and Preferences › Look).
+- **Edge and cavity masks reach further, like Painter's:** generators such as Worn edges, Dirt in cavities and Chipped paint now spread away from edges and grooves (more with Width), and faint curvature maps are read more strongly, so wear shows on models whose curvature bake is subtle.
 - **Smart material and smart mask thumbnails** now show them on the Material preview model, from an angle; smart masks in black and white, like Painter.
 - **Fixed:** turning Quick mask on and off left an orange tint over the whole model.
 
