@@ -199,7 +199,7 @@ function sel3Draw(m,tris,into){if(!P_SEL3)P_SEL3=prog3(VS_SEL3,`uniform float uV
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,lb);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,ln,gl.STREAM_DRAW);gl.drawElements(gl.LINES,ln.length,gl.UNSIGNED_INT,0);}
   gl.bindVertexArray(vao);gl.deleteVertexArray(va);gl.deleteBuffer(eb);gl.deleteBuffer(lb);return t;}
 /* a triangle under the pointer, before growing it to its Object / Material / UV island / Face / Loop */
-function sel3HitSeed(hit,e){const p=v3PickAt(hit,e),m=v3.mesh;if(!p||!m)return null;const f=m.subF||1,O=m.src||m,R=ui.mode==='p3d'?p3Range():{start:0,count:m.idx.length/3},RO={start:Math.floor(R.start/f),count:Math.floor(R.count/f)},t=sel3Tri(O,p.eye,p.dir,RO);return t<0?null:{m,O,f,R:RO,t,pos:p.pos};}
+function sel3HitSeed(hit,e){const p=v3PickAt(hit,e),m=v3.mesh;if(!p||!m)return null;const f=m.subF||1,O=m.src||m,R=ui.mode==='p3d'?p3Range():{start:0,count:m.idx.length/3},RO={start:Math.floor(R.start/f),count:Math.floor(R.count/f)},t=sel3Tri(O,p.eye,p.dir,RO);return t<0?null:{m,O,f,R:RO,t,pos:p.pos,eye:p.eye,dir:p.dir};}
 function sel3HitTriangles(hit,e){const s=sel3HitSeed(hit,e);if(!s)return null;const own=sel3Grow(s.O,s.t,sel3.mode,s.pos,s.R),tris=[];for(const x of own)for(let j=0;j<s.f;j++)tris.push(x*s.f+j);return {m:s.m,tris};}
 function sel3DragSeed(d,s){if(!s||s.m!==d.mesh||s.O!==d.O||d.seeds.has(s.t))return;d.seeds.set(s.t,s.pos);const base=s.t*d.f;if(d.tris.has(base))return;
   for(const x of sel3Grow(d.O,s.t,sel3.mode,s.pos,d.R))for(let j=0;j<d.f;j++)d.tris.add(x*d.f+j);}

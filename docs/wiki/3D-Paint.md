@@ -128,6 +128,8 @@ You can delete all the layers of a texture set. A plain grey **Base material** i
 ## Polygon fill
 The **Polygon fill** tool (3D Paint only, under Blend in the toolbar) fills whole parts of the model at once. Choose **Face**, **Triangle**, **Loop** or **UV island** in its options, then click the model (or drag over it to fill several). The part under the pointer lights up before you click. It fills the selected layer with the brush colour; on a mask it fills white, and **Alt + click** fills black. Each click or drag is one undo step.
 
+With **mirror** (X, Y, Z) or **radial** symmetry on in the 3D view's top bar, the matching polygons on the other sides fill in the same click.
+
 ## Mirror and radial painting
 The mirror sits in the **3D view's top bar**: **X**, **Y** and **Z** turn the mirror planes on, the menu next to them sets **radial** copies, and **▾** opens the plane positions, the radial axis, snapping and showing the planes.
 

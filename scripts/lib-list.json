@@ -1,166 +1,1061 @@
 {
  "materials": [
-  {"id": "Metal041A", "name": "Clean iron", "cat": "Metal"},
-  {"id": "Metal045A", "name": "Polished nickel", "cat": "Metal"},
-  {"id": "Metal061A", "name": "Cobalt", "cat": "Metal"},
-  {"id": "Metal062A", "name": "Platinum", "cat": "Metal"},
-  {"id": "Metal054B", "name": "Scratched rusty iron", "cat": "Metal"},
-  {"id": "Metal056A", "name": "Damaged iron", "cat": "Metal"},
-  {"id": "Metal055B", "name": "Lightly rusted iron", "cat": "Metal"},
-  {"id": "Metal058B", "name": "Oxidised copper", "cat": "Metal"},
-  {"id": "Metal043B", "name": "Dirty copper", "cat": "Metal"},
-  {"id": "Metal050C", "name": "Rough aluminium", "cat": "Metal"},
-  {"id": "Metal051B", "name": "Circular brushed aluminium", "cat": "Metal"},
-  {"id": "Metal049C", "name": "Dented silver", "cat": "Metal"},
-  {"id": "Metal013", "name": "Eroded bronze", "cat": "Metal"},
-  {"id": "Metal028", "name": "Black powder coat", "cat": "Metal"},
-  {"id": "Metal063", "name": "Aged dark metal", "cat": "Metal"},
-  {"id": "Chainmail001", "name": "Fine chainmail", "cat": "Metal"},
-  {"id": "MetalPlates015A", "name": "Sci-fi panels", "cat": "Metal"},
-  {"id": "DiamondPlate004", "name": "Diamond plate", "cat": "Metal"},
-  {"id": "CorrugatedSteel009", "name": "Corrugated steel", "cat": "Metal"},
-  {"id": "Leather006", "name": "Worn brown leather", "cat": "Leather"},
-  {"id": "Leather014", "name": "Scratched old leather", "cat": "Leather"},
-  {"id": "Leather015", "name": "Perforated dark leather", "cat": "Leather"},
-  {"id": "Leather016", "name": "Perforated brown leather", "cat": "Leather"},
-  {"id": "Leather024", "name": "Shiny red leather", "cat": "Leather"},
-  {"id": "Leather027", "name": "Smooth black leather", "cat": "Leather"},
-  {"id": "Leather036A", "name": "Diamond-stitched leather", "cat": "Leather"},
-  {"id": "Leather035A", "name": "Stitched cream leather", "cat": "Leather"},
-  {"id": "Leather034A", "name": "Stitched dark leather", "cat": "Leather"},
-  {"id": "Fabric004", "name": "Carbon cloth", "cat": "Fabric"},
-  {"id": "Fabric005", "name": "Blue stripes", "cat": "Fabric"},
-  {"id": "Fabric016", "name": "Red wool", "cat": "Fabric"},
-  {"id": "Fabric031", "name": "Chunky grey wool", "cat": "Fabric"},
-  {"id": "Fabric051", "name": "Black tartan", "cat": "Fabric"},
-  {"id": "Fabric052", "name": "Green tartan", "cat": "Fabric"},
-  {"id": "Fabric068", "name": "Orange wool", "cat": "Fabric"},
-  {"id": "Fabric082A", "name": "Fine grey weave", "cat": "Fabric"},
-  {"id": "Plastic001", "name": "Scratched black plastic", "cat": "Plastic & rubber"},
-  {"id": "Plastic007", "name": "Red plastic", "cat": "Plastic & rubber"},
-  {"id": "Plastic008", "name": "Blue plastic", "cat": "Plastic & rubber"},
-  {"id": "Plastic016A", "name": "Yellow plastic", "cat": "Plastic & rubber"},
-  {"id": "Plastic017A", "name": "Green plastic", "cat": "Plastic & rubber"},
-  {"id": "Rubber003", "name": "Gym rubber", "cat": "Plastic & rubber"},
-  {"id": "Wood008", "name": "Cherry wood", "cat": "Wood"},
-  {"id": "Wood035", "name": "Old dark wood", "cat": "Wood"},
-  {"id": "Wood049", "name": "Furniture wood", "cat": "Wood"},
-  {"id": "Wood073", "name": "Knotty wood", "cat": "Wood"},
-  {"id": "Wood080", "name": "Old planks", "cat": "Wood"},
-  {"id": "Wood090A", "name": "Birch", "cat": "Wood"},
-  {"id": "Bamboo001B", "name": "Bamboo", "cat": "Wood"},
-  {"id": "Wicker001", "name": "Wicker", "cat": "Wood"},
-  {"id": "Bark008", "name": "Mossy bark", "cat": "Ground & nature"},
-  {"id": "Moss003", "name": "Thick moss", "cat": "Ground & nature"},
-  {"id": "Grass002", "name": "Green grass", "cat": "Ground & nature"},
-  {"id": "Snow005", "name": "Fresh snow", "cat": "Ground & nature"},
-  {"id": "Gravel016", "name": "River pebbles", "cat": "Ground & nature"},
-  {"id": "Ground025", "name": "Wet clay", "cat": "Ground & nature"},
-  {"id": "Ground012", "name": "Forest mud", "cat": "Ground & nature"},
-  {"id": "Lava001", "name": "Lava", "cat": "Ground & nature"},
-  {"id": "Rock028", "name": "Rough stone", "cat": "Stone & tile"},
-  {"id": "Rock031", "name": "Black rock", "cat": "Stone & tile"},
-  {"id": "Rock017", "name": "Pale limestone", "cat": "Stone & tile"},
-  {"id": "Concrete027", "name": "Cast concrete", "cat": "Stone & tile"},
-  {"id": "Concrete036", "name": "Old plaster", "cat": "Stone & tile"},
-  {"id": "Marble001", "name": "White marble", "cat": "Stone & tile"},
-  {"id": "Marble006", "name": "Dark marble", "cat": "Stone & tile"},
-  {"id": "Bricks003", "name": "Old red bricks", "cat": "Stone & tile"},
-  {"id": "Terrazzo001", "name": "Terrazzo", "cat": "Stone & tile"},
-  {"id": "PaintedMetal001", "name": "Scratched yellow paint", "cat": "Paint & ceramic"},
-  {"id": "PaintedMetal002", "name": "Blue painted metal", "cat": "Paint & ceramic"},
-  {"id": "PaintedMetal004", "name": "Red painted metal", "cat": "Paint & ceramic"},
-  {"id": "PaintedMetal009", "name": "Chipped yellow paint", "cat": "Paint & ceramic"},
-  {"id": "Porcelain001", "name": "White porcelain", "cat": "Paint & ceramic"},
-  {"id": "Porcelain003", "name": "Black porcelain", "cat": "Paint & ceramic"},
-  {"id": "GlazedTerracotta001", "name": "Glazed terracotta", "cat": "Paint & ceramic"},
-  {"id": "PaintedMetal006", "name": "Green painted metal", "cat": "Paint & ceramic"},
-  {"id": "Leather001", "name": "Soft brown leather", "cat": "Leather"},
-  {"id": "Leather002", "name": "Grey olive leather", "cat": "Leather"},
-  {"id": "Leather003", "name": "Tan leather", "cat": "Leather"},
-  {"id": "Leather004", "name": "Cream smooth leather", "cat": "Leather"},
-  {"id": "Leather005", "name": "Soft red leather", "cat": "Leather"},
-  {"id": "Leather022", "name": "Dark brown leather", "cat": "Leather"},
-  {"id": "Leather025", "name": "Pale grey leather", "cat": "Leather"},
-  {"id": "Leather028", "name": "Chestnut leather", "cat": "Leather"},
-  {"id": "Leather029", "name": "Russet leather", "cat": "Leather"},
-  {"id": "Leather031", "name": "Matte black leather", "cat": "Leather"},
-  {"id": "Leather034D", "name": "Espresso leather", "cat": "Leather"},
-  {"id": "Leather035D", "name": "Ivory leather", "cat": "Leather"},
-  {"id": "Fabric036", "name": "Grey linen", "cat": "Fabric"},
-  {"id": "Fabric037", "name": "Forest green cotton", "cat": "Fabric"},
-  {"id": "Fabric040", "name": "Rust cotton", "cat": "Fabric"},
-  {"id": "Fabric042", "name": "Black cotton", "cat": "Fabric"},
-  {"id": "Fabric003", "name": "Navy cotton", "cat": "Fabric"},
-  {"id": "Fabric066", "name": "Olive linen", "cat": "Fabric"},
-  {"id": "Fabric032", "name": "White cotton", "cat": "Fabric"},
-  {"id": "Fabric060", "name": "Smooth white cloth", "cat": "Fabric"},
-  {"id": "Fabric069", "name": "Dark denim", "cat": "Fabric"},
-  {"id": "Fabric077", "name": "Light denim", "cat": "Fabric"},
-  {"id": "Fabric075", "name": "Slate canvas", "cat": "Fabric"},
-  {"id": "Fabric019", "name": "White wool", "cat": "Fabric"},
-  {"id": "Metal010", "name": "Brushed dark steel", "cat": "Metal"},
-  {"id": "Metal011", "name": "Satin brushed steel", "cat": "Metal"},
-  {"id": "Metal053A", "name": "Clean dark iron", "cat": "Metal"},
-  {"id": "Metal052A", "name": "Smooth dark steel", "cat": "Metal"},
-  {"id": "Metal033", "name": "Slate gunmetal", "cat": "Metal"},
-  {"id": "Metal044B", "name": "Matte aluminium", "cat": "Metal"},
-  {"id": "Metal044A", "name": "Satin silver", "cat": "Metal"},
-  {"id": "Metal042A", "name": "Satin brass", "cat": "Metal"},
-  {"id": "Metal047A", "name": "Clean copper", "cat": "Metal"},
-  {"id": "Metal043A", "name": "Rose gold", "cat": "Metal"},
-  {"id": "Metal057A", "name": "Dark bronze", "cat": "Metal"},
-  {"id": "Metal060A", "name": "Dark nickel", "cat": "Metal"},
-  {"id": "Ground010", "name": "Dust", "cat": "Ground & nature"},
-  {"id": "Ground006", "name": "Grey dust", "cat": "Ground & nature"},
-  {"id": "Ground099", "name": "Ash", "cat": "Ground & nature"},
-  {"id": "Ground101", "name": "Cream dust", "cat": "Ground & nature"},
-  {"id": "Ground026", "name": "Dry earth", "cat": "Ground & nature"},
-  {"id": "Ground066", "name": "Fine dry soil", "cat": "Ground & nature"},
-  {"id": "Ground091", "name": "Sandy dirt", "cat": "Ground & nature"},
-  {"id": "Ground009", "name": "Dry dirt", "cat": "Ground & nature"},
-  {"id": "Ground057", "name": "Fine sand", "cat": "Ground & nature"},
-  {"id": "Ground061", "name": "Beach sand", "cat": "Ground & nature"},
-  {"id": "Ground093C", "name": "Pale dune sand", "cat": "Ground & nature"},
-  {"id": "Ground055L", "name": "Desert sand", "cat": "Ground & nature"},
-  {"id": "Ground089", "name": "Warm sand", "cat": "Ground & nature"},
-  {"id": "Ground088", "name": "Dark sand", "cat": "Ground & nature"}
+  {
+   "id": "Metal041A",
+   "name": "Clean iron",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal045A",
+   "name": "Polished nickel",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal061A",
+   "name": "Cobalt",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal062A",
+   "name": "Platinum",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal054B",
+   "name": "Scratched rusty iron",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal056A",
+   "name": "Damaged iron",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal055B",
+   "name": "Lightly rusted iron",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal058B",
+   "name": "Oxidised copper",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal043B",
+   "name": "Dirty copper",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal050C",
+   "name": "Rough aluminium",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal051B",
+   "name": "Circular brushed aluminium",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal049C",
+   "name": "Dented silver",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal013",
+   "name": "Eroded bronze",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal028",
+   "name": "Black powder coat",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal063",
+   "name": "Aged dark metal",
+   "cat": "Metal"
+  },
+  {
+   "id": "Chainmail001",
+   "name": "Fine chainmail",
+   "cat": "Metal"
+  },
+  {
+   "id": "MetalPlates015A",
+   "name": "Sci-fi panels",
+   "cat": "Metal"
+  },
+  {
+   "id": "DiamondPlate004",
+   "name": "Diamond plate",
+   "cat": "Metal"
+  },
+  {
+   "id": "CorrugatedSteel009",
+   "name": "Corrugated steel",
+   "cat": "Metal"
+  },
+  {
+   "id": "Leather006",
+   "name": "Worn brown leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Leather014",
+   "name": "Scratched old leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Leather015",
+   "name": "Perforated dark leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Leather016",
+   "name": "Perforated brown leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Leather024",
+   "name": "Shiny red leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Leather027",
+   "name": "Smooth black leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Leather036A",
+   "name": "Diamond-stitched leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Leather035A",
+   "name": "Stitched cream leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Leather034A",
+   "name": "Stitched dark leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Fabric004",
+   "name": "Carbon cloth",
+   "cat": "Fabric"
+  },
+  {
+   "id": "Fabric005",
+   "name": "Blue stripes",
+   "cat": "Fabric"
+  },
+  {
+   "id": "Fabric016",
+   "name": "Red wool",
+   "cat": "Fabric"
+  },
+  {
+   "id": "Fabric031",
+   "name": "Chunky grey wool",
+   "cat": "Fabric"
+  },
+  {
+   "id": "Fabric051",
+   "name": "Black tartan",
+   "cat": "Fabric"
+  },
+  {
+   "id": "Fabric052",
+   "name": "Green tartan",
+   "cat": "Fabric"
+  },
+  {
+   "id": "Fabric068",
+   "name": "Orange wool",
+   "cat": "Fabric"
+  },
+  {
+   "id": "Fabric082A",
+   "name": "Fine grey weave",
+   "cat": "Fabric"
+  },
+  {
+   "id": "Plastic001",
+   "name": "Scratched black plastic",
+   "cat": "Plastic & rubber"
+  },
+  {
+   "id": "Plastic007",
+   "name": "Red plastic",
+   "cat": "Plastic & rubber"
+  },
+  {
+   "id": "Plastic008",
+   "name": "Blue plastic",
+   "cat": "Plastic & rubber"
+  },
+  {
+   "id": "Plastic016A",
+   "name": "Yellow plastic",
+   "cat": "Plastic & rubber"
+  },
+  {
+   "id": "Plastic017A",
+   "name": "Green plastic",
+   "cat": "Plastic & rubber"
+  },
+  {
+   "id": "Rubber003",
+   "name": "Gym rubber",
+   "cat": "Plastic & rubber"
+  },
+  {
+   "id": "Wood008",
+   "name": "Cherry wood",
+   "cat": "Wood"
+  },
+  {
+   "id": "Wood035",
+   "name": "Old dark wood",
+   "cat": "Wood"
+  },
+  {
+   "id": "Wood049",
+   "name": "Furniture wood",
+   "cat": "Wood"
+  },
+  {
+   "id": "Wood073",
+   "name": "Knotty wood",
+   "cat": "Wood"
+  },
+  {
+   "id": "Wood080",
+   "name": "Old planks",
+   "cat": "Wood"
+  },
+  {
+   "id": "Wood090A",
+   "name": "Birch",
+   "cat": "Wood"
+  },
+  {
+   "id": "Bamboo001B",
+   "name": "Bamboo",
+   "cat": "Wood"
+  },
+  {
+   "id": "Wicker001",
+   "name": "Wicker",
+   "cat": "Wood"
+  },
+  {
+   "id": "Bark008",
+   "name": "Mossy bark",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Moss003",
+   "name": "Thick moss",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Grass002",
+   "name": "Green grass",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Snow005",
+   "name": "Fresh snow",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Gravel016",
+   "name": "River pebbles",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Ground025",
+   "name": "Wet clay",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Ground012",
+   "name": "Forest mud",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Lava001",
+   "name": "Lava",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Rock028",
+   "name": "Rough stone",
+   "cat": "Stone & tile"
+  },
+  {
+   "id": "Rock031",
+   "name": "Black rock",
+   "cat": "Stone & tile"
+  },
+  {
+   "id": "Rock017",
+   "name": "Pale limestone",
+   "cat": "Stone & tile"
+  },
+  {
+   "id": "Concrete027",
+   "name": "Cast concrete",
+   "cat": "Stone & tile"
+  },
+  {
+   "id": "Concrete036",
+   "name": "Old plaster",
+   "cat": "Stone & tile"
+  },
+  {
+   "id": "Marble001",
+   "name": "White marble",
+   "cat": "Stone & tile"
+  },
+  {
+   "id": "Marble006",
+   "name": "Dark marble",
+   "cat": "Stone & tile"
+  },
+  {
+   "id": "Bricks003",
+   "name": "Old red bricks",
+   "cat": "Stone & tile"
+  },
+  {
+   "id": "Terrazzo001",
+   "name": "Terrazzo",
+   "cat": "Stone & tile"
+  },
+  {
+   "id": "PaintedMetal001",
+   "name": "Scratched yellow paint",
+   "cat": "Paint & ceramic"
+  },
+  {
+   "id": "PaintedMetal002",
+   "name": "Blue painted metal",
+   "cat": "Paint & ceramic"
+  },
+  {
+   "id": "PaintedMetal004",
+   "name": "Red painted metal",
+   "cat": "Paint & ceramic"
+  },
+  {
+   "id": "PaintedMetal009",
+   "name": "Chipped yellow paint",
+   "cat": "Paint & ceramic"
+  },
+  {
+   "id": "Porcelain001",
+   "name": "White porcelain",
+   "cat": "Paint & ceramic"
+  },
+  {
+   "id": "Porcelain003",
+   "name": "Black porcelain",
+   "cat": "Paint & ceramic"
+  },
+  {
+   "id": "GlazedTerracotta001",
+   "name": "Glazed terracotta",
+   "cat": "Paint & ceramic"
+  },
+  {
+   "id": "PaintedMetal006",
+   "name": "Green painted metal",
+   "cat": "Paint & ceramic"
+  },
+  {
+   "id": "Leather001",
+   "name": "Soft brown leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Leather002",
+   "name": "Grey olive leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Leather003",
+   "name": "Tan leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Leather004",
+   "name": "Cream smooth leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Leather005",
+   "name": "Soft red leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Leather022",
+   "name": "Dark brown leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Leather025",
+   "name": "Pale grey leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Leather028",
+   "name": "Chestnut leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Leather029",
+   "name": "Russet leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Leather031",
+   "name": "Matte black leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Leather034D",
+   "name": "Espresso leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Leather035D",
+   "name": "Ivory leather",
+   "cat": "Leather"
+  },
+  {
+   "id": "Fabric036",
+   "name": "Grey linen",
+   "cat": "Fabric"
+  },
+  {
+   "id": "Fabric037",
+   "name": "Forest green cotton",
+   "cat": "Fabric"
+  },
+  {
+   "id": "Fabric040",
+   "name": "Rust cotton",
+   "cat": "Fabric"
+  },
+  {
+   "id": "Fabric042",
+   "name": "Black cotton",
+   "cat": "Fabric"
+  },
+  {
+   "id": "Fabric003",
+   "name": "Navy cotton",
+   "cat": "Fabric"
+  },
+  {
+   "id": "Fabric066",
+   "name": "Olive linen",
+   "cat": "Fabric"
+  },
+  {
+   "id": "Fabric032",
+   "name": "White cotton",
+   "cat": "Fabric"
+  },
+  {
+   "id": "Fabric060",
+   "name": "Smooth white cloth",
+   "cat": "Fabric"
+  },
+  {
+   "id": "Fabric069",
+   "name": "Dark denim",
+   "cat": "Fabric"
+  },
+  {
+   "id": "Fabric077",
+   "name": "Light denim",
+   "cat": "Fabric"
+  },
+  {
+   "id": "Fabric075",
+   "name": "Slate canvas",
+   "cat": "Fabric"
+  },
+  {
+   "id": "Fabric019",
+   "name": "White wool",
+   "cat": "Fabric"
+  },
+  {
+   "id": "Metal010",
+   "name": "Brushed dark steel",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal011",
+   "name": "Satin brushed steel",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal053A",
+   "name": "Clean dark iron",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal052A",
+   "name": "Smooth dark steel",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal033",
+   "name": "Slate gunmetal",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal044B",
+   "name": "Matte aluminium",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal044A",
+   "name": "Satin silver",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal042A",
+   "name": "Satin brass",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal047A",
+   "name": "Clean copper",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal043A",
+   "name": "Rose gold",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal057A",
+   "name": "Dark bronze",
+   "cat": "Metal"
+  },
+  {
+   "id": "Metal060A",
+   "name": "Dark nickel",
+   "cat": "Metal"
+  },
+  {
+   "id": "Ground010",
+   "name": "Dust",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Ground006",
+   "name": "Grey dust",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Ground099",
+   "name": "Ash",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Ground101",
+   "name": "Cream dust",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Ground026",
+   "name": "Dry earth",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Ground066",
+   "name": "Fine dry soil",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Ground091",
+   "name": "Sandy dirt",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Ground009",
+   "name": "Dry dirt",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Ground057",
+   "name": "Fine sand",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Ground061",
+   "name": "Beach sand",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Ground093C",
+   "name": "Pale dune sand",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Ground055L",
+   "name": "Desert sand",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Ground089",
+   "name": "Warm sand",
+   "cat": "Ground & nature"
+  },
+  {
+   "id": "Ground088",
+   "name": "Dark sand",
+   "cat": "Ground & nature"
+  }
  ],
  "grunge": [
-  {"id": "Scratches001", "name": "Brushed scratches", "ch": "Opacity", "hi": 99.9},
-  {"id": "Scratches002", "name": "Tangled scratches", "ch": "Opacity", "hi": 99.9},
-  {"id": "Scratches003", "name": "Light scratches", "ch": "Opacity", "hi": 99.9},
-  {"id": "Scratches004", "name": "Fine brushed lines", "ch": "Opacity", "hi": 99.9},
-  {"id": "Scratches005", "name": "Hairline scratches", "ch": "Opacity", "hi": 99.9},
-  {"id": "Smear006", "name": "Ink smears", "ch": "Opacity"},
-  {"id": "Smear007", "name": "Greasy swirls", "ch": "Opacity"},
-  {"id": "SurfaceImperfections001", "name": "Bubble stains", "ch": "Opacity"},
-  {"id": "SurfaceImperfections002", "name": "Foggy blotches", "ch": "Opacity"},
-  {"id": "Leaking012B", "name": "Runs 1", "ch": "Roughness", "invert": true, "hi": 99.8},
-  {"id": "Leaking013B", "name": "Runs 2", "ch": "Roughness", "invert": true, "hi": 99.8},
-  {"id": "Leaking014B", "name": "Runs 3", "ch": "Roughness", "invert": true, "hi": 99.8},
-  {"id": "Leaking015B", "name": "Runs 4", "ch": "Roughness", "invert": true, "hi": 99.8},
-  {"id": "Leaking016B", "name": "Runs 5", "ch": "Roughness", "invert": true, "hi": 99.8},
-  {"id": "Leaking017B", "name": "Runs 6", "ch": "Roughness", "invert": true, "hi": 99.8},
-  {"id": "Leaking018B", "name": "Runs 7", "ch": "Roughness", "invert": true, "hi": 99.8},
-  {"id": "Leaking019B", "name": "Runs 8", "ch": "Roughness", "invert": true, "hi": 99.8, "gamma": 1.8},
-  {"id": "Asphalt011", "name": "Cracks 1", "ch": "Opacity", "invert": true},
-  {"id": "Asphalt012", "name": "Cracks 2", "ch": "Opacity", "invert": true},
-  {"id": "Asphalt013", "name": "Cracks 3", "ch": "Opacity", "invert": true},
-  {"id": "Asphalt008", "name": "Crazed cracks", "ch": "Roughness"},
-  {"id": "Ground031", "name": "Dry cracks", "ch": "Roughness"},
-  {"id": "Asphalt022", "name": "Cracked plates", "ch": "Displacement"},
-  {"id": "Asphalt021", "name": "Broken plates", "ch": "Displacement"},
-  {"id": "Rust002", "name": "Rust pits 1", "ch": "Displacement", "invert": true},
-  {"id": "Rust003", "name": "Rust pits 2", "ch": "Displacement", "invert": true},
-  {"id": "Rust004", "name": "Rust pits 3", "ch": "Displacement", "invert": true},
-  {"id": "Rust005", "name": "Rust pits 4", "ch": "Displacement", "invert": true},
-  {"id": "Rust006", "name": "Rust pits 5", "ch": "Displacement", "invert": true},
-  {"id": "Rust008", "name": "Rust pits 6", "ch": "Displacement", "invert": true},
-  {"id": "Rust010", "name": "Rust pits 7", "ch": "Displacement", "invert": true},
-  {"id": "Paint001", "name": "Worn paint 1", "ch": "Displacement", "invert": true, "gamma": 1.8},
-  {"id": "Paint003", "name": "Worn paint 2", "ch": "Displacement", "invert": true, "gamma": 1.8},
-  {"id": "Paint005", "name": "Worn paint 3", "ch": "Displacement", "invert": true, "gamma": 1.8},
-  {"id": "Rock062", "name": "Frost veins", "ch": "Roughness"}
+  {
+   "id": "Scratches001",
+   "name": "Brushed scratches",
+   "ch": "Opacity",
+   "hi": 99.9
+  },
+  {
+   "id": "Scratches002",
+   "name": "Tangled scratches",
+   "ch": "Opacity",
+   "hi": 99.9
+  },
+  {
+   "id": "Scratches003",
+   "name": "Light scratches",
+   "ch": "Opacity",
+   "hi": 99.9
+  },
+  {
+   "id": "Scratches004",
+   "name": "Fine brushed lines",
+   "ch": "Opacity",
+   "hi": 99.9
+  },
+  {
+   "id": "Scratches005",
+   "name": "Hairline scratches",
+   "ch": "Opacity",
+   "hi": 99.9
+  },
+  {
+   "id": "Smear006",
+   "name": "Ink smears",
+   "ch": "Opacity"
+  },
+  {
+   "id": "Smear007",
+   "name": "Greasy swirls",
+   "ch": "Opacity"
+  },
+  {
+   "id": "SurfaceImperfections001",
+   "name": "Bubble stains",
+   "ch": "Opacity"
+  },
+  {
+   "id": "SurfaceImperfections002",
+   "name": "Foggy blotches",
+   "ch": "Opacity"
+  },
+  {
+   "id": "Leaking012B",
+   "name": "Runs 1",
+   "ch": "Roughness",
+   "invert": true,
+   "hi": 99.8
+  },
+  {
+   "id": "Leaking013B",
+   "name": "Runs 2",
+   "ch": "Roughness",
+   "invert": true,
+   "hi": 99.8
+  },
+  {
+   "id": "Leaking014B",
+   "name": "Runs 3",
+   "ch": "Roughness",
+   "invert": true,
+   "hi": 99.8
+  },
+  {
+   "id": "Leaking015B",
+   "name": "Runs 4",
+   "ch": "Roughness",
+   "invert": true,
+   "hi": 99.8
+  },
+  {
+   "id": "Leaking016B",
+   "name": "Runs 5",
+   "ch": "Roughness",
+   "invert": true,
+   "hi": 99.8
+  },
+  {
+   "id": "Leaking017B",
+   "name": "Runs 6",
+   "ch": "Roughness",
+   "invert": true,
+   "hi": 99.8
+  },
+  {
+   "id": "Leaking018B",
+   "name": "Runs 7",
+   "ch": "Roughness",
+   "invert": true,
+   "hi": 99.8
+  },
+  {
+   "id": "Leaking019B",
+   "name": "Runs 8",
+   "ch": "Roughness",
+   "invert": true,
+   "hi": 99.8,
+   "gamma": 1.8
+  },
+  {
+   "id": "Asphalt011",
+   "name": "Cracks 1",
+   "ch": "Opacity",
+   "invert": true
+  },
+  {
+   "id": "Asphalt012",
+   "name": "Cracks 2",
+   "ch": "Opacity",
+   "invert": true
+  },
+  {
+   "id": "Asphalt013",
+   "name": "Cracks 3",
+   "ch": "Opacity",
+   "invert": true
+  },
+  {
+   "id": "Asphalt008",
+   "name": "Crazed cracks",
+   "ch": "Roughness"
+  },
+  {
+   "id": "Ground031",
+   "name": "Dry cracks",
+   "ch": "Roughness"
+  },
+  {
+   "id": "Asphalt022",
+   "name": "Cracked plates",
+   "ch": "Displacement"
+  },
+  {
+   "id": "Asphalt021",
+   "name": "Broken plates",
+   "ch": "Displacement"
+  },
+  {
+   "id": "Rust002",
+   "name": "Rust pits 1",
+   "ch": "Displacement",
+   "invert": true
+  },
+  {
+   "id": "Rust003",
+   "name": "Rust pits 2",
+   "ch": "Displacement",
+   "invert": true
+  },
+  {
+   "id": "Rust004",
+   "name": "Rust pits 3",
+   "ch": "Displacement",
+   "invert": true
+  },
+  {
+   "id": "Rust005",
+   "name": "Rust pits 4",
+   "ch": "Displacement",
+   "invert": true
+  },
+  {
+   "id": "Rust006",
+   "name": "Rust pits 5",
+   "ch": "Displacement",
+   "invert": true
+  },
+  {
+   "id": "Rust008",
+   "name": "Rust pits 6",
+   "ch": "Displacement",
+   "invert": true
+  },
+  {
+   "id": "Rust010",
+   "name": "Rust pits 7",
+   "ch": "Displacement",
+   "invert": true
+  },
+  {
+   "id": "Paint001",
+   "name": "Worn paint 1",
+   "ch": "Displacement",
+   "invert": true,
+   "gamma": 1.8
+  },
+  {
+   "id": "Paint003",
+   "name": "Worn paint 2",
+   "ch": "Displacement",
+   "invert": true,
+   "gamma": 1.8
+  },
+  {
+   "id": "Paint005",
+   "name": "Worn paint 3",
+   "ch": "Displacement",
+   "invert": true,
+   "gamma": 1.8
+  },
+  {
+   "id": "Rock062",
+   "name": "Frost veins",
+   "ch": "Roughness"
+  },
+  {
+   "id": "Smear008",
+   "name": "Swirled smears",
+   "ch": "Roughness",
+   "hi": 99.8
+  }
+ ],
+ "grungeOld": [
+  {
+   "slug": "prints",
+   "id": "Fingerprints001",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "fingerprints",
+   "id": "Fingerprints002",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "prints-2",
+   "id": "Fingerprints003",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "hand-print",
+   "id": "Fingerprints004",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "thumb-prints",
+   "id": "Fingerprints005",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "smudges",
+   "id": "Fingerprints006",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "greasy-prints",
+   "id": "Fingerprints007",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "print-smears",
+   "id": "Fingerprints008",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "oily-marks",
+   "id": "Fingerprints009",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "wipe",
+   "id": "Smear001",
+   "ch": "Roughness"
+  },
+  {
+   "slug": "smears",
+   "id": "Smear002",
+   "ch": "Roughness"
+  },
+  {
+   "slug": "brush-smears",
+   "id": "Smear003",
+   "ch": "Roughness"
+  },
+  {
+   "slug": "streaky-wipes",
+   "id": "Smear004",
+   "ch": "Roughness"
+  },
+  {
+   "slug": "swipes",
+   "id": "Smear005",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "streaks",
+   "id": "SurfaceImperfections003",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "circles",
+   "id": "SurfaceImperfections004",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "scattered-rings",
+   "id": "SurfaceImperfections005",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "rings",
+   "id": "SurfaceImperfections006",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "specks",
+   "id": "SurfaceImperfections007",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "stains",
+   "id": "SurfaceImperfections008",
+   "ch": "Opacity",
+   "invert": true
+  },
+  {
+   "slug": "chips",
+   "id": "SurfaceImperfections009",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "drips",
+   "id": "SurfaceImperfections010",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "splotches",
+   "id": "SurfaceImperfections011",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "spatter",
+   "id": "SurfaceImperfections012",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "scratches",
+   "id": "SurfaceImperfections013",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "grime",
+   "id": "SurfaceImperfections014",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "dirt",
+   "id": "SurfaceImperfections015",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "fine-grime",
+   "id": "SurfaceImperfections016",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "speckle",
+   "id": "SurfaceImperfections017",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "micro-scratches",
+   "id": "SurfaceImperfections018",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "dust",
+   "id": "SurfaceImperfections019",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "faint-marks",
+   "id": "SurfaceImperfections020",
+   "ch": "Opacity"
+  },
+  {
+   "slug": "leaks-2",
+   "id": "Leaking012A",
+   "ch": "Roughness",
+   "invert": true
+  },
+  {
+   "slug": "leaks-3",
+   "id": "Leaking013A",
+   "ch": "Roughness",
+   "invert": true
+  },
+  {
+   "slug": "leaks-4",
+   "id": "Leaking014A",
+   "ch": "Roughness",
+   "invert": true
+  },
+  {
+   "slug": "leaks-5",
+   "id": "Leaking015A",
+   "ch": "Roughness",
+   "invert": true
+  },
+  {
+   "slug": "leaks",
+   "id": "Leaking016A",
+   "ch": "Roughness",
+   "invert": true
+  },
+  {
+   "slug": "leaks-6",
+   "id": "Leaking017A",
+   "ch": "Roughness",
+   "invert": true
+  },
+  {
+   "slug": "leaks-7",
+   "id": "Leaking018A",
+   "ch": "Roughness",
+   "invert": true
+  },
+  {
+   "slug": "leaks-8",
+   "id": "Leaking019A",
+   "ch": "Roughness",
+   "invert": true
+  }
  ]
 }

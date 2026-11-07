@@ -25,7 +25,7 @@
    After a grunge run, add the printed lines to TX_PHOTO in src/js/ui/textures.js, and the ids to the wiki credits. */
 const fs = require('fs'), path = require('path'), os = require('os'), zlib = require('zlib'), cp = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
-const { chromium } = require(path.join(ROOT, 'tests/e2e/node_modules/playwright'));
+const { chromium } = (()=>{try{return require(path.join(ROOT, 'tests/e2e/node_modules/playwright'));}catch(e){return require('playwright');}})();
 const CACHE = process.env.LIB_CACHE || path.join(os.tmpdir(), 'gouache-lib-cache');
 fs.mkdirSync(CACHE, { recursive: true });
 

@@ -12,7 +12,7 @@ const TX_PHOTO=[['streaks','Streaks'],['rings','Water rings'],['specks','Specks'
   ['prints','Prints'],['prints-2','Prints 2'],['hand-print','Hand print'],['thumb-prints','Thumb prints'],['smudges','Smudges'],['greasy-prints','Greasy prints'],['print-smears','Print smears'],['oily-marks','Oily marks'],
   ['wipe','Wipe'],['brush-smears','Brush smears'],['streaky-wipes','Streaky wipes'],['swipes','Swipes'],
   ['leaks-2','Leaks 2'],['leaks-3','Leaks 3'],['leaks-4','Leaks 4'],['leaks-5','Leaks 5'],['leaks-6','Leaks 6'],['leaks-7','Leaks 7'],['leaks-8','Leaks 8'],
-  ['brushed-scratches','Brushed scratches'],['tangled-scratches','Tangled scratches'],['light-scratches','Light scratches'],['fine-brushed-lines','Fine brushed lines'],['hairline-scratches','Hairline scratches'],['ink-smears','Ink smears'],['greasy-swirls','Greasy swirls'],['bubble-stains','Bubble stains'],['foggy-blotches','Foggy blotches'],
+  ['brushed-scratches','Brushed scratches'],['tangled-scratches','Tangled scratches'],['light-scratches','Light scratches'],['fine-brushed-lines','Fine brushed lines'],['hairline-scratches','Hairline scratches'],['ink-smears','Ink smears'],['greasy-swirls','Greasy swirls'],['swirled-smears','Swirled smears'],['bubble-stains','Bubble stains'],['foggy-blotches','Foggy blotches'],
   ['runs-1','Runs 1'],['runs-2','Runs 2'],['runs-3','Runs 3'],['runs-4','Runs 4'],['runs-5','Runs 5'],['runs-6','Runs 6'],['runs-7','Runs 7'],['runs-8','Runs 8'],
   ['cracks-1','Cracks 1'],['cracks-2','Cracks 2'],['cracks-3','Cracks 3'],['crazed-cracks','Crazed cracks'],['dry-cracks','Dry cracks'],['cracked-plates','Cracked plates'],['broken-plates','Broken plates'],
   ['rust-pits-1','Rust pits 1'],['rust-pits-2','Rust pits 2'],['rust-pits-3','Rust pits 3'],['rust-pits-4','Rust pits 4'],['rust-pits-5','Rust pits 5'],['rust-pits-6','Rust pits 6'],['rust-pits-7','Rust pits 7'],
@@ -96,7 +96,7 @@ function txGenTarget(k,S,phase){const i=TX_GEN.findIndex(g=>g[0]===k),t=makeTarg
   if(i>=20){const pr=P_TXWR[i]||(P_TXWR[i]=program(FS_TXWR.replace('void main(){','#define WK '+i+'\nvoid main(){')));run(pr,t,{uSeed:1,uOut:[S,S],uPhase:phase||[0,0]});}
   else{if(!P_TXGEN)P_TXGEN=program(FS_TXGEN);run(P_TXGEN,t,{uKind:{int:i},uSeed:1,uOut:[S,S],uPhase:phase||[0,0]});}setWrap(t,true);return t;}
 /* the shipped photo grunge: files next to the desktop app, or inside the page for the web version */
-async function txPhotoBytes(slug){const tag=document.getElementById('gr_'+slug);if(tag){const b=atob(tag.textContent.trim()),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;}
+async function txPhotoBytes(slug){if(typeof g4Cached==='function'){const big=await g4Cached(slug);if(big)return big;}const tag=document.getElementById('gr_'+slug);if(tag){const b=atob(tag.textContent.trim()),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;}
   return await bcGet('grunge',slug+'.webp','grunge/'+slug+'.webp');}
 async function bitmapTarget(bm){const c=document.createElement('canvas');c.width=bm.width;c.height=bm.height;c.getContext('2d').drawImage(bm,0,0);
   const tex=uploadStraight({el:c,w:c.width,h:c.height}),t=makeTarget(c.width,c.height,8,true);premultInto(t,tex,[0,0],null);gl.deleteTexture(tex);setWrap(t,true);return t;}

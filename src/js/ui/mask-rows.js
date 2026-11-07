@@ -125,7 +125,7 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
       box.append(el('div',{class:'sub',text:'Mesh-map mask builder'}),chk('ms_uvWrap','UV wrap',p.uvWrap!==false,v=>ed(x=>{x.p.uvWrap=v;})),...[
         ['edgeWeight','Curvature edges'],['cavityWeight','Curvature cavities'],['aoWeight','AO cavities'],['directionWeight','Facing direction'],['positionWeight','Position gradient'],['heightWeight','Height'],['thicknessWeight','Thin areas']].map(([k,l])=>S('ms_'+k,l,k,0,1,.01,pct)),
         sel('ms_gradAxis','Direction',[['up','Up'],['down','Down'],['x','Right'],['-x','Left'],['z','Front'],['-z','Back']],'gradAxis'),S('ms_positionFrom','Position start','positionFrom',0,1,.01,pct),S('ms_positionTo','Position end','positionTo',0,1,.01,pct),S('ms_w','Direction softness','width',0,1,.01,pct),S('ms_amt','Offset','amount',0,1,.01,pct),S('ms_con','Contrast','contrast',.3,6,.05),S('ms_brk','Grunge breakup','breakup',0,1,.01,pct),S('ms_scale','Grunge scale','scale',.5,40,.5),S('ms_seed','Seed','seed',1,99,1),S('ms_dist','Distort mesh maps','distort',0,1,.01,pct),inv(),sel('ms_ganc','Also follow anchor',[['','None'],...msAnchorNames().map(x=>[x,x])],'anchor'),
-        el('p',{class:'note',text:'Combines mesh maps with separate strengths. Baked world normal and position take priority; otherwise direction and position follow the model. Bake curvature, AO, height and thickness for those inputs. Add a picture row above this generator in Multiply to use a library grunge.'}));return;}
+        msGrungeBox(r,p,ed,S),el('p',{class:'note',text:'Combines mesh maps with separate strengths. Baked world normal and position take priority; otherwise direction and position follow the model. Bake curvature, AO, height and thickness for those inputs. Pick your own grunge above to break it up with it.'}));return;}
     const choose=sel('ms_g','Preset',MS_GENS,'g'),input=choose.querySelector('select');input.onchange=()=>{ed(x=>Object.assign(x.p,['light','linear','radial','comic'].includes(input.value)?msGenDefaults(input.value):{g:input.value}));renderLayers();renderMatEd(true);};box.append(choose);
     box.append(chk('ms_uvWrap','UV wrap',p.uvWrap!==false,v=>ed(x=>{x.p.uvWrap=v;})));
     const fresh=['light','linear','radial','comic'].includes(p.g);
@@ -138,7 +138,7 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
       if(p.g==='comic'){const style=sel('ms_comicStyle','Style',[['shade','Shading and dots'],['shadow','Solid ink shadows'],['dots','Halftone dots']],'comicStyle');style.querySelector('select').addEventListener('change',()=>renderMatEd(true));box.append(style);if(p.comicStyle==='shade')box.append(S('ms_bands','Shading bands','bands',2,6,1,v=>String(v)));if(p.comicStyle!=='shadow')box.append(S('ms_dots','Dot density','dots',4,120,1,v=>String(v)),S('ms_dotSize','Dot size','dotSize',0,.8,.01,pct),S('ms_dotAngle','Dot angle','dotAngle',-180,180,1,v=>v+'°'));}
       box.append(S('ms_amt','Offset','amount',0,1,.01,pct),S('ms_con','Contrast','contrast',.3,6,.05),inv(),el('p',{class:'note',text:p.g==='light'||p.g==='comic'?'Follows surface normals; Cavity shading uses baked AO. Change the angles to move the mask across the model.':'Follows the model’s bounds. On a flat canvas it follows the image. Start and End can be reversed.'}));
     }else{const has=[msMeshTex('curv')&&'curvature',msMeshTex('ao')&&'AO',v3.mesh&&'the model'].filter(Boolean);
-      box.append(S('ms_amt','Amount','amount',0,1,.01,pct),S('ms_w','Width','width',0,1,.01,pct),S('ms_brk','Breakup','breakup',0,1,.01,pct),S('ms_dist','Distort','distort',0,1,.01,pct),S('ms_con','Contrast','contrast',.3,6,.05),S('ms_scale','Noise size','scale',.5,40,.5),S('ms_seed','Seed','seed',1,99,1,v=>String(v)),inv(),sel('ms_ganc','Also follow anchor',[['','None'],...msAnchorNames().map(x=>[x,x])],'anchor'),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),el('p',{class:'note',text:'Uses '+(has.length?has.join(', '):'the document’s maps')+'. Bake curvature and AO for the best results.'}));
+      box.append(S('ms_amt','Amount','amount',0,1,.01,pct),S('ms_w','Width','width',0,1,.01,pct),S('ms_brk','Breakup','breakup',0,1,.01,pct),S('ms_dist','Distort','distort',0,1,.01,pct),S('ms_con','Contrast','contrast',.3,6,.05),S('ms_scale','Noise size','scale',.5,40,.5),S('ms_seed','Seed','seed',1,99,1,v=>String(v)),inv(),sel('ms_ganc','Also follow anchor',[['','None'],...msAnchorNames().map(x=>[x,x])],'anchor'),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),msGrungeBox(r,p,ed,S),el('p',{class:'note',text:'Uses '+(has.length?has.join(', '):'the document’s maps')+'. Bake curvature and AO for the best results.'}));
     }
   }}
 
@@ -154,3 +154,18 @@ function pxfBox(L,r,modes){const m=pxfRowMode(r),g=seg(modes,m,v=>{msEdit(L,r,x=
 function cfxAddAnchor(L){if(!isLayer(L))return null;let row=null;const names=msAnchorNames();let nm=L.name,i=2;while(names.includes(nm))nm=L.name+' '+(i++);
   msRecord(L,'Add anchor point to “'+L.name+'”',()=>{row=msRow('anchorpt',{p:{name:nm}});L.cfx=L.cfx||[];L.cfx.push(row);L.editMask=false;});
   if(row)msSelect(L,'c',row.id);return row;}
+
+/* (0.95.7, Kenn: "generators should take your own grunge textures") the generator's breakup can be a texture: any Textures item
+   (photo grunge, mixed, generated, your own) or a picture dropped here; Breakup sets how strongly it eats into the mask */
+function msGrungeBox(r,p,ed,S){const box=el('div',{class:'dlg-grid msgrunge',id:'msGrunge'});
+  const name=el('span',{class:'note',id:'msGrungeName',text:p.gimg?p.gimg.name:'Built-in noise'});
+  const set=g=>{ed(x=>{x.p.gimg=g?{kind:g.kind,id:g.id,name:g.name}:null;});name.textContent=g?g.name:'Built-in noise';if(typeof renderMatEd==='function')renderMatEd(true);};
+  const drop=el('div',{class:'fxddrop',id:'msGrungeDrop',tabindex:'0',title:'Drop a picture here to use it as the grunge'},el('b',{text:'Drop a grunge'}),el('small',{text:'or click to browse'}));
+  drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+  drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');const tx0=e.dataTransfer.getData('text/gouache-texture');if(tx0){try{set(JSON.parse(tx0));return;}catch(er){}}fxdDropFiles(e.dataTransfer.files,set);});
+  drop.addEventListener('click',async()=>{const fs=await pickFiles('image/*',false,'Pictures',['png','jpg','jpeg','webp','tga','bmp','tif','tiff']);if(fs&&fs.length)fxdDropFiles(fs,set);});
+  box.append(el('div',{class:'sub',text:'Grunge'}),drop,el('div',{class:'chips'},el('button',{class:'btn sm',id:'msGrungePick',text:'Choose from Textures…',onclick:()=>fxdPickTexture(set)}),
+    p.gimg?el('button',{class:'btn sm',id:'msGrungeClear',text:'Use built-in noise',onclick:()=>set(null)}):'',name));
+  if(p.gimg)box.append(S('ms_gtile','Grunge tiling','gtile',.25,16,.05,v=>v.toFixed(2)+'×'),S('ms_grot','Grunge rotation','grot',0,360,1,v=>Math.round(v)+'°'),chk('ms_ginv','Invert grunge',!!p.ginv,v=>ed(x=>{x.p.ginv=v;})),
+    el('p',{class:'note',text:'Breakup sets how strongly the grunge eats into the mask. With the World projection it is laid over the model from three sides, so it has no seams.'}));
+  return box;}
