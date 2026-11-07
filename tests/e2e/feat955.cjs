@@ -36,8 +36,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.keyboard.press(']');await W(100);
  const w1=await p.evaluate(()=>{const c=__gs.v3.curEl;return c&&!c.hidden?parseFloat(c.style.width):0;});
  ok(w0>0&&w1>w0,'] grows the outline on the model without moving the mouse ('+w0.toFixed(1)+' → '+w1.toFixed(1)+')');
- const steps=await p.evaluate(()=>{const G=__gs,out=[];G.brush.size=50;G.kbBrushSize(1,false);out.push(G.brush.size);for(let i=0;i<30;i++)G.kbBrushSize(1,true);const a=G.brush.size;G.kbBrushSize(1,true);out.push(a,G.brush.size);return out;});
- ok(steps[2]/steps[1]>1.2,'holding ] speeds up (last step ×'+(steps[2]/steps[1]).toFixed(2)+')');
+ const steps=await p.evaluate(()=>{const G=__gs;G.brush.size=40;G.kbBrushSize(1,false);const f1=G.brush.size/40;for(let i=0;i<12;i++)G.kbBrushSize(1,true);const a=G.brush.size;G.kbBrushSize(1,true);return [f1,G.brush.size/a];});
+ ok(steps[1]>steps[0]+.08,'holding ] speeds up (first step ×'+steps[0].toFixed(2)+', later ×'+steps[1].toFixed(2)+')');
  await p.evaluate(()=>{__gs.brush.size=40;});
  /* ---- colour pick: one pick picture for a still view, colour set on the key press ---- */
  await p.evaluate(()=>{const G=__gs;G.setFG([.9,.1,.1]);});
@@ -77,7 +77,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const s1=await soft();ok(s1>s0+30,'Shift + drag smooths the paint (soft edge pixels '+s0+' → '+s1+')');
  /* ---- Polygon fill ---- */
  ok(await p.evaluate(()=>!!document.querySelector('#tools .tool[data-tool="pfill"]')&&getComputedStyle(document.querySelector('#tools .tool[data-tool="pfill"]')).display!=='none'),'3D Paint has a Polygon fill tool button');
- await p.evaluate(()=>{const G=__gs;G.undo();G.undo();G.setFG([.1,.2,.9]);G.setTool('pfill');G.pf.kind='island';});await W(300);
+ await p.evaluate(()=>{const G=__gs;G.undo();G.undo();G.selectOnly(G.layerByName('Paint'));G.setFG([.1,.2,.9]);G.setTool('pfill');G.pf.kind='island';});await W(300);
  ok(await p.evaluate(()=>/Face/.test(document.getElementById('brushBody').textContent)&&/UV island/.test(document.getElementById('brushBody').textContent)),'its options: Face, Triangle, Loop, UV island');
  const blue=()=>p.evaluate(()=>{const L=__gs.layerByName('Paint'),T=__gs.mapT(L,'base'),d=__gs.captureRegionNow(T,0,0,T.w,T.h).data;let n=0;for(let i=0;i<d.length;i+=4)if(d[i+2]>180&&d[i]<80&&d[i+3]>200)n++;return [n,d.length/4];});
  const h0=await p.evaluate(()=>__gs.hist?__gs.hist.undo.length:0);const q0=await blue();

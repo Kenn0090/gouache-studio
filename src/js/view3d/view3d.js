@@ -620,14 +620,14 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     if(e.button===0&&!e.altKey&&!st3.sKey&&(maskToolsOn()||liveOn())&&mk3Down(hit,e))return;
     if(e.button===0&&typeof pfDown==='function'&&pfDown(hit,e))return;
     let how=v3NavOf(hit,e);
-    if(how==='paint'){if(e.button===0&&meshDown(hit,e)&&v3.mstroke)return;how='turn';if(stroke)return;}
+    if(how==='paint'){if(e.button===0&&meshDown(hit,e)&&(v3.mstroke||v3.shiftPend))return;how='turn';if(stroke)return;}
     v3.drag={x:e.clientX,y:e.clientY,how,id:e.pointerId,x0:e.clientX,y0:e.clientY,alt:e.altKey&&e.button===0,penAlt:how==='pan'&&e.altKey&&typeof penPanBtn==='function'&&penPanBtn(e)};});
   hit.addEventListener('pointermove',e=>{v3PickHold.hit=hit;v3PickHold.point={clientX:e.clientX,clientY:e.clientY};if(sel3DragBusy()){sel3DragMove(hit,e);return;}if(typeof pfBusy==='function'&&pfBusy()){pfMove(hit,e);return;}if(typeof pfHover==='function'&&!e.buttons&&!v3PickHeld(e)&&pfHover(hit,e)){meshCursor(hit,null);return;}sel3HoverMove(hit,e);if(pgz.drag){if(!e.buttons){pgzUp();return;}pgzMove(hit,e);return;}if(lgz.drag){if(!e.buttons){lgzUp();return;}lgzMove(hit,e);return;}if(!e.buttons&&!v3PickHeld(e)&&pgzHover(hit,e)){meshCursor(hit,null);return;}if(mk3Busy()){mk3Move(hit,e);return;}meshCursor(hit,e);
     /* no button held any more: the release went missing (another window, a pen gesture, Alt menu mode); finish instead of sticking */
-    if(!e.buttons){if(v3.mstroke)meshUp();if(v3.drag)v3.drag=null;}
+    if(!e.buttons){if(v3.mstroke||v3.shiftPend)meshUp();if(v3.drag)v3.drag=null;}
     /* a pen hovering with its side button held moves the view (no tip contact, so no pointerdown arrives) */
     if(e.pointerType==='pen'&&prefs.penPan!==false&&(e.buttons&6)&&!(e.buttons&1)&&!v3.drag&&!v3.mstroke)v3.drag={x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,how:'pan',id:e.pointerId,alt:false};
-    if(v3.mstroke){meshMove(hit,e);return;}const d=v3.drag;
+    if(v3.mstroke||v3.shiftPend){meshMove(hit,e);return;}const d=v3.drag;
     /* (0.68.3) Alt + the pen's button pans; let go of Alt with the button still down and the same drag zooms (press Alt again to pan), like Painter */
     if(d&&d.penAlt&&(d.how==='pan'||d.how==='zoom'))d.how=e.altKey?'pan':'zoom';
     if(!d){if(v3PickHeld(e)&&!e.buttons)v3HoverPick(hit,e);return;}
