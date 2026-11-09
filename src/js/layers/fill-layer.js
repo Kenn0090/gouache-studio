@@ -121,8 +121,8 @@ function fillDrawMap(L,k,T){const f=L.fill,s=f.maps[k],grey=MAP_DEFS[k].grey,bk=
 /* (0.95.2, Kenn: smaller 4K textures) a grey channel's picture (roughness, metal, AO, height…) is kept in ONE channel on the graphics card:
    a quarter of the memory, no loss (Preferences › Memory and disk). Done the first time it is drawn; copies keep the one channel. */
 function fillMonoize(L,k){const img=L._fillImg&&L._fillImg[k];if(!img||img.mono||img.packed||img.depth===16||prefs.monoGrey===false||!MAP_DEFS[k]||!MAP_DEFS[k].grey||img.w*img.h<65536)return img;
-  const m=makeTarget(img.w,img.h,8,true,false,true);blit(img,m,0,0,img.w,img.h,0,0);m.opaque=true;if(img._instSrc)m._instSrc=img._instSrc;disposeTarget(img);L._fillImg[k]=m;return m;}
-function fillImgCopy(s){const t=makeTarget(s.w,s.h,8,true,false,!!s.mono);blit(s,t,0,0,s.w,s.h,0,0);return t;}
+  const m=makeTarget(img.w,img.h,8,true,false,true);blit(img,m,0,0,img.w,img.h,0,0);m.opaque=true;if(img._instSrc)m._instSrc=img._instSrc;if(img._lib)m._lib=img._lib;disposeTarget(img);L._fillImg[k]=m;return m;}
+function fillImgCopy(s){const t=makeTarget(s.w,s.h,8,true,false,!!s.mono);blit(s,t,0,0,s.w,s.h,0,0);if(s._lib)t._lib=s._lib;return t;}
 function fillRender(L,only){const f=L.fill;if(!f)return;
   for(const k of fillMapsOf()){if(only&&k!==only)continue;const s=f.maps[k]||(f.maps[k]=fillDefaults().maps[k]);
     /* Hide the bumps below: a flat height and normal even where the material has none of its own (decals only cover their outline) */

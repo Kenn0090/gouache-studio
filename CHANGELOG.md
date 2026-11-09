@@ -2,6 +2,8 @@
 
 - **Pixels beyond the canvas are kept:** moving or transforming a layer partly off the canvas no longer cuts it off. Move it back and the hidden part comes back (undo works as usual), and the hidden pixels are saved in the .gouache file.
 - **Crop › Delete cropped pixels** (on by default, as before). Turn it off and what the crop box leaves out stays hidden: pick Crop again and drag the box out over the dashed outline (or press **Reveal all**) to bring it back. Tilted crops can keep it too. Cropping larger than the canvas also brings hidden pixels back.
+- **Smart materials made from Library materials are much smaller**: they remember which Library material each layer uses instead of copying its pictures, and fetch it again when added. This also works after reopening a project. To shrink a smart material you already saved, add the Library materials again and save it again.
+- **Smart materials that cannot be added now say why** (for example, not enough graphics memory) instead of silently adding nothing.
 
 ## 0.96.3
 
