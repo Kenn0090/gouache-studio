@@ -1,3 +1,9 @@
+## 0.96.2
+
+- **No more herringbone on shiny baked models:** baked normal maps are kept with fine (16-bit) steps inside the app, exported from the Bake tab as 16-bit PNGs, and the model's final normal is built with fine steps too. Normal maps exported as ordinary 8-bit pictures get a very fine grain instead of the stepped contour lines that bent at every triangle (the zig-zag on chrome).
+- **No more swirls at full roughness:** the blurriest environment reflections were tiny pictures mixed from too few samples, so smooth, very rough surfaces showed blocky swirls. They are now larger and mixed from more samples.
+- **Height depth with several texture sets:** each set is now displaced by its own height map, not the selected set's.
+
 ## 0.96.1
 
 - **No more breaks at UV seams in generated masks:** on a model, Warp rows (and the Warp filter) now push the picture along the model's surface, so both sides of a UV seam move together, and a generator's Distort roughens edges and cavities on the surface instead of reading from a shifted spot of the texture. Smart masks and smart materials that use them are seamless again.

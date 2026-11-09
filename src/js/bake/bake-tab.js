@@ -215,7 +215,7 @@ async function bakeExport(){const tick=bakeCfg.send||{},ks=bakeSendable().filter
   const fileOf={normal:'Normal',height:'Height',ao:'AO',curv:'Curvature',curvEdge:'CurvatureEdges',curvCrease:'CurvatureCreases',thick:'Thickness',wnormal:'WorldNormal',position:'Position',id:'ID',light:'Lighting'};
   loadStart('Exporting baked maps');try{const files=[];let i=0;
     for(const k of ks){loadSet(i++/ks.length,BAKE_NAMES[k]+'…');await loadPaint();const col=k==='normal'||k==='wnormal'||k==='position'||k==='id'||k==='light',C=col?3:1;let f=readMapF(bk.res[k],col?4:1);if(C===3)f=dropAlpha(f,W*H);
-      const blob=await encodeTex(W,H,f,C,'png',k==='height'&&canFloat?16:8);files.push({name:base+'_'+fileOf[k]+'.png',data:new Uint8Array(await blob.arrayBuffer())});}
+      const blob=await encodeTex(W,H,f,C,'png',(k==='height'||k==='normal')&&canFloat?16:8);files.push({name:base+'_'+fileOf[k]+'.png',data:new Uint8Array(await blob.arrayBuffer())});}
     if(dir){const sep=dir.includes('\\')?'\\':'/';for(const f of files)await platform.writeFile(dir.replace(/[\\/]$/,'')+sep+f.name,f.data);toast('Saved '+files.length+' baked map'+(files.length>1?'s':'')+' to '+dir);}
     else{const r=await deliver(base+'_bake.zip',await makeZipMulti(files));toast(deliveredText(r,'Baked maps'));}}
   catch(e){console.error(e);toast('Export failed: '+(e.message||e));}finally{loadEnd();}}

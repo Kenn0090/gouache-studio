@@ -74,7 +74,9 @@ function envBuild(img,key,name){envFree();let {w,h,rgb}=img;
   let data=px;if(!canFloat){data=new Uint8Array(w*h*4);for(let i=0;i<px.length;i++)data[i]=Math.min(255,Math.pow(px[i]/(1+px[i]),1/2.2)*255);}
   const src=envTex(w,h,data);gl.bindTexture(gl.TEXTURE_2D,src);gl.generateMipmap(gl.TEXTURE_2D);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
   env.src={tex:src,w,h};const PR=envProgs();let lw=Math.min(512,w);
-  for(let i=0;i<ENV_LEVELS;i++){const W=Math.max(16,lw>>i),H=Math.max(8,W>>1),t=envTarget(W,H);run(PR.pre,t,{uSrc:src,uR:i/(ENV_LEVELS-1),uN:{int:i===0?1:i<2?64:128},uSrcW:w,uOutW:{int:W},uOutH:{int:H}});env.lv.push(t);}
+  /* (0.96.2, Kenn's friend: swirls at full roughness) the blurriest levels were 16×8 and 32×16 pixels mixed from 128 samples: smooth,
+     very rough surfaces showed their blocky texels and sample pattern as swirls. Now no level is smaller than 64×32 and rough ones take 256. */
+  for(let i=0;i<ENV_LEVELS;i++){const W=Math.max(64,lw>>i),H=Math.max(32,W>>1),t=envTarget(W,H);run(PR.pre,t,{uSrc:src,uR:i/(ENV_LEVELS-1),uN:{int:i===0?1:i<2?64:i<3?128:256},uSrcW:w,uOutW:{int:W},uOutH:{int:H}});env.lv.push(t);}
   const irr=envTarget(64,32);run(PR.irr,irr,{uSrc:src,uOutW:{int:64},uOutH:{int:32}});env.irr=irr;env.key=key;env.name=name;v3.dirty=true;requestRender();}
 /* the bundled ones: inside the page (web version) or beside it (desktop) */
 async function envBundled(file){try{if(typeof aiDB!=='undefined'){const v=await aiDB.get('hdri/'+file+'_2k.hdr');if(v&&v.buf)return new Uint8Array(v.buf);}}catch(e){}/* a 2K sky downloaded in File › Content */

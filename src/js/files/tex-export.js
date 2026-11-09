@@ -102,6 +102,10 @@ async function encodePNGx(W,H,q,C,bits){const bpp=C*bits/8,row=1+W*bpp,raw=new U
   for(let y=0;y<H;y++){let o=y*row+1;const s=y*W*C,e=s+W*C;if(bits===16)for(let i=s;i<e;i++){raw[o++]=q[i]>>8;raw[o++]=q[i]&255;}else for(let i=s;i<e;i++)raw[o++]=q[i];}
   const z=await zlib(raw),ih=new Uint8Array(13),dv=new DataView(ih.buffer);dv.setUint32(0,W);dv.setUint32(4,H);ih[8]=bits;ih[9]=C===1?0:C===3?2:6;
   return new Blob([new Uint8Array([137,80,78,71,13,10,26,10]),chunk('IHDR',ih),chunk('IDAT',z),chunk('IEND',new Uint8Array(0))],{type:'image/png'});}
+/* (0.96.2) a fine, even grain of ±1 step before an 8-bit normal map is rounded: without it a gentle slope rounds into
+   contour lines that bend at every triangle (herringbone and swirls on shiny or smooth surfaces); with it, they melt into noise
+   too fine to see. Same seed every time, so exports are repeatable. */
+function texDither(f){let s=0x9e3779b9;const r=()=>{s^=s<<13;s^=s>>>17;s^=s<<5;return (s>>>0)/4294967296;};for(let i=0;i<f.length;i++)f[i]+=(r()-r())/255;return f;}
 function quant(f,bits){const m=bits===16?65535:255,q=bits===16?new Uint16Array(f.length):new Uint8Array(f.length);for(let i=0;i<f.length;i++)q[i]=Math.min(1,Math.max(0,f[i]))*m+.5|0;return q;}
 async function encodeTex(W,H,f,C,fmt,bits){
   if(fmt==='tga'){const q=quant(f,8),st=new Uint8Array(W*H*4);for(let i=0;i<W*H;i++){if(C===1){st[i*4]=st[i*4+1]=st[i*4+2]=q[i];st[i*4+3]=255;}else{st.set(q.subarray(i*C,i*C+C),i*4);if(C===3)st[i*4+3]=255;}}
@@ -130,9 +134,9 @@ async function buildTexturesIn(pr,name,W,H,nw,nh,pad,U){
     else if(o.grey){const g=grey(o.grey);if(!g)continue;f=g.slice();C=1;}
     else{C=o.ch.length;f=new Float32Array(n*C);o.ch.forEach((k,c)=>{const g=grey(k),inv=k==='smooth',d=def(k);for(let i=0;i<n;i++){const v=g?g[i]:d;f[i*C+c]=inv&&g?1-v:v;}});}
     const bits=o.grey==='height'&&texCfg.h16&&ext==='png'?16:8;
-    if(U){for(const T of U.B.tiles){const R=udimTileRect(U.m,T,W,H),r=resampleF(texCrop(f,W,H,C,R),R[2],R[3],C,nw,nh,C===4);
+    if(U){for(const T of U.B.tiles){const R=udimTileRect(U.m,T,W,H),r=resampleF(texCrop(f,W,H,C,R),R[2],R[3],C,nw,nh,C===4);if(o.rgb==='normal'&&bits===8)texDither(r);
       const blob=await encodeTex(nw,nh,r,C,ext,bits);files.push({suffix:o.s,tile:T.id,name:pr.name(name).replace('{s}',o.s)+'.'+T.id+'.'+ext,data:new Uint8Array(await blob.arrayBuffer())});await tick();}continue;}
-    const r=resampleF(f,W,H,C,nw,nh,C===4);
+    const r=resampleF(f,W,H,C,nw,nh,C===4);if(o.rgb==='normal'&&bits===8)texDither(r);
     const blob=await encodeTex(nw,nh,r,C,ext,bits);files.push({suffix:o.s,name:pr.name(name).replace('{s}',o.s)+'.'+ext,data:new Uint8Array(await blob.arrayBuffer())});await tick();}
   return files;}
 function dropAlpha(f,n){const o=new Float32Array(n*3);for(let i=0;i<n;i++){o[i*3]=f[i*4];o[i*3+1]=f[i*4+1];o[i*3+2]=f[i*4+2];}return o;}
