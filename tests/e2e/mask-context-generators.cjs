@@ -6,7 +6,7 @@ let fails=0;const ok=(v,s)=>{console.log((v?'PASS ':'FAIL ')+s);if(!v)fails++;};
  ok(await p.evaluate(()=>{const b=__gs.allLayers().find(l=>l.name==='Base material');return b.fill.maps.base.c.every(v=>v===.82)&&b.fill.maps.rough.v===.6&&b.fill.maps.metal.v===0;}),'new texture set has a greyish-white non-metal base material');
  const target=p.locator('.lrow').filter({has:p.locator('.lname',{hasText:'Target layer'})});await target.locator('.mthumb').click({button:'right'});
  ok(await p.evaluate(()=>__gs.doc.active===targetLayer&&targetLayer.editMask),'right-click selects the clicked mask on another layer');
- await p.getByRole('menuitem',{name:'Generators',exact:true}).click();ok(await p.locator('#menuSub [role=menuitem]').count()===await p.evaluate(()=>__gs.MS_GENS.length),'submenu lists every available generator');
+ await p.getByRole('menuitem',{name:'Generators',exact:true}).click();ok(await p.locator('#menuSub [role=menuitem]').count()===await p.evaluate(()=>__gs.MS_GENS.length+__gs.MS_MESH_GENS.length+3),'submenu lists every available generator (and the baked maps)');
  await p.getByRole('menuitem',{name:'Light',exact:true}).click();
  ok(await p.evaluate(()=>targetLayer.mask.stack.at(-1).kind==='gen'&&targetLayer.mask.stack.at(-1).p.g==='light'&&!otherLayer.mask),'generator is added to the clicked mask only');
  ok(await p.locator('#ms_lightAz').count()===1,'generator settings open immediately');

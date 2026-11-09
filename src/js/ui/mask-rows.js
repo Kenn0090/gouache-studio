@@ -70,6 +70,11 @@ async function msPickImage(L,r){if(!r)return;const fs=await pickFiles('image/*',
   let t;try{t=await fileTarget(f);}catch(er){toast('Could not read '+f.name+': '+(er.message||er));return;}setWrap(t,true);
   msEdit(L,r,x=>{x.t=t;x.p.name=f.name;});(L.mask._rows||(L.mask._rows=new Set())).add(r);renderLayers();renderMatEd(true);}
 
+/* (0.96.1, Kenn) a texture tile dragged from the Textures panel onto a Picture row replaces its picture */
+function msImageDrop(L,r){const drop=el('div',{class:'fxddrop',id:'msImageDrop',tabindex:'0',title:'Drop a texture tile here to use it as this picture'},el('b',{text:'Drop a texture'}),el('small',{text:'a tile from Textures'}));
+  drop._texDrop=async ref=>{try{await txLoad();const it=fxdAllTex().find(x=>x.kind===ref.kind&&x.id===ref.id);if(!it)return;const t=txCopy(await txTarget(it));setWrap(t,true);
+      msEdit(L,r,x=>{x.t=t;x.p.name=it.name;});(L.mask._rows||(L.mask._rows=new Set())).add(r);renderLayers();renderMatEd(true);}catch(e){toast('Could not read that texture: '+(e.message||e));}};
+  return drop;}
 /* ---- Properties: the selected row's settings ---- */
 function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
   const ed=fn=>msEdit(L,r,fn);const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:p[key]==null?min:p[key],fmt:fmt||(v=>String(Math.round(v*100)/100)),onInput:v=>ed(x=>{x.p[key]=v;})}).el;
@@ -104,7 +109,11 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
   if(r.kind==='anchor'){const ns=msAnchorNames();if(p.name&&!ns.includes(p.name))ns.unshift(p.name);
     box.append(sel('ms_anc','Anchor',ns.map(x=>[x,x]),'name'),el('div',{class:'sub',text:'Reads'}),seg([['height','Height'],['shape','Shape'],['colour','Colour']],p.ch||'height',v=>{ed(x=>{x.p.ch=v;});renderLayers();},'Reads'),inv(),
       el('p',{class:'note',text:msAnchor(p.name)?'Follows “'+msAnchor(p.name).name+'”, live.':'That anchor point is gone.'}));}
-  if(r.kind==='mesh'){const ks=msMeshKeys();if(!ks.includes(p.k))ks.unshift(p.k);box.append(sel('ms_k','Map',ks.map(k=>[k,msMeshName(k)]),'k'),inv(),
+  if(r.kind==='mesh'){const ks=msMeshKeys();if(!ks.includes(p.k))ks.unshift(p.k);if(p.bal==null)p.bal=0;if(p.con==null)p.con=0;
+    const curvy=/curv(?!Edge|Crease)/.test(p.k);
+    box.append(sel('ms_k','Map',ks.map(k=>[k,msMeshName(k)]),'k'),
+      ...(curvy?[el('div',{class:'sub',text:'Use'}),seg([['both','Both'],['edges','Edges'],['cavities','Cavities']],p.part||'both',v=>{ed(x=>{x.p.part=v;});},'Curvature part')]:[]),
+      S('ms_bal','Balance','bal',-1,1,.01,v=>(v>0?'+':'')+Math.round(v*100)),S('ms_con','Contrast','con',-1,1,.01,v=>(v>0?'+':'')+Math.round(v*100)),inv(),
     el('p',{class:'note',text:msMeshTex(p.k)?'A baked map of this texture set.':'Not baked yet: using the document’s own map, if it has one.'}));}
   if(r.kind==='id'){const sw=(p.cols||[]).map((c,i)=>el('button',{class:'idsw',style:'background:'+toHex(c),title:'Remove this colour','aria-label':'Remove colour '+toHex(c),onclick:()=>{ed(x=>x.p.cols.splice(i,1));renderMatEd(true);}}));
     box.append(el('div',{class:'chips'},...sw,el('button',{class:'btn sm',text:'Pick colours',onclick:()=>{msSelect(L,where,r.id);ui.viewMask=true;L.editMask=true;maskTool('id');renderLayers();}})),
@@ -116,7 +125,7 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
   if(r.kind==='grad')box.append(sel('ms_axis','Towards',[['up','Top'],['down','Bottom'],['x','Right'],['-x','Left'],['z','Front'],['-z','Back']],'axis'),S('ms_from','From','from',0,1,.01,pct),S('ms_to','To','to',0,1,.01,pct),inv());
   if(r.kind==='noise')box.append(sel('ms_type','Pattern',MS_NOISES,'type'),S('ms_scale','Size','scale',.5,40,.5),S('ms_con','Contrast','contrast',.2,8,.05),S('ms_lvl','Level','level',-1,1,.01),S('ms_seed','Seed','seed',1,99,1,v=>String(v)),
     inv(),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]));
-  if(r.kind==='image')box.append(el('div',{class:'row wrap'},el('span',{class:'note',text:p.name||'No picture'}),el('button',{class:'btn sm',text:'Choose picture…',onclick:()=>msPickImage(L,r)})),
+  if(r.kind==='image')box.append(el('div',{class:'row wrap'},el('span',{class:'note',text:p.name||'No picture'}),el('button',{class:'btn sm',text:'Choose picture…',onclick:()=>msPickImage(L,r)})),msImageDrop(L,r),
     makeSlider({id:'ms_imgContrast',label:'Contrast',min:-1,max:4,step:.01,value:p.contrast??0,fmt:pct,onInput:v=>ed(x=>{x.p.contrast=v;})}).el,
     S('ms_tile','Tile','tile',.25,16,.25,v=>v+'×'),inv(),pxfBox(L,r,PXF_MODES));
   if(r.kind==='alpha')box.append(inv(),el('p',{class:'note',text:'Uses the transparency of this material’s picture (and its Opacity map, if it has one). Where it is see-through, the layers under show in every map.'}));
@@ -161,12 +170,12 @@ function cfxAddAnchor(L){if(!isLayer(L))return null;let row=null;const names=msA
 function msGrungeBox(r,p,ed,S){const box=el('div',{class:'dlg-grid msgrunge',id:'msGrunge'});
   const name=el('span',{class:'note',id:'msGrungeName',text:p.gimg?p.gimg.name:'Built-in noise'});
   const set=g=>{ed(x=>{x.p.gimg=g?{kind:g.kind,id:g.id,name:g.name}:null;});name.textContent=g?g.name:'Built-in noise';if(typeof renderMatEd==='function')renderMatEd(true);};
-  const drop=el('div',{class:'fxddrop',id:'msGrungeDrop',tabindex:'0',title:'Drop a picture here to use it as the grunge'},el('b',{text:'Drop a grunge'}),el('small',{text:'or click to browse'}));
+  const drop=el('div',{class:'fxddrop',id:'msGrungeDrop',tabindex:'0',title:'Drop a texture tile or a picture here to use it as the grunge'},el('b',{text:'Drop a grunge'}),el('small',{text:'a Textures tile or a picture, or click to browse'}));drop._texDrop=set;
   drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
   drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');const tx0=e.dataTransfer.getData('text/gouache-texture');if(tx0){try{set(JSON.parse(tx0));return;}catch(er){}}fxdDropFiles(e.dataTransfer.files,set);});
   drop.addEventListener('click',async()=>{const fs=await pickFiles('image/*',false,'Pictures',['png','jpg','jpeg','webp','tga','bmp','tif','tiff']);if(fs&&fs.length)fxdDropFiles(fs,set);});
   box.append(el('div',{class:'sub',text:'Grunge'}),drop,el('div',{class:'chips'},el('button',{class:'btn sm',id:'msGrungePick',text:'Choose from Textures…',onclick:()=>fxdPickTexture(set)}),
     p.gimg?el('button',{class:'btn sm',id:'msGrungeClear',text:'Use built-in noise',onclick:()=>set(null)}):'',name));
-  if(p.gimg)box.append(S('ms_gtile','Grunge tiling','gtile',.25,16,.05,v=>v.toFixed(2)+'×'),S('ms_grot','Grunge rotation','grot',0,360,1,v=>Math.round(v)+'°'),chk('ms_ginv','Invert grunge',!!p.ginv,v=>ed(x=>{x.p.ginv=v;})),
+  if(p.gimg)box.append(S('ms_gtile','Grunge tiling','gtile',.25,16,.05,v=>v.toFixed(2)+'×'),S('ms_grot','Grunge rotation','grot',0,360,1,v=>Math.round(v)+'°'),S('ms_gcon','Grunge contrast','gcon',-1,1,.01,v=>(v>0?'+':'')+Math.round(v*100)+'%'),S('ms_glev','Grunge level','glev',-1,1,.01,v=>(v>0?'+':'')+Math.round(v*100)+'%'),chk('ms_ginv','Invert grunge',!!p.ginv,v=>ed(x=>{x.p.ginv=v;})),
     el('p',{class:'note',text:'Breakup sets how strongly the grunge eats into the mask. With the World projection it is laid over the model from three sides, so it has no seams.'}));
   return box;}

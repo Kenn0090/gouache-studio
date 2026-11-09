@@ -1,3 +1,17 @@
+## 0.96.1
+
+- **No more breaks at UV seams in generated masks:** on a model, Warp rows (and the Warp filter) now push the picture along the model's surface, so both sides of a UV seam move together, and a generator's Distort roughens edges and cavities on the surface instead of reading from a shifted spot of the texture. Smart masks and smart materials that use them are seamless again.
+- **Drop a texture tile on a generator's Grunge box** (from the Textures panel or shelf): it becomes the grunge. This works for every generator including the Mask builder, Slope blur's picture box, the Fur pattern, and a mask's Picture row (its picture is replaced).
+- **Grunge contrast and level** sliders for a generator's grunge.
+- **Slope blur is seamless on a model too** (the mask row and the Slope blur filter): the smear follows the model's surface across UV seams. The filter has an "Across mesh seams" tick to turn it off.
+- **Baked normal maps match other apps:** the baker now works out the surface directions of the model the standard way (MikkTSpace, used by Blender, Marmoset, Substance, Unity, Unreal and Godot). FBX low-polys used to get these directions polygon by polygon, which left a zig-zag, triangle-by-triangle pattern on shiny, smooth surfaces when the map was used anywhere else. Re-bake normal maps made with earlier versions.
+- **Gradient map, rebuilt:** a grid of small gradient previews to pick from (click one, the picture updates live); an editor for the colour stops (click under the strip to add one, drag to move, drag away to remove, colour and position boxes, Spread evenly, Flip); **Save as new / Update** your own gradients (shared with the Gradient tool, kept for future projects; right-click one to rename, duplicate or delete; Import / Export to share); **Pick from picture** (drag a line across the canvas or the model and its colours become the gradient, dark to light); blending **Smooth / Linear / Hard**, a **Steps** slider for toon-like bands, **Input dark / light** and **Strength**.
+- **Levels is smaller and sharp:** drawn at the screen's real resolution, shorter, the histogram tinted per channel with the cut-off parts dimmed, and number boxes for every handle.
+- **Baked maps under Generators:** right-click a mask › Generators now starts with Ambient occlusion, Curvature (both, edges or cavities), Thickness and Height. Each row has **Balance**, **Contrast** and **Invert**, like Painter's.
+- **A short menu for the mask:** right-clicking a mask thumbnail now shows only mask things: make it (Paint, Fill white, Fill black, Generators with the baked maps first, Noise and grunge, Picture, ID colour, anchors), change it (Levels, Invert, Blur, More filters) and its own commands (copy, paste, clear, flatten, save as smart mask, delete). The layer's commands stay on the layer's name. Works in Paint and 3D Paint.
+- **L is the Lasso again in the 2D canvas** (Shift+X still turns symmetry on and off). In 3D Paint, L stays Mirror X.
+- **The fill layer button uses a highlighted material once:** after it adds that material the highlight clears, so the next press adds a plain base material.
+
 ## 0.96.0
 
 - **Scripting:** Window › Scripts… lets you write, run, save and share scripts that drive the app (layers, materials, masks, filters, brushes and strokes, selections, 3D Paint texture sets, any menu command). A whole run is one undo step, Stop stops it, mistakes are explained in plain words, and examples are included.

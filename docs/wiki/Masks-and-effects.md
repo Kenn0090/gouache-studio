@@ -12,7 +12,7 @@ Select the layer, click its **mask thumbnail**, then press **✦** (the effects 
 
 **Generators** have a **Distort** setting: the edges and cavities they find are read a little to the side, following a noise, so wear and dirt break up irregularly instead of following every edge exactly.
 
-**Your own grunge in a generator:** select a generator row and, in Properties under **Grunge**, click **Choose from Textures…** (photo grunges, mixed, generated or your own) or drop a picture onto the box. The picture then breaks up the mask instead of the built-in noise; **Breakup** sets how strongly. **Grunge tiling**, **Grunge rotation** and **Invert grunge** adjust it, and **Use built-in noise** goes back. With the World projection the picture is laid over the model from three sides, so it has no seams.
+**Your own grunge in a generator:** select a generator row and, in Properties under **Grunge**, click **Choose from Textures…** (photo grunges, mixed, generated or your own) or drop a picture onto the box. The picture then breaks up the mask instead of the built-in noise; **Breakup** sets how strongly. **Grunge tiling**, **Grunge rotation**, **Grunge contrast**, **Grunge level** and **Invert grunge** adjust it (you can also drag a tile from the Textures panel onto the box), and **Use built-in noise** goes back. With the World projection the picture is laid over the model from three sides, so it has no seams.
 
 Click the layer's own thumbnail instead, and ✦ adds **effects to the layer's content** (blue **fx** rows): filters such as Blur, Levels or Hue/Saturation that change the layer's own maps before it is blended.
 
@@ -89,6 +89,8 @@ In Properties, each channel of a material can be a colour or value, an **Image**
 Generators and filters have **UV wrap** on by default. When an effect samples beyond a texture edge, it reads the opposite edge, including intermediate blur passes and anchor-height curvature used by generators. Turn it off in Properties or the filter settings to clamp at the border. The choice is saved with the effect and exported smart materials.
 
 This repeats across the texture's outer edges. It does not join separate UV islands on a mesh, and it does not change the document's tile-painting mode.
+
+**Across UV seams on a model:** in 3D Paint, Warp rows, the Warp filter and the Gaussian and Box blurs work on the model's surface, so both sides of a seam match. A generator's **Distort** roughens the edges and cavities on the surface too, and **Slope blur** smears along the surface.
 
 ## Mesh-map Mask builder
 

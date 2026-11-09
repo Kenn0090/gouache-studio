@@ -11,12 +11,16 @@ const MS_MODES=[['normal','Normal','Norm'],['multiply','Multiply','Mult'],['add'
 const msModeIx=m=>Math.max(0,MS_MODES.findIndex(x=>x[0]===m));
 const MS_GENS=[['edge','Edge wear'],['dirt','Dirt in cavities'],['dust','Dust on top'],['moss','Moss'],['rust','Rust streaks'],['water','Water line'],['slime','Slime'],['crud','Crud'],
   ['chips','Chipped paint'],['scratch','Scratches'],['snow','Snow on top'],['soot','Soot'],['drips','Drips and leaks'],['bleach','Sun-bleached'],['light','Light'],['linear','Linear gradient'],['radial','Radial gradient'],['comic','Comic shading'],['builder','Mask builder']];
+/* (0.96.1, Kenn) baked maps straight from Generators, with Balance / Contrast / Invert like Painter's */
+const MS_MESH_GENS=[['ao','Ambient occlusion'],['curv','Curvature'],['curv','Curvature: edges','edges'],['curv','Curvature: cavities','cavities'],['thick','Thickness'],['height','Height']];
+/* the baked map if this set has one, else a converted one (cv:), else the name itself (the document's own map is used) */
+function msMeshPick(k){const M=doc.meshMaps||{};return M[k]?k:M['cv:'+k]?'cv:'+k:k;}
 const MS_NOISES=[['clouds','Clouds'],['cells','Cells'],['grunge','Grunge'],['scratches','Scratches'],['streaks','Streaks'],['dots','Dots'],['fibres','Fibres']];
 /* what each row kind is: its title, and its settings when new */
 const MS_KINDS={
   paint:{title:'Paint',p:()=>({})},
   fill:{title:'Fill',p:()=>({v:1})},
-  mesh:{title:'Mesh map',p:()=>({k:'ao',inv:false})},
+  mesh:{title:'Mesh map',p:()=>({k:'ao',inv:false,bal:0,con:0,part:'both'})},
   id:{title:'ID colour',p:()=>({cols:[],tol:.08,soft:.04,inv:false})},
   dir:{title:'Direction',p:()=>({axis:'up',angle:50,soft:15,inv:false})},
   grad:{title:'Gradient',p:()=>({axis:'up',from:0,to:1,inv:false})},
@@ -96,7 +100,7 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; float m=0.0,cov=1.0;
 const FS_MSGEN=MS_NOISE_GLSL+MS_SURF_GLSL+`
 uniform sampler2D uCurv; uniform int uHasCurv; uniform sampler2D uAO; uniform int uHasAO; uniform int uG; uniform float uAmt; uniform float uWidth; uniform float uBreak; uniform float uCon; uniform float uScale; uniform int uNeg; uniform float uDist;
 uniform sampler2D uCurv2; uniform int uHasCurv2; uniform vec4 uLight; uniform vec4 uGrad; uniform vec3 uAxis; uniform vec3 uCenter; uniform vec4 uComic; uniform int uComicMode;
-uniform sampler2D uGTex; uniform int uHasG; uniform float uGTile; uniform int uGInv; uniform float uGRot;
+uniform sampler2D uGTex; uniform int uHasG; uniform float uGTile; uniform int uGInv; uniform float uGRot; uniform float uGCon; uniform float uGLev;
 uniform vec4 uBuilder; uniform vec3 uBuilderExtra; uniform vec4 uBuilderRange; uniform sampler2D uHeight; uniform sampler2D uThick; uniform sampler2D uWorldN; uniform sampler2D uPosition; uniform int uHasHeight; uniform int uHasThick; uniform int uHasWorldN; uniform int uHasPosition;
 float curvOf(vec2 uv){ float c=uHasCurv==1?texture(uCurv,uv).r:0.5; if(uHasCurv2==1) c=clamp(c+(texture(uCurv2,uv).r-0.5)*1.5,0.0,1.0); return c; }
 float aoOf(vec2 uv){ return uHasAO==1?texture(uAO,uv).r:1.0; }
@@ -107,11 +111,16 @@ float grungeOf(vec2 uv){ vec3 q=surfQ(uv)*uGTile; float c=cos(uGRot),s=sin(uGRot
     vec2 a=q.zy,b=q.xz,d=q.xy; a=vec2(c*a.x-s*a.y,s*a.x+c*a.y); b=vec2(c*b.x-s*b.y,s*b.x+c*b.y); d=vec2(c*d.x-s*d.y,s*d.x+c*d.y);
     g=texture(uGTex,fract(a)).r*w.x+texture(uGTex,fract(b)).r*w.y+texture(uGTex,fract(d)).r*w.z; }
   else { vec2 d=q.xy; d=vec2(c*d.x-s*d.y,s*d.x+c*d.y); g=texture(uGTex,fract(d)).r; }
-  return uGInv==1?1.0-g:g; }
+  if(uGInv==1) g=1.0-g;
+  /* (0.96.1, Kenn) contrast and level for the dropped grunge */
+  float k=uGCon>=0.0?1.0+uGCon*4.0:1.0+uGCon*0.95; g=clamp((g-0.5)*k+0.5+uGLev*0.5,0.0,1.0); return g; }
 void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(); vec3 q=surfQ(uv)*uScale;
   /* (0.27) Distort: the edges and cavities read a little off to the side, following a noise, so they break up irregularly */
-  if(uDist>0.0){ vec2 dd=vec2(fbm(q*0.45+vec3(3.1,0.0,1.7)),fbm(q*0.45+vec3(0.0,7.7,4.2)))-0.5; uv+=dd*uDist*0.05; }
-  float c=curvOf(uv),edge=clamp((c-0.5)*2.0,0.0,1.0),cav=clamp((0.5-c)*2.0,0.0,1.0),ao=aoOf(uv),occ=1.0-ao,up=dot(N,vec3(0.0,1.0,0.0)),n=uHasG==1?grungeOf(uv):fbm(q),w=uWidth;
+  /* (0.96.1, Kenn: "the UVs are breaking") on a model, Distort no longer reads the edges from a shifted spot of the texture (that
+     jumps across UV seams): it pushes the edge and cavity strengths up and down with a noise laid over the model, so it stays
+     continuous across seams. On a flat texture it still shifts the reading point. */
+  float dShift=0.0; if(uDist>0.0){ if(uHasPos==1) dShift=(fbm(q*0.45+vec3(3.1,0.0,1.7))-0.5)*uDist; else { vec2 dd=vec2(fbm(q*0.45+vec3(3.1,0.0,1.7)),fbm(q*0.45+vec3(0.0,7.7,4.2)))-0.5; uv+=dd*uDist*0.05; } }
+  float c=clamp(curvOf(uv)+dShift*0.5,0.0,1.0),edge=clamp((c-0.5)*2.0,0.0,1.0),cav=clamp((0.5-c)*2.0,0.0,1.0),ao=clamp(aoOf(uv)+dShift*0.6,0.0,1.0),occ=1.0-ao,up=dot(N,vec3(0.0,1.0,0.0)),n=uHasG==1?grungeOf(uv):fbm(q),w=uWidth;
   float b=0.0;
   if(uG==18){vec3 bn=uHasWorldN==1?normalize(texture(uWorldN,uv).rgb*2.0-1.0+1e-5):N;
     vec3 bp=uHasPosition==1?texture(uPosition,uv).rgb:P;float pos=dot(bp,abs(uAxis));if(uAxis.x+uAxis.y+uAxis.z<0.0)pos=1.0-pos;
@@ -236,7 +245,12 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
       void main(){ float a=1.0; if(uHasT==1)a=texture(uT,vUV).a; if(uHasO==1)a*=dot(texture(uO,vUV).rgb,vec3(0.299,0.587,0.114)); o=vec4(vec3(uNeg==1?1.0-a:a),1.0); }`);
     const o=out();run(P_MSALPHA,o,{uT:T&&!T.empty?T.tex:dummy,uHasT:{int:T&&!T.empty?1:0},uO:O&&!O.empty?O.tex:dummy,uHasO:{int:O&&!O.empty?1:0},uNeg:{int:p.inv?1:0}});return {t:o,pooled:true};}
   const lum=(tex,inv)=>{const o=out();run(P.src,o,Object.assign({uKind:{int:0},uT:tex,uNeg:{int:inv?1:0},uSeed:0},ctx.surf));return {t:o,pooled:true};};
-  if(r.kind==='mesh'){const t=msMeshTex(p.k)||msDocMap(p.k,ctx);return t?lum(t.tex,p.inv):null;}
+  if(r.kind==='mesh'){const t=msMeshTex(p.k)||msDocMap(p.k,ctx);if(!t)return null;
+    /* (0.96.1, Kenn: "with controls … like in Painter") balance, contrast and, for curvature, which part */
+    if(!P_MSMESH)P_MSMESH=program(`in vec2 vUV; uniform sampler2D uT; uniform int uPart; uniform float uBal; uniform float uCon; uniform int uNeg;
+      void main(){ float v=dot(texture(uT,vUV).rgb,vec3(0.299,0.587,0.114)); if(uPart==1)v=clamp((v-0.5)*2.0,0.0,1.0); else if(uPart==2)v=clamp((0.5-v)*2.0,0.0,1.0);
+        float k=uCon>=0.0?1.0+uCon*4.0:1.0+uCon*0.95; v=clamp((v-0.5)*k+0.5+uBal*0.5,0.0,1.0); o=vec4(vec3(uNeg==1?1.0-v:v),1.0); }`);
+    const curvy=/curv(?!Edge|Crease)/.test(p.k),o=out();run(P_MSMESH,o,{uT:t.tex,uPart:{int:curvy?(p.part==='edges'?1:p.part==='cavities'?2:0):0},uBal:p.bal||0,uCon:p.con||0,uNeg:{int:p.inv?1:0}});return {t:o,pooled:true};}
   if(r.kind==='ref'){const o=r._ref&&r._ref.mask&&inDoc(r._ref)?r._ref:(allNodes(doc.root).find(n=>n.name===p.name&&n.mask&&n!==L)||null);if(!o||o===L||(guard||[]).includes(o))return null;r._ref=o;
     if(msHas(o))msUpdate(o,[...(guard||[]),L]);return lum(o.mask.target.tex,p.inv);}
   if(r.kind==='image'){if(!r.t)return null;if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);const pm=pxfRowMode(r),tri=pxfIs3D(pm)&&typeof fillPosMaps==='function'?fillPosMaps():null,o=out();
@@ -267,9 +281,11 @@ function msGrungeTex(p){const g=p&&p.gimg;if(!g||typeof txCacheGet!=='function')
   if(!g._busy){Object.defineProperty(g,'_busy',{value:true,writable:true,enumerable:false,configurable:true});
     txLoad().then(()=>{const it=fxdAllTex().find(x=>x.kind===g.kind&&x.id===g.id);return it&&txTarget(it);}).then(r=>{g._busy=false;if(r){msEpoch++;changedAll();}}).catch(()=>{g._busy=false;});}
   return null;}
-function msGrungeU(p){const t=msGrungeTex(p);return {uGTex:t?t.tex:dummy,uHasG:{int:t?1:0},uGTile:p.gtile||1,uGInv:{int:p.ginv?1:0},uGRot:(p.grot||0)*Math.PI/180};}
+function msGrungeU(p){const t=msGrungeTex(p);return {uGTex:t?t.tex:dummy,uHasG:{int:t?1:0},uGTile:p.gtile||1,uGInv:{int:p.ginv?1:0},uGRot:(p.grot||0)*Math.PI/180,uGCon:p.gcon||0,uGLev:p.glev||0};}
 /* a filter row on the picture so far */
 function msFilter(r,acc){const o=acquireD(acc.depth);
+  if(r.own==='warp'&&typeof meshConnectedWarp==='function'&&ui.mode==='p3d'&&!window.__oldWarp){const p=r.p||{};if(meshConnectedWarp(acc,o,p.r==null?3:p.r,p.scale||6,p.seed||1))return o;}
+  if(r.own==='slope'&&typeof meshConnectedSlope==='function'&&ui.mode==='p3d'&&!window.__oldWarp){const p=r.p||{};if(meshConnectedSlope(acc,o,{amt:(p.r==null?3:p.r)*3.75,steps:16,mode:0,guide:1,freq:p.scale||6,seed:p.seed||1}))return o;}
   if(r.own){const P=msProgs(),p=r.p||{};withUVWrap(p.uvWrap!==false,[acc],()=>run(P.own,o,{uSrc:acc.tex,uOwn:{int:['grow','warp','slope'].indexOf(r.own)},uR:p.r==null?3:p.r,uScale:p.scale||6,uSz:[doc.w,doc.h],uSeed:p.seed||1}));return o;}
   const F=FX[r.fx];if(!F){release(o);return null;}F.render(acc,o,r.v||fxDefaults(F),{});return o;}
 /* the whole stack → a picture (pooled). ov = {row, t}: that Paint row's picture while it is being painted */
@@ -291,7 +307,7 @@ function msEval(L,ov,guard){const M=L.mask,S=M.stack,P=msProgs(),d=M.target.dept
 /* keep L.mask.target up to date: redone when the rows, the layer, the mesh maps or the model change */
 function msKey(L){const M=doc.meshMaps||{};return [L.lookVer||0,JSON.stringify(L.mask.stack,(k,x)=>k==='t'||k[0]==='_'?undefined:x),Object.keys(M).map(k=>k+(M[k].tex?1:0)).join(),doc.w,doc.h,
   v3.mesh&&(ui.mode==='p3d'||v3.on)?v3.mesh.name+v3.mesh.idx.length+(typeof p3Range==='function'&&ui.mode==='p3d'?p3Range().start:0):'',msEpoch,msUsesDoc(L)?msDocVer:'',L.mask.stack.some(r=>r.kind==='anchor'||(r.kind==='gen'&&r.p.anchor))?L.mask.stack.map(r=>{const A=msAnchor(r.kind==='anchor'?r.p.name:r.p.anchor);return A?A.lookVer||0:'';}).join(':'):'',(L.mask.stack.find(r=>r.kind==='ref')?allNodes(doc.root).map(n=>n.mask&&n.mask._key?n.lookVer:'').join(','):'')].join('|');}
-let msEpoch=0;let P_MSALPHA=null;
+let msEpoch=0;let P_MSMESH=null;let P_MSALPHA=null;
 function msUpdate(L,guard){if(!msHas(L))return;const k=msKey(L);if(L.mask._key===k)return;L.mask._key=k;const r=msEval(L,null,guard);blit(r,L.mask.target,0,0,doc.w,doc.h,0,0);release(r);if(L.mask.thumb)thumbQ.add(L);}
 function msUpdateAll(){for(const n of allNodes(doc.root))if(msHas(n))msUpdate(n);}
 

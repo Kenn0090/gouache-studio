@@ -65,39 +65,60 @@ fxDef('levels',{title:'Levels',init:()=>({lv:{m:[0,1,1,0,1],r:[0,1,1,0,1],g:[0,1
     const S=(id,label,i,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:lv[ch][i],fmt,numericScale:i===1?1:255,onInput:x=>{lv[ch][i]=i===0?Math.min(x,lv[ch][2]-.0001):i===2?Math.max(x,lv[ch][0]+.0001):x;upd();}});
     const box=el('div',{class:'dlg-grid'});
     let mode=(()=>{try{return localStorage.getItem('gs.lvMode')||'simple';}catch(e){return 'simple';}})();
-    const build=()=>{if(mode==='simple'){box.replaceChildren(lvSimple(lv[ch],upd,cv));cv.hidden=true;drawH();return;}cv.hidden=false;box.replaceChildren(...[S('lvIb','Input black',0,0,1,.005,x=>Math.round(x*255)),S('lvG','Midtones',1,.1,5,.01,x=>x.toFixed(2)),S('lvIw','Input white',2,0,1,.005,x=>Math.round(x*255)),
+    const build=()=>{if(mode==='simple'){box.replaceChildren(lvSimple(lv[ch],upd,cv,()=>histOf(ctx)[ch==='m'?3:'rgb'.indexOf(ch)],{m:'rgba(200,205,215,.55)',r:'rgba(255,107,107,.55)',g:'rgba(105,219,124,.55)',b:'rgba(116,192,252,.55)'}[ch]));cv.hidden=true;drawH();return;}cv.hidden=false;box.replaceChildren(...[S('lvIb','Input black',0,0,1,.005,x=>Math.round(x*255)),S('lvG','Midtones',1,.1,5,.01,x=>x.toFixed(2)),S('lvIw','Input white',2,0,1,.005,x=>Math.round(x*255)),
         S('lvOb','Output black',3,0,1,.005,x=>Math.round(x*255)),S('lvOw','Output white',4,0,1,.005,x=>Math.round(x*255))].map(s=>s.el));drawH();};
     const chs=seg(CH_NAMES.map(([k,l])=>[k,l]),ch,k=>{ch=k;build();},'Channel');build();
     const auto=el('button',{class:'btn sm',text:'Auto',title:'Stretch the darkest and lightest 0.1% to black and white',onclick:()=>{const h=histOf(ctx)[3],n=h.reduce((a,b)=>a+b,0);let a=0,lo=0,hi=255;
       for(let i=0;i<256;i++){a+=h[i];if(a>n*.001){lo=i;break;}}a=0;for(let i=255;i>=0;i--){a+=h[i];if(a>n*.001){hi=i;break;}}lv.m[0]=lo/255;lv.m[2]=Math.max(lo+1,hi)/255;ch='m';build();upd();}});
     const modeSeg=seg([['simple','Simple'],['sliders','Sliders']],mode,m=>{mode=m;try{localStorage.setItem('gs.lvMode',m);}catch(e){}build();},'Levels layout');
-    return [el('div',{class:'row wrap'},chs,modeSeg),cv,box,el('div',{class:'frow'},auto)];},
+    return [el('div',{class:'row wrap lvtop'},chs,modeSeg,auto),cv,box];},
   render(src,dst,v){const lv=v.lv;run(P.f_lut,dst,{uSrc:src.tex,uLut:uploadFxLut([levelsCurve(lv.r),levelsCurve(lv.g),levelsCurve(lv.b),levelsCurve(lv.m)])});}});
 
 /* the simple Levels layout (like Substance Painter's): the histogram with three handles under it (black, midtones,
-   white) and the output bar with two (drag them past each other to invert). p = [inBlack, gamma, inWhite, outBlack, outWhite] */
-function lvSimple(p,upd,hcv){const W=256,cv=el('canvas',{class:'lvsimple',width:W,height:132,role:'img','aria-label':'Levels: drag the handles'});
-  const X0=8,IW=W-16,HY=0,HH=86,TY=90,OY=110,midPos=()=>p[0]+(p[2]-p[0])*Math.pow(.5,p[1]);
-  const draw=()=>{const x=cv.getContext('2d');x.clearRect(0,0,W,132);x.drawImage(hcv,0,0,256,90,X0,HY,IW,HH);
-    const g=x.createLinearGradient(X0,0,X0+IW,0);g.addColorStop(0,'#000');g.addColorStop(1,'#fff');x.fillStyle=g;x.fillRect(X0,OY,IW,10);
-    const og=x.createLinearGradient(X0+IW*p[3],0,X0+IW*p[4],0);og.addColorStop(0,'#000');og.addColorStop(1,'#fff');
-    const tri=(v,y,fill)=>{const cx=X0+IW*v;x.beginPath();x.moveTo(cx,y);x.lineTo(cx-6,y+10);x.lineTo(cx+6,y+10);x.closePath();x.fillStyle=fill;x.fill();x.strokeStyle='#888';x.lineWidth=1;x.stroke();};
-    x.strokeStyle='rgba(128,128,128,.5)';x.beginPath();x.moveTo(X0,TY+5);x.lineTo(X0+IW,TY+5);x.stroke();
-    tri(p[0],TY,'#000');tri(midPos(),TY,'#888');tri(p[2],TY,'#fff');tri(p[3],OY+10,'#000');tri(p[4],OY+10,'#fff');
-    x.fillStyle=getComputedStyle(document.body).getPropertyValue('--muted')||'#999';x.font='10px sans-serif';x.textAlign='center';
-    x.fillText(Math.round(p[0]*255)+'  ·  '+p[1].toFixed(2)+'  ·  '+Math.round(p[2]*255)+'      out '+Math.round(p[3]*255)+' – '+Math.round(p[4]*255),W/2,131);};
-  let drag=null;const at=e=>{const r=cv.getBoundingClientRect();return [(e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*132];};
-  cv.addEventListener('pointerdown',e=>{const [mx,my]=at(e),v=clamp((mx-X0)/IW,0,1);
-    const cand=my>=OY?[[3,p[3]],[4,p[4]]]:[[0,p[0]],['m',midPos()],[2,p[2]]];let best=null,bd=1e9;for(const [k,x] of cand){const d=Math.abs(x-v);if(d<bd){bd=d;best=k;}}
+   white) and the output bar with two (drag them past each other to invert). p = [inBlack, gamma, inWhite, outBlack, outWhite].
+   (0.96.1, Kenn: "a bit huge and low quality") drawn at the screen's real pixel size, shorter, with number boxes. */
+function lvSimple(p,upd,hcv,getHist,tint){const H=96,cv=el('canvas',{class:'lvsimple',role:'img','aria-label':'Levels: drag the handles'});
+  const X0=7,HH=58,TY=60,OY=76,midPos=()=>p[0]+(p[2]-p[0])*Math.pow(.5,p[1]);let W=260;
+  const css=k=>getComputedStyle(document.body).getPropertyValue(k).trim();
+  const draw=()=>{const r=cv.getBoundingClientRect();if(r.width>10)W=r.width;const dpr=Math.max(1,devicePixelRatio||1);
+    if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
+    const x=cv.getContext('2d'),IW=W-2*X0;x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,W,H);
+    x.fillStyle='rgba(255,255,255,.035)';x.fillRect(X0,0,IW,HH);
+    const h=getHist?getHist():null;
+    if(h){const s=[...h].sort((a,b)=>a-b),mx=Math.max(1,s[250]*1.2);x.beginPath();x.moveTo(X0,HH);
+      for(let i=0;i<256;i++)x.lineTo(X0+IW*(i+.5)/256,HH-Math.min(1,h[i]/mx)*(HH-2));x.lineTo(X0+IW,HH);x.closePath();
+      x.fillStyle=tint||'rgba(200,205,215,.55)';x.fill();}
+    else if(hcv)x.drawImage(hcv,0,0,hcv.width,hcv.height,X0,0,IW,HH);
+    /* dim what the input range cuts off */
+    x.fillStyle='rgba(0,0,0,.45)';x.fillRect(X0,0,IW*p[0],HH);x.fillRect(X0+IW*p[2],0,IW*(1-p[2]),HH);
+    x.strokeStyle=css('--line-2')||'rgba(128,128,128,.4)';x.lineWidth=1;x.beginPath();x.moveTo(X0,TY+.5);x.lineTo(X0+IW,TY+.5);x.stroke();
+    const g=x.createLinearGradient(X0,0,X0+IW,0);g.addColorStop(0,'#000');g.addColorStop(1,'#fff');x.fillStyle=g;x.fillRect(X0,OY,IW,7);
+    const tri=(v,y,up,fill)=>{const cx=Math.round(X0+IW*v)+.5;x.beginPath();if(up){x.moveTo(cx,y);x.lineTo(cx-5,y+8);x.lineTo(cx+5,y+8);}else{x.moveTo(cx,y+8);x.lineTo(cx-5,y);x.lineTo(cx+5,y);}
+      x.closePath();x.fillStyle=fill;x.fill();x.strokeStyle='rgba(150,150,150,.9)';x.lineWidth=1;x.stroke();};
+    tri(p[0],TY+1,true,'#000');tri(midPos(),TY+1,true,'#8a8a8a');tri(p[2],TY+1,true,'#fff');tri(p[3],OY+8,true,'#000');tri(p[4],OY+8,true,'#fff');};
+  let drag=null;const at=e=>{const r=cv.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top,r.width];};
+  cv.addEventListener('pointerdown',e=>{const [mx,my,w]=at(e),v=clamp((mx-X0)/(w-2*X0),0,1);
+    const cand=my>=OY-2?[[3,p[3]],[4,p[4]]]:[[0,p[0]],['m',midPos()],[2,p[2]]];let best=null,bd=1e9;for(const [k,xx] of cand){const d=Math.abs(xx-v);if(d<bd){bd=d;best=k;}}
     drag=best;cv.setPointerCapture(e.pointerId);e.preventDefault();});
-  cv.addEventListener('pointermove',e=>{if(drag===null)return;const v=clamp((at(e)[0]-X0)/IW,0,1);
+  cv.addEventListener('pointermove',e=>{if(drag===null)return;const [mx,,w]=at(e),v=clamp((mx-X0)/(w-2*X0),0,1);
     if(drag===0)p[0]=Math.min(v,p[2]-.004);else if(drag===2)p[2]=Math.max(v,p[0]+.004);
     else if(drag==='m'){const t=clamp((v-p[0])/Math.max(1e-4,p[2]-p[0]),.01,.99);p[1]=clamp(Math.log(t)/Math.log(.5),.1,5);}
-    else p[drag]=v;draw();upd();});
+    else p[drag]=v;draw();nums();upd();});
   const end=()=>{drag=null;};cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
-  const inv=el('button',{class:'btn sm',text:'Invert',title:'Swap the output black and white',onclick:()=>{[p[3],p[4]]=[p[4],p[3]];draw();upd();}});
-  const reset=el('button',{class:'btn sm',text:'Reset',onclick:()=>{p.splice(0,5,0,1,1,0,1);draw();upd();}});
-  requestAnimationFrame(draw);return el('div',{class:'dlg-grid'},cv,el('div',{class:'chips'},inv,reset),el('p',{class:'note',text:'Drag the handles under the histogram (black, midtones, white) and on the output bar.'}));}
+  /* number boxes: input black / midtones / white, output black / white */
+  const box=(id,label,get,set,step,min,max)=>{const i=el('input',{class:'num lvnum',type:'number',id,step,min,max,title:label,'aria-label':label});i._get=get;
+    i.addEventListener('change',()=>{const v=+i.value;if(isFinite(v)){set(clamp(v,min,max));draw();nums();upd();}});return i;};
+  const B=[box('lvNIb','Input black',()=>Math.round(p[0]*255),v=>{p[0]=Math.min(v/255,p[2]-.004);},1,0,255),
+    box('lvNG','Midtones',()=>p[1].toFixed(2),v=>{p[1]=v;},.01,.1,5),
+    box('lvNIw','Input white',()=>Math.round(p[2]*255),v=>{p[2]=Math.max(v/255,p[0]+.004);},1,0,255),
+    box('lvNOb','Output black',()=>Math.round(p[3]*255),v=>{p[3]=v/255;},1,0,255),
+    box('lvNOw','Output white',()=>Math.round(p[4]*255),v=>{p[4]=v/255;},1,0,255)];
+  const nums=()=>{for(const i of B)if(document.activeElement!==i)i.value=i._get();};
+  const inv=el('button',{class:'btn sm',text:'Invert',title:'Swap the output black and white',onclick:()=>{[p[3],p[4]]=[p[4],p[3]];draw();nums();upd();}});
+  const reset=el('button',{class:'btn sm',text:'Reset',onclick:()=>{p.splice(0,5,0,1,1,0,1);draw();nums();upd();}});
+  const row=el('div',{class:'lvrow'},el('span',{class:'lvlab',text:'In'},),B[0],B[1],B[2],el('span',{class:'lvlab',text:'Out'}),B[3],B[4]);
+  nums();requestAnimationFrame(draw);if(typeof ResizeObserver==='function'){const ro=new ResizeObserver(()=>draw());ro.observe(cv);}
+  return el('div',{class:'lvwrap'},cv,row,el('div',{class:'chips'},inv,reset));}
 /* Curves: points per channel, smooth monotone curve through them */
 function monotone(pts){pts=pts.slice().sort((a,b)=>a[0]-b[0]);const n=pts.length;if(n<2)return identity();
   const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),d=[],m=[];for(let i=0;i<n-1;i++)d.push((ys[i+1]-ys[i])/Math.max(1e-6,xs[i+1]-xs[i]));
@@ -132,11 +153,9 @@ fxDef('curves',{title:'Curves',note:'Click the curve to add a point, drag to mov
 fxDef('hueSat',{title:'Hue / Saturation',defs:[{key:'h',label:'Hue',min:-180,max:180,step:1,value:0,fmt:v=>(v>0?'+':'')+v+'°'},{key:'s',label:'Saturation',min:-100,max:100,step:1,value:0,fmt:v=>(v>0?'+':'')+v},{key:'l',label:'Lightness',min:-100,max:100,step:1,value:0,fmt:v=>(v>0?'+':'')+v}],
   checks:[['c','Colorize',false]],render(src,dst,v){run(P.f_hsl,dst,{uSrc:src.tex,uHue:v.c?((v.h+360)%360)/360:v.h/360,uSat:v.c?(v.s+100)/200:v.s/100,uLight:v.l/100,uColorize:!!v.c});}});
 fxDef('gradMap',{title:'Gradient map',note:'Replaces each brightness with a colour from the gradient: dark to the left end, light to the right.',
-  init:()=>({pick:2,def:null}),checks:[['rev','Reverse',false]],
-  controls:(v,upd)=>{const s=el('select',{id:'gmSel'},el('option',{value:'cur',text:'Current gradient (Gradient tool)'}),...GRAD_BUILTIN.map((p,i)=>el('option',{value:i,text:p.name})));s.value=String(v.pick);
-    const set=()=>{v.pick=s.value==='cur'?'cur':+s.value;v.def=cloneGrad(v.pick==='cur'?ui.grad:presetDef(GRAD_BUILTIN[v.pick]));};if(!v.def)set();
-    s.addEventListener('change',()=>{set();upd();});return [el('div',{class:'frow'},el('label',{for:'gmSel',text:'Gradient'}),s)];},
-  render(src,dst,v){const def=v.def||presetDef(GRAD_BUILTIN[2]);run(P.f_gmap,dst,{uSrc:src.tex,uLut:uploadLut(def),uRev:!!v.rev,uDither:!!def.dither&&dst.depth===8});}});
+  init:()=>({pick:2,def:null,blend:'smooth',steps:0,inLo:0,inHi:1,str:1}),checks:[['rev','Reverse',false]],
+  controls:(v,upd)=>gmControls(v,upd),
+  render(src,dst,v){gmRender(src,dst,v);}});
 fxDef('threshold',{title:'Threshold',defs:[{key:'t',label:'Level',min:1,max:255,step:1,value:128}],render(src,dst,v){run(P.f_thresh,dst,{uSrc:src.tex,uT:v.t/255});}});
 fxDef('desat',{title:'Desaturate',render(src,dst){run(P.f_desat,dst,{uSrc:src.tex});}});
 fxDef('invert',{title:'Invert',render(src,dst){run(P.invert,dst,{uSrc:src.tex});}});

@@ -274,15 +274,40 @@ $('#lUngroup').addEventListener('click',cmdUngroup);$('#lDup').addEventListener(
 $('#lClear').addEventListener('click',cmdClearLayer);
 $('#lMerge').addEventListener('click',cmdMerge);$('#lUp').addEventListener('click',()=>cmdMove(1));$('#lDown').addEventListener('click',()=>cmdMove(-1));
 /* right-click a layer: masks, layer styles (each adds that style and opens it), filters, array, and the usual commands */
+/* (0.96.1, Kenn: "when I right click the mask I shouldn't have to go through a lot of menu stuff … black and white
+   things mainly, or things that affect the mask") the mask thumbnail has its own short menu: ways to make the mask, ways to
+   change it, and the mask's own commands. The layer commands stay on the layer's name. */
+function maskMenu(e,n){const pop=$('#menuPop');closeMenu();
+  const it=(t,f,key,dis)=>el('button',{class:'mi',role:'menuitem',disabled:!!dis,onclick:()=>{pop.hidden=true;flyHide();f();}},el('span'),el('span',{text:t}),el('span',{text:key||''}));
+  const head=t=>el('div',{class:'mh',text:t}),sep=()=>el('div',{class:'msep'});
+  const on=()=>{selectOnly(n);n.editMask=true;};
+  const add=(kind,o)=>()=>{on();const r=msAdd(n,kind,o);if(kind==='image'&&r)msPickImage(n,r);renderLayers();};
+  const fly=(name,list)=>{const f=flyItem(name,list);f.setAttribute('aria-label',name);return f;};
+  const generators=fly('Generators',()=>[head('From baked maps'),...MS_MESH_GENS.map(([k,title,part])=>it(title,add('mesh',{p:Object.assign(MS_KINDS.mesh.p(),{k:msMeshPick(k),part:part||'both'})}))),sep(),
+    head('Wear and weather'),...MS_GENS.map(([k,title])=>it(title,add('gen',{p:msGenDefaults(k)}))),sep(),
+    it('3D gradient',add('g3d')),it('Direction (faces pointing up)',add('dir')),it('Gradient (bottom to top)',add('grad'))]);
+  const noises=fly('Noise and grunge',()=>MS_NOISES.map(([k,title])=>it(title,add('noise',{p:Object.assign(MS_KINDS.noise.p(),{type:k})}))));
+  const quick=['levels','invert','blur'],more=fly('More filters',()=>[...MS_FILTERS.filter(id=>FX[id]&&!quick.includes(id)).map(id=>it(FX[id].title,add('filter',{fx:id}))),sep(),
+    ...Object.keys(MS_OWN_FILTERS).map(k=>it(MS_OWN_FILTERS[k],add('filter',{own:k,p:{r:k==='grow'?3:k==='warp'?4:6,scale:6,seed:1}})))]);
+  const names=typeof msAnchorNames==='function'?msAnchorNames():[];
+  const items=[head('Make the mask'),it('Paint',add('paint')),it('Fill white',add('fill',{p:{v:1}})),it('Fill black',add('fill',{p:{v:0}})),generators,noises,it('Picture…',add('image')),
+    ...(doc.meshMaps&&doc.meshMaps.id?[it('ID colour (pick colours on the model)…',()=>idColourMask(n))]:[]),
+    ...(names.length?[fly('From an anchor point',()=>names.map(name=>it(name,add('anchor',{p:{name,ch:'height',inv:false}}))))]:[]),
+    sep(),head('Change it'),...quick.filter(id=>FX[id]).map(id=>it(FX[id].title,add('filter',{fx:id}))),more,
+    sep(),it('Copy mask',()=>cmdCopyMask(n)),...(maskClip?[it('Paste mask',()=>cmdPasteMask(n))]:[]),it('Clear mask (all black)',()=>cmdClearMask(n)),
+    ...(typeof msHas==='function'&&msHas(n)?[it('Flatten mask (keep the result)',()=>msFlatten(n))]:[]),
+    ...(ui.mode!=='paint'&&typeof smMaskSave==='function'?[it('Save as smart mask…',()=>smMaskSave(n))]:[]),
+    it('Delete mask',()=>{selectOnly(n);cmdDeleteMask();})];
+  flyHide();pop.replaceChildren(...items);pop.hidden=false;
+  pop.style.left=Math.max(4,Math.min(e.clientX,window.innerWidth-pop.offsetWidth-8))+'px';pop.style.top=Math.max(4,Math.min(e.clientY+4,window.innerHeight-pop.offsetHeight-8))+'px';
+  const off=ev=>{if(!pop.contains(ev.target)&&!flyEl.contains(ev.target)){pop.hidden=true;flyHide();document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}
 function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)&&!n.fx,grp=n.type==='group',anim=ui.mode==='anim';
+  if(n.mask&&!n.fx&&ui.mode!=='anim'&&(isLayer(n)||n.type==='group')&&e.target&&e.target.closest&&e.target.closest('.mthumb')&&typeof msAdd==='function'){maskMenu(e,n);return;}
   const it=(t,f,key,dis)=>{const b=el('button',{class:'mi',role:'menuitem',disabled:!!dis,onclick:()=>{pop.hidden=true;flyHide();f();}},el('span'),el('span',{text:t}),el('span',{text:key||''}));return b;};
   const head=t=>el('div',{class:'mh',text:t});const sep=()=>el('div',{class:'msep'});
   const items=[];
   if(n.fx&&n.fx.stack&&n.fx.stack.some(x=>x.id==='handPaint'))items.push(it('Make it a hand-painted material',()=>hpOverlayToMat(n)),sep());
   if(ui.mode==='p3d'&&n.fill&&!n.fx&&p3.sets.filter(S=>!S.missing).length>1)items.push(it('Instance to sets…',()=>dlgInstance(n)),...(n.inst?[it('Unlink instance',()=>instUnlink(n))]:[]),sep());
-  if(ui.mode==='p3d'&&n.mask&&!n.fx&&e.target&&e.target.closest('.mthumb')){
-    const generators=flyItem('Generators',()=>[...MS_GENS.map(([k,title])=>it(title,()=>{selectOnly(n);msAdd(n,'gen',{p:msGenDefaults(k)});})),sep(),it('3D gradient',()=>{selectOnly(n);msAdd(n,'g3d');})]);generators.setAttribute('aria-label','Generators');
-    const anchors=flyItem('Anchor points',()=>{const names=msAnchorNames();return [it('Add anchor point to this layer',()=>{selectOnly(n);cfxAddAnchor(n);},null,!lay),sep(),head('Use an anchor in this mask'),...(names.length?names.map(name=>it('From “'+name+'”',()=>{selectOnly(n);msAdd(n,'anchor',{p:{name,ch:'height',inv:false}});})): [it('No anchor points yet',()=>{},null,true)])];});anchors.setAttribute('aria-label','Anchor points');items.push(generators,anchors,it('Levels',()=>{selectOnly(n);msAdd(n,'filter',{fx:'levels'});}),it('Invert',()=>{selectOnly(n);msAdd(n,'filter',{fx:'invert'});}),sep());}
   /* (0.95.8, Kenn: "too much to look at") everyday commands on top, the rest in a few fly-outs */
   const G={mask:[],fx:[],conv:[],smart:[],send:[]};
   {if(maskClip)G.mask.push(it('Paste mask',()=>cmdPasteMask(n)));if(n.mask)G.mask.push(it('Copy mask',()=>cmdCopyMask(n)),it('Clear mask (hide all)',()=>cmdClearMask(n)),it('Delete mask',()=>{if(doc.active===n)cmdDeleteMask();else{selectOnly(n);cmdDeleteMask();}}),...(typeof msHas==='function'&&msHas(n)?[it('Flatten mask (keep the result, drop its rows)',()=>msFlatten(n))]:[]));else{G.addMask=it('Add mask',()=>cmdAddMask(1));G.mask.push(it('Add black mask (hide all)',()=>cmdAddMask(0)),...(lay&&typeof liveMaskStart==='function'?[it('Live mask…',()=>liveMaskStart(n))]:[]));}}

@@ -35,7 +35,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const heads=await p.evaluate(()=>[...document.querySelectorAll('.galhead')].map(h=>h.textContent.replace(/[▾▸] /,'')).join());ok(/Photo/.test(heads)&&/Print/.test(heads),'gallery has Photo and Print folders: '+heads);
  await p.click('.galhead:has-text("Print")');await W(300);ok(await p.evaluate(()=>[...document.querySelectorAll('.galitem span')].map(s=>s.textContent).join()).then(t=>/Riso/.test(t)&&/Halftone/.test(t)),'Print folder lists the new filters');
  await p.click('#dlgCancel');await W(200);
- await p.evaluate(()=>__gs.act('gradMap'));await W(400);ok(await p.evaluate(()=>[...document.querySelectorAll('#gmSel option')].filter(o=>/Y2K/.test(o.textContent)).length)>=5,'Y2K gradient maps');await p.click('#dlgCancel');
+ await p.evaluate(()=>__gs.act('gradMap'));await W(400);ok(await p.evaluate(()=>[...document.querySelectorAll('#gmGrid .gmtile')].filter(o=>/Y2K/.test(o.title)).length)>=5,'Y2K gradient maps');await p.click('#dlgCancel');
  // as a filter layer
  await p.evaluate(()=>__gs.act('newFx'));await W(400);const kinds=await p.evaluate(()=>document.querySelector('#dlgBody').textContent);ok(/Riso print/.test(kinds)&&/Drift blur/.test(kinds),'filter layers can use them');await p.click('#dlgCancel');
 
