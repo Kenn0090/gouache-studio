@@ -5,6 +5,9 @@
 - **Grunge contrast and level** sliders for a generator's grunge.
 - **Slope blur is seamless on a model too** (the mask row and the Slope blur filter): the smear follows the model's surface across UV seams. The filter has an "Across mesh seams" tick to turn it off.
 - **Baked normal maps match other apps:** the baker now works out the surface directions of the model the standard way (MikkTSpace, used by Blender, Marmoset, Substance, Unity, Unreal and Godot). FBX low-polys used to get these directions polygon by polygon, which left a zig-zag, triangle-by-triangle pattern on shiny, smooth surfaces when the map was used anywhere else. Re-bake normal maps made with earlier versions.
+- **Gradient map, rebuilt:** a grid of small gradient previews to pick from (click one, the picture updates live); an editor for the colour stops (click under the strip to add one, drag to move, drag away to remove, colour and position boxes, Spread evenly, Flip); **Save as new / Update** your own gradients (shared with the Gradient tool, kept for future projects; right-click one to rename, duplicate or delete; Import / Export to share); **Pick from picture** (drag a line across the canvas or the model and its colours become the gradient, dark to light); blending **Smooth / Linear / Hard**, a **Steps** slider for toon-like bands, **Input dark / light** and **Strength**.
+- **Levels is smaller and sharp:** drawn at the screen's real resolution, shorter, the histogram tinted per channel with the cut-off parts dimmed, and number boxes for every handle.
+- **Baked maps under Generators:** right-click a mask › Generators now starts with Ambient occlusion, Curvature (both, edges or cavities), Thickness and Height. Each row has **Balance**, **Contrast** and **Invert**, like Painter's.
 - **The fill layer button uses a highlighted material once:** after it adds that material the highlight clears, so the next press adds a plain base material.
 
 ## 0.96.0

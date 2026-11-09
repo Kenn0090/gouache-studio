@@ -4,6 +4,9 @@
 - **Drag a texture tile onto a generator's Grunge box**, and use the new Grunge contrast and level sliders.
 - **Slope blur is seamless on a model too.**
 - **Baked normal maps now match other apps** (no more zig-zag streaks on shiny surfaces from FBX models). Re-bake old normal maps.
+- **Gradient map, rebuilt:** gradient previews to pick from, a stop editor, saving your own gradients, pick colours from the picture, Hard / Steps, input range and strength.
+- **Levels is smaller and sharp**, with number boxes.
+- **Generators now list the baked maps** (AO, Curvature edges/cavities, Thickness, Height) with Balance, Contrast and Invert.
 - **The fill layer button adds a highlighted material only once**, then plain base materials.
 
 ## 0.96.0

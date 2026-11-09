@@ -104,7 +104,11 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
   if(r.kind==='anchor'){const ns=msAnchorNames();if(p.name&&!ns.includes(p.name))ns.unshift(p.name);
     box.append(sel('ms_anc','Anchor',ns.map(x=>[x,x]),'name'),el('div',{class:'sub',text:'Reads'}),seg([['height','Height'],['shape','Shape'],['colour','Colour']],p.ch||'height',v=>{ed(x=>{x.p.ch=v;});renderLayers();},'Reads'),inv(),
       el('p',{class:'note',text:msAnchor(p.name)?'Follows “'+msAnchor(p.name).name+'”, live.':'That anchor point is gone.'}));}
-  if(r.kind==='mesh'){const ks=msMeshKeys();if(!ks.includes(p.k))ks.unshift(p.k);box.append(sel('ms_k','Map',ks.map(k=>[k,msMeshName(k)]),'k'),inv(),
+  if(r.kind==='mesh'){const ks=msMeshKeys();if(!ks.includes(p.k))ks.unshift(p.k);if(p.bal==null)p.bal=0;if(p.con==null)p.con=0;
+    const curvy=/curv(?!Edge|Crease)/.test(p.k);
+    box.append(sel('ms_k','Map',ks.map(k=>[k,msMeshName(k)]),'k'),
+      ...(curvy?[el('div',{class:'sub',text:'Use'}),seg([['both','Both'],['edges','Edges'],['cavities','Cavities']],p.part||'both',v=>{ed(x=>{x.p.part=v;});},'Curvature part')]:[]),
+      S('ms_bal','Balance','bal',-1,1,.01,v=>(v>0?'+':'')+Math.round(v*100)),S('ms_con','Contrast','con',-1,1,.01,v=>(v>0?'+':'')+Math.round(v*100)),inv(),
     el('p',{class:'note',text:msMeshTex(p.k)?'A baked map of this texture set.':'Not baked yet: using the document’s own map, if it has one.'}));}
   if(r.kind==='id'){const sw=(p.cols||[]).map((c,i)=>el('button',{class:'idsw',style:'background:'+toHex(c),title:'Remove this colour','aria-label':'Remove colour '+toHex(c),onclick:()=>{ed(x=>x.p.cols.splice(i,1));renderMatEd(true);}}));
     box.append(el('div',{class:'chips'},...sw,el('button',{class:'btn sm',text:'Pick colours',onclick:()=>{msSelect(L,where,r.id);ui.viewMask=true;L.editMask=true;maskTool('id');renderLayers();}})),
