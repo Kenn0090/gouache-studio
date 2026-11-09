@@ -4,7 +4,10 @@
 - **Crop › Delete cropped pixels** switch: turn it off to keep what the crop leaves out, and bring it back later with Crop.
 - **Smart materials made from Library materials are tiny now**: they name the Library material instead of copying its pictures. Re-add the Library materials and save the smart material again to shrink an existing one.
 - **A smart material that cannot be added now says why**, instead of doing nothing.
-- **Polygon fill highlight is golden yellow with a UV checkerboard.**
+- **Polygon fill highlight is a dithered golden yellow UV checkerboard.**
+- **Save as (Ctrl+Shift+S) offers every file type**: Gouache, PSD, PNG, TGA, DDS, TIFF, EXR, JPG, WebP.
+- **Ctrl+Shift+E opens the game engine export.**
+- **Unreal: every node that feeds the material is labelled**, and any wire the script could not make is marked in red with what to connect.
 
 ## 0.96.3
 

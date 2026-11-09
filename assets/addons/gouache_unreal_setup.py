@@ -158,6 +158,8 @@ class Graph:
     def __init__(self, mat):
         self.mat = mat
         self.col = {}
+        CUR["mat"] = mat
+        CUR["missing"] = []
 
     def node(self, cls, x, y):
         return MEL.create_material_expression(self.mat, cls, x, y)
@@ -208,10 +210,74 @@ class Graph:
                 except Exception:
                     pass
         FAILED.append("%s.%s -> %s.%s" % (a.get_class().get_name(), ao, b.get_class().get_name(), bi))
+        what = "Connect %s%s into %s's %s input" % (node_label(a), (" (" + ao + ")") if ao else "", node_label(b), bi or "first")
+        CUR["missing"].append(what)
+        note(b, "NOT CONNECTED: " + what, True)
         return False
 
 
 FAILED = []
+CUR = {"mat": None, "missing": []}
+
+
+def node_label(n):
+    try:
+        for k in ("parameter_name", "desc"):
+            try:
+                v = n.get_editor_property(k)
+                if v:
+                    return '"' + str(v) + '"'
+            except Exception:
+                pass
+        return n.get_class().get_name().replace("MaterialExpression", "")
+    except Exception:
+        return "node"
+
+
+def mp_label(mp):
+    import re
+    m = re.search(r"MP_([A-Z0-9_]+)", str(mp))
+    t = m.group(1) if m else str(mp)
+    return t.replace("_", " ").title()
+
+
+def note(near, text, bad):
+    """A comment box next to a node in the material graph, so a wire the script could not make can be
+    made by hand (and every node that feeds the material says where it goes)."""
+    mat = CUR.get("mat")
+    if mat is None:
+        return
+    try:
+        x = near.get_editor_property("material_expression_editor_x") if near is not None else -1600
+        y = near.get_editor_property("material_expression_editor_y") if near is not None else -400
+    except Exception:
+        x, y = -1600, -400
+    try:
+        c = MEL.create_material_expression(mat, unreal.MaterialExpressionComment, x - 16, y - 70)
+        c.set_editor_property("text", text)
+        for k, v in (("size_x", max(260, 9 * len(text) // 2)), ("size_y", 60)):
+            try:
+                c.set_editor_property(k, v)
+            except Exception:
+                pass
+        try:
+            c.set_editor_property("comment_color", unreal.LinearColor(0.9, 0.12, 0.08, 1.0) if bad else unreal.LinearColor(0.15, 0.55, 0.25, 1.0))
+        except Exception:
+            pass
+        try:
+            c.set_editor_property("font_size", 18 if bad else 14)
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+
+def finish(mat):
+    """A summary box at the top left when any wire is missing, then compile and save."""
+    if CUR.get("mat") is mat and CUR["missing"]:
+        note(None, "Gouache: %d wire(s) could not be connected by the script. Please connect by hand:\n- %s" % (len(CUR["missing"]), "\n- ".join(CUR["missing"])), True)
+    MEL.recompile_material(mat)
+    EAL.save_loaded_asset(mat)
 PIN_ALIASES = {"UVs": ["Coordinates", "UV"], "Coordinates": ["UVs"]}
 COLOUR_NODES = tuple(c for c in (getattr(unreal, "MaterialExpressionVectorParameter", None), getattr(unreal, "MaterialExpressionConstant3Vector", None), getattr(unreal, "MaterialExpressionConstant4Vector", None)) if c)
 
@@ -227,10 +293,14 @@ def prop(node, pin, mp):
     """Connects a node to an input of the material (Base Color, Roughness, ...); a failure is reported."""
     try:
         if MEL.connect_material_property(node, out_pin(node, pin), mp):
+            note(node, "Goes into: " + mp_label(mp), False)
             return True
     except Exception:
         pass
     FAILED.append("%s -> %s" % (node.get_class().get_name(), str(mp)))
+    what = "Connect %s%s into the material's %s" % (node_label(node), (" (" + pin + ")") if pin else "", mp_label(mp))
+    CUR["missing"].append(what)
+    note(node, "NOT CONNECTED: " + what, True)
     return False
 
 
@@ -392,8 +462,7 @@ def build_master(look, kind, alpha, S, existing=None):
         g.link(c, "", am, "")
         prop(rgb, "", MP.MP_EMISSIVE_COLOR)
         prop(am, "", MP.MP_OPACITY)
-        MEL.recompile_material(mat)
-        EAL.save_loaded_asset(mat)
+        finish(mat)
         return mat
 
     custom_light = look in ("Toon", "Cel", "Retro", "HalftoneCel", "InkToon")
@@ -552,8 +621,7 @@ def build_master(look, kind, alpha, S, existing=None):
             prop(one, "", MP.MP_OPACITY_MASK)
         else:
             prop(c, "", MP.MP_EMISSIVE_COLOR)
-        MEL.recompile_material(mat)
-        EAL.save_loaded_asset(mat)
+        finish(mat)
         return mat
 
     # lit looks
@@ -722,12 +790,11 @@ def build_master(look, kind, alpha, S, existing=None):
         prop(col, "RGB", MP.MP_SUBSURFACE_COLOR)
         amt = scalar("ScatterStrength", 0.5)
         prop(amt, "", MP.MP_OPACITY)
-    MEL.recompile_material(mat)
-    EAL.save_loaded_asset(mat)
+    finish(mat)
     return mat
 
 
-MASTER_FIXED = 3
+MASTER_FIXED = 5  # 5 (0.96.4): every node that feeds the material carries a note saying where it goes
 
 
 def master_version(mat):
@@ -744,7 +811,7 @@ def master_for(S):
     if EAL.does_asset_exist(path):
         mat = EAL.load_asset(path)
         if master_version(mat) < MASTER_FIXED:
-            unreal.log("Gouache: rebuilding " + path + " (made by an older Gouache that left wires unconnected)")
+            unreal.log("Gouache: rebuilding " + path + " (made by an older Gouache; the new one labels where each node goes)")
             return build_master(look, S["kind"], alpha, S, mat)
         if DATA.get("updateMasters"):
             unreal.log("Gouache: updating the master material " + path)

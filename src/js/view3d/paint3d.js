@@ -229,8 +229,12 @@ function sel3HoverMove(hit,e){if(!sel3.armed||sel3.mode==='off'||e.buttons||e.al
  H.frame=requestAnimationFrame(()=>{H.frame=0;if(!sel3.armed||!hit.isConnected){sel3HoverClear();return;}const found=sel3HitTriangles(hit,H.point);if(!found){sel3HoverClear();return;}H.mesh=found.m;H.root=doc.root;H.tris=found.tris;H.upload=true;v3.dirty=true;requestRender();});}
 /* (0.96.4, Kenn) Polygon fill's highlight: golden yellow with a checkerboard laid out by the UVs, like a UV checker. Select part stays blue */
 const PF_HOVER_FS=`in vec2 vT; uniform vec4 uCol; uniform float uChk;
+/* (0.96.4, Kenn: "make it look dithered") drawn as a 4x4 ordered dither in 2-pixel dots: about half the dots are solid, the model shows between them */
+const float BAY[16]=float[16](0.,8.,2.,10.,12.,4.,14.,6.,3.,11.,1.,9.,15.,7.,13.,5.);
 void main(){ if(uChk<0.5){ o=uCol; return; } vec2 q=floor(vT*16.0); float c=mod(q.x+q.y,2.0);
-  o=vec4(mix(vec3(1.0,0.80,0.22),vec3(0.80,0.50,0.04),c),0.62); }`;
+  ivec2 d=ivec2(floor(gl_FragCoord.xy/2.0))&3; float th=(BAY[d.y*4+d.x]+0.5)/16.0;
+  if(th>(c>0.5?0.5:0.68)) discard;
+  o=vec4(mix(vec3(1.0,0.80,0.22),vec3(0.80,0.50,0.04),c),1.0); }`;
 function sel3HoverDraw(g,common,F){const H=sel3HoverState;if(!(sel3.armed||(typeof pfOn==='function'&&pfOn()))||H.mesh!==v3.mesh||H.root!==doc.root||!H.tris?.length)return;
  if(!H.program)H.program=prog3(VS_3D,PF_HOVER_FS);gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);gl.disable(gl.SCISSOR_TEST);gl.disable(gl.CULL_FACE);gl.colorMask(true,true,true,true);if(!H.buffer)H.buffer=gl.createBuffer();gl.bindVertexArray(g.vao);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,H.buffer);if(H.upload){const ids=new Uint32Array(H.tris.length*3);H.tris.forEach((t,i)=>ids.set(v3.mesh.idx.subarray(t*3,t*3+3),i*3));gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,ids,gl.DYNAMIC_DRAW);H.upload=false;}
  gl.enable(gl.DEPTH_TEST);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(-1,-1);gl.enable(gl.BLEND);gl.blendEquation(gl.FUNC_ADD);gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);
