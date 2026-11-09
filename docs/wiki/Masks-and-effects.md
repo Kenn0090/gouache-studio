@@ -90,7 +90,7 @@ Generators and filters have **UV wrap** on by default. When an effect samples be
 
 This repeats across the texture's outer edges. It does not join separate UV islands on a mesh, and it does not change the document's tile-painting mode.
 
-**Across UV seams on a model:** in 3D Paint, Warp rows, the Warp filter and the Gaussian and Box blurs work on the model's surface, so both sides of a seam match. A generator's **Distort** roughens the edges and cavities on the surface too. (Slope blur still works on the flat texture.)
+**Across UV seams on a model:** in 3D Paint, Warp rows, the Warp filter and the Gaussian and Box blurs work on the model's surface, so both sides of a seam match. A generator's **Distort** roughens the edges and cavities on the surface too, and **Slope blur** smears along the surface.
 
 ## Mesh-map Mask builder
 

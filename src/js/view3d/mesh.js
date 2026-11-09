@@ -18,20 +18,48 @@ function smoothNormals(pos,idx){const n=new Float32Array(pos.length);
     const ux=pos[b]-pos[a],uy=pos[b+1]-pos[a+1],uz=pos[b+2]-pos[a+2],vx=pos[c]-pos[a],vy=pos[c+1]-pos[a+1],vz=pos[c+2]-pos[a+2];
     const nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;for(const k of [a,b,c]){n[k]+=nx;n[k+1]+=ny;n[k+2]+=nz;}}
   for(let i=0;i<n.length;i+=3){const l=Math.hypot(n[i],n[i+1],n[i+2])||1;n[i]/=l;n[i+1]/=l;n[i+2]/=l;}return n;}
-/* per-vertex tangent (xyz) and handedness (w) from the UV layout */
-function tangentsOf(pos,nrm,uv,idx){const n=pos.length/3,T=new Float32Array(n*3),B=new Float32Array(n*3),out=new Float32Array(n*4);
-  for(let t=0;t<idx.length;t+=3){const i0=idx[t],i1=idx[t+1],i2=idx[t+2];
-    const e1=[pos[i1*3]-pos[i0*3],pos[i1*3+1]-pos[i0*3+1],pos[i1*3+2]-pos[i0*3+2]],e2=[pos[i2*3]-pos[i0*3],pos[i2*3+1]-pos[i0*3+1],pos[i2*3+2]-pos[i0*3+2]];
+/* per-vertex tangent (xyz) and handedness (w) from the UV layout, the way MikkTSpace does it (the standard
+   Blender, Marmoset, Substance, Unity, Unreal and Godot use), so baked normal maps match those apps:
+   - corners with the same position, normal and UV count as one point even when the file lists them separately
+     (FBX gives every polygon corner its own point: before 0.96.1 each polygon got its own tangent, and smooth
+     low-polys baked a triangle-by-triangle zig-zag that showed on shiny surfaces in every other app);
+   - each triangle's UV direction is flattened onto the corner's normal and weighted by the corner's angle;
+   - mirrored and unmirrored triangles at a point are kept apart (handedness). */
+function tangentsOf(pos,nrm,uv,idx){const n=pos.length/3,out=new Float32Array(n*4);
+  const F=k=>k instanceof Float32Array?k:Float32Array.from(k),P=F(pos),N=F(nrm),U=F(uv);
+  /* 1. weld: rep[i] = first point with exactly the same position, normal and UV (skipped for huge meshes: high-polys need no tangents) */
+  const rep=new Int32Array(n);
+  if(n<=4000000){const pb=new Int32Array(P.buffer,P.byteOffset,n*3),nb=new Int32Array(N.buffer,N.byteOffset,n*3),ub=new Int32Array(U.buffer,U.byteOffset,n*2);
+    let sz=1;while(sz<n*2)sz<<=1;const tab=new Int32Array(sz).fill(-1),msk=sz-1;
+    const same=(i,j)=>pb[i*3]===pb[j*3]&&pb[i*3+1]===pb[j*3+1]&&pb[i*3+2]===pb[j*3+2]&&nb[i*3]===nb[j*3]&&nb[i*3+1]===nb[j*3+1]&&nb[i*3+2]===nb[j*3+2]&&ub[i*2]===ub[j*2]&&ub[i*2+1]===ub[j*2+1];
+    for(let i=0;i<n;i++){let h=0x811c9dc5;const mix=v=>{h=Math.imul(h^v,16777619);h^=h>>>15;};
+      mix(pb[i*3]);mix(pb[i*3+1]);mix(pb[i*3+2]);mix(nb[i*3]);mix(nb[i*3+1]);mix(nb[i*3+2]);mix(ub[i*2]);mix(ub[i*2+1]);
+      let k=h&msk,r=i;while(tab[k]>=0){if(same(tab[k],i)){r=tab[k];break;}k=(k+1)&msk;}if(r===i)tab[k]=i;rep[i]=r;}}
+  else for(let i=0;i<n;i++)rep[i]=i;
+  /* 2. per triangle corner: the UV's u direction, flattened onto the corner normal, times the corner angle */
+  const acc=new Float32Array(n*6),vote=new Float32Array(n);
+  for(let t=0;t<idx.length;t+=3){const c=[idx[t],idx[t+1],idx[t+2]];
+    const p0=c[0]*3,p1=c[1]*3,p2=c[2]*3,e1x=P[p1]-P[p0],e1y=P[p1+1]-P[p0+1],e1z=P[p1+2]-P[p0+2],e2x=P[p2]-P[p0],e2y=P[p2+1]-P[p0+1],e2z=P[p2+2]-P[p0+2];
     /* v grows downwards in our UVs; tangent space wants it growing upwards */
-    const du1=uv[i1*2]-uv[i0*2],dv1=-(uv[i1*2+1]-uv[i0*2+1]),du2=uv[i2*2]-uv[i0*2],dv2=-(uv[i2*2+1]-uv[i0*2+1]);
-    const r=du1*dv2-du2*dv1;if(Math.abs(r)<1e-12)continue;const f=1/r;
-    const tx=(e1[0]*dv2-e2[0]*dv1)*f,ty=(e1[1]*dv2-e2[1]*dv1)*f,tz=(e1[2]*dv2-e2[2]*dv1)*f;
-    const bx=(e2[0]*du1-e1[0]*du2)*f,by=(e2[1]*du1-e1[1]*du2)*f,bz=(e2[2]*du1-e1[2]*du2)*f;
-    for(const i of [i0,i1,i2]){T[i*3]+=tx;T[i*3+1]+=ty;T[i*3+2]+=tz;B[i*3]+=bx;B[i*3+1]+=by;B[i*3+2]+=bz;}}
-  for(let i=0;i<n;i++){const nx=nrm[i*3],ny=nrm[i*3+1],nz=nrm[i*3+2];let tx=T[i*3],ty=T[i*3+1],tz=T[i*3+2];const d=nx*tx+ny*ty+nz*tz;tx-=nx*d;ty-=ny*d;tz-=nz*d;
+    const du1=U[c[1]*2]-U[c[0]*2],dv1=-(U[c[1]*2+1]-U[c[0]*2+1]),du2=U[c[2]*2]-U[c[0]*2],dv2=-(U[c[2]*2+1]-U[c[0]*2+1]);
+    const r=du1*dv2-du2*dv1;if(!(Math.abs(r)>1e-20))continue;const f=1/r;
+    const tx=(e1x*dv2-e2x*dv1)*f,ty=(e1y*dv2-e2y*dv1)*f,tz=(e1z*dv2-e2z*dv1)*f,bx=(e2x*du1-e1x*du2)*f,by=(e2y*du1-e1y*du2)*f,bz=(e2z*du1-e1z*du2)*f;
+    if(!(tx*tx+ty*ty+tz*tz>1e-30))continue;
+    for(let j=0;j<3;j++){const i=c[j],a=i*3,nx=N[a],ny=N[a+1],nz=N[a+2];
+      let x=tx-nx*(nx*tx+ny*ty+nz*tz),y=ty-ny*(nx*tx+ny*ty+nz*tz),z=tz-nz*(nx*tx+ny*ty+nz*tz);let l=Math.hypot(x,y,z);if(l<1e-20)continue;x/=l;y/=l;z/=l;
+      /* the corner angle, measured with both edges flattened onto the normal */
+      const o1=c[(j+1)%3]*3,o2=c[(j+2)%3]*3;let ax=P[o1]-P[a],ay=P[o1+1]-P[a+1],az=P[o1+2]-P[a+2],cx=P[o2]-P[a],cy=P[o2+1]-P[a+1],cz=P[o2+2]-P[a+2];
+      let d=nx*ax+ny*ay+nz*az;ax-=nx*d;ay-=ny*d;az-=nz*d;d=nx*cx+ny*cy+nz*cz;cx-=nx*d;cy-=ny*d;cz-=nz*d;
+      const la=Math.hypot(ax,ay,az),lc=Math.hypot(cx,cy,cz);const ang=la>0&&lc>0?Math.acos(Math.max(-1,Math.min(1,(ax*cx+ay*cy+az*cz)/(la*lc)))):0;if(!(ang>0))continue;
+      /* handedness: is the UV's v direction on the cross(normal, tangent) side? */
+      const qx=ny*z-nz*y,qy=nz*x-nx*z,qz=nx*y-ny*x,s=(qx*bx+qy*by+qz*bz)<0?1:0,g=(rep[i]*2+s)*3;
+      acc[g]+=x*ang;acc[g+1]+=y*ang;acc[g+2]+=z*ang;vote[i]+=s?-ang:ang;}}
+  /* 3. each point takes its group's sum, made square to its own normal */
+  for(let i=0;i<n;i++){const nx=N[i*3],ny=N[i*3+1],nz=N[i*3+2],s=vote[i]<0?1:0;let g=(rep[i]*2+s)*3;
+    if(!(acc[g]*acc[g]+acc[g+1]*acc[g+1]+acc[g+2]*acc[g+2]>1e-30))g=(rep[i]*2+(1-s))*3;
+    let tx=acc[g],ty=acc[g+1],tz=acc[g+2];const d=nx*tx+ny*ty+nz*tz;tx-=nx*d;ty-=ny*d;tz-=nz*d;
     let l=Math.hypot(tx,ty,tz);if(l<1e-8){const a=Math.abs(nx)<.9?[1,0,0]:[0,1,0];tx=a[1]*nz-a[2]*ny;ty=a[2]*nx-a[0]*nz;tz=a[0]*ny-a[1]*nx;l=Math.hypot(tx,ty,tz)||1;}
-    tx/=l;ty/=l;tz/=l;const cx=ny*tz-nz*ty,cy=nz*tx-nx*tz,cz=nx*ty-ny*tx,w=(cx*B[i*3]+cy*B[i*3+1]+cz*B[i*3+2])<0?-1:1;
-    out[i*4]=tx;out[i*4+1]=ty;out[i*4+2]=tz;out[i*4+3]=w;}
+    out[i*4]=tx/l;out[i*4+1]=ty/l;out[i*4+2]=tz/l;out[i*4+3]=s?-1:1;}
   return out;}
 /* unique edges, for the wireframe and the UV overlay */
 function meshEdges(m){const I=m.idx,T=I.length/3;

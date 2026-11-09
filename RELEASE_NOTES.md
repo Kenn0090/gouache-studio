@@ -2,6 +2,9 @@
 
 - **Seamless generated masks:** Warp and Distort no longer break at UV seams on a model.
 - **Drag a texture tile onto a generator's Grunge box**, and use the new Grunge contrast and level sliders.
+- **Slope blur is seamless on a model too.**
+- **Baked normal maps now match other apps** (no more zig-zag streaks on shiny surfaces from FBX models). Re-bake old normal maps.
+- **The fill layer button adds a highlighted material only once**, then plain base materials.
 
 ## 0.96.0
 

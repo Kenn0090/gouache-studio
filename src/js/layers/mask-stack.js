@@ -276,6 +276,7 @@ function msGrungeU(p){const t=msGrungeTex(p);return {uGTex:t?t.tex:dummy,uHasG:{
 /* a filter row on the picture so far */
 function msFilter(r,acc){const o=acquireD(acc.depth);
   if(r.own==='warp'&&typeof meshConnectedWarp==='function'&&ui.mode==='p3d'&&!window.__oldWarp){const p=r.p||{};if(meshConnectedWarp(acc,o,p.r==null?3:p.r,p.scale||6,p.seed||1))return o;}
+  if(r.own==='slope'&&typeof meshConnectedSlope==='function'&&ui.mode==='p3d'&&!window.__oldWarp){const p=r.p||{};if(meshConnectedSlope(acc,o,{amt:(p.r==null?3:p.r)*3.75,steps:16,mode:0,guide:1,freq:p.scale||6,seed:p.seed||1}))return o;}
   if(r.own){const P=msProgs(),p=r.p||{};withUVWrap(p.uvWrap!==false,[acc],()=>run(P.own,o,{uSrc:acc.tex,uOwn:{int:['grow','warp','slope'].indexOf(r.own)},uR:p.r==null?3:p.r,uScale:p.scale||6,uSz:[doc.w,doc.h],uSeed:p.seed||1}));return o;}
   const F=FX[r.fx];if(!F){release(o);return null;}F.render(acc,o,r.v||fxDefaults(F),{});return o;}
 /* the whole stack → a picture (pooled). ov = {row, t}: that Paint row's picture while it is being painted */

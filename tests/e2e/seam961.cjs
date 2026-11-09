@@ -27,6 +27,19 @@ const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAI
  await p.evaluate(()=>{window.__oldWarp=true;const L=__gs.doc.active,r=L.mask.stack.find(x=>x.own==='warp');r.p.r=8.0001;L.mask._key=null;});await W(800);const sOld=await seam();await p.evaluate(()=>{window.__oldWarp=false;const L=__gs.doc.active,r=L.mask.stack.find(x=>x.own==='warp');r.p.r=8;L.mask._key=null;});await W(800);
  ok(sOld.diff>sOld.spread*1.6,'(check) the old flat Warp did break at the seam');
  console.log('  (the old flat Warp: difference '+sOld.diff.toFixed(1)+', neighbours inside '+sOld.spread.toFixed(1)+')');
+ /* (0.96.1) Slope blur row and the Slope blur filter */
+ await p.evaluate(()=>{const G=__gs,L=G.doc.active;L.mask.stack.splice(0);G.msAdd(L,'noise',{p:Object.assign(G.MS_KINDS.noise.p(),{type:'grunge',scale:5,contrast:2})});G.msAdd(L,'filter',{own:'slope',p:{r:8,scale:6,seed:1}});});await W(1500);
+ const s3=await seam();ok(s3.diff<s3.spread*1.6+4,'a Slope blur row is continuous across the seam (difference '+s3.diff.toFixed(1)+', inside '+s3.spread.toFixed(1)+')');
+ await p.evaluate(()=>{window.__oldWarp=true;const L=__gs.doc.active,r=L.mask.stack.find(x=>x.own==='slope');r.p.r=8.0001;L.mask._key=null;});await W(800);const s3o=await seam();await p.evaluate(()=>{window.__oldWarp=false;});
+ console.log('  (the old flat Slope blur: difference '+s3o.diff.toFixed(1)+', inside '+s3o.spread.toFixed(1)+')');
+ for(const guide of ['self','noise']){
+  const fx=await p.evaluate(guide=>{const G=__gs,L=G.doc.active;L.mask.stack.splice(0);G.msAdd(L,'noise',{p:Object.assign(G.MS_KINDS.noise.p(),{type:'grunge',scale:5,contrast:2})});G.msUpdate(L);
+    const t=L.mask.target,o=G.makeTarget(t.w,t.h,8,false),res={};
+    for(const old of [false,true]){window.__oldWarp=old;G.FX.slopeBlur.render(t,o,{amt:24,steps:16,mode:'blur',guide,size:40,seed:1,gtile:1,meshSeams:true});
+      const d=G.captureRegionNow(o,0,0,o.w,o.h).data,W=o.w,H=o.h,x0=Math.round(W*.25),x1=Math.round(W*.75)-1,xm=Math.round(W*.5);let diff=0,n=0,spread=0;
+      for(let y=Math.round(H*.2);y<H*.8;y++){diff+=Math.abs(d[(y*W+x0)*4]-d[(y*W+x1)*4]);spread+=Math.abs(d[(y*W+xm)*4]-d[(y*W+xm+1)*4]);n++;}res[old?'old':'now']={diff:diff/n,spread:spread/n};}
+    window.__oldWarp=false;G.disposeTarget(o);return res;},guide);
+  ok(fx.now.diff<fx.now.spread*1.6+4,'Slope blur filter ('+guide+') is continuous across the seam (difference '+fx.now.diff.toFixed(1)+', inside '+fx.now.spread.toFixed(1)+'; old flat one '+fx.old.diff.toFixed(1)+')');}
  /* generator with Distort */
  await p.evaluate(()=>{const G=__gs,L=G.doc.active;for(const r of L.mask.stack.slice())if(r.kind!=='paint'){}L.mask.stack.splice(0);G.msAdd(L,'gen',{p:Object.assign(G.msGenDefaults('dust'),{distort:1})});});await W(1500);
  const s2=await seam();ok(s2.diff<s2.spread*1.6+4,'a generator with Distort is continuous across the seam (difference '+s2.diff.toFixed(1)+')');

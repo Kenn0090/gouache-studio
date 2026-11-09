@@ -83,8 +83,9 @@ let matSize=(()=>{try{return localStorage.getItem('gs.matSize')||'m';}catch(e){r
 const matTw=()=>MT_SIZES[matSize]||64;
 function matPick(kind,rec,tile){matSel.kind=kind;matSel.rec=rec;document.querySelectorAll('#matBody .mattile.sel').forEach(t=>t.classList.remove('sel'));if(tile)tile.classList.add('sel');const b=document.getElementById('matPaint');if(b)b.disabled=kind!=='mat';}
 /* the fill layer button adds the highlighted material; false when nothing is highlighted */
-function matAddSelected(){const r=matSel.rec;if(!r||matSel.kind==='smask')return false;
-  if(matSel.kind==='hp'){cmdNewHandPaintMaterial(r.preset);return true;}if(matSel.kind==='smart')smApply(r);else if(r.bundled&&!r.fill)gmApply(r);else if(r.bundled)gmApply(r);else matApply(r);return true;}
+/* (0.96.1, Kenn) the highlight is used once: afterwards it clears, so the next press adds a plain base material */
+function matAddSelected(){const r=matSel.rec,kind=matSel.kind;if(!r||kind==='smask')return false;matPick(null,null,null);
+  if(kind==='hp'){cmdNewHandPaintMaterial(r.preset);return true;}if(kind==='smart')smApply(r);else if(r.bundled)gmApply(r);else matApply(r);return true;}
 function matMaskSelected(){const r=matSel.rec;if(!r||matSel.kind!=='smask')return false;smMaskApply(r);return true;}
 /* (0.34, Kenn) double-click a material while a material layer is selected: it replaces that layer's material (mask, blend and place in the stack stay); one undo step */
 async function matReplace(rec){const L=doc.active;
