@@ -52,6 +52,7 @@
     "transform/xform-ui",
     "paint/cage",
     "transform/crop",
+    "transform/overflow",
     "fill/gradient",
     "fill/bucket",
     "anim/anim-core",

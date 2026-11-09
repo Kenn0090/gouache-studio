@@ -60,6 +60,8 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
     /* mask rows and content effects (0.23) */
     gfLabel=(n.name||'?')+' · mask rows';
     {const ms=await msEncode(n,put,putRaw);if(ms.stack)base.mstack=ms.stack;if(ms.cfx)base.cfx=ms.cfx;}
+    /* (0.96.4) hidden pixels beyond the canvas */
+    if(n.ext&&Object.keys(n.ext).length){base.ext={};for(const k in n.ext){const e=n.ext[k];gfLabel=(n.name||'?')+' · hidden pixels';const r=await putRaw(e.t);r.r=[0,0,e.t.w,e.t.h];r.ox=e.ox;r.oy=e.oy;r.mono=e.t.mono||undefined;base.ext[k]=r;}}
     if(n.type==='group'){const kids=[];for(const c of n.children)kids.push(await node(c));return Object.assign(base,{t:'G',open:n.open,kids,hold:n.frame?n.hold:undefined});}
     if(n.fx)return Object.assign(base,{t:'F',clip:n.clip,mapModes:n.mapModes||{},fx:{map:n.fx.map,stack:fxCleanStack(n.fx.stack)}});
     const maps={};for(const k of mapKeysOf(n)){let r;const color=mapSolid(n,k);gfLabel=(n.name||'?')+' · '+k;
@@ -140,6 +142,7 @@ async function gfReadInto(buf,head,data){
     Object.assign(n,{visible:o.vis!==false,opacity:o.op==null?1:o.op,mapOpacities:Object.assign({},o.mapOpacities),mode:o.mode==null?(o.t==='G'?-1:0):o.mode});n.lockPx=!!o.lockPx;n.lockPos=!!o.lockPos;n.lockAll=!!o.lockAll;n.smSrc=o.smSrc;if(o.inst)n.inst=o.inst;n.smMaskSrc=o.smMaskSrc;n.materialPaint=o.materialPaint;if(o.meshEdit&&typeof o.meshEdit.setID==='string'&&typeof o.meshEdit.key==='string'){n.meshEdit=Object.assign({},o.meshEdit);n.meshMap=o.meshEdit.key;n.baked=true;}
     if(o.mask){n.mask=makeMask(1,o.mask.mono);n.mask.enabled=o.mask.en!==false;if(o.mask.lk===0)n.mask.link=false;await img(o.mask.img,n.mask.target);}
     await msDecode(n,o,img,async r=>{const raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),r.w,r.h,r.d||8,r.f),t=makeTarget(r.w,r.h,8,true);writeRegion(t,0,0,r.w,r.h,raw);return t;});
+    if(o.ext){n.ext={};for(const k in o.ext){const r=o.ext[k],t=makeTarget(r.w,r.h,r.d===16&&canFloat?16:8,false,false,!!r.mono);await img(r,t);n.ext[k]={t,ox:r.ox|0,oy:r.oy|0};}}
     if(o.sid){n.shared=true;sharedMap.set(o.sid,n);}
     if(parent)insertNode(n,parent);
     if(o.t==='G')for(const c of o.kids||[])await mk(c,n);

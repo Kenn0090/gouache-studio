@@ -72,15 +72,18 @@ function xfStart(opts){opts=opts||{};if(xf)return true;
       for(const k of mapKeysOf(L)){const T0=mapT(L,k),d=T0.depth,orig=acquireD(d);blit(T0,orig,0,0,doc.w,doc.h,0,0);let src=orig,base=null;
       if(useSel){src=acquireD(d);run(P.cropsel,src,{uSrc:orig.tex,uSel:sel.t.tex,uOff:[0,0],uUseSel:true});
         base=acquireD(d);if(opts.copy)blit(orig,base,0,0,doc.w,doc.h,0,0);else{const clearT=acquireD(d);clearTarget(clearT);run(P.selmix,base,{uOld:orig.tex,uNew:clearT.tex,uSel:sel.t.tex});release(clearT);}}
-      const b=contentBounds(src);if(b)rect=rUnion(rect,b);
-      items.push({node:L,key:k,t:()=>mapT(L,k),orig,src,base,outside:[0,0,0,0]});}
-      if(!useSel&&L.mask&&L.mask.link!==false){const m=L.mask,mo=acquireD(m.target.depth);blit(m.target,mo,0,0,doc.w,doc.h,0,0);items.push({node:L,t:()=>m.target,orig:mo,src:mo,base:null,outside:[1,1,1,1],full:true,mask:m});}}
+      let b=contentBounds(src);const ext=!useSel&&L.ext&&L.ext[k]?extFull(L,k):null;
+      /* (0.96.4) hidden pixels beyond the canvas move along: the box covers them too */
+      if(ext&&k==='base'){const eb=extBounds(ext.t);if(eb)b=rUnion(b,[eb[0]+ext.ox,eb[1]+ext.oy,eb[2]+ext.ox,eb[3]+ext.oy]);}
+      if(b)rect=rUnion(rect,b);
+      items.push({node:L,key:k,t:()=>mapT(L,k),orig,src,base,outside:[0,0,0,0],ext,extKey:useSel?null:k});}
+      if(!useSel&&L.mask&&L.mask.link!==false){const m=L.mask,mo=acquireD(m.target.depth);blit(m.target,mo,0,0,doc.w,doc.h,0,0);items.push({node:L,t:()=>m.target,orig:mo,src:mo,base:null,outside:[1,1,1,1],full:true,mask:m,ext:L.ext&&L.ext[EXT_MASK]?extFull(L,EXT_MASK):null,extKey:EXT_MASK});}}
     if(!rect){for(const it of items)freeItem(it);toast(useSel?'There are no pixels inside the selection to transform.':'The layer is empty, so there is nothing to transform.');return false;}}
   let selItem=null;if(useSel&&!pick.maskOnly){const o=acquireD(sel.t.depth);blit(sel.t,o,0,0,doc.w,doc.h,0,0);selItem={orig:o,bb:sel.bb.slice()};}
   xf={items,selItem,rect,q:rectCorners(rect),pivot:[(rect[0]+rect[2])/2,(rect[1]+rect[3])/2],warp:null,move:!!opts.move,copy:!!opts.copy&&useSel&&!pick.maskOnly,dirty:null};
   if(!xf.move){buildBrushPanel();drawXfOverlay();}
   return true;}
-function freeItem(it){for(const k of ['orig','src','base'])if(it[k]&&(k==='orig'||it[k]!==it.orig))release(it[k]);}
+function freeItem(it){for(const k of ['orig','src','base'])if(it[k]&&(k==='orig'||it[k]!==it.orig))release(it[k]);if(it.ext&&it.ext.own){disposeTarget(it.ext.t);it.ext=null;}}
 
 /* ---- rendering the current state into the real layers ---- */
 function xfOutBB(){const b=xf.warp?warpBB():quadBB(xf.q);return b;}
@@ -99,6 +102,8 @@ function xfRender(fast){if(!xf)return;const bb=xfOutBB(),prev=xf.dirty;xf.dirty=
   for(const it of xf.items){const reg=rUnion(xfRegion(it,bb),prev?xfRegion(it,prev):null);if(!reg)continue;const dst=it.t();
     gl.enable(gl.SCISSOR_TEST);gl.scissor(reg[0],reg[1],reg[2]-reg[0],reg[3]-reg[1]);
     if(xf.warp)warpDraw(it,dst,interp);
+    else if(it.ext&&!doc.wrap){const E=it.ext,Hs=mul3([1,0,-E.ox,0,1,-E.oy,0,0,1],H);run(P.xform,dst,{uSrc:E.t.tex,uH0:Hs.slice(0,3),uH1:Hs.slice(3,6),uH2:Hs.slice(6,9),uInterp:{int:interp},uSS:{int:ss},uWrap:false,
+      uRect:[0,0,0,0],uDoc:[doc.w,doc.h],uOutside:it.outside,uBase:dummy,uUseBase:false});}
     else run(P.xform,dst,{uSrc:it.src.tex,uH0:H.slice(0,3),uH1:H.slice(3,6),uH2:H.slice(6,9),uInterp:{int:interp},uSS:{int:ss},uWrap:doc.wrap,
       uRect:it.full?[0,0,doc.w,doc.h]:xf.rect,uDoc:[doc.w,doc.h],uOutside:it.outside,uBase:it.base?it.base.tex:dummy,uUseBase:!!it.base});
     gl.disable(gl.SCISSOR_TEST);if(it.row&&it.node.mask)it.node.mask._key=null;}
@@ -116,9 +121,17 @@ function xfCommit(){if(!xf)return;const s=xf;xfRender(false);xf=null;
   let selStep=null;if(s.selItem){const r=rToDoc(rUnion(s.selItem.bb,sel.bb))||fullRect();selStep={r,b:captureSel(s.selItem.orig,r),a:captureSel(sel.t,r),bbB:s.selItem.bb,bbA:sel.bb&&sel.bb.slice()};snaps.push(selStep.b,selStep.a);}
   const refs=[...new Set(s.items.map(it=>it.node))],masks=s.items.filter(it=>it.mask).map(it=>it.mask);
   const label=s.copy?'Duplicate selected pixels':s.move?'Move':s.warp?'Warp':'Transform';
+  /* (0.96.4) what of each moved layer now lies outside the canvas is kept (not for warps or moved selections) */
+  const extSteps=[];if(!s.warp&&!s.selItem&&!s.copy){const H=inv3(rectToQuad(s.rect,s.q));
+    if(H)for(const n of refs){const its=s.items.filter(it=>it.node===n&&it.extKey);if(!its.length||!its.some(it=>it.extKey==='base'))continue;
+      const fulls={};for(const it of its)fulls[it.extKey]=it.ext||{t:it.orig,ox:0,oy:0};
+      extSteps.push({n,a:n.ext||null,b:extKeep(fulls,H,ui.xfInterp)});}
+    for(const e of extSteps)e.n.ext=e.b;}
+  let extNow='b';
   pushUndo({label,refs,masks,snaps,
-    undo(){for(const st of steps){restoreRegion(st.b,st.it.t(),st.r[0],st.r[1]);if(st.it.row&&st.it.node.mask)st.it.node.mask._key=null;}if(selStep){restoreSel(selStep.b,selStep.r[0],selStep.r[1]);sel.bb=selStep.bbB;sel.active=true;selChanged();}},
-    redo(){for(const st of steps){restoreRegion(st.a,st.it.t(),st.r[0],st.r[1]);if(st.it.row&&st.it.node.mask)st.it.node.mask._key=null;}if(selStep){restoreSel(selStep.a,selStep.r[0],selStep.r[1]);sel.bb=selStep.bbA;sel.active=true;selChanged();}}});
+    drop(){for(const e of extSteps)extFree(extNow==='b'?e.a:e.b);},
+    undo(){extNow='a';for(const e of extSteps)e.n.ext=e.a;for(const st of steps){restoreRegion(st.b,st.it.t(),st.r[0],st.r[1]);if(st.it.row&&st.it.node.mask)st.it.node.mask._key=null;}if(selStep){restoreSel(selStep.b,selStep.r[0],selStep.r[1]);sel.bb=selStep.bbB;sel.active=true;selChanged();}},
+    redo(){extNow='b';for(const e of extSteps)e.n.ext=e.b;for(const st of steps){restoreRegion(st.a,st.it.t(),st.r[0],st.r[1]);if(st.it.row&&st.it.node.mask)st.it.node.mask._key=null;}if(selStep){restoreSel(selStep.a,selStep.r[0],selStep.r[1]);sel.bb=selStep.bbA;sel.active=true;selChanged();}}});
   for(const it of s.items)freeItem(it);if(s.selItem)release(s.selItem.orig);
   xfEnd(refs);if(s.contentSel&&sel.active)setTool('move');}
 function xfCancel(){if(!xf)return;const s=xf;xf=null;

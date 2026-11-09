@@ -1,3 +1,8 @@
+## 0.96.4
+
+- **Pixels beyond the canvas are kept:** moving or transforming a layer partly off the canvas no longer cuts it off. Move it back and the hidden part comes back (undo works as usual), and the hidden pixels are saved in the .gouache file.
+- **Crop › Delete cropped pixels** (on by default, as before). Turn it off and what the crop box leaves out stays hidden: pick Crop again and drag the box out over the dashed outline (or press **Reveal all**) to bring it back. Tilted crops can keep it too. Cropping larger than the canvas also brings hidden pixels back.
+
 ## 0.96.3
 
 - **De-light filter in Paint** (Filter › Adjust › De-light…, also in the Filter Gallery and as a filter layer): removes lighting baked into a photo, with Even out lighting, Lighting size, Lift shadows, Tame highlights and Saturation, previewed live like the other filters.

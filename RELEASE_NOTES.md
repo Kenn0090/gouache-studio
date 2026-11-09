@@ -1,3 +1,8 @@
+## 0.96.4
+
+- **Moving a layer off the canvas no longer cuts it off**: move it back and it is all there.
+- **Crop › Delete cropped pixels** switch: turn it off to keep what the crop leaves out, and bring it back later with Crop.
+
 ## 0.96.3
 
 - **De-light filter in Paint** (Filter › Adjust): removes lighting baked into a photo.
