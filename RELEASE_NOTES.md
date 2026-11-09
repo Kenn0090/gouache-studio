@@ -1,3 +1,8 @@
+## 0.96.1
+
+- **Seamless generated masks:** Warp and Distort no longer break at UV seams on a model.
+- **Drag a texture tile onto a generator's Grunge box**, and use the new Grunge contrast and level sliders.
+
 ## 0.96.0
 
 - **Scripting** (Window › Scripts…): automate the app with scripts, with examples, one-step undo and a **Record** button that turns what you do into a script.

@@ -1,3 +1,9 @@
+## 0.96.1
+
+- **No more breaks at UV seams in generated masks:** on a model, Warp rows (and the Warp filter) now push the picture along the model's surface, so both sides of a UV seam move together, and a generator's Distort roughens edges and cavities on the surface instead of reading from a shifted spot of the texture. Smart masks and smart materials that use them are seamless again.
+- **Drop a texture tile on a generator's Grunge box** (from the Textures panel or shelf): it becomes the grunge. The same works for Slope blur's picture box.
+- **Grunge contrast and level** sliders for a generator's grunge.
+
 ## 0.96.0
 
 - **Scripting:** Window › Scripts… lets you write, run, save and share scripts that drive the app (layers, materials, masks, filters, brushes and strokes, selections, 3D Paint texture sets, any menu command). A whole run is one undo step, Stop stops it, mistakes are explained in plain words, and examples are included.

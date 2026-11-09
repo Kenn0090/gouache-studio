@@ -35,7 +35,10 @@ const fxdWrap=()=>({int:doc.wrap?1:0});
 fxDef('warp',{title:'Warp',note:'Pushes the picture around with a smooth noise: wobbly edges, organic breakup. Turbulent folds it harder.',init:()=>({mode:'smooth'}),
   defs:[{key:'amt',label:'Amount',min:0,max:120,step:.5,value:12,fmt:px},{key:'size',label:'Noise size',min:4,max:600,step:1,value:80,fmt:px},{key:'seed',label:'Seed',min:1,max:99,step:1,value:1,fmt:v=>String(v)}],
   controls:(v,upd)=>[modeSeg(v,'mode',[['smooth','Smooth'],['turb','Turbulent']],upd,'Warp kind')],
-  render(src,dst,v){run(pxd('warp'),dst,{uSrc:src.tex,uAmt:v.amt,uSize:v.size,uSeed:v.seed,uMode:{int:v.mode==='turb'?1:0},uWrap:fxdWrap()});}});
+  checks:[['meshSeams','Across mesh seams',true]],
+  /* (0.96.1) on a model in 3D Paint the push follows the surface, so both sides of a UV seam move together */
+  render(src,dst,v){if(v.meshSeams!==false&&v.mode!=='turb'&&typeof meshConnectedWarp==='function'&&meshConnectedWarp(src,dst,v.amt/4,Math.max(1,doc.w/Math.max(4,v.size)),v.seed))return;
+    run(pxd('warp'),dst,{uSrc:src.tex,uAmt:v.amt,uSize:v.size,uSeed:v.seed,uMode:{int:v.mode==='turb'?1:0},uWrap:fxdWrap()});}});
 /* (0.39, Kenn) the slope can come from a picture: drop one on the box, or pick from the Textures library */
 function fxdAllTex(){return [...tx.mine.map(rec=>({kind:'mine',id:rec.id,name:rec.name,rec})),...TX_PHOTO.map(([id,name])=>({kind:'photo',id,name})),...TX_GEN.map(([id,name])=>({kind:'gen',id,name}))];}
 function fxdGuideTex(v){const g=v.gimg;if(!g)return null;txCachePin(g);const key=g.kind+':'+g.id,t=txCacheGet(key);if(t)return t;
@@ -50,7 +53,7 @@ async function fxdDropFiles(files,done){const f=[...files].find(x=>/^image\//.te
 function fxdGuideRow(v,upd){const name=el('span',{class:'note',text:v.gimg?v.gimg.name:'No picture yet'});
   const set=g=>{v.gimg=g;txCachePin(g);name.textContent=g.name;txLoad().then(()=>{const it=fxdAllTex().find(x=>x.kind===g.kind&&x.id===g.id);return it&&txTarget(it);}).then(()=>upd()).catch(e=>toast('Could not read that texture: '+(e.message||e)));};
   const drop=el('div',{class:'fxddrop',id:'fxdDrop',tabindex:'0',title:'Drop a picture here'},el('b',{text:'Drop a picture'}),el('small',{text:'or click to browse'}));
-  drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+  drop._texDrop=set;drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
   drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');fxdDropFiles(e.dataTransfer.files,set);});
   drop.addEventListener('click',async()=>{const fs=await pickFiles('image/*',false,'Pictures',['png','jpg','jpeg','webp','tga','bmp','tif','tiff']);if(fs&&fs.length)fxdDropFiles(fs,set);});
   return el('div',{class:'fxdguide',id:'fxdGuide'},drop,el('div',{class:'chips'},el('button',{class:'btn sm',id:'fxdLib',text:'Choose from Textures…',onclick:()=>fxdPickTexture(set)}),name),

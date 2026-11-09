@@ -161,12 +161,12 @@ function cfxAddAnchor(L){if(!isLayer(L))return null;let row=null;const names=msA
 function msGrungeBox(r,p,ed,S){const box=el('div',{class:'dlg-grid msgrunge',id:'msGrunge'});
   const name=el('span',{class:'note',id:'msGrungeName',text:p.gimg?p.gimg.name:'Built-in noise'});
   const set=g=>{ed(x=>{x.p.gimg=g?{kind:g.kind,id:g.id,name:g.name}:null;});name.textContent=g?g.name:'Built-in noise';if(typeof renderMatEd==='function')renderMatEd(true);};
-  const drop=el('div',{class:'fxddrop',id:'msGrungeDrop',tabindex:'0',title:'Drop a picture here to use it as the grunge'},el('b',{text:'Drop a grunge'}),el('small',{text:'or click to browse'}));
+  const drop=el('div',{class:'fxddrop',id:'msGrungeDrop',tabindex:'0',title:'Drop a texture tile or a picture here to use it as the grunge'},el('b',{text:'Drop a grunge'}),el('small',{text:'a Textures tile or a picture, or click to browse'}));drop._texDrop=set;
   drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
   drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');const tx0=e.dataTransfer.getData('text/gouache-texture');if(tx0){try{set(JSON.parse(tx0));return;}catch(er){}}fxdDropFiles(e.dataTransfer.files,set);});
   drop.addEventListener('click',async()=>{const fs=await pickFiles('image/*',false,'Pictures',['png','jpg','jpeg','webp','tga','bmp','tif','tiff']);if(fs&&fs.length)fxdDropFiles(fs,set);});
   box.append(el('div',{class:'sub',text:'Grunge'}),drop,el('div',{class:'chips'},el('button',{class:'btn sm',id:'msGrungePick',text:'Choose from Textures…',onclick:()=>fxdPickTexture(set)}),
     p.gimg?el('button',{class:'btn sm',id:'msGrungeClear',text:'Use built-in noise',onclick:()=>set(null)}):'',name));
-  if(p.gimg)box.append(S('ms_gtile','Grunge tiling','gtile',.25,16,.05,v=>v.toFixed(2)+'×'),S('ms_grot','Grunge rotation','grot',0,360,1,v=>Math.round(v)+'°'),chk('ms_ginv','Invert grunge',!!p.ginv,v=>ed(x=>{x.p.ginv=v;})),
+  if(p.gimg)box.append(S('ms_gtile','Grunge tiling','gtile',.25,16,.05,v=>v.toFixed(2)+'×'),S('ms_grot','Grunge rotation','grot',0,360,1,v=>Math.round(v)+'°'),S('ms_gcon','Grunge contrast','gcon',-1,1,.01,v=>(v>0?'+':'')+Math.round(v*100)+'%'),S('ms_glev','Grunge level','glev',-1,1,.01,v=>(v>0?'+':'')+Math.round(v*100)+'%'),chk('ms_ginv','Invert grunge',!!p.ginv,v=>ed(x=>{x.p.ginv=v;})),
     el('p',{class:'note',text:'Breakup sets how strongly the grunge eats into the mask. With the World projection it is laid over the model from three sides, so it has no seams.'}));
   return box;}
