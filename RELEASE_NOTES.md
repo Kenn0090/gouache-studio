@@ -1,3 +1,10 @@
+## 0.96.5
+
+- **3D Paint shows only tools that work on the model** (their keys too); Hand, Zoom and the Eyedropper now work on the model.
+- **Pick colours from anywhere on the screen**, also outside the app: choose the Eyedropper again (or press I again), or drag off the app window while picking.
+- **Gradients from the screen**, like Substance Designer: Pick from screen in the Gradient tool and Gradient map, then drag a line across anything.
+- **Polygon fill highlight is orange.**
+
 ## 0.96.4
 
 - **Moving a layer off the canvas no longer cuts it off**: move it back and it is all there.

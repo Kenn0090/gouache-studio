@@ -227,14 +227,9 @@ function p3SelectAt(hit,e){if(sel3.mode==='off'||!v3.mesh||(ui.mode!=='p3d'&&ui.
 function sel3HoverClear(){const H=sel3HoverState;if(H.frame)cancelAnimationFrame(H.frame);H.frame=0;if(H.tris){H.tris=null;H.mesh=null;v3.dirty=true;requestRender();}}
 function sel3HoverMove(hit,e){if(!sel3.armed||sel3.mode==='off'||e.buttons||e.altKey||v3.drag||!modal.hidden){sel3HoverClear();return;}const H=sel3HoverState;H.point={clientX:e.clientX,clientY:e.clientY};if(H.frame)return;
  H.frame=requestAnimationFrame(()=>{H.frame=0;if(!sel3.armed||!hit.isConnected){sel3HoverClear();return;}const found=sel3HitTriangles(hit,H.point);if(!found){sel3HoverClear();return;}H.mesh=found.m;H.root=doc.root;H.tris=found.tris;H.upload=true;v3.dirty=true;requestRender();});}
-/* (0.96.4, Kenn) Polygon fill's highlight: golden yellow with a checkerboard laid out by the UVs, like a UV checker. Select part stays blue */
-const PF_HOVER_FS=`in vec2 vT; uniform vec4 uCol; uniform float uChk;
-/* (0.96.4, Kenn: "make it look dithered") drawn as a 4x4 ordered dither in 2-pixel dots: about half the dots are solid, the model shows between them */
-const float BAY[16]=float[16](0.,8.,2.,10.,12.,4.,14.,6.,3.,11.,1.,9.,15.,7.,13.,5.);
-void main(){ if(uChk<0.5){ o=uCol; return; } vec2 q=floor(vT*16.0); float c=mod(q.x+q.y,2.0);
-  ivec2 d=ivec2(floor(gl_FragCoord.xy/2.0))&3; float th=(BAY[d.y*4+d.x]+0.5)/16.0;
-  if(th>(c>0.5?0.5:0.68)) discard;
-  o=vec4(mix(vec3(1.0,0.80,0.22),vec3(0.80,0.50,0.04),c),1.0); }`;
+/* (0.96.5, Kenn: "let's just make the highlight be orange") Polygon fill's hover highlight is a plain see-through orange; Select part stays blue */
+const PF_HOVER_FS=`uniform vec4 uCol; uniform float uChk;
+void main(){ o=uChk<0.5?uCol:vec4(1.0,0.5,0.08,0.5); }`;
 function sel3HoverDraw(g,common,F){const H=sel3HoverState;if(!(sel3.armed||(typeof pfOn==='function'&&pfOn()))||H.mesh!==v3.mesh||H.root!==doc.root||!H.tris?.length)return;
  if(!H.program)H.program=prog3(VS_3D,PF_HOVER_FS);gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);gl.disable(gl.SCISSOR_TEST);gl.disable(gl.CULL_FACE);gl.colorMask(true,true,true,true);if(!H.buffer)H.buffer=gl.createBuffer();gl.bindVertexArray(g.vao);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,H.buffer);if(H.upload){const ids=new Uint32Array(H.tris.length*3);H.tris.forEach((t,i)=>ids.set(v3.mesh.idx.subarray(t*3,t*3+3),i*3));gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,ids,gl.DYNAMIC_DRAW);H.upload=false;}
  gl.enable(gl.DEPTH_TEST);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(-1,-1);gl.enable(gl.BLEND);gl.blendEquation(gl.FUNC_ADD);gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);
@@ -291,7 +286,7 @@ function maskBarSync(){let bar=document.getElementById('maskBar');
   if(on&&!live&&!mk3.was){mk3.was={tool:ui.tool,sel:sel.active,used:false};}
   else if(!on&&mk3.was){const w=mk3.was;mk3.was=null;if(mk3.tool)mk3Reset();
     if(sel.active&&(w.used||!w.sel))deselect();drawSelOverlay();
-    if((ui.tool==='marquee'||ui.tool==='lasso')&&w.tool!==ui.tool)setTool(w.tool||'brush');}
+    if((ui.tool==='marquee'||ui.tool==='lasso')&&w.tool!==ui.tool)setTool(w.tool||'brush',false,true);}
   if(!on){if(bar)bar.hidden=true;return;}
   if(!bar){bar=el('div',{id:'maskBar',class:'maskbar',role:'toolbar','aria-label':'Mask'});$('#work').append(bar);}
   const workTop=$('#work').getBoundingClientRect().top,viewport=!v3.pop&&v3.on,items=viewport?[document.querySelector('#pane3d .v3bar'),document.querySelector('#pane3d #v3Settings')].filter(x=>x&&!x.hidden):[],bottom=items.reduce((y,x)=>Math.max(y,x.getBoundingClientRect().bottom),workTop+2);

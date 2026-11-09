@@ -30,6 +30,6 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.keyboard.press('Escape');await W(200);
  const fs=require('fs'),py=fs.readFileSync(__dirname+'/../../assets/addons/gouache_unreal_setup.py','utf8'),js=fs.readFileSync(__dirname+'/../../src/js/view3d/paint3d.js','utf8');
  ok(/Goes into: /.test(py)&&/NOT CONNECTED: /.test(py)&&/MaterialExpressionComment/.test(py)&&/MASTER_FIXED = 5/.test(py),'Unreal masters label where each node goes and mark wires the script could not make');
- ok(/BAY\[16\]/.test(js)&&/discard/.test(js),'the polygon fill highlight is dithered');
+ ok(js.includes('vec4(1.0,0.5,0.08,0.5)'),'the polygon fill highlight is orange');
  ok(!errs.length,'no page errors '+errs.join(' | '));
  await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();

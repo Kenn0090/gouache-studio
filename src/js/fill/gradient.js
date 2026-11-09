@@ -154,6 +154,9 @@ function buildGradPanel(box){gradPanelBox=box;const L=editedGrad(),d=panelDef(),
   GRAD_BUILTIN.forEach(p=>addPre(p,false));userGradPresets.forEach(p=>addPre(p,true));
   pre.append(el('button',{class:'btn sm',text:'+ Save',title:'Save this gradient as a preset',onclick:()=>{userGradPresets.push({name:'My gradient '+(userGradPresets.length+1),def:cloneGrad(panelDef())});saveGradPresets();buildBrushPanel();}}));
   box.append(el('div',{class:'sub',text:'Presets'}),pre);
+  /* (0.96.5, Kenn) drag a line across anything on the screen, like Substance Designer's gradient picker */
+  box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'gPickScreen',text:'Pick from screen',title:'Drag a line across anything on your screen, also outside the app: the colours along it become the gradient. Esc cancels.',
+    onclick:()=>screenGrabPick('line',cols=>{const nd=cloneGrad(panelDef());nd.stops=sgStops(cols);const LL=editedGrad();if(LL){gradBegin(LL);LL.grad.def=nd;renderLiveGrad(LL);gradTouch();}else ui.grad=nd;ui.gradStop={kind:'c',i:0};buildBrushPanel();drawXfOverlay();})})));
   const ms=el('select',{id:'gMethod','aria-label':'Blending method'},...[['perceptual','Perceptual'],['linear','Linear'],['classic','Classic']].map(([v,t])=>el('option',{value:v,text:t})));ms.value=d.method;
   ms.addEventListener('change',()=>{d.method=ms.value;defChanged();});
   box.append(el('div',{class:'frow'},el('label',{for:'gMethod',text:'Blending'}),ms),el('div',{class:'chips'},chk('gRev','Reverse',d.reverse,v=>{d.reverse=v;defChanged();}),chk('gDith','Dither',d.dither,v=>{d.dither=v;defChanged();})));
