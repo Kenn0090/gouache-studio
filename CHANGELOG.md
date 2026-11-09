@@ -4,6 +4,7 @@
 - **Crop › Delete cropped pixels** (on by default, as before). Turn it off and what the crop box leaves out stays hidden: pick Crop again and drag the box out over the dashed outline (or press **Reveal all**) to bring it back. Tilted crops can keep it too. Cropping larger than the canvas also brings hidden pixels back.
 - **Smart materials made from Library materials are much smaller**: they remember which Library material each layer uses instead of copying its pictures, and fetch it again when added. This also works after reopening a project. To shrink a smart material you already saved, add the Library materials again and save it again.
 - **Smart materials that cannot be added now say why** (for example, not enough graphics memory) instead of silently adding nothing.
+- **Polygon fill's hover highlight is now golden yellow with a checkerboard laid out by the model's UVs**, like a UV checker, so you can see the faces and how the UVs run. Select part keeps its blue.
 
 ## 0.96.3
 

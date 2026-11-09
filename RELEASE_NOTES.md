@@ -4,6 +4,7 @@
 - **Crop › Delete cropped pixels** switch: turn it off to keep what the crop leaves out, and bring it back later with Crop.
 - **Smart materials made from Library materials are tiny now**: they name the Library material instead of copying its pictures. Re-add the Library materials and save the smart material again to shrink an existing one.
 - **A smart material that cannot be added now says why**, instead of doing nothing.
+- **Polygon fill highlight is golden yellow with a UV checkerboard.**
 
 ## 0.96.3
 
