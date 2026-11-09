@@ -383,7 +383,7 @@ function p3ReceiveBake(mesh,by,ks,asLayers){if(ui.mode!=='p3d'&&!setMode('p3d',t
   const j=p3.sets.findIndex(S=>S.name===back);if(j>=0)p3SwitchSet(j,true);buildP3Panel();
   toast(n?'Sent the bake to '+n+' texture set'+(n>1?'s':'')+(asLayers?', as mesh maps and layers.':', as mesh maps.'):'No texture set matched the baked materials.');}
 function p3ApplyBake(res,ks,asLayers){const M=doc.meshMaps||(doc.meshMaps={});
-  for(const k of ks){if(!res[k])continue;let t=M[k];if(!t||t.w!==doc.w||t.h!==doc.h){if(t)disposeTarget(t);t=M[k]=makeTarget(doc.w,doc.h,k==='height'&&canFloat?16:doc.depth,false);}copyScaled(res[k],t);}
+  for(const k of ks){if(!res[k])continue;let t=M[k];if(!t||t.w!==doc.w||t.h!==doc.h){if(t)disposeTarget(t);t=M[k]=makeTarget(doc.w,doc.h,(k==='height'||k==='normal')&&canFloat?16:doc.depth,false);}copyScaled(res[k],t);}
   /* (0.27, Kenn: sent bakes shouldn't be added to the layer stack) they are the set's mesh maps; the baked normal
      shades the model from there (meshNormalBase). Layers only when asked for; an old "Mesh normal (baked)" layer goes. */
   const add=[];

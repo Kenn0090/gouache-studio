@@ -99,13 +99,15 @@ function normalComposite(flipY,own,region){
   /* A one-texel halo supplies Sobel neighbours; only the requested normal patch is copied. */
   const scoped=fn=>region?scissorDo(region,fn):fn(),input=k=>{if(!region)return mapComp(k,own);if(k===doc.map&&own)return {t:own,own:true};
     const x=Math.max(0,region[0]-1),y=Math.max(0,region[1]-1),r=[x,y,Math.min(doc.w,region[0]+region[2]+1)-x,Math.min(doc.h,region[1]+region[3]+1)-y];return {t:scissorDo(r,()=>compositeMap(k)),own:false};};const hasH=doc.maps.includes('height'),hasN=doc.maps.includes('normal'),mb=meshNormalBase();
-  const out=acquireD(doc.depth);
+  /* (0.96.2, Kenn: swirls and herringbone on shiny or smooth skin) the final normal is built with fine (16-bit) steps:
+     in 8 bits a gentle slope rounds into contour lines that bend at every triangle, which mirror-like and smooth surfaces show */
+  const ND=canFloat?16:doc.depth,out=acquireD(ND);
   if(!hasH&&!hasN)scoped(()=>clearTarget(out,[.5,.5,1,1]));
   else{const h=hasH?input('height'):null,n=hasN?input('normal'):null;
     scoped(()=>run(P.nrm,out,{uH:h?h.t.tex:dummy,uN:n?n.t.tex:dummy,uUseN:!!n,uStr:hasH?doc.nrmStr:0,uWrap:!!doc.wrap,uFlipY:!!flipY&&!mb}));
     for(const c of [h,n])if(c&&!c.own)release(c.t);}
   if(!mb)return out;
-  if(!P_NRMB)P_NRMB=program(FS_NRMB);const o2=acquireD(doc.depth);scoped(()=>run(P_NRMB,o2,{uB:mb.tex,uD:out.tex,uFlipY:!!flipY}));release(out);return o2;}
+  if(!P_NRMB)P_NRMB=program(FS_NRMB);const o2=acquireD(ND);scoped(()=>run(P_NRMB,o2,{uB:mb.tex,uD:out.tex,uFlipY:!!flipY}));release(out);return o2;}
 function lightVec(){const a=doc.light.az*Math.PI/180,e=doc.light.el*Math.PI/180;return [Math.cos(e)*Math.cos(a),Math.cos(e)*Math.sin(a),Math.sin(e)];}
 function buildMaterialView(){const own=compOut;let out;
   if(doc.view==='nfinal')out=normalComposite(false,own);

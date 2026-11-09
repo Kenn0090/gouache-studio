@@ -1,3 +1,9 @@
+## 0.96.2
+
+- **Shiny baked models no longer show herringbone streaks** (normal maps keep fine steps; re-bake and re-export).
+- **No more swirls on very rough, smooth surfaces** (smoother blurry reflections).
+- **Height depth works per texture set.**
+
 ## 0.96.1
 
 - **Seamless generated masks:** Warp and Distort no longer break at UV seams on a model.
