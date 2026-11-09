@@ -7,6 +7,7 @@
 - **Gradient map, rebuilt:** gradient previews to pick from, a stop editor, saving your own gradients, pick colours from the picture, Hard / Steps, input range and strength.
 - **Levels is smaller and sharp**, with number boxes.
 - **Generators now list the baked maps** (AO, Curvature edges/cavities, Thickness, Height) with Balance, Contrast and Invert.
+- **Right-click a mask for a short mask-only menu.**
 - **The fill layer button adds a highlighted material only once**, then plain base materials.
 
 ## 0.96.0
