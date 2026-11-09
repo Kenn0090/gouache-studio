@@ -85,6 +85,7 @@
     "filters/filter-shaders",
     "filters/converters",
     "filters/filters",
+    "filters/grad-map",
     "filters/filters-more",
     "filters/filters-retro",
     "filters/filters-distort",

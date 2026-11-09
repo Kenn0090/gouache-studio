@@ -1532,3 +1532,29 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .btn.mono{font-family:ui-monospace,Consolas,monospace;font-size:11px}
 #scrRec.on{color:#ff6b5b}
 @media (max-width:700px){.scrdlg{grid-template-columns:1fr}}
+/* (0.96.1) Levels, compact and sharp */
+.lvsimple{width:100%;max-width:none;height:96px;display:block;touch-action:none;cursor:ew-resize}
+.lvwrap{display:grid;gap:6px}
+.lvtop{gap:6px;align-items:center}.lvtop .seg button{padding:3px 8px}
+.lvrow{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.lvrow .lvnum{width:58px;padding:2px 6px;font-size:12px;text-align:right;-moz-appearance:textfield;appearance:textfield}
+.lvrow .lvnum::-webkit-inner-spin-button,.lvrow .lvnum::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.lvrow .lvlab{font-size:11px;color:var(--muted);margin:0 2px 0 4px}
+.lvrow .lvlab:first-child{margin-left:0}
+/* (0.96.1) Gradient map editor */
+.gmed{display:grid;gap:8px}
+.gmbar{display:grid;gap:0}
+.gmstrip{height:26px;border-radius:5px;box-shadow:inset 0 0 0 1px var(--line-2);cursor:copy}
+.gmstops{position:relative;height:18px;margin:0 6px;cursor:copy}
+.gminfo{gap:6px;flex-wrap:wrap;align-items:center}.gminfo input[type=color]{width:34px;height:24px;padding:0}
+.gminfo .num{width:56px}
+.gmgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:5px;max-height:150px;overflow:auto;padding:2px}
+.gmtile{height:22px;border-radius:4px;border:1px solid var(--line-2);padding:0;cursor:pointer}
+.gmtile:hover{outline:1px solid var(--muted)}
+.gmtile.on{outline:2px solid var(--accent);outline-offset:1px}
+.gmtile.user{border-style:dashed}
+.gmsave{gap:6px}.gmsave input[type=text]{flex:1;min-width:80px}
+.gmpick{position:fixed;inset:0;z-index:70;cursor:crosshair;background:transparent}
+.gmpicktip{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:71;background:var(--panel);border:1px solid var(--line-2);border-radius:6px;padding:6px 10px;font-size:12px;pointer-events:none}
+.gmmenu{background:var(--panel);border:1px solid var(--line-2);border-radius:6px;padding:4px;display:grid;min-width:120px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.gmmenu .mi{text-align:left;background:none;border:0;padding:5px 8px;color:inherit;border-radius:4px;cursor:pointer}.gmmenu .mi:hover{background:var(--line-2)}
