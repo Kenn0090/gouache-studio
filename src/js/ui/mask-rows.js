@@ -70,6 +70,11 @@ async function msPickImage(L,r){if(!r)return;const fs=await pickFiles('image/*',
   let t;try{t=await fileTarget(f);}catch(er){toast('Could not read '+f.name+': '+(er.message||er));return;}setWrap(t,true);
   msEdit(L,r,x=>{x.t=t;x.p.name=f.name;});(L.mask._rows||(L.mask._rows=new Set())).add(r);renderLayers();renderMatEd(true);}
 
+/* (0.96.1, Kenn) a texture tile dragged from the Textures panel onto a Picture row replaces its picture */
+function msImageDrop(L,r){const drop=el('div',{class:'fxddrop',id:'msImageDrop',tabindex:'0',title:'Drop a texture tile here to use it as this picture'},el('b',{text:'Drop a texture'}),el('small',{text:'a tile from Textures'}));
+  drop._texDrop=async ref=>{try{await txLoad();const it=fxdAllTex().find(x=>x.kind===ref.kind&&x.id===ref.id);if(!it)return;const t=txCopy(await txTarget(it));setWrap(t,true);
+      msEdit(L,r,x=>{x.t=t;x.p.name=it.name;});(L.mask._rows||(L.mask._rows=new Set())).add(r);renderLayers();renderMatEd(true);}catch(e){toast('Could not read that texture: '+(e.message||e));}};
+  return drop;}
 /* ---- Properties: the selected row's settings ---- */
 function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
   const ed=fn=>msEdit(L,r,fn);const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:p[key]==null?min:p[key],fmt:fmt||(v=>String(Math.round(v*100)/100)),onInput:v=>ed(x=>{x.p[key]=v;})}).el;
@@ -120,7 +125,7 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
   if(r.kind==='grad')box.append(sel('ms_axis','Towards',[['up','Top'],['down','Bottom'],['x','Right'],['-x','Left'],['z','Front'],['-z','Back']],'axis'),S('ms_from','From','from',0,1,.01,pct),S('ms_to','To','to',0,1,.01,pct),inv());
   if(r.kind==='noise')box.append(sel('ms_type','Pattern',MS_NOISES,'type'),S('ms_scale','Size','scale',.5,40,.5),S('ms_con','Contrast','contrast',.2,8,.05),S('ms_lvl','Level','level',-1,1,.01),S('ms_seed','Seed','seed',1,99,1,v=>String(v)),
     inv(),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]));
-  if(r.kind==='image')box.append(el('div',{class:'row wrap'},el('span',{class:'note',text:p.name||'No picture'}),el('button',{class:'btn sm',text:'Choose picture…',onclick:()=>msPickImage(L,r)})),
+  if(r.kind==='image')box.append(el('div',{class:'row wrap'},el('span',{class:'note',text:p.name||'No picture'}),el('button',{class:'btn sm',text:'Choose picture…',onclick:()=>msPickImage(L,r)})),msImageDrop(L,r),
     makeSlider({id:'ms_imgContrast',label:'Contrast',min:-1,max:4,step:.01,value:p.contrast??0,fmt:pct,onInput:v=>ed(x=>{x.p.contrast=v;})}).el,
     S('ms_tile','Tile','tile',.25,16,.25,v=>v+'×'),inv(),pxfBox(L,r,PXF_MODES));
   if(r.kind==='alpha')box.append(inv(),el('p',{class:'note',text:'Uses the transparency of this material’s picture (and its Opacity map, if it has one). Where it is see-through, the layers under show in every map.'}));

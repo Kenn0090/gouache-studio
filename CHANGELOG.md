@@ -1,7 +1,7 @@
 ## 0.96.1
 
 - **No more breaks at UV seams in generated masks:** on a model, Warp rows (and the Warp filter) now push the picture along the model's surface, so both sides of a UV seam move together, and a generator's Distort roughens edges and cavities on the surface instead of reading from a shifted spot of the texture. Smart masks and smart materials that use them are seamless again.
-- **Drop a texture tile on a generator's Grunge box** (from the Textures panel or shelf): it becomes the grunge. The same works for Slope blur's picture box.
+- **Drop a texture tile on a generator's Grunge box** (from the Textures panel or shelf): it becomes the grunge. This works for every generator including the Mask builder, Slope blur's picture box, the Fur pattern, and a mask's Picture row (its picture is replaced).
 - **Grunge contrast and level** sliders for a generator's grunge.
 - **Slope blur is seamless on a model too** (the mask row and the Slope blur filter): the smear follows the model's surface across UV seams. The filter has an "Across mesh seams" tick to turn it off.
 - **Baked normal maps match other apps:** the baker now works out the surface directions of the model the standard way (MikkTSpace, used by Blender, Marmoset, Substance, Unity, Unreal and Godot). FBX low-polys used to get these directions polygon by polygon, which left a zig-zag, triangle-by-triangle pattern on shiny, smooth surfaces when the map was used anywhere else. Re-bake normal maps made with earlier versions.
