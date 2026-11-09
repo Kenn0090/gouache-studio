@@ -1,3 +1,7 @@
+## 0.96.3
+
+- **De-light filter in Paint** (Filter › Adjust › De-light…, also in the Filter Gallery and as a filter layer): removes lighting baked into a photo, with Even out lighting, Lighting size, Lift shadows, Tame highlights and Saturation, previewed live like the other filters.
+
 ## 0.96.2
 
 - **No more herringbone on shiny baked models:** baked normal maps are kept with fine (16-bit) steps inside the app, exported from the Bake tab as 16-bit PNGs, and the model's final normal is built with fine steps too. Normal maps exported as ordinary 8-bit pictures get a very fine grain instead of the stepped contour lines that bent at every triangle (the zig-zag on chrome).

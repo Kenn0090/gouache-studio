@@ -486,3 +486,6 @@ Artist style unwrap, `bake/uv-artist.js` (loaded before uv-unwrap.js because `UW
 
 ## 0.96.2 (branch)
 - Kenn: re-baked pistol still herringbone + friend's swirls at max roughness ("2 separate problems"). (1) 8-bit quantisation of normals on smoothed low-polys: iso-lines of a piecewise-linear field bend at triangle edges = herringbone on chrome. `normalComposite` now builds in 16-bit (`ND=canFloat?16:doc.depth`, so v3MapTex's nfinal is 16-bit), baked normal mesh map 16-bit (`p3ApplyBake`), Bake-tab export of normal 16-bit PNG, `texDither` (±1 LSB triangular, fixed seed) on 8-bit normal exports in buildTexturesIn. (2) env prefilter levels were 16x8/32x16 with 128 samples: blocky swirls on rough smooth surfaces; now min 64x32 and 256 samples for i>=3 (envBuild). (3) v3MeshU: per-item uH/uUseH/uUseUDIM/uUDIMTile were overwritten by the trailing `...common` (active set's height displaced every set); now re-set after. Test nprec962.
+
+## 0.96.3 (branch)
+- De-light filter `filters/delight.js` (after grad-map): FX 'delight' = Convert's base-colour maths (FS_DELIGHT); light found by halving copies (`dlT` temps, P.f_rs) to ~r/6 per texel, separable P.blur, mean brightness from a ≤32 px copy; menu Adjust ['De-light…','delight'] (+ actions.delight in menus.js line 34), FX_KINDS Adjust, gallery Adjust. Test delight963.
