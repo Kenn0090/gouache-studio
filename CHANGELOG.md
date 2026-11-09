@@ -8,6 +8,8 @@
 - **Save as… (Ctrl+Shift+S) now lets you pick any file type** Gouache can write: the Gouache document, a layered Photoshop file, or one flat picture as PNG, TGA, DDS, TIFF, EXR, JPG or WebP. In 3D Paint it offers the project or textures for a game engine. Ctrl+S still saves the document.
 - **Ctrl+Shift+E opens Export textures for a game engine.** (The picture export is in File › Export… and in Save as.)
 - **Unreal materials explain themselves:** each node that feeds the material carries a green note saying where it goes (Base Color, Emissive, World Position Offset…). If the setup script cannot make a wire, a red note says exactly what to connect, and a summary box lists them all. Master materials from older versions are rebuilt once with the notes.
+- **Roblox:** Send to › Roblox Studio writes the SurfaceAppearance maps (Color, Normal, Roughness, Metalness, up to 1024 px) and an FBX. The new Gouache plug-in for Roblox Studio (Plugins tab › Gouache › Live link / Get now) builds MeshParts with their SurfaceAppearance straight from Gouache.
+- **Two-way links:** Blender (sidebar › Gouache tab), Unity and Unreal (a Gouache menu) can now send to Gouache: a changed model (your painting is kept), a high-poly for the Bake tab, a material's textures (they become a material layer and stay in Materials), and from Blender the 3D view itself. Update the Blender add-on and the Unity/Unreal links from the export window to get them.
 
 ## 0.96.3
 

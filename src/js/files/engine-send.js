@@ -4,7 +4,7 @@
    picks up (Unity and Godot when you switch to them; Unreal with Auto Import on, or drag the .glb in). Blender: a
    running Blender with the Gouache Studio add-on receives the .glb at once (each send replaces the last one);
    without it, Blender is started with the model if you told the app where Blender is. */
-const ES_TARGETS=[['none','Nowhere else (just save)'],['blender','Blender'],['unity','Unity'],['godot','Godot'],['unreal','Unreal Engine']];
+const ES_TARGETS=[['none','Nowhere else (just save)'],['blender','Blender'],['unity','Unity'],['godot','Godot'],['unreal','Unreal Engine'],['roblox','Roblox Studio']];
 const ES_PORT=47650;
 const es=(()=>{const d={to:'none',dirs:{},blender:''};try{return Object.assign(d,JSON.parse(localStorage.getItem('gs.engines')||'{}'));}catch(e){return d;}})();
 function esSave(){try{localStorage.setItem('gs.engines',JSON.stringify(es));}catch(e){}}
@@ -18,9 +18,13 @@ async function esCheckProject(to,dir){try{const fs=(await platform.invoke('dir_f
 /* the controls in the Export textures window */
 function esRow(redraw){if(!platform.isDesktop)return [el('p',{class:'note',text:'Sending straight into Blender, Unity, Godot or Unreal works in the desktop app.'})];
   const sel=el('select',{id:'txSend','aria-label':'Send to'},...ES_TARGETS.map(([v,l])=>el('option',{value:v,text:l})));sel.value=es.to||'none';
-  sel.onchange=()=>{es.to=sel.value;es.warn='';esSave();if(esActive()&&mxHasModel()&&texCfg.model==='none')texCfg.model='glb';redraw();};
+  sel.onchange=()=>{es.to=sel.value;es.warn='';esSave();if(es.to==='roblox'){texCfg.preset='roblox';texCfg.fmt='png';if(mxHasModel())texCfg.model='fbx';}if(esActive()&&mxHasModel()&&texCfg.model==='none')texCfg.model='glb';redraw();};
   const out=[el('div',{class:'frow'},el('label',{for:'txSend',text:'Send to'}),sel)];
-  if(es.to==='blender'){
+  if(es.to==='roblox'){
+    out.push(el('p',{class:'note',text:'Roblox gets the four SurfaceAppearance maps (Color, Normal, Roughness, Metalness) at up to 1024 px and an FBX for the 3D Importer. With the Gouache plug-in in Roblox Studio, the model also arrives by itself: Plugins tab › Gouache › Live link (or Get now).'}),
+      el('div',{class:'chips'},el('button',{class:'btn sm',id:'rbxInstall',text:'Add the plug-in to Roblox Studio',onclick:rbxInstall})),
+      el('div',{class:'chips'},el('span',{class:'note',text:'Files go to: '+(es.dirs.roblox||'a folder you choose')}),el('button',{class:'btn sm',id:'rbxDir',text:es.dirs.roblox?'Change…':'Choose…',onclick:async()=>{const d=await platform.pickFolder();if(d){es.dirs.roblox=d;esSave();redraw();}}})));}
+  else if(es.to==='blender'){
     out.push(el('p',{class:'note',text:'A running Blender with the Gouache Studio add-on gets the model at once (each send replaces the last one). Otherwise Blender is started with it'+(es.blender?'.':' once you choose the Blender program.')}),
       el('div',{class:'chips'},el('button',{class:'btn sm',id:'esAddon',text:'Save the Blender add-on…',onclick:esSaveAddon}),
         el('button',{class:'btn sm',id:'esBlender',text:es.blender?'Blender: '+fileNameOf(es.blender):'Choose the Blender program…',title:es.blender||'',onclick:async()=>{const p=await platform.openDialog([{name:'Blender',extensions:['exe','app','']}]).catch(()=>null);if(p){es.blender=p;esSave();redraw();}}})),
@@ -44,11 +48,13 @@ function esRow(redraw){if(!platform.isDesktop)return [el('p',{class:'note',text:
   return out.filter(Boolean);}
 /* where the export goes: the engine project's folder, Blender's folder, or a folder you pick */
 async function esTargetDir(name){if(!esActive())return await platform.pickFolder();
-  if(es.to==='blender'){if(!es.dirs.blender){const d=await platform.pickFolder();if(!d)return null;es.dirs.blender=d;esSave();}return es.dirs.blender;}
+  if(es.to==='blender'||es.to==='roblox'){const k=es.to;if(!es.dirs[k]){const d=await platform.pickFolder();if(!d)return null;es.dirs[k]=d;esSave();}return es.dirs[k];}
   const base=es.dirs[es.to];if(!base){toast('Choose the project folder in the export window first.');return null;}
   const dir=[base.replace(/[\\/]+$/,''),...esSub(es.to,pascal(name))].join(esSep(base));await platform.invoke('make_dir',{path:dir});return dir;}
 /* after the files are written */
 async function esAfter(dir,files,name){if(!esActive())return;const label=ES_TARGETS.find(x=>x[0]===es.to)[1],sep=esSep(dir);
+  if(es.to==='roblox'){let info=null;try{info=await rbxPublish(name,esLastBySet);}catch(e){console.warn(e);}
+    toast(info?'Saved to '+dir+'. In Roblox Studio: Plugins › Gouache › Get now (or Live link) brings it in ('+info.parts.length+' part'+(info.parts.length===1?'':'s')+').':'Saved '+files.length+' files to '+dir+' for Roblox Studio’s 3D Importer.');return;}
   if(es.to!=='blender'){toast('Sent '+files.length+' files to '+label+': '+dir);await elPing(es.to,dir,files,name);return;}
   const m=files.find(f=>/\.(glb|obj)$/i.test(f.name));if(!m){toast('Saved to '+dir+'. Tick a model (.glb) to send it to Blender.');return;}
   const path=dir.replace(/[\\/]+$/,'')+sep+m.name;

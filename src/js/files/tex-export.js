@@ -28,6 +28,12 @@ const TEX_PRESETS={
     {s:'Height',what:'Height',grey:'height'},
     {s:'Curvature',what:'Curvature (mask)',grey:'curv'},
     {s:'Emissive',what:'Emissive',rgb:'emis'}]},
+  /* (0.96.4, Kenn) Roblox: a SurfaceAppearance takes Color (alpha: transparency), Normal (OpenGL), Roughness and Metalness, at most 1024 px */
+  roblox:{label:'Roblox (SurfaceAppearance)',normal:'gl',max:1024,name:n=>pascal(n)+'_{s}',outs:[
+    {s:'Color',what:'ColorMap (alpha: transparency)',rgb:'base',a:'opac?'},
+    {s:'Normal',what:'NormalMap (OpenGL)',rgb:'normal'},
+    {s:'Roughness',what:'RoughnessMap',grey:'rough'},
+    {s:'Metalness',what:'MetalnessMap',grey:'metal'}]},
   godot:{label:'Godot',normal:'gl',name:n=>snake(n)+'_{s}',outs:[
     {s:'albedo',what:'Albedo (alpha: opacity)',rgb:'base',a:'opac?'},
     {s:'orm',what:'R occlusion · G roughness · B metallic (ORMMaterial3D)',ch:['ao','rough','metal'],need:['ao','rough','metal']},
@@ -112,7 +118,7 @@ async function encodeTex(W,H,f,C,fmt,bits){
     return encodeTGA(W,H,st,true,C===4);}
   return encodePNGx(W,H,quant(f,bits),C,bits);}
 /* build every file of a preset: [{name,data}] */
-async function buildTextures(pr,name,opt){const W=doc.w,H=doc.h,S=texCfg.size||0,U=opt&&opt.udim?texUdim():null;
+async function buildTextures(pr,name,opt){const W=doc.w,H=doc.h,S=pr&&pr.max?Math.max(1,Math.round(Math.min(texCfg.size||W,pr.max*W/Math.max(W,H)))):(texCfg.size||0),U=opt&&opt.udim?texUdim():null;
   /* (0.95) a UDIM set: the size is per tile, and each tile is its own file (Name_BaseColor.1001.png …) */
   const tw=U?W/U.B.nx:W,th=U?H/U.B.ny:H,nw=U?(S||Math.round(tw)):(S||W),nh=U?(S?Math.max(1,Math.round(S*th/tw)):Math.round(th)):(S?Math.max(1,Math.round(S*H/W)):H);
   const pad=texPadBegin(U?Math.round(nw*U.B.nx):nw);try{return await buildTexturesIn(pr,name,W,H,nw,nh,pad,U);}finally{texPadEnd(pad);}}
@@ -194,7 +200,7 @@ async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.
     const epv=eshWanted()?await epResolve(es.to,epm.rec,name,shInfo):{regen:new Set(),updates:[]};
     if(eshWanted()&&Object.keys(shInfo).length)files.push(...eshFiles(es.to,name,shInfo,eshModelSize(mxHasModel()?mxModel():null),wantModel&&['glb','obj','fbx'].includes(texCfg.model)?pascal(name)+'.'+texCfg.model:null,{updateMasters:epm.update,updates:epv.updates}));
     if(!files.length){toast('Nothing to export.');return;}
-    if(dir){const sep=dir.includes('\\')?'\\':'/';for(const f of files){const fp=eshPath(dir,f.name);if(f.shared&&!epm.update&&await elExists(fp)&&!await eshStale(fp))continue;if(/^(\.\.\/)*[^\/]+\//.test(f.name))await platform.invoke('make_dir',{path:fp.replace(/[\\/][^\\/]*$/,'')});await platform.writeFile(fp,f.data);}toast('Saved '+files.length+' files to '+dir);await esAfter(dir,files,name);if(eshWanted()){const nregen=await epRegen(es.to,epm.rec,epv.regen);if(nregen)toast('Updated '+nregen+' material file'+(nregen===1?'':'s')+' of other assets that follow this look.');}
+    if(dir){const sep=dir.includes('\\')?'\\':'/';for(const f of files){const fp=eshPath(dir,f.name);if(f.shared&&!epm.update&&await elExists(fp)&&!await eshStale(fp))continue;if(/^(\.\.\/)*[^\/]+\//.test(f.name))await platform.invoke('make_dir',{path:fp.replace(/[\\/][^\\/]*$/,'')});await platform.writeFile(fp,f.data);}toast('Saved '+files.length+' files to '+dir);esLastBySet=bySet;await esAfter(dir,files,name);if(eshWanted()){const nregen=await epRegen(es.to,epm.rec,epv.regen);if(nregen)toast('Updated '+nregen+' material file'+(nregen===1?'':'s')+' of other assets that follow this look.');}
     if(eshWanted())await epRecord(es.to,epm.rec,name,files,shInfo,wantModel&&['glb','obj','fbx'].includes(texCfg.model)?pascal(name)+'.'+texCfg.model:null,epm.update);}
     else{const r=await deliver(pascal(name)+'_'+(pr.user?'custom':texCfg.preset)+'.zip',await makeZipMulti(files));toast(deliveredText(r,'Textures'));}
     return files;}

@@ -8,6 +8,8 @@ mod altmenu;
 mod engine;
 mod viewer;
 mod files;
+mod link;
+mod link_core;
 mod net;
 mod single;
 mod undo_spill;
@@ -70,6 +72,8 @@ pub fn run() {
             // Start each session with an empty undo folder in the default cache (a chosen folder is
             // cleared when the interface sets it at start-up).
             undo_spill::reset(&app.handle());
+            // (0.96.4) the two-way links: Blender, Unity, Unreal and Roblox Studio talk to Gouache on 127.0.0.1
+            link::start(&app.handle());
             // The main window is built here (not from the config alone) so that the 3D view can
             // pop out into its own window: window.open("about:blank") from the page is allowed and
             // gets a plain window the page draws into. Anything else is refused.
@@ -125,6 +129,8 @@ pub fn run() {
             files::make_dir,
             files::launch_app,
             files::blender_send,
+            link::link_status,
+            link::link_publish,
             files::open_url,
             files::autosave_list,
             files::autosave_delete,

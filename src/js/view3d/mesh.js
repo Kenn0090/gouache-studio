@@ -9,6 +9,7 @@ function meshFinish(m,name){const n=m.pos.length/3;
   let mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];for(let i=0;i<n;i++)for(let c=0;c<3;c++){const v=m.pos[i*3+c];if(v<mn[c])mn[c]=v;if(v>mx[c])mx[c]=v;}
   const ctr=[0,1,2].map(c=>(mn[c]+mx[c])/2),size=Math.max(mx[0]-mn[0],mx[1]-mn[1],mx[2]-mn[2])||1,s=2/size;
   for(let i=0;i<n;i++)for(let c=0;c<3;c++)m.pos[i*3+c]=(m.pos[i*3+c]-ctr[c])*s;
+  m.fitC=ctr;m.fitS=s;/* (0.96.4) kept so a camera from Blender can be placed the same way */
   m.radius=0;for(let i=0;i<n;i++)m.radius=Math.max(m.radius,Math.hypot(m.pos[i*3],m.pos[i*3+1],m.pos[i*3+2]));
   /* how to get back to the file's own coordinates (the baker lines up low and high poly with it) */
   m.xf={ctr,s};

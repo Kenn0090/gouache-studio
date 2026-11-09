@@ -8,6 +8,8 @@
 - **Save as (Ctrl+Shift+S) offers every file type**: Gouache, PSD, PNG, TGA, DDS, TIFF, EXR, JPG, WebP.
 - **Ctrl+Shift+E opens the game engine export.**
 - **Unreal: every node that feeds the material is labelled**, and any wire the script could not make is marked in red with what to connect.
+- **Roblox export**: SurfaceAppearance maps + FBX, and a Roblox Studio plug-in that brings sends in live.
+- **Blender, Unity and Unreal can send back to Gouache**: changed models (painting kept), high-polys for baking, textures as materials, and Blender's view.
 
 ## 0.96.3
 
