@@ -10,7 +10,10 @@ const smClone=o=>JSON.parse(JSON.stringify(o,(k,x)=>k==='t'||k[0]==='_'?undefine
 function smSer(n){const o={t:n.type==='group'?'G':'L',name:n.name,mode:n.mode,op:n.opacity,vis:n.visible!==false,clip:!!n.clip,mapModes:Object.assign({},n.mapModes||{})};
   if(n.type==='group'){o.open=n.open!==false;o.kids=n.children.map(smSer);}
   else if(n.fx){/* (0.78) a Hand-painted or Stylize layer: its settings */o.fx={map:n.fx.map,stack:n.fx.stack.map(it=>Object.assign(smClone(Object.assign({},it,{v:undefined})),{v:fxClean(it.v||{})}))};if(n.cfx&&n.cfx.length)o.cfx=smClone(n.cfx);}
-  else{if(n.fill){o.fill=fillClone(n.fill);o.fillImg={};for(const k in n._fillImg||{})o.fillImg[k]=smCap(n._fillImg[k]);}
+  else{if(n.fill){o.fill=fillClone(n.fill);o.fillImg={};const lib=Object.values(n._fillImg||{}).map(t=>t&&t._lib).find(Boolean);
+      /* (0.96.4, Kenn: "the Gmat file is 193mb") Library pictures are named, not copied: they come back from the Library when the smart material is added */
+      if(lib){o.lib=lib;o.libAdjust=fillClone(n.fill);}
+      for(const k in n._fillImg||{}){const t=n._fillImg[k];if(lib&&t&&t._lib===lib)continue;const c=smCap(t);if(c)o.fillImg[k]=c;}}
     else{o.maps={};for(const k of mapKeysOf(n)){const c=smCap(mapT(n,k));if(c)o.maps[k]=c;}}
     if(n.styles)o.styles=smClone(n.styles);if(n.cfx&&n.cfx.length)o.cfx=smClone(n.cfx);}
   if(n.mask)o.mask=smSerMask(n.mask);return o;}
@@ -29,7 +32,7 @@ function smBuild(o){let n;
   else if(o.fx){n=newFxLayerObj(o.name,smClone(o.fx.stack),o.fx.map);doc.count--;}
   else{n=newLayerObj(o.name);doc.count--;
     if(o.fill){n.fill=Object.assign(fillDefaults(),fillClone(o.fill));const D=fillDefaults().maps;for(const k in D)n.fill.maps[k]=Object.assign({},D[k],o.fill.maps&&o.fill.maps[k]||{on:false});
-      if(o._fillT||(o.fillImg&&Object.keys(o.fillImg).length)){n._fillImg={};for(const k in o._fillT||{})n._fillImg[k]=txCopy(o._fillT[k]);
+      if(o._fillT||(o.fillImg&&Object.keys(o.fillImg).length)){n._fillImg={};for(const k in o._fillT||{}){n._fillImg[k]=txCopy(o._fillT[k]);if(o.lib)n._fillImg[k]._lib=o.lib;}
         for(const k in o.fillImg||{}){const t=smImg(o.fillImg[k]);if(t){setWrap(t,true);if(n._fillImg[k])disposeTarget(n._fillImg[k]);n._fillImg[k]=t;}}}fillRender(n);}
     else for(const k in o.maps||{}){if(!doc.maps.includes(k)&&k!=='base')continue;const t=smFit(o.maps[k],mapDepth(k));if(t){copyScaled(t,ensureMapTarget(n,k));disposeTarget(t);}}
     if(o.styles)n.styles=smClone(o.styles);if(o.cfx)n.cfx=o.cfx.map(r=>Object.assign(msRow('filter'),smClone(r),{id:'r'+(++msSeq)}));}
@@ -45,14 +48,16 @@ function smApplyNow(rec){if(ui.mode==='anim'){toast('Smart materials are for Pai
   if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the smart material');
   /* a single layer that acts on every map (Hand-painted, Stylize) goes in as itself, not in a folder, so it reaches the layers below */
   const t=rec.tree,solo=t&&t.t==='G'&&(t.kids||[]).length===1&&t.kids[0].fx&&t.kids[0].fx.map==='all';
-  const n=smBuild(solo?t.kids[0]:t);smFitWorkflow(n);n.name=rec.name;if(!rec.builtin&&!solo)n.smSrc=rec.id;const fromSel=sel.active&&!sel.quick&&!n.mask;
+  let n;try{n=smBuild(solo?t.kids[0]:t);smFitWorkflow(n);}catch(e){console.error('smart material',e);toast('Could not add “'+rec.name+'”: '+smWhy(e));return null;}n.name=rec.name;if(!rec.builtin&&!solo)n.smSrc=rec.id;const fromSel=sel.active&&!sel.quick&&!n.mask;
   if(fromSel){n.mask=makeMask(0);run(P.loadsel,n.mask.target,{uSrc:sel.t.tex,uWhat:{int:1},uInv:false});}
   /* above the selected layer or folder (not inside a folder that happens to be selected) */
   const A=doc.active,P=insertAt?insertAt.parent:A&&A.parent?A.parent:doc.root,I=insertAt?insertAt.index:A&&A.parent?P.children.indexOf(A)+1:P.children.length;
-  structOp('Add smart material',()=>{insertNode(n,P,I);selectOnly(n);});msEpoch++;changedAll();
+  try{structOp('Add smart material',()=>{insertNode(n,P,I);selectOnly(n);});}catch(e){console.error('smart material',e);toast('Could not add “'+rec.name+'”: '+smWhy(e));return null;}msEpoch++;changedAll();
   toast('Added the smart material “'+rec.name+'”'+(fromSel?' in the selection.':'. Its rows stay live: change them under each layer.'));return n;}
 /* built-ins that use library materials or grunge pictures fetch them first (a moment on the first use) */
-function smApply(rec){if(!smNeeds(rec.tree))return smApplyNow(rec);
+/* (0.96.4, Kenn: "when I drag and drop it adds nothing") a failure says so instead of doing nothing */
+function smWhy(e){const m=String(e&&e.message||e||'');return /memory|allocat|context|texture/i.test(m)?'not enough graphics memory for its pictures. Try a smaller project or close other documents.':m||'unknown error';}
+function smApply(rec){let need;try{need=smNeeds(rec.tree);}catch(e){console.error('smart material',e);toast('Could not add “'+rec.name+'”: '+smWhy(e));return null;}if(!need)return smApplyNow(rec);
   const at=insertAt;toast('Loading “'+rec.name+'”…');
   return (async()=>{const t=JSON.parse(JSON.stringify(rec.tree));try{await smResolveNode(t);}catch(e){toast('Could not load “'+rec.name+'”: '+(e.message||e));return null;}
     insertAt=at;try{return smApplyNow(Object.assign({},rec,{tree:t}));}finally{insertAt=null;}})();}
@@ -88,7 +93,7 @@ function smMaskUpdate(n){const rec=smOrigin(n,'smask');if(!rec||!n.mask){toast('
   confirmDlg('Update smart mask','Replace the saved smart mask “'+rec.name+'” with this mask as it is now?','Update',()=>{
     smPut({kind:'smask',name:rec.name,mask:smSerMask(n.mask)});n.smMaskSrc=rec.id;toast('Updated “'+rec.name+'” in Materials › Smart masks.');});}
 function smPut(o){const old=matLib.list.find(r=>r.kind===o.kind&&r.name===o.name),rec=Object.assign({id:old?old.id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),t:old?old.t:Date.now()},o);
-  if(old)matLib.list[matLib.list.indexOf(old)]=rec;else matLib.list.push(rec);store.put(rec,'materials');renderMats();return rec;}
+  if(old)matLib.list[matLib.list.indexOf(old)]=rec;else matLib.list.push(rec);Promise.resolve(store.put(rec,'materials')).catch(e=>{console.error('smart material save',e);toast('“'+rec.name+'” works now but could not be kept on this computer for next time: '+(e&&e.message||e));});renderMats();return rec;}
 
 /* ---- the built-ins: materials and generators only ---- */
 const SM_F=(name,maps,o)=>Object.assign({t:'L',name,fill:{maps:Object.fromEntries(Object.entries(maps).map(([k,v])=>[k,Object.assign({on:true,src:'value'},v)])),proj:'uv',triSharp:4,hStr:1}},o||{});
@@ -196,8 +201,8 @@ async function smResolveNode(o){
       const cv=ui.mode==='bake'||ui.mode==='convert'?null:wfMatConvert(rec,doc.workflow==='spec'?'spec':'metal'),conv=cv&&cv.converted;
       o.fill=fillClone(conv?Object.assign({},rec.fill,{maps:cv.maps}):rec.fill);
       if(o.libAdjust){const a=fillClone(o.libAdjust),tile=a.tile;delete a.tile;const maps=a.maps;delete a.maps;Object.assign(o.fill,a);if(tile!=null)for(const k in o.fill.maps)o.fill.maps[k].tile=tile;if(maps)for(const k in maps)o.fill.maps[k]=Object.assign({},o.fill.maps[k]||{},maps[k]);}
-      o.fillImg={};const T=matRecTargets(rec),ft={};for(const k in T)if(T[k]&&!T[k].empty)ft[k]=T[k];Object.defineProperty(o,'_fillT',{value:ft,enumerable:false,writable:true});/* (0.58) copied on the graphics card, not read back */
-      if(conv){for(const k in cv.imgs){const im=cv.imgs[k];if(rec.imgs&&rec.imgs[k]===im)continue;const t=makeTarget(im.w,im.h,8,true);writeRegion(t,0,0,im.w,im.h,im.data);const c=smCap(t);disposeTarget(t);if(c)o.fillImg[k]=c;}
+      o.fillImg=o.fillImg||{};const T=matRecTargets(rec),ft={};for(const k in T)if(T[k]&&!T[k].empty)ft[k]=T[k];Object.defineProperty(o,'_fillT',{value:ft,enumerable:false,writable:true});/* (0.58) copied on the graphics card, not read back */
+      if(conv){for(const k in cv.imgs){const im=cv.imgs[k];if(rec.imgs&&rec.imgs[k]===im)continue;const t=makeTarget(im.w,im.h,8,true);writeRegion(t,0,0,im.w,im.h,im.data);const c=smCap(t);disposeTarget(t);if(c&&!o.fillImg[k])o.fillImg[k]=c;}
         for(const k of ['rough','metal','spec','gloss'])if(!o.fill.maps[k]||!o.fill.maps[k].on)delete o.fillImg[k];}}}
   if(o.mask)await smResolveMask(o.mask);
   for(const c of o.kids||[])await smResolveNode(c);}

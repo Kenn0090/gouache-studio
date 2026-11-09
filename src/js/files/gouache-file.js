@@ -60,13 +60,15 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
     /* mask rows and content effects (0.23) */
     gfLabel=(n.name||'?')+' · mask rows';
     {const ms=await msEncode(n,put,putRaw);if(ms.stack)base.mstack=ms.stack;if(ms.cfx)base.cfx=ms.cfx;}
+    /* (0.96.4) hidden pixels beyond the canvas */
+    if(n.ext&&Object.keys(n.ext).length){base.ext={};for(const k in n.ext){const e=n.ext[k];gfLabel=(n.name||'?')+' · hidden pixels';const r=await putRaw(e.t);r.r=[0,0,e.t.w,e.t.h];r.ox=e.ox;r.oy=e.oy;r.mono=e.t.mono||undefined;base.ext[k]=r;}}
     if(n.type==='group'){const kids=[];for(const c of n.children)kids.push(await node(c));return Object.assign(base,{t:'G',open:n.open,kids,hold:n.frame?n.hold:undefined});}
     if(n.fx)return Object.assign(base,{t:'F',clip:n.clip,mapModes:n.mapModes||{},fx:{map:n.fx.map,stack:fxCleanStack(n.fx.stack)}});
     const maps={};for(const k of mapKeysOf(n)){let r;const color=mapSolid(n,k);gfLabel=(n.name||'?')+' · '+k;
       if(mapLive(n,k)){const tmp=acquireD(mapDepth(k));try{fillDrawMap(n,k,tmp);r=await put(tmp,true,PX_LOSSY.has(k));r.live=1;}finally{release(tmp);}}
       else r=color?await putSolid(k,color):await put(mapT(n,k),false,PX_LOSSY.has(k));if(r)maps[k]=r;}
     /* a material layer's own images (so it stays editable after opening) */
-    let fillImg;if((n.fill||n.path)&&n._fillImg){fillImg={};for(const k in n._fillImg){gfLabel=(n.name||'?')+' · material picture '+k;const t=n._fillImg[k],{pr}=await pack(t,0,0,t.w,t.h,!mapLive(n,k)&&PX_LOSSY.has(k));fillImg[k]=defer(pr,{w:t.w,h:t.h});}}
+    let fillImg;if((n.fill||n.path)&&n._fillImg){fillImg={};for(const k in n._fillImg){gfLabel=(n.name||'?')+' · material picture '+k;const t=n._fillImg[k],{pr}=await pack(t,0,0,t.w,t.h,!mapLive(n,k)&&PX_LOSSY.has(k));fillImg[k]=defer(pr,Object.assign({w:t.w,h:t.h},t._lib?{lib:t._lib}:{}));}}
     return Object.assign(base,{t:'L',clip:n.clip,lock:n.lockAlpha,mapModes:n.mapModes||{},maps,text:n.text?cloneText(n.text):undefined,grad:n.grad||undefined,array:n.array||undefined,arrBox:n.array?n.arrBox:undefined,styles:n.styles||undefined,shape:n.shape||undefined,path:n.path||undefined,text3d:n.text3d||undefined,paths:n.path&&n.paths&&n.paths.length>1?n.paths:undefined,pathCur:n.path&&n.paths&&n.paths.length>1?n.pathCur:undefined,fill:n.fill||undefined,nrm:n.nrm||undefined,idSel:n.idSel||undefined,paper:n.paper||undefined,fillImg,hold:n.frame?n.hold:undefined});};
   const R=paintRoot(),kids=[];for(const c of R.children){kids.push(await node(c));await tick();}
   const all=allLayers(R),active=doc.active&&!doc.active.frame?allNodes(R).indexOf(doc.active):-1;
@@ -135,11 +137,12 @@ async function gfReadInto(buf,head,data){
     else if(o.t==='F'){n=newFxLayerObj(o.name,(o.fx.stack||[]).filter(it=>it.conv?CONVERTERS[it.conv]:FX[it.id]),o.fx.map);n.clip=!!o.clip;n.mapModes=Object.assign({},o.mapModes||{});}
     else{n=newLayerObj(o.name,!!o.fill);n.clip=!!o.clip;n.lockAlpha=!!o.lock;n.nrm=!!o.nrm;n.mapModes=Object.assign({},o.mapModes||{});
       if(o.text)n.text=o.text;if(o.grad)n.grad=o.grad;if(o.array){n.array=o.array;n.arrBox=o.arrBox||null;}if(o.styles)n.styles=o.styles;if(o.shape)n.shape=o.shape;if(o.text3d)n.text3d=o.text3d;if(o.path){n.path=o.path;if(Array.isArray(o.paths)&&o.paths.length){n.paths=o.paths;n.pathCur=Math.min(o.pathCur|0,o.paths.length-1);n.path=n.paths[n.pathCur];}else{n.paths=[n.path];n.pathCur=0;}}if(o.fill)n.fill=o.fill;if(o.idSel)n.idSel=o.idSel;if(o.paper)n.paper=o.paper;
-      if(o.fillImg){n._fillImg={};for(const k in o.fillImg){const r=o.fillImg[k],raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),r.w,r.h,8,r.f),t=makeTarget(r.w,r.h,8,true);writeRegion(t,0,0,r.w,r.h,raw);n._fillImg[k]=t;}}
+      if(o.fillImg){n._fillImg={};for(const k in o.fillImg){const r=o.fillImg[k],raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),r.w,r.h,8,r.f),t=makeTarget(r.w,r.h,8,true);writeRegion(t,0,0,r.w,r.h,raw);if(r.lib)t._lib=r.lib;n._fillImg[k]=t;}}
       for(const k in o.maps||{}){if(k!=='base'&&!doc.maps.includes(k))continue;const r=o.maps[k];if(r.live&&fillLiveSource(n,k))setMapLive(n,k);else await img(r,()=>ensureMapTarget(n,k),o.fill?n:null,k);}}
     Object.assign(n,{visible:o.vis!==false,opacity:o.op==null?1:o.op,mapOpacities:Object.assign({},o.mapOpacities),mode:o.mode==null?(o.t==='G'?-1:0):o.mode});n.lockPx=!!o.lockPx;n.lockPos=!!o.lockPos;n.lockAll=!!o.lockAll;n.smSrc=o.smSrc;if(o.inst)n.inst=o.inst;n.smMaskSrc=o.smMaskSrc;n.materialPaint=o.materialPaint;if(o.meshEdit&&typeof o.meshEdit.setID==='string'&&typeof o.meshEdit.key==='string'){n.meshEdit=Object.assign({},o.meshEdit);n.meshMap=o.meshEdit.key;n.baked=true;}
     if(o.mask){n.mask=makeMask(1,o.mask.mono);n.mask.enabled=o.mask.en!==false;if(o.mask.lk===0)n.mask.link=false;await img(o.mask.img,n.mask.target);}
     await msDecode(n,o,img,async r=>{const raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),r.w,r.h,r.d||8,r.f),t=makeTarget(r.w,r.h,8,true);writeRegion(t,0,0,r.w,r.h,raw);return t;});
+    if(o.ext){n.ext={};for(const k in o.ext){const r=o.ext[k],t=makeTarget(r.w,r.h,r.d===16&&canFloat?16:8,false,false,!!r.mono);await img(r,t);n.ext[k]={t,ox:r.ox|0,oy:r.oy|0};}}
     if(o.sid){n.shared=true;sharedMap.set(o.sid,n);}
     if(parent)insertNode(n,parent);
     if(o.t==='G')for(const c of o.kids||[])await mk(c,n);

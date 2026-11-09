@@ -42,3 +42,19 @@ function markSaved(){doc.savedAt=hist.undo.length?hist.undo[hist.undo.length-1]:
 function updateTitle(){platform.setTitle((doc.name||'Untitled')+(doc.filePath?' — '+doc.filePath:'')+' — Gouache Studio');}
 /* Recent files: files/recent.js */
 
+/* (0.96.4, Kenn) Save as (Ctrl+Shift+S) offers every file type Gouache can write: the document itself, a layered PSD,
+   or a flat picture (PNG, TGA, DDS, TIFF, EXR, JPG, WebP); in 3D Paint the project, or textures (and the model) for a game engine */
+const saveAsCfg={fmt:localStorage.getItem('gs.saveAsFmt')||''};
+function saveAsChoices(){if(ui.mode==='p3d')return [['gouache3d','3D Paint project (.gouache3d)','The model and every texture set, to keep working later.'],
+    ['tex','Textures for a game engine…','Unreal, Unity, Godot, Blender… with the model if you like (Ctrl+Shift+E).']];
+  return [['gouache','Gouache document (.gouache)','Every layer, mask, map and setting, to keep working later.'],['psd','Photoshop (.psd)','Layers of the base colour, for other painting apps.'],
+    ...FORMATS.map(([v,l])=>[v,l+' (.'+v+')','One flat picture of what you see.'])];}
+function dlgSaveAs(){const ch=saveAsChoices(),def=ui.mode==='p3d'?'gouache3d':'gouache';let cur=ch.some(c=>c[0]===saveAsCfg.fmt)?saveAsCfg.fmt:def;
+  const list=el('div',{class:'saveas-list',role:'radiogroup','aria-label':'File type'});
+  const draw=()=>list.replaceChildren(...ch.map(([v,l,n])=>el('label',{class:'saveas-row'+(v===cur?' on':'')},
+    el('input',{type:'radio',name:'saveAsFmt',value:v,id:'saveAs_'+v,checked:v===cur,onchange:()=>{cur=v;draw();}}),el('span',{},el('b',{text:l}),el('small',{class:'dim',text:' '+n})))));
+  draw();
+  openDialog({title:'Save as',body:el('div',{},list),okLabel:'Continue',onOk(){saveAsCfg.fmt=cur;try{localStorage.setItem('gs.saveAsFmt',cur);}catch(e){}setTimeout(()=>saveAsGo(cur),0);}});}
+function saveAsGo(v){if(v==='gouache3d')return saveP3Project(true);if(v==='tex')return dlgExportTextures();
+  if(v==='gouache')return withPaintDocAsync(()=>saveDoc(true));if(v==='psd')return withPaintDocAsync(savePSDAs);
+  exp.fmt=v;return dlgExport();}

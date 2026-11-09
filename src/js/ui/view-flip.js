@@ -52,7 +52,7 @@ function canvasXf(kind){
   const W=doc.w,H=doc.h,swap=kind==='cw'||kind==='ccw',nw=swap?H:W,nh=swap?W:H;
   const U={fh:{uX:[-1,0],uY:[0,1],uB:[W,0]},fv:{uX:[1,0],uY:[0,-1],uB:[0,H]},r180:{uX:[-1,0],uY:[0,-1],uB:[W,H]},cw:{uX:[0,1],uY:[-1,0],uB:[0,H]},ccw:{uX:[0,-1],uY:[1,0],uB:[W,0]}}[kind];
   if(sel.active)sel.active=false;
-  if(!rebuildLayers(nw,nh,doc.depth,(s,d)=>run(P.axf,d,Object.assign({uSrc:s.tex},U)))){toast(NO_GPU_MEM);return;}
+  if(!rebuildLayers(nw,nh,doc.depth,(s,d)=>run(P.axf,d,Object.assign({uSrc:s.tex},U)))){toast(NO_GPU_MEM);return;}if(typeof extClearAll==='function')extClearAll();
   const g=doc.guides||[];for(const G of g){const p=G.p,h=G.o==='h';
     if(kind==='fh'){if(!h)G.p=W-p;}else if(kind==='fv'){if(h)G.p=H-p;}else if(kind==='r180'){G.p=(h?H:W)-p;}
     else if(kind==='cw'){G.o=h?'v':'h';G.p=h?H-p:p;}else{G.o=h?'v':'h';G.p=h?p:W-p;}}

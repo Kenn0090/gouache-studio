@@ -1,3 +1,16 @@
+## 0.96.4
+
+- **Pixels beyond the canvas are kept:** moving or transforming a layer partly off the canvas no longer cuts it off. Move it back and the hidden part comes back (undo works as usual), and the hidden pixels are saved in the .gouache file.
+- **Crop › Delete cropped pixels** (on by default, as before). Turn it off and what the crop box leaves out stays hidden: pick Crop again and drag the box out over the dashed outline (or press **Reveal all**) to bring it back. Tilted crops can keep it too. Cropping larger than the canvas also brings hidden pixels back.
+- **Smart materials made from Library materials are much smaller**: they remember which Library material each layer uses instead of copying its pictures, and fetch it again when added. This also works after reopening a project. To shrink a smart material you already saved, add the Library materials again and save it again.
+- **Smart materials that cannot be added now say why** (for example, not enough graphics memory) instead of silently adding nothing.
+- **Polygon fill's hover highlight is now a dithered golden yellow checkerboard laid out by the model's UVs**, like a UV checker, so you can see the faces and how the UVs run. Select part keeps its blue.
+- **Save as… (Ctrl+Shift+S) now lets you pick any file type** Gouache can write: the Gouache document, a layered Photoshop file, or one flat picture as PNG, TGA, DDS, TIFF, EXR, JPG or WebP. In 3D Paint it offers the project or textures for a game engine. Ctrl+S still saves the document.
+- **Ctrl+Shift+E opens Export textures for a game engine.** (The picture export is in File › Export… and in Save as.)
+- **Unreal materials explain themselves:** each node that feeds the material carries a green note saying where it goes (Base Color, Emissive, World Position Offset…). If the setup script cannot make a wire, a red note says exactly what to connect, and a summary box lists them all. Master materials from older versions are rebuilt once with the notes.
+- **Roblox:** Send to › Roblox Studio writes the SurfaceAppearance maps (Color, Normal, Roughness, Metalness, up to 1024 px) and an FBX. The new Gouache plug-in for Roblox Studio (Plugins tab › Gouache › Live link / Get now) builds MeshParts with their SurfaceAppearance straight from Gouache.
+- **Two-way links:** Blender (sidebar › Gouache tab), Unity and Unreal (a Gouache menu) can now send to Gouache: a changed model (your painting is kept), a high-poly for the Bake tab, a material's textures (they become a material layer and stay in Materials), and from Blender the 3D view itself. Update the Blender add-on and the Unity/Unreal links from the export window to get them.
+
 ## 0.96.3
 
 - **De-light filter in Paint** (Filter › Adjust › De-light…, also in the Filter Gallery and as a filter layer): removes lighting baked into a photo, with Even out lighting, Lighting size, Lift shadows, Tame highlights and Saturation, previewed live like the other filters.

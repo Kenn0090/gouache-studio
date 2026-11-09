@@ -5,6 +5,8 @@
    ready scene with the materials on the model, Unreal runs the setup script. The same message path as the Blender link. */
 const EL_PORT={unity:47651,godot:47652,unreal:47653};
 const EL_NAME={unity:'Unity',godot:'Godot',unreal:'Unreal'};
+/* (0.96.4) Gouache's own listener (src-tauri link.rs): the apps send things back to it */
+const LINK_PORT=47660;
 
 const EL_UNITY=`// Gouache Studio link: lets Gouache Studio tell this Unity editor that new files were sent, so it refreshes at once.
 // It listens on this computer only (127.0.0.1:${EL_PORT.unity}). Delete this file to remove the link.
@@ -85,6 +87,146 @@ public static class GouacheLink
 #endif
 `;
 
+/* (0.96.4, Kenn: "export and import into both") Unity → Gouache: menu Gouache › Send … writes the selection to a temporary folder
+   (an OBJ of the selected meshes in world space, and the first material's textures as they are on disk) and tells Gouache */
+const EL_UNITY_SEND=`// Gouache Studio: send models and textures from Unity to Gouache Studio (menu Gouache). Gouache must be running.
+#if UNITY_EDITOR
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Text;
+using UnityEditor;
+using UnityEngine;
+
+public static class GouacheSend
+{
+    const int GouachePort = ${LINK_PORT};
+
+    [MenuItem("Gouache/Send selected model to Gouache (with textures)")]
+    static void SendModel() { Send("model", true); }
+    [MenuItem("Gouache/Send selected model to Gouache (model only)")]
+    static void SendModelOnly() { Send("model", false); }
+    [MenuItem("Gouache/Send selected as high-poly (Bake)")]
+    static void SendHigh() { Send("high", false); }
+    [MenuItem("Gouache/Send material textures to Gouache")]
+    static void SendMaterial() { Send("material", true); }
+
+    static string Esc(string s) { return s.Replace("\\\\", "\\\\\\\\").Replace("\\"", "\\\\\\""); }
+
+    static void Send(string kind, bool withTex)
+    {
+        try
+        {
+            var go = Selection.activeGameObject;
+            Material mat = Selection.activeObject as Material;
+            if (go == null && mat == null) { EditorUtility.DisplayDialog("Gouache", "Select a model in the scene (or a material for its textures) first.", "OK"); return; }
+            string name = go != null ? go.name : mat.name;
+            string dir = Path.Combine(Path.GetTempPath(), "gouache_link", name + "_" + DateTime.Now.Ticks);
+            Directory.CreateDirectory(dir);
+            var msg = new StringBuilder();
+            msg.Append("{\\"from\\":\\"unity\\",\\"kind\\":\\"" + kind + "\\",\\"name\\":\\"" + Esc(name) + "\\"");
+            if (kind != "material")
+            {
+                string obj = Path.Combine(dir, name + ".obj");
+                if (!WriteObj(go, obj)) { EditorUtility.DisplayDialog("Gouache", "The selection has no meshes.", "OK"); return; }
+                msg.Append(",\\"file\\":\\"" + Esc(obj) + "\\"");
+            }
+            if (withTex)
+            {
+                if (mat == null && go != null) { var r = go.GetComponentInChildren<Renderer>(); if (r != null) mat = r.sharedMaterial; }
+                var tex = Textures(mat);
+                if (tex.Count > 0) msg.Append(",\\"textures\\":{" + string.Join(",", tex.Select(kv => "\\"" + kv.Key + "\\":\\"" + Esc(kv.Value) + "\\"")) + "}");
+            }
+            msg.Append("}");
+            using (var wc = new WebClient())
+            {
+                wc.Headers[HttpRequestHeader.ContentType] = "application/json";
+                wc.UploadString("http://127.0.0.1:" + GouachePort + "/inbox", "POST", msg.ToString());
+            }
+            Debug.Log("Gouache: sent " + name + " (" + kind + ").");
+        }
+        catch (WebException) { EditorUtility.DisplayDialog("Gouache", "Gouache Studio isn't running (or is an older version without the link).", "OK"); }
+        catch (Exception e) { Debug.LogError("Gouache: " + e); }
+    }
+
+    static Dictionary<string, string> Textures(Material m)
+    {
+        var o = new Dictionary<string, string>();
+        if (m == null) return o;
+        foreach (var p in m.GetTexturePropertyNames())
+        {
+            var t = m.GetTexture(p) as Texture2D;
+            if (t == null) continue;
+            string path = AssetDatabase.GetAssetPath(t);
+            if (string.IsNullOrEmpty(path)) continue;
+            string full = Path.GetFullPath(path);
+            if (!File.Exists(full)) continue;
+            string n = p.ToLowerInvariant(), k = null;
+            if (n.Contains("basemap") || n == "_maintex" || n.Contains("albedo") || n.Contains("basecolor")) k = "base";
+            else if (n.Contains("bump") || n.Contains("normal")) k = "normal";
+            else if (n.Contains("rough")) k = "rough";
+            else if (n.Contains("metal")) k = "metal";
+            else if (n.Contains("occlusion") || n == "_ao") k = "ao";
+            else if (n.Contains("parallax") || n.Contains("height")) k = "height";
+            else if (n.Contains("emission") || n.Contains("emissive")) k = "emis";
+            if (k != null && !o.ContainsKey(k)) o[k] = full;
+        }
+        return o;
+    }
+
+    /* every mesh under the selection, in world space; Unity is left-handed, OBJ right-handed: X is flipped and the winding turned */
+    static bool WriteObj(GameObject go, string path)
+    {
+        var sb = new StringBuilder();
+        var ci = CultureInfo.InvariantCulture;
+        int baseV = 1, any = 0;
+        foreach (var mf in go.GetComponentsInChildren<MeshFilter>())
+            any += AddMesh(sb, mf.sharedMesh, mf.transform, mf.GetComponent<Renderer>(), ci, ref baseV);
+        foreach (var sk in go.GetComponentsInChildren<SkinnedMeshRenderer>())
+        {
+            var baked = new Mesh(); sk.BakeMesh(baked);
+            any += AddMesh(sb, baked, sk.transform, sk, ci, ref baseV);
+        }
+        if (any == 0) return false;
+        File.WriteAllText(path, sb.ToString());
+        return true;
+    }
+
+    static int AddMesh(StringBuilder sb, Mesh m, Transform t, Renderer r, CultureInfo ci, ref int baseV)
+    {
+        if (m == null || !m.isReadable) return 0;
+        var v = m.vertices; var n = m.normals; var uv = m.uv;
+        foreach (var p in v) { var w = t.TransformPoint(p); sb.Append("v ").Append((-w.x).ToString(ci)).Append(' ').Append(w.y.ToString(ci)).Append(' ').Append(w.z.ToString(ci)).Append('\\n'); }
+        bool hasN = n != null && n.Length == v.Length, hasUV = uv != null && uv.Length == v.Length;
+        if (hasN) foreach (var q in n) { var w = t.TransformDirection(q); sb.Append("vn ").Append((-w.x).ToString(ci)).Append(' ').Append(w.y.ToString(ci)).Append(' ').Append(w.z.ToString(ci)).Append('\\n'); }
+        if (hasUV) foreach (var q in uv) sb.Append("vt ").Append(q.x.ToString(ci)).Append(' ').Append(q.y.ToString(ci)).Append('\\n');
+        var mats = r != null ? r.sharedMaterials : new Material[0];
+        for (int s = 0; s < m.subMeshCount; s++)
+        {
+            sb.Append("usemtl ").Append(s < mats.Length && mats[s] != null ? mats[s].name : "Material" + s).Append('\\n');
+            var tri = m.GetTriangles(s);
+            for (int i = 0; i + 2 < tri.Length; i += 3)
+            {
+                sb.Append('f');
+                foreach (int j in new[] { tri[i], tri[i + 2], tri[i + 1] })
+                {
+                    int k = j + baseV;
+                    sb.Append(' ').Append(k);
+                    if (hasUV || hasN) sb.Append('/').Append(hasUV ? k.ToString() : "");
+                    if (hasN) sb.Append('/').Append(k);
+                }
+                sb.Append('\\n');
+            }
+        }
+        baseV += v.Length;
+        return 1;
+    }
+}
+#endif
+`;
 const EL_GODOT_CFG='[plugin]\n\nname="Gouache Studio link"\ndescription="Lets Gouache Studio tell Godot that new files were sent: it scans, then builds a ready scene with the materials on the model."\nauthor="Gouache Studio"\nversion="1.0"\nscript="plugin.gd"\n';
 const EL_GODOT=`# Gouache Studio link for Godot 4. It listens on this computer only (127.0.0.1:${EL_PORT.godot}).
 # When Gouache Studio sends something, this scans the project and builds <Name>_ready.tscn next to the model:
@@ -281,6 +423,143 @@ if not _state["started"]:
         unreal.log("Gouache link: listening on port " + str(PORT))
     except Exception as e:
         unreal.log_warning("Gouache link could not start: " + str(e))
+
+# ---------------------------------------------------------------- sending back to Gouache Studio (0.96.4)
+# Menu Gouache in the level editor's main menu: send the selected static mesh (Content Browser or level) with its textures,
+# as a high-poly for baking, or a material's textures. Files go to a temporary folder; Gouache must be running.
+import tempfile
+import time
+import urllib.request
+
+GOUACHE_PORT = ${LINK_PORT}
+TEX_KEYS = (("basecolor", "base"), ("albedo", "base"), ("diffuse", "base"), ("_d", "base"), ("_bc", "base"), ("color", "base"),
+            ("normal", "normal"), ("_n", "normal"), ("orm", "arm"), ("arm", "arm"), ("rough", "rough"), ("_r", "rough"),
+            ("metal", "metal"), ("_m", "metal"), ("occlusion", "ao"), ("_ao", "ao"), ("height", "height"), ("displace", "height"),
+            ("_h", "height"), ("emissive", "emis"), ("emission", "emis"), ("_e", "emis"), ("opacity", "opac"), ("alpha", "opac"))
+
+
+def _tex_key(name):
+    n = name.lower()
+    for k, v in TEX_KEYS:
+        if (k.startswith("_") and n.endswith(k)) or (not k.startswith("_") and k in n):
+            return v
+    return None
+
+
+def _export(obj, path):
+    t = unreal.AssetExportTask()
+    t.object = obj
+    t.filename = path
+    t.automated = True
+    t.prompt = False
+    t.replace_identical = True
+    if path.lower().endswith(".fbx"):
+        try:
+            o = unreal.FbxExportOption()
+            o.collision = False
+            o.level_of_detail = False
+            t.options = o
+        except Exception:
+            pass
+    return unreal.Exporter.run_asset_export_task(t) and os.path.exists(path)
+
+
+def _selected():
+    meshes, mats = [], []
+    for a in unreal.EditorUtilityLibrary.get_selected_assets():
+        if isinstance(a, unreal.StaticMesh):
+            meshes.append(a)
+        elif isinstance(a, unreal.MaterialInterface):
+            mats.append(a)
+    try:
+        actors = unreal.get_editor_subsystem(unreal.EditorActorSubsystem).get_selected_level_actors()
+    except Exception:
+        actors = unreal.EditorLevelLibrary.get_selected_level_actors()
+    for act in actors:
+        for c in act.get_components_by_class(unreal.StaticMeshComponent):
+            if c.static_mesh and c.static_mesh not in meshes:
+                meshes.append(c.static_mesh)
+    return meshes, mats
+
+
+def _textures(mat, folder):
+    out = {}
+    try:
+        texs = unreal.MaterialEditingLibrary.get_used_textures(mat)
+    except Exception:
+        texs = []
+    for tx in texs:
+        k = _tex_key(tx.get_name())
+        if not k or k in out:
+            continue
+        p = os.path.join(folder, tx.get_name() + ".tga")
+        if _export(tx, p):
+            out[k] = p
+    return out
+
+
+def _post(msg):
+    req = urllib.request.Request("http://127.0.0.1:%d/inbox" % GOUACHE_PORT, data=json.dumps(msg).encode("utf-8"),
+                                 headers={"Content-Type": "application/json"}, method="POST")
+    with urllib.request.urlopen(req, timeout=4) as r:
+        return r.read() == b"ok"
+
+
+def send(kind="model", with_textures=True):
+    """Gouache menu: kind = model, high or material."""
+    try:
+        meshes, mats = _selected()
+        if kind != "material" and not meshes:
+            unreal.EditorDialog.show_message("Gouache", "Select a static mesh (in the Content Browser or the level) first.", unreal.AppMsgType.OK)
+            return
+        if kind == "material" and not mats and meshes:
+            mats = [meshes[0].get_material(0)]
+        if kind == "material" and not mats:
+            unreal.EditorDialog.show_message("Gouache", "Select a material (or a mesh that has one) first.", unreal.AppMsgType.OK)
+            return
+        name = (meshes[0] if kind != "material" else mats[0]).get_name()
+        folder = os.path.join(tempfile.gettempdir(), "gouache_link", "%s_%d" % (name, int(time.time() * 1000)))
+        os.makedirs(folder, exist_ok=True)
+        msg = {"from": "unreal", "kind": kind, "name": name, "normalDX": True}
+        if kind != "material":
+            path = os.path.join(folder, name + ".fbx")
+            if not _export(meshes[0], path):
+                unreal.log_error("Gouache: the mesh could not be exported to " + path)
+                return
+            msg["file"] = path
+            if with_textures and kind == "model" and meshes[0].get_material(0):
+                msg["textures"] = _textures(meshes[0].get_material(0), folder)
+        else:
+            msg["textures"] = _textures(mats[0], folder)
+        _post(msg)
+        unreal.log("Gouache: sent " + name + " (" + kind + ")")
+    except urllib.error.URLError:
+        unreal.EditorDialog.show_message("Gouache", "Gouache Studio isn't running (or is an older version without the link).", unreal.AppMsgType.OK)
+    except Exception as e:
+        unreal.log_error("Gouache: could not send (" + str(e) + ")")
+
+
+def _menu():
+    try:
+        menus = unreal.ToolMenus.get()
+        main = menus.find_menu("LevelEditor.MainMenu")
+        if not main:
+            return
+        sub = main.add_sub_menu("Gouache", "Gouache", "Gouache", "Gouache")
+        for kind, label, tex in (("model", "Send selected model to Gouache (with textures)", True), ("model", "Send selected model to Gouache (model only)", False),
+                                 ("high", "Send selected as high-poly (Bake)", False), ("material", "Send material textures to Gouache", True)):
+            e = unreal.ToolMenuEntry(name="gouache_" + kind + ("_t" if tex else ""), type=unreal.MultiBlockType.MENU_ENTRY)
+            e.set_label(label)
+            e.set_string_command(unreal.ToolMenuStringCommandType.PYTHON, "", "import gouache_link; gouache_link.send(%r, %r)" % (kind, tex))
+            sub.add_menu_entry("Send", e)
+        menus.refresh_all_widgets()
+    except Exception as e:
+        unreal.log_warning("Gouache: the menu could not be added (" + str(e) + ")")
+
+
+if not _state.get("menu"):
+    _menu()
+    _state["menu"] = True
 `;
 
 /* is a file there? */
@@ -293,7 +572,7 @@ async function elInstalled(to){const b=es.dirs[to];return !!b&&await elExists(el
 async function elInstall(to){const b=es.dirs[to];if(!b){toast('Choose the '+EL_NAME[to]+' project first.');return false;}
   const enc=s=>new TextEncoder().encode(s),put=async(path,data)=>{await platform.invoke('make_dir',{path:path.replace(/[\\/][^\\/]*$/,'')});await platform.writeFile(path,typeof data==='string'?enc(data):data);};
   try{
-    if(to==='unity'){const f=elMarker(to,b);await put(f,EL_UNITY);await put(f+'.meta',eshUnityMeta('mono',eshGuid('GouacheLink.cs')));toast('Unity link added (Assets/Gouache/GouacheLink.cs). Unity picks it up when you switch to it.');}
+    if(to==='unity'){const f=elMarker(to,b);await put(f,EL_UNITY);await put(f+'.meta',eshUnityMeta('mono',eshGuid('GouacheLink.cs')));const g=elJoin(b,'Assets','Gouache','Editor','GouacheSend.cs');await put(g,EL_UNITY_SEND);await put(g+'.meta',eshUnityMeta('mono',eshGuid('GouacheSend.cs')));toast('Unity link added (Assets/Gouache/GouacheLink.cs, and the Gouache menu to send things back). Unity picks it up when you switch to it.');}
     else if(to==='godot'){const d=elJoin(b,'addons','gouache_link');await put(elJoin(d,'plugin.cfg'),EL_GODOT_CFG);await put(elJoin(d,'plugin.gd'),EL_GODOT);toast('Godot link added. In Godot: Project › Project Settings › Plugins, tick “Gouache Studio link”.');}
     else{const d=elJoin(b,'Content','Python'),init=elJoin(d,'init_unreal.py');await put(elJoin(d,'gouache_link.py'),EL_UNREAL);
       if(!(await elExists(init))){await put(init,'import gouache_link\n');toast('Unreal link added. Turn on the Python Editor Script Plugin (Edit › Plugins) and restart Unreal.');}

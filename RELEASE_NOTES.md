@@ -1,3 +1,16 @@
+## 0.96.4
+
+- **Moving a layer off the canvas no longer cuts it off**: move it back and it is all there.
+- **Crop › Delete cropped pixels** switch: turn it off to keep what the crop leaves out, and bring it back later with Crop.
+- **Smart materials made from Library materials are tiny now**: they name the Library material instead of copying its pictures. Re-add the Library materials and save the smart material again to shrink an existing one.
+- **A smart material that cannot be added now says why**, instead of doing nothing.
+- **Polygon fill highlight is a dithered golden yellow UV checkerboard.**
+- **Save as (Ctrl+Shift+S) offers every file type**: Gouache, PSD, PNG, TGA, DDS, TIFF, EXR, JPG, WebP.
+- **Ctrl+Shift+E opens the game engine export.**
+- **Unreal: every node that feeds the material is labelled**, and any wire the script could not make is marked in red with what to connect.
+- **Roblox export**: SurfaceAppearance maps + FBX, and a Roblox Studio plug-in that brings sends in live.
+- **Blender, Unity and Unreal can send back to Gouache**: changed models (painting kept), high-polys for baking, textures as materials, and Blender's view.
+
 ## 0.96.3
 
 - **De-light filter in Paint** (Filter › Adjust): removes lighting baked into a photo.

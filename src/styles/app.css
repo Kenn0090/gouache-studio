@@ -1558,3 +1558,9 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .gmpicktip{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:71;background:var(--panel);border:1px solid var(--line-2);border-radius:6px;padding:6px 10px;font-size:12px;pointer-events:none}
 .gmmenu{background:var(--panel);border:1px solid var(--line-2);border-radius:6px;padding:4px;display:grid;min-width:120px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 .gmmenu .mi{text-align:left;background:none;border:0;padding:5px 8px;color:inherit;border-radius:4px;cursor:pointer}.gmmenu .mi:hover{background:var(--line-2)}
+/* (0.96.4) Save as: every file type */
+.saveas-list{display:flex;flex-direction:column;gap:4px;min-width:min(440px,80vw)}
+.saveas-row{display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border-radius:var(--r,6px);border:1px solid transparent;cursor:pointer}
+.saveas-row:hover{background:var(--hover,rgba(127,127,127,.12))}
+.saveas-row.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.saveas-row small{display:block}

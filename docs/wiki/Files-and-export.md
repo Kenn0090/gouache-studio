@@ -25,7 +25,10 @@ The first save asks where to put the file; after that, Ctrl+S saves in place. **
 - **Filter layers** are turned into the pixels they produce.
 - **Round-trips:** live gradients, text and animation are stored inside the PSD, so they come back when you reopen it in Gouache Studio.
 
-## Export an image (Ctrl+Shift+E)
+## Save as (Ctrl+Shift+S)
+**File › Save as…** lists every file type Gouache can write: the Gouache document (every layer, mask and map), a layered Photoshop file, or one flat picture as PNG, TGA, DDS, TIFF, EXR, JPG or WebP (the picture types continue to the export options). In 3D Paint it offers the project or textures for a game engine. **Ctrl+S** saves the document as before.
+
+## Export an image
 Exports the **visible image** or the **active layer** as:
 - **PNG** (8 or 16-bit)
 - **TGA**
@@ -35,7 +38,7 @@ Exports the **visible image** or the **active layer** as:
 - **JPG**
 - **WebP**
 
-## Export textures for a game engine
+## Export textures for a game engine (Ctrl+Shift+E)
 
 ![Export textures, with engine presets.](images/export-textures.png)
 *Export textures, with engine presets.*
@@ -107,6 +110,7 @@ The nine looks added in 0.94.1 (Hologram, Glass, Fur, Iridescent, Car paint, Clo
 - **Unity (URP):** all nine, in the one `GouacheShaded` shader. Hologram and Glass are see-through materials. **Fur shows without its strand layers in Unity for now**: Unity's URP draws only one extra layer per material, so the ten fur layers in the shader are skipped. The Built-in pipeline gets Standard for these looks.
 - **Godot 4:** all nine. Glass bends what is behind it (it reads the screen). Fur is a chain of ten materials (`<Set>_fur1`…`_fur10`). Halftone cel and Ink toon get an inked outline material.
 - **Unreal:** all nine as master materials. Car paint uses Unreal's Clear Coat, Cloth sheen and Fur use Cloth shading, Wax uses Subsurface. **Fur is a fuzzy cloth look without strands** (a material can't grow strands in Unreal). Hologram and Glass are translucent.
+- **Notes in Unreal's material graph (0.96.4):** every node that feeds the material carries a green note saying where it goes (Base Color, Emissive, World Position Offset…). If the setup script could not make a wire, a red note says exactly what to connect, and a box at the top left lists them all.
 - **If something goes wrong in Unreal:** the setup script writes to the Output Log (Window › Output Log, filter *Gouache*). A line saying some wires could not be connected lists them: please send it.
 - **The live link sets itself up:** the first send to a project adds the link. Unreal: Gouache also switches on the Python Editor Script Plugin and Editor Scripting Utilities; restart Unreal once. Godot: the link plug-in is switched on; reopen the project once. Unity: nothing to do. After that each send makes the materials and puts them on the model.
 
@@ -114,3 +118,26 @@ All of this was written without being able to run the real engines: please check
 
 ## The File menu
 The File menu keeps New, Close, Open, **Open recent ▸** (the last five Paint documents and 3D Paint projects, and All recent files…), Save and Save as on top, and groups the rest: **Import ▸** (models, images as layers, brushes, frames), **Export ▸** (images, PSD, textures for a game engine, the model with its UVs, sprite sheets, video, Turn canvas into a texture, Send to 3D Paint) and **Content and add-ons ▸**. The Welcome and Launch screens are in the **Help** menu.
+
+## Roblox (0.96.4)
+Pick **Roblox Studio** under **Send to** in the export window. Gouache writes the four maps of a Roblox *SurfaceAppearance* (`Name_Color` with transparency in its alpha, `Name_Normal`, `Name_Roughness`, `Name_Metalness`, at most 1024 px, which is Roblox's limit) and an FBX for Roblox Studio's 3D Importer.
+
+**Live link:** click **Add the plug-in to Roblox Studio** once (it goes into Roblox Studio's local Plugins folder) and restart Studio. The Plugins tab then has a **Gouache** toolbar:
+- **Get now** brings in the last send from Gouache.
+- **Live link** brings in each new send by itself.
+
+Each texture set becomes a MeshPart with its SurfaceAppearance, inside a model called `Gouache_<name>`. A new send replaces the old one where it stands. Roblox takes at most 20,000 triangles per part, so a bigger set is split into several parts with the same maps. Roblox asks once whether the plug-in may reach `127.0.0.1` (your own computer): allow it. The parts are made inside Studio, so publish the place (or *File › Save to Roblox*) to keep them.
+
+## Sending things back to Gouache (0.96.4)
+The desktop app listens on your own computer (port 47660) for Blender, Unity and Unreal:
+
+| From | Where | What can be sent |
+|---|---|---|
+| Blender | 3D view sidebar (N) › **Gouache** tab (add-on 1.1: save it again from the export window) | **Send model** (optionally with its textures), **Send as high-poly (Bake)**, **Send textures as a material**, **Match Gouache's view to this one** |
+| Unity | menu **Gouache** (added with the Unity link) | the selected model (with or without its material's textures), as a high-poly, or a material's textures |
+| Unreal | main menu **Gouache** (added with the Unreal link) | the selected static mesh (Content Browser or level), with or without its textures, as a high-poly, or a material's textures |
+
+- **A model** starts a 3D Paint project if none is open; otherwise it replaces the model and **keeps your painting** (like the model updater). In the Bake tab it becomes the low-poly.
+- **A high-poly** goes to the Bake tab.
+- **Textures** become a material layer and are kept in **Materials**. Packed maps (ARM/ORM) and Unreal's DirectX normals are handled.
+- **The view from Blender** turns Gouache's 3D view to match. It lines up best with a model that was sent from Blender.

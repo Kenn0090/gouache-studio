@@ -2,6 +2,8 @@
    The box is centre, size and angle in document pixels. Applying builds new, smaller (or larger) layers;
    pixels outside the box are deleted. Undo swaps the old layers back in, so crop is fully undoable. */
 let crop=null;
+/* (0.96.4) Delete cropped pixels: on by default (as before); off keeps what the box leaves out as hidden pixels */
+ui.cropDelete=(()=>{try{return localStorage.getItem('gs.cropDel')!=='0';}catch(e){return true;}})();
 function cropStart(){crop={cx:doc.w/2,cy:doc.h/2,w:doc.w,h:doc.h,ang:0,ratio:null};buildBrushPanel();drawXfOverlay();}
 function cropCornersOf(c){const co=Math.cos(c.ang),si=Math.sin(c.ang),hw=c.w/2,hh=c.h/2;
   return [[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]].map(([x,y])=>[c.cx+x*co-y*si,c.cy+x*si+y*co]);}
@@ -36,6 +38,8 @@ function cropPointerUp(){ptr=null;cropPanelSync();}
 function drawCropOverlay(){const c=crop,r=stage.getBoundingClientRect(),k=cropCornersOf(c).map(scrPt),f=p=>p.map(v=>v.toFixed(1)).join(' ');
   let s='<path class="dim" fill-rule="evenodd" d="M-10 -10H'+(r.width+10)+'V'+(r.height+10)+'H-10Z M'+k.map(f).join('L')+'Z"/>';
   s+='<path class="ln" d="M'+k.map(f).join('L')+'Z"/>';
+  /* where hidden pixels are (beyond the canvas), dashed */
+  {const er=typeof extAllRect==='function'?extAllRect():null;if(er){const q=[[er[0],er[1]],[er[2],er[1]],[er[2],er[3]],[er[0],er[3]]].map(scrPt);s+='<path class="ln" style="stroke-dasharray:5 4;opacity:.75" d="M'+q.map(f).join('L')+'Z"/>';}}
   let g='';for(const t of [1/3,2/3]){const a=[k[0][0]+(k[1][0]-k[0][0])*t,k[0][1]+(k[1][1]-k[0][1])*t],b=[k[3][0]+(k[2][0]-k[3][0])*t,k[3][1]+(k[2][1]-k[3][1])*t],
     c2=[k[0][0]+(k[3][0]-k[0][0])*t,k[0][1]+(k[3][1]-k[0][1])*t],d=[k[1][0]+(k[2][0]-k[1][0])*t,k[1][1]+(k[2][1]-k[1][1])*t];g+='M'+f(a)+'L'+f(b)+'M'+f(c2)+'L'+f(d);}
   s+='<path class="th" d="'+g+'"/>';
@@ -62,9 +66,12 @@ function buildCropPanel(box){$('#brushTitle').textContent='Crop';if(!crop)cropSt
   const grid=el('div',{class:'xfgrid'});for(const [k,inp,label] of cropFields)grid.append(el('label',{for:inp.id,text:label}),inp);
   box.append(el('div',{class:'frow'},el('label',{for:'crRatio',text:'Ratio'}),rs),el('div',{class:'frow'},el('label',{for:'crPow',text:'Size'}),ps),grid,
     el('div',{class:'frow'},el('button',{class:'btn sm',text:'Crop to selection',onclick:()=>{if(!sel.active||!sel.bb){toast('Make a selection first.');return;}const b=sel.bb;Object.assign(crop,{cx:(b[0]+b[2])/2,cy:(b[1]+b[3])/2,w:b[2]-b[0],h:b[3]-b[1],ang:0});drawXfOverlay();cropPanelSync();}}),
-      el('button',{class:'btn sm',text:'Reset',onclick:()=>{const r=crop.ratio;cropStart();crop.ratio=r;}})),
+      el('button',{class:'btn sm',text:'Reset',onclick:()=>{const r=crop.ratio;cropStart();crop.ratio=r;}}),
+      el('button',{class:'btn sm',id:'crReveal',text:'Reveal all',title:'Stretch the box over every hidden pixel beyond the canvas (dashed outline)',disabled:!(typeof extAny==='function'&&extAny()),
+        onclick:()=>{const r=extAllRect();if(!r)return;const x0=Math.min(0,r[0]),y0=Math.min(0,r[1]),x1=Math.max(doc.w,r[2]),y1=Math.max(doc.h,r[3]);Object.assign(crop,{cx:(x0+x1)/2,cy:(y0+y1)/2,w:x1-x0,h:y1-y0,ang:0,ratio:null});rs.value='free';drawXfOverlay();cropPanelSync();}})),
+    chk('crDelete','Delete cropped pixels',ui.cropDelete!==false,v=>{ui.cropDelete=v;try{localStorage.setItem('gs.cropDel',v?'1':'0');}catch(e){}}),
     el('div',{class:'frow'},el('button',{class:'btn sm primary',text:'Crop (Enter)',onclick:cropApply})),
-    el('div',{class:'sub',text:'Drag the edges or corners (Shift keeps the shape, Alt works from the centre). Drag inside to move, just outside to rotate and straighten, further out to draw a new box. Pixels outside the box are deleted. Double-click or Enter crops.'}));
+    el('div',{class:'sub',text:'Drag the edges or corners (Shift keeps the shape, Alt works from the centre). Drag inside to move, just outside to rotate and straighten, further out to draw a new box. With Delete cropped pixels off, what the box leaves out stays hidden: crop again later and drag the box out (or Reveal all) to bring it back. Double-click or Enter crops.'}));
   cropPanelSync();}
 function cropKeys(e){if(ui.tool!=='crop'||!crop)return false;
   if(e.key==='Enter'){e.preventDefault();cropApply();return true;}
@@ -79,15 +86,26 @@ function applyCropBox(c){const nw=clamp(Math.round(c.w),1,MAX_DIM),nh=clamp(Math
   else{const co=Math.cos(c.ang),si=Math.sin(c.ang);H=[co,-si,c.cx-co*nw/2+si*nh/2, si,co,c.cy-si*nw/2-co*nh/2, 0,0,1];}
   const layers=everyLayer();if(rot)for(const L of layers)if(L.text||L.grad)rasterizeText(L);
   const maskNodes=everyNode().filter(n=>n.mask),mObjs=maskNodes.map(n=>n.mask),texts=rot?[]:layers.filter(L=>L.text),grads=rot?[]:layers.filter(L=>L.grad);
-  const draw=(src,outside)=>{const t=makeTarget(nw,nh,src.depth,doc.wrap,src.packed);run(P.xform,t,{uSrc:src.tex,uH0:H.slice(0,3),uH1:H.slice(3,6),uH2:H.slice(6,9),uInterp:{int:rot?2:0},uSS:{int:1},uWrap:false,uDoc:[nw,nh],uOutside:outside});return t;};
+  /* (0.96.4) drawn from the full picture: pixels hidden beyond the canvas come back when the box reaches them */
+  const fulls=new Map(),fullOf=(n,k)=>{const key=n.ext&&n.ext[k]?n:null;if(!key)return null;let m=fulls.get(n);if(!m)fulls.set(n,m={});return m[k]||(m[k]=extFull(n,k));};
+  const draw=(src,outside,n,k)=>{const t=makeTarget(nw,nh,src.depth,doc.wrap,src.packed,src.mono),F=n?fullOf(n,k):null,Hs=F?mul3([1,0,-F.ox,0,1,-F.oy,0,0,1],H):H;
+    run(P.xform,t,{uSrc:(F?F.t:src).tex,uH0:Hs.slice(0,3),uH1:Hs.slice(3,6),uH2:Hs.slice(6,9),uInterp:{int:rot?2:0},uSS:{int:1},uWrap:false,uDoc:[nw,nh],uOutside:outside});return t;};
   /* every map of every layer (frames too) */
   const mapsOf=L=>Object.fromEntries(mapKeysOf(L).map(k=>[k,mapT(L,k)]));
-  const oldT=layers.map(mapsOf),newT=oldT.map(ms=>Object.fromEntries(Object.entries(ms).map(([k,t])=>[k,draw(t,[0,0,0,0])]))),newM=mObjs.map(m=>draw(m.target,[1,1,1,1]));
+  const oldT=layers.map(mapsOf),newT=oldT.map((ms,i)=>Object.fromEntries(Object.entries(ms).map(([k,t])=>[k,draw(t,[0,0,0,0],layers[i],k)]))),newM=mObjs.map((m,i)=>draw(m.target,[1,1,1,1],maskNodes[i],EXT_MASK));
+  /* with Delete cropped pixels off, what the box leaves out is kept as hidden pixels (on by default: deleted, as before) */
+  const keep=ui.cropDelete===false,extSteps=[];
+  for(const n of everyNode()){const a=n.ext||null;let b=null;
+    if(keep&&(isLayer(n)||n.mask)){const fs={};if(isLayer(n))for(const k of mapKeysOf(n))fs[k]=fullOf(n,k)||{t:mapT(n,k),ox:0,oy:0};if(n.mask)fs[EXT_MASK]=fullOf(n,EXT_MASK)||{t:n.mask.target,ox:0,oy:0};
+      if(fs.base)b=extKeep(fs,H,rot?2:0,nw,nh);}
+    if(a||b)extSteps.push({n,a,b});}
+  for(const m of fulls.values())for(const k in m)if(m[k]&&m[k].own)disposeTarget(m[k].t);
   const oldM=mObjs.map(m=>m.target),oldSize=[doc.w,doc.h],newSize=[nw,nh];
   const set=(sz,ts,ms,dir)=>{if(doc.cage){doc.cage=null;cageFlatOff();}if(typeof bakeReset==='function')bakeReset();doc.w=sz[0];doc.h=sz[1];layers.forEach((L,i)=>{L.maps=Object.assign({},ts[i]);L.target=L.maps.base;});mObjs.forEach((m,i)=>m.target=ms[i]);
     for(const L of texts){L.text.x-=dir*x0;L.text.y-=dir*y0;}for(const L of grads)for(const k of ['a','b']){L.grad[k][0]-=dir*x0;L.grad[k][1]-=dir*y0;}
     allocAux();syncTargets();if(doc.anim){doc.anim.frames.forEach(frameDirty);showFrame(doc.anim.cur,true);}for(const L of texts)renderText(L);for(const L of grads)renderLiveGrad(L);fit();changedAll();updateStatus();};
-  set(newSize,newT,newM,1);let usingNew=true;
-  pushUndo({label:'Crop',refs:layers,undo(){usingNew=false;set(oldSize,oldT,oldM,-1);if(crop)cropStart();},redo(){usingNew=true;set(newSize,newT,newM,1);if(crop)cropStart();},
-    drop(){const flat=a=>a.flatMap(m=>Object.values(m));(usingNew?[...flat(oldT),...oldM]:[...flat(newT),...newM]).forEach(disposeTarget);}});
+  const extSet=w=>{for(const e of extSteps)e.n.ext=e[w];};
+  set(newSize,newT,newM,1);extSet('b');let usingNew=true;
+  pushUndo({label:'Crop',refs:layers,undo(){usingNew=false;set(oldSize,oldT,oldM,-1);extSet('a');if(crop)cropStart();},redo(){usingNew=true;set(newSize,newT,newM,1);extSet('b');if(crop)cropStart();},
+    drop(){const flat=a=>a.flatMap(m=>Object.values(m));(usingNew?[...flat(oldT),...oldM]:[...flat(newT),...newM]).forEach(disposeTarget);for(const e of extSteps)extFree(usingNew?e.a:e.b);}});
   toast('Cropped to '+nw+' × '+nh+'.');}

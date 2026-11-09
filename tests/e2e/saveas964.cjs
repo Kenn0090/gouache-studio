@@ -1,0 +1,35 @@
+/* 0.96.4 (Kenn): Save as offers every file type, Ctrl+Shift+E opens the game engine export, Unreal graph notes, dithered polygon fill highlight */
+const {chromium}=require('playwright');
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const p=await (await b.newContext({viewport:{width:1400,height:880}})).newPage();
+ await p.addInitScript(()=>{try{localStorage.setItem('gs.welcome','no');localStorage.setItem('gs.p3d',JSON.stringify({size:128,layout:'3d'}));}catch(e){}});
+ await p.route('**/*',r=>{const u=r.request().url();if(u.includes('pako'))return r.fulfill({path:__dirname+'/node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});if(u.startsWith('file:'))return r.continue();return r.abort();});
+ const errs=[];p.on('pageerror',e=>errs.push(e.message));
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ const W=ms=>p.waitForTimeout(ms||250);
+ await p.evaluate(()=>__gs.newDoc(64,64,8,[1,1,1],'Test',false));await W(300);
+ await p.mouse.click(700,450);await p.keyboard.press('Control+Shift+S');await W(400);
+ const a=await p.evaluate(()=>({open:!document.getElementById('modal').hidden,title:document.querySelector('#modal .dialog h2,#modal .dlg-title')?.textContent||'',n:document.querySelectorAll('.saveas-row').length,ids:[...document.querySelectorAll('.saveas-row input')].map(i=>i.value)}));
+ ok(a.open&&a.n===9&&['gouache','psd','png','tga','dds','tif','exr','jpg','webp'].every(v=>a.ids.includes(v)),'Ctrl+Shift+S opens Save as with every file type '+JSON.stringify(a));
+ await p.click('#saveAs_png');await p.click('#dlgOk');await W(500);
+ const b2=await p.evaluate(()=>({open:!document.getElementById('modal').hidden,fmt:__gs.exp?__gs.exp.fmt:null,txt:document.querySelector('#modal .dialog').textContent.slice(0,200)}));
+ ok(b2.open&&/Lossless|PNG/.test(b2.txt),'PNG goes on to the export options for a PNG '+JSON.stringify(b2).slice(0,200));
+ await p.keyboard.press('Escape');await W(300);
+ await p.mouse.click(700,450);await p.keyboard.press('Control+Shift+E');await W(500);
+ const c=await p.evaluate(()=>({open:!document.getElementById('modal').hidden,eng:!!document.getElementById('txPreset')}));
+ ok(c.open&&c.eng,'Ctrl+Shift+E opens the game engine export '+JSON.stringify(c));
+ await p.keyboard.press('Escape');await W(300);
+ const m=await p.evaluate(()=>{const f=JSON.stringify(__gs.MENUS.File);return {saveAs:f.includes('"saveAs","Ctrl+Shift+S"'),exp:f.includes('"expTex","Ctrl+Shift+E"')};});
+ ok(m.saveAs&&m.exp,'the File menu shows both shortcuts '+JSON.stringify(m));
+ await p.click('#modeTabs [data-mode=p3d]');await W(1200);
+ await p.evaluate(()=>__gs.saveAsGo&&0);await p.evaluate(()=>__gs.dlgSaveAs());await W(300);
+ const d=await p.evaluate(()=>[...document.querySelectorAll('.saveas-row input')].map(i=>i.value));
+ ok(d.join()==='gouache3d,tex','in 3D Paint Save as offers the project or textures for an engine '+d);
+ await p.keyboard.press('Escape');await W(200);
+ const fs=require('fs'),py=fs.readFileSync(__dirname+'/../../assets/addons/gouache_unreal_setup.py','utf8'),js=fs.readFileSync(__dirname+'/../../src/js/view3d/paint3d.js','utf8');
+ ok(/Goes into: /.test(py)&&/NOT CONNECTED: /.test(py)&&/MaterialExpressionComment/.test(py)&&/MASTER_FIXED = 5/.test(py),'Unreal masters label where each node goes and mark wires the script could not make');
+ ok(/BAY\[16\]/.test(js)&&/discard/.test(js),'the polygon fill highlight is dithered');
+ ok(!errs.length,'no page errors '+errs.join(' | '));
+ await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();
