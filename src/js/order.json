@@ -86,6 +86,7 @@
     "filters/converters",
     "filters/filters",
     "filters/grad-map",
+    "filters/delight",
     "filters/filters-more",
     "filters/filters-retro",
     "filters/filters-distort",

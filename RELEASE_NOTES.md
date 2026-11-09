@@ -1,3 +1,7 @@
+## 0.96.3
+
+- **De-light filter in Paint** (Filter › Adjust): removes lighting baked into a photo.
+
 ## 0.96.2
 
 - **Shiny baked models no longer show herringbone streaks** (normal maps keep fine steps; re-bake and re-export).

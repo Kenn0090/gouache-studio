@@ -12,7 +12,7 @@ const GALLERY_FOLDERS=()=>[
   ['Stylize',['glass','emboss','edges','convolve','edgeWear']],
   ['Render',['clouds','cells','noise']],
   ['Tiling',['offset','tile','seamless']],
-  ['Adjust',['levels','curves','hueSat','gradMap','threshold','posterize','quantize','desat','invert']]].map(([n,ids])=>[n,ids.filter(id=>FX[id])]).filter(f=>f[1].length);
+  ['Adjust',['levels','curves','hueSat','gradMap','delight','threshold','posterize','quantize','desat','invert']]].map(([n,ids])=>[n,ids.filter(id=>FX[id])]).filter(f=>f[1].length);
 const gal={open:{Artistic:true},thumbs:{},thumbFor:null};
 function dlgGallery(){const et=needTarget();if(!et)return;if(!effVisible(et.node)){toast('Show the active layer before filtering it.');return;}if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
   const L=et.L,S={stack:[fxItem(GALLERY_FOLDERS()[0][1][0])],sel:0,search:'',compare:false};

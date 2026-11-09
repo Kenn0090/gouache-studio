@@ -4,7 +4,7 @@
    only that layer (like a smart filter). Nothing is baked: double-click it to change any setting.
    L.fx = {map, stack:[{id|conv, v, on}]}. The layer has no pixels of its own. */
 const FX_KINDS=()=>[
-  ['Adjust',['colorAdj','levels','curves','hueSat','gradMap','desat','invert','threshold','posterize','quantize']],
+  ['Adjust',['colorAdj','levels','curves','hueSat','gradMap','delight','desat','invert','threshold','posterize','quantize']],
   ['Blur and sharpen',['blur','boxBlur','radialBlur','lensBlur','surfBlur','motionBlur','driftBlur','sharpen','highPass','convolve']],
   ['Distort',['warp','slopeBlur','distort']],
   ['Artistic',['filmGrain','dissolve','vfxGlow','oilPaint','painterly','kuwahara','watercolour','charcoal','cutout','mosaic','acid','glass','emboss','edges','noise']],
