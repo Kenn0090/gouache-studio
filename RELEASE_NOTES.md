@@ -8,6 +8,7 @@
 - **Levels is smaller and sharp**, with number boxes.
 - **Generators now list the baked maps** (AO, Curvature edges/cavities, Thickness, Height) with Balance, Contrast and Invert.
 - **Right-click a mask for a short mask-only menu.**
+- **L picks the Lasso in the 2D canvas** (3D Paint keeps L for Mirror X).
 - **The fill layer button adds a highlighted material only once**, then plain base materials.
 
 ## 0.96.0

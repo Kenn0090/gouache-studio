@@ -9,6 +9,7 @@
 - **Levels is smaller and sharp:** drawn at the screen's real resolution, shorter, the histogram tinted per channel with the cut-off parts dimmed, and number boxes for every handle.
 - **Baked maps under Generators:** right-click a mask › Generators now starts with Ambient occlusion, Curvature (both, edges or cavities), Thickness and Height. Each row has **Balance**, **Contrast** and **Invert**, like Painter's.
 - **A short menu for the mask:** right-clicking a mask thumbnail now shows only mask things: make it (Paint, Fill white, Fill black, Generators with the baked maps first, Noise and grunge, Picture, ID colour, anchors), change it (Levels, Invert, Blur, More filters) and its own commands (copy, paste, clear, flatten, save as smart mask, delete). The layer's commands stay on the layer's name. Works in Paint and 3D Paint.
+- **L is the Lasso again in the 2D canvas** (Shift+X still turns symmetry on and off). In 3D Paint, L stays Mirror X.
 - **The fill layer button uses a highlighted material once:** after it adds that material the highlight clears, so the next press adds a plain base material.
 
 ## 0.96.0

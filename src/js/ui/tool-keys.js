@@ -6,6 +6,7 @@ function toolKeyFor(tool){const id='tool:'+tool,user=typeof kbUser!=='undefined'
   if(tool==='brush')return p3?'1':'B';
   if(tool==='pen')return p3?'':'P';
   if(tool==='path')return p3?'P':'';
+  if(tool==='lasso'&&!p3)return 'L';
   if(p3&&['crop','text','shape','array'].includes(tool))return '';
   if(tool==='bucket'||tool==='gbucket')return kbKeyOf('tool:gradient');
   if(tool==='burn')return kbKeyOf('tool:dodge');
