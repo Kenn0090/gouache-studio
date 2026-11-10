@@ -2,6 +2,14 @@
    Kenn: Distort and Warp filters, plus Slope blur like Substance Painter/Designer, to push things further and to give
    generated masks irregularity. They work on any layer (Filter menu, Filter Gallery, filter layers, material and
    mask effects). Seamless (tile mode) documents wrap around the edges. */
+const FXD_SLOPE_INFLUENCE=`
+uniform sampler2D uInfluence; uniform int uHasInfluence; uniform int uInvertInfluence;
+float slopeInfluence(vec2 uv){
+  if(uHasInfluence==0) return 1.0;
+  vec4 c=textureLod(uInfluence,uv,0.0);
+  float weight=dot(c.rgb,vec3(0.299,0.587,0.114));
+  return uInvertInfluence==1?1.0-weight:weight;
+}`;
 const FXD_FS={
   /* warp: every pixel is pushed by a smooth noise (1 = turbulent, sharper folds) */
   warp:()=>FX2_H+`uniform sampler2D uSrc; uniform float uAmt; uniform float uSize; uniform float uSeed; uniform int uMode; uniform int uWrap;
@@ -12,15 +20,17 @@ void main(){ vec2 p=gl_FragCoord.xy,sz=SZ(uSrc),q=p/max(uSize,1.0)+uSeed*3.7;
   o=at(uSrc,wr(p+d*2.0*uAmt,sz)); }`,
   /* slope blur: smears along the slope of a guide (the image's own brightness, or a noise), downhill;
      Blur averages, Min keeps the darkest, Max the brightest (Substance's modes) */
-  slope:()=>FX2_H+`uniform sampler2D uSrc; uniform float uAmt; uniform int uSteps; uniform int uMode; uniform int uGuide; uniform float uSize; uniform float uSeed; uniform int uWrap; uniform sampler2D uGImg; uniform float uGTile; uniform float uGInv;
+  slope:()=>FX2_H+FXD_SLOPE_INFLUENCE+`uniform sampler2D uSrc; uniform float uAmt; uniform int uSteps; uniform int uMode; uniform int uGuide; uniform float uSize; uniform float uSeed; uniform int uWrap; uniform sampler2D uGImg; uniform float uGTile; uniform float uGInv;
 vec2 wr(vec2 p,vec2 sz){ return uWrap==1?mod(p,sz):clamp(p,vec2(0.5),sz-0.5); }
 float gd(vec2 p,vec2 sz){ if(uGuide==1) return fbm(p/max(uSize,1.0)+uSeed*3.7);
   if(uGuide==2){ vec2 gs=SZ(uGImg); vec2 u=fract(p/sz*uGTile); vec4 c=at(uGImg,u*gs); float l=dot(st(c),vec3(0.299,0.587,0.114))*c.a; return uGInv>0.5?1.0-l:l; } vec4 c=at(uSrc,wr(p,sz)); return dot(st(c),vec3(0.299,0.587,0.114))*c.a; }
-void main(){ vec2 p=gl_FragCoord.xy,sz=SZ(uSrc); float e=uGuide==1?max(uSize*0.08,1.0):1.5;
+void main(){ vec2 p=gl_FragCoord.xy,sz=SZ(uSrc); vec4 original=at(uSrc,p); float weight=slopeInfluence(p/sz);
+  if(weight<=0.0){ o=original; return; }
+  float e=uGuide==1?max(uSize*0.08,1.0):1.5;
   vec2 g=vec2(gd(p+vec2(e,0.0),sz)-gd(p-vec2(e,0.0),sz),gd(p+vec2(0.0,e),sz)-gd(p-vec2(0.0,e),sz));
-  vec2 dir=length(g)>1e-6?-normalize(g):vec2(0.0); vec4 acc=at(uSrc,p),mn=acc,mx=acc; float n=1.0;
+  vec2 dir=length(g)>1e-6?-normalize(g):vec2(0.0); vec4 acc=original,mn=acc,mx=acc; float n=1.0;
   for(int i=1;i<=64;i++){ if(i>uSteps) break; vec2 q=p+dir*uAmt*float(i)/float(uSteps); vec4 c=at(uSrc,wr(q,sz)); acc+=c; n+=1.0; mn=min(mn,c); mx=max(mx,c); }
-  o=uMode==1?mn:uMode==2?mx:acc/n; }`,
+  o=mix(original,uMode==1?mn:uMode==2?mx:acc/n,weight); }`,
   /* distort: waves, ripples, a twirl, or a pinch/bulge around the middle */
   distort:()=>FX2_H+`uniform sampler2D uSrc; uniform int uKind; uniform float uAmt; uniform float uSize; uniform float uAng; uniform vec2 uC; uniform int uWrap;
 vec2 wr(vec2 p,vec2 sz){ return uWrap==1?mod(p,sz):clamp(p,vec2(0.5),sz-0.5); }
@@ -41,31 +51,81 @@ fxDef('warp',{title:'Warp',note:'Pushes the picture around with a smooth noise: 
     run(pxd('warp'),dst,{uSrc:src.tex,uAmt:v.amt,uSize:v.size,uSeed:v.seed,uMode:{int:v.mode==='turb'?1:0},uWrap:fxdWrap()});}});
 /* (0.39, Kenn) the slope can come from a picture: drop one on the box, or pick from the Textures library */
 function fxdAllTex(){return [...tx.mine.map(rec=>({kind:'mine',id:rec.id,name:rec.name,rec})),...TX_PHOTO.map(([id,name])=>({kind:'photo',id,name})),...TX_GEN.map(([id,name])=>({kind:'gen',id,name}))];}
-function fxdGuideTex(v){const g=v.gimg;if(!g)return null;txCachePin(g);const key=g.kind+':'+g.id,t=txCacheGet(key);if(t)return t;
-  if(!g._busy){g._busy=true;txLoad().then(()=>{const it=fxdAllTex().find(x=>x.kind===g.kind&&x.id===g.id);return it&&txTarget(it);}).then(r=>{g._busy=false;if(r)changedAll();}).catch(()=>{g._busy=false;});}
+async function fxdTextureTarget(ref){
+  await txLoad();
+  const item=fxdAllTex().find(x=>x.kind===ref.kind&&x.id===ref.id);
+  return item?txTarget(item):null;
+}
+function fxdPictureTex(g){if(!g)return null;txCachePin(g);const key=g.kind+':'+g.id,t=txCacheGet(key);if(t)return t;
+  if(!g._busy){g._busy=true;fxdTextureTarget(g).then(r=>{if(r)changedAll();}).catch(()=>{}).finally(()=>{g._busy=false;});}
   return null;}
-function fxdPickTexture(done){txLoad().then(()=>{const items=fxdAllTex();
+function fxdGuideTex(v){return fxdPictureTex(v.gimg);}
+function fxdPickTexture(done,host){txLoad().then(()=>{const items=fxdAllTex();
+  if(host&&(!host.isConnected||!host.hidden||host.closest('#modal')?.hidden))return;
+  const hide=()=>{txForget(grid);if(host){host.hidden=true;host.replaceChildren();}};
   const grid=el('div',{class:'fxdpick'},...items.map(it=>{const img=el('img',{alt:'',width:64,height:64,draggable:'false'});img._tx=it;txObserve(img);
-    return el('button',{class:'mattile txtile',type:'button',title:it.name,onclick:()=>{txForget(grid);closeDialog();done({kind:it.kind,id:it.id,name:it.name});}},img,el('span',{text:it.name}));}));
-  openDialog({title:'Pick a texture',body:grid,okLabel:'Close',onOk:()=>txForget(grid),onCancel:()=>txForget(grid)});txPruneObserved();});}
+    return el('button',{class:'mattile txtile',type:'button',title:it.name,onclick:()=>{hide();if(!host)closeDialog();done({kind:it.kind,id:it.id,name:it.name});}},img,el('span',{text:it.name}));}));
+  if(host){
+    host.replaceChildren(grid,el('button',{class:'btn sm',type:'button',text:'Close textures',onclick:hide}));
+    host.hidden=false;
+  }else openDialog({title:'Pick a texture',body:grid,okLabel:'Close',onOk:hide,onCancel:hide});
+  txPruneObserved();
+});}
 async function fxdDropFiles(files,done){const f=[...files].find(x=>/^image\//.test(x.type)||/\.(png|jpe?g|webp|tga|bmp|tiff?)$/i.test(x.name));if(!f)return;
   let t;try{await txLoad();t=await fileTarget(f);const rec=await txAddTarget(t,baseName(f.name));t=null;if(typeof renderTextures==='function')renderTextures();done({kind:'mine',id:rec.id,name:rec.name});}catch(e){if(t)disposeTarget(t);toast('Could not read that picture: '+(e.message||e));}}
-function fxdGuideRow(v,upd){const name=el('span',{class:'note',text:v.gimg?v.gimg.name:'No picture yet'});name._hpv=()=>v.gimg?{tex:v.gimg,name:v.gimg.name}:null;
-  const set=g=>{v.gimg=g;txCachePin(g);name.textContent=g.name;txLoad().then(()=>{const it=fxdAllTex().find(x=>x.kind===g.kind&&x.id===g.id);return it&&txTarget(it);}).then(()=>upd()).catch(e=>toast('Could not read that texture: '+(e.message||e)));};
-  const drop=el('div',{class:'fxddrop',id:'fxdDrop',tabindex:'0',title:'Drop a picture here'},el('b',{text:'Drop a picture'}),el('small',{text:'or click to browse'}));
-  drop._texDrop=set;drop._hpv=name._hpv;drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
-  drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');fxdDropFiles(e.dataTransfer.files,set);});
-  drop.addEventListener('click',async()=>{const fs=await pickFiles('image/*',false,'Pictures',['png','jpg','jpeg','webp','tga','bmp','tif','tiff']);if(fs&&fs.length)fxdDropFiles(fs,set);});
-  return el('div',{class:'fxdguide',id:'fxdGuide'},drop,el('div',{class:'chips'},el('button',{class:'btn sm',id:'fxdLib',text:'Choose from Textures…',onclick:()=>fxdPickTexture(set)}),name),
-    chk('fxdInv','Flip the slope',!!v.ginv,x=>{v.ginv=x;upd();}));}
-fxDef('slopeBlur',{title:'Slope blur',note:'Smears the picture downhill along a slope (like Substance): its own brightness, a noise, or a picture you choose. Min eats into bright parts, Max grows them.',checks:[['meshSeams','Across mesh seams',true]],init:()=>({mode:'blur',guide:'self',gimg:null,ginv:false}),
+function fxdPictureRow(v,upd,influence=false){
+  const key=influence?'influence':'gimg',flip=influence?'invertInfluence':'ginv',prefix=influence?'fxdInfluence':'fxd';
+  const name=el('span',{class:'note'}),textures=el('div',{class:'fxdtextures',hidden:true});
+  name._hpv=()=>v[key]?{tex:v[key],name:v[key].name}:null;
+  let revision=0;
+  const clear=el('button',{class:'btn sm',type:'button',text:'Clear picture',onclick:()=>{revision++;v[key]=null;sync();upd();}});
+  const sync=()=>{name.textContent=v[key]?.name||'No picture yet';clear.hidden=!influence||!v[key];};
+  const select=async (ref,request=++revision)=>{
+    try{
+      const image={kind:ref.kind,id:ref.id,name:ref.name};
+      if(!await fxdTextureTarget(image))throw new Error('The picture is no longer in Textures.');
+      if(request!==revision||!drop.isConnected||drop.closest('#modal')?.hidden)return;
+      txCachePin(image);
+      v[key]=image;
+      sync();
+      upd();
+    }catch(e){if(request===revision)toast('Could not read that texture: '+(e.message||e));}
+  };
+  const read=files=>{const request=++revision;fxdDropFiles(files,ref=>select(ref,request));};
+  const drop=el('button',{class:'fxddrop',type:'button',id:prefix+'Drop',title:'Drop a picture here',_texDrop:select,_hpv:name._hpv},
+    el('b',{text:influence?'Drop an influence image':'Drop a picture'}),el('small',{text:'or click to browse'}));
+  drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});
+  drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+  drop.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();drop.classList.remove('over');read(e.dataTransfer.files);});
+  drop.addEventListener('click',async()=>{const fs=await pickFiles('image/*',false,'Pictures',['png','jpg','jpeg','webp','tga','bmp','tif','tiff']);if(fs?.length)read(fs);});
+  sync();
+  return el('div',{class:'fxdguide',id:influence?prefix:'fxdGuide'},drop,
+    el('div',{class:'chips'},el('button',{class:'btn sm',type:'button',id:prefix+'Lib',text:'Choose from Textures…',
+      onclick:()=>{if(textures.hidden)fxdPickTexture(select,textures);}}),clear,name),textures,
+    chk(prefix+'Inv',influence?'Invert influence':'Flip the slope',!!v[flip],x=>{v[flip]=x;upd();}));
+}
+function fxdGuideRow(v,upd){return fxdPictureRow(v,upd);}
+function fxdSlopeInfluenceU(image,invert){return {uInfluence:image?.tex||dummy,uHasInfluence:{int:image?1:0},uInvertInfluence:{int:invert?1:0}};}
+fxDef('slopeBlur',{title:'Slope blur',note:'Smears along the slope of the layer, noise, or a picture. Min shrinks bright areas. Max grows them.',checks:[['meshSeams','Across mesh seams',true]],init:()=>({mode:'blur',guide:'self',gimg:null,ginv:false,influence:null,invertInfluence:false}),
+  presets:[
+    ['Soft smear',{mode:'blur',guide:'self',amt:8,steps:16,size:60,seed:1}],
+    ['Fine erosion',{mode:'min',guide:'noise',amt:10,steps:20,size:24,seed:1}],
+    ['Chipped edges',{mode:'min',guide:'noise',amt:30,steps:24,size:75,seed:1}],
+    ['Edge spread',{mode:'max',guide:'noise',amt:18,steps:20,size:45,seed:1}]
+  ],
   defs:[{key:'amt',label:'Intensity',min:0,max:200,step:.5,value:16,fmt:px},{key:'steps',label:'Samples',min:4,max:64,step:1,value:16,fmt:v=>String(v)},{key:'size',label:'Noise size',min:4,max:600,step:1,value:60,fmt:px},{key:'seed',label:'Seed',min:1,max:99,step:1,value:1,fmt:v=>String(v)},{key:'gtile',label:'Picture repeat',min:1,max:8,step:1,value:1,fmt:v=>v+'×'}],
   controls:(v,upd)=>{const row=fxdGuideRow(v,upd);row.hidden=v.guide!=='image';
     const gs=seg([['self','Its own slope'],['noise','Noise'],['image','A picture']],v.guide,x=>{v.guide=x;row.hidden=x!=='image';upd();},'Slope from');
-    return [modeSeg(v,'mode',[['blur','Blur'],['min','Min'],['max','Max']],upd,'Slope blur mode'),gs,row];},
-  render(src,dst,v){const gt=v.guide==='image'?fxdGuideTex(v):null;
-    if(v.meshSeams!==false&&typeof meshConnectedSlope==='function'&&!window.__oldWarp&&meshConnectedSlope(src,dst,{amt:v.amt,steps:v.steps,mode:v.mode==='min'?1:v.mode==='max'?2:0,guide:(v.guide==='image'&&gt)?2:v.guide==='noise'?1:0,freq:Math.max(1,doc.w/Math.max(4,v.size)),seed:v.seed,gimg:gt,gtile:v.gtile||1,ginv:v.ginv}))return;
-    run(pxd('slope'),dst,{uSrc:src.tex,uAmt:v.amt,uSteps:{int:Math.round(v.steps)},uMode:{int:v.mode==='min'?1:v.mode==='max'?2:0},uGuide:{int:(v.guide==='image'&&gt)?2:v.guide==='noise'?1:0},uSize:v.size,uSeed:v.seed,uWrap:fxdWrap(),uGImg:(gt||src).tex,uGTile:v.gtile||1,uGInv:v.ginv?1:0});}});
+    const influence=el('details',{class:'fxdinfluence',open:!!v.influence},el('summary',{text:'Influence image'}),
+      el('p',{class:'note',text:'White applies the full effect. Black leaves the area alone.'}),fxdPictureRow(v,upd,true));
+    return [modeSeg(v,'mode',[['blur','Blur'],['min','Min'],['max','Max']],upd,'Slope blur mode'),gs,row,influence];},
+  render(src,dst,v){
+    const gt=v.guide==='image'?fxdGuideTex(v):null,influence=fxdPictureTex(v.influence);
+    if(v.influence&&!influence){blit(src,dst,0,0,src.w,src.h,0,0);return;}
+    const mode=v.mode==='min'?1:v.mode==='max'?2:0,guide=gt?2:v.guide==='noise'?1:0;
+    if(v.meshSeams!==false&&!window.__oldWarp&&meshConnectedSlope(src,dst,{amt:v.amt,steps:v.steps,mode,guide,freq:Math.max(1,doc.w/Math.max(4,v.size)),seed:v.seed,gimg:gt,gtile:v.gtile||1,ginv:v.ginv,influence,invertInfluence:v.invertInfluence}))return;
+    run(pxd('slope'),dst,{uSrc:src.tex,uAmt:v.amt,uSteps:{int:Math.round(v.steps)},uMode:{int:mode},uGuide:{int:guide},uSize:v.size,uSeed:v.seed,uWrap:fxdWrap(),uGImg:(gt||src).tex,uGTile:v.gtile||1,uGInv:v.ginv?1:0,...fxdSlopeInfluenceU(influence,v.invertInfluence)});
+  }});
 fxDef('distort',{title:'Distort',note:'Waves, ripples, a twirl, or a pinch or bulge around the middle.',init:()=>({kind:'waves'}),
   defs:[{key:'amt',label:'Amount',min:-100,max:100,step:.5,value:10,fmt:v=>String(v)},{key:'size',label:'Wave length',min:4,max:600,step:1,value:60,fmt:px},{key:'ang',label:'Angle',min:-180,max:180,step:1,value:0,fmt:deg},
     {key:'cx',label:'Centre across',min:0,max:1,step:.01,value:.5,fmt:pct},{key:'cy',label:'Centre down',min:0,max:1,step:.01,value:.5,fmt:pct}],

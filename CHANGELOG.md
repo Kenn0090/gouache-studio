@@ -1,3 +1,9 @@
+## 0.97.3
+
+- **Slope Blur has an Influence image** in 2D Paint, 3D Paint, and mask rows. White applies the full effect, black leaves the area alone, and gray applies part of the effect. Drop in a picture or choose one from Textures.
+- **Slope Blur mask rows now accept a picture as the slope guide.** The guide steers the blur, while the Influence image controls where it appears.
+- **Slope Blur presets** include Soft Smear, Fine Erosion, Chipped Edges, and Edge Spread. Switching presets keeps the chosen Influence image.
+
 ## 0.97.2
 
 - **Custom smart materials apply again:** saved materials with embedded images or masks can be added without the “Invalid string length” error.

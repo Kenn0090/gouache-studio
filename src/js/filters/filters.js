@@ -9,10 +9,33 @@ const fxClean=v=>JSON.parse(JSON.stringify(v,(k,x)=>k[0]==='_'?undefined:x));
 /* the controls of a filter, shared by the one-off dialog and the filter layer editor */
 function fxControls(o,v,upd,ctx){const body=[],sliders=[];
   if(o.note)body.push(el('p',{class:'note',text:o.note}));
-  if(o.controls)body.push(...o.controls(v,upd,ctx));
-  for(const d of o.defs||[]){const s=makeSlider(Object.assign({},d,d.fmt===pct&&d.min>=0&&/^(Strength|Contrast|Intensity)$/.test(d.label)&&d.numericMax===undefined?{numericMax:d.max*4}:{},{value:v[d.key],def:d.value,id:'fx_'+d.key,onInput:x=>{v[d.key]=x;upd();}}));sliders.push([s,d]);body.push(s.el);}
-  for(const [key,label] of o.checks||[])body.push(chk('fx_'+key,label,key==='uvWrap'?v[key]!==false:!!v[key],x=>{v[key]=x;upd();}));
-  const reset=sliders.length?el('button',{class:'btn sm',text:'Reset',onclick:()=>{for(const [s,d] of sliders){v[d.key]=d.value;s.set(d.value);}upd();}}):null;
+  let syncPreset=()=>{};
+  const change=()=>{syncPreset();upd();};
+  const build=()=>{
+    const fields=o.controls?[...o.controls(v,change,ctx)]:[];
+    sliders.length=0;
+    for(const d of o.defs||[]){const s=makeSlider(Object.assign({},d,d.fmt===pct&&d.min>=0&&/^(Strength|Contrast|Intensity)$/.test(d.label)&&d.numericMax===undefined?{numericMax:d.max*4}:{},{value:v[d.key],def:d.value,id:'fx_'+d.key,onInput:x=>{v[d.key]=x;change();}}));sliders.push([s,d]);fields.push(s.el);}
+    for(const [key,label] of o.checks||[])fields.push(chk('fx_'+key,label,key==='uvWrap'?v[key]!==false:!!v[key],x=>{v[key]=x;change();}));
+    return fields;
+  };
+  if(o.presets){
+    const picker=el('select',{id:'fx_'+o.id+'_preset','aria-label':o.title+' preset'},el('option',{value:'',text:'Custom',disabled:true}),
+      ...o.presets.map(([name],index)=>el('option',{value:String(index),text:name})));
+    const fields=el('div',{class:'dlg-grid'},...build());
+    syncPreset=()=>{
+      const i=o.presets.findIndex(([,settings])=>Object.entries(settings).every(([key,value])=>v[key]===value));
+      picker.value=i===-1?'':String(i);
+    };
+    picker.onchange=()=>{
+      if(picker.value==='')return;
+      Object.assign(v,o.presets[Number(picker.value)][1]);
+      fields.replaceChildren(...build());
+      change();
+    };
+    syncPreset();
+    body.push(el('label',{class:'frow'},el('span',{text:'Preset'}),picker),fields);
+  }else body.push(...build());
+  const reset=sliders.length?el('button',{class:'btn sm',text:'Reset',onclick:()=>{for(const [s,d] of sliders){v[d.key]=d.value;s.set(d.value);}change();}}):null;
   return {body,reset};}
 /* one-off filter on the active layer (or mask); "Keep editable" makes a filter layer instead */
 function fxDialog(o){if(typeof o==='string')o=FX[o];const et=needTarget();if(!et)return;const L=et.L;if(!effVisible(et.node)){toast('Show the active layer before filtering it.');return;}

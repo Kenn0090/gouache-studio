@@ -86,10 +86,17 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
     el('div',{class:'frow'},el('label',{text:'Blend'}),modeSel),
     makeSlider({id:'ms_op',label:'Opacity',min:0,max:1,step:.01,value:r.op==null?1:r.op,fmt:pct,onInput:v=>{ed(x=>{x.op=v;});const e=document.querySelector('.msrow.on .msop');if(e)e.textContent=String(Math.round(v*100));}}).el);
   /* filters take the settings of the filter itself */
-  if(r.kind==='filter'&&!r.own){const F=FX[r.fx];if(!F){box.append(el('p',{class:'note',text:'This filter is not available.'}));return;}
-    r.v=r.v||fxDefaults(F);const draft=fxClean(r.v),ctx={};
+  if(r.kind==='filter'&&(!r.own||r.own==='slope')){
+    const legacySlope=r.own==='slope',F=FX[legacySlope?'slopeBlur':r.fx];
+    if(!F){box.append(el('p',{class:'note',text:'This filter is not available.'}));return;}
+    // Keep the old mask result until its filter settings are edited.
+    const defaults=fxDefaults(F);
+    if(legacySlope)Object.assign(defaults,{guide:'noise',amt:(p.r??3)*3.75,
+      size:clamp(Math.round(doc.w/(p.scale||6)),4,600),seed:p.seed||1,uvWrap:p.uvWrap!==false});
+    const settings=legacySlope?p.slope:r.v;
+    const draft=Object.assign(defaults,fxClean(settings||{})),ctx={};
     if(where==='m'&&(r.fx==='levels'||r.fx==='curves')){const t=msEval(L,{upTo:L.mask.stack.indexOf(r)});try{ctx._h=histogramOf(t);}finally{release(t);}}
-    const c=fxControls(F,draft,()=>ed(x=>{x.v=fxClean(draft);}),ctx);
+    const c=fxControls(F,draft,()=>ed(x=>{if(legacySlope)x.p.slope=fxClean(draft);else x.v=fxClean(draft);}),ctx);
     /* (0.94.6) a Hand-painted material: its look's settings, with the way back to the material's channels and the switch to painting over the layers below */
     if(r.fx==='handPaint'&&where==='c'&&L.fill)box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'hpMatChannels',text:'Material channels',title:'Roughness, metallic, height and the other channels of this material',onclick:()=>{matEd.hpChan=L;ui.msSel=null;renderLayers();renderMatEd(true);}}),el('button',{class:'btn sm',id:'hpOverBelow',text:'Paint over the layers below',title:'Turn it into a Hand-painted layer that lights and shades what is under it',onclick:()=>hpMatToOverlay(L)})));
     box.append(...c.body);if(c.reset)box.append(el('div',{class:'frow'},c.reset));
@@ -97,9 +104,9 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
       ms.value=Array.isArray(r.maps)?'only:'+r.maps[0]:r.maps==='all'?'all':'base';ms.onchange=()=>ed(x=>{x.maps=ms.value==='all'?'all':ms.value==='base'?'base':[ms.value.slice(5)];});
       box.append(el('div',{class:'frow'},el('label',{text:'Changes'}),ms));}
     else box.append(el('p',{class:'note',text:'A filter changes everything below it in the mask.'}));return;}
-  if(r.kind==='filter'){box.append(chk('ms_uvWrap','UV wrap',p.uvWrap!==false,v=>ed(x=>{x.p.uvWrap=v;})),S('ms_r',r.own==='grow'?'Grow (−: shrink)':r.own==='warp'?'Amount':'Length',...(r.own==='grow'?['r',-12,12,1]:['r',0,24,.5]),v=>String(v)));
+  if(r.kind==='filter'){box.append(chk('ms_uvWrap','UV wrap',p.uvWrap!==false,v=>ed(x=>{x.p.uvWrap=v;})),S('ms_r',r.own==='grow'?'Grow (−: shrink)':'Amount',...(r.own==='grow'?['r',-12,12,1]:['r',0,24,.5]),v=>String(v)));
     if(r.own!=='grow')box.append(S('ms_scale','Noise size','scale',1,40,.5),S('ms_seed','Seed','seed',1,99,1,v=>String(v)));
-    box.append(el('p',{class:'note',text:r.own==='grow'?'Makes the white parts bigger (or smaller, below 0).':r.own==='warp'?'Pushes the mask around with a noise, to break up clean edges.':'Smears the mask along a noise, like dripping or flowing.'}));return;}
+    box.append(el('p',{class:'note',text:r.own==='grow'?'Makes the white parts bigger (or smaller, below 0).':'Pushes the mask around with a noise, to break up clean edges.'}));return;}
   if(r.kind==='paint'){box.append(el('p',{class:'note',text:'Paint on the model or the canvas: white shows the layer, black hides it. The eraser takes paint away (back to the rows below).'}),
     el('div',{class:'chips'},el('button',{class:'btn sm',text:'Fill white',onclick:()=>{msSelect(L,where,r.id);maskOp(0,1);}}),el('button',{class:'btn sm',text:'Fill black',onclick:()=>{msSelect(L,where,r.id);maskOp(0,0);}}),
       el('button',{class:'btn sm',text:'Clear',onclick:()=>{msSelect(L,where,r.id);fullRecord({target:r.t,lockAlpha:false,maskOf:L,maskObj:L.mask},'Clear paint row',()=>clearTarget(r.t,[0,0,0,0]));}})));return;}

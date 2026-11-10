@@ -287,6 +287,7 @@ function msGrungeTex(p){const g=p&&p.gimg;if(!g||typeof txCacheGet!=='function')
 function msGrungeU(p){const t=msGrungeTex(p);return {uGTex:t?t.tex:dummy,uHasG:{int:t?1:0},uGTile:p.gtile||1,uGInv:{int:p.ginv?1:0},uGRot:(p.grot||0)*Math.PI/180,uGCon:p.gcon||0,uGLev:p.glev||0};}
 /* a filter row on the picture so far */
 function msFilter(r,acc){const o=acquireD(acc.depth);
+  if(r.own==='slope'&&r.p?.slope){FX.slopeBlur.render(acc,o,r.p.slope,{});return o;}
   if(r.own==='warp'&&typeof meshConnectedWarp==='function'&&ui.mode==='p3d'&&!window.__oldWarp){const p=r.p||{};if(meshConnectedWarp(acc,o,p.r==null?3:p.r,p.scale||6,p.seed||1))return o;}
   if(r.own==='slope'&&typeof meshConnectedSlope==='function'&&ui.mode==='p3d'&&!window.__oldWarp){const p=r.p||{};if(meshConnectedSlope(acc,o,{amt:(p.r==null?3:p.r)*3.75,steps:16,mode:0,guide:1,freq:p.scale||6,seed:p.seed||1}))return o;}
   if(r.own){const P=msProgs(),p=r.p||{};withUVWrap(p.uvWrap!==false,[acc],()=>run(P.own,o,{uSrc:acc.tex,uOwn:{int:['grow','warp','slope'].indexOf(r.own)},uR:p.r==null?3:p.r,uScale:p.scale||6,uSz:[doc.w,doc.h],uSeed:p.seed||1}));return o;}

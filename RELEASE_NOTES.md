@@ -1,3 +1,8 @@
+## 0.97.3
+
+- **Slope Blur** now supports a separate Influence image in 2D Paint, 3D Paint, and mask rows. White applies the full effect, black leaves the area alone, and gray applies part of it.
+- Mask rows can also use a picture as the slope guide. Choose from four presets to get started, and keep your Influence image when switching between them.
+
 ## 0.97.2
 
 - Fixed the “Invalid string length” error when adding a custom smart material with saved images or masks.
