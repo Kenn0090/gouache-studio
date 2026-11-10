@@ -2,6 +2,8 @@
 
 Gouache Studio is a GPU-powered painting and texture app for hand-painted and PBR game art. It runs as a Windows desktop app that updates itself, and also in a browser.
 
+[Download Gouache Studio](https://github.com/Kenn0090/gouache-studio/releases/latest) · [What's new](../../CHANGELOG.md)
+
 ## Start here
 - [Getting started](Getting-started.md): installing, updates, a tour of the screen, your first document, document tabs and windows
 - [Keyboard shortcuts](Keyboard-shortcuts.md)
@@ -17,8 +19,8 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 - [Shapes, arrays and layer styles](Shapes-arrays-and-layer-styles.md): shapes with bevels, repeating a layer in a line, grid or circle, drop shadows, strokes, bevels and more
 - [Selections, transforms and crop](Selections-transforms-and-crop.md)
 - [Rulers and guides](Rulers-and-guides.md): rulers in pixels, inches or centimetres, guides, snapping
-- [Rotate and flip](Rotate-and-flip)
-- [Liquify](Liquify)
+- [Rotate and flip](Rotate-and-flip.md)
+- [Liquify](Liquify.md)
 - [Normal layers](Normal-layers.md): paint bumps, dents and tilts straight into a normal, on the canvas or the model, and convert to AO and curvature
 - [Fills and gradients](Fills-and-gradients.md)
 - [Cage painting and symmetry](Cage-painting-and-symmetry.md): paint through a cage onto slanted or curved shapes; mirror and radial symmetry
@@ -36,7 +38,7 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 - [Painted looks](Painted-looks.md): the Stylize layer (strokes, lighting, edges) and the Hand-painted layer (fake lighting from the model's shape), both on every map
 
 ## 3D
-- [3D Paint](3D-Paint.md): the 3D Paint tab. Paint on a model with texture sets, mirror and radial painting, stencils, selections on the model, materials, baking mesh maps and project files
+- [3D Paint](3D-Paint.md): the 3D Paint tab. Paint on a model with texture sets, mirror and radial painting, stencils, selections on the model, materials, UDIM tiles, mesh map baking and project files
 - [The new viewer](New-viewer.md): the second window drawn on your graphics card: painting in it, ray-traced shadows and reflections, pictures from it
 - [3D view](3D-view.md): see your textures on a model while you paint; HDRI lighting, shaders, ray-traced renders, screenshots and turntables
 - [Baker](Baker.md): the Bake tab. Bake normal, AO, curvature and more from a high-poly model, watch it on the model, and paint skew and offset fixes
@@ -46,14 +48,16 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 - [Animation, flipbooks and sprite sheets](Animation.md)
 
 ## Files
-- [Files, saving and export](Files-and-export.md): .gouache documents, PSD, image formats, texture export for Unreal, Unity, Godot and Blender (your own packed presets, the model as .glb or .obj, sending straight into the engine or Blender), models that update when their file changes, sprite sheets
+- [Files, saving and export](Files-and-export.md): .gouache documents, PSD, image formats, texture export for Unreal, Unity, Godot and Blender (your own packed presets, the model as GLB, OBJ or FBX, plus links for Blender, game engines and Roblox Studio), models that update when their file changes, sprite sheets
 
 ## Settings and help
 - [Preferences and performance](Preferences-and-performance.md): engine quality, smaller files, themes (rounded or sharp), shortcut hints and the shortcut helper, autosave countdown, previews, memory
 - [Scripting (automate the app)](Scripting.md)
 - [Troubleshooting and FAQ](Troubleshooting.md)
 
-## Roadmap
+## Early development milestones
+
+These milestones cover the app’s early development. See the [changelog](../../CHANGELOG.md) for later versions and [GitHub Releases](https://github.com/Kenn0090/gouache-studio/releases/latest) for the current installer.
 | Phase | What | Version |
 |---|---|---|
 | 0 | Desktop app, self-updates | 0.1 |
@@ -94,5 +98,5 @@ Gouache Studio is a GPU-powered painting and texture app for hand-painted and PB
 
 The first time you start Gouache Studio a launch screen asks for your **Look** (Classic or Modern), your **Level** (Beginner or Full) and where to **Start in**. Change them later in Preferences › Look, or open File › **Launch screen…**. Beginner shows the main tools only and a Getting started card; Full shows everything.
 
-- [Timelapse recorder](Timelapse)
-- [Content and downloads](Content-and-downloads) — bigger Library pictures, 2K skies and the AI add-ons
+- [Timelapse recorder](Timelapse.md)
+- [Content and downloads](Content-and-downloads.md) — bigger Library pictures, 2K skies and the AI add-ons

@@ -15,7 +15,7 @@ All of these can be changed in **Edit › Keyboard shortcuts…**. The commands 
 
 **Tap a tool shortcut** to select it. **Hold its shortcut** (about a quarter second, or use the tool while its key is down) to use it temporarily; releasing the key returns to the previous tool. Another tapped tool or a toolbar choice takes over permanently. This also works with reassigned keys and popped-out windows. Switching tools finishes a current stroke or transform without losing its pixels. Text fields and modal dialogs retain their normal input.
 
-In 3D Paint, **M** selects Marquee and **S** selects Smudge. **Esc** returns from channel inspection to the lit material. Hold **Shift+S** to move a stencil. **C** still cycles viewport channels, since Crop is a 2D tool.
+In 3D Paint, **M** returns to Material Lit, **S** selects Smudge, and **C** cycles viewport channels. Hold **Ctrl** and left-drag with the Paint brush over painted areas to smooth them. Hold **Shift+S** to move a stencil. Use Polygon fill or the mask toolbar’s Box and Lasso for selections on the model.
 | Key | Tool |
 |---|---|
 | Shift+B | Swap the last two brush presets, including their session sizes |
@@ -28,7 +28,7 @@ In 3D Paint, **M** selects Marquee and **S** selects Smudge. **Esc** returns fro
 | O | Dodge / Burn (Shift+O switches between them) |
 | G | Fill tools: gradient, paint bucket, gradient bucket (Shift+G cycles) |
 | V | Move |
-| M | Marquee (Shift+M switches rectangle / ellipse) |
+| M | Paint: Marquee (Shift+M switches rectangle / ellipse). 3D Paint and Bake: Material Lit. |
 | Shift+L | Lasso: switch freehand / polygon (the Lasso has no key of its own now; give it one in Edit › Keyboard shortcuts) |
 | W | Magic wand |
 | C | Crop |

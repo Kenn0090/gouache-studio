@@ -1,41 +1,36 @@
 # Gouache Studio
 
-A GPU-accelerated painting and texture app for hand-painted game art. Windows desktop app built with Tauri, and also runs in a browser.
+Gouache Studio is a GPU-accelerated app for digital painting, 3D texturing, and game art. Paint on a canvas or directly on a model, bake mesh maps, build reusable materials, and export textures for your engine. It runs as a self-updating Windows app or as a browser build.
 
-**[User guide (wiki)](docs/wiki/Home.md)**: how everything in the app works.
+[Download for Windows](https://github.com/Kenn0090/gouache-studio/releases/latest) · [User guide](docs/wiki/Home.md) · [Version history](CHANGELOG.md)
 
 ## Download
 
-Get the latest installer from [Releases](https://github.com/Kenn0090/gouache-studio/releases/latest): `Gouache Studio_x.y.z_x64-setup.exe`. Once installed, the app checks for updates when it starts and can update itself (File › Check for updates…).
+**[Get Gouache Studio for Windows (x64)](https://github.com/Kenn0090/gouache-studio/releases/latest)**
 
-Test builds of every change are on the **Actions** tab (download `gouache-studio-windows`).
+Choose the recommended **Full installer** for bundled materials, skies, and grunge maps. Choose **Lite** for a smaller download that fetches assets as you use them. An MSI is also available.
 
-## Roadmap
+Already installed? Use **File → Check for updates…**. See [Getting started](docs/wiki/Getting-started.md) for installation and your first project.
 
-1. ~~Desktop foundation~~ (0.1)
-2. ~~Selections, transforms, crop, fills, gradients, dodge/burn, flipbooks~~ (0.2–0.5)
-3. ~~Material maps and game-engine export presets~~ (0.6)
-4. ~~Converters and filters~~ (0.7)
-5. ~~Filter layers~~ (0.8)
-6. ~~3D viewer~~ (0.9)
-7. ~~Baker~~ (0.10)
-8. Cage / skew painting
-9. Paint on the model
+## What you can do
 
-## Releasing a version
+| Workflow | Features |
+| --- | --- |
+| **Paint and illustrate** | Use pressure-sensitive brushes, import Photoshop brushes, make custom tips, and work with layers, masks, selections, paths, gradients, live filters, and non-destructive crop. Open and export layered PSDs. [Painting guide](docs/wiki/Brushes-and-painting.md) |
+| **Paint on a 3D model** | Import OBJ, glTF, GLB, or binary or text FBX. Cancel a large import from the progress bar. Paint PBR channels with per-material texture sets and UDIM tiles, polygon fill, surface paths, symmetry, stencils, and decals. Use **Ctrl + left-drag** to smooth painted areas and **M** to return to Material Lit. [3D Paint guide](docs/wiki/3D-Paint.md) |
+| **Build materials and masks** | Layer material channels, project textures in UV, planar, or triplanar space, and build smart materials and masks with generators, baked maps, custom grunge, and anchor points. Browse ambientCG materials and textures from the app. [Materials and masks](docs/wiki/Smart-materials-and-anchors.md) · [Online library](docs/wiki/Online-library.md) |
+| **Bake, convert, and preview** | Bake normals, ambient occlusion, curvature, thickness, ID, and other maps from a model. Use a cage and paint skew or offset corrections, unwrap UVs, and convert images into texture maps. Inspect materials under HDRI lighting or in the ray-traced viewer, and capture stills or turntables. [Baker](docs/wiki/Baker.md) · [Convert](docs/wiki/Convert-tab.md) · [Viewer](docs/wiki/New-viewer.md) |
+| **Animate and edit photos** | Create frame animations, flipbooks, and sprite sheets. Edit JPEG and RAW photos with masks, curves, colour adjustments, and presets. Optional AI add-ons include selection, removal, and upscaling. [Animation](docs/wiki/Animation.md) · [Photo](docs/wiki/Photo-tab.md) · [AI add-ons](docs/wiki/AI-add-ons.md) |
+| **Export and automate** | Pack texture channels and export models and maps for Unreal, Unity, Godot, Blender, or Roblox Studio. Use the two-way links for Blender, Unity, and Unreal to bring model or material changes back into Gouache. Record or write scripts for repeatable workflows. [Files and export](docs/wiki/Files-and-export.md) · [Scripting](docs/wiki/Scripting.md) |
 
-1. `node scripts/bump.mjs 0.2.0`
-2. Write what's new in `RELEASE_NOTES.md` (shown in the app's update card and on the release page).
-3. Commit and push to `main`.
+See the [latest release notes](https://github.com/Kenn0090/gouache-studio/releases/latest) for recent changes and the [changelog](CHANGELOG.md) for the full history.
 
-When the pushed version has no release yet, the build publishes `v0.2.0` automatically. Releases are signed with the `TAURI_SIGNING_PRIVATE_KEY` repository secret.
+## Build from source
 
-## Build it yourself
-
-```
+```sh
 npm ci
-npm run build:web        # single-file browser version -> dist-web/index.html
-npm run desktop:build    # desktop installer (needs Rust + Tauri prerequisites)
+npm run build:web      # Browser build in dist-web/
+npm run desktop:build  # Windows installer; requires Rust and Tauri prerequisites
 ```
 
-Source lives in `src/js` (the app, ordered by `src/js/order.json`) and `src-tauri` (the native shell: file access, recent files, undo spill to disk).
+The application source is in [src/js](src/js), with its load order in [src/js/order.json](src/js/order.json). The Windows shell, file access, and updater are in [src-tauri](src-tauri). See the [test guide](tests/e2e/README.md) and the [release workflow](AGENTS.md) for development and publishing.

@@ -1,8 +1,8 @@
 # Getting started
 
 ## Installing
-1. Open the [latest release](https://github.com/Kenn0090/gouache-studio/releases/latest).
-2. Download `Gouache.Studio_x.y.z_x64-setup.exe` and run it. It installs for your Windows user only, so no administrator rights are needed.
+1. Open [Download Gouache Studio for Windows](https://github.com/Kenn0090/gouache-studio/releases/latest).
+2. Choose the recommended Windows x64 installer and run it. Choose Lite for a smaller download that fetches bundled assets as you use them. Gouache installs for your Windows user.
 3. Start **Gouache Studio** from the Start menu.
 
 Double-clicking a `.gouache` file opens it in the app.
