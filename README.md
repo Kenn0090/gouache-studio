@@ -53,4 +53,4 @@ npm run desktop:build  # Windows installer; requires Rust and Tauri prerequisite
 
 The application source is in [src/js](src/js), with its load order in [src/js/order.json](src/js/order.json). The Windows shell, file access, and updater are in [src-tauri](src-tauri). See the [test guide](tests/e2e/README.md) and the [release workflow](AGENTS.md) for development and publishing.
 
-[windows-download]: https://github.com/Kenn0090/gouache-studio/releases/download/v0.96.6/Gouache.Studio_0.96.6_x64-setup.exe
+[windows-download]: https://github.com/Kenn0090/gouache-studio/releases/download/v0.96.7/Gouache.Studio_0.96.7_x64-setup.exe
