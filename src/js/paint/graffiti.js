@@ -27,7 +27,7 @@ const GRAFFITI=[
  ['Wildstyle chisel (fringed)',{tip:WILD_TIP,size:210,angle:38,hardness:1,flow:1,opacity:1,spacing:.012,smoothing:.5,pSize:false,buildup:false,spray:0,drip:0,simP:'off'}],
  ['Wildstyle chisel (clean)',{size:120,angle:38,roundness:.14,hardness:1,flow:1,opacity:1,spacing:.012,smoothing:.5,pSize:false,buildup:false,spray:0,drip:0,simP:'off'}],
  ['Stencil edge',{size:44,hardness:1,flow:1,grain:.22,spacing:.04,smoothing:.1,pSize:false,buildup:false,spray:0,drip:0}]
-].map(([name,s])=>Object.assign({name,tool:'brush',tip:null,buildup:true,smoothing:.35,smoothCurve:true,pOpacity:false,simP:s.spray>0?'taper':'off'},s));
+].map(([name,s])=>Object.assign({name,tool:'brush',align3d:'wrap'/* (0.96.6) in 3D Paint: drips run down the view, as paint does */,tip:null,buildup:true,smoothing:.35,smoothCurve:true,pOpacity:false,simP:s.spray>0?'taper':'off'},s));
 library.splice(4,0,{id:'graffiti',name:'Graffiti',builtin:true,presets:GRAFFITI,tips:[]});
 /* Spray cap levels: one pass makes a grainy, see-through stipple that builds up slowly (no solid core), from a hairline to a huge cloud, with a hollow
    cone and swirl on the fatter caps. Press harder for a bigger, denser cloud; ease off for a fine mist. */
@@ -38,5 +38,5 @@ const CAP_LEVELS=[
  ['Cap level 4 · Fat cream',{size:110,hardness:.5,spray:.8,sprayDen:1.9,sprayMist:.08,sprayRing:.78,spraySwirl:.12,sprayFleck:.35,flow:.44,spacing:.055}],
  ['Cap level 5 · Fat',{size:190,hardness:.4,spray:.85,sprayDen:1.9,sprayMist:.1,sprayRing:.92,spraySwirl:.18,sprayVar:.2,sprayFleck:.5,flow:.42,spacing:.06}],
  ['Cap level 6 · Hardcore fat',{size:320,hardness:.3,spray:1.0,sprayDen:1.9,sprayMist:.12,sprayRing:1,spraySwirl:.25,sprayVar:.35,sprayFleck:.7,flow:.4,spacing:.06}]
-].map(([name,s])=>Object.assign({name,tool:'brush',tip:null,buildup:true,smoothing:.4,smoothCurve:true,pOpacity:false,pSize:true,minSize:.04,pFlow:false,sprayPress:.85,spraySolid:0,drip:0,dripAuto:0,simP:'taper'},s));
+].map(([name,s])=>Object.assign({name,tool:'brush',align3d:'wrap'/* (0.96.6) in 3D Paint: drips run down the view, as paint does */,tip:null,buildup:true,smoothing:.4,smoothCurve:true,pOpacity:false,pSize:true,minSize:.04,pFlow:false,sprayPress:.85,spraySolid:0,drip:0,dripAuto:0,simP:'taper'},s));
 library.splice(5,0,{id:'caplevels',name:'Spray cap levels',builtin:true,presets:CAP_LEVELS,tips:[]});

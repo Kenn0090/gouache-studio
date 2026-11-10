@@ -1,3 +1,13 @@
+## 0.96.6
+
+- **Smart materials: double-click to add one**, and dropping one in the wrong place now says where to drop it.
+- **Bake tab:** Match size for a high-poly in other units, Bake groups (by name, material or by hand), Explode, and move arrows for the low- and high-poly.
+- **Outline tick on the Standard and Skin looks.**
+- **New painting defaults:** UV alignment, backface culling at 90°, object size; Ctrl smoothing works with any alignment.
+- **Pictures that are no baked map** (Albedo…) still come into the project.
+- **Mirror and radial symmetry now work with UV alignment** (graffiti brushes included).
+- **Brushes with their own 3D Paint alignment** show a small 3D badge and switch it for you.
+
 ## 0.96.5
 
 - **3D Paint shows only tools that work on the model** (their keys too); Hand, Zoom and the Eyedropper now work on the model.

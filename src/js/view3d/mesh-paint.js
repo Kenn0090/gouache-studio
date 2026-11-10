@@ -136,8 +136,8 @@ const SHIFT_SMOOTH_TOOLS=['brush','erase','dodge','burn','material'];
 const evCopy=e=>({clientX:e.clientX,clientY:e.clientY,pointerId:e.pointerId,pressure:e.pressure,pointerType:e.pointerType,tiltX:e.tiltX,tiltY:e.tiltY,twist:e.twist,timeStamp:e.timeStamp,button:0,buttons:1,shiftKey:e.shiftKey,ctrlKey:e.ctrlKey,altKey:e.altKey,metaKey:e.metaKey});
 function meshDown(hit,e){if(stroke||preview||selLive||v3.shiftPend)return false;const s=v3s();
   /* (0.95.6, Kenn: "no overlap between the blur and the straight line") Ctrl + drag smooths; Shift + click stays the straight line only */
-  if(ui.mode==='p3d'&&(e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&s.shiftSmooth!==false&&SHIFT_SMOOTH_TOOLS.includes(ui.tool)&&s.paintAlign!=='uv')return meshDown0(hit,Object.assign(evCopy(e),{ctrlKey:false,metaKey:false}),{smooth:true});
-  if(ui.mode==='p3d'&&s.paintAlign==='uv')return meshDownUV(hit,e);
+  if(ui.mode==='p3d'&&(e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&s.shiftSmooth!==false&&SHIFT_SMOOTH_TOOLS.includes(ui.tool))/* (0.96.6, Kenn) Ctrl smooths with Tangent | Wrap whatever the alignment (UV alignment cannot smooth) */return meshDown0(hit,Object.assign(evCopy(e),{ctrlKey:false,metaKey:false}),{smooth:true});
+  if(ui.mode==='p3d'&&(s.paintAlign||'uv')==='uv')return meshDownUV(hit,e);
   return meshDown0(hit,e);}
 /* the pending Shift press: moved far enough = a Smooth stroke; let go = the straight line */
 function meshShiftMove(hit,e){const P=v3.shiftPend;if(!P||e.pointerId!==P.id)return false;if(Math.hypot(e.clientX-P.ev.clientX,e.clientY-P.ev.clientY)<4)return true;
@@ -149,7 +149,7 @@ function meshDownUV(hit,e){if(typeof bk!=='undefined'&&bk.busy)return true;if(ui
   if(['smudge','liquify','heal','clone'].includes(ui.tool)){toast('UV alignment paints with the brush, eraser and dodge/burn. Use Tangent | Wrap for this tool.');return true;}
   if(typeof npSync==='function')npSync();const et=editTarget();if(lockStop(et))return true;const o=paintOpts(et);if(!o)return true;
   const q=meshUVAt(hit,e);if(!q)return false;const r=hit.getBoundingClientRect(),k=v3TexelPx(hit,e);
-  o.uvRs=true;o.cageRs=k?meshBrushScale(r.height)/k:1;o.sym=null;o.extras=[];const p=pressureOf(e);
+  o.uvRs=true;o.cageRs=k?meshBrushScale(r.height)/k:1;o.sym=typeof uvmSym==='function'?uvmSym():null;if(ui.tool!=='material')o.extras=[];/* (0.96.6) mirror/radial now work with UV alignment; the material brush keeps its other channels */const p=pressureOf(e);
   v3.mstroke={id:e.pointerId,uv:true,hit,last:q};beginStroke(et.L,q[0],q[1],p,o);return true;}
 /* the texture pixel under a point of the view, on the active texture set only */
 function meshUVAt(hit,e){const q=v3PickFast(hit,e);if(!q)return null;if(ui.mode==='p3d'&&v3.mesh?.setRanges&&typeof p3Range==='function'){const R=v3.mesh.setRanges[q.set],A=p3Range();if(R&&A&&R.start!==A.start)return null;}return [q.uv[0]*doc.w,q.uv[1]*doc.h];}
@@ -411,16 +411,17 @@ function meshBackfaceControl(id){const control=chk(id,'Paint back faces',v3s().n
    Alignment: Tangent | Wrap (follows the surface, reaches just behind raised edges), Camera (flat from the view, only what is seen),
    UV (stamps straight onto the texture). Backface culling: surfaces turned away from you by more than the angle take no paint.
    Size Space: Object (the brush keeps its size on the model as you zoom), Viewport (screen pixels), Texture (texture pixels). */
-const PROJ_DEF={paintAlign:'wrap',noBack:true,cullAngle:90,sizeSpace:'object'};
+/* (0.96.6, Kenn's defaults) UV alignment, backface culling on at 90°, object size space */
+const PROJ_DEF={paintAlign:'uv',noBack:true,cullAngle:90,sizeSpace:'object'};
 function projectionBox(){const s=v3s(),box=el('div',{class:'dlg-grid projbox',id:'p3Proj'});
   const redo=()=>{const n=projectionBox();box.replaceWith(n);for(const root of [document,...(v3.pop?[v3.pop.win.document]:[])])for(const input of root.querySelectorAll('[data-backface-paint]'))input.checked=s.noBack===false;v3.dirty=true;requestRender(true);refreshCursor();};
   const sel=(id,label,opts,val,on,title)=>{const x=el('select',{id,'aria-label':label,title:title||''},...opts.map(([v,t])=>el('option',{value:v,text:t})));x.value=val;x.onchange=()=>on(x.value);return el('label',{class:'hpsel'},el('span',{text:label}),x);};
   const head=el('div',{class:'sub projhead'},el('span',{text:'Projection'}),el('button',{class:'btn sm',type:'button',id:'projReset',title:'Back to the defaults','aria-label':'Reset projection',text:'↺',onclick:()=>{Object.assign(s,PROJ_DEF);redo();}}));
-  const align=sel('projAlign','Alignment',[['wrap','Tangent | Wrap'],['camera','Camera'],['uv','UV']],s.paintAlign||'wrap',v=>{s.paintAlign=v;redo();},'How the brush lands on the model');
+  const align=sel('projAlign','Alignment',[['wrap','Tangent | Wrap'],['camera','Camera'],['uv','UV']],s.paintAlign||'uv',v=>{s.paintAlign=v;delete s.userAlign;redo();},'How the brush lands on the model');
   const on=s.noBack!==false,cull=el('button',{class:'btn sm'+(on?' on':''),type:'button',id:'projCull','aria-pressed':String(on),text:on?'On':'Off',title:'Backface culling: no paint on surfaces turned away from you',onclick:()=>{s.noBack=!on;redo();}});
   const ang=makeSlider({id:'projCullAng',label:'Angle',min:1,max:90,step:1,value:s.cullAngle??90,def:90,fmt:v=>Math.round(v)+'°',onInput:v=>{s.cullAngle=v;v3.dirty=true;}}).el;if(!on)ang.classList.add('dim');
   const size=sel('projSize','Size Space',[['object','Object'],['viewport','Viewport'],['texture','Texture']],s.sizeSpace||'object',v=>{s.sizeSpace=v;redo();},'What the brush size is measured in');
-  const a=s.paintAlign||'wrap',sz=s.sizeSpace||'object';
+  const a=s.paintAlign||'uv',sz=s.sizeSpace||'object';
   const note=el('p',{class:'note',text:(a==='wrap'?'Tangent | Wrap follows the surface, even just behind a raised edge.':a==='camera'?'Camera projects the stroke flat from the view and only paints what you can see.':'UV stamps the brush straight onto the texture where you point; a seam starts a new stroke.')+
     ' Culling: surfaces turned away by more than the angle take no paint (90° = only those facing away). '+(sz==='object'?'Object: the brush keeps its size on the model as you zoom.':sz==='viewport'?'Viewport: the size is in screen pixels.':'Texture: the size is in texture pixels.')});
   box.append(head,align,el('div',{class:'frow projcull'},el('span',{text:'Backface culling'}),cull,ang),size,note);return box;}
