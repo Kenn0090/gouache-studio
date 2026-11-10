@@ -404,7 +404,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
         flip,S('bkCurvR','Radius','curvRadius',1,32,1,v=>v+' px'),S('bkCurvS','Strength','curvStr',.1,4,.05,pct),S('bkCurvE','Edges','curvEdges',0,2,.05,pct),S('bkCurvC','Creases','curvCreases',0,2,.05,pct),
         chk('bkCurvParts','Also make edges-only and creases-only maps',C.curvParts!==false,v=>{C.curvParts=v;}),
         note('Radius: how far around each point it looks (small: thin sharp edges; large: broad soft ones). Edges and Creases set the light and dark sides on their own.'));}
-    if(T==='height')pg.append(on('height'),note('How far the high-poly is above (light) or below (dark) the low-poly, within Front and Back (General).'));
+    if(T==='height')pg.append(on('height'),note('How far the high-poly is above (light) or below (dark) the low-poly, within Front and Back (Geometry).'));
     if(T==='thick')pg.append(on('thick'),S('bkThR','Rays','thickRays',8,256,8,v=>String(v)),S('bkThD','Reach','thickDist',1,100,1,v=>v+'%'),note('White is thick, dark is thin. Reach: how deep it looks.'));
     if(T==='wnormal')pg.append(on('wnormal'),note('The direction each point faces in the world (red = X, green = Y, blue = Z), not bent by the UVs. Masks use it for things like dust on top.'));
     if(T==='position')pg.append(on('position'),note('Where each point is inside the model’s box, as a colour gradient (red = X, green = Y, blue = Z). Masks use it for gradients from bottom to top or side to side.'));
