@@ -1,3 +1,7 @@
+## 0.96.8
+
+- **Save as fits its window again:** in 3D Paint the choices no longer spill off the side, and the Continue button is fully shown.
+
 ## 0.96.7
 
 - **3D Paint: the brush preview is back at the top of the Brush settings**, and stays in view while you scroll them.

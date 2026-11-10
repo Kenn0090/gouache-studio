@@ -1,3 +1,7 @@
+## 0.96.8
+
+- **Save as window fits again** (Continue button no longer cut off).
+
 ## 0.96.7
 
 - **3D Paint: the brush preview sits at the top of the Brush settings** and stays in view while they scroll.
