@@ -170,8 +170,9 @@ function cfxAddAnchor(L){if(!isLayer(L))return null;let row=null;const names=msA
    (photo grunge, mixed, generated, your own) or a picture dropped here; Breakup sets how strongly it eats into the mask */
 function msGrungeBox(r,p,ed,S){const box=el('div',{class:'dlg-grid msgrunge',id:'msGrunge'});
   const name=el('span',{class:'note',id:'msGrungeName',text:p.gimg?p.gimg.name:'Built-in noise'});
+  name._hpv=()=>p.gimg?{tex:p.gimg,name:p.gimg.name}:null;/* (0.97.1) hover shows the chosen grunge */
   const set=g=>{ed(x=>{x.p.gimg=g?{kind:g.kind,id:g.id,name:g.name}:null;});name.textContent=g?g.name:'Built-in noise';if(typeof renderMatEd==='function')renderMatEd(true);};
-  const drop=el('div',{class:'fxddrop',id:'msGrungeDrop',tabindex:'0',title:'Drop a texture tile or a picture here to use it as the grunge'},el('b',{text:'Drop a grunge'}),el('small',{text:'a Textures tile or a picture, or click to browse'}));drop._texDrop=set;
+  const drop=el('div',{class:'fxddrop',id:'msGrungeDrop',tabindex:'0',title:'Drop a texture tile or a picture here to use it as the grunge'},el('b',{text:'Drop a grunge'}),el('small',{text:'a Textures tile or a picture, or click to browse'}));drop._texDrop=set;drop._hpv=name._hpv;
   drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
   drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');const tx0=e.dataTransfer.getData('text/gouache-texture');if(tx0){try{set(JSON.parse(tx0));return;}catch(er){}}fxdDropFiles(e.dataTransfer.files,set);});
   drop.addEventListener('click',async()=>{const fs=await pickFiles('image/*',false,'Pictures',['png','jpg','jpeg','webp','tga','bmp','tif','tiff']);if(fs&&fs.length)fxdDropFiles(fs,set);});

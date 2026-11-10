@@ -164,6 +164,7 @@
     "bake/bake-groups",
     "bake/bake-tree",
     "bake/bake-log",
+    "ui/hover-preview",
     "bake/bake-light",
     "view3d/p3-bake",
     "files/model-watch",
