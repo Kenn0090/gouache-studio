@@ -2,13 +2,13 @@
 
 Gouache Studio is a GPU-accelerated app for digital painting, 3D texturing, and game art. Paint on a canvas or directly on a model, bake mesh maps, build reusable materials, and export textures for your engine. It runs as a self-updating Windows app or as a browser build.
 
-[Download for Windows](https://github.com/Kenn0090/gouache-studio/releases/latest) · [User guide](docs/wiki/Home.md) · [Version history](CHANGELOG.md)
+**[Download Gouache Studio for Windows (x64)][windows-download]**
+
+[Other installers and release notes](https://github.com/Kenn0090/gouache-studio/releases/latest) · [User guide](docs/wiki/Home.md) · [Version history](CHANGELOG.md)
 
 ## Download
 
-**[Get Gouache Studio for Windows (x64)](https://github.com/Kenn0090/gouache-studio/releases/latest)**
-
-Choose the recommended **Full installer** for bundled materials, skies, and grunge maps. Choose **Lite** for a smaller download that fetches assets as you use them. An MSI is also available.
+The download above starts the recommended **Full installer**. It includes the bundled materials, skies, and grunge maps. The [release page](https://github.com/Kenn0090/gouache-studio/releases/latest) lists the smaller **Lite installer** and the **MSI** when available.
 
 Already installed? Use **File → Check for updates…**. See [Getting started](docs/wiki/Getting-started.md) for installation and your first project.
 
@@ -34,3 +34,5 @@ npm run desktop:build  # Windows installer; requires Rust and Tauri prerequisite
 ```
 
 The application source is in [src/js](src/js), with its load order in [src/js/order.json](src/js/order.json). The Windows shell, file access, and updater are in [src-tauri](src-tauri). See the [test guide](tests/e2e/README.md) and the [release workflow](AGENTS.md) for development and publishing.
+
+[windows-download]: https://github.com/Kenn0090/gouache-studio/releases/download/v0.96.6/Gouache.Studio_0.96.6_x64-setup.exe
