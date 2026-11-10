@@ -8,7 +8,11 @@ The **3D Paint** tab (top right, next to Paint) is for painting straight onto a 
 The column beside the view works like the rest of the dock: drag its tabs out (to float them or put them with other panels), or drag other tabs into it.
 
 ## Getting started
-**File › New** can start a new 3D Paint project straight away: choose **Start in: 3D Paint** at the top of the New document window. The width you type is the texture size, and the model you have loaded stays.
+In **3D Paint**, choose **File › New** (**Ctrl+N**) to open **New 3D Paint Project**. From Paint, choose **Start in: 3D Paint** in the New document window and press **Create** to open the same project dialog.
+
+![New 3D Paint Project with mesh, project setup, starting material and document resolution controls.](images/new-3d-paint-project.png)
+
+Choose the mesh and document resolution here. Expand **Advanced settings** for UV tiles, up axis, ZBrush polygroups, a high-poly model and baked mesh maps.
 
 The New project window also lets you pick the **Project setup** (Hand-painted, PBR or Specular / Glossiness); a Spec/Gloss project lists Specular and Glossiness instead of Metallic and Roughness everywhere (Maps list, Also paint, the channel drop-down). Once you have chosen your own low-poly mesh, the built-in shape drop-down is disabled. **Ignore polygroups from ZBrush** (on by default) makes a model saved by ZBrush one texture set: ZBrush writes each polygroup as its own group or material, which would otherwise give a texture set per polygroup. It only applies to models saved by ZBrush; models from other apps keep their materials. **Add a high-poly** there to have the Bake tab ready with both models, in case you have no maps to import.
 
@@ -91,7 +95,9 @@ Right-click a material layer › **Instance to sets…** and tick the other text
 ## Layouts
 **3D** shows only the model, **3D + 2D** shows the flat texture beside it, and **2D** shows only the flat texture. You can paint in all of them.
 
-Since 0.35 a small strip at the bottom of the painting area switches between **3D**, **Split** and **2D** in one click, and the **UV** button shows or hides the model's UV layout over the flat texture. In Split the views start the same size and the divider between them drags; the flat texture keeps its own zoom.
+Use the strip at the bottom of the painting area to switch between **3D**, **Split** and **2D**. **UV** overlays the model's UV layout on the flat texture, and **Lit** shows the flat texture with material lighting. In Split, drag the divider to resize the views. The flat texture keeps its own zoom.
+
+![Viewport strip with 3D, Split, 2D, UV and Lit controls.](images/viewport-controls.png)
 
 ## Texture sets
 A model with several materials gets one **texture set** per material, each with its own maps and layers, like Substance Painter. Click a set in the list to paint it. Only the active set takes paint; the others keep showing their own textures on the model.
@@ -208,7 +214,7 @@ The layer stays live: every change shows straight away on the model, and becomes
 - **Quality** (the number of rays) and *also add them as layers*.
 - **Source** (when the set has a normal map, imported or baked): Curvature, AO and Height can each be **From the normal map** instead of baked from the model. Tick *The normal map is DirectX* for green-down normals. The results are regular mesh maps (Curvature also gives Edges and Creases).
 
-![The Bake mesh maps window.](images/p3-bake.png)
+![Bake mesh maps dialog with map choices, bake size, optional high-poly model, bevel shader and quality.](images/p3-bake.png)
 
 The results become each set's mesh maps, and everything that reads them (mask rows, generators, material channels) updates straight away. The bake also waits in the **Bake tab**: **Fine-tune in the Bake tab** opens it there to change settings, add a cage or paint skew and offset fixes, then **Send to 3D Paint** again. **Send to the Paint canvas** puts the active set's bake in the painting as layers, to clean up intersections by hand.
 

@@ -40,8 +40,8 @@ Exports the **visible image** or the **active layer** as:
 
 ## Export textures for a game engine (Ctrl+Shift+E)
 
-![Export textures, with engine presets.](images/export-textures.png)
-*Export textures, with engine presets.*
+![Windows texture export dialog with the Unreal preset, UV padding, GLB model export, Send to and the output file list.](images/export-textures.png)
+*The Windows export dialog shows which texture files the selected engine preset will write.*
 
 **File › Export textures for a game engine…** writes every map as separate files, packed and named for the engine you pick:
 

@@ -10,6 +10,10 @@ Select the layer, click its **mask thumbnail**, then press **✦** (the effects 
 
 **Every filter** can go on a mask: the ✦ menu has the usual ones under **Filter**, and **All filters** lists the rest in the Filter Gallery's folders. A filter row changes everything below it in the mask. You can also **right-click a layer › Filter this layer ▸** or **Filter its mask ▸**.
 
+Right-click a **mask thumbnail** and open **Generators** to choose a baked map, an edge wear or dirt effect, or a gradient.
+
+![The mask thumbnail's Generators submenu showing baked maps and wear effects.](images/mask-generators-menu.png)
+
 **Generators** have a **Distort** setting: the edges and cavities they find are read a little to the side, following a noise, so wear and dirt break up irregularly instead of following every edge exactly.
 
 **Your own grunge in a generator:** select a generator row and, in Properties under **Grunge**, click **Choose from Textures…** (photo grunges, mixed, generated or your own) or drop a picture onto the box. The picture then breaks up the mask instead of the built-in noise; **Breakup** sets how strongly. **Grunge tiling**, **Grunge rotation**, **Grunge contrast**, **Grunge level** and **Invert grunge** adjust it (you can also drag a tile from the Textures panel onto the box), and **Use built-in noise** goes back. With the World projection the picture is laid over the model from three sides, so it has no seams.
