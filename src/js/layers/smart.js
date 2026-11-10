@@ -80,7 +80,7 @@ function smThumb(){/* what the 3D view shows (or the base colour of the painting
 function smAskName(title,def,fn){const inp=el('input',{type:'text',id:'smName',value:def,'aria-label':'Name'});
   openDialog({title,body:el('div',{class:'dlg-grid'},inp),okLabel:'Save',onOk(){const n=inp.value.trim();if(!n)return false;fn(n);}});setTimeout(()=>{inp.focus();inp.select();},0);}
 function smSave(n){if(!n)return;smAskName('Save as smart material',n.name,name=>{const tree=n.type==='group'?smSer(n):{t:'G',name,open:true,kids:[smSer(n)]};
-  const r=smPut({kind:'smart',name,tree,thumb:smThumb()});n.smSrc=r.id;toast('Saved “'+name+'” in Materials › Smart materials.');});}
+  const r=smPut({kind:'smart',name,tree,thumb:smThumb()});n.smSrc=r.id;smThumbLater(r);toast('Saved “'+name+'” in Materials › Smart materials.');});}
 function smMaskSave(n){if(!n||!n.mask)return;smAskName('Save as smart mask',n.name+' mask',name=>{const r=smPut({kind:'smask',name,mask:smSerMask(n.mask)});n.smMaskSrc=r.id;toast('Saved “'+name+'” in Materials › Smart masks.');});}
 /* (0.35, Kenn) right-click a folder that came from a saved smart material (or a layer whose mask came from a saved smart mask): put the changes back into the library */
 function smOrigin(n,kind){if(!n)return null;const id=kind==='smask'?n.smMaskSrc:n.smSrc,nm=kind==='smask'?null:n.name;
@@ -88,7 +88,7 @@ function smOrigin(n,kind){if(!n)return null;const id=kind==='smask'?n.smMaskSrc:
 function smUpdate(n){const rec=smOrigin(n,'smart');if(!rec){toast('This folder is not from a saved smart material. Use Save as smart material.');return;}
   confirmDlg('Update smart material','Replace the saved smart material “'+rec.name+'” with this folder as it is now?','Update',()=>{
     const tree=n.type==='group'?smSer(n):{t:'G',name:rec.name,open:true,kids:[smSer(n)]};tree.name=rec.name;
-    smPut({kind:'smart',name:rec.name,tree,thumb:smThumb()});n.smSrc=rec.id;toast('Updated “'+rec.name+'” in Materials › Smart materials.');});}
+    smThumbLater(smPut({kind:'smart',name:rec.name,tree,thumb:smThumb()}));n.smSrc=rec.id;toast('Updated “'+rec.name+'” in Materials › Smart materials.');});}
 function smMaskUpdate(n){const rec=smOrigin(n,'smask');if(!rec||!n.mask){toast('This mask is not from a saved smart mask. Use Save mask as smart mask.');return;}
   confirmDlg('Update smart mask','Replace the saved smart mask “'+rec.name+'” with this mask as it is now?','Update',()=>{
     smPut({kind:'smask',name:rec.name,mask:smSerMask(n.mask)});n.smMaskSrc=rec.id;toast('Updated “'+rec.name+'” in Materials › Smart masks.');});}

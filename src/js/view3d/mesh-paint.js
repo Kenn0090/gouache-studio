@@ -252,8 +252,8 @@ function v3ToolPick(hit,e){const p=v3PickFast(hit,e);const t=p&&ui.mode==='p3d'&
    radial copies around an axis. The copies are matrices: every texel also takes the brush where its mirror image is. */
 const mir3=Object.assign({x:false,y:false,z:false,off:[0,0,0],radial:0,axis:'y',snap:true,show:true,cursors:true},(()=>{try{return JSON.parse(localStorage.getItem('gs.mir3d')||'{}');}catch(e){return {};}})());
 function mir3Save(){mir3RadSync();try{localStorage.setItem('gs.mir3d',JSON.stringify(mir3));}catch(e){}v3.dirty=true;requestRender();}
-const mir3On=()=>mir3.x||mir3.y||mir3.z||mir3.radial>1;
-function mir3Mats(){const I=()=>{const m=m4();m[0]=m[5]=m[10]=m[15]=1;return m;};let L=[I()];const o=mir3.off;
+const mir3On=()=>ui.mode!=='bake'&&(mir3.x||mir3.y||mir3.z||mir3.radial>1);/* (0.96.9, Kenn) no symmetry for skew painting in the Bake tab */
+function mir3Mats(){const I=()=>{const m=m4();m[0]=m[5]=m[10]=m[15]=1;return m;};let L=[I()];if(ui.mode==='bake')return L;const o=mir3.off;
   ['x','y','z'].forEach((a,i)=>{if(!mir3[a])return;const R=I();R[i*5]=-1;R[12+i]=2*o[i];L=L.concat(L.map(M=>m4mul(R,M)));});
   const n=mir3.radial|0;if(n>1){const ax=['x','y','z'].indexOf(mir3.axis),out=[];
     for(let k=0;k<n;k++){const a=2*Math.PI*k/n,c=Math.cos(a),sn=Math.sin(a),R=I(),u=(ax+1)%3,v=(ax+2)%3;

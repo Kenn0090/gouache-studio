@@ -95,9 +95,10 @@ function uvCard(L){uvBigHide();if(!L||!L.pos)return null;const an=uvAn(L),A=L.uv
   const head=el('div',{class:'uvhead'},el('div',{class:'sub',text:'UVs'}),el('span',{class:'uvstat'+(an.none||worst?' warn':''),id:'uvStat',text:chips.join(' · ')}),
     el('button',{class:'btn sm',id:'uvToggle',text:uvw.open||an.none?'Hide':'Review…',hidden:an.none,onclick:()=>{uvw.open=!uvw.open;buildBakePanel();}}));card.append(head);
   if(an.none){card.append(uvLine('This low-poly has no UVs, so nothing can be baked onto it.'),el('div',{class:'chips'},el('button',{class:'btn primary',id:'uvAuto',text:'Auto unwrap',disabled:uvw.busy,onclick:()=>uvAct('unwrap')})));return card;}
-  if(worst&&!uvw.open)card.append(uvLine(worst.text+' Optimize packs the islands again; Re-roll tries another layout.'));
+  /* (0.96.9, Kenn) folded to one line until Review… opens it: the warning is the line's tooltip, the two fixes sit on the same line */
   if(!uvw.open&&!worst&&!A){return card;}
-  if(!uvw.open&&(worst||A)){card.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'uvOpt',text:'Optimize layout',onclick:()=>uvAct('repack')}),el('button',{class:'btn sm',id:'uvRoll',text:'Re-roll',onclick:()=>uvAct('reroll')})));return card;}
+  if(!uvw.open&&(worst||A)){const st=head.querySelector('#uvStat');if(worst&&st)st.title=worst.text+' Optimize packs the islands again; Re-roll tries another layout.';
+    head.insertBefore(el('span',{class:'uvfix'},el('button',{class:'btn sm',id:'uvOpt',text:'Optimize layout',onclick:()=>uvAct('repack')}),el('button',{class:'btn sm',id:'uvRoll',text:'Re-roll',onclick:()=>uvAct('reroll')})),head.lastChild);return card;}
   /* the full review */
   const O=Object.assign(uwDefaults(),L.uwOpt||{}),own=!L.uwRes,cv=el('canvas',{id:'uvPrev',width:240,height:240,class:'uvprev',title:'Hover for a bigger view',onpointerenter:()=>uvBigShow(cv),onpointerleave:uvBigHide});uvDrawPreview(cv,L);
   const seedIn=el('input',{type:'number',id:'uvSeed',min:1,max:99999,step:1,value:String(O.seed||1),'aria-label':'Seed',onchange:()=>uvAct(own?'repack':'reroll',{seed:Math.max(1,Math.round(+seedIn.value||1))})});

@@ -148,18 +148,19 @@ out vec3 vP; out vec3 vN; out vec4 vTan; out vec3 vR; flat out float vPart; out 
 void main(){ vec2 px=aT*uFull; vec2 c=(px-uTile.xy)/uTile.zw*2.0-1.0; gl_Position=vec4(c,0.0,1.0); vP=aP; vN=aN; vTan=aTan; vR=aR; vPart=aPart; vCurv=aCurv; vT=aT; }`;
 const BK_FS_UV=`#version 300 es
 precision highp float; in vec3 vP; in vec3 vN; in vec4 vTan; in vec3 vR; flat in float vPart; in float vCurv; in vec2 vT; uniform int uCage;
-uniform sampler2D uSkew; uniform sampler2D uOffs; uniform int uUseSkew; uniform int uUseOff;
+uniform sampler2D uSkew; uniform sampler2D uOffs; uniform int uUseSkew; uniform int uUseOff; uniform int uUseG; uniform vec4 uGFB[64];
 layout(location=0) out vec4 oP; layout(location=1) out vec4 oN; layout(location=2) out vec4 oT; layout(location=3) out vec4 oR;
 /* skew map: white keeps the averaged (cage) ray direction, black shoots straight out of the face.
    offset map: grey keeps the front/back distances, white doubles them, black shrinks them to nothing.
    The offset factor rides in oP.w (1 + factor; 0 still means "no surface here"). */
 void main(){ vec3 n=normalize(vN); vec3 fn=cross(dFdx(vP),dFdy(vP)); fn=dot(fn,fn)>1e-20?normalize(fn):n; if(dot(fn,n)<0.0) fn=-fn;
-  float sk=uUseSkew==1?clamp(texture(uSkew,vT).r,0.0,1.0):1.0, of=uUseOff==1?clamp(texture(uOffs,vT).r,0.0,1.0)*2.0:1.0;
+  float sk=(uUseSkew==1?clamp(texture(uSkew,vT).r,0.0,1.0):1.0)*(uUseG==1?uGFB[int(vPart+0.5)&63].w:1.0), of=uUseOff==1?clamp(texture(uOffs,vT).r,0.0,1.0)*2.0:1.0;
   oP=vec4(vP,1.0+of); oN=vec4(n,vPart); oT=vTan;
   if(uCage==1){ vec3 d=vR-vP; float l=length(d); vec3 dc=l>1e-7?d/l:fn; oR=vec4(vP+normalize(mix(fn,dc,sk))*l,vCurv); }
   else oR=vec4(normalize(mix(fn,normalize(vR),sk)),vCurv); }`;
 /* 2. the ray from the cage to the high-poly */
-const BK_FS_HIT=BK_TRACE+`uniform sampler2D uGP; uniform sampler2D uGR; uniform sampler2D uGN; uniform float uFront; uniform float uBack; uniform int uSelf; uniform int uCage; uniform int uMatch;
+const BK_GFB0=new Float32Array(256);
+const BK_FS_HIT=BK_TRACE+`uniform sampler2D uGP; uniform sampler2D uGR; uniform sampler2D uGN; uniform float uFront; uniform float uBack; uniform int uSelf; uniform int uCage; uniform int uMatch; uniform int uUseG; uniform vec4 uGFB[64];
 layout(location=0) out vec4 oH; layout(location=1) out vec4 oHN;
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 P=texelFetch(uGP,p,0); if(P.w<0.5){ o=vec4(0); oH=vec4(0); oHN=vec4(0); return; }
   vec3 R=texelFetch(uGR,p,0).xyz; float th; vec2 bc; o=vec4(0);
@@ -167,8 +168,10 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 P=texelFetch(uGP,p,0); if(P.w<
   if(uMatch==1) bkPart=int(texelFetch(uGN,p,0).w+0.5);
   /* the ray starts on the cage (a loaded cage mesh, or the surface pushed out by the front distance) */
   vec3 org,dir; float len,front; float of=max(P.w-1.0,0.0);
-  if(uCage==1){ vec3 Rc=P.xyz+(R-P.xyz)*of; vec3 v=P.xyz-Rc; front=length(v); dir=front>1e-6?v/front:-normalize(texelFetch(uGN,p,0).xyz); org=Rc; len=front+uBack*of; }
-  else { dir=-R; front=uFront*of; org=P.xyz+R*front; len=front+uBack*of; }
+  /* (0.96.9) a bake group with its own cage distances (x front, y back, z = 1 when set) */
+  float gF=uFront,gB=uBack; if(uUseG==1){ vec4 g=uGFB[int(texelFetch(uGN,p,0).w+0.5)&63]; if(g.z>0.5){ gF=g.x; gB=g.y; } }
+  if(uCage==1){ vec3 Rc=P.xyz+(R-P.xyz)*of; vec3 v=P.xyz-Rc; front=length(v); dir=front>1e-6?v/front:-normalize(texelFetch(uGN,p,0).xyz); org=Rc; len=front+gB*of; }
+  else { dir=-R; front=gF*of; org=P.xyz+R*front; len=front+gB*of; }
   int t=bkTrace(org,dir,len,false,th,bc);
   if(t<0){ oH=vec4(P.xyz,0.5); oHN=vec4(0,0,0,0); return; }
   vec3 hp=org+dir*th; oH=vec4(hp,1.0); oHN=vec4(bkNrm(t,bc),front-th); vec2 tp=bkTriPack(t); o=vec4(tp.x,bc,tp.y); }`;
@@ -338,10 +341,10 @@ async function bakeRun(low,high,o,progress){const P=bkPrograms(),W=o.size,H=o.si
     /* the part of this tile to work on (tile coordinates) */
     const lx0=Math.max(0,RR[0]-tx),ly0=Math.max(0,RR[1]-ty),lx1=Math.min(tw,RR[2]-tx),ly1=Math.min(th,RR[3]-ty);
     /* 1: surface points of this tile */
-    bkClear(G);gl.bindFramebuffer(gl.FRAMEBUFFER,G.fbo);gl.viewport(0,0,tw,th);useProg(P.uv,{uFull:[FW,FH],uTile:[tx,ty,tw,th],uCage:!!o.cage,uSkew:o.skew?o.skew.tex:dummy,uOffs:o.offset?o.offset.tex:dummy,uUseSkew:!!o.skew,uUseOff:!!o.offset});
+    bkClear(G);gl.bindFramebuffer(gl.FRAMEBUFFER,G.fbo);gl.viewport(0,0,tw,th);useProg(P.uv,{uFull:[FW,FH],uTile:[tx,ty,tw,th],uCage:!!o.cage,uSkew:o.skew?o.skew.tex:dummy,uOffs:o.offset?o.offset.tex:dummy,uUseSkew:!!o.skew,uUseOff:!!o.offset,uUseG:!!(o.gfb&&o.match),uGFB:{v4a:o.gfb||BK_GFB0}});
     gl.disable(gl.CULL_FACE);gl.bindVertexArray(lg.vao);gl.drawElements(gl.TRIANGLES,lg.count,gl.UNSIGNED_INT,0);gl.bindVertexArray(vao);await tick();
     /* 2: rays to the high-poly, in small pieces */
-    bkClear(HB);const hitU={uNodes:hg.nodes,uTris:hg.tris,uTN:hg.nrm,uTC:hg.col,uGP:G.tex[0],uGR:G.tex[3],uGN:G.tex[1],uFront:o.front,uBack:o.back,uSelf:self,uCage:!!o.cage,uMatch:!!o.match};
+    bkClear(HB);const hitU={uNodes:hg.nodes,uTris:hg.tris,uTN:hg.nrm,uTC:hg.col,uGP:G.tex[0],uGR:G.tex[3],uGN:G.tex[1],uFront:o.front,uBack:o.back,uSelf:self,uCage:!!o.cage,uMatch:!!o.match,uUseG:!!(o.gfb&&o.match),uGFB:{v4a:o.gfb||BK_GFB0}};
     gl.enable(gl.SCISSOR_TEST);
     for(let sy=ly0;sy<ly1;sy+=256)for(let sx=lx0;sx<lx1;sx+=256){gl.bindFramebuffer(gl.FRAMEBUFFER,HB.fbo);gl.viewport(0,0,tw,th);gl.scissor(sx,sy,Math.min(256,lx1-sx),Math.min(256,ly1-sy));useProg(P.hit,hitU);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.flush();}
     gl.disable(gl.SCISSOR_TEST);await tick();

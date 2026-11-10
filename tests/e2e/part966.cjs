@@ -40,7 +40,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(Math.abs(r.moved-.5)<1e-4,'moving the high-poly moves it in the bake ('+r.moved+')');
  /* the panel: Bake groups list, Match size, Move buttons */
  await p.evaluate(()=>__gs.buildBakePanel&&__gs.buildBakePanel());await W(300);
- ok(await p.evaluate(()=>!!document.getElementById('bkGroups')&&!!document.getElementById('bkMatchSize')&&!!document.getElementById('bkMoveHigh')&&!!document.getElementById('bkExplode')),'the Bake tab has Bake groups, Explode, Match size and Move');
+ ok(await p.evaluate(()=>!!document.getElementById('btTree')&&!!document.getElementById('bkMatchSize')&&!!document.getElementById('bkMoveHigh')&&!!document.getElementById('bkExplode')),'the Bake tab has Bake groups, Explode, Match size and Move');
  /* the move gizmo: drag the high-poly's X arrow */
  await p.evaluate(()=>{if(!__gs.v3.on)__gs.toggle3D(true);});await W(500);
  await p.click('#bkMoveHigh');await W(500);

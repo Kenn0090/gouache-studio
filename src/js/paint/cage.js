@@ -105,7 +105,7 @@ function cageStrokeStart(o,ix,iy){const C=cageOf();
 
 /* ---------- symmetry ---------- */
 function symBasis(o){if(ui.sym.align!=='screen'||(o?.space&&!ui.cageFlat))return 0;const A=vxA();return A?Math.atan2(A[1],A[0]):0;}
-function symFor(o){const S=ui.sym;if(S.mode==='off')return null;return {mode:S.mode,n:clamp(Math.round(S.n),2,128),cx:S.cx,cy:S.cy,basis:symBasis(o)};}
+function symFor(o){const S=ui.sym;if(S.mode==='off'||ui.mode==='bake')return null;/* (0.96.9, Kenn) skew and offset painting in the Bake tab never mirror */return {mode:S.mode,n:clamp(Math.round(S.n),2,128),cx:S.cx,cy:S.cy,basis:symBasis(o)};}
 /* copies of a dab: [x, y, angle, flipX, flipY, dx, dy] */
 function symCopies(sym,W,H,x,y,ang,fx,fy,dx,dy){const out=[[x,y,ang,fx,fy,dx,dy]];if(!sym)return out;if(sym.mode==='map')return out.concat(sym.fn(x,y,ang,fx,fy,dx,dy));/* (0.96.6) 3D mirror with UV alignment: uv-mirror.js */const cx=sym.cx*W,cy=sym.cy*H;
   if(sym.basis&&sym.mode!=='radial'){const a=sym.basis,c=Math.cos(a),s=Math.sin(a),rx=x-cx,ry=y-cy;
@@ -149,7 +149,7 @@ function buildSymSection(box){const S=ui.sym;
 const SYM_HIT=14;
 const SYM_PAINT_TOOLS=['brush','erase','smudge','dodge','burn','heal','clone','material','liquify'];
 /* the centre can be grabbed (and shows its pop-out) while symmetry is on for a painting tool, and nothing else owns the pointer */
-function symHandleOk(){return ui.sym.mode!=='off'&&SYM_PAINT_TOOLS.includes(ui.tool)&&!xf&&!selLive&&ui.mode!=='convert'&&!(cageOf()?.on!==false&&cageOf()&&!ui.cageFlat);}
+function symHandleOk(){return ui.sym.mode!=='off'&&SYM_PAINT_TOOLS.includes(ui.tool)&&!xf&&!selLive&&ui.mode!=='convert'&&ui.mode!=='bake'&&!(cageOf()?.on!==false&&cageOf()&&!ui.cageFlat);}
 function symHandleDist(e){const [W,H]=viewDims(),p=scrPt([ui.sym.cx*W,ui.sym.cy*H]),r=stage.getBoundingClientRect();return Math.hypot(e.clientX-r.left-p[0],e.clientY-r.top-p[1]);}
 function symCentreDown(e){if(e.altKey||e.shiftKey||e.ctrlKey||e.metaKey||!symHandleOk())return false;
   const [W,H]=viewDims(),p=scrPt([ui.sym.cx*W,ui.sym.cy*H]),r=stage.getBoundingClientRect();if(Math.hypot(e.clientX-r.left-p[0],e.clientY-r.top-p[1])>SYM_HIT)return false;
