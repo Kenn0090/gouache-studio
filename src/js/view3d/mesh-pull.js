@@ -11,7 +11,7 @@ const smudge3dSave=()=>{try{localStorage.setItem('gs.smudge3d',JSON.stringify({m
 /* uMode 0: Smudge (under the dab, pull from the pixel uDelta behind it); 1: Liquify (pull through the movement map uDisp2) */
 const FS_3DPULL=`in vec3 vP; in vec3 vN; in vec2 vT; uniform mat4 uVPm; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform int uAlign; uniform float uWrapTol; uniform int uNoBack; uniform float uCullCos; uniform float uBlurR; uniform int uUseUDIM; uniform vec2 uUDIMTile;
 uniform int uMode; uniform sampler2D uCopy; uniform sampler2D uStroke; uniform vec2 uDelta; uniform float uK; uniform float uCharge; uniform vec3 uColor; uniform int uLockAlpha; uniform float uTol; uniform int uNormalMap;
-uniform sampler2D uDisp2; uniform sampler2D uSelTex; uniform int uUseSel;
+uniform sampler2D uDisp2; uniform sampler2D uSelTex; uniform int uUseSel; uniform int uMirPass;
 void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard;
   vec4 c=uVPm*vec4(vP,1.0); if(c.w<=1e-6) discard; vec2 s=c.xy/c.w*0.5+0.5; if(s.x<0.0||s.y<0.0||s.x>1.0||s.y>1.0) discard;
   ivec2 ds=textureSize(uDepth,0); ivec2 ip=clamp(ivec2(s*vec2(ds)),ivec2(0),ds-ivec2(1)); float z=texelFetch(uDepth,ip,0).r; float d=length(vP-uCamP);
@@ -32,11 +32,11 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard;
     o=r; return; }
   vec2 shift; float k;
   if(uMode==0){ k=texelFetch(uStroke,ip,0).a*uK*m; if(k<=0.0) discard; shift=uDelta; }
-  else{ shift=texelFetch(uDisp2,ip,0).xy; k=m; if(dot(shift,shift)<1e-6){ o=dst; return; } }
+  else{ shift=texelFetch(uDisp2,ip,0).xy; k=m; if(dot(shift,shift)<1e-6){ if(uMirPass==1) discard; o=dst; return; } }
   ivec2 sp2=ivec2(floor(s*vec2(ds)-shift));
-  if(any(lessThan(sp2,ivec2(0)))||any(greaterThanEqual(sp2,ds))){ if(uMode==1){ o=dst; return; } discard; }
+  if(any(lessThan(sp2,ivec2(0)))||any(greaterThanEqual(sp2,ds))){ if(uMode==1&&uMirPass==0){ o=dst; return; } discard; }
   vec4 sv=texelFetch(uDepth,sp2,0);
-  if(sv.r<=0.0||abs(sv.r-d)>uTol*d){ if(uMode==1){ o=dst; return; } discard; }
+  if(sv.r<=0.0||abs(sv.r-d)>uTol*d){ if(uMode==1&&uMirPass==0){ o=dst; return; } discard; }
   vec4 pulled=texture(uCopy,sv.gb);
   if(uMode==0) pulled=mix(pulled,vec4(uColor,1.0),uCharge);
   vec4 r=mix(dst,pulled,clamp(k,0.0,1.0));
@@ -62,8 +62,10 @@ function meshSmudgeApply(s,cx,cy,ext,dx,dy){const sp=s.space,m=s.msm;if(!sp||!m)
   const rc=meshPullRect(sp,[cx-ext,cy-ext,cx+ext,cy+ext]);if(!rc)return;
   const o=s.o,sm=!!o.smooth3d,smear=!sm&&smudge3d.mode==='smear',k=sm?clamp(o.smoothK??.6,0,1):smear?Math.min(1,o.strength*1.35+.15):o.strength,mul=smear?2.4:1,P=p3pull(),sel=selU(o);
   for(const it of m.items){const T=it.T,colour=(it.k===null?doc.map:it.k)==='base',pre=it.pre;
-    scissorDo(rc,()=>sp.pull(P,T,Object.assign({uMode:{int:sm?2:0},uBlurR:Math.max(2,ext*.6),uNormalMap:{int:(it.k===null?doc.map:it.k)==='normal'?1:0},uCopy:pre.tex,uStroke:sp.buf.tex,uDelta:[dx*mul,dy*mul],uK:k,uTol:.12,uCharge:colour?(o.charge||0):0,uColor:o.color||[0,0,0],uLockAlpha:{int:s.L.lockAlpha?1:0}},sel)));
-    blit(T,pre,rc[0],rc[1],rc[2],rc[3],rc[0],rc[1]);}
+    const U=Object.assign({uMode:{int:sm?2:0},uBlurR:Math.max(2,ext*.6),uNormalMap:{int:(it.k===null?doc.map:it.k)==='normal'?1:0},uCopy:pre.tex,uStroke:sp.buf.tex,uDelta:[dx*mul,dy*mul],uK:k,uTol:.12,uCharge:colour?(o.charge||0):0,uColor:o.color||[0,0,0],uLockAlpha:{int:s.L.lockAlpha?1:0},uMirPass:{int:0}},sel);
+    scissorDo(rc,()=>sp.pull(P,T,U));blit(T,pre,rc[0],rc[1],rc[2],rc[3],rc[0],rc[1]);
+    /* (0.96.7) mirror and radial: the same dab on each copy's side */
+    if(sp.mirrorViews)for(const mv of sp.mirrorViews()){scissorDo(rc,()=>sp.pull(P,T,U,mv));blit(T,pre,rc[0],rc[1],rc[2],rc[3],rc[0],rc[1]);}}
   if(!s.L.maskOf&&!s.L.quick)s.L.lookVer=(s.L.lookVer||0)+1;}
 /* at the end: the undo parts of the other maps */
 function meshSmudgeEnd(s,x0,y0,bw,bh,record){const parts=[];
@@ -93,7 +95,8 @@ function meshLiqDab(ml,x,y,dx,dy,amount){const r=liq.size/2*ml.scale,mode=['push
   ml.dirty=ml.dirty?[Math.min(ml.dirty[0],box[0]),Math.min(ml.dirty[1],box[1]),Math.max(ml.dirty[2],box[2]),Math.max(ml.dirty[3],box[3])]:box;ml.dabs++;}
 /* redraw every map from its copy through the movement map, inside what changed */
 function meshLiqFlush(ml){if(!ml.dirty)return;const rc=meshPullRect(ml.sp,ml.dirty);ml.dirty=null;if(!rc)return;const P=p3pull(),sel=selU(ml.o);
-  for(const it of ml.items)scissorDo(rc,()=>ml.sp.pull(P,it.T,Object.assign({uMode:{int:1},uNormalMap:{int:doc.map==='normal'?1:0},uCopy:it.orig.tex,uDisp2:ml.D.tex,uTol:.12,uK:1,uStroke:dummy,uDelta:[0,0],uCharge:0,uColor:[0,0,0],uLockAlpha:{int:0}},sel)));
+  const views=[null,...(ml.sp.mirrorViews?ml.sp.mirrorViews():[])];
+  for(const it of ml.items)for(const mv of views)scissorDo(rc,()=>ml.sp.pull(P,it.T,Object.assign({uMode:{int:1},uNormalMap:{int:doc.map==='normal'?1:0},uCopy:it.orig.tex,uDisp2:ml.D.tex,uTol:.12,uK:1,uStroke:dummy,uDelta:[0,0],uCharge:0,uColor:[0,0,0],uLockAlpha:{int:0},uMirPass:{int:mv?1:0}},sel),mv||undefined));
   if(!ml.L.maskOf&&!ml.L.quick)ml.L.lookVer=(ml.L.lookVer||0)+1;requestRender(true);}
 /* the hold modes (pinch, bloat, twirl) keep working while the button is down */
 function meshLiqLoop(ml){const m=v3.mstroke;if(!m||m.ml!==ml)return;const now=performance.now(),dt=Math.min(.1,(now-ml.t)/1000);ml.t=now;

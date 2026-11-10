@@ -48,7 +48,7 @@ const p3Bounds={off:false};
 function p3p(){if(!P3P)P3P={depth:prog3(VS_3DD,FS_3DDEPTH.replace('void main','in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan;\nvoid main')),proj:prog3(VS_3DPROJ,FS_3DPROJ)};return P3P;}
 function v3ViewProj(w,h){const s=v3s(),eye=v3Eye(),V=m4look(eye,[v3.cam.tx,v3.cam.ty,v3.cam.tz],[0,1,0]),Pm=v3Proj(w/h,.02,100);return {VP:m4mul(Pm,V),eye};}
 /* the screen buffer the brush stamps into, and how far away the model is at each pixel */
-function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
+function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;if(M&&M.mvFree){for(const t of M.mvFree)gl.deleteTexture(t);M.mvFree=null;}
   if(!M||M.w!==w||M.h!==h){if(M){disposeTarget(M.buf);gl.deleteFramebuffer(M.fb);gl.deleteTexture(M.dt);gl.deleteRenderbuffer(M.rb);}
     M={w,h,buf:makeTarget(w,h,doc.depth===16?16:8,false)};M.fb=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,M.fb);
     M.dt=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,M.dt);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,w,h,0,gl.RGBA,gl.FLOAT,null);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
@@ -83,7 +83,17 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;
     return u1<u0?[0,0,0,0]:[u0*doc.w-2,v0*doc.h-2,u1*doc.w+2,v1*doc.h+2];};
   return SPo={w,h,buf:M.buf,yup:true,viewportBounds,mesh:true,colourStencil:!!st3.img&&st3.mode==='colour',
     /* draws the model flat in its UV layout into a map with a shader of mesh-pull.js (same visibility rules as painting) */
-    pull(prog,target,extra){useProg(prog,Object.assign({uVPm:{m4:VP},uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v]},extra));
+    /* (0.96.7, Kenn: "blend and smooth should mirror") one view per mirror copy: the model seen through the mirror, so the copy's side
+       sits under the brush exactly as the real side does (depth + UV picture of the mirrored model, made once per stroke) */
+    mirrorViews(){if(SPo._mv)return SPo._mv;const out=[];for(const Mi of mirs.slice(1)){const R3=[Mi[0],Mi[1],Mi[2],Mi[4],Mi[5],Mi[6],Mi[8],Mi[9],Mi[10]],t=[Mi[12],Mi[13],Mi[14]],d=[eye[0]-t[0],eye[1]-t[1],eye[2]-t[2]];
+        /* the camera in the copy's own space (the mirror is a rigid move: its inverse is the transpose) */
+        const cam=[R3[0]*d[0]+R3[1]*d[1]+R3[2]*d[2],R3[3]*d[0]+R3[4]*d[1]+R3[5]*d[2],R3[6]*d[0]+R3[7]*d[1]+R3[8]*d[2]],VPm=m4mul(VP,Mi);
+        const dt=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,dt);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,w,h,0,gl.RGBA,gl.FLOAT,null);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+        gl.bindFramebuffer(gl.FRAMEBUFFER,M.fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,dt,0);gl.viewport(0,0,w,h);gl.clearColor(0,0,0,0);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.BLEND);
+        useProg(P.depth,{uVP:{m4:VPm},uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uCamP:cam});gl.bindVertexArray(g.vao);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);gl.bindVertexArray(vao);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,M.dt,0);gl.disable(gl.DEPTH_TEST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);out.push({VP:VPm,cam,dt});}
+      (M.mvFree||(M.mvFree=[])).push(...out.map(v=>v.dt));return SPo._mv=out;},
+    pull(prog,target,extra,ov){useProg(prog,Object.assign({uVPm:{m4:ov?ov.VP:VP},uDepth:ov?ov.dt:M.dt,uCamP:ov?ov.cam:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v]},extra));
       bindTarget(target);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);
       const loc=gl.getUniformLocation(prog.p,'uShift'),alignLoc=gl.getUniformLocation(prog.p,'uAlign'),backLoc=gl.getUniformLocation(prog.p,'uNoBack');gl.bindVertexArray(g.vao);
       gl.uniform1i(alignLoc,s.paintAlign==='camera'?0:1);gl.uniform1i(backLoc,s.noBack===false?0:1);gl.uniform1f(gl.getUniformLocation(prog.p,'uCullCos'),meshCullCos());gl.uniform1f(gl.getUniformLocation(prog.p,'uWrapTol'),meshWrapTol());
