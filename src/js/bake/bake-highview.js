@@ -7,8 +7,8 @@ const bkHV={g:null,key:null};
 const FS_BKHIGH=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform vec3 uCamH; uniform float uAlpha; uniform vec3 uTint;
 void main(){ vec3 N=normalize(vN),V=normalize(uCamH-vP); if(dot(N,V)<0.0) N=-N; float l=0.25+0.6*max(dot(N,normalize(vec3(0.4,0.8,0.5))),0.0)+0.15*max(dot(N,V),0.0); o=vec4(uTint*l,uAlpha); }`;
 let P_BKHIGH=null;
-function bkHighView(){const C=bakeCfg,low=v3.mesh;if(!C.high||!low)return null;const key=[C.high,low];if(bkHV.g&&bkHV.key?.[0]===C.high&&bkHV.key?.[1]===low)return bkHV.g;bkHighViewFree();
-  const H=bakeAlign(C.high,low),n=H.pos.length/3,d=new Float32Array(n*6);for(let i=0;i<n;i++){d.set(H.pos.subarray(i*3,i*3+3),i*6);if(H.nrm)d.set(H.nrm.subarray(i*3,i*3+3),i*6+3);}
+function bkHighView(){const C=bakeCfg,low0=v3.mesh,low=low0&&low0.bgOf||low0;if(!C.high||!low)return null;const sig=typeof bgSig==='function'?bgSig():'',key=[C.high,low,sig];if(bkHV.g&&bkHV.key?.[0]===C.high&&bkHV.key?.[1]===low&&bkHV.key?.[2]===sig)return bkHV.g;bkHighViewFree();
+  const H=typeof bgPlaceHigh==='function'?bgPlaceHigh(bakeAlign(C.high,low),low,true):bakeAlign(C.high,low),n=H.pos.length/3,d=new Float32Array(n*6);for(let i=0;i<n;i++){d.set(H.pos.subarray(i*3,i*3+3),i*6);if(H.nrm)d.set(H.nrm.subarray(i*3,i*3+3),i*6+3);}
   const vaoH=gl.createVertexArray();gl.bindVertexArray(vaoH);const vb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vb);gl.bufferData(gl.ARRAY_BUFFER,d,gl.STATIC_DRAW);
   gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,24,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,24,12);for(const a of [2,3])gl.disableVertexAttribArray(a);
   const ib=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,H.idx instanceof Uint32Array?H.idx:new Uint32Array(H.idx),gl.STATIC_DRAW);gl.bindVertexArray(vao);

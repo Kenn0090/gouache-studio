@@ -27,7 +27,7 @@ function bakeExit(){tabDocExit('bake');const p=bk.prev3d;bk.prev3d=null;v3.btex=
   /* back to the model the 3D view had (even when it closes: Convert and Paint reopen it) */
   if(v3.on||v3.mesh===bakeCfg.low)v3LoadModel(true);if(v3.on)build3dPane();v3.mapsDirty=true;v3.dirty=true;resizeGL();fit();requestRender(true);}
 /* the 3D view shows the model being baked onto */
-function bakeSyncMesh(){if(ui.mode!=='bake'||!v3.on)return;const C=bakeCfg,was=v3.mesh;if(C.low){if(v3.mesh!==C.low)v3SetMesh(C.low);}else v3LoadModel(true);if(v3.mesh!==was&&v3.on)build3dPane();v3.dirty=true;}
+function bakeSyncMesh(){if(ui.mode!=='bake'||!v3.on)return;const C=bakeCfg,was=v3.mesh;if(C.low){const S=typeof bgLowShown==='function'?bgLowShown(C.low):C.low;if(v3.mesh!==S)v3SetMesh(S,true);}else v3LoadModel(true);if(v3.mesh!==was&&v3.on)build3dPane();v3.dirty=true;}
 function bakeReset(){if(typeof lightPreviewFree==='function')lightPreviewFree();for(const k in bk.res)disposeTarget(bk.res[k]);for(const k in bk.acc)disposeTarget(bk.acc[k]);bk.res={};bk.acc={};bk.opts=null;bk.src=null;bk.kinds=[];
   if(bk.hg){bkFreeHigh(bk.hg);bk.hg=null;bk.hgKey=null;}for(const k in bk.maps)if(bk.maps[k]){disposeTarget(bk.maps[k]);bk.maps[k]=null;}bk.L={};bk.stale.clear();bk.sentLayers=[];bk.dirty=true;}
 
@@ -50,13 +50,13 @@ function bakeClearMap(k){const T=bakeMapT(k);if(!T)return;const before=captureRe
   const L=bakeMapL(k),r=regionRecord(L,before,after,0,0,doc.w,doc.h,'Clear '+BK_PAINT[k].name.toLowerCase());L.onRecord(r,[0,0,doc.w,doc.h]);pushUndo(r);toast(BK_PAINT[k].name+' map cleared.');}
 
 /* ---------- baking ---------- */
-function bakePrep(L){const C=bakeCfg;const high=C.high?bakeAlign(C.high,L):null,cage=C.cage?bakeAlign(C.cage,L).pos:null;let low=Object.assign({},L);
-  if(C.match&&high){const names=(L.partNames||['default']).map(partBase),ix=new Map(names.map((n,i)=>[n,i]));
-    low.vertPart=new Float32Array(L.verts);(L.triPart||new Uint32Array(L.tris)).forEach((p,t)=>{for(let k=0;k<3;k++)low.vertPart[L.idx[t*3+k]]=p;});
-    const hn=(high.partNames||['default']).map(n=>ix.has(partBase(n))?ix.get(partBase(n)):9999);high.bakePart=new Float32Array((high.triPart||new Uint32Array(high.tris)).length);(high.triPart||[]).forEach((p,t)=>{high.bakePart[t]=hn[p];});}
+function bakePrep(L){const C=bgCfg();const high=C.high?bgPlaceHigh(bakeAlign(C.high,L),L):null,cage=C.cage?bakeAlign(C.cage,L).pos:null;let low=Object.assign({},L);
+  /* (0.96.6) bake groups (by name, material or hand): rays only find the high-poly of their own group */
+  if(C.groupMode!=='off'&&high){const lg=bgLowGroups(L);low.vertPart=new Float32Array(L.verts);for(let t=0;t<lg.tri.length;t++)for(let k=0;k<3;k++)low.vertPart[L.idx[t*3+k]]=lg.tri[t];
+    high.bakePart=bgHighGroups(high,L);}
   return {low,high,cage};}
 /* the high-poly's search tree, kept between bakes of the same models */
-async function bakeHG(L,high,low,step,needCol,whole){const source=high||(bvWidth(bakeCfg.bevel)||whole?low.whole||low:low),key=[bakeCfg.high,L.whole||L,!!(bakeCfg.match&&high),needCol?bakeCfg.idSrc||'auto':'',source.idx],same=k=>k&&k[0]===key[0]&&k[1]===key[1]&&k[2]===key[2]&&k[4]===key[4]&&(!needCol||k[3]===key[3]);
+async function bakeHG(L,high,low,step,needCol,whole){const source=high||(bvWidth(bakeCfg.bevel)||whole?low.whole||low:low),key=[bakeCfg.high,L.whole||L,!!(bakeCfg.match&&high),needCol?bakeCfg.idSrc||'auto':'',source.idx,bgSig()],same=k=>k&&k[0]===key[0]&&k[1]===key[1]&&k[2]===key[2]&&k[4]===key[4]&&k[5]===key[5]&&(!needCol||k[3]===key[3]);
   if(bk.hgBuild){const b=bk.hgBuild;try{await b.p;}catch(e){}if(bk.hgBuild===b)bk.hgBuild=null;}
   if(bk.hg&&same(bk.hgKey)&&(!needCol||bk.hg.hasCol))return bk.hg;if(bk.hg){bkFreeHigh(bk.hg);bk.hg=null;bk.hgKey=null;}
   const b={p:bkHighGPU(source,step,needCol)};bk.hgBuild=b;try{bk.hg=await b.p;}finally{if(bk.hgBuild===b)bk.hgBuild=null;}bk.hgKey=key;return bk.hg;}
@@ -426,7 +426,8 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
   /* (0.52, Kenn) two columns so it all fits without scrolling: models, maps and sending on the left, the settings of each map on the right */
   const colA=el('div',{class:'bkcol',id:'bkColA'}),colB=el('div',{class:'bkcol',id:'bkColB'});const uvc=uvCard(bkLow());if(uvc)box.append(uvc);box.append(el('div',{class:'bkcols'},colA,colB));
   colA.append(el('div',{class:'sub',text:'Models',title:'Drop model files on the panel: names ending in _low, _high and _cage go to the right place.'}),row('Low-poly',modelSel('low',lowOpts)),row('High-poly',modelSel('high',highOpts)),bakeHighList(),row('Cage',modelSel('cage',cageOpts)),upSelect('bkUp',v=>{for(const k of ['low','high','cage'])if(C[k]&&C[k].upTurns!==undefined)bakeSetModel(k,upApply(C[k],v));}),upTurnRow(),
-    el('div',{class:'chips'},chk('bkMatch','Match parts by name',C.match,v=>{C.match=v;info();}),chk('bkShowCage','Show the cage',bk.showCage,v=>{bk.showCage=v;v3.dirty=true;requestRender();})),
+    ...bgControls(()=>buildBakePanel()),
+    el('div',{class:'chips'},chk('bkShowCage','Show the cage',bk.showCage,v=>{bk.showCage=v;v3.dirty=true;requestRender();})),
     ...(C.high?[row('High-poly view',(()=>{const g=seg([['off','Off'],['over','See-through'],['only','Only']],bk.showHigh||'off',v=>{bk.showHigh=v;v3.dirty=true;requestRender();},'Show the high-poly');g.id='bkShowHigh';return g;})())]:[]),
     inf,
     el('div',{class:'sub',text:'Maps to bake'}),list(),

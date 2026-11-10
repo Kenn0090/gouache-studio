@@ -6,7 +6,7 @@
    glossiness or reflections alone). Each shader has its own tab of settings in the Shader panel, and keeps
    them when you switch. Kept in the document (doc.v3shade) and so per texture set in 3D Paint. */
 const SHADERS=[['std','Standard'],['skin','Skin'],['aniso','Brushed metal'],['velvet','Velvet'],['toon','Toon'],['cel','Cel'],['specgloss','Spec/Gloss'],['panner','Panner (PBR)'],['retro','Retro (N64 / PSX)'],['hologram','Hologram'],['glass','Glass'],['fur','Fur'],['iridescent','Iridescent'],['car','Car paint'],['cloth','Cloth sheen'],['wax','Wax / marble glow'],['halfcel','Halftone cel'],['ink','Ink toon']];
-const SH_DEF={std:{},skin:{scatter:.5,strength:.6,soft:.5,thick:.5,oil:.3,surface:.45,depth:1,transmission:.5,col:[.85,.25,.18]},aniso:{amount:.7,dir:0},velvet:{sheen:.8,srough:.5,rim:1,col:[1,1,1]},
+const SH_DEF={std:{oline:false,outline:2,ocol:[0,0,0]},skin:{oline:false,outline:2,ocol:[0,0,0],scatter:.5,strength:.6,soft:.5,thick:.5,oil:.3,surface:.45,depth:1,transmission:.5,col:[.85,.25,.18]},aniso:{amount:.7,dir:0},velvet:{sheen:.8,srough:.5,rim:1,col:[1,1,1]},
   toon:{steps:3,spec:.3,rim:.2,offset:0,col:[.45,.4,.55],outline:2,ocol:[0,0,0]},cel:{thresh:.5,soft:.06,spec:.3,rim:.15,col:[.45,.42,.55],outline:2,ocol:[0,0,0]},specgloss:{view:0},panner:{sx:0,sy:.25,play:true,layer:0,maps:{base:true,rough:true,metal:true,nfinal:true,ao:true,emis:true,opac:true}},
   retro:{bright:1,res:32,filt:1,br:5,bg:5,bb:5,dither:.6,steps:0,amb:.35,wobble:0,fog:0,fogc:[.5,.55,.65],preset:'n64'},
   hologram:{lines:40,flicker:.35,glow:1.4,opacity:.8,speed:.6,fill:.5,glitch:.5,pulse:.5,sweep:.6,col:[.2,.85,1]},glass:{refr:.5,frost:0,thick:.5,edge:1,cloud:.08,disp:.2,col:[.9,.97,1]},
@@ -42,6 +42,8 @@ let P3OUT=null;
 function shOutline(sh){if(!sh)return null;const P=shParams(sh);
   if(sh.kind==='toon'||sh.kind==='cel')return {w:P.outline,mode:1,dark:0,col:P.ocol,wobble:0};
   if(sh.kind==='halfcel')return {w:P.outline,mode:0,dark:.3,col:[0,0,0],wobble:0};
+  /* (0.96.6, Kenn) an outline tick on the Standard (PBR) and Skin looks, instead of new shaders */
+  if((sh.kind==='std'||sh.kind==='skin')&&P.oline)return {w:P.outline==null?2:P.outline,mode:1,dark:0,col:P.ocol||[0,0,0],wobble:0};
   if(sh.kind==='ink')return {w:P.outline,mode:P.omode?1:0,dark:P.odark,col:P.ocol,wobble:P.wobble};return null;}
 function v3DrawOutlines(list,common,F,flip){const eye=v3Eye(),c=v3.cam,dist=Math.hypot(eye[0]-c.tx,eye[1]-c.ty,eye[2]-c.tz),pxW=2*dist*Math.tan(v3s().fov*Math.PI/360)/F.h;let on=false;
   for(const it of list){const sh=it.sh,O=shOutline(sh);if(!O||!(O.w>0)||!it.count||!it.T||!it.T.base)continue;
@@ -99,6 +101,7 @@ function renderShading(){const box=document.getElementById('shadeBody');if(!box)
   if(k==='std')body.append(el('p',{class:'note',text:'Physically based shading (metal/roughness), lit by the environment chosen below.'}));
   if(k==='skin')body.append(seg([['natural','Natural skin'],['soft','Soft skin'],['wax','Wax']],null,id=>{const presets={natural:{scatter:.5,strength:.6,soft:.5,oil:.3,surface:.45,depth:1,transmission:.5,col:[.85,.25,.18]},soft:{scatter:.7,strength:.8,soft:.65,oil:.15,surface:.55,depth:1.4,transmission:.35,col:[1,.35,.22]},wax:{scatter:.85,strength:.9,soft:.8,oil:.1,surface:.3,depth:.6,transmission:.8,col:[1,.72,.4]}};shadeEdit(d=>{d.p.skin=presets[id];});renderShading();},'Skin preset'),sl('surface','Surface roughness',.08,1),sl('depth','Scatter depth',.1,4,.05,v=>v.toFixed(2)),sl('transmission','Transmission'),sl('scatter','Scatter'),sl('strength','Strength'),sl('soft','Softness'),sl('oil','Oily sheen'),colr('col','Subsurface colour'),
     ...(doc.meshMaps&&doc.meshMaps.thick?[el('p',{class:'note',text:'Thin parts glow, from the baked Thickness map.'})]:[sl('thick','Thickness'),el('p',{class:'note',text:'Bake a Thickness map (Bake mesh maps) so thin parts like ears glow on their own.'})]));
+  if(k==='std'||k==='skin'){const on=!!P.oline;body.append(chk('sh_oline','Outline',on,v=>{setP('oline',v);renderShading();}),...(on?[sl('outline','Outline width',.5,10,.5,v=>v+' px'),colr('ocol','Outline colour')]:[]));}
   if(k==='aniso')body.append(sl('amount','Stretch',-1,1,.01,v=>Math.round(v*100)+'%'),sl('dir','Direction',0,1,.01,v=>Math.round(v*360)+'°'),el('p',{class:'note',text:'Highlights stretch along the model’s UV direction, turned by Direction, like brushed or spun metal.'}));
   if(k==='velvet')body.append(sl('sheen','Sheen',0,2,.01),sl('srough','Sheen softness'),sl('rim','Rim',0,3,.05,v=>v.toFixed(2)),colr('col','Sheen colour'));
   if(k==='toon')body.append(sl('steps','Bands',1,6,1,v=>String(v)),sl('offset','Band shift',-1,1,.01,v=>v.toFixed(2)),colr('col','Shadow colour'),sl('spec','Highlight'),sl('rim','Rim light'),sl('outline','Outline',0,10,.5,v=>v?v+' px':'off'),colr('ocol','Outline colour'));

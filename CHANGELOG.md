@@ -1,3 +1,12 @@
+## 0.96.6
+
+- **Smart materials:** double-click a smart material (or smart mask) to add it; dragging one onto a spot where it can't go now tells you where to drop it.
+- **Bake tab, fitting the high-poly:** **Match size** scales a high-poly exported in other units (tiny or huge) to the low-poly's size, with a hint when they differ a lot. **Move low / Move high** show arrows in the view to move either model; **Reset** puts them back.
+- **Bake groups, like Marmoset:** each part of the low-poly is baked only from its own high-poly parts. Group by name (_low / _high), by material, or by hand (a group number per part). **Explode** spreads the groups apart in the view to check them; the bake is the same either way.
+- **Outline tick on the Standard (PBR) and Skin looks**, with width and colour.
+- **New painting defaults in 3D Paint:** UV alignment, backface culling on at 90°, Object size space. Ctrl + drag smoothing now always works: it switches to Tangent | Wrap by itself while you smooth.
+- **Importing mesh maps:** pictures that are not a baked map (Albedo, Roughness…) are no longer skipped; they come into the project (Textures › Yours and the Project shelf).
+
 ## 0.96.5
 
 - **3D Paint keeps only tools that work on the model.** Move, Fill bucket / Gradient, Marquee, Lasso, Magic wand and Pen are gone from 3D Paint, and their keys do nothing there (Polygon fill, the mask tools bar's Box and Lasso, and the Surface Path do those jobs). Paint is unchanged.
