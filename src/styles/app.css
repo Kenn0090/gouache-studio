@@ -1592,3 +1592,9 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .btsidek{font-size:11px;opacity:.7;min-width:30px}
 .btpart{padding:1px 7px;border-radius:10px;background:var(--line-2);font-size:12px;cursor:grab;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .btpart.dragging{opacity:.4}
+.btset{display:grid;gap:2px;margin:4px 0 2px 22px}
+.btfolder{margin:2px 0 0 18px;border-left:1px solid var(--line-2);padding-left:4px;border-radius:3px}
+.btfolder.dropon{background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.btfolder.hid .btfk{font-style:italic;opacity:.6}
+.btfh{display:flex;gap:6px;align-items:center}.btfi{opacity:.6;font-size:11px}.btfk{flex:1;font-weight:600;font-size:12px}
+.btfolder .btside{margin-left:18px}.btfolder .btset{margin-left:18px}

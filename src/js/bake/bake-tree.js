@@ -6,7 +6,7 @@
    Underneath, the tree is the bake-group mode 'tree' of bake-groups.js: each triangle gets its group's number, and rays only find the
    high-poly parts of their own group. Part 2 (to come): each group's own cage distance and skew painting. */
 const BT_COLS=['#e5533d','#4d8fe8','#5fbf45','#e8b04d','#b05fe8','#45bfb5','#e85fa0','#a3b35f','#5f7fe8','#e8834d','#7fd0f0','#d0c070'];
-const btg={drag:null,colours:false,open:{},tex:null,texKey:null};
+const btg={drag:null,colours:false,open:{},fold:{},tex:null,texKey:null};
 function btTree(){const C=bgCfg();if(!C.tree)C.tree={groups:[],low:{},high:{},seq:0};const T=C.tree;if(!T.groups.length)T.groups.push(btNew(T,'Default'));return T;}
 function btNew(T,name){const id=++T.seq;return {id,name:name||'Bake group '+id,col:BT_COLS[(id-1)%BT_COLS.length],hide:false,skip:false};}
 const btModel=side=>side==='low'?bkLow():bakeCfg.high;
@@ -30,12 +30,12 @@ function btSync(redo){const T=btTree(),lp=btParts('low'),hp=btParts('high');if(r
 function btAuto(){const T=btTree();T.groups=[T.groups[0]];T.groups[0].name='Default';T.seq=Math.max(T.seq,T.groups[0].id);btSync(true);btChanged();}
 function btChanged(){btg.texKey=null;bgChanged();bk.dirty=true;if(typeof buildBakePanel==='function'&&ui.mode==='bake')buildBakePanel();}
 /* the group number of each triangle: a left-out group's low-poly gets 0 (no ray finds anything), its high-poly 9999 */
-function btLowIds(L){const T=btSync(),parts=L.partNames&&L.partNames.length?L.partNames:['default'],per=parts.map(p=>{const g=btGroup(T,T.low[p]);return g.skip?0:g.id;});
+function btLowIds(L,raw){const T=btSync(),parts=L.partNames&&L.partNames.length?L.partNames:['default'],per=parts.map(p=>{const g=btGroup(T,T.low[p]);return g.skip&&!raw?0:g.id;});
   const n=L.idx.length/3,tri=new Uint32Array(n);for(let t=0;t<n;t++)tri[t]=per[L.triPart?L.triPart[t]:0]||0;return tri;}
-function btHighIds(H){const T=btSync(),parts=H.partNames&&H.partNames.length?H.partNames:['default'],per=parts.map(p=>{const g=btGroup(T,T.high[p]);return g.skip?9999:g.id;});
+function btHighIds(H,raw){const T=btSync(),parts=H.partNames&&H.partNames.length?H.partNames:['default'],per=parts.map(p=>{const g=btGroup(T,T.high[p]);return g.skip&&!raw?9999:g.id;});
   const n=H.idx.length/3,out=new Float32Array(n);for(let t=0;t<n;t++)out[t]=per[H.triPart?H.triPart[t]:0];return out;}
 /* hidden groups: their triangles are left out of what the view draws */
-function btHidden(){const T=btTree();return new Set(T.groups.filter(g=>g.hide).map(g=>g.id));}
+function btHidden(side){const T=btTree();return new Set(T.groups.filter(g=>g.hide||(side==='high'?g.hideHigh:g.hideLow)).map(g=>g.id));}
 function btDropTris(m,ids,hid){const keep=[];for(let t=0;t<ids.length;t++)if(!hid.has(ids[t]))keep.push(t);if(keep.length===ids.length)return m;
   const idx=new Uint32Array(keep.length*3);keep.forEach((t,i)=>{idx[i*3]=m.idx[t*3];idx[i*3+1]=m.idx[t*3+1];idx[i*3+2]=m.idx[t*3+2];});
   const o=Object.assign({},m,{idx});for(const k in o)if(k[0]==='_')delete o[k];if(m.triPart)o.triPart=Uint32Array.from(keep,t=>m.triPart[t]);if(m.triMat)o.triMat=Uint32Array.from(keep,t=>m.triMat[t]);o.setRanges=null;o.tris=keep.length;o.btKeep=keep;return o;}
@@ -44,9 +44,9 @@ function btDropTris(m,ids,hid){const keep=[];for(let t=0;t<ids.length;t++)if(!hi
 {const f=bgLowGroups;bgLowGroups=function(L){if(bgCfg().groupMode!=='tree')return f(L);const T=btTree();return {tri:btLowIds(L),names:T.groups.map(g=>g.name)};};}
 {const f=bgHighGroups;bgHighGroups=function(H,L){if(bgCfg().groupMode!=='tree')return f(H,L);return btHighIds(H);};}
 {const f=bgSig;bgSig=function(){const C=bgCfg();return f()+(C.groupMode==='tree'?JSON.stringify(C.tree||0)+(btg.colours?'c':''):'');};}
-{const f=bgLowShown;const cache={src:null,sig:null,m:null};bgLowShown=function(L){const m=f(L);if(!L||bgCfg().groupMode!=='tree')return m;const hid=btHidden(),col=btColourOn();if(!hid.size&&!col)return m;
-  const sig=bgSig();if(cache.src===m&&cache.sig===sig)return cache.m;let o=hid.size?btDropTris(m,btLowIds(L),hid):Object.assign({},m);o.bgOf=L;if(col&&L.uv)o=btColourUV(o,L);cache.src=m;cache.sig=sig;cache.m=o;return o;};}
-{const f=bgPlaceHigh;bgPlaceHigh=function(H,L,view){const m=f(H,L,view);if(!view||bgCfg().groupMode!=='tree')return m;const hid=btHidden();if(!hid.size)return m;return btDropTris(m,btHighIds(H),hid);};}
+{const f=bgLowShown;const cache={src:null,sig:null,m:null};bgLowShown=function(L){const m=f(L);if(!L||bgCfg().groupMode!=='tree')return m;const hid=btHidden('low'),col=btColourOn();if(!hid.size&&!col)return m;
+  const sig=bgSig();if(cache.src===m&&cache.sig===sig)return cache.m;let o=hid.size?btDropTris(m,btLowIds(L,true),hid):Object.assign({},m);o.bgOf=L;if(col&&L.uv)o=btColourUV(o,L);cache.src=m;cache.sig=sig;cache.m=o;return o;};}
+{const f=bgPlaceHigh;bgPlaceHigh=function(H,L,view){const m=f(H,L,view);if(!view||bgCfg().groupMode!=='tree')return m;const hid=btHidden('high');if(!hid.size)return m;return btDropTris(m,btHighIds(H,true),hid);};}
 
 /* Group colours: the shown copy of the low-poly gets texture positions that point at its group's colour in a small strip of colours
    (so parts that share UV space still each show their own colour; the bake uses the real UVs) */
@@ -102,9 +102,33 @@ function btPanel(){const C=bgCfg();if(C.groupMode!=='tree')C.groupMode='tree';C.
         el('button',{class:'btn sm bteye'+(g.hide?'':' on'),text:g.hide?'◌':'👁','aria-pressed':String(!g.hide),title:g.hide?'Hidden in the view: click to show':'Shown in the view: click to hide','aria-label':(g.hide?'Show ':'Hide ')+g.name,onclick:()=>{g.hide=!g.hide;btChanged();}}),
         chk('btSkip_'+g.id,'Bake',!g.skip,v=>{g.skip=!v;btChanged();}),
         el('button',{class:'btn sm',text:'×',title:'Delete this group (its parts go to another group)','aria-label':'Delete '+g.name,onclick:()=>bgtDelete(g)})));
-    if(open){const side=(s,parts,lab)=>{const b=el('div',{class:'btside','data-side':s},el('div',{class:'btsidek',text:lab}),...parts.map(p=>btPartChip(s,p,g)),parts.length?'':el('span',{class:'note',text:'Drag parts here'}));btDropOn(b,s,g);return b;};
-      row.append(side('low',lowP,'Low'),hasHigh?side('high',highP,'High'):'');}
+    /* (Kenn: "make the low and high act like Marmoset's") each group holds a Low and a High folder: fold arrow, count, own eye; the Low
+       folder carries the low-poly's bake settings (cage, skew), as Marmoset shows them on the Low object; parts are dropped on a folder */
+    if(open){const folder=(s,parts,lab)=>{const k=g.id+s,fo=btg.fold[k]!==true,hk=s==='low'?'hideLow':'hideHigh',hidden=g.hide||g[hk];
+        const head=el('div',{class:'btfh','data-side':s},el('button',{class:'btfold',text:fo?'▾':'▸','aria-label':(fo?'Fold ':'Unfold ')+lab+' of '+g.name,onclick:()=>{btg.fold[k]=fo;buildBakePanel();}}),
+          el('span',{class:'btfi',text:'▣','aria-hidden':'true'}),el('span',{class:'btfk',text:lab}),el('span',{class:'btcount',text:String(parts.length)}),
+          el('button',{class:'btn sm bteye'+(g[hk]?'':' on'),id:'btEye_'+s+'_'+g.id,text:g[hk]?'◌':'👁','aria-pressed':String(!g[hk]),title:(g[hk]?'Hidden':'Shown')+' in the view: click to '+(g[hk]?'show':'hide')+' this group’s '+(s==='low'?'low-poly':'high-poly'),'aria-label':(g[hk]?'Show ':'Hide ')+lab+' of '+g.name,onclick:()=>{g[hk]=!g[hk];btChanged();}}));
+        const b=el('div',{class:'btfolder'+(hidden?' hid':''),'data-side':s},head);
+        if(fo){const pl=el('div',{class:'btside','data-side':s},...parts.map(p=>btPartChip(s,p,g)),parts.length?'':el('span',{class:'note',text:'Drag parts here'}));b.append(pl);if(s==='low')b.append(btGroupSettings(g));}
+        btDropOn(b,s,g);return b;};
+      row.append(folder('low',lowP,'Low'),hasHigh?folder('high',highP,'High'):'');}
     list.append(row);}
   return [el('div',{class:'btload',id:'btLoader'},el('div',{class:'sub',text:'Quick loader',title:'Drop model files here: names ending in _low, _high and _cage go to the right place'}),btSlot('low','Low'),btSlot('high','High'),bakeHighList()),head,list];}
 /* the old drop-down of group modes gives way to the tree; Explode, Match size and Move stay */
 {const f=bgControls;bgControls=function(redraw){const out=f(redraw);return bgCfg().groupMode==='tree'?out.slice(1):out;};}
+
+/* ---- part 2: each group's own cage distances and skew amount ---- */
+/* 64 vec4 per group number (id % 64): x front, y back (bake units = % × 0.02), z 1 when the group has its own cage, w skew amount */
+function btGFB(C){if(bgCfg().groupMode!=='tree')return null;const T=btTree(),a=new Float32Array(256);for(let i=0;i<64;i++)a[i*4+3]=1;let any=false;
+  for(const g of T.groups){const o=(g.id%64)*4;if(g.ownCage){a[o]=(g.front!=null?g.front:C.front)*.02;a[o+1]=(g.back!=null?g.back:C.back)*.02;a[o+2]=1;any=true;}
+    const sk=g.skew==null?1:clamp(g.skew,0,1);a[o+3]=sk;if(sk!==1)any=true;}
+  return any?a:null;}
+function btGroupSettings(g){const C=bakeCfg;const box=el('div',{class:'btset'});
+  const draw=()=>{box.replaceChildren(
+    chk('btOwn_'+g.id,'Own cage',!!g.ownCage,v=>{g.ownCage=v;if(v){if(g.front==null)g.front=C.front;if(g.back==null)g.back=C.back;}draw();bkGroupCageFlash(g);}),
+    ...(g.ownCage?[makeSlider({id:'btFront_'+g.id,label:'Front',min:0,max:20,step:.1,value:g.front,fmt:v=>v.toFixed(1)+'%',onInput:v=>{g.front=v;bkGroupCageFlash(g);}}).el,
+      makeSlider({id:'btBack_'+g.id,label:'Back',min:0,max:20,step:.1,value:g.back,fmt:v=>v.toFixed(1)+'%',onInput:v=>{g.back=v;bkGroupCageFlash(g);}}).el]:[]),
+    makeSlider({id:'btSkew_'+g.id,label:'Skew',min:0,max:1,step:.01,value:g.skew==null?1:g.skew,fmt:v=>Math.round(v*100)+'%',onInput:v=>{g.skew=v;}}).el);};
+  draw();box.title='This group’s own cage distance (instead of General › Front / Back), and its skew: lower makes the rays shoot straighter out of the surface for the whole group (painted skew still applies on top)';return box;}
+/* show the cage while a group's distance changes (the cage view is for the whole model; the group's own distance is what the bake uses) */
+function bkGroupCageFlash(g){if(typeof bakeCageFlash==='function')bakeCageFlash();}

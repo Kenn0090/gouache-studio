@@ -4,7 +4,7 @@ const {chromium}=require('playwright');
 let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
 (async()=>{
  const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
- const p=await (await b.newContext({viewport:{width:1400,height:880}})).newPage();
+ const p=await (await b.newContext({viewport:{width:1400,height:1500}})).newPage();
  await p.addInitScript(()=>{try{localStorage.setItem('gs.welcome','no');}catch(e){}});
  await p.route('**/*',r=>{const u=r.request().url();if(u.includes('pako'))return r.fulfill({path:__dirname+'/node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});if(u.startsWith('file:'))return r.continue();return r.abort();});
  const errs=[];p.on('pageerror',e=>errs.push(e.message));
@@ -25,7 +25,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const ids=()=>p.evaluate(()=>{const G=__gs,P=G.bakePrep(G.bkLow());return {low:[...new Set(P.low.vertPart)].sort().join(),high:[...new Set(P.high.bakePart)].sort().join()};});
  const i1=await ids();ok(i1.low==='1,2,3'&&i1.high==='1,2,3','each group has its own number in the bake '+JSON.stringify(i1));
  /* drag c_low onto group b's Low */
- const src=p.locator('#btTree .btpart[data-part="c_low"]'),dst=p.locator('#btTree .btgroup').nth(2).locator('.btside[data-side=low]');
+ const src=p.locator('#btTree .btpart[data-part="c_low"]'),dst=p.locator('#btTree .btgroup').nth(2).locator('.btfolder[data-side=low] .btfh');
+
  await src.dragTo(dst);await W(400);
  const d=await p.evaluate(()=>{const T=__gs.btTree();return T.groups.find(g=>g.id===T.low.c_low).name;});
  ok(d==='b','dragging a part onto another group moves it ('+d+')');
@@ -37,6 +38,13 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{const T=__gs.btTree(),g=T.groups.find(g=>g.name==='a');document.querySelector('#btTree .btgroup[data-id="'+g.id+'"] .bteye').click();});await W(500);
  const t1=await p.evaluate(()=>__gs.v3.mesh.idx.length/3);
  ok(t0===36&&t1===24,'the eye hides a group’s parts in the view ('+t0+' → '+t1+')');
+ /* Low and High folders have their own eyes: hiding b's High leaves the low-poly alone, hiding b's Low hides its low parts */
+ await p.evaluate(()=>{const T=__gs.btTree(),g=T.groups.find(g=>g.name==='b');document.getElementById('btEye_high_'+g.id).click();});await W(400);
+ const t2=await p.evaluate(()=>__gs.v3.mesh.idx.length/3);
+ await p.evaluate(()=>{const T=__gs.btTree(),g=T.groups.find(g=>g.name==='b');document.getElementById('btEye_low_'+g.id).click();});await W(400);
+ const t3=await p.evaluate(()=>__gs.v3.mesh.idx.length/3);
+ ok(t2===24&&t3===0,'the Low and High folders hide on their own ('+t2+' → '+t3+')');
+ ok(await p.evaluate(()=>document.querySelectorAll('#btTree .btfolder').length===6&&!!document.querySelector('#btTree .btfolder[data-side=low] .btset')),'every group shows a Low and a High folder, with the cage and skew settings in Low');
  const i3=await ids();ok(i3.low.split(',').includes('2'),'hidden groups are still baked '+JSON.stringify(i3));
  /* group colours */
  await p.click('#btColours');await W(600);
