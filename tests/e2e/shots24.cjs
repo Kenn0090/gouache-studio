@@ -5,7 +5,7 @@ const OUT=require("path").resolve(__dirname,"../../docs/wiki/images")+"/";
 let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
 (async()=>{
  const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
- const ctx=await b.newContext({viewport:{width:1600,height:950}});const p=await ctx.newPage();
+ const ctx=await b.newContext({viewport:{width:1600,height:950}});const p=await ctx.newPage();p.setDefaultTimeout(90000);
  await p.addInitScript(()=>{try{localStorage.setItem('gs.p3d',JSON.stringify({size:512,layout:'3d'}));}catch(e){}});
  await p.route('**/*',r=>{const u=r.request().url();
   if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});

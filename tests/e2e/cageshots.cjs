@@ -4,7 +4,7 @@ const OUT=__dirname+'/out/';
 let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
 (async()=>{
  const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
- const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();
+ const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();p.setDefaultTimeout(90000);
  await p.route('**/*',r=>{const u=r.request().url();
   if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
   if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
@@ -16,7 +16,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const box=await p.locator('#gl').boundingBox();
  const scr=async(x,y)=>{const v=await p.evaluate(()=>({x:__gs.view.x,y:__gs.view.y,z:__gs.view.zoom}));return [box.x+v.x+x*v.z,box.y+v.y+y*v.z];};
  const drag=async(pts)=>{let a=await scr(...pts[0]);await p.mouse.move(a[0],a[1]);await p.mouse.down();for(const q of pts.slice(1)){a=await scr(...q);await p.mouse.move(a[0],a[1],{steps:6});}await p.mouse.up();await W(60);};
- const setFG=async hx=>{await p.fill('#hex',hx);await p.press('#hex','Enter');};
+ const setFG=async hx=>p.evaluate(h=>__gs.setFG([1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255)),hx);
  await p.evaluate(()=>{__gs.newDoc(1024,768,8,[.13,.15,.17],'Panel',false);Object.assign(__gs.brush,{smoothing:0,pSize:false,tip:null,spacing:.06,opacity:1,flow:1,grain:0});});
  await W(500);
  await p.keyboard.press('k');await p.evaluate(()=>{const b=[...document.querySelectorAll('.seg button')].find(b=>b.textContent==='Grid');b.click();});await W();

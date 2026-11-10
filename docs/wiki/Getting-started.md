@@ -17,12 +17,12 @@ If an update was published while the app was already open, it won't show until t
 ![The Gouache Studio window: tools on the left, canvas in the middle, panels on the right.](images/overview.png)
 *The Gouache Studio window: tools on the left, canvas in the middle, panels on the right.*
 
-- **Menu bar** (top): File, Edit, Image, Maps, Layer, Select, Adjust, Filter, View, Window.
-- **Workspace** and **tabs** (top right): the Workspace menu (Painting, Texturing, 3D Paint, Minimal or your own), then **Paint**, **Animation** (see [Animation](Animation.md)), **Bake** (see [Baker](Baker.md)), **Convert** (see [Convert tab](Convert-tab.md)) and **Brush** (see [Brush tab](Brush-tab.md)), and **Tile mode**, for seamless textures that wrap at the edges.
+- **Menu bar** (top): File, Edit, Image, Layer, Select, Adjust, Filter, View, Window, Help (Maps and other menus appear in the tabs that use them).
+- **Workspace** and **tabs** (top right): the Workspace menu (Painting, Texturing, 3D Paint, Minimal or your own), then **2D Paint**, **Photo** (see [Photo tab](Photo-tab.md)), **3D Paint** (see [3D Paint](3D-Paint.md)), **Animation** (see [Animation](Animation.md)), **Bake** (see [Baker](Baker.md)), **Convert** (see [Convert tab](Convert-tab.md)) and **Brush** (see [Brush tab](Brush-tab.md)), and **Tile mode**, for seamless textures that wrap at the edges.
 - **Options bar** (under the menus): size, opacity, flow, hardness, pressure, symmetry and more for the tool in use.
 - **Toolbar** (left): move, selections, brush, eraser, blend, fills and gradients, dodge/burn, crop, text, eyedropper and hand. Small corner marks show buttons that hold more than one tool. It can be two columns wide, or on the right.
 - **Canvas** (centre): wheel to zoom, **Space**+drag or the Hand tool to pan.
-- **Dock** (right): groups of tabbed panels: **Color**, **Brushes** and **Tool settings**, **Maps**, **Layers** and **Channels**. Drag tabs and the bars between groups to arrange them any way you like (see [Panels and workspaces](Panels-and-workspaces.md)).
+- **Dock** (right): groups of tabbed panels: **Color** (Square, Wheel, Sliders, Swatches) and **Material editor**, **Brushes**, **Textures** and **Canvas**, **Maps**, and **Layers**, **Channels** and **History**. Drag tabs and the bars between groups to arrange them any way you like (see [Panels and workspaces](Panels-and-workspaces.md)).
 - **Status bar** (bottom): size, bit depth, the map you're painting, zoom, cursor position, pen pressure.
 
 ## The welcome screen
