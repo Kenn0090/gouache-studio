@@ -10,6 +10,7 @@ mod viewer;
 mod files;
 mod link;
 mod link_core;
+mod screen;
 mod net;
 mod single;
 mod undo_spill;
@@ -131,6 +132,7 @@ pub fn run() {
             files::blender_send,
             link::link_status,
             link::link_publish,
+            screen::screen_grab,
             files::open_url,
             files::autosave_list,
             files::autosave_delete,

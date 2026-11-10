@@ -49,8 +49,10 @@ function dragOn(c,fn){c.addEventListener('pointerdown',e=>{c.setPointerCapture(e
 dragOn(svC,e=>{const r=svC.getBoundingClientRect();setHSV(ui.hsv[0],clamp((e.clientX-r.left)/r.width,0,1),clamp(1-(e.clientY-r.top)/r.height,0,1));});
 dragOn(hueC,e=>{const r=hueC.getBoundingClientRect();setHSV(clamp((e.clientX-r.left)/r.width,0,1)*359.9,ui.hsv[1],ui.hsv[2]);});
 /* (0.39.3, Kenn) eyedropper that reads a colour from anywhere on the screen, also outside the app window (needs the browser's EyeDropper; hidden where it is missing) */
-const hasScreenPick=()=>typeof window.EyeDropper==='function';
+const hasScreenPick=()=>typeof window.EyeDropper==='function'||platform.isDesktop||!!(navigator.mediaDevices&&navigator.mediaDevices.getDisplayMedia);
 async function screenPick(put){if(!hasScreenPick()){toast('This browser cannot pick colours from the screen.');return;}
+  /* (0.96.5) the browser's own picker when there is one; otherwise a copy of the screen to click on (screen-grab.js) */
+  if(typeof window.EyeDropper!=='function'){return screenGrabPick('point',c=>put(c));}
   try{const r=await new window.EyeDropper().open();const c=fromHex(r.sRGBHex);if(c){put(c);}}catch(e){/* Esc or closed */}}
 function screenPickBtn(put){if(!hasScreenPick())return null;const b=el('button',{type:'button',class:'btn sm eyedrop',title:'Pick a colour from anywhere on the screen, even outside the app','aria-label':'Pick a colour from the screen',onclick:()=>screenPick(put)});
   b.innerHTML='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z"/></svg>';return b;}

@@ -232,6 +232,11 @@ function v3HoverPickRun(){{const ev=v3PickQ;if(!ev)return;const hit=ev.hit;v3Pic
     let c=t.depth===16?(()=>{const L=h2fLut();return [L[d[0]],L[d[1]],L[d[2]],L[d[3]]];})():[d[0]/255,d[1]/255,d[2]/255,d[3]/255];
     if(c[3]<.02)return;c=[c[0]/c[3],c[1]/c[3],c[2]/c[3]].map(v=>clamp(v,0,1));if(toHex(c)!==toHex(ui.fg))setFG(c);}}
 
+/* (0.96.5) the Eyedropper tool on the model: the colour of the set's base colour under the pointer */
+function v3ToolPick(hit,e){const p=v3PickFast(hit,e);const t=p&&ui.mode==='p3d'&&typeof p3SetTex==='function'?p3SetTex(p.set,'base'):v3.tex.base;if(!p||!t)return;
+  const x=clamp(Math.floor(p.uv[0]*t.w),0,t.w-1),y=clamp(Math.floor(p.uv[1]*t.h),0,t.h-1),d=captureRegionNow(t,x,y,1,1).data;
+  let c=t.depth===16?(()=>{const L=h2fLut();return [L[d[0]],L[d[1]],L[d[2]],L[d[3]]];})():[d[0]/255,d[1]/255,d[2]/255,d[3]/255];
+  if(c[3]<.02)return;c=[c[0]/c[3],c[1]/c[3],c[2]/c[3]].map(v=>clamp(v,0,1));if(toHex(c)!==toHex(ui.fg)){setFG(c);if(typeof pushRecent==='function')pushRecent(c);}}
 /* ---- mirror and radial painting on the model ----
    Mirrors across X, Y and/or Z planes (each can be moved off centre, snapping to the centre and to steps), and
    radial copies around an axis. The copies are matrices: every texel also takes the brush where its mirror image is. */

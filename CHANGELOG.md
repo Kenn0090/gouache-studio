@@ -1,3 +1,11 @@
+## 0.96.5
+
+- **3D Paint keeps only tools that work on the model.** Move, Fill bucket / Gradient, Marquee, Lasso, Magic wand and Pen are gone from 3D Paint, and their keys do nothing there (Polygon fill, the mask tools bar's Box and Lasso, and the Surface Path do those jobs). Paint is unchanged.
+- **Hand, Zoom and Eyedropper work on the model:** Hand drag moves the view, Zoom drag zooms, the Eyedropper picks the colour where you click (keep the button down and move to keep picking).
+- **Pick a colour from anywhere on the screen**, also outside the app: choose the Eyedropper again when it is already chosen (its button or I), drag off the app window while picking, or use the eyedropper button in the Colour panel.
+- **Gradients from the screen, like Substance Designer:** Pick from screen in the Gradient tool and in Gradient map. The app steps aside, shows a copy of your screen, and the colours along the line you drag become the gradient in that order. Esc cancels.
+- **Polygon fill's highlight is plain orange** again (no checkerboard).
+
 ## 0.96.4
 
 - **Pixels beyond the canvas are kept:** moving or transforming a layer partly off the canvas no longer cuts it off. Move it back and the hidden part comes back (undo works as usual), and the hidden pixels are saved in the .gouache file.

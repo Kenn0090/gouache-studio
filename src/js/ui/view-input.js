@@ -142,7 +142,7 @@ cv.addEventListener('pointermove',e=>{
   if(ptr.mode==='tmove'){const [mx2,my2]=toImage(e.clientX,e.clientY),dx=mx2-ptr.sx,dy=my2-ptr.sy;if(!ptr.moved&&Math.hypot(dx,dy)*view.zoom<4)return;
     if(!ptr.moved){ptr.moved=true;textBegin(ptr.L);}ptr.L.text.x=Math.round(ptr.ox+dx);ptr.L.text.y=Math.round(ptr.oy+dy);renderText(ptr.L);return;}
   const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];const list=evs.length?evs:[e];
-  if(ptr.mode==='pick'){const l=list[list.length-1];let q=toImage(l.clientX,l.clientY);if(ui.cageFlat)q=cageFwd(q[0],q[1]);pickAt(q[0],q[1]);return;}
+  if(ptr.mode==='pick'){const l=list[list.length-1];/* (0.96.5) dragged off the app window: carry on picking from the whole screen */if(ui.tool==='picker'&&(l.clientX<=0||l.clientY<=0||l.clientX>=innerWidth-1||l.clientY>=innerHeight-1)){ptr=null;screenPick(c=>{setFG(c);if(typeof pushRecent==='function')pushRecent(c);});return;}let q=toImage(l.clientX,l.clientY);if(ui.cageFlat)q=cageFwd(q[0],q[1]);pickAt(q[0],q[1]);return;}
   for(const ev of list){let [ix,iy]=toImage(ev.clientX,ev.clientY);const p=simPress(ptr,ix,iy,ev.timeStamp,pressureOf(ev,e));
     if(ptr.cage==='bend'&&stroke&&stroke.space){const m=cageInv(stroke.space.C,ix,iy);if(!m){ptr.gap=true;continue;}ix=m.x;iy=m.y;stroke.rs=1/Math.max(m.s,1e-3);
       if(ptr.gap){ptr.gap=false;ptr.sx=ptr.rx=ix;ptr.sy=ptr.ry=iy;ptr.sp=p;strokeJump(ix,iy,p);continue;}}

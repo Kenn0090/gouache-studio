@@ -53,7 +53,8 @@ function gmControls(v,upd){gmInit(v);const box=el('div',{class:'gmed'});let sel=
   const tools=el('div',{class:'chips'},
     el('button',{class:'btn sm',type:'button',id:'gmEven',text:'Spread evenly',title:'Space the stops out evenly',onclick:()=>{const s=v.def.stops.sort((a,b)=>a.p-b.p);s.forEach((q,i)=>q.p=s.length>1?i/(s.length-1):0);sync();}}),
     el('button',{class:'btn sm',type:'button',id:'gmFlip',text:'Flip',title:'Turn the gradient around (dark ↔ light)',onclick:()=>{for(const q of v.def.stops)q.p=1-q.p;for(const q of v.def.alphas)q.p=1-q.p;sync();}}),
-    el('button',{class:'btn sm',type:'button',id:'gmPick',text:'Pick from picture',title:'Drag a line across the canvas or the model: the colours under it become the gradient (dark to light). Esc cancels.',onclick:()=>gmPickLine(v,()=>{sel=0;sync();})}));
+    el('button',{class:'btn sm',type:'button',id:'gmPick',text:'Pick from picture',title:'Drag a line across the canvas or the model: the colours under it become the gradient (dark to light). Esc cancels.',onclick:()=>gmPickLine(v,()=>{sel=0;sync();})}),
+    el('button',{class:'btn sm',type:'button',id:'gmPickScreen',text:'Pick from screen',title:'Drag a line across anything on your screen, also outside the app (like Substance Designer): the colours along it become the gradient, in the order you drag. Esc cancels.',onclick:()=>screenGrabPick('line',cols=>{v.def.stops=sgStops(cols);v.name='';sel=0;sync();})}));
   /* --- presets: a grid of small strips --- */
   const grid=el('div',{class:'gmgrid',id:'gmGrid'});
   const buildGrid=()=>{grid.replaceChildren(...gmPresets().map(({p,user})=>{const d=presetDef(p);const b=el('button',{class:'gmtile'+(user?' user':''),type:'button',title:p.name+(user?' (yours: right-click for more)':''),'aria-label':p.name,style:'background:'+gradCss(d)+', repeating-conic-gradient(#555 0 25%, #333 0 50%) 0 0/8px 8px'});b._p=p;b._user=user;

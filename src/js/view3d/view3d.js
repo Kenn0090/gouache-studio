@@ -496,7 +496,7 @@ function drawUVOverlay(){if(!v3.on||!v3.gpu)return;if(v3s().litUV&&ui.mode!=='ba
   gl.bindVertexArray(vao);gl.disable(gl.BLEND);}
 
 /* ---- the pane: toolbar, settings, camera controls ---- */
-function toggle3D(on){v3.on=on===undefined?!v3.on:!!on;$('#work').classList.toggle('p3left',ui.mode==='p3d'&&!(typeof pcSwapped==='function'&&pcSwapped()));document.body.classList.toggle('m-p3d',ui.mode==='p3d');const pane=$('#pane3d'),sp=$('#split3d'),work=$('#work');
+function toggle3D(on){v3.on=on===undefined?!v3.on:!!on;$('#work').classList.toggle('p3left',ui.mode==='p3d'&&!(typeof pcSwapped==='function'&&pcSwapped()));document.body.classList.toggle('m-p3d',ui.mode==='p3d');if(typeof p3ToolFix==='function')p3ToolFix();const pane=$('#pane3d'),sp=$('#split3d'),work=$('#work');
   if(v3.on&&ui.mode==='anim'&&false)return;
   if(!v3.on&&v3.pop)pop3D(false,true);
   pane.hidden=!v3.on||!!v3.pop;sp.hidden=!v3.on||!!v3.pop;const p3k=ui.mode==='p3d'?'gs.pane3dp':'gs.pane3d';let w=320;try{w=+localStorage.getItem(p3k)||0;}catch(e){}if(!w)w=Math.round(work.clientWidth*(ui.mode==='p3d'?.5:.42));
@@ -621,7 +621,10 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     if(e.button===0&&!e.altKey&&(lgzDown(hit,e)||(typeof g3Down==='function'&&g3Down(hit,e))))return;/* a light of the bake rig */
     if(e.button===0&&!e.altKey&&!st3.sKey&&(maskToolsOn()||liveOn())&&mk3Down(hit,e))return;
     if(e.button===0&&typeof pfDown==='function'&&pfDown(hit,e))return;
+    /* (0.96.5, Kenn) the Eyedropper picks from the model; Hand moves and Zoom zooms the view on a plain drag */
+    if(e.button===0&&!e.altKey&&ui.tool==='picker'){v3ToolPick(hit,e);v3.drag={x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,how:'pick',id:e.pointerId,alt:false};return;}
     let how=v3NavOf(hit,e);
+    if(e.button===0&&!e.altKey&&how!=='paint'){if(ui.tool==='hand')how='pan';else if(ui.tool==='zoom')how='zoom';}
     if(how==='paint'){if(e.button===0&&meshDown(hit,e)&&(v3.mstroke||v3.shiftPend))return;how='turn';if(stroke)return;}
     v3.drag={x:e.clientX,y:e.clientY,how,id:e.pointerId,x0:e.clientX,y0:e.clientY,alt:e.altKey&&e.button===0,penAlt:how==='pan'&&e.altKey&&typeof penPanBtn==='function'&&penPanBtn(e)};});
   hit.addEventListener('pointermove',e=>{v3PickHold.hit=hit;v3PickHold.point={clientX:e.clientX,clientY:e.clientY};if(typeof g3Move==='function'&&g3.drag){g3Move(hit,e);return;}if(!e.buttons&&typeof lgzHover==='function'&&!lgz.drag&&(lgzHover(hit,e)||(typeof g3Hover==='function'&&g3Hover(hit,e))))return;if(sel3DragBusy()){sel3DragMove(hit,e);return;}if(typeof pfBusy==='function'&&pfBusy()){pfMove(hit,e);return;}if(typeof pfHover==='function'&&!e.buttons&&!v3PickHeld(e)&&pfHover(hit,e)){meshCursor(hit,null);return;}sel3HoverMove(hit,e);if(pgz.drag){if(!e.buttons){pgzUp();return;}pgzMove(hit,e);return;}if(lgz.drag){if(!e.buttons){lgzUp();return;}lgzMove(hit,e);return;}if(!e.buttons&&!v3PickHeld(e)&&pgzHover(hit,e)){meshCursor(hit,null);return;}if(mk3Busy()){mk3Move(hit,e);return;}meshCursor(hit,e);
@@ -634,6 +637,7 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     if(d&&d.penAlt&&(d.how==='pan'||d.how==='zoom'))d.how=e.altKey?'pan':'zoom';
     if(!d){if(v3PickHeld(e)&&!e.buttons)v3HoverPick(hit,e);return;}
     if(d.how==='bsize'||d.how==='bflow'){pcAdjust(d,e,hit);d.x=e.clientX;d.y=e.clientY;return;}
+    if(d.how==='pick'){v3ToolPick(hit,e);return;}
     if(d.how.startsWith('st')){st3Drag(d,e,hit);d.x=e.clientX;d.y=e.clientY;return;}
     const dx=e.clientX-d.x,dy=e.clientY-d.y;d.x=e.clientX;d.y=e.clientY;const c=v3.cam;
     if(d.how==='sky'){envTurnBy(dx*.5);return;}

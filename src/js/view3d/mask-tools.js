@@ -10,9 +10,9 @@ const maskToolsOn=()=>!!(ui.viewMask&&doc.active&&doc.active.mask&&ui.mode!=='an
 const maskPaintLocked=()=>maskToolsOn()&&mk3.tool!=='paint';
 function maskTool(t){if(mk3.tool===t)t=null;if(t&&t!=='paint'&&mk3.was)mk3.was.used=true;if(mk3.tool==='id')idSelCommit();mk3.tool=t;mk3.draw=null;mk3.move=null;
   if(t==='paint'||(!t&&liveOn())){if(!MESH_TOOLS.includes(ui.tool))setTool('brush');if(v3.on||ui.mode==='p3d')v3.paintOn=true;}
-  else if(t==='box'){ui.marquee='rect';setTool('marquee');}
-  else if(t==='lasso'){ui.lasso='free';setTool('lasso');}
-  else if(t==='poly'){ui.lasso='poly';setTool('lasso');}
+  else if(t==='box'){ui.marquee='rect';setTool('marquee',false,true);}
+  else if(t==='lasso'){ui.lasso='free';setTool('lasso',false,true);}
+  else if(t==='poly'){ui.lasso='poly';setTool('lasso',false,true);}
   maskBarSync();mk3Overlay();v3.dirty=true;requestRender(true);}
 function mk3Reset(){if(mk3.tool==='id'){idSelCommit();v3.dirty=true;}mk3.tool=null;mk3.pts=null;mk3.draw=null;mk3.move=null;mk3Overlay();}
 const mk3Hint=()=>({paint:'Paint white to show, black to hide.',box:'Drag over the model to select what you see. Drag inside the box to move it. Shift adds, Ctrl removes.',
