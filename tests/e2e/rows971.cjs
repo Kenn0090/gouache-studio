@@ -33,5 +33,13 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(/^Add white mask/.test(first[0])&&/^Add black mask/.test(first[1]),'right-click: Add white mask and Add black mask come first '+JSON.stringify(first));
  await p.evaluate(()=>[...document.querySelectorAll('#menuPop .mi')][1].click());await W(200);
  ok(await p.evaluate(()=>{const m=__gs.doc.active.mask;if(!m)return false;const d=__gs.captureRegionNow(m.target,0,0,4,4).data;return d[0]<10;}),'Add black mask adds a black mask');
+
+ /* right-click the mask: an Adjust list with Slope blur, Warp and Grow first */
+ await p.evaluate(()=>{const G=__gs,L=G.doc.active,t=L.mask.thumb,b=t.getBoundingClientRect();t.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,clientX:b.left+5,clientY:b.top+5}));});await W(200);
+ const adj=await p.evaluate(()=>{const b=[...document.querySelectorAll('#menuPop .mi')].find(x=>/^Adjust/.test(x.textContent.trim()));if(!b)return null;b.click();
+   return [...document.querySelectorAll('.mi')].filter(x=>x.offsetParent&&!x.closest('#menuPop')).map(x=>x.textContent.trim());});
+ ok(adj&&adj[0]==='Slope blur'&&adj[1]==='Warp'&&adj[2]==='Grow / shrink'&&adj.includes('Levels')&&adj.includes('High pass')&&adj.some(t=>t.startsWith('All filters')),'right-click the mask: Adjust lists Slope blur, Warp, Grow first, then the rest '+JSON.stringify(adj));
+ await p.evaluate(()=>{const b=[...document.querySelectorAll('.mi')].find(x=>x.offsetParent&&x.textContent.trim()==='Slope blur');b.click();});await W(300);
+ ok(await p.evaluate(()=>{const S=__gs.doc.active.mask.stack;return S[S.length-1].kind==='filter'&&S[S.length-1].own==='slope';}),'picking Slope blur adds it to the mask');
  ok(!errs.length,'no page errors '+errs.join(' | '));
  await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();

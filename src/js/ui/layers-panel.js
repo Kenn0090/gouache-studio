@@ -292,8 +292,11 @@ function maskMenu(e,n){const pop=$('#menuPop');closeMenu();
     head('Wear and weather'),...MS_GENS.map(([k,title])=>it(title,add('gen',{p:msGenDefaults(k)}))),sep(),
     it('3D gradient',add('g3d')),it('Direction (faces pointing up)',add('dir')),it('Gradient (bottom to top)',add('grad'))]);
   const noises=fly('Noise and grunge',()=>MS_NOISES.map(([k,title])=>it(title,add('noise',{p:Object.assign(MS_KINDS.noise.p(),{type:k})}))));
-  const quick=['levels','invert','blur'],more=fly('More filters',()=>[...MS_FILTERS.filter(id=>FX[id]&&!quick.includes(id)).map(id=>it(FX[id].title,add('filter',{fx:id}))),sep(),
-    ...Object.keys(MS_OWN_FILTERS).map(k=>it(MS_OWN_FILTERS[k],add('filter',{own:k,p:{r:k==='grow'?3:k==='warp'?4:6,scale:6,seed:1}})))]);
+  /* (0.97.1, Kenn: "add Adjust so you can get to Slope blur etc faster") every mask adjustment in one list, the shaping ones first */
+  const quick=['levels','invert','blur'],own=k=>it(MS_OWN_FILTERS[k],add('filter',{own:k,p:{r:k==='grow'?3:k==='warp'?4:6,scale:6,seed:1}})),fx=id=>FX[id]?it(FX[id].title,add('filter',{fx:id})):null;
+  const more=fly('Adjust',()=>[head('Shape'),own('slope'),own('warp'),own('grow'),sep(),head('Tone'),...['levels','curves','threshold','posterize','invert'].map(fx),sep(),
+    head('Blur and sharpen'),...['blur','boxBlur','motionBlur','sharpen','highPass'].map(fx),sep(),head('Edges'),...['edges','convolve'].map(fx),
+    ...(typeof fxAddMenu==='function'?[sep(),it('All filters…',()=>{on();renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);})]:[])].filter(Boolean));
   const names=typeof msAnchorNames==='function'?msAnchorNames():[];
   const items=[head('Make the mask'),it('Paint',add('paint')),it('Fill white',add('fill',{p:{v:1}})),it('Fill black',add('fill',{p:{v:0}})),generators,noises,it('Picture…',add('image')),
     ...(doc.meshMaps&&doc.meshMaps.id?[it('ID colour (pick colours on the model)…',()=>idColourMask(n))]:[]),
