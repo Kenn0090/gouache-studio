@@ -252,7 +252,7 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
           if(k==='height')row.append(makeSlider({id:'fl_hs',label:'Bump strength',min:0,max:4,numericMax:20,step:.05,value:W.hStr==null?1:W.hStr,fmt:pct,onInput:v=>edit(()=>{W.hStr=v;},k)}).el);}}
       else{const has=!!(L._fillImg&&L._fillImg[k]);
         row.append(el('div',{class:'row wrap'},(()=>{const nm=el('span',{class:'note',text:s.name||(isN?'No normal map yet':'No image')});nm._hpv=()=>L._fillImg&&L._fillImg[k]?{t:L._fillImg[k],name:s.name||MAP_DEFS[k].label}:null;return nm;})(),el('button',{class:'btn sm',text:'Choose image…',id:'fl_img_'+k,onclick:()=>{matEdBegin(L);fillPickImage(L,k,s,()=>edit(()=>{},k,true));}}),...(isN?[]:[el('button',{class:'btn sm',text:'Textures…',id:'fl_tx_'+k,title:'Pick one from the Textures library (grunge, patterns, your own)',onclick:()=>txPickDlg(k)})])));
-        if(has)row.append(makeSlider({id:'fl_t_'+k,label:W.proj==='tri'?'Scale':'Tile',min:.25,max:1000,numericMin:.01,numericMax:10000,step:.25,value:s.tile||1,fmt:v=>v+'×',onInput:v=>edit(()=>{s.tile=v;},k)}).el,
+        if(has)row.append(makeSlider({id:'fl_t_'+k,label:W.proj==='tri'?'Scale':'Tile',min:.25,max:1000,numericMin:.01,numericMax:Infinity,step:.25,value:s.tile||1,fmt:v=>v+'×',onInput:v=>edit(()=>{s.tile=v;},k)}).el,
           makeSlider({id:'fl_r_'+k,label:'Turn',min:-180,max:180,step:1,value:s.rot||0,fmt:v=>v+'°',onInput:v=>edit(()=>{s.rot=v;},k)}).el);
         else if(s.name)row.append(el('p',{class:'note',text:'Choose the image again to change its tiling.'}));
         if(k==='height'&&has)row.append(makeSlider({id:'fl_hs',label:'Bump strength',min:0,max:4,numericMax:20,step:.05,value:W.hStr==null?1:W.hStr,fmt:pct,onInput:v=>edit(()=>{W.hStr=v;},k)}).el,

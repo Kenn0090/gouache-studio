@@ -43,7 +43,7 @@ void main(){ vec2 p=gl_FragCoord.xy,sz=SZ(uSrc),c=uC*sz,d=p-c; float R=0.5*min(s
 let PXD=null;const pxd=k=>{if(!PXD)PXD={};return PXD[k]||(PXD[k]=program(FXD_FS[k]()));};
 const fxdWrap=()=>({int:doc.wrap?1:0});
 fxDef('warp',{title:'Warp',note:'Pushes the picture around with a smooth noise: wobbly edges, organic breakup. Turbulent folds it harder.',init:()=>({mode:'smooth'}),
-  defs:[{key:'amt',label:'Amount',min:0,max:120,step:.5,value:12,fmt:px},{key:'size',label:'Noise size',min:4,max:600,step:1,value:80,fmt:px},{key:'seed',label:'Seed',min:1,max:99,step:1,value:1,fmt:v=>String(v)}],
+  defs:[{key:'amt',label:'Amount',min:0,max:120,numericMax:Infinity,step:.5,value:12,fmt:px},{key:'size',label:'Noise size',min:4,max:600,numericMax:Infinity,step:1,value:80,fmt:px},{key:'seed',label:'Seed',min:1,max:99,step:1,value:1,fmt:v=>String(v)}],
   controls:(v,upd)=>[modeSeg(v,'mode',[['smooth','Smooth'],['turb','Turbulent']],upd,'Warp kind')],
   checks:[['meshSeams','Across mesh seams',true]],
   /* (0.96.1) on a model in 3D Paint the push follows the surface, so both sides of a UV seam move together */
@@ -113,7 +113,7 @@ fxDef('slopeBlur',{title:'Slope blur',note:'Smears along the slope of the layer,
     ['Chipped edges',{mode:'min',guide:'noise',amt:30,steps:24,size:75,seed:1}],
     ['Edge spread',{mode:'max',guide:'noise',amt:18,steps:20,size:45,seed:1}]
   ],
-  defs:[{key:'amt',label:'Intensity',min:0,max:200,step:.5,value:16,fmt:px},{key:'steps',label:'Samples',min:4,max:64,step:1,value:16,fmt:v=>String(v)},{key:'size',label:'Noise size',min:4,max:600,step:1,value:60,fmt:px},{key:'seed',label:'Seed',min:1,max:99,step:1,value:1,fmt:v=>String(v)},{key:'gtile',label:'Picture repeat',min:1,max:8,step:1,value:1,fmt:v=>v+'×'}],
+  defs:[{key:'amt',label:'Intensity',min:0,max:200,numericMax:Infinity,step:.5,value:16,fmt:px},{key:'steps',label:'Samples',min:4,max:64,step:1,value:16,fmt:v=>String(v)},{key:'size',label:'Noise size',min:4,max:600,numericMax:Infinity,step:1,value:60,fmt:px},{key:'seed',label:'Seed',min:1,max:99,step:1,value:1,fmt:v=>String(v)},{key:'gtile',label:'Picture repeat',min:1,max:8,numericMax:Infinity,step:1,value:1,fmt:v=>v+'×'}],
   controls:(v,upd)=>{const row=fxdGuideRow(v,upd);row.hidden=v.guide!=='image';
     const gs=seg([['self','Its own slope'],['noise','Noise'],['image','A picture']],v.guide,x=>{v.guide=x;row.hidden=x!=='image';upd();},'Slope from');
     const influence=el('details',{class:'fxdinfluence',open:!!v.influence},el('summary',{text:'Influence image'}),

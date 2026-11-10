@@ -1,3 +1,9 @@
+## 0.97.4
+
+- **Type past the slider range** for settings such as Slope Blur intensity, Warp amount, Motion Blur distance, tiling, and Mask Builder input strength. Click the number to type a value. Controls such as opacity and sample count keep their limits.
+- **Mask Builder** has Edge Wear, Cavity Dirt, Top Dust, and Low Buildup presets. Tune each input with its own strength, balance, contrast, and invert controls, then combine them with Add, Lightest, or Intersect.
+- **Facing direction and position gradients** can use separate axes in Mask Builder. The grunge can use world or UV projection, and painted mesh-map inputs refresh when the document changes.
+
 ## 0.97.3
 
 - **Slope Blur has an Influence image** in 2D Paint, 3D Paint, and mask rows. White applies the full effect, black leaves the area alone, and gray applies part of the effect. Drop in a picture or choose one from Textures.

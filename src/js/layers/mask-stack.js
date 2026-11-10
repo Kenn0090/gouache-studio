@@ -11,6 +11,9 @@ const MS_MODES=[['normal','Normal','Norm'],['multiply','Multiply','Mult'],['add'
 const msModeIx=m=>Math.max(0,MS_MODES.findIndex(x=>x[0]===m));
 const MS_GENS=[['edge','Edge wear'],['dirt','Dirt in cavities'],['dust','Dust on top'],['moss','Moss'],['rust','Rust streaks'],['water','Water line'],['slime','Slime'],['crud','Crud'],
   ['chips','Chipped paint'],['scratch','Scratches'],['snow','Snow on top'],['soot','Soot'],['drips','Drips and leaks'],['bleach','Sun-bleached'],['light','Light'],['linear','Linear gradient'],['radial','Radial gradient'],['comic','Comic shading'],['builder','Mask builder']];
+const MS_BUILDER_INPUTS=[['edgeWeight','Curvature edges'],['cavityWeight','Curvature cavities'],['aoWeight','AO cavities'],
+  ['directionWeight','Facing direction'],['positionWeight','Position gradient'],['heightWeight','Height'],['thicknessWeight','Thin areas']];
+const MS_BUILDER_MIX=[['add','Add'],['lightest','Lightest'],['intersect','Intersect']];
 /* (0.96.1, Kenn) baked maps straight from Generators, with Balance / Contrast / Invert like Painter's */
 const MS_MESH_GENS=[['ao','Ambient occlusion'],['curv','Curvature'],['curv','Curvature: edges','edges'],['curv','Curvature: cavities','cavities'],['thick','Thickness'],['height','Height']];
 /* the baked map if this set has one, else a converted one (cv:), else the name itself (the document's own map is used) */
@@ -51,7 +54,17 @@ function msRowTitle(r){if(r.kind==='filter')return r.own?MS_OWN_FILTERS[r.own]:(
   return r.name||MS_KINDS[r.kind].title;}
 /* rows that read the document's own maps (no bake yet, or the Paint tab) redo when any layer changes */
 let msDocVer=0;
-const msUsesDoc=L=>L.mask.stack.some(r=>r.on!==false&&((r.kind==='mesh'&&!msMeshTex(r.p.k))||(r.kind==='gen'&&!msMeshTex('curv')&&!msMeshTex('ao'))||r.kind==='dir'&&!(v3.mesh&&(ui.mode==='p3d'||v3.on))));
+function msUsesDoc(L){return L.mask.stack.some(r=>{
+  if(r.on===false)return false;
+  if(r.kind==='mesh')return !msMeshTex(r.p.k);
+  if(r.kind==='dir')return !(v3.mesh&&(ui.mode==='p3d'||v3.on));
+  if(r.kind!=='gen')return false;
+  const p=r.p;
+  if(p.g!=='builder')return !msMeshTex('curv')&&!msMeshTex('ao');
+  const painted=k=>doc.maps.includes(k)&&!msMeshTex(k)&&!msMeshTex('cv:'+k);
+  return ((p.edgeWeight??1)||p.cavityWeight)&&painted('curv')||
+    p.aoWeight&&painted('ao')||p.heightWeight&&painted('height');
+});}
 {const st=scheduleThumb;scheduleThumb=function(n){msDocVer++;return st(n);};}
 const msMeshName=k=>k&&k.startsWith('cv:')?(P3_MESHMAP_NAMES[k.slice(3)]||k.slice(3))+' (converted)':(typeof P3_MESHMAP_NAMES!=='undefined'&&P3_MESHMAP_NAMES[k])||(MAP_DEFS[k]?MAP_DEFS[k].label:k);
 const msHas=L=>!!(L&&L.mask&&L.mask.stack);
@@ -103,7 +116,8 @@ const FS_MSGEN=MS_NOISE_GLSL+MS_SURF_GLSL+`
 uniform sampler2D uCurv; uniform int uHasCurv; uniform sampler2D uAO; uniform int uHasAO; uniform int uG; uniform float uAmt; uniform float uWidth; uniform float uBreak; uniform float uCon; uniform float uScale; uniform int uNeg; uniform float uDist;
 uniform sampler2D uCurv2; uniform int uHasCurv2; uniform vec4 uLight; uniform vec4 uGrad; uniform vec3 uAxis; uniform vec3 uCenter; uniform vec4 uComic; uniform int uComicMode;
 uniform sampler2D uGTex; uniform int uHasG; uniform float uGTile; uniform int uGInv; uniform float uGRot; uniform float uGCon; uniform float uGLev;
-uniform vec4 uBuilder; uniform vec3 uBuilderExtra; uniform vec4 uBuilderRange; uniform sampler2D uHeight; uniform sampler2D uThick; uniform sampler2D uWorldN; uniform sampler2D uPosition; uniform int uHasHeight; uniform int uHasThick; uniform int uHasWorldN; uniform int uHasPosition;
+uniform vec4 uBuilderInputs[7]; uniform int uBuilderMix; uniform vec2 uBuilderRange; uniform vec3 uBuilderDirection;
+uniform sampler2D uHeight; uniform sampler2D uThick; uniform sampler2D uWorldN; uniform sampler2D uPosition; uniform int uHasHeight; uniform int uHasThick; uniform int uHasWorldN; uniform int uHasPosition;
 float curvOf(vec2 uv){ float c=uHasCurv==1?texture(uCurv,uv).r:0.5; if(uHasCurv2==1) c=clamp(c+(texture(uCurv2,uv).r-0.5)*1.5,0.0,1.0); return c; }
 float aoOf(vec2 uv){ return uHasAO==1?texture(uAO,uv).r:1.0; }
 /* (0.95.7, Kenn) your own grunge as the generator's breakup: a picture from Textures, tiled; on the model (World) it is laid
@@ -128,7 +142,30 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(); vec3 q=sur
     vec3 bp=uHasPosition==1?texture(uPosition,uv).rgb:P;float pos=dot(bp,abs(uAxis));if(uAxis.x+uAxis.y+uAxis.z<0.0)pos=1.0-pos;
     float span=uBuilderRange.y-uBuilderRange.x;float gradient=abs(span)<.0001?step(uBuilderRange.x,pos):clamp((pos-uBuilderRange.x)/span,0.0,1.0);
     float h=uHasHeight==1?texture(uHeight,uv).r:0.0,thin=uHasThick==1?1.0-texture(uThick,uv).r:0.0;
-    b=clamp(edge*uBuilder.x+cav*uBuilder.y+occ*uBuilder.z+smoothstep(-uWidth,uWidth+.0001,dot(bn,uAxis))*uBuilder.w+gradient*uBuilderExtra.x+h*uBuilderExtra.y+thin*uBuilderExtra.z,0.0,1.0);
+    float facing=smoothstep(-uWidth,uWidth+.0001,dot(bn,uBuilderDirection));
+    float sources[7]=float[7](edge,cav,occ,facing,gradient,h,thin);
+    bool hasCurv=uHasCurv==1||uHasCurv2==1;
+    bool available[7]=bool[7](hasCurv,hasCurv,uHasAO==1,true,true,uHasHeight==1,uHasThick==1);
+    float overlap=1.0; bool hasOverlap=false;
+    for(int i=0;i<7;i++){
+      vec4 inputSettings=uBuilderInputs[i];
+      if(inputSettings.x==0.0) continue;
+      float v=sources[i];
+      if(available[i]){
+        float contrast=inputSettings.z;
+        if(inputSettings.y!=0.0||contrast!=0.0){
+          float gain=contrast>=0.0?1.0+contrast*4.0:1.0+contrast*0.95;
+          v=clamp((v-0.5)*gain+0.5+inputSettings.y,0.0,1.0);
+        }
+        if(inputSettings.w>0.5) v=1.0-v;
+      }
+      if(uBuilderMix==1) b=max(b,v*inputSettings.x);
+      else if(uBuilderMix==2){
+        if(available[i]&&inputSettings.x>0.0){ overlap*=clamp(v*inputSettings.x,0.0,1.0); hasOverlap=true; }
+      }else b+=v*inputSettings.x;
+    }
+    if(uBuilderMix==2) b=hasOverlap?overlap:0.0;
+    b=clamp(b,0.0,1.0);
     b=clamp((b-.5)*uCon+.5+(uAmt-.5)*2.0+(n-.5)*uBreak,0.0,1.0);if(uNeg==1)b=1.0-b;o=vec4(vec3(b),1.0);return;}
   if(uG==0) b=edge*(0.6+w*1.4);
   else if(uG==1) b=(occ*1.3+cav*0.8)*(0.6+w);
@@ -238,6 +275,14 @@ function msCtxFree(ctx){for(const t of ctx.tmp)if(t)release(t);}
 /* a row's projection uniforms: its mode and transform */
 const msPx=(r,ctx)=>{const m=pxfRowMode(r);return Object.assign({},ctx.surf,pxfUniforms(m,r.p.xf),{uWorld:{int:m==='world'?1:0}});};
 const MS_AXES={up:[0,1,0],down:[0,-1,0],x:[1,0,0],'-x':[-1,0,0],z:[0,0,1],'-z':[0,0,-1]};
+function msBuilderU(p){
+  const values=MS_BUILDER_INPUTS.flatMap(([key],i)=>{
+    const tone=p.inputTone?.[key];
+    return [p[key]??(i===0?1:0),tone?.balance??0,tone?.contrast??0,tone?.invert?1:0];
+  });
+  return {uBuilderInputs:{v4a:new Float32Array(values)},uBuilderMix:{int:Math.max(0,MS_BUILDER_MIX.findIndex(([key])=>key===p.combine))},
+    uBuilderRange:[p.positionFrom??0,p.positionTo??1],uBuilderDirection:MS_AXES[p.directionAxis||p.gradAxis]||MS_AXES.up};
+}
 
 /* one row's picture (grey, coverage in alpha): {t, pooled} or null */
 function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquireD(depth);
@@ -270,9 +315,10 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
     run(msProgs().anc,o,{uT:T.tex,uM:A.mask&&A.mask.enabled!==false?A.mask.target.tex:dummy,uUseM:{int:A.mask&&A.mask.enabled!==false&&ch==='shape'?1:0},uCh:{int:ch==='shape'?1:0},uNeg:{int:p.inv?1:0}});return {t:o,pooled:true};}
   if(r.kind==='gen'){const o=out(),curv0=msMeshTex('curv')||msMeshTex('cv:curv')||msDocMap('curv',ctx)||msModelCurv(),curv=p.g==='builder'?curv0:msWideCurv(curv0,p,ctx),ao=msMeshTex('ao')||msMeshTex('cv:ao')||msDocMap('ao',ctx);
     const ac=p.anchor?msAnchorCurv(p.anchor,ctx,p.uvWrap!==false):null;
-    const height=p.g==='builder'&&(msMeshTex('height')||msDocMap('height',ctx)),thick=p.g==='builder'&&msMeshTex('thick'),wn=p.g==='builder'&&msMeshTex('wnormal'),pos=p.g==='builder'&&msMeshTex('position');
+    const height=p.g==='builder'&&p.heightWeight&&(msMeshTex('height')||msMeshTex('cv:height')||msDocMap('height',ctx));
+    const thick=p.g==='builder'&&msMeshTex('thick'),wn=p.g==='builder'&&msMeshTex('wnormal'),pos=p.g==='builder'&&msMeshTex('position');
     withUVWrap(p.uvWrap!==false,[curv,ac,ao,height,thick,wn,pos],()=>run(P.gen,o,Object.assign({uG:{int:Math.max(0,MS_GENS.findIndex(g=>g[0]===p.g))},uCurv:curv?curv.tex:dummy,uHasCurv:{int:curv?1:0},uCurv2:ac?ac.tex:dummy,uHasCurv2:{int:ac?1:0},uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},
-      uBuilder:[p.edgeWeight??1,p.cavityWeight??0,p.aoWeight??0,p.directionWeight??0],uBuilderExtra:[p.positionWeight??0,p.heightWeight??0,p.thicknessWeight??0],uBuilderRange:[p.positionFrom??0,p.positionTo??1,0,1],uHeight:height?height.tex:dummy,uThick:thick?thick.tex:dummy,uWorldN:wn?wn.tex:dummy,uPosition:pos?pos.tex:dummy,uHasHeight:{int:height?1:0},uHasThick:{int:thick?1:0},uHasWorldN:{int:wn?1:0},uHasPosition:{int:pos?1:0},
+      ...(p.g==='builder'?msBuilderU(p):{}),uHeight:height?height.tex:dummy,uThick:thick?thick.tex:dummy,uWorldN:wn?wn.tex:dummy,uPosition:pos?pos.tex:dummy,uHasHeight:{int:height?1:0},uHasThick:{int:thick?1:0},uHasWorldN:{int:wn?1:0},uHasPosition:{int:pos?1:0},
       uLight:[Math.sin((p.lightAz??-35)*Math.PI/180)*Math.cos((p.lightEl??45)*Math.PI/180),Math.sin((p.lightEl??45)*Math.PI/180),Math.cos((p.lightAz??-35)*Math.PI/180)*Math.cos((p.lightEl??45)*Math.PI/180),p.occlude??.25],
       uGrad:[p.gradFrom??0,p.gradTo??1,['linear','smooth','bands'].indexOf(p.gradStyle||'smooth'),p.bands??3],uAxis:MS_AXES[p.gradAxis||'up']||[0,1,0],uCenter:[p.centerX??.5,p.centerY??.5,p.centerZ??.5],
       uComic:[p.bands??3,p.dots??28,p.dotSize??.45,p.dotAngle??45],uComicMode:{int:['shade','shadow','dots'].indexOf(p.comicStyle||'shade')},

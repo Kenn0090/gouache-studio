@@ -223,9 +223,12 @@ function makeSlider(o){
   const show=v=>{value=v;if(!editing)out.textContent=fmt(v);};
   const typeValue=()=>{if(editing)return;editing=true;
     const scale=o.numericScale||(fmt===pct?100:1),a=from(+o.min),b=from(+o.max),lo=o.numericMin??Math.min(a,b),hi=o.numericMax??Math.max(a,b);
-    const number=el('input',{type:'number',class:'slider-value',id:o.id+'_value','aria-label':o.label+' precise value',step:'any',min:String(lo*scale),max:String(hi*scale),value:String(Math.round(value*scale*1e8)/1e8)});
+    const number=el('input',{type:'number',class:'slider-value',id:o.id+'_value','aria-label':o.label+' precise value',step:'any',
+      min:Number.isFinite(lo)?String(lo*scale):null,max:Number.isFinite(hi)?String(hi*scale):null,value:String(Math.round(value*scale*1e8)/1e8)});
     let done=false;const finish=cancel=>{if(done)return;done=true;const n=number.valueAsNumber;editing=false;
-      if(cancel||!Number.isFinite(n)){show(value);return;}const v=clamp(n/scale,lo,hi);inp.value=to(v);show(v);o.onInput(v);if(o.onChange)o.onChange(v);};
+      const v=clamp(n/scale,lo,hi);
+      if(cancel||!Number.isFinite(n)||Math.abs(v)>Number.MAX_SAFE_INTEGER){show(value);return;}
+      inp.value=to(v);show(v);o.onInput(v);if(o.onChange)o.onChange(v);if(rst)rst.classList.toggle('at',atDef(v));};
     number.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();e.stopPropagation();finish(e.key==='Escape');}});
     number.addEventListener('blur',()=>finish(false));out.replaceChildren(number);number.focus();number.select();};
   out.addEventListener('click',typeValue);out.addEventListener('keydown',e=>{if(e.target===out&&(e.key==='Enter'||e.key===' ')){e.preventDefault();typeValue();}});

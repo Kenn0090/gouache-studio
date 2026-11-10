@@ -1,3 +1,8 @@
+## 0.97.4
+
+- Click the number beside supported sliders to type past their drag range, including Slope Blur intensity, tiling, and Mask Builder input strength. Opacity and sample counts still have limits.
+- Mask Builder has four starting presets, independent balance, contrast, and invert for each input, and Add, Lightest, and Intersect modes. Facing direction and position gradients can use separate axes.
+
 ## 0.97.3
 
 - **Slope Blur** now supports a separate Influence image in 2D Paint, 3D Paint, and mask rows. White applies the full effect, black leaves the area alone, and gray applies part of it.

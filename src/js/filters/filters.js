@@ -14,7 +14,7 @@ function fxControls(o,v,upd,ctx){const body=[],sliders=[];
   const build=()=>{
     const fields=o.controls?[...o.controls(v,change,ctx)]:[];
     sliders.length=0;
-    for(const d of o.defs||[]){const s=makeSlider(Object.assign({},d,d.fmt===pct&&d.min>=0&&/^(Strength|Contrast|Intensity)$/.test(d.label)&&d.numericMax===undefined?{numericMax:d.max*4}:{},{value:v[d.key],def:d.value,id:'fx_'+d.key,onInput:x=>{v[d.key]=x;change();}}));sliders.push([s,d]);fields.push(s.el);}
+    for(const d of o.defs||[]){const s=makeSlider(Object.assign({},d,d.fmt===pct&&d.min>=0&&/^(Strength|Contrast|Intensity)$/.test(d.label)&&d.numericMax===undefined?{numericMax:Infinity}:{},{value:v[d.key],def:d.value,id:'fx_'+d.key,onInput:x=>{v[d.key]=x;change();}}));sliders.push([s,d]);fields.push(s.el);}
     for(const [key,label] of o.checks||[])fields.push(chk('fx_'+key,label,key==='uvWrap'?v[key]!==false:!!v[key],x=>{v[key]=x;change();}));
     return fields;
   };
@@ -232,7 +232,7 @@ fxDef('lensBlur',{title:'Lens blur',heavy:true,note:'Blurs like an out-of-focus 
   controls:(v,upd)=>[el('div',{class:'sub',text:'Highlight shape'}),seg([[1,'Hexagon'],[0,'Round']],v.shape,x=>{v.shape=x;upd();},'Shape')],
   defs:[{key:'r',label:'Radius',min:1,max:80,step:.5,value:12,fmt:px},{key:'b',label:'Highlight glow',min:0,max:4,step:.05,value:1.2,fmt:pct},{key:'t',label:'Highlight threshold',min:0,max:.95,step:.01,value:.7,fmt:pct},{key:'rot',label:'Rotation',min:0,max:60,step:1,value:0,fmt:deg}],
   render(src,dst,v){run(P.f_lens,dst,{uSrc:src.tex,uR:v.r,uBoost:v.b,uThr:v.t,uShape:{int:v.shape},uRot:v.rot*Math.PI/180});}});
-fxDef('motionBlur',{title:'Motion blur',defs:[{key:'a',label:'Angle',min:-180,max:180,step:1,value:0,fmt:deg},{key:'d',label:'Distance',min:1,max:200,step:1,value:20,fmt:px}],
+fxDef('motionBlur',{title:'Motion blur',defs:[{key:'a',label:'Angle',min:-180,max:180,step:1,value:0,fmt:deg},{key:'d',label:'Distance',min:1,max:200,numericMax:Infinity,step:1,value:20,fmt:px}],
   render(src,dst,v){const r=v.a*Math.PI/180;run(P.f_motion,dst,{uSrc:src.tex,uDir:[Math.cos(r),-Math.sin(r)],uLen:v.d});}});
 fxDef('highPass',{title:'High pass',note:'Keeps only detail smaller than the radius, around mid-grey. Set the layer to Overlay to sharpen.',defs:[{key:'r',label:'Radius',min:.5,max:100,step:.5,value:8,fmt:px}],
   render(src,dst,v){const b=acquire();gaussian(src,b,v.r);run(P.f_highpass,dst,{uSrc:src.tex,uBlur:b.tex});release(b);}});
@@ -300,7 +300,7 @@ fxDef('offset',{title:'Offset',note:'Slides the image, wrapping around the edges
   controls:(v,upd)=>[makeSlider({id:'fx_x',label:'Horizontal',min:-doc.w,max:doc.w,step:1,value:v.x,fmt:px,onInput:x=>{v.x=x;upd();}}).el,makeSlider({id:'fx_y',label:'Vertical',min:-doc.h,max:doc.h,step:1,value:v.y,fmt:px,onInput:x=>{v.y=x;upd();}}).el],
   render(src,dst,v){run(P.shift,dst,{uSrc:src.tex,uOff:[v.x,v.y],uWrap:true,uOutside:[0,0,0,0]});}});
 fxDef('tile',{title:'Tile',note:'Repeats the image across and down, smaller each time. Works on masks too. Check the result with Tile mode.',init:()=>({flip:false,seed:1,uni:true}),
-  defs:[{key:'nx',label:'Tiles',min:1,max:32,step:1,value:2,fmt:v=>String(Math.round(v))},{key:'ny',label:'Down',min:1,max:32,step:1,value:2,fmt:v=>String(Math.round(v))},
+  defs:[{key:'nx',label:'Tiles',min:1,max:32,numericMax:Infinity,step:1,value:2,fmt:v=>String(Math.round(v))},{key:'ny',label:'Down',min:1,max:32,numericMax:Infinity,step:1,value:2,fmt:v=>String(Math.round(v))},
     {key:'sh',label:'Row offset',min:0,max:1,step:.01,value:0,fmt:pct},{key:'rot',label:'Random rotation',min:0,max:180,step:1,value:0,fmt:v=>Math.round(v)+'°'}],
   /* uniform scale: one count for both directions (the Down slider is then ignored) */
   controls:(v,upd)=>{if(v.uni==null)v.uni=false;const note=el('p',{class:'note',text:v.uni?'Uniform scale: Tiles sets both directions. Untick it to set Across (Tiles) and Down separately.':'Tiles is across, Down is down.'});

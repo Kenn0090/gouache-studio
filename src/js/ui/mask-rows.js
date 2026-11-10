@@ -78,7 +78,10 @@ function msImageDrop(L,r){const drop=el('div',{class:'fxddrop',id:'msImageDrop',
   return drop;}
 /* ---- Properties: the selected row's settings ---- */
 function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
-  const ed=fn=>msEdit(L,r,fn);const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:p[key]==null?min:p[key],fmt:fmt||(v=>String(Math.round(v*100)/100)),onInput:v=>ed(x=>{x.p[key]=v;})}).el;
+  const ed=fn=>msEdit(L,r,fn);const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,
+    numericMax:['scale','tile','gtile','gcon','contrast'].includes(key)||(key==='r'&&r.own==='warp')||
+      (p.g==='builder'&&MS_BUILDER_INPUTS.some(([input])=>input===key))?Infinity:undefined,
+    value:p[key]==null?min:p[key],fmt:fmt||(v=>String(Math.round(v*100)/100)),onInput:v=>ed(x=>{x.p[key]=v;})}).el;
   const sel=(id,label,opts,key)=>{const s=el('select',{id,'aria-label':label},...opts.map(([v,t])=>el('option',{value:v,text:t})));s.value=p[key];s.onchange=()=>{ed(x=>{x.p[key]=s.value;});renderLayers();};return el('div',{class:'frow'},el('label',{text:label}),s);};
   const inv=()=>chk('ms_inv','Invert',!!p.inv,v=>ed(x=>{x.p.inv=v;}));
   const modeSel=el('select',{id:'ms_mode','aria-label':'Blend mode'},...MS_MODES.map(([v,t])=>el('option',{value:v,text:t})));modeSel.value=r.mode||'normal';modeSel.onchange=()=>{ed(x=>{x.mode=modeSel.value;});renderLayers();};
@@ -139,11 +142,27 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
   if(r.kind==='alpha')box.append(inv(),el('p',{class:'note',text:'Uses the transparency of this material’s picture (and its Opacity map, if it has one). Where it is see-through, the layers under show in every map.'}));
   if(r.kind==='ref'){const os=allNodes(doc.root).filter(n=>n!==L&&n.mask);box.append(sel('ms_ref','Layer',os.map(o=>[o.name,o.name]),'name'),inv(),el('p',{class:'note',text:'Follows that layer’s mask, live.'}));}
   if(r.kind==='gen'){
-    if(p.g==='builder'){for(const [k,v] of Object.entries(msGenDefaults('builder')))if(p[k]==null)p[k]=v;
-      box.append(el('div',{class:'sub',text:'Mesh-map mask builder'}),chk('ms_uvWrap','UV wrap',p.uvWrap!==false,v=>ed(x=>{x.p.uvWrap=v;})),...[
-        ['edgeWeight','Curvature edges'],['cavityWeight','Curvature cavities'],['aoWeight','AO cavities'],['directionWeight','Facing direction'],['positionWeight','Position gradient'],['heightWeight','Height'],['thicknessWeight','Thin areas']].map(([k,l])=>S('ms_'+k,l,k,0,1,.01,pct)),
-        sel('ms_gradAxis','Direction',[['up','Up'],['down','Down'],['x','Right'],['-x','Left'],['z','Front'],['-z','Back']],'gradAxis'),S('ms_positionFrom','Position start','positionFrom',0,1,.01,pct),S('ms_positionTo','Position end','positionTo',0,1,.01,pct),S('ms_w','Direction softness','width',0,1,.01,pct),S('ms_amt','Offset','amount',0,1,.01,pct),S('ms_con','Contrast','contrast',.3,6,.05),S('ms_brk','Grunge breakup','breakup',0,1,.01,pct),S('ms_scale','Grunge scale','scale',.5,40,.5),S('ms_seed','Seed','seed',1,99,1),S('ms_dist','Distort mesh maps','distort',0,1,.01,pct),inv(),sel('ms_ganc','Also follow anchor',[['','None'],...msAnchorNames().map(x=>[x,x])],'anchor'),
-        msGrungeBox(r,p,ed,S),el('p',{class:'note',text:'Combines mesh maps with separate strengths. Baked world normal and position take priority; otherwise direction and position follow the model. Bake curvature, AO, height and thickness for those inputs. Pick your own grunge above to break it up with it.'}));return;}
+    if(p.g==='builder'){
+      for(const [k,v] of Object.entries(msGenDefaults('builder')))if(p[k]==null)p[k]=v;
+      const axes=[['up','Up'],['down','Down'],['x','Right'],['-x','Left'],['z','Front'],['-z','Back']];
+      const facing=sel('ms_directionAxis','Faces towards',axes,'directionAxis');
+      facing.querySelector('select').value=p.directionAxis||p.gradAxis;
+      const position=sel('ms_gradAxis','Position runs towards',axes,'gradAxis'),positionAxis=position.querySelector('select');
+      positionAxis.onchange=()=>ed(x=>{x.p.directionAxis??=x.p.gradAxis;x.p.gradAxis=positionAxis.value;});
+      const combine=sel('ms_builderCombine','Combine inputs',MS_BUILDER_MIX,'combine');
+      combine.querySelector('select').value=p.combine||'add';
+      box.append(el('div',{class:'sub',text:'Mask Builder'}),msBuilderPreset(ed),combine,
+        ...MS_BUILDER_INPUTS.map(([k,label])=>S('ms_'+k,label,k,0,1,.01,pct)),msBuilderTone(p,ed),
+        facing,S('ms_w','Direction softness','width',0,1,.01,pct),position,
+        S('ms_positionFrom','Position start','positionFrom',0,1,.01,pct),S('ms_positionTo','Position end','positionTo',0,1,.01,pct),
+        el('div',{class:'sub',text:'Final mask'}),S('ms_amt','Offset','amount',0,1,.01,pct),S('ms_con','Contrast','contrast',.3,6,.05),
+        inv(),sel('ms_ganc','Also follow anchor',[['','None'],...msAnchorNames().map(x=>[x,x])],'anchor'),
+        chk('ms_uvWrap','UV wrap',p.uvWrap!==false,v=>ed(x=>{x.p.uvWrap=v;})),
+        S('ms_brk','Grunge breakup','breakup',0,1,.01,pct),S('ms_scale','Grunge scale','scale',.5,40,.5),S('ms_seed','Seed','seed',1,99,1),
+        S('ms_dist','Distort mesh maps','distort',0,1,.01,pct),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),msGrungeBox(r,p,ed,S),
+        el('p',{class:'note',text:'Add sums the inputs. Lightest keeps the strongest. Intersect keeps their overlap and skips missing maps. Bake the mesh maps to get the most detail.'}));
+      return;
+    }
     const choose=sel('ms_g','Preset',MS_GENS,'g'),input=choose.querySelector('select');input.onchange=()=>{ed(x=>Object.assign(x.p,['light','linear','radial','comic'].includes(input.value)?msGenDefaults(input.value):{g:input.value}));renderLayers();renderMatEd(true);};box.append(choose);
     box.append(chk('ms_uvWrap','UV wrap',p.uvWrap!==false,v=>ed(x=>{x.p.uvWrap=v;})));
     const fresh=['light','linear','radial','comic'].includes(p.g);
@@ -163,6 +182,46 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
 $('#lFxAdd').addEventListener('click',fxAddMenu);
 
 /* a row's projection: its mode, and the offset/rotation/scale fields (the gizmo or the 2D handles move them too) */
+const MS_BUILDER_PRESETS=[
+  ['Edge wear',{edgeWeight:1}],
+  ['Cavity dirt',{cavityWeight:.45,aoWeight:.8}],
+  ['Top dust',{directionWeight:.65,positionWeight:.35,positionFrom:.35}],
+  ['Low buildup',{positionWeight:.65,aoWeight:.35,gradAxis:'down',positionFrom:.4}]
+];
+function msBuilderPreset(edit){
+  const picker=el('select',{id:'ms_builderPreset','aria-label':'Mask Builder preset'},
+    el('option',{value:'',text:'Choose a starting point…'}),
+    ...MS_BUILDER_PRESETS.map(([label],i)=>el('option',{value:String(i),text:label})));
+  picker.onchange=()=>{
+    if(picker.value==='')return;
+    const settings=MS_BUILDER_PRESETS[Number(picker.value)][1];
+    const weights=Object.fromEntries(MS_BUILDER_INPUTS.map(([key])=>[key,0]));
+    msCommit();
+    edit(r=>Object.assign(r.p,weights,{combine:'add',gradAxis:'up',directionAxis:'up',positionFrom:0,positionTo:1},settings));
+    msCommit();
+    renderMatEd(true);
+  };
+  return el('label',{class:'frow'},el('span',{text:'Preset'}),picker);
+}
+function msBuilderTone(p,edit){
+  const picker=el('select',{id:'ms_builderInput','aria-label':'Tune input'},
+    ...MS_BUILDER_INPUTS.map(([key,label])=>el('option',{value:key,text:label})));
+  const controls=el('div',{class:'dlg-grid'});
+  const draw=()=>{
+    const key=picker.value,tone=p.inputTone?.[key]||{};
+    const set=(field,value)=>edit(r=>{
+      const inputs=r.p.inputTone||(r.p.inputTone={});
+      (inputs[key]||(inputs[key]={}))[field]=value;
+    });
+    controls.replaceChildren(
+      makeSlider({id:'ms_builderBalance',label:'Input balance',min:-1,max:1,step:.01,value:tone.balance??0,def:0,fmt:pct,onInput:v=>set('balance',v)}).el,
+      makeSlider({id:'ms_builderContrast',label:'Input contrast',min:-1,max:1,numericMax:Infinity,step:.01,value:tone.contrast??0,def:0,fmt:pct,onInput:v=>set('contrast',v)}).el,
+      chk('ms_builderInvert','Invert input',!!tone.invert,v=>set('invert',v)));
+  };
+  picker.onchange=draw;
+  draw();
+  return el('div',{class:'dlg-grid'},el('label',{class:'frow'},el('span',{text:'Tune input'}),picker),controls);
+}
 function pxfBox(L,r,modes){const m=pxfRowMode(r),g=seg(modes,m,v=>{msEdit(L,r,x=>{x.p.proj=v;delete x.p.tri;});renderMatEd(true);requestRender(true);},'Projection');g.classList.add('tight');g.id='ms_proj';
   return el('div',{class:'dlg-grid'},el('div',{class:'sub',text:'Projection'}),g,
     m==='planar'?el('div',{class:'chips'},chk('ms_rep','Repeat',r.p.rep!==false,v=>msEdit(L,r,x=>{x.p.rep=v;})),chk('ms_front','Front faces only',!!r.p.front,v=>msEdit(L,r,x=>{x.p.front=v;}))):null,
