@@ -3,7 +3,7 @@
 The **Bake** tab (top right, or **Maps › Bake from high poly…**) copies the detail of a high-poly model onto the low-poly model's UVs, at the document's size. For a bigger bake, change *Image › Image size* first.
 
 ![The Bake tab.](images/bake-tab.png)
-*The Bake tab: settings on the right, the bake on the model in the middle, the baked map on the left.*
+*The Bake tab: the Quick loader and bake groups at the top of the panel on the right, the bake on the model in the middle, the baked map on the left.*
 
 ## UVs: checking and auto unwrap
 Every model you load as a low-poly (in the New 3D Paint Project window, the Bake tab, or dropped on the 3D view) has its UVs checked.
@@ -46,19 +46,25 @@ When the UVs change, baked maps from before are cleared (they no longer fit); ba
   - The skew or offset map.
   - **C** steps through them on the model (**Shift+C** backwards).
 - **Show high-poly** (when one is loaded): **See-through** draws it over the low-poly to check they line up, **Only** shows it on its own in grey clay.
-- The Bake tab has **its own canvas**, sized by **Size** in the General tab (the painting's size unless you choose another). Baking never touches your painting until you send the results, and the tab shows only its own panels.
-- Bakes stay in the tab, so you can check them and bake again as often as you like. Tick the maps you want under **Send to the painting, or export**, then **Send to Paint** adds them as layers, or **Export…** saves them as PNG files (you choose a folder on the desktop; the browser gives a zip).
+- The Bake tab has **its own canvas**, sized by **Size** under **Output** (the painting's size unless you choose another). Baking never touches your painting until you send the results, and the tab shows only its own panels.
+- Bakes stay in the tab, so you can check them and bake again as often as you like. Tick the maps you want under **Maps to send or export** (in **Output**), then **Send to Paint** adds them as layers, or **Export…** saves them as PNG files (you choose a folder on the desktop; the browser gives a zip).
   - Tick **Send results to layers automatically** to have every bake go straight into the document.
   - **Replace the last baked layers** swaps the previous bake's layers for the new ones, instead of piling them up.
 
 ## The top bar
 The **Bake** button is big and bold at the top of the panel and stays in view while you scroll. **Send to Paint**, **Send to 3D Paint** and **Export…** sit right under it (they switch on once there is a bake and something is ticked). The ticks for which maps to send are further down under *Maps to send or export*.
 
-The Bake panel is one wide panel in two columns, so everything is in view without scrolling on a normal screen: models, maps to bake, sending and the Show list on the left, and the settings of each map on the right. **History** is only a tab beside it. If you make the panel narrower, the columns stack.
+The Bake panel has **no tabs**. From the top: the **Quick loader** and the **bake groups** (see below), then foldable sections you open and close by their headings: **Geometry**, **Output**, **Maps**, **Fix the bake** and **Bake log**. A section you fold stays folded the next time. **History** is only a tab beside the panel.
+
+- **Geometry:** the cage, the up axis and 90° turns, **Show high** (the high-poly over the low-poly) and **Hide low** (only the high-poly), the high-poly view, **Front**, **Back** and **Average ray directions**.
+- **Output:** size, anti-aliasing, padding, how bakes go to the document, and the ticks for what to send or export.
+
+![The Geometry section.](images/bake-geometry.png)
+*The Geometry section.*
 
 ## Bevel preview and baking
 
-Under **Normal › Bevel shader**, enable the bevel and **Preview before baking**. The material view shows rounded edge shading on the high-poly when supplied, otherwise the low-poly. The preview refines in small pieces; its status says when it is ready. Geometry and the silhouette stay unchanged.
+Under **Normal**'s ⚙ › **Bevel shader**, enable the bevel and **Preview before baking**. The material view shows rounded edge shading on the high-poly when supplied, otherwise the low-poly. The preview refines in small pieces; its status says when it is ready. Geometry and the silhouette stay unchanged.
 
 - **Width units:** use a percentage of the model, or millimeters. For millimeters, set **Model file units** to the units used to export the model; importers normalize the viewport size, so the original file scale matters. Changing the width-unit choice preserves the current radius.
 - **Minimum edge angle:** apply the effect where the surface turns more sharply than this angle.
@@ -71,18 +77,19 @@ Under **Normal › Bevel shader**, enable the bevel and **Preview before baking*
 
 Use widths that fit the part: a shading bevel cannot change a large silhouette or replace modeled forms. Connected edges blend by their distance and imported smooth normals; separate-object intersections use scene probes. The result depends on the source geometry and its imported normals. Width is shared by the bake, with per-material shares and vertex colors for local variation. **Use preview material**, **Preview metalness** and **Preview roughness** let you inspect highlights without changing your material or baked maps.
 
-## Settings: one tab per map
-Under the model rows, the tabs hold the settings. A dot marks the maps that will be baked; tick **Bake …** at the top of a tab to turn a map on or off.
-- **General:** Front, Back, Average ray directions, Anti-aliasing, Padding, and how bakes are sent to the document (below).
-- **Normal:** OpenGL style (green up). For DirectX engines, flip green when exporting (*File › Export textures*).
-- **AO:** Rays, Reach and **Spread** (narrower keeps the shading to deep cavities).
+## Maps: tick, ⚙ and 🔍
+**Maps** lists every bake. Tick the ones to bake (Alt + click a tick: only that one; again: all the others). Each row has two buttons:
+- **⚙** unfolds that map's own settings right under it. Open as many as you like.
+- **🔍** shows that baked map on the model; press it again to go back to the lit material. It switches on once the map is baked.
+
+The settings under each ⚙:
+- **Normal:** Soften normals and the bevel shader. OpenGL style (green up); for DirectX engines, flip green when exporting (*File › Export textures*).
+- **Ambient occlusion:** Rays, Reach and **Spread** (narrower keeps the shading to deep cavities).
 - **Curvature:** see below.
-- **Height**, **Thickness** (its own Rays and Reach), **World normal**, **Position** and **ID** (where its colours come from). Every bake has its own tab; a dot marks the ones that will be baked.
+- **Height**, **Thickness** (its own Rays and Reach), **World-space normal**, **Position**, **ID colours** (where its colours come from) and **Lighting** (the light rig).
 
-![The Bake tab's tabs.](images/bake-tabs.png)
-
-![The Bake panel's tabs.](images/bake-tabs.png)
-*The map tabs, here AO.*
+![The Maps section with the AO settings open.](images/bake-maps.png)
+*Maps, with the Ambient occlusion settings open.*
 
 ## Curvature
 Light on edges and corners, dark in creases, mid-grey on flat areas. **From** picks where it comes from:
@@ -98,21 +105,44 @@ For the last two, **Flip green** swaps the edges and creases that run across the
 ## Sending bakes to the document
 **Send to 3D Paint** sends the low-poly and the ticked maps to 3D Paint: each material's maps go to its own texture set (see [3D Paint](3D-Paint.md#mesh-maps-from-the-bake-tab)). With several materials, tick **Bake each material separately** before baking; a **Material** menu then shows each one's result.
 
-**Send as** (General tab):
+**Send as** (under **Output**):
 - **Layers** (the default): every bake is also a layer in the **base colour**, so bakes blend with each other there. For example, set the curvature layer to *Overlay* over the AO. AO, curvature and height also go into their own maps. The edges-only and creases-only layers sit, hidden, in the curvature group.
 - **Maps only:** each bake only in its own map, as before.
 
 Each map arrives as a **plain layer** (no folders), so you can set blend modes between them. Layers that would cover your colours (thickness, world-space normal, position, ID) start hidden. Bakes of a different size are scaled to the painting.
 
-## Models
+## Quick loader and bake groups
+Like Marmoset's baker, the top of the panel holds the models and how they pair up.
 
-- **Loading models:** press **Load…** next to Low-poly, High-poly or Cage, or **drag model files** onto those rows. You can also drop them anywhere in the Bake tab: files named `…_low`, `…_high` and `…_cage` go to the right place by themselves. A loading bar shows big files coming in. FBX must be binary FBX (not text).
+- **Quick loader:** a **Low** and a **High** slot. Drop a model file on a slot, or press **Load…**. **↻** loads the file again after you changed it in another app (desktop app only), **×** empties the slot (Low then uses the model in the 3D view). Files dropped anywhere in the Bake tab named `…_low`, `…_high` and `…_cage` go to the right place. A loading bar shows big files coming in. FBX must be binary FBX (not text).
 - **Low-poly:** the model in the 3D view, or a file (OBJ, glTF, GLB, FBX). It must have UVs.
-- **High-poly:** load a file. Or choose **None** to bake the low-poly on its own (see below).
-- **Cage:** either *Push out by the front distance*, or load a **cage model**, which is your low-poly pushed outwards with the same vertices and triangles.
+- **High-poly:** a file, or none to bake the low-poly on its own (see below). **Add…** (under High) bakes several high-poly files together.
+- **Cage** (in **Geometry**): either *Push out by the front distance*, or load a **cage model**, which is your low-poly pushed outwards with the same vertices and triangles.
+
+**Bake groups** keep close parts from leaking into each other: each group's low-poly is only baked from the high-poly parts in the same group.
+- When the models load, parts whose names match on both sides (`body_low` with `body_high`; also `_lo/_hi` and `_lp/_hp`) get a group of their own. Everything else goes in **Default**.
+- Each group holds a **Low** and a **High** folder with its parts. **Drag a part** onto another group's folder to move it. **+ Group** adds an empty group, double-click a name to rename it, **×** deletes a group (its parts go to another), **Auto** groups everything by name again.
+- Each group has an **eye** (hide it in the view) and a **Bake** tick (leave it out of the bake). The Low and High folders have their own eyes too, so you can hide just the high-poly of one group.
+- **Group colours** shows each part of the low-poly in its group's colour, to check the pairing at a glance. The little square before a group's name sets its colour.
+- **Click a group** to see its own settings beside the list: **Own cage** (its own Front and Back distances instead of the ones in Geometry) and **Skew** (lower makes that whole group's rays shoot straighter out of the surface; painted skew still applies on top).
+- **Fit and place** (beside the list too): **Explode** spreads the groups apart in the view to check them (the bake is the same), **Match size** scales a high-poly exported in other units to the low-poly, **Move low** / **Move high** show arrows to move either model.
+
+![The Quick loader and bake groups.](images/bake-groups.png)
+*The Quick loader and the bake groups; the clicked group (body) shows its settings on the right.*
+
+![Group colours on the model.](images/bake-group-colours.png)
+*Group colours: each part of the low-poly in its group's colour.*
+
+## Bake log
+The last section, like Painter's baking log:
+- **Matching:** each group with how many low-poly and high-poly parts it has, and a warning when a group's low-poly has no high-poly to bake from, or a high-poly part has no low-poly to land on.
+- **Bakes:** a line for every bake with the time, the maps, the size and how long it took (or that it was cancelled).
+
+![The Bake log.](images/bake-log.png)
+*The Bake log after a bake.*
 
 ## ID colours
-In the **ID** tab, *ID colours from* chooses where the ID map's colours come from:
+Under **ID colours**' ⚙, *ID colours from* chooses where the ID map's colours come from:
 - **Separate meshes:** one stable, distinct colour per disconnected piece, including several pieces joined into one imported object. Shared UV or normal seams do not split a piece; objects with identical names stay distinct.
 - **Materials:** one colour per material.
 - **UV islands:** one colour per connected UV island.
@@ -120,7 +150,7 @@ In the **ID** tab, *ID colours from* chooses where the ID map's colours come fro
 - **Polypaint:** ZBrush polypaint. Export the OBJ from ZBrush with Polypaint on.
 - **Auto:** vertex colours, then materials, then separate meshes.
 
-The tab lists what the loaded model has.
+It lists what the loaded model has.
 
 ## Rays
 **Show the cage on the model** draws where the rays start as a see-through blue shell around the model. It follows Front, the offset map and a loaded cage model, so you can check the cage covers the high-poly.
@@ -129,7 +159,7 @@ Each pixel of the low-poly's UVs sends a ray from just outside the surface back 
 - **Front:** how far outside the surface the ray starts, as a % of the model's size.
 - **Back:** how far inside it still looks.
 - **Average ray directions:** stops gaps and seams at hard edges.
-- **Match parts by name:** `crate_low` bakes only against `crate_high`. This stops close parts from leaking into each other. The endings `_low/_high`, `_lo/_hi` and `_lp/_hp` are recognised, and the panel lists the parts it matched.
+- **Bake groups** (above): `crate_low` bakes only against `crate_high`, which stops close parts from leaking into each other. The Bake log lists what matched.
 
 If parts of the high-poly are missed, raise the distances. If detail from other parts leaks in, lower them or match parts by name. To fix just one area, paint an offset map (below).
 
@@ -143,7 +173,7 @@ If parts of the high-poly are missed, raise the distances. If detail from other 
 | Thickness (white = thick) | Base colour, hidden | Base colour, hidden |
 | World-space normal | Base colour, hidden | Base colour, hidden |
 | Position (gradient over the model's box) | Base colour, hidden | Base colour, hidden |
-| ID colours (ID tab: **separate meshes**, **materials**, **vertex colours** or **ZBrush polypaint**; Auto uses vertex colours, else materials) | Base colour, hidden | Base colour, hidden |
+| ID colours (its ⚙: **separate meshes**, **materials**, **vertex colours** or **ZBrush polypaint**; Auto uses vertex colours, else materials) | Base colour, hidden | Base colour, hidden |
 
 Each baked map arrives in **its own group** (“Baked normal”, “Baked AO”…), so they're easy to find in the layer stack. Maps the document doesn't have yet are added for you. Groups for maps that live in the base colour (thickness, world-space normal, position, ID) start hidden so they don't cover your colours: show one, or use it as a mask with *Select › Load selection*.
 
@@ -151,7 +181,7 @@ Each baked map arrives in **its own group** (“Baked normal”, “Baked AO”�
 Choose High-poly **None** to bake AO, **curvature from the model's own shape**, thickness, ID, world-space normal and position. Normal and height are skipped because they'd come out flat.
 
 ## Quality
-- **Rays and reach** (AO and Thickness tabs): how many rays each pixel sends. More rays are smoother but slower. Reach is how far those rays look.
+- **Rays and reach** (the AO and Thickness ⚙ settings): how many rays each pixel sends. More rays are smoother but slower. Reach is how far those rays look.
 - **Anti-aliasing:** 1×, 4× or 16× samples per pixel. 16× is the default. For very large maps it steps down by itself so the oversized image still fits the graphics card. A pixel's AO and thickness rays are shared out over its samples, so anti-aliasing smooths the edges without multiplying the time AO and thickness take.
 - **Padding:** extends colour past the UV edges so seams don't show.
 
@@ -195,7 +225,7 @@ Use **Material** in the viewport toolbar (or **Escape**) to turn off UV and bake
 
 ## Lighting (light rig)
 
-The **Lighting** bake writes the light of a rig onto the model, with the soft shadows the model casts on itself, like a Marmoset light setup baked into a texture. Tick **Lighting** in the list of maps and open the **Lighting** settings tab.
+The **Lighting** bake writes the light of a rig onto the model, with the soft shadows the model casts on itself, like a Marmoset light setup baked into a texture. Tick **Lighting** in **Maps** and open its **⚙**: while its settings are open, the model shows the lighting live.
 
 - **Auto rig (key, fill, rim, sky):** three-point lighting around the model (it faces the front, +Z): a warm key light from the front left above, a cool weaker fill from the right, a bright rim from behind, and a little sky.
 - **+ Sun, + Point, + Spot, + Sky** add a light. Sky uses the environment picture (HDRI) of the 3D view, turned as there; with none it is a plain white sky.
@@ -216,6 +246,6 @@ Where it goes:
 
 ### Rig presets, exact positions and lights in 3D Paint
 
-- **Rigs…** (top of the Lighting tab) loads a built-in rig (Three-point, Soft studio, Top light, Dramatic rim, Sunset) or one of yours. **Save rig…** keeps the current one; **Export** and **Import** share it as a file. Positions are stored relative to the model's size, so a rig fits any model.
+- **Rigs…** (top of the Lighting settings) loads a built-in rig (Three-point, Soft studio, Top light, Dramatic rim, Sunset) or one of yours. **Save rig…** keeps the current one; **Export** and **Import** share it as a file. Positions are stored relative to the model's size, so a rig fits any model.
 - A point light or spot has **Position X / Y / Z** fields to type exact values (the model's middle is shown next to them).
 - In **3D Paint**, the lighting settings (3D view Settings and the Shader panel) have **Light the view with my light rig** and **Lights…**, the same rig in a window. Up to four lights light the view live while you paint (no shadows in the view; the Lighting bake gives those).
