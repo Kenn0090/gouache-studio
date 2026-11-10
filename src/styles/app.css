@@ -1600,10 +1600,25 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .btfolder .btside{margin-left:18px}.btfolder .btset{margin-left:18px}
 /* (0.96.9) the bake group list across the whole Bake panel; the clicked group's settings under it; the UV card on one line */
 .btwide{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:4px 14px;margin-bottom:8px;align-items:start}
-.btwide>.btload{grid-column:1/-1;grid-template-columns:1fr 1fr}.btwide>.btload>.sub{grid-column:1/-1}.btwide>.btload>.highmeshes{grid-column:1/-1}
-.btwide>.bthead,.btwide>.bttree{grid-column:1}.btwide>.btgset{grid-column:2;grid-row:2/span 2;position:sticky;top:0}
+/* (Kenn: "keep low and high on one side") the loader slots stack in the left column, above the groups */
+.btwide>.btload,.btwide>.bthead,.btwide>.bttree{grid-column:1}.btwide>.btgset{grid-column:2;grid-row:1/span 3;position:sticky;top:0}
 .bttree{max-height:46vh;overflow:auto}
 .btgroup.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}.btgh{cursor:pointer}
 .btgset{border:1px solid var(--line-2);border-radius:var(--r,6px);padding:6px 8px}.btgset .btset{margin:4px 0 0}
 .uvhead .uvfix{display:inline-flex;gap:4px;margin-left:auto}
 @media (max-width:900px){.btwide{grid-template-columns:1fr}.btwide>.btgset{grid-column:1;grid-row:auto}.btwide>.btload{grid-template-columns:1fr}}
+.bksec-h{font-weight:700;font-size:13px;margin-top:10px;padding-top:6px;border-top:1px solid var(--line-2)}.bktab:first-child .bksec-h{border-top:0}
+/* (0.97) Bake panel without tabs: foldable sections; map rows with ⚙ and 🔍; the bake log */
+.bksecs{display:grid;gap:6px;margin-top:6px}
+.bksec{border:1px solid var(--line-2);border-radius:var(--r,6px)}
+.bksech{display:flex;gap:8px;align-items:center;width:100%;background:none;border:0;color:inherit;font-weight:700;font-size:13px;padding:7px 10px;cursor:pointer;text-align:left}
+.bksech:hover{background:var(--hover,rgba(127,127,127,.1))}.bksecarr{opacity:.7;width:12px}
+.bksecb{display:grid;gap:6px;padding:4px 10px 10px}
+.bkmaps{display:grid;gap:3px}
+.bkmaph{display:flex;gap:6px;align-items:center}.bkmaph>label{flex:1;min-width:0}
+.bkgear.on,.bklook.on{border-color:var(--accent);color:var(--accent)}
+.bkmapset{margin:2px 0 6px 26px;padding:6px 8px;border-left:2px solid var(--line-2)}
+.bkmapset .bktab{gap:6px}
+.bklog{display:grid;gap:4px}.bklogl{display:grid;gap:2px;max-height:180px;overflow:auto}
+.bklogrow{display:flex;gap:8px;align-items:center;font-size:12px}.bklogrow.warn{color:var(--warn,#e8b04d)}.bklogrow.dim{opacity:.55}
+.bklogt{opacity:.6;font-variant-numeric:tabular-nums}.bklogsw{width:10px;height:10px;border-radius:2px;flex:none}

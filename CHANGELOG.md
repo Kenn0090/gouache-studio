@@ -1,3 +1,9 @@
+## 0.97.0
+
+- **The Bake panel without tabs, laid out like Marmoset with a bit of Painter:** the Quick loader and the bake group tree at the top (Low and High stacked on the left, the clicked group's settings beside them), then foldable sections: **Geometry** (cage, up axis, **Show high** / **Hide low**, Front, Back), **Output** (size, anti-aliasing, padding, sending), **Maps**, **Fix the bake** and **Bake log**. Folded sections stay folded next time.
+- **Maps** is a ticked list: **⚙** unfolds that map's settings right under it (open as many as you like), **🔍** shows that map on the model (press again for the lit material).
+- **Bake log** (like Painter's): what each group matched by name, groups whose low-poly or high-poly has no partner, and a line per bake with its maps, size and how long it took.
+
 ## 0.96.9
 
 - **Smart material pictures like Substance Painter:** saving (or updating) a smart material now shows it on the Material preview model, over a grey base, from the same angle as the built-in ones, instead of a screenshot of your 3D view. Your project is not touched. The ↻ button under one of your smart materials makes its picture again (for ones saved before).

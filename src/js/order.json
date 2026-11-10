@@ -163,6 +163,7 @@
     "bake/bake-highview",
     "bake/bake-groups",
     "bake/bake-tree",
+    "bake/bake-log",
     "bake/bake-light",
     "view3d/p3-bake",
     "files/model-watch",

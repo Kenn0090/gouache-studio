@@ -199,7 +199,7 @@ const lp={sig:'',done:'',t:0,prog:null,run:null,raw:null,view:null,pass:-1,ids:n
 const LP_IDLE=500;
 const lpInstant=()=>lpvActive()&&!(lp.view&&lp.done===lp.sig&&lp.sig);
 const lpOn=()=>!!(bakeCfg&&lightRig().live!==false);
-function lpvActive(){if(ui.mode!=='bake'||!v3.on||bakeCfg.tab!=='light'||!lpOn()||bk.uvCheck)return false;if(bk.show!=='material'&&bk.show!=='light')return false;
+function lpvActive(){if(ui.mode!=='bake'||!v3.on||!(bakeCfg.mapOpen&&bakeCfg.mapOpen.light)||!lpOn()||bk.uvCheck)return false;if(bk.show!=='material'&&bk.show!=='light')return false;
   const L=bkLow();return !!(L&&!L.noUV&&canFloat&&(lightRig().lights||[]).some(x=>x.on!==false));}
 const lpId=o=>{if(!o)return 0;let i=lp.ids.get(o);if(!i){i=++lp.seq;lp.ids.set(o,i);}return i;};
 function lpSig(){const R=lightRig(),s=v3s(),lo=bakeCfg.low||(s.model==='imported'?v3.imported:null);/* a built-in shape is made anew on every call: name it instead */return JSON.stringify([R.lights,R.expo,s.env,s.envRot,lo?lpId(lo):s.model,lpId(bakeCfg.high),lpId(bakeCfg.cage),bakeCfg.front,bakeCfg.back,bakeCfg.skip]);}
@@ -232,7 +232,7 @@ async function lightPreviewStop(){if(lp.prog)lp.prog.cancelled=true;clearTimeout
 /* (0.95.8, Kenn) Delete removes the selected light, while the lights are being worked on (Bake tab's Lighting page, the Lights
    window, or right after a light was clicked in the view) */
 function lightKeyDelete(e){if(e.key!=='Delete'&&e.key!=='Backspace')return false;if(isTypingTarget(e.target)||e.ctrlKey||e.metaKey||e.altKey)return false;
-  const R=bakeCfg&&bakeCfg.rig;if(!R||!R.sel||!lgzActive())return false;const page=ui.mode==='bake'&&bakeCfg.tab==='light';if(!(page||lightWin.open||lgz.picked))return false;
+  const R=bakeCfg&&bakeCfg.rig;if(!R||!R.sel||!lgzActive())return false;const page=ui.mode==='bake'&&!!(bakeCfg.mapOpen&&bakeCfg.mapOpen.light);/* (0.97, no tabs) the Lighting settings are always on show: its preview and lights follow the Lighting tick */if(!(page||lightWin.open||lgz.picked))return false;
   if(!modal.hidden&&!lightWin.open)return false;const L=R.lights.find(x=>x.id===R.sel);if(!L)return false;
   e.preventDefault();e.stopImmediatePropagation();if(e.repeat)return true;R.lights=R.lights.filter(x=>x!==L);R.sel=null;lgz.picked=false;if(lightHist)lightHist.note();
   if(lightPageRedraw)lightPageRedraw();else if(typeof buildBakePanel==='function'&&ui.mode==='bake')buildBakePanel();v3.dirty=true;requestRender&&requestRender(true);toast('Deleted the light “'+L.name+'”.');return true;}
