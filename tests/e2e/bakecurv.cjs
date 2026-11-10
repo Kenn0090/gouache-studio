@@ -51,13 +51,12 @@ function mesa(N){const v=[],f=[];for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){cons
  /* maps only: nothing in the base colour */
  await bake({curvSrc:'mesh',curvFlip:false,sendAs:'maps'},['ao']);
  const mo=await p.evaluate(()=>{const ao=__gs.layerByName('Baked AO');const t=__gs.mapT(ao,'base');return !t||t.empty||ao.blankBase;});ok(mo,'maps only: AO not in the base colour');
- /* the panel: tabs */
+ /* the panel: the Curvature row and its ⚙ (0.97: no tabs) */
  await p.evaluate(()=>{__gs.bakeCfg.tab='general';__gs.bakeCfg.sendAs='layers';});await p.click('#modeTabs [data-mode=bake]');await p.waitForTimeout(500);
- await p.click('#bakeBody .segb:text-is("Curvature"), #bakeBody .segb:text-is("Curvature •")');await p.waitForTimeout(200);
- ok(await p.isVisible('#bkTab_curv')&&await p.isVisible('#bkCurvR'),'Curvature tab shows its settings');
+ await p.click('#bkGear_curv');await p.waitForTimeout(200);ok(await p.isVisible('#bkTab_curv')&&await p.isVisible('#bkCurvR'),'Curvature tab shows its settings');
  ok(!(await p.isVisible('#bkCurvFlip')),'Flip green hidden for the shape');
  await p.click('#bkTab_curv .segb:text-is("Baked normal")');ok(await p.isVisible('#bkCurvFlip')&&await p.evaluate(()=>__gs.bakeCfg.curvSrc)==='normal','choosing Baked normal shows Flip green');
- await p.click('#bakeBody .segb:has-text("AO")');await p.waitForTimeout(200);ok(await p.isVisible('#bkAoS'),'AO tab has Spread');
+ await p.click('#bkGear_ao');await p.waitForTimeout(200);ok(await p.isVisible('#bkAoS'),'AO tab has Spread');
  await p.locator('#bakeBody').screenshot({path:OUT+'bake-tabs.png'});
  ok(errs.length===0,'no errors '+errs.slice(0,3).join('\n'));
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();})();

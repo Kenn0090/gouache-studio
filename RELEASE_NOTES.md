@@ -1,3 +1,7 @@
+## 0.97.0
+
+- **New Bake panel, no tabs:** group tree on top, foldable Geometry / Output / Maps / Fix the bake / Bake log sections, ⚙ and 🔍 on every map, Show high / Hide low.
+
 ## 0.96.9
 
 - **Smart materials get a proper preview** on the Material preview model when saved (↻ redoes older ones).

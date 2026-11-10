@@ -383,14 +383,12 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
       bits.push(both.length?'Matching '+both.length+' part'+(both.length>1?'s':'')+' by name: '+both.slice(0,6).join(', ')+(both.length>6?'…':'')+'.':'No part names match between the models (use names like “crate_low” and “crate_high”).');}
     inf.textContent=bits.join(' ');};
   const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:C[key],fmt,onInput:v=>{C[key]=v;}}).el;
-  const on=k=>chk('bk_'+k,'Bake '+BAKE_NAMES[k].toLowerCase(),!!C.kinds[k],v=>{C.kinds[k]=v;tabs.replaceWith(tabs=tabBar());const m=document.getElementById('bkm_'+k);if(m)m.checked=v;});
+  const on=k=>'';/* (0.97) the tick is on the map's row in Maps (an empty string: append(null) would write "null") */
   const note=t=>el('p',{class:'note',text:t});
   /* one tab of settings per map, plus the ones they share */
   const TABS=[['general','General'],['normal','Normal'],['ao','AO'],['curv','Curvature'],['height','Height'],['thick','Thickness'],['wnormal','World normal'],['position','Position'],['id','ID'],['light','Lighting']];
-  if(!TABS.some(t=>t[0]===C.tab))C.tab=C.tab==='other'?'id':'general';
   const baking=t=>!!C.kinds[t];
-  const tabBar=()=>{const g=seg(TABS.map(([v,t])=>[v,t+(v!=='general'&&baking(v)?' •':''),v==='general'?'Settings every map shares':baking(v)?t+': baked':t+': not baked']),C.tab,v=>{C.tab=v;page.replaceWith(page=tabPage());},'Map settings');g.classList.add('themeseg','bktabs');return g;};
-  const tabPage=()=>{const T=C.tab,pg=el('div',{class:'dlg-grid bktab',id:'bkTab_'+T});
+  const tabPage=T=>{const pg=el('div',{class:'dlg-grid bktab',id:'bkTab_'+T});
     if(T==='general')pg.append(el('div',{class:'sub',text:'Size'}),bakeSizeSeg(),
       makeSlider({id:'bkFront',label:'Front',min:0,max:20,step:.1,value:C.front,fmt:v=>v.toFixed(1)+'%',onInput:v=>{C.front=v;bakeCageDirty();}}).el,makeSlider({id:'bkBack',label:'Back',min:0,max:20,step:.1,value:C.back,fmt:v=>v.toFixed(1)+'%',onInput:v=>{C.back=v;bakeCageFlash();}}).el,
       chk('bkAvg','Average ray directions',C.average,v=>{C.average=v;bakeCageDirty();}),
@@ -416,48 +414,74 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
         note('In 3D Paint, masks can pick these colours: Alt+click a mask, then ID colour.'));}
     if(T==='light')pg.append(lightTabPage(on('light'),note));
     return pg;};
-  let tabs=tabBar(),page=tabPage();
-  /* (0.28, Kenn) every map to bake in one list; Alt + click keeps only that one, again flips (ui/ticks.js) */
+  /* (0.97, Kenn, with Painter and Marmoset screenshots: no tabs, a "mix"): Marmoset's group tree on top, then foldable sections.
+     Maps are ticked rows; ⚙ unfolds that map's settings right under it (several may be open), 🔍 shows that map on the model. */
+  const mopen=C.mapOpen||(C.mapOpen={});if(C.tab&&C.tab!=='general'){mopen[C.tab]=true;C.tab=null;}/* an old saved tab opens its map once */
+  const secOpen=bkSecState();
+  const sec=(id,title,kids,tip)=>{const open=secOpen[id]!==false,body=el('div',{class:'bksecb',hidden:!open},...kids.filter(x=>x!=null&&x!==''&&x!==false));
+    const arrow=el('span',{class:'bksecarr',text:open?'▾':'▸'});
+    const h=el('button',{class:'bksech',type:'button',id:'bkSec_'+id,'aria-expanded':String(open),title:tip||'',onclick:()=>{const o=body.hidden;body.hidden=!o;arrow.textContent=o?'▾':'▸';h.setAttribute('aria-expanded',String(o));secOpen[id]=o;bkSecSave(secOpen);}},arrow,el('span',{text:title}));
+    return el('section',{class:'bksec',id:'bkS_'+id},h,body);};
   const BK_LIST=['normal','ao','curv','height','thick','wnormal','position','id','light'];
-  const list=()=>el('div',{class:'chips bklist',id:'bkList',title:'Alt + click: only this one. Alt + click again: all the others.'},...BK_LIST.map(k=>chk('bkm_'+k,BAKE_NAMES[k],!!C.kinds[k],v=>{C.kinds[k]=v;tabs.replaceWith(tabs=tabBar());page.replaceWith(page=tabPage());})));
+  const mapRow=k=>{const pane=el('div',{class:'bkmapset',id:'bkMapSet_'+k,hidden:!mopen[k]}),fill=()=>{if(!pane.firstChild)pane.append(tabPage(k));};if(mopen[k])fill();
+    const gear=el('button',{class:'btn sm bkgear'+(mopen[k]?' on':''),type:'button',id:'bkGear_'+k,text:'⚙',title:BAKE_NAMES[k]+' settings','aria-label':BAKE_NAMES[k]+' settings','aria-expanded':String(!!mopen[k]),
+      onclick:()=>{mopen[k]=!mopen[k];fill();pane.hidden=!mopen[k];gear.classList.toggle('on',!!mopen[k]);gear.setAttribute('aria-expanded',String(!!mopen[k]));if(k==='light'){bk.dirty=true;v3.dirty=true;requestRender(true);}}});
+    const has=!!(bk.res[k]||(k==='curv'&&bk.res.curv));
+    const look=el('button',{class:'btn sm bklook'+(bk.show===k?' on':''),type:'button',id:'bkLook_'+k,text:'🔍',disabled:!has,title:has?(bk.show===k?'Back to the lit material':'Show the baked '+BAKE_NAMES[k].toLowerCase()+' on the model'):'Bake it first to look at it','aria-label':'Show '+BAKE_NAMES[k]+' on the model','aria-pressed':String(bk.show===k),onclick:()=>bakeLookAt(k)});
+    return el('div',{class:'bkmap','data-k':k},el('div',{class:'bkmaph'},chk('bkm_'+k,BAKE_NAMES[k],!!C.kinds[k],v=>{C.kinds[k]=v;}),gear,look),pane);};
   const go=bakeGoButton();
   go.onclick=()=>{if(bk.busy){if(bk.prog)bk.prog.cancelled=true;return;}const L=bkLow();const ks=Object.keys(C.kinds).filter(k=>C.kinds[k]);if(!ks.length){toast('Pick at least one map.');return;}if(C.perMat!==false&&bkMats(L))runBakeSets(L,ks);else{bk.byMat=null;runBake(L,ks);}};
   const prog=el('div',{id:'bkProg',hidden:true},el('p',{class:'note'}),el('div',{class:'bakebar'},el('div')));
-  /* (0.52, Kenn) two columns so it all fits without scrolling: models, maps and sending on the left, the settings of each map on the right */
-  const colA=el('div',{class:'bkcol',id:'bkColA'}),colB=el('div',{class:'bkcol',id:'bkColB'});const uvc=uvCard(bkLow());if(uvc)box.append(uvc);const cols=el('div',{class:'bkcols'},colA,colB);
-  box.append(el('div',{class:'btwide',id:'btWide'},...btPanel()));/* (0.96.9) Quick loader + bake group tree across the whole panel, like Marmoset's outliner (bake-tree.js) */
-  box.append(cols);
-  colA.append(el('div',{class:'sub',text:'Models',title:'Drop model files on the panel: names ending in _low, _high and _cage go to the right place.'}),row('Cage',modelSel('cage',cageOpts)),upSelect('bkUp',v=>{for(const k of ['low','high','cage'])if(C[k]&&C[k].upTurns!==undefined)bakeSetModel(k,upApply(C[k],v));}),upTurnRow(),
-    el('div',{class:'chips'},chk('bkShowCage','Show the cage',bk.showCage,v=>{bk.showCage=v;v3.dirty=true;requestRender();})),
-    ...(C.high?[row('High-poly view',(()=>{const g=seg([['off','Off'],['over','See-through'],['only','Only']],bk.showHigh||'off',v=>{bk.showHigh=v;v3.dirty=true;requestRender();},'Show the high-poly');g.id='bkShowHigh';return g;})())]:[]),
-    inf,
-    el('div',{class:'sub',text:'Maps to bake'}),list(),
+  const uvc=uvCard(bkLow());if(uvc)box.append(uvc);
+  box.append(el('div',{class:'btwide',id:'btWide'},...btPanel()));
+  /* Geometry */
+  const hv=bk.showHigh||'off',hiBtn=(id,t,on,tip,fn)=>el('button',{class:'btn sm'+(on?' on':''),type:'button',id,text:t,'aria-pressed':String(on),title:tip,disabled:!C.high,onclick:fn});
+  const setHv=v=>{bk.showHigh=v;v3.dirty=true;requestRender();buildBakePanel();};
+  const geo=[row('Cage',modelSel('cage',cageOpts)),upSelect('bkUp',v=>{for(const k of ['low','high','cage'])if(C[k]&&C[k].upTurns!==undefined)bakeSetModel(k,upApply(C[k],v));}),upTurnRow(),
+    el('div',{class:'chips'},hiBtn('bkShowHi','Show high',hv!=='off','Show the high-poly in the view (like Marmoset’s Show High)',()=>setHv(hv==='off'?'over':'off')),
+      hiBtn('bkHideLo','Hide low',hv==='only','Hide the low-poly so only the high-poly shows',()=>setHv(hv==='only'?'over':'only')),
+      chk('bkShowCage','Show the cage',bk.showCage,v=>{bk.showCage=v;v3.dirty=true;requestRender();})),
+    ...(C.high?[row('High-poly view',(()=>{const g=seg([['off','Off'],['over','See-through'],['only','Only']],hv,v=>setHv(v),'Show the high-poly');g.id='bkShowHigh';return g;})())]:[]),
+    makeSlider({id:'bkFront',label:'Front',min:0,max:20,step:.1,value:C.front,fmt:v=>v.toFixed(1)+'%',onInput:v=>{C.front=v;bakeCageDirty();}}).el,makeSlider({id:'bkBack',label:'Back',min:0,max:20,step:.1,value:C.back,fmt:v=>v.toFixed(1)+'%',onInput:v=>{C.back=v;bakeCageFlash();}}).el,
+    chk('bkAvg','Average ray directions',C.average,v=>{C.average=v;bakeCageDirty();}),inf,
     bkMats(bkLow())?chk('bkPerMat','Bake each material separately ('+bkMats(bkLow()).length+')',C.perMat!==false,v=>{C.perMat=v;}):null,
-    bkMats(bkLow())&&C.perMat!==false?bkMatEyes(C):null,
-    bk.byMat?row('Material',(()=>{const s=el('select',{id:'bkMat','aria-label':'Material'},...Object.keys(bk.byMat).map(n=>el('option',{value:n,text:n})));s.value=bk.matShow;s.onchange=()=>bakeShowMat(s.value);return s;})()):null,
-    bakeSendBox().valueOf());
-  colA.replaceChildren(...[...colA.childNodes].filter(n=>n.nodeType!==3||n.textContent!=='null'));
-  colB.append(el('div',{class:'sub',text:'Settings'}),tabs,page);
+    bkMats(bkLow())&&C.perMat!==false?bkMatEyes(C):null];
+  /* Output */
+  const out=[el('div',{class:'sub',text:'Size'}),bakeSizeSeg(),el('div',{class:'sub',text:'Anti-aliasing'}),seg([[1,'1×'],[2,'4×'],[4,'16×']],C.ss,v=>{C.ss=v;},'Anti-aliasing'),S('bkPad','Padding','pad',0,64,1,v=>v+'px'),
+    el('div',{class:'sub',text:'Send to the document as',title:'Layers: each bake is also a layer in the base colour, so you can blend them (curvature on Overlay over AO). AO, curvature and height go into their own maps too.'}),seg([['layers','Layers'],['maps','Maps only']],C.sendAs==='maps'?'maps':'layers',v=>{C.sendAs=v;},'Send as'),
+    el('div',{class:'chips'},chk('bkAuto','Send results automatically',C.autoSend,v=>{C.autoSend=v;}),chk('bkRepl','Replace the last baked layers',C.replace,v=>{C.replace=v;})),bakeSendBox().valueOf()];
+  /* Maps */
+  const have=Object.keys(bk.res).filter(k=>k!=='mcurv'&&k!=='gcurv'),maps=[el('div',{class:'bkmaps',id:'bkList',title:'Alt + click a tick: only this one. Alt + click again: all the others.'},...BK_LIST.map(mapRow))];
+  if(have.length||bk.maps.skew||bk.maps.offset){const opts=[['material','Material (lit)'],...have.map(k=>[k,k==='curv'?'Curvature':BAKE_NAMES[k]]),...Object.keys(BK_PAINT).filter(k=>bk.maps[k]).map(k=>[k,BK_PAINT[k].name+' map'])];
+    const sh=el('select',{id:'bkShow','aria-label':'Show'},...opts.map(([v,t])=>el('option',{value:v,text:t})));sh.value=opts.some(o=>o[0]===bk.show)?bk.show:'material';
+    sh.onchange=()=>{bk.show=sh.value;uvw.view='off';bk.uvCheck=false;bk.dirty=true;v3.dirty=true;requestRender();buildBakePanel();};maps.push(row('Show',sh),...(bk.res.normal?[el('button',{class:'btn',id:'bkCompare',text:'Compare with a normal map…',title:'Pick a normal map made elsewhere (Marmoset…) and see how far the baked one is from it',onclick:bakeCompare})]:[]),el('p',{class:'note',text:'C steps through the maps on the model.'}));
+    if(bk.show==='material')maps.push(el('div',{class:'chips'},chk('bkDocBase','Use the document’s base colour',bk.docBase,v=>{bk.docBase=v;v3.mapsDirty=true;bk.dirty=true;requestRender(true);})));}
+  if(bk.byMat)maps.push(row('Material',(()=>{const s2=el('select',{id:'bkMat','aria-label':'Material'},...Object.keys(bk.byMat).map(n=>el('option',{value:n,text:n})));s2.value=bk.matShow;s2.onchange=()=>bakeShowMat(s2.value);return s2;})()));
+  if(bk.stale.size)maps.push(el('p',{class:'note warn',text:[...bk.stale].map(k=>BAKE_NAMES[k]).join(' and ')+' will update on the next full bake.'}));
+  /* Fix the bake */
+  const fix=[seg([['off','Off'],['skew','Skew'],['offset','Offset']],bk.paint||'off',v=>{bk.paint=v==='off'?null:v;
+      if(bk.paint){bakeMapT(bk.paint,true);v3.paintOn=true;if(!['brush','erase'].includes(ui.tool))setTool('brush');}bk.dirty=true;buildBakePanel();if(v3.on)build3dPane();requestRender();},'Paint fixes')];
+  if(bk.paint==='skew')fix.push(el('p',{class:'note',text:'Paint black over details that come out smeared or leaning (screws, bolts, panel lines): the rays there shoot straight out of the surface. White keeps the averaged direction, which avoids gaps at hard edges. The Eraser paints white.'}));
+  if(bk.paint==='offset')fix.push(el('p',{class:'note',text:'Grey keeps Front and Back. Lighter reaches further (for parts of the high-poly that were missed); darker reaches less far (for detail leaking in from nearby parts). The Eraser paints grey.'}));
+  if(bk.paint){const vk=bk.paint,val=bk.val||(bk.val={skew:0,offset:.85});fix.push(makeSlider({id:'bkPaintVal',label:'Paint',min:0,max:1,step:.01,value:val[vk],fmt:v=>v<.02?'black':v>.98?'white':Math.round(v*100)+'%',onInput:v=>{val[vk]=v;}}).el,
+    makeSlider({id:'bkSoft',label:'Edge softness',min:0,max:12,step:.5,value:bk.soft==null?3:bk.soft,fmt:v=>v<.2?'hard':v.toFixed(1)+' px',onInput:v=>{bk.soft=v;bk.offVer=(bk.offVer||0)+1;}}).el,
+    el('p',{class:'note',text:'Paint on the model in the 3D view (Alt+drag turns it) or on the map on the left. After each stroke the bake updates where you painted.'}));}
+  const bt=(t,f,dis)=>{const b=el('button',{class:'btn sm',text:t});b.disabled=!!dis;b.onclick=f;return b;};
+  fix.push(el('div',{class:'row wrap'},bt('Estimate offset',bakeEstimateOffset,!C.high||bk.busy),bt('Clear skew',()=>bakeClearMap('skew'),!bk.maps.skew),bt('Clear offset',()=>bakeClearMap('offset'),!bk.maps.offset)));
+  box.append(el('div',{class:'bksecs',id:'bkSecs'},
+    sec('geo','Geometry',geo,'The cage, the up axis, showing the high-poly and how far rays reach'),
+    sec('out','Output',out,'Size, anti-aliasing, padding and where the results go'),
+    sec('maps','Maps',maps,'Tick the maps to bake; ⚙ shows a map’s settings, 🔍 shows it on the model'),
+    sec('fix','Fix the bake',fix,'Paint skew and offset fixes on the model'),
+    sec('log','Bake log',[bkLogPanel()],'What is happening, what matched by name, and how long each bake took')));
   box.prepend(bakeActionBar(go,prog));bakeSendSync();
   info();
-  /* what to look at */
-  const have=Object.keys(bk.res).filter(k=>k!=='mcurv'&&k!=='gcurv');
-  if(have.length||bk.maps.skew||bk.maps.offset){const opts=[['material','Material (lit)'],...have.map(k=>[k,k==='curv'?'Curvature':BAKE_NAMES[k]]),...Object.keys(BK_PAINT).filter(k=>bk.maps[k]).map(k=>[k,BK_PAINT[k].name+' map'])];
-    const s=el('select',{id:'bkShow','aria-label':'Show'},...opts.map(([v,t])=>el('option',{value:v,text:t})));s.value=opts.some(o=>o[0]===bk.show)?bk.show:'material';
-    s.onchange=()=>{bk.show=s.value;uvw.view='off';bk.uvCheck=false;bk.dirty=true;v3.dirty=true;requestRender();};colA.append(row('Show',s),...(bk.res.normal?[el('button',{class:'btn',id:'bkCompare',text:'Compare with a normal map…',title:'Pick a normal map made elsewhere (Marmoset…) and see how far the baked one is from it',onclick:bakeCompare})]:[]),el('p',{class:'note',text:'C steps through the maps on the model.'}));
-    if(bk.show==='material')colA.append(el('div',{class:'chips'},chk('bkDocBase','Use the document’s base colour',bk.docBase,v=>{bk.docBase=v;v3.mapsDirty=true;bk.dirty=true;requestRender(true);})));}
-  if(bk.stale.size)colA.append(el('p',{class:'note warn',text:[...bk.stale].map(k=>BAKE_NAMES[k]).join(' and ')+' will update on the next full bake.'}));
-  /* fixing */
-  colB.append(el('div',{class:'sub',text:'Fix the bake'}),seg([['off','Off'],['skew','Skew'],['offset','Offset']],bk.paint||'off',v=>{bk.paint=v==='off'?null:v;
-      if(bk.paint){bakeMapT(bk.paint,true);v3.paintOn=true;if(!['brush','erase'].includes(ui.tool))setTool('brush');}bk.dirty=true;buildBakePanel();if(v3.on)build3dPane();requestRender();},'Paint fixes'));
-  if(bk.paint==='skew')colB.append(el('p',{class:'note',text:'Paint black over details that come out smeared or leaning (screws, bolts, panel lines): the rays there shoot straight out of the surface. White keeps the averaged direction, which avoids gaps at hard edges. The Eraser paints white.'}));
-  if(bk.paint==='offset')colB.append(el('p',{class:'note',text:'Grey keeps Front and Back. Lighter reaches further (for parts of the high-poly that were missed); darker reaches less far (for detail leaking in from nearby parts). The Eraser paints grey.'}));
-  if(bk.paint){const vk=bk.paint,val=bk.val||(bk.val={skew:0,offset:.85});colB.append(makeSlider({id:'bkPaintVal',label:'Paint',min:0,max:1,step:.01,value:val[vk],fmt:v=>v<.02?'black':v>.98?'white':Math.round(v*100)+'%',onInput:v=>{val[vk]=v;}}).el);}
-  if(bk.paint)colB.append(makeSlider({id:'bkSoft',label:'Edge softness',min:0,max:12,step:.5,value:bk.soft==null?3:bk.soft,fmt:v=>v<.2?'hard':v.toFixed(1)+' px',onInput:v=>{bk.soft=v;bk.offVer=(bk.offVer||0)+1;}}).el);
-  if(bk.paint)colB.append(el('p',{class:'note',text:'Paint on the model in the 3D view (Alt+drag turns it) or on the map on the left. After each stroke the bake updates where you painted.'}));
-  const bt=(t,f,dis)=>{const b=el('button',{class:'btn sm',text:t});b.disabled=!!dis;b.onclick=f;return b;};
-  colB.append(el('div',{class:'row wrap'},bt('Estimate offset',bakeEstimateOffset,!C.high||bk.busy),bt('Clear skew',()=>bakeClearMap('skew'),!bk.maps.skew),bt('Clear offset',()=>bakeClearMap('offset'),!bk.maps.offset)));
   bakeProgUI();}
+/* which Bake panel sections are folded (kept between runs) */
+function bkSecState(){try{return JSON.parse(localStorage.getItem('gs.bkSec')||'{}')||{};}catch(e){return {};}}
+function bkSecSave(o){try{localStorage.setItem('gs.bkSec',JSON.stringify(o));}catch(e){}}
+/* 🔍: that map on the model (again: back to the lit material) */
+function bakeLookAt(k){if(!bk.res[k]){toast('Bake '+BAKE_NAMES[k].toLowerCase()+' first to look at it.');return;}bk.show=bk.show===k?'material':k;uvw.view='off';bk.uvCheck=false;bk.dirty=true;v3.dirty=true;requestRender(true);buildBakePanel();}
 
 /* Keep the file coordinates of every high mesh; normalising each import separately must not move it. */
 function bakeMergeHigh(list){if(list.length===1)return list[0];if(!list.length)return null;

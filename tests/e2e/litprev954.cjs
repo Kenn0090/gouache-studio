@@ -40,7 +40,7 @@ const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAI
  /* the switch turns it off; another settings page shows the normal view */
  await p.evaluate(()=>document.getElementById('l_prev').click());await W(600);ok(await p.evaluate(()=>!__gs.bk.lpShown&&!__gs.lp.view),'turning the switch off removes the preview');
  await p.evaluate(()=>document.getElementById('l_prev').click());await W(300);await wait();ok(await p.evaluate(()=>__gs.bk.lpShown),'and on again shows it');
- await p.evaluate(()=>{__gs.bakeCfg.tab='ao';__gs.buildBakePanel();__gs.v3.dirty=true;__gs.requestRender(true);});for(let i=0;i<40&&await p.evaluate(()=>__gs.bk.lpShown);i++){await p.evaluate(()=>{__gs.v3.dirty=true;__gs.requestRender(true);});await W(250);}
+ await p.evaluate(()=>{__gs.bakeCfg.mapOpen.light=false;__gs.buildBakePanel();__gs.v3.dirty=true;__gs.requestRender(true);});for(let i=0;i<40&&await p.evaluate(()=>__gs.bk.lpShown);i++){await p.evaluate(()=>{__gs.v3.dirty=true;__gs.requestRender(true);});await W(250);}
  ok(await p.evaluate(()=>!__gs.bk.lpShown),'on another settings page the normal view is back');
  ok(!errors.length,'no errors '+errors.join('|'));
  await b.close();console.log(fails?'FAILS '+fails:'ALL PASS');process.exit(fails?1:0);
