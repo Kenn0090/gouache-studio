@@ -1,3 +1,9 @@
+## 0.96.7
+
+- **3D Paint: the brush preview is back at the top of the Brush settings**, and stays in view while you scroll them.
+- **Blending, Ctrl smoothing and Liquify on the model now follow mirror and radial symmetry**, like painting does.
+- **Square brush, redone:** a full square tip (edge to edge), 0 spacing for a solid stroke, and its size follows pen pressure.
+
 ## 0.96.6
 
 - **Smart materials:** double-click a smart material (or smart mask) to add it; dragging one onto a spot where it can't go now tells you where to drop it.

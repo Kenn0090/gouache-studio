@@ -27,6 +27,8 @@ function genTip(name,w,h,draw){return makeTip(name,w,h,null,false,()=>{const c=d
 const TIPS={
   pixel:makeTip('Pixel square',16,16,new Uint8Array(256).fill(255),true),
   square:genTip('Square brush',128,128,(x,w,h)=>x.fillRect(8,8,w-16,h-16)),
+  /* (0.96.7, Kenn: "a proper square brush") edge to edge, so the stroke is as wide as the brush size */
+  squareFull:genTip('Square (full)',128,128,(x,w,h)=>x.fillRect(0,0,w,h)),
   bristle:genTip('Flat bristle',96,256,(x,w,h,R)=>{for(let i=0;i<150;i++){const y=h*.03+R()*h*.94,len=w*(.55+R()*.45),x0=(w-len)/2+(R()-.5)*8;x.globalAlpha=.25+R()*.6;x.fillRect(x0,y,len,1+R()*2.2);}}),
   sponge:genTip('Sponge',256,256,(x,w,h,R)=>{for(let i=0;i<420;i++){const a=R()*6.283,rr=Math.sqrt(R())*w*.44;x.globalAlpha=.25+R()*.5;x.beginPath();x.arc(w/2+Math.cos(a)*rr,h/2+Math.sin(a)*rr,2+R()*9,0,7);x.fill();}}),
   leaf:genTip('Leaf',160,256,(x,w,h)=>{x.beginPath();x.moveTo(w/2,4);x.bezierCurveTo(w*1.02,h*.28,w*.86,h*.78,w/2,h-4);x.bezierCurveTo(w*.14,h*.78,-w*.02,h*.28,w/2,4);x.fill();
@@ -47,7 +49,7 @@ TIPS.painterly=genTip('Painterly block stroke',256,256,(x,w,h,R)=>{x.beginPath()
 const PRESETS=[
   {name:'Pixel pencil',tool:'brush',tip:TIPS.pixel,size:1,hardness:1,spacing:1,pSize:false,pOpacity:false,smoothing:0,grain:0},
   {name:'Square pixel brush',tool:'brush',tip:TIPS.pixel,size:12,hardness:1,spacing:.15,pSize:false,pOpacity:false,smoothing:0,grain:0},
-  {name:'Square brush',tool:'brush',tip:TIPS.square,size:32,hardness:1,spacing:.16,pSize:true,minSize:.35,pOpacity:false,smoothing:.15},
+  {name:'Square brush',tool:'brush',tip:TIPS.squareFull,size:32,hardness:1,spacing:0,pSize:true,minSize:.1,pOpacity:false,pFlow:false,smoothing:.15,simP:'off'},
   {name:'Fine scratches',tool:'brush',tip:TIPS.scratch,size:74,hardness:.8,spacing:.24,followDir:true,angleJitter:.08,sizeJitter:.18,scatter:.08,pSize:true,minSize:.45,pOpacity:true},
   {name:'Grunge wear',tool:'brush',tip:TIPS.sponge,size:96,hardness:.65,flow:.58,spacing:.3,grain:.68,sizeJitter:.32,angleJitter:.5,scatter:.2,pSize:false,pOpacity:true,buildup:true},
   {name:'Abstract shards',tool:'brush',tip:TIPS.abstract,size:66,hardness:.85,spacing:.46,followDir:true,angleJitter:.35,sizeJitter:.22,scatter:.3,count:2,pSize:true,minSize:.4},

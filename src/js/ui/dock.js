@@ -99,9 +99,9 @@ function brushMergeSync(){if(ui.mode==='brush'&&dk.btPaintControls){const box=$(
     if(actions&&actions.parentNode!==mount)mount.append(actions);if(pw.parentNode!==mount)mount.append(pw);if(bb.parentNode!==mount)mount.append(bb);
     return;}
   if(actions&&actions.parentNode!==home)home.append(actions);
-  const librarySec=dkSec('brushes');if(pw&&pw.parentNode!==librarySec)librarySec.append(pw);
-  if(sep){if(bb.parentNode!==tool)tool.append(bb);const ht=$('#hTool');if(title&&ht&&title.parentNode!==ht)ht.prepend(title);}
-  else if(pw){if(bb.previousElementSibling!==pw)pw.after(bb);if(title&&home&&title.parentNode!==home)home.prepend(title);}}
+  /* (0.96.7, Kenn) in 3D Paint the stroke preview sits at the top of the brush settings and stays there while they scroll */
+  if(sep){if(pw&&pw.parentNode!==tool)tool.append(pw);if(pw?bb.previousElementSibling!==pw:bb.parentNode!==tool){if(pw)pw.after(bb);else tool.append(bb);}const ht=$('#hTool');if(title&&ht&&title.parentNode!==ht)ht.prepend(title);}
+  else{const librarySec=dkSec('brushes');if(pw&&pw.parentNode!==librarySec)librarySec.append(pw);if(pw){if(bb.previousElementSibling!==pw)pw.after(bb);if(title&&home&&title.parentNode!==home)home.prepend(title);}}}
 /* ---- building the page structure once ---- */
 function dkInit(){
   /* Tool settings get a panel of their own, split from the brush library */

@@ -1,3 +1,9 @@
+## 0.96.7
+
+- **3D Paint: the brush preview sits at the top of the Brush settings** and stays in view while they scroll.
+- **Blend, smooth and Liquify on the model follow mirror and radial symmetry.**
+- **Square brush: a full square, 0 spacing, size follows pen pressure.**
+
 ## 0.96.6
 
 - **Smart materials: double-click to add one**, and dropping one in the wrong place now says where to drop it.
