@@ -424,9 +424,10 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
   go.onclick=()=>{if(bk.busy){if(bk.prog)bk.prog.cancelled=true;return;}const L=bkLow();const ks=Object.keys(C.kinds).filter(k=>C.kinds[k]);if(!ks.length){toast('Pick at least one map.');return;}if(C.perMat!==false&&bkMats(L))runBakeSets(L,ks);else{bk.byMat=null;runBake(L,ks);}};
   const prog=el('div',{id:'bkProg',hidden:true},el('p',{class:'note'}),el('div',{class:'bakebar'},el('div')));
   /* (0.52, Kenn) two columns so it all fits without scrolling: models, maps and sending on the left, the settings of each map on the right */
-  const colA=el('div',{class:'bkcol',id:'bkColA'}),colB=el('div',{class:'bkcol',id:'bkColB'});const uvc=uvCard(bkLow());if(uvc)box.append(uvc);box.append(el('div',{class:'bkcols'},colA,colB));
-  colA.append(...btPanel(),/* (0.96.9) Marmoset-style Quick loader + bake group tree (bake-tree.js) */el('div',{class:'sub',text:'Models',title:'Drop model files on the panel: names ending in _low, _high and _cage go to the right place.'}),row('Cage',modelSel('cage',cageOpts)),upSelect('bkUp',v=>{for(const k of ['low','high','cage'])if(C[k]&&C[k].upTurns!==undefined)bakeSetModel(k,upApply(C[k],v));}),upTurnRow(),
-    ...bgControls(()=>buildBakePanel()),
+  const colA=el('div',{class:'bkcol',id:'bkColA'}),colB=el('div',{class:'bkcol',id:'bkColB'});const uvc=uvCard(bkLow());if(uvc)box.append(uvc);const cols=el('div',{class:'bkcols'},colA,colB);
+  box.append(el('div',{class:'btwide',id:'btWide'},...btPanel()));/* (0.96.9) Quick loader + bake group tree across the whole panel, like Marmoset's outliner (bake-tree.js) */
+  box.append(cols);
+  colA.append(el('div',{class:'sub',text:'Models',title:'Drop model files on the panel: names ending in _low, _high and _cage go to the right place.'}),row('Cage',modelSel('cage',cageOpts)),upSelect('bkUp',v=>{for(const k of ['low','high','cage'])if(C[k]&&C[k].upTurns!==undefined)bakeSetModel(k,upApply(C[k],v));}),upTurnRow(),
     el('div',{class:'chips'},chk('bkShowCage','Show the cage',bk.showCage,v=>{bk.showCage=v;v3.dirty=true;requestRender();})),
     ...(C.high?[row('High-poly view',(()=>{const g=seg([['off','Off'],['over','See-through'],['only','Only']],bk.showHigh||'off',v=>{bk.showHigh=v;v3.dirty=true;requestRender();},'Show the high-poly');g.id='bkShowHigh';return g;})())]:[]),
     inf,

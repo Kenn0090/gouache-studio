@@ -44,7 +44,12 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{const T=__gs.btTree(),g=T.groups.find(g=>g.name==='b');document.getElementById('btEye_low_'+g.id).click();});await W(400);
  const t3=await p.evaluate(()=>__gs.v3.mesh.idx.length/3);
  ok(t2===24&&t3===0,'the Low and High folders hide on their own ('+t2+' → '+t3+')');
- ok(await p.evaluate(()=>document.querySelectorAll('#btTree .btfolder').length===6&&!!document.querySelector('#btTree .btfolder[data-side=low] .btset')),'every group shows a Low and a High folder, with the cage and skew settings in Low');
+ ok(await p.evaluate(()=>document.querySelectorAll('#btTree .btfolder').length===6),'every group shows a Low and a High folder');
+ /* clicking a group shows its own settings beside the list (like Marmoset's inspector) */
+ await p.click('#btTree .btgroup:nth-child(3) .btgh .btcount');await W(300);
+ const gs=await p.evaluate(()=>{const T=__gs.btTree(),g=T.groups[2];return {title:document.querySelector('#btGroupSet .sub').textContent,sel:document.querySelector('#btTree .btgroup.sel').dataset.id==String(g.id),own:!!document.getElementById('btOwn_'+g.id),name:g.name,only:document.querySelectorAll('.btset').length};});
+ ok(gs.title==='Settings: '+gs.name&&gs.sel&&gs.own&&gs.only===1,'clicking a group outlines it and shows only its settings '+JSON.stringify(gs));
+ ok(await p.evaluate(()=>!!document.querySelector('#btWide #bkExplode')&&!!document.querySelector('#btWide #bkMatchSize')),'Explode, Match size and Move sit with the groups');
  const i3=await ids();ok(i3.low.split(',').includes('2'),'hidden groups are still baked '+JSON.stringify(i3));
  /* group colours */
  await p.click('#btColours');await W(600);

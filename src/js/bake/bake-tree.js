@@ -6,7 +6,7 @@
    Underneath, the tree is the bake-group mode 'tree' of bake-groups.js: each triangle gets its group's number, and rays only find the
    high-poly parts of their own group. Part 2 (to come): each group's own cage distance and skew painting. */
 const BT_COLS=['#e5533d','#4d8fe8','#5fbf45','#e8b04d','#b05fe8','#45bfb5','#e85fa0','#a3b35f','#5f7fe8','#e8834d','#7fd0f0','#d0c070'];
-const btg={drag:null,colours:false,open:{},fold:{},tex:null,texKey:null};
+const btg={drag:null,colours:false,open:{},fold:{},sel:null,tex:null,texKey:null};
 function btTree(){const C=bgCfg();if(!C.tree)C.tree={groups:[],low:{},high:{},seq:0};const T=C.tree;if(!T.groups.length)T.groups.push(btNew(T,'Default'));return T;}
 function btNew(T,name){const id=++T.seq;return {id,name:name||'Bake group '+id,col:BT_COLS[(id-1)%BT_COLS.length],hide:false,skip:false};}
 const btModel=side=>side==='low'?bkLow():bakeCfg.high;
@@ -96,8 +96,8 @@ function btPanel(){const C=bgCfg();if(C.groupMode!=='tree')C.groupMode='tree';C.
   for(const g of T.groups){const lowP=btParts('low').filter(p=>T.low[p]===g.id),highP=btParts('high').filter(p=>T.high[p]===g.id),open=btg.open[g.id]!==false;
     const name=el('span',{class:'btname',text:g.name,title:'Double-click to rename'});name.addEventListener('dblclick',()=>bgtRename(g,name));
     const sw=el('input',{type:'color',class:'btcol',value:g.col,'aria-label':'Colour of '+g.name,title:'This group’s colour (Group colours)'});sw.addEventListener('input',()=>{g.col=sw.value;btg.texKey=null;bk.dirty=true;requestRender(true);});
-    const row=el('div',{class:'btgroup'+(g.skip?' skip':'')+(g.hide?' hid':''),role:'treeitem','aria-expanded':String(open),'data-id':g.id},
-      el('div',{class:'btgh'},el('button',{class:'btfold',text:open?'▾':'▸','aria-label':(open?'Fold ':'Unfold ')+g.name,onclick:()=>{btg.open[g.id]=!open;buildBakePanel();}}),sw,name,
+    const row=el('div',{class:'btgroup'+(g.skip?' skip':'')+(g.hide?' hid':'')+(btSel(T)===g?' sel':''),'aria-selected':String(btSel(T)===g),role:'treeitem','aria-expanded':String(open),'data-id':g.id},
+      el('div',{class:'btgh',title:'Click to see this group’s settings below the list',onclick:e=>{if(e.target.closest('button,input,label'))return;btSelect(g);}},el('button',{class:'btfold',text:open?'▾':'▸','aria-label':(open?'Fold ':'Unfold ')+g.name,onclick:()=>{btg.open[g.id]=!open;buildBakePanel();}}),sw,name,
         el('span',{class:'btcount',text:lowP.length+' / '+highP.length,title:lowP.length+' low-poly parts, '+highP.length+' high-poly parts'}),
         el('button',{class:'btn sm bteye'+(g.hide?'':' on'),text:g.hide?'◌':'👁','aria-pressed':String(!g.hide),title:g.hide?'Hidden in the view: click to show':'Shown in the view: click to hide','aria-label':(g.hide?'Show ':'Hide ')+g.name,onclick:()=>{g.hide=!g.hide;btChanged();}}),
         chk('btSkip_'+g.id,'Bake',!g.skip,v=>{g.skip=!v;btChanged();}),
@@ -109,11 +109,13 @@ function btPanel(){const C=bgCfg();if(C.groupMode!=='tree')C.groupMode='tree';C.
           el('span',{class:'btfi',text:'▣','aria-hidden':'true'}),el('span',{class:'btfk',text:lab}),el('span',{class:'btcount',text:String(parts.length)}),
           el('button',{class:'btn sm bteye'+(g[hk]?'':' on'),id:'btEye_'+s+'_'+g.id,text:g[hk]?'◌':'👁','aria-pressed':String(!g[hk]),title:(g[hk]?'Hidden':'Shown')+' in the view: click to '+(g[hk]?'show':'hide')+' this group’s '+(s==='low'?'low-poly':'high-poly'),'aria-label':(g[hk]?'Show ':'Hide ')+lab+' of '+g.name,onclick:()=>{g[hk]=!g[hk];btChanged();}}));
         const b=el('div',{class:'btfolder'+(hidden?' hid':''),'data-side':s},head);
-        if(fo){const pl=el('div',{class:'btside','data-side':s},...parts.map(p=>btPartChip(s,p,g)),parts.length?'':el('span',{class:'note',text:'Drag parts here'}));b.append(pl);if(s==='low')b.append(btGroupSettings(g));}
+        if(fo){const pl=el('div',{class:'btside','data-side':s},...parts.map(p=>btPartChip(s,p,g)),parts.length?'':el('span',{class:'note',text:'Drag parts here'}));b.append(pl);}
         btDropOn(b,s,g);return b;};
       row.append(folder('low',lowP,'Low'),hasHigh?folder('high',highP,'High'):'');}
     list.append(row);}
-  return [el('div',{class:'btload',id:'btLoader'},el('div',{class:'sub',text:'Quick loader',title:'Drop model files here: names ending in _low, _high and _cage go to the right place'}),btSlot('low','Low'),btSlot('high','High'),bakeHighList()),head,list];}
+  /* (0.96.9, Kenn) like Marmoset's inspector: the settings of the group you clicked, under the list */
+  const gs=btGSet(T);
+  return [el('div',{class:'btload',id:'btLoader'},el('div',{class:'sub',text:'Quick loader',title:'Drop model files here: names ending in _low, _high and _cage go to the right place'}),btSlot('low','Low'),btSlot('high','High'),bakeHighList()),head,list,gs];}
 /* the old drop-down of group modes gives way to the tree; Explode, Match size and Move stay */
 {const f=bgControls;bgControls=function(redraw){const out=f(redraw);return bgCfg().groupMode==='tree'?out.slice(1):out;};}
 
@@ -132,3 +134,10 @@ function btGroupSettings(g){const C=bakeCfg;const box=el('div',{class:'btset'});
   draw();box.title='This group’s own cage distance (instead of General › Front / Back), and its skew: lower makes the rays shoot straighter out of the surface for the whole group (painted skew still applies on top)';return box;}
 /* show the cage while a group's distance changes (the cage view is for the whole model; the group's own distance is what the bake uses) */
 function bkGroupCageFlash(g){if(typeof bakeCageFlash==='function')bakeCageFlash();}
+
+const btSel=T=>T.groups.find(g=>g.id===btg.sel)||T.groups[0];
+
+function btGSet(T){const sg=btSel(T);return el('div',{class:'btgset',id:'btGroupSet'},el('div',{class:'sub',text:'Settings: '+sg.name,title:'Click a group in the list to see its settings here'}),btGroupSettings(sg),el('div',{class:'sub',text:'Fit and place',title:'For the whole bake: spread the groups apart to check them, scale the high-poly to the low-poly, move either model'}),...bgControls(()=>buildBakePanel()));}
+/* clicking a group: outline it and show its settings, without rebuilding the list (so a double-click on the name still renames it) */
+function btSelect(g){btg.sel=g.id;document.querySelectorAll('#btTree .btgroup').forEach(r=>{const on=+r.dataset.id===g.id;r.classList.toggle('sel',on);r.setAttribute('aria-selected',String(on));});
+  const old=document.getElementById('btGroupSet');if(old)old.replaceWith(btGSet(btTree()));}

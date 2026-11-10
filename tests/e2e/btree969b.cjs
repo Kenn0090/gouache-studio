@@ -26,6 +26,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const h0=await bakeHalves();
  ok(Math.abs(h0[0]-h0[1])<12,'with the same cage both cubes bake alike '+JSON.stringify(h0));
  /* group a: its own cage with no distance: its rays find nothing */
+ await p.evaluate(()=>{const T=__gs.btTree(),a=T.groups.find(g=>g.name==='a');document.querySelector('#btTree .btgroup[data-id="'+a.id+'"] .btcount').click();});await W(300);
  await p.evaluate(()=>{const T=__gs.btTree(),a=T.groups.find(g=>g.name==='a');document.getElementById('btOwn_'+a.id).click();});await W(300);
  ok(await p.evaluate(()=>{const T=__gs.btTree(),a=T.groups.find(g=>g.name==='a');return !!document.getElementById('btFront_'+a.id)&&a.front===8;}),'Own cage shows the group’s Front and Back, starting from General’s');
  await p.evaluate(()=>{const T=__gs.btTree(),a=T.groups.find(g=>g.name==='a');a.front=0;a.back=0;});
@@ -38,6 +39,6 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const sk=await p.evaluate(()=>{const G=__gs,T=G.btTree(),b=T.groups.find(g=>g.name==='b'),f=G.btGFB(G.bakeCfg);return f[b.id*4+3];});
  ok(sk===0,'a group’s Skew reaches the baker');
  await bakeHalves();
- ok(await p.evaluate(()=>!!document.getElementById('btSkew_'+__gs.btTree().groups[1].id)),'every group has a Skew slider');
+ ok(await p.evaluate(()=>!!document.getElementById('btSkew_'+__gs.btg.sel)),'the clicked group has a Skew slider');
  ok(!errs.length,'no page errors '+errs.join(' | '));
  await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();

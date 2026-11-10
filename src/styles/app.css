@@ -1598,3 +1598,12 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .btfolder.hid .btfk{font-style:italic;opacity:.6}
 .btfh{display:flex;gap:6px;align-items:center}.btfi{opacity:.6;font-size:11px}.btfk{flex:1;font-weight:600;font-size:12px}
 .btfolder .btside{margin-left:18px}.btfolder .btset{margin-left:18px}
+/* (0.96.9) the bake group list across the whole Bake panel; the clicked group's settings under it; the UV card on one line */
+.btwide{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:4px 14px;margin-bottom:8px;align-items:start}
+.btwide>.btload{grid-column:1/-1;grid-template-columns:1fr 1fr}.btwide>.btload>.sub{grid-column:1/-1}.btwide>.btload>.highmeshes{grid-column:1/-1}
+.btwide>.bthead,.btwide>.bttree{grid-column:1}.btwide>.btgset{grid-column:2;grid-row:2/span 2;position:sticky;top:0}
+.bttree{max-height:46vh;overflow:auto}
+.btgroup.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}.btgh{cursor:pointer}
+.btgset{border:1px solid var(--line-2);border-radius:var(--r,6px);padding:6px 8px}.btgset .btset{margin:4px 0 0}
+.uvhead .uvfix{display:inline-flex;gap:4px;margin-left:auto}
+@media (max-width:900px){.btwide{grid-template-columns:1fr}.btwide>.btgset{grid-column:1;grid-row:auto}.btwide>.btload{grid-template-columns:1fr}}
