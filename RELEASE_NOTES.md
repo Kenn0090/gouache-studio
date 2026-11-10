@@ -1,6 +1,7 @@
 ## 0.96.9
 
 - **Smart materials get a proper preview** on the Material preview model when saved (↻ redoes older ones).
+- **Bake groups like Marmoset:** Quick loader + a tree of groups (drag parts, hide, skip, colours).
 - **Skew painting ignores symmetry.**
 
 ## 0.96.8

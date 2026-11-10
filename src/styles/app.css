@@ -1572,3 +1572,23 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 /* (0.96.6) brushes with their own 3D Paint alignment */
 .has3d{position:relative}
 .b3d{position:absolute;right:2px;top:2px;font:600 9px/1 system-ui,sans-serif;padding:2px 3px;border-radius:3px;background:var(--accent);color:#fff;pointer-events:none;letter-spacing:.02em}
+/* (0.96.9) Bake tab: Marmoset-style Quick loader and bake group tree */
+.btload{display:grid;gap:4px;margin-bottom:6px}
+.btslot{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto auto;gap:6px;align-items:center;padding:4px 6px;border:1px dashed var(--line-2);border-radius:var(--r,6px)}
+.btslot.dropon{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.btslotk{font-weight:600;min-width:34px}.btslotn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.85}
+.bthead{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.bthead .sub{margin-right:auto}
+.bttree{display:grid;gap:4px;margin:4px 0 8px}
+.btgroup{border:1px solid var(--line-2);border-radius:var(--r,6px);padding:3px 4px}
+.btgroup.skip{opacity:.55}.btgroup.hid .btname{font-style:italic}
+.btgh{display:flex;gap:6px;align-items:center;min-width:0}
+.btfold{background:none;border:0;color:inherit;cursor:pointer;padding:0 2px}
+.btcol{width:18px;height:18px;padding:0;border:0;background:none;flex:none}
+.btname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;cursor:text}
+.btname-in{flex:1;min-width:0}
+.btcount{opacity:.6;font-size:11px}
+.btside{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:3px 0 0 22px;padding:3px;border-radius:4px;min-height:24px}
+.btside.dropon{background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.btsidek{font-size:11px;opacity:.7;min-width:30px}
+.btpart{padding:1px 7px;border-radius:10px;background:var(--line-2);font-size:12px;cursor:grab;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btpart.dragging{opacity:.4}

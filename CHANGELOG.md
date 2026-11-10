@@ -1,6 +1,7 @@
 ## 0.96.9
 
 - **Smart material pictures like Substance Painter:** saving (or updating) a smart material now shows it on the Material preview model, over a grey base, from the same angle as the built-in ones, instead of a screenshot of your 3D view. Your project is not touched. The ↻ button under one of your smart materials makes its picture again (for ones saved before).
+- **Bake groups like Marmoset** (part 1): the Bake tab has a **Quick loader** (Low and High slots: drop a file, Load…, ↻ load it again after changing it, ×) and a **tree of bake groups**, each with its Low and High parts. Parts named alike (crate_low / crate_high) get a group of their own; the rest go in **Default**. Drag parts between groups, **+ Group**, double-click to rename, × to delete, **Auto** to group by name again. Each group has an **eye** (hide it in the view), a **Bake** tick (leave it out) and its **own colour**: **Group colours** shows each part of the low-poly in its group's colour.
 - **Skew and offset painting in the Bake tab ignore symmetry** (the 2D mirror and the 3D mirror); the symmetry controls are hidden there.
 
 ## 0.96.8
