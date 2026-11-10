@@ -6,13 +6,11 @@ Gouache Studio is a GPU-accelerated app for digital painting, 3D texturing, and 
 
 ## Download
 
-Open the [latest release](https://github.com/Kenn0090/gouache-studio/releases/latest) and choose a Windows x64 installer.
+**[Get Gouache Studio for Windows (x64)](https://github.com/Kenn0090/gouache-studio/releases/latest)**
 
-- **Full installer** (`Gouache.Studio_<version>_x64-setup.exe`) includes the bundled materials, skies, and grunge maps.
-- **Lite installer** (`Gouache.Studio_<version>_x64-lite-setup.exe`) downloads those assets as needed. You can also download them from the app for offline use.
-- An **MSI** is available on the same release page.
+Choose the recommended **Full installer** for bundled materials, skies, and grunge maps. Choose **Lite** for a smaller download that fetches assets as you use them. An MSI is also available.
 
-Gouache checks for signed updates when it starts. To check manually, use **File → Check for updates…**. See [Getting started](docs/wiki/Getting-started.md) for installation and your first project.
+Already installed? Use **File → Check for updates…**. See [Getting started](docs/wiki/Getting-started.md) for installation and your first project.
 
 ## What you can do
 

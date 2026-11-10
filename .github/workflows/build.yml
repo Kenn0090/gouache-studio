@@ -119,6 +119,46 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload "v${{ steps.ver.outputs.version }}" out/lite/*.exe --clobber
 
+      - name: Put Windows downloads first on the release page
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          $tag = "v$env:RELEASE_VERSION"
+          $releaseJson = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$tag"
+          if ($LASTEXITCODE -ne 0) { throw "Could not read release $tag." }
+          $release = $releaseJson | ConvertFrom-Json
+          $full = $release.assets | Where-Object name -like '*_x64-setup.exe' | Select-Object -First 1
+          $lite = $release.assets | Where-Object name -like '*_x64-lite-setup.exe' | Select-Object -First 1
+          $msi = $release.assets | Where-Object name -like '*_x64*.msi' | Select-Object -First 1
+          if (-not $full) { throw "Release $tag has no Windows x64 setup file." }
+
+          $start = '<!-- gouache-downloads:start -->'
+          $end = '<!-- gouache-downloads:end -->'
+          $downloads = @(
+            $start
+            '## Download for Windows'
+            ''
+            "**[Download Gouache Studio for Windows (x64)]($($full.browser_download_url))** · Recommended. Includes the bundled materials, skies, and grunge maps."
+          )
+          if ($lite) {
+            $downloads += '', "[Lite installer]($($lite.browser_download_url)) · Smaller download. Assets are downloaded as you use them."
+          }
+          if ($msi) {
+            $downloads += '', "[MSI installer]($($msi.browser_download_url))"
+          }
+          $downloads += '', 'Already installed? In Gouache Studio, choose **File → Check for updates…**.', $end
+          $body = ([string]$release.body).Replace("`r`n", "`n").TrimStart()
+          $notes = [regex]::Replace($body, '(?s)\A<!-- gouache-downloads:start -->.*?<!-- gouache-downloads:end -->\s*', '')
+          $updated = ($downloads -join "`n") + "`n`n" + $notes
+          if ($updated -ne $body) {
+            $notesFile = Join-Path $env:RUNNER_TEMP 'gouache-release-notes.md'
+            Set-Content -LiteralPath $notesFile -Value $updated -Encoding utf8 -NoNewline
+            gh release edit $tag --notes-file $notesFile --repo $env:GITHUB_REPOSITORY
+            if ($LASTEXITCODE -ne 0) { throw "Could not update release $tag." }
+          }
+
       - uses: actions/upload-artifact@v4
         with:
           name: gouache-studio-windows
