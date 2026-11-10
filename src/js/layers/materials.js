@@ -10,7 +10,18 @@ const dlView=r=>Object.assign(dlMeta(r),{builtin:true,lazy:true,wf:'',bundled:{f
 /* the built-in ones, as material records */
 function matBuiltins(){return (typeof P3_MATERIALS!=='undefined'?P3_MATERIALS:[]).map(([name,m])=>({id:'b:'+name,name,builtin:true,fill:{maps:Object.fromEntries(Object.entries(JSON.parse(JSON.stringify(m))).map(([k,v])=>[k,Object.assign({on:true,src:'value'},v)])),proj:'uv',triSharp:4,hStr:1},imgs:{}}));}
 async function matLoad(){if(matLib.loaded)return;matLib.loaded=true;try{const rows=await store.scanRaw('materials',r=>r.dl?dlView(r):r),mine=[];dlLib.list=[];
-    for(const r of rows||[]){if(r.dl){dlLib.list.push(r);continue;}try{mine.push(await pxDeep(r,false));}catch(e){console.warn('material',e);}}matLib.list=mine.sort((a,b)=>(a.t||0)-(b.t||0));}catch(e){matLib.list=[];}if(typeof p3ListsDone==='undefined'||p3ListsDone)renderMats();}
+    const previews=new Map(rows.filter(r=>r.kind==='smart-preview').map(r=>[r.id,r]));
+    for(const r of rows){
+      if(r.dl){dlLib.list.push(r);continue;}
+      if(r.kind==='smart-preview')continue;
+      try{
+        const rec=await pxDeep(r,false),preview=previews.get(smThumbKey(rec.id));
+        if(rec.kind==='smart'&&preview&&preview.revision===rec.previewRev)rec.thumb=preview.thumb;
+        mine.push(rec);
+      }catch(e){console.warn('material',e);}
+    }
+    matLib.list=mine.sort((a,b)=>(a.t||0)-(b.t||0));
+  }catch(e){matLib.list=[];}if(typeof p3ListsDone==='undefined'||p3ListsDone)renderMats();}
 /* a record's images as graphics-card textures (made when first needed) */
 function matRecTargets(rec){if(rec._t)return rec._t;const o={};for(const k in rec.imgs||{}){const im=rec.imgs[k],t=makeTarget(im.w,im.h,8,true);writeRegion(t,0,0,im.w,im.h,im.data);o[k]=t;}return rec._t=o;}
 function matApply(rec){const f=rec.fill;let maps={},imgs=null,temp=null,note='';
@@ -31,7 +42,11 @@ function matSaveFromFill(L,f){const name=(L.name||'Material').trim(),imgs={};
   if(old){if(old._t)for(const k in old._t)disposeTarget(old._t[k]);matLib.list[matLib.list.indexOf(old)]=rec;}else matLib.list.push(rec);
   paRemember('mat',rec).catch(e=>toast('Could not add the material to Projects: '+e.message));store.put(rec,'materials');renderMats();toast((old?'Updated':'Saved')+' “'+name+'” in Materials.');}
 function matDelete(rec){confirmDlg('Delete material','Delete the material “'+rec.name+'” from Materials? Layers that use it keep it.','Delete',()=>{
-  const i=matLib.list.indexOf(rec);if(i>=0)matLib.list.splice(i,1);if(rec._t)for(const k in rec._t)disposeTarget(rec._t[k]);store.del(rec.id,'materials');renderMats();});}
+  const i=matLib.list.indexOf(rec);if(i<0)return;
+  matLib.list.splice(i,1);if(rec._t)for(const k in rec._t)disposeTarget(rec._t[k]);
+  if(rec.kind==='smart')store.tx('readwrite',st=>{st.delete(smThumbKey(rec.id));return st.delete(rec.id);},'materials').catch(e=>console.warn('smart material delete',e));
+  else store.del(rec.id,'materials');
+  renderMats();});}
 /* .gmat: the material as gzipped JSON, its images as PNG or WebP */
 async function matExport(rec){if(rec.kind==='smart'||rec.kind==='smask'){const body=await smImgsOut(rec.kind==='smart'?{tree:rec.tree}:{mask:rec.mask});
     const blob=await gmatBlob(Object.assign({app:'Gouache Studio',kind:rec.kind,v:1,name:rec.name},body));const r=await deliver(slug(rec.name)+'.gmat',blob);toast(deliveredText(r,rec.kind==='smart'?'Smart material':'Smart mask'));return;}
@@ -73,7 +88,7 @@ function gmRelease(rec){if(!rec||!rec.dl||rec.dl.res==='1K')return;if(rec._t){fo
 async function gmApply(rec){if(!(rec.fill&&rec.imgs)){toast('Loading “'+rec.name+'”…');try{await gmLoad(rec);}catch(e){toast('Could not load “'+rec.name+'”: '+(e.message||e));return null;}}const L=matApply(rec);gmRelease(rec);return L;}
 async function matImport(){const fs=await pickFiles('.gmat,application/json',true,'Gouache Studio materials',['gmat']);let n=0;
   for(const f of fs){try{const j=await gmatParse(f);
-      if((j.kind==='smart'&&j.tree)||(j.kind==='smask'&&j.mask)){const body=await smImgsIn(j.kind==='smart'?{tree:j.tree}:{mask:j.mask});smPut(Object.assign({kind:j.kind,name:j.name||baseName(f.name)},body));n++;continue;}
+      if((j.kind==='smart'&&j.tree)||(j.kind==='smask'&&j.mask)){const body=await smImgsIn(j.kind==='smart'?{tree:j.tree}:{mask:j.mask});const rec=smPut(Object.assign({kind:j.kind,name:j.name||baseName(f.name)},body));if(rec.kind==='smart')smThumbLater(rec);n++;continue;}
       if(j.kind!=='material'||!j.fill)throw new Error('not a material');
       const rec={id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:j.name||baseName(f.name),t:Date.now(),fill:j.fill,imgs:await gmatImgs(j)};matLib.list.push(rec);store.put(rec,'materials');n++;}
     catch(e){toast('Could not read '+f.name+': '+(e.message||e));}}

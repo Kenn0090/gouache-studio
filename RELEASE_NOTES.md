@@ -1,3 +1,9 @@
+## 0.97.2
+
+- Fixed the “Invalid string length” error when adding a custom smart material with saved images or masks.
+- Saving smart materials keeps Gouache more responsive. Applying them does less work before they appear on your mesh.
+- Smart material thumbnails render on the Material Preview mesh. Click **↻** to remake an older thumbnail.
+
 ## 0.97.1
 
 - **Layer rows like Painter:** the layer's picture shows its effects, the mask shows the mask's rows, click again to hide.

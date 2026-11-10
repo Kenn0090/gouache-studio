@@ -1,66 +1,206 @@
-/* ================= Smart material previews on the Material preview model (0.96.9, Kenn: "like Substance Painter") =================
-   Saving a smart material used to keep a small screenshot of the 3D view as it was (your model, your camera, whatever was
-   around it). Now the saved folder is built again on the Material preview model, with that model's own mesh maps (curvature,
-   ambient occlusion, thickness, height, normal), over a mid grey base, and photographed from the same angle as the built-in
-   smart materials (scripts/smart-thumbs.cjs). The project is set aside for that moment and put back exactly as it was:
-   nothing is drawn on screen meanwhile (everything between setting aside and putting back runs without waiting). */
-const smTh={kit:null,pending:null,busy:false,size:256};
-/* the model and its mesh maps, made once (kept on the graphics card while the app runs) */
-function smThumbKit(){if(smTh.kit)return Promise.resolve(smTh.kit);if(smTh.pending)return smTh.pending;
-  smTh.pending=(async()=>{const m=await studioPreviewLoad();if(!m)throw new Error('the Material preview model could not be loaded');
-    const pic=async name=>{const raw=await decodeFile(new File([await studioPreviewBytes('preview-'+name+'.png')],'Preview_'+name+'.png',{type:'image/png'}));
-      const tex=uploadStraight(raw),t=makeTarget(raw.w,raw.h,8,false);try{premultInto(t,tex,[0,0],null);}finally{gl.deleteTexture(tex);}setWrap(t,true);return t;};
-    const maps={normal:await pic('N'),curv:await pic('Curv'),height:await pic('H'),thick:await pic('Thickness')};
-    /* ambient occlusion is the red channel of the packed ORM picture */
-    const raw=await decodeFile(new File([await studioPreviewBytes('preview-ORM.png')],'Preview_ORM.png',{type:'image/png'})),c=document.createElement('canvas');c.width=raw.w;c.height=raw.h;
-    const x=c.getContext('2d');x.drawImage(raw.el,0,0);const d=x.getImageData(0,0,raw.w,raw.h).data;try{URL.revokeObjectURL(raw.el.src);}catch(e){}
-    const g=new Uint8Array(raw.w*raw.h*4);for(let i=0;i<raw.w*raw.h;i++){const v=d[i*4];g[i*4]=g[i*4+1]=g[i*4+2]=v;g[i*4+3]=255;}
-    const ao=makeTarget(raw.w,raw.h,8,false);writeRegion(ao,0,0,raw.w,raw.h,g);setWrap(ao,true);maps.ao=ao;
-    const mesh=primMesh('matpreview',0);smTh.kit={mesh,maps,w:raw.w,h:raw.h};return smTh.kit;})().finally(()=>{smTh.pending=null;});
-  return smTh.pending;}
-const smThumbFreeGpu=g=>{if(!g)return;if(g.wireRanges)for(const r of g.wireRanges.values())gl.deleteBuffer(r.b);gl.deleteVertexArray(g.vao);gl.deleteBuffer(g.vb);gl.deleteBuffer(g.ib);gl.deleteBuffer(g.eb);gl.deleteVertexArray(g.evao);};
-/* tree = a smart material as saved (smSer); returns a data URL, or null when it cannot be made (the caller keeps the old picture) */
-async function smStudioThumb(tree){if(ui.mode!=='p3d'||typeof p3==='undefined'||smTh.busy)return null;smTh.busy=true;
-  try{const kit=await smThumbKit(),t=JSON.parse(JSON.stringify(tree));
-    /* Library materials and grunge pictures the folder names are fetched before anything is set aside */
-    if(smNeeds(t))await smResolveNode(t);
-    if(stroke||preview||selLive||(typeof tabDocs!=='undefined'&&tabDocs.hold)||ui.mode!=='p3d')return null;
-    return smThumbRender(kit,t);}
-  catch(e){console.warn('smart material preview',e);return null;}finally{smTh.busy=false;}}
-function smThumbRender(kit,t){const mine=docState(),wf=doc.workflow,v3d=doc.v3d,keep={mesh:v3.mesh,gpu:v3.gpu,tex:v3.tex,cam:Object.assign({},v3.cam),rt:v3.rt,sets:p3.sets,cur:p3.cur,mv:v3.mapsDirty};
-  const thq=new Set(thumbQ),S=smTh.size,W=S*2,set={name:'Smart preview'};let out=null,gpu=null,temp=null;
-  try{blankTabDoc(kit.w,kit.h,'Smart preview');doc.v3d=v3d;doc.workflow=wf;
-    /* the maps a 3D Paint texture set has, plus any the folder paints into */
-    const need=[...smMapsOf(t)].filter(k=>MAP_DEFS[k]&&!FILL_SKIP.includes(k)&&!WF_KEYS[wf==='spec'?'metal':'spec'].includes(k));
-    doc.maps=MAP_ORDER.filter(k=>(wf==='spec'?P3_MAPS_SPEC:P3_MAPS).includes(k)||need.includes(k));syncTargets();
-    doc.meshMaps=Object.assign({},kit.maps);doc.meshMapVer=1;
-    for(const n of [...doc.root.children]){doc.root.children.splice(doc.root.children.indexOf(n),1);disposeLayer(n);}
-    /* a mid grey base, so overlay materials (dirt, dust, edge wear) show against something, as in the built-in previews */
-    const B=newLayerObj('Base');B.fill=fillDefaults();const F=B.fill.maps;for(const k in F)F[k].on=false;
-    Object.assign(F.base,{on:true,src:'value',c:[.42,.43,.45]});if(wf==='spec'){if(F.spec)Object.assign(F.spec,{on:true,src:'value',c:[.04,.04,.04]});if(F.gloss)Object.assign(F.gloss,{on:true,src:'value',v:.4});}
-    else{Object.assign(F.rough,{on:true,src:'value',v:.6});Object.assign(F.metal,{on:true,src:'value',v:0});}
-    fillRender(B);insertNode(B,doc.root);
-    const solo=t.t==='G'&&(t.kids||[]).length===1&&t.kids[0].fx&&t.kids[0].fx.map==='all',n=smBuild(solo?t.kids[0]:t);smFitWorkflow(n);insertNode(n,doc.root);selectOnly(n);
-    /* the model: its own buffers, one material range for the one stand-in texture set */
-    temp=Object.assign({},kit.mesh,{setRanges:[{name:set.name,start:0,count:kit.mesh.idx.length/3}]});
-    v3.gpu=null;v3.mesh=temp;v3Upload(temp);gpu=v3.gpu;gl.bindVertexArray(vao);
-    p3.sets=[set];p3.cur=0;v3.tex={};v3.rt=false;msEpoch++;msUpdateAll();
+/* Render saved materials on the same model regardless of the current viewport.
+   Load assets first, then use a small temporary document for the synchronous render. */
+const smTh={kit:null,pending:null,busy:false,size:256,queue:Promise.resolve()};
+
+function smThumbKit(){
+  if(smTh.kit)return Promise.resolve(smTh.kit);
+  if(smTh.pending)return smTh.pending;
+  smTh.pending=(async()=>{
+    const mesh=await studioPreviewLoad();
+    if(!mesh)throw new Error('The Material Preview mesh could not be loaded.');
+    const size=512,maps={};
+    const decode=async name=>decodeFile(new File(
+      [await studioPreviewBytes('preview-'+name+'.png')],'Preview_'+name+'.png',{type:'image/png'}));
+    try{
+      for(const [key,name] of [['normal','N'],['curv','Curv'],['height','H'],['thick','Thickness']]){
+        const raw=await decode(name);
+        let texture=null,source=null;
+        try{
+          texture=uploadStraight(raw);
+          source=makeTarget(raw.w,raw.h,8,false);
+          premultInto(source,texture,[0,0],null);
+          maps[key]=makeTarget(size,size,8,false);
+          copyScaled(source,maps[key]);
+          setWrap(maps[key],true);
+        }finally{
+          if(texture)gl.deleteTexture(texture);
+          disposeTarget(source);
+          if(raw.el)URL.revokeObjectURL(raw.el.src);
+        }
+      }
+      const raw=await decode('ORM'),canvas=document.createElement('canvas');
+      canvas.width=canvas.height=size;
+      const context=canvas.getContext('2d');
+      try{context.drawImage(raw.el,0,0,size,size);}finally{URL.revokeObjectURL(raw.el.src);}
+      const data=context.getImageData(0,0,size,size).data;
+      for(let i=0;i<data.length;i+=4){data[i+1]=data[i+2]=data[i];data[i+3]=255;}
+      maps.ao=makeTarget(size,size,8,false);
+      writeRegion(maps.ao,0,0,size,size,new Uint8Array(data.buffer));
+      setWrap(maps.ao,true);
+      smTh.kit={mesh:primMesh('matpreview',0),maps,w:size,h:size};
+      return smTh.kit;
+    }catch(e){
+      for(const map of Object.values(maps))disposeTarget(map);
+      throw e;
+    }
+  })().finally(()=>{smTh.pending=null;});
+  return smTh.pending;
+}
+
+function smThumbFreeGpu(gpu){
+  if(!gpu)return;
+  if(gpu.wireRanges)for(const range of gpu.wireRanges.values())gl.deleteBuffer(range.b);
+  for(const buffer of [gpu.vb,gpu.ib,gpu.eb])gl.deleteBuffer(buffer);
+  gl.deleteVertexArray(gpu.vao);
+  gl.deleteVertexArray(gpu.evao);
+}
+
+async function smStudioThumb(tree,workflow=doc.workflow,isCurrent=()=>true){
+  if(!isCurrent()||gl.isContextLost())return null;
+  smTh.busy=true;
+  try{
+    const kit=await smThumbKit(),copy=smCopyTree(tree);
+    if(smNeeds(copy))await smResolveNode(copy,workflow);
+    while(isCurrent()&&!gl.isContextLost()&&(stroke||preview||selLive||tabDocs.hold)){
+      await new Promise(resolve=>setTimeout(resolve,100));
+    }
+    if(!isCurrent()||gl.isContextLost())return null;
+    return await smThumbRender(kit,copy,workflow);
+  }catch(e){
+    console.warn('smart material preview',e);
+    return null;
+  }finally{smTh.busy=false;}
+}
+
+function smThumbRender(kit,tree,workflow){
+  const project=docState();
+  const viewState={mesh:v3.mesh,gpu:v3.gpu,tex:v3.tex,cam:v3.cam,rt:v3.rt,dirty:v3.dirty,mapsDirty:v3.mapsDirty};
+  const paintState={sets:p3.sets,cur:p3.cur,udim:p3.udim,ua:p3.ua};
+  const uiState={mode:ui.mode,viewMask:ui.viewMask};
+  const meshMap=p3mm.k,thumbs=new Set(thumbQ);
+  const projectMasks={epoch:msEpoch,version:msDocVer};
+  const projectProjection={maps:fillPosC,limit:fillPosLimit};
+  const projectSeams=seamBlurCache;
+  const projectRender={dirty:dirtyComp,weld:weldEndPreview,timelapse:tlTouch};
+  const size=smTh.size,width=size*2,set={name:'Smart preview'};
+  try{
+    Object.assign(v3,{gpu:null,mesh:null,tex:{},rt:false});
+    Object.assign(p3,{sets:[set],cur:0,udim:false,ua:null});
+    Object.assign(ui,{mode:'p3d',viewMask:false});
+    p3mm.k=null;
+    fillPosC=null;
+    seamBlurCache=null;
+    blankTabDoc(kit.w,kit.h,'Smart preview');
+    doc.v3d={...V3D_DEFAULTS,model:'matpreview',unlit:false,env:'none',shadows:false};
+    doc.workflow=workflow;
+
+    const need=[...smMapsOf(tree)].filter(key=>MAP_DEFS[key]&&!FILL_SKIP.includes(key)&&
+      !WF_KEYS[workflow==='spec'?'metal':'spec'].includes(key));
+    const standard=workflow==='spec'?P3_MAPS_SPEC:P3_MAPS;
+    doc.maps=MAP_ORDER.filter(key=>standard.includes(key)||need.includes(key));
+    syncTargets();
+    doc.meshMaps={...kit.maps};
+    doc.meshMapVer=1;
+    for(const layer of doc.root.children.splice(0))disposeLayer(layer);
+
+    const mesh={...kit.mesh,setRanges:[{name:set.name,start:0,count:kit.mesh.idx.length/3}]};
+    v3.mesh=mesh;
+    v3Upload(mesh);
+    gl.bindVertexArray(vao);
+    const base=newLayerObj('Base',true);
+    base.fill=fillDefaults();
+    const maps=base.fill.maps;
+    for(const map of Object.values(maps))map.on=false;
+    Object.assign(maps.base,{on:true,src:'value',c:[.42,.43,.45]});
+    if(workflow==='spec'){
+      Object.assign(maps.spec,{on:true,src:'value',c:[.04,.04,.04]});
+      Object.assign(maps.gloss,{on:true,src:'value',v:.4});
+    }else{
+      Object.assign(maps.rough,{on:true,src:'value',v:.6});
+      Object.assign(maps.metal,{on:true,src:'value',v:0});
+    }
+    fillRender(base);
+    insertNode(base,doc.root);
+
+    const only=tree.t==='G'&&tree.kids?.length===1&&tree.kids[0].fx?.map==='all';
+    const material=smBuild(only?tree.kids[0]:tree);
+    insertNode(material,doc.root);
+    selectOnly(material);
+
+    msUpdateAll();
     p3RefreshTex();
-    Object.assign(v3.cam,{yaw:.7,pitch:.9});v3Frame();v3.cam.dist*=.95;
-    const d=v3Offscreen(W,W,{transparent:true}),c=document.createElement('canvas');c.width=c.height=W;const x=c.getContext('2d'),id=x.createImageData(W,W);
-    for(let y=0;y<W;y++)id.data.set(d.subarray((W-1-y)*W*4,(W-y)*W*4),y*W*4);x.putImageData(id,0,0);
-    const o=document.createElement('canvas');o.width=o.height=S;const ox=o.getContext('2d');ox.imageSmoothingQuality='high';ox.drawImage(c,0,0,S,S);
-    out=o.toDataURL('image/webp',.86);if(!/^data:image\/webp/.test(out))out=o.toDataURL('image/png');}
-  catch(e){console.warn('smart material preview',e);out=null;}
-  finally{for(const k in v3.tex)disposeTarget(v3.tex[k]);smThumbFreeGpu(gpu);
-    v3.gpu=keep.gpu;v3.mesh=keep.mesh;v3.tex=keep.tex;Object.assign(v3.cam,keep.cam);v3.rt=keep.rt;p3.sets=keep.sets;p3.cur=keep.cur;
-    gl.bindVertexArray(vao);/* the flat full-screen shape every 2D pass draws with (not the model) */
-    /* the stand-in document goes (its mesh maps stay in the kit for next time) */
-    doc.meshMaps={};const gone=docState();setDocState(mine);disposeDocState(gone);
-    thumbQ.clear();for(const q of thq)thumbQ.add(q);msEpoch++;v3.mapsDirty=true;v3.dirty=true;requestRender(true);}
-  return out;}
-/* after Save / Update: the quick screenshot is kept until the proper preview is ready, then replaced */
-function smThumbLater(rec){if(!rec||rec.kind!=='smart')return;smStudioThumb(rec.tree).then(u=>{if(!u)return;const r=matLib.list.find(x=>x.id===rec.id);if(!r)return;
-  r.thumb=u;Promise.resolve(store.put(r,'materials')).catch(e=>console.warn('smart material preview',e));renderMats();});}
-/* Right-click › Redo preview on one of your own smart materials */
-function smThumbRedo(rec){if(ui.mode!=='p3d'){toast('Open 3D Paint to make the preview.');return;}toast('Making the preview of “'+rec.name+'”…');smThumbLater(rec);}
+    const dist=mesh.radius/Math.sin(doc.v3d.fov*Math.PI/360)*1.026;
+    v3.cam={yaw:.7,pitch:.9,dist,tx:0,ty:0,tz:0};
+    return v3Offscreen(width,width,{transparent:true,overlays:false,async:true})
+      .then(pixels=>smThumbImage(pixels,width,size));
+  }finally{
+    const temp=doc.root!==project.doc.root?docState():null;
+    if(temp)temp.doc.meshMaps={}; // The preview kit owns these maps.
+    for(const target of Object.values(v3.tex))disposeTarget(target);
+    if(fillPosC)for(const target of [fillPosC.pos,fillPosC.nrm,fillPosC.tan])disposeTarget(target);
+    fillPosC=projectProjection.maps;
+    fillPosLimit=projectProjection.limit;
+    seamBlurDispose();
+    seamBlurCache=projectSeams;
+    smThumbFreeGpu(v3.gpu);
+    Object.assign(v3,viewState);
+    Object.assign(p3,paintState);
+    Object.assign(ui,uiState);
+    p3mm.k=meshMap;
+    gl.bindVertexArray(vao);
+    setDocState(project);
+    disposeDocState(temp);
+    thumbQ.clear();
+    for(const item of thumbs)thumbQ.add(item);
+    msEpoch=projectMasks.epoch;
+    msDocVer=projectMasks.version;
+    dirtyComp=projectRender.dirty;
+    weldEndPreview=projectRender.weld;
+    tlTouch=projectRender.timelapse;
+  }
+}
+
+function smThumbImage(pixels,width,size){
+  const render=document.createElement('canvas');
+  render.width=render.height=width;
+  const context=render.getContext('2d'),image=context.createImageData(width,width);
+  for(let y=0;y<width;y++){
+    image.data.set(pixels.subarray((width-1-y)*width*4,(width-y)*width*4),y*width*4);
+  }
+  context.putImageData(image,0,0);
+  const tile=document.createElement('canvas');
+  tile.width=tile.height=size;
+  const tileContext=tile.getContext('2d');
+  tileContext.imageSmoothingQuality='high';
+  tileContext.drawImage(render,0,0,size,size);
+  return tile.toDataURL('image/webp',.86);
+}
+
+/* Every save gets a turn. An older job must not overwrite a newer save or recreate a deleted tile. */
+function smThumbLater(rec,workflow=doc.workflow){
+  if(!rec||rec.kind!=='smart')return Promise.resolve(null);
+  const isCurrent=()=>matLib.list.includes(rec);
+  const next=smTh.queue.then(async()=>{
+    const thumb=await smStudioThumb(rec.tree,workflow,isCurrent);
+    if(!thumb||!isCurrent())return null;
+    rec.thumb=thumb;
+    // Store only the thumbnail. Saving the recipe again would repack every embedded image.
+    store.tx('readwrite',st=>isCurrent()?st.put({
+      id:smThumbKey(rec.id),kind:'smart-preview',revision:rec.previewRev,thumb
+    }):null,'materials').catch(e=>console.warn('smart material preview',e));
+    renderMats();
+    return thumb;
+  });
+  smTh.queue=next.catch(e=>{console.warn('smart material preview',e);return null;});
+  return smTh.queue;
+}
+
+const smThumbKey=id=>'smart-preview:'+id;
+
+function smThumbRedo(rec){
+  toast('Making the preview of “'+rec.name+'”…');
+  return smThumbLater(rec).then(thumb=>{
+    if(!thumb&&matLib.list.includes(rec))toast('Could not make a Material Preview thumbnail for “'+rec.name+'”.');
+    return thumb;
+  });
+}

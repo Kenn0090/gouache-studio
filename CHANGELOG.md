@@ -1,3 +1,9 @@
+## 0.97.2
+
+- **Custom smart materials apply again:** saved materials with embedded images or masks can be added without the “Invalid string length” error.
+- **Saving and applying smart materials is more responsive:** saving reads textures in the background, and applying skips duplicate texture copies and fill-layer renders.
+- **Smart material thumbnails render on the Material Preview mesh** in Paint and 3D Paint. New thumbnails appear when the preview is ready. Click **↻** on an older thumbnail to replace it.
+
 ## 0.97.1
 
 - **Layer rows like Painter:** only the selected layer shows rows under it. Click its picture to see its own effects (fx rows), click its mask to see only the mask's rows, and click the same picture again to hide them. Adding an effect or a mask row shows the rows again.

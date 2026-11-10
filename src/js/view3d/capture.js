@@ -7,12 +7,14 @@
      frames per second, size, format (WebM or MP4 video, GIF, PNG sequence), whether the light turns with the
      model, and a transparent background (PNG sequence). */
 /* the view drawn off-screen at w×h (the normal, fast shading) → RGBA rows, bottom first */
-function v3Offscreen(w,h,o){o=o||{};const S=Math.min(4,gl.getParameter(gl.MAX_SAMPLES)||0),F={w,h};
+function v3Offscreen(w,h,o){o=o||{};const S=Math.min(4,gl.getParameter(gl.MAX_SAMPLES)||0),F={w,h,overlays:o.overlays};
   F.ms=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);F.c=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,F.c);gl.renderbufferStorageMultisample(gl.RENDERBUFFER,S,gl.RGBA8,w,h);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.RENDERBUFFER,F.c);
   F.d=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,F.d);gl.renderbufferStorageMultisample(gl.RENDERBUFFER,S,gl.DEPTH_COMPONENT24,w,h);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,F.d);
   F.rf=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,F.rf);F.rc=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,F.rc);gl.renderbufferStorage(gl.RENDERBUFFER,gl.RGBA8,w,h);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.RENDERBUFFER,F.rc);
   const was=v3.transparent;v3.transparent=!!o.transparent;let out;
-  try{v3Render(F,false);gl.bindFramebuffer(gl.FRAMEBUFFER,F.rf);out=new Uint8Array(w*h*4);gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,out);}
+  try{v3Render(F,false);
+    if(o.async)out=readRegionAsync({fbo:F.rf,depth:8},0,0,w,h);
+    else{gl.bindFramebuffer(gl.FRAMEBUFFER,F.rf);out=new Uint8Array(w*h*4);gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,out);}}
   finally{v3.transparent=was;gl.bindFramebuffer(gl.FRAMEBUFFER,null);v3PostFree(F);gl.deleteFramebuffer(F.ms);gl.deleteFramebuffer(F.rf);for(const r of [F.c,F.d,F.rc])gl.deleteRenderbuffer(r);v3.dirty=true;requestRender();}
   return out;}
 const v3ViewSize=()=>{const pane=v3.pop?null:$('#pane3d'),d=dprNow();return pane?[Math.max(16,Math.round(pane.clientWidth*d)),Math.max(16,Math.round(pane.clientHeight*d))]:[1280,720];};

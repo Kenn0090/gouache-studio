@@ -453,13 +453,13 @@ function v3Render(F,flip){const g=v3.gpu;if(!g)return;gl.blendEquation(gl.FUNC_A
   v3DrawAlpha(alphaItems,C,common,flip,g);
   if(!wireOnly&&!bake&&!mv&&!v3Unlit())v3DrawOutlines(list,common,F,flip);gl.bindVertexArray(g.vao);
   /* the selection, tinted on the model (3D Paint, or while painting on the model) */
-  if(!wireOnly&&!bake&&sel.active&&!sel.quick&&sel.t&&(ui.mode==='p3d'||v3.paintOn)){const R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:g.count/3};
+  if(F.overlays!==false&&!wireOnly&&!bake&&sel.active&&!sel.quick&&sel.t&&(ui.mode==='p3d'||v3.paintOn)){const R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:g.count/3};
     gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);useProg(P3.sel,Object.assign({},common,{uSel:sel.t.tex}));gl.bindVertexArray(g.vao);
     gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);gl.depthMask(true);gl.disable(gl.BLEND);}
-  if(!bake)sel3HoverDraw(g,common,F);
+  if(F.overlays!==false&&!bake)sel3HoverDraw(g,common,F);
   if(s.wire)v3DrawWire(g,list,common);
   if(bake&&!(bk.fold>0)){bakeDrawHigh(common,F);bakeDrawCage(common);}
-  if(!bake&&(v3.paintOn||ui.mode==='p3d')){drawMir3(VP);drawMir3Cursors(F,common);}
+  if(F.overlays!==false&&!bake&&(v3.paintOn||ui.mode==='p3d')){drawMir3(VP);drawMir3Cursors(F,common);}
   gl.bindVertexArray(vao);gl.disable(gl.DEPTH_TEST);
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,F.rf);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
   if(F.px)F.px.valid=false;if(!wireOnly&&!bake&&!mv&&typeof v3Post==='function')v3Post(F);v3.postDirty=false;}

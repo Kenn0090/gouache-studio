@@ -5,41 +5,77 @@
    Saved ones live with the materials (the browser's storage) and export as .gmat files. The built-ins are made
    of materials and generators, plus (0.34) some that fetch library materials and grunge pictures when added. */
 /* ---- a layer or folder → a plain description (pictures copied as 8-bit images) ---- */
-function smCap(t){if(!t||t.empty)return null;let s=t,tmp=null;if(t.depth!==8){tmp=makeTarget(t.w,t.h,8,false);copyScaled(t,tmp);s=tmp;}const c=captureRegionNow(s,0,0,s.w,s.h);if(tmp)disposeTarget(tmp);return {w:c.w,h:c.h,data:c.data};}
+function smCap(t,reads){
+  if(!t||t.empty)return null;
+  const {w,h}=t,im={w,h,data:null};
+  const staged=t.depth!==8||t.mono?makeTarget(w,h,8,false):null;
+  try{
+    if(t.mono)blit(t,staged,0,0,w,h,0,0);
+    else if(staged)copyScaled(t,staged);
+    if(!reads){im.data=captureRegionNow(staged||t,0,0,w,h).data;return im;}
+    // Queue the read now so it captures these pixels even if the layer is edited or removed.
+    reads.push(readRegionAsync(staged||t,0,0,w,h).then(data=>{im.data=data;}));
+  }finally{disposeTarget(staged);}
+  return im;
+}
 const smClone=o=>JSON.parse(JSON.stringify(o,(k,x)=>k==='t'||k[0]==='_'?undefined:x));
-function smSer(n){const o={t:n.type==='group'?'G':'L',name:n.name,mode:n.mode,op:n.opacity,vis:n.visible!==false,clip:!!n.clip,mapModes:Object.assign({},n.mapModes||{})};
-  if(n.type==='group'){o.open=n.open!==false;o.kids=n.children.map(smSer);}
+/* Resolving a saved material edits its node, picture table and mask rows.
+   Pixel buffers are read-only inputs to the GPU. Keep them as typed arrays. */
+function smCopyMask(mask){
+  if(!mask.rows)return {...mask};
+  return {...mask,rows:mask.rows.map(row=>({...row,p:row.p&&{...row.p}}))};
+}
+function smCopyTree(node){
+  const copy={...node};
+  if(node.kids)copy.kids=node.kids.map(smCopyTree);
+  if(node.mask)copy.mask=smCopyMask(node.mask);
+  if(node.fillImg)copy.fillImg={...node.fillImg};
+  return copy;
+}
+function smSer(n,reads){const o={t:n.type==='group'?'G':'L',name:n.name,mode:n.mode,op:n.opacity,vis:n.visible!==false,clip:!!n.clip,mapModes:Object.assign({},n.mapModes||{})};
+  if(n.type==='group'){o.open=n.open!==false;o.kids=n.children.map(c=>smSer(c,reads));}
   else if(n.fx){/* (0.78) a Hand-painted or Stylize layer: its settings */o.fx={map:n.fx.map,stack:n.fx.stack.map(it=>Object.assign(smClone(Object.assign({},it,{v:undefined})),{v:fxClean(it.v||{})}))};if(n.cfx&&n.cfx.length)o.cfx=smClone(n.cfx);}
   else{if(n.fill){o.fill=fillClone(n.fill);o.fillImg={};const lib=Object.values(n._fillImg||{}).map(t=>t&&t._lib).find(Boolean);
       /* (0.96.4, Kenn: "the Gmat file is 193mb") Library pictures are named, not copied: they come back from the Library when the smart material is added */
       if(lib){o.lib=lib;o.libAdjust=fillClone(n.fill);}
-      for(const k in n._fillImg||{}){const t=n._fillImg[k];if(lib&&t&&t._lib===lib)continue;const c=smCap(t);if(c)o.fillImg[k]=c;}}
-    else{o.maps={};for(const k of mapKeysOf(n)){const c=smCap(mapT(n,k));if(c)o.maps[k]=c;}}
+      for(const k in n._fillImg||{}){const t=n._fillImg[k];if(lib&&t&&t._lib===lib)continue;const c=smCap(t,reads);if(c)o.fillImg[k]=c;}}
+    else{o.maps={};for(const k of mapKeysOf(n)){const c=smCap(mapT(n,k),reads);if(c)o.maps[k]=c;}}
     if(n.styles)o.styles=smClone(n.styles);if(n.cfx&&n.cfx.length)o.cfx=smClone(n.cfx);}
-  if(n.mask)o.mask=smSerMask(n.mask);return o;}
-function smSerMask(m){if(m.stack)return {en:m.enabled!==false,rows:m.stack.map(r=>Object.assign(smClone(r),r.t?{img:smCap(r.t)}:{}))};return {en:m.enabled!==false,img:smCap(m.target)};}
+  if(n.mask)o.mask=smSerMask(n.mask,reads);return o;}
+function smSerMask(m,reads){if(m.stack)return {en:m.enabled!==false,rows:m.stack.map(r=>Object.assign(smClone(r),r.t?{img:smCap(r.t,reads)}:{}))};return {en:m.enabled!==false,img:smCap(m.target,reads)};}
 /* ---- a description → layers (pictures stretched to this document's size) ---- */
 function smImg(im){if(!im)return null;const t=makeTarget(im.w,im.h,8,false);writeRegion(t,0,0,im.w,im.h,im.data);return t;}
-function smFit(im,depth){const s=smImg(im);if(!s)return null;const d=makeTarget(doc.w,doc.h,depth||8,false);if(s.w===doc.w&&s.h===doc.h)copyScaled(s,d);else run(P.resample,d,{uSrc:s.tex,uOffset:[0,0],uScale:[s.w/doc.w,s.h/doc.h],uTaps:{int:Math.min(8,Math.max(1,Math.ceil(s.w/doc.w)))},uOutside:[0,0,0,0]});disposeTarget(s);return d;}
+function smWrite(im,target){
+  if(im.w===target.w&&im.h===target.h&&target.depth===8&&!target.packed){
+    writeRegion(target,0,0,im.w,im.h,im.data);
+    return;
+  }
+  const source=smImg(im);
+  try{copyScaled(source,target);}finally{disposeTarget(source);}
+}
 function smBuildMask(o){const m=makeMask(o.rows?0:1);m.enabled=o.en!==false;
-  if(o.rows){m.stack=[];m._rows=new Set();for(const d of o.rows){const r=Object.assign(msRow(d.kind),smClone(d),{id:'r'+(++msSeq)});delete r.img;
-      if(d.img){r.t=d.kind==='image'?smImg(d.img):smFit(d.img,m.target.depth);if(r.t&&d.kind==='image')setWrap(r.t,true);}else if(d._imgT&&d.kind==='image'){r.t=txCopy(d._imgT);}else if(d.kind==='paint'){r.t=makeTarget(doc.w,doc.h,m.target.depth);clearTarget(r.t,[0,0,0,0]);}
+  if(o.rows){m.stack=[];m._rows=new Set();for(const d of o.rows){const {img,...settings}=d;const r=Object.assign(msRow(d.kind),smClone(settings),{id:'r'+(++msSeq)});
+      if(img){
+        if(d.kind==='image'){r.t=smImg(img);setWrap(r.t,true);}
+        else{r.t=makeTarget(doc.w,doc.h,m.target.depth,false);smWrite(img,r.t);}
+      }else if(d._imgT&&d.kind==='image'){r.t=txCopy(d._imgT);}else if(d.kind==='paint'){r.t=makeTarget(doc.w,doc.h,m.target.depth);}
       m.stack.push(r);m._rows.add(r);}m._key=null;}
-  else if(o.img){const t=smFit(o.img,m.target.depth);if(t){copyScaled(t,m.target);disposeTarget(t);}}
+  else if(o.img)smWrite(o.img,m.target);
   return m;}
 function smBuild(o){let n;
   if(o.t==='G'){n=newGroupObj(o.name);n.open=o.open!==false;for(const k of o.kids||[]){const c=smBuild(k);insertNode(c,n);}}
   else if(o.fx){n=newFxLayerObj(o.name,smClone(o.fx.stack),o.fx.map);doc.count--;}
-  else{n=newLayerObj(o.name);doc.count--;
-    if(o.fill){n.fill=Object.assign(fillDefaults(),fillClone(o.fill));const D=fillDefaults().maps;for(const k in D)n.fill.maps[k]=Object.assign({},D[k],o.fill.maps&&o.fill.maps[k]||{on:false});
-      if(o._fillT||(o.fillImg&&Object.keys(o.fillImg).length)){n._fillImg={};for(const k in o._fillT||{}){n._fillImg[k]=txCopy(o._fillT[k]);if(o.lib)n._fillImg[k]._lib=o.lib;}
-        for(const k in o.fillImg||{}){const t=smImg(o.fillImg[k]);if(t){setWrap(t,true);if(n._fillImg[k])disposeTarget(n._fillImg[k]);n._fillImg[k]=t;}}}fillRender(n);}
-    else for(const k in o.maps||{}){if(!doc.maps.includes(k)&&k!=='base')continue;const t=smFit(o.maps[k],mapDepth(k));if(t){copyScaled(t,ensureMapTarget(n,k));disposeTarget(t);}}
+  else{n=newLayerObj(o.name,!!o.fill);doc.count--;
+    if(o.fill){const defaults=fillDefaults(),maps=defaults.maps;n.fill=Object.assign(defaults,fillClone(o.fill));
+      for(const k in maps)n.fill.maps[k]=Object.assign(maps[k],o.fill.maps&&o.fill.maps[k]||{on:false});
+      if(o._fillT||(o.fillImg&&Object.keys(o.fillImg).length)){n._fillImg={};for(const k in o._fillT||{}){if(o.fillImg?.[k])continue;n._fillImg[k]=fillImgCopy(o._fillT[k]);if(o.lib)n._fillImg[k]._lib=o.lib;}
+        for(const k in o.fillImg||{}){const t=smImg(o.fillImg[k]);if(t){setWrap(t,true);n._fillImg[k]=t;}}}
+      wfFillFit(n);
+      fillRender(n);}
+    else for(const k in o.maps||{}){const im=o.maps[k];if(im&&(doc.maps.includes(k)||k==='base'))smWrite(im,ensureMapTarget(n,k));}
     if(o.styles)n.styles=smClone(o.styles);if(o.cfx)n.cfx=o.cfx.map(r=>Object.assign(msRow('filter'),smClone(r),{id:'r'+(++msSeq)}));}
   Object.assign(n,{visible:o.vis!==false,opacity:o.op==null?1:o.op,mode:o.mode==null?(o.t==='G'?-1:0):o.mode,clip:!!o.clip,mapModes:Object.assign({},o.mapModes||{})});
   if(o.mask)n.mask=smBuildMask(o.mask);return n;}
-/* a smart material made in the other workflow (Roughness and Metallic in a Spec/Gloss project) is converted layer by layer as it is added */
-function smFitWorkflow(n){const go=x=>{if(x.fill){wfFillFit(x);fillRender(x);}for(const c of x.children||[])go(c);};go(n);}
 /* the maps a description needs (added to the document if missing) */
 function smMapsOf(o,out){out=out||new Set();if(o.fill)for(const k in o.fill.maps||{})if(o.fill.maps[k].on!==false)out.add(k);for(const k in o.maps||{})out.add(k);for(const c of o.kids||[])smMapsOf(c,out);return out;}
 /* Materials tab › a smart material: the folder goes above the active layer (a selection becomes its mask) */
@@ -48,52 +84,91 @@ function smApplyNow(rec){if(ui.mode==='anim'){toast('Smart materials are for Pai
   if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the smart material');
   /* a single layer that acts on every map (Hand-painted, Stylize) goes in as itself, not in a folder, so it reaches the layers below */
   const t=rec.tree,solo=t&&t.t==='G'&&(t.kids||[]).length===1&&t.kids[0].fx&&t.kids[0].fx.map==='all';
-  let n;try{n=smBuild(solo?t.kids[0]:t);smFitWorkflow(n);}catch(e){console.error('smart material',e);toast('Could not add “'+rec.name+'”: '+smWhy(e));return null;}n.name=rec.name;if(!rec.builtin&&!solo)n.smSrc=rec.id;const fromSel=sel.active&&!sel.quick&&!n.mask;
+  let n;try{n=smBuild(solo?t.kids[0]:t);}catch(e){console.error('smart material',e);toast('Could not add “'+rec.name+'”: '+smWhy(e));return null;}n.name=rec.name;if(!rec.builtin&&!solo)n.smSrc=rec.id;const fromSel=sel.active&&!sel.quick&&!n.mask;
   if(fromSel){n.mask=makeMask(0);run(P.loadsel,n.mask.target,{uSrc:sel.t.tex,uWhat:{int:1},uInv:false});}
   /* above the selected layer or folder (not inside a folder that happens to be selected) */
-  const A=doc.active,P=insertAt?insertAt.parent:A&&A.parent?A.parent:doc.root,I=insertAt?insertAt.index:A&&A.parent?P.children.indexOf(A)+1:P.children.length;
-  try{structOp('Add smart material',()=>{insertNode(n,P,I);selectOnly(n);});}catch(e){console.error('smart material',e);toast('Could not add “'+rec.name+'”: '+smWhy(e));return null;}msEpoch++;changedAll();
+  const A=doc.active,parent=insertAt?insertAt.parent:A&&A.parent?A.parent:doc.root,index=insertAt?insertAt.index:A&&A.parent?parent.children.indexOf(A)+1:parent.children.length;
+  try{structOp('Add smart material',()=>{insertNode(n,parent,index);selectOnly(n);msEpoch++;});}catch(e){console.error('smart material',e);toast('Could not add “'+rec.name+'”: '+smWhy(e));return null;}
   toast('Added the smart material “'+rec.name+'”'+(fromSel?' in the selection.':'. Its rows stay live: change them under each layer.'));return n;}
 /* built-ins that use library materials or grunge pictures fetch them first (a moment on the first use) */
 /* (0.96.4, Kenn: "when I drag and drop it adds nothing") a failure says so instead of doing nothing */
 function smWhy(e){const m=String(e&&e.message||e||'');return /memory|allocat|context|texture/i.test(m)?'not enough graphics memory for its pictures. Try a smaller project or close other documents.':m||'unknown error';}
 function smApply(rec){let need;try{need=smNeeds(rec.tree);}catch(e){console.error('smart material',e);toast('Could not add “'+rec.name+'”: '+smWhy(e));return null;}if(!need)return smApplyNow(rec);
-  const at=insertAt;toast('Loading “'+rec.name+'”…');
-  return (async()=>{const t=JSON.parse(JSON.stringify(rec.tree));try{await smResolveNode(t);}catch(e){toast('Could not load “'+rec.name+'”: '+(e.message||e));return null;}
-    insertAt=at;try{return smApplyNow(Object.assign({},rec,{tree:t}));}finally{insertAt=null;}})();}
+  const at=insertAt,root=doc.root,mode=ui.mode,workflow=doc.workflow;
+  toast('Loading “'+rec.name+'”…');
+  return (async()=>{
+    try{
+      const tree=smCopyTree(rec.tree);
+      await smResolveNode(tree,mode==='bake'||mode==='convert'?null:workflow);
+      if(doc.root!==root||ui.mode!==mode||doc.workflow!==workflow){
+        toast('The document changed while loading “'+rec.name+'”. Try adding it again.');
+        return null;
+      }
+      const previous=insertAt;
+      insertAt=at&&(at.parent===root||inDoc(at.parent))?at:null;
+      try{return smApplyNow({...rec,tree});}finally{insertAt=previous;}
+    }catch(e){console.error('smart material',e);toast('Could not add “'+rec.name+'”: '+smWhy(e));return null;}
+  })();}
 /* Materials tab › a smart mask: it becomes the active layer's mask */
 function smMaskApply(rec){if(!(rec.mask.rows||[]).some(r=>r.p&&r.p.grunge&&!r.img&&!r._imgT))return smMaskApplyNow(rec);
   const L=doc.active;if(!L||L.fx||ui.mode==='anim'){toast('Select a layer first.');return;}
-  toast('Loading “'+rec.name+'”…');return (async()=>{const m=JSON.parse(JSON.stringify(rec.mask));try{await smResolveMask(m);}catch(e){toast('Could not load “'+rec.name+'”: '+(e.message||e));return;}
+  toast('Loading “'+rec.name+'”…');return (async()=>{const m=smCopyMask(rec.mask);try{await smResolveMask(m);}catch(e){toast('Could not load “'+rec.name+'”: '+(e.message||e));return;}
     if(doc.active!==L)return;smMaskApplyNow(Object.assign({},rec,{mask:m}));})();}
 function smMaskApplyNow(rec){const L=doc.active;if(!L||L.fx||ui.mode==='anim'){toast('Select a layer first.');return;}
   msRecord(L,'Smart mask “'+rec.name+'”',()=>{const m=smBuildMask(rec.mask);if(L.mask){m.enabled=L.mask.enabled;}L.mask=m;L.editMask=true;L.smMaskSrc=rec.builtin?undefined:rec.id;});msEpoch++;toast('“'+L.name+'” has the smart mask “'+rec.name+'”.');}
 
 /* ---- saving ---- */
-function smThumb(){/* what the 3D view shows (or the base colour of the painting), small */
-  try{const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');
-    if(v3.on&&v3.fbo){const F=v3.fbo,s=Math.min(F.w,F.h),d=new Uint8Array(s*s*4);gl.bindFramebuffer(gl.FRAMEBUFFER,F.rf);gl.readPixels((F.w-s)>>1,(F.h-s)>>1,s,s,gl.RGBA,gl.UNSIGNED_BYTE,d);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
-      const t=document.createElement('canvas');t.width=t.height=s;const id=t.getContext('2d').createImageData(s,s);for(let y=0;y<s;y++)id.data.set(d.subarray((s-1-y)*s*4,(s-y)*s*4),y*s*4);t.getContext('2d').putImageData(id,0,0);x.drawImage(t,0,0,64,64);}
-    else{const t=compositeMap('base'),im=captureRegionNow(t,0,0,doc.w,doc.h);release(t);const s=document.createElement('canvas');s.width=doc.w;s.height=doc.h;const id=s.getContext('2d').createImageData(doc.w,doc.h);
-      for(let i=0;i<im.data.length;i+=4){const a=im.data[i+3]||1;id.data[i]=im.data[i]*255/a;id.data[i+1]=im.data[i+1]*255/a;id.data[i+2]=im.data[i+2]*255/a;id.data[i+3]=255;}s.getContext('2d').putImageData(id,0,0);x.drawImage(s,0,0,64,64);}
-    return c.toDataURL('image/png');}catch(e){return null;}}
 function smAskName(title,def,fn){const inp=el('input',{type:'text',id:'smName',value:def,'aria-label':'Name'});
   openDialog({title,body:el('div',{class:'dlg-grid'},inp),okLabel:'Save',onOk(){const n=inp.value.trim();if(!n)return false;fn(n);}});setTimeout(()=>{inp.focus();inp.select();},0);}
-function smSave(n){if(!n)return;smAskName('Save as smart material',n.name,name=>{const tree=n.type==='group'?smSer(n):{t:'G',name,open:true,kids:[smSer(n)]};
-  const r=smPut({kind:'smart',name,tree,thumb:smThumb()});n.smSrc=r.id;smThumbLater(r);toast('Saved “'+name+'” in Materials › Smart materials.');});}
-function smMaskSave(n){if(!n||!n.mask)return;smAskName('Save as smart mask',n.name+' mask',name=>{const r=smPut({kind:'smask',name,mask:smSerMask(n.mask)});n.smMaskSrc=r.id;toast('Saved “'+name+'” in Materials › Smart masks.');});}
+let smSaveQueue=Promise.resolve();
+async function smSaveRecipe(n,kind,name,update=false){
+  const reads=[],workflow=doc.workflow,isMask=kind==='smask',mask=n.mask;
+  const recipe={kind,name};
+  try{
+    if(isMask)recipe.mask=smSerMask(mask,reads);
+    else{
+      const node=smSer(n,reads);
+      recipe.tree=node.t==='G'?{...node,name}:{t:'G',name,open:true,kids:[node]};
+    }
+    if(reads.length)toast('Saving “'+name+'”…');
+    const ready=Promise.all([smSaveQueue,Promise.all(reads)]);
+    const saved=ready.then(()=>{
+      const rec=smPut(recipe);
+      if(isMask){if(n.mask===mask)n.smMaskSrc=rec.id;}
+      else n.smSrc=rec.id;
+      if(!isMask)smThumbLater(rec,workflow);
+      toast((update?'Updated':'Saved')+' “'+name+'” in Materials › '+(isMask?'Smart masks.':'Smart materials.'));
+    });
+    smSaveQueue=saved.catch(()=>{});
+    await saved;
+  }catch(e){
+    await Promise.allSettled(reads);
+    console.error('smart material save',e);
+    toast('Could not save “'+name+'”: '+smWhy(e));
+  }
+}
+function smSave(n){if(n)smAskName('Save as smart material',n.name,name=>smSaveRecipe(n,'smart',name));}
+function smMaskSave(n){if(n&&n.mask)smAskName('Save as smart mask',n.name+' mask',name=>smSaveRecipe(n,'smask',name));}
 /* (0.35, Kenn) right-click a folder that came from a saved smart material (or a layer whose mask came from a saved smart mask): put the changes back into the library */
 function smOrigin(n,kind){if(!n)return null;const id=kind==='smask'?n.smMaskSrc:n.smSrc,nm=kind==='smask'?null:n.name;
   return matLib.list.find(r=>r.kind===kind&&!r.builtin&&(r.id===id||(!id&&nm&&r.name===nm)))||null;}
 function smUpdate(n){const rec=smOrigin(n,'smart');if(!rec){toast('This folder is not from a saved smart material. Use Save as smart material.');return;}
-  confirmDlg('Update smart material','Replace the saved smart material “'+rec.name+'” with this folder as it is now?','Update',()=>{
-    const tree=n.type==='group'?smSer(n):{t:'G',name:rec.name,open:true,kids:[smSer(n)]};tree.name=rec.name;
-    smThumbLater(smPut({kind:'smart',name:rec.name,tree,thumb:smThumb()}));n.smSrc=rec.id;toast('Updated “'+rec.name+'” in Materials › Smart materials.');});}
+  confirmDlg('Update smart material','Replace the saved smart material “'+rec.name+'” with this folder as it is now?','Update',()=>smSaveRecipe(n,'smart',rec.name,true));}
 function smMaskUpdate(n){const rec=smOrigin(n,'smask');if(!rec||!n.mask){toast('This mask is not from a saved smart mask. Use Save mask as smart mask.');return;}
-  confirmDlg('Update smart mask','Replace the saved smart mask “'+rec.name+'” with this mask as it is now?','Update',()=>{
-    smPut({kind:'smask',name:rec.name,mask:smSerMask(n.mask)});n.smMaskSrc=rec.id;toast('Updated “'+rec.name+'” in Materials › Smart masks.');});}
-function smPut(o){const old=matLib.list.find(r=>r.kind===o.kind&&r.name===o.name),rec=Object.assign({id:old?old.id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),t:old?old.t:Date.now()},o);
-  if(old)matLib.list[matLib.list.indexOf(old)]=rec;else matLib.list.push(rec);Promise.resolve(store.put(rec,'materials')).catch(e=>{console.error('smart material save',e);toast('“'+rec.name+'” works now but could not be kept on this computer for next time: '+(e&&e.message||e));});renderMats();return rec;}
+  confirmDlg('Update smart mask','Replace the saved smart mask “'+rec.name+'” with this mask as it is now?','Update',()=>smSaveRecipe(n,'smask',rec.name,true));}
+function smPut(o){
+  const old=matLib.list.find(r=>r.kind===o.kind&&r.name===o.name);
+  const revision='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  const rec={id:old?old.id:revision,t:old?old.t:Date.now(),...o};
+  if(rec.kind==='smart')rec.previewRev=revision;
+  if(old)matLib.list[matLib.list.indexOf(old)]=rec;else matLib.list.push(rec);
+  pxDeep(rec,true).then(packed=>store.tx('readwrite',st=>matLib.list.includes(rec)?st.put(packed):null,'materials')).catch(e=>{
+    console.error('smart material save',e);
+    toast('“'+rec.name+'” works now but could not be kept on this computer for next time: '+(e&&e.message||e));
+  });
+  renderMats();
+  return rec;
+}
 
 /* ---- the built-ins: materials and generators only ---- */
 const SM_F=(name,maps,o)=>Object.assign({t:'L',name,fill:{maps:Object.fromEntries(Object.entries(maps).map(([k,v])=>[k,Object.assign({on:true,src:'value'},v)])),proj:'uv',triSharp:4,hStr:1}},o||{});
@@ -194,18 +269,18 @@ const SM_LIB=[
 /* fetch what a description points at: library materials and grunge pictures */
 function smNeeds(o){if(o.lib)return true;for(const r of (o.mask&&o.mask.rows)||[])if(r.p&&r.p.grunge&&!r.img)return true;for(const c of o.kids||[])if(smNeeds(c))return true;return false;}
 async function smResolveMask(m){for(const r of m.rows||[]){const g=r.p&&r.p.grunge;if(g&&!r.img){const it=txItems().find(x=>x.kind==='photo'&&x.id===g);if(it){/* (0.58) the picture stays on the graphics card: copying it there is instant, reading it back to the CPU and uploading it again was the slow part */Object.defineProperty(r,'_imgT',{value:await txTarget(it),enumerable:false,writable:true});r.p.name=it.name;}}}}
-async function smResolveNode(o){
+async function smResolveNode(o,workflow=ui.mode==='bake'||ui.mode==='convert'?null:doc.workflow){
   if(o.lib){const rec=gmRecs.find(r=>r.bundled&&r.bundled.file===o.lib+'.gmat');
     if(rec){if(!(rec.fill&&rec.imgs))await gmLoad(rec);
       /* a Library material made for the other workflow is converted (values and pictures) as it is fetched */
-      const cv=ui.mode==='bake'||ui.mode==='convert'?null:wfMatConvert(rec,doc.workflow==='spec'?'spec':'metal'),conv=cv&&cv.converted;
+      const cv=workflow==null?null:wfMatConvert(rec,workflow==='spec'?'spec':'metal'),conv=cv&&cv.converted;
       o.fill=fillClone(conv?Object.assign({},rec.fill,{maps:cv.maps}):rec.fill);
       if(o.libAdjust){const a=fillClone(o.libAdjust),tile=a.tile;delete a.tile;const maps=a.maps;delete a.maps;Object.assign(o.fill,a);if(tile!=null)for(const k in o.fill.maps)o.fill.maps[k].tile=tile;if(maps)for(const k in maps)o.fill.maps[k]=Object.assign({},o.fill.maps[k]||{},maps[k]);}
       o.fillImg=o.fillImg||{};const T=matRecTargets(rec),ft={};for(const k in T)if(T[k]&&!T[k].empty)ft[k]=T[k];Object.defineProperty(o,'_fillT',{value:ft,enumerable:false,writable:true});/* (0.58) copied on the graphics card, not read back */
-      if(conv){for(const k in cv.imgs){const im=cv.imgs[k];if(rec.imgs&&rec.imgs[k]===im)continue;const t=makeTarget(im.w,im.h,8,true);writeRegion(t,0,0,im.w,im.h,im.data);const c=smCap(t);disposeTarget(t);if(c&&!o.fillImg[k])o.fillImg[k]=c;}
+      if(conv){for(const k in cv.imgs){const im=cv.imgs[k];if(im!==rec.imgs?.[k]&&!o.fillImg[k])o.fillImg[k]=im;}
         for(const k of ['rough','metal','spec','gloss'])if(!o.fill.maps[k]||!o.fill.maps[k].on)delete o.fillImg[k];}}}
   if(o.mask)await smResolveMask(o.mask);
-  for(const c of o.kids||[])await smResolveNode(c);}
+  for(const c of o.kids||[])await smResolveNode(c,workflow);}
 function smBuiltins(){return SM_BUILTIN.concat(SM_LIB).map(([name,kids])=>({id:'sb:'+name,kind:'smart',builtin:true,name,tree:{t:'G',name,open:true,kids:kids.map(smUpgrade)}}));}
 const SMASK_BUILTIN=[['Worn edges',SM_M(SM_GEN('edge',.5,.5,.55),SM_NOISE('grunge',8,2,.1,'multiply',.7))],['Dirty cavities',SM_M(SM_GEN('dirt',.5,.55,.5),SM_NOISE('clouds',6,1.5,.1,'multiply',.7))],
   ['Dusty top',SM_M(SM_GEN('dust',.5,.5,.5),SM_NOISE('clouds',5,1.5,.1,'multiply',.7))],['Scratched',SM_M(SM_NOISE('scratches',3,2,0))],['Chipped paint',SM_M(SM_GEN('chips',.5,.5,.5))]];
@@ -231,7 +306,9 @@ function smaskBuiltins(){return SMASK_BUILTIN.concat(SMASK_LIB).map(([name,mask]
 
 /* ---- a small picture for the tiles: the bottom material as a ball, the layers above painted on where their
    generators would put them (edges at the rim, cavities low, dust on top, patterns as noise) ---- */
-function smPreviewEl(rec,S){const S0=S||56;{const u=rec.builtin&&typeof SM_THUMBS!=='undefined'&&SM_THUMBS['smart:'+rec.name];if(u)return el('img',{class:'matprev',src:u,width:S0,height:S0,alt:''});}if(rec.thumb){const i=el('img',{class:'matprev',src:rec.thumb,width:S0,height:S0,alt:''});return i;}S=Math.min(1024,Math.max(256,S0*4));
+function smPreviewEl(rec,S){const S0=S||56;{const u=rec.builtin&&typeof SM_THUMBS!=='undefined'&&SM_THUMBS['smart:'+rec.name];if(u)return el('img',{class:'matprev',src:u,width:S0,height:S0,alt:''});}if(rec.thumb){const i=el('img',{class:'matprev',src:rec.thumb,width:S0,height:S0,alt:''});return i;}
+  if(!rec.builtin)return el('span',{class:'matprev',style:'width:'+S0+'px;height:'+S0+'px','aria-hidden':'true'});
+  S=Math.min(1024,Math.max(256,S0*4));
   const kids=rec.tree?rec.tree.kids:[],base=kids.find(k=>k.fill&&k.fill.maps.base)||kids[0],cv2=el('canvas',{class:'matprev',width:S,height:S,style:'width:'+S0+'px;height:'+S0+'px','aria-hidden':'true'});
   const hp=base&&base.fx&&base.fx.stack&&base.fx.stack.find(it=>it.id==='handPaint'),hv=hp&&Object.assign({},typeof HP_DEFAULTS!=='undefined'?HP_DEFAULTS:{},hp.v);
   const bf=hv?{maps:{base:{on:true,c:hv.base},rough:{on:true,v:hv.rOn?hv.rBase:.6},metal:{on:true,v:hv.mOn?hv.mBase:0}}}:base&&base.fill?Object.assign({maps:{}},base.fill):{maps:{base:{on:true,c:[.6,.6,.6]}}},pv=matPreviewEl(()=>bf,()=>({}),S,1),x=cv2.getContext('2d');x.drawImage(pv.el,0,0,S,S);
