@@ -85,6 +85,43 @@ jobs:
           }
           Write-Host "Verified Windows installer downloads and matching updater signatures for $releaseVersion."
 
+      - name: Refresh the front-page Windows download
+        if: steps.ver.outputs.release == 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $repo = $env:GITHUB_REPOSITORY
+          $readmeJson = gh api "repos/$repo/contents/README.md?ref=main"
+          if ($LASTEXITCODE -ne 0) { throw "Could not read the front-page README." }
+          $readme = $readmeJson | ConvertFrom-Json
+          $text = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($readme.content))
+
+          # A build for an older tag may finish after a newer release.
+          $releaseJson = gh api "repos/$repo/releases/latest"
+          if ($LASTEXITCODE -ne 0) { throw "Could not read the latest release." }
+          $latest = $releaseJson | ConvertFrom-Json
+          $installer = $latest.assets | Where-Object name -like '*_x64-setup.exe' | Select-Object -First 1
+          if (-not $installer) { throw "The latest release has no Windows x64 setup file." }
+
+          $downloadReference = [regex]'(?m)^\[windows-download\]: [^\r\n]+'
+          if ($downloadReference.Matches($text).Count -ne 1) {
+            throw "Expected one Windows download reference in README.md."
+          }
+          $updated = $downloadReference.Replace($text, "[windows-download]: $($installer.browser_download_url)", 1)
+          if ($updated -ceq $text) { return }
+
+          $request = @{
+            message = "Refresh the Windows download link for $($latest.tag_name) [skip ci]"
+            sha = $readme.sha
+            content = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($updated))
+            branch = 'main'
+          }
+          $requestFile = Join-Path $env:RUNNER_TEMP 'gouache-readme-update.json'
+          $request | ConvertTo-Json -Compress | Set-Content -LiteralPath $requestFile -Encoding utf8
+          gh api --method PUT "repos/$repo/contents/README.md" --input $requestFile --silent
+          if ($LASTEXITCODE -ne 0) { throw "Could not refresh the Windows download link." }
+
       - name: Keep the full installer
         shell: bash
         run: |
