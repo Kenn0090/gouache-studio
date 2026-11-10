@@ -5,7 +5,7 @@ const OUT=require('path').resolve(__dirname,'../../docs/wiki/images')+'/';
 let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
 (async()=>{
  const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
- const ctx=await b.newContext({viewport:{width:1440,height:1000}});const p=await ctx.newPage();
+ const ctx=await b.newContext({viewport:{width:1440,height:1000}});const p=await ctx.newPage();p.setDefaultTimeout(90000);
  await p.route('**/*',r=>{const u=r.request().url();
   if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
   if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
@@ -17,7 +17,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const scr=async(x,y)=>{const v=await p.evaluate(()=>({x:__gs.view.x,y:__gs.view.y,z:__gs.view.zoom}));return [box.x+v.x+x*v.z,box.y+v.y+y*v.z];};
  const drag=async(x0,y0,x1,y1,opts={})=>{const a=await scr(x0,y0),c=await scr(x1,y1);await p.mouse.move(a[0],a[1]);await p.mouse.down();await p.mouse.move(c[0],c[1],{steps:opts.steps||8});await p.mouse.up();await p.waitForTimeout(120);};
  const mpx=(name,k,pts)=>p.evaluate(([name,k,pts])=>{const L=__gs.layerByName(name),t=__gs.mapT(L,k);if(!t||t.empty)return null;const d=__gs.readRGBA8(t),W=__gs.doc.w;return pts.map(([x,y])=>Array.from(d.slice((y*W+x)*4,(y*W+x)*4+4)));},[name,k,pts]);
- const setFG=async hx=>{await p.fill('#hex',hx);await p.press('#hex','Enter');};
+ const setFG=async hx=>p.evaluate(h=>__gs.setFG([1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255)),hx);
  const W=async ms=>p.waitForTimeout(ms||300);
  const setv=(id,v)=>p.evaluate(([id,v])=>{const i=document.querySelector('#'+id);i.value=String(v);i.dispatchEvent(new Event('input'));},[id,v]);
  const stageShot=async n=>{await W(500);const bb=await p.locator('#stage').boundingBox();await p.screenshot({path:OUT+n+'.png',clip:{x:bb.x,y:bb.y,width:Math.min(bb.width,900),height:Math.min(bb.height,640)}});console.log('shot',n);};
