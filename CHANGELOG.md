@@ -1,3 +1,8 @@
+## 0.96.9
+
+- **Smart material pictures like Substance Painter:** saving (or updating) a smart material now shows it on the Material preview model, over a grey base, from the same angle as the built-in ones, instead of a screenshot of your 3D view. Your project is not touched. The ↻ button under one of your smart materials makes its picture again (for ones saved before).
+- **Skew and offset painting in the Bake tab ignore symmetry** (the 2D mirror and the 3D mirror); the symmetry controls are hidden there.
+
 ## 0.96.8
 
 - **Save as fits its window again:** in 3D Paint the choices no longer spill off the side, and the Continue button is fully shown.

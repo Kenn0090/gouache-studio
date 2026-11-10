@@ -1,3 +1,8 @@
+## 0.96.9
+
+- **Smart materials get a proper preview** on the Material preview model when saved (↻ redoes older ones).
+- **Skew painting ignores symmetry.**
+
 ## 0.96.8
 
 - **Save as window fits again** (Continue button no longer cut off).

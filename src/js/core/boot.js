@@ -63,3 +63,4 @@ if(window.__gs)Object.assign(window.__gs,{dualTip,dualTexOf,dualCache,dualWork,r
 toolKeys.ready=true;
 
 if(window.__gs)Object.assign(window.__gs,{toolKeys,toolKeyBinding,toolKeyCancel,toolKeyFinish,dkPopOut});
+if(window.__gs)Object.assign(window.__gs,{smStudioThumb,smThumbRedo,smTh,smThumbLater});
