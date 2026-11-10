@@ -6,6 +6,8 @@
 - **Outline tick on the Standard (PBR) and Skin looks**, with width and colour.
 - **New painting defaults in 3D Paint:** UV alignment, backface culling on at 90°, Object size space. Ctrl + drag smoothing now always works: it switches to Tangent | Wrap by itself while you smooth.
 - **Importing mesh maps:** pictures that are not a baked map (Albedo, Roughness…) are no longer skipped; they come into the project (Textures › Yours and the Project shelf).
+- **Mirror and radial symmetry work with UV alignment.** Before, symmetry was switched off for every brush with UV alignment (that is why graffiti brushes didn't mirror). Each mirrored dab now finds its own spot on the model, and its angle follows the texture there. The material brush also paints all its channels with UV alignment now.
+- **Brushes with their own alignment in 3D Paint:** graffiti brushes paint with Tangent | Wrap (so drips run down the view), and so do blending, liquify, healing and clone brushes. They carry a small **3D** badge in the brush list in 3D Paint; picking one switches the Projection setting for you, and picking a plain brush puts your own setting back.
 
 ## 0.96.5
 

@@ -5,6 +5,8 @@
 - **Outline tick on the Standard and Skin looks.**
 - **New painting defaults:** UV alignment, backface culling at 90°, object size; Ctrl smoothing works with any alignment.
 - **Pictures that are no baked map** (Albedo…) still come into the project.
+- **Mirror and radial symmetry now work with UV alignment** (graffiti brushes included).
+- **Brushes with their own 3D Paint alignment** show a small 3D badge and switch it for you.
 
 ## 0.96.5
 

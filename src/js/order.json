@@ -115,6 +115,7 @@
     "view3d/post",
     "view3d/panner",
     "view3d/mesh-paint",
+    "view3d/uv-mirror",
     "view3d/mesh-pull",
     "view3d/paint3d",
     "view3d/p3-tools",

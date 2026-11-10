@@ -107,7 +107,7 @@ function cageStrokeStart(o,ix,iy){const C=cageOf();
 function symBasis(o){if(ui.sym.align!=='screen'||(o?.space&&!ui.cageFlat))return 0;const A=vxA();return A?Math.atan2(A[1],A[0]):0;}
 function symFor(o){const S=ui.sym;if(S.mode==='off')return null;return {mode:S.mode,n:clamp(Math.round(S.n),2,128),cx:S.cx,cy:S.cy,basis:symBasis(o)};}
 /* copies of a dab: [x, y, angle, flipX, flipY, dx, dy] */
-function symCopies(sym,W,H,x,y,ang,fx,fy,dx,dy){const out=[[x,y,ang,fx,fy,dx,dy]];if(!sym)return out;const cx=sym.cx*W,cy=sym.cy*H;
+function symCopies(sym,W,H,x,y,ang,fx,fy,dx,dy){const out=[[x,y,ang,fx,fy,dx,dy]];if(!sym)return out;if(sym.mode==='map')return out.concat(sym.fn(x,y,ang,fx,fy,dx,dy));/* (0.96.6) 3D mirror with UV alignment: uv-mirror.js */const cx=sym.cx*W,cy=sym.cy*H;
   if(sym.basis&&sym.mode!=='radial'){const a=sym.basis,c=Math.cos(a),s=Math.sin(a),rx=x-cx,ry=y-cy;
     const copies=symCopies({...sym,basis:0},W,H,cx+c*rx+s*ry,cy-s*rx+c*ry,ang-a,fx,fy,c*dx+s*dy,-s*dx+c*dy);
     return copies.map((p,i)=>i===0?out[0]:[cx+c*(p[0]-cx)-s*(p[1]-cy),cy+s*(p[0]-cx)+c*(p[1]-cy),p[2]+a,p[3],p[4],c*p[5]-s*p[6],s*p[5]+c*p[6]]);}

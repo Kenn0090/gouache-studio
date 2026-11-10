@@ -149,7 +149,7 @@ function meshDownUV(hit,e){if(typeof bk!=='undefined'&&bk.busy)return true;if(ui
   if(['smudge','liquify','heal','clone'].includes(ui.tool)){toast('UV alignment paints with the brush, eraser and dodge/burn. Use Tangent | Wrap for this tool.');return true;}
   if(typeof npSync==='function')npSync();const et=editTarget();if(lockStop(et))return true;const o=paintOpts(et);if(!o)return true;
   const q=meshUVAt(hit,e);if(!q)return false;const r=hit.getBoundingClientRect(),k=v3TexelPx(hit,e);
-  o.uvRs=true;o.cageRs=k?meshBrushScale(r.height)/k:1;o.sym=null;o.extras=[];const p=pressureOf(e);
+  o.uvRs=true;o.cageRs=k?meshBrushScale(r.height)/k:1;o.sym=typeof uvmSym==='function'?uvmSym():null;if(ui.tool!=='material')o.extras=[];/* (0.96.6) mirror/radial now work with UV alignment; the material brush keeps its other channels */const p=pressureOf(e);
   v3.mstroke={id:e.pointerId,uv:true,hit,last:q};beginStroke(et.L,q[0],q[1],p,o);return true;}
 /* the texture pixel under a point of the view, on the active texture set only */
 function meshUVAt(hit,e){const q=v3PickFast(hit,e);if(!q)return null;if(ui.mode==='p3d'&&v3.mesh?.setRanges&&typeof p3Range==='function'){const R=v3.mesh.setRanges[q.set],A=p3Range();if(R&&A&&R.start!==A.start)return null;}return [q.uv[0]*doc.w,q.uv[1]*doc.h];}
@@ -417,7 +417,7 @@ function projectionBox(){const s=v3s(),box=el('div',{class:'dlg-grid projbox',id
   const redo=()=>{const n=projectionBox();box.replaceWith(n);for(const root of [document,...(v3.pop?[v3.pop.win.document]:[])])for(const input of root.querySelectorAll('[data-backface-paint]'))input.checked=s.noBack===false;v3.dirty=true;requestRender(true);refreshCursor();};
   const sel=(id,label,opts,val,on,title)=>{const x=el('select',{id,'aria-label':label,title:title||''},...opts.map(([v,t])=>el('option',{value:v,text:t})));x.value=val;x.onchange=()=>on(x.value);return el('label',{class:'hpsel'},el('span',{text:label}),x);};
   const head=el('div',{class:'sub projhead'},el('span',{text:'Projection'}),el('button',{class:'btn sm',type:'button',id:'projReset',title:'Back to the defaults','aria-label':'Reset projection',text:'↺',onclick:()=>{Object.assign(s,PROJ_DEF);redo();}}));
-  const align=sel('projAlign','Alignment',[['wrap','Tangent | Wrap'],['camera','Camera'],['uv','UV']],s.paintAlign||'uv',v=>{s.paintAlign=v;redo();},'How the brush lands on the model');
+  const align=sel('projAlign','Alignment',[['wrap','Tangent | Wrap'],['camera','Camera'],['uv','UV']],s.paintAlign||'uv',v=>{s.paintAlign=v;delete s.userAlign;redo();},'How the brush lands on the model');
   const on=s.noBack!==false,cull=el('button',{class:'btn sm'+(on?' on':''),type:'button',id:'projCull','aria-pressed':String(on),text:on?'On':'Off',title:'Backface culling: no paint on surfaces turned away from you',onclick:()=>{s.noBack=!on;redo();}});
   const ang=makeSlider({id:'projCullAng',label:'Angle',min:1,max:90,step:1,value:s.cullAngle??90,def:90,fmt:v=>Math.round(v)+'°',onInput:v=>{s.cullAngle=v;v3.dirty=true;}}).el;if(!on)ang.classList.add('dim');
   const size=sel('projSize','Size Space',[['object','Object'],['viewport','Viewport'],['texture','Texture']],s.sizeSpace||'object',v=>{s.sizeSpace=v;redo();},'What the brush size is measured in');
