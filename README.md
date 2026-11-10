@@ -6,6 +6,24 @@ Gouache Studio is a GPU-accelerated app for digital painting, 3D texturing, and 
 
 [Other installers and release notes](https://github.com/Kenn0090/gouache-studio/releases/latest) · [User guide](docs/wiki/Home.md) · [Version history](CHANGELOG.md)
 
+## Feature gallery
+
+<picture>
+  <source media="(prefers-reduced-motion: reduce)" srcset="docs/showcase/gouache-gallery-poster.jpg">
+  <img alt="Five Gouache Studio highlights: hand-painted PBR textures, split 2D and 3D painting, mesh-aware smart materials, bake corrections, and VFX flipbooks." src="docs/showcase/gouache-feature-gallery.gif" width="1120" height="590">
+</picture>
+
+<details>
+<summary>Explore the five featured workflows</summary>
+
+- [Paint the look. Keep the maps.](docs/wiki/Maps-and-PBR.md) Paint colour, roughness, metallic and height in the same document.
+- [Paint right on the model.](docs/wiki/3D-Paint.md) Switch between the UV texture and the model in one project, with texture sets and UDIM tiles.
+- [Wear that follows the mesh.](docs/wiki/Smart-materials-and-anchors.md) Use baked curvature and ambient occlusion to place wear and dirt, and save the layers as reusable smart materials.
+- [Fix the bake on the surface.](docs/wiki/Baker.md) Paint skew and offset corrections on the model while checking a high-to-low bake.
+- [Build VFX flipbooks.](docs/wiki/Animation.md) Generate stylized effects, edit the frames, and export a sprite sheet.
+
+</details>
+
 ## Download
 
 The download above starts the recommended **Full installer**. It includes the bundled materials, skies, and grunge maps. The [release page](https://github.com/Kenn0090/gouache-studio/releases/latest) lists the smaller **Lite installer** and the **MSI** when available.
