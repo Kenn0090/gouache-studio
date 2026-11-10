@@ -6,7 +6,7 @@ const OUT=require('path').resolve(__dirname,'../../docs/wiki/images')+'/';
 let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
 (async()=>{
  const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
- const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();p.setDefaultTimeout(240000);
+ const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();p.setDefaultTimeout(90000);
  await p.route('**/*',r=>{const u=r.request().url();
   if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
   if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
@@ -18,7 +18,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
      if(cmd==='cache_set_dir'){dir=args.dir;return dir;}if(cmd==='tree_prune')return 0;if(cmd==='plugin:dialog|open')return 'D:\\Scratch';if(cmd==='recent_list')return [];return null;}},event:{listen:async()=>()=>{}}};});
  await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
  await p.evaluate(()=>__gs.newDoc(512,512,8,[1,1,1],'Mem',false));
- await p.keyboard.press('Control+k');await p.waitForTimeout(600);
+ await p.keyboard.press('Control+k');await p.waitForTimeout(600);await p.click('[role=tab]:has-text("Files")');await p.waitForTimeout(300);
  const t=await p.textContent('#modal .dialog');
  ok(t.includes('This computer has 32 GB'),'shows the computer’s memory');
  ok(await p.inputValue('#pMem')==='16384','memory limit starts at half (16 GB)');

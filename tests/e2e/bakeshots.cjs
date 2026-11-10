@@ -4,7 +4,7 @@ const OUT=__dirname+'/out/';
 let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
 (async()=>{
  const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
- const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();p.setDefaultTimeout(240000);
+ const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();p.setDefaultTimeout(90000);
  await p.route('**/*',r=>{const u=r.request().url();
   if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
   if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
@@ -14,7 +14,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
  const IMG=require('path').resolve(__dirname,'../../docs/wiki/images')+'/';const W=ms=>p.waitForTimeout(ms||300);
  const waitIdle=async()=>{for(let i=0;i<1200;i++){if(await p.evaluate(()=>!__gs.bk.busy&&!__gs.bk.regionBusy))return;await W(100);}};
- const setFG=async hx=>{await p.fill('#hex',hx);await p.press('#hex','Enter');};
+ const setFG=async hx=>p.evaluate(h=>__gs.setFG([1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255)),hx);
  await p.addScriptTag({path:__dirname+'/fixtures/bumpy.js'});
  await p.evaluate(()=>{__gs.newDoc(1024,1024,8,[.55,.5,.45],'Rock',false);});await W(400);
  await p.click('#modeTabs [data-mode=bake]');await W(600);
