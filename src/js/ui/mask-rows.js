@@ -16,8 +16,9 @@ function msRowsEl(n){const out=[];if(!(msHas(n)||(n.cfx&&n.cfx.length))||n.fxFol
     row.addEventListener('pointerdown',e=>msRowDown(e,row));
     row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();msSelect(n,where,r.id);}if(e.key==='Delete'){e.preventDefault();e.stopPropagation();msRemove(n,where,r.id);}});
     out.push(row);}};
-  /* (0.34, Kenn) the mask's rows show only while that layer's mask is the one selected */
-  if(n.cfx&&n.cfx.length)mk('c',n.cfx);if(msHas(n)&&n===doc.active&&n.editMask)mk('m',n.mask.stack);return out;}
+  /* (0.97.1, Kenn: "like Painter") only the selected layer shows rows: its mask's rows when the mask is selected, else its own effects;
+     clicking the same thumbnail again folds them away (layerPointerDown) */
+  if(n!==doc.active)return out;if(n.editMask&&msHas(n))mk('m',n.mask.stack);else if(!n.editMask&&n.cfx&&n.cfx.length)mk('c',n.cfx);return out;}
 /* (0.31.2) click a row's blend name to pick another blend mode right there */
 function msModeMenu(e,n,r,btn){const pop=$('#menuPop');closeMenu();const cur=r.mode||'normal',b=btn.getBoundingClientRect();
   pop.replaceChildren(...MS_MODES.map(([v,t])=>el('button',{class:'mi',role:'menuitemradio','aria-checked':String(v===cur),onclick:()=>{pop.hidden=true;if(v===cur)return;msRecord(n,'Blend mode: '+t.toLowerCase(),()=>{r.mode=v;});}},el('span',{text:v===cur?'✓':''}),el('span',{text:t}),el('span'))));
@@ -163,7 +164,7 @@ function pxfBox(L,r,modes){const m=pxfRowMode(r),g=seg(modes,m,v=>{msEdit(L,r,x=
 /* ✦ › Anchor point: marks this layer's content so masks elsewhere can read it */
 function cfxAddAnchor(L){if(!isLayer(L))return null;let row=null;const names=msAnchorNames();let nm=L.name,i=2;while(names.includes(nm))nm=L.name+' '+(i++);
   msRecord(L,'Add anchor point to “'+L.name+'”',()=>{row=msRow('anchorpt',{p:{name:nm}});L.cfx=L.cfx||[];L.cfx.push(row);L.editMask=false;});
-  if(row)msSelect(L,'c',row.id);return row;}
+  if(row){L.fxFold=false;msSelect(L,'c',row.id);}return row;}
 
 /* (0.95.7, Kenn: "generators should take your own grunge textures") the generator's breakup can be a texture: any Textures item
    (photo grunge, mixed, generated, your own) or a picture dropped here; Breakup sets how strongly it eats into the mask */

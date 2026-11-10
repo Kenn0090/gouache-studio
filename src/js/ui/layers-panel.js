@@ -101,7 +101,7 @@ function renderLayers(){
     row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selectOnly(n);updateRowClasses();}});
     name.addEventListener('dblclick',e=>{e.stopPropagation();layerRenameStart(n,row);});
     /* a layer with mask rows or content effects: ▾ folds them (like Substance) */
-    if(typeof msRowsEl==='function'&&(msHas(n)||(n.cfx&&n.cfx.length))){const fold=el('button',{class:'msfold'+(n.fxFold?'':' open'),title:n.fxFold?'Show its mask and effect rows':'Fold its rows','aria-label':(n.fxFold?'Show':'Fold')+' the rows of '+n.name,'aria-expanded':String(!n.fxFold)});
+    if(typeof msRowsEl==='function'&&n===doc.active&&(msHas(n)||(n.cfx&&n.cfx.length))){const fold=el('button',{class:'msfold'+(n.fxFold?'':' open'),title:n.fxFold?'Show its mask and effect rows':'Fold its rows','aria-label':(n.fxFold?'Show':'Fold')+' the rows of '+n.name,'aria-expanded':String(!n.fxFold)});
       fold.innerHTML='<svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"><path d="M5 3l4 4-4 4"/></svg>';
       fold.addEventListener('pointerdown',e=>e.stopPropagation());fold.addEventListener('click',e=>{e.stopPropagation();n.fxFold=!n.fxFold;renderLayers();});row.insertBefore(fold,row.children[1]);}
     row.addEventListener('pointerdown',()=>{if(ui.msSel){ui.msSel=null;if(typeof renderMatEd==='function')requestAnimationFrame(()=>renderMatEd(true));}},true);
@@ -147,14 +147,18 @@ function onlyMapOf(n){const ks=new Set();const add=L=>{if(L.fx||L.text||L.grad)r
   if(ks.size!==1)return null;const k=[...ks][0];return k!=='base'&&doc.maps.includes(k)?k:null;}
 function layerPointerDown(e,n,row){
   if(e.button!==0||e.target.closest('button,input'))return;
+  /* (0.97.1) only the selected layer shows rows: redraw the list when which rows show has changed */
+  const rowSig=()=>{const A=doc.active;return [A,A&&!!A.editMask,A&&!!A.fxFold];},sig0=rowSig(),rowSame=(a,b)=>a.every((v,i)=>v===b[i]);
   if(xf&&!xf.move)xfCommit();
   if((e.ctrlKey||e.metaKey)&&(e.target===n.thumb||(n.mask&&e.target===n.mask.thumb))){const mode=e.shiftKey&&e.altKey?'int':e.shiftKey?'add':e.altKey?'sub':'new';
     if(e.target===n.thumb)selectLayerPixels(n,mode);else selectMask(n,mode);return;}
   if(n.mask&&e.target===n.mask.thumb){if(e.shiftKey){n.mask.enabled=!n.mask.enabled;toast(n.mask.enabled?'Mask on.':'Mask off.');}
     else if(e.altKey){selectOnly(n);n.editMask=true;ui.viewMask=!ui.viewMask;}
-    else{selectOnly(n);n.editMask=true;}renderLayers();requestRender(true);refreshChanUI();return;}
+    else{const showing=n===doc.active&&n.editMask&&!n.fxFold;selectOnly(n);n.editMask=true;n.fxFold=showing;/* (0.97.1) the mask again: its rows fold away */}renderLayers();requestRender(true);refreshChanUI();return;}
   /* the layer's own thumbnail: back to the layer (and out of mask mode) */
   if(e.target===n.thumb&&ui.viewMask&&typeof maskModeExit==='function'){maskModeExit();v3.dirty=true;}
+  /* (0.97.1, Kenn) the layer's thumbnail shows its own effects; clicking it again folds them away */
+  if(e.target===n.thumb&&!e.shiftKey){n.fxFold=n===doc.active&&!n.editMask&&!n.fxFold;}
   if(e.target===n.thumb&&n.editMask){n.editMask=false;ui.viewMask=false;}
   let pendingSingle=null;
   if(e.shiftKey&&doc.active){const rows=displayRows().map(r=>r.n),a=rows.indexOf(doc.active),b=rows.indexOf(n);if(a>=0&&b>=0){const lo=Math.min(a,b),hi=Math.max(a,b);doc.sel=new Set(rows.slice(lo,hi+1));}doc.sel.add(n);doc.active=n;}
@@ -164,6 +168,7 @@ function layerPointerDown(e,n,row){
   /* clicking a layer or group that only holds one other map shows that map */
   if(ui.mode==='paint'&&!e.shiftKey&&!e.ctrlKey&&!e.metaKey){const k=onlyMapOf(n);if(k&&k!==doc.map){setView(k);if(doc.map===k)toast('Showing the '+MAP_DEFS[k].label.toLowerCase()+' map.');}}
   ldrag={n,x:e.clientX,y:e.clientY,id:e.pointerId,moving:false,pendingSingle,target:null};
+  if(!rowSame(rowSig(),sig0))requestAnimationFrame(()=>{if(!(ldrag&&ldrag.moving))renderLayers();});
 }
 function dropTargetAt(y){const rows=[...$('#layerList').querySelectorAll('.lrow')];if(!rows.length)return null;
   for(const r of rows){const b=r.getBoundingClientRect();if(y>=b.top&&y<b.bottom){const n=r._node,f=(y-b.top)/b.height;

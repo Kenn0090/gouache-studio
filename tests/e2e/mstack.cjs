@@ -61,7 +61,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* ---- the rows in the Layers panel, FX ▾, Properties ---- */
  await p.evaluate(()=>{for(const g of __gs.dk.L.groups)g.min=!g.tabs.includes('layers')&&!g.tabs.includes('matEd');__gs.showPanel('layers');});await W(300);
  const nrows=await p.evaluate(()=>({rows:document.querySelectorAll('#layerList .msrow').length,m:document.querySelectorAll('#layerList .msrow.m').length,c:document.querySelectorAll('#layerList .msrow.c').length,want:__gs.doc.active.mask.stack.length}));
- ok(nrows.m===nrows.want&&nrows.c===1,'mask rows and the content effect show under the layer '+JSON.stringify(nrows));
+ ok(nrows.m===nrows.want&&nrows.c===0,'with the mask selected only the mask rows show under the layer (0.97.1) '+JSON.stringify(nrows));
  await p.click('#layerList .msrow.m:has-text("Dust on top")');await W(300);
  ok(await p.evaluate(()=>!!__gs.doc.active),'clicking a row selects it (its settings are in 3D Paint Properties)');
  await p.evaluate(()=>{const s=document.querySelector('#ms_amt input[type=range]')||document.querySelector('#ms_amt');s.value=.9;s.dispatchEvent(new Event('input',{bubbles:true}));});await W(300);

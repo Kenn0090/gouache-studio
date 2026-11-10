@@ -1,3 +1,7 @@
+## 0.97.1
+
+- **Layer rows like Painter:** the layer's picture shows its effects, the mask shows the mask's rows, click again to hide.
+
 ## 0.97.0
 
 - **New Bake panel, no tabs:** group tree on top, foldable Geometry / Output / Maps / Fix the bake / Bake log sections, ⚙ and 🔍 on every map, Show high / Hide low.

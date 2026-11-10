@@ -1,3 +1,7 @@
+## 0.97.1
+
+- **Layer rows like Painter:** only the selected layer shows rows under it. Click its picture to see its own effects (fx rows), click its mask to see only the mask's rows, and click the same picture again to hide them. Adding an effect or a mask row shows the rows again.
+
 ## 0.97.0
 
 - **The Bake panel without tabs, laid out like Marmoset with a bit of Painter:** the Quick loader and the bake group tree at the top (Low and High stacked on the left, the clicked group's settings beside them), then foldable sections: **Geometry** (cage, up axis, **Show high** / **Hide low**, Front, Back), **Output** (size, anti-aliasing, padding, sending), **Maps**, **Fix the bake** and **Bake log**. Folded sections stay folded next time.
