@@ -1,6 +1,7 @@
 ## 0.97.1
 
 - **Layer rows like Painter:** only the selected layer shows rows under it. Click its picture to see its own effects (fx rows), click its mask to see only the mask's rows, and click the same picture again to hide them. Adding an effect or a mask row shows the rows again.
+- **Right-click a layer: Add white mask and Add black mask** are the first two entries.
 - **Generators use the baked world-space normal:** when a texture set has a baked **World normal** mesh map, the Light generator, Dust and Snow on top, the Direction mask row and the Hand-painted look's lighting follow it (with the high-poly's detail) instead of the low-poly's smooth shape.
 
 ## 0.97.0

@@ -18,7 +18,7 @@ const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAI
  await p.evaluate(()=>{__gs.act('addLayer');__gs.showPanel('layers');});await W(200);
  await p.click('#layerList .lrow.sel',{button:'right'}).catch(()=>p.click('#layerList .lrow',{button:'right'}));await W(200);
  const lm=await p.evaluate(()=>[...document.querySelectorAll('#menuPop > .mi')].map(b=>b.textContent.replace('▸','').trim()));
- ok(lm.length<=14&&lm.some(t=>t.startsWith('Add mask'))&&lm.some(t=>t.startsWith('Filters and effects'))&&lm.some(t=>t.startsWith('Duplicate')),'layer menu is short ('+lm.length+'): '+lm.join(' | '));
+ ok(lm.length<=15&&lm.some(t=>t.startsWith('Add white mask'))&&lm.some(t=>t.startsWith('Add black mask'))&&lm.some(t=>t.startsWith('Filters and effects'))&&lm.some(t=>t.startsWith('Duplicate')),'layer menu is short ('+lm.length+'): '+lm.join(' | '));
  await p.keyboard.press('Escape');await p.mouse.click(5,450);await W(100);
  /* ---- Transform on a material moves what was painted ---- */
  const xt=await p.evaluate(()=>{const G=__gs;G.cmdNewFillLayer({name:'Mat',maps:{base:{c:[1,0,0]}}});const L=G.doc.active;G.cmdAddMask(0);

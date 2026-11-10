@@ -25,5 +25,13 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await thumb('Patina',false);r=await rows();ok(r.c===1,'and once more shows them '+JSON.stringify(r));
  await thumb('Other',false);r=await rows();ok(r.c===1&&r.m===0&&await p.evaluate(()=>__gs.doc.active.name==='Other'),'another layer shows only its own rows '+JSON.stringify(r));
  await p.evaluate(()=>{const G=__gs,A=G.doc.active;A.fxFold=true;G.cfxAdd(A,'invert');G.renderLayers();});await W(200);r=await rows();ok(r.c===2,'adding an effect shows the rows '+JSON.stringify(r));
+
+ /* right-click a layer without a mask: Add white mask and Add black mask come first */
+ await p.evaluate(()=>{const G=__gs;G.cmdAddLayer();G.renderLayers();});await W(200);
+ await p.evaluate(()=>{const G=__gs,L=G.doc.active,row=[...document.querySelectorAll('#layerList .lrow')].find(r=>r._node===L),b=row.getBoundingClientRect();row.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,clientX:b.left+60,clientY:b.top+8}));});await W(200);
+ const first=await p.evaluate(()=>[...document.querySelectorAll('#menuPop .mi')].slice(0,2).map(b=>b.textContent.trim()));
+ ok(/^Add white mask/.test(first[0])&&/^Add black mask/.test(first[1]),'right-click: Add white mask and Add black mask come first '+JSON.stringify(first));
+ await p.evaluate(()=>[...document.querySelectorAll('#menuPop .mi')][1].click());await W(200);
+ ok(await p.evaluate(()=>{const m=__gs.doc.active.mask;if(!m)return false;const d=__gs.captureRegionNow(m.target,0,0,4,4).data;return d[0]<10;}),'Add black mask adds a black mask');
  ok(!errs.length,'no page errors '+errs.join(' | '));
  await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();
