@@ -25,7 +25,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  // clicking mask rows keeps the layer list where it was (the dock is rebuilt when Properties comes forward)
  await p.evaluate(()=>__gs.newDoc(256,256,8,[1,1,1],'nav',false,'pbr'));await W(300);
  await p.click('#modeTabs [data-mode=p3d]');await W(1500);
- await p.evaluate(()=>{for(let i=0;i<6;i++){const L=__gs.cmdAddLayer();__gs.cmdAddMask(1);__gs.msAdd(L,'fill',{p:{v:1}});__gs.msAdd(L,'noise',{p:{type:'clouds',scale:4,contrast:3,level:0,seed:3,tri:false,inv:false}});__gs.cfxAdd(L,'invert');}});await W(500);
+ await p.evaluate(()=>{for(let i=0;i<14;i++){const L=__gs.cmdAddLayer();__gs.cmdAddMask(1);__gs.msAdd(L,'fill',{p:{v:1}});__gs.msAdd(L,'noise',{p:{type:'clouds',scale:4,contrast:3,level:0,seed:3,tri:false,inv:false}});__gs.cfxAdd(L,'invert');}});await W(500);
  const bodyOf=()=>document.querySelector('#layerList').closest('.dkbody');
  await p.evaluate(()=>{document.querySelector('#layerList').closest('.dkbody').scrollTop=300;});
  for(let k=0;k<4;k++){const info=await p.evaluate(k=>{const bd=document.querySelector('#layerList').closest('.dkbody').getBoundingClientRect();const rs=[...document.querySelectorAll('#layerList .lrow,#layerList .msrow')].filter(r=>{const b=r.getBoundingClientRect();return b.top>bd.top+5&&b.bottom<bd.bottom-5;});const b=rs[(k*3)%rs.length].getBoundingClientRect();return {x:b.left+90,y:b.top+b.height/2};},k);

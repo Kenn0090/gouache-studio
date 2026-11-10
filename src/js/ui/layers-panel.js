@@ -101,7 +101,7 @@ function renderLayers(){
     row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selectOnly(n);updateRowClasses();}});
     name.addEventListener('dblclick',e=>{e.stopPropagation();layerRenameStart(n,row);});
     /* a layer with mask rows or content effects: ▾ folds them (like Substance) */
-    if(typeof msRowsEl==='function'&&(msHas(n)||(n.cfx&&n.cfx.length))){const fold=el('button',{class:'msfold'+(n.fxFold?'':' open'),title:n.fxFold?'Show its mask and effect rows':'Fold its rows','aria-label':(n.fxFold?'Show':'Fold')+' the rows of '+n.name,'aria-expanded':String(!n.fxFold)});
+    if(typeof msRowsEl==='function'&&n===doc.active&&(msHas(n)||(n.cfx&&n.cfx.length))){const fold=el('button',{class:'msfold'+(n.fxFold?'':' open'),title:n.fxFold?'Show its mask and effect rows':'Fold its rows','aria-label':(n.fxFold?'Show':'Fold')+' the rows of '+n.name,'aria-expanded':String(!n.fxFold)});
       fold.innerHTML='<svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"><path d="M5 3l4 4-4 4"/></svg>';
       fold.addEventListener('pointerdown',e=>e.stopPropagation());fold.addEventListener('click',e=>{e.stopPropagation();n.fxFold=!n.fxFold;renderLayers();});row.insertBefore(fold,row.children[1]);}
     row.addEventListener('pointerdown',()=>{if(ui.msSel){ui.msSel=null;if(typeof renderMatEd==='function')requestAnimationFrame(()=>renderMatEd(true));}},true);
@@ -147,14 +147,18 @@ function onlyMapOf(n){const ks=new Set();const add=L=>{if(L.fx||L.text||L.grad)r
   if(ks.size!==1)return null;const k=[...ks][0];return k!=='base'&&doc.maps.includes(k)?k:null;}
 function layerPointerDown(e,n,row){
   if(e.button!==0||e.target.closest('button,input'))return;
+  /* (0.97.1) only the selected layer shows rows: redraw the list when which rows show has changed */
+  const rowSig=()=>{const A=doc.active;return [A,A&&!!A.editMask,A&&!!A.fxFold];},sig0=rowSig(),rowSame=(a,b)=>a.every((v,i)=>v===b[i]);
   if(xf&&!xf.move)xfCommit();
   if((e.ctrlKey||e.metaKey)&&(e.target===n.thumb||(n.mask&&e.target===n.mask.thumb))){const mode=e.shiftKey&&e.altKey?'int':e.shiftKey?'add':e.altKey?'sub':'new';
     if(e.target===n.thumb)selectLayerPixels(n,mode);else selectMask(n,mode);return;}
   if(n.mask&&e.target===n.mask.thumb){if(e.shiftKey){n.mask.enabled=!n.mask.enabled;toast(n.mask.enabled?'Mask on.':'Mask off.');}
     else if(e.altKey){selectOnly(n);n.editMask=true;ui.viewMask=!ui.viewMask;}
-    else{selectOnly(n);n.editMask=true;}renderLayers();requestRender(true);refreshChanUI();return;}
+    else{const showing=n===doc.active&&n.editMask&&!n.fxFold;selectOnly(n);n.editMask=true;n.fxFold=showing;/* (0.97.1) the mask again: its rows fold away */}renderLayers();requestRender(true);refreshChanUI();return;}
   /* the layer's own thumbnail: back to the layer (and out of mask mode) */
   if(e.target===n.thumb&&ui.viewMask&&typeof maskModeExit==='function'){maskModeExit();v3.dirty=true;}
+  /* (0.97.1, Kenn) the layer's thumbnail shows its own effects; clicking it again folds them away */
+  if(e.target===n.thumb&&!e.shiftKey){n.fxFold=n===doc.active&&!n.editMask&&!n.fxFold;}
   if(e.target===n.thumb&&n.editMask){n.editMask=false;ui.viewMask=false;}
   let pendingSingle=null;
   if(e.shiftKey&&doc.active){const rows=displayRows().map(r=>r.n),a=rows.indexOf(doc.active),b=rows.indexOf(n);if(a>=0&&b>=0){const lo=Math.min(a,b),hi=Math.max(a,b);doc.sel=new Set(rows.slice(lo,hi+1));}doc.sel.add(n);doc.active=n;}
@@ -164,6 +168,7 @@ function layerPointerDown(e,n,row){
   /* clicking a layer or group that only holds one other map shows that map */
   if(ui.mode==='paint'&&!e.shiftKey&&!e.ctrlKey&&!e.metaKey){const k=onlyMapOf(n);if(k&&k!==doc.map){setView(k);if(doc.map===k)toast('Showing the '+MAP_DEFS[k].label.toLowerCase()+' map.');}}
   ldrag={n,x:e.clientX,y:e.clientY,id:e.pointerId,moving:false,pendingSingle,target:null};
+  if(!rowSame(rowSig(),sig0))requestAnimationFrame(()=>{if(!(ldrag&&ldrag.moving))renderLayers();});
 }
 function dropTargetAt(y){const rows=[...$('#layerList').querySelectorAll('.lrow')];if(!rows.length)return null;
   for(const r of rows){const b=r.getBoundingClientRect();if(y>=b.top&&y<b.bottom){const n=r._node,f=(y-b.top)/b.height;
@@ -287,8 +292,11 @@ function maskMenu(e,n){const pop=$('#menuPop');closeMenu();
     head('Wear and weather'),...MS_GENS.map(([k,title])=>it(title,add('gen',{p:msGenDefaults(k)}))),sep(),
     it('3D gradient',add('g3d')),it('Direction (faces pointing up)',add('dir')),it('Gradient (bottom to top)',add('grad'))]);
   const noises=fly('Noise and grunge',()=>MS_NOISES.map(([k,title])=>it(title,add('noise',{p:Object.assign(MS_KINDS.noise.p(),{type:k})}))));
-  const quick=['levels','invert','blur'],more=fly('More filters',()=>[...MS_FILTERS.filter(id=>FX[id]&&!quick.includes(id)).map(id=>it(FX[id].title,add('filter',{fx:id}))),sep(),
-    ...Object.keys(MS_OWN_FILTERS).map(k=>it(MS_OWN_FILTERS[k],add('filter',{own:k,p:{r:k==='grow'?3:k==='warp'?4:6,scale:6,seed:1}})))]);
+  /* (0.97.1, Kenn: "add Adjust so you can get to Slope blur etc faster") every mask adjustment in one list, the shaping ones first */
+  const quick=['levels','invert','blur'],own=k=>it(MS_OWN_FILTERS[k],add('filter',{own:k,p:{r:k==='grow'?3:k==='warp'?4:6,scale:6,seed:1}})),fx=id=>FX[id]?it(FX[id].title,add('filter',{fx:id})):null;
+  const more=fly('Adjust',()=>[head('Shape'),own('slope'),own('warp'),own('grow'),sep(),head('Tone'),...['levels','curves','threshold','posterize','invert'].map(fx),sep(),
+    head('Blur and sharpen'),...['blur','boxBlur','motionBlur','sharpen','highPass'].map(fx),sep(),head('Edges'),...['edges','convolve'].map(fx),
+    ...(typeof fxAddMenu==='function'?[sep(),it('All filters…',()=>{on();renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);})]:[])].filter(Boolean));
   const names=typeof msAnchorNames==='function'?msAnchorNames():[];
   const items=[head('Make the mask'),it('Paint',add('paint')),it('Fill white',add('fill',{p:{v:1}})),it('Fill black',add('fill',{p:{v:0}})),generators,noises,it('Picture…',add('image')),
     ...(doc.meshMaps&&doc.meshMaps.id?[it('ID colour (pick colours on the model)…',()=>idColourMask(n))]:[]),
@@ -310,7 +318,7 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
   if(ui.mode==='p3d'&&n.fill&&!n.fx&&p3.sets.filter(S=>!S.missing).length>1)items.push(it('Instance to sets…',()=>dlgInstance(n)),...(n.inst?[it('Unlink instance',()=>instUnlink(n))]:[]),sep());
   /* (0.95.8, Kenn: "too much to look at") everyday commands on top, the rest in a few fly-outs */
   const G={mask:[],fx:[],conv:[],smart:[],send:[]};
-  {if(maskClip)G.mask.push(it('Paste mask',()=>cmdPasteMask(n)));if(n.mask)G.mask.push(it('Copy mask',()=>cmdCopyMask(n)),it('Clear mask (hide all)',()=>cmdClearMask(n)),it('Delete mask',()=>{if(doc.active===n)cmdDeleteMask();else{selectOnly(n);cmdDeleteMask();}}),...(typeof msHas==='function'&&msHas(n)?[it('Flatten mask (keep the result, drop its rows)',()=>msFlatten(n))]:[]));else{G.addMask=it('Add mask',()=>cmdAddMask(1));G.mask.push(it('Add black mask (hide all)',()=>cmdAddMask(0)),...(lay&&typeof liveMaskStart==='function'?[it('Live mask…',()=>liveMaskStart(n))]:[]));}}
+  {if(maskClip)G.mask.push(it('Paste mask',()=>cmdPasteMask(n)));if(n.mask)G.mask.push(it('Copy mask',()=>cmdCopyMask(n)),it('Clear mask (hide all)',()=>cmdClearMask(n)),it('Delete mask',()=>{if(doc.active===n)cmdDeleteMask();else{selectOnly(n);cmdDeleteMask();}}),...(typeof msHas==='function'&&msHas(n)?[it('Flatten mask (keep the result, drop its rows)',()=>msFlatten(n))]:[]));else{/* (0.97.1, Kenn) both at the very top of the menu */G.addMask=[it('Add white mask (shows all)',()=>{selectOnly(n);cmdAddMask(1);}),it('Add black mask (hides all)',()=>{selectOnly(n);cmdAddMask(0);})];G.mask.push(...(lay&&typeof liveMaskStart==='function'?[it('Live mask…',()=>liveMaskStart(n))]:[]));}}
   let styleItem=null;
   if(lay){styleItem=flyItem('Layer style',()=>[...STYLE_ORDER.map(k=>it(STYLE_DEFS[k].label+(n.styles&&n.styles[k]&&n.styles[k].on?' ✓':''),()=>dlgLayerStyle(k,true))),sep(),it('All styles…',()=>dlgLayerStyle())]);
     G.fx.push(it('Filter this layer…',()=>{selectOnly(n);n.editMask=false;renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);}),
@@ -334,7 +342,8 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
   if(ui.mode==='p3d'&&typeof p3LayerToPaint==='function')G.send.push(it('Edit in the Paint canvas',()=>p3LayerToPaint(n)));
   const fly=(name,list)=>{const l=list.filter((x,i)=>!(x.classList&&x.classList.contains('msep')&&(i===0||i===list.length-1)));if(!l.length)return [];if(l.length===1&&!l[0].classList.contains('mh'))return [l[0]];const f=flyItem(name,()=>l);f.setAttribute('aria-label',name);return [f];};
   if(lay&&n.fill)items.unshift(it('Material settings…',()=>dlgFillLayer(n)),sep());
-  items.push(...(G.addMask?[G.addMask]:[]),...fly('Mask',G.mask),...(styleItem?[styleItem]:[]),...fly('Filters and effects',G.fx),...fly('Convert',G.conv),...fly('Smart material',G.smart),...fly(ui.mode==='paint'?'Send to 3D Paint':'Send to',G.send));
+  if(G.addMask)items.unshift(...G.addMask,sep());
+  items.push(...fly('Mask',G.mask),...(styleItem?[styleItem]:[]),...fly('Filters and effects',G.fx),...fly('Convert',G.conv),...fly('Smart material',G.smart),...fly(ui.mode==='paint'?'Send to 3D Paint':'Send to',G.send));
   if(!anim)items.push(sep(),it('New fill layer',cmdNewFillLayer));
   if(anim&&isLayer(n)&&n.parent&&n.parent.frame)items.push(sep(),it(n.shared?'Shown in every frame ✓ (make separate)':'Show in every frame',()=>animShareLayer(n,!n.shared)),...(n.shared?[it('Delete from every frame',()=>animDeleteShared(n))]:[]));
   items.push(sep(),it(grp?'Ungroup':'Group into folder',grp?cmdUngroup:cmdGroup,grp?'Ctrl+Shift+G':'Ctrl+G'),it('Duplicate',cmdDuplicate,'Ctrl+J'),it('Clear layer contents',cmdClearLayer,kbKeyOf('clearContents'),!lay||lockedPx(n)),it(grp?'Merge group':'Merge down',cmdMerge,'Ctrl+E'),it('Delete',cmdDelete,'Del'));

@@ -1622,3 +1622,5 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .bklog{display:grid;gap:4px}.bklogl{display:grid;gap:2px;max-height:180px;overflow:auto}
 .bklogrow{display:flex;gap:8px;align-items:center;font-size:12px}.bklogrow.warn{color:var(--warn,#e8b04d)}.bklogrow.dim{opacity:.55}
 .bklogt{opacity:.6;font-variant-numeric:tabular-nums}.bklogsw{width:10px;height:10px;border-radius:2px;flex:none}
+/* (0.97.1) hover previews */
+.hpvpop{position:fixed;z-index:80;pointer-events:none;max-width:290px}.hpvpic{display:block;border-radius:4px;background:repeating-conic-gradient(#555 0 25%,#777 0 50%) 0 0/16px 16px}

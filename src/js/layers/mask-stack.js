@@ -72,9 +72,11 @@ float noiseOf(int t,vec3 q){
   if(t==5) return 1.0-smoothstep(0.15,0.3,worley(q*1.4));
   return fbm(vec3(q.x*6.0,q.y*0.4,q.z*6.0)+fbm(q)*1.5); }`;
 /* the surface at each texel: world position and normal on the model (3D), or the flat texture (2D) */
-const MS_SURF_GLSL=`uniform sampler2D uPos; uniform sampler2D uNrm; uniform int uHasPos; uniform vec3 uBmin; uniform vec3 uBsize; uniform sampler2D uDocN; uniform int uHasDocN; uniform vec2 uSz;
+const MS_SURF_GLSL=`uniform sampler2D uPos; uniform sampler2D uNrm; uniform int uHasPos; uniform vec3 uBmin; uniform vec3 uBsize; uniform sampler2D uDocN; uniform int uHasDocN; uniform vec2 uSz; uniform sampler2D uBWN; uniform int uHasBWN;
 vec3 surfP(vec2 uv){ if(uHasPos==1){ vec4 P=texelFetch(uPos,ivec2(gl_FragCoord.xy),0); if(P.a>0.5) return (P.xyz-uBmin)/max(uBsize,vec3(1e-4)); } return vec3(uv.x,1.0-uv.y,0.5); }
-vec3 surfN(){ if(uHasPos==1){ vec4 P=texelFetch(uPos,ivec2(gl_FragCoord.xy),0); if(P.a>0.5) return normalize(texelFetch(uNrm,ivec2(gl_FragCoord.xy),0).xyz+1e-5); }
+vec3 surfN(){ /* (0.97.1, Kenn) the baked world-space normal (with the high-poly's detail) when the set has one */
+  if(uHasBWN==1&&uSz.x>0.0){ vec3 b=texture(uBWN,gl_FragCoord.xy/uSz).rgb*2.0-1.0; if(dot(b,b)>0.25) return normalize(b); }
+  if(uHasPos==1){ vec4 P=texelFetch(uPos,ivec2(gl_FragCoord.xy),0); if(P.a>0.5) return normalize(texelFetch(uNrm,ivec2(gl_FragCoord.xy),0).xyz+1e-5); }
   if(uHasDocN==1){ vec3 n=texture(uDocN,gl_FragCoord.xy/uSz).rgb*2.0-1.0; return normalize(vec3(n.x,n.y,n.z)); } return vec3(0.0,0.0,1.0); }
 /* where a pattern is sampled: in the projection's own 3D space (World), or the texture's (UV), with its transform */
 uniform mat4 uInv; uniform mat3 uUvM; uniform int uWorld;
@@ -204,9 +206,10 @@ function msMeshTex(k){const M=doc.meshMaps||{};if(M[k])return M[k];if(k&&k.start
 function msDocMap(k,ctx){if(!doc.maps.includes(k))return null;if(ctx.doc[k]===undefined){ctx.doc[k]=null;const t=compositeMap(k);ctx.doc[k]=t;ctx.tmp.push(t);}return ctx.doc[k];}
 function msMeshKeys(){const M=Object.keys(doc.meshMaps||{});const d=['ao','curv','height','normal','thick'].filter(k=>!M.includes(k)&&doc.maps.includes(k)&&k!=='normal');return [...M,...d];}
 function msSurf(){const tri=typeof fillPosMaps==='function'&&v3.mesh&&(ui.mode==='p3d'||v3.on)?fillPosMaps():null;
-  if(!tri)return {uPos:dummy,uNrm:dummy,uHasPos:{int:0},uBmin:[0,0,0],uBsize:[1,1,1]};
+  const bwn=msMeshTex('wnormal'),B={uBWN:bwn?bwn.tex:dummy,uHasBWN:{int:bwn?1:0},uSz:[doc.w,doc.h]};/* (0.97.1) the baked world normal, for every surface user */
+  if(!tri)return Object.assign({uPos:dummy,uNrm:dummy,uHasPos:{int:0},uBmin:[0,0,0],uBsize:[1,1,1]},B);
   const m=v3.mesh;if(!m._bb){const p=m.pos,mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];for(let i=0;i<p.length;i+=3)for(let j=0;j<3;j++){mn[j]=Math.min(mn[j],p[i+j]);mx[j]=Math.max(mx[j],p[i+j]);}m._bb={mn,sz:mx.map((v,j)=>v-mn[j])};}
-  return {uPos:tri.pos.tex,uNrm:tri.nrm.tex,uHasPos:{int:1},uBmin:m._bb.mn,uBsize:m._bb.sz};}
+  return Object.assign({uPos:tri.pos.tex,uNrm:tri.nrm.tex,uHasPos:{int:1},uBmin:m._bb.mn,uBsize:m._bb.sz},B);}
 function msCtx(){const ctx={tmp:[],doc:{},surf:msSurf()};const dn=msDocMap('normal',ctx);
   Object.assign(ctx.surf,{uDocN:dn?dn.tex:dummy,uHasDocN:{int:dn?1:0},uSz:[doc.w,doc.h],uWorld:{int:0}},pxfUniforms('uv',null));return ctx;}
 /* (0.95.5, Kenn: "make them wider like Painter") edges and cavities reach further than the sharp line the curvature map marks:
@@ -323,7 +326,7 @@ function msMakeStack(L){const M=L.mask;if(!M||M.stack)return;const t=M.target;M.
 /* a new, empty Paint row (transparent: it changes nothing until painted) */
 function msNewPaintRow(L){const r=msRow('paint',{name:'Paint'});r.t=makeTarget(doc.w,doc.h,L.mask.target.depth);clearTarget(r.t,[0,0,0,0]);(L.mask._rows||(L.mask._rows=new Set())).add(r);return r;}
 /* add a row to the mask (making the mask, or the stack, when there is none): above the selected row, else on top */
-function msAdd(L,kind,o,label){if(!isLayer(L)&&!(L&&L.type==='group'))return null;let row=null;
+function msAdd(L,kind,o,label){if(!isLayer(L)&&!(L&&L.type==='group'))return null;let row=null;L.fxFold=false;/* (0.97.1) a new row shows */
   msRecord(L,label||('Add '+(o&&o.fx&&FX[o.fx]?FX[o.fx].title:o&&o.own?MS_OWN_FILTERS[o.own]:MS_KINDS[kind].title).toLowerCase()+' to the mask'),()=>{
     if(!L.mask){L.mask=makeMask(kind==='paint'?1:0);L.mask.stack=[];L.mask._rows=new Set();}
     msMakeStack(L);
@@ -340,7 +343,7 @@ function msFlatten(L){if(!msHas(L))return;msUpdate(L);msRecord(L,'Flatten mask',
 /* content effects: filters on the layer's own maps */
 function cfxAdd(L,fx,own){if(!isLayer(L))return null;let row=null;
   msRecord(L,'Add '+(FX[fx]?FX[fx].title:'effect').toLowerCase()+' to “'+L.name+'”',()=>{row=msRow('filter',{fx,v:fxDefaults(FX[fx]),maps:'all'});L.cfx=L.cfx||[];L.cfx.push(row);L.editMask=false;});
-  if(row)msSelect(L,'c',row.id);return row;}
+  if(row){L.fxFold=false;msSelect(L,'c',row.id);}return row;}
 /* the selected row (it shows in Properties; painting goes into a selected Paint row) */
 function msSelect(L,where,id){ui.msSel={L,where,id};if(where==='m'){L.editMask=true;}if(doc.active!==L){selectOnly(L);}renderLayers();if(typeof showPanel==='function')showPanel('matEd');renderMatEd(true);requestRender(true);}
 function msRowOf(sel){if(!sel||!sel.L)return null;const S=sel.where==='m'?(sel.L.mask&&sel.L.mask.stack):sel.L.cfx;return S?S.find(r=>r.id===sel.id)||null:null;}

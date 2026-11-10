@@ -1,3 +1,10 @@
+## 0.97.1
+
+- **Layer rows like Painter:** the layer's picture shows its effects, the mask shows the mask's rows, click again to hide.
+- **Hover previews** of textures, layers, masks, document tabs and chosen pictures.
+- **Generators use the baked world-space normal.**
+- **Right-click:** Add white/black mask first on layers; an **Adjust** list (Slope blur, Warp…) on masks.
+
 ## 0.97.0
 
 - **New Bake panel, no tabs:** group tree on top, foldable Geometry / Output / Maps / Fix the bake / Bake log sections, ⚙ and 🔍 on every map, Show high / Hide low.

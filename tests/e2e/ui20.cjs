@@ -54,7 +54,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const row=p.locator('#layerList .lrow').first();
  await row.click({button:'right'});await W();
  const items=await p.evaluate(()=>[...document.querySelectorAll('#menuPop .mi')].map(b=>b.textContent));
- ok(items.some(t=>t.includes('Layer style'))&&items.some(t=>t.includes('Add mask'))&&items.some(t=>t.includes('Duplicate')),'right-click shows the layer menu '+items.length);
+ ok(items.some(t=>t.includes('Layer style'))&&items.some(t=>t.includes('Add white mask'))&&items.some(t=>t.includes('Duplicate')),'right-click shows the layer menu '+items.length);
  await p.hover('#menuPop .hassub:has-text("Layer style")');await p.click('#menuSub .mi:has-text("Drop shadow")');await W(250);
  ok(await p.evaluate(()=>document.querySelector('#ls_drop')&&document.querySelector('#ls_drop').checked),'picking a style turns it on in the Layer style dialog');
  const fl=await p.evaluate(()=>{const m=document.querySelector('#modal');return {float:m.classList.contains('float'),bg:getComputedStyle(m).backgroundColor};});

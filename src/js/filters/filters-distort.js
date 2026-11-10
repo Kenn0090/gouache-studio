@@ -50,10 +50,10 @@ function fxdPickTexture(done){txLoad().then(()=>{const items=fxdAllTex();
   openDialog({title:'Pick a texture',body:grid,okLabel:'Close',onOk:()=>txForget(grid),onCancel:()=>txForget(grid)});txPruneObserved();});}
 async function fxdDropFiles(files,done){const f=[...files].find(x=>/^image\//.test(x.type)||/\.(png|jpe?g|webp|tga|bmp|tiff?)$/i.test(x.name));if(!f)return;
   let t;try{await txLoad();t=await fileTarget(f);const rec=await txAddTarget(t,baseName(f.name));t=null;if(typeof renderTextures==='function')renderTextures();done({kind:'mine',id:rec.id,name:rec.name});}catch(e){if(t)disposeTarget(t);toast('Could not read that picture: '+(e.message||e));}}
-function fxdGuideRow(v,upd){const name=el('span',{class:'note',text:v.gimg?v.gimg.name:'No picture yet'});
+function fxdGuideRow(v,upd){const name=el('span',{class:'note',text:v.gimg?v.gimg.name:'No picture yet'});name._hpv=()=>v.gimg?{tex:v.gimg,name:v.gimg.name}:null;
   const set=g=>{v.gimg=g;txCachePin(g);name.textContent=g.name;txLoad().then(()=>{const it=fxdAllTex().find(x=>x.kind===g.kind&&x.id===g.id);return it&&txTarget(it);}).then(()=>upd()).catch(e=>toast('Could not read that texture: '+(e.message||e)));};
   const drop=el('div',{class:'fxddrop',id:'fxdDrop',tabindex:'0',title:'Drop a picture here'},el('b',{text:'Drop a picture'}),el('small',{text:'or click to browse'}));
-  drop._texDrop=set;drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+  drop._texDrop=set;drop._hpv=name._hpv;drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
   drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');fxdDropFiles(e.dataTransfer.files,set);});
   drop.addEventListener('click',async()=>{const fs=await pickFiles('image/*',false,'Pictures',['png','jpg','jpeg','webp','tga','bmp','tif','tiff']);if(fs&&fs.length)fxdDropFiles(fs,set);});
   return el('div',{class:'fxdguide',id:'fxdGuide'},drop,el('div',{class:'chips'},el('button',{class:'btn sm',id:'fxdLib',text:'Choose from Textures…',onclick:()=>fxdPickTexture(set)}),name),
