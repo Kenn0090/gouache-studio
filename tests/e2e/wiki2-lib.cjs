@@ -8,6 +8,7 @@ async function open(opts={}){
   if(u.includes('pako'))return r.fulfill({path:__dirname+'/node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
   if(u.includes('UTIF.js'))return r.fulfill({path:__dirname+'/node_modules/utif/UTIF.js',contentType:'text/javascript'});
   if(u.includes('ag-psd'))return r.fulfill({path:__dirname+'/node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(/\/materials\/[^/]+\.gmat$/.test(u))return r.fulfill({path:path.resolve(__dirname,'../../assets/materials/'+u.split('/').pop())});
   if(u.startsWith('file:'))return r.continue();return r.abort();});
  const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.message));
  await p.addInitScript(()=>{try{localStorage.setItem('gs.matOpen','all');}catch(e){}});

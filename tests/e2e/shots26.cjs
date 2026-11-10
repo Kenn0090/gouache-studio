@@ -29,7 +29,7 @@ const OUT=require("path").resolve(__dirname,"../../docs/wiki/images")+"/";
  await p.click('#v3Shade button:has-text("Ray traced")');for(let i=0;i<90;i++){await W(1000);if(await p.evaluate(()=>__gs.rt.view&&__gs.rt.view.n>=160))break;}
  const bx=await p.locator('#pane3d').boundingBox();await p.mouse.move(5,900);await p.screenshot({path:OUT+'raytraced.png',clip:bx});console.log('shot rt');
  await p.click('#v3Shade button:has-text("Lit")');await W(500);
- await p.click('#v3RenderBtn');await W(400);await p.click('#rtDlg .segb:has-text("Draft")');await p.evaluate(()=>{const z=document.querySelector('#rtDlg');});await p.setViewportSize({width:1100,height:760});await W(800);await p.click('#dlgCancel');await W(300);await p.click('#v3RenderBtn');await W(400);await p.click('#rtDlg .segb:has-text("Draft")');await p.evaluate(()=>document.getElementById('rtGo').click());
+ await p.evaluate(()=>(typeof __gs.dlgRender==='function'?__gs.dlgRender():document.getElementById('v3RenderBtn').click()));await W(400);await p.click('#rtDlg .segb:has-text("Draft")');await p.evaluate(()=>{const z=document.querySelector('#rtDlg');});await p.setViewportSize({width:1100,height:760});await W(800);await p.click('#dlgCancel');await W(300);await p.evaluate(()=>(typeof __gs.dlgRender==='function'?__gs.dlgRender():document.getElementById('v3RenderBtn').click()));await W(400);await p.click('#rtDlg .segb:has-text("Draft")');await p.evaluate(()=>document.getElementById('rtGo').click());
  for(let i=0;i<400;i++){await W(1500);if(await p.evaluate(()=>/Done/.test(document.getElementById('rtMsg').textContent)))break;}
  await p.locator('#modal .dialog').screenshot({path:OUT+'render-window.png'});console.log('shot render window');
  await b.close();})();
