@@ -122,8 +122,7 @@ function smThumbRender(kit,tree,workflow){
     fillRender(base);
     insertNode(base,doc.root);
 
-    const only=tree.t==='G'&&tree.kids?.length===1&&tree.kids[0].fx?.map==='all';
-    const material=smBuild(only?tree.kids[0]:tree);
+    const material=smBuild(smStandaloneEffect(tree)?tree.kids[0]:tree);
     insertNode(material,doc.root);
     selectOnly(material);
 

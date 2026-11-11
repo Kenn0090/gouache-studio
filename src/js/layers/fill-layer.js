@@ -148,7 +148,7 @@ function cmdNewFillLayer(preset){if(ui.mode==='anim'){toast('Fill layers are ava
   /* (0.94.6, Kenn) a new material in 3D Paint is a plain neutral grey (50%) and nothing else switched on */
   if(!preset&&ui.mode==='p3d'){const m=L.fill.maps;for(const k in m)m[k].on=false;if(m.base)Object.assign(m.base,{on:true,src:'value',c:[.5,.5,.5]});}
   if(preset&&preset.maps){for(const k in L.fill.maps)L.fill.maps[k].on=false;for(const k in preset.maps)if(L.fill.maps[k])Object.assign(L.fill.maps[k],{on:true,src:'value'},preset.maps[k]);
-    for(const k of ['proj','triSharp','hStr','xf','rep','front','decal'])if(preset[k]!=null)L.fill[k]=JSON.parse(JSON.stringify(preset[k]));L.fill.name=preset.name;
+    for(const k of ['proj','triSharp','hStr','xf','rep','front','decal','coverH'])if(preset[k]!=null)L.fill[k]=JSON.parse(JSON.stringify(preset[k]));L.fill.name=preset.name;
     if(preset.imgs){L._fillImg={};for(const k in preset.imgs)L._fillImg[k]=fillImgCopy(preset.imgs[k]);}
     wfFillFit(L);
     const need=Object.keys(L.fill.maps).filter(k=>L.fill.maps[k].on&&!doc.maps.includes(k)&&MAP_DEFS[k]&&!(WF_KEYS[doc.workflow==='spec'?'metal':'spec'].includes(k)));
@@ -167,6 +167,14 @@ const matEd={L:null,snap:null,timer:0,shown:null,open:{},openAll:(()=>{try{retur
 function matEdSnap(L){const keys=fillMapsOf(),S={};for(const k of keys){const t=mapT(L,k,true);S[k]=!mapSolid(L,k)&&t&&!t.empty?captureRegion(t,0,0,doc.w,doc.h):null;}
   return {f:fillClone(L.fill),C:fillClone(L._fillSolid||{}),V:fillClone(L._fillLive||{}),S,I:Object.assign({},L._fillImg||{}),n:L.name,keys};}
 function matEdBegin(L){if(matEd.snap&&matEd.L===L)return;matEdCommit();matEd.L=L;matEd.snap=matEdSnap(L);}
+function fillEnableDocMap(k){
+  if(!MAP_DEFS[k]||FILL_SKIP.includes(k)||WF_KEYS[doc.workflow==='spec'?'metal':'spec'].includes(k))return false;
+  if(!doc.maps.includes(k)){
+    matEdCommit();
+    setDocMaps([...doc.maps,k],'Add '+MAP_DEFS[k].label+' for the material');
+  }
+  return true;
+}
 function matEdCommit(){clearTimeout(matEd.timer);matEd.timer=0;const L=matEd.L,B=matEd.snap;matEd.snap=null;if(!L||!B||!L.fill)return;
   const I=L._fillImg||{},sameImg=Object.keys(I).length===Object.keys(B.I).length&&Object.keys(I).every(k=>I[k]===B.I[k]);
   if(JSON.stringify(B.f)===JSON.stringify(L.fill)&&B.n===L.name&&sameImg)return;
@@ -218,10 +226,11 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
     t1.querySelector('.fillhead').append(chk('fl_tint_on','',!!TN.on,v=>edit(()=>{TN.on=v;if(v&&!TN.amt)TN.amt=.7;matEd.open.fl_tint=v;},'base',true)));
     t1.querySelector('.v').textContent=TN.on?(TN.mode||'multiply')+' '+Math.round(TN.amt*100)+'%':'off';t2.querySelector('.v').textContent=fillTintOn({adj:AJ})?'on':'contrast, brightness…';
     box.append(el('div',{class:'sub',text:'Tint & adjust'}),t1,t2);}
-  const M=doc.meshMaps||{},mks=Object.keys(M).filter(k=>!k.startsWith('cv:')),cks=Object.keys(M).filter(k=>k.startsWith('cv:')),keys=MAT_CH.filter(k=>fillMapsOf().includes(k)&&!(doc.workflow==='spec'?k==='rough'||k==='metal':k==='spec'||k==='gloss'));/* (0.53.1) only the channels of this project's workflow: no Roughness or Metallic in Spec/Gloss, no Specular or Glossiness in PBR */
+  const M=doc.meshMaps||{},mks=Object.keys(M).filter(k=>!k.startsWith('cv:')),cks=Object.keys(M).filter(k=>k.startsWith('cv:')),keys=MAT_CH.filter(k=>(k==='height'||fillMapsOf().includes(k))&&!WF_KEYS[doc.workflow==='spec'?'metal':'spec'].includes(k));
   if(ui.mode==='p3d'&&doc.p3){const spec=doc.workflow==='spec',hand=doc.p3Setup==='handpainted';box.append(el('div',{class:'sub p3-material-section',text:(hand?'Hand-painted · ':'')+(spec?'Spec Gloss parameters':'PBR parameters')}));}
   for(const k of keys){const s=W.maps[k]||(W.maps[k]=fillDefaults().maps[k]),grey=MAP_DEFS[k].grey,isN=k==='normal',inputTex=s.src==='image'?L._fillImg&&L._fillImg[k]:s.src==='baked'||s.src==='conv'?M[s.mm]:null;
-    const row=el('div',{class:'fillbody'}),open=!!(s.on&&(matEd.open[k]||matEd.openAll)),card=el('div',{class:'fillcard fillrow'+(open?' open':'')+(s.on?'':' off')});
+    const enabled=s.on&&doc.maps.includes(k);
+    const row=el('div',{class:'fillbody'}),open=!!(enabled&&(matEd.open[k]||matEd.openAll)),card=el('div',{class:'fillcard fillrow'+(open?' open':'')+(enabled?'':' off')});
     card.dataset.materialChannel=k;card.title='Drop an image here for '+MAP_DEFS[k].label;
     card.addEventListener('dragover',e=>{if(![...e.dataTransfer.types].includes('Files'))return;e.preventDefault();e.stopPropagation();e.dataTransfer.dropEffect='copy';card.classList.add('material-drop');});
     card.addEventListener('dragleave',e=>{if(!card.contains(e.relatedTarget))card.classList.remove('material-drop');});
@@ -231,11 +240,14 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
       if(left&&!plan.some(x=>x[0]===k))plan.push([k,left]);
       for(const [ck,f] of plan){const cs=L.fill.maps[ck];await fillUseImage(L,ck,cs,f,()=>{edit(()=>{cs.on=true;matEd.open[ck]=true;},ck,true);matEdCommit();});}
       if(plan.length>1)toast('Put '+plan.length+' pictures into '+plan.map(([ck])=>MAP_DEFS[ck].label).join(', ')+'.');});
-    const sumTxt=!s.on?'Off':s.src==='value'?(grey?Math.round(s.v*100)/100:'Colour'):s.src==='baked'?'Mesh map':s.src==='conv'?'Converted':s.src==='g3d'?'3D gradient':(s.name?'Image':'No image'),sw=s.on&&s.src==='value'?(grey?[s.v,s.v,s.v]:(s.c||[.5,.5,.5])):[.5,.5,.5];
+    const sumTxt=!enabled?'Off':s.src==='value'?(grey?Math.round(s.v*100)/100:'Colour'):s.src==='baked'?'Mesh map':s.src==='conv'?'Converted':s.src==='g3d'?'3D gradient':(s.name?'Image':'No image'),sw=enabled&&s.src==='value'?(grey?[s.v,s.v,s.v]:(s.c||[.5,.5,.5])):[.5,.5,.5];
     card.append(el('div',{class:'fillhead',onclick:e=>{if(e.target.closest('.chk'))return;matEd.open[k]=!card.classList.contains('open');card.classList.toggle('open',matEd.open[k]);}},
       el('span',{class:'chev',text:'▸'}),el('span',{class:'sw',style:'background:rgb('+sw.map(x=>Math.round(clamp(x,0,1)*255)).join(',')+')'}),el('span',{class:'nm',text:MAP_DEFS[k].label}),el('span',{class:'v',text:String(sumTxt)}),
-      chk('fl_on_'+k,'',!!s.on,v=>edit(()=>{s.on=v;matEd.open[k]=v;if(v&&isN&&s.src==='value')s.src='image';},k,true))),row);
-    if(s.on){const srcs=[...(isN?[]:[['value',grey?'Value':'Colour']]),['image','Image'],['baked','Mesh map'],['conv','Converted'],...(isN?[]:[['g3d','3D gradient']])];
+      chk('fl_on_'+k,'',!!enabled,v=>{
+        if(v&&!fillEnableDocMap(k))return;
+        edit(()=>{s.on=v;matEd.open[k]=v;if(v&&isN&&s.src==='value')s.src='image';},k,true);
+      })),row);
+    if(enabled){const srcs=[...(isN?[]:[['value',grey?'Value':'Colour']]),['image','Image'],['baked','Mesh map'],['conv','Converted'],...(isN?[]:[['g3d','3D gradient']])];
       row.append(seg(srcs,s.src,v=>{
         edit(()=>{s.src=v;if(v==='baked'&&!(M[s.mm]&&!s.mm.startsWith('cv:')))s.mm=mks.find(x=>x===k)||(isN?'normal':mks.find(x=>x!=='normal'))||mks[0];if(v==='conv'&&!(M[s.mm]&&s.mm.startsWith('cv:')))s.mm=cks.find(x=>x==='cv:'+k)||cks[0];},k,true);},'Fill '+MAP_DEFS[k].label+' with'));
       if(s.src==='value'&&!isN){if(grey)row.append(makeSlider({id:'fl_v_'+k,label:k==='metal'?'Metallic':k==='rough'?'Roughness':k==='height'?'Height':k==='gloss'?'Glossiness':'Level',min:0,max:1,step:.01,value:s.v,fmt:pct,onInput:v=>edit(()=>{s.v=v;},k)}).el);
@@ -257,13 +269,14 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
         else if(s.name)row.append(el('p',{class:'note',text:'Choose the image again to change its tiling.'}));
         if(k==='height'&&has)row.append(makeSlider({id:'fl_hs',label:'Bump strength',min:0,max:4,numericMax:20,step:.05,value:W.hStr==null?1:W.hStr,fmt:pct,onInput:v=>edit(()=>{W.hStr=v;},k)}).el,
           el('p',{class:'note',text:'Height makes bump detail: the normal follows it, on the model and in exported normal maps.'}));}
+      if(k==='height'&&s.src==='value')row.append(el('p',{class:'note',text:'Use a mask, image, or gradient to vary the height and create bumps.'}));
       if(inputTex)row.append(makeSlider({id:'fl_con_'+k,label:'Contrast',min:-1,max:1,step:.01,value:s.con||0,fmt:v=>Math.round(v*100)+'%',onInput:v=>edit(()=>{s.con=v;},k)}).el);}
     box.append(card);}
   if(fillHasAlpha(L))box.append(chk('fl_alpha','Cut out by the material’s transparency',fillAlphaOn(L),v=>{matEdCommit();fillAlphaMask(L,v);renderMatEd(true);}),
     el('p',{class:'note',text:'This material’s picture has see-through parts. Tick this to add a mask from its transparency, so the layers under show through in every map (colour, roughness, normal…).'}));
   box.append(chk('fl_cover','Hide the bumps below',W.coverH!==false,v=>edit(()=>{W.coverH=v;},null)),
     el('p',{class:'note',text:'On: this material covers the height and normal detail of the layers under it. Off: its bumps are added on top of theirs.'}));
-  const miss=['rough','metal','height','normal','emis','opac'].filter(k=>!doc.maps.includes(k)&&!(doc.workflow==='spec'&&(k==='rough'||k==='metal')));
+  const miss=['rough','metal','normal','emis','opac'].filter(k=>!doc.maps.includes(k)&&!(doc.workflow==='spec'&&(k==='rough'||k==='metal')));
   if(miss.length)box.append(el('div',{class:'chips'},el('span',{class:'note',text:'Add a map:'}),...miss.map(k=>el('button',{class:'btn sm',text:MAP_DEFS[k].label,onclick:()=>{matEdCommit();setDocMaps([...doc.maps,k],'Add a map for the material');fillRender(L);renderMatEd(true);}}))));
   box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'fl_save',text:'Save to Materials',title:'Keep this material in the Materials tab for other layers and projects',onclick:()=>{matEdCommit();if(typeof matSaveFromFill==='function')matSaveFromFill(L,L.fill);}})),
     el('p',{class:'note',text:'Painting on a material layer paints its mask: black hides the material, white shows it.'}));}
@@ -292,7 +305,8 @@ function matEdFollow(){if((matEd.shown!==doc.active&&!(matEd.shown===null&&matEd
 {const rl=renderLayers;renderLayers=function(...a){const r=rl.apply(this,a);if((matEd.shown!==doc.active&&!(matEd.shown===null&&matEd.shownRow&&typeof msRowOf==='function'&&ui.msSel&&msRowOf(ui.msSel)===matEd.shownRow))||(doc.active&&doc.active.fill&&!document.querySelector('#matEdBody .matHead')))renderMatEd();return r;};}
 const fillImageFile=f=>/^image\//.test(f.type)||/\.(png|jpe?g|webp|tga|tiff?|bmp|psd|exr|hdr|dds)$/i.test(f.name);
 async function fillUseImage(L,k,s,f,done){const root=doc.root,W=L.fill;let t;try{t=await fileTarget(f);}catch(e){toast('Could not read '+f.name+': '+(e.message||e));return;}
-  if(doc.root!==root||L.fill!==W||W.maps[k]!==s){disposeTarget(t);toast('The material changed while the image was loading. Drop it again.');return;}
+  if(doc.root!==root||!inDoc(L)||L.fill!==W||W.maps[k]!==s){disposeTarget(t);toast('The material changed while the image was loading. Drop it again.');return;}
+  if(!fillEnableDocMap(k)){disposeTarget(t);toast('This material cannot use the '+MAP_DEFS[k].label+' channel.');return;}
   matEdBegin(L);setWrap(t,true);L._fillImg=L._fillImg||{};L._fillImg[k]=t;s.src='image';s.name=f.name;done();}
 async function fillPickImage(L,k,s,done){const fs=await pickFiles('image/*',false,'Images',['png','jpg','jpeg','webp','tga','tif','tiff','bmp','psd','exr','hdr']);const f=fs[0];if(!f){done();return;}await fillUseImage(L,k,s,f,done);}
 /* painting, filters and fills on a fill layer go to its mask */

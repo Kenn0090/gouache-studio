@@ -177,8 +177,12 @@ async function txToMask(it,target=doc.active){const L=target;if(!isLayer(L)&&!(L
   if(msAddImageTarget(L,t,it.name))toast('Added “'+it.name+'” as a mask layer. Adjust its contrast and projection in the Material editor.');}
 const TX_CHANNELS=[['base','Base colour'],['rough','Roughness'],['metal','Metallic'],['height','Height'],['ao','Ambient occlusion'],['emis','Emissive'],['opac','Opacity']];
 async function txToChannel(it,k){const L=doc.active;if(!isLayer(L)||!L.fill){toast('Select a material layer first.');return;}
-  const root=doc.root,W=L.fill,t=txCopy(await txTarget(it));if(doc.root!==root||L.fill!==W){disposeTarget(t);toast('The material changed while the texture was loading. Drop it again.');return;}matEdBegin(L);const s=L.fill.maps[k]||(L.fill.maps[k]={on:true,src:'value',v:.5,tile:1});
-  const old=L._fillImg&&L._fillImg[k];L._fillImg=Object.assign({},L._fillImg||{});L._fillImg[k]=t;s.src='image';s.name=it.name;s.on=true;fillRender(L,k);matEdCommit();
+  const root=doc.root,W=L.fill;let t;
+  try{t=txCopy(await txTarget(it));}catch(e){toast('Could not load “'+it.name+'”: '+(e.message||e));return;}
+  if(doc.root!==root||!inDoc(L)||L.fill!==W){disposeTarget(t);toast('The material changed while the texture was loading. Drop it again.');return;}
+  if(!fillEnableDocMap(k)){disposeTarget(t);toast('This material cannot use the '+(MAP_DEFS[k]?.label||k)+' channel.');return;}
+  matEdBegin(L);const s=L.fill.maps[k]||(L.fill.maps[k]={on:true,src:'value',v:.5,tile:1});
+  const old=L._fillImg&&L._fillImg[k];L._fillImg=Object.assign({},L._fillImg||{});L._fillImg[k]=t;s.src='image';s.name=it.name;s.on=true;matEd.open[k]=true;fillRender(L,k);matEdCommit();
   if(old&&!Object.values(L._fillImg).includes(old)){/* kept by undo */}
   renderLayers();if(typeof renderMatEd==='function')renderMatEd(true);toast('“'+it.name+'” is now the '+(TX_CHANNELS.find(c=>c[0]===k)||[0,k])[1].toLowerCase()+' of “'+L.name+'”.');}
 /* (0.70, Kenn) pick a texture from the Textures library for one channel of a material, right from the Material editor */

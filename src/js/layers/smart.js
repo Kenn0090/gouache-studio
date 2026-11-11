@@ -33,6 +33,7 @@ function smCopyTree(node){
   return copy;
 }
 function smSer(n,reads){const o={t:n.type==='group'?'G':'L',name:n.name,mode:n.mode,op:n.opacity,vis:n.visible!==false,clip:!!n.clip,mapModes:Object.assign({},n.mapModes||{})};
+  if(n.mapOpacities&&Object.keys(n.mapOpacities).length)o.mapOpacities={...n.mapOpacities};
   if(n.type==='group'){o.open=n.open!==false;o.kids=n.children.map(c=>smSer(c,reads));}
   else if(n.fx){/* (0.78) a Hand-painted or Stylize layer: its settings */o.fx={map:n.fx.map,stack:n.fx.stack.map(it=>Object.assign(smClone(Object.assign({},it,{v:undefined})),{v:fxClean(it.v||{})}))};if(n.cfx&&n.cfx.length)o.cfx=smClone(n.cfx);}
   else{if(n.fill){o.fill=fillClone(n.fill);o.fillImg={};const lib=Object.values(n._fillImg||{}).map(t=>t&&t._lib).find(Boolean);
@@ -74,16 +75,21 @@ function smBuild(o){let n;
       fillRender(n);}
     else for(const k in o.maps||{}){const im=o.maps[k];if(im&&(doc.maps.includes(k)||k==='base'))smWrite(im,ensureMapTarget(n,k));}
     if(o.styles)n.styles=smClone(o.styles);if(o.cfx)n.cfx=o.cfx.map(r=>Object.assign(msRow('filter'),smClone(r),{id:'r'+(++msSeq)}));}
-  Object.assign(n,{visible:o.vis!==false,opacity:o.op==null?1:o.op,mode:o.mode==null?(o.t==='G'?-1:0):o.mode,clip:!!o.clip,mapModes:Object.assign({},o.mapModes||{})});
+  Object.assign(n,{visible:o.vis!==false,opacity:o.op==null?1:o.op,mode:o.mode==null?(o.t==='G'?-1:0):o.mode,clip:!!o.clip,mapModes:Object.assign({},o.mapModes||{}),mapOpacities:{...o.mapOpacities}});
   if(o.mask)n.mask=smBuildMask(o.mask);return n;}
 /* the maps a description needs (added to the document if missing) */
 function smMapsOf(o,out){out=out||new Set();if(o.fill)for(const k in o.fill.maps||{})if(o.fill.maps[k].on!==false)out.add(k);for(const k in o.maps||{})out.add(k);for(const c of o.kids||[])smMapsOf(c,out);return out;}
+/* A saved standalone filter has a wrapper. Keep a folder if it contributes opacity. */
+function smStandaloneEffect(o){
+  return o.t==='G'&&o.kids?.length===1&&o.kids[0].fx?.map==='all'&&
+    (o.op==null||o.op===1)&&!Object.keys(o.mapOpacities||{}).length;
+}
 /* Materials tab › a smart material: the folder goes above the active layer (a selection becomes its mask) */
 function smApplyNow(rec){if(ui.mode==='anim'){toast('Smart materials are for Paint and 3D Paint.');return;}if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
   const need=[...smMapsOf(rec.tree)].filter(k=>MAP_DEFS[k]&&!doc.maps.includes(k)&&!FILL_SKIP.includes(k)&&!WF_KEYS[doc.workflow==='spec'?'metal':'spec'].includes(k));
   if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the smart material');
   /* a single layer that acts on every map (Hand-painted, Stylize) goes in as itself, not in a folder, so it reaches the layers below */
-  const t=rec.tree,solo=t&&t.t==='G'&&(t.kids||[]).length===1&&t.kids[0].fx&&t.kids[0].fx.map==='all';
+  const t=rec.tree,solo=smStandaloneEffect(t);
   let n;try{n=smBuild(solo?t.kids[0]:t);}catch(e){console.error('smart material',e);toast('Could not add “'+rec.name+'”: '+smWhy(e));return null;}n.name=rec.name;if(!rec.builtin&&!solo)n.smSrc=rec.id;const fromSel=sel.active&&!sel.quick&&!n.mask;
   if(fromSel){n.mask=makeMask(0);run(P.loadsel,n.mask.target,{uSrc:sel.t.tex,uWhat:{int:1},uInv:false});}
   /* above the selected layer or folder (not inside a folder that happens to be selected) */

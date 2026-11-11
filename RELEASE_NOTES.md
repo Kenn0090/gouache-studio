@@ -1,3 +1,10 @@
+## 0.97.6
+
+- **Smart Materials** keep separate opacity values for each channel on layers and groups when saved, exported, and applied. Re-save older presets from the original layer stack to capture values those presets omitted.
+- **Height on blank materials** works when you turn on Height, assign a texture from the shelf, or drop in an image. Gouache adds the Height map if the document needs it, so textured height can show as bump detail.
+- **Saved materials** keep their **Hide the bumps below** setting when applied. Leave it off to build up Height over the layers underneath.
+- **Paint and metal scans** now have small previews in the Textures shelf.
+
 ## 0.97.5
 
 - **Metal Edge Wear** follows exposed edges with independent Edge Strength, Edge Distortion, and Edge Distortion Scale controls. Scratched Iron, Pitted Steel, and Chipped Steel add seamless photo detail. Adjust scan influence, tiling, and rotation, or use the scans separately from the Textures panel.

@@ -30,7 +30,7 @@ function matApply(rec){const f=rec.fill;let maps={},imgs=null,temp=null,note='';
   if(cv&&cv.converted){maps=cv.maps;temp={};for(const k in cv.imgs){const im=cv.imgs[k];if(rec.imgs&&rec.imgs[k]===im)continue;const t=makeTarget(im.w,im.h,8,true);writeRegion(t,0,0,im.w,im.h,im.data);temp[k]=t;}
     imgs=Object.assign({},matRecTargets(rec),temp);for(const k of ['rough','metal','spec','gloss'])if(!maps[k]||!maps[k].on)delete imgs[k];note=' It was converted to '+(want==='spec'?'Spec/Gloss':'Metal/Rough')+'.';}
   else{for(const k in f.maps)maps[k]=Object.assign({},f.maps[k]);imgs=matRecTargets(rec);}
-  const L=cmdNewFillLayer({name:rec.name,maps,proj:f.proj,triSharp:f.triSharp,hStr:f.hStr,xf:f.xf,rep:f.rep,front:f.front,decal:f.decal,imgs});
+  const L=cmdNewFillLayer({name:rec.name,maps,proj:f.proj,triSharp:f.triSharp,hStr:f.hStr,xf:f.xf,rep:f.rep,front:f.front,decal:f.decal,coverH:f.coverH,imgs});
   /* (0.96.4) pictures that came straight from the Library are tagged, so a smart material made from this layer names the Library material instead of copying its pictures */
   {const lib=matLibSlug(rec);if(L&&lib&&L._fillImg)for(const k in L._fillImg)if(!(temp&&temp[k])&&L._fillImg[k])L._fillImg[k]._lib=lib;}
   if(temp)for(const k in temp)disposeTarget(temp[k]);if(L&&note)toast('Added “'+rec.name+'”.'+note);if(L&&!note&&!(ui.mode==='p3d'||v3.on))toast('Added “'+rec.name+'”. It shows on the model in the 3D view or 3D Paint.');return L;}

@@ -32,6 +32,8 @@ let failures=0;const ok=(v,m)=>{console.log((v?'PASS ':'FAIL ')+m);if(!v)failure
   await G.store.put({id:'legacy-decal',name:'Separate decal',t:2,w:8,h:8,decal:true,data:new Uint8Array(8*8*4).fill(255)},'textures');
   const meta=await G.txAddTarget(await G.txTarget({kind:'gen',id:'dots'}),'New import');const raw=await G.store.getRaw(meta.id,'textures');return {id:meta.id,packed:!!raw.z&&!raw.data,preview:!!raw.thumb,metadata:!meta.data&&!meta.z};});
  ok(seed.packed&&seed.preview&&seed.metadata,'new imports persist packed originals plus previews and retain metadata only');
+ // Measure startup separately from preview requests made by a visible Textures tab.
+ await p.evaluate(()=>__gs.showPanel('mats'));
  await p.reload();await p.waitForFunction(()=>window.__gs&&__gs.tx.loaded&&__gs.dc.loaded);await p.waitForTimeout(300);
  const startup=await p.evaluate(()=>({n:__gs.tx.mine.length,meta:__gs.tx.mine.every(r=>!r.data&&!r.z),unpacks:__gs.tx.stats.unpacks,loads:__gs.tx.stats.loads,decals:__gs.dc.mine.length,decalPixels:__gs.dc.mine[0].data.length}));
  ok(startup.n===2&&startup.meta&&startup.unpacks===0&&startup.loads===0,'startup lists imported textures without unpacking their originals '+JSON.stringify(startup));

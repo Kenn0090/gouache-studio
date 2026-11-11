@@ -201,6 +201,53 @@ const server = http.createServer((req, res) => {
     assert.deepEqual(painted,[[1024,8],[128,8],[128,16]].map(([w,depth])=>
       Array.from({length:2},()=>({w,depth,rgba:[56,76,96,255]}))));
     console.log('PASS painted layers and flat masks keep their pixels across texture sizes and bit depths');
+
+    await page.evaluate(() => {
+      const G=__gs;
+      G.setMode('p3d',true);
+      G.useModel(G.primMesh('sphere',0));
+      const layer=G.cmdNewFillLayer({name:'Coat',maps:{base:{c:[.7,.2,.1]},rough:{v:.9},metal:{v:1}}});
+      layer.opacity=.58;
+      G.setMapOpacityOf(layer,'base',.35);
+      G.setMapOpacityOf(layer,'rough',.72);
+      G.setMapOpacityOf(layer,'metal',0);
+      G.act('group');
+      const group=G.doc.active;
+      group.opacity=.8;
+      G.setMapOpacityOf(group,'base',.6);
+      G.setMapOpacityOf(group,'rough',.25);
+      G.smSave(group);
+      document.getElementById('smName').value='Channel opacity example';
+      document.getElementById('dlgOk').click();
+    });
+    await page.waitForFunction(async () => {
+      const G=__gs,rec=G.matLib.list.find(r=>r.name==='Channel opacity example');
+      return rec?.thumb&&!!await G.store.getRaw(rec.id,'materials');
+    });
+    await page.reload();
+    await page.waitForFunction(() => __gs.matLib.list.some(r=>r.name==='Channel opacity example'));
+    const opacity=await page.evaluate(async () => {
+      const G=__gs,rec=G.matLib.list.find(r=>r.name==='Channel opacity example');
+      G.setMode('p3d',true);
+      G.useModel(G.primMesh('sphere',0));
+      const exported=await G.gmatParse(await G.gmatBlob({kind:'smart',name:'Exported opacity',...await G.smImgsOut({tree:rec.tree})}));
+      const read=node=>['base','rough','metal','height'].map(k=>G.mapOpacityOf(node,k));
+      const applied=await G.smApply(rec),imported=await G.smApply(exported);
+      (applied.children[0].mapOpacities??={}).base=.9;
+      const reapplied=await G.smApply(rec);
+      const fx={t:'L',name:'Desaturate',fx:{map:'all',stack:[{id:'desat',v:{}}]}};
+      const effectFolder=await G.smApply({name:'Faded filter',tree:{t:'G',op:.4,mapOpacities:{base:.2},kids:[fx]}});
+      const standalone=await G.smApply({name:'Filter alone',tree:{t:'G',kids:[fx]}});
+      return {folder:read(applied),layer:read(reapplied.children[0]),importedFolder:read(imported),importedLayer:read(imported.children[0]),
+        effectFolder:{type:effectFolder.type,opacity:read(effectFolder)},standalone:standalone.fx?.map};
+    });
+    assert.deepEqual(opacity,{
+      folder:[.6,.25,.8,.8],layer:[.35,.72,0,.58],
+      importedFolder:[.6,.25,.8,.8],importedLayer:[.35,.72,0,.58],
+      effectFolder:{type:'group',opacity:[.2,.4,.4,.4]},standalone:'all'
+    });
+    console.log('PASS saved and exported Smart Materials retain layer and group opacity for every channel');
+
     assert.deepEqual(errors,[]);
     console.log('PASS redo and restart load the new preview without rewriting the recipe');
   } finally {
