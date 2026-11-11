@@ -1,0 +1,40 @@
+[
+  {
+    "slug": "peeling-wall-scan",
+    "name": "Cracked Wall Paint",
+    "source": "https://polyhaven.com/a/peeling_painted_wall",
+    "author": "Dimitrios Savva",
+    "license": "CC0-1.0",
+    "processing": "16-bit scan displacement, rescaled and sharpened by subtracting a wrapped 24 px blur. Neutral relief centered at 128 with gain 4.5. Preserves the original repeating tile. Lossless grayscale WebP.",
+    "downloads": [
+      {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/peeling_painted_wall/peeling_painted_wall_disp_1k.png",
+        "sha256": "fb0a7ed1af1387a069c841c6a112012167442db4377c88bc2fccf325dc87693e"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "d89fc424b79ef6d8271c3be4ae381dc124303dae57405527ebb1c0966188e763"
+  },
+  {
+    "slug": "peeling-wood-scan",
+    "name": "Peeling Painted Wood",
+    "source": "https://polyhaven.com/a/wood_peeling_paint_weathered",
+    "author": "Dimitrios Savva (photography), Rob Tuytel (processing)",
+    "license": "CC0-1.0",
+    "processing": "Scan paint mask softened with a wrapped 0.9 px blur, combined with fine displacement after subtracting a wrapped 10 px blur. Neutral relief centered at 128. Preserves the original repeating tile. Lossless grayscale WebP.",
+    "downloads": [
+      {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/wood_peeling_paint_weathered/wood_peeling_paint_weathered_mask_1k.png",
+        "sha256": "a4895aa8a7ac7d9ced01f7ebc65900f0d5ba5491ae9601f5e5d9c053f04df81a"
+      },
+      {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/wood_peeling_paint_weathered/wood_peeling_paint_weathered_disp_1k.png",
+        "sha256": "55703cf1463ef3ba38ccc5fd80c753a072bbb5e6f117c4d01ad635029b1465f4"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "9b0766344bbc889837595bf0f8066b607b3758a6b2d2f77559e34b82ea5bf544"
+  }
+]

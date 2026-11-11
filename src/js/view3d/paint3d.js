@@ -381,20 +381,19 @@ window.addEventListener('keydown',e=>{if(typeof pathKeys==='function'&&pathKeys(
   else if((e.key==='m'||e.key==='M')&&!e.shiftKey){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat&&!stroke&&!selLive){closeMenu();const wasMask=ui.viewMask;p3ShowLit();if(wasMask&&typeof maskBarSync==='function'){maskBarSync();renderLayers();}toast('Material (lit)');}}},true);
 function p3ReceiveBake(mesh,by,ks,asLayers){if(ui.mode!=='p3d'&&!setMode('p3d',true))return;if(mesh&&mesh.udimAtlas)mesh=mesh.udimOf;
   if(mesh&&mesh!==v3.imported){v3.imported=p3.imported=mesh;v3s().model='imported';v3.mesh=null;v3LoadModel();}
-  const back=p3.sets[p3.cur]&&p3.sets[p3.cur].name;let n=0;
-  for(let i=0;i<p3.sets.length;i++){const S=p3.sets[i],binding=p3Binding(S),res=(S.tile&&by[binding+'@'+S.tile.id])||by[binding]||by['*'];if(!res||S.missing)continue;p3SwitchSet(i,true);p3ApplyBake(res,ks,asLayers);n++;}
+  const back=p3.sets[p3.cur]&&p3.sets[p3.cur].name;let n=0,layers=0;
+  for(let i=0;i<p3.sets.length;i++){const S=p3.sets[i],binding=p3Binding(S),res=(S.tile&&by[binding+'@'+S.tile.id])||by[binding]||by['*'];if(!res||S.missing)continue;p3SwitchSet(i,true);layers+=p3ApplyBake(res,ks,asLayers);n++;}
   const j=p3.sets.findIndex(S=>S.name===back);if(j>=0)p3SwitchSet(j,true);buildP3Panel();
-  toast(n?'Sent the bake to '+n+' texture set'+(n>1?'s':'')+(asLayers?', as mesh maps and layers.':', as mesh maps.'):'No texture set matched the baked materials.');}
+  toast(n?'Sent the bake to '+n+' texture set'+(n>1?'s':'')+(layers?', as mesh maps and layers.':', as mesh maps.'):'No texture set matched the baked materials.');}
 function p3ApplyBake(res,ks,asLayers){const M=doc.meshMaps||(doc.meshMaps={});
   for(const k of ks){if(!res[k])continue;let t=M[k];if(!t||t.w!==doc.w||t.h!==doc.h){if(t)disposeTarget(t);t=M[k]=makeTarget(doc.w,doc.h,(k==='height'||k==='normal')&&canFloat?16:doc.depth,false);}copyScaled(res[k],t);}
   /* (0.27, Kenn: sent bakes shouldn't be added to the layer stack) they are the set's mesh maps; the baked normal
      shades the model from there (meshNormalBase). Layers only when asked for; an old "Mesh normal (baked)" layer goes. */
   const add=[];
-  /* (0.80) the baked lighting always also comes as a Multiply layer you can paint on (Kenn: both) */
-  for(const k of ks)if(k!=='normal'&&M[k]&&(asLayers||k==='light'))add.push(p3MeshLayer(k));
+  for(const k of ks)if(k!=='normal'&&res[k]&&(k==='light'?bakeCfg.lightLayer===true:asLayers))add.push(p3MeshLayer(k));
   const old=paintLayers().filter(L=>L.meshMap&&(add.some(a=>a.meshMap===L.meshMap)||(L.meshMap==='normal'&&ks.includes('normal'))));
   if(old.length||add.length)structOp('Bake from the Bake tab',()=>{for(const L of old)detachNode(L);for(const L of add)insertNode(L,doc.root,L.meshMap==='normal'?1:doc.root.children.length);});
-  syncTargets();p3MeshMapsChanged();renderLayers();}
+  syncTargets();p3MeshMapsChanged();renderLayers();return add.length;}
 /* a mesh map as a layer: the normal in the Normal map, AO on Multiply, curvature on Overlay, the rest hidden in the base colour */
 function p3MeshLayer(k){const M=doc.meshMaps,L=newLayerObj(k==='normal'?'Mesh normal (baked)':'Baked '+(P3_MESHMAP_NAMES[k]||k).toLowerCase());doc.count--;
   const own=k==='normal'?'normal':'base';for(const x of Object.keys(L.maps))if(x!==own){disposeTarget(L.maps[x]);delete L.maps[x];}

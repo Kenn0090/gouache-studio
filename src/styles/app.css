@@ -991,7 +991,7 @@ body:not(.m-p3d) #lFill,body:not(.m-p3d) #lFxAdd{display:none}
 .dkshelf .sec:has(#libBody)>.stbrush,.dkshelf .sec:has(#libBody)>.prevwrap,.dkshelf .sec:has(#libBody)>#brushBody{grid-column:2}
 .dkshelf .sec:has(#libBody) #brushPrev{height:56px}
 .dkshelf .sec:has(#libBody)>#brushBody{max-height:calc(100% - 4px);overflow:auto}
-.colpop{position:fixed;z-index:9000;width:250px;display:grid;gap:8px;padding:10px;background:var(--panel);border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 28px rgba(0,0,0,.45)}
+.colpop{position:fixed;z-index:9000;width:250px;max-width:calc(100vw - 12px);max-height:calc(100vh - 12px);overflow:auto;display:grid;gap:8px;padding:10px;background:var(--panel);border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 28px rgba(0,0,0,.45)}
 .colsw{height:26px;border-radius:6px;border:1px solid var(--line)}.colhex{width:74px}
 
 /* 0.39 Beginner level, Getting started card, launch screen */

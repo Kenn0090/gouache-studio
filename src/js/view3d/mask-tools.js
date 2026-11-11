@@ -148,7 +148,12 @@ function liveBarRow(){const M=lm.M,S=M.mask.stack;
   const chips=S.map(r=>{const b=el('button',{class:'chip'+(ui.msSel&&ui.msSel.id===r.id?' on':''),text:msRowTitle(r),title:'Change it in the Material editor',onclick:()=>{ui.msSel={L:M,where:'m',id:r.id};showPanel('matEd');renderMatEd(true);maskBarSync();}});
     const x=el('button',{class:'msdel',text:'✕','aria-label':'Remove '+msRowTitle(r),onclick:()=>liveRemove(r.id)});return el('span',{class:'lmchip'},b,x);});
   const mks=msMeshKeys(),mm=el('select',{id:'lmMesh','aria-label':'Add a mesh map'},el('option',{value:'',text:'+ Mesh map'}),...mks.map(k=>el('option',{value:k,text:msMeshName(k)})));mm.onchange=()=>{if(mm.value)liveAdd('mesh',{p:{k:mm.value,inv:false}});};
-  const gn=el('select',{id:'lmGen','aria-label':'Add a generator'},el('option',{value:'',text:'+ Generator'}),...MS_GENS.map(([k,t])=>el('option',{value:k,text:t})));gn.onchange=()=>{if(gn.value)liveAdd('gen',{p:Object.assign(MS_KINDS.gen.p(),{g:gn.value})});};
+  const gn=el('select',{id:'lmGen','aria-label':'Add a generator'},el('option',{value:'',text:'+ Generator'}),...MS_GENS.map(([k,t])=>el('option',{value:k,text:t})));
+  gn.onchange=()=>{
+    const g=gn.value;if(!g)return;
+    const p=g==='metalWear'||MS_PAINT_DAMAGE.includes(g)?msGenDefaults(g):{...MS_KINDS.gen.p(),g};
+    liveAdd('gen',{p});
+  };
   const nz=el('select',{id:'lmNoise','aria-label':'Add a noise'},el('option',{value:'',text:'+ Noise'}),...MS_NOISES.map(([k,t])=>el('option',{value:k,text:t})));nz.onchange=()=>{if(nz.value)liveAdd('noise',{p:Object.assign(MS_KINDS.noise.p(),{type:nz.value})});};
   return el('div',{class:'maskbar-row'},mm,gn,nz,...(chips.length?chips:[el('span',{class:'maskbar-n',text:'No rows yet.'})]));}
 

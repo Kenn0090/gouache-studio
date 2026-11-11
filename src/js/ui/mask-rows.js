@@ -78,10 +78,10 @@ function msImageDrop(L,r){const drop=el('div',{class:'fxddrop',id:'msImageDrop',
   return drop;}
 /* ---- Properties: the selected row's settings ---- */
 function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
-  const ed=fn=>msEdit(L,r,fn);const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,
-    numericMax:['scale','tile','gtile','gcon','contrast'].includes(key)||(key==='r'&&r.own==='warp')||
+  const ed=fn=>msEdit(L,r,fn);const S=(id,label,key,min,max,step,fmt,fallback)=>makeSlider({id,label,min,max,step,
+    numericMax:['scale','scratchScale','tile','gtile','gcon','contrast'].includes(key)||(key==='r'&&r.own==='warp')||
       (p.g==='builder'&&MS_BUILDER_INPUTS.some(([input])=>input===key))?Infinity:undefined,
-    value:p[key]==null?min:p[key],fmt:fmt||(v=>String(Math.round(v*100)/100)),onInput:v=>ed(x=>{x.p[key]=v;})}).el;
+    value:p[key]??fallback??min,fmt:fmt||(v=>String(Math.round(v*100)/100)),onInput:v=>ed(x=>{x.p[key]=v;})}).el;
   const sel=(id,label,opts,key)=>{const s=el('select',{id,'aria-label':label},...opts.map(([v,t])=>el('option',{value:v,text:t})));s.value=p[key];s.onchange=()=>{ed(x=>{x.p[key]=s.value;});renderLayers();};return el('div',{class:'frow'},el('label',{text:label}),s);};
   const inv=()=>chk('ms_inv','Invert',!!p.inv,v=>ed(x=>{x.p.inv=v;}));
   const modeSel=el('select',{id:'ms_mode','aria-label':'Blend mode'},...MS_MODES.map(([v,t])=>el('option',{value:v,text:t})));modeSel.value=r.mode||'normal';modeSel.onchange=()=>{ed(x=>{x.mode=modeSel.value;});renderLayers();};
@@ -163,7 +163,7 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
         el('p',{class:'note',text:'Add sums the inputs. Lightest keeps the strongest. Intersect keeps their overlap and skips missing maps. Bake the mesh maps to get the most detail.'}));
       return;
     }
-    const choose=sel('ms_g','Preset',MS_GENS,'g'),input=choose.querySelector('select');input.onchange=()=>{ed(x=>Object.assign(x.p,['light','linear','radial','comic'].includes(input.value)?msGenDefaults(input.value):{g:input.value}));renderLayers();renderMatEd(true);};box.append(choose);
+    const choose=sel('ms_g','Preset',MS_GENS,'g'),input=choose.querySelector('select');input.onchange=()=>{ed(x=>Object.assign(x.p,['light','linear','radial','comic','metalWear',...MS_PAINT_DAMAGE].includes(input.value)?msGenDefaults(input.value):{g:input.value}));renderLayers();renderMatEd(true);};box.append(choose);
     box.append(chk('ms_uvWrap','UV wrap',p.uvWrap!==false,v=>ed(x=>{x.p.uvWrap=v;})));
     const fresh=['light','linear','radial','comic'].includes(p.g);
     if(fresh){for(const [k,v] of Object.entries(msGenDefaults(p.g)))if(p[k]==null)p[k]=v;
@@ -174,8 +174,81 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
       }
       if(p.g==='comic'){const style=sel('ms_comicStyle','Style',[['shade','Shading and dots'],['shadow','Solid ink shadows'],['dots','Halftone dots']],'comicStyle');style.querySelector('select').addEventListener('change',()=>renderMatEd(true));box.append(style);if(p.comicStyle==='shade')box.append(S('ms_bands','Shading bands','bands',2,6,1,v=>String(v)));if(p.comicStyle!=='shadow')box.append(S('ms_dots','Dot density','dots',4,120,1,v=>String(v)),S('ms_dotSize','Dot size','dotSize',0,.8,.01,pct),S('ms_dotAngle','Dot angle','dotAngle',-180,180,1,v=>v+'°'));}
       box.append(S('ms_amt','Offset','amount',0,1,.01,pct),S('ms_con','Contrast','contrast',.3,6,.05),inv(),el('p',{class:'note',text:p.g==='light'||p.g==='comic'?'Follows surface normals; Cavity shading uses baked AO. Change the angles to move the mask across the model.':'Follows the model’s bounds. On a flat canvas it follows the image. Start and End can be reversed.'}));
-    }else{const has=[msMeshTex('curv')&&'curvature',msMeshTex('ao')&&'AO',v3.mesh&&'the model'].filter(Boolean);
-      box.append(S('ms_amt','Amount','amount',0,1,.01,pct),S('ms_w','Width','width',0,1,.01,pct),S('ms_brk','Breakup','breakup',0,1,.01,pct),S('ms_dist','Distort','distort',0,1,.01,pct),S('ms_con','Contrast','contrast',.3,6,.05),S('ms_scale','Noise size','scale',.5,40,.5),S('ms_seed','Seed','seed',1,99,1,v=>String(v)),inv(),sel('ms_ganc','Also follow anchor',[['','None'],...msAnchorNames().map(x=>[x,x])],'anchor'),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),msGrungeBox(r,p,ed,S),el('p',{class:'note',text:'Uses '+(has.length?has.join(', '):'the document’s maps')+'. Bake curvature and AO for the best results.'}));
+    }else{
+      const metalWear=p.g==='metalWear',peeling=p.g==='peelingPaint',bubbles=p.g==='paintBubbles';
+      const has=[msMeshTex('curv')&&'curvature',msMeshTex('ao')&&'AO',v3.mesh&&'the model'].filter(Boolean);
+      const note=metalWear?'Edge distortion bends the wear along the model. Scratch reach controls how far scuffs spread onto flat areas.'
+        :peeling?'Invert the damage mask on your top coat. Use a second row with the same preset and seed for lifted edges or coating relief in Height.'
+        :bubbles?'Makes clusters of rounded paint blisters. Use this mask on a fill with Height to give the bubbles relief.'
+        :'Uses '+(has.length?has.join(', '):'the document’s maps')+'. Bake curvature and AO for the best results.';
+      if(metalWear)p.cavityProtection??=.75;
+      const scanSelect=(id,label,key,sources)=>{
+        const row=sel(id,label,[['','None'],...sources.map(({slug,name})=>[slug,name])],key);
+        const picker=row.querySelector('select');
+        if(!picker.value)picker.value='';
+        picker.onchange=()=>{
+          ed(x=>{x.p[key]=picker.value;});
+          renderMatEd(true);
+        };
+        return row;
+      };
+      if(peeling){
+        const variants=MS_PEEL_PRESETS.map(([key,label])=>[key,label]);
+        if(!p.peelPreset)variants.unshift(['','Original flakes']);
+        const row=sel('ms_peelPreset','Peeling Paint preset',variants,'peelPreset'),picker=row.querySelector('select');
+        picker.value=p.peelPreset||'';
+        picker.onchange=()=>{
+          const preset=MS_PEEL_PRESETS.find(([key])=>key===picker.value);
+          if(!preset)return;
+          msCommit();
+          ed(x=>Object.assign(x.p,preset[2],{peelPreset:preset[0]}));
+          msCommit();
+          renderMatEd(true);
+        };
+        box.append(row);
+        if(p.crackWidth!=null){
+          const output=sel('ms_peelOutput','Output',MS_PEEL_OUTPUTS,'peelOutput');
+          output.querySelector('select').value=p.peelOutput||'damage';
+          const scan=scanSelect('ms_peelScan','Paint scan','peelScan',TX_PAINT_SCANS);
+          box.append(output,S('ms_crackWidth','Crack width','crackWidth',0,1,.01,pct),
+            S('ms_flakeLoss','Missing flakes','flakeLoss',0,1,.01,pct),
+            S('ms_edgeLift','Rim height','edgeLift',0,1,.01,pct),
+            S('ms_stretch','Directional stretch','stretch',0,1,.01,pct),
+            S('ms_direction','Direction','direction',-180,180,1,v=>Math.round(v)+'°'),scan);
+          if(scan.querySelector('select').value)box.append(
+            S('ms_peelScanAmount','Scan strength','peelScanAmount',0,1,.01,pct,.65),
+            S('ms_peelScanTile','Scan tiling','peelScanTile',.25,16,.25,v=>v+'×',2));
+        }
+      }
+      box.append(S('ms_amt',bubbles?'Density':'Amount','amount',0,1,.01,pct),
+        S('ms_w',metalWear?'Edge width':peeling?'Flake spread':bubbles?'Bubble radius':'Width','width',0,1,.01,pct),
+        ...(metalWear?[
+          S('ms_edgeStrength','Edge strength','edgeStrength',0,2,.01,pct,1),
+          S('ms_dist','Edge distortion','distort',0,1,.01,pct),
+          S('ms_edgeDistortScale','Edge distortion scale','edgeDistortScale',1,32,.5,v=>String(v),9)
+        ]:[]),
+        metalWear?S('ms_cavityProtection','Cavity protection','cavityProtection',0,1,.01,pct):null,
+        S('ms_brk','Breakup','breakup',0,1,.01,pct),metalWear?null:S('ms_dist','Distort','distort',0,1,.01,pct),
+        S('ms_con','Contrast','contrast',.3,6,.05),
+        S('ms_scale',peeling||bubbles?'Pattern frequency':'Noise size','scale',.5,40,.5),S('ms_seed','Seed','seed',1,99,1,v=>String(v)));
+      if(metalWear){
+        const scan=scanSelect('ms_metalScan','Metal scan','metalScan',TX_METAL_SCANS);
+        box.append(scan);
+        if(scan.querySelector('select').value)box.append(
+          S('ms_metalScanAmount','Scan influence','metalScanAmount',0,1,.01,pct,.65),
+          S('ms_metalScanTile','Scan tiling','metalScanTile',.25,16,.25,v=>v+'×',2),
+          S('ms_metalScanAngle','Scan rotation','metalScanAngle',-180,180,1,v=>Math.round(v)+'°'));
+        box.append(
+          S('ms_scratchAmount','Scratch amount','scratchAmount',0,1,.01,pct),
+          S('ms_scratchScale','Scratch frequency','scratchScale',2,100,1,v=>String(Math.round(v)),34),
+          S('ms_scratchAngle','Scratch angle','scratchAngle',-180,180,1,v=>Math.round(v)+'°'),
+          S('ms_scratchReach','Scratch reach','scratchReach',0,1,.01,pct,.35));
+      }
+      if(bubbles)box.append(S('ms_sizeVariation','Size variation','sizeVariation',0,1,.01,pct,.82),
+        S('ms_clumping','Clumping','clumping',0,1,.01,pct,.85));
+      box.append(inv(),
+        peeling||bubbles?null:sel('ms_ganc','Also follow anchor',[['','None'],...msAnchorNames().map(x=>[x,x])],'anchor'),
+        pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),msGrungeBox(r,p,ed,S),el('p',{class:'note',text:note}));
     }
   }}
 

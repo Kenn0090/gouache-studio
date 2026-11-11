@@ -1,5 +1,4 @@
-/* 0.80: the Lighting bake: a light rig (sun, point, spot, sky) baked onto the model with soft shadows; sent to 3D Paint as a
-   mesh map and a Multiply layer; the Hand-painted layer lights the model with it; the rig's tab and gizmo in the Bake tab */
+/* Lighting bake with soft shadows, a mesh map and optional Multiply layer in 3D Paint, and Hand-painted lighting. */
 const {chromium}=require('playwright'),path=require('path');
 const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
 (async()=>{
@@ -27,8 +26,14 @@ const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAI
    return {up:up/Math.max(1,un),dn:dn/Math.max(1,dnn),all:all/Math.max(1,an),un,dnn,shadowed,facing};});
  const s1=await stat();console.log('  sun from above, shadows:',JSON.stringify(s1));
  ok(s1.un>20&&s1.dnn>20&&s1.up>s1.dn+80,'parts facing up are lit, parts facing down are dark ('+s1.up.toFixed(0)+' vs '+s1.dn.toFixed(0)+')');
- const layer=await p.evaluate(()=>{const L=__gs.allNodes(__gs.doc.root).find(n=>n.meshMap==='light');return L?{name:L.name,mode:__gs.MODES[L.mode],vis:L.visible}:null;});
- ok(layer&&layer.mode==='Multiply'&&layer.vis,'and as a Multiply layer you can paint on: '+JSON.stringify(layer));
+ const layer=await p.evaluate(()=>{
+   const G=__gs,find=()=>G.allNodes(G.doc.root).find(n=>n.meshMap==='light'),automatic=!!find();
+   G.bakeCfg.lightLayer=true;
+   G.p3ApplyBake(G.bk.res,['light'],false);
+   G.bakeCfg.lightLayer=false;
+   const L=find();return {automatic,mode:L&&G.MODES[L.mode],visible:L?.visible};
+ });
+ ok(!layer.automatic&&layer.mode==='Multiply'&&layer.visible,'Lighting only becomes a Multiply layer when requested: '+JSON.stringify(layer));
  /* the same without shadows: more light (the rim of the model shades its inside) */
  await p.evaluate(()=>{__gs.lightRig().lights[0].shadow=false;});await bake(['light','wnormal']);
  const s2=await stat();console.log('  no shadows:',JSON.stringify(s2));

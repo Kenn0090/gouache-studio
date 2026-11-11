@@ -255,6 +255,52 @@ fxDef('mosaic',{title:'Mosaic',init:()=>({gc:'bg',gcol:null}),defs:[{key:'c',lab
 /* ---- stylize ---- */
 fxDef('emboss',{title:'Emboss',defs:[{key:'a',label:'Angle',min:-180,max:180,step:1,value:135,fmt:deg},{key:'h',label:'Height',min:1,max:10,step:1,value:2,fmt:px},{key:'amt',label:'Amount',min:.1,max:5,step:.05,value:1.5,fmt:pct}],
   checks:[['grey','Grey (like Photoshop)',true]],render(src,dst,v){const r=v.a*Math.PI/180;run(P.f_emboss,dst,{uSrc:src.tex,uDir:[Math.cos(r)*v.h,-Math.sin(r)*v.h],uAmt:v.amt,uWrap:!!doc.wrap,uGrey:!!v.grey});}});
+const FS_PAINT_EMBOSS=`
+uniform sampler2D uSrc; uniform bool uAlpha; uniform float uWidth; uniform float uDepth; uniform float uShine;
+uniform vec2 uLightDir;
+float paintHeight(vec2 uv){
+  vec4 sampleColor=texture(uSrc,uv);
+  return uAlpha?sampleColor.a:dot(sampleColor.rgb,vec3(0.299,0.587,0.114));
+}
+vec2 paintSlope(vec2 uv,vec2 px){
+  vec2 x=vec2(px.x,0.0),y=vec2(0.0,px.y);
+  return vec2(paintHeight(uv+x)-paintHeight(uv-x),paintHeight(uv+y)-paintHeight(uv-y));
+}
+void main(){
+  vec2 texel=1.0/vec2(textureSize(uSrc,0)),uv=gl_FragCoord.xy*texel;
+  vec4 paint=texture(uSrc,uv);
+  if(paint.a<=0.00001){o=paint;return;}
+  vec2 wide=texel*uWidth;
+  vec2 slope=mix(paintSlope(uv,wide),paintSlope(uv,wide*0.5),0.55);
+  vec3 normal=normalize(vec3(-slope*uDepth,1.0));
+  vec3 light=normalize(vec3(uLightDir,0.72));
+  vec3 halfway=normalize(light+vec3(0.0,0.0,1.0));
+  float shade=dot(normal,light)-light.z;
+  float shine=max(0.0,pow(max(0.0,dot(normal,halfway)),20.0)-pow(halfway.z,20.0))*uShine;
+  vec3 colour=paint.rgb*(1.0-clamp(-shade*0.75,0.0,0.85));
+  float highlight=clamp(max(0.0,shade)*0.65+shine*0.45,0.0,1.0);
+  o=vec4(mix(colour,vec3(paint.a),highlight),paint.a);
+}`;
+let paintEmbossProgram=null;
+fxDef('paintEmboss',{
+  title:'Paint Emboss',
+  note:'Adds a raised, shaded edge to paint while keeping its colour and transparency. Use Brightness for an opaque texture.',
+  init:()=>({source:'alpha'}),
+  controls:(v,upd)=>[seg([['alpha','Paint coverage'],['light','Brightness']],v.source,
+    source=>{v.source=source;upd();},'Relief source')],
+  defs:[
+    {key:'width',label:'Bevel width',min:1,max:40,step:.5,value:6,fmt:px},
+    {key:'depth',label:'Relief depth',min:0,max:4,step:.05,value:1.6,fmt:pct},
+    {key:'angle',label:'Light angle',min:-180,max:180,step:1,value:135,fmt:deg},
+    {key:'shine',label:'Shine',min:0,max:1,step:.01,value:.3,fmt:pct}
+  ],
+  render(src,dst,v){
+    if(!paintEmbossProgram)paintEmbossProgram=program(FS_PAINT_EMBOSS);
+    const angle=rad(v.angle);
+    run(paintEmbossProgram,dst,{uSrc:src.tex,uAlpha:v.source!=='light',uWidth:v.width,uDepth:v.depth,uShine:v.shine,
+      uLightDir:[Math.cos(angle),-Math.sin(angle)]});
+  }
+});
 fxDef('edges',{title:'Find edges',defs:[{key:'a',label:'Strength',min:.2,max:8,step:.1,value:2,fmt:pct}],checks:[['inv','Dark lines on white',true]],
   render(src,dst,v){run(P.f_edges,dst,{uSrc:src.tex,uAmt:v.a,uWrap:!!doc.wrap,uInv:!!v.inv});}});
 

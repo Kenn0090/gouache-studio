@@ -10,7 +10,16 @@
 const MS_MODES=[['normal','Normal','Norm'],['multiply','Multiply','Mult'],['add','Add','Add'],['subtract','Subtract','Sub'],['screen','Screen','Scrn'],['min','Min (darker)','Min'],['max','Max (lighter)','Max'],['overlay','Overlay','Ovl']];
 const msModeIx=m=>Math.max(0,MS_MODES.findIndex(x=>x[0]===m));
 const MS_GENS=[['edge','Edge wear'],['dirt','Dirt in cavities'],['dust','Dust on top'],['moss','Moss'],['rust','Rust streaks'],['water','Water line'],['slime','Slime'],['crud','Crud'],
-  ['chips','Chipped paint'],['scratch','Scratches'],['snow','Snow on top'],['soot','Soot'],['drips','Drips and leaks'],['bleach','Sun-bleached'],['light','Light'],['linear','Linear gradient'],['radial','Radial gradient'],['comic','Comic shading'],['builder','Mask builder']];
+  ['chips','Chipped paint'],['scratch','Scratches'],['snow','Snow on top'],['soot','Soot'],['drips','Drips and leaks'],['bleach','Sun-bleached'],['light','Light'],['linear','Linear gradient'],['radial','Radial gradient'],['comic','Comic shading'],['builder','Mask builder'],
+  ['metalWear','Metal Edge Wear'],['peelingPaint','Peeling Paint'],['paintBubbles','Paint Bubbles']];
+const MS_PAINT_DAMAGE=['peelingPaint','paintBubbles'];
+const MS_PEEL_PRESETS=[
+  ['cracked','Cracked Coat',{amount:.47,width:.4,breakup:.12,contrast:1.6,scale:6,distort:.45,crackWidth:.24,flakeLoss:.16,edgeLift:.74,stretch:0,direction:0,peelScan:'peeling-wall-scan',peelScanAmount:.85,peelScanTile:1.5}],
+  ['fine','Fine Crazing',{amount:.6,width:.32,breakup:.12,contrast:1.9,scale:14,distort:.26,crackWidth:.13,flakeLoss:.05,edgeLift:.38,stretch:0,direction:0,peelScan:'peeling-wall-scan',peelScanAmount:.6,peelScanTile:4}],
+  ['heavy','Heavy Peeling',{amount:.67,width:.59,breakup:.22,contrast:1.5,scale:5.5,distort:.61,crackWidth:.43,flakeLoss:.9,edgeLift:.92,stretch:.14,direction:0,peelScan:'peeling-wall-scan',peelScanAmount:.8,peelScanTile:1.5}],
+  ['directional','Directional Cracks',{amount:.56,width:.45,breakup:.18,contrast:1.75,scale:8,distort:.37,crackWidth:.22,flakeLoss:.27,edgeLift:.62,stretch:.82,direction:0,peelScan:'peeling-wood-scan',peelScanAmount:.65,peelScanTile:2}]
+];
+const MS_PEEL_OUTPUTS=[['damage','Damage mask'],['rims','Lifted edges'],['height','Coating relief']];
 const MS_BUILDER_INPUTS=[['edgeWeight','Curvature edges'],['cavityWeight','Curvature cavities'],['aoWeight','AO cavities'],
   ['directionWeight','Facing direction'],['positionWeight','Position gradient'],['heightWeight','Height'],['thicknessWeight','Thin areas']];
 const MS_BUILDER_MIX=[['add','Add'],['lightest','Lightest'],['intersect','Intersect']];
@@ -60,8 +69,11 @@ function msUsesDoc(L){return L.mask.stack.some(r=>{
   if(r.kind==='dir')return !(v3.mesh&&(ui.mode==='p3d'||v3.on));
   if(r.kind!=='gen')return false;
   const p=r.p;
-  if(p.g!=='builder')return !msMeshTex('curv')&&!msMeshTex('ao');
+  if(MS_PAINT_DAMAGE.includes(p.g))return false;
   const painted=k=>doc.maps.includes(k)&&!msMeshTex(k)&&!msMeshTex('cv:'+k);
+  if(p.g==='metalWear')return (!msMeshTex('curvEdge')&&!msMeshTex('cv:curvEdge')&&painted('curv'))||
+    (p.cavityProtection??.75)>0&&painted('ao');
+  if(p.g!=='builder')return !msMeshTex('curv')&&!msMeshTex('ao');
   return ((p.edgeWeight??1)||p.cavityWeight)&&painted('curv')||
     p.aoWeight&&painted('ao')||p.heightWeight&&painted('height');
 });}
@@ -116,28 +128,192 @@ const FS_MSGEN=MS_NOISE_GLSL+MS_SURF_GLSL+`
 uniform sampler2D uCurv; uniform int uHasCurv; uniform sampler2D uAO; uniform int uHasAO; uniform int uG; uniform float uAmt; uniform float uWidth; uniform float uBreak; uniform float uCon; uniform float uScale; uniform int uNeg; uniform float uDist;
 uniform sampler2D uCurv2; uniform int uHasCurv2; uniform vec4 uLight; uniform vec4 uGrad; uniform vec3 uAxis; uniform vec3 uCenter; uniform vec4 uComic; uniform int uComicMode;
 uniform sampler2D uGTex; uniform int uHasG; uniform float uGTile; uniform int uGInv; uniform float uGRot; uniform float uGCon; uniform float uGLev;
+uniform float uCavityProtection;
+uniform vec3 uWearShape; // edge strength, remaining distortion, distortion frequency
+uniform vec4 uScratch; uniform vec3 uPeel; uniform vec2 uPeelDirection; uniform int uPeelOutput; uniform vec2 uBubble;
+uniform sampler2D uSurfaceScan; uniform vec3 uSurfaceScanSettings;
 uniform vec4 uBuilderInputs[7]; uniform int uBuilderMix; uniform vec2 uBuilderRange; uniform vec3 uBuilderDirection;
 uniform sampler2D uHeight; uniform sampler2D uThick; uniform sampler2D uWorldN; uniform sampler2D uPosition; uniform int uHasHeight; uniform int uHasThick; uniform int uHasWorldN; uniform int uHasPosition;
-float curvOf(vec2 uv){ float c=uHasCurv==1?texture(uCurv,uv).r:0.5; if(uHasCurv2==1) c=clamp(c+(texture(uCurv2,uv).r-0.5)*1.5,0.0,1.0); return c; }
+float curvOf(vec2 uv){ float c=uHasCurv==0?0.5:texture(uCurv,uv).r; if(uHasCurv==2)c=0.5+c*0.5;
+  if(uHasCurv2==1) c=clamp(c+(texture(uCurv2,uv).r-0.5)*1.5,0.0,1.0); return c; }
 float aoOf(vec2 uv){ return uHasAO==1?texture(uAO,uv).r:1.0; }
-/* (0.95.7, Kenn) your own grunge as the generator's breakup: a picture from Textures, tiled; on the model (World) it is laid
-   over the surface from three sides so it has no seams, on UVs it follows the texture */
-float grungeOf(vec2 uv){ vec3 q=surfQ(uv)*uGTile; float c=cos(uGRot),s=sin(uGRot); float g;
+/* Repeat pictures in UV space or blend the three projections across the surface in World mode. */
+float msProjectedPicture(sampler2D img,vec3 q,float angle){
+  float c=cos(angle),s=sin(angle);
+  mat2 rot=mat2(c,s,-s,c);
   if(uWorld==1&&uHasPos==1){ vec3 w=abs(surfN()); w=pow(w,vec3(4.0)); w/=max(w.x+w.y+w.z,1e-4);
-    vec2 a=q.zy,b=q.xz,d=q.xy; a=vec2(c*a.x-s*a.y,s*a.x+c*a.y); b=vec2(c*b.x-s*b.y,s*b.x+c*b.y); d=vec2(c*d.x-s*d.y,s*d.x+c*d.y);
-    g=texture(uGTex,fract(a)).r*w.x+texture(uGTex,fract(b)).r*w.y+texture(uGTex,fract(d)).r*w.z; }
-  else { vec2 d=q.xy; d=vec2(c*d.x-s*d.y,s*d.x+c*d.y); g=texture(uGTex,fract(d)).r; }
+    return texture(img,fract(rot*q.zy)).r*w.x+texture(img,fract(rot*q.xz)).r*w.y+texture(img,fract(rot*q.xy)).r*w.z;
+  }
+  return texture(img,fract(rot*q.xy)).r;
+}
+float grungeOf(vec2 uv){ float g=msProjectedPicture(uGTex,surfQ(uv)*uGTile,uGRot);
   if(uGInv==1) g=1.0-g;
   /* (0.96.1, Kenn) contrast and level for the dropped grunge */
   float k=uGCon>=0.0?1.0+uGCon*4.0:1.0+uGCon*0.95; g=clamp((g-0.5)*k+0.5+uGLev*0.5,0.0,1.0); return g; }
-void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(); vec3 q=surfQ(uv)*uScale;
+/* Gap to the next cell gives each flake its own irregular outline. */
+vec3 flakeCell(vec3 p){
+  vec3 cell=floor(p),local=fract(p);
+  float first=8.0,second=8.0,seed=0.0;
+  for(int z=-1;z<=1;z++)for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){
+    vec3 offset=vec3(x,y,z),id=cell+offset;
+    vec3 delta=offset+vec3(h3(id),h3(id+11.1),h3(id+23.7))-local;
+    float distance=dot(delta,delta);
+    if(distance<first){second=first;first=distance;seed=h3(id+49.1);}
+    else second=min(second,distance);
+  }
+  return vec3(sqrt(second)-sqrt(first),seed,sqrt(first));
+}
+vec2 rotateDamage(vec2 p,float angle){
+  float c=cos(angle),s=sin(angle);
+  return vec2(c*p.x+s*p.y,-s*p.x+c*p.y);
+}
+float scratchPlane(vec2 uv){
+  vec2 p=rotateDamage(uv,uScratch.z)*uScratch.y*vec2(0.52,2.3);
+  vec2 cell=floor(p);
+  float value=0.0;
+  for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){
+    vec2 id=cell+vec2(x,y);
+    vec3 key=vec3(id,17.1);
+    float density=h3(key);
+    if(density>uScratch.x)continue;
+    vec2 centre=id+vec2(h3(key+7.4),h3(key+18.2));
+    vec2 d=p-centre;
+    d.y+=d.x*(h3(key+44.5)-0.5)*0.16;
+    float length0=mix(0.1,0.62,h3(key+23.4));
+    float tip=1.0-smoothstep(length0*0.6,length0,abs(d.x));
+    float thickness=mix(0.026,0.072,h3(key+91.6));
+    value=max(value,tip*(1.0-smoothstep(thickness*0.16,thickness,abs(d.y)))*mix(0.45,1.0,h3(key+4.2)));
+  }
+  return value;
+}
+float scratchesOf(vec3 p,vec3 n){
+  if(uWorld==0||uHasPos==0)return scratchPlane(p.xy);
+  vec3 weight=pow(abs(n),vec3(4.0));
+  weight/=max(weight.x+weight.y+weight.z,1e-5);
+  return scratchPlane(p.zy)*weight.x+scratchPlane(p.xz)*weight.y+scratchPlane(p.xy)*weight.z;
+}
+void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(),surfaceQ=surfQ(uv); vec3 q=surfaceQ*uScale;
   /* (0.27) Distort: the edges and cavities read a little off to the side, following a noise, so they break up irregularly */
   /* (0.96.1, Kenn: "the UVs are breaking") on a model, Distort no longer reads the edges from a shifted spot of the texture (that
      jumps across UV seams): it pushes the edge and cavity strengths up and down with a noise laid over the model, so it stays
      continuous across seams. On a flat texture it still shifts the reading point. */
-  float dShift=0.0; if(uDist>0.0){ if(uHasPos==1) dShift=(fbm(q*0.45+vec3(3.1,0.0,1.7))-0.5)*uDist; else { vec2 dd=vec2(fbm(q*0.45+vec3(3.1,0.0,1.7)),fbm(q*0.45+vec3(0.0,7.7,4.2)))-0.5; uv+=dd*uDist*0.05; } }
-  float c=clamp(curvOf(uv)+dShift*0.5,0.0,1.0),edge=clamp((c-0.5)*2.0,0.0,1.0),cav=clamp((0.5-c)*2.0,0.0,1.0),ao=clamp(aoOf(uv)+dShift*0.6,0.0,1.0),occ=1.0-ao,up=dot(N,vec3(0.0,1.0,0.0)),n=uHasG==1?grungeOf(uv):fbm(q),w=uWidth;
+  float dShift=0.0; if(uDist>0.0&&uG<19){ if(uHasPos==1) dShift=(fbm(q*0.45+vec3(3.1,0.0,1.7))-0.5)*uDist; else { vec2 dd=vec2(fbm(q*0.45+vec3(3.1,0.0,1.7)),fbm(q*0.45+vec3(0.0,7.7,4.2)))-0.5; uv+=dd*uDist*0.05; } }
+  float rawCurv=curvOf(uv);
+  float c=clamp(rawCurv+dShift*0.5,0.0,1.0),edge=clamp((c-0.5)*2.0,0.0,1.0),cav=clamp((0.5-c)*2.0,0.0,1.0),ao=clamp(aoOf(uv)+dShift*0.6,0.0,1.0),occ=1.0-ao,up=dot(N,vec3(0.0,1.0,0.0)),n=uHasG==1?grungeOf(uv):fbm(q),w=uWidth;
   float b=0.0;
+  if(uG==19){
+    float cutoff=mix(0.55,0.045,uAmt)*mix(1.2,0.45,w);
+    if(uWearShape.y>0.0&&(uHasCurv!=0||uHasCurv2!=0)){
+      if(uWorld==1&&uHasPos==1){
+        // When surface walking is unavailable, shape the edge without sampling across atlas islands.
+        float noise=fbm(surfaceQ*uWearShape.z)-0.5;
+        cutoff=max(0.02,cutoff+noise*uWearShape.y*0.45);
+      }else{
+        vec3 p=vec3(uv*uWearShape.z,0.0);
+        vec2 offset=vec2(fbm(p+vec3(5.2,1.3,7.7)),fbm(p+vec3(2.9,8.4,3.3)))-0.5;
+        edge=clamp((curvOf(uv+offset*uWearShape.y*0.065)-0.5)*2.0,0.0,1.0);
+      }
+    }
+    float scanInfluence=uSurfaceScanSettings.x;
+    float scan=0.5, edgeBreakup=1.0;
+    if(scanInfluence>0.0){
+      scan=msProjectedPicture(uSurfaceScan,surfaceQ*uSurfaceScanSettings.y,uSurfaceScanSettings.z);
+      // The scan opens and breaks up the band of wear along the existing convex edges.
+      float abrasion=smoothstep(0.16,0.83,scan);
+      cutoff=max(0.02,cutoff+mix(0.16,-0.15,abrasion)*scanInfluence);
+      edgeBreakup=mix(1.0,mix(0.3,1.0,abrasion),scanInfluence);
+    }
+    float edgeSignal=clamp(edge*uWearShape.x,0.0,1.0);
+    float edgeCore=smoothstep(0.4,0.9,edgeSignal);
+    edgeBreakup=mix(edgeBreakup,max(edgeBreakup,0.68),edgeCore);
+    float wear=smoothstep(cutoff,cutoff+0.24/max(uCon,0.3),edgeSignal)*edgeBreakup*min(1.0,uWearShape.x);
+    float exposure=mix(1.0,smoothstep(0.1,0.9,ao),uCavityProtection);
+    float textureBreakup=mix(1.0,smoothstep(0.18,0.82,n),uBreak);
+    float scratches=0.0;
+    if(uScratch.x>0.0){
+      float edgeProximity=smoothstep(0.015,0.23,edge);
+      float scratchReach=mix(edgeProximity,1.0,uScratch.w);
+      scratches=scratchesOf(q/max(0.5,uScale),N)*scratchReach;
+      if(scanInfluence>0.0){
+        float scuffs=smoothstep(0.51,0.92,scan)*min(1.0,uScratch.x*2.4);
+        float scanReach=mix(edgeProximity,1.0,uScratch.w*uScratch.w);
+        scratches=max(scratches*(1.0-0.5*scanInfluence),scuffs*scanInfluence*scanReach);
+      }
+    }
+    b=max(wear,scratches)*exposure*textureBreakup*min(1.0,uAmt*2.0);
+    if(uNeg==1)b=1.0-b;
+    o=vec4(vec3(b),1.0);return;
+  }
+  if(uG==20||uG==21){
+    vec3 warp=vec3(vn(q*3.0),vn(q*3.0+12.4),vn(q*3.0+37.6))-0.5;
+    vec3 surface=q+warp*uDist;
+    float cluster=fbm(q*0.32+19.7),cutoff=1.0-uAmt;
+    float softness=0.12/max(uCon,0.3);
+    if(uG==20&&uPeel.x>=0.0){
+      vec3 pattern=q;
+      pattern.xy=rotateDamage(q.xy,uPeelDirection.x);
+      pattern.x/=mix(1.0,5.0,uPeelDirection.y);
+      pattern.y*=mix(1.0,1.55,uPeelDirection.y);
+      vec3 chippedShape=pattern+(vec3(vn(pattern*3.0),vn(pattern*3.0+12.4),vn(pattern*3.0+37.6))-0.5)*uDist;
+      vec3 flake=flakeCell(chippedShape);
+      float small=vn(pattern*10.0+7.1),weathering=fbm(pattern*0.48+19.7);
+      float scan=0.0,scanAmount=uSurfaceScanSettings.x;
+      if(scanAmount>0.0){
+        vec3 scanQ=surfaceQ*uSurfaceScanSettings.y;
+        scan=msProjectedPicture(uSurfaceScan,scanQ,uSurfaceScanSettings.z)-0.5;
+      }
+      float width=mix(0.006,0.11,uPeel.x)*mix(0.72,1.28,small)*(1.0-scan*scanAmount*0.75);
+      float fracture=smoothstep(cutoff-0.34,cutoff-0.04,mix(weathering,flake.y,0.31));
+      float crack=(1.0-smoothstep(width*0.25,width,flake.x))*fracture;
+      float chipSignal=mix(flake.y,weathering,0.57)+0.12*(small-0.5);
+      float chipCutoff=clamp(1.05-uAmt*0.65-uPeel.y*0.35,0.05,0.99);
+      float chip=smoothstep(chipCutoff-softness,chipCutoff+softness,chipSignal);
+      chip*=smoothstep(width,mix(0.24,0.075,w)+width,flake.x)*uPeel.y;
+      float coverage=min(1.0,uAmt*4.0);
+      float scanDamage=smoothstep(0.035,0.29,-scan)*scanAmount*mix(0.47,0.8,uPeel.y);
+      float damage=max(max(crack,chip)*(1.0-0.14*scanAmount),scanDamage)*coverage;
+      float shoulder=smoothstep(width*0.6,width*1.25+0.006,flake.x)*
+        (1.0-smoothstep(width+0.025,width+0.09,flake.x));
+      float scanRim=smoothstep(0.065,0.36,scan)*scanAmount*0.57;
+      float rim=max(shoulder*fracture,scanRim)*(1.0-chip)*uPeel.z*coverage;
+      float grunge=mix(1.0,smoothstep(0.15,0.8,n),uBreak);
+      if(uPeelOutput==1)b=rim*grunge;
+      else if(uPeelOutput==2){
+        float grain=(mix(vn(pattern*22.0+11.3),vn(pattern*48.0+31.5),0.4)-0.5);
+        float roughCoat=grain*uBreak*mix(0.18,0.42,damage);
+        float scanRelief=scan*scanAmount*coverage*0.52;
+        b=clamp(0.64*(1.0-damage*grunge)+rim*0.31+roughCoat+scanRelief,0.0,1.0);
+      }
+      else b=damage*grunge;
+      if(uNeg==1)b=1.0-b;
+      o=vec4(vec3(b),1.0);return;
+    }
+    if(uG==20){
+      vec3 flake=flakeCell(surface);
+      float selected=smoothstep(cutoff-softness,cutoff+softness,mix(flake.y,cluster,0.45));
+      float outline=smoothstep(0.025,mix(0.31,0.06,w),flake.x);
+      b=selected*outline;
+    }else if(uBubble.x>=0.0){
+      vec3 blister=flakeCell(surface+warp*uBubble.x*0.26);
+      float weathering=fbm(q*0.23+19.7);
+      float group=smoothstep(0.33,0.67,weathering);
+      float selected=smoothstep(cutoff-softness,cutoff+softness,
+        mix(blister.y,mix(blister.y*0.43+group*0.57,group,0.18),uBubble.y));
+      float radius=mix(0.12,0.47,w)*mix(1.0,mix(0.38,1.48,blister.y),uBubble.x);
+      float distance=blister.z/radius;
+      float dome=sqrt(max(0.0,1.0-distance*distance));
+      b=pow(dome,max(0.25,uCon))*selected;
+    }else{
+      float radius=mix(0.14,0.48,w)*mix(0.75,1.25,cluster);
+      float distance=worley(surface)/radius;
+      float dome=sqrt(max(0.0,1.0-distance*distance));
+      float selected=smoothstep(cutoff-softness,cutoff+softness,cluster);
+      b=pow(dome,max(0.25,uCon))*selected;
+    }
+    b*=mix(1.0,smoothstep(0.15,0.8,n),uBreak)*min(1.0,uAmt*4.0);
+    if(uNeg==1)b=1.0-b;
+    o=vec4(vec3(b),1.0);return;
+  }
   if(uG==18){vec3 bn=uHasWorldN==1?normalize(texture(uWorldN,uv).rgb*2.0-1.0+1e-5):N;
     vec3 bp=uHasPosition==1?texture(uPosition,uv).rgb:P;float pos=dot(bp,abs(uAxis));if(uAxis.x+uAxis.y+uAxis.z<0.0)pos=1.0-pos;
     float span=uBuilderRange.y-uBuilderRange.x;float gradient=abs(span)<.0001?step(uBuilderRange.x,pos):clamp((pos-uBuilderRange.x)/span,0.0,1.0);
@@ -274,6 +450,12 @@ function msWideGain(curv,blur){const k=msWideGains.get(curv);if(k&&k.v===(curv.v
 function msCtxFree(ctx){for(const t of ctx.tmp)if(t)release(t);}
 /* a row's projection uniforms: its mode and transform */
 const msPx=(r,ctx)=>{const m=pxfRowMode(r);return Object.assign({},ctx.surf,pxfUniforms(m,r.p.xf),{uWorld:{int:m==='world'?1:0}});};
+function msWarpEdgeMap(src,ctx,amount,scale,seed){
+  const dst=acquireD(src.depth);
+  if(!meshConnectedWarp(src,dst,amount*0.065,scale,seed,true)){release(dst);return null;}
+  ctx.tmp.push(dst);
+  return dst;
+}
 const MS_AXES={up:[0,1,0],down:[0,-1,0],x:[1,0,0],'-x':[-1,0,0],z:[0,0,1],'-z':[0,0,-1]};
 function msBuilderU(p){
   const values=MS_BUILDER_INPUTS.flatMap(([key],i)=>{
@@ -313,17 +495,56 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
   if(r.kind==='noise'){const o=out();run(P.src,o,Object.assign(msPx(r,ctx),{uKind:{int:4},uType:{int:Math.max(0,MS_NOISES.findIndex(n=>n[0]===p.type))},uScale:p.scale||6,uC:p.contrast||1,uV:p.level||0,uNeg:{int:p.inv?1:0},uSeed:p.seed||1}));return {t:o,pooled:true};}
   if(r.kind==='anchor'){const A=msAnchor(p.name);if(!A)return null;const o=out(),ch=p.ch||'height',T=ch==='height'?mapT(A,'height'):mapT(A,'base');if(!T||T.empty)return null;
     run(msProgs().anc,o,{uT:T.tex,uM:A.mask&&A.mask.enabled!==false?A.mask.target.tex:dummy,uUseM:{int:A.mask&&A.mask.enabled!==false&&ch==='shape'?1:0},uCh:{int:ch==='shape'?1:0},uNeg:{int:p.inv?1:0}});return {t:o,pooled:true};}
-  if(r.kind==='gen'){const o=out(),curv0=msMeshTex('curv')||msMeshTex('cv:curv')||msDocMap('curv',ctx)||msModelCurv(),curv=p.g==='builder'?curv0:msWideCurv(curv0,p,ctx),ao=msMeshTex('ao')||msMeshTex('cv:ao')||msDocMap('ao',ctx);
-    const ac=p.anchor?msAnchorCurv(p.anchor,ctx,p.uvWrap!==false):null;
+  if(r.kind==='gen'){
+    const o=out(),metalWear=p.g==='metalWear',edgeMap=metalWear&&(msMeshTex('curvEdge')||msMeshTex('cv:curvEdge'));
+    const paintDamage=MS_PAINT_DAMAGE.includes(p.g);
+    const curv0=!paintDamage&&(edgeMap||msMeshTex('curv')||msMeshTex('cv:curv')||msDocMap('curv',ctx)||msModelCurv());
+    let curv=metalWear||p.g==='builder'?curv0:msWideCurv(curv0,p,ctx);
+    const ao=!paintDamage&&(msMeshTex('ao')||msMeshTex('cv:ao')||msDocMap('ao',ctx));
+    let ac=!paintDamage&&p.anchor?msAnchorCurv(p.anchor,ctx,p.uvWrap!==false):null;
+    let wearDistort=metalWear?Math.max(0,p.distort||0):0;
+    const wearScale=Math.max(0.5,p.edgeDistortScale??9);
+    if(wearDistort>0&&ui.mode==='p3d'&&pxfRowMode(r)==='world'&&(curv||ac)){
+      const warpedCurv=curv&&msWarpEdgeMap(curv,ctx,wearDistort,wearScale,p.seed||1);
+      const warpedAnchor=ac&&msWarpEdgeMap(ac,ctx,wearDistort,wearScale,p.seed||1);
+      if((!curv||warpedCurv)&&(!ac||warpedAnchor)){
+        curv=warpedCurv;ac=warpedAnchor;wearDistort=0;
+      }
+    }
     const height=p.g==='builder'&&p.heightWeight&&(msMeshTex('height')||msMeshTex('cv:height')||msDocMap('height',ctx));
     const thick=p.g==='builder'&&msMeshTex('thick'),wn=p.g==='builder'&&msMeshTex('wnormal'),pos=p.g==='builder'&&msMeshTex('position');
-    withUVWrap(p.uvWrap!==false,[curv,ac,ao,height,thick,wn,pos],()=>run(P.gen,o,Object.assign({uG:{int:Math.max(0,MS_GENS.findIndex(g=>g[0]===p.g))},uCurv:curv?curv.tex:dummy,uHasCurv:{int:curv?1:0},uCurv2:ac?ac.tex:dummy,uHasCurv2:{int:ac?1:0},uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},
+    const [scanId,scanAmount,scanTile,scanAngle]=metalWear
+      ?[p.metalScan,p.metalScanAmount??.65,p.metalScanTile??2,p.metalScanAngle??0]
+      :p.g==='peelingPaint'&&p.crackWidth!=null
+        ?[p.peelScan,p.peelScanAmount??.65,p.peelScanTile??2,-(p.direction??0)]
+        :[null,0,1,0];
+    const scan=scanAmount>0&&msSurfaceScanTex(scanId);
+    withUVWrap(p.uvWrap!==false,[curv,ac,ao,height,thick,wn,pos],()=>run(P.gen,o,Object.assign({uG:{int:Math.max(0,MS_GENS.findIndex(g=>g[0]===p.g))},uCurv:curv?curv.tex:dummy,uHasCurv:{int:edgeMap?2:curv?1:0},uCurv2:ac?ac.tex:dummy,uHasCurv2:{int:ac?1:0},uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},
+      uCavityProtection:p.cavityProtection??.75,
+      uWearShape:[Math.max(0,p.edgeStrength??1),wearDistort,wearScale],
+      uScratch:[p.scratchAmount??0,p.scratchScale??34,(p.scratchAngle??0)*Math.PI/180,p.scratchReach??.35],
+      uPeel:[p.crackWidth??-1,p.flakeLoss??0,p.edgeLift??0],
+      uPeelDirection:[(p.direction??0)*Math.PI/180,p.stretch??0],
+      uPeelOutput:{int:Math.max(0,MS_PEEL_OUTPUTS.findIndex(([key])=>key===p.peelOutput))},
+      uSurfaceScan:scan?scan.tex:dummy,uSurfaceScanSettings:[scan?scanAmount:0,scanTile,scanAngle*Math.PI/180],
+      uBubble:[p.sizeVariation??(p.clumping==null?-1:.82),p.clumping??.85],
       ...(p.g==='builder'?msBuilderU(p):{}),uHeight:height?height.tex:dummy,uThick:thick?thick.tex:dummy,uWorldN:wn?wn.tex:dummy,uPosition:pos?pos.tex:dummy,uHasHeight:{int:height?1:0},uHasThick:{int:thick?1:0},uHasWorldN:{int:wn?1:0},uHasPosition:{int:pos?1:0},
       uLight:[Math.sin((p.lightAz??-35)*Math.PI/180)*Math.cos((p.lightEl??45)*Math.PI/180),Math.sin((p.lightEl??45)*Math.PI/180),Math.cos((p.lightAz??-35)*Math.PI/180)*Math.cos((p.lightEl??45)*Math.PI/180),p.occlude??.25],
       uGrad:[p.gradFrom??0,p.gradTo??1,['linear','smooth','bands'].indexOf(p.gradStyle||'smooth'),p.bands??3],uAxis:MS_AXES[p.gradAxis||'up']||[0,1,0],uCenter:[p.centerX??.5,p.centerY??.5,p.centerZ??.5],
       uComic:[p.bands??3,p.dots??28,p.dotSize??.45,p.dotAngle??45],uComicMode:{int:['shade','shadow','dots'].indexOf(p.comicStyle||'shade')},
       uAmt:p.amount,uWidth:p.width,uBreak:p.breakup,uCon:p.contrast,uDist:p.distort||0,uScale:p.scale||6,uSeed:p.seed||1,uNeg:{int:p.inv?1:0},...msGrungeU(p)},msPx(r,ctx))));return {t:o,pooled:true};}
   return null;}
+const msSurfaceScans=new Map([...TX_PAINT_SCANS,...TX_METAL_SCANS].map(({slug,name})=>[slug,{kind:'photo',id:slug,name}]));
+function msSurfaceScanTex(slug){
+  const scan=msSurfaceScans.get(slug);
+  if(!scan)return null;
+  txCachePin(scan);
+  const t=txCacheGet('photo:'+slug);
+  if(!t&&!scan.loading){
+    scan.loading=txTarget(scan).then(()=>{msEpoch++;changedAll();}).catch(()=>{}).finally(()=>{scan.loading=null;});
+  }
+  return t;
+}
 /* (0.95.7) the generator's own grunge picture: loaded from Textures (cached on the graphics card); the mask is worked out
    again once it has arrived */
 function msGrungeTex(p){const g=p&&p.gimg;if(!g||typeof txCacheGet!=='function')return null;txCachePin(g);const t=txCacheGet(g.kind+':'+g.id);if(t)return t;
@@ -435,7 +656,17 @@ function msCommit(){clearTimeout(msEd.timer);msEd.timer=0;const L=msEd.L,b=msEd.
   if(JSON.stringify(a.stack&&a.stack.map(x=>x.d))===JSON.stringify(b.stack&&b.stack.map(x=>x.d))&&JSON.stringify(a.cfx.map(x=>x.d))===JSON.stringify(b.cfx.map(x=>x.d)))return;
   pushUndo({label:msEd.label,refs:[L],masks:[a.mask].filter(Boolean),undo(){msRestore(L,b);},redo(){msRestore(L,a);}});}
 
-function msGenDefaults(g){return Object.assign(MS_KINDS.gen.p(),{g},g==='builder'?{amount:.5,width:.25,breakup:.2,contrast:1,edgeWeight:1,cavityWeight:0,aoWeight:0,directionWeight:0,positionWeight:0,heightWeight:0,thicknessWeight:0,gradAxis:'up',positionFrom:0,positionTo:1}:['light','linear','radial','comic'].includes(g)?{amount:.5,width:.25,breakup:0,contrast:1,lightAz:-35,lightEl:45,occlude:.25,gradAxis:'up',gradFrom:0,gradTo:1,gradStyle:'smooth',centerX:.5,centerY:.5,centerZ:.5,bands:3,dots:28,dotSize:.45,dotAngle:45,comicStyle:'shade'}:{});}
+function msGenDefaults(g){
+  const base={...MS_KINDS.gen.p(),g};
+  if(g==='metalWear')return {...base,amount:.65,width:.55,breakup:.28,contrast:2,cavityProtection:.75,distort:.3,edgeStrength:1.25,edgeDistortScale:9,
+    scratchAmount:.24,scratchScale:34,scratchAngle:18,scratchReach:.36,
+    metalScan:'metal-gouged-iron-scan',metalScanAmount:.7,metalScanTile:2,metalScanAngle:0};
+  if(g==='peelingPaint')return {...base,...MS_PEEL_PRESETS[0][2],peelPreset:MS_PEEL_PRESETS[0][0],peelOutput:'damage'};
+  if(g==='paintBubbles')return {...base,amount:.62,width:.5,breakup:.1,contrast:1.1,scale:21,distort:.17,sizeVariation:.82,clumping:.85};
+  if(g==='builder')return {...base,amount:.5,width:.25,breakup:.2,contrast:1,edgeWeight:1,cavityWeight:0,aoWeight:0,directionWeight:0,positionWeight:0,heightWeight:0,thicknessWeight:0,gradAxis:'up',positionFrom:0,positionTo:1};
+  if(['light','linear','radial','comic'].includes(g))return {...base,amount:.5,width:.25,breakup:0,contrast:1,lightAz:-35,lightEl:45,occlude:.25,gradAxis:'up',gradFrom:0,gradTo:1,gradStyle:'smooth',centerX:.5,centerY:.5,centerZ:.5,bands:3,dots:28,dotSize:.45,dotAngle:45,comicStyle:'shade'};
+  return base;
+}
 /* (0.58) the mask shaders are big: compile them while the app is idle after start-up, not when the first smart mask is added */
 (typeof requestIdleCallback==='function'?(f=>requestIdleCallback(f,{timeout:12000})):(f=>setTimeout(f,6000)))(()=>{try{if(!stroke&&!xf)msProgs();}catch(e){}});
 

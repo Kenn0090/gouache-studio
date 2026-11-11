@@ -185,14 +185,21 @@ function bkMatEyes(C){const names=bkMats(bkLow());C.skip=C.skip||{};const box=el
 function bakeShowMat(n){const B=bk.byMat;if(!B||!B[n])return;if(bk.matShow&&B[bk.matShow])Object.assign(B[bk.matShow],{res:bk.res,kinds:bk.kinds,opts:bk.opts,src:bk.src});
   const E=B[n];bk.res=E.res;bk.kinds=E.kinds;bk.opts=E.opts;bk.src=E.src;bk.matShow=n;bakeRefresh();}
 /* Send to 3D Paint: the low-poly and the ticked maps, each material's to its own texture set */
-function bakeSendP3(){if(!Object.keys(bk.res).length){toast('Bake first.');return;}const tick=bakeCfg.send||{},ks=bakeSendable().filter(k=>tick[k]!==false&&!(tick[k]===undefined&&(k==='curvEdge'||k==='curvCrease')));
+function bakeSendP3(){if(!Object.keys(bk.res).length){toast('Bake first.');return;}const ks=bakeSendSelected();
   if(!ks.length){toast('Tick at least one map to send.');return;}
   if(bk.byMat&&bk.matShow)Object.assign(bk.byMat[bk.matShow],{res:bk.res});
   const L=bk.src&&bk.src.L?(bk.src.L.whole||bk.src.L):bkLow(),by={};if(bk.byMat)for(const n in bk.byMat)by[n]=bk.byMat[n].res;else by['*']=bk.res;
   p3ReceiveBake(L,by,ks,!!bakeCfg.p3Layers);}
 function bakeSendable(){const res=bk.res,ks=bk.kinds;return BK_SEND_ORDER.filter(k=>res[k]&&(k==='curvEdge'||k==='curvCrease'?ks.includes('curv'):ks.includes(k)));}
-function bakeSend(){const res=bk.res;if(!Object.keys(res).length){toast('Bake first.');return;}const asLayers=bakeCfg.sendAs!=='maps',tick=bakeCfg.send||{};
-  const ks=bakeSendable().filter(k=>tick[k]!==false&&!(tick[k]===undefined&&(k==='curvEdge'||k==='curvCrease')));if(!ks.length){toast('Tick at least one map to send.');return;}
+function bakeSendMapOn(k){return bakeCfg.send?.[k]??(k!=='curvEdge'&&k!=='curvCrease');}
+function bakeSendSelected(){return bakeSendable().filter(bakeSendMapOn);}
+function bakeSend(){const res=bk.res;if(!Object.keys(res).length){toast('Bake first.');return;}const asLayers=bakeCfg.sendAs!=='maps';
+  const selected=bakeSendSelected(),ks=selected.filter(k=>k!=='light'||bakeCfg.lightLayer===true);
+  if(!ks.length){
+    if(selected.includes('light'))toast('Enable “Add baked Lighting as a layer” to send Lighting to Paint.');
+    else toast('Tick at least one map to send.');
+    return;
+  }
   const own={normal:'normal',height:'height',ao:'ao',curv:'curv'},inBase=k=>asLayers||!own[k],hiddenK=k=>!own[k]||(k==='height'&&asLayers&&false);
   let n=0,replaced=false;
   withPaintDoc(()=>{const need=ks.map(k=>own[k]).filter(Boolean).filter(m=>!doc.maps.includes(m));if(need.length)setDocMaps([...doc.maps,...need],'Add maps for the bake');
@@ -206,9 +213,11 @@ function bakeSend(){const res=bk.res;if(!Object.keys(res).length){toast('Bake fi
       if(ui.mode!=='bake'){const vis=Ls.filter(L=>L.visible);const last=vis[vis.length-1]||Ls[Ls.length-1];if(last)selectOnly(last);}});
     syncTargets();changedAll();refreshMapsUI();});
   if(typeof v3Changed==='function')v3Changed();
-  if(ui.mode==='bake')toast((replaced?'Replaced the baked layers':'Sent '+n+' baked map'+(n>1?'s':'')+' to the painting')+(asLayers?', as layers you can blend.':'.'));}
+  if(ui.mode==='bake')toast((replaced?'Replaced the baked layers':'Sent '+n+' baked map'+(n>1?'s':'')+' to the painting')+(asLayers?', as layers you can blend.':'.'));
+  return n;
+}
 /* Export: the ticked maps straight to image files (a folder on the desktop, a zip in the browser) */
-async function bakeExport(){const tick=bakeCfg.send||{},ks=bakeSendable().filter(k=>tick[k]!==false&&!(tick[k]===undefined&&(k==='curvEdge'||k==='curvCrease')));
+async function bakeExport(){const ks=bakeSendSelected();
   if(!ks.length){toast(Object.keys(bk.res).length?'Tick at least one map to export.':'Bake first.');return;}
   let dir=null;if(platform.isDesktop){dir=await platform.pickFolder();if(!dir)return;}
   const base=pascal(((bk.src&&bk.src.L&&bk.src.L.name)||'Bake').replace(/[_\-\s]*(low|lo|lp)(poly)?$/i,''))||'Bake',W=doc.w,H=doc.h;
@@ -322,15 +331,22 @@ function bakeGoButton(){const ns='http://www.w3.org/2000/svg',svg=document.creat
   svg.innerHTML='<path d="M12 2.5c3.4 4.3 6.6 6.8 6.6 11.2a6.6 6.6 0 0 1-13.2 0c0-2.6 1.2-4.2 2.6-5.7.3 1.7 1 2.6 1.9 3 .2-3.2 .8-5.6 2.1-8.5z"/><path class="in" d="M12 11.5c1.5 1.7 2.7 2.8 2.7 4.5a2.7 2.7 0 0 1-5.4 0c0-1.2.7-2 1.3-2.8.4.8.9 1.1 1.4 1.1z"/>';
   const b=el('button',{class:'btn primary',id:'bkGo',type:'button'},el('span',{class:'bkfill','aria-hidden':'true'}),svg,el('span',{class:'bkl',text:'Bake'}));return b;}
 /* which maps to send or export, and the buttons */
-function bakeSendOff(){const have=bakeSendable(),t=bakeCfg.send||{},on=k=>t[k]!==undefined?t[k]:!(k==='curvEdge'||k==='curvCrease');return bk.busy||!have.length||!have.some(on);}
 /* (0.52) the three buttons sit under Bake: they are off while a bake runs or nothing is ticked */
-function bakeSendSync(){const off=bakeSendOff();for(const id of ['bkSend','bkSendP3','bkExport']){const b=document.getElementById(id);if(b)b.disabled=off;}}
+function bakeSendSync(){
+  const selected=bakeSendSelected();
+  for(const id of ['bkSend','bkSendP3','bkExport']){
+    const b=document.getElementById(id);
+    if(b)b.disabled=bk.busy||!selected.some(k=>id!=='bkSend'||k!=='light'||bakeCfg.lightLayer===true);
+  }
+}
+function bakeLightLayerOption(id){
+  return chk(id,'Add baked Lighting as a layer',bakeCfg.lightLayer===true,v=>{bakeCfg.lightLayer=v;bakeSendSync();});
+}
 function bakeSendBox(){const box=el('div',{class:'dlg-grid',id:'bkSendBox'}),have=bakeSendable(),t=bakeCfg.send||(bakeCfg.send={});
-  box.append(el('div',{class:'sub',text:'Maps to send or export'}));
+  box.append(el('div',{class:'sub',text:'Maps to send or export'}),bakeLightLayerOption('bkLightLayer'));
   if(!have.length){box.append(el('p',{class:'note',text:'Bake first: the maps you bake can then be ticked here.'}));return box;}
-  const on=k=>t[k]!==undefined?t[k]:!(k==='curvEdge'||k==='curvCrease');
-  box.append(el('div',{class:'chips'},...have.map(k=>chk('bks_'+k,BAKE_NAMES[k],on(k),v=>{t[k]=v;bakeSendSync();}))),
-    chk('bkP3Layers','Also as layers in 3D Paint',!!bakeCfg.p3Layers,v=>{bakeCfg.p3Layers=v;}));
+  box.append(el('div',{class:'chips'},...have.map(k=>chk('bks_'+k,BAKE_NAMES[k],bakeSendMapOn(k),v=>{t[k]=v;bakeSendSync();}))),
+    chk('bkP3Layers','Also add other maps as layers in 3D Paint',!!bakeCfg.p3Layers,v=>{bakeCfg.p3Layers=v;}));
   box.title='Sent maps arrive as plain layers (no folders), scaled to the painting when its size differs. In 3D Paint they always become the set’s mesh maps. In the browser, Export gives a zip.';
   return box;}
 /* (0.52, Kenn) one bar at the top that stays in view: a big Bake button, the progress, and Send to Paint · Send to 3D Paint · Export */

@@ -143,10 +143,13 @@ function shapeOverlay(){if(ui.tool!=='shape')return '';const L=activeShape();if(
   return o;}
 
 /* ---- the panel ---- */
-/* (0.37.2, Kenn) a colour button opens a small picker with hue, saturation and lightness sliders (the system picker stays as a button) */
+/* A colour swatch opens Gouache's picker. */
 function colourBtn(id,get,set,title){const i=el('input',{type:'color',id,value:toHex(get()),title,'aria-label':title});i.addEventListener('input',()=>{const c=fromHex(i.value);if(c)set(c);});
   i.addEventListener('click',e=>{e.preventDefault();colourPop(i,get,c=>{i.value=toHex(c);set(c);});});return i;}
-function colourPop(anchor,get,put){document.querySelectorAll('.colpop').forEach(x=>x.remove());
+let closeColourPop=null;
+function colourPop(anchor,get,put){
+  if(closeColourPop)closeColourPop();
+  const owner=anchor.ownerDocument,win=owner.defaultView,rect=anchor.getBoundingClientRect();
   /* (0.39.2, Kenn) the preview opens out into a full picker: colour square, hue bar, Hue / Saturation / Lightness sliders, hex and RGB */
   let [h,sv,vv]=rgb2hsv(...get());const hexI=el('input',{type:'text',class:'colhex','aria-label':'Hex colour',maxlength:7,id:'cp_hex'});
   const sw=el('div',{class:'colsw'}),old=toHex(get()),oldSw=el('button',{type:'button',class:'colold',title:'Back to the colour you started with',style:'background:'+old,onclick:()=>{[h,sv,vv]=rgb2hsv(...fromHex(old));sync();go();}});
@@ -160,16 +163,35 @@ function colourPop(anchor,get,put){document.querySelectorAll('.colpop').forEach(
   const mk=(id,label,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:min,fmt,onInput:v=>{const [hh,ss,ll]=rgb2hsl(...cur());const t=id==='cp_h'?[v,ss,ll]:id==='cp_s'?[hh,v,ll]:[hh,ss,v];const c=hsl2rgb(...t);[h,sv,vv]=rgb2hsv(...c);if(id!=='cp_h'&&sv===0)h=hh;if(id==='cp_h')h=v;go(true);}});
   const H=mk('cp_h','Hue',0,360,1,v=>Math.round(v)+'°'),S=mk('cp_s','Saturation',0,1,.01,pct),Lm=mk('cp_l','Lightness',0,1,.01,pct);
   const sync=()=>{const [hh,ss,ll]=rgb2hsl(...cur());H.set(h);S.set(ss);Lm.set(ll);drawSq();drawHue();};
-  const go=(fromSlider)=>{const c=cur();sw.style.background=toHex(c);hexI.value=toHex(c);drawSq();drawHue();if(!fromSlider){const [hh,ss,ll]=rgb2hsl(...c);S.set(ss);Lm.set(ll);H.set(h);}put(c);};
+  const go=(fromSlider)=>{const c=cur();sw.style.background=toHex(c);hexI.value=toHex(c);if(!fromSlider)sync();else{drawSq();drawHue();}put(c);};
   const drag=(cv,fn)=>{cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);const f=ev=>{const r=cv.getBoundingClientRect();fn(clamp((ev.clientX-r.left)/r.width,0,1),clamp((ev.clientY-r.top)/r.height,0,1));go();};f(e);const up=()=>{cv.removeEventListener('pointermove',f);cv.removeEventListener('pointerup',up);};cv.addEventListener('pointermove',f);cv.addEventListener('pointerup',up);});};
   drag(sq,(x,y)=>{sv=x;vv=1-y;});drag(hb,x=>{h=x*360;});
   hexI.onchange=()=>{const c=fromHex(hexI.value);if(!c)return;[h,sv,vv]=rgb2hsv(...c);go();};
-  const pop=el('div',{class:'colpop',role:'dialog','aria-label':'Colour'},sq,hb,el('div',{class:'colrow'},sw,oldSw),H.el,S.el,Lm.el,el('div',{class:'frow'},hexI,screenPickBtn(c=>{[h,sv,vv]=rgb2hsv(...c);go();}),el('button',{class:'btn sm',text:'System picker…',onclick:()=>{pop.remove();anchor.showPicker&&anchor.showPicker();}}),el('button',{class:'btn sm',id:'cp_close',text:'Done',onclick:()=>pop.remove()})));
-  document.body.append(pop);go();
-  const r=anchor.getBoundingClientRect(),w=pop.offsetWidth,hh=pop.offsetHeight,L=Math.max(6,Math.min(innerWidth-w-6,r.left)),T=Math.max(6,Math.min(innerHeight-hh-6,r.bottom+6));
-  pop.style.left=L+'px';pop.style.top=T+'px';pop.style.transformOrigin=(r.left+r.width/2-L)+'px '+(r.top+r.height/2-T)+'px';
-  pop.classList.add('grow');requestAnimationFrame(()=>requestAnimationFrame(()=>pop.classList.remove('grow')));
-  const away=e=>{if(!pop.contains(e.target)&&e.target!==anchor){pop.remove();window.removeEventListener('pointerdown',away,true);}};setTimeout(()=>window.addEventListener('pointerdown',away,true),0);}
+  const close=()=>{
+    pop.remove();
+    win.removeEventListener('pointerdown',away,true);
+    win.removeEventListener('pagehide',close);
+    closeColourPop=null;
+  };
+  const away=e=>{if(!pop.contains(e.target)&&e.target!==anchor)close();};
+  const pop=el('div',{class:'colpop',role:'dialog','aria-label':'Colour'},sq,hb,el('div',{class:'colrow'},sw,oldSw),H.el,S.el,Lm.el,
+    el('div',{class:'frow'},hexI,screenPickBtn(c=>{[h,sv,vv]=rgb2hsv(...c);go();}),el('button',{class:'btn sm',id:'cp_close',type:'button',text:'Done',onclick:close})));
+  owner.body.append(pop);
+  sw.style.background=old;
+  hexI.value=old;
+  sync();
+  const left=Math.max(6,Math.min(win.innerWidth-pop.offsetWidth-6,rect.left));
+  const below=rect.bottom+6,above=rect.top-pop.offsetHeight-6;
+  const top=Math.max(6,Math.min(win.innerHeight-pop.offsetHeight-6,below+pop.offsetHeight>win.innerHeight-6&&above>=6?above:below));
+  pop.style.left=left+'px';
+  pop.style.top=top+'px';
+  pop.style.transformOrigin=(rect.left+rect.width/2-left)+'px '+(rect.top+rect.height/2-top)+'px';
+  pop.classList.add('grow');
+  win.requestAnimationFrame(()=>win.requestAnimationFrame(()=>pop.classList.remove('grow')));
+  win.addEventListener('pointerdown',away,true);
+  win.addEventListener('pagehide',close);
+  closeColourPop=close;
+}
 function buildShapePanel(box){const L=activeShape(),S=L?L.shape:ui.shape;$('#brushTitle').textContent=L?'Shape layer':'Shape';
   const sl=(id,label,get,set,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:get(),fmt,onInput:v=>shapeSet(s=>set(s,v))}).el;
   box.append(el('p',{class:'note',text:L?'Drag the corners to resize, the round handle to turn, inside to move. Painting on it or transforming it turns it into pixels.':'Drag on the canvas to draw a shape on a new layer (Shift: square or straight; Alt: from the centre). It fills with the foreground colour.'}),

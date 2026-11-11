@@ -124,7 +124,18 @@ function drawGradBar(){const d=panelDef(),b=gradBar;if(!b)return;b.strip.style.b
   if(b.count)b.count.value=String(d.stops.length);
   if(!s)return;
   const loc=el('input',{class:'num',type:'number',min:0,max:100,step:1,value:Math.round(s.p*100),'aria-label':'Location %',id:'gsLoc'});loc.addEventListener('change',()=>{s.p=clamp(+loc.value/100,0,1);defChanged();});
-  if(st.kind==='c'){const color=el('input',{id:'gsColor',type:'color',value:toHex(s.c),'aria-label':'Selected stop colour',title:'Choose this colour stop'});color.addEventListener('focus',()=>{const L=editedGrad();if(L)gradBegin(L);});color.addEventListener('input',()=>{const L=editedGrad();if(L&&!gsess)gradBegin(L);s.c=fromHex(color.value);if(L){renderLiveGrad(L);gradTouch();renderLayers();}if(gradBar&&gradBar.strip)gradBar.strip.style.background=gradCss(panelDef())+', repeating-conic-gradient(#555 0 25%, #333 0 50%) 0 0/10px 10px';});color.addEventListener('change',()=>{defChanged();});b.info.append(el('label',{for:'gsColor',text:'Colour'}),color,el('button',{class:'btn sm',text:'Use foreground',title:'Set this stop to the foreground colour',onclick:()=>{s.c=ui.fg.slice();defChanged();}}));}
+  if(st.kind==='c'){
+    const layer=editedGrad(),marker=b.crow.children[st.i];
+    const color=colourBtn('gsColor',()=>s.c,c=>{
+      if(layer)gradBegin(layer);
+      s.c=c.slice(0,3);
+      if(layer){renderLiveGrad(layer);gradTouch();renderLayers();}
+      b.strip.style.background=gradCss(d)+', repeating-conic-gradient(#555 0 25%, #333 0 50%) 0 0/10px 10px';
+      if(marker)marker.style.background=toHex(c);
+      drawXfOverlay();
+    },'Selected stop colour');
+    b.info.append(el('label',{for:'gsColor',text:'Colour'}),color,el('button',{class:'btn sm',text:'Use foreground',title:'Set this stop to the foreground colour',onclick:()=>{if(layer)gradBegin(layer);s.c=ui.fg.slice();defChanged();}}));
+  }
   else{const op=el('input',{class:'num',type:'number',min:0,max:100,step:1,value:Math.round(s.a*100),'aria-label':'Opacity %',id:'gsOp'});op.addEventListener('change',()=>{s.a=clamp(+op.value/100,0,1);defChanged();});b.info.append(el('label',{for:'gsOp',text:'Opacity %'}),op);}
   b.info.append(el('label',{for:'gsLoc',text:'Location %'}),loc);
   if(list.length>2)b.info.append(el('button',{class:'xbtn',text:'×',title:'Remove this stop','aria-label':'Remove stop',onclick:()=>{list.splice(list.indexOf(s),1);ui.gradStop.i=0;defChanged();}}));}

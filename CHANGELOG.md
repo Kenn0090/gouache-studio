@@ -1,3 +1,11 @@
+## 0.97.5
+
+- **Metal Edge Wear** follows exposed edges with independent Edge Strength, Edge Distortion, and Edge Distortion Scale controls. Scratched Iron, Pitted Steel, and Chipped Steel add seamless photo detail. Adjust scan influence, tiling, and rotation, or use the scans separately from the Textures panel.
+- **Peeling Paint** has Cracked Coat, Fine Crazing, Heavy Peeling, and Directional Cracks presets. Use the damage mask, lifted edges, or coating relief output, and add seamless detail from scans of cracked wall paint and peeling painted wood.
+- **Paint Bubbles** makes clusters of raised paint blisters with adjustable size variation and clumping. **Paint Emboss** gives paint edges a raised, directional bevel.
+- **Gradient and Gradient Map** use Gouache’s color picker, which stays anchored to the swatch while you edit.
+- **Baked Lighting** stays available as a mesh map in 3D Paint. Enable **Add baked Lighting as a layer** to put it on the layer stack as a Multiply layer.
+
 ## 0.97.4
 
 - **Type past the slider range** for settings such as Slope Blur intensity, Warp amount, Motion Blur distance, tiling, and Mask Builder input strength. Click the number to type a value. Controls such as opacity and sample count keep their limits.

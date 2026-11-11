@@ -32,14 +32,14 @@ function gmCss(v,dir){const n=v.blend==='hard'||v.steps>=2?160:32,parts=[];for(l
 const gmSame=(a,b)=>JSON.stringify(a.stops)===JSON.stringify(b.stops)&&JSON.stringify(a.alphas)===JSON.stringify(b.alphas);
 
 function gmControls(v,upd){gmInit(v);const box=el('div',{class:'gmed'});let sel=0;
-  const sync=()=>{upd();strip.style.background=gmCss(v);drawStops();markGrid();saveRowSync();};
+  const sync=(rebuildInfo=true)=>{upd();strip.style.background=gmCss(v);drawStops(rebuildInfo);markGrid();saveRowSync();};
   /* --- the gradient being used, with its stops --- */
   const strip=el('div',{class:'gmstrip',id:'gmStrip',title:'Click under the strip to add a colour stop'}),row=el('div',{class:'gmstops',id:'gmStops'}),info=el('div',{class:'frow gminfo',id:'gmInfo'});
-  const drawStops=()=>{const s=v.def.stops;sel=Math.min(sel,s.length-1);row.replaceChildren(...s.map((q,i)=>{const b=el('button',{class:'gstop c'+(i===sel?' on':''),type:'button','aria-label':'Colour stop at '+Math.round(q.p*100)+'%',title:'Drag to move, drag away to remove',style:'left:'+(q.p*100)+'%;background:'+toHex(q.c)});
-      b.addEventListener('pointerdown',e=>drag(e,q));return b;}));drawInfo();};
+  const drawStops=(rebuildInfo=true)=>{const s=v.def.stops;sel=Math.min(sel,s.length-1);row.replaceChildren(...s.map((q,i)=>{const b=el('button',{class:'gstop c'+(i===sel?' on':''),type:'button','aria-label':'Colour stop at '+Math.round(q.p*100)+'%',title:'Drag to move, drag away to remove',style:'left:'+(q.p*100)+'%;background:'+toHex(q.c)});
+      b.addEventListener('pointerdown',e=>drag(e,q));return b;}));if(rebuildInfo)drawInfo();};
   const drawInfo=()=>{const s=v.def.stops,q=s[sel];info.replaceChildren();if(!q)return;
     const loc=el('input',{class:'num',type:'number',min:0,max:100,step:1,value:Math.round(q.p*100),id:'gmLoc','aria-label':'Position %'});loc.addEventListener('change',()=>{q.p=clamp(+loc.value/100,0,1);sync();});
-    info.append(el('label',{for:'gmCol',text:'Colour'}),colourBtn('gmCol',()=>q.c,c=>{q.c=c.slice(0,3);sync();},'This stop’s colour'),
+    info.append(el('label',{for:'gmCol',text:'Colour'}),colourBtn('gmCol',()=>q.c,c=>{q.c=c.slice(0,3);sync(false);},'This stop’s colour'),
       el('button',{class:'btn sm',type:'button',text:'Use foreground',onclick:()=>{q.c=ui.fg.slice(0,3);sync();drawInfo();}}),el('label',{for:'gmLoc',text:'Position %'}),loc);
     if(s.length>2)info.append(el('button',{class:'xbtn',type:'button',text:'×',title:'Remove this stop','aria-label':'Remove stop',onclick:()=>{s.splice(sel,1);sel=0;sync();}}));};
   const drag=(e,q)=>{e.preventDefault();e.stopPropagation();const s=v.def.stops;sel=s.indexOf(q);const r=row.getBoundingClientRect();let gone=false;

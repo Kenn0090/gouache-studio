@@ -30,7 +30,8 @@ function dlgP3Bake(){if(ui.mode!=='p3d')return;if(bk.busy){toast('Wait for the b
     ...p3FromNBox(),
     bevelSection(draw,'p3bk'),
     el('div',{class:'sub',text:'Quality'}),seg([[32,'Draft'],[64,'Normal'],[128,'High']],C.rays>=128?128:C.rays<=32?32:64,v=>{C.rays=+v;},'Ray count'),
-    chk('p3bkLayers','Also add them as layers (they always become the set’s mesh maps)',!!C.p3Layers,v=>{C.p3Layers=v;}),
+    chk('p3bkLayers','Also add other baked maps as layers',!!C.p3Layers,v=>{C.p3Layers=v;}),
+    bakeLightLayerOption('p3bkLightLayer'),
     el('p',{class:'note',text:'Masks, generators and materials that use the mesh maps update when the bake is done. The bake also waits in the Bake tab: fine-tune it there (cage, fixes, per-map settings), or send it to the Paint canvas to clean it up.'}));};
   draw();
   openDialog({title:'Bake mesh maps',body,okLabel:'Bake',onOk(){const ks=P3BK_MAPS.filter(k=>kinds[k]);if(!ks.length){toast('Tick at least one map.');return false;}
@@ -92,5 +93,5 @@ function p3MeshMapsChanged(){if(typeof msEpoch!=='undefined')msEpoch++;if(typeof
   changedAll();}
 /* Send the active set's bake to the Paint canvas (to clean up by hand) */
 function p3BakeToPaint(){const S=p3.sets[p3.cur],key=S&&S.tile?p3Binding(S)+'@'+S.tile.id:S&&p3Binding(S);if(bk.byMat&&S&&bk.byMat[key])bakeShowMat(key);if(!Object.keys(bk.res).length){toast('Bake first.');return;}
-  bakeSend();toast('Sent the bake'+(S&&bk.byMat?' of “'+S.name+'”':'')+' to the Paint canvas as layers.');}
+  if(bakeSend())toast('Sent the bake'+(S&&bk.byMat?' of “'+S.name+'”':'')+' to the Paint canvas as layers.');}
 

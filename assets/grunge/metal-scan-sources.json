@@ -1,0 +1,64 @@
+[
+  {
+    "slug": "metal-gouged-iron-scan",
+    "name": "Scratched Iron",
+    "category": "Scratches",
+    "source": "https://polyhaven.com/a/rusty_iron",
+    "author": "Amal Kumar",
+    "license": "CC0-1.0",
+    "processing": "Positive roughness detail and recessed displacement isolated with wrapped Gaussian blurs (9 px and 7 px). Percentile levels .03/.995. Wrapped 15 px directional averaging isolates long scratches, with 11% of the original detail blended back in. Final contrast stretched at .04/.994. Matched the repeating joins by feathering opposite borders across four pixels. Lossless grayscale WebP.",
+    "downloads": [
+      {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/rusty_iron/rusty_iron_rough_1k.png",
+        "sha256": "516d6f0db648a7e38fc36357103d1f2f57fcc278cb6869f4df326affc41e3aa3"
+      },
+      {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/rusty_iron/rusty_iron_disp_1k.png",
+        "sha256": "d3d973a7dcd8312ed16e917f175eba4d52fac93a457d48830ced3581bba40080"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "bf63667f079aea667c21b09d7bef8659da0ec4b9f3e03283f7f06cf6af249be9"
+  },
+  {
+    "slug": "metal-pitted-steel-scan",
+    "name": "Pitted Steel",
+    "category": "Grunge",
+    "source": "https://polyhaven.com/a/rusty_metal_03",
+    "author": "Amal Kumar",
+    "license": "CC0-1.0",
+    "processing": "Local deviation in scan displacement using a wrapped 12 px blur, combined with roughness. Percentile levels .04/.994, wrapped 0.6 px smoothing. Midtones raised with a 0.73 power curve. Preserves the original repeating tile. Lossless grayscale WebP.",
+    "downloads": [
+      {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/rusty_metal_03/rusty_metal_03_disp_1k.png",
+        "sha256": "194f2220efeef50df7ed0fd403d860095dff9853e194fff7d994c9aac07f6229"
+      },
+      {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/rusty_metal_03/rusty_metal_03_rough_1k.png",
+        "sha256": "595361ba0bc7d9df8ca9f460ba14a46a78b9c2e735a980a8feb093a4c2c34e1a"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "dfe629f60e666ec3604d23e2c0882780b576a28d79f2d7a80e6421ea13b8ee27"
+  },
+  {
+    "slug": "metal-chipped-steel-scan",
+    "name": "Chipped Steel",
+    "category": "Grunge",
+    "source": "https://polyhaven.com/a/rusty_metal_04",
+    "author": "Amal Kumar",
+    "license": "CC0-1.0",
+    "processing": "Red minus blue separates exposed oxidized steel from the cool paint in the calibrated diffuse photo. Percentile levels .11/.94, wrapped 0.55 px smoothing. Preserves the original repeating tile. Lossless grayscale WebP.",
+    "downloads": [
+      {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/rusty_metal_04/rusty_metal_04_diff_1k.png",
+        "sha256": "c5ad2c6dab50c63c1925465c8ef6e386cb3bb76a1f4d81d2b0c6dc29b3f1da3e"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "30379905b4f74f68d6d54d7ed6acc5ef96d1cdac35d7178f946669d818dfb51f"
+  }
+]
