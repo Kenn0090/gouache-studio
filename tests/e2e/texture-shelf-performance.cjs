@@ -77,6 +77,78 @@ let failures=0;const ok=(v,m)=>{console.log((v?'PASS ':'FAIL ')+m);if(!v)failure
  // Deletion can race a legacy preview backfill; it must never recreate the record.
  const deleted=await p.evaluate(async()=>{const G=__gs,r=G.tx.mine.find(x=>x.id==='legacy-shelf');await G.store.del(r.id,'textures');await G.txSaveThumb(r,r.thumb);return !(await G.store.getRaw(r.id,'textures'));});
  ok(deleted,'late preview backfills cannot resurrect deleted textures');
+ const newGrunges=require('../../assets/grunge/extra-grunge-sources.json');
+ const library=await p.evaluate(async scans=>{
+  const G=__gs;
+  const all=scans.every(({slug,name,category})=>G.TX_PHOTO.some(([id,title,group])=>id===slug&&title===name&&group===category));
+  const concrete=await G.txTarget({kind:'photo',id:'grunge-concrete-fractures'});
+  G.tx.show='photo';
+  const count=category=>{
+   G.tx.category=category;G.renderTextures();
+   return G.txItems().filter(it=>scans.some(s=>s.slug===it.id&&(category!=='Scratches'||s.family==='Metal'))).length;
+  };
+  return {all,metal:count('Metal'),fabric:count('Fabric'),scratches:count('Scratches'),dents:count('Dents'),
+    width:concrete.w,height:concrete.h};
+ },newGrunges);
+ ok(library.all&&library.metal===11&&library.fabric===10&&library.scratches===5&&library.dents===5
+    &&library.width===1024&&library.height===1024,
+    'new scans are browsable by category and cracked concrete loads offline at full size '+JSON.stringify(library));
+
+ await p.evaluate(()=>{
+  const G=__gs;G.setMode('paint');G.newDoc(64,64,8,[1,1,1],'Photo grunge',false);
+  const L=G.doc.active;L.name='Test concrete.jpg';
+  const pixels=new Uint8Array(64*64*4);
+  for(let y=0;y<64;y++)for(let x=0;x<64;x++){
+   const i=(y*64+x)*4, shade=Math.abs(x-28)<2?18:140+x+y;
+   if(x>59&&y>59)continue;
+   pixels.set([shade,Math.round(shade*.8),Math.round(shade*.6),255],i);
+  }
+  G.writeRegion(L.target,0,0,64,64,pixels);
+  window.grungePhotoPixels=pixels;
+ });
+ const openPhotoGrunge=async()=>{
+  await p.locator('#menus').getByRole('button',{name:'Filter',exact:true}).click();
+  await p.locator('[data-act=photoGrunge]').click();
+ };
+ await openPhotoGrunge();
+ await p.locator('#fx_photoGrunge_preset').selectOption({label:'Fabric'});
+ await p.locator('#fx_photoGrunge_preset').selectOption({label:'Cracks'});
+ await p.locator('#fx_seamless').check();
+ await p.locator('#fxPrev').uncheck();
+ await p.locator('#fxTextureName').fill('Cracks from Paint');
+ await p.getByRole('button',{name:'Save to Textures',exact:true}).click();
+ await p.waitForFunction(()=>__gs.doc.projectAssets?.some(a=>a.rec.name==='Cracks from Paint'));
+ await p.click('#dlgCancel');
+ const photoGrunge=await p.evaluate(async()=>{
+  const G=__gs,rec=G.tx.mine.find(r=>r.name==='Cracks from Paint'),full=await G.txRead(rec),bytes=full.data;
+  const preserved=G.captureRegionNow(G.doc.active.target,0,0,64,64).data.every((v,i)=>v===grungePhotoPixels[i]);
+  const grey=bytes.every((v,i)=>i%4!==0||v===bytes[i+1]&&v===bytes[i+2]);
+  const val=(x,y,c=0)=>bytes[(y*64+x)*4+c];
+  const visible=G.tx.show==='mine'&&!!document.querySelector('#tx_mine_'+rec.id);
+  return {preserved,grey,visible,crack:val(28,32),surface:val(20,32),transparent:val(62,62,3),size:[full.w,full.h]};
+ });
+ ok(photoGrunge.preserved&&photoGrunge.grey&&photoGrunge.visible&&photoGrunge.crack-photoGrunge.surface>120
+    &&photoGrunge.size.every(v=>v===64),'saving with preview off stores the converted full-resolution grayscale texture '+JSON.stringify(photoGrunge));
+ await openPhotoGrunge();
+ await p.click('#dlgOk');
+ const applied=await p.evaluate(async()=>{
+  const G=__gs,read=()=>G.captureRegionNow(G.doc.active.target,0,0,64,64).data;
+  const edited=read(),i=(32*64+28)*4;
+  const grey=edited[i]===edited[i+1]&&edited[i]===edited[i+2]&&edited[i]>150&&edited[(62*64+62)*4+3]===0;
+  await G.undo();
+  return grey&&read().every((v,i)=>v===grungePhotoPixels[i]);
+ });
+ ok(applied,'applying the filter preserves transparency and can be undone');
+ await p.reload();await p.waitForFunction(()=>window.__gs&&__gs.tx.loaded);
+ await p.evaluate(()=>{
+  const G=__gs;G.closeWelcome();G.newDoc(64,64,8,[1,1,1],'Saved grunge mask',false);
+  const L=G.cmdNewFillLayer({name:'Metal',maps:{base:{c:[1,1,1]}}});
+  G.msAdd(L,'gen',{p:G.msGenDefaults('metalWear')});
+ });
+ await p.click('#msGrungePick');
+ await p.locator('.fxdpick').getByRole('button',{name:'Cracks from Paint',exact:true}).click();
+ const picked=await p.evaluate(()=>__gs.doc.active.mask.stack.some(r=>r.p?.gimg?.name==='Cracks from Paint'));
+ ok(picked,'a grunge saved from Paint stays available in the metal-wear generator after restart');
  ok(errors.length===0&&owned.error===0&&bounded.error===0,'no application or graphics errors '+errors.join(' | '));
  await browser.close();if(server)await new Promise(r=>server.close(r));process.exit(failures?1:0);
 })().catch(e=>{console.error(e);process.exit(1);});

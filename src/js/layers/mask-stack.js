@@ -11,7 +11,8 @@ const MS_MODES=[['normal','Normal','Norm'],['multiply','Multiply','Mult'],['add'
 const msModeIx=m=>Math.max(0,MS_MODES.findIndex(x=>x[0]===m));
 const MS_GENS=[['edge','Edge wear'],['dirt','Dirt in cavities'],['dust','Dust on top'],['moss','Moss'],['rust','Rust streaks'],['water','Water line'],['slime','Slime'],['crud','Crud'],
   ['chips','Chipped paint'],['scratch','Scratches'],['snow','Snow on top'],['soot','Soot'],['drips','Drips and leaks'],['bleach','Sun-bleached'],['light','Light'],['linear','Linear gradient'],['radial','Radial gradient'],['comic','Comic shading'],['builder','Mask builder'],
-  ['metalWear','Metal Edge Wear'],['peelingPaint','Peeling Paint'],['paintBubbles','Paint Bubbles']];
+  ['metalWear','Metal Edge Wear'],['peelingPaint','Peeling Paint'],['paintBubbles','Paint Bubbles'],['useWear','Use Wear']];
+const MS_WEAR_GENS=['metalWear','useWear'];
 const MS_PAINT_DAMAGE=['peelingPaint','paintBubbles'];
 const MS_PEEL_PRESETS=[
   ['cracked','Cracked Coat',{amount:.47,width:.4,breakup:.12,contrast:1.6,scale:6,distort:.45,crackWidth:.24,flakeLoss:.16,edgeLift:.74,stretch:0,direction:0,peelScan:'peeling-wall-scan',peelScanAmount:.85,peelScanTile:1.5}],
@@ -71,8 +72,8 @@ function msUsesDoc(L){return L.mask.stack.some(r=>{
   const p=r.p;
   if(MS_PAINT_DAMAGE.includes(p.g))return false;
   const painted=k=>doc.maps.includes(k)&&!msMeshTex(k)&&!msMeshTex('cv:'+k);
-  if(p.g==='metalWear')return (!msMeshTex('curvEdge')&&!msMeshTex('cv:curvEdge')&&painted('curv'))||
-    (p.cavityProtection??.75)>0&&painted('ao');
+  if(MS_WEAR_GENS.includes(p.g))return (!msMeshTex('curvEdge')&&!msMeshTex('cv:curvEdge')&&painted('curv'))||
+    ((p.cavityProtection??.75)>0||p.g==='useWear'&&p.contactAmount>0)&&painted('ao');
   if(p.g!=='builder')return !msMeshTex('curv')&&!msMeshTex('ao');
   return ((p.edgeWeight??1)||p.cavityWeight)&&painted('curv')||
     p.aoWeight&&painted('ao')||p.heightWeight&&painted('height');
@@ -130,6 +131,7 @@ uniform sampler2D uCurv2; uniform int uHasCurv2; uniform vec4 uLight; uniform ve
 uniform sampler2D uGTex; uniform int uHasG; uniform float uGTile; uniform int uGInv; uniform float uGRot; uniform float uGCon; uniform float uGLev;
 uniform float uCavityProtection;
 uniform vec3 uWearShape; // edge strength, remaining distortion, distortion frequency
+uniform vec4 uWearContact; // amount and contact direction
 uniform vec4 uScratch; uniform vec3 uPeel; uniform vec2 uPeelDirection; uniform int uPeelOutput; uniform vec2 uBubble;
 uniform sampler2D uSurfaceScan; uniform vec3 uSurfaceScanSettings;
 uniform vec4 uBuilderInputs[7]; uniform int uBuilderMix; uniform vec2 uBuilderRange; uniform vec3 uBuilderDirection;
@@ -201,7 +203,7 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(),surfaceQ=su
   float rawCurv=curvOf(uv);
   float c=clamp(rawCurv+dShift*0.5,0.0,1.0),edge=clamp((c-0.5)*2.0,0.0,1.0),cav=clamp((0.5-c)*2.0,0.0,1.0),ao=clamp(aoOf(uv)+dShift*0.6,0.0,1.0),occ=1.0-ao,up=dot(N,vec3(0.0,1.0,0.0)),n=uHasG==1?grungeOf(uv):fbm(q),w=uWidth;
   float b=0.0;
-  if(uG==19){
+  if(uG==19||uG==22){
     float cutoff=mix(0.55,0.045,uAmt)*mix(1.2,0.45,w);
     if(uWearShape.y>0.0&&(uHasCurv!=0||uHasCurv2!=0)){
       if(uWorld==1&&uHasPos==1){
@@ -240,7 +242,17 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(),surfaceQ=su
         scratches=max(scratches*(1.0-0.5*scanInfluence),scuffs*scanInfluence*scanReach);
       }
     }
-    b=max(wear,scratches)*exposure*textureBreakup*min(1.0,uAmt*2.0);
+    float contact=0.0;
+    if(uG==22&&uWearContact.x>0.0){
+      float patches=fbm(q+vec3(9.2,24.5,12.6));
+      float coverage=smoothstep(0.78-uWearContact.x*0.45,0.97-uWearContact.x*0.39,patches);
+      float facing=1.0;
+      if(dot(uWearContact.yzw,uWearContact.yzw)>0.5&&(uHasPos==1||uHasBWN==1||uHasDocN==1))
+        facing=smoothstep(0.05,0.8,dot(N,uWearContact.yzw));
+      float contactDetail=mix(1.0,mix(0.25,1.0,smoothstep(0.13,0.82,scan)),scanInfluence);
+      contact=coverage*facing*smoothstep(0.22,0.83,ao)*contactDetail*uWearContact.x;
+    }
+    b=max(max(wear,scratches),contact)*exposure*textureBreakup*min(1.0,uAmt*2.0);
     if(uNeg==1)b=1.0-b;
     o=vec4(vec3(b),1.0);return;
   }
@@ -450,11 +462,46 @@ function msWideGain(curv,blur){const k=msWideGains.get(curv);if(k&&k.v===(curv.v
 function msCtxFree(ctx){for(const t of ctx.tmp)if(t)release(t);}
 /* a row's projection uniforms: its mode and transform */
 const msPx=(r,ctx)=>{const m=pxfRowMode(r);return Object.assign({},ctx.surf,pxfUniforms(m,r.p.xf),{uWorld:{int:m==='world'?1:0}});};
-function msWarpEdgeMap(src,ctx,amount,scale,seed){
+function msWarpEdgeMap(src,ctx,amount,scale,seed,grow,mid){
   const dst=acquireD(src.depth);
-  if(!meshConnectedWarp(src,dst,amount*0.065,scale,seed,true)){release(dst);return null;}
+  if(!meshConnectedWarp(src,dst,amount*0.065,scale,seed,true,grow,mid)){release(dst);return null;}
   ctx.tmp.push(dst);
   return dst;
+}
+const FS_MSEDGEGROW=`uniform sampler2D uSrc; uniform sampler2D uPos; uniform vec2 uSize; uniform vec2 uStep;
+uniform float uEdgeMid; uniform float uSurfaceLimit;
+float edgeTap(vec2 uv,vec4 p){
+  if(uSurfaceLimit>0.0){
+    vec4 next=texture(uPos,uv);
+    if(p.a<0.5||next.a<0.5||distance(p.xyz,next.xyz)>uSurfaceLimit)return 0.0;
+  }
+  float v=texture(uSrc,uv).r;
+  return v>uEdgeMid+0.002?v:0.0;
+}
+void main(){
+  vec2 uv=gl_FragCoord.xy/uSize;
+  vec4 p=uSurfaceLimit>0.0?texture(uPos,uv):vec4(0.0);
+  float edge=max(texture(uSrc,uv).r,max(edgeTap(uv+uStep,p),edgeTap(uv-uStep,p)));
+  o=vec4(vec3(edge),1.0);
+}`;
+let msEdgeGrowProgram=null;
+function msGrowEdgeMap(src,ctx,grow,mid,wrap){
+  const radius=Math.max(1,Math.round(grow*Math.min(doc.w,doc.h)));
+  const x=acquireD(src.depth),y=acquireD(src.depth),surf=ctx.surf;
+  if(!msEdgeGrowProgram)msEdgeGrowProgram=program(FS_MSEDGEGROW);
+  const U={uPos:surf.uPos,uSize:[doc.w,doc.h],uEdgeMid:mid,
+    uSurfaceLimit:surf.uHasPos.int?grow*Math.max(...surf.uBsize)*1.6:0};
+  // Each stride expands the already-filled band, so narrow features survive wide growth.
+  withUVWrap(wrap,[src,x,y],()=>{
+    for(let step=1,remaining=radius;remaining>0;step*=3){
+      const d=Math.min(step,remaining);remaining-=d;
+      run(msEdgeGrowProgram,x,{...U,uSrc:src.tex,uStep:[d/doc.w,0]});
+      run(msEdgeGrowProgram,y,{...U,uSrc:x.tex,uStep:[0,d/doc.h]});
+      src=y;
+    }
+  });
+  release(x);ctx.tmp.push(y);
+  return y;
 }
 const MS_AXES={up:[0,1,0],down:[0,-1,0],x:[1,0,0],'-x':[-1,0,0],z:[0,0,1],'-z':[0,0,-1]};
 function msBuilderU(p){
@@ -496,24 +543,29 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
   if(r.kind==='anchor'){const A=msAnchor(p.name);if(!A)return null;const o=out(),ch=p.ch||'height',T=ch==='height'?mapT(A,'height'):mapT(A,'base');if(!T||T.empty)return null;
     run(msProgs().anc,o,{uT:T.tex,uM:A.mask&&A.mask.enabled!==false?A.mask.target.tex:dummy,uUseM:{int:A.mask&&A.mask.enabled!==false&&ch==='shape'?1:0},uCh:{int:ch==='shape'?1:0},uNeg:{int:p.inv?1:0}});return {t:o,pooled:true};}
   if(r.kind==='gen'){
-    const o=out(),metalWear=p.g==='metalWear',edgeMap=metalWear&&(msMeshTex('curvEdge')||msMeshTex('cv:curvEdge'));
+    const o=out(),wear=MS_WEAR_GENS.includes(p.g),edgeMap=wear&&(msMeshTex('curvEdge')||msMeshTex('cv:curvEdge'));
     const paintDamage=MS_PAINT_DAMAGE.includes(p.g);
     const curv0=!paintDamage&&(edgeMap||msMeshTex('curv')||msMeshTex('cv:curv')||msDocMap('curv',ctx)||msModelCurv());
-    let curv=metalWear||p.g==='builder'?curv0:msWideCurv(curv0,p,ctx);
+    let curv=wear||p.g==='builder'?curv0:msWideCurv(curv0,p,ctx);
     const ao=!paintDamage&&(msMeshTex('ao')||msMeshTex('cv:ao')||msDocMap('ao',ctx));
     let ac=!paintDamage&&p.anchor?msAnchorCurv(p.anchor,ctx,p.uvWrap!==false):null;
-    let wearDistort=metalWear?Math.max(0,p.distort||0):0;
+    let wearDistort=wear?Math.max(0,p.distort||0):0;
+    let wearGrow=wear?clamp(p.edgeGrow||0,0,1)*0.045:0;
     const wearScale=Math.max(0.5,p.edgeDistortScale??9);
-    if(wearDistort>0&&ui.mode==='p3d'&&pxfRowMode(r)==='world'&&(curv||ac)){
-      const warpedCurv=curv&&msWarpEdgeMap(curv,ctx,wearDistort,wearScale,p.seed||1);
-      const warpedAnchor=ac&&msWarpEdgeMap(ac,ctx,wearDistort,wearScale,p.seed||1);
+    if((wearDistort>0||wearGrow>0)&&ui.mode==='p3d'&&pxfRowMode(r)==='world'&&(curv||ac)){
+      const warpedCurv=curv&&msWarpEdgeMap(curv,ctx,wearDistort,wearScale,p.seed||1,wearGrow,edgeMap?0:.5);
+      const warpedAnchor=ac&&msWarpEdgeMap(ac,ctx,wearDistort,wearScale,p.seed||1,wearGrow,.5);
       if((!curv||warpedCurv)&&(!ac||warpedAnchor)){
-        curv=warpedCurv;ac=warpedAnchor;wearDistort=0;
+        curv=warpedCurv;ac=warpedAnchor;wearDistort=0;wearGrow=0;
       }
+    }
+    if(wearGrow>0){
+      if(curv)curv=msGrowEdgeMap(curv,ctx,wearGrow,edgeMap?0:.5,p.uvWrap!==false);
+      if(ac)ac=msGrowEdgeMap(ac,ctx,wearGrow,.5,p.uvWrap!==false);
     }
     const height=p.g==='builder'&&p.heightWeight&&(msMeshTex('height')||msMeshTex('cv:height')||msDocMap('height',ctx));
     const thick=p.g==='builder'&&msMeshTex('thick'),wn=p.g==='builder'&&msMeshTex('wnormal'),pos=p.g==='builder'&&msMeshTex('position');
-    const [scanId,scanAmount,scanTile,scanAngle]=metalWear
+    const [scanId,scanAmount,scanTile,scanAngle]=wear
       ?[p.metalScan,p.metalScanAmount??.65,p.metalScanTile??2,p.metalScanAngle??0]
       :p.g==='peelingPaint'&&p.crackWidth!=null
         ?[p.peelScan,p.peelScanAmount??.65,p.peelScanTile??2,-(p.direction??0)]
@@ -522,6 +574,7 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
     withUVWrap(p.uvWrap!==false,[curv,ac,ao,height,thick,wn,pos],()=>run(P.gen,o,Object.assign({uG:{int:Math.max(0,MS_GENS.findIndex(g=>g[0]===p.g))},uCurv:curv?curv.tex:dummy,uHasCurv:{int:edgeMap?2:curv?1:0},uCurv2:ac?ac.tex:dummy,uHasCurv2:{int:ac?1:0},uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},
       uCavityProtection:p.cavityProtection??.75,
       uWearShape:[Math.max(0,p.edgeStrength??1),wearDistort,wearScale],
+      uWearContact:[p.contactAmount??0,...(MS_AXES[p.contactAxis]||[0,0,0])],
       uScratch:[p.scratchAmount??0,p.scratchScale??34,(p.scratchAngle??0)*Math.PI/180,p.scratchReach??.35],
       uPeel:[p.crackWidth??-1,p.flakeLoss??0,p.edgeLift??0],
       uPeelDirection:[(p.direction??0)*Math.PI/180,p.stretch??0],
@@ -534,7 +587,7 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
       uComic:[p.bands??3,p.dots??28,p.dotSize??.45,p.dotAngle??45],uComicMode:{int:['shade','shadow','dots'].indexOf(p.comicStyle||'shade')},
       uAmt:p.amount,uWidth:p.width,uBreak:p.breakup,uCon:p.contrast,uDist:p.distort||0,uScale:p.scale||6,uSeed:p.seed||1,uNeg:{int:p.inv?1:0},...msGrungeU(p)},msPx(r,ctx))));return {t:o,pooled:true};}
   return null;}
-const msSurfaceScans=new Map([...TX_PAINT_SCANS,...TX_METAL_SCANS].map(({slug,name})=>[slug,{kind:'photo',id:slug,name}]));
+const msSurfaceScans=new Map([...TX_PAINT_SCANS,...TX_METAL_SCANS,...TX_WEAR_SCANS].map(({slug,name})=>[slug,{kind:'photo',id:slug,name}]));
 function msSurfaceScanTex(slug){
   const scan=msSurfaceScans.get(slug);
   if(!scan)return null;
@@ -658,9 +711,12 @@ function msCommit(){clearTimeout(msEd.timer);msEd.timer=0;const L=msEd.L,b=msEd.
 
 function msGenDefaults(g){
   const base={...MS_KINDS.gen.p(),g};
-  if(g==='metalWear')return {...base,amount:.65,width:.55,breakup:.28,contrast:2,cavityProtection:.75,distort:.3,edgeStrength:1.25,edgeDistortScale:9,
+  if(g==='metalWear')return {...base,amount:.65,width:.55,breakup:.28,contrast:2,cavityProtection:.75,distort:.3,edgeStrength:1.25,edgeGrow:0,edgeDistortScale:9,
     scratchAmount:.24,scratchScale:34,scratchAngle:18,scratchReach:.36,
     metalScan:'metal-gouged-iron-scan',metalScanAmount:.7,metalScanTile:2,metalScanAngle:0};
+  if(g==='useWear')return {...msGenDefaults('metalWear'),g,amount:.72,width:.54,edgeStrength:.85,edgeGrow:.28,distort:.25,
+    contactAmount:.72,contactAxis:'',scale:5,breakup:.18,scratchAmount:.16,scratchReach:.48,
+    metalScan:'grunge-scuffed-steel',metalScanAmount:.6,metalScanTile:2};
   if(g==='peelingPaint')return {...base,...MS_PEEL_PRESETS[0][2],peelPreset:MS_PEEL_PRESETS[0][0],peelOutput:'damage'};
   if(g==='paintBubbles')return {...base,amount:.62,width:.5,breakup:.1,contrast:1.1,scale:21,distort:.17,sizeVariation:.82,clumping:.85};
   if(g==='builder')return {...base,amount:.5,width:.25,breakup:.2,contrast:1,edgeWeight:1,cavityWeight:0,aoWeight:0,directionWeight:0,positionWeight:0,heightWeight:0,thicknessWeight:0,gradAxis:'up',positionFrom:0,positionTo:1};

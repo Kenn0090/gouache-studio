@@ -30,7 +30,7 @@ function matApply(rec){const f=rec.fill;let maps={},imgs=null,temp=null,note='';
   if(cv&&cv.converted){maps=cv.maps;temp={};for(const k in cv.imgs){const im=cv.imgs[k];if(rec.imgs&&rec.imgs[k]===im)continue;const t=makeTarget(im.w,im.h,8,true);writeRegion(t,0,0,im.w,im.h,im.data);temp[k]=t;}
     imgs=Object.assign({},matRecTargets(rec),temp);for(const k of ['rough','metal','spec','gloss'])if(!maps[k]||!maps[k].on)delete imgs[k];note=' It was converted to '+(want==='spec'?'Spec/Gloss':'Metal/Rough')+'.';}
   else{for(const k in f.maps)maps[k]=Object.assign({},f.maps[k]);imgs=matRecTargets(rec);}
-  const L=cmdNewFillLayer({name:rec.name,maps,proj:f.proj,triSharp:f.triSharp,hStr:f.hStr,xf:f.xf,rep:f.rep,front:f.front,decal:f.decal,coverH:f.coverH,imgs});
+  const L=cmdNewFillLayer({...f,name:rec.name,maps,imgs,op:rec.op,mapOpacities:rec.mapOpacities});
   /* (0.96.4) pictures that came straight from the Library are tagged, so a smart material made from this layer names the Library material instead of copying its pictures */
   {const lib=matLibSlug(rec);if(L&&lib&&L._fillImg)for(const k in L._fillImg)if(!(temp&&temp[k])&&L._fillImg[k])L._fillImg[k]._lib=lib;}
   if(temp)for(const k in temp)disposeTarget(temp[k]);if(L&&note)toast('Added “'+rec.name+'”.'+note);if(L&&!note&&!(ui.mode==='p3d'||v3.on))toast('Added “'+rec.name+'”. It shows on the model in the 3D view or 3D Paint.');return L;}
@@ -38,7 +38,8 @@ function matLibSlug(rec){return rec&&rec.bundled&&!rec.bundled.dl&&typeof rec.bu
 /* from the material editor */
 function matSaveFromFill(L,f){const name=(L.name||'Material').trim(),imgs={};
   for(const k in L._fillImg||{}){const s=f.maps[k];if(!s||!s.on||s.src!=='image')continue;const t=L._fillImg[k];imgs[k]={w:t.w,h:t.h,data:captureRegionNow(t,0,0,t.w,t.h).data};}
-  const old=matLib.list.find(r=>r.name===name),rec={id:old?old.id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name,t:old?old.t:Date.now(),fill:fillClone(f),imgs};
+  const old=matLib.list.find(r=>r.name===name&&r.kind!=='smart'&&r.kind!=='smask');
+  const rec={id:old?old.id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name,t:old?old.t:Date.now(),fill:fillClone(f),imgs,...layerOpacitySettings(L)};
   if(old){if(old._t)for(const k in old._t)disposeTarget(old._t[k]);matLib.list[matLib.list.indexOf(old)]=rec;}else matLib.list.push(rec);
   paRemember('mat',rec).catch(e=>toast('Could not add the material to Projects: '+e.message));store.put(rec,'materials');renderMats();toast((old?'Updated':'Saved')+' “'+name+'” in Materials.');}
 function matDelete(rec){confirmDlg('Delete material','Delete the material “'+rec.name+'” from Materials? Layers that use it keep it.','Delete',()=>{
@@ -53,7 +54,7 @@ async function matExport(rec){if(rec.kind==='smart'||rec.kind==='smask'){const b
   const imgs={};for(const k in rec.imgs||{}){const im=rec.imgs[k],c=document.createElement('canvas');c.width=im.w;c.height=im.h;const x=c.getContext('2d'),id=x.createImageData(im.w,im.h),d=im.data;
     for(let i=0;i<d.length;i+=4){const a=d[i+3]||1;id.data[i]=Math.min(255,d[i]*255/a);id.data[i+1]=Math.min(255,d[i+1]*255/a);id.data[i+2]=Math.min(255,d[i+2]*255/a);id.data[i+3]=d[i+3];}
     x.putImageData(id,0,0);imgs[k]={w:im.w,h:im.h,png:pxDataURL(c,k)};}
-  const blob=await gmatBlob({app:'Gouache Studio',kind:'material',v:1,name:rec.name,fill:rec.fill,imgs});
+  const blob=await gmatBlob({app:'Gouache Studio',kind:'material',v:1,name:rec.name,fill:rec.fill,imgs,op:rec.op,mapOpacities:rec.mapOpacities});
   const r=await deliver(slug(rec.name)+'.gmat',blob);toast(deliveredText(r,'Material'));}
 /* a .gmat's pictures (PNG or WebP data URLs) back to premultiplied pixels */
 async function gmatImgs(j){const imgs={};
@@ -90,7 +91,8 @@ async function matImport(){const fs=await pickFiles('.gmat,application/json',tru
   for(const f of fs){try{const j=await gmatParse(f);
       if((j.kind==='smart'&&j.tree)||(j.kind==='smask'&&j.mask)){const body=await smImgsIn(j.kind==='smart'?{tree:j.tree}:{mask:j.mask});const rec=smPut(Object.assign({kind:j.kind,name:j.name||baseName(f.name)},body));if(rec.kind==='smart')smThumbLater(rec);n++;continue;}
       if(j.kind!=='material'||!j.fill)throw new Error('not a material');
-      const rec={id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:j.name||baseName(f.name),t:Date.now(),fill:j.fill,imgs:await gmatImgs(j)};matLib.list.push(rec);store.put(rec,'materials');n++;}
+      const rec={id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:j.name||baseName(f.name),t:Date.now(),fill:j.fill,
+        imgs:await gmatImgs(j),op:j.op,mapOpacities:j.mapOpacities};matLib.list.push(rec);store.put(rec,'materials');n++;}
     catch(e){toast('Could not read '+f.name+': '+(e.message||e));}}
   if(n){renderMats();toast('Imported '+n+' material'+(n>1?'s':'')+'.');}}
 /* (0.29, Kenn) a click only highlights a tile. Drag it onto the layers, or press the fill layer button, to add it.

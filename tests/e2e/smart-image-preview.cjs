@@ -248,6 +248,88 @@ const server = http.createServer((req, res) => {
     });
     console.log('PASS saved and exported Smart Materials retain layer and group opacity for every channel');
 
+    await page.evaluate(async () => {
+      const G=__gs,rec=G.matLib.list.find(r=>r.name==='Channel opacity example');
+      const group=await G.smApply(rec);
+      G.selectOnly(group.children[0]);
+      G.setEditMap('base');
+      const slider=document.getElementById('lOp');
+      slider.value='.42';
+      slider.dispatchEvent(new Event('input',{bubbles:true}));
+      G.smUpdate(group);
+      document.getElementById('dlgOk').click();
+    });
+    await page.waitForFunction(() => __gs.matLib.list.find(r=>r.name==='Channel opacity example')?.tree.kids[0].mapOpacities?.base===.42);
+    const updatedOpacity=await page.evaluate(async () => {
+      const G=__gs,rec=G.matLib.list.find(r=>r.name==='Channel opacity example');
+      const layer=(await G.smApply(rec)).children[0];
+      G.selectOnly(layer);
+      G.setEditMap('base');
+      G.renderLayers();
+      return Number(document.getElementById('lOp').value);
+    });
+    assert.equal(updatedOpacity,.42);
+    console.log('PASS the Layers opacity slider survives Update smart material and reapplying it');
+
+    const ordinary=await page.evaluate(async () => {
+      const G=__gs;
+      const add=name=>G.cmdNewFillLayer({name,maps:{base:{c:[.6,.2,.1]},rough:{v:.8},metal:{v:1}}});
+      const set=(key,value)=>{
+        G.setEditMap(key);
+        const slider=document.getElementById('lOp');
+        slider.value=String(value);
+        slider.dispatchEvent(new Event('input',{bubbles:true}));
+      };
+      G.setMode('paint',true);
+      G.newDoc(64,64,8,[1,1,1],'Opacity',false);
+      const paint=add('Paint material opacity');
+      set('base',.43);
+      G.matSaveFromFill(paint,paint.fill);
+      const paintRec=G.matLib.list.find(r=>r.name===paint.name);
+      const paintApplied=G.matApply(paintRec);
+      G.setMode('p3d',true);
+      const layer=add('3D material opacity');
+      set('base',.24);set('rough',.57);set('metal',0);
+      G.matSaveFromFill(layer,layer.fill);
+      const rec=G.matLib.list.find(r=>r.name===layer.name);
+      const applied=G.matApply(rec);
+      const live=await G.paUse({kind:'mat',name:'Project layer copy',layer});
+      const channels=L=>['base','rough','metal'].map(k=>G.mapOpacityOf(L,k));
+      G.showPanel('mats');
+      return {paint:paintApplied.opacity,applied:channels(applied),live:channels(live)};
+    });
+    assert.equal(ordinary.paint,.43);
+    assert.deepEqual(ordinary.applied,[.24,.57,0]);
+    assert.deepEqual(ordinary.live,[.24,.57,0]);
+    await page.waitForFunction(()=>__gs.paEntries().some(e=>e.name==='3D material opacity'&&e.asset));
+    const projectOpacity=await page.evaluate(async()=>{
+      const G=__gs,entry=G.paEntries().find(e=>e.name==='3D material opacity'&&e.asset);
+      const layer=await G.paUse(entry);
+      return ['base','rough','metal'].map(k=>G.mapOpacityOf(layer,k));
+    });
+    assert.deepEqual(projectOpacity,[.24,.57,0]);
+    const bytes=await page.evaluate(()=>new Promise(resolve=>{
+      const G=__gs,{isDesktop,saveAs}=G.platform;
+      G.platform.isDesktop=true;
+      G.platform.saveAs=async(name,file)=>{
+        Object.assign(G.platform,{isDesktop,saveAs});
+        resolve([...new Uint8Array(await file.arrayBuffer())]);
+        return name;
+      };
+      document.querySelector('[aria-label="Export 3D material opacity"]').click();
+    }));
+    const [chooser]=await Promise.all([
+      page.waitForEvent('filechooser'),page.locator('#matBody').getByRole('button',{name:'Import…',exact:true}).click()
+    ]);
+    await chooser.setFiles({name:'opacity.gmat',mimeType:'application/octet-stream',buffer:Buffer.from(bytes)});
+    await page.waitForFunction(()=>__gs.matLib.list.filter(r=>r.name==='3D material opacity').length===2);
+    const importedOpacity=await page.evaluate(()=>{
+      const G=__gs,rec=G.matLib.list.filter(r=>r.name==='3D material opacity').at(-1),layer=G.matApply(rec);
+      return ['base','rough','metal'].map(k=>G.mapOpacityOf(layer,k));
+    });
+    assert.deepEqual(importedOpacity,[.24,.57,0]);
+    console.log('PASS Save to Materials and .gmat export and import preserve layer and channel opacity');
+
     assert.deepEqual(errors,[]);
     console.log('PASS redo and restart load the new preview without rewriting the recipe');
   } finally {

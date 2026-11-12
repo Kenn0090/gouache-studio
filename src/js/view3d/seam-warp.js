@@ -5,6 +5,7 @@
    welded edges into the next UV island (the same walk the seam-aware blur uses). The push matches the old one in pixels. */
 const FS_SEAMWARP=FS_SEAMBLUR.slice(0,FS_SEAMBLUR.indexOf('void main()'))+MS_NOISE_GLSL+`
 uniform float uAmt; uniform float uFreq; uniform vec3 uBmin; uniform float uBsz; uniform int uWorldDistance;
+uniform float uGrow; uniform float uEdgeMid;
 void main(){vec3 b=vec3(1.0-vBary.x-vBary.y,vBary);int t=vFace;
  vec3 A=pointAt(t,0),B=pointAt(t,1),C=pointAt(t,2),p=A*b.x+B*b.y+C*b.z,nn=cross(B-A,C-A);float a3=length(nn);vec3 n=nn/max(a3,1e-12);
  vec2 ua=uvAt(t,0)*uSize,ub=uvAt(t,1)*uSize,uc=uvAt(t,2)*uSize;float aUV=abs((ub.x-ua.x)*(uc.y-ua.y)-(ub.y-ua.y)*(uc.x-ua.x));
@@ -13,14 +14,33 @@ void main(){vec3 b=vec3(1.0-vBary.x-vBary.y,vBary);int t=vFace;
  vec3 d=vec3(fbm(q),fbm(q+vec3(5.2,1.3,7.7)),fbm(q+vec3(2.9,8.4,3.3)))-0.5;d-=n*dot(d,n);
  float distance=uAmt*(uWorldDistance==1?uBsz:8.0*perPx);
  vec3 target=p+d*distance;
- vec2 tap=walkUV(t,b,baryWorld(t,target));o=textureLod(uSrc,tap,0.0);}`;
+ vec2 tap=walkUV(t,b,baryWorld(t,target));o=textureLod(uSrc,tap,0.0);
+ if(uGrow>0.0&&o.r<0.995){
+   float radius=uGrow*uBsz;
+   int rings=int(clamp(ceil(radius/max(perPx,1e-8)),1.0,8.0));
+   vec3 axis=abs(n.z)<0.9?vec3(0,0,1):vec3(0,1,0),e1=normalize(cross(axis,n)),e2=cross(n,e1);
+   float edge=o.r;
+   for(int i=0;i<8;i++){
+     float a=float(i)*0.78539816;
+     vec3 ray=(cos(a)*e1+sin(a)*e2)*radius;
+     for(int ring=1;ring<=8;ring++){
+       if(ring>rings)break;
+       float distance=float(ring)/float(rings);
+       vec2 uv=walkUV(t,b,baryWorld(t,target+ray*distance));
+       float sampleEdge=textureLod(uSrc,uv,0.0).r;
+       if(sampleEdge>uEdgeMid+0.002)edge=max(edge,mix(sampleEdge,uEdgeMid,distance*0.28));
+     }
+   }
+   o=vec4(vec3(edge),1.0);
+ }
+}`;
 let seamWarpProgram=null;
 /* worldDistance expresses the amount as a fraction of the model's bounds, independent of UV density. */
-function meshConnectedWarp(src,dst,amt,scale,seed,worldDistance=false){if(ui.mode!=='p3d'||!v3.mesh||src===dst||src.w!==doc.w||src.h!==doc.h||dst.w!==src.w||dst.h!==src.h||Math.abs(amt)<1e-4)return false;
+function meshConnectedWarp(src,dst,amt,scale,seed,worldDistance=false,grow=0,edgeMid=0){if(ui.mode!=='p3d'||!v3.mesh||src===dst||src.w!==doc.w||src.h!==doc.h||dst.w!==src.w||dst.h!==src.h||(Math.abs(amt)<1e-4&&grow<=0))return false;
  const C=seamBlurMesh();if(!C)return false;if(!seamWarpProgram)seamWarpProgram=prog3(VS_SEAMBLUR,FS_SEAMWARP);
  const m=v3.mesh;if(!m._bb)msSurf();const bb=m._bb||{mn:[0,0,0],sz:[1,1,1]};
  blit(src,dst,0,0,src.w,src.h,0,0);/* pixels outside the model stay as they were */
- try{useProg(seamWarpProgram,{uFaces:C.tex,uSrc:src.tex,uSize:[src.w,src.h],uRadius:[0,0],uBox:{int:0},uAmt:amt,uFreq:scale,uSeed:seed,uBmin:bb.mn,uBsz:Math.max(...bb.sz),uWorldDistance:{int:worldDistance?1:0}},!!dst.packed);
+ try{useProg(seamWarpProgram,{uFaces:C.tex,uSrc:src.tex,uSize:[src.w,src.h],uRadius:[0,0],uBox:{int:0},uAmt:amt,uFreq:scale,uSeed:seed,uBmin:bb.mn,uBsz:Math.max(...bb.sz),uWorldDistance:{int:worldDistance?1:0},uGrow:grow,uEdgeMid:edgeMid},!!dst.packed);
   bindTarget(dst);gl.disable(gl.BLEND);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.bindVertexArray(C.vao);gl.drawArrays(gl.TRIANGLES,0,C.count*3);}
  finally{gl.bindVertexArray(vao);}seamBlurPadding(C,dst);return true;}
 /* (0.96.1, Kenn: "make slope blur seam-safe too") Slope blur on the model's surface: the slope (of a 3D noise, of

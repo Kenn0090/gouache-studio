@@ -142,9 +142,12 @@ function fillRender(L,only){const f=L.fill;if(!f)return;
   if(doc.map==='base')delete L.blankBase;L.lookVer=(L.lookVer||0)+1;scheduleThumb(L);requestRender(true);}
 /* Layer › New fill layer (and the fill button under the layers): fills everything; a selection becomes its mask.
    preset: a material {name, maps:{k:{c|v|src…}}, proj, triSharp, hStr, imgs:{k:target}} fills with it and skips the dialog */
+const layerOpacitySettings=L=>({op:L.opacity,mapOpacities:L.mapOpacities?{...L.mapOpacities}:undefined});
 function cmdNewFillLayer(preset){if(ui.mode==='anim'){toast('Fill layers are available in Paint mode.');return;}
   if(ui.mode!=='paint'&&ui.mode!=='p3d'&&typeof setMode==='function')setMode('paint',true);
   const L=newLayerObj(preset&&preset.name||'Fill '+(++fillCount),true);doc.count--;L.fill=fillDefaults();
+  if(preset?.op!=null)L.opacity=preset.op;
+  if(preset?.mapOpacities)L.mapOpacities={...preset.mapOpacities};
   /* (0.94.6, Kenn) a new material in 3D Paint is a plain neutral grey (50%) and nothing else switched on */
   if(!preset&&ui.mode==='p3d'){const m=L.fill.maps;for(const k in m)m[k].on=false;if(m.base)Object.assign(m.base,{on:true,src:'value',c:[.5,.5,.5]});}
   if(preset&&preset.maps){for(const k in L.fill.maps)L.fill.maps[k].on=false;for(const k in preset.maps)if(L.fill.maps[k])Object.assign(L.fill.maps[k],{on:true,src:'value'},preset.maps[k]);

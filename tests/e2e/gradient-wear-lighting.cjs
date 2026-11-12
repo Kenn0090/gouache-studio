@@ -183,7 +183,9 @@ const server = http.createServer((req,res)=>{
         return G.captureRegionNow(L.mask.target,0,0,w,h).data;
       };
       const weak=sample({edgeStrength:.5}),strong=sample({edgeStrength:2});
-      const undistorted=sample({edgeStrength:1}),warped=sample({distort:1,edgeDistortScale:9});
+      const undistorted=sample({edgeStrength:1});
+      const grown=sample({edgeGrow:1}),uvGrown=sample({proj:'uv'});
+      const warped=sample({proj:'world',edgeGrow:0,distort:1,edgeDistortScale:9});
       const finer=sample({edgeDistortScale:20}),uvWarped=sample({proj:'uv',edgeDistortScale:9});
       const disabled=sample({proj:'world',distort:0,edgeStrength:0});
       const value=(d,x,y)=>d[(y*w+x)*4],sum=d=>d.reduce((s,v,i)=>s+(i%4===0?v:0),0);
@@ -197,6 +199,8 @@ const server = http.createServer((req,res)=>{
       };
       const band=Array.from({length:30},(_,i)=>centre(warped,12+i));
       return {weak:sum(weak),strong:sum(strong),disabled:sum(disabled),
+        growRatio:sum(grown)/sum(undistorted),uvGrowRatio:sum(uvGrown)/sum(undistorted),
+        grownGap:value(grown,Math.floor(w/2),Math.floor(h/2)),
         warpDelta:difference(undistorted,warped),scaleDelta:difference(warped,finer),uvDelta:difference(undistorted,uvWarped),
         bandMovement:Math.max(...band)-Math.min(...band),
         seamError:Math.abs(centre(warped,Math.floor(.4*w)-1)-centre(warped,Math.ceil(.6*w))),
@@ -205,9 +209,47 @@ const server = http.createServer((req,res)=>{
     assert.ok(edgeShape.weak>0&&edgeShape.strong>edgeShape.weak*1.5&&edgeShape.disabled===0,JSON.stringify(edgeShape));
     assert.ok(edgeShape.warpDelta>1000&&edgeShape.scaleDelta>1000&&edgeShape.uvDelta>1000&&edgeShape.bandMovement>1,JSON.stringify(edgeShape));
     assert.ok(edgeShape.seamError<2&&edgeShape.gap===0,JSON.stringify(edgeShape));
+    assert.ok(edgeShape.growRatio>1.4&&edgeShape.uvGrowRatio>1.4&&edgeShape.grownGap===0,JSON.stringify(edgeShape));
     assert.equal(await page.locator('label[for="ms_dist"]').textContent(),'Edge distortion');
     assert.equal(await page.locator('#ms_edgeDistortScale').count(),1);
-    console.log('PASS Edge strength controls the band, and distortion moves it in UV and World modes across a split mesh');
+    assert.equal(await page.locator('#ms_edgeGrow').count(),1);
+    console.log('PASS Edge strength, growth, and distortion control the band in UV and World modes');
+
+    const useWear=await page.evaluate(async()=>{
+      const G=__gs,{w,h}=G.doc,ao=G.makeTarget(w,h,8,false),rgba=new Uint8Array(w*h*4);
+      for(let i=0;i<rgba.length;i+=4){
+        const v=(i/4)%w<w/2?0:255;
+        rgba[i]=rgba[i+1]=rgba[i+2]=v;rgba[i+3]=255;
+      }
+      G.writeRegion(ao,0,0,w,h,rgba);
+      G.doc.meshMaps={ao};
+      const L=G.cmdNewFillLayer({name:'Contact wear',maps:{base:{c:[1,1,1]}}});
+      const row=G.msAdd(L,'gen',{p:{...G.msGenDefaults('useWear'),proj:'uv',edgeStrength:0,distort:0,
+        edgeGrow:0,scratchAmount:0,breakup:0,cavityProtection:1,contactAmount:1,metalScan:''}});
+      const sample=()=>{
+        L.mask._key=null;G.msUpdate(L);
+        const data=G.captureRegionNow(L.mask.target,0,0,w,h).data;
+        const total=(start,end)=>data.reduce((sum,v,i)=>sum+(i%4===0&&(i/4)%w>=start&&(i/4)%w<end?v:0),0);
+        return {shadow:total(0,w/2),exposed:total(w/2,w)};
+      };
+      const contact=sample();
+      row.p.contactAxis='-z';
+      const turned=sample();
+      row.p.contactAxis='';
+      const scans=['grunge-concrete-pores','grunge-concrete-cracks','grunge-oxidized-steel','grunge-scuffed-steel'];
+      const found=G.txItems().filter(t=>t.kind==='photo'&&scans.includes(t.id)).length;
+      for(const id of scans)await G.txTarget({kind:'photo',id});
+      row.p.metalScan='grunge-scuffed-steel';
+      const scanned=sample();
+      row.p.contactAmount=0;
+      const disabled=sample();
+      return {contact,turned,scanned,disabled,found};
+    });
+    assert.ok(useWear.found===4&&useWear.contact.exposed>1000&&useWear.contact.shadow===0&&useWear.turned.exposed<useWear.contact.exposed*.05,JSON.stringify(useWear));
+    assert.ok(useWear.scanned.exposed>0&&useWear.scanned.exposed<useWear.contact.exposed&&useWear.disabled.exposed===0,JSON.stringify(useWear));
+    assert.equal(await page.locator('#ms_g').inputValue(),'useWear');
+    assert.equal(await page.locator('#ms_contactAmount').count(),1);
+    console.log('PASS Use Wear adds directional contact scuffs to exposed areas and reads the new scans offline');
 
     const damage=await page.evaluate(()=>{
       const G=__gs;

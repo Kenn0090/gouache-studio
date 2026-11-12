@@ -1,0 +1,82 @@
+[
+  {
+    "slug": "grunge-concrete-pores",
+    "name": "Concrete Pores",
+    "category": "Grunge",
+    "source": "https://polyhaven.com/a/worn_concrete_floor",
+    "author": "Dimitrios Savva",
+    "license": "CC0-1.0",
+    "processing": "Wrapped 9 px local height subtraction emphasizes surface pores. Mixed with leveled roughness. Seamless lossless grayscale WebP.",
+    "downloads": [
+      {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/worn_concrete_floor/worn_concrete_floor_disp_1k.png",
+        "sha256": "bbaf3145f247646e200fde30083e22789b95ee0b859dd43d1acc723659641ea8"
+      },
+      {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/worn_concrete_floor/worn_concrete_floor_rough_1k.png",
+        "sha256": "3f6df261ef22eee56c6411b9cc4c9177465b22db43b7f2e984770afc34bdd626"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "53119f7b8d92f0a8fcd78681d8b7525f6025c5aa836e592ff4d6aa1c2be44ef4"
+  },
+  {
+    "slug": "grunge-concrete-cracks",
+    "name": "Cracked Concrete",
+    "category": "Grunge",
+    "source": "https://polyhaven.com/a/damaged_concrete_floor",
+    "author": "Rob Tuytel",
+    "license": "CC0-1.0",
+    "processing": "Wrapped 21 px local height subtraction isolates recessed damage. Mixed with the inverted, leveled photo luminance. Seamless lossless grayscale WebP.",
+    "downloads": [
+      {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/damaged_concrete_floor/damaged_concrete_floor_disp_1k.png",
+        "sha256": "51722f8488272d9142ab3acb7d2584e34d8876c14e4bfd0901d5342a3c4b3a27"
+      },
+      {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/damaged_concrete_floor/damaged_concrete_floor_diff_1k.png",
+        "sha256": "1be8dc9525c1f11a700fdc733673c854fbe9f98d16b679ed943e64c59918d8ac"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "664de825cb3a6766b23816cb40263a63d20010fa9d76c26627139bc10f1dc536"
+  },
+  {
+    "slug": "grunge-oxidized-steel",
+    "name": "Oxidized Steel",
+    "category": "Grunge",
+    "source": "https://polyhaven.com/a/rusty_metal_06",
+    "author": "Amal Kumar",
+    "license": "CC0-1.0",
+    "processing": "Extracted oxidation from red minus blue in the photo and normalized the levels. Seamless lossless grayscale WebP.",
+    "downloads": [
+      {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/rusty_metal_06/rusty_metal_06_diff_1k.png",
+        "sha256": "6964511f483f90d01f92137478f854639a933791d73c8a50e7f8811db7eeed6b"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "373d20f1000802976fbfb73c64e202bef739b006d5b447e072b8bd0985c9aa92"
+  },
+  {
+    "slug": "grunge-scuffed-steel",
+    "name": "Scuffed Steel",
+    "category": "Grunge",
+    "source": "https://polyhaven.com/a/blue_metal_plate",
+    "author": "Rob Tuytel",
+    "license": "CC0-1.0",
+    "processing": "Cropped a single plate to omit its rails, overlapped each axis with a 54 px cosine crossfade, then isolated fine abrasions using a wrapped blur. Matched opposite borders across six pixels after resizing. Seamless lossless grayscale WebP.",
+    "downloads": [
+      {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/blue_metal_plate/blue_metal_plate_rough_1k.png",
+        "sha256": "db0cee2879a04f6449f8abd4dbe51b9ba4be939052dc27dd8f8c2bcee8d2c402"
+      }
+    ],
+    "width": 512,
+    "height": 512,
+    "outputSha256": "1ed9033e3cf3636622fc5d7cb31348b101995fb85de9666910fa749b39d0c7e6"
+  }
+]

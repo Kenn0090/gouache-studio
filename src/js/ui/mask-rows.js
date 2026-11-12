@@ -163,7 +163,7 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
         el('p',{class:'note',text:'Add sums the inputs. Lightest keeps the strongest. Intersect keeps their overlap and skips missing maps. Bake the mesh maps to get the most detail.'}));
       return;
     }
-    const choose=sel('ms_g','Preset',MS_GENS,'g'),input=choose.querySelector('select');input.onchange=()=>{ed(x=>Object.assign(x.p,['light','linear','radial','comic','metalWear',...MS_PAINT_DAMAGE].includes(input.value)?msGenDefaults(input.value):{g:input.value}));renderLayers();renderMatEd(true);};box.append(choose);
+    const choose=sel('ms_g','Preset',MS_GENS,'g'),input=choose.querySelector('select');input.onchange=()=>{ed(x=>Object.assign(x.p,['light','linear','radial','comic',...MS_WEAR_GENS,...MS_PAINT_DAMAGE].includes(input.value)?msGenDefaults(input.value):{g:input.value}));renderLayers();renderMatEd(true);};box.append(choose);
     box.append(chk('ms_uvWrap','UV wrap',p.uvWrap!==false,v=>ed(x=>{x.p.uvWrap=v;})));
     const fresh=['light','linear','radial','comic'].includes(p.g);
     if(fresh){for(const [k,v] of Object.entries(msGenDefaults(p.g)))if(p[k]==null)p[k]=v;
@@ -175,13 +175,14 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
       if(p.g==='comic'){const style=sel('ms_comicStyle','Style',[['shade','Shading and dots'],['shadow','Solid ink shadows'],['dots','Halftone dots']],'comicStyle');style.querySelector('select').addEventListener('change',()=>renderMatEd(true));box.append(style);if(p.comicStyle==='shade')box.append(S('ms_bands','Shading bands','bands',2,6,1,v=>String(v)));if(p.comicStyle!=='shadow')box.append(S('ms_dots','Dot density','dots',4,120,1,v=>String(v)),S('ms_dotSize','Dot size','dotSize',0,.8,.01,pct),S('ms_dotAngle','Dot angle','dotAngle',-180,180,1,v=>v+'°'));}
       box.append(S('ms_amt','Offset','amount',0,1,.01,pct),S('ms_con','Contrast','contrast',.3,6,.05),inv(),el('p',{class:'note',text:p.g==='light'||p.g==='comic'?'Follows surface normals; Cavity shading uses baked AO. Change the angles to move the mask across the model.':'Follows the model’s bounds. On a flat canvas it follows the image. Start and End can be reversed.'}));
     }else{
-      const metalWear=p.g==='metalWear',peeling=p.g==='peelingPaint',bubbles=p.g==='paintBubbles';
+      const wear=MS_WEAR_GENS.includes(p.g),useWear=p.g==='useWear',peeling=p.g==='peelingPaint',bubbles=p.g==='paintBubbles';
       const has=[msMeshTex('curv')&&'curvature',msMeshTex('ao')&&'AO',v3.mesh&&'the model'].filter(Boolean);
-      const note=metalWear?'Edge distortion bends the wear along the model. Scratch reach controls how far scuffs spread onto flat areas.'
+      const note=useWear?'Contact wear adds scuffed patches to exposed surfaces. Use Contact faces to favor the parts most often touched.'
+        :wear?'Edge growth spreads the wear outward from exposed edges. Edge distortion bends the band.'
         :peeling?'Invert the damage mask on your top coat. Use a second row with the same preset and seed for lifted edges or coating relief in Height.'
         :bubbles?'Makes clusters of rounded paint blisters. Use this mask on a fill with Height to give the bubbles relief.'
         :'Uses '+(has.length?has.join(', '):'the document’s maps')+'. Bake curvature and AO for the best results.';
-      if(metalWear)p.cavityProtection??=.75;
+      if(wear)p.cavityProtection??=.75;
       const scanSelect=(id,label,key,sources)=>{
         const row=sel(id,label,[['','None'],...sources.map(({slug,name})=>[slug,name])],key);
         const picker=row.querySelector('select');
@@ -221,18 +222,22 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
         }
       }
       box.append(S('ms_amt',bubbles?'Density':'Amount','amount',0,1,.01,pct),
-        S('ms_w',metalWear?'Edge width':peeling?'Flake spread':bubbles?'Bubble radius':'Width','width',0,1,.01,pct),
-        ...(metalWear?[
+        S('ms_w',wear?'Edge width':peeling?'Flake spread':bubbles?'Bubble radius':'Width','width',0,1,.01,pct),
+        ...(wear?[
           S('ms_edgeStrength','Edge strength','edgeStrength',0,2,.01,pct,1),
+          S('ms_edgeGrow','Edge growth','edgeGrow',0,1,.01,pct,0),
           S('ms_dist','Edge distortion','distort',0,1,.01,pct),
           S('ms_edgeDistortScale','Edge distortion scale','edgeDistortScale',1,32,.5,v=>String(v),9)
         ]:[]),
-        metalWear?S('ms_cavityProtection','Cavity protection','cavityProtection',0,1,.01,pct):null,
-        S('ms_brk','Breakup','breakup',0,1,.01,pct),metalWear?null:S('ms_dist','Distort','distort',0,1,.01,pct),
+        wear?S('ms_cavityProtection','Cavity protection','cavityProtection',0,1,.01,pct):null,
+        S('ms_brk','Breakup','breakup',0,1,.01,pct),wear?null:S('ms_dist','Distort','distort',0,1,.01,pct),
         S('ms_con','Contrast','contrast',.3,6,.05),
-        S('ms_scale',peeling||bubbles?'Pattern frequency':'Noise size','scale',.5,40,.5),S('ms_seed','Seed','seed',1,99,1,v=>String(v)));
-      if(metalWear){
-        const scan=scanSelect('ms_metalScan','Metal scan','metalScan',TX_METAL_SCANS);
+        S('ms_scale',useWear?'Contact scale':peeling||bubbles?'Pattern frequency':'Noise size','scale',.5,40,.5),S('ms_seed','Seed','seed',1,99,1,v=>String(v)));
+      if(wear){
+        if(useWear)box.append(S('ms_contactAmount','Contact wear','contactAmount',0,1,.01,pct,.72),
+          sel('ms_contactAxis','Contact faces',[['','All exposed faces'],['up','Top'],['down','Bottom'],
+            ['x','Right (+X)'],['-x','Left (−X)'],['z','Front (+Z)'],['-z','Back (−Z)']],'contactAxis'));
+        const scan=scanSelect('ms_metalScan',useWear?'Wear scan':'Metal scan','metalScan',[...TX_METAL_SCANS,...TX_WEAR_SCANS]);
         box.append(scan);
         if(scan.querySelector('select').value)box.append(
           S('ms_metalScanAmount','Scan influence','metalScanAmount',0,1,.01,pct,.65),

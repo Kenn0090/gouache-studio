@@ -1,3 +1,10 @@
+## 0.97.7
+
+- **171 built-in grunges**, including 50 new textures for concrete, metal, fabric, leather, wood, and ground. The new set includes **Concrete Fractures**, five scratch maps, and five dent maps.
+- **Photo to Grunge** in 2D Paint has live presets for cracks, stains, fabric, and tonal detail. Make the result seamless and save it to **Textures → Yours** to reuse it in 3D Paint.
+- **Edge growth** widens Metal Edge Wear. The new **Use Wear** generator adds directional contact scuffs and includes four concrete and steel scan options.
+- **Save to Materials** now keeps the layer's opacity and per-channel opacity through reapplying, project reuse, and `.gmat` export and import.
+
 ## 0.97.6
 
 - **Smart Materials** keep separate opacity values for each channel on layers and groups when saved, exported, and applied. Re-save older presets from the original layer stack to capture values those presets omitted.

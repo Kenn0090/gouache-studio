@@ -9,7 +9,7 @@ async function paReady(){const jobs=paShelf.pending.get(doc.projectAssets);while
 /* Include assets in close prompts and recoveries even when the painting pixels did not change. */
 function paDocSig(u,D){const last=u.length?u[u.length-1]:null,list=D.projectAssets,v=list?._ver||0;if(!v)return last;const sig=list._sig;if(sig?.last===last&&sig.version===v)return sig;return list._sig={last,version:v};}
 function paDocSaved(u,D){const list=D.projectAssets;return (!u.length||u[u.length-1]===D.savedAt)&&(list?._ver||0)===(list?._saved||0);}
-function paEncode(put){return (doc.projectAssets||[]).map(a=>{const rec=a.rec,out={kind:a.kind,rec:{id:rec.id,name:rec.name,t:rec.t,thumb:rec.thumb,fill:rec.fill,w:rec.w,h:rec.h,zf:rec.zf}};
+function paEncode(put){return (doc.projectAssets||[]).map(a=>{const rec=a.rec,out={kind:a.kind,rec:{id:rec.id,name:rec.name,t:rec.t,thumb:rec.thumb,fill:rec.fill,w:rec.w,h:rec.h,zf:rec.zf,op:rec.op,mapOpacities:rec.mapOpacities}};
   if(rec.z)out.rec.blob=put(rec.z);if(rec.imgs){out.rec.imgs={};for(const [k,im] of Object.entries(rec.imgs))out.rec.imgs[k]={w:im.w,h:im.h,zf:im.zf,blob:put(im.z)};}return out;});}
 function paDecode(items,read){return (items||[]).map(a=>{const rec=Object.assign({},a.rec);if(rec.blob){rec.z=read(rec.blob);delete rec.blob;}if(rec.imgs){rec.imgs={};for(const [k,im] of Object.entries(a.rec.imgs))rec.imgs[k]={w:im.w,h:im.h,zf:im.zf,z:read(im.blob)};}return {kind:a.kind,rec};});}
 function paVisible(id){const b=$(id);return b&&b.isConnected&&b.getBoundingClientRect().width>0&&b.getBoundingClientRect().height>0;}
@@ -29,7 +29,8 @@ function paRender(){const box=$('#paBody');if(!box||!paVisible('#paBody'))return
   box.replaceChildren(tabs,el('p',{class:'note',text:'Current document: '+doc.name+'. Layers, source textures and saved conversions. Drag an asset onto the layer stack to reuse it.'}),el('div',{class:'chips'},search,seg([['s','S'],['m','M'],['l','L']],paShelf.size,v=>{paShelf.size=v;paRender();},'Project thumbnail size')),seg([['all','All'],['tex','Textures'],['mat','Materials']],paShelf.filter,v=>{paShelf.filter=v;paRender();},'Project asset type'),grid,items.length?null:el('p',{class:'note',text:'Paint a layer, send artwork from Paint, or turn a canvas into a texture or material. It will appear here.'}));}
 async function paUse(e,T){const owner=doc.root;let rec,source,dispose=false;try{
   if(e.asset)rec=await pxDeep(e.asset.rec,false);if(doc.root!==owner)throw new Error('The document changed. Choose the asset again.');
-  if(e.kind==='mat'){if(e.layer){rec={name:e.name,fill:fillClone(e.layer.fill),imgs:{}};const imgs=fillImgsOf(e.layer);insertAt=T?.at||null;try{return cmdNewFillLayer({name:rec.name,maps:rec.fill.maps,proj:rec.fill.proj,triSharp:rec.fill.triSharp,hStr:rec.fill.hStr,xf:rec.fill.xf,rep:rec.fill.rep,front:rec.fill.front,decal:rec.fill.decal,imgs});}finally{insertAt=null;}}
+  if(e.kind==='mat'){if(e.layer){const L=e.layer;insertAt=T?.at||null;
+      try{return cmdNewFillLayer({...L.fill,name:e.name,imgs:fillImgsOf(L),...layerOpacitySettings(L)});}finally{insertAt=null;}}
     insertAt=T?.at||null;try{return matApply(rec);}finally{insertAt=null;for(const t of Object.values(rec._t||{}))disposeTarget(t);}}
   source=e.source;if(rec){source=makeTarget(rec.w,rec.h,8,false);writeRegion(source,0,0,rec.w,rec.h,rec.data);dispose=true;}if(!source?.tex)throw new Error('This layer is no longer available.');
   if(T?.mask){const L=T.mask;selectOnly(L);const et=maskTargetOf(L);if(et)pictureIntoMask(et,source,0,0,doc.w,doc.h,'Project texture into mask');return;}

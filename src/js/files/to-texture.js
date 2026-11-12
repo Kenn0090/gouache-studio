@@ -23,10 +23,29 @@ function dlgToTexture(L){
   sync();
   openDialog({title:L?'Turn layer into a texture':'Turn canvas into a texture',body:el('div',{class:'dlg-grid'},el('div',{class:'frow'},el('label',{for:'ttName',text:'Name'}),nm),el('div',{class:'sub',text:'What is it?'}),types,note),okLabel:'Make texture',
     onOk(){ttMake(L,type,(name||'Texture').trim()||'Texture');}});}
+/* The texture cache takes ownership of the GPU target once the library write succeeds. */
+async function ttSaveGrunge(t,name,showYours=false){
+  const owner=paOwner(),root=owner.root;
+  const projectAssets=owner.projectAssets||(owner.projectAssets=[]);
+  let rec;
+  try{rec=await txAddTarget(t,name);}
+  catch(e){disposeTarget(t);throw e;}
+  const raw=await store.getRaw(rec.id,'textures');
+  await paRemember('tex',raw,{projectAssets},true);
+  if(doc.root===root){
+    if(showYours){tx.show='mine';tx.category='all';tx.query='';}
+    showPanel('textures');
+  }
+  renderTextures();
+  toast('Added “'+name+'” to Textures › Yours.');
+}
 async function ttMake(L,type,name){
   const t=ttSource(L);if(!t){toast('Nothing to turn into a texture: the area is empty.');return;}
-  if(type==='grunge'){doc.projectAssets=doc.projectAssets||[];const owner=docState().doc;try{const rec=await txAddTarget(t,name),raw=await store.getRaw(rec.id,'textures');await paRemember('tex',raw,owner,true);}catch(e){disposeTarget(t);toast('Could not save the texture: '+(e.message||e));return;}
-    if(typeof renderTextures==='function')renderTextures();if(typeof showPanel==='function')try{showPanel('textures');}catch(e){}toast('Added “'+name+'” to Textures.');return;}
+  if(type==='grunge'){
+    try{await ttSaveGrunge(t,name);}
+    catch(e){toast('Could not save the texture: '+(e.message||e));}
+    return;
+  }
   if(type==='tip'){const S=Math.min(512,Math.max(t.w,t.h)),s=makeTarget(S,S,8,false);copyScaled(t,s);const d=captureRegionNow(s,0,0,S,S).data;disposeTarget(s);disposeTarget(t);
     const v=new Uint8Array(S*S);for(let i=0;i<S*S;i++)v[i]=Math.round((d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11)*(d[i*4+3]/255));
     const p=addCustomTip(name+' tip',S,S,v);toast(p?'Made the brush tip “'+p.name+'”: it is in Custom tips and selected.':'This picture is too dark to make a brush tip from.');return;}

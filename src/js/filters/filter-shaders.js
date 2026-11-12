@@ -7,6 +7,21 @@ ivec2 wrapP(ivec2 p,ivec2 s,int w){ return w==1?((p%s)+s)%s:clamp(p,ivec2(0),s-1
 const FILTER_FS={
   /* brightness of a colour image, as opaque grey (transparent counts as black) */
   lum:GL_ST+`uniform sampler2D uSrc; void main(){ vec4 c=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0); float v=lumOf(st(c))*c.a; o=vec4(vec3(v),1.0); }`,
+  photoGrunge:GL_ST+`
+uniform sampler2D uSrc, uBlur;
+uniform float uDetail, uContrast, uBalance;
+uniform bool uInvert;
+void main(){
+  ivec2 p=ivec2(gl_FragCoord.xy);
+  vec4 c=texelFetch(uSrc,p,0), b=texelFetch(uBlur,p,0);
+  float luma=lumOf(st(c));
+  float localLuma=b.a>1e-5?lumOf(st(b)):luma;
+  float localDetail=0.5+(localLuma-luma)*2.0;
+  float value=mix(1.0-luma,localDetail,uDetail);
+  value=clamp((value-0.5)*uContrast+0.5+uBalance,0.0,1.0);
+  if(uInvert)value=1.0-value;
+  o=vec4(vec3(value*c.a),c.a);
+}`,
   /* height from brightness: big shapes (blurred) and fine detail (what the blur removed), each with its own weight */
   hgen:`uniform sampler2D uL; uniform sampler2D uB; uniform float uLarge; uniform float uFine; uniform float uContrast; uniform int uInv;
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy); float l=texelFetch(uL,p,0).r, b=texelFetch(uB,p,0).r;

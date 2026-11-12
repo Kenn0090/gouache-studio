@@ -22,6 +22,8 @@ const order = JSON.parse(read('src/js/order.json')).order;
 const APP_VERSION = JSON.parse(read('package.json')).version;
 const PAINT_SCANS = JSON.parse(read('assets/grunge/paint-scan-sources.json')).map(({slug,name})=>({slug,name}));
 const METAL_SCANS = JSON.parse(read('assets/grunge/metal-scan-sources.json')).map(({slug,name,category})=>({slug,name,category}));
+const WEAR_SCANS = JSON.parse(read('assets/grunge/wear-scan-sources.json')).map(({slug,name,category})=>({slug,name,category}));
+const EXTRA_GRUNGE = JSON.parse(read('assets/grunge/extra-grunge-sources.json')).map(({slug,name,category})=>[slug,name,category]);
 /* the Blender add-on (assets/addons), carried inside the app so it can be saved from the Export window */
 const UNREAL_SETUP = fs.existsSync(r('assets/addons/gouache_unreal_setup.py')) ? read('assets/addons/gouache_unreal_setup.py') : '';
 /* (0.95.5) built-in smart material / smart mask thumbnails rendered on the Material preview model (scripts/smart-thumbs.cjs) */
@@ -57,7 +59,7 @@ const GR_SRC = {};
   for (const e of ll.grunge || []) GR_SRC[sl(e.name)] = { id: e.id, ch: e.ch || 'Opacity', inv: !!e.invert, lo: e.lo, hi: e.hi, g: e.gamma };
   for (const e of ll.grungeOld || []) GR_SRC[e.slug] = { id: e.id, ch: e.ch || 'Opacity', inv: !!e.invert, lo: e.lo, hi: e.hi, g: e.gamma }; }
 const LITE = process.env.GOUACHE_LITE === '1'; /* the smaller installer: no Library files, skies or grunge inside; they are fetched when used (File > Content keeps copies for offline) */
-const js = `const APP_VERSION='${APP_VERSION}';\nconst GR_SRC=${JSON.stringify(GR_SRC)};\nconst SM_THUMBS=${JSON.stringify(SM_THUMBS)};\nconst GM_LITE=${LITE};\nconst TX_PREVIEWS=${JSON.stringify(TX_PREVIEW_DATA)};\nconst TX_PAINT_SCANS=${JSON.stringify(PAINT_SCANS)};\nconst TX_METAL_SCANS=${JSON.stringify(METAL_SCANS)};\nconst GM_BUNDLED=${JSON.stringify(GMATS).replace(/<\//g, '<\\/')};\nconst UNREAL_SETUP=${JSON.stringify(UNREAL_SETUP).replace(/<\//g, '<\\/')};\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\nconst CHANGELOG_MD=${JSON.stringify(CHANGELOG).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
+const js = `const APP_VERSION='${APP_VERSION}';\nconst GR_SRC=${JSON.stringify(GR_SRC)};\nconst SM_THUMBS=${JSON.stringify(SM_THUMBS)};\nconst GM_LITE=${LITE};\nconst TX_PREVIEWS=${JSON.stringify(TX_PREVIEW_DATA)};\nconst TX_PAINT_SCANS=${JSON.stringify(PAINT_SCANS)};\nconst TX_METAL_SCANS=${JSON.stringify(METAL_SCANS)};\nconst TX_WEAR_SCANS=${JSON.stringify(WEAR_SCANS)};\nconst TX_EXTRA_GRUNGE=${JSON.stringify(EXTRA_GRUNGE)};\nconst GM_BUNDLED=${JSON.stringify(GMATS).replace(/<\//g, '<\\/')};\nconst UNREAL_SETUP=${JSON.stringify(UNREAL_SETUP).replace(/<\//g, '<\\/')};\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\nconst CHANGELOG_MD=${JSON.stringify(CHANGELOG).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
 const studioFonts=JSON.parse(read('assets/fonts/manifest.json'));
 const studioFontCss=studioFonts.map(f=>`@font-face{font-family:"${f.family}";font-style:normal;font-weight:${f.weight};font-display:swap;src:url(${f.file}) format("truetype")}`).join('\n');
 const css = read('src/styles/app.css');
@@ -112,7 +114,7 @@ function buildDesktop() {
   if (!LITE) for (const g of GMATS) copy('assets/materials/' + g.file, `${out}/materials/${g.file}`);
   for (const g of GMATS) if(g.preview) copy('assets/material-previews/' + g.preview, `${out}/material-previews/${g.preview}`);
   // Generator scans are available offline in both installers.
-  const grungeFiles = LITE ? [...PAINT_SCANS,...METAL_SCANS].map(({slug})=>slug+'.webp') : GRUNGE;
+  const grungeFiles = LITE ? [...PAINT_SCANS,...METAL_SCANS,...WEAR_SCANS].map(({slug})=>slug+'.webp') : GRUNGE;
   for (const f of grungeFiles) copy('assets/grunge/' + f, `${out}/grunge/${f}`);
   for (const f of RAWFILES) copy('assets/raw/' + f, `${out}/raw/${f}`);
   for(const f of STUDIO) copy('assets/studio/'+f,`${out}/studio/${f}`);

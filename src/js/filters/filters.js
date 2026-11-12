@@ -49,6 +49,26 @@ function fxDialog(o){if(typeof o==='string')o=FX[o];const et=needTarget();if(!et
   const canKeep=!et.isMask&&!L.quick&&!o.noLayer&&ui.mode!=='anim';
   if(canKeep)body.append(chk('fxKeep','Keep editable (adds a filter layer clipped to this layer)',false,x=>{keep=x;}));
   body.append(previewChk('fxPrev',prefs.livePreview,x=>{if(!preview)return;preview.off=!x;if(x)draw();requestRender(true);}));
+  if(o.saveTexture){
+    const name=el('input',{type:'text',id:'fxTextureName',value:baseName(et.node.name)+' grunge'});
+    const save=el('button',{type:'button',class:'btn sm',text:'Save to Textures',async onclick(){
+      save.disabled=true;
+      const textureName=name.value.trim()||'Grunge';
+      let t;
+      try{
+        // Save the converted image, before the canvas preview blends in unselected pixels or channels.
+        o.render(L.target,previewT,v,ctx);
+        t=makeTarget(previewT.w,previewT.h,8,true);
+        copyScaled(previewT,t);
+        chanLimit(et);selLimit(et);requestRender(true);
+        const saving=ttSaveGrunge(t,textureName,true);
+        t=null;
+        await saving;
+      }catch(e){toast('Could not save the texture: '+(e.message||e));}
+      finally{if(t)disposeTarget(t);save.disabled=false;}
+    }});
+    body.append(el('div',{class:'frow'},el('label',{for:'fxTextureName',text:'Texture name'}),name),save);
+  }
   preview={L:et.node,isMask:et.isMask,et,off:!prefs.livePreview};upd();
   openDialog({title:o.title,body,float:true,wide:!!o.wide,okLabel:'Apply',onOk(){cancelAnimationFrame(pend);pend=0;
       if(keep){preview=null;addFxLayer(o.id,fxClean(v),et.node,true);if(typeof apiRecFx==='function')apiRecFx(o.id,fxClean(v),true);return;}
@@ -354,6 +374,39 @@ fxDef('tile',{title:'Tile',note:'Repeats the image across and down, smaller each
   render(src,dst,v){const nx=Math.round(v.nx),ny=v.uni===true?nx:Math.round(v.ny);run(P.f_tile,dst,{uSrc:src.tex,uN:[nx,ny],uShift:v.sh,uRot:v.rot*Math.PI/180,uSeed:v.seed||1,uFlip:!!v.flip});}});
 fxDef('seamless',{title:'Make seamless',note:'Blends the edges with the middle of the image so it repeats without visible seams. Check it with Tile mode.',
   defs:[{key:'w',label:'Blend width',min:.05,max:1,step:.01,value:.35,fmt:pct}],render(src,dst,v){run(P.f_seam,dst,{uSrc:src.tex,uW:v.w});}});
+
+fxDef('photoGrunge',{
+  title:'Photo to Grunge',
+  note:'Extract cracks, stains or fabric grain as a grayscale texture. Save to Textures keeps a library copy. Apply updates the layer.',
+  saveTexture:true,
+  noLayer:true,
+  presets:[
+    ['Cracks',{radius:18,detail:.9,contrast:2.4,balance:-.3,invert:false}],
+    ['Stains',{radius:40,detail:.48,contrast:2,balance:-.14,invert:false}],
+    ['Fabric',{radius:5,detail:1,contrast:3,balance:-.18,invert:false}],
+    ['Tonal',{radius:18,detail:0,contrast:1,balance:0,invert:true}]
+  ],
+  defs:[
+    {key:'radius',label:'Detail size',min:2,max:48,step:1,value:18,fmt:px},
+    {key:'detail',label:'Lighting removal',min:0,max:1,step:.01,value:.9,fmt:pct},
+    {key:'contrast',label:'Contrast',min:.25,max:5,numericMax:Infinity,step:.05,value:2.4,fmt:pct},
+    {key:'balance',label:'Balance',min:-.5,max:.5,step:.01,value:-.3,fmt:pct}
+  ],
+  checks:[['invert','Invert',false],['seamless','Make seamless',false]],
+  render(src,dst,v){
+    const blur=v.detail>0?acquireD(dst.depth):null;
+    const grunge=v.seamless?acquireD(dst.depth):dst;
+    try{
+      if(blur)gaussian(src,blur,v.radius);
+      run(P.f_photoGrunge,grunge,{uSrc:src.tex,uBlur:(blur||src).tex,uDetail:v.detail,
+        uContrast:v.contrast,uBalance:v.balance,uInvert:!!v.invert});
+      if(v.seamless)FX.seamless.render(grunge,dst,{w:.35,uvWrap:v.uvWrap});
+    }finally{
+      if(blur)release(blur);
+      if(grunge!==dst)release(grunge);
+    }
+  }
+});
 
 /* menu entry points */
 const FX_NOW=new Set(['desat','invert']);

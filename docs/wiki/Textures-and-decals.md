@@ -21,7 +21,7 @@ In 2D Paint, drag a shelf texture onto the canvas or an ordinary layer row to cr
 ## Textures panel
 The **Textures** panel (next to Materials) holds grunge maps and textures you can use anywhere.
 
-- **Photo grunge:** 76 real scans (1K; File › Content… fetches them at 4K): streaks, water rings, specks, stains, drips, splotches, spatter, scratches, micro scratches, chips, dirt, dust, grime, speckle, fingerprints, a hand print, smudges, oily marks, smears, wipes and swipes, eight kinds of leak streaks, and (new) brushed and tangled scratches, ink smears and greasy swirls, bubble stains, eight kinds of running drips (**Runs**), cracks (**Cracks**, crazed, dry, cracked and broken plates), rust pits, worn paint and frost veins. They are grey pictures where white shows the marks.
+- **Photo grunge** has 171 built-in grayscale textures, including scans and blends. Browse **Metal** for corrosion and scuffs, **Scratches** for fine abrasion and gouges, **Dents** for dings and impressions, and **Fabric** for denim, linen, and leather detail.
 - **Generated:** 12 seamless patterns made by the app: Clouds, Cells, Cracks, Grain, Ridges, Streaks, Fine scratches, Blotches, Dots, Weave, Bricks and Pits.
 - **Yours:** **Import…** pictures (PNG, JPG, WebP, TGA…) or a **.gtex** pack. They are kept on this computer. **Export pack…** saves all of yours in one .gtex file to share.
 
@@ -34,6 +34,10 @@ Click a texture to see what it can do:
 
 ### Wrinkles
 Eight seamless generated wrinkle maps (category **Wrinkles**): soft folds, sharp creases, folds fanning from pinch points, fine skin and leather, crumpled paper, a bunched sleeve, drag creases and crumpled foil. Use them as a mask picture, a material height or a stencil to put wrinkles on shirts and sleeves.
+
+### Photo to Grunge
+
+In **2D Paint**, select a photo layer and choose **Filter › Photo to Grunge…**. Choose **Cracks**, **Stains**, **Fabric**, or **Tonal**, then adjust detail size, lighting removal, contrast, and balance with the live preview. Turn on **Make seamless** to blend the edges for tiling. **Save to Textures** stores a library copy under **Yours** for masks, generators, and material channels. **Apply** updates the layer and can be undone.
 
 ## Decals (3D Paint)
 The **Decals** panel has bolts, rivets, cross and slot screws, a vent grille, a round vent, a warning label, hazard stripes, a serial plate, a crack, a bullet hole and scratches.

@@ -20,6 +20,8 @@ const TX_PHOTO=[['streaks','Streaks'],['rings','Water rings'],['specks','Specks'
 TX_PHOTO.push(...TX_WORKSHOP.map(r=>[r.slug,r.name,r.category]));
 TX_PHOTO.push(...TX_PAINT_SCANS.map(({slug,name})=>[slug,name,'Grunge']));
 TX_PHOTO.push(...TX_METAL_SCANS.map(({slug,name,category})=>[slug,name,category]));
+TX_PHOTO.push(...TX_WEAR_SCANS.map(({slug,name,category})=>[slug,name,category]));
+TX_PHOTO.push(...TX_EXTRA_GRUNGE);
 /* (0.95.6, Kenn: "put the grunges to use, with the Grunge Mixer") built-in mixes of the photo grunges, made with the Grunge Mixer's own blend maths (scripts/grunge-mixes.py) */
 const TX_MIXED=[['mix-battle-damage','Battle damage'],['mix-blade-scratches','Blade scratches'],['mix-handled-wear','Handled wear'],['mix-bullet-nicks','Bullet nicks'],['mix-panel-grime','Panel grime'],['mix-sandblasted','Sandblasted'],
   ['mix-ornate-tarnish','Ornate tarnish'],['mix-scorch','Scorch marks'],['mix-painterly','Painterly breakup'],['mix-mud-splash','Mud splash'],['mix-lichen','Lichen patches'],['mix-sun-bleach','Sun bleach']];
@@ -270,7 +272,7 @@ function txMenu(e,it){const pop=$('#menuPop');closeMenu();const L=doc.active,has
     ...(it.kind==='mine'?[el('div',{class:'msep'}),item('Delete…',()=>txDelete(it.rec))]:[]));
   pop.hidden=false;pop.style.left=Math.min(e.clientX,innerWidth-pop.offsetWidth-8)+'px';pop.style.top=Math.min(e.clientY+4,innerHeight-pop.offsetHeight-8)+'px';
   const off=ev=>{if(!pop.contains(ev.target)){pop.hidden=true;document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}
-const TX_CATEGORIES=['Scratches','Wrinkles','Grunge','Fabric','Patterns'];
+const TX_CATEGORIES=['Scratches','Dents','Wrinkles','Grunge','Fabric','Metal','Patterns'];
 function txCategory(id,name,category){return category||(/scratch|abrasion|brushed|hairline|scuff|gouge|tool scar/i.test(name)?'Scratches':/wrinkle|crease|crumple/i.test(name)?'Wrinkles':/fabric|weave|twill|herringbone|knit|basket/i.test(name)?'Fabric':/pattern|dots|bricks/i.test(name)?'Patterns':'Grunge');}
 function txItems(){const g=TX_GEN.map(([id,name])=>({kind:'gen',id,name,category:txCategory(id,name)})),p=TX_PHOTO.map(([id,name,category])=>({kind:'photo',id,name,category:txCategory(id,name,category)})),m=tx.mine.map(rec=>({kind:'mine',id:rec.id,name:rec.name,category:txCategory(rec.id,rec.name,rec.category),rec}));
   const items=tx.show==='gen'?g:tx.show==='photo'?p:tx.show==='mine'?m:[...m,...p,...g];return items.filter(it=>(tx.category==='all'||it.category===tx.category)&&it.name.toLowerCase().includes(tx.query.trim().toLowerCase()));}
@@ -289,4 +291,4 @@ function renderTextures(){const box=$('#txBody');if(!box)return;if(!tx.loaded){t
     el('div',{class:'row wrap'},category,search),el('p',{class:'note',text:items.length+' textures'}),
     el('div',{class:'chips'},el('button',{class:'btn sm',id:'txGrungeMix',text:'Grunge Mixer…',title:'Combine grunge textures with live preview',onclick:txMixOpen}),el('button',{class:'btn sm',id:'txFromCanvas',text:'From canvas…',title:'Turn the Paint canvas or the selection into a texture',onclick:()=>{if(ui.mode==='paint')dlgToTexture();else toast('Switch to the Paint tab first.');}}),el('button',{class:'btn sm',id:'txImport',text:'Import…',title:'Pictures, or a .gtex texture pack',onclick:txImport}),el('button',{class:'btn sm',id:'txExport',text:'Export pack…',title:'All your textures in one .gtex file to share',onclick:txExportPack}),el('div',{class:'seg matsize',role:'radiogroup','aria-label':'Texture thumbnail size'},...['s','m','l'].map(k=>el('button',{id:'txSize_'+k,type:'button',role:'radio','aria-checked':String(tx.size===k),text:k.toUpperCase(),class:tx.size===k?'on':'',onclick:()=>{tx.size=k;try{localStorage.setItem('gs.txSize',k);}catch(e){}renderTextures();}})))),
     items.length?el('div',{class:'matgrid',id:'txGrid'},...items.map(tile)):el('p',{class:'note',text:'No textures match these filters. Choose All categories or clear the search.'}),
-    el('p',{class:'note',text:'Click a texture for what to do with it. Sources: ambientCG, Poly Haven, Public Domain Pictures and OpenGameArt (CC0).'}));txPruneObserved();}
+    el('p',{class:'note',text:'CC0 textures from ambientCG, Poly Haven, Public Domain Pictures, OpenGameArt, Pixnio and TextureCan.'}));txPruneObserved();}

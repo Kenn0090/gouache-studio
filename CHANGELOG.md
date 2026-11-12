@@ -1,3 +1,10 @@
+## 0.97.7
+
+- **Textures** has 171 built-in grunges. The 50-map collection includes concrete fractures, rust, steel scratches and dents, fabric and leather grain, weathered wood, and ground textures. Browse the new **Metal** and **Dents** categories or use the existing **Scratches** and **Fabric** categories.
+- **Photo to Grunge** in 2D Paint turns a photo layer into a grayscale texture. Pick Cracks, Stains, Fabric, or Tonal, adjust the live preview, and turn on **Make seamless** for tiling. **Save to Textures** adds the result to **Yours** for use in masks and generators. **Apply** updates the layer.
+- **Metal Edge Wear** has **Edge growth** to spread wear beyond exposed edges. **Use Wear** adds directional scuffs to exposed areas and comes with four concrete and steel scan options.
+- **Save to Materials** keeps overall and per-channel layer opacity when a material is reapplied, shared as a `.gmat`, or reused from Projects. Re-save a material from the original layer to capture opacity missing from an older saved copy.
+
 ## 0.97.6
 
 - **Smart Materials** keep separate opacity values for each channel on layers and groups when saved, exported, and applied. Re-save older presets from the original layer stack to capture values those presets omitted.

@@ -15,7 +15,7 @@ const MENUS={
     ['Feather…','selFeather'],['Expand…','selExpand'],['Contract…','selContract'],['Smooth…','selSmooth'],'-',['Select layer pixels','selLayer','Ctrl+click thumbnail'],['Load selection…','selLoad']],
   Adjust:[['Color adjustments…','adjust','Ctrl+U'],['Levels…','levels','Ctrl+L'],['Curves…','curves','Ctrl+M'],['Hue / Saturation…','hueSat'],['Gradient map…','gradMap'],['De-light…','delight'],'-',
     ['Invert','invert','Ctrl+I'],['Desaturate','desat','Ctrl+Shift+U'],['Threshold…','threshold'],['Posterize…','posterize'],['Quantize…','quantize']],
-  Filter:[['Filter Gallery…','gallery','Ctrl+Shift+F'],['Embroidery patch…','embroidery'],['Mesh maps from material…','matConvert'],'-',
+  Filter:[['Filter Gallery…','gallery','Ctrl+Shift+F'],['Photo to Grunge…','photoGrunge'],['Embroidery patch…','embroidery'],['Mesh maps from material…','matConvert'],'-',
     ['Blur','sub',[['Gaussian blur…','blur'],['Box blur…','boxBlur'],['Radial blur…','radialBlur'],['Lens blur…','lensBlur'],['Surface blur…','surfBlur'],['Motion blur…','motionBlur'],['Drift blur…','driftBlur'],['Slope blur…','slopeBlur']]],
     ['Sharpen','sub',[['Sharpen…','sharpen'],['High pass…','highPass']]],
     ['Distort','sub',[['Warp…','warp'],['Distort…','distort'],['Glass…','glass'],['Acid…','acid']]],
@@ -45,6 +45,7 @@ Object.assign(actions,{wireToggle:()=>{if(!v3.on)toggle3D(true);v3SetWireMode(v3
 actions.clearContents=cmdClearLayer;
 actions.selColorRange=dlgColorRange;
 actions.paintEmboss=()=>fxMenu('paintEmboss');
+actions.photoGrunge=()=>{if(ui.mode==='paint')fxMenu('photoGrunge');else toast('Switch to the Paint tab to convert a photo.');};
 const LAYER_ONLY=['mergeVisible','stampVisible','flatten','tipFromLayer'];/* (0.58) the other layer commands work inside a frame */
 const checked={ws_painting:()=>dk.ws==='painting',ws_texturing:()=>dk.ws==='texturing',ws_paint3d:()=>dk.ws==='paint3d',ws_minimal:()=>dk.ws==='minimal',wsLock:()=>dk.lock,pn_color:()=>panelShown('color'),pn_brushes:()=>panelShown('brushes'),pn_tool:()=>panelShown('tool'),pn_maps:()=>panelShown('maps'),pn_layers:()=>panelShown('layers'),pn_chan:()=>panelShown('chan'),optBarToggle:()=>dk.L&&dk.L.opt,tbCols:()=>dk.L&&dk.L.tb.cols===2,tbSide:()=>dk.L&&dk.L.tb.side==='right',hints:()=>!prefs.hideHints,view3d:()=>v3.on,perf:()=>perf.on,depth8:()=>doc.depth===8,depth16:()=>doc.depth===16,tile:()=>doc.wrap,quickMask:()=>sel.quick};
 const pop=$('#menuPop');let openName=null;
@@ -81,6 +82,7 @@ const FILE_NOT={paint:['phOpen','phExport','impModel','p3BakeMenu','impSheet','i
 function menuTidy(list){const o=[];for(const it of list){if(it==='-'&&(!o.length||o[o.length-1]==='-'))continue;o.push(it);}while(o.length&&o[o.length-1]==='-')o.pop();return o;}
 function menuList(list,name){let l=list.filter(it=>platform.isDesktop||it==='-'||!['recent','checkUpdates'].includes(it[1]));
   if(name==='File'){const no=FILE_NOT[ui.mode]||[];l=fileGroup(menuTidy(l.filter(it=>it==='-'||!no.includes(it[1]))));}
+  if(name==='Filter'&&ui.mode!=='paint')l=l.filter(it=>it==='-'||it[1]!=='photoGrunge');
   if(name==='Help'&&!l.some(it=>it!=='-'&&it[1]==='setup')){const i=l.findIndex(it=>it!=='-'&&it[1]==='welcome');l=l.slice();l.splice(i>=0?i+1:l.length,0,['Launch screen (look and level)…','setup']);}
   if(name==='View'){if(ui.mode==='p3d')l=menuTidy(l.filter(it=>it==='-'||it[1]!=='view3d'));else l=l.map(it=>it!=='-'&&it[1]==='view3d'?['3D preview beside canvas',...it.slice(1)]:it);}
   return l.map(menuEntry);}

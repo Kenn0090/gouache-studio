@@ -96,6 +96,10 @@ This repeats across the texture's outer edges. It does not join separate UV isla
 
 **Across UV seams on a model:** in 3D Paint, Warp rows, the Warp filter and the Gaussian and Box blurs work on the model's surface, so both sides of a seam match. A generator's **Distort** roughens the edges and cavities on the surface too, and **Slope blur** smears along the surface.
 
+## Wear generators
+
+For worn metal, select a mask and add **Metal Edge Wear**. **Edge growth** spreads the band beyond exposed edges, and **Edge distortion** makes it irregular. Add **Use Wear** for directional scuffs on exposed areas. Choose a concrete or steel scan in the generator, or use **Choose from Textures** to add your own grunge to the breakup.
+
 ## Mesh-map Mask builder
 
 Choose **Mask builder** from Generators (including the 3D Paint mask right-click menu). It adds one live generator row with separate strengths for curvature edges, curvature cavities, AO cavities, facing direction, position gradient, height and thin areas. The inputs add together, followed by Offset, Contrast, Grunge breakup and Invert.

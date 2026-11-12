@@ -1,0 +1,1234 @@
+[
+  {
+    "slug": "grunge-denim-seams",
+    "name": "Denim Seams and Fade",
+    "category": "Fabric",
+    "family": "Fabric",
+    "source": "https://polyhaven.com/a/denim_fabric",
+    "author": "Rob Tuytel",
+    "license": "CC0-1.0",
+    "processing": "Broad fading from inverted photo luminance mixed with wrapped local height contrast. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/denim_fabric/denim_fabric_disp_1k.png",
+        "sha256": "a89ba29633bc9a8f8d1ec38911e5448ee30b003b155fa6e7a68decf01addffe2"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/denim_fabric/denim_fabric_diff_1k.jpg",
+        "sha256": "d6d0254e2c90768482b0be8cfdc16e18117acc92bad00d406fd4b9be24facdec"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "c3087fe7cec042fc4d5f5e1b111ee3f006d23bb881816f3c429c15eb436725fa"
+  },
+  {
+    "slug": "grunge-denim-creases",
+    "name": "Denim Creases",
+    "category": "Fabric",
+    "family": "Fabric",
+    "source": "https://polyhaven.com/a/denim_fabric_03",
+    "author": "colormass, Rico Cilliers",
+    "license": "CC0-1.0",
+    "processing": "Raised threads from wrapped local height contrast, with woven height detail and subtle variation from the photo. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/denim_fabric_03/denim_fabric_03_disp_1k.png",
+        "sha256": "aee4b36fd3e872510685ff7795c56a4cc77c2053df937d55316b5d08378cf14d"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/denim_fabric_03/denim_fabric_03_diff_1k.jpg",
+        "sha256": "4a1d34077a5c999f590a31a056be5f70edac19f254b6d970e41942b335788575"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "213019fdc061cf8098af7fc7b290b3b97c5c6c787ee246b83eacdb59dd8b6a47"
+  },
+  {
+    "slug": "grunge-denim-fine-twill",
+    "name": "Fine Denim Twill",
+    "category": "Fabric",
+    "family": "Fabric",
+    "source": "https://polyhaven.com/a/denim_fabric_04",
+    "author": "colormass, Rico Cilliers",
+    "license": "CC0-1.0",
+    "processing": "Surface weave from the height scan, with local height contrast and subtle variation from the photo. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/denim_fabric_04/denim_fabric_04_disp_1k.png",
+        "sha256": "933425c115ce67834c10ddda244ed8e1f0f0bae80948d2a054be216b49ff7fb9"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/denim_fabric_04/denim_fabric_04_diff_1k.jpg",
+        "sha256": "fc2527c166196684e588ef858daf977285b6701a3c4a68ef71da0c8f01f00263"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "b4e4992aa9bd678c84f4659650e7b88658a3d1ee245fe894f84d0ec22cc8bf14"
+  },
+  {
+    "slug": "grunge-denim-fuzz",
+    "name": "Worn Denim Fuzz",
+    "category": "Fabric",
+    "family": "Fabric",
+    "source": "https://polyhaven.com/a/denim_fabric_06",
+    "author": "Greg Zaal, Rico Cilliers",
+    "license": "CC0-1.0",
+    "processing": "Raised threads from wrapped local height contrast, with woven height detail and subtle variation from the photo. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/denim_fabric_06/denim_fabric_06_disp_1k.png",
+        "sha256": "860dcdad9eccad56e8c9a422bc8db055d6197b245638ee5dffccbf13a15ba8fc"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/denim_fabric_06/denim_fabric_06_diff_1k.jpg",
+        "sha256": "9da7f6672e71a87135d5b4b6bdf4471ee9d250f88ae78ce51f36cd0a6ed5d78d"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "fe4ad93e5d70e6c23e5f8d3534e5571f5db1e5bb04f3ce46572dbf2cadc8ae78"
+  },
+  {
+    "slug": "grunge-linen-crossweave",
+    "name": "Linen Crossweave",
+    "category": "Fabric",
+    "family": "Fabric",
+    "source": "https://polyhaven.com/a/rough_linen",
+    "author": "colormass, Rico Cilliers",
+    "license": "CC0-1.0",
+    "processing": "Surface weave from the height scan, with local height contrast and subtle variation from the photo. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/rough_linen/rough_linen_disp_1k.png",
+        "sha256": "78b56241190055fce94238d587bc71504b155c5785ace241b455b256166c24a2"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rough_linen/rough_linen_diff_1k.jpg",
+        "sha256": "04897d7611d7390ddf5b2c6f7273f448dfc48341fdbd1f4f207fa30b331d7f57"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "9fb3978d2e9c256f98663772f4e3d482dc93a8e38c73ba0b8c5c67d4b8658342"
+  },
+  {
+    "slug": "grunge-terry-loops",
+    "name": "Terry Cloth Loops",
+    "category": "Fabric",
+    "family": "Fabric",
+    "source": "https://polyhaven.com/a/terry_cloth",
+    "author": "colormass, Rico Cilliers",
+    "license": "CC0-1.0",
+    "processing": "Surface weave from the height scan, with local height contrast and subtle variation from the photo. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/terry_cloth/terry_cloth_disp_1k.png",
+        "sha256": "db6c115a795e4a8223b93fdd4c06c6d10e59e74226c5bf3be5731e220f328185"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/terry_cloth/terry_cloth_diff_1k.jpg",
+        "sha256": "8605d028a0109de5f2db5992795581f441b56266f27f7969dca32d30866eb9db"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "a75017232dfca451d7229d01477ef3e8aa7d6551b23c7be3577c06799bd8c25b"
+  },
+  {
+    "slug": "grunge-carpet-matting",
+    "name": "Matted Carpet Fibres",
+    "category": "Fabric",
+    "family": "Fabric",
+    "source": "https://polyhaven.com/a/dirty_carpet",
+    "author": "Rohit Seervi",
+    "license": "CC0-1.0",
+    "processing": "Broad fading from inverted photo luminance mixed with wrapped local height contrast. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/dirty_carpet/dirty_carpet_disp_1k.png",
+        "sha256": "b8b6a19c44b8ccd913d4034708565c32f55e4678187505d9c3b8e642f380c3c8"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/dirty_carpet/dirty_carpet_diff_1k.jpg",
+        "sha256": "b0ef2b248cb7dfa1d33f1b2215fb3b83e815527d4091a2c3a423bdcd63bef60a"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "aad7fe831f73e10b77a138071d60921e042f6eb6b84a09aafc9d70f955a6aff3"
+  },
+  {
+    "slug": "grunge-leather-creases",
+    "name": "Upholstery Creases",
+    "category": "Fabric",
+    "family": "Fabric",
+    "source": "https://polyhaven.com/a/fabric_leather_01",
+    "author": "Rob Tuytel",
+    "license": "CC0-1.0",
+    "processing": "Broad fading from inverted photo luminance mixed with wrapped local height contrast. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/fabric_leather_01/fabric_leather_01_disp_1k.png",
+        "sha256": "ccf961ad6bede5333086fc97fbfaf0658898e915bb3fdaaf54a877e0c1370a44"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/fabric_leather_01/fabric_leather_01_diff_1k.jpg",
+        "sha256": "19d8935e5f9ece35b422290b1a0333cc438fabab88990d8217ee37408bc33c64"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "8743b57b8b7430679e5e69ad05b3274708be5b010958332847638e0a767f7a90"
+  },
+  {
+    "slug": "grunge-leather-pebbles",
+    "name": "Pebbled Leather",
+    "category": "Fabric",
+    "family": "Fabric",
+    "source": "https://polyhaven.com/a/leather_white",
+    "author": "Rob Tuytel",
+    "license": "CC0-1.0",
+    "processing": "Surface weave from the height scan, with local height contrast and subtle variation from the photo. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/leather_white/leather_white_disp_1k.png",
+        "sha256": "c2b07df1d7fc884a009b2e27388f67e13ca8a969a9d0116b0ef9018c175d52c3"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/leather_white/leather_white_diff_1k.jpg",
+        "sha256": "4d916dfe89c9d2b88bf52e0c70c6a9798a5c29c8c2fcb6ba1ab7b7ded9ef3ed5"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "c6cf58d8d55cffb10d7faeac9e451dab5f651944eedda0a74d58ddf34ed737f9"
+  },
+  {
+    "slug": "grunge-jacquard-threads",
+    "name": "Jacquard Thread Relief",
+    "category": "Fabric",
+    "family": "Fabric",
+    "source": "https://polyhaven.com/a/quatrefoil_jacquard_fabric",
+    "author": "colormass, Rico Cilliers",
+    "license": "CC0-1.0",
+    "processing": "Surface weave from the height scan, with local height contrast and subtle variation from the photo. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/quatrefoil_jacquard_fabric/quatrefoil_jacquard_fabric_disp_1k.png",
+        "sha256": "cf77744ef7c4e7308360d5e4face9ba8b30f28fac8a65f01efd052004c0e2a3b"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/quatrefoil_jacquard_fabric/quatrefoil_jacquard_fabric_diff_1k.jpg",
+        "sha256": "674e9d4c2c116099b79ab364eb04e2101031745f2eb27e4a9e198a81e31c8cd7"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "b13e98c4dbe19fdb65fb9311b9b4e29b1aaa437eba71f292b6fa99fa3f75645e"
+  },
+  {
+    "slug": "grunge-concrete-fractures",
+    "name": "Concrete Fractures",
+    "category": "Grunge",
+    "family": "Concrete",
+    "source": "https://polyhaven.com/a/cracked_concrete",
+    "author": "Dimitrios Savva",
+    "license": "CC0-1.0",
+    "processing": "Recesses from local height subtraction with a wrapped blur, combined with darker markings from the photo. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/cracked_concrete/cracked_concrete_disp_1k.png",
+        "sha256": "d81049f6f3ec73c7f00b93d09b57423ff3642b9d0bb03b79925fb616e972e89f"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/cracked_concrete/cracked_concrete_diff_1k.jpg",
+        "sha256": "26b268b23dc71accc627cc25d889bdb56287518a5abb27565bb71bda26cec5c5"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "53cda8f02f5c3f7dc7075c86df0dc9ba0456e240c22179c6acefa72fcb2f1991"
+  },
+  {
+    "slug": "grunge-concrete-wall-flakes",
+    "name": "Flaking Concrete Wall",
+    "category": "Grunge",
+    "family": "Concrete",
+    "source": "https://polyhaven.com/a/cracked_concrete_wall",
+    "author": "Dimitrios Savva, Rico Cilliers",
+    "license": "CC0-1.0",
+    "processing": "Local height variation and dark photo markings emphasize chips and flaking. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/cracked_concrete_wall/cracked_concrete_wall_disp_1k.png",
+        "sha256": "c41c270151c2039ec86ac1f2e7d3a4e0f1bcef9b7c35a26641338bbb49366609"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/cracked_concrete_wall/cracked_concrete_wall_diff_1k.jpg",
+        "sha256": "f910cbaff5a0fbd778a8c41947ac826f2313e70e9b4077bc39221a417fa8d5b4"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "9941301e3d9fe5fc39cca583e9bc3d5b5ffbee82ce53e57aa08775d0a49b3f47"
+  },
+  {
+    "slug": "grunge-concrete-aggregate",
+    "name": "Chipped Concrete Aggregate",
+    "category": "Grunge",
+    "family": "Concrete",
+    "source": "https://polyhaven.com/a/chipped_concrete",
+    "author": "Amal Kumar",
+    "license": "CC0-1.0",
+    "processing": "Local height variation and dark photo markings emphasize chips and flaking. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/chipped_concrete/chipped_concrete_disp_1k.png",
+        "sha256": "c6536c7953c0da50e84bae7493ba266df7714cae43e2549b29d938f0115fc020"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/chipped_concrete/chipped_concrete_diff_1k.jpg",
+        "sha256": "2adf65fe5b702c8882480b04f1802b81d1e8868a03e7047504f5a77a726fd6ff"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "c09f9b89dc2c1b55d30c103511dc3d79c47e2fb832015b326e3bf2f5b79e5a2c"
+  },
+  {
+    "slug": "grunge-concrete-mud-stains",
+    "name": "Concrete Mud Stains",
+    "category": "Grunge",
+    "family": "Concrete",
+    "source": "https://polyhaven.com/a/dirty_concrete",
+    "author": "Rob Tuytel",
+    "license": "CC0-1.0",
+    "processing": "Darker marks from the photo, with fine height variation added. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/dirty_concrete/dirty_concrete_disp_1k.png",
+        "sha256": "804eab540737ab132ef609639589a08b19d5345c5a435202d0a2af2310b9aff7"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/dirty_concrete/dirty_concrete_diff_1k.jpg",
+        "sha256": "322c588a5e883c27743c9555833ca3c4e95fbb20796a81559bb082a94569ce2c"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "d46db989bd2b8e373508738ffb45b44b615f1f6b20192059f69b3ae22e9a6b94"
+  },
+  {
+    "slug": "grunge-concrete-broom-marks",
+    "name": "Concrete Broom Marks",
+    "category": "Grunge",
+    "family": "Concrete",
+    "source": "https://polyhaven.com/a/brushed_concrete_04",
+    "author": "Amal Kumar",
+    "license": "CC0-1.0",
+    "processing": "Local surface contrast with a wrapped blur, mixed with markings from the photo. Feathered the repeating borders where needed. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/brushed_concrete_04/brushed_concrete_04_disp_1k.png",
+        "sha256": "e24fa632cd24efa46f3e9779ad28620f890ffb37ed5efacf32dd002ab68329fb"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brushed_concrete_04/brushed_concrete_04_diff_1k.jpg",
+        "sha256": "5dd957199bdbaa203b04ab39c7e8af02a0cd36013daad995592c53352beded4c"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "b32d27c389d4ab34acad5de82f39348e0d50de367122272560f79a9a640cc4df"
+  },
+  {
+    "slug": "grunge-concrete-grit",
+    "name": "Concrete Grit",
+    "category": "Grunge",
+    "family": "Concrete",
+    "source": "https://polyhaven.com/a/granular_concrete",
+    "author": "Dario Barresi, Michael Jenkins",
+    "license": "CC0-1.0",
+    "processing": "Fine surface relief from wrapped local height contrast, combined with visible grain from the photo. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/granular_concrete/granular_concrete_disp_1k.png",
+        "sha256": "e2a28af86c1c366abff15283bed105dca891a01be07a62742a10c5ddafd9435c"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/granular_concrete/granular_concrete_diff_1k.jpg",
+        "sha256": "2c2efcdff062fbcd91d8aeee8134ef2849817378d70189ff024683d7f09e2fd2"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "7296a8fef8c06381add9eddd8236d337784565c6bfb0af4a812a02bf18b8062a"
+  },
+  {
+    "slug": "grunge-cement-scuffs",
+    "name": "Cement Scuffs",
+    "category": "Grunge",
+    "family": "Concrete",
+    "source": "https://polyhaven.com/a/scuffed_cement",
+    "author": "Dario Barresi, Dimitrios Savva",
+    "license": "CC0-1.0",
+    "processing": "Local surface contrast with a wrapped blur, mixed with markings from the photo. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/scuffed_cement/scuffed_cement_disp_1k.png",
+        "sha256": "9aa7cc3001c0696c5b7c0f55d4eeccfff536f47f123fd6b2abb3641f8961d137"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/scuffed_cement/scuffed_cement_diff_1k.jpg",
+        "sha256": "45ef8951432f0b692dc461178a898fb83b2e5a873ba53fb19041e9356e118e4a"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "4ac124bc6efd523aae89ae3b947ba2dc5c9e6f0a8352a58239a24cd209623130"
+  },
+  {
+    "slug": "grunge-plaster-breaks",
+    "name": "Broken Plaster",
+    "category": "Grunge",
+    "family": "Concrete",
+    "source": "https://polyhaven.com/a/damaged_plaster",
+    "author": "Amal Kumar",
+    "license": "CC0-1.0",
+    "processing": "Local height variation and dark photo markings emphasize chips and flaking. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/damaged_plaster/damaged_plaster_disp_1k.png",
+        "sha256": "d0de7336ee6d8e8c0f8718803ae38fc3dd7d50764494adc5c1355b117fbfde25"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/damaged_plaster/damaged_plaster_diff_1k.jpg",
+        "sha256": "391649dbb391c978b0d95cdd2351617fe3b7a577e432b94171208e576c9b2c63"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "9c376e629cd26f0ec1b977910038ba5a88558b411265d3e215797c185053bf7a"
+  },
+  {
+    "slug": "grunge-plaster-crazing",
+    "name": "Plaster Crazing",
+    "category": "Grunge",
+    "family": "Concrete",
+    "source": "https://polyhaven.com/a/worn_cracked_plaster",
+    "author": "Amal Kumar",
+    "license": "CC0-1.0",
+    "processing": "Recesses from local height subtraction with a wrapped blur, combined with darker markings from the photo. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/worn_cracked_plaster/worn_cracked_plaster_disp_1k.png",
+        "sha256": "bd6eca5b56e2c80c0a26df0af9a78613ac591d70038e669ad814bdc0372c2fcb"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/worn_cracked_plaster/worn_cracked_plaster_diff_1k.jpg",
+        "sha256": "fdef86634dab6bd4ce9c9a45c0fd08bc4eb34beb06f066ea792535f839af9773"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "1d92d754b3b5989d18df80adf6dab7a050dc494e5448a3783cca6aa30b4cb01f"
+  },
+  {
+    "slug": "grunge-steel-paint-flecks",
+    "name": "Paint Flecks on Steel",
+    "category": "Metal",
+    "family": "Metal",
+    "source": "https://polyhaven.com/a/green_metal_rust",
+    "author": "Rob Tuytel",
+    "license": "CC0-1.0",
+    "processing": "Warm oxidation isolated from the calibrated photo and combined with surface roughness. Feathered the repeating borders where needed. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Rough",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/green_metal_rust/green_metal_rust_rough_1k.jpg",
+        "sha256": "f214f22608dd75aa3e7b4da8bffac97c344cbacbc50f49ba0beb0236701a622c"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/green_metal_rust/green_metal_rust_diff_1k.jpg",
+        "sha256": "4509ab0cb1cf6bf9b9f970450a41f83ebd9bff178006deae568ff34b404856fc"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "fcc0d48f5da18894c965d5c686d84b58cd8490cf970dab38fa757daaeeeee472"
+  },
+  {
+    "slug": "grunge-rust-crust",
+    "name": "Coarse Rust Crust",
+    "category": "Metal",
+    "family": "Metal",
+    "source": "https://polyhaven.com/a/rust_coarse_01",
+    "author": "Dimitrios Savva, Rico Cilliers",
+    "license": "CC0-1.0",
+    "processing": "Roughness and photo luminance isolate corrosion and streaks. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Rough",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rust_coarse_01/rust_coarse_01_rough_1k.jpg",
+        "sha256": "f5b4a23044af1b49284e6adb082f49e6ea1a33c3753d5641e36f72de1ebf323e"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rust_coarse_01/rust_coarse_01_diff_1k.jpg",
+        "sha256": "369f69eb86a7dcc4e5b6e30b1f3a4da5ce6ba50cf417de937efb4f09101f88d4"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "8b27e150c1f02b8cfd371a863ebc141bfda341cd6cd42df293fab79ea2fa17a2"
+  },
+  {
+    "slug": "grunge-steel-rust-specks",
+    "name": "Rust Specks on Steel",
+    "category": "Metal",
+    "family": "Metal",
+    "source": "https://polyhaven.com/a/rusty_metal_02",
+    "author": "Rob Tuytel",
+    "license": "CC0-1.0",
+    "processing": "Warm oxidation isolated from the calibrated photo and combined with surface roughness. Feathered the repeating borders where needed. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Rough",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rusty_metal_02/rusty_metal_02_rough_1k.jpg",
+        "sha256": "178deb5896232f0498555676e55a3be1d6d197e2211d8d17cb8386a868bfd54a"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rusty_metal_02/rusty_metal_02_diff_1k.jpg",
+        "sha256": "adaf094391518b6afe787a123942110aa88ef521c844f970b124420f5ed5d3d9"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "2b6fb946a216f4ced56187500f89e388d219e79c8bf5ad9a2ab9aaae804aac0a"
+  },
+  {
+    "slug": "grunge-steel-corrosion-bands",
+    "name": "Steel Corrosion Bands",
+    "category": "Metal",
+    "family": "Metal",
+    "source": "https://polyhaven.com/a/rusty_metal_05",
+    "author": "Amal Kumar",
+    "license": "CC0-1.0",
+    "processing": "Warm oxidation isolated from the calibrated photo and combined with surface roughness. Feathered the repeating borders where needed. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Rough",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rusty_metal_05/rusty_metal_05_rough_1k.jpg",
+        "sha256": "8b68979e2e2a75fedb366564db09873346895853bc70b0e441757900457c68bf"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rusty_metal_05/rusty_metal_05_diff_1k.jpg",
+        "sha256": "c48e9064ef1a1a1f745c605669adfac9391980c31a68f4f06808a2ab25aeaca8"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "ebafb3864c816ab40598cbe98d021cec6565f6fb1cf737d0b811e5ed28901f75"
+  },
+  {
+    "slug": "grunge-metal-rib-scuffs",
+    "name": "Ribbed Metal Scuffs",
+    "category": "Metal",
+    "family": "Metal",
+    "source": "https://polyhaven.com/a/painted_metal_shutter",
+    "author": "Dario Barresi, Rico Cilliers, Charlotte Baglioni",
+    "license": "CC0-1.0",
+    "processing": "Local surface contrast with a wrapped blur, mixed with markings from the photo. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Rough",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/painted_metal_shutter/painted_metal_shutter_rough_1k.jpg",
+        "sha256": "bb32b8783a96b33e5807ecfdc242b69a08f0aeec4e0609f5dc9be62890ed88f2"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/painted_metal_shutter/painted_metal_shutter_diff_1k.jpg",
+        "sha256": "278394aabcb5a5bd560d9904358682acc5af23666b22bd1f12558789da4aa4d2"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "04a6e7b2afa37ec7b19268a3140850b0b9208bdf30de9c30055fdfaa22efc3f3"
+  },
+  {
+    "slug": "grunge-rust-shutter-streaks",
+    "name": "Shutter Rust Streaks",
+    "category": "Metal",
+    "family": "Metal",
+    "source": "https://polyhaven.com/a/rusty_metal_shutter",
+    "author": "Charlotte Baglioni",
+    "license": "CC0-1.0",
+    "processing": "Roughness and photo luminance isolate corrosion and streaks. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Rough",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rusty_metal_shutter/rusty_metal_shutter_rough_1k.jpg",
+        "sha256": "d62c4446834a17b9e6fdb51ee720cecaf7d05e015905354435406ce5ed98505a"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rusty_metal_shutter/rusty_metal_shutter_diff_1k.jpg",
+        "sha256": "979b0f9db0194b6f1588492ade6627be4f86f8807c6593679ca1eb1d604622f4"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "f12bcf725800aea9d95979deace2fe297456f44412349f27e4be260641c2fc95"
+  },
+  {
+    "slug": "grunge-iron-ridged-abrasion",
+    "name": "Ridged Iron Abrasion",
+    "category": "Metal",
+    "family": "Metal",
+    "source": "https://polyhaven.com/a/worn_corrugated_iron",
+    "author": "Jenelle van Heerden, Dimitrios Savva",
+    "license": "CC0-1.0",
+    "processing": "Local surface contrast with a wrapped blur, mixed with markings from the photo. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Rough",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/worn_corrugated_iron/worn_corrugated_iron_rough_1k.jpg",
+        "sha256": "aad215f1b076f763e2d239b5312a80d9fee3d2f4b39768abec8bb1b667e9e86c"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/worn_corrugated_iron/worn_corrugated_iron_diff_1k.jpg",
+        "sha256": "8980bec97815510c828cb6b3d840c05345eb44212e34c212c39ec54c0abecaa3"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "5f59d9ebaef71573cbfc007d7875aeec197405d3f86fd32820ed50c67c8d3620"
+  },
+  {
+    "slug": "grunge-pine-stains",
+    "name": "Stained Pine Grain",
+    "category": "Grunge",
+    "family": "Wood",
+    "source": "https://polyhaven.com/a/stained_pine",
+    "author": "Dario Barresi, Jenelle van Heerden",
+    "license": "CC0-1.0",
+    "processing": "Darker marks from the photo, with fine height variation added. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/stained_pine/stained_pine_disp_1k.png",
+        "sha256": "30fc656225267a24458324195c709161f414b3d76d2b43cace6db36a7e2eca3b"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/stained_pine/stained_pine_diff_1k.jpg",
+        "sha256": "bab73315eb57f942a98e3201ef7f00515f3a4c5b74bb9aba9c00007a3029e594"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "b38724b08873c3ac415107de11261634334c6cba376d14576fa1677d8b568339"
+  },
+  {
+    "slug": "grunge-wood-table-scuffs",
+    "name": "Worn Wood Scuffs",
+    "category": "Grunge",
+    "family": "Wood",
+    "source": "https://polyhaven.com/a/wood_table_worn",
+    "author": "Dimitrios Savva, Rico Cilliers",
+    "license": "CC0-1.0",
+    "processing": "Local surface contrast with a wrapped blur, mixed with markings from the photo. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/wood_table_worn/wood_table_worn_disp_1k.png",
+        "sha256": "6d74782461edbcf748d8100535994202efbc9bb09959f36d155c97e962d43c44"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_table_worn/wood_table_worn_diff_1k.jpg",
+        "sha256": "092ab3465a6a24b24d092ea86865f332c3bd239b8eb2fd664b70357082031a3f"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "53e2b1c9f5437f06ecab250caa264116cbfa0c3c6d0e2cfb4d1f53f1aad99bfb"
+  },
+  {
+    "slug": "grunge-wood-splits",
+    "name": "Split Wood Fibres",
+    "category": "Grunge",
+    "family": "Wood",
+    "source": "https://polyhaven.com/a/rough_wood",
+    "author": "Rob Tuytel",
+    "license": "CC0-1.0",
+    "processing": "Recesses from local height subtraction with a wrapped blur, combined with darker markings from the photo. Feathered the repeating borders where needed. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/rough_wood/rough_wood_disp_1k.png",
+        "sha256": "1baffcfcf71ea1975a6aefb21a144c49c035c5bf21946fb2bb6bf1036047efec"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rough_wood/rough_wood_diff_1k.jpg",
+        "sha256": "abc46d8e3163d911220f4ec3a4043b68d2b0c6d750513f80871211acfefb2a98"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "523258eddce5d9fbb76bb94316c218a6051ebf52dcf8fdb28d8f2366622397d0"
+  },
+  {
+    "slug": "grunge-wood-paint-remnants",
+    "name": "Paint Remnants on Wood",
+    "category": "Grunge",
+    "family": "Wood",
+    "source": "https://polyhaven.com/a/distressed_painted_planks",
+    "author": "Rob Tuytel",
+    "license": "CC0-1.0",
+    "processing": "Local height variation and dark photo markings emphasize chips and flaking. Feathered the repeating borders where needed. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/distressed_painted_planks/distressed_painted_planks_disp_1k.png",
+        "sha256": "d53f99721890c385b1fbc0f14cf284f8a1a5809c971af6df2fe76ccaa82cb11d"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/distressed_painted_planks/distressed_painted_planks_diff_1k.jpg",
+        "sha256": "ec8d54700e32d583ec3cd64089de73810de1e177874266fe29e931d33ab5ca1e"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "dcf037f08df4111ee3e14c218a2293792162c48d26cc5ebc51740872c5519161"
+  },
+  {
+    "slug": "grunge-willow-bark-fissures",
+    "name": "Willow Bark Fissures",
+    "category": "Grunge",
+    "family": "Wood",
+    "source": "https://polyhaven.com/a/bark_willow_02",
+    "author": "Charlotte Baglioni",
+    "license": "CC0-1.0",
+    "processing": "Recesses from local height subtraction with a wrapped blur, combined with darker markings from the photo. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/bark_willow_02/bark_willow_02_disp_1k.png",
+        "sha256": "e25841ea5e0322b25d99967bf02d66bc19df0beba5a62112fa0ca09fa1b4a4d0"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/bark_willow_02/bark_willow_02_diff_1k.jpg",
+        "sha256": "95e1380566834aab220bd8ea9a5287f3bfff46910c18017fcb46ebbbe832024f"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "3c723da50c2d427070a30b2229870f3150301bfcdfdfc36c1bc7746dd40e8e75"
+  },
+  {
+    "slug": "grunge-clay-crumbles",
+    "name": "Dry Clay Crumbles",
+    "category": "Grunge",
+    "family": "Ground",
+    "source": "https://polyhaven.com/a/cracked_red_ground",
+    "author": "Amal Kumar",
+    "license": "CC0-1.0",
+    "processing": "Local height variation and dark photo markings emphasize chips and flaking. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/cracked_red_ground/cracked_red_ground_disp_1k.png",
+        "sha256": "36c0cb3fb9201b2ca7efe5a6fed479a0a918258f27a04f5b9b83c4d73b5fcd78"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/cracked_red_ground/cracked_red_ground_diff_1k.jpg",
+        "sha256": "36f41dc2e889c5473c784f3316baf6ac0d4f4e6ad21205781c60e767aa640644"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "f8dc423c6cfe8c9d2fc4f0d74b6192e1a16795817bb4c81d9c029f7016e5fbef"
+  },
+  {
+    "slug": "grunge-mud-dry-mottle",
+    "name": "Dry Mud Mottle",
+    "category": "Grunge",
+    "family": "Ground",
+    "source": "https://polyhaven.com/a/dry_mud_field_001",
+    "author": "Rob Tuytel, Rico Cilliers",
+    "license": "CC0-1.0",
+    "processing": "Darker marks from the photo, with fine height variation added. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/dry_mud_field_001/dry_mud_field_001_disp_1k.png",
+        "sha256": "3875ab199dbd5463cf06fc5d6b9743f98ae2126b6f3b24bb5057be8053dba052"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/dry_mud_field_001/dry_mud_field_001_diff_1k.jpg",
+        "sha256": "fa527aa4eb6151c7dab4f0a7b31722d0aa180f728af694594439d106e76f6c6d"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "cb04d020bb46bea1f3e68bf8e9cbd2cb98758ea93f6baa0d41dda002be57b46d"
+  },
+  {
+    "slug": "grunge-mud-track-impressions",
+    "name": "Mud Track Impressions",
+    "category": "Grunge",
+    "family": "Ground",
+    "source": "https://polyhaven.com/a/muddy_tracks",
+    "author": "Amal Kumar",
+    "license": "CC0-1.0",
+    "processing": "Recesses from local height subtraction with a wrapped blur, combined with darker markings from the photo. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/muddy_tracks/muddy_tracks_disp_1k.png",
+        "sha256": "2e7990db4123c1a9393954828c373ad1ea6a466530baacd17c1467fbc015b951"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/muddy_tracks/muddy_tracks_diff_1k.jpg",
+        "sha256": "7867c9bfc6f6e85d51debddda3974ed68225e96b2cdb385a5518616102710730"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "a6bd1556daea3c07283a7ac039d68ae710665b0c56a4765d672472c4bb00dbff"
+  },
+  {
+    "slug": "grunge-asphalt-aggregate",
+    "name": "Asphalt Aggregate",
+    "category": "Grunge",
+    "family": "Ground",
+    "source": "https://polyhaven.com/a/asphalt_pit_lane",
+    "author": "Dimitrios Savva",
+    "license": "CC0-1.0",
+    "processing": "Fine surface relief from wrapped local height contrast, combined with visible grain from the photo. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/asphalt_pit_lane/asphalt_pit_lane_disp_1k.png",
+        "sha256": "7fa8a6ba7173d6297546b6b65172a20f7f6de7be5fb4c8e3eabefeb31d527d8b"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/asphalt_pit_lane/asphalt_pit_lane_diff_1k.jpg",
+        "sha256": "8aad5097f6de913aebc33f2b9b9271834b55c6942359955722db3196a9ce9bca"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "4d90100c577258f03580c25b4feca361fa3f1759b6d4390ba9cd371c71573df9"
+  },
+  {
+    "slug": "grunge-dirt-drag-marks",
+    "name": "Dirt Drag Marks",
+    "category": "Grunge",
+    "family": "Ground",
+    "source": "https://polyhaven.com/a/raked_dirt",
+    "author": "Dario Barresi, Dimitrios Savva",
+    "license": "CC0-1.0",
+    "processing": "Local surface contrast with a wrapped blur, mixed with markings from the photo. Leveled grayscale mask, WebP.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/raked_dirt/raked_dirt_disp_1k.png",
+        "sha256": "7d8d4c8e6014f57e7fda17c8a54edb4a47d8c898cb6ae4495025a29244fdeb66"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/raked_dirt/raked_dirt_diff_1k.jpg",
+        "sha256": "edc0d6b5d7532fc3e4db4086cd3612b7267ddfb3cc509c34793aa774964520a6"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "b944250791ffb3944083581ebbe35b4e01034d0493f4f7ef02b641e267a704a4"
+  },
+  {
+    "slug": "grunge-container-paint-scuffs",
+    "name": "Container Paint Scuffs",
+    "category": "Metal",
+    "family": "Metal",
+    "source": "https://polyhaven.com/a/container_side",
+    "author": "Dimitrios Savva",
+    "license": "CC0-1.0",
+    "processing": "Dark abrasion and lifted paint from local photo contrast and roughness. Grayscale percentile levels with feathered tile edges.",
+    "downloads": [
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/container_side/container_side_diff_1k.jpg",
+        "sha256": "9d6a8a9a243b6111f9d13af12d90325f0f1d52e45c2e1731f2d496702f024452"
+      },
+      {
+        "channel": "Rough",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/container_side/container_side_rough_1k.png",
+        "sha256": "3fc5f39d127faff6d2c3f29ac4daf0c2dea0f6f1abcbc1575831ae7a7208b44c"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "411522b8015a119388b2b84d135ec76394b2728e5b1a0aecc3fd45859b3837d9"
+  },
+  {
+    "slug": "grunge-galvanized-zinc-mottle",
+    "name": "Galvanized Zinc Mottle",
+    "category": "Metal",
+    "family": "Metal",
+    "source": "https://polyhaven.com/a/corrugated_iron_02",
+    "author": "Jenelle van Heerden, Sergej Majboroda",
+    "license": "CC0-1.0",
+    "processing": "Galvanized detail from fine-scale diffuse and roughness contrast after removing the repetitive rib profile. Grayscale percentile levels with feathered tile edges.",
+    "downloads": [
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/corrugated_iron_02/corrugated_iron_02_diff_1k.jpg",
+        "sha256": "7a7b43099d015c1b08ebb175da5965caeae44b86de65a727b3fffa20a7c69a93"
+      },
+      {
+        "channel": "Rough",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/corrugated_iron_02/corrugated_iron_02_rough_1k.png",
+        "sha256": "e9a557fe282b875d73a287bdcd4bae420fab54a269d8bb633974f14454d7392b"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "c81664a2a6c3e0641192337d7ca9530f67bd4eb1e4b832a80fe162d1907899c9"
+  },
+  {
+    "slug": "grunge-flaking-blue-steel",
+    "name": "Flaking Steel Paint",
+    "category": "Metal",
+    "family": "Metal",
+    "source": "https://polyhaven.com/a/rusted_shutter",
+    "author": "Dimitrios Savva",
+    "license": "CC0-1.0",
+    "processing": "Corroded areas isolated from the color difference between rust and painted steel, with roughness detail. Grayscale percentile levels with feathered tile edges.",
+    "downloads": [
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rusted_shutter/rusted_shutter_diff_1k.jpg",
+        "sha256": "32f33d87bbe514c4c087a739ad4dd1d28433dad8238de0ba655739da6450b29d"
+      },
+      {
+        "channel": "Rough",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/rusted_shutter/rusted_shutter_rough_1k.png",
+        "sha256": "2a4f80c3f86533b4914f062b40b78ee2f0a594239a0717c139a660c3e9028570"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "05578051932b97654f11646175d5a597c61bdd22e3bfd888b8104a1904752d43"
+  },
+  {
+    "slug": "grunge-shutter-fine-scratches",
+    "name": "Fine Shutter Scratches",
+    "category": "Metal",
+    "family": "Metal",
+    "source": "https://polyhaven.com/a/worn_shutter",
+    "author": "Dimitrios Savva",
+    "license": "CC0-1.0",
+    "processing": "Fine bright abrasions and roughness microdetail after removing the repetitive rib profile. Grayscale percentile levels with feathered tile edges.",
+    "downloads": [
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/worn_shutter/worn_shutter_diff_1k.jpg",
+        "sha256": "1e1a84c4f2ce5d005c9c3e8860d23370e2ad6dcc4040cd972803ad700e516a08"
+      },
+      {
+        "channel": "Rough",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/worn_shutter/worn_shutter_rough_1k.png",
+        "sha256": "81f5498c7b5186d90b6a048402159b714f826313bed9ab4891b641a363166865"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "0619067a5e259848e7d773c42d52c70576ccb37d43ba315878944b0b4dbe9584"
+  },
+  {
+    "slug": "grunge-fine-crosshatched-scratches",
+    "name": "Crosshatched Scratches",
+    "category": "Scratches",
+    "family": "Metal",
+    "source": "https://www.publicdomainpictures.net/en/view-image.php?image=20754&picture=grunge-scratches",
+    "author": "Talia Felix",
+    "license": "CC0-1.0",
+    "processing": "Fine light scratch lines from a public-domain photo. Grayscale levels with feathered tile edges.",
+    "downloads": [
+      {
+        "channel": "Diffuse",
+        "url": "https://www.publicdomainpictures.net/pictures/30000/velka/grunge-scratches.jpg",
+        "sha256": "407ce57246b1afd91f9e82e40f5b2cb82f21000f89395bb8a6adc53520f063b9"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "e3bd7df411b40cad420558acce2e306f315cd89c54b90ed582d698ff1d14df88"
+  },
+  {
+    "slug": "grunge-scored-steel-scratches",
+    "name": "Scored Steel Scratches",
+    "category": "Scratches",
+    "family": "Metal",
+    "source": "https://www.publicdomainpictures.net/en/view-image.php?image=448132&picture=scratched-metal-background-grunge",
+    "author": "Martina Stokow",
+    "license": "CC0-1.0",
+    "processing": "Heavy, overlapping abrasion from photographed metal. Grayscale levels with feathered tile edges.",
+    "downloads": [
+      {
+        "channel": "Diffuse",
+        "url": "https://www.publicdomainpictures.net/pictures/450000/velka/zerkratzt-metall-hintergrund-grunge-1652351148uDQ.jpg",
+        "sha256": "b44f4ba5bf19da6445310e502c39fc1c3acdcafbe0f01046e25fc65424dc4dc3"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "b6d39a55c3f6565b66ccc2a1a1435e43bc6876e1ee22b4fab4fb2f5eb3176e1d"
+  },
+  {
+    "slug": "grunge-industrial-hairline-scratches",
+    "name": "Painted Metal Scrapes",
+    "category": "Scratches",
+    "family": "Metal",
+    "source": "https://www.publicdomainpictures.net/en/view-image.php?image=291546&picture=red-rusty-scratched-metal-texture",
+    "author": "Mirek Schubert",
+    "license": "CC0-1.0",
+    "processing": "Photographed paint abrasion isolated with local contrast. Grayscale levels with feathered tile edges.",
+    "downloads": [
+      {
+        "channel": "Diffuse",
+        "url": "https://www.publicdomainpictures.net/pictures/300000/velka/red-rusty-scratched-metal-texture.jpg",
+        "sha256": "207d9c2980eea3eac8e654ee8e8cba324fb61dee2779123f2fce022f175bb46b"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "feddf4367a4de56967fbbab8340a414194e04f64f5cdc0397c33ec97c8b32003"
+  },
+  {
+    "slug": "grunge-scraped-steel-gouges",
+    "name": "Worn Iron Gouges",
+    "category": "Scratches",
+    "family": "Metal",
+    "source": "https://pixnio.com/textures-and-patterns/metal-texture/old-dirty-dusty-rusty-scratched-metal-iron-structure-texture",
+    "author": "Titus Tscharntke",
+    "license": "CC0-1.0",
+    "processing": "Coarser gouges from a photograph of scratched iron. Grayscale levels with feathered tile edges.",
+    "downloads": [
+      {
+        "channel": "Diffuse",
+        "url": "https://pixnio.com/free-images/textures-and-patterns/metal-texture/old-dirty-dusty-rusty-scratched-metal-iron-structure-texture.jpg",
+        "sha256": "5b0e6efe1842739927f7958d03ddc2ce8d82d31af3cb24acf40d99f9fdf61bc0"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "53df8acf4b00c034340a87198c380bb47bd202ffa029891fc2b9cbfc421e4c99"
+  },
+  {
+    "slug": "grunge-brushed-aluminum-scores",
+    "name": "Brushed Aluminum Scores",
+    "category": "Scratches",
+    "family": "Metal",
+    "source": "https://www.texturecan.com/details/475/",
+    "author": "TextureCan",
+    "license": "CC0-1.0",
+    "processing": "Thin score marks from a CC0 authored aluminum height and roughness map. Grayscale levels with feathered tile edges.",
+    "downloads": [
+      {
+        "channel": "height",
+        "url": "https://www.texturecan.com/downloads/metal_0058/metal_0058_1k_ZmmcU2.zip",
+        "member": "metal_0058_height_1k.png",
+        "sha256": "40af43d5ca14becd632ff39788d2acca31fa8449b73ffc7e125eb23da734d428",
+        "mapSha256": "04907933f1adf68e95712d43d5843fedd2d31dc4339c135f7495e0d64bea8c3f"
+      },
+      {
+        "channel": "roughness",
+        "url": "https://www.texturecan.com/downloads/metal_0058/metal_0058_1k_ZmmcU2.zip",
+        "member": "metal_0058_roughness_1k.jpg",
+        "sha256": "40af43d5ca14becd632ff39788d2acca31fa8449b73ffc7e125eb23da734d428",
+        "mapSha256": "115ee665b13f847944aa89e0b1feaddbb206bc20f1d015262cdb881750202fd4"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "852c702b0b2ffafda6bfdc867de08878679ab7b8be969f2b234826cc1f3674ad"
+  },
+  {
+    "slug": "grunge-polished-metal-pin-dings",
+    "name": "Polished Metal Pin Dings",
+    "category": "Dents",
+    "family": "Metal",
+    "source": "https://www.texturecan.com/details/269/",
+    "author": "TextureCan",
+    "license": "CC0-1.0",
+    "processing": "Localized shallow depressions isolated from CC0 authored polished metal height and ambient occlusion maps. Grayscale levels with feathered tile edges.",
+    "downloads": [
+      {
+        "channel": "height",
+        "url": "https://www.texturecan.com/downloads/metal_0026/metal_0026_1k_nvC7qF.zip",
+        "member": "metal_0026_height_1k.png",
+        "sha256": "a269d7234b2dab60d5d163cf8bfafca28041131f1f04c91aca42361d8d64adad",
+        "mapSha256": "be579a183af17a4e46e34edcc9267aac9d88b483e6486e2f7ae2c659ceac4b9b"
+      },
+      {
+        "channel": "ao",
+        "url": "https://www.texturecan.com/downloads/metal_0026/metal_0026_1k_nvC7qF.zip",
+        "member": "metal_0026_ao_1k.jpg",
+        "sha256": "a269d7234b2dab60d5d163cf8bfafca28041131f1f04c91aca42361d8d64adad",
+        "mapSha256": "52d6ef3d74f252f9e59f2aff27e9068215e7ba551f0457aba1b6ce641d650d4b"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "46465ba57cefba1196f772d88ffb2785a180049afb14d96086af084b405a2f1f"
+  },
+  {
+    "slug": "grunge-plate-impact-dings",
+    "name": "Plate Impact Dings",
+    "category": "Dents",
+    "family": "Metal",
+    "source": "https://www.texturecan.com/details/635/",
+    "author": "TextureCan",
+    "license": "CC0-1.0",
+    "processing": "Localized medium-scale impact marks from a CC0 authored weathered metal ambient occlusion map. Grayscale levels with feathered tile edges.",
+    "downloads": [
+      {
+        "channel": "ao",
+        "url": "https://www.texturecan.com/downloads/metal_0081/metal_0081_1k_qh6kbG.zip",
+        "member": "metal_0081_ao_1k.jpg",
+        "sha256": "c57e70bb67a2b33fa8f017b4657f909e83dec749cbd3dd33bcc056938bed7d05",
+        "mapSha256": "8ef6c9e084ee88947bc4a6d44d67896c500a7ccdc5597829402cfef6527a9164"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "b2fff63e8d7bd7ef3274f59c3d5abfa194511bb41d3ff8b09b621c9f538df2fa"
+  },
+  {
+    "slug": "grunge-hammered-steel-dimples",
+    "name": "Hammered Steel Dimples",
+    "category": "Dents",
+    "family": "Metal",
+    "source": "https://www.texturecan.com/details/292/",
+    "author": "TextureCan",
+    "license": "CC0-1.0",
+    "processing": "Broad hammered indentations from a CC0 authored galvanized metal height map. Grayscale levels with feathered tile edges.",
+    "downloads": [
+      {
+        "channel": "height",
+        "url": "https://www.texturecan.com/downloads/metal_0029/metal_0029_1k_VwU9p4.zip",
+        "member": "metal_0029_height_1k.png",
+        "sha256": "6dd5964259a581272690823b7a4163b60b52acfaaff47108329851577469f585",
+        "mapSha256": "833ffb972772550e8bdda5bf96d47b72b5ee55d388c122241b7b992950bbe350"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "9d5153ac71c401ae99feeb381b8c751803116b11e0adedeac9b203158c789df5"
+  },
+  {
+    "slug": "grunge-sheet-metal-crease-dents",
+    "name": "Sheet Metal Crease Dents",
+    "category": "Dents",
+    "family": "Metal",
+    "source": "https://polyhaven.com/a/box_profile_metal_sheet",
+    "author": "Amal Kumar",
+    "license": "CC0-1.0",
+    "processing": "The displacement scan is flattened across its profile to emphasize dents and creases. Grayscale levels with feathered tile edges.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/box_profile_metal_sheet/box_profile_metal_sheet_disp_1k.png",
+        "sha256": "6b5d2fa216bdb78ade8f4b6d10102cf66e41b5f7ac62187fd5bdf336befca8f9"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/box_profile_metal_sheet/box_profile_metal_sheet_diff_1k.jpg",
+        "sha256": "c2c3643bb2e07554f805f56525ec2ffbc23117be95e324af46ac98f56fa7961f"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "33abfad78deef7ddfa3b24c932dcc543b546598b4b1830dd610663046a049cfc"
+  },
+  {
+    "slug": "grunge-container-panel-dents",
+    "name": "Container Panel Dents",
+    "category": "Dents",
+    "family": "Metal",
+    "source": "https://polyhaven.com/a/container_side",
+    "author": "Dimitrios Savva",
+    "license": "CC0-1.0",
+    "processing": "The container displacement scan isolates broader deformation after flattening the ribs. Grayscale levels with feathered tile edges.",
+    "downloads": [
+      {
+        "channel": "Displacement",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/container_side/container_side_disp_1k.png",
+        "sha256": "a2674de82fc40ae404fdc656bcc40b489b1c993d61cd4a376bcbbac7892175e4"
+      },
+      {
+        "channel": "Diffuse",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/container_side/container_side_diff_1k.jpg",
+        "sha256": "9d6a8a9a243b6111f9d13af12d90325f0f1d52e45c2e1731f2d496702f024452"
+      }
+    ],
+    "width": 1024,
+    "height": 1024,
+    "outputSha256": "5a7fea0e0c01a8717f28a983c9d9b66d54c9fe50a040d0afe4b75206b206219f"
+  }
+]
