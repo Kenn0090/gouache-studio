@@ -27,6 +27,7 @@ function genApply(n,rec){if(!n||!isLayer(n)&&n.type!=='group'){toast('Select a l
 function genShelfRender(){const box=document.getElementById('shGenBody');if(!box)return;const tw=typeof matTw==='function'?matTw():64,groups=new Map();
   for(const r of genRecs()){if(!groups.has(r.group))groups.set(r.group,[]);groups.get(r.group).push(r);}
   box.replaceChildren(...[...groups].flatMap(([g,list])=>[el('div',{class:'sub',text:g}),el('div',{class:'matgrid'},...list.map(r=>{
-    const b=el('button',{type:'button',class:'mattile gentile',title:r.name+': click to add to the selected layer’s mask, or drag it onto a layer','aria-label':r.name,'data-shkey':'gen:'+r.group+':'+r.name},genIcon(r.key,Math.max(48,Math.round(tw)),Math.round(Math.max(48,tw)*.75)),el('span',{text:r.name}));
+    const pic=typeof GEN_THUMBS!=='undefined'&&GEN_THUMBS[r.group+'|'+r.name],sz=Math.max(48,Math.round(tw));
+    const b=el('button',{type:'button',class:'mattile gentile',title:r.name+': click to add to the selected layer’s mask, or drag it onto a layer','aria-label':r.name,'data-shkey':'gen:'+r.group+':'+r.name},pic?el('img',{class:'matprev',src:pic,width:sz,height:sz,alt:'',draggable:'false'}):genIcon(r.key,sz,Math.round(sz*.75)),el('span',{text:r.name}));
     b._libDrag=['gen',r];b.addEventListener('click',()=>genApply(doc.active,r));return b;}))]),
     el('p',{class:'note',text:'Drop a generator on a layer in the Layers list, or on the rows under its mask. A layer without a mask gets one.'}));}
