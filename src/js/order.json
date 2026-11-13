@@ -223,6 +223,7 @@
     "ui/favorites",
     "ui/dock",
     "ui/shelf",
+    "files/send-photo",
     "ui/history",
     "ui/layer-undo",
     "tools/paths",

@@ -12,7 +12,7 @@ function phBuildPanel(){const box=$('#photoBody');if(!box)return;box.replaceChil
     el('button',{class:'btn sm',id:'phBefore',text:'Before',title:'Hold to see the photo as it was (\\)',onpointerdown:()=>phShow('before'),onpointerup:()=>phShow('edit'),onpointerleave:()=>{if(ph.show==='before')phShow('edit');}}),
     el('button',{class:'btn sm',text:'Reset',title:'Take all edits off this photo',onclick:phReset}),
     el('button',{class:'btn sm',text:'Copy',title:'Copy this photo’s edits (Ctrl+Shift+C)',onclick:phCopy}),el('button',{class:'btn sm',text:'Paste',title:'Paste the copied edits (Ctrl+Shift+V)',onclick:()=>phPaste()}),
-    el('button',{class:'btn sm',text:'Export…',onclick:()=>dlgPhotoExport()}),el('button',{class:'btn sm',text:'To Paint',title:'Put the edited photo on a new layer in Paint',onclick:phToPaint}));
+    el('button',{class:'btn sm',text:'Export…',onclick:()=>dlgPhotoExport()}),el('button',{class:'btn sm',id:'phToPaint',text:'Send to Paint',title:'Put the edited photo, at full size, on a new layer in Paint',onclick:()=>sendPhotoToPaint()}));
   box.append(bar);
   if(!p){box.append(el('div',{class:'phempty'},el('p',{text:'Open a photo to start editing. JPEG, PNG, WebP, TIFF and RAW photos work. You can also drop photos on the picture.'}),el('button',{class:'btn primary',text:'Open photos…',onclick:phOpenDialog})));return;}
   const s=p.s;

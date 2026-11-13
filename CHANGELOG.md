@@ -1,3 +1,9 @@
+## 0.97.9
+
+- **Send to Photo.** From **3D**: the **Screenshot** window and the **Render** window have a **Send to Photo** button that opens the picture in the Photo tab. From **2D Paint**: **File › Export › Send to Photo** sends the painting as one flat picture. It arrives as a new photo in the Photo strip, selected, ready to develop.
+- **Send to Paint** (from Photo): the Photo panel's button and **File › Export › Send to Paint** now send the developed photo at **full size** (it used to be the preview size) as a new layer in Paint, and switch to Paint.
+- Photos can't be sent to 3D Paint: the menu items are not there in 3D Paint, Bake, Convert or Brush.
+
 ## 0.97.8
 
 - **The 3D Paint shelf is like Substance Painter's.** The list on the left has a category with an icon for each: **Brushes · Materials · Smart materials · Smart masks · Alphas · Textures · Decals · Environments · Mesh maps · Tools · Projects**. Smart materials and Smart masks are categories of their own now (they were chips inside Materials).

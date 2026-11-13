@@ -26,23 +26,25 @@ const v3FileBase=()=>slug((ui.mode==='p3d'&&typeof p3!=='undefined'&&p3.name)||d
 function dlgScreenshot(){if(!v3.on||!v3.mesh){toast('Open the 3D view first.');return;}let size='view',tr=false;
   const body=el('div',{class:'dlg-grid',id:'shotDlg'},el('div',{class:'sub',text:'Size'}),(()=>{const g=seg(V3_SIZES,size,v=>{size=v;},'Size');g.classList.add('themeseg');return g;})(),
     chk('shotTr','Transparent background',tr,v=>{tr=v;}),el('p',{class:'note',text:v3.rt?'Ray traced mode: the ray-traced picture is saved as it is now, at the view’s size.':'Saved as PNG.'}));
-  openDialog({title:'Screenshot',body,okLabel:'Save',onOk(){setTimeout(()=>v3Screenshot(size,tr),0);}});}
-async function v3Screenshot(size,tr){let w,h,d,premul=!!tr;
+  const toPhoto=el('button',{class:'btn',id:'shotPhoto',text:'Send to Photo',title:'Take the picture and open it in the Photo tab',onclick:()=>{closeDialog();setTimeout(()=>v3Screenshot(size,tr,true),0);}});
+  openDialog({title:'Screenshot',body,okLabel:'Save',extra:[toPhoto],onOk(){setTimeout(()=>v3Screenshot(size,tr),0);}});}
+async function v3Screenshot(size,tr,toPhoto){let w,h,d,premul=!!tr;
   if(typeof nv!=='undefined'&&nv.isOpen&&platform.isDesktop){try{[w,h]=v3SizeOf(size||'view');toast('Taking the picture in the new viewer…');const png=await nvCapture(w,h,tr),r=await deliver(v3FileBase()+'_3d.png',new Blob([png],{type:'image/png'}));toast(deliveredText(r,'Screenshot'));return {w,h};}catch(e){console.warn(e);toast('The new viewer could not take it, so the normal viewer did.');}}
   if(v3.rt&&rt.view&&rt.view.n){const S=rt.view;w=S.w;h=S.h;d=rtPixels(S,!tr);}
   else{[w,h]=v3SizeOf(size||'view');d=v3Offscreen(w,h,{transparent:tr});}
-  const blob=await pixelsToPNG(w,h,d,premul),r=await deliver(v3FileBase()+'_3d.png',blob);toast(deliveredText(r,'Screenshot'));return {w,h};}
+  const blob=await pixelsToPNG(w,h,d,premul);if(toPhoto){await phReceive(blob,v3FileBase()+'_3d.png');return {w,h};}
+  const r=await deliver(v3FileBase()+'_3d.png',blob);toast(deliveredText(r,'Screenshot'));return {w,h};}
 /* ---- the Render window (ray traced) ---- */
 const rtWin={S:null,run:false,raf:0,o:null};
 function dlgRender(){if(!v3.on||!v3.mesh){toast('Open the 3D view first.');return;}if(v3.mesh.noUV){toast('This model has no UVs, so its textures cannot show.');return;}
   const o=rtWin.o||(rtWin.o={size:'view',spp:256,bounces:4,bg:'hdri'});const prev=el('canvas',{class:'rtprev',id:'rtPrev'}),bar=el('div',{class:'bakebar'},el('div')),msg=el('p',{class:'note',id:'rtMsg',text:'Set it up, then press Render.'});
-  const go=el('button',{class:'btn',id:'rtGo',text:'Render',onclick:()=>rtWinStart(prev,bar,msg,go)}),save=el('button',{class:'btn',id:'rtSave',text:'Save PNG…',onclick:rtWinSave});
+  const go=el('button',{class:'btn',id:'rtGo',text:'Render',onclick:()=>rtWinStart(prev,bar,msg,go)}),save=el('button',{class:'btn',id:'rtSave',text:'Save PNG…',onclick:()=>rtWinSave()}),toPh=el('button',{class:'btn',id:'rtPhoto',text:'Send to Photo',title:'Open this render in the Photo tab',onclick:()=>rtWinSave(true)});
   const sz=seg(V3_SIZES,o.size,v=>{o.size=v;},'Size');sz.classList.add('themeseg');
   const body=el('div',{class:'dlg-grid',id:'rtDlg'},el('div',{class:'sub',text:'Size'}),sz,
     el('div',{class:'sub',text:'Quality'}),seg([[64,'Draft (64)'],[256,'Good (256)'],[1024,'Best (1024)']],o.spp,v=>{o.spp=+v;},'Samples'),
     makeSlider({id:'rtBounces',label:'Light bounces',min:1,max:8,step:1,value:o.bounces,fmt:v=>String(v),onInput:v=>{o.bounces=v;}}).el,
     el('div',{class:'sub',text:'Background'}),seg([['hdri','HDRI'],['colour','Colour'],['clear','Transparent']],o.bg,v=>{o.bg=v;},'Background'),
-    prev,bar,msg,el('div',{class:'chips'},go,(typeof nv!=='undefined'&&nv.isOpen&&platform.isDesktop)?el('button',{class:'btn',id:'rtNv',text:'Render in the new viewer',title:'Uses the new viewer window: its shaders, shadows and reflections',onclick:()=>rtNvRender(prev,msg)}):null,save),
+    prev,bar,msg,el('div',{class:'chips'},go,(typeof nv!=='undefined'&&nv.isOpen&&platform.isDesktop)?el('button',{class:'btn',id:'rtNv',text:'Render in the new viewer',title:'Uses the new viewer window: its shaders, shadows and reflections',onclick:()=>rtNvRender(prev,msg)}):null,save,toPh),
     el('p',{class:'note',text:'Lit by the HDRI (and the extra sun) from the 3D view’s Settings, with real shadows and bounced light. It gets cleaner the longer it runs; the camera is the 3D view’s when you press Render.'}));
   openDialog({title:'Render (ray traced)',body,okLabel:null,cancelLabel:'Close',wide:true,onCancel(){rtWinStop();}});}
 async function rtWinStart(prev,bar,msg,go){rtWinStop();const o=rtWin.o,[w,h]=v3SizeOf(o.size);msg.textContent='Preparing…';const g=await rtScene();if(!g){msg.textContent='Ray tracing could not start.';return;}
@@ -64,8 +66,8 @@ function rtWinStop(){rtWin.run=false;cancelAnimationFrame(rtWin.raf);}
 async function rtNvRender(prev,msg){rtWinStop();const o=rtWin.o,[w,h]=v3SizeOf(o.size);msg.textContent='Rendering in the new viewer… this can take a while at large sizes.';
   try{const u=await nvFrame(w,h,0,undefined,undefined,Math.max(8,Math.min(1024,o.spp)));rtWin.nvImg={w,h,rgba:u};prev.width=w;prev.height=h;prev.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(u.buffer,u.byteOffset,w*h*4),w,h),0,0);msg.textContent='Done · '+w+' × '+h+' (new viewer)';}
   catch(e){console.warn(e);msg.textContent='The new viewer could not render it: '+(e&&e.message||e);}}
-async function rtWinSave(){if(rtWin.nvImg&&!(rtWin.S&&rtWin.S.n)){const I=rtWin.nvImg,flip=new Uint8Array(I.w*I.h*4);for(let y=0;y<I.h;y++)flip.set(I.rgba.subarray(y*I.w*4,(y+1)*I.w*4),(I.h-1-y)*I.w*4);const r=await deliver(v3FileBase()+'_render.png',await pixelsToPNG(I.w,I.h,flip,false));toast(deliveredText(r,'Render'));return;}
-  const S=rtWin.S;if(!S||!S.n){toast('Render first.');return;}const tr=rtWin.o.bg==='clear',d=rtPixels(S,!tr);const r=await deliver(v3FileBase()+'_render.png',await pixelsToPNG(S.w,S.h,d,tr));toast(deliveredText(r,'Render'));}
+async function rtWinSave(toPhoto){if(rtWin.nvImg&&!(rtWin.S&&rtWin.S.n)){const I=rtWin.nvImg,flip=new Uint8Array(I.w*I.h*4);for(let y=0;y<I.h;y++)flip.set(I.rgba.subarray(y*I.w*4,(y+1)*I.w*4),(I.h-1-y)*I.w*4);const bl=await pixelsToPNG(I.w,I.h,flip,false);if(toPhoto){closeDialog();await phReceive(bl,v3FileBase()+'_render.png');return;}const r=await deliver(v3FileBase()+'_render.png',bl);toast(deliveredText(r,'Render'));return;}
+  const S=rtWin.S;if(!S||!S.n){toast('Render first.');return;}const tr=rtWin.o.bg==='clear',d=rtPixels(S,!tr),bl=await pixelsToPNG(S.w,S.h,d,tr);if(toPhoto){closeDialog();await phReceive(bl,v3FileBase()+'_render.png');return;}const r=await deliver(v3FileBase()+'_render.png',bl);toast(deliveredText(r,'Render'));}
 /* ---- turntable ---- */
 const TT_FORMATS=()=>[['webm','WebM video'],...(typeof MediaRecorder!=='undefined'&&MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported('video/mp4')?[['mp4','MP4 video']]:[]),['gif','GIF'],['png','PNG sequence']];
 function dlgTurntable(){if(!v3.on||!v3.mesh){toast('Open the 3D view first.');return;}

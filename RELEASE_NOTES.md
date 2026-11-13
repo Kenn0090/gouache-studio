@@ -1,3 +1,8 @@
+## 0.97.9
+
+- **Send to Photo** from the 3D Screenshot and Render windows and from 2D Paint (File › Export › Send to Photo).
+- **Send to Paint** from Photo now sends the developed photo at full size, as a new layer.
+
 ## 0.97.8
 
 - **3D Paint shelf like Substance Painter's:** categories with icons (Brushes, Materials, Smart materials, Smart masks, Alphas, Textures, Decals, Environments, Mesh maps, Tools, Projects) and a quick bar with search, favourites, recent, tile size and list view.
