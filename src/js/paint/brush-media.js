@@ -13,6 +13,7 @@ const BR_NAME_RULES=[['stamps',/shard|jagged|torn|fracture|shatter|faceted|^poly
   ['effects',/smoke|fire|flame|lightning|spark|glint|star|cloud|swoosh|crack|explosion/i],['texture',/grain|noise|salt|speckle|scatter|texture|crumb|dirt|rough|scratch|grunge|dust|stipple|static|sprinkle|moss|rust|stone|bark/i],
   ['stamps',/stamp|pixel|square|shape|leaf|dot|star|cross|arrow/i]];
 function brushMedium(p,set){
+  const nm=p.name||'';if(/stump|smudger|blender|water brush/i.test(nm))return 'blend';if(/erase|eraser|lift-off|lifter/i.test(nm))return 'retouch';
   const m=set&&BR_SET_MEDIUM[set.id];if(m)return m;
   if(p.tool==='smudge')return 'blend';if(['heal','clone','dodge','burn','erase'].includes(p.tool))return 'retouch';
   if(p.weldPaint||p.ownTool&&p.tool==='material')return 'tools';
