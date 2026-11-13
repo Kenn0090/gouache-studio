@@ -1,0 +1,23 @@
+/* 0.97.11 (Kenn): the Tools shelf shows only thumbnails; the weld / stitch / surface detail settings appear in the Brush settings panel */
+const {chromium}=require('playwright'),path=require('path');
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});const p=await(await b.newContext({viewport:{width:1600,height:950}})).newPage();
+const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.route('**/*',r=>r.request().url().startsWith('file:')?r.continue():r.abort());
+await p.goto('file://'+path.resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+await p.click('#modeTabs [data-mode=p3d]');await p.waitForTimeout(3500);
+await p.evaluate(()=>__gs.showPanel('shtools'));await p.waitForTimeout(800);
+const inShelf=sel=>p.evaluate(s=>{const e=document.querySelector('#shToolsBody '+s);return !!e},sel);
+ok(!await inShelf('.weld-controls')&&!await inShelf('input[type=range]')&&!await inShelf('select'),'the shelf has no sliders or settings, only thumbnails');
+ok(await p.evaluate(()=>document.querySelectorAll('#shToolsBody .weld-card').length)>=25,'the thumbnails are all there');
+const settingsIn=()=>p.evaluate(()=>({n:document.querySelectorAll('#brushBody .toolset input[type=range]').length,kind:(document.querySelector('#brushBody .toolset')||{dataset:{}}).dataset.kind||''}));
+await p.evaluate(async()=>{await __gs.weldUse(__gs.WELD_STYLES[0])});await p.waitForTimeout(900);
+let s=await settingsIn();ok(s.kind==='weld'&&s.n>3,'a weld brush shows its sliders in the Brush settings ('+s.n+')');
+await p.locator('#dkShelf').getByRole('button',{name:'Cross stitch',exact:true}).first().click();await p.waitForTimeout(900);
+s=await settingsIn();ok(s.kind==='stitch'&&s.n>5,'a stitch shows its sliders in the Brush settings ('+s.n+')');
+await p.evaluate(()=>__gs.showPanel('shtools'));await p.waitForTimeout(500);
+await p.locator('#dkShelf').getByRole('button',{name:'Hammer dent',exact:true}).first().click();await p.waitForTimeout(900);
+s=await settingsIn();ok(s.kind==='detail'&&s.n>3,'a surface detail shows its sliders in the Brush settings ('+s.n+')');
+ok(await p.evaluate(()=>!!document.querySelector('#brushBody .toolset #surfaceDetail-size')),'the sliders are live controls');
+ok(errs.length===0,'no page errors '+errs.join('|'));
+await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0)})();

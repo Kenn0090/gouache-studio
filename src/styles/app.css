@@ -1678,3 +1678,6 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .br-simple .br-adv{display:none}.br-searching .br-adv{display:revert}.br-searching .br-adv[hidden]{display:none}
 .brgrp{margin:4px 0}
 .libview{display:inline-flex;gap:4px}.libview .btn.on{background:var(--accent,#f0a040);color:#111}
+/* (0.97.11) Tools shelf: thumbnails only; the settings live in the Brush settings panel */
+.toolset .weld-controls{grid-template-columns:1fr}.toolset .weld-shelf{padding-top:4px}
+.dkshelf .weld-card small{display:none}.dkshelf .weld-grid{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}

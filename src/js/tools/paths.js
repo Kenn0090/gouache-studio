@@ -287,7 +287,7 @@ function pathPanel(box){const L=pathActive(),P=L?.path;pathPanelFor=doc.active;$
   box.append(el('p',{class:'note',text:ui.tool==='path'?'Click on the model to add points. Drag a new point for a curve. Alt+drag rotates the model. Enter finishes; click a point to edit it.':'Click for corners; click and drag for Bézier handles. Drag points or handles to edit. Alt+drag a handle breaks its pair. Click the first point to close. Enter finishes. To carry on from an open end, click that end point, then click where the path should go (Esc first to start a new path instead).'}),
     el('div',{class:'chips'},el('button',{class:'btn sm',id:'pathNew',text:'New path',onclick:pathNewButton}),el('button',{class:'btn sm',id:'pathFinish',text:'Finish',disabled:!P,onclick:pathFinish})));
   if(!P){box.append(el('p',{class:'note',text:'Start a path on the '+(ui.tool==='path'?'model.':'canvas.')}));return;}
-  if(P.stitch)box.append(el('button',{class:'btn sm',text:'Stitch settings',onclick:()=>showPanel('stitches')}));
+  if(P.stitch)box.append(el('div',{class:'sub',text:'Stitch settings'}),tsHost('stitch'));
   else if(P.weather)weatherPathControls(box,P);
   else pathsPanel(box,L);
   const name=el('input',{id:'pathName',value:L.name,'aria-label':'Layer name',title:'Layer name'});name.onchange=()=>{const b=L.name,a=name.value.trim()||b;L.name=a;pushUndo({label:'Rename layer',refs:[L],undo(){L.name=b;},redo(){L.name=a;}});changed(L);};box.append(name,

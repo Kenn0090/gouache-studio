@@ -54,8 +54,9 @@ function materialBrushTarget(){if(ui.tool!=='material')return null;const n=doc.a
   const f=fillClone(r.fill);for(const k in f.maps)if(f.maps[k].src==='image')f.maps[k].tile=(f.maps[k].tile||1)*materialBrush.tile;
   const L=cmdNewFillLayer({name:'Paint · '+r.name,maps:f.maps,proj:f.proj,triSharp:f.triSharp,hStr:f.hStr,xf:f.xf,rep:f.rep,front:f.front,decal:f.decal,imgs:matRecTargets(r)});if(!L)return null;
   if(L.mask)maskDispose(L.mask);L.materialPaint=key;L.mask=makeMask(0,true);L.editMask=false;L.fill.coverH=false;fillRender(L);changed(L);return L;}
-function buildMaterialBrushPanel(box){if(materialBrush.rec?.stitch){box.append(el('button',{class:'btn sm',text:'Stitch settings',onclick:()=>showPanel('stitches')}));return;}
-  if(materialBrush.rec?.surfaceDetail){box.append(el('button',{class:'btn sm',text:'Surface detail settings',onclick:()=>showPanel('surfacedetails')}));return;}
+function buildMaterialBrushPanel(box){if(materialBrush.rec?.stitch){box.append(el('div',{class:'sub',text:'Stitch settings'}),tsHost('stitch'));return;}
+  if(materialBrush.rec?.surfaceDetail){box.append(el('div',{class:'sub',text:'Surface detail settings'}),tsHost('detail'));return;}
+  if(materialBrush.rec?.weldPaint){box.append(el('div',{class:'sub',text:'Weld settings'}),tsHost('weld'));return;}
   box.append(el('div',{class:'sub',text:'Painting material'}),el('p',{class:'note',text:materialBrush.rec?.name||'Select a material in the Materials shelf.'}),
   el('button',{class:'btn sm',id:'mbPick',text:'Choose from Materials',onclick:()=>showPanel('mats')}),
   makeSlider({id:'mbTile',label:'Material tiling',min:.05,max:100,numericMax:Infinity,step:.05,value:materialBrush.tile,fmt:v=>v.toFixed(2)+'×',onInput:v=>{materialBrush.tile=v;}}).el,
