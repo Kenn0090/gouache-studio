@@ -298,7 +298,7 @@ function maskMenu(e,n){const pop=$('#menuPop');closeMenu();
     head('Blur and sharpen'),...['blur','boxBlur','motionBlur','sharpen','highPass'].map(fx),sep(),head('Edges'),...['edges','convolve'].map(fx),
     ...(typeof fxAddMenu==='function'?[sep(),it('All filters…',()=>{on();renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);})]:[])].filter(Boolean));
   const names=typeof msAnchorNames==='function'?msAnchorNames():[];
-  const items=[head('Make the mask'),it('Paint',add('paint')),it('Fill white',add('fill',{p:{v:1}})),it('Fill black',add('fill',{p:{v:0}})),generators,noises,it('Picture…',add('image')),
+  const items=[head('Make the mask'),it('Paint',add('paint')),it('Fill white',()=>{on();maskFillTo(n,1);}),it('Fill black',()=>{on();maskFillTo(n,0);}),generators,noises,it('Picture…',add('image')),
     ...(doc.meshMaps&&doc.meshMaps.id?[it('ID colour (pick colours on the model)…',()=>idColourMask(n))]:[]),
     ...(names.length?[fly('From an anchor point',()=>names.map(name=>it(name,add('anchor',{p:{name,ch:'height',inv:false}}))))]:[]),
     sep(),head('Change it'),...quick.filter(id=>FX[id]).map(id=>it(FX[id].title,add('filter',{fx:id}))),more,

@@ -16,8 +16,8 @@ const {chromium}=require('playwright'),path=require('path');const OLD=__dirname+
   ok(!(await p.getByRole('menuitem',{name:/^Duplicate/}).count())&&!(await has('Layer style'))&&!(await has('Group into folder')),mode+': and no layer commands');
   const n=await p.locator('#menuPop > *').count();ok(n<=24,mode+': it is short ('+n+' lines)');
   await mi('Fill black').click();await W(200);
-  ok(await p.evaluate(()=>{const r=ML.mask.stack.at(-1);return r.kind==='fill'&&r.p.v===0;}),mode+': Fill black adds a black fill row');
-  await row.locator('.mthumb').click({button:'right'});await W(200);await mi('Invert').click();await W(200);
+  ok(await p.evaluate(()=>{const st=ML.mask.stack||[];const d=__gs.captureRegionNow((ML.mask.stack?__gs.msPaintRow(ML).t:ML.mask.target),0,0,8,8).data;return !st.some(r=>r.kind==='fill')&&d[0]===0;}),mode+': Fill black adds no Fill row: it fills the mask\'s own Paint row');
+  await row.locator('.mthumb').click({button:'right'});await W(200);await mi('Invert').last().click();await W(200);
   ok(await p.evaluate(()=>ML.mask.stack.at(-1).fx==='invert'),mode+': Invert adds to the mask');
   await row.locator('.lname').click({button:'right'});await W(200);
   console.log('   layer menu:',(await p.locator('#menuPop').innerText()).replace(/\s+/g,' ').slice(0,200));ok(await p.getByRole('menuitem',{name:/^Duplicate/}).count()>0&&await mi('Generators').count()===0,mode+': the layer’s own menu is unchanged');await p.keyboard.press('Escape');}
