@@ -1,3 +1,8 @@
+## 0.97.14
+
+- **Export baked maps.** The export window has an **Export baked maps** tick (also when you send to a game engine): the set's baked maps (Normal, AO, Curvature, Thickness, Position, World normal, ID, Height) are saved beside the textures with a Mesh_ prefix, each with its own tick so you can leave one out. A set without baked maps says so.
+- **Fewer flashes when you pick a tool brush.** Choosing a weld, stitch or surface detail no longer rebuilds the side panels when the Brush tab is already showing.
+
 ## 0.97.13
 
 - **Brushes library in Paint like the 3D Paint shelf.** The Brushes panel has a **search box** (finds a brush in any folder), **favourites** (a star on each brush, a Favourites section on top and a ★ button to show only those), tile size **S / M / L**, and a **list view** with the brush names.

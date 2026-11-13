@@ -1,3 +1,8 @@
+## 0.97.14
+
+- **Export baked maps** in the export window (also for game engine exports), with a tick per map.
+- **Fewer flashes** when picking a weld, stitch or surface detail.
+
 ## 0.97.13
 
 - **Brushes library in Paint:** search, favourites (star), tile size S / M / L and a list view.
