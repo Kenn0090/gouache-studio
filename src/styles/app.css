@@ -229,6 +229,8 @@ body.ldragging,body.ldragging *{cursor:grabbing!important}
 .dual-tip-grid .libset-h{margin-bottom:5px}
 #stFps{min-width:7ch}
 .prevwrap{position:sticky;top:0;z-index:4;background:var(--panel,var(--raise));padding-bottom:4px}
+/* on a short window the pinned stroke preview would leave no room for the settings: it scrolls away instead */
+@media (max-height:900px){.prevwrap{position:static}}
 #brushPrev{display:block;width:100%;height:78px;border-radius:7px;border:1px solid var(--line);background:var(--ground)}
 #prevNote{position:absolute;right:8px;bottom:6px;font:10px var(--mono);color:var(--faint);pointer-events:none}
 .modebtn{display:flex;justify-content:space-between;align-items:center;width:100%;background:var(--ground);border:1px solid var(--line-2);border-radius:5px;padding:5px 8px;text-align:left}
@@ -1662,7 +1664,8 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .shtgrp[open]>summary::before{content:'▾'}
 .shtgrp>:not(summary){padding:0 10px 10px}
 /* the Reset brush row stays in view at the foot of the scrolling panel instead of being cut off by its edge */
-#brushBody>.resetrow{position:sticky;bottom:0;z-index:3;background:var(--panel);padding:6px 0;margin-top:6px;border-top:1px solid var(--line)}
+/* (0.97.15, Kenn: it hides the settings) Reset brush is the last row of the panel and scrolls with it; it no longer sticks over the settings */
+#brushBody>.resetrow{padding:6px 0 10px;margin-top:6px;border-top:1px solid var(--line)}
 #brushBody{padding-bottom:4px}
 /* (0.97.10) options bar pop-ups */
 .optpop{position:fixed;z-index:60;min-width:260px;max-width:340px;padding:10px 12px;display:grid;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
