@@ -282,6 +282,41 @@ fn system_ram() -> (u64, u64) {
             return (kb("MemTotal:"), kb("MemAvailable:"));
         }
     }
+    #[cfg(target_os = "macos")]
+    {
+        // (0.97.15) Mac: installed RAM from sysctl, free + inactive pages from vm_stat
+        let run = |cmd: &str, args: &[&str]| -> Option<String> {
+            std::process::Command::new(cmd)
+                .args(args)
+                .output()
+                .ok()
+                .and_then(|o| String::from_utf8(o.stdout).ok())
+        };
+        let total = run("sysctl", &["-n", "hw.memsize"])
+            .and_then(|t| t.trim().parse::<u64>().ok())
+            .unwrap_or(0);
+        let mut avail = 0u64;
+        if let Some(v) = run("vm_stat", &[]) {
+            let page = v
+                .lines()
+                .next()
+                .and_then(|l| l.split("page size of ").nth(1))
+                .and_then(|l| l.split_whitespace().next())
+                .and_then(|n| n.parse::<u64>().ok())
+                .unwrap_or(4096);
+            let pages = |name: &str| -> u64 {
+                v.lines()
+                    .find(|l| l.starts_with(name))
+                    .and_then(|l| l.split(':').nth(1))
+                    .and_then(|n| n.trim().trim_end_matches('.').parse::<u64>().ok())
+                    .unwrap_or(0)
+            };
+            avail = (pages("Pages free") + pages("Pages inactive") + pages("Pages speculative")) * page;
+        }
+        if total > 0 {
+            return (total, avail);
+        }
+    }
     (0, 0)
 }
 

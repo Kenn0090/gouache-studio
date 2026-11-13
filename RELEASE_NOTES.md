@@ -1,3 +1,13 @@
+## 0.97.14
+
+- **Export baked maps** in the export window (also for game engine exports), with a tick per map.
+- **Save As like Photoshop:** the standard file window with a Save as type list, then the format's options.
+- **Navigator pip** while zoomed in (View › Navigator).
+- **3D Brush tab shows every setting** (Show all settings removed); a **grey base material** shows where the layers are see-through.
+- **Faster painting** on masks with filter rows and with the new tools' outline cursor.
+- **Mac build** (.dmg) on the release page.
+- **Fewer flashes** when picking a weld, stitch or surface detail.
+
 ## 0.97.13
 
 - **Brushes library in Paint:** search, favourites (star), tile size S / M / L and a list view.

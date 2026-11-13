@@ -30,7 +30,7 @@ uniform int uUseUDIM; uniform vec2 uUDIMTile;
 uniform sampler2D uBase; uniform sampler2D uRough; uniform sampler2D uMetal; uniform sampler2D uNrm; uniform sampler2D uAO; uniform sampler2D uEmis; uniform sampler2D uOpac; uniform sampler2D uThick;
 uniform int uUseSafeMip;
 uniform vec4 uVLA[4]; uniform vec4 uVLB[4]; uniform vec4 uVLC[4]; uniform int uVLN;
-uniform int uFlipY; uniform int uHas; uniform vec2 uDef; uniform vec3 uCam; uniform vec3 uSun; uniform float uSunI; uniform float uSkyI; uniform float uExpo; uniform int uUnlit; uniform int uClip;
+uniform int uBackdrop; uniform int uFlipY; uniform int uHas; uniform vec2 uDef; uniform vec3 uCam; uniform vec3 uSun; uniform float uSunI; uniform float uSkyI; uniform float uExpo; uniform int uUnlit; uniform int uClip;
 /* the HDRI (0.26): 6 levels from sharp to fully rough, and the diffuse light */
 uniform int uEnvOn; uniform float uEnvRot; uniform float uEnvI; uniform sampler2D uEnv0; uniform sampler2D uEnv1; uniform sampler2D uEnv2; uniform sampler2D uEnv3; uniform sampler2D uEnv4; uniform sampler2D uEnv5; uniform sampler2D uIrr; uniform int uTone;
 /* the texture set's shader: 0 standard, 1 skin, 2 anisotropic metal, 3 velvet, 4 toon, 5 cel, 6 spec/gloss view, 7 panner, 8 retro (N64 / PSX); its settings */
@@ -69,8 +69,10 @@ float retroBayer(vec2 p){ ivec2 i=ivec2(mod(p,4.0)); int v=0; for(int k=0;k<2;k+
 float hsh(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
 float hsh3(vec3 p){ return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453); }
 vec4 mapSample(sampler2D tex,vec2 uv){vec2 dx,dy;mapGrad(uv,dx,dy);if(uSh==8)return retroSample(tex,uv,dx,dy);return textureGrad(tex,uv,dx,dy);}
-void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv=uUseUDIM==1?fract(vT):vT; vec2 dUx=dFdx(uv),dUy=dFdy(uv); vec4 b=mapSample(uBase,uv+uPB); float a=b.a; if((uHas&64)!=0) a*=mapSample(uOpac,uv+uPO).r;
-  if(uClip==1&&a<0.5) discard; vec3 alb=b.a>1e-5?b.rgb/b.a:vec3(0.0);
+void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv=uUseUDIM==1?fract(vT):vT; vec2 dUx=dFdx(uv),dUy=dFdy(uv); vec4 b=mapSample(uBase,uv+uPB); float aOp=1.0; if((uHas&64)!=0) aOp=mapSample(uOpac,uv+uPO).r; float a=b.a*aOp;
+  /* (0.97.15, Kenn) in 3D Paint the model always has a plain grey base material: where the layers (or a black mask) leave it see-through, that grey shows instead of the mesh vanishing; only an Opacity map cuts holes */
+  if(uBackdrop==1){ if(uClip==1&&aOp<0.5) discard; a=aOp; } else if(uClip==1&&a<0.5) discard;
+  vec3 alb=b.a>1e-5?b.rgb/b.a:vec3(0.0); if(uBackdrop==1) alb=mix(vec3(0.5),alb,b.a);
   if(uUnlit==1){ vec3 c=alb; if((uHas&8)!=0) c*=mapSample(uAO,uv+uPA).r; o=vec4(c,1.0); return; }
   alb=lin(alb);
   vec3 Ng=normalize(vN),N=Ng; vec3 T=normalize(vTan.xyz-Ng*dot(Ng,vTan.xyz)), B=cross(Ng,T)*vTan.w;
@@ -418,7 +420,7 @@ function v3MeshU(C,common,it,flip,safeMip=null){const {s,bake,EU,eye,a,e}=C,sg=i
     if(!bake&&!it.thick&&!it.sh&&doc.meshMaps&&doc.meshMaps.thick)it.thick=doc.meshMaps.thick;
     const mOK=ok('metal')&&!(sg&&ok('spec')),hm=(ok('rough')?1:0)|(mOK?2:0)|(ok('nfinal')?4:0)|(ok('ao')?8:0)|(ok('emis')?16:0)|(ok('opac')?64:0)|(it.thick?128:0)|(ok('spec')&&!mOK?256:0);
     const U=Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uUseUDIM:!!it.udim,uUDIMTile:it.udim?[it.udim.u,it.udim.v]:[0,0],uUseSafeMip:useSafeMip,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:mOK?T.metal.tex:ok('spec')?T.spec.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,uThick:useSafeMip?safeMip.tex:it.thick?it.thick.tex:dummy,...EU,...shadeUniforms(bake?null:it.sh||v3ShadeOf(doc)),
-      uMorph:bake&&bk.fold>0?bk.fold:0,uMorphOff:[it.off||0,0,0],uStudioFill:s.studioFill||0,...lightViewUniforms(),uStudioRim:s.studioRim||0,uLightColor:s.lightColor||[1,1,1],uShadow:dummy,uShadowVP:{m4:m4()},uShadowOn:0,uShadowSoft:1,...common,uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uMetalView:{int:s.metalView?1:0},uMetalRough:s.metalRough||.25,uBevelMaterial:{int:bevelPreviewOn()&&bvSettings().previewMaterial?1:0},uBevelMetal:bvSettings().previewMetal||0,uBevelRough:bvSettings().previewRough??.25,uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});
+      uBackdrop:{int:ui.mode==='p3d'?1:0},uMorph:bake&&bk.fold>0?bk.fold:0,uMorphOff:[it.off||0,0,0],uStudioFill:s.studioFill||0,...lightViewUniforms(),uStudioRim:s.studioRim||0,uLightColor:s.lightColor||[1,1,1],uShadow:dummy,uShadowVP:{m4:m4()},uShadowOn:0,uShadowSoft:1,...common,uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uMetalView:{int:s.metalView?1:0},uMetalRough:s.metalRough||.25,uBevelMaterial:{int:bevelPreviewOn()&&bvSettings().previewMaterial?1:0},uBevelMetal:bvSettings().previewMetal||0,uBevelRough:bvSettings().previewRough??.25,uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});
     /* (0.96.2) per-set pictures win over the shared ones: before, every set was displaced by the active set's height and lost its UDIM tile */
     if(!bake){U.uH=T.height&&s.disp?T.height.tex:dummy;U.uUseH=!!(T.height&&s.disp&&(T===v3.tex?doc.maps.includes('height'):true));U.uUseUDIM=!!it.udim;U.uUDIMTile=it.udim?[it.udim.u,it.udim.v]:[0,0];}
     if(isFur)furUniforms(U,T,shk);return U;}

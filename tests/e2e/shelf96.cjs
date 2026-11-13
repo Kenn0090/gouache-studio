@@ -62,13 +62,11 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const sets=async(align)=>{await p.evaluate(a=>{__gs.v3s().paintAlign=a;__gs.setTool('erase');__gs.setTool('brush');},align);await W(500);await p.evaluate(()=>__gs.showPanel('tool'));await W(400);
    return p.evaluate(()=>({mix:!!document.getElementById('bMix'),drip:!!document.getElementById('bDrip'),sp:!!document.getElementById('bSpace'),groups:document.querySelectorAll('#brushBody details.brg3').length,sym:!!document.querySelector('#brushBody [id^=sym]'),prev:!!document.querySelector('#toolSec #brushPrev'),stencil:!!document.querySelector('#toolSec #stBrush'),all:!!document.getElementById('bShowAll3d'),curve:!!document.getElementById('bSmCurve')}));};
  const cw=await sets('wrap');
- ok(!cw.mix&&!cw.drip&&!cw.curve&&cw.sp&&cw.groups>=2&&cw.all&&!cw.sym,'Tangent | Wrap: mixing, drips and smooth curves are hidden; spacing sits in a folding group '+JSON.stringify(cw));
+ ok(cw.mix&&cw.drip&&cw.curve&&cw.sp&&!cw.all,'Tangent | Wrap: every setting is shown now (nothing hidden, no Show all settings tick) '+JSON.stringify(cw));
  const cu=await sets('uv');
- ok(cu.mix&&cu.drip&&cu.curve&&cu.sp&&cu.groups>=2,'UV alignment (works like the canvas): mixing, drips and smooth curves are there '+JSON.stringify(cu));
+ ok(cu.mix&&cu.drip&&cu.curve&&cu.sp,'UV alignment: mixing, drips and smooth curves are there '+JSON.stringify(cu));
  ok(cu.prev&&cu.stencil,'the stroke preview and the stencil sit with the brush settings');
- await sets('wrap');await p.evaluate(()=>{document.getElementById('bShowAll3d').click();});await W(600);
- const c2=await p.evaluate(()=>({mix:!!document.getElementById('bMix'),drip:!!document.getElementById('bDrip')}));
- ok(c2.mix&&c2.drip,'“Show all settings” brings the rest back');await p.evaluate(()=>{document.getElementById('bShowAll3d').click();});await W(400);await sets('uv');
+ await sets('uv');
  /* Pressure without a pen now works on the model too (it did nothing there before) */
  await p.evaluate(async()=>{const G=__gs;G.setMode('p3d',true);G.p3.savedAt=G.p3Sig();await G.p3NewProject(128,{modelKey:'plane'});G.useModel(G.primMesh('plane',1));Object.assign(G.v3.cam,{yaw:0,pitch:0,dist:3.2,tx:0,ty:0,tz:0});Object.assign(G.v3s(),{disp:0,showUV:false,litUV:false});G.v3.paintOn=true;G.prefs.paintSpeed='best';G.setTool('brush');G.setFG([1,0,0]);});
  await W(1500);const box=await p.locator('#v3Hit').boundingBox();

@@ -127,9 +127,9 @@ function bevelPreviewGPU(m,slot='low'){if(!m)return null;if(m.subF&&m.src)m=m.sr
 function bevelPreviewProgram(high=false){if(high)return P_BVHIGH||(P_BVHIGH=Object.assign(prog3(VS_3D,'uniform float uBVAlpha;\n'+bvScreenMaterial(FS_3D).replace('vec3 T=normalize(vTan.xyz-Ng*dot(Ng,vTan.xyz)), B=cross(Ng,T)*vTan.w;','vec3 T=normalize(cross(abs(Ng.z)<.95?vec3(0,0,1):vec3(0,1,0),Ng)), B=cross(Ng,T);').replaceAll('vec4(pow(clamp(col,0.0,1.0),vec3(1.0/2.2)),1.0)','vec4(pow(clamp(col,0.0,1.0),vec3(1.0/2.2)),uBVAlpha)')),{decodeOnly:true}));
   return P_BV3||(P_BV3=Object.assign(prog3(VS_3D,bvScreenMaterial(FS_3D)),{decodeOnly:true}));}
 function bvPrograms(){if(!P_BVGEOM)P_BVGEOM=prog3(VS_3D,`in vec3 vP;in vec3 vN;in vec2 vT;in vec4 vTan;
-uniform sampler2D uNrm;uniform sampler2D uBase;uniform sampler2D uOpac;uniform int uHas;uniform int uClip;uniform int uHigh;uniform vec2 uPN;
+uniform sampler2D uNrm;uniform sampler2D uBase;uniform sampler2D uOpac;uniform int uHas;uniform int uClip;uniform int uBackdrop;uniform int uHigh;uniform vec2 uPN;
 layout(location=1) out vec4 oG;layout(location=2) out vec4 oS;
-void main(){if(uHigh==0&&uClip==1){float a=texture(uBase,vT).a;if((uHas&64)!=0)a*=texture(uOpac,vT).r;if(a<.5)discard;}
+void main(){if(uHigh==0&&uClip==1){float a=uBackdrop==1?1.0:texture(uBase,vT).a;if((uHas&64)!=0)a*=texture(uOpac,vT).r;if(a<.5)discard;}
 vec3 n=normalize(vN),g=cross(dFdx(vP),dFdy(vP));g=dot(g,g)>1e-20?normalize(g):n;if(dot(g,n)<0.0)g=-g;vec3 shade=n;
 if((uHas&4)!=0){vec3 t=normalize(vTan.xyz-n*dot(n,vTan.xyz)),b=cross(n,t)*vTan.w,c=texture(uNrm,vT+uPN).rgb*2.0-1.0;shade=normalize(t*c.x+b*c.y+n*c.z);}
 o=vec4(vP,1);oG=vec4(g,1);oS=vec4(shade,1);}`,FS_HEAD.replace('out vec4 o;','layout(location=0) out vec4 o;'));

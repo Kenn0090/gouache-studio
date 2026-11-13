@@ -49,7 +49,38 @@ function saveAsChoices(){if(ui.mode==='p3d')return [['gouache3d','3D Paint proje
     ['tex','Textures for a game engine…','Unreal, Unity, Godot, Blender… with the model if you like (Ctrl+Shift+E).']];
   return [['gouache','Gouache document (.gouache)','Every layer, mask, map and setting, to keep working later.'],['psd','Photoshop (.psd)','Layers of the base colour, for other painting apps.'],
     ...FORMATS.map(([v,l])=>[v,l+' (.'+v+')','One flat picture of what you see.'])];}
-function dlgSaveAs(){const ch=saveAsChoices(),def=ui.mode==='p3d'?'gouache3d':'gouache';let cur=ch.some(c=>c[0]===saveAsCfg.fmt)?saveAsCfg.fmt:def;
+/* (0.97.15, Kenn) Save As like Photoshop: the standard file window with a "Save as type" list, then a small window with that format's options
+   (PNG bit depth, JPEG quality…). In a browser one window holds the name, the type and the options. 3D Paint keeps its project / textures choice. */
+const SAVE_TYPES=[['gouache','Gouache document',['gouache']],['psd','Photoshop',['psd']],['png','PNG',['png']],['jpg','JPEG',['jpg','jpeg']],['tga','Targa',['tga']],['tif','TIFF',['tif','tiff']],['dds','DirectDraw Surface',['dds']],['exr','OpenEXR',['exr']],['webp','WebP',['webp']]];
+const saveTypeOfExt=e=>{e=(e||'').toLowerCase();const t=SAVE_TYPES.find(t=>t[2].includes(e));return t?t[0]:null;};
+const saveTypeInfo=v=>SAVE_TYPES.find(t=>t[0]===v)||SAVE_TYPES[0];
+function saveFmtDefault(){const f=saveAsCfg.fmt;if(saveTypeOfExt(f)&&f!=='gouache3d'&&f!=='tex')return saveTypeOfExt(f);const e=saveTypeOfExt(extOf(doc.filePath||''));return e||'gouache';}
+/* options window for one picture format; calls go() when OK is pressed (formats with no options go straight on) */
+function saveFormatOptions(fmt,go){if(!['png','jpg','tga','tif','dds','webp'].includes(fmt)){go();return;}
+  exp.fmt=fmt;exp.png16=exp.tif16=doc.depth===16;
+  const opts=el('div',{class:'fmt-opts'}),draw=()=>opts.replaceChildren(...exportOptsFor(fmt,draw));draw();
+  openDialog({title:saveTypeInfo(fmt)[1]+' options',body:el('div',{class:'dlg-grid'},opts,el('p',{class:'note',text:doc.w+' × '+doc.h+' px · what you see (all visible layers)'})),okLabel:'OK',onOk(){setTimeout(go,0);}});}
+async function saveImageTo(fmt,path,filename){exp.fmt=fmt;exp.src='image';toast('Preparing '+fmt.toUpperCase()+'…');await tick();
+  try{const {blob}=await buildExport();
+    if(path){await platform.writeFile(path,blob);toast('Saved '+path);platform.recentAdd(path);return;}
+    const r=await deliver(filename||slug(doc.name)+'.'+(fmt==='tif'?'tif':fmt),blob);toast(deliveredText(r,fmt.toUpperCase()));}
+  catch(e){console.error(e);toast('The picture could not be saved: '+(e.message||e));}}
+async function saveDocAt(path){toast('Saving…');try{await tick();const blob=await encodeGouache();await platform.writeFile(path,blob);doc.filePath=path;doc.name=baseName(fileNameOf(path));platform.recentAdd(path);markSaved();updateStatus();toast('Saved '+path);}catch(e){console.error(e);toast('The document could not be saved: '+(e.message||e));}}
+async function savePSDAt(path){if(doc.maps.length>1)toast('A PSD holds the base colour only. Save as .gouache to keep every map.');try{await tick();const blob=await encodePSD();await platform.writeFile(path,new Uint8Array(await blob.arrayBuffer()));doc.filePath=path;doc.name=baseName(fileNameOf(path));platform.recentAdd(path);markSaved();updateStatus();toast('Saved '+path);}catch(e){console.error(e);toast('The PSD could not be saved: '+(e.message||e));}}
+async function dlgSaveAsNative(){const cur=saveFmtDefault(),order=[saveTypeInfo(cur),...SAVE_TYPES.filter(t=>t[0]!==cur)];
+  const path=await platform.saveAsPath(slug(doc.name)+'.'+saveTypeInfo(cur)[2][0],order.map(t=>({name:t[1]+' (*.'+t[2].join(', *.')+')',extensions:t[2]})));
+  if(!path)return;let fmt=saveTypeOfExt(extOf(path)),p=path;if(!fmt){fmt=cur;p=path+'.'+saveTypeInfo(cur)[2][0];}
+  saveAsCfg.fmt=fmt;try{localStorage.setItem('gs.saveAsFmt',fmt);}catch(e){}
+  if(fmt==='gouache')return withPaintDocAsync(()=>saveDocAt(p));if(fmt==='psd')return withPaintDocAsync(()=>savePSDAt(p));
+  saveFormatOptions(fmt,()=>saveImageTo(fmt,p));}
+function dlgSaveAsWeb(){let cur=saveFmtDefault();const name=el('input',{type:'text',id:'saveAsName',value:slug(doc.name),'aria-label':'File name'}),
+    sel=el('select',{id:'saveAsType','aria-label':'Save as type'},...SAVE_TYPES.map(t=>el('option',{value:t[0],text:t[1]+' (.'+t[2][0]+')'}))),opts=el('div',{class:'fmt-opts'});sel.value=cur;
+  const draw=()=>{cur=sel.value;exp.fmt=cur;exp.png16=exp.tif16=doc.depth===16;opts.replaceChildren(...(['png','jpg','tga','tif','dds','webp'].includes(cur)?exportOptsFor(cur,draw):[]));};sel.onchange=draw;draw();
+  openDialog({title:'Save as',body:el('div',{class:'dlg-grid'},el('div',{class:'frow'},el('label',{text:'File name'}),name),el('div',{class:'frow'},el('label',{text:'Save as type'}),sel),opts),okLabel:'Save',
+    onOk(){const base=(name.value.trim()||slug(doc.name)).replace(/[\\/:*?"<>|]/g,'_'),fmt=sel.value,ext=saveTypeInfo(fmt)[2][0];saveAsCfg.fmt=fmt;try{localStorage.setItem('gs.saveAsFmt',fmt);}catch(e){}
+      setTimeout(()=>{if(fmt==='gouache')return withPaintDocAsync(()=>saveDoc(true));if(fmt==='psd')return withPaintDocAsync(savePSDAs);saveImageTo(fmt,null,base+'.'+ext);},0);}});}
+function dlgSaveAs(){if(ui.mode!=='p3d')return platform.isDesktop?dlgSaveAsNative():dlgSaveAsWeb();
+  const ch=saveAsChoices(),def='gouache3d';let cur=ch.some(c=>c[0]===saveAsCfg.fmt)?saveAsCfg.fmt:def;
   const list=el('div',{class:'saveas-list',role:'radiogroup','aria-label':'File type'});
   const draw=()=>list.replaceChildren(...ch.map(([v,l,n])=>el('label',{class:'saveas-row'+(v===cur?' on':'')},
     el('input',{type:'radio',name:'saveAsFmt',value:v,id:'saveAs_'+v,checked:v===cur,onchange:()=>{cur=v;draw();}}),el('span',{},el('b',{text:l}),el('small',{class:'dim',text:' '+n})))));

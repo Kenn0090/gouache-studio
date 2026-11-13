@@ -23,7 +23,11 @@ const tipOutlineCache=new Map();
    Before, hovering a curved model changed the cursor size on nearly every move and each new size read the canvas again (~0.2 s a move in tests). */
 const tipAlphaCache=new Map();
 function tipOutAlpha(tip){let r=tipAlphaCache.get(tip.id);if(r&&r.tw===tip.w&&r.th===tip.h)return r;const a=tip.w/tip.h,M=512,W=a>=1?M:Math.max(2,Math.round(M*a)),H=a>=1?Math.max(2,Math.round(M/a)):M;
-  const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(tip.canvas,0,0,W,H);const d=x.getImageData(0,0,W,H).data,A=new Uint8Array(W*H);for(let i=0;i<A.length;i++)A[i]=d[i*4+3];
+  /* (0.97.15, Kenn: it lags when you paint with the new tools) the tip's own alpha picture is in memory: box-average it down here, instead of reading a canvas back (which waits for every painting job still queued on the graphics card) */
+  let A=null;const src=tip.alpha;
+  if(src&&src.length===tip.w*tip.h){A=new Uint8Array(W*H);const sw=tip.w,sh=tip.h;
+    for(let j=0;j<H;j++){const y0=Math.floor(j*sh/H),y1=Math.max(y0+1,Math.floor((j+1)*sh/H));for(let i=0;i<W;i++){const x0=Math.floor(i*sw/W),x1=Math.max(x0+1,Math.floor((i+1)*sw/W));let sum=0;for(let yy=y0;yy<y1;yy++){const row=yy*sw;for(let xx=x0;xx<x1;xx++)sum+=src[row+xx];}A[j*W+i]=sum/((y1-y0)*(x1-x0));}}}
+  else{const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(tip.canvas,0,0,W,H);const d=x.getImageData(0,0,W,H).data;A=new Uint8Array(W*H);for(let i=0;i<A.length;i++)A[i]=d[i*4+3];}
   r={tw:tip.w,th:tip.h,W,H,A};if(tipAlphaCache.size>16)tipAlphaCache.clear();tipAlphaCache.set(tip.id,r);return r;}
 function tipOutline(tip,d){d=clamp(d,8,512);const step=Math.max(4,Math.round(d*.06/4)*4),n=clamp(Math.round(d/step)*step,8,512),key=tip.id+':'+n;let c=tipOutlineCache.get(key);if(c)return c;
   const a=tip.w/tip.h,W=a>=1?n:Math.max(2,Math.round(n*a)),H=a>=1?Math.max(2,Math.round(n/a)):n,S=tipOutAlpha(tip);

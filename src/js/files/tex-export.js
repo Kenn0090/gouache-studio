@@ -79,8 +79,11 @@ const TEX_PRESETS={
     {s:'Opacity',what:'Opacity',grey:'opac'}]}};
 const pascal=n=>(String(n||'Texture').replace(/\.[a-z0-9]+$/i,'').match(/[A-Za-z0-9]+/g)||['Texture']).map(w=>w[0].toUpperCase()+w.slice(1)).join('');
 const snake=n=>(String(n||'texture').replace(/\.[a-z0-9]+$/i,'').match(/[A-Za-z0-9]+/g)||['texture']).map(w=>w.toLowerCase()).join('_');
-const texCfg={preset:'unreal',normal:'preset',size:0,fmt:'png',h16:true,name:'',allSets:true,model:'none',meshMaps:false,pad:'dilate+inf',padPx:16};
+const texCfg={preset:'unreal',normal:'preset',size:0,fmt:'png',h16:true,name:'',allSets:true,model:'none',meshMaps:false,meshOff:{},pad:'dilate+inf',padPx:16};
 /* a baked mesh map (3D Paint) stands in for a map the document doesn't paint, like AO in the ORM file */
+/* (0.97.14, Kenn) Export baked maps: the set's baked maps (normal, AO, curvature, thickness, position, world normal, ID, height) go out beside the textures, also in game engine exports; each can be left out */
+const texMeshWanted=k=>!!texCfg.meshMaps&&!(texCfg.meshOff&&texCfg.meshOff[k])&&!k.startsWith('cv:');
+const texMeshKeys=()=>Object.keys(doc.meshMaps||{}).filter(k=>doc.meshMaps[k]&&!k.startsWith('cv:'));
 const texMesh=k=>doc.meshMaps&&doc.meshMaps[k]&&!doc.maps.includes(k)?doc.meshMaps[k]:null;
 /* which files this document produces with a preset */
 const texPresetsFor=()=>Object.entries(TEX_PRESETS).filter(([k,p])=>(p.wf||'metal')===(doc.workflow||'metal'));
@@ -155,9 +158,11 @@ function dlgExportTextures(){if(stroke||preview||selLive){toast('Finish the curr
   const nameIn=el('input',{type:'text',id:'txName',value:texCfg.name});nameIn.addEventListener('input',()=>{texCfg.name=nameIn.value;draw();});
   const sizes=[[0,'Document ('+doc.w+' × '+doc.h+')'],[256,'256'],[512,'512'],[1024,'1024'],[2048,'2048'],[4096,'4096'],[8192,'8192 (8K)']];
   const setNm=()=>ui.mode==='p3d'&&texCfg.allSets&&p3.sets.filter(S=>!S.missing).length>1?(texCfg.name||'Texture')+'_'+doc.name:(texCfg.name||'Texture');
+  const meshPick=el('div',{class:'chips',id:'txMeshPick'});
+  const pick=()=>{meshPick.replaceChildren(...(texCfg.meshMaps?texMeshKeys().map(k=>chk('txMesh_'+k,P3_MESHMAP_NAMES[k]||k,!(texCfg.meshOff&&texCfg.meshOff[k]),v=>{texCfg.meshOff=texCfg.meshOff||{};texCfg.meshOff[k]=!v;draw();})):[]));};
   const draw=()=>{const pr=TEX_PRESETS[texCfg.preset],outs=texOutputs(pr),flip=texNormalFlip(pr);list.replaceChildren(...outs.map(o=>el('div',{class:'texrow'},
       el('code',{text:pr.name(setNm()).replace('{s}',o.s)+'.'+texCfg.fmt}),el('span',{class:'dim',text:o.rgb==='normal'?'Normal ('+(flip?'DirectX':'OpenGL')+')':o.what}))));
-    if(texCfg.meshMaps)for(const [k,t] of Object.entries(doc.meshMaps||{})){if(k.startsWith('cv:')||!t)continue;list.append(el('div',{class:'texrow'},el('code',{text:pr.name(setNm()).replace('{s}',meshExportSuffix(k))+'.'+texCfg.fmt}),el('span',{class:'dim',text:(P3_MESHMAP_NAMES[k]||k)+' · '+t.w+' × '+t.h})));}
+    if(texCfg.meshMaps)for(const [k,t] of Object.entries(doc.meshMaps||{})){if(!t||!texMeshWanted(k))continue;list.append(el('div',{class:'texrow'},el('code',{text:pr.name(setNm()).replace('{s}',meshExportSuffix(k))+'.'+texCfg.fmt}),el('span',{class:'dim',text:(P3_MESHMAP_NAMES[k]||k)+' · '+t.w+' × '+t.h})));}
     if(doc.maps.length<2)list.append(el('p',{class:'note',text:'This document only has base colour. Add maps with Image › Document maps… to export roughness, metallic, height and normal too.'}));};
   if((TEX_PRESETS[texCfg.preset].wf||'metal')!==(doc.workflow||'metal'))texCfg.preset=texPresetsFor()[0][0];
   if(!TEX_PRESETS[texCfg.preset])texCfg.preset=texPresetsFor()[0][0];
@@ -175,9 +180,9 @@ function dlgExportTextures(){if(stroke||preview||selLive){toast('Finish the curr
     el('div',{class:'sub',text:'Padding'}),sel('txPad','Padding',TEX_PAD_MODES,texCfg.pad||'none',v=>{texCfg.pad=v;}),
     makeSlider({id:'txPadPx',label:'Dilation',min:0,max:128,step:1,value:texCfg.padPx??16,def:16,fmt:v=>Math.round(v)+' px',onInput:v=>{texCfg.padPx=Math.round(v);}}).el,
     el('p',{class:'note',id:'txPadNote',text:texPadAvail()?'Grows each UV island’s colours outward past its edges (in pixels of the exported size), so mip-maps in the engine show no seams. Fill the rest: the space between islands takes the nearest island’s colours. Transparent: it stays see-through (PNG/TGA with alpha).':'Padding needs the model’s UVs: export from 3D Paint, or open the 3D view with your model. Without them the maps are saved as painted.'}),
-    chk('txH16','Height at 16 bits (PNG)',texCfg.h16,v=>{texCfg.h16=v;}),chk('txMeshMaps','Include assigned mesh maps',texCfg.meshMaps,v=>{texCfg.meshMaps=v;draw();}),el('p',{class:'note',text:'Mesh maps export at their original size unless you choose an export size. They have a Mesh_ prefix and belong to their texture set.'}),
+    chk('txH16','Height at 16 bits (PNG)',texCfg.h16,v=>{texCfg.h16=v;}),el('div',{class:'sub',text:'Baked maps'}),texMeshKeys().length?chk('txMeshMaps','Export baked maps ('+texMeshKeys().length+' in this set)',texCfg.meshMaps,v=>{texCfg.meshMaps=v;draw();pick();}):el('p',{class:'note',id:'txNoBaked',text:'This set has no baked maps yet. Bake in the Bake tab and send them to 3D Paint, or import them in the Mesh maps shelf.'}),meshPick,el('p',{class:'note',text:'Baked maps are saved beside the textures, also when you send to a game engine. They export at their original size unless you choose an export size, with a Mesh_ prefix, and belong to their texture set.'}),
     ui.mode==='p3d'&&p3.sets.filter(S=>!S.missing).length>1?chk('txAll','Every texture set (files named after each set)',texCfg.allSets,v=>{texCfg.allSets=v;draw();}):'',
-    ...modelRow,...esRow(()=>{closeDialog();dlgExportTextures();}),el('div',{class:'sub',text:'Files'}),list);draw();
+    ...modelRow,...esRow(()=>{closeDialog();dlgExportTextures();}),el('div',{class:'sub',text:'Files'}),list);draw();pick();
   openDialog({title:'Export textures',body,okLabel:platform.isDesktop?(esActive()?'Export and send':'Choose folder…'):'Export',onOk(){exportTextures();}});}
 async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.name||'Texture',wantModel=mxHasModel()&&texCfg.model&&texCfg.model!=='none';
   let dir=null;if(platform.isDesktop){dir=await esTargetDir(name);if(!dir)return;}
@@ -207,7 +212,7 @@ async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.
   catch(e){console.error(e);toast('Export failed: '+(e.message||e));}}
 
 const meshExportSuffix=k=>'Mesh_'+({normal:'Normal',height:'Height',ao:'AO',curv:'Curvature',curvEdge:'CurvatureEdges',curvCrease:'CurvatureCreases',thick:'Thickness',wnormal:'WorldNormal',position:'Position',id:'ID',rough:'Roughness',metal:'Metallic'}[k]||pascal(k));
-async function buildMeshMapTextures(pr,name){const files=[],pad=texPadBegin(texCfg.size||doc.w);try{for(const [k,t0] of Object.entries(doc.meshMaps||{})){if(!t0||k.startsWith('cv:'))continue;
+async function buildMeshMapTextures(pr,name){const files=[],pad=texPadBegin(texCfg.size||doc.w);try{for(const [k,t0] of Object.entries(doc.meshMaps||{})){if(!t0||!texMeshWanted(k))continue;
  const t=texPadT(pad,t0,true),C=['normal','wnormal','position','id'].includes(k)?3:1,raw=readMapF(t,C===3?4:1);if(t!==t0)release(t);let f=C===3?dropAlpha(raw,t.w*t.h):raw;
  if(k==='normal'&&texNormalFlip(pr))for(let i=1;i<f.length;i+=3)f[i]=1-f[i];
  const W=texCfg.size||t.w,H=texCfg.size?Math.max(1,Math.round(texCfg.size*t.h/t.w)):t.h,r=resampleF(f,t.w,t.h,C,W,H,false),bits=k==='height'&&texCfg.h16&&texCfg.fmt==='png'?16:8;

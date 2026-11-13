@@ -1,0 +1,25 @@
+/* 0.97.15 (Kenn): a picture-in-picture navigator while zoomed into the canvas */
+const {chromium}=require('playwright'),path=require('path');
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});const p=await(await b.newContext({viewport:{width:1500,height:950}})).newPage();
+const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.route('**/*',r=>r.request().url().startsWith('file:')?r.continue():r.abort());
+await p.goto('file://'+path.resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+await p.evaluate(()=>{localStorage.removeItem('gs.nav');const G=__gs;G.closeWelcome&&G.closeWelcome();G.newDoc(2000,1500,8,[.2,.5,.8],'big',false);});await p.waitForTimeout(1200);
+const vis=()=>p.evaluate(()=>{const e=document.getElementById('navPip');return !!e&&!e.hidden&&e.offsetParent!==null;});
+ok(!await vis(),'at "fit to screen" the whole canvas shows, so there is no pip');
+await p.evaluate(()=>{const v=__gs.view;v.zoom=1.5;v.x=-300;v.y=-200;__gs.requestRender(true);});await p.waitForTimeout(1200);
+ok(await vis(),'zoomed in, the pip appears');
+const fr=await p.evaluate(()=>{const f=document.querySelector('#navPip .navframe').getBoundingClientRect(),c=document.querySelector('#navPip canvas').getBoundingClientRect();return {w:f.width,cw:c.width,inside:f.left>=c.left-1&&f.right<=c.right+1};});
+ok(fr.w>4&&fr.w<fr.cw&&fr.inside,'its frame marks the part on screen, inside the picture ('+Math.round(fr.w)+' of '+Math.round(fr.cw)+' px)');
+const px=await p.evaluate(()=>{const c=document.querySelector('#navPip canvas'),d=c.getContext('2d').getImageData(c.width>>1,c.height>>1,1,1).data;return [d[0],d[1],d[2]];});
+ok(px[2]>px[0],'the picture is the painting (blue canvas): '+px.join(','));
+const before=await p.evaluate(()=>[__gs.view.x,__gs.view.y]);
+const cb=await p.locator('#navPip canvas').boundingBox();
+await p.mouse.move(cb.x+cb.width*.85,cb.y+cb.height*.85);await p.mouse.down();await p.mouse.move(cb.x+cb.width*.9,cb.y+cb.height*.9,{steps:3});await p.mouse.up();await p.waitForTimeout(500);
+const after=await p.evaluate(()=>[__gs.view.x,__gs.view.y]);
+ok(after[0]<before[0]-100&&after[1]<before[1]-60,'dragging the frame moves the view to that part ('+before.map(Math.round)+' → '+after.map(Math.round)+')');
+await p.evaluate(()=>__gs.actions.navigator());await p.waitForTimeout(500);
+ok(!await vis(),'View › Navigator turns it off');await p.evaluate(()=>__gs.actions.navigator());
+ok(errs.length===0,'no page errors '+errs.join('|'));
+await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0)})();

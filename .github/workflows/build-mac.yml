@@ -1,0 +1,81 @@
+name: Build macOS app
+
+# (0.97.15, Kenn: "make it Mac accessible") A Mac build of Gouache Studio, separate from the Windows installer so that one is never affected.
+# It runs after "Build Windows installer" succeeds, and puts a universal (Apple silicon + Intel) .dmg on the same GitHub Release.
+# You can also run it by hand from the Actions tab (it asks which release tag to attach to; leave it empty for a test build only).
+# The app is signed ad hoc (no Apple developer account): the first time, right-click the app and choose Open.
+
+on:
+  workflow_run:
+    workflows: ["Build Windows installer"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to attach the Mac build to (for example v0.97.15). Empty = test build only.'
+        required: false
+
+jobs:
+  macos:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - run: npm ci
+
+      - name: Which release does this go on?
+        id: ver
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          v=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          tag="${INPUT_TAG:-v$v}"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if [ -n "$INPUT_TAG" ] || gh release view "$tag" >/dev/null 2>&1; then
+            echo "attach=true" >> "$GITHUB_OUTPUT"; echo "The Mac build goes on release $tag."
+          else
+            echo "attach=false" >> "$GITHUB_OUTPUT"; echo "No release $tag yet - test build only."
+          fi
+
+      - name: Build the Mac app (universal)
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
+          APPLE_SIGNING_IDENTITY: '-'
+        run: npx tauri build --target universal-apple-darwin --bundles app,dmg
+
+      - name: Put the Mac download on the release
+        if: steps.ver.outputs.attach == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          dmg=$(ls src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg | head -1)
+          cp "$dmg" "Gouache.Studio_${{ steps.ver.outputs.version }}_macOS-universal.dmg"
+          gh release upload "${{ steps.ver.outputs.tag }}" "Gouache.Studio_${{ steps.ver.outputs.version }}_macOS-universal.dmg" --clobber
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gouache-studio-macos
+          path: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg

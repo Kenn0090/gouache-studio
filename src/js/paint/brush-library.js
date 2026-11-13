@@ -286,7 +286,8 @@ function brushNumericRange(key){return ({spacing:{numericMax:10},scatter:{numeri
 function brushEdited(key){if(typeof optSync==='function')optSync();brushRememberSize();if(activePreset&&key!=='size'){activePreset=null;renderLibrary();}schedulePreview();}
 /* (0.96, Kenn) in 3D Paint the brush settings are condensed: settings that need a flat canvas (mixing, drips, line blend, symmetry…) are hidden,
    the rest sit in folding groups. "Show all settings" brings everything back. */
-const brush3dAll=()=>{try{return localStorage.getItem('gs.brush3dAll')==='1';}catch(e){return false;}};
+/* (0.97.15, Kenn: "it's hiding the settings, remove that") the 3D brush panel always shows every setting: the Show all settings tick and the hiding are gone */
+const brush3dAll=()=>true;
 const br3Open={};
 function br3Group(title,def,kids){const d=el('details',{class:'more brg3',id:'brg3_'+title.replace(/\W+/g,'')},el('summary',{text:title}),el('div',{class:'dlg-grid'},...kids.filter(Boolean)));d.open=title in br3Open?br3Open[title]:def;d.addEventListener('toggle',()=>{br3Open[title]=d.open;});return d;}
 function buildBrushPanel(){
@@ -369,7 +370,6 @@ function buildBrushPanel(){
     el('div',{class:'chips'},C('bJS','Once per stroke','jitterPerStroke'))));
   box.append(el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:'brushReset',text:'Reset brush',title:'Put this tool’s brush back to its starting settings',onclick:()=>{for(const k of SETTING_KEYS)brush[k]=BRUSH_DEFAULTS[k];brushSession.source=null;activePreset=null;if(typeof tbSaveCur==='function')tbSaveCur();buildBrushPanel();if(typeof buildOptBar==='function')buildOptBar();if(typeof refreshCursor==='function')refreshCursor();toast('Brush back to its starting settings.');}})));
   box.append(det);if(typeof buildDualSection==='function')buildDualSection(box);if(typeof buildNormalSection==='function'&&ui.tool==='brush')buildNormalSection(box);if(!c3)buildSymSection(box);if((ui.tool==='brush'||ui.tool==='erase')&&ui.mode!=='bake')buildMapBrushSection(box,ui.tool);
-  if(ui.mode==='p3d'&&!sm&&!tonal)box.append(el('div',{class:'chips resetrow'},chk('bShowAll3d','Show all settings',brush3dAll(),v=>{try{localStorage.setItem('gs.brush3dAll',v?'1':'0');}catch(e){}buildBrushPanel();})),...(brush3dAll()?[]:[el('p',{class:'note',text:'Settings that do nothing with the current alignment are hidden (line blend; and with Tangent | Wrap or Camera also mixing, drips, ink bleed), and the canvas Symmetry: the 3D view has its own Mirror.'})]));
   if(typeof brOrganize==='function')brOrganize(box);
   schedulePreview();
 }
