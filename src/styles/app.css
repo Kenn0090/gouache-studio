@@ -1696,3 +1696,8 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 #libBody.liblist .tiles canvas{width:24px;height:24px;flex:none}
 #libBody.liblist .libname{display:block;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 #libBody.liblist .libstar{position:static;opacity:1;margin-left:auto}
+/* (0.97.15) Navigator pip */
+.navpip{position:absolute;right:14px;bottom:14px;z-index:30;padding:5px;border-radius:9px;background:var(--panel);border:1px solid var(--line);box-shadow:0 6px 22px rgba(0,0,0,.45);cursor:crosshair;touch-action:none;user-select:none}
+.navpip canvas{display:block;max-width:176px;max-height:132px;border-radius:4px}
+.navframe{position:absolute;border:2px solid var(--accent,#f0a040);box-shadow:0 0 0 9999px rgba(0,0,0,.35);border-radius:2px;pointer-events:none;box-sizing:border-box;clip-path:inset(0)}
+.navpip{overflow:hidden}.navframe{box-shadow:none;background:rgba(240,160,64,.15)}

@@ -12,7 +12,7 @@ function frame(){raf=0;if(typeof tabDocs!=='undefined'&&tabDocs.hold){requestRen
   const stackGap=(()=>{const M=stroke&&stroke.L&&stroke.L.maskOf&&stroke.L.maskOf.mask,S=M&&M.stack;if(!S)return 0;const n=S.filter(r=>r.on!==false&&r.kind!=='paint'&&r.kind!=='fill').length;return n?Math.min(250,60+30*n):0;})();
   const gap=Math.max(PAINT_GAP[prefs.paintSpeed]||autoPaintGap,stackGap);
   if(stroke&&gap&&t0-lastPaintFrame<gap){requestRender();return;}lastPaintFrame=t0;const gq=perf.on?perfGpuBegin():null;let tc=t0;
-  try{if(stroke&&stroke.spaceDirty){stroke.spaceDirty=false;stroke.space.sync();}if(stroke&&stroke.cloneDirty)cloneUpdate();if(dirtyComp){composite();dirtyComp=false;tc=performance.now();}drawView();drawUVOverlay();draw3D();const tv=performance.now();flushThumbs();if(tedit)positionEditor();
+  try{if(stroke&&stroke.spaceDirty){stroke.spaceDirty=false;stroke.space.sync();}if(stroke&&stroke.cloneDirty)cloneUpdate();let dirtyWas=false;if(dirtyComp){composite();dirtyComp=false;dirtyWas=true;tc=performance.now();}drawView();drawUVOverlay();draw3D();if(typeof navSync==='function'){if(dirtyWas)navSoon();navSync();}const tv=performance.now();flushThumbs();if(tedit)positionEditor();
   perfFrame(t0,tc-t0,tv-tc,performance.now()-tv);}finally{if(gq)perfGpuEnd(gq);}}
 let maskOverride=new Map();
 /* Keep live coverage shared by every material channel, including the 3D preview. */

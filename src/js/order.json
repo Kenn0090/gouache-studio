@@ -256,6 +256,7 @@
     "ui/close-guard",
     "ui/stretch",
     "ui/rulers",
+    "ui/navigator",
     "ui/view-flip",
     "ui/welcome",
     "ui/examples",
