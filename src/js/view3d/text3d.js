@@ -69,7 +69,7 @@ document.addEventListener('pointerdown',async e=>{if(ui.mode!=='p3d'||ui.tool!==
 
 /* "Put on a path": the words become the picture of a Ribbon path, so they bend along its curve (a path layer is selected, or the newest one is used) */
 async function t3PutOnPath(){const spec=Object.assign({},t3Layer()?t3Layer().text3d.spec:t3.style,{align:'left'});
-  const cur=doc.active,L=cur&&cur.path&&cur.path.kind==='3d'?cur:allLayers().filter(n=>n.path&&n.path.kind==='3d'&&!n.path.weld).pop();
+  const cur=doc.active,L=cur&&cur.path&&cur.path.kind==='3d'&&!cur.path.weather?cur:allLayers().filter(n=>n.path&&n.path.kind==='3d'&&!n.path.weld&&!n.path.weather).pop();
   if(!L){toast('Draw a path first (Path tool, P), then put the text on it.');return;}
   selectOnly(L);pathEnsure(L);const P=L.path;pathChange(q=>{q.mode='ribbon';q.ribbon=Object.assign({},RB_DEFAULT,q.ribbon);},'Put text on a path',P);
   await rbUseText(L,P,spec);setTool('path');buildBrushPanel();toast('The text is on the path. Change how it stretches and tiles in the Path panel.');}

@@ -100,6 +100,15 @@ This repeats across the texture's outer edges. It does not join separate UV isla
 
 For worn metal, select a mask and add **Metal Edge Wear**. **Edge growth** spreads the band beyond exposed edges, and **Edge distortion** makes it irregular. Add **Use Wear** for directional scuffs on exposed areas. Choose a concrete or steel scan in the generator, or use **Choose from Textures** to add your own grunge to the breakup.
 
+### Rust & Runoff and Mineral Buildup
+
+In **Paint** or **3D Paint**, add a mask to a fill layer and choose one of these from **Generators**. **Starts from** picks baked edges and cavities, the mask rows below, or a painted anchor. To place an effect by hand, add a black mask and paint white spots in a Paint row below the generator.
+
+- **Rust & Runoff** starts with Spot Rust, Rust Under Paint, or Rain Streaks. Set gravity, length, width, taper, and branching. Use the same source and seed on separate fills for rust coverage, fresh oxide, corrosion pits, and flat runoff stains. Use a Height value below mid-gray for pits. **World** projection with **UV wrap** follows connected UV islands within a texture set on standard UV meshes. Tiled layouts use UV-space flow.
+- **Mineral Buildup** makes rings at a chosen waterline, crust at a leak, or chalky buildup from the mesh maps. Adjust band count and waterline height, or use **Leaking Pipe** with a painted source and gravity. The Crust, Rough deposits, and Runoff stains outputs can go on separate fills.
+
+Drag a texture into the **Grunge** box to use it for breakup. These rows stay editable when you save a project or smart mask.
+
 ## Mesh-map Mask builder
 
 Choose **Mask builder** from Generators (including the 3D Paint mask right-click menu). It adds one live generator row with separate strengths for curvature edges, curvature cavities, AO cavities, facing direction, position gradient, height and thin areas. The inputs add together, followed by Offset, Contrast, Grunge breakup and Invert.

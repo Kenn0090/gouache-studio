@@ -1,5 +1,7 @@
 # End-to-end tests
 
+- `creative-weathering.cjs` checks gravity and cross-seam rust runoff, painted anchors, mineral bands, transparent decal damage, and editable sealant paths. It also checks project reopening.
+
 - `dual-brush-feedback.cjs` checks exact painted pixels when disabling dual brush, switching presets and losing a secondary tip; grouped versus individual dab submissions with pressure, random masks, symmetry, wrapping, 16-bit paint and ordered fallbacks; actual 2D/3D pointer strokes and undo/redo; live searchable alpha thumbnails, duplicate names, import/removal and saved selection reload; and 120 Hz frame accounting without idle redraws. `GS_DUAL_GPU=1` uses the installed graphics driver. Saves a picker image under `out/dual-brush-feedback/`. Graphics-call counts describe work reduction, not a general FPS guarantee.
 
 - `colour-range-views.cjs` uses actual menu, pointer and keyboard input for Color Range sampling (including Shift/Alt samples), fuzziness, alpha, 16-bit precision, combinations, preview cancellation and exact undo/redo. It checks live Direction/Raise normal pixels, C channel cycling, B baked-map cycling, raw unlit colour, Lit return, per-set channel data, saved inspection state, typing guards and retained 2D shortcuts. `GS_VIEWS_GPU=1` uses the installed graphics driver. Dialog images are saved in `out/colour-range-views/`.

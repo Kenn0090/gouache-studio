@@ -197,6 +197,8 @@ function surfaceDetailRender(){
     }}).el;
   const color=colourBtn('surfaceDetail-color',()=>ui.fg,setFG,'Detail color');
   box.replaceChildren(el('div',{class:'weld-shelf'},el('div',{class:'matgrid weld-grid'},...cards),
+    el('div',{class:'chips'},el('button',{class:'btn sm',text:'Sealant Bead',
+      title:'Lay an editable sealant bead on the model',onclick:sealantPathStart})),
     el('div',{class:'weld-controls'},el('label',{class:'frow'},el('span',{text:'Detail color'}),color),
       slider('size','Size',8,250,1,v=>v+' px'),slider('spacing','Spacing',.12,1.5,.01),
       slider('depth','Relief strength',0,1,.01),slider('paint','Color amount',0,1,.01),

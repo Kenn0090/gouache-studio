@@ -39,7 +39,7 @@ function fxControls(o,v,upd,ctx){const body=[],sliders=[];
   return {body,reset};}
 /* one-off filter on the active layer (or mask); "Keep editable" makes a filter layer instead */
 function fxDialog(o){if(typeof o==='string')o=FX[o];const et=needTarget();if(!et)return;const L=et.L;if(!effVisible(et.node)){toast('Show the active layer before filtering it.');return;}
-  const v=fxDefaults(o);const ctx={src:L.target};
+  const v=fxDefaults(o);const ctx={src:L.target,mask:et.isMask};
   const body=el('div',{class:'dlg-grid'});let keep=false;
   const draw=()=>{o.render(L.target,previewT,v,ctx);chanLimit(et);selLimit(et);};
   /* slider moves are gathered into one redraw per frame */
