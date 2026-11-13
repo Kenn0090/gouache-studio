@@ -187,7 +187,8 @@ function renderLibrary(){const box=$('#libBody');box.replaceChildren();
   box.append(bar);
   if(brushSession.recent.length)box.append(section('recent','Recent brushes',null,t=>t.append(...brushSession.recent.map(p=>brushLibraryTile(p,true)))));
   for(const set of library)box.append(section(set.id,set.builtin?set.name:set.name+' · '+set.presets.length,set.builtin?null:el('button',{text:'Remove','aria-label':'Remove brush set '+set.name,onclick:e=>{e.stopPropagation();removeSet(set);}}),t=>{for(const p of set.presets){const tile=brushLibraryTile(p,false);if(!set.builtin){tile.title+=' · right-click to delete';tile.addEventListener('contextmenu',e=>{e.preventDefault();confirmDlg('Delete brush','Delete “'+p.name+'” from '+set.name+'? This cannot be undone.','Delete',()=>removeBrush(set,p));});}t.append(tile);}}));
-  if(typeof renderDualPicker==='function')queueMicrotask(renderDualPicker);}
+  if(typeof renderDualPicker==='function')queueMicrotask(renderDualPicker);
+  if(typeof shBrushChanged==='function')shBrushChanged();/* (0.96) the shelf's Brushes category follows */}
 /* Shared range gestures use displayed units: five percentage points, degrees or pixels.
    Keep mapped sliders (brush size, tiling) in their value space when snapping. Ctrl-wheel adjusts the temporary snap increment. */
 const sliderSnap={step:0,badge:null};
@@ -250,6 +251,11 @@ const sizeMap={to:v=>Math.round(Math.pow(clamp((v-1)/(brushMax()-1),0,1),1/2.6)*
 let sizeSlider=null,dynOpen=false;
 function brushNumericRange(key){return ({spacing:{numericMax:10},scatter:{numericMax:20},lazy:{numericMax:2000},angle:{numericMin:-1080,numericMax:1080}})[key]||{};}
 function brushEdited(key){if(typeof optSync==='function')optSync();brushRememberSize();if(activePreset&&key!=='size'){activePreset=null;renderLibrary();}schedulePreview();}
+/* (0.96, Kenn) in 3D Paint the brush settings are condensed: settings that need a flat canvas (mixing, drips, line blend, symmetry…) are hidden,
+   the rest sit in folding groups. "Show all settings" brings everything back. */
+const brush3dAll=()=>{try{return localStorage.getItem('gs.brush3dAll')==='1';}catch(e){return false;}};
+const br3Open={};
+function br3Group(title,def,kids){const d=el('details',{class:'more brg3',id:'brg3_'+title.replace(/\W+/g,'')},el('summary',{text:title}),el('div',{class:'dlg-grid'},...kids.filter(Boolean)));d.open=title in br3Open?br3Open[title]:def;d.addEventListener('toggle',()=>{br3Open[title]=d.open;});return d;}
 function buildBrushPanel(){
   const box=$('#brushBody');box.replaceChildren();const sm=ui.tool==='smudge',isText=ui.tool==='text',isSel=isSelTool(ui.tool),isXf=!!(xf&&!xf.move),isOther=['crop','move','gradient','bucket','gbucket','cage','array','shape'].includes(ui.tool),noBrush=isText||isSel||isXf||isOther;
   $('#libBody').hidden=noBrush;$('.prevwrap').hidden=noBrush;$('#abrBtn').hidden=noBrush;$('#saveBrushBtn').hidden=noBrush||ui.tool==='dodge'||ui.tool==='burn';$('#tipBtn').hidden=noBrush;
@@ -282,7 +288,7 @@ function buildBrushPanel(){
   box.append(el('div',{class:'sub',text:'Tip: '+(brush.tip?brush.tip.name+' ('+brush.tip.w+'×'+brush.tip.h+')':'round')+(activePreset?' · preset “'+activePreset.name+'”':'')}),
     el('div',{class:'chips'},el('button',{class:'btn sm',id:'tipChange',text:'Change tip…',title:'Use another tip for this brush; its other settings stay',onclick:()=>dlgTipPicker()}),(brush._tipOrig&&brush.tip!==brush._tipOrig)?el('button',{class:'btn sm',id:'tipOrig',text:'Original tip',title:'Put back the tip this brush came with',onclick:()=>tipSet(brush._tipOrig)}):null));
   /* (0.37.1) in 3D Paint the top bar already has size, opacity, flow and hardness: the panel keeps the rest */
-  const bar3=ui.mode==='p3d'&&!sm&&!tonal;sizeSlider=null;
+  const bar3=ui.mode==='p3d'&&!sm&&!tonal,c3=ui.mode==='p3d'&&!brush3dAll()&&!sm&&!tonal,no3=k=>c3&&typeof shNo3d==='function'&&shNo3d(k);sizeSlider=null;
   if(!bar3){sizeSlider=S('bSize','Size','size',0,1000,1,v=>v+'px',sizeMap);box.append(sizeSlider.el);}
   box.append(brushDefaultSizeButton('bDefaultSize'));
   if(sm&&!brush.mixBrush)box.append(el('div',{class:'sub',text:'Blend mode'}),seg([['soft','Soft blend','Mixes the colours under the brush into smooth gradients in place, nothing is dragged'],['smear','Wet smear','Pulls the paint along the stroke, like wet oil']],brush.blendMode==='smear'?'smear':'soft',v=>{brush.blendMode=v;brushEdited();buildBrushPanel();},'Blend mode'),...(brush.blendMode==='smear'?[S('bStreak','Bristle streaks','streak',0,1,.01,v=>v?Math.round(v*100)+'%':'off').el]:[el('div',{class:'chips'},C('bSoftSmooth','Smoother blur (no steps)','softSmooth'))]));
@@ -290,24 +296,29 @@ function buildBrushPanel(){
   else if(!tonal&&!bar3)box.append(S('bOp','Opacity','opacity',0,1,.01,pct).el);
   if(!bar3)box.append(S('bFlow','Flow','flow',.01,1,.01,pct).el);
   if(!brush.tip&&!bar3)box.append(S('bHard','Hardness','hardness',0,1,.01,pct).el);
-  box.append(S('bTooth','Paper tooth','tooth',0,1,.01,v=>v?Math.round(v*100)+'%':'off').el);
+  if(c3){box.append(br3Group('Stroke',true,[S('bSpace','Spacing','spacing',.01,1.5,.01,pct).el,S('bSmooth','Smoothing','smoothing',0,1,.01,pct).el,S('bLazy','Lazy mouse','lazy',0,200,1,v=>v?v+' px':'off').el,...(no3('smoothCurve')?[]:[el('div',{class:'chips'},C('bSmCurve','Smooth curves (round off corners)','smoothCurve'))])]),
+    br3Group('Texture',false,[S('bTooth','Paper tooth','tooth',0,1,.01,v=>v?Math.round(v*100)+'%':'off').el,S('bGrain','Grain','grain',0,1,.01,pct).el,...(brush.texKey?[S('bTexD','Texture depth','texDepth',0,1,.01,pct).el,S('bTexS','Texture size','texScale',16,1024,1,v=>Math.round(v)+' px').el]:[])]));}
+  else{box.append(S('bTooth','Paper tooth','tooth',0,1,.01,v=>v?Math.round(v*100)+'%':'off').el);
   if(brush.texKey)box.append(S('bTexD','Texture depth','texDepth',0,1,.01,pct).el,S('bTexS','Texture size','texScale',16,1024,1,v=>Math.round(v)+' px').el);
-  box.append(S('bSpace','Spacing','spacing',.01,1.5,.01,pct).el,S('bGrain','Grain','grain',0,1,.01,pct).el,S('bSmooth','Smoothing','smoothing',0,1,.01,pct).el,S('bLazy','Lazy mouse','lazy',0,200,1,v=>v?v+' px':'off').el,el('div',{class:'chips'},C('bSmCurve','Smooth curves (round off corners)','smoothCurve')));
-  if(brush.lineBlend&&ui.tool==='brush')box.append(el('div',{class:'sub',text:'Line blend'}),el('p',{class:'note',text:'Press where the first colour is, drag to where the second is: a strip fills in between, as wide as the brush.'}),el('div',{class:'chips'},C('bLBAll','Sample all visible layers','sampleAll')));
+  box.append(S('bSpace','Spacing','spacing',.01,1.5,.01,pct).el,S('bGrain','Grain','grain',0,1,.01,pct).el,S('bSmooth','Smoothing','smoothing',0,1,.01,pct).el,S('bLazy','Lazy mouse','lazy',0,200,1,v=>v?v+' px':'off').el,(no3('smoothCurve')?null:el('div',{class:'chips'},C('bSmCurve','Smooth curves (round off corners)','smoothCurve'))));}
+  if(brush.lineBlend&&ui.tool==='brush'&&!no3('lineBlend'))box.append(el('div',{class:'sub',text:'Line blend'}),el('p',{class:'note',text:'Press where the first colour is, drag to where the second is: a strip fills in between, as wide as the brush.'}),el('div',{class:'chips'},C('bLBAll','Sample all visible layers','sampleAll')));
   if(ui.tool==='brush'){box.append(el('div',{class:'sub',text:'Spray paint'}),S('bSpDot','Spray dot size','spray',0,12,.1,v=>v?v.toFixed(1)+' px':'off').el);
     if(brush.spray>0)box.append(S('bSpDen','Spray density','sprayDen',.05,2,.01,pct).el,S('bSpMist','Overspray mist','sprayMist',0,1,.01,pct).el);
-    box.append(S('bDrip','Drips when held still','drip',0,1.5,.01,v=>v?Math.round(v*100)+'%':'off').el,S('bDripA','Drips while painting','dripAuto',0,2,.01,v=>v?Math.round(v*100)+'%':'off').el,S('bDripW','Drip width','dripWidth',.4,5,.05,v=>Math.round(v*100)+'%').el);}
-  if(ui.tool==='brush'){box.append(el('div',{class:'sub',text:'Real paint mixing'}),el('div',{class:'chips'},C('bMix','Mixing brush (paint load and wet paint)','mix',true)));
+    if(!no3('drip'))box.append(S('bDrip','Drips when held still','drip',0,1.5,.01,v=>v?Math.round(v*100)+'%':'off').el,S('bDripA','Drips while painting','dripAuto',0,2,.01,v=>v?Math.round(v*100)+'%':'off').el,S('bDripW','Drip width','dripWidth',.4,5,.05,v=>Math.round(v*100)+'%').el);}
+  if(ui.tool==='brush'&&!no3('mix')){box.append(el('div',{class:'sub',text:'Real paint mixing'}),el('div',{class:'chips'},C('bMix','Mixing brush (paint load and wet paint)','mix',true)));
     if(brush.mix&&typeof mixPanelExtras==='function')box.append(mixPanelExtras(S));
     if(brush.mix)box.append(S('bMxLoad','Paint on the brush','mixLoad',0,1,.01,pct).el,S('bMxPick','Pick up from canvas','mixPick',0,1,.01,pct).el,S('bMxWet','Wetness added','mixWet',0,1,.01,pct).el,S('bMxUse','Paint runs out','mixUse',0,1,.01,pct).el,S('bMxBr','Bristles','mixBristles',0,64,1,v=>v?String(v):'smooth').el,S('bMxDB','Dry brush','mixDryB',0,1,.01,pct).el,S('bMxWC','Watercolour edges','mixWC',0,1,.01,pct).el,S('bMxWE','Edge pooling','mixWCEdge',0,1,.01,pct).el,S('bMxWP','Layered pools','mixWCPools',0,1,.01,pct).el,S('bMxWG','Paper grain','mixWCGran',0,1,.01,pct).el,S('bMxWB','Bloom (backrun)','mixWCBloom',0,1,.01,pct).el,S('bMxTo','Paper tooth','mixTooth',0,1,.01,pct).el,S('bMxTh','Paint thickness','mixThick',0,1,.01,v=>v?Math.round(v*100)+'%':'flat').el,S('bMxDry','Dry after','mixDry',0,120,1,v=>v?v+' s':'by hand').el,el('div',{class:'chips'},C('bMxAll','Pick up from all visible layers','sampleAll'),C('bMxEven','Keep paint even at any spacing','mixEven')),el('button',{class:'btn sm',text:'Dry paint now',onclick:()=>mixDryAll()}));}
-  if(ui.tool==='brush')box.append(S('bEndInk','Ink bleed','endInk',0,.5,.01,pct).el,S('bWet','Paint mixing','wet',0,1,.01,pct).el,S('bPickup','Pick up paint','pickup',0,1,.01,pct).el,el('div',{class:'frow'},el('label',{text:'Mix colours like'}),seg([['p','Pigment'],['l','Lab']],brush.mixLab?'l':'p',v=>{brush.mixLab=v==='l';brushEdited();},'Mixing method')),S('bGlaze','Thin pigment','glaze',0,1,.01,pct).el,S('bPig','Pigment amount','pigment',.2,3,.05,v=>Math.round(v*100)+'%').el,S('bEdgeSat','Edge colour','edgeSat',0,1,.01,pct).el);
-  box.append(el('div',{class:'sub',text:'Pressure without a pen'}),seg([['off','Off'],['speed','Speed'],['taper','Taper'],['fixed','Fixed']],brush.simP||'off',v=>{brush.simP=v;brushEdited();buildBrushPanel();},'Pressure without a pen'));
-  if(brush.simP==='fixed')box.append(S('bSimLvl','Pressure level','simLevel',.05,1,.01,pct).el);
-  box.append(el('div',{class:'sub',text:'Pen pressure'}));
-  box.append(el('div',{class:'chips'},C('bPS','Size','pSize',true),C('bPO','Opacity','pOpacity'),sm?null:C('bPF','Flow','pFlow'),sm?null:C('bBU','Build-up','buildup')));
-  if(brush.pSize)box.append(S('bMin','Min size','minSize',0,1,.01,pct).el);
-  if(typeof pcGraph==='function')box.append(pcGraph());
-  box.append(S('bCurve','Curve','curve',-1,1,.05,v=>v>0.02?'soft':v<-0.02?'firm':'linear').el);
+  if(ui.tool==='brush'&&c3)box.append(br3Group('Paint feel',false,[...(no3('endInk')?[]:[S('bEndInk','Ink bleed','endInk',0,.5,.01,pct).el]),...(no3('wet')?[]:[S('bWet','Paint mixing','wet',0,1,.01,pct).el]),S('bPickup','Pick up paint','pickup',0,1,.01,pct).el,S('bGlaze','Thin pigment','glaze',0,1,.01,pct).el,...(no3('wet')?[]:[S('bPig','Pigment amount','pigment',.2,3,.05,v=>Math.round(v*100)+'%').el]),S('bEdgeSat','Edge colour','edgeSat',0,1,.01,pct).el]));
+  if(ui.tool==='brush'&&!c3)box.append(S('bEndInk','Ink bleed','endInk',0,.5,.01,pct).el,S('bWet','Paint mixing','wet',0,1,.01,pct).el,S('bPickup','Pick up paint','pickup',0,1,.01,pct).el,el('div',{class:'frow'},el('label',{text:'Mix colours like'}),seg([['p','Pigment'],['l','Lab']],brush.mixLab?'l':'p',v=>{brush.mixLab=v==='l';brushEdited();},'Mixing method')),S('bGlaze','Thin pigment','glaze',0,1,.01,pct).el,S('bPig','Pigment amount','pigment',.2,3,.05,v=>Math.round(v*100)+'%').el,S('bEdgeSat','Edge colour','edgeSat',0,1,.01,pct).el);
+  const pbox=c3?el('div',{class:'dlg-grid'}):box;
+  pbox.append(el('div',{class:'sub',text:'Pressure without a pen'}),seg([['off','Off'],['speed','Speed'],['taper','Taper'],['fixed','Fixed']],brush.simP||'off',v=>{brush.simP=v;brushEdited();buildBrushPanel();},'Pressure without a pen'));
+  if(brush.simP==='fixed')pbox.append(S('bSimLvl','Pressure level','simLevel',.05,1,.01,pct).el);
+  pbox.append(el('div',{class:'sub',text:'Pen pressure'}));
+  pbox.append(el('div',{class:'chips'},C('bPS','Size','pSize',true),C('bPO','Opacity','pOpacity'),sm?null:C('bPF','Flow','pFlow'),sm?null:C('bBU','Build-up','buildup')));
+  if(brush.pSize)pbox.append(S('bMin','Min size','minSize',0,1,.01,pct).el);
+  if(typeof pcGraph==='function')pbox.append(pcGraph());
+  pbox.append(S('bCurve','Curve','curve',-1,1,.05,v=>v>0.02?'soft':v<-0.02?'firm':'linear').el);
+  if(c3)box.append(br3Group('Pressure',false,[...pbox.children]));
   const det=el('details',{class:'more'});det.open=dynOpen;det.addEventListener('toggle',()=>{dynOpen=det.open;});
   det.append(el('summary',{text:'Tip shape & dynamics'}),el('div',{},
     S('bAng','Angle','angle',-180,180,1,v=>Math.round(v)+'°').el,
@@ -323,7 +334,9 @@ function buildBrushPanel(){
     S('bVJ','Brightness','valJitter',0,1,.01,pct).el,
     el('div',{class:'chips'},C('bJS','Once per stroke','jitterPerStroke'))));
   box.append(el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:'brushReset',text:'Reset brush',title:'Put this tool’s brush back to its starting settings',onclick:()=>{for(const k of SETTING_KEYS)brush[k]=BRUSH_DEFAULTS[k];brushSession.source=null;activePreset=null;if(typeof tbSaveCur==='function')tbSaveCur();buildBrushPanel();if(typeof buildOptBar==='function')buildOptBar();if(typeof refreshCursor==='function')refreshCursor();toast('Brush back to its starting settings.');}})));
-  box.append(det);if(typeof buildDualSection==='function')buildDualSection(box);if(typeof buildNormalSection==='function'&&ui.tool==='brush')buildNormalSection(box);buildSymSection(box);if((ui.tool==='brush'||ui.tool==='erase')&&ui.mode!=='bake')buildMapBrushSection(box,ui.tool);schedulePreview();
+  box.append(det);if(typeof buildDualSection==='function')buildDualSection(box);if(typeof buildNormalSection==='function'&&ui.tool==='brush')buildNormalSection(box);if(!c3)buildSymSection(box);if((ui.tool==='brush'||ui.tool==='erase')&&ui.mode!=='bake')buildMapBrushSection(box,ui.tool);
+  if(ui.mode==='p3d'&&!sm&&!tonal)box.append(el('div',{class:'chips resetrow'},chk('bShowAll3d','Show all settings',brush3dAll(),v=>{try{localStorage.setItem('gs.brush3dAll',v?'1':'0');}catch(e){}buildBrushPanel();})),...(brush3dAll()?[]:[el('p',{class:'note',text:'Settings that do nothing with the current alignment are hidden (line blend; and with Tangent | Wrap or Camera also mixing, drips, ink bleed), and the canvas Symmetry: the 3D view has its own Mirror.'})]));
+  schedulePreview();
 }
 function applyPreset(p){if(typeof tbSaveCur==='function')tbSaveCur();const t=p.ownTool?(p.tool||'brush'):p.tool!=='smudge'&&['erase','smudge','dodge','burn','heal','clone','material','pen','path'].includes(ui.tool)?ui.tool:(p.tool||'brush');/* ownTool: the preset brings its own tool (the Watercolour studio mixes pens, washes and erasers) */for(const k of SETTING_KEYS)brush[k]=(k in p)?p[k]:BRUSH_DEFAULTS[k];const size=brushSession.sizes.get(p)?.[brushSessionGroup(t)];if(size!==undefined)brush.size=size;if(p.maps)applyMapBrush(p.maps);brushSession.source=p;brushRecent(p);activePreset=p;setTool(t,true);renderLibrary();refreshCursor();}
 function setTool(t,keepPreset,force){/* (0.96.5) the Eyedropper chosen again (its button or I): pick from anywhere on the screen */if(t==='picker'&&ui.tool==='picker'&&!keepPreset&&!force&&hasScreenPick()){screenPick(c=>{setFG(c);if(typeof pushRecent==='function')pushRecent(c);});return;}

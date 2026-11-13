@@ -14,6 +14,11 @@ const PANELS={
   shading:{title:'Shader',sel:'#shadeSec',avail:m=>m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" opacity=".35"/>'},
   stencils:{title:'Stencils',sel:'#st3Sec',avail:m=>false,icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 15l3-4 2 3 1.5-2 1.5 3"/>'},
   mats:{title:'Materials',sel:'#matSec',avail:m=>m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M7 9.5a6 6 0 0 1 5-3" opacity=".6"/>'},
+  /* (0.96, Kenn) the 3D Paint shelf's own categories (ui/shelf.js) */
+  shbrush:{title:'Brushes',sel:'#shBrushSec',avail:m=>m==='p3d',icon:'<path d="m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z"/>'},
+  smats:{title:'Smart materials',sel:'#smSec',avail:m=>m==='p3d',icon:'<circle cx="11" cy="13" r="6.5"/><path d="M18.5 3.5l.9 2 2 .9-2 .9-.9 2-.9-2-2-.9 2-.9z"/>'},
+  smasks:{title:'Smart masks',sel:'#smkSec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="12" cy="12" r="4" fill="currentColor" opacity=".35"/>'},
+  shalpha:{title:'Alphas',sel:'#shAlphaSec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16l4-8 4 8M9.5 13h5"/>'},
   canvas:{title:'Canvas',sel:'#cvsSec',avail:m=>m==='paint',icon:'<rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 9h16M4 14h16" stroke-width="1"/>'},
   textures:{title:'Textures',sel:'#txSec',avail:m=>m==='paint'||m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M7 8h1M11 7h1M15 9h1M8 12h1M13 13h1M16 15h1M9 16h1" stroke-width="2.4" stroke-linecap="round"/>'},
   p3bake:{title:'Bake Maps',sel:'#p3bkSec',avail:m=>m==='p3d',icon:'<path d="M12 3c3 4 6 6 6 10a6 6 0 0 1-12 0c0-4 3-6 6-10z"/><path d="M9.5 14a2.5 2.5 0 0 0 2.5 2.5" opacity=".6"/>'},
@@ -34,12 +39,14 @@ const PANELS={
   layers:{title:'Layers',sel:'section[aria-labelledby="hLayers"]',avail:m=>m==='paint'||m==='brush'||m==='p3d'||m==='anim',icon:'<path d="M12 4 3 9l9 5 9-5-9-5z"/><path d="m3 14 9 5 9-5"/>'},
   chan:{title:'Channels',sel:'section[aria-labelledby="hChan"]',avail:m=>m==='paint'||m==='p3d',icon:'<circle cx="9" cy="10" r="5"/><circle cx="15" cy="10" r="5"/><circle cx="12" cy="15" r="5"/>'}};
 const PANEL_IDS=Object.keys(PANELS);
+/* (0.96) the 3D Paint shelf's categories, in the order of its list */
+const SH_SHELF_TABS=['shbrush','mats','smats','smasks','shalpha','textures','decals','envs','meshmaps','weldtools','projects'];
 const MODE_GROUP=['p3d','brushtab','conv','bake','anim','photo'],MODE_HID=[...MODE_GROUP,'phhist','phlib','phpre'];
 /* the built-in workspaces: extra = 3D view on and how wide, painting on the model */
 const WS_PRESETS={
   painting:{name:'Panels: Paint',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_HID.slice(),f:1.4},{tabs:['color','matEd','shading'],f:1.05},{tabs:['brushes','stencils','mats','textures','canvas','decals','envs','tool'],f:2.4},{tabs:['maps','p3bake'],f:.45},{tabs:['layers','chan','hist'],f:1.6}],icons:[],floats:[]},
-  texturing:{name:'Panels: 3D Paint',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:[...MODE_HID,'p3bake','shading'],f:1.2},{tabs:['layers','maps','chan','hist'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','projects','meshmaps','weldtools'],f:1,h:260},icons:[],floats:[]},
-  paint3d:{name:'Panels: Large 3D',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:[...MODE_HID,'p3bake','shading'],f:1.2},{tabs:['layers','maps','chan','hist'],f:2.5}],shelf:{tabs:['mats','textures','decals','envs','projects','meshmaps','brushes','weldtools'],f:1,h:260},icons:[],floats:[]},
+  texturing:{name:'Panels: 3D Paint',tb:{side:'left',cols:1},opt:true,w:300,extra:{v3:.45},groups:[{tabs:[...MODE_HID,'p3bake','shading'],f:1.2},{tabs:['layers','maps','chan','hist'],f:2.5}],shelf:{tabs:SH_SHELF_TABS,f:1,h:260},hidden:['brushes'],icons:[],floats:[]},
+  paint3d:{name:'Panels: Large 3D',tb:{side:'left',cols:1},opt:true,w:280,extra:{v3:.68,paint3d:true},groups:[{tabs:[...MODE_HID,'p3bake','shading'],f:1.2},{tabs:['layers','maps','chan','hist'],f:2.5}],shelf:{tabs:SH_SHELF_TABS,f:1,h:260},hidden:['brushes'],icons:[],floats:[]},
   minimal:{name:'Panels: Minimal',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_HID.slice(),f:1}],icons:['color','matEd','shading','brushes','stencils','mats','textures','decals','envs','tool','maps','layers','chan','hist'],floats:[]}};
 /* (0.28, Kenn) each top tab has its own workspace, and the drop-down follows the tab */
 for(const [k,n] of [['animation','Animation'],['bake','Bake'],['convert','Convert'],['brush','Brush']])WS_PRESETS[k]=Object.assign(JSON.parse(JSON.stringify(WS_PRESETS.painting)),{name:'Panels: '+n});
@@ -63,7 +70,11 @@ const dk={ws:'painting',L:null,custom:{},saved:{},lock:false,flyout:null,drag:nu
   /* (0.95) the Brushes group in the Paint layout was short: a saved layout gets more room once */
   if(!localStorage.getItem('gs.brushH95')){localStorage.setItem('gs.brushH95','1');for(const n of ['painting']){const L=dk.saved[n];if(!L||!L.groups)continue;const g=L.groups.find(x=>(x.tabs||[]).includes('brushes'));if(g&&g.f<2.4)g.f=2.4;}}
   if(!localStorage.getItem('gs.layout520')){localStorage.setItem('gs.layout520','1');delete dk.saved.bake;if(dk.modeLayouts&&dk.modeLayouts.bake)delete dk.modeLayouts.bake;}
-  if(!localStorage.getItem('gs.layout37')){localStorage.setItem('gs.layout37','1');delete dk.saved.texturing;delete dk.saved.paint3d;if(dk.col2)delete dk.col2;}}catch(e){}})();
+  if(!localStorage.getItem('gs.layout37')){localStorage.setItem('gs.layout37','1');delete dk.saved.texturing;delete dk.saved.paint3d;if(dk.col2)delete dk.col2;}
+  /* (0.96) the 3D Paint shelf has its own categories, and the Brushes panel left the 3D Paint dock (its brushes are the shelf's Brushes category) */
+  if(!localStorage.getItem('gs.shelf96')){localStorage.setItem('gs.shelf96','1');
+    const fix=L=>{if(!L)return;const all=[...(L.groups||[]),L.shelf,...Object.values(L.edges||{}).flatMap(e=>e.groups||[])].filter(Boolean);for(const g of all)g.tabs=(g.tabs||[]).filter(t=>t!=='brushes');L.hidden=[...new Set([...(L.hidden||[]),'brushes'])];if(L.icons)L.icons=L.icons.filter(t=>t!=='brushes');};
+    for(const n of ['texturing','paint3d'])fix(dk.saved[n]);const ml=dk.modeLayouts&&dk.modeLayouts.p3d;if(ml)for(const n of Object.keys(ml))fix(ml[n]);}}catch(e){}})();
 const dkClone=o=>JSON.parse(JSON.stringify(o));
 /* (0.53, Kenn) "drag tabs to any side of the viewport": the right dock (L.groups), the bottom shelf, and now a left and a top dock (L.edges). Each dock lays its groups out in a column or in a row (dir). */
 const DK_EDGES=['left','top'];
@@ -84,8 +95,8 @@ function dkFix(L){const seen=new Set();const keep=a=>a.filter(id=>PANELS[id]&&!s
   if(L.dir!=='row')L.dir='col';
   for(const g of L.groups)g.tabs=keep(g.tabs);L.shelf.tabs=keep(L.shelf.tabs);for(const f of L.floats)f.tabs=keep(f.tabs);L.icons=keep(L.icons||[]);L.hidden=keep(L.hidden||[]);
   L.groups=L.groups.filter(g=>g.tabs.length);L.floats=L.floats.filter(f=>f.tabs.length);
-  for(const id of PANEL_IDS)if(!seen.has(id)){if(id==='favorites'){L.hidden.push(id);continue;}if(['mats','textures','decals','envs','projects','meshmaps','weldtools'].includes(id)){L.shelf.tabs.push(id);continue;}const home=WS_PRESETS.painting.groups.find(g=>g.tabs.includes(id));const g=L.groups.find(g=>home&&g.tabs.some(t=>home.tabs.includes(t)));if(g)g.tabs.push(id);else L.groups.push({tabs:[id],f:1});}
-  if(ui.mode==='p3d'&&L.shelf){const order=['mats','textures','decals','envs','projects','meshmaps'];L.shelf.tabs=[...order.filter(id=>L.shelf.tabs.includes(id)),...L.shelf.tabs.filter(id=>!order.includes(id)&&id!=='weldtools'),'weldtools'];}
+  for(const id of PANEL_IDS)if(!seen.has(id)){if(id==='favorites'){L.hidden.push(id);continue;}if(['mats','textures','decals','envs','projects','meshmaps','weldtools','shbrush','smats','smasks','shalpha'].includes(id)){L.shelf.tabs.push(id);continue;}const home=WS_PRESETS.painting.groups.find(g=>g.tabs.includes(id));const g=L.groups.find(g=>home&&g.tabs.some(t=>home.tabs.includes(t)));if(g)g.tabs.push(id);else L.groups.push({tabs:[id],f:1});}
+  if(ui.mode==='p3d'&&L.shelf){const order=SH_SHELF_TABS.filter(id=>id!=='weldtools'&&id!=='projects');L.shelf.tabs=[...order.filter(id=>L.shelf.tabs.includes(id)),...L.shelf.tabs.filter(id=>!SH_SHELF_TABS.includes(id)&&id!=='brushes'),...['weldtools','projects'].filter(id=>L.shelf.tabs.includes(id))];}
   return L;}
 /* the panels themselves, found once (while redrawing they are briefly off the page) */
 const dkSecs={};const dkSec=id=>dkSecs[id]||(dkSecs[id]=document.querySelector(PANELS[id].sel));
@@ -100,8 +111,13 @@ function brushMergeSync(){if(ui.mode==='brush'&&dk.btPaintControls){const box=$(
     return;}
   if(actions&&actions.parentNode!==home)home.append(actions);
   /* (0.96.7, Kenn) in 3D Paint the stroke preview sits at the top of the brush settings and stays there while they scroll */
-  if(sep){if(pw&&pw.parentNode!==tool)tool.append(pw);if(pw?bb.previousElementSibling!==pw:bb.parentNode!==tool){if(pw)pw.after(bb);else tool.append(bb);}const ht=$('#hTool');if(title&&ht&&title.parentNode!==ht)ht.prepend(title);}
-  else{const librarySec=dkSec('brushes');if(pw&&pw.parentNode!==librarySec)librarySec.append(pw);if(pw){if(bb.previousElementSibling!==pw)pw.after(bb);if(title&&home&&title.parentNode!==home)home.prepend(title);}}}
+  const librarySec=dkSec('brushes'),stb=$('#stBrush'),lb=$('#libBody');
+  if(sep){/* (0.96) 3D Paint: the stroke preview and the stencil sit with the brush settings (the Brushes are a shelf category now) */
+    if(pw&&pw.parentNode!==tool)tool.append(pw);if(stb&&stb.parentNode!==tool)tool.append(stb);if(bb.parentNode!==tool)tool.append(bb);
+    const want=[pw,stb,bb].filter(Boolean),have=[...tool.children].filter(c=>want.includes(c));if(want.some((c,i)=>have[i]!==c))tool.append(...want);
+    const ht=$('#hTool');if(title&&ht&&title.parentNode!==ht)ht.prepend(title);}
+  else{if(pw&&pw.parentNode!==librarySec)librarySec.append(pw);if(stb&&lb&&stb.previousElementSibling!==lb)lb.after(stb);
+    if(pw){if(bb.previousElementSibling!==pw)pw.after(bb);if(title&&home&&title.parentNode!==home)home.prepend(title);}}}
 /* ---- building the page structure once ---- */
 function dkInit(){
   /* Tool settings get a panel of their own, split from the brush library */
@@ -109,7 +125,7 @@ function dkInit(){
   const tool=el('section',{class:'sec',id:'toolSec','aria-labelledby':'hTool'},el('div',{class:'sec-h',id:'hTool'},title));tool.append($('#brushBody'));bs.after(tool);hb.prepend(el('span',{text:'Brushes'}));
   const weldtools=el('section',{class:'sec',id:'weldToolsSec','aria-labelledby':'hWeldTools'},el('div',{class:'sec-h',id:'hWeldTools'},el('span',{text:'Tools'})),el('div',{id:'weldToolsBody',class:'dlg-grid'}));bs.after(weldtools);dkSecs.weldtools=weldtools;
   const panel=document.querySelector('aside.panel');panel.id='dock';panel.setAttribute('aria-label','Panels');
-  dk.park=el('div',{id:'dkPark',hidden:true});document.body.append(dk.park);for(const id of PANEL_IDS)dk.park.append(dkSec(id));panel.replaceChildren();
+  dk.park=el('div',{id:'dkPark',hidden:true});document.body.append(dk.park);shInit();for(const id of PANEL_IDS)dk.park.append(dkSec(id));panel.replaceChildren();
   dk.icons=el('nav',{id:'dkIcons','aria-label':'Panels kept as icons'});panel.before(dk.icons);
   const grip=el('div',{class:'tbgrip',title:'Drag to the other side of the window. Double-click for one or two columns.'});$('#tools').prepend(grip);
   grip.addEventListener('dblclick',()=>dkToolbar({cols:dk.L.tb.cols===2?1:2}));
@@ -184,6 +200,7 @@ function dkRender(){brushMergeSync();const keepSc=dkScrollSave(),L=dk.L,dock=$('
   dk.dock2.replaceChildren();dk.dock2.hidden=!dkCol2On();
   if(dkCol2On()){const g2=dk.col2.groups.filter(g=>dkAvail(g).length);g2.forEach((g,i)=>{if(i)dk.dock2.append(dkSplit(g2[i-1],g));dk.dock2.append(dkGroup(g));});}
   dkShelfRender();if(typeof weldToolsRender==='function')weldToolsRender();
+  if(typeof shEnsure==='function')shEnsure();/* (0.96) a shelf category shown for the first time is drawn now */
   dk.icons.replaceChildren(...L.icons.filter(id=>dkIn(id)).map(id=>{const b=el('button',{class:'dkicon'+(dk.flyout===id?' on':''),title:PANELS[id].title,'aria-label':PANELS[id].title,'aria-pressed':String(dk.flyout===id)});
     b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+(PANELS[id].icon||'')+'</svg>';b.onclick=()=>dkFlyout(dk.flyout===id?null:id);b.addEventListener('pointerdown',e=>dkDragStart(e,id,{icons:true}));return b;}));
   for(const n of [...document.querySelectorAll('.dkfloat')])n.remove();
@@ -196,6 +213,7 @@ function dkRender(){brushMergeSync();const keepSc=dkScrollSave(),L=dk.L,dock=$('
   if(typeof resizeGL==='function')requestAnimationFrame(()=>{resizeGL();if(typeof drawSV==='function')drawSV();});}
 function dkTabs(tabs,active,where,onPick){const strip=el('div',{class:'dktabs',role:'tablist'});
   for(const id of tabs){const on=id===active,label=id==='tool'?(dk.toolTitle.textContent||'Tool settings'):PANELS[id].title,b=el('button',{class:'dktab'+(on?' on':''),role:'tab','aria-selected':String(on),text:label,title:(on?'Current panel: ':'Show panel: ')+label+'. Drag to move it.'});
+    if(ui.mode==='p3d'&&where.group&&where.group===dk.L.shelf&&PANELS[id].icon){const sv=document.createElementNS('http://www.w3.org/2000/svg','svg');sv.setAttribute('viewBox','0 0 24 24');sv.setAttribute('class','dkti');sv.setAttribute('aria-hidden','true');sv.innerHTML=PANELS[id].icon;b.prepend(sv);}/* (0.96) category icons in the shelf's list */
     b.addEventListener('click',()=>onPick(id));if(!where.popped)b.addEventListener('pointerdown',e=>dkDragStart(e,id,where));
     b.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();dkMenu(e,id,where);});
     strip.append(b);}

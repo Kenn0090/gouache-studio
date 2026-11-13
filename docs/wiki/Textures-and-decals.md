@@ -2,7 +2,7 @@
 
 ## Material previews
 
-Use **S**, **M** or **L** in the Materials shelf to change the tile size. Hover a material to see a larger preview. From 0.51.6, all 200 bundled material thumbnails are rendered at **768 × 768**. Live hover previews render at least 768 pixels across, and material editor and saved-material preview balls render at least 256 pixels while retaining their compact panel sizes.
+Use **S**, **M** or **L** in the shelf's quick bar (3D Paint) to change the tile size; **★** and **🕒** filter the favourites and the recently used ones. Hover a material to see a larger preview. From 0.51.6, all 200 bundled material thumbnails are rendered at **768 × 768**. Live hover previews render at least 768 pixels across, and material editor and saved-material preview balls render at least 256 pixels while retaining their compact panel sizes.
 
 Preview balls include colour, normal, roughness, metallic and height texture detail. The original material textures and document resolution are unchanged. Bundled preview images load separately as needed in the desktop app.
 

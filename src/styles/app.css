@@ -1626,3 +1626,27 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .bklogt{opacity:.6;font-variant-numeric:tabular-nums}.bklogsw{width:10px;height:10px;border-radius:2px;flex:none}
 /* (0.97.1) hover previews */
 .hpvpop{position:fixed;z-index:80;pointer-events:none;max-width:290px}.hpvpic{display:block;border-radius:4px;background:repeating-conic-gradient(#555 0 25%,#777 0 50%) 0 0/16px 16px}
+
+/* ===== (0.96) the 3D Paint shelf: category icons, quick bar, tiles ===== */
+.dkti{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;margin-right:8px}
+.dkshelf .dktab{display:flex;align-items:center;white-space:nowrap}
+.shbar{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;padding:2px 0 6px;overflow-x:auto;position:sticky;top:0;z-index:2;background:var(--panel)}
+.shbar>*{flex:none}.shbar .shq{flex:1 1 140px;min-width:100px;max-width:240px;height:26px}.shbar .shgrow{flex:1 1 0;min-width:0}
+.shbtn{width:26px;height:26px;padding:0;display:grid;place-items:center;border:1px solid var(--line-2);background:var(--raise);color:var(--muted);border-radius:6px;cursor:pointer}
+.shbtn:hover{border-color:var(--accent);color:var(--text)}.shbtn.on{background:color-mix(in srgb,var(--accent) 28%,var(--raise));border-color:var(--accent);color:var(--text)}
+.shbtn svg,.shvw svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.shsize .segb,.shview .segb,.shall .segb{padding:2px 8px;min-height:24px;white-space:nowrap}.shvw{display:grid;place-items:center;padding:2px 6px!important}.shsz{min-width:26px}
+.shacts{display:flex;gap:6px;align-items:center}.shall{display:inline-flex}
+.shsec .shstar{font-style:normal;position:absolute;top:2px;left:4px;font-size:14px;line-height:1;color:var(--muted);opacity:0;cursor:pointer;text-shadow:0 1px 2px rgba(0,0,0,.7);z-index:1}
+.shsec .mattile:hover .shstar,.shsec .shstar.on{opacity:1}.shsec .shstar.on{color:#f0b429}
+.dkshelf .shsec .mattile>img,.dkshelf .shsec .mattile>canvas.shbtc,.dkshelf .shsec .mattile>canvas.tipthumb{width:var(--tw,64px);height:var(--tw,64px);object-fit:cover}
+.dkshelf .shsec .mattile>canvas:not(.matprev){width:var(--tw,64px);height:var(--tw,64px)}
+.shbt>canvas,.shat>canvas{border-radius:8px;background:var(--raise)}
+.shbt.sel>canvas,.shat.sel>canvas{box-shadow:0 0 0 2px var(--accent)}
+.shsec.shlist .matgrid,.shsec.shlist .shgrid{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))!important;gap:2px 8px!important}
+.shsec.shlist .mattile{grid-auto-flow:column;grid-template-columns:auto 1fr;justify-items:start;align-items:center;gap:10px;padding:2px 6px!important;text-align:left}
+.shsec.shlist .mattile .matprev,.shsec.shlist .mattile .gmthumb{border-radius:6px!important;box-shadow:none!important}
+.shsec.shlist .shstar{top:50%;transform:translateY(-50%);left:auto;right:6px}
+.shgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(var(--tw,64px) + 18px),1fr));gap:8px 4px}
+.shsec>.sub,.shsec .sub{margin:6px 0 2px}
+.dkshelf .shsec .mattile>canvas.shtc{width:var(--tw,64px);height:var(--tw,64px);border-radius:8px;background:var(--raise)}

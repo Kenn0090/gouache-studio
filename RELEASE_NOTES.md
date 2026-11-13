@@ -1,3 +1,10 @@
+## 0.97.8
+
+- **3D Paint shelf like Substance Painter's:** categories with icons (Brushes, Materials, Smart materials, Smart masks, Alphas, Textures, Decals, Environments, Mesh maps, Tools, Projects) and a quick bar with search, favourites, recent, tile size and list view.
+- **Brushes for 3D** in their own category (All brushes shows the rest), and **Alphas** for brush tips.
+- **Condensed brush settings** in 3D Paint (Show all settings brings everything back).
+- **Pressure without a pen, Smoothing and Lazy mouse** now work when painting on the model.
+
 ## 0.97.7
 
 - **171 built-in grunges**, including 50 new textures for concrete, metal, fabric, leather, wood, and ground. The new set includes **Concrete Fractures**, five scratch maps, and five dent maps.

@@ -18,9 +18,9 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const W=ms=>p.waitForTimeout(ms||200);
  await p.evaluate(()=>__gs.newDoc(300,200,8,[1,1,1],'painting',false));await W(300);
  await p.click('#modeTabs [data-mode=p3d]');await W(1200);
- await p.evaluate(()=>{__gs.useModel(__gs.primMesh('sphere',1));__gs.showPanel('mats');});await W(900);
+ await p.evaluate(()=>{__gs.useModel(__gs.primMesh('sphere',1));__gs.showPanel('mats');});await W(300);await p.evaluate(()=>__gs.showPanel('smats'));await W(900);
  // a smart material made from library materials and grunge maps
- await p.click('#smGrid .mattile:has-text("Worn Steel")');await p.click('#lFill');
+ await p.evaluate(()=>__gs.showPanel('smats'));await W(500);await p.click('#smGrid .mattile:has-text("Worn Steel")');await p.click('#lFill');
  for(let i=0;i<80;i++){if(await p.evaluate(()=>__gs.doc.root.children.some(n=>n.name==='Worn Steel')))break;await W(250);}
  const a=await p.evaluate(()=>{const G=__gs.doc.root.children.find(n=>n.name==='Worn Steel');if(!G)return null;const L=G.children;return {n:L.length,names:L.map(c=>c.name).join(),img:L.map(c=>c._fillImg?Object.keys(c._fillImg).length:0).join(),rows:L.map(c=>c.mask?c.mask.stack.map(r=>r.kind).join('+'):'').join('|'),pic:L.map(c=>c.mask?c.mask.stack.filter(r=>r.kind==='image'&&r.t).length:0).join()};});
  ok(a&&a.n===4,'Worn Steel adds a folder of 4 layers '+JSON.stringify(a));
@@ -28,7 +28,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(a&&a.pic.split(',').slice(1,4).every(v=>v>='1'),'the masks carry grunge pictures '+(a&&a.pic));
  // a smart mask with a grunge picture
  await p.evaluate(()=>{__gs.act('addLayer');});await W(300);
- await p.click('#smMaskGrid .mattile:has-text("Cracks")');
+ await p.evaluate(()=>__gs.showPanel('smasks'));await W(700);await p.click('#smMaskGrid .mattile:has-text("Cracks")');
  await p.evaluate(()=>__gs.matMaskSelected&&__gs.matMaskSelected());
  for(let i=0;i<60;i++){if(await p.evaluate(()=>{const A=__gs.doc.active;return A&&A.mask&&A.mask.stack&&A.mask.stack.some(r=>r.kind==='image'&&r.t);}))break;await W(250);}
  ok(await p.evaluate(()=>{const A=__gs.doc.active;return !!(A.mask&&A.mask.stack.some(r=>r.kind==='image'&&r.t));}),'the Cracks smart mask puts a picture row on the layer');

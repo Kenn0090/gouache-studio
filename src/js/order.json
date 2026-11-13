@@ -222,6 +222,7 @@
     "ui/keys",
     "ui/favorites",
     "ui/dock",
+    "ui/shelf",
     "ui/history",
     "ui/layer-undo",
     "tools/paths",

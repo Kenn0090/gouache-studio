@@ -159,14 +159,19 @@ function meshDownUV(hit,e){if(typeof bk!=='undefined'&&bk.busy)return true;if(ui
   if(['smudge','liquify','heal','clone'].includes(ui.tool)){toast('UV alignment paints with the brush, eraser and dodge/burn. Use Tangent | Wrap for this tool.');return true;}
   if(typeof npSync==='function')npSync();const et=editTarget();if(lockStop(et))return true;const o=paintOpts(et);if(!o)return true;
   const q=meshUVAt(hit,e);if(!q)return false;const r=hit.getBoundingClientRect(),k=v3TexelPx(hit,e);
-  o.uvRs=true;o.cageRs=k?meshBrushScale(r.height)/k:1;o.sym=typeof uvmSym==='function'?uvmSym():null;if(ui.tool!=='material')o.extras=[];/* (0.96.6) mirror/radial now work with UV alignment; the material brush keeps its other channels */const p=pressureOf(e);
-  v3.mstroke={id:e.pointerId,uv:true,hit,last:q};beginStroke(et.L,q[0],q[1],p,o);return true;}
+  o.uvRs=true;o.cageRs=k?meshBrushScale(r.height)/k:1;o.sym=typeof uvmSym==='function'?uvmSym():null;if(ui.tool!=='material')o.extras=[];/* (0.96.6) mirror/radial now work with UV alignment; the material brush keeps its other channels */const p=simPressStart(pressureOf(e),e);
+  v3.mstroke={id:e.pointerId,uv:true,hit,last:q,sx:q[0],sy:q[1],sp:p,rx:q[0],ry:q[1],rp:p,smoothAt:e.timeStamp,sim:{x:q[0],y:q[1],t:e.timeStamp,spd:0,travel:0,pen:e.pointerType==='pen'}};beginStroke(et.L,q[0],q[1],p,o);if(stroke)stroke.simOn=!v3.mstroke.sim.pen&&brush.simP==='taper';/* (0.97.8) Pressure without a pen on the model */return true;}
 /* the texture pixel under a point of the view, on the active texture set only */
 function meshUVAt(hit,e){const q=v3PickFast(hit,e);if(!q)return null;if(ui.mode==='p3d'&&v3.mesh?.setRanges&&typeof p3Range==='function'){const R=v3.mesh.setRanges[q.set],A=p3Range();if(R&&A&&R.start!==A.start)return null;}return [q.uv[0]*doc.w,q.uv[1]*doc.h];}
 function meshMoveUV(hit,e){const m=v3.mstroke;if(!m||!stroke)return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];
-  for(const ev of (evs.length?evs:[e])){const q=meshUVAt(hit,ev);if(!q)continue;const jump=Math.hypot(q[0]-m.last[0],q[1]-m.last[1]),reach=Math.max(8,(stroke.o.size||brush.size)*(stroke.rs||1)*3);
-    if(jump>reach){/* crossed a seam: lift and start again on the other island */const o=stroke.o,L=stroke.L;endStroke(true);beginStroke(L,q[0],q[1],pressureOf(ev,e),o);m.last=q;continue;}
-    addPoint(q[0],q[1],pressureOf(ev,e));m.last=q;}}
+  for(const ev of (evs.length?evs:[e])){const q=meshUVAt(hit,ev);if(!q)continue;
+    /* (0.97.8) Smoothing and Lazy mouse work with UV alignment too (they were skipped): the point is smoothed in texels, the lazy string is in brush pixels */
+    let x=q[0],y=q[1];const pr=simPress(m,x,y,ev.timeStamp,pressureOf(ev,e));m.rx=x;m.ry=y;m.rp=pr;
+    if(brush.lazy>0&&!ev.shiftKey){const z=lazyStep(m,x,y,brush.lazy*(stroke.o.cageRs||1));if(!z)continue;x=z[0];y=z[1];}
+    strokeSmooth(m,x,y,pr,brush.smoothing,ev.timeStamp,ev.shiftKey);
+    const jump=Math.hypot(m.sx-m.last[0],m.sy-m.last[1]),reach=Math.max(8,(stroke.o.size||brush.size)*(stroke.rs||1)*3);
+    if(jump>reach){/* crossed a seam: lift and start again on the other island */const o=stroke.o,L=stroke.L;endStroke(true);m.sx=q[0];m.sy=q[1];m.sp=pr;m.lx=undefined;beginStroke(L,q[0],q[1],pr,o);m.last=q;continue;}
+    addPoint(m.sx,m.sy,m.sp);m.last=[m.sx,m.sy];}}
 function meshDown0(hit,e,opt){if(typeof bk!=='undefined'&&bk.busy&&ui.mode==='bake'){toast('Wait for the bake to finish.');return true;}
   if(ui.mode==='p3d'&&p3.udim){const pk=v3PickAt(hit,e),R=pk&&v3.mesh?.setRanges?.[pk.set],i=pk&&pk.tile&&p3.sets.findIndex(S=>p3Binding(S)===(R&&R.name)&&S.tile&&S.tile.id===pk.tile.id);if(i>=0&&i!==p3.cur)p3SwitchSet(i,true);}
   if(ui.mode==='bake'&&(ui.tool==='smudge'||ui.tool==='liquify')){toast('Smudge and Liquify work in 3D Paint, on the model’s texture set.');return true;}
@@ -177,10 +182,10 @@ function meshDown0(hit,e,opt){if(typeof bk!=='undefined'&&bk.busy&&ui.mode==='ba
   if(o.tool==='liquify')return meshLiqDown(hit,e,et,o,sp);
   if(o.tool==='smudge'){o.extras=[];o.sym=null;if(!sp.mesh||(typeof p3!=='undefined'&&p3.udim)){toast('Smudge on the model needs a plain texture set (no UDIM tiles).');return true;}}
   if(o.tool==='heal'||o.tool==='clone'){const pk=v3PickAt(hit,e);if(!pk)return true;if(!healBegin(pk.uv[0]*doc.w,pk.uv[1]*doc.h,o.tool))return true;}
-  o.space=sp;o.cageRs=meshBrushScale(h);o.sym=null;const [x,y]=meshPt(hit,e),p=pressureOf(e),line=brushLineStart(et,x,y,p,e,'mesh');v3.mstroke={id:e.pointerId,sx:x,sy:y,sp:p,rx:x,ry:y,smoothAt:e.timeStamp,line};beginStroke(et.L,line.x,line.y,line.p,o);if(line.joined){let qx=x,qy=y;if(e.shiftKey&&e.ctrlKey)[qx,qy]=brushLineAngle(line,x,y);addPoint(qx,qy,p);v3.mstroke.rx=qx;v3.mstroke.ry=qy;}return true;}
+  o.space=sp;o.cageRs=meshBrushScale(h);o.sym=null;const [x,y]=meshPt(hit,e),p=simPressStart(pressureOf(e),e),line=brushLineStart(et,x,y,p,e,'mesh'),rs=Math.max(1e-3,o.cageRs||1);v3.mstroke={id:e.pointerId,sx:x,sy:y,sp:p,rx:x,ry:y,smoothAt:e.timeStamp,line,rs,sim:{x:x/rs,y:y/rs,t:e.timeStamp,spd:0,travel:0,pen:e.pointerType==='pen'}};beginStroke(et.L,line.x,line.y,line.p,o);if(stroke)stroke.simOn=!v3.mstroke.sim.pen&&brush.simP==='taper';/* (0.96) Pressure without a pen works on the model too */if(line.joined){let qx=x,qy=y;if(e.shiftKey&&e.ctrlKey)[qx,qy]=brushLineAngle(line,x,y);addPoint(qx,qy,p);v3.mstroke.rx=qx;v3.mstroke.ry=qy;}return true;}
 function meshMove(hit,e){if(v3.shiftPend&&meshShiftMove(hit,e))return;const m=v3.mstroke;if(m&&m.uv&&e.pointerId===m.id){meshMoveUV(hit,e);return;}if(m&&m.liq&&e.pointerId===m.id){meshLiqMove(hit,e);return;}if(!m||e.pointerId!==m.id||!stroke)return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];
-  for(const ev of (evs.length?evs:[e])){let [x,y]=meshPt(hit,ev);const p=pressureOf(ev,e);if(m.line)[x,y]=brushLineSnap(m.line,x,y,ev.shiftKey,ev.ctrlKey);m.rx=x;m.ry=y;if(brush.lazy>0&&!ev.shiftKey){const q=lazyStep(m,x,y,brush.lazy);if(!q)continue;x=q[0];y=q[1];}strokeSmooth(m,x,y,p,brush.smoothing,ev.timeStamp,ev.shiftKey);addPoint(m.sx,m.sy,m.sp);}}
-function meshUp(e){if(v3.shiftPend&&meshShiftUp(e))return;const m=v3.mstroke;if(!m||(e&&e.pointerId!==m.id))return;if(m.uv){v3.mstroke=null;if(stroke)endStroke(true);return;}if(m.liq){meshLiqUp();return;}v3.mstroke=null;if(stroke){if(brush.smoothing>0)addPoint(brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);brushLineRemember(m.line,brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);endStroke(true);}}
+  for(const ev of (evs.length?evs:[e])){let [x,y]=meshPt(hit,ev);const p=simPress(m,x/m.rs,y/m.rs,ev.timeStamp,pressureOf(ev,e));if(m.line)[x,y]=brushLineSnap(m.line,x,y,ev.shiftKey,ev.ctrlKey);m.rx=x;m.ry=y;if(brush.lazy>0&&!ev.shiftKey){const q=lazyStep(m,x,y,brush.lazy);if(!q)continue;x=q[0];y=q[1];}strokeSmooth(m,x,y,p,brush.smoothing,ev.timeStamp,ev.shiftKey);addPoint(m.sx,m.sy,m.sp);}}
+function meshUp(e){if(v3.shiftPend&&meshShiftUp(e))return;const m=v3.mstroke;if(!m||(e&&e.pointerId!==m.id))return;if(m.uv){v3.mstroke=null;if(stroke){if(brush.smoothing>0&&m.rx!==undefined)addPoint(brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);endStroke(true);}return;}if(m.liq){meshLiqUp();return;}v3.mstroke=null;if(stroke){if(brush.smoothing>0)addPoint(brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);brushLineRemember(m.line,brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);endStroke(true);}}
 /* round cursor showing the brush size over the model */
 function meshCursor(hit,e){mir3CursorMove(hit,e);let c=v3.curEl;if(!c||!c.isConnected){c=v3.curEl=el('div',{class:'v3cur'});hit.parentNode.append(c);}
   if(e&&sel3.armed&&!e.altKey){c.hidden=true;hit.style.cursor='crosshair';return;}
