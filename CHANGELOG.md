@@ -1,3 +1,9 @@
+## 0.97.12
+
+- **Smoothing groups.** A **Smoothing groups** row in the Bake tab (Geometry) and in 3D Paint's Model section: **File's own**, **Smooth all** (removes the smoothing groups, so the whole model shades smooth) or **Auto by angle** (edges sharper than the angle stay hard, the rest shade smooth), with an Angle slider. Only the normals change; UVs and triangles stay, so painted textures and baked maps still fit, and File's own brings the original back.
+- **Real pictures for the Generators.** Every tile in the shelf's Generators category now shows the generator as a black-and-white mask on the Material preview model, instead of a drawn stand-in.
+- **Updated Material preview model.** The preview low-poly and its baked maps are your updated ones. **Load preview material and mesh maps** now brings in Normal, Ambient occlusion, Curvature, Height, Thickness, Position, World normal and ID, with a plain grey material.
+
 ## 0.97.11
 
 - **Shorter 3D Paint bar.** The bar above the 3D view keeps shading and **Mirror X Y Z**; **Show** (Metal view and the channel list) and **View** (snap to a side, Perspective / Orthographic) are small buttons that open a pop-up, and the radial choice moved into the Mirror ▾ pop-up.

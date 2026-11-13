@@ -453,7 +453,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
   /* Geometry */
   const hv=bk.showHigh||'off',hiBtn=(id,t,on,tip,fn)=>el('button',{class:'btn sm'+(on?' on':''),type:'button',id,text:t,'aria-pressed':String(on),title:tip,disabled:!C.high,onclick:fn});
   const setHv=v=>{bk.showHigh=v;v3.dirty=true;requestRender();buildBakePanel();};
-  const geo=[row('Cage',modelSel('cage',cageOpts)),upSelect('bkUp',v=>{for(const k of ['low','high','cage'])if(C[k]&&C[k].upTurns!==undefined)bakeSetModel(k,upApply(C[k],v));}),upTurnRow(),
+  const geo=[row('Cage',modelSel('cage',cageOpts)),upSelect('bkUp',v=>{for(const k of ['low','high','cage'])if(C[k]&&C[k].upTurns!==undefined)bakeSetModel(k,upApply(C[k],v));}),upTurnRow(),smoothingRow('bkSm_'),
     el('div',{class:'chips'},hiBtn('bkShowHi','Show high',hv!=='off','Show the high-poly in the view (like Marmoset’s Show High)',()=>setHv(hv==='off'?'over':'off')),
       hiBtn('bkHideLo','Hide low',hv==='only','Hide the low-poly so only the high-poly shows',()=>setHv(hv==='only'?'over':'only')),
       chk('bkShowCage','Show the cage',bk.showCage,v=>{bk.showCage=v;v3.dirty=true;requestRender();})),

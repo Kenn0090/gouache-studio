@@ -1,3 +1,9 @@
+## 0.97.12
+
+- **Smoothing groups:** remove them, or make them from an angle (Auto smooth), in the Bake tab and in 3D Paint.
+- **Generators shelf pictures** are real previews on the Material preview model.
+- **Updated Material preview model** with its baked maps (Position, World normal and ID included).
+
 ## 0.97.11
 
 - **Shorter 3D Paint bar** with Show and View pop-ups; radial symmetry is in the Mirror pop-up.
