@@ -192,13 +192,8 @@ async function buildExport(){
     case 'exr':return {blob:encodeEXR(W,H,px),name:base+'.exr'};
     case 'jpg':return {blob:await canvasBlob(W,H,toStraight(px,8),'image/jpeg',exp.q,true),name:base+'.jpg'};
     case 'webp':return {blob:await canvasBlob(W,H,toStraight(px,8),'image/webp',exp.q,false),name:base+'.webp'};}}
-function dlgExport(){
-  exp.png16=exp.tif16=doc.depth===16;
-  const opts=el('div',{class:'fmt-opts'}),info=el('p',{class:'note'}),status=el('div',{class:'status-line',role:'status'});
-  const go=el('button',{class:'btn primary',text:'Export'});
-  const fmtRow=segChips(FORMATS.map(([v,l])=>[v,l]),()=>exp.fmt,v=>{exp.fmt=v;},drawOpts);
-  const srcRow=segChips([['image','Visible image'],['layer',(doc.active&&doc.active.type==='group'?'Active group':'Active layer')+(doc.active?' ('+doc.active.name+')':'')]],()=>exp.src,v=>{exp.src=v;});
-  function drawOpts(){const f=exp.fmt,W=doc.w,H=doc.h,ow=[];const hi16=doc.depth===16?null:'The document is 8-bit; switch to 16-bit in the Image menu to get extra precision.';
+/* the options of one picture format (PNG bit depth, JPG quality, TGA, DDS, TIFF…): used by Export and by Save As */
+function exportOptsFor(f,drawOpts){const W=doc.w,H=doc.h,ow=[];const hi16=doc.depth===16?null:'The document is 8-bit; switch to 16-bit in the Image menu to get extra precision.';
     if(f==='png'){ow.push(segChips([[false,'8-bit'],[true,'16-bit',doc.depth!==16,hi16]],()=>exp.png16,v=>{exp.png16=v;}),el('p',{class:'note',text:'Lossless with transparency. The safe default for engines and for sharing.'}));}
     if(f==='tga'){ow.push(el('div',{class:'chips'},chk('eRle','RLE compression',exp.tgaRle,v=>{exp.tgaRle=v;}),chk('eAlpha','Alpha channel (32-bit)',exp.tgaAlpha,v=>{exp.tgaAlpha=v;})),el('p',{class:'note',text:'Top-left origin, BGRA. Read by Unreal, Unity, Godot, Substance and most DCC tools.'}));}
     if(f==='dds'){ow.push(segChips([['bc1','BC1 / DXT1'],['bc3','BC3 / DXT5'],['rgba','Uncompressed']],()=>exp.dds,v=>{exp.dds=v;},drawOpts),el('div',{class:'chips'},chk('eMip','Generate mipmaps',exp.mips,v=>{exp.mips=v;})),
@@ -208,6 +203,14 @@ function dlgExport(){
     if(f==='exr')ow.push(el('p',{class:'note',text:'Half-float RGBA in linear color with premultiplied alpha. Use it for HDR, lighting or VFX work; painted color textures usually go out as PNG, TGA or DDS.'}));
     if(f==='jpg'||f==='webp'){ow.push(makeSlider({id:'eQ',label:'Quality',min:.4,max:1,step:.01,value:exp.q,fmt:pct,onInput:v=>{exp.q=v;}}).el);
       if(f==='jpg')ow.push(el('p',{class:'note',text:'JPG has no transparency; transparent areas become black. Avoid it for textures you will edit again.'}));}
+    return ow;}
+function dlgExport(){
+  exp.png16=exp.tif16=doc.depth===16;
+  const opts=el('div',{class:'fmt-opts'}),info=el('p',{class:'note'}),status=el('div',{class:'status-line',role:'status'});
+  const go=el('button',{class:'btn primary',text:'Export'});
+  const fmtRow=segChips(FORMATS.map(([v,l])=>[v,l]),()=>exp.fmt,v=>{exp.fmt=v;},drawOpts);
+  const srcRow=segChips([['image','Visible image'],['layer',(doc.active&&doc.active.type==='group'?'Active group':'Active layer')+(doc.active?' ('+doc.active.name+')':'')]],()=>exp.src,v=>{exp.src=v;});
+  function drawOpts(){const ow=exportOptsFor(exp.fmt,drawOpts);
     opts.replaceChildren(...ow);
     info.textContent=doc.w+' × '+doc.h+' px'+(isPOT(doc.w)&&isPOT(doc.h)?' (power of two).':'. Not a power of two; engines generate mipmaps best from sizes like 512, 1024 or 2048.');}
   drawOpts();

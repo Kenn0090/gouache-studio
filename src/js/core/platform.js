@@ -11,6 +11,8 @@ const platform={
     const ext=extOf(defaultName);
     const path=await this.invoke('plugin:dialog|save',{options:{defaultPath:defaultName,filters:[{name:filterName||ext.toUpperCase(),extensions:[ext]}]}});
     if(!path)return null;await this.writeFile(path,bytes);return path;},
+  /* (0.97.15) the native Save As window with a "Save as type" list; resolves to the chosen path (no file is written) or null */
+  async saveAsPath(defaultName,filters){const path=await this.invoke('plugin:dialog|save',{options:{defaultPath:defaultName,filters}});return path||null;},
   /* bytes, or a Blob: a Blob is sent in 16 MB pieces (write_chunk), so a project of hundreds of MB is never held in the page as one block */
   writeFile(path,bytes){if(typeof Blob!=='undefined'&&bytes instanceof Blob)return this.writeBlob(path,bytes);return this.invoke('write_file',bytes,{headers:{'x-path':encodeURIComponent(path)}});},
   async writeBlob(path,blob){const CH=16*1024*1024,n=blob.size,h=encodeURIComponent(path);
