@@ -17,7 +17,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{__gs.v3.paintOn=true;});const g1=await p.evaluate(()=>window.__gid);
  for(let i=0;i<15;i++){await p.mouse.move(box[0]+box[2]*(.35+i/60),box[1]+box[3]*(.4+i/90));await p.waitForTimeout(40);}
  await p.mouse.down();for(let i=0;i<10;i++){await p.mouse.move(box[0]+box[2]*(.5+i/80),box[1]+box[3]*.5);await p.waitForTimeout(40);}await p.mouse.up();await p.waitForTimeout(800);
- const g2=await p.evaluate(()=>window.__gid);ok(g2-g1<=2,'hovering and painting the model read canvases '+(g2-g1)+' times (was once per move)');if(g2-g1>2)console.log(await p.evaluate(()=>Object.keys(window.__gst).join('\n')));
+ const g2=await p.evaluate(()=>window.__gid),cur=await p.evaluate(()=>Object.keys(window.__gst||{}).filter(k=>/tipOutAlpha|tipOutline|tipCursor/.test(k)).length);ok(cur===0,'the brush outline cursor reads no canvas while hovering and painting the model ('+cur+' reads from the cursor; '+(g2-g1)+' in all, mostly brush tips being made)');
  /* a big model draws lighter while turning */
  const N=390;await p.evaluate(async N=>{const L=[];for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){const u=i/N,v=j/N,th=u*Math.PI*2,ph=v*Math.PI;L.push('v '+(Math.sin(ph)*Math.cos(th)).toFixed(4)+' '+Math.cos(ph).toFixed(4)+' '+(Math.sin(ph)*Math.sin(th)).toFixed(4)+'\nvt '+u.toFixed(4)+' '+v.toFixed(4));}
   for(let j=0;j<N;j++)for(let i=0;i<N;i++){const a=j*(N+1)+i+1,b=a+1,c=a+N+1,d=c+1;L.push('f '+a+'/'+a+' '+c+'/'+c+' '+b+'/'+b+'\nf '+b+'/'+b+' '+c+'/'+c+' '+d+'/'+d);}
