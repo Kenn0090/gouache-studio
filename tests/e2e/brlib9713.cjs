@@ -1,0 +1,27 @@
+/* 0.97.13 (Kenn): the Paint tab's Brushes panel has search, favourites, tile size and a list view */
+const {chromium}=require('playwright'),path=require('path');
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});const p=await(await b.newContext({viewport:{width:1500,height:1000}})).newPage();
+const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.route('**/*',r=>r.request().url().startsWith('file:')?r.continue():r.abort());
+await p.goto('file://'+path.resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(3000);
+await p.evaluate(()=>{__gs.closeWelcome&&__gs.closeWelcome();for(const k of ['gs.libUI','gs.brFav','gs.libFoldMed'])localStorage.removeItem(k);__gs.renderLibrary();__gs.showPanel('brushes')});await p.waitForTimeout(900);
+const vis=s=>p.evaluate(s=>{const e=document.querySelector(s);return !!e&&e.offsetParent!==null},s);
+ok(await vis('#libSearch')&&await vis('#libFavOnly')&&await vis('#libSz_m')&&await vis('#libList'),'the panel has search, favourites, sizes and a list switch');
+await p.fill('#libSearch','charcoal');await p.waitForTimeout(600);
+const res=await p.evaluate(()=>({n:document.querySelectorAll('#libResults .tiles button').length,all:[...document.querySelectorAll('#libResults .tiles button')].every(b=>/charcoal/i.test(b.getAttribute('aria-label')||'')),focus:document.activeElement&&document.activeElement.id}));
+ok(res.n>=2&&res.all,'searching "charcoal" lists only matching brushes from every folder ('+res.n+')');
+ok(res.focus==='libSearch','typing keeps the cursor in the search box');
+await p.fill('#libSearch','');await p.waitForTimeout(500);
+await p.evaluate(()=>{const t=document.querySelector('#libBody .tiles button[data-favorite-source]');t.querySelector('.libstar').click();});await p.waitForTimeout(500);
+ok(await p.evaluate(()=>JSON.parse(localStorage.getItem('gs.brFav')||'[]').length===1&&!![...document.querySelectorAll('#libBody .libset-h span')].find(s=>/^Favourites/.test(s.textContent))),'a starred brush is kept and gets a Favourites section');
+await p.click('#libFavOnly');await p.waitForTimeout(500);
+ok(await p.evaluate(()=>document.querySelectorAll('#libResults .tiles button').length===1),'the star button shows only favourites');
+await p.click('#libFavOnly');await p.waitForTimeout(300);
+await p.click('#libSz_l');await p.waitForTimeout(400);
+ok(await p.evaluate(()=>getComputedStyle(document.getElementById('libBody')).getPropertyValue('--libtw').trim()==='72px'),'L makes the tiles larger');
+await p.click('#libList');await p.waitForTimeout(400);
+ok(await p.evaluate(()=>document.getElementById('libBody').classList.contains('liblist')&&[...document.querySelectorAll('#libBody .tiles .libname')].some(n=>n.offsetParent!==null)),'List view shows the brush names');
+await p.screenshot({path:'/tmp/claude-0/-home-user-gouache-studio/92f86222-7ec7-5899-b73a-60feb38a81d6/scratchpad/brlib.png',clip:{x:1190,y:260,width:310,height:480}});
+ok(errs.length===0,'no page errors '+errs.join('|'));
+await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0)})();

@@ -157,7 +157,7 @@ function brushRecent(p){brushSession.recent=[p,...brushSession.recent.filter(x=>
 function brushDefaultSize(){brush.size=clamp(brushSession.source?.size||BRUSH_DEFAULTS.size,1,brushMax());brushRememberSize();if(sizeSlider)sizeSlider.set(brush.size);refreshCursor();schedulePreview();}
 function brushDefaultSizeButton(id){return el('button',{class:'btn sm',id,text:'Default size',title:'Restore '+(brushSession.source?.name||'the brush')+' size ('+(brushSession.source?.size||BRUSH_DEFAULTS.size)+'px)',onclick:brushDefaultSize});}
 function brushSwapLast(){const list=brushSession.recent.filter(p=>library.some(s=>s.presets.includes(p)));if(list.length<2){toast('Use two brush presets first.');return;}applyPreset(list[brushSession.source===list[0]?1:0]);}
-function brushLibraryTile(p,recent){const key=recent?'_recentThumb':'_thumb',theme=key+'Theme';if(p[theme]!==themeKey()){p[key]=null;p[theme]=themeKey();}const b=el('button',{'data-favorite-source':'brush',title:p.name+(p.tool==='smudge'?' (blend)':''),'aria-label':p.name,class:p===activePreset?'on':null,onclick:()=>applyPreset(p)},p[key]||(p[key]=tileCanvas(p)));b._libDrag=['brush',p];return b;}
+function brushLibraryTile(p,recent,variant){const key=recent?'_recentThumb':variant?'_'+variant+'Thumb':'_thumb',theme=key+'Theme';if(p[theme]!==themeKey()){p[key]=null;p[theme]=themeKey();}const b=el('button',{'data-favorite-source':'brush',title:p.name+(p.tool==='smudge'?' (blend)':''),'aria-label':p.name,class:p===activePreset?'on':null,onclick:()=>applyPreset(p)},p[key]||(p[key]=tileCanvas(p)),el('span',{class:'libname',text:p.name}));b._libDrag=['brush',p];return b;}
 function tileCanvas(p){const c=el('canvas',{width:64,height:64});const x=c.getContext('2d');
   if(p.tip&&p.tip.canvas){const t=p.tip,s=54/Math.max(t.w,t.h);x.drawImage(t.canvas,32-t.w*s/2,32-t.h*s/2,t.w*s,t.h*s);}
   else{const h=clamp(p.hardness==null?.85:p.hardness,0,.98),g=x.createRadialGradient(32,32,0,32,32,26);g.addColorStop(0,'#fff');g.addColorStop(h,'#fff');g.addColorStop(1,'rgba(255,255,255,0)');
@@ -168,7 +168,24 @@ function tileCanvas(p){const c=el('canvas',{width:64,height:64});const x=c.getCo
 const LIBFOLD_KEY='gs.libFold';
 function libFolded(){try{return new Set(JSON.parse(localStorage.getItem(LIBFOLD_KEY)||'[]'));}catch(e){return new Set();}}
 function libFoldSave(set){try{localStorage.setItem(LIBFOLD_KEY,JSON.stringify([...set]));}catch(e){}}
-function renderLibrary(){const box=$('#libBody');box.replaceChildren();
+/* (0.97.13, Kenn) the Paint tab's Brushes panel like the 3D Paint shelf: search, favourites (a star on each tile), tile size and a list view */
+const brLib=(()=>{let o={};try{o=JSON.parse(localStorage.getItem('gs.libUI')||'{}');}catch(e){}return Object.assign({size:'m',list:false,fav:false},o,{q:''});})();
+let brFav=new Set((()=>{try{return JSON.parse(localStorage.getItem('gs.brFav')||'[]');}catch(e){return [];}})()),libQuickEl=null;
+const brLibSave=()=>{try{localStorage.setItem('gs.libUI',JSON.stringify({size:brLib.size,list:brLib.list,fav:brLib.fav}));localStorage.setItem('gs.brFav',JSON.stringify([...brFav]));}catch(e){}};
+function libQuickBar(){if(libQuickEl)return libQuickEl;
+  const q=el('input',{type:'search',id:'libSearch',class:'shq',placeholder:'Search brushes','aria-label':'Search brushes'});
+  q.addEventListener('input',()=>{brLib.q=q.value;renderLibrary();});
+  const sz=el('div',{class:'seg shsize','aria-label':'Tile size'},...[['s','S'],['m','M'],['l','L']].map(([k,l])=>el('button',{type:'button',class:'segb',id:'libSz_'+k,'data-k':k,text:l,title:'Tile size '+l,onclick:()=>{brLib.size=k;brLib.list=false;brLibSave();renderLibrary();}})));
+  const fav=el('button',{type:'button',class:'shbtn',id:'libFavOnly',title:'Favourites only (click the star on a tile)','aria-label':'Favourites only',text:'★',onclick:()=>{brLib.fav=!brLib.fav;brLibSave();renderLibrary();}});
+  const lst=el('button',{type:'button',class:'shbtn',id:'libList',title:'List or tiles','aria-label':'List view',text:'☰',onclick:()=>{brLib.list=!brLib.list;brLibSave();renderLibrary();}});
+  libQuickEl=el('div',{class:'shbar libquick',id:'libQuick'},q,fav,sz,lst);return libQuickEl;}
+function libQuickSync(box){const b=libQuickEl;if(!b)return;b.querySelector('#libFavOnly').setAttribute('aria-pressed',String(brLib.fav));b.querySelector('#libFavOnly').classList.toggle('on',brLib.fav);
+  b.querySelector('#libList').setAttribute('aria-pressed',String(brLib.list));b.querySelector('#libList').classList.toggle('on',brLib.list);
+  b.querySelectorAll('#libQuick .segb').forEach(x=>x.setAttribute('aria-pressed',String(!brLib.list&&brLib.size===x.dataset.k)));
+  box.style.setProperty('--libtw',({s:30,m:42,l:72})[brLib.size]+'px');box.classList.toggle('liblist',brLib.list);}
+function libStar(tile,p){const f=brFav.has(p.name),i=el('i',{class:'libstar'+(f?' on':''),role:'button',title:'Favourite','aria-label':'Favourite',text:f?'★':'☆'});
+  i.addEventListener('pointerdown',e=>e.stopPropagation());i.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();if(brFav.has(p.name))brFav.delete(p.name);else brFav.add(p.name);brLibSave();renderLibrary();});tile.append(i);return tile;}
+function renderLibrary(){const box=$('#libBody'),hadFocus=!!libQuickEl&&document.activeElement===libQuickEl.querySelector('#libSearch');box.replaceChildren();
   brushSession.recent=brushSession.recent.filter(p=>library.some(s=>s.presets.includes(p)));
   const folded=libFolded();let mfolded=null;
   /* one folding section: arrow + title (+ extra header buttons); the tiles are made the first time it is open */
@@ -186,13 +203,23 @@ function renderLibrary(){const box=$('#libBody');box.replaceChildren();
   const bar=el('div',{class:'libfoldbar',style:'display:flex;gap:6px;margin:2px 0 6px;flex-wrap:wrap'},viewSeg,
     el('button',{class:'btn sm',type:'button',text:'Fold all',onclick:()=>{if(byMed)brMedFoldSave(new Set(brushMediaGroups().media.map(g=>'med_'+g.key)));else libFoldSave(new Set([...library.map(x=>x.id),'recent']));renderLibrary();}}),
     el('button',{class:'btn sm',type:'button',text:'Unfold all',onclick:()=>{if(byMed)brMedFoldSave(new Set());else libFoldSave(new Set());renderLibrary();}}));
-  box.append(bar);
-  const tileOf=(set,p)=>{const tile=brushLibraryTile(p,false);if(!set.builtin){tile.title+=' · right-click to delete';tile.addEventListener('contextmenu',e=>{e.preventDefault();confirmDlg('Delete brush','Delete “'+p.name+'” from '+set.name+'? This cannot be undone.','Delete',()=>removeBrush(set,p));});}return tile;};
-  if(brushSession.recent.length)box.append(section('recent','Recent brushes',null,t=>t.append(...brushSession.recent.map(p=>brushLibraryTile(p,true)))));
-  if(byMed){const G=brushMediaGroups();
-    for(const g of G.mine)box.append(section(g.set.id,g.set.name+' · '+g.items.length,el('button',{text:'Remove','aria-label':'Remove brush set '+g.set.name,onclick:e=>{e.stopPropagation();removeSet(g.set);}}),t=>{for(const {set,p} of g.items)t.append(tileOf(set,p));}));
-    for(const g of G.media){const id='med_'+g.key;const wrap=section(id,g.title+' · '+g.items.length,null,t=>{for(const {set,p} of g.items)t.append(tileOf(set,p));},'brmed');box.append(wrap);}
-  }else for(const set of library)box.append(section(set.id,set.builtin?set.name:set.name+' · '+set.presets.length,set.builtin?null:el('button',{text:'Remove','aria-label':'Remove brush set '+set.name,onclick:e=>{e.stopPropagation();removeSet(set);}}),t=>{for(const p of set.presets)t.append(tileOf(set,p));}));
+  box.append(libQuickBar());libQuickSync(box);box.append(bar);
+  const tileOf=(set,p,variant)=>{const tile=brushLibraryTile(p,false,variant);if(!set.builtin){tile.title+=' · right-click to delete';tile.addEventListener('contextmenu',e=>{e.preventDefault();confirmDlg('Delete brush','Delete “'+p.name+'” from '+set.name+'? This cannot be undone.','Delete',()=>removeBrush(set,p));});}return libStar(tile,p);};
+  const qq=brLib.q.trim().toLowerCase();
+  if(qq||brLib.fav){/* search and favourites show one list across every folder */
+    const hits=[];for(const set of library)for(const p of set.presets)if((!qq||p.name.toLowerCase().includes(qq))&&(!brLib.fav||brFav.has(p.name)))hits.push({set,p});
+    box.append(el('div',{class:'libset',id:'libResults'},el('div',{class:'libset-h'},el('span',{text:(qq?'Search results':'Favourites')+' · '+hits.length})),el('div',{class:'tiles'},...hits.map(({set,p})=>tileOf(set,p))),
+      hits.length?null:el('p',{class:'note',text:brLib.fav&&!qq?'No favourites yet: click the star on a brush.':'No brush has that name.'})));}
+  else{
+    const favs=[];for(const set of library)for(const p of set.presets)if(brFav.has(p.name))favs.push({set,p});
+    if(favs.length)box.append(section('favs','Favourites · '+favs.length,null,t=>{for(const {set,p} of favs)t.append(tileOf(set,p,'fav'));}));
+    if(brushSession.recent.length)box.append(section('recent','Recent brushes',null,t=>t.append(...brushSession.recent.map(p=>libStar(brushLibraryTile(p,true),p)))));
+    if(byMed){const G=brushMediaGroups();
+      for(const g of G.mine)box.append(section(g.set.id,g.set.name+' · '+g.items.length,el('button',{text:'Remove','aria-label':'Remove brush set '+g.set.name,onclick:e=>{e.stopPropagation();removeSet(g.set);}}),t=>{for(const {set,p} of g.items)t.append(tileOf(set,p));}));
+      for(const g of G.media){const id='med_'+g.key;const wrap=section(id,g.title+' · '+g.items.length,null,t=>{for(const {set,p} of g.items)t.append(tileOf(set,p));},'brmed');box.append(wrap);}
+    }else for(const set of library)box.append(section(set.id,set.builtin?set.name:set.name+' · '+set.presets.length,set.builtin?null:el('button',{text:'Remove','aria-label':'Remove brush set '+set.name,onclick:e=>{e.stopPropagation();removeSet(set);}}),t=>{for(const p of set.presets)t.append(tileOf(set,p));}));
+  }
+  if(hadFocus){const q=libQuickEl.querySelector('#libSearch');q.focus();try{q.setSelectionRange(q.value.length,q.value.length);}catch(e){}}
   if(typeof renderDualPicker==='function')queueMicrotask(renderDualPicker);
   if(typeof shBrushChanged==='function')shBrushChanged();/* (0.96) the shelf's Brushes category follows */}
 /* Shared range gestures use displayed units: five percentage points, degrees or pixels.

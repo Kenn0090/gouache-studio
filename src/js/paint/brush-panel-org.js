@@ -12,7 +12,7 @@ const brAdvanced=()=>{try{return localStorage.getItem('gs.brushAdv')==='1';}catc
 const brGroupOpen={Stroke:true};
 function brIdsOf(n){const s=[];if(n.id)s.push(n.id);if(n.querySelectorAll)for(const e of n.querySelectorAll('[id]'))s.push(e.id);return s;}
 function brOrganize(box){
-  if(!box||!(ui.tool==='brush'||ui.tool==='erase'))return;
+  if(!box||!['brush','erase','smudge','dodge','burn','heal','clone'].includes(ui.tool))return;
   if(box.querySelector(':scope>.brg3'))return;/* 3D Paint's condensed panel has its own groups */
   const kids=[...box.children];let last=-1;kids.forEach((k,i)=>{if(brIdsOf(k).some(id=>BR_ESSENTIAL.test(id)))last=i;});
   if(last<0)return;
