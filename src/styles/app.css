@@ -1637,7 +1637,7 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .shbtn svg,.shvw svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .shsize .segb,.shview .segb,.shall .segb{padding:2px 8px;min-height:24px;white-space:nowrap}.shvw{display:grid;place-items:center;padding:2px 6px!important}.shsz{min-width:26px}
 .shacts{display:flex;gap:6px;align-items:center}.shall{display:inline-flex}
-.shsec .shstar{position:absolute;top:2px;left:4px;font-size:14px;line-height:1;color:var(--muted);opacity:0;cursor:pointer;text-shadow:0 1px 2px rgba(0,0,0,.7);z-index:1}
+.shsec .shstar{font-style:normal;position:absolute;top:2px;left:4px;font-size:14px;line-height:1;color:var(--muted);opacity:0;cursor:pointer;text-shadow:0 1px 2px rgba(0,0,0,.7);z-index:1}
 .shsec .mattile:hover .shstar,.shsec .shstar.on{opacity:1}.shsec .shstar.on{color:#f0b429}
 .dkshelf .shsec .mattile>img,.dkshelf .shsec .mattile>canvas.shbtc,.dkshelf .shsec .mattile>canvas.tipthumb{width:var(--tw,64px);height:var(--tw,64px);object-fit:cover}
 .dkshelf .shsec .mattile>canvas:not(.matprev){width:var(--tw,64px);height:var(--tw,64px)}

@@ -1,3 +1,11 @@
+## 0.97.8
+
+- **The 3D Paint shelf is like Substance Painter's.** The list on the left has a category with an icon for each: **Brushes · Materials · Smart materials · Smart masks · Alphas · Textures · Decals · Environments · Mesh maps · Tools · Projects**. Smart materials and Smart masks are categories of their own now (they were chips inside Materials).
+- **Quick bar on every category:** search, **★ favourites** (a star on each tile), **🕒 recent**, tile size **S / M / L**, **tiles or list**, and each category's own buttons (New material…, Import…, Save brush…).
+- **Brushes for 3D.** The new **Brushes** category lists the brushes that work on the model with the current alignment (with UV alignment, the default, every brush but Line blend); **All brushes** shows the rest, and a brush that brings its own alignment keeps its **3D** badge. **Alphas** lists the brush tips.
+- **Condensed brush settings in 3D Paint.** The Brush tab keeps the stroke preview and the stencil switch at the top and folds the settings into groups (Stroke, Texture, Pressure, Paint feel, Tip shape & dynamics). Settings that do nothing with the current alignment are hidden; **Show all settings** brings them back. The Brushes panel left the right dock in 3D Paint, because the shelf has it now (an older saved layout loses it once; Window › Brushes brings it back).
+- **Pressure without a pen** (Speed, Taper, Fixed) and, with UV alignment, **Smoothing** and **Lazy mouse** now work when painting on the model; they did nothing there before.
+
 ## 0.97.7
 
 - **Textures** has 171 built-in grunges. The 50-map collection includes concrete fractures, rust, steel scratches and dents, fabric and leather grain, weathered wood, and ground textures. Browse the new **Metal** and **Dents** categories or use the existing **Scratches** and **Fabric** categories.

@@ -43,7 +43,7 @@ function shApply(cat){const sec=document.querySelector(SH_SEC[cat]);if(!sec)retu
   try{sec.style.setProperty('--tw',shTw()+'px');sec.classList.toggle('shlist',!!shS.list);
     const q=(shQ[cat]||'').trim().toLowerCase();
     for(const t of sec.querySelectorAll('.mattile')){const k=shKeyOf(cat,t);t.dataset.shkey=k;
-      if(!t.querySelector(':scope>.shstar')){const s=el('span',{class:'shstar',role:'button',title:'Favourite','aria-label':'Favourite'});s.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();shToggleFav(t.dataset.shkey);shApply(cat);});s.addEventListener('pointerdown',e=>e.stopPropagation());t.append(s);}
+      if(!t.querySelector(':scope>.shstar')){const s=el('i',{class:'shstar',role:'button',title:'Favourite','aria-label':'Favourite'});s.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();shToggleFav(t.dataset.shkey);shApply(cat);});s.addEventListener('pointerdown',e=>e.stopPropagation());t.append(s);}
       const fav=shIsFav(k),s=t.querySelector(':scope>.shstar');s.textContent=fav?'★':'☆';s.classList.toggle('on',fav);s.setAttribute('aria-pressed',String(fav));
       const w=t.closest('.matwrap')||t,nm=shName(t).toLowerCase();
       w.hidden=!!(q&&!nm.includes(q))||(shS.fav&&!fav)||(shS.recent&&!shRecent.includes(k));}
@@ -74,12 +74,14 @@ function shInit(){const mk=(id,hid,title,body)=>{const s=el('section',{class:'se
     body.addEventListener('click',used,true);body.addEventListener('dragstart',used,true);}
   shSyncBars();}
 /* ---- the Brushes category: the brushes that work on the model ---- */
-/* Presets that cannot work on a 3D model: they read paint already on the canvas (mixing, wet paint), draw a strip between two points
-   (line blend, fans), lay lanes of colour, or drip. The Brushes category lists the rest (and every brush with "All brushes"). Smooth curves
-   and similar finishing touches do not make a brush unusable. */
-const SH_NO3D=['mix','lineBlend','fanFill','laneN','drip','dripAuto','endInk','wet'];/* tested on the model (0.96): these have no effect there, or paint nothing */
-function shWorks3D(p){if(!p)return false;if(!['brush','erase','smudge','dodge','burn',undefined].includes(p.tool))return false;
-  for(const k of SH_NO3D){const v=p[k];if(v&&v!==(BRUSH_DEFAULTS[k]||0))return false;}return true;}
+/* What works depends on how the brush lands (Projection › Alignment). With UV alignment (the default) the stroke is stamped straight onto the
+   texture like on the flat canvas, so everything works but Line blend (tested: it paints nothing). With Tangent | Wrap or Camera the stroke is
+   drawn on the screen and projected, which cannot read the paint underneath: mixing, drips, fans and the like do nothing there (tested). A brush that
+   carries its own alignment (graffiti, blending…, p3-tools.js) is judged by that one. */
+function shAlignOf(p){const s=typeof v3s==='function'?v3s():{};const a=typeof brushAlign3d==='function'?brushAlign3d(p):null;return a||s.userAlign||s.paintAlign||'uv';}
+function shNo3d(k,align){const a=align||shAlignOf(null);return (a==='uv'?['lineBlend']:['mix','lineBlend','fanFill','laneN','drip','dripAuto','endInk','wet','smoothCurve']).includes(k);}
+function shWorks3D(p){if(!p)return false;if(!['brush','erase','smudge','dodge','burn',undefined].includes(p.tool))return false;const a=shAlignOf(p);
+  for(const k of ['mix','lineBlend','fanFill','laneN','drip','dripAuto','endInk','wet']){const v=p[k];if(v&&v!==(BRUSH_DEFAULTS[k]||0)&&shNo3d(k,a))return false;}return true;}
 function shBrushActs(){const a=el('div',{class:'seg shall','aria-label':'Which brushes'},...[[false,'3D brushes','Brushes that work on the model'],[true,'All brushes','Every brush, also the ones that need a flat canvas']].map(([v,l,t])=>el('button',{type:'button',class:'segb shallb','aria-pressed':String(!!shS.all===v),id:'shall_'+(v?'all':'3d'),title:t,text:l,onclick:()=>{shS.all=v;shSave();shDirty.shbrush=true;shEnsure();a.querySelectorAll('.shallb').forEach(x=>x.setAttribute('aria-pressed',String((x.id==='shall_all')===v)));}})));
   return el('span',{class:'shacts'},a,el('button',{class:'btn sm',id:'shSaveBrush',text:'Save brush',title:'Keep the current brush settings as a brush',onclick:()=>{const b=document.getElementById('saveBrushBtn');if(b)b.click();}}),el('button',{class:'btn sm',id:'shImportBrush',text:'Import…',title:'Import brushes (.abr, .brush, .brushset…)',onclick:()=>{const b=document.getElementById('abrBtn');if(b)b.click();}}),el('button',{class:'btn sm',id:'shMakeTip',text:'Make tip',title:'Make a brush tip from a picture',onclick:()=>{const b=document.getElementById('tipBtn');if(b)b.click();}}));}
 /* Tip pictures are made the first time a tile scrolls into view: 300 brushes and 195 tips drawn at once would make every one of their tips (and stall the page) */
@@ -88,7 +90,10 @@ function shLazy(c,draw){c._draw=draw;if(typeof IntersectionObserver==='undefined
   if(!shIO)shIO=new IntersectionObserver(es=>{for(const e of es){if(!e.isIntersecting)continue;shIO.unobserve(e.target);const c=e.target;try{c._draw(c);}catch(err){}c._draw=null;}},{rootMargin:'160px'});
   shIO.observe(c);return c;}
 function shBrushTile(p){const c=el('canvas',{width:64,height:64,class:'shbtc'});shLazy(c,cv=>{const t=typeof themeKey==='function'?themeKey():'';if(p._shThumb&&p._shTheme===t){cv.getContext('2d').drawImage(p._shThumb,0,0);return;}const src=tileCanvas(p);p._shThumb=src;p._shTheme=t;cv.getContext('2d').drawImage(src,0,0);});
-  const b=el('button',{type:'button',class:'mattile shbt'+(p===activePreset?' sel':''),title:p.name+(p.tool==='smudge'?' (blend)':'')+': click to paint with it','data-shkey':'shbrush:'+p.name,onclick:()=>applyPreset(p)},c,el('span',{text:p.name}));b._libDrag=['brush',p];b._preset=p;return b;}
+  const b=el('button',{type:'button',class:'mattile shbt'+(p===activePreset?' sel':''),title:p.name+(p.tool==='smudge'?' (blend)':'')+': click to paint with it','data-shkey':'shbrush:'+p.name,onclick:()=>applyPreset(p)},c,el('span',{text:p.name}));b._libDrag=['brush',p];b._preset=p;
+  /* (0.96.6) a brush that carries its own alignment in 3D Paint gets the small 3D badge (p3-tools.js) */
+  const al=typeof brushAlign3d==='function'?brushAlign3d(p):null;if(al){b.classList.add('has3d');b.append(el('span',{class:'b3d',text:'3D',title:'In 3D Paint this brush paints with '+(typeof ALIGN3D_NAMES!=='undefined'?ALIGN3D_NAMES[al]:al)+' alignment (switched for you)'}));b.title+=' · 3D: '+(typeof ALIGN3D_NAMES!=='undefined'?ALIGN3D_NAMES[al]:al);}
+  return b;}
 function shBrushRender(){const box=document.getElementById('shBrushBody');if(!box)return;
   if(typeof library==='undefined')return;
   const keep=p=>shS.all||shWorks3D(p),parts=[];let n=0;
@@ -96,7 +101,7 @@ function shBrushRender(){const box=document.getElementById('shBrushBody');if(!bo
   if(recent.length)parts.push(el('div',{class:'sub',text:'Recent'}),el('div',{class:'matgrid shgrid',id:'shBrushRecent'},...recent.map(shBrushTile)));
   for(const set of library){const ps=set.presets.filter(keep);if(!ps.length)continue;n+=ps.length;parts.push(el('div',{class:'sub',text:(set.builtin?set.name:set.name)+' · '+ps.length}),el('div',{class:'matgrid shgrid'},...ps.map(shBrushTile)));}
   if(!n)parts.push(el('p',{class:'note',text:'No brushes match. Choose “All brushes” to see every brush.'}));
-  parts.push(el('p',{class:'note',text:shS.all?'Every brush. Brushes that read paint already on the canvas (mixing, drips, line blend…) have no effect on the model.':'The brushes that work on the model. “All brushes” shows the rest, which need a flat canvas.'}));
+  parts.push(el('p',{class:'note',text:shS.all?'Every brush. Some (line blend, and mixing or drips with Tangent | Wrap alignment) have no effect on the model.':'The brushes that work on the model with the current alignment. “All brushes” shows the rest.'}));
   box.replaceChildren(...parts);}
 function shBrushSync(){for(const b of document.querySelectorAll('#shBrushBody .shbt'))b.classList.toggle('sel',b._preset===activePreset);}
 /* ---- the Alphas category: brush tips and stencils ---- */

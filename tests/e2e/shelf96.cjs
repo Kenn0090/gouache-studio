@@ -48,6 +48,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.showPanel('shbrush'));await W(1200);
  const br=await p.evaluate(()=>{const g=__gs,all=g.library.flatMap(s=>s.presets),w=all.filter(g.shWorks3D),bad=all.filter(x=>!g.shWorks3D(x));return {all:all.length,w:w.length,tiles:document.querySelectorAll('#shBrushBody .shbt').length,mixing:!![...document.querySelectorAll('#shBrushBody .shbt')].find(t=>bad.some(x=>x.name===t._preset.name&&x.mix)),badN:bad.length};});
  ok(br.tiles>0&&br.tiles<br.all&&br.badN>0&&!br.mixing,'Brushes lists the ones that work on the model ('+br.tiles+' of '+br.all+')');
+ await p.evaluate(()=>{__gs.v3s().paintAlign='wrap';__gs.shMarkDirty('shbrush');});await W(1000);const brw=await p.evaluate(()=>document.querySelectorAll('#shBrushBody .shbt').length);await p.evaluate(()=>{__gs.v3s().paintAlign='uv';__gs.shMarkDirty('shbrush');});await W(1000);
+ ok(brw<br.tiles,'with Tangent | Wrap fewer brushes work than with UV alignment ('+brw+' < '+br.tiles+')');
  await p.click('#shall_all');await W(1500);const all=await p.evaluate(()=>document.querySelectorAll('#shBrushBody .shbt').length);
  ok(all>br.tiles,'“All brushes” shows every brush ('+all+')');await p.click('#shall_3d');await W(1200);
  const pick=await p.evaluate(()=>{const t=[...document.querySelectorAll('#shBrushBody .shbt')].find(x=>x._preset.name!==__gs.activePreset?.name);t.click();return {n:t._preset.name,act:__gs.activePreset&&__gs.activePreset.name};});await W(400);
@@ -56,24 +58,30 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>__gs.showPanel('shalpha'));await W(1200);
  const al=await p.evaluate(()=>{const t=document.querySelectorAll('#shAlphaBody .shat');const x=t[3];x.click();return {n:t.length,tip:__gs.brush.tip&&__gs.brush.tip.name,want:x._tip.name};});
  ok(al.n>20&&al.tip===al.want,'Alphas lists the brush tips; a click gives the brush that tip ('+al.n+' tips, '+al.want+')');
- /* the condensed brush settings */
- await p.evaluate(()=>{__gs.setTool('brush');});await W(500);await p.evaluate(()=>__gs.showPanel('tool'));await W(500);
- const c1=await p.evaluate(()=>({mix:!!document.getElementById('bMix'),drip:!!document.getElementById('bDrip'),sp:!!document.getElementById('bSpace'),groups:document.querySelectorAll('#brushBody details.brg3').length,sym:!!document.querySelector('#brushBody [id^=sym]'),prev:!!document.querySelector('#toolSec #brushPrev'),stencil:!!document.querySelector('#toolSec #stBrush'),all:!!document.getElementById('bShowAll3d')}));
- ok(!c1.mix&&!c1.drip&&c1.sp&&c1.groups>=2&&c1.all,'3D Paint brush settings are condensed (no mixing or drips; spacing in a folding group) '+JSON.stringify(c1));
- ok(c1.prev&&c1.stencil,'the stroke preview and the stencil sit with the brush settings');
- await p.evaluate(()=>{const c=document.getElementById('bShowAll3d');c.click();});await W(600);
+ /* the condensed brush settings: what is hidden depends on the projection alignment (UV, the default, works like the flat canvas) */
+ const sets=async(align)=>{await p.evaluate(a=>{__gs.v3s().paintAlign=a;__gs.setTool('erase');__gs.setTool('brush');},align);await W(500);await p.evaluate(()=>__gs.showPanel('tool'));await W(400);
+   return p.evaluate(()=>({mix:!!document.getElementById('bMix'),drip:!!document.getElementById('bDrip'),sp:!!document.getElementById('bSpace'),groups:document.querySelectorAll('#brushBody details.brg3').length,sym:!!document.querySelector('#brushBody [id^=sym]'),prev:!!document.querySelector('#toolSec #brushPrev'),stencil:!!document.querySelector('#toolSec #stBrush'),all:!!document.getElementById('bShowAll3d'),curve:!!document.getElementById('bSmCurve')}));};
+ const cw=await sets('wrap');
+ ok(!cw.mix&&!cw.drip&&!cw.curve&&cw.sp&&cw.groups>=2&&cw.all&&!cw.sym,'Tangent | Wrap: mixing, drips and smooth curves are hidden; spacing sits in a folding group '+JSON.stringify(cw));
+ const cu=await sets('uv');
+ ok(cu.mix&&cu.drip&&cu.curve&&cu.sp&&cu.groups>=2,'UV alignment (works like the canvas): mixing, drips and smooth curves are there '+JSON.stringify(cu));
+ ok(cu.prev&&cu.stencil,'the stroke preview and the stencil sit with the brush settings');
+ await sets('wrap');await p.evaluate(()=>{document.getElementById('bShowAll3d').click();});await W(600);
  const c2=await p.evaluate(()=>({mix:!!document.getElementById('bMix'),drip:!!document.getElementById('bDrip')}));
- ok(c2.mix&&c2.drip,'“Show all settings” brings the rest back');await p.evaluate(()=>{document.getElementById('bShowAll3d').click();});await W(400);
+ ok(c2.mix&&c2.drip,'“Show all settings” brings the rest back');await p.evaluate(()=>{document.getElementById('bShowAll3d').click();});await W(400);await sets('uv');
  /* Pressure without a pen now works on the model too (it did nothing there before) */
  await p.evaluate(async()=>{const G=__gs;G.setMode('p3d',true);G.p3.savedAt=G.p3Sig();await G.p3NewProject(128,{modelKey:'plane'});G.useModel(G.primMesh('plane',1));Object.assign(G.v3.cam,{yaw:0,pitch:0,dist:3.2,tx:0,ty:0,tz:0});Object.assign(G.v3s(),{disp:0,showUV:false,litUV:false});G.v3.paintOn=true;G.prefs.paintSpeed='best';G.setTool('brush');G.setFG([1,0,0]);});
  await W(1500);const box=await p.locator('#v3Hit').boundingBox();
- const stroke=async(sim)=>{await p.evaluate(sim=>{const G=__gs,b=G.brush,d=G.BRUSH_DEFAULTS;for(const k of G.SETTING_KEYS)if(!['size','opacity','flow','hardness'].includes(k))b[k]=d[k];b.size=34;b.opacity=1;b.flow=1;b.hardness=.85;b.tip=null;Object.assign(b,sim);const t=G.compositeMap('base');window.__pre=G.captureRegionNow(t,0,0,t.w,t.h).data.slice();G.release(t);},sim);
-   await p.mouse.move(box.x+box.width*.3,box.y+box.height*.5);await p.mouse.down();for(let i=1;i<=10;i++){await p.mouse.move(box.x+box.width*(.3+.04*i),box.y+box.height*.5);await W(30);}await p.mouse.up();await W(600);
+ const stroke=async(sim,zig)=>{await p.evaluate(sim=>{const G=__gs,b=G.brush,d=G.BRUSH_DEFAULTS;for(const k of G.SETTING_KEYS)if(!['size','opacity','flow','hardness'].includes(k))b[k]=d[k];b.size=34;b.opacity=1;b.flow=1;b.hardness=.85;b.tip=null;Object.assign(b,sim);const t=G.compositeMap('base');window.__pre=G.captureRegionNow(t,0,0,t.w,t.h).data.slice();G.release(t);},sim);
+   await p.mouse.move(box.x+box.width*.3,box.y+box.height*.5);await p.mouse.down();for(let i=1;i<=10;i++){await p.mouse.move(box.x+box.width*(.3+.04*i),box.y+box.height*(.5+(zig?(i%2?.12:-.12):0)));await W(30);}await p.mouse.up();await W(600);
    const n=await p.evaluate(()=>{const G=__gs,t=G.compositeMap('base'),d=G.captureRegionNow(t,0,0,t.w,t.h).data;G.release(t);let n=0;for(let i=0;i<d.length;i+=4)if(Math.abs(d[i]-__pre[i])+Math.abs(d[i+1]-__pre[i+1])+Math.abs(d[i+2]-__pre[i+2])>30)n++;return n;});
    await p.evaluate(()=>__gs.undo());await W(300);return n;};
  const full=await stroke({}),thin=await stroke({simP:'fixed',simLevel:.2}),tap=await stroke({simP:'taper'});
  ok(full>400&&thin<full*.6,'Pressure without a pen (Fixed) thins a stroke on the model ('+thin+' pixels instead of '+full+')');
  ok(tap!==full,'…and Taper changes it too ('+tap+')');
+ const lz=await stroke({lazy:90}),smo=await stroke({smoothing:.95},true),zg=await stroke({smoothing:0},true);
+ ok(lz<full*.85,'Lazy mouse works with UV alignment on the model ('+lz+' pixels instead of '+full+')');
+ ok(smo<zg*.9,'…and Smoothing rounds a zigzag off ('+smo+' pixels instead of '+zg+')');
  /* the Paint tab keeps its own Brushes panel and settings */
  await p.evaluate(()=>__gs.setMode('paint',true));await W(1200);
  const pt=await p.evaluate(()=>({lib:!!document.querySelector('#libBody')&&document.querySelector('#libBody').offsetParent!==null,mix:!!document.getElementById('bMix'),stIn:document.getElementById('stBrush').parentNode.id||document.getElementById('stBrush').parentNode.className}));

@@ -286,7 +286,7 @@ The tiles of the chosen category fill the rest. Drag the bar above the shelf to 
 - **S / M / L** change the tile size; the two buttons next to them switch between **tiles** and a compact **list**.
 - Each category adds its own buttons at the right (New material…, Import…, Save brush…).
 
-**Brushes.** This category lists the brushes that work on the model. **All brushes** also shows the ones that need a flat canvas: mixing and wet paint, drips, line blend, fans and colour lanes. Click a tile to paint with that brush; **Save brush**, **Import…** and **Make tip** are in the bar. The brush's settings are in the **Brush** tab (see below). Painting a stroke works the same on the model as on the canvas, with one gain in 0.96: **Pressure without a pen** (Speed, Taper, Fixed) now works on the model too; it did nothing there before.
+**Brushes.** This category lists the brushes that work on the model with the current **Projection › Alignment**. With **UV** alignment (the default) the stroke is stamped straight onto the texture like on the flat canvas, so every brush works except **Line blend**. With **Tangent | Wrap** or **Camera** the stroke is drawn on the screen and projected, which cannot read the paint underneath, so mixing and wet brushes, drips, fans and colour lanes are left out. **All brushes** shows every brush. A brush with a small **3D** badge brings its own alignment (graffiti, blending…) and switches it for you. Click a tile to paint with it; **Save brush**, **Import…** and **Make tip** are in the bar. The brush's settings are in the **Brush** tab (see below).
 
 **Alphas.** The brush tips (basic shapes, art media, brush packs, your own). Click one to give the current brush that tip; its other settings stay.
 
@@ -296,7 +296,9 @@ The shelf also has an **Environments** category: a thumbnail for each HDRI (clic
 
 ### The Brush tab in 3D Paint
 
-The brush settings are condensed. The stroke preview and the **stencil** switch sit at the top, then the settings in folding groups: **Stroke** (spacing, smoothing, lazy mouse), **Texture** (paper tooth, grain), **Pressure**, **Paint feel**, **Tip shape & dynamics**, dual brush and the normal brush. Settings that cannot work on the model (mixing brush, drips, line blend, symmetry, ink bleed…) are hidden. Tick **Show all settings** at the bottom to bring every setting back. The 3D view has its own **Mirror**.
+The brush settings are condensed. The stroke preview and the **stencil** switch sit at the top, then the settings in folding groups: **Stroke** (spacing, smoothing, lazy mouse, smooth curves), **Texture** (paper tooth, grain), **Pressure**, **Paint feel**, **Tip shape & dynamics**, dual brush and the normal brush. Settings that do nothing with the current alignment are hidden (Line blend; and with Tangent | Wrap or Camera also the mixing brush, drips and ink bleed), and so is the canvas **Symmetry**: the 3D view has its own **Mirror**. Tick **Show all settings** at the bottom to bring everything back.
+
+Two things now work on the model that did nothing there before: **Pressure without a pen** (Speed, Taper, Fixed) and, with UV alignment, **Smoothing** and **Lazy mouse**.
 
 The Brushes panel left the right-hand dock in 3D Paint, because its brushes are the shelf's first category. A layout you saved earlier loses it once; **Window › Brushes** brings it back.
 
