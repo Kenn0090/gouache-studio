@@ -1,3 +1,15 @@
+## 0.97.10
+
+- **Creative weathering tools.** **Ghost Decal** (Filter › Edges and relief, or Stylize in the Filter Gallery) ages a sticker layer with torn paper, adhesive residue and protected paint. **Rust & Runoff** and **Mineral Buildup** are new mask generators (rust, corrosion pits, rain streaks, waterlines, crust and leaks, following the mesh maps and UV islands). **Sealant Bead** draws an editable surface path with a round, tooled or flat profile.
+- **Tools group.** Welds, Stitches and Surface details are one **Tools** category in the 3D Paint shelf, with three foldable groups.
+- **Welds, stitches and surface details no longer add a layer.** They paint onto the paint layer you picked, or its mask. On a material layer they ask you to pick a paint layer.
+- **Shorter top bar.** Size, Opacity, Flow and Hardness stay; **Stroke**, **Dynamics**, **Texture** and **Symmetry** are small buttons that open a pop-up with just those settings. **More** still opens the second row.
+- **Brush panel.** Settings sit in folding groups, with a **Simple / Advanced** switch and a **search box** that finds any setting, even a hidden one.
+- **Brush folders by medium.** The library is grouped as Pencil and charcoal, Ink and pen, Paint, Airbrush and spray, Blend and smudge, Texture and grunge, Effects, Retouch and erase, Stamps and shapes, and Welds. **By set** brings back the old list. The folder of the selected brush opens first.
+- **Border lock.** Moving or scaling a layer snaps its edges and centre to the canvas edges and centre. Hold Alt to turn it off for one drag, or switch it off under View.
+- **Convert** no longer makes a flat normal map after 3D Paint has been used, and rebuilds a flat one with a fresh shader if it ever happens again.
+- **Reset brush** stays in view at the foot of the 3D Brush panel.
+
 ## 0.97.9
 
 - **Stitches** adds 19 presets in the 3D Paint shelf, including baseball lacing, garment seams, piping, bar tacks, buttonholes and darning. Paint freehand or draw editable paths with the seam brushes. Adjust needle holes, thread relief, puckering, damage, fray and variation. Editable paths save their settings and random seed with the project.
