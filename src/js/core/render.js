@@ -7,7 +7,10 @@ const perf={on:false,frames:[],worst:null,last:0};
    The paint itself lands exactly the same; only how often the picture is redrawn changes. */
 const PAINT_GAP={balanced:33,fast:70};let lastPaintFrame=0;
 function frame(){raf=0;if(typeof tabDocs!=='undefined'&&tabDocs.hold){requestRender();return;}const t0=performance.now();
-  const autoPaintGap=prefs.paintSpeed!=='best'&&stroke?.space?.viewportBounds&&doc.w*doc.h>=16777216&&allLayers().length>=4?33:0,gap=PAINT_GAP[prefs.paintSpeed]||autoPaintGap;
+  const autoPaintGap=prefs.paintSpeed!=='best'&&stroke?.space?.viewportBounds&&doc.w*doc.h>=16777216&&allLayers().length>=4?33:0;
+  /* (0.97.15, Kenn: painting on a mask with generators and filters is slow) a mask with generator or filter rows is worked out again from its first row on every redraw while you paint; redraw it less often (the paint still lands at full speed, and the result is exact when you lift) */
+  const stackGap=(()=>{const M=stroke&&stroke.L&&stroke.L.maskOf&&stroke.L.maskOf.mask,S=M&&M.stack;if(!S)return 0;const n=S.filter(r=>r.on!==false&&r.kind!=='paint'&&r.kind!=='fill').length;return n?Math.min(250,60+30*n):0;})();
+  const gap=Math.max(PAINT_GAP[prefs.paintSpeed]||autoPaintGap,stackGap);
   if(stroke&&gap&&t0-lastPaintFrame<gap){requestRender();return;}lastPaintFrame=t0;const gq=perf.on?perfGpuBegin():null;let tc=t0;
   try{if(stroke&&stroke.spaceDirty){stroke.spaceDirty=false;stroke.space.sync();}if(stroke&&stroke.cloneDirty)cloneUpdate();if(dirtyComp){composite();dirtyComp=false;tc=performance.now();}drawView();drawUVOverlay();draw3D();const tv=performance.now();flushThumbs();if(tedit)positionEditor();
   perfFrame(t0,tc-t0,tv-tc,performance.now()-tv);}finally{if(gq)perfGpuEnd(gq);}}
