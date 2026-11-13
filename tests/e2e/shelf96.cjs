@@ -46,11 +46,11 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(sm.a>=30&&!sm.m&&mk>=20,'Smart materials ('+sm.a+') and Smart masks ('+mk+') are categories of their own, not chips inside Materials');
  /* Brushes: the ones that work on the model */
  await p.evaluate(()=>__gs.showPanel('shbrush'));await W(1200);
- const br=await p.evaluate(()=>{const g=__gs,all=g.library.flatMap(s=>s.presets),w=all.filter(g.shWorks3D),bad=all.filter(x=>!g.shWorks3D(x));return {all:all.length,w:w.length,tiles:document.querySelectorAll('#shBrushBody .shbt').length,mixing:!![...document.querySelectorAll('#shBrushBody .shbt')].find(t=>bad.some(x=>x.name===t._preset.name&&x.mix)),badN:bad.length};});
+ const br=await p.evaluate(()=>{const g=__gs,all=g.library.flatMap(s=>s.presets),w=all.filter(g.shWorks3D),bad=all.filter(x=>!g.shWorks3D(x));return {all:all.length,w:w.length,tiles:new Set([...document.querySelectorAll('#shBrushBody .shbt')].map(t=>t.dataset.shkey)).size,mixing:!![...document.querySelectorAll('#shBrushBody .shbt')].find(t=>bad.some(x=>x.name===t._preset.name&&x.mix)),badN:bad.length};});
  ok(br.tiles>0&&br.tiles<br.all&&br.badN>0&&!br.mixing,'Brushes lists the ones that work on the model ('+br.tiles+' of '+br.all+')');
- await p.evaluate(()=>{__gs.v3s().paintAlign='wrap';__gs.shMarkDirty('shbrush');});await W(1000);const brw=await p.evaluate(()=>document.querySelectorAll('#shBrushBody .shbt').length);await p.evaluate(()=>{__gs.v3s().paintAlign='uv';__gs.shMarkDirty('shbrush');});await W(1000);
+ await p.evaluate(()=>{__gs.v3s().paintAlign='wrap';__gs.shMarkDirty('shbrush');});await W(1000);const brw=await p.evaluate(()=>new Set([...document.querySelectorAll('#shBrushBody .shbt')].map(t=>t.dataset.shkey)).size);await p.evaluate(()=>{__gs.v3s().paintAlign='uv';__gs.shMarkDirty('shbrush');});await W(1000);
  ok(brw<br.tiles,'with Tangent | Wrap fewer brushes work than with UV alignment ('+brw+' < '+br.tiles+')');
- await p.click('#shall_all');await W(1500);const all=await p.evaluate(()=>document.querySelectorAll('#shBrushBody .shbt').length);
+ await p.click('#shall_all');await W(1500);const all=await p.evaluate(()=>new Set([...document.querySelectorAll('#shBrushBody .shbt')].map(t=>t.dataset.shkey)).size);
  ok(all>br.tiles,'“All brushes” shows every brush ('+all+')');await p.click('#shall_3d');await W(1200);
  const pick=await p.evaluate(()=>{const t=[...document.querySelectorAll('#shBrushBody .shbt')].find(x=>x._preset.name!==__gs.activePreset?.name);t.click();return {n:t._preset.name,act:__gs.activePreset&&__gs.activePreset.name};});await W(400);
  ok(pick.n===pick.act&&await p.evaluate(()=>!!document.querySelector('#shBrushBody .shbt.sel')),'clicking a brush tile selects the brush ('+pick.n+')');
