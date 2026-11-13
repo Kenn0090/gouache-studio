@@ -28,7 +28,7 @@ function chanU(o){return o&&o.chan?{uChanMode:{int:1},uChan:o.chan}:{uChanMode:{
    Layers with nothing in map k are skipped; clipping always uses the base colour's shape. */
 /* While a stroke is being painted nothing below the painted layer changes, so the picture of
    everything underneath is made once per stroke and reused every frame. */
-function strokeBranch(list){if(!stroke)return -1;let n=stroke.L.maskOf||stroke.L;while(n){const i=list.indexOf(n);if(i>=0)return i;n=n.parent;}return -1;}
+function strokeBranch(list){if(!stroke)return -1;let n=stroke.weldHeat?.layer||stroke.L.maskOf||stroke.L;while(n){const i=list.indexOf(n);if(i>=0)return i;n=n.parent;}return -1;}
 /* References and map-driven masks can change layers below the brush. Never freeze those dependencies. */
 function strokeCacheSafe(){if(!stroke)return false;if(stroke.cacheSafe===undefined)stroke.cacheSafe=!allNodes().some(n=>
   (n.fx&&n.fx.stack.some(r=>r.on!==false&&r.conv))||(typeof msHas==='function'&&msHas(n)&&(msUsesDoc(n)||n.mask.stack.some(r=>r.on!==false&&(r.kind==='ref'||r.kind==='anchor'||r.kind==='gen'&&r.p.anchor)))));
@@ -54,6 +54,7 @@ function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
       if(solid&&(lk||cf.length||cx||panState&&n.id===panState.id&&panState.maps.has(k)||preview&&preview.L===n)){T=mapT(n,k);solid=null;}
       if((!T||T.empty)&&!lk&&!solid&&!direct)continue;if(!T||T.empty)T=solid||direct?{tex:dummy}:emptyFor(mapDepth(k));
       let src=(edit&&preview&&!preview.off&&preview.L===n&&!preview.isMask)?previewT:T,own=null;const out=acquire(),cm=clipped?maskTexOf(clipped):null;
+      if(k==='base'&&stroke?.weldHeat?.layer===n){own=acquire();weldHeatMerge(stroke,own,src,[0,0]);src=own;}
       let st=(stroke&&stroke.L===n&&!strokeLive(stroke.o))?stroke:null,ex=null,lkM=false;
       if(st&&!edit){ex=(st.o.extras||[]).find(e=>e.key===k)||null;if(!ex)st=null;}
       let pn=null;if(panState&&n.id===panState.id&&panState.maps.has(k)){pn=panShift(src);src=pn;}
@@ -65,7 +66,7 @@ function compositeList(list,acc,k){k=k||doc.map;const edit=k===doc.map;
         if(lk&&mt&&n.styles&&anyStyle(n)){const m=lkMasked(src,mt);if(own)release(own);own=m;src=m;lkM=true;}
         if(lk){const r=layerLook(n,src,k,src===T,lkM?mt:null);if(r.t!==src){if(own)release(own);own=r.pooled?r.t:null;src=r.t;}}}
       compStats.layerPixels+=compPart?compPartPixels:doc.w*doc.h;
-      run(st?.o.material?materialStrokeProgram(true,!!st.o.material.weldPaint):direct?fillCompProgram():P.comp,out,Object.assign(direct?fillCompUniforms(n,k):{},strokeMaterialU(st,k),{uSolid:!!solid,uSolidColor:solid||[0,0,0,0],uBase:acc.tex,uLayer:src.tex,uStrokeTex:strokeT.tex,uMask:clipped?(mapT(clipped,'base')||emptyFor(8)).tex:dummy,uUseMask:!!clipped,uMask2:cm||dummy,uUseMask2:!!cm,uLMask:mt||dummy,uUseLMask:!!mt&&!lkM,
+      run(strokeMaterialProgram(st,true)||(direct?fillCompProgram():P.comp),out,Object.assign(direct?fillCompUniforms(n,k):{},strokeMaterialU(st,k),{uSolid:!!solid,uSolidColor:solid||[0,0,0,0],uBase:acc.tex,uLayer:src.tex,uStrokeTex:strokeT.tex,uMask:clipped?(mapT(clipped,'base')||emptyFor(8)).tex:dummy,uUseMask:!!clipped,uMask2:cm||dummy,uUseMask2:!!cm,uLMask:mt||dummy,uUseLMask:!!mt&&!lkM,
         uMode:{int:mapModeOf(n,k)},uOpacity:mapOpacityOf(n,k),uStroke:{int:st?(ex?ex.mode:strokeMode(st.o)):0},uStrokeTint:!!(st&&!ex&&st.tint),uStrokeColor:st?(ex?ex.color:st.o.color):[0,0,0],uStrokeOpacity:st?st.o.opacity:0,uLockAlpha:ex?false:n.lockAlpha},
         edit?chanU(st&&st.o):chanU(null),ex?st.exU:selU(st&&st.o),edit?tonalU(st&&st.o):{}));
       if(own)release(own);if(pn)release(pn);if(live)release(live);release(acc);acc=out;}

@@ -17,6 +17,7 @@ function pathRestore(L,sn){L.paths=pathCopy(sn.paths);L.pathCur=clamp(sn.cur|0,0
 const pathSnapOf=b=>b&&b.paths?b:{paths:[b],cur:0};
 let pathClip=null;
 function pathActive(){const L=doc.active;return L?.path&&inDoc(L)?L:null;}
+const pathMaterial=P=>P?.weld||P?.stitch;
 function pathToolOn(){return (ui.tool==='pen'&&['paint','p3d'].includes(ui.mode))||(ui.tool==='path'&&ui.mode==='p3d');}
 function pathMeshIndex(m){let C=pathMeshCaches.get(m);if(C)return C;const n=m.idx.length/3,ids=Uint32Array.from({length:n},(_,i)=>i),bounds=new Float32Array(n*6);let hash=2166136261;
   for(let t=0;t<n;t++){const b=t*6;bounds[b]=bounds[b+1]=bounds[b+2]=Infinity;bounds[b+3]=bounds[b+4]=bounds[b+5]=-Infinity;
@@ -37,7 +38,7 @@ function pathTriPoint(m,t,p){const ids=[0,1,2].map(i=>m.idx[t*3+i]),A=ids.map(i=
 function pathNearest(m,p,range){const C=pathMeshIndex(m),R=range||p3Range(),distance=N=>N.lo.reduce((s,x,i)=>s+Math.pow(Math.max(x-p[i],0,p[i]-N.hi[i]),2),0);let best=null;
   const visit=N=>{if(best&&distance(N)>best.d)return;if(N.l){let a=N.l,b=N.r;if(distance(a)>distance(b))[a,b]=[b,a];visit(a);visit(b);}else for(let i=N.a;i<N.b;i++){const t=C.ids[i];if(t<R.start||t>=R.start+R.count)continue;const q=pathTriPoint(m,t,p);if(!best||q.d<best.d)best=q;}};visit(C.tree);return best;}
 function pathCurve(a,b,t){const h=a.out||a.p.map(()=>0),j=b.in||b.p.map(()=>0),s=1-t;return a.p.map((x,i)=>s*s*s*x+3*s*s*t*(x+h[i])+3*s*t*t*(b.p[i]+j[i])+t*t*t*b.p[i]);}
-function pathSamples(P,surface){const out=[],pts=P.points,n=pts.length;if(n<2)return out;const count=n-1+(P.closed?1:0),radius=P.width/2,stepRadius=surface&&P.weld?radius*Math.min(1.2,Math.max(.3,(P.spacing||.2)*3)):radius*.4;
+function pathSamples(P,surface){const out=[],pts=P.points,n=pts.length;if(n<2)return out;const count=n-1+(P.closed?1:0),radius=P.width/2,stepRadius=surface&&P.weld&&!P.weld.profile?radius*Math.min(1.2,Math.max(.3,(P.spacing||.2)*3)):radius*.4;
   for(let i=0;i<count;i++){const a=pts[i],b=pts[(i+1)%n],length=Math.hypot(...sub3d(b.p,a.p))+Math.hypot(...(a.out||[]))+Math.hypot(...(b.in||[])),steps=clamp(Math.ceil(length/Math.max(surface?stepRadius:.8,.0001)),4,256);
     for(let j=0;j<=steps;j++){if(i&&j===0)continue;const t=j/steps,p=pathCurve(a,b,t),q=surface?pathNearest(v3.mesh,p):{p};if(!q)continue;out.push({p:q.p,n:q.n,pressure:(a.pressure??1)*(1-t)+(b.pressure??1)*t,segment:i,t});}}
   return out;}
@@ -48,12 +49,26 @@ function pathTipCopy(tip){const t=makeTarget(tip.w,tip.h,8,false);
   if(tip.fbo)blit(tip,t,0,0,tip.w,tip.h,0,0);
   else{if(!P_PATHTIPCOPY)P_PATHTIPCOPY=program('uniform sampler2D uTip; uniform vec2 uTipSize; void main(){float a=texture(uTip,gl_FragCoord.xy/uTipSize).r; o=vec4(a);}');run(P_PATHTIPCOPY,t,{uTip:tip.tex,uTipSize:[tip.w,tip.h]});}
   return t;}
-function pathNew(kind){const L=newLayerObj(kind==='3d'?'Surface path':'Pen path',true),P={kind,points:[],closed:false,mode:kind==='3d'?'stroke':'none',width:kind==='3d'?(v3.mesh?.radius||1)*(brush.tip?.name==='Weld bead'&&typeof weldOptions!=='undefined'?weldOptions.width/100:.035):brush.size,hardness:brush.hardness,opacity:brush.opacity,spacing:brush.spacing,angle:brush.angle||0,roundness:brush.roundness||1,pressure:true};
-  if(kind==='3d')P.mesh=pathMeshIndex(v3.mesh).sig;L.path=P;P.name='Path 1';L.paths=[P];L.pathCur=0;L.fill=fillDefaults();for(const k in L.fill.maps)L.fill.maps[k].on=false;L.fill.maps.base={on:true,src:'value',c:ui.fg.slice()};L.fill.coverH=false;L.fill.proj='uv';fillRender(L);
-  L.mask=makeMask(0,true);L.editMask=false;const tip=brush.tip;if(tip?.tex){L._fillImg={pathTip:pathTipCopy(tip)};P.tipName=tip.name;}if(kind==='3d'&&(brush.tip?.name==='Weld bead'||weldOptions.pathMode)&&typeof weldPathSetup==='function'){weldPathSetup(L);weldOptions.pathMode=false;}
-  structOp('New '+(kind==='3d'?'surface':'Pen')+' path',()=>{const [p,i]=insertPoint();insertNode(L,p,i);selectOnly(L);});pathEdit.L=L;pathEdit.point=-1;pathEdit.drawing=true;return L;}
+function pathNew(kind,stitch){const L=newLayerObj(kind==='3d'?'Surface path':'Pen path',true),P={kind,points:[],closed:false,mode:kind==='3d'?'stroke':'none',width:kind==='3d'?(v3.mesh?.radius||1)*.035:brush.size,hardness:brush.hardness,opacity:brush.opacity,spacing:brush.spacing,angle:brush.angle||0,roundness:brush.roundness||1,pressure:true};
+  const undoFrom=hist.undo.length;
+  if(kind==='3d')P.mesh=pathMeshIndex(v3.mesh).sig;L.path=P;P.name='Path 1';L.paths=[P];L.pathCur=0;
+  const weldMaterialTip=toolBrush.cur==='material'&&materialBrush.rec?.weldPaint&&brush.tip?.name.startsWith('Weld tip · ');
+  if(kind==='3d'&&stitch){
+    stitchEnsureChannels();P.stitch=stitch;P.width=(v3.mesh.radius||1)*stitch.size/256;P.opacity=1;L.name='Stitch path';
+  }else if(kind==='3d'&&(weldPathArmed||weldMaterialTip)){
+    weldPathArmed=false;weldEnsureChannels();weldPathSetup(L);
+  }else{
+    L.fill=fillDefaults();for(const k in L.fill.maps)L.fill.maps[k].on=false;
+    L.fill.maps.base={on:true,src:'value',c:ui.fg.slice()};L.fill.coverH=false;L.fill.proj='uv';fillRender(L);
+    L.mask=makeMask(0,true);L.editMask=false;
+    const tip=brush.tip;if(tip?.tex){L._fillImg={pathTip:pathTipCopy(tip)};P.tipName=tip.name;}
+  }
+  const label=P.weld?'New weld path':P.stitch?'New stitch path':'New '+(kind==='3d'?'surface':'Pen')+' path';
+  structOp(label,()=>{const [p,i]=insertPoint();insertNode(L,p,i);selectOnly(L);});
+  if(pathMaterial(P))undoMerge(undoFrom,label);
+  pathEdit.L=L;pathEdit.point=-1;pathEdit.drawing=true;return L;}
 function pathRecord(L,before,label){before=pathSnapOf(before);const after=pathSnap(L);if(JSON.stringify(before)===JSON.stringify(after))return;
-  const put=p=>{pathRestore(L,p);selectOnly(L);pathEdit.L=L;pathEdit.point=-1;pathEdit.drawing=false;pathEdit.drag=null;delete L._pathPreview;if(L.path.weld&&typeof weldPathUpdate==='function'){Object.assign(weldOptions,L.path.weld);weldPathUpdate(L);}else pathRender(L);if(pathToolOn())buildBrushPanel();};pushUndo({label:label||'Edit path',refs:[L],undo(){put(before);},redo(){put(after);}});changed(L);}
+  const put=p=>{pathRestore(L,p);selectOnly(L);pathEdit.L=L;pathEdit.point=-1;pathEdit.drawing=false;pathEdit.drag=null;delete L._pathPreview;pathRender(L);if(pathToolOn())buildBrushPanel();if(L.path.weld)weldToolsRender();if(L.path.stitch)stitchToolsRender();};pushUndo({label:label||'Edit path',refs:[L],undo(){put(before);},redo(){put(after);}});changed(L);}
 function pathFlush(){for(const L of allLayers())if(L._pathBefore){clearTimeout(L._pathTimer);const b=L._pathBefore;L._pathBefore=null;pathRecord(L,b,'Path settings');}}
 function pathChange(fn,label,P){pathFlush();const L=pathActive();if(!L||lockStop({node:L}))return;if(!pathValid(L)){toast('This path belongs to a different mesh. Its saved texture is preserved.');return;}const b=pathSnap(L);fn(P||L.path);pathRender(L);pathRecord(L,b,label);buildBrushPanel();}
 function pathSplit(P,i,t=.5){const a=P.points[i],b=P.points[(i+1)%P.points.length];if(!a||!b||!P.closed&&i===P.points.length-1)return;
@@ -68,12 +83,16 @@ const PATH_UP={x:[1,0,0],y:[0,1,0],z:[0,0,1],nx:[-1,0,0],ny:[0,-1,0],nz:[0,0,-1]
 /* the copies of a path that symmetry paints: mirrored across the model's X, Y or Z plane (the plane positions of the 3D mirror tool) */
 function pathMirrorSets(P,samples){const sets=[samples];if(!P.sym||P.kind!=='3d')return sets;const axes=['x','y','z'].filter(a=>P.sym[a]),off=(typeof mir3!=='undefined'&&mir3.off)||[0,0,0];
   for(let m=1;m<(1<<axes.length);m++){const flip=axes.filter((a,i)=>m&(1<<i)).map(a=>'xyz'.indexOf(a));sets.push(samples.map(q=>({...q,p:q.p.map((v,k)=>flip.includes(k)?2*off[k]-v:v),n:q.n.map((v,k)=>flip.includes(k)?-v:v)})));}return sets;}
-function pathSurfaceMask(L,samples,coverage,stamps){if(!P_SURFACEPATH)P_SURFACEPATH=prog3(VS_3DPROJ,FS_SURFACEPATH);const m=v3.mesh,g=v3.gpu,C=pathMeshIndex(m),R=p3Range(),V=gl.createVertexArray(),E=gl.createBuffer(),T=coverage||L.mask.target,P=L.path,r=P.width/2,tip=L._fillImg?.pathTip;
+function pathSurfaceMask(L,samples,coverage,stamps,weld){if(!P_SURFACEPATH)P_SURFACEPATH=prog3(VS_3DPROJ,FS_SURFACEPATH);const m=v3.mesh,g=v3.gpu,C=pathMeshIndex(m),R=p3Range(),V=gl.createVertexArray(),E=gl.createBuffer(),T=coverage||L.mask.target,P=L.path,r=P.width/2,tip=weld?null:L._fillImg?.pathTip;
+  const tile=weld&&p3.udim?p3.sets[p3.cur]?.tile:null;
+  const shift=tile?[tile.u,tile.v]:[0,0],uvs=weld?(v3s().uvs||1):1;
   gl.bindVertexArray(V);gl.bindBuffer(gl.ARRAY_BUFFER,g.vb);for(const [a,n,o] of [[0,3,0],[1,3,12],[2,2,24],[4,3,48]]){gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,n,gl.FLOAT,false,60,o);}gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,E);
-  try{for(let i=stamps?0:1;i<samples.length;i++){const a=stamps?samples[i]:samples[i-1],b=samples[i],pad=r*1.2*Math.max(1,P.depthK||1),lo=a.p.map((v,k)=>Math.min(v,b.p[k])-pad),hi=a.p.map((v,k)=>Math.max(v,b.p[k])+pad),tris=[],bb=[Infinity,Infinity,-Infinity,-Infinity];
-      const overlaps=(l,h)=>l.every((v,k)=>v<=hi[k]&&h[k]>=lo[k]);const visit=N=>{if(!overlaps(N.lo,N.hi))return;if(N.l){visit(N.l);visit(N.r);}else for(let j=N.a;j<N.b;j++){const t=C.ids[j],q=t*6;if(t<R.start||t>=R.start+R.count||!overlaps(C.bounds.subarray(q,q+3),C.bounds.subarray(q+3,q+6)))continue;for(let k=0;k<3;k++){const v=m.idx[t*3+k];tris.push(v);bb[0]=Math.min(bb[0],m.uv[v*2]*doc.w);bb[1]=Math.min(bb[1],m.uv[v*2+1]*doc.h);bb[2]=Math.max(bb[2],m.uv[v*2]*doc.w);bb[3]=Math.max(bb[3],m.uv[v*2+1]*doc.h);}}};visit(C.tree);if(!tris.length)continue;
+  try{for(let i=stamps?0:1;i<samples.length;i++){const a=stamps?samples[i]:samples[i-1],b=samples[i],pad=r*(weld?2.5:1.2)*Math.max(1,P.depthK||1),lo=a.p.map((v,k)=>Math.min(v,b.p[k])-pad),hi=a.p.map((v,k)=>Math.max(v,b.p[k])+pad),tris=[],bb=[Infinity,Infinity,-Infinity,-Infinity];
+      const overlaps=(l,h)=>l.every((v,k)=>v<=hi[k]&&h[k]>=lo[k]);const visit=N=>{if(!overlaps(N.lo,N.hi))return;if(N.l){visit(N.l);visit(N.r);}else for(let j=N.a;j<N.b;j++){const t=C.ids[j],q=t*6;if(t<R.start||t>=R.start+R.count||!overlaps(C.bounds.subarray(q,q+3),C.bounds.subarray(q+3,q+6)))continue;for(let k=0;k<3;k++){const v=m.idx[t*3+k];tris.push(v);const x=(m.uv[v*2]*uvs-shift[0])*doc.w,y=(m.uv[v*2+1]*uvs-shift[1])*doc.h;bb[0]=Math.min(bb[0],x);bb[1]=Math.min(bb[1],y);bb[2]=Math.max(bb[2],x);bb[3]=Math.max(bb[3],y);}}};visit(C.tree);if(!tris.length)continue;
       gl.bindVertexArray(V);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,E);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint32Array(tris),gl.STREAM_DRAW);bindTarget(T);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.enable(gl.SCISSOR_TEST);gl.scissor(Math.max(0,Math.floor(bb[0]-1)),Math.max(0,Math.floor(bb[1]-1)),Math.ceil(bb[2]-bb[0]+2),Math.ceil(bb[3]-bb[1]+2));gl.enable(gl.BLEND);gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);
-      useProg(P_SURFACEPATH,{uUVs:1,uShift:[0,0],uH:dummy,uDisp:0,uUseH:false,uA:a.p,uB:b.p,uNA:a.n,uNB:b.n,uRadius:[r*(P.pressure?a.pressure:1),r*(P.pressure?b.pressure:1)],uDepth:r*1.2*(P.depthK||1),uFollow:P.follow===false?0:1,uUp:PATH_UP[P.up||'y']||[0,1,0],uHard:P.hardness,uTip:tip?.tex||dummy,uUseTip:!!tip,uAspect:tip?tip.w/tip.h:1});gl.drawElements(gl.TRIANGLES,tris.length,gl.UNSIGNED_INT,0);}}
+      const u={uUVs:uvs,uShift:shift,uH:dummy,uDisp:0,uUseH:false,uA:a.p,uB:b.p,uNA:a.n,uNB:b.n,uRadius:[r*(P.pressure?a.pressure:1),r*(P.pressure?b.pressure:1)],uDepth:r*1.2*(P.depthK||1),uFollow:P.follow===false?0:1,uUp:PATH_UP[P.up||'y']||[0,1,0],uHard:P.hardness,uTip:tip?.tex||dummy,uUseTip:!!tip,uAspect:tip?tip.w/tip.h:1};
+      if(weld){u.uRun=[weld.distance[i-1],weld.distance[i]];u.uEnd=[!P.closed&&i===1?1:0,!P.closed&&i===samples.length-1?1:0];}
+      useProg(weld?weld.program:P_SURFACEPATH,weld?{...u,...weld.uniforms}:u);gl.drawElements(gl.TRIANGLES,tris.length,gl.UNSIGNED_INT,0);}}
   finally{gl.disable(gl.SCISSOR_TEST);gl.disable(gl.BLEND);gl.blendEquation(gl.FUNC_ADD);gl.bindVertexArray(vao);gl.deleteVertexArray(V);gl.deleteBuffer(E);}}
 /* Filled path (3D): everything on the surface that lies inside the closed path as seen along the path's average direction. The shape is the path's outline
    flattened onto a plane facing that direction; a surface point is filled when it is inside that outline, facing roughly the same way and not too far in front or behind. */
@@ -97,7 +116,7 @@ function pathSurfaceFill(L,samples,T){if(samples.length<3)return;if(!P_SURFACEFI
     useProg(P_SURFACEFILL,{uUVs:1,uShift:[0,0],uH:dummy,uDisp:0,uUseH:false,uC:c,uAx:A,uU:U,uV:V,uDepth:depth,uCos:.15,uCount:{int:pts.length},uPoly:{v4a:packed}});gl.drawElements(gl.TRIANGLES,tris.length,gl.UNSIGNED_INT,0);}
   finally{gl.disable(gl.SCISSOR_TEST);gl.disable(gl.BLEND);gl.blendEquation(gl.FUNC_ADD);gl.bindVertexArray(vao);gl.deleteVertexArray(V0);gl.deleteBuffer(E);}}
 let P_PATHMERGE=null;
-function pathRender(L){if(L.path?.weld){weldPathRender(L);return;}if(!L.path||!L.mask||!pathValid(L))return;pathEnsure(L);const T=L.mask.target,cur=L.path;clearTarget(T,[0,0,0,1]);
+function pathRender(L){if(L.path?.weld){weldPathRender(L);return;}if(L.path?.stitch){stitchPathRender(L);return;}if(!L.path||!L.mask||!pathValid(L))return;pathEnsure(L);const T=L.mask.target,cur=L.path;clearTarget(T,[0,0,0,1]);
   /* (0.93.3) every path has its own opacity: it is drawn into a spare picture and mixed into the layer's coverage at that opacity, the stronger of two paths winning where they cross.
      A layer saved before this kept its path's opacity as the layer's opacity; that moves into the path coverage the first time it is drawn. */
   let tmp=null;try{for(const P of L.paths){if(P.hidden||P.points.length<2||P.mode==='none')continue;L.path=P;if(!tmp)tmp=acquireD(T.depth);clearTarget(tmp,[0,0,0,1]);
@@ -161,15 +180,15 @@ function pathAddTo(L){pathEnsure(L);const before=pathSnap(L),P=pathCopy(L.path);
 function pathDelete(L,i){pathEnsure(L);if(L.paths.length<2){cmdDelete();return;}const before=pathSnap(L);L.paths.splice(i,1);pathSetCur(L,Math.min(i,L.paths.length-1));pathEdit.point=-1;pathRender(L);pathRecord(L,before,'Delete path');buildBrushPanel();requestRender();}
 function pathDuplicate(L,i){pathEnsure(L);const before=pathSnap(L),P=pathCopy(L.paths[i]);P.name=(P.name||'Path')+' copy';L.paths.splice(i+1,0,P);pathSetCur(L,i+1);pathRender(L);pathRecord(L,before,'Duplicate path');buildBrushPanel();requestRender();}
 function pathCopyClip(L){if(!L?.path)return;pathClip=pathCopy(L.path);toast('Copied “'+(L.path.name||'path')+'”.');if(pathToolOn())buildBrushPanel();}
-function pathPaste(L){if(!pathClip||!L?.path||pathClip.kind!==L.path.kind){toast(pathClip?'That path is a different kind.':'Copy a path first.');return;}pathEnsure(L);const before=pathSnap(L),P=pathCopy(pathClip);P.name=(P.name||'Path')+' copy';L.paths.push(P);pathSetCur(L,L.paths.length-1);pathRender(L);pathRecord(L,before,'Paste path');buildBrushPanel();requestRender();}
+function pathPaste(L){if(pathClip?.stitch||L?.path?.stitch){toast('Use Duplicate path to copy a stitch path.');return;}if(!pathClip||!L?.path||pathClip.kind!==L.path.kind){toast(pathClip?'That path is a different kind.':'Copy a path first.');return;}pathEnsure(L);const before=pathSnap(L),P=pathCopy(pathClip);P.name=(P.name||'Path')+' copy';L.paths.push(P);pathSetCur(L,L.paths.length-1);pathRender(L);pathRecord(L,before,'Paste path');buildBrushPanel();requestRender();}
 function pathEventPoint(hit,e,kind){if(kind==='2d')return {p:toImage(e.clientX,e.clientY)};const pk=v3PickAt(hit,e);if(!pk||pk.set!==p3.cur)return null;return pathNearest(v3.mesh,pk.pos);}
 /* (0.94) Alt+click on an open, finished path adds a point at the end nearer the click (a click, not a drag: Alt+drag still turns the model) */
-function pathAltAdd(hit,e,kind,L){if(!L||!L.path||L.path.closed||L.path.weld||L.path.kind!==kind||lockStop({node:L})||lockedPos(L))return false;const q=pathEventPoint(hit,e,kind);if(!q)return false;
+function pathAltAdd(hit,e,kind,L){if(!L||!L.path||L.path.closed||pathMaterial(L.path)||L.path.kind!==kind||lockStop({node:L})||lockedPos(L))return false;const q=pathEventPoint(hit,e,kind);if(!q)return false;
   const P=L.path,n=P.points.length,r=hit.getBoundingClientRect(),m=[e.clientX-r.left,e.clientY-r.top],dist=i=>{const v=pathProject(P.points[i].p,kind,hit);return v?Math.hypot(v[0]-m[0],v[1]-m[1]):1e9;};
   const first=n>1&&dist(0)<dist(n-1),before=pathSnap(L),pt={p:q.p,n:q.n,pressure:pressureOf(e),in:q.p.map(()=>0),out:q.p.map(()=>0)};
   if(first)P.points.unshift(pt);else P.points.push(pt);pathEdit.L=L;pathSelect(L,[first?0:P.points.length-1]);pathRender(L);pathRecord(L,before,'Add path point');buildBrushPanel();requestRender();return true;}
 function pathAltStart(hit,e,kind){if(!e.altKey||e.button!==0||!pathToolOn()||!((kind==='2d'&&ui.tool==='pen')||(kind==='3d'&&ui.tool==='path'))||pathHit(hit,e,kind))return false;
-  const L=pathActive();if(!L||!L.path||L.path.kind!==kind||!pathValid(L)||L.path.closed||L.path.weld||!L.path.points.length||pathEdit.drawing)return false;
+  const L=pathActive();if(!L||!L.path||L.path.kind!==kind||!pathValid(L)||L.path.closed||pathMaterial(L.path)||!L.path.points.length||pathEdit.drawing)return false;
   if(kind==='2d')return pathAltAdd(hit,e,kind,L);
   pathEdit.altClick={id:e.pointerId,start:[e.clientX,e.clientY],hit,kind,moved:false};return false;}
 function pathDown(hit,e,kind){if(pathAltStart(hit,e,kind))return true;if(!pathToolOn()||(kind==='2d'&&ui.tool!=='pen')||(kind==='3d'&&ui.tool!=='path')||e.button!==0||spaceDown||e.altKey&&!pathHit(hit,e,kind))return false;
@@ -177,7 +196,7 @@ function pathDown(hit,e,kind){if(pathAltStart(hit,e,kind))return true;if(!pathTo
   pathFlush();const found=pathHit(hit,e,kind),q=pathEventPoint(hit,e,kind);if(!q&&!found)return true;let L=found?.L||pathActive();
   if(found&&found.k==='select'){selectOnly(found.L);pathSetCur(found.L,found.pi);pathEdit.L=found.L;pathEdit.point=-1;pathEdit.drawing=false;renderLayers();buildBrushPanel();requestRender();return true;}
   if(found&&found.pi!=null&&found.pi!==found.L.pathCur){selectOnly(found.L);pathSetCur(found.L,found.pi);}
-  const can=L&&L.path&&L.path.kind===kind&&pathValid(L)&&!L.path.weld;
+  const can=L&&L.path&&L.path.kind===kind&&pathValid(L);
   /* editing a finished path: double-click a point to switch it between smooth and corner */
   const dbl=found&&found.k==='anchor'&&pathEdit.last&&pathEdit.last.P===found.P&&pathEdit.last.i===found.i&&e.timeStamp-pathEdit.last.t<400;if(found&&found.k==='anchor')pathEdit.last={P:found.P,i:found.i,t:e.timeStamp};
   if(dbl&&!pathEdit.drawing&&can){pathEdit.last=null;pathSelect(L,[found.i]);pathToggleSmooth(L,[found.i]);return true;}
@@ -186,9 +205,9 @@ function pathDown(hit,e,kind){if(pathAltStart(hit,e,kind))return true;if(!pathTo
     if(near&&!lockStop({node:L})&&!lockedPos(L)){const before=pathSnap(L);pathSplit(L.path,near.i,near.t);const index=near.i+1;pathSelect(L,[index]);
       pathEdit.L=L;pathEdit.drag={id:e.pointerId,L,index,k:'anchor',before,origin:pathCopy(L.path.points[index]),start:[e.clientX,e.clientY],hit,kind,moved:false,added:true};try{hit.setPointerCapture(e.pointerId);}catch(er){}renderLayers();buildBrushPanel();requestRender();return true;}}
   /* clicking empty surface: drag draws a selection rectangle; a plain click starts a new path (decided when the button is released) */
-  if(!found&&can&&!pathEdit.drawing){pathEdit.pend={id:e.pointerId,start:[e.clientX,e.clientY],hit,kind,shift:e.shiftKey,moved:false};try{hit.setPointerCapture(e.pointerId);}catch(er){}return true;}
+  if(!found&&can&&!pathMaterial(L.path)&&!pathEdit.drawing){pathEdit.pend={id:e.pointerId,start:[e.clientX,e.clientY],hit,kind,shift:e.shiftKey,moved:false};try{hit.setPointerCapture(e.pointerId);}catch(er){}return true;}
   if(found&&found.k==='anchor'&&e.shiftKey&&can){const cur=pathSelection(L),i=found.i;pathSelect(L,cur.includes(i)?cur.filter(x=>x!==i):[...cur,i]);buildBrushPanel();requestRender();return true;}
-  if(!can)L=pathNew(kind);
+  if(!can||(!found&&pathMaterial(L.path)&&!pathEdit.drawing))L=pathNew(kind,L?.path?.stitch?pathCopy(L.path.stitch):undefined);
   if(lockStop({node:L})||lockedPos(L)){if(lockedPos(L))lockMsg(L,'position');return true;}selectOnly(L);const before=pathSnap(L);let index=found?.i,k=found?.k||'new';
   if(found)pathSelect(L,[found.i]);
   if(found&&index===0&&pathEdit.drawing&&L.path.points.length>=3&&!e.ctrlKey&&!e.altKey){L.path.closed=true;pathEdit.drawing=false;pathRender(L);pathRecord(L,before,'Close path');buildBrushPanel();return true;}
@@ -199,7 +218,7 @@ function pathHoverUpdate(e){let h=null;const kind=ui.tool==='pen'?'2d':ui.tool==
   if(kind&&pathToolOn()&&!e.buttons&&!pathEdit.drag&&!pathEdit.pend){const hit=kind==='3d'?document.getElementById('v3Hit'):stage;
     if(hit&&e.target&&(e.target===hit||(hit.contains&&hit.contains(e.target))||(kind==='2d'&&e.target===cv))){const found=pathHit(hit,e,kind);
       if(found)h=found.k==='select'?{L:found.L,P:found.P,line:true}:{L:found.L,P:found.P,pt:found.i,k:found.k};
-      else{const L=pathActive();if(L&&L.path&&L.path.kind===kind&&pathValid(L)&&!pathEdit.drawing&&L.path.points.length>=2&&!L.path.weld){const near=pathNearLine(hit,e,kind,L.path);if(near)h={L,P:L.path,seg:near.i,t:near.t};}}}}
+      else{const L=pathActive();if(L&&L.path&&L.path.kind===kind&&pathValid(L)&&!pathEdit.drawing&&L.path.points.length>=2&&!pathMaterial(L.path)){const near=pathNearLine(hit,e,kind,L.path);if(near)h={L,P:L.path,seg:near.i,t:near.t};}}}}
   const key=h?[h.L.paths?h.L.paths.indexOf(h.P):0,h.line?'l':'',h.seg,h.pt,h.k].join():'';if(key!==pathEdit.hovKey){pathEdit.hovKey=key;pathEdit.hov=h;requestRender();}}
 function pathMove(e){pathHoverUpdate(e);{const AC=pathEdit.altClick;if(AC&&AC.id===e.pointerId&&Math.hypot(e.clientX-AC.start[0],e.clientY-AC.start[1])>4)AC.moved=true;}
   const PD=pathEdit.pend;if(PD&&PD.id===e.pointerId){if(!PD.moved&&Math.hypot(e.clientX-PD.start[0],e.clientY-PD.start[1])>5)PD.moved=true;
@@ -216,7 +235,7 @@ function pathUp(e,cancel){{const AC=pathEdit.altClick;if(AC&&AC.id===e.pointerId
     const q=pathEventPoint(PD.hit,e,PD.kind);if(!q||lockStop({node:L})||lockedPos(L))return true;
     /* (0.94) an end point of an open path is selected: carry on from it instead of starting a new path. From the first point the path is turned round while you draw and turned back when you finish. */
     {const P0=L.path,n=P0.points.length,sel=pathSelection(L);
-      if(!P0.closed&&n>=1&&!P0.weld&&sel.length===1&&(sel[0]===n-1||sel[0]===0)){const before=pathSnap(L);
+      if(!P0.closed&&n>=1&&!pathMaterial(P0)&&sel.length===1&&(sel[0]===n-1||sel[0]===0)){const before=pathSnap(L);
         if(sel[0]===0&&n>1){P0.points.reverse();for(const a of P0.points){const t=a.in;a.in=a.out;a.out=t;}pathEdit.rev=P0;}
         P0.points.push({p:q.p,n:q.n,pressure:pressureOf(e),in:q.p.map(()=>0),out:q.p.map(()=>0)});pathEdit.L=L;pathEdit.drawing=true;pathSelect(L,[P0.points.length-1]);
         pathRender(L);pathRecord(L,before,'Continue path');buildBrushPanel();requestRender();return true;}}
@@ -234,7 +253,7 @@ function pathKeys(e){const typing=!modal.hidden||openName||!pop.hidden||/INPUT|S
   const L=pathActive();if(e.key==='Enter'||e.key==='Escape'){if(pathEdit.drag)pathUp({pointerId:pathEdit.drag.id},e.key==='Escape');if(e.key==='Escape'&&L)pathSelect(L,[]);pathFinish();e.preventDefault();e.stopImmediatePropagation();return true;}
   if((e.key==='Delete'||e.key==='Backspace')&&L&&pathSelection(L).length){pathDeletePoints(L,pathSelection(L));e.preventDefault();e.stopImmediatePropagation();return true;}
   if((e.key==='Delete'||e.key==='Backspace')&&L&&!pathSelection(L).length){pathDelete(L,L.pathCur);e.preventDefault();e.stopImmediatePropagation();return true;}return false;}
-function pathNewButton(){pathFinish();const L=pathActive();pathEdit.point=-1;if(L&&!L.path.weld&&L.path.kind===(ui.tool==='path'?'3d':'2d')&&pathValid(L)){pathAddTo(L);buildBrushPanel();requestRender();return;}pathEdit.L=null;selectOnly(null);pathEdit.drawing=true;buildBrushPanel();requestRender();}
+function pathNewButton(){pathFinish();const L=pathActive();if(L?.path.stitch){stitchPathStart();return;}pathEdit.point=-1;if(L&&!pathMaterial(L.path)&&L.path.kind===(ui.tool==='path'?'3d':'2d')&&pathValid(L)){pathAddTo(L);buildBrushPanel();requestRender();return;}pathEdit.L=null;selectOnly(null);pathEdit.drawing=true;buildBrushPanel();requestRender();}
 /* the Paths panel: every path of this layer, with show/hide, rename (double-click), duplicate, copy, paste and delete */
 function pathsPanel(box,L){pathEnsure(L);const list=el('div',{class:'pathlist',role:'listbox','aria-label':'Paths'});
   L.paths.forEach((P,i)=>{const on=P===L.path,eye=el('button',{type:'button',class:'btn sm patheye',title:P.hidden?'Show this path':'Hide this path','aria-label':P.hidden?'Show path':'Hide path','aria-pressed':String(!P.hidden),text:P.hidden?'○':'●',onclick:e=>{e.stopPropagation();pathChange(q=>{q.hidden=!q.hidden;},P.hidden?'Show path':'Hide path',P);}}),
@@ -261,16 +280,18 @@ function pathPanel(box){const L=pathActive(),P=L?.path;pathPanelFor=doc.active;$
   box.append(el('p',{class:'note',text:ui.tool==='path'?'Click on the model to add points. Drag a new point for a curve. Alt+drag rotates the model. Enter finishes; click a point to edit it.':'Click for corners; click and drag for Bézier handles. Drag points or handles to edit. Alt+drag a handle breaks its pair. Click the first point to close. Enter finishes. To carry on from an open end, click that end point, then click where the path should go (Esc first to start a new path instead).'}),
     el('div',{class:'chips'},el('button',{class:'btn sm',id:'pathNew',text:'New path',onclick:pathNewButton}),el('button',{class:'btn sm',id:'pathFinish',text:'Finish',disabled:!P,onclick:pathFinish})));
   if(!P){box.append(el('p',{class:'note',text:'Start a path on the '+(ui.tool==='path'?'model.':'canvas.')}));return;}
-  pathsPanel(box,L);
+  if(P.stitch)box.append(el('button',{class:'btn sm',text:'Stitch settings',onclick:()=>showPanel('stitches')}));
+  else pathsPanel(box,L);
   const name=el('input',{id:'pathName',value:L.name,'aria-label':'Layer name',title:'Layer name'});name.onchange=()=>{const b=L.name,a=name.value.trim()||b;L.name=a;pushUndo({label:'Rename layer',refs:[L],undo(){L.name=b;},redo(){L.name=a;}});changed(L);};box.append(name,
-    seg((P.kind==='3d'?[['stroke','Paint along path'],['ribbon','Ribbon path'],['fill','Filled path']]:[['none','Path only'],['stroke','Brush stroke'],['fill','Fill']]),P.mode,v=>{pathChange(p=>{p.mode=v;if(v==='fill'&&p.points.length>=3)p.closed=true;},'Path painting mode');if(v==='ribbon'&&typeof rbUseText==='function'&&!rbImage(L,L.path))rbUseText(L,L.path,Object.assign({},t3.style,{content:'Ribbon text',align:'left'}));},'Path painting mode'),
+    seg(pathMaterial(P)?[['none','Path only'],['stroke',P.stitch?'Stitches':'Weld bead']]:P.kind==='3d'?[['stroke','Paint along path'],['ribbon','Ribbon path'],['fill','Filled path']]:[['none','Path only'],['stroke','Brush stroke'],['fill','Fill']],P.mode,v=>{pathChange(p=>{p.mode=v;if(v==='fill'&&p.points.length>=3)p.closed=true;},'Path painting mode');if(v==='ribbon'&&typeof rbUseText==='function'&&!rbImage(L,L.path))rbUseText(L,L.path,Object.assign({},t3.style,{content:'Ribbon text',align:'left'}));},'Path painting mode'),
     el('div',{class:'chips'},chk('pathClosed','Closed path',P.closed,v=>pathChange(p=>p.closed=v,'Close/open path')),chk('pathPressure','Point pressure',P.pressure,v=>pathChange(p=>p.pressure=v,'Path pressure'))));
   const sl=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:P[key],fmt,onInput:v=>{if(lockStop({node:L}))return;const b=pathSnap(L);L.path[key]=v;pathRender(L);clearTimeout(L._pathTimer);if(!L._pathBefore)L._pathBefore=b;L._pathTimer=setTimeout(()=>{const old=L._pathBefore;L._pathBefore=null;pathRecord(L,old,'Path '+label.toLowerCase());},400);}}).el;
   if(P.kind==='3d'&&P.mode==='ribbon'&&typeof ribbonPanel==='function')ribbonPanel(box,L,P);
-  box.append(sl('pathWidth','Width','width',P.kind==='3d'?.001:1,P.kind==='3d'?2:1000,P.kind==='3d'?.001:1,v=>P.kind==='3d'?v.toFixed(3)+' units':Math.round(v)+' px'),sl('pathHard','Hardness','hardness',0,1,.01,pct),sl('pathOpacity','Opacity','opacity',0,1,.01,pct));
+  if(!P.weld?.profile&&!P.stitch)box.append(sl('pathWidth','Width','width',P.kind==='3d'?.001:1,P.kind==='3d'?2:1000,P.kind==='3d'?.001:1,v=>P.kind==='3d'?v.toFixed(3)+' units':Math.round(v)+' px'),sl('pathHard','Hardness','hardness',0,1,.01,pct));
+  box.append(sl('pathOpacity','Opacity','opacity',0,1,.01,pct));
   if(P.kind==='3d'){
     box.append(makeSlider({id:'pathDepth',label:'Projection depth',min:.1,max:6,step:.05,value:P.depthK||1,fmt:v=>v.toFixed(2)+'×',onInput:v=>{if(lockStop({node:L}))return;const b=pathSnap(L);L.path.depthK=v;pathRender(L);clearTimeout(L._pathTimer);if(!L._pathBefore)L._pathBefore=b;L._pathTimer=setTimeout(()=>{const old=L._pathBefore;L._pathBefore=null;pathRecord(L,old,'Path projection depth');},400);}}).el,
-      el('div',{class:'chips'},chk('pathFollow','Follow path',P.follow!==false,v=>pathChange(q=>q.follow=v,'Follow path')),
+      (P.weld?.profile||P.stitch)?null:el('div',{class:'chips'},chk('pathFollow','Follow path',P.follow!==false,v=>pathChange(q=>q.follow=v,'Follow path')),
         P.follow===false?el('select',{id:'pathUp','aria-label':'Up axis',title:'The axis that orients each stamp when Follow path is off'},...[['x','+X'],['y','+Y'],['z','+Z'],['nx','−X'],['ny','−Y'],['nz','−Z']].map(([v,t])=>el('option',{value:v,text:'Up axis: '+t}))):null),
       el('div',{class:'chips'},el('span',{class:'note',text:'Symmetry'}),...['x','y','z'].map(a=>chk('pathSym'+a,a.toUpperCase(),!!(P.sym&&P.sym[a]),v=>pathChange(q=>{q.sym=Object.assign({x:false,y:false,z:false},q.sym,{[a]:v});},'Path symmetry')))));
     const up=$('#pathUp');if(up){up.value=P.up||'y';up.onchange=()=>pathChange(q=>q.up=up.value,'Path up axis');}}
@@ -282,7 +303,7 @@ function pathPanel(box){const L=pathActive(),P=L?.path;pathPanelFor=doc.active;$
       el('button',{class:'btn sm',id:'pathDelPoint',text:selected.length>1?'Delete points':'Delete point',onclick:()=>pathDeletePoints(L,pathSelection(L))})));
   if(point)box.append(makeSlider({id:'pathTanLen',label:selected.length>1?'Handle length ('+selected.length+' points)':'Handle length',min:0,max:3,step:.01,value:Math.min(3,pathTanRatio(P,selected[selected.length-1])),fmt:v=>Math.round(v*100)+'% of automatic',onInput:v=>{if(lockStop({node:L}))return;if(!L._pathBefore)L._pathBefore=pathSnap(L);for(const i of selected)pathSetTanLen(P,i,v);if(L.path.kind==='3d')L._pathPreview=pathSamples(L.path,true);requestRender();},onChange:()=>{pathRender(L);pathFlush();}}).el);
   box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'pathReverse',text:'Reverse direction',title:'Flip the direction the path is painted in',disabled:P.points.length<2,onclick:()=>pathReverse(L)})));
-  if(!P.weld)box.append(colourBtn('pathColor',()=>L.fill.maps.base.c||ui.fg,c=>{if(lockStop({node:L}))return;matEdBegin(L);L.fill.maps.base={on:true,src:'value',c};fillRender(L);matEdCommit();},'Path colour'),
+  if(!pathMaterial(P))box.append(colourBtn('pathColor',()=>L.fill.maps.base.c||ui.fg,c=>{if(lockStop({node:L}))return;matEdBegin(L);L.fill.maps.base={on:true,src:'value',c};fillRender(L);matEdCommit();},'Path colour'),
     el('button',{class:'btn sm',id:'pathMaterial',text:'Use selected library material',onclick:async()=>{if(matSel.kind!=='mat'){toast('Select a material in the Materials shelf.');showPanel('mats');return;}const r=matSel.rec;if(lockStop({node:L}))return;try{if(r.bundled)await gmLoad(r);const need=Object.keys(r.fill.maps).filter(k=>r.fill.maps[k].on&&MAP_DEFS[k]&&!doc.maps.includes(k)&&!(doc.workflow==='spec'&&(k==='rough'||k==='metal')));if(need.length)setDocMaps([...doc.maps,...need],'Path material channels');matEdBegin(L);L.fill=fillClone(r.fill);L.fill.coverH=false;L._fillImg=L._fillImg||{};for(const k in matRecTargets(r)){const t=r._t[k],copy=makeTarget(t.w,t.h,8,true);blit(t,copy,0,0,t.w,t.h,0,0);L._fillImg[k]=copy;}fillRender(L);matEdCommit();buildBrushPanel();}catch(e){toast('Could not load material: '+e.message);}}}));
   box.append(el('div',{class:'chips'},P.kind==='2d'?el('button',{class:'btn sm',id:'pathSelect',text:'Make selection',disabled:!P.closed||P.points.length<3,onclick:()=>selectPolygon(pathSamples(P,false).flatMap(a=>a.p),ui.selMode,'Path selection',true)}):null,el('button',{class:'btn sm',id:'pathDuplicate',text:'Duplicate path',onclick:cmdDuplicate}),el('button',{class:'btn sm',id:'pathDelete',text:'Delete path',onclick:cmdDelete})));
   box.append(el('div',{class:'sub',text:'Path layers'}),...allLayers().filter(n=>n.path?.kind===P.kind).map(n=>el('button',{class:'btn sm'+(n===L?' on':''),text:n.name,onclick:()=>{selectOnly(n);pathEdit.L=n;pathEdit.point=-1;pathEdit.drawing=false;changed(n);buildBrushPanel();}})));}

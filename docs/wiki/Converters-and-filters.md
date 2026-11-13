@@ -102,9 +102,9 @@ Heavy filters (painterly, oil paint, lens and surface blur, cutout) are drawn in
 ## Embroidery patch
 Filter › **Embroidery patch…** turns a picture (the selected layer, or the whole painting) into a stitched patch on a new layer:
 - **Thread colours:** how many colours; they are picked from the picture and shown as swatches. **Simplify** and **Clean up small bits** remove details too small to stitch.
-- **Stitches:** thread width, the width of the **satin** band along each colour's edges (threads running across it), and the angle of the **fill** stitches inside (optionally different for each colour).
-- **Merrow border:** the rolled edge around the patch, in the darkest or lightest thread or the foreground colour.
-- **Patch shape:** the picture's outline (transparent parts stay empty) or the whole canvas.
+- **Stitch style** offers **Tatami fill** for staggered rows, **Satin fill** for long parallel threads, and **Woven twill** for a diagonal weave. Use **Thread width** for spacing, **Stitch length** for Tatami, and **Fill angle** to turn the fill. **Satin edge width** sets the band of stitches that follow each colour's edge.
+- **Merrow border** wraps thread around a raised binding. Choose the darkest thread, the lightest thread, or the foreground colour.
+- **Patch shape** follows the picture's outline, including cutouts and soft edges, or covers the whole canvas.
 - **Thread shine**, **Height** and **Variation**.
 It writes colour and Height (so the normal shows the threads), and Roughness if the document has it.
 

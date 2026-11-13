@@ -36,8 +36,17 @@ let fails=0;const ok=(v,m)=>{console.log((v?'PASS ':'FAIL ')+m);if(!v)fails++;};
  const hit=p.locator('#v3Hit'),box=await hit.boundingBox(),x=box.x+box.width/2,y=box.y+box.height/2;await p.mouse.move(x,y);await p.keyboard.down('q');await p.waitForTimeout(220);
  ok(await p.evaluate(()=>__gs.ui.fg[0]>.7&&__gs.ui.fg[1]<.2&&__gs.ui.tool==='brush'&&__gs.v3PickHeld()),'holding the new key samples colour without changing tools');const count=await p.evaluate(()=>__gs.hist.undo.length);await p.mouse.click(x,y);await p.keyboard.up('q');ok(await p.evaluate(n=>!__gs.v3PickHeld()&&__gs.hist.undo.length===n,count),'picker clicks do not paint; key release restores painting');
  await p.evaluate(()=>__gs.setFG([0,1,0]));await p.keyboard.down('Alt');await p.mouse.move(x+2,y);await p.waitForTimeout(150);await p.keyboard.up('Alt');ok(await p.evaluate(()=>__gs.ui.fg[1]>.9),'the old Alt hold no longer picks after rebinding');
- // Dispatch press/release in one task: separate browser round trips may let the queued sample run before release.
- await p.evaluate(()=>{for(const type of ['keydown','keyup'])window.dispatchEvent(new KeyboardEvent(type,{key:'q',code:'KeyQ',bubbles:true,cancelable:true}));});await p.waitForTimeout(100);ok(await p.evaluate(()=>__gs.ui.fg[1]>.9),'releasing the picker cancels a queued sample');
+ // The first sample is immediate. Queue a second sample in the same frame, then release.
+ const releasedColor=await p.evaluate(()=>{
+  const options={key:'q',code:'KeyQ',bubbles:true,cancelable:true};
+  window.dispatchEvent(new KeyboardEvent('keydown',options));
+  __gs.setFG([0,1,0]);
+  window.dispatchEvent(new KeyboardEvent('keydown',{...options,repeat:true}));
+  window.dispatchEvent(new KeyboardEvent('keyup',options));
+  return __gs.ui.fg.slice();
+ });
+ await p.waitForTimeout(100);
+ ok(releasedColor[1]>.9&&await p.evaluate(()=>!__gs.v3PickHeld()&&__gs.ui.fg[1]>.9),'releasing the picker cancels a queued sample');
  const yaw=await p.evaluate(()=>__gs.v3.cam.yaw);await p.keyboard.down('Alt');await p.mouse.move(x,y);await p.mouse.down();await p.mouse.move(x+30,y,{steps:4});await p.mouse.up();await p.keyboard.up('Alt');ok(await p.evaluate(yaw=>__gs.v3.cam.yaw!==yaw,yaw),'Alt navigation still works after rebinding colour picking');
  await p.evaluate(()=>{__gs.sel3.mode='object';__gs.sel3.armed=false;});await hit.dispatchEvent('dblclick',{clientX:x,clientY:y,button:0});console.log('Picker setup',await p.evaluate(({x,y})=>{const G=__gs,h=document.getElementById('v3Hit'),r=h.getBoundingClientRect();return {mode:G.ui.mode,tool:G.ui.tool,cam:G.v3.cam,sel:{active:G.sel.active,quick:G.sel.quick},hit:!!G.v3PickAt(h,{clientX:x,clientY:y}),rect:{x:r.x,y:r.y,w:r.width,h:r.height},point:{x,y},model:G.v3.mesh?.name,viewMask:G.ui.viewMask};},{x,y}));ok(await p.evaluate(()=>!__gs.sel.active&&!__gs.sel.quick),'double-click on the model does not make a selection or quick mask');
  await p.evaluate(()=>{const G=__gs;G.cmdAddMask(0);G.doc.active.editMask=true;G.ui.viewMask=true;G.renderLayers();G.composite();G.v3Refresh();});await hit.dispatchEvent('dblclick',{clientX:x,clientY:y,button:0});

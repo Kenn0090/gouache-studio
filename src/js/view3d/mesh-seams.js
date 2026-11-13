@@ -94,6 +94,7 @@ function seamMipLimit(range){const C=seamBlurMesh(range);if(!C)return null;
 let seamPadPrograms=null;
 const SEAM_OWNER_GLSL=`ivec2 ownerAt(sampler2D img,ivec2 p){ivec4 b=ivec4(round(texelFetch(img,p,0)*255.0));return ivec2(b.x*256+b.y,b.z*256+b.w)-1;}
 vec4 ownerPack(ivec2 p){ivec2 v=p+1;return vec4(v.x/256,v.x%256,v.y/256,v.y%256)/255.0;}`;
+function seamPadOwners(){const edges=seamBlurMesh();return edges?.pad?.w===doc.w&&edges.pad.h===doc.h?edges.pad.tex:null;}
 function seamBlurPadding(C,dst,region){if(!seamPadPrograms)seamPadPrograms={
  seed:prog3(VS_SEAMBLUR,SEAM_OWNER_GLSL+`void main(){o=ownerPack(ivec2(gl_FragCoord.xy));}`),
  grow:program(SEAM_OWNER_GLSL+`uniform sampler2D uOwners;

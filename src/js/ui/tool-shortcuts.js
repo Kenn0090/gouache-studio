@@ -19,7 +19,9 @@ function toolKeyFinish(){if(!toolKeys.ready)return;
 }
 function toolKeyRestore(s){if(!s)return;toolKeys.changing=true;try{
   ui.fillKind=s.fill;ui.tonal=s.tonal;ui.marquee=s.marquee;ui.lasso=s.lasso;if(heal.mode!==s.heal){heal.mode=s.heal;healSave();}
-  setTool(s.tool);if(typeof maskToolsOn==='function'&&(maskToolsOn()||liveOn())&&mk3.tool!==s.mask)maskTool(s.mask);
+  const inMask=typeof maskToolsOn==='function'&&(maskToolsOn()||liveOn());
+  const maskSelection=inMask&&(s.tool==='marquee'||s.tool==='lasso');
+  setTool(s.tool,false,maskSelection);if(inMask&&mk3.tool!==s.mask)maskTool(s.mask);
   if(typeof sel3!=='undefined'&&sel3.armed!==s.armed)sel3Arm(s.armed);
   if(typeof updateSelIcons==='function')updateSelIcons();buildBrushPanel();refreshCursor();
 }finally{toolKeys.changing=false;}}

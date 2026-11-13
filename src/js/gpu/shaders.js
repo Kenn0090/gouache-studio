@@ -352,10 +352,14 @@ void main(){ vec4 c=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0); if(c.a<=1e-6){ o=
 /* ---- maps: normal from height, lit material preview ---- */
 /* Sobel slope of the height composite -> tangent-space normal (OpenGL: green = up), combined with
    any painted/loaded normal detail by reoriented normal blending. uFlipY gives DirectX (green = down). */
-const FS_NRM=`uniform sampler2D uH; uniform sampler2D uN; uniform int uUseN; uniform float uStr; uniform int uWrap; uniform int uFlipY;
-float hAt(ivec2 p){ ivec2 s=textureSize(uH,0); if(uWrap==1) p=((p%s)+s)%s; else p=clamp(p,ivec2(0),s-1); return texelFetch(uH,p,0).r; }
+const FS_NRM=`uniform sampler2D uH, uOwners; uniform sampler2D uN; uniform int uUseN; uniform float uStr; uniform int uWrap; uniform int uFlipY; uniform bool uPadHeight;
+float hAt(ivec2 p,ivec2 center){ ivec2 s=textureSize(uH,0); if(uWrap==1) p=((p%s)+s)%s; else p=clamp(p,ivec2(0),s-1);
+  if(uPadHeight){ivec4 bytes=ivec4(round(texelFetch(uOwners,p,0)*255.0));
+    ivec2 owner=ivec2(bytes.x*256+bytes.y,bytes.z*256+bytes.w)-1;
+    if(any(notEqual(p,owner)))p=all(greaterThanEqual(owner,ivec2(0)))&&all(lessThanEqual(abs(owner-center),ivec2(1)))?owner:center;}
+  return texelFetch(uH,p,0).r; }
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy);
-  float tl=hAt(p+ivec2(-1,-1)),t=hAt(p+ivec2(0,-1)),tr=hAt(p+ivec2(1,-1)),l=hAt(p+ivec2(-1,0)),r=hAt(p+ivec2(1,0)),bl=hAt(p+ivec2(-1,1)),b=hAt(p+ivec2(0,1)),br=hAt(p+ivec2(1,1));
+  float tl=hAt(p+ivec2(-1,-1),p),t=hAt(p+ivec2(0,-1),p),tr=hAt(p+ivec2(1,-1),p),l=hAt(p+ivec2(-1,0),p),r=hAt(p+ivec2(1,0),p),bl=hAt(p+ivec2(-1,1),p),b=hAt(p+ivec2(0,1),p),br=hAt(p+ivec2(1,1),p);
   float dx=((tr+2.0*r+br)-(tl+2.0*l+bl))/8.0, dy=((bl+2.0*b+br)-(tl+2.0*t+tr))/8.0;
   vec3 n=normalize(vec3(-dx*uStr, dy*uStr, 1.0));
   if(uUseN==1){ vec3 d=texelFetch(uN,p,0).rgb*2.0-1.0; vec3 tt=n+vec3(0,0,1), u=d*vec3(-1,-1,1); n=normalize(tt*dot(tt,u)/tt.z-u); }

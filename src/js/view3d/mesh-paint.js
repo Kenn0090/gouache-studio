@@ -16,7 +16,7 @@ void main(){ vec2 t=aT*uUVs; vec3 p=aP; if(uUseH==1&&uDisp!=0.0){ float h=textur
   vP=p; vN=aN; vT=t; vec2 q=(uUseUDIM==1?fract(t):t)-uShift; gl_Position=vec4(q*2.0-1.0,0.0,1.0); }`;
 /* uMir: for mirror and radial painting, the texel looks up the brush where its mirror image is (identity otherwise) */
 const FS_3DPROJ=`in vec3 vP; in vec3 vN; in vec2 vT; uniform mat4 uVPm; uniform sampler2D uStroke; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform mat4 uMir; uniform int uAlign; uniform float uWrapTol; uniform int uNoBack; uniform float uCullCos; uniform int uUseUDIM; uniform vec2 uUDIMTile;
-uniform int uSt; uniform sampler2D uStT; uniform vec2 uStC; uniform vec2 uStHalf; uniform float uStRot; uniform vec2 uScr; uniform int uStTile; uniform int uStInv;
+uniform int uSt; uniform sampler2D uStT; uniform vec2 uStC; uniform vec2 uStHalf; uniform float uStRot; uniform vec2 uScr; uniform int uStTile; uniform int uStInv; uniform bool uMaterialData;
 void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec3 q=(uMir*vec4(vP,1.0)).xyz; vec4 c=uVPm*vec4(q,1.0); if(c.w<=1e-6){ o=vec4(0); return; } vec2 s=c.xy/c.w*0.5+0.5;
   if(s.x<0.0||s.y<0.0||s.x>1.0||s.y>1.0){ o=vec4(0); return; }
   ivec2 ds=textureSize(uDepth,0); float z=texelFetch(uDepth,clamp(ivec2(s*vec2(ds)),ivec2(0),ds-1),0).r; float d=length(q-uCamP);
@@ -36,7 +36,11 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec3 q=
   /* stencil: 1 = mask (light parts let paint through), 2 = colour (paints the picture itself) */
   if(uSt>0){ vec2 pp=s*uScr-uStC; float cr=cos(uStRot),sr=sin(uStRot); vec2 l=vec2(cr*pp.x-sr*pp.y,sr*pp.x+cr*pp.y)/(2.0*uStHalf)+0.5;
     if(uStTile==1) l=fract(l); else if(l.x<0.0||l.y<0.0||l.x>1.0||l.y>1.0){ o=vec4(0); return; }
-    vec4 m=texture(uStT,vec2(l.x,1.0-l.y));/* pictures are stored top row first */ if(uSt==1){ float k=m.a>1e-5?dot(m.rgb/m.a,vec3(0.299,0.587,0.114))*m.a:0.0; t.a*=uStInv==1?1.0-k:k; } else { vec3 c=m.a>1e-5?m.rgb/m.a:vec3(0.0); t.rgb=uStInv==1?1.0-c:c; t.a*=m.a; } }
+    vec4 m=texture(uStT,vec2(l.x,1.0-l.y));/* pictures are stored top row first */
+    float k=dot(m.rgb,vec3(0.299,0.587,0.114));
+    float a=uSt==1?(uStInv==1?1.0-k:k):m.a;
+    if(uMaterialData)t*=a;
+    else{if(uSt==2){vec3 col=m.a>1e-5?m.rgb/m.a:vec3(0.0);t.rgb=uStInv==1?1.0-col:col;}t.a*=a;} }
   /* Depth determines visibility. Shading normals must not fade a visible bevel out of the stroke. */
   o=t; }`;
 const VS_3DD=VS_3D.replace('out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;','out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;');
@@ -107,9 +111,12 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;if(
       const W=doc.w,H=doc.h,x0=clamp(Math.floor(b[0]),0,W),y0=clamp(Math.floor(b[1]),0,H),x1=clamp(Math.ceil(b[2]),0,W),y1=clamp(Math.ceil(b[3]),0,H),q=st.syncR;
       const r=q?[Math.min(q[0],x0),Math.min(q[1],y0),Math.max(q[2],x1),Math.max(q[3],y1)]:(x1>x0&&y1>y0?[x0,y0,x1,y1]:null);
       if(!r)return;st.syncR=r;scissorDo([r[0],r[1],r[2]-r[0],r[3]-r[1]],()=>SPo.syncAll());},
-    syncAll(){bindTarget(strokeT);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
-      const stU=st3Uniforms(w,h);for(const Mi of mirs){useProg(P.proj,Object.assign({uVPm:{m4:VP},uStroke:M.buf.tex,uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v],uMir:{m4:Mi}},stU));
-      bindTarget(strokeT);gl.enable(gl.BLEND);gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);gl.disable(gl.CULL_FACE);
+    syncAll(){SPo.projectStroke(M.buf,strokeT,!!materialDab(stroke?.o.material));
+      const halo=stroke?.weldHeat;if(halo?.screen){SPo.projectStroke(halo.screen,halo.uv,true);halo.projected=true;}
+      const folds=stroke?.stitchFolds;if(folds?.screen)SPo.projectStroke(folds.screen,folds.uv,true);},
+    projectStroke(source,target,materialData){bindTarget(target);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
+      const stU=st3Uniforms(w,h);for(const Mi of mirs){useProg(P.proj,Object.assign({uVPm:{m4:VP},uStroke:source.tex,uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v],uMir:{m4:Mi},uMaterialData:materialData},stU));
+      bindTarget(target);gl.enable(gl.BLEND);gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);gl.disable(gl.CULL_FACE);
       const loc=gl.getUniformLocation(P.proj.p,'uShift'),alignLoc=gl.getUniformLocation(P.proj.p,'uAlign'),backLoc=gl.getUniformLocation(P.proj.p,'uNoBack');gl.bindVertexArray(g.vao);
       const align=v3s().paintAlign==='camera'?0:1;gl.uniform1i(alignLoc,align);gl.uniform1f(gl.getUniformLocation(P.proj.p,'uCullCos'),meshCullCos());gl.uniform1f(gl.getUniformLocation(P.proj.p,'uWrapTol'),meshWrapTol());gl.uniform1i(backLoc,v3s().noBack===false?0:1);
       for(let j=0;j<uvs;j++)for(let i=0;i<uvs;i++){gl.uniform2f(loc,i,j);gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);}}

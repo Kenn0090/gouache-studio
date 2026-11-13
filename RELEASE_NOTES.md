@@ -1,3 +1,11 @@
+## 0.97.9
+
+- **19 stitch presets** in the 3D Paint shelf, including baseball lacing, garment seams, piping, buttonholes and darning. Paint freehand or draw editable stitch paths. Tune puckering, thread fray, damage and variation.
+- **7 Surface Details brushes** for dents, gouges, chips, corrosion, grime, rust and cast-metal grain, with independent color, relief and roughness controls.
+- **Welds** has Standard, Narrow and Sharp presets, softer bead edges and a pressure-sensitive heat halo for bare metal. Use a material brush, editable path or regular brush tip.
+- **Embroidery Patch** adds Tatami, Satin and Woven Twill fills and a raised Merrow border.
+- **Height shading** follows UV island edges more cleanly in 3D Paint.
+
 ## 0.97.8
 
 - **3D Paint shelf like Substance Painter's:** categories with icons (Brushes, Materials, Smart materials, Smart masks, Alphas, Textures, Decals, Environments, Mesh maps, Tools, Projects) and a quick bar with search, favourites, recent, tile size and list view.

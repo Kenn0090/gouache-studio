@@ -275,7 +275,7 @@ See [Textures, decals and the material library](Textures-and-decals.md): click a
 
 In 3D Paint the things you paint with live in a shelf along the bottom. The list on the left has a category for each, with an icon:
 
-**Brushes** · **Materials** · **Smart materials** · **Smart masks** · **Alphas** · **Textures** · **Decals** · **Environments** · **Mesh maps** · **Tools** · **Projects**
+**Brushes** · **Materials** · **Smart materials** · **Smart masks** · **Alphas** · **Textures** · **Decals** · **Environments** · **Mesh maps** · **Welds** · **Stitches** · **Surface Details** · **Projects**
 
 The tiles of the chosen category fill the rest. Drag the bar above the shelf to make it taller, or fold it with the arrow.
 

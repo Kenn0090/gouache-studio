@@ -40,7 +40,6 @@ const TIPS={
 /* Original, deterministic alpha tips for the material/stylized brush set. */
 TIPS.scratch=genTip('Scratch cluster',192,192,(x,w,h,R)=>{for(let i=0;i<15;i++){const cx=w*(.18+R()*.64),cy=h*(.12+R()*.76),len=12+R()*66;x.globalAlpha=.25+R()*.75;x.lineWidth=.8+R()*2.7;x.beginPath();x.moveTo(cx-len/2,cy+(R()-.5)*8);x.lineTo(cx+len/2,cy+(R()-.5)*8);x.stroke();}});
 TIPS.abstract=genTip('Abstract shards',192,192,(x,w,h,R)=>{for(let i=0;i<20;i++){const cx=w*(.12+R()*.76),cy=h*(.12+R()*.76),s=3+R()*16;x.globalAlpha=.2+R()*.8;x.beginPath();x.moveTo(cx-s,cy-s*.4);x.lineTo(cx+s,cy-s*.7);x.lineTo(cx+s*.35,cy+s);x.closePath();x.fill();}});
-TIPS.stitch=genTip('Running stitch',160,96,(x,w,h)=>{x.lineCap='round';x.lineWidth=13;x.beginPath();x.moveTo(16,h*.5);x.lineTo(w-16,h*.5);x.stroke();x.globalCompositeOperation='destination-out';x.lineWidth=5;x.beginPath();x.moveTo(w*.5,h*.5);x.lineTo(w*.5+1,h*.5);x.stroke();});
 TIPS.poly=genTip('Polygon alpha',256,256,(x,w,h)=>{x.beginPath();x.moveTo(w*.28,h*.18);x.lineTo(w*.94,h*.28);x.lineTo(w*.68,h*.91);x.lineTo(w*.22,h*.88);x.closePath();x.fill();});
 TIPS.angular=genTip('Angular paint shards',256,256,(x,w,h,R)=>{for(let i=0;i<28;i++){const cx=w*(.08+R()*.84),cy=h*(.08+R()*.84),s=5+R()*25,lean=(R()-.5)*s*1.8;x.globalAlpha=.32+R()*.68;x.beginPath();x.moveTo(cx-s,cy-s*.45);x.lineTo(cx+lean,cy-s*(.55+R()*.65));x.lineTo(cx+s,cy+s*(.35+R()*.6));x.lineTo(cx-s*.38,cy+s*.18);x.closePath();x.fill();}});
 TIPS.chip=genTip('Torn angular edge',256,256,(x,w,h,R)=>{x.beginPath();x.moveTo(w*.08,h*.22);x.lineTo(w*.92,h*.18);x.lineTo(w*.94,h*.5);for(let i=10;i>=0;i--){const px=w*(.08+i*.084);x.lineTo(px,h*(.62+R()*.17));x.lineTo(px-w*.025,h*(.53+R()*.11));}x.closePath();x.fill();x.globalCompositeOperation='destination-out';for(let i=0;i<22;i++){const cx=w*(.1+R()*.8),cy=h*(.28+R()*.3),r=2+R()*9;x.beginPath();x.moveTo(cx-r,cy-r);x.lineTo(cx+r,cy-r*.4);x.lineTo(cx+r*.25,cy+r);x.closePath();x.fill();}});
@@ -53,7 +52,6 @@ const PRESETS=[
   {name:'Fine scratches',tool:'brush',tip:TIPS.scratch,size:74,hardness:.8,spacing:.24,followDir:true,angleJitter:.08,sizeJitter:.18,scatter:.08,pSize:true,minSize:.45,pOpacity:true},
   {name:'Grunge wear',tool:'brush',tip:TIPS.sponge,size:96,hardness:.65,flow:.58,spacing:.3,grain:.68,sizeJitter:.32,angleJitter:.5,scatter:.2,pSize:false,pOpacity:true,buildup:true},
   {name:'Abstract shards',tool:'brush',tip:TIPS.abstract,size:66,hardness:.85,spacing:.46,followDir:true,angleJitter:.35,sizeJitter:.22,scatter:.3,count:2,pSize:true,minSize:.4},
-  {name:'Running stitch',tool:'brush',tip:TIPS.stitch,size:18,hardness:1,spacing:.8,followDir:true,pSize:false,pOpacity:false,smoothing:.2},
   {name:'Polygon Stamp',tool:'brush',tip:TIPS.poly,size:62,hardness:1,spacing:.82,angleJitter:.08,sizeJitter:.04,pSize:false,pOpacity:false,smoothing:0},
   {name:'Angular Shards',tool:'brush',tip:TIPS.angular,size:76,hardness:.9,spacing:.48,angleJitter:.34,sizeJitter:.24,scatter:.28,count:2,pSize:true,minSize:.4,pOpacity:true},
   {name:'Chipped Poster',tool:'brush',tip:TIPS.chip,size:92,hardness:.86,spacing:.7,followDir:true,angleJitter:.12,sizeJitter:.12,pSize:true,minSize:.5,pOpacity:true},
@@ -257,6 +255,7 @@ const brush3dAll=()=>{try{return localStorage.getItem('gs.brush3dAll')==='1';}ca
 const br3Open={};
 function br3Group(title,def,kids){const d=el('details',{class:'more brg3',id:'brg3_'+title.replace(/\W+/g,'')},el('summary',{text:title}),el('div',{class:'dlg-grid'},...kids.filter(Boolean)));d.open=title in br3Open?br3Open[title]:def;d.addEventListener('toggle',()=>{br3Open[title]=d.open;});return d;}
 function buildBrushPanel(){
+  if(stitchShelfPath!==stitchPathLayer())stitchToolsRender();
   const box=$('#brushBody');box.replaceChildren();const sm=ui.tool==='smudge',isText=ui.tool==='text',isSel=isSelTool(ui.tool),isXf=!!(xf&&!xf.move),isOther=['crop','move','gradient','bucket','gbucket','cage','array','shape'].includes(ui.tool),noBrush=isText||isSel||isXf||isOther;
   $('#libBody').hidden=noBrush;$('.prevwrap').hidden=noBrush;$('#abrBtn').hidden=noBrush;$('#saveBrushBtn').hidden=noBrush||ui.tool==='dodge'||ui.tool==='burn';$('#tipBtn').hidden=noBrush;
   if(ui.tool==='pfill'&&typeof pfPanel==='function'){$('#libBody').hidden=true;$('.prevwrap').hidden=true;$('#abrBtn').hidden=true;$('#saveBrushBtn').hidden=true;$('#tipBtn').hidden=true;pfPanel(box);return;}
