@@ -12,11 +12,11 @@ const brAdvanced=()=>{try{return localStorage.getItem('gs.brushAdv')==='1';}catc
 const brGroupOpen={Stroke:true};
 function brIdsOf(n){const s=[];if(n.id)s.push(n.id);if(n.querySelectorAll)for(const e of n.querySelectorAll('[id]'))s.push(e.id);return s;}
 function brOrganize(box){
-  if(!box||!['brush','erase','smudge','dodge','burn','heal','clone'].includes(ui.tool))return;
+  if(!box||!['brush','erase','smudge','dodge','burn','heal','clone','material'].includes(ui.tool))return;
   if(box.querySelector(':scope>.brg3'))return;/* 3D Paint's condensed panel has its own groups */
   const kids=[...box.children];let last=-1;kids.forEach((k,i)=>{if(brIdsOf(k).some(id=>BR_ESSENTIAL.test(id)))last=i;});
   if(last<0)return;
-  const rest=kids.slice(last+1),reset=rest.find(k=>k.classList&&k.classList.contains('resetrow')&&!k.querySelector('#bShowAll3d'));
+  const rest=kids.slice(last+1),reset=rest.find(k=>k.classList&&k.classList.contains('resetrow'));
   const groups=new Map();let cur='Stroke';const adv=[];let afterReset=false;
   const put=(g,n)=>{if(!groups.has(g))groups.set(g,[]);groups.get(g).push(n);};
   for(const k of rest){
