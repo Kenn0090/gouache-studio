@@ -1,3 +1,8 @@
+## 0.97.13
+
+- **Brushes library in Paint like the 3D Paint shelf.** The Brushes panel has a **search box** (finds a brush in any folder), **favourites** (a star on each brush, a Favourites section on top and a ★ button to show only those), tile size **S / M / L**, and a **list view** with the brush names.
+- **Grouped settings for the other tools.** Smudge/Blend, Dodge, Burn, Heal and Clone settings use the same folding groups, **Simple / Advanced** switch and search as Brush and Eraser.
+
 ## 0.97.12
 
 - **Smoothing groups.** A **Smoothing groups** row in the Bake tab (Geometry) and in 3D Paint's Model section: **File's own**, **Smooth all** (removes the smoothing groups, so the whole model shades smooth) or **Auto by angle** (edges sharper than the angle stay hard, the rest shade smooth), with an Angle slider. Only the normals change; UVs and triangles stay, so painted textures and baked maps still fit, and File's own brings the original back.
