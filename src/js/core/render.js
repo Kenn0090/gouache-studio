@@ -16,10 +16,12 @@ function frame(){raf=0;if(typeof tabDocs!=='undefined'&&tabDocs.hold){requestRen
   perfFrame(t0,tc-t0,tv-tc,performance.now()-tv);}finally{if(gq)perfGpuEnd(gq);}}
 let maskOverride=new Map();
 /* Keep live coverage shared by every material channel, including the 3D preview. */
-function withWeldMask(region,fn){const s=stroke;if(!s?.L.maskOf||s.L.mrow||strokeLive(s.o))return fn();const prev=maskOverride,T=acquireD(s.L.target.depth);
+function withWeldMask(region,fn){const s=stroke;if(!s?.L.maskOf||strokeLive(s.o))return fn();const prev=maskOverride,T=acquireD(s.L.target.depth);let ev=null;
   const merge=()=>run(P.merge,T,Object.assign({uSrc:s.lazy?s.L.target.tex:beforeT.tex,uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(s.o)},uStrokeColor:s.o.color,...tintU(),uStrokeOpacity:s.o.opacity,uLockAlpha:false},selU(s.o),tonalU(s.o)));
-  try{if(region){const x=Math.max(0,region[0]-1),y=Math.max(0,region[1]-1);scissorDo([x,y,Math.min(doc.w,region[0]+region[2]+1)-x,Math.min(doc.h,region[1]+region[3]+1)-y],merge);}else merge();maskOverride=new Map(prev);maskOverride.set(s.L.maskOf,T.tex);return fn();}
-  finally{maskOverride=prev;release(T);}}
+  try{if(region){const x=Math.max(0,region[0]-1),y=Math.max(0,region[1]-1);scissorDo([x,y,Math.min(doc.w,region[0]+region[2]+1)-x,Math.min(doc.h,region[1]+region[3]+1)-y],merge);}else merge();maskOverride=new Map(prev);
+    /* (0.97.15, Kenn: the mask is not live while I paint) a Paint row of a mask with rows: the whole stack again, with the row as it is being painted, so the model follows the stroke */
+    if(s.L.mrow){ev=msEval(s.L.maskOf,{row:s.L.mrow,t:T});maskOverride.set(s.L.maskOf,ev.tex);}else maskOverride.set(s.L.maskOf,T.tex);return fn();}
+  finally{maskOverride=prev;if(ev)release(ev);release(T);}}
 function maskTexOf(n){if(!n.mask||!n.mask.enabled)return null;return maskOverride.get(n)||n.mask.target.tex;}
 /* selection clipping for a stroke: only when the stroke was started with an active selection */
 /* how a stroke is merged: 1 paint, 2 erase, 3 dodge, 4 burn (plus the dodge/burn settings) */
