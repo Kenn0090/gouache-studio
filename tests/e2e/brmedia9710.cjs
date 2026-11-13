@@ -9,7 +9,7 @@ await p.evaluate(()=>{__gs.closeWelcome&&__gs.closeWelcome();localStorage.remove
 const folders=await p.evaluate(()=>[...document.querySelectorAll('#libBody .libset')].map(w=>w.querySelector('.libset-h span').textContent+'|'+w.classList.contains('folded')));
 console.log(folders.join('\n'));
 ok(folders.some(f=>f.startsWith('Pencil and charcoal'))&&folders.some(f=>f.startsWith('Ink and pen'))&&folders.some(f=>f.startsWith('Paint (')),'medium folders are listed');
-ok(folders.some(f=>f.startsWith('Pencil and charcoal')&&f.endsWith('false'))&&folders.some(f=>f.startsWith('Effects')&&f.endsWith('true')),'Pencil and Paint start open, the others closed');
+ok(folders.some(f=>f.startsWith('Ink and pen')&&f.endsWith('false'))&&folders.filter(f=>/·/.test(f)&&f.endsWith('false')).length===1,'only the folder of the selected brush (Gasa Pen: Ink and pen) starts open');
 const total=await p.evaluate(()=>__gs.library.reduce((n,s)=>n+s.presets.length,0));
 const counted=folders.reduce((n,f)=>{const m=f.match(/· (\d+)\|/);return n+(m?+m[1]:0)},0);
 ok(counted===total,'every brush is in exactly one folder ('+counted+' of '+total+')');

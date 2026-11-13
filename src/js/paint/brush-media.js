@@ -25,5 +25,5 @@ function brushMediaGroups(){const by=new Map(BR_MEDIA.map(([k])=>[k,[]]));const 
     for(const p of set.presets)by.get(brushMedium(p,set)).push({set,p});}
   return {media:BR_MEDIA.map(([k,t])=>({key:k,title:t,items:by.get(k)})).filter(g=>g.items.length),mine};}
 const brLibView=()=>{try{return localStorage.getItem('gs.libView')==='set'?'set':'medium';}catch(e){return 'medium';}};
-function brMedFolded(){try{const v=localStorage.getItem('gs.libFoldMed');if(v===null)return new Set(BR_MEDIA.map(([k])=>'med_'+k).filter(id=>id!=='med_pencil'&&id!=='med_paint'));return new Set(JSON.parse(v));}catch(e){return new Set();}}
+function brMedFolded(){try{const v=localStorage.getItem('gs.libFoldMed');if(v===null){/* nothing chosen yet: only the folder of the brush you are using is open */let open='pencil';try{if(typeof activePreset!=='undefined'&&activePreset){const set=library.find(x=>x.presets.includes(activePreset));open=brushMedium(activePreset,set);}}catch(e){}return new Set(BR_MEDIA.map(([k])=>'med_'+k).filter(id=>id!=='med_'+open));}return new Set(JSON.parse(v));}catch(e){return new Set();}}
 function brMedFoldSave(s){try{localStorage.setItem('gs.libFoldMed',JSON.stringify([...s]));}catch(e){}}
