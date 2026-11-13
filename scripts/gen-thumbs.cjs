@@ -29,15 +29,18 @@ const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
    for(let y=0;y<W;y++)id.data.set(d.subarray((W-1-y)*W*4,(W-y)*W*4),y*W*4);x.putImageData(id,0,0);
    const o=document.createElement('canvas');o.width=o.height=S;const ox=o.getContext('2d');ox.imageSmoothingQuality='high';ox.drawImage(c,0,0,S,S);return o.toDataURL('image/webp',.86);},SIZE);
  const save=(kind,name,url)=>{const f=kind+'-'+slug(name)+'.webp';fs.writeFileSync(path.join(OUT,f),Buffer.from(url.split(',')[1],'base64'));return f;};
- const items={},only=process.env.ONLY;
+ const items={},only=process.env.ONLY?process.env.ONLY.split(','):null;
+ /* settings that make the weak ones readable on this model (its baked maps are subtle); the tiles show what the generator makes, not the defaults */
+ const OV={water:{amount:.9,width:.8,contrast:2.2},soot:{amount:.95,width:.9,contrast:2.4},drips:{amount:.95,width:.8,contrast:2.4},rustRunoff:{amount:.95,spread:.6,contrast:2.2},mineralBuildup:{preset:'crust',source:'geometry',amount:.95,spread:.7,contrast:2.2},builder:{amount:.9,width:.7,edgeWeight:1,cavityWeight:.8,aoWeight:.6,contrast:2},edge:{amount:.8}};
+ const OVM={curv:{bal:0,con:.9}};
  /* a light material masked over a dark one, shown in mask view: the generator reads as black and white on the model */
  await p.evaluate(()=>{const G=__gs,base=G.layerByName('Base material');if(base){G.selectOnly(base);}
    G.cmdNewFillLayer({name:'Under',maps:{base:{on:true,c:[.16,.17,.19]},rough:{on:true,v:.55},metal:{on:true,v:0}}});
    G.cmdNewFillLayer({name:'Masked',maps:{base:{on:true,c:[.86,.62,.30]},rough:{on:true,v:.35},metal:{on:true,v:0}}});});
  await p.waitForTimeout(400);
  const names=await p.evaluate(()=>__gs.genRecs().map(r=>r.group+'|'+r.name));
- for(const full of names){const name=full.split('|')[1];if(only&&name!==only)continue;
-   await p.evaluate(async full=>{const G=__gs,rec=G.genRecs().find(r=>r.group+'|'+r.name===full),L=G.layerByName('Masked');G.selectOnly(L);G.genApply(L,rec);G.doc.active.editMask=true;G.ui.viewMask=true;G.changedAll();},full);
+ for(const full of names){const name=full.split('|')[1];if(only&&!only.includes(name))continue;
+   await p.evaluate(async ([full,OV])=>{const G=__gs,rec0=G.genRecs().find(r=>r.group+'|'+r.name===full),L=G.layerByName('Masked');const rec=Object.assign({},rec0,{make:()=>{const [k,o]=rec0.make();if(OV[rec0.key]&&o&&o.p)Object.assign(o.p,OV[rec0.key]);return [k,o];}});G.selectOnly(L);G.genApply(L,rec);G.doc.active.editMask=true;G.ui.viewMask=true;G.changedAll();},[full,Object.assign({},OV)]);
    await p.waitForTimeout(1500);
    items[full]=save('gen',full.replace('|','-'),await shot());await p.evaluate(()=>{__gs.ui.viewMask=false;__gs.undo();});await p.waitForTimeout(250);console.log('generator',full);}
  const jf=path.join(OUT,'previews.json'),old=fs.existsSync(jf)?JSON.parse(fs.readFileSync(jf,'utf8')).items||{}:{};
