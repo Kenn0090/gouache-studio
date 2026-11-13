@@ -6,9 +6,10 @@
 const PANELS={
   favorites:{title:'Favorites',sel:'#favoritesSec',avail:m=>!['bake','convert','photo'].includes(m),icon:'<path d="m12 3 3 6 6 1-4.5 4.5 1 6.5-5.5-3-5.5 3 1-6.5L3 10l6-1z"/>'},
   projects:{title:'Projects',sel:'#paSec',avail:m=>m==='p3d',icon:'<path d="M3 6h7l2 2h9v11H3z"/>'},
-  weldtools:{title:'Welds',sel:'#weldToolsSec',avail:m=>m==='p3d',icon:'<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="8" cy="17" r="1.8"/>'},
-  stitches:{title:'Stitches',sel:'#stitchToolsSec',avail:m=>m==='p3d',icon:'<path d="M3 8l5 8 4-8 4 8 5-8"/>'},
-  surfacedetails:{title:'Surface Details',sel:'#surfaceDetailsSec',avail:m=>m==='p3d',icon:'<path d="m4 16 5-7 4 3 7-7M4 20h16"/><circle cx="17" cy="15" r="2"/>'},
+  weldtools:{title:'Welds',sel:'#weldToolsSec',avail:m=>false,icon:'<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="8" cy="17" r="1.8"/>'},
+  stitches:{title:'Stitches',sel:'#stitchToolsSec',avail:m=>false,icon:'<path d="M3 8l5 8 4-8 4 8 5-8"/>'},
+  surfacedetails:{title:'Surface Details',sel:'#surfaceDetailsSec',avail:m=>false,icon:'<path d="m4 16 5-7 4 3 7-7M4 20h16"/><circle cx="17" cy="15" r="2"/>'},
+  shtools:{title:'Tools',sel:'#shToolsSec',avail:m=>m==='p3d',icon:'<path d="M14.7 6.3a4 4 0 0 0-5 5L3 18l3 3 6.7-6.7a4 4 0 0 0 5-5l-2.5 2.5-2.4-.6-.6-2.4z"/>'},
   meshmaps:{title:'Mesh maps',sel:'#mmSec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="m4 4 16 16M4 20 20 4"/>'},
   p3d:{title:'3D Paint',sel:'#p3dSec',avail:m=>m==='p3d',mode:true},
   hist:{title:'History',sel:'#histSec',avail:m=>m!=='convert'&&m!=='photo',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>'},
@@ -42,7 +43,9 @@ const PANELS={
   chan:{title:'Channels',sel:'section[aria-labelledby="hChan"]',avail:m=>m==='paint'||m==='p3d',icon:'<circle cx="9" cy="10" r="5"/><circle cx="15" cy="10" r="5"/><circle cx="12" cy="15" r="5"/>'}};
 const PANEL_IDS=Object.keys(PANELS);
 /* (0.96) the 3D Paint shelf's categories, in the order of its list */
-const SH_SHELF_TABS=['shbrush','mats','smats','smasks','shalpha','textures','decals','envs','meshmaps','weldtools','stitches','surfacedetails','projects'];
+/* (0.97.10) Welds, Stitches and Surface details live in one shelf category, Tools; the old panel names still open it */
+const SH_TOOL_ALIAS={weldtools:'weld',stitches:'stitch',surfacedetails:'detail'};
+const SH_SHELF_TABS=['shbrush','mats','smats','smasks','shalpha','textures','decals','envs','meshmaps','shtools','projects'];
 const MODE_GROUP=['p3d','brushtab','conv','bake','anim','photo'],MODE_HID=[...MODE_GROUP,'phhist','phlib','phpre'];
 /* the built-in workspaces: extra = 3D view on and how wide, painting on the model */
 const WS_PRESETS={
@@ -98,6 +101,7 @@ function dkFix(L){const seen=new Set();const keep=a=>a.filter(id=>PANELS[id]&&!s
   for(const g of L.groups)g.tabs=keep(g.tabs);L.shelf.tabs=keep(L.shelf.tabs);for(const f of L.floats)f.tabs=keep(f.tabs);L.icons=keep(L.icons||[]);L.hidden=keep(L.hidden||[]);
   L.groups=L.groups.filter(g=>g.tabs.length);L.floats=L.floats.filter(f=>f.tabs.length);
   for(const id of PANEL_IDS)if(!seen.has(id)){if(id==='favorites'){L.hidden.push(id);continue;}if(SH_SHELF_TABS.includes(id)){L.shelf.tabs.push(id);continue;}const home=WS_PRESETS.painting.groups.find(g=>g.tabs.includes(id));const g=L.groups.find(g=>home&&g.tabs.some(t=>home.tabs.includes(t)));if(g)g.tabs.push(id);else L.groups.push({tabs:[id],f:1});}
+  if(L.shelf){const old=['weldtools','stitches','surfacedetails'];if(L.shelf.tabs.some(t=>old.includes(t))){L.shelf.tabs=L.shelf.tabs.filter(t=>!old.includes(t));if(!L.shelf.tabs.includes('shtools'))L.shelf.tabs.push('shtools');if(old.includes(L.shelf.active))L.shelf.active='shtools';}}
   if(ui.mode==='p3d'&&L.shelf){L.shelf.tabs=[...SH_SHELF_TABS.filter(id=>L.shelf.tabs.includes(id)),...L.shelf.tabs.filter(id=>!SH_SHELF_TABS.includes(id)&&id!=='brushes')];}
   return L;}
 /* the panels themselves, found once (while redrawing they are briefly off the page) */
@@ -133,6 +137,10 @@ function dkInit(){
     el('div',{class:'sec-h',id:'hSurfaceDetails'},el('span',{text:'Surface Details'})),
     el('div',{id:'surfaceDetailsBody',class:'dlg-grid'}));
   bs.after(dkSecs.surfacedetails);
+  {const grp=(k,t,body)=>{const d=el('details',{class:'shtgrp',id:'shtg_'+k},el('summary',{text:t}),body);let o=true;try{const v=JSON.parse(localStorage.getItem('gs.shTools')||'{}');if(v[k]===false)o=false;}catch(e){}d.open=o;
+      d.addEventListener('toggle',()=>{try{const v=JSON.parse(localStorage.getItem('gs.shTools')||'{}');v[k]=d.open;localStorage.setItem('gs.shTools',JSON.stringify(v));}catch(e){}});return d;};
+    dkSecs.shtools=el('section',{class:'sec shsec',id:'shToolsSec','aria-labelledby':'hShTools'},el('div',{class:'sec-h',id:'hShTools'},el('span',{text:'Tools'})),
+      el('div',{id:'shToolsBody',class:'dlg-grid'},grp('weld','Welds',weldtools.querySelector('#weldToolsBody')),grp('stitch','Stitches',dkSecs.stitches.querySelector('#stitchToolsBody')),grp('detail','Surface details',dkSecs.surfacedetails.querySelector('#surfaceDetailsBody'))));}
   const panel=document.querySelector('aside.panel');panel.id='dock';panel.setAttribute('aria-label','Panels');
   dk.park=el('div',{id:'dkPark',hidden:true});document.body.append(dk.park);shInit();for(const id of PANEL_IDS)dk.park.append(dkSec(id));panel.replaceChildren();
   dk.icons=el('nav',{id:'dkIcons','aria-label':'Panels kept as icons'});panel.before(dk.icons);
@@ -306,7 +314,7 @@ function dkMove(id,to){const L=dk.L;dkRemove(id);
   if(!L.groups.some(g=>g.tabs.length)&&!to.group&&to.newGroup==null&&to.newGroup2==null&&!to.edge&&L.icons.length===0)L.groups.push({tabs:[],f:1});
   dkApply(L,true);}
 /* show a panel (Window menu, tests): brings it back into the dock and to the front */
-function showPanel(id){if((id==='mats'||id==='decals'||id==='envs')&&typeof ensureP3Lists==='function')ensureP3Lists();if(id==='tool'&&ui.mode!=='p3d')id='brushes';const L=dk.L;if(dkCol2On()&&dkC2Has(id)){const g2=dk.col2.groups.find(g=>g.tabs.includes(id));if(g2){g2.active=id;g2.min=false;dkRender();return;}}let g=dkAllGroups().find(g=>g.tabs.includes(id));const f=L.floats.find(f=>f.tabs.includes(id));
+function showPanel(id){const ta=SH_TOOL_ALIAS[id];if(ta){shToolsOpen(ta);id='shtools';}if((id==='mats'||id==='decals'||id==='envs')&&typeof ensureP3Lists==='function')ensureP3Lists();if(id==='tool'&&ui.mode!=='p3d')id='brushes';const L=dk.L;if(dkCol2On()&&dkC2Has(id)){const g2=dk.col2.groups.find(g=>g.tabs.includes(id));if(g2){g2.active=id;g2.min=false;dkRender();return;}}let g=dkAllGroups().find(g=>g.tabs.includes(id));const f=L.floats.find(f=>f.tabs.includes(id));
   if(f){f.active=id;dkRender();return;}if(!g&&L.shelf&&L.shelf.tabs.includes(id)){L.shelf.active=id;L.shelf.min=false;if(L.fold&&L.fold.shelf){L.fold.shelf=false;dkGrid();}dkRender();dkSave();return;}if(L.icons.includes(id)){dkFlyout(id);return;}
   if(!g){L.hidden=L.hidden.filter(t=>t!==id);const home=WS_PRESETS.painting.groups.findIndex(x=>x.tabs.includes(id));g=L.groups.find(x=>x.tabs.some(t=>(WS_PRESETS.painting.groups[home]||{tabs:[]}).tabs.includes(t)));
     if(g)g.tabs.push(id);else{g={tabs:[id],f:1};L.groups.push(g);}}
@@ -425,3 +433,6 @@ function dkModeWs(){const w=wsForMode(ui.mode);if(w!==dk.ws||dk.layoutMode!==ui.
 {const sm=setMode;setMode=function(m,q){const r=sm(m,q);if(r!==false&&ui.mode===m)dkModeWs();return r;};}
 
 {const favoriteDockRender=dkRender;dkRender=function(){favoriteDockRender();renderFavorites();};}
+
+/* open one group of the Tools category (and close nothing else) */
+function shToolsOpen(k){const d=document.getElementById('shtg_'+k);if(d)d.open=true;}

@@ -198,7 +198,7 @@ const ok=(v,m)=>{console.log((v?'PASS ':'FAIL ')+m);if(!v)fails++;};
   g.requestRender(true);
  });
  const weldShelf=p.locator('#dkShelf');
- await weldShelf.getByRole('tab',{name:'Welds',exact:true}).click();
+ await p.evaluate(()=>__gs.showPanel('weldtools'));
  const shelfWelds=await weldShelf.locator('#weldToolsBody .weld-card').evaluateAll(cards=>cards.map(c=>c.title));
  const styleOptions=await weldShelf.getByRole('combobox',{name:'Weld bead style'}).locator('option:not(:disabled)').allTextContents();
  ok(shelfWelds.join('|')===weldNames.join('|')&&styleOptions.join('|')===weldNames.join('|'),
@@ -535,7 +535,7 @@ const ok=(v,m)=>{console.log((v?'PASS ':'FAIL ')+m);if(!v)fails++;};
  });
  ok(centered.defaultPucker===.68&&centered.hasThread&&centered.above&&centered.below&&centered.sameThread,
    'centered piping puckers both sides while keeping the thread placement unchanged');
- await p.locator('#dkShelf').getByRole('tab',{name:'Surface Details',exact:true}).click();
+ await p.evaluate(()=>__gs.showPanel('surfacedetails'));
  const detailShelf=p.locator('#surfaceDetailsBody');
  const detailCards=await detailShelf.locator('canvas').evaluateAll(nodes=>nodes.map(node=>node.toDataURL()));
  ok(detailCards.length===7&&new Set(detailCards).size===7,'the Surface Details shelf offers seven distinct brushes');

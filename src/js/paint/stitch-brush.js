@@ -455,23 +455,21 @@ function stitchEnsureChannels(){
   const keys=stitchMapKeys();
   if(keys.some(k=>!doc.maps.includes(k)))setDocMaps([...doc.maps,...keys],'Add stitch channels');
 }
+/* (0.97.10, Kenn) stitches never add a layer: they go onto the paint layer you picked (or its mask) */
 function stitchTarget(){
   if(sel.quick)return null;
+  const n=doc.active;
+  if(!toolPaintLayerOk(n,'sew stitches'))return null;
   stitchEnsureChannels();
-  const active=doc.active;
-  if(active?.materialPaint==='stitch'&&!active.fill&&!active.editMask)return active;
-  const L=newLayerObj('Stitches',true);
-  L.materialPaint='stitch';
-  ensureMapTarget(L,'base');
-  structOp('New stitch layer',()=>{const [parent,index]=insertPoint();insertNode(L,parent,index);selectOnly(L);});
-  return L;
+  return n;
 }
 
 function stitchPaintOptions(o,et){
-  if(!et||et.isMask){toast('Select a paint layer to sew stitches.');return null;}
+  if(!et){toast('Select a paint layer to sew stitches.');return null;}
   o.tool='brush';
   o.noTint=true;
   o.chan=null;
+  if(et.isMask)return toolMaskOptions(o,{stitch:{...stitchOptions}},stitchOptions.style!==undefined&&STITCH_PRESETS[stitchOptions.style].stamp);
   o.material={stitch:{...stitchOptions}};
   o.singleDab=!!STITCH_PRESETS[stitchOptions.style].stamp;
   o.extras=stitchMapKeys().filter(k=>k!==doc.map&&doc.maps.includes(k)).map(key=>({key,mode:1,color:[0,0,0]}));

@@ -1654,3 +1654,13 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .shgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(var(--tw,64px) + 18px),1fr));gap:8px 4px}
 .shsec>.sub,.shsec .sub{margin:6px 0 2px}
 .dkshelf .shsec .mattile>canvas.shtc{width:var(--tw,64px);height:var(--tw,64px);border-radius:8px;background:var(--raise)}
+/* (0.97.10) Tools category of the 3D Paint shelf: Welds, Stitches and Surface details as foldable groups */
+.shtgrp{border:1px solid var(--line);border-radius:8px;margin:0 0 8px;background:var(--panel2,rgba(255,255,255,.02))}
+.shtgrp>summary{cursor:pointer;padding:7px 10px;font-weight:600;font-size:12.5px;list-style:none;display:flex;align-items:center;gap:6px}
+.shtgrp>summary::-webkit-details-marker{display:none}
+.shtgrp>summary::before{content:'▸';color:var(--muted);font-size:11px;width:10px}
+.shtgrp[open]>summary::before{content:'▾'}
+.shtgrp>:not(summary){padding:0 10px 10px}
+/* the Reset brush row stays in view at the foot of the scrolling panel instead of being cut off by its edge */
+#brushBody>.resetrow{position:sticky;bottom:0;z-index:3;background:var(--panel);padding:6px 0;margin-top:6px;border-top:1px solid var(--line)}
+#brushBody{padding-bottom:4px}
