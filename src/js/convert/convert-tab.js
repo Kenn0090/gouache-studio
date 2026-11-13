@@ -161,6 +161,17 @@ function cvOut(k){return cvT('out_'+k,doc.w,doc.h,k==='normal'||k==='base'?(canF
 /* the height a normal-map source describes (slow: kept until the source changes) */
 function cvPois(){if(cvS.cache.pois&&cvS.cache.poisDx===cvS.dx)return cvS.cache.pois;const t=cvT('pois',doc.w,doc.h,16);heightFromNormal(cvPrep(),t,{str:1,iter:50,dx:cvS.dx});cvS.cache.pois=t;cvS.cache.poisDx=cvS.dx;return t;}
 /* ---------- each output ---------- */
+/* (0.97.10, Kenn: "it's just not generating the normal map") a finished normal map that is one flat colour while the height has relief is not right:
+   build it again with a fresh copy of the shader, and say what was found so it can be reported */
+function cvFlatSpread(t,fn){const sm=makeTarget(64,64,8,false);try{run(P.f_rs,sm,{uSrc:t.tex,uOut:[64,64]});const d=captureRegionNow(sm,0,0,64,64).data;let m=0,n=0;for(let i=0;i<d.length;i+=4){m+=d[i]+d[i+1];n+=2;}m/=n;let v=0;for(let i=0;i<d.length;i+=4)v+=(d[i]-m)**2+(d[i+1]-m)**2;return Math.sqrt(v/n)/255;}finally{disposeTarget(sm);}}
+let cvFreshNrm=null,cvFlatWarned=false;
+function cvNormalCheck(dst,h,v,dn){if(cvS.kind==='normal')return;
+  let flat=cvFlatSpread(dst)<.002&&cvFlatSpread(h)>.01;if(window.__cvForceFlat&&!cvS._forced){flat=true;cvS._forced=true;clearTarget(dst,[.5,.5,1,1]);}
+  if(!flat)return;
+  if(!cvFreshNrm)cvFreshNrm=program(FS_NRM);
+  run(cvFreshNrm,dst,{uPadHeight:false,uOwners:dummy,uH:h.tex,uN:dn?dn.tex:dummy,uUseN:!!dn,uStr:v.str,uWrap:!!(cvS.seam.on||doc.wrap),uFlipY:!!v.dx});
+  const again=cvFlatSpread(dst);cvS.nrmRetry={fixed:again>=.002,spread:+again.toFixed(4),depth:dst.depth,w:dst.w,h:dst.h,str:v.str,canFloat:!!canFloat};
+  if(!cvFlatWarned){cvFlatWarned=true;toast(again>=.002?'The normal map came out flat the first time, so it was made again and is fine now.':'The normal map is flat. Please report: size '+dst.w+'×'+dst.h+', '+dst.depth+'-bit, intensity '+v.str+', float '+(canFloat?'yes':'no')+'.',again>=.002?4000:12000);}}
 const CV_MAKE={
   height(dst){const v=cvS.v.height,P2=cvP();
     if(cvS.aiDepth&&cvS.cache.depthT){const src=cvS.cache.depthT,b=cvT('hb');cvBlur(src,b,1.5,'btB');run(P2.adjh,dst,{uH:src.tex,uB:b.tex,uCon:v.con,uSharp:v.sharp||0,uInv:!!cvS.inv});if(v.smooth>.25){const t=cvT('hs');cvBlur(dst,t,v.smooth,'btB');blit(t,dst,0,0,doc.w,doc.h,0,0);}return;}
@@ -172,7 +183,8 @@ const CV_MAKE={
       if(mix)run(P2.rnm,dst,{uA:t.tex,uB:dn.tex,uOutDX:!!v.dx});}
     else{let h;if(cvS.kind==='photo'){h=cvT('nh');cvBands(h,v,1,true);if(v.sharp>0){const b=cvT('nhb');cvBlur(h,b,1.2,'btC');const t=cvT('nhs');run(P2.adjh,t,{uH:h.tex,uB:b.tex,uCon:1,uSharp:v.sharp,uInv:false});h=t;}}
       else{h=cvT('nh');const l=cvLum();cvBlur(l,h,v.noise*.8,'btC');if(cvS.inv){const t=cvT('nhi');run(P2.adjh,t,{uH:h.tex,uB:h.tex,uCon:1,uSharp:0,uInv:true});h=t;}}
-      run(P.nrm,dst,{uPadHeight:false,uOwners:dummy,uH:h.tex,uN:dn?dn.tex:dummy,uUseN:!!dn,uStr:v.str,uWrap:!!(cvS.seam.on||doc.wrap),uFlipY:!!v.dx});}
+      run(P.nrm,dst,{uPadHeight:false,uOwners:dummy,uH:h.tex,uN:dn?dn.tex:dummy,uUseN:!!dn,uStr:v.str,uWrap:!!(cvS.seam.on||doc.wrap),uFlipY:!!v.dx});
+      cvNormalCheck(dst,h,v,dn);}
     if(dn)release(dn);},
   ao(dst){const v=cvS.v.ao,h=cvRes('height'),b1=cvT('ab1'),b2=cvT('ab2'),b3=cvT('ab3');cvBlur(h,b1,v.r*.25,'btD');cvBlur(h,b2,v.r*.5,'btD');cvBlur(h,b3,v.r,'btD');
     run(cvP().ao,dst,{uH:h.tex,uB1:b1.tex,uB2:b2.tex,uB3:b3.tex,uStr:v.str,uBal:v.bal});if(v.smooth>.25){const t=cvT('as');cvBlur(dst,t,v.smooth,'btD');blit(t,dst,0,0,doc.w,doc.h,0,0);}},
