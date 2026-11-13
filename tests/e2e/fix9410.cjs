@@ -22,11 +22,13 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const N=390;await p.evaluate(async N=>{const L=[];for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){const u=i/N,v=j/N,th=u*Math.PI*2,ph=v*Math.PI;L.push('v '+(Math.sin(ph)*Math.cos(th)).toFixed(4)+' '+Math.cos(ph).toFixed(4)+' '+(Math.sin(ph)*Math.sin(th)).toFixed(4)+'\nvt '+u.toFixed(4)+' '+v.toFixed(4));}
   for(let j=0;j<N;j++)for(let i=0;i<N;i++){const a=j*(N+1)+i+1,b=a+1,c=a+N+1,d=c+1;L.push('f '+a+'/'+a+' '+c+'/'+c+' '+b+'/'+b+'\nf '+b+'/'+b+' '+c+'/'+c+' '+d+'/'+d);}
   const m=await __gs.parseModelBytes('dense.obj',new TextEncoder().encode(L.join('\n')));const v3=__gs.v3;v3.imported=__gs.p3.imported=m;__gs.v3s().model='imported';v3.mesh=null;v3.dirty=true;__gs.requestRender();},N);
- await p.waitForTimeout(6000);
+ await p.waitForTimeout(3000);
+ /* wait until the picture has settled (a slow software card needs a while for the first sharp frame of 300k triangles) */
+ let last=-1,same=0;for(let i=0;i<40&&same<3;i++){const w=await p.evaluate(()=>__gs.v3.fbo&&__gs.v3.fbo.w);same=w===last?same+1:0;last=w;await p.waitForTimeout(1200);}
  const full=await p.evaluate(()=>__gs.v3.fbo.w);
  const sc=await p.evaluate(()=>{const s=__gs.v3Work.scenes;__gs.v3.cam.yaw+=.3;__gs.v3.dirty=true;__gs.requestRender();return s;});await p.waitForFunction(s=>__gs.v3Work.scenes>s,sc,{timeout:60000});
  const mov=await p.evaluate(()=>({w:__gs.v3.fbo.w,tris:__gs.v3.mesh.idx.length/3}));
  ok(mov.tris>=3e5&&mov.w<full*.7,'turning a '+mov.tris+'-triangle model draws at '+mov.w+' px instead of '+full);
- await p.waitForTimeout(6000);ok(await p.evaluate(f=>__gs.v3.fbo.w===f,full),'…and sharp again once it stops');
+ await p.waitForFunction(f=>__gs.v3.fbo.w===f,full,{timeout:60000}).catch(()=>{});ok(await p.evaluate(f=>__gs.v3.fbo.w===f,full),'…and sharp again once it stops');
  ok(!errs.length,'no page errors '+errs.join(' | '));
  await b.close();console.log(fails?fails+' FAILED':'ALL PASS');process.exit(fails?1:0);})();

@@ -271,11 +271,34 @@ In 3D Paint, **Delete** and **Backspace** remove selected layers, including when
 See [Textures, decals and the material library](Textures-and-decals.md): click a decal and then the model to place bolts, vents, labels and more; use grunge maps in masks and materials; start from ready-made leathers, metals, fabrics and more.
 
 
-## The bottom shelf
+## The bottom shelf (like Substance Painter's, 0.96)
 
-In 3D Paint the asset panels live in a shelf along the bottom: **Materials**, **Textures**, **Decals**, **Stencils** and **Brushes** are a list on the left, and the tiles of the chosen category fill the rest. Drag the bar above it to resize, or fold it with the arrow. In Materials, the chips at the top choose All, Yours, Library, Smart materials or Smart masks, and S / M / L set the tile size.
+In 3D Paint the things you paint with live in a shelf along the bottom. The list on the left has a category for each, with an icon:
+
+**Brushes** · **Materials** · **Smart materials** · **Smart masks** · **Alphas** · **Textures** · **Decals** · **Environments** · **Mesh maps** · **Tools** · **Projects**
+
+The tiles of the chosen category fill the rest. Drag the bar above the shelf to make it taller, or fold it with the arrow.
+
+**The quick bar** (on every category with tiles):
+- **Search** narrows the tiles by name.
+- **★** shows only your favourites. Hover a tile and click its star to add or remove it.
+- **🕒** shows what you used recently (clicking or dragging a tile counts).
+- **S / M / L** change the tile size; the two buttons next to them switch between **tiles** and a compact **list**.
+- Each category adds its own buttons at the right (New material…, Import…, Save brush…).
+
+**Brushes.** This category lists the brushes that work on the model. **All brushes** also shows the ones that need a flat canvas: mixing and wet paint, drips, line blend, fans and colour lanes. Click a tile to paint with that brush; **Save brush**, **Import…** and **Make tip** are in the bar. The brush's settings are in the **Brush** tab (see below). Painting a stroke works the same on the model as on the canvas, with one gain in 0.96: **Pressure without a pen** (Speed, Taper, Fixed) now works on the model too; it did nothing there before.
+
+**Alphas.** The brush tips (basic shapes, art media, brush packs, your own). Click one to give the current brush that tip; its other settings stay.
+
+**Smart materials** and **Smart masks** are categories of their own (they used to be chips inside Materials). Materials has **All**, **Yours**, **Library** and **Hand-painted**.
 
 The shelf also has an **Environments** category: a thumbnail for each HDRI (click to light the model), **Load your own…** for a .hdr or .exr, and **Simple sky** to turn the HDRI off. In the Bake tab, a model with several materials gets a **Materials to bake** list with an eyeball for each; a closed eye leaves that material out of the bake.
+
+### The Brush tab in 3D Paint
+
+The brush settings are condensed. The stroke preview and the **stencil** switch sit at the top, then the settings in folding groups: **Stroke** (spacing, smoothing, lazy mouse), **Texture** (paper tooth, grain), **Pressure**, **Paint feel**, **Tip shape & dynamics**, dual brush and the normal brush. Settings that cannot work on the model (mixing brush, drips, line blend, symmetry, ink bleed…) are hidden. Tick **Show all settings** at the bottom to bring every setting back. The 3D view has its own **Mirror**.
+
+The Brushes panel left the right-hand dock in 3D Paint, because its brushes are the shelf's first category. A layout you saved earlier loses it once; **Window › Brushes** brings it back.
 
 
 ## The 3D Paint layout (0.37)

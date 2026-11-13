@@ -30,19 +30,21 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(shown,'dragging shows where it will land');
  ok(n.length===3&&n[0]==='Paint'&&n[2]==='Base material'&&matName.startsWith(n[1]),'a material dropped between two layers lands between them '+JSON.stringify(n));
  /* a smart material above Paint */
- const smTile='#matBody .mattile.smart';const smCount=await p.locator(smTile).count();
- const first=await p.evaluate(()=>{const t=[...document.querySelectorAll('#matBody .mattile.smart')].find(b=>b._libDrag&&b._libDrag[0]==='smart');return t?t._libDrag[1].name:null;});
- if(first){await p.evaluate(()=>{[...document.querySelectorAll('#matBody .mattile.smart')].forEach(b=>b.classList.toggle('pick',b._libDrag&&b._libDrag[0]==='smart'));});
-   await drag('#matBody .mattile.smart.pick','Paint','above');n=await names();ok(n[0]===first&&n.length===4,'a smart material dropped above the top layer lands on top '+JSON.stringify(n));}
+ await p.evaluate(()=>__gs.showPanel('smats'));await W(900);
+ const smTile='#smBody .mattile.smart';const smCount=await p.locator(smTile).count();
+ const first=await p.evaluate(()=>{const t=[...document.querySelectorAll('#smBody .mattile.smart')].find(b=>b._libDrag&&b._libDrag[0]==='smart');return t?t._libDrag[1].name:null;});
+ if(first){await p.evaluate(()=>{[...document.querySelectorAll('#smBody .mattile.smart')].forEach(b=>b.classList.toggle('pick',b._libDrag&&b._libDrag[0]==='smart'));});
+   await drag('#smBody .mattile.smart.pick','Paint','above');n=await names();ok(n[0]===first&&n.length===4,'a smart material dropped above the top layer lands on top '+JSON.stringify(n));}
  else ok(false,'no smart material tiles found');
  /* a smart mask onto Base material */
- await p.evaluate(()=>{[...document.querySelectorAll('#matBody .mattile.smart')].forEach(b=>b.classList.toggle('pickm',b._libDrag&&b._libDrag[0]==='smask'));});
- const smask=await p.evaluate(()=>{const b=document.querySelector('#matBody .mattile.pickm');return b&&b._libDrag[1].name;});
- await drag('#matBody .mattile.pickm','Base material','mid');
+ await p.evaluate(()=>__gs.showPanel('smasks'));await W(900);
+ await p.evaluate(()=>{[...document.querySelectorAll('#smkBody .mattile.smart')].forEach(b=>b.classList.toggle('pickm',b._libDrag&&b._libDrag[0]==='smask'));});
+ const smask=await p.evaluate(()=>{const b=document.querySelector('#smkBody .mattile.pickm');return b&&b._libDrag[1].name;});
+ await drag('#smkBody .mattile.pickm','Base material','mid');
 
  ok(await p.evaluate(()=>{const L=__gs.layerByName('Base material');return !!(L.mask&&L.mask.stack&&L.mask.stack.length);}),'a smart mask dropped onto a layer becomes its mask ('+smask+')');
  ok(await p.evaluate(()=>__gs.hist.undo.slice(-3).map(u=>u.label).join('|')).then(s=>/Add material/.test(s)&&/Smart mask|smart material/i.test(s)),'each drop is an undo step');
  /* a click highlights; the fill layer button adds it (on top of the selected layer) */
- const cnt=()=>p.evaluate(()=>__gs.allLayers().length);const before=await cnt();await p.locator(matTile).first().click();await W(300);ok((await cnt())===before,'clicking a tile only highlights it');await p.click('#lFill');await W(500);ok((await cnt())===before+1,'the fill layer button adds the highlighted tile');
+ await p.evaluate(()=>__gs.showPanel('mats'));await W(600);const cnt=()=>p.evaluate(()=>__gs.allLayers().length);const before=await cnt();await p.locator(matTile).first().click();await W(300);ok((await cnt())===before,'clicking a tile only highlights it');await p.click('#lFill');await W(500);ok((await cnt())===before+1,'the fill layer button adds the highlighted tile');
  console.log(errs.length?errs.join('\n'):'no page errors');ok(!errs.length,'no page errors');
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();process.exit(fails?1:0);})();
