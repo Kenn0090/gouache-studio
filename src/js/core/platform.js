@@ -2,6 +2,9 @@
    One place that knows whether we run as the desktop app (Tauri) or in a browser.
    Desktop: native open/save dialogs, direct file writes, recent files, undo spill-to-disk, self-update.
    Browser: falls back to file inputs and downloads. */
+/* (0.97.15, Kenn: Mac) on a Mac the shortcuts read ⌘ ⌥ ⇧ (the keys themselves already accept Cmd as well as Ctrl) */
+const IS_MAC=/Mac|iPhone|iPad/.test((navigator.platform||'')+' '+(navigator.userAgent||''));
+function macKeys(t){return IS_MAC&&t?String(t).replace(/Ctrl\+/g,'⌘').replace(/Alt\+/g,'⌥').replace(/Shift\+/g,'⇧'):t;}
 const TAURI=window.__TAURI__&&window.__TAURI__.core?window.__TAURI__:null;
 const platform={
   isDesktop:!!TAURI,
