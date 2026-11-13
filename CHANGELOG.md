@@ -1,6 +1,12 @@
 ## 0.97.14
 
 - **Export baked maps.** The export window has an **Export baked maps** tick (also when you send to a game engine): the set's baked maps (Normal, AO, Curvature, Thickness, Position, World normal, ID, Height) are saved beside the textures with a Mesh_ prefix, each with its own tick so you can leave one out. A set without baked maps says so.
+- **Save As like Photoshop.** Ctrl+Shift+S opens the standard file window with a **Save as type** list (Gouache, Photoshop, PNG, JPEG, Targa, TIFF, DDS, OpenEXR, WebP), then a small window with that format's options (PNG bit depth, JPEG quality…). In a browser one window holds the name, the type and the options. 3D Paint keeps its project / textures choice.
+- **Navigator pip.** When you are zoomed into the canvas, a small picture of the whole canvas appears in the corner with a frame showing what is on screen. Drag the frame, or click the picture, to move around. **View › Navigator** turns it off.
+- **No more hidden brush settings.** The 3D Brush tab always shows every setting (the **Show all settings** tick and the hiding are gone), grouped with Simple / Advanced and search, also for the weld, stitch and surface detail brushes. Reset brush and the stroke preview no longer stay pinned over the settings on a short window.
+- **A grey base material in 3D Paint.** Where the layers leave the model see-through (for example a black mask on the bottom layer) a plain grey material shows instead of the mesh disappearing. Only an Opacity map cuts holes.
+- **Faster painting.** Painting on a mask with several generator or filter rows redraws the picture less often while you paint (the result when you lift is exact), and the brush outline on the model no longer reads the graphics card back on every move.
+- **Mac.** A macOS build (universal, Apple silicon and Intel) is made after each Windows release and put on the same release page as a .dmg. Menus show ⌘ ⌥ ⇧ on a Mac and the memory settings read the Mac's RAM. The app is not notarised: the first time, right-click it and choose Open.
 - **Fewer flashes when you pick a tool brush.** Choosing a weld, stitch or surface detail no longer rebuilds the side panels when the Brush tab is already showing.
 
 ## 0.97.13
