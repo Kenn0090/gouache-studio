@@ -1,3 +1,25 @@
+/* (0.97.10, Kenn) border lock like Photoshop's Snap to document bounds: while moving or scaling, the layer's edges and centre click onto the canvas edges and centre (Alt = off) */
+function xfSnapOn(){try{return localStorage.getItem('gs.xfSnap')!=='0';}catch(e){return true;}}
+function xfSnapToggle(){try{localStorage.setItem('gs.xfSnap',xfSnapOn()?'0':'1');}catch(e){}toast(xfSnapOn()?'Transforms snap to the canvas edges.':'Transforms no longer snap to the canvas edges.');}
+function xfSnapTol(){return 8/Math.max(.05,view.zoom);}
+/* the shift that puts the box's edges or centre on the canvas edges or centre (null when nothing is near), and which canvas line it lands on */
+function xfSnapShift(bb){const tol=xfSnapTol();let dx=null,dy=null,tx=null,ty=null,bx=tol,by=tol;
+  for(const [v,t] of [[bb[0],0],[bb[2],doc.w],[(bb[0]+bb[2])/2,doc.w/2]]){const d=t-v;if(Math.abs(d)<=bx){bx=Math.abs(d);dx=d;tx=t;}}
+  for(const [v,t] of [[bb[1],0],[bb[3],doc.h],[(bb[1]+bb[3])/2,doc.h/2]]){const d=t-v;if(Math.abs(d)<=by){by=Math.abs(d);dy=d;ty=t;}}
+  return [dx,dy,tx,ty];}
+/* a dragged point lands on the canvas edges or centre when it is close */
+function xfSnapPoint(x,y){const tol=xfSnapTol();let sx=null,sy=null;
+  for(const t of [0,doc.w/2,doc.w])if(Math.abs(x-t)<=tol){sx=t;x=t;break;}
+  for(const t of [0,doc.h/2,doc.h])if(Math.abs(y-t)<=tol){sy=t;y=t;break;}
+  xf.snapG=sx===null&&sy===null?null:{x:sx,y:sy};return [x,y];}
+function xfSnapMove(q,dx,dy,off){xf.snapG=null;if(off||!xfSnapOn())return [dx,dy];
+  const bb=quadBB(q.map((v,i)=>v+(i%2?dy:dx)));const [sx,sy,tx,ty]=xfSnapShift(bb);
+  if(tx!==null||ty!==null)xf.snapG={x:tx,y:ty};
+  return [dx+(sx||0),dy+(sy||0)];}
+function xfSnapLines(){const g=xf&&xf.snapG;if(!g)return '';let s='';const st=' style="stroke:#ff3d8b;stroke-width:1;fill:none"';
+  if(g.x!==null&&g.x!==undefined){const a=scrPt([g.x,0]),b=scrPt([g.x,doc.h]);s+='<path'+st+' d="M'+a.join(' ')+'L'+b.join(' ')+'"/>';}
+  if(g.y!==null&&g.y!==undefined){const a=scrPt([0,g.y]),b=scrPt([doc.w,g.y]);s+='<path'+st+' d="M'+a.join(' ')+'L'+b.join(' ')+'"/>';}
+  return s;}
 /* ================= Transforms: on-canvas handles, Move tool, panel ================= */
 const xfOv=document.createElementNS('http://www.w3.org/2000/svg','svg');xfOv.id='xfOv';xfOv.setAttribute('aria-hidden','true');stage.append(xfOv);
 const ROT_CURSOR='url("data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M6 14a7 7 0 1 0 2-7" fill="none" stroke="#000" stroke-width="3.2"/><path d="M6 14a7 7 0 1 0 2-7" fill="none" stroke="#fff" stroke-width="1.4"/><path d="M4 4l5 3-5 3z" fill="#fff" stroke="#000" stroke-width="1"/></svg>')+'") 12 12, crosshair';
@@ -31,13 +53,13 @@ function xfPointerDown(e,ix,iy){const [sx,sy]=stageXY(e);let hit=xfHit(sx,sy);if
   if(hit.type==='wanchor'){xf.warp.active=[hit.i,hit.j];ptr.last=[ix,iy];}
   if(hit.type==='whandle')ptr.last=[ix,iy];
   drawXfOverlay();}
-function xfPointerMove(e,ix,iy){const p=ptr,h=p.hit,R=xfLocalRect(),dx=ix-p.m0[0],dy=iy-p.m0[1],ctrl=e.ctrlKey||e.metaKey||['distort','skew','shear'].includes(xf.dragMode);
+function xfPointerMove(e,ix,iy){const p=ptr,h=p.hit;if(xf.snapG)xf.snapG=null;if((h.type==='corner'||h.type==='edge')&&!xf.warp&&!e.altKey&&xfSnapOn()&&!['perspective','distort','skew','shear'].includes(xf.dragMode)&&!(e.ctrlKey||e.metaKey))[ix,iy]=xfSnapPoint(ix,iy);const R=xfLocalRect(),dx=ix-p.m0[0],dy=iy-p.m0[1],ctrl=e.ctrlKey||e.metaKey||['distort','skew','shear'].includes(xf.dragMode);
   const fromLocal=pts=>pts.flatMap(q=>apply3(p.H0,q[0],q[1]));const u=apply3(p.Hi,ix,iy);
   if(h.type==='wanchor'||h.type==='whandle'){const W=xf.warp,ddx=ix-p.last[0],ddy=iy-p.last[1];p.last=[ix,iy];
     if(h.type==='wanchor')warpMoveAnchor(W,h.i,h.j,ddx,ddy);else{h.p[0]+=ddx;h.p[1]+=ddy;W.mesh=null;}
     xfRender(true);drawXfOverlay();return;}
   if(h.type==='pivot'){const Hi=inv3(rectToQuad(xf.rect,xf.q));xf.pivot=apply3(Hi,ix,iy);drawXfOverlay();return;}
-  if(h.type==='move'){let mx=dx,my=dy;if(e.shiftKey){if(Math.abs(mx)>Math.abs(my))my=0;else mx=0;}xf.q=p.q0.map((v,i)=>v+(i%2?my:mx));}
+  if(h.type==='move'){let mx=dx,my=dy;if(e.shiftKey){if(Math.abs(mx)>Math.abs(my))my=0;else mx=0;}[mx,my]=xfSnapMove(p.q0,mx,my,e.altKey);xf.q=p.q0.map((v,i)=>v+(i%2?my:mx));}
   else if(h.type==='rotate'){let a=Math.atan2(iy-p.pd[1],ix-p.pd[0])-Math.atan2(p.m0[1]-p.pd[1],p.m0[0]-p.pd[0]);if(e.shiftKey)a=Math.round(a/(Math.PI/12))*(Math.PI/12);
     const c=Math.cos(a),s=Math.sin(a);xf.q=[];for(let i=0;i<8;i+=2){const x=p.q0[i]-p.pd[0],y=p.q0[i+1]-p.pd[1];xf.q.push(p.pd[0]+x*c-y*s,p.pd[1]+x*s+y*c);}}
   else if(h.type==='corner'&&xf.dragMode==='perspective'){const k=h.k,pair=k^1;xf.q=p.q0.slice();xf.q[k*2]+=dx;xf.q[k*2+1]+=dy;xf.q[pair*2]-=dx;xf.q[pair*2+1]+=dy;}
@@ -52,10 +74,10 @@ function xfPointerMove(e,ix,iy){const p=ptr,h=p.hit,R=xfLocalRect(),dx=ix-p.m0[0
     if(k%2===0){const c=k===0?R.y0:R.y1,a=e.altKey?R.cy:(k===0?R.y1:R.y0);sy=(u[1]-a)/(c-a);xf.q=fromLocal(R.LC.map(q=>[q[0],a+(q[1]-a)*sy]));}
     else{const c=k===1?R.x1:R.x0,a=e.altKey?R.cx:(k===1?R.x0:R.x1);sx=(u[0]-a)/(c-a);xf.q=fromLocal(R.LC.map(q=>[a+(q[0]-a)*sx,q[1]]));}}
   xfRender(true);drawXfOverlay();xfPanelSync();}
-function xfPointerUp(){ptr=null;xfRender(false);drawXfOverlay();xfPanelSync();}
+function xfPointerUp(){ptr=null;if(xf)xf.snapG=null;xfRender(false);drawXfOverlay();xfPanelSync();}
 
 /* ---- overlay drawing ---- */
-function drawXfOverlay(){if(!xf||xf.move){if(typeof crop!=='undefined'&&crop){drawCropOverlay();return;}const g=(ui.cageFlat?'':(typeof drawGradOverlay==='function'?drawGradOverlay():'')+(typeof lkOverlay==='function'?lkOverlay()+shapeOverlay():''))+cageOverlay()+(typeof cvOverlay==='function'?cvOverlay():'')+(typeof pxfOverlay2D==='function'&&!ui.cageFlat?pxfOverlay2D():'')+(typeof g3Overlay2D==='function'&&!ui.cageFlat?g3Overlay2D():'');if(g){xfOv.innerHTML=g;return;}if(xfOv.firstChild)xfOv.replaceChildren();return;}
+function drawXfOverlay(){if(!xf||xf.move){if(typeof crop!=='undefined'&&crop){drawCropOverlay();return;}const g=(ui.cageFlat?'':(typeof drawGradOverlay==='function'?drawGradOverlay():'')+(typeof lkOverlay==='function'?lkOverlay()+shapeOverlay():''))+cageOverlay()+(typeof cvOverlay==='function'?cvOverlay():'')+(typeof pxfOverlay2D==='function'&&!ui.cageFlat?pxfOverlay2D():'')+(typeof g3Overlay2D==='function'&&!ui.cageFlat?g3Overlay2D():'');if(g||xfSnapLines()){xfOv.innerHTML=g+xfSnapLines();return;}if(xfOv.firstChild)xfOv.replaceChildren();return;}
   const f=p=>scrPt(p).map(v=>v.toFixed(1)).join(' ');let s='';
   if(xf.warp){const W=xf.warp;let d='';
     for(let j=0;j<=W.n;j++)for(let i=0;i<W.n;i++){const e=W.hE[j][i];d+='M'+f(W.A[j][i])+'C'+f(e[0])+' '+f(e[1])+' '+f(W.A[j][i+1]);}
@@ -66,7 +88,7 @@ function drawXfOverlay(){if(!xf||xf.move){if(typeof crop!=='undefined'&&crop){dr
   else{const h=xfHandles();s+='<path class="ln" d="M'+h.corners.map(f).join('L')+'Z"/>';
     for(const p of [...h.corners,...h.edges]){const q=scrPt(p);s+='<rect class="hs" x="'+(q[0]-4)+'" y="'+(q[1]-4)+'" width="8" height="8"/>';}
     const q=scrPt(h.pivot);s+='<circle class="pv" cx="'+q[0]+'" cy="'+q[1]+'" r="5"/><path class="pv" d="M'+(q[0]-8)+' '+q[1]+'H'+(q[0]+8)+'M'+q[0]+' '+(q[1]-8)+'V'+(q[1]+8)+'"/>';}
-  xfOv.innerHTML=s;}
+  xfOv.innerHTML=s+xfSnapLines();}
 
 /* ---- numbers: position, scale, angle, skew (for boxes that are not distorted) ---- */
 function xfDecompose(){if(!isParallelogram(xf.q))return null;const q=xf.q,w=xf.rect[2]-xf.rect[0],h=xf.rect[3]-xf.rect[1];
@@ -111,8 +133,9 @@ function freeTransform(){if(xf)return;if(xfStart()){xfRender(false);toast('Trans
 /* ---- Move tool (V) ---- */
 function movePointerDown(e,ix,iy){if(!xfStart({move:true,copy:e.altKey&&sel.active}))return;ptr={mode:'movedrag',id:e.pointerId,m0:[ix,iy],q0:xf.q.slice(),d:[0,0]};}
 function movePointerMove(e,ix,iy){let dx=Math.round(ix-ptr.m0[0]),dy=Math.round(iy-ptr.m0[1]);if(e.shiftKey){if(Math.abs(dx)>Math.abs(dy))dy=0;else dx=0;}
-  if(dx===ptr.d[0]&&dy===ptr.d[1])return;ptr.d=[dx,dy];xf.q=ptr.q0.map((v,i)=>v+(i%2?dy:dx));xfRender(true);}
-function movePointerUp(){const d=ptr.d;ptr=null;if(d[0]||d[1])xfCommit();else xfCancel();}
+  if(typeof xfSnapMove==='function'){[dx,dy]=xfSnapMove(ptr.q0,dx,dy,e.altKey);dx=Math.round(dx);dy=Math.round(dy);}
+  if(dx===ptr.d[0]&&dy===ptr.d[1])return;ptr.d=[dx,dy];xf.q=ptr.q0.map((v,i)=>v+(i%2?dy:dx));xfRender(true);drawXfOverlay();}
+function movePointerUp(){const d=ptr.d;ptr=null;if(xf)xf.snapG=null;if(d[0]||d[1])xfCommit();else xfCancel();}
 function nudgeLayer(dx,dy){if(!xfStart({move:true}))return;xf.q=xf.q.map((v,i)=>v+(i%2?dy:dx));xfCommit();}
 function buildMovePanel(box){$('#brushTitle').textContent='Move';
   box.append(el('div',{class:'sub',text:'Drag to move the selected layers, or only the selected pixels when there is a selection. Alt+drag copies the selected pixels. Shift keeps the move straight. Arrow keys nudge 1 px, Shift+arrow 10 px.'}),

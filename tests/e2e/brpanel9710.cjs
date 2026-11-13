@@ -1,0 +1,25 @@
+/* 0.97.10 (Kenn): the Brush panel in folding groups, Simple / Advanced and a search box */
+const {chromium}=require('playwright'),path=require('path');
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});const p=await(await b.newContext({viewport:{width:1500,height:1000}})).newPage();
+const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.route('**/*',r=>r.request().url().startsWith('file:')?r.continue():r.abort());
+await p.goto('file://'+path.resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+await p.evaluate(()=>{__gs.closeWelcome&&__gs.closeWelcome();localStorage.removeItem('gs.brushAdv');__gs.setTool('brush');__gs.showPanel('brushes');__gs.buildBrushPanel&&__gs.buildBrushPanel()});await p.waitForTimeout(600);
+const vis=sel=>p.evaluate(s=>{const e=document.querySelector(s);return !!e&&e.offsetParent!==null},sel);
+ok(await vis('#brSearch')&&await vis('#brMode_simple'),'the panel has a search box and a Simple / Advanced switch');
+ok(await vis('#bSize'),'size, opacity and flow stay on top');
+const g=await p.evaluate(()=>[...document.querySelectorAll('#brushBody .brgrp')].map(d=>d.id+':'+d.open+':'+(d.offsetParent!==null)));
+console.log(g.join(' '));
+ok(g.some(x=>x.startsWith('brgrp_Stroke:true:true'))&&g.some(x=>x.startsWith('brgrp_Texture:false:true')),'Stroke starts open, Texture closed');
+ok(g.every(x=>!/Spray|Paint mixing|Paint feel/.test(x)||x.endsWith(':false')),'Simple hides the rare groups');
+await p.fill('#brSearch','spray');await p.waitForTimeout(300);
+ok(await vis('#bSpDot'),'searching "spray" reveals the Spray dot size even in Simple');
+await p.fill('#brSearch','');await p.waitForTimeout(300);
+ok(!await vis('#bSpDot'),'clearing the search hides it again');
+await p.click('#brMode_adv');await p.waitForTimeout(600);
+ok(await vis('#brgrp_Sprayanddrips')||await vis('#brgrp_Paintfeel'),'Advanced shows the rare groups');
+ok(await vis('#brushReset'),'Reset brush is at the end and visible');
+await p.click('#brMode_simple');await p.waitForTimeout(400);
+ok(errs.length===0,'no page errors '+errs.join('|'));
+await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0)})();

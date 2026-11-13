@@ -131,24 +131,21 @@ function surfaceDetailUse(index){
     pSize:false,pOpacity:false,smoothing:.18});
   surfaceDetailRender();
 }
+/* (0.97.10, Kenn) surface details never add a layer: they go onto the paint layer you picked (or its mask) */
 function surfaceDetailTarget(){
   if(sel.quick)return null;
+  const n=doc.active;
+  if(!toolPaintLayerOk(n,'paint surface details'))return null;
   const keys=detailKeys();
   if(keys.some(k=>!doc.maps.includes(k)))setDocMaps([...doc.maps,...keys],'Add surface detail channels');
-  const active=doc.active;
-  const name=SURFACE_DETAILS[surfaceDetail.index].name,key='surface-detail:'+name;
-  if(active?.materialPaint===key&&!active.fill&&!active.editMask)return active;
-  const L=newLayerObj(name,true);
-  L.materialPaint=key;
-  ensureMapTarget(L,'base');
-  structOp('New surface detail layer',()=>{const [parent,index]=insertPoint();insertNode(L,parent,index);selectOnly(L);});
-  return L;
+  return n;
 }
 function surfaceDetailPaintOptions(o,et){
-  if(!et||et.isMask){toast('Select a paint layer to paint surface details.');return null;}
+  if(!et){toast('Select a paint layer to paint surface details.');return null;}
   o.tool='brush';
   o.noTint=true;
   o.chan=null;
+  if(et.isMask)return toolMaskOptions(o,{surfaceDetail:{...surfaceDetail,paint:1}},false);
   o.material={surfaceDetail:{...surfaceDetail}};
   o.extras=detailKeys().filter(k=>k!==doc.map&&doc.maps.includes(k)).map(key=>({key,mode:1,color:[0,0,0]}));
   return o;
@@ -200,6 +197,8 @@ function surfaceDetailRender(){
     }}).el;
   const color=colourBtn('surfaceDetail-color',()=>ui.fg,setFG,'Detail color');
   box.replaceChildren(el('div',{class:'weld-shelf'},el('div',{class:'matgrid weld-grid'},...cards),
+    el('div',{class:'chips'},el('button',{class:'btn sm',text:'Sealant Bead',
+      title:'Lay an editable sealant bead on the model',onclick:sealantPathStart})),
     el('div',{class:'weld-controls'},el('label',{class:'frow'},el('span',{text:'Detail color'}),color),
       slider('size','Size',8,250,1,v=>v+' px'),slider('spacing','Spacing',.12,1.5,.01),
       slider('depth','Relief strength',0,1,.01),slider('paint','Color amount',0,1,.01),

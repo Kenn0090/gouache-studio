@@ -4,6 +4,18 @@
    else stays in the Tool settings panel. */
 let optSliders={};
 const OPT_PAINT=['brush','erase','smudge','dodge','burn','heal','clone','material'];
+/* the pop-up under an options bar button (Stroke, Dynamics, Texture, Symmetry) */
+let optDest=null;
+function optPopClose(){const o=document.getElementById('optPop');if(o)o.remove();document.removeEventListener('pointerdown',optPopOut,true);document.removeEventListener('keydown',optPopKey,true);}
+function optPopOut(e){const o=document.getElementById('optPop');if(!o||o.contains(e.target)||e.target.closest('.optpopbtn'))return;optPopClose();}
+function optPopKey(e){if(e.key==='Escape'){e.stopPropagation();optPopClose();}}
+function optPopToggle(btn,build){const open=document.getElementById('optPop');if(open&&open._for===btn.id){optPopClose();return;}optPopClose();
+  const box=el('div',{class:'optpop',id:'optPop',role:'dialog','aria-label':btn.textContent});box._for=btn.id;
+  const fill=()=>{box.replaceChildren();optDest=box;try{build(box);}finally{optDest=null;}};fill();
+  /* a switch inside it redraws the bar and the pop-up, which stays open */
+  box.addEventListener('click',e=>{if(e.target.closest('.optchip')||e.target.closest('select'))setTimeout(()=>{if(box.isConnected)fill();},30);});
+  document.body.append(box);const r=btn.getBoundingClientRect();box.style.left=Math.max(6,Math.min(r.left,innerWidth-box.offsetWidth-6))+'px';box.style.top=(r.bottom+4)+'px';
+  document.addEventListener('pointerdown',optPopOut,true);document.addEventListener('keydown',optPopKey,true);}
 function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren();bar.classList.remove('xfoptions');optSliders={};xfQuickFields=[];
   const t=ui.tool,title=$('#brushTitle')?$('#brushTitle').textContent:'';
   const slim=ui.mode==='p3d'&&OPT_PAINT.includes(t);bar.classList.toggle('slim',slim);
@@ -22,7 +34,7 @@ function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren
   bar.append(el('span',{class:'optsep'}));
   const S=(key,label,min,max,step,fmt,map,get,set)=>{const sl=makeSlider({id:'ob_'+key,label,min,max,step,value:get?get():brush[key],fmt,map,...brushNumericRange(key),onInput:v=>{if(set)set(v);else brush[key]=v;
       if(key==='size'){if(sizeSlider)sizeSlider.set(v);refreshCursor();}else{const s=document.getElementById({opacity:'bOp',flow:'bFlow',hardness:'bHard',strength:'bStr',spacing:'bSpace',smoothing:'bSmooth',lazy:'bLazy',grain:'bGrain',sizeJitter:'bSJ',angleJitter:'bAJ'}[key]);if(s)s._gsSlider?.set(v);}
-      if(!set)brushEdited(key);}});sl.el.classList.add('optslider');optSliders[key]={sl,get:get||(()=>brush[key])};bar.append(sl.el);};
+      if(!set)brushEdited(key);}});sl.el.classList.add('optslider');optSliders[key]={sl,get:get||(()=>brush[key])};(optDest||bar).append(sl.el);};
   if(sm&&ui.mode==='p3d'&&typeof smudge3dSeg==='function')bar.append(smudge3dSeg(),el('span',{class:'optsep'}));
   S('size','Size',0,1000,1,v=>Math.round(v)+'px',typeof sizeMap!=='undefined'?sizeMap:undefined);
   bar.append(brushDefaultSizeButton('ob_default_size'));
@@ -30,7 +42,6 @@ function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren
   else if(sm)S('strength','Strength',0,1,.01,pct);else S('opacity','Opacity',0,1,.01,pct);
   S('flow','Flow',.01,1,.01,pct);if(!brush.tip)S('hardness','Hardness',0,1,.01,pct);
   /* (0.95, Kenn) line smoothness where you can see it: Smoothing (the pen follows on a string of paint) and Correction (the line is ironed out from the points around it) */
-  if(!tonal&&(t==='brush'||t==='erase')&&ui.mode!=='p3d'){S('smoothing','Smoothing',0,1,.01,pct,null,null,null,'Smooths the line while you draw (the brush follows the pen a little behind)');S('correction','Correction',0,1,.01,pct,null,null,null,'Irons out wobble in the line. Higher = straighter, smoother lines; the line trails the pen a little');}
   bar.append(el('span',{class:'optsep'}));
   const tg=(label,on,fn,title)=>el('button',{class:'optchip'+(on?' on':''),'aria-pressed':String(!!on),title:title||'',text:label,onclick:fn});
   if(t==='heal'){bar.append(tg('Spot',heal.mode==='spot',()=>{heal.mode='spot';healSave();buildBrushPanel();buildOptBar();healMarker();},'Paint over a flaw: clean texture from nearby'),
@@ -41,26 +52,29 @@ function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren
   if(slim){/* 3D Paint (0.37): only size, opacity, flow, hardness and what the brush paints; the rest is in the Brush tab */
     const pm=typeof mapBrushTargets==='function'?mapBrushTargets():[],cur=(typeof MAP_DEFS!=='undefined'&&MAP_DEFS[doc.map]?MAP_DEFS[doc.map].label:'Base colour');
     bar.append(el('span',{class:'optsep'}),tg('Paints: '+cur+(pm.length?' + '+pm.length:''),pm.length>0,()=>showPanel('tool'),'Which maps the brush paints, and every other brush setting (Brush tab)'));return;}
-  bar.append(tg('Pressure: size',brush.pSize,()=>{brush.pSize=!brush.pSize;brushEdited();buildBrushPanel();},'Pen pressure changes the size'));
+  /* (0.97.10, Kenn) a short bar: size, opacity, flow and hardness stay; every other group is one small button that opens a pop-up with just that group */
+  const lineTool=!tonal&&(t==='brush'||t==='erase')&&ui.mode!=='p3d';
+  const pop=(id,label,title,build)=>{const b=el('button',{class:'optchip optpopbtn',id:'obp_'+id,'aria-haspopup':'true',title,text:label+' ▾',onclick:()=>optPopToggle(b,build)});bar.append(b);};
+  pop('stroke','Stroke','Spacing, smoothing, correction and lazy mouse',box=>{
+    S('spacing','Spacing',.01,1.5,.01,pct);if(lineTool){S('smoothing','Smoothing',0,1,.01,pct);S('correction','Correction',0,1,.01,pct);}S('lazy','Lazy mouse',0,200,1,v=>v?v+' px':'off');});
+  pop('dyn','Dynamics','Pen pressure and jitter',box=>{
+    box.append(tg('Pressure: size',brush.pSize,()=>{brush.pSize=!brush.pSize;brushEdited();buildBrushPanel();},'Pen pressure changes the size'),
+      tg('Pressure: opacity',brush.pOpacity,()=>{brush.pOpacity=!brush.pOpacity;brushEdited();buildBrushPanel();},'Pen pressure changes the opacity'));
+    if(!sm)box.append(tg('Pressure: flow',brush.pFlow,()=>{brush.pFlow=!brush.pFlow;brushEdited();buildBrushPanel();},'Pen pressure changes how fast paint builds up (flow)'),tg('Build-up',brush.buildup,()=>{brush.buildup=!brush.buildup;brushEdited();buildBrushPanel();},'Paint builds up while you hold the pen still'));
+    if(brush.pSize)S('minSize','Min size',0,1,.01,pct);S('sizeJitter','Size jitter',0,1,.01,pct);S('angleJitter','Angle jitter',0,1,.01,pct);});
+  pop('tex','Texture','Grain on the paint',box=>{S('grain','Grain',0,1,.01,pct);});
   if(ui.mode!=='bake'){/* (0.96.9, Kenn) no symmetry for skew painting */
-  const sy=el('select',{class:'optsel','aria-label':'Symmetry',title:'Symmetry'},...SYM_MODES.map(([k,l])=>el('option',{value:k,text:'Symmetry: '+l})));sy.value=ui.sym.mode;sy.onchange=()=>setSym(sy.value);bar.append(sy);
-  if(ui.sym.mode==='radial'){const rn=el('input',{type:'number',class:'optnum',id:'obRays',min:2,max:128,step:1,value:String(Math.round(ui.sym.n)),'aria-label':'Number of rays (2 to 128)',title:'Rays: how many copies of the stroke (2 to 128)'});rn.onchange=()=>symSetRays(rn.value);bar.append(rn);}
-  if(ui.sym.mode!=='off')bar.append(el('button',{class:'optchip',id:'obSymReset',text:'↺',title:'Reset symmetry: centre in the middle, six rays, aligned with the canvas','aria-label':'Reset symmetry',onclick:symResetAll}));}
+    pop('sym','Symmetry: '+(SYM_MODES.find(m=>m[0]===ui.sym.mode)||[0,'Off'])[1],'Mirror or radial copies of the stroke',box=>{
+      const sy=el('select',{class:'optsel','aria-label':'Symmetry',title:'Symmetry'},...SYM_MODES.map(([k,l])=>el('option',{value:k,text:'Symmetry: '+l})));sy.value=ui.sym.mode;sy.onchange=()=>{setSym(sy.value);};box.append(sy);
+      if(ui.sym.mode==='radial'){const rn=el('input',{type:'number',class:'optnum',id:'obRays',min:2,max:128,step:1,value:String(Math.round(ui.sym.n)),'aria-label':'Number of rays (2 to 128)',title:'Rays: how many copies of the stroke (2 to 128)'});rn.onchange=()=>symSetRays(rn.value);box.append(rn);}
+      if(ui.sym.mode!=='off')box.append(el('button',{class:'optchip',id:'obSymReset',text:'↺',title:'Reset symmetry: centre in the middle, six rays, aligned with the canvas','aria-label':'Reset symmetry',onclick:symResetAll}));});}
   const mb=typeof mapBrushTargets==='function'?mapBrushTargets():[];
   if(doc.maps.length>1&&(t==='brush'||t==='erase')&&ui.mode!=='anim')bar.append(tg(mb.length?'Also paints: '+mb.map(k=>MAP_DEFS[k].label).join(', '):'Also paint other maps…',mb.length>0,()=>showPanel('tool'),'Which other maps this brush paints (Tool settings)'));
   /* More: a second row with the settings you change now and then (spacing, smoothing, jitter, pressure…) */
   const more=optMore();bar.classList.toggle('more',more);
   bar.append(el('button',{class:'optchip optmore'+(more?' on':''),id:'obMore','aria-expanded':String(more),title:more?'Show fewer settings':'Show more brush settings',text:more?'Less ▴':'More ▾',onclick:()=>{optMore(!more);buildOptBar();if(typeof dkGrid==='function'&&dk.L)dkGrid();if(typeof resizeGL==='function'){resizeGL();fit();}}}));
   if(!more)return;
-  bar.append(el('span',{class:'optbreak'}));
-  const X=(key,label,min,max,step,fmt,id)=>S(key,label,min,max,step,fmt);
-  X('spacing','Spacing',.01,1.5,.01,pct,'bSpace');X('lazy','Lazy mouse',0,200,1,v=>v?v+' px':'off','bLazy');X('grain','Grain',0,1,.01,pct,'bGrain');
-  X('sizeJitter','Size jitter',0,1,.01,pct,'bSJ');X('angleJitter','Angle jitter',0,1,.01,pct,'bAJ');
-  bar.append(el('span',{class:'optsep'}));
-  bar.append(tg('Pressure: opacity',brush.pOpacity,()=>{brush.pOpacity=!brush.pOpacity;brushEdited();buildBrushPanel();},'Pen pressure changes the opacity'));
-  if(!sm)bar.append(tg('Pressure: flow',brush.pFlow,()=>{brush.pFlow=!brush.pFlow;brushEdited();buildBrushPanel();},'Pen pressure changes how fast paint builds up (flow)'));
-  if(!sm)bar.append(tg('Build-up',brush.buildup,()=>{brush.buildup=!brush.buildup;brushEdited();buildBrushPanel();},'Paint builds up while you hold the pen still'));
-  if(brush.pSize)X('minSize','Min size',0,1,.01,pct,'bMin');}
+  bar.append(el('span',{class:'optbreak'}),el('span',{class:'optnote',text:'Every setting is in the Tool settings panel.'}),el('button',{class:'btn sm',text:'Tool settings',title:'Open all settings for the selected tool',onclick:()=>showPanel('tool')}));}
 function optMore(v){if(v===undefined){try{return localStorage.getItem('gs.optMore')==='1';}catch(e){return false;}}try{localStorage.setItem('gs.optMore',v?'1':'0');}catch(e){}return v;}
 /* keep the bar's values in step when the brush changes elsewhere */
 function optSync(){for(const k in optSliders){const o=optSliders[k];o.sl.set(o.get());}}

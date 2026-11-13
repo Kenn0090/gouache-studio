@@ -1,0 +1,22 @@
+/* 0.97.10 (Kenn): the brush library in folders by medium (Pencil and charcoal, Ink and pen, Paint, ...), with By set still available */
+const {chromium}=require('playwright'),path=require('path');
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});const p=await(await b.newContext({viewport:{width:1500,height:1000}})).newPage();
+const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.route('**/*',r=>r.request().url().startsWith('file:')?r.continue():r.abort());
+await p.goto('file://'+path.resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(3000);
+await p.evaluate(()=>{__gs.closeWelcome&&__gs.closeWelcome();localStorage.removeItem('gs.libView');localStorage.removeItem('gs.libFoldMed');__gs.renderLibrary();__gs.showPanel('brushes')});await p.waitForTimeout(800);
+const folders=await p.evaluate(()=>[...document.querySelectorAll('#libBody .libset')].map(w=>w.querySelector('.libset-h span').textContent+'|'+w.classList.contains('folded')));
+console.log(folders.join('\n'));
+ok(folders.some(f=>f.startsWith('Pencil and charcoal'))&&folders.some(f=>f.startsWith('Ink and pen'))&&folders.some(f=>f.startsWith('Paint (')),'medium folders are listed');
+ok(folders.some(f=>f.startsWith('Ink and pen')&&f.endsWith('false'))&&folders.filter(f=>/·/.test(f)&&f.endsWith('false')).length===1,'only the folder of the selected brush (Gasa Pen: Ink and pen) starts open');
+const total=await p.evaluate(()=>__gs.library.reduce((n,s)=>n+s.presets.length,0));
+const counted=folders.reduce((n,f)=>{const m=f.match(/· (\d+)\|/);return n+(m?+m[1]:0)},0);
+ok(counted===total,'every brush is in exactly one folder ('+counted+' of '+total+')');
+const med=await p.evaluate(()=>({pencil:__gs.brushMedium({name:'HB pencil'},{id:'sketch0'}),smudge:__gs.brushMedium({name:'Whatever',tool:'smudge'},{id:'x'}),ink:__gs.brushMedium({name:'Fineliner'},{id:'x'}),eraser:__gs.brushMedium({name:'Hard eraser'},{id:'aqua6'})}));
+ok(med.pencil==='pencil'&&med.smudge==='blend'&&med.ink==='ink'&&med.eraser==='retouch','brushes are placed by set, tool and name: '+JSON.stringify(med));
+await p.click('#libView_set');await p.waitForTimeout(600);
+ok(await p.evaluate(()=>[...document.querySelectorAll('#libBody .libset-h span')].some(s=>/^Built-in/.test(s.textContent))),'By set shows the old list');
+await p.click('#libView_medium');await p.waitForTimeout(500);
+ok(errs.length===0,'no page errors '+errs.join('|'));
+await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0)})();

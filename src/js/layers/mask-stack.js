@@ -70,7 +70,7 @@ function msUsesDoc(L){return L.mask.stack.some(r=>{
   if(r.kind==='dir')return !(v3.mesh&&(ui.mode==='p3d'||v3.on));
   if(r.kind!=='gen')return false;
   const p=r.p;
-  if(MS_PAINT_DAMAGE.includes(p.g))return false;
+  if(MS_PAINT_DAMAGE.includes(p.g)||msWeatherKind(p.g)&&p.source!=='geometry')return false;
   const painted=k=>doc.maps.includes(k)&&!msMeshTex(k)&&!msMeshTex('cv:'+k);
   if(MS_WEAR_GENS.includes(p.g))return (!msMeshTex('curvEdge')&&!msMeshTex('cv:curvEdge')&&painted('curv'))||
     ((p.cavityProtection??.75)>0||p.g==='useWear'&&p.contactAmount>0)&&painted('ao');
@@ -611,7 +611,7 @@ function msFilter(r,acc){const o=acquireD(acc.depth);
   if(r.own==='warp'&&typeof meshConnectedWarp==='function'&&ui.mode==='p3d'&&!window.__oldWarp){const p=r.p||{};if(meshConnectedWarp(acc,o,p.r==null?3:p.r,p.scale||6,p.seed||1))return o;}
   if(r.own==='slope'&&typeof meshConnectedSlope==='function'&&ui.mode==='p3d'&&!window.__oldWarp){const p=r.p||{};if(meshConnectedSlope(acc,o,{amt:(p.r==null?3:p.r)*3.75,steps:16,mode:0,guide:1,freq:p.scale||6,seed:p.seed||1}))return o;}
   if(r.own){const P=msProgs(),p=r.p||{};withUVWrap(p.uvWrap!==false,[acc],()=>run(P.own,o,{uSrc:acc.tex,uOwn:{int:['grow','warp','slope'].indexOf(r.own)},uR:p.r==null?3:p.r,uScale:p.scale||6,uSz:[doc.w,doc.h],uSeed:p.seed||1}));return o;}
-  const F=FX[r.fx];if(!F){release(o);return null;}F.render(acc,o,r.v||fxDefaults(F),{});return o;}
+  const F=FX[r.fx];if(!F){release(o);return null;}F.render(acc,o,r.v||fxDefaults(F),{mask:true});return o;}
 /* the whole stack → a picture (pooled). ov = {row, t}: that Paint row's picture while it is being painted */
 /* while a Paint row is being painted, everything under it stays the same: that part is worked out once (msPre) and each frame starts from it */
 function msPreFree(M){if(M._pre){disposeTarget(M._pre.t);M._pre=null;}}
@@ -624,6 +624,7 @@ function msEval(L,ov,guard){const M=L.mask,S=M.stack,P=msProgs(),d=M.target.dept
       blit(M._pre.t,acc,0,0,doc.w,doc.h,0,0);from=idx;}}
   try{for(let ri=from;ri<S.length;ri++){const r=S[ri];if(ov&&ov.upTo!=null&&ri>=ov.upTo)break;if(r.on===false)continue;let s=null;
     if(r.kind==='filter'){const f=msFilter(r,acc);if(!f)continue;s={t:f,pooled:true};}
+    else if(r.kind==='gen'&&msWeatherKind(r.p.g))s=msWeatherSource(r,ctx,d,L,guard,acc);
     else s=msSource(r,ctx,d,ov,L,guard);
     if(!s)continue;const o=acquireD(d);run(P.blend,o,{uA:acc.tex,uB:s.t.tex,uMode:{int:msModeIx(r.mode)},uOp:r.op==null?1:r.op});if(s.pooled)release(s.t);release(acc);acc=o;}}
   finally{msCtxFree(ctx);}
@@ -711,6 +712,7 @@ function msCommit(){clearTimeout(msEd.timer);msEd.timer=0;const L=msEd.L,b=msEd.
 
 function msGenDefaults(g){
   const base={...MS_KINDS.gen.p(),g};
+  if(msWeatherKind(g))return {...base,...msWeatherDefaults(g)};
   if(g==='metalWear')return {...base,amount:.65,width:.55,breakup:.28,contrast:2,cavityProtection:.75,distort:.3,edgeStrength:1.25,edgeGrow:0,edgeDistortScale:9,
     scratchAmount:.24,scratchScale:34,scratchAngle:18,scratchReach:.36,
     metalScan:'metal-gouged-iron-scan',metalScanAmount:.7,metalScanTile:2,metalScanAngle:0};

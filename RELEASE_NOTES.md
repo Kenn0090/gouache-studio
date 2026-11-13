@@ -1,3 +1,13 @@
+## 0.97.10
+
+- **Creative weathering tools:** Ghost Decal for aged stickers, Rust & Runoff and Mineral Buildup mask generators, and an editable Sealant Bead path.
+- **Tools group** in the 3D Paint shelf (Welds, Stitches, Surface details). These tools now paint on the paint layer or mask you picked instead of adding a layer.
+- **Shorter top bar** with Stroke, Dynamics, Texture and Symmetry pop-ups.
+- **Brush panel** with folding groups, Simple / Advanced and search.
+- **Brush folders by medium** (Pencil, Ink, Paint, Spray, Blend, Texture, Effects, Retouch, Stamps, Welds).
+- **Border lock:** moves and scales snap to the canvas edges and centre (Alt turns it off).
+- **Fixed:** flat normal maps in Convert after using 3D Paint; Reset brush cut off in 3D Paint.
+
 ## 0.97.9
 
 - **19 stitch presets** in the 3D Paint shelf, including baseball lacing, garment seams, piping, buttonholes and darning. Paint freehand or draw editable stitch paths. Tune puckering, thread fray, damage and variation.

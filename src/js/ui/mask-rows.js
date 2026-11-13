@@ -163,8 +163,9 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
         el('p',{class:'note',text:'Add sums the inputs. Lightest keeps the strongest. Intersect keeps their overlap and skips missing maps. Bake the mesh maps to get the most detail.'}));
       return;
     }
-    const choose=sel('ms_g','Preset',MS_GENS,'g'),input=choose.querySelector('select');input.onchange=()=>{ed(x=>Object.assign(x.p,['light','linear','radial','comic',...MS_WEAR_GENS,...MS_PAINT_DAMAGE].includes(input.value)?msGenDefaults(input.value):{g:input.value}));renderLayers();renderMatEd(true);};box.append(choose);
+    const choose=sel('ms_g','Preset',MS_GENS,'g'),input=choose.querySelector('select');input.onchange=()=>{ed(x=>Object.assign(x.p,(msWeatherKind(input.value)||['light','linear','radial','comic',...MS_WEAR_GENS,...MS_PAINT_DAMAGE].includes(input.value))?msGenDefaults(input.value):{g:input.value}));renderLayers();renderMatEd(true);};box.append(choose);
     box.append(chk('ms_uvWrap','UV wrap',p.uvWrap!==false,v=>ed(x=>{x.p.uvWrap=v;})));
+    if(msWeatherKind(p.g)){msWeatherControls(box,L,r,p,ed,S,sel,inv);return;}
     const fresh=['light','linear','radial','comic'].includes(p.g);
     if(fresh){for(const [k,v] of Object.entries(msGenDefaults(p.g)))if(p[k]==null)p[k]=v;
       if(p.g==='light'||p.g==='comic')box.append(S('ms_lightAz','Light horizontal angle','lightAz',-180,180,1,v=>v+'°'),S('ms_lightEl','Light elevation','lightEl',-90,90,1,v=>v+'°'),S('ms_wrap','Light wrap','width',0,1,.01,pct),S('ms_occ','Cavity shading','occlude',0,1,.01,pct));

@@ -73,8 +73,9 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* ---- options bar: More ---- */
  await p.keyboard.press('b');await W();
  ok(!(await p.$('#ob_spacing')),'spacing is not in the short bar');
- await p.click('#obMore');await W();ok(!!(await p.$('#ob_spacing'))&&!!(await p.$('#ob_sizeJitter')),'More shows spacing and jitter');
- await p.click('#obMore');await W();ok(!(await p.$('#ob_spacing')),'Less hides them again');
+ await p.click('#obp_stroke');await W();ok(!!(await p.$('#optPop #ob_spacing')),'the Stroke pop-up shows spacing');
+ await p.click('#obp_dyn');await W();ok(!!(await p.$('#optPop #ob_sizeJitter')),'the Dynamics pop-up shows jitter');
+ await p.keyboard.press('Escape');await W();ok(!(await p.$('#optPop')),'Escape closes the pop-up');
 
  /* ---- fill layers ---- */
  await setFG('#2060c0');

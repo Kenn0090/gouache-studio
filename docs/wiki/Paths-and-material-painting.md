@@ -59,3 +59,7 @@ Choose **Draw stitch path**, click points on the model and press **Enter** to fi
 ## Surface detail brushes
 
 Open **Surface Details** in the **3D Paint** shelf to paint dents, gouges, chips, corrosion pits, grime, rust or cast-metal texture. Use **Relief strength**, **Color amount** and **Roughness amount** to control which parts of the underlying material change. Lower **Spacing** to overlap dabs when dragging. Add a mask to the finished layer to control where its details show.
+
+Choose **Sealant Bead** in the same shelf to create an editable surface path with a round, tooled, or flat profile. Tune the height, squeeze-out, gaps, and tool marks.
+
+Click on the model to place points, drag a point to curve the path, and press **Enter** to finish. Select it with **Surface Path** to edit it later.

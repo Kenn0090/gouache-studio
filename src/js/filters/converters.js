@@ -19,7 +19,7 @@ const CONVERTERS={
   normalFromBase:{title:'Normal from base colour',from:'base',to:'normal',name:'Normal from colour',
     defs:[...HEIGHT_DEFS,{key:'str',label:'Strength',min:0,max:32,step:.5,value:6,fmt:v=>v.toFixed(1)}],checks:[['inv','Invert (dark is high)',false]],
     note:'Builds a height from the colour’s brightness, then turns it into normal detail. It adds to any normal made from the Height map.',
-    make(src,out,v){const h=acquireD(greyDepth());heightFromColor(src,h,v);run(P.nrm,out,{uH:h.tex,uN:dummy,uUseN:false,uStr:v.str,uWrap:!!doc.wrap,uFlipY:false});release(h);}},
+    make(src,out,v){const h=acquireD(greyDepth());heightFromColor(src,h,v);run(P.nrm,out,{uPadHeight:false,uOwners:dummy,uH:h.tex,uN:dummy,uUseN:false,uStr:v.str,uWrap:!!doc.wrap,uFlipY:false});release(h);}},
   roughFromBase:{title:'Roughness from base colour',from:'base',to:'rough',name:'Roughness from colour',
     defs:[{key:'min',label:'Darkest becomes',min:0,max:1,step:.01,value:.35,fmt:pct},{key:'max',label:'Lightest becomes',min:0,max:1,step:.01,value:.85,fmt:pct},{key:'contrast',label:'Contrast',min:.2,max:4,step:.05,value:1,fmt:pct}],
     checks:[['inv','Invert',false]],note:'Maps brightness to a roughness range: 0% is glossy, 100% is matte.',

@@ -17,7 +17,7 @@ function pathRestore(L,sn){L.paths=pathCopy(sn.paths);L.pathCur=clamp(sn.cur|0,0
 const pathSnapOf=b=>b&&b.paths?b:{paths:[b],cur:0};
 let pathClip=null;
 function pathActive(){const L=doc.active;return L?.path&&inDoc(L)?L:null;}
-const pathMaterial=P=>P?.weld||P?.stitch;
+const pathMaterial=P=>P?.weld||P?.stitch||P?.weather;
 function pathToolOn(){return (ui.tool==='pen'&&['paint','p3d'].includes(ui.mode))||(ui.tool==='path'&&ui.mode==='p3d');}
 function pathMeshIndex(m){let C=pathMeshCaches.get(m);if(C)return C;const n=m.idx.length/3,ids=Uint32Array.from({length:n},(_,i)=>i),bounds=new Float32Array(n*6);let hash=2166136261;
   for(let t=0;t<n;t++){const b=t*6;bounds[b]=bounds[b+1]=bounds[b+2]=Infinity;bounds[b+3]=bounds[b+4]=bounds[b+5]=-Infinity;
@@ -49,11 +49,13 @@ function pathTipCopy(tip){const t=makeTarget(tip.w,tip.h,8,false);
   if(tip.fbo)blit(tip,t,0,0,tip.w,tip.h,0,0);
   else{if(!P_PATHTIPCOPY)P_PATHTIPCOPY=program('uniform sampler2D uTip; uniform vec2 uTipSize; void main(){float a=texture(uTip,gl_FragCoord.xy/uTipSize).r; o=vec4(a);}');run(P_PATHTIPCOPY,t,{uTip:tip.tex,uTipSize:[tip.w,tip.h]});}
   return t;}
-function pathNew(kind,stitch){const L=newLayerObj(kind==='3d'?'Surface path':'Pen path',true),P={kind,points:[],closed:false,mode:kind==='3d'?'stroke':'none',width:kind==='3d'?(v3.mesh?.radius||1)*.035:brush.size,hardness:brush.hardness,opacity:brush.opacity,spacing:brush.spacing,angle:brush.angle||0,roundness:brush.roundness||1,pressure:true};
+function pathNew(kind,stitch,weather){const L=newLayerObj(kind==='3d'?'Surface path':'Pen path',true),P={kind,points:[],closed:false,mode:kind==='3d'?'stroke':'none',width:kind==='3d'?(v3.mesh?.radius||1)*.035:brush.size,hardness:brush.hardness,opacity:brush.opacity,spacing:brush.spacing,angle:brush.angle||0,roundness:brush.roundness||1,pressure:true};
   const undoFrom=hist.undo.length;
   if(kind==='3d')P.mesh=pathMeshIndex(v3.mesh).sig;L.path=P;P.name='Path 1';L.paths=[P];L.pathCur=0;
   const weldMaterialTip=toolBrush.cur==='material'&&materialBrush.rec?.weldPaint&&brush.tip?.name.startsWith('Weld tip · ');
-  if(kind==='3d'&&stitch){
+  if(kind==='3d'&&weather){
+    weatherPathSetup(L,weather);
+  }else if(kind==='3d'&&stitch){
     stitchEnsureChannels();P.stitch=stitch;P.width=(v3.mesh.radius||1)*stitch.size/256;P.opacity=1;L.name='Stitch path';
   }else if(kind==='3d'&&(weldPathArmed||weldMaterialTip)){
     weldPathArmed=false;weldEnsureChannels();weldPathSetup(L);
@@ -63,7 +65,7 @@ function pathNew(kind,stitch){const L=newLayerObj(kind==='3d'?'Surface path':'Pe
     L.mask=makeMask(0,true);L.editMask=false;
     const tip=brush.tip;if(tip?.tex){L._fillImg={pathTip:pathTipCopy(tip)};P.tipName=tip.name;}
   }
-  const label=P.weld?'New weld path':P.stitch?'New stitch path':'New '+(kind==='3d'?'surface':'Pen')+' path';
+  const label=P.weather?'New '+P.weather.name.toLowerCase():P.weld?'New weld path':P.stitch?'New stitch path':'New '+(kind==='3d'?'surface':'Pen')+' path';
   structOp(label,()=>{const [p,i]=insertPoint();insertNode(L,p,i);selectOnly(L);});
   if(pathMaterial(P))undoMerge(undoFrom,label);
   pathEdit.L=L;pathEdit.point=-1;pathEdit.drawing=true;return L;}
@@ -116,7 +118,7 @@ function pathSurfaceFill(L,samples,T){if(samples.length<3)return;if(!P_SURFACEFI
     useProg(P_SURFACEFILL,{uUVs:1,uShift:[0,0],uH:dummy,uDisp:0,uUseH:false,uC:c,uAx:A,uU:U,uV:V,uDepth:depth,uCos:.15,uCount:{int:pts.length},uPoly:{v4a:packed}});gl.drawElements(gl.TRIANGLES,tris.length,gl.UNSIGNED_INT,0);}
   finally{gl.disable(gl.SCISSOR_TEST);gl.disable(gl.BLEND);gl.blendEquation(gl.FUNC_ADD);gl.bindVertexArray(vao);gl.deleteVertexArray(V0);gl.deleteBuffer(E);}}
 let P_PATHMERGE=null;
-function pathRender(L){if(L.path?.weld){weldPathRender(L);return;}if(L.path?.stitch){stitchPathRender(L);return;}if(!L.path||!L.mask||!pathValid(L))return;pathEnsure(L);const T=L.mask.target,cur=L.path;clearTarget(T,[0,0,0,1]);
+function pathRender(L){if(L.path?.weather){weatherPathRender(L);return;}if(L.path?.weld){weldPathRender(L);return;}if(L.path?.stitch){stitchPathRender(L);return;}if(!L.path||!L.mask||!pathValid(L))return;pathEnsure(L);const T=L.mask.target,cur=L.path;clearTarget(T,[0,0,0,1]);
   /* (0.93.3) every path has its own opacity: it is drawn into a spare picture and mixed into the layer's coverage at that opacity, the stronger of two paths winning where they cross.
      A layer saved before this kept its path's opacity as the layer's opacity; that moves into the path coverage the first time it is drawn. */
   let tmp=null;try{for(const P of L.paths){if(P.hidden||P.points.length<2||P.mode==='none')continue;L.path=P;if(!tmp)tmp=acquireD(T.depth);clearTarget(tmp,[0,0,0,1]);
@@ -180,8 +182,11 @@ function pathAddTo(L){pathEnsure(L);const before=pathSnap(L),P=pathCopy(L.path);
 function pathDelete(L,i){pathEnsure(L);if(L.paths.length<2){cmdDelete();return;}const before=pathSnap(L);L.paths.splice(i,1);pathSetCur(L,Math.min(i,L.paths.length-1));pathEdit.point=-1;pathRender(L);pathRecord(L,before,'Delete path');buildBrushPanel();requestRender();}
 function pathDuplicate(L,i){pathEnsure(L);const before=pathSnap(L),P=pathCopy(L.paths[i]);P.name=(P.name||'Path')+' copy';L.paths.splice(i+1,0,P);pathSetCur(L,i+1);pathRender(L);pathRecord(L,before,'Duplicate path');buildBrushPanel();requestRender();}
 function pathCopyClip(L){if(!L?.path)return;pathClip=pathCopy(L.path);toast('Copied “'+(L.path.name||'path')+'”.');if(pathToolOn())buildBrushPanel();}
-function pathPaste(L){if(pathClip?.stitch||L?.path?.stitch){toast('Use Duplicate path to copy a stitch path.');return;}if(!pathClip||!L?.path||pathClip.kind!==L.path.kind){toast(pathClip?'That path is a different kind.':'Copy a path first.');return;}pathEnsure(L);const before=pathSnap(L),P=pathCopy(pathClip);P.name=(P.name||'Path')+' copy';L.paths.push(P);pathSetCur(L,L.paths.length-1);pathRender(L);pathRecord(L,before,'Paste path');buildBrushPanel();requestRender();}
-function pathEventPoint(hit,e,kind){if(kind==='2d')return {p:toImage(e.clientX,e.clientY)};const pk=v3PickAt(hit,e);if(!pk||pk.set!==p3.cur)return null;return pathNearest(v3.mesh,pk.pos);}
+function pathPaste(L){if(pathClip?.weather||L?.path?.weather){toast('Choose Sealant Bead to start another bead.');return;}if(pathClip?.stitch||L?.path?.stitch){toast('Use Duplicate path to copy a stitch path.');return;}if(!pathClip||!L?.path||pathClip.kind!==L.path.kind){toast(pathClip?'That path is a different kind.':'Copy a path first.');return;}pathEnsure(L);const before=pathSnap(L),P=pathCopy(pathClip);P.name=(P.name||'Path')+' copy';L.paths.push(P);pathSetCur(L,L.paths.length-1);pathRender(L);pathRecord(L,before,'Paste path');buildBrushPanel();requestRender();}
+function pathEventPoint(hit,e,kind){if(kind==='2d')return {p:toImage(e.clientX,e.clientY)};const pk=v3PickAt(hit,e);if(!pk)return null;
+  const active=p3.sets[p3.cur],range=v3.mesh.setRanges?.[pk.set];
+  if(p3.udim?(!pk.tile||pk.tile.id!==active?.tile?.id||range&&range.start!==p3Range().start):pk.set!==p3.cur)return null;
+  return pathNearest(v3.mesh,pk.pos);}
 /* (0.94) Alt+click on an open, finished path adds a point at the end nearer the click (a click, not a drag: Alt+drag still turns the model) */
 function pathAltAdd(hit,e,kind,L){if(!L||!L.path||L.path.closed||pathMaterial(L.path)||L.path.kind!==kind||lockStop({node:L})||lockedPos(L))return false;const q=pathEventPoint(hit,e,kind);if(!q)return false;
   const P=L.path,n=P.points.length,r=hit.getBoundingClientRect(),m=[e.clientX-r.left,e.clientY-r.top],dist=i=>{const v=pathProject(P.points[i].p,kind,hit);return v?Math.hypot(v[0]-m[0],v[1]-m[1]):1e9;};
@@ -193,7 +198,9 @@ function pathAltStart(hit,e,kind){if(!e.altKey||e.button!==0||!pathToolOn()||!((
   pathEdit.altClick={id:e.pointerId,start:[e.clientX,e.clientY],hit,kind,moved:false};return false;}
 function pathDown(hit,e,kind){if(pathAltStart(hit,e,kind))return true;if(!pathToolOn()||(kind==='2d'&&ui.tool!=='pen')||(kind==='3d'&&ui.tool!=='path')||e.button!==0||spaceDown||e.altKey&&!pathHit(hit,e,kind))return false;
   if(stroke||preview||xf||selLive||tabDocs.hold||gfSaving||bk.busy)return true;if(kind==='3d'&&(!v3.mesh||v3.mesh.noUV))return true;
-  pathFlush();const found=pathHit(hit,e,kind),q=pathEventPoint(hit,e,kind);if(!q&&!found)return true;let L=found?.L||pathActive();
+  pathFlush();let found=pathHit(hit,e,kind);const active=pathActive();
+  if(pathEdit.drawing&&active?.path?.weather&&found?.L!==active)found=null;
+  const q=pathEventPoint(hit,e,kind);if(!q&&!found)return true;let L=found?.L||active;
   if(found&&found.k==='select'){selectOnly(found.L);pathSetCur(found.L,found.pi);pathEdit.L=found.L;pathEdit.point=-1;pathEdit.drawing=false;renderLayers();buildBrushPanel();requestRender();return true;}
   if(found&&found.pi!=null&&found.pi!==found.L.pathCur){selectOnly(found.L);pathSetCur(found.L,found.pi);}
   const can=L&&L.path&&L.path.kind===kind&&pathValid(L);
@@ -207,7 +214,7 @@ function pathDown(hit,e,kind){if(pathAltStart(hit,e,kind))return true;if(!pathTo
   /* clicking empty surface: drag draws a selection rectangle; a plain click starts a new path (decided when the button is released) */
   if(!found&&can&&!pathMaterial(L.path)&&!pathEdit.drawing){pathEdit.pend={id:e.pointerId,start:[e.clientX,e.clientY],hit,kind,shift:e.shiftKey,moved:false};try{hit.setPointerCapture(e.pointerId);}catch(er){}return true;}
   if(found&&found.k==='anchor'&&e.shiftKey&&can){const cur=pathSelection(L),i=found.i;pathSelect(L,cur.includes(i)?cur.filter(x=>x!==i):[...cur,i]);buildBrushPanel();requestRender();return true;}
-  if(!can||(!found&&pathMaterial(L.path)&&!pathEdit.drawing))L=pathNew(kind,L?.path?.stitch?pathCopy(L.path.stitch):undefined);
+  if(!can||(!found&&pathMaterial(L.path)&&!pathEdit.drawing))L=pathNew(kind,L?.path?.stitch?pathCopy(L.path.stitch):undefined,L?.path?.weather?{...pathCopy(L.path.weather),width:L.path.width/(v3.mesh.radius||1)}:undefined);
   if(lockStop({node:L})||lockedPos(L)){if(lockedPos(L))lockMsg(L,'position');return true;}selectOnly(L);const before=pathSnap(L);let index=found?.i,k=found?.k||'new';
   if(found)pathSelect(L,[found.i]);
   if(found&&index===0&&pathEdit.drawing&&L.path.points.length>=3&&!e.ctrlKey&&!e.altKey){L.path.closed=true;pathEdit.drawing=false;pathRender(L);pathRecord(L,before,'Close path');buildBrushPanel();return true;}
@@ -253,7 +260,7 @@ function pathKeys(e){const typing=!modal.hidden||openName||!pop.hidden||/INPUT|S
   const L=pathActive();if(e.key==='Enter'||e.key==='Escape'){if(pathEdit.drag)pathUp({pointerId:pathEdit.drag.id},e.key==='Escape');if(e.key==='Escape'&&L)pathSelect(L,[]);pathFinish();e.preventDefault();e.stopImmediatePropagation();return true;}
   if((e.key==='Delete'||e.key==='Backspace')&&L&&pathSelection(L).length){pathDeletePoints(L,pathSelection(L));e.preventDefault();e.stopImmediatePropagation();return true;}
   if((e.key==='Delete'||e.key==='Backspace')&&L&&!pathSelection(L).length){pathDelete(L,L.pathCur);e.preventDefault();e.stopImmediatePropagation();return true;}return false;}
-function pathNewButton(){pathFinish();const L=pathActive();if(L?.path.stitch){stitchPathStart();return;}pathEdit.point=-1;if(L&&!pathMaterial(L.path)&&L.path.kind===(ui.tool==='path'?'3d':'2d')&&pathValid(L)){pathAddTo(L);buildBrushPanel();requestRender();return;}pathEdit.L=null;selectOnly(null);pathEdit.drawing=true;buildBrushPanel();requestRender();}
+function pathNewButton(){pathFinish();const L=pathActive();if(L?.path.stitch){stitchPathStart();return;}if(L?.path.weather){sealantPathStart();return;}pathEdit.point=-1;if(L&&!pathMaterial(L.path)&&L.path.kind===(ui.tool==='path'?'3d':'2d')&&pathValid(L)){pathAddTo(L);buildBrushPanel();requestRender();return;}pathEdit.L=null;selectOnly(null);pathEdit.drawing=true;buildBrushPanel();requestRender();}
 /* the Paths panel: every path of this layer, with show/hide, rename (double-click), duplicate, copy, paste and delete */
 function pathsPanel(box,L){pathEnsure(L);const list=el('div',{class:'pathlist',role:'listbox','aria-label':'Paths'});
   L.paths.forEach((P,i)=>{const on=P===L.path,eye=el('button',{type:'button',class:'btn sm patheye',title:P.hidden?'Show this path':'Hide this path','aria-label':P.hidden?'Show path':'Hide path','aria-pressed':String(!P.hidden),text:P.hidden?'○':'●',onclick:e=>{e.stopPropagation();pathChange(q=>{q.hidden=!q.hidden;},P.hidden?'Show path':'Hide path',P);}}),
@@ -281,17 +288,19 @@ function pathPanel(box){const L=pathActive(),P=L?.path;pathPanelFor=doc.active;$
     el('div',{class:'chips'},el('button',{class:'btn sm',id:'pathNew',text:'New path',onclick:pathNewButton}),el('button',{class:'btn sm',id:'pathFinish',text:'Finish',disabled:!P,onclick:pathFinish})));
   if(!P){box.append(el('p',{class:'note',text:'Start a path on the '+(ui.tool==='path'?'model.':'canvas.')}));return;}
   if(P.stitch)box.append(el('button',{class:'btn sm',text:'Stitch settings',onclick:()=>showPanel('stitches')}));
+  else if(P.weather)weatherPathControls(box,P);
   else pathsPanel(box,L);
   const name=el('input',{id:'pathName',value:L.name,'aria-label':'Layer name',title:'Layer name'});name.onchange=()=>{const b=L.name,a=name.value.trim()||b;L.name=a;pushUndo({label:'Rename layer',refs:[L],undo(){L.name=b;},redo(){L.name=a;}});changed(L);};box.append(name,
-    seg(pathMaterial(P)?[['none','Path only'],['stroke',P.stitch?'Stitches':'Weld bead']]:P.kind==='3d'?[['stroke','Paint along path'],['ribbon','Ribbon path'],['fill','Filled path']]:[['none','Path only'],['stroke','Brush stroke'],['fill','Fill']],P.mode,v=>{pathChange(p=>{p.mode=v;if(v==='fill'&&p.points.length>=3)p.closed=true;},'Path painting mode');if(v==='ribbon'&&typeof rbUseText==='function'&&!rbImage(L,L.path))rbUseText(L,L.path,Object.assign({},t3.style,{content:'Ribbon text',align:'left'}));},'Path painting mode'),
+    seg(pathMaterial(P)?[['none','Path only'],['stroke',P.weather?P.weather.name:P.stitch?'Stitches':'Weld bead']]:P.kind==='3d'?[['stroke','Paint along path'],['ribbon','Ribbon path'],['fill','Filled path']]:[['none','Path only'],['stroke','Brush stroke'],['fill','Fill']],P.mode,v=>{pathChange(p=>{p.mode=v;if(v==='fill'&&p.points.length>=3)p.closed=true;},'Path painting mode');if(v==='ribbon'&&typeof rbUseText==='function'&&!rbImage(L,L.path))rbUseText(L,L.path,Object.assign({},t3.style,{content:'Ribbon text',align:'left'}));},'Path painting mode'),
     el('div',{class:'chips'},chk('pathClosed','Closed path',P.closed,v=>pathChange(p=>p.closed=v,'Close/open path')),chk('pathPressure','Point pressure',P.pressure,v=>pathChange(p=>p.pressure=v,'Path pressure'))));
   const sl=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:P[key],fmt,onInput:v=>{if(lockStop({node:L}))return;const b=pathSnap(L);L.path[key]=v;pathRender(L);clearTimeout(L._pathTimer);if(!L._pathBefore)L._pathBefore=b;L._pathTimer=setTimeout(()=>{const old=L._pathBefore;L._pathBefore=null;pathRecord(L,old,'Path '+label.toLowerCase());},400);}}).el;
   if(P.kind==='3d'&&P.mode==='ribbon'&&typeof ribbonPanel==='function')ribbonPanel(box,L,P);
-  if(!P.weld?.profile&&!P.stitch)box.append(sl('pathWidth','Width','width',P.kind==='3d'?.001:1,P.kind==='3d'?2:1000,P.kind==='3d'?.001:1,v=>P.kind==='3d'?v.toFixed(3)+' units':Math.round(v)+' px'),sl('pathHard','Hardness','hardness',0,1,.01,pct));
+  if(!P.weld?.profile&&!P.stitch)box.append(sl('pathWidth','Width','width',P.kind==='3d'?.001:1,P.kind==='3d'?2:1000,P.kind==='3d'?.001:1,v=>P.kind==='3d'?v.toFixed(3)+' units':Math.round(v)+' px'));
+  if(!P.weld?.profile&&!P.stitch&&!P.weather)box.append(sl('pathHard','Hardness','hardness',0,1,.01,pct));
   box.append(sl('pathOpacity','Opacity','opacity',0,1,.01,pct));
   if(P.kind==='3d'){
     box.append(makeSlider({id:'pathDepth',label:'Projection depth',min:.1,max:6,step:.05,value:P.depthK||1,fmt:v=>v.toFixed(2)+'×',onInput:v=>{if(lockStop({node:L}))return;const b=pathSnap(L);L.path.depthK=v;pathRender(L);clearTimeout(L._pathTimer);if(!L._pathBefore)L._pathBefore=b;L._pathTimer=setTimeout(()=>{const old=L._pathBefore;L._pathBefore=null;pathRecord(L,old,'Path projection depth');},400);}}).el,
-      (P.weld?.profile||P.stitch)?null:el('div',{class:'chips'},chk('pathFollow','Follow path',P.follow!==false,v=>pathChange(q=>q.follow=v,'Follow path')),
+      (P.weld?.profile||P.stitch||P.weather)?null:el('div',{class:'chips'},chk('pathFollow','Follow path',P.follow!==false,v=>pathChange(q=>q.follow=v,'Follow path')),
         P.follow===false?el('select',{id:'pathUp','aria-label':'Up axis',title:'The axis that orients each stamp when Follow path is off'},...[['x','+X'],['y','+Y'],['z','+Z'],['nx','−X'],['ny','−Y'],['nz','−Z']].map(([v,t])=>el('option',{value:v,text:'Up axis: '+t}))):null),
       el('div',{class:'chips'},el('span',{class:'note',text:'Symmetry'}),...['x','y','z'].map(a=>chk('pathSym'+a,a.toUpperCase(),!!(P.sym&&P.sym[a]),v=>pathChange(q=>{q.sym=Object.assign({x:false,y:false,z:false},q.sym,{[a]:v});},'Path symmetry')))));
     const up=$('#pathUp');if(up){up.value=P.up||'y';up.onchange=()=>pathChange(q=>q.up=up.value,'Path up axis');}}
