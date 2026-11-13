@@ -19,6 +19,7 @@
     "ui/color-modes",
     "paint/brush-library",
     "paint/brush-panel-org",
+    "paint/brush-media",
     "paint/dual-brush",
     "paint/pressure-curve",
     "paint/brush-preview-pop",

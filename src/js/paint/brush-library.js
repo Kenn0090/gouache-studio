@@ -170,21 +170,29 @@ function libFolded(){try{return new Set(JSON.parse(localStorage.getItem(LIBFOLD_
 function libFoldSave(set){try{localStorage.setItem(LIBFOLD_KEY,JSON.stringify([...set]));}catch(e){}}
 function renderLibrary(){const box=$('#libBody');box.replaceChildren();
   brushSession.recent=brushSession.recent.filter(p=>library.some(s=>s.presets.includes(p)));
-  const folded=libFolded();
+  const folded=libFolded();let mfolded=null;
   /* one folding section: arrow + title (+ extra header buttons); the tiles are made the first time it is open */
   const section=(id,title,extra,fill,cls)=>{const wrap=el('div',{class:'libset'+(cls?' '+cls:''),id:id==='recent'?'recentBrushes':undefined}),tiles=el('div',{class:'tiles'}),
       arrow=el('button',{class:'libfold',type:'button','aria-label':'Fold or unfold '+title,title:'Fold or unfold this set'}),
       head=el('div',{class:'libset-h',style:'cursor:pointer'},arrow,el('span',{text:title,style:'flex:1'}),extra||null);
-    const apply=()=>{const f=folded.has(id);wrap.classList.toggle('folded',f);arrow.textContent=f?'▸':'▾';arrow.setAttribute('aria-expanded',String(!f));if(!f&&!tiles.childElementCount)fill(tiles);};
-    const toggle=()=>{if(folded.has(id))folded.delete(id);else folded.add(id);libFoldSave(folded);apply();};
+    const med=id.startsWith('med_'),F=()=>med?mfolded:folded,SV=x=>med?brMedFoldSave(x):libFoldSave(x);const apply=()=>{const f=F().has(id);wrap.classList.toggle('folded',f);arrow.textContent=f?'▸':'▾';arrow.setAttribute('aria-expanded',String(!f));if(!f&&!tiles.childElementCount)fill(tiles);};
+    const toggle=()=>{const f=F();if(f.has(id))f.delete(id);else f.add(id);SV(f);apply();};
     head.addEventListener('click',e=>{if(e.target.closest('button')&&e.target!==arrow)return;toggle();});
     wrap.append(head,tiles);apply();return wrap;};
-  const bar=el('div',{class:'libfoldbar',style:'display:flex;gap:6px;margin:2px 0 6px'},
-    el('button',{class:'btn sm',type:'button',text:'Fold all',onclick:()=>{libFoldSave(new Set([...library.map(x=>x.id),'recent']));renderLibrary();}}),
-    el('button',{class:'btn sm',type:'button',text:'Unfold all',onclick:()=>{libFoldSave(new Set());renderLibrary();}}));
+  const byMed=typeof brushMediaGroups==='function'&&brLibView()==='medium';
+  mfolded=byMed?brMedFolded():null;
+  const viewSeg=typeof brushMediaGroups==='function'?el('span',{class:'seg libview','aria-label':'Group brushes by'},...[['medium','By medium','Folders by what you paint with'],['set','By set','The sets the brushes came in']].map(([v,l,t])=>
+    el('button',{class:'btn sm'+((byMed?'medium':'set')===v?' on':''),type:'button',id:'libView_'+v,text:l,title:t,onclick:()=>{try{localStorage.setItem('gs.libView',v);}catch(e){}renderLibrary();}}))):null;
+  const bar=el('div',{class:'libfoldbar',style:'display:flex;gap:6px;margin:2px 0 6px;flex-wrap:wrap'},viewSeg,
+    el('button',{class:'btn sm',type:'button',text:'Fold all',onclick:()=>{if(byMed)brMedFoldSave(new Set(brushMediaGroups().media.map(g=>'med_'+g.key)));else libFoldSave(new Set([...library.map(x=>x.id),'recent']));renderLibrary();}}),
+    el('button',{class:'btn sm',type:'button',text:'Unfold all',onclick:()=>{if(byMed)brMedFoldSave(new Set());else libFoldSave(new Set());renderLibrary();}}));
   box.append(bar);
+  const tileOf=(set,p)=>{const tile=brushLibraryTile(p,false);if(!set.builtin){tile.title+=' · right-click to delete';tile.addEventListener('contextmenu',e=>{e.preventDefault();confirmDlg('Delete brush','Delete “'+p.name+'” from '+set.name+'? This cannot be undone.','Delete',()=>removeBrush(set,p));});}return tile;};
   if(brushSession.recent.length)box.append(section('recent','Recent brushes',null,t=>t.append(...brushSession.recent.map(p=>brushLibraryTile(p,true)))));
-  for(const set of library)box.append(section(set.id,set.builtin?set.name:set.name+' · '+set.presets.length,set.builtin?null:el('button',{text:'Remove','aria-label':'Remove brush set '+set.name,onclick:e=>{e.stopPropagation();removeSet(set);}}),t=>{for(const p of set.presets){const tile=brushLibraryTile(p,false);if(!set.builtin){tile.title+=' · right-click to delete';tile.addEventListener('contextmenu',e=>{e.preventDefault();confirmDlg('Delete brush','Delete “'+p.name+'” from '+set.name+'? This cannot be undone.','Delete',()=>removeBrush(set,p));});}t.append(tile);}}));
+  if(byMed){const G=brushMediaGroups();
+    for(const g of G.mine)box.append(section(g.set.id,g.set.name+' · '+g.items.length,el('button',{text:'Remove','aria-label':'Remove brush set '+g.set.name,onclick:e=>{e.stopPropagation();removeSet(g.set);}}),t=>{for(const {set,p} of g.items)t.append(tileOf(set,p));}));
+    for(const g of G.media){const id='med_'+g.key;const wrap=section(id,g.title+' · '+g.items.length,null,t=>{for(const {set,p} of g.items)t.append(tileOf(set,p));},'brmed');box.append(wrap);}
+  }else for(const set of library)box.append(section(set.id,set.builtin?set.name:set.name+' · '+set.presets.length,set.builtin?null:el('button',{text:'Remove','aria-label':'Remove brush set '+set.name,onclick:e=>{e.stopPropagation();removeSet(set);}}),t=>{for(const p of set.presets)t.append(tileOf(set,p));}));
   if(typeof renderDualPicker==='function')queueMicrotask(renderDualPicker);
   if(typeof shBrushChanged==='function')shBrushChanged();/* (0.96) the shelf's Brushes category follows */}
 /* Shared range gestures use displayed units: five percentage points, degrees or pixels.

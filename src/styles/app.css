@@ -1677,3 +1677,4 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .brhead .seg{display:flex;gap:4px}.brhead .seg .btn{flex:1}.brhead .seg .btn.on{background:var(--accent,#f0a040);color:#111}
 .br-simple .br-adv{display:none}.br-searching .br-adv{display:revert}.br-searching .br-adv[hidden]{display:none}
 .brgrp{margin:4px 0}
+.libview{display:inline-flex;gap:4px}.libview .btn.on{background:var(--accent,#f0a040);color:#111}
