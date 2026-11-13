@@ -98,7 +98,7 @@ function gdSnap(x,y){const tol=GD_SNAP/view.zoom;let bx=null,dx=tol,by=null,dy=t
 window.addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey)||e.key!==';'||isTypingTarget(e.target))return;e.preventDefault();e.stopImmediatePropagation();
   if(e.altKey){rl.lock=!rl.lock;toast(rl.lock?'Guides locked.':'Guides unlocked.');}else{rl.show=!rl.show;toast(rl.show?'Guides shown.':'Guides hidden.');}rlStore();rl.sig='';},true);
 /* View menu */
-MENUS.View.splice(MENUS.View.indexOf('-')+0,0,'-',['Rulers','rulers','Ctrl+R'],['Show guides','guidesShow','Ctrl+;'],['Snap to guides','guidesSnap'],['Lock guides','guidesLock','Alt+Ctrl+;'],['New guide…','guideNew'],['Clear guides','guidesClear']);
-Object.assign(actions,{rulers:()=>toggleRulers(),guidesShow:()=>{rl.show=!rl.show;rlStore();rl.sig='';},guidesSnap:()=>{rl.snap=!rl.snap;rlStore();},guidesLock:()=>{rl.lock=!rl.lock;rlStore();rl.sig='';},guideNew:dlgNewGuide,guidesClear:gdClear});
-Object.assign(checked,{rulers:()=>rl.on,guidesShow:()=>rl.show,guidesSnap:()=>rl.snap,guidesLock:()=>rl.lock});
+MENUS.View.splice(MENUS.View.indexOf('-')+0,0,'-',['Rulers','rulers','Ctrl+R'],['Show guides','guidesShow','Ctrl+;'],['Snap to guides','guidesSnap'],['Snap transforms to canvas edges','xfSnap'],['Lock guides','guidesLock','Alt+Ctrl+;'],['New guide…','guideNew'],['Clear guides','guidesClear']);
+Object.assign(actions,{rulers:()=>toggleRulers(),guidesShow:()=>{rl.show=!rl.show;rlStore();rl.sig='';},guidesSnap:()=>{rl.snap=!rl.snap;rlStore();},xfSnap:()=>xfSnapToggle(),guidesLock:()=>{rl.lock=!rl.lock;rlStore();rl.sig='';},guideNew:dlgNewGuide,guidesClear:gdClear});
+Object.assign(checked,{rulers:()=>rl.on,guidesShow:()=>rl.show,guidesSnap:()=>rl.snap,xfSnap:()=>xfSnapOn(),guidesLock:()=>rl.lock});
 rlSync();requestAnimationFrame(rlFrame);
