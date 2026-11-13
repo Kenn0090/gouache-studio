@@ -616,6 +616,7 @@ async function weldUse(style){
   try{
     if(!await materialBrushUse(weldMaterial(style,weldOptions)))return;
     weldWarmMask();weldApplyBrush(true);
+    if(ui.mode==='p3d')showPanel('tool');
     toast(style.name+' ready. Drag to weld or choose Draw weld path.');
     weldToolsRender();
   }finally{weldBusy=false;}
@@ -704,12 +705,11 @@ function weldShelfContent(){
     legacy?null:row('Pitting','pitting',0,1,.01),legacy?null:row('Spatter','spatter',0,1,.01),
     editing&&!legacy?row('End taper','taper',0,1,.01):null,
     legacy?null:row('Variation seed','seed',1,99,1,v=>String(Math.round(v))));
-  return el('div',{class:'weld-shelf'},
-    el('div',{class:'weld-actions'},select,paint,path),joins,grid,controls);
+  return {thumbs:grid,settings:el('div',{class:'weld-shelf'},el('div',{class:'weld-actions'},select,paint,path),joins,controls)};
 }
 function weldToolsRender(){
   const L=pathActive();
   if(L?.path?.weld&&ui.tool==='path')Object.assign(weldOptions,weldPathSettings(L.path.weld));
   else if(!weldIsPreset(weldOptions.style))Object.assign(weldOptions,weldDefaults(WELD_PRESETS[0]));
-  const box=$('#weldToolsBody');if(box)box.replaceChildren(weldShelfContent());
+  const box=$('#weldToolsBody');if(box){const c=weldShelfContent();box.replaceChildren(c.thumbs);tsSet('weld',c.settings);}
 }

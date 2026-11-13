@@ -733,3 +733,8 @@ function msAddImageTarget(L,t,name){
   matFlush();const r=msAdd(L,'image',{t,p:Object.assign(MS_KINDS.image.p(),{name})},'Add '+name+' to the mask');
   if(!r){disposeTarget(t);return null;}L.fxFold=false;msSelect(L,'m',r.id);renderLayers();renderMatEd(true);requestRender(true);return r;
 }
+
+/* (0.97.11, Kenn) "Fill white / Fill black" in the mask menus clears the mask itself (its Paint row, or the selection) instead of adding a Fill row:
+   a layer with no mask gets a plain white (reveal all) or black (hide all) one */
+function maskFillTo(L,v){if(!L)return;if(!L.mask){if(doc.active!==L)selectOnly(L);cmdAddMask(v?1:0);renderLayers();return;}
+  if(doc.active!==L)selectOnly(L);L.editMask=true;maskOp(0,v?1:0);renderLayers();}

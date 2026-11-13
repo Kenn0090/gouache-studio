@@ -13,9 +13,9 @@ const {chromium}=require('playwright');const OLD=__dirname+'/';let fails=0;const
  const grab=()=>p.evaluate(()=>{const G=__gs,F=G.v3Targets(160,160);G.v3Render(F);const a=G.captureRegionNow({fbo:F.rf,w:F.w,h:F.h,depth:8},0,0,F.w,F.h).data;const sm=[];for(let i=0;i<a.length;i+=8)sm.push(a[i]+a[i+1]*3+a[i+2]*7);return {sm,err:G.gl.getError()};});
  const md=(x,y)=>{let m=0;for(let i=0;i<x.sm.length;i++)m=Math.max(m,Math.abs(x.sm[i]-y.sm[i]));return m;};
  const base=await grab();
- await p.locator('#v3Metal').click();await W(500);const metal=await grab();
+ await p.evaluate(()=>{const e=document.getElementById('v3Metal'),k=document.getElementById('v3ShowBtn');if(e&&e.offsetParent===null&&k)k.click();});await p.locator('#v3Metal').click();await W(500);const metal=await grab();
  ok(await p.evaluate(()=>__gs.v3s().metalView)===true&&md(base,metal)>40&&metal.err===0,'the Metal button shows the model as polished metal');
- await p.locator('#v3Metal').click();await W(400);ok(md(base,await grab())<4,'clicking Metal again goes back');
+ await p.evaluate(()=>{const e=document.getElementById('v3Metal'),k=document.getElementById('v3ShowBtn');if(e&&e.offsetParent===null&&k)k.click();});await p.locator('#v3Metal').click();await W(400);ok(md(base,await grab())<4,'clicking Metal again goes back');
  /* reset */
  await p.evaluate(()=>{const o=__gs.bvSettings();Object.assign(o,{on:true,width:3.3,angle:77,samples:60,profile:'chamfer',soft:.7,convex:.2,isect:0,mats:{a:.5}});__gs.showPanel('shading');__gs.renderShading();});await W(800);
  ok(await p.locator('#bkBevelReset').count()===1,'the Bevel shader has a Reset button');

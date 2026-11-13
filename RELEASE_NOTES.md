@@ -1,3 +1,10 @@
+## 0.97.11
+
+- **Shorter 3D Paint bar** with Show and View pop-ups; radial symmetry is in the Mirror pop-up.
+- **Tools shelf shows thumbnails only**; weld, stitch and surface detail settings appear in the Brush settings.
+- **Generators category** in the 3D Paint shelf: click or drag onto a layer or mask.
+- **Fill white / Fill black on a mask** fills the mask instead of adding a Fill row.
+
 ## 0.97.10
 
 - **Creative weathering tools:** Ghost Decal for aged stickers, Rust & Runoff and Mineral Buildup mask generators, and an editable Sealant Bead path.

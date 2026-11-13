@@ -49,7 +49,7 @@ function fxAddMenu(e,start){const L=doc.active;if(!L||!(isLayer(L)||L.type==='gr
       page([head('Add to the layer’s content'),it('⚓ Anchor point',()=>cfxAddAnchor(L)),sep(),...all.slice(0,40),sep(),...(isLayer(L)&&!L.mask?[it('Live mask (limits painting)…',()=>liveMaskStart(L))]:[]),it('Add to its mask instead…',()=>{if(!L.mask){msAdd(L,'fill',{p:{v:1}});}L.editMask=true;renderLayers();fxAddMenu(e);},true)]);return;}
     const mks=msMeshKeys(),others=allNodes(doc.root).filter(n=>n!==L&&n.mask);
     page([head('Add to the mask of “'+L.name+'”'),
-      it('Paint',add('paint')),it('Fill white',add('fill',{p:{v:1}})),it('Fill black',add('fill',{p:{v:0}})),
+      it('Paint',add('paint')),it('Fill white',()=>maskFillTo(L,1)),it('Fill black',()=>maskFillTo(L,0)),
       it('Mesh map',sub('Mesh map',mks.length?mks.map(k=>it(msMeshName(k),add('mesh',{p:{k,inv:false}}))):[el('p',{class:'note',style:'padding:6px 10px;max-width:240px',text:'No baked maps yet. Bake in the Bake tab and press Send to 3D Paint.'})]),true),
       it('ID colour',()=>{const r=msAdd(L,'id');if(r){ui.viewMask=true;maskTool('id');}}),
       it('Direction (facing up…)',add('dir')),it('Gradient',add('grad')),it('3D gradient (points around the model)',add('g3d')),

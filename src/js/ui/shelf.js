@@ -6,13 +6,13 @@
    Every category with tiles gets the same quick bar: search, ★ favourites, 🕒 recent, tile size S/M/L, grid/list, then its own buttons.
    Tiles are the ordinary .mattile buttons of each panel: a MutationObserver gives each one a star, a key and the filters, so the
    panels keep rendering the way they always did. Favourites and recent items are remembered per computer (gs.shFav, gs.shRecent). */
-const SH_SEC={shbrush:'#shBrushSec',mats:'#matSec',smats:'#smSec',smasks:'#smkSec',shalpha:'#shAlphaSec',textures:'#txSec',decals:'#dcSec',envs:'#envSec'};
-const SH_BODY={shbrush:'shBrushBody',mats:'matBody',smats:'smBody',smasks:'smkBody',shalpha:'shAlphaBody',textures:'txBody',decals:'dcBody',envs:'envBody'};
+const SH_SEC={shbrush:'#shBrushSec',mats:'#matSec',smats:'#smSec',smasks:'#smkSec',shgen:'#shGenSec',shalpha:'#shAlphaSec',textures:'#txSec',decals:'#dcSec',envs:'#envSec'};
+const SH_BODY={shbrush:'shBrushBody',mats:'matBody',smats:'smBody',smasks:'smkBody',shgen:'shGenBody',shalpha:'shAlphaBody',textures:'txBody',decals:'dcBody',envs:'envBody'};
 const SH_KEY='gs.shelf96',SH_SIZES={s:44,m:64,l:104};
 const shS=(()=>{let o={};try{o=JSON.parse(localStorage.getItem(SH_KEY)||'{}');}catch(e){}return Object.assign({size:'m',list:false,fav:false,recent:false,all:false},o);})();
 const shQ={},shLoad=k=>{try{return JSON.parse(localStorage.getItem(k)||'[]');}catch(e){return [];}};
 let shFav=new Set(shLoad('gs.shFav')),shRecent=shLoad('gs.shRecent');
-const shObs={},shDirty={smats:true,smasks:true,shbrush:true,shalpha:true};let shBusy=false;
+const shObs={},shDirty={smats:true,smasks:true,shgen:true,shbrush:true,shalpha:true};let shBusy=false;
 function shSave(){try{localStorage.setItem(SH_KEY,JSON.stringify({size:shS.size,list:shS.list,fav:shS.fav,recent:shS.recent,all:shS.all}));localStorage.setItem('gs.shFav',JSON.stringify([...shFav]));localStorage.setItem('gs.shRecent',JSON.stringify(shRecent));}catch(e){}}
 const shTw=()=>shS.list?30:(SH_SIZES[shS.size]||64);
 const SH_ICO={star:'<path d="m12 3 3 6 6 1-4.5 4.5 1 6.5-5.5-3-5.5 3 1-6.5L3 10l6-1z"/>',clock:'<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>',grid:'<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>',list:'<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="5" cy="6" r="1"/><circle cx="5" cy="12" r="1"/><circle cx="5" cy="18" r="1"/>'};
@@ -53,18 +53,18 @@ function shApply(cat){const sec=document.querySelector(SH_SEC[cat]);if(!sec)retu
 /* a new tile size: material previews are drawn at that size, so those categories are drawn again */
 function shResize(){for(const c of Object.keys(SH_SEC))shApply(c);if(typeof renderMats==='function')renderMats();}
 /* each category rendered the first time it is shown, and again after it changed while it was hidden */
-const SH_RENDER={smats:()=>typeof renderSmartMats==='function'&&renderSmartMats(false),smasks:()=>typeof renderSmartMats==='function'&&renderSmartMats(true),shbrush:()=>shBrushRender(),shalpha:()=>shAlphaRender()};
+const SH_RENDER={smats:()=>typeof renderSmartMats==='function'&&renderSmartMats(false),smasks:()=>typeof renderSmartMats==='function'&&renderSmartMats(true),shbrush:()=>shBrushRender(),shgen:()=>genShelfRender(),shalpha:()=>shAlphaRender()};
 function shVisible(cat){const s=document.querySelector(SH_SEC[cat]);return !!s&&ui.mode==='p3d'&&!s.classList.contains('dk-off')&&!!s.offsetParent;}
 function shEnsure(){if(ui.mode!=='p3d')return;for(const c of Object.keys(shDirty)){if(shDirty[c]&&shVisible(c)){shDirty[c]=false;try{SH_RENDER[c]();}catch(e){console.error(e);}}}}
 function shMarkDirty(cat){shDirty[cat]=true;shEnsure();}
 /* the sections and bars, made once */
 function shInit(){const mk=(id,hid,title,body)=>{const s=el('section',{class:'sec shsec',id,'aria-labelledby':hid},el('div',{class:'sec-h',id:hid},el('span',{text:title})),el('div',{id:body,class:'dlg-grid'}));return s;};
   const add=(pid,sec)=>{dkSecs[pid]=sec;};
-  add('shbrush',mk('shBrushSec','hShBrush','Brushes','shBrushBody'));add('smats',mk('smSec','hSm','Smart materials','smBody'));add('smasks',mk('smkSec','hSmk','Smart masks','smkBody'));add('shalpha',mk('shAlphaSec','hShAlpha','Alphas','shAlphaBody'));
+  add('shbrush',mk('shBrushSec','hShBrush','Brushes','shBrushBody'));add('smats',mk('smSec','hSm','Smart materials','smBody'));add('smasks',mk('smkSec','hSmk','Smart masks','smkBody'));add('shgen',mk('shGenSec','hShGen','Generators','shGenBody'));add('shalpha',mk('shAlphaSec','hShAlpha','Alphas','shAlphaBody'));
   const acts={mats:()=>[shMatActs()],shbrush:()=>[shBrushActs()]};
   /* the bars go between each section's title and its body */
   const park=()=>dk.park||document.body;
-  for(const pid of ['shbrush','smats','smasks','shalpha'])park().append(dkSecs[pid]);
+  for(const pid of ['shbrush','smats','smasks','shgen','shalpha'])park().append(dkSecs[pid]);
   for(const cat of Object.keys(SH_SEC)){const sec=dkSec(cat)||document.querySelector(SH_SEC[cat]);if(!sec)continue;sec.classList.add('shsec');
     const body=sec.querySelector('#'+SH_BODY[cat]);if(!body||sec.querySelector(':scope>.shbar'))continue;
     sec.insertBefore(shBar(cat,acts[cat]?acts[cat]():[]),body);

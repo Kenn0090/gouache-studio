@@ -130,6 +130,7 @@ function surfaceDetailUse(index){
     spacing:surfaceDetail.spacing,followDir:!!preset.follow,angleJitter:preset.follow?0:.18,
     pSize:false,pOpacity:false,smoothing:.18});
   surfaceDetailRender();
+  if(ui.mode==='p3d')showPanel('tool');
 }
 /* (0.97.10, Kenn) surface details never add a layer: they go onto the paint layer you picked (or its mask) */
 function surfaceDetailTarget(){
@@ -198,7 +199,8 @@ function surfaceDetailRender(){
   const color=colourBtn('surfaceDetail-color',()=>ui.fg,setFG,'Detail color');
   box.replaceChildren(el('div',{class:'weld-shelf'},el('div',{class:'matgrid weld-grid'},...cards),
     el('div',{class:'chips'},el('button',{class:'btn sm',text:'Sealant Bead',
-      title:'Lay an editable sealant bead on the model',onclick:sealantPathStart})),
+      title:'Lay an editable sealant bead on the model',onclick:sealantPathStart}))));
+  tsSet('detail',el('div',{class:'weld-shelf'},
     el('div',{class:'weld-controls'},el('label',{class:'frow'},el('span',{text:'Detail color'}),color),
       slider('size','Size',8,250,1,v=>v+' px'),slider('spacing','Spacing',.12,1.5,.01),
       slider('depth','Relief strength',0,1,.01),slider('paint','Color amount',0,1,.01),

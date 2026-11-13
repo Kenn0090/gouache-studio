@@ -443,6 +443,7 @@ function stitchSelect(index,recipe){
   applyPreset({name:preset.name,tool:'material',ownTool:true,size:stitchOptions.size,spacing:stitchOptions.spacing,
     followDir:!preset.stamp,pSize:false,pOpacity:false,smoothing:preset.stamp?0:.23});
   stitchToolsRender();
+  if(ui.mode==='p3d')showPanel('tool');
 }
 function stitchPresetSettings(index){
   const {size,spacing,thickness,seam=0,pucker,puckerWidth}=STITCH_PRESETS[index];
@@ -673,8 +674,8 @@ function stitchToolsRender(){
   const freehand=edit?el('button',{class:'btn',type:'button',text:'Paint freehand',onclick:()=>{
     pathFinish();stitchSelect(settings.style,settings);
   }}):null;
-  box.replaceChildren(el('div',{class:'weld-shelf'},el('div',{class:'weld-actions'},draw,freehand),
-    el('div',{class:'matgrid weld-grid'},...tiles),
+  box.replaceChildren(el('div',{class:'matgrid weld-grid'},...tiles));
+  tsSet('stitch',el('div',{class:'weld-shelf'},el('div',{class:'weld-actions'},draw,freehand),
     el('div',{class:'weld-controls'},el('label',{class:'frow'},el('span',{text:'Thread color'}),color),
       slider('size','Stitch size',6,160,1,v=>v+' px'),preset.stamp?null:slider('spacing','Stitch spacing',.30,1.55,.01),
       slider('length','Stitch length',.45,1.22,.01),
