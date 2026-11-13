@@ -1,0 +1,26 @@
+/* 0.97.11 (Kenn): a short 3D Paint bar: shading, Mirror X Y Z, then View and Show open pop-ups */
+const {chromium}=require('playwright'),path=require('path');
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});const p=await(await b.newContext({viewport:{width:1600,height:950}})).newPage();
+const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.route('**/*',r=>r.request().url().startsWith('file:')?r.continue():r.abort());
+await p.goto('file://'+path.resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+await p.click('#modeTabs [data-mode=p3d]');await p.waitForTimeout(3500);
+const vis=s=>p.evaluate(s=>{const e=document.querySelector(s);return !!e&&e.offsetParent!==null},s);
+const direct=await p.evaluate(()=>[...document.querySelectorAll('#pane3d .v3bar.slim > *')].filter(e=>e.offsetParent!==null).map(e=>e.id||e.className));
+console.log(direct.join(' | '));
+ok(await vis('#v3Shade')&&await vis('#mir3_x')&&await vis('#v3ShowBtn')&&await vis('#v3ViewBtn')&&await vis('#v3Gear'),'the bar shows shading, Mirror X, Show, View and Settings');
+ok(!await vis('#v3Metal')&&!await vis('#v3Proj')&&!await vis('#v3ViewSel')&&!await vis('#mir3Rad')&&!await vis('#p3ChannelView'),'Metal, Perspective, View…, Radial and the channel list left the bar');
+await p.click('#v3ViewBtn');await p.waitForTimeout(300);
+ok(await vis('#v3ViewSel')&&await vis('#v3Proj'),'View opens the view list and Perspective');
+await p.click('#v3Proj');await p.waitForTimeout(500);
+ok((await p.textContent('#v3Proj'))==='Orthographic','Orthographic works from the pop-up');await p.click('#v3Proj');await p.waitForTimeout(300);
+await p.click('#v3ShowBtn');await p.waitForTimeout(300);
+ok(!await vis('#v3ViewSel')&&await vis('#v3Metal')&&await vis('#p3ChannelView'),'Show replaces it: Metal and the channel list');
+await p.click('#v3Metal');await p.waitForTimeout(300);ok(await p.evaluate(()=>__gs.v3s().metalView===true),'Metal works from the pop-up');await p.click('#v3Metal');
+await p.mouse.click(300,500);await p.waitForTimeout(300);
+ok(!await vis('#v3ShowBtnPop'),'clicking elsewhere closes the pop-up');
+await p.click('#mir3More');await p.waitForTimeout(300);ok(await vis('#mir3Rad'),'the radial choice is in the Mirror ▾ pop-up');
+ok(errs.length===0,'no page errors '+errs.join('|'));
+await p.click('#v3ViewBtn');await p.waitForTimeout(300);await p.screenshot({path:'/tmp/claude-0/-home-user-gouache-studio/92f86222-7ec7-5899-b73a-60feb38a81d6/scratchpad/bar3d.png',clip:{x:40,y:100,width:700,height:200}});
+await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0)})();

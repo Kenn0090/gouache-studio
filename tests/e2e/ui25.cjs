@@ -35,7 +35,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>!!document.querySelector('.v3bar #v3Mir #mir3_x')&&!document.querySelector('#p3dBody #mir3Box')&&!document.querySelector('#p3dBody #st3Box')),'the mirror is in the 3D view’s top bar, not the panel');
  await p.click('#mir3_x');await W(150);ok(await p.evaluate(()=>__gs.mir3.x===true&&document.querySelector('#mir3_x').classList.contains('on')),'X in the bar turns the mirror on');
  await p.click('#mir3More');await W(150);ok(await p.evaluate(()=>!document.querySelector('#v3MirPop').hidden&&!!document.querySelector('#v3MirPop #mir3o_x')),'▾ opens the plane settings');
- await p.selectOption('#mir3Rad','6');await W(100);ok(await p.evaluate(()=>__gs.mir3.radial===6),'radial copies from the bar');
+ await p.evaluate(()=>{const pp=document.getElementById('v3MirPop');if(pp&&pp.hidden)document.getElementById('mir3More').click();});await W(150);await p.selectOption('#mir3Rad','6');await W(100);ok(await p.evaluate(()=>__gs.mir3.radial===6),'radial copies from the bar');
  await p.evaluate(()=>{__gs.mir3.x=false;__gs.mir3.radial=0;});
  await p.evaluate(()=>__gs.showPanel('brushes'));await W(300);
  ok(await p.evaluate(()=>{const b=document.querySelector('#stBrush');return !!b&&!b.hidden&&!!b.querySelector('#stUse');}),'Stencils is a switch inside Brushes');

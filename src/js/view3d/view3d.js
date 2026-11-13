@@ -541,7 +541,15 @@ const nvB=el('button',{hidden:!platform.isDesktop||NV_BANKED,class:'btn sm'+(typ
     const xt=el('div',{class:'v3xtra',id:'v3Xtra',hidden:true},modelControl,upTurnRow('v3Turn_'),detSel,wireB,uvB,spinB,...capB,dock,close),more=el('button',{class:'btn sm',id:'v3More',text:'⋯',title:'More: model, detail, wireframe, spin, screenshot, render, turntable','aria-expanded':'false','aria-label':'More 3D view options'});
     more.onclick=()=>{xt.hidden=!xt.hidden;more.setAttribute('aria-expanded',String(!xt.hidden));more.classList.toggle('on',!xt.hidden);};
     xt.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});
-    bar=el('div',{class:'v3bar slim'},shade,metalB,p3ChannelControl(),...(mb?[mb.wrap]:[]),viewSel,projBtn,nvB,gear,more,xt);}
+    /* (0.97.11, Kenn) a short 3D bar: shading, Mirror, then View and Show as small buttons that open a pop-up */
+    const popBtn=(id,label,title,kids)=>{const pop=el('div',{class:'v3set v3mirpop v3barpop',id:id+'Pop',hidden:true},...kids),b=el('button',{class:'btn sm v3popbtn',id,text:label+' ▾',title,'aria-expanded':'false','aria-haspopup':'true'});
+      b.onclick=()=>{const open=pop.hidden;{const mp=document.getElementById('v3MirPop');if(mp&&open){mp.hidden=true;const mm=document.getElementById('mir3More');if(mm)mm.setAttribute('aria-expanded','false');}}for(const o of document.querySelectorAll('.v3barpop'))if(o!==pop){o.hidden=true;}document.querySelectorAll('.v3popbtn').forEach(x=>x.setAttribute('aria-expanded','false'));pop.hidden=!open;b.setAttribute('aria-expanded',String(open));
+        if(open){const pr=pop.parentElement.getBoundingClientRect(),br=bar.getBoundingClientRect(),bb=b.getBoundingClientRect();pop.style.top=(br.bottom-pr.top+4)+'px';pop.style.left=Math.max(6,bb.left-pr.left)+'px';pop.style.right='auto';}};
+      pop.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});return {b,pop};};
+    const viewP=popBtn('v3ViewBtn','View','Snap to a side, perspective or orthographic',[el('div',{class:'sub',text:'View'}),viewSel,projBtn]);
+    const showP=popBtn('v3ShowBtn','Show','Metal view and which channel the model shows',[el('div',{class:'sub',text:'Show on the model'}),p3ChannelControl(),metalB]);
+    v3.barPops=[viewP.pop,showP.pop];
+    bar=el('div',{class:'v3bar slim'},shade,...(mb?[mb.wrap]:[]),showP.b,viewP.b,nvB,gear,more,xt);}
   else bar=el('div',{class:'v3bar'},...(inBake?[lowLab]:ui.mode==='convert'?[modelControl,detSel]:[modelControl,detSel,shade]),...(mb?[mb.wrap]:[]),...(ui.mode==='convert'||ui.mode==='p3d'?[]:[pbtn]),viewSel,projBtn,nvB,materialB,metalB,wireB,uvB,spinB,...capB,gear,dock,close);
   const box=el('div',{class:'v3set',id:'v3Settings',hidden:true,'aria-label':'3D viewport settings'});gear.setAttribute('aria-controls','v3Settings');
   box.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});
@@ -570,7 +578,7 @@ const nvB=el('button',{hidden:!platform.isDesktop||NV_BANKED,class:'btn sm'+(typ
   if(typeof ResizeObserver!=='undefined'){const ro=new ResizeObserver(placeBox);ro.observe(bar);ro.observe(pane);}
   const info=el('div',{class:'v3info',id:'v3Info'});v3.infoEl=info;
   const hit=el('div',{class:'v3hit',id:'v3Hit'});
-  pane.append(hit,bar,box,...(mb?[mb.pop]:[]),info);{let o;try{o=localStorage.getItem('gs.v3setOpen');}catch(e){}if(o==='1'&&(ui.mode==='p3d'||!v3.pop))requestAnimationFrame(()=>{if(box.isConnected&&box.hidden)gear.onclick();});}if(ui.mode==='p3d')p3ChannelSync();refresh3dUI();v3Controls(hit);st3.el=null;requestAnimationFrame(st3Overlay);}
+  pane.append(hit,bar,box,...(mb?[mb.pop]:[]),...(v3.barPops||[]),info);v3.barPops=null;{let o;try{o=localStorage.getItem('gs.v3setOpen');}catch(e){}if(o==='1'&&(ui.mode==='p3d'||!v3.pop))requestAnimationFrame(()=>{if(box.isConnected&&box.hidden)gear.onclick();});}if(ui.mode==='p3d')p3ChannelSync();refresh3dUI();v3Controls(hit);st3.el=null;requestAnimationFrame(st3Overlay);}
 function refresh3dUI(){const i=v3.infoEl;if(!i||!v3.mesh)return;const m=v3.mesh;i.textContent=m.name+' · '+m.tris.toLocaleString()+' triangles'+(m.noUV?' · this model has no UVs, so textures cannot map onto it':v3.paintOn?' · painting: '+v3NavHint()+(v3PickKey()?'; hold '+v3PickKey()+' over the model to pick its colour':''):'');}
 /* ---- navigation: Substance Painter style (default) or 3D-Coat style (Preferences, or the 3D Paint panel) ----
    Substance: Alt+left turns, Alt+middle moves, Alt+right zooms; middle or right drag also moves; left paints.
@@ -698,3 +706,5 @@ function drawPop(){const p=v3.pop;if(p.win.closed){pop3D(false);return;}const dp
       p.ctx.putImageData(new ImageData(new Uint8ClampedArray(buf.buffer),w,h),0,0);if(v3.dirty||v3.postDirty)requestRender();});}
   if(v3s().spin&&!v3.drag){v3.cam.yaw+=.006;v3.dirty=true;requestRender();}}
 
+/* (0.97.11) the 3D bar's View and Show pop-ups close when you click anywhere else */
+document.addEventListener('pointerdown',e=>{if(e.target.closest&&(e.target.closest('.v3barpop')||e.target.closest('.v3popbtn')))return;for(const o of document.querySelectorAll('.v3barpop'))o.hidden=true;document.querySelectorAll('.v3popbtn').forEach(x=>x.setAttribute('aria-expanded','false'));},true);
