@@ -22,7 +22,7 @@ const MENUS={
     ['Paint and sketch','sub',[['Oil paint…','oilPaint'],['Painterly…','painterly'],['Kuwahara…','kuwahara'],['Watercolour…','watercolour'],['Charcoal…','charcoal'],['Cutout…','cutout'],['Mosaic…','mosaic']]],
     ['Photo looks','sub',[['Soft focus…','softFocus'],['Cinematic mono…','cineMono'],['Anaglyph…','anaglyph']]],
     ['Print','sub',[['Halftone…','halftone'],['Engraving…','engraving'],['Riso print…','riso'],['B&W print…','bwPrint'],['Pixel / bitmap…','pixelBitmap'],['Retro pixelate (N64 / PSX)…','retroPixel']]],
-    ['Edges and relief','sub',[['Emboss…','emboss'],['Paint Emboss…','paintEmboss'],['Find edges…','edges'],['Convolution kernel…','convolve'],['Edge wear…','edgeWear']]],
+    ['Edges and relief','sub',[['Emboss…','emboss'],['Paint Emboss…','paintEmboss'],['Ghost Decal…','ghostDecal'],['Find edges…','edges'],['Convolution kernel…','convolve'],['Edge wear…','edgeWear']]],
     ['Noise and render','sub',[['Add noise…','noise'],['Render clouds…','clouds'],['Render cells…','cells']]],
     ['Tiling','sub',[['Offset…','offset'],['Tile…','tile_fx'],['Make seamless…','seamless']]]],
   View:[['Canvas-only view','canvasFull','F'],['Frame 3D model','frame3d','Shift+F'],['Fit on screen','fit','Ctrl+0'],['Actual pixels','actual','Ctrl+1'],['Tile mode','tile','Shift+T'],['Perspective guides…','perspDlg'],['3D view','view3d','F3'],['Wireframe overlay','wireToggle','Shift+W'],'-',['Cage tool','cageTool','K'],['Flat cage view','cageFlat','Shift+F'],['Symmetry: left–right','symX','L'],'-',['Shortcut hints','hints'],['Performance monitor','perf']],
@@ -45,6 +45,7 @@ Object.assign(actions,{wireToggle:()=>{if(!v3.on)toggle3D(true);v3SetWireMode(v3
 actions.clearContents=cmdClearLayer;
 actions.selColorRange=dlgColorRange;
 actions.paintEmboss=()=>fxMenu('paintEmboss');
+actions.ghostDecal=()=>fxMenu('ghostDecal');
 actions.photoGrunge=()=>{if(ui.mode==='paint')fxMenu('photoGrunge');else toast('Switch to the Paint tab to convert a photo.');};
 const LAYER_ONLY=['mergeVisible','stampVisible','flatten','tipFromLayer'];/* (0.58) the other layer commands work inside a frame */
 const checked={ws_painting:()=>dk.ws==='painting',ws_texturing:()=>dk.ws==='texturing',ws_paint3d:()=>dk.ws==='paint3d',ws_minimal:()=>dk.ws==='minimal',wsLock:()=>dk.lock,pn_color:()=>panelShown('color'),pn_brushes:()=>panelShown('brushes'),pn_tool:()=>panelShown('tool'),pn_maps:()=>panelShown('maps'),pn_layers:()=>panelShown('layers'),pn_chan:()=>panelShown('chan'),optBarToggle:()=>dk.L&&dk.L.opt,tbCols:()=>dk.L&&dk.L.tb.cols===2,tbSide:()=>dk.L&&dk.L.tb.side==='right',hints:()=>!prefs.hideHints,view3d:()=>v3.on,perf:()=>perf.on,depth8:()=>doc.depth===8,depth16:()=>doc.depth===16,tile:()=>doc.wrap,quickMask:()=>sel.quick};

@@ -48,6 +48,8 @@ Only the Normal map is in colour. Every other converted map is grey and lands in
 
 ## Filter menu
 
+**Ghost Decal** ages a transparent decal layer. Choose **Filter → Edges and relief → Ghost Decal** or find it under **Stylize** in the Filter Gallery. Use the combined result or isolate torn paper, adhesive residue, and protected paint. Pick the protected paint color to match the paint underneath the sticker. **Keep editable** adds the effect as a clipped filter layer.
+
 **Warp, Slope blur and Distort** (also in the Filter Gallery's *Distort* folder, and as filter layers and mask or content effects):
 - **Warp** pushes the picture around with a smooth noise: wobbly edges and organic breakup. **Turbulent** folds it harder. *Amount*, *Noise size* and *Seed*.
 - **Slope blur** smears the picture downhill along a slope, like Substance's: its **own** brightness, or a **noise**. **Blur** averages along the way, **Min** eats into the bright parts, **Max** grows them. Great for drips, erosion and melted edges.

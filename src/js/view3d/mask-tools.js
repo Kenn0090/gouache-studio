@@ -151,7 +151,7 @@ function liveBarRow(){const M=lm.M,S=M.mask.stack;
   const gn=el('select',{id:'lmGen','aria-label':'Add a generator'},el('option',{value:'',text:'+ Generator'}),...MS_GENS.map(([k,t])=>el('option',{value:k,text:t})));
   gn.onchange=()=>{
     const g=gn.value;if(!g)return;
-    const p=g==='metalWear'||MS_PAINT_DAMAGE.includes(g)?msGenDefaults(g):{...MS_KINDS.gen.p(),g};
+    const p=g==='metalWear'||MS_PAINT_DAMAGE.includes(g)||msWeatherKind(g)?msGenDefaults(g):{...MS_KINDS.gen.p(),g};
     liveAdd('gen',{p});
   };
   const nz=el('select',{id:'lmNoise','aria-label':'Add a noise'},el('option',{value:'',text:'+ Noise'}),...MS_NOISES.map(([k,t])=>el('option',{value:k,text:t})));nz.onchange=()=>{if(nz.value)liveAdd('noise',{p:Object.assign(MS_KINDS.noise.p(),{type:nz.value})});};
