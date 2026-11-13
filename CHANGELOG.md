@@ -1,3 +1,10 @@
+## 0.97.11
+
+- **Shorter 3D Paint bar.** The bar above the 3D view keeps shading and **Mirror X Y Z**; **Show** (Metal view and the channel list) and **View** (snap to a side, Perspective / Orthographic) are small buttons that open a pop-up, and the radial choice moved into the Mirror ▾ pop-up.
+- **Tools shelf is thumbnails only.** Welds, Stitches and Surface details show just their pictures. Pick one and its settings (sliders, colour, draw path) appear in the **Brush settings** panel, which comes forward by itself.
+- **Generators in the shelf.** A new **Generators** category lists the mask generators (baked maps, wear and weather, gradients, noise and grunge) as tiles. Click one to add it to the selected layer's mask, or drag it onto a layer or onto the rows under a mask. A layer without a mask gets one.
+- **Fill white / Fill black on a mask** fill the mask itself (or the selection) instead of adding a Fill row, so a black fill clears the mask.
+
 ## 0.97.10
 
 - **Creative weathering tools.** **Ghost Decal** (Filter › Edges and relief, or Stylize in the Filter Gallery) ages a sticker layer with torn paper, adhesive residue and protected paint. **Rust & Runoff** and **Mineral Buildup** are new mask generators (rust, corrosion pits, rain streaks, waterlines, crust and leaks, following the mesh maps and UV islands). **Sealant Bead** draws an editable surface path with a round, tooled or flat profile.

@@ -22,12 +22,12 @@ function libTarget(x,y,D){D=D||libDrag.d;
   if(D.kind==='meshmap'){const row=document.elementFromPoint(x,y)?.closest('[data-mesh-slot]');return row?{meshSlot:row.dataset.meshSlot,row}:null;}
   /* (0.37.1, Kenn) dropped on the model: a new layer with the material; with Ctrl, only where the ID colour under the pointer is */
   if(ui.mode==='p3d'&&(D.kind==='mat'||D.kind==='smart'||D.kind==='hp')){const u=document.elementFromPoint(x,y);if(u&&u.id==='v3Hit')return {mesh:true,x,y,ctrl:!!D.ctrl};}
-  const maskRow=document.elementFromPoint(x,y)?.closest('.msrow.m');if((D.kind==='tex'||D.kind==='project'&&D.rec.kind==='tex')&&maskRow?._ms)return {mask:maskRow._ms.L,row:maskRow};
+  const maskRow=document.elementFromPoint(x,y)?.closest('.msrow.m');if((D.kind==='gen'||D.kind==='tex'||D.kind==='project'&&D.rec.kind==='tex')&&maskRow?._ms)return {mask:maskRow._ms.L,row:maskRow};
   const list=$('#layerList'),lb=list&&list.getBoundingClientRect();if(!lb||x<lb.left||x>lb.right||y<lb.top-8||y>lb.bottom+8)return null;
-  if(D.kind==='smask'||D.kind==='tex'||D.kind==='project'&&D.rec.kind==='tex'){const under=document.elementFromPoint(x,y),row=under&&under.closest('.lrow');const n=row&&row._node;
+  if(D.kind==='gen'||D.kind==='smask'||D.kind==='tex'||D.kind==='project'&&D.rec.kind==='tex'){const under=document.elementFromPoint(x,y),row=under&&under.closest('.lrow');const n=row&&row._node;
     /* 2D textures become layers except on explicit mask thumbnails; preserve 3D row targets. */
     const maskHit=ui.mode==='paint'?!!under.closest('.mthumb'):(n&&!n.fx&&y>row.getBoundingClientRect().top+row.offsetHeight*.3&&y<row.getBoundingClientRect().bottom-row.offsetHeight*.3);
-    if(D.kind==='smask'||maskHit)return n&&!n.fx?{mask:n,row}:null;}
+    if(D.kind==='gen'||D.kind==='smask'||maskHit)return n&&!n.fx?{mask:n,row}:null;}
   const t=dropTargetAt(y),d=resolveDrop(t);if(!d)return {at:{parent:doc.root,index:doc.root.children.length},t:null,d:null};
   const index=d.top?d.parent.children.length:d.parent.children.indexOf(d.ref)+(d.where==='above'?1:0);return {at:{parent:d.parent,index},t,d};}
 window.addEventListener('pointermove',e=>{const D=libDrag.d;if(!D||e.pointerId!==D.id)return;
@@ -50,10 +50,11 @@ function libDrop(e){const D=libDrag.d;if(!D||e.pointerId!==D.id)return;libDrag.d
   if(!D.moving)return;/* a plain click: the tile's own click adds it as before */
   /* a drag is not a click */
   const stop=ev=>{ev.stopPropagation();ev.preventDefault();};D.tile.addEventListener('click',stop,{capture:true,once:true});setTimeout(()=>D.tile.removeEventListener('click',stop,{capture:true}),50);
-  D.ctrl=e.ctrlKey||e.metaKey;const T=libTarget(e.clientX,e.clientY,D);if(!T){/* (0.96.6, Kenn: "adds nothing") say where it can go instead of doing nothing */if(D.kind==='smart'||D.kind==='mat'||D.kind==='hp'||D.kind==='smask')toast(D.kind==='smask'?'Drop the smart mask on a layer in the Layers list.':'Drop it on the Layers list'+(ui.mode==='p3d'?' or on the model':'')+' (or double-click the tile).');return;}if(T.mix){if(typeof txMix.add==='function')txMix.add(D.rec);return;}libApply(D.kind,D.rec,T);}
+  D.ctrl=e.ctrlKey||e.metaKey;const T=libTarget(e.clientX,e.clientY,D);if(!T){/* (0.96.6, Kenn: "adds nothing") say where it can go instead of doing nothing */if(D.kind==='smart'||D.kind==='mat'||D.kind==='hp'||D.kind==='smask'||D.kind==='gen')toast(D.kind==='smask'||D.kind==='gen'?'Drop it on a layer in the Layers list (or on the rows under its mask).':'Drop it on the Layers list'+(ui.mode==='p3d'?' or on the model':'')+' (or double-click the tile).');return;}if(T.mix){if(typeof txMix.add==='function')txMix.add(D.rec);return;}libApply(D.kind,D.rec,T);}
 window.addEventListener('pointerup',libDrop,true);window.addEventListener('pointercancel',e=>{if(libDrag.d&&e.pointerId===libDrag.d.id){libDrag.d=null;libGhost.hidden=true;libClear();libIdShow(false);document.body.classList.remove('libdragging');}},true);
 /* also used by tests */
 function libApply(kind,rec,T){if(T.texDrop&&kind==='tex')return T.texDrop({kind:rec.kind,id:rec.id,name:rec.name});if(T.materialChannel&&kind==='tex')return txToChannel(rec,T.materialChannel);if(T.favorite)return favoritesAdd(kind,rec);if(kind==='meshmap')return p3MapLibraryDrop(rec,T.meshSlot);if(kind==='project')return paUse(rec,T);if(rec&&rec.bundled&&!(rec.fill&&rec.imgs)){gmLoad(rec).then(()=>libApply(kind,rec,T)).catch(e=>toast('Could not load “'+rec.name+'”: '+(e.message||e)));return;}if(T.mesh)return libMeshDrop(kind,rec,T);
+  if(kind==='gen'){return genApply(T.mask,rec);}
   if(kind==='smask'){const n=T.mask;if(!n)return;selectOnly(n);renderLayers();smMaskApply(rec);return;}
   if(kind==='tex'){if(T.mask)return txToMask(rec,T.mask);return txToLayer(rec,T.at);}
   insertAt=T.at;try{return kind==='hp'?cmdNewHandPaintMaterial(rec.preset):kind==='smart'?smApply(rec):matApply(rec);}finally{insertAt=null;}}

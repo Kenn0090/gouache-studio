@@ -230,6 +230,7 @@
     "ui/favorites",
     "ui/dock",
     "ui/shelf",
+    "ui/gen-shelf",
     "ui/history",
     "ui/layer-undo",
     "tools/paths",

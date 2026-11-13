@@ -21,6 +21,7 @@ const PANELS={
   shbrush:{title:'Brushes',sel:'#shBrushSec',avail:m=>m==='p3d',icon:'<path d="m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z"/>'},
   smats:{title:'Smart materials',sel:'#smSec',avail:m=>m==='p3d',icon:'<circle cx="11" cy="13" r="6.5"/><path d="M18.5 3.5l.9 2 2 .9-2 .9-.9 2-.9-2-2-.9 2-.9z"/>'},
   smasks:{title:'Smart masks',sel:'#smkSec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="12" cy="12" r="4" fill="currentColor" opacity=".35"/>'},
+  shgen:{title:'Generators',sel:'#shGenSec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 14c3-4 5 2 8-2s5 3 8-1"/>'},
   shalpha:{title:'Alphas',sel:'#shAlphaSec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16l4-8 4 8M9.5 13h5"/>'},
   canvas:{title:'Canvas',sel:'#cvsSec',avail:m=>m==='paint',icon:'<rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 9h16M4 14h16" stroke-width="1"/>'},
   textures:{title:'Textures',sel:'#txSec',avail:m=>m==='paint'||m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M7 8h1M11 7h1M15 9h1M8 12h1M13 13h1M16 15h1M9 16h1" stroke-width="2.4" stroke-linecap="round"/>'},
@@ -45,7 +46,7 @@ const PANEL_IDS=Object.keys(PANELS);
 /* (0.96) the 3D Paint shelf's categories, in the order of its list */
 /* (0.97.10) Welds, Stitches and Surface details live in one shelf category, Tools; the old panel names still open it */
 const SH_TOOL_ALIAS={weldtools:'weld',stitches:'stitch',surfacedetails:'detail'};
-const SH_SHELF_TABS=['shbrush','mats','smats','smasks','shalpha','textures','decals','envs','meshmaps','shtools','projects'];
+const SH_SHELF_TABS=['shbrush','mats','smats','smasks','shgen','shalpha','textures','decals','envs','meshmaps','shtools','projects'];
 const MODE_GROUP=['p3d','brushtab','conv','bake','anim','photo'],MODE_HID=[...MODE_GROUP,'phhist','phlib','phpre'];
 /* the built-in workspaces: extra = 3D view on and how wide, painting on the model */
 const WS_PRESETS={
