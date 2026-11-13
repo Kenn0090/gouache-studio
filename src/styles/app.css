@@ -1667,3 +1667,13 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 /* (0.97.10) options bar pop-ups */
 .optpop{position:fixed;z-index:60;min-width:260px;max-width:340px;padding:10px 12px;display:grid;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
 .optpop .optslider{width:100%}.optpopbtn{white-space:nowrap}
+/* (0.97.10) Brush panel: search, Simple / Advanced, folding groups */
+.brhead{display:grid;gap:6px;margin:8px 0 4px}.brsearch{width:100%;box-sizing:border-box}
+.brhead .seg{display:flex;gap:4px}.brhead .seg .btn{flex:1}.brhead .seg .btn.on{background:var(--accent,#f0a040);color:#111}
+.br-simple .br-adv{display:none}.br-searching .br-adv{display:revert}.br-searching .br-adv[hidden]{display:none}
+.brgrp{margin:4px 0}
+/* (0.97.10) Brush panel: search, Simple / Advanced, folding groups */
+.brhead{display:grid;gap:6px;margin:8px 0 4px}.brsearch{width:100%;box-sizing:border-box}
+.brhead .seg{display:flex;gap:4px}.brhead .seg .btn{flex:1}.brhead .seg .btn.on{background:var(--accent,#f0a040);color:#111}
+.br-simple .br-adv{display:none}.br-searching .br-adv{display:revert}.br-searching .br-adv[hidden]{display:none}
+.brgrp{margin:4px 0}

@@ -21,7 +21,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  // the settings panel
  await p.evaluate(()=>{__gs.showPanel('tool');});await p.waitForTimeout(400);
  ok(await p.evaluate(()=>!!document.getElementById('bPF')&&!!document.getElementById('bPO')&&!!document.getElementById('bCurveGraph')),'the panel has Size, Opacity and Flow pressure choices and the curve graph');
- await p.locator('#bCurveGraph').scrollIntoViewIfNeeded();const g=await p.locator('#bCurveGraph').boundingBox();
+ await p.evaluate(()=>{const d=document.querySelector('#brgrp_Pressure');if(d)d.open=true;});await p.locator('#bCurveGraph').scrollIntoViewIfNeeded();const g=await p.locator('#bCurveGraph').boundingBox();
  await p.mouse.move(g.x+g.width/2,g.y+g.height*.5);await p.mouse.down();await p.mouse.move(g.x+g.width/2,g.y+g.height*.15,{steps:5});await p.mouse.up();
  const c1=await p.evaluate(()=>__gs.brush.curve);ok(c1>.3,'dragging the curve up makes the pen softer (curve '+c1+')');
  await p.mouse.move(g.x+g.width/2,g.y+g.height*.5);await p.mouse.down();await p.mouse.move(g.x+g.width/2,g.y+g.height*.9,{steps:5});await p.mouse.up();
