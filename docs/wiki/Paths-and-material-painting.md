@@ -36,4 +36,26 @@ This version implements **Paint along path**. Ribbon, Filled-path, Erase-path an
 
 The eraser-shaped **Clear layer** button in Layers clears all painted channels together. On a material it removes coverage while retaining the editable recipe. On a path it clears the rendered stroke/fill while keeping the editable geometry. Undo restores the appearance.
 
-Weld brush painting uses one shared coverage mask on its material layer. Repeated strokes reuse that layer; undo and redo affect all its enabled channels together. Existing pixel weld layers and editable weld paths retain their original format. Small weld strokes refresh only the changed 3D preview area, and mask shaders are prepared when selecting the tool.
+## Weld brush and paths
+
+In **3D Paint**, open **Welds** in the bottom shelf, select a preset, and drag on the model to paint freehand. **Standard weld** leaves rounded, uneven overlaps, **Narrow weld** leaves a thin seam with long swells, and **Sharp weld** leaves tight, crisp ridges.
+
+For regular painting, open **Brushes → Welds** in Paint or 3D Paint and choose a preset. In the **Welds** shelf, **Use as Brush** loads the current weld shape into the regular Brush. It paints in your foreground color on the active paint layer or map.
+
+Increase **Bead fusion** to fill the joins between puddles while retaining the overlap ridges. **Edge blend** tapers the height and fades the material into the surface underneath. Standard starts with both settings high. Use **Detail sharpness** to define the overlap ridges and **Smoothness** to soften the ripples across the whole bead. **Pitting** recesses small spots on the bead and **Spatter** adds raised droplets beside it. Both controls start at zero. **Weld finish → Keep underlying paint** writes only height, so the bead uses the material already on the surface. Freehand material strokes use a shared material mask.
+
+Choose **Draw weld path** to place an editable bead on the model. Click for points, drag for Bézier handles, and press **Enter** to finish. **Ripple spacing** is a percentage of the bead width. At 30%, the distance from one ripple to the next is 30% of the width. Path ripples follow the length of the bead across UV islands in the active texture set. On bare-metal paths, **Heat tint**, **Halo spread**, and **Burn halo** control the discolored band beside the weld. **End taper** narrows and lowers the ends. The path recipe saves with the project.
+
+For a freehand **Bare metal** weld, **Heat tint** sets the strength of the halo and **Halo spread** sets its reach. With **Heat responds to pen pressure** enabled, lighter pressure leaves a narrow gold tint and heavier pressure spreads the violet and blue bands. A mouse uses full pressure. The halo is stored on a color layer beneath the weld and shares the stroke’s undo step.
+
+## Stitch brushes
+
+Open **Stitches** in the **3D Paint** shelf and pick a preset. Gouache paints thread color, raised strands, recessed needle holes and roughness on a **Stitches** layer. Drag to paint a seam or click once to place a bar tack, buttonhole or darning patch.
+
+**Stitch size** sets the size of each stitch and **Stitch spacing** sets the distance between them as a percentage of size. **Thread thickness** adjusts the strand width, **Thread height** adjusts relief, and **Needle holes** controls the strength of the recesses. **Fiber twist** brings out the plies in each strand. **Thread roughness** sets how much the thread catches the light.
+
+Choose **Draw stitch path**, click points on the model and press **Enter** to finish. Select the path with the **Surface Path** tool to edit the curve or its stitch settings. **Puckering** adjusts the depth of folds beside the thread and **Pucker spread** sets their reach. **Seam relief** controls the groove or ridge underneath the thread on seam presets. **Stitch damage** breaks or drops stitches, **Thread fray** adds loose fibers, and **Stitch variation** varies individual stitches. **Shuffle variation** changes the pattern. Editable paths keep the random seed in the project.
+
+## Surface detail brushes
+
+Open **Surface Details** in the **3D Paint** shelf to paint dents, gouges, chips, corrosion pits, grime, rust or cast-metal texture. Use **Relief strength**, **Color amount** and **Roughness amount** to control which parts of the underlying material change. Lower **Spacing** to overlap dabs when dragging. Add a mask to the finished layer to control where its details show.

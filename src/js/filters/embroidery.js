@@ -1,18 +1,16 @@
-/* ================= Embroidery (0.28) =================
-   Kenn: an embroidery filter for patches. The picture becomes a stitched patch on a new layer: its colours are
-   reduced to a few thread colours, each colour area gets a satin band along its edges (threads running across the
-   band, like satin columns) and fill stitches inside (rows of short stitches at an angle, staggered like bricks),
-   the patch's outline gets a rolled merrow border, and every thread has a little shine. It also writes Height (so
-   the normal shows the threads) and Roughness when the document has it. */
+/* ================= Embroidery =================
+   Quantize the artwork into thread colours, then stitch the colour regions and
+   bind the silhouette. Colour, Height and Roughness share the same profiles. */
 const EMB_MAX=16;
 /* a small copy of the picture for choosing the thread colours */
 const FS_EMB_DOWN=`uniform sampler2D uSrc; uniform vec2 uOut;
 void main(){ vec2 sz=vec2(textureSize(uSrc,0)); o=texelFetch(uSrc,ivec2((floor(gl_FragCoord.xy)+0.5)*sz/uOut),0); }`;
-/* each pixel's nearest thread colour (R = its number), and whether it is inside the patch (G) */
-const FS_EMB_LABEL=GL_ST+`uniform sampler2D uSrc; uniform vec4 uPal[${EMB_MAX}]; uniform int uN; uniform int uWhole;
-void main(){ vec4 c=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0); vec3 s=st(c); int bi=0; float bd=1e9;
+/* R is the nearest thread colour. G keeps the original silhouette at antialiased edges. */
+const FS_EMB_LABEL=GL_ST+`uniform sampler2D uSrc, uShape; uniform vec4 uPal[${EMB_MAX}]; uniform int uN; uniform int uWhole;
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 c=texelFetch(uSrc,p,0); vec3 s=st(c); int bi=0; float bd=1e9;
   for(int i=0;i<${EMB_MAX};i++){ if(i>=uN) break; vec3 d=s-uPal[i].rgb; float e=dot(d*d,vec3(0.3,0.59,0.11)); if(e<bd){ bd=e; bi=i; } }
-  o=vec4(float(bi)/255.0,(uWhole==1||c.a>=0.5)?1.0:0.0,0.0,1.0); }`;
+  float alpha=uWhole==1?1.0:texelFetch(uShape,p,0).a;
+  o=vec4(float(bi)/255.0,alpha,0.0,1.0); }`;
 /* tidy: every pixel takes the most common thread colour around it (removes specks too small to stitch) */
 const FS_EMB_MAJ=`uniform sampler2D uL; uniform int uR;
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uL,0); vec4 me=texelFetch(uL,p,0); int cnt[${EMB_MAX}];
@@ -28,47 +26,179 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uL,0); vec2 me=lab(p,s
   for(int k=0;k<4;k++){ ivec2 d=k==0?ivec2(1,0):k==1?ivec2(-1,0):k==2?ivec2(0,1):ivec2(0,-1); vec2 n=lab(p+d,s);
     if(uWhat==1){ if(n.y<0.5) e=true; } else if(n.x!=me.x) e=true; }
   o=e?vec4(vec2(p),0.0,1.0):vec4(-1.0,-1.0,0.0,0.0); }`;
-/* the stitches: uMap 0 = colour, 1 = height, 2 = roughness */
-const FS_EMB=GL_ST+`uniform sampler2D uL; uniform sampler2D uE; uniform sampler2D uP; uniform vec4 uPal[${EMB_MAX}]; uniform int uMap;
-uniform float uSp; uniform float uSat; uniform float uAng; uniform int uVary; uniform float uMw; uniform vec3 uMc; uniform float uShine; uniform float uDepth; uniform float uSeed;
-float h1(float n){ return fract(sin(n*12.9898+uSeed*7.1)*43758.5453); }
-float h2(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7))+uSeed)*43758.5453); }
-vec2 rot2(vec2 p,float a){ float c=cos(a),s=sin(a); return vec2(c*p.x-s*p.y,s*p.x+c*p.y); }
-void main(){ ivec2 ip=ivec2(gl_FragCoord.xy); vec2 p=gl_FragCoord.xy; vec4 L=texelFetch(uL,ip,0);
-  if(L.g<0.5){ o=vec4(0.0); return; }
-  int k=int(L.r*255.0+0.5); vec3 col=uPal[k].rgb;
-  vec4 E=texelFetch(uE,ip,0),P=texelFetch(uP,ip,0);
-  float dp=P.x>=0.0?length(P.xy-(p-0.5))+0.5:1e4, de=E.x>=0.0?length(E.xy-(p-0.5))+0.5:1e4;
-  float a=clamp(dp,0.0,1.0);
-  float prof,groove,body,ph; vec2 td; float along;
-  if(uMw>0.0&&dp<uMw){
-    /* merrow: a rolled edge, threads wrapped over it at a slant */
-    vec2 n=dp>0.6?normalize((p-0.5)-P.xy):vec2(0.0,1.0),t=vec2(-n.y,n.x); float x=dp/uMw;
-    ph=(dot(P.xy,t)+dp*0.9)/(uSp*1.3); float f=fract(ph); prof=sin(3.14159*f);
-    body=sqrt(max(0.0,1.0-pow(2.0*x-1.0,2.0)))*1.25; groove=1.0-prof; td=normalize(n+t*0.6); along=x; col=uMc;
-    col*=0.9+0.2*h1(floor(ph));
-  } else if(de<uSat){
-    /* satin: long threads straight across the band, side by side along the edge */
-    vec2 n=de>0.6?normalize((p-0.5)-E.xy):vec2(0.0,1.0),t=vec2(-n.y,n.x); float x=de/uSat;
-    ph=dot(E.xy,t)/uSp; float f=fract(ph); prof=sin(3.14159*f);
-    body=0.75+0.35*sqrt(clamp(x*(2.0-x),0.0,1.0)); groove=1.0-prof; td=n; along=x;
-    col*=0.93+0.14*h1(floor(ph)+float(k)*31.0);
-  } else {
-    /* fill (tatami): rows of short stitches, each row shifted a third */
-    float ang=uAng+(uVary==1?float(k)*0.785398:0.0); vec2 q=rot2(p,-ang); float row=floor(q.y/uSp),f=fract(q.y/uSp);
-    float Ls=uSp*7.0,u=fract((q.x+mod(row,3.0)*Ls/3.0)/Ls); float hole=smoothstep(0.0,0.07,u)*smoothstep(1.0,0.93,u);
-    prof=sin(3.14159*f)*(0.55+0.45*hole); body=0.62; groove=1.0-prof; td=rot2(vec2(1.0,0.0),ang); along=u; ph=row;
-    col*=0.95+0.1*h1(row+float(k)*17.0);
+/* The same stitch profiles drive colour, height, and roughness. */
+const FS_EMB=`uniform sampler2D uL, uE, uP;
+uniform vec4 uPal[${EMB_MAX}];
+uniform int uMap, uStyle;
+uniform float uSp, uLength, uSat, uAng, uVary, uMw, uShine, uDepth, uSeed;
+uniform vec3 uMc;
+
+struct Stitch {
+  float cover;
+  float height;
+  float light;
+  float shine;
+};
+
+Stitch blendStitch(Stitch a, Stitch b, float t){
+  return Stitch(mix(a.cover,b.cover,t),mix(a.height,b.height,t),
+    mix(a.light,b.light,t),mix(a.shine,b.shine,t));
+}
+
+float threadHash(vec2 p){
+  vec3 n=fract(vec3(p.xyx)*vec3(.1031,.1030,.0973)+uSeed*.071);
+  n+=dot(n,n.yzx+33.33);
+  return fract((n.x+n.y)*n.z);
+}
+
+vec2 rotateThread(vec2 p, float angle){
+  float c=cos(angle), s=sin(angle);
+  return vec2(c*p.x-s*p.y,s*p.x+c*p.y);
+}
+
+/* A rounded strand with a recessed end, two twisted plies and a small change in
+   tension from stitch to stitch. The radial slope also puts the shine off-centre. */
+Stitch thread(vec2 p, vec2 direction, float stagger, bool ends){
+  vec2 across=vec2(-direction.y,direction.x);
+  float row=floor(p.y);
+  float s=p.x+row*stagger;
+  float stitch=floor(s);
+  float along=fract(s);
+  float variation=threadHash(vec2(stitch,row));
+  float center=fract(p.y)-.5+.062*sin(along*6.283+variation*6.283);
+  float aa=clamp(.30/uSp,.025,.18);
+  float halfWidth=mix(.405,.48,variation);
+  float cap=ends?smoothstep(.012,min(.25,1.1/uLength),min(along,1.0-along)):1.0;
+  float radial=center/(halfWidth*mix(.63,1.0,cap));
+  float cover=(1.0-smoothstep(1.0-aa,1.0+aa,abs(radial)))*mix(.38,1.0,cap);
+  float crown=sqrt(max(0.0,1.0-radial*radial));
+  float twist=cos(6.283*(p.x*(ends?uLength:3.1)*.72+center*2.0+variation*.32));
+  float fibre=cos(6.283*(center*3.1+twist*.18))*smoothstep(1.65,3.2,uSp);
+  vec3 normal=normalize(vec3(across*radial*.76,max(.24,crown)));
+  vec3 light=normalize(vec3(-.54,.59,.63));
+  float diffuse=.72+.30*max(0.0,dot(normal,light))+.07*twist+.065*fibre;
+  float glint=pow(max(0.0,dot(normal,normalize(light+vec3(0,0,1)))),8.0);
+  glint*=mix(.52,1.0,abs(dot(direction,vec2(.62,.78))))*(.78+.22*twist);
+  return Stitch(cover,crown*mix(.70,1.0,cap)*(1.0+.045*twist),diffuse*mix(.88,1.09,variation),glint);
+}
+
+/* Approximate the tangent with two fixed axes. Smoothly blend their stitch
+   profiles near diagonals so a nearest-edge change cannot reset the phase. */
+Stitch edgeThread(vec2 p, vec2 inward, float distance, float spacing, float bias){
+  float angleBlend=smoothstep(.44,.56,abs(inward.y)/(abs(inward.x)+abs(inward.y)));
+  vec2 tx=vec2(sign(inward.y),0), ty=vec2(0,-sign(inward.x));
+  float offset=distance*bias;
+  Stitch vertical=thread(vec2(distance/(spacing*3.1),(dot(p,ty)+offset)/spacing),inward,0.0,false);
+  Stitch horizontal=thread(vec2(distance/(spacing*3.1),(dot(p,tx)+offset)/spacing),inward,0.0,false);
+  return blendStitch(vertical,horizontal,angleBlend);
+}
+
+vec2 nearestOffset(sampler2D field, ivec2 p){
+  vec2 seed=texelFetch(field,p,0).xy;
+  return seed.x>=0.0?vec2(p)-seed:vec2(4096.0);
+}
+
+/* Read the distance gradient across several pixels to smooth pixel stairs and
+   nearest-seed ties on curves and acute corners. */
+float edgeDistance(sampler2D field, sampler2D labels, ivec2 p, bool outline, int label){
+  ivec2 size=textureSize(labels,0);
+  if(any(lessThan(p,ivec2(0)))||any(greaterThanEqual(p,size)))return -1.0;
+  vec4 sampleLabel=texelFetch(labels,p,0);
+  bool same=sampleLabel.g>=.5&&(outline||int(sampleLabel.r*255.0+.5)==label);
+  float d=length(nearestOffset(field,p))+.5;
+  return same?d:-min(d,2.0);
+}
+vec2 edgeDirection(sampler2D field, sampler2D labels, ivec2 p, vec2 offset, bool outline, int label){
+  ivec2 dx=ivec2(2,0),dy=ivec2(0,2);
+  vec2 gradient=vec2(
+    edgeDistance(field,labels,p+dx,outline,label)-edgeDistance(field,labels,p-dx,outline,label),
+    edgeDistance(field,labels,p+dy,outline,label)-edgeDistance(field,labels,p-dy,outline,label));
+  if(dot(gradient,gradient)>.01)return normalize(gradient);
+  if(dot(offset,offset)>.01)return normalize(offset);
+  return vec2(0,1);
+}
+
+void main(){
+  ivec2 ip=ivec2(gl_FragCoord.xy);
+  vec2 p=gl_FragCoord.xy;
+  vec4 label=texelFetch(uL,ip,0);
+  float alpha=label.g;
+  if(alpha<=0.0){o=vec4(0);return;}
+  int k=int(label.r*255.0+.5);
+  vec3 colour=uPal[k].rgb;
+  vec2 region=nearestOffset(uE,ip), outline=nearestOffset(uP,ip);
+  float de=length(region)+.5, dp=length(outline)+.5;
+  if(alpha<.5&&dp<8.0)dp=.25;
+  float angle=uAng+uVary*float(k)*.6854;
+  vec2 direction=vec2(cos(angle),sin(angle));
+  vec2 q=rotateThread(p,-angle)/uSp;
+
+  Stitch fill;
+  float foundation=.17, pile=.55, backing=.48;
+  if(uStyle==2){
+    vec2 cell=floor(q);
+    Stitch warp=thread(vec2(q.x*.5,q.y),direction,0.0,false);
+    Stitch weft=thread(vec2(q.y*.5,q.x),vec2(-direction.y,direction.x),0.0,false);
+    float over=step(2.0,mod(cell.x-cell.y,4.0));
+    fill=blendStitch(warp,weft,over);
+    foundation=.12; pile=.40; backing=.60;
+  }else{
+    fill=thread(vec2(q.x/uLength,q.y),direction,.37,uStyle!=1);
+    if(uStyle==1){foundation=.22; pile=.62;}
   }
-  /* fibres: fine lengthwise streaks in each thread */
-  float fib=h2(floor(vec2(dot(p,vec2(-td.y,td.x))*1.7,dot(p,td)*0.12)))-0.5;
-  /* shine: bright along the top of each thread, stronger where the thread faces the light */
-  float face=0.45+0.55*abs(dot(td,normalize(vec2(0.55,0.83))));
-  float spec=uShine*pow(prof,6.0)*face;
-  if(uMap==0){ vec3 c=col*(0.62+0.38*prof)*(1.0+fib*0.12)+vec3(spec*0.32); o=outC(c,a); }
-  else if(uMap==1){ float h=0.5+uDepth*0.5*(body*0.7+prof*0.3+fib*0.03-groove*0.08); o=outC(vec3(clamp(h,0.0,1.0)),a); }
-  else { float r=clamp(0.78-0.3*prof*uShine+groove*0.15,0.05,1.0); o=outC(vec3(r),a); } }`;
-let EMBP=null;const embProgs=()=>EMBP||(EMBP={down:program(FS_EMB_DOWN),label:program(FS_EMB_LABEL),maj:program(FS_EMB_MAJ),seed:program(FS_EMB_SEED),jfa:program(FS_LKJFA),emb:program(FX2_H+FS_EMB.replace(GL_ST,''))});
+  if(uSat>0.0&&de<uSat+uSp){
+    vec2 inward=edgeDirection(uE,uL,ip,region,false,k);
+    Stitch satin=edgeThread(p,inward,de,uSp*.91,0.0);
+    float band=1.0-smoothstep(max(.4,uSat-uSp*.85),uSat+uSp*.45,de);
+    fill=blendStitch(fill,satin,band);
+    foundation+=.16*band*smoothstep(.3,uSp*1.35,de);
+    pile+=.08*band;
+    backing*=mix(1.0,.76,band);
+  }
+  if(uMw>0.0&&dp<uMw+uSp*.4){
+    vec2 inward=edgeDirection(uP,uL,ip,outline,true,k);
+    float rim=clamp(dp/uMw,0.0,1.0);
+    float roll=sqrt(max(0.0,1.0-pow(2.0*rim-1.0,2.0)));
+    float binding=1.0-smoothstep(uMw-uSp*.27,uMw+uSp*.4,dp);
+    Stitch wrap=edgeThread(p,inward,dp,uSp*1.19,.72);
+    wrap.light*=.67+.29*roll+.15*dot(inward,vec2(-.55,.62))*(1.0-2.0*rim);
+    wrap.shine*=.66+.52*roll;
+    fill=blendStitch(fill,wrap,binding);
+    colour=mix(colour,uMc,binding);
+    foundation=mix(foundation,.19+.49*roll,binding);
+    pile=mix(pile,.43,binding);
+    backing=mix(backing,.47,binding);
+    float contact=exp(-pow((dp-uMw-uSp*.40)/max(.75,uSp*.56),2.0));
+    fill.light*=1.0-contact*.21;
+    backing*=1.0-contact*.26;
+  }else{
+    float turn=smoothstep(.45,uSp*.96+.45,dp);
+    fill.light*=.77+.23*turn;
+    foundation*=.68+.32*turn;
+  }
+
+  float weight=fill.cover;
+  if(uMap==0){
+    float weave=.94+.06*cos(p.x*2.9)*cos(p.y*3.3);
+    vec3 base=colour*mix(backing*weave,fill.light,weight);
+    vec3 glint=mix(colour,vec3(1),.58)*fill.shine*uShine*.26*weight;
+    o=vec4(clamp(base+glint,0.0,1.0)*alpha,alpha);
+  }else if(uMap==1){
+    float h=.5+uDepth*.44*(foundation+pile*fill.height*weight);
+    o=vec4(vec3(clamp(h,0.0,1.0)*alpha),alpha);
+  }else{
+    float roughness=clamp(mix(.88,.69-uShine*(.16+.20*fill.shine),weight),.14,.92);
+    o=vec4(vec3(roughness*alpha),alpha);
+  }
+}`;
+
+let EMBP=null;
+function embProgs(){
+  if(!EMBP)EMBP={down:program(FS_EMB_DOWN),label:program(FS_EMB_LABEL),maj:program(FS_EMB_MAJ),
+    seed:program(FS_EMB_SEED),jfa:program(FS_LKJFA),emb:program(FS_EMB)};
+  return EMBP;
+}
+
 /* thread colours: sharp samples of the picture (transparent pixels left out), split where the colours spread most
    (so a small yellow detail still gets its own thread), refined by a few rounds of k-means, near-twins merged */
 function embPalette(src,n){const E=embProgs(),S=128,t=makeTarget(S,S,8);run(E.down,t,{uSrc:src.tex,uOut:[S,S]});const d=captureRegionNow(t,0,0,S,S).data;disposeTarget(t);
@@ -85,19 +215,44 @@ function embPalette(src,n){const E=embProgs(),S=128,t=makeTarget(S,S,8);run(E.do
   for(let it=0;it<6;it++){const sum=pal.map(()=>[0,0,0,0]);for(const p of px){let bi=0,bd=1e9;pal.forEach((c,i)=>{const e=dist(p,c);if(e<bd){bd=e;bi=i;}});const s=sum[bi];s[0]+=p[0];s[1]+=p[1];s[2]+=p[2];s[3]++;}
     pal=pal.map((c,i)=>sum[i][3]?[sum[i][0]/sum[i][3],sum[i][1]/sum[i][3],sum[i][2]/sum[i][3]]:c);}
   const out=[];for(const c of pal)if(!out.some(o=>dist(o,c)<.0015))out.push(c.map(v=>Math.min(1,Math.max(0,v))));return out;}
-/* jump flooding from the seeds: each pixel finds its nearest seed */
-function embField(E,L,what,A,B){run(E.seed,A,{uL:L.tex,uWhat:{int:what}});let st=1;while(st<Math.max(doc.w,doc.h))st*=2;
-  for(st>>=1;st>=1;st>>=1){run(E.jfa,B,{uSrc:A.tex,uStep:{int:st}});const t=A;A=B;B=t;}return [A,B];}
-/* the whole thing, into the layer's maps */
-function embRender(src,v,maps){const E=embProgs(),pal=v.pal,n=pal.length,P=new Float32Array(EMB_MAX*4);pal.forEach((c,i)=>P.set([c[0],c[1],c[2],1],i*4));
-  const sm=v.simplify>.25?blurOf(src,v.simplify):null,L0=makeTarget(doc.w,doc.h,8),L1=makeTarget(doc.w,doc.h,8);
-  run(E.label,L0,{uSrc:(sm||src).tex,uPal:{v4a:P},uN:{int:n},uWhole:{int:v.shape==='whole'?1:0}});if(sm)release(sm);
-  let a=L0,b=L1;for(let i=0;i<v.clean;i++){run(E.maj,b,{uL:a.tex,uR:{int:2}});const t=a;a=b;b=t;}
-  const F1=lkTex(gl.RG32F),F2=lkTex(gl.RG32F),F3=lkTex(gl.RG32F),F4=lkTex(gl.RG32F);
-  const [Ed]=embField(E,a,0,F1,F2),[Pd]=embField(E,a,1,F3,F4);
-  const u={uL:a.tex,uE:Ed.tex,uP:Pd.tex,uPal:{v4a:P},uSp:v.sp,uSat:v.satin,uAng:v.ang*Math.PI/180,uVary:{int:v.vary?1:0},uMw:v.merrow?v.mw:0,uMc:v.mc,uShine:v.shine,uDepth:v.depth,uSeed:v.seed};
-  for(const [k,m] of [['base',0],['height',1],['rough',2]])if(maps[k])run(E.emb,maps[k],Object.assign({uMap:{int:m}},u));
-  [F1,F2,F3,F4].forEach(disposeTarget);disposeTarget(L0);disposeTarget(L1);}
+/* Only the first 92 pixels from an edge can affect a stitch. An even number
+   of flood passes puts the refined field back in its own target. */
+function embField(E,labels,what,a,b){
+  run(E.seed,a,{uL:labels.tex,uWhat:{int:what}});
+  for(const step of [64,32,16,8,4,2,1,1]){
+    run(E.jfa,b,{uSrc:a.tex,uStep:{int:step}});
+    [a,b]=[b,a];
+  }
+}
+
+function embGeometry(src,v,palette,fields){
+  const E=embProgs();
+  if(!fields){
+    fields={labels:makeTarget(doc.w,doc.h,8,false),spare:makeTarget(doc.w,doc.h,8,false),
+      region:lkTex(gl.RG32F),outline:lkTex(gl.RG32F),flood:lkTex(gl.RG32F)};
+  }
+  const soft=v.simplify>.25?blurOf(src,v.simplify):null;
+  try{
+    run(E.label,fields.labels,{uSrc:(soft||src).tex,uShape:src.tex,uPal:{v4a:palette},
+      uN:{int:v.pal.length},uWhole:{int:v.shape==='whole'?1:0}});
+  }finally{if(soft)release(soft);}
+  for(let i=0;i<v.clean;i++){
+    run(E.maj,fields.spare,{uL:fields.labels.tex,uR:{int:2}});
+    [fields.labels,fields.spare]=[fields.spare,fields.labels];
+  }
+  embField(E,fields.labels,0,fields.region,fields.flood);
+  embField(E,fields.labels,1,fields.outline,fields.flood);
+  return fields;
+}
+
+function embRender(v,maps,fields,palette){
+  const u={uL:fields.labels.tex,uE:fields.region.tex,uP:fields.outline.tex,uPal:{v4a:palette},
+    uStyle:{int:v.style},uSp:v.sp,uLength:v.length,uSat:v.satin,uAng:v.ang*Math.PI/180,
+    uVary:v.vary?1:0,uMw:v.merrow?v.mw:0,uMc:v.mc,uShine:v.shine,uDepth:v.depth,uSeed:v.seed};
+  for(const [key,index] of [['base',0],['height',1],['rough',2]]){
+    if(maps[key])run(embProgs().emb,maps[key],{...u,uMap:{int:index}});
+  }
+}
 function embBorderColour(v){const pal=v.pal,lum=c=>c[0]*.3+c[1]*.59+c[2]*.11;
   return v.mcFrom==='fg'?ui.fg.slice(0,3):v.mcFrom==='light'?pal.reduce((a,c)=>lum(c)>lum(a)?c:a,pal[0]):pal.reduce((a,c)=>lum(c)<lum(a)?c:a,pal[0]);}
 let embDlg=null;
@@ -106,34 +261,71 @@ function dlgEmbroidery(){if(stroke||preview||selLive||embDlg){toast('Finish the 
   if(!canFloat){toast('This needs float textures, which this graphics card lacks.');return;}
   const A=doc.active,fromLayer=isLayer(A)&&hasMap(A,'base');
   let srcT=acquireD(doc.depth);if(fromLayer)blit(mapT(A,'base'),srcT,0,0,doc.w,doc.h,0,0);else{release(srcT);srcT=compositeMap('base');}
-  const v={threads:6,simplify:1.5,clean:2,sp:Math.max(2,Math.round(Math.max(doc.w,doc.h)/340)),satin:Math.max(4,Math.round(Math.max(doc.w,doc.h)/110)),ang:45,vary:true,
-    merrow:true,mw:Math.max(6,Math.round(Math.max(doc.w,doc.h)/70)),mcFrom:'dark',shine:.6,depth:.6,seed:1,shape:'outline'};
-  const prev={map:doc.map,view:doc.view};let added=null;
-  if(!doc.maps.includes('height')){setDocMaps([...doc.maps,'height'],'Add Height map');added=hist.undo[hist.undo.length-1];}
+  const size=Math.max(doc.w,doc.h);
+  const v={threads:8,simplify:.5,clean:1,style:0,sp:clamp(Math.round(size/105)*.5,2.5,12),length:4.5,
+    satin:clamp(Math.round(size/150),3,60),ang:33,vary:true,merrow:true,
+    mw:clamp(Math.round(size/60),6,72),mcFrom:'dark',shine:.72,depth:.73,seed:1,shape:'outline'};
   const parent=A?(A.parent||doc.root):doc.root,idx=A?parent.children.indexOf(A)+1:doc.root.children.length;
-  const L=newLayerObj('Embroidery');ensureMapTarget(L,'height');if(doc.maps.includes('rough'))ensureMapTarget(L,'rough');insertNode(L,parent,idx);
+  const L=newLayerObj('Embroidery',true);
+  ensureMapTarget(L,'base');ensureMapTarget(L,'height');
+  if(doc.maps.includes('rough'))ensureMapTarget(L,'rough');
+  insertNode(L,parent,idx);
   preview={off:true,conv:true};embDlg={L};
-  const draw=()=>{v.pal=embPalette(srcT,v.threads);v.mc=embBorderColour(v);const M={};for(const k of ['base','height','rough'])if(L.maps[k]&&doc.maps.includes(k))M[k]=L.maps[k];
-    embRender(srcT,v,M);L.visible=prefs.livePreview&&!embDlg.hidden;scheduleThumb(L);changedAll();chips();};
-  let tm=0;const later=()=>{clearTimeout(tm);tm=setTimeout(draw,120);};
+  let fields=null,palette=null,geometryKey='',colours=0,dirty=true,show=prefs.livePreview,tm=0;
+  const draw=()=>{
+    if(!dirty)return;
+    if(colours!==v.threads){
+      colours=v.threads;
+      v.pal=embPalette(srcT,colours);
+      palette=new Float32Array(EMB_MAX*4);
+      v.pal.forEach((colour,i)=>palette.set([...colour,1],i*4));
+      chips();
+    }
+    const key=[v.threads,v.simplify,v.clean,v.shape].join(':');
+    if(geometryKey!==key){
+      fields=embGeometry(srcT,v,palette,fields);
+      geometryKey=key;
+    }
+    v.mc=embBorderColour(v);
+    embRender(v,L.maps,fields,palette);
+    dirty=false;scheduleThumb(L);changedAll();
+  };
+  const later=()=>{dirty=true;clearTimeout(tm);if(show)tm=setTimeout(draw,100);};
   const sw=el('div',{class:'chips',id:'embPal','aria-label':'Thread colours'});
   const chips=()=>sw.replaceChildren(...(v.pal||[]).map(c=>el('span',{class:'embsw',style:'background:'+toHex(c),title:toHex(c)})));
   const S=(key,label,min,max,step,fmt)=>makeSlider({id:'emb_'+key,label,min,max,step,value:v[key],fmt,onInput:x=>{v[key]=x;later();}}).el;
+  const style=el('select',{id:'embStyle','aria-label':'Stitch style'},
+    el('option',{value:'tatami',text:'Tatami fill'}),el('option',{value:'satin',text:'Satin fill'}),
+    el('option',{value:'woven',text:'Woven twill'}));
+  style.onchange=()=>{v.style=style.selectedIndex;later();};
   const body=el('div',{class:'dlg-grid'},
-    el('p',{class:'note',text:'Turns '+(fromLayer?'the layer “'+A.name+'”':'the picture')+' into a stitched patch on a new layer: thread colours, satin edges, fill stitches, a merrow border and thread shine. It also writes Height'+(doc.maps.includes('rough')?' and Roughness':'')+'.'}),
+    el('p',{class:'note',text:'Stitch '+(fromLayer?'“'+A.name+'”':'the canvas')+' on a new layer with Height'+(doc.maps.includes('rough')?' and Roughness':'')+'.'}),
     el('div',{class:'sub',text:'Threads'}),S('threads','Thread colours',2,EMB_MAX,1,x=>String(x)),sw,S('simplify','Simplify',0,12,.5,px),S('clean','Clean up small bits',0,6,1,x=>String(x)),
-    el('div',{class:'sub',text:'Stitches'}),S('sp','Thread width',1.5,12,.5,px),S('satin','Satin edge width',2,80,1,px),S('ang','Fill angle',0,180,1,x=>x+'°'),
+    el('div',{class:'sub',text:'Stitches'}),el('label',{class:'frow'},el('span',{text:'Stitch style'}),style),
+    S('sp','Thread width',1.5,12,.5,px),S('length','Stitch length',2,12,.25,x=>x+'×'),
+    S('satin','Satin edge width',0,80,1,px),S('ang','Fill angle',0,180,1,x=>x+'°'),
     chk('emb_vary','Different angle for each colour',v.vary,x=>{v.vary=x;later();}),
     el('div',{class:'sub',text:'Merrow border'}),chk('emb_merrow','Rolled border around the patch',v.merrow,x=>{v.merrow=x;later();}),S('mw','Border width',2,80,1,px),
     seg([['dark','Darkest thread'],['light','Lightest thread'],['fg','Foreground colour']],v.mcFrom,x=>{v.mcFrom=x;later();},'Border colour'),
     el('div',{class:'sub',text:'Patch shape'}),seg([['outline','The picture’s outline'],['whole','Whole canvas']],v.shape,x=>{v.shape=x;later();},'Patch shape'),
     el('div',{class:'sub',text:'Look'}),S('shine','Thread shine',0,1,.01,pct),S('depth','Height',0,1,.01,pct),S('seed','Variation',1,99,1,x=>String(x)),
-    previewChk('embPrev',prefs.livePreview,x=>{embDlg.hidden=!x;L.visible=x;changed(L);requestRender(true);}));
-  draw();
-  const finish=()=>{clearTimeout(tm);preview=null;embDlg=null;if(srcT)release(srcT);srcT=null;};
+    previewChk('embPrev',show,x=>{show=x;clearTimeout(tm);L.visible=x;if(x)draw();changed(L);requestRender(true);}));
+  L.visible=show;
+  if(show)draw();
+  const finish=()=>{
+    clearTimeout(tm);preview=null;embDlg=null;release(srcT);
+    if(fields)Object.values(fields).forEach(disposeTarget);
+  };
   openDialog({title:'Embroidery patch',body,float:true,okLabel:'Create layer',
-    onOk(){clearTimeout(tm);draw();detachNode(L);L.visible=true;structOp('Embroidery patch',()=>{insertNode(L,parent,idx);selectOnly(L);});finish();syncTargets();changedAll();refreshMapsUI();
+    onOk(){clearTimeout(tm);draw();detachNode(L);L.visible=true;
+      let heightStep=null;
+      if(!doc.maps.includes('height')){
+        setDocMaps([...doc.maps,'height'],'Add Height map');
+        heightStep=hist.undo[hist.undo.length-1];
+      }
+      structOp('Embroidery patch',()=>{insertNode(L,parent,idx);selectOnly(L);});
+      const first=hist.undo.indexOf(heightStep);
+      if(first>=0)undoMerge(first,'Embroidery patch');
+      finish();syncTargets();changedAll();refreshMapsUI();
       toast('Added the layer “'+L.name+'”: colour and Height'+(L.maps.rough?' and Roughness':'')+'. Paint on it, or hide the picture under it.');},
-    onCancel(){detachNode(L);disposeLayer(L);finish();
-      if(added&&hist.undo[hist.undo.length-1]===added){hist.undo.pop();added.undo();dropRecords([added]);}
-      if(doc.maps.includes(prev.map))setEditMap(prev.map);doc.view=doc.maps.includes(prev.view)||prev.view==='material'||prev.view==='nfinal'?prev.view:doc.map;changedAll();refreshMapsUI();}});}
+    onCancel(){detachNode(L);disposeLayer(L);finish();changedAll();}});}

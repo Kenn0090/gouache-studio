@@ -344,7 +344,7 @@ function v3Changed(rects){if(!v3.on)return;if(!stroke&&weldEndPreview){const q=w
      masks, normal/height, converters and external edits still invalidate the complete material. */
   if(s&&s.viewportIndependent===undefined)s.viewportIndependent=doc.map!=='base'||!allNodes().some(n=>n.visible&&n.clip);
   const weldMask=s?.L.maskOf?.mask?.enabled&&!s.L.mrow&&maskPartOK(s);
-  const weld=(s?.o.material?.weldPaint||weldMask)&&prefs.paintSpeed!=='fast'&&doc.map==='base'&&!doc.wrap&&
+  const weld=(s?.o.material?.weldPaint||materialDab(s?.o.material)||weldMask)&&prefs.paintSpeed!=='fast'&&doc.map==='base'&&!doc.wrap&&
     doc.maps.every(k=>!compNeedsAll(doc.root.children,k));
   const safe=s&&s.viewportIndependent&&['brush','erase','dodge','burn'].includes(s.o.tool)&&(!s.L.maskOf||(weldMask&&weld))&&!s.L.quick&&!preview&&(!s.o.extras?.length||weld)&&doc.workflow!=='spec'&&doc.view===doc.map&&
     !['height','normal','curv'].includes(doc.map)&&!['anim','bake','convert'].includes(ui.mode)&&strokeCacheSafe()&&!compNeedsAll(doc.root.children,doc.map);

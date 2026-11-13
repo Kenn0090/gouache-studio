@@ -74,7 +74,7 @@ const ok=(v,m)=>{console.log((v?'PASS ':'FAIL ')+m);if(!v)fails++;};
    return copy.children[0].mask.stack.at(-1).p;
  });
  ok(restored.combine==='intersect'&&restored.inputTone.edgeWeight.contrast===.5&&restored.inputTone.aoWeight.invert,'a saved smart material keeps the Mask Builder input settings');
- await p.evaluate(async()=>{__gs.setMode('p3d');await __gs.weldUse(__gs.WELD_STYLES[0]);__gs.showPanel('weldtools');});
+ await p.evaluate(async()=>{__gs.setMode('p3d');await __gs.weldUse(__gs.WELD_STYLES.find(s=>s.id==='standard'));__gs.showPanel('weldtools');});
  await type('weld-width','80');ok(await p.evaluate(()=>__gs.weldOptions.width===80),'weld width accepts a precise value above its slider range');
  ok(errors.length===0,'no application errors');if(errors.length)console.log(errors);await b.close();await new Promise(r=>server.close(r));process.exitCode=fails?1:0;
 })().catch(e=>{console.error(e);process.exit(1);});

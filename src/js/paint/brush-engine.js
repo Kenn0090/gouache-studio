@@ -48,7 +48,7 @@ function beginStroke(L,x,y,p,o){
   const W=doc.w,H=doc.h;
   /* Big canvases: plain painting copies only the part of the layer the stroke covered, when it ends (endStroke), and
      clears only what the last stroke left in strokeT, instead of the whole canvas each time (a 16k canvas is 1 GB). */
-  const lazy=['brush','erase','dodge','burn'].includes(o.tool)&&!L.quick&&ui.mode!=='bake'&&(!o.space||!!L.maskOf);
+  const lazy=['brush','erase','dodge','burn'].includes(o.tool)&&!L.quick&&ui.mode!=='bake'&&(!o.space||!!L.maskOf||materialDab(o.material));
   if(strokeT.w===1&&strokeT.h===1&&doc.w*doc.h>=67108864)useAux(L.target.depth,false,lazy);
   else if(!lazy&&(beforeT.w!==W||beforeT.h!==H))useAux(L.target.depth,false);
   if(!lazy)blit(L.target,beforeT,0,0,W,H,0,0);
@@ -66,6 +66,8 @@ function beginStroke(L,x,y,p,o){
   const sampleT=o.tool==='smudge'&&o.sampleAll&&!o.space&&!L.maskOf&&!L.quick?compositeMap(doc.map):null;
   const gcell=clamp(o.grainSize||6,1,40),gx=Math.max(1,Math.round(W/gcell)),gy=Math.max(1,Math.round(H/gcell));
   stroke={lazy,fd:o.space?'all':null,L,o,x,y,p,lsx:x,lsy:y,dir:0,carry:0,bb:[W,H,0,0],clearBox,gScale:[W/gx,H/gy],gPeriod:[gx,gy],space:cg,rs:(cg||o.uvRs)?(o.cageRs||1):1,SW,SH,sym:o.sym||null,tint,grey:doc.map!=='base',sampleT,sampleAt:performance.now()};
+  if(o.weldHeat)weldHeatBegin(stroke);
+  if(stitchHasRelief(o.material?.stitch))stitchFoldsBegin(stroke);
   /* Resolve the library and repeating mask once, rather than per dab at low spacing. */
   stroke.dualU=typeof dualUniforms==='function'?dualUniforms(o.dual,false):null;
   if(o.mixBrush)mixBegin(stroke);
@@ -80,7 +82,7 @@ function beginStroke(L,x,y,p,o){
   if(o.tool==='smudge'&&stroke.space)meshSmudgeBegin(stroke);/* on the 3D model (mesh-pull.js) */
   if((o.lineBlend||o.fanFill)&&tint&&typeof lbBegin==='function'){stroke.cv=null;lbBegin(stroke);requestRender(true);return;}
   /* a brush that turns with the stroke waits for the first couple of pixels, so its first dab already points the way you are going */
-  if(o.followDir&&(o.tool==='brush'||o.tool==='erase'||o.mixer)&&!o.space){stroke.fdWait=true;stroke.carry=0;}else{stamp(x,y,p);stroke.carry=spacingAt(p);}if(o.tool==='brush'&&o.endInk>0){stroke.inkAnchor=[x,y];stroke.inkSince=performance.now();stroke.inkFrame=requestAnimationFrame(brushInkLoop);}requestRender(true);
+  if(o.followDir&&(o.tool==='brush'||o.tool==='erase'||o.mixer)&&(!o.space||materialDab(o.material))){stroke.fdWait=true;stroke.carry=0;}else{stamp(x,y,p);stroke.carry=spacingAt(p);}if(o.tool==='brush'&&o.endInk>0){stroke.inkAnchor=[x,y];stroke.inkSince=performance.now();stroke.inkFrame=requestAnimationFrame(brushInkLoop);}requestRender(true);
 }
 /* Ink wets the paper while the nib lingers, rather than adding a dot at release.
    A bounded, local stamp uses the normal selection, symmetry, maps and undo path. */
@@ -126,6 +128,9 @@ function brushDripLoop(now){const s=stroke;if(!s||!s.drips)return;
   requestRender(true);s.dripFrame=requestAnimationFrame(brushDripLoop);}
 function stamp(x,y,p){
   const s=stroke,o=s.o,r0=radiusAt(p),a=alphaAt(p);
+  if(o.singleDab&&s.stitchDabs)return;
+  if(o.material?.stitch)s.stitchDabs=(s.stitchDabs||0)+1;
+  if(o.material?.surfaceDetail)s.detailDabs=(s.detailDabs||0)+1;
   let dx=0,dy=0;if(o.tool==='smudge'){dx=x-s.lsx;dy=y-s.lsy;if(s.segX!==undefined){const ex=x-s.segX,ey=y-s.segY;if(ex*ex+ey*ey>dx*dx+dy*dy){dx=ex;dy=ey;}}s.lsx=x;s.lsy=y;}/* tiny spacing: pull by the whole move since the sample was taken, not by one dab step */
   const n=Math.max(1,Math.round(o.count||1)),dir=s.dir,PI=Math.PI;
   for(let k=0;k<n;k++){
@@ -135,15 +140,17 @@ function stamp(x,y,p){
     if(o.scatter>0){const d=r0*2*o.scatter,c=Math.cos(dir),sn=Math.sin(dir),t=(Math.random()*2-1)*d;px+=-sn*t;py+=c*t;if(o.bothAxes){const u=(Math.random()*2-1)*d;px+=c*u;py+=sn*u;}}
     const fx=(o.flipX?-1:1)*(o.randFlipX&&Math.random()<.5?-1:1),fy=(o.flipY?-1:1)*(o.randFlipY&&Math.random()<.5?-1:1)*(yup?-1:1);
     if(s.tint&&!o.jitterPerStroke)s.dabCol=jitterColor(o.color,o,s.grey);
-    for(const c of symCopies(s.sym,s.SW,s.SH,px,py,ang,fx,fy,dx,dy))stampOne(c[0],c[1],r,a,c[2],c[3],c[4],c[5],c[6]);
+    for(const c of symCopies(s.sym,s.SW,s.SH,px,py,ang,fx,fy,dx,dy))stampOne(c[0],c[1],r,a,c[2],c[3],c[4],c[5],c[6],p);
   }
   if(s.space&&!s.msm)s.spaceDirty=true;if(s.clone)s.cloneDirty=true;
 }
 /* continue a stroke from a new place without painting the gap between (a stroke that left the cage and came back) */
 function refreshStrokeSample(s){if(!s||!s.sampleT||!s.o.sampleAll||s.o.mixBrush)return false;const now=performance.now();if(now-s.sampleAt<16)return false;const prev=s.sampleT;s.sampleT=compositeMap(doc.map);if(s.samplePrevT)release(s.samplePrevT);s.samplePrevT=prev;s.sampleAt=now;return true;}
 function strokeJump(x,y,p){const s=stroke;if(!s)return;refreshStrokeSample(s);s.sampleBlend=1;s.x=x;s.y=y;s.p=p;s.lsx=x;s.lsy=y;stamp(x,y,p);if(s.samplePrevT){release(s.samplePrevT);s.samplePrevT=null;}s.carry=spacingAt(p);requestRender(true);}
-function stampOne(x,y,r,a,ang,fx,fy,dx,dy){
-  const s=stroke,o=s.o,W=s.SW||doc.w,H=s.SH||doc.h,tip=o.tip&&o.tip.tex?o.tip:null,ext=r*(tip?1.4143:o.spray>0&&o.sprayFleck>0?2.8:1)+2;const copies=[];
+function stampOne(x,y,r,a,ang,fx,fy,dx,dy,pressure){
+  const s=stroke,o=s.o,W=s.SW||doc.w,H=s.SH||doc.h,tip=o.tip&&o.tip.tex?o.tip:null;
+  const stitch=o.material?.stitch,stitchExtent=stitch&&(stitch.fray||stitch.variation)?1.85:1.4143;
+  const ext=r*(s.weldHeat?3:stitch?stitchExtent:o.material?.surfaceDetail?1.10:tip?1.4143:o.spray>0&&o.sprayFleck>0?2.8:1)+2,copies=[];
   if(doc.wrap&&!s.space){const cx0=mod(x,W),cy0=mod(y,H);for(const ox of [-W,0,W])for(const oy of [-H,0,H]){const cx=cx0+ox,cy=cy0+oy;if(cx+ext<0||cx-ext>W||cy+ext<0||cy-ext>H)continue;copies.push([cx,cy]);}}
   else if(!(x+ext<0||x-ext>W||y+ext<0||y-ext>H))copies.push([x,y]);
   if(!copies.length)return;
@@ -160,7 +167,12 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy){
   } else {
     const dst=s.space?s.space.buf:strokeT;
     if(dst===strokeT&&!doc.wrap)for(const c of copies)clearStrokeBufferRegion(s,[c[0]-ext,c[1]-ext,c[0]+ext,c[1]+ext]);
-    if(s.dualBatch){s.dualBatch.u=U;for(const c of copies)s.dualBatch.data.push(c[0],c[1],r,ext,ang,a,fx,fy,...U.uDualOff);
+    if(s.weldHeat)for(const [cx,cy] of copies)weldHeatDab(s.weldHeat,
+      {uCenter:[cx,cy],uExtent:ext,uSize:[W,H],uRadius:r,uAngle:ang,uRound:o.roundness||1},
+      pcurve(pressure??s.p,o),a);
+    if(o.material?.stitch)stitchStamp(s,dst,U,copies,a);
+    else if(o.material?.surfaceDetail)surfaceDetailStamp(s,dst,U,copies,a);
+    else if(s.dualBatch){s.dualBatch.u=U;for(const c of copies)s.dualBatch.data.push(c[0],c[1],r,ext,ang,a,fx,fy,...U.uDualOff);
       if(s.dualBatch.data.length>=10240){dualBatchFlush(s);dualBatchStart(s);}}
     else for(const c of copies){if(s.tint)run(P.stamp,dst,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:2},uDabCol:s.dabCol}),{blend:'tintfirst'});
       run(P.stamp,dst,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:s.tint?1:0},uDabCol:s.dabCol||[0,0,0]}),{blend:o.buildup||o.pFlow?'over':s.tint?'tintmax':'max'});}
@@ -179,7 +191,7 @@ function clearStrokeBufferRegion(s,r){
   if(!b){scissorDo([x0,y0,x1-x0,y1-y0],()=>clearTarget(strokeT));s.clearBox=[x0,y0,x1,y1];return;}
   const nx0=Math.min(b[0],x0),ny0=Math.min(b[1],y0),nx1=Math.max(b[2],x1),ny1=Math.max(b[3],y1);
   if(nx0===b[0]&&ny0===b[1]&&nx1===b[2]&&ny1===b[3])return;
-  const clear=(x,y,w,h)=>{if(w>0&&h>0)scissorDo([x,y,w,h],()=>clearTarget(strokeT));};
+  const clear=(x,y,w,h)=>{if(w>0&&h>0){const r=[x,y,w,h];scissorDo(r,()=>clearTarget(strokeT));if(s.weldHeat)weldHeatClear(s.weldHeat,r);}};
   clear(nx0,ny0,nx1-nx0,Math.max(0,b[1]-ny0));
   clear(nx0,b[3],nx1-nx0,Math.max(0,ny1-b[3]));
   const iy0=Math.max(ny0,b[1]),iy1=Math.min(ny1,b[3]);
@@ -229,6 +241,8 @@ function endStroke(record){
     if(record&&bw>0&&bh>0)parts.push({k:e.key,before:captureRegion(old,x0,y0,bw,bh)});
     scissorDo(R,()=>run(strokeMergeProgram(s),T,Object.assign({uSrc:old.tex,uStrokeTex:strokeT.tex,uStroke:{int:e.mode},uStrokeColor:e.color,uStrokeOpacity:s.o.opacity,uLockAlpha:false},chanU(null),s.exU,strokeMaterialU(s,e.key))));release(old);
     if(parts.length&&parts[parts.length-1].k===e.key)parts[parts.length-1].after=captureRegion(T,x0,y0,bw,bh);}
+  const halo=weldHeatFinish(s,R,record);
+  stitchFoldsRelease(s);
   if(s.lockT)release(s.lockT);if(s.sampleT)release(s.sampleT);if(s.samplePrevT)release(s.samplePrevT);dropStrokeCache(s);
   if(s.mix)mixEnd(s);
   if(s.lb)lbEnd(s);
@@ -236,6 +250,8 @@ function endStroke(record){
   if(record){
     if(bw>0&&bh>0){const r=regionRecord(L,lazyBefore||captureRegion(beforeT,x0,y0,bw,bh),captureRegion(L.target,x0,y0,bw,bh),x0,y0,bw,bh,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?(s.o.mixer?'Brush stroke':'Blend'):s.o.tool==='dodge'?'Dodge':s.o.tool==='burn'?'Burn':healing?'Heal':cloning?'Clone':'Brush stroke');
       if(L.onRecord)L.onRecord(r,[x0,y0,bw,bh]);
+      if(halo){const undo=r.undo,redo=r.redo;r.refs.push(halo.layer);r.snaps.push(...halo.snaps);
+        r.undo=()=>{undo();halo.undo();};r.redo=()=>{redo();halo.redo();};}
       pushUndo(parts.length?withMapParts(r,L,parts,x0,y0):r);}
     scheduleThumb(L.maskOf||L);
   }

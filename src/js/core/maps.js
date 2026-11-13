@@ -104,7 +104,11 @@ function normalComposite(flipY,own,region){
   const ND=canFloat?16:doc.depth,out=acquireD(ND);
   if(!hasH&&!hasN)scoped(()=>clearTarget(out,[.5,.5,1,1]));
   else{const h=hasH?input('height'):null,n=hasN?input('normal'):null;
-    scoped(()=>run(P.nrm,out,{uH:h?h.t.tex:dummy,uN:n?n.t.tex:dummy,uUseN:!!n,uStr:hasH?doc.nrmStr:0,uWrap:!!doc.wrap,uFlipY:!!flipY&&!mb}));
+    // A height derivative at the edge of a UV island should read the island's
+    // border, where its texel continues into the padding used in the viewport.
+    const owners=h&&ui.mode==='p3d'&&!doc.wrap?seamPadOwners():null;
+    scoped(()=>run(P.nrm,out,{uH:h?h.t.tex:dummy,uN:n?n.t.tex:dummy,uOwners:owners||dummy,uPadHeight:!!owners,
+      uUseN:!!n,uStr:hasH?doc.nrmStr:0,uWrap:!!doc.wrap,uFlipY:!!flipY&&!mb}));
     for(const c of [h,n])if(c&&!c.own)release(c.t);}
   if(!mb)return out;
   if(!P_NRMB)P_NRMB=program(FS_NRMB);const o2=acquireD(ND);scoped(()=>run(P_NRMB,o2,{uB:mb.tex,uD:out.tex,uFlipY:!!flipY}));release(out);return o2;}

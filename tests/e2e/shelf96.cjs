@@ -12,7 +12,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('#modeTabs [data-mode=p3d]');await W(3000);
  /* categories */
  const cats=await p.evaluate(()=>({tabs:__gs.dk.L.shelf.tabs.slice(),names:[...document.querySelectorAll('#dkShelf .dktab')].map(b=>b.textContent.trim()),icons:[...document.querySelectorAll('#dkShelf .dktab')].filter(b=>b.querySelector('svg.dkti')).length,brushesInDock:__gs.dk.L.groups.some(g=>g.tabs.includes('brushes')),hidden:__gs.dk.L.hidden.slice()}));
- ok(cats.tabs.join()==='shbrush,mats,smats,smasks,shalpha,textures,decals,envs,meshmaps,weldtools,projects','shelf categories in the Painter-like order '+cats.tabs.join());
+ ok(cats.tabs.join()==='shbrush,mats,smats,smasks,shalpha,textures,decals,envs,meshmaps,weldtools,stitches,surfacedetails,projects','shelf categories in the Painter-like order '+cats.tabs.join());
  ok(cats.names.slice(0,5).join()==='Brushes,Materials,Smart materials,Smart masks,Alphas'&&cats.icons===cats.names.length,'each category has an icon: '+cats.names.join(' · '));
  ok(!cats.brushesInDock&&cats.hidden.includes('brushes'),'an older saved layout loses the Brushes panel from the 3D Paint dock (it is the shelf’s first category now)');
  /* the quick bar on every tile category */

@@ -147,6 +147,8 @@
     "layers/mat-import",
     "layers/online-lib",
     "paint/weld-brush",
+    "paint/stitch-brush",
+    "paint/surface-detail-brush",
     "ui/lib-drag",
     "ui/texture-workshop-library",
     "ui/textures",

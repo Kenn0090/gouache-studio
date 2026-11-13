@@ -844,7 +844,11 @@ body.libdragging,body.libdragging *{cursor:grabbing!important;user-select:none}
 .meshslot>.btn{flex:0 0 auto}
 .projectgrid .mattile small{display:block;font-size:10px;color:var(--dim)}
 .projectgrid .mattile img{object-fit:contain}
-.weld-shelf{display:grid;gap:10px;padding-top:8px}.weld-grid{grid-template-columns:repeat(auto-fit,minmax(132px,1fr))}.weld-card{min-height:112px}.weld-card canvas{width:100%;height:54px;border-radius:4px}.weld-card small{display:block;color:var(--dim);font-size:10px}
+.weld-shelf{display:grid;gap:10px;padding-top:8px}
+.weld-actions{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.weld-grid{grid-template-columns:repeat(auto-fill,minmax(122px,1fr))}
+.weld-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(235px,100%),1fr));gap:4px 16px}
+.weld-card{min-height:98px}.weld-card canvas{width:100%;height:48px;border-radius:4px}.weld-card small{display:block;color:var(--dim);font-size:10px}
 #dkShelf .projectgrid .mattile .matprev{border-radius:4px}
 #meshMapSlots{padding:10px 0}
 #paBody,#mmBody{min-width:0;padding:8px}
