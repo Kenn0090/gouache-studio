@@ -1681,3 +1681,15 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 /* (0.97.11) Tools shelf: thumbnails only; the settings live in the Brush settings panel */
 .toolset .weld-controls{grid-template-columns:1fr}.toolset .weld-shelf{padding-top:4px}
 .dkshelf .weld-card small{display:none}.dkshelf .weld-grid{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
+/* (0.97.13) Paint tab Brushes panel: search, favourites, tile size, list view */
+.libquick{padding:2px 0 6px;position:static;flex-wrap:wrap}.libquick .shq{flex:1 1 90px;min-width:70px}
+#libBody .tiles{grid-template-columns:repeat(auto-fill,minmax(var(--libtw,38px),1fr))}
+#libBody .tiles button{position:relative}
+.libname{display:none}
+.libstar{position:absolute;top:1px;right:3px;font-style:normal;font-size:12px;line-height:1;color:var(--faint);opacity:0;cursor:pointer;text-shadow:0 0 3px #000}
+.tiles button:hover .libstar,.libstar.on{opacity:1}.libstar.on{color:#f0b840}
+#libBody.liblist .tiles{grid-template-columns:1fr;gap:2px}
+#libBody.liblist .tiles button{aspect-ratio:auto;display:flex;align-items:center;gap:8px;height:30px;padding:2px 6px;text-align:left}
+#libBody.liblist .tiles canvas{width:24px;height:24px;flex:none}
+#libBody.liblist .libname{display:block;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+#libBody.liblist .libstar{position:static;opacity:1;margin-left:auto}

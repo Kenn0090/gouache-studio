@@ -1,3 +1,8 @@
+## 0.97.13
+
+- **Brushes library in Paint:** search, favourites (star), tile size S / M / L and a list view.
+- **Smudge, Dodge, Burn, Heal and Clone settings** use the folding groups, Simple / Advanced and search.
+
 ## 0.97.12
 
 - **Smoothing groups:** remove them, or make them from an angle (Auto smooth), in the Bake tab and in 3D Paint.
