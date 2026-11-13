@@ -172,7 +172,7 @@ const CV_MAKE={
       if(mix)run(P2.rnm,dst,{uA:t.tex,uB:dn.tex,uOutDX:!!v.dx});}
     else{let h;if(cvS.kind==='photo'){h=cvT('nh');cvBands(h,v,1,true);if(v.sharp>0){const b=cvT('nhb');cvBlur(h,b,1.2,'btC');const t=cvT('nhs');run(P2.adjh,t,{uH:h.tex,uB:b.tex,uCon:1,uSharp:v.sharp,uInv:false});h=t;}}
       else{h=cvT('nh');const l=cvLum();cvBlur(l,h,v.noise*.8,'btC');if(cvS.inv){const t=cvT('nhi');run(P2.adjh,t,{uH:h.tex,uB:h.tex,uCon:1,uSharp:0,uInv:true});h=t;}}
-      run(P.nrm,dst,{uH:h.tex,uN:dn?dn.tex:dummy,uUseN:!!dn,uStr:v.str,uWrap:!!(cvS.seam.on||doc.wrap),uFlipY:!!v.dx});}
+      run(P.nrm,dst,{uPadHeight:false,uOwners:dummy,uH:h.tex,uN:dn?dn.tex:dummy,uUseN:!!dn,uStr:v.str,uWrap:!!(cvS.seam.on||doc.wrap),uFlipY:!!v.dx});}
     if(dn)release(dn);},
   ao(dst){const v=cvS.v.ao,h=cvRes('height'),b1=cvT('ab1'),b2=cvT('ab2'),b3=cvT('ab3');cvBlur(h,b1,v.r*.25,'btD');cvBlur(h,b2,v.r*.5,'btD');cvBlur(h,b3,v.r,'btD');
     run(cvP().ao,dst,{uH:h.tex,uB1:b1.tex,uB2:b2.tex,uB3:b3.tex,uStr:v.str,uBal:v.bal});if(v.smooth>.25){const t=cvT('as');cvBlur(dst,t,v.smooth,'btD');blit(t,dst,0,0,doc.w,doc.h,0,0);}},
@@ -193,7 +193,7 @@ function cvCompute(){if(!cvS.src)return;cvPrep();const need=new Set([cvS.tab,...
 let cvView=null;
 /* the two "which looks right?" previews: the photo as bumps pushed out and pushed in */
 function cvThumbs(){const S=112,P2=cvP();cvS.thumbs=[];const keepInv=cvS.inv;
-  for(const inv of [false,true]){cvS.inv=inv;const h=cvT('th_h');cvBands(h,cvS.v.normal,1,true);const n=cvT('th_n');run(P.nrm,n,{uH:h.tex,uN:dummy,uUseN:false,uStr:cvS.v.normal.str,uWrap:false,uFlipY:false});
+  for(const inv of [false,true]){cvS.inv=inv;const h=cvT('th_h');cvBands(h,cvS.v.normal,1,true);const n=cvT('th_n');run(P.nrm,n,{uPadHeight:false,uOwners:dummy,uH:h.tex,uN:dummy,uUseN:false,uStr:cvS.v.normal.str,uWrap:false,uFlipY:false});
     const sm=makeTarget(S,S,8,false);run(P2.shade,sm,{uN:n.tex,uSize:[S,S]});const d=captureRegionNow(sm,0,0,sm.w,sm.h).data;disposeTarget(sm);cvS.thumbs.push(d);}
   cvS.inv=keepInv;const box=$('#cvThumbs');if(box)cvDrawThumbs(box);}
 function cvDrawThumbs(box){box.querySelectorAll('canvas').forEach((c,i)=>{const d=cvS.thumbs&&cvS.thumbs[i];if(!d)return;const x=c.getContext('2d'),im=x.createImageData(112,112);im.data.set(d);x.putImageData(im,0,0);});}
