@@ -1,0 +1,23 @@
+/* 0.97.10 (Kenn): a short options bar; Stroke, Dynamics, Texture and Symmetry are small buttons that open pop-ups */
+const {chromium}=require('playwright'),path=require('path');
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});const p=await(await b.newContext({viewport:{width:1500,height:900}})).newPage();
+const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.route('**/*',r=>r.request().url().startsWith('file:')?r.continue():r.abort());
+await p.goto('file://'+path.resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+await p.evaluate(()=>{__gs.closeWelcome&&__gs.closeWelcome();__gs.setTool('brush')});await p.waitForTimeout(500);
+const ids=await p.evaluate(()=>[...document.querySelectorAll('#optBar .optpopbtn')].map(b=>b.id));
+ok(['obp_stroke','obp_dyn','obp_tex','obp_sym'].every(i=>ids.includes(i)),'the bar has the four group buttons: '+ids.join(','));
+ok(await p.evaluate(()=>['ob_size','ob_opacity','ob_flow'].every(i=>!!document.getElementById(i))&&!document.getElementById('ob_smoothing')&&!document.getElementById('ob_spacing')),'size, opacity and flow stay; the rest left the bar');
+await p.click('#obp_stroke');await p.waitForTimeout(300);
+ok(await p.evaluate(()=>!!document.querySelector('#optPop #ob_spacing')&&!!document.querySelector('#optPop #ob_smoothing')&&!!document.querySelector('#optPop #ob_lazy')),'Stroke: spacing, smoothing, lazy mouse');
+const v0=await p.evaluate(()=>__gs.brush.smoothing);await p.evaluate(()=>{const i=document.querySelector('#optPop #ob_smoothing');const r=i.querySelector?i:i});
+await p.click('#obp_dyn');await p.waitForTimeout(300);
+ok(await p.evaluate(()=>!!document.querySelector('#optPop #ob_sizeJitter')&&document.querySelectorAll('#optPop').length===1),'Dynamics replaces it; only one pop-up at a time');
+const pOp=await p.evaluate(()=>__gs.brush.pOpacity);await p.click('#optPop .optchip:nth-of-type(2)');await p.waitForTimeout(400);
+ok(await p.evaluate(()=>!!document.getElementById('optPop'))&&await p.evaluate(()=>__gs.brush.pOpacity)!==pOp,'a switch inside the pop-up works and the pop-up stays open');
+await p.mouse.click(700,500);await p.waitForTimeout(300);
+ok(!await p.evaluate(()=>!!document.getElementById('optPop')),'clicking elsewhere closes it');
+await p.click('#obMore');await p.waitForTimeout(300);ok(await p.evaluate(()=>!!document.querySelector('#optBar .optbreak')),'More still opens the second row');
+ok(errs.length===0,'no page errors '+errs.join('|'));
+await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0)})();

@@ -10,7 +10,7 @@ const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAI
   if(u.startsWith('file:'))return r.continue();return r.abort();});
  await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
  await p.evaluate(()=>__gs.closeWelcome());await p.waitForTimeout(300);
- ok(await p.locator('#ob_smoothing').count()===1&&await p.locator('#ob_correction').count()===1,'Smoothing and Correction are on the main options bar');
+ await p.click('#obp_stroke');await p.waitForTimeout(300);ok(await p.locator('#ob_smoothing').count()===1&&await p.locator('#ob_correction').count()===1,'Smoothing and Correction are in the Stroke pop-up of the options bar');
  /* the function: a zig-zag comes out flatter and the last point is the end */
  const f=await p.evaluate(()=>{const s={};const pts=[];for(let i=0;i<60;i++)pts.push([i*4,(i%2?6:-6)]);let out=[];for(const q of pts)out.push(...__gs.corrFeed(s,q[0],q[1],1,40,false));out.push(...__gs.corrFeed(s,0,0,1,0,true,240,0));
    const mid=out.slice(5,out.length-5),amp=Math.max(...mid.map(q=>Math.abs(q[1])));return {n:out.length,amp,last:out[out.length-1],first:out[0],raw:6};});

@@ -13,7 +13,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const a=await p.evaluate(()=>{const G=__gs;return {sym:!!G.symFor({}),mats:G.mir3Mats().length,sel:!![...document.querySelectorAll('#optBar select,.optbar select')].find(s=>s.getAttribute('aria-label')==='Symmetry')};});
  ok(a.sym&&a.mats===2,'in Paint the symmetry and the 3D mirror are on '+JSON.stringify(a));
  await p.click('#modeTabs [data-mode=bake]');await W(1200);
- const c=await p.evaluate(()=>{const G=__gs;G.buildOptBar();return {sym:!!G.symFor({}),mats:G.mir3Mats().length,sel:!![...document.querySelectorAll('select')].find(s=>s.getAttribute('aria-label')==='Symmetry'&&s.offsetParent),reset:!!document.getElementById('obSymReset')};});
+ const c=await p.evaluate(()=>{const G=__gs;G.buildOptBar();const sp=document.getElementById('obp_sym');if(sp)sp.click();return {sym:!!G.symFor({}),mats:G.mir3Mats().length,sel:!![...document.querySelectorAll('select')].find(s=>s.getAttribute('aria-label')==='Symmetry'&&s.offsetParent),reset:!!document.getElementById('obSymReset')};});
  ok(!c.sym&&c.mats===1,'in the Bake tab skew painting uses no symmetry and no 3D mirror '+JSON.stringify(c));
  ok(!c.sel&&!c.reset,'and the symmetry controls are not shown there');
  await p.click('#modeTabs [data-mode=paint]');await W(800);

@@ -31,7 +31,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok((await p.evaluate(()=>__gs.hist.undo.length))===h2,'with the preference off, hiding adds no Undo step');
  // ---- symmetry handle
  await p.evaluate(()=>{__gs.setTool('brush');__gs.setSym('radial');});await p.waitForTimeout(400);
- ok(await p.evaluate(()=>!!document.querySelector('#obRays')),'options bar has a Rays box');
+ await p.click('#obp_sym');await p.waitForTimeout(300);ok(await p.evaluate(()=>!!document.querySelector('#obRays')),'the Symmetry pop-up has a Rays box');
  await p.evaluate(()=>{const e=document.querySelector('#obRays');e.value='12';e.dispatchEvent(new Event('change',{bubbles:true}));});
  ok((await p.evaluate(()=>__gs.ui.sym.n))===12,'typing in the Rays box sets the rays');
  await p.evaluate(()=>{__gs.ui.sym.cx=.3;__gs.ui.sym.cy=.4;__gs.drawXfOverlay();});await p.waitForTimeout(300);
