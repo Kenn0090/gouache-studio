@@ -1,10 +1,10 @@
 # Material preview assets
 
-Kenn supplied Default.obj, Default.mtl and the T_Default maps for use as Gouache Studio's material preview and smart-material/mask test mesh.
+Kenn supplied Material_Preview_L.fbx (the updated preview low-poly) and its baked maps for use as Gouache Studio's material preview and smart-material/mask/generator test mesh.
 
-- material-preview.obj.gz is a lossless gzip copy of the supplied OBJ.
-- BC, Curv, N, ORM and Thickness are 2048-square preview copies of the 4096-square source PNGs.
-- H is a 2048-square 16-bit greyscale preview copy; height precision is retained.
-- ORM uses R = ambient occlusion, G = roughness, B = metallic, as assigned in the supplied MTL.
+- material-preview.obj.gz is the mesh from the FBX, written as an OBJ (one vertex per corner, UVs and normals as in the file) and gzipped.
+- preview-N (normal), AO, Curv (curvature), Thickness, Position, WNormal (world normal) and ID are 2048-square copies of the 4096-square baked PNGs.
+- preview-H is a 2048-square 16-bit greyscale copy; height precision is retained.
+- The old colour and ORM textures were made for the previous UV layout and were removed; the preview material is plain grey.
 
-The originals in Downloads are unchanged. These files are user-supplied assets, rather than assets downloaded from an external texture service.
+These files are user-supplied assets, rather than assets downloaded from an external texture service.
