@@ -124,7 +124,18 @@ async function encodeTex(W,H,f,C,fmt,bits){
 async function buildTextures(pr,name,opt){const W=doc.w,H=doc.h,S=pr&&pr.max?Math.max(1,Math.round(Math.min(texCfg.size||W,pr.max*W/Math.max(W,H)))):(texCfg.size||0),U=opt&&opt.udim?texUdim():null;
   /* (0.95) a UDIM set: the size is per tile, and each tile is its own file (Name_BaseColor.1001.png …) */
   const tw=U?W/U.B.nx:W,th=U?H/U.B.ny:H,nw=U?(S||Math.round(tw)):(S||W),nh=U?(S?Math.max(1,Math.round(S*th/tw)):Math.round(th)):(S?Math.max(1,Math.round(S*H/W)):H);
-  const pad=texPadBegin(U?Math.round(nw*U.B.nx):nw);try{return await buildTexturesIn(pr,name,W,H,nw,nh,pad,U);}finally{texPadEnd(pad);}}
+  const render=async()=>{if(opt?.replay&&ui.mode==='p3d')msUpdateAll();
+    const pad=texPadBegin(U?Math.round(nw*U.B.nx):nw);
+    try{return await buildTexturesIn(pr,name,doc.w,doc.h,nw,nh,pad,U);}finally{texPadEnd(pad);}};
+  const targetW=U?nw*U.B.nx:nw,targetH=U?nh*U.B.ny:nh;
+  if(opt?.replay&&ui.mode==='p3d'&&(targetW!==W||targetH!==H)){
+    if(!v3.mesh)v3LoadModel(true);
+    const scale=Math.min(1,MAX_DIM/Math.max(targetW,targetH));
+    const w=U?Math.max(1,Math.floor(nw*scale))*U.B.nx:Math.max(1,Math.floor(targetW*scale));
+    const h=U?Math.max(1,Math.floor(nh*scale))*U.B.ny:Math.max(1,Math.floor(targetH*scale));
+    if(w!==W||h!==H)return p3PaintHold(()=>p3PaintAtSize(w,h,{},render));
+  }
+  return render();}
 function texUdim(){if(ui.mode!=='p3d'||!p3.ua)return null;const S=p3.sets[p3.cur],m=S&&p3Binding(S),B=m&&udimBox(m);return B?{m,B}:null;}
 function texCrop(f,W,H,C,r){const [x,y,w,h]=r,o=new Float32Array(w*h*C);for(let j=0;j<h;j++){const yy=Math.min(H-1,y+j);o.set(f.subarray((yy*W+x)*C,(yy*W+x+w)*C),j*w*C);}return o;}
 async function buildTexturesIn(pr,name,W,H,nw,nh,pad,U){
@@ -185,14 +196,15 @@ function dlgExportTextures(){if(stroke||preview||selLive){toast('Finish the curr
     ...modelRow,...esRow(()=>{closeDialog();dlgExportTextures();}),el('div',{class:'sub',text:'Files'}),list);draw();pick();
   openDialog({title:'Export textures',body,okLabel:platform.isDesktop?(esActive()?'Export and send':'Choose folder…'):'Export',onOk(){exportTextures();}});}
 async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.name||'Texture',wantModel=mxHasModel()&&texCfg.model&&texCfg.model!=='none';
+  if(p3PaintBusy||tabDocs.hold||stroke||preview||selLive)return;
   let dir=null;if(platform.isDesktop){dir=await esTargetDir(name);if(!dir)return;}
   const epm=esActive()?await epMastersCheck(es.to):{rec:null,update:false};
   toast('Exporting textures…');await tick();
   try{let files=[];const bySet={},glTex={},shInfo={};
     /* each texture set (3D Paint), or the document; the model needs glTF-shaped textures too */
-    const one=async(setName,fileName)=>{const fs=await buildTextures(pr,fileName,{udim:true});bySet[setName]=fs;files.push(...fs);
-      if(eshWanted()){const g=await buildTextures(GLTF_TEX,pascal(fileName)),T={};for(const f of g)T[f.suffix]=f;shInfo[setName]={sh:JSON.parse(JSON.stringify(eshSafeShade(v3ShadeOf(doc)))),tex:T,alpha:doc.maps.includes('opac')};for(const f of g)if(!files.some(x=>x.name===f.name))files.push(f);}if(texCfg.meshMaps)files.push(...await buildMeshMapTextures(pr,fileName));
-      if(wantModel&&texCfg.model==='glb'){const g=await buildTextures(GLTF_TEX,pascal(fileName)),T={};for(const f of g)T[f.suffix]=f;T.alpha=doc.maps.includes('opac');glTex[setName]=T;}};
+    const one=async(setName,fileName)=>{const fs=await buildTextures(pr,fileName,{udim:true,replay:true});bySet[setName]=fs;files.push(...fs);
+      if(eshWanted()){const g=await buildTextures(GLTF_TEX,pascal(fileName),{replay:true}),T={};for(const f of g)T[f.suffix]=f;shInfo[setName]={sh:JSON.parse(JSON.stringify(eshSafeShade(v3ShadeOf(doc)))),tex:T,alpha:doc.maps.includes('opac')};for(const f of g)if(!files.some(x=>x.name===f.name))files.push(f);}if(texCfg.meshMaps)files.push(...await buildMeshMapTextures(pr,fileName));
+      if(wantModel&&texCfg.model==='glb'){const g=await buildTextures(GLTF_TEX,pascal(fileName),{replay:true}),T={};for(const f of g)T[f.suffix]=f;T.alpha=doc.maps.includes('opac');glTex[setName]=T;}};
     const sets=ui.mode==='p3d'?p3.sets.filter(S=>!S.missing):[];
     if(ui.mode==='p3d'&&(texCfg.allSets||wantModel)&&sets.length>1){const back=p3.cur;
       try{for(let i=0;i<p3.sets.length;i++){if(p3.sets[i].missing)continue;p3SwitchSet(i,true);const S=p3.sets[i];await one(S.name,S.tile?name+'_'+S.tile.id:name+'_'+S.name);}}finally{p3SwitchSet(back,true);}}

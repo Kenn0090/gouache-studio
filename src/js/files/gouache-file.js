@@ -9,7 +9,7 @@ function readRegion(t,x,y,w,h){gl.bindFramebuffer(gl.FRAMEBUFFER,t.fbo);let out;
   if(t.depth===16){const f=new Float32Array(w*h*4);gl.readPixels(x,y,w,h,gl.RGBA,gl.FLOAT,f);packedRead(t,f);out=new Uint16Array(f.length);for(let i=0;i<f.length;i++)out[i]=f2h(f[i]);out=new Uint8Array(out.buffer);}
   else{out=new Uint8Array(w*h*4);gl.readPixels(x,y,w,h,gl.RGBA,gl.UNSIGNED_BYTE,out);}
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);return out;}
-function writeRegion(t,x,y,w,h,bytes){t.opaque=false;gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
+function writeRegion(t,x,y,w,h,bytes){p3PaintWrite(t);t.opaque=false;gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
   if(t.depth===16)gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,w,h,t.mono?gl.RED:t.packed?gl.RG:gl.RGBA,gl.HALF_FLOAT,packedUpload(t,new Uint16Array(bytes.buffer,bytes.byteOffset,w*h*4)));
   else gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,w,h,t.mono?gl.RED:gl.RGBA,gl.UNSIGNED_BYTE,packedUpload(t,bytes));
   gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);t.mipDirty=true;t.opaque=x===0&&y===0&&w===t.w&&h===t.h&&imageOpaque(bytes,t.depth);}
@@ -47,8 +47,13 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
   const pack=async(t,x,y,w,h,lossy)=>{await throttle();ghCrumb('save: picture '+(stats.images+1)+' ('+w+'×'+h+', '+Math.round(stats.bytes/1048576)+' MB read so far)');const time=performance.now(),raw=await readRegionAsync(t,x,y,w,h);stats.read+=performance.now()-time;stats.bytes+=raw.byteLength;stats.images++;
     return {pr:pxPack(raw,w,h,t.depth,lossy,true)};};
   /* pictures are packed (files/pixel-pack.js): lossless, or WebP for colour and grey maps with Smaller files on */
-  const put=async(t,full,lossy)=>{if(!t||t.empty)return null;const start=performance.now(),b=full?[0,0,doc.w,doc.h]:await contentBoundsAsync(t);stats.bounds+=performance.now()-start;if(!b)return null;
-    const [x,y]=b,w=b[2]-b[0],h=b[3]-b[1],{pr}=await pack(t,x,y,w,h,lossy);return defer(pr,{r:[x,y,w,h],d:t.depth});};
+  const put=async(t,full,lossy)=>{if(!t||t.empty)return null;const source=doc.p3&&!t._paintStale?t._paintSource:null;
+    const start=performance.now(),b=full?[0,0,doc.w,doc.h]:await contentBoundsAsync(t);stats.bounds+=performance.now()-start;
+    if(!b&&!source)return null;
+    const [x,y,x1,y1]=b||[0,0,1,1],w=x1-x,h=y1-y,{pr}=await pack(t,x,y,w,h,lossy&&!source);
+    const r=defer(pr,{r:[x,y,w,h],d:t.depth});
+    if(source)r.paint=p3PaintEncode(source,defer);
+    return r;};
   /* Keep ordinary pixel blobs for older app versions, without allocating/readback of a full GPU image.
      The colour hint lets new versions reopen uniform maps without expanding their storage. */
   const putSolid=async(k,color)=>{const d=mapDepth(k);stats.images++;stats.bytes+=doc.w*doc.h*(d===16?8:4);return defer(pxPackSolid(color,doc.w,doc.h,d),{r:[0,0,doc.w,doc.h],d,c:color});};
@@ -84,7 +89,7 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
   /* every picture is packed now: give each its place in the file, in the order it was made */
   {const t0=performance.now();for(const d of later){const bytes=await d.e;if(opts.space){opts.space.push({label:(opts.prefix||'')+(d.label||'?'),bytes:bytes.length});continue;}d.r.o=off;off+=bytes.length;blobs.push(bytes);}stats.pack+=performance.now()-t0;}
   const head={persp:doc.persp||undefined,session:opts.lean?undefined:gfSession(),p3:!!doc.p3,meshMaps,meshMapInfo:doc.meshMapInfo,projectAssets,bakeMaps,cage:cageClone(doc.cage),v3d:doc.v3d||null,v3shade:doc.v3shade||null,guides:doc.guides&&doc.guides.length?doc.guides:undefined,dpi:doc.dpi||undefined,mesh:meshRec,app:'Gouache Studio',v:GF_VERSION,w:doc.w,h:doc.h,depth:doc.depth,wrap:doc.wrap,name:doc.name,
-    maps:doc.maps,map:doc.map,view:doc.view,mapDef:doc.mapDef,workflow:doc.workflow,nrmStr:doc.nrmStr,light:doc.light,tex:texCfg,kids,active,anim,layers:all.length};
+    maps:doc.maps,map:doc.map,view:doc.view,mapDef:doc.mapDef,workflow:doc.workflow,nrmStr:doc.nrmStr,heightReference:doc.p3?doc.heightReference:undefined,light:doc.light,tex:texCfg,kids,active,anim,layers:all.length};
   const hj=new TextEncoder().encode(JSON.stringify(head)),pre=new Uint8Array(16);pre.set(GF_MAGIC,0);const dv=new DataView(pre.buffer);dv.setUint32(8,GF_VERSION,true);dv.setUint32(12,hj.length,true);
   return new Blob([pre,hj,...blobs],{type:'application/octet-stream'});}
 function isGouache(buf){const u=new Uint8Array(buf,0,Math.min(8,buf.byteLength));return u.length===8&&GF_MAGIC.every((v,i)=>u[i]===v);}
@@ -116,20 +121,26 @@ async function openGouache(buf,name){const {head,data}=gfHead(buf);if(tabDocs.pa
 /* the maps, settings and layers of a document into the current (blank, right-sized) one; returns the image and layer readers */
 async function gfReadInto(buf,head,data){
   Object.assign(doc,{maps:head.maps||['base'],mapDef:head.mapDef||{},workflow:head.workflow==='spec'?'spec':'metal',nrmStr:head.nrmStr!=null?head.nrmStr:8,light:head.light||{az:135,el:40}});if(head.p3)doc.p3=true;
+  const ref=head.heightReference;
+  doc.heightReference=head.p3&&Array.isArray(ref)&&ref.length===2&&ref.every(v=>Number.isInteger(v)&&v>0&&v<=16384)?ref:undefined;
   const img=async(r,t,L,k)=>{if(!r)return;const [x,y,w,h]=r.r;
     if(L&&x===0&&y===0&&w===doc.w&&h===doc.h&&Array.isArray(r.c)&&r.c.length===4&&r.c.every(Number.isFinite)){setMapSolid(L,k,fillSolidColor(k,r.c));return;}
     const raw=await pxUnpack(new Uint8Array(buf,data+r.o,r.n),w,h,r.d||8,r.f);
     /* Older documents also compact truly uniform fill images, checking every pixel, before GPU upload. */
-    if(L&&x===0&&y===0&&w===doc.w&&h===doc.h){const a=new DataView(raw.buffer,raw.byteOffset,raw.byteLength),step=r.d===16?8:4,v=a.getUint32(0,true),v2=step===8?a.getUint32(4,true):0;let same=true;
+    if(L&&!r.paint&&x===0&&y===0&&w===doc.w&&h===doc.h){const a=new DataView(raw.buffer,raw.byteOffset,raw.byteLength),step=r.d===16?8:4,v=a.getUint32(0,true),v2=step===8?a.getUint32(4,true):0;let same=true;
       for(let i=step;i<raw.byteLength;i+=step)if(a.getUint32(i,true)!==v||step===8&&a.getUint32(i+4,true)!==v2){same=false;break;}
       if(same){const c=step===8?Array.from({length:4},(_,i)=>h2fLut()[a.getUint16(i*2,true)]):Array.from(raw.subarray(0,4),v=>v/255);setMapSolid(L,k,fillSolidColor(k,c));return;}}
     if(typeof t==='function')t=t();
-    if(r.d===t.depth){writeRegion(t,x,y,w,h,raw);return;}
-    /* stored at another depth (e.g. 16-bit file on a GPU without float targets): convert */
-    const n=w*h*4,out=t.depth===16?new Uint16Array(n):new Uint8Array(n);
-    if(r.d===16){const hv=new Uint16Array(raw.buffer,raw.byteOffset,n),lut=h2fLut();for(let i=0;i<n;i++)out[i]=clamp(Math.round(lut[hv[i]]*255),0,255);}
-    else for(let i=0;i<n;i++)out[i]=f2h(raw[i]/255);
-    writeRegion(t,x,y,w,h,new Uint8Array(out.buffer));};
+    if(r.d===t.depth)writeRegion(t,x,y,w,h,raw);
+    else{
+      /* 16-bit projects can open on GPUs without float targets. */
+      const n=w*h*4,out=t.depth===16?new Uint16Array(n):new Uint8Array(n);
+      if(r.d===16){const hv=new Uint16Array(raw.buffer,raw.byteOffset,n),lut=h2fLut();for(let i=0;i<n;i++)out[i]=clamp(Math.round(lut[hv[i]]*255),0,255);}
+      else for(let i=0;i<n;i++)out[i]=f2h(raw[i]/255);
+      writeRegion(t,x,y,w,h,new Uint8Array(out.buffer));
+    }
+    if(head.p3&&r.paint)await p3PaintDecode(t,r.paint,b=>new Uint8Array(buf,data+b.o,b.n));
+  };
   const sharedMap=new Map();
   const mk=async(o,parent)=>{let n;
     if(o.t==='R'){const sh=sharedMap.get(o.sid);if(sh&&parent)insertNode(sh,parent);return sh;}

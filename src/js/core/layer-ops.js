@@ -5,9 +5,14 @@ function needTarget(){const et=editTarget();if(et)useAux(et.target.depth);if(et&
 /* others: [{k,apply(T)}] — the same edit made to other maps of the layer, in the same undo step */
 function fullRecord(L,label,fn,rect,others){const r=rect||[0,0,doc.w,doc.h],x=r[0],y=r[1],w=r[2]-r[0],h=r[3]-r[1];others=others||[];
   if(w<=0||h<=0){fn();for(const o of others)o.apply(ensureMapTarget(L,o.k));changed(L.maskOf||L);return;}
-  const b=captureRegion(L.target,x,y,w,h);fn();const a=captureRegion(L.target,x,y,w,h);
-  const parts=others.map(o=>{const T=ensureMapTarget(L,o.k),before=captureRegion(T,x,y,w,h);o.apply(T);return {k:o.k,before,after:captureRegion(T,x,y,w,h)};});
-  const rec=regionRecord(L,b,a,x,y,w,h,label);pushUndo(parts.length?withMapParts(rec,L,parts,x,y):rec);changed(L.maskOf||L);}
+  const base=p3PaintValid(L.target),b=captureRegion(L.target,x,y,w,h);fn();const a=captureRegion(L.target,x,y,w,h);
+  const change=p3PaintPatch(base,recTarget(L),b,a,x,y),changes=change?[change]:[];
+  const parts=others.map(o=>{const T=ensureMapTarget(L,o.k),source=p3PaintValid(T),before=captureRegion(T,x,y,w,h);o.apply(T);
+    const after=captureRegion(T,x,y,w,h),patch=p3PaintPatch(source,()=>mapT(L,o.k,true),before,after,x,y);
+    if(patch)changes.push(patch);
+    return {k:o.k,before,after};
+  });
+  const rec=regionRecord(L,b,a,x,y,w,h,label);pushUndo(p3PaintUndoSources(parts.length?withMapParts(rec,L,parts,x,y):rec,changes));changed(L.maskOf||L);}
 /* other maps a fill / delete / bucket also changes: the ones switched on in the brush's Maps section */
 function otherMapsFor(et,needContent){if(!et||et.isMask||et.L.quick||!et.L.maps||chanRestricted())return [];return mapBrushTargets().filter(k=>!needContent||hasMap(et.L,k));}
 /* write src over T through the selection (T and a temp share T's depth) */

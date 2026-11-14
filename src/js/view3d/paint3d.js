@@ -39,6 +39,9 @@ function buildP3Panel(){p3BakePanel();if(typeof stBrushRender==='function')stBru
   const models=el('select',{id:'p3Model','aria-label':'Model'},...Object.entries(PRIMS).map(([k,[l]])=>el('option',{value:k,text:l})),
     ...(v3.imported?[el('option',{value:'imported',text:v3.imported.name})]:[]),el('option',{value:'__import',text:'Import a model (OBJ, glTF, GLB, FBX)…'}));
   models.value=s.model;models.onchange=()=>{if(models.value==='__import'){models.value=s.model;importModel().then(()=>{p3.imported=v3.imported;buildP3Panel();});return;}s.model=models.value;v3LoadModel();buildP3Panel();};
+  const active=p3.sets[p3.cur],tileBox=active&&udimBox(p3Binding(active)),side=Math.round(doc.w/(tileBox?.nx||1));
+  const sizes=[1024,2048,4096,...(MAX_DIM>=8192?[8192]:[])];
+  if(!sizes.includes(side))sizes.push(side);
   box.append(el('div',{class:'sub',text:'Model'}),models,s.model==='imported'&&v3.imported?upTurnRow():'',s.model==='imported'&&v3.imported?smoothingRow('p3Sm_'):'',s.model==='matpreview'?el('button',{class:'btn sm',id:'p3PreviewMaps',text:'Load preview material and mesh maps',onclick:()=>studioPreviewMaps()}):'',
     el('div',{class:'sub',text:'Texture sets'}),p3SetsBox(),el('p',{class:'note',text:p3.ua?'One texture set per material. Its UV tiles (UDIMs) sit side by side on one canvas, so strokes, fills and blurs carry across tiles. Click a tile to see it on the flat canvas; export writes one picture per tile.':p3.udim?'Each material has a paintable texture set for every detected UV tile. A stroke starts on the tile under the cursor.':'One set of maps per material of the model. Click a set to paint it.'}),
     el('div',{class:'sub',text:'Layout'}),seg([['3d','3D'],['split','3D + 2D'],['2d','2D']],p3.layout,p3SetLayout,'Viewport layout'),
@@ -48,8 +51,42 @@ function buildP3Panel(){p3BakePanel();if(typeof stBrushRender==='function')stBru
     el('p',{class:'note',text:'Ctrl + drag smooths and blends the paint. Shift-click joins the previous brush endpoint with a straight line. '+(v3PickKey()?'Hold '+v3PickKey()+' over the model to pick its colour (change it in Edit › Keyboard shortcuts).':'Colour picking has no hold key (Edit › Keyboard shortcuts).')+' Left/Right arrow keys step through the shades in the Color panel. Double-click empty space to reframe.'}),
     el('div',{class:'sub',text:'Project'}),el('div',{class:'chips'},el('button',{class:'btn sm',text:'Save project',title:'Save the model and all texture sets as a .gouache3d project (Ctrl+S here)',onclick:()=>saveP3Project(false)}),el('button',{class:'btn sm',text:'Open project…',onclick:()=>pickFile('open')})),
     el('div',{class:'sub',text:'Select on the model'}),sel3Box(),
-    el('div',{class:'sub',text:'Texture size · '+p3Resolution()}),seg([[1024,'1K'],[2048,'2K'],[4096,'4K'],...(MAX_DIM>=8192?[[8192,'8K']]:[]),...(doc.w>4096&&doc.w!==8192?[[doc.w,Math.round(doc.w/1024)+'K']]:[])],doc.w,v=>p3Resize(+v),'Texture size'));p3ResolutionSync();}
-function p3Resize(n){const S0=p3.sets[p3.cur],D=p3.ua&&S0?udimDims(p3Binding(S0),n):[n,n];if(D[0]===doc.w&&D[1]===doc.h)return;if(Math.max(D[0],D[1])>MAX_DIM){toast('This computer cannot edit textures that large.');return;}resizeImageDoc(D[0],D[1]);if(doc.w!==D[0]||doc.h!==D[1])return;p3.size=n;p3Save();for(const L of paintLayers())if(L.fill)fillRender(L);buildP3Panel();}
+    el('div',{class:'sub',text:'Texture size · '+p3Resolution()}),seg(sizes.sort((a,b)=>a-b).map(n=>[n,n>=1024&&n%1024===0?n/1024+'K':String(n)]),side,v=>p3Resize(+v),'Texture size'));p3ResolutionSync();}
+async function p3Resize(n){
+  if(p3PaintBusy||tabDocs.hold||gfSaving||loadDepth)return false;
+  const S=p3.sets[p3.cur],[w,h]=p3.ua&&S?udimDims(p3Binding(S),n):[n,n],oldW=doc.w,oldH=doc.h;
+  if(w===oldW&&h===oldH)return true;
+  if(Math.max(w,h)>MAX_DIM){toast('This computer cannot edit textures that large.');return false;}
+  if(stroke||ptr||preview||selLive||sel.quick||undoBusy){toast('Finish the current edit first.');return false;}
+  if(typeof xf!=='undefined'&&xf)xfCommit();
+  if(typeof gsess!=='undefined'&&gsess)gradCommit();
+  if(tedit)closeTextEditor();
+  textCommit();pathFlush();msCommit();
+  if(!v3.mesh)v3LoadModel(true);
+  const cancel={stopped:false};
+  try{
+    await p3PaintHold(async()=>{
+      loadStart('Texture size');
+      loadEls().classList.add('p3-resolution-progress');
+      loadSet(0,'Rebuilding layers and masks…');
+      loadCancel(()=>{cancel.stopped=true;});
+      try{await loadPaint();await p3PaintAtSize(w,h,{keep:true,cancel});}
+      finally{loadEls().classList.remove('p3-resolution-progress');loadEnd();}
+    });
+  }catch(e){if(!cancel.stopped)console.error(e);toast(e.message||NO_GPU_MEM);buildP3Panel();return false;}
+  extClearAll();
+  scaleEditableLayers(w/oldW,h/oldH);
+  for(const L of paintLayers()){
+    if(L.fill)fillRender(L);
+    if(L.path&&L.path.kind!=='2d')pathRender(L);
+  }
+  p3.size=n;p3.metadataVer=(p3.metadataVer||0)+1;p3Save();
+  if(S)S.resized=true;
+  v3.mapsDirty=true;v3.editDirty=true;v3.dirty=true;
+  fit();changedAll();updateStatus();buildP3Panel();
+  toast('Texture set rebuilt at '+w+' × '+h+'. Undo history was cleared.');
+  return true;
+}
 
 /* ---- texture sets: one per material of the model, each its own canvas of maps (like Substance Painter) ----
    The active set's canvas is the live document; the others are set aside (docState) with the textures they
@@ -92,7 +129,7 @@ function p3SyncSets(){const rs=v3.mesh?meshGroupByMat(v3.mesh):[{name:'default',
   if(p3.cur<0&&p3.sets.length)p3SwitchSet(0,true);
   else if(p3.sets[p3.cur]?.missing){const i=p3.sets.findIndex(S=>!S.missing);if(i>=0)p3SwitchSet(i,true);}
   if(p3.sets[p3.cur])doc.name=p3.sets[p3.cur].name;
-  if(p3.ua&&p3.sets[p3.cur]&&!hist.undo.length){const D=p3SetDims(p3.sets[p3.cur]);if(D[0]!==doc.w||D[1]!==doc.h){resizeImageDoc(D[0],D[1]);for(const L of paintLayers())if(L.fill)fillRender(L);}}/* (0.95) a fresh set takes its tiles' canvas size */
+  if(p3.ua&&p3.sets[p3.cur]&&!p3.sets[p3.cur].resized&&!hist.undo.length){const D=p3SetDims(p3.sets[p3.cur]);if(D[0]!==doc.w||D[1]!==doc.h){resizeImageDoc(D[0],D[1]);for(const L of paintLayers())if(L.fill)fillRender(L);}}/* a fresh set takes its tiles' canvas size */
   $('#docName').textContent=doc.name;}
 function p3SwitchSet(i,quiet){if(i===p3.cur||!p3.sets[i])return;if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
   if(typeof xf!=='undefined'&&xf)xfCommit();if(typeof gsess!=='undefined'&&gsess)gradCommit();

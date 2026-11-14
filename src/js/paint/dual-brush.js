@@ -18,6 +18,7 @@ function dualTip(d){const k=d&&d.tipKey||'';
   if(k.startsWith('b:'))return TIPS[k.slice(2)]||null;if(k.startsWith('a:'))return (typeof ART_TIPS!=='undefined'&&ART_TIPS[k.slice(2)])||null;
   if(k.startsWith('u:')){const n=k.slice(2);for(const s of library)for(const t of s.tips)if(t.name===n)return t;}return null;}
 const dualCache=new Map();
+const dualPictures=new WeakMap();
 function dualTexOf(d){const tip=dualTip(d);if(!tip||!tip.alpha)return null;
   const key=[tip.id,d.size,d.spacing,d.scatter,d.count].join('|');let e=dualCache.get(key);if(e)return e;
   const sz=clamp(+d.size||40,2,600),S=sz>180?1024:512,T=new Uint8Array(S*S),TA=tip.alpha,tw=tip.w,th=tip.h;
@@ -32,7 +33,7 @@ function dualTexOf(d){const tip=dualTip(d);if(!tip||!tip.alpha)return null;
       const px=((Math.round(cx+x)%S)+S)%S,py=((Math.round(cy+y)%S)+S)%S,ix=py*S+px;if(val>T[ix])T[ix]=val;}}
   const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);gl.texImage2D(gl.TEXTURE_2D,0,gl.R8,S,S,0,gl.RED,gl.UNSIGNED_BYTE,T);gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);
-  e={tex,size:S};if(dualCache.size>=8){const [k0,v0]=dualCache.entries().next().value;gl.deleteTexture(v0.tex);dualCache.delete(k0);}dualCache.set(key,e);return e;}
+  e={tex,size:S};dualPictures.set(tex,{size:S,pixels:T});if(dualCache.size>=8){const [k0,v0]=dualCache.entries().next().value;gl.deleteTexture(v0.tex);dualCache.delete(k0);}dualCache.set(key,e);return e;}
 /* the uniforms for one dab (stampOne) */
 function dualUniforms(d,randomize=true){if(!d||!d.on||d.amount===0)return null;const t=dualTexOf(d);if(!t)return null;
   return {uUseDual:true,uDual:t.tex,uDualSize:[t.size,t.size],uDualOff:d.random&&randomize?[Math.random()*t.size,Math.random()*t.size]:[0,0],uDualMode:{int:d.mode|0},uDualAmt:(d.amount==null?100:d.amount)/100};}
@@ -67,6 +68,7 @@ let dualBatchGPU=null;
 function dualBatchStart(s){if(!dualWork.enabled||!s.dualU||s.tint||!['brush','erase','dodge','burn'].includes(s.o.tool))return;
   const dst=s.space?s.space.buf:strokeT;if(dst.packed)return;s.dualBatch={dst,data:[],u:null,over:!!(s.o.buildup||s.o.pFlow)};}
 function dualBatchFlush(s){const b=s.dualBatch;s.dualBatch=null;if(!b||!b.data.length)return;
+  if(s.paintReplay)p3PaintBatch(s,b);
   if(!dualBatchGPU){
     const vs=`#version 300 es
       in vec2 a; layout(location=1) in vec4 dab0; layout(location=2) in vec4 dab1; layout(location=3) in vec2 dab2;

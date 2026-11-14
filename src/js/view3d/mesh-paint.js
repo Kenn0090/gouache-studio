@@ -67,17 +67,20 @@ const p3Bounds={off:false};
 function p3p(){if(!P3P)P3P={depth:prog3(VS_3DD,FS_3DDEPTH.replace('void main','in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan;\nvoid main')),proj:prog3(VS_3DPROJ,FS_3DPROJ)};return P3P;}
 function v3ViewProj(w,h){const s=v3s(),eye=v3Eye(),V=m4look(eye,[v3.cam.tx,v3.cam.ty,v3.cam.tz],[0,1,0]),Pm=v3Proj(w/h,.02,100);return {VP:m4mul(Pm,V),eye};}
 /* the screen buffer the brush stamps into, and how far away the model is at each pixel */
-function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;if(M&&M.mvFree){for(const t of M.mvFree)gl.deleteTexture(t);M.mvFree=null;}
-  if(!M||M.w!==w||M.h!==h){if(M){disposeTarget(M.buf);gl.deleteFramebuffer(M.fb);gl.deleteTexture(M.dt);gl.deleteRenderbuffer(M.rb);}
-    M={w,h,buf:makeTarget(w,h,doc.depth===16?16:8,false)};M.fb=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,M.fb);
+function meshSpaceFree(M){if(!M)return;for(const t of M.mvFree||[])gl.deleteTexture(t);disposeTarget(M.buf);gl.deleteFramebuffer(M.fb);gl.deleteTexture(M.dt);gl.deleteRenderbuffer(M.rb);}
+function meshSpace(w,h,replay=null,depth=doc.depth,replayCache=null){const P=p3p(),g=v3.gpu;if(!g)return null;let M=replayCache?replayCache.mesh:v3.mp;if(M&&M.mvFree){for(const t of M.mvFree)gl.deleteTexture(t);M.mvFree=null;}
+  if(!M||M.w!==w||M.h!==h||M.buf.depth!==depth){meshSpaceFree(M);
+    M={w,h,buf:makeTarget(w,h,depth,false)};M.fb=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,M.fb);
     M.dt=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,M.dt);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,w,h,0,gl.RGBA,gl.FLOAT,null);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
     gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,M.dt,0);M.rb=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,M.rb);gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT24,w,h);
-    gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,M.rb);gl.bindFramebuffer(gl.FRAMEBUFFER,null);v3.mp=M;}
-  const s=v3s(),bake=ui.mode==='bake',T=v3.tex,{VP,eye}=v3ViewProj(w,h),useH=!bake&&!!(T.height&&s.disp&&doc.maps.includes('height')),udim=ui.mode==='p3d'&&!!p3.udim&&!!p3.sets[p3.cur]?.tile,udimTile=udim?p3.sets[p3.cur].tile:{u:0,v:0},uvs=bake?1:(p3.udim||p3.ua?1:s.uvs);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,M.rb);gl.bindFramebuffer(gl.FRAMEBUFFER,null);if(replayCache)replayCache.mesh=M;else v3.mp=M;}
+  const s=v3s(),bake=ui.mode==='bake',T=v3.tex,{VP,eye}=replay||v3ViewProj(w,h),useH=!replay&&!bake&&!!(T.height&&s.disp&&doc.maps.includes('height'));
+  const udim=replay?replay.udim:ui.mode==='p3d'&&!!p3.udim&&!!p3.sets[p3.cur]?.tile,udimTile=replay?.tile||(udim?p3.sets[p3.cur].tile:{u:0,v:0}),uvs=replay?.uvs??(bake?1:(p3.udim||p3.ua?1:s.uvs));
   gl.bindFramebuffer(gl.FRAMEBUFFER,M.fb);gl.viewport(0,0,w,h);gl.clearColor(0,0,0,0);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.BLEND);
   useProg(P.depth,{uVP:{m4:VP},uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uCamP:eye});gl.bindVertexArray(g.vao);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);gl.bindVertexArray(vao);
   gl.disable(gl.DEPTH_TEST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
-  const mirs=mir3Mats(),mesh=v3.mesh,R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:g.count/3};/* 3D Paint: only the active texture set takes paint */
+  const mirs=replay?.mirs||mir3Mats(),mesh=v3.mesh,R=replay?.range||(ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:g.count/3});/* only the active texture set takes paint */
+  const projectSettings=()=>({align:v3s().paintAlign==='camera'?0:1,back:v3s().noBack===false?0:1,cull:meshCullCos(),wrap:meshWrapTol()});
   /* A small screen-space index, built once per stroke, bounds the UV triangles touched by the brush.
      Per-frame queries visit at most 256 cells, rather than transforming a high-poly mesh again.
      Displacement, mirrored painting, tiled UVs and near-plane intersections keep full texture updates. */
@@ -101,6 +104,11 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;if(
     for(const B of bins)for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const j=(y*16+x)*4;u0=Math.min(u0,B[j]);v0=Math.min(v0,B[j+1]);u1=Math.max(u1,B[j+2]);v1=Math.max(v1,B[j+3]);}
     return u1<u0?[0,0,0,0]:[u0*doc.w-2,v0*doc.h-2,u1*doc.w+2,v1*doc.h+2];};
   return SPo={w,h,buf:M.buf,yup:true,viewportBounds,mesh:true,colourStencil:!!st3.img&&st3.mode==='colour',
+    get paintProjection(){
+      if(replay||!doc.p3||bake||useH||(st3.img&&st3.mode!=='off'))return null;
+      return {mesh:p3PaintMeshKey(mesh),VP:Array.from(VP),eye:Array.from(eye),mirs:mirs.map(m=>Array.from(m)),
+        uvs,udim,tile:{u:udimTile.u,v:udimTile.v},range:{start:R.start,count:R.count},...projectSettings()};
+    },
     /* draws the model flat in its UV layout into a map with a shader of mesh-pull.js (same visibility rules as painting) */
     /* (0.96.7, Kenn: "blend and smooth should mirror") one view per mirror copy: the model seen through the mirror, so the copy's side
        sits under the brush exactly as the real side does (depth + UV picture of the mirrored model, made once per stroke) */
@@ -130,13 +138,13 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;if(
       const halo=stroke?.weldHeat;if(halo?.screen){SPo.projectStroke(halo.screen,halo.uv,true);halo.projected=true;}
       const folds=stroke?.stitchFolds;if(folds?.screen)SPo.projectStroke(folds.screen,folds.uv,true);},
     projectStroke(source,target,materialData,worldDirection){bindTarget(target);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
-      const stU=st3Uniforms(w,h),normalBase=worldDirection&&meshNormalBase();
+      const stU=replay?{uSt:{int:0},uStT:dummy}:st3Uniforms(w,h),normalBase=worldDirection&&meshNormalBase(),settings=replay||projectSettings();
       // A texel must get one direction, even when mirrored projections overlap. Give the original stroke priority.
       const copies=worldDirection?mirs.slice().reverse():mirs;
       for(const Mi of copies){useProg(P.proj,Object.assign({uVPm:{m4:VP},uStroke:source.tex,uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v],uMir:{m4:Mi},uMaterialData:materialData,uWorldNormal:!!worldDirection,uWorldDirection:worldDirection||[0,0,1],uHasNormalBase:!!normalBase,uNormalBase:normalBase?.tex||dummy},stU));
       bindTarget(target);if(worldDirection)gl.disable(gl.BLEND);else{gl.enable(gl.BLEND);gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);}gl.disable(gl.CULL_FACE);
       const loc=gl.getUniformLocation(P.proj.p,'uShift'),alignLoc=gl.getUniformLocation(P.proj.p,'uAlign'),backLoc=gl.getUniformLocation(P.proj.p,'uNoBack');gl.bindVertexArray(g.vao);
-      const align=v3s().paintAlign==='camera'?0:1;gl.uniform1i(alignLoc,align);gl.uniform1f(gl.getUniformLocation(P.proj.p,'uCullCos'),meshCullCos());gl.uniform1f(gl.getUniformLocation(P.proj.p,'uWrapTol'),meshWrapTol());gl.uniform1i(backLoc,v3s().noBack===false?0:1);
+      gl.uniform1i(alignLoc,settings.align);gl.uniform1f(gl.getUniformLocation(P.proj.p,'uCullCos'),settings.cull);gl.uniform1f(gl.getUniformLocation(P.proj.p,'uWrapTol'),settings.wrap);gl.uniform1i(backLoc,settings.back);
       for(let j=0;j<uvs;j++)for(let i=0;i<uvs;i++){gl.uniform2f(loc,i,j);gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);}}
       gl.bindVertexArray(vao);gl.blendEquation(gl.FUNC_ADD);gl.disable(gl.BLEND);},
     /* the part of the texture this stroke can have touched: triangles whose screen position meets the stroke */

@@ -10,6 +10,7 @@
     "core/render",
     "core/workflow",
     "paint/brush-engine",
+    "view3d/paint-resolution",
     "paint/straight-lines",
     "paint/perspective",
     "paint/heal",
