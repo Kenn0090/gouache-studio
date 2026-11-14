@@ -1,3 +1,10 @@
+## 0.97.16
+
+- **Arcane-inspired paint** adds an editable Stylize layer with broad and fine directional strokes, dry bristles, and separate shadow and light tints.
+- **World Direction normal brush** paints a shared direction across UV seams in 3D Paint. Preview the result in Material Lit or World normals and export it through the Normal channel.
+- **Comic Crosshatch** adds animated ink and a moving key light. Pick a built-in pattern or import a hatch image, then set outline width, colour, opacity, and wobble independently.
+- **3D Paint projects** restore each texture set's shader settings and custom hatch texture when reopened.
+
 ## 0.97.15
 
 - **Masks paint live on the model.** Painting a mask that has generator or filter rows now shows on the 3D model while you paint, not only when you let go of the mouse.
