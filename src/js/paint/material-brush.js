@@ -39,9 +39,11 @@ function toolMaskOptions(o,material,single){
 }
 function materialPaintOpts(o,et){if(ui.tool!=='material')return o;if(materialBrush.rec?.stitch)return stitchPaintOptions(o,et);
   if(materialBrush.rec?.surfaceDetail)return surfaceDetailPaintOptions(o,et);
-  if(et.isMask&&(et.node?.materialPaint||materialBrush.rec?.weldPaint)){if(!materialBrush.rec||materialBrush.loading)return null;o.tool='brush';o.color=et.node?.materialPaint?[1,1,1]:o.color;o.noTint=true;o.chan=null;o.extras=[];o.weldMask=et.node?.materialPaint?et.node.materialPaint.startsWith('weld:'):true;if(o.weldMask&&ui.mode==='p3d')o.weldHeat=materialBrush.rec.heatHalo;return o;}if(et.isMask){toast('Select a layer’s colour thumbnail to start painting a material.');return null;}
+  if(et.isMask&&(et.node?.materialPaint||materialBrush.rec?.weldPaint)){if(!materialBrush.rec||materialBrush.loading)return null;o.tool='brush';o.color=et.node?.materialPaint?[1,1,1]:o.color;o.noTint=true;o.chan=null;o.extras=[];o.weldMask=et.node?.materialPaint?et.node.materialPaint.startsWith('weld:'):true;if(o.weldMask&&et.node?.materialPaint&&ui.mode==='p3d')o.weldHeat=materialBrush.rec.heatHalo;return o;}if(et.isMask){toast('Select a layer’s colour thumbnail to start painting a material.');return null;}
   const rec=materialBrush.rec;if(!rec||materialBrush.loading){toast(materialBrush.loading?'The material is loading.':'Choose a material in the shelf, then press Paint material.');return null;}
   o.tool='brush';o.noTint=true;o.chan=null;o.material={weldPaint:!!rec.weldPaint,fill:fillClone(rec.fill),imgs:matRecTargets(rec),tile:materialBrush.tile};
+  /* (0.97.16) a bare-metal weld on a paint layer paints its heat halo into that layer, under the bead */
+  if(rec.weldPaint&&rec.heatHalo&&ui.mode==='p3d'&&!et.isMask){o.weldHeat=rec.heatHalo;o.haloInLayer=true;}
   o.extras=doc.maps.filter(k=>k!==doc.map&&rec.fill.maps[k]?.on).map(k=>({key:k,mode:1,color:[0,0,0]}));return o;}
 function materialBrushTarget(){if(ui.tool!=='material')return null;const n=doc.active,r=materialBrush.rec;if(!r||materialBrush.loading||sel.quick)return null;
   if(r.stitch)return stitchTarget();

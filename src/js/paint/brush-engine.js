@@ -29,7 +29,7 @@ const brush=Object.assign({},BRUSH_DEFAULTS);
 function pcurve(p,o){return Math.pow(clamp(p,0,1),Math.pow(2,-o.curve*1.6));}
 function radiusAt(p){const o=stroke.o;let r=o.size/2*(stroke.rs||1);if(o.pSize)r*=o.minSize+(1-o.minSize)*pcurve(p,o);return Math.max(.5,r);}
 function alphaAt(p){const o=stroke.o;let a=o.flow;if(o.pOpacity||o.pFlow)a*=pcurve(p,o);return a;}
-function spacingAt(p){return Math.max(.5,stroke.o.spacing*2*radiusAt(p));}
+function spacingAt(p){/* (0.97.16) on the model each blend dab redraws the whole mesh once per map: never closer than a fifth of the brush */const sp=stroke.o.spacing*(stroke.o.tool==='smudge'&&stroke.space?Math.max(1,.2/Math.max(.01,stroke.o.spacing)):1);return Math.max(.5,sp*2*radiusAt(p));}
 /* colour jitter: each dab (or each stroke) gets its own hue, saturation and brightness around the brush colour */
 function jitterColor(c,o,grey){const R=()=>Math.random()*2-1;
   if(grey){const g=clamp(c[0]*(1+R()*(o.valJitter||0)),0,1);return [g,g,g];}
@@ -160,7 +160,7 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy,pressure){
   if(s.dualU){if(o.dual.random)s.dualU.uDualOff=[Math.random()*s.dualU.uDualSize[0],Math.random()*s.dualU.uDualSize[1]];Object.assign(U,s.dualU);}
   if(!s.dualBatch)p3PaintDab(s,U,copies,a,tip);
   if(o.tool==='smudge'&&s.space){/* on the 3D model: the dab goes into the screen buffer, then pulls paint through the model's UVs (mesh-pull.js) */
-    clearTarget(s.space.buf);for(const c of copies)run(P.stamp,s.space.buf,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:0},uDabCol:[0,0,0]}),{blend:'max'});
+    {const bx=copies.map(c=>[Math.floor(c[0]-ext),Math.floor(c[1]-ext),Math.ceil(ext*2)+2,Math.ceil(ext*2)+2]);for(const r of (s.lastClr||[]).concat(bx))scissorDo(r,()=>clearTarget(s.space.buf));s.lastClr=bx;}for(const c of copies)run(P.stamp,s.space.buf,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:0},uDabCol:[0,0,0]}),{blend:'max'});
     for(const c of copies)meshSmudgeApply(s,c[0],c[1],ext,dx,dy);
   } else if(o.tool==='smudge'){
     if(doc.wrap)blit(s.L.target,scratchT,0,0,W,H,0,0);
@@ -243,7 +243,7 @@ function endStroke(record){
     if(record&&bw>0&&bh>0)parts.push({k:e.key,before:captureRegion(old,x0,y0,bw,bh)});
     scissorDo(R,()=>run(strokeMergeProgram(s),T,Object.assign({uSrc:old.tex,uStrokeTex:strokeT.tex,uStroke:{int:e.mode},uStrokeColor:e.color,uStrokeOpacity:s.o.opacity,uLockAlpha:false},chanU(null),s.exU,strokeMaterialU(s,e.key))));release(old);
     if(parts.length&&parts[parts.length-1].k===e.key)parts[parts.length-1].after=captureRegion(T,x0,y0,bw,bh);}
-  const halo=weldHeatFinish(s,R,record);
+  const halo=weldHeatFinish(s,R,record&&!s.weldHeat?.inLayer);/* a halo painted into the layer itself is part of the stroke's own undo step */
   p3PaintAfter(s);
   stitchFoldsRelease(s);
   if(s.lockT)release(s.lockT);if(s.sampleT)release(s.sampleT);if(s.samplePrevT)release(s.samplePrevT);dropStrokeCache(s);

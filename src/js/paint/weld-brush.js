@@ -182,17 +182,24 @@ vec3 weldHeatColor(float h){
 }`;
 
 function weldHeatBegin(s){
-  const settings=s.o.weldHeat,weld=s.L.maskOf;
-  if(!settings||s.o.tool!=='brush'||!weld?.mask?.enabled||s.L.mrow||(s.space&&!s.space.mesh))return;
-  const parent=weld.parent,index=parent.children.indexOf(weld);
-  const id='weld-halo:'+weld.materialPaint;
-  let layer=parent.children[index-1];
-  const fresh=layer?.materialPaint!==id;
-  if(fresh){
-    layer=newLayerObj('Heat halo · '+settings.name,true);
-    layer.materialPaint=id;
-    insertNode(layer,parent,index);
-  }else if(!layer.visible||layer.lockAll||layer.lockPx||layer.lockAlpha)return;
+  const settings=s.o.weldHeat,weld=s.L.maskOf,inLayer=!!s.o.haloInLayer;
+  if(!settings||s.o.tool!=='brush'||(s.space&&!s.space.mesh))return;
+  let layer,parent,index,fresh=false;
+  if(inLayer){/* (0.97.16, Kenn: paint the halo into the layer) the halo goes into the paint layer being welded, under the bead: no layer of its own */
+    if(s.L.maskOf||s.L.fill||s.L.lockAll||s.L.lockPx)return;
+    layer=s.L;parent=layer.parent;index=parent?parent.children.indexOf(layer):0;
+  }else{
+    if(!weld?.mask?.enabled||s.L.mrow)return;
+    parent=weld.parent;index=parent.children.indexOf(weld);
+    const id='weld-halo:'+weld.materialPaint;
+    layer=parent.children[index-1];
+    fresh=layer?.materialPaint!==id;
+    if(fresh){
+      layer=newLayerObj('Heat halo · '+settings.name,true);
+      layer.materialPaint=id;
+      insertNode(layer,parent,index);
+    }else if(!layer.visible||layer.lockAll||layer.lockPx||layer.lockAlpha)return;
+  }
   ensureMapTarget(layer,'base');
   const uv=acquireD(8);
   if(doc.wrap)clearTarget(uv);
@@ -201,7 +208,7 @@ function weldHeatBegin(s){
     scissorDo([x,y,x1-x,y1-y],()=>clearTarget(uv));
   }
   const screen=s.space?.mesh?makeTarget(s.SW,s.SH,8,false):null;
-  s.weldHeat={layer,parent,index,fresh,uv,screen,settings};
+  s.weldHeat={layer,parent,index,fresh,uv,screen,settings,inLayer};
 }
 
 function weldHeatDab(heat,uniforms,pressure,alpha){
@@ -223,6 +230,7 @@ uniform vec4 uHeatBounds;
 uniform sampler2D uSelTex;
 uniform bool uUseSel;
 uniform float uOpacity;
+uniform bool uUnder;
 void main(){
   ivec2 p=ivec2(gl_FragCoord.xy);
   vec4 base=texelFetch(uSrc,p-uSrcOrigin,0);
@@ -231,12 +239,13 @@ void main(){
   vec4 heat=texelFetch(uHeat,p,0);
   float a=heat.a*uOpacity;
   if(uUseSel)a*=texelFetch(uSelTex,p,0).r;
-  o=vec4(weldHeatColor(heat.r/max(heat.a,1e-5))*a,a)+base*(1.0-a);
+  vec4 h=vec4(weldHeatColor(heat.r/max(heat.a,1e-5))*a,a);
+  o=uUnder?base+h*(1.0-base.a):h+base*(1.0-a);
 }`);
   const full=[0,0,doc.w,doc.h],empty=[0,0,0,0];
   const bounds=doc.wrap?full:s.space?(s.syncR||(s.weldHeat.projected?full:empty)):(s.clearBox||empty);
   run(P_WELD_HEAT_MERGE,dst,{uSrc:source.tex,uSrcOrigin:{iv2:origin},uHeat:s.weldHeat.uv.tex,
-    uHeatBounds:bounds,uOpacity:s.o.opacity,...selU(s.o)});
+    uHeatBounds:bounds,uOpacity:s.o.opacity,uUnder:!!s.weldHeat.inLayer,...selU(s.o)});
 }
 
 function weldHeatRelease(s){
