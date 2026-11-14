@@ -96,6 +96,28 @@ This repeats across the texture's outer edges. It does not join separate UV isla
 
 **Across UV seams on a model:** in 3D Paint, Warp rows, the Warp filter and the Gaussian and Box blurs work on the model's surface, so both sides of a seam match. A generator's **Distort** roughens the edges and cavities on the surface too, and **Slope blur** smears along the surface.
 
+## Generator settings
+Select a generator row and its settings show in **Properties** as titled cards, like Marmoset's layer settings: **Mask**, **Edges**, **Cavities**, **Top and flat surfaces**, **Breakup** and **Projection**. Each card starts with its picture slot (drop a grunge or a Textures tile on it, or click it to choose one), and the controls that go with that picture come right after it: its Tiling, Rotation and strength, then the card's own sliders. Click a card's title to fold it; it stays folded next time.
+
+**Invert** is the big button under the **Preset**. It lights up when the mask is inverted.
+
+![A generator's settings in cards, with the Invert button under the Preset.](images/gen-cards.png)
+*Edge wear's settings: Invert under the Preset, then the Mask, Edges and Breakup cards (Cavities and Top and flat surfaces are folded).*
+
+**Edge controls.** Edge wear, Chipped paint, Scratches and Sun-bleached have the same Edges card:
+- **Width** and **Edge strength**: how wide the band is and how much of each edge wears.
+- **Edge growth**: spreads the wear outward from the edge.
+- **Edge sharpness**: a crisp line, or a soft fade.
+- **Sharp edges only**: raise it to leave soft, rounded forms clean and wear only the sharper edges.
+- **Corners wear more**: where edges meet, the wear is stronger.
+- **Edge distortion** and its **scale**: the band wobbles instead of running as an even stripe (World projection, on a model).
+- **Cavity protection**: keeps wear out of creases (it uses the baked AO).
+
+With all of them at their starting values the presets look as they always did.
+
+![The Edges card with a grunge chosen.](images/gen-card-edges.png)
+*The Edges card with a grunge picked: the picture first, its Tiling, Rotation and strength right under it, then the edge sliders.*
+
 ## Wear generators
 
 For worn metal, select a mask and add **Metal Edge Wear**. **Edge growth** spreads the band beyond exposed edges, and **Edge distortion** makes it irregular. Add **Use Wear** for directional scuffs on exposed areas. Choose a concrete or steel scan in the generator, or use **Choose from Textures** to add your own grunge to the breakup.
