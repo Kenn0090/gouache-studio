@@ -452,6 +452,20 @@ function v3Frame(){const r=v3.mesh?v3.mesh.radius:1.5,pane=v3.pop?null:$('#pane3
   if(v3s().model==='plane'||v3s().model==='dplane'){v3.cam.yaw=0;v3.cam.pitch=0;}v3.dirty=true;}
 
 /* ---- drawing ---- */
+/* (0.97.23, Kenn: a button that refreshes things) throw away everything the 3D view keeps for itself (its copies of the maps, the sky,
+   the render targets, the model's buffers) and build it all again from the painting. The painting itself is never touched. */
+function v3ResetView(){if(!v3.on){toast('Turn the 3D view on first.');return;}
+  if(stroke||ptr){toast('Finish the current stroke first.');return;}
+  try{for(const k of Object.keys(v3.tex||{})){const t=v3.tex[k];if(t&&t.fbo)disposeTarget(t);}v3.tex={};}catch(e){console.warn('reset 3D view: maps',e);}
+  try{if(typeof envFree==='function'){envFree();env.key=null;env.loading=null;}}catch(e){console.warn('reset 3D view: sky',e);}
+  try{const F=v3.fbo;if(F){if(typeof v3PostFree==='function')v3PostFree(F);gl.deleteFramebuffer(F.ms);gl.deleteRenderbuffer(F.c);gl.deleteRenderbuffer(F.d);gl.deleteFramebuffer(F.rf);gl.deleteRenderbuffer(F.rc);v3.fbo=null;}}catch(e){console.warn('reset 3D view: targets',e);}
+  try{if(typeof v3PB!=='undefined'&&v3PB.fb){gl.deleteFramebuffer(v3PB.fb);gl.deleteTexture(v3PB.t);gl.deleteRenderbuffer(v3PB.rb);v3PB.fb=v3PB.t=v3PB.rb=null;v3PB.key='';}}catch(e){console.warn('reset 3D view: pick',e);}
+  try{if(typeof studioShadow!=='undefined')studioShadow.key=null;}catch(e){console.warn('reset 3D view: shadow',e);}/* rebuilt on the next frame */
+  try{if(typeof txCacheTrim==='function')txCacheTrim();}catch(e){}
+  try{const m=v3.mesh;if(m)v3Upload(m);gl.bindVertexArray(vao);}catch(e){console.warn('reset 3D view: model',e);}
+  v3.mapsDirty=true;v3.editDirty=true;v3.dirty=true;v3.mapRegion=null;
+  for(const ms of [0,300,1200,4000])setTimeout(()=>{if(!v3.on)return;v3.mapsDirty=true;v3.editDirty=true;v3.dirty=true;requestRender(true);},ms);
+  toast('The 3D view was refreshed from your painting.');}
 function v3Targets(w,h,lite){let F=v3.fbo;const S=lite?0:Math.min(qual('msaa'),gl.getParameter(gl.MAX_SAMPLES)||0);if(F&&F.w===w&&F.h===h&&F.S===S)return F;
   if(F){if(typeof v3PostFree==='function')v3PostFree(F);gl.deleteFramebuffer(F.ms);gl.deleteRenderbuffer(F.c);gl.deleteRenderbuffer(F.d);gl.deleteFramebuffer(F.rf);gl.deleteRenderbuffer(F.rc);}
   F={w,h,S};
@@ -620,7 +634,7 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   const wireB=tog('v3Wire','Wireframe','wire','Show the mesh edges'),uvB=tog('v3UV','UVs','showUV','Draw the model’s UV layout over your canvas'),spinB=tog('v3Spin','Spin','spin','Spin the model slowly');
   const metalB=tog('v3Metal','Metal','metalView','See the model as polished metal, whatever its material: the shape and the bevel show clearly');
   wireB.onclick=()=>v3SetWireMode(s.wire?'shaded':'overlay');
-  const capB=ui.mode==='bake'||ui.mode==='convert'?[]:[el('button',{class:'btn sm',id:'v3Shot',text:'📷',title:'Screenshot of the 3D view','aria-label':'Screenshot',onclick:()=>dlgScreenshot()}),el('button',{class:'btn sm',id:'v3RenderBtn',text:'Render…',title:'A ray-traced picture, in a window of its own',onclick:()=>dlgRender()}),el('button',{class:'btn sm',id:'v3TT',text:'Turntable…',title:'Record the model turning (video, GIF or PNG frames)',onclick:()=>dlgTurntable()})];
+  const capB=ui.mode==='bake'||ui.mode==='convert'?[]:[el('button',{class:'btn sm',id:'v3Shot',text:'📷',title:'Screenshot of the 3D view','aria-label':'Screenshot',onclick:()=>dlgScreenshot()}),el('button',{class:'btn sm',id:'v3RenderBtn',text:'Render…',title:'A ray-traced picture, in a window of its own',onclick:()=>dlgRender()}),el('button',{class:'btn sm',id:'v3TT',text:'Turntable…',title:'Record the model turning (video, GIF or PNG frames)',onclick:()=>dlgTurntable()}),el('button',{class:'btn sm',id:'v3Reset',text:'Reset view',title:'Refresh the 3D view: throw away its copies of the maps, the sky and its render targets and build them again from your painting (nothing in your painting changes)',onclick:()=>v3ResetView()})];
 const nvB=el('button',{hidden:!platform.isDesktop||NV_BANKED,class:'btn sm'+(typeof nv!=='undefined'&&nv.isOpen?' on':''),id:'v3Nv',text:'New viewer',title:'Open the model in the new viewer window (paint in it, ray-traced shadows and reflections). Press again to close it.',onclick:()=>{if(nv.isOpen)nvClose();else nvOpen();}});
   let bar;
   if(ui.mode==='p3d'){/* 3D Paint (0.37): a slim bar, the rest behind ⋯ */

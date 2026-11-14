@@ -1,4 +1,3 @@
-## Gouache Studio 0.97.22
+## Gouache Studio 0.97.23
 
-- Preferences › Speed › Data folder: keep Gouache's data on another drive; the existing data is moved over at the next start.
-- Smoother sky light from bright suns; the model's maps are rebuilt again after a texture size change.
+- New Reset view button in the 3D view: refreshes the 3D view from your painting if the shading looks blocky or wrong.

@@ -1,3 +1,7 @@
+## 0.97.23
+
+- **Reset view button in the 3D view.** In the 3D bar (under **⋯** in 3D Paint) **Reset view** throws away everything the 3D view keeps for itself (its copies of the maps, the sky, its render targets, the model's buffers) and builds it again from your painting. Your painting is not touched. Use it if the model shows blocky or wrong shading.
+
 ## 0.97.22
 
 - **Choose where Gouache keeps its data.** Preferences › Speed › **Data folder**: pick a folder on another drive to keep saved materials, the Library, skies, grunge, AI add-ons, settings, autosave copies and the Exports folder off the C drive. When you change it, Gouache restarts, copies everything to the new folder, checks the copy, then removes the old one (a big library can take a few minutes). **Default** moves it back. Your own .gouache files stay where you saved them.
