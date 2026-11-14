@@ -309,6 +309,7 @@ function buildBrushPanel(){
   if(ui.tool==='bucket'){buildBucketPanel(box);return;}
   if(isSel){buildSelectPanel(box);return;}
   if(ui.mode==='p3d'||v3.on)box.append(el('div',{class:'sub',text:'3D painting'}),meshBackfaceControl('brushBackfacePaint'));
+  if(ui.tool==='brush')buildNormalSection(box);
   const healing=ui.tool==='heal'||ui.tool==='clone';if(ui.tool==='heal')buildHealPanel(box);else if(ui.tool==='clone')buildClonePanel(box);
   const tonal=ui.tool==='dodge'||ui.tool==='burn';
   if(sm&&ui.mode==='p3d'&&typeof smudge3dSeg==='function')box.append(smudge3dSeg(),el('p',{class:'note',text:'On the model, Smudge and Smear move paint across the surface and over UV seams, on every map of the layer together. A selection limits them.'}));
@@ -369,7 +370,7 @@ function buildBrushPanel(){
     S('bVJ','Brightness','valJitter',0,1,.01,pct).el,
     el('div',{class:'chips'},C('bJS','Once per stroke','jitterPerStroke'))));
   box.append(el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:'brushReset',text:'Reset brush',title:'Put this tool’s brush back to its starting settings',onclick:()=>{for(const k of SETTING_KEYS)brush[k]=BRUSH_DEFAULTS[k];brushSession.source=null;activePreset=null;if(typeof tbSaveCur==='function')tbSaveCur();buildBrushPanel();if(typeof buildOptBar==='function')buildOptBar();if(typeof refreshCursor==='function')refreshCursor();toast('Brush back to its starting settings.');}})));
-  box.append(det);if(typeof buildDualSection==='function')buildDualSection(box);if(typeof buildNormalSection==='function'&&ui.tool==='brush')buildNormalSection(box);if(!c3)buildSymSection(box);if((ui.tool==='brush'||ui.tool==='erase')&&ui.mode!=='bake')buildMapBrushSection(box,ui.tool);
+  box.append(det);if(typeof buildDualSection==='function')buildDualSection(box);if(!c3)buildSymSection(box);if((ui.tool==='brush'||ui.tool==='erase')&&ui.mode!=='bake')buildMapBrushSection(box,ui.tool);
   if(typeof brOrganize==='function')brOrganize(box);
   schedulePreview();
 }

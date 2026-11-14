@@ -5,7 +5,7 @@
    and Cel (two tones), both with an outline, and a Spec/Gloss view (lit, or diffuse colour, specular colour,
    glossiness or reflections alone). Each shader has its own tab of settings in the Shader panel, and keeps
    them when you switch. Kept in the document (doc.v3shade) and so per texture set in 3D Paint. */
-const SHADERS=[['std','Standard'],['skin','Skin'],['aniso','Brushed metal'],['velvet','Velvet'],['toon','Toon'],['cel','Cel'],['specgloss','Spec/Gloss'],['panner','Panner (PBR)'],['retro','Retro (N64 / PSX)'],['hologram','Hologram'],['glass','Glass'],['fur','Fur'],['iridescent','Iridescent'],['car','Car paint'],['cloth','Cloth sheen'],['wax','Wax / marble glow'],['halfcel','Halftone cel'],['ink','Ink toon']];
+const SHADERS=[['std','Standard'],['skin','Skin'],['aniso','Brushed metal'],['velvet','Velvet'],['toon','Toon'],['cel','Cel'],['specgloss','Spec/Gloss'],['panner','Panner (PBR)'],['retro','Retro (N64 / PSX)'],['hologram','Hologram'],['glass','Glass'],['fur','Fur'],['iridescent','Iridescent'],['car','Car paint'],['cloth','Cloth sheen'],['wax','Wax / marble glow'],['halfcel','Halftone cel'],['ink','Ink toon'],['hatch','Comic Crosshatch']];
 const SH_DEF={std:{oline:false,outline:2,ocol:[0,0,0]},skin:{oline:false,outline:2,ocol:[0,0,0],scatter:.5,strength:.6,soft:.5,thick:.5,oil:.3,surface:.45,depth:1,transmission:.5,col:[.85,.25,.18]},aniso:{amount:.7,dir:0},velvet:{sheen:.8,srough:.5,rim:1,col:[1,1,1]},
   toon:{steps:3,spec:.3,rim:.2,offset:0,col:[.45,.4,.55],outline:2,ocol:[0,0,0]},cel:{thresh:.5,soft:.06,spec:.3,rim:.15,col:[.45,.42,.55],outline:2,ocol:[0,0,0]},specgloss:{view:0},panner:{sx:0,sy:.25,play:true,layer:0,maps:{base:true,rough:true,metal:true,nfinal:true,ao:true,emis:true,opac:true}},
   retro:{bright:1,res:32,filt:1,br:5,bg:5,bb:5,dither:.6,steps:0,amb:.35,wobble:0,fog:0,fogc:[.5,.55,.65],preset:'n64'},
@@ -13,17 +13,20 @@ const SH_DEF={std:{oline:false,outline:2,ocol:[0,0,0]},skin:{oline:false,outline
   fur:{length:.5,density:90,clump:.3,wind:.3,windSpeed:1,root:.5,width:.7,tipMix:.5,gravity:.3,col:[.95,.85,.7],scatter:.7,lenVar:.5,dirVar:.35,patch:.3,patchSize:.5,patStr:1,patTile:1,gimg:null},iridescent:{strength:.8,shift:0,range:1.5,angle:.8},
   halfcel:{bands:3,soft:.1,dots:.5,dotSize:10,follow:0,depth:.55,sat:.5,tintAmt:.55,col:[.7,.25,.6],rim:.5,rimW:.35,rimCol:[1,.65,.55],spec:.3,outline:0},
   ink:{steps:2,soft:.03,shadow:.6,col:[.45,.45,.75],rim:.8,rimW:.3,rimBias:.6,rimCol:[1,.4,.35],outline:2.5,omode:0,odark:.35,ocol:[.08,.04,.05],wobble:.4},
+  hatch:{spacing:8,weight:.74,bias:.54,breakup:.52,highlight:.7,range:.55,pattern:0,angle:0,gimg:null,ginv:false,
+    outline:1.8,outlineOn:true,outlineOpacity:1,outlineWobble:.10,ocol:[.095,.07,.06],inkCol:[.095,.07,.06],col:[.62,.55,.49],mono:false,drift:.25,speed:1,sweep:0},
   car:{flakes:.5,size:170,coat:1,sparkle:1,coatRough:.04,peel:.3,col:[1,.85,.5]},cloth:{sheen:1,soft:.5,fibre:0,aniso:.5,weave:.4,col:[1,.9,.85]},wax:{glow:1.5,depth:.7,soft:.6,thick:.5,col:[1,.62,.3]}};
 /* (0.70, Kenn) Retro shader: old-school console looks for the viewport */
 const RETRO_SHADER_PRESETS=[['n64','Nintendo 64',{res:32,filt:1,br:5,bg:5,bb:5,dither:.6,steps:0,amb:.4,wobble:0,fog:.25}],['psx','PlayStation',{res:64,filt:0,br:5,bg:5,bb:5,dither:.9,steps:0,amb:.35,wobble:.6,fog:.3}],['saturn','Saturn',{res:64,filt:0,br:5,bg:5,bb:5,dither:0,steps:0,amb:.35,wobble:.2,fog:0}],['dc','Dreamcast',{res:128,filt:2,br:5,bg:6,bb:5,dither:.4,steps:0,amb:.4,wobble:0,fog:0}],['chunky','Chunky 3-bit',{res:16,filt:0,br:1,bg:1,bb:1,dither:.9,steps:3,amb:.3,wobble:.3,fog:0}]];
 function v3ShadeOf(D){const d=D&&D.v3shade;return d&&d.kind?d:{kind:'std',p:{}};}
 function shParams(sh,k){return Object.assign({},SH_DEF[k||sh.kind]||{},(sh.p&&sh.p[k||sh.kind])||{});}
-function shadeUniforms(sh){if(!sh)return Object.assign({uSkin:[.45,1,.5,0],uSh:{int:0},uShP:[0,0,0,.5],uShQ:[0,0,0,0],uShC:[1,1,1],uShD:[0,0,0],uSnap:0},pnUniforms(null));const k=sh.kind,P=shParams(sh),i=Math.max(0,SHADERS.findIndex(x=>x[0]===k));
-  const v={skin:[P.scatter,P.strength,P.soft,P.thick],aniso:[P.amount,P.dir,0,.5],velvet:[P.sheen,P.srough,P.rim,.5],toon:[P.steps,0,P.spec,P.rim],cel:[P.thresh,P.soft,P.spec,P.rim],specgloss:[P.view,0,0,.5],retro:[P.res,P.filt,P.dither,0],hologram:[P.lines,P.flicker,P.glow,P.opacity],glass:[P.refr,P.frost,P.thick,P.edge],fur:[P.length,P.density,P.clump,P.wind],iridescent:[P.strength,P.shift,P.range,P.angle],car:[P.flakes,P.size,P.coat,P.sparkle],cloth:[P.sheen,P.soft,P.fibre,P.aniso],wax:[P.glow,P.depth,P.soft,P.thick],halfcel:[P.bands,P.soft,P.dots,900/Math.max(P.dotSize,1)],ink:[P.steps,P.soft,P.rimW,P.rimBias]}[k]||[0,0,0,.5];
-  const q={hologram:[P.speed,P.fill,P.glitch,P.pulse],glass:[P.cloud,P.disp,0,0],fur:[P.windSpeed,P.root,P.width,P.tipMix],car:[P.coatRough,P.peel,0,0],cloth:[P.weave,0,0,0],halfcel:[P.outline,P.depth,P.sat,P.tintAmt],ink:[P.outline,P.wobble,P.omode,P.odark]}[k];
-  return Object.assign({uSkin:k==='skin'?[P.surface,P.depth,P.transmission,0]:k==='fur'?[P.gravity,P.scatter||0,P.lenVar||0,P.dirVar||0]:k==='halfcel'?[P.rim,P.rimW,P.spec,0]:k==='ink'?[...P.ocol,0]:[.45,1,.5,0],uShE:k==='fur'?[0,0,P.patTile||1,P.patStr==null?1:P.patStr]:k==='ink'?[P.shadow,P.rim,0,0]:k==='halfcel'?[P.follow||0,0,0,0]:[0,0,0,0],uSh:{int:i},uShP:v,uShQ:q?q:k==='retro'?[P.steps||0,P.fog||0,P.amb==null?.35:P.amb,P.bright==null?1:P.bright]:[P.outline||0,P.offset||0,k==='skin'?(P.oil||0):0,0],uShC:k==='retro'?[(1<<P.br)-1,(1<<P.bg)-1,(1<<P.bb)-1]:P.col||[1,1,1],uShD:k==='retro'?P.fogc:k==='hologram'?[P.sweep,0,0]:k==='fur'?[P.patch||0,P.patchSize==null?.5:P.patchSize,0]:(k==='halfcel'||k==='ink')?P.rimCol:P.ocol||[0,0,0],uSnap:k==='retro'&&P.wobble>0?320-280*P.wobble:0,uTime:pnNow()},pnUniforms(k==='panner'?P:null));}
+function shadeUniforms(sh,time=pnNow()){if(!sh)return Object.assign({uSkin:[.45,1,.5,0],uSh:{int:0},uShP:[0,0,0,.5],uShQ:[0,0,0,0],uShC:[1,1,1],uShD:[0,0,0],uSnap:0},pnUniforms(null));const k=sh.kind,P=shParams(sh),i=Math.max(0,SHADERS.findIndex(x=>x[0]===k));
+  const v={skin:[P.scatter,P.strength,P.soft,P.thick],aniso:[P.amount,P.dir,0,.5],velvet:[P.sheen,P.srough,P.rim,.5],toon:[P.steps,0,P.spec,P.rim],cel:[P.thresh,P.soft,P.spec,P.rim],specgloss:[P.view,0,0,.5],retro:[P.res,P.filt,P.dither,0],hologram:[P.lines,P.flicker,P.glow,P.opacity],glass:[P.refr,P.frost,P.thick,P.edge],fur:[P.length,P.density,P.clump,P.wind],iridescent:[P.strength,P.shift,P.range,P.angle],car:[P.flakes,P.size,P.coat,P.sparkle],cloth:[P.sheen,P.soft,P.fibre,P.aniso],wax:[P.glow,P.depth,P.soft,P.thick],halfcel:[P.bands,P.soft,P.dots,900/Math.max(P.dotSize,1)],ink:[P.steps,P.soft,P.rimW,P.rimBias],hatch:[P.spacing,P.weight,P.bias,P.breakup]}[k]||[0,0,0,.5];
+  const q={hologram:[P.speed,P.fill,P.glitch,P.pulse],glass:[P.cloud,P.disp,0,0],fur:[P.windSpeed,P.root,P.width,P.tipMix],car:[P.coatRough,P.peel,0,0],cloth:[P.weave,0,0,0],halfcel:[P.outline,P.depth,P.sat,P.tintAmt],ink:[P.outline,P.wobble,P.omode,P.odark],hatch:[P.highlight,P.range,P.drift,P.speed]}[k];
+  return Object.assign({uSkin:k==='hatch'?[P.angle*Math.PI/180,0,0,0]:k==='skin'?[P.surface,P.depth,P.transmission,0]:k==='fur'?[P.gravity,P.scatter||0,P.lenVar||0,P.dirVar||0]:k==='halfcel'?[P.rim,P.rimW,P.spec,0]:k==='ink'?[...P.ocol,0]:[.45,1,.5,0],uShE:k==='hatch'?[P.mono?1:0,0,P.ginv?1:0,P.pattern]:k==='fur'?[0,0,P.patTile||1,P.patStr==null?1:P.patStr]:k==='ink'?[P.shadow,P.rim,0,0]:k==='halfcel'?[P.follow||0,0,0,0]:[0,0,0,0],uSh:{int:i},uShP:v,uShQ:q?q:k==='retro'?[P.steps||0,P.fog||0,P.amb==null?.35:P.amb,P.bright==null?1:P.bright]:[P.outline||0,P.offset||0,k==='skin'?(P.oil||0):0,0],uShC:k==='retro'?[(1<<P.br)-1,(1<<P.bg)-1,(1<<P.bb)-1]:P.col||[1,1,1],uShD:k==='hatch'?P.inkCol:k==='retro'?P.fogc:k==='hologram'?[P.sweep,0,0]:k==='fur'?[P.patch||0,P.patchSize==null?.5:P.patchSize,0]:(k==='halfcel'||k==='ink')?P.rimCol:P.ocol||[0,0,0],uSnap:k==='retro'&&P.wobble>0?320-280*P.wobble:0,uTime:time},pnUniforms(k==='panner'?P:null));}
 /* (0.95) one-click presets for the newer looks: they change the settings below them, which you can then adjust */
 const SH_PRESETS={
+  hatch:[['field','Field ink',{spacing:8,weight:.74,breakup:.52,outline:1.8,mono:false}],['graphic','Black & white',{spacing:7,weight:.93,breakup:.35,outline:2.4,mono:true}],['dry','Dry brush',{spacing:11,weight:.78,breakup:.9,highlight:.85,range:.65,outline:1.35,mono:false,col:[.49,.57,.69]}]],
   hologram:[['cyan','Sci-fi blue',{col:[.2,.85,1],lines:40,glow:1.4,opacity:.8,flicker:.35,glitch:.5,pulse:.5,sweep:.6,fill:.5}],['green','Terminal green',{col:[.2,1,.35],lines:90,glow:1,opacity:.75,flicker:.2,glitch:.2,pulse:.2,sweep:.4,fill:.4}],['orange','Warning orange',{col:[1,.55,.1],lines:24,glow:1.8,opacity:.7,flicker:.6,glitch:.9,pulse:.8,sweep:.5,fill:.35}],['ghost','Ghost',{col:[.8,.9,1],lines:12,glow:2.2,opacity:.45,flicker:.15,glitch:0,pulse:.7,sweep:.3,fill:.2}]],
   glass:[['clear','Clear glass',{col:[.95,1,1],refr:.5,frost:0,thick:.3,edge:1,cloud:.05,disp:.1}],['frosted','Frosted',{col:[.95,.97,1],refr:.3,frost:.6,thick:.4,edge:.8,cloud:.35,disp:0}],['green','Bottle green',{col:[.25,.7,.35],refr:.55,frost:.05,thick:1.2,edge:1,cloud:.12,disp:.15}],['crystal','Crystal',{col:[1,1,1],refr:.9,frost:0,thick:.2,edge:1.4,cloud:.02,disp:.7}],['ice','Ice',{col:[.75,.9,1],refr:.6,frost:.35,thick:.8,edge:1,cloud:.3,disp:.15}]],
   fur:[['short','Short fur',{length:.25,density:140,clump:.2,wind:.1,windSpeed:1,root:.4,width:.7,tipMix:.3,gravity:.15,col:[.9,.8,.65]}],['long','Long fur',{length:.8,density:70,clump:.4,wind:.3,windSpeed:1,root:.55,width:.6,tipMix:.5,gravity:.5,col:[.95,.85,.7]}],['shaggy','Shaggy',{length:1,density:45,clump:.7,wind:.5,windSpeed:1.3,root:.6,width:.8,tipMix:.4,gravity:.7,col:[.8,.65,.5]}],['peach','Peach fuzz',{length:.12,density:220,clump:0,wind:0,windSpeed:0,root:.15,width:.5,tipMix:.6,gravity:0,col:[1,.9,.85]}],['grass','Grass',{length:.7,density:60,clump:.5,wind:.6,windSpeed:1.2,root:.5,width:.45,tipMix:.7,gravity:.1,col:[.55,.85,.3]}]],
@@ -36,7 +39,7 @@ const SH_PRESETS={
 /* the outline for Toon and Cel: the back faces drawn slightly larger, in the outline colour */
 const VS_3DOUT=VS_3D.replace('vec3 p=aP;','vec3 p=aP+aN*uOutW*(1.0+uWob*0.7*(sin(dot(aP,vec3(37.0,23.0,29.0)))*0.5+sin(dot(aP,vec3(17.0,41.0,31.0)))*0.5));').replace('uniform mat4 uVP;','uniform mat4 uVP; uniform float uOutW; uniform float uWob;');
 /* only the faces turned away from the camera are drawn, so it works whichever way the model's faces wind */
-const FS_3DOUT=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform vec3 uCamO; uniform vec4 uCol; uniform vec4 uOutP; uniform sampler2D uBase; void main(){ if(dot(normalize(vN),normalize(uCamO-vP))>0.0) discard; vec3 c=uCol.rgb; if(uOutP.x<0.5){ vec4 b=texture(uBase,vT); vec3 a=b.a>1e-5?b.rgb/b.a:vec3(0.0); c=a*uOutP.y; c=mix(vec3(dot(c,vec3(0.3333))),c,1.25); } o=vec4(c,1.0); }`;
+const FS_3DOUT=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform vec3 uCamO; uniform vec4 uCol; uniform vec4 uOutP; uniform sampler2D uBase; void main(){ if(dot(normalize(vN),normalize(uCamO-vP))>0.0) discard; vec3 c=uCol.rgb; if(uOutP.x<0.5){ vec4 b=texture(uBase,vT); vec3 a=b.a>1e-5?b.rgb/b.a:vec3(0.0); c=a*uOutP.y; c=mix(vec3(dot(c,vec3(0.3333))),c,1.25); } o=vec4(c,uCol.a); }`;
 let P3OUT=null;
 /* the outline a shader asks for: width in pixels, colour (mode 1 = the picked colour, 0 = a darker version of the surface colour), hand-drawn wobble */
 function shOutline(sh){if(!sh)return null;const P=shParams(sh);
@@ -44,11 +47,17 @@ function shOutline(sh){if(!sh)return null;const P=shParams(sh);
   if(sh.kind==='halfcel')return {w:P.outline,mode:0,dark:.3,col:[0,0,0],wobble:0};
   /* (0.96.6, Kenn) an outline tick on the Standard (PBR) and Skin looks, instead of new shaders */
   if((sh.kind==='std'||sh.kind==='skin')&&P.oline)return {w:P.outline==null?2:P.outline,mode:1,dark:0,col:P.ocol||[0,0,0],wobble:0};
-  if(sh.kind==='ink')return {w:P.outline,mode:P.omode?1:0,dark:P.odark,col:P.ocol,wobble:P.wobble};return null;}
+  if(sh.kind==='ink')return {w:P.outline,mode:P.omode?1:0,dark:P.odark,col:P.ocol,wobble:P.wobble};
+  if(sh.kind==='hatch'&&P.outlineOn)return {w:P.outline,mode:1,dark:0,col:P.ocol,wobble:P.outlineWobble,opacity:P.outlineOpacity};return null;}
 function v3DrawOutlines(list,common,F,flip){const eye=v3Eye(),c=v3.cam,dist=Math.hypot(eye[0]-c.tx,eye[1]-c.ty,eye[2]-c.tz),pxW=2*dist*Math.tan(v3s().fov*Math.PI/360)/F.h;let on=false;
-  for(const it of list){const sh=it.sh,O=shOutline(sh);if(!O||!(O.w>0)||!it.count||!it.T||!it.T.base)continue;
+  for(const it of list){const sh=it.sh,O=shOutline(sh);if(!O||!(O.w>0)||O.opacity===0||!it.count||!it.T||!it.T.base)continue;
     if(!P3OUT)P3OUT=prog3(VS_3DOUT,FS_3DOUT);on=true;
-    useProg(P3OUT,Object.assign({},common,{uOutW:O.w*pxW,uCol:[...O.col,1],uCamO:eye,uOutP:[O.mode,O.dark,0,0],uWob:O.wobble,uBase:it.T.base.tex}));gl.drawElements(gl.TRIANGLES,it.count*3,gl.UNSIGNED_INT,it.start*12);}
+    const opacity=O.opacity??1;
+    if(opacity<1){gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);}
+    useProg(P3OUT,Object.assign({},common,{uOutW:O.w*pxW,uCol:[...O.col,opacity],uCamO:eye,uOutP:[O.mode,O.dark,0,0],uWob:O.wobble,uBase:it.T.base.tex}));
+    gl.drawElements(gl.TRIANGLES,it.count*3,gl.UNSIGNED_INT,it.start*12);
+    if(opacity<1){gl.depthMask(true);gl.disable(gl.BLEND);}
+  }
   return on;}
 
 /* (0.95) Hologram and Glass are drawn after the solid parts and blended over them; Fur is grown in shells (the surface drawn again and again, a little further out each time, keeping only the strand dots) */
@@ -83,10 +92,61 @@ async function furMaskPicture(g){try{await txLoad();const it=fxdAllTex().find(x=
 /* the fur pattern: drop or pick a picture, or none */
 function furPatternRow(P,setP){const v={gimg:P.gimg||null};const row=fxdGuideRow(v,()=>{setP('gimg',v.gimg?{kind:v.gimg.kind,id:v.gimg.id,name:v.gimg.name}:null);renderShading();});
   if(P.gimg)row.append(el('button',{class:'btn sm',id:'furPatOff',text:'No pattern',onclick:()=>{shadeEdit(d=>{d.p.fur=Object.assign({},shParams(d,'fur'),{gimg:null});});renderShading();}}));return row;}
+/* The project shelf keeps custom hatches portable across computers. The GPU copy is loaded
+   before the viewport binds its framebuffer. Cache records by identity so a reopened file reloads them. */
+const shHatchTextures=new WeakMap();
+function shHatchTexture(sh,assets){
+  if(sh?.kind!=='hatch')return null;
+  const ref=sh.p?.hatch?.gimg;if(!ref)return null;
+  const rec=assets?.find(a=>a.kind==='tex'&&a.rec.id===ref.id)?.rec;
+  if(!rec)return null;
+  if(shHatchTextures.has(rec))return shHatchTextures.get(rec);
+  shHatchTextures.set(rec,null);
+  pxDeep(rec,false).then(im=>{
+    if(!(im.data instanceof Uint8Array)||im.data.length!==im.w*im.h*4)return;
+    const tex=gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D,tex);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,im.w,im.h,0,gl.RGBA,gl.UNSIGNED_BYTE,im.data);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    shHatchTextures.set(rec,tex);
+    v3.dirty=true;requestRender();
+  }).catch(e=>{console.warn('Could not load hatch texture',e);});
+  return null;
+}
+function shHatchTextureRows(P,setP){
+  const v={gimg:P.gimg||null,ginv:!!P.ginv},root=doc.root;
+  const controls=fxdGuideRow(v,async()=>{
+    const ref=v.gimg;
+    const current=()=>controls.isConnected&&doc.root===root&&v.gimg===ref;
+    if(!current())return;
+    if(!ref||ref.kind==='project'){setP('ginv',v.ginv);return;}
+    try{
+      const source=await fxdTextureTarget(ref);
+      if(!source||!current())return;
+      const id=ref.kind+':'+ref.id;
+      if(!doc.projectAssets?.some(a=>a.kind==='tex'&&a.rec.id===id)){
+        const w=source.w,h=source.h,data=captureRegionNow(source,0,0,w,h).data;
+        await paRemember('tex',{id,name:ref.name,w,h,data,t:Date.now()},doc);
+      }
+      if(!current())return;
+      shadeEdit(d=>{d.p.hatch={...shParams(d,'hatch'),gimg:{kind:'project',id,name:ref.name},ginv:v.ginv};});
+      renderShading();
+    }catch(e){toast('Could not attach the hatch texture: '+(e.message||e));}
+  });
+  controls.id='shHatchTexture';
+  controls.querySelector('b').textContent='Drop a hatch texture';
+  controls.querySelector('label.chk span').textContent='Invert texture';
+  if(P.gimg)controls.append(el('button',{class:'btn sm',id:'shHatchClear',text:'Use built-in pattern',onclick:()=>{v.gimg=null;setP('gimg',null);renderShading();}}));
+  return controls;
+}
 /* does a shader move by itself (so the view must keep drawing)? */
-function shMoves(sh){if(!sh)return false;const P=shParams(sh);return (sh.kind==='hologram'&&(P.speed>0||P.flicker>0||P.glitch>0||P.pulse>0||P.sweep>0))||(sh.kind==='fur'&&P.wind>0&&P.windSpeed>0);}
+function shMoves(sh){if(!sh)return false;const P=shParams(sh);return (sh.kind==='hologram'&&(P.speed>0||P.flicker>0||P.glitch>0||P.pulse>0||P.sweep>0))||(sh.kind==='fur'&&P.wind>0&&P.windSpeed>0)||(sh.kind==='hatch'&&P.speed>0&&(P.drift>0||P.sweep>0));}
 /* ---- the Shader panel: a tab per shader, each with its own settings ---- */
-function shadeEdit(fn){const d=doc.v3shade||(doc.v3shade={kind:'std',p:{}});if(!d.p)d.p={};fn(d);v3.dirty=true;requestRender();}
+function shadeEdit(fn){const d=doc.v3shade||(doc.v3shade={kind:'std',p:{}});if(!d.p)d.p={};const hatch=d.kind==='hatch';fn(d);if(ui.mode==='p3d'&&(hatch||d.kind==='hatch'))p3.metadataVer=(p3.metadataVer||0)+1;v3.dirty=true;requestRender();}
 function renderShading(){const box=document.getElementById('shadeBody');if(!box)return;const sh=v3ShadeOf(doc),k=sh.kind,P=shParams(sh);
   const setP=(key,v)=>shadeEdit(d=>{d.p[k]=Object.assign({},shParams(d,k),{[key]:v});});
   const sl=(key,label,min=0,max=1,step=.01,fmt)=>makeSlider({id:'sh_'+key,label,min,max,step,value:P[key],fmt:fmt||pct,onInput:v=>setP(key,v)}).el;
@@ -128,6 +188,17 @@ function renderShading(){const box=document.getElementById('shadeBody');if(!box)
   if(k==='wax')body.append(el('p',{class:'note',text:'Light travelling through the surface, like wax, jade or marble. A baked Thickness map makes thin parts glow more.'}),colr('col','Glow colour'),sl('glow','Glow',0,2,.01),sl('depth','How far light travels'),sl('soft','Surface softness'),sl('thick','Thickness'));
   if(k==='halfcel')body.append(el('p',{class:'note',text:'Flat colour steps with comic-print dots where the light fades into shadow. Shadows turn warmer and more saturated instead of grey. The dots are on the model’s surface (they follow its texture layout); turn on Dots follow the colour to make dark parts of the picture get bigger dots.'}),sl('bands','Light steps',1,6,1,v=>String(v)),sl('soft','Step edge softness',0,.5,.01),sl('dots','Dotted fade',0,1,.01,v=>v?Math.round(v*100)+'%':'off'),sl('dotSize','Dot size',3,60,1,v=>String(v)),sl('follow','Dots follow the colour',0,1,.01,v=>v?Math.round(v*100)+'%':'off'),sl('depth','Shadow depth'),sl('sat','Shadow colour boost'),colr('col','Shadow tint'),sl('tintAmt','Shadow tint amount'),sl('spec','Highlight'),sl('rim','Rim light'),sl('rimW','Rim width'),colr('rimCol','Rim colour'),sl('outline','Outline',0,10,.5,v=>v?v+' px':'off'));
   if(k==='ink')body.append(el('p',{class:'note',text:'A hand-inked look: hard-edged shadow shapes in a cool colour, a coloured rim light along the edges, and a dark coloured outline that can wobble like a pen line.'}),sl('steps','Shadow shapes',1,3,1,v=>String(v)),sl('soft','Shape edge softness',0,.3,.005),sl('shadow','Shadow strength'),colr('col','Shadow colour'),sl('rim','Rim light'),sl('rimW','Rim width'),sl('rimBias','Rim follows the light'),colr('rimCol','Rim colour'),sl('outline','Outline',0,10,.5,v=>v?v+' px':'off'),seg([[0,'Dark of each colour'],[1,'One colour']],P.omode?1:0,v=>{setP('omode',+v);renderShading();},'Outline colour'),...(P.omode?[colr('ocol','Outline colour')]:[sl('odark','Outline darkness',.05,.8,.01)]),sl('wobble','Hand-drawn wobble'));
+  if(k==='hatch')body.append(
+    sl('spacing','Hatch spacing',4,24,1,v=>v+' px'),sl('weight','Ink strength'),sl('bias','Shadow coverage'),sl('breakup','Ink breakup'),
+    colr('col','Shadow tint'),colr('inkCol','Ink colour'),sl('highlight','Highlight strength'),sl('range','Highlight coverage'),
+    el('div',{class:'sub',text:'Hatch texture'}),
+    seg([[0,'Crosshatch'],[1,'Parallel'],[2,'Etched']],P.gimg?null:P.pattern,v=>{shadeEdit(d=>{d.p.hatch={...shParams(d,'hatch'),pattern:+v,gimg:null};});renderShading();},'Built-in hatch pattern'),
+    shHatchTextureRows(P,setP),sl('angle','Rotation',-180,180,1,v=>v+'°'),
+    el('div',{class:'sub',text:'Outline'}),chk('shHatchOutline','Show outline',P.outlineOn,v=>setP('outlineOn',v)),
+    sl('outline','Width',0,8,.25,v=>v?v+' px':'off'),sl('outlineOpacity','Opacity'),sl('outlineWobble','Wobble'),colr('ocol','Outline colour'),
+    chk('shHatchMono','Black & white',P.mono,v=>setP('mono',v)),
+    el('div',{class:'sub',text:'Motion'}),sl('drift','Ink motion'),sl('sweep','Key light sweep',0,90,1,v=>v?v+'°':'off'),
+    sl('speed','Animation speed',0,3,.05,v=>v?v.toFixed(2)+'×':'paused'));
   if(k==='panner')body.append(...pnPanelRows(P,setP,sl));
   if(ui.mode==='p3d'&&typeof bevelSection==='function')body.append(bevelSection(renderShading,'sh'));
   body.append(el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:'shReset',text:'Reset this shader',title:'Put this shader’s settings back to how they start',onclick:()=>{shadeEdit(d=>{delete d.p[k];});renderShading();}})));

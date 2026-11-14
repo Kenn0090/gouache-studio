@@ -48,7 +48,7 @@ function tipCursor(elm,d){const t=brush.tip;let src=null;const on=!!(prefs.tipCu
 function pressureOf(e,parent){const pen=e.pointerType==='pen'||(!e.pointerType&&parent?.pointerType==='pen');if(!pen)return 1;const p=Number(e.pressure),fallback=Number(parent?.pressure);return clamp(Number.isFinite(p)&&p>0?p:Number.isFinite(fallback)&&fallback>0?fallback:.02,.02,1);}
 function showPressure(e){const pb=$('#pBar'),pv=$('#pVal');if(e.pointerType==='pen'){pb.style.width=Math.round((e.pressure||0)*100)+'%';pv.textContent=(e.pressure||0).toFixed(2)+' pen';}else{pb.style.width=(e.buttons?100:0)+'%';pv.textContent=e.pointerType==='touch'?'touch':'mouse';}}
 /* brush settings for a stroke on edit target et (null, with a message, if it can't be painted) */
-function paintOpts(et){
+function paintOpts(et,projected=false){
   if(et===false)return null;
   if(!et){toast(doc.active&&doc.active.fx?'This is a filter layer: it has no pixels to paint on. Double-click its thumbnail to change its filters, or select a normal layer.':doc.active?'A group is selected. Select a layer inside it, or click the group’s mask thumbnail to paint its mask.':'Select a layer to paint on.');return null;}
   if(et.node&&!effVisible(et.node)&&!ui.viewMask){toast('The active layer (or its group) is hidden. Show it to paint on it.');return null;}
@@ -60,8 +60,8 @@ function paintOpts(et){
   o.extras=strokeExtras(o,et);if(!materialPaintOpts(o,et))return null;
   /* (0.68) a brush that picks up paint carries colour along like a loaded brush on wet paint: it works as the Blend brush with the brush's own colour loaded */
   if(o.tool==='brush'&&o.mix&&!et.isMask&&!o.material&&ui.mode!=='bake'&&doc.map==='base'&&!doc.wrap)Object.assign(o,{tool:'smudge',mixer:true,mixBrush:true,extras:[],hueJitter:0,satJitter:0,valJitter:0,noTint:true});
-  if(o.tool==='brush'&&o.pickup>0&&!o.mixBrush&&!et.isMask&&!o.material&&ui.mode!=='bake')Object.assign(o,{tool:'smudge',mixer:true,strength:Math.max(.05,o.opacity),opacity:1,charge:1-o.pickup,paintMix:1,extras:[],hueJitter:0,satJitter:0,valJitter:0});
-  if(typeof npApply==='function')npApply(o,et);
+  if(o.tool==='brush'&&o.pickup>0&&!o.mixBrush&&!et.isMask&&!o.material&&ui.mode!=='bake'&&!npWorldPaint(et.L))Object.assign(o,{tool:'smudge',mixer:true,strength:Math.max(.05,o.opacity),opacity:1,charge:1-o.pickup,paintMix:1,extras:[],hueJitter:0,satJitter:0,valJitter:0});
+  if(typeof npApply==='function'&&npApply(o,et,projected)===false)return null;
   /* the heal brush: a faint grey trail while painting; the healing happens on release, on every map */
   if(o.tool==='heal')Object.assign(o,{color:[.6,.6,.6],healOpacity:o.opacity,opacity:.45,noTint:true,extras:[],buildup:false,hueJitter:0,satJitter:0,valJitter:0,chan:null});
   if(o.tool==='clone')Object.assign(o,{noTint:true,extras:[],buildup:false,hueJitter:0,satJitter:0,valJitter:0,chan:null});

@@ -9,16 +9,17 @@ v3.paintOn=false;
 /* red: how far away; green, blue: the model's UV there (Smudge and Liquify look up where paint comes from on screen) */
 const FS_3DDEPTH=`uniform vec3 uCamP; void main(){ o=vec4(length(vP-uCamP),vT,1.0); }`;
 const VS_3DPROJ=`#version 300 es
-layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec2 aT; layout(location=4) in vec3 aD;
+layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec2 aT; layout(location=3) in vec4 aTan; layout(location=4) in vec3 aD;
 uniform float uUVs; uniform vec2 uShift; uniform sampler2D uH; uniform float uDisp; uniform int uUseH; uniform int uUseUDIM;
-out vec3 vP; out vec3 vN; out vec2 vT;
+out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;
 void main(){ vec2 t=aT*uUVs; vec3 p=aP; if(uUseH==1&&uDisp!=0.0){ float h=textureLod(uH,uUseUDIM==1?fract(t):t,0.0).r-0.5; p+=aD*h*uDisp; }
-  vP=p; vN=aN; vT=t; vec2 q=(uUseUDIM==1?fract(t):t)-uShift; gl_Position=vec4(q*2.0-1.0,0.0,1.0); }`;
+  vP=p; vN=aN; vT=t; vTan=aTan; vec2 q=(uUseUDIM==1?fract(t):t)-uShift; gl_Position=vec4(q*2.0-1.0,0.0,1.0); }`;
 /* uMir: for mirror and radial painting, the texel looks up the brush where its mirror image is (identity otherwise) */
-const FS_3DPROJ=`in vec3 vP; in vec3 vN; in vec2 vT; uniform mat4 uVPm; uniform sampler2D uStroke; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform mat4 uMir; uniform int uAlign; uniform float uWrapTol; uniform int uNoBack; uniform float uCullCos; uniform int uUseUDIM; uniform vec2 uUDIMTile;
+const FS_3DPROJ=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform mat4 uVPm; uniform sampler2D uStroke; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform mat4 uMir; uniform int uAlign; uniform float uWrapTol; uniform int uNoBack; uniform float uCullCos; uniform int uUseUDIM; uniform vec2 uUDIMTile;
 uniform int uSt; uniform sampler2D uStT; uniform vec2 uStC; uniform vec2 uStHalf; uniform float uStRot; uniform vec2 uScr; uniform int uStTile; uniform int uStInv; uniform bool uMaterialData;
-void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec3 q=(uMir*vec4(vP,1.0)).xyz; vec4 c=uVPm*vec4(q,1.0); if(c.w<=1e-6){ o=vec4(0); return; } vec2 s=c.xy/c.w*0.5+0.5;
-  if(s.x<0.0||s.y<0.0||s.x>1.0||s.y>1.0){ o=vec4(0); return; }
+uniform vec2 uShift; uniform bool uWorldNormal; uniform vec3 uWorldDirection; uniform bool uHasNormalBase; uniform sampler2D uNormalBase;
+void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec3 q=(uMir*vec4(vP,1.0)).xyz; vec4 c=uVPm*vec4(q,1.0); if(c.w<=1e-6)discard; vec2 s=c.xy/c.w*0.5+0.5;
+  if(s.x<0.0||s.y<0.0||s.x>1.0||s.y>1.0)discard;
   ivec2 ds=textureSize(uDepth,0); float z=texelFetch(uDepth,clamp(ivec2(s*vec2(ds)),ivec2(0),ds-1),0).r; float d=length(q-uCamP);
   /* Surface wrap projects onto front-facing mesh surfaces even when a raised lip occludes
      them in camera depth. Back faces stay protected; Camera keeps strict depth visibility. */
@@ -26,22 +27,36 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec3 q=
   /* Keep the wrap active at grazing angles; only reject surfaces clearly facing away. */
   /* Skip back faces: the real face (from how the position changes across the pixels, turned to the side the vertex normals point to)
      must look at the camera. Paint then never goes through a thin part to the far side, and never lands on a face seen from behind. */
-  if(uNoBack==1){ vec3 gn=cross(dFdx(vP),dFdy(vP)); if(dot(gn,gn)>1e-24){ gn=normalize(gn); if(dot(gn,vN)<0.0) gn=-gn; if(dot(normalize(mat3(uMir)*gn),viewDir)<=uCullCos){ o=vec4(0); return; } } }
+  if(uNoBack==1){ vec3 gn=cross(dFdx(vP),dFdy(vP)); if(dot(gn,gn)>1e-24){ gn=normalize(gn); if(dot(gn,vN)<0.0) gn=-gn; if(dot(normalize(mat3(uMir)*gn),viewDir)<=uCullCos)discard; } }
   /* (0.95.4, Kenn: paint at the lip corner landed on the neck) Surface wrap still needs SOME depth check: a surface facing
      the camera but hidden far behind another part (the neck under the chin) must not take paint. uWrapTol (world units,
      from the brush size) lets paint reach just behind a raised edge, nothing further. */
-  if(uAlign==1){if(dot(n,viewDir)<-0.035){o=vec4(0);return;} if(z>0.0&&d>z*1.006+uWrapTol){o=vec4(0);return;}}
-  else if(z<=0.0||d>z*1.006+0.004){o=vec4(0);return;}
+  if(uAlign==1){if(dot(n,viewDir)<-0.035||(z>0.0&&d>z*1.006+uWrapTol))discard;}
+  else if(z<=0.0||d>z*1.006+0.004)discard;
   vec4 t=texture(uStroke,s);
   /* stencil: 1 = mask (light parts let paint through), 2 = colour (paints the picture itself) */
   if(uSt>0){ vec2 pp=s*uScr-uStC; float cr=cos(uStRot),sr=sin(uStRot); vec2 l=vec2(cr*pp.x-sr*pp.y,sr*pp.x+cr*pp.y)/(2.0*uStHalf)+0.5;
-    if(uStTile==1) l=fract(l); else if(l.x<0.0||l.y<0.0||l.x>1.0||l.y>1.0){ o=vec4(0); return; }
+    if(uStTile==1) l=fract(l); else if(l.x<0.0||l.y<0.0||l.x>1.0||l.y>1.0)discard;
     vec4 m=texture(uStT,vec2(l.x,1.0-l.y));/* pictures are stored top row first */
     float k=dot(m.rgb,vec3(0.299,0.587,0.114));
     float a=uSt==1?(uStInv==1?1.0-k:k):m.a;
     if(uMaterialData)t*=a;
     else{if(uSt==2){vec3 col=m.a>1e-5?m.rgb/m.a:vec3(0.0);t.rgb=uStInv==1?1.0-col:col;}t.a*=a;} }
   /* Depth determines visibility. Shading normals must not fade a visible bevel out of the stroke. */
+  if(uWorldNormal){
+    if(t.a<=1e-5)discard;
+    vec3 N=normalize(vN), T=normalize(vTan.xyz-N*dot(vTan.xyz,N)), B=cross(N,T)*vTan.w;
+    // The projected symmetry copy also mirrors or rotates the chosen direction.
+    vec3 W=transpose(mat3(uMir))*uWorldDirection;
+    vec3 d=normalize(vec3(dot(T,W),dot(B,W),max(dot(N,W),0.01)));
+    if(uHasNormalBase){
+      vec3 b=normalize(texture(uNormalBase,uUseUDIM==1?fract(vT):vT-uShift).rgb*2.0-1.0);
+      vec3 t0=b+vec3(0.0,0.0,1.0);
+      // Undo the reorientation that the baked tangent normal will apply at compositing time.
+      if(t0.z>0.0001) d=(t0*dot(t0,d)/t0.z-d)*vec3(-1.0,-1.0,1.0);
+    }
+    t.rgb=d*0.5+0.5;
+  }
   o=t; }`;
 const VS_3DD=VS_3D.replace('out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;','out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;');
 let P3P=null;
@@ -111,12 +126,15 @@ function meshSpace(w,h){const P=p3p(),g=v3.gpu;if(!g)return null;let M=v3.mp;if(
       const W=doc.w,H=doc.h,x0=clamp(Math.floor(b[0]),0,W),y0=clamp(Math.floor(b[1]),0,H),x1=clamp(Math.ceil(b[2]),0,W),y1=clamp(Math.ceil(b[3]),0,H),q=st.syncR;
       const r=q?[Math.min(q[0],x0),Math.min(q[1],y0),Math.max(q[2],x1),Math.max(q[3],y1)]:(x1>x0&&y1>y0?[x0,y0,x1,y1]:null);
       if(!r)return;st.syncR=r;scissorDo([r[0],r[1],r[2]-r[0],r[3]-r[1]],()=>SPo.syncAll());},
-    syncAll(){SPo.projectStroke(M.buf,strokeT,!!materialDab(stroke?.o.material));
+    syncAll(){SPo.projectStroke(M.buf,strokeT,!!materialDab(stroke?.o.material),stroke?.o.tool==='brush'?stroke.o.worldNormal:null);
       const halo=stroke?.weldHeat;if(halo?.screen){SPo.projectStroke(halo.screen,halo.uv,true);halo.projected=true;}
       const folds=stroke?.stitchFolds;if(folds?.screen)SPo.projectStroke(folds.screen,folds.uv,true);},
-    projectStroke(source,target,materialData){bindTarget(target);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
-      const stU=st3Uniforms(w,h);for(const Mi of mirs){useProg(P.proj,Object.assign({uVPm:{m4:VP},uStroke:source.tex,uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v],uMir:{m4:Mi},uMaterialData:materialData},stU));
-      bindTarget(target);gl.enable(gl.BLEND);gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);gl.disable(gl.CULL_FACE);
+    projectStroke(source,target,materialData,worldDirection){bindTarget(target);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
+      const stU=st3Uniforms(w,h),normalBase=worldDirection&&meshNormalBase();
+      // A texel must get one direction, even when mirrored projections overlap. Give the original stroke priority.
+      const copies=worldDirection?mirs.slice().reverse():mirs;
+      for(const Mi of copies){useProg(P.proj,Object.assign({uVPm:{m4:VP},uStroke:source.tex,uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v],uMir:{m4:Mi},uMaterialData:materialData,uWorldNormal:!!worldDirection,uWorldDirection:worldDirection||[0,0,1],uHasNormalBase:!!normalBase,uNormalBase:normalBase?.tex||dummy},stU));
+      bindTarget(target);if(worldDirection)gl.disable(gl.BLEND);else{gl.enable(gl.BLEND);gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);}gl.disable(gl.CULL_FACE);
       const loc=gl.getUniformLocation(P.proj.p,'uShift'),alignLoc=gl.getUniformLocation(P.proj.p,'uAlign'),backLoc=gl.getUniformLocation(P.proj.p,'uNoBack');gl.bindVertexArray(g.vao);
       const align=v3s().paintAlign==='camera'?0:1;gl.uniform1i(alignLoc,align);gl.uniform1f(gl.getUniformLocation(P.proj.p,'uCullCos'),meshCullCos());gl.uniform1f(gl.getUniformLocation(P.proj.p,'uWrapTol'),meshWrapTol());gl.uniform1i(backLoc,v3s().noBack===false?0:1);
       for(let j=0;j<uvs;j++)for(let i=0;i<uvs;i++){gl.uniform2f(loc,i,j);gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);}}
@@ -154,7 +172,7 @@ const evCopy=e=>({clientX:e.clientX,clientY:e.clientY,pointerId:e.pointerId,pres
 function meshDown(hit,e){if(stroke||preview||selLive||v3.shiftPend)return false;const s=v3s();
   /* (0.95.6, Kenn: "no overlap between the blur and the straight line") Ctrl + drag smooths; Shift + click stays the straight line only */
   if(ui.mode==='p3d'&&(e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&s.shiftSmooth!==false&&SHIFT_SMOOTH_TOOLS.includes(ui.tool))/* (0.96.6, Kenn) Ctrl smooths with Tangent | Wrap whatever the alignment (UV alignment cannot smooth) */return meshDown0(hit,Object.assign(evCopy(e),{ctrlKey:false,metaKey:false}),{smooth:true});
-  if(ui.mode==='p3d'&&(s.paintAlign||'uv')==='uv')return meshDownUV(hit,e);
+  if(ui.mode==='p3d'&&(s.paintAlign||'uv')==='uv'&&!npWorldPaint(doc.active))return meshDownUV(hit,e);
   return meshDown0(hit,e);}
 /* the pending Shift press: moved far enough = a Smooth stroke; let go = the straight line */
 function meshShiftMove(hit,e){const P=v3.shiftPend;if(!P||e.pointerId!==P.id)return false;if(Math.hypot(e.clientX-P.ev.clientX,e.clientY-P.ev.clientY)<4)return true;
@@ -183,7 +201,7 @@ function meshDown0(hit,e,opt){if(typeof bk!=='undefined'&&bk.busy&&ui.mode==='ba
   if(ui.mode==='p3d'&&p3.udim){const pk=v3PickAt(hit,e),R=pk&&v3.mesh?.setRanges?.[pk.set],i=pk&&pk.tile&&p3.sets.findIndex(S=>p3Binding(S)===(R&&R.name)&&S.tile&&S.tile.id===pk.tile.id);if(i>=0&&i!==p3.cur)p3SwitchSet(i,true);}
   if(ui.mode==='bake'&&(ui.tool==='smudge'||ui.tool==='liquify')){toast('Smudge and Liquify work in 3D Paint, on the model’s texture set.');return true;}
   if(ui.tool==='material')materialBrushTarget();if(fillNoMask())return true;
-  if(typeof npSync==='function')npSync();const et=ui.mode==='bake'?bakeEditTarget():editTarget();if(ui.mode!=='bake'&&lockStop(et))return true;const o=paintOpts(et);if(!o)return true;
+  if(typeof npSync==='function')npSync();const et=ui.mode==='bake'?bakeEditTarget():editTarget();if(ui.mode!=='bake'&&lockStop(et))return true;const o=paintOpts(et,true);if(!o)return true;
   if(opt&&opt.smooth){Object.assign(o,{tool:'smudge',smooth3d:true,smoothK:clamp(.35+(o.opacity??1)*.45,.2,.85),charge:0,mix:false,paintMix:0,streak:0});}
   const r=hit.getBoundingClientRect(),w=Math.max(1,Math.round(r.width)),h=Math.max(1,Math.round(r.height)),sp=meshSpace(w,h);if(!sp)return true;
   if(o.tool==='liquify')return meshLiqDown(hit,e,et,o,sp);

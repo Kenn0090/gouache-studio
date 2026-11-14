@@ -65,7 +65,7 @@ function beginStroke(L,x,y,p,o){
   const SW=cg?cg.w:W,SH=cg?cg.h:H;
   const sampleT=o.tool==='smudge'&&o.sampleAll&&!o.space&&!L.maskOf&&!L.quick?compositeMap(doc.map):null;
   const gcell=clamp(o.grainSize||6,1,40),gx=Math.max(1,Math.round(W/gcell)),gy=Math.max(1,Math.round(H/gcell));
-  stroke={lazy,fd:o.space?'all':null,L,o,x,y,p,lsx:x,lsy:y,dir:0,carry:0,bb:[W,H,0,0],clearBox,gScale:[W/gx,H/gy],gPeriod:[gx,gy],space:cg,rs:(cg||o.uvRs)?(o.cageRs||1):1,SW,SH,sym:o.sym||null,tint,grey:doc.map!=='base',sampleT,sampleAt:performance.now()};
+  stroke={lazy,fd:o.space?'all':null,L,o,x,y,p,lsx:x,lsy:y,dir:0,carry:0,bb:[W,H,0,0],clearBox,gScale:[W/gx,H/gy],gPeriod:[gx,gy],space:cg,rs:(cg||o.uvRs)?(o.cageRs||1):1,SW,SH,sym:o.sym||null,tint:!!(tint||cg&&o.worldNormal),dabTint:tint,grey:doc.map!=='base',sampleT,sampleAt:performance.now()};
   if(o.weldHeat)weldHeatBegin(stroke);
   if(stitchHasRelief(o.material?.stitch))stitchFoldsBegin(stroke);
   /* Resolve the library and repeating mask once, rather than per dab at low spacing. */
@@ -139,7 +139,7 @@ function stamp(x,y,p){
     let px=x,py=y;
     if(o.scatter>0){const d=r0*2*o.scatter,c=Math.cos(dir),sn=Math.sin(dir),t=(Math.random()*2-1)*d;px+=-sn*t;py+=c*t;if(o.bothAxes){const u=(Math.random()*2-1)*d;px+=c*u;py+=sn*u;}}
     const fx=(o.flipX?-1:1)*(o.randFlipX&&Math.random()<.5?-1:1),fy=(o.flipY?-1:1)*(o.randFlipY&&Math.random()<.5?-1:1)*(yup?-1:1);
-    if(s.tint&&!o.jitterPerStroke)s.dabCol=jitterColor(o.color,o,s.grey);
+    if(s.dabTint&&!o.jitterPerStroke)s.dabCol=jitterColor(o.color,o,s.grey);
     for(const c of symCopies(s.sym,s.SW,s.SH,px,py,ang,fx,fy,dx,dy))stampOne(c[0],c[1],r,a,c[2],c[3],c[4],c[5],c[6],p);
   }
   if(s.space&&!s.msm)s.spaceDirty=true;if(s.clone)s.cloneDirty=true;
@@ -174,8 +174,8 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy,pressure){
     else if(o.material?.surfaceDetail)surfaceDetailStamp(s,dst,U,copies,a);
     else if(s.dualBatch){s.dualBatch.u=U;for(const c of copies)s.dualBatch.data.push(c[0],c[1],r,ext,ang,a,fx,fy,...U.uDualOff);
       if(s.dualBatch.data.length>=10240){dualBatchFlush(s);dualBatchStart(s);}}
-    else for(const c of copies){if(s.tint)run(P.stamp,dst,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:2},uDabCol:s.dabCol}),{blend:'tintfirst'});
-      run(P.stamp,dst,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:s.tint?1:0},uDabCol:s.dabCol||[0,0,0]}),{blend:o.buildup||o.pFlow?'over':s.tint?'tintmax':'max'});}
+    else for(const c of copies){if(s.dabTint)run(P.stamp,dst,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:2},uDabCol:s.dabCol}),{blend:'tintfirst'});
+      run(P.stamp,dst,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:s.dabTint?1:0},uDabCol:s.dabCol||[0,0,0]}),{blend:o.buildup||o.pFlow?'over':s.dabTint?'tintmax':'max'});}
   }
   for(const [cx,cy] of copies){const b=s.bb;b[0]=Math.min(b[0],cx-ext-1);b[1]=Math.min(b[1],cy-ext-1);b[2]=Math.max(b[2],cx+ext+1);b[3]=Math.max(b[3],cy+ext+1);}
   /* what changed since the last frame, so only that part of the picture is composited again */

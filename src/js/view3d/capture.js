@@ -7,7 +7,7 @@
      frames per second, size, format (WebM or MP4 video, GIF, PNG sequence), whether the light turns with the
      model, and a transparent background (PNG sequence). */
 /* the view drawn off-screen at w×h (the normal, fast shading) → RGBA rows, bottom first */
-function v3Offscreen(w,h,o){o=o||{};const S=Math.min(4,gl.getParameter(gl.MAX_SAMPLES)||0),F={w,h,overlays:o.overlays};
+function v3Offscreen(w,h,o){o=o||{};const S=Math.min(4,gl.getParameter(gl.MAX_SAMPLES)||0),F={w,h,overlays:o.overlays,time:o.time};
   F.ms=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);F.c=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,F.c);gl.renderbufferStorageMultisample(gl.RENDERBUFFER,S,gl.RGBA8,w,h);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.RENDERBUFFER,F.c);
   F.d=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,F.d);gl.renderbufferStorageMultisample(gl.RENDERBUFFER,S,gl.DEPTH_COMPONENT24,w,h);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,F.d);
   F.rf=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,F.rf);F.rc=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,F.rc);gl.renderbufferStorage(gl.RENDERBUFFER,gl.RGBA8,w,h);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.RENDERBUFFER,F.rc);
@@ -27,8 +27,9 @@ function dlgScreenshot(){if(!v3.on||!v3.mesh){toast('Open the 3D view first.');r
   const body=el('div',{class:'dlg-grid',id:'shotDlg'},el('div',{class:'sub',text:'Size'}),(()=>{const g=seg(V3_SIZES,size,v=>{size=v;},'Size');g.classList.add('themeseg');return g;})(),
     chk('shotTr','Transparent background',tr,v=>{tr=v;}),el('p',{class:'note',text:v3.rt?'Ray traced mode: the ray-traced picture is saved as it is now, at the view’s size.':'Saved as PNG.'}));
   openDialog({title:'Screenshot',body,okLabel:'Save',onOk(){setTimeout(()=>v3Screenshot(size,tr),0);}});}
+function v3CaptureOwnLook(){return (ui.mode==='p3d'&&v3s().worldNormalView)||v3ShadeOf(doc).kind==='hatch'||(ui.mode==='p3d'&&p3.sets.some(S=>!S.hidden&&S.state?.doc?.v3shade?.kind==='hatch'));}
 async function v3Screenshot(size,tr){let w,h,d,premul=!!tr;
-  if(typeof nv!=='undefined'&&nv.isOpen&&platform.isDesktop){try{[w,h]=v3SizeOf(size||'view');toast('Taking the picture in the new viewer…');const png=await nvCapture(w,h,tr),r=await deliver(v3FileBase()+'_3d.png',new Blob([png],{type:'image/png'}));toast(deliveredText(r,'Screenshot'));return {w,h};}catch(e){console.warn(e);toast('The new viewer could not take it, so the normal viewer did.');}}
+  if(!v3CaptureOwnLook()&&typeof nv!=='undefined'&&nv.isOpen&&platform.isDesktop){try{[w,h]=v3SizeOf(size||'view');toast('Taking the picture in the new viewer…');const png=await nvCapture(w,h,tr),r=await deliver(v3FileBase()+'_3d.png',new Blob([png],{type:'image/png'}));toast(deliveredText(r,'Screenshot'));return {w,h};}catch(e){console.warn(e);toast('The new viewer could not take it, so the normal viewer did.');}}
   if(v3.rt&&rt.view&&rt.view.n){const S=rt.view;w=S.w;h=S.h;d=rtPixels(S,!tr);}
   else{[w,h]=v3SizeOf(size||'view');d=v3Offscreen(w,h,{transparent:tr});}
   const blob=await pixelsToPNG(w,h,d,premul),r=await deliver(v3FileBase()+'_3d.png',blob);toast(deliveredText(r,'Screenshot'));return {w,h};}
@@ -82,9 +83,9 @@ function dlgTurntable(){if(!v3.on||!v3.mesh){toast('Open the 3D view first.');re
 async function ttRecord(o){const s=v3s(),n=Math.max(2,Math.round(o.spins*o.secs*o.fps));let [w,h]=v3SizeOf(o.size);if(o.fmt==='gif'&&w>640){h=Math.round(h*640/w);w=640;}
   if(o.fmt!=='png'){w&=~1;h&=~1;}const cam0=Object.assign({},v3.cam),rot0=s.envRot||0,az0=s.sunAz,tr=o.fmt==='png'&&o.tr;
   const frame=i=>{v3.postSeed=7.13+i*3.17;const a=2*Math.PI*o.spins*i/n;v3.cam.yaw=cam0.yaw+a;/* light fixed to the viewer unless it turns with the model */if(!o.lightTurns){s.envRot=(rot0+a*180/Math.PI)%360;s.sunAz=(az0+a*180/Math.PI)%360;}
-    const d=v3Offscreen(w,h,{transparent:tr});const top=new Uint8Array(w*h*4);for(let y=0;y<h;y++)top.set(d.subarray((h-1-y)*w*4,(h-y)*w*4),y*w*4);return top;};
+    const d=v3Offscreen(w,h,{transparent:tr,time:i/o.fps});const top=new Uint8Array(w*h*4);for(let y=0;y<h;y++)top.set(d.subarray((h-1-y)*w*4,(h-y)*w*4),y*w*4);return top;};
   /* with the new viewer open (and no see-through background) the frames come from it, ray traced; the light stays fixed to the viewer unless it turns with the model */
-  const viaNv=typeof nv!=='undefined'&&nv.isOpen&&platform.isDesktop;
+  const viaNv=!v3CaptureOwnLook()&&typeof nv!=='undefined'&&nv.isOpen&&platform.isDesktop;
   const getFrame=async i=>{if(!viaNv)return frame(i);const a=2*Math.PI*o.spins*i/n,deg=a*180/Math.PI;return nvFrame(w,h,-a,o.lightTurns?undefined:((rot0+deg)%360)/360,o.lightTurns?undefined:((az0==null?40:az0)+deg)%360,24,tr);};
   const restore=()=>{Object.assign(v3.cam,cam0);s.envRot=rot0;s.sunAz=az0;v3.postSeed=0;v3.dirty=true;requestRender();};
   loadStart('Turntable');let cancelled=false;
