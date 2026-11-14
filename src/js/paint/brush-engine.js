@@ -80,6 +80,7 @@ function beginStroke(L,x,y,p,o){
     else stroke.exU=selU(o);}
   if(o.tool==='clone')cloneBegin(stroke);
   if(o.tool==='smudge'&&stroke.space)meshSmudgeBegin(stroke);/* on the 3D model (mesh-pull.js) */
+  p3PaintBegin(stroke);
   if((o.lineBlend||o.fanFill)&&tint&&typeof lbBegin==='function'){stroke.cv=null;lbBegin(stroke);requestRender(true);return;}
   /* a brush that turns with the stroke waits for the first couple of pixels, so its first dab already points the way you are going */
   if(o.followDir&&(o.tool==='brush'||o.tool==='erase'||o.mixer)&&(!o.space||materialDab(o.material))){stroke.fdWait=true;stroke.carry=0;}else{stamp(x,y,p);stroke.carry=spacingAt(p);}if(o.tool==='brush'&&o.endInk>0){stroke.inkAnchor=[x,y];stroke.inkSince=performance.now();stroke.inkFrame=requestAnimationFrame(brushInkLoop);}requestRender(true);
@@ -157,6 +158,7 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy,pressure){
   const U={uRadius:r,uExtent:ext,uLane:[o.laneN||0,o.laneHue||0,o.laneVal||0,o.laneMode||0],uSize:[W,H],uHard:s.solid?.9:o.hardness,uGrain:s.solid?0:o.grain,uGrainScale:s.gScale,uPeriod:s.gPeriod,
     uUseTip:!!tip,uTip:tip?tip.tex:dummy,uAngle:ang,uRound:o.roundness||1,uFlip:[fx,fy],uTipAspect:tip?tip.w/tip.h:1,uSpray:o.spray>0&&!tip&&!s.solid?[o.spray,o.sprayDen*(1-(o.sprayPress||0)*(1-pcurve(s.p,o))),Math.random()*997,o.sprayMist]:[0,0,0,0],uSprayVar:o.sprayVar||0,uSprayFleck:o.spray>0&&!tip&&!s.solid?(o.sprayFleck||0)*((o.pSize||o.pFlow||o.pOpacity||o.simP!=='off')?.3+.7*pcurve(s.p,o):1):0,uSprayRing:o.spray>0&&!tip&&!s.solid?[o.sprayRing||0,o.spraySwirl||0,(s.ph=(s.ph||0)+.9+Math.random()*.5)]:[0,0,0],uSpraySolid:o.spraySolid==null?1:o.spraySolid,uTexImg:(s.texT===undefined&&(s.texT=o.texDepth>0&&o.texKey&&typeof dualTip==='function'?dualTip({tipKey:o.texKey}):null),s.texT)?s.texT.tex:dummy,uTexSet:[o.texScale||128,s.texT?o.texDepth:0,o.texInvert?1:0,1.5],uPat:o.pattern>0?[o.pattern,o.patSize||10,(o.patDen==null?1:o.patDen)*(.4+.6*pcurve(s.p,o))*(o.patRamp>0?.22+.78*Math.min(1,(s.trav||0)/o.patRamp):1),s.patSeed==null?(s.patSeed=Math.random()*400):s.patSeed]:[0,10,1,0],uPaper:o.tooth>0?(()=>{const pi=s.pap||(s.pap=(typeof paperInfo==='function'&&paperInfo())||{t:4,sc:1});return [pi.t,pi.sc,o.tooth];})():[0,1,0]};
   if(s.dualU){if(o.dual.random)s.dualU.uDualOff=[Math.random()*s.dualU.uDualSize[0],Math.random()*s.dualU.uDualSize[1]];Object.assign(U,s.dualU);}
+  if(!s.dualBatch)p3PaintDab(s,U,copies,a,tip);
   if(o.tool==='smudge'&&s.space){/* on the 3D model: the dab goes into the screen buffer, then pulls paint through the model's UVs (mesh-pull.js) */
     clearTarget(s.space.buf);for(const c of copies)run(P.stamp,s.space.buf,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:0},uDabCol:[0,0,0]}),{blend:'max'});
     for(const c of copies)meshSmudgeApply(s,c[0],c[1],ext,dx,dy);
@@ -174,8 +176,7 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy,pressure){
     else if(o.material?.surfaceDetail)surfaceDetailStamp(s,dst,U,copies,a);
     else if(s.dualBatch){s.dualBatch.u=U;for(const c of copies)s.dualBatch.data.push(c[0],c[1],r,ext,ang,a,fx,fy,...U.uDualOff);
       if(s.dualBatch.data.length>=10240){dualBatchFlush(s);dualBatchStart(s);}}
-    else for(const c of copies){if(s.dabTint)run(P.stamp,dst,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:2},uDabCol:s.dabCol}),{blend:'tintfirst'});
-      run(P.stamp,dst,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:s.dabTint?1:0},uDabCol:s.dabCol||[0,0,0]}),{blend:o.buildup||o.pFlow?'over':s.dabTint?'tintmax':'max'});}
+    else for(const c of copies)paintRegularDab(dst,U,c,a,s.dabCol,s.dabTint,o.buildup||o.pFlow);
   }
   for(const [cx,cy] of copies){const b=s.bb;b[0]=Math.min(b[0],cx-ext-1);b[1]=Math.min(b[1],cy-ext-1);b[2]=Math.max(b[2],cx+ext+1);b[3]=Math.max(b[3],cy+ext+1);}
   /* what changed since the last frame, so only that part of the picture is composited again */
@@ -232,6 +233,7 @@ function endStroke(record){
   const x0=clamp(Math.floor(s.bb[0]),0,W),y0=clamp(Math.floor(s.bb[1]),0,H),x1=clamp(Math.ceil(s.bb[2]),0,W),y1=clamp(Math.ceil(s.bb[3]),0,H),bw=x1-x0,bh=y1-y0,R=[x0,y0,bw,bh];
   /* A normal stroke needs only a small before-image of its painted area for merging and undo. */
   let lazySrc=null,lazyBefore=null;
+  if(bw>0&&bh>0)p3PaintBefore(s);
   if(s.lazy&&bw>0&&bh>0){lazySrc=makeTarget(bw,bh,L.target.depth,false,packedHeight(L.target.depth));blit(L.target,lazySrc,x0,y0,bw,bh,0,0);if(record)lazyBefore=captureRegion(lazySrc,0,0,bw,bh);}
   if(s.o.tool!=='smudge'&&!healing&&!cloning&&bw>0&&bh>0){scissorDo(R,()=>run(strokeMergeProgram(s),L.target,{uSrc:s.lazy?lazySrc.tex:beforeT.tex,uSrcOrigin:{iv2:s.lazy?[x0,y0]:[0,0]},uStrokeTex:strokeT.tex,uStroke:{int:strokeMode(s.o)},...tonalU(s.o),uStrokeColor:s.o.color,uStrokeTint:!!s.tint,uStrokeOpacity:s.o.opacity,uLockAlpha:L.lockAlpha,...chanU(s.o),...selU(s.o),...strokeMaterialU(s)}));if(lazySrc)disposeTarget(lazySrc);}
   if(s.o.tool!=='smudge'||s.wcBuf)strokeT.dirtyR=s.space?'all':R;
@@ -242,17 +244,20 @@ function endStroke(record){
     scissorDo(R,()=>run(strokeMergeProgram(s),T,Object.assign({uSrc:old.tex,uStrokeTex:strokeT.tex,uStroke:{int:e.mode},uStrokeColor:e.color,uStrokeOpacity:s.o.opacity,uLockAlpha:false},chanU(null),s.exU,strokeMaterialU(s,e.key))));release(old);
     if(parts.length&&parts[parts.length-1].k===e.key)parts[parts.length-1].after=captureRegion(T,x0,y0,bw,bh);}
   const halo=weldHeatFinish(s,R,record);
+  p3PaintAfter(s);
   stitchFoldsRelease(s);
   if(s.lockT)release(s.lockT);if(s.sampleT)release(s.sampleT);if(s.samplePrevT)release(s.samplePrevT);dropStrokeCache(s);
   if(s.mix)mixEnd(s);
   if(s.lb)lbEnd(s);
   stroke=null;
   if(record){
-    if(bw>0&&bh>0){const r=regionRecord(L,lazyBefore||captureRegion(beforeT,x0,y0,bw,bh),captureRegion(L.target,x0,y0,bw,bh),x0,y0,bw,bh,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?(s.o.mixer?'Brush stroke':'Blend'):s.o.tool==='dodge'?'Dodge':s.o.tool==='burn'?'Burn':healing?'Heal':cloning?'Clone':'Brush stroke');
+    if(bw>0&&bh>0){const before=lazyBefore||captureRegion(beforeT,x0,y0,bw,bh),after=captureRegion(L.target,x0,y0,bw,bh);
+      const r=regionRecord(L,before,after,x0,y0,bw,bh,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?(s.o.mixer?'Brush stroke':'Blend'):s.o.tool==='dodge'?'Dodge':s.o.tool==='burn'?'Burn':healing?'Heal':cloning?'Clone':'Brush stroke');
       if(L.onRecord)L.onRecord(r,[x0,y0,bw,bh]);
       if(halo){const undo=r.undo,redo=r.redo;r.refs.push(halo.layer);r.snaps.push(...halo.snaps);
         r.undo=()=>{undo();halo.undo();};r.redo=()=>{redo();halo.redo();};}
-      pushUndo(parts.length?withMapParts(r,L,parts,x0,y0):r);}
+      const step=parts.length?withMapParts(r,L,parts,x0,y0):r;
+      pushUndo(p3PaintRasterUndo(p3PaintUndo(step,s),s,parts,x0,y0,before,after));}
     scheduleThumb(L.maskOf||L);
   }
   requestRender(true);if(typeof v3WeldEnd==='function')v3WeldEnd(s,R);

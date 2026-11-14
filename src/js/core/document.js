@@ -66,10 +66,10 @@ function inDoc(n){if(n&&n.frame)return !!(doc.anim&&doc.anim.frames.includes(n))
 function isAncestor(a,n){let c=n.parent;while(c){if(c===a)return true;c=c.parent;}return false;}
 function activeLayer(){return isLayer(doc.active)?doc.active:null;}
 function makeMask(fill,mono){const m={target:makeTarget(doc.w,doc.h,doc.depth,false,false,!!mono),enabled:true,thumb:thumbCanvas()};m.thumb.className='mthumb';clearTarget(m.target,[fill,fill,fill,1]);return m;}
-function cloneMask(m){if(!m)return null;const c=makeMask(1,m.target.mono);blit(m.target,c.target,0,0,doc.w,doc.h,0,0);c.enabled=m.enabled;
+function cloneMask(m){if(!m)return null;const c=makeMask(1,m.target.mono);blit(m.target,c.target,0,0,doc.w,doc.h,0,0);p3PaintCopy(m.target,c.target);c.enabled=m.enabled;
   /* its rows too, each with its own copy of its picture */
   if(m.stack){c._rows=new Set();c.stack=m.stack.map(r=>{const x=Object.assign({},r,{id:'r'+(++msSeq),p:JSON.parse(JSON.stringify(r.p||{})),v:r.v?JSON.parse(JSON.stringify(r.v)):r.v});
-    if(r.t){x.t=makeTarget(r.t.w,r.t.h,r.t.depth,r.kind==='image');blit(r.t,x.t,0,0,r.t.w,r.t.h,0,0);}c._rows.add(x);return x;});}
+    if(r.t){x.t=makeTarget(r.t.w,r.t.h,r.t.depth,r.kind==='image');blit(r.t,x.t,0,0,r.t.w,r.t.h,0,0);p3PaintCopy(r.t,x.t);}c._rows.add(x);return x;});}
   return c;}
 function editTarget(){if(sel.quick){useAux(sel.t.depth);return {node:sel.node,target:sel.t,isMask:true,L:sel.L};}const n=doc.active;if(!n)return null;fillMaskEdit(n);if(n.fx&&!n.editMask)return null;if(isLayer(n)&&!n.editMask){ensureTarget(n);useAux(n.target.depth,false,['brush','erase','dodge','burn'].includes(ui.tool));if(doc.map==='base')delete n.blankBase;}else if(n.mask&&n.editMask)useAux(n.mask.target.depth,false,['brush','erase','dodge','burn'].includes(ui.tool));
   /* a mask with rows: painting goes into its Paint row */

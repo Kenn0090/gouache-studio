@@ -19,7 +19,7 @@ function blankTabDoc(w,h,name){symReset();for(const k of Object.keys(aux))delete
 /* the tab's canvas size: its own, or the painting's the first time */
 function tabDocEnter(key,w,h,name){if(tabDocs.paint)return;const v3d=doc.v3d,wf=doc.workflow;tabDocs.paint=docState();tabDocs.key=key;
   let s=tabDocs.own[key];tabDocs.own[key]=null;
-  if(s&&s.doc.w===w&&s.doc.h===h)setDocState(s);else{disposeDocState(s);blankTabDoc(w,h,name);}
+  if(s&&(key==='p3d'||s.doc.w===w&&s.doc.h===h))setDocState(s);else{disposeDocState(s);blankTabDoc(w,h,name);}
   doc.v3d=v3d;doc.workflow=wf;$('#docName').textContent=name;if(typeof selChanged==='function')selChanged();}
 function tabDocExit(key){if(!tabDocs.paint)return;tabDocs.own[key]=docState();setDocState(tabDocs.paint);tabDocs.paint=null;tabDocs.key=null;
   $('#docName').textContent=doc.name;if(typeof selChanged==='function')selChanged();if(typeof updateStatus==='function')updateStatus();}

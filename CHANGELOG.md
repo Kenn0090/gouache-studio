@@ -1,3 +1,10 @@
+## 0.97.17
+
+- **Non-destructive texture resizing in 3D Paint.** Switch each texture set between 1K, 2K and 4K. Gouache rebuilds supported UV and projected brush strokes, painted masks, and material channels at the chosen size. The source survives saving and reopening a 3D Paint project.
+- **Preserved raster detail.** Lowering the working size keeps the original texture pixels. Local raster edits retain the original detail outside the edited area. Specialist effects such as welds and stitches retain their painted pixels.
+- **Export at the output size.** Export supported strokes and masks at 4K while working at 1K. Height-derived normal shading keeps its strength across resolutions.
+- **Cancellable rebuilds.** Press Stop to keep the current size. A completed size change clears undo history for the selected texture set.
+
 ## 0.97.16
 
 - **Arcane-inspired paint** adds an editable Stylize layer with broad and fine directional strokes, dry bristles, and separate shadow and light tints.

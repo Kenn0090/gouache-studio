@@ -40,7 +40,7 @@ async function openP3Project(buf,name,path){if(!isP3Proj(buf))throw new Error('T
   for(const rec of head.sets||[]){let st=null;
     if(!rec.empty){const b=buf.slice(data+rec.o,data+rec.o+rec.n),{head:h,data:d}=gfHead(b);blankTabDoc(h.w,h.h,rec.name);for(const L of everyNode())disposeLayer(L);doc.root.children=[];doc.count=0;
       await gfReadInto(b,h,d);doc.v3shade=h.v3shade||null;doc.p3=true;doc.name=rec.name;hist.undo=[];hist.redo=[];st=docState();}
-    states.push(st);p3.sets.push({name:rec.name,material:rec.material||rec.name,tile:rec.tile||null,meshEditID:rec.meshEditID,state:st,tex:null,missing:false,hidden:!!rec.hid});}
+    states.push(st);p3.sets.push({name:rec.name,material:rec.material||rec.name,tile:rec.tile||null,meshEditID:rec.meshEditID,state:st,tex:null,missing:false,hidden:!!rec.hid,resized:!!st});}
   if(!p3.sets.length&&!p3.deletedSets.length)throw new Error('This project has no texture sets.');
   disposeDocState(old);
   p3.cur=p3.sets.length?clamp(head.cur||0,0,p3.sets.length-1):-1;const A=p3.sets[p3.cur];

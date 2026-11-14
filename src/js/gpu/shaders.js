@@ -184,12 +184,12 @@ vec4 applyStroke(vec4 L, float cov){
   if(uStroke==2){ if(uLockAlpha==1) return L; return L*(1.0-a); }
   return L; }
 `;
-const FS_STAMP=CH_BRUSH+`uniform float uAlpha; uniform int uTint; uniform vec3 uDabCol; uniform vec4 uLane;
+const FS_STAMP=CH_BRUSH+`uniform float uAlpha; uniform int uTint; uniform vec3 uDabCol; uniform vec4 uLane; uniform vec2 uDabScale;
 /* colour that changes across the brush (0.95): uLane = (number of lanes, hue turn, brightness, mode). Mode 0: hard stripes across the brush, 2: hard stripes along it, 1: a round tube (hue and light change from the middle to the edges), 3: soft wavy bands. The lanes stay with the brush as it turns, so they run along the stroke. */
 float lnH(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
 float lnN(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f); return mix(mix(lnH(i),lnH(i+vec2(1,0)),f.x),mix(lnH(i+vec2(0,1)),lnH(i+vec2(1,1)),f.x),f.y); }
 float lnF(vec2 p){ return lnN(p)*0.55+lnN(p*2.03+7.1)*0.3+lnN(p*4.1+3.3)*0.15; }
-vec3 laneCol(vec3 c){ if(uLane.x<0.5) return c; vec2 dv=gl_FragCoord.xy-uCenter; float ca=cos(uAngle),sa=sin(uAngle); vec2 q=vec2(ca*dv.x+sa*dv.y,-sa*dv.x+ca*dv.y)*uFlip; float r=max(uRadius,0.01); float md=uLane.w;
+vec3 laneCol(vec3 c){ if(uLane.x<0.5) return c; vec2 dv=gl_FragCoord.xy*uDabScale-uCenter; float ca=cos(uAngle),sa=sin(uAngle); vec2 q=vec2(ca*dv.x+sa*dv.y,-sa*dv.x+ca*dv.y)*uFlip; float r=max(uRadius,0.01); float md=uLane.w;
   float t=clamp(((md>1.5&&md<2.5)||(md>5.5&&md<6.5))?q.x/r:q.y/r,-1.0,1.0); /* modes 2 and 6 run along the brush's x, 7 across it (streaks along the stroke when the brush turns with it) */ float h=0.0,v=0.0;
   if(md>6.5){ /* smooth pastel streaks: soft uneven noise across the brush, mostly near the colour itself with gentle pink, mint and cream drifting through (uLane.x = how many streaks, y = strength, z = brightness spread) */
     float u=t*0.5+0.5; float dr=(uCenter.x*0.7+uCenter.y*0.55)*0.0045; /* dr: where along the stroke this dab is, so the streaks change as you drag */
@@ -206,7 +206,7 @@ vec3 laneCol(vec3 c){ if(uLane.x<0.5) return c; vec2 dv=gl_FragCoord.xy-uCenter;
   else if(md>3.5){ float u=t*0.5+0.5; float ph=fract(sin(floor(uLane.x)*1.7)*43758.5453)*6.28; float n1=sin(u*uLane.x*2.1+ph)+0.8*sin(u*uLane.x*3.7+ph*1.7)+0.6*sin(u*uLane.x*6.3+ph*0.4); float n2=sin(u*uLane.x*1.7+ph*2.3)+0.7*sin(u*uLane.x*4.9+ph*0.9); h=-uLane.y*(0.5+0.5*clamp(n1/2.4,-1.0,1.0)); v=uLane.z*clamp(n2/1.7,-1.0,1.0); }
   else { float ph=fract(sin(floor(uLane.x)*1.7)*43758.5453)*6.28; h=uLane.y*sin(t*uLane.x*1.5708+ph)*(0.6+0.4*sin(t*uLane.x*0.7)); v=uLane.z*sin(t*uLane.x*1.2+ph*0.5); }
   vec3 k=vec3(0.57735); c=c*cos(h)+cross(k,c)*sin(h)+k*dot(k,c)*(1.0-cos(h)); return clamp(c*(1.0+v),0.0,1.0); }
-void main(){ float m=brushMask(gl_FragCoord.xy)*uAlpha; if(uTint==2){ if(m<=0.0) discard; o=vec4(laneCol(uDabCol),0.0); return; } o=uTint==1?vec4(laneCol(uDabCol)*m,m):vec4(m); }`;
+void main(){ float m=brushMask(gl_FragCoord.xy*uDabScale)*uAlpha; if(uTint==2){ if(m<=0.0) discard; o=vec4(laneCol(uDabCol),0.0); return; } o=uTint==1?vec4(laneCol(uDabCol)*m,m):vec4(m); }`;
 /* colour-jitter strokes stamp each dab twice: uTint 2 first gives pixels nothing has touched yet the dab's colour
    (so soft edges keep it), then uTint 1 lays the dab over what is there */
 const FS_SMUDGE=CH_BRUSH+`
@@ -352,7 +352,7 @@ void main(){ vec4 c=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0); if(c.a<=1e-6){ o=
 /* ---- maps: normal from height, lit material preview ---- */
 /* Sobel slope of the height composite -> tangent-space normal (OpenGL: green = up), combined with
    any painted/loaded normal detail by reoriented normal blending. uFlipY gives DirectX (green = down). */
-const FS_NRM=`uniform sampler2D uH, uOwners; uniform sampler2D uN; uniform int uUseN; uniform float uStr; uniform int uWrap; uniform int uFlipY; uniform bool uPadHeight;
+const FS_NRM=`uniform sampler2D uH, uOwners; uniform sampler2D uN; uniform int uUseN; uniform float uStr; uniform vec2 uSlopeScale; uniform int uWrap; uniform int uFlipY; uniform bool uPadHeight;
 float hAt(ivec2 p,ivec2 center){ ivec2 s=textureSize(uH,0); if(uWrap==1) p=((p%s)+s)%s; else p=clamp(p,ivec2(0),s-1);
   if(uPadHeight){ivec4 bytes=ivec4(round(texelFetch(uOwners,p,0)*255.0));
     ivec2 owner=ivec2(bytes.x*256+bytes.y,bytes.z*256+bytes.w)-1;
@@ -361,7 +361,7 @@ float hAt(ivec2 p,ivec2 center){ ivec2 s=textureSize(uH,0); if(uWrap==1) p=((p%s
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy);
   float tl=hAt(p+ivec2(-1,-1),p),t=hAt(p+ivec2(0,-1),p),tr=hAt(p+ivec2(1,-1),p),l=hAt(p+ivec2(-1,0),p),r=hAt(p+ivec2(1,0),p),bl=hAt(p+ivec2(-1,1),p),b=hAt(p+ivec2(0,1),p),br=hAt(p+ivec2(1,1),p);
   float dx=((tr+2.0*r+br)-(tl+2.0*l+bl))/8.0, dy=((bl+2.0*b+br)-(tl+2.0*t+tr))/8.0;
-  vec3 n=normalize(vec3(-dx*uStr, dy*uStr, 1.0));
+  vec3 n=normalize(vec3(vec2(-dx,dy)*uSlopeScale*uStr, 1.0));
   if(uUseN==1){ vec3 d=texelFetch(uN,p,0).rgb*2.0-1.0; vec3 tt=n+vec3(0,0,1), u=d*vec3(-1,-1,1); n=normalize(tt*dot(tt,u)/tt.z-u); }
   if(uFlipY==1) n.y=-n.y;
   o=vec4(n*0.5+0.5,1.0); }`;

@@ -107,8 +107,9 @@ function normalComposite(flipY,own,region){
     // A height derivative at the edge of a UV island should read the island's
     // border, where its texel continues into the padding used in the viewport.
     const owners=h&&ui.mode==='p3d'&&!doc.wrap?seamPadOwners():null;
+    const [refW,refH]=doc.p3&&doc.heightReference||[doc.w,doc.h];
     scoped(()=>run(P.nrm,out,{uH:h?h.t.tex:dummy,uN:n?n.t.tex:dummy,uOwners:owners||dummy,uPadHeight:!!owners,
-      uUseN:!!n,uStr:hasH?doc.nrmStr:0,uWrap:!!doc.wrap,uFlipY:!!flipY&&!mb}));
+      uUseN:!!n,uStr:hasH?doc.nrmStr:0,uSlopeScale:[doc.w/refW,doc.h/refH],uWrap:!!doc.wrap,uFlipY:!!flipY&&!mb}));
     for(const c of [h,n])if(c&&!c.own)release(c.t);}
   if(!mb)return out;
   if(!P_NRMB)P_NRMB=program(FS_NRMB);const o2=acquireD(ND);scoped(()=>run(P_NRMB,o2,{uB:mb.tex,uD:out.tex,uFlipY:!!flipY}));release(out);return o2;}

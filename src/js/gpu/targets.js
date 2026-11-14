@@ -22,15 +22,15 @@ function makeTarget(w,h,depth,wrap,packed,mono){
   const fbo=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0);
   const t=gpuTrack({tex,fbo,w,h,depth,packed:!!packed,mono:!!mono,mipDirty:true});clearTarget(t);return t;
 }
-function disposeTarget(t){if(!t)return;gpuTargets.delete(t._gpuRef);gl.deleteTexture(t.tex);gl.deleteFramebuffer(t.fbo);t.tex=null;t.fbo=null;}
+function disposeTarget(t){if(!t)return;gpuTargets.delete(t._gpuRef);gl.deleteTexture(t.tex);gl.deleteFramebuffer(t.fbo);t.tex=null;t.fbo=null;t._paintSource=null;}
 function setWrap(t,rep){gl.bindTexture(gl.TEXTURE_2D,t.tex);const wm=rep?gl.REPEAT:gl.CLAMP_TO_EDGE;gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,wm);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,wm);}
 /* Opacity proofs are conservative: any write invalidates them unless the complete result is known. */
-function bindTarget(t){if(t)t.opaque=false;gl.bindFramebuffer(gl.FRAMEBUFFER,t?t.fbo:null);gl.viewport(0,0,t?t.w:cv.width,t?t.h:cv.height);}
-function clearTarget(t,c){bindTarget(t);c=c||[0,0,0,0];gl.clearColor(c[0],t&&t.packed?c[3]:c[1],c[2],c[3]);gl.clear(gl.COLOR_BUFFER_BIT);if(t)t.opaque=c[3]===1&&!gl.isEnabled(gl.SCISSOR_TEST);}
+function bindTarget(t){if(t){t.opaque=false;p3PaintWrite(t);}gl.bindFramebuffer(gl.FRAMEBUFFER,t?t.fbo:null);gl.viewport(0,0,t?t.w:cv.width,t?t.h:cv.height);}
+function clearTarget(t,c){bindTarget(t);c=c||[0,0,0,0];gl.clearColor(c[0],t&&t.packed?c[3]:c[1],c[2],c[3]);gl.clear(gl.COLOR_BUFFER_BIT);if(t){const full=!gl.isEnabled(gl.SCISSOR_TEST);t.opaque=c[3]===1&&full;if(full)t._paintClear=c.slice();}}
 function blit(src,dst,sx,sy,w,h,dx,dy){const opaque=!!src.opaque,proof=opaque&&sx>=0&&sy>=0&&sx+w<=src.w&&sy+h<=src.h&&dx===0&&dy===0&&w===dst.w&&h===dst.h&&!gl.isEnabled(gl.SCISSOR_TEST);
   if(src.mono&&!dst.mono&&!dst.packed){const copy=()=>run(P.maskplace,dst,{uMask:src.tex,uRect:[dx,dy,w,h],uSourceOffset:[sx,sy],uDef:0});if(scissorNow)copy();else scissorDo([dx,dy,w,h],copy);dst.opaque=proof;return;}/* (0.95.2) one channel → grey RGBA */
   if(!!src.packed!==!!dst.packed||!!src.mono!==!!dst.mono){const copy=()=>run(P.resample,dst,{uSrc:src.tex,uOffset:[dx-sx,dy-sy],uScale:[1,1],uTaps:{int:1}});if(scissorNow)copy();else scissorDo([dx,dy,w,h],copy);dst.opaque=proof;return;}
-  dst.opaque=proof;gl.bindFramebuffer(gl.READ_FRAMEBUFFER,src.fbo);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,dst.fbo);gl.blitFramebuffer(sx,sy,sx+w,sy+h,dx,dy,dx+w,dy+h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
+  p3PaintWrite(dst);dst.opaque=proof;gl.bindFramebuffer(gl.READ_FRAMEBUFFER,src.fbo);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,dst.fbo);gl.blitFramebuffer(sx,sy,sx+w,sy+h,dx,dy,dx+w,dy+h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
 function packedRead(t,u){if(t.packed||t.mono)for(let i=0;i<u.length;i+=4){const a=t.mono?(u instanceof Uint16Array?0x3c00:t.depth===8?255:1):u[i+1];u[i+1]=u[i+2]=u[i];u[i+3]=a;}return u;}
 function packedUpload(t,u){if(t.mono){const out=new u.constructor(u.length/4);for(let i=0;i<out.length;i++)out[i]=u[i*4];return out;}if(!t.packed)return u;const out=new Uint16Array(u.length/2);for(let i=0,j=0;i<u.length;i+=4){out[j++]=u[i];out[j++]=u[i+3];}return out;}
 function imageOpaque(bytes,depth){const step=depth===16?8:4;for(let i=step-1;i<bytes.length;i+=step)if(depth===16?bytes[i]!==60||bytes[i-1]!==0:bytes[i]!==255)return false;return bytes.length>0;}
@@ -60,25 +60,26 @@ function captureRegionNow(src,x,y,w,h){gl.bindFramebuffer(gl.FRAMEBUFFER,src.fbo
   else{u=new Uint8Array(w*h*4);gl.readPixels(x,y,w,h,gl.RGBA,gl.UNSIGNED_BYTE,u);packedRead(src,u);}
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);return {w,h,depth:src.depth===16?16:8,data:u,bytes:u.byteLength};}
 /* an undo snapshot: its pixels arrive asynchronously; reading .data before then waits for them */
-function makeSnap(w,h,depth,bytes){const s={w,h,depth,bytes,_d:null,_job:null,
+function makeSnap(w,h,depth,bytes){const s={w,h,depth,bytes,_d:null,_job:null,_ready:null,
   get data(){if(this._job)this._job.finish();return this._d;},set data(v){this._d=v;},get resident(){return !!(this._d||this._job);}};return s;}
+function snapResolved(s,data){s._job=null;s._d=data;if(s._ready){s._ready(data);s._ready=null;}}
 function captureRegion(src,x,y,w,h){const n=w*h*4;
   if(src.depth===16){
     if(src.mono){const staged=makeTarget(w,h,16,false,false);run(P.maskplace,staged,{uMask:src.tex,uRect:[0,0,w,h],uSourceOffset:[x,y],uDef:0});const s=makeSnap(w,h,16,n*2);
-      s._job=asyncRead(staged.fbo,0,0,w,h,gl.FLOAT,Float32Array,n,f=>{const u=new Uint16Array(n);for(let i=0;i<n;i++)u[i]=f2h(f[i]);s._job=null;s._d=packedRead(staged,u);disposeTarget(staged);},()=>disposeTarget(staged));return s;}
+      s._job=asyncRead(staged.fbo,0,0,w,h,gl.FLOAT,Float32Array,n,f=>{const u=new Uint16Array(n);for(let i=0;i<n;i++)u[i]=f2h(f[i]);snapResolved(s,packedRead(staged,u));disposeTarget(staged);},()=>{snapResolved(s,null);disposeTarget(staged);});return s;}
     if(halfRead===null)halfRead=gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_FORMAT)===gl.RGBA&&gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_TYPE)===gl.HALF_FLOAT;
     const s=makeSnap(w,h,16,n*2);
-    s._job=halfRead?asyncRead(src.fbo,x,y,w,h,gl.HALF_FLOAT,Uint16Array,n,u=>{s._job=null;s._d=packedRead(src,u);})
-      :asyncRead(src.fbo,x,y,w,h,gl.FLOAT,Float32Array,n,f=>{packedRead(src,f);const u=new Uint16Array(n);for(let i=0;i<n;i++)u[i]=f2h(f[i]);s._job=null;s._d=u;});
+    s._job=halfRead?asyncRead(src.fbo,x,y,w,h,gl.HALF_FLOAT,Uint16Array,n,u=>snapResolved(s,packedRead(src,u)),()=>snapResolved(s,null))
+      :asyncRead(src.fbo,x,y,w,h,gl.FLOAT,Float32Array,n,f=>{packedRead(src,f);const u=new Uint16Array(n);for(let i=0;i<n;i++)u[i]=f2h(f[i]);snapResolved(s,u);},()=>snapResolved(s,null));
     return s;}
   if(src.mono){const staged=makeTarget(w,h,8,false,false);run(P.maskplace,staged,{uMask:src.tex,uRect:[0,0,w,h],uSourceOffset:[x,y],uDef:0});const s=makeSnap(w,h,8,n);
-    s._job=asyncRead(staged.fbo,0,0,w,h,gl.UNSIGNED_BYTE,Uint8Array,n,u=>{s._job=null;s._d=packedRead(staged,u);disposeTarget(staged);},()=>disposeTarget(staged));return s;}
-  const s=makeSnap(w,h,8,n);s._job=asyncRead(src.fbo,x,y,w,h,gl.UNSIGNED_BYTE,Uint8Array,n,u=>{s._job=null;s._d=packedRead(src,u);});return s;}
+    s._job=asyncRead(staged.fbo,0,0,w,h,gl.UNSIGNED_BYTE,Uint8Array,n,u=>{snapResolved(s,packedRead(staged,u));disposeTarget(staged);},()=>{snapResolved(s,null);disposeTarget(staged);});return s;}
+  const s=makeSnap(w,h,8,n);s._job=asyncRead(src.fbo,x,y,w,h,gl.UNSIGNED_BYTE,Uint8Array,n,u=>snapResolved(s,packedRead(src,u)),()=>snapResolved(s,null));return s;}
 /* File reads wait for the fence instead of forcing an undo snapshot's .data getter early.
    The file worker converts float pixels to half-float bytes. */
 function readRegionAsync(src,x,y,w,h){return new Promise((resolve,reject)=>{if(gl.isContextLost()){reject(new Error('The graphics context was lost.'));return;}
   asyncRead(src.fbo,x,y,w,h,src.depth===16?gl.FLOAT:gl.UNSIGNED_BYTE,src.depth===16?Float32Array:Uint8Array,w*h*4,u=>resolve(packedRead(src,u)),reject);});}
-function restoreRegion(snap,dst,x,y){dst.opaque=false;gl.bindTexture(gl.TEXTURE_2D,dst.tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
+function restoreRegion(snap,dst,x,y){p3PaintWrite(dst);dst.opaque=false;gl.bindTexture(gl.TEXTURE_2D,dst.tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
   if(snap.depth===16)gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,snap.w,snap.h,dst.mono?gl.RED:dst.packed?gl.RG:gl.RGBA,gl.HALF_FLOAT,packedUpload(dst,snap.data));
   else gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,snap.w,snap.h,dst.mono?gl.RED:gl.RGBA,gl.UNSIGNED_BYTE,packedUpload(dst,snap.data));
   gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);}
@@ -126,10 +127,11 @@ const dummy=(()=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.
 
 const CH_DEF={uChanMode:{int:0},uChan:[1,1,1,1]};
 const SEL_DEF={uSelTex:dummy,uUseSel:false,uTonalRange:{int:1},uProtect:true};
+P.nrm.defaults={uSlopeScale:[1,1]};
 /* Uniforms survive draws. Reset the secondary mask for every caller, including
    previews and tools that share the stamp/smudge programs. Bind a safe sampler too. */
 const DUAL_UNIFORM_DEFAULTS={uUseDual:false,uDual:dummy,uDualSize:[1,1],uDualOff:[0,0],uDualMode:{int:0},uDualAmt:0};
 P.comp.defaults=Object.assign({uEdge:0,uGlaze:0,uPig:1,uWet:0,uMixLab:0,uSolid:false,uSolidColor:[0,0,0,0],uMask2:dummy,uLMask:dummy,uUseMask2:false,uUseLMask:false,uStrokeTint:false},CH_DEF,SEL_DEF);P.merge.defaults=Object.assign({uEdge:0,uGlaze:0,uPig:1,uWet:0,uMixLab:0,uStrokeTint:false,uSrcOrigin:{iv2:[0,0]}},CH_DEF,SEL_DEF);P.stamp.defaults={uTint:{int:0},uDabCol:[0,0,0],uSpray:[0,0,0,0],uSprayVar:0,uSprayFleck:0,uSprayRing:[0,0,0],uSpraySolid:1,uPaper:[0,1,0],uPat:[0,10,1,0],uTexImg:dummy,uTexSet:[128,0,0,1.5]};P.smudge.defaults=Object.assign({uPaper:[0,1,0],uPat:[0,10,1,0],uTexImg:dummy,uTexSet:[128,0,0,1.5],uSpray:[0,0,0,0],uSprayVar:0,uSprayFleck:0,uSprayRing:[0,0,0],uSpraySolid:1,uPaintMix:0,uMixLab:0,uNormalMap:{int:0}},CH_DEF,SEL_DEF);
-Object.assign(P.stamp.defaults,DUAL_UNIFORM_DEFAULTS);Object.assign(P.smudge.defaults,DUAL_UNIFORM_DEFAULTS);
+Object.assign(P.stamp.defaults,DUAL_UNIFORM_DEFAULTS,{uDabScale:[1,1]});Object.assign(P.smudge.defaults,DUAL_UNIFORM_DEFAULTS);
 P.mix.defaults={uM:dummy,uUseM:false};P.resample.defaults={uOutside:[0,0,0,0]};P.view.defaults={uR:[1,0,0,1],uShow:[1,1,1,0],uSingle:{int:-1},uMaskView:false,uSel:dummy,uSelMode:{int:0},uTime:0,uPx:1,uWrap:false,uUnder:dummy,uUseUnder:false,uBg:[0,0,0,0]};
 P.shift.defaults={uWrap:false,uOutside:[0,0,0,0]};P.maskplace.defaults={uSourceOffset:[0,0]};P.grad.defaults={uShape:{int:0},uDither:false,uOpacity:1,uGray:false,uBase:dummy,uUseBase:false,uSelTex:dummy,uUseSel:false};P.fillcov.defaults={uSelTex:dummy,uUseSel:false};P.lockcov.defaults={uSelTex:dummy,uUseSel:false};P.texcov.defaults={uSelTex:dummy,uUseSel:false};P.xform.defaults={uOutside:[0,0,0,0],uInterp:{int:2},uSS:{int:1},uWrap:false,uRect:[0,0,0,0],uBase:dummy,uUseBase:false};P.mesh.defaults={uOutside:[0,0,0,0],uInterp:{int:2},uOff:[0,0]};P.proj.defaults={uAlphaOnly:true};P.selop.defaults={uShape:dummy,uOldOn:true};P.loadsel.defaults={uInv:false};P.cropsel.defaults={uSel:dummy,uUseSel:false};

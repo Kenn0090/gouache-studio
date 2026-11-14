@@ -1,3 +1,9 @@
+## 0.97.17
+
+- **Work at 1K and export at 4K.** In **3D Paint → Texture size**, change the working resolution of each texture set independently. Gouache redraws supported strokes and painted masks at the chosen resolution, preserves existing raster detail, and keeps the paint source when you save and reopen the project.
+- **Keep your material detail.** Local raster edits preserve higher-resolution detail outside the edited area. Welds and stitches keep their painted pixels. Height-derived normals keep their strength when you change texture size.
+- **Stop a rebuild** to keep your current texture size. A completed resize clears undo history for that texture set.
+
 ## 0.97.16
 
 - **Arcane-inspired paint** adds an editable Stylize layer with broad and fine directional strokes, dry bristles, and separate shadow and light tints.

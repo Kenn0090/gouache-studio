@@ -615,7 +615,9 @@ function msFilter(r,acc){const o=acquireD(acc.depth);
 /* the whole stack → a picture (pooled). ov = {row, t}: that Paint row's picture while it is being painted */
 /* while a Paint row is being painted, everything under it stays the same: that part is worked out once (msPre) and each frame starts from it */
 function msPreFree(M){if(M._pre){disposeTarget(M._pre.t);M._pre=null;}}
-function msEval(L,ov,guard){const M=L.mask,S=M.stack,P=msProgs(),d=M.target.depth,ctx=msCtx();let acc=acquireD(d);clearTarget(acc,[0,0,0,1]);
+function msEval(L,ov,guard){const M=L.mask,S=M.stack,P=msProgs(),d=M.target.depth;
+  const ctx=S.some(r=>r.on!==false&&!['paint','fill','filter','alpha','id','anchor'].includes(r.kind))?msCtx():{tmp:[]};
+  let acc=acquireD(d);clearTarget(acc,[0,0,0,1]);
   let from=0;
   if(!ov||!ov.row)msPreFree(M);
   else if(ov.upTo==null){const idx=S.indexOf(ov.row);
