@@ -19,5 +19,9 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{const A=__gs.doc.active;__gs.ui.msSel={L:A,where:'m',id:A.mask.stack.find(x=>x.kind==='gen').id};__gs.ui.editMask=true;__gs.showPanel('matEd');__gs.renderMatEd&&__gs.renderMatEd(true);});await W(500);
  ok(await p.evaluate(()=>!!document.getElementById('msCGrungePick')&&!!document.getElementById('msSGrungePick')&&!!document.getElementById('msCGrunge_t')&&!!document.getElementById('msCGrunge_tri')&&!!document.getElementById('ms_gtri')&&!!document.getElementById('msEGrunge_tri')&&!!document.getElementById('msVGrunge_a')&&!!document.getElementById('msFGrunge')),'Properties: Contact wear and Scan influence grunge pickers');
  ok(await p.evaluate(()=>{__gs.compositeMap('base');const A=__gs.doc.active,t=A.mask.target;return !!t&&__gs.gl.getError()===0;}),'the generator runs with both grunges and no GL error');
+ /* Mask builder takes the zone grunges too */
+ await p.evaluate(()=>{const A=__gs.doc.active,r=A.mask.stack.find(x=>x.kind==='gen');__gs.msEdit(A,r,x=>{x.p.g='builder';x.p.edgeWeight=1;x.p.positionWeight=0;});__gs.renderMatEd(true);});await W(600);
+ ok(await p.evaluate(()=>!!document.getElementById('msEGrunge')&&!!document.getElementById('msVGrunge_a')&&!!document.getElementById('msFGrunge_tri')),'Mask builder: Edges, Cavities and Flat grunge by zone');
+ ok(await p.evaluate(()=>{__gs.compositeMap('base');return __gs.gl.getError()===0;}),'the Mask builder runs with zone grunges and no GL error');
  ok(errs.length===0,'no page errors '+errs.join('|').slice(0,200));
  await b.close();process.exit(fails?1:0);})();

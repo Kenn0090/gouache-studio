@@ -152,7 +152,7 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
         inv(),sel('ms_ganc','Also follow anchor',[['','None'],...msAnchorNames().map(x=>[x,x])],'anchor'),
         chk('ms_uvWrap','UV wrap',p.uvWrap!==false,v=>ed(x=>{x.p.uvWrap=v;})),
         S('ms_brk','Grunge breakup','breakup',0,1,.01,pct),S('ms_scale','Grunge scale','scale',.5,40,.5),S('ms_seed','Seed','seed',1,99,1),
-        S('ms_dist','Distort mesh maps','distort',0,1,.01,pct),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),msGrungeBox(r,p,ed,S),
+        S('ms_dist','Distort mesh maps','distort',0,1,.01,pct),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),msGrungeBox(r,p,ed,S),...msZoneSet(p,ed,S),
         el('p',{class:'note',text:'Add sums the inputs. Lightest keeps the strongest. Intersect keeps their overlap and skips missing maps. Bake the mesh maps to get the most detail.'}));
       return;
     }
@@ -250,11 +250,7 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
       box.append(inv(),
         peeling||bubbles?null:sel('ms_ganc','Also follow anchor',[['','None'],...msAnchorNames().map(x=>[x,x])],'anchor'),
         pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),msGrungeBox(r,p,ed,S),
-        /* (0.97.20, Kenn) a grunge of your own for each zone */
-        el('div',{class:'sub',text:'Grunge by zone'}),
-        msZoneGrunge(p,ed,S,{key:'egimg',tri:'etri',title:'Edges grunge',id:'msEGrunge',tile:'etile',rot:'erot',amt:'eamt',amtLabel:'Edges grunge strength',note:'Breaks up the edge zone (where the model is convex).'}),
-        msZoneGrunge(p,ed,S,{key:'vgimg',tri:'vtri',title:'Cavities grunge',id:'msVGrunge',tile:'vtile',rot:'vrot',amt:'vamt',amtLabel:'Cavities grunge strength',note:'Breaks up the cavity and crevice zone.'}),
-        msZoneGrunge(p,ed,S,{key:'fgimg',tri:'ftri',title:'Top and flat surfaces grunge',id:'msFGrunge',tile:'ftile',rot:'frot',amt:'famt',amtLabel:'Flat grunge strength',note:'Breaks up surfaces that face up.'}),
+        ...msZoneSet(p,ed,S),
         el('p',{class:'note',text:note}));
     }
   }}
@@ -316,6 +312,12 @@ function cfxAddAnchor(L){if(!isLayer(L))return null;let row=null;const names=msA
    (photo grunge, mixed, generated, your own) or a picture dropped here; Breakup sets how strongly it eats into the mask */
 /* (0.97.20, Kenn) a grunge for one zone of a generator (contact wear, scan influence): choose from Textures or drop a picture,
    with tiling and turn; leave it empty for the built-in clouds / chosen scan */
+/* (0.97.20, Kenn) a grunge of your own for each zone: edges, cavities, top and flat surfaces */
+function msZoneSet(p,ed,S){return [
+        el('div',{class:'sub',text:'Grunge by zone'}),
+        msZoneGrunge(p,ed,S,{key:'egimg',tri:'etri',title:'Edges grunge',id:'msEGrunge',tile:'etile',rot:'erot',amt:'eamt',amtLabel:'Edges grunge strength',note:'Breaks up the edge zone (where the model is convex).'}),
+        msZoneGrunge(p,ed,S,{key:'vgimg',tri:'vtri',title:'Cavities grunge',id:'msVGrunge',tile:'vtile',rot:'vrot',amt:'vamt',amtLabel:'Cavities grunge strength',note:'Breaks up the cavity and crevice zone.'}),
+        msZoneGrunge(p,ed,S,{key:'fgimg',tri:'ftri',title:'Top and flat surfaces grunge',id:'msFGrunge',tile:'ftile',rot:'frot',amt:'famt',amtLabel:'Flat grunge strength',note:'Breaks up surfaces that face up.'})];}
 function msZoneGrunge(p,ed,S,o){const g=p[o.key],box=el('div',{class:'dlg-grid msgrunge',id:o.id});
   const name=el('span',{class:'note',text:g?g.name:'Built-in'});name._hpv=()=>g?{tex:g,name:g.name}:null;
   const set=v=>{ed(x=>{x.p[o.key]=v?{kind:v.kind,id:v.id,name:v.name}:null;});if(typeof renderMatEd==='function')renderMatEd(true);};

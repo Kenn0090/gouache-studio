@@ -355,7 +355,7 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(),surfaceQ=su
     vec3 bp=uHasPosition==1?texture(uPosition,uv).rgb:P;float pos=dot(bp,abs(uAxis));if(uAxis.x+uAxis.y+uAxis.z<0.0)pos=1.0-pos;
     float span=uBuilderRange.y-uBuilderRange.x;float gradient=abs(span)<.0001?step(uBuilderRange.x,pos):clamp((pos-uBuilderRange.x)/span,0.0,1.0);
     float h=uHasHeight==1?texture(uHeight,uv).r:0.0,thin=uHasThick==1?1.0-texture(uThick,uv).r:0.0;
-    float facing=smoothstep(-uWidth,uWidth+.0001,dot(bn,uBuilderDirection));
+    float facing=clamp(smoothstep(-uWidth,uWidth+.0001,dot(bn,uBuilderDirection))*zF,0.0,1.0);
     float sources[7]=float[7](edge,cav,occ,facing,gradient,h,thin);
     bool hasCurv=uHasCurv==1||uHasCurv2==1;
     bool available[7]=bool[7](hasCurv,hasCurv,uHasAO==1,true,true,uHasHeight==1,uHasThick==1);
@@ -600,9 +600,9 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
     const scan=scanAmount>0&&(wear&&p.sgimg?ownScan:peelOwn||msSurfaceScanTex(scanId));
     const cTex=wear&&p.cgimg?msGrungeTex(p,'cgimg'):null;
     /* zone grunges (edges, cavities, flat areas) */
-    const zk=[['egimg','e'],['vgimg','v'],['fgimg','f']],zt=zk.map(([k])=>p.builder?null:msGrungeTex(p,k)),zOn=zt.some(Boolean);
+    const zk=[['egimg','e'],['vgimg','v'],['fgimg','f']],zt=zk.map(([k])=>msGrungeTex(p,k)),zOn=zt.some(Boolean);
     let zT=null;
-    if(zOn&&p.g!=='builder'){zT=acquireD(8);
+    if(zOn){zT=acquireD(8);
       run(P.zone,zT,Object.assign({uZ0:zt[0]?zt[0].tex:dummy,uZ1:zt[1]?zt[1].tex:dummy,uZ2:zt[2]?zt[2].tex:dummy,uZon:[zt[0]?1:0,zt[1]?1:0,zt[2]?1:0,0],
         uZT:zk.map(([,c])=>p[c+'tile']||1).concat(1),uZR:zk.map(([,c])=>(p[c+'rot']||0)*Math.PI/180).concat(0),uZI:zk.map(([,c])=>p[c+'inv']?1:0).concat(0),uZTri:zk.map(([,c])=>p[c+'tri']?1:0).concat(0)},msPx(r,ctx)));}
     withUVWrap(p.uvWrap!==false,[curv,ac,ao,height,thick,wn,pos],()=>run(P.gen,o,Object.assign({uG:{int:Math.max(0,MS_GENS.findIndex(g=>g[0]===p.g))},uCurv:curv?curv.tex:dummy,uHasCurv:{int:edgeMap?2:curv?1:0},uCurv2:ac?ac.tex:dummy,uHasCurv2:{int:ac?1:0},uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},
