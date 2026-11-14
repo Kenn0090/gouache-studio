@@ -1,3 +1,9 @@
+## 0.97.22
+
+- **Choose where Gouache keeps its data.** Preferences › Speed › **Data folder**: pick a folder on another drive to keep saved materials, the Library, skies, grunge, AI add-ons, settings, autosave copies and the Exports folder off the C drive. When you change it, Gouache restarts, copies everything to the new folder, checks the copy, then removes the old one (a big library can take a few minutes). **Default** moves it back. Your own .gouache files stay where you saved them.
+- **Smoother diffuse sky light.** The soft light from a sky picture with a bright sun is now averaged over a wider area, so the sun no longer lights a model in lumps.
+- **After switching the texture size (4K) the model's maps are rebuilt again a few moments later**, in case the first rebuild came out blocky or empty.
+
 ## 0.97.21
 
 - **Show in Explorer from the shelf.** Right-click a Material, Smart material, Smart mask, Texture, Alpha, Environment, Generator, Brush or Decal in the shelf and choose **Show in Explorer**. The item is saved as a file in the app's Exports folder (one folder per category) and shown there, ready to edit or share. In the browser version it is **Save a copy…** instead.

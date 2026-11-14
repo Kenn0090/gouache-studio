@@ -227,8 +227,7 @@ pub fn reveal_path(path: String) -> Result<(), String> {
 /// The folder holding autosaved recovery copies (created if needed).
 #[tauri::command]
 pub fn autosave_dir(app: AppHandle) -> Result<String, String> {
-    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join("autosave");
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let dir = crate::data_loc::autosave_dir(&app)?;
     Ok(dir.to_string_lossy().to_string())
 }
 

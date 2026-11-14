@@ -320,6 +320,17 @@ fn system_ram() -> (u64, u64) {
     (0, 0)
 }
 
+/// Free space for the data-folder settings.
+pub fn disk_free_of(p: &Path) -> u64 {
+    let mut q = p.to_path_buf();
+    while !q.exists() {
+        if !q.pop() {
+            break;
+        }
+    }
+    disk_free(&q)
+}
+
 /// Free space on the drive holding `p` in bytes (0 when unknown).
 fn disk_free(p: &Path) -> u64 {
     #[cfg(windows)]
