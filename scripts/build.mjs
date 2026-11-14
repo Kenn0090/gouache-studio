@@ -38,6 +38,11 @@ if (fs.existsSync(r('assets/gen-thumbs/previews.json'))) {
   const items = JSON.parse(read('assets/gen-thumbs/previews.json')).items || {};
   for (const [k, f] of Object.entries(items)) if (f === path.basename(f) && fs.existsSync(r('assets/gen-thumbs/' + f))) GEN_THUMBS[k] = 'data:image/webp;base64,' + fs.readFileSync(r('assets/gen-thumbs/' + f)).toString('base64');
 }
+// Pre-rendered filter examples keep shelf browsing off the painting GPU.
+const filterThumbFiles = fs.existsSync(r('assets/filter-thumbs')) ? fs.readdirSync(r('assets/filter-thumbs')) : [];
+const FILTER_THUMBS = Object.fromEntries(filterThumbFiles.filter(f=>/^[a-z][a-z0-9]*\.webp$/i.test(f)).sort().map(f=>[
+  path.basename(f,'.webp'), 'data:image/webp;base64,' + fs.readFileSync(r('assets/filter-thumbs/' + f)).toString('base64')
+]));
 const BLENDER_ADDON = fs.existsSync(r('assets/addons/gouache_link.py')) ? read('assets/addons/gouache_link.py') : '';
 /* the change log for Help › What's new */
 const CHANGELOG = fs.existsSync(r('CHANGELOG.md')) ? read('CHANGELOG.md') : '';
@@ -65,7 +70,7 @@ const GR_SRC = {};
   for (const e of ll.grunge || []) GR_SRC[sl(e.name)] = { id: e.id, ch: e.ch || 'Opacity', inv: !!e.invert, lo: e.lo, hi: e.hi, g: e.gamma };
   for (const e of ll.grungeOld || []) GR_SRC[e.slug] = { id: e.id, ch: e.ch || 'Opacity', inv: !!e.invert, lo: e.lo, hi: e.hi, g: e.gamma }; }
 const LITE = process.env.GOUACHE_LITE === '1'; /* the smaller installer: no Library files, skies or grunge inside; they are fetched when used (File > Content keeps copies for offline) */
-const js = `const APP_VERSION='${APP_VERSION}';\nconst GR_SRC=${JSON.stringify(GR_SRC)};\nconst SM_THUMBS=${JSON.stringify(SM_THUMBS)};\nconst GEN_THUMBS=${JSON.stringify(GEN_THUMBS)};\nconst GM_LITE=${LITE};\nconst TX_PREVIEWS=${JSON.stringify(TX_PREVIEW_DATA)};\nconst TX_PAINT_SCANS=${JSON.stringify(PAINT_SCANS)};\nconst TX_METAL_SCANS=${JSON.stringify(METAL_SCANS)};\nconst TX_WEAR_SCANS=${JSON.stringify(WEAR_SCANS)};\nconst TX_EXTRA_GRUNGE=${JSON.stringify(EXTRA_GRUNGE)};\nconst GM_BUNDLED=${JSON.stringify(GMATS).replace(/<\//g, '<\\/')};\nconst UNREAL_SETUP=${JSON.stringify(UNREAL_SETUP).replace(/<\//g, '<\\/')};\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\nconst CHANGELOG_MD=${JSON.stringify(CHANGELOG).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
+const js = `const APP_VERSION='${APP_VERSION}';\nconst GR_SRC=${JSON.stringify(GR_SRC)};\nconst SM_THUMBS=${JSON.stringify(SM_THUMBS)};\nconst GEN_THUMBS=${JSON.stringify(GEN_THUMBS)};\nconst FILTER_THUMBS=${JSON.stringify(FILTER_THUMBS)};\nconst GM_LITE=${LITE};\nconst TX_PREVIEWS=${JSON.stringify(TX_PREVIEW_DATA)};\nconst TX_PAINT_SCANS=${JSON.stringify(PAINT_SCANS)};\nconst TX_METAL_SCANS=${JSON.stringify(METAL_SCANS)};\nconst TX_WEAR_SCANS=${JSON.stringify(WEAR_SCANS)};\nconst TX_EXTRA_GRUNGE=${JSON.stringify(EXTRA_GRUNGE)};\nconst GM_BUNDLED=${JSON.stringify(GMATS).replace(/<\//g, '<\\/')};\nconst UNREAL_SETUP=${JSON.stringify(UNREAL_SETUP).replace(/<\//g, '<\\/')};\nconst BLENDER_ADDON=${JSON.stringify(BLENDER_ADDON).replace(/<\//g, '<\\/')};\nconst CHANGELOG_MD=${JSON.stringify(CHANGELOG).replace(/<\//g, '<\\/')};\n` + order.map(n => `/* ---- ${n}.js ---- */\n` + read(`src/js/${n}.js`)).join('\n');
 const studioFonts=JSON.parse(read('assets/fonts/manifest.json'));
 const studioFontCss=studioFonts.map(f=>`@font-face{font-family:"${f.family}";font-style:normal;font-weight:${f.weight};font-display:swap;src:url(${f.file}) format("truetype")}`).join('\n');
 const css = read('src/styles/app.css');

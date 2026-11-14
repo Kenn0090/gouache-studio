@@ -66,3 +66,4 @@ toolKeys.ready=true;
 if(window.__gs)Object.assign(window.__gs,{toolKeys,toolKeyBinding,toolKeyCancel,toolKeyFinish,dkPopOut});
 if(window.__gs)Object.assign(window.__gs,{smStudioThumb,smThumbRedo,smTh,smThumbLater});
 if(window.__gs)Object.assign(window.__gs,{p3MeshMapsChanged,btGFB,btTree,btMove,btAuto,btg,bgtDelete,btSync,btColourTex});
+if(window.__gs)Object.assign(window.__gs,{shelfFilterGroups,shelfFilterItem,disposeTarget,RETRO_PRESETS});

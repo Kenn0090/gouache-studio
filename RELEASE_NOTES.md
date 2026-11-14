@@ -1,3 +1,10 @@
+## 0.97.18
+
+- **Filters and Layer Styles in the shelf.** Browse 60 filter previews rendered in Gouache. Drag a filter onto a layer or its mask, or between layers to create an editable filter layer. Drag a layer style onto a layer to open its settings.
+- **Searchable layer effects.** Right-click a layer and choose **Effects** to find filters for the layer, its mask, or a new filter layer.
+- **Brush settings stay in reach.** Brush search stays at the top, and the left dock extends below the viewport when the shelf is open.
+- **World Space Normal Brush.** Choose it from the **Layer** menu in 3D Paint. Aim from the camera or set azimuth and elevation, adjust direction strength, and preview in World Normals. Strokes keep a consistent direction across UV seams and export through the Normal channel.
+
 ## 0.97.17
 
 - **Work at 1K and export at 4K.** In **3D Paint → Texture size**, change the working resolution of each texture set independently. Gouache redraws supported strokes and painted masks at the chosen resolution, preserves existing raster detail, and keeps the paint source when you save and reopen the project.

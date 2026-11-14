@@ -41,8 +41,9 @@ function brOrganize(box){
   }
   for(const n of adv){n.classList.add('br-adv');items.push({el:n,group:null,adv:true});}
   box.classList.toggle('br-simple',!brAdvanced());
-  /* put the header after the essentials, the groups next, then the rarely used sections, with Reset brush at the very end */
-  const anchor=kids[last];anchor.after(head,...wrap,...adv);
+  const anchor=kids[last];
+  (ui.mode==='p3d'?$('#toolSec'):box).prepend(head);
+  anchor.after(...wrap,...adv);
   if(reset)box.append(reset);
   const run=()=>{const q=search.value.trim().toLowerCase();box.classList.toggle('br-searching',!!q);
     const shown=new Map();

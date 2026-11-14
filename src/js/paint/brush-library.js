@@ -292,6 +292,7 @@ const br3Open={};
 function br3Group(title,def,kids){const d=el('details',{class:'more brg3',id:'brg3_'+title.replace(/\W+/g,'')},el('summary',{text:title}),el('div',{class:'dlg-grid'},...kids.filter(Boolean)));d.open=title in br3Open?br3Open[title]:def;d.addEventListener('toggle',()=>{br3Open[title]=d.open;});return d;}
 function buildBrushPanel(){
   if(stitchShelfPath!==stitchPathLayer())stitchToolsRender();
+  $('#toolSec')?.querySelector(':scope > .brhead')?.remove();
   const box=$('#brushBody');box.replaceChildren();const sm=ui.tool==='smudge',isText=ui.tool==='text',isSel=isSelTool(ui.tool),isXf=!!(xf&&!xf.move),isOther=['crop','move','gradient','bucket','gbucket','cage','array','shape'].includes(ui.tool),noBrush=isText||isSel||isXf||isOther;
   $('#libBody').hidden=noBrush;$('.prevwrap').hidden=noBrush;$('#abrBtn').hidden=noBrush;$('#saveBrushBtn').hidden=noBrush||ui.tool==='dodge'||ui.tool==='burn';$('#tipBtn').hidden=noBrush;
   if(ui.tool==='pfill'&&typeof pfPanel==='function'){$('#libBody').hidden=true;$('.prevwrap').hidden=true;$('#abrBtn').hidden=true;$('#saveBrushBtn').hidden=true;$('#tipBtn').hidden=true;pfPanel(box);return;}

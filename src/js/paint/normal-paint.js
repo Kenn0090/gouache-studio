@@ -7,7 +7,7 @@
    Selections, the lasso and marquee, Levels and the gradient tool work on its Height like any other map, and Smudge
    on the Normal map keeps the normals unit length. */
 const NP_MODES=[['raise','Raise'],['dent','Dent'],['dir','Direction']];
-const np={mode:'raise',str:.5,ang:90,tilt:.6,worldAz:45,worldEl:35};
+const np={mode:'raise',str:.5,ang:90,tilt:.6,worldAz:45,worldEl:35,worldStrength:1};
 try{Object.assign(np,JSON.parse(localStorage.getItem('gs.np')||'{}'));}catch(e){}
 const npSave=()=>{try{localStorage.setItem('gs.np',JSON.stringify(np));}catch(e){}};
 const isNormalLayer=L=>!!L&&L.type==='layer'&&!!L.nrm;
@@ -30,7 +30,7 @@ function npApply(o,et,projected){const L=et&&et.L;if(o.tool!=='brush'||!isNormal
   o.noTint=true;o.hueJitter=o.satJitter=o.valJitter=0;o.extras=[];
   if(npWorldPaint(L)){
     if(!projected){toast('Paint World direction on the model in the 3D view.');return false;}
-    Object.assign(o,{worldNormal:npWorldDirection(),chan:null,edgeSat:0,glaze:0,wet:0});
+    Object.assign(o,{worldNormal:npWorldDirection(),opacity:o.opacity*clamp(np.worldStrength,0,1),chan:null,edgeSat:0,glaze:0,wet:0});
   }else if(np.mode==='dir')o.color=npDirColour();
   else{/* Height adds twice the colour's distance from mid-grey, so Strength 100% is the whole height range */
     const c=np.mode==='dent'?.5-.25*np.str:.5+.25*np.str;o.color=[c,c,c];}}
@@ -42,9 +42,18 @@ function cmdNewNormalLayer(){if(ui.mode==='anim'){toast('Normal layers are avail
   for(const k of Object.keys(L.maps))if(k!=='height'&&k!=='normal'&&k!==doc.map){disposeTarget(L.maps[k]);delete L.maps[k];}
   L.blankBase=true;L.nrm=true;ensureMapTarget(L,'height');ensureMapTarget(L,'normal');
   structOp('New normal layer',()=>{const [p,i]=insertPoint();insertNode(L,p,i);selectOnly(L);});
-  if(ui.tool!=='smudge')setTool('brush');npSync(true);if(typeof buildBrushPanel==='function')buildBrushPanel();
-  if(ui.mode==='p3d'){p3SetChannelView(np.mode==='world'?null:'nfinal');showPanel('tool');}
-  toast('Normal layer added. Paint Raise or Dent to bump the surface, or Direction to tilt it. Settings are in the Brush panel.');return L;}
+  const world=ui.mode==='p3d'&&np.mode==='world';
+  if(world||ui.tool!=='smudge')setTool('brush');npSync(true);if(typeof buildBrushPanel==='function')buildBrushPanel();
+  if(ui.mode==='p3d'){p3SetChannelView(world?null:'nfinal');showPanel('tool');}
+  toast(world?'Paint normals on the model. Find World direction settings in the Brush panel.':'Normal layer added. Paint Raise or Dent to bump the surface, or Direction to tilt it. Settings are in the Brush panel.');return L;}
+function cmdWorldNormalBrush(){
+  if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
+  if(ui.mode!=='p3d'&&!setMode('p3d'))return;
+  const current=isNormalLayer(doc.active)&&!doc.active.editMask;
+  np.mode='world';npSave();
+  if(current){setTool('brush');npSync(true);p3SetChannelView(null);showPanel('tool');}
+  else cmdNewNormalLayer();
+}
 /* the Normal paint section of the brush settings */
 function buildNormalSection(box){const L=doc.active;if(!isNormalLayer(L)||ui.mode==='bake')return;
   const sec=el('div',{class:'npsec'},el('div',{class:'sub',text:'Normal paint'}));
@@ -58,6 +67,7 @@ function buildNormalSection(box){const L=doc.active;if(!isNormalLayer(L)||ui.mod
     const direction=(key,label,min,max)=>makeSlider({id:'np_'+key,label,min,max,step:1,value:np[key],fmt:v=>Math.round(v)+'°',onInput:v=>{np[key]=v;npSave();paint();}}).el;
     const aim=()=>{const c=v3.cam;npWorldAim(norm3(sub3(v3Eye(),[c.tx,c.ty,c.tz])));};
     sec.append(direction('worldAz','Azimuth',0,359),direction('worldEl','Elevation',-90,90),
+      makeSlider({id:'np_worldStrength',label:'Direction strength',min:0,max:1,step:.01,value:np.worldStrength,fmt:pct,onInput:v=>{np.worldStrength=v;npSave();}}).el,
       el('div',{class:'chips'},el('button',{class:'btn sm',text:'Aim at camera',onclick:aim})),
       chk('npWorldView','Show world normals',!!v3s().worldNormalView,on=>p3SetWorldNormalView(on)),
       el('p',{class:'note',text:'Paint on the model. Each stroke points the surface toward the same world direction.'}));

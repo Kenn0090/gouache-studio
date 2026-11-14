@@ -543,6 +543,8 @@ body.dkresizing{cursor:col-resize;user-select:none}body.dklock .dkwidth{cursor:d
 .llist{grid-template-columns:minmax(0,1fr)}
 .dkbody>.sec>.sec-h>span:first-child:not(#brushTitle){display:none}
 #toolSec>.sec-h{display:none}
+#toolSec>.brhead{position:sticky;top:0;z-index:5;background:var(--panel);margin:0;padding:2px 0 6px}
+#toolSec>.prevwrap{position:static}
 .dk-off{display:none!important}
 .dksplit{flex:none;height:9px;background:color-mix(in srgb,var(--ground) 45%,var(--panel));border-block:1px solid var(--line);cursor:row-resize;position:relative}
 .dksplit::after{content:"";position:absolute;left:50%;top:3px;width:34px;height:3px;margin-left:-17px;border-radius:2px;background:var(--faint)}
@@ -1655,6 +1657,24 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .shsec.shlist .mattile .matprev,.shsec.shlist .mattile .gmthumb{border-radius:6px!important;box-shadow:none!important}
 .shsec.shlist .shstar{top:50%;transform:translateY(-50%);left:auto;right:6px}
 .shgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(var(--tw,64px) + 18px),1fr));gap:8px 4px}
+.mattile.sheffect{cursor:grab;user-select:none}
+.mattile.sheffect:active{cursor:grabbing}
+.sheffect .sheffect-icon{display:grid;place-items:center;width:var(--tw,64px);aspect-ratio:1;border-radius:8px;background:var(--raise);color:var(--muted)}
+.sheffect-icon>img{width:100%;height:100%;object-fit:cover;pointer-events:none}
+.sheffect-icon svg{width:48%;height:48%;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.sheffect .sheffect-icon i{width:43%;aspect-ratio:1;border-radius:23%;background:#bc9474}
+.shstyle-icon[data-style="drop"] i{box-shadow:5px 6px 4px #0009}
+.shstyle-icon[data-style="outerGlow"] i{box-shadow:0 0 10px #ffc868}
+.shstyle-icon[data-style="stroke"] i{outline:2px solid #ffe4c5;outline-offset:2px}
+.shstyle-icon[data-style="overlay"] i{background:#d77467}
+.shstyle-icon[data-style="innerShadow"] i{box-shadow:inset 4px 4px 5px #311f1abf}
+.shstyle-icon[data-style="innerGlow"] i{box-shadow:inset 0 0 8px #fff0ae}
+.shstyle-icon[data-style="bevel"] i{box-shadow:inset 2px 2px 3px #ffdbb7,inset -3px -3px 3px #593d31}
+.effect-picker input{width:100%;min-width:0}
+.effect-results{display:grid;gap:2px;overflow:auto;max-height:min(48vh,440px);padding-right:4px}
+.effect-choice{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:28px;padding:4px 8px;text-align:left;border:0;border-radius:5px;background:transparent}
+.effect-choice:hover,.effect-choice:focus-visible{background:var(--accent-soft);color:var(--text)}
+.msrow.drop-into{box-shadow:inset 0 0 0 1.5px var(--accent)}
 .shsec>.sub,.shsec .sub{margin:6px 0 2px}
 .dkshelf .shsec .mattile>canvas.shtc{width:var(--tw,64px);height:var(--tw,64px);border-radius:8px;background:var(--raise)}
 /* (0.97.10) Tools category of the 3D Paint shelf: Welds, Stitches and Surface details as foldable groups */

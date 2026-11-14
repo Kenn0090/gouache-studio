@@ -4,16 +4,16 @@
    a smart mask dropped onto a layer becomes that layer's mask. Clicking a tile still adds it as before. */
 const libDrag={d:null};
 const libGhost=el('div',{class:'libghost',hidden:true});document.body.append(libGhost);
-document.addEventListener('pointerdown',e=>{if(e.button!==0)return;const t=e.target.closest&&e.target.closest('.mattile,[data-favorite-source],#tools .tool');if(!t||e.target.closest('.tool-arrow'))return;if(t.classList.contains('tool')){const id=t.dataset.tool+(t.dataset.tool==='heal'?':'+heal.mode:'');t._libDrag=['tool',{id,name:t.getAttribute('aria-label')||t.title}];}if(!t._libDrag)return;
+document.addEventListener('pointerdown',e=>{if(e.button!==0)return;const t=e.target.closest&&e.target.closest('.mattile,[data-favorite-source],#tools .tool');if(!t||e.target.closest('.tool-arrow,.shstar'))return;if(t.classList.contains('tool')){const id=t.dataset.tool+(t.dataset.tool==='heal'?':'+heal.mode:'');t._libDrag=['tool',{id,name:t.getAttribute('aria-label')||t.title}];}if(!t._libDrag)return;
   libDrag.d={kind:t._libDrag[0],rec:t._libDrag[1],x:e.clientX,y:e.clientY,id:e.pointerId,moving:false,tile:t};},true);
 /* (0.37.2, Kenn) Ctrl + drag over the model shows the ID map so you can see which colour the material lands on */
 let libIdView=false;
 function libIdShow(on){on=!!on&&ui.mode==='p3d'&&!!(doc.meshMaps&&doc.meshMaps.id);if(on===libIdView)return;libIdView=on;if(typeof v3!=='undefined'){v3.dirty=true;requestRender(true);}}
-function libClear(){stage.classList.remove('texture-drop');const pn=document.getElementById('pane3d');if(pn)pn.classList.remove('libover');document.querySelectorAll('.lrow.drop-into,.lrow.drop-mask,.meshslot.dropon,.txmix-drop.dropon,.fillrow.material-drop,.msrow.drop-mask').forEach(r=>r.classList.remove('drop-into','drop-mask','dropon','material-drop'));dropLine.hidden=true;const f=$('#favoritesBody');if(f)f.classList.remove('dropon');}
+function libClear(){stage.classList.remove('texture-drop');const pn=document.getElementById('pane3d');if(pn)pn.classList.remove('libover');document.querySelectorAll('.lrow.drop-into,.lrow.drop-mask,.meshslot.dropon,.txmix-drop.dropon,.fillrow.material-drop,.msrow.drop-mask,.msrow.drop-into').forEach(r=>r.classList.remove('drop-into','drop-mask','dropon','material-drop'));dropLine.hidden=true;const f=$('#favoritesBody');if(f)f.classList.remove('dropon');}
 /* where a drop at (x, y) goes: {mask: layer} for smart masks, {at: {parent, index}} for the rest */
 function libTarget(x,y,D){D=D||libDrag.d;
   const channel=document.elementFromPoint(x,y)?.closest('[data-material-channel]');if(D.kind==='tex'&&channel&&isLayer(doc.active)&&doc.active.fill)return {materialChannel:channel.dataset.materialChannel,row:channel};
-  const favorite=document.elementFromPoint(x,y)?.closest('#favoritesBody');if(favorite)return {favorite:true};
+  const favorite=document.elementFromPoint(x,y)?.closest('#favoritesBody');if(favorite)return ['filter','style'].includes(D.kind)?null:{favorite:true};
   /* (0.96.1, Kenn) a texture tile let go on a picture box (a generator's Grunge, Slope blur's guide…) */
   const tdrop=document.elementFromPoint(x,y)?.closest('.fxddrop');if(D.kind==='tex'&&tdrop&&tdrop._texDrop)return {texDrop:tdrop._texDrop,row:tdrop};
   const mixer=document.elementFromPoint(x,y)?.closest('.txmix-drop');if(D.kind==='tex'&&mixer)return {mix:true,row:mixer};
@@ -24,6 +24,17 @@ function libTarget(x,y,D){D=D||libDrag.d;
   if(ui.mode==='p3d'&&(D.kind==='mat'||D.kind==='smart'||D.kind==='hp')){const u=document.elementFromPoint(x,y);if(u&&u.id==='v3Hit')return {mesh:true,x,y,ctrl:!!D.ctrl};}
   const maskRow=document.elementFromPoint(x,y)?.closest('.msrow.m');if((D.kind==='gen'||D.kind==='tex'||D.kind==='project'&&D.rec.kind==='tex')&&maskRow?._ms)return {mask:maskRow._ms.L,row:maskRow};
   const list=$('#layerList'),lb=list&&list.getBoundingClientRect();if(!lb||x<lb.left||x>lb.right||y<lb.top-8||y>lb.bottom+8)return null;
+  if(D.kind==='filter'||D.kind==='style'){
+    const under=document.elementFromPoint(x,y),row=under?.closest('.lrow,.msrow'),n=row?._node||row?._ms?.L;
+    if(row&&!list.contains(row))return null;
+    if(D.kind==='style')return isLayer(n)&&!n.fx?{layer:n,row}:null;
+    const stack=shelfStackFilter(D.rec.id);
+    if(!stack&&n){
+      if(under.closest('.mthumb,.msrow.m'))return {mask:n,row};
+      const b=row.getBoundingClientRect();
+      if(isLayer(n)&&y>b.top+b.height*.25&&y<b.bottom-b.height*.25)return n.fx?{effect:n,row}:{layer:n,row};
+    }
+  }
   if(D.kind==='gen'||D.kind==='smask'||D.kind==='tex'||D.kind==='project'&&D.rec.kind==='tex'){const under=document.elementFromPoint(x,y),row=under&&under.closest('.lrow');const n=row&&row._node;
     /* 2D textures become layers except on explicit mask thumbnails; preserve 3D row targets. */
     const maskHit=ui.mode==='paint'?!!under.closest('.mthumb'):(n&&!n.fx&&y>row.getBoundingClientRect().top+row.offsetHeight*.3&&y<row.getBoundingClientRect().bottom-row.offsetHeight*.3);
@@ -43,6 +54,7 @@ window.addEventListener('pointermove',e=>{const D=libDrag.d;if(!D||e.pointerId!=
   if(T.meshSlot){T.row.classList.add('dropon');return;}
   if(T.mesh){const pn=document.getElementById('pane3d');if(pn)pn.classList.add('libover');return;}
   if(T.mask){T.row.classList.add('drop-mask');return;}
+  if(T.layer||T.effect){T.row.classList.add('drop-into');return;}
   if(T.t){if(T.d.top&&T.t.where==='into'){T.t.row.classList.add('drop-into');return;}
     const list=$('#layerList'),lb=list.getBoundingClientRect(),rb=T.t.row.getBoundingClientRect();dropLine.hidden=false;
     dropLine.style.top=((T.t.where==='above'?rb.top:rb.bottom)-lb.top+list.scrollTop-1)+'px';dropLine.style.left=(rb.left-lb.left+10)+'px';}});
@@ -50,11 +62,16 @@ function libDrop(e){const D=libDrag.d;if(!D||e.pointerId!==D.id)return;libDrag.d
   if(!D.moving)return;/* a plain click: the tile's own click adds it as before */
   /* a drag is not a click */
   const stop=ev=>{ev.stopPropagation();ev.preventDefault();};D.tile.addEventListener('click',stop,{capture:true,once:true});setTimeout(()=>D.tile.removeEventListener('click',stop,{capture:true}),50);
-  D.ctrl=e.ctrlKey||e.metaKey;const T=libTarget(e.clientX,e.clientY,D);if(!T){/* (0.96.6, Kenn: "adds nothing") say where it can go instead of doing nothing */if(D.kind==='smart'||D.kind==='mat'||D.kind==='hp'||D.kind==='smask'||D.kind==='gen')toast(D.kind==='smask'||D.kind==='gen'?'Drop it on a layer in the Layers list (or on the rows under its mask).':'Drop it on the Layers list'+(ui.mode==='p3d'?' or on the model':'')+' (or double-click the tile).');return;}if(T.mix){if(typeof txMix.add==='function')txMix.add(D.rec);return;}libApply(D.kind,D.rec,T);}
+  D.ctrl=e.ctrlKey||e.metaKey;const T=libTarget(e.clientX,e.clientY,D);if(!T){/* (0.96.6, Kenn: "adds nothing") say where it can go instead of doing nothing */if(D.kind==='style'||D.kind==='filter')toast(D.kind==='style'?'Drop the style onto a layer.':'Drop the filter onto a layer or between layers.');else if(D.kind==='smart'||D.kind==='mat'||D.kind==='hp'||D.kind==='smask'||D.kind==='gen')toast(D.kind==='smask'||D.kind==='gen'?'Drop it on a layer in the Layers list (or on the rows under its mask).':'Drop it on the Layers list'+(ui.mode==='p3d'?' or on the model':'')+' (or double-click the tile).');return;}if(T.mix){if(typeof txMix.add==='function')txMix.add(D.rec);return;}
+  const applied=libApply(D.kind,D.rec,T);
+  if(applied&&D.tile.classList.contains('sheffect'))shRecentAdd(D.tile.dataset.shkey);
+}
 window.addEventListener('pointerup',libDrop,true);window.addEventListener('pointercancel',e=>{if(libDrag.d&&e.pointerId===libDrag.d.id){libDrag.d=null;libGhost.hidden=true;libClear();libIdShow(false);document.body.classList.remove('libdragging');}},true);
 /* also used by tests */
 function libApply(kind,rec,T){if(T.texDrop&&kind==='tex')return T.texDrop({kind:rec.kind,id:rec.id,name:rec.name});if(T.materialChannel&&kind==='tex')return txToChannel(rec,T.materialChannel);if(T.favorite)return favoritesAdd(kind,rec);if(kind==='meshmap')return p3MapLibraryDrop(rec,T.meshSlot);if(kind==='project')return paUse(rec,T);if(rec&&rec.bundled&&!(rec.fill&&rec.imgs)){gmLoad(rec).then(()=>libApply(kind,rec,T)).catch(e=>toast('Could not load “'+rec.name+'”: '+(e.message||e)));return;}if(T.mesh)return libMeshDrop(kind,rec,T);
   if(kind==='gen'){return genApply(T.mask,rec);}
+  if(kind==='filter')return shelfFilterApply(rec,T);
+  if(kind==='style')return shelfStyleApply(rec,T.layer);
   if(kind==='smask'){const n=T.mask;if(!n)return;selectOnly(n);renderLayers();smMaskApply(rec);return;}
   if(kind==='tex'){if(T.mask)return txToMask(rec,T.mask);return txToLayer(rec,T.at);}
   insertAt=T.at;try{return kind==='hp'?cmdNewHandPaintMaterial(rec.preset):kind==='smart'?smApply(rec):matApply(rec);}finally{insertAt=null;}}

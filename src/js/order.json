@@ -232,6 +232,7 @@
     "ui/favorites",
     "ui/dock",
     "ui/shelf",
+    "ui/effect-shelf",
     "ui/gen-shelf",
     "ui/history",
     "ui/layer-undo",
