@@ -1755,3 +1755,13 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .gslot-sl .srow{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"l o" "r r";row-gap:0}.gslot-sl .srow label{grid-area:l}.gslot-sl .srow output,.gslot-sl .srow .slider-value{grid-area:o}.gslot-sl .srow input[type=range]{grid-area:r;width:100%;min-width:0}
 .gslot-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gslot-btns .btn{padding:2px 8px}
 .gzones{margin:4px 0}.gzones>summary{cursor:pointer;font-weight:600;font-size:12px;padding:4px 0;color:var(--muted)}.gzones[open]>summary{color:var(--text)}.gzones>.gslot,.gzones>.msgrunge{padding-left:2px}
+/* (0.97.24) generator settings in cards, like Marmoset's layer settings */
+.msccards{display:grid;gap:6px;margin-top:4px}
+.msccard{border:1px solid var(--line-2);border-radius:var(--r,6px);background:color-mix(in srgb,var(--panel) 92%,#000)}
+.msccard-h{display:flex;gap:8px;align-items:center;width:100%;background:color-mix(in srgb,var(--line-2) 55%,transparent);border:0;color:inherit;font-weight:700;font-size:12px;padding:5px 8px;cursor:pointer;text-align:left;border-radius:var(--r,6px) var(--r,6px) 0 0}
+.msccard-arr{opacity:.7;width:12px}
+.msccard-b{display:grid;gap:4px;padding:6px 8px 8px}
+.msccard-b .msgrunge{margin:0}
+.msinvbtn{display:flex;gap:8px;align-items:center;justify-content:center;width:100%;font-weight:600;padding:6px 10px;margin:2px 0 4px}
+.msinvbtn .msinv-ic{font-size:15px}.msinvbtn.on{background:var(--accent);color:var(--accent-fg,#111);border-color:var(--accent)}
+.msccard-b>.msgrunge:first-child{padding-bottom:6px;margin-bottom:2px;border-bottom:1px solid var(--line-2)}

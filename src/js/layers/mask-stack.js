@@ -594,7 +594,7 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
     const o=out(),wear=MS_WEAR_GENS.includes(p.g),edgeMap=wear&&(msMeshTex('curvEdge')||msMeshTex('cv:curvEdge'));
     const paintDamage=MS_PAINT_DAMAGE.includes(p.g);
     const curv0=!paintDamage&&(edgeMap||msMeshTex('curv')||msMeshTex('cv:curv')||msDocMap('curv',ctx)||msModelCurv());
-    let curv=wear||p.g==='builder'?curv0:msWideCurv(curv0,p,ctx);
+    let curv=wear||p.g==='builder'?curv0:msWideCurv(typeof msEdgeShape==='function'?msEdgeShape(curv0,p,ctx,r):curv0,p,ctx);/* (0.97.24) edge controls */
     const ao=!paintDamage&&(msMeshTex('ao')||msMeshTex('cv:ao')||msDocMap('ao',ctx));
     let ac=!paintDamage&&p.anchor?msAnchorCurv(p.anchor,ctx,p.uvWrap!==false):null;
     let wearDistort=wear?Math.max(0,p.distort||0):0;
