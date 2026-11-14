@@ -125,7 +125,8 @@ function buildDesktop() {
   if (!LITE) for (const g of GMATS) copy('assets/materials/' + g.file, `${out}/materials/${g.file}`);
   for (const g of GMATS) if(g.preview) copy('assets/material-previews/' + g.preview, `${out}/material-previews/${g.preview}`);
   // Generator scans are available offline in both installers.
-  const grungeFiles = LITE ? [...PAINT_SCANS,...METAL_SCANS,...WEAR_SCANS].map(({slug})=>slug+'.webp') : GRUNGE;
+  const grungeFiles = LITE ? [...PAINT_SCANS,...METAL_SCANS,...WEAR_SCANS].map(({slug})=>slug+'.webp')
+    .concat(EXTRA_GRUNGE.filter(([slug])=>slug.startsWith('grunge-wood-')).map(([slug])=>slug+'.webp')) : GRUNGE;
   for (const f of grungeFiles) copy('assets/grunge/' + f, `${out}/grunge/${f}`);
   for (const f of RAWFILES) copy('assets/raw/' + f, `${out}/raw/${f}`);
   for(const f of STUDIO) copy('assets/studio/'+f,`${out}/studio/${f}`);

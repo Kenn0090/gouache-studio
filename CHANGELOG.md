@@ -1,3 +1,8 @@
+## 0.97.24
+
+- **Wood Edge Wear** follows raised edges and breaks up along the wood grain. Find it under **3D Paint → Generators → Wear and weather**.
+- Start with **Rubbed Finish**, **Chipped Finish**, or **Splintered Timber**. Adjust edge growth and distortion, protect recesses, and choose between wear, splinters, or both. Use a bundled wood scan or drop in a custom grain image.
+
 ## 0.97.23
 
 - **Grunge slot like Marmoset's.** Every grunge input is now a small square: drop a picture or a Textures tile on it, or click it to open a little gallery of the program's grunges (with search and Browse files…). Name, Choose…, Clear and Tri-planar sit beside it, and Tiling / Rotation / Contrast / Level are two to a row. The three zone grunges (edges, cavities, flat) are folded into one **Grunge by zone** group that opens when you use one.
