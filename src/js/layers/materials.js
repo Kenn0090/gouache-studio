@@ -9,7 +9,15 @@ const dlMeta=r=>({id:r.id,name:r.name,t:r.t,kind:'material',dl:r.dl,cat:r.cat||'
 const dlView=r=>Object.assign(dlMeta(r),{builtin:true,lazy:true,wf:'',bundled:{file:'dl:'+r.dl.aid,dl:true}});
 /* the built-in ones, as material records */
 function matBuiltins(){return (typeof P3_MATERIALS!=='undefined'?P3_MATERIALS:[]).map(([name,m])=>({id:'b:'+name,name,builtin:true,fill:{maps:Object.fromEntries(Object.entries(JSON.parse(JSON.stringify(m))).map(([k,v])=>[k,Object.assign({on:true,src:'value'},v)])),proj:'uv',triSharp:4,hStr:1},imgs:{}}));}
-async function matLoad(){if(matLib.loaded)return;matLib.loaded=true;try{const rows=await store.scanRaw('materials',r=>r.dl?dlView(r):r),mine=[];dlLib.list=[];
+async function matLoad(){if(matLib.loaded)return;matLib.loaded=true;let bad=0;try{
+    /* (0.97.20, Kenn: my handmade smart materials were gone) one unreadable record used to make the whole list come back empty.
+       Read the list in one go; if that fails, read each record on its own and skip only the broken ones (they stay on disk). */
+    const sel=r=>r.dl?dlView(r):r;let rows;
+    try{rows=await store.scanRaw('materials',sel);}
+    catch(e){console.warn('materials: reading one by one',e);rows=[];const db=await store.open();
+      const keys=await new Promise(res=>{try{const q=db.transaction('materials','readonly').objectStore('materials').getAllKeys();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>res([]);}catch(er){res([]);}});
+      for(const k of keys){try{const v=await new Promise((res,rej)=>{const q=db.transaction('materials','readonly').objectStore('materials').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error);});if(v)rows.push(sel(v));}catch(er){bad++;console.warn('material record',k,er);}}}
+    const mine=[];dlLib.list=[];
     const previews=new Map(rows.filter(r=>r.kind==='smart-preview').map(r=>[r.id,r]));
     for(const r of rows){
       if(r.dl){dlLib.list.push(r);continue;}
@@ -18,10 +26,11 @@ async function matLoad(){if(matLib.loaded)return;matLib.loaded=true;try{const ro
         const rec=await pxDeep(r,false),preview=previews.get(smThumbKey(rec.id));
         if(rec.kind==='smart'&&preview&&preview.revision===rec.previewRev)rec.thumb=preview.thumb;
         mine.push(rec);
-      }catch(e){console.warn('material',e);}
+      }catch(e){bad++;console.warn('material',e);}
     }
     matLib.list=mine.sort((a,b)=>(a.t||0)-(b.t||0));
-  }catch(e){matLib.list=[];}if(typeof p3ListsDone==='undefined'||p3ListsDone)renderMats();}
+    if(bad)toast(bad+' saved material'+(bad>1?'s':'')+' could not be opened. They are still stored on this computer, nothing was deleted.');
+  }catch(e){console.warn('materials',e);matLib.list=[];toast('Your saved materials could not be read: '+(e&&e.message||e));}if(typeof p3ListsDone==='undefined'||p3ListsDone)renderMats();}
 /* a record's images as graphics-card textures (made when first needed) */
 function matRecTargets(rec){if(rec._t)return rec._t;const o={};for(const k in rec.imgs||{}){const im=rec.imgs[k],t=makeTarget(im.w,im.h,8,true);writeRegion(t,0,0,im.w,im.h,im.data);o[k]=t;}return rec._t=o;}
 function matApply(rec){const f=rec.fill;let maps={},imgs=null,temp=null,note='';

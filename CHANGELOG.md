@@ -4,6 +4,8 @@
 - **Filter and effect pop-ups are a gallery.** Find a filter… and Effects… show picture tiles in folders, and the window can be resized by dragging its corner.
 - **Grunge for each zone of a wear generator.** Use wear now has a Contact wear grunge (instead of the built-in clouds) and a Scan influence grunge: choose Contact wear, Scan influence or any picture from Textures. They follow the row's projection (World = triplanar).
 - **Grunge by zone on every generator.** Edge wear, Dirt, Dust, Moss, Rust, Chipped paint and the rest now have three optional grunges: one for the **edges**, one for the **cavities** and one for **top and flat surfaces**, each with its own strength, tiling, turn and Triplanar tick (built-in, scans or your own pictures).
+- **Redo preview works again** for smart materials (it was asking for a preview picture that no longer exists).
+- **Saved materials load even if one record is bad.** One unreadable saved material used to make every handmade smart material and material vanish from the lists; now only the broken one is skipped, you are told how many, and nothing is deleted.
 - **Every grunge has a Triplanar tick.** The Breakup grunge, Contact wear, Scan influence and Peeling paint's Paint scan can each be set to triplanar on its own. Peeling paint can use any grunge as its paint scan.
 - **A left-hand panel stops above the shelf.** The brush panel (or any left column) ends where the shelf begins, and the shelf runs under it.
 - **Sliders show their full name when there is room.** Labels grow as you stretch the panel instead of staying cut off.

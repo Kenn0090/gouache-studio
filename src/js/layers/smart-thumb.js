@@ -28,12 +28,12 @@ function smThumbKit(){
           if(raw.el)URL.revokeObjectURL(raw.el.src);
         }
       }
-      const raw=await decode('ORM'),canvas=document.createElement('canvas');
+      const raw=await decode('AO'),canvas=document.createElement('canvas');
       canvas.width=canvas.height=size;
       const context=canvas.getContext('2d');
       try{context.drawImage(raw.el,0,0,size,size);}finally{URL.revokeObjectURL(raw.el.src);}
       const data=context.getImageData(0,0,size,size).data;
-      for(let i=0;i<data.length;i+=4){data[i+1]=data[i+2]=data[i];data[i+3]=255;}
+      for(let i=0;i<data.length;i+=4){data[i+1]=data[i+2]=data[i];data[i+3]=255;}/* (0.97.20) the preview's own baked AO picture (the old ORM file is gone: Redo preview failed) */
       maps.ao=makeTarget(size,size,8,false);
       writeRegion(maps.ao,0,0,size,size,new Uint8Array(data.buffer));
       setWrap(maps.ao,true);
