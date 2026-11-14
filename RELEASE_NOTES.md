@@ -1,8 +1,13 @@
-## Gouache Studio 0.97.24
+## Gouache Studio 0.97.25
 
 - Generator settings in Marmoset-style cards, each picture slot with its own controls.
 - More edge controls on the edge presets (strength, growth, sharpness, sharp edges only, corners, distortion, cavity protection).
 - A clear Invert button on every generator.
+
+## Gouache Studio 0.97.24
+
+- **Wood Edge Wear** follows raised edges and breaks up along the wood grain. Find it under **3D Paint → Generators → Wear and weather**.
+- Start with **Rubbed Finish**, **Chipped Finish**, or **Splintered Timber**. Adjust edge growth and distortion, protect recesses, and choose between wear, splinters, or both. Use a bundled wood scan or drop in a custom grain image.
 
 ## Gouache Studio 0.97.23
 

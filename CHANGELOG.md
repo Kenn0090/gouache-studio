@@ -1,8 +1,13 @@
-## 0.97.24
+## 0.97.25
 
 - **Generator settings in cards, like Marmoset's layer settings:** Mask, Edges, Cavities, Top and flat surfaces, Breakup and Projection. Each card opens with its picture slot, and the controls that belong to it come right after: the Edges grunge with the edge sliders, the Breakup grunge with Breakup and Noise size, and so on. A card folds by its title and stays folded.
 - **More edge controls** on Edge wear, Chipped paint, Scratches and Sun-bleached: Edge strength, Edge growth, Edge sharpness, Sharp edges only, Corners wear more, Edge distortion and its scale, and Cavity protection. At their defaults the presets look as before.
 - **Invert** is now a clear button under the Preset on every generator, lit when it's on.
+
+## 0.97.24
+
+- **Wood Edge Wear** follows raised edges and breaks up along the wood grain. Find it under **3D Paint → Generators → Wear and weather**.
+- Start with **Rubbed Finish**, **Chipped Finish**, or **Splintered Timber**. Adjust edge growth and distortion, protect recesses, and choose between wear, splinters, or both. Use a bundled wood scan or drop in a custom grain image.
 
 ## 0.97.23
 

@@ -138,6 +138,7 @@
     "layers/mask-stack",
     "view3d/seam-warp",
     "layers/weathering-generators",
+    "layers/wood-edge-wear",
     "filters/ghost-decal",
     "view3d/grad3d",
     "filters/handpaint",
