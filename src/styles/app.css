@@ -1730,7 +1730,7 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .navpip{overflow:hidden}.navframe{box-shadow:none;background:rgba(240,160,64,.15)}
 
 /* (0.97.20) shelf icon row */
-.shstrip{display:flex;gap:4px;padding:4px 8px;border-bottom:1px solid var(--line);flex:none;overflow-x:auto}
+.shstrip{display:flex;justify-content:center;gap:4px;padding:4px 8px;border-bottom:1px solid var(--line);flex:none;overflow-x:auto}
 .shsi{width:32px;height:28px;display:grid;place-items:center;border:0;border-radius:6px;background:transparent;color:var(--muted);padding:0;flex:none}
 .shsi:hover{background:var(--accent-soft);color:var(--text)}.shsi.on{background:color-mix(in srgb,var(--accent,#5b8cff) 30%,var(--panel));color:var(--text)}
 .shsi svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
