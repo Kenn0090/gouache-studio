@@ -166,7 +166,7 @@ function dkGrid(){const L=dk.L,app=$('#app'),F=L.fold||{},shOn=!!(L.shelf&&dkAva
   app.style.gridTemplateColumns=left?`${tw} ${lw} minmax(0,1fr) ${c2} ${ic} ${dw}`:`${lw} minmax(0,1fr) ${tw} ${c2} ${ic} ${dw}`;
   app.style.gridTemplateRows=`38px ${L.opt?(F.opt?'26px':'minmax(36px,auto)'):'0px'} ${th} minmax(0,1fr) auto ${shOn?(F.shelf?26:clamp(L.shelf.h||170,90,Math.max(90,window.innerHeight*.6))):0}px 26px`;
   /* (0.38.2, Kenn) like Substance: the shelf sits under the viewport only; the right-hand panels run all the way down */
-  const sh=shOn&&dkEdgeOn('left')?(left?'"tools dockl shelf dock2 icons dock"':'"dockl shelf tools dock2 icons dock"'):'"shelf shelf shelf dock2 icons dock"';
+  const sh=shOn&&dkEdgeOn('left')?(left?'"tools shelf shelf dock2 icons dock"':'"shelf shelf tools dock2 icons dock"')/* (0.97.20, Kenn) a left column stops above the shelf, which runs under it */:'"shelf shelf shelf dock2 icons dock"';
   app.style.gridTemplateAreas=left?`"head head head head head head" "opt opt opt opt opt opt" "tools dockt dockt dock2 icons dock" "tools dockl work dock2 icons dock" "tools dockl tl dock2 icons dock" ${sh} "status status status status status status"`:`"head head head head head head" "opt opt opt opt opt opt" "dockt dockt tools dock2 icons dock" "dockl work tools dock2 icons dock" "dockl tl tools dock2 icons dock" ${sh} "status status status status status status"`;}
 /* ---- (0.30) fold arrows on every docked bar and column, and the bottom shelf ---- */
 const DK_FOLDS=[['dock','#dock','Panels',()=>dk.L.groups.some(g=>dkAvail(g).length)&&dk.L.w>0,()=>['›','‹']],
@@ -187,7 +187,14 @@ function dkShelfRender(){const L=dk.L,S=L.shelf;if(!dk.shelf){dk.shelf=el('aside
   bar.addEventListener('pointerdown',e=>{if(dk.lock||e.button!==0||(L.fold&&L.fold.shelf))return;e.preventDefault();const h0=S.h||170,y0=e.clientY;document.body.classList.add('stvresize');
     const mv=ev=>{S.h=Math.round(clamp(h0-(ev.clientY-y0),90,Math.max(90,window.innerHeight*.6)));dkGrid();if(typeof resizeGL==='function')resizeGL();};
     const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);document.body.classList.remove('stvresize');dkSave();if(typeof fit==='function')fit();};window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);});
-  dk.shelf.append(bar,dkGroup(S));}
+  /* (0.97.20, Kenn: icons like Painter's) a row of icons along the top of the 3D Paint shelf: one click per category */
+  let strip=null;
+  if(ui.mode==='p3d'){const av=dkAvail(S),act=av.includes(S.active)?S.active:av[0];
+    strip=el('div',{class:'shstrip',role:'toolbar','aria-label':'Shelf categories'},...av.filter(id=>PANELS[id].icon).map(id=>{
+      const b=el('button',{type:'button',class:'shsi'+(id===act?' on':''),title:PANELS[id].title,'aria-label':PANELS[id].title,'aria-pressed':String(id===act)});
+      const sv=document.createElementNS('http://www.w3.org/2000/svg','svg');sv.setAttribute('viewBox','0 0 24 24');sv.setAttribute('class','dkti');sv.setAttribute('aria-hidden','true');sv.innerHTML=PANELS[id].icon;b.append(sv);
+      b.addEventListener('click',()=>showPanel(id));return b;}));}
+  dk.shelf.append(bar,...(strip?[strip]:[]),dkGroup(S));}
 /* in 3D Paint, Colour, Material, Brushes, Materials and Tool settings sit in a column of their own beside the
    viewport (dock2). Its tabs drag like any other: out of it, or other tabs into it (remembered in gs.dock col2). */
 const DK_COL2=['color','matEd','shading','brushes','stencils','mats','textures','decals','envs','tool'];

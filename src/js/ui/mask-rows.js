@@ -152,7 +152,7 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
         inv(),sel('ms_ganc','Also follow anchor',[['','None'],...msAnchorNames().map(x=>[x,x])],'anchor'),
         chk('ms_uvWrap','UV wrap',p.uvWrap!==false,v=>ed(x=>{x.p.uvWrap=v;})),
         S('ms_brk','Grunge breakup','breakup',0,1,.01,pct),S('ms_scale','Grunge scale','scale',.5,40,.5),S('ms_seed','Seed','seed',1,99,1),
-        S('ms_dist','Distort mesh maps','distort',0,1,.01,pct),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),msGrungeBox(r,p,ed,S),
+        S('ms_dist','Distort mesh maps','distort',0,1,.01,pct),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),msGrungeBox(r,p,ed,S),...msZoneSet(p,ed,S),
         el('p',{class:'note',text:'Add sums the inputs. Lightest keeps the strongest. Intersect keeps their overlap and skips missing maps. Bake the mesh maps to get the most detail.'}));
       return;
     }
@@ -209,8 +209,9 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
             S('ms_flakeLoss','Missing flakes','flakeLoss',0,1,.01,pct),
             S('ms_edgeLift','Rim height','edgeLift',0,1,.01,pct),
             S('ms_stretch','Directional stretch','stretch',0,1,.01,pct),
-            S('ms_direction','Direction','direction',-180,180,1,v=>Math.round(v)+'°'),scan);
-          if(scan.querySelector('select').value)box.append(
+            S('ms_direction','Direction','direction',-180,180,1,v=>Math.round(v)+'°'),scan,
+            msZoneGrunge(p,ed,S,{key:'pgimg',tri:'ptri',title:'Paint scan grunge',id:'msPGrunge',tile:'peelScanTile',note:'Any grunge or picture can be the paint scan: it overrides the scan chosen above.'}));
+          if(scan.querySelector('select').value||p.pgimg)box.append(
             S('ms_peelScanAmount','Scan strength','peelScanAmount',0,1,.01,pct,.65),
             S('ms_peelScanTile','Scan tiling','peelScanTile',.25,16,.25,v=>v+'×',2));
         }
@@ -232,8 +233,9 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
           sel('ms_contactAxis','Contact faces',[['','All exposed faces'],['up','Top'],['down','Bottom'],
             ['x','Right (+X)'],['-x','Left (−X)'],['z','Front (+Z)'],['-z','Back (−Z)']],'contactAxis'));
         const scan=scanSelect('ms_metalScan',useWear?'Wear scan':'Metal scan','metalScan',[...TX_METAL_SCANS,...TX_WEAR_SCANS]);
-        box.append(scan);
-        if(scan.querySelector('select').value)box.append(
+        if(useWear)box.append(msZoneGrunge(p,ed,S,{key:'cgimg',tri:'ctri',title:'Contact wear grunge',id:'msCGrunge',tile:'ctile',rot:'crot',note:'Replaces the clouds that decide where the contact wear lands. Follows the row\u2019s projection (World = triplanar).'}));
+        box.append(scan,msZoneGrunge(p,ed,S,{key:'sgimg',tri:'stri',title:'Scan influence grunge',id:'msSGrunge',tile:'metalScanTile',rot:'metalScanAngle',rotMax:180,note:'Any grunge or picture can be the scan: it overrides the scan chosen above.'}));
+        if(scan.querySelector('select').value||p.sgimg)box.append(
           S('ms_metalScanAmount','Scan influence','metalScanAmount',0,1,.01,pct,.65),
           S('ms_metalScanTile','Scan tiling','metalScanTile',.25,16,.25,v=>v+'×',2),
           S('ms_metalScanAngle','Scan rotation','metalScanAngle',-180,180,1,v=>Math.round(v)+'°'));
@@ -247,7 +249,9 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
         S('ms_clumping','Clumping','clumping',0,1,.01,pct,.85));
       box.append(inv(),
         peeling||bubbles?null:sel('ms_ganc','Also follow anchor',[['','None'],...msAnchorNames().map(x=>[x,x])],'anchor'),
-        pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),msGrungeBox(r,p,ed,S),el('p',{class:'note',text:note}));
+        pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),msGrungeBox(r,p,ed,S),
+        ...msZoneSet(p,ed,S),
+        el('p',{class:'note',text:note}));
     }
   }}
 
@@ -306,6 +310,26 @@ function cfxAddAnchor(L){if(!isLayer(L))return null;let row=null;const names=msA
 
 /* (0.95.7, Kenn: "generators should take your own grunge textures") the generator's breakup can be a texture: any Textures item
    (photo grunge, mixed, generated, your own) or a picture dropped here; Breakup sets how strongly it eats into the mask */
+/* (0.97.20, Kenn) a grunge for one zone of a generator (contact wear, scan influence): choose from Textures or drop a picture,
+   with tiling and turn; leave it empty for the built-in clouds / chosen scan */
+/* (0.97.20, Kenn) a grunge of your own for each zone: edges, cavities, top and flat surfaces */
+function msZoneSet(p,ed,S){return [
+        el('div',{class:'sub',text:'Grunge by zone'}),
+        msZoneGrunge(p,ed,S,{key:'egimg',tri:'etri',title:'Edges grunge',id:'msEGrunge',tile:'etile',rot:'erot',amt:'eamt',amtLabel:'Edges grunge strength',note:'Breaks up the edge zone (where the model is convex).'}),
+        msZoneGrunge(p,ed,S,{key:'vgimg',tri:'vtri',title:'Cavities grunge',id:'msVGrunge',tile:'vtile',rot:'vrot',amt:'vamt',amtLabel:'Cavities grunge strength',note:'Breaks up the cavity and crevice zone.'}),
+        msZoneGrunge(p,ed,S,{key:'fgimg',tri:'ftri',title:'Top and flat surfaces grunge',id:'msFGrunge',tile:'ftile',rot:'frot',amt:'famt',amtLabel:'Flat grunge strength',note:'Breaks up surfaces that face up.'})];}
+function msZoneGrunge(p,ed,S,o){const g=p[o.key],box=el('div',{class:'dlg-grid msgrunge',id:o.id});
+  const name=el('span',{class:'note',text:g?g.name:'Built-in'});name._hpv=()=>g?{tex:g,name:g.name}:null;
+  const set=v=>{ed(x=>{x.p[o.key]=v?{kind:v.kind,id:v.id,name:v.name}:null;});if(typeof renderMatEd==='function')renderMatEd(true);};
+  const drop=el('div',{class:'fxddrop',id:o.id+'Drop',tabindex:'0',title:'Drop a texture tile or a picture here'},el('b',{text:'Drop a grunge'}),el('small',{text:'a Textures tile or a picture, or click to browse'}));drop._texDrop=set;drop._hpv=name._hpv;
+  drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+  drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');const t0=e.dataTransfer.getData('text/gouache-texture');if(t0){try{set(JSON.parse(t0));return;}catch(er){}}fxdDropFiles(e.dataTransfer.files,set);});
+  drop.addEventListener('click',async()=>{const fs=await pickFiles('image/*',false,'Pictures',['png','jpg','jpeg','webp','tga','bmp','tif','tiff']);if(fs&&fs.length)fxdDropFiles(fs,set);});
+  box.append(el('div',{class:'sub',text:o.title}),drop,el('div',{class:'chips'},el('button',{class:'btn sm',id:o.id+'Pick',text:'Choose from Textures…',onclick:()=>fxdPickTexture(set)}),g?el('button',{class:'btn sm',id:o.id+'Clear',text:'Clear',onclick:()=>set(null)}):'',name));
+  if(g&&(o.key==='cgimg'||o.amt))box.append(S(o.id+'_t','Grunge tiling',o.tile,.25,16,.05,v=>v.toFixed(2)+'\u00d7',1),S(o.id+'_r','Grunge rotation',o.rot,0,360,1,v=>Math.round(v)+'\u00b0',0));
+  if(g&&o.amt)box.append(S(o.id+'_a',o.amtLabel||'Grunge strength',o.amt,0,1,.01,v=>Math.round(v*100)+'%',.7));
+  if(g)box.append(chk(o.id+'_tri','Triplanar (no seams)',!!p[o.tri],v=>ed(x=>{x.p[o.tri]=v;})));
+  box.append(el('p',{class:'note',text:o.note}));return box;}
 function msGrungeBox(r,p,ed,S){const box=el('div',{class:'dlg-grid msgrunge',id:'msGrunge'});
   const name=el('span',{class:'note',id:'msGrungeName',text:p.gimg?p.gimg.name:'Built-in noise'});
   name._hpv=()=>p.gimg?{tex:p.gimg,name:p.gimg.name}:null;/* (0.97.1) hover shows the chosen grunge */
@@ -316,6 +340,6 @@ function msGrungeBox(r,p,ed,S){const box=el('div',{class:'dlg-grid msgrunge',id:
   drop.addEventListener('click',async()=>{const fs=await pickFiles('image/*',false,'Pictures',['png','jpg','jpeg','webp','tga','bmp','tif','tiff']);if(fs&&fs.length)fxdDropFiles(fs,set);});
   box.append(el('div',{class:'sub',text:'Grunge'}),drop,el('div',{class:'chips'},el('button',{class:'btn sm',id:'msGrungePick',text:'Choose from Textures…',onclick:()=>fxdPickTexture(set)}),
     p.gimg?el('button',{class:'btn sm',id:'msGrungeClear',text:'Use built-in noise',onclick:()=>set(null)}):'',name));
-  if(p.gimg)box.append(S('ms_gtile','Grunge tiling','gtile',.25,16,.05,v=>v.toFixed(2)+'×'),S('ms_grot','Grunge rotation','grot',0,360,1,v=>Math.round(v)+'°'),S('ms_gcon','Grunge contrast','gcon',-1,1,.01,v=>(v>0?'+':'')+Math.round(v*100)+'%'),S('ms_glev','Grunge level','glev',-1,1,.01,v=>(v>0?'+':'')+Math.round(v*100)+'%'),chk('ms_ginv','Invert grunge',!!p.ginv,v=>ed(x=>{x.p.ginv=v;})),
+  if(p.gimg)box.append(S('ms_gtile','Grunge tiling','gtile',.25,16,.05,v=>v.toFixed(2)+'×'),S('ms_grot','Grunge rotation','grot',0,360,1,v=>Math.round(v)+'°'),S('ms_gcon','Grunge contrast','gcon',-1,1,.01,v=>(v>0?'+':'')+Math.round(v*100)+'%'),S('ms_glev','Grunge level','glev',-1,1,.01,v=>(v>0?'+':'')+Math.round(v*100)+'%'),chk('ms_ginv','Invert grunge',!!p.ginv,v=>ed(x=>{x.p.ginv=v;})),chk('ms_gtri','Triplanar (no seams)',!!p.gtri,v=>ed(x=>{x.p.gtri=v;})),
     el('p',{class:'note',text:'Breakup sets how strongly the grunge eats into the mask. With the World projection it is laid over the model from three sides, so it has no seams.'}));
   return box;}

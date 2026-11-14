@@ -346,6 +346,7 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
   items.push(...fly('Mask',G.mask));
   if(n.fx)items.push(it('Edit filters…',()=>{selectOnly(n);updateRowClasses();fxEditor(n);}));
   else if(lay){
+    if(!anim&&lay&&!n.fill)items.push(it('Invert',()=>{selectOnly(n);fxNow('invert');}),it('Levels…',()=>{selectOnly(n);fxMenu('levels');}));/* (0.97.20, Kenn: bring them back) */
     if(!anim)items.push(it('Effects…',()=>dlgLayerEffects(n)));
     items.push(it('Layer styles…',()=>{selectOnly(n);updateRowClasses();dlgLayerStyle();}));
   }

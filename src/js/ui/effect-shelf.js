@@ -73,9 +73,14 @@ function dlgLayerEffects(L,mode='layer'){
     for(const [name,recs] of groups){
       const hits=recs.filter(r=>!q||(r.name+' '+name).toLowerCase().includes(q));
       if(!hits.length)continue;
-      rows.push(el('div',{class:'sub',text:name}),...hits.map(r=>el('button',{type:'button',class:'effect-choice',
+      rows.push(el('div',{class:'sub',text:name}),el('div',{class:'effect-grid'},...hits.map(r=>{/* (0.97.20, Kenn) a gallery of picture tiles */
+        const src=r.id&&typeof FILTER_THUMBS!=='undefined'?FILTER_THUMBS[r.id]:null;
+        const pic=el('span',{class:'effect-pic','aria-hidden':'true'});
+        if(src){const img=el('img',{alt:'',loading:'lazy',decoding:'async',draggable:'false'});img.addEventListener('error',()=>img.remove(),{once:true});img.src=src;pic.append(img);}
+        else pic.append(el('i',{text:r.name.slice(0,1)}));
+        return el('button',{type:'button',class:'effect-choice effect-tile',title:r.name,
         'aria-label':r.name,onclick:r.run||(()=>next(()=>shelfFilterApply(r,stack?{}:mask?{mask:L}:{layer:L})))},
-        el('span',{text:r.name}),!stack&&!mask&&r.id&&shelfStackFilter(r.id)?el('span',{class:'note',text:'Filter layer'}):null)));
+        pic,el('span',{class:'effect-name',text:r.name}),!stack&&!mask&&r.id&&shelfStackFilter(r.id)?el('span',{class:'note',text:'Filter layer'}):null);})));
     }
     results.replaceChildren(...(rows.length?rows:[el('p',{class:'note',text:'No effects match your search.'})]));
   };
@@ -83,7 +88,7 @@ function dlgLayerEffects(L,mode='layer'){
   search.addEventListener('input',draw);
   search.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();results.querySelector('button')?.click();}});
   draw();
-  openDialog({title:'Effects · '+L.name,body:el('div',{class:'dlg-grid effect-picker'},search,tabs,results),cancelLabel:'Close'});
+  openDialog({title:'Effects · '+L.name,body:el('div',{class:'dlg-grid effect-picker'},search,tabs,results),cancelLabel:'Close',resizable:true});
 }
 function shelfStyleApply(rec,L){
   if(stroke||preview||selLive||!modal.hidden){toast('Finish the current edit first.');return;}
