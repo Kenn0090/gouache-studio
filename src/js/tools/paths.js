@@ -288,6 +288,7 @@ function pathPanel(box){const L=pathActive(),P=L?.path;pathPanelFor=doc.active;$
     el('div',{class:'chips'},el('button',{class:'btn sm',id:'pathNew',text:'New path',onclick:pathNewButton}),el('button',{class:'btn sm',id:'pathFinish',text:'Finish',disabled:!P,onclick:pathFinish})));
   if(!P){box.append(el('p',{class:'note',text:'Start a path on the '+(ui.tool==='path'?'model.':'canvas.')}));return;}
   if(P.stitch)box.append(el('div',{class:'sub',text:'Stitch settings'}),tsHost('stitch'));
+  else if(P.weld){weldToolsRender();box.append(el('div',{class:'sub',text:'Weld settings'}),tsHost('weld'));}
   else if(P.weather)weatherPathControls(box,P);
   else pathsPanel(box,L);
   const name=el('input',{id:'pathName',value:L.name,'aria-label':'Layer name',title:'Layer name'});name.onchange=()=>{const b=L.name,a=name.value.trim()||b;L.name=a;pushUndo({label:'Rename layer',refs:[L],undo(){L.name=b;},redo(){L.name=a;}});changed(L);};box.append(name,
