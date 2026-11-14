@@ -12,7 +12,7 @@ const msModeIx=m=>Math.max(0,MS_MODES.findIndex(x=>x[0]===m));
 const MS_GENS=[['edge','Edge wear'],['dirt','Dirt in cavities'],['dust','Dust on top'],['moss','Moss'],['rust','Rust streaks'],['water','Water line'],['slime','Slime'],['crud','Crud'],
   ['chips','Chipped paint'],['scratch','Scratches'],['snow','Snow on top'],['soot','Soot'],['drips','Drips and leaks'],['bleach','Sun-bleached'],['light','Light'],['linear','Linear gradient'],['radial','Radial gradient'],['comic','Comic shading'],['builder','Mask builder'],
   ['metalWear','Metal Edge Wear'],['peelingPaint','Peeling Paint'],['paintBubbles','Paint Bubbles'],['useWear','Use Wear']];
-const MS_SCRATCH_TYPES=[['fine','Fine scratches'],['curved','Curved'],['dirty','Dirty and broken'],['gouge','Deep gouges'],['hatch','Cross-hatch'],['swirl','Swirl (circular)'],['hair','Hairline']];
+const MS_SCRATCH_TYPES=[['fine','Fine scratches'],['curved','Curved'],['dirty','Dirty and broken'],['gouge','Deep gouges'],['hatch','Cross-hatch'],['swirl','Swirl (circular)'],['hair','Hairline'],['scan','From a scan (best)']];
 const MS_WEAR_GENS=['metalWear','useWear'];
 const MS_PAINT_DAMAGE=['peelingPaint','paintBubbles'];
 const MS_PEEL_PRESETS=[
@@ -132,11 +132,22 @@ float zpic(sampler2D img,vec2 uv,float tile,float ang,float tri){ float c=cos(an
     if(P.a>0.5){ vec3 q=(uInv*vec4(P.xyz,1.0)).xyz*tile; vec3 w=abs(surfN()); w=pow(w,vec3(4.0)); w/=max(w.x+w.y+w.z,1e-4);
       return texture(img,fract(rot*q.zy)).r*w.x+texture(img,fract(rot*q.xz)).r*w.y+texture(img,fract(rot*q.xy)).r*w.z; } }
   return texture(img,fract(rot*(surfQ(uv)*tile).xy)).r; }
+uniform sampler2D uZ3; uniform vec4 uSc; uniform vec4 uScT; /* scratch scan: amount, blur level, tiling, turn · tri-planar on */
+float zpicL(sampler2D img,vec2 uv,float tile,float ang,float tri,float lod){ float c=cos(ang),sn=sin(ang); mat2 rot=mat2(c,sn,-sn,c);
+  if((tri>0.5||uWorld==1)&&uHasPos==1){ vec4 P=texelFetch(uPos,ivec2(gl_FragCoord.xy),0);
+    if(P.a>0.5){ vec3 q=(uInv*vec4(P.xyz,1.0)).xyz*tile; vec3 w=abs(surfN()); w=pow(w,vec3(4.0)); w/=max(w.x+w.y+w.z,1e-4);
+      return textureLod(img,fract(rot*q.zy),lod).r*w.x+textureLod(img,fract(rot*q.xz),lod).r*w.y+textureLod(img,fract(rot*q.xy),lod).r*w.z; } }
+  return textureLod(img,fract(rot*(surfQ(uv)*tile).xy),lod).r; }
+/* scratches pulled out of a scan: what stands out from the picture's own soft level, kept thin */
+float scratchFromScan(vec2 uv){ float a=zpicL(uZ3,uv,uSc.z,uSc.w,uScT.x,1.1), b=zpicL(uZ3,uv,uSc.z,uSc.w,uScT.x,uSc.y);
+  float c=zpicL(uZ3,uv,uSc.z*0.5,uSc.w+0.7,uScT.x,6.0);/* where the scan itself is busy: scratches come in patches, not everywhere */
+  float hp=(a-b)*1.8, lo=mix(0.5,0.2,clamp(uSc.x,0.0,1.0)), gate=1.0;
+  return smoothstep(lo,lo+0.1,hp)*gate; }
 void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 g=vec3(0.5);
   if(uZon.x>0.5){ g.r=zpic(uZ0,uv,uZT.x,uZR.x,uZTri.x); if(uZI.x>0.5)g.r=1.0-g.r; }
   if(uZon.y>0.5){ g.g=zpic(uZ1,uv,uZT.y,uZR.y,uZTri.y); if(uZI.y>0.5)g.g=1.0-g.g; }
   if(uZon.z>0.5){ g.b=zpic(uZ2,uv,uZT.z,uZR.z,uZTri.z); if(uZI.z>0.5)g.b=1.0-g.b; }
-  o=vec4(g,1.0); }`;
+  o=vec4(g,uScT.y>0.5?scratchFromScan(uv):0.0); }`;
 /* generators: the Mask Builder presets, made from curvature, AO, direction and height with noise to break them up */
 const FS_MSGEN=MS_NOISE_GLSL+MS_SURF_GLSL+`
 uniform sampler2D uCurv; uniform int uHasCurv; uniform sampler2D uAO; uniform int uHasAO; uniform int uG; uniform float uAmt; uniform float uWidth; uniform float uBreak; uniform float uCon; uniform float uScale; uniform int uNeg; uniform float uDist;
@@ -272,7 +283,7 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(),surfaceQ=su
     if(uScratch.x>0.0){
       float edgeProximity=smoothstep(0.015,0.23,edge);
       float scratchReach=mix(edgeProximity,1.0,uScratch.w);
-      scratches=scratchesOf(q/max(0.5,uScale),N)*scratchReach;
+      scratches=(uScratchT==7&&uZS.w>0.5?texture(uZone,gl_FragCoord.xy/uSz).a:scratchesOf(q/max(0.5,uScale),N))*scratchReach;
       if(scanInfluence>0.0){
         float scuffs=smoothstep(0.51,0.92,scan)*min(1.0,uScratch.x*2.4);
         float scanReach=mix(edgeProximity,1.0,uScratch.w*uScratch.w);
@@ -612,16 +623,20 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
     const scan=scanAmount>0&&(wear&&p.sgimg?ownScan:peelOwn||msSurfaceScanTex(scanId));
     const cTex=wear&&p.cgimg?msGrungeTex(p,'cgimg'):null;
     /* zone grunges (edges, cavities, flat areas) */
-    const zk=[['egimg','e'],['vgimg','v'],['fgimg','f']],zt=zk.map(([k])=>msGrungeTex(p,k)),zOn=zt.some(Boolean);
+    const zk=[['egimg','e'],['vgimg','v'],['fgimg','f']],zt=zk.map(([k])=>msGrungeTex(p,k));
+    /* (0.97.24) scratches extracted from a scan picture (default for the wear generators) */
+    const scrOn=wear&&(p.scratchType||'scan')==='scan'&&(p.scratchAmount??0)>0,scrT=scrOn?msGrungeTex(p,'scrimg',p.scrimg||MS_SCR_DEFAULT):null;
+    if(scrT&&!scrT._gsm){scrT._gsm=true;gl.bindTexture(gl.TEXTURE_2D,scrT.tex);gl.generateMipmap(gl.TEXTURE_2D);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);}
+    const zOn=zt.some(Boolean)||!!scrT;
     let zT=null;
     if(zOn){zT=acquireD(8);
-      run(P.zone,zT,Object.assign({uZ0:zt[0]?zt[0].tex:dummy,uZ1:zt[1]?zt[1].tex:dummy,uZ2:zt[2]?zt[2].tex:dummy,uZon:[zt[0]?1:0,zt[1]?1:0,zt[2]?1:0,0],
+      run(P.zone,zT,Object.assign({uZ0:zt[0]?zt[0].tex:dummy,uZ1:zt[1]?zt[1].tex:dummy,uZ2:zt[2]?zt[2].tex:dummy,uZ3:scrT?scrT.tex:dummy,uSc:[p.scratchAmount??0,2.2+(p.scratchThick??1)*1.6,Math.max(.15,(p.scratchScale??34)/90),(p.scratchAngle??0)*Math.PI/180],uScT:[p.sctri?1:0,scrT?1:0,0,0],uZon:[zt[0]?1:0,zt[1]?1:0,zt[2]?1:0,0],
         uZT:zk.map(([,c])=>p[c+'tile']||1).concat(1),uZR:zk.map(([,c])=>(p[c+'rot']||0)*Math.PI/180).concat(0),uZI:zk.map(([,c])=>p[c+'inv']?1:0).concat(0),uZTri:zk.map(([,c])=>p[c+'tri']?1:0).concat(0)},msPx(r,ctx)));}
     withUVWrap(p.uvWrap!==false,[curv,ac,ao,height,thick,wn,pos],()=>run(P.gen,o,Object.assign({uG:{int:Math.max(0,MS_GENS.findIndex(g=>g[0]===p.g))},uCurv:curv?curv.tex:dummy,uHasCurv:{int:edgeMap?2:curv?1:0},uCurv2:ac?ac.tex:dummy,uHasCurv2:{int:ac?1:0},uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},
       uCavityProtection:p.cavityProtection??.75,
       uWearShape:[Math.max(0,p.edgeStrength??1),wearDistort,wearScale],
       uWearContact:[p.contactAmount??0,...(MS_AXES[p.contactAxis]||[0,0,0])],
-      uScratch:[p.scratchAmount??0,p.scratchScale??34,(p.scratchAngle??0)*Math.PI/180,p.scratchReach??.35],uScratchT:{int:Math.max(0,MS_SCRATCH_TYPES.findIndex(([k])=>k===(p.scratchType||'fine')))},uScratchS:[p.scratchLen??1,p.scratchThick??1],
+      uScratch:[p.scratchAmount??0,p.scratchScale??34,(p.scratchAngle??0)*Math.PI/180,p.scratchReach??.35],uScratchT:{int:Math.max(0,MS_SCRATCH_TYPES.findIndex(([k])=>k===(p.scratchType||'scan')))},uScratchS:[p.scratchLen??1,p.scratchThick??1],
       uPeel:[p.crackWidth??-1,p.flakeLoss??0,p.edgeLift??0],
       uPeelDirection:[(p.direction??0)*Math.PI/180,p.stretch??0],
       uPeelOutput:{int:Math.max(0,MS_PEEL_OUTPUTS.findIndex(([key])=>key===p.peelOutput))},
@@ -646,7 +661,8 @@ function msSurfaceScanTex(slug){
 }
 /* (0.95.7) the generator's own grunge picture: loaded from Textures (cached on the graphics card); the mask is worked out
    again once it has arrived */
-function msGrungeTex(p,key){const g=p&&p[key||'gimg'];if(!g||typeof txCacheGet!=='function')return null;txCachePin(g);const t=txCacheGet(g.kind+':'+g.id);if(t)return t;
+const MS_SCR_DEFAULT={kind:'photo',id:'grunge-scored-steel-scratches',name:'Scored steel scratches'};
+function msGrungeTex(p,key,ref){const g=ref||(p&&p[key||'gimg']);if(!g||typeof txCacheGet!=='function')return null;txCachePin(g);const t=txCacheGet(g.kind+':'+g.id);if(t)return t;
   if(!g._busy){Object.defineProperty(g,'_busy',{value:true,writable:true,enumerable:false,configurable:true});
     txLoad().then(()=>{const it=fxdAllTex().find(x=>x.kind===g.kind&&x.id===g.id);return it&&txTarget(it);}).then(r=>{g._busy=false;if(r){msEpoch++;changedAll();}}).catch(()=>{g._busy=false;});}
   return null;}
@@ -788,4 +804,7 @@ function msAddImageTarget(L,t,name){
 /* (0.97.11, Kenn) "Fill white / Fill black" in the mask menus clears the mask itself (its Paint row, or the selection) instead of adding a Fill row:
    a layer with no mask gets a plain white (reveal all) or black (hide all) one */
 function maskFillTo(L,v){if(!L)return;if(!L.mask){if(doc.active!==L)selectOnly(L);cmdAddMask(v?1:0);renderLayers();return;}
-  if(doc.active!==L)selectOnly(L);L.editMask=true;maskOp(0,v?1:0);renderLayers();}
+  /* (0.97.24, Kenn) Fill black / Fill white act like Clear mask: the whole mask, its effect rows included, becomes plain black or white */
+  if(doc.active!==L)selectOnly(L);const old=L.mask,next=makeMask(v?1:0),edit=L.editMask,view=ui.viewMask;next.enabled=old.enabled;
+  const r={label:v?'Fill mask white':'Fill mask black',refs:[L],masks:[old,next],undo(){L.mask=old;L.editMask=edit;ui.viewMask=view;ui.msSel=null;},redo(){L.mask=next;L.editMask=true;ui.msSel=null;}};
+  r.redo();pushUndo(r);changed(L);renderLayers();renderMatEd&&renderMatEd(true);toast(v?'Mask filled white: everything shows.':'Mask filled black: everything is hidden. Paint white to reveal.');}

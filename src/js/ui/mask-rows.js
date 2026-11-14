@@ -176,7 +176,7 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
         :peeling?'Invert the damage mask on your top coat. Use a second row with the same preset and seed for lifted edges or coating relief in Height.'
         :bubbles?'Makes clusters of rounded paint blisters. Use this mask on a fill with Height to give the bubbles relief.'
         :'Uses '+(has.length?has.join(', '):'the document’s maps')+'. Bake curvature and AO for the best results.';
-      if(wear){p.cavityProtection??=.75;p.scratchType??='fine';}
+      if(wear){p.cavityProtection??=.75;p.scratchType??='scan';}
       const scanSelect=(id,label,key,sources)=>{
         const row=sel(id,label,[['','None'],...sources.map(({slug,name})=>[slug,name])],key);
         const picker=row.querySelector('select');
@@ -241,7 +241,8 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
           S('ms_metalScanAngle','Scan rotation','metalScanAngle',-180,180,1,v=>Math.round(v)+'°'));
         box.append(
           S('ms_scratchAmount','Scratch amount','scratchAmount',0,1,.01,pct),
-          sel('ms_scratchType','Scratch type',MS_SCRATCH_TYPES,'scratchType'),
+          sel('ms_scratchType','Scratch type',[MS_SCRATCH_TYPES.at(-1),...MS_SCRATCH_TYPES.slice(0,-1)],'scratchType'),
+          ...((p.scratchType||'scan')==='scan'?[msZoneGrunge(p,ed,S,{key:'scrimg',tri:'sctri',title:'Scratch scan',id:'msScrGrunge',empty:'Scored steel scratches',note:'The scratches are pulled out of this picture. Pick any scratched scan or grunge: the program has several (search "scratch").'})]:[]),
           S('ms_scratchScale','Scratch frequency','scratchScale',2,400,1,v=>String(Math.round(v)),34),
           S('ms_scratchLen','Scratch length','scratchLen',.2,4,.05,v=>v.toFixed(2)+'\u00d7',1),S('ms_scratchThick','Scratch thickness','scratchThick',.2,4,.05,v=>v.toFixed(2)+'\u00d7',1),
           S('ms_scratchAngle','Scratch angle','scratchAngle',-180,180,1,v=>Math.round(v)+'°'),
