@@ -11,7 +11,7 @@ const {chromium}=require('playwright'),path=require('path');const OLD=__dirname+
    const tb=await tile.boundingBox(),bb=await box.boundingBox();if(!tb||!bb)return false;await p.mouse.move(tb.x+tb.width/2,tb.y+tb.height/2);await p.mouse.down();await p.mouse.move(tb.x+40,tb.y+10,{steps:4});await p.mouse.move(bb.x+bb.width/2,bb.y+bb.height/2,{steps:8});await p.mouse.up();await W(1200);return true;};
  const show=kind=>p.evaluate(kind=>{const G=__gs;G.selectOnly(G.layerByName('Paint'));const L=G.doc.active;if(L.mask)L.mask.stack.splice(0);const r=G.msAdd(L,kind==='builder'?'gen':'image',kind==='builder'?{p:G.msGenDefaults('builder')}:{});
    const row=L.mask.stack.at(-1);G.ui.msSel={L,where:'m',id:row.id};G.ui.editMask=true;G.showPanel('matEd');G.renderMatEd(true);},kind);
- await show('builder');await W(500);await dragTo('#msGrungeDrop');
+ await show('builder');await W(500);await dragTo('#msGrungeSlotDrop');
  ok(await p.evaluate(()=>!!__gs.doc.active.mask.stack.at(-1).p.gimg),'a tile dropped on the Mask builder’s Grunge box becomes its grunge');
  await show('image');await W(500);await dragTo('#msImageDrop');
  ok(await p.evaluate(()=>{const r=__gs.doc.active.mask.stack.at(-1);return !!r.t&&!!r.p.name;}),'a tile dropped on a Picture row becomes its picture');

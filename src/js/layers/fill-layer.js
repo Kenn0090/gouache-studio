@@ -208,6 +208,11 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
   box.replaceChildren();
   const nm=el('input',{type:'text',id:'fl_name',value:L.name,'aria-label':'Material name'});nm.addEventListener('input',()=>edit(()=>{L.name=nm.value||L.name;W.name=L.name;renderLayers();},false));
   {const hr=typeof hpMatRow==='function'?hpMatRow(L):null;if(hr)box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'hpMatLook',text:'Hand-painted look settings…',onclick:()=>{matEd.hpChan=null;msSelect(L,'c',hr.id);}})));}
+  /* (0.97.24, Kenn) start a new material from here, or put this one back to a plain default (one undo step) */
+  const resetMat=()=>edit(()=>{const d=fillDefaults();if(ui.mode==='p3d'){for(const k in d.maps)d.maps[k].on=false;if(d.maps.base)Object.assign(d.maps.base,{on:true,src:'value',c:[.5,.5,.5]});}
+    d.name=L.name;for(const k of Object.keys(W))delete W[k];Object.assign(W,d);L._fillImg={};toast('Material put back to its defaults.');},undefined,true);
+  box.append(el('div',{class:'chips'},el('button',{class:'btn sm',id:'matEdNewHere',text:'New material',title:'Start a new, plain material layer',onclick:()=>cmdNewFillLayer()}),
+    el('button',{class:'btn sm',id:'matEdReset',text:'Reset to default',title:'Put this material back to a plain default: grey colour, no pictures, default settings (you can undo it)',onclick:resetMat})));
   box.append(el('div',{class:'matHead'},prev.el,el('div',{class:'dlg-grid'},nm,
     el('div',{class:'sub',text:'Projection'}),(()=>{const g=seg(PXF_MODES,W.proj||'uv',v=>edit(()=>{W.proj=v;if(pxfIs3D(v)&&!fillPosMaps())toast('This projection needs a model: open the 3D view or 3D Paint. Until then images follow the UVs.');},null,true),'Projection');g.classList.add('tight');g.id='fl_proj';return g;})(),
     W.proj==='tri'?makeSlider({id:'fl_sharp',label:'Blend',min:1,max:16,step:.5,value:W.triSharp||4,fmt:v=>v<3?'soft':v>9?'sharp':'medium',onInput:v=>edit(()=>{W.triSharp=v;})}).el:null,

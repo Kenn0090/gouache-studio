@@ -1,3 +1,13 @@
+## 0.97.23
+
+- **Grunge slot like Marmoset's.** Every grunge input is now a small square: drop a picture or a Textures tile on it, or click it to open a little gallery of the program's grunges (with search and Browse files…). Name, Choose…, Clear and Tri-planar sit beside it, and Tiling / Rotation / Contrast / Level are two to a row. The three zone grunges (edges, cavities, flat) are folded into one **Grunge by zone** group that opens when you use one.
+- **Scratches pulled out of real scans.** The wear generators' default scratch type is now **From a scan (best)**: the scratches are extracted from a scan picture (default: scored steel; pick any scratched scan or grunge, with its own Tri-planar tick), so they look like real scratches instead of drawn lines. The older drawn types stay in the list.
+- **Fill black / Fill white act like Clear mask.** They replace the whole mask, effect rows included, with plain black or white (one undo step).
+- **New material and Reset to default** buttons at the top of the material editor. Reset puts the material back to a plain grey with default settings (undo brings it back).
+- **Other scratch types** for the wear generators: Fine, Curved, Dirty and broken, Deep gouges, Cross-hatch, Swirl (circular) and Hairline, with **Scratch length** and **Scratch thickness** sliders. Scratch frequency now goes up to 400 (and you can type a higher number).
+- **A stray "null" under Breakup** in the wear generators' settings is gone.
+- **Reset view button in the 3D view.** In the 3D bar (under **⋯** in 3D Paint) **Reset view** throws away everything the 3D view keeps for itself (its copies of the maps, the sky, its render targets, the model's buffers) and builds it again from your painting. Your painting is not touched. Use it if the model shows blocky or wrong shading.
+
 ## 0.97.22
 
 - **Choose where Gouache keeps its data.** Preferences › Speed › **Data folder**: pick a folder on another drive to keep saved materials, the Library, skies, grunge, AI add-ons, settings, autosave copies and the Exports folder off the C drive. When you change it, Gouache restarts, copies everything to the new folder, checks the copy, then removes the old one (a big library can take a few minutes). **Default** moves it back. Your own .gouache files stay where you saved them.
