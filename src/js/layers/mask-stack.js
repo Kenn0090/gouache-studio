@@ -149,7 +149,15 @@ float msProjectedPicture(sampler2D img,vec3 q,float angle){
   }
   return texture(img,fract(rot*q.xy)).r;
 }
-float grungeOf(vec2 uv){ float g=msProjectedPicture(uGTex,surfQ(uv)*uGTile,uGRot);
+/* (0.97.20, Kenn) a picture that can be forced to triplanar for its own zone, whatever the row's projection */
+uniform vec4 uTri; /* grunge, contact, scan, peel scan */
+float msPicTri(sampler2D img,vec2 uv,float tile,float angle,float tri){
+  if(tri>0.5&&uHasPos==1){ vec4 P=texelFetch(uPos,ivec2(gl_FragCoord.xy),0);
+    if(P.a>0.5){ vec3 q=(uInv*vec4(P.xyz,1.0)).xyz*tile; float c=cos(angle),sn=sin(angle); mat2 rot=mat2(c,sn,-sn,c);
+      vec3 w=abs(surfN()); w=pow(w,vec3(4.0)); w/=max(w.x+w.y+w.z,1e-4);
+      return texture(img,fract(rot*q.zy)).r*w.x+texture(img,fract(rot*q.xz)).r*w.y+texture(img,fract(rot*q.xy)).r*w.z; } }
+  return msProjectedPicture(img,surfQ(uv)*tile,angle); }
+float grungeOf(vec2 uv){ float g=msPicTri(uGTex,uv,uGTile,uGRot,uTri.x);
   if(uGInv==1) g=1.0-g;
   /* (0.96.1, Kenn) contrast and level for the dropped grunge */
   float k=uGCon>=0.0?1.0+uGCon*4.0:1.0+uGCon*0.95; g=clamp((g-0.5)*k+0.5+uGLev*0.5,0.0,1.0); return g; }
@@ -220,7 +228,7 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(),surfaceQ=su
     float scanInfluence=uSurfaceScanSettings.x;
     float scan=0.5, edgeBreakup=1.0;
     if(scanInfluence>0.0){
-      scan=msProjectedPicture(uSurfaceScan,surfaceQ*uSurfaceScanSettings.y,uSurfaceScanSettings.z);
+      scan=msPicTri(uSurfaceScan,uv,uSurfaceScanSettings.y,uSurfaceScanSettings.z,uTri.z);
       // The scan opens and breaks up the band of wear along the existing convex edges.
       float abrasion=smoothstep(0.16,0.83,scan);
       cutoff=max(0.02,cutoff+mix(0.16,-0.15,abrasion)*scanInfluence);
@@ -245,7 +253,7 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(),surfaceQ=su
     }
     float contact=0.0;
     if(uG==22&&uWearContact.x>0.0){
-      float patches=uHasC==1?msProjectedPicture(uCTex,surfQ(uv)*uCTile,uCRot):fbm(q+vec3(9.2,24.5,12.6));
+      float patches=uHasC==1?msPicTri(uCTex,uv,uCTile,uCRot,uTri.y):fbm(q+vec3(9.2,24.5,12.6));
       float coverage=smoothstep(0.78-uWearContact.x*0.45,0.97-uWearContact.x*0.39,patches);
       float facing=1.0;
       if(dot(uWearContact.yzw,uWearContact.yzw)>0.5&&(uHasPos==1||uHasBWN==1||uHasDocN==1))
@@ -273,7 +281,7 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(),surfaceQ=su
       float scan=0.0,scanAmount=uSurfaceScanSettings.x;
       if(scanAmount>0.0){
         vec3 scanQ=surfaceQ*uSurfaceScanSettings.y;
-        scan=msProjectedPicture(uSurfaceScan,scanQ,uSurfaceScanSettings.z)-0.5;
+        scan=msPicTri(uSurfaceScan,uv,uSurfaceScanSettings.y,uSurfaceScanSettings.z,uTri.w)-0.5;
       }
       float width=mix(0.006,0.11,uPeel.x)*mix(0.72,1.28,small)*(1.0-scan*scanAmount*0.75);
       float fracture=smoothstep(cutoff-0.34,cutoff-0.04,mix(weathering,flake.y,0.31));
@@ -572,7 +580,8 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
         ?[p.peelScan,p.peelScanAmount??.65,p.peelScanTile??2,-(p.direction??0)]
         :[null,0,1,0];
     const ownScan=wear&&p.sgimg?msGrungeTex(p,'sgimg'):null;/* (0.97.20) any grunge as the scan */
-    const scan=scanAmount>0&&(wear&&p.sgimg?ownScan:msSurfaceScanTex(scanId));
+    const peelOwn=p.g==='peelingPaint'&&p.pgimg?msGrungeTex(p,'pgimg'):null;
+    const scan=scanAmount>0&&(wear&&p.sgimg?ownScan:peelOwn||msSurfaceScanTex(scanId));
     const cTex=wear&&p.cgimg?msGrungeTex(p,'cgimg'):null;
     withUVWrap(p.uvWrap!==false,[curv,ac,ao,height,thick,wn,pos],()=>run(P.gen,o,Object.assign({uG:{int:Math.max(0,MS_GENS.findIndex(g=>g[0]===p.g))},uCurv:curv?curv.tex:dummy,uHasCurv:{int:edgeMap?2:curv?1:0},uCurv2:ac?ac.tex:dummy,uHasCurv2:{int:ac?1:0},uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},
       uCavityProtection:p.cavityProtection??.75,
@@ -582,7 +591,7 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
       uPeel:[p.crackWidth??-1,p.flakeLoss??0,p.edgeLift??0],
       uPeelDirection:[(p.direction??0)*Math.PI/180,p.stretch??0],
       uPeelOutput:{int:Math.max(0,MS_PEEL_OUTPUTS.findIndex(([key])=>key===p.peelOutput))},
-      uCTex:cTex?cTex.tex:dummy,uHasC:{int:cTex?1:0},uCTile:p.ctile||1,uCRot:(p.crot||0)*Math.PI/180,uSurfaceScan:scan?scan.tex:dummy,uSurfaceScanSettings:[scan?scanAmount:0,scanTile,scanAngle*Math.PI/180],
+      uTri:[p.gtri?1:0,p.ctri?1:0,p.stri?1:0,p.ptri?1:0],uCTex:cTex?cTex.tex:dummy,uHasC:{int:cTex?1:0},uCTile:p.ctile||1,uCRot:(p.crot||0)*Math.PI/180,uSurfaceScan:scan?scan.tex:dummy,uSurfaceScanSettings:[scan?scanAmount:0,scanTile,scanAngle*Math.PI/180],
       uBubble:[p.sizeVariation??(p.clumping==null?-1:.82),p.clumping??.85],
       ...(p.g==='builder'?msBuilderU(p):{}),uHeight:height?height.tex:dummy,uThick:thick?thick.tex:dummy,uWorldN:wn?wn.tex:dummy,uPosition:pos?pos.tex:dummy,uHasHeight:{int:height?1:0},uHasThick:{int:thick?1:0},uHasWorldN:{int:wn?1:0},uHasPosition:{int:pos?1:0},
       uLight:[Math.sin((p.lightAz??-35)*Math.PI/180)*Math.cos((p.lightEl??45)*Math.PI/180),Math.sin((p.lightEl??45)*Math.PI/180),Math.cos((p.lightAz??-35)*Math.PI/180)*Math.cos((p.lightEl??45)*Math.PI/180),p.occlude??.25],

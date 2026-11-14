@@ -3,6 +3,8 @@
 - **Shelf icon row (3D Paint).** A row of icons along the top of the shelf switches between Brushes, Materials, Smart materials, Generators, Filters and the rest in one click.
 - **Filter and effect pop-ups are a gallery.** Find a filter… and Effects… show picture tiles in folders, and the window can be resized by dragging its corner.
 - **Grunge for each zone of a wear generator.** Use wear now has a Contact wear grunge (instead of the built-in clouds) and a Scan influence grunge: choose Contact wear, Scan influence or any picture from Textures. They follow the row's projection (World = triplanar).
+- **Every grunge has a Triplanar tick.** The Breakup grunge, Contact wear, Scan influence and Peeling paint's Paint scan can each be set to triplanar on its own. Peeling paint can use any grunge as its paint scan.
+- **A left-hand panel stops above the shelf.** The brush panel (or any left column) ends where the shelf begins, and the shelf runs under it.
 - **Sliders show their full name when there is room.** Labels grow as you stretch the panel instead of staying cut off.
 - **Invert and Levels are back in the layer right-click menu.**
 

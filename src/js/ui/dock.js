@@ -166,7 +166,7 @@ function dkGrid(){const L=dk.L,app=$('#app'),F=L.fold||{},shOn=!!(L.shelf&&dkAva
   app.style.gridTemplateColumns=left?`${tw} ${lw} minmax(0,1fr) ${c2} ${ic} ${dw}`:`${lw} minmax(0,1fr) ${tw} ${c2} ${ic} ${dw}`;
   app.style.gridTemplateRows=`38px ${L.opt?(F.opt?'26px':'minmax(36px,auto)'):'0px'} ${th} minmax(0,1fr) auto ${shOn?(F.shelf?26:clamp(L.shelf.h||170,90,Math.max(90,window.innerHeight*.6))):0}px 26px`;
   /* (0.38.2, Kenn) like Substance: the shelf sits under the viewport only; the right-hand panels run all the way down */
-  const sh=shOn&&dkEdgeOn('left')?(left?'"tools dockl shelf dock2 icons dock"':'"dockl shelf tools dock2 icons dock"'):'"shelf shelf shelf dock2 icons dock"';
+  const sh=shOn&&dkEdgeOn('left')?(left?'"tools shelf shelf dock2 icons dock"':'"shelf shelf tools dock2 icons dock"')/* (0.97.20, Kenn) a left column stops above the shelf, which runs under it */:'"shelf shelf shelf dock2 icons dock"';
   app.style.gridTemplateAreas=left?`"head head head head head head" "opt opt opt opt opt opt" "tools dockt dockt dock2 icons dock" "tools dockl work dock2 icons dock" "tools dockl tl dock2 icons dock" ${sh} "status status status status status status"`:`"head head head head head head" "opt opt opt opt opt opt" "dockt dockt tools dock2 icons dock" "dockl work tools dock2 icons dock" "dockl tl tools dock2 icons dock" ${sh} "status status status status status status"`;}
 /* ---- (0.30) fold arrows on every docked bar and column, and the bottom shelf ---- */
 const DK_FOLDS=[['dock','#dock','Panels',()=>dk.L.groups.some(g=>dkAvail(g).length)&&dk.L.w>0,()=>['›','‹']],
