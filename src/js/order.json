@@ -143,6 +143,8 @@
     "filters/handpaint",
     "filters/stylize-painter",
     "ui/mask-rows",
+    "ui/mask-sections",
+    "layers/edge-shape",
     "layers/mat-convert",
     "layers/smart",
     "layers/smart-workshop",

@@ -1,3 +1,9 @@
+## Gouache Studio 0.97.24
+
+- Generator settings in Marmoset-style cards, each picture slot with its own controls.
+- More edge controls on the edge presets (strength, growth, sharpness, sharp edges only, corners, distortion, cavity protection).
+- A clear Invert button on every generator.
+
 ## Gouache Studio 0.97.23
 
 - New Reset view button in the 3D view: refreshes the 3D view from your painting if the shading looks blocky or wrong.

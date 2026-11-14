@@ -1,3 +1,9 @@
+## 0.97.24
+
+- **Generator settings in cards, like Marmoset's layer settings:** Mask, Edges, Cavities, Top and flat surfaces, Breakup and Projection. Each card opens with its picture slot, and the controls that belong to it come right after: the Edges grunge with the edge sliders, the Breakup grunge with Breakup and Noise size, and so on. A card folds by its title and stays folded.
+- **More edge controls** on Edge wear, Chipped paint, Scratches and Sun-bleached: Edge strength, Edge growth, Edge sharpness, Sharp edges only, Corners wear more, Edge distortion and its scale, and Cavity protection. At their defaults the presets look as before.
+- **Invert** is now a clear button under the Preset on every generator, lit when it's on.
+
 ## 0.97.23
 
 - **Grunge slot like Marmoset's.** Every grunge input is now a small square: drop a picture or a Textures tile on it, or click it to open a little gallery of the program's grunges (with search and Browse files…). Name, Choose…, Clear and Tri-planar sit beside it, and Tiling / Rotation / Contrast / Level are two to a row. The three zone grunges (edges, cavities, flat) are folded into one **Grunge by zone** group that opens when you use one.
