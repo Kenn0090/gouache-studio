@@ -39,6 +39,9 @@ const platform={
   spillDelete(id){return this.invoke('spill_delete',{id}).catch(()=>{});},
   /* the disk cache: where it is, what it holds, how much memory this computer has */
   cacheInfo(){return this.invoke('cache_info').catch(()=>null);},
+  dataInfo(){return this.invoke('data_info').catch(()=>null);},
+  dataSet(dir){return this.invoke('data_set',{dir:dir||null});},
+  dataRestart(){return this.invoke('data_restart');},
   cacheSetDir(dir){return this.invoke('cache_set_dir',{dir:dir||null});},
   treeWrite(key,bytes){return this.invoke('tree_write',bytes,{headers:{'x-key':key}});},
   async treeRead(key){return await this.invoke('tree_read',{key});},

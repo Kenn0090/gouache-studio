@@ -56,9 +56,9 @@ void main(){ vec2 uv=gl_FragCoord.xy/vec2(textureSize(uSrc,0).x,textureSize(uSrc
     acc+=textureLod(uSrc,envUV(L,0.0),lod).rgb*NdL; wsum+=NdL; }
   o=vec4(acc/max(wsum,1e-4),1.0); }`;
 /* diffuse light: cosine-weighted over the hemisphere */
-const FS_ENVIRR=ENV_GLSL+`uniform sampler2D uSrc;
+const FS_ENVIRR=ENV_GLSL+`uniform sampler2D uSrc; uniform float uSrcW;
 void main(){ vec2 uv=gl_FragCoord.xy/vec2(float(uOutW),float(uOutH)); vec3 N=uvDir(uv,0.0); vec3 up=abs(N.y)<0.999?vec3(0,1,0):vec3(1,0,0), T=normalize(cross(up,N)), B=cross(N,T); vec3 acc=vec3(0.0);
-  for(int i=0;i<256;i++){ vec2 xi=hamm(i,256); float ph=2.0*PI*xi.x, r=sqrt(xi.y); vec3 L=T*(r*cos(ph))+B*(r*sin(ph))+N*sqrt(1.0-xi.y); acc+=textureLod(uSrc,envUV(L,0.0),5.0).rgb; }
+  for(int i=0;i<256;i++){ vec2 xi=hamm(i,256); float ph=2.0*PI*xi.x, r=sqrt(xi.y); vec3 L=T*(r*cos(ph))+B*(r*sin(ph))+N*sqrt(1.0-xi.y); acc+=textureLod(uSrc,envUV(L,0.0),max(log2(uSrcW)-4.0,5.0)).rgb; }/* (0.97.22) each sample reads a ~1/16-wide blur whatever the picture's size: a bright sun was hit by a few samples only and lit the model in lumps */
   o=vec4(acc/256.0,1.0); }`;
 let P_ENV=null;
 function envProgs(){if(!P_ENV){const U='uniform int uOutW; uniform int uOutH;\n';P_ENV={pre:program(U+FS_ENVPRE),irr:program(U+FS_ENVIRR)};}return P_ENV;}
@@ -77,7 +77,7 @@ function envBuild(img,key,name){envFree();let {w,h,rgb}=img;
   /* (0.96.2, Kenn's friend: swirls at full roughness) the blurriest levels were 16×8 and 32×16 pixels mixed from 128 samples: smooth,
      very rough surfaces showed their blocky texels and sample pattern as swirls. Now no level is smaller than 64×32 and rough ones take 256. */
   for(let i=0;i<ENV_LEVELS;i++){const W=Math.max(64,lw>>i),H=Math.max(32,W>>1),t=envTarget(W,H);run(PR.pre,t,{uSrc:src,uR:i/(ENV_LEVELS-1),uN:{int:i===0?1:i<2?64:i<3?128:256},uSrcW:w,uOutW:{int:W},uOutH:{int:H}});env.lv.push(t);}
-  const irr=envTarget(64,32);run(PR.irr,irr,{uSrc:src,uOutW:{int:64},uOutH:{int:32}});env.irr=irr;env.key=key;env.name=name;v3.dirty=true;requestRender();}
+  const irr=envTarget(64,32);run(PR.irr,irr,{uSrc:src,uSrcW:w,uOutW:{int:64},uOutH:{int:32}});env.irr=irr;env.key=key;env.name=name;v3.dirty=true;requestRender();}
 /* the bundled ones: inside the page (web version) or beside it (desktop) */
 async function envBundled(file){try{if(typeof aiDB!=='undefined'){const v=await aiDB.get('hdri/'+file+'_2k.hdr');if(v&&v.buf)return new Uint8Array(v.buf);}}catch(e){}/* a 2K sky downloaded in File › Content */
   const tag=document.getElementById('hdri_'+file);if(tag){const b=atob(tag.textContent.trim()),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;}

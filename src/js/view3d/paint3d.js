@@ -84,6 +84,9 @@ async function p3Resize(n){
   if(S)S.resized=true;
   v3.mapsDirty=true;v3.editDirty=true;v3.dirty=true;
   fit();changedAll();updateStatus();buildP3Panel();
+  /* (0.97.22, Kenn: blocky shading after switching to 4K) the model's own copies of the maps (above all the final normal map) were not
+     rebuilt after the resize and stayed empty or half-built: ask for a full rebuild once the new size has settled */
+  for(const ms of [0,250,900,3000,8000])setTimeout(()=>{if(!v3.on)return;v3.mapsDirty=true;v3.editDirty=true;v3.dirty=true;requestRender(true);},ms);
   toast('Texture set rebuilt at '+w+' × '+h+'. Undo history was cleared.');
   return true;
 }

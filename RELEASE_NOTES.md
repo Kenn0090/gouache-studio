@@ -1,3 +1,4 @@
-## Gouache Studio 0.97.21
+## Gouache Studio 0.97.22
 
-- Right-click a shelf item and choose Show in Explorer: it is saved as a file in the Exports folder and shown there.
+- Preferences › Speed › Data folder: keep Gouache's data on another drive; the existing data is moved over at the next start.
+- Smoother sky light from bright suns; the model's maps are rebuilt again after a texture size change.

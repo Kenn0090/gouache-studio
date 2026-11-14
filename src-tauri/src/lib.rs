@@ -5,6 +5,8 @@
 //! heavy GPU/CPU work (mesh baking, large-file encoding) that a browser cannot do.
 
 mod altmenu;
+mod data_core;
+mod data_loc;
 mod engine;
 mod viewer;
 mod files;
@@ -72,6 +74,8 @@ pub fn run() {
         .setup(|app| {
             // Start each session with an empty undo folder in the default cache (a chosen folder is
             // cleared when the interface sets it at start-up).
+            // (0.97.22) a data folder moved to another drive is carried over here, before anything opens the old one
+            data_loc::startup(&app.handle());
             undo_spill::reset(&app.handle());
             // (0.96.4) the two-way links: Blender, Unity, Unreal and Roblox Studio talk to Gouache on 127.0.0.1
             link::start(&app.handle());
@@ -79,15 +83,19 @@ pub fn run() {
             // pop out into its own window: window.open("about:blank") from the page is allowed and
             // gets a plain window the page draws into. Anything else is refused.
             if let Some(cfg) = app.config().app.windows.iter().find(|w| w.label == "main").cloned() {
-                let w = tauri::WebviewWindowBuilder::from_config(app.handle(), &cfg)?
+                let mut builder = tauri::WebviewWindowBuilder::from_config(app.handle(), &cfg)?
                     .on_new_window(|url, _features| {
                         if url.as_str() == "about:blank" {
                             tauri::webview::NewWindowResponse::Allow
                         } else {
                             tauri::webview::NewWindowResponse::Deny
                         }
-                    })
-                    .build()?;
+                    });
+                // (0.97.22) the web view's profile (saved materials, downloaded content, settings) in the chosen data folder
+                if let Some(dir) = data_loc::web_dir(&app.handle()) {
+                    builder = builder.data_directory(dir);
+                }
+                let w = builder.build()?;
                 let _ = w.set_title("Gouache Studio");
                 altmenu::install(&w);
             }
@@ -124,6 +132,9 @@ pub fn run() {
             files::recent_details,
             files::recent_remove,
             files::reveal_path,
+            data_loc::data_info,
+            data_loc::data_set,
+            data_loc::data_restart,
             files::autosave_dir,
             files::dir_files,
             files::file_mtime,

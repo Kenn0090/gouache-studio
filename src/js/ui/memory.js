@@ -22,6 +22,20 @@ function memSection(){const d={limitMB:mem.limitMB||memAutoMB(),steps:undoSteps(
     const change=el('button',{class:'btn sm',text:'Change…',id:'pCacheChange',title:'Put the disk cache on another drive (a fast SSD with plenty of space is best)',onclick:async()=>{const p=await platform.pickFolder();if(p){d.dir=p;where.textContent=p+' (after Save)';}}});
     const def=el('button',{class:'btn sm',text:'Default',title:'Use the app’s own cache folder',onclick:()=>{d.dir='';where.textContent='Default folder (after Save)';}});
     const clr=el('button',{class:'btn sm',text:'Clear bake trees',title:'Delete the saved high-poly search trees (they are rebuilt when needed)',onclick:async()=>{await platform.treePrune(0);show();toast('Saved search trees cleared.');}});
+    /* (0.97.22, Kenn: keep the C drive free) where Gouache keeps its data, with a move to another drive at the next start */
+    const dWhere=el('p',{class:'note mono',id:'pDataDir',text:'…'}),dUse=el('p',{class:'note',id:'pDataUse',text:''}),dMsg=el('p',{class:'note',id:'pDataMsg',text:''});
+    const dShow=async()=>{const i=await platform.dataInfo();if(!i)return;dWhere.textContent=(i.custom?'':'Default folder: ')+i.dir;
+      dUse.textContent='In use: '+fmtBytes(i.size_bytes)+(i.free_bytes?' · free on that drive: '+fmtBytes(i.free_bytes):'');
+      dMsg.textContent=i.pending?'Waiting: your data moves to '+i.pending_to+' the next time Gouache starts.':i.error?'The last move did not finish: '+i.error:'';};
+    const dRestart=()=>{if(typeof unsavedWork==='function'&&unsavedWork()){toast('Save your work first, then restart Gouache to finish the move.');return;}
+      confirmDlg('Restart Gouache','Gouache restarts now and moves your data. This can take a few minutes for a big library. Do not switch the computer off.','Restart',()=>platform.dataRestart());};
+    const dChoose=async()=>{const p=await platform.pickFolder();if(!p)return;const i=await platform.dataInfo();
+      confirmDlg('Move Gouache’s data','Move everything Gouache has saved ('+(i?fmtBytes(i.size_bytes):'your data')+': materials, skies, textures, AI add-ons, settings, autosaves) into “'+p+'”? The old copy is deleted once the new one is checked.','Choose folder',async()=>{
+        try{const r=await platform.dataSet(p);await dShow();if(r==='restart')dRestart();}catch(e){toast('That folder cannot be used: '+(e.message||e));}});};
+    const dDefault=()=>confirmDlg('Move the data back','Move Gouache’s data back to its normal place on the system drive?','Move back',async()=>{try{const r=await platform.dataSet(null);await dShow();if(r==='restart')dRestart();}catch(e){toast('Could not do that: '+(e.message||e));}});
+    box.append(el('div',{class:'sub',text:'Data folder'}),dWhere,el('div',{class:'row wrap'},el('button',{class:'btn sm',id:'pDataChange',text:'Change…',title:'Keep everything Gouache saves (materials, skies, downloads, settings, autosaves) on another drive',onclick:dChoose}),el('button',{class:'btn sm',id:'pDataDefault',text:'Default',title:'Back to the system drive',onclick:dDefault}),el('button',{class:'btn sm',id:'pDataRestart',text:'Restart to finish',title:'Needed after a change',onclick:dRestart})),dUse,dMsg,
+      el('p',{class:'note',text:'Saved materials, the Library, skies, grunge, AI add-ons and settings, autosave copies and the Exports folder live here. Your own .gouache files stay wherever you saved them. Changing it copies the data to the new place when Gouache restarts, checks the copy, then removes the old one. The undo cache has its own folder below.'}));
+    dShow();
     box.append(el('div',{class:'sub',text:'Disk cache'}),where,el('div',{class:'row wrap'},change,def,clr),
       makeSlider({id:'pDisk',label:'Cache size',min:1,max:500,step:1,value:d.diskGB,fmt:v=>v+' GB',onInput:v=>{d.diskGB=v;}}).el,use,
       el('p',{class:'note',text:'Holds undo steps past the memory limit, and the search trees of high-polys you have baked, so baking the same high-poly again (even after a restart) skips the “Sorting triangles” step. Past the limit, the oldest are removed.'}));
