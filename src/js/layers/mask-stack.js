@@ -650,9 +650,12 @@ function msMakeStack(L){const M=L.mask;if(!M||M.stack)return;const t=M.target;M.
 /* a new, empty Paint row (transparent: it changes nothing until painted) */
 function msNewPaintRow(L){const r=msRow('paint',{name:'Paint'});r.t=makeTarget(doc.w,doc.h,L.mask.target.depth);clearTarget(r.t,[0,0,0,0]);(L.mask._rows||(L.mask._rows=new Set())).add(r);return r;}
 /* add a row to the mask (making the mask, or the stack, when there is none): above the selected row, else on top */
-function msAdd(L,kind,o,label){if(!isLayer(L)&&!(L&&L.type==='group'))return null;let row=null;L.fxFold=false;/* (0.97.1) a new row shows */
+function msAdd(L,kind,o,label,initialMask){if(!isLayer(L)&&!(L&&L.type==='group'))return null;let row=null;L.fxFold=false;/* (0.97.1) a new row shows */
   msRecord(L,label||('Add '+(o&&o.fx&&FX[o.fx]?FX[o.fx].title:o&&o.own?MS_OWN_FILTERS[o.own]:MS_KINDS[kind].title).toLowerCase()+' to the mask'),()=>{
-    if(!L.mask){L.mask=makeMask(kind==='paint'?1:0);L.mask.stack=[];L.mask._rows=new Set();}
+    if(!L.mask){
+      L.mask=makeMask(initialMask??(kind==='paint'?1:0));
+      if(initialMask===undefined){L.mask.stack=[];L.mask._rows=new Set();}
+    }
     msMakeStack(L);
     row=kind==='paint'?msNewPaintRow(L):msRow(kind,o);if(kind==='paint'&&o)Object.assign(row,o,{t:row.t});
     if(kind==='filter'&&row.fx&&!row.v&&FX[row.fx])row.v=fxDefaults(FX[row.fx]);
@@ -665,8 +668,8 @@ function msMove(L,where,id,to){msRecord(L,'Move row',()=>{const S=where==='m'?L.
 /* Flatten mask: keep the result, drop the rows */
 function msFlatten(L){if(!msHas(L))return;msUpdate(L);msRecord(L,'Flatten mask',()=>{L.mask.stack=null;});}
 /* content effects: filters on the layer's own maps */
-function cfxAdd(L,fx,own){if(!isLayer(L))return null;let row=null;
-  msRecord(L,'Add '+(FX[fx]?FX[fx].title:'effect').toLowerCase()+' to “'+L.name+'”',()=>{row=msRow('filter',{fx,v:fxDefaults(FX[fx]),maps:'all'});L.cfx=L.cfx||[];L.cfx.push(row);L.editMask=false;});
+function cfxAdd(L,fx,maps='all'){if(!isLayer(L))return null;let row=null;
+  msRecord(L,'Add '+(FX[fx]?FX[fx].title:'effect').toLowerCase()+' to “'+L.name+'”',()=>{row=msRow('filter',{fx,v:fxDefaults(FX[fx]),maps});L.cfx=L.cfx||[];L.cfx.push(row);L.editMask=false;});
   if(row){L.fxFold=false;msSelect(L,'c',row.id);}return row;}
 /* the selected row (it shows in Properties; painting goes into a selected Paint row) */
 function msSelect(L,where,id){ui.msSel={L,where,id};if(where==='m'){L.editMask=true;}if(doc.active!==L){selectOnly(L);}renderLayers();if(typeof showPanel==='function')showPanel('matEd');renderMatEd(true);requestRender(true);}

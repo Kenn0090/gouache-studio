@@ -6,7 +6,7 @@ const MENUS={
   Maps:[['Document maps…','maps'],'-',['Convert tab…','convertTab'],['Height from base colour…','cvHeight'],['Normal from base colour…','cvNormal'],['Roughness from base colour…','cvRough'],'-',
     ['Ambient occlusion from height…','cvAO'],['Curvature from height…','cvCurv'],'-',['Curvature from normal…','cvCurvN'],['Ambient occlusion from normal…','cvAON'],['Height from normal…','cvHfN'],['Flip normal green (DirectX ↔ OpenGL)','flipG'],'-',['Bake from high poly…','bake']],
   Layer:[['New','sub',[['Layer','addLayer','Ctrl+Shift+N'],['Group','newGroup'],['Fill layer…','newFill'],['Paper…','newPaper'],['Filter layer…','newFx'],['Retro layer (N64 / PSX), everything below','newRetro'],['Stylize layer (strokes, lighting, edges)','newStylizeP'],['Arcane-inspired paint…','newArcanePaint'],['Hand-painted layer (lights the model in paint)','newHandPaint'],['Retro layer (N64 / PSX), this layer only','newRetroClip'],['Hue / Saturation layer','newAdjHsl'],['Normal layer','newNormal'],['3D gradient layer','newG3d']]],['Duplicate','dupLayer','Ctrl+J'],['Clear layer contents','clearContents','Ctrl+Q'],['Delete','delLayer','Del'],'-',
-    ['Layer style…','layerStyle'],['Array…','arrayTool'],['Edit filter layer…','editFx'],'-',
+    ['Layer style…','layerStyle'],['Array…','arrayTool'],['Edit filter layer…','editFx'],['World Space Normal Brush','worldNormalBrush'],'-',
     ['Layer mask','sub',[['Reveal all','addMask'],['Hide all','addMaskHide'],['Apply mask','applyMask'],['Delete mask','deleteMask']]],'-',
     ['Group selected','group','Ctrl+G'],['Ungroup','ungroup','Ctrl+Shift+G'],'-',
     ['Rasterize text, shape or fill','rasterize'],['Make brush tip from layer','tipFromLayer'],'-',
@@ -46,6 +46,7 @@ actions.clearContents=cmdClearLayer;
 actions.selColorRange=dlgColorRange;
 actions.paintEmboss=()=>fxMenu('paintEmboss');
 actions.ghostDecal=()=>fxMenu('ghostDecal');
+actions.worldNormalBrush=()=>cmdWorldNormalBrush();
 actions.photoGrunge=()=>{if(ui.mode==='paint')fxMenu('photoGrunge');else toast('Switch to the Paint tab to convert a photo.');};
 const LAYER_ONLY=['mergeVisible','stampVisible','flatten','tipFromLayer'];/* (0.58) the other layer commands work inside a frame */
 const checked={ws_painting:()=>dk.ws==='painting',ws_texturing:()=>dk.ws==='texturing',ws_paint3d:()=>dk.ws==='paint3d',ws_minimal:()=>dk.ws==='minimal',wsLock:()=>dk.lock,pn_color:()=>panelShown('color'),pn_brushes:()=>panelShown('brushes'),pn_tool:()=>panelShown('tool'),pn_maps:()=>panelShown('maps'),pn_layers:()=>panelShown('layers'),pn_chan:()=>panelShown('chan'),optBarToggle:()=>dk.L&&dk.L.opt,tbCols:()=>dk.L&&dk.L.tb.cols===2,tbSide:()=>dk.L&&dk.L.tb.side==='right',hints:()=>!prefs.hideHints,view3d:()=>v3.on,perf:()=>perf.on,depth8:()=>doc.depth===8,depth16:()=>doc.depth===16,tile:()=>doc.wrap,quickMask:()=>sel.quick};
@@ -83,6 +84,7 @@ const FILE_NOT={paint:['phOpen','phExport','impModel','p3BakeMenu','impSheet','i
 function menuTidy(list){const o=[];for(const it of list){if(it==='-'&&(!o.length||o[o.length-1]==='-'))continue;o.push(it);}while(o.length&&o[o.length-1]==='-')o.pop();return o;}
 function menuList(list,name){let l=list.filter(it=>platform.isDesktop||it==='-'||!['recent','checkUpdates'].includes(it[1]));
   if(name==='File'){const no=FILE_NOT[ui.mode]||[];l=fileGroup(menuTidy(l.filter(it=>it==='-'||!no.includes(it[1]))));}
+  if(name==='Layer'&&ui.mode!=='p3d')l=l.filter(it=>it==='-'||it[1]!=='worldNormalBrush');
   if(name==='Filter'&&ui.mode!=='paint')l=l.filter(it=>it==='-'||it[1]!=='photoGrunge');
   if(name==='Help'&&!l.some(it=>it!=='-'&&it[1]==='setup')){const i=l.findIndex(it=>it!=='-'&&it[1]==='welcome');l=l.slice();l.splice(i>=0?i+1:l.length,0,['Launch screen (look and level)…','setup']);}
   if(name==='View'){if(ui.mode==='p3d')l=menuTidy(l.filter(it=>it==='-'||it[1]!=='view3d'));else l=l.map(it=>it!=='-'&&it[1]==='view3d'?['3D preview beside canvas',...it.slice(1)]:it);}

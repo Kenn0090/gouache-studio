@@ -22,6 +22,8 @@ const PANELS={
   smats:{title:'Smart materials',sel:'#smSec',avail:m=>m==='p3d',icon:'<circle cx="11" cy="13" r="6.5"/><path d="M18.5 3.5l.9 2 2 .9-2 .9-.9 2-.9-2-2-.9 2-.9z"/>'},
   smasks:{title:'Smart masks',sel:'#smkSec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="12" cy="12" r="4" fill="currentColor" opacity=".35"/>'},
   shgen:{title:'Generators',sel:'#shGenSec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 14c3-4 5 2 8-2s5 3 8-1"/>'},
+  shfilters:{title:'Filters',sel:'#shFiltersSec',avail:m=>m==='paint'||m==='p3d',icon:'<path d="M4 5h16l-6 7v6l-4 2v-8z"/>'},
+  shstyles:{title:'Layer Styles',sel:'#shStylesSec',avail:m=>m==='paint'||m==='p3d',icon:'<path d="m12 3 9 5-9 5-9-5zM3 12l9 5 9-5M3 16l9 5 9-5"/>'},
   shalpha:{title:'Alphas',sel:'#shAlphaSec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16l4-8 4 8M9.5 13h5"/>'},
   canvas:{title:'Canvas',sel:'#cvsSec',avail:m=>m==='paint',icon:'<rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 9h16M4 14h16" stroke-width="1"/>'},
   textures:{title:'Textures',sel:'#txSec',avail:m=>m==='paint'||m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M7 8h1M11 7h1M15 9h1M8 12h1M13 13h1M16 15h1M9 16h1" stroke-width="2.4" stroke-linecap="round"/>'},
@@ -46,7 +48,7 @@ const PANEL_IDS=Object.keys(PANELS);
 /* (0.96) the 3D Paint shelf's categories, in the order of its list */
 /* (0.97.10) Welds, Stitches and Surface details live in one shelf category, Tools; the old panel names still open it */
 const SH_TOOL_ALIAS={weldtools:'weld',stitches:'stitch',surfacedetails:'detail'};
-const SH_SHELF_TABS=['shbrush','mats','smats','smasks','shgen','shalpha','textures','decals','envs','meshmaps','shtools','projects'];
+const SH_SHELF_TABS=['shbrush','mats','smats','smasks','shgen','shfilters','shstyles','shalpha','textures','decals','envs','meshmaps','shtools','projects'];
 const MODE_GROUP=['p3d','brushtab','conv','bake','anim','photo'],MODE_HID=[...MODE_GROUP,'phhist','phlib','phpre'];
 /* the built-in workspaces: extra = 3D view on and how wide, painting on the model */
 const WS_PRESETS={
@@ -164,7 +166,7 @@ function dkGrid(){const L=dk.L,app=$('#app'),F=L.fold||{},shOn=!!(L.shelf&&dkAva
   app.style.gridTemplateColumns=left?`${tw} ${lw} minmax(0,1fr) ${c2} ${ic} ${dw}`:`${lw} minmax(0,1fr) ${tw} ${c2} ${ic} ${dw}`;
   app.style.gridTemplateRows=`38px ${L.opt?(F.opt?'26px':'minmax(36px,auto)'):'0px'} ${th} minmax(0,1fr) auto ${shOn?(F.shelf?26:clamp(L.shelf.h||170,90,Math.max(90,window.innerHeight*.6))):0}px 26px`;
   /* (0.38.2, Kenn) like Substance: the shelf sits under the viewport only; the right-hand panels run all the way down */
-  const sh='"shelf shelf shelf dock2 icons dock"';
+  const sh=shOn&&dkEdgeOn('left')?(left?'"tools dockl shelf dock2 icons dock"':'"dockl shelf tools dock2 icons dock"'):'"shelf shelf shelf dock2 icons dock"';
   app.style.gridTemplateAreas=left?`"head head head head head head" "opt opt opt opt opt opt" "tools dockt dockt dock2 icons dock" "tools dockl work dock2 icons dock" "tools dockl tl dock2 icons dock" ${sh} "status status status status status status"`:`"head head head head head head" "opt opt opt opt opt opt" "dockt dockt tools dock2 icons dock" "dockl work tools dock2 icons dock" "dockl tl tools dock2 icons dock" ${sh} "status status status status status status"`;}
 /* ---- (0.30) fold arrows on every docked bar and column, and the bottom shelf ---- */
 const DK_FOLDS=[['dock','#dock','Panels',()=>dk.L.groups.some(g=>dkAvail(g).length)&&dk.L.w>0,()=>['›','‹']],
@@ -218,7 +220,6 @@ function dkRender(){brushMergeSync();const keepSc=dkScrollSave(),L=dk.L,dock=$('
   dk.dock2.replaceChildren();dk.dock2.hidden=!dkCol2On();
   if(dkCol2On()){const g2=dk.col2.groups.filter(g=>dkAvail(g).length);g2.forEach((g,i)=>{if(i)dk.dock2.append(dkSplit(g2[i-1],g));dk.dock2.append(dkGroup(g));});}
   dkShelfRender();if(typeof weldToolsRender==='function')weldToolsRender();
-  if(typeof shEnsure==='function')shEnsure();/* (0.96) a shelf category shown for the first time is drawn now */
   if(ui.mode==='p3d'){stitchToolsRender();surfaceDetailRender();}
   dk.icons.replaceChildren(...L.icons.filter(id=>dkIn(id)).map(id=>{const b=el('button',{class:'dkicon'+(dk.flyout===id?' on':''),title:PANELS[id].title,'aria-label':PANELS[id].title,'aria-pressed':String(dk.flyout===id)});
     b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+(PANELS[id].icon||'')+'</svg>';b.onclick=()=>dkFlyout(dk.flyout===id?null:id);b.addEventListener('pointerdown',e=>dkDragStart(e,id,{icons:true}));return b;}));
@@ -227,6 +228,7 @@ function dkRender(){brushMergeSync();const keepSc=dkScrollSave(),L=dk.L,dock=$('
   if(dk.flyout&&!(L.icons.includes(dk.flyout)&&dkIn(dk.flyout)))dk.flyout=null;
   if(dk.flyout)dkFlyoutEl(dk.flyout);
   for(const id of PANEL_IDS){const s=dkSec(id);if(!s.parentElement||s.parentElement===dk.park||!s.isConnected)dk.park.append(s);}
+  shEnsure();
   dkFoldBtns();if(dk.wbar)dk.wbar.hidden=dk.wbar.hidden||!!(L.fold&&L.fold.dock);
   dkScrollRestore(keepSc);requestAnimationFrame(()=>dkScrollRestore(keepSc));if(typeof paRefresh==='function')paRefresh();
   if(typeof resizeGL==='function')requestAnimationFrame(()=>{resizeGL();if(typeof drawSV==='function')drawSV();});}

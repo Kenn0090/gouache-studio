@@ -300,12 +300,12 @@ function maskMenu(e,n){const pop=$('#menuPop');closeMenu();
   const quick=['levels','invert','blur'],own=k=>it(MS_OWN_FILTERS[k],add('filter',{own:k,p:{r:k==='grow'?3:k==='warp'?4:6,scale:6,seed:1}})),fx=id=>FX[id]?it(FX[id].title,add('filter',{fx:id})):null;
   const more=fly('Adjust',()=>[head('Shape'),own('slope'),own('warp'),own('grow'),sep(),head('Tone'),...['levels','curves','threshold','posterize','invert'].map(fx),sep(),
     head('Blur and sharpen'),...['blur','boxBlur','motionBlur','sharpen','highPass'].map(fx),sep(),head('Edges'),...['edges','convolve'].map(fx),
-    ...(typeof fxAddMenu==='function'?[sep(),it('All filters…',()=>{on();renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);})]:[])].filter(Boolean));
+    ].filter(Boolean));
   const names=typeof msAnchorNames==='function'?msAnchorNames():[];
   const items=[head('Make the mask'),it('Paint',add('paint')),it('Fill white',()=>{on();maskFillTo(n,1);}),it('Fill black',()=>{on();maskFillTo(n,0);}),generators,noises,it('Picture…',add('image')),
     ...(doc.meshMaps&&doc.meshMaps.id?[it('ID colour (pick colours on the model)…',()=>idColourMask(n))]:[]),
     ...(names.length?[fly('From an anchor point',()=>names.map(name=>it(name,add('anchor',{p:{name,ch:'height',inv:false}}))))]:[]),
-    sep(),head('Change it'),...quick.filter(id=>FX[id]).map(id=>it(FX[id].title,add('filter',{fx:id}))),more,
+    sep(),head('Change it'),...quick.filter(id=>FX[id]).map(id=>it(FX[id].title,add('filter',{fx:id}))),more,it('Find a filter…',()=>dlgLayerEffects(n,'mask')),
     sep(),it('Copy mask',()=>cmdCopyMask(n)),...(maskClip?[it('Paste mask',()=>cmdPasteMask(n))]:[]),it('Clear mask (all black)',()=>cmdClearMask(n)),
     ...(typeof msHas==='function'&&msHas(n)?[it('Flatten mask (keep the result)',()=>msFlatten(n))]:[]),
     ...(ui.mode!=='paint'&&typeof smMaskSave==='function'?[it('Save as smart mask…',()=>smMaskSave(n))]:[]),
@@ -321,13 +321,9 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
   if(n.fx&&n.fx.stack&&n.fx.stack.some(x=>x.id==='handPaint'))items.push(it('Make it a hand-painted material',()=>hpOverlayToMat(n)),sep());
   if(ui.mode==='p3d'&&n.fill&&!n.fx&&p3.sets.filter(S=>!S.missing).length>1)items.push(it('Instance to sets…',()=>dlgInstance(n)),...(n.inst?[it('Unlink instance',()=>instUnlink(n))]:[]),sep());
   /* (0.95.8, Kenn: "too much to look at") everyday commands on top, the rest in a few fly-outs */
-  const G={mask:[],fx:[],conv:[],smart:[],send:[]};
+  const G={mask:[],conv:[],smart:[],send:[]};
   {if(maskClip)G.mask.push(it('Paste mask',()=>cmdPasteMask(n)));if(n.mask)G.mask.push(it('Copy mask',()=>cmdCopyMask(n)),it('Clear mask (hide all)',()=>cmdClearMask(n)),it('Delete mask',()=>{if(doc.active===n)cmdDeleteMask();else{selectOnly(n);cmdDeleteMask();}}),...(typeof msHas==='function'&&msHas(n)?[it('Flatten mask (keep the result, drop its rows)',()=>msFlatten(n))]:[]));else{/* (0.97.1, Kenn) both at the very top of the menu */G.addMask=[it('Add white mask (shows all)',()=>{selectOnly(n);cmdAddMask(1);}),it('Add black mask (hides all)',()=>{selectOnly(n);cmdAddMask(0);})];G.mask.push(...(lay&&typeof liveMaskStart==='function'?[it('Live mask…',()=>liveMaskStart(n))]:[]));}}
-  let styleItem=null;
-  if(lay){styleItem=flyItem('Layer style',()=>[...STYLE_ORDER.map(k=>it(STYLE_DEFS[k].label+(n.styles&&n.styles[k]&&n.styles[k].on?' ✓':''),()=>dlgLayerStyle(k,true))),sep(),it('All styles…',()=>dlgLayerStyle())]);
-    G.fx.push(it('Filter this layer…',()=>{selectOnly(n);n.editMask=false;renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);}),
-      it('Filter its mask…',()=>{selectOnly(n);if(!n.mask)msAdd(n,'fill',{p:{v:1}});n.editMask=true;renderLayers();setTimeout(()=>fxAddMenu(e,'filters'),0);}),sep(),
-      it('Filter layer above…',cmdNewFxLayer),it('Retro layer above (this layer only)…',()=>{selectOnly(n);cmdNewRetroLayer(true);}),it('Stylize layer (strokes, lighting, edges)…',()=>cmdNewStylizePLayer()),it('Hand-painted layer (lights the model in paint)…',()=>cmdNewHandPaintLayer()),sep(),it('Array…',()=>setTool('array')));
+  if(lay){
     if(n.fill)G.conv.push(it('Mesh maps from this material…',()=>dlgMatConvert(n)));
     if(typeof mcHasSource==='function'&&mcHasSource(n))G.conv.push(head('Make a map from it'),it('Ambient occlusion (AO)…',()=>dlgMatConvert(n,['ao'])),it('Curvature…',()=>dlgMatConvert(n,['curv'])),it('Edges…',()=>dlgMatConvert(n,['curvEdge'])),it('Creases…',()=>dlgMatConvert(n,['curvCrease'])),sep());
     if(n.text||n.grad||n.shape||n.fill)G.conv.push(it('Convert to pixels',()=>{if(n.fill)fillRasterize(n);else rasterizeText(n);changed(n);}));}
@@ -347,7 +343,13 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
   const fly=(name,list)=>{const l=list.filter((x,i)=>!(x.classList&&x.classList.contains('msep')&&(i===0||i===list.length-1)));if(!l.length)return [];if(l.length===1&&!l[0].classList.contains('mh'))return [l[0]];const f=flyItem(name,()=>l);f.setAttribute('aria-label',name);return [f];};
   if(lay&&n.fill)items.unshift(it('Material settings…',()=>dlgFillLayer(n)),sep());
   if(G.addMask)items.unshift(...G.addMask,sep());
-  items.push(...fly('Mask',G.mask),...(styleItem?[styleItem]:[]),...fly('Filters and effects',G.fx),...fly('Convert',G.conv),...fly('Smart material',G.smart),...fly(ui.mode==='paint'?'Send to 3D Paint':'Send to',G.send));
+  items.push(...fly('Mask',G.mask));
+  if(n.fx)items.push(it('Edit filters…',()=>{selectOnly(n);updateRowClasses();fxEditor(n);}));
+  else if(lay){
+    if(!anim)items.push(it('Effects…',()=>dlgLayerEffects(n)));
+    items.push(it('Layer styles…',()=>{selectOnly(n);updateRowClasses();dlgLayerStyle();}));
+  }
+  items.push(...fly('Convert',G.conv),...fly('Smart material',G.smart),...fly(ui.mode==='paint'?'Send to 3D Paint':'Send to',G.send));
   if(!anim)items.push(sep(),it('New fill layer',cmdNewFillLayer));
   if(anim&&isLayer(n)&&n.parent&&n.parent.frame)items.push(sep(),it(n.shared?'Shown in every frame ✓ (make separate)':'Show in every frame',()=>animShareLayer(n,!n.shared)),...(n.shared?[it('Delete from every frame',()=>animDeleteShared(n))]:[]));
   items.push(sep(),it(grp?'Ungroup':'Group into folder',grp?cmdUngroup:cmdGroup,grp?'Ctrl+Shift+G':'Ctrl+G'),it('Duplicate',cmdDuplicate,'Ctrl+J'),it('Clear layer contents',cmdClearLayer,kbKeyOf('clearContents'),!lay||lockedPx(n)),it(grp?'Merge group':'Merge down',cmdMerge,'Ctrl+E'),it('Delete',cmdDelete,'Del'));

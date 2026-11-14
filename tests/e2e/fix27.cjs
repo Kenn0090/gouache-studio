@@ -51,15 +51,17 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(r.px[0]-n0[0]>40,'the painted normal sits on the baked one ('+n0+' → '+r.px+')');
  /* 5. every filter can go on a mask */
  await p.evaluate(()=>{const L=__gs.layerByName('Steel');L.editMask=true;__gs.renderLayers();});await W(200);
- await p.click('#lFxAdd');await W(200);await p.click('#menuPop .mi:has-text("All filters")');await W(150);await p.click('#menuPop .mi:has-text("Artistic")');await W(150);await p.click('#menuPop .mi:has-text("Oil paint")');await W(400);
- ok(await p.evaluate(()=>__gs.layerByName('Steel').mask.stack.some(r=>r.kind==='filter'&&r.fx==='oilPaint')),'Oil paint added to the mask from All filters');
+ const find=p.getByRole('searchbox',{name:'Search filters and effects'});
+ await p.click('#lFxAdd');await p.click('#menuPop .mi:has-text("Find a filter")');await find.fill('oil paint');await find.press('Enter');await W(400);
+ ok(await p.evaluate(()=>__gs.layerByName('Steel').mask.stack.some(r=>r.kind==='filter'&&r.fx==='oilPaint')),'Oil paint added to the mask from the filter picker');
  /* 6. filters from the right-click layer menu, on the layer and on its mask */
- await p.locator('#layerList .lrow',{hasText:'Steel'}).first().click({button:'right',position:{x:120,y:12}});await W(200);
- await p.click('#menuPop .mi:has-text("Filter this layer")');await W(250);await p.click('#menuPop .mi:has-text("Adjust")');await W(150);await p.click('#menuPop .mi:has-text("Invert")');await W(400);
- ok(await p.evaluate(()=>(__gs.layerByName('Steel').cfx||[]).some(r=>r.fx==='invert')),'right-click › Filter this layer adds a live filter to the layer');
- await p.locator('#layerList .lrow',{hasText:'Steel'}).first().click({button:'right',position:{x:120,y:12}});await W(200);
- await p.click('#menuPop .mi:has-text("Filter its mask")');await W(250);await p.locator('#menuPop .mi',{hasText:/^Blur$|Gaussian blur/}).first().click();await W(400);
- ok(await p.evaluate(()=>__gs.layerByName('Steel').mask.stack.filter(r=>r.kind==='filter').length>=2),'right-click › Filter its mask adds a filter to the mask');
+ const steelName=p.locator('#layerList .lrow',{has:p.getByText('Steel',{exact:true})}).locator('.lname');
+ await steelName.click({button:'right'});
+ await p.click('#menuPop .mi:has-text("Effects…")');await find.fill('invert');await find.press('Enter');await W(400);
+ ok(await p.evaluate(()=>(__gs.layerByName('Steel').cfx||[]).some(r=>r.fx==='invert')),'right-click › Effects adds a live filter to the layer');
+ await steelName.click({button:'right'});
+ await p.click('#menuPop .mi:has-text("Effects…")');await p.getByRole('button',{name:'Its mask',exact:true}).click();await find.fill('gaussian blur');await find.press('Enter');await W(400);
+ ok(await p.evaluate(()=>__gs.layerByName('Steel').mask.stack.filter(r=>r.kind==='filter').length>=2),'right-click › Effects › Its mask adds a filter to the mask');
  /* 9. the environment in the Shader panel, and Shift+right-drag turns the sky */
  await p.evaluate(()=>__gs.showPanel('shading'));await W(300);
  ok(await p.locator('#shEnv').isVisible()&&await p.locator('#shEnvRot').count()===1,'the Shader panel has the Environment settings');
@@ -100,7 +102,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const at=()=>p.evaluate(()=>{const t=__gs.compositeMap('base'),d=__gs.readRGBA8(t);__gs.release(t);let grey=0,blueish=0;for(let i=0;i<d.length;i+=4){if(d[i]<200&&Math.abs(d[i]-d[i+2])<25)grey++;if(d[i+2]>200&&d[i]>60&&d[i]<230)blueish++;}return {grey,blueish};});
  const s0=await at();
  await p.locator('#layerList .lrow',{hasText:'Blue'}).first().click({button:'right',position:{x:120,y:12}});await W(200);
- await p.hover('#menuPop .hassub:has-text("Layer style")');await p.click('#menuSub .mi:has-text("Drop shadow")');await W(500);await p.click('#dlgOk');await W(500);
+ await p.getByRole('menuitem',{name:'Layer styles…',exact:true}).click();await p.locator('#ls_drop').check();await W(500);await p.click('#dlgOk');await W(500);
  const s1=await at();
  ok(s1.grey>s0.grey+200&&s1.blueish<s1.grey/3,'drop shadow shows outside a masked material, grey not blue ('+JSON.stringify(s0)+' → '+JSON.stringify(s1)+')');
  console.log(errs.length?errs.join('\n'):'no page errors');ok(!errs.length,'no page errors');
