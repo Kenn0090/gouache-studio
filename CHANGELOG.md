@@ -1,3 +1,10 @@
+## 0.97.15
+
+- **Masks paint live on the model.** Painting a mask that has generator or filter rows now shows on the 3D model while you paint, not only when you let go of the mouse.
+- **High pass has an Invert tick** (filter dialog, filter layers and mask rows): it swaps light and dark detail.
+- **Weld paths keep their settings in the Brush settings** (like stitch paths), including Use as Brush and Draw weld path.
+- **Known gap:** a weld painted straight onto a paint layer has no separate heat-halo layer any more (it used to add one). Painting the halo into the picked layer is next.
+
 ## 0.97.14
 
 - **Export baked maps.** The export window has an **Export baked maps** tick (also when you send to a game engine): the set's baked maps (Normal, AO, Curvature, Thickness, Position, World normal, ID, Height) are saved beside the textures with a Mesh_ prefix, each with its own tick so you can leave one out. A set without baked maps says so.

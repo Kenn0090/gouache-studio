@@ -119,8 +119,8 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uN,0); int k=int(uStep
   float dx=nAt(p+ivec2(k,0),s).x-nAt(p-ivec2(k,0),s).x, dy=nAt(p+ivec2(0,k),s).y-nAt(p-ivec2(0,k),s).y;
   if(uFlipG==1) dy=-dy; float c=(dx-dy)*uStr*2.0/uStep;
   float v=uMode==1?clamp(c,0.0,1.0):uMode==2?1.0-clamp(-c,0.0,1.0):clamp(0.5+c*0.5,0.0,1.0); o=vec4(vec3(v),1.0); }`,
-  highpass:`uniform sampler2D uSrc; uniform sampler2D uBlur; void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 s=texelFetch(uSrc,p,0),b=texelFetch(uBlur,p,0);
-  if(s.a<=1e-6){ o=s; return; } vec3 r=clamp(s.rgb/s.a-(b.a>1e-6?b.rgb/b.a:vec3(0))+0.5,0.0,1.0); o=vec4(r*s.a,s.a); }`,
+  highpass:`uniform sampler2D uSrc; uniform sampler2D uBlur; uniform bool uInv; void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 s=texelFetch(uSrc,p,0),b=texelFetch(uBlur,p,0);
+  if(s.a<=1e-6){ o=s; return; } vec3 d=s.rgb/s.a-(b.a>1e-6?b.rgb/b.a:vec3(0)); if(uInv) d=-d; vec3 r=clamp(d+0.5,0.0,1.0); o=vec4(r*s.a,s.a); }`,
   /* ---- painterly ---- */
   /* Kuwahara (oil paint): each pixel takes the calmest of the four quadrants around it */
   kuwa:GL_ST+`uniform sampler2D uSrc; uniform int uR; uniform int uWrap;

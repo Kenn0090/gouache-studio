@@ -254,8 +254,9 @@ fxDef('lensBlur',{title:'Lens blur',heavy:true,note:'Blurs like an out-of-focus 
   render(src,dst,v){run(P.f_lens,dst,{uSrc:src.tex,uR:v.r,uBoost:v.b,uThr:v.t,uShape:{int:v.shape},uRot:v.rot*Math.PI/180});}});
 fxDef('motionBlur',{title:'Motion blur',defs:[{key:'a',label:'Angle',min:-180,max:180,step:1,value:0,fmt:deg},{key:'d',label:'Distance',min:1,max:200,numericMax:Infinity,step:1,value:20,fmt:px}],
   render(src,dst,v){const r=v.a*Math.PI/180;run(P.f_motion,dst,{uSrc:src.tex,uDir:[Math.cos(r),-Math.sin(r)],uLen:v.d});}});
-fxDef('highPass',{title:'High pass',note:'Keeps only detail smaller than the radius, around mid-grey. Set the layer to Overlay to sharpen.',defs:[{key:'r',label:'Radius',min:.5,max:100,step:.5,value:8,fmt:px}],
-  render(src,dst,v){const b=acquire();gaussian(src,b,v.r);run(P.f_highpass,dst,{uSrc:src.tex,uBlur:b.tex});release(b);}});
+fxDef('highPass',{title:'High pass',note:'Keeps only detail smaller than the radius, around mid-grey. Set the layer to Overlay to sharpen. Invert swaps light and dark detail.',defs:[{key:'r',label:'Radius',min:.5,max:100,step:.5,value:8,fmt:px}],
+  checks:[['inv','Invert',false]],
+  render(src,dst,v){const b=acquire();gaussian(src,b,v.r);run(P.f_highpass,dst,{uSrc:src.tex,uBlur:b.tex,uInv:!!v.inv});release(b);}});
 
 /* ---- painterly ---- */
 fxDef('oilPaint',{title:'Oil paint',heavy:true,note:'Each spot takes the calmest nearby colour, giving flat dabs of paint.',defs:[{key:'r',label:'Brush size',min:1,max:10,step:1,value:4,fmt:px},{key:'p',label:'Passes',min:1,max:3,step:1,value:1}],

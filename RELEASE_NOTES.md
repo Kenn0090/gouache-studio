@@ -1,3 +1,9 @@
+## 0.97.15
+
+- **Masks paint live on the 3D model** when they have generator or filter rows.
+- **High pass: Invert tick.**
+- **Weld paths** keep their settings in the Brush settings.
+
 ## 0.97.14
 
 - **Export baked maps** in the export window (also for game engine exports), with a tick per map.
