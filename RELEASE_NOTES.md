@@ -5,3 +5,4 @@
 - Use wear: pick your own grunge for Contact wear and Scan influence.
 - Slider names show in full when there is room.
 - Invert and Levels are back in the layer right-click menu.
+- Every generator can take its own grunge for edges, cavities and flat surfaces, each with Triplanar, tiling and strength.

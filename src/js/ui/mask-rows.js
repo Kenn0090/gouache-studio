@@ -249,7 +249,13 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
         S('ms_clumping','Clumping','clumping',0,1,.01,pct,.85));
       box.append(inv(),
         peeling||bubbles?null:sel('ms_ganc','Also follow anchor',[['','None'],...msAnchorNames().map(x=>[x,x])],'anchor'),
-        pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),msGrungeBox(r,p,ed,S),el('p',{class:'note',text:note}));
+        pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),msGrungeBox(r,p,ed,S),
+        /* (0.97.20, Kenn) a grunge of your own for each zone */
+        el('div',{class:'sub',text:'Grunge by zone'}),
+        msZoneGrunge(p,ed,S,{key:'egimg',tri:'etri',title:'Edges grunge',id:'msEGrunge',tile:'etile',rot:'erot',amt:'eamt',amtLabel:'Edges grunge strength',note:'Breaks up the edge zone (where the model is convex).'}),
+        msZoneGrunge(p,ed,S,{key:'vgimg',tri:'vtri',title:'Cavities grunge',id:'msVGrunge',tile:'vtile',rot:'vrot',amt:'vamt',amtLabel:'Cavities grunge strength',note:'Breaks up the cavity and crevice zone.'}),
+        msZoneGrunge(p,ed,S,{key:'fgimg',tri:'ftri',title:'Top and flat surfaces grunge',id:'msFGrunge',tile:'ftile',rot:'frot',amt:'famt',amtLabel:'Flat grunge strength',note:'Breaks up surfaces that face up.'}),
+        el('p',{class:'note',text:note}));
     }
   }}
 
@@ -318,7 +324,8 @@ function msZoneGrunge(p,ed,S,o){const g=p[o.key],box=el('div',{class:'dlg-grid m
   drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');const t0=e.dataTransfer.getData('text/gouache-texture');if(t0){try{set(JSON.parse(t0));return;}catch(er){}}fxdDropFiles(e.dataTransfer.files,set);});
   drop.addEventListener('click',async()=>{const fs=await pickFiles('image/*',false,'Pictures',['png','jpg','jpeg','webp','tga','bmp','tif','tiff']);if(fs&&fs.length)fxdDropFiles(fs,set);});
   box.append(el('div',{class:'sub',text:o.title}),drop,el('div',{class:'chips'},el('button',{class:'btn sm',id:o.id+'Pick',text:'Choose from Textures…',onclick:()=>fxdPickTexture(set)}),g?el('button',{class:'btn sm',id:o.id+'Clear',text:'Clear',onclick:()=>set(null)}):'',name));
-  if(g&&o.key==='cgimg')box.append(S(o.id+'_t','Grunge tiling',o.tile,.25,16,.05,v=>v.toFixed(2)+'\u00d7',1),S(o.id+'_r','Grunge rotation',o.rot,0,360,1,v=>Math.round(v)+'\u00b0',0));
+  if(g&&(o.key==='cgimg'||o.amt))box.append(S(o.id+'_t','Grunge tiling',o.tile,.25,16,.05,v=>v.toFixed(2)+'\u00d7',1),S(o.id+'_r','Grunge rotation',o.rot,0,360,1,v=>Math.round(v)+'\u00b0',0));
+  if(g&&o.amt)box.append(S(o.id+'_a',o.amtLabel||'Grunge strength',o.amt,0,1,.01,v=>Math.round(v*100)+'%',.7));
   if(g)box.append(chk(o.id+'_tri','Triplanar (no seams)',!!p[o.tri],v=>ed(x=>{x.p[o.tri]=v;})));
   box.append(el('p',{class:'note',text:o.note}));return box;}
 function msGrungeBox(r,p,ed,S){const box=el('div',{class:'dlg-grid msgrunge',id:'msGrunge'});

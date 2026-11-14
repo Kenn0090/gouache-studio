@@ -124,6 +124,18 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; float m=0.0,cov=1.0;
   else if(uKind==3){ vec3 P=surfP(uv); float t=dot(P,abs(uDir)); if(uDir.x+uDir.y+uDir.z<0.0) t=1.0-t; float span=uB-uA; m=abs(span)<1e-4?step(uA,t):clamp((t-uA)/span,0.0,1.0); }
   else { vec3 q=surfQ(uv)*uScale; float n=noiseOf(uType,q); m=clamp((n-0.5)*uC+0.5+uV,0.0,1.0); }
   if(uNeg==1) m=1.0-m; o=vec4(vec3(m)*cov,cov); }`;
+/* (0.97.20, Kenn) zone grunges: each zone's picture, with its own tiling, turn and triplanar, packed into one picture so the generator keeps within the graphics card's sampler limit */
+const FS_MSZONE=MS_SURF_GLSL+`uniform sampler2D uZ0; uniform sampler2D uZ1; uniform sampler2D uZ2; uniform vec4 uZon; uniform vec4 uZT; uniform vec4 uZR; uniform vec4 uZI; uniform vec4 uZTri;
+float zpic(sampler2D img,vec2 uv,float tile,float ang,float tri){ float c=cos(ang),sn=sin(ang); mat2 rot=mat2(c,sn,-sn,c);
+  if((tri>0.5||uWorld==1)&&uHasPos==1){ vec4 P=texelFetch(uPos,ivec2(gl_FragCoord.xy),0);
+    if(P.a>0.5){ vec3 q=(uInv*vec4(P.xyz,1.0)).xyz*tile; vec3 w=abs(surfN()); w=pow(w,vec3(4.0)); w/=max(w.x+w.y+w.z,1e-4);
+      return texture(img,fract(rot*q.zy)).r*w.x+texture(img,fract(rot*q.xz)).r*w.y+texture(img,fract(rot*q.xy)).r*w.z; } }
+  return texture(img,fract(rot*(surfQ(uv)*tile).xy)).r; }
+void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 g=vec3(0.5);
+  if(uZon.x>0.5){ g.r=zpic(uZ0,uv,uZT.x,uZR.x,uZTri.x); if(uZI.x>0.5)g.r=1.0-g.r; }
+  if(uZon.y>0.5){ g.g=zpic(uZ1,uv,uZT.y,uZR.y,uZTri.y); if(uZI.y>0.5)g.g=1.0-g.g; }
+  if(uZon.z>0.5){ g.b=zpic(uZ2,uv,uZT.z,uZR.z,uZTri.z); if(uZI.z>0.5)g.b=1.0-g.b; }
+  o=vec4(g,1.0); }`;
 /* generators: the Mask Builder presets, made from curvature, AO, direction and height with noise to break them up */
 const FS_MSGEN=MS_NOISE_GLSL+MS_SURF_GLSL+`
 uniform sampler2D uCurv; uniform int uHasCurv; uniform sampler2D uAO; uniform int uHasAO; uniform int uG; uniform float uAmt; uniform float uWidth; uniform float uBreak; uniform float uCon; uniform float uScale; uniform int uNeg; uniform float uDist;
@@ -134,6 +146,7 @@ uniform vec3 uWearShape; // edge strength, remaining distortion, distortion freq
 uniform vec4 uWearContact; // amount and contact direction
 uniform vec4 uScratch; uniform vec3 uPeel; uniform vec2 uPeelDirection; uniform int uPeelOutput; uniform vec2 uBubble;
 uniform sampler2D uSurfaceScan; uniform vec3 uSurfaceScanSettings;
+uniform sampler2D uZone; uniform vec4 uZS; /* (0.97.20) zone grunges: R edges, G cavities, B flat areas (made by FS_MSZONE), uZS = strengths + 'on' */
 uniform sampler2D uCTex; uniform int uHasC; uniform float uCTile; uniform float uCRot; /* (0.97.20) Contact wear's own grunge */
 uniform vec4 uBuilderInputs[7]; uniform int uBuilderMix; uniform vec2 uBuilderRange; uniform vec3 uBuilderDirection;
 uniform sampler2D uHeight; uniform sampler2D uThick; uniform sampler2D uWorldN; uniform sampler2D uPosition; uniform int uHasHeight; uniform int uHasThick; uniform int uHasWorldN; uniform int uHasPosition;
@@ -211,6 +224,9 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(),surfaceQ=su
   float dShift=0.0; if(uDist>0.0&&uG<19){ if(uHasPos==1) dShift=(fbm(q*0.45+vec3(3.1,0.0,1.7))-0.5)*uDist; else { vec2 dd=vec2(fbm(q*0.45+vec3(3.1,0.0,1.7)),fbm(q*0.45+vec3(0.0,7.7,4.2)))-0.5; uv+=dd*uDist*0.05; } }
   float rawCurv=curvOf(uv);
   float c=clamp(rawCurv+dShift*0.5,0.0,1.0),edge=clamp((c-0.5)*2.0,0.0,1.0),cav=clamp((0.5-c)*2.0,0.0,1.0),ao=clamp(aoOf(uv)+dShift*0.6,0.0,1.0),occ=1.0-ao,up=dot(N,vec3(0.0,1.0,0.0)),n=uHasG==1?grungeOf(uv):fbm(q),w=uWidth;
+  float zE=1.0,zC=1.0,zF=1.0;
+  if(uZS.w>0.5){ vec3 zg=texture(uZone,gl_FragCoord.xy/uSz).rgb; zE=mix(1.0,smoothstep(0.15,0.8,zg.r)*1.25,uZS.x); zC=mix(1.0,smoothstep(0.15,0.8,zg.g)*1.25,uZS.y); zF=mix(1.0,smoothstep(0.15,0.8,zg.b)*1.25,uZS.z);
+    edge=clamp(edge*zE,0.0,1.0); cav=clamp(cav*zC,0.0,1.0); occ=clamp(occ*zC,0.0,1.0); if(up>0.0) up*=zF; }
   float b=0.0;
   if(uG==19||uG==22){
     float cutoff=mix(0.55,0.045,uAmt)*mix(1.2,0.45,w);
@@ -431,7 +447,7 @@ const msAnchorNames=()=>{const out=[];for(const n of allNodes(doc.root))for(cons
 function msAnchorCurv(name,ctx,wrap){const A=msAnchor(name),H=A&&mapT(A,'height');if(!H||H.empty)return null;return withUVWrap(wrap,[H],()=>{const t=acquireD(8),b1=blurOf(H,3),b2=blurOf(H,9);
   run(P.f_curv,t,{uH:H.tex,uB1:b1.tex,uB2:b2.tex,uStr:1.5,uMode:{int:0}});release(b1);release(b2);ctx.tmp.push(t);return t;});}
 let P_MS=null;
-function msProgs(){if(!P_MS)P_MS={blend:program(FS_MSBLEND),src:program(FS_MSSRC),gen:program(FS_MSGEN),own:program(FS_MSOWN),curv:program(FS_MSCURV),anc:program(FS_MSANC)};return P_MS;}
+function msProgs(){if(!P_MS)P_MS={blend:program(FS_MSBLEND),src:program(FS_MSSRC),gen:program(FS_MSGEN),zone:program(FS_MSZONE),own:program(FS_MSOWN),curv:program(FS_MSCURV),anc:program(FS_MSANC)};return P_MS;}
 
 /* ---- what the rows read: mesh maps (baked, converted, or in 2D the document's maps) and the model's surface ---- */
 function msMeshTex(k){const M=doc.meshMaps||{};if(M[k])return M[k];if(k&&k.startsWith('cv:')&&M[k])return M[k];
@@ -583,6 +599,12 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
     const peelOwn=p.g==='peelingPaint'&&p.pgimg?msGrungeTex(p,'pgimg'):null;
     const scan=scanAmount>0&&(wear&&p.sgimg?ownScan:peelOwn||msSurfaceScanTex(scanId));
     const cTex=wear&&p.cgimg?msGrungeTex(p,'cgimg'):null;
+    /* zone grunges (edges, cavities, flat areas) */
+    const zk=[['egimg','e'],['vgimg','v'],['fgimg','f']],zt=zk.map(([k])=>p.builder?null:msGrungeTex(p,k)),zOn=zt.some(Boolean);
+    let zT=null;
+    if(zOn&&p.g!=='builder'){zT=acquireD(8);
+      run(P.zone,zT,Object.assign({uZ0:zt[0]?zt[0].tex:dummy,uZ1:zt[1]?zt[1].tex:dummy,uZ2:zt[2]?zt[2].tex:dummy,uZon:[zt[0]?1:0,zt[1]?1:0,zt[2]?1:0,0],
+        uZT:zk.map(([,c])=>p[c+'tile']||1).concat(1),uZR:zk.map(([,c])=>(p[c+'rot']||0)*Math.PI/180).concat(0),uZI:zk.map(([,c])=>p[c+'inv']?1:0).concat(0),uZTri:zk.map(([,c])=>p[c+'tri']?1:0).concat(0)},msPx(r,ctx)));}
     withUVWrap(p.uvWrap!==false,[curv,ac,ao,height,thick,wn,pos],()=>run(P.gen,o,Object.assign({uG:{int:Math.max(0,MS_GENS.findIndex(g=>g[0]===p.g))},uCurv:curv?curv.tex:dummy,uHasCurv:{int:edgeMap?2:curv?1:0},uCurv2:ac?ac.tex:dummy,uHasCurv2:{int:ac?1:0},uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},
       uCavityProtection:p.cavityProtection??.75,
       uWearShape:[Math.max(0,p.edgeStrength??1),wearDistort,wearScale],
@@ -591,13 +613,13 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
       uPeel:[p.crackWidth??-1,p.flakeLoss??0,p.edgeLift??0],
       uPeelDirection:[(p.direction??0)*Math.PI/180,p.stretch??0],
       uPeelOutput:{int:Math.max(0,MS_PEEL_OUTPUTS.findIndex(([key])=>key===p.peelOutput))},
-      uTri:[p.gtri?1:0,p.ctri?1:0,p.stri?1:0,p.ptri?1:0],uCTex:cTex?cTex.tex:dummy,uHasC:{int:cTex?1:0},uCTile:p.ctile||1,uCRot:(p.crot||0)*Math.PI/180,uSurfaceScan:scan?scan.tex:dummy,uSurfaceScanSettings:[scan?scanAmount:0,scanTile,scanAngle*Math.PI/180],
+      uZone:zT?zT.tex:dummy,uZS:[p.eamt??.7,p.vamt??.7,p.famt??.7,zT?1:0],uTri:[p.gtri?1:0,p.ctri?1:0,p.stri?1:0,p.ptri?1:0],uCTex:cTex?cTex.tex:dummy,uHasC:{int:cTex?1:0},uCTile:p.ctile||1,uCRot:(p.crot||0)*Math.PI/180,uSurfaceScan:scan?scan.tex:dummy,uSurfaceScanSettings:[scan?scanAmount:0,scanTile,scanAngle*Math.PI/180],
       uBubble:[p.sizeVariation??(p.clumping==null?-1:.82),p.clumping??.85],
       ...(p.g==='builder'?msBuilderU(p):{}),uHeight:height?height.tex:dummy,uThick:thick?thick.tex:dummy,uWorldN:wn?wn.tex:dummy,uPosition:pos?pos.tex:dummy,uHasHeight:{int:height?1:0},uHasThick:{int:thick?1:0},uHasWorldN:{int:wn?1:0},uHasPosition:{int:pos?1:0},
       uLight:[Math.sin((p.lightAz??-35)*Math.PI/180)*Math.cos((p.lightEl??45)*Math.PI/180),Math.sin((p.lightEl??45)*Math.PI/180),Math.cos((p.lightAz??-35)*Math.PI/180)*Math.cos((p.lightEl??45)*Math.PI/180),p.occlude??.25],
       uGrad:[p.gradFrom??0,p.gradTo??1,['linear','smooth','bands'].indexOf(p.gradStyle||'smooth'),p.bands??3],uAxis:MS_AXES[p.gradAxis||'up']||[0,1,0],uCenter:[p.centerX??.5,p.centerY??.5,p.centerZ??.5],
       uComic:[p.bands??3,p.dots??28,p.dotSize??.45,p.dotAngle??45],uComicMode:{int:['shade','shadow','dots'].indexOf(p.comicStyle||'shade')},
-      uAmt:p.amount,uWidth:p.width,uBreak:p.breakup,uCon:p.contrast,uDist:p.distort||0,uScale:p.scale||6,uSeed:p.seed||1,uNeg:{int:p.inv?1:0},...msGrungeU(p)},msPx(r,ctx))));return {t:o,pooled:true};}
+      uAmt:p.amount,uWidth:p.width,uBreak:p.breakup,uCon:p.contrast,uDist:p.distort||0,uScale:p.scale||6,uSeed:p.seed||1,uNeg:{int:p.inv?1:0},...msGrungeU(p)},msPx(r,ctx))));if(zT)release(zT);return {t:o,pooled:true};}
   return null;}
 const msSurfaceScans=new Map([...TX_PAINT_SCANS,...TX_METAL_SCANS,...TX_WEAR_SCANS].map(({slug,name})=>[slug,{kind:'photo',id:slug,name}]));
 function msSurfaceScanTex(slug){
