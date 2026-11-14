@@ -26,6 +26,16 @@ The **Detail** menu at the top gives the model more triangles, from Low up to ×
 
 ![Ray traced mode.](images/raytraced.png)
 
+## Comic Crosshatch
+
+In the **Shader** panel, choose **Comic Crosshatch** and switch the view to **Lit**. The ink follows the mesh and its painted normal detail. Deeper shadows get a second set of strokes. Highlights and reflections break up the ink. The **Outline** section controls silhouette width, opacity, colour and wobble. Turn off **Show outline** to hide it and keep its settings.
+
+**Hatch spacing**, **Ink strength**, **Shadow coverage**, and **Ink breakup** shape the strokes. Try **Field ink**, **Black & white**, or **Dry brush** to start. Under **Hatch texture**, choose **Crosshatch**, **Parallel**, or **Etched**. Drop in a seamless grayscale picture or choose one from the Textures shelf to use a custom pattern. Dark areas lay down ink. **Invert texture** swaps light and dark, and **Rotation** turns the pattern. The custom texture is saved in the project.
+
+Under **Motion**, **Ink motion** animates the linework and **Key light sweep** moves the light and its shadows. Set **Animation speed** to zero to hold the image still.
+
+The look is available in the main real-time viewport, screenshots, and turntables. Painted normal and material maps export through the usual texture exporter.
+
 ## Lighting (HDRIs)
 The model is lit by an **HDRI**, a 360° photo of real light, the way Substance Painter and Marmoset do it. Choose one in the **Shader** panel's **Environment** section (or **Settings › Lighting**). **Shift + right-drag** in the 3D view turns the lighting around the model, like Substance Painter (with 3D-Coat navigation: **Shift + Alt + right-drag**); with the simple sky it moves the sun.
 - **Studio**, **Photo studio**, **Cloudy sky**, **Venice sunset** and **Evening sky** come with the app.

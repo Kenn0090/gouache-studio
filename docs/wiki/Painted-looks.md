@@ -15,7 +15,11 @@ Our own version of the stylization filter in Substance Painter. On top are maste
 - **Edges and cavities:** edge colour, opacity and width, cavity colour, opacity and width, ambient occlusion, from the baked curvature and AO.
 - **Helpers:** show the strokes' relief, the normals the layer reads, or its AO / curvature / thin-parts map.
 
-Presets: Painterly, Smudges, Thick strokes, Soft paint, Sketchy, Comic. **Restore defaults** puts every setting back.
+Presets include Painterly, Arcane-inspired, Smudges, Thick strokes, Soft paint, Sketchy, and Comic. **Restore defaults** puts every setting back.
+
+### Arcane-inspired paint
+
+Choose **Layer › New › Arcane-inspired paint…** in Paint or 3D Paint. This opens an editable Stylize layer with broad and fine directional strokes, dry bristles, cooler shadows, and warmer lights. **Protect colour edges** limits bleed across painted shapes, while **Normal threshold** keeps strokes on the same surface. Set **Normal relief** and **Roughness variation** to control how the strokes catch the light. Add a Normal layer below it to steer individual facets by hand.
 
 ## Hand-painted material
 

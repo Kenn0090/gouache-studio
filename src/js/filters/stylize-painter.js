@@ -16,6 +16,7 @@ function paProgs(){if(P_PA)return P_PA;
 uniform float uCol; uniform float uHue; uniform float uSat; uniform float uVal; uniform float uCon; uniform float uPost;
 uniform float uGrad; uniform int uGMode; uniform vec3 uG1; uniform float uGO1; uniform int uGB1; uniform vec3 uG2; uniform float uGO2; uniform int uGB2; uniform vec3 uGDir; uniform int uGInv; uniform float uGOff; uniform float uGCon;
 uniform sampler2D uLM; uniform int uHasLM; uniform float uLit; uniform float uLitPart; uniform vec3 uL; uniform float uDI; uniform vec3 uDC; uniform float uDR; uniform float uDCon; uniform float uSI; uniform vec3 uSC; uniform float uSR; uniform float uSCon;
+uniform float uTones; uniform vec3 uShadeTone; uniform vec3 uLightTone;
 uniform float uEdg; uniform vec3 uEC; uniform float uEO; uniform float uEW; uniform vec3 uCC; uniform float uCO; uniform float uCW; uniform float uAOO;
 float lum(vec3 c){ return dot(c,vec3(0.299,0.587,0.114)); }
 vec3 ovl(vec3 a,vec3 b){ return mix(2.0*a*b,1.0-2.0*(1.0-a)*(1.0-b),step(0.5,a)); }
@@ -43,6 +44,15 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 s=texelFetch(uSrc,p,0); if(s.a
     /* edges and cavities: curvature (0.5 = flat) and AO */
     if(uEdg>0.0){ float cv=(M.g-0.5)*2.0; float e=smoothstep(mix(0.6,0.02,uEW),mix(0.95,0.3,uEW),cv), k=smoothstep(mix(0.6,0.02,uCW),mix(0.95,0.3,uCW),-cv);
       c=mix(c,blendM(2,c,uEC),e*uEO*uEdg); c=mix(c,c*uCC,k*uCO*uEdg); c=mix(c,c*M.r,(1.0-M.r)*uAOO*uEdg); }
+    if(uTones>0.0){
+      float key=lm>=0.0?lm:dot(N,uL)*0.5+0.5;
+      float value=lum(c);
+      float shape=mix(value,key,0.58);
+      float shade=1.0-smoothstep(0.17,0.60,shape);
+      float lit=smoothstep(0.44,0.92,shape);
+      c=mix(c,c*mix(vec3(1.0),uShadeTone*1.25,0.62),shade*uTones);
+      c=mix(c,c+(uLightTone-0.5)*(0.14+0.32*value),lit*uTones);
+    }
     c=light(c,N,uLit*uLitPart,lm);
   } else c=light(c,N,uLit*(1.0-uLitPart),lm);
   o=vec4(clamp(c,0.0,1.0)*s.a,s.a); }`;
@@ -51,7 +61,7 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 s=texelFetch(uSrc,p,0); if(s.a
      uMode 1: the relief of the stamps instead (for height, normal and stroke edges). */
   const stamp=GL_ST+`uniform sampler2D uA; uniform sampler2D uG; uniform sampler2D uN; uniform sampler2D uTip; uniform vec2 uTipS; uniform int uMode; uniform int uKind;
 uniform float uSize; uniform float uRand; uniform float uDens; uniform float uLen; uniform float uRot; uniform float uRotRand; uniform float uFollow; uniform float uHard; uniform float uNThr;
-uniform float uCVar; uniform float uDetail; uniform float uSeed; uniform int uWrap;
+uniform float uCVar; uniform float uDetail; uniform float uSeed; uniform float uEdgeKeep; uniform float uDry; uniform int uWrap;
 float h21(vec2 p){ p=fract(p*vec2(123.34,456.21)+uSeed*0.0137); p+=dot(p,p+45.32); return fract(p.x*p.y); }
 float lm(ivec2 q,ivec2 s){ vec4 c=texelFetch(uG,wrapP(q,s,uWrap),0); return dot(st(c),vec3(0.299,0.587,0.114)); }
 vec3 nAt(ivec2 q,ivec2 s){ return normalize(texelFetch(uN,wrapP(q,s,uWrap),0).rgb*2.0-1.0+1e-5); }
@@ -64,6 +74,11 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uG,0); vec4 c0=texelFe
     vec2 ctr=(cc+vec2(r1,r2))*cell; ivec2 cp=wrapP(ivec2(floor(ctr)),s,uWrap); vec4 gk=texelFetch(uG,cp,0); if(gk.a<0.5) continue;
     /* a stamp stays on the side of the model it started on (normal threshold) */
     if(uNThr>0.0&&dot(nAt(cp,s),N0)<mix(-1.0,0.98,uNThr)) continue;
+    float edgeKeep=1.0;
+    if(uEdgeKeep>0.0){
+      float dCol=length(st(gk)-st(g0));
+      edgeKeep=1.0-uEdgeKeep*smoothstep(0.12,0.38,dCol);
+    }
     float size=max(1.0,uSize*(1.0+(r3*2.0-1.0)*uRand)), ang=uRot+(r4*2.0-1.0)*uRotRand*3.1415927;
     if(uFollow>0.0){ int st2=max(1,int(size*0.35)); float gx=lm(cp+ivec2(st2,0),s)-lm(cp-ivec2(st2,0),s), gy=lm(cp+ivec2(0,st2),s)-lm(cp-ivec2(0,st2),s);
       if(abs(gx)+abs(gy)>1e-3){ float a2=atan(gx,-gy)+(r4*2.0-1.0)*uRotRand*3.1415927+uRot; float dd=mod(a2-ang+3.1415927,6.2831853)-3.1415927; ang+=dd*uFollow; } }
@@ -71,7 +86,13 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uG,0); vec4 c0=texelFe
     float cs=cos(ang),sn=sin(ang); vec2 l=vec2(cs*d.x+sn*d.y,-sn*d.x+cs*d.y);
     vec2 wh=uTipS.x>=uTipS.y?vec2(size,size*uTipS.y/uTipS.x):vec2(size*uTipS.x/uTipS.y,size); wh.x*=1.0+(uLen-1.0)*(0.6+0.4*r5);
     vec2 t=l/wh+0.5; if(t.x<0.0||t.y<0.0||t.x>1.0||t.y>1.0) continue;
-    float ta=texture(uTip,t).r; ta=mix(ta,smoothstep(0.35,0.65,ta),uHard); if(ta<0.02) continue;
+    float ta=texture(uTip,t).r; ta=mix(ta,smoothstep(0.35,0.65,ta),uHard)*edgeKeep;
+    if(uDry>0.0){
+      float grooves=sin(t.y*61.0+r1*17.0+sin(t.x*4.0+r3*6.28)*0.7);
+      float broken=smoothstep(-0.3,0.84,grooves)*(0.4+0.6*sin(t.x*5.4+r2*6.28)*sin(t.x*5.4+r2*6.28));
+      ta*=1.0-broken*uDry;
+    }
+    if(ta<0.02) continue;
     if(uMode==1){ rel=mix(rel,0.55+0.45*r7,ta); continue; }
     vec4 k=texelFetch(uA,cp,0); vec3 kc=st(k);
     if(uKind==0&&uCVar>0.0) kc=clamp(kc*(1.0+(r7-0.5)*uCVar*0.5)+(r5-0.5)*uCVar*0.08,0.0,1.0);
@@ -95,6 +116,7 @@ void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); vec4 c=texelF
 const PA_DEFAULTS={stylization:1,strokes:1,smooth:1,colorize:0,gradient:0,lighting:.3,edges:.4,seed:1,
   tipKey:'b:dab',sDens:2.2,sSize:30,sRand:.4,sLen:2.4,sFollow:.85,sRot:0,sRotRand:.2,sHard:.15,sDetail:.35,sNThr:.6,sCVar:.3,
   eH:.5,eN:.5,eE:.08,eR:.3,
+  edgeKeep:0,dry:0,fine:0,fineScale:.38,tones:0,shadeTone:[.42,.55,.75],lightTone:[1,.75,.49],
   smR:3,smC:.25,smH:.8,smN:.8,smRo:1,smM:1,
   hue:0,sat:1.1,val:1,con:1.05,post:0,
   gMode:1,g1:[1,.92,.8],gO1:.6,gB1:3,g2:[.35,.3,.5],gO2:.5,gB2:1,gH:0,gV:90,gInv:false,gOff:.5,gCon:.2,
@@ -102,6 +124,8 @@ const PA_DEFAULTS={stylization:1,strokes:1,smooth:1,colorize:0,gradient:0,lighti
   eC:[1,.95,.85],eO:.6,eW:.4,cC:[.35,.28,.3],cO:.6,cW:.4,aoO:.5,show:'result'};
 const PA_PRESETS={
   'Painterly':{},
+  'Arcane-inspired':{sSize:36,sLen:2.2,sDens:2.7,sRand:.46,sRotRand:.12,sFollow:.94,sDetail:.43,sNThr:.82,sCVar:.56,sHard:.4,edgeKeep:.93,dry:.5,fine:.52,fineScale:.36,
+    tones:.72,shadeTone:[.47,.53,.74],lightTone:[1,.78,.57],colorize:.46,post:7,con:1.16,sat:1.08,smC:.48,lighting:.25,dI:.44,dCon:.56,sI:.12,edges:.49,eE:.12,eH:.57,eN:.78,eR:.51},
   'Smudges':{tipKey:'b:sponge',sSize:28,sLen:1.2,sHard:.2,sCVar:.2,eE:.06,eH:.2,eN:.2,smC:.6},
   'Thick strokes':{sSize:48,sLen:2.2,sHard:.8,eH:1,eN:1,eE:.25,sCVar:.5},
   'Soft paint':{sSize:56,sLen:1.4,sHard:.1,eH:.2,eN:.2,eE:.04,smC:.5,lighting:.2,edges:.25},
@@ -111,22 +135,31 @@ const PA_PRESETS={
 /* the model's shape as three pictures, worked out once per layer: normal, AO/curvature/thinness, position */
 function paDrop(n){const f=n&&n._paF;if(f){for(const k of ['N','M','P','R','G'])if(f[k])disposeTarget(f[k]);n._paF=null;}}
 function paField(n,src,v,k){
-  const key=[typeof msDocVer==='number'?msDocVer:0,typeof msEpoch==='number'?msEpoch:0,n?n.lookVer||0:0,doc.w,doc.h,!!doc.wrap,
+  const key=[typeof msDocVer==='number'?msDocVer:0,typeof msEpoch==='number'?msEpoch:0,n?n.lookVer||0:0,doc.w,doc.h,!!doc.wrap,v.strokes>0||v.show==='strokes',
     Object.keys(doc.meshMaps||{}).join(','),typeof v3!=='undefined'&&v3.mesh?v3.mesh.name+':'+v3.mesh.idx.length:'',
-    ['tipKey','sDens','sSize','sRand','sLen','sFollow','sRot','sRotRand','sHard','sNThr','seed'].map(x=>v[x]).join(',')].join('|');
+    ['tipKey','sDens','sSize','sRand','sLen','sFollow','sRot','sRotRand','sHard','sNThr','edgeKeep','dry','fine','fineScale','seed'].map(x=>v[x]).join(',')].join('|');
   const f=n&&n._paF;if(f&&(f.key===key||stroke))return f;
   if(n)paDrop(n);
   let base=src,own=null;if(k!=='base'){own=typeof hpBelow==='function'?hpBelow(n,'base'):null;if(!own){own=acquireD(mapDepth('base'));clearTarget(own);}base=own;}
   const mk=()=>makeTarget(doc.w,doc.h,doc.depth,false),F={key,temp:!n,N:mk(),M:mk(),P:mk(),G:mk(),R:makeTarget(doc.w,doc.h,canFloat?16:doc.depth,false)};
   blit(base,F.G,0,0,doc.w,doc.h,0,0);
   for(const [t,m] of [[F.N,1],[F.M,2],[F.P,3]])hpPaint(base,t,Object.assign({},SG_SHAPE_V,{showN:m}),n);
-  run(paProgs().stamp,F.R,Object.assign(paStampU(v),{uA:F.G.tex,uG:F.G.tex,uN:F.N.tex,uMode:{int:1},uKind:{int:0}}));
-  /* the relief is softened a little, so a stroke's body shows and not every bristle line of the tip */
-  {const t=acquireD(F.R.depth);gaussian(F.R,t,Math.max(1,v.sSize*Math.max(doc.w,doc.h)/1024*.06));blit(t,F.R,0,0,doc.w,doc.h,0,0);release(t);}
+  if(v.strokes>0||v.show==='strokes'){
+    const PG=paProgs(),u={uA:F.G.tex,uG:F.G.tex,uN:F.N.tex,uMode:{int:1},uKind:{int:0}},t=acquireD(F.R.depth);
+    run(PG.stamp,F.R,{...paStampU(v),...u});
+    if(v.fine>0){
+      const fine=acquireD(F.R.depth);
+      run(PG.stamp,fine,{...paStampU(v,true),...u});
+      run(P.mix,t,{uA:F.R.tex,uB:fine.tex,uT:v.fine*.44,uM:dummy,uUseM:false});
+      blit(t,F.R,0,0,doc.w,doc.h,0,0);release(fine);
+    }
+    /* Soften the relief to keep the bristles from turning into noisy surface normals. */
+    gaussian(F.R,t,Math.max(1,v.sSize*Math.max(doc.w,doc.h)/1024*.06));blit(t,F.R,0,0,doc.w,doc.h,0,0);release(t);
+  }
   if(own)release(own);if(n)n._paF=F;return F;}
-function paStampU(v){const S=Math.max(doc.w,doc.h)/1024,tip=typeof dualTip==='function'?dualTip({tipKey:v.tipKey}):null,tt=tip&&tip.alpha?tip:TIPS.bristle;
-  return {uTip:tt.tex,uTipS:[tt.w,tt.h],uSize:v.sSize*S,uRand:v.sRand,uDens:v.sDens,uLen:v.sLen,uRot:v.sRot*Math.PI/180,uRotRand:v.sRotRand,uFollow:v.sFollow,uHard:v.sHard,uNThr:v.sNThr,
-    uCVar:v.sCVar,uDetail:v.sDetail??.35,uSeed:v.seed||1,uWrap:{int:doc.wrap?1:0}};}
+function paStampU(v,fine=false){const S=Math.max(doc.w,doc.h)/1024,tip=typeof dualTip==='function'?dualTip({tipKey:v.tipKey}):null,tt=tip&&tip.alpha?tip:TIPS.bristle;
+  return {uTip:tt.tex,uTipS:[tt.w,tt.h],uSize:v.sSize*S*(fine?v.fineScale:1),uRand:v.sRand,uDens:v.sDens,uLen:v.sLen,uRot:v.sRot*Math.PI/180,uRotRand:v.sRotRand,uFollow:v.sFollow,uHard:v.sHard,uNThr:v.sNThr,
+    uCVar:v.sCVar,uDetail:v.sDetail??.35,uEdgeKeep:v.edgeKeep||0,uDry:v.dry||0,uSeed:(v.seed||1)+(fine?201:0),uWrap:{int:doc.wrap?1:0}};}
 /* (0.79) a soft paint dab: an oval with a loaded edge and faint bristle marks along it, the default stroke tip */
 TIPS.dab=genTip('Paint dab',192,128,(x,w,h,R)=>{const g=x.createRadialGradient(w/2,h/2,0,w/2,h/2,w*.48);g.addColorStop(0,'rgba(255,255,255,.9)');g.addColorStop(.45,'rgba(255,255,255,.85)');g.addColorStop(1,'rgba(255,255,255,0)');
   x.save();x.translate(w/2,h/2);x.scale(1,h/w*.95);x.translate(-w/2,-w/2);x.fillStyle=g;x.beginPath();x.arc(w/2,w/2,w*.48,0,7);x.fill();x.restore();
@@ -135,7 +168,7 @@ const PA_KIND={base:0,rough:1,gloss:1,height:2,normal:3};
 const paLookU=(v,F,part)=>({uN:F.N.tex,uM:F.M.tex,uP:F.P.tex,uPart:{int:part},uCol:v.colorize,uHue:v.hue,uSat:v.sat,uVal:v.val,uCon:v.con,uPost:v.post,
   uGrad:v.gradient,uGMode:{int:v.gMode|0},uG1:v.g1,uGO1:v.gO1,uGB1:{int:v.gB1|0},uG2:v.g2,uGO2:v.gO2,uGB2:{int:v.gB2|0},uGDir:hpDir(v.gV,v.gH),uGInv:{int:v.gInv?1:0},uGOff:v.gOff,uGCon:v.gCon,
   uLM:hpLightMap(v)?hpLightMap(v).tex:dummy,uHasLM:{int:hpLightMap(v)?1:0},uLit:v.lighting,uLitPart:v.litPart,uL:hpDir(v.lV,v.lH),uDI:v.dI,uDC:v.dC,uDR:v.dR,uDCon:v.dCon,uSI:v.sI,uSC:v.sC,uSR:v.sR,uSCon:v.sCon,
-  uEdg:v.edges,uEC:v.eC,uEO:v.eO,uEW:v.eW,uCC:v.cC,uCO:v.cO,uCW:v.cW,uAOO:v.aoO});
+  uTones:v.tones,uShadeTone:v.shadeTone,uLightTone:v.lightTone,uEdg:v.edges,uEC:v.eC,uEO:v.eO,uEW:v.eW,uCC:v.cC,uCO:v.cO,uCW:v.cW,uAOO:v.aoO});
 
 fxDef('stylizeP',{title:'Stylize (Painter style)',heavy:true,onlyLayer:true,wide:true,
   note:'Repaints everything below in every map, like the stylization filter of Substance Painter: brush strokes, smoothness, colorize, a gradient, baked lighting and edges and cavities, from the mesh maps of the model.',
@@ -152,8 +185,15 @@ fxDef('stylizeP',{title:'Stylize (Painter style)',heavy:true,onlyLayer:true,wide
       if(kind===3){const o2=get();run(PG.nrm,o2,{uSrc:cur.tex});cur=o2;}}
     if(kind===0){const o=get();run(PG.look,o,Object.assign(paLookU(v,F,0),{uSrc:cur.tex}));cur=o;}
     /* brush strokes: the same stamps in every map */
-    if(v.strokes>0){const o=get();run(PG.stamp,o,Object.assign(paStampU(v),{uA:cur.tex,uG:F.G.tex,uN:F.N.tex,uMode:{int:0},uKind:{int:kind}}));
-      const o2=get();run(P.mix,o2,{uA:cur.tex,uB:o.tex,uT:Math.min(1,v.strokes),uM:dummy,uUseM:false});cur=o2;
+    if(v.strokes>0){
+      const original=cur,u={uA:cur.tex,uG:F.G.tex,uN:F.N.tex,uMode:{int:0},uKind:{int:kind}},o=get();
+      run(PG.stamp,o,{...paStampU(v),...u});
+      let painted=o;
+      if(v.fine>0){
+        const fine=get();run(PG.stamp,fine,{...paStampU(v,true),...u});
+        painted=get();run(P.mix,painted,{uA:o.tex,uB:fine.tex,uT:v.fine,uM:dummy,uUseM:false});
+      }
+      const o2=get();run(P.mix,o2,{uA:original.tex,uB:painted.tex,uT:Math.min(1,v.strokes),uM:dummy,uUseM:false});cur=o2;
       if(kind<=3){const o3=get();run(PG.fx,o3,{uSrc:cur.tex,uR:F.R.tex,uKind:{int:kind},uWrap:{int:doc.wrap?1:0},uEH:v.eH*v.strokes,uEN:v.eN*v.strokes,uEE:v.eE*v.strokes,uER:v.eR*v.strokes,uGl:{int:k==='gloss'?1:0}});cur=o3;}}
     if(kind===0&&v.lighting>0&&v.litPart<1){const o=get();run(PG.look,o,Object.assign(paLookU(v,F,1),{uSrc:cur.tex}));cur=o;}
     run(P.mix,dst,{uA:src.tex,uB:cur.tex,uT:Math.min(1,v.stylization),uM:dummy,uUseM:false});
@@ -174,11 +214,13 @@ function paControls(v,upd){for(const k in PA_DEFAULTS)if(v[k]===undefined)v[k]=J
     S('colorize','Colorize',0,1,.01,pct),S('gradient','Gradient',0,1,.01,pct),S('lighting','Baked lighting',0,1,.01,pct),S('edges','Edges and cavities',0,1,.01,pct),
     G('Brush strokes',false,tp.tipName,tp.tipHost,tp.importTip,S('sDens','Strokes amount',.3,3,.05),S('sSize','Strokes scale',4,200,1,px),S('sRand','Scale random',0,1,.01,pct),
       S('sLen','Stroke length (non-uniform size)',1,4,.05),S('sFollow','Strokes follow surface',0,1,.01,pct),S('sRot','Strokes rotation',-180,180,1,deg),S('sRotRand','Rotation random',0,1,.01,pct),
-      S('sHard','Projection hardness',0,1,.01,pct),S('sNThr','Normal threshold',0,1,.01,pct),S('sCVar','Colour per stroke',0,1,.01,pct),S('sDetail','Keep detail',0,1,.01,pct)),
+      S('sHard','Projection hardness',0,1,.01,pct),S('sNThr','Normal threshold',0,1,.01,pct),S('sCVar','Colour per stroke',0,1,.01,pct),S('sDetail','Keep detail',0,1,.01,pct),S('edgeKeep','Protect colour edges',0,1,.01,pct),
+      S('dry','Dry bristles',0,1,.01,pct),S('fine','Fine strokes',0,1,.01,pct),S('fineScale','Fine stroke size',.18,.8,.01,pct)),
     G('Brush strokes effects',false,S('eH','Height relief',0,2,.01,pct),S('eN','Normal relief',0,2,.01,pct),S('eE','Darker stroke edges',0,1,.01,pct),S('eR','Roughness variation',0,1,.01,pct)),
     G('Smoothness',false,S('smR','Radius',0,30,.5,px),S('smC','Colour',0,1,.01,pct),S('smH','Height',0,1,.01,pct),S('smN','Normal',0,1,.01,pct),
       S('smRo',doc.workflow==='spec'?'Glossiness':'Roughness',0,1,.01,pct),S('smM',doc.workflow==='spec'?'Specular':'Metallic',0,1,.01,pct)),
     G('Colorize',false,S('hue','Hue shift',-180,180,1,deg),S('sat','Saturation',0,2,.01,pct),S('val','Brightness',0,2,.01,pct),S('con','Contrast',0,2,.01,pct),S('post','Flat tones (0 = off)',0,12,1)),
+    G('Shadow and light tint',false,S('tones','Tint amount',0,1,.01,pct),C('shadeTone','Shadow tint'),C('lightTone','Light tint')),
     G('Gradient',false,SEL('gMode','Gradient mode',[[0,'1 colour'],[1,'2 colours']]),C('g1','Colour'),S('gO1','Colour opacity',0,1,.01,pct),SEL('gB1','Colour blending mode',blends),
       C('g2','Colour 2'),S('gO2','Colour 2 opacity',0,1,.01,pct),SEL('gB2','Colour 2 blending mode',blends),S('gH','Horizontal rotation',-180,180,1,deg),S('gV','Vertical rotation',-90,90,1,deg),
       K('gInv','Gradient invert'),S('gOff','Gradient offset',0,1,.01,pct),S('gCon','Gradient contrast',0,1,.01,pct)),
@@ -191,6 +233,6 @@ function paControls(v,upd){for(const k in PA_DEFAULTS)if(v[k]===undefined)v[k]=J
 
 /* Layer › New › Stylize layer (Painter style): on top of the stack */
 function cmdNewStylizePLayer(preset){if(ui.mode==='anim'){toast('Stylize layers are for paint mode.');return;}if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
-  const p=doc.root,i=p.children.length,L=newFxLayerObj('Stylize (Painter style)',[fxItem('stylizeP')],'all');
+  const p=doc.root,i=p.children.length,L=newFxLayerObj(preset==='Arcane-inspired'?'Arcane-inspired':'Stylize (Painter style)',[fxItem('stylizeP')],'all');
   if(preset&&PA_PRESETS[preset])Object.assign(L.fx.stack[0].v,JSON.parse(JSON.stringify(PA_PRESETS[preset])),{preset});
   insertNode(L,p,i);selectOnly(L);changedAll();fxEditor(L,{isNew:true,parent:p,index:i});}

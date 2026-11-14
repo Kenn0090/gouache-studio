@@ -34,7 +34,7 @@ uniform int uBackdrop; uniform int uFlipY; uniform int uHas; uniform vec2 uDef; 
 /* the HDRI (0.26): 6 levels from sharp to fully rough, and the diffuse light */
 uniform int uEnvOn; uniform float uEnvRot; uniform float uEnvI; uniform sampler2D uEnv0; uniform sampler2D uEnv1; uniform sampler2D uEnv2; uniform sampler2D uEnv3; uniform sampler2D uEnv4; uniform sampler2D uEnv5; uniform sampler2D uIrr; uniform int uTone;
 /* the texture set's shader: 0 standard, 1 skin, 2 anisotropic metal, 3 velvet, 4 toon, 5 cel, 6 spec/gloss view, 7 panner, 8 retro (N64 / PSX); its settings */
-uniform int uMetalView; uniform float uMetalRough;
+uniform int uMetalView; uniform float uMetalRough; uniform bool uWorldNormalView;
 uniform int uBevelMaterial; uniform float uBevelMetal; uniform float uBevelRough;
 uniform float uTime; uniform float uFurK; uniform vec4 uSkin; uniform vec4 uShE; uniform int uSh; uniform vec4 uShP; uniform vec4 uShQ; uniform vec3 uShC; uniform vec3 uShD;
 /* the Panner shader (0.40): each map slid by its own offset */
@@ -68,6 +68,51 @@ vec4 retroSample(sampler2D tex,vec2 uv,vec2 dx,vec2 dy){ vec2 sz=vec2(textureSiz
 float retroBayer(vec2 p){ ivec2 i=ivec2(mod(p,4.0)); int v=0; for(int k=0;k<2;k++){ int x=(i.x>>k)&1,y=(i.y>>k)&1; v|=(((x^y)<<1)|y)<<(2*(1-k)); } return (float(v)+0.5)/16.0; }
 float hsh(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
 float hsh3(vec3 p){ return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453); }
+// Each plane has two families of short, irregular strokes. Cross-fade between octave
+// scales so the ink stays legible as the model or camera changes size.
+float hatchStroke(vec2 p,float width,float breakup,float phase){
+  vec2 cell=floor(p+vec2(0.0,0.5)), f=fract(p+vec2(0.0,0.5));
+  float rn=hsh(vec2(cell.y,11.7));
+  float wave=sin(p.x*2.7+rn*6.28)*0.10+sin(p.x*5.0+p.y)*0.032+sin(p.x*1.9+rn*6.28+phase)*0.065*uShQ.z;
+  float dist=abs(f.y-0.5-wave*breakup);
+  float aa=clamp(fwidth(p.y)*0.54,0.02,0.25);
+  float line=1.0-smoothstep(max(0.0,width-aa),width+aa,dist);
+  float dry=smoothstep(0.06,0.42,hsh(cell*vec2(1.0,7.0)+floor(f.x*4.0)*0.23));
+  float ends=smoothstep(0.03,0.22,f.x)*(1.0-smoothstep(0.77,0.98,f.x));
+  return line*mix(1.0,0.34+0.66*ends*dry,breakup);
+}
+float hatchScale(vec2 p,float width,float breakup,float phase){
+  float fw=max(length(vec2(dFdx(p.y),dFdy(p.y))),0.00001);
+  float oct=log2(max(0.00001,1.0/(uShP.x*fw))),level=floor(oct);
+  vec2 q=p*exp2(level);
+  float blend=smoothstep(0.32,0.98,fract(oct));
+  return mix(hatchStroke(q,width,breakup,phase),hatchStroke(q*2.0,width,breakup,phase),blend);
+}
+float hatchImage(vec2 p,float dark,float phase){
+  float fw=max(max(length(dFdx(p)),length(dFdy(p))),0.00001);
+  float oct=log2(max(0.00001,1.0/(uShP.x*fw))),level=floor(oct);
+  vec2 q=p*exp2(level)*0.25;
+  q+=vec2(sin(q.y*6.1+phase),cos(q.x*4.3+phase))*uShP.w*uShQ.z*0.022;
+  vec4 stampA=texture(uThick,q),stampB=texture(uThick,q*2.0);
+  vec4 stamp=mix(stampA,stampB,smoothstep(0.32,0.98,fract(oct)));
+  float grey=dot(stamp.rgb,vec3(0.2126,0.7152,0.0722));
+  float value=uShE.z>0.5?grey:max(0.0,stamp.a-grey);
+  return value*smoothstep(0.015,0.82,dark);
+}
+float hatchPlane(vec2 p,float dark,float breakup,float phase){
+  float cs=cos(uSkin.x),sn=sin(uSkin.x);
+  p=mat2(cs,sn,-sn,cs)*p;
+  if(uShE.y>0.5)return hatchImage(p,dark,phase);
+  float first=smoothstep(0.02,0.55,dark),second=smoothstep(0.42,0.99,dark);
+  float a=hatchScale(vec2(p.x+p.y,p.x-p.y)*0.7071,0.055+first*0.115,breakup,phase);
+  if(uShE.w>0.5&&uShE.w<1.5)return a*first;
+  float b=hatchScale(vec2(p.x-p.y,p.x+p.y)*0.7071+vec2(1.8,0.43),0.04+second*0.102,breakup,phase+1.4);
+  if(uShE.w>1.5){
+    float fine=hatchScale(vec2(p.x+p.y,p.x-p.y)*1.4142+vec2(0.4,0.32),0.054,0.78,phase);
+    a=max(a*0.76,fine*0.56);b*=0.50;
+  }
+  return 1.0-(1.0-a*first)*(1.0-b*second*0.86);
+}
 vec4 mapSample(sampler2D tex,vec2 uv){vec2 dx,dy;mapGrad(uv,dx,dy);if(uSh==8)return retroSample(tex,uv,dx,dy);return textureGrad(tex,uv,dx,dy);}
 void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv=uUseUDIM==1?fract(vT):vT; vec2 dUx=dFdx(uv),dUy=dFdy(uv); vec4 b=mapSample(uBase,uv+uPB); float aOp=1.0; if((uHas&64)!=0) aOp=mapSample(uOpac,uv+uPO).r; float a=b.a*aOp;
   /* (0.97.15, Kenn) in 3D Paint the model always has a plain grey base material: where the layers (or a black mask) leave it see-through, that grey shows instead of the mesh vanishing; only an Opacity map cuts holes */
@@ -77,6 +122,7 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
   alb=lin(alb);
   vec3 Ng=normalize(vN),N=Ng; vec3 T=normalize(vTan.xyz-Ng*dot(Ng,vTan.xyz)), B=cross(Ng,T)*vTan.w;
   if((uHas&4)!=0){ vec3 n=mapSample(uNrm,uv+uPN).rgb*2.0-1.0; N=normalize(T*n.x+B*n.y+Ng*n.z); }
+  if(uWorldNormalView){ o=vec4(N*0.5+0.5,1.0); return; }
   /* which side faces the camera, from the surface itself (not the triangles' winding, which differs between models) */
   { vec3 Nf=normalize(cross(dFdx(vP),dFdy(vP))); if(dot(Nf,uCam-vP)<0.0) Nf=-Nf; if(dot(Ng,Nf)<0.0){ N=-N; Ng=-Ng; } }
   /* ---- Retro (N64 / PSX): the texture as a small grid, a plain light, banded if asked, fog, 15/16-bit colour with a dither ---- */
@@ -237,6 +283,29 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
     if(m==1){ o=vec4(pow(dcol,vec3(1.0/2.2)),1.0); return; } if(m==2){ o=vec4(pow(scol,vec3(1.0/2.2)),1.0); return; } if(m==3){ o=vec4(vec3(1.0-rough),1.0); return; }
     if(m==4){ col=envS*uSkyI*ao; col*=uExpo; col=tone(col); o=vec4(pow(clamp(col,0.0,1.0),vec3(1.0/2.2)),1.0); return; } }
   col+=(envD*ao+envS*specAO)*uSkyI;
+  if(uSh==18){
+    float grit=sin(dot(vP,vec3(97.1,83.7,53.3)))*sin(dot(vP,vec3(149.4,-63.1,79.8)));
+    float light=clamp((dot(N,L)*0.58+0.42)*mix(0.18,1.0,visibility),0.0,1.0);
+    float shadow=1.0-smoothstep(uShP.z-0.24,uShP.z+0.18,light+grit*uShP.w*0.13);
+    shadow=clamp(shadow+(1.0-ao)*0.28,0.0,1.0);
+    vec3 refl=envS*uSkyI*specAO+spec*NdL*uSunI*visibility;
+    float gleam=dot(refl,vec3(0.2126,0.7152,0.0722));
+    float gloss=smoothstep(mix(0.29,0.028,uShQ.y),mix(0.57,0.19,uShQ.y),gleam);
+    float highlight=smoothstep(1.0-uShQ.y*0.38,1.0,NdL+grit*uShP.w*0.028)*visibility*clamp(uSunI,0.0,1.0);
+    float lift=clamp(max(gloss,highlight*0.8)*uShQ.x,0.0,1.0);
+    vec3 w=pow(abs(Ng),vec3(8.0)); w/=max(dot(w,vec3(1.0)),0.0001);
+    float phase=uTime*uShQ.w*5.0;
+    float ink=hatchPlane(vP.zy,shadow,uShP.w,phase)*w.x+hatchPlane(vP.xz,shadow,uShP.w,phase)*w.y+hatchPlane(vP.xy,shadow,uShP.w,phase)*w.z;
+    // The lit shape and the actual specular reflection erode the ink independently of the outline.
+    float drift=uShQ.z*uShP.w;
+    float restless=sin(phase+dot(vP,vec3(14.2,11.3,17.6)));
+    ink*=mix(1.0,0.88+0.12*restless,drift);
+    vec3 paper=mix(col,alb*(0.72+light*0.54),0.5*(1.0-metal))*mix(vec3(1.0),mix(vec3(1.0),lin(uShC),0.64),shadow);
+    paper=mix(paper,max(paper,alb*1.3)+vec3(0.08),lift*0.74);
+    vec3 inkColour=lin(uShD);
+    if(uShE.x>0.5){paper=vec3(mix(0.31,0.91,1.0-shadow)+lift*0.1);inkColour=vec3(0.004);}
+    col=mix(paper,inkColour,clamp(ink*uShP.y*(1.0-lift),0.0,1.0));
+  }
   if((uHas&16)!=0) col+=lin(mapSample(uEmis,uv+uPE).rgb)*2.0;
   col*=uExpo; col=tone(col); o=vec4(pow(clamp(col,0.0,1.0),vec3(1.0/2.2)),1.0); }`;
 const FS_3DLINE=`uniform vec4 uCol; void main(){ o=uCol; }`;
@@ -331,7 +400,7 @@ function v3Refresh(){if(!v3.on)return;/* a stroke made in the new viewer window:
       if(keys.has('height')||keys.has('normal')){const t=normalComposite(false,null,r);v3MapTex('nfinal',t,r);release(t);}});
       v3.editDirty=false;v3.dirty=true;
     }else{v3.mapRegion=null;v3.mapsDirty=true;v3.lastFull=-Infinity;v3Refresh();}}
-  else if(v3.editDirty){const k=ui.mode==='anim'?'base':doc.map;if(v3Needed().includes(k))one(k);if((k==='height'||k==='normal')&&stroke&&((typeof p3ChannelView==='function'&&p3ChannelView()==='nfinal')||now-v3.lastFull>gap)){one('nfinal');}v3.editDirty=false;v3.dirty=true;if(['base','spec','gloss'].includes(k))v3SgDerive();}
+  else if(v3.editDirty){const k=ui.mode==='anim'?'base':doc.map;if(v3Needed().includes(k))one(k);if((k==='height'||k==='normal')&&stroke&&((typeof p3ChannelView==='function'&&p3ChannelView()==='nfinal')||stroke.o.worldNormal||now-v3.lastFull>gap)){one('nfinal');}v3.editDirty=false;v3.dirty=true;if(['base','spec','gloss'].includes(k))v3SgDerive();}
   v3.mapRegion=null;if(typeof pnTick==='function')pnTick(one,full);}
 /* Specular/Gloss documents shade the model with the equivalent base/metal/rough */
 function v3SgDerive(){if(doc.workflow!=='spec'||!v3.tex.base||ui.mode==='anim')return;const T=v3.tex,r=sgAsMR(T.base,doc.maps.includes('spec')?T.spec:null,doc.maps.includes('gloss')?T.gloss:null);
@@ -393,7 +462,7 @@ function v3Targets(w,h,lite){let F=v3.fbo;const S=lite?0:Math.min(qual('msaa'),g
   gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.RENDERBUFFER,F.rc);gl.bindFramebuffer(gl.FRAMEBUFFER,null);v3.fbo=F;v3.dirty=true;return F;}
 const BG3={dark:[.09,.1,.115],grey:[.32,.33,.35],light:[.78,.79,.81]};
 /* what both the 3D view and the lit UV view need to draw the model (0.40) */
-function v3Ctx(){const g=v3.gpu,s=v3s();
+function v3Ctx(time=pnNow()){const g=v3.gpu,s=v3s();
   /* 3D Paint's per-set list is made before drawing starts (it may create textures, which binds other framebuffers) */
   const pre=ui.mode==='p3d'&&typeof p3DrawList==='function'?p3DrawList():null;
   /* mask view (Alt+click a mask): the active layer's mask on the model, black and white, unlit */
@@ -403,27 +472,42 @@ function v3Ctx(){const g=v3.gpu,s=v3s();
   /* (0.51.32) Spec/Gloss: the diffuse colour stays the base, the Specular colour is the reflection colour (uSpec), and the roughness comes from the Glossiness */
   const bake=(ui.mode==='bake'||ui.mode==='convert')&&v3.btex,sg=!bake&&doc.workflow==='spec'&&v3.tex.sgRough&&ui.mode!=='anim'&&!v3Unlit();
   const T0=bake?v3.btex:sg?Object.assign({},v3.tex,{metal:null,rough:v3.tex.sgRough}):v3.tex;
-  const a=s.sunAz*Math.PI/180,e=s.sunEl*Math.PI/180;
+  const active=v3ShadeOf(doc);
+  // The key light belongs to the whole model, even when the selected set uses another shader.
+  const hatchSet=pre?.find(it=>it.sh?.kind==='hatch');
+  const sh=active.kind==='hatch'?active:(pre?.find(it=>it.sh?.kind==='hatch'&&shParams(it.sh).sweep>0)||hatchSet)?.sh;
+  const P=sh&&!bake&&!mv&&!s.worldNormalView&&!v3Unlit()?shParams(sh):null;
+  // A lit comic set needs a key light even under an HDRI preset with its extra sun off.
+  const keyLight=EU.uEnvOn?(s.envSun||(P?0.65:0)):s.sunI;
+  // Step the animated shadow map at 12 Hz and use the same light angle for every draw in the frame.
+  const sweep=P&&P.sweep>0&&P.speed>0?P.sweep*Math.sin(Math.floor(time*12)/12*P.speed*0.8):0;
+  const a=(s.sunAz+sweep)*Math.PI/180,e=s.sunEl*Math.PI/180;
   const eye=v3Eye();
-  return {g,s,pre,mv,channel,EU,bake,sg,T0,a,e,eye};}
+  return {g,s,pre,mv,channel,EU,bake,sg,T0,a,e,eye,time,keyLight};}
 function v3List(C){const {g,pre,mv,bake,T0}=C;
   /* one draw per texture set in 3D Paint (each with its own maps), else the whole model with the document's maps */
-  let list=!bake&&pre?pre:[{T:T0,start:0,count:g.count/3,sh:bake?null:v3ShadeOf(doc)}];
+  let list=!bake&&pre?pre:[{T:T0,start:0,count:g.count/3,sh:bake?null:v3ShadeOf(doc),projectAssets:doc.projectAssets}];
   if(mv){const R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():null;list=list.map(it=>C.channel?{...it,T:{base:it.T[C.channel]||p3ChannelDefault(C.channel)},sg:false,sh:null,thick:null,unlit:true}:!R||it.start===R.start?{...it,T:{base:mv},sg:false,sh:null,thick:null,unlit:true}:it);}
   if(bake&&typeof bakeHighHidesLow==='function'&&bakeHighHidesLow())list=[];
+  if(!bake&&!mv)for(const it of list){
+    const sh=it.sh||v3ShadeOf(doc);
+    if(sh.kind==='hatch')it.hatchTex=shHatchTexture(sh,it.projectAssets);
+  }
   /* unfolded: one draw per material, side by side (each has its own UV square) */
   if(bake&&bk.fold>0&&list.length===1&&v3.mesh&&v3.mesh.setRanges&&v3.mesh.setRanges.length>1){const it=list[0],n=v3.mesh.setRanges.length;list=v3.mesh.setRanges.map((r,k)=>Object.assign({},it,{start:r.start,count:r.count,off:(k-(n-1)/2)*2.6}));}
   return list;}
 /* the uniforms for one texture set's draw */
-function v3MeshU(C,common,it,flip,safeMip=null){const {s,bake,EU,eye,a,e}=C,sg=it.sg!==undefined?it.sg:C.sg,T=it.T||{},base=T.base,shk=bake?null:(it.sh||v3ShadeOf(doc)),isFur=!!shk&&shk.kind==='fur',useSafeMip=!!(safeMip&&!it.thick)&&!isFur;
+function v3MeshU(C,common,it,flip,safeMip=null){const {s,bake,EU,eye,a,e}=C,sg=it.sg!==undefined?it.sg:C.sg,T=it.T||{},base=T.base,shk=bake?null:(it.sh||v3ShadeOf(doc)),isFur=!!shk&&shk.kind==='fur',useSafeMip=!!(safeMip&&!it.thick&&!it.hatchTex)&&!isFur;
     const ok=k=>T[k]&&(bake||(sg&&(k==='rough'||k==='metal'))||(k==='nfinal'?doc.maps.includes('height')||doc.maps.includes('normal')||!!meshNormalBase():doc.maps.includes(k)));
     if(!bake&&!it.thick&&!it.sh&&doc.meshMaps&&doc.meshMaps.thick)it.thick=doc.meshMaps.thick;
     const mOK=ok('metal')&&!(sg&&ok('spec')),hm=(ok('rough')?1:0)|(mOK?2:0)|(ok('nfinal')?4:0)|(ok('ao')?8:0)|(ok('emis')?16:0)|(ok('opac')?64:0)|(it.thick?128:0)|(ok('spec')&&!mOK?256:0);
-    const U=Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uUseUDIM:!!it.udim,uUDIMTile:it.udim?[it.udim.u,it.udim.v]:[0,0],uUseSafeMip:useSafeMip,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:mOK?T.metal.tex:ok('spec')?T.spec.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,uThick:useSafeMip?safeMip.tex:it.thick?it.thick.tex:dummy,...EU,...shadeUniforms(bake?null:it.sh||v3ShadeOf(doc)),
-      uBackdrop:{int:ui.mode==='p3d'?1:0},uMorph:bake&&bk.fold>0?bk.fold:0,uMorphOff:[it.off||0,0,0],uStudioFill:s.studioFill||0,...lightViewUniforms(),uStudioRim:s.studioRim||0,uLightColor:s.lightColor||[1,1,1],uShadow:dummy,uShadowVP:{m4:m4()},uShadowOn:0,uShadowSoft:1,...common,uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:EU.uEnvOn?(s.envSun||0):s.sunI,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uMetalView:{int:s.metalView?1:0},uMetalRough:s.metalRough||.25,uBevelMaterial:{int:bevelPreviewOn()&&bvSettings().previewMaterial?1:0},uBevelMetal:bvSettings().previewMetal||0,uBevelRough:bvSettings().previewRough??.25,uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});
+    const U=Object.assign({},common,{uH:T.height&&s.disp?T.height.tex:dummy,uUseUDIM:!!it.udim,uUDIMTile:it.udim?[it.udim.u,it.udim.v]:[0,0],uUseSafeMip:useSafeMip,uBase:base.tex,uRough:ok('rough')?T.rough.tex:dummy,uMetal:mOK?T.metal.tex:ok('spec')?T.spec.tex:dummy,uNrm:ok('nfinal')?T.nfinal.tex:dummy,uAO:ok('ao')?T.ao.tex:dummy,uEmis:ok('emis')?T.emis.tex:dummy,uOpac:ok('opac')?T.opac.tex:dummy,uThick:useSafeMip?safeMip.tex:it.thick?it.thick.tex:dummy,...EU,...shadeUniforms(bake?null:it.sh||v3ShadeOf(doc),C.time),
+      uBackdrop:{int:ui.mode==='p3d'?1:0},uWorldNormalView:ui.mode==='p3d'&&!C.mv&&!!s.worldNormalView,uMorph:bake&&bk.fold>0?bk.fold:0,uMorphOff:[it.off||0,0,0],uStudioFill:s.studioFill||0,...lightViewUniforms(),uStudioRim:s.studioRim||0,uLightColor:s.lightColor||[1,1,1],uShadow:dummy,uShadowVP:{m4:m4()},uShadowOn:0,uShadowSoft:1,...common,uHas:{int:hm},uDef:[mapDefault('rough')[0],mapDefault('metal')[0]],uCam:eye,uSun:[Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)],uSunI:C.keyLight,uSkyI:s.skyI,uExpo:s.expo,uTone:{int:toneInt(s)},uMetalView:{int:s.metalView?1:0},uMetalRough:s.metalRough||.25,uBevelMaterial:{int:bevelPreviewOn()&&bvSettings().previewMaterial?1:0},uBevelMetal:bvSettings().previewMetal||0,uBevelRough:bvSettings().previewRough??.25,uUnlit:it.unlit?true:bake?!!v3.bunlit:v3Unlit(),uFlipY:!!flip,uClip:!it.unlit&&!!s.clip});
     /* (0.96.2) per-set pictures win over the shared ones: before, every set was displaced by the active set's height and lost its UDIM tile */
     if(!bake){U.uH=T.height&&s.disp?T.height.tex:dummy;U.uUseH=!!(T.height&&s.disp&&(T===v3.tex?doc.maps.includes('height'):true));U.uUseUDIM=!!it.udim;U.uUDIMTile=it.udim?[it.udim.u,it.udim.v]:[0,0];}
-    if(isFur)furUniforms(U,T,shk);return U;}
+    if(isFur)furUniforms(U,T,shk);
+    if(it.hatchTex){U.uThick=it.hatchTex;U.uShE[1]=1;U.uHas.int&=~128;}
+    return U;}
 /* (0.95.5, Kenn) wireframe colour with its own opacity (Preferences › Look and the viewport display settings) */
 const wireOpacity=()=>{const o=prefs.wireOp;return o==null?1:Math.max(0,Math.min(1,+o));};
 const wireColA=()=>[...(prefs.wireCol||[.95,.7,.35]),wireOpacity()];
@@ -431,7 +515,7 @@ function v3DrawWire(g,list,common){gl.bindVertexArray(g.evao);const op=wireOpaci
     for(const it of list){if(!it.count)continue;let r;if(it.start===0&&it.count*3===g.count)r={b:g.eb,count:g.ecount};else{const key=it.start+':'+it.count,cache=g.wireRanges||(g.wireRanges=new Map());r=cache.get(key);if(!r){const edges=meshEdges({idx:v3.mesh.idx.subarray(it.start*3,(it.start+it.count)*3)}),b=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,b);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,edges,gl.STATIC_DRAW);r={b,count:edges.length};cache.set(key,r);}}
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,r.b);useProg(P3.line,{...common,uCol:wireColA()});gl.drawElements(gl.LINES,r.count,gl.UNSIGNED_INT,0);}}
   finally{gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,g.eb);if(op){gl.disable(gl.BLEND);gl.depthMask(true);}}}
-function v3Render(F,flip){const g=v3.gpu;if(!g)return;gl.blendEquation(gl.FUNC_ADD);v3Work.scenes++;F.sceneFlip=!!flip;const C=v3Ctx(),{s,bake}=C,list=v3List(C),wireOnly=ui.mode==='p3d'&&s.wire&&s.wireOnly,SU=wireOnly?{}:studioShadowPrepare(C,list),BV=!wireOnly&&typeof bevelPreviewOn==='function'&&bevelPreviewOn()&&!(bk.fold>0)?bevelPreviewGPU(v3.mesh):null;
+function v3Render(F,flip){const g=v3.gpu;if(!g)return;gl.blendEquation(gl.FUNC_ADD);v3Work.scenes++;F.sceneFlip=!!flip;const C=v3Ctx(F.time),{s,bake}=C,list=v3List(C),wireOnly=ui.mode==='p3d'&&s.wire&&s.wireOnly,SU=wireOnly?{}:studioShadowPrepare(C,list),BV=!wireOnly&&typeof bevelPreviewOn==='function'&&bevelPreviewOn()&&!(bk.fold>0)?bevelPreviewGPU(v3.mesh):null;
   const activeRange=!bake&&ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():null,safeMip=activeRange&&typeof seamMipLimit==='function'?seamMipLimit(activeRange):null;
   gl.bindFramebuffer(gl.FRAMEBUFFER,F.ms);gl.viewport(0,0,F.w,F.h);const bg=BG3[s.bg]||BG3.dark,tr=!!(v3.transparent);gl.clearColor(bg[0],bg[1],bg[2],tr?0:1);gl.clearDepth(1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
@@ -453,7 +537,7 @@ function v3Render(F,flip){const g=v3.gpu;if(!g)return;gl.blendEquation(gl.FUNC_A
   v3DrawFur(furItems,g);
   if(!wireOnly)studioFloorDraw(C,VP,F,SU);
   v3DrawAlpha(alphaItems,C,common,flip,g);
-  if(!wireOnly&&!bake&&!mv&&!v3Unlit())v3DrawOutlines(list,common,F,flip);gl.bindVertexArray(g.vao);
+  if(!wireOnly&&!bake&&!mv&&!s.worldNormalView&&!v3Unlit())v3DrawOutlines(list,common,F,flip);gl.bindVertexArray(g.vao);
   /* the selection, tinted on the model (3D Paint, or while painting on the model) */
   if(F.overlays!==false&&!wireOnly&&!bake&&sel.active&&!sel.quick&&sel.t&&(ui.mode==='p3d'||v3.paintOn)){const R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:g.count/3};
     gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);useProg(P3.sel,Object.assign({},common,{uSel:sel.t.tex}));gl.bindVertexArray(g.vao);
@@ -524,7 +608,7 @@ function build3dPane(){const pane=v3.pop?v3.pop.box:$('#pane3d'),s=v3s();pane.re
   viewSel.onchange=()=>{if(viewSel.value)v3SnapView(viewSel.value);viewSel.value='';};
   const projBtn=el('button',{class:'btn sm',id:'v3Proj',text:s.ortho?'Orthographic':'Perspective',title:'Perspective looks natural; orthographic has no depth shrinking, good for lining things up (Numpad 5)','aria-pressed':String(!!s.ortho),onclick:()=>v3SetOrtho(!v3s().ortho)});
   const tog=(id,label,key,title)=>{const b=el('button',{class:'btn sm'+(s[key]?' on':''),id,text:label,title,'aria-pressed':String(!!s[key])});b.onclick=()=>{s[key]=!s[key];b.classList.toggle('on',s[key]);b.setAttribute('aria-pressed',String(s[key]));v3.dirty=true;requestRender();if(key==='wire'&&typeof maskBarSync==='function')maskBarSync();};return b;};
-  const shade=seg([['lit','Lit'],['unlit','Unlit'],['rt','Ray traced']],v3Unlit()?'unlit':v3.rt?'rt':'lit',x=>{if(ui.mode==='p3d'){if(x==='unlit'){p3SetChannelView('base');return;}if(x==='lit'){p3ShowLit();return;}p3SetChannelView(null);}if(x==='rt'&&s.wire)v3SetWireMode('shaded');s.unlit=x==='unlit';v3.rt=x==='rt';v3.mapsDirty=true;v3.dirty=true;requestRender(true);refresh3dUI();},'Shading');shade.id='v3Shade';
+  const shade=seg([['lit','Lit'],['unlit','Unlit'],['rt','Ray traced']],v3Unlit()?'unlit':v3.rt?'rt':s.worldNormalView?null:'lit',x=>{if(ui.mode==='p3d'){if(x==='unlit'){p3SetChannelView('base');return;}if(x==='lit'){p3ShowLit();return;}p3SetChannelView(null);}if(x==='rt'&&s.wire)v3SetWireMode('shaded');s.unlit=x==='unlit';v3.rt=x==='rt';v3.mapsDirty=true;v3.dirty=true;requestRender(true);refresh3dUI();},'Shading');shade.id='v3Shade';
   const gear=el('button',{class:'btn sm',text:'Settings',id:'v3Gear','aria-expanded':'false'});
   const materialB=el('button',{class:'btn sm',id:'v3Material',text:'Material',title:'Return to the lit material and turn off map and UV previews',onclick:v3ShowMaterial});
   const dock=el('button',{class:'btn sm',text:v3.pop?'Dock':'Pop out',id:'v3Pop',title:v3.pop?'Put the 3D view back beside the canvas':'Open the 3D view in its own window (for a second screen)'});dock.onclick=()=>pop3D(!v3.pop);

@@ -8,13 +8,14 @@ A **normal layer** is a layer you paint bumps, dents and tilts into. It holds on
 
 ## Paint it
 
-Pick the Brush. The Brush panel has a **Normal paint** section with three modes:
+Pick the Brush. The Brush panel has a **Normal paint** section with these modes.
 
 - **Raise** and **Dent** push the surface up or down where you paint. The brush shape is the profile: a soft brush makes hills, a textured tip makes a textured bump. **Strength** is how high or deep it goes (100% is the whole height range). Lower Opacity or Flow for gentler strokes.
 - **Direction** tilts the surface toward an **angle** (0° is right, 90° is up) by an amount of **Tilt**. The swatch shows the colour it paints into the Normal.
+- **World direction** in 3D Paint aims normals along a shared world-space direction. Set **Azimuth** and **Elevation**, or click **Aim at camera**. Paint on the model to carry the direction across UV seams. Brush opacity and pressure control the coverage. The stroke is stored in the usual tangent-space Normal channel for export.
 - **Bump (whole document)** sets how strongly height turns into normal detail everywhere.
 
-In Paint the lit normal is shown so you can see what you are doing. In 3D Paint you see it on the model.
+In Paint the lit normal is shown so you can see what you are doing. In 3D Paint, choose **Show world normals** to check the directions in colour. Press **M** to return to the lit material. Use a harder tip and full opacity to paint crisp facets, or a textured tip and reduced opacity for softer transitions.
 
 ## Other tools work on it too
 
