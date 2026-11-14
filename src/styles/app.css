@@ -1734,3 +1734,24 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .shsi{width:32px;height:28px;display:grid;place-items:center;border:0;border-radius:6px;background:transparent;color:var(--muted);padding:0;flex:none}
 .shsi:hover{background:var(--accent-soft);color:var(--text)}.shsi.on{background:color-mix(in srgb,var(--accent,#5b8cff) 30%,var(--panel));color:var(--text)}
 .shsi svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+/* (0.97.24) grunge slot, like Marmoset's: a square to drop on or click, with the name and buttons beside it */
+.gslot{display:grid;grid-template-columns:56px minmax(0,1fr);gap:8px;align-items:center;margin:2px 0}
+.gslot-pic{width:56px;height:56px;padding:0;border:1px dashed var(--line-2);border-radius:6px;background:var(--panel2,#1a1c20);display:grid;place-items:center;overflow:hidden;cursor:pointer;position:relative}
+.gslot-pic.has{border-style:solid}.gslot-pic img{width:100%;height:100%;object-fit:cover;display:block}
+.gslot-pic:hover,.gslot-pic.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--panel2,#1a1c20))}
+.gslot-ph{font-size:10px;color:var(--muted);text-align:center;padding:4px;line-height:1.2}
+.gslot-side{display:grid;gap:4px;min-width:0}.gslot-title{font-weight:600;font-size:12px}.gslot-name{color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gslot-btns{display:flex;gap:6px;flex-wrap:wrap}.gslot-chk{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}.gslot-chk input{margin:0}
+.gpop{position:fixed;z-index:9500;width:340px;max-width:calc(100vw - 16px);max-height:min(460px,calc(100vh - 16px));display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:8px;padding:10px;background:var(--panel);border:1px solid var(--line-2);border-radius:10px;box-shadow:0 18px 50px rgba(0,0,0,.55)}
+.gpop-h{display:flex;gap:6px}.gpop-q{flex:1;min-width:0}
+.gpop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;overflow:auto;min-height:0;padding-right:4px}
+.gpop-tile{display:grid;gap:3px;padding:3px;border:1px solid transparent;border-radius:6px;background:transparent;text-align:center;font-size:10px;min-width:0}
+.gpop-tile:hover,.gpop-tile:focus-visible{border-color:var(--accent);background:var(--accent-soft)}
+.gpop-tile img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;background:var(--panel2,#1a1c20)}.gpop-tile span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gpop-note{font-size:11px;color:var(--muted)}
+
+.gslot-sl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 12px;margin:2px 0 4px}
+.gslot-sl .srow{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"l o" "r r";row-gap:0}.gslot-sl .srow label{grid-area:l}.gslot-sl .srow output,.gslot-sl .srow .slider-value{grid-area:o}.gslot-sl .srow input[type=range]{grid-area:r;width:100%;min-width:0}
+.gslot-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gslot-btns .btn{padding:2px 8px}
+.gzones{margin:4px 0}.gzones>summary{cursor:pointer;font-weight:600;font-size:12px;padding:4px 0;color:var(--muted)}.gzones[open]>summary{color:var(--text)}.gzones>.gslot,.gzones>.msgrunge{padding-left:2px}

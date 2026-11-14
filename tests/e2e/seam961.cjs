@@ -46,7 +46,7 @@ const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAI
  /* drop a texture tile onto the Grunge box */
  await p.evaluate(()=>{const G=__gs,L=G.doc.active,r=L.mask.stack.find(x=>x.kind==='gen');G.ui.msSel={L,where:'m',id:r.id};G.ui.editMask=true;G.showPanel('matEd');G.renderMatEd(true);});await W(400);
  await p.evaluate(()=>__gs.showPanel('textures'));await W(600);
- const tile=p.locator('.txtile').first(),box=p.locator('#msGrungeDrop');await box.scrollIntoViewIfNeeded();await tile.scrollIntoViewIfNeeded();await W(200);
+ const tile=p.locator('.txtile').first(),box=p.locator('#msGrungeSlotDrop');await box.scrollIntoViewIfNeeded();await tile.scrollIntoViewIfNeeded();await W(200);
  const tb=await tile.boundingBox(),bb=await box.boundingBox();
  console.log('  target at box:',await p.evaluate(([x,y])=>{const T=__gs.libTarget(x,y,{kind:'tex'});return T?Object.keys(T).join(','):'none';},[bb.x+bb.width/2,bb.y+bb.height/2]),await p.evaluate(([x,y])=>{const e=document.elementFromPoint(x,y);return e&&(e.id+' '+e.className);},[bb.x+bb.width/2,bb.y+bb.height/2]));
  if(tb&&bb){await p.mouse.move(tb.x+tb.width/2,tb.y+tb.height/2);await p.mouse.down();await p.mouse.move(tb.x+40,tb.y+10,{steps:4});await p.mouse.move(bb.x+bb.width/2,bb.y+bb.height/2,{steps:8});await p.mouse.up();await W(600);}

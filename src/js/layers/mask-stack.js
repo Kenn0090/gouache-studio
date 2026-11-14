@@ -12,6 +12,7 @@ const msModeIx=m=>Math.max(0,MS_MODES.findIndex(x=>x[0]===m));
 const MS_GENS=[['edge','Edge wear'],['dirt','Dirt in cavities'],['dust','Dust on top'],['moss','Moss'],['rust','Rust streaks'],['water','Water line'],['slime','Slime'],['crud','Crud'],
   ['chips','Chipped paint'],['scratch','Scratches'],['snow','Snow on top'],['soot','Soot'],['drips','Drips and leaks'],['bleach','Sun-bleached'],['light','Light'],['linear','Linear gradient'],['radial','Radial gradient'],['comic','Comic shading'],['builder','Mask builder'],
   ['metalWear','Metal Edge Wear'],['peelingPaint','Peeling Paint'],['paintBubbles','Paint Bubbles'],['useWear','Use Wear']];
+const MS_SCRATCH_TYPES=[['fine','Fine scratches'],['curved','Curved'],['dirty','Dirty and broken'],['gouge','Deep gouges'],['hatch','Cross-hatch'],['swirl','Swirl (circular)'],['hair','Hairline']];
 const MS_WEAR_GENS=['metalWear','useWear'];
 const MS_PAINT_DAMAGE=['peelingPaint','paintBubbles'];
 const MS_PEEL_PRESETS=[
@@ -144,7 +145,7 @@ uniform sampler2D uGTex; uniform int uHasG; uniform float uGTile; uniform int uG
 uniform float uCavityProtection;
 uniform vec3 uWearShape; // edge strength, remaining distortion, distortion frequency
 uniform vec4 uWearContact; // amount and contact direction
-uniform vec4 uScratch; uniform vec3 uPeel; uniform vec2 uPeelDirection; uniform int uPeelOutput; uniform vec2 uBubble;
+uniform vec4 uScratch; uniform int uScratchT; uniform vec2 uScratchS; uniform vec3 uPeel; uniform vec2 uPeelDirection; uniform int uPeelOutput; uniform vec2 uBubble;
 uniform sampler2D uSurfaceScan; uniform vec3 uSurfaceScanSettings;
 uniform sampler2D uZone; uniform vec4 uZS; /* (0.97.20) zone grunges: R edges, G cavities, B flat areas (made by FS_MSZONE), uZS = strengths + 'on' */
 uniform sampler2D uCTex; uniform int uHasC; uniform float uCTile; uniform float uCRot; /* (0.97.20) Contact wear's own grunge */
@@ -191,8 +192,8 @@ vec2 rotateDamage(vec2 p,float angle){
   float c=cos(angle),s=sin(angle);
   return vec2(c*p.x+s*p.y,-s*p.x+c*p.y);
 }
-float scratchPlane(vec2 uv){
-  vec2 p=rotateDamage(uv,uScratch.z)*uScratch.y*vec2(0.52,2.3);
+/* (0.97.24, Kenn: more scratch types) uScratchT: 0 fine, 1 curved, 2 dirty (broken, uneven), 3 deep gouges, 4 cross-hatch, 5 swirl (circular brushing), 6 hairline */
+float scratchCell(vec2 p,int ty){
   vec2 cell=floor(p);
   float value=0.0;
   for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){
@@ -203,12 +204,23 @@ float scratchPlane(vec2 uv){
     vec2 centre=id+vec2(h3(key+7.4),h3(key+18.2));
     vec2 d=p-centre;
     d.y+=d.x*(h3(key+44.5)-0.5)*0.16;
-    float length0=mix(0.1,0.62,h3(key+23.4));
+    if(ty==1) d.y+=d.x*d.x*(h3(key+60.5)-0.5)*1.6;
+    float length0=mix(0.1,0.62,h3(key+23.4))*uScratchS.x*(ty==3?1.6:ty==6?1.4:1.0);
+    float thickness=mix(0.026,0.072,h3(key+91.6))*uScratchS.y*(ty==3?3.0:ty==6?0.4:1.0);
     float tip=1.0-smoothstep(length0*0.6,length0,abs(d.x));
-    float thickness=mix(0.026,0.072,h3(key+91.6));
-    value=max(value,tip*(1.0-smoothstep(thickness*0.16,thickness,abs(d.y)))*mix(0.45,1.0,h3(key+4.2)));
+    float broken=1.0;
+    if(ty==2){ float seg=h3(vec3(floor(d.x*16.0),id.x*7.0+id.y*13.0,3.3)); broken=step(0.28,seg)*mix(0.55,1.0,seg); thickness*=mix(0.7,1.9,seg); }
+    value=max(value,tip*broken*(1.0-smoothstep(thickness*0.16,thickness,abs(d.y)))*mix(0.45,1.0,h3(key+4.2)));
   }
   return value;
+}
+float scratchPlane(vec2 uv){
+  vec2 u=rotateDamage(uv,uScratch.z);int ty=uScratchT;
+  vec2 p=u*uScratch.y*vec2(0.52,2.3);
+  if(ty==5){ float r=length(u)*uScratch.y*0.9; float a=atan(u.y,u.x)*uScratch.y*0.9; p=vec2(a*0.58,r*2.3); }
+  float v=scratchCell(p,ty);
+  if(ty==4) v=max(v,scratchCell(u.yx*uScratch.y*vec2(0.52,2.3)+vec2(17.0,5.0),ty));
+  return v;
 }
 float scratchesOf(vec3 p,vec3 n){
   if(uWorld==0||uHasPos==0)return scratchPlane(p.xy);
@@ -609,7 +621,7 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
       uCavityProtection:p.cavityProtection??.75,
       uWearShape:[Math.max(0,p.edgeStrength??1),wearDistort,wearScale],
       uWearContact:[p.contactAmount??0,...(MS_AXES[p.contactAxis]||[0,0,0])],
-      uScratch:[p.scratchAmount??0,p.scratchScale??34,(p.scratchAngle??0)*Math.PI/180,p.scratchReach??.35],
+      uScratch:[p.scratchAmount??0,p.scratchScale??34,(p.scratchAngle??0)*Math.PI/180,p.scratchReach??.35],uScratchT:{int:Math.max(0,MS_SCRATCH_TYPES.findIndex(([k])=>k===(p.scratchType||'fine')))},uScratchS:[p.scratchLen??1,p.scratchThick??1],
       uPeel:[p.crackWidth??-1,p.flakeLoss??0,p.edgeLift??0],
       uPeelDirection:[(p.direction??0)*Math.PI/180,p.stretch??0],
       uPeelOutput:{int:Math.max(0,MS_PEEL_OUTPUTS.findIndex(([key])=>key===p.peelOutput))},

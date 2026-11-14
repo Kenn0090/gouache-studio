@@ -1,5 +1,8 @@
 ## 0.97.23
 
+- **Grunge slot like Marmoset's.** Every grunge input is now a small square: drop a picture or a Textures tile on it, or click it to open a little gallery of the program's grunges (with search and Browse files…). Name, Choose…, Clear and Tri-planar sit beside it, and Tiling / Rotation / Contrast / Level are two to a row. The three zone grunges (edges, cavities, flat) are folded into one **Grunge by zone** group that opens when you use one.
+- **More scratch types** for the wear generators: Fine, Curved, Dirty and broken, Deep gouges, Cross-hatch, Swirl (circular) and Hairline, with **Scratch length** and **Scratch thickness** sliders. Scratch frequency now goes up to 400 (and you can type a higher number).
+- **A stray "null" under Breakup** in the wear generators' settings is gone.
 - **Reset view button in the 3D view.** In the 3D bar (under **⋯** in 3D Paint) **Reset view** throws away everything the 3D view keeps for itself (its copies of the maps, the sky, its render targets, the model's buffers) and builds it again from your painting. Your painting is not touched. Use it if the model shows blocky or wrong shading.
 
 ## 0.97.22

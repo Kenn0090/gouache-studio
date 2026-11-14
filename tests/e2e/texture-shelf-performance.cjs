@@ -145,7 +145,7 @@ let failures=0;const ok=(v,m)=>{console.log((v?'PASS ':'FAIL ')+m);if(!v)failure
   const L=G.cmdNewFillLayer({name:'Metal',maps:{base:{c:[1,1,1]}}});
   G.msAdd(L,'gen',{p:G.msGenDefaults('metalWear')});
  });
- await p.click('#msGrungePick');
+ await p.click('#msGrungeSlotPick');
  await p.locator('.fxdpick').getByRole('button',{name:'Cracks from Paint',exact:true}).click();
  const picked=await p.evaluate(()=>__gs.doc.active.mask.stack.some(r=>r.p?.gimg?.name==='Cracks from Paint'));
  ok(picked,'a grunge saved from Paint stays available in the metal-wear generator after restart');

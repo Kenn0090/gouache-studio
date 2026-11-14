@@ -175,6 +175,7 @@
     "bake/bake-log",
     "ui/hover-preview",
     "ui/shelf-reveal",
+    "ui/grunge-slot",
     "bake/bake-light",
     "view3d/p3-bake",
     "files/model-watch",

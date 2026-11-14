@@ -26,7 +26,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(diff(m1,m2)>3,'Invert grunge changes it again ('+diff(m1,m2).toFixed(1)+')');
  /* the row editor shows the Grunge section */
  await p.evaluate(()=>{const A=__gs.doc.active;__gs.ui.msSel={L:A,where:'m',id:A.mask.stack.find(x=>x.kind==='gen').id};__gs.ui.editMask=true;__gs.showPanel('matEd');__gs.renderMatEd&&__gs.renderMatEd(true);});await W(400);
- ok(await p.evaluate(()=>!!document.getElementById('msGrungePick')&&!!document.getElementById('ms_gtile')),'Properties: Grunge section with Choose from Textures and tiling');
+ ok(await p.evaluate(()=>!!document.getElementById('msGrungeSlotPick')&&!!document.getElementById('ms_gtile')),'Properties: Grunge section with Choose from Textures and tiling');
  /* ---- Polygon fill with symmetry ---- */
  await p.click('#modeTabs [data-mode=p3d]');await W(1500);
  await p.evaluate(()=>{const G=__gs;G.v3s().model='plane';G.v3.mesh=null;G.v3.dirty=true;G.requestRender(true);Object.assign(G.v3.cam,{yaw:0,pitch:0});});await W(1200);
