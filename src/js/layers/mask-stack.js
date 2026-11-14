@@ -134,6 +134,7 @@ uniform vec3 uWearShape; // edge strength, remaining distortion, distortion freq
 uniform vec4 uWearContact; // amount and contact direction
 uniform vec4 uScratch; uniform vec3 uPeel; uniform vec2 uPeelDirection; uniform int uPeelOutput; uniform vec2 uBubble;
 uniform sampler2D uSurfaceScan; uniform vec3 uSurfaceScanSettings;
+uniform sampler2D uCTex; uniform int uHasC; uniform float uCTile; uniform float uCRot; /* (0.97.20) Contact wear's own grunge */
 uniform vec4 uBuilderInputs[7]; uniform int uBuilderMix; uniform vec2 uBuilderRange; uniform vec3 uBuilderDirection;
 uniform sampler2D uHeight; uniform sampler2D uThick; uniform sampler2D uWorldN; uniform sampler2D uPosition; uniform int uHasHeight; uniform int uHasThick; uniform int uHasWorldN; uniform int uHasPosition;
 float curvOf(vec2 uv){ float c=uHasCurv==0?0.5:texture(uCurv,uv).r; if(uHasCurv==2)c=0.5+c*0.5;
@@ -244,7 +245,7 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 P=surfP(uv),N=surfN(),surfaceQ=su
     }
     float contact=0.0;
     if(uG==22&&uWearContact.x>0.0){
-      float patches=fbm(q+vec3(9.2,24.5,12.6));
+      float patches=uHasC==1?msProjectedPicture(uCTex,surfQ(uv)*uCTile,uCRot):fbm(q+vec3(9.2,24.5,12.6));
       float coverage=smoothstep(0.78-uWearContact.x*0.45,0.97-uWearContact.x*0.39,patches);
       float facing=1.0;
       if(dot(uWearContact.yzw,uWearContact.yzw)>0.5&&(uHasPos==1||uHasBWN==1||uHasDocN==1))
@@ -570,7 +571,9 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
       :p.g==='peelingPaint'&&p.crackWidth!=null
         ?[p.peelScan,p.peelScanAmount??.65,p.peelScanTile??2,-(p.direction??0)]
         :[null,0,1,0];
-    const scan=scanAmount>0&&msSurfaceScanTex(scanId);
+    const ownScan=wear&&p.sgimg?msGrungeTex(p,'sgimg'):null;/* (0.97.20) any grunge as the scan */
+    const scan=scanAmount>0&&(wear&&p.sgimg?ownScan:msSurfaceScanTex(scanId));
+    const cTex=wear&&p.cgimg?msGrungeTex(p,'cgimg'):null;
     withUVWrap(p.uvWrap!==false,[curv,ac,ao,height,thick,wn,pos],()=>run(P.gen,o,Object.assign({uG:{int:Math.max(0,MS_GENS.findIndex(g=>g[0]===p.g))},uCurv:curv?curv.tex:dummy,uHasCurv:{int:edgeMap?2:curv?1:0},uCurv2:ac?ac.tex:dummy,uHasCurv2:{int:ac?1:0},uAO:ao?ao.tex:dummy,uHasAO:{int:ao?1:0},
       uCavityProtection:p.cavityProtection??.75,
       uWearShape:[Math.max(0,p.edgeStrength??1),wearDistort,wearScale],
@@ -579,7 +582,7 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
       uPeel:[p.crackWidth??-1,p.flakeLoss??0,p.edgeLift??0],
       uPeelDirection:[(p.direction??0)*Math.PI/180,p.stretch??0],
       uPeelOutput:{int:Math.max(0,MS_PEEL_OUTPUTS.findIndex(([key])=>key===p.peelOutput))},
-      uSurfaceScan:scan?scan.tex:dummy,uSurfaceScanSettings:[scan?scanAmount:0,scanTile,scanAngle*Math.PI/180],
+      uCTex:cTex?cTex.tex:dummy,uHasC:{int:cTex?1:0},uCTile:p.ctile||1,uCRot:(p.crot||0)*Math.PI/180,uSurfaceScan:scan?scan.tex:dummy,uSurfaceScanSettings:[scan?scanAmount:0,scanTile,scanAngle*Math.PI/180],
       uBubble:[p.sizeVariation??(p.clumping==null?-1:.82),p.clumping??.85],
       ...(p.g==='builder'?msBuilderU(p):{}),uHeight:height?height.tex:dummy,uThick:thick?thick.tex:dummy,uWorldN:wn?wn.tex:dummy,uPosition:pos?pos.tex:dummy,uHasHeight:{int:height?1:0},uHasThick:{int:thick?1:0},uHasWorldN:{int:wn?1:0},uHasPosition:{int:pos?1:0},
       uLight:[Math.sin((p.lightAz??-35)*Math.PI/180)*Math.cos((p.lightEl??45)*Math.PI/180),Math.sin((p.lightEl??45)*Math.PI/180),Math.cos((p.lightAz??-35)*Math.PI/180)*Math.cos((p.lightEl??45)*Math.PI/180),p.occlude??.25],
@@ -600,7 +603,7 @@ function msSurfaceScanTex(slug){
 }
 /* (0.95.7) the generator's own grunge picture: loaded from Textures (cached on the graphics card); the mask is worked out
    again once it has arrived */
-function msGrungeTex(p){const g=p&&p.gimg;if(!g||typeof txCacheGet!=='function')return null;txCachePin(g);const t=txCacheGet(g.kind+':'+g.id);if(t)return t;
+function msGrungeTex(p,key){const g=p&&p[key||'gimg'];if(!g||typeof txCacheGet!=='function')return null;txCachePin(g);const t=txCacheGet(g.kind+':'+g.id);if(t)return t;
   if(!g._busy){Object.defineProperty(g,'_busy',{value:true,writable:true,enumerable:false,configurable:true});
     txLoad().then(()=>{const it=fxdAllTex().find(x=>x.kind===g.kind&&x.id===g.id);return it&&txTarget(it);}).then(r=>{g._busy=false;if(r){msEpoch++;changedAll();}}).catch(()=>{g._busy=false;});}
   return null;}

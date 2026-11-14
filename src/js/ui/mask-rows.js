@@ -232,8 +232,9 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
           sel('ms_contactAxis','Contact faces',[['','All exposed faces'],['up','Top'],['down','Bottom'],
             ['x','Right (+X)'],['-x','Left (−X)'],['z','Front (+Z)'],['-z','Back (−Z)']],'contactAxis'));
         const scan=scanSelect('ms_metalScan',useWear?'Wear scan':'Metal scan','metalScan',[...TX_METAL_SCANS,...TX_WEAR_SCANS]);
-        box.append(scan);
-        if(scan.querySelector('select').value)box.append(
+        if(useWear)box.append(msZoneGrunge(p,ed,S,{key:'cgimg',title:'Contact wear grunge',id:'msCGrunge',tile:'ctile',rot:'crot',note:'Replaces the clouds that decide where the contact wear lands. Follows the row\u2019s projection (World = triplanar).'}));
+        box.append(scan,msZoneGrunge(p,ed,S,{key:'sgimg',title:'Scan influence grunge',id:'msSGrunge',tile:'metalScanTile',rot:'metalScanAngle',rotMax:180,note:'Any grunge or picture can be the scan: it overrides the scan chosen above.'}));
+        if(scan.querySelector('select').value||p.sgimg)box.append(
           S('ms_metalScanAmount','Scan influence','metalScanAmount',0,1,.01,pct,.65),
           S('ms_metalScanTile','Scan tiling','metalScanTile',.25,16,.25,v=>v+'×',2),
           S('ms_metalScanAngle','Scan rotation','metalScanAngle',-180,180,1,v=>Math.round(v)+'°'));
@@ -306,6 +307,18 @@ function cfxAddAnchor(L){if(!isLayer(L))return null;let row=null;const names=msA
 
 /* (0.95.7, Kenn: "generators should take your own grunge textures") the generator's breakup can be a texture: any Textures item
    (photo grunge, mixed, generated, your own) or a picture dropped here; Breakup sets how strongly it eats into the mask */
+/* (0.97.20, Kenn) a grunge for one zone of a generator (contact wear, scan influence): choose from Textures or drop a picture,
+   with tiling and turn; leave it empty for the built-in clouds / chosen scan */
+function msZoneGrunge(p,ed,S,o){const g=p[o.key],box=el('div',{class:'dlg-grid msgrunge',id:o.id});
+  const name=el('span',{class:'note',text:g?g.name:'Built-in'});name._hpv=()=>g?{tex:g,name:g.name}:null;
+  const set=v=>{ed(x=>{x.p[o.key]=v?{kind:v.kind,id:v.id,name:v.name}:null;});if(typeof renderMatEd==='function')renderMatEd(true);};
+  const drop=el('div',{class:'fxddrop',id:o.id+'Drop',tabindex:'0',title:'Drop a texture tile or a picture here'},el('b',{text:'Drop a grunge'}),el('small',{text:'a Textures tile or a picture, or click to browse'}));drop._texDrop=set;drop._hpv=name._hpv;
+  drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+  drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');const t0=e.dataTransfer.getData('text/gouache-texture');if(t0){try{set(JSON.parse(t0));return;}catch(er){}}fxdDropFiles(e.dataTransfer.files,set);});
+  drop.addEventListener('click',async()=>{const fs=await pickFiles('image/*',false,'Pictures',['png','jpg','jpeg','webp','tga','bmp','tif','tiff']);if(fs&&fs.length)fxdDropFiles(fs,set);});
+  box.append(el('div',{class:'sub',text:o.title}),drop,el('div',{class:'chips'},el('button',{class:'btn sm',id:o.id+'Pick',text:'Choose from Textures…',onclick:()=>fxdPickTexture(set)}),g?el('button',{class:'btn sm',id:o.id+'Clear',text:'Clear',onclick:()=>set(null)}):'',name));
+  if(g&&o.key==='cgimg')box.append(S(o.id+'_t','Grunge tiling',o.tile,.25,16,.05,v=>v.toFixed(2)+'\u00d7',1),S(o.id+'_r','Grunge rotation',o.rot,0,360,1,v=>Math.round(v)+'\u00b0',0));
+  box.append(el('p',{class:'note',text:o.note}));return box;}
 function msGrungeBox(r,p,ed,S){const box=el('div',{class:'dlg-grid msgrunge',id:'msGrunge'});
   const name=el('span',{class:'note',id:'msGrungeName',text:p.gimg?p.gimg.name:'Built-in noise'});
   name._hpv=()=>p.gimg?{tex:p.gimg,name:p.gimg.name}:null;/* (0.97.1) hover shows the chosen grunge */

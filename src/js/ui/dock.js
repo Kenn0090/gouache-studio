@@ -187,7 +187,14 @@ function dkShelfRender(){const L=dk.L,S=L.shelf;if(!dk.shelf){dk.shelf=el('aside
   bar.addEventListener('pointerdown',e=>{if(dk.lock||e.button!==0||(L.fold&&L.fold.shelf))return;e.preventDefault();const h0=S.h||170,y0=e.clientY;document.body.classList.add('stvresize');
     const mv=ev=>{S.h=Math.round(clamp(h0-(ev.clientY-y0),90,Math.max(90,window.innerHeight*.6)));dkGrid();if(typeof resizeGL==='function')resizeGL();};
     const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);document.body.classList.remove('stvresize');dkSave();if(typeof fit==='function')fit();};window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);});
-  dk.shelf.append(bar,dkGroup(S));}
+  /* (0.97.20, Kenn: icons like Painter's) a row of icons along the top of the 3D Paint shelf: one click per category */
+  let strip=null;
+  if(ui.mode==='p3d'){const av=dkAvail(S),act=av.includes(S.active)?S.active:av[0];
+    strip=el('div',{class:'shstrip',role:'toolbar','aria-label':'Shelf categories'},...av.filter(id=>PANELS[id].icon).map(id=>{
+      const b=el('button',{type:'button',class:'shsi'+(id===act?' on':''),title:PANELS[id].title,'aria-label':PANELS[id].title,'aria-pressed':String(id===act)});
+      const sv=document.createElementNS('http://www.w3.org/2000/svg','svg');sv.setAttribute('viewBox','0 0 24 24');sv.setAttribute('class','dkti');sv.setAttribute('aria-hidden','true');sv.innerHTML=PANELS[id].icon;b.append(sv);
+      b.addEventListener('click',()=>showPanel(id));return b;}));}
+  dk.shelf.append(bar,...(strip?[strip]:[]),dkGroup(S));}
 /* in 3D Paint, Colour, Material, Brushes, Materials and Tool settings sit in a column of their own beside the
    viewport (dock2). Its tabs drag like any other: out of it, or other tabs into it (remembered in gs.dock col2). */
 const DK_COL2=['color','matEd','shading','brushes','stencils','mats','textures','decals','envs','tool'];
