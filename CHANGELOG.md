@@ -1,3 +1,7 @@
+## 0.97.21
+
+- **Show in Explorer from the shelf.** Right-click a Material, Smart material, Smart mask, Texture, Alpha, Environment, Generator, Brush or Decal in the shelf and choose **Show in Explorer**. The item is saved as a file in the app's Exports folder (one folder per category) and shown there, ready to edit or share. In the browser version it is **Save a copy…** instead.
+
 ## 0.97.20
 
 - **Shelf icon row (3D Paint).** A row of icons along the top of the shelf switches between Brushes, Materials, Smart materials, Generators, Filters and the rest in one click.
