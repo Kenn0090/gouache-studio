@@ -1,3 +1,8 @@
+## 0.97.19
+
+- **Heat halo goes into the layer.** A weld painted on a paint layer now paints its heat halo into that same layer, under the bead, so there is no extra layer and one undo removes both.
+- **Smear, Smudge and Ctrl-smooth are lighter on the model.** Their dabs are spaced further apart and only the dab's own area is cleared each time, so painting with them lags much less.
+
 ## 0.97.18
 
 - **Filters and Layer Styles in the shelf.** Browse 60 filter previews rendered in Gouache. Drag a filter onto a layer or its mask, or between layers to create an editable filter layer. Drag a layer style onto a layer to open its settings.
