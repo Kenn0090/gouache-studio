@@ -9,7 +9,9 @@ async function makeZip(name,data){const nb=new TextEncoder().encode(name),comp=a
 let dlPromise=null;
 function downloadsCap(){if(!(window.claude&&typeof window.claude.use==='function'))return Promise.resolve(null);if(!dlPromise)dlPromise=window.claude.use('downloads').catch(()=>null);return dlPromise;}
 const VIEWER_OK=['png','jpg','jpeg','webp','gif','zip'];
+let deliverHook=null;/* (0.97.21) set by 'Show in Explorer': the export goes to a folder and is revealed instead of asking where */
 async function deliver(filename,blob){
+  if(deliverHook)return deliverHook(filename,blob);
   if(platform.isDesktop){
     try{const path=await platform.saveAs(filename,blob);if(!path)return {ok:false,msg:'Save cancelled.'};return {ok:true,name:fileNameOf(path),path,desktop:true};}
     catch(e){return {ok:false,msg:'The file could not be saved: '+(e.message||e)}}}
