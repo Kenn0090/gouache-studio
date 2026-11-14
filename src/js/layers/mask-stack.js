@@ -13,7 +13,7 @@ const MS_GENS=[['edge','Edge wear'],['dirt','Dirt in cavities'],['dust','Dust on
   ['chips','Chipped paint'],['scratch','Scratches'],['snow','Snow on top'],['soot','Soot'],['drips','Drips and leaks'],['bleach','Sun-bleached'],['light','Light'],['linear','Linear gradient'],['radial','Radial gradient'],['comic','Comic shading'],['builder','Mask builder'],
   ['metalWear','Metal Edge Wear'],['peelingPaint','Peeling Paint'],['paintBubbles','Paint Bubbles'],['useWear','Use Wear']];
 const MS_SCRATCH_TYPES=[['fine','Fine scratches'],['curved','Curved'],['dirty','Dirty and broken'],['gouge','Deep gouges'],['hatch','Cross-hatch'],['swirl','Swirl (circular)'],['hair','Hairline'],['scan','From a scan (best)']];
-const MS_WEAR_GENS=['metalWear','useWear'];
+const MS_WEAR_GENS=['metalWear','useWear','woodWear'];
 const MS_PAINT_DAMAGE=['peelingPaint','paintBubbles'];
 const MS_PEEL_PRESETS=[
   ['cracked','Cracked Coat',{amount:.47,width:.4,breakup:.12,contrast:1.6,scale:6,distort:.45,crackWidth:.24,flakeLoss:.16,edgeLift:.74,stretch:0,direction:0,peelScan:'peeling-wall-scan',peelScanAmount:.85,peelScanTile:1.5}],
@@ -611,6 +611,10 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
       if(curv)curv=msGrowEdgeMap(curv,ctx,wearGrow,edgeMap?0:.5,p.uvWrap!==false);
       if(ac)ac=msGrowEdgeMap(ac,ctx,wearGrow,.5,p.uvWrap!==false);
     }
+    if(p.g==='woodWear'){
+      msWoodRender(r,ctx,o,{curv,edgeMap,ao,anchor:ac,distort:wearDistort});
+      return {t:o,pooled:true};
+    }
     const height=p.g==='builder'&&p.heightWeight&&(msMeshTex('height')||msMeshTex('cv:height')||msDocMap('height',ctx));
     const thick=p.g==='builder'&&msMeshTex('thick'),wn=p.g==='builder'&&msMeshTex('wnormal'),pos=p.g==='builder'&&msMeshTex('position');
     const [scanId,scanAmount,scanTile,scanAngle]=wear
@@ -779,6 +783,7 @@ function msCommit(){clearTimeout(msEd.timer);msEd.timer=0;const L=msEd.L,b=msEd.
 
 function msGenDefaults(g){
   const base={...MS_KINDS.gen.p(),g};
+  if(g==='woodWear')return {...base,...msWoodDefaults()};
   if(msWeatherKind(g))return {...base,...msWeatherDefaults(g)};
   if(g==='metalWear')return {...base,amount:.65,width:.55,breakup:.28,contrast:2,cavityProtection:.75,distort:.3,edgeStrength:1.25,edgeGrow:0,edgeDistortScale:9,
     scratchAmount:.24,scratchScale:34,scratchAngle:18,scratchReach:.36,

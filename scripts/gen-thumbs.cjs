@@ -5,13 +5,13 @@ const {chromium}=require('playwright'),fs=require('fs'),path=require('path');
 const repo=path.resolve(__dirname,'..'),OUT=path.join(repo,'assets/gen-thumbs'),SIZE=256;
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 (async()=>{fs.mkdirSync(OUT,{recursive:true});
- const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const b=await chromium.launch({channel:process.env.GOUACHE_TEST_BROWSER||(process.platform==='win32'?'msedge':undefined),args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const p=await b.newPage({viewport:{width:1200,height:900}});
  await p.addInitScript(()=>{try{localStorage.setItem('gs.p3d',JSON.stringify({size:512,layout:'3d'}));localStorage.setItem('gs.welcome','no');}catch(e){}});
  await p.route('**/*',r=>{const u=r.request().url();const m=u.match(/materials\/([a-z0-9-]+\.gmat)$/);if(m)return r.fulfill({path:path.join(repo,'assets/materials',m[1]),contentType:'application/octet-stream'});
   if(u.startsWith('file:'))return r.continue();return r.abort();});
  const errs=[];p.on('pageerror',e=>errs.push(e.message));
- await p.goto('file://'+path.join(repo,'dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ await p.goto(require('node:url').pathToFileURL(path.join(repo,'dist-web/index.html')).href+'?debug');await p.waitForTimeout(2500);
  await p.click('#modeTabs [data-mode=p3d]');await p.waitForTimeout(1500);
  await p.evaluate(async()=>{const G=__gs;await G.studioPreviewLoad();G.v3s().model='matpreview';});await p.waitForTimeout(800);
  await p.evaluate(async()=>{const G=__gs;await G.studioPreviewMaps();const L=G.layerByName('Preview mesh material');if(L){G.selectOnly(L);G.cmdDelete();}
@@ -33,6 +33,7 @@ const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
  /* settings that make the weak ones readable on this model (its baked maps are subtle); the tiles show what the generator makes, not the defaults */
  const OV={water:{amount:.9,width:.8,contrast:2.2},soot:{amount:.95,width:.9,contrast:2.4},drips:{amount:.95,width:.8,contrast:2.4},rustRunoff:{amount:.95,spread:.6,contrast:2.2},mineralBuildup:{preset:'crust',source:'geometry',amount:.95,spread:.7,contrast:2.2},builder:{amount:.9,width:.7,edgeWeight:1,cavityWeight:.8,aoWeight:.6,contrast:2},edge:{amount:.8}};
  const OVM={curv:{bal:0,con:.9}};
+ Object.assign(OV,{woodWear:{woodStyle:'splintered',amount:.88,width:.72,edgeGrow:.62,woodGrain:.85,woodSplinters:.92}});
  /* a light material masked over a dark one, shown in mask view: the generator reads as black and white on the model */
  await p.evaluate(()=>{const G=__gs,base=G.layerByName('Base material');if(base){G.selectOnly(base);}
    G.cmdNewFillLayer({name:'Under',maps:{base:{on:true,c:[.16,.17,.19]},rough:{on:true,v:.55},metal:{on:true,v:0}}});
