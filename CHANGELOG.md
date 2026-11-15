@@ -1,3 +1,7 @@
+## 0.97.28
+
+- **Curvature detail everywhere curvature is made or used:** the **Big shapes / Medium shapes / Small details** sliders are now also in the **Mask Builder** (right under its curvature inputs), the **Bake mesh maps** window in 3D Paint (also when curvature comes from a normal map), the **Convert** tab's curvature, and the **Curvature from normal** converter.
+
 ## 0.97.27
 
 - **Normal mixing, Ambient occlusion mixing and UV padding** in Texture Set Settings, like Painter. Normal mixing **Combine** blends each layer's normal detail with the detail below it; **Replace** covers it (as before). AO mixing **Multiply** darkens with every layer's occlusion. UV padding sets how far colour grows past the UV islands' edges in exported textures.

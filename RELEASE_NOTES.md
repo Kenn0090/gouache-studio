@@ -1,3 +1,7 @@
+## Gouache Studio 0.97.28
+
+- Curvature detail (Big / Medium / Small) also in the Mask Builder, the Bake mesh maps window, the Convert tab and the Curvature from normal converter.
+
 ## Gouache Studio 0.97.27
 
 - Normal mixing (Combine / Replace), AO mixing and UV padding in Texture Set Settings.

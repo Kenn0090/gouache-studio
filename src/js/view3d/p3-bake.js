@@ -28,6 +28,7 @@ function dlgP3Bake(){if(ui.mode!=='p3d')return;if(bk.busy){toast('Wait for the b
     el('div',{class:'sub',text:'Texture sets'}),
     sets.length>1?el('div',{class:'chips'},...sets.map((n,i)=>chk('p3bkSet'+i,n,p3bk.sets[n]!==false,v=>{p3bk.sets[n]=v;}))):el('p',{class:'note',text:'The model has one texture set.'}),
     ...p3FromNBox(),
+    ...(typeof curvBandsSliders==='function'?[el('div',{class:'sub',text:'Curvature detail'}),...curvBandsSliders(()=>C.curvBands,(k,v)=>{C.curvBands=Object.assign({},C.curvBands||{},{[k]:v});},'p3bkCb_')]:[]),
     bevelSection(draw,'p3bk'),
     el('div',{class:'sub',text:'Quality'}),seg([[32,'Draft'],[64,'Normal'],[128,'High']],C.rays>=128?128:C.rays<=32?32:64,v=>{C.rays=+v;},'Ray count'),
     chk('p3bkLayers','Also add other baked maps as layers',!!C.p3Layers,v=>{C.p3Layers=v;}),
@@ -51,8 +52,8 @@ function p3FromNBox(){if(!p3HasNormalMap())return [];if(!p3bk.fromN)p3bk.fromN={
 /* make the maps from the live set's normal map */
 function p3DeriveFromNormal(ks){const n0=doc.meshMaps&&doc.meshMaps.normal;if(!n0)return 0;const dx=!!(p3bk.fromN&&p3bk.fromN.dx),W=doc.w,H=doc.h,C=bakeCfg;
   const src=makeTarget(W,H,8,false);copyScaled(n0,src);let made=0;
-  try{if(ks.includes('curv')){const raw=makeTarget(W,H,16,false),b=acquireD(src.depth),rad=Math.max(1,C.curvRadius||3);gaussian(src,b,Math.max(.8,rad*.35));
-      run(P.f_ncurv,raw,{uN:b.tex,uWrap:!!doc.wrap,uStr:1.2*(C.curvStr||1),uMode:{int:0},uStep:rad,uFlipG:dx});release(b);
+  try{if(ks.includes('curv')){let raw=makeTarget(W,H,16,false);const b=acquireD(src.depth),rad=Math.max(1,C.curvRadius||3);gaussian(src,b,Math.max(.8,rad*.35));
+      run(P.f_ncurv,raw,{uN:b.tex,uWrap:!!doc.wrap,uStr:1.2*(C.curvStr||1),uMode:{int:0},uStep:rad,uFlipG:dx});release(b);if(typeof cbBake==='function')raw=cbBake(raw);/* curvature detail */
       if(!bkCurvP)bkCurvP=program(FS_BKCURV);const out=m=>{const t=makeTarget(W,H,8,false);run(bkCurvP,t,{uSrc:raw.tex,uEdges:C.curvEdges==null?1:C.curvEdges,uCreases:C.curvCreases==null?1:C.curvCreases,uMode:{int:m},uStr:1});setWrap(t,true);return t;};
       p3MapSet('curv',out(0),'Curvature from the normal map');p3MapSet('curvEdge',out(1),'Edges from the normal map');p3MapSet('curvCrease',out(2),'Creases from the normal map');disposeTarget(raw);made++;}
     if(ks.includes('ao')){const v={r:16,str:1,dx},t=makeTarget(W,H,8,false);CONVERTERS.aoFromNormal.make(src,t,v);CONVERTERS.aoFromNormal.cleanup(v);setWrap(t,true);p3MapSet('ao',t,'AO from the normal map');made++;}
