@@ -8,6 +8,7 @@
 - **Alignment in each brush's settings** (3D Paint): an "On the model" choice at the top of the brush settings, saved with the brush, so a brush that needs Tangent | Wrap or Camera switches to it when you pick it.
 - **The stroke preview stays pinned** while you scroll the brush settings, on every window size.
 - **The material editor** shows only the channels the material has switched on (the buttons above turn the others on), follows the Shader's **Reflectivity** (Specular colour instead of Metallic), and **Recolour** now sits with Tint & adjust. **Alt+click** a channel button (on a material or the brush) keeps only that one on; Alt+click it again brings the others back. Removing a channel in Texture Set Settings updates the material editor at once.
+- **Heal and clone on the model copy from what you see**, not from the flat texture shifted: near seams and open borders (a neck, a sleeve) they no longer pull in colour from unrelated UV pieces. Alt+click a source on the model and turn the camera freely before painting; spot healing picks a clean spot beside the stroke on the model by itself.
 - **Drag a picture from the Projects shelf** onto a channel card in the material editor.
 - **Zoom** has no hard limit any more: right up to a pore or far out, without the model being cut off.
 - **The export window** says plainly that sets with UV tiles are written one file per tile (Name_BaseColor.1001.png…).

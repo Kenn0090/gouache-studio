@@ -244,6 +244,7 @@
     "ui/shelf",
     "ui/texset-settings",
     "view3d/viewport-panels",
+    "view3d/heal-screen",
     "ui/effect-shelf",
     "ui/gen-shelf",
     "ui/history",
