@@ -69,7 +69,7 @@ async function p3DeriveSets(ks,which){loadStart('Mesh maps from the normal map')
 async function p3Bake(ks,size,which){p3bk.lastArgs={ks:ks.slice(),size,which:which&&which.slice()};const C=bakeCfg,model0=bakeViewModel(),
     /* (0.95) UDIM: bake the model with its tiles' canvas UVs, at a size that keeps each tile's pixels */
     ua=!!(p3.ua&&model0&&!model0.udimAtlas&&model0===v3.imported),model=ua?udimAtlasMesh(model0):model0,names=bkMats(model);
-  if(ua){let n=1;for(const w of which||[]){const S=p3.sets.find(S=>S.name===w),B=S&&udimBox(p3Binding(S));if(B)n=Math.max(n,B.nx,B.ny);}size=Math.min(8192,size*n);}
+  if(ua){let n=1;for(const w of which||[]){const S=p3.sets.find(S=>S.name===w),B=S&&udimBox(p3Binding(S));if(B)n=Math.max(n,B.lay?Math.max(...udimDims(p3Binding(S),size))/size:Math.max(B.nx,B.ny));}size=Math.min(8192,Math.round(size*n));}
   const keep={high:C.high,cage:C.cage,size:C.size};if(!p3bk.useHigh)C.high=null;if(C.cage&&C.low!==model)C.cage=null;
   /* the Bake tab's fixes are painted for its own model and size */
   if(C.low!==model||(C.size||0)!==size){for(const k of ['skew','offset'])if(bk.maps[k]){disposeTarget(bk.maps[k]);bk.maps[k]=null;}}

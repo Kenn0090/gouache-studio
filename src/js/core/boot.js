@@ -94,3 +94,4 @@ if(window.__gs)Object.assign(window.__gs,{dlgP3Bake,cvS,CONVERTERS});
 if(window.__gs)Object.assign(window.__gs,{buildConvertPanel});
 if(window.__gs)Object.assign(window.__gs,{nav,navSync});
 if(window.__gs)Object.assign(window.__gs,{mcMake,ensureMapTarget,setDocMaps});
+if(window.__gs)Object.assign(window.__gs,{udimBox,udimSetTileSize,udimGU,udimLay,udimPack,udimTileRect,udimGridRect,p3PaintMeshKey});

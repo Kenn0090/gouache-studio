@@ -11,11 +11,14 @@ const udimPattern=n=>String(n||'').replace(UDIM_RX,(a,b)=>b+'<UDIM>');
 /* the active set's tile box when it has more than one tile */
 function udimImgBox(){if(typeof udimOn!=='function'||!udimOn()||!p3.sets[p3.cur])return null;const B=udimBox(p3Binding(p3.sets[p3.cur]));return B&&B.tiles.length>1?{B,name:p3Binding(p3.sets[p3.cur])}:null;}
 /* pictures → one canvas picture: tile pictures in their tiles, or one picture in every tile */
-async function udimAtlasFrom(files,box){const W=doc.w,H=doc.h,out=makeTarget(W,H,8,false);clearTarget(out,[0,0,0,0]);const byId=new Map();
+/* (0.97.30) material pictures stay in the plain grid of tiles (the material reads them per tile); mesh maps (packed) follow the
+   canvas, where tiles of different sizes are packed */
+async function udimAtlasFrom(files,box,packed){const grid=!packed&&box.B.lay,gt=grid?Math.max(64,Math.min(Math.max(...box.B.tiles.map(T=>udimNominal(box.name,T))),Math.floor(udimLim()/Math.max(box.B.nx,box.B.ny)))):0,
+  W=grid?gt*box.B.nx:doc.w,H=grid?gt*box.B.ny:doc.h,out=makeTarget(W,H,8,false);clearTarget(out,[0,0,0,0]);const byId=new Map();
   for(const f of files){const id=udimNameId(f.name);if(id&&!byId.has(id))byId.set(id,f);}
   const plain=!byId.size?files[0]:null;let placed=0;const missing=[];
   for(const T of box.B.tiles){const f=plain||byId.get(T.id);if(!f){missing.push(T.id);continue;}
-    const t=await fileTarget(f);try{const R=udimTileRect(box.name,T,W,H);
+    const t=await fileTarget(f);try{const R=(grid?udimGridRect:udimTileRect)(box.name,T,W,H);
       scissorDo(R,()=>run(P.resample,out,{uSrc:t.tex,uOffset:[R[0],R[1]],uScale:[t.w/R[2],t.h/R[3]],uTaps:{int:Math.max(1,Math.min(8,Math.ceil(Math.max(t.w/R[2],t.h/R[3]))))},uOutside:[0,0,0,0]}));placed++;}
     finally{disposeTarget(t);}}
   return {t:out,placed,missing,plain:!!plain,name:plain?plain.name:udimPattern(files.find(f=>udimNameId(f.name))?.name||files[0].name)};}
@@ -46,7 +49,7 @@ const UDIM_EXTS=['png','jpg','jpeg','webp','tga','tif','tiff','bmp','psd','exr',
   const files=await udimPickFiles('Images',UDIM_EXTS);if(!files.length){done();return;}await fillUseImage(L,k,s,files,done);};}
 /* (Georgian: "same as the input maps") mesh map slots: tile maps go into their tiles too */
 {const f=p3MapImport;p3MapImport=async function(k,file){const box=udimImgBox(),files=Array.isArray(file)?file:[file];if(!box||!files[0])return f.call(this,k,files[0]);
-  const root=doc.root;let A=null;try{loadStart(files[0].name);loadBusy('Reading mesh map…');await loadPaint();A=await udimAtlasFrom(files,box);setWrap(A.t,true);
+  const root=doc.root;let A=null;try{loadStart(files[0].name);loadBusy('Reading mesh map…');await loadPaint();A=await udimAtlasFrom(files,box,true);setWrap(A.t,true);
     if(doc.root!==root||ui.mode!=='p3d')throw new Error('The texture set changed during import. Try again.');p3MapSet(k,A.t,A.name);
     toast(P3_MESHMAP_NAMES[k]+' in “'+doc.name+'”: '+(A.plain?'“'+A.name+'” repeated in each UV tile.':A.placed+' of '+box.B.tiles.length+' UV tiles'+(A.missing.length?' (no map for '+A.missing.join(', ')+')':'')+'.'));A=null;}
   catch(e){if(A)disposeTarget(A.t);toast('Could not import '+files[0].name+': '+(e.message||e));}finally{loadEnd();}};}

@@ -1822,3 +1822,4 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .fliplabel .flname{font-size:20px;font-weight:600;color:var(--text,#eee)}
 .fliplabel .flside{font-size:12px;color:var(--muted,#999)}
 .fliplabel .flhint{font-size:10.5px;color:var(--muted,#999);margin-top:2px}
+.p3tilegrp{display:inline-flex;align-items:center;gap:2px}.p3tilesz{font-size:10.5px;padding:0 2px;min-height:0;height:20px;max-width:74px}

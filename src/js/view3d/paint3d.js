@@ -39,7 +39,7 @@ function buildP3Panel(){p3BakePanel();if(typeof stBrushRender==='function')stBru
   const models=el('select',{id:'p3Model','aria-label':'Model'},...Object.entries(PRIMS).map(([k,[l]])=>el('option',{value:k,text:l})),
     ...(v3.imported?[el('option',{value:'imported',text:v3.imported.name})]:[]),el('option',{value:'__import',text:'Import a model (OBJ, glTF, GLB, FBX)…'}));
   models.value=s.model;models.onchange=()=>{if(models.value==='__import'){models.value=s.model;importModel().then(()=>{p3.imported=v3.imported;buildP3Panel();});return;}s.model=models.value;v3LoadModel();buildP3Panel();};
-  const active=p3.sets[p3.cur],tileBox=active&&udimBox(p3Binding(active)),side=Math.round(doc.w/(tileBox?.nx||1));
+  const active=p3.sets[p3.cur],tileBox=active&&udimBox(p3Binding(active)),side=tileBox&&tileBox.lay?p3.size:Math.round(doc.w/(tileBox?.nx||1));
   const sizes=[1024,2048,4096,...(MAX_DIM>=8192?[8192]:[])];
   if(!sizes.includes(side))sizes.push(side);
   box.append(el('div',{class:'sub',text:'Model'}),models,s.model==='imported'&&v3.imported?upTurnRow():'',s.model==='imported'&&v3.imported?smoothingRow('p3Sm_'):'',s.model==='matpreview'?el('button',{class:'btn sm',id:'p3PreviewMaps',text:'Load preview material and mesh maps',onclick:()=>studioPreviewMaps()}):'',
@@ -55,7 +55,9 @@ function buildP3Panel(){p3BakePanel();if(typeof stBrushRender==='function')stBru
 async function p3Resize(n){
   if(p3PaintBusy||tabDocs.hold||gfSaving||loadDepth)return false;
   const S=p3.sets[p3.cur],[w,h]=p3.ua&&S?udimDims(p3Binding(S),n):[n,n],oldW=doc.w,oldH=doc.h;
-  if(w===oldW&&h===oldH)return true;
+  /* (0.97.30) per-tile UDIM sizes: the tiles may also move to new places on the canvas */
+  const uName=p3.ua&&S?p3Binding(S):null,uB=uName&&udimBox(uName),uPk=uB?udimPack(uName,n):null,uFrom=uB?udimLay(uName):null,uTo=uB?(uPk.lay||udimGridLay(uB)):null,relay=!!uB&&!udimLayEq(uFrom,uTo);
+  if(w===oldW&&h===oldH&&!relay)return true;
   if(Math.max(w,h)>MAX_DIM){toast('This computer cannot edit textures that large.');return false;}
   if(stroke||ptr||preview||selLive||sel.quick||undoBusy){toast('Finish the current edit first.');return false;}
   if(typeof xf!=='undefined'&&xf)xfCommit();
@@ -63,7 +65,8 @@ async function p3Resize(n){
   if(tedit)closeTextEditor();
   textCommit();pathFlush();msCommit();
   if(!v3.mesh)v3LoadModel(true);
-  const cancel={stopped:false};
+  const cancel={stopped:false},layWas=uB?uB.lay:undefined,mmWas=relay?Object.assign({},doc.meshMaps||{}):null;
+  if(relay){udimRelay={from:uFrom,to:uTo,oldKey:p3PaintMeshKey(v3.mesh)};if(uPk.lay)uB.lay=uPk.lay;else delete uB.lay;v3LoadModel(true);}
   try{
     await p3PaintHold(async()=>{
       loadStart('Texture size');
@@ -73,7 +76,13 @@ async function p3Resize(n){
       try{await loadPaint();await p3PaintAtSize(w,h,{keep:true,cancel});}
       finally{loadEls().classList.remove('p3-resolution-progress');loadEnd();}
     });
-  }catch(e){if(!cancel.stopped)console.error(e);toast(e.message||NO_GPU_MEM);buildP3Panel();return false;}
+  }catch(e){if(relay){if(layWas)uB.lay=layWas;else delete uB.lay;udimRelay=null;v3LoadModel(true);}
+    if(!cancel.stopped)console.error(e);toast(e.message||NO_GPU_MEM);buildP3Panel();return false;}
+  finally{udimRelay=null;}
+  if(relay){/* the baked mesh maps follow their tiles too */
+    for(const [k,t] of Object.entries(mmWas||{})){if(!t||!t.tex||doc.meshMaps[k]!==t)continue;const M=Math.max(t.w,t.h),nw=Math.max(1,Math.round(M*w/Math.max(w,h))),nh=Math.max(1,Math.round(M*h/Math.max(w,h)));
+      const nt=makeTarget(nw,nh,t.depth,true,t.packed,t.mono);udimRemapT(t,nt,uFrom,uTo);doc.meshMaps[k]=nt;disposeTarget(t);}
+    if(typeof msEpoch!=='undefined')msEpoch++;}
   extClearAll();
   scaleEditableLayers(w/oldW,h/oldH);
   for(const L of paintLayers()){
@@ -164,7 +173,7 @@ function p3SetsBox(){const box=el('div',{class:'p3sets',role:'listbox','aria-lab
       p3EyeBtn(S),el('span',{class:'p3sn',text:S.name,ondblclick:ev=>{ev.stopPropagation();p3RenameDialog(i);}}),S.tile?el('span',{class:'p3udims',text:String(S.tile.id),'aria-label':'UDIM '+S.tile.id,title:'UDIM tile '+S.tile.id}):tiles.length?el('span',{class:'p3udims',text:tiles.join(' · '),'aria-label':'UV tiles '+tiles.join(', '),title:'UDIM tiles detected: '+tiles.join(', ')}):null,el('button',{class:'btn sm p3rename',text:'Rename',title:'Name this texture set',onclick:ev=>{ev.stopPropagation();p3RenameDialog(i);}}),el('button',{class:'btn sm p3del',text:'×','aria-label':'Delete '+S.name,title:'Delete this texture set',onclick:ev=>{ev.stopPropagation();p3DeleteSet(i);}}));
     row.addEventListener('click',()=>{if(!S.missing)p3SwitchSet(i);});row.addEventListener('keydown',ev=>{if((ev.key==='Enter'||ev.key===' ')&&!S.missing){ev.preventDefault();p3SwitchSet(i);}});box.append(row);
     /* (0.95) UDIM: the set's tiles as small rows under it; click one to see that tile on the flat canvas */
-    if(p3.ua&&!S.tile&&tiles.length>0&&!S.missing)box.append(el('div',{class:'p3tiles','aria-label':'UV tiles of '+S.name},...(S.udimTiles||[]).map(T=>el('button',{class:'btn sm p3tile',text:String(T.id),title:'Show tile '+T.id+' on the flat canvas','data-tile':String(T.id),onclick:ev=>{ev.stopPropagation();if(p3.cur!==i)p3SwitchSet(i,true);udimFrameTile(p3Binding(S),T);}}))));});
+    if(p3.ua&&!S.tile&&tiles.length>0&&!S.missing)box.append(el('div',{class:'p3tiles','aria-label':'UV tiles of '+S.name},...(S.udimTiles||[]).map(T=>el('span',{class:'p3tilegrp'},el('button',{class:'btn sm p3tile',text:String(T.id),title:'Show tile '+T.id+' on the flat canvas','data-tile':String(T.id),onclick:ev=>{ev.stopPropagation();if(p3.cur!==i)p3SwitchSet(i,true);udimFrameTile(p3Binding(S),T);}}),udimTileSizeSel(p3Binding(S),T,i)))));});
   if((p3.deletedSets||[]).length)box.append(el('button',{class:'btn sm',id:'p3RestoreSets',text:'Restore deleted sets',title:'Recreate deleted texture sets with empty layers',onclick:p3RestoreSets}));
   return box;}
 

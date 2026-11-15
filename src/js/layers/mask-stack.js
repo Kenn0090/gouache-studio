@@ -106,8 +106,9 @@ vec3 surfN(){ /* (0.97.1, Kenn) the baked world-space normal (with the high-poly
   if(uHasPos==1){ vec4 P=texelFetch(uPos,ivec2(gl_FragCoord.xy),0); if(P.a>0.5) return normalize(texelFetch(uNrm,ivec2(gl_FragCoord.xy),0).xyz+1e-5); }
   if(uHasDocN==1){ vec3 n=texture(uDocN,gl_FragCoord.xy/uSz).rgb*2.0-1.0; return normalize(vec3(n.x,n.y,n.z)); } return vec3(0.0,0.0,1.0); }
 /* where a pattern is sampled: in the projection's own 3D space (World), or the texture's (UV), with its transform */
+`+UDIM_GLSL+`
 uniform mat4 uInv; uniform mat3 uUvM; uniform int uWorld;
-vec3 surfQ(vec2 uv){ if(uWorld==1&&uHasPos==1){ vec4 P=texelFetch(uPos,ivec2(gl_FragCoord.xy),0); if(P.a>0.5) return (uInv*vec4(P.xyz,1.0)).xyz; } return vec3((uUvM*vec3(uv,1.0)).xy,0.0); }
+vec3 surfQ(vec2 uv){ if(uWorld==1&&uHasPos==1){ vec4 P=texelFetch(uPos,ivec2(gl_FragCoord.xy),0); if(P.a>0.5) return (uInv*vec4(P.xyz,1.0)).xyz; } return vec3((uUvM*vec3(udimG(uv),1.0)).xy,0.0); }
 /* "up" for the flat texture: towards the top of the texture (green of the normal map) */
 vec3 upOf(){ return uHasPos==1?vec3(0.0,1.0,0.0):vec3(0.0,1.0,0.0); }`;
 const FS_MSBLEND=`uniform sampler2D uA; uniform sampler2D uB; uniform int uMode; uniform float uOp;

@@ -2,6 +2,8 @@
 
 - "Hide the bumps below" starts off on new materials; Preferences › Painting can make it start on.
 - Flipping through maps with C or B shows each map's name on screen.
+- UV tiles (UDIMs) can each have their own texture size, set in the texture set list.
+- Fixed: changing a texture set's size could recolour earlier strokes.
 
 ## Gouache Studio 0.97.29
 
