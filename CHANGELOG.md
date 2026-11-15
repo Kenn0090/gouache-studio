@@ -1,6 +1,7 @@
 ## 0.97.30
 
 - **"Hide the bumps below" now starts off** on new materials, so their height and normal add on top of what is below. Turn it on per material as before, or make it start on for every new material in **Preferences › Painting**. Materials in your existing projects keep their own setting.
+- **Map names while you flip through them:** pressing **C** or **Shift+C** (channels), **B** (baked mesh maps) in 3D Paint, or **C** in the Bake tab now shows the name of the map on screen, with the one before and after it, then fades away.
 
 ## 0.97.29
 

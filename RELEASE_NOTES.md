@@ -1,6 +1,7 @@
 ## Gouache Studio 0.97.30
 
 - "Hide the bumps below" starts off on new materials; Preferences › Painting can make it start on.
+- Flipping through maps with C or B shows each map's name on screen.
 
 ## Gouache Studio 0.97.29
 

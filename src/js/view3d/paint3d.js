@@ -403,7 +403,17 @@ function p3ChannelSync(){const k=p3ChannelView(),s=document.getElementById('p3Ch
 function p3SetChannelView(k){if(ui.mode!=='p3d'||stroke||selLive)return;/* (0.80.2, Kenn) only the view: fine while a settings window is open */if(k&&!p3ChannelKeys().includes(k))return;
   ui.viewMask=false;libIdShow(false);p3mm.k=null;p3mmBadge();v3s().channelView=k||null;v3s().worldNormalView=false;v3s().unlit=false;v3.rt=false;v3.mapsDirty=true;v3.dirty=true;p3ChannelSync();requestRender(true);}
 function p3SetWorldNormalView(on){if(ui.mode!=='p3d'||stroke||selLive)return;p3SetChannelView(null);v3s().worldNormalView=!!on;p3ChannelSync();v3.dirty=true;requestRender();}
-function p3CycleChannel(dir){const K=p3ChannelKeys(),i=K.indexOf(p3ChannelView());if(!K.length)return;p3SetChannelView(K[(i<0?(dir>0?0:K.length-1):(i+dir+K.length)%K.length)]);toast('Channel: '+p3ChannelLabel(p3ChannelView())+' · Esc for Lit');}
+/* (0.97.30, Kenn: "when you're switching through the maps and channels with C or B you should see the names") a big label at the top of
+   the 3D view: the map now shown, with the ones before and after it, fading out after a moment */
+function flipLabel(kind,names,i){const host=document.getElementById('pane3d')||document.getElementById('work');if(!host)return;let b=document.getElementById('flipLabel');
+  if(!b||!b.isConnected){b=el('div',{id:'flipLabel',class:'fliplabel',role:'status','aria-live':'polite'});host.append(b);}
+  const n=names.length,at=k=>names[((i+k)%n+n)%n];
+  b.replaceChildren(el('div',{class:'flk',text:kind}),el('div',{class:'flrow'},n>2?el('span',{class:'flside',text:'‹ '+at(-1)}):'',el('span',{class:'flname',text:names[i]}),n>2?el('span',{class:'flside',text:at(1)+' ›'}):''),
+    el('div',{class:'flhint',text:(kind==='Mesh map'?'B / Shift+B':'C / Shift+C')+(ui.mode==='p3d'?' · Esc for Lit':'')}));
+  {const bar=host.querySelector('.v3bar'),hr=host.getBoundingClientRect();b.style.top=Math.round((bar?bar.getBoundingClientRect().bottom-hr.top:0)+12)+'px';}/* just below the 3D bar, however many rows it has */
+  b.classList.remove('fade');void b.offsetWidth;b.classList.add('show');clearTimeout(b._t);const go=++b._n||(b._n=1);requestAnimationFrame(()=>requestAnimationFrame(()=>{if(b._n===go)b._t=setTimeout(()=>{b.classList.add('fade');},1400);}));}/* the clock starts once the new view is on screen */
+function p3CycleChannel(dir){const K=p3ChannelKeys(),i=K.indexOf(p3ChannelView());if(!K.length)return;p3SetChannelView(K[(i<0?(dir>0?0:K.length-1):(i+dir+K.length)%K.length)]);
+  const j=K.indexOf(p3ChannelView());flipLabel('Channel',K.map(p3ChannelLabel),Math.max(0,j));}
 function p3ChannelControl(){const s=el('select',{id:'p3ChannelView','aria-label':'Viewport channel',title:'C: next channel · Shift+C: previous · B: baked maps · Esc: Lit'},el('option',{value:'',text:'Lit'}),el('option',{value:'world',text:'World normals'}),...p3ChannelKeys().map(k=>el('option',{value:k,text:p3ChannelLabel(k)})));s.value=p3ChannelView()||(v3s().worldNormalView?'world':'');s.onchange=()=>{const k=s.value;s.blur();if(k==='world')p3SetWorldNormalView(true);else if(k)p3SetChannelView(k);else p3ShowLit();};return s;}
 /* B / Shift+B: the set's baked mesh maps, unlit, like the Bake tab. */
 const p3mm={k:null};
@@ -416,7 +426,7 @@ function p3mmBadge(){let b=document.getElementById('p3mmBadge');const on=ui.mode
 function p3mmSet(k){if(k&&k===p3mm.k)k=null;p3mm.k=k;if(k){ui.viewMask=false;libIdShow(false);v3s().channelView=null;v3s().worldNormalView=false;v3.rt=false;}p3mmBadge();p3ChannelSync();v3.dirty=true;requestRender(true);}
 function p3mmCycle(dir){const K=p3mmKeys();if(!K.length){toast('No baked maps yet. Bake mesh maps or import them, then B steps through them.');return;}
   const L=[null,...K],i=Math.max(0,L.indexOf(p3mm.k)),k=L[(i+dir+L.length)%L.length];p3mmSet(k);
-  toast('Showing: '+(k?P3_MESHMAP_NAMES[k]||k:'the material'));}
+  flipLabel('Mesh map',L.map(x=>x?P3_MESHMAP_NAMES[x]||x:'Material (lit)'),L.indexOf(k));}
 function p3ShowLit(){if(stroke||selLive)return;closeMenu();v3s().worldNormalView=false;ui.viewMask=false;libIdShow(false);v3s().channelView=null;p3mmSet(null);v3s().unlit=false;v3.rt=false;setView('material');build3dPane();v3.mapsDirty=true;v3.dirty=true;requestRender(true);}
 window.addEventListener('keydown',e=>{if(typeof pathKeys==='function'&&pathKeys(e))return;if(ui.mode!=='p3d'||!modal.hidden||isTypingTarget(e.target)||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('#menuPop.tool-menu:not([hidden])'))return;
   if((e.key==='Delete'||e.key==='Backspace')&&typeof lightKeyDelete==='function'&&lightKeyDelete(e))return;
