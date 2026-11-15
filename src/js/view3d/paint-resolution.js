@@ -37,9 +37,9 @@ function p3PaintRead(t){
   blit(t,stage,0,0,t.w,t.h,0,0);
   return readRegionAsync(stage,0,0,t.w,t.h).finally(()=>disposeTarget(stage));
 }
-function p3PaintSource(t,force=false){
+function p3PaintSource(t,force=false,lay){
   if(!force&&t._paintSource&&!t._paintStale)return t._paintSource;
-  const base={w:t.w,h:t.h,d:t.depth,lay:udimLayNow()};
+  const base={w:t.w,h:t.h,d:t.depth,lay:lay!==undefined?lay:udimLayNow()};
   if(t._paintClear)base.color=t._paintClear.slice();
   else{
     base.image=p3PaintRead(t).then(raw=>pxPack(raw,base.w,base.h,base.d,false,true));
@@ -408,7 +408,7 @@ async function p3PaintRebuild(j,work,keep){
   if(!current||meshMismatch){
     p3LayScale(src,nt,udimRelay&&udimRelay.from);
     if(keep){
-      const source=p3PaintSource(nt,true);
+      const source=p3PaintSource(src,true,udimRelay?udimRelay.from:undefined);/* the picture before scaling: a later size up gets its detail back */
       await source.base.image;
       p3PaintAttach(nt,source);
     }
