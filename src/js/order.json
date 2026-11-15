@@ -240,6 +240,7 @@
     "ui/favorites",
     "ui/dock",
     "ui/shelf",
+    "ui/texset-settings",
     "ui/effect-shelf",
     "ui/gen-shelf",
     "ui/history",

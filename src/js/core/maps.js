@@ -31,7 +31,8 @@ const MAP_SHORT={specl:'SpL',sss:'SSS',sssc:'SSC',trans:'Trn',u1:'U1',u2:'U2',u3
 const isBlankBase=L=>!!L.blankBase;
 const MAP_ORDER=['base','rough','metal','specl','spec','gloss','height','normal','ao','curv','emis','opac','sss','sssc','trans','fur',...MAP_USER];
 const MAP_TEMPLATES={hand:['base'],pbr:['base','rough','metal','height','normal'],pbrsg:['base','spec','gloss','height','normal']};
-function mapDepth(k){return k==='height'&&canFloat?16:doc.depth;}
+/* (0.97.26) a channel's own format from Texture Set Settings (8 or 16-bit) wins */
+function mapDepth(k){const f=doc.mapDef&&doc.mapDef['fmt:'+k];if(f===16)return canFloat?16:doc.depth;if(f===8)return 8;return k==='height'&&canFloat?16:doc.depth;}
 /* what a map shows where no layer has painted it */
 function mapDefault(k){if(k==='base')return [0,0,0,0];if(k==='normal')return [.5,.5,1,1];if(k==='emis')return [0,0,0,1];if(MAP_DEFS[k].def==null)return [0,0,0,0];
   const v=doc.mapDef&&doc.mapDef[k]!=null?doc.mapDef[k]:MAP_DEFS[k].def;return [v,v,v,1];}

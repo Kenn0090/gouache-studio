@@ -30,9 +30,13 @@ async function slotPicture(k,file){let files=file?[file]:null;
   fillRender(L);changedAll();matEdCommit();matEd.open=Object.assign({},matEd.open,{[k]:true});
   if(typeof showPanel==='function')showPanel('matEd');if(typeof renderMatEd==='function')renderMatEd();renderShading();
   toast('The picture is the '+MAP_DEFS[k].label+' of '+(fresh?'a new material':'“'+L.name+'”')+'. Change it on its card in the material editor.');}
-function slotPaint(k){if(!doc.maps.includes(k))setDocMaps(doc.maps.concat(k),MAP_DEFS[k].label);setEditMap(k);if(typeof setView==='function')setView(k);
-  if(typeof setTool==='function'&&!['brush','erase','fill','gradient','bucket'].includes(ui.tool))setTool('brush');
-  toast('Painting '+MAP_DEFS[k].label+'. Pick Base colour in the channel list to paint colour again.');renderShading();}
+/* (Kenn: "paint access via a channel via the material", Painter's way) Paint keeps the channel you are viewing and lights this
+   channel's button on the brush, so strokes paint it too with its own value (Texture Set Settings adds the channel if needed) */
+function slotPaint(k){if(!doc.maps.includes(k))setDocMaps(doc.maps.concat(k),MAP_DEFS[k].label);
+  if(k!==doc.map&&ui.mapBrush[k])ui.mapBrush[k].on=true;
+  if(typeof setTool==='function'&&!['brush','erase'].includes(ui.tool))setTool('brush');
+  if(typeof buildBrushPanel==='function')buildBrushPanel();if(typeof showPanel==='function')showPanel('tool');
+  toast('The brush now also paints '+MAP_DEFS[k].label+'. Set its value under the channel buttons in the brush settings.');renderShading();}
 function slotValue(k){if(!doc.maps.includes(k))return;const used=paintLayers().some(L=>hasMap(L,k));
   const go=()=>{setDocMaps(doc.maps.filter(x=>x!==k),MAP_DEFS[k].label+' off');renderShading();};
   if(used)confirmDlg('Use a value for '+MAP_DEFS[k].label+'?','What was painted in '+MAP_DEFS[k].label+' is taken out of the texture set (Undo brings it back).','Use a value',go);else go();}
@@ -42,7 +46,7 @@ function slotValueCtl(k){if(k!=='rough'&&k!=='metal')return el('span',{class:'di
 function slotsBox(kind){const rows=slotList(kind).map(([k,label])=>{const src=slotSrc(k),sel=el('select',{id:'slot_'+k,class:'shsel slotsel','aria-label':label+' comes from'},
       el('option',{value:'value',text:'Value'}),el('option',{value:'paint',text:'Painted'}),el('option',{value:'pic',text:'Picture'}));sel.value=src;
     sel.onchange=()=>{const v=sel.value;sel.value=src;if(v==='value')slotValue(k);else if(v==='paint')slotPaint(k);else slotPicture(k);};
-    const act=src==='value'?slotValueCtl(k):el('span',{class:'slotacts'},el('button',{type:'button',class:'btn sm',id:'slotPaint_'+k,text:doc.map===k?'Painting':'Paint',onclick:()=>slotPaint(k)}),
+    const act=src==='value'?slotValueCtl(k):el('span',{class:'slotacts'},el('button',{type:'button',class:'btn sm',id:'slotPaint_'+k,text:doc.map===k||(ui.mapBrush[k]&&ui.mapBrush[k].on)?'Painting':'Paint',onclick:()=>slotPaint(k)}),
       el('button',{type:'button',class:'btn sm',id:'slotPic_'+k,text:'Picture…',title:'Bring a picture into '+label+' as a new layer',onclick:()=>slotPicture(k)}));
     return el('div',{class:'slotrow'+(src==='value'?'':' on'),title:MAP_DEFS[k].hint||''},el('span',{class:'slotname',text:label}),sel,act);});
   return el('div',{class:'slots',id:'shSlots'},el('div',{class:'sub',text:'Material slots'}),

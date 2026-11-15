@@ -1788,3 +1788,17 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .cxmask{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
 .cxmask .shsel{flex:1;min-width:120px}
 .cxlibbtns{margin-top:4px}
+/* (0.97.26) Texture Set Settings + channel buttons (Painter style) */
+.tsslist{display:flex;flex-direction:column;gap:3px}
+.tssrow{display:grid;grid-template-columns:minmax(0,1fr) 64px 78px 28px;gap:5px;align-items:center;padding:3px 6px;border-radius:var(--r,4px);background:color-mix(in srgb,var(--fg,#ccc) 6%,transparent)}
+.tssrow .tssname{font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tssrow input.tssname{width:100%}
+.tssrow .tsskind{font-size:11px}
+.tssrow .tssx{padding:1px 0;min-width:0}
+.tsschips{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 6px}
+.tsschip{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:var(--r,4px);border:1px solid var(--line,#444);background:transparent;color:var(--dim,#999);font-size:11px;cursor:pointer;user-select:none}
+.tsschip.on{border-color:var(--accent,#4a8);color:var(--fg,#eee);background:color-mix(in srgb,var(--accent,#4a8) 18%,transparent)}
+.tsschip.lock{cursor:default}
+.tsschip input{margin:0;width:11px;height:11px}
+.mbvals .mbrow{display:flex;align-items:center;gap:6px}
+.mbvals .mbname{font-size:12px;flex:1}

@@ -165,7 +165,7 @@ function cmdNewFillLayer(preset){if(ui.mode==='anim'){toast('Fill layers are ava
 /* ---- the Material panel (a tab beside Colour): edits the selected material layer live, on the canvas and the model.
    Changes become one undo step when you pause (or pick another layer). Each channel is a colour or value, an image,
    or one of the texture set's baked mesh maps. ---- */
-const MAT_CH=['base','rough','metal','height','normal','emis','opac','spec','gloss','ao'];
+const MAT_CH=['base','rough','metal','height','normal','emis','opac','spec','gloss','ao','specl','sss','sssc','trans',...MAP_USER];
 const matEd={L:null,snap:null,timer:0,shown:null,open:{},openAll:(()=>{try{return localStorage.getItem('gs.matOpen')==='all';}catch(e){return false;}})()};
 function matEdSnap(L){const keys=fillMapsOf(),S={};for(const k of keys){const t=mapT(L,k,true);S[k]=!mapSolid(L,k)&&t&&!t.empty?captureRegion(t,0,0,doc.w,doc.h):null;}
   return {f:fillClone(L.fill),C:fillClone(L._fillSolid||{}),V:fillClone(L._fillLive||{}),S,I:Object.assign({},L._fillImg||{}),n:L.name,keys};}

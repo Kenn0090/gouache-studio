@@ -12,6 +12,7 @@ const PANELS={
   shtools:{title:'Tools',sel:'#shToolsSec',avail:m=>m==='p3d',icon:'<path d="M14.7 6.3a4 4 0 0 0-5 5L3 18l3 3 6.7-6.7a4 4 0 0 0 5-5l-2.5 2.5-2.4-.6-.6-2.4z"/>'},
   meshmaps:{title:'Mesh maps',sel:'#mmSec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="m4 4 16 16M4 20 20 4"/>'},
   p3d:{title:'3D Paint',sel:'#p3dSec',avail:m=>m==='p3d',mode:true},
+  tsset:{title:'Texture Set Settings',sel:'#tssSec',avail:m=>m==='p3d',icon:'<path d="M4 6h16M4 12h16M4 18h10"/><circle cx="18" cy="18" r="2"/>'},
   hist:{title:'History',sel:'#histSec',avail:m=>m!=='convert'&&m!=='photo',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>'},
   matEd:{title:'Material editor',sel:'#matEdSec',avail:m=>m==='p3d'||m==='paint',icon:'<circle cx="12" cy="12" r="8"/><path d="M8 15l8-8M9 9h.01"/>'},
   shading:{title:'Shader',sel:'#shadeSec',avail:m=>m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" opacity=".35"/>'},
@@ -50,7 +51,7 @@ const PANEL_IDS=Object.keys(PANELS);
 /* (0.97.10) Welds, Stitches and Surface details live in one shelf category, Tools; the old panel names still open it */
 const SH_TOOL_ALIAS={weldtools:'weld',stitches:'stitch',surfacedetails:'detail'};
 const SH_SHELF_TABS=['shbrush','mats','smats','smasks','shgen','shfilters','shstyles','shshaders','shalpha','textures','decals','envs','meshmaps','shtools','projects'];
-const MODE_GROUP=['p3d','brushtab','conv','bake','anim','photo'],MODE_HID=[...MODE_GROUP,'phhist','phlib','phpre'];
+const MODE_GROUP=['p3d','brushtab','conv','bake','anim','photo'],MODE_HID=[...MODE_GROUP,'tsset','phhist','phlib','phpre'];
 /* the built-in workspaces: extra = 3D view on and how wide, painting on the model */
 const WS_PRESETS={
   painting:{name:'Panels: Paint',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_HID.slice(),f:1.4},{tabs:['color','matEd','shading'],f:1.05},{tabs:['brushes','stencils','mats','textures','canvas','decals','envs','tool'],f:2.4},{tabs:['maps','p3bake'],f:.45},{tabs:['layers','chan','hist'],f:1.6}],icons:[],floats:[]},
