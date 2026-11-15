@@ -23,6 +23,13 @@ const OBJ=['v -1 -1 0','v 0 -1 0','v 0 1 0','v -1 1 0','v 1 -1 0','v 1 1 0','vt 
   const grad=await pic('Skin.png',x=>{x.fillStyle='#000';x.fillRect(0,0,32,64);x.fillStyle='#fff';x.fillRect(32,0,32,64);});
   await g.fillUseImage(L,'base',s,grad,()=>{s.on=true;});const plain=read();
   await g.fillUseImage(L,'base',s,[f1],()=>{s.on=true;});const half=read();
+  /* a square texture from anywhere (Library, Textures, smart materials): repeats per tile */
+  const sq=await pic('Rock.png',x=>{x.fillStyle='#000';x.fillRect(0,0,32,64);x.fillStyle='#fff';x.fillRect(32,0,32,64);});
+  const tsq=await g.fileTarget(sq);g.setWrap(tsq,true);L._fillImg.base=tsq;s.name='Rock.png';s.src='image';delete s.atlas;const lib=read();
+  /* Materials › From textures with tile files */
+  const b1=await pic('Tpose_1001_BaseColor.png',solid('#ff0000')),b2=await pic('Tpose_1002_BaseColor.png',solid('#00ff00'));
+  const rec=await g.miBuild([b1,b2],'Tpose',2048);const bi=rec.imgs.base,bm=rec.fill.maps.base;
+  const ft={w:bi.w,h:bi.h,atlas:bm.atlas,name:bm.name,uT:g.fillUdimT({w:bi.w,h:bi.h},bm),left:[...bi.data.slice((Math.floor(bi.h/2)*bi.w+Math.floor(bi.w/4))*4,(Math.floor(bi.h/2)*bi.w+Math.floor(bi.w/4))*4+3)],right:[...bi.data.slice((Math.floor(bi.h/2)*bi.w+Math.floor(bi.w*3/4))*4,(Math.floor(bi.h/2)*bi.w+Math.floor(bi.w*3/4))*4+3)]};
   /* mesh maps (input maps): AO tiles, then a batch drop of normal tiles */
   const ao1=await pic('Tpose_1001_AO.png',solid('#202020')),ao2=await pic('Tpose_1002_AO.png',solid('#e0e0e0'));
   await g.p3MapImport('ao',[ao1,ao2]);
@@ -31,7 +38,7 @@ const OBJ=['v -1 -1 0','v 0 -1 0','v 0 1 0','v -1 1 0','v 1 -1 0','v 1 1 0','vt 
   const ao=mm('ao');
   const n1=await pic('Tpose_1001_Normal.png',solid('#ff8080')),n2=await pic('Tpose_1002_Normal.png',solid('#8080ff'));
   await g.p3MapBatch([n1,n2]);const nm=mm('normal');
-  return {box:g.udimImgBox()&&g.udimImgBox().B.tiles.map(t=>t.id),tiles,name1,plain,half,ao,nm};},OBJ);
+  return {box:g.udimImgBox()&&g.udimImgBox().B.tiles.map(t=>t.id),tiles,name1,plain,half,ao,nm,lib,ft};},OBJ);
  console.log(JSON.stringify(r));
  ok(r.box&&r.box.join()==='1001,1002'&&r.tiles.w===2*r.tiles.h,'the set has tiles 1001 and 1002 on a 2:1 canvas');
  ok(r.tiles.a[0]>200&&r.tiles.a[2]<60&&r.tiles.b[2]>200&&r.tiles.b[0]<60,'Tpose_1001 lands in tile 1001 and Tpose_1002 in tile 1002 '+JSON.stringify([r.tiles.a,r.tiles.b]));
@@ -40,5 +47,7 @@ const OBJ=['v -1 -1 0','v 0 -1 0','v 0 1 0','v -1 1 0','v 1 -1 0','v 1 1 0','vt 
  ok(r.half.a[0]>200&&Math.abs(r.half.b[0]-r.half.b[2])<10,'with only the 1001 picture, tile 1002 is left alone (the grey base shows) '+JSON.stringify([r.half.a,r.half.b]));
  ok(r.ao.w===r.tiles.w&&r.ao.a[0]<60&&r.ao.b[0]>200,'mesh map tiles go into their own tiles (AO 1001 dark, 1002 light) '+JSON.stringify(r.ao));
  ok(r.nm.a[0]>200&&r.nm.b[2]>200&&r.nm.b[0]<160,'tile mesh maps dropped together are sorted into one map with each tile in place '+JSON.stringify(r.nm));
+ ok(r.lib.aL[0]<60&&r.lib.aR[0]>200&&r.lib.bL[0]<60&&r.lib.bR[0]>200,'a square texture from the Library or Textures repeats once per tile '+JSON.stringify(r.lib));
+ ok(r.ft.w===2*r.ft.h&&r.ft.atlas===true&&r.ft.uT.join()==='1,1'&&r.ft.left[0]>200&&r.ft.right[1]>200,'Materials › From textures puts the 1001 and 1002 pictures together into one 2:1 picture '+JSON.stringify(r.ft));
  ok(!errs.length,'no page errors '+errs.join('|'));
  await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();

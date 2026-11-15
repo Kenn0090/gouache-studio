@@ -26,10 +26,12 @@ async function udimSiblings(path){try{const dir=path.replace(/[\\/][^\\/]*$/,'')
     return out;}catch(e){return [];}}
 {const f=fillUseImage;fillUseImage=async function(L,k,s,file,done){const box=udimImgBox(),files=Array.isArray(file)?file:[file];
   if(!box||!files.length||!files[0])return f.call(this,L,k,s,files[0],done);
+  /* a plain picture keeps its own size: the material repeats it once per tile (fillUdimT) */
+  if(!files.some(x=>udimNameId(x.name))){await f.call(this,L,k,s,files[0],()=>{s.atlas=false;s.atlasOf=s.name;done();});toast('“'+files[0].name+'” repeats in each of the '+box.B.tiles.length+' UV tiles.');return;}
   const root=doc.root,W0=L.fill;let A;try{A=await udimAtlasFrom(files,box);}catch(e){toast('Could not read '+files[0].name+': '+(e.message||e));return;}
   if(doc.root!==root||!inDoc(L)||L.fill!==W0||W0.maps[k]!==s){disposeTarget(A.t);toast('The material changed while the images were loading. Drop them again.');return;}
   if(!fillEnableDocMap(k)){disposeTarget(A.t);toast('This material cannot use the '+MAP_DEFS[k].label+' channel.');return;}
-  matEdBegin(L);setWrap(A.t,true);L._fillImg=L._fillImg||{};L._fillImg[k]=A.t;s.src='image';s.name=A.name;s.tile=1;done();
+  matEdBegin(L);setWrap(A.t,true);L._fillImg=L._fillImg||{};L._fillImg[k]=A.t;s.src='image';s.name=A.name;s.tile=1;s.atlas=true;s.atlasOf=s.name;done();
   toast(A.plain?'“'+A.name+'” is repeated in each of the '+box.B.tiles.length+' UV tiles.':MAP_DEFS[k].label+': '+A.placed+' of '+box.B.tiles.length+' UV tiles filled'+(A.missing.length?' (no picture for '+A.missing.join(', ')+': pick or drop those files too)':'')+'.');};}
 /* pick pictures for a set with tiles: several at once; picking one tile's picture also brings the other tiles' from its folder (desktop) */
 async function udimPickFiles(title,exts){let files=[];
@@ -60,3 +62,16 @@ document.addEventListener('drop',e=>{const card=e.target.closest&&e.target.close
   const s=L.fill.maps[k];fillUseImage(L,k,s,fs,()=>{matEdBegin(L);s.on=true;fillRender(L);changedAll();matEdCommit();if(typeof renderMatEd==='function')renderMatEd();});},true);
 document.addEventListener('drop',e=>{const row=e.target.closest&&e.target.closest('.meshslot[data-mesh-slot]');if(!row||!udimImgBox())return;const fs=[...(e.dataTransfer&&e.dataTransfer.files||[])];if(fs.length<2||!fs.some(f=>udimNameId(f.name)))return;
   e.preventDefault();e.stopPropagation();row.classList.remove('dropon');p3MapImport(row.dataset.meshSlot,fs);},true);
+/* Materials › From textures with tile files (Tpose_1001_BaseColor.png, Tpose_1002_BaseColor.png…): the tiles of each map are put
+   together first, so the material's pictures hold every tile (shaped like the tile canvas, so they cover it: fillUdimT) */
+async function udimTargetFile(t,name){const d=captureRegionNow(t,0,0,t.w,t.h).data,c=document.createElement('canvas');c.width=t.w;c.height=t.h;const x=c.getContext('2d'),id=x.createImageData(t.w,t.h);
+  for(let i=0;i<d.length;i+=4){const a=d[i+3],k=a?255/a:0;id.data[i]=Math.min(255,d[i]*k);id.data[i+1]=Math.min(255,d[i+1]*k);id.data[i+2]=Math.min(255,d[i+2]*k);id.data[i+3]=a;}
+  x.putImageData(id,0,0);return new File([await new Promise(r=>c.toBlob(r,'image/png'))],name,{type:'image/png'});}
+{const f=miBuild;miBuild=async function(files,folder,max){const box=udimImgBox();if(!box||!files||!files.some(x=>udimNameId(x.name)))return f.apply(this,arguments);
+  const groups=new Map(),out=[];
+  for(const x of files){if(!udimNameId(x.name)){out.push(x);continue;}const key=udimPattern(x.name).toLowerCase();if(!groups.has(key))groups.set(key,[]);groups.get(key).push(x);}
+  const made=new Set();
+  for(const g of groups.values()){const A=await udimAtlasFrom(g,box);try{const nm=A.name.replace('<UDIM>','UDIM');made.add(nm);out.push(await udimTargetFile(A.t,nm));}finally{disposeTarget(A.t);}}
+  const rec=await f.call(this,out,folder,max?Math.max(max,Math.max(doc.w,doc.h)):max);
+  for(const k in rec.fill.maps){const m=rec.fill.maps[k];if(m.src==='image'&&made.has(m.name)){m.atlas=true;m.atlasOf=m.name;}}
+  return rec;};}

@@ -72,3 +72,6 @@ if(window.__gs)Object.assign(window.__gs,{encodePSD,psdIntoChannel,psdChannelFil
 if(window.__gs)Object.assign(window.__gs,{cxLib,cxApplyTo,cxShelfRender,cxNewMask,cxRecipe,cxEdit,shOutline,shadeUniforms,CX});
 if(window.__gs)Object.assign(window.__gs,{udimAtlasFrom,udimImgBox,udimNameId,udimPattern});
 if(window.__gs)Object.assign(window.__gs,{p3MapImport,p3MapBatch});
+if(window.__gs)Object.assign(window.__gs,{miBuild,fillUdimT});
+if(window.__gs)Object.assign(window.__gs,{fileTarget});
+if(window.__gs)Object.assign(window.__gs,{setWrap});
