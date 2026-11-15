@@ -18,7 +18,7 @@ void main(){ vec3 s=texture(uSrc,vUV).rgb*0.227027; s+=(texture(uSrc,vUV+uDir*1.
 const FS_POSTC=`in vec2 vUV; uniform sampler2D uSrc; uniform sampler2D uBloom; uniform sampler2D uDepth; uniform sampler2D uAO;
 uniform vec2 uPx; uniform float uAsp; uniform float uOrtho; uniform float uTan; uniform float uOH;
 uniform vec4 uA; uniform vec4 uD; uniform vec4 uB; uniform vec4 uG; uniform vec4 uV; uniform vec4 uS; uniform vec4 uL;
-float lin(vec2 uv){ float d=texture(uDepth,uv).r; if(d>=0.99999) return 1e4; return uOrtho>0.5 ? 0.02+d*99.98 : 2.0*0.02*100.0/(100.02-(2.0*d-1.0)*99.98); }
+uniform vec2 uNF; float lin(vec2 uv){ float d=texture(uDepth,uv).r; if(d>=0.99999) return 1e4; float n=uNF.x, f=uNF.y; return uOrtho>0.5 ? n+d*(f-n) : 2.0*n*f/(f+n-(2.0*d-1.0)*(f-n)); }
 float h12(vec2 p){ vec3 p3=fract(vec3(p.xyx)*0.1031); p3+=dot(p3,p3.yzx+33.33); return fract((p3.x+p3.y)*p3.z); }
 void main(){
   vec2 uv=vUV; vec4 s0=texture(uSrc,uv); vec3 c=s0.rgb;
@@ -50,7 +50,7 @@ void main(){
   o=vec4(clamp(c,0.0,1.0),s0.a); }`;
 /* ambient occlusion: a normal-aware screen-space pass into its own picture, then a blur that stops at edges */
 const FS_POSTAO=`in vec2 vUV; uniform sampler2D uDepth; uniform vec2 uPx; uniform float uAsp; uniform float uOrtho; uniform float uTan; uniform float uOH; uniform float uR;
-float lin(vec2 uv){ float d=texture(uDepth,uv).r; if(d>=0.99999) return 1e4; return uOrtho>0.5 ? 0.02+d*99.98 : 2.0*0.02*100.0/(100.02-(2.0*d-1.0)*99.98); }
+uniform vec2 uNF; float lin(vec2 uv){ float d=texture(uDepth,uv).r; if(d>=0.99999) return 1e4; float n=uNF.x, f=uNF.y; return uOrtho>0.5 ? n+d*(f-n) : 2.0*n*f/(f+n-(2.0*d-1.0)*(f-n)); }
 vec3 pos(vec2 uv,float z){ vec2 q=(uv-0.5)*vec2(uAsp,1.0); return uOrtho>0.5 ? vec3(q*uOH,z) : vec3(q*uTan*z,z); }
 void main(){ vec2 uv=vUV; float z=lin(uv); if(z>=1000.0){ o=vec4(1.0); return; } vec3 P=pos(uv,z);
   vec2 dx=vec2(uPx.x,0.0), dy=vec2(0.0,uPx.y); float zl=lin(uv-dx), zr=lin(uv+dx), zd=lin(uv-dy), zu=lin(uv+dy);
@@ -61,7 +61,7 @@ void main(){ vec2 uv=vUV; float z=lin(uv); if(z>=1000.0){ o=vec4(1.0); return; }
     vec3 V=pos(uv+off,zs)-P; float dist=length(V); if(dist<1e-5) continue; float w=clamp(1.0-dist/uR,0.0,1.0); occ+=max(dot(N,V/dist)-0.12,0.0)*w*w*(3.0-2.0*w); }
   float ao=1.0-clamp(occ/20.0*4.0,0.0,1.0); o=vec4(vec3(ao),1.0); }`;
 const FS_POSTAOB=`in vec2 vUV; uniform sampler2D uSrc; uniform sampler2D uDepth; uniform vec2 uDir; uniform float uOrtho;
-float lin(vec2 uv){ float d=texture(uDepth,uv).r; if(d>=0.99999) return 1e4; return uOrtho>0.5 ? 0.02+d*99.98 : 2.0*0.02*100.0/(100.02-(2.0*d-1.0)*99.98); }
+uniform vec2 uNF; float lin(vec2 uv){ float d=texture(uDepth,uv).r; if(d>=0.99999) return 1e4; float n=uNF.x, f=uNF.y; return uOrtho>0.5 ? n+d*(f-n) : 2.0*n*f/(f+n-(2.0*d-1.0)*(f-n)); }
 void main(){ float z=lin(vUV); float s=texture(uSrc,vUV).r, ws=1.0; float k=1.0/(0.03*min(z,100.0)+0.004);
   for(int i=-4;i<=4;i++){ if(i==0) continue; vec2 u=vUV+uDir*float(i); float zs=lin(u); float w=exp(-abs(zs-z)*k)*exp(-float(i*i)*0.08); s+=texture(uSrc,u).r*w; ws+=w; }
   o=vec4(vec3(s/ws),1.0); }`;
@@ -74,7 +74,7 @@ function postFreeT(t){if(!t)return;gl.deleteTexture(t.tex);gl.deleteFramebuffer(
 function v3PostFree(F){const X=F&&F.px;if(!X)return;postFreeT(X.a);postFreeT(X.b0);postFreeT(X.b1);postFreeT(X.ao0);postFreeT(X.ao1);if(X.dt){gl.deleteTexture(X.dt);gl.deleteFramebuffer(X.df);}F.px=null;}
 /* run after the model is resolved into F.rf; the result goes back into F.rf */
 function v3Post(F,reuse){const s=v3s();if(!postActive(s))return false;const p=postOf(s),needD=p.dof.on||p.ao.on;
-  if(reuse&&(!F.px?.valid||F.px.w!==F.w||F.px.h!==F.h||F.px.key!==JSON.stringify(p)))return false;
+  if(reuse&&(!F.px?.valid||F.px.w!==F.w||F.px.h!==F.h||F.px.key!==JSON.stringify(p)+(p.dof.on?'|'+v3.cam.dist+v3.cam.yaw+v3.cam.pitch:'')))return false;
   if(!P_PC){P_PAO=program(FS_POSTAO);P_PAOB=program(FS_POSTAOB);P_PTH=program(FS_POSTTH);P_PBL=program(FS_POSTBL);P_PC=program(FS_POSTC);}
   let X=F.px;if(X&&(X.w!==F.w||X.h!==F.h)){v3PostFree(F);X=null;}
   if(!X){X=F.px={w:F.w,h:F.h,a:postTex(F.w,F.h,gl.LINEAR),b0:postTex(Math.max(1,F.w>>1),Math.max(1,F.h>>1),gl.LINEAR),b1:postTex(Math.max(1,F.w>>1),Math.max(1,F.h>>1),gl.LINEAR)};}
@@ -86,15 +86,15 @@ function v3Post(F,reuse){const s=v3s();if(!postActive(s))return false;const p=po
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,X.df);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.DEPTH_BUFFER_BIT,gl.NEAREST);}
   if(!reuse&&p.bloom.on){v3Work.postPasses+=5;run(P_PTH,X.b0,{uSrc:X.a.tex,uT:p.bloom.thr});const st=1+p.bloom.rad*5;
     for(let i=0;i<2;i++){run(P_PBL,X.b1,{uSrc:X.b0.tex,uDir:[st/X.b0.w,0]});run(P_PBL,X.b0,{uSrc:X.b1.tex,uDir:[0,st/X.b0.h]});}}
-  const sm=v3s(),c=v3.cam,foc=Math.max(.01,c.dist*(1+p.dof.focus)),tanH=2*Math.tan(sm.fov*Math.PI/360),oh=sm.ortho?2*c.dist*Math.tan(sm.fov*Math.PI/360):1,tanH0=tanH,oh0=oh;
+  const sm=v3s(),c=v3.cam,NF=typeof v3Clip==='function'?v3Clip():[.02,100],foc=typeof vpFocusDist==='function'?vpFocusDist(p.dof):Math.max(.01,c.dist*(1+p.dof.focus)),tanH=2*Math.tan(sm.fov*Math.PI/360),oh=sm.ortho?2*c.dist*Math.tan(sm.fov*Math.PI/360):1,tanH0=tanH,oh0=oh;
   if(!reuse&&p.ao.on&&X.dt){v3Work.postPasses+=3;if(!X.ao0){X.ao0=postTex(F.w,F.h,gl.LINEAR);X.ao1=postTex(F.w,F.h,gl.LINEAR);}
-    run(P_PAO,X.ao0,{uDepth:X.dt,uPx:[1/F.w,1/F.h],uAsp:F.w/F.h,uOrtho:sm.ortho?1:0,uTan:tanH0,uOH:oh0,uR:p.ao.rad});
-    const st=1+p.ao.soft*2.5;run(P_PAOB,X.ao1,{uSrc:X.ao0.tex,uDepth:X.dt,uDir:[st/F.w,0],uOrtho:sm.ortho?1:0});run(P_PAOB,X.ao0,{uSrc:X.ao1.tex,uDepth:X.dt,uDir:[0,st/F.h],uOrtho:sm.ortho?1:0});}
+    run(P_PAO,X.ao0,{uNF:NF,uDepth:X.dt,uPx:[1/F.w,1/F.h],uAsp:F.w/F.h,uOrtho:sm.ortho?1:0,uTan:tanH0,uOH:oh0,uR:p.ao.rad});
+    const st=1+p.ao.soft*2.5;run(P_PAOB,X.ao1,{uNF:NF,uSrc:X.ao0.tex,uDepth:X.dt,uDir:[st/F.w,0],uOrtho:sm.ortho?1:0});run(P_PAOB,X.ao0,{uNF:NF,uSrc:X.ao1.tex,uDepth:X.dt,uDir:[0,st/F.h],uOrtho:sm.ortho?1:0});}
   const seed=postGrainSeed(p.grain);v3Work.postPasses++;if(reuse)v3Work.postReuses++;
-  run(P_PC,{fbo:F.rf,w:F.w,h:F.h},{uSrc:X.a.tex,uBloom:X.b0.tex,uDepth:needD&&X.dt?X.dt:dummy,uAO:p.ao.on&&X.ao0?X.ao0.tex:dummy,uPx:[1/F.w,1/F.h],uAsp:F.w/F.h,uOrtho:sm.ortho?1:0,uTan:tanH,uOH:oh,
+  run(P_PC,{fbo:F.rf,w:F.w,h:F.h},{uNF:NF,uSrc:X.a.tex,uBloom:X.b0.tex,uDepth:needD&&X.dt?X.dt:dummy,uAO:p.ao.on&&X.ao0?X.ao0.tex:dummy,uPx:[1/F.w,1/F.h],uAsp:F.w/F.h,uOrtho:sm.ortho?1:0,uTan:tanH,uOH:oh,
     uA:[p.ao.on?1:0,p.ao.amt,p.ao.rad,0],uD:[p.dof.on?1:0,p.dof.amt,foc,0],uB:[p.bloom.on?1:0,p.bloom.amt,p.grain.col,0],uG:p.grade.on?[p.grade.exp,p.grade.con,p.grade.sat,p.grade.warm]:[0,0,0,0],
     uV:[p.vig.on?p.vig.amt:0,p.vig.soft,p.grain.on?p.grain.amt:0,p.ca.on?p.ca.amt:0],uS:[p.sharp.on?p.sharp.amt:0,seed,p.grade.on?1:0,p.grain.size*Math.max(1,F.h/1080)],uL:[p.look.on?p.look.mode:0,p.look.amt,p.look.lv,0]});
-  X.valid=true;X.key=JSON.stringify(p);X.seed=seed;gl.bindFramebuffer(gl.FRAMEBUFFER,null);return true;}
+  X.valid=true;X.key=JSON.stringify(p)+(p.dof.on?'|'+v3.cam.dist+v3.cam.yaw+v3.cam.pitch:'');X.seed=seed;gl.bindFramebuffer(gl.FRAMEBUFFER,null);return true;}
 /* ---- the settings, in the Shader panel ---- */
 function postEdit(k,key,v){const s=v3s();if(!s.post)s.post={};s.post[k]=Object.assign({},s.post[k]||{},{[key]:v});v3.dirty=true;requestRender();}
 const POST_SL={bloom:[['amt','Amount',0,2,.01],['thr','Threshold',0,1,.01],['rad','Spread',0,1,.01]],ao:[['amt','Strength',0,1,.01],['rad','Radius',.02,1,.01],['soft','Smoothness',0,1,.01]],dof:[['amt','Blur',0,1,.01],['focus','Focus distance',-.8,1.5,.01]],

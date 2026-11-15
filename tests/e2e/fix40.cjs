@@ -51,8 +51,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(!s1.equals(s2),'turning Lit off changes the flat view');
  await p.click('#vp_lit');await W(300);
  /* post processing */
- await p.evaluate(()=>__gs.showPanel('shading'));await W(400);
- ok(await p.evaluate(()=>!!document.getElementById('postBox')&&document.querySelectorAll('#postBox .postfx').length===9),'the Shader panel has 9 post effects, including Filter look');
+ await p.evaluate(()=>{__gs.showPanel('v3post');__gs.vpRender();});await W(400);
+ ok(await p.evaluate(()=>!!document.getElementById('postBox')&&document.querySelectorAll('#postBox .postfx').length===8),'the Post FX panel has 8 post effects, including Filter look (depth of field is in Camera)');
  await p.evaluate(()=>{document.getElementById('post_vig').click();});await W(400);
  const wv=await shot();
  ok(lum(wv,3,3,160)<lum(base,3,3,160)-30,'Vignette darkens the corners');
@@ -60,13 +60,14 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{const i=document.getElementById('post_grade_exp');i.value='1.5';i.dispatchEvent(new Event('input',{bubbles:true}));});await W(400);
  const gr=await shot();
  ok(diff(base,gr)>2000,'Colour grade exposure brightens the picture');
- await p.evaluate(()=>{document.getElementById('post_grade').click();for(const k of ['bloom','ao','dof','sharp','ca','grain'])document.getElementById('post_'+k).click();});await W(500);
+ await p.evaluate(()=>{document.getElementById('post_grade').click();for(const k of ['bloom','ao','sharp','ca','grain'])document.getElementById('post_'+k).click();__gs.postEdit('dof','on',true);});await W(500);
  const all=await shot();
  ok(diff(base,all)>100,'Bloom, occlusion, depth of field, sharpen, fringes and grain all run');
  await p.click('#postReset');await W(400);
  const back=await shot();
  ok(diff(base,back)<40,'Reset post processing puts the picture back');
  /* panner */
+ await p.evaluate(()=>{__gs.showPanel('shading');__gs.renderShading();});await W(300);
  await p.selectOption('#shKind','panner');await W(400);
  ok(await p.evaluate(()=>!!document.getElementById('pnLayer')&&document.querySelectorAll('[id^=pn_m_]').length===7),'the Panner shader has its layer choice and seven map ticks');
  await p.evaluate(()=>{const i=document.getElementById('sh_sx');i.value='0.25';i.dispatchEvent(new Event('input',{bubbles:true}));});await W(300);

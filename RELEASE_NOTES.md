@@ -2,6 +2,12 @@
 
 - Normal mixing (Combine / Replace), AO mixing and UV padding in Texture Set Settings.
 - Real skin blur like Marmoset: light spreads under the skin, painted detail stays sharp; Model height for real millimetres.
+- Skin goes to Unreal, Unity and Godot with its scatter, translucency and fuzz maps; Specular reflectivity exports as Metallic.
+- Lights, Camera and Post FX buttons on the 3D view, each opening a dockable panel; depth of field with sticky focus.
+- Easier light gizmo; brush alignment saved in each brush; stroke preview stays pinned.
+- Material editor shows only the material's channels and follows the reflectivity; Alt+click a channel button to solo it.
+- Drag Projects pictures onto material channels; no zoom limit.
+- Fixed: clone and heal on the model, flicker in the Ray traced view while painting, a leftover wireframe after deleting a layer.
 
 ## Gouache Studio 0.97.26
 

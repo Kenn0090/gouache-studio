@@ -243,6 +243,7 @@
     "ui/dock",
     "ui/shelf",
     "ui/texset-settings",
+    "view3d/viewport-panels",
     "ui/effect-shelf",
     "ui/gen-shelf",
     "ui/history",

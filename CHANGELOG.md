@@ -2,6 +2,16 @@
 
 - **Normal mixing, Ambient occlusion mixing and UV padding** in Texture Set Settings, like Painter. Normal mixing **Combine** blends each layer's normal detail with the detail below it; **Replace** covers it (as before). AO mixing **Multiply** darkens with every layer's occlusion. UV padding sets how far colour grows past the UV islands' edges in exported textures.
 - **Real skin blur, like Marmoset:** the light under the skin now spreads across the surface (red furthest), while painted detail, shine and fuzz stay sharp. **Skin blur** and **Model height (cm)** are in the skin settings; Scatter Depth is now measured in real millimetres on a model of that height.
+- **Skin in Unreal, Unity and Godot:** exporting a Skin set now brings its scatter, translucency and fuzz along, with a **SkinMask** picture (red scattering, green translucency, blue fuzz) and the Scatter colour map wired into each engine's skin material. **Specular reflectivity** is turned into Metallic and Base colour on export, so engines and presets that read Metallic look the same.
+- **Lights, Camera and Post FX buttons on the 3D view.** Each opens its own panel beside the button; drag its tab into the dock to keep it there. **Lights**: your lights (sun, point, spot, sky) and the studio lighting. **Camera**: focal length and view angle, **depth of field** and **sticky focus** (pick a point on the model and it stays sharp as the camera moves, like Marmoset). **Post FX**: bloom, occlusion, colour grade, vignette, grain and the rest. They moved out of the Settings drop-down and the Shader panel.
+- **Lights are easier to move:** bigger handles on the light gizmo, easier to grab, and it shows whenever the Lights panel is open.
+- **Alignment in each brush's settings** (3D Paint): an "On the model" choice at the top of the brush settings, saved with the brush, so a brush that needs Tangent | Wrap or Camera switches to it when you pick it.
+- **The stroke preview stays pinned** while you scroll the brush settings, on every window size.
+- **The material editor** shows only the channels the material has switched on (the buttons above turn the others on), follows the Shader's **Reflectivity** (Specular colour instead of Metallic), and **Recolour** now sits with Tint & adjust. **Alt+click** a channel button (on a material or the brush) keeps only that one on; Alt+click it again brings the others back. Removing a channel in Texture Set Settings updates the material editor at once.
+- **Drag a picture from the Projects shelf** onto a channel card in the material editor.
+- **Zoom** has no hard limit any more: right up to a pore or far out, without the model being cut off.
+- **The export window** says plainly that sets with UV tiles are written one file per tile (Name_BaseColor.1001.png…).
+- Fixed: **clone stamp and healing brush** did nothing on the model with UV alignment (the default): they now paint with Tangent | Wrap by themselves. The **Ray traced** view showed the textures from before a stroke while painting. Deleting a layer while viewing its mask could leave the mask view's wireframe on. A warning now says when the graphics card runs out of memory while updating the model's textures (very large texture sets), instead of the model quietly showing an old picture. The degree sign in the shadow floor sliders.
 
 ## 0.97.26
 

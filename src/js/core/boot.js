@@ -85,3 +85,4 @@ if(window.__gs)Object.assign(window.__gs,{paEntries,skSetRefl,renderMatEd,tssRem
 if(window.__gs)Object.assign(window.__gs,{brushAlignRow,brushAlign3d});
 if(window.__gs)Object.assign(window.__gs,{maskBarSync,v3SetWireMode,v3WireMode,mk3});
 if(window.__gs)Object.assign(window.__gs,{rt,rtTexVer});
+if(window.__gs)Object.assign(window.__gs,{vpRender,vpOpen,vpFocusDist,vpFocus,panelShown,lgzActive,postOf,lightRig});
