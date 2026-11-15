@@ -8,7 +8,17 @@
    the chosen images are L._fillImg[k] (kept in .gouache files). */
 /* projections (0.23.1): 0 UV (uUvM: offset/turn/scale), 1 triplanar, 2 planar, 3 spherical; uInv takes a world position
    into the projection's own space (its offset, rotation and scale) */
-const FS_FILLIMG=`uniform sampler2D uSrc; uniform vec2 uUdimT; uniform float uTile; uniform float uRot; uniform float uUvRot; uniform float uContrast; uniform int uGrey; uniform int uProj; uniform sampler2D uPos; uniform sampler2D uNrm; uniform sampler2D uTan;
+/* (0.97.30, per-tile UDIM sizes) canvas UV → the same point in the plain grid of UV tiles, so UV patterns repeat once per tile
+   whatever size each tile has (uniforms from udimGU in view3d/udim-atlas.js; uUdN 0 = unchanged) */
+const UDIM_GLSL=`
+#ifndef UDIM_G
+#define UDIM_G
+uniform int uUdN; uniform vec4 uUdP[32]; uniform vec4 uUdG[32];
+vec2 udimG(vec2 uv){ for(int i=0;i<32;i++){ if(i>=uUdN) break; vec4 r=uUdP[i]; vec2 l=(uv-r.xy)/r.zw;
+    if(l.x>=0.0&&l.y>=0.0&&l.x<1.0&&l.y<1.0){ vec4 g=uUdG[i]; return g.xy+l*g.zw; } } return uv; }
+#endif
+`;
+const FS_FILLIMG=UDIM_GLSL+`uniform sampler2D uSrc; uniform vec2 uUdimT; uniform float uTile; uniform float uRot; uniform float uUvRot; uniform float uContrast; uniform int uGrey; uniform int uProj; uniform sampler2D uPos; uniform sampler2D uNrm; uniform sampler2D uTan;
 uniform float uSharp; uniform float uHStr; uniform int uHeight; uniform int uNormal; uniform mat4 uInv; uniform mat3 uNrmInv; uniform mat3 uUvM; uniform int uRep; uniform int uFront; uniform int uKeepA; uniform vec4 uCyl; uniform float uCrop; uniform sampler2D uWarp; uniform vec4 uWarpD; uniform int uNearest; in vec2 vUV;
 bool wrapOut(vec2 t){ if(uCyl.w<0.5) return false; if(uCyl.w<1.5) return t.x<0.0||t.x>1.0||t.y<0.0||t.y>1.0; if(uCyl.w<2.5) return t.y<0.0||t.y>1.0; return t.x<0.0||t.x>1.0; }
 vec2 nearestUV(vec2 t){ vec2 sz=vec2(textureSize(uSrc,0)); return (floor(t*sz)+0.5)/sz; }
@@ -73,7 +83,7 @@ void main(){ vec4 s; float coverage=1.0;
         o=vec4(fillProjectedNormal(q,Nworld,detail)*a,a); return;
       }}
     else { vec3 d=normalize(L+vec3(0.0,0.0,1e-6)); vec2 t=vec2(atan(d.x,d.z)/6.2831853+0.5,0.5-asin(clamp(d.y,-1.0,1.0))/3.1415927); s=sampL(t*uTile); } }
-  else s=samp((uUvM*vec3(vUV*(uUdimT.x>0.0?uUdimT:vec2(1.0)),1.0)).xy*uTile);
+  else s=samp((uUvM*vec3((uUdimT.x>0.0&&uUdimT!=vec2(1.0))?vUV*uUdimT:udimG(vUV),1.0)).xy*uTile);
   vec3 c=s.a>1e-6?s.rgb/s.a:vec3(0.0);
   if(uGrey==1){ float g=dot(c,vec3(0.299,0.587,0.114)); g=clamp(0.5+(g-0.5)*(1.0+uContrast),0.0,1.0); if(uHeight==1) g=clamp(0.5+(g-0.5)*uHStr,0.0,1.0); float a=coverage*(uKeepA==1?s.a:1.0); o=vec4(vec3(g)*a,a); return; }
   c=clamp(0.5+(c-0.5)*(1.0+uContrast),0.0,1.0);
@@ -101,7 +111,8 @@ const FILL_SKIP=['curv'];
 const fillMapsOf=()=>doc.maps.filter(k=>!FILL_SKIP.includes(k));
 function fillDefaults(){const m={};for(const k of MAP_ORDER){if(FILL_SKIP.includes(k))continue;const d=MAP_DEFS[k].def;
     m[k]={on:k==='base'||k==='rough'||k==='metal'||k==='spec'||k==='gloss',src:k==='normal'?'image':'value',c:k==='base'?ui.fg.slice():k==='spec'?[.22,.22,.22]:k==='emis'?[0,0,0]:k==='sssc'?[.85,.25,.18]:k==='specc'?[.22,.22,.22]:MAP_DEFS[k].user?[.5,.5,.5]:null,v:d==null?.5:d,tile:1,rot:0,con:0};}
-  return {maps:m,proj:'uv',triSharp:4,hStr:1};}
+  /* (0.97.30, Kenn) “Hide the bumps below” starts off; Preferences › Painting can make it start on. Saved materials keep their own. */
+  return {maps:m,proj:'uv',triSharp:4,hStr:1,coverH:typeof prefs!=='undefined'&&prefs.coverBumps===true};}
 const fillClone=f=>JSON.parse(JSON.stringify(f));
 /* Match the storage rounding of the previous cleared image, including 8-bit flat normals. */
 function fillSolidColor(k,c){return mapDepth(k)===16?c.map(v=>h2fLut()[f2h(v)]):c.map(v=>Math.round(clamp(v,0,1)*255)/255);}

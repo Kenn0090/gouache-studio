@@ -71,7 +71,7 @@ const server=http.createServer((req,res)=>{
 
     await page.evaluate(()=>newBumpMaterial('paint'));
     assert.equal(await page.locator('#fl_on_height').isChecked(),false);
-    await page.locator('#fl_on_height').check();
+    await page.locator('#tssMat_height').click();await page.waitForTimeout(300);assert.equal(await page.locator('#fl_on_height').isChecked(),true);/* (0.97.27) off channels are switched on by their button */
     assert.equal(await page.evaluate(()=>__gs.doc.maps.includes('height')&&__gs.doc.active.fill.maps.height.on),true);
     assert.ok(await page.locator('#fl_v_height').isVisible());
     console.log('PASS the Height toggle adds and enables the channel on a blank material');
@@ -96,7 +96,7 @@ const server=http.createServer((req,res)=>{
     const additive=await page.evaluate(()=>{
       const G=__gs;
       newBumpMaterial('paint');
-      G.cmdNewFillLayer({name:'Underlying height',maps:{height:{v:.55}}});
+      G.cmdNewFillLayer({name:'Underlying height',maps:{height:{v:.55}},coverH:true});/* (0.97.30) the default is now off */
       const layer=G.matApply({name:'Additive bumps',fill:{maps:{height:{on:true,src:'value',v:.6}},coverH:false},imgs:{}});
       const h=G.compositeMap('height'),byte=G.makeTarget(h.w,h.h,8,false);
       G.copyScaled(h,byte);

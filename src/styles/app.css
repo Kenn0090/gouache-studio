@@ -1814,3 +1814,12 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .skslcol{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:end}
 /* (0.97.27, Kenn: "the projections UI is extended past the UI's box") fields and drop-downs in the projection box count their padding inside their width */
 .pxf,.pxf *{box-sizing:border-box}.pxf{min-width:0;max-width:100%}.pxf select,.pxf .chk{max-width:100%;min-width:0}.msccard{min-width:0}.msccard>*{max-width:100%}
+/* (0.97.30) the map name while flipping with C / B */
+.fliplabel{position:absolute;left:50%;top:54px;transform:translateX(-50%);z-index:30;pointer-events:none;text-align:center;padding:8px 16px 7px;border-radius:12px;background:color-mix(in srgb,var(--panel,#1e1f24) 88%,transparent);border:1px solid var(--line,#333);box-shadow:0 6px 24px rgba(0,0,0,.35);opacity:0;transition:opacity .35s}
+.fliplabel.show{opacity:1;transition:none}.fliplabel.show.fade{opacity:0;transition:opacity .6s}
+.fliplabel .flk{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#999)}
+.fliplabel .flrow{display:flex;align-items:baseline;gap:14px;justify-content:center;white-space:nowrap}
+.fliplabel .flname{font-size:20px;font-weight:600;color:var(--text,#eee)}
+.fliplabel .flside{font-size:12px;color:var(--muted,#999)}
+.fliplabel .flhint{font-size:10.5px;color:var(--muted,#999);margin-top:2px}
+.p3tilegrp{display:inline-flex;align-items:center;gap:2px}.p3tilesz{font-size:10.5px;padding:0 2px;min-height:0;height:20px;max-width:74px}

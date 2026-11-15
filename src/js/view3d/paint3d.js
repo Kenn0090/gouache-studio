@@ -39,7 +39,7 @@ function buildP3Panel(){p3BakePanel();if(typeof stBrushRender==='function')stBru
   const models=el('select',{id:'p3Model','aria-label':'Model'},...Object.entries(PRIMS).map(([k,[l]])=>el('option',{value:k,text:l})),
     ...(v3.imported?[el('option',{value:'imported',text:v3.imported.name})]:[]),el('option',{value:'__import',text:'Import a model (OBJ, glTF, GLB, FBX)…'}));
   models.value=s.model;models.onchange=()=>{if(models.value==='__import'){models.value=s.model;importModel().then(()=>{p3.imported=v3.imported;buildP3Panel();});return;}s.model=models.value;v3LoadModel();buildP3Panel();};
-  const active=p3.sets[p3.cur],tileBox=active&&udimBox(p3Binding(active)),side=Math.round(doc.w/(tileBox?.nx||1));
+  const active=p3.sets[p3.cur],tileBox=active&&udimBox(p3Binding(active)),side=tileBox&&tileBox.lay?p3.size:Math.round(doc.w/(tileBox?.nx||1));
   const sizes=[1024,2048,4096,...(MAX_DIM>=8192?[8192]:[])];
   if(!sizes.includes(side))sizes.push(side);
   box.append(el('div',{class:'sub',text:'Model'}),models,s.model==='imported'&&v3.imported?upTurnRow():'',s.model==='imported'&&v3.imported?smoothingRow('p3Sm_'):'',s.model==='matpreview'?el('button',{class:'btn sm',id:'p3PreviewMaps',text:'Load preview material and mesh maps',onclick:()=>studioPreviewMaps()}):'',
@@ -55,7 +55,9 @@ function buildP3Panel(){p3BakePanel();if(typeof stBrushRender==='function')stBru
 async function p3Resize(n){
   if(p3PaintBusy||tabDocs.hold||gfSaving||loadDepth)return false;
   const S=p3.sets[p3.cur],[w,h]=p3.ua&&S?udimDims(p3Binding(S),n):[n,n],oldW=doc.w,oldH=doc.h;
-  if(w===oldW&&h===oldH)return true;
+  /* (0.97.30) per-tile UDIM sizes: the tiles may also move to new places on the canvas */
+  const uName=p3.ua&&S?p3Binding(S):null,uB=uName&&udimBox(uName),uPk=uB?udimPack(uName,n):null,uFrom=uB?udimLay(uName):null,uTo=uB?(uPk.lay||udimGridLay(uB)):null,relay=!!uB&&!udimLayEq(uFrom,uTo);
+  if(w===oldW&&h===oldH&&!relay)return true;
   if(Math.max(w,h)>MAX_DIM){toast('This computer cannot edit textures that large.');return false;}
   if(stroke||ptr||preview||selLive||sel.quick||undoBusy){toast('Finish the current edit first.');return false;}
   if(typeof xf!=='undefined'&&xf)xfCommit();
@@ -63,7 +65,8 @@ async function p3Resize(n){
   if(tedit)closeTextEditor();
   textCommit();pathFlush();msCommit();
   if(!v3.mesh)v3LoadModel(true);
-  const cancel={stopped:false};
+  const cancel={stopped:false},layWas=uB?uB.lay:undefined,mmWas=relay?Object.assign({},doc.meshMaps||{}):null;
+  if(relay){udimRelay={from:uFrom,to:uTo,oldKey:p3PaintMeshKey(v3.mesh)};if(uPk.lay)uB.lay=uPk.lay;else delete uB.lay;v3LoadModel(true);}
   try{
     await p3PaintHold(async()=>{
       loadStart('Texture size');
@@ -73,7 +76,13 @@ async function p3Resize(n){
       try{await loadPaint();await p3PaintAtSize(w,h,{keep:true,cancel});}
       finally{loadEls().classList.remove('p3-resolution-progress');loadEnd();}
     });
-  }catch(e){if(!cancel.stopped)console.error(e);toast(e.message||NO_GPU_MEM);buildP3Panel();return false;}
+  }catch(e){if(relay){if(layWas)uB.lay=layWas;else delete uB.lay;udimRelay=null;v3LoadModel(true);}
+    if(!cancel.stopped)console.error(e);toast(e.message||NO_GPU_MEM);buildP3Panel();return false;}
+  finally{udimRelay=null;}
+  if(relay){/* the baked mesh maps follow their tiles too */
+    for(const [k,t] of Object.entries(mmWas||{})){if(!t||!t.tex||doc.meshMaps[k]!==t)continue;const M=Math.max(t.w,t.h),nw=Math.max(1,Math.round(M*w/Math.max(w,h))),nh=Math.max(1,Math.round(M*h/Math.max(w,h)));
+      const nt=makeTarget(nw,nh,t.depth,true,t.packed,t.mono);udimRemapT(t,nt,uFrom,uTo);doc.meshMaps[k]=nt;disposeTarget(t);}
+    if(typeof msEpoch!=='undefined')msEpoch++;}
   extClearAll();
   scaleEditableLayers(w/oldW,h/oldH);
   for(const L of paintLayers()){
@@ -164,7 +173,7 @@ function p3SetsBox(){const box=el('div',{class:'p3sets',role:'listbox','aria-lab
       p3EyeBtn(S),el('span',{class:'p3sn',text:S.name,ondblclick:ev=>{ev.stopPropagation();p3RenameDialog(i);}}),S.tile?el('span',{class:'p3udims',text:String(S.tile.id),'aria-label':'UDIM '+S.tile.id,title:'UDIM tile '+S.tile.id}):tiles.length?el('span',{class:'p3udims',text:tiles.join(' · '),'aria-label':'UV tiles '+tiles.join(', '),title:'UDIM tiles detected: '+tiles.join(', ')}):null,el('button',{class:'btn sm p3rename',text:'Rename',title:'Name this texture set',onclick:ev=>{ev.stopPropagation();p3RenameDialog(i);}}),el('button',{class:'btn sm p3del',text:'×','aria-label':'Delete '+S.name,title:'Delete this texture set',onclick:ev=>{ev.stopPropagation();p3DeleteSet(i);}}));
     row.addEventListener('click',()=>{if(!S.missing)p3SwitchSet(i);});row.addEventListener('keydown',ev=>{if((ev.key==='Enter'||ev.key===' ')&&!S.missing){ev.preventDefault();p3SwitchSet(i);}});box.append(row);
     /* (0.95) UDIM: the set's tiles as small rows under it; click one to see that tile on the flat canvas */
-    if(p3.ua&&!S.tile&&tiles.length>0&&!S.missing)box.append(el('div',{class:'p3tiles','aria-label':'UV tiles of '+S.name},...(S.udimTiles||[]).map(T=>el('button',{class:'btn sm p3tile',text:String(T.id),title:'Show tile '+T.id+' on the flat canvas','data-tile':String(T.id),onclick:ev=>{ev.stopPropagation();if(p3.cur!==i)p3SwitchSet(i,true);udimFrameTile(p3Binding(S),T);}}))));});
+    if(p3.ua&&!S.tile&&tiles.length>0&&!S.missing)box.append(el('div',{class:'p3tiles','aria-label':'UV tiles of '+S.name},...(S.udimTiles||[]).map(T=>el('span',{class:'p3tilegrp'},el('button',{class:'btn sm p3tile',text:String(T.id),title:'Show tile '+T.id+' on the flat canvas','data-tile':String(T.id),onclick:ev=>{ev.stopPropagation();if(p3.cur!==i)p3SwitchSet(i,true);udimFrameTile(p3Binding(S),T);}}),udimTileSizeSel(p3Binding(S),T,i)))));});
   if((p3.deletedSets||[]).length)box.append(el('button',{class:'btn sm',id:'p3RestoreSets',text:'Restore deleted sets',title:'Recreate deleted texture sets with empty layers',onclick:p3RestoreSets}));
   return box;}
 
@@ -403,7 +412,17 @@ function p3ChannelSync(){const k=p3ChannelView(),s=document.getElementById('p3Ch
 function p3SetChannelView(k){if(ui.mode!=='p3d'||stroke||selLive)return;/* (0.80.2, Kenn) only the view: fine while a settings window is open */if(k&&!p3ChannelKeys().includes(k))return;
   ui.viewMask=false;libIdShow(false);p3mm.k=null;p3mmBadge();v3s().channelView=k||null;v3s().worldNormalView=false;v3s().unlit=false;v3.rt=false;v3.mapsDirty=true;v3.dirty=true;p3ChannelSync();requestRender(true);}
 function p3SetWorldNormalView(on){if(ui.mode!=='p3d'||stroke||selLive)return;p3SetChannelView(null);v3s().worldNormalView=!!on;p3ChannelSync();v3.dirty=true;requestRender();}
-function p3CycleChannel(dir){const K=p3ChannelKeys(),i=K.indexOf(p3ChannelView());if(!K.length)return;p3SetChannelView(K[(i<0?(dir>0?0:K.length-1):(i+dir+K.length)%K.length)]);toast('Channel: '+p3ChannelLabel(p3ChannelView())+' · Esc for Lit');}
+/* (0.97.30, Kenn: "when you're switching through the maps and channels with C or B you should see the names") a big label at the top of
+   the 3D view: the map now shown, with the ones before and after it, fading out after a moment */
+function flipLabel(kind,names,i){const host=document.getElementById('pane3d')||document.getElementById('work');if(!host)return;let b=document.getElementById('flipLabel');
+  if(!b||!b.isConnected){b=el('div',{id:'flipLabel',class:'fliplabel',role:'status','aria-live':'polite'});host.append(b);}
+  const n=names.length,at=k=>names[((i+k)%n+n)%n];
+  b.replaceChildren(el('div',{class:'flk',text:kind}),el('div',{class:'flrow'},n>2?el('span',{class:'flside',text:'‹ '+at(-1)}):'',el('span',{class:'flname',text:names[i]}),n>2?el('span',{class:'flside',text:at(1)+' ›'}):''),
+    el('div',{class:'flhint',text:(kind==='Mesh map'?'B / Shift+B':'C / Shift+C')+(ui.mode==='p3d'?' · Esc for Lit':'')}));
+  {const bar=host.querySelector('.v3bar'),hr=host.getBoundingClientRect();b.style.top=Math.round((bar?bar.getBoundingClientRect().bottom-hr.top:0)+12)+'px';}/* just below the 3D bar, however many rows it has */
+  b.classList.remove('fade');void b.offsetWidth;b.classList.add('show');clearTimeout(b._t);const go=++b._n||(b._n=1);requestAnimationFrame(()=>requestAnimationFrame(()=>{if(b._n===go)b._t=setTimeout(()=>{b.classList.add('fade');},1400);}));}/* the clock starts once the new view is on screen */
+function p3CycleChannel(dir){const K=p3ChannelKeys(),i=K.indexOf(p3ChannelView());if(!K.length)return;p3SetChannelView(K[(i<0?(dir>0?0:K.length-1):(i+dir+K.length)%K.length)]);
+  const j=K.indexOf(p3ChannelView());flipLabel('Channel',K.map(p3ChannelLabel),Math.max(0,j));}
 function p3ChannelControl(){const s=el('select',{id:'p3ChannelView','aria-label':'Viewport channel',title:'C: next channel · Shift+C: previous · B: baked maps · Esc: Lit'},el('option',{value:'',text:'Lit'}),el('option',{value:'world',text:'World normals'}),...p3ChannelKeys().map(k=>el('option',{value:k,text:p3ChannelLabel(k)})));s.value=p3ChannelView()||(v3s().worldNormalView?'world':'');s.onchange=()=>{const k=s.value;s.blur();if(k==='world')p3SetWorldNormalView(true);else if(k)p3SetChannelView(k);else p3ShowLit();};return s;}
 /* B / Shift+B: the set's baked mesh maps, unlit, like the Bake tab. */
 const p3mm={k:null};
@@ -416,7 +435,7 @@ function p3mmBadge(){let b=document.getElementById('p3mmBadge');const on=ui.mode
 function p3mmSet(k){if(k&&k===p3mm.k)k=null;p3mm.k=k;if(k){ui.viewMask=false;libIdShow(false);v3s().channelView=null;v3s().worldNormalView=false;v3.rt=false;}p3mmBadge();p3ChannelSync();v3.dirty=true;requestRender(true);}
 function p3mmCycle(dir){const K=p3mmKeys();if(!K.length){toast('No baked maps yet. Bake mesh maps or import them, then B steps through them.');return;}
   const L=[null,...K],i=Math.max(0,L.indexOf(p3mm.k)),k=L[(i+dir+L.length)%L.length];p3mmSet(k);
-  toast('Showing: '+(k?P3_MESHMAP_NAMES[k]||k:'the material'));}
+  flipLabel('Mesh map',L.map(x=>x?P3_MESHMAP_NAMES[x]||x:'Material (lit)'),L.indexOf(k));}
 function p3ShowLit(){if(stroke||selLive)return;closeMenu();v3s().worldNormalView=false;ui.viewMask=false;libIdShow(false);v3s().channelView=null;p3mmSet(null);v3s().unlit=false;v3.rt=false;setView('material');build3dPane();v3.mapsDirty=true;v3.dirty=true;requestRender(true);}
 window.addEventListener('keydown',e=>{if(typeof pathKeys==='function'&&pathKeys(e))return;if(ui.mode!=='p3d'||!modal.hidden||isTypingTarget(e.target)||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('#menuPop.tool-menu:not([hidden])'))return;
   if((e.key==='Delete'||e.key==='Backspace')&&typeof lightKeyDelete==='function'&&lightKeyDelete(e))return;

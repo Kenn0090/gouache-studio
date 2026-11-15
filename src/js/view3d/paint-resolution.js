@@ -37,9 +37,9 @@ function p3PaintRead(t){
   blit(t,stage,0,0,t.w,t.h,0,0);
   return readRegionAsync(stage,0,0,t.w,t.h).finally(()=>disposeTarget(stage));
 }
-function p3PaintSource(t,force=false){
+function p3PaintSource(t,force=false,lay){
   if(!force&&t._paintSource&&!t._paintStale)return t._paintSource;
-  const base={w:t.w,h:t.h,d:t.depth};
+  const base={w:t.w,h:t.h,d:t.depth,lay:lay!==undefined?lay:udimLayNow()};
   if(t._paintClear)base.color=t._paintClear.slice();
   else{
     base.image=p3PaintRead(t).then(raw=>pxPack(raw,base.w,base.h,base.d,false,true));
@@ -111,7 +111,7 @@ async function p3PaintPrepare(w,h,keep,cancel){
       const j=jobs[i],src=j.src;
       j.nt=makeTarget(w,h,src.depth,undefined,src.depth===16&&w*h>=268435456,src.mono);
       work.check();
-      if(j.derived)p3PaintScale(src,j.nt);
+      if(j.derived)p3LayScale(src,j.nt,udimRelay&&udimRelay.from);
       else await p3PaintRebuild(j,work,keep);
       work.check();
       if(cancel)loadSet((i+1)/(jobs.length+1),'Rebuilding layers and masks…');
@@ -187,7 +187,7 @@ function p3PaintBegin(s){
     uStrokeOpacity:o.opacity,uLockAlpha:false}});
   s.paintReplay={channels,draw:{size:[s.SW,s.SH],d:s.space?.buf.depth||strokeT.depth,w:doc.w,h:doc.h,wrap:doc.wrap,
     projection,world:o.tool==='brush'&&o.worldNormal?Array.from(o.worldNormal):null,tint:s.dabTint,
-    over:!!(o.buildup||o.pFlow),dabs:[]}};
+    over:!!(o.buildup||o.pFlow),dabs:[],lay:udimLayNow()}};
 }
 function paintRegularDab(t,u,center,alpha,color,tint,over){
   const d={...u,uCenter:center,uAlpha:alpha,uTint:{int:tint?1:0},uDabCol:color||[0,0,0]};
@@ -259,7 +259,7 @@ function p3PaintPatch(source,getTarget,before,after,x,y){
     return {getTarget,before:source,after:next};
   }
   const pack=s=>p3PaintSnap(s).then(raw=>pxPack(new Uint8Array(raw.buffer,raw.byteOffset,raw.byteLength),w,h,d,false));
-  const patch={x,y,w,h,d,W:t.w,H:t.h,before:pack(before),after:pack(after)};
+  const patch={x,y,w,h,d,W:t.w,H:t.h,lay:udimLayNow(),before:pack(before),after:pack(after)};
   patch.before.catch(()=>{});patch.after.catch(()=>{});
   const next={base:source.base,tail:{prev:source.tail,patch}};
   p3PaintAttach(t,next);
@@ -285,6 +285,11 @@ function p3PaintScale(src,dst){
   const scale=[src.w/dst.w,src.h/dst.h],taps=Math.min(8,Math.max(1,Math.ceil(Math.max(...scale))));
   run(P.resample,dst,{uSrc:src.tex,uOffset:[0,0],uScale:scale,uTaps:{int:taps}});
 }
+/* (0.97.30, per-tile UDIM sizes) which tile layout a record was made in: its own, else the plain grid (records from before) */
+function p3LayOf(rec){const cur=udimLayNow();if(!cur)return null;if(rec&&rec.lay)return rec.lay;const b=udimImgBox();return b?udimGridLay(b.B):null;}
+const p3LaySame=rec=>{const cur=udimLayNow();return !cur||udimLayEq(p3LayOf(rec),cur);};
+/* scale a picture made in layout `from` into the current one */
+function p3LayScale(src,dst,from){const cur=udimLayNow();if(!cur||!from||udimLayEq(from,cur))p3PaintScale(src,dst);else udimRemapT(src,dst,from,cur);}
 function p3PaintTexture(image,cache){
   if(!image)return dummy;
   let tex=cache.get(image);
@@ -309,7 +314,12 @@ async function p3PaintDraw(step,t,work){
   const depth=p.d===16&&canFloat?16:8;
   const space=p.projection?meshSpace(Math.max(1,Math.round(sw*factor)),Math.max(1,Math.round(sh*factor)),p.projection,depth,work):null;
   const uv=work.buffer(w,h,depth,p.wrap,t.packed&&depth===16);
-  const dst=space?space.buf:uv;
+  /* (0.97.30) a stroke painted straight on the texture in another tile layout: drawn in its own layout, then moved tile by tile */
+  const lay=!space&&!p3LaySame(p)?p3LayOf(p):null,cur=lay?udimLayNow():null;let tmp=null;
+  if(lay){let f=1;for(const id of Object.keys(cur))if(lay[id])f=Math.max(f,cur[id][2]*w/(lay[id][2]*sw),cur[id][3]*h/(lay[id][3]*sh));
+    f=Math.min(f,MAX_DIM/Math.max(sw,sh));tmp=makeTarget(Math.max(1,Math.round(sw*f)),Math.max(1,Math.round(sh*f)),depth,p.wrap);clearTarget(tmp);}
+  try{
+  const dst=tmp||(space?space.buf:uv);
   const scale=[dst.w/sw,dst.h/sh],box=[Infinity,Infinity,-Infinity,-Infinity];
   for(const [x,y,,ext] of p.dabs){
     box[0]=Math.min(box[0],x-ext);box[1]=Math.min(box[1],y-ext);
@@ -318,7 +328,7 @@ async function p3PaintDraw(step,t,work){
   const pixels=box.map((v,i)=>v*scale[i%2]);
   const area=p3PaintRect(pixels,dst.w,dst.h);
   if(!area[2]||!area[3])return;
-  scissorDo(area,()=>clearTarget(dst));
+  if(space)clearTarget(dst);else scissorDo(area,()=>clearTarget(dst));/* (0.97.30) the screen buffer is shared by every stroke of a rebuild: all of an older stroke's dabs must go */
   const [uTip,uTexImg,uDual]=p.images.map(i=>p3PaintTexture(i,work.images));
   const U={...p.uniforms,uTip,uTexImg,uDual,uSize:p.size,uDabScale:scale.map(v=>1/v)};
   for(const [x,y,r,ext,angle,a,fx,fy,hard,grain,spray,den,seed,mist,fleck,ring,swirl,phase,pat,patSeed,dx,dy,...color] of p.dabs){
@@ -328,17 +338,19 @@ async function p3PaintDraw(step,t,work){
     if(work.yieldNeeded())await work.pause();
   }
   let r=area;
+  if(tmp){udimRemapT(tmp,uv,lay,cur);r=[0,0,w,h];}
   if(space){
     const b=space.viewportBounds({bb:pixels});
     r=b?p3PaintRect([b[0]*w/doc.w-2,b[1]*h/doc.h-2,b[2]*w/doc.w+2,b[3]*h/doc.h+2],w,h):[0,0,w,h];
     if(!r[2]||!r[3])return;
-    scissorDo(r,()=>space.projectStroke(dst,uv,false,p.world));
+    scissorDo(r,()=>{clearTarget(uv);space.projectStroke(dst,uv,false,p.world);});/* (0.97.30) the shared stroke buffer still held the previous stroke's coverage there */
   }
   const old=makeTarget(r[2],r[3],t.depth,false,t.packed,t.mono);
   try{
     blit(t,old,...r,0,0);
     scissorDo(r,()=>run(P.merge,t,{...merge,uSrc:old.tex,uSrcOrigin:{iv2:r.slice(0,2)},uStrokeTex:uv.tex}));
   }finally{disposeTarget(old);}
+  }finally{if(tmp)disposeTarget(tmp);}
 }
 let P_PAINT_PATCH=null;
 function p3PaintUpload(w,h,d,raw){
@@ -352,7 +364,7 @@ function p3PaintUpload(w,h,d,raw){
 }
 async function p3PaintDrawPatch(p,t){
   const scale=[t.w/p.W,t.h/p.H],area=p3PaintRect([p.x*scale[0],p.y*scale[1],(p.x+p.w)*scale[0],(p.y+p.h)*scale[1]],t.w,t.h);
-  if(!area[2]||!area[3])return;
+  if((!area[2]||!area[3])&&p3LaySame(p))return;
   const targets=[];
   const unpack=async image=>{
     const {bytes,f}=await image,raw=await pxUnpack(bytes,p.w,p.h,p.d,f);
@@ -372,7 +384,14 @@ void main(){
   if(all(equal(newer,texelFetch(uBefore,q,0)))) discard;
   o=newer;
 }`);
-    scissorDo(area,()=>run(P_PAINT_PATCH,t,{uBefore:before.tex,uAfter:after.tex,uScale:scale.map(v=>1/v),uOrigin:[p.x,p.y]}));
+    if(p3LaySame(p))scissorDo(area,()=>run(P_PAINT_PATCH,t,{uBefore:before.tex,uAfter:after.tex,uScale:scale.map(v=>1/v),uOrigin:[p.x,p.y]}));
+    else{/* (0.97.30) made in another tile layout: each tile of the patch goes to that tile's new place */
+      const from=p3LayOf(p),cur=udimLayNow();
+      for(const id of Object.keys(cur)){const a=from[id],b=cur[id];if(!a)continue;
+        const Rs=[a[0]*p.W,a[1]*p.H,a[2]*p.W,a[3]*p.H],Rd=[b[0]*t.w,b[1]*t.h,b[2]*t.w,b[3]*t.h];
+        if(p.x>=Rs[0]+Rs[2]||p.x+p.w<=Rs[0]||p.y>=Rs[1]+Rs[3]||p.y+p.h<=Rs[1])continue;
+        const sc=[Rs[2]/Rd[2],Rs[3]/Rd[3]],R=p3PaintRect([Rd[0],Rd[1],Rd[0]+Rd[2],Rd[1]+Rd[3]],t.w,t.h);if(!R[2]||!R[3])continue;
+        scissorDo(R,()=>run(P_PAINT_PATCH,t,{uBefore:before.tex,uAfter:after.tex,uScale:sc,uOrigin:[Rd[0]*sc[0]-Rs[0]+p.x,Rd[1]*sc[1]-Rs[1]+p.y]}));}}
   }finally{targets.forEach(disposeTarget);}
 }
 async function p3PaintRebuild(j,work,keep){
@@ -382,11 +401,14 @@ async function p3PaintRebuild(j,work,keep){
     return;
   }
   const steps=current?p3PaintSteps(current):[];
-  const meshMismatch=steps.some(s=>s.draw?.projection&&s.draw.projection.mesh!==p3PaintMeshKey(v3.mesh));
+  /* (0.97.30) a new tile layout redraws the model's UVs: strokes made on the old layout still belong to the same model */
+  const meshNow=p3PaintMeshKey(v3.mesh),relay=udimRelay&&udimRelay.oldKey;
+  const meshMismatch=steps.some(s=>s.draw?.projection&&s.draw.projection.mesh!==meshNow&&s.draw.projection.mesh!==relay);
+  if(!meshMismatch&&relay)for(const s of steps)if(s.draw?.projection&&s.draw.projection.mesh===relay)s.draw.projection={...s.draw.projection,mesh:meshNow};
   if(!current||meshMismatch){
-    p3PaintScale(src,nt);
+    p3LayScale(src,nt,udimRelay&&udimRelay.from);
     if(keep){
-      const source=p3PaintSource(src,true);
+      const source=p3PaintSource(src,true,udimRelay?udimRelay.from:undefined);/* the picture before scaling: a later size up gets its detail back */
       await source.base.image;
       p3PaintAttach(nt,source);
     }
@@ -397,10 +419,10 @@ async function p3PaintRebuild(j,work,keep){
   else{
     const {bytes,f}=await b.image;
     const raw=await pxUnpack(bytes,b.w,b.h,b.d,f);
-    if(b.w===nt.w&&b.h===nt.h&&b.d===nt.depth)writeRegion(nt,0,0,b.w,b.h,raw);
+    if(b.w===nt.w&&b.h===nt.h&&b.d===nt.depth&&p3LaySame(b))writeRegion(nt,0,0,b.w,b.h,raw);
     else{
       const t=p3PaintUpload(b.w,b.h,b.d,raw);
-      try{p3PaintScale(t,nt);}finally{disposeTarget(t);}
+      try{p3LayScale(t,nt,p3LayOf(b));}finally{disposeTarget(t);}
     }
   }
   for(const step of steps){
@@ -417,7 +439,7 @@ function p3PaintBase64(a){
   return btoa(bin);
 }
 function p3PaintEncode(source,defer){
-  const b=source.base,base={w:b.w,h:b.h,d:b.d,color:b.color};
+  const b=source.base,base={w:b.w,h:b.h,d:b.d,color:b.color,lay:b.lay};
   if(b.image)base.image=defer(b.image,{});
   const out={v:1,base};
   if(!source.tail)return out;
@@ -442,7 +464,7 @@ async function p3PaintDecode(t,r,blob){
   try{
     const b=r.base;
     if(!Number.isInteger(b.w)||!Number.isInteger(b.h)||b.w<1||b.h<1||Math.max(b.w,b.h)>MAX_DIM||![8,16].includes(b.d))return;
-    const base={w:b.w,h:b.h,d:b.d,color:b.color};
+    const base={w:b.w,h:b.h,d:b.d,color:b.color,lay:b.lay&&typeof b.lay==='object'?b.lay:undefined};
     const unpack=r=>Promise.resolve({bytes:blob(r).slice(),f:r.f});
     if(!Array.isArray(b.color)){
       if(!b.image)return;

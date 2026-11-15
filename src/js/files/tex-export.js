@@ -123,6 +123,13 @@ async function encodeTex(W,H,f,C,fmt,bits){
 /* build every file of a preset: [{name,data}] */
 async function buildTextures(pr,name,opt){const W=doc.w,H=doc.h,S=pr&&pr.max?Math.max(1,Math.round(Math.min(texCfg.size||W,pr.max*W/Math.max(W,H)))):(texCfg.size||0),U=opt&&opt.udim?texUdim():null;
   /* (0.95) a UDIM set: the size is per tile, and each tile is its own file (Name_BaseColor.1001.png …) */
+  /* (0.97.30) tiles with their own sizes: each tile is written at its own size (scaled with the export size, if one is chosen) */
+  if(U&&U.B.lay){U.sz={};let f=1;for(const T of U.B.tiles){const R=udimTileRect(U.m,T,W,H),o=S?Math.max(1,Math.round(S*udimNominal(U.m,T)/p3.size)):R[2];U.sz[T.id]=o;f=Math.max(f,o/Math.max(1,R[2]));}
+    const render=async()=>{if(opt?.replay&&ui.mode==='p3d')msUpdateAll();const pad=texPadBegin(Math.round(doc.w*Math.max(...Object.values(U.sz))/Math.max(1,...U.B.tiles.map(T=>udimTileRect(U.m,T,doc.w,doc.h)[2]))));
+      try{return await buildTexturesIn(pr,name,doc.w,doc.h,0,0,pad,U);}finally{texPadEnd(pad);}};
+    f=Math.min(f,MAX_DIM/Math.max(W,H));
+    if(opt?.replay&&ui.mode==='p3d'&&f>1.01){if(!v3.mesh)v3LoadModel(true);const w=Math.round(W*f),h=Math.round(H*f);return p3PaintHold(()=>p3PaintAtSize(w,h,{},render));}
+    return render();}
   const tw=U?W/U.B.nx:W,th=U?H/U.B.ny:H,nw=U?(S||Math.round(tw)):(S||W),nh=U?(S?Math.max(1,Math.round(S*th/tw)):Math.round(th)):(S?Math.max(1,Math.round(S*H/W)):H);
   const render=async()=>{if(opt?.replay&&ui.mode==='p3d')msUpdateAll();
     const pad=texPadBegin(U?Math.round(nw*U.B.nx):nw);
@@ -159,8 +166,8 @@ async function buildTexturesIn(pr,name,W,H,nw,nh,pad,U){
     else if(o.grey){const g=grey(o.grey);if(!g)continue;f=g.slice();C=1;}
     else{C=o.ch.length;f=new Float32Array(n*C);o.ch.forEach((k,c)=>{const g=grey(k),inv=k==='smooth',d=def(k);for(let i=0;i<n;i++){const v=g?g[i]:d;f[i*C+c]=inv&&g?1-v:v;}});}
     const bits=o.grey==='height'&&texCfg.h16&&ext==='png'?16:8;
-    if(U){for(const T of U.B.tiles){const R=udimTileRect(U.m,T,W,H),r=resampleF(texCrop(f,W,H,C,R),R[2],R[3],C,nw,nh,C===4);if(o.rgb==='normal'&&bits===8)texDither(r);
-      const blob=await encodeTex(nw,nh,r,C,ext,bits);files.push({suffix:o.s,tile:T.id,name:pr.name(name).replace('{s}',o.s)+'.'+T.id+'.'+ext,data:new Uint8Array(await blob.arrayBuffer())});await tick();}continue;}
+    if(U){for(const T of U.B.tiles){const R=udimTileRect(U.m,T,W,H),ow=U.sz?U.sz[T.id]:nw,oh=U.sz?U.sz[T.id]:nh,r=resampleF(texCrop(f,W,H,C,R),R[2],R[3],C,ow,oh,C===4);if(o.rgb==='normal'&&bits===8)texDither(r);
+      const blob=await encodeTex(ow,oh,r,C,ext,bits);files.push({suffix:o.s,tile:T.id,name:pr.name(name).replace('{s}',o.s)+'.'+T.id+'.'+ext,data:new Uint8Array(await blob.arrayBuffer())});await tick();}continue;}
     const r=resampleF(f,W,H,C,nw,nh,C===4);if(o.rgb==='normal'&&bits===8)texDither(r);
     const blob=await encodeTex(nw,nh,r,C,ext,bits);files.push({suffix:o.s,name:pr.name(name).replace('{s}',o.s)+'.'+ext,data:new Uint8Array(await blob.arrayBuffer())});await tick();}
   return files;}
