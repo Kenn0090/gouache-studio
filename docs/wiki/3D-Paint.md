@@ -92,6 +92,7 @@ Tick **Use UV tile workflow** in the New 3D Paint Project window for a model who
 In a texture set with several UV tiles, a picture chosen for a material channel (**Choose image…** or dropped on the channel) is not stretched over the whole canvas:
 - **Tile pictures** have the tile number in their name (Body_1001_D.png, Body_1002_D.png, Body.1001.png). Each goes into its own tile. In the desktop app, picking one also brings in the others from the same folder; in the browser, pick or drop them all together. A tile with no picture is left as it is.
 - **A plain picture** (no tile number), including Library materials, Textures and smart materials, repeats once in every tile, like UV tiling in Painter.
+- **Procedurals** (noise, grunge, generators and pictures in mask rows) in UV projection measure against one tile, so they keep their proportions instead of stretching across the wide canvas. **Triplanar** and the other 3D projections cover the whole model, every tile.
 - **Materials › From textures** with tile files (Body_1001_BaseColor.png, Body_1002_BaseColor.png…): each map's tiles are put together, so the new material fits the set.
 - The same goes for **mesh maps** brought in on their slots (Import…, Replace…, or dropped on the slot). Dropping several maps at once sorts them by name, and each map's tile files go in together.
 
