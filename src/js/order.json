@@ -126,6 +126,7 @@
     "view3d/p3-tools",
     "view3d/poly-fill",
     "view3d/udim-atlas",
+    "view3d/udim-images",
     "view3d/p3-instance",
     "view3d/up-axis",
     "view3d/smoothing",

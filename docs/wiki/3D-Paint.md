@@ -88,6 +88,11 @@ Tick **Use UV tile workflow** in the New 3D Paint Project window for a model who
 - **Bake mesh maps** bakes into the tiles' canvas too.
 - Projects made with an older version, with one texture set per tile, still open and work as before.
 
+### Pictures in a material with UV tiles
+In a texture set with several UV tiles, a picture chosen for a material channel (**Choose image…** or dropped on the channel) is not stretched over the whole canvas:
+- **Tile pictures** have the tile number in their name (Body_1001_D.png, Body_1002_D.png, Body.1001.png). Each goes into its own tile. In the desktop app, picking one also brings in the others from the same folder; in the browser, pick or drop them all together. A tile with no picture is left as it is.
+- **A plain picture** (no tile number) repeats once in every tile.
+
 ## Instances (linked materials across sets)
 
 Right-click a material layer › **Instance to sets…** and tick the other texture sets. Each gets a linked copy: change the material in any set (colour, sliders, pictures, projection, look) and the copies follow after a moment. **Unlink instance** makes a copy its own again. A **triplanar** or **planar** projection is placed on the whole model, so the pattern continues across sets and tiles without breaks.

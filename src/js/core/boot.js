@@ -70,3 +70,4 @@ if(window.__gs)Object.assign(window.__gs,{shelfFilterGroups,shelfFilterItem,disp
 if(window.__gs)Object.assign(window.__gs,{slotAutoAdd,slotPaint,slotValue,slotPicture,slotsBox,chPackUniforms,texOutputs,TEX_PRESETS,MAP_DEFS,MAP_USER,setDocMaps,dlgMaps});
 if(window.__gs)Object.assign(window.__gs,{encodePSD,psdIntoChannel,psdChannelFiles,fovToMm,mmToFov,loadPaint,lensBox});
 if(window.__gs)Object.assign(window.__gs,{cxLib,cxApplyTo,cxShelfRender,cxNewMask,cxRecipe,cxEdit,shOutline,shadeUniforms,CX});
+if(window.__gs)Object.assign(window.__gs,{udimAtlasFrom,udimImgBox,udimNameId,udimPattern});
