@@ -67,3 +67,5 @@ if(window.__gs)Object.assign(window.__gs,{toolKeys,toolKeyBinding,toolKeyCancel,
 if(window.__gs)Object.assign(window.__gs,{smStudioThumb,smThumbRedo,smTh,smThumbLater});
 if(window.__gs)Object.assign(window.__gs,{p3MeshMapsChanged,btGFB,btTree,btMove,btAuto,btg,bgtDelete,btSync,btColourTex});
 if(window.__gs)Object.assign(window.__gs,{shelfFilterGroups,shelfFilterItem,disposeTarget,RETRO_PRESETS});
+if(window.__gs)Object.assign(window.__gs,{slotAutoAdd,slotPaint,slotValue,slotPicture,slotsBox,chPackUniforms,texOutputs,TEX_PRESETS,MAP_DEFS,MAP_USER,setDocMaps,dlgMaps});
+if(window.__gs)Object.assign(window.__gs,{encodePSD,psdIntoChannel,psdChannelFiles,fovToMm,mmToFov,loadPaint,lensBox});

@@ -205,6 +205,21 @@ The layer stays live: every change shows straight away on the model, and becomes
 - **Layer › New › Retro layer (N64 / PSX)** adds the Retro effect to the whole stack (or only the selected layer) as a filter layer.
 - The 3D view's **settings** panel (gear) remembers whether it was open. Click Wireframe or Wireframe overlay again to turn it off.
 
+## Skin channels, Material slots and channels of your own (0.97.26)
+- **Skin channels.** Picking **Skin** in the Shader panel adds three channels to the texture set: **Scattering** (white = the full amount set in the Skin settings, black = none), **Scatter colour** (the colour light takes under the surface; unpainted areas use the Skin colour) and **Translucency** (where light shines through thin parts such as ears and nostrils; it works with the baked Thickness map). Paint them like any channel, or put a material on them.
+![Material slots in the Shader panel](images/material-slots.png)
+
+- **Material slots** (under each shader's settings, like Marmoset's material editor): every input of the shader is listed with where it comes from:
+  - **Value**: the channel is not in the set; one number is used (the slider beside it, or the look's own setting).
+  - **Painted**: the channel is in the set. **Paint** picks it for painting.
+  - **Picture**: **Picture…** brings in an image as a new layer in that channel. A layered PSD comes in as a folder of layers.
+  Switching a painted channel back to Value takes it out of the set (Undo brings it back).
+- **Specular level** (Metal/Rough sets): how strong the shine of non-metals is. Mid-grey is the usual 4%, white doubles it, black takes it away.
+- **Channels of your own:** **+ Channel of your own…** (or **Document maps**) adds up to eight channels with your own names (Wetness, Dirt mask…), grey or colour. The 3D view does not use them; they paint, save and export like any channel.
+- **Exporting:** the new channels are exported as their own files with every preset (for example Helmet_Scattering.png, Helmet_Wetness.png). Tick **Also each channel as a layered PSD** in the export window to get one PSD per channel with its layers and folders.
+- **PSD into a channel:** **File › Import › Import PSD into a channel…**, or drop a .psd on 3D Paint (it goes into the channel you are painting).
+- **Focal length:** the 3D settings show the camera's **Focal length** in mm next to the **View angle** (they move together), with buttons for 18, 24, 35, 50, 85 and 135 mm. The numbers match a full-frame camera, so 50 mm looks like a normal lens.
+
 ## Baking mesh maps here
 **Bake mesh maps…** (3D Paint panel, under *Mesh maps*) bakes without leaving 3D Paint, like Substance Painter's window:
 - **Maps:** Normal, Ambient occlusion, Curvature, Height, Thickness, World-space normal, Position and ID colours.

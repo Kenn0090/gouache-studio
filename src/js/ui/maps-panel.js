@@ -41,10 +41,16 @@ function dlgMaps(){if(ui.mode==='anim'){toast('Switch to paint mode to change ma
       if(wf===k)return;wf=k;for(const x of other(k))on.delete(x);for(const x of WF_KEYS[k])on.add(x);drawWf();draw();}})));drawWf();
   const tpl=el('div',{class:'chips'},...Object.entries({hand:'Hand-painted',pbr:'PBR'}).map(([t,l])=>el('button',{class:'chip',text:l,onclick:()=>{on.clear();MAP_TEMPLATES[t==='pbr'&&wf==='spec'?'pbrsg':t].forEach(k=>on.add(k));draw();}})));
   const box=el('div',{class:'dlg-grid'});
-  const draw=()=>{box.replaceChildren(...MAP_ORDER.filter(k=>!other(wf).includes(k)).map(k=>{const D=MAP_DEFS[k];
-    const c=chk('mp_'+k,D.label,on.has(k),v=>{if(v)on.add(k);else on.delete(k);draw();});if(k==='base'){c.querySelector('input').disabled=true;}
+  /* (0.97.26) custom channels: the ones in use plus one free one to tick */
+  const userShown=k=>{if(!MAP_DEFS[k].user)return true;if(on.has(k))return true;return MAP_USER.find(u=>!on.has(u))===k;};
+  const uLabel=k=>defs['name:'+k]||MAP_DEFS[k].label;
+  const draw=()=>{box.replaceChildren(...MAP_ORDER.filter(k=>!other(wf).includes(k)&&!(wf==='spec'&&k==='specl')&&userShown(k)).map(k=>{const D=MAP_DEFS[k];
+    const c=chk('mp_'+k,D.user?(on.has(k)?uLabel(k):'Add a channel of your own'):D.label,on.has(k),v=>{if(v)on.add(k);else on.delete(k);draw();});if(k==='base'){c.querySelector('input').disabled=true;}
     const kids=[c];
-    if((D.grey||k==='spec')&&D.def!=null&&on.has(k)){const s=makeSlider({id:'mpd_'+k,label:'Unpainted value',min:0,max:100,step:1,value:Math.round((defs[k]!=null?defs[k]:D.def)*100),fmt:v=>v+'%',onInput:v=>{defs[k]=v/100;}});kids.push(s.el);}
+    if(D.user&&on.has(k)){const nm=el('input',{type:'text',id:'mpn_'+k,class:'txt',value:defs['name:'+k]||'',placeholder:'Name (e.g. Wetness)',maxlength:'32','aria-label':'Channel name'});
+      nm.oninput=()=>{const v=nm.value.trim();if(v)defs['name:'+k]=v;else delete defs['name:'+k];};
+      kids.push(nm,chk('mpc_'+k,'Colour channel (not grey)',!!defs['col:'+k],v=>{if(v)defs['col:'+k]=1;else delete defs['col:'+k];draw();}));}
+    if((D.user?!defs['col:'+k]:(D.grey||k==='spec'))&&(D.user||D.def!=null)&&on.has(k)){const s=makeSlider({id:'mpd_'+k,label:'Unpainted value',min:0,max:100,step:1,value:Math.round((defs[k]!=null?defs[k]:(D.def??0))*100),fmt:v=>v+'%',onInput:v=>{defs[k]=v/100;}});kids.push(s.el);}
     if(k==='normal'&&on.has(k))kids.push(el('p',{class:'note',text:'Normal is built from Height automatically. Its own layer content is only for loaded normal detail.'}));
     return el('div',{class:'mapopt'},...kids);}));};draw();
   const gone=()=>doc.maps.filter(k=>!on.has(k)&&!(wf!==(doc.workflow||'metal')&&WF_KEYS[doc.workflow||'metal'].includes(k)));

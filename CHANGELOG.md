@@ -1,3 +1,13 @@
+## 0.97.26
+
+- **Paint skin like in Painter:** three new channels, **Scattering** (where light sinks in and glows under the surface), **Scatter colour** (the colour it takes, e.g. red for skin, green for leaves) and **Translucency** (where light shines through thin parts like ears). Picking the **Skin** shader adds them to the texture set by itself. Unpainted areas use the Skin settings in the Shader panel, as before.
+- **Material slots like Marmoset's**, under each shader's settings in the Shader panel: for every input (Roughness, Metallic, Scattering, Translucency, Emissive, Opacity…) choose **Value**, **Painted** or **Picture**. Picture puts an image (or a layered PSD) into that channel as a new layer.
+- **Specular level** channel for Metal/Rough: how strong the shine of non-metals is (mid-grey is the usual 4%).
+- **Channels of your own** (up to 8, like Painter's user channels): add one in **Document maps** or with **+ Channel of your own** under Material slots, give it a name (e.g. Wetness), make it grey or colour. They paint, save and export like any channel.
+- **Export:** the new channels come out as their own files with every preset. New tick **Also each channel as a layered PSD**: one PSD per channel (e.g. Helmet_Roughness.psd) with all its layers and folders.
+- **Import PSD into a channel** (File › Import, or drop a .psd on 3D Paint): its layers arrive as a folder that paints only that channel.
+- **Focal length** in mm next to the view angle in the 3D settings, linked both ways, with 18, 24, 35, 50, 85 and 135 mm buttons. The view angle now goes down to 5° (long lenses).
+
 ## 0.97.25
 
 - **Generator settings in cards, like Marmoset's layer settings:** Mask, Edges, Cavities, Top and flat surfaces, Breakup and Projection. Each card opens with its picture slot, and the controls that belong to it come right after: the Edges grunge with the edge sliders, the Breakup grunge with Breakup and Noise size, and so on. A card folds by its title and stays folded.

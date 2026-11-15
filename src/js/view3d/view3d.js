@@ -114,7 +114,7 @@ float hatchPlane(vec2 p,float dark,float breakup,float phase){
   return 1.0-(1.0-a*first)*(1.0-b*second*0.86);
 }
 vec4 mapSample(sampler2D tex,vec2 uv){vec2 dx,dy;mapGrad(uv,dx,dy);if(uSh==8)return retroSample(tex,uv,dx,dy);return textureGrad(tex,uv,dx,dy);}
-void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv=uUseUDIM==1?fract(vT):vT; vec2 dUx=dFdx(uv),dUy=dFdy(uv); vec4 b=mapSample(uBase,uv+uPB); float aOp=1.0; if((uHas&64)!=0) aOp=mapSample(uOpac,uv+uPO).r; float a=b.a*aOp;
+void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv=uUseUDIM==1?fract(vT):vT; vec2 dUx=dFdx(uv),dUy=dFdy(uv); vec4 b=mapSample(uBase,uv+uPB); float aOp=1.0; if((uHas&64)!=0) aOp=(uHas&512)!=0?mapSample(uOpac,uv+uPO).a:mapSample(uOpac,uv+uPO).r; float a=b.a*aOp;
   /* (0.97.15, Kenn) in 3D Paint the model always has a plain grey base material: where the layers (or a black mask) leave it see-through, that grey shows instead of the mesh vanishing; only an Opacity map cuts holes */
   if(uBackdrop==1){ if(uClip==1&&aOp<0.5) discard; a=aOp; } else if(uClip==1&&a<0.5) discard;
   vec3 alb=b.a>1e-5?b.rgb/b.a:vec3(0.0); if(uBackdrop==1) alb=mix(vec3(0.5),alb,b.a);
@@ -177,7 +177,7 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
   vec3 V=normalize(uCam-vP), L=normalize(uSun), H=normalize(L+V);
   float NdL=max(dot(N,L),0.0), NdV=max(dot(N,V),1e-3), NdH=max(dot(N,H),0.0), VdH=max(dot(V,H),0.0);
   /* a Specular colour map (Spec/Gloss) sets the reflection colour directly (flag 256); otherwise it follows the metal amount */
-  vec3 F0=mix(vec3(0.04),alb,metal);
+  vec3 F0=mix(vec3((uHas&1024)!=0?0.08*mapSample(uMetal,uv+uPM).g:0.04),alb,metal);
   /* the Specular map comes in on the Metallic slot: a Spec/Gloss set has no Metallic map, and graphics cards that allow only 16 textures in a shader (common on Windows) cannot take a 17th */
   if((uHas&256)!=0){ vec4 sp=mapSample(uMetal,uv); vec3 sc=sp.a>1e-5?sp.rgb/sp.a:vec3(0.04); F0=lin(sc); }
   if(uSh==12){ float t=uShP.y+uShP.z*(0.3+uShP.w*(1.0-NdV)); vec3 film=0.5+0.5*cos(6.2832*(t*vec3(1.0)+vec3(0.0,0.33,0.67)));
@@ -221,13 +221,15 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
   float visibility=uSunI>0.0&&(NdL>0.0||uSh==1)?studioVisibility(vP,Ng,L):1.0;
   vec3 F=F0+(1.0-F0)*pow(1.0-VdH,5.0);
   vec3 spec=D*vis*F, dif=(1.0-F)*(1.0-metal)*alb/PI;
-  float thick=(uHas&128)!=0?mapSample(uThick,uv).r:uShP.w;
+  /* (0.97.26) Skin with painted channels: uThick holds R thickness, G translucency, B scattering; uOpac holds the scatter colour (RGB) and opacity (A) */
+  vec4 skP=(uHas&512)!=0?mapSample(uThick,uv):vec4(uShP.w,1.0,1.0,1.0); vec3 skC=(uHas&512)!=0?mapSample(uOpac,uv).rgb:uShC;
+  float thick=(uHas&512)!=0?skP.r:(uHas&128)!=0?mapSample(uThick,uv).r:uShP.w, skS=uShP.y*skP.b, skT=uSkin.z*skP.g;
   if(uSh==1){ /* RGB diffuse wrap and thickness attenuation; two surface specular lobes. */
-    vec3 Ns=normalize(mix(N,Ng,uShP.z)),sss=clamp(uShC,0.02,1.0),wrap=uShP.x*vec3(0.8,0.38,0.18);
+    vec3 Ns=normalize(mix(N,Ng,uShP.z)),sss=clamp(skC,0.02,1.0),wrap=uShP.x*skP.b*vec3(0.8,0.38,0.18);
     vec3 dl=max((vec3(dot(Ns,L))+wrap)/(1.0+wrap),0.0)/(1.0+wrap);
-    dl=mix(vec3(max(dot(Ns,L),0.0)),dl,clamp(uShP.y,0.0,1.0));
+    dl=mix(vec3(max(dot(Ns,L),0.0)),dl,clamp(skS,0.0,1.0));
     vec3 attenuation=exp(-max(thick,0.0)*uSkin.y/sss);
-    float back=max(dot(-Ns,L),0.0);vec3 transmitted=attenuation*sss*back*uSkin.z*uShP.y;
+    float back=max(dot(-Ns,L),0.0);vec3 transmitted=attenuation*sss*back*skT*skS;
     float sr=clamp(mix(rough,uSkin.x,0.75),0.08,1.0);
     vec3 surface=studioDirect(N,V,L,vec3(0.0),vec3(0.028),sr,0.0);
     surface+=studioDirect(N,V,L,vec3(0.0),vec3(0.04),max(sr*0.38,0.08),0.0)*uShQ.z*0.35;
@@ -271,8 +273,8 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
   vec3 compensation=vec3(1.0)+F0*(1.0/max(ab.x+ab.y,0.1)-1.0);
   vec3 envS=envSpec(R,rough)*(uEnvOn==1?single*compensation:Fr),envD=envDif(N)*alb*(1.0-metal)*(1.0-Fr);
   float specAO=clamp(pow(NdV+ao,exp2(-16.0*rough-1.0))-1.0+ao,0.0,1.0);
-  if(uSh==1){vec3 Ns=normalize(mix(N,Ng,uShP.z)),sss=clamp(uShC,0.02,1.0),attenuation=exp(-max(thick,0.0)*uSkin.y/sss);
-    envD=envDif(Ns)*alb*(1.0-metal)*(1.0-Fr)+envDif(-Ns)*attenuation*sss*alb*uShP.y*uSkin.z*0.25;
+  if(uSh==1){vec3 Ns=normalize(mix(N,Ng,uShP.z)),sss=clamp(skC,0.02,1.0),attenuation=exp(-max(thick,0.0)*uSkin.y/sss);
+    envD=envDif(Ns)*alb*(1.0-metal)*(1.0-Fr)+envDif(-Ns)*attenuation*sss*alb*skS*skT*0.25;
     float sr=clamp(mix(rough,uSkin.x,0.75),0.08,1.0);vec2 sab=envBRDF(NdV,sr);
     envS=envSpec(R,sr)*(vec3(0.028)*sab.x+sab.y)+envSpec(R,max(sr*0.38,0.08))*(vec3(0.04)*sab.x+sab.y)*uShQ.z*0.35;}
   if(uSh==3){ envS+=lin(uShC)*uShP.x*envDif(N)*pow(1.0-NdV,max(uShP.z,0.5)*3.0+1.0); }
@@ -520,6 +522,7 @@ function v3MeshU(C,common,it,flip,safeMip=null){const {s,bake,EU,eye,a,e}=C,sg=i
     /* (0.96.2) per-set pictures win over the shared ones: before, every set was displaced by the active set's height and lost its UDIM tile */
     if(!bake){U.uH=T.height&&s.disp?T.height.tex:dummy;U.uUseH=!!(T.height&&s.disp&&(T===v3.tex?doc.maps.includes('height'):true));U.uUseUDIM=!!it.udim;U.uUDIMTile=it.udim?[it.udim.u,it.udim.v]:[0,0];}
     if(isFur)furUniforms(U,T,shk);
+    if(!bake&&!isFur)chPackUniforms(U,T,shk,it);
     if(it.hatchTex){U.uThick=it.hatchTex;U.uShE[1]=1;U.uHas.int&=~128;}
     return U;}
 /* (0.95.5, Kenn) wireframe colour with its own opacity (Preferences › Look and the viewport display settings) */
@@ -658,7 +661,7 @@ const nvB=el('button',{hidden:!platform.isDesktop||NV_BANKED,class:'btn sm'+(typ
     box.append(el('div',{class:'sub',text:'Viewport display'}),display,el('div',{class:'frow'},el('span',{text:'Wireframe colour'}),colourBtn('v3WireCol',()=>prefs.wireCol||[.95,.7,.35],c=>{prefs.wireCol=c.slice(0,3);savePrefs();v3.dirty=true;requestRender(true);},'Wireframe colour')),makeSlider({id:'v3WireOp',label:'Wireframe opacity',min:0,max:1,step:.01,value:wireOpacity(),def:1,fmt:pct,onInput:v=>{prefs.wireOp=v;savePrefs();v3.dirty=true;requestRender();}}).el);}
   box.append(el('div',{class:'sub',text:'Painting'}),meshBackfaceControl('v3BackfacePaint'),el('p',{class:'note',text:'Allow painting on faces seen from behind. Camera alignment still protects surfaces hidden behind other parts.'}));
   const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:s[key],fmt,...(['disp','sunI','skyI','envIntensity','studioFill','studioRim'].includes(key)?{numericMax:Math.max(max,1)*4}:{}),onInput:v=>{s[key]=v;if(key==='disp'){v3.mapsDirty=true;if(v>0&&(s.detail||0)<4&&!v3.detAuto){v3.detAuto=true;s.detail=4;if(v3.detSel)v3.detSel.value='4';v3LoadModel(true);toast('Mesh detail raised to ×16 so the height can show. Change it with the Detail menu at the top of the 3D view.');}}v3.dirty=true;requestRender(key==='disp');}}).el;
-  box.append(el('div',{class:'sub',text:'Lighting'}),envSettingsBox(S),studioSettingsBox(S),el('div',{class:'sub',text:'Model and camera'}),S('v3Uvs','Tile repeat','uvs',1,8,1,v=>v+'×'),S('v3Disp','Height depth','disp',0,1,.01,pct),S('v3Fov','Lens','fov',15,90,1,v=>v+'°'),S('v3MetalRough','Metal view roughness','metalRough',.05,1,.01,pct),
+  box.append(el('div',{class:'sub',text:'Lighting'}),envSettingsBox(S),studioSettingsBox(S),el('div',{class:'sub',text:'Model and camera'}),S('v3Uvs','Tile repeat','uvs',1,8,1,v=>v+'×'),S('v3Disp','Height depth','disp',0,1,.01,pct),...lensBox(s,S),S('v3MetalRough','Metal view roughness','metalRough',.05,1,.01,pct),
     el('div',{class:'sub',text:'Background'}),seg([['dark','Dark'],['grey','Grey'],['light','Light']],s.bg,x=>{s.bg=x;v3.dirty=true;requestRender();},'Background'),
     chk('v3Clip','Cut out transparent areas',!!s.clip,x=>{s.clip=x;v3.dirty=true;requestRender();}),
     ...(ui.mode==='p3d'||ui.mode==='bake'||ui.mode==='convert'?[]:[el('div',{class:'sub',text:'Mirror painting on the model'}),mir3Box(),el('div',{class:'sub',text:'Select on the model'}),sel3Box()]),
@@ -808,3 +811,13 @@ function drawPop(){const p=v3.pop;if(p.win.closed){pop3D(false);return;}const dp
 
 /* (0.97.11) the 3D bar's View and Show pop-ups close when you click anywhere else */
 document.addEventListener('pointerdown',e=>{if(e.target.closest&&(e.target.closest('.v3barpop')||e.target.closest('.v3popbtn')))return;for(const o of document.querySelectorAll('.v3barpop'))o.hidden=true;document.querySelectorAll('.v3popbtn').forEach(x=>x.setAttribute('aria-expanded','false'));},true);
+
+/* (0.97.26, Georgian via Kenn) focal length in millimetres next to the view angle, linked both ways (full-frame camera: 24 mm
+   high, so 50 mm is a normal lens), plus the common lenses */
+const LENS_MM=[18,24,35,50,85,135];
+const fovToMm=f=>12/Math.tan(f*Math.PI/360),mmToFov=m=>360/Math.PI*Math.atan(12/m);
+function lensBox(s,S){let fs,ms;const draw=()=>{v3.dirty=true;if(typeof requestRender==='function')requestRender();chips.querySelectorAll('button').forEach(b=>b.classList.toggle('on',Math.abs(fovToMm(s.fov)-+b.dataset.mm)<.5));};
+  fs=makeSlider({id:'v3Fov',label:'View angle',min:5,max:90,step:.5,value:s.fov,fmt:v=>(Math.round(v*10)/10)+'°',onInput:v=>{s.fov=v;ms.set(Math.round(fovToMm(v)));draw();}});
+  ms=makeSlider({id:'v3Mm',label:'Focal length',min:10,max:275,step:1,value:Math.round(fovToMm(s.fov)),fmt:v=>v+' mm',onInput:v=>{s.fov=Math.round(mmToFov(v)*100)/100;fs.set(s.fov);draw();}});
+  const chips=el('div',{class:'chips lenschips',id:'v3Lens'},...LENS_MM.map(m=>el('button',{type:'button',class:'chip',text:m+' mm','data-mm':String(m),title:m<35?'Wide':m>70?'Long (flatter, like a portrait lens)':'Normal',onclick:()=>{s.fov=Math.round(mmToFov(m)*100)/100;fs.set(s.fov);ms.set(m);draw();}})));
+  setTimeout(draw,0);return [fs.el,ms.el,chips];}

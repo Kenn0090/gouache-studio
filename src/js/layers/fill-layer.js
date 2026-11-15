@@ -73,7 +73,7 @@ function fillTintPost(L){const f=L.fill;if(!fillTintOn(f)||!f.maps.base||!f.maps
 const FILL_SKIP=['curv'];
 const fillMapsOf=()=>doc.maps.filter(k=>!FILL_SKIP.includes(k));
 function fillDefaults(){const m={};for(const k of MAP_ORDER){if(FILL_SKIP.includes(k))continue;const d=MAP_DEFS[k].def;
-    m[k]={on:k==='base'||k==='rough'||k==='metal'||k==='spec'||k==='gloss',src:k==='normal'?'image':'value',c:k==='base'?ui.fg.slice():k==='spec'?[.22,.22,.22]:k==='emis'?[0,0,0]:null,v:d==null?.5:d,tile:1,rot:0,con:0};}
+    m[k]={on:k==='base'||k==='rough'||k==='metal'||k==='spec'||k==='gloss',src:k==='normal'?'image':'value',c:k==='base'?ui.fg.slice():k==='spec'?[.22,.22,.22]:k==='emis'?[0,0,0]:k==='sssc'?[.85,.25,.18]:MAP_DEFS[k].user?[.5,.5,.5]:null,v:d==null?.5:d,tile:1,rot:0,con:0};}
   return {maps:m,proj:'uv',triSharp:4,hStr:1};}
 const fillClone=f=>JSON.parse(JSON.stringify(f));
 /* Match the storage rounding of the previous cleared image, including 8-bit flat normals. */

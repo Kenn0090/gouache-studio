@@ -1,3 +1,11 @@
+## Gouache Studio 0.97.26
+
+- Paint Scattering, Scatter colour and Translucency for the Skin shader (added when you pick Skin).
+- Material slots in the Shader panel: each input is a value, painted, or a picture.
+- Specular level channel, and up to 8 channels of your own with names.
+- Export each channel as a layered PSD; import a layered PSD into a channel.
+- Focal length in mm for the 3D camera, with common lenses.
+
 ## Gouache Studio 0.97.25
 
 - Generator settings in Marmoset-style cards, each picture slot with its own controls.

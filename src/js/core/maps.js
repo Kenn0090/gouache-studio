@@ -15,15 +15,25 @@ const MAP_DEFS={
   curv:{label:'Curvature',grey:true,def:.5,blend:0,hint:'Mid-grey is flat; light is raised edges, dark is cavities. A mask for wear and dirt, not shown in the material.'},
   emis:{label:'Emissive',grey:false,def:null,blend:0},
   opac:{label:'Opacity',grey:true,def:1,blend:0},
-  fur:{label:'Fur mask',grey:true,def:1,blend:0,hint:'For the Fur look: white grows fur, black stays bare. Not exported as a texture of its own.'}};
-const MAP_SHORT={base:'Col',rough:'Rgh',metal:'Met',spec:'Spc',gloss:'Gls',height:'Hgt',normal:'Nrm',ao:'AO',curv:'Cur',emis:'Emi',opac:'Opa',fur:'Fur'};
+  fur:{label:'Fur mask',grey:true,def:1,blend:0,hint:'For the Fur look: white grows fur, black stays bare. Not exported as a texture of its own.'},
+  /* (0.97.26, Georgian via Kenn: paint the skin's scattering and translucency, like Painter's SSS channels) */
+  specl:{label:'Specular level',grey:true,def:.5,blend:0,hint:'How strong the shine of non-metals is. Mid-grey is normal (4%); white doubles it, black takes it away.'},
+  sss:{label:'Scattering',grey:true,def:1,blend:0,hint:'For the Skin look: where light sinks in and glows under the surface. White is the full amount set in the Shader panel, black is none.'},
+  sssc:{label:'Scatter colour',grey:false,def:null,blend:0,hint:'For the Skin look: the colour the light takes under the surface (red for skin, green for leaves). Unpainted areas use the Shader panel colour.'},
+  trans:{label:'Translucency',grey:true,def:1,blend:0,hint:'For the Skin look: where light shines through thin parts (ears, nostrils, leaves). White is the full amount, black blocks it.'}};
+/* (0.97.26) eight channels of your own (like Painter's user channels): you name them; grey unless made a colour channel */
+const MAP_USER=['u1','u2','u3','u4','u5','u6','u7','u8'];
+for(const [i,k] of MAP_USER.entries())Object.defineProperty(MAP_DEFS,k,{enumerable:true,value:{
+  get label(){return (doc.mapDef&&doc.mapDef['name:'+k])||'Custom '+(i+1);},get grey(){return !(doc.mapDef&&doc.mapDef['col:'+k]);},
+  get def(){return this.grey?0:null;},blend:0,user:true,hint:'A channel of your own. Painted and exported like any other; the 3D view does not use it.'}});
+const MAP_SHORT={specl:'SpL',sss:'SSS',sssc:'SSC',trans:'Trn',u1:'U1',u2:'U2',u3:'U3',u4:'U4',u5:'U5',u6:'U6',u7:'U7',u8:'U8',base:'Col',rough:'Rgh',metal:'Met',spec:'Spc',gloss:'Gls',height:'Hgt',normal:'Nrm',ao:'AO',curv:'Cur',emis:'Emi',opac:'Opa',fur:'Fur'};
 /* a layer whose base colour was never painted (made by a converter or painted only in other maps) */
 const isBlankBase=L=>!!L.blankBase;
-const MAP_ORDER=['base','rough','metal','spec','gloss','height','normal','ao','curv','emis','opac','fur'];
+const MAP_ORDER=['base','rough','metal','specl','spec','gloss','height','normal','ao','curv','emis','opac','sss','sssc','trans','fur',...MAP_USER];
 const MAP_TEMPLATES={hand:['base'],pbr:['base','rough','metal','height','normal'],pbrsg:['base','spec','gloss','height','normal']};
 function mapDepth(k){return k==='height'&&canFloat?16:doc.depth;}
 /* what a map shows where no layer has painted it */
-function mapDefault(k){if(k==='base')return [0,0,0,0];if(k==='normal')return [.5,.5,1,1];if(k==='emis')return [0,0,0,1];
+function mapDefault(k){if(k==='base')return [0,0,0,0];if(k==='normal')return [.5,.5,1,1];if(k==='emis')return [0,0,0,1];if(MAP_DEFS[k].def==null)return [0,0,0,0];
   const v=doc.mapDef&&doc.mapDef[k]!=null?doc.mapDef[k]:MAP_DEFS[k].def;return [v,v,v,1];}
 /* Channel opacity overrides inherit older projects' shared layer opacity until edited. */
 function mapOpacityOf(n,k){const v=n.mapOpacities&&n.mapOpacities[k];return v==null?n.opacity:v;}

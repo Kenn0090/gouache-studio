@@ -146,6 +146,7 @@ async function buildTexturesIn(pr,name,W,H,nw,nh,pad,U){
   for(const o of texOutputs(pr)){let f,C;
     if(o.rgb==='normal'){const t=texPadT(pad,normalComposite(texNormalFlip(pr),null));f=readMapF(t,4);release(t);C=3;f=dropAlpha(f,n);}
     else if(o.rgb){const t=texPadT(pad,compositeMap(o.rgb));const rgba=readMapF(t,4);release(t);
+      if(o.rgb==='sssc'){const sh=typeof v3ShadeOf==='function'?v3ShadeOf(doc):null,c=(sh&&sh.kind==='skin'&&shParams(sh).col)||SH_DEF.skin.col;for(let i=0;i<n;i++){const al=rgba[i*4+3];for(let j=0;j<3;j++)rgba[i*4+j]=rgba[i*4+j]*al+c[j]*(1-al);rgba[i*4+3]=1;}}
       if(o.a==='opac?'&&has('opac')){const op=grey('opac');for(let i=0;i<n;i++)rgba[i*4+3]*=op[i];C=4;f=rgba;}
       else if(o.rgb==='base'&&baseHasAlpha(rgba,n)&&o.a){C=4;f=rgba;}
       else{C=3;f=dropAlpha(rgba,n);}}
@@ -191,7 +192,7 @@ function dlgExportTextures(){if(stroke||preview||selLive){toast('Finish the curr
     el('div',{class:'sub',text:'Padding'}),sel('txPad','Padding',TEX_PAD_MODES,texCfg.pad||'none',v=>{texCfg.pad=v;}),
     makeSlider({id:'txPadPx',label:'Dilation',min:0,max:128,step:1,value:texCfg.padPx??16,def:16,fmt:v=>Math.round(v)+' px',onInput:v=>{texCfg.padPx=Math.round(v);}}).el,
     el('p',{class:'note',id:'txPadNote',text:texPadAvail()?'Grows each UV island’s colours outward past its edges (in pixels of the exported size), so mip-maps in the engine show no seams. Fill the rest: the space between islands takes the nearest island’s colours. Transparent: it stays see-through (PNG/TGA with alpha).':'Padding needs the model’s UVs: export from 3D Paint, or open the 3D view with your model. Without them the maps are saved as painted.'}),
-    chk('txH16','Height at 16 bits (PNG)',texCfg.h16,v=>{texCfg.h16=v;}),el('div',{class:'sub',text:'Baked maps'}),texMeshKeys().length?chk('txMeshMaps','Export baked maps ('+texMeshKeys().length+' in this set)',texCfg.meshMaps,v=>{texCfg.meshMaps=v;draw();pick();}):el('p',{class:'note',id:'txNoBaked',text:'This set has no baked maps yet. Bake in the Bake tab and send them to 3D Paint, or import them in the Mesh maps shelf.'}),meshPick,el('p',{class:'note',text:'Baked maps are saved beside the textures, also when you send to a game engine. They export at their original size unless you choose an export size, with a Mesh_ prefix, and belong to their texture set.'}),
+    chk('txH16','Height at 16 bits (PNG)',texCfg.h16,v=>{texCfg.h16=v;}),chk('txPsd','Also each channel as a layered PSD (keeps layers and folders)',!!texCfg.psd,v=>{texCfg.psd=v;}),el('div',{class:'sub',text:'Baked maps'}),texMeshKeys().length?chk('txMeshMaps','Export baked maps ('+texMeshKeys().length+' in this set)',texCfg.meshMaps,v=>{texCfg.meshMaps=v;draw();pick();}):el('p',{class:'note',id:'txNoBaked',text:'This set has no baked maps yet. Bake in the Bake tab and send them to 3D Paint, or import them in the Mesh maps shelf.'}),meshPick,el('p',{class:'note',text:'Baked maps are saved beside the textures, also when you send to a game engine. They export at their original size unless you choose an export size, with a Mesh_ prefix, and belong to their texture set.'}),
     ui.mode==='p3d'&&p3.sets.filter(S=>!S.missing).length>1?chk('txAll','Every texture set (files named after each set)',texCfg.allSets,v=>{texCfg.allSets=v;draw();}):'',
     ...modelRow,...esRow(()=>{closeDialog();dlgExportTextures();}),el('div',{class:'sub',text:'Files'}),list);draw();pick();
   openDialog({title:'Export textures',body,okLabel:platform.isDesktop?(esActive()?'Export and send':'Choose folder…'):'Export',onOk(){exportTextures();}});}
@@ -203,7 +204,7 @@ async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.
   try{let files=[];const bySet={},glTex={},shInfo={};
     /* each texture set (3D Paint), or the document; the model needs glTF-shaped textures too */
     const one=async(setName,fileName)=>{const fs=await buildTextures(pr,fileName,{udim:true,replay:true});bySet[setName]=fs;files.push(...fs);
-      if(eshWanted()){const g=await buildTextures(GLTF_TEX,pascal(fileName),{replay:true}),T={};for(const f of g)T[f.suffix]=f;shInfo[setName]={sh:JSON.parse(JSON.stringify(eshSafeShade(v3ShadeOf(doc)))),tex:T,alpha:doc.maps.includes('opac')};for(const f of g)if(!files.some(x=>x.name===f.name))files.push(f);}if(texCfg.meshMaps)files.push(...await buildMeshMapTextures(pr,fileName));
+      if(eshWanted()){const g=await buildTextures(GLTF_TEX,pascal(fileName),{replay:true}),T={};for(const f of g)T[f.suffix]=f;shInfo[setName]={sh:JSON.parse(JSON.stringify(eshSafeShade(v3ShadeOf(doc)))),tex:T,alpha:doc.maps.includes('opac')};for(const f of g)if(!files.some(x=>x.name===f.name))files.push(f);}if(texCfg.meshMaps)files.push(...await buildMeshMapTextures(pr,fileName));if(texCfg.psd)files.push(...await psdChannelFiles(fileName));
       if(wantModel&&texCfg.model==='glb'){const g=await buildTextures(GLTF_TEX,pascal(fileName),{replay:true}),T={};for(const f of g)T[f.suffix]=f;T.alpha=doc.maps.includes('opac');glTex[setName]=T;}};
     const sets=ui.mode==='p3d'?p3.sets.filter(S=>!S.missing):[];
     if(ui.mode==='p3d'&&(texCfg.allSets||wantModel)&&sets.length>1){const back=p3.cur;
@@ -230,3 +231,16 @@ async function buildMeshMapTextures(pr,name){const files=[],pad=texPadBegin(texC
  const W=texCfg.size||t.w,H=texCfg.size?Math.max(1,Math.round(texCfg.size*t.h/t.w)):t.h,r=resampleF(f,t.w,t.h,C,W,H,false),bits=k==='height'&&texCfg.h16&&texCfg.fmt==='png'?16:8;
  const blob=await encodeTex(W,H,r,C,texCfg.fmt,bits),suffix=meshExportSuffix(k);files.push({suffix,name:pr.name(name).replace('{s}',suffix)+'.'+texCfg.fmt,data:new Uint8Array(await blob.arrayBuffer())});await tick();}}finally{texPadEnd(pad);}return files;}
 
+/* (0.97.26) channels no preset knows about (Scattering, Scatter colour, Translucency, Specular level, your own channels)
+   are exported as their own files after the preset's own, named after the channel */
+const TEX_EXTRA=['specl','sss','sssc','trans',...MAP_USER];
+{const f=texOutputs;texOutputs=function(pr){const outs=f(pr),used=new Set();
+  for(const o of pr.outs){for(const k of [o.rgb,o.grey,...(o.ch||[]),...(o.rgbA||[])])if(k)used.add(k);}
+  for(const k of TEX_EXTRA){if(used.has(k)||!doc.maps.includes(k))continue;if(k==='specl'&&doc.workflow==='spec')continue;
+    const D=MAP_DEFS[k],s=pascal(D.label);outs.push(D.grey?{s,what:D.label,grey:k}:{s,what:D.label,rgb:k});}
+  return outs;};}
+/* (0.97.26) each channel of the set as a layered PSD at the canvas size, e.g. Helmet_BaseColour.psd, Helmet_Roughness.psd */
+async function psdChannelFiles(fileName){const out=[];
+  for(const k of doc.maps){if(k==='curv')continue;const blob=await encodePSD(k);
+    out.push({name:pascal(fileName)+'_'+pascal(MAP_DEFS[k].label)+'.psd',data:new Uint8Array(await blob.arrayBuffer())});await tick();}
+  return out;}

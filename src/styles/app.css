@@ -1765,3 +1765,15 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .msinvbtn{display:flex;gap:8px;align-items:center;justify-content:center;width:100%;font-weight:600;padding:6px 10px;margin:2px 0 4px}
 .msinvbtn .msinv-ic{font-size:15px}.msinvbtn.on{background:var(--accent);color:var(--accent-fg,#111);border-color:var(--accent)}
 .msccard-b>.msgrunge:first-child{padding-bottom:6px;margin-bottom:2px;border-bottom:1px solid var(--line-2)}
+/* (0.97.26) Material slots in the Shader panel */
+.slots{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.slotrow{display:grid;grid-template-columns:minmax(0,1fr) 84px 112px;gap:5px;align-items:center;padding:2px 4px;border-radius:var(--r,4px)}
+.slotrow .slotsel{width:84px;min-width:0}
+.slotrow .slotacts .btn{padding:2px 6px;font-size:11px}
+.slotrow:has(.srow){grid-template-columns:minmax(0,1fr) 84px minmax(90px,1.2fr)}
+.slotrow.on{background:color-mix(in srgb,var(--accent,#4a8) 10%,transparent)}
+.slotname{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slotrow .slotacts{display:flex;gap:3px;flex-wrap:nowrap}
+.slotrow .slotv{font-size:11px}
+.slotrow .frow,.slotrow .srow{margin:0}
+.slots #slotAddOwn{align-self:flex-start;margin-top:4px}
