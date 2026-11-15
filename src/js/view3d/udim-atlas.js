@@ -126,9 +126,22 @@ async function udimSetTileSize(name,id,px){const B=udimBox(name);if(!B)return fa
 /* a tile's size as painted (px on the canvas) */
 function udimTilePx(name,T){const R=udimTileRect(name,T,doc.w,doc.h);return Math.max(R[2],R[3]);}
 function udimTileSizeSel(name,T,i){const B=udimBox(name),cur=B&&B.size&&B.size[T.id]||0,sizes=UDIM_TILE_SIZES.filter(s=>s<=udimLim());
-  const sel=el('select',{class:'p3tilesz',id:'p3TileSz_'+T.id,'aria-label':'Texture size of UV tile '+T.id,title:'Texture size of UV tile '+T.id+(p3.cur===i?' (painted at '+udimTilePx(name,T)+' px)':'')+'. Changing it rebuilds the set from your strokes.'},
-    el('option',{value:'0',text:'Set ('+p3.size+')'}),...sizes.map(s=>el('option',{value:String(s),text:s>=1024?(s/1024)+'K':String(s)})));
+  const kf=n=>n>=1024?(Math.round(n/102.4)/10)+'K':String(n);const sel=el('select',{class:'p3tilesz',id:'p3TileSz_'+T.id,'aria-label':'Texture size of UV tile '+T.id,title:'Texture size of UV tile '+T.id+(p3.cur===i?' (painted at '+udimTilePx(name,T)+' px)':'')+'. Changing it rebuilds the set from your strokes.'},
+    el('option',{value:'0',text:'Auto · '+kf(p3.cur===i?udimTilePx(name,T):p3.size)}),...sizes.map(s=>el('option',{value:String(s),text:kf(s)})));
   sel.value=String(cur&&sizes.includes(cur)?cur:0);
   sel.onclick=e=>e.stopPropagation();
   sel.onchange=async e=>{e.stopPropagation();const v=+sel.value;if(p3.cur!==i)p3SwitchSet(i,true);sel.blur();await udimSetTileSize(name,T.id,v);};
   return sel;}
+/* (0.97.32, Kenn) clicking a UV tile flashes it on the model: lit up, then fading out */
+const udimFlashS={on:false};let P_3DTILE=null;
+const FS_3DTILE=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform vec4 uRect; uniform float uA; void main(){
+  vec2 l=(vT-uRect.xy)/uRect.zw; if(l.x<0.0||l.y<0.0||l.x>1.0||l.y>1.0) discard;
+  vec2 e=min(l,1.0-l)*uRect.zw/max(fwidth(vT),vec2(1e-6)); float edge=1.0-smoothstep(1.5,3.5,min(e.x,e.y));
+  o=vec4(mix(vec3(1.0,0.72,0.3),vec3(1.0,0.92,0.7),edge),(0.38+0.5*edge)*uA); }`;
+function udimFlash(name,T){const L=udimLay(name),r=L&&L[T.id];if(!r)return;udimFlashS.on=true;udimFlashS.r=r.slice();udimFlashS.t0=performance.now();udimFlashS.id=T.id;v3.dirty=true;requestRender();}
+function udimFlashAlpha(){if(!udimFlashS.on)return 0;const t=(performance.now()-udimFlashS.t0)/1000;if(t>1.7){udimFlashS.on=false;return 0;}return t<.35?1:Math.max(0,1-(t-.35)/1.35);}
+function udimFlashDraw(g,common){const a=udimFlashAlpha();if(!a||(ui.mode!=='p3d'&&ui.mode!=='bake'))return;if(!P_3DTILE)P_3DTILE=prog3(VS_3D,FS_3DTILE);const R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:g.count/3};
+  gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);useProg(P_3DTILE,Object.assign({},common,{uRect:udimFlashS.r,uA:a}));gl.bindVertexArray(g.vao);
+  gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);gl.depthMask(true);gl.disable(gl.BLEND);
+  requestAnimationFrame(()=>{v3.dirty=true;requestRender();});}
+{const f=udimFrameTile;udimFrameTile=function(name,T){const r=f.apply(this,arguments);try{udimFlash(name,T);}catch(e){console.warn('tile flash',e);}return r;};}

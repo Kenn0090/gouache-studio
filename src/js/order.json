@@ -181,6 +181,7 @@
     "bake/bake-groups",
     "bake/bake-tree",
     "bake/bake-log",
+    "bake/bake-udim",
     "ui/hover-preview",
     "ui/shelf-reveal",
     "ui/grunge-slot",

@@ -1,3 +1,10 @@
+## Gouache Studio 0.97.32
+
+- The Bake tab bakes UV tiles (UDIMs): each tile at the bake size, one picture per tile on export, every tile sent to its place in 3D Paint.
+- Clicking a UV tile flashes it on the model.
+- Texture size moved to the top of the 3D Paint panel; tidier UV tile list.
+- Fixed: a pause after every stroke on 8K textures.
+
 ## Gouache Studio 0.97.31
 
 - "Hide the bumps below" starts off on new materials; Preferences › Painting can make it start on.

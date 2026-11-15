@@ -95,3 +95,4 @@ if(window.__gs)Object.assign(window.__gs,{buildConvertPanel});
 if(window.__gs)Object.assign(window.__gs,{nav,navSync});
 if(window.__gs)Object.assign(window.__gs,{mcMake,ensureMapTarget,setDocMaps});
 if(window.__gs)Object.assign(window.__gs,{udimBox,udimSetTileSize,udimGU,udimLay,udimPack,udimTileRect,udimGridRect,p3PaintMeshKey});
+if(window.__gs)Object.assign(window.__gs,{udimFlashS,udimFlash,udimFlashAlpha,bkUdBox,bkUdBake,bkUdCompose,bkUdSub,bkUdCard,bkUdFlash,bakeExport,bakeSendP3,runBake,bkLow,bakeSetModel,bakeCfg});

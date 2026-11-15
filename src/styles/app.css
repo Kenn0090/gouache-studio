@@ -1823,3 +1823,27 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .fliplabel .flside{font-size:12px;color:var(--muted,#999)}
 .fliplabel .flhint{font-size:10.5px;color:var(--muted,#999);margin-top:2px}
 .p3tilegrp{display:inline-flex;align-items:center;gap:2px}.p3tilesz{font-size:10.5px;padding:0 2px;min-height:0;height:20px;max-width:74px}
+/* (0.97.32) 3D Paint: texture size at the top, UV tiles as a tidy grid */
+.p3sizebox{border:1px solid var(--line);border-radius:10px;padding:8px 10px 6px;margin:2px 0 10px;background:var(--raise)}
+.p3sizehead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+.p3sizettl{font-weight:600;font-size:12.5px;color:var(--text)}.p3sizenow{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.p3sizenote{margin:6px 0 0}
+.p3tilewrap{margin:2px 0 10px 30px}
+.p3tilehead{display:flex;justify-content:space-between;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:0 2px 4px}
+.p3tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(124px,1fr));gap:6px;margin:0}
+.p3tilegrp{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--raise);min-height:28px}
+.p3tilegrp .p3tile{border:0;border-radius:0;padding:2px 9px;font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;background:transparent;min-height:0}
+.p3tilegrp .p3tile:hover{background:var(--accent-soft)}
+.p3tilegrp .p3tilesz{flex:1;min-width:0;max-width:none;height:auto;border:0;border-left:1px solid var(--line);border-radius:0;background:transparent;font-size:12px;padding:0 4px;color:var(--text)}
+/* (0.97.32) UV tiles in the Bake tab */
+.bkud{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:8px 0;background:var(--raise)}
+.bkudhead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}.bkudttl{font-weight:600;font-size:12.5px}
+.bkudgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:6px}
+.bkudt{display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:8px;padding:2px 4px 2px 6px;background:var(--panel)}
+.bkudt.off{opacity:.55}.bkudt.done{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.bkudid{flex:1;border:0;background:transparent;color:var(--text);font-weight:600;font-size:12.5px;font-variant-numeric:tabular-nums;text-align:left;cursor:pointer;padding:3px 2px}.bkudid:hover{color:var(--accent)}
+.bkudst{color:var(--accent);font-size:12px;min-width:10px}.bkudre{padding:0 6px;min-height:0;height:22px}
+.p3sizebox{min-width:0;max-width:100%;box-sizing:border-box;overflow:hidden}.p3sizebox .seg{display:grid;grid-template-columns:repeat(auto-fit,minmax(46px,1fr));width:100%;box-sizing:border-box}
+.p3sizebox .seg>*{min-width:0}.p3sizebox .note{overflow-wrap:anywhere}
+#p3dBody{grid-template-columns:minmax(0,1fr)}.p3sets,.p3tilewrap{min-width:0}
+.p3sets>*{min-width:0}.p3set{min-width:0}.p3set .p3sn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.p3set .p3udims{min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
