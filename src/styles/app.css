@@ -1811,3 +1811,5 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .skmapname{font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .skmapbtns{display:flex;gap:3px}.skmapbtns .btn{padding:2px 6px;font-size:11px}
 .skslcol{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:end}
+/* (0.97.27, Kenn: "the projections UI is extended past the UI's box") fields and drop-downs in the projection box count their padding inside their width */
+.pxf,.pxf *{box-sizing:border-box}.pxf{min-width:0;max-width:100%}.pxf select,.pxf .chk{max-width:100%;min-width:0}.msccard{min-width:0}.msccard>*{max-width:100%}

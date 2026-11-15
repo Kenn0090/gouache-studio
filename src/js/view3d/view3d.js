@@ -499,7 +499,12 @@ window.addEventListener('keydown',e=>{if(!v3.on&&ui.mode!=='p3d')return;if(!v3.h
   const m={Numpad1:['front','back'],Numpad3:['right','left'],Numpad7:['top','bottom']}[e.code];
   if(m){e.preventDefault();v3SnapView(e.ctrlKey?m[1]:m[0]);}else if(e.code==='Numpad5'){e.preventDefault();v3SetOrtho(!v3s().ortho);}});
 function m4ortho(hw,hh,n,fa){const o=m4();o[0]=1/hw;o[5]=1/hh;o[10]=-2/(fa-n);o[14]=-(fa+n)/(fa-n);o[15]=1;return o;}
-function v3Proj(a,n,fa){const s=v3s();if(s.ortho){const hh=v3.cam.dist*Math.tan(s.fov*Math.PI/360);return m4ortho(hh*a,hh,n,fa);}return m4persp(s.fov*Math.PI/180,a,n,fa);}
+/* (0.97.27, Kenn: "the camera has a zoom limit") the zoom range and the near/far cut-off follow the model's size and the zoom, so
+   you can go right up to a pore or far out to see a whole scene without the model being sliced */
+function v3ZoomLim(){const r=(v3.mesh&&v3.mesh.radius)||1.5;return [Math.max(1e-4,r*.002),Math.max(50,r*2000)];}
+function v3Clip(){const r=(v3.mesh&&v3.mesh.radius)||1.5,d=v3.cam.dist;return [Math.max(1e-5,Math.min(.02,d*.05)),Math.max(100,(d+r*4)*1.5)];}
+function v3Zoom(d){const L=v3ZoomLim();return clamp(d,L[0],L[1]);}
+function v3Proj(a,n,fa){if(n===.02&&fa===100){const C=v3Clip();n=C[0];fa=C[1];}const s=v3s();if(s.ortho){const hh=v3.cam.dist*Math.tan(s.fov*Math.PI/360);return m4ortho(hh*a,hh,n,fa);}return m4persp(s.fov*Math.PI/180,a,n,fa);}
 function m4persp(f,a,n,fa){const o=m4(),t=1/Math.tan(f/2);o[0]=t/a;o[5]=t;o[10]=(fa+n)/(n-fa);o[11]=-1;o[14]=2*fa*n/(n-fa);return o;}
 function m4look(e,c,u){const z=norm3(sub3(e,c)),x=norm3(cross3(u,z)),y=cross3(z,x),o=m4();o[0]=x[0];o[4]=x[1];o[8]=x[2];o[1]=y[0];o[5]=y[1];o[9]=y[2];o[2]=z[0];o[6]=z[1];o[10]=z[2];
   o[12]=-dot3(x,e);o[13]=-dot3(y,e);o[14]=-dot3(z,e);o[15]=1;return o;}
@@ -810,14 +815,14 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     const dx=e.clientX-d.x,dy=e.clientY-d.y;d.x=e.clientX;d.y=e.clientY;const c=v3.cam;
     if(d.how==='sky'){envTurnBy(dx*.5);return;}
     if(d.how==='pan'){const k=c.dist*.0018,eye=v3Eye(),f=norm3(sub3([c.tx,c.ty,c.tz],eye)),r=norm3(cross3(f,[0,1,0])),u=cross3(r,f);c.tx+=(-r[0]*dx+u[0]*dy)*k;c.ty+=(-r[1]*dx+u[1]*dy)*k;c.tz+=(-r[2]*dx+u[2]*dy)*k;}
-    else if(d.how==='zoom')c.dist=clamp(c.dist*Math.exp((dy-dx)*.006),.2,50);
+    else if(d.how==='zoom')c.dist=v3Zoom(c.dist*Math.exp((dy-dx)*.006));
     else{/* Shift while turning snaps to the nearest side view (front/back/left/right/top/bottom); the free angle keeps going underneath */
       if(d.fy==null){d.fy=c.yaw;d.fp=c.pitch;}d.fy-=dx*.008;d.fp=clamp(d.fp+dy*.008,-1.55,1.55);
       if(e.shiftKey){const Q=Math.PI/2;if(Math.abs(d.fp)>Math.PI/4){c.pitch=d.fp>0?1.5699:-1.5699;c.yaw=Math.round(d.fy/Q)*Q;}else{c.pitch=0;c.yaw=Math.round(d.fy/Q)*Q;}}
       else{c.yaw=d.fy;c.pitch=d.fp;}}v3.dirty=true;requestRender();});
   const up=e=>{if(typeof pfBusy==='function'&&pfBusy()){pfUp(e);return;}if(pgz.drag){pgzUp();return;}if(typeof g3Up==='function'&&g3.drag){g3Up();return;}if(lgz.drag){lgzUp();return;}if(sel3DragBusy()){sel3DragUp(e,e.type!=='pointerup',hit);return;}if(mk3Busy()&&e.type!=='lostpointercapture'){mk3Up(e);return;}if(v3.drag&&e.pointerId!==undefined&&v3.drag.id!==e.pointerId)return;v3.drag=null;meshUp(e);};
   hit.addEventListener('pointerup',up);hit.addEventListener('pointercancel',up);hit.addEventListener('lostpointercapture',up);hit.addEventListener('pointerleave',()=>{sel3HoverClear();v3.hover=false;v3PickRelease();v3PickHold.hit=null;v3PickHold.point=null;meshCursor(hit,null);});hit.addEventListener('pointerenter',()=>{v3.hover=true;});
-  hit.addEventListener('wheel',e=>{e.preventDefault();e.stopPropagation();v3.cam.dist=clamp(v3.cam.dist*Math.exp(e.deltaY*.0012),.2,50);v3.dirty=true;requestRender();},{passive:false});
+  hit.addEventListener('wheel',e=>{e.preventDefault();e.stopPropagation();v3.cam.dist=v3Zoom(v3.cam.dist*Math.exp(e.deltaY*.0012));v3.dirty=true;requestRender();},{passive:false});
   for(const t of ['selectstart','dragstart'])hit.parentNode.addEventListener(t,e=>e.preventDefault());
   hit.addEventListener('dblclick',e=>{const s=window.getSelection&&window.getSelection();if(s&&s.rangeCount)s.removeAllRanges();if(maskToolsOn()&&mk3.tool&&mk3.tool!=='paint')return;if(ui.mode==='p3d'){if(v3PickAt(hit,e))return;}else{if(typeof p3SelectAt==='function'&&p3SelectAt(hit,e))return;}v3Frame();requestRender();});}
 /* a release anywhere (or the window losing focus) ends turning and painting on the model */

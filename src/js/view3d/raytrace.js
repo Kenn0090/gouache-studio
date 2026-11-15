@@ -81,7 +81,7 @@ function rtAccT(w,h){const t=makeTarget(w,h,32,false);gl.bindTexture(gl.TEXTURE_
 function rtSession(w,h){return {w,h,a:rtAccT(w,h),b:rtAccT(w,h),n:0,key:''};}
 function rtFree(S){if(!S)return;disposeTarget(S.a);disposeTarget(S.b);}
 function rtCamera(w,h,flip,yawAdd){const s=v3s(),c=v3.cam,cam=yawAdd?Object.assign({},c,{yaw:c.yaw+yawAdd}):c,cp=Math.cos(cam.pitch),eye=[cam.tx+Math.sin(cam.yaw)*cp*cam.dist,cam.ty+Math.sin(cam.pitch)*cam.dist,cam.tz+Math.cos(cam.yaw)*cp*cam.dist];
-  const V=m4look(eye,[cam.tx,cam.ty,cam.tz],[0,1,0]),Pm=m4persp(s.fov*Math.PI/180,w/h,.02,100);if(flip)Pm[5]=-Pm[5];return {VP:m4mul(Pm,V),eye};}
+  const V=m4look(eye,[cam.tx,cam.ty,cam.tz],[0,1,0]),Pm=m4persp(s.fov*Math.PI/180,w/h,...v3Clip());if(flip)Pm[5]=-Pm[5];return {VP:m4mul(Pm,V),eye};}
 /* one more sample into session S; bg: 0 HDRI, 1 colour, 2 transparent */
 function rtStep(S,g,o){const s=v3s(),PR=rtProgs(),E=envUniforms(),a=s.sunAz*Math.PI/180,e=s.sunEl*Math.PI/180,cam=rtCamera(S.w,S.h,false,o.yaw||0);
   const envOn=!!(E.uEnvOn&&envOf(s)!=='none');run(PR.trace,S.b,{uNodes:g.nodes,uTris:g.tris,uTN:g.nrm,uTC:dummy,uUV:g.uv,uTan:g.tan,uMat:{arr:rt.mat},uEnvSrc:envOn?envG().src.tex:dummy,uEnvOn:envOn,uEnvRot:(s.envRot||0)/360+(o.envAdd||0),uEnvI:s.envI==null?1:s.envI,
