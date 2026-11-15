@@ -82,3 +82,4 @@ if(window.__gs)Object.assign(window.__gs,{skinBlurPass,skbRadius});
 if(window.__gs)Object.assign(window.__gs,{eshFiles,ESH_UNITY_SHADER,texSpecMetal,texSpecSolve,texPadBegin,texPadEnd,texOutputs,GLTF_TEX,setDocMaps,SH_DEF,ESH_SKIN_TEX,eshGodotShader});
 if(window.__gs)Object.assign(window.__gs,{tssMatSolo,paToChannel,v3ZoomLim,v3Clip,v3Zoom,MESH_WRAP_ONLY});
 if(window.__gs)Object.assign(window.__gs,{paEntries,skSetRefl,renderMatEd,tssRemove,tssAdd});
+if(window.__gs)Object.assign(window.__gs,{brushAlignRow,brushAlign3d});

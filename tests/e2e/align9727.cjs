@@ -1,0 +1,21 @@
+/* 0.97.27 (Kenn): the alignment on the model sits in the brush's own settings and is saved with the brush */
+const {chromium}=require('playwright');
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const p=await (await b.newContext({viewport:{width:1600,height:1000}})).newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ await p.evaluate(()=>document.querySelector('#modeTabs [data-mode=p3d]').click());await p.waitForTimeout(3000);
+ await p.evaluate(()=>{__gs.setTool('brush');__gs.showPanel('tool');});await p.waitForTimeout(300);
+ ok(await p.locator('#brAlign3d').count()===1,'3D Paint: the brush settings start with the alignment on the model');
+ await p.selectOption('#brAlign3d','camera');await p.waitForTimeout(300);
+ ok(await p.evaluate(()=>__gs.v3s().paintAlign==='camera'&&__gs.brush.align3d==='camera'),'choosing Camera there switches the alignment and keeps it in the brush');
+ ok(await p.evaluate(()=>/Saved with the brush/.test(document.getElementById('brAlignRow').textContent)),'…and says it is saved with the brush');
+ await p.selectOption('#brAlign3d','');await p.waitForTimeout(300);
+ ok(await p.evaluate(()=>__gs.v3s().paintAlign==='uv'&&!__gs.brush.align3d),'“Projection setting” gives the alignment back');
+ await p.evaluate(()=>__gs.applyPreset({name:'Cam brush',tool:'brush',align3d:'camera'}));await p.waitForTimeout(300);
+ ok(await p.evaluate(()=>__gs.v3s().paintAlign==='camera'&&document.getElementById('brAlign3d').value==='camera'),'a saved brush with an alignment switches to it when picked');
+ await p.evaluate(()=>__gs.setTool('clone'));await p.waitForTimeout(300);
+ ok(await p.evaluate(()=>{const s=document.getElementById('brAlign3d');return s&&s.disabled&&s.value==='wrap';}),'clone shows that it always uses Tangent | Wrap');
+ await p.evaluate(()=>document.querySelector('#modeTabs [data-mode=paint]').click());await p.waitForTimeout(1500);await p.evaluate(()=>{__gs.setTool('brush');__gs.showPanel('tool');});
+ ok(await p.locator('#brAlign3d').count()===0,'the flat Paint tab has no alignment row');
+ ok(!errs.length,'no page errors '+errs.join(' | '));await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();

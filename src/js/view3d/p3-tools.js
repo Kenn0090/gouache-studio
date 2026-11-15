@@ -20,3 +20,17 @@ function p3BrushAlign(p){if(ui.mode!=='p3d')return;const s=v3s(),a=brushAlign3d(
 {const ap=applyPreset;applyPreset=function(p){const r=ap.apply(this,arguments);try{p3BrushAlign(p);}catch(e){console.warn(e);}return r;};}
 {const bt=brushLibraryTile;brushLibraryTile=function(p,recent){const b=bt.apply(this,arguments);const a=ui.mode==='p3d'?brushAlign3d(p):null;
   if(a&&b){b.classList.add('has3d');b.append(el('span',{class:'b3d',text:'3D',title:'In 3D Paint this brush paints with '+ALIGN3D_NAMES[a]+' alignment (switched for you)'}));b.title=(b.title||'')+' · 3D: '+ALIGN3D_NAMES[a];}return b;};}
+
+/* (0.97.27, Kenn: "when brushes need specific alignment, they should have that in their brush settings so they can easily be
+   switched") the Brush settings in 3D Paint start with how this brush lands on the model. Saved with the brush (align3d), so
+   picking the brush again switches the alignment; "Projection setting" leaves it to the Projection panel. */
+function brushAlignRow(){if(ui.mode!=='p3d'||!['brush','erase','dodge','burn','smudge','liquify','heal','clone','material'].includes(ui.tool))return null;
+  const s=v3s(),fixed=typeof MESH_WRAP_ONLY!=='undefined'&&MESH_WRAP_ONLY.includes(ui.tool),need=brushAlign3d({tool:ui.tool,align3d:brush.align3d});
+  const sel=el('select',{id:'brAlign3d',class:'shsel','aria-label':'Alignment on the model',disabled:fixed||null},
+    el('option',{value:'',text:'Projection setting ('+ALIGN3D_NAMES[s.userAlign||s.paintAlign||'uv']+')'}),...['wrap','camera','uv'].map(k=>el('option',{value:k,text:ALIGN3D_NAMES[k]})));
+  sel.value=fixed?'wrap':(brush.align3d||'');
+  sel.onchange=()=>{const v=sel.value;brush.align3d=v;if(v){if(s.userAlign==null)s.userAlign=s.paintAlign||'uv';s.paintAlign=v;}else if(s.userAlign!=null){s.paintAlign=s.userAlign;delete s.userAlign;}
+    if(typeof brushEdited==='function')brushEdited();buildBrushPanel();if(typeof v3Refresh==='function')v3Refresh();};
+  const note=fixed?'This tool reads the paint around it, so it always uses Tangent | Wrap.':need==='wrap'&&!brush.align3d?'':brush.align3d?'Saved with the brush: picking it again switches to '+ALIGN3D_NAMES[brush.align3d]+'.':'';
+  return el('div',{class:'bralign',id:'brAlignRow'},el('div',{class:'frow'},el('span',{text:'On the model'}),sel),note?el('p',{class:'note',text:note}):'');}
+{const f=buildBrushPanel;buildBrushPanel=function(){const r=f.apply(this,arguments);try{const body=document.getElementById('brushBody');if(body&&!body.querySelector('#brAlignRow')){const row=brushAlignRow();if(row)body.prepend(row);}}catch(e){console.warn('brush alignment row',e);}return r;};}
