@@ -79,3 +79,4 @@ if(window.__gs)Object.assign(window.__gs,{tssAdd,tssRemove,tssSetFormat,tssRende
 if(window.__gs)Object.assign(window.__gs,{skSetRefl,skReflSpec,shadeUniforms,chPackUniforms});
 if(window.__gs)Object.assign(window.__gs,{tssSetMix,mapModeOf,compositeMap});
 if(window.__gs)Object.assign(window.__gs,{skinBlurPass,skbRadius});
+if(window.__gs)Object.assign(window.__gs,{eshFiles,ESH_UNITY_SHADER,texSpecMetal,texSpecSolve,texPadBegin,texPadEnd,texOutputs,GLTF_TEX,setDocMaps,SH_DEF,ESH_SKIN_TEX,eshGodotShader});
