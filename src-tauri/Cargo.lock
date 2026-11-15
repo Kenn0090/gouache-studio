@@ -1203,7 +1203,7 @@ dependencies = [
 
 [[package]]
 name = "gouache-studio"
-version = "0.97.25"
+version = "0.97.26"
 dependencies = [
  "reqwest",
  "rustls",
