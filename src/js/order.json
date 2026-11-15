@@ -116,6 +116,7 @@
     "view3d/env",
     "view3d/shading",
     "view3d/shade-slots",
+    "view3d/custom-shader",
     "view3d/post",
     "view3d/panner",
     "view3d/mesh-paint",

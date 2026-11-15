@@ -6,6 +6,8 @@
 - **Channels of your own** (up to 8, like Painter's user channels): add one in **Document maps** or with **+ Channel of your own** under Material slots, give it a name (e.g. Wetness), make it grey or colour. They paint, save and export like any channel.
 - **Export:** the new channels come out as their own files with every preset. New tick **Also each channel as a layered PSD**: one PSD per channel (e.g. Helmet_Roughness.psd) with all its layers and folders.
 - **Import PSD into a channel** (File › Import, or drop a .psd on 3D Paint): its layers arrive as a folder that paints only that channel.
+- **Custom shader maker:** in the Shader panel pick **Custom (mix your own)** and stack ingredients from the other shaders. **Lighting styles** (Skin scattering, Wax glow, Toon bands, Cel, Halftone dots, Ink shadows), **Shine** (Brushed metal, Clear coat and flakes, Cloth sheen, Iridescent colour) and **Extras** (Rim light, Hologram lines, Glass, Retro pixels, Outline, Moving textures). Each one has on/off, an amount, its own settings and a **mask**: any channel of the set, or **New mask channel** to paint one. Move rows up and down; they apply in order.
+- **Shaders library** on the 3D Paint shelf: **Save to library** keeps a custom shader for every project. Click a tile to use it on the active texture set, drag it onto a texture set, or pick it (★) in the Shader drop-down. Export and import shaders as .gshader files. The project keeps the shader of each set. Game engines get the textures with a Standard material.
 - **Focal length** in mm next to the view angle in the 3D settings, linked both ways, with 18, 24, 35, 50, 85 and 135 mm buttons. The view angle now goes down to 5° (long lenses).
 
 ## 0.97.25

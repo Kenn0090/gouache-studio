@@ -36,7 +36,7 @@ uniform int uEnvOn; uniform float uEnvRot; uniform float uEnvI; uniform sampler2
 /* the texture set's shader: 0 standard, 1 skin, 2 anisotropic metal, 3 velvet, 4 toon, 5 cel, 6 spec/gloss view, 7 panner, 8 retro (N64 / PSX); its settings */
 uniform int uMetalView; uniform float uMetalRough; uniform bool uWorldNormalView;
 uniform int uBevelMaterial; uniform float uBevelMetal; uniform float uBevelRough;
-uniform float uTime; uniform float uFurK; uniform vec4 uSkin; uniform vec4 uShE; uniform int uSh; uniform vec4 uShP; uniform vec4 uShQ; uniform vec3 uShC; uniform vec3 uShD;
+uniform int uCxN; uniform vec4 uCxA[8]; uniform vec4 uCxB[8]; uniform vec4 uCxC[8]; uniform vec4 uCxR; uniform float uTime; uniform float uFurK; uniform vec4 uSkin; uniform vec4 uShE; uniform int uSh; uniform vec4 uShP; uniform vec4 uShQ; uniform vec3 uShC; uniform vec3 uShD;
 /* the Panner shader (0.40): each map slid by its own offset */
 uniform vec2 uPB; uniform vec2 uPR; uniform vec2 uPM; uniform vec2 uPN; uniform vec2 uPA; uniform vec2 uPE; uniform vec2 uPO;
 const float PI=3.14159265;
@@ -114,7 +114,7 @@ float hatchPlane(vec2 p,float dark,float breakup,float phase){
   return 1.0-(1.0-a*first)*(1.0-b*second*0.86);
 }
 vec4 mapSample(sampler2D tex,vec2 uv){vec2 dx,dy;mapGrad(uv,dx,dy);if(uSh==8)return retroSample(tex,uv,dx,dy);return textureGrad(tex,uv,dx,dy);}
-void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv=uUseUDIM==1?fract(vT):vT; vec2 dUx=dFdx(uv),dUy=dFdy(uv); vec4 b=mapSample(uBase,uv+uPB); float aOp=1.0; if((uHas&64)!=0) aOp=(uHas&512)!=0?mapSample(uOpac,uv+uPO).a:mapSample(uOpac,uv+uPO).r; float a=b.a*aOp;
+void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv=uUseUDIM==1?fract(vT):vT; if(uSh==19&&uCxR.x>0.5) uv=(floor(uv*uCxR.x)+0.5)/uCxR.x; vec2 dUx=dFdx(uv),dUy=dFdy(uv); vec4 b=mapSample(uBase,uv+uPB); float aOp=1.0; if((uHas&64)!=0) aOp=(uHas&512)!=0?mapSample(uOpac,uv+uPO).a:mapSample(uOpac,uv+uPO).r; float a=b.a*aOp;
   /* (0.97.15, Kenn) in 3D Paint the model always has a plain grey base material: where the layers (or a black mask) leave it see-through, that grey shows instead of the mesh vanishing; only an Opacity map cuts holes */
   if(uBackdrop==1){ if(uClip==1&&aOp<0.5) discard; a=aOp; } else if(uClip==1&&a<0.5) discard;
   vec3 alb=b.a>1e-5?b.rgb/b.a:vec3(0.0); if(uBackdrop==1) alb=mix(vec3(0.5),alb,b.a);
@@ -308,8 +308,55 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
     if(uShE.x>0.5){paper=vec3(mix(0.31,0.91,1.0-shadow)+lift*0.1);inkColour=vec3(0.004);}
     col=mix(paper,inkColour,clamp(ink*uShP.y*(1.0-lift),0.0,1.0));
   }
+  /* (0.97.27) Custom shader: rows of ingredients from the other looks, applied in order on top of Standard.
+     A = kind, amount, mask slot (-1 none, 0..3 = R..A of the packed masks in uThick, uHas 2048), invert; B = settings; C = colour + one more setting */
+  float cxRet=0.0; vec4 cxRP=vec4(0.0);
+  if(uSh==19){ vec4 cxM=(uHas&2048)!=0?mapSample(uThick,uv):vec4(1.0); vec3 envT=(envD*ao+envS*specAO)*uSkyI;
+    for(int i=0;i<8;i++){ if(i>=uCxN) break; vec4 A=uCxA[i],P=uCxB[i],C=uCxC[i]; int kd=int(A.x+0.5);
+      float m=A.z<-0.5?1.0:(A.z<0.5?cxM.r:A.z<1.5?cxM.g:A.z<2.5?cxM.b:cxM.a); if(A.w>0.5) m=1.0-m; float w=max(A.y,0.0)*m; if(w<=0.0) continue; float wm=min(w,1.0);
+      vec3 sc=lin(C.rgb);
+      if(kd==1){ vec3 sss=clamp(C.rgb,0.02,1.0), wrap=P.x*vec3(0.8,0.38,0.18); vec3 dl=max((vec3(dot(N,L))+wrap)/(1.0+wrap),0.0)/(1.0+wrap); dl=mix(vec3(NdL),dl,clamp(P.y,0.0,1.0));
+        vec3 att=exp(-max(P.w,0.0)*max(C.w,0.05)/sss); vec3 tr=att*sss*max(dot(-N,L),0.0)*P.z*P.y;
+        vec3 sf=studioDirect(N,V,L,vec3(0.0),vec3(0.028),clamp(rough,0.08,1.0),0.0);
+        vec3 c=((1.0-metal)*alb/PI*dl+sf)*visibility*uSunI*3.0*uLightColor+tr*alb*uSunI*1.5+envT+envDif(-N)*att*sss*alb*P.y*P.z*0.25*uSkyI; col=mix(col,c,wm); }
+      else if(kd==2||kd==3){ float l=dot(N,L)*0.5+0.5, band; if(kd==2){ float st=max(P.x,1.0); band=mix(floor(l*st+0.5)/st,l,P.y); } else band=smoothstep(P.x-P.y*0.5,P.x+P.y*0.5+1e-4,l);
+        vec3 bs=mix(alb*sc,alb,clamp(band,0.0,1.0)); float sp=step(1.0-P.z*0.05,NdH)*(1.0-rough*0.5)*step(0.01,P.z); float rim=smoothstep(1.0-P.w,1.0,1.0-NdV)*P.w;
+        vec3 c=bs*(0.75+0.25*uEnvI)+bs*envDif(N)*0.25*ao+vec3(sp)+alb*rim; col=mix(col,c,wm); }
+      else if(kd==4){ float l=dot(N,L)*0.5+0.5; float st=max(P.x,1.0), x=l*st, i0=floor(x), f=x-i0, lvl;
+        if(P.z>0.01){ float hw=P.z*0.5, t=clamp((f-0.5)/(hw*2.0+1e-3)+0.5,0.0,1.0); vec2 c2=vec2(uv.x+uv.y,uv.x-uv.y)*max(P.w,1.0); float pp=length(fract(c2)-0.5)*1.4142, aa=fwidth(pp)+1e-3; lvl=i0+(1.0-smoothstep(t*1.15-aa,t*1.15+aa,pp))*step(0.001,t); }
+        else lvl=i0+smoothstep(0.5-P.y,0.5+P.y+1e-4,f);
+        vec3 shc=alb*0.45*mix(vec3(1.0),sc*2.0,0.55); vec3 c=mix(shc,alb,clamp(lvl/st,0.0,1.0)); c=c*(0.75+0.25*uEnvI)+c*envDif(N)*0.25*ao; col=mix(col,c,wm); }
+      else if(kd==5){ float l=dot(N,L)*0.5+0.5; float st=max(P.x,1.0), lv=0.0; for(int k=1;k<=3;k++){ if(float(k)>st) break; float th=float(k)/(st+1.0)*1.1; lv+=smoothstep(th-P.y,th+P.y+1e-4,l); }
+        vec3 c=mix(alb*sc*1.1,alb,lv/st); c+=vec3(1.0)*smoothstep(1.0-P.z,1.0,1.0-NdV)*P.w*smoothstep(-0.3,0.3,dot(N,L)); c=c*(0.75+0.25*uEnvI)+c*envDif(N)*0.25*ao; col=mix(col,c,wm); }
+      else if(kd==6){ float ang=P.y*2.0*PI; vec3 Ta=normalize(T*cos(ang)+B*sin(ang)); Ta=normalize(Ta-N*dot(N,Ta)); vec3 Ba=cross(N,Ta);
+        float an=clamp(P.x,-0.95,0.95), ar=rough*rough, ax=max(ar*(1.0+an),0.002), ay=max(ar*(1.0-an),0.002), th=dot(Ta,H)/ax, bh=dot(Ba,H)/ay, q=th*th+bh*bh+NdH*NdH; float Da=1.0/(PI*ax*ay*q*q);
+        vec3 at=cross(Ba,V), an2=normalize(cross(at,Ba)); vec3 Na=normalize(mix(N,an2,abs(P.x)*clamp(1.0-rough*0.5,0.0,1.0)));
+        col+=((Da-D)*vis*F*NdL*uSunI*3.0*visibility*uLightColor+(envSpec(reflect(-V,Na),rough)-envSpec(R,rough))*single*uSkyI*specAO)*wm; col=max(col,vec3(0.0)); }
+      else if(kd==7){ float cr=max(P.y,0.02); vec3 Nc=normalize(Ng+0.012*vec3(sin(vP.x*90.0+vP.y*37.0),sin(vP.y*83.0+vP.z*51.0),sin(vP.z*77.0+vP.x*29.0)));
+        vec3 add=studioDirect(Nc,V,L,vec3(0.0),vec3(0.04),cr,0.0)*uSunI*3.0*P.x*visibility;
+        vec2 abc=envBRDF(NdV,cr); add+=envSpec(reflect(-V,Ng),cr)*(vec3(0.04)*abc.x+abc.y)*P.x*uSkyI;
+        vec3 fq3=mat3(0.36,0.48,-0.8,-0.8,0.6,0.0,0.48,0.64,0.6)*vP*max(P.w,1.0)*0.85, ci=floor(fq3), fr=fract(fq3)-0.5; float fw=length(fwidth(fq3));
+        float h1=hsh3(ci), h2=hsh3(ci+17.1), h3=hsh3(ci+43.7), h4=hsh3(ci+91.3); float rad=0.22+0.28*h4, fm=step(h1,P.z*0.8)*smoothstep(rad,rad*0.55,length(fr));
+        vec3 nf=normalize(N+(vec3(h2,h3,hsh3(ci+5.5))-0.5)*1.6); vec3 fcol=mix(sc,alb,0.2)*(0.6+0.8*h4);
+        vec3 fsp=fcol*((pow(max(dot(nf,H),0.0),70.0)*12.0+pow(max(dot(nf,H),0.0),10.0)*1.4)*uSunI*visibility+envSpec(reflect(-V,nf),0.15)*0.5*uSkyI);
+        add+=C.w*mix(fm*fsp,fcol*P.z*0.1,smoothstep(0.5,1.0,fw)); col+=add*wm; }
+      else if(kd==8){ float sr=max(P.y,0.05), sn=sqrt(max(1.0-NdH*NdH,0.0)), Dc=(2.0+1.0/sr)*pow(sn,1.0/sr)/(2.0*PI);
+        float an=P.z*2.0*PI; vec3 Tf=normalize(T*cos(an)+B*sin(an)); Tf=normalize(Tf-N*dot(N,Tf)); float th=dot(Tf,H); float Da=pow(sqrt(max(1.0-th*th,0.0)),mix(10.0,160.0,1.0-P.y))*0.6;
+        vec3 add=sc*P.x*mix(Dc,Da,P.w)*NdL*uSunI*3.0/max(4.0*(NdL+NdV-NdL*NdV),1e-3)+sc*P.x*envDif(N)*pow(1.0-NdV,2.5)*0.8*uSkyI; col+=add*wm; }
+      else if(kd==9){ float t=P.y+P.z*(0.3+P.w*(1.0-NdV)); vec3 film=0.5+0.5*cos(6.2832*(t*vec3(1.0)+vec3(0.0,0.33,0.67)));
+        col=mix(col,col*mix(vec3(1.0),film*1.6,0.75)+film*envSpec(R,rough)*uSkyI*0.25,clamp(P.x*wm,0.0,1.0)); }
+      else if(kd==10){ col+=sc*smoothstep(1.0-P.x,1.0,1.0-NdV)*P.y*mix(1.0,smoothstep(-0.2,0.4,dot(N,L)),P.z)*w; }
+      else if(kd==11){ float t=uTime; float ln=smoothstep(0.35,0.65,sin((vP.y*P.x-t*P.w*3.0)*1.5708)*0.5+0.5);
+        float fl=max(1.0-P.y*(0.35*hsh(vec2(floor(t*24.0),1.0))+0.15*sin(t*60.0)),0.0); float edge=pow(1.0-NdV,2.5)*P.z;
+        col+=sc*(edge+ln*0.45)*fl*2.0*wm; }
+      else if(kd==12){ float rf=clamp(P.y,0.0,1.0), Fg=clamp((0.04+0.96*pow(1.0-NdV,5.0))*max(P.w,0.0),0.0,1.0), eta=1.0/(1.0+0.6*P.x);
+        vec3 dg=refract(-V,N,eta); if(dot(dg,dg)<0.5) dg=reflect(-V,N); vec3 Tg=envSpec(dg,rf)*uSkyI*exp(-(vec3(1.0)-sc)*P.z*1.6/NdV)*mix(vec3(1.0),alb,0.85);
+        vec3 c=Tg*(1.0-Fg)+envSpec(reflect(-V,N),rf*0.6)*uSkyI*Fg; col=mix(col,c,wm); }
+      else if(kd==13){ cxRet=wm; cxRP=P; } } }
   if((uHas&16)!=0) col+=lin(mapSample(uEmis,uv+uPE).rgb)*2.0;
-  col*=uExpo; col=tone(col); o=vec4(pow(clamp(col,0.0,1.0),vec3(1.0/2.2)),1.0); }`;
+  col*=uExpo; col=tone(col); vec3 outC=pow(clamp(col,0.0,1.0),vec3(1.0/2.2));
+  if(cxRet>0.0){ float bt=max(cxRP.y,2.0); vec3 q=floor(outC*bt+0.5+(retroBayer(gl_FragCoord.xy)-0.5)*cxRP.z)/bt; outC=mix(outC,clamp(q,0.0,1.0),cxRet); }
+  o=vec4(outC,1.0); }`;
 const FS_3DLINE=`uniform vec4 uCol; void main(){ o=uCol; }`;
 const VS_UV=`#version 300 es
 layout(location=2) in vec2 aT; uniform vec2 uOrigin; uniform vec2 uExtent; uniform vec2 uViewport; uniform vec2 uShift;

@@ -220,6 +220,21 @@ The layer stays live: every change shows straight away on the model, and becomes
 - **PSD into a channel:** **File › Import › Import PSD into a channel…**, or drop a .psd on 3D Paint (it goes into the channel you are painting).
 - **Focal length:** the 3D settings show the camera's **Focal length** in mm next to the **View angle** (they move together), with buttons for 18, 24, 35, 50, 85 and 135 mm. The numbers match a full-frame camera, so 50 mm looks like a normal lens.
 
+## Custom shader maker (0.97.26)
+Mix your own look from pieces of the other shaders, per texture set:
+
+![The custom shader maker](images/custom-shader.png)
+
+1. In the **Shader** panel pick **Custom (mix your own)**. On its own it looks like Standard.
+2. **+ Add an ingredient…** adds a row. Rows apply from top to bottom (↑ ↓ to move them):
+   - **Lighting styles** replace the shading by their amount: Skin scattering, Wax glow, Toon bands, Cel shading, Halftone dots, Ink shadows.
+   - **Shine** adds on top: Brushed metal, Clear coat and flakes, Cloth sheen, Iridescent colour.
+   - **Extras**: Rim light, Hologram lines, Glass, Retro pixels, Outline, Moving textures.
+3. Each row has a tick (on/off), **Amount**, its own settings (▸ opens them) and a **Mask**: *Whole set*, or *Where (a channel) is light*, with **Invert**. **New mask channel** adds a channel of your own named after the ingredient (black to start): paint white where the ingredient should show. Up to four different mask channels per shader; Outline and Moving textures always cover the whole set.
+4. **Save to library** keeps it for every project (the **Shaders** category on the shelf). **Update in library** saves changes back; **Save as new** makes a copy; **Export… / Import…** share .gshader files.
+
+Using a saved shader: click its tile on the shelf (active texture set), drag the tile onto a texture set in the list, or pick it (★) in the Shader drop-down. The project file keeps each set's shader, so it opens the same elsewhere. Game engine exports use a Standard material with the textures.
+
 ## Baking mesh maps here
 **Bake mesh maps…** (3D Paint panel, under *Mesh maps*) bakes without leaving 3D Paint, like Substance Painter's window:
 - **Maps:** Normal, Ambient occlusion, Curvature, Height, Thickness, World-space normal, Position and ID colours.

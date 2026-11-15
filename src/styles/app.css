@@ -1777,3 +1777,14 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .slotrow .slotv{font-size:11px}
 .slotrow .frow,.slotrow .srow{margin:0}
 .slots #slotAddOwn{align-self:flex-start;margin-top:4px}
+/* (0.97.26) Custom shader maker */
+.cxed{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.cxrow{border:1px solid var(--line,#333);border-radius:var(--r,6px);padding:4px 6px;display:flex;flex-direction:column;gap:3px}
+.cxrow.off{opacity:.55}
+.cxhead{display:flex;align-items:center;gap:4px}
+.cxhead .cxname{font-weight:600;font-size:12px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cxhead .cxgrp{font-size:10px;white-space:nowrap}
+.cxhead .btn{padding:1px 6px;min-width:0}
+.cxmask{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.cxmask .shsel{flex:1;min-width:120px}
+.cxlibbtns{margin-top:4px}

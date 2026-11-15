@@ -215,6 +215,7 @@ const FS_CHPACK=`uniform sampler2D uA; uniform sampler2D uB; uniform sampler2D u
 void main(){ vec2 uv=gl_FragCoord.xy/uSz;
   if(uPass==0){ o=vec4(uHasA.x>0.5?texture(uA,uv).r:uV.x, uHasA.y>0.5?texture(uB,uv).r:1.0, uHasA.z>0.5?texture(uC,uv).r:1.0, 1.0); return; }
   if(uPass==1){ vec3 c=uCol; if(uHasA.x>0.5){ vec4 s=texture(uA,uv); if(s.a>1e-5) c=mix(uCol,s.rgb/s.a,clamp(s.a,0.0,1.0)); } o=vec4(c, uHasA.y>0.5?texture(uB,uv).r:1.0); return; }
+  if(uPass==3){ o=vec4(uHasA.x>0.5?texture(uA,uv).r:uV.x, uHasA.y>0.5?texture(uB,uv).r:uV.y, uHasA.z>0.5?texture(uC,uv).r:uV.z, uHasA.w>0.5?texture(uD,uv).r:uV.w); return; }
   o=vec4(uHasA.x>0.5?texture(uA,uv).r:uV.x, uHasA.y>0.5?texture(uB,uv).r:0.5, 0.0, 1.0); }`;
 let P_CHPACK=null;const chPk=new WeakMap(),chIds=new WeakMap();let chIdN=0;
 const chId=t=>{if(!t)return '-';if(!chIds.has(t))chIds.set(t,++chIdN);return chIds.get(t)+'.'+(t._studioVer||0);};
