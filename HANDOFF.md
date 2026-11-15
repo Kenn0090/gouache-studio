@@ -26,19 +26,14 @@ Started from Georgian's feedback (a friend testing the app): paint SSS, transluc
 
 Tests for this round: `chan9726`, `cx9727`, `udimimg9726` (all pass). Older tests re-run and passing: fur945, looks95, engshader9304, smthumb969, saveas964, cover281, udim95, projxf, mstack, mimport, maps53, shelf96 (updated to the current shelf list). Known failures that also fail on main: multi947, part966; project-maps-psd needs the Edge browser.
 
-## Open item: how painting a channel should work (waiting on Kenn)
-
-- Kenn said the current paint route is wrong: **"paint access via a channel via the material"**.
-- Today, in the Shader panel's Material slots, "Paint" switches the brush to paint that raw channel on the selected layer (`slotPaint` in `src/js/view3d/shade-slots.js`). Leave it as it is until the redesign.
-- Kenn wants the redesign based on **Georgian's YouTube video "Short discussion about SSS, roughness and specular for a head"**: https://www.youtube.com/watch?v=Brryt3l-fiQ (23 minutes, captions available; Kenn: "it's all important").
-- **The cloud container cannot open YouTube** (Google's "unusual traffic" check; yt-dlp gets 403). It needs one of:
-  - the video file uploaded into the chat (frames can be pulled with ffmpeg, which is installed), or
-  - the YouTube transcript pasted, plus screenshots of the key moments.
-- Once seen, the steps are:
-  1. Describe to Kenn in plain words how Georgian/Painter does it.
-  2. Compare it with Gouache.
-  3. Propose a plan with multiple-choice questions (Kenn prefers the question tool).
-  4. Build only after his answers.
+## Settled after the first hand-off (built, tests pass)
+- **How painting a channel works** (Kenn sent a screenshot of Painter's Texture Set Settings):
+  - a **Texture Set Settings** panel: channel list with + / −, an 8/16-bit format per channel, size and workflow;
+  - a **row of channel buttons** in every material and on the brush, each with its own value, so one stroke can paint several channels.
+  - Test: tss9726.
+- **Skin like Marmoset's Subsurface Scatter** (Kenn sent Marmoset's panel, "no need to ask questions"): Scatter / Translucency / Fuzz, each with a map slot, depths in mm and colours. New channels Specular colour and Fuzz.
+- **Reflectivity drop-down** (Metalness / Specular) on Standard and Skin. Test: skin9726.
+- The YouTube video (https://www.youtube.com/watch?v=Brryt3l-fiQ) was never watched (YouTube blocks the cloud container). The Painter screenshot answered the question instead.
 
 ## Code map for this round
 
@@ -47,6 +42,8 @@ Tests for this round: `chan9726`, `cx9727`, `udimimg9726` (all pass). Older test
 - `src/js/view3d/view3d.js`: the FS_3D skin block reads the packed inputs; the custom block (uSh 19) sits before the final emissive add; `lensBox`.
 - `src/js/view3d/shade-slots.js`: Material slots; `slotPicture`, `slotPaint`, `slotValue`, `slotAutoAdd`.
 - `src/js/view3d/custom-shader.js`: `CX` ingredients, library (`gs.cxLib`), shelf panel `shshaders`.
+- `src/js/ui/texset-settings.js`: Texture Set Settings panel, formats, channel buttons on materials and the brush.
+- `src/js/view3d/skin-marmoset.js`: Marmoset skin layout and uniforms, Specular reflectivity.
 - `src/js/view3d/udim-images.js` (loaded after `ui/project-shelf`): wraps `fillUseImage`, `fillPickImage`, `p3MapImport`, `p3MapPick`, `p3MapBatch` and `miBuild`.
 - `src/js/layers/fill-layer.js`: `uUdimT` / `fillUdimT`.
 - `src/js/view3d/proj-xf.js`: UV matrix scaled per tile.
