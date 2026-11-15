@@ -11,22 +11,25 @@ const SLOT_AUTO={skin:['sss','sssc','trans']};
 function slotList(kind){const wf=doc.workflow==='spec'?'spec':'metal',skip=WF_KEYS[wf==='spec'?'metal':'spec'];
   const L=[...(SLOT_LOOK[kind]||[]),...SLOT_COMMON.filter(([k])=>!skip.includes(k)&&!(wf==='spec'&&k==='specl'))];
   for(const k of MAP_USER)if(doc.maps.includes(k))L.push([k,MAP_DEFS[k].label]);return L;}
-const slotSrc=k=>doc.maps.includes(k)?(paintLayers().some(L=>L.slotPic===k)?'pic':'paint'):'value';
+const slotSrc=k=>doc.maps.includes(k)?(paintLayers().some(L=>L.fill&&L.fill.maps&&L.fill.maps[k]&&L.fill.maps[k].on&&L.fill.maps[k].src==='image')?'pic':'paint'):'value';
 /* a picture into channel k of a new layer (grey channels take the picture's brightness) */
 const FS_SLOTPIC=`uniform sampler2D uSrc; uniform int uGrey; uniform vec2 uSz;
 void main(){ vec4 c=texture(uSrc,gl_FragCoord.xy/uSz); if(uGrey==1){ float a=c.a; vec3 s=a>1e-5?c.rgb/a:vec3(0.0); float g=dot(s,vec3(0.2126,0.7152,0.0722)); o=vec4(vec3(g)*a,a); return; } o=c; }`;
 let P_SLOTPIC=null;
-async function slotPicture(k,file){if(!file){const f=await pickFiles('image/*,.tga,.tif,.tiff,.dds,.psd',false,'Pictures',['png','jpg','jpeg','webp','tga','tif','tiff','dds','bmp','psd']);file=f&&f[0];}if(!file)return;
-  if(/\.psd$/i.test(file.name)){try{await loadPaint();needLib('agPsd','PSD');await psdIntoChannel(await file.arrayBuffer(),baseName(file.name),k);}catch(e){toast('Could not use that PSD: '+(e.message||e));}return;}
-  let raw,tx=null,src=null,fit=null;try{raw=await decodeFile(file);
-    if(!doc.maps.includes(k))setDocMaps(doc.maps.concat(k),MAP_DEFS[k].label);
-    tx=uploadStraight(raw);src=makeTarget(raw.w,raw.h,8,false);premultInto(src,tx,[0,0],null);fit=makeTarget(doc.w,doc.h,8,false);copyScaled(src,fit);
-    const A=doc.active,parent=A?(A.parent||doc.root):doc.root,idx=A?parent.children.indexOf(A)+1:doc.root.children.length,L=newLayerObj(MAP_DEFS[k].label+': '+baseName(file.name),true);
-    if(!P_SLOTPIC)P_SLOTPIC=program(FS_SLOTPIC);run(P_SLOTPIC,ensureMapTarget(L,k),{uSrc:fit.tex,uGrey:{int:MAP_DEFS[k].grey?1:0},uSz:[doc.w,doc.h]});L.blankBase=true;L.slotPic=k;
-    structOp(MAP_DEFS[k].label+' from a picture',()=>{insertNode(L,parent,idx);selectOnly(L);});changedAll();renderShading();
-    toast('The picture is in '+MAP_DEFS[k].label+' (layer “'+L.name+'”). Paint on it to fix spots.');}
-  catch(e){toast('Could not use that picture: '+(e.message||e));}
-  finally{if(tx)gl.deleteTexture(tx);disposeTarget(src);disposeTarget(fit);if(raw&&raw.el)URL.revokeObjectURL(raw.el.src);}}
+/* (Kenn: "into the material's channel") a picture goes into that channel of the selected material layer, like Choose image… on
+   its card; with no material selected, a new material is made that carries only this channel. Layered PSDs still come in as a folder. */
+async function slotPicture(k,file){let files=file?[file]:null;
+  if(!files){files=typeof udimImgBox==='function'&&udimImgBox()?await udimPickFiles('Pictures',UDIM_EXTS):await pickFiles('image/*,.tga,.tif,.tiff,.dds,.psd',false,'Pictures',['png','jpg','jpeg','webp','tga','tif','tiff','dds','bmp','psd']);}
+  if(!files||!files.length)return;
+  if(/\.psd$/i.test(files[0].name)&&files.length===1){try{await loadPaint();needLib('agPsd','PSD');await psdIntoChannel(await files[0].arrayBuffer(),baseName(files[0].name),k);}catch(e){toast('Could not use that PSD: '+(e.message||e));}return;}
+  if(!fillEnableDocMap(k)){toast('This set cannot use the '+MAP_DEFS[k].label+' channel.');return;}
+  let L=doc.active;const fresh=!(L&&isLayer(L)&&L.fill&&L.fill.maps&&L.fill.maps[k]);
+  if(fresh){cmdNewFillLayer();L=doc.active;if(!L||!L.fill){toast('Could not make a material for the picture.');return;}for(const m of Object.values(L.fill.maps))m.on=false;L.name=MAP_DEFS[k].label;}
+  const s=L.fill.maps[k];matEdBegin(L);
+  await fillUseImage(L,k,s,files.length>1?files:files[0],()=>{s.on=true;s.src='image';});
+  fillRender(L);changedAll();matEdCommit();matEd.open=Object.assign({},matEd.open,{[k]:true});
+  if(typeof showPanel==='function')showPanel('matEd');if(typeof renderMatEd==='function')renderMatEd();renderShading();
+  toast('The picture is the '+MAP_DEFS[k].label+' of '+(fresh?'a new material':'“'+L.name+'”')+'. Change it on its card in the material editor.');}
 function slotPaint(k){if(!doc.maps.includes(k))setDocMaps(doc.maps.concat(k),MAP_DEFS[k].label);setEditMap(k);if(typeof setView==='function')setView(k);
   if(typeof setTool==='function'&&!['brush','erase','fill','gradient','bucket'].includes(ui.tool))setTool('brush');
   toast('Painting '+MAP_DEFS[k].label+'. Pick Base colour in the channel list to paint colour again.');renderShading();}

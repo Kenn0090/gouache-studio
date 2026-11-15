@@ -220,7 +220,7 @@ The layer stays live: every change shows straight away on the model, and becomes
 - **Material slots** (under each shader's settings, like Marmoset's material editor): every input of the shader is listed with where it comes from:
   - **Value**: the channel is not in the set; one number is used (the slider beside it, or the look's own setting).
   - **Painted**: the channel is in the set. **Paint** picks it for painting.
-  - **Picture**: **Picture…** brings in an image as a new layer in that channel. A layered PSD comes in as a folder of layers.
+  - **Picture**: **Picture…** puts an image into that channel of the selected material (as Choose image… on its card does); with no material selected, a new material carrying just that channel is made. A layered PSD comes in as a folder of layers.
   Switching a painted channel back to Value takes it out of the set (Undo brings it back).
 - **Specular level** (Metal/Rough sets): how strong the shine of non-metals is. Mid-grey is the usual 4%, white doubles it, black takes it away.
 - **Channels of your own:** **+ Channel of your own…** (or **Document maps**) adds up to eight channels with your own names (Wetness, Dirt mask…), grey or colour. The 3D view does not use them; they paint, save and export like any channel.

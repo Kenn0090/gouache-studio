@@ -55,6 +55,11 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(()=>{const L=__gs.layerByName('Skin test');L.fill.maps.trans.on=false;__gs.fillRender(L);__gs.slotValue('trans');});await W(400);
  const dlg=await p.$('#modal:not([hidden]) .dlg-actions button.primary, #modal:not([hidden]) .dlg-ok');if(dlg){await dlg.click();await W(300);}
  ok(await p.evaluate(()=>!__gs.doc.maps.includes('trans')),'Value takes Translucency out of the set');
+ /* Picture… on a slot goes into that channel of the selected material */
+ const pic=await p.evaluate(async()=>{const g=__gs;const c=document.createElement('canvas');c.width=c.height=32;const x=c.getContext('2d');x.fillStyle='#808080';x.fillRect(0,0,32,32);
+   const f=new File([await new Promise(r=>c.toBlob(r,'image/png'))],'Ears_Translucency.png',{type:'image/png'});const L=g.layerByName('Skin test');g.selectOnly(L);const n0=g.doc.root.children.length;
+   await g.slotPicture('trans',f);const m=L.fill.maps.trans;return {on:m.on,src:m.src,name:m.name,same:g.doc.active===L,added:g.doc.root.children.length-n0,inMaps:g.doc.maps.includes('trans')};});
+ ok(pic.on&&pic.src==='image'&&pic.name==='Ears_Translucency.png'&&pic.same&&pic.added===0&&pic.inMaps,'Picture… puts the image into the selected material’s Translucency channel '+JSON.stringify(pic));
  /* PSD: each channel as a layered PSD, and a layered PSD into a channel */
  const psd=await p.evaluate(async()=>{const g=__gs;await g.loadPaint();const L=g.layerByName('Skin test');L.fill.maps.rough.on=true;L.fill.maps.rough.v=.8;g.fillRender(L);
    const files=await g.psdChannelFiles('Helmet'),f=files.find(x=>/Roughness\.psd$/.test(x.name));if(!f)return {names:files.map(x=>x.name)};

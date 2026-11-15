@@ -1,7 +1,7 @@
 ## 0.97.26
 
 - **Paint skin like in Painter:** three new channels, **Scattering** (where light sinks in and glows under the surface), **Scatter colour** (the colour it takes, e.g. red for skin, green for leaves) and **Translucency** (where light shines through thin parts like ears). Picking the **Skin** shader adds them to the texture set by itself. Unpainted areas use the Skin settings in the Shader panel, as before.
-- **Material slots like Marmoset's**, under each shader's settings in the Shader panel: for every input (Roughness, Metallic, Scattering, Translucency, Emissive, Opacity…) choose **Value**, **Painted** or **Picture**. Picture puts an image (or a layered PSD) into that channel as a new layer.
+- **Material slots like Marmoset's**, under each shader's settings in the Shader panel: for every input (Roughness, Metallic, Scattering, Translucency, Emissive, Opacity…) choose **Value**, **Painted** or **Picture**. Picture puts an image into that channel of the selected material (a layered PSD comes in as a folder).
 - **Specular level** channel for Metal/Rough: how strong the shine of non-metals is (mid-grey is the usual 4%).
 - **Channels of your own** (up to 8, like Painter's user channels): add one in **Document maps** or with **+ Channel of your own** under Material slots, give it a name (e.g. Wetness), make it grey or colour. They paint, save and export like any channel.
 - **Export:** the new channels come out as their own files with every preset. New tick **Also each channel as a layered PSD**: one PSD per channel (e.g. Helmet_Roughness.psd) with all its layers and folders.
