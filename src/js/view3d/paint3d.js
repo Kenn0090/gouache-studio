@@ -319,7 +319,11 @@ function maskFromMeshMap(L,k){if(!(doc.meshMaps&&doc.meshMaps[k])||!isLayer(L))r
 function maskModeExit(){sel3HoverClear();const A=doc.active;sel3.armed=false;if(typeof mk3Reset==='function')mk3Reset();ui.viewMask=false;if(A&&A.mask)A.editMask=false;renderLayers();requestRender(true);v3.dirty=true;}
 function maskBarSync(){let bar=document.getElementById('maskBar');
   if(typeof lm!=='undefined'&&lm.on&&doc.active!==lm.L)liveMaskEnd();
+  /* (0.97.27, Georgian: "a layer that I deleted but still showing") the mask view belongs to the layer it was opened on: when that
+     layer is deleted or another one is picked, the view closes, so the wireframe it may have turned on goes back as it was */
+  if(ui.viewMask&&!(typeof liveOn==='function'&&liveOn())&&mk3.viewL&&doc.active!==mk3.viewL){ui.viewMask=false;if(doc.active&&doc.active.mask)doc.active.editMask=false;}
   const live=typeof liveOn==='function'&&liveOn(),on=live||!!(ui.viewMask&&doc.active&&doc.active.mask&&ui.mode!=='anim');
+  mk3.viewL=on&&!live?(mk3.viewL||doc.active):null;
   if(on&&mk3.wireWas===null)mk3.wireWas=typeof v3WireMode==='function'?v3WireMode():'shaded';
   else if(!on&&mk3.wireWas!==null){const restore=mk3.wireWas;mk3.wireWas=null;if(restore&&typeof v3SetWireMode==='function'&&v3WireMode()!==restore)v3SetWireMode(restore);}
   /* entering and leaving the mask view: selections and the Box/Lasso tool used for the mask don't stay behind */
