@@ -448,3 +448,5 @@ function dkModeWs(){const w=wsForMode(ui.mode);if(w!==dk.ws||dk.layoutMode!==ui.
 
 /* open one group of the Tools category (and close nothing else) */
 function shToolsOpen(k){const d=document.getElementById('shtg_'+k);if(d)d.open=true;}
+
+{const f=brushMergeSync;brushMergeSync=function(){const r=f.apply(this,arguments);try{prevPinFit();}catch(e){}return r;};}
