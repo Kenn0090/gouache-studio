@@ -20,16 +20,18 @@ const MAP_DEFS={
   specl:{label:'Specular level',grey:true,def:.5,blend:0,hint:'How strong the shine of non-metals is. Mid-grey is normal (4%); white doubles it, black takes it away.'},
   sss:{label:'Scattering',grey:true,def:1,blend:0,hint:'For the Skin look: where light sinks in and glows under the surface. White is the full amount set in the Shader panel, black is none.'},
   sssc:{label:'Scatter colour',grey:false,def:null,blend:0,hint:'For the Skin look: the colour the light takes under the surface (red for skin, green for leaves). Unpainted areas use the Shader panel colour.'},
+  specc:{label:'Specular colour',grey:false,def:null,blend:0,hint:'For the Specular reflectivity (Shader panel): the colour and strength of the shine, used instead of Metallic. Dark grey (about 22%) for skin and other non-metals.'},
+  fuzzm:{label:'Fuzz',grey:true,def:1,blend:0,hint:'For the Skin look: where the soft fuzz (peach-fuzz sheen at the edges) shows. White is the full amount set in the Shader panel.'},
   trans:{label:'Translucency',grey:true,def:1,blend:0,hint:'For the Skin look: where light shines through thin parts (ears, nostrils, leaves). White is the full amount, black blocks it.'}};
 /* (0.97.26) eight channels of your own (like Painter's user channels): you name them; grey unless made a colour channel */
 const MAP_USER=['u1','u2','u3','u4','u5','u6','u7','u8'];
 for(const [i,k] of MAP_USER.entries())Object.defineProperty(MAP_DEFS,k,{enumerable:true,value:{
   get label(){return (doc.mapDef&&doc.mapDef['name:'+k])||'Custom '+(i+1);},get grey(){return !(doc.mapDef&&doc.mapDef['col:'+k]);},
   get def(){return this.grey?0:null;},blend:0,user:true,hint:'A channel of your own. Painted and exported like any other; the 3D view does not use it.'}});
-const MAP_SHORT={specl:'SpL',sss:'SSS',sssc:'SSC',trans:'Trn',u1:'U1',u2:'U2',u3:'U3',u4:'U4',u5:'U5',u6:'U6',u7:'U7',u8:'U8',base:'Col',rough:'Rgh',metal:'Met',spec:'Spc',gloss:'Gls',height:'Hgt',normal:'Nrm',ao:'AO',curv:'Cur',emis:'Emi',opac:'Opa',fur:'Fur'};
+const MAP_SHORT={specc:'SpC',fuzzm:'Fzz',specl:'SpL',sss:'SSS',sssc:'SSC',trans:'Trn',u1:'U1',u2:'U2',u3:'U3',u4:'U4',u5:'U5',u6:'U6',u7:'U7',u8:'U8',base:'Col',rough:'Rgh',metal:'Met',spec:'Spc',gloss:'Gls',height:'Hgt',normal:'Nrm',ao:'AO',curv:'Cur',emis:'Emi',opac:'Opa',fur:'Fur'};
 /* a layer whose base colour was never painted (made by a converter or painted only in other maps) */
 const isBlankBase=L=>!!L.blankBase;
-const MAP_ORDER=['base','rough','metal','specl','spec','gloss','height','normal','ao','curv','emis','opac','sss','sssc','trans','fur',...MAP_USER];
+const MAP_ORDER=['base','rough','metal','specl','specc','spec','gloss','height','normal','ao','curv','emis','opac','sss','sssc','trans','fuzzm','fur',...MAP_USER];
 const MAP_TEMPLATES={hand:['base'],pbr:['base','rough','metal','height','normal'],pbrsg:['base','spec','gloss','height','normal']};
 /* (0.97.26) a channel's own format from Texture Set Settings (8 or 16-bit) wins */
 function mapDepth(k){const f=doc.mapDef&&doc.mapDef['fmt:'+k];if(f===16)return canFloat?16:doc.depth;if(f===8)return 8;return k==='height'&&canFloat?16:doc.depth;}

@@ -213,7 +213,7 @@ function renderShading(){const box=document.getElementById('shadeBody');if(!box)
    metallic picture's G (bit 1024; Metal/Rough only). The packed pictures are remade only when a source changes. */
 const FS_CHPACK=`uniform sampler2D uA; uniform sampler2D uB; uniform sampler2D uC; uniform sampler2D uD; uniform vec4 uHasA; uniform vec4 uV; uniform vec3 uCol; uniform int uPass; uniform vec2 uSz;
 void main(){ vec2 uv=gl_FragCoord.xy/uSz;
-  if(uPass==0){ o=vec4(uHasA.x>0.5?texture(uA,uv).r:uV.x, uHasA.y>0.5?texture(uB,uv).r:1.0, uHasA.z>0.5?texture(uC,uv).r:1.0, 1.0); return; }
+  if(uPass==0){ o=vec4(uHasA.x>0.5?texture(uA,uv).r:uV.x, uHasA.y>0.5?texture(uB,uv).r:1.0, uHasA.z>0.5?texture(uC,uv).r:1.0, uHasA.w>0.5?texture(uD,uv).r:1.0); return; }
   if(uPass==1){ vec3 c=uCol; if(uHasA.x>0.5){ vec4 s=texture(uA,uv); if(s.a>1e-5) c=mix(uCol,s.rgb/s.a,clamp(s.a,0.0,1.0)); } o=vec4(c, uHasA.y>0.5?texture(uB,uv).r:1.0); return; }
   if(uPass==3){ o=vec4(uHasA.x>0.5?texture(uA,uv).r:uV.x, uHasA.y>0.5?texture(uB,uv).r:uV.y, uHasA.z>0.5?texture(uC,uv).r:uV.z, uHasA.w>0.5?texture(uD,uv).r:uV.w); return; }
   o=vec4(uHasA.x>0.5?texture(uA,uv).r:uV.x, uHasA.y>0.5?texture(uB,uv).r:0.5, 0.0, 1.0); }`;
@@ -230,8 +230,8 @@ function chPackRun(T,slot,key,w,h,U){let c=chPk.get(T);if(!c)chPk.set(T,c={});le
   gl.bindTexture(gl.TEXTURE_2D,e.t.tex);gl.generateMipmap(gl.TEXTURE_2D);e.t.hasMips=true;gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
   e.key=key;return e.t;}
 function chPackUniforms(U,T,sh,it){if(!T||!T.base)return;const has=k=>!!T[k]&&(T!==v3.tex||doc.maps.includes(k)),w=T.base.w,h=T.base.h;
-  if(sh&&sh.kind==='skin'&&(has('sss')||has('trans')||has('sssc'))){const P=shParams(sh),thick=it&&it.thick||null,col=P.col||[.85,.25,.18],op=has('opac')?T.opac:null;
-    const a=chPackRun(T,'skinA',[chId(thick),chId(has('trans')&&T.trans),chId(has('sss')&&T.sss),P.thick,w,h].join('|'),w,h,{uA:thick?thick.tex:dummy,uB:has('trans')?T.trans.tex:dummy,uC:has('sss')?T.sss.tex:dummy,uHasA:[thick?1:0,has('trans')?1:0,has('sss')?1:0,0],uV:[P.thick,0,0,0],uPass:{int:0}});
+  if(sh&&sh.kind==='skin'&&(has('sss')||has('trans')||has('sssc')||has('fuzzm'))){const P=shParams(sh),thick=it&&it.thick||null,col=P.col||[.85,.25,.18],op=has('opac')?T.opac:null;
+    const a=chPackRun(T,'skinA',[chId(thick),chId(has('trans')&&T.trans),chId(has('sss')&&T.sss),chId(has('fuzzm')&&T.fuzzm),P.thick,w,h].join('|'),w,h,{uA:thick?thick.tex:dummy,uB:has('trans')?T.trans.tex:dummy,uC:has('sss')?T.sss.tex:dummy,uD:has('fuzzm')?T.fuzzm.tex:dummy,uHasA:[thick?1:0,has('trans')?1:0,has('sss')?1:0,has('fuzzm')?1:0],uV:[P.thick,0,0,0],uPass:{int:0}});
     const b=chPackRun(T,'skinB',[chId(has('sssc')&&T.sssc),chId(op),col.join(),w,h].join('|'),w,h,{uA:has('sssc')?T.sssc.tex:dummy,uB:op?op.tex:dummy,uHasA:[has('sssc')?1:0,op?1:0,0,0],uCol:col,uPass:{int:1}});
     U.uThick=a.tex;U.uOpac=b.tex;U.uUseSafeMip=false;U.uHas={int:(U.uHas.int|512)&~128};}
   if(has('specl')&&doc.workflow!=='spec'&&!(U.uHas.int&256)){const m=has('metal')?T.metal:null,d=mapDefault('metal')[0];

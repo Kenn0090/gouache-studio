@@ -224,16 +224,20 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
   /* (0.97.26) Skin with painted channels: uThick holds R thickness, G translucency, B scattering; uOpac holds the scatter colour (RGB) and opacity (A) */
   vec4 skP=(uHas&512)!=0?mapSample(uThick,uv):vec4(uShP.w,1.0,1.0,1.0); vec3 skC=(uHas&512)!=0?mapSample(uOpac,uv).rgb:uShC;
   float thick=(uHas&512)!=0?skP.r:(uHas&128)!=0?mapSample(uThick,uv).r:uShP.w, skS=uShP.y*skP.b, skT=uSkin.z*skP.g;
+  /* (0.97.26, like Marmoset's Subsurface Scatter) translucency colour uShD, translucency scatter uSkin.w, fuzz amount/scale/occlusion uShE.xyz with its map in skP.a and colour uShQ.xyw;
+     with Specular reflectivity (uHas 256 outside Spec/Gloss) the skin's shine comes from the Specular colour map */
+  vec3 skF0=(uHas&256)!=0?F0:vec3(0.028), skTC=clamp(uShD,0.02,1.0), skFC=lin(vec3(uShQ.x,uShQ.y,uShQ.w)); float skFz=uShE.x*skP.a, skFR=pow(1.0-NdV,max(uShE.y,0.2)*3.0);
   if(uSh==1){ /* RGB diffuse wrap and thickness attenuation; two surface specular lobes. */
-    vec3 Ns=normalize(mix(N,Ng,uShP.z)),sss=clamp(skC,0.02,1.0),wrap=uShP.x*skP.b*vec3(0.8,0.38,0.18);
+    vec3 Ns=normalize(mix(N,Ng,uShP.z)),sss=clamp(skC,0.02,1.0),wrap=uShP.x*skP.b*mix(vec3(0.8,0.38,0.18),sss,0.6);
     vec3 dl=max((vec3(dot(Ns,L))+wrap)/(1.0+wrap),0.0)/(1.0+wrap);
     dl=mix(vec3(max(dot(Ns,L),0.0)),dl,clamp(skS,0.0,1.0));
-    vec3 attenuation=exp(-max(thick,0.0)*uSkin.y/sss);
-    float back=max(dot(-Ns,L),0.0);vec3 transmitted=attenuation*sss*back*skT*skS;
+    vec3 attenuation=exp(-max(thick,0.0)*uSkin.y/skTC);
+    float back=max((dot(-Ns,L)+uSkin.w)/(1.0+uSkin.w),0.0);vec3 transmitted=attenuation*skTC*back*skT;
     float sr=clamp(mix(rough,uSkin.x,0.75),0.08,1.0);
-    vec3 surface=studioDirect(N,V,L,vec3(0.0),vec3(0.028),sr,0.0);
-    surface+=studioDirect(N,V,L,vec3(0.0),vec3(0.04),max(sr*0.38,0.08),0.0)*uShQ.z*0.35;
+    vec3 surface=studioDirect(N,V,L,vec3(0.0),skF0,sr,0.0);
+    surface+=studioDirect(N,V,L,vec3(0.0),skF0*1.43,max(sr*0.38,0.08),0.0)*uShQ.z*0.35;
     col=((1.0-F)*(1.0-metal)*alb/PI*dl+surface)*visibility*uSunI*3.0+transmitted*alb*uSunI*1.5;
+    col+=skFC*skFz*skFR*(0.35+0.65*max(dot(N,L),0.0))*mix(1.0,ao,uShE.z)*visibility*uSunI*1.5;
   }else col=(dif+spec)*NdL*uSunI*3.0*visibility;
   col*=uLightColor;
   vec3 fillL=normalize(vec3(-0.75,0.45,-0.25)),rimL=normalize(vec3(0.3,0.35,-0.9));
@@ -273,10 +277,10 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
   vec3 compensation=vec3(1.0)+F0*(1.0/max(ab.x+ab.y,0.1)-1.0);
   vec3 envS=envSpec(R,rough)*(uEnvOn==1?single*compensation:Fr),envD=envDif(N)*alb*(1.0-metal)*(1.0-Fr);
   float specAO=clamp(pow(NdV+ao,exp2(-16.0*rough-1.0))-1.0+ao,0.0,1.0);
-  if(uSh==1){vec3 Ns=normalize(mix(N,Ng,uShP.z)),sss=clamp(skC,0.02,1.0),attenuation=exp(-max(thick,0.0)*uSkin.y/sss);
-    envD=envDif(Ns)*alb*(1.0-metal)*(1.0-Fr)+envDif(-Ns)*attenuation*sss*alb*skS*skT*0.25;
+  if(uSh==1){vec3 Ns=normalize(mix(N,Ng,uShP.z)),attenuation=exp(-max(thick,0.0)*uSkin.y/skTC);
+    envD=envDif(Ns)*alb*(1.0-metal)*(1.0-Fr)+envDif(-Ns)*attenuation*skTC*alb*skT*0.25+skFC*skFz*skFR*envDif(N)*0.6;
     float sr=clamp(mix(rough,uSkin.x,0.75),0.08,1.0);vec2 sab=envBRDF(NdV,sr);
-    envS=envSpec(R,sr)*(vec3(0.028)*sab.x+sab.y)+envSpec(R,max(sr*0.38,0.08))*(vec3(0.04)*sab.x+sab.y)*uShQ.z*0.35;}
+    envS=envSpec(R,sr)*(skF0*sab.x+sab.y)+envSpec(R,max(sr*0.38,0.08))*(skF0*1.43*sab.x+sab.y)*uShQ.z*0.35;}
   if(uSh==3){ envS+=lin(uShC)*uShP.x*envDif(N)*pow(1.0-NdV,max(uShP.z,0.5)*3.0+1.0); }
   if(uSh==14){ envS+=lin(uShC)*uShP.x*envDif(N)*pow(1.0-NdV,2.5)*0.8; }
   if(uSh==13){ vec2 abc=envBRDF(NdV,max(uShQ.x,0.02)); envS+=envSpec(reflect(-V,Ng),max(uShQ.x,0.02))*(vec3(0.04)*abc.x+abc.y)*uShP.z; }

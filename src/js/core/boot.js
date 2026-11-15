@@ -76,3 +76,4 @@ if(window.__gs)Object.assign(window.__gs,{miBuild,fillUdimT});
 if(window.__gs)Object.assign(window.__gs,{fileTarget});
 if(window.__gs)Object.assign(window.__gs,{setWrap});
 if(window.__gs)Object.assign(window.__gs,{tssAdd,tssRemove,tssSetFormat,tssRender,mapBrushTargets,ensureMapTarget,mapDepth,renderMatEd,buildBrushPanel});
+if(window.__gs)Object.assign(window.__gs,{skSetRefl,skReflSpec,shadeUniforms,chPackUniforms});

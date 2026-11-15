@@ -233,10 +233,10 @@ async function buildMeshMapTextures(pr,name){const files=[],pad=texPadBegin(texC
 
 /* (0.97.26) channels no preset knows about (Scattering, Scatter colour, Translucency, Specular level, your own channels)
    are exported as their own files after the preset's own, named after the channel */
-const TEX_EXTRA=['specl','sss','sssc','trans',...MAP_USER];
+const TEX_EXTRA=['specl','specc','sss','sssc','trans','fuzzm',...MAP_USER];
 {const f=texOutputs;texOutputs=function(pr){const outs=f(pr),used=new Set();
   for(const o of pr.outs){for(const k of [o.rgb,o.grey,...(o.ch||[]),...(o.rgbA||[])])if(k)used.add(k);}
-  for(const k of TEX_EXTRA){if(used.has(k)||!doc.maps.includes(k))continue;if(k==='specl'&&doc.workflow==='spec')continue;
+  for(const k of TEX_EXTRA){if(used.has(k)||!doc.maps.includes(k))continue;if((k==='specl'||k==='specc')&&doc.workflow==='spec')continue;
     const D=MAP_DEFS[k],s=pascal(D.label);outs.push(D.grey?{s,what:D.label,grey:k}:{s,what:D.label,rgb:k});}
   return outs;};}
 /* (0.97.26) each channel of the set as a layered PSD at the canvas size, e.g. Helmet_BaseColour.psd, Helmet_Roughness.psd */

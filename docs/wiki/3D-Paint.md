@@ -228,6 +228,26 @@ The layer stays live: every change shows straight away on the model, and becomes
 - **PSD into a channel:** **File › Import › Import PSD into a channel…**, or drop a .psd on 3D Paint (it goes into the channel you are painting).
 - **Focal length:** the 3D settings show the camera's **Focal length** in mm next to the **View angle** (they move together), with buttons for 18, 24, 35, 50, 85 and 135 mm. The numbers match a full-frame camera, so 50 mm looks like a normal lens.
 
+## Texture Set Settings and channel buttons (0.97.26)
+Like Substance Painter:
+
+![Texture Set Settings](images/texset-settings.png) ![Channel buttons in the material editor](images/material-channels.png)
+
+- **Texture Set Settings** (a panel next to Texture sets) shows the set's size, workflow and **channels**. **+ Add a channel…** adds one (Scattering, Translucency, Specular level, Fuzz, a channel of your own…); **−** removes one (Undo brings it back). Each channel has a **format**: 8-bit, or 16-bit for smoother values (height, soft gradients), which uses twice the memory.
+- Every channel is an input in every **material**: the row of buttons at the top of the material editor (color · rough · metal · height · nrm · scatt …) turns each input on or off. Its card below sets the value, image or mesh map.
+- The **brush** has the same buttons. The channel you're viewing gets the brush colour; every lit button is painted by the same stroke with its own value (e.g. colour, roughness and scattering at once).
+
+## Skin like Marmoset's, and Specular reflectivity (0.97.26)
+
+![Skin settings like Marmoset's](images/skin-marmoset.png)
+
+- **Skin** shader settings follow Marmoset Toolbag's *Diffusion: Subsurface Scatter*:
+  - **Scatter Map** (the Scatter colour channel), **Scatter Depth (mm)** and the scatter colour: how far light spreads under the skin.
+  - **Translucency Map** (the Translucency channel), **Translucency** and its colour, **Translucency Depth (mm)** and **Translucency Scatter**: light coming through thin parts, with the baked Thickness map.
+  - **Fuzz Map** (the Fuzz channel), **Fuzz** and its colour, **Fuzz Scale**, **Fuzz Occlusion**: a soft sheen at the edges (peach fuzz).
+  - Each map slot has **Paint** (lights that channel on the brush), **Picture…** and **×** (take the channel out).
+- **Reflectivity** (Standard and Skin): **Metalness** reads the Metallic channel; **Specular** reads a **Specular colour** channel instead (added for you), like Marmoset's Specular setting. Roughness stays roughness. Unpainted areas use the colour beside the drop-down (dark grey, about 4% shine, suits skin).
+
 ## Custom shader maker (0.97.26)
 Mix your own look from pieces of the other shaders, per texture set:
 

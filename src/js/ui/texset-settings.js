@@ -3,12 +3,12 @@
    gives every material an input for it (a row of channel buttons at the top of the material editor: color, height, rough,
    metal, nrm, scatt, s lvl, user1…) and the brush the same buttons, each with its own value, so one stroke can paint several
    channels. The format (8-bit / 16-bit) is stored in doc.mapDef['fmt:k'], which is saved, copied and undone with the set. */
-const TSS_SHORT={base:'color',rough:'rough',metal:'metal',specl:'s lvl',spec:'spec',gloss:'gloss',height:'height',normal:'nrm',ao:'ao',curv:'curv',emis:'emiss',opac:'opac',sss:'scatt',sssc:'s col',trans:'trans',fur:'fur'};
+const TSS_SHORT={specc:'spec',fuzzm:'fuzz',base:'color',rough:'rough',metal:'metal',specl:'s lvl',spec:'spec',gloss:'gloss',height:'height',normal:'nrm',ao:'ao',curv:'curv',emis:'emiss',opac:'opac',sss:'scatt',sssc:'s col',trans:'trans',fur:'fur'};
 const tssShort=k=>MAP_DEFS[k]&&MAP_DEFS[k].user?MAP_DEFS[k].label.toLowerCase().slice(0,8):TSS_SHORT[k]||k;
 const tssFmt=k=>mapDepth(k)>8?16:8;
 /* the brush can paint every channel (the viewed one gets the brush colour, the rest their own value) */
-for(const k of ['specl','sss','sssc','trans',...MAP_USER])if(!MAP_BRUSH_KEYS.includes(k))MAP_BRUSH_KEYS.push(k);
-Object.assign(ui.mapBrush,{specl:{on:false,v:.5},sss:{on:false,v:1},sssc:{on:false,c:[.85,.25,.18]},trans:{on:false,v:1}},Object.fromEntries(MAP_USER.map(k=>[k,{on:false,v:1}])));
+for(const k of ['specl','specc','sss','sssc','trans','fuzzm',...MAP_USER])if(!MAP_BRUSH_KEYS.includes(k))MAP_BRUSH_KEYS.push(k);
+Object.assign(ui.mapBrush,{specc:{on:false,c:[.22,.22,.22]},fuzzm:{on:false,v:1},specl:{on:false,v:.5},sss:{on:false,v:1},sssc:{on:false,c:[.85,.25,.18]},trans:{on:false,v:1}},Object.fromEntries(MAP_USER.map(k=>[k,{on:false,v:1}])));
 
 /* ---- channel format: 8-bit or 16-bit; existing pictures are copied into the new format (one undo step) ---- */
 function tssSetFormat(k,bits){if(!doc.maps.includes(k)||tssFmt(k)===bits)return;const key='fmt:'+k,before=doc.mapDef[key],after=bits;
@@ -26,11 +26,11 @@ function tssAdd(k){if(k==='own'){const free=MAP_USER.find(u=>!doc.maps.includes(
   if(doc.maps.includes(k))return;setDocMaps(doc.maps.concat(k),MAP_DEFS[k].label);tssRender();}
 function tssRemove(k){if(k==='base'||!doc.maps.includes(k))return;const used=paintLayers().some(L=>hasMap(L,k)),go=()=>{setDocMaps(doc.maps.filter(x=>x!==k),'Remove '+MAP_DEFS[k].label);tssRender();};
   if(used)confirmDlg('Remove '+MAP_DEFS[k].label+'?','What was painted in '+MAP_DEFS[k].label+' is taken out of this texture set (Undo brings it back).','Remove',go);else go();}
-function tssAddable(){const other=WF_KEYS[doc.workflow==='spec'?'metal':'spec'];return MAP_ORDER.filter(k=>!doc.maps.includes(k)&&!other.includes(k)&&!(doc.workflow==='spec'&&k==='specl')&&!MAP_DEFS[k].user);}
+function tssAddable(){const other=WF_KEYS[doc.workflow==='spec'?'metal':'spec'];return MAP_ORDER.filter(k=>!doc.maps.includes(k)&&!other.includes(k)&&!(doc.workflow==='spec'&&(k==='specl'||k==='specc'))&&!MAP_DEFS[k].user);}
 /* ---- the panel ---- */
 function tssRender(){const box=document.getElementById('tssBody');if(!box)return;if(ui.mode!=='p3d'){box.replaceChildren(el('p',{class:'note',text:'Texture set settings are for 3D Paint.'}));return;}
   const S=p3.sets&&p3.sets[p3.cur];
-  const size=el('select',{id:'tssSize',class:'shsel','aria-label':'Texture size'},...[512,1024,2048,4096,8192].map(n=>el('option',{value:String(n),text:String(n)})));size.value=String(p3.size||doc.w);
+  const size=el('select',{id:'tssSize',class:'shsel','aria-label':'Texture size'},...[...new Set([256,512,1024,2048,4096,8192,p3.size||doc.w])].sort((a,b)=>a-b).map(n=>el('option',{value:String(n),text:String(n)})));size.value=String(p3.size||doc.w);
   size.onchange=async()=>{const n=+size.value;if(typeof p3Resize==='function'&&!(await p3Resize(n)))size.value=String(p3.size||doc.w);tssRender();};
   const wf=el('select',{id:'tssWf',class:'shsel','aria-label':'Workflow'},el('option',{value:'metal',text:'Metal / Rough'}),el('option',{value:'spec',text:'Specular / Gloss'}));wf.value=doc.workflow==='spec'?'spec':'metal';
   wf.onchange=()=>{const to=wf.value;if(to===(doc.workflow||'metal'))return;wfAsk(to,()=>tssRender());};

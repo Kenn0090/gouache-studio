@@ -1802,3 +1802,12 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .tsschip input{margin:0;width:11px;height:11px}
 .mbvals .mbrow{display:flex;align-items:center;gap:6px}
 .mbvals .mbname{font-size:12px;flex:1}
+/* (0.97.26) Marmoset-style skin settings */
+.skmarm,.skrefl{display:flex;flex-direction:column;gap:4px}
+.skmarm .skhead{margin-top:6px}
+.skmap{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:6px;align-items:center;margin-top:6px}
+.skmapsw{width:26px;height:26px;border-radius:4px;border:1px solid var(--line,#444);background:repeating-conic-gradient(#555 0 25%,#333 0 50%) 0 0/10px 10px}
+.skmapsw.on{background:linear-gradient(135deg,#d99 0,#a55 100%)}
+.skmapname{font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.skmapbtns{display:flex;gap:3px}.skmapbtns .btn{padding:2px 6px;font-size:11px}
+.skslcol{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:end}
