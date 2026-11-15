@@ -20,6 +20,20 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(r.noSmall.fine<r.s0.fine*.35&&Math.abs(r.noSmall.ramp-r.s0.ramp)<r.s0.ramp*.25,'Small details 0% takes the fine detail out and keeps the big shape '+JSON.stringify(r.noSmall));
  ok(r.noBig.ramp<r.s0.ramp*.35&&r.noBig.fine>r.s0.fine*.7,'Big and medium 0% flatten the broad shape and keep the fine detail '+JSON.stringify(r.noBig));
  ok(r.pushBig.ramp>r.s0.ramp*1.6,'Big shapes 250% pushes the broad shape '+JSON.stringify(r.pushBig));
+ /* (0.97.29) Edge wear and Mesh maps from a material: the same pattern as their curvature / height */
+ const ew=await p.evaluate(()=>{const g=__gs,W=g.doc.w,H=g.doc.h,gl=document.querySelector('#gl').getContext('webgl2'),px=new Uint8Array(W*H*4);
+   for(let y=0;y<H;y++)for(let x=0;x<W;x++){const v=Math.round(255*(.5+.3*(x/W-.5)+(((x>>2)+(y>>2))&1?.08:-.08)));px.set([v,v,v,255],(y*W+x)*4);}
+   g.setDocMaps(g.doc.maps.concat('curv','height'),'test');const L=g.doc.active;
+   for(const k of ['curv','height']){const T=g.ensureMapTarget(L,k),t8=g.makeTarget(W,H,8,false);gl.bindTexture(gl.TEXTURE_2D,t8.tex);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,W,H,gl.RGBA,gl.UNSIGNED_BYTE,px);g.copyScaled(t8,T);T.empty=false;g.disposeTarget(t8);}
+   const fine=t=>{const d=g.captureRegionNow(t,0,0,W,H).data;let f=0,n=0;for(let y=8;y<H-8;y+=3)for(let x=8;x<W-8;x+=3){const i=(y*W+x)*4;f+=Math.abs(d[i]-d[i+4]);n++;}return f/n;};
+   const FXE=g.FX.edgeWear,src=g.makeTarget(W,H,8,false);g.clearTarget(src,[.5,.5,.5,1]);
+   const run=o=>{const v=Object.assign(g.fxDefaults(FXE),{src:'curv',sm:0},o),dst=g.makeTarget(W,H,8,false);FXE.render(src,dst,v);const f=fine(dst);g.disposeTarget(dst);return f;};
+   const e1=run({}),e0=run({cbSmall:0});
+   const mc=o=>{const m=g.mcMake(L,Object.assign({curv:true,ao:false,curvEdge:false,curvCrease:false,rough:false,metal:false,r:2,str:1,aoR:16},o));const f=fine(m.curv);for(const k in m)g.disposeTarget(m[k]);return f;};
+   const m1=mc({}),m0=mc({cb:{small:0}});g.disposeTarget(src);
+   return {defs:['cbBig','cbMed','cbSmall'].every(k=>FXE.defs.some(d=>d.key===k)),e1,e0,m1,m0};});
+ ok(ew.defs&&ew.e0<ew.e1*.6,'Edge wear has Big / Medium / Small, and Small details 0% takes the fine wear out '+JSON.stringify(ew));
+ ok(ew.m0<ew.m1*.6,'Mesh maps from a material: Small details 0% takes the fine curvature out ('+ew.m1.toFixed(2)+' → '+ew.m0.toFixed(2)+')');
  /* the sliders: in the generator settings (3D Paint) and the Bake tab's curvature */
  await p.evaluate(()=>document.querySelector('#modeTabs [data-mode=p3d]').click());await p.waitForTimeout(3000);
  const gen=await p.evaluate(()=>{const g=__gs;g.cmdNewFillLayer();const L=g.doc.active;const row=g.msAdd(L,'gen',{p:g.msGenDefaults('edge')});g.msSelect(L,'m',(row||L.mask.stack[L.mask.stack.length-1]).id);

@@ -135,7 +135,8 @@ function viewSource(){const A=doc.active;if(ui.viewMask&&A&&A.mask){
     if(stroke&&stroke.L.maskObj===A.mask&&maskViewLive)return {t:maskViewT,mask:true};
     if(preview&&!preview.off&&preview.isMask&&preview.L===A)return {t:previewT,mask:true};return {t:A.mask.target,mask:true};}
   return {t:compOut,mask:false};}
-function drawView(){
+function drawView(){/* (0.97.29) a broken view position (infinity / not a number) would make every click miss: put the canvas back on screen */
+  if(!(isFinite(view.x)&&isFinite(view.y)&&isFinite(view.zoom)&&view.zoom>0)&&typeof fit==='function'){try{fit();}catch(e){}}
   /* A view owns its clear and quad state, even when an asynchronous baker has yielded. */
   gl.disable(gl.SCISSOR_TEST);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.disable(gl.BLEND);gl.colorMask(true,true,true,true);gl.bindVertexArray(vao);
   bindTarget(null);gl.clearColor(themeGround[0],themeGround[1],themeGround[2],1);gl.clear(gl.COLOR_BUFFER_BIT);

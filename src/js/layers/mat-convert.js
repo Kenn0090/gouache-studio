@@ -18,7 +18,7 @@ function mcSource(L){const h=mapT(L,'height'),n=mapT(L,'normal');if(h&&!h.empty)
   if(n&&!n.empty){const t=makeTarget(doc.w,doc.h,16);heightFromNormal(n,t,{str:1,iter:50,dx:false});return {h:t,own:true};}return null;}
 /* the maps themselves (new targets, document size) */
 function mcMake(L,cfg){const src=mcSource(L);if(!src)return null;if(!P_MC)P_MC={rm:program(FS_MCRM),add:program(FS_MCADD)};const out={},H=src.h,mk=()=>makeTarget(doc.w,doc.h,8,false);
-  const curvMode=m=>{const t=mk(),b1=blurOf(H,cfg.r),b2=blurOf(H,cfg.r*3);run(P.f_curv,t,{uH:H.tex,uB1:b1.tex,uB2:b2.tex,uStr:cfg.str,uMode:{int:m}});release(b1);release(b2);return t;};
+  const curvMode=m=>{const t=mk(),b1=blurOf(H,cfg.r),b2=blurOf(H,cfg.r*3);run(P.f_curv,t,{uH:H.tex,uB1:b1.tex,uB2:b2.tex,uStr:cfg.str,uMode:{int:m}});release(b1);release(b2);if(typeof cbInto==='function')cbInto(t,cfg.cb);/* (0.97.29) curvature detail */return t;};
   const need=k=>cfg[k]||((k==='curv'||k==='ao')&&(cfg.rough||cfg.metal));
   if(need('curv'))out.curv=curvMode(0);if(cfg.curvEdge)out.curvEdge=curvMode(1);if(cfg.curvCrease)out.curvCrease=curvMode(2);
   if(need('ao')){const t=mk(),r=cfg.aoR,b1=blurOf(H,r*.25),b2=blurOf(H,r*.5),b3=blurOf(H,r);run(P.f_ao,t,{uH:H.tex,uB1:b1.tex,uB2:b2.tex,uB3:b3.tex,uStr:cfg.str});[b1,b2,b3].forEach(release);out.ao=t;}
@@ -63,6 +63,7 @@ function dlgMatConvert(L,only){L=L||doc.active;if(!isLayer(L)||L.fx){toast('Sele
     el('div',{class:'chips'},...MC_MAPS.filter(([k])=>wants(k)).map(([k,t])=>chk('mc_'+k,t,!!c[k],v=>set(k,v)))),
     showR?makeSlider({id:'mc_r',label:'Radius',min:1,max:32,step:.5,value:c.r,fmt:v=>v+'px',onInput:v=>set('r',v)}).el:null,
     makeSlider({id:'mc_s',label:'Strength',min:.1,max:4,step:.05,value:c.str,fmt:pct,onInput:v=>set('str',v)}).el,
+    ...(typeof curvBandsSliders==='function'&&(c.curv||c.curvEdge||c.curvCrease||c.rough||c.metal)?[el('div',{class:'sub',text:'Curvature detail'}),...curvBandsSliders(()=>c.cb,(k,v)=>set('cb',Object.assign({},c.cb||{},{[k]:v})),'mcCb_')]:[]),
     showAo?makeSlider({id:'mc_aor',label:'AO reach',min:2,max:96,step:1,value:c.aoR,fmt:v=>v+'px',onInput:v=>set('aoR',v)}).el:null,
     all?el('div',{class:'sub',text:'Roughness: tops and gaps'}):null,
     all?makeSlider({id:'mc_top',label:'Tops',min:0,max:1,step:.01,value:c.top,fmt:pct,onInput:v=>{c.top=v;}}).el:null,

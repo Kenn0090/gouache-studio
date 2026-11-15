@@ -1,3 +1,8 @@
+## Gouache Studio 0.97.29
+
+- Fixed: dragging the Navigator past its edge no longer breaks the app.
+- Curvature detail (Big / Medium / Small) in Mesh maps from a material and the Edge wear filter.
+
 ## Gouache Studio 0.97.28
 
 - Curvature detail (Big / Medium / Small) also in the Mask Builder, the Bake mesh maps window, the Convert tab and the Curvature from normal converter.

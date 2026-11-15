@@ -5,11 +5,15 @@ function navBuild(){if(nav.el)return;
   nav.cv=el('canvas',{width:176,height:132,'aria-hidden':'true'});nav.fr=el('div',{class:'navframe'});
   nav.el=el('div',{id:'navPip',class:'navpip',role:'group','aria-label':'Navigator: drag the frame to move around the canvas',title:'Navigator: drag the frame to move around. View › Navigator turns it off.',hidden:true},nav.cv,nav.fr);
   stage.append(nav.el);
-  const go=e=>{const r=nav.cv.getBoundingClientRect(),dx=(e.clientX-r.left)/r.width,dy=(e.clientY-r.top)/r.height,px=dx*doc.w,py=dy*doc.h;
+  /* (0.97.29, JayM: "drag on the navigator and if you drag it off it makes everything unfunctional") dragging past the picture's edge used to
+     move the view so far that the navigator hid itself mid-drag; its size then read 0, the view went to infinity and no click worked.
+     Now the point stays on the picture, a hidden or zero-size navigator moves nothing, and it stays shown while you drag it. */
+  const go=e=>{if(nav.el.hidden)return;const r=nav.cv.getBoundingClientRect();if(!(r.width>1&&r.height>1))return;
+    const dx=clamp((e.clientX-r.left)/r.width,0,1),dy=clamp((e.clientY-r.top)/r.height,0,1),px=dx*doc.w,py=dy*doc.h;
     const W=stage.clientWidth,H=stage.clientHeight;view.x=W/2-px*view.zoom;view.y=H/2-py*view.zoom;updateStatus();requestRender();navSync();};
   nav.el.addEventListener('pointerdown',e=>{if(e.button!==0)return;e.preventDefault();e.stopPropagation();nav.drag=true;try{nav.el.setPointerCapture(e.pointerId);}catch(er){}go(e);});
   nav.el.addEventListener('pointermove',e=>{if(nav.drag)go(e);});
-  const up=e=>{nav.drag=false;try{nav.el.releasePointerCapture(e.pointerId);}catch(er){}};nav.el.addEventListener('pointerup',up);nav.el.addEventListener('pointercancel',up);
+  const up=e=>{nav.drag=false;try{nav.el.releasePointerCapture(e.pointerId);}catch(er){}};nav.el.addEventListener('pointerup',up);nav.el.addEventListener('pointercancel',up);nav.el.addEventListener('lostpointercapture',()=>{nav.drag=false;});window.addEventListener('blur',()=>{nav.drag=false;});
   nav.el.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});}
 /* the little picture of the whole canvas, made from the finished composite (a small read-back, not while you paint) */
 function navPicture(){nav.timer=0;if(!nav.on||stroke||!compOut||ui.mode!=='paint')return;
@@ -27,6 +31,7 @@ function navSync(){if(!nav.el&&nav.on&&ui.mode==='paint')navBuild();if(!nav.el)r
     const cx0=Math.max(0,x0),cy0=Math.max(0,y0),cx1=Math.min(doc.w,x1),cy1=Math.min(doc.h,y1);
     vis=(x0>1||y0>1||x1<doc.w-1||y1<doc.h-1)&&cx1>cx0&&cy1>cy0;/* only when part of the canvas is out of view */
     fx=cx0/doc.w;fy=cy0/doc.h;fw=(cx1-cx0)/doc.w;fh=(cy1-cy0)/doc.h;}
+  if(nav.drag)vis=vis||!nav.el.hidden;/* never hide it under the pointer while it is being dragged */
   if(nav.el.hidden===vis)nav.el.hidden=!vis;
   if(!vis)return;
   if(nav.dirty&&!nav.timer&&!stroke)navSoon();

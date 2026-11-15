@@ -1,3 +1,8 @@
+## 0.97.29
+
+- **Fixed: dragging the Navigator past its edge broke the whole app** (the view jumped away and no click worked until a restart). The navigator now stays put under the pointer while you drag it, and a broken view puts itself back on screen.
+- **Curvature detail in Mesh maps from a material and in Edge wear:** the Big shapes / Medium shapes / Small details sliders now also shape the curvature these make, so edges and cavities can follow the broad forms or the fine detail.
+
 ## 0.97.28
 
 - **Curvature detail everywhere curvature is made or used:** the **Big shapes / Medium shapes / Small details** sliders are now also in the **Mask Builder** (right under its curvature inputs), the **Bake mesh maps** window in 3D Paint (also when curvature comes from a normal map), the **Convert** tab's curvature, and the **Curvature from normal** converter.
