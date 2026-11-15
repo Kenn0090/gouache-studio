@@ -71,3 +71,4 @@ if(window.__gs)Object.assign(window.__gs,{slotAutoAdd,slotPaint,slotValue,slotPi
 if(window.__gs)Object.assign(window.__gs,{encodePSD,psdIntoChannel,psdChannelFiles,fovToMm,mmToFov,loadPaint,lensBox});
 if(window.__gs)Object.assign(window.__gs,{cxLib,cxApplyTo,cxShelfRender,cxNewMask,cxRecipe,cxEdit,shOutline,shadeUniforms,CX});
 if(window.__gs)Object.assign(window.__gs,{udimAtlasFrom,udimImgBox,udimNameId,udimPattern});
+if(window.__gs)Object.assign(window.__gs,{p3MapImport,p3MapBatch});

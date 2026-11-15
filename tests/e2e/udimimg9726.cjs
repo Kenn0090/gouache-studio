@@ -23,12 +23,22 @@ const OBJ=['v -1 -1 0','v 0 -1 0','v 0 1 0','v -1 1 0','v 1 -1 0','v 1 1 0','vt 
   const grad=await pic('Skin.png',x=>{x.fillStyle='#000';x.fillRect(0,0,32,64);x.fillStyle='#fff';x.fillRect(32,0,32,64);});
   await g.fillUseImage(L,'base',s,grad,()=>{s.on=true;});const plain=read();
   await g.fillUseImage(L,'base',s,[f1],()=>{s.on=true;});const half=read();
-  return {box:g.udimImgBox()&&g.udimImgBox().B.tiles.map(t=>t.id),tiles,name1,plain,half};},OBJ);
+  /* mesh maps (input maps): AO tiles, then a batch drop of normal tiles */
+  const ao1=await pic('Tpose_1001_AO.png',solid('#202020')),ao2=await pic('Tpose_1002_AO.png',solid('#e0e0e0'));
+  await g.p3MapImport('ao',[ao1,ao2]);
+  const mm=k=>{const t=g.doc.meshMaps[k],d=g.captureRegionNow(t,0,0,t.w,t.h).data,w=t.w,h=t.h,B=g.p3.ua.mats.Body;
+    const c=T=>{const R=g.udimTileRect('Body',B.tiles.find(x=>x.id===T),w,h),i=(Math.round(R[1]+R[3]/2)*w+Math.round(R[0]+R[2]/2))*4;return [d[i],d[i+1],d[i+2]];};return {w,h,a:c(1001),b:c(1002),name:g.doc.meshMapInfo[k].name};};
+  const ao=mm('ao');
+  const n1=await pic('Tpose_1001_Normal.png',solid('#ff8080')),n2=await pic('Tpose_1002_Normal.png',solid('#8080ff'));
+  await g.p3MapBatch([n1,n2]);const nm=mm('normal');
+  return {box:g.udimImgBox()&&g.udimImgBox().B.tiles.map(t=>t.id),tiles,name1,plain,half,ao,nm};},OBJ);
  console.log(JSON.stringify(r));
  ok(r.box&&r.box.join()==='1001,1002'&&r.tiles.w===2*r.tiles.h,'the set has tiles 1001 and 1002 on a 2:1 canvas');
  ok(r.tiles.a[0]>200&&r.tiles.a[2]<60&&r.tiles.b[2]>200&&r.tiles.b[0]<60,'Tpose_1001 lands in tile 1001 and Tpose_1002 in tile 1002 '+JSON.stringify([r.tiles.a,r.tiles.b]));
  ok(r.name1==='Tpose_<UDIM>_D.png','the channel shows the tile name pattern '+r.name1);
  ok(r.plain.aL[0]<60&&r.plain.aR[0]>200&&r.plain.bL[0]<60&&r.plain.bR[0]>200,'a plain picture repeats once in each tile (not stretched) '+JSON.stringify(r.plain));
  ok(r.half.a[0]>200&&Math.abs(r.half.b[0]-r.half.b[2])<10,'with only the 1001 picture, tile 1002 is left alone (the grey base shows) '+JSON.stringify([r.half.a,r.half.b]));
+ ok(r.ao.w===r.tiles.w&&r.ao.a[0]<60&&r.ao.b[0]>200,'mesh map tiles go into their own tiles (AO 1001 dark, 1002 light) '+JSON.stringify(r.ao));
+ ok(r.nm.a[0]>200&&r.nm.b[2]>200&&r.nm.b[0]<160,'tile mesh maps dropped together are sorted into one map with each tile in place '+JSON.stringify(r.nm));
  ok(!errs.length,'no page errors '+errs.join('|'));
  await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();

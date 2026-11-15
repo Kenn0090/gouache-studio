@@ -5,7 +5,7 @@
 - Specular level channel, and up to 8 channels of your own with names.
 - Export each channel as a layered PSD; import a layered PSD into a channel.
 - Custom shader maker: mix ingredients from the other shaders (lighting styles, shine, extras), each with a mask channel; a Shaders library on the shelf.
-- Material pictures in UV-tile sets go into their own tiles (1001, 1002…) instead of stretching.
+- Material pictures and imported mesh maps in UV-tile sets go into their own tiles (1001, 1002…) instead of stretching.
 - Focal length in mm for the 3D camera, with common lenses.
 
 ## Gouache Studio 0.97.25

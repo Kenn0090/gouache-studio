@@ -31,17 +31,32 @@ async function udimSiblings(path){try{const dir=path.replace(/[\\/][^\\/]*$/,'')
   if(!fillEnableDocMap(k)){disposeTarget(A.t);toast('This material cannot use the '+MAP_DEFS[k].label+' channel.');return;}
   matEdBegin(L);setWrap(A.t,true);L._fillImg=L._fillImg||{};L._fillImg[k]=A.t;s.src='image';s.name=A.name;s.tile=1;done();
   toast(A.plain?'“'+A.name+'” is repeated in each of the '+box.B.tiles.length+' UV tiles.':MAP_DEFS[k].label+': '+A.placed+' of '+box.B.tiles.length+' UV tiles filled'+(A.missing.length?' (no picture for '+A.missing.join(', ')+': pick or drop those files too)':'')+'.');};}
-{const f=fillPickImage;fillPickImage=async function(L,k,s,done){const box=udimImgBox();if(!box)return f.apply(this,arguments);
-  const exts=['png','jpg','jpeg','webp','tga','tif','tiff','bmp','psd','exr','hdr'];let files=[];
-  if(platform.isDesktop){try{const ps=await platform.openFiles([{name:'Images',extensions:exts}],true);if(!ps||!ps.length){done();return;}
+/* pick pictures for a set with tiles: several at once; picking one tile's picture also brings the other tiles' from its folder (desktop) */
+async function udimPickFiles(title,exts){let files=[];
+  if(platform.isDesktop){try{const ps=await platform.openFiles([{name:title,extensions:exts}],true);if(!ps||!ps.length)return [];
       for(const p of ps)files.push(new File([await platform.readFile(p)],fileNameOf(p)));
-      if(ps.length===1&&udimNameId(files[0].name))files.push(...await udimSiblings(ps[0]));}catch(e){toast('The file dialog failed: '+(e.message||e));done();return;}}
-  else files=await pickFiles('image/*',true,'Images',exts);
-  if(!files.length){done();return;}
+      if(ps.length===1&&udimNameId(files[0].name))files.push(...await udimSiblings(ps[0]));}catch(e){toast('The file dialog failed: '+(e.message||e));return [];}}
+  else files=await pickFiles('image/*,.tga,.dds,.tif,.tiff',true,title,exts);
   if(!platform.isDesktop&&files.length===1&&udimNameId(files[0].name))toast('Tip: pick all the tile pictures together (…1001, …1002) to fill every tile.');
-  await fillUseImage(L,k,s,files,done);};}
+  return files;}
+const UDIM_EXTS=['png','jpg','jpeg','webp','tga','tif','tiff','bmp','psd','exr','hdr','dds'];
+{const f=fillPickImage;fillPickImage=async function(L,k,s,done){if(!udimImgBox())return f.apply(this,arguments);
+  const files=await udimPickFiles('Images',UDIM_EXTS);if(!files.length){done();return;}await fillUseImage(L,k,s,files,done);};}
+/* (Georgian: "same as the input maps") mesh map slots: tile maps go into their tiles too */
+{const f=p3MapImport;p3MapImport=async function(k,file){const box=udimImgBox(),files=Array.isArray(file)?file:[file];if(!box||!files[0])return f.call(this,k,files[0]);
+  const root=doc.root;let A=null;try{loadStart(files[0].name);loadBusy('Reading mesh map…');await loadPaint();A=await udimAtlasFrom(files,box);setWrap(A.t,true);
+    if(doc.root!==root||ui.mode!=='p3d')throw new Error('The texture set changed during import. Try again.');p3MapSet(k,A.t,A.name);
+    toast(P3_MESHMAP_NAMES[k]+' in “'+doc.name+'”: '+(A.plain?'“'+A.name+'” repeated in each UV tile.':A.placed+' of '+box.B.tiles.length+' UV tiles'+(A.missing.length?' (no map for '+A.missing.join(', ')+')':'')+'.'));A=null;}
+  catch(e){if(A)disposeTarget(A.t);toast('Could not import '+files[0].name+': '+(e.message||e));}finally{loadEnd();}};}
+{const f=p3MapPick;p3MapPick=async function(k){if(!udimImgBox())return f.apply(this,arguments);const files=await udimPickFiles(P3_MESHMAP_NAMES[k],UDIM_EXTS);if(files.length)await p3MapImport(k,files);};}
+/* several mesh maps dropped at once: the tile files of one map go in together */
+{const f=p3MapBatch;p3MapBatch=async function(files){if(!udimImgBox())return f.apply(this,arguments);const groups=new Map(),rest=[];
+  for(const x of files){const k=udimNameId(x.name)?p3MapGuess(x.name):null;if(!k){rest.push(x);continue;}const key=k+'|'+udimPattern(x.name).toLowerCase();if(!groups.has(key))groups.set(key,{k,files:[]});groups.get(key).files.push(x);}
+  for(const g of groups.values())await p3MapImport(g.k,g.files);if(rest.length)await f.call(this,rest);};}
 /* dropping several tile pictures on one channel card: they go together (the card's own handler sends one picture per channel) */
 document.addEventListener('drop',e=>{const card=e.target.closest&&e.target.closest('.fillcard[data-material-channel]');if(!card||!udimImgBox())return;
   const fs=[...(e.dataTransfer&&e.dataTransfer.files||[])].filter(f=>typeof fillImageFile!=='function'||fillImageFile(f));if(fs.length<2||!fs.every(f=>udimNameId(f.name)))return;
   const L=doc.active,k=card.dataset.materialChannel;if(!L||!L.fill||!L.fill.maps[k])return;e.preventDefault();e.stopPropagation();card.classList.remove('material-drop');
   const s=L.fill.maps[k];fillUseImage(L,k,s,fs,()=>{matEdBegin(L);s.on=true;fillRender(L);changedAll();matEdCommit();if(typeof renderMatEd==='function')renderMatEd();});},true);
+document.addEventListener('drop',e=>{const row=e.target.closest&&e.target.closest('.meshslot[data-mesh-slot]');if(!row||!udimImgBox())return;const fs=[...(e.dataTransfer&&e.dataTransfer.files||[])];if(fs.length<2||!fs.some(f=>udimNameId(f.name)))return;
+  e.preventDefault();e.stopPropagation();row.classList.remove('dropon');p3MapImport(row.dataset.meshSlot,fs);},true);
