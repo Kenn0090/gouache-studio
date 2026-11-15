@@ -93,3 +93,4 @@ if(window.__gs)Object.assign(window.__gs,{msGenDefaults});
 if(window.__gs)Object.assign(window.__gs,{dlgP3Bake,cvS,CONVERTERS});
 if(window.__gs)Object.assign(window.__gs,{buildConvertPanel});
 if(window.__gs)Object.assign(window.__gs,{nav,navSync});
+if(window.__gs)Object.assign(window.__gs,{mcMake,ensureMapTarget,setDocMaps});
