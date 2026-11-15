@@ -30,7 +30,21 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const after=await p.evaluate(()=>{const g=__gs,L=g.doc.active,row=L.mask.stack[L.mask.stack.length-1];g.msUpdate&&g.msUpdate(L);const t=L.mask.target,d=g.captureRegionNow(t,0,0,t.w,t.h).data;let s=0;for(let i=0;i<d.length;i+=4)s+=d[i];return {s,cb:row.p.cb};});
  ok(after.cb&&after.cb.small===0,'moving the slider stores it on the generator '+JSON.stringify(after.cb));
  ok(after.s!==before,'…and changes the mask ('+before+' → '+after.s+')');
+ /* the Mask Builder: the sliders sit right under its curvature inputs */
+ const mb=await p.evaluate(()=>{const g=__gs,L=g.doc.active,row=g.msAdd(L,'gen',{p:g.msGenDefaults('builder')});g.msSelect(L,'m',(row||L.mask.stack[L.mask.stack.length-1]).id);
+   const b=document.getElementById('matEdBody'),cav=b.querySelector('#ms_cavityWeight'),card=b.querySelector('#msC_curvbands');
+   return {card:!!card,big:!!b.querySelector('#msCb_big'),after:!!(cav&&card&&(cav.compareDocumentPosition(card)&Node.DOCUMENT_POSITION_FOLLOWING))};});
+ ok(mb.card&&mb.big&&mb.after,'the Mask Builder has the curvature detail sliders, under its curvature inputs '+JSON.stringify(mb));
+ /* the Bake mesh maps window in 3D Paint */
+ const pb=await p.evaluate(()=>{__gs.dlgP3Bake();const ok=!!document.getElementById('p3bkCb_big')&&!!document.getElementById('p3bkCb_small');document.getElementById('dlgCancel')?.click();return ok;});
+ ok(pb,'the Bake mesh maps window has them too');
+ /* the converter Curvature from normal */
+ ok(await p.evaluate(()=>['cbBig','cbMed','cbSmall'].every(k=>__gs.CONVERTERS.curvFromNormal.defs.some(d=>d.key===k))),'the Curvature from normal converter has Big / Medium / Small');
  await p.evaluate(()=>document.querySelector('#modeTabs [data-mode=bake]').click());await p.waitForTimeout(2500);
  const bk=await p.evaluate(()=>{const g=__gs;g.bakeCfg.mapOpen=Object.assign({},g.bakeCfg.mapOpen,{curv:true});g.buildBakePanel&&g.buildBakePanel();return !!document.getElementById('bkCb_big')&&!!document.getElementById('bkCb_small');});
  ok(bk,'the Bake tab\'s curvature has the same sliders');
+ /* the Convert tab's curvature */
+ await p.evaluate(()=>document.querySelector('#modeTabs [data-mode=convert]').click());await p.waitForTimeout(2500);
+ const cv=await p.evaluate(()=>{const g=__gs;g.cvS.tab='curv';g.buildConvertPanel&&g.buildConvertPanel();return !!document.getElementById('cvCb_big')&&!!document.getElementById('cvCb_small');});
+ ok(cv,'the Convert tab\'s curvature has them as well');
  ok(!errs.length,'no page errors '+errs.join(' | '));await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();

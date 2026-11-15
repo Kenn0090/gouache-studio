@@ -35,10 +35,12 @@ const CONVERTERS={
     make(src,out,v){const b1=blurOf(src,v.r),b2=blurOf(src,v.r*3);run(P.f_curv,out,{uH:src.tex,uB1:b1.tex,uB2:b2.tex,uStr:v.str,uMode:{int:v.part}});release(b1);release(b2);
       if(v.smooth>.25){const t=blurOf(out,v.smooth);blit(t,out,0,0,doc.w,doc.h,0,0);release(t);}}},
   curvFromNormal:{title:'Curvature from normal',from:'normal',finalNormal:true,name:'Curvature',outputs:[['curv','Curvature map'],['sel','Selection']],
-    defs:[{key:'r',label:'Radius',min:0,max:32,step:.5,value:1.5,fmt:v=>v+'px'},{key:'str',label:'Strength',min:0,max:4,step:.05,value:1,fmt:pct},{key:'smooth',label:'Smooth',min:0,max:16,step:.5,value:1,fmt:v=>v+'px'}],
+    defs:[{key:'r',label:'Radius',min:0,max:32,step:.5,value:1.5,fmt:v=>v+'px'},{key:'str',label:'Strength',min:0,max:4,step:.05,value:1,fmt:pct},{key:'smooth',label:'Smooth',min:0,max:16,step:.5,value:1,fmt:v=>v+'px'},
+      {key:'cbBig',label:'Big shapes',min:0,max:4,step:.01,value:1,fmt:pct},{key:'cbMed',label:'Medium shapes',min:0,max:4,step:.01,value:1,fmt:pct},{key:'cbSmall',label:'Small details',min:0,max:4,step:.01,value:1,fmt:pct}],
     segs:[['part','Show',[[0,'Edges and cavities'],[1,'Edges only'],[2,'Cavities only']],0]],
     note:'Reads curvature straight from the normal map (including the normal made from Height). It goes into its own grey Curvature map (your colours are not touched). Use Filter › Edge wear to put it onto colour, or make it a selection.',
     make(src,out,v){const n=blurOf(src,v.r);run(P.f_ncurv,out,{uN:n.tex,uWrap:!!doc.wrap,uStr:v.str,uMode:{int:v.part},uStep:Math.max(1,Math.round(v.r*.7))});release(n);
+      if(typeof cbInto==='function')cbInto(out,{big:v.cbBig,med:v.cbMed,small:v.cbSmall});/* curvature detail */
       if(v.smooth>.25){const t=blurOf(out,v.smooth);blit(t,out,0,0,doc.w,doc.h,0,0);release(t);}}},
   aoFromNormal:{title:'Ambient occlusion from normal',from:'normal',finalNormal:true,to:'ao',name:'AO from normal',mode:1,float:true,
     defs:[{key:'r',label:'Radius',min:1,max:128,step:1,value:16,fmt:v=>v+'px'},{key:'str',label:'Strength',min:0,max:4,step:.05,value:1,fmt:pct}],checks:[['dx','Normal map is DirectX (green down)',false]],

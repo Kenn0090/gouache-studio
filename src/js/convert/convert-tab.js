@@ -190,6 +190,7 @@ const CV_MAKE={
     run(cvP().ao,dst,{uH:h.tex,uB1:b1.tex,uB2:b2.tex,uB3:b3.tex,uStr:v.str,uBal:v.bal});if(v.smooth>.25){const t=cvT('as');cvBlur(dst,t,v.smooth,'btD');blit(t,dst,0,0,doc.w,doc.h,0,0);}},
   curv(dst){const v=cvS.v.curv,n=cvS.kind==='normal'?cvPrep():cvRes('normal'),b=cvT('cb',doc.w,doc.h,n.depth);cvBlur(n,b,v.r,'btE');
     run(P.f_ncurv,dst,{uN:b.tex,uWrap:!!(cvS.seam.on||doc.wrap),uStr:v.str*(cvS.v.normal.dx&&cvS.kind!=='normal'?-1:1)*(cvS.kind==='normal'&&cvS.dx?-1:1),uMode:{int:v.part||0},uStep:Math.max(1,Math.round(v.r*.7))});
+    if(typeof cbInto==='function')cbInto(dst,v.cb);/* curvature detail */
     if(v.smooth>.25){const t=cvT('cs');cvBlur(dst,t,v.smooth,'btE');blit(t,dst,0,0,doc.w,doc.h,0,0);}},
   rough(dst){cvKeyed(dst,'rough',0);},
   metal(dst){cvKeyed(dst,'metal',1);},
@@ -301,6 +302,7 @@ function buildConvertPanel(){const box=$('#convBody');if(!box)return;box.replace
   if(k==='normal')box.append(el('div',{class:'chips'},chk('cvNdx','DirectX (green down, for Unreal)',!!v.dx,x=>{v.dx=x;cvChanged('normal');}),
     ...(doc.maps.includes('normal')||doc.maps.includes('height')?[chk('cvNmix','Mix with the document’s normal map',!!v.mix,x=>{v.mix=x;cvChanged('normal');})]:[])));
   if(k==='curv')box.append(seg([[0,'Edges and cavities'],[1,'Edges only'],[2,'Cavities only']],v.part||0,x=>{v.part=x;cvChanged('curv');},'Show'));
+  if(k==='curv'&&typeof curvBandsSliders==='function')box.append(el('div',{class:'sub',text:'Curvature detail'}),...curvBandsSliders(()=>v.cb,(kk,x)=>{v.cb=Object.assign({},v.cb||{},{[kk]:x});cvChanged('curv');},'cvCb_'));
   if(k==='rough')box.append(el('div',{class:'chips'},chk('cvRinv','Invert',!!v.inv,x=>{v.inv=x;cvChanged('rough');})));
   if(k==='rough'||k==='metal'){const pk=el('button',{class:'btn sm'+(cvS.pick===k?' on':''),text:cvS.pick===k?'Click a colour in the image…':'Pick a colour'});pk.onclick=()=>{cvS.pick=cvS.pick===k?null:k;buildConvertPanel();requestRender();};
     box.append(el('div',{class:'row wrap'},pk));

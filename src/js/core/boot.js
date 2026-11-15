@@ -90,3 +90,5 @@ if(window.__gs)Object.assign(window.__gs,{hscr,scrProject,v3ViewProj,heal,MESH_W
 if(window.__gs)Object.assign(window.__gs,{curvBands,curvBandsOn,cbOf,bakeCfg});
 if(window.__gs)Object.assign(window.__gs,{msSelect});
 if(window.__gs)Object.assign(window.__gs,{msGenDefaults});
+if(window.__gs)Object.assign(window.__gs,{dlgP3Bake,cvS,CONVERTERS});
+if(window.__gs)Object.assign(window.__gs,{buildConvertPanel});
