@@ -1,9 +1,14 @@
-## 0.97.30
+## 0.97.31
 
 - **"Hide the bumps below" now starts off** on new materials, so their height and normal add on top of what is below. Turn it on per material as before, or make it start on for every new material in **Preferences › Painting**. Materials in your existing projects keep their own setting.
 - **Map names while you flip through them:** pressing **C** or **Shift+C** (channels), **B** (baked mesh maps) in 3D Paint, or **C** in the Bake tab now shows the name of the map on screen, with the one before and after it, then fades away.
 - **Each UV tile can have its own texture size** (UDIMs in 3D Paint): pick a size beside each tile in the texture set list, for example an 8K face tile next to 2K body tiles. The tiles are packed onto the set's canvas at their own sizes, so a big tile no longer makes every tile big, which saves graphics memory. A stroke across two tiles stays the same size on the model; changing a tile's size rebuilds the set from your strokes, so nothing gets blurred by scaling. Export writes each tile at its own size, and the sizes are saved in the project.
 - **Fixed: changing a texture set's size could repaint an earlier stroke in a later stroke's colour** when the set was rebuilt from its strokes.
+
+## 0.97.30
+
+- **Triplanar normals** preserve the baked surface shading when the material's normal texture is flat, including across mirrored UV islands.
+- **Cylindrical projection** respects Backface culling in the roughness, height and normal channels, so excluded caps keep the material detail beneath the wrap.
 
 ## 0.97.29
 

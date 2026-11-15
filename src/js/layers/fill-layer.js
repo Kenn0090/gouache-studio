@@ -25,23 +25,36 @@ vec2 nearestUV(vec2 t){ vec2 sz=vec2(textureSize(uSrc,0)); return (floor(t*sz)+0
 uniform int uOneCh; vec4 monoX(vec4 v){ return uOneCh==1?vec4(v.rrr,1.0):v; }/* (0.95.2) a one-channel grey picture */
 vec4 samp(vec2 t){ float c=cos(uRot),s=sin(uRot); t=mat2(c,s,-s,c)*(t-0.5)+0.5; if(uNearest==1) return monoX(textureLod(uSrc,nearestUV(t),0.0)); return monoX(texture(uSrc,t)); }
 vec4 sampL(vec2 t){ float c=cos(uRot),s=sin(uRot); t=mat2(c,s,-s,c)*(t-0.5)+0.5; if(uNearest==1) t=nearestUV(t); return monoX(textureLod(uSrc,t,0.0)); }
-void main(){ vec4 s;
+vec2 fillSlope(vec4 sampleN){
+  if(sampleN.a<=1e-6)return vec2(0.0);
+  vec3 n=clamp((sampleN.rgb/sampleN.a-0.5)*(1.0+uContrast)+0.5,0.0,1.0)*2.0-1.0;
+  // Red points along +U. Green points toward the top of the image, opposite +V.
+  float c=cos(uRot),s=sin(uRot);
+  return mat2(c,-s,s,c)*vec2(n.x,-n.y)/max(n.z,0.08);
+}
+vec3 fillProjectedNormal(ivec2 q,vec3 N,vec3 slope){
+  mat3 m=transpose(mat3(uInv));
+  vec3 worldSlope=mat3(normalize(m[0]),normalize(m[1]),normalize(m[2]))*slope;
+  vec4 tn=texelFetch(uTan,q,0);
+  vec3 t=tn.xyz-N*dot(N,tn.xyz);
+  if(!(dot(t,t)>1e-8))return vec3(0.5,0.5,1.0);
+  vec3 T=normalize(t),B=cross(N,T)*(tn.w<0.0?-1.0:1.0);
+  // Keep the unperturbed surface normal, even where several projections meet.
+  return normalize(vec3(dot(worldSlope,T),dot(worldSlope,B),1.0))*0.5+0.5;
+}
+void main(){ vec4 s; float coverage=1.0;
   if(uProj>=1){ ivec2 q=ivec2(gl_FragCoord.xy); vec4 P=texelFetch(uPos,q,0); if(P.a<0.5){ o=vec4(0.0); return; }
     vec3 L=(uInv*vec4(P.xyz,1.0)).xyz;
     vec3 Nworld=normalize(texelFetch(uNrm,q,0).xyz+1e-5),N=normalize(uNrmInv*Nworld+1e-5);
     if(uProj==1){ vec3 w=pow(abs(N),vec3(uSharp)); w/=max(w.x+w.y+w.z,1e-5); vec3 p=L*uTile*0.5;
-      if(uNormal==1){ float c=cos(uRot),sn=sin(uRot); mat2 rot=mat2(c,-sn,sn,c);
-        vec3 nx=samp(p.zy).rgb*2.0-1.0,ny=samp(p.xz).rgb*2.0-1.0,nz=samp(p.xy).rgb*2.0-1.0;
-        nx.xy=rot*nx.xy;ny.xy=rot*ny.xy;nz.xy=rot*nz.xy;
-        vec3 sx=vec3(sign(N.x)*nx.z,-sign(N.x)*nx.y,nx.x);
-        vec3 sy=vec3(ny.x,sign(N.y)*ny.z,-sign(N.y)*ny.y);
-        vec3 sz=vec3(sign(N.z)*nz.x,nz.y,sign(N.z)*nz.z);
-        vec3 nLocal=normalize(sx*w.x+sy*w.y+sz*w.z);
-        vec3 nWorld=normalize(transpose(mat3(uInv))*nLocal);vec4 tn=texelFetch(uTan,q,0);
-        vec3 T=normalize(tn.xyz-Nworld*dot(Nworld,tn.xyz)),B=cross(Nworld,T)*tn.w;
-        vec3 nTangent=normalize(vec3(dot(nWorld,T),dot(nWorld,B),dot(nWorld,Nworld)));
-        s=vec4(nTangent*0.5+0.5,1.0);
-      } else s=samp(p.zy)*w.x+samp(p.xz)*w.y+samp(p.xy)*w.z; }
+      vec4 x=samp(p.zy),y=samp(p.xz),z=samp(p.xy);
+      s=x*w.x+y*w.y+z*w.z;
+      if(uNormal==1){
+        vec2 sx=fillSlope(x),sy=fillSlope(y),sz=fillSlope(z);
+        vec3 slope=vec3(0.0,sx.y,sx.x)*w.x+vec3(sy.x,0.0,sy.y)*w.y+vec3(sz,0.0)*w.z;
+        float a=uKeepA==1?s.a:1.0;
+        o=vec4(fillProjectedNormal(q,Nworld,slope)*a,a); return;
+      }}
     else if(uProj==2){ vec2 t=vec2(L.x*0.5+0.5,0.5-L.y*0.5); if(uKeepA==1&&abs(L.z)>1.0){ o=vec4(0.0); return; }
       if(uFront==1){ vec3 Nl=normalize(mat3(uInv)*texelFetch(uNrm,q,0).xyz+1e-5); if(uKeepA==1?abs(Nl.z)<0.5:Nl.z<0.15){ o=vec4(0.0); return; } }/* decals: the model's stored normals may point either way, the thin slab above keeps a sticker to the surface under it */ if(uRep==0&&(t.x<0.0||t.y<0.0||t.x>1.0||t.y>1.0)){ o=vec4(0.0); return; } if(wrapOut(t*uTile)||(uCrop>0.5&&(abs(L.x)>1.0||abs(L.y)>1.0))){ o=vec4(0.0); return; } s=samp(t*uTile); }
     else if(uProj==5){ if(abs(L.z)>uWarpD.x){ o=vec4(0.0); return; }
@@ -52,16 +65,30 @@ void main(){ vec4 s;
         if(ws>0.001) uv=acc/ws; else ok=false; }
       if(!ok&&uCrop>0.5){ o=vec4(0.0); return; }
       vec2 t=uv*uTile; if(wrapOut(t)){ o=vec4(0.0); return; } float k=1.0-smoothstep(min(uWarpD.y,0.999),1.0,abs(L.z)/uWarpD.x); s=samp(t)*k; }
-    else if(uProj==4){ float ang=atan(L.x,L.z),span=radians(max(uCyl.x,1.0)); if(abs(ang)>span*0.5||(uCrop>0.5&&abs(L.y)>1.0)){ o=vec4(0.0); return; }
-      vec2 t=vec2(ang/span+0.5,0.5-L.y*0.5)*uTile; if(wrapOut(t)){ o=vec4(0.0); return; } float k=1.0;
-      if(uCyl.z>0.5){ vec3 rad=normalize(vec3(L.x,0.0,L.z)+1e-6); k=smoothstep(0.0,max(0.02,1.0-uCyl.y),dot(N,rad)); } s=samp(t)*k; }
+    else if(uProj==4){
+      float radius=length(L.xz),ang=radius>1e-6?atan(L.x,L.z):0.0,span=radians(max(uCyl.x,1.0));
+      if(abs(ang)>span*0.5||(uCrop>0.5&&abs(L.y)>1.0)){ o=vec4(0.0); return; }
+      vec2 t=vec2(ang/span+0.5,0.5-L.y*0.5)*uTile;
+      if(wrapOut(t)){ o=vec4(0.0); return; }
+      vec3 radial=radius>1e-6?vec3(L.x,0.0,L.z)/radius:vec3(0.0);
+      if(uCyl.z>0.5)coverage=smoothstep(0.0,max(0.02,1.0-uCyl.y),dot(N,radial));
+      if(coverage<=1e-6){ o=vec4(0.0); return; }
+      // The angular coordinate jumps by one turn at the wrap seam. As with
+      // spherical projection, use the base mip to avoid a false filtering stripe.
+      s=sampL(t);
+      if(uNormal==1){
+        vec2 slope=fillSlope(s);
+        vec3 detail=vec3(radial.z,0.0,-radial.x)*slope.x-vec3(0.0,slope.y,0.0);
+        float a=coverage*(uKeepA==1?s.a:1.0);
+        o=vec4(fillProjectedNormal(q,Nworld,detail)*a,a); return;
+      }}
     else { vec3 d=normalize(L+vec3(0.0,0.0,1e-6)); vec2 t=vec2(atan(d.x,d.z)/6.2831853+0.5,0.5-asin(clamp(d.y,-1.0,1.0))/3.1415927); s=sampL(t*uTile); } }
   else s=samp((uUvM*vec3((uUdimT.x>0.0&&uUdimT!=vec2(1.0))?vUV*uUdimT:udimG(vUV),1.0)).xy*uTile);
   vec3 c=s.a>1e-6?s.rgb/s.a:vec3(0.0);
-  if(uGrey==1){ float g=dot(c,vec3(0.299,0.587,0.114)); g=clamp(0.5+(g-0.5)*(1.0+uContrast),0.0,1.0); if(uHeight==1) g=clamp(0.5+(g-0.5)*uHStr,0.0,1.0); o=uKeepA==1?vec4(vec3(g)*s.a,s.a):vec4(vec3(g),1.0); return; }
+  if(uGrey==1){ float g=dot(c,vec3(0.299,0.587,0.114)); g=clamp(0.5+(g-0.5)*(1.0+uContrast),0.0,1.0); if(uHeight==1) g=clamp(0.5+(g-0.5)*uHStr,0.0,1.0); float a=coverage*(uKeepA==1?s.a:1.0); o=vec4(vec3(g)*a,a); return; }
   c=clamp(0.5+(c-0.5)*(1.0+uContrast),0.0,1.0);
   if(uNormal==1){ vec3 n=normalize(c*2.0-1.0); if(uProj==0){ float a=uRot-uUvRot,cs=cos(a),sn=sin(a); n.xy=mat2(cs,-sn,sn,cs)*n.xy; } c=n*0.5+0.5; o=uKeepA==1?vec4(c*s.a,s.a):vec4(c,1.0); return; }
-  o=vec4(c*s.a,s.a); }`;
+  o=vec4(c*s.a,s.a)*coverage; }`;
 let P_FILLIMG=null,fillCount=0;
 /* maps a fill can fill (curvature is a measurement, not a material) */
 /* (0.37.1) Tint & adjust: recolours the material's colour after it is drawn (the mock-up's Recolour section) */
@@ -93,9 +120,18 @@ function fillSolidColor(k,c){return mapDepth(k)===16?c.map(v=>h2fLut()[f2h(v)]):
 const VS_FILLPOS=`#version 300 es
 layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec2 aT; layout(location=3) in vec4 aTan; uniform vec2 uShift; uniform float uUVs; out vec3 vP; out vec3 vN; out vec4 vTan;
 void main(){ vP=aP; vN=aN; vTan=aTan; gl_Position=vec4((aT*uUVs-uShift)*2.0-1.0,0.0,1.0); }`;
-const FS_FILLDIL=`uniform sampler2D uSrc; void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); vec4 c=texelFetch(uSrc,p,0); if(c.a>0.5){ o=c; return; }
-  vec4 acc=vec4(0.0); for(int j=-1;j<=1;j++)for(int i=-1;i<=1;i++){ vec4 n=texelFetch(uSrc,clamp(p+ivec2(i,j),ivec2(0),s-1),0); if(n.a>0.5) acc+=vec4(n.rgb,1.0); }
-  o=acc.a>0.0?vec4(acc.rgb/acc.a,1.0):vec4(0.0); }`;
+const FS_FILLDIL=`uniform sampler2D uSrc; uniform bool uTangent;
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy),s=textureSize(uSrc,0); vec4 c=texelFetch(uSrc,p,0);
+  // Tangent alpha is the sign of the UV frame. -1 on a mirrored island is valid.
+  if(abs(c.a)>0.5){ o=c; return; }
+  vec4 acc=vec4(0.0),nearest=vec4(0.0); int distance=3;
+  for(int j=-1;j<=1;j++)for(int i=-1;i<=1;i++){
+    vec4 n=texelFetch(uSrc,clamp(p+ivec2(i,j),ivec2(0),s-1),0);
+    if(abs(n.a)<=0.5)continue;
+    if(uTangent){ int d=i*i+j*j; if(d<distance){nearest=n;distance=d;} }
+    else acc+=vec4(n.rgb,1.0);
+  }
+  o=uTangent?nearest:(acc.a>0.0?vec4(acc.rgb/acc.a,1.0):vec4(0.0)); }`;
 let P_FILLPOS=null,fillPosC=null,fillPosLimit='';
 function fillPosMaps(){const m=v3.mesh,g=v3.gpu;if(!m||!g||m.noUV)return null;const R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:m.idx.length/3},uvs=(v3s().uvs)||1;
   const key=[m.name,m.idx.length,R.start,R.count,doc.w,doc.h,uvs].join();if(fillPosC&&fillPosC.key===key&&fillPosC.m===m)return fillPosC;
@@ -103,14 +139,14 @@ function fillPosMaps(){const m=v3.mesh,g=v3.gpu;if(!m||!g||m.noUV)return null;co
   if(doc.w*doc.h>=134217728){if(fillPosLimit!==key){fillPosLimit=key;toast('3D projection needs smaller textures on this renderer. At 16K, use UV projection.');}return null;}
   fillPosLimit='';
   if(fillPosC){disposeTarget(fillPosC.pos);disposeTarget(fillPosC.nrm);disposeTarget(fillPosC.tan);}
-  if(!P_FILLPOS)P_FILLPOS={pos:prog3(VS_FILLPOS,'in vec3 vP; in vec3 vN; in vec4 vTan; void main(){ o=vec4(vP,1.0); }'),nrm:prog3(VS_FILLPOS,'in vec3 vP; in vec3 vN; in vec4 vTan; void main(){ o=vec4(normalize(vN),1.0); }'),tan:prog3(VS_FILLPOS,'in vec3 vP; in vec3 vN; in vec4 vTan; void main(){ o=vec4(normalize(vTan.xyz),vTan.w); }'),dil:program(FS_FILLDIL)};
+  if(!P_FILLPOS)P_FILLPOS={pos:prog3(VS_FILLPOS,'in vec3 vP; in vec3 vN; in vec4 vTan; void main(){ o=vec4(vP,1.0); }'),nrm:prog3(VS_FILLPOS,'in vec3 vP; in vec3 vN; in vec4 vTan; void main(){ o=vec4(normalize(vN),1.0); }'),tan:prog3(VS_FILLPOS,'in vec4 vTan; void main(){ o=vec4(vTan.xyz,vTan.w<0.0?-1.0:1.0); }'),dil:program(FS_FILLDIL)};
   /* 32-bit float images must be read unfiltered (nearest), or they read as zero */
   const mk=depth=>{const t=makeTarget(doc.w,doc.h,depth,false);gl.bindTexture(gl.TEXTURE_2D,t.tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);return t;},pos=mk(32),nrm=mk(32),tan=mk(16),tmp=mk(32);
   for(const [t,pr] of [[pos,P_FILLPOS.pos],[nrm,P_FILLPOS.nrm],[tan,P_FILLPOS.tan]]){clearTarget(t,[0,0,0,0]);
     for(let j=0;j<uvs;j++)for(let i=0;i<uvs;i++){useProg(pr,{uShift:[i,j],uUVs:uvs});bindTarget(t);gl.disable(gl.BLEND);gl.bindVertexArray(g.vao);gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);}
     gl.bindVertexArray(vao);
     /* a few texels of padding past the UV edges, so seams don't show */
-    for(let n=0;n<4;n++){run(P_FILLPOS.dil,tmp,{uSrc:t.tex});blit(tmp,t,0,0,doc.w,doc.h,0,0);}}
+    for(let n=0;n<4;n++){run(P_FILLPOS.dil,tmp,{uSrc:t.tex,uTangent:t===tan});blit(tmp,t,0,0,doc.w,doc.h,0,0);}}
   disposeTarget(tmp);fillPosC={key,m,pos,nrm,tan};return fillPosC;}
 /* A live image channel is rendered into a borrowed output, never into every material layer. */
 function fillLiveSource(L,k){const f=L.fill,s=f&&f.maps[k];if(!s||!s.on||!['image','baked','conv'].includes(s.src)||k==='base'&&fillTintOn(f))return null;

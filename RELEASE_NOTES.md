@@ -1,9 +1,14 @@
-## Gouache Studio 0.97.30
+## Gouache Studio 0.97.31
 
 - "Hide the bumps below" starts off on new materials; Preferences › Painting can make it start on.
 - Flipping through maps with C or B shows each map's name on screen.
 - UV tiles (UDIMs) can each have their own texture size, set in the texture set list.
 - Fixed: changing a texture set's size could recolour earlier strokes.
+
+## Gouache Studio 0.97.30
+
+- **Triplanar normals** preserve the baked surface shading when the material's normal texture is flat, including across mirrored UV islands.
+- **Cylindrical projection** respects Backface culling in the roughness, height and normal channels, so excluded caps keep the material detail beneath the wrap.
 
 ## Gouache Studio 0.97.29
 
