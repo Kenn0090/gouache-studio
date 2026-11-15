@@ -1,3 +1,11 @@
+## 0.97.32
+
+- **UV tiles (UDIMs) bake in the Bake tab.** A low-poly whose UVs reach into several tiles is baked tile by tile, each at the bake size. The model shows every tile's bake at once; a **UV tiles** card lists the tiles: tick which to bake, click a tile to see it flash on the model, and **↻** bakes just that tile again. Painting skew or offset re-bakes the tiles under the paint. **Export** writes one picture per tile (Name_Normal.1001.png …), and **Send to 3D Paint** puts each tile's maps in its place in the texture set (setting up the tiles there if needed).
+- **Clicking a UV tile flashes it on the model**, in 3D Paint and in the Bake tab, then fades out.
+- **Texture size is at the top of the 3D Paint panel** (no more scrolling), and with UV tiles it says plainly how big each tile is painted. The tile list under a texture set is now a tidy grid: each tile with its size picker, showing the size it is really painted at.
+- **Fixed: a pause after every stroke on big textures (8K).** After each stroke the app asked the graphics card whether it had run out of memory, which made everything wait until the card had finished all its work. It now asks only after the texture size changes or a project opens.
+- Fixed: a long UV tile list next to a texture set's name made the 3D Paint panel wider than the dock.
+
 ## 0.97.31
 
 - **"Hide the bumps below" now starts off** on new materials, so their height and normal add on top of what is below. Turn it on per material as before, or make it start on for every new material in **Preferences › Painting**. Materials in your existing projects keep their own setting.

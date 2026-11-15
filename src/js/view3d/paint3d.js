@@ -41,8 +41,13 @@ function buildP3Panel(){p3BakePanel();if(typeof stBrushRender==='function')stBru
   models.value=s.model;models.onchange=()=>{if(models.value==='__import'){models.value=s.model;importModel().then(()=>{p3.imported=v3.imported;buildP3Panel();});return;}s.model=models.value;v3LoadModel();buildP3Panel();};
   const active=p3.sets[p3.cur],tileBox=active&&udimBox(p3Binding(active)),side=tileBox&&tileBox.lay?p3.size:Math.round(doc.w/(tileBox?.nx||1));
   const sizes=[1024,2048,4096,...(MAX_DIM>=8192?[8192]:[])];
-  if(!sizes.includes(side))sizes.push(side);
-  box.append(el('div',{class:'sub',text:'Model'}),models,s.model==='imported'&&v3.imported?upTurnRow():'',s.model==='imported'&&v3.imported?smoothingRow('p3Sm_'):'',s.model==='matpreview'?el('button',{class:'btn sm',id:'p3PreviewMaps',text:'Load preview material and mesh maps',onclick:()=>studioPreviewMaps()}):'',
+  if(!sizes.includes(side)&&!(tileBox&&tileBox.tiles.length>1&&!tileBox.lay&&side<p3.size))sizes.push(side);
+  /* (0.97.32, Kenn) the texture size first, so it is not a scroll away; with UV tiles it is the size of each tile */
+  const kfmt=n=>n>=1024?(Math.round(n/102.4)/10)+'K':String(n),nT=tileBox?tileBox.tiles.length:0;
+  const sizeBox=el('div',{class:'p3sizebox',id:'p3SizeBox'},el('div',{class:'p3sizehead'},el('span',{class:'p3sizettl',text:nT>1?'Texture size per UV tile':'Texture size'}),el('span',{class:'p3sizenow',id:'p3SizeNow',text:p3Resolution()})),
+    seg(sizes.sort((a,b)=>a-b).map(n=>[n,kfmt(n)]),side,v=>p3Resize(+v),'Texture size'),
+    nT>1?el('p',{class:'note p3sizenote',text:tileBox.lay?'Tiles with their own size (in the list below) keep it; the others follow this size.':(side<p3.size?'The '+nT+' tiles share one canvas, so each is painted at '+side+' px here (the graphics card allows '+udimLim()+' px across). Give the important tiles their own size below to make the others smaller.':'Every tile is painted at '+side+' px. Give a tile its own size in the list below.')}):'');
+  box.append(sizeBox,el('div',{class:'sub',text:'Model'}),models,s.model==='imported'&&v3.imported?upTurnRow():'',s.model==='imported'&&v3.imported?smoothingRow('p3Sm_'):'',s.model==='matpreview'?el('button',{class:'btn sm',id:'p3PreviewMaps',text:'Load preview material and mesh maps',onclick:()=>studioPreviewMaps()}):'',
     el('div',{class:'sub',text:'Texture sets'}),p3SetsBox(),el('p',{class:'note',text:p3.ua?'One texture set per material. Its UV tiles (UDIMs) sit side by side on one canvas, so strokes, fills and blurs carry across tiles. Click a tile to see it on the flat canvas; export writes one picture per tile.':p3.udim?'Each material has a paintable texture set for every detected UV tile. A stroke starts on the tile under the cursor.':'One set of maps per material of the model. Click a set to paint it.'}),
     el('div',{class:'sub',text:'Layout'}),seg([['3d','3D'],['split','3D + 2D'],['2d','2D']],p3.layout,p3SetLayout,'Viewport layout'),
     el('div',{class:'sub',text:'Navigation'}),seg([['substance','Substance Painter'],['coat','3D-Coat']],v3nav.mode,v=>{setNav3d(v);buildP3Panel();},'Navigation style'),
@@ -50,8 +55,7 @@ function buildP3Panel(){p3BakePanel();if(typeof stBrushRender==='function')stBru
     el('p',{class:'note',text:v3nav.mode==='coat'?'Left paints. Right-drag turns, middle-drag moves, Ctrl+right-drag zooms (or the wheel). Left-drag off the model turns too.':'Left paints. Alt+left turns, Alt+middle moves, Alt+right zooms (or the wheel). Middle or right drag also moves.'}),
     el('p',{class:'note',text:'Ctrl + drag smooths and blends the paint. Shift-click joins the previous brush endpoint with a straight line. '+(v3PickKey()?'Hold '+v3PickKey()+' over the model to pick its colour (change it in Edit › Keyboard shortcuts).':'Colour picking has no hold key (Edit › Keyboard shortcuts).')+' Left/Right arrow keys step through the shades in the Color panel. Double-click empty space to reframe.'}),
     el('div',{class:'sub',text:'Project'}),el('div',{class:'chips'},el('button',{class:'btn sm',text:'Save project',title:'Save the model and all texture sets as a .gouache3d project (Ctrl+S here)',onclick:()=>saveP3Project(false)}),el('button',{class:'btn sm',text:'Open project…',onclick:()=>pickFile('open')})),
-    el('div',{class:'sub',text:'Select on the model'}),sel3Box(),
-    el('div',{class:'sub',text:'Texture size · '+p3Resolution()}),seg(sizes.sort((a,b)=>a-b).map(n=>[n,n>=1024&&n%1024===0?n/1024+'K':String(n)]),side,v=>p3Resize(+v),'Texture size'));p3ResolutionSync();}
+    el('div',{class:'sub',text:'Select on the model'}),sel3Box());p3ResolutionSync();}
 async function p3Resize(n){
   if(p3PaintBusy||tabDocs.hold||gfSaving||loadDepth)return false;
   const S=p3.sets[p3.cur],[w,h]=p3.ua&&S?udimDims(p3Binding(S),n):[n,n],oldW=doc.w,oldH=doc.h;
@@ -89,7 +93,7 @@ async function p3Resize(n){
     if(L.fill)fillRender(L);
     if(L.path&&L.path.kind!=='2d')pathRender(L);
   }
-  p3.size=n;p3.metadataVer=(p3.metadataVer||0)+1;p3Save();
+  v3.oomCheck=true;  p3.size=n;p3.metadataVer=(p3.metadataVer||0)+1;p3Save();
   if(S)S.resized=true;
   v3.mapsDirty=true;v3.editDirty=true;v3.dirty=true;
   fit();changedAll();updateStatus();buildP3Panel();
@@ -173,7 +177,7 @@ function p3SetsBox(){const box=el('div',{class:'p3sets',role:'listbox','aria-lab
       p3EyeBtn(S),el('span',{class:'p3sn',text:S.name,ondblclick:ev=>{ev.stopPropagation();p3RenameDialog(i);}}),S.tile?el('span',{class:'p3udims',text:String(S.tile.id),'aria-label':'UDIM '+S.tile.id,title:'UDIM tile '+S.tile.id}):tiles.length?el('span',{class:'p3udims',text:tiles.join(' · '),'aria-label':'UV tiles '+tiles.join(', '),title:'UDIM tiles detected: '+tiles.join(', ')}):null,el('button',{class:'btn sm p3rename',text:'Rename',title:'Name this texture set',onclick:ev=>{ev.stopPropagation();p3RenameDialog(i);}}),el('button',{class:'btn sm p3del',text:'×','aria-label':'Delete '+S.name,title:'Delete this texture set',onclick:ev=>{ev.stopPropagation();p3DeleteSet(i);}}));
     row.addEventListener('click',()=>{if(!S.missing)p3SwitchSet(i);});row.addEventListener('keydown',ev=>{if((ev.key==='Enter'||ev.key===' ')&&!S.missing){ev.preventDefault();p3SwitchSet(i);}});box.append(row);
     /* (0.95) UDIM: the set's tiles as small rows under it; click one to see that tile on the flat canvas */
-    if(p3.ua&&!S.tile&&tiles.length>0&&!S.missing)box.append(el('div',{class:'p3tiles','aria-label':'UV tiles of '+S.name},...(S.udimTiles||[]).map(T=>el('span',{class:'p3tilegrp'},el('button',{class:'btn sm p3tile',text:String(T.id),title:'Show tile '+T.id+' on the flat canvas','data-tile':String(T.id),onclick:ev=>{ev.stopPropagation();if(p3.cur!==i)p3SwitchSet(i,true);udimFrameTile(p3Binding(S),T);}}),udimTileSizeSel(p3Binding(S),T,i)))));});
+    if(p3.ua&&!S.tile&&tiles.length>0&&!S.missing)box.append(el('div',{class:'p3tilewrap'},el('div',{class:'p3tilehead'},el('span',{text:'UV tiles'}),el('span',{text:'size per tile'})),el('div',{class:'p3tiles','aria-label':'UV tiles of '+S.name},...(S.udimTiles||[]).map(T=>el('span',{class:'p3tilegrp'},el('button',{class:'btn sm p3tile',text:String(T.id),title:'Show tile '+T.id+' on the flat canvas','data-tile':String(T.id),onclick:ev=>{ev.stopPropagation();if(p3.cur!==i)p3SwitchSet(i,true);udimFrameTile(p3Binding(S),T);}}),udimTileSizeSel(p3Binding(S),T,i))))));});
   if((p3.deletedSets||[]).length)box.append(el('button',{class:'btn sm',id:'p3RestoreSets',text:'Restore deleted sets',title:'Recreate deleted texture sets with empty layers',onclick:p3RestoreSets}));
   return box;}
 

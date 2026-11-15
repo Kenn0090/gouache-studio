@@ -452,7 +452,9 @@ function v3Refresh(){if(!v3.on)return;/* a stroke made in the new viewer window:
     v3.mapsDirty=false;v3.editDirty=false;v3.lastFull=now;v3.dirty=true;v3SgDerive();
     /* (0.97.27, Georgian's 8K head kept showing a deleted layer) when the graphics card runs out of memory the model keeps its old
        textures: say so instead of silently showing an old picture */
-    if(gl.getError()===gl.OUT_OF_MEMORY&&!v3.oomSaid){v3.oomSaid=true;toast('The graphics card ran out of memory, so the model may show an old picture of the textures. Try a smaller texture size, 8-bit channels, or fewer channels (Texture Set Settings), then save and reopen.',12000);}}
+    /* (0.97.32, Kenn: "lags in between strokes" at 8K) asking the card for errors waits until it has finished ALL its work, so it
+       is asked only once after the texture size changes or a project opens (v3.oomCheck), never after ordinary strokes */
+    if(v3.oomCheck&&!stroke&&(v3.oomCheck=false,gl.getError()===gl.OUT_OF_MEMORY)&&!v3.oomSaid){v3.oomSaid=true;toast('The graphics card ran out of memory, so the model may show an old picture of the textures. Try a smaller texture size, 8-bit channels, or fewer channels (Texture Set Settings), then save and reopen.',12000);}}
   else if(v3.editDirty&&(stroke||v3.mapRegion?.finished)&&v3.mapRegion?.weld){const q=v3.mapRegion,r=q.r;
     if(r&&q.root===doc.root&&q.tex===v3.tex&&q.map===doc.map&&r[2]*r[3]<doc.w*doc.h*.25&&!(doc.w&(doc.w-1))&&!(doc.h&(doc.h-1))&&v3Needed().every(k=>v3.tex[k]?.hasMips)){
       withWeldMask(r,()=>{const maskLayer=stroke?.L.maskOf;const keys=new Set(q.keys|| (maskLayer?doc.maps:[doc.map,...stroke.o.extras.map(e=>e.key)])),needed=v3Needed();
@@ -623,6 +625,7 @@ function v3Render(F,flip){const g=v3.gpu;if(!g)return;gl.blendEquation(gl.FUNC_A
   if(F.overlays!==false&&!wireOnly&&!bake&&sel.active&&!sel.quick&&sel.t&&(ui.mode==='p3d'||v3.paintOn)){const R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:g.count/3};
     gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);useProg(P3.sel,Object.assign({},common,{uSel:sel.t.tex}));gl.bindVertexArray(g.vao);
     gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);gl.depthMask(true);gl.disable(gl.BLEND);}
+  if(F.overlays!==false&&typeof udimFlashDraw==='function')udimFlashDraw(g,common);
   if(F.overlays!==false&&!bake)sel3HoverDraw(g,common,F);
   if(s.wire)v3DrawWire(g,list,common);
   if(bake&&!(bk.fold>0)){bakeDrawHigh(common,F);bakeDrawCage(common);}
