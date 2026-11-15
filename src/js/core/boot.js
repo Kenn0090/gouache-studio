@@ -87,3 +87,6 @@ if(window.__gs)Object.assign(window.__gs,{maskBarSync,v3SetWireMode,v3WireMode,m
 if(window.__gs)Object.assign(window.__gs,{rt,rtTexVer});
 if(window.__gs)Object.assign(window.__gs,{vpRender,vpOpen,vpFocusDist,vpFocus,panelShown,lgzActive,postOf,lightRig});
 if(window.__gs)Object.assign(window.__gs,{hscr,scrProject,v3ViewProj,heal,MESH_WRAP_ONLY});
+if(window.__gs)Object.assign(window.__gs,{curvBands,curvBandsOn,cbOf,bakeCfg});
+if(window.__gs)Object.assign(window.__gs,{msSelect});
+if(window.__gs)Object.assign(window.__gs,{msGenDefaults});

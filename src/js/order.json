@@ -245,6 +245,7 @@
     "ui/texset-settings",
     "view3d/viewport-panels",
     "view3d/heal-screen",
+    "layers/curv-bands",
     "ui/effect-shelf",
     "ui/gen-shelf",
     "ui/history",

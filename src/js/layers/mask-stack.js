@@ -593,7 +593,8 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
   if(r.kind==='gen'){
     const o=out(),wear=MS_WEAR_GENS.includes(p.g),edgeMap=wear&&(msMeshTex('curvEdge')||msMeshTex('cv:curvEdge'));
     const paintDamage=MS_PAINT_DAMAGE.includes(p.g);
-    const curv0=!paintDamage&&(edgeMap||msMeshTex('curv')||msMeshTex('cv:curv')||msDocMap('curv',ctx)||msModelCurv());
+    const curvIn=!paintDamage&&(edgeMap||msMeshTex('curv')||msMeshTex('cv:curv')||msDocMap('curv',ctx)||msModelCurv());
+    const curv0=curvIn&&typeof cbGen==='function'?cbGen(curvIn,p,ctx):curvIn;/* (0.97.27) curvature detail: big / medium / small */
     let curv=wear||p.g==='builder'?curv0:msWideCurv(typeof msEdgeShape==='function'?msEdgeShape(curv0,p,ctx,r):curv0,p,ctx);/* (0.97.24) edge controls */
     const ao=!paintDamage&&(msMeshTex('ao')||msMeshTex('cv:ao')||msDocMap('ao',ctx));
     let ac=!paintDamage&&p.anchor?msAnchorCurv(p.anchor,ctx,p.uvWrap!==false):null;

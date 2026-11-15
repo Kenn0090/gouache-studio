@@ -107,6 +107,7 @@ function bakeDerive(){const r=bk.res,C=bakeCfg;for(const k of ['curv','curvEdge'
   else{const fromDoc=bk.curvSrc==='doc'&&doc.maps.includes('normal'),n=fromDoc?normalComposite(false,null):r.normal;if(!n)return;
     raw=makeTarget(doc.w,doc.h,16,false);const b=acquireD(n.depth),rad=Math.max(1,C.curvRadius||3);gaussian(n,b,Math.max(.8,rad*.35));
     run(P.f_ncurv,raw,{uN:b.tex,uWrap:!!doc.wrap,uStr:1.2*(C.curvStr||1),uMode:{int:0},uStep:rad,uFlipG:!!C.curvFlip});release(b);if(fromDoc)release(n);}
+  if(typeof cbBake==='function')raw=cbBake(raw);/* (0.97.27) curvature detail */
   if(!bkCurvP)bkCurvP=program(FS_BKCURV);const out=m=>{const t=makeTarget(doc.w,doc.h,doc.depth,false);run(bkCurvP,t,{uSrc:raw.tex,uEdges:C.curvEdges==null?1:C.curvEdges,uCreases:C.curvCreases==null?1:C.curvCreases,uMode:{int:m},uStr:str});return t;};
   r.curv=out(0);if(C.curvParts!==false){r.curvEdge=out(1);r.curvCrease=out(2);}disposeTarget(raw);}
 /* while baking: what is done so far, shown straight away */
@@ -417,7 +418,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
     if(T==='curv'){const flip=chk('bkCurvFlip','Flip green',!!C.curvFlip,v=>{C.curvFlip=v;});flip.hidden=C.curvSrc==='mesh';
       pg.append(on('curv'),el('div',{class:'sub',text:'From'}),seg([['mesh','The shape'],['normal','Baked normal'],['doc','Normal map']],C.curvSrc||'mesh',v=>{C.curvSrc=v;flip.hidden=v==='mesh';},'Curvature from'),
         note('The shape: measured on the high-poly (or the low-poly on its own), right on mirrored and flipped UVs. Baked normal: from the normal baked with it. Normal map: from the document’s own normal map. Flip green if edges and creases come out swapped on some parts.'),
-        flip,S('bkCurvR','Radius','curvRadius',1,32,1,v=>v+' px'),S('bkCurvS','Strength','curvStr',.1,4,.05,pct),S('bkCurvE','Edges','curvEdges',0,2,.05,pct),S('bkCurvC','Creases','curvCreases',0,2,.05,pct),
+        flip,S('bkCurvR','Radius','curvRadius',1,32,1,v=>v+' px'),S('bkCurvS','Strength','curvStr',.1,4,.05,pct),S('bkCurvE','Edges','curvEdges',0,2,.05,pct),S('bkCurvC','Creases','curvCreases',0,2,.05,pct),el('div',{class:'sub',text:'Curvature detail'}),...(typeof curvBandsSliders==='function'?curvBandsSliders(()=>C.curvBands,(k,v)=>{C.curvBands=Object.assign({},C.curvBands||{},{[k]:v});},'bkCb_'):[]),
         chk('bkCurvParts','Also make edges-only and creases-only maps',C.curvParts!==false,v=>{C.curvParts=v;}),
         note('Radius: how far around each point it looks (small: thin sharp edges; large: broad soft ones). Edges and Creases set the light and dark sides on their own.'));}
     if(T==='height')pg.append(on('height'),note('How far the high-poly is above (light) or below (dark) the low-poly, within Front and Back (Geometry).'));
