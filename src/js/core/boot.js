@@ -84,3 +84,4 @@ if(window.__gs)Object.assign(window.__gs,{tssMatSolo,paToChannel,v3ZoomLim,v3Cli
 if(window.__gs)Object.assign(window.__gs,{paEntries,skSetRefl,renderMatEd,tssRemove,tssAdd});
 if(window.__gs)Object.assign(window.__gs,{brushAlignRow,brushAlign3d});
 if(window.__gs)Object.assign(window.__gs,{maskBarSync,v3SetWireMode,v3WireMode,mk3});
+if(window.__gs)Object.assign(window.__gs,{rt,rtTexVer});

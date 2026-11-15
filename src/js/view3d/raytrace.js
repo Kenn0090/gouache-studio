@@ -19,7 +19,13 @@ async function rtScene(){const m=v3.mesh;if(!m||m.noUV)return null;if(rt.mesh===
   finally{rt.building=false;}}
 /* every texture set's maps in one texture array (rebuilt when the maps change) */
 const RT_MAPS=[['base',[0,0,0,0]],['rough',null],['metal',null],['nfinal',[.5,.5,1,1]]];
-function rtMaterials(g){const list=ui.mode==='p3d'&&typeof p3DrawList==='function'?p3DrawList():[{T:v3.tex}],key=v3.lastFull+':'+list.length+':'+(doc.maps||[]).join()+':'+(doc.workflow||'');
+/* (0.97.27, Kenn: "when painting it's flickering a lot") the traced copy of the textures follows every change, not only the full
+   refreshes (about once a second while painting): before, the ray-traced picture showed the textures from before the stroke, and the
+   paint only flashed up while the tracer restarted. While a stroke goes on, the copy is remade at most every 120 ms. */
+function rtTexVer(){const T=v3.tex||{};const v=['base','rough','metal','nfinal','emis','opac','sgBase'].map(k=>T[k]?T[k]._studioVer||0:'-').join('.');
+  const now=performance.now();if(v!==rt.texVer){if(!stroke||!rt.texVer||now-(rt.texVerAt||0)>120){rt.texVer=v;rt.texVerAt=now;}else{clearTimeout(rt.texVerT);rt.texVerT=setTimeout(()=>{v3.dirty=true;requestRender();},130);}}
+  return rt.texVer||'';}
+function rtMaterials(g){const list=ui.mode==='p3d'&&typeof p3DrawList==='function'?p3DrawList():[{T:v3.tex}],key=v3.lastFull+':'+rtTexVer()+':'+list.length+':'+(doc.maps||[]).join()+':'+(doc.workflow||'');
   if(rt.mat&&rt.matKey===key)return rt.mat;const S=1024,L=list.length*4;if(rt.mat)gl.deleteTexture(rt.mat);
   const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D_ARRAY,tex);gl.texImage3D(gl.TEXTURE_2D_ARRAY,0,gl.RGBA8,S,S,L,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
   const fb=gl.createFramebuffer(),sgW=doc.workflow==='spec',sgK={base:'sgBase',metal:'sgMetal',rough:'sgRough'},has=k=>k==='nfinal'?doc.maps.includes('height')||doc.maps.includes('normal')||!!meshNormalBase():doc.maps.includes(k)||(sgW&&(k==='metal'||k==='rough'));
@@ -90,7 +96,7 @@ function rtStep(S,g,o){const s=v3s(),PR=rtProgs(),E=envUniforms(),a=s.sunAz*Math
   const t=S.a;S.a=S.b;S.b=t;S.n++;}
 const envG=()=>env;
 /* ---- the 3D view's "Ray traced" mode ---- */
-function rtViewKey(F){const c=v3.cam,s=v3s();return [F.w,F.h,c.yaw,c.pitch,c.dist,c.tx,c.ty,c.tz,s.fov,s.env,s.envRot,s.envI,s.envSun,s.sunAz,s.sunEl,s.envBg,s.bg,v3.lastFull,rt.ver,env.key].join();}
+function rtViewKey(F){const c=v3.cam,s=v3s();return [F.w,F.h,c.yaw,c.pitch,c.dist,c.tx,c.ty,c.tz,s.fov,s.env,s.envRot,s.envI,s.envSun,s.sunAz,s.sunEl,s.envBg,s.bg,v3.lastFull,rt.texVer||'',rt.ver,env.key].join();}
 function rtViewDraw(F){const g=rt.mesh===v3.mesh?rt.g:null;if(!g){if(v3.infoEl)v3.infoEl.textContent='Preparing ray tracing…';rtScene().then(()=>{v3.dirty=true;requestRender();});return null;}
   const E=envUniforms();if(envOf(v3s())!=='none'&&!E.uEnvOn){setTimeout(()=>{v3.dirty=true;requestRender();},100);return null;}
   rtMaterials(g);let S=rt.view;const key=rtViewKey(F);if(!S||S.w!==F.w||S.h!==F.h){rtFree(S);S=rt.view=rtSession(F.w,F.h);}

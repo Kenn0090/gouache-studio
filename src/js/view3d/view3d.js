@@ -449,7 +449,10 @@ function v3Refresh(){if(!v3.on)return;/* a stroke made in the new viewer window:
     const t=compositeMap(k);v3MapTex(k,t);release(t);};
   const one=k=>{if(typeof pnBegin==='function')pnBegin(k);try{one0(k);}finally{panState=null;}};
   if(full){withWeldMask(null,()=>{for(const k of v3Needed())one(k);if(v3s().disp&&doc.maps.includes('height')){const t=compositeMap('height');v3MapTex('height',t);release(t);}});
-    v3.mapsDirty=false;v3.editDirty=false;v3.lastFull=now;v3.dirty=true;v3SgDerive();}
+    v3.mapsDirty=false;v3.editDirty=false;v3.lastFull=now;v3.dirty=true;v3SgDerive();
+    /* (0.97.27, Georgian's 8K head kept showing a deleted layer) when the graphics card runs out of memory the model keeps its old
+       textures: say so instead of silently showing an old picture */
+    if(gl.getError()===gl.OUT_OF_MEMORY&&!v3.oomSaid){v3.oomSaid=true;toast('The graphics card ran out of memory, so the model may show an old picture of the textures. Try a smaller texture size, 8-bit channels, or fewer channels (Texture Set Settings), then save and reopen.',12000);}}
   else if(v3.editDirty&&(stroke||v3.mapRegion?.finished)&&v3.mapRegion?.weld){const q=v3.mapRegion,r=q.r;
     if(r&&q.root===doc.root&&q.tex===v3.tex&&q.map===doc.map&&r[2]*r[3]<doc.w*doc.h*.25&&!(doc.w&(doc.w-1))&&!(doc.h&(doc.h-1))&&v3Needed().every(k=>v3.tex[k]?.hasMips)){
       withWeldMask(r,()=>{const maskLayer=stroke?.L.maskOf;const keys=new Set(q.keys|| (maskLayer?doc.maps:[doc.map,...stroke.o.extras.map(e=>e.key)])),needed=v3Needed();
