@@ -1,3 +1,8 @@
+## Gouache Studio 0.97.30
+
+- **Triplanar normals** preserve the baked surface shading when the material's normal texture is flat, including across mirrored UV islands.
+- **Cylindrical projection** respects Backface culling in the roughness, height and normal channels, so excluded caps keep the material detail beneath the wrap.
+
 ## Gouache Studio 0.97.29
 
 - Fixed: dragging the Navigator past its edge no longer breaks the app.

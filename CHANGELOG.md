@@ -1,3 +1,8 @@
+## 0.97.30
+
+- **Triplanar normals** preserve the baked surface shading when the material's normal texture is flat, including across mirrored UV islands.
+- **Cylindrical projection** respects Backface culling in the roughness, height and normal channels, so excluded caps keep the material detail beneath the wrap.
+
 ## 0.97.29
 
 - **Fixed: dragging the Navigator past its edge broke the whole app** (the view jumped away and no click worked until a restart). The navigator now stays put under the pointer while you drag it, and a broken view puts itself back on screen.
