@@ -36,7 +36,7 @@ uniform int uEnvOn; uniform float uEnvRot; uniform float uEnvI; uniform sampler2
 /* the texture set's shader: 0 standard, 1 skin, 2 anisotropic metal, 3 velvet, 4 toon, 5 cel, 6 spec/gloss view, 7 panner, 8 retro (N64 / PSX); its settings */
 uniform int uMetalView; uniform float uMetalRough; uniform bool uWorldNormalView;
 uniform int uBevelMaterial; uniform float uBevelMetal; uniform float uBevelRough;
-uniform int uCxN; uniform vec4 uCxA[8]; uniform vec4 uCxB[8]; uniform vec4 uCxC[8]; uniform vec4 uCxR; uniform float uTime; uniform float uFurK; uniform vec4 uSkin; uniform vec4 uShE; uniform int uSh; uniform vec4 uShP; uniform vec4 uShQ; uniform vec3 uShC; uniform vec3 uShD;
+uniform int uSkinPass; uniform int uCxN; uniform vec4 uCxA[8]; uniform vec4 uCxB[8]; uniform vec4 uCxC[8]; uniform vec4 uCxR; uniform float uTime; uniform float uFurK; uniform vec4 uSkin; uniform vec4 uShE; uniform int uSh; uniform vec4 uShP; uniform vec4 uShQ; uniform vec3 uShC; uniform vec3 uShD;
 /* the Panner shader (0.40): each map slid by its own offset */
 uniform vec2 uPB; uniform vec2 uPR; uniform vec2 uPM; uniform vec2 uPN; uniform vec2 uPA; uniform vec2 uPE; uniform vec2 uPO;
 const float PI=3.14159265;
@@ -226,7 +226,7 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
   float thick=(uHas&512)!=0?skP.r:(uHas&128)!=0?mapSample(uThick,uv).r:uShP.w, skS=uShP.y*skP.b, skT=uSkin.z*skP.g;
   /* (0.97.26, like Marmoset's Subsurface Scatter) translucency colour uShD, translucency scatter uSkin.w, fuzz amount/scale/occlusion uShE.xyz with its map in skP.a and colour uShQ.xyw;
      with Specular reflectivity (uHas 256 outside Spec/Gloss) the skin's shine comes from the Specular colour map */
-  vec3 skF0=(uHas&256)!=0?F0:vec3(0.028), skTC=clamp(uShD,0.02,1.0), skFC=lin(vec3(uShQ.x,uShQ.y,uShQ.w)); float skFz=uShE.x*skP.a, skFR=pow(1.0-NdV,max(uShE.y,0.2)*3.0);
+  vec3 skDiffL=vec3(0.0),skEnvL=vec3(0.0); vec3 skF0=(uHas&256)!=0?F0:vec3(0.028), skTC=clamp(uShD,0.02,1.0), skFC=lin(vec3(uShQ.x,uShQ.y,uShQ.w)); float skFz=uShE.x*skP.a, skFR=pow(1.0-NdV,max(uShE.y,0.2)*3.0);
   if(uSh==1){ /* RGB diffuse wrap and thickness attenuation; two surface specular lobes. */
     vec3 Ns=normalize(mix(N,Ng,uShP.z)),sss=clamp(skC,0.02,1.0),wrap=uShP.x*skP.b*mix(vec3(0.8,0.38,0.18),sss,0.6);
     vec3 dl=max((vec3(dot(Ns,L))+wrap)/(1.0+wrap),0.0)/(1.0+wrap);
@@ -236,6 +236,7 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
     float sr=clamp(mix(rough,uSkin.x,0.75),0.08,1.0);
     vec3 surface=studioDirect(N,V,L,vec3(0.0),skF0,sr,0.0);
     surface+=studioDirect(N,V,L,vec3(0.0),skF0*1.43,max(sr*0.38,0.08),0.0)*uShQ.z*0.35;
+    skDiffL=((1.0-F)*(1.0-metal)/PI*dl)*visibility*uSunI*3.0+transmitted*uSunI*1.5;
     col=((1.0-F)*(1.0-metal)*alb/PI*dl+surface)*visibility*uSunI*3.0+transmitted*alb*uSunI*1.5;
     col+=skFC*skFz*skFR*(0.35+0.65*max(dot(N,L),0.0))*mix(1.0,ao,uShE.z)*visibility*uSunI*1.5;
   }else col=(dif+spec)*NdL*uSunI*3.0*visibility;
@@ -279,6 +280,7 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
   float specAO=clamp(pow(NdV+ao,exp2(-16.0*rough-1.0))-1.0+ao,0.0,1.0);
   if(uSh==1){vec3 Ns=normalize(mix(N,Ng,uShP.z)),attenuation=exp(-max(thick,0.0)*uSkin.y/skTC);
     envD=envDif(Ns)*alb*(1.0-metal)*(1.0-Fr)+envDif(-Ns)*attenuation*skTC*alb*skT*0.25+skFC*skFz*skFR*envDif(N)*0.6;
+    skEnvL=envDif(Ns)*(1.0-metal)*(1.0-Fr)+envDif(-Ns)*attenuation*skTC*skT*0.25;
     float sr=clamp(mix(rough,uSkin.x,0.75),0.08,1.0);vec2 sab=envBRDF(NdV,sr);
     envS=envSpec(R,sr)*(skF0*sab.x+sab.y)+envSpec(R,max(sr*0.38,0.08))*(skF0*1.43*sab.x+sab.y)*uShQ.z*0.35;}
   if(uSh==3){ envS+=lin(uShC)*uShP.x*envDif(N)*pow(1.0-NdV,max(uShP.z,0.5)*3.0+1.0); }
@@ -289,6 +291,9 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
     if(m==1){ o=vec4(pow(dcol,vec3(1.0/2.2)),1.0); return; } if(m==2){ o=vec4(pow(scol,vec3(1.0/2.2)),1.0); return; } if(m==3){ o=vec4(vec3(1.0-rough),1.0); return; }
     if(m==4){ col=envS*uSkyI*ao; col*=uExpo; col=tone(col); o=vec4(pow(clamp(col,0.0,1.0),vec3(1.0/2.2)),1.0); return; } }
   col+=(envD*ao+envS*specAO)*uSkyI;
+  /* (0.97.27) skin blur, first pass: only the light under the skin (diffuse), for the screen-space blur (skin-blur.js) */
+  if(uSkinPass==1){ vec3 Ls=skDiffL*uLightColor+skEnvL*ao*uSkyI; o=vec4(Ls/(1.0+Ls),1.0); return; }/* the light alone, encoded */
+  if(uSkinPass==2){ o=vec4(sqrt(clamp(alb,0.0,1.0)),1.0); return; }/* the skin colour, so it stays sharp */
   if(uSh==18){
     float grit=sin(dot(vP,vec3(97.1,83.7,53.3)))*sin(dot(vP,vec3(149.4,-63.1,79.8)));
     float light=clamp((dot(N,L)*0.58+0.42)*mix(0.18,1.0,visibility),0.0,1.0);
@@ -616,6 +621,7 @@ function v3Render(F,flip){const g=v3.gpu;if(!g)return;gl.blendEquation(gl.FUNC_A
   if(F.overlays!==false&&!bake&&(v3.paintOn||ui.mode==='p3d')){drawMir3(VP);drawMir3Cursors(F,common);}
   gl.bindVertexArray(vao);gl.disable(gl.DEPTH_TEST);
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,F.rf);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  if(!wireOnly&&!bake&&!mv&&typeof skinBlurPass==='function')skinBlurPass(F,C,list,common,flip,g);
   if(F.px)F.px.valid=false;if(!wireOnly&&!bake&&!mv&&typeof v3Post==='function')v3Post(F);v3.postDirty=false;}
 /* after the 2D view: refresh maps if needed, redraw the model if anything changed, copy it into the pane */
 /* (0.31.1) how big the model is drawn while painting: 1 full, .75, .5 (older setting paintHalf = .5) */

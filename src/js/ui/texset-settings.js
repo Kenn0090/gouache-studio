@@ -77,3 +77,24 @@ buildMapBrushSection=function(box,what){if(doc.maps.length<2||ui.mode==='anim')r
   box.append(sec);};
 /* the channel buttons are a main brush setting (as in Painter), not an Advanced one: shown in Simple mode, right before the setting groups */
 {const f=brOrganize;brOrganize=function(box){const r=f.apply(this,arguments);try{const s=box&&box.querySelector('.mapbrush');if(s){s.classList.remove('br-adv');const g=box.querySelector(':scope>details.brgrp,:scope>.brg3');if(g&&g!==s)g.before(s);}}catch(e){}return r;};}
+
+/* ---- (0.97.27, Kenn: Painter's Texture Set Settings) Normal mixing, Ambient occlusion mixing, UV padding ----
+   Normal mixing Combine blends each layer's normal detail with the normals below it (reoriented normal blending, blend mode 26);
+   Replace covers them (as before). AO mixing Multiply darkens with every layer's occlusion; Normal covers. Both only change
+   layers that keep their channel's default blend mode; materials that hide the bumps below still replace. Stored per set in
+   doc.mapDef['mix:normal'] / ['mix:ao']. UV padding is the export's padding (texCfg.pad / padPx), shown here as in Painter. */
+MODES[26]='Normal combine';
+const TSS_NMIX=()=>(doc.mapDef&&doc.mapDef['mix:normal'])||'replace',TSS_AOMIX=()=>(doc.mapDef&&doc.mapDef['mix:ao'])||'normal';
+{const f=mapModeOf;mapModeOf=function(n,k){if(n&&n.type!=='group'&&(k==='normal'||k==='ao')){const m=n.mapModes&&n.mapModes[k];
+    if(m==null){if(k==='normal'&&TSS_NMIX()==='combine'&&!(n.fill&&n.fill.coverH!==false))return 26;if(k==='ao'&&TSS_AOMIX()==='multiply')return 1;}}
+  return f.apply(this,arguments);};}
+function tssSetMix(key,v){const before=doc.mapDef[key],put=x=>{doc.mapDef=Object.assign({},doc.mapDef);if(x==null)delete doc.mapDef[key];else doc.mapDef[key]=x;changedAll();if(typeof v3!=='undefined')v3.mapsDirty=true;tssRender();};
+  put(v);pushUndo({label:key==='mix:normal'?'Normal mixing':'AO mixing',refs:[],undo(){put(before);},redo(){put(v);}});}
+function tssMixBox(){const sel=(id,label,opts,cur,on)=>{const s=el('select',{id,class:'shsel','aria-label':label},...opts.map(([v,t])=>el('option',{value:v,text:t})));s.value=cur;s.onchange=()=>on(s.value);return el('div',{class:'frow'},el('span',{text:label}),s);};
+  const pad=texCfg.pad||'none',kids=[sel('tssNmix','Normal mixing',[['combine','Combine'],['replace','Replace']],TSS_NMIX(),v=>tssSetMix('mix:normal',v)),
+    sel('tssAomix','Ambient occlusion mixing',[['multiply','Multiply'],['normal','Normal']],TSS_AOMIX(),v=>tssSetMix('mix:ao',v)),
+    sel('tssPad','UV padding',TEX_PAD_MODES,pad,v=>{texCfg.pad=v;tssRender();})];
+  if(/dilate/.test(pad))kids.push(makeSlider({id:'tssPadPx',label:'Padding width',min:1,max:64,step:1,value:texCfg.padPx??16,fmt:v=>v+' px',onInput:v=>{texCfg.padPx=v;}}).el);
+  return el('div',{class:'tssmix',id:'tssMix'},el('div',{class:'sub',text:'Mixing and padding'}),...kids,
+    el('p',{class:'note',text:'Combine blends each layer’s normal detail with the detail below (like Painter); Replace covers it. UV padding grows colour past the edges of the UV islands in exported textures, so seams don’t show.'}));}
+{const f=tssRender;tssRender=function(){f.apply(this,arguments);const box=document.getElementById('tssBody');if(!box||ui.mode!=='p3d'||box.querySelector('#tssMix'))return;try{const note=box.lastElementChild;box.insertBefore(tssMixBox(),note);}catch(e){console.warn('mixing',e);}};}

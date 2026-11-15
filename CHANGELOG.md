@@ -1,3 +1,8 @@
+## 0.97.27
+
+- **Normal mixing, Ambient occlusion mixing and UV padding** in Texture Set Settings, like Painter. Normal mixing **Combine** blends each layer's normal detail with the detail below it; **Replace** covers it (as before). AO mixing **Multiply** darkens with every layer's occlusion. UV padding sets how far colour grows past the UV islands' edges in exported textures.
+- **Real skin blur, like Marmoset:** the light under the skin now spreads across the surface (red furthest), while painted detail, shine and fuzz stay sharp. **Skin blur** and **Model height (cm)** are in the skin settings; Scatter Depth is now measured in real millimetres on a model of that height.
+
 ## 0.97.26
 
 - **Paint skin like in Painter:** three new channels, **Scattering** (where light sinks in and glows under the surface), **Scatter colour** (the colour it takes, e.g. red for skin, green for leaves) and **Translucency** (where light shines through thin parts like ears). Picking the **Skin** shader adds them to the texture set by itself. Unpainted areas use the Skin settings in the Shader panel, as before.

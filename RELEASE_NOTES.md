@@ -1,3 +1,8 @@
+## Gouache Studio 0.97.27
+
+- Normal mixing (Combine / Replace), AO mixing and UV padding in Texture Set Settings.
+- Real skin blur like Marmoset: light spreads under the skin, painted detail stays sharp; Model height for real millimetres.
+
 ## Gouache Studio 0.97.26
 
 - Paint Scattering, Scatter colour and Translucency for the Skin shader (added when you pick Skin).
