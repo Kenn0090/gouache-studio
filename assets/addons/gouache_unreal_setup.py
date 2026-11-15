@@ -785,21 +785,78 @@ def build_master(look, kind, alpha, S, existing=None):
         g.link(soft, "", rg, "So")
         prop(rg, "", MP.MP_ROUGHNESS)
     elif look == "Skin":
+        # (0.97.27) skin like Marmoset's: scatter colour (or its map), scatter amount, translucency, fuzz, skin roughness, oiliness
         mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_SUBSURFACE)
+        try:
+            EAL.set_metadata_tag(mat, "gouache_skin", str(SKIN_VERSION))
+        except Exception:
+            pass
+        skm = g.texture("SkinMaskTex", white_lin, SAMP.SAMPLERTYPE_MASKS, -900, 900)
+        scm = g.texture("ScatterColourTex", white, SAMP.SAMPLERTYPE_COLOR, -900, 1200)
+        g.link(uvn, "", skm, "UVs")
+        g.link(uvn, "", scm, "UVs")
         col = vector("BloodColour", [0.85, 0.25, 0.18, 1])
-        prop(col, "RGB", MP.MP_SUBSURFACE_COLOR)
+        tcol = vector("TranslucencyColour", [1, 0.45, 0.25, 1])
+        hsc = scalar("HasScatterColour", 0)
+        trn = scalar("Translucency", 0.5)
+        sub = g.custom("float3 s = lerp(C, SC, H); return lerp(s, Tc, saturate(Tr * M.g) * 0.5);", ["C", "SC", "H", "Tc", "Tr", "M"], F3, -200, 900)
+        g.link(col, "RGB", sub, "C")
+        g.link(scm, "RGB", sub, "SC")
+        g.link(hsc, "", sub, "H")
+        g.link(tcol, "RGB", sub, "Tc")
+        g.link(trn, "", sub, "Tr")
+        g.link(skm, "RGB", sub, "M")
+        prop(sub, "", MP.MP_SUBSURFACE_COLOR)
         amt = scalar("ScatterStrength", 0.5)
-        prop(amt, "", MP.MP_OPACITY)
+        op = g.custom("return saturate(A * M.r);", ["A", "M"], F1, -200, 1050)
+        g.link(amt, "", op, "A")
+        g.link(skm, "RGB", op, "M")
+        prop(op, "", MP.MP_OPACITY)
+        fz = scalar("Fuzz", 0)
+        fzc = vector("FuzzColour", [1, 1, 1, 1])
+        fzs = scalar("FuzzScale", 1)
+        fzo = scalar("FuzzOcclusion", 1)
+        N = g.node(unreal.MaterialExpressionPixelNormalWS, -500, 1300)
+        V = g.node(unreal.MaterialExpressionCameraVectorWS, -500, 1400)
+        em = g.custom("float nv = saturate(dot(normalize(N), normalize(V))); float f = Fz * M.b * pow(1.0 - nv, 3.0 / max(Sc, 0.2)) * lerp(1.0, Ao, Oc); return E + FC * f * 0.15;",
+                      ["N", "V", "Fz", "M", "Sc", "Ao", "Oc", "E", "FC"], F3, -200, 1250)
+        g.link(N, "", em, "N")
+        g.link(V, "", em, "V")
+        g.link(fz, "", em, "Fz")
+        g.link(skm, "RGB", em, "M")
+        g.link(fzs, "", em, "Sc")
+        g.link(occl, "", em, "Ao")
+        g.link(fzo, "", em, "Oc")
+        g.link(emi, "RGB", em, "E")
+        g.link(fzc, "RGB", em, "FC")
+        prop(em, "", MP.MP_EMISSIVE_COLOR)
+        srg = scalar("SkinRoughness", 0.45)
+        rg = g.custom("return lerp(R, S, 0.75);", ["R", "S"], F1, -200, 1450)
+        g.link(rough, "", rg, "R")
+        g.link(srg, "", rg, "S")
+        prop(rg, "", MP.MP_ROUGHNESS)
+        oil = scalar("Oiliness", 0.3)
+        spc = g.custom("return 0.5 + O * 0.4;", ["O"], F1, -200, 1550)
+        g.link(oil, "", spc, "O")
+        prop(spc, "", MP.MP_SPECULAR)
     finish(mat)
     return mat
 
 
 MASTER_FIXED = 5  # 5 (0.96.4): every node that feeds the material carries a note saying where it goes
+SKIN_VERSION = 2  # 2 (0.97.27): the skin master reads the skin maps, translucency and fuzz; older Skin masters are rebuilt
 
 
 def master_version(mat):
     try:
         return int(EAL.get_metadata_tag(mat, "gouache_master") or 0)
+    except Exception:
+        return 0
+
+
+def skin_version(mat):
+    try:
+        return int(EAL.get_metadata_tag(mat, "gouache_skin") or 0)
     except Exception:
         return 0
 
@@ -810,6 +867,9 @@ def master_for(S):
     path = master_path(look, alpha)
     if EAL.does_asset_exist(path):
         mat = EAL.load_asset(path)
+        if look == "Skin" and skin_version(mat) < SKIN_VERSION:
+            unreal.log("Gouache: rebuilding " + path + " (the skin now reads its scatter, translucency and fuzz maps)")
+            return build_master(look, S["kind"], alpha, S, mat)
         if master_version(mat) < MASTER_FIXED:
             unreal.log("Gouache: rebuilding " + path + " (made by an older Gouache; the new one labels where each node goes)")
             return build_master(look, S["kind"], alpha, S, mat)
@@ -855,13 +915,13 @@ def make_instance(S, master):
         mi = TOOLS.create_asset(name, DEST, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
     parent = variant_parent(S, master) if S.get("variant") else master
     MEL.set_material_instance_parent(mi, parent)
-    for key, fname, kind in (("BaseColor", None, "color"), ("ORM", None, "data"), ("Normal", None, "normal"), ("Emissive", None, "color")):
+    for key, fname, kind in (("BaseColor", None, "color"), ("ORM", None, "data"), ("Normal", None, "normal"), ("Emissive", None, "color"), ("SkinMask", None, "data"), ("ScatterColour", None, "color")):
         f = S["tex"].get(key)
         if not f:
             continue
         tex = import_texture(f, kind)
         if tex is not None:
-            pname = {"BaseColor": "BaseColorTex", "ORM": "ORMTex", "Normal": "NormalTex", "Emissive": "EmissiveTex"}[key]
+            pname = {"BaseColor": "BaseColorTex", "ORM": "ORMTex", "Normal": "NormalTex", "Emissive": "EmissiveTex", "SkinMask": "SkinMaskTex", "ScatterColour": "ScatterColourTex"}[key]
             MEL.set_material_instance_texture_parameter_value(mi, pname, tex)
     # a variant's look settings come from its parent; the asset only sets the rest
     set_params(mi, S["scalars"], S["vectors"], skip=set(S.get("lookKeys", [])) if S.get("variant") else ())

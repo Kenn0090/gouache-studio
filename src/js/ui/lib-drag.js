@@ -12,7 +12,7 @@ function libIdShow(on){on=!!on&&ui.mode==='p3d'&&!!(doc.meshMaps&&doc.meshMaps.i
 function libClear(){stage.classList.remove('texture-drop');const pn=document.getElementById('pane3d');if(pn)pn.classList.remove('libover');document.querySelectorAll('.lrow.drop-into,.lrow.drop-mask,.meshslot.dropon,.txmix-drop.dropon,.fillrow.material-drop,.msrow.drop-mask,.msrow.drop-into').forEach(r=>r.classList.remove('drop-into','drop-mask','dropon','material-drop'));dropLine.hidden=true;const f=$('#favoritesBody');if(f)f.classList.remove('dropon');}
 /* where a drop at (x, y) goes: {mask: layer} for smart masks, {at: {parent, index}} for the rest */
 function libTarget(x,y,D){D=D||libDrag.d;
-  const channel=document.elementFromPoint(x,y)?.closest('[data-material-channel]');if(D.kind==='tex'&&channel&&isLayer(doc.active)&&doc.active.fill)return {materialChannel:channel.dataset.materialChannel,row:channel};
+  const channel=document.elementFromPoint(x,y)?.closest('[data-material-channel]');if((D.kind==='tex'||D.kind==='project'&&D.rec&&D.rec.kind==='tex')&&channel&&isLayer(doc.active)&&doc.active.fill)return {materialChannel:channel.dataset.materialChannel,row:channel};
   const favorite=document.elementFromPoint(x,y)?.closest('#favoritesBody');if(favorite)return ['filter','style'].includes(D.kind)?null:{favorite:true};
   /* (0.96.1, Kenn) a texture tile let go on a picture box (a generator's Grunge, Slope blur's guide…) */
   const tdrop=document.elementFromPoint(x,y)?.closest('.fxddrop');if(D.kind==='tex'&&tdrop&&tdrop._texDrop)return {texDrop:tdrop._texDrop,row:tdrop};
@@ -68,7 +68,7 @@ function libDrop(e){const D=libDrag.d;if(!D||e.pointerId!==D.id)return;libDrag.d
 }
 window.addEventListener('pointerup',libDrop,true);window.addEventListener('pointercancel',e=>{if(libDrag.d&&e.pointerId===libDrag.d.id){libDrag.d=null;libGhost.hidden=true;libClear();libIdShow(false);document.body.classList.remove('libdragging');}},true);
 /* also used by tests */
-function libApply(kind,rec,T){if(T.texDrop&&kind==='tex')return T.texDrop({kind:rec.kind,id:rec.id,name:rec.name});if(T.materialChannel&&kind==='tex')return txToChannel(rec,T.materialChannel);if(T.favorite)return favoritesAdd(kind,rec);if(kind==='meshmap')return p3MapLibraryDrop(rec,T.meshSlot);if(kind==='project')return paUse(rec,T);if(rec&&rec.bundled&&!(rec.fill&&rec.imgs)){gmLoad(rec).then(()=>libApply(kind,rec,T)).catch(e=>toast('Could not load “'+rec.name+'”: '+(e.message||e)));return;}if(T.mesh)return libMeshDrop(kind,rec,T);
+function libApply(kind,rec,T){if(T.texDrop&&kind==='tex')return T.texDrop({kind:rec.kind,id:rec.id,name:rec.name});if(T.materialChannel&&kind==='tex')return txToChannel(rec,T.materialChannel);if(T.materialChannel&&kind==='project')return paToChannel(rec,T.materialChannel);if(T.favorite)return favoritesAdd(kind,rec);if(kind==='meshmap')return p3MapLibraryDrop(rec,T.meshSlot);if(kind==='project')return paUse(rec,T);if(rec&&rec.bundled&&!(rec.fill&&rec.imgs)){gmLoad(rec).then(()=>libApply(kind,rec,T)).catch(e=>toast('Could not load “'+rec.name+'”: '+(e.message||e)));return;}if(T.mesh)return libMeshDrop(kind,rec,T);
   if(kind==='gen'){return genApply(T.mask,rec);}
   if(kind==='filter')return shelfFilterApply(rec,T);
   if(kind==='style')return shelfStyleApply(rec,T.layer);

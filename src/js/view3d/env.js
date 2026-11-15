@@ -132,7 +132,9 @@ function envSettingsBox(S,pre){pre=pre||'v3';if(pre!=='v3'){const S0=S;S=(id,...
   box.append(S('v3Ex','Exposure','expo',.2,3,.05,pct),toneRow(s));
   if(k!=='none'&&k!=='custom'){const it=ENV_LIST.find(e=>e[0]===k);if(it)box.append(el('p',{class:'note',text:'“'+it[1]+'” by '+it[3]+', from Poly Haven (CC0).'}));}
   box.append(el('div',{class:'chips resetrow'},el('button',{class:'btn sm',id:pre+'EnvReset',text:'Reset lighting',title:'Back to the starting environment, sun and exposure',onclick:()=>{for(const q of ['env','envRot','envI','envBg','envBlur','envSun','sunAz','sunEl','sunI','skyI','expo','tone'])s[q]=V3D_DEFAULTS[q];if(typeof envEnsure==='function')envEnsure();redo();}})));
-  if(typeof lightRigRow==='function'&&(ui.mode==='p3d'||ui.mode==='bake'))box.append(lightRigRow());/* (0.80) your own lights */
+  if(typeof lightRigRow==='function'&&ui.mode==='bake')box.append(lightRigRow());/* (0.80) your own lights */
+  /* (0.97.27) in 3D Paint the light rig lives in the Lights panel (button on the 3D view) */
+  if(ui.mode==='p3d'&&typeof vpOpen==='function')box.append(el('div',{class:'chips'},el('button',{class:'btn sm',type:'button',id:pre+'LightsOpen',text:'Lights…',title:'Add and move your own lights (Lights panel)',onclick:e=>vpOpen('v3lights',e.currentTarget)})));
   return box;}
 
 /* (0.40.2, Kenn) tone mapping list: Filmic, ACES, AgX, PBR Neutral, Soft, None */

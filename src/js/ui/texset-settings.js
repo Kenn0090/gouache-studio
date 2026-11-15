@@ -24,7 +24,7 @@ function tssSetFormat(k,bits){if(!doc.maps.includes(k)||tssFmt(k)===bits)return;
 /* ---- add / remove a channel (setDocMaps is undoable; removing asks when something was painted) ---- */
 function tssAdd(k){if(k==='own'){const free=MAP_USER.find(u=>!doc.maps.includes(u));if(!free){toast('All eight channels of your own are in use.');return;}k=free;}
   if(doc.maps.includes(k))return;setDocMaps(doc.maps.concat(k),MAP_DEFS[k].label);tssRender();}
-function tssRemove(k){if(k==='base'||!doc.maps.includes(k))return;const used=paintLayers().some(L=>hasMap(L,k)),go=()=>{setDocMaps(doc.maps.filter(x=>x!==k),'Remove '+MAP_DEFS[k].label);tssRender();};
+function tssRemove(k){if(k==='base'||!doc.maps.includes(k))return;const used=paintLayers().some(L=>hasMap(L,k)),go=()=>{setDocMaps(doc.maps.filter(x=>x!==k),'Remove '+MAP_DEFS[k].label);tssRender();if(typeof renderMatEd==='function')renderMatEd(true);if(typeof buildBrushPanel==='function')buildBrushPanel();};
   if(used)confirmDlg('Remove '+MAP_DEFS[k].label+'?','What was painted in '+MAP_DEFS[k].label+' is taken out of this texture set (Undo brings it back).','Remove',go);else go();}
 function tssAddable(){const other=WF_KEYS[doc.workflow==='spec'?'metal':'spec'];return MAP_ORDER.filter(k=>!doc.maps.includes(k)&&!other.includes(k)&&!(doc.workflow==='spec'&&(k==='specl'||k==='specc'))&&!MAP_DEFS[k].user);}
 /* ---- the panel ---- */
@@ -52,10 +52,23 @@ function tssInit(){if(dkSecs.tsset)return;const sec=el('section',{class:'sec',id
 
 /* ---- channel buttons at the top of the material editor ---- */
 function tssMatChips(){const box=document.getElementById('matEdBody'),L=doc.active;if(!box||!L||!L.fill||box.querySelector('#tssMatChips'))return;
-  const cards=[...box.querySelectorAll('.fillcard[data-material-channel]')];if(!cards.length)return;
+  /* (0.97.27, Kenn: "if I change the reflectivity type it should be represented in the material editor") Specular reflectivity
+     shows Specular colour in place of Metallic, Metalness the other way round */
+  const spR=typeof skReflSpec==='function'&&typeof v3ShadeOf==='function'&&skReflSpec(v3ShadeOf(doc)),drop=spR?'metal':'specc';
+  const all=[...box.querySelectorAll('.fillcard[data-material-channel]')];for(const c of all)if(c.dataset.materialChannel===drop)c.hidden=true;
+  const cards=all.filter(c=>c.dataset.materialChannel!==drop);if(!cards.length)return;
   const row=el('div',{class:'tsschips',id:'tssMatChips',role:'group','aria-label':'Channels this material sets'},...cards.map(c=>{const k=c.dataset.materialChannel,cb=c.querySelector('#fl_on_'+k),on=!!(cb&&cb.checked);
-    return el('button',{type:'button',class:'tsschip'+(on?' on':''),id:'tssMat_'+k,'aria-pressed':String(on),text:tssShort(k),title:(on?'Turn off ':'Turn on ')+MAP_DEFS[k].label+' in this material',onclick:()=>{const x=document.getElementById('fl_on_'+k);if(x)x.click();}});}));
-  cards[0].before(el('div',{class:'sub',text:'Material'}),row);}
+    return el('button',{type:'button',class:'tsschip'+(on?' on':''),id:'tssMat_'+k,'aria-pressed':String(on),text:tssShort(k),title:(on?'Turn off ':'Turn on ')+MAP_DEFS[k].label+' in this material (Alt+click: only this one; again: all back)',onclick:e=>{if(e.altKey){tssMatSolo(L,k,cards.map(c=>c.dataset.materialChannel));return;}const x=document.getElementById('fl_on_'+k);if(x)x.click();}});}));
+  cards[0].before(el('div',{class:'sub',text:'Material'}),row);
+  /* (0.97.27, Kenn) only the channels this material sets are shown; the buttons above turn the others on */
+  for(const c of cards){const cb=c.querySelector('#fl_on_'+c.dataset.materialChannel);if(cb&&!cb.checked)c.hidden=true;}}
+let tssBrSolo=null;
+/* Alt+click a channel button: only that channel on; Alt+click it again while it is the only one: the ones turned off come back */
+function tssMatSolo(L,k,keys){if(!L||!L.fill||doc.active!==L)return;const M=L.fill.maps,on=keys.filter(x=>M[x]&&M[x].on);
+  matEdBegin(L);
+  if(on.length===1&&on[0]===k&&L._tssSolo&&L._tssSolo.k===k){for(const x of L._tssSolo.was)if(M[x])M[x].on=true;L._tssSolo=null;}
+  else{if(!fillEnableDocMap(k)){toast('This set cannot use '+MAP_DEFS[k].label+'.');return;}L._tssSolo={k,was:on.filter(x=>x!==k)};for(const x of keys)if(M[x])M[x].on=x===k;if(M[k])M[k].on=true;else M[k]={on:true,src:'value',v:.5,tile:1};}
+  fillRender(L);changedAll();matEdCommit();renderLayers();renderMatEd(true);}
 {const f=renderMatEd;renderMatEd=function(){const r=f.apply(this,arguments);try{tssMatChips();}catch(e){console.warn('material channel buttons',e);}return r;};}
 
 /* ---- the same buttons on the brush, each with its own value ---- */
@@ -68,7 +81,12 @@ buildMapBrushSection=function(box,what){if(doc.maps.length<2||ui.mode==='anim')r
   for(const k of keys){if(k===doc.map)continue;const m=ui.mapBrush[k]||(ui.mapBrush[k]={on:false,v:1}),D=MAP_DEFS[k];
     if(!D.grey&&!m.c)m.c=[.5,.5,.5];if(D.grey&&m.c&&D.user)delete m.c;
     const cb=el('input',{type:'checkbox',id:'mb_'+k,'aria-label':D.label});cb.checked=!!m.on;cb.onchange=()=>{m.on=cb.checked;brushEdited();buildBrushPanel();};
-    chips.append(el('label',{class:'tsschip'+(m.on?' on':''),for:'mb_'+k,title:(m.on?'Stop painting ':'Also paint ')+D.label},cb,el('span',{text:tssShort(k)})));
+    const lab=el('label',{class:'tsschip'+(m.on?' on':''),for:'mb_'+k,title:(m.on?'Stop painting ':'Also paint ')+D.label+' (Alt+click: only this one; again: all back)'},cb,el('span',{text:tssShort(k)}));
+    lab.addEventListener('click',e=>{if(!e.altKey)return;e.preventDefault();const others=keys.filter(x=>x!==doc.map&&x!==k);const on=others.filter(x=>ui.mapBrush[x]&&ui.mapBrush[x].on);
+      if(m.on&&!on.length&&tssBrSolo&&tssBrSolo.k===k){for(const x of tssBrSolo.was)if(ui.mapBrush[x])ui.mapBrush[x].on=true;tssBrSolo=null;}
+      else{tssBrSolo={k,was:on};for(const x of others)if(ui.mapBrush[x])ui.mapBrush[x].on=false;m.on=true;}
+      brushEdited();buildBrushPanel();});
+    chips.append(lab);
     if(!erase&&m.on){const nm=el('span',{class:'mbname',text:D.label});
       if(m.c){const c=el('input',{type:'color','aria-label':D.label+' colour',value:toHex(m.c)});c.addEventListener('input',()=>{m.c=fromHex(c.value);brushEdited();});vals.append(el('div',{class:'mbrow'},nm,c));}
       else if(k==='height')vals.append(makeSlider({id:'mbv_'+k,label:'Height',min:-1,max:1,step:.01,value:m.v*2-1,fmt:v=>(v>0?'+':'')+Math.round(v*100)+'%',onInput:v=>{m.v=(v+1)/2;brushEdited();}}).el);
@@ -77,3 +95,28 @@ buildMapBrushSection=function(box,what){if(doc.maps.length<2||ui.mode==='anim')r
   box.append(sec);};
 /* the channel buttons are a main brush setting (as in Painter), not an Advanced one: shown in Simple mode, right before the setting groups */
 {const f=brOrganize;brOrganize=function(box){const r=f.apply(this,arguments);try{const s=box&&box.querySelector('.mapbrush');if(s){s.classList.remove('br-adv');const g=box.querySelector(':scope>details.brgrp,:scope>.brg3');if(g&&g!==s)g.before(s);}}catch(e){}return r;};}
+
+/* ---- (0.97.27, Kenn: Painter's Texture Set Settings) Normal mixing, Ambient occlusion mixing, UV padding ----
+   Normal mixing Combine blends each layer's normal detail with the normals below it (reoriented normal blending, blend mode 26);
+   Replace covers them (as before). AO mixing Multiply darkens with every layer's occlusion; Normal covers. Both only change
+   layers that keep their channel's default blend mode; materials that hide the bumps below still replace. Stored per set in
+   doc.mapDef['mix:normal'] / ['mix:ao']. UV padding is the export's padding (texCfg.pad / padPx), shown here as in Painter. */
+MODES[26]='Normal combine';
+const TSS_NMIX=()=>(doc.mapDef&&doc.mapDef['mix:normal'])||'replace',TSS_AOMIX=()=>(doc.mapDef&&doc.mapDef['mix:ao'])||'normal';
+{const f=mapModeOf;mapModeOf=function(n,k){if(n&&n.type!=='group'&&(k==='normal'||k==='ao')){const m=n.mapModes&&n.mapModes[k];
+    if(m==null){if(k==='normal'&&TSS_NMIX()==='combine'&&!(n.fill&&n.fill.coverH!==false))return 26;if(k==='ao'&&TSS_AOMIX()==='multiply')return 1;}}
+  return f.apply(this,arguments);};}
+function tssSetMix(key,v){const before=doc.mapDef[key],put=x=>{doc.mapDef=Object.assign({},doc.mapDef);if(x==null)delete doc.mapDef[key];else doc.mapDef[key]=x;changedAll();if(typeof v3!=='undefined')v3.mapsDirty=true;tssRender();};
+  put(v);pushUndo({label:key==='mix:normal'?'Normal mixing':'AO mixing',refs:[],undo(){put(before);},redo(){put(v);}});}
+function tssMixBox(){const sel=(id,label,opts,cur,on)=>{const s=el('select',{id,class:'shsel','aria-label':label},...opts.map(([v,t])=>el('option',{value:v,text:t})));s.value=cur;s.onchange=()=>on(s.value);return el('div',{class:'frow'},el('span',{text:label}),s);};
+  const pad=texCfg.pad||'none',kids=[sel('tssNmix','Normal mixing',[['combine','Combine'],['replace','Replace']],TSS_NMIX(),v=>tssSetMix('mix:normal',v)),
+    sel('tssAomix','Ambient occlusion mixing',[['multiply','Multiply'],['normal','Normal']],TSS_AOMIX(),v=>tssSetMix('mix:ao',v)),
+    sel('tssPad','UV padding',TEX_PAD_MODES,pad,v=>{texCfg.pad=v;tssRender();})];
+  if(/dilate/.test(pad))kids.push(makeSlider({id:'tssPadPx',label:'Padding width',min:1,max:64,step:1,value:texCfg.padPx??16,fmt:v=>v+' px',onInput:v=>{texCfg.padPx=v;}}).el);
+  return el('div',{class:'tssmix',id:'tssMix'},el('div',{class:'sub',text:'Mixing and padding'}),...kids,
+    el('p',{class:'note',text:'Combine blends each layer’s normal detail with the detail below (like Painter); Replace covers it. UV padding grows colour past the edges of the UV islands in exported textures, so seams don’t show.'}));}
+{const f=tssRender;tssRender=function(){f.apply(this,arguments);const box=document.getElementById('tssBody');if(!box||ui.mode!=='p3d'||box.querySelector('#tssMix'))return;try{const note=box.lastElementChild;box.insertBefore(tssMixBox(),note);}catch(e){console.warn('mixing',e);}};}
+/* (0.97.27, Kenn: "there's a delay when you remove them from the set") any change to the set's channels redraws the material editor
+   straight away, so its cards and buttons match the set */
+{const f=setDocMaps;setDocMaps=function(){const r=f.apply(this,arguments);try{if(typeof renderMatEd==='function'&&document.getElementById('matEdBody'))renderMatEd(true);}catch(e){}return r;};}
+{const f=skSetRefl;skSetRefl=function(){const r=f.apply(this,arguments);try{if(typeof renderMatEd==='function'&&document.getElementById('matEdBody'))renderMatEd(true);}catch(e){}return r;};}

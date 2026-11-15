@@ -52,7 +52,7 @@ function recolDetect(L,k){const r=L.fill.recol,keep=r.mode;r.mode='off';const c=
 function recolBuild(box,L){const W=L.fill;if(!W.recol)W.recol=RC_DEF();const r=W.recol;box.replaceChildren();
   const ed=(fn,redraw)=>{matEdBegin(L);fn();fillRender(L,'base');clearTimeout(matEd.timer);matEd.timer=setTimeout(matEdCommit,700);if(redraw)recolBuild(box,L);};
   const mode=(m)=>{ed(()=>{r.mode=m;if(m==='main'||m==='multi'||m==='custom'){const want=m==='main'?1:m==='multi'?(r.n||3):Math.max(1,r.pairs.length||1);if(r.pairs.length!==want||!r.pairs.length){if(m==='custom'&&r.pairs.length)r.pairs=r.pairs.slice(0,4);else{recolDetect(L,want);}}}},true);};
-  box.append(el('div',{class:'sub',text:'Recolour (keeps the detail)'}),
+  box.append(el('div',{class:'sub',text:'Recolour (swap colours, keeps the detail)'}),
     seg([['off','Off'],['simple','One colour'],['main','Main colour'],['multi','Several'],['custom','Custom']],r.mode,mode,'Recolour mode'));
   if(r.mode==='simple')box.append(el('div',{class:'frow'},el('label',{text:'Colour'}),colourBtn('rc_tint',()=>r.tint,c=>ed(()=>{r.tint=c;}),'Recolour colour')));
   if(r.mode==='main'||r.mode==='multi'||r.mode==='custom'){
@@ -65,10 +65,15 @@ function recolBuild(box,L){const W=L.fill;if(!W.recol)W.recol=RC_DEF();const r=W
     row.append(el('button',{class:'btn sm',id:'rc_detect',text:'Find the colours again',title:'Look at the material again and pick the colours to change',onclick:()=>ed(()=>{recolDetect(L,r.mode==='main'?1:r.mode==='multi'?(r.n||3):Math.max(1,r.pairs.length));},true)}));
     box.append(row,makeSlider({id:'rc_tol',label:'Reach',min:.05,max:1,step:.01,value:r.tol||.4,fmt:pct,onInput:v=>ed(()=>{r.tol=v;})}).el);}
   if(r.mode!=='off')box.append(makeSlider({id:'rc_amt',label:'Amount',min:0,max:1,step:.01,value:r.amt==null?1:r.amt,fmt:pct,onInput:v=>ed(()=>{r.amt=v;})}).el);
-  box.append(makeSlider({id:'rc_con',label:'Contrast',min:.2,max:2.5,step:.01,value:r.con==null?1:r.con,fmt:v=>Math.round(v*100)+'%',onInput:v=>ed(()=>{r.con=v;})}).el,
+  /* (0.97.27, Kenn) Contrast / Brightness / Saturation live in Adjust (Tint & adjust) above; these old ones show only when a
+     material from before still uses them */
+  const oldAdj=(r.con!=null&&r.con!==1)||(r.bri||0)!==0||(r.sat!=null&&r.sat!==1);
+  if(oldAdj)box.append(el('p',{class:'note',text:'This material still uses the old recolour adjustments below. Adjust (above) does the same.'}),makeSlider({id:'rc_con',label:'Contrast',min:.2,max:2.5,step:.01,value:r.con==null?1:r.con,fmt:v=>Math.round(v*100)+'%',onInput:v=>ed(()=>{r.con=v;})}).el,
     makeSlider({id:'rc_bri',label:'Brightness',min:-.5,max:.5,step:.01,value:r.bri||0,fmt:v=>(v>0?'+':'')+Math.round(v*100),onInput:v=>ed(()=>{r.bri=v;})}).el,
     makeSlider({id:'rc_sat',label:'Saturation',min:0,max:2,step:.01,value:r.sat==null?1:r.sat,fmt:v=>Math.round(v*100)+'%',onInput:v=>ed(()=>{r.sat=v;})}).el,
     el('p',{class:'note',text:doc.workflow==='spec'?'Only the diffuse colour changes. The specular, glossiness and the normal map keep their detail.':'Only the base colour changes. Roughness, metal and the normal map keep their detail.'}));}
 {const rm=renderMatEd;renderMatEd=function(force){rm.apply(this,arguments);const box=document.getElementById('matEdBody'),L=doc.active;
   if(!box||matEd.shownRow||!isLayer(L)||!L.fill||!box.querySelector('.matHead')||box.querySelector('.recolBox'))return;
-  const b=el('div',{class:'recolBox dlg-grid'});const cover=box.querySelector('#fl_cover');(cover?cover.closest('label'):null)?cover.closest('label').before(b):box.append(b);recolBuild(b,L);};}
+  const b=el('div',{class:'recolBox dlg-grid'});const tints=box.querySelectorAll('.fillcard.tint'),cover=box.querySelector('#fl_cover');
+  /* (0.97.27, Kenn: "the recolour is technically the tint and adjust") it sits with Tint & adjust */
+  if(tints.length)tints[tints.length-1].after(b);else if(cover&&cover.closest('label'))cover.closest('label').before(b);else box.append(b);recolBuild(b,L);};}

@@ -15,6 +15,10 @@ const PANELS={
   tsset:{title:'Texture Set Settings',sel:'#tssSec',avail:m=>m==='p3d',icon:'<path d="M4 6h16M4 12h16M4 18h10"/><circle cx="18" cy="18" r="2"/>'},
   hist:{title:'History',sel:'#histSec',avail:m=>m!=='convert'&&m!=='photo',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>'},
   matEd:{title:'Material editor',sel:'#matEdSec',avail:m=>m==='p3d'||m==='paint',icon:'<circle cx="12" cy="12" r="8"/><path d="M8 15l8-8M9 9h.01"/>'},
+  /* (0.97.27, Kenn) opened by the Lights / Camera / Post FX buttons on the 3D view; dockable like any panel */
+  v3lights:{title:'Lights',sel:'#vpLightsSec',avail:m=>m!=='photo'&&m!=='brushtab',icon:'<circle cx="12" cy="10" r="5"/><path d="M10 17h4M10 20h4"/>'},
+  v3cam:{title:'Camera',sel:'#vpCamSec',avail:m=>m!=='photo'&&m!=='brushtab',icon:'<rect x="3" y="7" width="18" height="12" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 7l2-3h4l2 3"/>'},
+  v3post:{title:'Post FX',sel:'#vpPostSec',avail:m=>m!=='photo'&&m!=='brushtab'&&m!=='bake'&&m!=='convert',icon:'<path d="M4 18l6-12 4 8 2-4 4 8z"/>'},
   shading:{title:'Shader',sel:'#shadeSec',avail:m=>m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" opacity=".35"/>'},
   stencils:{title:'Stencils',sel:'#st3Sec',avail:m=>false,icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 15l3-4 2 3 1.5-2 1.5 3"/>'},
   mats:{title:'Materials',sel:'#matSec',avail:m=>m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M7 9.5a6 6 0 0 1 5-3" opacity=".6"/>'},
@@ -105,7 +109,7 @@ function dkFix(L){const seen=new Set();const keep=a=>a.filter(id=>PANELS[id]&&!s
   if(L.dir!=='row')L.dir='col';
   for(const g of L.groups)g.tabs=keep(g.tabs);L.shelf.tabs=keep(L.shelf.tabs);for(const f of L.floats)f.tabs=keep(f.tabs);L.icons=keep(L.icons||[]);L.hidden=keep(L.hidden||[]);
   L.groups=L.groups.filter(g=>g.tabs.length);L.floats=L.floats.filter(f=>f.tabs.length);
-  for(const id of PANEL_IDS)if(!seen.has(id)){if(id==='favorites'){L.hidden.push(id);continue;}if(SH_SHELF_TABS.includes(id)){L.shelf.tabs.push(id);continue;}const home=WS_PRESETS.painting.groups.find(g=>g.tabs.includes(id));const g=L.groups.find(g=>home&&g.tabs.some(t=>home.tabs.includes(t)));if(g)g.tabs.push(id);else L.groups.push({tabs:[id],f:1});}
+  for(const id of PANEL_IDS)if(!seen.has(id)){if(id==='favorites'||['v3lights','v3cam','v3post'].includes(id)){L.hidden.push(id);continue;}/* (0.97.27) the viewport panels open from their buttons on the 3D view */if(SH_SHELF_TABS.includes(id)){L.shelf.tabs.push(id);continue;}const home=WS_PRESETS.painting.groups.find(g=>g.tabs.includes(id));const g=L.groups.find(g=>home&&g.tabs.some(t=>home.tabs.includes(t)));if(g)g.tabs.push(id);else L.groups.push({tabs:[id],f:1});}
   if(L.shelf){const old=['weldtools','stitches','surfacedetails'];if(L.shelf.tabs.some(t=>old.includes(t))){L.shelf.tabs=L.shelf.tabs.filter(t=>!old.includes(t));if(!L.shelf.tabs.includes('shtools'))L.shelf.tabs.push('shtools');if(old.includes(L.shelf.active))L.shelf.active='shtools';}}
   if(ui.mode==='p3d'&&L.shelf){L.shelf.tabs=[...SH_SHELF_TABS.filter(id=>L.shelf.tabs.includes(id)),...L.shelf.tabs.filter(id=>!SH_SHELF_TABS.includes(id)&&id!=='brushes')];}
   return L;}
@@ -448,3 +452,5 @@ function dkModeWs(){const w=wsForMode(ui.mode);if(w!==dk.ws||dk.layoutMode!==ui.
 
 /* open one group of the Tools category (and close nothing else) */
 function shToolsOpen(k){const d=document.getElementById('shtg_'+k);if(d)d.open=true;}
+
+{const f=brushMergeSync;brushMergeSync=function(){const r=f.apply(this,arguments);try{prevPinFit();}catch(e){}return r;};}

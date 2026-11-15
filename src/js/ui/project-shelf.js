@@ -27,6 +27,19 @@ function paRender(){const box=$('#paBody');if(!box||!paVisible('#paBody'))return
   const items=paEntries().filter(e=>paShelf.filter==='all'||e.kind===paShelf.filter),grid=el('div',{class:'matgrid projectgrid'});
   for(const e of items){const tile=el('button',{class:'mattile',title:e.name+' · '+(e.kind==='mat'?'Material':'Texture')+' — click to use; drag onto layers',type:'button'},el('img',{class:'matprev',src:paThumb(e)||'',alt:''}),el('span',{text:e.name}),el('small',{text:e.kind==='mat'?'Material':'Texture'}));tile.dataset.assetName=e.name.toLowerCase();tile.hidden=!tile.dataset.assetName.includes(paShelf.query.toLowerCase());tile._libDrag=['project',e];tile.onclick=()=>paUse(e);grid.append(tile);}
   box.replaceChildren(tabs,el('p',{class:'note',text:'Current document: '+doc.name+'. Layers, source textures and saved conversions. Drag an asset onto the layer stack to reuse it.'}),el('div',{class:'chips'},search,seg([['s','S'],['m','M'],['l','L']],paShelf.size,v=>{paShelf.size=v;paRender();},'Project thumbnail size')),seg([['all','All'],['tex','Textures'],['mat','Materials']],paShelf.filter,v=>{paShelf.filter=v;paRender();},'Project asset type'),grid,items.length?null:el('p',{class:'note',text:'Paint a layer, send artwork from Paint, or turn a canvas into a texture or material. It will appear here.'}));}
+/* (0.97.27, Kenn: "I can't drag images from the projects tab to the material editor") a project texture let go on a channel card
+   of the selected material becomes that channel's picture */
+async function paToChannel(e,k){const L=doc.active;if(!isLayer(L)||!L.fill){toast('Select a material layer first.');return;}
+  const root=doc.root,W=L.fill;let t=null;
+  try{let rec=null;if(e.asset)rec=await pxDeep(e.asset.rec,false);
+    if(rec){t=makeTarget(rec.w,rec.h,8,false);writeRegion(t,0,0,rec.w,rec.h,rec.data);}
+    else{const src=e.source;if(!src?.tex)throw new Error('This layer is no longer available.');t=makeTarget(src.w,src.h,8,false);blit(src,t,0,0,src.w,src.h,0,0);}}
+  catch(err){if(t)disposeTarget(t);toast('Could not use the project texture: '+(err.message||err));return;}
+  if(doc.root!==root||!inDoc(L)||L.fill!==W){disposeTarget(t);toast('The material changed meanwhile. Drop it again.');return;}
+  if(!fillEnableDocMap(k)){disposeTarget(t);toast('This material cannot use the '+(MAP_DEFS[k]?.label||k)+' channel.');return;}
+  setWrap(t,true);matEdBegin(L);const s=L.fill.maps[k]||(L.fill.maps[k]={on:true,src:'value',v:.5,tile:1});
+  L._fillImg=Object.assign({},L._fillImg||{});L._fillImg[k]=t;s.src='image';s.name=e.name;s.on=true;s.tile=s.tile||1;matEd.open=Object.assign({},matEd.open,{[k]:true});fillRender(L,k);matEdCommit();
+  renderLayers();if(typeof renderMatEd==='function')renderMatEd(true);toast('“'+e.name+'” is now the '+(MAP_DEFS[k]?.label||k).toLowerCase()+' of “'+L.name+'”.');}
 async function paUse(e,T){const owner=doc.root;let rec,source,dispose=false;try{
   if(e.asset)rec=await pxDeep(e.asset.rec,false);if(doc.root!==owner)throw new Error('The document changed. Choose the asset again.');
   if(e.kind==='mat'){if(e.layer){const L=e.layer;insertAt=T?.at||null;

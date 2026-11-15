@@ -22,3 +22,7 @@ function prevOwnWindow(floatEl){const win=window.open('','gsBrushPreview','width
   prevFloats.push({canvas:c,note:null,win});prevRO.observe(c);prevPop.win=win;if(floatEl){floatEl.remove();prevPop.el=null;}
   win.addEventListener('resize',()=>schedulePreview());win.addEventListener('pagehide',()=>{prevPop.win=null;schedulePreview();});setTimeout(schedulePreview,50);}
 (function(){const wrap=document.querySelector('.prevwrap');if(!wrap)return;wrap.append(el('button',{class:'prevpopbtn',id:'prevPop',title:'Pop out the preview into a window you can move and resize','aria-label':'Pop out the preview',text:'⧉',onclick:prevPopOut}));})();
+/* (0.97.27, Kenn) the stroke preview pins right under the Brush panel's title row (which is pinned too), whatever its height */
+function prevPinFit(){const sec=document.getElementById('toolSec');if(!sec)return;const h=sec.querySelector(':scope>.brhead');
+  sec.style.setProperty('--brhH',(h&&getComputedStyle(h).position==='sticky'?h.offsetHeight:0)+'px');
+  if(h&&!h._prevObs&&typeof ResizeObserver==='function'){h._prevObs=new ResizeObserver(prevPinFit);h._prevObs.observe(h);}}

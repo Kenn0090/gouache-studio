@@ -269,6 +269,7 @@ vec3 blendFn(vec3 b,vec3 s){
   if(uMode==23) return step(vec3(1.0),b+s);
   if(uMode==24) return max(b-s,vec3(0.0));
   if(uMode==25) return mix(min(b/max(s,vec3(1e-5)),vec3(1.0)),vec3(1.0),step(s,vec3(0.0)));
+  if(uMode==26){ vec3 t=b*vec3(2.0,2.0,2.0)+vec3(-1.0,-1.0,0.0); vec3 u=s*vec3(-2.0,-2.0,2.0)+vec3(1.0,1.0,-1.0); vec3 r=t*dot(t,u)/max(t.z,1e-4)-u; return normalize(r)*0.5+0.5; }/* (0.97.27) normal combine: reoriented normal blending, Painter's Combine */
   return s; }
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy);
   vec4 b=texelFetch(uBase,p,0); vec4 s=uSolid?uSolidColor:texelFetch(uLayer,p,0);

@@ -36,7 +36,7 @@ uniform int uEnvOn; uniform float uEnvRot; uniform float uEnvI; uniform sampler2
 /* the texture set's shader: 0 standard, 1 skin, 2 anisotropic metal, 3 velvet, 4 toon, 5 cel, 6 spec/gloss view, 7 panner, 8 retro (N64 / PSX); its settings */
 uniform int uMetalView; uniform float uMetalRough; uniform bool uWorldNormalView;
 uniform int uBevelMaterial; uniform float uBevelMetal; uniform float uBevelRough;
-uniform int uCxN; uniform vec4 uCxA[8]; uniform vec4 uCxB[8]; uniform vec4 uCxC[8]; uniform vec4 uCxR; uniform float uTime; uniform float uFurK; uniform vec4 uSkin; uniform vec4 uShE; uniform int uSh; uniform vec4 uShP; uniform vec4 uShQ; uniform vec3 uShC; uniform vec3 uShD;
+uniform int uSkinPass; uniform int uCxN; uniform vec4 uCxA[8]; uniform vec4 uCxB[8]; uniform vec4 uCxC[8]; uniform vec4 uCxR; uniform float uTime; uniform float uFurK; uniform vec4 uSkin; uniform vec4 uShE; uniform int uSh; uniform vec4 uShP; uniform vec4 uShQ; uniform vec3 uShC; uniform vec3 uShD;
 /* the Panner shader (0.40): each map slid by its own offset */
 uniform vec2 uPB; uniform vec2 uPR; uniform vec2 uPM; uniform vec2 uPN; uniform vec2 uPA; uniform vec2 uPE; uniform vec2 uPO;
 const float PI=3.14159265;
@@ -226,7 +226,7 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
   float thick=(uHas&512)!=0?skP.r:(uHas&128)!=0?mapSample(uThick,uv).r:uShP.w, skS=uShP.y*skP.b, skT=uSkin.z*skP.g;
   /* (0.97.26, like Marmoset's Subsurface Scatter) translucency colour uShD, translucency scatter uSkin.w, fuzz amount/scale/occlusion uShE.xyz with its map in skP.a and colour uShQ.xyw;
      with Specular reflectivity (uHas 256 outside Spec/Gloss) the skin's shine comes from the Specular colour map */
-  vec3 skF0=(uHas&256)!=0?F0:vec3(0.028), skTC=clamp(uShD,0.02,1.0), skFC=lin(vec3(uShQ.x,uShQ.y,uShQ.w)); float skFz=uShE.x*skP.a, skFR=pow(1.0-NdV,max(uShE.y,0.2)*3.0);
+  vec3 skDiffL=vec3(0.0),skEnvL=vec3(0.0); vec3 skF0=(uHas&256)!=0?F0:vec3(0.028), skTC=clamp(uShD,0.02,1.0), skFC=lin(vec3(uShQ.x,uShQ.y,uShQ.w)); float skFz=uShE.x*skP.a, skFR=pow(1.0-NdV,max(uShE.y,0.2)*3.0);
   if(uSh==1){ /* RGB diffuse wrap and thickness attenuation; two surface specular lobes. */
     vec3 Ns=normalize(mix(N,Ng,uShP.z)),sss=clamp(skC,0.02,1.0),wrap=uShP.x*skP.b*mix(vec3(0.8,0.38,0.18),sss,0.6);
     vec3 dl=max((vec3(dot(Ns,L))+wrap)/(1.0+wrap),0.0)/(1.0+wrap);
@@ -236,6 +236,7 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
     float sr=clamp(mix(rough,uSkin.x,0.75),0.08,1.0);
     vec3 surface=studioDirect(N,V,L,vec3(0.0),skF0,sr,0.0);
     surface+=studioDirect(N,V,L,vec3(0.0),skF0*1.43,max(sr*0.38,0.08),0.0)*uShQ.z*0.35;
+    skDiffL=((1.0-F)*(1.0-metal)/PI*dl)*visibility*uSunI*3.0+transmitted*uSunI*1.5;
     col=((1.0-F)*(1.0-metal)*alb/PI*dl+surface)*visibility*uSunI*3.0+transmitted*alb*uSunI*1.5;
     col+=skFC*skFz*skFR*(0.35+0.65*max(dot(N,L),0.0))*mix(1.0,ao,uShE.z)*visibility*uSunI*1.5;
   }else col=(dif+spec)*NdL*uSunI*3.0*visibility;
@@ -279,6 +280,7 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
   float specAO=clamp(pow(NdV+ao,exp2(-16.0*rough-1.0))-1.0+ao,0.0,1.0);
   if(uSh==1){vec3 Ns=normalize(mix(N,Ng,uShP.z)),attenuation=exp(-max(thick,0.0)*uSkin.y/skTC);
     envD=envDif(Ns)*alb*(1.0-metal)*(1.0-Fr)+envDif(-Ns)*attenuation*skTC*alb*skT*0.25+skFC*skFz*skFR*envDif(N)*0.6;
+    skEnvL=envDif(Ns)*(1.0-metal)*(1.0-Fr)+envDif(-Ns)*attenuation*skTC*skT*0.25;
     float sr=clamp(mix(rough,uSkin.x,0.75),0.08,1.0);vec2 sab=envBRDF(NdV,sr);
     envS=envSpec(R,sr)*(skF0*sab.x+sab.y)+envSpec(R,max(sr*0.38,0.08))*(skF0*1.43*sab.x+sab.y)*uShQ.z*0.35;}
   if(uSh==3){ envS+=lin(uShC)*uShP.x*envDif(N)*pow(1.0-NdV,max(uShP.z,0.5)*3.0+1.0); }
@@ -289,6 +291,9 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
     if(m==1){ o=vec4(pow(dcol,vec3(1.0/2.2)),1.0); return; } if(m==2){ o=vec4(pow(scol,vec3(1.0/2.2)),1.0); return; } if(m==3){ o=vec4(vec3(1.0-rough),1.0); return; }
     if(m==4){ col=envS*uSkyI*ao; col*=uExpo; col=tone(col); o=vec4(pow(clamp(col,0.0,1.0),vec3(1.0/2.2)),1.0); return; } }
   col+=(envD*ao+envS*specAO)*uSkyI;
+  /* (0.97.27) skin blur, first pass: only the light under the skin (diffuse), for the screen-space blur (skin-blur.js) */
+  if(uSkinPass==1){ vec3 Ls=skDiffL*uLightColor+skEnvL*ao*uSkyI; o=vec4(Ls/(1.0+Ls),1.0); return; }/* the light alone, encoded */
+  if(uSkinPass==2){ o=vec4(sqrt(clamp(alb,0.0,1.0)),1.0); return; }/* the skin colour, so it stays sharp */
   if(uSh==18){
     float grit=sin(dot(vP,vec3(97.1,83.7,53.3)))*sin(dot(vP,vec3(149.4,-63.1,79.8)));
     float light=clamp((dot(N,L)*0.58+0.42)*mix(0.18,1.0,visibility),0.0,1.0);
@@ -444,7 +449,10 @@ function v3Refresh(){if(!v3.on)return;/* a stroke made in the new viewer window:
     const t=compositeMap(k);v3MapTex(k,t);release(t);};
   const one=k=>{if(typeof pnBegin==='function')pnBegin(k);try{one0(k);}finally{panState=null;}};
   if(full){withWeldMask(null,()=>{for(const k of v3Needed())one(k);if(v3s().disp&&doc.maps.includes('height')){const t=compositeMap('height');v3MapTex('height',t);release(t);}});
-    v3.mapsDirty=false;v3.editDirty=false;v3.lastFull=now;v3.dirty=true;v3SgDerive();}
+    v3.mapsDirty=false;v3.editDirty=false;v3.lastFull=now;v3.dirty=true;v3SgDerive();
+    /* (0.97.27, Georgian's 8K head kept showing a deleted layer) when the graphics card runs out of memory the model keeps its old
+       textures: say so instead of silently showing an old picture */
+    if(gl.getError()===gl.OUT_OF_MEMORY&&!v3.oomSaid){v3.oomSaid=true;toast('The graphics card ran out of memory, so the model may show an old picture of the textures. Try a smaller texture size, 8-bit channels, or fewer channels (Texture Set Settings), then save and reopen.',12000);}}
   else if(v3.editDirty&&(stroke||v3.mapRegion?.finished)&&v3.mapRegion?.weld){const q=v3.mapRegion,r=q.r;
     if(r&&q.root===doc.root&&q.tex===v3.tex&&q.map===doc.map&&r[2]*r[3]<doc.w*doc.h*.25&&!(doc.w&(doc.w-1))&&!(doc.h&(doc.h-1))&&v3Needed().every(k=>v3.tex[k]?.hasMips)){
       withWeldMask(r,()=>{const maskLayer=stroke?.L.maskOf;const keys=new Set(q.keys|| (maskLayer?doc.maps:[doc.map,...stroke.o.extras.map(e=>e.key)])),needed=v3Needed();
@@ -494,7 +502,12 @@ window.addEventListener('keydown',e=>{if(!v3.on&&ui.mode!=='p3d')return;if(!v3.h
   const m={Numpad1:['front','back'],Numpad3:['right','left'],Numpad7:['top','bottom']}[e.code];
   if(m){e.preventDefault();v3SnapView(e.ctrlKey?m[1]:m[0]);}else if(e.code==='Numpad5'){e.preventDefault();v3SetOrtho(!v3s().ortho);}});
 function m4ortho(hw,hh,n,fa){const o=m4();o[0]=1/hw;o[5]=1/hh;o[10]=-2/(fa-n);o[14]=-(fa+n)/(fa-n);o[15]=1;return o;}
-function v3Proj(a,n,fa){const s=v3s();if(s.ortho){const hh=v3.cam.dist*Math.tan(s.fov*Math.PI/360);return m4ortho(hh*a,hh,n,fa);}return m4persp(s.fov*Math.PI/180,a,n,fa);}
+/* (0.97.27, Kenn: "the camera has a zoom limit") the zoom range and the near/far cut-off follow the model's size and the zoom, so
+   you can go right up to a pore or far out to see a whole scene without the model being sliced */
+function v3ZoomLim(){const r=(v3.mesh&&v3.mesh.radius)||1.5;return [Math.max(1e-4,r*.002),Math.max(50,r*2000)];}
+function v3Clip(){const r=(v3.mesh&&v3.mesh.radius)||1.5,d=v3.cam.dist;return [Math.max(1e-5,Math.min(.02,d*.05)),Math.max(100,(d+r*4)*1.5)];}
+function v3Zoom(d){const L=v3ZoomLim();return clamp(d,L[0],L[1]);}
+function v3Proj(a,n,fa){if(n===.02&&fa===100){const C=v3Clip();n=C[0];fa=C[1];}const s=v3s();if(s.ortho){const hh=v3.cam.dist*Math.tan(s.fov*Math.PI/360);return m4ortho(hh*a,hh,n,fa);}return m4persp(s.fov*Math.PI/180,a,n,fa);}
 function m4persp(f,a,n,fa){const o=m4(),t=1/Math.tan(f/2);o[0]=t/a;o[5]=t;o[10]=(fa+n)/(n-fa);o[11]=-1;o[14]=2*fa*n/(n-fa);return o;}
 function m4look(e,c,u){const z=norm3(sub3(e,c)),x=norm3(cross3(u,z)),y=cross3(z,x),o=m4();o[0]=x[0];o[4]=x[1];o[8]=x[2];o[1]=y[0];o[5]=y[1];o[9]=y[2];o[2]=z[0];o[6]=z[1];o[10]=z[2];
   o[12]=-dot3(x,e);o[13]=-dot3(y,e);o[14]=-dot3(z,e);o[15]=1;return o;}
@@ -616,6 +629,7 @@ function v3Render(F,flip){const g=v3.gpu;if(!g)return;gl.blendEquation(gl.FUNC_A
   if(F.overlays!==false&&!bake&&(v3.paintOn||ui.mode==='p3d')){drawMir3(VP);drawMir3Cursors(F,common);}
   gl.bindVertexArray(vao);gl.disable(gl.DEPTH_TEST);
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,F.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,F.rf);gl.blitFramebuffer(0,0,F.w,F.h,0,0,F.w,F.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  if(!wireOnly&&!bake&&!mv&&typeof skinBlurPass==='function')skinBlurPass(F,C,list,common,flip,g);
   if(F.px)F.px.valid=false;if(!wireOnly&&!bake&&!mv&&typeof v3Post==='function')v3Post(F);v3.postDirty=false;}
 /* after the 2D view: refresh maps if needed, redraw the model if anything changed, copy it into the pane */
 /* (0.31.1) how big the model is drawn while painting: 1 full, .75, .5 (older setting paintHalf = .5) */
@@ -703,8 +717,8 @@ const nvB=el('button',{hidden:!platform.isDesktop||NV_BANKED,class:'btn sm'+(typ
     const viewP=popBtn('v3ViewBtn','View','Snap to a side, perspective or orthographic',[el('div',{class:'sub',text:'View'}),viewSel,projBtn]);
     const showP=popBtn('v3ShowBtn','Show','Metal view and which channel the model shows',[el('div',{class:'sub',text:'Show on the model'}),p3ChannelControl(),metalB]);
     v3.barPops=[viewP.pop,showP.pop];
-    bar=el('div',{class:'v3bar slim'},shade,...(mb?[mb.wrap]:[]),showP.b,viewP.b,nvB,gear,more,xt);}
-  else bar=el('div',{class:'v3bar'},...(inBake?[lowLab]:ui.mode==='convert'?[modelControl,detSel]:[modelControl,detSel,shade]),...(mb?[mb.wrap]:[]),...(ui.mode==='convert'||ui.mode==='p3d'?[]:[pbtn]),viewSel,projBtn,nvB,materialB,metalB,wireB,uvB,spinB,...capB,gear,dock,close);
+    bar=el('div',{class:'v3bar slim'},shade,...(mb?[mb.wrap]:[]),showP.b,viewP.b,...(typeof vpButtons==='function'?vpButtons():[]),nvB,gear,more,xt);}
+  else bar=el('div',{class:'v3bar'},...(inBake?[lowLab]:ui.mode==='convert'?[modelControl,detSel]:[modelControl,detSel,shade]),...(mb?[mb.wrap]:[]),...(ui.mode==='convert'||ui.mode==='p3d'?[]:[pbtn]),viewSel,projBtn,...(typeof vpButtons==='function'?vpButtons():[]),nvB,materialB,metalB,wireB,uvB,spinB,...capB,gear,dock,close);
   const box=el('div',{class:'v3set',id:'v3Settings',hidden:true,'aria-label':'3D viewport settings'});gear.setAttribute('aria-controls','v3Settings');
   box.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});
   if(ui.mode==='p3d'){const display=el('div',{class:'v3display',role:'group','aria-label':'Viewport display'});
@@ -712,7 +726,7 @@ const nvB=el('button',{hidden:!platform.isDesktop||NV_BANKED,class:'btn sm'+(typ
     box.append(el('div',{class:'sub',text:'Viewport display'}),display,el('div',{class:'frow'},el('span',{text:'Wireframe colour'}),colourBtn('v3WireCol',()=>prefs.wireCol||[.95,.7,.35],c=>{prefs.wireCol=c.slice(0,3);savePrefs();v3.dirty=true;requestRender(true);},'Wireframe colour')),makeSlider({id:'v3WireOp',label:'Wireframe opacity',min:0,max:1,step:.01,value:wireOpacity(),def:1,fmt:pct,onInput:v=>{prefs.wireOp=v;savePrefs();v3.dirty=true;requestRender();}}).el);}
   box.append(el('div',{class:'sub',text:'Painting'}),meshBackfaceControl('v3BackfacePaint'),el('p',{class:'note',text:'Allow painting on faces seen from behind. Camera alignment still protects surfaces hidden behind other parts.'}));
   const S=(id,label,key,min,max,step,fmt)=>makeSlider({id,label,min,max,step,value:s[key],fmt,...(['disp','sunI','skyI','envIntensity','studioFill','studioRim'].includes(key)?{numericMax:Math.max(max,1)*4}:{}),onInput:v=>{s[key]=v;if(key==='disp'){v3.mapsDirty=true;if(v>0&&(s.detail||0)<4&&!v3.detAuto){v3.detAuto=true;s.detail=4;if(v3.detSel)v3.detSel.value='4';v3LoadModel(true);toast('Mesh detail raised to ×16 so the height can show. Change it with the Detail menu at the top of the 3D view.');}}v3.dirty=true;requestRender(key==='disp');}}).el;
-  box.append(el('div',{class:'sub',text:'Lighting'}),envSettingsBox(S),studioSettingsBox(S),el('div',{class:'sub',text:'Model and camera'}),S('v3Uvs','Tile repeat','uvs',1,8,1,v=>v+'×'),S('v3Disp','Height depth','disp',0,1,.01,pct),...lensBox(s,S),S('v3MetalRough','Metal view roughness','metalRough',.05,1,.01,pct),
+  box.append(el('div',{class:'sub',text:'Lighting'}),envSettingsBox(S),el('p',{class:'note',text:'Lights, Camera (focal length, depth of field) and Post FX have their own buttons on the 3D view’s top bar.'}),el('div',{class:'sub',text:'Model'}),S('v3Uvs','Tile repeat','uvs',1,8,1,v=>v+'×'),S('v3Disp','Height depth','disp',0,1,.01,pct),S('v3MetalRough','Metal view roughness','metalRough',.05,1,.01,pct),
     el('div',{class:'sub',text:'Background'}),seg([['dark','Dark'],['grey','Grey'],['light','Light']],s.bg,x=>{s.bg=x;v3.dirty=true;requestRender();},'Background'),
     chk('v3Clip','Cut out transparent areas',!!s.clip,x=>{s.clip=x;v3.dirty=true;requestRender();}),
     ...(ui.mode==='p3d'||ui.mode==='bake'||ui.mode==='convert'?[]:[el('div',{class:'sub',text:'Mirror painting on the model'}),mir3Box(),el('div',{class:'sub',text:'Select on the model'}),sel3Box()]),
@@ -804,14 +818,14 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     const dx=e.clientX-d.x,dy=e.clientY-d.y;d.x=e.clientX;d.y=e.clientY;const c=v3.cam;
     if(d.how==='sky'){envTurnBy(dx*.5);return;}
     if(d.how==='pan'){const k=c.dist*.0018,eye=v3Eye(),f=norm3(sub3([c.tx,c.ty,c.tz],eye)),r=norm3(cross3(f,[0,1,0])),u=cross3(r,f);c.tx+=(-r[0]*dx+u[0]*dy)*k;c.ty+=(-r[1]*dx+u[1]*dy)*k;c.tz+=(-r[2]*dx+u[2]*dy)*k;}
-    else if(d.how==='zoom')c.dist=clamp(c.dist*Math.exp((dy-dx)*.006),.2,50);
+    else if(d.how==='zoom')c.dist=v3Zoom(c.dist*Math.exp((dy-dx)*.006));
     else{/* Shift while turning snaps to the nearest side view (front/back/left/right/top/bottom); the free angle keeps going underneath */
       if(d.fy==null){d.fy=c.yaw;d.fp=c.pitch;}d.fy-=dx*.008;d.fp=clamp(d.fp+dy*.008,-1.55,1.55);
       if(e.shiftKey){const Q=Math.PI/2;if(Math.abs(d.fp)>Math.PI/4){c.pitch=d.fp>0?1.5699:-1.5699;c.yaw=Math.round(d.fy/Q)*Q;}else{c.pitch=0;c.yaw=Math.round(d.fy/Q)*Q;}}
       else{c.yaw=d.fy;c.pitch=d.fp;}}v3.dirty=true;requestRender();});
   const up=e=>{if(typeof pfBusy==='function'&&pfBusy()){pfUp(e);return;}if(pgz.drag){pgzUp();return;}if(typeof g3Up==='function'&&g3.drag){g3Up();return;}if(lgz.drag){lgzUp();return;}if(sel3DragBusy()){sel3DragUp(e,e.type!=='pointerup',hit);return;}if(mk3Busy()&&e.type!=='lostpointercapture'){mk3Up(e);return;}if(v3.drag&&e.pointerId!==undefined&&v3.drag.id!==e.pointerId)return;v3.drag=null;meshUp(e);};
   hit.addEventListener('pointerup',up);hit.addEventListener('pointercancel',up);hit.addEventListener('lostpointercapture',up);hit.addEventListener('pointerleave',()=>{sel3HoverClear();v3.hover=false;v3PickRelease();v3PickHold.hit=null;v3PickHold.point=null;meshCursor(hit,null);});hit.addEventListener('pointerenter',()=>{v3.hover=true;});
-  hit.addEventListener('wheel',e=>{e.preventDefault();e.stopPropagation();v3.cam.dist=clamp(v3.cam.dist*Math.exp(e.deltaY*.0012),.2,50);v3.dirty=true;requestRender();},{passive:false});
+  hit.addEventListener('wheel',e=>{e.preventDefault();e.stopPropagation();v3.cam.dist=v3Zoom(v3.cam.dist*Math.exp(e.deltaY*.0012));v3.dirty=true;requestRender();},{passive:false});
   for(const t of ['selectstart','dragstart'])hit.parentNode.addEventListener(t,e=>e.preventDefault());
   hit.addEventListener('dblclick',e=>{const s=window.getSelection&&window.getSelection();if(s&&s.rangeCount)s.removeAllRanges();if(maskToolsOn()&&mk3.tool&&mk3.tool!=='paint')return;if(ui.mode==='p3d'){if(v3PickAt(hit,e))return;}else{if(typeof p3SelectAt==='function'&&p3SelectAt(hit,e))return;}v3Frame();requestRender();});}
 /* a release anywhere (or the window losing focus) ends turning and painting on the model */
@@ -820,7 +834,7 @@ window.addEventListener('pointerup',e=>{if(v3.drag&&v3.drag.id===e.pointerId){co
     if(d.alt&&e.button===0&&Math.hypot(e.clientX-d.x0,e.clientY-d.y0)<4&&typeof maskClearAll==='function'&&maskClearAll())return;
     /* the heal brush: Alt+click on the model (without turning it) sets where to copy from */
     if(d.alt&&(ui.tool==='heal'||ui.tool==='clone')&&Math.hypot(e.clientX-d.x0,e.clientY-d.y0)<4){const hit=document.getElementById('v3Hit'),pk=hit&&v3PickAt(hit,e);
-      if(pk){if(ui.tool==='heal'&&heal.mode==='spot'){heal.mode='source';healSave();buildBrushPanel();buildOptBar();}healSetSource(pk.uv[0]*doc.w,pk.uv[1]*doc.h,ui.mode==='p3d'?pk.set:null);}}}if(v3.mstroke&&v3.mstroke.id===e.pointerId)meshUp(e);},true);
+      if(pk){if(ui.tool==='heal'&&heal.mode==='spot'){heal.mode='source';healSave();buildBrushPanel();buildOptBar();}healSetSource(pk.uv[0]*doc.w,pk.uv[1]*doc.h,ui.mode==='p3d'?pk.set:null);heal.srcPos=pk.pos?pk.pos.slice():null;}}}if(v3.mstroke&&v3.mstroke.id===e.pointerId)meshUp(e);},true);
 window.addEventListener('blur',()=>{v3.drag=null;if(sel3DragBusy())sel3DragUp(null,true);if(v3.mstroke)meshUp();});
 /* Alt on its own must not hand the keyboard to the window menu (Windows), which made the model seem locked */
 for(const t of ['keydown','keyup'])window.addEventListener(t,e=>{if(e.key==='Alt')e.preventDefault();},true);

@@ -140,17 +140,21 @@ function texUdim(){if(ui.mode!=='p3d'||!p3.ua)return null;const S=p3.sets[p3.cur
 function texCrop(f,W,H,C,r){const [x,y,w,h]=r,o=new Float32Array(w*h*C);for(let j=0;j<h;j++){const yy=Math.min(H-1,y+j);o.set(f.subarray((yy*W+x)*C,(yy*W+x+w)*C),j*w*C);}return o;}
 async function buildTexturesIn(pr,name,W,H,nw,nh,pad,U){
   const cache={},has=k=>doc.maps.includes(k);
-  const grey=k=>{if(k==='one')return null;const kk=k==='smooth'?'rough':k;const mm=texMesh(kk);if(!has(kk)&&!mm)return null;if(!cache[kk]){if(mm){const pt=texPadT(pad,mm,true);cache[kk]=resampleF(readMapF(pt,1),pt.w,pt.h,1,W,H,false);if(pt!==mm)release(pt);}else{const t=texPadT(pad,compositeMap(kk));cache[kk]=readMapF(t,1);release(t);}}return cache[kk];};
+  const grey=k=>{if(k==='one')return null;const kk=k==='smooth'?'rough':k;if(cache[kk]&&kk==='metal')return cache[kk];const mm=texMesh(kk);if(!has(kk)&&!mm)return null;if(!cache[kk]){if(mm){const pt=texPadT(pad,mm,true);cache[kk]=resampleF(readMapF(pt,1),pt.w,pt.h,1,W,H,false);if(pt!==mm)release(pt);}else{const t=texPadT(pad,compositeMap(kk));cache[kk]=readMapF(t,1);release(t);}}return cache[kk];};
   const def=k=>k==='zero'?0:k==='one'?1:k==='smooth'?1-mapDefault('rough')[0]:has(k)?mapDefault(k)[0]:(MAP_DEFS[k].def!=null?MAP_DEFS[k].def:0);
   const files=[],ext=texCfg.fmt,n=W*H;
+  /* (0.97.27) Specular reflectivity: the Specular colour is turned into Metallic + Base colour for presets that carry them */
+  const SM=texSpecMetal()&&texOutputs(pr).some(o=>o.rgb==='base'||o.grey==='metal'||(o.ch||[]).includes('metal')||(o.rgbA||[])[0]==='base')?texSpecSolve(pad,W,H):null;
+  if(SM)cache.metal=SM.metal;
   for(const o of texOutputs(pr)){let f,C;
     if(o.rgb==='normal'){const t=texPadT(pad,normalComposite(texNormalFlip(pr),null));f=readMapF(t,4);release(t);C=3;f=dropAlpha(f,n);}
     else if(o.rgb){const t=texPadT(pad,compositeMap(o.rgb));const rgba=readMapF(t,4);release(t);
+      if(SM&&o.rgb==='base')for(let i=0;i<n;i++)for(let j=0;j<3;j++)rgba[i*4+j]=SM.base[i*4+j];
       if(o.rgb==='sssc'){const sh=typeof v3ShadeOf==='function'?v3ShadeOf(doc):null,c=(sh&&sh.kind==='skin'&&shParams(sh).col)||SH_DEF.skin.col;for(let i=0;i<n;i++){const al=rgba[i*4+3];for(let j=0;j<3;j++)rgba[i*4+j]=rgba[i*4+j]*al+c[j]*(1-al);rgba[i*4+3]=1;}}
       if(o.a==='opac?'&&has('opac')){const op=grey('opac');for(let i=0;i<n;i++)rgba[i*4+3]*=op[i];C=4;f=rgba;}
       else if(o.rgb==='base'&&baseHasAlpha(rgba,n)&&o.a){C=4;f=rgba;}
       else{C=3;f=dropAlpha(rgba,n);}}
-    else if(o.rgbA){const [rk,ak]=o.rgbA;const t=texPadT(pad,compositeMap(rk));const rgba=readMapF(t,4);release(t);const g=grey(ak),d=def(ak);for(let i=0;i<n;i++)rgba[i*4+3]=g?g[i]:d;C=4;f=rgba;
+    else if(o.rgbA){const [rk,ak]=o.rgbA;const t=texPadT(pad,compositeMap(rk));const rgba=readMapF(t,4);release(t);if(SM&&rk==='base')for(let i=0;i<n;i++)for(let j=0;j<3;j++)rgba[i*4+j]=SM.base[i*4+j];const g=grey(ak),d=def(ak);for(let i=0;i<n;i++)rgba[i*4+3]=g?g[i]:d;C=4;f=rgba;
       if(!has(rk)){const c=mapDefault(rk);for(let i=0;i<n;i++){rgba[i*4]=c[0];rgba[i*4+1]=c[1];rgba[i*4+2]=c[2];}}}
     else if(o.grey){const g=grey(o.grey);if(!g)continue;f=g.slice();C=1;}
     else{C=o.ch.length;f=new Float32Array(n*C);o.ch.forEach((k,c)=>{const g=grey(k),inv=k==='smooth',d=def(k);for(let i=0;i<n;i++){const v=g?g[i]:d;f[i*C+c]=inv&&g?1-v:v;}});}
@@ -193,6 +197,8 @@ function dlgExportTextures(){if(stroke||preview||selLive){toast('Finish the curr
     makeSlider({id:'txPadPx',label:'Dilation',min:0,max:128,step:1,value:texCfg.padPx??16,def:16,fmt:v=>Math.round(v)+' px',onInput:v=>{texCfg.padPx=Math.round(v);}}).el,
     el('p',{class:'note',id:'txPadNote',text:texPadAvail()?'Grows each UV island’s colours outward past its edges (in pixels of the exported size), so mip-maps in the engine show no seams. Fill the rest: the space between islands takes the nearest island’s colours. Transparent: it stays see-through (PNG/TGA with alpha).':'Padding needs the model’s UVs: export from 3D Paint, or open the 3D view with your model. Without them the maps are saved as painted.'}),
     chk('txH16','Height at 16 bits (PNG)',texCfg.h16,v=>{texCfg.h16=v;}),chk('txPsd','Also each channel as a layered PSD (keeps layers and folders)',!!texCfg.psd,v=>{texCfg.psd=v;}),el('div',{class:'sub',text:'Baked maps'}),texMeshKeys().length?chk('txMeshMaps','Export baked maps ('+texMeshKeys().length+' in this set)',texCfg.meshMaps,v=>{texCfg.meshMaps=v;draw();pick();}):el('p',{class:'note',id:'txNoBaked',text:'This set has no baked maps yet. Bake in the Bake tab and send them to 3D Paint, or import them in the Mesh maps shelf.'}),meshPick,el('p',{class:'note',text:'Baked maps are saved beside the textures, also when you send to a game engine. They export at their original size unless you choose an export size, with a Mesh_ prefix, and belong to their texture set.'}),
+    /* (0.97.27, Georgian: "how do I export the separate UDIMs now?") say plainly that tile sets come out one file per tile */
+    ui.mode==='p3d'&&p3.ua&&p3.sets.some(S=>{const B=udimBox(p3Binding(S));return B&&B.tiles.length>1;})?el('p',{class:'note',id:'txUdimNote',text:'UV tiles (UDIMs): every set with tiles is written one file per tile, e.g. '+(texCfg.name||'Texture')+'_BaseColor.1001.png, …1002.png. Size is per tile.'}):'',
     ui.mode==='p3d'&&p3.sets.filter(S=>!S.missing).length>1?chk('txAll','Every texture set (files named after each set)',texCfg.allSets,v=>{texCfg.allSets=v;draw();}):'',
     ...modelRow,...esRow(()=>{closeDialog();dlgExportTextures();}),el('div',{class:'sub',text:'Files'}),list);draw();pick();
   openDialog({title:'Export textures',body,okLabel:platform.isDesktop?(esActive()?'Export and send':'Choose folder…'):'Export',onOk(){exportTextures();}});}
@@ -204,7 +210,7 @@ async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.
   try{let files=[];const bySet={},glTex={},shInfo={};
     /* each texture set (3D Paint), or the document; the model needs glTF-shaped textures too */
     const one=async(setName,fileName)=>{const fs=await buildTextures(pr,fileName,{udim:true,replay:true});bySet[setName]=fs;files.push(...fs);
-      if(eshWanted()){const g=await buildTextures(GLTF_TEX,pascal(fileName),{replay:true}),T={};for(const f of g)T[f.suffix]=f;shInfo[setName]={sh:JSON.parse(JSON.stringify(eshSafeShade(v3ShadeOf(doc)))),tex:T,alpha:doc.maps.includes('opac')};for(const f of g)if(!files.some(x=>x.name===f.name))files.push(f);}if(texCfg.meshMaps)files.push(...await buildMeshMapTextures(pr,fileName));if(texCfg.psd)files.push(...await psdChannelFiles(fileName));
+      if(eshWanted()){const g=await buildTextures(GLTF_TEX,pascal(fileName),{replay:true}),T={};for(const f of g)T[f.suffix]=f;const sh0=eshSafeShade(v3ShadeOf(doc));if(sh0&&sh0.kind==='skin'){const sk=await buildTextures(ESH_SKIN_TEX,pascal(fileName),{replay:true});for(const f of sk){T[f.suffix]=f;g.push(f);}}shInfo[setName]={sh:JSON.parse(JSON.stringify(sh0)),tex:T,alpha:doc.maps.includes('opac')};for(const f of g)if(!files.some(x=>x.name===f.name))files.push(f);}if(texCfg.meshMaps)files.push(...await buildMeshMapTextures(pr,fileName));if(texCfg.psd)files.push(...await psdChannelFiles(fileName));
       if(wantModel&&texCfg.model==='glb'){const g=await buildTextures(GLTF_TEX,pascal(fileName),{replay:true}),T={};for(const f of g)T[f.suffix]=f;T.alpha=doc.maps.includes('opac');glTex[setName]=T;}};
     const sets=ui.mode==='p3d'?p3.sets.filter(S=>!S.missing):[];
     if(ui.mode==='p3d'&&(texCfg.allSets||wantModel)&&sets.length>1){const back=p3.cur;
@@ -234,11 +240,26 @@ async function buildMeshMapTextures(pr,name){const files=[],pad=texPadBegin(texC
 /* (0.97.26) channels no preset knows about (Scattering, Scatter colour, Translucency, Specular level, your own channels)
    are exported as their own files after the preset's own, named after the channel */
 const TEX_EXTRA=['specl','specc','sss','sssc','trans','fuzzm',...MAP_USER];
-{const f=texOutputs;texOutputs=function(pr){const outs=f(pr),used=new Set();
+{const f=texOutputs;texOutputs=function(pr){const o0=f(pr),spec=texSpecMetal(),used=new Set();
+  const outs=spec?pr.outs.filter(o=>o0.includes(o)||o.grey==='metal'||(o.ch||[]).includes('metal')):o0;if(pr.noExtra)return outs;
   for(const o of pr.outs){for(const k of [o.rgb,o.grey,...(o.ch||[]),...(o.rgbA||[])])if(k)used.add(k);}
   for(const k of TEX_EXTRA){if(used.has(k)||!doc.maps.includes(k))continue;if((k==='specl'||k==='specc')&&doc.workflow==='spec')continue;
     const D=MAP_DEFS[k],s=pascal(D.label);outs.push(D.grey?{s,what:D.label,grey:k}:{s,what:D.label,rgb:k});}
   return outs;};}
+/* (0.97.27) Specular reflectivity (Shader panel, Standard and Skin): game engines and most presets read Metallic, so on export the
+   Specular colour (or the unpainted specular colour) and the base colour are turned into Metallic + Base colour, with the same
+   maths as switching a set to Metal / Rough. The Specular colour picture is still exported beside them. */
+function texSpecMetal(){return typeof skReflSpec==='function'&&typeof v3ShadeOf==='function'&&skReflSpec(v3ShadeOf(doc));}
+function texSpecSolve(pad,W,H){const n=W*H,c=shParams(v3ShadeOf(doc)).specDef||[.22,.22,.22];
+  const rd=k=>{const t=texPadT(pad,compositeMap(k)),f=readMapF(t,4);release(t);return f;};
+  const D=rd('base'),S=doc.maps.includes('specc')?rd('specc'):null,base=new Float32Array(n*4),metal=new Float32Array(n),s=[0,0,0],d=[0,0,0];
+  for(let i=0;i<n;i++){const a=S?S[i*4+3]:0;for(let j=0;j<3;j++){s[j]=wfLin(S?c[j]*(1-a)+S[i*4+j]*a:c[j]);d[j]=wfLin(D[i*4+j]);}
+    const oms=1-Math.max(s[0],s[1],s[2]),m=wfSolveMetal(wfLum(d),wfLum(s),oms);metal[i]=m;
+    for(let j=0;j<3;j++){const bd=d[j]*oms/.96/Math.max(1-m,1e-4),bs=(s[j]-.04*(1-m))/Math.max(m,1e-4);base[i*4+j]=wfSrgb(Math.min(1,Math.max(0,bd+(bs-bd)*m*m)));}
+    base[i*4+3]=D[i*4+3];}
+  return {base,metal};}
+/* (0.97.27) the skin's own maps for game engines in one picture: red Scattering, green Translucency, blue Fuzz (white where unpainted) */
+const ESH_SKIN_TEX={label:'Skin mask',normal:'gl',name:n=>n+'_{s}',noExtra:true,outs:[{s:'SkinMask',ch:['sss','trans','fuzzm'],need:['sss','trans','fuzzm']}]};
 /* (0.97.26) each channel of the set as a layered PSD at the canvas size, e.g. Helmet_BaseColour.psd, Helmet_Roughness.psd */
 async function psdChannelFiles(fileName){const out=[];
   for(const k of doc.maps){if(k==='curv')continue;const blob=await encodePSD(k);

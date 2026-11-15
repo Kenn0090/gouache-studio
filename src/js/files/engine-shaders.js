@@ -12,7 +12,7 @@
      material and follow the Directional Light through a parameter collection).
    The look is a close match, not identical: each engine lights differently. */
 /* bump this when a look's shader changes in a way that matters: Gouache then offers to update the master shaders already in a game */
-const ESH_MASTER_VER=4;
+const ESH_MASTER_VER=5;
 /* shared files from before are replaced without asking: before version 3 they had errors (Unity: a broken comment in the shader and a lost
    backslash in GouacheAssign.cs, which stopped every script in the project, the live link too); version 4 (0.94.4) fixed giving the model
    its materials in Unity's newer material import mode */
@@ -46,7 +46,10 @@ function eshGodotParams(sh){const k=sh.kind,P=shParams(sh),L=[];
   if(k==='retro')L.push(['texels','float',eshF(P.res)],['dither_amount','float',eshF(P.dither)],['colour_levels','vec3','vec3('+[(1<<P.br)-1,(1<<P.bg)-1,(1<<P.bb)-1].map(eshF).join(', ')+')'],['ambient_amount','float',eshF(P.amb==null?.35:P.amb)],['brightness','float',eshF(P.bright==null?1:P.bright)],['fog_amount','float',eshF(P.fog||0)],['fog_colour','vec3',eshV3(P.fogc)],['snap_grid','float',eshF(P.wobble>0?320-280*P.wobble:0)]);
   if(k==='aniso')L.push(['stretch','float',eshF(Math.min(1,Math.abs(P.amount)))],['direction_turns','float',eshF(P.dir)]);
   if(k==='velvet')L.push(['sheen_colour','vec3',eshV3(P.col)],['sheen','float',eshF(P.sheen)],['sheen_softness','float',eshF(P.srough)],['rim_power','float',eshF(P.rim)]);
-  if(k==='skin')L.push(['blood_colour','vec3',eshV3(P.col)],['scatter_strength','float',eshF(P.scatter*P.strength)],['scatter_depth','float',eshF(P.depth*.1)],['transmission','float',eshF(P.transmission)],['oiliness','float',eshF(P.oil)]);
+  /* (0.97.27) the Marmoset-style skin: scatter, translucency and fuzz with their maps (one SkinMask picture: R scatter, G translucency, B fuzz) */
+  if(k==='skin')L.push(['blood_colour','vec3',eshV3(P.col)],['scatter_strength','float',eshF(Math.min(1,(P.strength??.6)*Math.min(1,.4+.3*(P.scatDepth??1))))],['translucency_colour','vec3',eshV3(P.tcol||[1,.45,.25])],
+    ['translucency_depth','float',eshF(.1*(P.transDepth??1))],['transmission','float',eshF(P.transmission??.5)],['fuzz','float',eshF(P.fuzz||0)],['fuzz_colour','vec3',eshV3(P.fcol||[1,1,1])],['fuzz_scale','float',eshF(P.fuzzScale??1)],
+    ['skin_roughness','float',eshF(P.surface??.45)],['oiliness','float',eshF(P.oil??.3)]);
   if(k==='toon'||k==='cel'){L.push(['shadow_colour','vec3',eshV3(P.col)],['highlight','float',eshF(P.spec)],['rim_light','float',eshF(P.rim)]);
     if(k==='toon')L.push(['bands','float',eshF(P.steps)],['band_shift','float',eshF(P.offset)]);else L.push(['shadow_line','float',eshF(P.thresh)],['edge_softness','float',eshF(P.soft)]);}
   if(k==='hologram')L.push(['holo_colour','vec3',eshV3(P.col)],['see_through','float',eshF(P.opacity)],['edge_glow','float',eshF(P.glow)],['scan_lines','float',eshF(P.lines)],['scan_speed','float',eshF(P.speed)],['flicker','float',eshF(P.flicker)],['glitch','float',eshF(P.glitch)],['edge_pulse','float',eshF(P.pulse)],['sweep','float',eshF(P.sweep)],['body_glow','float',eshF(P.fill)]);
@@ -75,7 +78,12 @@ function eshGodotShader(kind,alpha){const L=eshGodotParams({kind,p:{}}),k=kind,d
     '\tNORMAL_MAP = texture(normal_tex, uv).rgb;','\tNORMAL_MAP_DEPTH = normal_strength;','\tEMISSION = texture(emission_tex, uv).rgb;');
   if(k==='aniso')F.push('\tANISOTROPY = stretch;','\tANISOTROPY_FLOW = vec2(cos(direction_turns * TAU), sin(direction_turns * TAU));');
   if(k==='velvet')F.push('\tfloat fr = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), max(rim_power, 0.5) * 3.0 + 1.0);','\tEMISSION += sheen_colour * sheen * fr * mix(1.0, 0.5, sheen_softness);','\tROUGHNESS = max(ROUGHNESS, 0.55);');
-  if(k==='skin')F.push('\tSSS_STRENGTH = scatter_strength;','\tSSS_TRANSMITTANCE_COLOR = vec4(blood_colour, 1.0);','\tSSS_TRANSMITTANCE_DEPTH = scatter_depth;','\tSSS_TRANSMITTANCE_BOOST = transmission;','\tSPECULAR = 0.5 + oiliness * 0.4;');
+  if(k==='skin'){RM.push('sss_mode_skin');U.push('uniform sampler2D skin_tex : filter_linear_mipmap, repeat_enable, hint_default_white;','uniform sampler2D scatter_colour_tex : source_color, filter_linear_mipmap, repeat_enable, hint_default_white;','uniform bool has_scatter_colour = false;');
+    F.push('\tvec3 skm = texture(skin_tex, uv).rgb;','\tvec3 scol = has_scatter_colour ? texture(scatter_colour_tex, uv).rgb : blood_colour;','\tSSS_STRENGTH = scatter_strength * skm.r;',
+      '\tSSS_TRANSMITTANCE_COLOR = vec4(mix(scol, translucency_colour, 0.6), 1.0);','\tSSS_TRANSMITTANCE_DEPTH = translucency_depth;','\tSSS_TRANSMITTANCE_BOOST = transmission * skm.g;',
+      '\tfloat fz = clamp(fuzz * skm.b, 0.0, 1.0);','\tRIM = fz;','\tRIM_TINT = clamp(0.5 - 0.5 * (dot(fuzz_colour, vec3(0.3333)) - 0.5), 0.0, 1.0);',
+      '\tEMISSION += fuzz_colour * fz * pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0 / max(fuzz_scale, 0.2)) * 0.05;',
+      '\tROUGHNESS = mix(ROUGHNESS, skin_roughness, 0.75);','\tSPECULAR = 0.5 + oiliness * 0.4;');}
   if(k==='toon'||k==='cel'){
     F.push('\tfloat fresnel = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);','\tEMISSION += ALBEDO * smoothstep(1.0 - rim_light, 1.0, fresnel) * rim_light;');
     Lt.push('void light() {','\tfloat l = dot(NORMAL, LIGHT) * 0.5 + 0.5;');
@@ -218,6 +226,10 @@ Shader "Gouache/Shaded"
         _OrmMap("ORM (R = AO, G = roughness, B = metallic)", 2D) = "white" {}
         [Normal] _BumpMap("Normal", 2D) = "bump" {}
         _EmissionMap("Emission", 2D) = "black" {}
+        _SkinMap("Skin mask (R scatter, G translucency, B fuzz)", 2D) = "white" {}
+        _SssColMap("Scatter colour", 2D) = "white" {}
+        _HasSssCol("Has scatter colour map", Float) = 0
+        _ShE("Shader E", Vector) = (0,1,1,0)
         _BaseColor("Base colour tint", Color) = (1,1,1,1)
         _HasOrm("Has ORM", Float) = 1
         _HasNormal("Has normal", Float) = 1
@@ -250,10 +262,11 @@ Shader "Gouache/Shaded"
         TEXTURE2D(_OrmMap); SAMPLER(sampler_OrmMap);
         TEXTURE2D(_BumpMap); SAMPLER(sampler_BumpMap);
         TEXTURE2D(_EmissionMap); SAMPLER(sampler_EmissionMap);
+        TEXTURE2D(_SkinMap); TEXTURE2D(_SssColMap);
         CBUFFER_START(UnityPerMaterial)
             float4 _BaseMap_ST; float4 _BaseColor;
             float _HasOrm, _HasNormal, _HasEmis, _Roughness, _Metallic, _Kind, _OutW, _Cutoff, _UseAlpha, _RoughScale, _MetalScale, _NormalScale;
-            float4 _ShP, _ShQ, _ShC, _ShD, _Skin, _Pan;
+            float4 _ShP, _ShQ, _ShC, _ShD, _Skin, _Pan, _ShE; float _HasSssCol;
         CBUFFER_END
         float Hash21(float2 p) { return frac(sin(dot(p, float2(127.1, 311.7))) * 43758.5453); }
         float Hash31(float3 p) { return frac(sin(dot(p, float3(127.1, 311.7, 74.7))) * 43758.5453); }
@@ -465,11 +478,18 @@ ${ESH_FUR_HLSL}
                 // ---- Skin: light wraps round, and shines through thin parts ----
                 if (_Kind > 0.5 && _Kind < 1.5)
                 {
+                    // Skin like Marmoset's: scatter (wrapped light tinted by the scatter colour), translucency, fuzz; maps in _SkinMap
+                    half3 skm = SAMPLE_TEXTURE2D(_SkinMap, sampler_BaseMap, uv).rgb;
+                    half3 scol = _HasSssCol > 0.5 ? SAMPLE_TEXTURE2D(_SssColMap, sampler_BaseMap, uv).rgb : _ShC.rgb;
                     float nl = dot(N, ml.direction);
-                    float wrap = _ShP.x * 0.6;
-                    c.rgb += alb * ml.color * ml.shadowAttenuation * (max((nl + wrap) / (1.0 + wrap), 0.0) - max(nl, 0.0)) * 0.6;
-                    float back = max(dot(-N, ml.direction), 0.0);
-                    c.rgb += alb * _ShC.rgb * back * _Skin.z * _ShP.y * ml.color * ml.shadowAttenuation * 0.5;
+                    float wrap = saturate(_ShP.x) * 0.6 * skm.r;
+                    half3 lc = ml.color * ml.shadowAttenuation;
+                    c.rgb += alb * lerp(1.0, scol * 1.4, 0.6) * lc * (max((nl + wrap) / (1.0 + wrap), 0.0) - max(nl, 0.0)) * 0.8;
+                    float bk = dot(-N, ml.direction);
+                    float back = saturate(lerp(bk, bk * 0.5 + 0.5, _Skin.w)) * saturate(_Skin.y);
+                    c.rgb += alb * _ShD.rgb * back * _Skin.z * skm.g * ml.color * 0.6;
+                    float fz = _ShE.x * skm.b * pow(1.0 - NdV, 3.0 / max(_ShE.y, 0.2)) * lerp(1.0, ao, _ShE.z);
+                    c.rgb += float3(_ShQ.x, _ShQ.y, _ShQ.w) * fz * (lc * saturate(nl * 0.5 + 0.5) + bakedGI) * 0.5;
                 }
                 // ---- Car paint: a clear coat over the paint, and flakes ----
                 if (_Kind > 12.5 && _Kind < 13.5)
@@ -800,11 +820,11 @@ const ESH_ASSIGN_GUID='c3e19a5d8b7f4e60a2d4f1b9076c58e3';
 const eshYV=a=>'{r: '+eshF(a[0])+', g: '+eshF(a[1])+', b: '+eshF(a[2])+', a: '+eshF(a[3]==null?1:a[3])+'}';
 function eshUnityMaterial(name,sh,texGuids,flags,width,shaderGuid){const u=shadeUniforms(sh),k=sh.kind,P=shParams(sh),kind=Math.max(0,SHADERS.findIndex(x=>x[0]===k)),
     kk=kind===6?0:kind;/* Spec/Gloss: the textures are already metal/rough */
-  const tex=[['_BaseMap',texGuids.base],['_OrmMap',texGuids.orm],['_BumpMap',texGuids.normal],['_EmissionMap',texGuids.emis]].filter(x=>x[1]);
+  const tex=[['_BaseMap',texGuids.base],['_OrmMap',texGuids.orm],['_BumpMap',texGuids.normal],['_EmissionMap',texGuids.emis],['_SkinMap',texGuids.skin],['_SssColMap',texGuids.sssc]].filter(x=>x[1]);
   const te=tex.map(([n,g])=>'    - '+n+':\n        m_Texture: {fileID: 2800000, guid: '+g+', type: 3}\n        m_Scale: {x: 1, y: 1}\n        m_Offset: {x: 0, y: 0}').join('\n');
   const shp=u.uShP.slice(),shq=u.uShQ.slice(),skin=u.uSkin.slice();if(k==='retro')shp[3]=u.uSnap||0;
-  const floats=[['_Kind',kk],['_HasOrm',texGuids.orm?1:0],['_HasNormal',texGuids.normal?1:0],['_HasEmis',texGuids.emis?1:0],['_OutW',width||0],['_UseAlpha',flags.alpha?1:0],['_SrcBlend',flags.alpha?5:1],['_DstBlend',flags.alpha?10:0],['_ZWrite',flags.alpha?0:1],['_Cutoff',.5],['_Roughness',.6],['_Metallic',0],['_RoughScale',1],['_MetalScale',1],['_NormalScale',1]];
-  const colors=[['_BaseColor',[1,1,1,1]],['_ShP',shp],['_ShQ',shq],['_ShC',[...(u.uShC||[1,1,1]),1]],['_ShD',[...(u.uShD||[0,0,0]),1]],['_Skin',skin],['_Pan',k==='panner'?[P.sx,P.sy,0,0]:k==='hologram'?[P.sweep,0,0,0]:k==='halfcel'?[0,P.follow||0,0,0]:k==='ink'?[0,0,P.shadow,P.rim]:[0,0,0,0]]];
+  const floats=[['_Kind',kk],['_HasOrm',texGuids.orm?1:0],['_HasNormal',texGuids.normal?1:0],['_HasEmis',texGuids.emis?1:0],['_OutW',width||0],['_UseAlpha',flags.alpha?1:0],['_SrcBlend',flags.alpha?5:1],['_DstBlend',flags.alpha?10:0],['_ZWrite',flags.alpha?0:1],['_Cutoff',.5],['_Roughness',.6],['_Metallic',0],['_RoughScale',1],['_MetalScale',1],['_NormalScale',1],['_HasSssCol',texGuids.sssc?1:0]];
+  const colors=[['_BaseColor',[1,1,1,1]],['_ShP',shp],['_ShQ',shq],['_ShC',[...(u.uShC||[1,1,1]),1]],['_ShD',[...(u.uShD||[0,0,0]),1]],['_Skin',skin],['_ShE',k==='skin'?(u.uShE||[0,1,1,0]):[0,1,1,0]],['_Pan',k==='panner'?[P.sx,P.sy,0,0]:k==='hologram'?[P.sweep,0,0,0]:k==='halfcel'?[0,P.follow||0,0,0]:k==='ink'?[0,0,P.shadow,P.rim]:[0,0,0,0]]];
   return ['%YAML 1.1','%TAG !u! tag:unity3d.com,2011:','--- !u!21 &2100000','Material:','  serializedVersion: 8','  m_ObjectHideFlags: 0','  m_CorrespondingSourceObject: {fileID: 0}','  m_PrefabInstance: {fileID: 0}','  m_PrefabAsset: {fileID: 0}',
     '  m_Name: '+name,'  m_Shader: {fileID: 4800000, guid: '+(shaderGuid||ESH_SHADER_GUID)+', type: 3}','  m_ValidKeywords: []','  m_InvalidKeywords: []','  m_LightmapFlags: 4','  m_EnableInstancingVariants: 0','  m_DoubleSidedGI: 0','  m_CustomRenderQueue: '+(flags.alpha?3000:-1),'  stringTagMap: {}','  disabledShaderPasses: []',
     '  m_LockedProperties: ','  m_SavedProperties:','    serializedVersion: 3','    m_TexEnvs:',te||'    []','    m_Ints: []','    m_Floats:',floats.map(([n,v])=>'    - '+n+': '+eshF(v)).join('\n'),'    m_Colors:',colors.map(([n,v])=>'    - '+n+': '+eshYV(v)).join('\n'),'  m_BuildTextureStacks: []',''].join('\n');}
@@ -824,7 +844,9 @@ function eshUnrealParams(sh,size,hasOrm){const k=sh.kind,P=shParams(sh),lin=c=>(
   if(k==='retro'){sc.Texels=P.res;sc.DitherAmount=P.dither;sc.LightBands=P.steps||0;sc.Ambient=P.amb==null?.35:P.amb;sc.Brightness=P.bright==null?1:P.bright;vc.ColourLevels=[(1<<P.br)-1,(1<<P.bg)-1,(1<<P.bb)-1,1];}
   if(k==='aniso'){sc.Stretch=Math.min(1,Math.abs(P.amount));sc.DirectionTurns=P.dir;}
   if(k==='velvet'){vc.SheenColour=rgba(P.col);sc.Sheen=Math.min(1,P.sheen*.6);}
-  if(k==='skin'){vc.BloodColour=rgba(P.col);sc.ScatterStrength=Math.min(1,P.scatter*P.strength+.2);}
+  /* (0.97.27) the Marmoset-style skin: Subsurface model; scatter, translucency and fuzz with their maps (SkinMask, ScatterColour) */
+  if(k==='skin'){vc.BloodColour=rgba(P.col);vc.TranslucencyColour=rgba(P.tcol||[1,.45,.25]);vc.FuzzColour=rgba(P.fcol||[1,1,1]);
+    Object.assign(sc,{ScatterStrength:Math.min(1,(P.strength??.6)*Math.min(1,.4+.3*(P.scatDepth??1))+.2),Translucency:P.transmission??.5,Fuzz:P.fuzz||0,FuzzScale:P.fuzzScale??1,FuzzOcclusion:P.fuzzOcc??1,SkinRoughness:P.surface??.45,Oiliness:P.oil??.3,HasScatterColour:0});}
   if(k==='toon'||k==='cel'){vc.ShadowColour=rgba(P.col);sc.Highlight=P.spec;sc.RimLight=P.rim;sc.OutlineWidth=(P.outline||0)*size*0.0014;vc.OutlineColour=rgba(P.ocol||[0,0,0]);
     if(k==='toon'){sc.Bands=P.steps;sc.BandShift=P.offset;}else{sc.ShadowLine=P.thresh;sc.EdgeSoftness=P.soft;}}
   const ow=(P.outline||0)*size*0.0014;
@@ -847,7 +869,8 @@ function eshFiles(to,name,info,size,modelFile,opt){const out=[],pn=pascal(name),
     for(const s of sets){const I=info[s],T=I.tex||{},sh=I.sh||{kind:'std',p:{}},sn=eshSafe(s),look=eshLook(sh.kind),alpha=!!I.alpha,file=look+(alpha?'_alpha':'')+'.gdshader';
       if(!made.has(file)){made.add(file);out.push({name:'../_shaders/'+file,data:new TextEncoder().encode(eshGodotShader(sh.kind==='specgloss'?'std':sh.kind,alpha)),shared:true});}
       const texs=[];if(T.BaseColor)texs.push(['albedo_tex',base+T.BaseColor.name]);if(T.ORM)texs.push(['orm_tex',base+T.ORM.name]);if(T.Normal)texs.push(['normal_tex',base+T.Normal.name]);if(T.Emissive)texs.push(['emission_tex',base+T.Emissive.name]);
-      const params=[['has_orm','bool',T.ORM?'true':'false'],...eshGodotParams(sh)];
+      if(T.SkinMask)texs.push(['skin_tex',base+T.SkinMask.name]);if(sh.kind==='skin'&&T.ScatterColour)texs.push(['scatter_colour_tex',base+T.ScatterColour.name]);
+      const params=[['has_orm','bool',T.ORM?'true':'false'],...eshGodotParams(sh),...(sh.kind==='skin'?[['has_scatter_colour','bool',T.ScatterColour?'true':'false']]:[])];
       if(sh.kind==='halfcel'||sh.kind==='ink'){const O=shOutline(sh);
         if(O&&O.w>0){if(!made.has('_outlineink')){made.add('_outlineink');out.push({name:'../_shaders/OutlineInk.gdshader',data:new TextEncoder().encode(eshGodotOutlineInk()),shared:true});}
           const tex=T.BaseColor?[['albedo_tex',base+T.BaseColor.name]]:[];
@@ -864,14 +887,14 @@ function eshFiles(to,name,info,size,modelFile,opt){const out=[],pn=pascal(name),
   if(to==='unity'){const bi=texCfg.unityRP==='builtin',shaderPath=bi?'../GouacheShadedBuiltin.shader':'../GouacheShaded.shader',sguid=bi?ESH_BUILTIN_GUID:ESH_SHADER_GUID;
     for(const s of sets){const I=info[s],T=I.tex||{},sh=I.sh||{kind:'std',p:{}},sn=eshSafe(s),g={};
       const reg=(key,f,kind)=>{if(!f)return;g[key]=eshGuid(pn+'/'+f.name);out.push({name:f.name+'.meta',data:new TextEncoder().encode(eshUnityMeta('tex',g[key],kind))});};
-      reg('base',T.BaseColor,'color');reg('orm',T.ORM,'data');reg('normal',T.Normal,'normal');reg('emis',T.Emissive,'color');
+      reg('base',T.BaseColor,'color');reg('orm',T.ORM,'data');reg('normal',T.Normal,'normal');reg('emis',T.Emissive,'color');if(sh.kind==='skin'){reg('skin',T.SkinMask,'data');reg('sssc',T.ScatterColour,'color');}
       const P=shParams(sh),O=shOutline(sh),width=O?(O.w||0)*size*0.0014:0;
       out.push({name:sn+'.mat',data:new TextEncoder().encode(eshUnityMaterial(sn,sh,g,{alpha:(I.alpha&&!bi)||sh.kind==='hologram'||sh.kind==='glass'},width,sguid))},{name:sn+'.mat.meta',data:new TextEncoder().encode(eshUnityMeta('mat',eshGuid(pn+'/'+sn+'.mat')))});}
     out.push({name:'../GouacheAssign.cs',data:new TextEncoder().encode(ESH_UNITY_ASSIGN),shared:true},{name:'../GouacheAssign.cs.meta',data:new TextEncoder().encode('fileFormatVersion: 2\nguid: '+ESH_ASSIGN_GUID+'\nMonoImporter:\n  externalObjects: {}\n  serializedVersion: 2\n  defaultReferences: []\n  executionOrder: 0\n  icon: {instanceID: 0}\n  userData: \n  assetBundleName: \n  assetBundleVariant: \n'),shared:true});
     out.push({name:shaderPath,data:new TextEncoder().encode(bi?ESH_BUILTIN_SHADER:ESH_UNITY_SHADER),shared:true},{name:shaderPath+'.meta',data:new TextEncoder().encode(eshUnityMeta('shader',sguid)),shared:true});
     return out;}
-  if(to==='unreal'){const list=sets.map(s=>{const I=info[s],T=I.tex||{},sh=I.sh||{kind:'std',p:{}},tex={};for(const k of ['BaseColor','ORM','Normal','Emissive'])if(T[k])tex[k]=T[k].name;
-      const pr=eshUnrealParams(sh,size,!!T.ORM);return {name:s,safe:eshSafe(s),kind:sh.kind,look:eshLook(sh.kind),tex,alpha:!!I.alpha,scalars:pr.scalars,vectors:pr.vectors,lookKeys:pr.lookKeys,variant:I.variant||null};});
+  if(to==='unreal'){const list=sets.map(s=>{const I=info[s],T=I.tex||{},sh=I.sh||{kind:'std',p:{}},tex={};for(const k of ['BaseColor','ORM','Normal','Emissive',...(sh.kind==='skin'?['SkinMask','ScatterColour']:[])])if(T[k])tex[k]=T[k].name;
+      const pr=eshUnrealParams(sh,size,!!T.ORM);if(sh.kind==='skin'&&T.ScatterColour)pr.scalars.HasScatterColour=1;return {name:s,safe:eshSafe(s),kind:sh.kind,look:eshLook(sh.kind),tex,alpha:!!I.alpha,scalars:pr.scalars,vectors:pr.vectors,lookKeys:pr.lookKeys,variant:I.variant||null};});
     out.push({name:'gouache_unreal.gdata',data:new TextEncoder().encode(JSON.stringify({name:pn,model:modelFile||null,masterVersion:ESH_MASTER_VER,updateMasters:!!(opt&&opt.updateMasters),updates:(opt&&opt.updates)||[],sets:list},null,1))},{name:'gouache_unreal_setup.py',data:new TextEncoder().encode(UNREAL_SETUP||'')});
     return out;}
   return out;}

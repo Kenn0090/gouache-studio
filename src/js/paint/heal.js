@@ -11,8 +11,8 @@ const heal={mode:'spot',aligned:true,sampleAll:true,src:null,off:null,start:null
 try{const s=JSON.parse(localStorage.getItem('gs.heal')||'{}');if(s.mode==='spot'||s.mode==='source')heal.mode=s.mode;if(s.aligned===false)heal.aligned=false;}catch(e){}
 try{heal.sampleAll=JSON.parse(localStorage.getItem('gs.heal')||'{}').sampleAll!==false;}catch(e){}
 function healSave(){try{localStorage.setItem('gs.heal',JSON.stringify({mode:heal.mode,aligned:heal.aligned,sampleAll:heal.sampleAll}));}catch(e){}}
-const HL_GLSL=`uniform sampler2D uT; uniform sampler2D uM; uniform vec2 uOff; uniform int uWrap;
-bool srcAt(ivec2 q, out vec4 s){ ivec2 sz=textureSize(uT,0); ivec2 r=q+ivec2(uOff);
+const HL_GLSL=`uniform sampler2D uT; uniform sampler2D uM; uniform vec2 uOff; uniform int uWrap; uniform sampler2D uSh; uniform sampler2D uV; uniform int uUseSh;
+bool srcAt(ivec2 q, out vec4 s){ if(uUseSh==1){ if(texelFetch(uV,q,0).r<0.5){ s=vec4(0); return false; } s=texelFetch(uSh,q,0); return true; } ivec2 sz=textureSize(uT,0); ivec2 r=q+ivec2(uOff);
   if(uWrap==1) r=ivec2(mod(vec2(r),vec2(sz))); else if(any(lessThan(r,ivec2(0)))||any(greaterThanEqual(r,sz))){ s=vec4(0); return false; }
   s=texelFetch(uT,r,0); return true; }
 float wAt(float m){ return 1.0-smoothstep(0.0,0.3,m); }
@@ -48,7 +48,7 @@ let P_HL=null;
 function hlProgs(){if(!P_HL)P_HL={mask:program(FS_HLMASK),pull0:program(FS_HLPULL0),pull:program(FS_HLPULL),push:program(FS_HLPUSH),fin:program(FS_HLFINAL),down:program(FS_HLDOWN)};return P_HL;}
 
 /* ---- the source (healing brush) ---- */
-function healSetSource(x,y,set){heal.src=[x,y];heal.srcSet=set==null?null:set;heal.off=null;healMarker();toast('Heal source set. Now paint where it should go.');}
+function healSetSource(x,y,set){heal.srcPos=null;heal.offS=null;heal.src=[x,y];heal.srcSet=set==null?null:set;heal.off=null;healMarker();toast('Heal source set. Now paint where it should go.');}
 /* the point where a stroke starts (document pixels), and the offset it copies from */
 function healBegin(x,y,tool){heal.start=[x,y];
   if(tool!=='clone'&&heal.mode!=='source')return true;
@@ -94,25 +94,30 @@ function healFindOffset(T,M,bb){const W=doc.w,H=doc.h;
 
 /* ---- the healing itself ---- */
 function hlPyramid(W,H){const lv=[];let w=W,h=H;while(w>2||h>2){w=Math.max(1,Math.ceil(w/2));h=Math.max(1,Math.ceil(h/2));const d=canFloat?16:8;lv.push({w,h,a:makeTarget(w,h,d,false),b:makeTarget(w,h,d,false),c:makeTarget(w,h,d,false)});if(lv.length>14)break;}return lv;}
-function hlHealOne(T,M,off,lv,source){const PR=hlProgs(),old=acquireD(T.depth);blit(T,old,0,0,T.w,T.h,0,0);
-  const U={uT:(source||old).tex,uM:M.tex,uOff:off,uWrap:{int:doc.wrap?1:0}};
+function hlHealOne(T,M,off,lv,source,scr){const PR=hlProgs(),old=acquireD(T.depth);blit(T,old,0,0,T.w,T.h,0,0);
+  /* (0.97.27) on the model: the source comes from the surface as seen on screen (heal-screen.js), not from the texture shifted */
+  const sh=scr&&typeof scrShift==='function'?scrShift(scr,source||old,T.depth):null;
+  const U={uT:(source||old).tex,uM:M.tex,uOff:off,uWrap:{int:doc.wrap?1:0},uSh:sh?sh.v.tex:dummy,uV:sh?sh.ok.tex:dummy,uUseSh:{int:sh?1:0}};
+  try{
   run(PR.pull0,lv[0].a,Object.assign({uWhich:{int:0}},U));run(PR.pull0,lv[0].b,Object.assign({uWhich:{int:1}},U));
   for(let k=1;k<lv.length;k++){run(PR.pull,lv[k].a,{uA:lv[k-1].a.tex});run(PR.pull,lv[k].b,{uA:lv[k-1].b.tex});}
   for(let k=lv.length-1;k>=0;k--)run(PR.push,lv[k].c,{uA:lv[k].a.tex,uB:lv[k].b.tex,uC:k<lv.length-1?lv[k+1].c.tex:dummy,uHasC:{int:k<lv.length-1?1:0}});
-  run(PR.fin,T,Object.assign({uC:lv[0].c.tex,uDst:old.tex},U));return old;}
+  run(PR.fin,T,Object.assign({uC:lv[0].c.tex,uDst:old.tex},U));}finally{if(sh){release(sh.v);release(sh.ok);}}return old;}
 /* Never sample the temporary white stroke preview, and keep material data off the destination outside the stroke. */
 function healVisibleMap(k){const st=stroke;stroke=null;try{return compositeMap(k);}finally{stroke=st;}}
 /* called by endStroke for the heal tool, instead of the normal merge; returns the undo parts of the other maps */
 function healApply(s,x0,y0,bw,bh,record){const L=s.L,W=doc.w,H=doc.h,parts=[];if(bw<=0||bh<=0)return {parts,ok:false};
   const M=acquireD(doc.depth);run(hlProgs().mask,M,Object.assign({uStrokeTex:strokeT.tex,uOpacity:s.o.healOpacity??s.o.opacity},selU(s.o)));
   const sample=heal.sampleAll&&!L.maskOf&&!L.quick,source=sample?healVisibleMap(doc.map):null;
-  let off=heal.mode==='source'?heal.off:healFindOffset(source||L.target,M,[x0,y0,x0+bw,y0+bh]);
+  const scr=s.space&&typeof scrHealCtx==='function'?scrHealCtx(s):null;
+  let off=scr?[0,0]:heal.mode==='source'?heal.off:healFindOffset(source||L.target,M,[x0,y0,x0+bw,y0+bh]);
+  if(scr&&!scr.off)off=null;
   if(!off){if(source)release(source);release(M);toast(heal.mode==='source'?'Alt+click where to copy from first.':'No clean area nearby to copy from. Try a smaller spot, or the Healing brush (Alt+click a source).');return {parts,ok:false};}
   const lv=hlPyramid(W,H),maps=!L.maskOf&&!L.quick&&L.maps?Object.keys(L.maps).filter(k=>{const t=L.maps[k];return t&&!t.empty&&t.tex;}):[];
   try{
-    const primary=hlHealOne(L.target,M,off,lv,source);release(primary);
+    const primary=hlHealOne(L.target,M,off,lv,source,scr);release(primary);
     for(const k of maps){const T=L.maps[k];if(T===L.target)continue;const src=sample?healVisibleMap(k):null;let old;
-      try{old=hlHealOne(T,M,off,lv,src);if(record)parts.push({k,before:captureRegion(old,x0,y0,bw,bh),after:captureRegion(T,x0,y0,bw,bh)});}finally{if(src)release(src);if(old)release(old);}}
+      try{old=hlHealOne(T,M,off,lv,src,scr);if(record)parts.push({k,before:captureRegion(old,x0,y0,bw,bh),after:captureRegion(T,x0,y0,bw,bh)});}finally{if(src)release(src);if(old)release(old);}}
   }finally{for(const l of lv){disposeTarget(l.a);disposeTarget(l.b);disposeTarget(l.c);}if(source)release(source);release(M);}
   heal.last={off:off.slice()};return {parts,ok:true};}
 
@@ -134,8 +139,9 @@ function buildHealPanel(box){$('#brushTitle').textContent=heal.mode==='spot'?'Sp
    Alt+click where to copy from, then paint: the copy appears as you paint (no blending into the edges, unlike
    the healing brush). It shares the source (and Aligned) with the healing brush. Every map of the layer is
    cloned together; selection, symmetry and the 3D mirror shape the stroke. Opacity sets how strongly it covers. */
-const FS_CLONE=`uniform sampler2D uT; uniform sampler2D uStrokeTex; uniform sampler2D uSelTex; uniform int uUseSel; uniform vec2 uOff; uniform int uWrap; uniform float uOpacity;
+const FS_CLONE=`uniform sampler2D uT; uniform sampler2D uStrokeTex; uniform sampler2D uSelTex; uniform int uUseSel; uniform vec2 uOff; uniform int uWrap; uniform float uOpacity; uniform sampler2D uS; uniform sampler2D uV; uniform int uUseS;
 void main(){ ivec2 q=ivec2(gl_FragCoord.xy), sz=textureSize(uT,0); vec4 t=texelFetch(uT,q,0); float m=texelFetch(uStrokeTex,q,0).a*uOpacity; if(uUseSel==1) m*=texelFetch(uSelTex,q,0).r;
+  if(uUseS==1){ o = texelFetch(uV,q,0).r>0.5 ? mix(t,texelFetch(uS,q,0),m) : t; return; }
   ivec2 r=q+ivec2(uOff); if(uWrap==1) r=ivec2(mod(vec2(r),vec2(sz))); else if(any(lessThan(r,ivec2(0)))||any(greaterThanEqual(r,sz))){ o=t; return; }
   o=mix(t,texelFetch(uT,r,0),m); }`;
 let P_CLONE=null;
@@ -143,15 +149,19 @@ const strokeLive=o=>o.tool==='smudge'||o.tool==='clone';
 /* at the start of a clone stroke: a copy of every map as it was (the primary map's copy is beforeT) */
 function cloneBegin(s){const L=s.L,maps=[];
   if(!L.maskOf&&!L.quick&&L.maps)for(const k of Object.keys(L.maps)){const T=L.maps[k];if(!T||T.empty||!T.tex||T===L.target)continue;const old=acquireD(T.depth);blit(T,old,0,0,T.w,T.h,0,0);maps.push({k,T,old});}
-  s.clone={maps,off:heal.off.slice()};}
+  s.clone={maps,off:heal.off.slice()};
+  /* (0.97.27) on the model: one picture per map, copied from the surface as seen on screen, shifted by the source offset */
+  const scr=s.space&&typeof scrHealCtx==='function'?scrHealCtx(s):null;
+  if(scr&&scr.off){s.clone.scr={main:scrShift(scr,beforeT,beforeT.depth)};for(const m of maps)m.sh=scrShift(scr,m.old,m.T.depth);}}
 /* redraw the copy where the stroke has been so far */
 function cloneUpdate(){const s=stroke;if(!s||!s.clone)return;s.cloneDirty=false;if(!P_CLONE)P_CLONE=program(FS_CLONE);
-  const U=Object.assign({uStrokeTex:strokeT.tex,uOff:s.clone.off,uWrap:{int:doc.wrap?1:0},uOpacity:s.o.opacity},selU(s.o));
-  run(P_CLONE,s.L.target,Object.assign({uT:beforeT.tex},U));for(const m of s.clone.maps)run(P_CLONE,m.T,Object.assign({uT:m.old.tex},U));
+  const U=Object.assign({uStrokeTex:strokeT.tex,uOff:s.clone.off,uWrap:{int:doc.wrap?1:0},uOpacity:s.o.opacity,uS:dummy,uV:dummy,uUseS:{int:0}},selU(s.o)),C=s.clone.scr,sc=x=>x?{uS:x.v.tex,uV:x.ok.tex,uUseS:{int:1}}:{};
+  run(P_CLONE,s.L.target,Object.assign({uT:beforeT.tex},U,C?sc(C.main):{}));for(const m of s.clone.maps)run(P_CLONE,m.T,Object.assign({uT:m.old.tex},U,C?sc(m.sh):{}));
   if(s.L.maskOf||s.L.quick)return;s.L.lookVer=(s.L.lookVer||0)+1;}
 /* at the end: the undo parts of the other maps */
 function cloneEnd(s,x0,y0,bw,bh,record){cloneUpdate();const parts=[];
-  for(const m of s.clone.maps){if(record&&bw>0&&bh>0)parts.push({k:m.k,before:captureRegion(m.old,x0,y0,bw,bh),after:captureRegion(m.T,x0,y0,bw,bh)});release(m.old);}
+  for(const m of s.clone.maps){if(record&&bw>0&&bh>0)parts.push({k:m.k,before:captureRegion(m.old,x0,y0,bw,bh),after:captureRegion(m.T,x0,y0,bw,bh)});release(m.old);if(m.sh){release(m.sh.v);release(m.sh.ok);}}
+  if(s.clone.scr&&s.clone.scr.main){release(s.clone.scr.main.v);release(s.clone.scr.main.ok);}
   s.clone=null;return parts;}
 function buildClonePanel(box){$('#brushTitle').textContent='Clone stamp';
   box.append(el('div',{class:'chips'},chk('clAl','Aligned',heal.aligned,v=>{heal.aligned=v;heal.off=null;healSave();})),

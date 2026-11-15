@@ -80,6 +80,8 @@ function lightTabPage(on,note){const R=lightRig(),C=bakeCfg,pg=el('div',{});
 
 /* ---- the lights in the 3D view of the Bake tab: drag a sun to turn it, a bulb or spot to move it ---- */
 const lgz={el:null,drag:null,raf:0};
+/* (0.97.27) how close the pointer must be, in pixels, to grab the ring, an arrow or a light */
+const LGZ_GRAB={ring:11,axis:12,light:24};
 let lightPageRedraw=null,lightHist=null;
 const lightWin={open:false};
 function lgzActive(){const R=bakeCfg&&bakeCfg.rig;return (ui.mode==='bake'||ui.mode==='p3d'&&(v3s().rigLive||lightWin.open))&&v3.on&&R&&R.show!==false&&R.lights&&R.lights.some(L=>L.type!=='sky')?R:null;}
@@ -111,20 +113,23 @@ function lgzDraw(){const hit=document.getElementById('v3Hit');let c=lgz.el;const
     if(L.type==='spot'){x.strokeStyle=col;x.lineWidth=2;x.beginPath();x.arc(p[0],p[1],12,0,7);x.stroke();}
     x.fillStyle='#fff';x.font='11px sans-serif';x.fillText(L.name,p[0]+14,p[1]-10);x.globalAlpha=1;}
   const z=G.gz;if(z){const p=z.it.p,AX=['#ff5a5a','#5ad46a','#5a9bff'];
-    for(const a of z.ax){const hot=lgz.hot==='ax'+a.k;x.strokeStyle=AX[a.k];x.fillStyle=AX[a.k];x.lineWidth=hot?4:2.5;const r0=z.ring?z.ring+5:14,s0=[p[0]+a.u[0]*r0,p[1]+a.u[1]*r0];x.beginPath();x.moveTo(s0[0],s0[1]);x.lineTo(a.end[0],a.end[1]);x.stroke();
-      const n=[-a.u[1],a.u[0]];x.beginPath();x.moveTo(a.end[0]+a.u[0]*10,a.end[1]+a.u[1]*10);x.lineTo(a.end[0]+n[0]*5,a.end[1]+n[1]*5);x.lineTo(a.end[0]-n[0]*5,a.end[1]-n[1]*5);x.fill();}
-    if(z.ring){x.strokeStyle=lgz.hot==='ring'?'#ffd24a':'rgba(255,210,74,.75)';x.lineWidth=lgz.hot==='ring'?4:2.5;x.beginPath();x.arc(p[0],p[1],z.ring,0,7);x.stroke();}
+    for(const a of z.ax){const hot=lgz.hot==='ax'+a.k;x.strokeStyle=AX[a.k];x.fillStyle=AX[a.k];x.lineWidth=hot?5:3.5;const r0=z.ring?z.ring+5:14,s0=[p[0]+a.u[0]*r0,p[1]+a.u[1]*r0];x.beginPath();x.moveTo(s0[0],s0[1]);x.lineTo(a.end[0],a.end[1]);x.stroke();
+      const n=[-a.u[1],a.u[0]];x.beginPath();x.moveTo(a.end[0]+a.u[0]*13,a.end[1]+a.u[1]*13);x.lineTo(a.end[0]+n[0]*7,a.end[1]+n[1]*7);x.lineTo(a.end[0]-n[0]*7,a.end[1]-n[1]*7);x.fill();}
+    if(z.ring){x.strokeStyle=lgz.hot==='ring'?'#ffd24a':'rgba(255,210,74,.75)';x.lineWidth=lgz.hot==='ring'?5:3.5;x.beginPath();x.arc(p[0],p[1],z.ring,0,7);x.stroke();}
     if(z.aim){x.strokeStyle='#ffd24a';x.lineWidth=2;x.setLineDash([2,3]);x.beginPath();x.moveTo(p[0],p[1]);x.lineTo(z.aim[0],z.aim[1]);x.stroke();x.setLineDash([]);x.beginPath();x.arc(z.aim[0],z.aim[1],3,0,7);x.fillStyle='#ffd24a';x.fill();}}}
 const lgzMouse=(hit,e)=>{const r=hit.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top];};
 /* which gizmo part is under the pointer: 'ax0'..'ax2' (move along X/Y/Z) or 'ring' (turn) */
 function lgzPart(G,m){const z=G&&G.gz;if(!z)return null;const p=z.it.p;
-  if(z.ring&&Math.abs(Math.hypot(m[0]-p[0],m[1]-p[1])-z.ring)<6)return 'ring';const a0=z.ring?z.ring+7:14;
-  for(const a of z.ax){const t=(m[0]-p[0])*a.u[0]+(m[1]-p[1])*a.u[1],L=Math.hypot(a.end[0]-p[0],a.end[1]-p[1])+10;if(t>a0&&t<L){const d=Math.abs((m[0]-p[0])*a.u[1]-(m[1]-p[1])*a.u[0]);if(d<7)return 'ax'+a.k;}}
+  if(z.ring&&Math.abs(Math.hypot(m[0]-p[0],m[1]-p[1])-z.ring)<LGZ_GRAB.ring)return 'ring';const a0=z.ring?z.ring+4:10;
+  for(const a of z.ax){const t=(m[0]-p[0])*a.u[0]+(m[1]-p[1])*a.u[1],L=Math.hypot(a.end[0]-p[0],a.end[1]-p[1])+14;if(t>a0&&t<L){const d=Math.abs((m[0]-p[0])*a.u[1]-(m[1]-p[1])*a.u[0]);if(d<LGZ_GRAB.axis)return 'ax'+a.k;}}
   return null;}
-function lgzHover(hit,e){const G=lgzGeom(hit);const h=G&&!lgz.drag?lgzPart(G,lgzMouse(hit,e)):null;if(h!==lgz.hot){lgz.hot=h;lgzDraw();}if(hit&&h)hit.style.cursor=h==='ring'?'grab':'move';return !!h;}
+function lgzHover(hit,e){const G=lgzGeom(hit),m=G?lgzMouse(hit,e):null;let h=G&&!lgz.drag?lgzPart(G,m):null;
+  /* (0.97.27, Kenn: "lights are a little hard to move around") a light under the pointer shows it can be grabbed too */
+  if(!h&&G&&!lgz.drag&&G.items.some(it=>Math.hypot(m[0]-it.p[0],m[1]-it.p[1])<LGZ_GRAB.light))h='light';
+  if(h!==lgz.hot){lgz.hot=h;lgzDraw();}if(hit&&h)hit.style.cursor=h==='move'?'move':h==='ring'||h==='light'?'grab':'move';return !!h;}
 function lgzDown(hit,e){const G=lgzGeom(hit);if(!G)return false;const m=lgzMouse(hit,e);let best=null;
   const part=lgzPart(G,m);if(part){const L=G.gz.it.L;lgz.drag={L,m0:m,el0:L.el,turn0:L.turn,pos0:(L.pos||[0,0,0]).slice(),aim0:lightAim(L),G,part,shift:e.shiftKey};lgz.picked=true;try{hit.setPointerCapture(e.pointerId);}catch(_){}e.preventDefault();return true;}
-  for(const it of G.items){const d=Math.hypot(m[0]-it.p[0],m[1]-it.p[1]);if(d<14&&(!best||d<best.d))best={it,d};}
+  for(const it of G.items){const d=Math.hypot(m[0]-it.p[0],m[1]-it.p[1]);if(d<LGZ_GRAB.light&&(!best||d<best.d))best={it,d};}
   if(!best){lgz.picked=false;return false;}const L=best.it.L;G.R.sel=L.id;lgz.picked=true;lgz.drag={L,m0:m,el0:L.el,turn0:L.turn,pos0:(L.pos||[0,0,0]).slice(),G,shift:e.shiftKey};
   try{hit.setPointerCapture(e.pointerId);}catch(_){}e.preventDefault();if(lightPageRedraw)lightPageRedraw();else lightTabSync();return true;}
 function lgzMove(hit,e){const D=lgz.drag;if(!D)return;D.m=lgzMouse(hit,e);D.shift=e.shiftKey;if(lgz.raf)return;lgz.raf=requestAnimationFrame(()=>{lgz.raf=0;lgzApply();});}

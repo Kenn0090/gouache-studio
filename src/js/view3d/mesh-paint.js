@@ -158,6 +158,7 @@ function meshSpace(w,h,replay=null,depth=doc.depth,replayCache=null){const P=p3p
       return [x0*doc.w-2,y0*doc.h-2,x1*doc.w+2,y1*doc.h+2];}};}
 /* ---- pointer on the 3D view ---- */
 const MESH_TOOLS=['brush','erase','dodge','burn','smudge','liquify','heal','clone','material'];
+const MESH_WRAP_ONLY=['smudge','liquify','heal','clone'];
 function meshPaintReady(e){return v3.paintOn&&MESH_TOOLS.includes(ui.tool)&&!sel3.armed&&!e.altKey&&!v3PickHeld(e)&&e.button===0&&v3.gpu&&v3.mesh&&!v3.mesh.noUV;}
 /* Brush size is measured against a fixed 512-pixel model diameter, not the zoomed viewport.
    Perspective and orthographic cameras share the same scale at their target plane. */
@@ -180,7 +181,9 @@ const evCopy=e=>({clientX:e.clientX,clientY:e.clientY,pointerId:e.pointerId,pres
 function meshDown(hit,e){if(stroke||preview||selLive||v3.shiftPend)return false;const s=v3s();
   /* (0.95.6, Kenn: "no overlap between the blur and the straight line") Ctrl + drag smooths; Shift + click stays the straight line only */
   if(ui.mode==='p3d'&&(e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&s.shiftSmooth!==false&&SHIFT_SMOOTH_TOOLS.includes(ui.tool))/* (0.96.6, Kenn) Ctrl smooths with Tangent | Wrap whatever the alignment (UV alignment cannot smooth) */return meshDown0(hit,Object.assign(evCopy(e),{ctrlKey:false,metaKey:false}),{smooth:true});
-  if(ui.mode==='p3d'&&(s.paintAlign||'uv')==='uv'&&!npWorldPaint(doc.active))return meshDownUV(hit,e);
+  /* (0.97.27, Kenn: "clone stamp isn't working") clone, heal, smudge and liquify read the paint around them, which UV alignment cannot
+     do: they use Tangent | Wrap by themselves instead of refusing */
+  if(ui.mode==='p3d'&&(s.paintAlign||'uv')==='uv'&&!npWorldPaint(doc.active)&&!MESH_WRAP_ONLY.includes(ui.tool))return meshDownUV(hit,e);
   return meshDown0(hit,e);}
 /* the pending Shift press: moved far enough = a Smooth stroke; let go = the straight line */
 function meshShiftMove(hit,e){const P=v3.shiftPend;if(!P||e.pointerId!==P.id)return false;if(Math.hypot(e.clientX-P.ev.clientX,e.clientY-P.ev.clientY)<4)return true;
@@ -189,7 +192,6 @@ function meshShiftUp(e){const P=v3.shiftPend;if(!P||(e&&e.pointerId!==P.id))retu
 /* (0.95.5) Projection › Alignment › UV: the brush stamps straight onto the texture (the flat canvas), placed where the pointer
    is on the model; seams cut the stroke, like Painter's UV alignment */
 function meshDownUV(hit,e){if(typeof bk!=='undefined'&&bk.busy)return true;if(ui.tool==='material')materialBrushTarget();if(fillNoMask())return true;
-  if(['smudge','liquify','heal','clone'].includes(ui.tool)){toast('UV alignment paints with the brush, eraser and dodge/burn. Use Tangent | Wrap for this tool.');return true;}
   if(typeof npSync==='function')npSync();const et=editTarget();if(lockStop(et))return true;const o=paintOpts(et);if(!o)return true;
   const q=meshUVAt(hit,e);if(!q)return false;const r=hit.getBoundingClientRect(),k=v3TexelPx(hit,e);
   o.uvRs=true;o.cageRs=k?meshBrushScale(r.height)/k:1;o.sym=typeof uvmSym==='function'?uvmSym():null;if(ui.tool!=='material')o.extras=[];/* (0.96.6) mirror/radial now work with UV alignment; the material brush keeps its other channels */const p=simPressStart(pressureOf(e),e);
@@ -214,7 +216,7 @@ function meshDown0(hit,e,opt){if(typeof bk!=='undefined'&&bk.busy&&ui.mode==='ba
   const r=hit.getBoundingClientRect(),w=Math.max(1,Math.round(r.width)),h=Math.max(1,Math.round(r.height)),sp=meshSpace(w,h);if(!sp)return true;
   if(o.tool==='liquify')return meshLiqDown(hit,e,et,o,sp);
   if(o.tool==='smudge'){o.extras=[];o.sym=null;if(!sp.mesh||(typeof p3!=='undefined'&&p3.udim)){toast('Smudge on the model needs a plain texture set (no UDIM tiles).');return true;}}
-  if(o.tool==='heal'||o.tool==='clone'){const pk=v3PickAt(hit,e);if(!pk)return true;if(!healBegin(pk.uv[0]*doc.w,pk.uv[1]*doc.h,o.tool))return true;}
+  if(o.tool==='heal'||o.tool==='clone'){const pk=v3PickAt(hit,e);if(!pk)return true;if(!healBegin(pk.uv[0]*doc.w,pk.uv[1]*doc.h,o.tool))return true;if(typeof scrBegin==='function')scrBegin(hit,e,o.tool);}
   o.space=sp;o.cageRs=meshBrushScale(h);o.sym=null;const [x,y]=meshPt(hit,e),p=simPressStart(pressureOf(e),e),line=brushLineStart(et,x,y,p,e,'mesh'),rs=Math.max(1e-3,o.cageRs||1);v3.mstroke={id:e.pointerId,sx:x,sy:y,sp:p,rx:x,ry:y,smoothAt:e.timeStamp,line,rs,sim:{x:x/rs,y:y/rs,t:e.timeStamp,spd:0,travel:0,pen:e.pointerType==='pen'}};beginStroke(et.L,line.x,line.y,line.p,o);if(stroke)stroke.simOn=!v3.mstroke.sim.pen&&brush.simP==='taper';/* (0.96) Pressure without a pen works on the model too */if(line.joined){let qx=x,qy=y;if(e.shiftKey&&e.ctrlKey)[qx,qy]=brushLineAngle(line,x,y);addPoint(qx,qy,p);v3.mstroke.rx=qx;v3.mstroke.ry=qy;}return true;}
 function meshMove(hit,e){if(v3.shiftPend&&meshShiftMove(hit,e))return;const m=v3.mstroke;if(m&&m.uv&&e.pointerId===m.id){meshMoveUV(hit,e);return;}if(m&&m.liq&&e.pointerId===m.id){meshLiqMove(hit,e);return;}if(!m||e.pointerId!==m.id||!stroke)return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];
   for(const ev of (evs.length?evs:[e])){let [x,y]=meshPt(hit,ev);const p=simPress(m,x/m.rs,y/m.rs,ev.timeStamp,pressureOf(ev,e));if(m.line)[x,y]=brushLineSnap(m.line,x,y,ev.shiftKey,ev.ctrlKey);m.rx=x;m.ry=y;if(brush.lazy>0&&!ev.shiftKey){const q=lazyStep(m,x,y,brush.lazy);if(!q)continue;x=q[0];y=q[1];}strokeSmooth(m,x,y,p,brush.smoothing,ev.timeStamp,ev.shiftKey);addPoint(m.sx,m.sy,m.sp);}}
