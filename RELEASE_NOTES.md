@@ -1,3 +1,15 @@
+## Gouache Studio 0.97.26
+
+- Paint Scattering, Scatter colour and Translucency for the Skin shader (added when you pick Skin).
+- Material slots in the Shader panel: each input is a value, painted, or a picture.
+- Specular level channel, and up to 8 channels of your own with names.
+- Export each channel as a layered PSD; import a layered PSD into a channel.
+- Custom shader maker: mix ingredients from the other shaders (lighting styles, shine, extras), each with a mask channel; a Shaders library on the shelf.
+- Material pictures and imported mesh maps in UV-tile sets go into their own tiles (1001, 1002…) instead of stretching.
+- Texture Set Settings panel: add or remove channels, 8- or 16-bit per channel; channel buttons on materials and the brush, like Painter.
+- Skin shader laid out like Marmoset's: scatter, translucency and fuzz, each with a map; Metalness or Specular reflectivity.
+- Focal length in mm for the 3D camera, with common lenses.
+
 ## Gouache Studio 0.97.25
 
 - Generator settings in Marmoset-style cards, each picture slot with its own controls.

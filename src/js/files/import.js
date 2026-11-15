@@ -36,6 +36,7 @@ function askReplace(){if(paDocSaved(hist.undo,doc))return Promise.resolve(true);
 async function handleFile(file,mode,path){const ext=extOf(file.name);loadStart(file.name);
   try{if(!['abr','brush','brushset','sut','sutb','sutg','ttf','otf','woff','woff2'].includes(ext)){loadBusy(mode==='open'?'Opening…':'Placing…');await loadPaint();}if(ext==='abr'){await importABR(file);return;}if(['brush','brushset','sut','sutb','sutg'].includes(ext)){await importBrushFile(file);return;}
     if(['ttf','otf','woff','woff2'].includes(ext)){await addFontFile(file);return;}
+    if(mode!=='open'&&ext==='psd'&&ui.mode==='p3d'){needLib('agPsd','PSD');await psdIntoChannel(await file.arrayBuffer(),baseName(file.name),doc.map);return;}
     if(mode!=='open'&&tabDocs.paint){toast('Switch to Paint to place images.');return;}
     if(mode==='open'&&(ext==='gouache3d'||isP3Proj(await file.slice(0,8).arrayBuffer()))){await openP3Project(await file.arrayBuffer(),baseName(file.name),path);if(path)platform.recentAdd(path);return;}
     if(mode==='open'){if(tabDocs.paint&&!setMode('paint',true))return;if(!(await askReplace()))return;const head=await file.slice(0,8).arrayBuffer();if(ext==='gouache'||isGouache(head)){await openGouache(await file.arrayBuffer(),baseName(file.name));doc.filePath=path||null;markSaved();}else if(ext==='psd'){await openPSD(await file.arrayBuffer(),baseName(file.name));doc.filePath=path||null;}else{openRaw(await decodeFile(file),baseName(file.name));doc.filePath=null;}

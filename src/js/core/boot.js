@@ -67,3 +67,13 @@ if(window.__gs)Object.assign(window.__gs,{toolKeys,toolKeyBinding,toolKeyCancel,
 if(window.__gs)Object.assign(window.__gs,{smStudioThumb,smThumbRedo,smTh,smThumbLater});
 if(window.__gs)Object.assign(window.__gs,{p3MeshMapsChanged,btGFB,btTree,btMove,btAuto,btg,bgtDelete,btSync,btColourTex});
 if(window.__gs)Object.assign(window.__gs,{shelfFilterGroups,shelfFilterItem,disposeTarget,RETRO_PRESETS});
+if(window.__gs)Object.assign(window.__gs,{slotAutoAdd,slotPaint,slotValue,slotPicture,slotsBox,chPackUniforms,texOutputs,TEX_PRESETS,MAP_DEFS,MAP_USER,setDocMaps,dlgMaps});
+if(window.__gs)Object.assign(window.__gs,{encodePSD,psdIntoChannel,psdChannelFiles,fovToMm,mmToFov,loadPaint,lensBox});
+if(window.__gs)Object.assign(window.__gs,{cxLib,cxApplyTo,cxShelfRender,cxNewMask,cxRecipe,cxEdit,shOutline,shadeUniforms,CX});
+if(window.__gs)Object.assign(window.__gs,{udimAtlasFrom,udimImgBox,udimNameId,udimPattern});
+if(window.__gs)Object.assign(window.__gs,{p3MapImport,p3MapBatch});
+if(window.__gs)Object.assign(window.__gs,{miBuild,fillUdimT});
+if(window.__gs)Object.assign(window.__gs,{fileTarget});
+if(window.__gs)Object.assign(window.__gs,{setWrap});
+if(window.__gs)Object.assign(window.__gs,{tssAdd,tssRemove,tssSetFormat,tssRender,mapBrushTargets,ensureMapTarget,mapDepth,renderMatEd,buildBrushPanel});
+if(window.__gs)Object.assign(window.__gs,{skSetRefl,skReflSpec,shadeUniforms,chPackUniforms});

@@ -1,0 +1,60 @@
+/* 0.97.27: Custom shader maker: ingredients from the other looks, masks, library, assigning to texture sets (Kenn) */
+const {chromium}=require('playwright');
+const OLD=__dirname+'/';
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const ctx=await b.newContext({viewport:{width:1440,height:900}});const p=await ctx.newPage();
+ await p.addInitScript(()=>{try{localStorage.setItem("gs.p3d",JSON.stringify({size:128,layout:"3d"}));localStorage.removeItem('gs.cxLib');}catch(e){}});
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.message));p.on('console',m=>{if(m.type()==='warning'||m.type()==='error')console.log('CON',m.text());});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ const W=ms=>p.waitForTimeout(ms||200);
+ await p.evaluate(()=>document.querySelector('#modeTabs [data-mode=p3d]').click());await W(2500);
+ await p.evaluate(()=>{const s=__gs.v3s();s.model='sphere';__gs.v3LoadModel&&__gs.v3LoadModel(true);});await W(800);
+ const shot=()=>p.evaluate(()=>{__gs.v3.dirty=true;return Array.from(__gs.v3Offscreen(200,160));});
+ const diff=(a,b)=>{let d=0;for(let i=0;i<a.length;i+=4)d+=Math.abs(a[i]-b[i])+Math.abs(a[i+1]-b[i+1])+Math.abs(a[i+2]-b[i+2]);return d/(a.length/4);};
+ await p.evaluate(()=>{__gs.showPanel('shading');__gs.renderShading();});await W(300);
+ const std=await shot();
+ await p.selectOption('#shKind','custom');await W(500);
+ ok(await p.evaluate(()=>!!document.getElementById('cxEd')&&!!document.getElementById('cxAdd')),'picking Custom shows the shader maker');
+ const empty=await shot();
+ ok(diff(std,empty)<0.5,'an empty custom shader looks like Standard '+diff(std,empty).toFixed(2));
+ await p.selectOption('#cxAdd','toon');await W(500);
+ ok(await p.evaluate(()=>__gs.cxRecipe(__gs.v3ShadeOf(__gs.doc)).rows.length===1&&!!document.getElementById('cxRow_0')),'an ingredient is added as a row');
+ const toon=await shot();
+ ok(diff(empty,toon)>1,'Toon bands change the look '+diff(empty,toon).toFixed(2));
+ await p.fill('#cxAmt_0 ~ input[type=number], #cxAmt_0',"0").catch(()=>{});
+ await p.evaluate(()=>__gs.cxEdit(R=>{R.rows[0].amt=0;},true));await W(200);const toon0=await shot();
+ ok(diff(empty,toon0)<0.5,'amount 0 takes the ingredient away '+diff(empty,toon0).toFixed(2));
+ await p.evaluate(()=>__gs.cxEdit(R=>{R.rows[0].on=false;},true));
+ /* a rim light limited by a mask channel of its own */
+ await p.selectOption('#cxAdd','rim');await W(300);
+ await p.evaluate(()=>__gs.cxEdit(R=>{const r=R.rows.find(x=>x.k==='rim');r.p={strength:3,width:.8,col:[1,0,0]};},true));await W(200);const rimAll=await shot();
+ ok(diff(empty,rimAll)>1,'a red rim light shows on the whole set '+diff(empty,rimAll).toFixed(2));
+ await p.evaluate(()=>{const R=__gs.cxRecipe(__gs.v3ShadeOf(__gs.doc));__gs.cxNewMask(R.rows.find(x=>x.k==='rim').id);});await W(500);
+ ok(await p.evaluate(()=>{const R=__gs.cxRecipe(__gs.v3ShadeOf(__gs.doc));return R.rows.find(x=>x.k==='rim').mask==='u1'&&__gs.doc.maps.includes('u1')&&/Rim light mask/.test(__gs.MAP_DEFS.u1.label);}),'New mask channel adds a named channel of your own as the mask');
+ await p.evaluate(()=>{__gs.setView('material');});await W(800);const rimMasked=await shot();
+ ok(diff(empty,rimMasked)<diff(empty,rimAll)*0.3,'a black mask hides the rim ('+diff(empty,rimMasked).toFixed(2)+' vs '+diff(empty,rimAll).toFixed(2)+')');
+ await p.evaluate(()=>{const g=__gs;g.cmdNewFillLayer();const L=g.doc.active;for(const k in L.fill.maps)L.fill.maps[k].on=false;Object.assign(L.fill.maps.u1,{on:true,src:'value',v:1});g.fillRender(L);g.changedAll();g.setView('material');});await W(900);
+ const rimWhite=await shot();ok(diff(empty,rimWhite)>diff(empty,rimAll)*0.6,'painting the mask white brings the rim back '+diff(empty,rimWhite).toFixed(2));
+ await p.evaluate(()=>__gs.cxEdit(R=>{const r=R.rows.find(x=>x.k==='rim');r.inv=true;},true));await W(300);const rimInv=await shot();
+ ok(diff(empty,rimInv)<diff(empty,rimWhite)*0.3,'Invert flips the mask '+diff(empty,rimInv).toFixed(2));
+ /* every ingredient compiles and renders */
+ const each=await p.evaluate(()=>{const g=__gs,res={};const keys=Object.keys(g.CX);for(const k of keys){g.cxEdit(R=>{R.rows=[{id:'t'+k,k,on:true,amt:1,mask:null,inv:false,p:{}}];});g.v3.dirty=true;const px=g.v3Offscreen(64,48);let s=0;for(let i=0;i<px.length;i+=4)s+=px[i]+px[i+1]+px[i+2];res[k]=s>0;}return res;});
+ ok(Object.values(each).every(Boolean),'every ingredient renders '+JSON.stringify(each));
+ ok(await p.evaluate(()=>{__gs.cxEdit(R=>{R.rows=[{id:'o',k:'outline',on:true,amt:1,p:{width:3,col:[1,0,0]}}];});const o=__gs.shOutline(__gs.v3ShadeOf(__gs.doc));return o&&o.w===3&&o.col[0]===1;}),'the Outline ingredient draws an outline');
+ /* library: save, shelf tile, drop-down, assign to another set */
+ await p.evaluate(()=>{__gs.cxEdit(R=>{R.name='Toon chrome';R.rows=[{id:'a',k:'toon',on:true,amt:1,p:{}},{id:'b',k:'coat',on:true,amt:1,p:{}}];},true);});await W(200);
+ await p.click('#cxSave');await W(300);
+ ok(await p.evaluate(()=>__gs.cxLib().length===1&&__gs.cxLib()[0].name==='Toon chrome'&&__gs.cxRecipe(__gs.v3ShadeOf(__gs.doc)).libId===__gs.cxLib()[0].id),'Save to library keeps the shader for every project');
+ ok(await p.evaluate(()=>[...document.querySelectorAll('#shKind option')].some(o=>o.textContent==='★ Toon chrome')),'library shaders are in the Shader drop-down');
+ await p.evaluate(()=>{__gs.showPanel('shshaders');__gs.cxShelfRender();});await W(300);
+ ok(await p.evaluate(()=>document.querySelectorAll('#shShadersBody .cxtile').length===1),'the Shaders shelf shows the saved shader');
+ await p.evaluate(()=>{__gs.showPanel('shading');__gs.shadeEdit(d=>{d.kind='std';d.p={};});__gs.renderShading();});await W(200);
+ await p.evaluate(()=>document.querySelector('#shShadersBody .cxtile')?.click());await W(300);
+ ok(await p.evaluate(()=>{const sh=__gs.v3ShadeOf(__gs.doc);return sh.kind==='custom'&&__gs.cxRecipe(sh).rows.length===2;}),'clicking the tile puts the shader on the active texture set');
+ ok(!errs.length,'no page errors '+errs.join('|'));
+ await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();

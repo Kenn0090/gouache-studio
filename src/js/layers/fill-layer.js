@@ -8,7 +8,7 @@
    the chosen images are L._fillImg[k] (kept in .gouache files). */
 /* projections (0.23.1): 0 UV (uUvM: offset/turn/scale), 1 triplanar, 2 planar, 3 spherical; uInv takes a world position
    into the projection's own space (its offset, rotation and scale) */
-const FS_FILLIMG=`uniform sampler2D uSrc; uniform float uTile; uniform float uRot; uniform float uUvRot; uniform float uContrast; uniform int uGrey; uniform int uProj; uniform sampler2D uPos; uniform sampler2D uNrm; uniform sampler2D uTan;
+const FS_FILLIMG=`uniform sampler2D uSrc; uniform vec2 uUdimT; uniform float uTile; uniform float uRot; uniform float uUvRot; uniform float uContrast; uniform int uGrey; uniform int uProj; uniform sampler2D uPos; uniform sampler2D uNrm; uniform sampler2D uTan;
 uniform float uSharp; uniform float uHStr; uniform int uHeight; uniform int uNormal; uniform mat4 uInv; uniform mat3 uNrmInv; uniform mat3 uUvM; uniform int uRep; uniform int uFront; uniform int uKeepA; uniform vec4 uCyl; uniform float uCrop; uniform sampler2D uWarp; uniform vec4 uWarpD; uniform int uNearest; in vec2 vUV;
 bool wrapOut(vec2 t){ if(uCyl.w<0.5) return false; if(uCyl.w<1.5) return t.x<0.0||t.x>1.0||t.y<0.0||t.y>1.0; if(uCyl.w<2.5) return t.y<0.0||t.y>1.0; return t.x<0.0||t.x>1.0; }
 vec2 nearestUV(vec2 t){ vec2 sz=vec2(textureSize(uSrc,0)); return (floor(t*sz)+0.5)/sz; }
@@ -46,7 +46,7 @@ void main(){ vec4 s;
       vec2 t=vec2(ang/span+0.5,0.5-L.y*0.5)*uTile; if(wrapOut(t)){ o=vec4(0.0); return; } float k=1.0;
       if(uCyl.z>0.5){ vec3 rad=normalize(vec3(L.x,0.0,L.z)+1e-6); k=smoothstep(0.0,max(0.02,1.0-uCyl.y),dot(N,rad)); } s=samp(t)*k; }
     else { vec3 d=normalize(L+vec3(0.0,0.0,1e-6)); vec2 t=vec2(atan(d.x,d.z)/6.2831853+0.5,0.5-asin(clamp(d.y,-1.0,1.0))/3.1415927); s=sampL(t*uTile); } }
-  else s=samp((uUvM*vec3(vUV,1.0)).xy*uTile);
+  else s=samp((uUvM*vec3(vUV*(uUdimT.x>0.0?uUdimT:vec2(1.0)),1.0)).xy*uTile);
   vec3 c=s.a>1e-6?s.rgb/s.a:vec3(0.0);
   if(uGrey==1){ float g=dot(c,vec3(0.299,0.587,0.114)); g=clamp(0.5+(g-0.5)*(1.0+uContrast),0.0,1.0); if(uHeight==1) g=clamp(0.5+(g-0.5)*uHStr,0.0,1.0); o=uKeepA==1?vec4(vec3(g)*s.a,s.a):vec4(vec3(g),1.0); return; }
   c=clamp(0.5+(c-0.5)*(1.0+uContrast),0.0,1.0);
@@ -73,7 +73,7 @@ function fillTintPost(L){const f=L.fill;if(!fillTintOn(f)||!f.maps.base||!f.maps
 const FILL_SKIP=['curv'];
 const fillMapsOf=()=>doc.maps.filter(k=>!FILL_SKIP.includes(k));
 function fillDefaults(){const m={};for(const k of MAP_ORDER){if(FILL_SKIP.includes(k))continue;const d=MAP_DEFS[k].def;
-    m[k]={on:k==='base'||k==='rough'||k==='metal'||k==='spec'||k==='gloss',src:k==='normal'?'image':'value',c:k==='base'?ui.fg.slice():k==='spec'?[.22,.22,.22]:k==='emis'?[0,0,0]:null,v:d==null?.5:d,tile:1,rot:0,con:0};}
+    m[k]={on:k==='base'||k==='rough'||k==='metal'||k==='spec'||k==='gloss',src:k==='normal'?'image':'value',c:k==='base'?ui.fg.slice():k==='spec'?[.22,.22,.22]:k==='emis'?[0,0,0]:k==='sssc'?[.85,.25,.18]:k==='specc'?[.22,.22,.22]:MAP_DEFS[k].user?[.5,.5,.5]:null,v:d==null?.5:d,tile:1,rot:0,con:0};}
   return {maps:m,proj:'uv',triSharp:4,hStr:1};}
 const fillClone=f=>JSON.parse(JSON.stringify(f));
 /* Match the storage rounding of the previous cleared image, including 8-bit flat normals. */
@@ -111,10 +111,10 @@ function fillCompProgram(){if(!P_FILLCOMP){const sample=FS_FILLIMG.replace('void
     P_FILLCOMP=program(sample+`uniform int uFillDepth;
 vec4 fillQuant(vec4 c){ if(uFillDepth==16) return vec4(unpackHalf2x16(packHalf2x16(c.rg)),unpackHalf2x16(packHalf2x16(c.ba))); return roundEven(clamp(c,0.0,1.0)*255.0)/255.0; }
 `+FS_COMP.replace('texelFetch(uLayer,p,0)','fillQuant(fillSample())'));P_FILLCOMP.defaults=P.comp.defaults;}return P_FILLCOMP;}
-function fillCompUniforms(L,k){const f=L.fill,s=f.maps[k],bk=s.src==='baked'||s.src==='conv';return Object.assign({uSrc:fillLiveSource(L,k).tex,uOneCh:{int:fillLiveSource(L,k).mono?1:0},uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:MAP_DEFS[k].grey?1:0},uPos:dummy,uNrm:dummy,uTan:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0},uFillDepth:{int:mapDepth(k)}},pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf));}
+function fillCompUniforms(L,k){const f=L.fill,s=f.maps[k],bk=s.src==='baked'||s.src==='conv';return Object.assign({uSrc:fillLiveSource(L,k).tex,uOneCh:{int:fillLiveSource(L,k).mono?1:0},uUdimT:fillUdimT(fillLiveSource(L,k),s,bk),uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:MAP_DEFS[k].grey?1:0},uPos:dummy,uNrm:dummy,uTan:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0},uFillDepth:{int:mapDepth(k)}},pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf));}
 function fillDrawMap(L,k,T){const f=L.fill,s=f.maps[k],grey=MAP_DEFS[k].grey,bk=s.src==='baked'||s.src==='conv',img=fillLiveSource(L,k),tri=pxfIs3D(f.proj)&&!bk?fillPosMaps():null;
   if(!img){clearTarget(T);return;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
-  run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uOneCh:{int:img.mono?1:0},uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uTan:tri?tri.tan.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
+  run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uOneCh:{int:img.mono?1:0},uUdimT:fillUdimT(img,s,bk),uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uTan:tri?tri.tan.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
     uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}},(tri&&!bk?pxfUniforms(f.proj,f.xf):pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf))));T.opaque=(!tri||bk)&&!f.decal&&(grey||k==='normal'||!!img.opaque);
 }
 /* redraw a fill layer's maps from its settings (image maps need their picture in memory) */
@@ -134,7 +134,7 @@ function fillRender(L,only){const f=L.fill;if(!f)return;
     if(L._fillLive)delete L._fillLive[k];const tri=pxfIs3D(f.proj)?fillPosMaps():null,T=ensureMapTarget(L,k),grey=MAP_DEFS[k].grey;
     if(s.src==='g3d'){g3FillRun(L,k,T);T.opaque=true;continue;}
     if(s.src==='image'||s.src==='baked'||s.src==='conv'){const bk=s.src==='baked'||s.src==='conv',img=bk?doc.meshMaps&&doc.meshMaps[s.mm]:fillMonoize(L,k);if(!img){if(k==='normal')clearTarget(T,[.5,.5,1,1]);continue;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
-      run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uOneCh:{int:img.mono?1:0},uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uTan:tri?tri.tan.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
+      run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uOneCh:{int:img.mono?1:0},uUdimT:fillUdimT(img,s,bk),uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uTan:tri?tri.tan.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
         uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}},(tri&&!bk?pxfUniforms(f.proj,f.xf):pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf))));T.opaque=(!tri||bk)&&!f.decal&&(grey||k==='normal'||!!img.opaque);continue;}
     if(k==='normal'){clearTarget(T,[.5,.5,1,1]);continue;}
     const c=grey?[s.v,s.v,s.v]:(s.c||[s.v,s.v,s.v]);clearTarget(T,[c[0],c[1],c[2],1]);}
@@ -165,7 +165,7 @@ function cmdNewFillLayer(preset){if(ui.mode==='anim'){toast('Fill layers are ava
 /* ---- the Material panel (a tab beside Colour): edits the selected material layer live, on the canvas and the model.
    Changes become one undo step when you pause (or pick another layer). Each channel is a colour or value, an image,
    or one of the texture set's baked mesh maps. ---- */
-const MAT_CH=['base','rough','metal','height','normal','emis','opac','spec','gloss','ao'];
+const MAT_CH=['base','rough','metal','height','normal','emis','opac','spec','gloss','ao','specl','specc','sss','sssc','trans','fuzzm',...MAP_USER];
 const matEd={L:null,snap:null,timer:0,shown:null,open:{},openAll:(()=>{try{return localStorage.getItem('gs.matOpen')==='all';}catch(e){return false;}})()};
 function matEdSnap(L){const keys=fillMapsOf(),S={};for(const k of keys){const t=mapT(L,k,true);S[k]=!mapSolid(L,k)&&t&&!t.empty?captureRegion(t,0,0,doc.w,doc.h):null;}
   return {f:fillClone(L.fill),C:fillClone(L._fillSolid||{}),V:fillClone(L._fillLive||{}),S,I:Object.assign({},L._fillImg||{}),n:L.name,keys};}
@@ -364,3 +364,10 @@ function matPreviewEl(getF,getImgs,size,scale){const S0=size||96,S=scale?Math.ro
   const redrawGPU=()=>{const x=cv2.getContext('2d'),id=x.createImageData(S,S);id.data.set(matPreviewPixels(getF(),getImgs()||{},S));x.putImageData(id,0,0);};
   redrawGPU();return {el:cv2,redraw:redrawGPU};
 }
+/* (0.97.26, Georgian: UV tiles) in a set with several UV tiles a picture covers ONE tile and repeats in each, like Painter's
+   UV tiling, unless it holds all the tiles (s.atlas: made from tile files; or, when unknown, shaped like the whole tile canvas) */
+function fillUdimT(t,s,bk){const box=typeof udimImgBox==='function'?udimImgBox():null;if(!box)return [1,1];const {nx,ny}=box.B,whole=[1/nx,1/ny];
+  /* the UV mapping (pxfUniforms) already repeats per tile; a picture that holds every tile, or a baked map, undoes that */
+  if(bk)return whole;if(!t||!t.w)return [1,1];
+  if(s&&s.atlasOf===s.name){if(s.atlas===true)return whole;if(s.atlas===false)return [1,1];}
+  return nx!==ny&&Math.abs(t.w/t.h-nx/ny)<.03*(nx/ny)?whole:[1,1];}

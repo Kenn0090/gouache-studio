@@ -11,15 +11,19 @@ function packRow(src,off,n){const out=new Uint8Array(n+Math.ceil(n/128)+2);let o
   return out.subarray(0,o);}
 function rleChannel(plane,W,H){const rows=[];let total=0;for(let y=0;y<H;y++){const r=packRow(plane,y*W,W);rows.push(r);total+=r.length;}
   const out=new Uint8Array(H*2+total);let o=H*2;rows.forEach((r,y)=>{out[y*2]=r.length>>8;out[y*2+1]=r.length&255;out.set(r,o);o+=r.length;});return out;}
-async function encodePSD(){
+/* (0.97.26) k: the channel to save (3D Paint exports each channel of a texture set as its own layered PSD) */
+async function encodePSD(k='base'){
   const W=doc.w,H=doc.h,b16=doc.depth===16,bits=b16?16:8,N=W*H,recs=[],empty=new Uint8Array(0);
   const emptyChans=()=>[-1,0,1,2].map(id=>({id,comp:0,data:empty}));
   /* a filter layer has no pixels: Photoshop gets what it produces from the layers under it (base colour) */
-  const fxPixels=(L,g,i)=>{const prev=pool;pool=auxFor(mapDepth('base')).pool;let base,out;
+  const fxPixels=(L,g,i)=>{const prev=pool;pool=auxFor(mapDepth(k)).pool;let base,out;
     const cb=clipBaseOf(g.children,i);
-    if(cb){base=acquire();if(mapT(cb,'base'))blit(mapT(cb,'base'),base,0,0,W,H,0,0);else clearTarget(base);}else base=renderNodesMap(g.children.slice(0,i),'base');
-    out=(L.fx.map==='base'||L.fx.map==='all')?fxStackResult(L,base,'base'):base;if(out!==base)release(base);pool=prev;return out;};
-  const encLayer=async(L,g,i)=>{let T=mapT(L,'base'),tmp=null;if(L.fx){tmp=fxPixels(L,g,i);T=tmp;}const st=toStraight(readPremult(T),bits),chans=[];if(tmp)release(tmp);
+    if(cb){base=acquire();if(mapT(cb,k))blit(mapT(cb,k),base,0,0,W,H,0,0);else clearTarget(base);}else base=renderNodesMap(g.children.slice(0,i),k);
+    out=(L.fx.map===k||L.fx.map==='all')?fxStackResult(L,base,k):base;if(out!==base)release(base);pool=prev;return out;};
+  const encLayer=async(L,g,i)=>{let T=k==='base'?mapT(L,'base'):mapT(L,k,true),tmp=null;if(L.fx){tmp=fxPixels(L,g,i);T=tmp;}
+    /* a material's one-value or live channel is drawn into a temporary picture (the layer itself is left as it is) */
+    else if(k!=='base'&&(mapSolid(L,k)||mapLive(L,k))){const prev=pool;pool=auxFor(mapDepth(k)).pool;tmp=acquire();pool=prev;if(mapSolid(L,k))clearTarget(tmp,mapSolid(L,k));else fillDrawMap(L,k,tmp);T=tmp;}
+    if(!T||T.empty){await tick();return emptyChans();}const st=toStraight(readPremult(T),bits),chans=[];if(tmp){if(L.fx)release(tmp);else{const prev=pool;pool=auxFor(mapDepth(k)).pool;release(tmp);pool=prev;}}
     for(const [id,ci] of [[-1,3],[0,0],[1,1],[2,2]]){
       if(b16){const pl=new Uint8Array(N*2);for(let i=0,j=ci;i<N;i++,j+=4){pl[i*2]=st[j]>>8;pl[i*2+1]=st[j]&255;}chans.push({id,comp:2,data:await zlib(pl)});}
       else{const pl=new Uint8Array(N);for(let i=0,j=ci;i<N;i++,j+=4)pl[i]=st[j];chans.push({id,comp:1,data:rleChannel(pl,W,H)});}}
@@ -42,7 +46,7 @@ async function encodePSD(){
   const lmPos=w.length;w.u32(0);
   const layerInfo=()=>{w.u16((b16?recs.length:-recs.length)&0xffff);
     recs.forEach(r=>{const n=r.n,full=r.kind==='layer';
-      if(full){w.u32(0);w.u32(0);w.u32(H);w.u32(W);}else{w.u32(0);w.u32(0);w.u32(0);w.u32(0);}
+      if(full&&r.chans.some(c=>c.id>=-1&&c.data.length)){w.u32(0);w.u32(0);w.u32(H);w.u32(W);}else{w.u32(0);w.u32(0);w.u32(0);w.u32(0);}
       w.u16(r.chans.length);for(const c of r.chans){w.u16(c.id&0xffff);w.u32(c.data.length+2);}
       const key=r.kind==='end'?'norm':r.kind==='group'?(n.mode<0?'pass':PSD_KEYS[n.mode]||'norm'):(PSD_KEYS[n.mode]||'norm');
       const vis=r.kind==='end'?true:n.visible,op=r.kind==='end'?1:n.opacity;
@@ -59,7 +63,7 @@ async function encodePSD(){
   if(!b16){const lp=w.length;w.u32(0);const s0=w.length;layerInfo();while((w.length-s0)%4)w.u8(0);w.setU32(lp,w.length-s0);w.u32(0);}
   else{w.u32(0);w.u32(0);w.str('8BIM');w.str('Lr16');const lp=w.length;w.u32(0);const s0=w.length;layerInfo();while((w.length-s0)%4)w.u8(0);w.setU32(lp,w.length-s0);}
   w.setU32(lmPos,w.length-lmPos-4);
-  const flat=renderNodes(paintRoot().children),cs=toStraight(readPremult(flat),bits);release(flat);
+  const flat=k==='base'?renderNodes(paintRoot().children):compositeMap(k),cs=toStraight(readPremult(flat),bits);release(flat);
   if(!b16){w.u16(1);const rows=[];for(let ci=0;ci<4;ci++){const pl=new Uint8Array(N);for(let i=0;i<N;i++)pl[i]=cs[i*4+ci];for(let y=0;y<H;y++)rows.push(packRow(pl,y*W,W));}
     for(const r of rows)w.u16(r.length);for(const r of rows)w.bytes(r);}
   else{w.u16(0);for(let ci=0;ci<3;ci++){const pl=new Uint8Array(N*2);for(let i=0;i<N;i++){const a=cs[i*4+3]/65535,v=Math.round(cs[i*4+ci]*a+65535*(1-a));pl[i*2]=v>>8;pl[i*2+1]=v&255;}w.bytes(pl);}}

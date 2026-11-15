@@ -12,6 +12,7 @@ const PANELS={
   shtools:{title:'Tools',sel:'#shToolsSec',avail:m=>m==='p3d',icon:'<path d="M14.7 6.3a4 4 0 0 0-5 5L3 18l3 3 6.7-6.7a4 4 0 0 0 5-5l-2.5 2.5-2.4-.6-.6-2.4z"/>'},
   meshmaps:{title:'Mesh maps',sel:'#mmSec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="m4 4 16 16M4 20 20 4"/>'},
   p3d:{title:'3D Paint',sel:'#p3dSec',avail:m=>m==='p3d',mode:true},
+  tsset:{title:'Texture Set Settings',sel:'#tssSec',avail:m=>m==='p3d',icon:'<path d="M4 6h16M4 12h16M4 18h10"/><circle cx="18" cy="18" r="2"/>'},
   hist:{title:'History',sel:'#histSec',avail:m=>m!=='convert'&&m!=='photo',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>'},
   matEd:{title:'Material editor',sel:'#matEdSec',avail:m=>m==='p3d'||m==='paint',icon:'<circle cx="12" cy="12" r="8"/><path d="M8 15l8-8M9 9h.01"/>'},
   shading:{title:'Shader',sel:'#shadeSec',avail:m=>m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" opacity=".35"/>'},
@@ -23,6 +24,7 @@ const PANELS={
   smasks:{title:'Smart masks',sel:'#smkSec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="12" cy="12" r="4" fill="currentColor" opacity=".35"/>'},
   shgen:{title:'Generators',sel:'#shGenSec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 14c3-4 5 2 8-2s5 3 8-1"/>'},
   shfilters:{title:'Filters',sel:'#shFiltersSec',avail:m=>m==='paint'||m==='p3d',icon:'<path d="M4 5h16l-6 7v6l-4 2v-8z"/>'},
+  shshaders:{title:'Shaders',sel:'#shShadersSec',avail:m=>m==='p3d',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16M7 9h10M6 13h12"/>'},
   shstyles:{title:'Layer Styles',sel:'#shStylesSec',avail:m=>m==='paint'||m==='p3d',icon:'<path d="m12 3 9 5-9 5-9-5zM3 12l9 5 9-5M3 16l9 5 9-5"/>'},
   shalpha:{title:'Alphas',sel:'#shAlphaSec',avail:m=>m==='p3d',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16l4-8 4 8M9.5 13h5"/>'},
   canvas:{title:'Canvas',sel:'#cvsSec',avail:m=>m==='paint',icon:'<rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 9h16M4 14h16" stroke-width="1"/>'},
@@ -48,8 +50,8 @@ const PANEL_IDS=Object.keys(PANELS);
 /* (0.96) the 3D Paint shelf's categories, in the order of its list */
 /* (0.97.10) Welds, Stitches and Surface details live in one shelf category, Tools; the old panel names still open it */
 const SH_TOOL_ALIAS={weldtools:'weld',stitches:'stitch',surfacedetails:'detail'};
-const SH_SHELF_TABS=['shbrush','mats','smats','smasks','shgen','shfilters','shstyles','shalpha','textures','decals','envs','meshmaps','shtools','projects'];
-const MODE_GROUP=['p3d','brushtab','conv','bake','anim','photo'],MODE_HID=[...MODE_GROUP,'phhist','phlib','phpre'];
+const SH_SHELF_TABS=['shbrush','mats','smats','smasks','shgen','shfilters','shstyles','shshaders','shalpha','textures','decals','envs','meshmaps','shtools','projects'];
+const MODE_GROUP=['p3d','brushtab','conv','bake','anim','photo'],MODE_HID=[...MODE_GROUP,'tsset','phhist','phlib','phpre'];
 /* the built-in workspaces: extra = 3D view on and how wide, painting on the model */
 const WS_PRESETS={
   painting:{name:'Panels: Paint',tb:{side:'left',cols:1},opt:true,w:300,groups:[{tabs:MODE_HID.slice(),f:1.4},{tabs:['color','matEd','shading'],f:1.05},{tabs:['brushes','stencils','mats','textures','canvas','decals','envs','tool'],f:2.4},{tabs:['maps','p3bake'],f:.45},{tabs:['layers','chan','hist'],f:1.6}],icons:[],floats:[]},

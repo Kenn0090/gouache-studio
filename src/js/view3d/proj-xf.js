@@ -38,6 +38,9 @@ function pxfUniforms(mode,xf){const X=pxfNorm(xf),{c,S}=pxfModel(),k=pxfUnit(mod
   const a=(X.r[2]||0)*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a),su=X.s[0]||1,sv=X.s[1]||1,A=[[ca/su,sa/su],[-sa/sv,ca/sv]];
   const cx=.5+X.t[0],cy=.5+X.t[1],b=[.5-(A[0][0]*cx+A[0][1]*cy),.5-(A[1][0]*cx+A[1][1]*cy)];
   const uvm=new Float32Array([A[0][0],A[1][0],0,A[0][1],A[1][1],0,b[0],b[1],1]);
+  /* (0.97.26, Georgian) in a set with several UV tiles, UV patterns, pictures and procedurals measure against ONE tile (the
+     canvas holds the tiles side by side), so they keep their proportions and repeat per tile instead of stretching */
+  {const T=mode==='uv'&&typeof udimImgBox==='function'?udimImgBox():null;if(T){uvm[0]*=T.B.nx;uvm[1]*=T.B.nx;uvm[3]*=T.B.ny;uvm[4]*=T.B.ny;}}
   return {uProj:{int:PXF_IX[mode]||0},uInv:{m4:inv},uNrmInv:{m3:nrmInv},uUvM:{m3:uvm},uUvRot:(X.r[2]||0)*Math.PI/180,uCyl:[X.ang,X.hard,X.cull?1:0,Math.max(0,PXF_WRAP.findIndex(w=>w[0]===X.wrap))],uCrop:X.crop?1:0,uNearest:{int:X.filter==='nearest'?1:0},...(typeof wpjUniforms==='function'?wpjUniforms(mode,xf,X):{})};}
 /* the four corners of the UV frame, in texture units (0..1), for the 2D handles */
 function pxfUvCorners(xf){const X=pxfNorm(xf),a=(X.r[2]||0)*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a),su=X.s[0]||1,sv=X.s[1]||1;

@@ -88,6 +88,14 @@ Tick **Use UV tile workflow** in the New 3D Paint Project window for a model who
 - **Bake mesh maps** bakes into the tiles' canvas too.
 - Projects made with an older version, with one texture set per tile, still open and work as before.
 
+### Pictures in a material with UV tiles
+In a texture set with several UV tiles, a picture chosen for a material channel (**Choose image…** or dropped on the channel) is not stretched over the whole canvas:
+- **Tile pictures** have the tile number in their name (Body_1001_D.png, Body_1002_D.png, Body.1001.png). Each goes into its own tile. In the desktop app, picking one also brings in the others from the same folder; in the browser, pick or drop them all together. A tile with no picture is left as it is.
+- **A plain picture** (no tile number), including Library materials, Textures and smart materials, repeats once in every tile, like UV tiling in Painter.
+- **Procedurals** (noise, grunge, generators and pictures in mask rows) in UV projection measure against one tile, so they keep their proportions instead of stretching across the wide canvas. **Triplanar** and the other 3D projections cover the whole model, every tile.
+- **Materials › From textures** with tile files (Body_1001_BaseColor.png, Body_1002_BaseColor.png…): each map's tiles are put together, so the new material fits the set.
+- The same goes for **mesh maps** brought in on their slots (Import…, Replace…, or dropped on the slot). Dropping several maps at once sorts them by name, and each map's tile files go in together.
+
 ## Instances (linked materials across sets)
 
 Right-click a material layer › **Instance to sets…** and tick the other texture sets. Each gets a linked copy: change the material in any set (colour, sliders, pictures, projection, look) and the copies follow after a moment. **Unlink instance** makes a copy its own again. A **triplanar** or **planar** projection is placed on the whole model, so the pattern continues across sets and tiles without breaks.
@@ -204,6 +212,56 @@ The layer stays live: every change shows straight away on the model, and becomes
 - **Reset bevel to default** puts every Bevel shader setting back to how it starts. The **Metal** button in the 3D bar shows any model as polished steel, with a roughness slider in the settings.
 - **Layer › New › Retro layer (N64 / PSX)** adds the Retro effect to the whole stack (or only the selected layer) as a filter layer.
 - The 3D view's **settings** panel (gear) remembers whether it was open. Click Wireframe or Wireframe overlay again to turn it off.
+
+## Skin channels, Material slots and channels of your own (0.97.26)
+- **Skin channels.** Picking **Skin** in the Shader panel adds three channels to the texture set: **Scattering** (white = the full amount set in the Skin settings, black = none), **Scatter colour** (the colour light takes under the surface; unpainted areas use the Skin colour) and **Translucency** (where light shines through thin parts such as ears and nostrils; it works with the baked Thickness map). Paint them like any channel, or put a material on them.
+![Material slots in the Shader panel](images/material-slots.png)
+
+- **Material slots** (under each shader's settings, like Marmoset's material editor): every input of the shader is listed with where it comes from:
+  - **Value**: the channel is not in the set; one number is used (the slider beside it, or the look's own setting).
+  - **Painted**: the channel is in the set. **Paint** picks it for painting.
+  - **Picture**: **Picture…** puts an image into that channel of the selected material (as Choose image… on its card does); with no material selected, a new material carrying just that channel is made. A layered PSD comes in as a folder of layers.
+  Switching a painted channel back to Value takes it out of the set (Undo brings it back).
+- **Specular level** (Metal/Rough sets): how strong the shine of non-metals is. Mid-grey is the usual 4%, white doubles it, black takes it away.
+- **Channels of your own:** **+ Channel of your own…** (or **Document maps**) adds up to eight channels with your own names (Wetness, Dirt mask…), grey or colour. The 3D view does not use them; they paint, save and export like any channel.
+- **Exporting:** the new channels are exported as their own files with every preset (for example Helmet_Scattering.png, Helmet_Wetness.png). Tick **Also each channel as a layered PSD** in the export window to get one PSD per channel with its layers and folders.
+- **PSD into a channel:** **File › Import › Import PSD into a channel…**, or drop a .psd on 3D Paint (it goes into the channel you are painting).
+- **Focal length:** the 3D settings show the camera's **Focal length** in mm next to the **View angle** (they move together), with buttons for 18, 24, 35, 50, 85 and 135 mm. The numbers match a full-frame camera, so 50 mm looks like a normal lens.
+
+## Texture Set Settings and channel buttons (0.97.26)
+Like Substance Painter:
+
+![Texture Set Settings](images/texset-settings.png) ![Channel buttons in the material editor](images/material-channels.png)
+
+- **Texture Set Settings** (a panel next to Texture sets) shows the set's size, workflow and **channels**. **+ Add a channel…** adds one (Scattering, Translucency, Specular level, Fuzz, a channel of your own…); **−** removes one (Undo brings it back). Each channel has a **format**: 8-bit, or 16-bit for smoother values (height, soft gradients), which uses twice the memory.
+- Every channel is an input in every **material**: the row of buttons at the top of the material editor (color · rough · metal · height · nrm · scatt …) turns each input on or off. Its card below sets the value, image or mesh map.
+- The **brush** has the same buttons. The channel you're viewing gets the brush colour; every lit button is painted by the same stroke with its own value (e.g. colour, roughness and scattering at once).
+
+## Skin like Marmoset's, and Specular reflectivity (0.97.26)
+
+![Skin settings like Marmoset's](images/skin-marmoset.png)
+
+- **Skin** shader settings follow Marmoset Toolbag's *Diffusion: Subsurface Scatter*:
+  - **Scatter Map** (the Scatter colour channel), **Scatter Depth (mm)** and the scatter colour: how far light spreads under the skin.
+  - **Translucency Map** (the Translucency channel), **Translucency** and its colour, **Translucency Depth (mm)** and **Translucency Scatter**: light coming through thin parts, with the baked Thickness map.
+  - **Fuzz Map** (the Fuzz channel), **Fuzz** and its colour, **Fuzz Scale**, **Fuzz Occlusion**: a soft sheen at the edges (peach fuzz).
+  - Each map slot has **Paint** (lights that channel on the brush), **Picture…** and **×** (take the channel out).
+- **Reflectivity** (Standard and Skin): **Metalness** reads the Metallic channel; **Specular** reads a **Specular colour** channel instead (added for you), like Marmoset's Specular setting. Roughness stays roughness. Unpainted areas use the colour beside the drop-down (dark grey, about 4% shine, suits skin).
+
+## Custom shader maker (0.97.26)
+Mix your own look from pieces of the other shaders, per texture set:
+
+![The custom shader maker](images/custom-shader.png)
+
+1. In the **Shader** panel pick **Custom (mix your own)**. On its own it looks like Standard.
+2. **+ Add an ingredient…** adds a row. Rows apply from top to bottom (↑ ↓ to move them):
+   - **Lighting styles** replace the shading by their amount: Skin scattering, Wax glow, Toon bands, Cel shading, Halftone dots, Ink shadows.
+   - **Shine** adds on top: Brushed metal, Clear coat and flakes, Cloth sheen, Iridescent colour.
+   - **Extras**: Rim light, Hologram lines, Glass, Retro pixels, Outline, Moving textures.
+3. Each row has a tick (on/off), **Amount**, its own settings (▸ opens them) and a **Mask**: *Whole set*, or *Where (a channel) is light*, with **Invert**. **New mask channel** adds a channel of your own named after the ingredient (black to start): paint white where the ingredient should show. Up to four different mask channels per shader; Outline and Moving textures always cover the whole set.
+4. **Save to library** keeps it for every project (the **Shaders** category on the shelf). **Update in library** saves changes back; **Save as new** makes a copy; **Export… / Import…** share .gshader files.
+
+Using a saved shader: click its tile on the shelf (active texture set), drag the tile onto a texture set in the list, or pick it (★) in the Shader drop-down. The project file keeps each set's shader, so it opens the same elsewhere. Game engine exports use a Standard material with the textures.
 
 ## Baking mesh maps here
 **Bake mesh maps…** (3D Paint panel, under *Mesh maps*) bakes without leaving 3D Paint, like Substance Painter's window:

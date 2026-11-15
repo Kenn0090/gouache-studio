@@ -85,3 +85,19 @@ async function openPSD(buf,name){
     psd.imageData?el('p',{class:'note',text:'Photoshop’s flattened version is included as a hidden layer at the top so you can compare.'}):null)});
   else toast('Opened “'+name+'”: '+summary+'.');
 }
+/* (0.97.26, Kenn) a layered PSD into one channel of a 3D Paint texture set: its layers and folders arrive as a folder whose
+   layers paint only that channel (grey channels take the picture's brightness) */
+async function psdIntoChannel(buf,name,k){k=k||doc.map;if(!MAP_DEFS[k]||MAP_DEFS[k].noPaint&&k!=='normal')k='base';
+  if(!doc.maps.includes(k))setDocMaps(doc.maps.concat(k),MAP_DEFS[k].label);
+  const was=doc.map;if(was!==k)setEditMap(k);
+  const G=await placePSD(buf,(name||'PSD')+' · '+MAP_DEFS[k].label);
+  const leaves=[],walk=n=>{if(n.children)n.children.forEach(walk);else leaves.push(n);};walk(G);
+  if(k!=='base'){if(!P_SLOTPIC)P_SLOTPIC=program(FS_SLOTPIC);
+    for(const L of leaves){L.blankBase=true;const t=L.maps&&L.maps[k];if(!t||t.empty||!MAP_DEFS[k].grey)continue;
+      const tmp=makeTarget(t.w,t.h,t.depth,false);try{blit(t,tmp,0,0,t.w,t.h,0,0);run(P_SLOTPIC,t,{uSrc:tmp.tex,uGrey:{int:1},uSz:[t.w,t.h]});}finally{disposeTarget(tmp);}}}
+  changedAll();if(typeof renderShading==='function')renderShading();
+  toast('“'+name+'” is in '+MAP_DEFS[k].label+': '+leaves.length+' layers in a folder.');return G;}
+async function dlgPsdIntoChannel(){const f=await pickFiles('.psd',false,'Photoshop',['psd']);if(!f||!f[0])return;
+  const ks=doc.maps.filter(k=>k!=='curv'),sel=el('select',{id:'psdCh'},...ks.map(k=>el('option',{value:k,text:MAP_DEFS[k].label})));sel.value=ks.includes(doc.map)?doc.map:'base';
+  openDialog({title:'Import PSD into a channel',body:el('div',{class:'dlg-grid'},el('p',{class:'note',text:'“'+f[0].name+'” comes in as a folder of layers that paint only the channel you pick.'}),el('label',{class:'frow'},el('span',{text:'Channel'}),sel)),okLabel:'Import',
+    async onOk(){const k=sel.value;loadStart(f[0].name);try{await loadPaint();needLib('agPsd','PSD');await psdIntoChannel(await f[0].arrayBuffer(),baseName(f[0].name),k);}catch(e){toast(e.message||String(e));}finally{loadEnd();}}});}
