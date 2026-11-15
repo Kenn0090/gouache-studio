@@ -1,3 +1,7 @@
+## 0.97.30
+
+- **"Hide the bumps below" now starts off** on new materials, so their height and normal add on top of what is below. Turn it on per material as before, or make it start on for every new material in **Preferences › Painting**. Materials in your existing projects keep their own setting.
+
 ## 0.97.29
 
 - **Fixed: dragging the Navigator past its edge broke the whole app** (the view jumped away and no click worked until a restart). The navigator now stays put under the pointer while you drag it, and a broken view puts itself back on screen.

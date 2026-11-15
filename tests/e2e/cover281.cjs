@@ -1,4 +1,4 @@
-/* 0.28.1: a material covers ("Hide the bumps below", on by default; untick to add bumps instead) the height and normal detail of the layers under it */
+/* 0.28.1: a material covers ("Hide the bumps below"; since 0.97.30 off by default, Preferences can turn it on for new materials) the height and normal detail of the layers under it */
 const {chromium}=require('playwright');
 const OLD=__dirname+'/';
 const OUT=__dirname+'/out/';
@@ -24,17 +24,24 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const h0=await h();
  await p.evaluate(()=>{__gs.cmdNewFillLayer({name:'Bumpy',maps:{height:{v:.9}}});});await W(400);const h1=await h();
  await p.evaluate(()=>{__gs.cmdNewFillLayer({name:'Smooth',maps:{height:{v:.5},base:{c:[.8,.7,.3]}}});});await W(400);const h2=await h();
- ok(Math.abs(h1-h0)>.2&&Math.abs(h2-.5)<.02,'by default a flat material on top hides the bumps below ('+[h0,h1,h2]+')');
+ /* (0.97.30, Kenn) off by default: the bumps below still show through */
+ ok(Math.abs(h1-h0)>.2&&Math.abs(h2-.5)>.1,'by default a new material lets the bumps below show ('+[h0,h1,h2]+')');
  await p.evaluate(()=>__gs.showPanel('matEd'));await W(300);
  ok(await p.locator('#fl_cover').count()===1,'the Material panel has "Hide the bumps below"');
- ok(await p.locator('#fl_cover').isChecked(),'…and it is ticked');
+ ok(!(await p.locator('#fl_cover').isChecked()),'…and it starts unticked');
  await p.click('#fl_cover');await W(900);const h3=await h();
- ok(Math.abs(h3-h1)<.02,'unticked, the bumps below add up again ('+h3+')');
- await p.click('#fl_cover');await W(900);
+ ok(Math.abs(h3-.5)<.02,'ticked, the flat material hides the bumps below ('+h3+')');
  /* also without a height of its own */
  await p.evaluate(()=>{const L=__gs.doc.active;L.fill.maps.height.on=false;__gs.fillRender(L);});await W(400);
  ok(Math.abs(await h()-.5)<.02,'…even when the material has no height channel');
+ await p.evaluate(()=>{const L=__gs.doc.active;L.fill.maps.height.on=true;__gs.fillRender(L);});await W(300);
+ await p.click('#fl_cover');await W(900);
+ ok(Math.abs(await h()-h2)<.02,'unticked again, the bumps below come back');
  await W(900);await p.evaluate(()=>__gs.act('undo'));await W(400);
- ok(await p.evaluate(()=>{const L=__gs.layerByName('Smooth');return !!L&&L.fill.coverH===false;}),'undo takes back the last tick (the layer stays)');
+ ok(await p.evaluate(()=>{const L=__gs.layerByName('Smooth');return !!L&&L.fill.coverH===true;}),'undo takes back the last tick (the layer stays)');
+ /* Preferences › Painting can make new materials start with it on */
+ await p.evaluate(()=>{__gs.prefs.coverBumps=true;__gs.cmdNewFillLayer({name:'Covering',maps:{height:{v:.5}}});});await W(400);
+ ok(await p.evaluate(()=>__gs.doc.active.fill.coverH===true)&&Math.abs(await h()-.5)<.02,'with the setting on, a new material hides the bumps below');
+ await p.evaluate(()=>{__gs.prefs.coverBumps=undefined;});
  console.log(errs.length?errs.join('\n'):'no page errors');ok(!errs.length,'no page errors');
  console.log(fails?fails+' FAILED':'ALL PASSED');await b.close();process.exit(fails?1:0);})();

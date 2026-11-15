@@ -1,3 +1,7 @@
+## Gouache Studio 0.97.30
+
+- "Hide the bumps below" starts off on new materials; Preferences › Painting can make it start on.
+
 ## Gouache Studio 0.97.29
 
 - Fixed: dragging the Navigator past its edge no longer breaks the app.
