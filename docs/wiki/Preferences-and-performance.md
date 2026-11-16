@@ -66,6 +66,10 @@ Large save images are packed in a background worker, and their GPU readbacks are
 
 Released scratch textures are trimmed when work has been idle for about ten seconds. The cache keeps at most two spare images per pool within a shared 256 MiB budget. Layer images, undo history and working results are not trimmed, including documents kept in other tabs.
 
+## Painting report (0.98)
+
+**Help › Painting report…** measures how smoothly painting runs on your computer and finds what causes a stutter. Open the work where it stutters, press **Start**, paint as you normally do for about half a minute, then press **Stop** on the note at the bottom of the window. The report says how evenly the screen refreshed, lists the worst stutters with what the app was doing at each one (putting the layers together, the undo step, an autosave, the graphics card being busy, and so on), and adds up how long each of the app's steps took. It holds no pictures and no file names. **Copy the report** puts it on the clipboard to send with a problem report. Nothing is measured unless a recording is running.
+
 ## Tips for big documents
 Painting on big canvases (8k, 16k) only redraws the parts your brush touches, and symmetry paints each side's area separately, so custom and textured brushes stay quick.
 

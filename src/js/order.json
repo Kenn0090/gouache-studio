@@ -286,6 +286,7 @@
     "ui/tool-keys",
     "api/gs-api",
     "ui/scripts",
+    "ui/paint-report",
     "core/boot"
   ]
 }

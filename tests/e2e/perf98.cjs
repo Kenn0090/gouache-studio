@@ -70,6 +70,18 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(gm.lossyType==='image/webp','colour pictures are still high-quality WebP');
  /* ---- timelapse quality ---- */
  await p.click('#modeTabs [data-mode=paint]');await p.waitForTimeout(1500);
+ /* ---- Painting report ---- */
+ await p.evaluate(()=>{__gs.newDoc(800,800,8,[1,1,1],'Rep',false);});await p.waitForTimeout(600);
+ ok(await p.evaluate(()=>__gs.pr.on===false&&__gs.pr.hooked===false),'nothing is timed before a recording is started');
+ await p.evaluate(()=>__gs.act('paintReport'));await p.waitForTimeout(400);await p.click('#dlgOk');await p.waitForTimeout(500);
+ ok(await p.evaluate(()=>!!document.querySelector('#prChip')&&__gs.pr.on),'Help › Painting report starts a recording with a Stop note');
+ {const box=await p.evaluate(()=>{const r=document.querySelector('#stage').getBoundingClientRect();return {x:r.left,y:r.top,w:r.width,h:r.height};});
+  for(let k=0;k<2;k++){await p.mouse.move(box.x+box.w*.35,box.y+box.h*(.4+.1*k));await p.mouse.down();for(let i=0;i<15;i++)await p.mouse.move(box.x+box.w*(.35+.3*i/15),box.y+box.h*(.4+.1*k));await p.mouse.up();await p.waitForTimeout(300);}}
+ await p.click('#prStop');await p.waitForTimeout(600);
+ const rep=await p.evaluate(()=>({t:(document.querySelector('#prText')||{}).value||'',on:__gs.pr.on,chip:!!document.querySelector('#prChip'),copy:!!document.querySelector('#prCopy')}));
+ ok(!rep.on&&!rep.chip&&rep.copy&&/PAINTING REPORT/.test(rep.t)&&/Document 800 × 800/.test(rep.t)&&/2 strokes/.test(rep.t),'Stop shows the report with the setup and the strokes counted');
+ ok(/WORST STUTTERS/.test(rep.t)&&/brush dabs: \d+ ×/.test(rep.t)&&/putting the layers together/.test(rep.t),'it lists the stutters and how long each of the app’s steps took');
+ await p.evaluate(()=>{const c=document.querySelector('#dlgCancel')||document.querySelector('#dlgOk');if(c)c.click();});await p.waitForTimeout(300);
  const t=await p.evaluate(async()=>{const g=__gs,q=k=>{g.tlr.cfg.vq=k;return g.tlBitrate(1280,720,30);};
   const s=q('small'),m=q('bal'),h=q('best');g.tlr.cfg.vq='bal';g.tlr.cfg.fmt='auto';
   const f=typeof VideoEncoder==='undefined'?null:await g.tlFormat(640,360,30,g.tlBitrate(640,360,30));
