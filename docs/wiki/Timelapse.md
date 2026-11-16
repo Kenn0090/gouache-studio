@@ -14,7 +14,25 @@ A picture of the **whole canvas**, taken every so often, but only when something
 
 - **Pictures taken**: per second, per minute or per hour, and **how many** (1 to 60). Six per minute is one every ten seconds.
 - **Compression**: smaller pictures (and a folder that lasts longer) at the cost of a little sharpness.
-- **Picture size** (720 px up to full size), **video speed** (pictures a second in the finished video) and **video format** (MP4 H.264 or H.265, WebM VP9 or AV1, depending on your computer).
+- **Picture size** (720 px up to full size) and **video speed** (pictures a second in the finished video).
+- **Video quality**: **Small file**, **Balanced** (the default) or **Best picture**. The window shows about how many megabytes a minute of video takes; still parts of the picture take less.
+- **Video format**: **Automatic** picks the tightest format your computer can make (AV1, then H.265, then VP9, then H.264). You can also choose one yourself. If a player cannot open the video, choose **MP4 · H.264**, which plays everywhere.
+
+## Making a video even smaller with HandBrake (desktop app)
+
+[HandBrake](https://handbrake.fr) is a separate free program that squeezes video much harder than Gouache can by itself. Each finished timelapse in the gear window has two buttons:
+
+- **Compress** makes a smaller copy in the background. A note at the bottom of the window shows the percentage, with **Stop**. The copy is saved next to the video with **-small.mp4** at the end of its name, and the original is left alone. **Show smaller copy** opens its folder.
+- **Open in HandBrake** opens the HandBrake window with the video loaded, so you can set everything yourself.
+
+In the gear window, under **HandBrake**:
+
+- **Compress as**: Smaller (H.265), Smallest but slower (AV1), Plays everywhere (H.264), or Fast on an NVIDIA card (H.265).
+- **How small**: Smallest file, Balanced or Best picture.
+- **Compress with HandBrake after every timelapse** does it by itself each time a video is made.
+- **Find HandBrake…** lets you point at the program if Gouache did not find it.
+
+What to install: **HandBrake** itself gives you **Open in HandBrake**. **Compress** needs HandBrake's command-line program, **HandBrakeCLI**, which is a separate download on handbrake.fr (Downloads › Command Line Version). Unzip it anywhere, press **Find HandBrake…** and choose HandBrakeCLI.exe. The browser version cannot start programs: use **Save a copy** there and open that file in HandBrake.
 
 ## If the app closes
 
