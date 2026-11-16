@@ -18,11 +18,14 @@ function navBuild(){if(nav.el)return;
 /* the little picture of the whole canvas, made from the finished composite (a small read-back, not while you paint) */
 function navPicture(){nav.timer=0;if(!nav.on||stroke||!compOut||ui.mode!=='paint')return;
   const w=176,h=Math.max(1,Math.min(132,Math.round(176*doc.h/doc.w))),ww=h===132?Math.max(1,Math.round(132*doc.w/doc.h)):w;
-  let sm=null;try{sm=makeTarget(ww,h,8,false);run(P.f_rs,sm,{uSrc:compOut.tex,uOut:[ww,h]});const d=captureRegionNow(sm,0,0,ww,h).data;
+  /* (0.98) collected when the graphics card is done: reading it at once made the page wait for everything still queued,
+     a hitch right after every stroke on a big canvas */
+  let sm=null;try{sm=makeTarget(ww,h,8,false);run(P.f_rs,sm,{uSrc:compOut.tex,uOut:[ww,h]});const seq=nav.seq=(nav.seq||0)+1;
+    asyncRead(sm.fbo,0,0,ww,h,gl.UNSIGNED_BYTE,Uint8Array,ww*h*4,d=>{if(seq!==nav.seq||!nav.cv)return;
     nav.cv.width=ww;nav.cv.height=h;const x=nav.cv.getContext('2d'),im=x.createImageData(ww,h);
     for(let i=0;i<ww*h;i++){const a=d[i*4+3]/255,sq=((i%ww>>3)+(((i/ww)|0)>>3))&1?200:240;/* a checker under transparent areas */
       im.data[i*4]=d[i*4]*1+sq*(1-a);im.data[i*4+1]=d[i*4+1]+sq*(1-a);im.data[i*4+2]=d[i*4+2]+sq*(1-a);im.data[i*4+3]=255;}
-    x.putImageData(im,0,0);nav.w=ww;nav.h=h;nav.dirty=false;}catch(e){}finally{if(sm)disposeTarget(sm);}}
+    x.putImageData(im,0,0);nav.w=ww;nav.h=h;if(typeof navSync==='function')navSync();},()=>{});nav.dirty=false;}catch(e){}finally{if(sm)disposeTarget(sm);}}
 function navSoon(){nav.dirty=true;if(!nav.timer)nav.timer=setTimeout(navPicture,260);}
 /* where the screen's frame sits on the picture, and whether the pip shows at all */
 function navSync(){if(!nav.el&&nav.on&&ui.mode==='paint')navBuild();if(!nav.el)return;
