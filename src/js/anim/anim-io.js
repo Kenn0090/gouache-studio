@@ -51,7 +51,7 @@ async function importGif(){if(!ensureAnimMode())return;const [f]=await pickFiles
     const list=[];let size=null;
     for(let i=0;i<n;i++){const {image}=await dec.decode({frameIndex:i});const w=image.displayWidth,h=image.displayHeight;
       if(!size){size=[w,h];if(replace&&(w!==doc.w||h!==doc.h))resizeCanvasDoc(w,h,0,0);}
-      const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.drawImage(image,0,0);const d=x.getImageData(0,0,w,h);
+      const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(image,0,0);const d=x.getImageData(0,0,w,h);
       const F=newFrame(),tex=uploadStraight({w,h,data:d.data,bits:8});premultInto(frameLayer(F).target,tex,[0,0],null);gl.deleteTexture(tex);
       F.hold=Math.max(1,Math.round((image.duration||100000)/1000*A.fps/1000));image.close();list.push(F);}
     dec.close();putFrames(list,replace,'Import GIF');}catch(e){console.error(e);toast('This GIF could not be read: '+(e.message||e));}}
@@ -147,7 +147,7 @@ function dlgExportSheet(){if(!doc.anim){toast('Switch to Animation mode (top rig
     if(platform.isDesktop){const dir=await platform.pickFolder();if(!dir)return;for(const f of files)await platform.writeFile(dir.replace(/[\\/]$/,'')+(dir.includes('\\')?'\\':'/')+f.name,f.data);toast('Saved '+files.length+' PNGs in '+dir);return;}
     const r=await deliver(slug(doc.name)+'_frames.zip',await makeZipMulti(files));toast(deliveredText(r,'PNG sequence'));}
   async function exportGif(){toast('Encoding GIF…');await tick0();const list=L.cells.filter(c=>!c.filler&&c.g===L.groups[0]),frames=[];
-    for(const c of list){const cv=scaledCanvas(full[c.fi],st.scale),d=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data;frames.push({d,delay:Math.max(2,Math.round((st.holds?1:A.frames[c.fi].hold)*100/A.fps))});}
+    for(const c of list){const cv=scaledCanvas(full[c.fi],st.scale),d=cv.getContext('2d',{willReadFrequently:true}).getImageData(0,0,cv.width,cv.height).data;frames.push({d,delay:Math.max(2,Math.round((st.holds?1:A.frames[c.fi].hold)*100/A.fps))});}
     const loop=!(L.groups[0].tag&&L.groups[0].tag.mode==='once');const bytes=encodeGIF(frames,L.fw,L.fh,loop);const r=await deliver(slug(doc.name)+'.gif',new Blob([bytes],{type:'image/gif'}));toast(deliveredText(r,'GIF'));}}
 const tick0=()=>new Promise(r=>setTimeout(r,30));
 
@@ -205,7 +205,7 @@ function lzwEncode(idx){const out=[];let cur=0,bits=0,size=9,next=258;const dict
 /* ---- (0.41) retiming and in-between frames for export ---- */
 const exRate=(v,fps)=>v==='same'?fps:v==='x2'?fps*2:v==='x4'?fps*4:+v||fps;
 /* straight-alpha RGBA bytes of a canvas */
-const cvPix=c=>c.getContext('2d').getImageData(0,0,c.width,c.height);
+const cvPix=c=>c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,c.width,c.height);
 /* a picture from RGBA bytes held premultiplied (Float32), back to a canvas with straight colour */
 function pixToCanvas(W,H,pm){const c=document.createElement('canvas');c.width=W;c.height=H;const img=new ImageData(W,H),d=img.data;
   for(let i=0;i<W*H;i++){const a=pm[i*4+3];if(a>0.001){d[i*4]=Math.min(255,pm[i*4]/a*255+.5);d[i*4+1]=Math.min(255,pm[i*4+1]/a*255+.5);d[i*4+2]=Math.min(255,pm[i*4+2]/a*255+.5);d[i*4+3]=Math.round(a*255);}}
@@ -215,7 +215,7 @@ function cvPremul(c){const d=cvPix(c).data,n=d.length/4,o=new Float32Array(n*4);
 function blendFrames(ca,cb,w){const W=ca.width,H=ca.height,a=cvPremul(ca),b=cvPremul(cb),o=new Float32Array(a.length);for(let i=0;i<o.length;i++)o[i]=a[i]*(1-w)+b[i]*w;return pixToCanvas(W,H,o);}
 /* Motion: block matching on small copies (coarse, then refined), smoothed, then both frames are pulled along the movement */
 function flowFeat(c,maxD){const s=Math.min(1,maxD/Math.max(c.width,c.height)),w=Math.max(8,Math.round(c.width*s)),h=Math.max(8,Math.round(c.height*s)),t=document.createElement('canvas');t.width=w;t.height=h;
-  const x=t.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(c,0,0,w,h);const d=x.getImageData(0,0,w,h).data,f=new Float32Array(w*h*2);
+  const x=t.getContext('2d',{willReadFrequently:true});x.imageSmoothingQuality='high';x.drawImage(c,0,0,w,h);const d=x.getImageData(0,0,w,h).data,f=new Float32Array(w*h*2);
   for(let i=0;i<w*h;i++){const a=d[i*4+3]/255;f[i*2]=(0.3*d[i*4]+0.59*d[i*4+1]+0.11*d[i*4+2])*a;f[i*2+1]=d[i*4+3]*0.6;}return {f,w,h};}
 /* for each block (step px apart) find the shift in B that best matches A; gx/gy = a first guess per block from a coarser level (in this level's px) */
 function blockMatch(A,B,step,win,R,guess){const w=A.w,h=A.h,gw=Math.ceil(w/step),gh=Math.ceil(h/step),dx=new Float32Array(gw*gh),dy=new Float32Array(gw*gh),ok=new Uint8Array(gw*gh),fa=A.f,fb=B.f;

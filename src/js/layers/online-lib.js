@@ -61,7 +61,7 @@ async function olZipGet(url,row){const id='ol'+(++ol.job);if(row)row.job=id;olDr
   const ab=await platform.invoke('net_download',{id,url});if(row)row.job=null;return ab instanceof ArrayBuffer?ab:(ab&&ab.buffer)||new Uint8Array(ab).buffer;}
 /* ---- a downloaded zip -> a Library material ---- */
 function olThumbPixels(im){const c=document.createElement('canvas'),s=Math.min(1,192/Math.max(im.w,im.h));c.width=Math.max(1,Math.round(im.w*s));c.height=Math.max(1,Math.round(im.h*s));
-  const full=document.createElement('canvas');full.width=im.w;full.height=im.h;const x=full.getContext('2d'),id=x.createImageData(im.w,im.h);id.data.set(im.data);x.putImageData(id,0,0);c.getContext('2d').drawImage(full,0,0,c.width,c.height);return c.toDataURL('image/webp',.8);}
+  const full=document.createElement('canvas');full.width=im.w;full.height=im.h;const x=full.getContext('2d',{willReadFrequently:true}),id=x.createImageData(im.w,im.h);id.data.set(im.data);x.putImageData(id,0,0);c.getContext('2d',{willReadFrequently:true}).drawImage(full,0,0,c.width,c.height);return c.toDataURL('image/webp',.8);}
 async function olThumb(it,built){if(it.thumb){try{const r=await fetch(it.thumb);if(r.ok){const b=await r.blob();return await new Promise((res,rej)=>{const f=new FileReader();f.onload=()=>res(f.result);f.onerror=rej;f.readAsDataURL(b);});}}catch(e){}}
   const im=built.imgs.base||Object.values(built.imgs)[0];return im?olThumbPixels(im):'';}
 /* res: '1K' | '2K' | '4K'; info: {id, name, cat, url?, upg?} */

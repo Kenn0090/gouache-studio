@@ -45,7 +45,7 @@ function uvViewTarget(){const m=(typeof bkLow==='function')?bkLow():null,v=uvw.v
   const key=v+'|'+(m.uv&&m.uv.length)+'|'+(m._uvStamp||0)+'|'+(m.uvAuto?m.uvAuto.packSeed+':'+m.uvAuto.seed:'');if(uvViewT&&uvViewKey===key&&uvViewT.mesh===m)return uvViewT;
   if(uvViewT){disposeTarget(uvViewT.t);uvViewT=null;}
   let cv;if(v==='check')cv=uvCheckerCanvas();else if(v==='overlap')cv=uvOverlapCanvas(m,1024,uvOvl(m));else cv=uvHeatCanvas(m,v,1024,true);
-  const t=makeTarget(cv.width,cv.height,8,true),tex=uploadStraight({w:cv.width,h:cv.height,data:new Uint8Array(cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data.buffer),bits:8});try{premultInto(t,tex,[0,0],null);}finally{gl.deleteTexture(tex);}setWrap(t,true);
+  const t=makeTarget(cv.width,cv.height,8,true),tex=uploadStraight({w:cv.width,h:cv.height,data:new Uint8Array(cv.getContext('2d',{willReadFrequently:true}).getImageData(0,0,cv.width,cv.height).data.buffer),bits:8});try{premultInto(t,tex,[0,0],null);}finally{gl.deleteTexture(tex);}setWrap(t,true);
   uvViewKey=key;uvViewT={t,unlit:v!=='check',mesh:m};return uvViewT;}
 /* the overlap check of a mesh, kept until the mesh changes */
 function uvOvl(m){if(!uvw.ovl||uvw.ovl.mesh!==m||uvw.ovl.stamp!==(m._uvStamp||0))uvw.ovl={mesh:m,stamp:m._uvStamp||0,res:uvOverlapCheck(m)};return uvw.ovl.res;}

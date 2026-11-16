@@ -147,7 +147,7 @@ function dkInit(){
     el('div',{id:'surfaceDetailsBody',class:'dlg-grid'}));
   bs.after(dkSecs.surfacedetails);
   {const grp=(k,t,body)=>{const d=el('details',{class:'shtgrp',id:'shtg_'+k},el('summary',{text:t}),body);let o=true;try{const v=JSON.parse(localStorage.getItem('gs.shTools')||'{}');if(v[k]===false)o=false;}catch(e){}d.open=o;
-      d.addEventListener('toggle',()=>{try{const v=JSON.parse(localStorage.getItem('gs.shTools')||'{}');v[k]=d.open;localStorage.setItem('gs.shTools',JSON.stringify(v));}catch(e){}if(d.open&&k==='weld'&&typeof weldToolsRender==='function')weldToolsRender();});return d;};
+      d.addEventListener('toggle',()=>{try{const v=JSON.parse(localStorage.getItem('gs.shTools')||'{}');v[k]=d.open;localStorage.setItem('gs.shTools',JSON.stringify(v));}catch(e){}if(d.open){try{({weld:weldToolsRender,stitch:stitchToolsRender,detail:surfaceDetailRender})[k]();}catch(e){}}});return d;};
     dkSecs.shtools=el('section',{class:'sec shsec',id:'shToolsSec','aria-labelledby':'hShTools'},el('div',{class:'sec-h',id:'hShTools'},el('span',{text:'Tools'})),
       el('div',{id:'shToolsBody',class:'dlg-grid'},grp('weld','Welds',weldtools.querySelector('#weldToolsBody')),grp('stitch','Stitches',dkSecs.stitches.querySelector('#stitchToolsBody')),grp('detail','Surface details',dkSecs.surfacedetails.querySelector('#surfaceDetailsBody'))));}
   const panel=document.querySelector('aside.panel');panel.id='dock';panel.setAttribute('aria-label','Panels');

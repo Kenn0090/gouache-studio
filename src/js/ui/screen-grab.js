@@ -9,7 +9,7 @@ async function screenGrab(){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia)throw new Error('This browser cannot share the screen.');
   const st=await navigator.mediaDevices.getDisplayMedia({video:true,audio:false});
   try{const v=document.createElement('video');v.srcObject=st;v.muted=true;await v.play();await new Promise(r=>setTimeout(r,250));
-    const c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;const x=c.getContext('2d');x.drawImage(v,0,0);return {w:c.width,h:c.height,data:x.getImageData(0,0,c.width,c.height).data};}
+    const c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(v,0,0);return {w:c.width,h:c.height,data:x.getImageData(0,0,c.width,c.height).data};}
   finally{for(const t of st.getTracks())t.stop();}}
 /* the copy over the whole app; mode 'point' (click) or 'line' (drag). done(result) gets [r,g,b] (0..1) or a list of colours */
 async function screenGrabPick(mode,done){let shot;try{toast(mode==='line'?'Getting the screen…':'Getting the screen…');shot=await (window.__screenGrab||screenGrab)();}catch(e){if(e&&e.name==='NotAllowedError')return;toast('Could not copy the screen: '+(e.message||e));return;}

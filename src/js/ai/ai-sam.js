@@ -2,7 +2,7 @@
    The picture goes through the image part once (slow part, a second or two; kept for more clicks), then every click or box is a
    quick second step. Masks come back as soft grey pictures at the size asked for. */
 const SAM_SIDE=1024;
-function aiResizeRGBA(img,w,h){const c=new OffscreenCanvas(img.w,img.h),x=c.getContext('2d');x.putImageData(new ImageData(img.data,img.w,img.h),0,0);const c2=new OffscreenCanvas(w,h),y=c2.getContext('2d');y.imageSmoothingQuality='high';y.drawImage(c,0,0,w,h);return y.getImageData(0,0,w,h).data;}
+function aiResizeRGBA(img,w,h){const c=new OffscreenCanvas(img.w,img.h),x=c.getContext('2d',{willReadFrequently:true});x.putImageData(new ImageData(img.data,img.w,img.h),0,0);const c2=new OffscreenCanvas(w,h),y=c2.getContext('2d',{willReadFrequently:true});y.imageSmoothingQuality='high';y.drawImage(c,0,0,w,h);return y.getImageData(0,0,w,h).data;}
 /* embed: {emb,pos,w,h,rw,rh,scale} for a picture {w,h,data} */
 async function aiSamEmbed(img){const ort=await aiEngine(),enc=await aiSession('sam','vision_encoder.onnx'),k=SAM_SIDE/Math.max(img.w,img.h),rw=Math.round(img.w*k),rh=Math.round(img.h*k),px=aiResizeRGBA(img,rw,rh),S=SAM_SIDE,f=new Float32Array(3*S*S),mean=[.485,.456,.406],std=[.229,.224,.225];
   for(let y=0;y<rh;y++)for(let x=0;x<rw;x++){const i=(y*rw+x)*4,j=y*S+x;for(let c=0;c<3;c++)f[c*S*S+j]=(px[i+c]/255-mean[c])/std[c];}

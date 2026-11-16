@@ -338,7 +338,7 @@ function dlgGenerate(kind,initial){if(!ensureAnimMode())return;const cur={o:init
 function spinFrames(n,deg){const A=A_();if(!A)return;n=clamp(Math.round(n)||8,2,256);if(!animMemOk(n))return;
   const src=frameCanvas(curFrame()),W=doc.w,H=doc.h,list=[];
   for(let i=0;i<n;i++){const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');x.translate(W/2,H/2);x.rotate(i*deg/n*Math.PI/180);x.drawImage(src,-W/2,-H/2);
-    const d=x.getImageData?c.getContext('2d').getImageData(0,0,W,H):null;const F=newFrame(),tex=uploadStraight({w:W,h:H,data:d.data,bits:8});premultInto(frameLayer(F).target,tex,[0,0],null);gl.deleteTexture(tex);list.push(F);}
+    const d=x.getImageData?c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H):null;const F=newFrame(),tex=uploadStraight({w:W,h:H,data:d.data,bits:8});premultInto(frameLayer(F).target,tex,[0,0],null);gl.deleteTexture(tex);list.push(F);}
   putFrames(list,false,'Spin frame');}
 /* make the loop seamless: the first k frames fade in from the last k, and the last k are dropped */
 function seamlessLoop(k){const A=A_();if(!A)return;const [a,b]=animRange(),n=b-a+1;k=clamp(Math.round(k)||1,1,Math.floor((n-1)/2));
@@ -347,7 +347,7 @@ function seamlessLoop(k){const A=A_();if(!A)return;const [a,b]=animRange(),n=b-a
       const ta=frameFlat(tail),tb=frameFlat(head);run(P.mix,frameLayer(F).target,{uA:ta.tex,uB:tb.tex,uT:j/k,uM:dummy.tex||dummy,uUseM:false});release(ta);release(tb);F.hold=head.hold;fr[a+j]=F;frameDirty(F);}
     fr.splice(b-k+1,k);A.frames=fr;A.cur=clamp(A.cur,0,fr.length-1);ui.fsel=null;});
   toast('Loop made seamless: '+k+' frames now fade from the end into the start.');}
-function cutFrameGrid(){if(!ensureAnimMode())return;const c=frameCanvas(curFrame()),id=c.getContext('2d').getImageData(0,0,c.width,c.height);importSheet({w:c.width,h:c.height,data:id.data,bits:8});}
+function cutFrameGrid(){if(!ensureAnimMode())return;const c=frameCanvas(curFrame()),id=c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,c.width,c.height);importSheet({w:c.width,h:c.height,data:id.data,bits:8});}
 (function buildVfxMenu(){const s=el('select',{class:'tlsel','aria-label':'VFX',title:'Fire, smoke and sparks generators, spin, seamless loop and cut into a grid'},el('option',{value:'',text:'VFX…'}),
     el('option',{value:'g0',text:'Browse effect gallery…'}),el('option',{value:'spin',text:'Spin this frame…'}),el('option',{value:'loop',text:'Make loop seamless…'}),el('option',{value:'cut',text:'Cut this frame into a grid…'}));
   s.addEventListener('change',()=>{const v=s.value;s.value='';s.blur();

@@ -38,7 +38,7 @@ async function pxWebp(raw,w,h,q){if(pxWebpOk===false||w>16383||h>16383||typeof O
     x.putImageData(id,0,0);const b=await c.convertToBlob({type:'image/webp',quality:q||.92});if(b.type!=='image/webp'){pxWebpOk=false;return null;}pxWebpOk=true;return new Uint8Array(await b.arrayBuffer());}
   catch(e){pxWebpOk=false;return null;}}
 async function pxWebpDecode(u8,w,h){const bm=await createImageBitmap(new Blob([u8],{type:'image/webp'}),{premultiplyAlpha:'none',colorSpaceConversion:'none'});
-  const c=new OffscreenCanvas(w,h),x=c.getContext('2d');x.drawImage(bm,0,0);bm.close&&bm.close();const d=x.getImageData(0,0,w,h).data,out=new Uint8Array(w*h*4);
+  const c=new OffscreenCanvas(w,h),x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bm,0,0);bm.close&&bm.close();const d=x.getImageData(0,0,w,h).data,out=new Uint8Array(w*h*4);
   for(let i=0;i<d.length;i+=4){const a=d[i+3],f=a/255;out[i]=Math.round(d[i]*f);out[i+1]=Math.round(d[i+1]*f);out[i+2]=Math.round(d[i+2]*f);out[i+3]=a;}return out;}
 /* pack: {bytes, f} ('p' lossless, 'w' WebP); lossy only when asked and Smaller files is on, and only if it is smaller */
 function pxBytes(raw,depth){if(depth!==16||!(raw instanceof Float32Array))return raw;const out=new Uint16Array(raw.length);for(let i=0;i<raw.length;i++)out[i]=f2h(raw[i]);return new Uint8Array(out.buffer);}

@@ -70,7 +70,7 @@ async function matExport(rec){if(rec.kind==='smart'||rec.kind==='smask'){const b
 /* a .gmat's pictures (PNG or WebP data URLs) back to premultiplied pixels */
 async function gmatImgs(j){const imgs={};
   for(const k in j.imgs||{}){const im=j.imgs[k],img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('bad image'));i.src=im.png;});
-    const c=document.createElement('canvas');c.width=im.w;c.height=im.h;const x=c.getContext('2d');x.drawImage(img,0,0);const d=x.getImageData(0,0,im.w,im.h).data,out=new Uint8Array(d.length);
+    const c=document.createElement('canvas');c.width=im.w;c.height=im.h;const x=c.getContext('2d',{willReadFrequently:true});/* read straight from memory, not back from the graphics card */x.drawImage(img,0,0);const d=x.getImageData(0,0,im.w,im.h).data,out=new Uint8Array(d.length);
     for(let i=0;i<d.length;i+=4){const a=d[i+3];out[i]=d[i]*a/255;out[i+1]=d[i+1]*a/255;out[i+2]=d[i+2]*a/255;out[i+3]=a;}imgs[k]={w:im.w,h:im.h,data:out};}
   return imgs;}
 /* ---- the Library: materials shipped with the app (assets/materials, e.g. from ambientCG), loaded when first used ---- */

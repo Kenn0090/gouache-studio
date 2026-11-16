@@ -32,7 +32,7 @@ function presetFromAbr(b,samples,notes,extraTips,pats,patTips){const sh=b.shape|
     else notes.add('Color dynamics (hue, saturation and brightness jitter) were applied; purity was ignored.');}
   const db=b.dualBrush;if(db){const sh=db.shape||{};let t=null;
     if(sh.type==='sampled')t=samples.get(sh.sampledData)||null;
-    if(!t&&extraTips){const hard=sh.type==='computed'&&sh.hardness!=null?clamp(sh.hardness,0,1):.8,c=tileCanvas({hardness:hard,roundness:1,grain:0,tool:'brush'}),d=c.getContext('2d').getImageData(0,0,64,64).data,A=new Uint8Array(4096);for(let i=0;i<4096;i++)A[i]=d[i*4+3];
+    if(!t&&extraTips){const hard=sh.type==='computed'&&sh.hardness!=null?clamp(sh.hardness,0,1):.8,c=tileCanvas({hardness:hard,roundness:1,grain:0,tool:'brush'}),d=c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,64,64).data,A=new Uint8Array(4096);for(let i=0;i<4096;i++)A[i]=d[i*4+3];
       t=makeTip('Dual tip '+(extraTips.length+1)+' · '+(p.name||'Brush'),64,64,A);extraTips.push(t);}
     if(t){p._dualTip=t;const bm=String(db.blendMode||'multiply').toLowerCase();
       p.dual=Object.assign({},DUAL_DEFAULTS,{tipKey:'',size:clamp(Math.round(sh.size||40),2,2000),spacing:clamp(Math.round((db.spacing||sh.spacing||.25)*100),1,1000),scatter:clamp(Math.round(((db.useScatter===false?0:(db.scatterDynamics&&db.scatterDynamics.jitter))||0)*100),0,400),count:clamp(Math.round(db.count||1),1,8),mode:/subtract|knock|height/.test(bm)?1:0,amount:100});

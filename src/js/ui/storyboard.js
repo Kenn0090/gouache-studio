@@ -24,6 +24,6 @@ function sbDraw(c,o){o=Object.assign({},SB_DEFAULT,o||{});const W=c.width,H=c.he
     if(o.captions&&b.capH>6){x.strokeStyle=soft;const n=3,top=b.y+b.h+b.capH*.22,step=(b.capH*.78)/n;for(let k=0;k<n;k++){const yy=top+step*(k+.8);x.beginPath();x.moveTo(b.x+fs*1.6,yy);x.lineTo(b.x+b.w,yy);x.stroke();}}});
   return c;}
 /* put the template into the document that was just made: a locked frames layer and a Sketch layer above it */
-function sbApply(o){const c=document.createElement('canvas');c.width=doc.w;c.height=doc.h;sbDraw(c,o);const id=c.getContext('2d').getImageData(0,0,doc.w,doc.h);
+function sbApply(o){const c=document.createElement('canvas');c.width=doc.w;c.height=doc.h;sbDraw(c,o);const id=c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,doc.w,doc.h);
   const F=newLayerObj('Storyboard frames');insertNode(F,doc.root);drawRawInto(F.target,{w:doc.w,h:doc.h,data:id.data,bits:8},false);F.lockAll=true;
   const S=newLayerObj('Sketch');insertNode(S,doc.root);selectOnly(S);if(typeof renderLayers==='function')renderLayers();changedAll();requestRender(true);}
