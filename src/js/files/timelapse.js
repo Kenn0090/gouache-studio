@@ -76,31 +76,62 @@ async function tlStop(){if(!tlr.on&&!tlr.paused)return;const sess=tlr.sess,sid=t
   if(tlr.count-tlr.first<2){toast('Not enough pictures yet for a timelapse (it needs at least two changes to the canvas).');sess.state='progress';await tlPut('sessions',sess);return;}
   await tlFinish(sess);}
 /* ---- making the video ---- */
+<<<<<<< Updated upstream
 async function tlEncode(sess,progress){const fps=clamp(tlr.cfg.vfps,1,60);
+=======
+async function tlEncode(sess,progress,soft){const fmt=tlr.cfg.fmt,F=VID_FORMATS.find(f=>f[0]===fmt)||VID_FORMATS[0],fps=clamp(tlr.cfg.vfps,1,60);
+>>>>>>> Stashed changes
   const first=await tlGet('frames',[sess.id,sess.first]);if(!first)throw new Error('The pictures of this timelapse are missing.');
   const sc=1;const W=Math.max(2,first.w&~1),H=Math.max(2,first.h&~1),bitrate=tlBitrate(W,H,fps);
   const {F,codec}=await tlFormat(W,H,fps,bitrate);if(!codec)throw new Error('This computer cannot make '+F[1]+' video at '+W+' × '+H+'. Try a smaller size or another format.');
   const cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d'),chunks=[];let desc=null,err=null;
   const enc=new VideoEncoder({output:(c,meta)=>{const d=new Uint8Array(c.byteLength);c.copyTo(d);if(meta&&meta.decoderConfig&&meta.decoderConfig.description&&!desc)desc=meta.decoderConfig.description;chunks.push({data:d,key:c.type==='key',ts:c.timestamp,dur:(c.duration||0)/1000});},error:e=>{err=e;}});
+<<<<<<< Updated upstream
   /* a timelapse hardly changes from one picture to the next: let the encoder spend few bits on still parts (variable rate) where it can */
   {const base=Object.assign({codec,width:W,height:H,bitrate,framerate:fps,latencyMode:'quality'},codec.startsWith('avc1')?{avc:{format:'avc'}}:codec.startsWith('hvc1')?{hevc:{format:'hevc'}}:{}),vbr=Object.assign({bitrateMode:'variable'},base);let okV=false;
     try{const r=await VideoEncoder.isConfigSupported(vbr);okV=!!(r&&r.supported);}catch(e){}
     try{enc.configure(okV?vbr:base);}catch(e){enc.configure(base);}}
   const n=sess.count-sess.first,ms=1000/fps,gop=Math.max(1,Math.round(fps*tlVq()[3]));let k=0;
   for(let i=sess.first;i<sess.count;i++){if(err)throw err;const f=await tlGet('frames',[sess.id,i]);if(!f)continue;const bmp=await createImageBitmap(f.blob);
+=======
+  enc.configure(Object.assign({codec,width:W,height:H,bitrate,framerate:fps,latencyMode:'quality',hardwareAcceleration:soft?'prefer-software':'no-preference'},codec.startsWith('avc1')?{avc:{format:'avc'}}:codec.startsWith('hvc1')?{hevc:{format:'hevc'}}:{}));
+  const n=sess.count-sess.first,ms=1000/fps,gop=Math.max(1,Math.round(fps*2));let k=0;
+  try{for(let i=sess.first;i<sess.count;i++){if(err)throw err;const f=await tlGet('frames',[sess.id,i]);if(!f)continue;const bmp=await createImageBitmap(f.blob);
+>>>>>>> Stashed changes
     x.fillStyle='#fff';x.fillRect(0,0,W,H);const s=Math.min(W/bmp.width,H/bmp.height),dw=bmp.width*s,dh=bmp.height*s;x.imageSmoothingQuality='high';x.drawImage(bmp,(W-dw)/2,(H-dh)/2,dw,dh);bmp.close&&bmp.close();
     const vf=new VideoFrame(cv,{timestamp:Math.round(k*ms*1000),duration:Math.round(ms*1000)});enc.encode(vf,{keyFrame:k%gop===0});vf.close();k++;
     while(enc.encodeQueueSize>6)await new Promise(r=>setTimeout(r,4));if(progress&&k%6===0){progress(k/n);await new Promise(r=>setTimeout(r,0));}}
-  await enc.flush();enc.close();if(err)throw err;if(!chunks.length)throw new Error('The encoder made no frames.');
+  await enc.flush();if(err)throw err;}finally{try{if(enc.state!=='closed')enc.close();}catch(e){}}/* (0.97.24) the encoder is always let go, also after an error: a leftover one blocked the next video */
+  if(!chunks.length)throw new Error('The encoder made no frames.');
   chunks.sort((a,b)=>a.ts-b.ts);const samples=chunks.map(c=>({data:c.data,key:c.key,dur:c.dur||ms}));
   return {blob:F[2]==='webm'?webmWrite(samples,W,H,codec,desc):mp4Write(samples,W,H,codec,desc,F[2]==='mov'),ext:F[3],w:W,h:H,frames:k,codec,fps,fmt:F[1]};}
 async function tlFinish(sess){loadStart('Making the timelapse video');
+<<<<<<< Updated upstream
   try{const r=await tlEncode(sess,f=>loadSet(f*.9,'Encoding picture '+Math.round(f*100)+'%…'));loadSet(.95,'Saving…');
     const vid={id:'v'+Date.now(),name:sess.name,created:Date.now(),ext:r.ext,blob:r.blob,frames:r.frames,w:r.w,h:r.h,fps:r.fps,docName:sess.docName};await tlPut('videos',vid);
     await tlDelFrames(sess.id,0,1e9);await tlDel('sessions',sess.id);if(tlr.sid===sess.id){tlr.sess=null;tlr.sid=null;tlr.count=0;}
     let where='';if(platform.isDesktop){try{const base=(await platform.cacheInfo()).dir.replace(/[\\/]+$/,'')+'/Timelapse/completed TL\'s';await platform.invoke('make_dir',{path:base});const file=base+'/'+slug(sess.name)+'-'+vid.id+'.'+r.ext;await platform.writeFile(file,r.blob);vid.path=file;await tlPut('videos',vid);where=' It is in the “completed TL’s” folder.';}catch(e){console.warn('timelapse folder',e);}}
     const d=await deliver(slug(sess.name)+'.'+r.ext,r.blob);toast(deliveredText(d,'Timelapse')+' ('+r.w+' × '+r.h+', '+r.frames+' pictures, '+(r.frames/r.fps).toFixed(1)+' s, '+r.fmt+', '+(Math.round(r.blob.size/104857.6)/10)+' MB).'+where);
     if(typeof hbAfterTimelapse==='function')hbAfterTimelapse(vid);}
+=======
+  try{const prog=f=>loadSet(f*.9,'Encoding picture '+Math.round(f*100)+'%…');let r;
+    try{r=await tlEncode(sess,prog,false);}
+    catch(e){if(/missing/i.test(e&&e.message||''))throw e;console.warn('timelapse: trying the software encoder',e);loadSet(0,'Trying again with the software encoder…');r=await tlEncode(sess,prog,true);}
+    loadSet(.95,'Saving…');
+    const vid={id:'v'+Date.now(),name:sess.name,created:Date.now(),ext:r.ext,blob:r.blob,frames:r.frames,w:r.w,h:r.h,fps:r.fps,docName:sess.docName};
+    let saved=null,where='',kept=true;
+    /* 1. the file itself first (desktop: the "completed TL's" folder), so a full list or storage never loses the video */
+    if(platform.isDesktop){try{const base=(await platform.cacheInfo()).dir.replace(/[\/]+$/,'')+'/Timelapse/completed TL\'s';await platform.invoke('make_dir',{path:base});
+      const file=base+'/'+slug(sess.name)+'-'+vid.id+'.'+r.ext;await platform.writeFile(file,r.blob);vid.path=file;saved=file;where=' It is in the “completed TL’s” folder.';}catch(e){console.warn('timelapse folder',e);}}
+    /* 2. the list in the program (replay and Save a copy); a failure here (storage full) does not lose the video */
+    try{await tlPut('videos',vid);}catch(e){console.warn('timelapse list',e);kept=false;
+      if(saved){try{await tlPut('videos',Object.assign({},vid,{blob:new Blob([],{type:r.blob.type}),size:r.blob.size,noBlob:true}));kept=true;}catch(e2){}}}
+    /* 3. out of the program: the desktop already wrote the file (show it), the browser asks where to save */
+    let d=null;if(saved){platform.invoke('reveal_path',{path:saved}).catch(()=>{});}else d=await deliver(slug(sess.name)+'.'+r.ext,r.blob);
+    if(saved||(d&&d.ok)){await tlDelFrames(sess.id,0,1e9);await tlDel('sessions',sess.id);if(tlr.sid===sess.id){tlr.sess=null;tlr.sid=null;tlr.count=0;}}
+    else{sess.state='progress';await tlPut('sessions',sess);}
+    toast((saved?'Timelapse saved':deliveredText(d,'Timelapse'))+' ('+r.w+' × '+r.h+', '+r.frames+' pictures, '+(r.frames/r.fps).toFixed(1)+' s).'+where+(kept?'':' It could not be added to the list (storage is full): delete old timelapses in the list to make room.'));}
+>>>>>>> Stashed changes
   catch(e){console.error(e);toast('The timelapse video could not be made: '+(e.message||e)+' Your pictures are kept; open the timelapse list to try again.');sess.state='progress';try{await tlPut('sessions',sess);}catch(e2){}}
   finally{loadEnd();tlUI();}}
 /* ---- replay on the canvas ---- */
@@ -117,7 +148,9 @@ async function tlUI(){const u=tlr.ui;if(!u.rec)return;const rec=tlr.on&&!tlr.pau
   const vids=await tlVideos(),cur=u.sel.value;u.sel.replaceChildren(...vids.map(v=>el('option',{value:v.id,text:v.name+' · '+v.frames})),...(vids.length?[]:[el('option',{value:'',text:'No timelapses yet'})]));if(vids.some(v=>v.id===cur))u.sel.value=cur;
   const playing=tlr.replay&&!tlr.replay.v.paused&&!tlr.replay.v.ended;u.play.textContent=playing?'❚❚':'▶';u.play.title=playing?'Pause the replay':'Replay the selected timelapse on the canvas';u.play.disabled=!vids.length;}
 async function tlPop(){const old=$('#tlPop');if(old){old.remove();return;}
+  /* (0.97.24, Kenn: cleaner, with tooltips) three groups (Recording, Video, Your timelapses), each control with a short hint */
   const sess=(await tlSessions()).filter(s=>s.id!==tlr.sid),vids=await tlVideos(),pop=el('div',{id:'tlPop',class:'tlpop',role:'dialog','aria-label':'Timelapse settings'});
+<<<<<<< Updated upstream
   const sel=(label,opts,get,set)=>{const s=el('select',{'aria-label':label},...opts.map(([v,t])=>el('option',{value:String(v),text:t})));s.value=String(get());s.onchange=()=>{set(s.value);tlSaveCfg();upd();};return el('div',{class:'frow'},el('label',{text:label}),s);};
   const est=el('p',{class:'note',id:'tlEst'});
   const info=el('p',{class:'note'}),upd=()=>{const mb=tlPerMinute();est.textContent='About '+(mb<10?mb.toFixed(1):Math.round(mb))+' MB for each minute of video at most; still parts take less. Automatic picks AV1 or H.265 when this computer can make them. If a player cannot open the video, choose MP4 · H.264.';const ms=tlInterval();info.textContent='A picture of the whole canvas every '+(ms<1000?Math.round(ms)+' ms':ms<90000?(ms/1000).toFixed(ms<10000?1:0)+' seconds':ms<5400000?(ms/60000).toFixed(1)+' minutes':(ms/3600000).toFixed(1)+' hours')+', only when something changed. Each picture is one frame of the video.';};
@@ -139,12 +172,44 @@ async function tlPop(){const old=$('#tlPop');if(old){old.remove();return;}
     el('button',{class:'btn sm',type:'button',text:'Delete',onclick:async()=>{await tlDel('videos',v.id);pop.remove();tlUI();tlPop();}}))));
   upd();document.body.append(pop);const r=tlr.ui.gear.getBoundingClientRect();pop.style.left=Math.max(8,Math.min(innerWidth-pop.offsetWidth-8,r.left))+'px';pop.style.top=(r.bottom+6)+'px';
   setTimeout(()=>{const off=e=>{if(!pop.contains(e.target)&&e.target!==tlr.ui.gear){pop.remove();window.removeEventListener('pointerdown',off,true);}};window.addEventListener('pointerdown',off,true);},0);}
+=======
+  const close=()=>{pop.remove();window.removeEventListener('pointerdown',off,true);};
+  const row=(label,tip,ctl)=>el('div',{class:'tlf',title:tip},el('label',{text:label}),ctl);
+  const sel=(label,tip,opts,get,set)=>{const s=el('select',{'aria-label':label,title:tip},...opts.map(([v,t])=>el('option',{value:String(v),text:t})));s.value=String(get());s.onchange=()=>{set(s.value);tlSaveCfg();upd();};return row(label,tip,s);};
+  const info=el('p',{class:'tlnote'}),upd=()=>{const ms=tlInterval();info.textContent='One picture of the whole canvas every '+(ms<1000?Math.round(ms)+' ms':ms<90000?(ms/1000).toFixed(ms<10000?1:0)+' seconds':ms<5400000?(ms/60000).toFixed(1)+' minutes':(ms/3600000).toFixed(1)+' hours')+', only when something changed. Each picture becomes one frame of the video.';};
+  const slider=(id,label,tip,min,max,val,fmt,on)=>{const m=makeSlider({id,label,min,max,step:1,value:val,fmt,onInput:on});m.el.title=tip;return m.el;};
+  const sec=(title,...kids)=>el('div',{class:'tlsec'},el('div',{class:'tlsh',text:title}),...kids);
+  const mb=b=>Math.round(b/1048576*10)/10+' MB';
+  pop.append(el('div',{class:'tlhead'},el('b',{text:'Timelapse'}),el('span',{class:'tlsub',text:'Records the canvas as you paint'}),el('button',{type:'button',class:'tlx',text:'×',title:'Close','aria-label':'Close',onclick:close})),
+    sec('Recording',
+      sel('Pictures taken','Count pictures per second, per minute or per hour',TL_UNITS.map(u=>[u[0],u[1]]),()=>tlr.cfg.unit,v=>{tlr.cfg.unit=v;}),
+      el('div',{class:'tlf',title:'How many pictures are taken in that time. More pictures make a smoother video but use more space.'},slider('tlFreq','How many','How many pictures are taken in that time. More pictures make a smoother video but use more space.',1,60,tlr.cfg.freq,v=>String(Math.round(v)),v=>{tlr.cfg.freq=Math.round(v);tlSaveCfg();upd();})),
+      info,
+      sel('Picture size','The longest side of each picture. Smaller pictures use less space; Full size keeps every pixel.',[[720,'720 px (small)'],[1280,'1280 px'],[1920,'1920 px (full HD)'],[2560,'2560 px'],[8192,'Full size']],()=>tlr.cfg.size,v=>{tlr.cfg.size=+v;}),
+      el('div',{class:'tlf',title:'Makes each saved picture smaller, so the folder lasts longer, at the cost of a little sharpness.'},slider('tlComp','Compression','Makes each saved picture smaller, so the folder lasts longer, at the cost of a little sharpness.',0,90,tlr.cfg.comp,v=>Math.round(v)+'%',v=>{tlr.cfg.comp=Math.round(v);tlSaveCfg();}))),
+    sec('Video',
+      sel('Speed','How many pictures are shown each second in the finished video. Higher is faster.',[[12,'12 pictures a second'],[24,'24 pictures a second'],[30,'30 pictures a second'],[60,'60 pictures a second']],()=>tlr.cfg.vfps,v=>{tlr.cfg.vfps=+v;}),
+      sel('Format','The kind of video file made when you press Stop. WebM works everywhere; MP4 suits editors and social sites.',VID_FORMATS.filter(f=>!f[5]).map(f=>[f[0],f[1]]),()=>tlr.cfg.fmt,v=>{tlr.cfg.fmt=v;})));
+  if(sess.length)pop.append(sec('Unfinished recordings',...sess.map(s=>el('div',{class:'tlcard'},el('div',{class:'tlname',text:s.name,title:s.name}),el('div',{class:'tlmeta',text:(s.count-s.first)+' pictures'}),
+    el('div',{class:'tlbtns'},el('button',{class:'btn sm',type:'button',text:'Resume',title:'Carry on recording into this timelapse',onclick:()=>{close();tlStart(s);}}),
+      el('button',{class:'btn sm',type:'button',text:'Make video',title:'Turn the pictures taken so far into a video',onclick:()=>{close();tlFinish(s);}}),
+      el('button',{class:'btn sm',type:'button',text:'Delete',title:'Throw these pictures away',onclick:async()=>{await tlDelFrames(s.id,0,1e9);await tlDel('sessions',s.id);close();tlPop();}}))))));
+  if(vids.length)pop.append(sec('Finished timelapses',...vids.map(v=>el('div',{class:'tlcard'},el('div',{class:'tlname',text:v.name,title:v.name}),
+    el('div',{class:'tlmeta',text:v.frames+' pictures · '+v.w+' × '+v.h+' · '+mb(v.size||(v.blob&&v.blob.size)||0)}),
+    el('div',{class:'tlbtns'},
+      v.path&&platform.isDesktop?el('button',{class:'btn sm',type:'button',text:'Show file',title:'Show the video in Explorer',onclick:()=>platform.invoke('reveal_path',{path:v.path}).catch(e=>toast('Could not open the folder: '+(e.message||e)))}):'',
+      v.noBlob?'':el('button',{class:'btn sm',type:'button',text:'Save a copy',title:'Save another copy of the video wherever you like',onclick:()=>deliver(slug(v.name)+'.'+v.ext,v.blob)}),
+      el('button',{class:'btn sm',type:'button',text:'Delete',title:'Remove it from this list'+(v.path?' (the file in the folder stays)':''),onclick:async()=>{await tlDel('videos',v.id);close();tlUI();tlPop();}}))))));
+  if(!sess.length&&!vids.length)pop.append(el('p',{class:'tlnote',text:'Nothing recorded yet. Press ● in the bar to start; ■ stops and makes the video.'}));
+  upd();document.body.append(pop);pop.scrollTop=0;const r=tlr.ui.gear.getBoundingClientRect();pop.style.left=Math.max(8,Math.min(innerWidth-pop.offsetWidth-8,r.left))+'px';pop.style.top=(r.bottom+6)+'px';
+  const off=e=>{if(!pop.contains(e.target)&&e.target!==tlr.ui.gear){close();}};setTimeout(()=>window.addEventListener('pointerdown',off,true),0);}
+>>>>>>> Stashed changes
 async function tlFolder(){if(platform.isDesktop){try{const base=(await platform.cacheInfo()).dir.replace(/[\\/]+$/,'')+'/Timelapse/completed TL\'s';await platform.invoke('make_dir',{path:base});await platform.invoke('reveal_path',{path:base});return;}catch(e){}}
   tlPop();toast(platform.isDesktop?'The folder could not be opened. Your finished timelapses are listed here.':'In the browser, finished timelapses are kept in the list below; use Save a copy to put one in a folder.');}
 function tlBuild(){const menus=$('#menus');if(!menus||tlr.ui.rec)return;
   const btn=(txt,title,cls,fn)=>el('button',{type:'button',class:'tlbtn '+(cls||''),title,'aria-label':title,text:txt,onclick:fn});
   const dot=el('span',{class:'tldot','aria-hidden':'true'}),rec=btn('●','Record a timelapse','tlrec',()=>{if(tlr.on)tlPause();else tlStart();}),
-    play=btn('▶','Replay the selected timelapse on the canvas','tlplay',async()=>{if(tlr.replay&&!tlr.replay.v.ended){tlr.replay.v.paused?tlr.replay.v.play():tlr.replay.v.pause();return;}const v=await tlGet('videos',sel.value);if(v)tlReplay(v);}),
+    play=btn('▶','Replay the selected timelapse on the canvas','tlplay',async()=>{if(tlr.replay&&!tlr.replay.v.ended){tlr.replay.v.paused?tlr.replay.v.play():tlr.replay.v.pause();return;}const v=await tlGet('videos',sel.value);if(v&&v.noBlob){toast('This timelapse is only kept as a file. Open it from the timelapse list (Show file).');return;}if(v)tlReplay(v);}),
     sel=el('select',{class:'tlsel','aria-label':'Timelapse to replay',title:'Your finished timelapses'}),
     stop=btn('■','Stop and save the timelapse as a video','tlstop',()=>tlStop()),folder=btn('📁','Show where the finished timelapses are kept','tlfolder',()=>tlFolder()),
     gear=btn('⚙','Timelapse settings: how often, compression, size','tlgear',()=>tlPop()),info=el('span',{class:'tlinfo'});
