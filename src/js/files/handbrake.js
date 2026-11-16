@@ -6,7 +6,7 @@
    The window is HandBrake.exe; the background worker is HandBrakeCLI.exe, a separate download on handbrake.fr. */
 const HB_KINDS=[['h265','Smaller (H.265)'],['av1','Smallest, slower (AV1)'],['h264','Plays everywhere (H.264)'],['nvenc','Fast, on an NVIDIA card (H.265)']];
 const HB_Q=[['0','Smallest file'],['1','Balanced'],['2','Best picture']];
-const hb={cfg:{gui:'',cli:'',kind:'h265',q:1,auto:false},found:null,jobs:new Map(),listening:false,chip:null};
+const hb={cfg:{gui:'',cli:'',kind:'h265',q:1,auto:false},found:null,jobs:new Map(),listening:null,chip:null};
 try{Object.assign(hb.cfg,JSON.parse(localStorage.getItem('gs.hb')||'{}'));}catch(e){}
 const hbSave=()=>{try{localStorage.setItem('gs.hb',JSON.stringify(hb.cfg));}catch(e){}};
 async function hbFind(){if(!platform.isDesktop)return hb.found={gui:null,cli:null};
@@ -21,9 +21,11 @@ async function hbOpen(v){if(!platform.isDesktop){toast('Opening HandBrake works 
   if(!v||!v.path){toast('This timelapse has no file on disk yet. Use Save a copy, then open that file in HandBrake.');return false;}
   const f=await hbFind();if(!f.gui){toast(HB_NEED_GUI);return false;}
   try{await platform.invoke('launch_app',{exe:f.gui,args:[v.path]});toast('Opening “'+v.name+'” in HandBrake…');return true;}catch(e){toast('HandBrake could not be started: '+(e.message||e));return false;}}
-function hbListen(){if(hb.listening||typeof TAURI==='undefined'||!TAURI||!TAURI.event)return;hb.listening=true;
-  TAURI.event.listen('hb-progress',e=>{const j=hb.jobs.get(e.payload.id);if(j){j.pct=e.payload.pct;hbChip();}});
-  TAURI.event.listen('hb-done',e=>hbDone(e.payload));}
+function hbListen(){if(!hb.listening)hb.listening=(async()=>{
+  const unlisten=await TAURI.event.listen('hb-progress',e=>{const j=hb.jobs.get(e.payload.id);if(j){j.pct=e.payload.pct;hbChip();}});
+  try{await TAURI.event.listen('hb-done',e=>hbDone(e.payload));}catch(e){unlisten();throw e;}
+  })().catch(e=>{hb.listening=null;throw e;});
+  return hb.listening;}
 /* the little progress note at the bottom of the window, with Stop */
 function hbChip(){const jobs=[...hb.jobs.values()];if(!jobs.length){if(hb.chip){hb.chip.remove();hb.chip=null;}return;}
   if(!hb.chip){hb.chip=el('div',{id:'hbChip',class:'hbchip',role:'status','aria-live':'polite'});document.body.append(hb.chip);}
@@ -39,9 +41,11 @@ async function hbDone(r){const j=hb.jobs.get(r.id);if(!j)return;hb.jobs.delete(r
 async function hbCompress(v,quiet){if(!platform.isDesktop){if(!quiet)toast('Compressing with HandBrake works in the desktop app. Here, use Save a copy and open that file in HandBrake.');return false;}
   if(!v||!v.path){if(!quiet)toast('This timelapse has no file on disk yet. Use Save a copy, then compress that file in HandBrake.');return false;}
   const f=await hbFind();if(!f.cli){if(!quiet)toast(HB_NEED_CLI);else toast('The timelapse was not sent to HandBrake: HandBrakeCLI was not found (see the timelapse settings).');return false;}
-  hbListen();const id='hb'+Date.now()+Math.round(Math.random()*1e4),out=v.path.replace(/\.[^./\\]+$/,'')+'-small.mp4';
-  hb.jobs.set(id,{id,vid:v.id,name:v.name,out,pct:0,size:v.blob?v.blob.size:0});hbChip();
-  try{await platform.invoke('hb_run',{id,cli:f.cli,input:v.path,output:out,kind:hb.cfg.kind,quality:+hb.cfg.q||0,width:v.w|0,height:v.h|0,fps:v.fps|0});return true;}
+  const id=crypto.randomUUID(),out=v.path.replace(/\.[^./\\]+$/,'')+'-small.mp4';
+  try{await hbListen();
+    if([...hb.jobs.values()].some(j=>j.out===out)){if(!quiet)toast('HandBrake is already compressing this video.');return false;}
+    hb.jobs.set(id,{id,vid:v.id,name:v.name,out,pct:0,size:v.blob?v.blob.size:0});hbChip();
+    await platform.invoke('hb_run',{id,cli:f.cli,input:v.path,output:out,kind:hb.cfg.kind,quality:+hb.cfg.q||0,width:v.w|0,height:v.h|0,fps:v.fps|0});return true;}
   catch(e){hb.jobs.delete(id);hbChip();toast('HandBrake could not be started: '+(e.message||e));return false;}}
 function hbAfterTimelapse(v){if(hb.cfg.auto&&platform.isDesktop&&v&&v.path)hbCompress(v,true);}
 /* the buttons on a finished timelapse's row */

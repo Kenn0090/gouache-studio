@@ -9,6 +9,8 @@
 - **Timelapse video quality.** Choose **Small file**, **Balanced** (the default, about 40% smaller than before) or **Best picture**; the window shows about how many megabytes a minute takes. **Video format** has a new **Automatic** choice that picks the tightest format your computer can make. If a player cannot open the video, choose MP4 · H.264.
 - **Send a timelapse to HandBrake** (desktop app, in the timelapse gear window). **Compress** makes a smaller "-small.mp4" next to the video in the background, with a progress note and Stop; **Open in HandBrake** opens the video in HandBrake's own window. Choose how it compresses (H.265, AV1, H.264, or fast on an NVIDIA card) and how small, and tick **Compress with HandBrake after every timelapse** to do it by itself. HandBrake is a separate free program from handbrake.fr; Compress needs its command-line program, HandBrakeCLI, which is a separate download there.
 
+- Stopping a HandBrake compression or hitting an error keeps any earlier compressed copy.
+
 ## 0.97.32
 
 - **UV tiles (UDIMs) bake in the Bake tab.** A low-poly whose UVs reach into several tiles is baked tile by tile, each at the bake size. The model shows every tile's bake at once; a **UV tiles** card lists the tiles: tick which to bake, click a tile to see it flash on the model, and **↻** bakes just that tile again. Painting skew or offset re-bakes the tiles under the paint. **Export** writes one picture per tile (Name_Normal.1001.png …), and **Send to 3D Paint** puts each tile's maps in its place in the texture set (setting up the tiles there if needed).

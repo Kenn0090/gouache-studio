@@ -5,7 +5,7 @@
 - Faster loading: entering 3D Paint, adding materials, opening projects.
 - Smoother painting: no wait after each stroke for the navigator picture. New Help › Painting report… finds what causes a stutter on your computer.
 - Timelapse: Video quality (Small, Balanced, Best) and an Automatic format; videos are smaller.
-- Send a timelapse to HandBrake: Compress in the background, or Open in HandBrake.
+- Send a timelapse to HandBrake: Compress in the background, or Open in HandBrake. Stopping a compression or hitting an error keeps any earlier compressed copy.
 
 ## Gouache Studio 0.97.32
 
