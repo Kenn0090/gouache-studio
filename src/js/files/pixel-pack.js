@@ -77,7 +77,20 @@ async function pxPackSolid(color,w,h,depth){const args=[null,w,h,depth,false,fal
 /* unpack a stored picture back to raw pixels; f missing = an older file (plain deflate) */
 async function pxUnpack(u8,w,h,depth,f){if(f==='w')return pxWebpDecode(u8,w,h);const raw=await streamThrough(u8,'deflate-raw',true);return f==='p'?pxUnpredict(raw,w,h,depth):raw;}
 /* a picture in a .gmat: WebP for colour and grey channels with Smaller files on (smaller than PNG), else PNG */
-function pxDataURL(c,key){if(pxSmall()&&PX_LOSSY.has(key)&&pxWebpOk!==false){const u=c.toDataURL('image/webp',.92);if(u.startsWith('data:image/webp'))return u;pxWebpOk=false;}return c.toDataURL('image/png');}
+/* (0.98) pictures that must stay exact (normal, height, masks) go into .gmat files as lossless WebP instead of PNG: the same
+   pixels in roughly half the bytes. Only where the browser's WebP at full quality really is lossless (Chromium and the
+   desktop app; checked once on a small test picture), otherwise PNG as before. Every version of the app can read both. */
+let pxWebpExact=null;
+function pxWebpExactCheck(){if(pxWebpExact!==null)return;pxWebpExact=false;
+  try{const n=48,c=document.createElement('canvas');c.width=c.height=n;const x=c.getContext('2d',{willReadFrequently:true}),id=x.createImageData(n,n),d=id.data;let v=12345;
+    for(let i=0;i<d.length;i+=4){for(let k=0;k<3;k++){v=(v*1103515245+12345)>>>0;d[i+k]=(v>>>16)&255;}d[i+3]=255;}x.putImageData(id,0,0);
+    const u=c.toDataURL('image/webp',1);if(!u.startsWith('data:image/webp'))return;
+    const im=new Image();im.onload=()=>{try{const c2=document.createElement('canvas');c2.width=c2.height=n;const x2=c2.getContext('2d',{willReadFrequently:true});x2.drawImage(im,0,0);const e=x2.getImageData(0,0,n,n).data;
+      let same=true;for(let i=0;i<d.length;i++)if(e[i]!==d[i]){same=false;break;}pxWebpExact=same;}catch(er){}};im.src=u;}catch(e){}}
+setTimeout(pxWebpExactCheck,3000);
+function pxDataURL(c,key){if(pxSmall()&&PX_LOSSY.has(key)&&pxWebpOk!==false){const u=c.toDataURL('image/webp',.92);if(u.startsWith('data:image/webp'))return u;pxWebpOk=false;}
+  if(pxWebpExact&&c.width<=16383&&c.height<=16383){const u=c.toDataURL('image/webp',1);if(u.startsWith('data:image/webp'))return u;}
+  return c.toDataURL('image/png');}
 /* .gmat files are gzipped JSON (older ones are plain JSON: both open) */
 async function gmatBlob(obj){return new Blob([await streamThrough(new TextEncoder().encode(JSON.stringify(obj)),'gzip')],{type:'application/octet-stream'});}
 async function gmatParse(src){let b=src instanceof Uint8Array?src:new Uint8Array(await (src.arrayBuffer?src.arrayBuffer():new Response(src).arrayBuffer()));

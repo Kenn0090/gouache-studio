@@ -57,6 +57,17 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(found,'Preferences has “Keep every picture inside saved files”');
  if(found){await p.click('#pKeepPics');ok(await p.evaluate(()=>__gs.prefs.keepPics===true&&__gs.gfKeepPics()),'ticking it turns self-contained files on');await p.click('#pKeepPics');}
  await p.evaluate(()=>{const c=document.querySelector('#dlgCancel');if(c)c.click();});await p.waitForTimeout(300);
+ /* ---- .gmat: exact pictures as lossless WebP ---- */
+ await p.waitForFunction(()=>__gs.pxWebpExactNow()!==null&&__gs.pxWebpExactNow()!==undefined,null,{timeout:15000}).catch(()=>{});await p.waitForTimeout(500);
+ const gm=await p.evaluate(async()=>{const g=__gs,n=256,c=document.createElement('canvas');c.width=c.height=n;const x=c.getContext('2d',{willReadFrequently:true}),id=x.createImageData(n,n),d=id.data;
+  for(let y=0;y<n;y++)for(let i=0;i<n;i++){const o=(y*n+i)*4;d[o]=128+Math.round(90*Math.sin(i*.13)*Math.cos(y*.07));d[o+1]=128+Math.round(90*Math.sin(y*.11+i*.02));d[o+2]=230+((i*7+y*3)%20);d[o+3]=255;}x.putImageData(id,0,0);
+  const u=g.pxDataURL(c,'normal'),png=c.toDataURL('image/png'),lossy=g.pxDataURL(c,'base');
+  const im=await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=u;});const c2=document.createElement('canvas');c2.width=c2.height=n;const x2=c2.getContext('2d',{willReadFrequently:true});x2.drawImage(im,0,0);const e=x2.getImageData(0,0,n,n).data;
+  let same=true;for(let i=0;i<d.length;i++)if(e[i]!==d[i]){same=false;break;}
+  return {exact:g.pxWebpExactNow(),type:u.slice(5,15),same,size:u.length,png:png.length,lossyType:lossy.slice(5,15)};});
+ ok(gm.exact===true&&gm.type==='image/webp'&&gm.same,'a normal map goes into a .gmat as WebP and comes back pixel for pixel the same');
+ ok(gm.size<gm.png,'and it is smaller than the PNG it replaces ('+gm.size+' < '+gm.png+')');
+ ok(gm.lossyType==='image/webp','colour pictures are still high-quality WebP');
  /* ---- timelapse quality ---- */
  await p.click('#modeTabs [data-mode=paint]');await p.waitForTimeout(1500);
  const t=await p.evaluate(async()=>{const g=__gs,q=k=>{g.tlr.cfg.vq=k;return g.tlBitrate(1280,720,30);};
