@@ -1756,7 +1756,6 @@ body:not(.m-p3d) #tools .tool[data-tool="pfill"]{display:none}
 .gslot-sl .srow{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"l o" "r r";row-gap:0}.gslot-sl .srow label{grid-area:l}.gslot-sl .srow output,.gslot-sl .srow .slider-value{grid-area:o}.gslot-sl .srow input[type=range]{grid-area:r;width:100%;min-width:0}
 .gslot-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gslot-btns .btn{padding:2px 8px}
 .gzones{margin:4px 0}.gzones>summary{cursor:pointer;font-weight:600;font-size:12px;padding:4px 0;color:var(--muted)}.gzones[open]>summary{color:var(--text)}.gzones>.gslot,.gzones>.msgrunge{padding-left:2px}
-<<<<<<< Updated upstream
 /* (0.97.24) generator settings in cards, like Marmoset's layer settings */
 .msccards{display:grid;gap:6px;margin-top:4px}
 .msccard{border:1px solid var(--line-2);border-radius:var(--r,6px);background:color-mix(in srgb,var(--panel) 92%,#000)}
@@ -1892,19 +1891,14 @@ select option:disabled{color:var(--muted)}
 .xweng:hover{border-color:var(--line-2);background:var(--ground)}.xweng.on{border-color:var(--accent);background:var(--accent-soft)}.xweng.on svg{color:var(--accent)}
 .xwengset{gap:8px}
 body.sharp .xwset,body.sharp .xwtile,body.sharp .xweng,body.sharp .xwfile,body.sharp .xwbadge{border-radius:0}
-=======
 
 /* (0.97.24) timelapse settings: grouped, with cards for the lists */
 .tlpop{width:360px;padding:0;overflow:auto}
-.tlhead{display:flex;align-items:baseline;gap:8px;padding:12px 14px 8px;border-bottom:1px solid var(--line)}.tlhead b{font-size:14px}.tlsub{color:var(--muted);font-size:11px;flex:1}
+.tlhead{display:flex;align-items:baseline;gap:8px;padding:12px 14px 8px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel,#222);z-index:1}.tlhead b{font-size:14px}.tlsub{color:var(--muted);font-size:11px;flex:1}
 .tlx{border:0;background:transparent;color:var(--muted);font-size:18px;line-height:1;cursor:pointer;padding:0 4px}.tlx:hover{color:var(--text)}
 .tlsec{padding:10px 14px;border-bottom:1px solid var(--line);display:grid;gap:8px}.tlsec:last-child{border-bottom:0}
 .tlsh{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 .tlf{display:grid;grid-template-columns:104px minmax(0,1fr);gap:8px;align-items:center}.tlf>label{color:var(--muted);font-size:12px}.tlf select{width:100%;min-width:0}
-.tlf .srow{grid-column:1/-1;margin:0}.tlnote{margin:0;font-size:11px;color:var(--muted);line-height:1.4}
+.tlf:has(.srow){display:block}.tlf .srow{grid-template-columns:104px minmax(0,1fr) 44px;margin:0}.tlf .srow label{color:var(--muted);font-size:12px}.tlnote{margin:0;font-size:11px;color:var(--muted);line-height:1.4}
 .tlcard{display:grid;gap:4px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:color-mix(in srgb,var(--panel) 85%,#000)}
 .tlname{font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tlmeta{font-size:11px;color:var(--muted)}.tlbtns{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
-
-.tlf:has(.srow){display:block}.tlf .srow{grid-template-columns:104px minmax(0,1fr) 44px}.tlf .srow label{color:var(--muted);font-size:12px}
-.tlhead{position:sticky;top:0;background:var(--panel,#222);z-index:1}
->>>>>>> Stashed changes

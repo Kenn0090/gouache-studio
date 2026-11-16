@@ -1,3 +1,8 @@
+## 0.98.2
+
+- **Timelapse export fixed.** A finished video is now written to the "completed TL's" folder first and shown in Explorer, so a full timelapse list can no longer lose it; if the normal video encoder fails (as on a third video in a row), Gouache retries with the software encoder, and the encoder is always released after an error. If the list in the program cannot take another video, the file is still saved and you are told.
+- **Cleaner timelapse settings window** with groups (Recording, Video, your timelapses), a tooltip on every control, cards for unfinished and finished timelapses (Show file, Save a copy, Delete) and a close button.
+
 ## 0.98.1
 
 - **A new Export window.** It is wide instead of tall: the everyday choices on the left (Preset, Name, Size, Format, Model, Folder), your texture sets on the right, and everything else folded under **More options**. A line at the bottom says how many files and about how many megabytes will be written.
@@ -93,11 +98,6 @@
 
 - **Wood Edge Wear** follows raised edges and breaks up along the wood grain. Find it under **3D Paint → Generators → Wear and weather**.
 - Start with **Rubbed Finish**, **Chipped Finish**, or **Splintered Timber**. Adjust edge growth and distortion, protect recesses, and choose between wear, splinters, or both. Use a bundled wood scan or drop in a custom grain image.
-
-## 0.97.24
-
-- **Timelapse export fixed.** A finished video is now written to the "completed TL's" folder first and shown in Explorer, so a full timelapse list can no longer lose it; if the normal video encoder fails (as on a third video in a row), Gouache retries with the software encoder, and the encoder is always released after an error. If the list in the program cannot take another video, the file is still saved and you are told.
-- **Cleaner timelapse settings window** with groups (Recording, Video, your timelapses), a tooltip on every control, cards for unfinished and finished timelapses (Show file, Save a copy, Delete) and a close button.
 
 ## 0.97.23
 
