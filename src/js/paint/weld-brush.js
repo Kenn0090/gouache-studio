@@ -631,9 +631,19 @@ async function weldUse(style){
   }finally{weldBusy=false;}
 }
 
+/* the bead pictures are worked out pixel by pixel; every panel redraw asked for all of them again (0.6 s at start-up),
+   so each finished picture is kept and only copied onto a new card */
+const weldCardPics=new Map();
 function weldCard(style){
   const c=el('canvas',{width:126,height:57,role:'img','aria-label':style.name+' bead preview'});
-  const x=c.getContext('2d'),v=weldDefaults(style),bead=x.createImageData(c.width,c.height),d=bead.data,r=13;
+  const x=c.getContext('2d'),v=weldDefaults(style),r=13;
+  const key=style.id+'|'+JSON.stringify(v)+'|'+(style.color||[]).join(',');let bead=weldCardPics.get(key);
+  if(!bead){bead=x.createImageData(c.width,c.height);weldCardPic(bead,c,style,v,r);weldCardPics.set(key,bead);}
+  x.putImageData(bead,0,0);
+  return el('button',{class:'mattile weld-card',type:'button',title:style.name,onclick:()=>weldUse(style)},c,
+    el('span',{text:style.name}),el('small',{text:style.detail}));
+}
+function weldCardPic(bead,c,style,v,r){const d=bead.data;
   const profile=(px,py)=>{
     const axis=29+4*Math.sin(px*.066);
     const period=r*Math.max(.24,v.spacing*2);
@@ -656,13 +666,10 @@ function weldCard(style){
     for(let k=0;k<3;k++)d[i+k]=Math.round(255*((.12+k*.016)*(1-a)+(silver+style.color[k]*.15)*a));
     d[i+3]=255;
   }
-  x.putImageData(bead,0,0);
-  return el('button',{class:'mattile weld-card',type:'button',title:style.name,onclick:()=>weldUse(style)},c,
-    el('span',{text:style.name}),el('small',{text:style.detail}));
 }
 
-function weldShelfContent(){
-  const grid=el('div',{class:'matgrid weld-grid'},...WELD_PRESETS.map(weldCard));
+function weldShelfContent(noCards){
+  const grid=el('div',{class:'matgrid weld-grid'},...(noCards?[]:WELD_PRESETS.map(weldCard)));
   const L=pathActive(),editing=!!(L?.path?.weld&&ui.tool==='path');
   const savedStyle=editing&&!weldIsPreset(weldOptions.style);
   const select=el('select',{'aria-label':'Weld bead style'},
@@ -720,5 +727,6 @@ function weldToolsRender(){
   const L=pathActive();
   if(L?.path?.weld&&ui.tool==='path')Object.assign(weldOptions,weldPathSettings(L.path.weld));
   else if(!weldIsPreset(weldOptions.style))Object.assign(weldOptions,weldDefaults(WELD_PRESETS[0]));
-  const box=$('#weldToolsBody');if(box){const c=weldShelfContent();box.replaceChildren(c.thumbs);tsSet('weld',c.settings);}
+  /* the cards are only drawn while their panel is on screen (a hidden panel is redrawn when it is brought forward) */
+  const box=$('#weldToolsBody');if(box){const c=weldShelfContent(!box.isConnected||box.offsetParent===null);box.replaceChildren(c.thumbs);tsSet('weld',c.settings);}
 }
