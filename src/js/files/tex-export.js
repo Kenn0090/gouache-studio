@@ -124,7 +124,7 @@ async function encodeTex(W,H,f,C,fmt,bits){
 async function buildTextures(pr,name,opt){const W=doc.w,H=doc.h,S=pr&&pr.max?Math.max(1,Math.round(Math.min(texCfg.size||W,pr.max*W/Math.max(W,H)))):(texCfg.size||0),U=opt&&opt.udim?texUdim():null;
   /* (0.95) a UDIM set: the size is per tile, and each tile is its own file (Name_BaseColor.1001.png …) */
   /* (0.97.30) tiles with their own sizes: each tile is written at its own size (scaled with the export size, if one is chosen) */
-  if(U&&U.B.lay){U.sz={};let f=1;for(const T of U.B.tiles){const R=udimTileRect(U.m,T,W,H),o=S?Math.max(1,Math.round(S*udimNominal(U.m,T)/p3.size)):R[2];U.sz[T.id]=o;f=Math.max(f,o/Math.max(1,R[2]));}
+  if(U&&U.B.lay){U.sz={};let f=1;for(const T of U.B.tiles){const R=udimTileRect(U.m,T,W,H),o=texTileOv(T.id)||(S?Math.max(1,Math.round(S*udimNominal(U.m,T)/p3.size)):R[2]);U.sz[T.id]=o;f=Math.max(f,o/Math.max(1,R[2]));}
     const render=async()=>{if(opt?.replay&&ui.mode==='p3d')msUpdateAll();const pad=texPadBegin(Math.round(doc.w*Math.max(...Object.values(U.sz))/Math.max(1,...U.B.tiles.map(T=>udimTileRect(U.m,T,doc.w,doc.h)[2]))));
       try{return await buildTexturesIn(pr,name,doc.w,doc.h,0,0,pad,U);}finally{texPadEnd(pad);}};
     f=Math.min(f,MAX_DIM/Math.max(W,H));
@@ -143,6 +143,10 @@ async function buildTextures(pr,name,opt){const W=doc.w,H=doc.h,S=pr&&pr.max?Mat
     if(w!==W||h!==H)return p3PaintHold(()=>p3PaintAtSize(w,h,{},render));
   }
   return render();}
+/* (0.98.1) the Export window's own choices for the set being written: a tile's export size, a tile left out */
+const texSetNow=()=>ui.mode==='p3d'&&p3.sets&&p3.sets[p3.cur]?p3.sets[p3.cur].name:'';
+const texTileOv=id=>{const o=texCfg.tileSz&&texCfg.tileSz[texSetNow()];return o&&o[id]>0?o[id]:0;};
+const texTileOff=id=>{const o=texCfg.tileOff&&texCfg.tileOff[texSetNow()];return !!(o&&o[id]);};
 function texUdim(){if(ui.mode!=='p3d'||!p3.ua)return null;const S=p3.sets[p3.cur],m=S&&p3Binding(S),B=m&&udimBox(m);return B?{m,B}:null;}
 function texCrop(f,W,H,C,r){const [x,y,w,h]=r,o=new Float32Array(w*h*C);for(let j=0;j<h;j++){const yy=Math.min(H-1,y+j);o.set(f.subarray((yy*W+x)*C,(yy*W+x+w)*C),j*w*C);}return o;}
 async function buildTexturesIn(pr,name,W,H,nw,nh,pad,U){
@@ -166,49 +170,14 @@ async function buildTexturesIn(pr,name,W,H,nw,nh,pad,U){
     else if(o.grey){const g=grey(o.grey);if(!g)continue;f=g.slice();C=1;}
     else{C=o.ch.length;f=new Float32Array(n*C);o.ch.forEach((k,c)=>{const g=grey(k),inv=k==='smooth',d=def(k);for(let i=0;i<n;i++){const v=g?g[i]:d;f[i*C+c]=inv&&g?1-v:v;}});}
     const bits=o.grey==='height'&&texCfg.h16&&ext==='png'?16:8;
-    if(U){for(const T of U.B.tiles){const R=udimTileRect(U.m,T,W,H),ow=U.sz?U.sz[T.id]:nw,oh=U.sz?U.sz[T.id]:nh,r=resampleF(texCrop(f,W,H,C,R),R[2],R[3],C,ow,oh,C===4);if(o.rgb==='normal'&&bits===8)texDither(r);
+    if(U){for(const T of U.B.tiles){if(texTileOff(T.id))continue;const R=udimTileRect(U.m,T,W,H),ov=U.sz?0:texTileOv(T.id),ow=ov||(U.sz?U.sz[T.id]:nw),oh=ov?Math.max(1,Math.round(ov*nh/Math.max(1,nw))):(U.sz?U.sz[T.id]:nh),r=resampleF(texCrop(f,W,H,C,R),R[2],R[3],C,ow,oh,C===4);if(o.rgb==='normal'&&bits===8)texDither(r);
       const blob=await encodeTex(ow,oh,r,C,ext,bits);files.push({suffix:o.s,tile:T.id,name:pr.name(name).replace('{s}',o.s)+'.'+T.id+'.'+ext,data:new Uint8Array(await blob.arrayBuffer())});await tick();}continue;}
     const r=resampleF(f,W,H,C,nw,nh,C===4);if(o.rgb==='normal'&&bits===8)texDither(r);
     const blob=await encodeTex(nw,nh,r,C,ext,bits);files.push({suffix:o.s,name:pr.name(name).replace('{s}',o.s)+'.'+ext,data:new Uint8Array(await blob.arrayBuffer())});await tick();}
   return files;}
 function dropAlpha(f,n){const o=new Float32Array(n*3);for(let i=0;i<n;i++){o[i*3]=f[i*4];o[i*3+1]=f[i*4+1];o[i*3+2]=f[i*4+2];}return o;}
 function baseHasAlpha(f,n){for(let i=0;i<n;i++)if(f[i*4+3]<.999)return true;return false;}
-function dlgExportTextures(){if(stroke||preview||selLive){toast('Finish the current edit first.');return;}
-  if(ui.mode==='anim'){toast('Switch to paint mode to export textures.');return;}
-  if(!texCfg.name)texCfg.name=(doc.name||'Texture').replace(/\.[a-z0-9]+$/i,'');
-  const body=el('div',{class:'dlg-grid'}),list=el('div',{class:'texlist'});
-  const sel=(id,label,opts,cur,set)=>{const s=el('select',{id});for(const [v,l] of opts){const o=el('option',{value:String(v),text:l});if(String(v)===String(cur))o.selected=true;s.append(o);}s.addEventListener('change',()=>{set(s.value);draw();});return el('div',{class:'frow'},el('label',{for:id,text:label}),s);};
-  const nameIn=el('input',{type:'text',id:'txName',value:texCfg.name});nameIn.addEventListener('input',()=>{texCfg.name=nameIn.value;draw();});
-  const sizes=[[0,'Document ('+doc.w+' × '+doc.h+')'],[256,'256'],[512,'512'],[1024,'1024'],[2048,'2048'],[4096,'4096'],[8192,'8192 (8K)']];
-  const setNm=()=>ui.mode==='p3d'&&texCfg.allSets&&p3.sets.filter(S=>!S.missing).length>1?(texCfg.name||'Texture')+'_'+doc.name:(texCfg.name||'Texture');
-  const meshPick=el('div',{class:'chips',id:'txMeshPick'});
-  const pick=()=>{meshPick.replaceChildren(...(texCfg.meshMaps?texMeshKeys().map(k=>chk('txMesh_'+k,P3_MESHMAP_NAMES[k]||k,!(texCfg.meshOff&&texCfg.meshOff[k]),v=>{texCfg.meshOff=texCfg.meshOff||{};texCfg.meshOff[k]=!v;draw();})):[]));};
-  const draw=()=>{const pr=TEX_PRESETS[texCfg.preset],outs=texOutputs(pr),flip=texNormalFlip(pr);list.replaceChildren(...outs.map(o=>el('div',{class:'texrow'},
-      el('code',{text:pr.name(setNm()).replace('{s}',o.s)+'.'+texCfg.fmt}),el('span',{class:'dim',text:o.rgb==='normal'?'Normal ('+(flip?'DirectX':'OpenGL')+')':o.what}))));
-    if(texCfg.meshMaps)for(const [k,t] of Object.entries(doc.meshMaps||{})){if(!t||!texMeshWanted(k))continue;list.append(el('div',{class:'texrow'},el('code',{text:pr.name(setNm()).replace('{s}',meshExportSuffix(k))+'.'+texCfg.fmt}),el('span',{class:'dim',text:(P3_MESHMAP_NAMES[k]||k)+' · '+t.w+' × '+t.h})));}
-    if(doc.maps.length<2)list.append(el('p',{class:'note',text:'This document only has base colour. Add maps with Image › Document maps… to export roughness, metallic, height and normal too.'}));};
-  if((TEX_PRESETS[texCfg.preset].wf||'metal')!==(doc.workflow||'metal'))texCfg.preset=texPresetsFor()[0][0];
-  if(!TEX_PRESETS[texCfg.preset])texCfg.preset=texPresetsFor()[0][0];
-  const own=el('div',{class:'chips'},el('button',{class:'btn sm',id:'txNewPreset',text:'New preset…',title:'Your own files and channel packing',onclick:()=>{closeDialog();dlgTexPreset(texCfg.preset);}}),
-    TEX_PRESETS[texCfg.preset].user?el('button',{class:'btn sm',id:'txEditPreset',text:'Edit preset…',onclick:()=>{closeDialog();dlgTexPreset(texCfg.preset);}}):null);
-  /* (0.27) the model too, with its textures connected */
-  const modelRow=mxHasModel()?[sel('txModel','Model',[['none','No model'],['glb','.glb (textures inside)'],['obj','.obj + .mtl'],['fbx','.fbx (mesh + texture links)']],texCfg.model||'none',v=>{texCfg.model=v;}),
-    el('p',{class:'note',text:'The model goes with the textures. GLB embeds them; OBJ and FBX link to the exported files. FBX exports the static mesh, UVs, normals and material slots.'}),
-    ...(texCfg.model==='obj'||texCfg.model==='fbx'?[sel('txUp','Up axis',[['engine','Follow the engine (now '+(upEngine()==='z'?'Z':'Y')+' up)'],['y','Y up'],['z','Z up']],texCfg.up||'engine',v=>{texCfg.up=v;})]:texCfg.model==='glb'?[el('p',{class:'note',text:'A .glb is always Y up (the glTF rule); Unreal and Blender turn it on import.'})]:[])]:[];
-  body.append(sel('txPreset','Engine',texPresetsFor().map(([k,p])=>[k,p.label]),texCfg.preset,v=>{texCfg.preset=v;closeDialog();dlgExportTextures();}),own,
-    el('div',{class:'frow'},el('label',{for:'txName',text:'Name'}),nameIn),
-    sel('txNrm','Normal map',[['preset','Engine default'],['gl','OpenGL (green up)'],['dx','DirectX (green down)']],texCfg.normal,v=>{texCfg.normal=v;}),
-    sel('txSize','Size',sizes,texCfg.size,v=>{texCfg.size=+v;}),
-    sel('txFmt','Format',[['png','PNG'],['tga','TGA']],texCfg.fmt,v=>{texCfg.fmt=v;}),
-    el('div',{class:'sub',text:'Padding'}),sel('txPad','Padding',TEX_PAD_MODES,texCfg.pad||'none',v=>{texCfg.pad=v;}),
-    makeSlider({id:'txPadPx',label:'Dilation',min:0,max:128,step:1,value:texCfg.padPx??16,def:16,fmt:v=>Math.round(v)+' px',onInput:v=>{texCfg.padPx=Math.round(v);}}).el,
-    el('p',{class:'note',id:'txPadNote',text:texPadAvail()?'Grows each UV island’s colours outward past its edges (in pixels of the exported size), so mip-maps in the engine show no seams. Fill the rest: the space between islands takes the nearest island’s colours. Transparent: it stays see-through (PNG/TGA with alpha).':'Padding needs the model’s UVs: export from 3D Paint, or open the 3D view with your model. Without them the maps are saved as painted.'}),
-    chk('txH16','Height at 16 bits (PNG)',texCfg.h16,v=>{texCfg.h16=v;}),chk('txPsd','Also each channel as a layered PSD (keeps layers and folders)',!!texCfg.psd,v=>{texCfg.psd=v;}),el('div',{class:'sub',text:'Baked maps'}),texMeshKeys().length?chk('txMeshMaps','Export baked maps ('+texMeshKeys().length+' in this set)',texCfg.meshMaps,v=>{texCfg.meshMaps=v;draw();pick();}):el('p',{class:'note',id:'txNoBaked',text:'This set has no baked maps yet. Bake in the Bake tab and send them to 3D Paint, or import them in the Mesh maps shelf.'}),meshPick,el('p',{class:'note',text:'Baked maps are saved beside the textures, also when you send to a game engine. They export at their original size unless you choose an export size, with a Mesh_ prefix, and belong to their texture set.'}),
-    /* (0.97.27, Georgian: "how do I export the separate UDIMs now?") say plainly that tile sets come out one file per tile */
-    ui.mode==='p3d'&&p3.ua&&p3.sets.some(S=>{const B=udimBox(p3Binding(S));return B&&B.tiles.length>1;})?el('p',{class:'note',id:'txUdimNote',text:'UV tiles (UDIMs): every set with tiles is written one file per tile, e.g. '+(texCfg.name||'Texture')+'_BaseColor.1001.png, …1002.png. Size is per tile.'}):'',
-    ui.mode==='p3d'&&p3.sets.filter(S=>!S.missing).length>1?chk('txAll','Every texture set (files named after each set)',texCfg.allSets,v=>{texCfg.allSets=v;draw();}):'',
-    ...modelRow,...esRow(()=>{closeDialog();dlgExportTextures();}),el('div',{class:'sub',text:'Files'}),list);draw();pick();
-  openDialog({title:'Export textures',body,okLabel:platform.isDesktop?(esActive()?'Export and send':'Choose folder…'):'Export',onOk(){exportTextures();}});}
+/* the Export window itself is in files/export-window.js (0.98.1) */
 async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.name||'Texture',wantModel=mxHasModel()&&texCfg.model&&texCfg.model!=='none';
   if(p3PaintBusy||tabDocs.hold||stroke||preview||selLive)return;
   let dir=null;if(platform.isDesktop){dir=await esTargetDir(name);if(!dir)return;}
@@ -219,10 +188,12 @@ async function exportTextures(){const pr=TEX_PRESETS[texCfg.preset],name=texCfg.
     const one=async(setName,fileName)=>{const fs=await buildTextures(pr,fileName,{udim:true,replay:true});bySet[setName]=fs;files.push(...fs);
       if(eshWanted()){const g=await buildTextures(GLTF_TEX,pascal(fileName),{replay:true}),T={};for(const f of g)T[f.suffix]=f;const sh0=eshSafeShade(v3ShadeOf(doc));if(sh0&&sh0.kind==='skin'){const sk=await buildTextures(ESH_SKIN_TEX,pascal(fileName),{replay:true});for(const f of sk){T[f.suffix]=f;g.push(f);}}shInfo[setName]={sh:JSON.parse(JSON.stringify(sh0)),tex:T,alpha:doc.maps.includes('opac')};for(const f of g)if(!files.some(x=>x.name===f.name))files.push(f);}if(texCfg.meshMaps)files.push(...await buildMeshMapTextures(pr,fileName));if(texCfg.psd)files.push(...await psdChannelFiles(fileName));
       if(wantModel&&texCfg.model==='glb'){const g=await buildTextures(GLTF_TEX,pascal(fileName),{replay:true}),T={};for(const f of g)T[f.suffix]=f;T.alpha=doc.maps.includes('opac');glTex[setName]=T;}};
+    /* (0.98.1) a set can have its own export size: the Size setting is swapped for the time that set is written */
+    const sized=async(setName,fn)=>{const own=texCfg.setSz&&texCfg.setSz[setName],was=texCfg.size;if(own)texCfg.size=own;try{return await fn();}finally{texCfg.size=was;}};
     const sets=ui.mode==='p3d'?p3.sets.filter(S=>!S.missing):[];
     if(ui.mode==='p3d'&&(texCfg.allSets||wantModel)&&sets.length>1){const back=p3.cur;
-      try{for(let i=0;i<p3.sets.length;i++){if(p3.sets[i].missing)continue;p3SwitchSet(i,true);const S=p3.sets[i];await one(S.name,S.tile?name+'_'+S.tile.id:name+'_'+S.name);}}finally{p3SwitchSet(back,true);}}
-    else{const S=ui.mode==='p3d'&&p3.sets[p3.cur];await one(S?S.name:(doc.name||name),S&&S.tile?name+'_'+S.tile.id:name);}
+      try{for(let i=0;i<p3.sets.length;i++){if(p3.sets[i].missing||texCfg.setOff&&texCfg.setOff[p3.sets[i].name])continue;p3SwitchSet(i,true);const S=p3.sets[i];await sized(S.name,()=>one(S.name,S.tile?name+'_'+S.tile.id:name+'_'+S.name));}}finally{p3SwitchSet(back,true);}}
+    else{const S=ui.mode==='p3d'&&p3.sets[p3.cur];await sized(S?S.name:'',()=>one(S?S.name:(doc.name||name),S&&S.tile?name+'_'+S.tile.id:name));}
     if(wantModel){const m=p3.ua&&ui.mode==='p3d'&&texCfg.model==='glb'&&v3.imported?udimAtlasMesh(v3.imported):mxModel()/* (0.95) glTF has no UDIM tiles: the .glb carries the tiles' canvas UVs and whole-canvas textures; OBJ/FBX keep the file's UDIM UVs with one picture per tile */,setNames=Object.keys(bySet),groups=mxGroups(m,setNames),mn=pascal(name);
       if(texCfg.model==='glb')files=files.concat([{name:mn+'.glb',data:mxGLB(m,groups,glTex,mn)}]);
       /* (0.95.1) OBJ and FBX follow the chosen up axis (Unreal/Blender Z up); glTF is always Y up */

@@ -42,10 +42,27 @@ Exports the **visible image** or the **active layer** as:
 
 ## Export textures for a game engine (Ctrl+Shift+E)
 
-![Windows texture export dialog with the Unreal preset, UV padding, GLB model export, Send to and the output file list.](images/export-textures.png)
-*The Windows export dialog shows which texture files the selected engine preset will write.*
+![The Export window: preset, name, size, format, model and folder on the left; the texture sets on the right, one with three UV tiles shown as a grid.](images/export-textures.png)
+*Settings on the left, your texture sets and the files they write on the right.*
 
-**File › Export textures for a game engine…** writes every map as separate files, packed and named for the engine you pick:
+**File › Export textures for a game engine…** opens the Export window. It has two tabs, **Textures** and **Game engine**, and the texture sets stay in view on the right in both.
+
+**On the left (Textures tab):** the **Preset** (how files are named and packed, see the table below), the **Name**, the **Size** (As painted, or 256 to 8K), the **Format**, the **Model** to export with the textures, and in the desktop app the **Folder** (remembered; **Change…** picks another). **More options** holds the rest: normal map direction, padding and dilation, Height at 16 bits, a layered PSD per channel, baked maps and the up axis.
+
+**On the right:** one card for each texture set.
+
+- The **tick** beside a set's name leaves that set out of the export.
+- A set without UV tiles has its own size picker (**Same as Size**, or a size just for that set).
+- A set with **UV tiles (UDIMs)** shows a badge such as *UV tiles: 3 · 3 files per map* and a **grid of its tiles in their real places**. Each tile has its number, a tick to leave it out, and its own **export size** (**Auto** follows Size). **All tiles…** sets every tile at once. Under the grid is an example of a tile's file name, such as `T_Dragon_BC.1001.png`: every map is written once for each tile. These sizes only change the exported pictures, not your project.
+- The small labels at the bottom of a card are the maps it writes; hover one for the full file names.
+- The line under the cards says **how many files and about how many megabytes** will be written.
+
+![The Game engine tab with a button for each engine and Unreal chosen.](images/export-engine.png)
+*The Game engine tab.*
+
+**Game engine tab (desktop app):** a button each for **Just save to a folder**, **Blender**, **Unity**, **Godot**, **Unreal Engine** and **Roblox Studio**. Choosing one shows only that engine's few settings (its project folder, the Gouache shader, the live link) and the Export button becomes **Export and send**. The tab's name shows the engine you chose. See the sections below for what each engine receives.
+
+The presets write these files:
 
 | Preset | Files |
 |---|---|

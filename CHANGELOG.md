@@ -1,3 +1,12 @@
+## 0.98.1
+
+- **A new Export window.** It is wide instead of tall: the everyday choices on the left (Preset, Name, Size, Format, Model, Folder), your texture sets on the right, and everything else folded under **More options**. A line at the bottom says how many files and about how many megabytes will be written.
+- **Game engine is its own tab**, with a button for Blender, Unity, Godot, Unreal and Roblox. Choosing one shows only that engine's settings; **Just save to a folder** is a plain export.
+- **UV tiles (UDIMs) are shown as tiles.** A set with tiles has a badge (for example "UV tiles: 3 · 3 files per map") and a grid of its tiles in their real places. Each tile has its own **export size** and a tick to leave it out, and **All tiles…** sets them together. An example file name shows that every map is written once per tile.
+- **Each texture set can be left out or given its own export size**, with a tick and a size picker on its card.
+- **The export folder is remembered** in the desktop app (Change… picks another).
+- **Drop-down lists are readable.** Some lists (the UV tile size in 3D Paint) opened white with pale text, so the choices looked greyed out. Every list now uses the app's dark colours.
+
 ## 0.98.0
 
 - **Much smaller documents and 3D Paint projects.** A material layer is now saved as its settings, and a picture that came from the Library only by the material's name; the pictures come from the Library when the file opens. A test project with three Library materials went from 29 MB to under 0.1 MB, and saving from 7 seconds to a fraction of a second. What you paint yourself (paint layers, masks, baked maps, your own pictures) is still stored in full. If a Library material is not on the computer, the layer shows grey and a message names it.

@@ -47,7 +47,7 @@ function esRow(redraw){if(!platform.isDesktop)return [el('p',{class:'note',text:
   out.push(...elRow(redraw));
   return out.filter(Boolean);}
 /* where the export goes: the engine project's folder, Blender's folder, or a folder you pick */
-async function esTargetDir(name){if(!esActive())return await platform.pickFolder();
+async function esTargetDir(name){if(!esActive()){if(texCfg.dir)return texCfg.dir;const d=await platform.pickFolder();if(d){texCfg.dir=d;try{localStorage.setItem('gs.exportDir',d);}catch(e){}}return d;}
   if(es.to==='blender'||es.to==='roblox'){const k=es.to;if(!es.dirs[k]){const d=await platform.pickFolder();if(!d)return null;es.dirs[k]=d;esSave();}return es.dirs[k];}
   const base=es.dirs[es.to];if(!base){toast('Choose the project folder in the export window first.');return null;}
   const dir=[base.replace(/[\\/]+$/,''),...esSub(es.to,pascal(name))].join(esSep(base));await platform.invoke('make_dir',{path:dir});return dir;}
