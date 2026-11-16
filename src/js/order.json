@@ -263,6 +263,7 @@
     "files/recent",
     "files/autosave",
     "files/timelapse",
+    "files/handbrake",
     "ui/canvas-tab",
     "ui/bar-custom",
     "ui/straight-preview",
