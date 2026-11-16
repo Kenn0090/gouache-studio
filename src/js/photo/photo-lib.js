@@ -56,7 +56,7 @@ function phPreThumb(patch,key){const p=phP();const S=96;ph.tc=ph.tc||{};const ck
   if(!p.small){const k=Math.min(1,S*2/Math.max(p.pw,p.ph)),w=Math.max(2,Math.round(p.pw*k)),h=Math.max(2,Math.round(p.ph*k));p.small=makeTarget(w,h,8,false);run(P.resample,p.small,{uSrc:p.psrc.tex,uOffset:[0,0],uScale:[p.pw/w,p.ph/h],uTaps:{int:Math.min(8,Math.max(1,Math.ceil(p.pw/w)))}});}
   const sm=p.small,k=Math.min(1,S/Math.max(sm.w,sm.h)),w=Math.max(2,Math.round(sm.w*k)),h=Math.max(2,Math.round(sm.h*k));return phThumbOf(sm,w,h,patch,ck);}
 function phThumbOf(sm,w,h,patch,ck){const t=makeTarget(w,h,8,false),s=phMerge(phDefaults(),patch);s.geo=phDefaults().geo;
-  try{phRender(sm,t,s);const d=captureRegionNow(t,0,0,w,h).data,c=document.createElement('canvas');c.width=w;c.height=h;const id=new ImageData(w,h);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,j=(y*w+x)*4;id.data[j]=d[i];id.data[j+1]=d[i+1];id.data[j+2]=d[i+2];id.data[j+3]=255;}c.getContext('2d').putImageData(id,0,0);return ph.tc[ck]=c.toDataURL('image/jpeg',.8);}
+  try{phRender(sm,t,s);const d=captureRegionNow(t,0,0,w,h).data,c=document.createElement('canvas');c.width=w;c.height=h;const id=new ImageData(w,h);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,j=(y*w+x)*4;id.data[j]=d[i];id.data[j+1]=d[i+1];id.data[j+2]=d[i+2];id.data[j+3]=255;}c.getContext('2d',{willReadFrequently:true}).putImageData(id,0,0);return ph.tc[ck]=c.toDataURL('image/jpeg',.8);}
   finally{disposeTarget(t);}}
 function phBuildPre(){const box=$('#phPreBody');if(!box)return;box.replaceChildren();const p=phP();
   const amtSl=makeSlider({id:'phPreAmt',label:'Amount',min:0,max:100,step:1,value:ph.preAmt==null?100:ph.preAmt,fmt:v=>Math.round(v)+'%',onInput:phPresetAmount,onChange:phPresetAmount});
@@ -126,7 +126,7 @@ function dlgPhotoExport(){if(!ph.photos.length){toast('Open a photo first.');ret
   let upSize=[1,1],upBox=null,upFull=null;
   const q=makeSlider({id:'phExQ',label:'Quality',min:40,max:100,step:1,value:o.q,fmt:v=>Math.round(v)+'',onInput:v=>{o.q=Math.round(v);}});
   upd();upBox=aiUpBox({size:()=>upSize,max:16384,allowNone:true,scale:0,onChange:st=>{o.upScale=st.scale;o.upDetail=st.strength;upd();},
-    crop:async n=>{const p=phP();const c=await phRenderFull(p,{mode:'orig'}),W=c.width,H=c.height,x=Math.max(0,Math.round((W-n)/2)),y=Math.max(0,Math.round((H-n)/2)),d=c.getContext('2d').getImageData(x,y,Math.min(n,W),Math.min(n,H));return {w:d.width,h:d.height,data:d.data};}});
+    crop:async n=>{const p=phP();const c=await phRenderFull(p,{mode:'orig'}),W=c.width,H=c.height,x=Math.max(0,Math.round((W-n)/2)),y=Math.max(0,Math.round((H-n)/2)),d=c.getContext('2d',{willReadFrequently:true}).getImageData(x,y,Math.min(n,W),Math.min(n,H));return {w:d.width,h:d.height,data:d.data};}});
   const upBoxEl=upBox.el;
   const body=el('div',{class:'dlg-grid'},sel('phExScope','Photos',[['one','This photo'],['sel','Selected photos'],['all','All photos']],()=>o.scope,v=>{o.scope=v;}),sel('phExFmt','Format',PH_FMT.map(f=>[f[0],f[1]]),()=>o.fmt,v=>{o.fmt=v;}),q.el,
     sel('phExSize','Size',[['orig','Original size'],['long','Longest side…'],['pct','Percent']],()=>o.mode,v=>{o.mode=v;}),
@@ -136,7 +136,7 @@ function dlgPhotoExport(){if(!ph.photos.length){toast('Open a photo first.');ret
 let phExStop=false;
 async function phExportRun(o){const idx=o.scope==='all'?ph.photos.map((_,i)=>i):o.scope==='sel'&&ph.sel.size?[...ph.sel].sort((a,b)=>a-b):[ph.cur];const F=PH_FMT.find(f=>f[0]===o.fmt),files=[];phExStop=false;loadStart('Exporting photos');loadCancel(()=>{phExStop=true;});
   try{let k=0;for(const i of idx){const p=ph.photos[i];if(!p)continue;loadSet(k/idx.length,p.name);let c=await phRenderFull(p,o);if(o.upScale){if(!(aiHas('engine')&&aiHas('upscale')))throw new Error('The upscaler add-on is not installed (File › AI add-ons).');if(!aiUpSize(c.width,c.height,o.upScale,16384).ok)throw new Error('“'+p.name+'” would be bigger than 16384 px after enlarging.');
-        const g=c.getContext('2d').getImageData(0,0,c.width,c.height),res=await aiUpscale({w:g.width,h:g.height,data:g.data},o.upScale,{strength:o.upDetail,stop:()=>phExStop},f=>loadSet((k+f)/idx.length,p.name+' · enlarging'));c=aiUpCanvas(res);}
+        const g=c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,c.width,c.height),res=await aiUpscale({w:g.width,h:g.height,data:g.data},o.upScale,{strength:o.upDetail,stop:()=>phExStop},f=>loadSet((k+f)/idx.length,p.name+' · enlarging'));c=aiUpCanvas(res);}
         const blob=await new Promise(r=>c.toBlob(r,F[2],o.q/100));if(!blob)throw new Error('This format is not available here.');
       files.push({name:(p.name.replace(/\.[^.]+$/,'')||'photo')+'-edit.'+F[0],data:new Uint8Array(await blob.arrayBuffer()),blob});k++;await new Promise(r=>setTimeout(r,0));}
     loadSet(.95,'Saving…');

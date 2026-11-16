@@ -106,7 +106,7 @@ async function importProcreate(file){const entries=await bzUnzip(await file.arra
       if(archKey){try{ex=bzProcreateSettings(bpUnarchive(bpParse(g[archKey])),new Set())||{};}catch(e){}}
       let tipA=shapeKey?bzTipAlpha(await bzBitmap(g[shapeKey])):null,tipObj;
       if(tipA){tipObj=bzPresetFromTip('Dual tip · '+pr.name,tipA,ex).tipObj;}
-      else{const c=tileCanvas({hardness:.8,roundness:1,grain:0,tool:'brush'}),d=c.getContext('2d').getImageData(0,0,64,64).data,A=new Uint8Array(4096);for(let i=0;i<4096;i++)A[i]=d[i*4+3];tipObj=makeTip('Dual tip · '+pr.name,64,64,A);}
+      else{const c=tileCanvas({hardness:.8,roundness:1,grain:0,tool:'brush'}),d=c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,64,64).data,A=new Uint8Array(4096);for(let i=0;i<4096;i++)A[i]=d[i*4+3];tipObj=makeTip('Dual tip · '+pr.name,64,64,A);}
       tips.push(tipObj);pr.dual=Object.assign({},DUAL_DEFAULTS,{tipKey:'u:'+tipObj.name,size:clamp(Math.round(ex.size||(pr.size||50)*.6),2,2000),spacing:clamp(Math.round((ex.spacing||.25)*100),1,1000),scatter:clamp(Math.round((ex.scatter||0)*100),0,400),count:clamp(Math.round(ex.count||1),1,8),mode:0,amount:100});
       notes.add('Procreate’s second (sub) brushes were converted to this app’s Dual brush.');}
     catch(e){notes.add('A second (sub) brush could not be read and was left out.');}}

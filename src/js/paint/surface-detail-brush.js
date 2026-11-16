@@ -181,8 +181,8 @@ void main(){
 function surfaceDetailRender(){
   const box=$('#surfaceDetailsBody');
   if(!box)return;
-  const pixels=surfaceDetailCardPixels();
-  const cards=SURFACE_DETAILS.map((preset,index)=>{
+  const hidden=!box.isConnected||box.offsetParent===null,pixels=hidden?null:surfaceDetailCardPixels();/* drawn once the cards are on screen */
+  const cards=(hidden?[]:SURFACE_DETAILS).map((preset,index)=>{
     const c=el('canvas',{width:pixels[index].width,height:pixels[index].height,'aria-hidden':'true'});
     c.getContext('2d').putImageData(pixels[index],0,0);
     return el('button',{type:'button',class:'mattile weld-card','aria-label':preset.name,

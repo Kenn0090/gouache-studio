@@ -135,7 +135,7 @@ async function dcImport(){const fs=await pickFiles('image/*',true,'Pictures (PNG
 function dcPreview(it){const key=it.kind+':'+it.id;if(dc.prev.has(key))return dc.prev.get(key);let u='';
   if(it.kind==='mine'){const c=document.createElement('canvas');c.width=it.rec.w;c.height=it.rec.h;const id=c.getContext('2d').createImageData(it.rec.w,it.rec.h),d=it.rec.data;
     for(let i=0;i<d.length;i+=4){const a=d[i+3]||1;id.data[i]=d[i]*255/a;id.data[i+1]=d[i+1]*255/a;id.data[i+2]=d[i+2]*255/a;id.data[i+3]=d[i+3];}c.getContext('2d').putImageData(id,0,0);
-    const s=document.createElement('canvas');s.width=s.height=64;const x=s.getContext('2d'),k=Math.min(64/c.width,64/c.height);x.drawImage(c,(64-c.width*k)/2,(64-c.height*k)/2,c.width*k,c.height*k);u=s.toDataURL();}
+    const s=document.createElement('canvas');s.width=s.height=64;const x=s.getContext('2d',{willReadFrequently:true}),k=Math.min(64/c.width,64/c.height);x.drawImage(c,(64-c.width*k)/2,(64-c.height*k)/2,c.width*k,c.height*k);u=s.toDataURL();}
   else u=dcDraw(it.id,'base',64).toDataURL();
   dc.prev.set(key,u);return u;}
 function renderDecals(){const box=$('#dcBody');if(!box)return;if(!dc.loaded)dcLoad();

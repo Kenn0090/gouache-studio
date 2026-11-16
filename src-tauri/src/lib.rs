@@ -10,6 +10,8 @@ mod data_loc;
 mod engine;
 mod viewer;
 mod files;
+mod handbrake;
+mod handbrake_core;
 mod link;
 mod link_core;
 mod screen;
@@ -141,6 +143,9 @@ pub fn run() {
             files::make_dir,
             files::launch_app,
             files::blender_send,
+            handbrake::hb_find,
+            handbrake::hb_run,
+            handbrake::hb_cancel,
             link::link_status,
             link::link_publish,
             screen::screen_grab,

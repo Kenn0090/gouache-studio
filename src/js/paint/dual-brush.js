@@ -8,7 +8,7 @@ const DUAL_DEFAULTS={on:true,tipKey:'b:sponge',size:40,spacing:130,scatter:80,co
 const dualRoundTips=new WeakMap();
 function dualPresetTip(p){if(p.tip)return p.tip;
   const key=[p.hardness,p.roundness,p.grain].join('|'),old=dualRoundTips.get(p);if(old&&old.key===key)return old.tip;
-  const c=tileCanvas(p),rgba=c.getContext('2d').getImageData(0,0,c.width,c.height).data,A=new Uint8Array(c.width*c.height);for(let i=0;i<A.length;i++)A[i]=rgba[i*4+3];
+  const c=tileCanvas(p),rgba=c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,c.width,c.height).data,A=new Uint8Array(c.width*c.height);for(let i=0;i<A.length;i++)A[i]=rgba[i*4+3];
   const tip=makeTip(p.name,c.width,c.height,A);dualRoundTips.set(p,{key,tip});return tip;}
 /* Names and duplicate occurrence are stable across saves and library reloads.
    Retain the old built-in/art/import keys for existing brush presets. */

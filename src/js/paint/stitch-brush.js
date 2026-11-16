@@ -635,8 +635,9 @@ function stitchToolsRender(){
   if(!box)return;
   const edit=stitchShelfPath=stitchPathLayer();
   const settings=edit?edit.path.stitch:stitchOptions;
-  const pixels=stitchCardPixels();
-  const tiles=STITCH_PRESETS.map((preset,i)=>{
+  /* the card pictures are drawn on the graphics card and read back; that only happens once the cards are on screen */
+  const hidden=!box.isConnected||box.offsetParent===null,pixels=hidden?null:stitchCardPixels();
+  const tiles=(hidden?[]:STITCH_PRESETS).map((preset,i)=>{
     const c=el('canvas',{width:pixels[i].width,height:pixels[i].height,'aria-hidden':'true'});
     c.getContext('2d').putImageData(pixels[i],0,0);
     const selected=(edit||ui.tool==='material'&&materialBrush.rec?.stitch)&&settings.style===i;

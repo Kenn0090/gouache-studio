@@ -14,6 +14,8 @@ For a Paint or Animation canvas, choose **Custom colour** under Background in **
 
 The first save asks where to put the file; after that, Ctrl+S saves in place. **Open recent** lists recent files, and double-clicking a .gouache file in Explorer opens it.
 
+Material layers are saved as their settings, and Library pictures by name, so files with materials are small and save fast; see [Preferences and performance](Preferences-and-performance.md#material-layers-and-library-pictures-098) for **Keep every picture inside saved files**.
+
 ## Opening files
 **File › Open** reads **.gouache, PSD** (layers, groups, masks, blend modes), **PNG, JPG, WebP, GIF, BMP, TGA, DDS and TIFF**. Dropping an image onto the canvas places it as a new layer.
 - **Place image as layer** adds an image to the current document.

@@ -133,7 +133,7 @@ function txCopy(t){const c=makeTarget(t.w,t.h,8,true);blit(t,c,0,0,t.w,t.h,0,0);
 function txThumbOf(t){const S=72,s=makeTarget(S,S,8,false);copyScaled(t,s);const d=captureRegionNow(s,0,0,S,S).data;disposeTarget(s);
   const c=document.createElement('canvas');c.width=c.height=S;const id=c.getContext('2d').createImageData(S,S);
   for(let y=0;y<S;y++)for(let x=0;x<S;x++){const i=(y*S+x)*4,a=d[i+3]||1;id.data[i]=d[i]*255/a;id.data[i+1]=d[i+1]*255/a;id.data[i+2]=d[i+2]*255/a;id.data[i+3]=255;}
-  c.getContext('2d').putImageData(id,0,0);return c.toDataURL('image/png');}
+  c.getContext('2d',{willReadFrequently:true}).putImageData(id,0,0);return c.toDataURL('image/png');}
 /* The app's texture row zero is the top of the painting (VS_VIEW flips screen Y).
    Sample premultiplied pixels straight into a tiny canvas, without a full-size upload. */
 function txThumbPixels(rec){const S=96,c=document.createElement('canvas');c.width=c.height=S;const x=c.getContext('2d'),im=x.createImageData(S,S),d=rec.data;
@@ -146,7 +146,7 @@ async function txSaveThumb(rec,u){/* Update only a record that still exists; nev
 async function txMakeThumb(it){tx.stats.previews++;if(it.kind==='photo'){
     if(TX_PREVIEWS[it.id])return TX_PREVIEWS[it.id];
     const bm=await createImageBitmap(new Blob([await txPhotoBytes(it.id)],{type:'image/webp'}),{resizeWidth:96,resizeHeight:96,resizeQuality:'high'});
-    try{const c=document.createElement('canvas');c.width=c.height=96;c.getContext('2d').drawImage(bm,0,0);return c.toDataURL('image/png');}finally{bm.close();}}
+    try{const c=document.createElement('canvas');c.width=c.height=96;c.getContext('2d',{willReadFrequently:true}).drawImage(bm,0,0);return c.toDataURL('image/png');}finally{bm.close();}}
   if(it.kind==='gen'){const t=txGenTarget(it.id,144);try{return txThumbOf(t);}finally{disposeTarget(t);}}
   if(it.rec.thumb)return it.rec.thumb;const full=await txRead(it.rec),u=txThumbPixels(full);it.rec.thumb=u;txSaveThumb(it.rec,u).catch(()=>{});return u;}
 function txPumpThumbs(){while(tx.thumbJobs<2&&tx.thumbQueue.length){const j=tx.thumbQueue.shift();
@@ -211,7 +211,7 @@ void main(){vec2 uv=gl_FragCoord.xy/vec2(textureSize(uA,0));float a=texture(uA,u
 let P_TXMIX=null;
 const TX_MIX_MODES=[['normal','Normal'],['multiply','Multiply'],['screen','Screen'],['add','Add'],['difference','Difference'],['overlay','Overlay'],['min','Min'],['max','Max']];
 const txMix={rows:[],busy:false,seq:0,queued:null,add:null};
-function txMixThumb(t,S=512){const s=makeTarget(S,S,8,false);copyScaled(t,s);const d=captureRegionNow(s,0,0,S,S).data;disposeTarget(s);const c=document.createElement('canvas');c.width=c.height=S;const im=c.getContext('2d').createImageData(S,S);for(let i=0;i<S*S;i++){const p=i*4,a=d[p+3]||1;im.data[p]=Math.min(255,d[p]*255/a);im.data[p+1]=Math.min(255,d[p+1]*255/a);im.data[p+2]=Math.min(255,d[p+2]*255/a);im.data[p+3]=255;}c.getContext('2d').putImageData(im,0,0);return c.toDataURL('image/png');}
+function txMixThumb(t,S=512){const s=makeTarget(S,S,8,false);copyScaled(t,s);const d=captureRegionNow(s,0,0,S,S).data;disposeTarget(s);const c=document.createElement('canvas');c.width=c.height=S;const im=c.getContext('2d',{willReadFrequently:true}).createImageData(S,S);for(let i=0;i<S*S;i++){const p=i*4,a=d[p+3]||1;im.data[p]=Math.min(255,d[p]*255/a);im.data[p+1]=Math.min(255,d[p+1]*255/a);im.data[p+2]=Math.min(255,d[p+2]*255/a);im.data[p+3]=255;}c.getContext('2d',{willReadFrequently:true}).putImageData(im,0,0);return c.toDataURL('image/png');}
 function txMixOpen(){
   const body=el('div',{class:'dlg-grid'}),sources=[...TX_GEN.map(([id,name])=>({kind:'gen',id,name})),...TX_PHOTO.map(([id,name])=>({kind:'photo',id,name})),...tx.mine.map(rec=>({kind:'mine',id:rec.id,name:rec.name,rec}))];
   if(!sources.length){toast('No grunge sources are available yet.');return;}

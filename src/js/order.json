@@ -88,6 +88,7 @@
     "files/engine-project",
     "files/pixel-pack",
     "files/gouache-file",
+    "files/lib-ref",
     "filters/filter-shaders",
     "filters/converters",
     "filters/filters",
@@ -262,6 +263,7 @@
     "files/recent",
     "files/autosave",
     "files/timelapse",
+    "files/handbrake",
     "ui/canvas-tab",
     "ui/bar-custom",
     "ui/straight-preview",
@@ -284,6 +286,7 @@
     "ui/tool-keys",
     "api/gs-api",
     "ui/scripts",
+    "ui/paint-report",
     "core/boot"
   ]
 }

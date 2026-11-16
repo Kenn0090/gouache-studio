@@ -42,6 +42,8 @@ function matApply(rec){const f=rec.fill;let maps={},imgs=null,temp=null,note='';
   const L=cmdNewFillLayer({...f,name:rec.name,maps,imgs,op:rec.op,mapOpacities:rec.mapOpacities});
   /* (0.96.4) pictures that came straight from the Library are tagged, so a smart material made from this layer names the Library material instead of copying its pictures */
   {const lib=matLibSlug(rec);if(L&&lib&&L._fillImg)for(const k in L._fillImg)if(!(temp&&temp[k])&&L._fillImg[k])L._fillImg[k]._lib=lib;}
+  /* (0.98) the 2K / 4K download of a Library material is named too, so files keep its name instead of its pictures */
+  if(L&&rec.dl&&rec.dl.upg&&rec.dl.aid&&L._fillImg)for(const k in L._fillImg)if(!(temp&&temp[k])&&L._fillImg[k])L._fillImg[k]._libDl={aid:rec.dl.aid,res:rec.dl.res};
   if(temp)for(const k in temp)disposeTarget(temp[k]);if(L&&note)toast('Added “'+rec.name+'”.'+note);if(L&&!note&&!(ui.mode==='p3d'||v3.on))toast('Added “'+rec.name+'”. It shows on the model in the 3D view or 3D Paint.');return L;}
 function matLibSlug(rec){return rec&&rec.bundled&&!rec.bundled.dl&&typeof rec.bundled.file==='string'&&rec.bundled.file.endsWith('.gmat')?rec.bundled.file.slice(0,-5):null;}
 /* from the material editor */
@@ -68,7 +70,7 @@ async function matExport(rec){if(rec.kind==='smart'||rec.kind==='smask'){const b
 /* a .gmat's pictures (PNG or WebP data URLs) back to premultiplied pixels */
 async function gmatImgs(j){const imgs={};
   for(const k in j.imgs||{}){const im=j.imgs[k],img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('bad image'));i.src=im.png;});
-    const c=document.createElement('canvas');c.width=im.w;c.height=im.h;const x=c.getContext('2d');x.drawImage(img,0,0);const d=x.getImageData(0,0,im.w,im.h).data,out=new Uint8Array(d.length);
+    const c=document.createElement('canvas');c.width=im.w;c.height=im.h;const x=c.getContext('2d',{willReadFrequently:true});/* read straight from memory, not back from the graphics card */x.drawImage(img,0,0);const d=x.getImageData(0,0,im.w,im.h).data,out=new Uint8Array(d.length);
     for(let i=0;i<d.length;i+=4){const a=d[i+3];out[i]=d[i]*a/255;out[i+1]=d[i+1]*a/255;out[i+2]=d[i+2]*a/255;out[i+3]=a;}imgs[k]={w:im.w,h:im.h,data:out};}
   return imgs;}
 /* ---- the Library: materials shipped with the app (assets/materials, e.g. from ambientCG), loaded when first used ---- */

@@ -1,3 +1,12 @@
+## Gouache Studio 0.98.0
+
+- Much smaller documents and 3D Paint projects: material layers are saved as settings, and Library pictures by name. Saving is many times faster. Preferences › Files › "Keep every picture inside saved files" writes the old self-contained file.
+- Smaller .gmat files (normal and height pictures about 45% smaller, same pixels).
+- Faster loading: entering 3D Paint, adding materials, opening projects.
+- Smoother painting: no wait after each stroke for the navigator picture. New Help › Painting report… finds what causes a stutter on your computer.
+- Timelapse: Video quality (Small, Balanced, Best) and an Automatic format; videos are smaller.
+- Send a timelapse to HandBrake: Compress in the background, or Open in HandBrake. Stopping a compression or hitting an error keeps any earlier compressed copy.
+
 ## Gouache Studio 0.97.32
 
 - The Bake tab bakes UV tiles (UDIMs): each tile at the bake size, one picture per tile on export, every tile sent to its place in 3D Paint.

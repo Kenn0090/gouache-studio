@@ -38,7 +38,7 @@ async function pxWebp(raw,w,h,q){if(pxWebpOk===false||w>16383||h>16383||typeof O
     x.putImageData(id,0,0);const b=await c.convertToBlob({type:'image/webp',quality:q||.92});if(b.type!=='image/webp'){pxWebpOk=false;return null;}pxWebpOk=true;return new Uint8Array(await b.arrayBuffer());}
   catch(e){pxWebpOk=false;return null;}}
 async function pxWebpDecode(u8,w,h){const bm=await createImageBitmap(new Blob([u8],{type:'image/webp'}),{premultiplyAlpha:'none',colorSpaceConversion:'none'});
-  const c=new OffscreenCanvas(w,h),x=c.getContext('2d');x.drawImage(bm,0,0);bm.close&&bm.close();const d=x.getImageData(0,0,w,h).data,out=new Uint8Array(w*h*4);
+  const c=new OffscreenCanvas(w,h),x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bm,0,0);bm.close&&bm.close();const d=x.getImageData(0,0,w,h).data,out=new Uint8Array(w*h*4);
   for(let i=0;i<d.length;i+=4){const a=d[i+3],f=a/255;out[i]=Math.round(d[i]*f);out[i+1]=Math.round(d[i+1]*f);out[i+2]=Math.round(d[i+2]*f);out[i+3]=a;}return out;}
 /* pack: {bytes, f} ('p' lossless, 'w' WebP); lossy only when asked and Smaller files is on, and only if it is smaller */
 function pxBytes(raw,depth){if(depth!==16||!(raw instanceof Float32Array))return raw;const out=new Uint16Array(raw.length);for(let i=0;i<raw.length;i++)out[i]=f2h(raw[i]);return new Uint8Array(out.buffer);}
@@ -77,7 +77,20 @@ async function pxPackSolid(color,w,h,depth){const args=[null,w,h,depth,false,fal
 /* unpack a stored picture back to raw pixels; f missing = an older file (plain deflate) */
 async function pxUnpack(u8,w,h,depth,f){if(f==='w')return pxWebpDecode(u8,w,h);const raw=await streamThrough(u8,'deflate-raw',true);return f==='p'?pxUnpredict(raw,w,h,depth):raw;}
 /* a picture in a .gmat: WebP for colour and grey channels with Smaller files on (smaller than PNG), else PNG */
-function pxDataURL(c,key){if(pxSmall()&&PX_LOSSY.has(key)&&pxWebpOk!==false){const u=c.toDataURL('image/webp',.92);if(u.startsWith('data:image/webp'))return u;pxWebpOk=false;}return c.toDataURL('image/png');}
+/* (0.98) pictures that must stay exact (normal, height, masks) go into .gmat files as lossless WebP instead of PNG: the same
+   pixels in roughly half the bytes. Only where the browser's WebP at full quality really is lossless (Chromium and the
+   desktop app; checked once on a small test picture), otherwise PNG as before. Every version of the app can read both. */
+let pxWebpExact=null;
+function pxWebpExactCheck(){if(pxWebpExact!==null)return;pxWebpExact=false;
+  try{const n=48,c=document.createElement('canvas');c.width=c.height=n;const x=c.getContext('2d',{willReadFrequently:true}),id=x.createImageData(n,n),d=id.data;let v=12345;
+    for(let i=0;i<d.length;i+=4){for(let k=0;k<3;k++){v=(v*1103515245+12345)>>>0;d[i+k]=(v>>>16)&255;}d[i+3]=255;}x.putImageData(id,0,0);
+    const u=c.toDataURL('image/webp',1);if(!u.startsWith('data:image/webp'))return;
+    const im=new Image();im.onload=()=>{try{const c2=document.createElement('canvas');c2.width=c2.height=n;const x2=c2.getContext('2d',{willReadFrequently:true});x2.drawImage(im,0,0);const e=x2.getImageData(0,0,n,n).data;
+      let same=true;for(let i=0;i<d.length;i++)if(e[i]!==d[i]){same=false;break;}pxWebpExact=same;}catch(er){}};im.src=u;}catch(e){}}
+setTimeout(pxWebpExactCheck,3000);
+function pxDataURL(c,key){if(pxSmall()&&PX_LOSSY.has(key)&&pxWebpOk!==false){const u=c.toDataURL('image/webp',.92);if(u.startsWith('data:image/webp'))return u;pxWebpOk=false;}
+  if(pxWebpExact&&c.width<=16383&&c.height<=16383){const u=c.toDataURL('image/webp',1);if(u.startsWith('data:image/webp'))return u;}
+  return c.toDataURL('image/png');}
 /* .gmat files are gzipped JSON (older ones are plain JSON: both open) */
 async function gmatBlob(obj){return new Blob([await streamThrough(new TextEncoder().encode(JSON.stringify(obj)),'gzip')],{type:'application/octet-stream'});}
 async function gmatParse(src){let b=src instanceof Uint8Array?src:new Uint8Array(await (src.arrayBuffer?src.arrayBuffer():new Response(src).arrayBuffer()));
