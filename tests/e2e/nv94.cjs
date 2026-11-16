@@ -19,7 +19,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.click('#modeTabs [data-mode=p3d]');await W(2500);
  /* the browser version only explains */
  await p.evaluate(()=>__gs.dlgExportTextures());await W(300);
- ok(await p.locator('#txSend').count()===0&&await p.evaluate(()=>/desktop app/.test(document.querySelector('#dlgBody').textContent)),'the browser version says sending needs the desktop app');
+ await p.click('#xwTab_eng');await p.waitForTimeout(200);ok(await p.locator('#xwEng_unity').count()===0&&await p.evaluate(()=>/desktop app/.test(document.querySelector('#dlgBody').textContent)),'the browser version says sending needs the desktop app');
  await p.click('#dlgCancel');await W(200);
  await p.click('#modeTabs [data-mode=p3d]');await W(2500);
  /* the browser version only explains */

@@ -16,7 +16,7 @@ await p.evaluate(async()=>{await __gs.studioPreviewMaps();});await p.waitForTime
 await p.evaluate(()=>__gs.dlgExportTextures());await p.waitForTimeout(600);
 ok(await p.evaluate(()=>!!document.getElementById('txMeshMaps')&&/Export baked maps/.test(document.getElementById('txMeshMaps').closest('label,div').textContent)),'the window has an Export baked maps tick');
 await p.evaluate(()=>{const c=document.getElementById('txMeshMaps');if(!c.checked)c.click();});await p.waitForTimeout(400);
-const rows=await p.evaluate(()=>[...document.querySelectorAll('#modal .texrow code')].map(c=>c.textContent).filter(t=>/Mesh_/.test(t)));
+const rows=await p.evaluate(()=>[...document.querySelectorAll('#modal .xwfile.baked')].map(c=>c.title).filter(t=>/Mesh_/.test(t)));
 ok(rows.length>=6&&rows.some(r=>/Mesh_Position/.test(r))&&rows.some(r=>/Mesh_WorldNormal/.test(r)),'the file list shows the baked maps ('+rows.length+')');
 ok(await p.evaluate(()=>document.querySelectorAll('#txMeshPick input').length>=6),'each baked map has its own tick');
 await p.evaluate(()=>document.getElementById('txMesh_position').click());await p.waitForTimeout(300);

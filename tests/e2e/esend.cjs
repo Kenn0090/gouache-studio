@@ -17,8 +17,8 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  /* names from the sites */
  await p.click('#modeTabs [data-mode=p3d]');await W(2500);
  /* the browser version only explains */
- await p.evaluate(()=>__gs.dlgExportTextures());await W(300);
- ok(await p.locator('#txSend').count()===0&&await p.evaluate(()=>/desktop app/.test(document.querySelector('#dlgBody').textContent)),'the browser version says sending needs the desktop app');
+ await p.evaluate(()=>__gs.dlgExportTextures());await W(300);await p.evaluate(()=>{const t=document.querySelector('#xwTab_eng');if(t)t.click();});await W(200);
+ await p.click('#xwTab_eng');await p.waitForTimeout(200);ok(await p.locator('#xwEng_unity').count()===0&&await p.evaluate(()=>/desktop app/.test(document.querySelector('#dlgBody').textContent)),'the browser version says sending needs the desktop app');
  await p.click('#dlgCancel');await W(200);
  /* pretend to be the desktop app */
  await p.evaluate(()=>{const P=__gs.platform;window.__calls=[];window.__written=[];P.isDesktop=true;
@@ -26,25 +26,25 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
    P.writeFile=async(path,bytes)=>{window.__written.push(path);};P.pickFolder=async()=>window.__pick;P.openDialog=async()=>'C:/Program Files/Blender/blender.exe';});
  /* Unity: files go into the project's Assets/Gouache/<name> */
  await p.evaluate(()=>{const g=__gs;g.es.to='unity';g.es.dirs.unity='C:/Games/MyUnity';g.texCfg.name='Rock';g.texCfg.preset='urp';g.texCfg.model='glb';g.texCfg.size=128;});
- await p.evaluate(()=>__gs.dlgExportTextures());await W(300);
- ok(await p.locator('#txSend').inputValue()==='unity'&&await p.locator('#dlgOk').textContent()==='Export and send','the export window has Send to (Unity chosen)');
- for(const e of ['unreal','godot']){await p.selectOption('#txSend',e);await W(300);ok(!(await p.evaluate(()=>/null/i.test(document.querySelector('#dlgBody').textContent))),e+': the export window shows no stray "null"');}
+ await p.evaluate(()=>__gs.dlgExportTextures());await W(300);await p.evaluate(()=>{const t=document.querySelector('#xwTab_eng');if(t)t.click();});await W(200);
+ ok(await p.evaluate(()=>{document.querySelector('#xwTab_eng').click();return new Promise(r=>setTimeout(()=>r(document.querySelector('#xwEng_unity').classList.contains('on')),200));})&&await p.locator('#dlgOk').textContent()==='Export and send','the export window has Send to (Unity chosen)');
+ for(const e of ['unreal','godot']){await p.evaluate(e=>{document.querySelector('#xwTab_eng').click();document.querySelector('#xwEng_'+e).click();},e);await W(300);ok(!(await p.evaluate(()=>/null/i.test(document.querySelector('#dlgBody').textContent))),e+': the export window shows no stray "null"');}
  /* Unreal: picking the Content folder uses the project folder above it */
- await p.evaluate(()=>{__gs.es.dirs.unreal='';window.__pick='C:/Games/Unreal/Content';});await p.selectOption('#txSend','unreal');await W(300);
+ await p.evaluate(()=>{__gs.es.dirs.unreal='';window.__pick='C:/Games/Unreal/Content';});await p.evaluate(e=>{document.querySelector('#xwTab_eng').click();document.querySelector('#xwEng_'+e).click();},'unreal');await W(300);
  await p.click('#esProject');await W(600);
  ok(await p.evaluate(()=>__gs.es.dirs.unreal==='C:/Games/Unreal'),'Unreal: the Content folder picked means the project folder above it');
  /* choosing a project folder without the project file: taken, with a warning in the window */
- await p.evaluate(()=>{__gs.es.dirs.unreal='';window.__pick='C:/Games/NoProject';});await p.selectOption('#txSend','unreal');await W(300);
+ await p.evaluate(()=>{__gs.es.dirs.unreal='';window.__pick='C:/Games/NoProject';});await p.evaluate(e=>{document.querySelector('#xwTab_eng').click();document.querySelector('#xwEng_'+e).click();},'unreal');await W(300);
  await p.click('#esProject');await W(600);
  ok(await p.evaluate(()=>__gs.es.dirs.unreal==='C:/Games/NoProject')&&await p.locator('#esWarn').count()===1,'a folder without .uproject is still taken, and the window says so');
- await p.selectOption('#txSend','unity');await W(300);
- await p.click('#dlgOk');await W(4000);
+ await p.evaluate(e=>{document.querySelector('#xwTab_eng').click();document.querySelector('#xwEng_'+e).click();},'unity');await W(300);
+ await p.click('#dlgOk');await W(12000);
  let r=await p.evaluate(()=>({mk:window.__calls.filter(c=>c[0]==='make_dir').map(c=>c[1].path),w:window.__written.map(x=>x.split('/').slice(-2).join('/'))}));
  ok(r.mk.includes('C:/Games/MyUnity/Assets/Gouache/Rock'),'Unity: the folder Assets/Gouache/Rock is made '+JSON.stringify(r.mk));
  ok(r.w.some(x=>x==='Rock/Rock.glb')&&r.w.some(x=>/Rock\/Rock_Albedo\.png/.test(x)),'…and the model and textures are written there '+JSON.stringify(r.w));
  /* Godot: a folder that isn't a Godot project is taken with a warning */
  await p.evaluate(()=>{__gs.es.to='godot';__gs.es.dirs.godot='';window.__pick='C:/stuff/notaproject';});
- await p.evaluate(()=>__gs.dlgExportTextures());await W(300);await p.click('#esProject');await W(300);
+ await p.evaluate(()=>__gs.dlgExportTextures());await W(300);await p.evaluate(()=>{const t=document.querySelector('#xwTab_eng');if(t)t.click();});await W(200);await p.click('#esProject');await W(300);
  ok(await p.evaluate(()=>__gs.es.dirs.godot==='C:/Games/NotGodot'||!!__gs.es.dirs.godot)&&await p.locator('#esWarn').count()===1,'Godot: a folder without project.godot is taken, with a warning in the window');
  await p.evaluate(()=>{window.__pick='C:/games/godotproj';});await p.click('#esProject');await W(500);
  ok(await p.evaluate(()=>__gs.es.dirs.godot==='C:/games/godotproj'),'…a Godot project folder is kept');
@@ -61,7 +61,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  r=await p.evaluate(()=>({l:window.__calls.filter(c=>c[0]==='launch_app').map(c=>c[1]),w:window.__written}));
  ok(r.l.length===1&&r.l[0].exe.endsWith('blender.exe')&&r.l[0].args[0]==='--python'&&r.w[0]==='C:/exports/_gouache_open.py','otherwise Blender is started with a script that opens the model '+JSON.stringify(r));
  /* the add-on can be saved */
- await p.evaluate(()=>{window.__written=[];window.__pick='C:/addons';__gs.dlgExportTextures();});await W(300);
+ await p.evaluate(()=>{window.__written=[];window.__pick='C:/addons';__gs.dlgExportTextures();document.querySelector('#xwTab_eng').click();});await W(300);
  ok(await p.locator('#esAddon').isVisible(),'Blender: Save the Blender add-on… is offered');
  await p.click('#esAddon');await W(300);ok(await p.evaluate(()=>window.__written[0]==='C:/addons/gouache_link.py'),'the add-on is saved');
  console.log(errs.length?errs.join('\n'):'no page errors');ok(!errs.length,'no page errors');

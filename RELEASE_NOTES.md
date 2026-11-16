@@ -1,3 +1,11 @@
+## Gouache Studio 0.98.1
+
+- A new Export window: wide instead of tall, settings on the left, texture sets on the right, the rest under More options, and a line saying how many files and megabytes it will write.
+- Game engine sending is its own tab, with a button for each engine.
+- UV tiles (UDIMs) show as a grid: each tile has its own export size and can be left out; each texture set too.
+- The export folder is remembered.
+- Fixed: drop-down lists that opened white with pale text (the UV tile sizes looked greyed out).
+
 ## Gouache Studio 0.98.0
 
 - Much smaller documents and 3D Paint projects: material layers are saved as settings, and Library pictures by name. Saving is many times faster. Preferences › Files › "Keep every picture inside saved files" writes the old self-contained file.

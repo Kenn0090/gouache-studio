@@ -264,6 +264,7 @@
     "files/autosave",
     "files/timelapse",
     "files/handbrake",
+    "files/export-window",
     "ui/canvas-tab",
     "ui/bar-custom",
     "ui/straight-preview",
