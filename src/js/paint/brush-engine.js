@@ -254,6 +254,7 @@ function endStroke(record){
     if(bw>0&&bh>0){const before=lazyBefore||captureRegion(beforeT,x0,y0,bw,bh),after=captureRegion(L.target,x0,y0,bw,bh);
       const r=regionRecord(L,before,after,x0,y0,bw,bh,s.o.tool==='erase'?'Erase':s.o.tool==='smudge'?(s.o.mixer?'Brush stroke':'Blend'):s.o.tool==='dodge'?'Dodge':s.o.tool==='burn'?'Burn':healing?'Heal':cloning?'Clone':'Brush stroke');
       if(L.onRecord)L.onRecord(r,[x0,y0,bw,bh]);
+      if(s.space&&!parts.length&&typeof snapSparseLater==='function')snapSparseLater(r.snaps[0],r.snaps[1]);
       if(halo){const undo=r.undo,redo=r.redo;r.refs.push(halo.layer);r.snaps.push(...halo.snaps);
         r.undo=()=>{undo();halo.undo();};r.redo=()=>{redo();halo.redo();};}
       const step=parts.length?withMapParts(r,L,parts,x0,y0):r;

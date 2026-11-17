@@ -79,7 +79,23 @@ function captureRegion(src,x,y,w,h){const n=w*h*4;
    The file worker converts float pixels to half-float bytes. */
 function readRegionAsync(src,x,y,w,h){return new Promise((resolve,reject)=>{if(gl.isContextLost()){reject(new Error('The graphics context was lost.'));return;}
   asyncRead(src.fbo,x,y,w,h,src.depth===16?gl.FLOAT:gl.UNSIGNED_BYTE,src.depth===16?Float32Array:Uint8Array,w*h*4,u=>resolve(packedRead(src,u)),reject);});}
+/* (0.98.11, Kenn: 2.8 GB of undo after 16 strokes in 3D Paint) a 3D stroke's box covers every island it touched, mostly untouched pixels.
+   Once both pictures of an undo step have been read back, keep only the 128-pixel tiles that differ (compact in snap.data, listed in snap.tiles). */
+function snapSparse(a,b){if(!a||!b||a.tiles||b.tiles||a.w!==b.w||a.h!==b.h||a.depth!==b.depth)return false;
+  if(a._job||b._job||!a._d||!b._d||a.file||b.file||a._d.length!==a.w*a.h*4||b._d.length!==b.w*b.h*4)return false;
+  const w=a.w,h=a.h,T=128,A=a._d,B=b._d,tiles=[];let keep=0;
+  for(let ty=0;ty<h;ty+=T)for(let tx=0;tx<w;tx+=T){const tw=Math.min(T,w-tx),th=Math.min(T,h-ty);let diff=false;
+    for(let y=0;y<th&&!diff;y++){const o=((ty+y)*w+tx)*4,n=tw*4;for(let i=0;i<n;i++)if(A[o+i]!==B[o+i]){diff=true;break;}}
+    if(diff){tiles.push({x:tx,y:ty,w:tw,h:th,off:keep});keep+=tw*th*4;}}
+  if(keep>w*h*4*.6)return false;
+  for(const sn of [a,b]){const src=sn._d,out=new src.constructor(keep);for(const t of tiles)for(let y=0;y<t.h;y++){const o=((t.y+y)*w+t.x)*4;out.set(src.subarray(o,o+t.w*4),t.off+y*t.w*4);}
+    sn._d=out;sn.tiles=tiles;sn.bytes=out.byteLength;}
+  return true;}
+function snapSparseLater(a,b,tries){tries=tries||0;if(tries>40)return;setTimeout(()=>{try{if(a._job||b._job||!a._d||!b._d){if(a._d!==null&&b._d!==null)snapSparseLater(a,b,tries+1);return;}snapSparse(a,b);}catch(e){}},tries?250:400);}
 function restoreRegion(snap,dst,x,y){p3PaintWrite(dst);dst.opaque=false;gl.bindTexture(gl.TEXTURE_2D,dst.tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
+  if(snap.tiles){const d=snap.data,fmt=dst.mono?gl.RED:dst.packed?gl.RG:gl.RGBA;for(const t of snap.tiles){const part=d.subarray(t.off,t.off+t.w*t.h*4);
+      if(snap.depth===16)gl.texSubImage2D(gl.TEXTURE_2D,0,x+t.x,y+t.y,t.w,t.h,gl.RGBA,gl.HALF_FLOAT,part);else gl.texSubImage2D(gl.TEXTURE_2D,0,x+t.x,y+t.y,t.w,t.h,gl.RGBA,gl.UNSIGNED_BYTE,part);}
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);return;}
   if(snap.depth===16)gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,snap.w,snap.h,dst.mono?gl.RED:dst.packed?gl.RG:gl.RGBA,gl.HALF_FLOAT,packedUpload(dst,snap.data));
   else gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,snap.w,snap.h,dst.mono?gl.RED:gl.RGBA,gl.UNSIGNED_BYTE,packedUpload(dst,snap.data));
   gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);}
