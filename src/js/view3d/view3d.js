@@ -792,7 +792,7 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     if(v3.mstroke&&v3.mstroke.id!==e.pointerId)meshUp();/* one whose release was missed is finished now */v3.drag=null;
     e.preventDefault();hit.tabIndex=0;hit.focus({preventScroll:true});/* release toolbar/dropdown keyboard focus when returning to the viewport */
     try{hit.setPointerCapture(e.pointerId);}catch(er){}
-    v3.altClick=e.button===0&&v3PickHeld(e)&&prefs.altPickMode!=='hover'?{x:e.clientX,y:e.clientY,id:e.pointerId}:null;
+    v3.altClick=e.button===0&&((v3PickHeld(e)&&prefs.altPickMode!=='hover')||(prefs.altClickPick===true&&e.altKey&&!e.ctrlKey&&!e.shiftKey&&!sel3.armed))?{x:e.clientX,y:e.clientY,id:e.pointerId}:null;/* (0.98.10) Preferences: Alt + click picks (off unless asked for); Alt + drag still turns */
     if(e.button===0&&v3PickHeld(e)&&v3PickKey()!=='Alt'){v3HoverPick(hit,{clientX:e.clientX,clientY:e.clientY,pointerId:e.pointerId,altKey:e.altKey,ctrlKey:e.ctrlKey,metaKey:e.metaKey,shiftKey:e.shiftKey,force:true});return;}
     if(e.button===0&&!e.altKey&&sel3.armed){sel3HoverClear();if(sel3DragDown(hit,e))return;p3SelectAt(hit,e);return;}
     /* mask mode: Paint must be on to paint; Box, Lasso and Polygon draw shapes */
