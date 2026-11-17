@@ -1,3 +1,11 @@
+## 0.98.6
+
+- **Masks of masks.** Every row under a mask has a small ◌ button that adds its own mask (white shows the row everywhere and you paint black to hide it; black hides it until you paint white). Click it again to paint that mask, right-click it to delete it. Right-click a row › **Move to** another layer: the row and its own mask go to the top of that layer's mask or effects as one undo step.
+- **Volume noise.** A new mask row (Add › Volume noise, or the Generators list and shelf) that fills 3D space with Clouds, Cells or Gaussian noise. Intensity, Scale, Macro and Micro contrast, Macro and Micro warp (amount and detail), Sampling, Level and Seed, plus the usual move/turn/scale gizmo. It ignores the UVs, so it has no seams.
+- **Texture on only some UDIM tiles.** A picture channel in a UDIM set has a **Tiles** row (All, or the tiles you tick); the others stay empty. The strip at the bottom of 3D Paint has one button per tile that frames it in the flat view.
+- **Paint follows new UVs.** When the model updater brings in a model with different UVs or different triangles, the paint is moved onto the new layout by surface position. **File › Import › Replace the model, keep my paint…** does the same for another model file. UDIM projects are not moved yet; baked mesh maps are moved approximately, so bake again.
+- **Mesh maps from a material** is a wide, resizable window: preview, maps, Strength and Send to up front, a short More options fold, and **Open in Convert tab** for every control.
+
 ## 0.98.5
 
 - **No picker icon on Alt in 3D Paint.** Holding Alt over the model (or the flat texture view) no longer changes the pointer to the colour picker; use Z to pick.
