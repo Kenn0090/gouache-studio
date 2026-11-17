@@ -28,4 +28,5 @@ const OBJ=['v -1 -1 0','v 0 -1 0','v 0 1 0','v -1 1 0','v 1 -1 0','v 1 1 0','v -
  ok(chips.length===4,'the card shows All and each tile');
  await p.evaluate(()=>{const g=__gs,L=g.doc.active;delete L.fill.maps.base.tiles;g.fillRender(L);g.changedAll&&g.changedAll();});await W(600);
  const r2=await red();ok(r2[1002]>80,'All brings the other tiles back '+JSON.stringify(r2));
+ ok(await p.evaluate(()=>{__gs.buildP3Panel();return ['1001','1002','1011'].every(i=>!!document.getElementById('vp_tile_'+i));}),'the strip has a button per UDIM tile');
  await b.close();console.log(fails?'FAILED':'ALL PASS');process.exit(fails?1:0);})();
