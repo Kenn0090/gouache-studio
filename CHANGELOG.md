@@ -1,3 +1,13 @@
+## 0.98.13
+
+- **The brush stays round on leaning surfaces.** In Tangent | Wrap, where a surface leans away from you the brush is squeezed on screen by the lean, so it is round on the model instead of stretched. Projection has a **Keep the brush round** switch (on by default).
+- **Smoother wrap edges.** Where another part hides the paint, the edge is no longer cut in square steps.
+- **A bar while the app is busy.** A small bar in the bottom-left corner shows when shaders are compiling, a sky's lighting is building, or a model's search tree is building.
+- **Lights panel like Marmoset's.** Each light has Transform, Light, Area / Shape and Spot sections, with Brightness, Distance, Temperature (Kelvin), Cast Shadows, Spot Angle and Spot Sharpness.
+- **Lights stay off until you turn them on.** Opening the Lights panel no longer switches them on or adds three lights.
+- **R turns the light gizmo.** In Free mode, R switches a sun or spot light between Move (arrows) and Rotate (ring).
+- **Less memory for undo.** Undo history stays in memory up to 1.5 GB by default (it was 3 GB); older steps move to disk sooner. Wide strokes keep only the changed parts.
+
 ## 0.98.12
 
 - **Drop pictures into Converted and Mesh map.** Drag a picture onto a material channel set to Converted or Mesh map and it becomes that kind of map, named after the file. Every converted or baked map has a **Layer** / **Send as layer** button that puts it in the layer stack as a normal layer.
