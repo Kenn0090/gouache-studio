@@ -51,7 +51,9 @@ function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren
   if(t==='clone')bar.append(tg('Aligned',heal.aligned,()=>{heal.aligned=!heal.aligned;heal.off=null;healSave();buildOptBar();buildBrushPanel();},'The source moves along with each stroke'),el('span',{class:'optsep'}));
   if(slim){/* 3D Paint (0.37): only size, opacity, flow, hardness and what the brush paints; the rest is in the Brush tab */
     const pm=typeof mapBrushTargets==='function'?mapBrushTargets():[],cur=(typeof MAP_DEFS!=='undefined'&&MAP_DEFS[doc.map]?MAP_DEFS[doc.map].label:'Base colour');
-    bar.append(el('span',{class:'optsep'}),tg('Paints: '+cur+(pm.length?' + '+pm.length:''),pm.length>0,()=>showPanel('tool'),'Which maps the brush paints, and every other brush setting (Brush tab)'));return;}
+    bar.append(el('span',{class:'optsep'}),tg('Paints: '+cur+(pm.length?' + '+pm.length:''),pm.length>0,()=>showPanel('tool'),'Which maps the brush paints, and every other brush setting (Brush tab)'),
+      /* (0.98.4, Georgian: "a big fat export button") export without hunting through three menus */
+      el('button',{class:'btn primary optexport',id:'optExport',type:'button',title:'Export the textures (Ctrl+Shift+E)',text:'Export',onclick:()=>{if(typeof dlgExportTextures==='function')dlgExportTextures();}}));return;}
   /* (0.97.10, Kenn) a short bar: size, opacity, flow and hardness stay; every other group is one small button that opens a pop-up with just that group */
   const lineTool=!tonal&&(t==='brush'||t==='erase')&&ui.mode!=='p3d';
   const pop=(id,label,title,build)=>{const b=el('button',{class:'optchip optpopbtn',id:'obp_'+id,'aria-haspopup':'true',title,text:label+' ▾',onclick:()=>optPopToggle(b,build)});bar.append(b);};

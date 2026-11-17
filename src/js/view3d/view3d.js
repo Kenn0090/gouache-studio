@@ -792,7 +792,8 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     if(v3.mstroke&&v3.mstroke.id!==e.pointerId)meshUp();/* one whose release was missed is finished now */v3.drag=null;
     e.preventDefault();hit.tabIndex=0;hit.focus({preventScroll:true});/* release toolbar/dropdown keyboard focus when returning to the viewport */
     try{hit.setPointerCapture(e.pointerId);}catch(er){}
-    if(e.button===0&&v3PickHeld(e)&&v3PickKey()!=='Alt'){v3HoverPick(hit,e);return;}
+    v3.altClick=e.button===0&&v3PickHeld(e)&&prefs.altPickMode!=='hover'?{x:e.clientX,y:e.clientY,id:e.pointerId}:null;
+    if(e.button===0&&v3PickHeld(e)&&v3PickKey()!=='Alt'){v3HoverPick(hit,{clientX:e.clientX,clientY:e.clientY,pointerId:e.pointerId,altKey:e.altKey,ctrlKey:e.ctrlKey,metaKey:e.metaKey,shiftKey:e.shiftKey,force:true});return;}
     if(e.button===0&&!e.altKey&&sel3.armed){sel3HoverClear();if(sel3DragDown(hit,e))return;p3SelectAt(hit,e);return;}
     /* mask mode: Paint must be on to paint; Box, Lasso and Polygon draw shapes */
     /* the projection gizmo (a material or mask row projected from 3D) */
@@ -826,7 +827,7 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
       if(d.fy==null){d.fy=c.yaw;d.fp=c.pitch;}d.fy-=dx*.008;d.fp=clamp(d.fp+dy*.008,-1.55,1.55);
       if(e.shiftKey){const Q=Math.PI/2;if(Math.abs(d.fp)>Math.PI/4){c.pitch=d.fp>0?1.5699:-1.5699;c.yaw=Math.round(d.fy/Q)*Q;}else{c.pitch=0;c.yaw=Math.round(d.fy/Q)*Q;}}
       else{c.yaw=d.fy;c.pitch=d.fp;}}v3.dirty=true;requestRender();});
-  const up=e=>{if(typeof pfBusy==='function'&&pfBusy()){pfUp(e);return;}if(pgz.drag){pgzUp();return;}if(typeof g3Up==='function'&&g3.drag){g3Up();return;}if(lgz.drag){lgzUp();return;}if(sel3DragBusy()){sel3DragUp(e,e.type!=='pointerup',hit);return;}if(mk3Busy()&&e.type!=='lostpointercapture'){mk3Up(e);return;}if(v3.drag&&e.pointerId!==undefined&&v3.drag.id!==e.pointerId)return;v3.drag=null;meshUp(e);};
+  const up=e=>{if(typeof pfBusy==='function'&&pfBusy()){pfUp(e);return;}if(pgz.drag){pgzUp();return;}if(typeof g3Up==='function'&&g3.drag){g3Up();return;}if(lgz.drag){lgzUp();return;}if(sel3DragBusy()){sel3DragUp(e,e.type!=='pointerup',hit);return;}if(mk3Busy()&&e.type!=='lostpointercapture'){mk3Up(e);return;}if(v3.drag&&e.pointerId!==undefined&&v3.drag.id!==e.pointerId)return;{const ac=v3.altClick;v3.altClick=null;if(ac&&e.type==='pointerup'&&ac.id===e.pointerId&&Math.hypot(e.clientX-ac.x,e.clientY-ac.y)<4)v3PickOnce(hit,e);}v3.drag=null;meshUp(e);};
   hit.addEventListener('pointerup',up);hit.addEventListener('pointercancel',up);hit.addEventListener('lostpointercapture',up);hit.addEventListener('pointerleave',()=>{sel3HoverClear();v3.hover=false;v3PickRelease();v3PickHold.hit=null;v3PickHold.point=null;meshCursor(hit,null);});hit.addEventListener('pointerenter',()=>{v3.hover=true;});
   hit.addEventListener('wheel',e=>{e.preventDefault();e.stopPropagation();v3.cam.dist=v3Zoom(v3.cam.dist*Math.exp(e.deltaY*.0012));v3.dirty=true;requestRender();},{passive:false});
   for(const t of ['selectstart','dragstart'])hit.parentNode.addEventListener(t,e=>e.preventDefault());

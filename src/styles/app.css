@@ -1906,3 +1906,8 @@ body.sharp .xwset,body.sharp .xwtile,body.sharp .xweng,body.sharp .xwfile,body.s
 #modal:has(.prtext) .dialog.resizable{width:min(920px,96vw);height:min(86vh,820px)}
 #modal:has(.prtext) .prtext{height:calc(100% - 12px);min-height:240px}
 #modal:has(.prtext) #dlgBody>.dlg-grid{height:100%;grid-template-rows:auto minmax(0,1fr) auto}
+
+/* (0.98.4) map chips are tick boxes */
+.xwfile{display:inline-flex;align-items:flex-start;gap:6px;cursor:pointer}.xwfile input{margin:3px 0 0}.xwfile-t{display:grid;gap:0;min-width:0}.xwfile.off{opacity:.5}.xwfile.off code{text-decoration:line-through}
+
+.optexport{margin-left:auto;padding:4px 16px;font-weight:600}

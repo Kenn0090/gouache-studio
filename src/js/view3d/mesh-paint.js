@@ -275,18 +275,24 @@ function v3PickFast(hit,e){if((v3PB.key!==v3PickBufKey(hit)||v3PB.mesh!==v3.mesh
   const x=clamp(Math.floor(px/v3PB.sc),0,v3PB.w-1),y=clamp(Math.floor(py/v3PB.sc),0,v3PB.h-1),i=(y*v3PB.w+x)*4,d=v3PB.data;v3PickStats.looks++;
   if(d[i+3]<.5)return null;const tile=p3UdimAddress(d[i],d[i+1]),uv=p3.udim&&tile?tile.uv:[d[i]-Math.floor(d[i]),d[i+1]-Math.floor(d[i+1])];return {uv,tile,set:Math.round(d[i+3]-1),dist:d[i+2]};}
 const v3HP={busy:false};
-function v3HoverPick(hit,e){if(!(e.again?v3PickHeld():v3PickHeld(e))||stroke)return;v3PickQ={clientX:e.clientX,clientY:e.clientY,hit};if(v3HP.busy)return;v3HP.busy=true;
+function v3HoverPick(hit,e){if(prefs.altPickMode!=='hover'&&!e.force)return;if(!(e.again?v3PickHeld():v3PickHeld(e))||stroke)return;v3PickQ={clientX:e.clientX,clientY:e.clientY,hit};if(v3HP.busy)return;v3HP.busy=true;
   try{v3HoverPickRun();}finally{requestAnimationFrame(()=>{v3HP.busy=false;const q=v3PickQ;if(q)v3HoverPick(q.hit,{clientX:q.clientX,clientY:q.clientY,again:true});});}}
-function v3HoverPickRun(){{const ev=v3PickQ;if(!ev)return;const hit=ev.hit;v3PickQ=null;if(!v3PickHeld()||!modal.hidden||v3.drag||v3.mstroke||!v3.on||!v3.hover)return;const p=v3PickFast(hit,ev);const t=p&&ui.mode==='p3d'&&typeof p3SetTex==='function'?p3SetTex(p.set,'base'):v3.tex.base;if(!p||!t)return;
-    const x=clamp(Math.floor(p.uv[0]*t.w),0,t.w-1),y=clamp(Math.floor(p.uv[1]*t.h),0,t.h-1),d=captureRegionNow(t,x,y,1,1).data;
-    let c=t.depth===16?(()=>{const L=h2fLut();return [L[d[0]],L[d[1]],L[d[2]],L[d[3]]];})():[d[0]/255,d[1]/255,d[2]/255,d[3]/255];
-    if(c[3]<.02)return;c=[c[0]/c[3],c[1]/c[3],c[2]/c[3]].map(v=>clamp(v,0,1));if(toHex(c)!==toHex(ui.fg))setFG(c);}}
-
+function v3HoverPickRun(){{const ev=v3PickQ;if(!ev)return;const hit=ev.hit;v3PickQ=null;if(!v3PickHeld()||!modal.hidden||v3.drag||v3.mstroke||!v3.on||!v3.hover)return;v3PickApply(hit,ev,false);}}
+/* (0.98.4) sample size (prefs.pickSize: 1, 3, 5, 11, 31 texels, averaged) and masks: on a mask the grey value is picked */
+function v3SampleAt(t,x,y){const n=Math.max(1,+prefs.pickSize||1),h=n>>1,x0=clamp(x-h,0,t.w-1),y0=clamp(y-h,0,t.h-1),w=Math.min(n,t.w-x0),hh=Math.min(n,t.h-y0),d=captureRegionNow(t,x0,y0,w,hh).data;
+  const L=t.depth===16?h2fLut():null;let r=0,g=0,b=0,a=0;
+  for(let i=0;i<w*hh;i++){const k=i*4;const R=L?L[d[k]]:d[k]/255,G=L?L[d[k+1]]:d[k+1]/255,B=L?L[d[k+2]]:d[k+2]/255,A=L?L[d[k+3]]:d[k+3]/255;r+=R;g+=G;b+=B;a+=A;}
+  if(a<.02*w*hh)return null;return [r/a,g/a,b/a].map(v=>clamp(v,0,1));}
+function v3PickApply(hit,e,recent){const p=v3PickFast(hit,e);if(!p)return;const act=typeof doc!=='undefined'&&doc.active;
+  let t,mask=false;if(act&&act.editMask&&act.mask&&act.mask.target){t=act.mask.target;mask=true;}
+  else t=ui.mode==='p3d'&&typeof p3SetTex==='function'?p3SetTex(p.set,'base'):v3.tex.base;if(!t)return;
+  const x=clamp(Math.floor(p.uv[0]*t.w),0,t.w-1),y=clamp(Math.floor(p.uv[1]*t.h),0,t.h-1);
+  let c;if(mask){const d=captureRegionNow(t,x,y,1,1).data;const L=t.depth===16?h2fLut():null;const v=L?L[d[3]||d[0]]:(d[3]||d[0])/255;c=[v,v,v];}else c=v3SampleAt(t,x,y);
+  if(!c)return;if(toHex(c)!==toHex(ui.fg)){setFG(c);if(recent&&typeof pushRecent==='function')pushRecent(c);}}
+/* Alt + click (not drag) picks once; Preferences can bring the old pick-while-hovering back */
+function v3PickOnce(hit,e){if(prefs.altPick===false||sel3.armed||['bake','convert'].includes(ui.mode)||['heal','clone'].includes(ui.tool)||!v3.on)return;v3PickApply(hit,e,true);}
 /* (0.96.5) the Eyedropper tool on the model: the colour of the set's base colour under the pointer */
-function v3ToolPick(hit,e){const p=v3PickFast(hit,e);const t=p&&ui.mode==='p3d'&&typeof p3SetTex==='function'?p3SetTex(p.set,'base'):v3.tex.base;if(!p||!t)return;
-  const x=clamp(Math.floor(p.uv[0]*t.w),0,t.w-1),y=clamp(Math.floor(p.uv[1]*t.h),0,t.h-1),d=captureRegionNow(t,x,y,1,1).data;
-  let c=t.depth===16?(()=>{const L=h2fLut();return [L[d[0]],L[d[1]],L[d[2]],L[d[3]]];})():[d[0]/255,d[1]/255,d[2]/255,d[3]/255];
-  if(c[3]<.02)return;c=[c[0]/c[3],c[1]/c[3],c[2]/c[3]].map(v=>clamp(v,0,1));if(toHex(c)!==toHex(ui.fg)){setFG(c);if(typeof pushRecent==='function')pushRecent(c);}}
+function v3ToolPick(hit,e){v3PickApply(hit,e,true);}
 /* ---- mirror and radial painting on the model ----
    Mirrors across X, Y and/or Z planes (each can be moved off centre, snapping to the centre and to steps), and
    radial copies around an axis. The copies are matrices: every texel also takes the brush where its mirror image is. */
