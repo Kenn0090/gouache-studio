@@ -34,7 +34,7 @@ function skbTargets(w,h){let X=skb.F;if(X&&(X.w!==w||X.h!==h)){skbFree();X=null;
   /* the under-skin picture's framebuffer also holds the scene's depth, so hidden skin is not drawn */
   for(const t of [X.d,X.a]){gl.bindFramebuffer(gl.FRAMEBUFFER,t.fbo);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.TEXTURE_2D,X.dt,0);}gl.bindFramebuffer(gl.FRAMEBUFFER,null);return X;}
 /* blur distance in pixels for each colour: Scatter Depth (mm) × scatter colour, at the model's real size on screen */
-function skbRadius(P,F){const s=v3s(),m=v3.mesh;if(!m)return [0,0,0];const realMm=Math.max(10,skAutoCm(m)*10)/2;
+function skbRadius(P,F){const s=v3s(),m=v3.mesh;if(!m)return [0,0,0];const realMm=Math.max(10,(P.realH!=null?P.realH:skAutoCm(m))*10)/2;
   const halfView=s.ortho?v3.cam.dist*Math.tan(s.fov*Math.PI/360):v3.cam.dist*Math.tan(s.fov*Math.PI/360);
   const pxPerUnit=(F.h/2)/Math.max(1e-4,halfView),pxPerMm=pxPerUnit*(m.radius||1)/realMm,c=P.col||[1,.62,.52],d=Math.max(0,P.scatDepth??1);
   return c.map(x=>Math.min(48,d*(0.35+0.65*x)*pxPerMm));}
