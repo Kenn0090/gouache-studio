@@ -1,0 +1,18 @@
+const {chromium}=require('playwright');const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const p=await (await b.newContext({viewport:{width:1500,height:900}})).newPage();const errs=[];p.on('pageerror',e=>errs.push(e.stack));
+ await p.route('**/*',r=>{const u=r.request().url();if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});if(u.startsWith('file:'))return r.continue();return r.abort();});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ await p.evaluate(()=>__gs.newDoc(128,128,8,[.5,.5,.5],'ap',false,'pbr'));await p.waitForTimeout(500);
+ await p.click('#modeTabs [data-mode=p3d]');await p.waitForTimeout(2000);
+ const bb=await p.locator('#optExport').boundingBox();ok(!!bb,'export button exists');
+ await p.mouse.move(bb.x+10,bb.y+10);await p.mouse.down();await p.mouse.move(bb.x-250,bb.y+300,{steps:8});await p.mouse.up();await p.waitForTimeout(300);
+ const a=await p.locator('#optExport').boundingBox();ok(Math.abs(a.x-bb.x)>150&&Math.abs(a.y-bb.y)>150,'dragging moves it '+Math.round(bb.x)+','+Math.round(bb.y)+' -> '+Math.round(a.x)+','+Math.round(a.y));
+ ok(await p.evaluate(()=>document.getElementById('modal').hidden),'a drag does not open the export window');
+ await p.evaluate(()=>{__gs.buildOptBar&&__gs.buildOptBar();});await p.waitForTimeout(300);const a2=await p.locator('#optExport').boundingBox();ok(Math.abs(a2.x-a.x)<3,'the place is kept when the bar is rebuilt');
+ await p.mouse.click(a.x+10,a.y+10);await p.waitForTimeout(800);ok(!(await p.evaluate(()=>document.getElementById('modal').hidden)),'a click still opens it');
+ const opts=await p.evaluate(()=>[...document.querySelectorAll('#txFmt option')].map(o=>o.value));console.log(opts.join());ok(['png','tga','tif','dds','webp','bmp','jpg'].every(f=>opts.includes(f)),'more formats in the list');
+ const sig=await p.evaluate(async()=>{const g=__gs,out={};for(const f of ['tif','dds','webp','bmp','jpg','tga','png']){g.texCfg.fmt=f;const files=await g.buildTextures(Object.values(g.TEX_PRESETS)[0],'t');const d=files[0].data;out[f]=[files[0].name.split('.').pop(),[...d.slice(0,4)].join(',')];}return out;});
+ console.log(JSON.stringify(sig));
+ ok(sig.bmp&&sig.bmp[1].startsWith('66,77')&&sig.dds&&sig.dds[1].startsWith('68,68,83')&&sig.jpg&&sig.jpg[1].startsWith('255,216')&&sig.tif&&(sig.tif[1].startsWith('73,73')||sig.tif[1].startsWith('77,77'))&&sig.webp&&sig.webp[1].startsWith('82,73,70'),'each format writes its own file type');
+ ok(errs.length===0,'no errors '+errs.join('|').slice(0,200));await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);})();

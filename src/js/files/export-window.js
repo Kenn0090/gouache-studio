@@ -79,7 +79,7 @@ function xwLeft(redraw){const sizes=[[0,'As painted'+(ui.mode==='p3d'?'':' ('+do
       TEX_PRESETS[texCfg.preset].user?el('button',{class:'btn sm',type:'button',id:'txEditPreset',text:'Edit preset…',onclick:()=>{closeDialog();dlgTexPreset(texCfg.preset);}}):null),
     xwRow('Name',nameIn,'txName'),
     xwRow('Size',xwSel('txSize',sizes,texCfg.size,v=>{texCfg.size=+v;redraw();},'Size')),
-    xwRow('Format',xwSel('txFmt',[['png','PNG'],['tga','TGA']],texCfg.fmt,v=>{texCfg.fmt=v;redraw();},'Format'))];
+    xwRow('Format',xwSel('txFmt',TEX_FORMATS,texCfg.fmt,v=>{texCfg.fmt=v;redraw();},'Format'))];
   if(mxHasModel())out.push(xwRow('Model',xwSel('txModel',[['none','No model'],['glb','.glb (textures inside)'],['obj','.obj + .mtl'],['fbx','.fbx (mesh + texture links)']],texCfg.model||'none',v=>{texCfg.model=v;redraw();},'Model')));
   if(platform.isDesktop&&!esActive()){const d=texCfg.dir||'';out.push(el('div',{class:'frow xwrow'},el('label',{text:'Folder'}),el('div',{class:'xwfolder'},el('span',{class:'xwdir',id:'xwDir',title:d,text:d||'Asked when you export'}),
     el('button',{class:'btn sm',type:'button',id:'xwFolder',text:d?'Change…':'Choose…',onclick:async()=>{const p=await platform.pickFolder();if(p){texCfg.dir=p;try{localStorage.setItem('gs.exportDir',p);}catch(e){}redraw();}}}))));}
@@ -92,7 +92,7 @@ function xwLeft(redraw){const sizes=[[0,'As painted'+(ui.mode==='p3d'?'':' ('+do
     xwRow('Padding',xwSel('txPad',TEX_PAD_MODES,texCfg.pad||'none',v=>{texCfg.pad=v;},'Padding')),
     makeSlider({id:'txPadPx',label:'Dilation',min:0,max:128,step:1,value:texCfg.padPx??16,def:16,fmt:v=>Math.round(v)+' px',onInput:v=>{texCfg.padPx=Math.round(v);}}).el,
     el('p',{class:'note',id:'txPadNote',text:texPadAvail()?'Padding grows each UV island’s colours past its edges, so the engine shows no seams.':'Padding needs the model’s UVs: export from 3D Paint, or open the 3D view with your model.'}),
-    chk('txH16','Height at 16 bits (PNG)',texCfg.h16,v=>{texCfg.h16=v;redraw(true);}),
+    chk('txH16','Height at 16 bits (PNG, TIFF)',texCfg.h16,v=>{texCfg.h16=v;redraw(true);}),
     chk('txPsd','Also each channel as a layered PSD',!!texCfg.psd,v=>{texCfg.psd=v;}),
     texMeshKeys().length?chk('txMeshMaps','Export baked maps ('+texMeshKeys().length+' in this set)',texCfg.meshMaps,v=>{texCfg.meshMaps=v;redraw();}):el('p',{class:'note',id:'txNoBaked',text:'This set has no baked maps yet.'}),meshPick,
     ...(mxHasModel()&&(texCfg.model==='obj'||texCfg.model==='fbx')?[xwRow('Up axis',xwSel('txUp',[['engine','Follow the engine (now '+(upEngine()==='z'?'Z':'Y')+' up)'],['y','Y up'],['z','Z up']],texCfg.up||'engine',v=>{texCfg.up=v;},'Up axis'))]:[])));

@@ -94,3 +94,15 @@ function buildXfOptBar(bar){bar.classList.add('xfoptions');
     bar.append(chk('ob_xf_link','Link W/H',ui.xfLink,v=>{ui.xfLink=v;const e=$('#xfLink');if(e)e.checked=v;}));}
   const interp=el('select',{id:'ob_xf_interp',class:'optsel','aria-label':'Transform resampling',title:'Choose how pixels are reconstructed when the layer changes size'},...[['2','Smooth'],['1','Bilinear'],['0','Nearest']].map(([v,t])=>el('option',{value:v,text:t})));interp.value=String(ui.xfInterp);interp.onchange=()=>{ui.xfInterp=+interp.value;const e=$('#xfInterp');if(e)e.value=interp.value;xfRender(false);};
   bar.append(interp,el('button',{id:'ob_xf_apply',class:'btn sm primary',text:'Apply',title:'Apply this transform to the layer',onclick:xfCommit}),el('button',{id:'ob_xf_cancel',class:'btn sm',text:'Cancel',title:'Discard this transform',onclick:xfCancel}));xfQuickSync();}
+
+/* (0.98.5, Kenn) the Export button can be dragged anywhere; the place is remembered, right-click puts it back */
+function optExportPlace(){const b=document.getElementById('optExport');if(!b)return;let pos=null;try{pos=JSON.parse(localStorage.getItem('gs.optExport')||'null');}catch(e){}
+  const apply=()=>{if(pos){b.style.position='fixed';b.style.margin='0';b.style.zIndex='30';b.style.left=Math.min(innerWidth-b.offsetWidth-4,Math.max(4,pos.x))+'px';b.style.top=Math.min(innerHeight-b.offsetHeight-4,Math.max(4,pos.y))+'px';}else{b.style.position=b.style.left=b.style.top=b.style.margin=b.style.zIndex='';}};
+  apply();b.title='Export the textures (Ctrl+Shift+E). Drag to move this button; right-click to put it back.';
+  let drag=null,moved=false;
+  b.addEventListener('pointerdown',e=>{if(e.button!==0)return;const r=b.getBoundingClientRect();drag={dx:e.clientX-r.left,dy:e.clientY-r.top,x:e.clientX,y:e.clientY};moved=false;try{b.setPointerCapture(e.pointerId);}catch(x){}});
+  b.addEventListener('pointermove',e=>{if(!drag)return;if(!moved&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<6)return;moved=true;pos={x:e.clientX-drag.dx,y:e.clientY-drag.dy};apply();});
+  b.addEventListener('pointerup',()=>{if(drag&&moved){try{localStorage.setItem('gs.optExport',JSON.stringify(pos));}catch(e){}}drag=null;});
+  b.addEventListener('click',e=>{if(moved){e.stopImmediatePropagation();e.preventDefault();moved=false;}},true);
+  b.addEventListener('contextmenu',e=>{e.preventDefault();pos=null;try{localStorage.removeItem('gs.optExport');}catch(e){}apply();});}
+{const f=buildOptBar;buildOptBar=function(){const r=f.apply(this,arguments);try{optExportPlace();}catch(e){console.warn('export button',e);}return r;};}
