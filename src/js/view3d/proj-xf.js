@@ -50,14 +50,14 @@ function pxfUvCorners(xf){const X=pxfNorm(xf),a=(X.r[2]||0)*Math.PI/180,ca=Math.
 function pxfTarget(){const L=doc.active;if(!L||ui.mode==='anim')return null;
   const liveM=typeof lm!=='undefined'&&lm.on&&ui.msSel&&ui.msSel.L===lm.M?lm.M:null;
   if(ui.msSel&&(ui.msSel.L===L||liveM)){const r=typeof msRowOf==='function'?msRowOf(ui.msSel):null,owner=ui.msSel.L;
-    if(r&&(r.kind==='image'||r.kind==='noise'||r.kind==='gen'))return {kind:'row',L:owner,r,title:msRowTitle(r),mode:pxfRowMode(r),get xf(){return pxfOf(r.p);},
+    if(r&&(r.kind==='image'||r.kind==='noise'||r.kind==='volume'||r.kind==='gen'))return {kind:'row',L:owner,r,title:msRowTitle(r),mode:pxfRowMode(r),get xf(){return pxfOf(r.p);},
       edit(fn){msEdit(owner,r,x=>fn(pxfOf(x.p)));}};
     return null;}
   if(isLayer(L)&&L.fill&&L.fill.maps&&Object.values(L.fill.maps).some(s=>s&&s.on&&s.src==='image'))return {kind:'fill',L,title:L.name,mode:L.fill.proj||'uv',get xf(){return pxfOf(L.fill);},
     edit(fn){matEdBegin(L);fn(pxfOf(L.fill));fillRender(L);clearTimeout(matEd.timer);matEd.timer=setTimeout(matEdCommit,700);}};
   return null;}
 /* a row's projection: pictures choose any of the four; patterns are UV or World (3D) */
-function pxfRowMode(r){const p=r.p||{};if(r.kind==='image')return p.proj||(p.tri?'tri':'uv');if(r.kind==='noise')return p.proj||(p.tri===false?'uv':'world');return p.proj||'world';}
+function pxfRowMode(r){const p=r.p||{};if(r.kind==='image')return p.proj||(p.tri?'tri':'uv');if(r.kind==='noise')return p.proj||(p.tri===false?'uv':'world');if(r.kind==='volume')return p.proj||'world';return p.proj||'world';}
 
 /* ---- the transform fields in Properties ---- */
 /* (0.33, Kenn) lock X and Y (and Z) together like Substance Painter: changing one scale number changes the others by the same factor */

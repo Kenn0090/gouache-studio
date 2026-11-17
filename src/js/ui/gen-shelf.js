@@ -19,6 +19,7 @@ function genRecs(){const R=[];
   for(const [k,title,part] of MS_MESH_GENS)R.push({group:'From baked maps',name:title,key:k,make:()=>['mesh',{p:Object.assign(MS_KINDS.mesh.p(),{k:msMeshPick(k),part:part||'both'})}]});
   for(const [k,title] of MS_GENS)R.push({group:'Wear and weather',name:title,key:k,make:()=>['gen',{p:msGenDefaults(k)}]});
   R.push({group:'Gradients and direction',name:'3D gradient',key:'g3d',make:()=>['g3d']},{group:'Gradients and direction',name:'Direction (faces pointing up)',key:'dir',make:()=>['dir']},{group:'Gradients and direction',name:'Gradient (bottom to top)',key:'grad',make:()=>['grad']});
+  R.push({group:'Noise and grunge',name:'Volume noise',key:'volume',make:()=>['volume']});
   for(const [k,title] of MS_NOISES)R.push({group:'Noise and grunge',name:title,key:k,make:()=>['noise',{p:Object.assign(MS_KINDS.noise.p(),{type:k})}]});
   return R;}
 /* put one generator on a layer's mask (the mask is made if the layer has none) */

@@ -16,4 +16,8 @@ function vpStripSync(show){
     work.append(vps.el);}
   vps.el.hidden=!on;if(!on)return;
   for(const b of vps.el.querySelectorAll('.vpb[data-k]'))b.setAttribute('aria-pressed',String(p3.layout===b.dataset.k));
+  /* (0.98.6) UDIM sets: one button per tile; click frames that tile in the flat view and flashes it */
+  for(const x of [...vps.el.querySelectorAll('.vptile,.vptsep')])x.remove();
+  {const B=typeof udimImgBox==='function'?udimImgBox():null;if(B){vps.el.append(el('span',{class:'vpsep vptsep'}));for(const T of B.B.tiles)vps.el.append(el('button',{class:'vpb vptile',id:'vp_tile_'+T.id,text:String(T.id),title:'Show UDIM tile '+T.id+' in the flat view',onclick:()=>{if(typeof udimFrameTile==='function')udimFrameTile(B.name,T);}}));}}
   const uv=$('#vp_uv');if(uv)uv.setAttribute('aria-pressed',String(!!v3s().showUV));const lt=$('#vp_lit');if(lt)lt.setAttribute('aria-pressed',String(!!v3s().litUV));}
+{const f=buildP3Panel;buildP3Panel=function(){const r=f.apply(this,arguments);try{if(ui.mode==='p3d')vpStripSync();}catch(e){console.warn('tile buttons',e);}return r;};}

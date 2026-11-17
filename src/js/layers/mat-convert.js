@@ -58,22 +58,32 @@ function dlgMatConvert(L,only){L=L||doc.active;if(!isLayer(L)||L.fx){toast('Sele
       const t=maps[first],s=makeTarget(PW,PH,8,false);copyScaled(t,s);const d=captureRegionNow(s,0,0,PW,PH).data;disposeTarget(s);for(const k in maps)disposeTarget(maps[k]);
       const id=g.createImageData(PW,PH);for(let k=0;k<PW*PH;k++){const a=d[k*4+3]||1;id.data[k*4]=d[k*4]*255/a;id.data[k*4+1]=d[k*4+1]*255/a;id.data[k*4+2]=d[k*4+2]*255/a;id.data[k*4+3]=255;}g.putImageData(id,0,0);pvNote.textContent=(MC_MAPS.find(x=>x[0]===first)||[0,first])[1];}catch(e){console.warn('convert preview',e);}},160);};
   const set=(k,v)=>{c[k]=v;pvDraw();};
-  const box=el('div',{class:'dlg-grid'},el('p',{class:'note',text:'Reads the height of “'+L.name+'” (or its normal) and makes the maps masks and generators use.'}),
-    el('div',{class:'mcpvbox'},pv,pvNote),el('div',{class:'sub',text:'Make'}),
-    el('div',{class:'chips'},...MC_MAPS.filter(([k])=>wants(k)).map(([k,t])=>chk('mc_'+k,t,!!c[k],v=>set(k,v)))),
+  /* (0.98.6, Kenn: "get rid of tall menus: a full, resizable, rectangular window, simple, with the full version in Convert") two columns:
+     the picture and the maps on the left; strength, where the results go and a short "More options" fold on the right */
+  const more=el('details',{class:'mcmore',id:'mc_more'},el('summary',{text:'More options'}),el('div',{class:'dlg-grid'},
     showR?makeSlider({id:'mc_r',label:'Radius',min:1,max:32,step:.5,value:c.r,fmt:v=>v+'px',onInput:v=>set('r',v)}).el:null,
-    makeSlider({id:'mc_s',label:'Strength',min:.1,max:4,step:.05,value:c.str,fmt:pct,onInput:v=>set('str',v)}).el,
-    ...(typeof curvBandsSliders==='function'&&(c.curv||c.curvEdge||c.curvCrease||c.rough||c.metal)?[el('div',{class:'sub',text:'Curvature detail'}),...curvBandsSliders(()=>c.cb,(k,v)=>set('cb',Object.assign({},c.cb||{},{[k]:v})),'mcCb_')]:[]),
     showAo?makeSlider({id:'mc_aor',label:'AO reach',min:2,max:96,step:1,value:c.aoR,fmt:v=>v+'px',onInput:v=>set('aoR',v)}).el:null,
-    all?el('div',{class:'sub',text:'Roughness: tops and gaps'}):null,
-    all?makeSlider({id:'mc_top',label:'Tops',min:0,max:1,step:.01,value:c.top,fmt:pct,onInput:v=>{c.top=v;}}).el:null,
-    all?makeSlider({id:'mc_gap',label:'Gaps',min:0,max:1,step:.01,value:c.gap,fmt:pct,onInput:v=>{c.gap=v;}}).el:null,
+    all?makeSlider({id:'mc_top',label:'Roughness on tops',min:0,max:1,step:.01,value:c.top,fmt:pct,onInput:v=>{c.top=v;}}).el:null,
+    all?makeSlider({id:'mc_gap',label:'Roughness in gaps',min:0,max:1,step:.01,value:c.gap,fmt:pct,onInput:v=>{c.gap=v;}}).el:null,
     all?el('div',{class:'frow'},el('label',{text:'Bare metal on'}),seg([['edge','Worn edges'],['cav','Cavities']],c.metalOn,v=>{c.metalOn=v;},'Bare metal on')):null,
     all?makeSlider({id:'mc_ma',label:'Metal',min:0,max:1,step:.01,value:c.metalAmt,fmt:pct,onInput:v=>{c.metalAmt=v;}}).el:null,
-    el('div',{class:'sub',text:'Send to (any of them)'}),
+    el('p',{class:'note',text:'Curvature detail (big, medium, small shapes) and every other control are in the Convert tab.'})));
+  const toConvert=el('button',{type:'button',class:'btn',id:'mc_toConvert',text:'Open in Convert tab',title:'Send this material\u2019s height (or normal) to the Convert tab, with all its controls',onclick:()=>{closeDialog();mcOpenConvert(L);}});
+  const left=el('div',{class:'mccol'},el('p',{class:'note',text:'Reads the height of \u201c'+L.name+'\u201d (or its normal) and makes the maps masks and generators use.'}),
+    el('div',{class:'mcpvbox'},pv,pvNote),el('div',{class:'sub',text:'Make'}),
+    el('div',{class:'chips'},...MC_MAPS.filter(([k])=>wants(k)).map(([k,t])=>chk('mc_'+k,t,!!c[k],v=>set(k,v)))),
+    makeSlider({id:'mc_s',label:'Strength',min:.1,max:4,step:.05,value:c.str,fmt:pct,onInput:v=>set('str',v)}).el);
+  const right=el('div',{class:'mccol'},el('div',{class:'sub',text:'Send to (any of them)'}),
     chk('mc_toLayers','New layers (one per map)',c.toLayers,v=>{c.toLayers=v;}),
     chk('mc_toMesh','Mesh maps, as converted maps (masks, generators and the Converted tab use them)',c.toMesh,v=>{c.toMesh=v;}),
     all?chk('mc_toBaked','Also add them onto the baked maps',c.toBaked,v=>{c.toBaked=v;}):null,
-    L.fill&&all?chk('mc_toMat','Into this material’s own roughness and metallic',c.toMat,v=>{c.toMat=v;}):null);
-  openDialog({title:only?'Convert “'+L.name+'”':'Mesh maps from a material',body:box,okLabel:'Make',onOk(){if(!MC_MAPS.some(([k])=>c[k])){toast('Tick at least one map.');return false;}
+    L.fill&&all?chk('mc_toMat','Into this material\u2019s own roughness and metallic',c.toMat,v=>{c.toMat=v;}):null,
+    more,el('div',{class:'frow'},toConvert));
+  const box=el('div',{class:'mcwide'},left,right);
+  openDialog({title:only?'Convert “'+L.name+'”':'Mesh maps from a material',body:box,xwin:true,resizable:true,okLabel:'Make',onOk(){if(!MC_MAPS.some(([k])=>c[k])){toast('Tick at least one map.');return false;}
     if(!(c.toMesh||c.toBaked||c.toLayers||c.toMat)){toast('Tick where they go.');return false;}clearTimeout(pvT);Object.assign(mcCfg,{r:c.r,str:c.str,aoR:c.aoR});if(!only)Object.assign(mcCfg,c);mcRun(L,c);}});pvDraw();}
+
+/* the material's height (or its normal, rebuilt into a height) goes to the Convert tab as its source */
+function mcOpenConvert(L){const src=mcSource(L);if(!src){toast('\u201c'+L.name+'\u201d has no height or normal to send.');return;}
+  const t=makeTarget(src.h.w,src.h.h,8,false);blit(src.h,t,0,0,src.h.w,src.h.h,0,0);if(src.own)disposeTarget(src.h);
+  if(!setMode('convert',true)){disposeTarget(t);return;}tabDocResize(t.w,t.h,'Convert');cvSetSource(t,L.name,true);cvSetKind('height');cvAllDirty();buildConvertPanel();}
