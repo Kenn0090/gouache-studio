@@ -225,7 +225,7 @@ function meshUp(e){if(v3.shiftPend&&meshShiftUp(e))return;const m=v3.mstroke;if(
 /* round cursor showing the brush size over the model */
 function meshCursor(hit,e){mir3CursorMove(hit,e);let c=v3.curEl;if(!c||!c.isConnected){c=v3.curEl=el('div',{class:'v3cur'});hit.parentNode.append(c);}
   if(e&&sel3.armed&&!e.altKey){c.hidden=true;hit.style.cursor='crosshair';return;}
-  if(!e||!v3.paintOn||!MESH_TOOLS.includes(ui.tool)||e.altKey||v3PickHeld(e)||v3.drag){c.hidden=true;hit.style.cursor=e&&v3PickHeld(e)?brushPickerCursor:'';return;}hit.style.cursor='none';const r=hit.getBoundingClientRect(),pr=hit.parentNode.getBoundingClientRect(),d=Math.max(3,(ui.tool==='liquify'?liq.size:brush.size)*meshBrushScale(r.height));
+  if(!e||!v3.paintOn||!MESH_TOOLS.includes(ui.tool)||e.altKey||v3PickHeld(e)||v3.drag){c.hidden=true;hit.style.cursor=e&&v3PickHeld(e)?'crosshair':'';return;}hit.style.cursor='none';const r=hit.getBoundingClientRect(),pr=hit.parentNode.getBoundingClientRect(),d=Math.max(3,(ui.tool==='liquify'?liq.size:brush.size)*meshBrushScale(r.height));
   c.hidden=false;c.style.width=c.style.height=d+'px';c.style.transform='translate('+(e.clientX-pr.left-d/2)+'px,'+(e.clientY-pr.top-d/2)+'px)';tipCursor(c,d);}
 /* ---- what is under the pointer: the model's UV there (and how far away), from a one-pixel render ---- */
 const FS_3DPICK=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform vec3 uCamP; uniform float uSet; uniform int uOrtho; uniform vec3 uFwd; void main(){ o=vec4(vT,uOrtho==1?dot(vP-uCamP,uFwd):length(vP-uCamP),1.0+uSet); }`;

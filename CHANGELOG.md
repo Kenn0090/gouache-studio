@@ -1,3 +1,9 @@
+## 0.98.5
+
+- **No picker icon on Alt in 3D Paint.** Holding Alt over the model (or the flat texture view) no longer changes the pointer to the colour picker; use Z to pick.
+- **More texture file formats.** The Export window's Format list now has PNG, TGA, TIFF (8 or 16-bit height), DDS (uncompressed), WebP (lossless), BMP and JPG (lossy, not for normal maps).
+- **Draggable Export button.** Drag the Export button in the options bar anywhere; the place is remembered and right-click puts it back.
+
 ## 0.98.4
 
 - **Colour picking in 3D Paint.** Hold **Z** (rebindable) over the model: a small swatch shows the colour a click would pick, and clicking picks it. **Alt no longer picks** or shows the picker icon, so Alt+drag only turns the view (Preferences can bring back picking while hovering). The picker has a **sample size** (Point, 3×3, 5×5, 11×11, 31×31, averaged) in Preferences, and on a mask it picks the mask's grey value instead of the base colour.

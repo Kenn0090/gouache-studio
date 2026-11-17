@@ -116,7 +116,18 @@ async function encodePNGx(W,H,q,C,bits){const bpp=C*bits/8,row=1+W*bpp,raw=new U
    too fine to see. Same seed every time, so exports are repeatable. */
 function texDither(f){let s=0x9e3779b9;const r=()=>{s^=s<<13;s^=s>>>17;s^=s<<5;return (s>>>0)/4294967296;};for(let i=0;i<f.length;i++)f[i]+=(r()-r())/255;return f;}
 function quant(f,bits){const m=bits===16?65535:255,q=bits===16?new Uint16Array(f.length):new Uint8Array(f.length);for(let i=0;i<f.length;i++)q[i]=Math.min(1,Math.max(0,f[i]))*m+.5|0;return q;}
+/* (0.98.5) more file formats: the channels as 8- or 16-bit RGBA (grey fills RGB, no alpha = opaque) */
+function texRGBA(f,W,H,C,bits){const q=quant(f,bits),n=W*H,st=bits===16?new Uint16Array(n*4):new Uint8Array(n*4),one=bits===16?65535:255;
+  for(let i=0;i<n;i++){if(C===1){st[i*4]=st[i*4+1]=st[i*4+2]=q[i];st[i*4+3]=one;}else{for(let c=0;c<C;c++)st[i*4+c]=q[i*C+c];if(C===3)st[i*4+3]=one;}}return st;}
+function encodeBMP(W,H,st){const row=W*4,hd=54,out=new Uint8Array(hd+row*H),dv=new DataView(out.buffer);out[0]=66;out[1]=77;dv.setUint32(2,out.length,true);dv.setUint32(10,hd,true);dv.setUint32(14,40,true);dv.setInt32(18,W,true);dv.setInt32(22,H,true);dv.setUint16(26,1,true);dv.setUint16(28,32,true);dv.setUint32(34,row*H,true);dv.setInt32(38,2835,true);dv.setInt32(42,2835,true);
+  for(let y=0;y<H;y++){let o=hd+(H-1-y)*row;for(let x=0;x<W;x++){const i=(y*W+x)*4;out[o++]=st[i+2];out[o++]=st[i+1];out[o++]=st[i];out[o++]=st[i+3];}}return new Blob([out],{type:'image/bmp'});}
+const TEX_FORMATS=[['png','PNG (lossless)'],['tga','TGA'],['tif','TIFF'],['dds','DDS (uncompressed)'],['webp','WebP (lossless)'],['bmp','BMP'],['jpg','JPG (smaller, lossy: not for normal maps)']];
 async function encodeTex(W,H,f,C,fmt,bits){
+  if(fmt==='tif'){const b=bits===16?16:8;return encodeTIFF(W,H,texRGBA(f,W,H,C,b),b);}
+  if(fmt==='dds')return encodeDDS(W,H,texRGBA(f,W,H,C,8),'rgba',false);
+  if(fmt==='webp')return canvasBlob(W,H,texRGBA(f,W,H,C,8),'image/webp',1,false);
+  if(fmt==='jpg')return canvasBlob(W,H,texRGBA(f,W,H,C,8),'image/jpeg',.95,true);
+  if(fmt==='bmp')return encodeBMP(W,H,texRGBA(f,W,H,C,8));
   if(fmt==='tga'){const q=quant(f,8),st=new Uint8Array(W*H*4);for(let i=0;i<W*H;i++){if(C===1){st[i*4]=st[i*4+1]=st[i*4+2]=q[i];st[i*4+3]=255;}else{st.set(q.subarray(i*C,i*C+C),i*4);if(C===3)st[i*4+3]=255;}}
     return encodeTGA(W,H,st,true,C===4);}
   return encodePNGx(W,H,quant(f,bits),C,bits);}
@@ -169,7 +180,7 @@ async function buildTexturesIn(pr,name,W,H,nw,nh,pad,U){
       if(!has(rk)){const c=mapDefault(rk);for(let i=0;i<n;i++){rgba[i*4]=c[0];rgba[i*4+1]=c[1];rgba[i*4+2]=c[2];}}}
     else if(o.grey){const g=grey(o.grey);if(!g)continue;f=g.slice();C=1;}
     else{C=o.ch.length;f=new Float32Array(n*C);o.ch.forEach((k,c)=>{const g=grey(k),inv=k==='smooth',d=def(k);for(let i=0;i<n;i++){const v=g?g[i]:d;f[i*C+c]=inv&&g?1-v:v;}});}
-    const bits=o.grey==='height'&&texCfg.h16&&ext==='png'?16:8;
+    const bits=o.grey==='height'&&texCfg.h16&&(ext==='png'||ext==='tif')?16:8;
     if(U){for(const T of U.B.tiles){if(texTileOff(T.id))continue;const R=udimTileRect(U.m,T,W,H),ov=U.sz?0:texTileOv(T.id),ow=ov||(U.sz?U.sz[T.id]:nw),oh=ov?Math.max(1,Math.round(ov*nh/Math.max(1,nw))):(U.sz?U.sz[T.id]:nh),r=resampleF(texCrop(f,W,H,C,R),R[2],R[3],C,ow,oh,C===4);if(o.rgb==='normal'&&bits===8)texDither(r);
       const blob=await encodeTex(ow,oh,r,C,ext,bits);files.push({suffix:o.s,tile:T.id,name:pr.name(name).replace('{s}',o.s)+'.'+T.id+'.'+ext,data:new Uint8Array(await blob.arrayBuffer())});await tick();}continue;}
     const r=resampleF(f,W,H,C,nw,nh,C===4);if(o.rgb==='normal'&&bits===8)texDither(r);
@@ -212,7 +223,7 @@ const meshExportSuffix=k=>'Mesh_'+({normal:'Normal',height:'Height',ao:'AO',curv
 async function buildMeshMapTextures(pr,name){const files=[],pad=texPadBegin(texCfg.size||doc.w);try{for(const [k,t0] of Object.entries(doc.meshMaps||{})){if(!t0||!texMeshWanted(k))continue;
  const t=texPadT(pad,t0,true),C=['normal','wnormal','position','id'].includes(k)?3:1,raw=readMapF(t,C===3?4:1);if(t!==t0)release(t);let f=C===3?dropAlpha(raw,t.w*t.h):raw;
  if(k==='normal'&&texNormalFlip(pr))for(let i=1;i<f.length;i+=3)f[i]=1-f[i];
- const W=texCfg.size||t.w,H=texCfg.size?Math.max(1,Math.round(texCfg.size*t.h/t.w)):t.h,r=resampleF(f,t.w,t.h,C,W,H,false),bits=k==='height'&&texCfg.h16&&texCfg.fmt==='png'?16:8;
+ const W=texCfg.size||t.w,H=texCfg.size?Math.max(1,Math.round(texCfg.size*t.h/t.w)):t.h,r=resampleF(f,t.w,t.h,C,W,H,false),bits=k==='height'&&texCfg.h16&&(texCfg.fmt==='png'||texCfg.fmt==='tif')?16:8;
  const blob=await encodeTex(W,H,r,C,texCfg.fmt,bits),suffix=meshExportSuffix(k);files.push({suffix,name:pr.name(name).replace('{s}',suffix)+'.'+texCfg.fmt,data:new Uint8Array(await blob.arrayBuffer())});await tick();}}finally{texPadEnd(pad);}return files;}
 
 /* (0.97.26) channels no preset knows about (Scattering, Scatter colour, Translucency, Specular level, your own channels)

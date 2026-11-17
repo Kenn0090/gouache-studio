@@ -31,7 +31,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.mouse.move(cx,cy);await W(200);
  await p.keyboard.down('Alt');await p.mouse.move(cx+2,cy);await W(300);
  ok(await p.evaluate(()=>{const d=document.getElementById('pickPrev');return !d||d.hidden;}),'Alt shows no pick swatch');
- ok(await p.evaluate(()=>getComputedStyle(document.getElementById('v3Hit')).cursor)!=='cell'||true,'cursor checked');
+ ok(!(await p.evaluate(()=>document.getElementById('v3Hit').style.cursor+'|'+getComputedStyle(document.getElementById('v3Hit')).cursor)).includes('svg'),'Alt shows no picker icon');
  await p.keyboard.up('Alt');
  await p.keyboard.down('z');await p.mouse.move(cx,cy,{steps:2});await W(400);
 console.log(await p.evaluate(()=>JSON.stringify({ae:document.activeElement.tagName+'#'+document.activeElement.id,st:!!__gs.stroke,sel:__gs.sel3&&__gs.sel3.armed,mod:document.getElementById('modal').hidden,k:__gs.v3PickKey(),h:__gs.v3.hover,on:__gs.v3.on,m:__gs.ui.mode,held:__gs.v3PickHeld(),tool:__gs.ui.tool,ap:__gs.prefs.altPick})));
