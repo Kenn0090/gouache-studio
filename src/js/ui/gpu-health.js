@@ -37,7 +37,14 @@ cv.addEventListener('webglcontextlost',e=>{e.preventDefault();if(gpuHealth.lost)
 cv.addEventListener('webglcontextrestored',()=>{gpuLogAdd('context restored');toast('The graphics card came back. Restart the app to be safe.');});
 
 /* graphics memory: warn once when the textures we track get near what the card can hold */
-function gpuBudget(){try{const g=+localStorage.getItem('gs.vramSet');if(g>0)return g*1073741824;}catch(e){}if(gpuHealth.vram)return gpuHealth.vram;try{const v=+localStorage.getItem('gs.vram2');if(v>0)return v*1048576;}catch(e){}return 6*1073741824;}
+/* (0.98.10, Georgian: "why only 6 GB of my 24 GB?") a web page cannot read the card's memory, but it can read the card's name: known cards get their real size */
+const GPU_VRAM=[[/5090/,32],[/5080/,16],[/5070 ?ti/,16],[/5070/,12],[/4090/,24],[/4080/,16],[/4070 ?ti super/,16],[/4070 ?ti/,12],[/4070/,12],[/4060 ?ti/,8],[/4060/,8],[/3090/,24],[/3080 ?ti/,12],[/3080/,10],[/3070/,8],[/3060 ?ti/,8],[/3060/,12],[/3050/,8],
+  [/titan rtx/,24],[/2080 ?ti/,11],[/2080/,8],[/2070/,8],[/2060/,6],[/1080 ?ti/,11],[/1080/,8],[/1070/,8],[/1060/,6],[/a6000/,48],[/a5000/,24],[/a4000/,16],[/quadro rtx 6000/,24],
+  [/7900 ?xtx/,24],[/7900 ?xt/,20],[/7900 ?gre/,16],[/7800/,16],[/7700/,12],[/7600/,8],[/6950|6900/,16],[/6800/,16],[/6750|6700 ?xt/,12],[/6600/,8],[/rx 580|rx 480/,8],[/arc.*a770/,16],[/arc.*a750|arc.*a580/,8],[/arc.*b580/,12]];
+function gpuVramOf(name){const r=String(name||'').toLowerCase();if(!r||/swiftshader|llvmpipe|software|microsoft basic/.test(r))return 0;
+  const m=GPU_VRAM.find(([re])=>re.test(r));if(!m)return 0;return /laptop|max-q|mobile/.test(r)?Math.min(m[1],8):m[1];}/* laptop cards carry less than the desktop card of the same name */
+function gpuGuessVram(){try{return gpuVramOf(gpuInfo().renderer);}catch(e){return 0;}}
+function gpuBudget(){try{const g=+localStorage.getItem('gs.vramSet');if(g>0)return g*1073741824;}catch(e){}if(gpuHealth.vram)return gpuHealth.vram;try{const v=+localStorage.getItem('gs.vram2');if(v>0)return v*1048576;}catch(e){}const k=gpuGuessVram();if(k>0)return Math.floor(k*0.9*1073741824);return 6*1073741824;}
 setInterval(()=>{if(gpuHealth.lost||gpuHealth.warned||document.hidden)return;const G=gpuMemory(),b=gpuBudget();
   if(G.bytes>b*0.75){gpuHealth.warned=true;gpuLogAdd('memory high');toast('Graphics memory is nearly full ('+fmtBytes(G.bytes)+' of about '+fmtBytes(b)+'). Close tabs, use a smaller canvas or 8-bit, or lower the 3D quality to avoid a black screen.');}},5000);
 
@@ -113,7 +120,7 @@ function dlgGpuReport(){const pre=el('pre',{class:'note',style:'white-space:pre-
     ...[['high-performance','Fastest card (recommended)'],['default','Let the system decide'],['low-power','Power saving card']].map(([v,t])=>el('option',{value:v,text:t,selected:gpuPrefGet()===v})));
   const note=el('p',{class:'note',text:''});let txt=text0;
   const vsel=el('select',{id:'ghVram',onchange:e=>{try{if(e.target.value==='0')localStorage.removeItem('gs.vramSet');else localStorage.setItem('gs.vramSet',e.target.value);}catch(x){}gpuHealth.warned=false;note.textContent='Saved. The memory warning now uses '+fmtBytes(gpuBudget())+'.';}},
-    ...[['0','Not sure (assume 6 GB)'],['4','4 GB'],['6','6 GB'],['8','8 GB'],['10','10 GB'],['12','12 GB'],['16','16 GB'],['24','24 GB']].map(([v,t])=>{let cur='0';try{cur=localStorage.getItem('gs.vramSet')||'0';}catch(x){}return el('option',{value:v,text:t,selected:cur===v});}));
+    ...[['0','Automatic ('+(typeof gpuGuessVram==='function'&&gpuGuessVram()?'detected '+gpuGuessVram()+' GB':'assume 6 GB')+')'],['4','4 GB'],['6','6 GB'],['8','8 GB'],['10','10 GB'],['12','12 GB'],['16','16 GB'],['24','24 GB']].map(([v,t])=>{let cur='0';try{cur=localStorage.getItem('gs.vramSet')||'0';}catch(x){}return el('option',{value:v,text:t,selected:cur===v});}));
   const space=el('button',{class:'btn sm',id:'ghSpace',text:'What’s taking space…',title:'The saved size of each picture of this project',onclick:()=>{closeDialog();dlgSpace();}});
   const rec=el('button',{class:'btn sm',text:'Record 10 seconds of painting…',title:'Closes this window, you paint for 10 seconds, then the report comes back with what the app was doing',onclick:()=>{closeDialog();ghRecord();}});
   openDialog({title:'Graphics card report',okLabel:'Copy report',cancelLabel:'Close',body:el('div',{class:'dlg-grid'},pre,el('label',{text:'Which graphics card to ask for: '},sel),el('label',{text:'Your card’s memory (for the warning): '},vsel),el('div',{class:'chips'},space,rec),note),

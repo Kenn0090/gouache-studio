@@ -1,0 +1,22 @@
+const {chromium}=require('playwright');const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const p=await (await b.newContext({viewport:{width:1500,height:1100}})).newPage();const errs=[];p.on('pageerror',e=>errs.push(e.stack));
+ await p.route('**/*',r=>{const u=r.request().url();if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});if(u.startsWith('file:'))return r.continue();return r.abort();});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ await p.evaluate(()=>__gs.newDoc(64,64,8,[1,.5,.2],'ap',false,'pbr'));await p.waitForTimeout(400);
+ await p.evaluate(()=>document.getElementById('lAdj').click());await p.waitForTimeout(400);
+ await p.evaluate(()=>{const g=__gs;g.cmdAddMask&&0;});
+ await p.evaluate(()=>{const g=__gs,L=g.doc.active;g.msAdd(L,'fill',{p:{v:1}});L.editMask=true;g.renderLayers();});await p.waitForTimeout(500);
+ const names=async(sel)=>p.evaluate(()=>[...document.querySelectorAll('#menuPop .mi')].map(b=>b.textContent.trim()));
+ await p.evaluate(()=>{const row=[...document.querySelectorAll('#layerList .lrow')].find(r=>r._node===__gs.doc.active);const th=row.querySelector('.mthumb');th.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:300,clientY:300,button:2}));});
+ await p.waitForTimeout(300);const items=await names();console.log(items.slice(0,14).join(' | '));
+ ok(items.some(t=>/Generators/.test(t))&&items.some(t=>/Fill black/.test(t))&&items.some(t=>/Gaussian blur/.test(t)),'right-click on a Hue / Saturation layer’s mask gives the same mask menu as a fill layer');
+ /* the layer buttons while its mask is selected */
+ await p.evaluate(()=>{document.getElementById('menuPop').hidden=true;const g=__gs,L=g.doc.active;L.editMask=true;g.ui.msSel=null;});
+ const n0=await p.evaluate(()=>__gs.doc.active.mask.stack.length);
+ await p.evaluate(()=>document.getElementById('lFill').click());await p.waitForTimeout(300);
+ const n1=await p.evaluate(()=>__gs.doc.active.mask.stack.length);
+ ok(n1===n0+1,'the New fill button adds a Fill row to the mask while the mask is selected ('+n0+' -> '+n1+')');
+ await p.evaluate(()=>document.getElementById('lAdd').click());await p.waitForTimeout(300);
+ const n2=await p.evaluate(()=>__gs.doc.active.mask.stack.length);ok(n2===n1+1,'New layer adds a Paint row to the mask ('+n1+' -> '+n2+')');
+ ok(errs.length===0,'no errors '+errs.join('|').slice(0,300));await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);})();

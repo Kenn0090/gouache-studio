@@ -53,7 +53,8 @@ function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren
     const pm=typeof mapBrushTargets==='function'?mapBrushTargets():[],cur=(typeof MAP_DEFS!=='undefined'&&MAP_DEFS[doc.map]?MAP_DEFS[doc.map].label:'Base colour');
     bar.append(el('span',{class:'optsep'}),tg('Paints: '+cur+(pm.length?' + '+pm.length:''),pm.length>0,()=>showPanel('tool'),'Which maps the brush paints, and every other brush setting (Brush tab)'),
       /* (0.98.4, Georgian: "a big fat export button") export without hunting through three menus */
-      (optExportMode()==='bar'?optExportBtn():null));return;}
+      );/* (0.98.10, Georgian: it took 5 minutes to find at the far right) the Export button leads the bar */
+    if(optExportMode()==='bar')bar.prepend(optExportBtn());return;}
   /* (0.97.10, Kenn) a short bar: size, opacity, flow and hardness stay; every other group is one small button that opens a pop-up with just that group */
   const lineTool=!tonal&&(t==='brush'||t==='erase')&&ui.mode!=='p3d';
   const pop=(id,label,title,build)=>{const b=el('button',{class:'optchip optpopbtn',id:'obp_'+id,'aria-haspopup':'true',title,text:label+' ▾',onclick:()=>optPopToggle(b,build)});bar.append(b);};

@@ -1,0 +1,12 @@
+const {chromium}=require('playwright');const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const p=await (await b.newContext({viewport:{width:1300,height:800}})).newPage();const errs=[];p.on('pageerror',e=>errs.push(e.stack));
+ await p.route('**/*',r=>{const u=r.request().url();if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});if(u.startsWith('file:'))return r.continue();return r.abort();});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ const r=await p.evaluate(()=>{const f=__gs.gpuVramOf;return {a:f('ANGLE (NVIDIA, NVIDIA GeForce RTX 3090 Direct3D11 vs_5_0 ps_5_0, D3D11)'),b:f('NVIDIA GeForce RTX 4080'),c:f('ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 Ti SUPER Direct3D11)'),d:f('NVIDIA GeForce RTX 3060 Laptop GPU'),e:f('AMD Radeon RX 7900 XTX'),f:f('Intel(R) UHD Graphics 770'),g:f('Google SwiftShader'),h:f('NVIDIA GeForce GTX 1080 Ti'),budget:__gs.gpuBudget()/1073741824};});
+ console.log(JSON.stringify(r));
+ ok(r.a===24&&r.b===16&&r.c===16&&r.h===11&&r.e===24,'known cards get their real memory (3090 → 24, 4080 → 16, 4070 Ti Super → 16, 1080 Ti → 11, 7900 XTX → 24)');
+ ok(r.d===6||r.d===8,'a laptop card is capped (3060 Laptop → '+r.d+')');
+ ok(r.f===0&&r.g===0,'unknown cards and software drawing fall back to the usual 6 GB');
+ ok(r.budget===6,'with no known card the budget stays at 6 GB ('+r.budget+')');
+ ok(errs.length===0,'no errors '+errs.join('|').slice(0,300));await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);})();
