@@ -121,7 +121,7 @@ float hv(vec3 p){ p=fract(p*vec3(0.1031,0.1030,0.0973)+uSeed*0.137); p+=dot(p,p.
 float vnv(vec3 x){ vec3 i=floor(x),f=fract(x); f=f*f*(3.0-2.0*f);
   return mix(mix(mix(hv(i),hv(i+vec3(1,0,0)),f.x),mix(hv(i+vec3(0,1,0)),hv(i+vec3(1,1,0)),f.x),f.y),mix(mix(hv(i+vec3(0,0,1)),hv(i+vec3(1,0,1)),f.x),mix(hv(i+vec3(0,1,1)),hv(i+vec3(1,1,1)),f.x),f.y),f.z); }
 float wv(vec3 p){ vec3 i=floor(p),f=fract(p); float d=8.0; for(int z=-1;z<=1;z++)for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){ vec3 g=vec3(x,y,z); vec3 r=g+vec3(hv(i+g),hv(i+g+11.1),hv(i+g+23.7))-f; d=min(d,dot(r,r)); } return sqrt(d); }
-vec3 vwarp(vec3 q,float amt,float det){ vec3 w=vec3(vnv(q*det+1.3),vnv(q*det+7.1),vnv(q*det+13.7))-0.5; return q+w*amt*2.4; }
+vec3 vwarp(vec3 q,float amt,float det){ if(amt<=0.0) return q; vec3 w=vec3(vnv(q*det+1.3),vnv(q*det+7.1),vnv(q*det+13.7))-0.5; return q+w*amt*2.4; }
 /* nearest and second nearest feature point, and which cell the nearest belongs to */
 vec3 wc(vec3 p){ vec3 i=floor(p),f=fract(p); float d1=8.0,d2=8.0,id=0.0; for(int z=-1;z<=1;z++)for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){ vec3 g=vec3(x,y,z); vec3 r=g+vec3(hv(i+g),hv(i+g+11.1),hv(i+g+23.7))-f; float d=dot(r,r); if(d<d1){ d2=d1; d1=d; id=hv(i+g+5.5); } else if(d<d2) d2=d; } return vec3(sqrt(d1),sqrt(d2),id); }
 float ridge(float v){ float r=1.0-abs(2.0*v-1.0); return r*r; }
@@ -129,19 +129,19 @@ float vfbm(vec3 p,int oct,float g,int mode){ float a=0.5,s=0.0,w=0.0; for(int i=
 void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 q=surfQ(uv)*uScale+vec3(0.37,0.61,0.83);
   q=vwarp(q,uVMwA,uVMwD*0.3);
   vec3 qm=vwarp(q*3.0,uVUwA,uVUwD);
-  float macro=0.5,micro=0.5;
-  if(uVType==1){ macro=1.0-clamp(wv(q)*1.15,0.0,1.0); micro=1.0-clamp(wv(qm)*1.15,0.0,1.0); }
-  else if(uVType==2){ macro=(vnv(q)+vnv(q+5.3)+vnv(q+9.1)+vnv(q+14.7))*0.25; micro=(vnv(qm)+vnv(qm+3.9)+vnv(qm+8.3)+vnv(qm+12.1))*0.25; macro=0.5+(macro-0.5)*2.0; micro=0.5+(micro-0.5)*2.0; }
-  else if(uVType==3){ macro=vfbm(q,2,0.5,1); micro=vfbm(qm,uVOct,0.55,1); }
-  else if(uVType==4){ macro=vfbm(q,2,0.5,2); micro=vfbm(qm,uVOct,0.55,2); }
-  else if(uVType==5){ vec3 a=wc(q),b=wc(qm); macro=1.0-smoothstep(0.0,0.14,a.y-a.x); micro=1.0-smoothstep(0.0,0.18,b.y-b.x); }
-  else if(uVType==6){ vec3 a=wc(q),b=wc(qm); macro=a.z; micro=0.5*b.z+0.5*(1.0-clamp(b.x*1.2,0.0,1.0)); }
-  else if(uVType==7){ float t=vfbm(q*0.8,3,0.5,0); macro=0.5+0.5*sin(6.2831*(q.x*0.5+1.8*t)); float t2=vfbm(qm,3,0.5,0); micro=pow(0.5+0.5*sin(6.2831*(qm.x*0.8+2.4*t2)),3.0); }
-  else if(uVType==8){ float r=length(q.xz)+0.35*vfbm(q*vec3(1.0,0.35,1.0),3,0.5,0); macro=0.5+0.5*sin(r*6.2831*1.3); micro=vfbm(vec3(qm.x*0.4,qm.y*5.0,qm.z*0.4),uVOct,0.55,0); }
-  else if(uVType==9){ vec3 a=wc(q),b=wc(qm); macro=1.0-smoothstep(0.12,0.34,a.x*(0.55+0.9*a.z)); micro=1.0-smoothstep(0.12,0.34,b.x*(0.55+0.9*b.z)); }
-  else if(uVType==10){ macro=0.5+0.5*sin(6.2831*q.x); micro=0.5+0.5*sin(6.2831*qm.x*1.0+vnv(qm)*3.0); }
-  else { float a=0.5,s=0.0,w=0.0; vec3 p=q; for(int i=0;i<2;i++){ s+=a*vnv(p); w+=a; p=p*2.03+vec3(1.7,9.2,3.1); a*=0.5; } macro=s/w;
-    a=0.5;s=0.0;w=0.0;p=qm; for(int i=0;i<8;i++){ if(i>=uVOct)break; s+=a*vnv(p); w+=a; p=p*2.03+vec3(1.7,9.2,3.1); a*=0.55; } micro=s/max(w,1e-4); }
+  float macro=0.5,micro=0.5; bool nm=uVMac>0.0,nu=uVMic>0.0;/* (0.98.9) what is switched off is not computed */
+  if(uVType==1){ if(nm)macro=1.0-clamp(wv(q)*1.15,0.0,1.0); if(nu)micro=1.0-clamp(wv(qm)*1.15,0.0,1.0); }
+  else if(uVType==2){ if(nm)macro=(vnv(q)+vnv(q+5.3)+vnv(q+9.1)+vnv(q+14.7))*0.25; if(nu)micro=(vnv(qm)+vnv(qm+3.9)+vnv(qm+8.3)+vnv(qm+12.1))*0.25; if(nm)macro=0.5+(macro-0.5)*2.0; micro=0.5+(micro-0.5)*2.0; }
+  else if(uVType==3){ if(nm)macro=vfbm(q,2,0.5,1); if(nu)micro=vfbm(qm,uVOct,0.55,1); }
+  else if(uVType==4){ if(nm)macro=vfbm(q,2,0.5,2); if(nu)micro=vfbm(qm,uVOct,0.55,2); }
+  else if(uVType==5){ vec3 a=nm?wc(q):vec3(0.0),b=nu?wc(qm):vec3(0.0); if(nm)macro=1.0-smoothstep(0.0,0.14,a.y-a.x); if(nu)micro=1.0-smoothstep(0.0,0.18,b.y-b.x); }
+  else if(uVType==6){ vec3 a=nm?wc(q):vec3(0.0),b=nu?wc(qm):vec3(0.0); if(nm)macro=a.z; micro=0.5*b.z+0.5*(1.0-clamp(b.x*1.2,0.0,1.0)); }
+  else if(uVType==7){ float t=vfbm(q*0.8,3,0.5,0); if(nm)macro=0.5+0.5*sin(6.2831*(q.x*0.5+1.8*t)); float t2=vfbm(qm,3,0.5,0); if(nu)micro=pow(0.5+0.5*sin(6.2831*(qm.x*0.8+2.4*t2)),3.0); }
+  else if(uVType==8){ float r=length(q.xz)+0.35*vfbm(q*vec3(1.0,0.35,1.0),3,0.5,0); if(nm)macro=0.5+0.5*sin(r*6.2831*1.3); if(nu)micro=vfbm(vec3(qm.x*0.4,qm.y*5.0,qm.z*0.4),uVOct,0.55,0); }
+  else if(uVType==9){ vec3 a=nm?wc(q):vec3(0.0),b=nu?wc(qm):vec3(0.0); if(nm)macro=1.0-smoothstep(0.12,0.34,a.x*(0.55+0.9*a.z)); if(nu)micro=1.0-smoothstep(0.12,0.34,b.x*(0.55+0.9*b.z)); }
+  else if(uVType==10){ if(nm)macro=0.5+0.5*sin(6.2831*q.x); micro=0.5+0.5*sin(6.2831*qm.x*1.0+vnv(qm)*3.0); }
+  else { float a=0.5,s=0.0,w=0.0; vec3 p=q; for(int i=0;i<2;i++){ s+=a*vnv(p); w+=a; p=p*2.03+vec3(1.7,9.2,3.1); a*=0.5; } if(nm)macro=s/w;
+    a=0.5;s=0.0;w=0.0;p=qm; for(int i=0;i<8;i++){ if(i>=uVOct)break; s+=a*vnv(p); w+=a; p=p*2.03+vec3(1.7,9.2,3.1); a*=0.55; } if(nu)micro=s/max(w,1e-4); }
   float n=0.5+(macro-0.5)*uVMac*uVInt+(micro-0.5)*uVMic*uVInt*0.7;
   float m=clamp(n+uVLvl,0.0,1.0); if(uNeg==1) m=1.0-m; o=vec4(vec3(m),1.0); }`;
 const FS_MSBLEND=`uniform sampler2D uA; uniform sampler2D uB; uniform int uMode; uniform float uOp;
@@ -517,7 +517,7 @@ function msSurf(){const tri=typeof fillPosMaps==='function'&&v3.mesh&&(ui.mode==
   if(!tri)return Object.assign({uPos:dummy,uNrm:dummy,uHasPos:{int:0},uBmin:[0,0,0],uBsize:[1,1,1]},B);
   const m=v3.mesh;if(!m._bb){const p=m.pos,mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];for(let i=0;i<p.length;i+=3)for(let j=0;j<3;j++){mn[j]=Math.min(mn[j],p[i+j]);mx[j]=Math.max(mx[j],p[i+j]);}m._bb={mn,sz:mx.map((v,j)=>v-mn[j])};}
   return Object.assign({uPos:tri.pos.tex,uNrm:tri.nrm.tex,uHasPos:{int:1},uBmin:m._bb.mn,uBsize:m._bb.sz},B);}
-function msCtx(){const ctx={tmp:[],doc:{},surf:msSurf()};const dn=msDocMap('normal',ctx);
+function msCtx(needDoc){const ctx={tmp:[],doc:{},surf:msSurf()};const dn=needDoc===false?null:msDocMap('normal',ctx);/* (0.98.9) the document's normal map is only composited for rows that read it */
   Object.assign(ctx.surf,{uDocN:dn?dn.tex:dummy,uHasDocN:{int:dn?1:0},uSz:[doc.w,doc.h],uWorld:{int:0}},pxfUniforms('uv',null));return ctx;}
 /* (0.95.5, Kenn: "make them wider like Painter") edges and cavities reach further than the sharp line the curvature map marks:
    the edge and cavity parts are blurred (wider with the row's Width) and laid over the sharp ones, so wear and dirt spread
@@ -732,7 +732,7 @@ function msAddRowMask(L,rowId,black){if(!msHas(L))return null;let comp=null;
   if(comp){ui.msSel={L,where:'m',id:comp.id};L.editMask=true;renderLayers();if(typeof renderMatEd==='function')renderMatEd(true);}return comp;}
 function msRemoveRowMask(L,rowId){msRecord(L,'Delete the row\u2019s mask',()=>{const S=L.mask.stack,c=S.find(r=>msIsRowMask(r)&&r.p.forRow===rowId);if(!c)return false;S.splice(S.indexOf(c),1);});}
 function msEval(L,ov,guard){const M=L.mask,S=M.stack,P=msProgs(),d=M.target.depth;
-  const ctx=S.some(r=>r.on!==false&&!['paint','fill','filter','alpha','id','anchor'].includes(r.kind))?msCtx():{tmp:[]};
+  const ctx=S.some(r=>r.on!==false&&!['paint','fill','filter','alpha','id','anchor'].includes(r.kind))?msCtx(S.some(r=>r.on!==false&&!['paint','fill','filter','alpha','id','anchor','noise','volume','image','mesh','ref','grad'].includes(r.kind))):{tmp:[]};
   let acc=acquireD(d);clearTarget(acc,[0,0,0,1]);
   let from=0;
   /* (0.98.6) a row's own mask is a companion Paint row (p.forRow = the row's id): painting it redoes its parent row */

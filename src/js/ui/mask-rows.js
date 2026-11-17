@@ -73,7 +73,7 @@ function msImageDrop(L,r){const drop=el('div',{class:'fxddrop',id:'msImageDrop',
 /* ---- Properties: the selected row's settings ---- */
 function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
   const ed=fn=>msEdit(L,r,fn);const S=(id,label,key,min,max,step,fmt,fallback)=>makeSlider({id,label,min,max,step,
-    numericMax:['scale','scratchScale','tile','gtile','gcon','contrast'].includes(key)||(key==='r'&&r.own==='warp')||
+    numericMax:['scale','scratchScale','tile','gtile','gcon','contrast'].includes(key)||(r.kind==='volume'&&['intensity','macro','micro','mwDet','uwDet'].includes(key))||(key==='r'&&r.own==='warp')||
       (p.g==='builder'&&MS_BUILDER_INPUTS.some(([input])=>input===key))?Infinity:undefined,
     value:p[key]??fallback??min,fmt:fmt||(v=>String(Math.round(v*100)/100)),onInput:v=>ed(x=>{x.p[key]=v;})}).el;
   const sel=(id,label,opts,key)=>{const s=el('select',{id,'aria-label':label},...opts.map(([v,t])=>el('option',{value:v,text:t})));s.value=p[key];s.onchange=()=>{ed(x=>{x.p[key]=s.value;});renderLayers();};return el('div',{class:'frow'},el('label',{text:label}),s);};
@@ -131,7 +131,7 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
   if(r.kind==='grad')box.append(sel('ms_axis','Towards',[['up','Top'],['down','Bottom'],['x','Right'],['-x','Left'],['z','Front'],['-z','Back']],'axis'),S('ms_from','From','from',0,1,.01,pct),S('ms_to','To','to',0,1,.01,pct),inv());
   if(r.kind==='noise')box.append(sel('ms_type','Pattern',MS_NOISES,'type'),S('ms_scale','Size','scale',.5,40,.5),S('ms_con','Contrast','contrast',.2,8,.05),S('ms_lvl','Level','level',-1,1,.01),S('ms_seed','Seed','seed',1,99,1,v=>String(v)),
     inv(),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]));
-  if(r.kind==='volume')box.append(sel('ms_vtype','Pattern',MS_VOL_TYPES,'type'),S('ms_vint','Intensity','intensity',0,3,.01,pct),S('ms_vscale','Scale','scale',.5,64,.5),
+  if(r.kind==='volume')box.append(sel('ms_vtype','Pattern',MS_VOL_TYPES,'type'),S('ms_vint','Intensity','intensity',0,3,.01,pct),makeSlider({id:'ms_vscale',label:'Scale',min:.1,max:200,step:.1,numericMin:.01,numericMax:Infinity,value:p.scale??4,fmt:v=>String(Math.round(v*100)/100),onInput:v=>ed(x=>{x.p.scale=v;})}).el,
     el('div',{class:'sub',text:'Contrast'}),S('ms_vmac','Macro','macro',0,3,.01,pct),S('ms_vmic','Micro','micro',0,3,.01,pct),
     el('div',{class:'sub',text:'Warp'}),S('ms_vmwa','Macro amount','mwAmt',0,1,.01,pct),S('ms_vmwd','Macro detail','mwDet',.5,8,.1),S('ms_vuwa','Micro amount','uwAmt',0,1,.01,pct),S('ms_vuwd','Micro detail','uwDet',1,16,.1),
     el('div',{class:'sub',text:'Quality'}),S('ms_vsamp','Sampling (detail levels)','samp',1,8,1,v=>String(v)),S('ms_vlvl','Level','level',-.5,.5,.01),S('ms_vseed','Seed','seed',1,99,1,v=>String(v)),inv(),
